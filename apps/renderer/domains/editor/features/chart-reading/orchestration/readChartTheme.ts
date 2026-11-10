@@ -14,7 +14,7 @@ import {
   baseChartTheme,
   type ChartScheme,
   type ChartThemeTokens,
-} from '../definitions/chartTheme'
+} from '@linnya/markdown-document-core/workspace-charts'
 
 /** 月白蓝是用户显式选择的浅色变体，与 light 使用同一组亮色色系。 */
 export function chartSchemeOfTheme(theme: string | null): ChartScheme {

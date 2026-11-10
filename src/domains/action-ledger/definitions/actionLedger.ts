@@ -14,8 +14,17 @@ export type ActionActorKind = 'user' | 'run' | 'subrun' | 'plugin' | 'external';
 export type ActionActor =
   | { readonly kind: 'user' }
   | { readonly kind: 'plugin'; readonly pluginId: string }
-  | { readonly kind: 'external' }
+  | ActionExternalActor
   | ActionRunActor;
+
+/**
+ * 经外部控制桥（Linnya CLI）进来的改动。分不出调用方是人、脚本还是外部 Agent，只证明来自这个入口。
+ * CLI 的工具调用由一次无模型运行执行，此时带上该运行身份，便于按对话和运行追溯。
+ */
+export interface ActionExternalActor {
+  readonly kind: 'external';
+  readonly run?: ActionRunActor;
+}
 
 /** Agent 运行。subrun 记录直接父运行，所有运行都记录用户这次请求的根运行。 */
 export interface ActionRunActor {

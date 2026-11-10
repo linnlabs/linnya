@@ -2,7 +2,7 @@ import {
   encodeMarkdownAnnotationComment,
   encodeMarkdownEmptyBlockAnnotationAnchorComment,
 } from '@app/schemas';
-import type { MarkdownDocJson, PlannedMarkdownAnnotationComment } from '../../normalization';
+import type { MarkdownInlineNodeProjector, MarkdownDocJson, PlannedMarkdownAnnotationComment } from '../../normalization';
 import { flattenMarkdownDocumentBlocks, serializeMarkdownBlocks } from '../../../shared';
 import { admitDocumentCitations } from '../../../../citation';
 
@@ -13,13 +13,14 @@ import { admitDocumentCitations } from '../../../../citation';
 export function serializeMarkdownFileWriteTarget(params: {
   readonly document: MarkdownDocJson;
   readonly annotationComments: readonly PlannedMarkdownAnnotationComment[];
+  readonly projectInlineNode?: MarkdownInlineNodeProjector;
   readonly projectBody: (markdown: string) => string;
 }): string {
   const citations = admitDocumentCitations(params.document);
   const blocks = flattenMarkdownDocumentBlocks(params.document, {
     includeAnnotations: false,
     projectInlineNode: input => {
-      if (input.type !== 'citationNode') return null;
+      if (input.type !== 'citationNode') return params.projectInlineNode?.(input) ?? null;
       const id = input.attrs['citationId'];
       if (typeof id !== 'string') throw new Error('Compiled citation node is missing its identity.');
       return citations.getBodyTokenForCitationId(id);

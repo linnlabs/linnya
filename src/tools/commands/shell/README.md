@@ -18,7 +18,7 @@
 工具始终返回 `StructuredToolResult` JSON：
 
 - `data` 给程序和 Renderer 使用，包含 `status`、`processHandle`、`terminal`、输出引用和展示事实。
-- `data.terminal` 的 `process_exit` 是命令真实退出事实；`completed` 只表示进程已完成终态，不能把它当成退出码为 0。
+- `data.terminal` 与模型控制首行 `command_control.terminal` 使用[公开终态摘要](../../../../packages/schemas/src/commands/commandToolDisplay.ts)：`outcome=exited` 时查看 `exitCode`；`completed` 只表示工具已收齐终态。Commands domain 内部的完整 `process_exit` 不在此公开摘要中。命令进程退出0仍须结合所调用CLI的业务响应判断结果，尤其管道的最后一个进程可能掩盖前段CLI失败。
 - `observation` 给模型使用：控制首行在外、命令正文进入动态不可信数据边界；不包含内部路径、PID、owner generation 或完整 raw artifact。
 - `running` 结果必须带可供 `process` 使用的 opaque handle。
 - `completed` 结果必须等待可信终态和输出结算后再返回。

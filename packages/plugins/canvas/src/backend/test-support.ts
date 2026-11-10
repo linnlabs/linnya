@@ -1,0 +1,20 @@
+export { canvasPluginMigrations } from './persistence/migrations';
+export {
+  createEmptyCanvasDocument,
+  readCanvasSnapshot,
+  updateCanvasEditingClaim,
+} from './features/canvasCommit/persistence/canvasRepository';
+export { commitCanvasOperations } from './features/canvasCommit/orchestration/commitCanvasOperations';
+export { createCanvasDocumentRuntime } from './orchestration/createCanvasDocumentRuntime';
+export { createCanvasBackendPlugin } from './index';
+export {
+  readCanvasSelectionContext,
+  readCanvasClipboard,
+} from './orchestration/readCanvasSelectionContext';
+export { executeCanvasCliCommand } from './orchestration/executeCanvasCliCommand';
+export { createCanvasComputationRuntime } from './capabilities/canvasComputation';
+export type { CanvasCliServices } from './orchestration/definitions/canvasCliExecution';
+export { createCanvasPluginCli, formatCanvasCliInputError } from './features/canvasCli';
+export { readCanvasStandalone } from './orchestration/readCanvasStandalone';
+export { readCanvasResources } from './orchestration/readCanvasRenderingResources';
+export { createCanvasArrangementRuntime } from './orchestration/createCanvasArrangementRuntime';

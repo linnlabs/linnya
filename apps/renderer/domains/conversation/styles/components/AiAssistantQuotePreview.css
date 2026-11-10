@@ -53,63 +53,85 @@
   gap: var(--space-1-5);
 }
 
+/* 引用标签：超级标签“淡墨”的紧凑档。外形与正文标签同源（淡墨底、4px 圆角、无边），只是字号固定 13px。 */
 .ai-assistant-quote-preview__pill {
+  --quote-pill-ink: var(--color-text-primary);
   display: inline-flex;
   align-items: center;
   max-width: 100%;
-  padding: var(--space-1) var(--space-2-5);
-  border-radius: var(--radius-full); /* 两头半圆形 */
-  background-color: var(--color-bg-hover-light);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1-5);
+  border-radius: var(--radius-sm);
+  background-color: color-mix(in srgb, var(--quote-pill-ink) 6%, transparent);
   color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-tight);
   transition: background-color var(--duration-short) var(--ease-standard);
-  position: relative; /* 让关闭按钮和渐变遮罩悬浮在文字上方 */
-  overflow: hidden; /* 确保右侧渐变和关闭按钮在 pill 内部裁剪 */
+  position: relative; /* 移除按钮悬浮在标签末端 */
 }
 
-.ai-assistant-quote-preview__pill::before {
-  /* 右侧渐变遮罩用于 hover 时盖住文字，避免关闭按钮和文本重叠。 */
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 64px;
-  height: 100%;
-  background: linear-gradient(
-    to right,
-    transparent,
-    color-mix(
-      in srgb,
-      var(--color-bg-hover-light) 50%,
-      transparent
-    ) 35%,
-    var(--color-bg-hover-light) 58%,
-    var(--color-bg-hover-light) 100%
-  );
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--duration-short) var(--ease-standard);
+.ai-assistant-quote-preview__pill:hover,
+.ai-assistant-quote-preview__pill:focus-within {
+  background-color: color-mix(in srgb, var(--quote-pill-ink) 10%, transparent);
+}
+
+/* 已发送消息里的标签只展示，不随悬停变化。 */
+.ai-assistant-quote-preview__pill--static:hover,
+.ai-assistant-quote-preview__pill--static:focus-within {
+  background-color: color-mix(in srgb, var(--quote-pill-ink) 6%, transparent);
 }
 
 .ai-assistant-quote-preview__pill-text {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ai-assistant-quote-preview__pill-icon {
+  display: inline-flex;
+  flex: none;
+  width: var(--space-4);
+  height: var(--space-4);
+  margin-inline-end: var(--space-1);
+  color: var(--color-text-secondary);
+}
+
+.ai-assistant-quote-preview__pill-icon svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.15;
+}
+
+.ai-assistant-quote-preview__pill-label {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* 悬停/聚焦时标题末端淡出给移除按钮让位；底色半透明，不能再用实色渐变遮罩。 */
+.ai-assistant-quote-preview__pill:not(.ai-assistant-quote-preview__pill--static):hover
+  .ai-assistant-quote-preview__pill-label,
+.ai-assistant-quote-preview__pill:not(.ai-assistant-quote-preview__pill--static):focus-within
+  .ai-assistant-quote-preview__pill-label {
+  -webkit-mask-image: linear-gradient(to left, transparent 12px, currentColor 28px);
+  mask-image: linear-gradient(to left, transparent 12px, currentColor 28px);
+}
+
 .ai-assistant-quote-preview__pill-close {
   position: absolute;
   top: 50%;
-  right: 2px;
+  right: var(--space-1);
   transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--radius-full);
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: var(--radius-xs);
   border: none;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: var(--color-text-tertiary);
   cursor: pointer;
   padding: 0;
   opacity: 0;
@@ -119,18 +141,72 @@
 
 .ai-assistant-quote-preview__pill-close:hover {
   background-color: var(--color-bg-hover-strong);
+  color: var(--color-text-secondary);
 }
 
 .ai-assistant-quote-preview__pill-close svg {
-  width: 14px;
-  height: 14px;
+  width: var(--space-3);
+  height: var(--space-3);
 }
 
-.ai-assistant-quote-preview__pill:hover::before {
-  opacity: 1;
-}
-
-.ai-assistant-quote-preview__pill:hover .ai-assistant-quote-preview__pill-close {
+.ai-assistant-quote-preview__pill:hover .ai-assistant-quote-preview__pill-close,
+.ai-assistant-quote-preview__pill:focus-within .ai-assistant-quote-preview__pill-close {
   opacity: 1;
   pointer-events: auto;
+}
+
+.ai-assistant-quote-preview__pill-action {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.ai-assistant-quote-preview__pill-action:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-xs);
+}
+
+.conversation-reference-hover {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+  width: min(22rem, calc(100vw - 16px));
+}
+
+/* DropdownPanel 默认绝对定位：外层高度会变成 0、宽度按加载文案收缩，定位和预览排版都按错的尺寸算。 */
+.conversation-reference-hover .conversation-reference-hover__content {
+  position: relative;
+  width: 100%;
+  max-height: min(60vh, 560px, var(--conversation-reference-available-height, 560px));
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+/* 预览组件自带内边距和正文排版，弹层的文字样式只给没有贡献组件的引用。 */
+.conversation-reference-hover__content:not(.conversation-reference-hover__content--owned) {
+  padding: var(--space-3);
+}
+
+.conversation-reference-hover__content:not(.conversation-reference-hover__content--owned) p {
+  margin-block: var(--space-2);
+  white-space: pre-wrap;
+}
+
+.conversation-reference-hover__content--owned {
+  --document-preview-fade-color: var(--color-bg-surface);
+  --document-preview-fade-radius: var(--radius-lg);
+}
+
+.conversation-reference-hover__content--owned [role='alert'] {
+  margin: var(--space-2) var(--space-3);
+}
+
+.conversation-reference-hover img {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }

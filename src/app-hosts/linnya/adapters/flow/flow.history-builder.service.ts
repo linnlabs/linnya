@@ -12,8 +12,6 @@ import { Logger } from 'src/shared/logger';
 import type {
   RuntimeEvent,
   RuntimeResourceRef,
-  ToolOutputEvent,
-  AiMessage,
 } from '@linnlabs/linnkit/contracts';
 import { RuntimeResourceRef as RuntimeResourceRefSchema } from '@linnlabs/linnkit/contracts';
 import { findRegisteredAgentDefinitionByPromptKey } from 'src/app-hosts/linnya/agent-registry/agentDefinitionResolver';
@@ -43,6 +41,13 @@ function isUserInputEvent(event: unknown): event is {
   if (event.attachments !== undefined && !Array.isArray(event.attachments)) return false;
   if (event.metadata !== undefined && !isRecord(event.metadata)) return false;
   return true;
+}
+
+interface HistoryUserInput {
+  readonly id?: string;
+  readonly content: string;
+  readonly attachments?: RuntimeResourceRef[];
+  readonly metadata?: Record<string, unknown>;
 }
 
 function parseOptionalUserQuote(value: unknown): UserQuoteData | undefined {
@@ -109,6 +114,13 @@ function resolveFixedModelIdFromPolicy(policy: AgentConfiguration['modelPolicy']
  * 功能 (What): 提供静态方法，将统一的历史记录翻译成不同模式所需的请求格式
  */
 export class HistoryBuilder {
+  static buildForContextEstimate(
+    conversationId: string,
+    options: ConversationNextRequest['options'],
+  ): AgentInvokeRequest {
+    // 尚未发送下一条消息。空 query 让 Linnkit 保留已落库历史，而不补造用户事件或重复本轮引用。
+    return this.buildFromUserInput(conversationId, { content: '' }, options);
+  }
   
   // ===========================================
   // 🎯 核心公共方法：统一的请求构建
@@ -193,12 +205,7 @@ export class HistoryBuilder {
      */
     const findLastUserInput = (
       events: RuntimeEvent[],
-    ): {
-      id?: string;
-      content: string;
-      attachments?: RuntimeResourceRef[];
-      metadata?: Record<string, unknown>;
-    } | null => {
+    ): HistoryUserInput | null => {
       const last = [...events].reverse().find((e) => isUserInputEvent(e));
       if (!last) return null;
       const timestamp = typeof last.timestamp === 'number' ? last.timestamp : Date.now();
@@ -226,6 +233,14 @@ export class HistoryBuilder {
       return null;
     }
 
+    return this.buildFromUserInput(conversationId, lastUser, options);
+  }
+
+  private static buildFromUserInput(
+    conversationId: string,
+    lastUser: HistoryUserInput,
+    options?: ConversationNextRequest['options'],
+  ): AgentInvokeRequest {
     const resolvedPromptKey = options?.promptKey || PromptKeys.DEFAULT;
 
     // ✅ 收口：统一在 AgentRegistry 中注册所有 HistoryBuilder 扩展器（幂等）

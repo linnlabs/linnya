@@ -4,6 +4,7 @@ import { ConversationSelectedAgentIdSchema, PromptKeys } from '@app/schemas';
 import { requireRendererAiInvocationPort } from '@plugin/renderer/aiInvocationPort';
 import {
   addComposerReference,
+  focusComposerInput,
   clearRendererComposerCommandPortForTest,
   removeComposerReference,
 } from '@plugin/renderer/composerCommandPort';
@@ -20,6 +21,10 @@ import {
   registerRendererPlugin,
 } from '@/app/plugins/registry';
 import { installBuiltinRendererPluginPorts } from './installBuiltinRendererPluginPorts';
+
+vi.mock('@/shared/ipc/workspaceMutationSubscription', () => ({ subscribeToWorkspaceMutation: () => () => {} }));
+vi.mock('@/app/layout/store/layoutStore', () => ({ useLayoutStore: () => ({ state: { layoutMode: 'editor-centric', conversationPane: { visible: true } }, openConversationInRightPane: vi.fn() }) }));
+vi.mock('@/domains/conversation/features/composer-focus', () => ({ focusRegisteredComposerInput: () => true }));
 
 const sendChatMessageMock = vi.hoisted(() => vi.fn());
 const updateSelectedAgentMock = vi.hoisted(() => vi.fn(async (
@@ -320,6 +325,8 @@ describe('installBuiltinRendererPluginPorts AI invocation port', () => {
     expect(composerReferenceHarness.addReference).toHaveBeenCalledWith(input);
     expect(composerReferenceHarness.removeReference).toHaveBeenCalledWith('reference-1');
   });
+
+  it('聚焦命令只返回当前输入框可聚焦结果', async () => { expect(await focusComposerInput()).toBe(true); });
 
   it('starts a visible subrun run through a declared worker', async () => {
     const handle = startConversationSubruns({

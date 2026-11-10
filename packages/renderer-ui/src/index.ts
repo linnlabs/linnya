@@ -66,9 +66,10 @@ export {
   applyTextareaAutoResize,
   CustomTextarea,
   CustomTextInput,
+  InlineTextInput,
   SecretInput,
 } from './features/text-entry';
-export type { TextareaAutoResizeOptions } from './features/text-entry';
+export type { InlineTextInputVariant, TextareaAutoResizeOptions } from './features/text-entry';
 export { CustomNumberInput, CustomSlider } from './features/number-entry';
 export type {
   CustomNumberInputAlignment,

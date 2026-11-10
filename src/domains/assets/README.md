@@ -9,6 +9,9 @@ domain 只管理资源身份与可验证内容事实，不拥有项目侧栏、�
 ## 身份与归属是两层事实
 
 文档版本清理由插件判断自身历史可达性，通过 `@plugin/backend/documentAssetOwnership` 精确释放文档与资产的关联。
+正文需与新图片归属原子提交时，先用 `documentImageAsset.prepareImageBytes` 准备字节与媒体事实，
+再在正文同步事务里调用 `documentAssetOwnership.registerDocumentAssetOwnership`。准备阶段不建立文档归属；
+归属入口要求当前事务，不做文件 I/O、不自行提交。既有 `adopt*` 保留其立即接管的用例。
 Host 实现位于 `application/document-assets`，只删除指定 `document_asset_links`，不删除资产账本或物理文件，
 其他文档、项目和会话引用不受影响。插件须串行协调新资产接管、提交前复核和持久重试；
 详见 [文档历史](../document-history/README.md)。
@@ -266,3 +269,5 @@ storage workflow 中明确统一的受管展示引用，而不是在读取端加
   仍使用受控物理路径服务本地展示，不能把它误当 Agent 合同。
 - `pathManager` 同时提供 AppData 和 Workspace 多种业务目录，是存量聚合点。asset
   domain 应只通过窄路径 port 消费已装配根，不继续把生命周期规则写回 pathManager。
+
+历史预算通过 `documentAssetOwnership.listDocumentAssetByteFacts` 读取仍归属本文档的实际字节事实，不让插件读取账本或物理路径。缺失归属或字节事实明确失败，不能以零字节继续裁剪。登记和精确释放仍使用调用方 SQLite 连接，版本重链与归属释放可以一起回滚。

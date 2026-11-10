@@ -212,3 +212,7 @@ import {
 已迁移到件套的 tab：对话、外观、命令权限、网络搜索 / 网页解析、文本文档、存储空间、添加模型、模型管理、模型配置、关于。
 
 旧的 `.form-row` / `.form-label` / `.control-area` 仍留在 [`styles/setting-content.css`](../styles/setting-content.css) 里，只供现有弹窗表单消费。布尔项已统一使用 `@linnya/renderer-ui` 的 `Switch` 或 `SettingsSwitchRow`，不再维护手写 `.toggle-switch`。`ModelDetailsModal` 已由 `model-configuration` domain 拥有；新 Settings 代码不要继续使用这些全局表单类。
+
+## 插件外观分节
+
+外观页在主题下面呈现通过 `@plugin/renderer/settingsContribution` 注册的 AppearanceSectionContribution。Settings owner 绘制标题与 SettingsSection，插件组件只绘制该节内容，优先使用现有件套。注册表是响应式的，已打开的页面也会反映后续激活/停用；插件必须成对调用 registerAppearanceSection / unregisterAppearanceSection。

@@ -15,6 +15,7 @@ import Text from '@tiptap/extension-text'
 import StarterKit from '@tiptap/starter-kit'
 
 // --- 特性模块导入 ---
+import { createDocumentReferenceExtension } from '../features/document-references';
 import AiWritingExtension from '../features/AiWriting'
 import {
   AnnoLayoutPlugin,
@@ -218,6 +219,7 @@ export function getAllExtensions(dependencies: ExtensionDependencies): Extension
     RevisionMark,
     // 引用原子节点（正文引用，存储快照数据；编号仅做视图派生）
     CitationNode,
+    createDocumentReferenceExtension(),
     // 使用包装后的 Extension
     createAutocompleteExtension(),
     ...coreAppExtensions,

@@ -150,6 +150,12 @@ export function buildInsertedNodesForRichSegment(
 ): ProseMirrorNode[] {
   const inlineAtom = segment.inlineAtom
 
+  if (inlineAtom?.type === 'documentReference') {
+    const node = schema.nodes.documentReference;
+    if (!node) throw new Error('Revision schema does not support document references.');
+    return [node.create({ documentId: inlineAtom.documentId, referenceId: inlineAtom.referenceId }, null, marks)];
+  }
+
   if (inlineAtom?.type === 'inlineLatex') {
     const inlineLatexType = schema.nodes.inlineLatex
     if (inlineLatexType) {

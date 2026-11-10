@@ -67,6 +67,8 @@
 不能直接查询非响应式 registry Map；停用或切换文档会卸载面板。
 参见 [Core 面板](../../../apps/renderer/domains/document-history/README.md)。
 
+文档类型还可贡献 `readonlyPreviewComponent`：超级标签、对话引用与画布展开到详情档时懒挂载，接收 documentId/projectId，规则与历史预览相同（只读、自行释放、不绑定可写会话）。插件要在自己的界面里预览别的文档时，用 `@plugin/renderer/documentPreview` 的 `readDocumentPreview` 或 `mountDocumentPreview`。两侧合同见 [05 文档类型 · 只读文档预览](./05-document-types.md#只读文档预览与稳定引用)。
+
 - UI 读插件启停一律走 enabled 状态 store 的快照；列表/菜单类 UI 在状态未加载完成（`hasLoaded` 为 false）时不要展示可创建类型（首屏假阳性窗口见审计 F-03）。
 - 启停切换后会同步收缩的注册面：file handler、page context provider、toolRefresh handler、document creation handler、document reference runtime handler、conversation input、CSS。插件 contribution 的静态声明可以保留在 registry 里用于缺失/禁用提示，但运行时副作用必须可卸载。
 - 动态加载插件的 contribution 注册是事务性的：`registerRendererPlugin()` 中途失败会回滚已注册 document type/tool card/workflow；conversation input 在 active 生命周期内事务挂卸；`activate()` 失败会由 loader 回滚本次新加载 contribution。平台内置 `platform` contribution 是唯一可启动期预注册的 renderer contribution。

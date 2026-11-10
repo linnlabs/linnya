@@ -7,7 +7,7 @@
  */
 
 import type { MarkdownChartSpecReadView as ChartSpec } from '@app/schemas'
-import { formatChartDisplayValue } from './chartNumbers'
+import { formatChartDisplayValue } from '@linnya/markdown-document-core/workspace-charts'
 
 export interface ChartDataTableModel {
   readonly header: readonly string[]

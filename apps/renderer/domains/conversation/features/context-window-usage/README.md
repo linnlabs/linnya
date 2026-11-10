@@ -1,36 +1,28 @@
 # Context Window Usage
 
-本 feature 展示当前 Conversation 最近一次成功提交给模型的 Prompt 上下文占用。它只消费正式用户消息 read model，
-不在 Renderer 估算草稿、不读取 telemetry / cost collector，也不维护第二份 token 状态。
+本 feature 展示按当前模型和 Agent 估算的已保存上下文占用。打开对话时独立查询 `GET /api/v1/conversation/:id/context-usage`，
+历史窗口可以先显示。查询与历史分页、滚动位置、可视行数无关。
 
 ## Owner 与数据流
 
-Graph 每次成功 LLM Prompt 发布一条 ephemeral `context_usage_snapshot`；Host 在 execution 边界为它绑定正式
-`user_message_id`，Renderer live projector 随即原子写入触发执行的用户消息。一次 Prompt 返回多个 tool calls 仍只有一条
-快照，工具本身不补造 token 事件；工具完成后的下一次 LLM Prompt 成功时再更新。
+Host 从 EventStore 读取前台正文事实，以 Linnkit 的正式上下文构建器做本地估算。它使用当前模型 route 和 Agent 工具目录，
+复用上下文裁剪、图片预算和 tokenizer。不会调用模型、远程计数或执行有写入行为的请求增强器。分项与总量是估算值，
+不计尚未发送的草稿、附件和临时本轮注入，也不预先执行历史压缩。
 
-execution settlement 最多发布一条 durable `run_execution_metrics.context_usage`，使用同一产品转换函数覆盖最终值，保证
-reload 和断线客户端收敛。临时快照不进 EventStore、UI replay、Agent context 或 Graph history。
-窗口 API 同时返回 `latest_context_usage`：从当前 durable user_input read model 按 sort_seq 读取最近成功快照及来源身份，
-不依赖该用户是否还在 80 条尾页或 320 条保留窗内，也不把来源消息插入可视消息。该依赖随窗口 revision 接纳，
-切换会话、清空/重建和编辑截断时同步清理；没有快照时明确返回 null。
-`useConversationSelectors` 提供该依赖、`window ∪ live` 合成消息和是否包含会话尾部；本 feature 的 orchestration 只把这些
-响应式来源交给纯函数，并把派生结果提供给输入框 footer。同来源或更新用户轮次的 live 快照继续优先；较旧 live 用户
-不能覆盖更新的 durable 来源，分页方式也不能改变用量。没有 feature store，也没有跨 domain store 读取。
-
-当前模型 ID 来自 model-configuration 的公开 purpose binding，仅用于判断 `historical_model`。后端以正式 inference route
-作为理论窗口和最大输出基线，只有显式 Agent policy cap 才能进一步收窄；Renderer 只消费最终快照，不保存模型容量表，
-也不为缺失快照补 256K/16K。
+前端在切换对话、模型或 Agent 时取消旧请求。运行结束或持久化窗口 revision 变更后重新查询；空闲时观察当前对话，
+使没有本窗口 SSE 的 CLI 工具运行也能更新用量。后端按会话持久化统计、Agent 与模型配置复用最近一次估算。
+滚动读取历史不会清除有效值。当前运行已经发布成功 Prompt 快照时，只有同一 run 和预算模型的 live 值可临时覆盖估算。
+历史快照仍是已发生 Prompt 的记录，不参与空闲时的当前用量。
 
 ## 展示联合
 
 | 状态 | 语义 |
 |---|---|
-| `unavailable` | 草稿会话或还没有成功快照；不渲染圆环入口 |
-| `tail_unavailable` | 当前历史窗口不含会话尾部，不能证明窗口内快照是最新值 |
-| `current` | 快照预算模型等于当前有效模型，且未超额 |
-| `historical_model` | 当前模型已改变；旧快照保持原数字 |
-| `overflow` | `used_tokens` 超过当次完整有效窗口，真实比例允许超过 100% |
+| `hidden` | 没有已保存会话，或没有可估算的模型 |
+| `loading` | 正在估算。圆环中心以明暗变化提示进度，并支持系统减少动态效果设置 |
+| `unavailable` | 本次估算未成功，可查看中性提示 |
+| `current` | 当前用量已就绪 |
+| `overflow` | 占用超过模型和 Agent 共同约束的有效窗口 |
 
 正常、偏高、很高阈值分别为 `<70%`、`70%–<90%`、`90%–100%`。超额状态的圆环弧长封顶，但顶部比例与总量不做
 clamp。正数小于 1% 显示为 `<1%`，避免伪装成 0%。
@@ -58,18 +50,13 @@ clamp。正数小于 1% 显示为 `<1%`，避免伪装成 0%。
 只统计当前消息窗口。新会话尚未取得历史 metadata 时，使用当前 live 投影中的 `user_input` 数量，metadata 到达后
 自动切换到全量计数。
 
-新对话和其它没有成功快照的会话不渲染圆环；第一次 LLM Prompt 成功并投影快照后自动出现。只有
-`tail_unavailable` 仍保留空环与说明面板，因为它表达的是已有历史窗口不完整，而不是尚无数据。
-
 圆环的未使用轨道消费 `--color-border-light` 并使用更细描边，已用弧线略粗且保留圆头；二者通过明度和线宽共同建立
 层级。圆环视觉直径为 16px，按钮热区保持 24px；与发送按钮使用标准 `--spacing-sm` 间距，不为了视觉变轻缩小
 可点击范围。
 
-会话 ID 作为 dropdown component key，切换会话会关闭旧弹层。运行期间 footer 不禁用圆环：第一次成功 Prompt 前保留
-上一份快照，之后每次成功 Prompt 到达即由同一 computed 自动刷新；最终 settlement 再覆盖为 durable 结算值。
+会话 ID 作为 dropdown component key，切换会话会关闭旧弹层。
 
 ## 测试边界
 
-纯函数测试覆盖不可用、tail gate、最近快照、阈值、历史模型、overflow、格式化和定位。集成测试覆盖固定三行、无关闭
-按钮、Teleport 面板内部点击与空态。共享 dropdown 独立覆盖点击外部和 Escape 焦点归还。不为 padding、颜色或 DOM
-snapshot 写测试；视觉值由样式 token、style audit 与 Electron 验收负责。
+测试覆盖当前运行的快照归属、阈值和容量显示，以及真实历史查询在无旧快照、追加工具结果、切模型和截断后的变化。
+集成测试验证加载提示和 Teleport 内点击，视觉以 Desktop 探针验收。

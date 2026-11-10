@@ -21,6 +21,33 @@ interface UseSelectFocusNavigationOptions {
   closeNestedSubmenu: () => void;
 }
 
+/**
+ * 最近一次输入是否来自键盘。菜单打开时要把焦点放到首项，浏览器只看“上一个焦点元素是否显示过焦点”，
+ * 先按过键再右键也会判成键盘操作，所以按实际输入自行决定。监听挂在 window 捕获阶段，业务 stopPropagation 不影响。
+ */
+let lastInputWasKeyboard = false;
+let inputTrackingInstalled = false;
+
+function trackLastInput(): void {
+  if (inputTrackingInstalled) return;
+  inputTrackingInstalled = true;
+  const options = { capture: true, passive: true } as const;
+  window.addEventListener(
+    'keydown',
+    () => {
+      lastInputWasKeyboard = true;
+    },
+    options
+  );
+  window.addEventListener(
+    'pointerdown',
+    () => {
+      lastInputWasKeyboard = false;
+    },
+    options
+  );
+}
+
 /** CustomSelect 内部的真实 DOM 焦点导航。 */
 export function useSelectFocusNavigation({
   manualMode,
@@ -38,6 +65,8 @@ export function useSelectFocusNavigation({
   closeSubmenu,
   closeNestedSubmenu,
 }: UseSelectFocusNavigationOptions) {
+  trackLastInput();
+
   function resolveTriggerElement(): HTMLElement | null {
     if (!unref(manualMode)) {
       const trigger = unref(selectRef)?.querySelector('.select-trigger');
@@ -62,7 +91,12 @@ export function useSelectFocusNavigation({
     const selected = panel.querySelector('button.select-option.is-selected:not(:disabled)');
     const firstEnabled = panel.querySelector('button.select-option:not(:disabled)');
     const target = selected ?? firstEnabled;
-    if (target instanceof HTMLElement) target.focus();
+    if (!(target instanceof HTMLElement)) return;
+    // focusVisible 尚未进 TS 的 DOM 类型；鼠标打开时焦点就位但不显示，键盘操作时才显示。
+    const options: FocusOptions & { focusVisible: boolean } = {
+      focusVisible: lastInputWasKeyboard,
+    };
+    target.focus(options);
   }
 
   function focusCurrentOption() {
@@ -79,19 +113,21 @@ export function useSelectFocusNavigation({
 
   function moveFocusWithinPanel(event: KeyboardEvent, direction: FocusDirection): boolean {
     if (!(event.currentTarget instanceof HTMLElement)) return false;
-    if (event.target instanceof Element && event.target.closest('.option-inline-number')) return false;
+    if (event.target instanceof Element && event.target.closest('.option-inline-number'))
+      return false;
 
     const options = Array.from(
-      event.currentTarget.querySelectorAll<HTMLButtonElement>('button.select-option:not(:disabled)'),
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('button.select-option:not(:disabled)')
     );
     if (options.length === 0) return false;
 
     const activeIndex = options.findIndex(option => option === document.activeElement);
-    const nextIndex = direction === 'first'
-      ? 0
-      : direction === 'last'
-        ? options.length - 1
-        : (activeIndex + direction + options.length) % options.length;
+    const nextIndex =
+      direction === 'first'
+        ? 0
+        : direction === 'last'
+          ? options.length - 1
+          : (activeIndex + direction + options.length) % options.length;
     options[nextIndex]?.focus();
     return true;
   }
@@ -104,15 +140,16 @@ export function useSelectFocusNavigation({
       return;
     }
 
-    const direction: FocusDirection | null = event.key === 'ArrowDown'
-      ? 1
-      : event.key === 'ArrowUp'
-        ? -1
-        : event.key === 'Home'
-          ? 'first'
-          : event.key === 'End'
-            ? 'last'
-            : null;
+    const direction: FocusDirection | null =
+      event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowUp'
+          ? -1
+          : event.key === 'Home'
+            ? 'first'
+            : event.key === 'End'
+              ? 'last'
+              : null;
     if (direction !== null && moveFocusWithinPanel(event, direction)) event.preventDefault();
   }
 
@@ -131,9 +168,7 @@ export function useSelectFocusNavigation({
     if (event.key === 'Escape' || event.key === 'ArrowLeft') {
       event.preventDefault();
       event.stopPropagation();
-      const parent = unref(submenuRef)?.querySelector(
-        `[aria-controls="${nestedSubmenuPanelId}"]`,
-      );
+      const parent = unref(submenuRef)?.querySelector(`[aria-controls="${nestedSubmenuPanelId}"]`);
       closeNestedSubmenu();
       if (parent instanceof HTMLElement) void nextTick(() => parent.focus());
       return;

@@ -1,0 +1,142 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CanvasCardIdSchema, CanvasEdgeSchema, CanvasTextCardSchema, type CanvasCamera, type CanvasCardId } from '../../../../shared';
+import type { CanvasInteractionOptions } from '../../definitions/canvasInteraction';
+import type { CanvasInteractionKernel, CanvasKernelIntent } from '../../definitions/canvasKernel';
+import { installCanvasInteraction } from '../installCanvasInteraction';
+import { createCanvasSnapTargets } from '../functions/canvasSnapping';
+
+const cleanups: Array<() => void> = [];
+afterEach(() => cleanups.splice(0).forEach(cleanup => cleanup()));
+function fixture(options: CanvasInteractionOptions = {}) {
+  const canvas = document.createElement('canvas'); document.body.append(canvas);
+  const captured = new Set<number>();
+  canvas.setPointerCapture = id => { captured.add(id); };
+  canvas.hasPointerCapture = id => captured.has(id);
+  canvas.releasePointerCapture = id => { captured.delete(id); };
+  const cards = [0, 120].map((x, index) => CanvasTextCardSchema.parse({ schemaVersion: 1, id: `c${index + 1}`, type: 'text', revision: 0, order: String(index), locked: false, color: 'white', x, y: 0, width: 100, height: 50, parentId: null, createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0, data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [] }] } } }));
+  let selected: readonly CanvasCardId[] = cards.map(card => card.id);
+  let camera: CanvasCamera = { x: 0, y: 0, zoom: 1 };
+  const brush = vi.fn(), preview = vi.fn(), clear = vi.fn(), guides = vi.fn();
+  const edge = CanvasEdgeSchema.parse({ schemaVersion: 1, revision: 0, order: 'a0', locked: false, color: 'white', createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0, id: 'e1', type: 'edge', from: { kind: 'point', x: 0, y: 80 }, to: { kind: 'point', x: 220, y: 80 }, direction: 'forward', lineStyle: 'curve', label: '' });
+  const hover = vi.fn();
+  const displayPositions = new Map(cards.map(card => [card.id, { x: card.x, y: card.y }]));
+  const displayedCards = () => cards.map(card => ({ ...card, ...displayPositions.get(card.id) }));
+  const kernel: CanvasInteractionKernel = { canvas, readCamera: () => camera, setCamera: value => { camera = value; }, screenToWorld: point => ({ x: (point.x - camera.x) / camera.zoom, y: (point.y - camera.y) / camera.zoom }), readSelection: () => selected, readDisplayPosition: id => displayPositions.get(id) ?? null, hitTest: point => displayedCards().find(card => point.x >= card.x && point.x <= card.x + card.width && point.y >= card.y && point.y <= card.y + card.height) ?? null, hitTestEdge: point => Math.abs(point.y - 80) < 5 ? edge : null, setHoveredCard: hover, visibleCards: displayedCards, setBrush: brush, setGuides: guides, setDragPreview: preview, clearDragPreview: clear };
+  const intents: CanvasKernelIntent[] = [];
+  const cleanup = installCanvasInteraction(kernel, intent => { intents.push(intent); if (intent.kind === 'select') selected = intent.additive ? [...selected, ...intent.ids] : intent.ids; }, options);
+  cleanups.push(() => { cleanup(); canvas.remove(); });
+  const pointer = (type: string, x: number, y: number, options: MouseEventInit = {}) => {
+    const event = new MouseEvent(type, { clientX: x, clientY: y, button: 0, bubbles: true, ...options });
+    Object.defineProperty(event, 'pointerId', { value: 1 }); canvas.dispatchEvent(event);
+  };
+  return { canvas, cards, intents, brush, preview, clear, guides, pointer, selected: () => selected, kernel, hover, displayPositions };
+}
+
+describe('Canvas pointer gestures', () => {
+  it('单击多选中的卡在松手时折叠，未达到3屏幕像素不产生移动', () => {
+    const f = fixture();
+    f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 12, 10); f.pointer('pointerup', 12, 10);
+    expect(f.selected()).toEqual([CanvasCardIdSchema.parse('c1')]);
+    expect(f.intents.filter(intent => intent.kind === 'move')).toEqual([]);
+    expect(f.preview).not.toHaveBeenCalled();
+  });
+
+  it('拖动已多选的卡保留整组并产生实时显示预览，松手只提交一次', () => {
+    const f = fixture();
+    f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 30, 20); f.pointer('pointermove', 40, 20); f.pointer('pointerup', 40, 20);
+    expect(f.preview).toHaveBeenLastCalledWith(f.cards.map(card => card.id), 30, 10);
+    const moves = f.intents.filter(intent => intent.kind === 'move');
+    expect(moves).toHaveLength(1);
+    expect(moves[0]).toMatchObject({ ids: f.cards.map(card => card.id), dx: 30, dy: 10 });
+  });
+
+  it('框选实时更新，Cmd只选择完全包裹的卡，下一次按下不复用旧框', () => {
+    const f = fixture();
+    f.pointer('pointerdown', -10, -10); f.pointer('pointermove', 150, 100, { metaKey: true });
+    expect(f.selected()).toEqual([CanvasCardIdSchema.parse('c1')]);
+    expect(f.brush).toHaveBeenLastCalledWith({ x: -10, y: -10, width: 160, height: 110 });
+    f.pointer('pointerup', 150, 100); f.pointer('pointerdown', 300, 300);
+    expect(f.brush).toHaveBeenLastCalledWith(null);
+  });
+
+  it('Escape撤销显示预览、恢复选择并释放保护，之后松手不提交', () => {
+    const f = fixture();
+    f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 50, 10);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); f.pointer('pointerup', 50, 10);
+    expect(f.clear).toHaveBeenCalled();
+    expect(f.intents.filter(intent => intent.kind === 'move')).toHaveLength(0);
+    expect(f.intents).toContainEqual({ kind: 'editing', ids: f.cards.map(card => card.id), active: false });
+  });
+
+  it('阈值按屏幕像素而不是世界坐标判断', () => {
+    const f = fixture(); f.kernel.setCamera({ x: 0, y: 0, zoom: 0.1 });
+    f.pointer('pointerdown', 1, 1); f.pointer('pointermove', 2, 1); f.pointer('pointerup', 2, 1);
+    expect(f.intents.filter(intent => intent.kind === 'move')).toHaveLength(0);
+  });
+
+  it('点击连线产生独立选择，拖线身不误框选；悬停使用同一命中', () => {
+    const f = fixture(); f.pointer('pointermove', 20, 20); expect(f.hover).toHaveBeenCalledWith(f.cards[0]?.id);
+    f.pointer('pointerdown', 50, 80); f.pointer('pointerup', 50, 80);
+    expect(f.intents).toContainEqual({ kind: 'select-edge', id: 'e1' });
+    f.pointer('pointerdown', 50, 80); f.pointer('pointermove', 60, 90); f.pointer('pointerup', 60, 90);
+    expect(f.brush.mock.calls.every(call => call[0] === null)).toBe(true);
+  });
+
+  it('单选拖动按屏幕阈值吸附，Alt临时关闭且松手提交相同坐标', () => {
+    const f = fixture(); f.pointer('pointerdown', 10, 10); f.pointer('pointerup', 10, 10);
+    f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 33, 10);
+    expect(f.preview).toHaveBeenLastCalledWith([f.cards[0]?.id], 20, 0);
+    expect(f.guides.mock.calls.some(call => call[0].length > 0)).toBe(true);
+    f.pointer('pointermove', 33, 10, { altKey: true });
+    expect(f.preview).toHaveBeenLastCalledWith([f.cards[0]?.id], 23, 0);
+    expect(f.guides).toHaveBeenLastCalledWith([]);
+    f.pointer('pointerup', 33, 10, { altKey: true });
+    expect(f.intents).toContainEqual(expect.objectContaining({ kind: 'move', ids: [f.cards[0]?.id], dx: 23, dy: 0, copy: true }));
+  });
+
+  it('滚轮偏好切换即时生效，Ctrl手势保持指针中心缩放，只读拖动只平移', () => {
+    let wheelZoom = false; const f = fixture({ readonly: true, readPreferences: () => ({ wheelZoom, snapping: true }) });
+    f.canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 10, cancelable: true })); expect(f.kernel.readCamera().zoom).toBe(1);
+    wheelZoom = true; f.canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 10, cancelable: true })); expect(f.kernel.readCamera().zoom).toBeLessThan(1);
+    f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 40, 10); f.pointer('pointerup', 40, 10);
+    expect(f.intents.some(intent => intent.kind === 'select' || intent.kind === 'move' || intent.kind === 'editing')).toBe(false);
+  });
+  it('拖动中进入只读立即取消预览，不在松手时提交，后续手势只平移', () => {
+    let readonly = false; const f = fixture({ readReadonly: () => readonly });
+    f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 40, 10); readonly = true; f.pointer('pointerup', 40, 10);
+    expect(f.intents.some(intent => intent.kind === 'move')).toBe(false); expect(f.clear).toHaveBeenCalled();
+    const oldCamera = f.kernel.readCamera(); f.pointer('pointerdown', 10, 10); f.pointer('pointermove', 40, 10); f.pointer('pointerup', 40, 10);
+    expect(f.kernel.readCamera().x).toBe(oldCamera.x + 30);
+  });
+
+  it('超过3000个其他可见卡时整次禁用吸附，不对前3000张产生偏向', () => {
+    const f = fixture(), moving = f.cards[0]; if (!moving) throw new Error('missing fixture card');
+    const others = Array.from({ length: 3001 }, (_, index) => ({ ...moving, id: CanvasCardIdSchema.parse(`c${index + 2}`), x: 120 }));
+    expect(createCanvasSnapTargets([moving, ...others], [moving.id])).toBeNull();
+    expect(createCanvasSnapTargets([moving, ...others.slice(0, 3000)], [moving.id])).not.toBeNull();
+  });
+
+  it('右键连线保留线身份，hover只在命中变化时通知且离开后清理', () => {
+    const f = fixture(); f.pointer('pointermove', 20, 20); f.pointer('pointermove', 21, 20);
+    expect(f.intents.filter(intent => intent.kind === 'hover')).toEqual([{ kind: 'hover', id: 'c1', edgeId: null }]);
+    window.dispatchEvent(new Event('blur'));
+    expect(f.intents).toContainEqual({ kind: 'hover', id: null, edgeId: null });
+    f.canvas.dispatchEvent(new MouseEvent('contextmenu', { clientX: 50, clientY: 80, cancelable: true }));
+    expect(f.intents).toContainEqual({ kind: 'context', point: { x: 50, y: 80 }, id: null, edgeId: 'e1' });
+  });
+  it('动画中越过拖动阈值才冻结视觉起点，松手交付绝对位置而不是提交target加delta', () => {
+    const f = fixture({ readPreferences: () => ({ wheelZoom: false, snapping: false }) }), id = CanvasCardIdSchema.parse('c1');
+    f.displayPositions.set(id, { x: 40, y: 0 }); f.pointer('pointerdown', 50, 10); f.pointer('pointerup', 50, 10);
+    f.pointer('pointerdown', 50, 10); f.displayPositions.set(id, { x: 55, y: 0 }); f.pointer('pointermove', 80, 10);
+    expect(f.preview.mock.calls.slice(-2)).toEqual([[[id], 0, 0], [[id], 30, 0]]);
+    f.displayPositions.set(id, { x: 500, y: 0 }); f.pointer('pointerup', 90, 10);
+    expect(f.intents).toContainEqual(expect.objectContaining({ kind: 'move', positions: [{ id, x: 95, y: 0 }], dx: 40 }));
+  });
+  it('连线悬停独立报告身份，离开canvas即清理，便于DOM显示完整标签', () => {
+    const f = fixture(); f.pointer('pointermove', 60, 80);
+    expect(f.intents).toContainEqual({ kind: 'hover', id: null, edgeId: 'e1' });
+    f.canvas.dispatchEvent(new MouseEvent('pointerleave'));
+    expect(f.intents).toContainEqual({ kind: 'hover', id: null, edgeId: null });
+  });
+});

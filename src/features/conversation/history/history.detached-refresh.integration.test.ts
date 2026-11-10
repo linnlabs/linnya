@@ -6,9 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { effectScope } from 'vue';
 import {
-  createSubRunTraceEvent, createToolCallDecisionEvent, createToolOutputEvent,
+  createFinalAnswerEvent, createSubRunTraceEvent, createToolCallDecisionEvent, createToolOutputEvent, createUserInputEvent,
   routeRuntimeEvent, RunIdSchema, ToolCallIdSchema, type RuntimeEvent,
 } from '@linnlabs/linnkit/contracts';
+import { ConversationContextUsageSchema } from '@app/schemas';
+import { modelCatalog } from 'src/domains/model-catalog';
+import { createConversationContextUsageReader } from 'src/app-hosts/linnya/adapters/flow/context-usage/orchestration/createConversationContextUsageReader';
+import { installRecoveryModelFixture } from 'src/app-hosts/linnya/adapters/flow/__test-helpers__/createDurableFlowHarness';
+import { ensureBuiltinBackendPluginsRegistered } from 'src/app-hosts/linnya/plugin-registry/builtin';
+import { clearPluginRuntimeStateForTests, setPluginRuntimeStateForTests } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { CONVERSATION_SCHEMAS } from '../../../app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 import { SQLiteEventStore } from '../../../app-hosts/linnya/adapters/persistence/event-store/sqlite.implementation';
 import * as reader from '../../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteUiMessagesReader';
@@ -48,7 +54,7 @@ const cleanups: (() => void | Promise<void>)[] = [];
 
 async function setup(toolName = 'subagent') {
   const db = new Database(':memory:');
-  db.exec('CREATE TABLE projects (id TEXT PRIMARY KEY)');
+  db.exec('CREATE TABLE projects (id TEXT PRIMARY KEY); CREATE TABLE assets (id TEXT PRIMARY KEY);');
   for (const schema of CONVERSATION_SCHEMAS) db.exec(schema);
   db.prepare('INSERT INTO conversations (conversation_id, created_at, last_event_at) VALUES (?, 1, 1)').run(conversationId);
   cleanups.push(() => { db.close(); });
@@ -77,9 +83,15 @@ async function setup(toolName = 'subagent') {
     readTurnIndex: id => reader.readTurnIndex(db, id),
     readSubrunTrace: (id, parent, child, options) => reader.readSubrunTrace(db, id, parent, child, options),
   });
+  const readHistory = vi.fn(async (id: string) => (await repository.readForegroundFrom(id)).events);
   const service = new HistoryService(repository,
     { requestDeletion: async () => { throw new Error('Unexpected deletion'); } },
     { readPendingConversationIds: async () => new Set(), retryPending: async () => { throw new Error('Unexpected cleanup'); } },
+    createConversationContextUsageReader({
+      readMetadata: id => eventStore.getConversationMetadata(id),
+      readHistory,
+      toolRuntime: { getToolSchemas: () => [] },
+    }),
   );
   const app = express();
   app.use('/api/v1/conversation', createHistoryRouter(service));
@@ -95,7 +107,11 @@ async function setup(toolName = 'subagent') {
   vi.mocked(fetchForegroundRunSettlement).mockResolvedValue({ conversation_id: conversationId, requested_run_id: runId, run: activeRun });
   await loadHistoryWindowTail(conversationId, 80);
   await restoreInteractiveRun(conversationId);
-  return { db, traces, append, startTool, toolName, window: useMessageWindowStore(), runs: useInteractiveRunStore() };
+  return {
+    db, traces, append, startTool, toolName, window: useMessageWindowStore(), runs: useInteractiveRunStore(),
+    readHistory,
+    truncateFrom: (id: string) => repository.truncateFromEvent(conversationId, id),
+  };
 }
 
 function parentPayload() {
@@ -123,6 +139,56 @@ describe('external run → open history → bounded durable refresh', () => {
   afterEach(async () => {
     for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
     vi.restoreAllMocks();
+  });
+
+  it('estimates saved context without a model snapshot and refreshes for tool-only facts, model changes and truncation', async () => {
+    ensureBuiltinBackendPluginsRegistered();
+    setPluginRuntimeStateForTests({ enabledPluginIds: ['platform'] });
+    cleanups.push(clearPluginRuntimeStateForTests);
+    installRecoveryModelFixture();
+    const model = modelCatalog.getModel('scripted-test-model');
+    if (!model?.inference_route) throw new Error('Fixture inference route missing');
+    const smallerModel = {
+      ...model,
+      id: 'smaller-model',
+      inference_route: { ...model.inference_route, context_window_tokens: 32_000 },
+    };
+    vi.mocked(modelCatalog.getModel).mockImplementation(id => id === model.id ? model : id === smallerModel.id ? smallerModel : undefined);
+    const fixture = await setup('read_file');
+    const userId = 'first-user-without-context-usage';
+    await fixture.append(createUserInputEvent(userId, conversationId, turnId, 'Read this project file.', { timestamp: 10 }));
+    await fixture.append(createFinalAnswerEvent('first-answer', conversationId, turnId, 'The file is ready.', {
+      timestamp: 11, completion_reason: 'terminal',
+    }));
+    const readUsage = async (modelId = model.id) => {
+      const response = await fetch(`${await getApiBaseUrl()}/api/v1/conversation/${conversationId}/context-usage?model_id=${modelId}`);
+      expect(response.status).toBe(200);
+      return ConversationContextUsageSchema.parse(await response.json());
+    };
+    const original = await readUsage();
+    expect(original.components.conversation_tokens).toBeGreaterThan(0);
+    expect(original.confidence).toBe('estimate');
+    expect(await readUsage()).toEqual(original);
+    expect(fixture.readHistory).toHaveBeenCalledOnce();
+
+    await fixture.startTool('external-read');
+    await fixture.append(createToolOutputEvent('external-read-result', conversationId, turnId, 'read_file', 'external-read', {
+      status: 'success',
+      observation: 'New project information returned by the CLI.\n'.repeat(200),
+      data: {
+        source_kind: 'host_file', locator: 'file:///tmp/report.md', file_name: 'report.md',
+        content_type: 'text/markdown', byte_length: 9_200,
+        offset: 1, limit: 2_000, line_count: 200, total_line_count: 200, has_more: false,
+      },
+    }, { timestamp: 12 }));
+    const afterTool = await readUsage();
+    expect(afterTool.components.conversation_tokens).toBeGreaterThan(original.components.conversation_tokens);
+    const afterSwitch = await readUsage(smallerModel.id);
+    expect(afterSwitch.budget_model_id).toBe(smallerModel.id);
+    expect(afterSwitch.input_budget_tokens + afterSwitch.output_limit_tokens).toBe(32_000);
+
+    await fixture.truncateFrom(userId);
+    expect((await readUsage(smallerModel.id)).components.conversation_tokens).toBeLessThan(afterSwitch.components.conversation_tokens);
   });
 
   it.each([

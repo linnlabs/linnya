@@ -81,7 +81,9 @@ export function createSqliteActionLedger(
   return {
     recorderFor(actor, granularity) {
       assertOneOf(granularity, GRANULARITIES, 'granularity');
-      const run = actor.kind === 'run' || actor.kind === 'subrun' ? actor : null;
+      const run = actor.kind === 'run' || actor.kind === 'subrun'
+        ? actor
+        : actor.kind === 'external' ? actor.run ?? null : null;
       const record = db.transaction((entry: ActionLedgerEntryInput): void => {
         assertOneOf(entry.action, ACTIONS, 'action');
         // owner 细账在自己的事务里先写；同一调用同一文档已有细账时，Host 粗账不再重复。

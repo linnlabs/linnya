@@ -9,6 +9,8 @@ import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from '../../infrastructure/sqlit
 import { MARKDOWN_DOCUMENT_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/document.schema';
 import { IMAGE_BLOCK_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/image.schema';
 import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
+import { DOCUMENT_REFERENCE_SCHEMAS } from 'src/domains/document-references';
+import { PENDING_REVISION_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/pending-revision.schema';
 import { MarkdownDocumentService } from 'src/domains/markdown';
 import { createWorkspaceDocument } from '../orchestration/createWorkspaceDocument';
 import { duplicateWorkspaceDocument } from '../orchestration/duplicateWorkspaceDocument';
@@ -38,7 +40,7 @@ function createDb(schemaSet: SchemaSet): Database.Database {
   const statements =
     schemaSet === 'core'
       ? [...CORE_SCHEMAS, ...ASSET_LEDGER_SCHEMAS]
-      : [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS, ...ASSET_LEDGER_SCHEMAS, ...MARKDOWN_DOCUMENT_SCHEMAS, ...IMAGE_BLOCK_SCHEMAS];
+      : [...CORE_SCHEMAS, ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS, ...ASSET_LEDGER_SCHEMAS, ...MARKDOWN_DOCUMENT_SCHEMAS, ...IMAGE_BLOCK_SCHEMAS, ...PENDING_REVISION_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS];
 
   for (const statement of statements) {
     db.exec(statement);
@@ -78,6 +80,7 @@ function createLifecycleRuntime(
 }
 
 async function flushMutationQueue(): Promise<void> {
+  // 节点事件在事务结束后的下一任务读取最终状态；失败路径也必须在关闭连接前收口。
   await new Promise<void>((resolve) => {
     setTimeout(resolve, 0);
   });
@@ -138,6 +141,7 @@ describe('workspace document lifecycle orchestration', () => {
       expect(countActiveNodesByName(db, '文档')).toBe(1);
       expect(countDocumentVersions(db, result.documentId)).toBe(1);
     } finally {
+      await flushMutationQueue();
       db.close();
     }
   });
@@ -169,6 +173,7 @@ describe('workspace document lifecycle orchestration', () => {
       });
       expect(countDocumentVersions(db, result.documentId)).toBe(1);
     } finally {
+      await flushMutationQueue();
       db.close();
     }
   });
@@ -189,6 +194,7 @@ describe('workspace document lifecycle orchestration', () => {
 
       expect(countActiveNodesByName(db, '半成品文档')).toBe(0);
     } finally {
+      await flushMutationQueue();
       db.close();
     }
   });
@@ -214,6 +220,7 @@ describe('workspace document lifecycle orchestration', () => {
       expect(countActiveNodesByName(db, '源文档 副本')).toBe(1);
       expect(countDocumentVersions(db, result.nodeId)).toBe(1);
     } finally {
+      await flushMutationQueue();
       db.close();
     }
   });
@@ -237,6 +244,7 @@ describe('workspace document lifecycle orchestration', () => {
       expect(countActiveNodes(db)).toBe(1);
       expect(countActiveNodesByName(db, '只有节点没有内容 副本')).toBe(0);
     } finally {
+      await flushMutationQueue();
       db.close();
     }
   });
@@ -288,6 +296,7 @@ describe('workspace document lifecycle orchestration', () => {
         }],
       });
     } finally {
+      await flushMutationQueue();
       db.close();
     }
   });

@@ -72,6 +72,17 @@ export default [
     },
   },
   {
+    // Canvas guard已由Prettier负责排版；关闭与其冲突的Vue排版规则，语义规则继续生效。
+    files: ['packages/plugins/canvas/src/**/*.vue'],
+    rules: {
+      'vue/max-attributes-per-line': 'off',
+      'vue/html-indent': 'off',
+      'vue/singleline-html-element-content-newline': 'off',
+      'vue/html-closing-bracket-newline': 'off',
+      'vue/html-self-closing': 'off',
+    },
+  },
+  {
     files: ['apps/renderer/**/*.{cjs,js,mjs,ts,tsx,vue}'],
     rules: {
       'no-restricted-imports': [

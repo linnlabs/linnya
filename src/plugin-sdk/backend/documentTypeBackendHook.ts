@@ -101,6 +101,7 @@ export interface DocumentTypeBackendToolReadParams {
 }
 
 export interface DocumentTypeBackendHook {
+  readonly preview?: import('@linnya/plugin-host-contract/backend/documentPreview').DocumentPreviewCapability;
   readonly history?: import('@linnya/plugin-host-contract/backend/documentHistory').DocumentHistoryCapability;
   readonly docType: string;
   readonly displayName: string;

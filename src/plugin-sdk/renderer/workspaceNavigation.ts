@@ -10,6 +10,7 @@
 export type {
   WorkspaceConversationNavigationRequest,
   WorkspaceDocumentNavigationRequest,
+  WorkspaceNodeDocumentNavigationRequest,
   WorkspaceDocumentNavigationParameters,
   WorkspaceNavigationPort,
   WorkspaceNavigationScope,

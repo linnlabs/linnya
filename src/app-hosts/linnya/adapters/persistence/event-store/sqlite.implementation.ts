@@ -824,14 +824,11 @@ export class SQLiteEventStore implements IEventStore {
   }
 
   async getConversationMetadata(conversationId: string): Promise<ConversationListItem | null> {
-    logger.info(`Getting metadata for conversation ${conversationId}`);
-
     const row = this.db
       .prepare('SELECT * FROM conversations WHERE conversation_id = ?')
       .get(conversationId) as ConversationRow | undefined;
 
     if (!row) {
-      logger.info(`Conversation ${conversationId} not found`);
       return null;
     }
 

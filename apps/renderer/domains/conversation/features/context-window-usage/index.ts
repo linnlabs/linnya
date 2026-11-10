@@ -4,7 +4,6 @@ export type {
 } from './definitions/contextWindowUsage';
 export type { ConversationInformationPresentation } from './definitions/conversationInformation';
 export {
-  findLatestContextUsage,
   formatContextUsagePercentage,
   formatContextUsageTokens,
   projectContextWindowUsage,

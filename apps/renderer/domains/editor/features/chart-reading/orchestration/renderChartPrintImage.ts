@@ -1,8 +1,8 @@
 import type { MarkdownChartSpec } from '@app/schemas'
 import { useLocalizationStore } from '@app/localization'
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage'
-import { baseChartTheme } from '../definitions/chartTheme'
-import { renderChartImageSvg } from './exportChartImage'
+import { baseChartTheme } from '@linnya/markdown-document-core/workspace-charts'
+import { renderChartImageSvg } from '@linnya/markdown-document-core/workspace-charts'
 
 /** 打印使用白纸上的完整默认视图，不继承界面的暗色主题或会话筛选。 */
 export function renderChartPrintImage(spec: MarkdownChartSpec) {

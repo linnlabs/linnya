@@ -44,7 +44,10 @@ describe('composer reference boundary', () => {
 
   it('禁止 conversation 按具体引用 kind 编写展示分支', () => {
     const referenceKindBranchPattern =
-      /(?:conversationReference|reference)\.kind\s*(?:===|!==)|switch\s*\([^)]*(?:conversationReference|reference)\.kind/;
+      /(?:conversationReference|reference)\.kind\s*(?:===|!==)\s*['"`]|switch\s*\([^)]*(?:conversationReference|reference)\.kind/;
+    expect(referenceKindBranchPattern.test("reference.kind === 'concrete-plugin-kind'")).toBe(true);
+    // 通用引用身份比较可以比较两个动态kind，不属于按插件种类分支。
+    expect(referenceKindBranchPattern.test('reference.kind === input.kind')).toBe(false);
     const offenders = readProductionFiles(conversationRoot)
       .filter((filePath) => referenceKindBranchPattern.test(readFileSync(filePath, 'utf8')))
       .map((filePath) => relative(conversationRoot, filePath).replace(/\\/g, '/'));

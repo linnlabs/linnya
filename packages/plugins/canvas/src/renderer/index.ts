@@ -1,0 +1,102 @@
+import { defineAsyncComponent, type Component } from 'vue';
+import type { RendererPluginContribution } from '@plugin/renderer/pluginContribution';
+import { registerMessageCatalogs } from '@app/localization';
+import {
+  registerSettingsContribution,
+  unregisterSettingsContribution,
+} from '@plugin/renderer/settingsContribution';
+import { canvasPluginMeta, CANVAS_PLUGIN_ID, CANVAS_DOCUMENT_TYPE } from '@plugin/canvas/shared';
+import CanvasIcon from './icon/CanvasIcon.vue';
+import { canvasFileHandler, readCanvasHistorySession } from './features/canvasDocument';
+import {
+  createCanvasSelectionReferenceKind,
+  clearCanvasReferenceFocus,
+} from './features/conversationSelection';
+import { createCanvasSelectionReferencePort } from './adapters/createCanvasSelectionReferencePort';
+import { persistCanvasPreferences, CanvasSettingsPage } from './features/materialSetting';
+import { CANVAS_MESSAGE_CATALOG } from './features/localization';
+import canvasStyles from './styles/canvas.css?url';
+import documentPreviewStyles from '@linnya/document-preview/style.css?url';
+import markdownStyles from '@linnya/markdown-document-core/style.css?url';
+import cardInkStyles from './features/cardRendering/styles/canvasCardInk.css?url';
+import cardMediaStyles from './features/cardRendering/styles/canvasMediaContent.css?url';
+import { clearCanvasDisplayImageCache } from './features/cardRendering/content';
+import canvasAgentReviewStyles from './features/agentReview/styles/agentReview.css?url';
+import canvasChromeStyles from './features/canvasChrome/styles/canvasChrome.css?url';
+
+const CANVAS_SETTINGS_ID = `${CANVAS_PLUGIN_ID}:settings`;
+let stopPreferences: (() => void) | null = null;
+const modules = import.meta.glob<{ default: Component }>('./page/CanvasView.vue');
+const CanvasView = defineAsyncComponent(async () => {
+  const load = modules['./page/CanvasView.vue'];
+  if (!load) throw new Error('Canvas surface chunk is not registered');
+  return (await load()).default;
+});
+export const rendererPlugin: RendererPluginContribution = {
+  meta: canvasPluginMeta,
+  stylesheets: [
+    markdownStyles,
+    documentPreviewStyles,
+    canvasStyles,
+    cardInkStyles,
+    cardMediaStyles,
+    canvasAgentReviewStyles,
+    canvasChromeStyles,
+  ],
+  conversationInput: {
+    referenceKinds: [createCanvasSelectionReferenceKind(createCanvasSelectionReferencePort())],
+    referenceProviders: [],
+  },
+  activate() {
+    registerMessageCatalogs(CANVAS_MESSAGE_CATALOG);
+    stopPreferences = persistCanvasPreferences();
+    // 画布的偏好只影响画布，放在“文档与插件”里自成一页，不混进全局外观。
+    registerSettingsContribution({
+      id: CANVAS_SETTINGS_ID,
+      title: '画布',
+      titleMessageKey: 'canvas.settings.title',
+      group: 'document-types',
+      order: 40,
+      component: CanvasSettingsPage,
+    });
+  },
+  deactivate() {
+    clearCanvasReferenceFocus();
+    clearCanvasDisplayImageCache();
+    stopPreferences?.();
+    stopPreferences = null;
+    unregisterSettingsContribution(CANVAS_SETTINGS_ID);
+  },
+  documentTypes: [
+    {
+      pluginId: CANVAS_PLUGIN_ID,
+      nodeType: CANVAS_DOCUMENT_TYPE,
+      activeDocumentType: CANVAS_DOCUMENT_TYPE,
+      fileSessionType: CANVAS_DOCUMENT_TYPE,
+      createRequestType: CANVAS_DOCUMENT_TYPE,
+      createBackend: 'workspace-document',
+      surfaceComponent: CanvasView,
+      historyPreviewComponent: defineAsyncComponent(() => import('./page/CanvasHistoryView.vue')),
+      historyClientSessionId: readCanvasHistorySession,
+      deferSurfaceUntilOpen: true,
+      fileHandler: canvasFileHandler,
+      shellClass: 'for-canvas',
+      label: '画布',
+      createLabel: '新建画布',
+      defaultName: '未命名画布',
+      labelText: { key: 'canvas.plugin.label', fallback: '画布' },
+      createLabelText: { key: 'canvas.plugin.createLabel', fallback: '新建画布' },
+      defaultNameText: { key: 'canvas.plugin.defaultName', fallback: '未命名画布' },
+      iconComponent: CanvasIcon,
+      iconClass: 'canvas-icon',
+      createPriority: 25,
+      entityReferences: [
+        {
+          kind: 'document',
+          uriPattern: 'linnya://canvas/{documentId}',
+          description: '自由画布文档',
+        },
+      ],
+    },
+  ],
+};

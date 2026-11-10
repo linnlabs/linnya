@@ -208,8 +208,7 @@ useConversationScrollController    → 只维护产品意图
 
 发送按钮左侧固定保留 24px 点击区，内部使用 16px 圆环；发送按钮本身的 regular / compact 尺寸不变。圆环按真实
 `used_tokens / (input_budget_tokens + output_limit_tokens)` 分为 `<70%`、`70%–<90%`、`90%–100%` 三档颜色，超过 100% 时弧长只在
-视觉上封顶，文案与 ARIA 仍显示真实百分比。无快照或当前窗口不含 tail 时使用中性空环，不伪造 0%。历史模型快照
-使用虚线轨道。
+视觉上封顶，文案与 ARIA 仍显示真实百分比。打开会话时以不旋转的圆形加载图标占位，估算结果不受历史翻页影响。
 
 点击圆环通过共享 `BaseDropdown` 打开 `UsageBreakdownPanel`，Teleport 容器复用 `CustomSelect` 的标准 dropdown
 surface。面板没有关闭按钮，只通过再次点击触发器、点击外部或 Escape 关闭；Escape 后焦点返回触发器。Teleport 面板
@@ -227,7 +226,7 @@ surface。面板没有关闭按钮，只通过再次点击触发器、点击外�
 面板只保留顶部占用摘要、分段条和三项构成。分母使用
 `input_budget_tokens + output_limit_tokens` 还原当次 route/policy 共同约束后的完整有效窗口；未着色尾部同时包含剩余输入
 空间与输出额度，不另列 source、confidence、预算模型或输出预留脚注。共享面板只负责通用 segments / rows
-展示，分类、百分比、格式化、历史态与 localization 全部属于 Conversation 的 `context-window-usage` feature。三项归因值
+展示，分类、百分比、格式化、加载态与 localization 全部属于 Conversation 的 `context-window-usage` feature。三项归因值
 使用 ASCII `~ ` 标识近似值；条内每个非零组成必须可见，同时不得扩大总体已用宽度。
 
 ---

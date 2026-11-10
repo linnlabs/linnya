@@ -1,3 +1,4 @@
+import { DOCUMENT_REFERENCE_SCHEMAS } from 'src/domains/document-references';
 import { createProjectLifecycle } from 'src/domains/projects';
 import Database from 'better-sqlite3';
 import sharp from 'sharp';
@@ -48,7 +49,7 @@ describe('Markdown image lifecycle through Host providers', () => {
     db = new Database(path.join(root, 'workspace.sqlite'));
     db.pragma('foreign_keys = ON');
     for (const statement of [
-      ...CORE_SCHEMAS,
+      ...CORE_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS,
       ...ASSET_LEDGER_SCHEMAS,
       ...MARKDOWN_DOCUMENT_SCHEMAS,
       ...PENDING_REVISION_SCHEMAS,

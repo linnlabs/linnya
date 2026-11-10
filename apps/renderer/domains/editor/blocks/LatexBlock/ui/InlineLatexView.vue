@@ -17,7 +17,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, inject } from 'vue';
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3';
-import katex from 'katex';
+import { renderWorkspaceLatex } from '@linnya/markdown-document-core/workspace-presentation';
 import { useLatexEditorStore } from '../store/latexEditor'; // Uncomment and import store
 import { EDITOR_KEY } from '../../../core/tokens';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
@@ -37,12 +37,7 @@ const latexSource = computed(() => props.node?.attrs?.latexSource || '');
 // Function to render LaTeX using KaTeX
 const renderLatex = (source) => {
   try {
-    renderedHtml.value = katex.renderToString(source || '', {
-      throwOnError: false, 
-      displayMode: false, 
-      output: 'html',
-      strict: false,
-    });
+    renderedHtml.value = renderWorkspaceLatex(source || '', false);
     renderError.value = false;
   } catch (error) {
     renderedHtml.value = `<code class="inline-latex-source-error">${source}</code>`;

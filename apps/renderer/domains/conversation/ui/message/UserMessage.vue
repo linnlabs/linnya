@@ -11,8 +11,28 @@
           - 这里用 quoteList 判空即可（quoteList 已过滤无展示内容的条目）。
         -->
         <div v-if="quoteList.length" class="quote-section">
-          <div 
-            v-for="quote in quoteList"
+          <!-- 引用对象（文档等）与输入框同一种紧凑标签；选中文字这类正文引用仍是引用块。 -->
+          <div
+            v-if="quoteTags.length"
+            class="quote-tags"
+          >
+            <span
+              v-for="quote in quoteTags"
+              :key="quote.item.quote_id"
+              class="ai-assistant-quote-preview__pill ai-assistant-quote-preview__pill--static"
+              :title="quote.displayText"
+            >
+              <span class="ai-assistant-quote-preview__pill-text">
+                <span
+                  class="ai-assistant-quote-preview__pill-icon"
+                  aria-hidden="true"
+                ><component :is="quote.icon" /></span>
+                <span class="ai-assistant-quote-preview__pill-label">{{ quote.displayText }}</span>
+              </span>
+            </span>
+          </div>
+          <div
+            v-for="quote in quoteBlocks"
             :key="quote.item.quote_id"
             class="quote-block"
           >
@@ -94,13 +114,21 @@
           </div>
           <div class="edit-quote-preview-body">
             <div class="edit-quote-list">
-              <div
+              <span
                 v-for="quote in quoteList"
                 :key="quote.item.quote_id"
-                class="edit-quote-pill"
+                class="ai-assistant-quote-preview__pill ai-assistant-quote-preview__pill--static"
+                :title="quote.displayText"
               >
-                <span class="edit-quote-pill-text">{{ quote.displayText }}</span>
-              </div>
+                <span class="ai-assistant-quote-preview__pill-text">
+                  <span
+                    v-if="quote.icon"
+                    class="ai-assistant-quote-preview__pill-icon"
+                    aria-hidden="true"
+                  ><component :is="quote.icon" /></span>
+                  <span class="ai-assistant-quote-preview__pill-label">{{ quote.displayText }}</span>
+                </span>
+              </span>
             </div>
           </div>
         </div>
@@ -165,6 +193,7 @@ import {
 import { useConversationLocalization } from '../useConversationLocalization';
 import { applyTextareaAutoResize, IconButton } from '@linnya/renderer-ui';
 import { buildUserMessageQuoteDisplay } from '../../functions/userMessageQuoteDisplay';
+import { readConversationReferenceIcon } from '../../features/composer-references';
 import type {
   EditUserMessageCommand,
   RegenerateUserMessageCommand,
@@ -206,9 +235,11 @@ const isEditSubmitting = computed(() => (
 
 const quoteList = computed(() => {
   return (props.message.metadata?.user_quote?.items ?? [])
-    .map(buildUserMessageQuoteDisplay)
+    .map(item => buildUserMessageQuoteDisplay(item, readConversationReferenceIcon))
     .filter(quote => quote !== undefined);
 });
+const quoteTags = computed(() => quoteList.value.filter(quote => quote.icon !== null));
+const quoteBlocks = computed(() => quoteList.value.filter(quote => quote.icon === null));
 
 const isActivityMessage = computed(() => {
   return !!props.message.metadata?.activity;

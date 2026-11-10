@@ -16,7 +16,7 @@ import { copyPresentationCoordinatorBindingToToolContext } from './tools/toolCon
 import slidesAgent from './agents/slides_agent';
 import { createSlidesDocumentHookRuntime } from './documentHook/createSlidesDocumentHookRuntime';
 import { createPresentationDocumentTypeBackendHook } from './documentHook/presentationDocumentTypeBackendHook';
-import { slidesDocumentHistoryCapability } from './documentHook/createSlidesDocumentHookRuntime';
+import { slidesDocumentHistoryCapability, slidesDocumentPreviewCapability } from './documentHook/createSlidesDocumentHookRuntime';
 import { registerSlidesIpcHandlers } from './ipc/registerSlidesIpcHandlers';
 import { slidesPluginMigrations } from './persistence/slidesPluginMigrations';
 import { pptComposeProfile } from './sandbox/pptComposeProfile';
@@ -48,6 +48,7 @@ function wrapSlidesSelectedElementFence(content: string): string {
 export const presentationDocumentTypeBackendHook = {
   ...createPresentationDocumentTypeBackendHook(createSlidesDocumentHookRuntime),
   history: slidesDocumentHistoryCapability,
+  preview: slidesDocumentPreviewCapability,
 };
 
 /**

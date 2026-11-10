@@ -1,4 +1,7 @@
 import type { Node as ProseMirrorNode } from 'prosemirror-model'
+import { ROOT_BLOCK_CONTENT_ATTRS, resolveRootBlockContentAttributes } from '@linnya/markdown-document-core/workspace-presentation'
+export { resolveRootBlockColorStyle, applyRootBlockColorStyle, resolveRootBlockContentAttributes } from '@linnya/markdown-document-core/workspace-presentation'
+export type { RootBlockColorAttributes } from '@linnya/markdown-document-core/workspace-presentation'
 
 // RootBlock DOM 是虚拟化、旧 Vue NodeView、schema 序列化和 Host chrome 的共同契约。
 // 这些字符串必须集中维护，避免某条渲染路径悄悄漂移后只在大文档或小文档里回归。
@@ -26,9 +29,7 @@ export const ROOT_BLOCK_DOM_ATTRS = {
   chromeAnchor: 'data-root-block-chrome-anchor',
   revisionHeaderMount: 'data-root-block-revision-header-mount',
   historyMount: 'data-root-block-history-mount',
-  contentType: 'data-content-type',
-  headingLevel: 'data-heading-level',
-  listType: 'data-list-type',
+  ...ROOT_BLOCK_CONTENT_ATTRS,
 } as const
 
 export const ROOT_BLOCK_DOM_NODE_TYPES = {
@@ -47,10 +48,6 @@ export const ROOT_BLOCK_OUTER_SELECTOR =
 export const ROOT_BLOCK_PLACEHOLDER_SELECTOR =
   `.${ROOT_BLOCK_DOM_CLASSES.outer}.${ROOT_BLOCK_DOM_CLASSES.virtualPlaceholder}[${ROOT_BLOCK_DOM_ATTRS.id}]`
 
-export interface RootBlockColorAttributes {
-  backgroundColor?: unknown
-  textColor?: unknown
-}
 
 export interface RootBlockDomShellElements {
   dom: HTMLDivElement
@@ -61,45 +58,6 @@ export interface RootBlockDomShellElements {
   historyMountEl: HTMLDivElement
 }
 
-function readColorAttribute(value: unknown): string | null {
-  return typeof value === 'string' && value.length > 0 ? value : null
-}
-
-function toColorVariable(prefix: 'block-bg' | 'block-text', value: string): string {
-  return `var(--${prefix}-${value.replace('_bg', '').replace('_text', '')})`
-}
-
-export function resolveRootBlockColorStyle(
-  attrs: RootBlockColorAttributes
-): Record<string, string> {
-  const style: Record<string, string> = {}
-  const bgColor = readColorAttribute(attrs.backgroundColor)
-  const textColor = readColorAttribute(attrs.textColor)
-
-  if (bgColor) style.backgroundColor = toColorVariable('block-bg', bgColor)
-  if (textColor) style.color = toColorVariable('block-text', textColor)
-
-  return style
-}
-
-export function applyRootBlockColorStyle(
-  rootBlockEl: HTMLElement,
-  attrs: RootBlockColorAttributes
-): void {
-  const style = resolveRootBlockColorStyle(attrs)
-
-  if (style.backgroundColor) {
-    rootBlockEl.style.setProperty('background-color', style.backgroundColor)
-  } else {
-    rootBlockEl.style.removeProperty('background-color')
-  }
-
-  if (style.color) {
-    rootBlockEl.style.setProperty('color', style.color)
-  } else {
-    rootBlockEl.style.removeProperty('color')
-  }
-}
 
 export function getRootBlockContentClass(firstChildTypeName: string | null | undefined): string {
   return firstChildTypeName ? `contains-${firstChildTypeName}` : ''
@@ -109,23 +67,6 @@ export function getRootBlockContentClass(firstChildTypeName: string | null | und
  * 排版只投影内容节点的语义，不新增持久化属性。
  * 离屏块没有 contentDOM，因此标题与列表间距不能依赖 :has(内部内容)。
  */
-export function resolveRootBlockContentAttributes(
-  content: ProseMirrorNode | null | undefined
-): Record<string, string> {
-  if (!content) return {}
-  const attributes: Record<string, string> = {
-    [ROOT_BLOCK_DOM_ATTRS.contentType]: content.type.name,
-  }
-  if (content.type.name === 'headingBlock') {
-    const level: unknown = content.attrs.level
-    if (typeof level === 'number') attributes[ROOT_BLOCK_DOM_ATTRS.headingLevel] = String(level)
-  }
-  if (content.type.name === 'listItemBlock') {
-    const listType: unknown = content.attrs.listType
-    if (typeof listType === 'string') attributes[ROOT_BLOCK_DOM_ATTRS.listType] = listType
-  }
-  return attributes
-}
 
 export function applyRootBlockContentAttributes(
   dom: HTMLElement,

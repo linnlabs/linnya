@@ -1,0 +1,91 @@
+@import '@linnya/renderer-ui/tokens.css';
+@import '@linnya/markdown-document-core/style.css';
+@import '@linnya/markdown-document-core/workspace-preview.css';
+
+/* 用户预览是独立内容尺寸，不跟随工具条 UI 缩放；光栅、悬停和 live 详情共用。 */
+.document-preview-surface {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--preview-paddingTop) var(--preview-paddingInline) var(--preview-paddingBottom);
+  font:
+    14px/1.7 system-ui,
+    sans-serif;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.document-preview-first-screen {
+  position: relative;
+  overflow: hidden;
+}
+/* 还有下文时的收尾，位图、选中详情和悬停共用。不用 mask-image：离屏位图绘制时遮罩会让整块正文消失。
+   消费方提供 --document-preview-fade-color（所在面板的底色）与 --document-preview-fade-radius（底角圆角），--document-preview-fade-inset 是可见边缘比容器内缩的距离。 */
+.document-preview-clipped::after,
+.document-preview-more-below::after {
+  content: '';
+  position: absolute;
+  left: var(--document-preview-fade-inset, 0px);
+  right: var(--document-preview-fade-inset, 0px);
+  bottom: var(--document-preview-fade-inset, 0px);
+  height: 24px;
+  /* 淡出到底是不透明底色，必须跟可见面板的底角同圆角，否则方角会盖住圆角外的投影。 */
+  border-radius: 0 0 var(--document-preview-fade-radius, 0px) var(--document-preview-fade-radius, 0px);
+  pointer-events: none;
+  background: linear-gradient(transparent, var(--document-preview-fade-color, transparent));
+}
+.document-preview-surface .document-preview-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  height: var(--preview-titleHeight);
+  padding: 0;
+  border: 0;
+  margin: 0 0 var(--preview-titleGap);
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font:
+    400 12px/16px system-ui,
+    sans-serif;
+  text-align: left;
+}
+.document-preview-type-icon {
+  display: inline-flex;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+}
+.document-preview-type-icon > svg {
+  width: 100%;
+  height: 100%;
+}
+.document-preview-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.document-preview-body {
+  min-width: 0;
+}
+.document-preview-cover {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.document-preview-summary,
+.document-preview-status {
+  margin: 0;
+  font: inherit;
+}
+.document-preview-plain {
+  white-space: pre-wrap;
+}
+.document-preview-portable {
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+.document-preview-portable > :first-child {
+  margin-top: 0;
+}

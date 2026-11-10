@@ -8,7 +8,7 @@
 
 import { defineStore } from 'pinia'
 import { shallowRef, triggerRef } from 'vue'
-import { DEFAULT_CHART_READING_STATE, type ChartReadingEntry, type ChartReadingKey, type ChartReadingState } from '../definitions/chartReadingState'
+import { DEFAULT_CHART_READING_STATE, type ChartReadingEntry, type ChartReadingKey, type ChartReadingState } from '@linnya/markdown-document-core/workspace-charts'
 
 export function chartReadingKeyOf(key: ChartReadingKey): string {
   return `${key.editorSessionId}\u0000${key.blockId}\u0000${key.variant}`

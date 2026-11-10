@@ -1,7 +1,7 @@
+import type { WorkspaceMutationEvent } from '@app/schemas';
 import type {
   CreateWorkspaceDocumentInput,
   CreateWorkspaceDocumentOutput,
-  FileSaveContext,
   FileSessionDescriptor,
   OperationResult,
   OperationResultWithData,
@@ -130,4 +130,8 @@ export function createWorkspaceDocument(
 
 export function listProjectKnowledgeBaseIds(args: { projectId: string }): Promise<OperationResultWithData<string[]>> {
   return getWorkspaceRuntimePort().listKnowledgeBaseIdsForProject(args);
+}
+
+export function subscribeWorkspaceMutations(callback: (event: WorkspaceMutationEvent) => void): () => void {
+  return getWorkspaceRuntimePort().subscribeMutations(callback);
 }

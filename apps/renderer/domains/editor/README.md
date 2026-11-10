@@ -55,11 +55,15 @@ YAML 头独立保存；打开、外部刷新和撤销到初始状态均保留原
 
 ### 持久化 schema 与完整文档装载
 
-- `core/extensionRegistry.ts` 是生产 Editor schema 的唯一注册点；正式持久化语义由后端 Markdown domain 的 `workspaceMarkdownSchemaContract` 拥有，`core/extensionRegistry.conformance.test.ts` 负责验证生产 Editor 覆盖全部 node、mark 和属性。
+- `core/extensionRegistry.ts` 是生产 Editor schema 的唯一注册点；正式持久化语义由 `@linnya/markdown-document-core/workspace-schema` 的 `workspaceMarkdownSchemaContract` 拥有，Backend normalization 从该入口转出，`core/extensionRegistry.conformance.test.ts` 负责验证生产 Editor 覆盖全部 node、mark 和属性。
 - `link` 是正式 Editor mark，唯一实现位于 `marks/Link.ts`，`href/title` 与后端合同一致；输入规则、HTML parse/render、命令和 Markdown 导出不得再各自维护替代实现。
 - 普通首开、大文档首开、文档切换和 Revision Apply All 都必须调用 `services/editorDocumentStateLoader.ts` 的 `loadDocumentJsonAtomically()`。该入口先严格检查未知 node、mark、属性和内容表达式，再构建新 `EditorState`；prepare 成功前不得触碰当前 state。
 - View/NodeView 切换抛错时，入口会恢复旧的 ProseMirror state 与 Tiptap Vue reactive state。失败调用方不得回退到宽松 `setContent`、不得把非法内容转成空文档，也不得继续执行标 clean 或清业务缓存等成功收尾。
 - 大文档与普通文档的正确性语义相同；`rootBlock >= 1500` 只决定是否启用临时 DOM detach 性能策略，不再决定是否严格校验。
+
+### 静态用户预览
+
+正式 Workspace Markdown 的预览入口是 [`markdown-document-core`](../../../../packages/markdown-document-core/README.md) 的 `workspace-preview` 子路径。文本/图片 renderHTML、根块颜色/内容语义、公式排版、列表编号、引用派生与图表纯能力在该包只有一个实现；本域反向消费公开子路径。预览不通过 `getAllExtensions` 或 History Editor 建立可写实例，也不使用面向 Agent 的 Markdown 代替正式正文。跨文档外壳、加载与打开行为由应用级文档预览负责。
 
 ### 块身份
 

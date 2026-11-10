@@ -1,0 +1,33 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "../../src/renderer/env.d.ts",
+    "./renderer.ts",
+    "./electron.ts",
+    "./kernelProbe.ts",
+    "./visualRenderer.ts",
+    "./visualElectron.ts",
+    "./performanceRenderer.ts",
+    "./performanceElectron.ts",
+    "./visibilityRenderer.ts",
+    "./visibilityElectron.ts",
+    "./visibleUpdateRenderer.ts",
+    "./visibleUpdateElectron.ts",
+    "./identityAtlasRenderer.ts",
+    "./identityAtlasElectron.ts",
+    "./__tests__/visualTextOracle.test.ts",
+    "./__tests__/visualDocumentVector.test.ts",
+    "./__tests__/visualDiagnostic.test.ts",
+    "./__tests__/visualSampling.test.ts",
+    "./__tests__/canvasTitleInk.test.ts",
+    "./previewParityRenderer.ts",
+    "./previewParityHostRenderer.ts",
+    "./previewParityElectron.ts",
+    "./previewParityFixture.ts",
+    "./previewTimingRenderer.ts"
+  ],
+  "exclude": []
+}

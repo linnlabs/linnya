@@ -1,6 +1,7 @@
 export type {
   ActionActor,
   ActionActorKind,
+  ActionExternalActor,
   ActionLedgerAction,
   ActionLedgerChangeList,
   ActionLedgerChangeQuery,

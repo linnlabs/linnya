@@ -98,7 +98,7 @@ mapper 把 snapshot 绑定到不可变 message row。store 不解析 citation、
 它从当前 user_input read model 按序读取最近成功 Prompt，不受 messages 范围限制。SQLite 部分索引直接定位来源，
 不重放事件、不扩大窗口、不读取完整用户正文到 Renderer。Renderer 使用共享 strict schema admission，独立保存在窗口快照，
 不回写 live 槽、不计入 320 行上限。切换、preparing、clear 和编辑截断同步移除不再有效的依赖。
-用量展示仍遵循 tail gate，并以同一用户或更新用户的 live 快照覆盖该 durable 依赖；详见 context-window-usage owner README。
+这是历史 Prompt 快照合同。输入框的当前用量由独立估算请求提供。
 
 ---
 
@@ -197,18 +197,11 @@ hasMoreAfter === true  → 不追加 live-only 消息（当前窗口不是尾部
 
 ### 3.5 Composer 上下文用量派生
 
-输入框的上下文用量只从 `selectors.activeMessages` 的 `window ∪ live` 合成视图派生，不新建 store，也不查询
-telemetry 或成本账本。派生函数从尾部反向读取最近一个带 `metadata.context_usage` 的 `user_input`，其语义是最近一次
-成功提交给模型的 Prompt 快照，而不是当前草稿预测、工具事件计数或会话累计用量。
-
-该读取必须同时满足 `activeMessageWindowIncludesConversationTail=true`。历史跳转或 around window 尚未回到尾部时，
-当前窗口中的最后一条快照不一定是整段会话的最新事实，UI 必须显示 `tail_unavailable` 中性空态，禁止拿较老快照冒充
-最新值。切换会话时弹出层实例随会话 key 销毁，不能把前一个会话的打开状态或快照带到新会话。
-
-当前有效模型只用于判断历史态：当其 ID 与快照 `budget_model_id` 不同时，保留原分子、分母和三项归因，并标记
-`historical_model`；禁止按当前模型 route 重算已经发生的请求。新 execution 在第一次 LLM Prompt 成功前仍展示上一份
-快照；之后每条 `context_usage_snapshot` 即时修订对应用户消息。`run_execution_metrics` 在结算时覆盖同一字段，保证 reload
-与未在线接收中间事件的客户端最终收敛。
+输入框用量通过独立的 `GET /api/v1/conversation/:id/context-usage` 读取。Host 复用正式前台历史读取和 Linnkit
+本地上下文构建，无需历史窗口包含会话尾部。按当前模型与 Agent 估算已保存上下文，不读取 telemetry 或成本账本。
+当前 run 和模型匹配的 live Prompt 快照只在运行期间用于即时显示。运行结束后重新估算，覆盖最终回答、工具输出和
+编辑截断。切换会话时取消旧估算，弹层跟随会话 key 销毁。详见
+[用量 owner](../../apps/renderer/domains/conversation/features/context-window-usage/README.md)。
 
 ---
 

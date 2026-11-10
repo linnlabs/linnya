@@ -18,6 +18,8 @@ function toDocumentImageAsset(image: VerifiedWorkspaceImage): DocumentImageAsset
     byteLength: image.byteLength,
     width: image.width,
     height: image.height,
+    displayWidth: image.displayWidth,
+    displayHeight: image.displayHeight,
     sha256: image.sha256,
     dataUri: `data:${image.mediaType};base64,${Buffer.from(image.bytes).toString('base64')}`,
   };
@@ -54,6 +56,15 @@ export function createDocumentImageAssetRuntime(
   }
 
   return {
+    async prepareImageBytes(input): Promise<DocumentImageAsset> {
+      try {
+        const asset = await dependencies.imageIngress.ingestImageBytes({ bytes: input.bytes });
+        const [image] = await dependencies.imageLoader.loadImages([{ assetId: asset.assetId }]);
+        return toDocumentImageAsset(image);
+      } catch (error) {
+        throw projectDocumentImageFailure(error, input.documentId, null);
+      }
+    },
     async adoptLocalImage(input): Promise<DocumentImageAsset> {
       try {
         const asset = await dependencies.imageIngress.ingestLocalImage({

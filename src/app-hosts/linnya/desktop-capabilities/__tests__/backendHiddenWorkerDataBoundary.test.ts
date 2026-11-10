@@ -7,6 +7,7 @@ import {
   type DesktopHiddenWorkerHostPort,
   type DesktopHiddenWorkerInvocation,
 } from '..';
+import { HiddenWorkerDescriptorRpcSchema } from '../features/hidden-worker-host-rpc/functions/hiddenWorkerHostRpcCodec';
 
 describe('Backend hidden worker data boundary', () => {
   it('codec 留在 Backend，Desktop 只收到 descriptor 与已编码 envelope', async () => {
@@ -27,6 +28,9 @@ describe('Backend hidden worker data boundary', () => {
     };
     const definition: HiddenWorkerDefinition = {
       id: 'demo-worker',
+      renderingMode: 'offscreen',
+      htmlCanvas: true,
+      renderViewport: { channel: 'demo:viewport', maxWidth: 4096, maxHeight: 4096, maxPixels: 8_000_000 },
       requestChannel: 'demo:request',
       responseChannel: 'demo:response',
       readyChannel: 'demo:ready',
@@ -56,6 +60,9 @@ describe('Backend hidden worker data boundary', () => {
 
     expect(registeredDescriptor).toEqual({
       id: 'demo-worker',
+      renderingMode: 'offscreen',
+      htmlCanvas: true,
+      renderViewport: { channel: 'demo:viewport', maxWidth: 4096, maxHeight: 4096, maxPixels: 8_000_000 },
       requestChannel: 'demo:request',
       responseChannel: 'demo:response',
       readyChannel: 'demo:ready',
@@ -65,6 +72,10 @@ describe('Backend hidden worker data boundary', () => {
     });
     expect(Object.values(registeredDescriptor ?? {}).some(value => typeof value === 'function'))
       .toBe(false);
+    expect(HiddenWorkerDescriptorRpcSchema.parse(registeredDescriptor)).toEqual(registeredDescriptor);
+    expect(() => HiddenWorkerDescriptorRpcSchema.parse({ ...HiddenWorkerDescriptorRpcSchema.parse(registeredDescriptor), renderViewport: {
+      channel: 'demo:viewport', maxWidth: 4096, maxHeight: 4096, maxPixels: 0,
+    } })).toThrow();
     expect(receivedInvocation).toEqual({
       requestId: 'request-1',
       payload: { requestId: 'request-1', command: 'render' },

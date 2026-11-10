@@ -19,6 +19,8 @@ export interface LinnyaRegisteredChildRunLifecycleDependencies {
   costCollector: runSupervisor.RunCostCollector;
   runAdmissionCommit?: RunAdmissionCommitPort;
   createCheckpointWriter?: (runId: string, executionId: string) => CheckpointWriter;
+  /** 有 Workspace 能力的 Host 提供；终态释放读取基线，暂停/等待继续持有。 */
+  releaseReferenceReads?: (conversationId: string, runId: string) => void;
 }
 
 export interface RegisteredChildRunLifecycleRequest {
@@ -98,6 +100,7 @@ function toFailureMessage(error: unknown): string {
  *   与 child-run 的 runId/subrunId 是同一个事实。
  */
 export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLifecyclePort {
+  private readonly conversations = new WeakMap<RunHandle, string>();
   constructor(private readonly dependencies: LinnyaRegisteredChildRunLifecycleDependencies) {}
 
   async start(
@@ -185,6 +188,7 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
       throw error;
     }
 
+    this.conversations.set(handle, params.conversationId);
     return {
       handle,
       eventBus,
@@ -213,6 +217,7 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
         currentNode: 'completed',
         iterationsUsed: stepCount,
       });
+      this.releaseReferenceReads(result.handle);
     } catch (error) {
       if (result.durableContinuation) {
         // 子图结果已经提交，结算失败不能把它变为不可恢复的 failed 并让父图跳过原结果。
@@ -251,6 +256,7 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
         ...(typeof stepCount === 'number' ? { iterationsUsed: stepCount } : {}),
       }
     );
+    this.releaseReferenceReads(result.handle);
   }
 
   async markCancelled(
@@ -274,6 +280,7 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
         ...(typeof stepCount === 'number' ? { iterationsUsed: stepCount } : {}),
       }
     );
+    this.releaseReferenceReads(result.handle);
   }
 
   close(result: RegisteredChildRunLifecycleStartResult): void {
@@ -301,5 +308,12 @@ export class LinnyaRegisteredChildRunLifecycle implements RegisteredChildRunLife
         ...(typeof stepCount === 'number' ? { iterationsUsed: stepCount } : {}),
       }
     );
+    this.releaseReferenceReads(handle);
+  }
+
+  private releaseReferenceReads(handle: RunHandle): void {
+    const conversationId = this.conversations.get(handle);
+    if (conversationId) this.dependencies.releaseReferenceReads?.(conversationId, handle.runId);
+    this.conversations.delete(handle);
   }
 }

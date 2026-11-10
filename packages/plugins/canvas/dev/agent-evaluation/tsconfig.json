@@ -1,0 +1,5 @@
+{
+  "extends": "../../scripts/agent-evaluation/tsconfig.json",
+  "compilerOptions": { "types": ["node", "vite/client"] },
+  "include": ["./**/*.ts", "./**/*.vue"]
+}

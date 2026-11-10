@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { ConversationReferenceChipInput } from '@linnya/plugin-host-contract/renderer';
 import {
   clearConversationReferenceKindsForTest,
+  readConversationReferenceIcon,
   registerConversationReferenceKind,
   resolveConversationReferenceChipPresentation,
 } from './conversationReferenceKindRegistry';
@@ -34,6 +35,29 @@ describe('conversationReferenceKindRegistry', () => {
       label: '引用内容',
       preview: '预览：一段引用',
     });
+  });
+
+  it('只有声明对象图标且可用的引用类型才在历史中按标签显示', () => {
+    const icon = { name: 'DocIcon' };
+    expect(readConversationReferenceIcon(reference)).toBeNull();
+    registerConversationReferenceKind({
+      pluginId: 'platform',
+      kind: 'text-selection',
+      chip: { label: (input) => input.label, preview: (input) => input.previewText },
+    });
+    expect(readConversationReferenceIcon(reference)).toBeNull();
+    let available = true;
+    registerConversationReferenceKind({
+      pluginId: 'platform',
+      kind: 'workspace-document',
+      chip: { label: (input) => input.label, preview: (input) => input.label, icon: () => icon },
+      isAvailable: () => available,
+    });
+    const documentReference = { ...reference, kind: 'workspace-document' };
+    expect(readConversationReferenceIcon(documentReference)).toBe(icon);
+    expect(resolveConversationReferenceChipPresentation(documentReference).icon).toBe(icon);
+    available = false;
+    expect(readConversationReferenceIcon(documentReference)).toBeNull();
   });
 
   it('把未注册、重复注册与失效引用视为契约错误', () => {

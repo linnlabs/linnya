@@ -1,12 +1,11 @@
+import type { Component } from 'vue';
 import type {
   ConversationReferenceChipInput,
   ConversationReferenceKindContribution,
 } from '@linnya/plugin-host-contract/renderer';
 
-export interface ConversationReferenceChipPresentation {
-  readonly label: string;
-  readonly preview: string;
-}
+import type { ConversationReferenceChipPresentation } from '../definitions/conversationReferenceChip';
+export type { ConversationReferenceChipPresentation } from '../definitions/conversationReferenceChip';
 
 const referenceKinds = new Map<string, ConversationReferenceKindContribution>();
 
@@ -36,6 +35,21 @@ export function unregisterConversationReferenceKind(pluginId: string, kind: stri
   return referenceKinds.delete(buildReferenceKindKey(pluginId, kind));
 }
 
+export function readConversationReferenceKind(
+  pluginId: string,
+  kind: string,
+): ConversationReferenceKindContribution {
+  const contribution = referenceKinds.get(buildReferenceKindKey(pluginId, kind));
+  if (!contribution || contribution.isAvailable?.() === false) {
+    throw new Error(`[composerReferences] 引用类型不可用: ${pluginId}:${kind}`);
+  }
+  return contribution;
+}
+
+export async function activateConversationReference(reference: ConversationReferenceChipInput): Promise<void> {
+  await readConversationReferenceKind(reference.pluginId, reference.kind).onActivate?.(reference);
+}
+
 export function resolveConversationReferenceChipPresentation(
   reference: ConversationReferenceChipInput,
 ): ConversationReferenceChipPresentation {
@@ -50,7 +64,22 @@ export function resolveConversationReferenceChipPresentation(
   return {
     label: contribution.chip.label(reference),
     preview: contribution.chip.preview(reference),
+    ...(contribution.chip.icon ? { icon: contribution.chip.icon(reference) } : {}),
+    ...(contribution.previewComponent ? { previewComponent: contribution.previewComponent } : {}),
+    ...(contribution.hoverPreview === false ? { hoverPreview: false as const } : {}),
+    ...(contribution.onActivate ? { activate: () => activateConversationReference(reference) } : {}),
   };
+}
+
+/**
+ * 历史消息只问“这条引用是否声明了对象图标”，不按 kind 分支；
+ * 类型未注册、已停用或判定失效时返回 null，由调用方按正文引用显示。
+ */
+export function readConversationReferenceIcon(reference: ConversationReferenceChipInput): Component | null {
+  const contribution = referenceKinds.get(buildReferenceKindKey(reference.pluginId, reference.kind));
+  if (!contribution?.chip.icon || contribution.isAvailable?.() === false) return null;
+  if (contribution.isValid && !contribution.isValid(reference)) return null;
+  return contribution.chip.icon(reference);
 }
 
 export function clearConversationReferenceKindsForTest(): void {

@@ -1,3 +1,4 @@
+import { renderWorkspaceTextBlock } from '@linnya/markdown-document-core/workspace-presentation'
 // src/renderer/extensions/blocks/HeadingBlock.js
 
 import { Node, mergeAttributes } from '@tiptap/core'
@@ -123,72 +124,8 @@ export const HeadingBlock = Node.create({
   },
   
   // 定义节点的HTML结构
-  renderHTML({ HTMLAttributes, node }) {
-    const level = node.attrs.level || 1
-    const tagName = `h${level}`
-    
-    // 创建外层元素
-    const outer = document.createElement('div')
-    outer.className = `heading-block-outer heading-level-${level}`
-    outer.setAttribute('data-node-type', 'headingBlockOuter')
-    outer.setAttribute('data-block-id', node.attrs.id);
-    // 在外层也添加 data-indent，以供 placeholder CSS 使用
-    if (node.attrs.indent > 0) {
-      outer.setAttribute('data-indent', node.attrs.indent);
-    }
-    
-    // ++ 文字颜色继承策略：仅将文字色应用到外层容器（用于控制装饰元素） ++
-    // 背景色由 RootBlock 控制（保持圆角）
-    // 注意：不再直接设置 color 样式，而是设置 CSS 变量，
-    // 防止文本内容意外继承块颜色（文本颜色应完全由 Mark 控制）。
-    if (node.attrs.textColor) {
-      outer.setAttribute('data-text-color', node.attrs.textColor);
-      const textCssVar = `--block-text-${node.attrs.textColor.replace('_text', '')}`;
-      // 设置一个局部变量，供伪元素（如列表点、引用线）使用，而不影响主文本
-      outer.style.setProperty('--local-block-text-color', `var(${textCssVar})`);
-    }
-    // ++ 颜色继承策略结束 ++
-    
-    // 创建内层元素
-    const inner = document.createElement(tagName)
-    inner.className = `heading-block editor-block heading-level-${level}`
-    inner.setAttribute('data-node-type', 'headingBlock')
-    inner.setAttribute('data-type', 'heading-block')
-    inner.setAttribute('data-block-id', node.attrs.id)
-    inner.setAttribute('data-heading-level', level)
-    
-    // 设置其他属性
-    if (node.attrs.blockType) {
-      inner.setAttribute('data-block-type', node.attrs.blockType)
-    }
-    
-    if (node.attrs.textAlign && node.attrs.textAlign !== 'left') {
-      inner.style.textAlign = node.attrs.textAlign
-    }
-    
-    if (node.attrs.indent > 0) { // 内层也保留 data-indent，以供文本缩进 CSS 使用
-       inner.setAttribute('data-indent', node.attrs.indent);
-    }
-    
-    if (node.attrs.collapsible) {
-      inner.setAttribute('data-collapsible', 'true')
-      
-      if (node.attrs.collapsed) {
-        inner.setAttribute('data-collapsed', 'true')
-      }
-    }
-    
-    // 设置是否为空
-    const isEmpty = node.content.size === 0
-    inner.setAttribute('data-is-empty', isEmpty ? 'true' : 'false')
-    
-    // 组装DOM结构
-    outer.appendChild(inner)
-    
-    return {
-      dom: outer,
-      contentDOM: inner
-    }
+  renderHTML({ node }) {
+    return renderWorkspaceTextBlock(node, document)
   },
   
   // 从HTML解析节点

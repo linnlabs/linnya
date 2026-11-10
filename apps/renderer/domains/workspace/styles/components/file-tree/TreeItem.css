@@ -26,7 +26,8 @@
   --workspace-sidebar-row-active-color: var(--workspace-project-row-active-color, var(--color-text-primary));
 }
 
-.workspace-sidebar .tree-item:hover .tree-item-content,
+/* 悬停时给“更多”按钮让出右侧空间；重命名时按钮隐藏，编辑框占满整行，不再让位。 */
+.workspace-sidebar .tree-item:not(.is-renaming):hover .tree-item-content,
 .workspace-sidebar .tree-item.is-more-menu-open .tree-item-content {
   --workspace-sidebar-row-padding-right: 33px;
 }
@@ -78,19 +79,6 @@
   background-color: var(--color-accent-bg);
   text-transform: uppercase;
   flex-shrink: 0; /* 防止被压缩 */
-}
-
-/* 重命名输入框 */
-.workspace-sidebar .tree-item .rename-input {
-  flex-grow: 1;
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border-focus);
-  border-radius: var(--radius-sm);
-  padding: var(--space-0-5) var(--space-1-5);
-  font-size: var(--font-size-body);
-  outline: none;
-  width: calc(100% - 50px);
-  color: var(--color-text-secondary);
 }
 
 .workspace-sidebar .tree-item .item-actions {

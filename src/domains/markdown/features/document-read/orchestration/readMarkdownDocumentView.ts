@@ -1,3 +1,6 @@
+import { buildMarkdownReferenceReadProjection } from '../../document-references';
+import { createMarkdownFileWriteSourceKey } from '../../../shared/markdownDocumentSourceKey';
+import { MarkdownDocumentVersionReader } from '../../document-storage';
 import { sliceTextWindow, type WorkspaceDocumentReadData } from '@app/schemas';
 import type { MarkdownReadDatabase } from '../../../definitions/markdownReadDatabase';
 import { projectMarkdownDocumentImages } from '../functions/projectMarkdownDocumentImages';
@@ -48,14 +51,15 @@ export async function readMarkdownDocumentView(params: {
     };
   }
 
+  const references = buildMarkdownReferenceReadProjection(params.readDb.references, params.request.documentId, content, pendings);
   const citationRead = buildMarkdownCitationReadProjection({
-    content,
-    pendings,
+    content: references.content,
+    pendings: references.pendings,
     viewMode: params.request.viewMode === 'preview' ? 'preview' : 'original',
   });
   const pendingDiffs = buildMarkdownPendingDiffs({
     baseBlocks: [...citationRead.baseBlocks],
-    pendings,
+    pendings: references.pendings,
   });
   const viewBlocks = [...citationRead.viewBlocks];
   const view = buildMarkdownDocumentView(content, {
@@ -76,7 +80,7 @@ export async function readMarkdownDocumentView(params: {
       viewMode: params.request.viewMode,
       viewLabel: params.request.viewMode === 'preview' ? '修订稿' : '原文',
     }),
-    ...(pendingDiffs.length > 0 ? { details: { pendingDiffs } } : {}),
+    details: { ...(pendingDiffs.length > 0 ? { pendingDiffs } : {}), documentReferences: { sourceKey: createMarkdownFileWriteSourceKey({ content, pendings, versionNumber: new MarkdownDocumentVersionReader(params.readDb).getLatest(params.request.documentId)?.version_number ?? null }), bindings: references.bindings, unprojectableReferenceIds: references.unprojectableReferenceIds } },
     ...imageData,
   };
   return {

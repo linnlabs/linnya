@@ -37,7 +37,7 @@ import presentationActionCardStylesheet from './tool-cards/styles/PresentationAc
 import presentationInspectCardStylesheet from './tool-cards/styles/PresentationInspectCard.css?url';
 import pptPlanApprovalCardStylesheet from './tool-cards/styles/PptPlanApprovalCard.css?url';
 import slidesShellStylesheet from './styles/index.css?url';
-import slidesHistoryStylesheet from './features/presentationHistory/ui/SlidesHistoryPreview.css?url';
+import slidesReadonlyPreviewStylesheet from './features/presentationPreview/ui/PresentationReadonlyPreview.css?url';
 import elementPropertyStylesheet from './features/elementProperties/ui/ElementPropertyToolbar.css?url';
 import imageEditingStylesheet from './features/imageEditing/ui/ImageEditingControls.css?url';
 import manualResizeStylesheet from './features/manualEditing/ui/ManualResizeHandles.css?url';
@@ -68,7 +68,7 @@ const slidesStylesheets = [
   manualResizeStylesheet,
   elementPropertyStylesheet,
   imageEditingStylesheet,
-  slidesHistoryStylesheet,
+  slidesReadonlyPreviewStylesheet,
   slidesShellStylesheet,
   slidesDraftFailureLogStylesheet,
   sourceSelectionPromptPopoverStylesheet,
@@ -106,6 +106,7 @@ export const slidesRendererPlugin: RendererPluginContribution = {
       createBackend: 'plugin-document',
       createHandlerId: 'slides.document-create',
       surfaceComponent: SlidesPage,
+      readonlyPreviewComponent: defineAsyncComponent(() => import('./features/presentationPreview/ui/SlidesDocumentPreview.vue')),
       historyPreviewComponent: defineAsyncComponent(() => import('./features/presentationHistory/ui/SlidesHistoryPreview.vue')),
       shellClass: 'for-slides',
       label: '演示文稿',

@@ -134,6 +134,14 @@ function parseRuntimeExportNames(source: string): string[] {
   return Array.from(names).sort();
 }
 
+function readProtocolShimNames(source: string, specifier: string): readonly string[] {
+  const opening = `buildNamedHostShim('${specifier}', [`;
+  const start = source.indexOf(opening);
+  if (start === -1) throw new Error(`Missing protocol shim: ${specifier}`);
+  const end = source.indexOf('])', start);
+  return [...source.slice(start + opening.length, end).matchAll(/'([^']+)'/g)].map(match => match[1] ?? '');
+}
+
 function rendererSdkUrl(specifier: string): string {
   return `plugin://host/plugin-renderer/${specifier.replace('@plugin/renderer/', '')}.js`;
 }
@@ -280,6 +288,11 @@ describe('renderer plugin host external boundary', () => {
     expect(externalMapSource).toContain(`'${subrunSpecifier}': '${subrunUrl}'`);
   });
 
+  it('每个插件实际使用的Renderer SDK入口都具有明确external协议映射', () => {
+    const modules = new Set(collectRuntimeImports().map(input => input.moduleId).filter(id => id.startsWith('@plugin/renderer/')));
+    for (const id of modules) expect(hostRendererExternalUrls).toHaveProperty(id);
+  });
+
   it('keeps named runtime imports exported by plugin://host renderer SDK shims', () => {
     const sdkImportsByModule = new Map<string, Set<string>>();
     for (const runtimeImport of collectRuntimeImports()) {
@@ -293,11 +306,18 @@ describe('renderer plugin host external boundary', () => {
 
     const pluginProtocolSource = readRepoFile('src/electron-main/plugins/loader/pluginProtocol.ts');
     for (const [specifier, importedNames] of sdkImportsByModule) {
-      expect(pluginProtocolSource).toContain(`buildNamedHostShim('${specifier}'`);
+      const exports = readProtocolShimNames(pluginProtocolSource, specifier);
       for (const importedName of importedNames) {
-        expect(pluginProtocolSource).toContain(`'${importedName}'`);
+        expect(exports, `${specifier} must export ${importedName}`).toContain(importedName);
       }
     }
+  });
+
+  it('文档引用只读SDK的完整公开函数均进入本模块shim，包括尚无插件消费者的新入口', () => {
+    const specifier = '@plugin/renderer/documentReferences';
+    const exports = readProtocolShimNames(readRepoFile('src/electron-main/plugins/loader/pluginProtocol.ts'), specifier);
+    const contract = readRepoFile('packages/plugin-host-contract/renderer/documentReferences.ts');
+    for (const match of contract.matchAll(/export declare function (\w+)/g)) expect(exports).toContain(match[1]);
   });
 
   it('maps Vue and Pinia singletons to plugin://host URLs instead of browser bare specifiers', () => {

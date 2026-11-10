@@ -1,0 +1,48 @@
+{
+  "name": "@linnya/markdown-document-core",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Portable and Workspace Markdown schemas and user-facing presentation shared by editors and rendering workers.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./style.css": "./src/style.css",
+    "./validation": "./src/functions/assertMarkdownDocument.ts",
+    "./references": "./src/references.ts",
+    "./workspace-schema": "./src/features/workspace-schema/index.ts",
+    "./workspace-charts": "./src/features/workspace-charts/index.ts",
+    "./workspace-citations": "./src/features/workspace-citations/index.ts",
+    "./workspace-preview": "./src/features/workspace-preview/index.ts",
+    "./workspace-preview.css": "./src/features/workspace-preview/styles/workspacePreview.css",
+    "./workspace-presentation": "./src/features/workspace-preview/functions/workspaceBlockPresentation.ts",
+    "./workspace-colors.css": "./src/features/workspace-preview/styles/workspaceColors.css"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run src"
+  },
+  "dependencies": {
+    "@app/schemas": "workspace:*",
+    "@linnya/color-core": "workspace:*",
+    "@tiptap/core": "3.31.3",
+    "@tiptap/extension-code-block": "3.31.3",
+    "@tiptap/extension-highlight": "3.31.3",
+    "@tiptap/extension-image": "3.31.3",
+    "@tiptap/extension-list": "3.31.3",
+    "@tiptap/extension-mathematics": "3.31.3",
+    "@tiptap/extension-subscript": "3.31.3",
+    "@tiptap/extension-superscript": "3.31.3",
+    "@tiptap/extension-table": "3.31.3",
+    "@tiptap/extension-text-style": "3.31.3",
+    "@tiptap/markdown": "3.31.3",
+    "@tiptap/pm": "3.31.3",
+    "@tiptap/starter-kit": "3.31.3",
+    "katex": "0.18.10",
+    "echarts": "6.1.0"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
+}

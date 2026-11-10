@@ -206,3 +206,9 @@ export * from './skills';
 export * from './project';
 export * from './project-overview';
 export * from './project-mutation-events';
+
+export * from './document-references';
+export * from './document-preview';
+export * from './document-image-asset';
+
+export * from './document-assets';

@@ -27,3 +27,7 @@ export type * from './textUnitRuntime';
 export type * from './toolRuntime';
 export type * from './workspaceRuntime';
 export type * from './runInputQuote';
+export type * from './documentReferences';
+export type { DocumentPreviewReader, DocumentPreviewCapability, DocumentPreviewProviderInput } from './documentPreview';
+
+export type * from './conversationProjection';

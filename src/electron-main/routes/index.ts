@@ -1,3 +1,5 @@
+import { bindMarkdownDocumentReferenceCapabilities } from 'src/app-hosts/linnya/application/markdown-document-references';
+import { clearDocumentReferenceMarkdownReader } from 'src/plugin-sdk/backend/documentReferences';
 import { withActionActor } from 'src/domains/action-ledger';
 import type { AuditControlPort } from 'src/domains/audit';
 import { readSourceCheckoutIdentity } from 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity';
@@ -44,6 +46,7 @@ import { createProviderOutboundDebugRouter } from './providerOutboundDebugRouter
 import ollamaRouter from './ollamaRouter';
 import { GraphExecutor, ToolNode, UserNode, WaitUserNode } from '@linnlabs/linnkit/runtime-kernel';
 import { createDefaultLlmNode } from '../../app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
+import { createConversationContextUsageReader } from '../../app-hosts/linnya/adapters/flow/context-usage/orchestration/createConversationContextUsageReader';
 import { SqliteCheckpointer } from '../../app-hosts/linnya/adapters/persistence/checkpointer/sqlite.implementation';
 import { SqliteTelemetryAdapter } from '../../app-hosts/linnya/adapters/telemetry/sqlite.implementation';
 import { bootstrapAgentRuntimeSingletons } from '../services/agentRuntimeSingletons';
@@ -588,6 +591,7 @@ export async function configureRoutes(
     logger.info('[诊断] 即将调用 dbService.getDb()');
     const db = dbService.getDb();
     bindMarkdownDocumentImageOwnership(db);
+    bindMarkdownDocumentReferenceCapabilities(db);
     const workspaceRoot = getWorkspaceRoot();
     const appDataRoot = getAppDataPath();
     const { storeId: managedImageStoreId } = readManagedImageStoreBinding(db);
@@ -787,6 +791,7 @@ export async function configureRoutes(
     });
     const registeredChildRunInvoker = createRegisteredChildRunInvoker({
       runtime: agentRuntime,
+      releaseReferenceReads: (conversationId, runId) => clearDocumentReferenceMarkdownReader(db, JSON.stringify([conversationId, runId])),
       telemetryPort,
       commandRuntime: commandAgentRuntimes.child,
       childRunInvoker: dependencies.agentToolEnvironment
@@ -894,7 +899,13 @@ export async function configureRoutes(
     const initializedHistoryService = new HistoryService(
       historyRepository,
       conversationCleanup,
-      conversationCleanup
+      conversationCleanup,
+      createConversationContextUsageReader({
+        readMetadata: conversationId => conversationEventStore.getConversationMetadata(conversationId),
+        readHistory: async conversationId => (await historyRepository.readForegroundFrom(conversationId)).events,
+        toolRuntime: dependencies.agentToolEnvironment?.toolRuntime ?? defaultToolRuntimePort,
+        toolManager: dependencies.agentToolEnvironment?.toolManager,
+      }),
     );
     historyService = initializedHistoryService;
     conversationControlUseCase = createLinnyaConversationControlUseCase({
@@ -1083,6 +1094,7 @@ export function getRouteSummary(
         'GET /api/v1/conversation/list',
         'GET /api/v1/conversation/:id/events/paginated',
         'GET /api/v1/conversation/:id/ui-messages/tail',
+        'GET /api/v1/conversation/:id/context-usage',
         'GET /api/v1/conversation/:id/ui-messages/before',
         'GET /api/v1/conversation/:id/ui-messages/after',
         'GET /api/v1/conversation/:id/ui-messages/around',

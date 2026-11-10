@@ -1,3 +1,4 @@
+import { getMarkdownDocumentReferences } from '../../features/document-references';
 import type {
   MarkdownReadDatabase,
   MarkdownSqliteReadSource,
@@ -29,6 +30,7 @@ export function createMarkdownReadDatabase(
   source: MarkdownSqliteReadSource,
 ): MarkdownReadDatabase {
   return {
+    references: getMarkdownDocumentReferences(source),
     get: (sql, params) => prepareReadStatement(source, sql).get(...params),
     all: (sql, params) => prepareReadStatement(source, sql).all(...params),
   };

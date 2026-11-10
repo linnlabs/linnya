@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { ConversationContextUsage, ConversationContextUsageSource } from '@app/schemas';
-import type { BaseMessage, UserMessage } from '../../../types';
+import type { ConversationContextUsage } from '@app/schemas';
+import type { UserMessage } from '../../../types';
 import {
+  findLiveContextUsage,
   formatApproximateContextUsageTokens,
   formatContextUsagePercentage,
   formatContextUsageTokens,
@@ -26,97 +27,41 @@ function usage(overrides: Partial<ConversationContextUsage> = {}): ConversationC
   };
 }
 
-function userMessage(id: string, contextUsage?: ConversationContextUsage): UserMessage {
+function userMessage(id: string, runId: string, contextUsage: ConversationContextUsage): UserMessage {
   return {
     id,
     role: 'user',
     type: 'user_input',
     content: id,
     timestamp: 1,
-    ...(contextUsage ? { metadata: { context_usage: contextUsage } } : {}),
+    metadata: { run_id: runId, context_usage: contextUsage },
   };
 }
 
-function project(input: {
-  readonly messages?: readonly BaseMessage[];
-  readonly durableUsage?: ConversationContextUsageSource;
-  readonly hasActiveConversation?: boolean;
-  readonly includesConversationTail?: boolean;
-  readonly currentModelId?: string | null;
-}) {
-  return projectContextWindowUsage({
-    messages: input.messages ?? [],
-    durableUsage: input.durableUsage ?? null,
-    hasActiveConversation: input.hasActiveConversation ?? true,
-    includesConversationTail: input.includesConversationTail ?? true,
-    currentModelId: input.currentModelId ?? 'model-a',
-  });
-}
-
 describe('projectContextWindowUsage', () => {
-  it('没有会话、没有快照与窗口不含尾部时给出明确不可用原因', () => {
-    expect(project({ hasActiveConversation: false })).toEqual({ status: 'unavailable' });
-    expect(project({})).toEqual({ status: 'unavailable' });
-    expect(project({ includesConversationTail: false })).toEqual({ status: 'tail_unavailable' });
-  });
-
-  it('只读取尾窗中最近一次成功请求的快照', () => {
-    const latest = usage({
-      used_tokens: 90_000,
-      remaining_tokens: 10_000,
-      components: {
-        system_prompt_tokens: 10_000,
-        conversation_tokens: 60_000,
-        tool_definition_tokens: 20_000,
-      },
-    });
-    const result = project({
-      messages: [userMessage('old', usage()), userMessage('pending'), userMessage('latest', latest)],
-    });
-
-    expect(result.status).toBe('current');
-    if (!('usage' in result)) throw new Error('expected available context usage');
-    expect(result.usage).toBe(latest);
-    expect(result.contextWindowTokens).toBe(120_000);
-    expect(result.level).toBe('elevated');
-    expect(result.drawPercent).toBe(75);
-    expect(result.segments.map(segment => segment.id)).toEqual([
-      'system_prompt',
-      'tool_definitions',
-      'conversation',
-    ]);
-  });
-
-  it('来源用户被裁出尾窗后仍展示快照，旧 live 不覆盖较新 durable，同轮与新轮 live 继续更新', () => {
-    const durableUsage: ConversationContextUsageSource = {
-      user_message_id: 'latest', sort_seq: 2, timestamp: 2, usage: usage(),
-    };
-    expect(project({ durableUsage })).toMatchObject({ status: 'current', usage: durableUsage.usage });
-    const liveUsage = usage({ budget_model_id: 'live-model' });
-    expect(project({ durableUsage, messages: [userMessage('old', liveUsage)] }))
-      .toMatchObject({ usage: durableUsage.usage });
-    expect(project({ durableUsage, messages: [userMessage('latest', liveUsage)] }))
-      .toMatchObject({ usage: liveUsage });
-    expect(project({ durableUsage, messages: [{ ...userMessage('new', liveUsage), timestamp: 3 }] }))
-      .toMatchObject({ usage: liveUsage });
-    expect(project({ durableUsage, includesConversationTail: false }))
-      .toEqual({ status: 'tail_unavailable' });
+  it('只消费当前运行和预算模型的实时快照', () => {
+    const latest = usage({ used_tokens: 90_000 });
+    const messages = [
+      userMessage('old', 'old-run', usage()),
+      userMessage('current', 'current-run', latest),
+      userMessage('other-model', 'current-run', usage({ budget_model_id: 'model-b' })),
+    ];
+    expect(findLiveContextUsage(messages, 'unknown-run', 'model-a')).toBeNull();
+    expect(findLiveContextUsage(messages, 'current-run', 'model-a')).toBe(latest);
   });
 
   it('把 239616 输入预算与 16384 输出上限还原为用户配置的 256K 窗口', () => {
-    const result = project({
-      messages: [userMessage('route-budget', usage({
-        used_tokens: 100_000,
-        input_budget_tokens: 239_616,
-        remaining_tokens: 139_616,
-        output_limit_tokens: 16_384,
-        components: {
-          system_prompt_tokens: 10_000,
-          conversation_tokens: 70_000,
-          tool_definition_tokens: 20_000,
-        },
-      }))],
-    });
+    const result = projectContextWindowUsage(usage({
+      used_tokens: 100_000,
+      input_budget_tokens: 239_616,
+      remaining_tokens: 139_616,
+      output_limit_tokens: 16_384,
+      components: {
+        system_prompt_tokens: 10_000,
+        conversation_tokens: 70_000,
+        tool_definition_tokens: 20_000,
+      },
+    }));
 
     if (!('contextWindowTokens' in result)) {
       throw new Error('expected available context usage');
@@ -125,47 +70,39 @@ describe('projectContextWindowUsage', () => {
     expect(formatContextUsageTokens(result.contextWindowTokens)).toBe('256K');
   });
 
-  it('按 70% 与 90% 阈值分级，并识别历史模型', () => {
-    const elevated = project({
-      messages: [userMessage('elevated', usage({
-        used_tokens: 84_000,
-        remaining_tokens: 16_000,
-        components: {
-          system_prompt_tokens: 10_000,
-          conversation_tokens: 54_000,
-          tool_definition_tokens: 20_000,
-        },
-      }))],
-    });
-    const historical = project({
-      messages: [userMessage('historical', usage())],
-      currentModelId: 'model-b',
-    });
+  it('按 70% 阈值分级', () => {
+    const elevated = projectContextWindowUsage(usage({
+      used_tokens: 84_000,
+      remaining_tokens: 16_000,
+      components: {
+        system_prompt_tokens: 10_000,
+        conversation_tokens: 54_000,
+        tool_definition_tokens: 20_000,
+      },
+    }));
 
     if (!('level' in elevated)) throw new Error('expected elevated context usage');
     expect(elevated.level).toBe('elevated');
-    expect(historical.status).toBe('historical_model');
+    expect(elevated.segments.map(segment => segment.id)).toEqual([
+      'system_prompt', 'tool_definitions', 'conversation',
+    ]);
   });
 
   it('超过完整窗口时保持真实百分比，同时把三个组成压缩到完整轨道', () => {
-    const result = project({
-      messages: [userMessage('overflow', usage({
-        used_tokens: 130_000,
-        remaining_tokens: -30_000,
-        components: {
-          system_prompt_tokens: 20_000,
-          conversation_tokens: 80_000,
-          tool_definition_tokens: 30_000,
-        },
-      }))],
-      currentModelId: 'model-b',
-    });
+    const result = projectContextWindowUsage(usage({
+      used_tokens: 130_000,
+      remaining_tokens: -30_000,
+      components: {
+        system_prompt_tokens: 20_000,
+        conversation_tokens: 80_000,
+        tool_definition_tokens: 30_000,
+      },
+    }));
 
     expect(result.status).toBe('overflow');
     if (result.status !== 'overflow') return;
     expect(result.ratio).toBe(130_000 / 120_000);
     expect(result.drawPercent).toBe(100);
-    expect(result.isHistoricalModel).toBe(true);
     expect(result.segments.reduce((sum, segment) => sum + segment.share, 0)).toBe(1);
   });
 });

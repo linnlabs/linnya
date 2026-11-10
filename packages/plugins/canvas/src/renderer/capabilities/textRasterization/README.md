@@ -1,0 +1,25 @@
+# DOM 卡片光栅化
+
+本 capability 接受正式正文 renderer 给出的 HTMLElement，不理解 Tiptap JSON，不复制正文 schema。`measure` 与 `rasterize` 使用同宽 DOM、产品 CSS 与字体；后者只画指定的可见框，支持横纵 offset 和 tileWidth，最大纹理边默认 4096，长卡由调用方分块。完整 width 决定正文排版，tileWidth 只决定当前纹理宽，不能用切片宽重新换行。
+
+DOM 安装后等待 fonts 和图片 decode。图片必须经内容 provider 从受管字节转成 blob/data URL；不放宽媒体协议 CORS。普通隐藏窗口可能成功触发 paint 却输出透明图，后台提供者必须选择已验证的 offscreen Host 能力。实验 API 不可用、paint 超时或中断时返回错误，由文档类型决定身份牌反馈，不伪造出图成功。
+
+`measureBatch` 先安装同批各自宽度的DOM，再集中读取高度，避免每张卡交替写入和读取布局。结果按请求顺序返回标准 settled result；某张图片解码失败不阻断其他正文，取消仍中止整批。复杂正文默认一次至多32卡，短纯文字按既有像素/DOM预算可至64卡；移动时分别降为16/32卡，共享一个staging和paint流程。
+
+字体等待在本批DOM全部安装后只读取一次，再由每张卡独立等待自身图片与测高。Chromium150的[已完成字体ready getter](https://github.com/chromium/chromium/blob/150.0.7871.250/third_party/blink/renderer/core/css/font_face_set_document.cc#L117)仍可能同步更新样式和布局，逐卡读取会重复这项工作；该Promise只在当前批次共享，不能跨批缓存而漏掉后续DOM触发的新字体加载。空测量批不读取字体，仍复核取消；已开始的图片decode不可取消，settle后沿原信号拒绝整批。光栅页仍通过同一准备流程等待字体及图片后才paint与裁独立tile，不改变媒体协议、超时或画质。
+
+`createLatestRasterQueue` 串行使用 staging DOM，默认至多一个运行批次和 64 个待处理项。同一任务批次先集中入队再开始paint，避免500张卡先单独画1张；支持当前视口优先级重排与移动时缩小批次，不能突破已声明上限。同一 key 的旧任务被替换；已完成的旧结果也会释放。调用方取消离屏请求，并对 dropped 结果按当前可见需求重新调度，不保留无限积压。
+
+队列入口位于 `orchestration/createLatestRasterQueue`：批次选择与优先级重排在 `functions/planRasterQueueBatch`，结果的所有权收口在 `orchestration/settleRasterQueueBatch`。结果收口必须同步完成后才离开原 execute 的 await 续体；不能再包一层 async，导致调用方 Promise 观察到尚未清除的运行批次或旧统计。待办 Map、运行组及取消控制器仍只由同一队列实例拥有。
+
+每次drain在独立task执行，避免DOM创建/测高与场景投影、身份牌准备连成阻挡绘制的微任务链；不改变批次预算、优先级和最新内容判定。销毁取消尚未开始的任务，运行中的paint仍由原有AbortSignal收口。该边界遵循[HTML事件循环](https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html)，不把Promise续体误当成让出主线程。
+
+`cardRasterKey` 覆盖正文修订、主题、DPR、材质、LOD、字体和界面缩放；业务应按实际影响区分正文与外框，材质只影响外框时复用正文。光栅器销毁后不再安装 DOM，返回的 bitmap 由接收者或队列释放。
+
+`rasterizeBatch` 将同批可见片段装入最长边4096的 paint atlas，再通过独立 OffscreenCanvas 裁出每个 ImageBitmap，防止小碎片保留整页底图。队列的 executeBatch 仍只有一个运行批次；同批一张卡取消只释放它的结果，其他卡继续完成。销毁会中断 paint 等待。
+
+测高只安装与读取DOM；实例首次非空光栅请求才将staging canvas唯一转移到同placeholder的Offscreen atlas，不创建HTMLCanvas2D context。真实onpaint捕获直属viewport的ElementImage，在同身份的Offscreen2D重放；[Chromium150要求同canvas身份](https://github.com/chromium/chromium/blob/150.0.7871.250/third_party/blink/renderer/core/html/canvas/canvas_rendering_context.cc#L145)，不能把快照直接交任意独立tile或将Element直接交Offscreen。每页快照在全部裁片结束或失败/取消后显式close；已交付的独立bitmap仍由原消费者关闭，销毁staging只中断本实例并清空atlas backing。
+
+转移后HTML bitmap尺寸setter不可调用，当前输出尺寸由Offscreen backing拥有，HTML与viewport CSS仍保持原排版宽高。原生paint record按目的backing与CSS的比率重放，CTM保持identity，不再次乘DPR；快照width/height和异步placeholder intrinsic尺寸都不能代替实际atlas输出尺寸。CPU hint、画质、纹理/队列预算和paint超时不因这条路径改变；能力缺失仍明确失败，不保留旧光栅fallback。该路径避免HTMLCanvas2D自己的FinalizeFrame限流器，但placeholder仍会提交合成资源，不能据此承诺没有GPU等待。旧dev paint/context诊断中HTML2D draw和HTML intrinsic宽高不再代表atlas，采样新路径时须按实际Offscreen记录解释。
+
+同 runner/DPR 的正文视觉 gate：`node packages/plugins/canvas/dev/probes/run-visual-probe.mjs`。实时 DOM、HTML 光栅、Pixi 三者都使用正式正文 fragment、CSS 和 system-ui 字体，覆盖中文、Emoji、列表、行内格式、引用、代码与表格，以及两主题/两材质。原墨迹交并比及raw95继续保留为诊断；Windows LCD与透明bitmap灰阶AA的资格、真实逐字簇/行边界和损坏反例由唯一的[开发视觉oracle](../../../../dev/probes/visualOracle/README.md)定义，不以降低旧阈值或修改生产样式制造通过。它检查正文缺失、截断、错位和颜色，排除独立材质外框，不锁定外观布局；输出只在 `_dev_data/canvas-visual-probe/`。

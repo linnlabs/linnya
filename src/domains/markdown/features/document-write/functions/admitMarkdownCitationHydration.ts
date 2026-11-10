@@ -93,7 +93,7 @@ export async function admitMarkdownCitationLinkHydration(
   urls: readonly string[],
   resolveSourcesByUrl: ResolveMarkdownCitationSourcesByUrl,
 ): Promise<Readonly<Record<string, CitationLinkHydrationData>>> {
-  const normalizedUrls = Array.from(new Set(urls.map(normalizeCitationWebUrl)));
+  const normalizedUrls = Array.from(new Set(urls.filter(url => /^https?:\/\//i.test(url)).map(normalizeCitationWebUrl)));
   if (normalizedUrls.length === 0) return {};
 
   const sources = await resolveSourcesByUrl(normalizedUrls);
