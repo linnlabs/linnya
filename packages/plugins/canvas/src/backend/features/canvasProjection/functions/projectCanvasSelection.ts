@@ -1,4 +1,8 @@
-import { canvasTextPrefix } from '../../../../shared';
+import {
+  canvasTextPrefix,
+  orderCanvasCardsForReading,
+  readCanvasCardConnections,
+} from '../../../../shared';
 import type { CanvasCard } from '../../../../shared';
 import type { CanvasSelectionProjectionInput } from '../definitions/canvasProjection';
 import { projectCanvasCardBody } from './projectCanvasCardBody';
@@ -7,9 +11,12 @@ import { projectCanvasCardBody } from './projectCanvasCardBody';
 export function projectCanvasSelection(input: CanvasSelectionProjectionInput): string {
   const { snapshot, elementIds, path, context, format = 'context' } = input;
   const selected = new Set<string>(elementIds);
-  const cards = snapshot.elements
-    .filter((element): element is CanvasCard => element.type !== 'edge' && selected.has(element.id))
-    .sort((a, b) => a.y - b.y || a.x - b.x || a.id.localeCompare(b.id));
+  const cards = orderCanvasCardsForReading(
+    snapshot.elements.filter(
+      (element): element is CanvasCard => element.type !== 'edge' && selected.has(element.id)
+    ),
+    readCanvasCardConnections(snapshot.elements)
+  );
   if (format === 'markdown')
     return cards.map(card => projectCanvasCardBody(card, context)).join('\n\n');
   const lines = snapshot.elements.filter(

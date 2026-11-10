@@ -58,6 +58,12 @@ export {
   readCanvasElementSearchText,
 } from './search/functions/searchCanvasElements';
 export type { CanvasSearchHit, CanvasSearchContext } from './search/definitions/canvasSearch';
+export { orderCanvasCardsForReading } from './reading/functions/orderCanvasCardsForReading';
+export {
+  readCanvasCardComponent,
+  readCanvasCardConnections,
+} from './reading/functions/canvasCardConnections';
+export type { CanvasCardConnection } from './reading/functions/canvasCardConnections';
 export { CanvasCheckReportSchema } from './query/definitions/canvasCheck';
 export type { CanvasCheckReport } from './query/definitions/canvasCheck';
 export {

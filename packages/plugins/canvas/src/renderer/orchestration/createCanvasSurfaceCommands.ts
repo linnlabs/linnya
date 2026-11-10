@@ -85,7 +85,7 @@ export function createCanvasSurfaceCommands({
     zoom,
     move: movement.move,
     navigation: createCanvasKeyboardNavigation({
-      cards,
+      elements: () => session.state.snapshot.value?.elements ?? [],
       selection: () => selection.ids.value,
       select,
       reveal: viewport.reveal,

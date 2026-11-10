@@ -1,4 +1,10 @@
-import type { CanvasContentNode, CanvasElement } from '../../model/definitions/canvasElement';
+import type {
+  CanvasCard,
+  CanvasContentNode,
+  CanvasElement,
+} from '../../model/definitions/canvasElement';
+import { readCanvasCardConnections } from '../../reading/functions/canvasCardConnections';
+import { orderCanvasCardsForReading } from '../../reading/functions/orderCanvasCardsForReading';
 import type { CanvasSearchContext, CanvasSearchHit } from '../definitions/canvasSearch';
 
 function bodyText(node: CanvasContentNode, context: CanvasSearchContext): string {
@@ -30,15 +36,12 @@ export function searchCanvasElements(
 ): CanvasSearchHit[] {
   const needle = query.trim().toLocaleLowerCase();
   if (!needle) return [];
-  const ordered = [...elements].sort((a, b) =>
-    a.type === 'edge'
-      ? b.type === 'edge'
-        ? 0
-        : 1
-      : b.type === 'edge'
-        ? -1
-        : a.y - b.y || a.x - b.x
-  );
+  // 卡片按画布唯一阅读顺序，与 Tab 一致；连线排在卡片之后保持文档顺序。
+  const cards = elements.filter((element): element is CanvasCard => element.type !== 'edge');
+  const ordered: CanvasElement[] = [
+    ...orderCanvasCardsForReading(cards, readCanvasCardConnections(elements)),
+    ...elements.filter(element => element.type === 'edge'),
+  ];
   return ordered.flatMap(element => {
     const text = readCanvasElementSearchText(element, context),
       start = text.toLocaleLowerCase().indexOf(needle);

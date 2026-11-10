@@ -1,27 +1,12 @@
-import type { CanvasCard, CanvasCardId, CanvasElement } from '@plugin/canvas/shared';
+import {
+  readCanvasCardComponent,
+  readCanvasCardConnections,
+  type CanvasCard,
+  type CanvasCardId,
+  type CanvasElement,
+} from '@plugin/canvas/shared';
 import type { CanvasTreeCreationPlan } from '../definitions/canvasLayoutCommands';
 import { canvasText } from '../../localization';
-function componentIds(elements: readonly CanvasElement[], id: CanvasCardId): CanvasCardId[] {
-  const neighbors = new Map<CanvasCardId, CanvasCardId[]>();
-  for (const element of elements)
-    if (element.type === 'edge' && element.from.kind === 'card' && element.to.kind === 'card') {
-      const from = neighbors.get(element.from.cardId) ?? [],
-        to = neighbors.get(element.to.cardId) ?? [];
-      from.push(element.to.cardId);
-      to.push(element.from.cardId);
-      neighbors.set(element.from.cardId, from);
-      neighbors.set(element.to.cardId, to);
-    }
-  const visited = new Set<CanvasCardId>([id]),
-    queue = [id];
-  for (let index = 0; index < queue.length; index++)
-    for (const neighbor of neighbors.get(queue[index]) ?? [])
-      if (!visited.has(neighbor)) {
-        visited.add(neighbor);
-        queue.push(neighbor);
-      }
-  return [...visited];
-}
 /** 树父子按from→to定义，与箭头画法及预留分组parentId无关。多父不能任取一条。 */
 export function planCanvasTreeCreation(
   elements: readonly CanvasElement[],
@@ -64,7 +49,10 @@ export function planCanvasTreeCreation(
     options: {
       algorithm: 'tree',
       direction,
-      elementIds: [...componentIds(elements, card.id), '$created'],
+      elementIds: [
+        ...readCanvasCardComponent(readCanvasCardConnections(elements), card.id),
+        '$created',
+      ],
     },
   };
 }

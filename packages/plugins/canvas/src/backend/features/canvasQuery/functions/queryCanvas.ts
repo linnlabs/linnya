@@ -1,5 +1,7 @@
 import {
   canvasBounds,
+  orderCanvasCardsForReading,
+  readCanvasCardConnections,
   searchCanvasElements,
   type CanvasCard,
   type CanvasSnapshot,
@@ -64,16 +66,17 @@ export function queryCanvas(
         ? wanted.has(card.id)
         : card.id === query.value
   );
-  const elements = selected
-    .sort((a, b) => a.y - b.y || a.x - b.x)
-    .map(card => ({
-      id: card.id,
-      type: card.type,
-      revision: card.revision,
-      color: card.color,
-      locked: card.locked,
-      text: projectCanvasCardBody(card, context),
-    }));
+  const elements = orderCanvasCardsForReading(
+    selected,
+    readCanvasCardConnections(snapshot.elements)
+  ).map(card => ({
+    id: card.id,
+    type: card.type,
+    revision: card.revision,
+    color: card.color,
+    locked: card.locked,
+    text: projectCanvasCardBody(card, context),
+  }));
   const selectedIds = new Set<string>(selected.map(card => card.id));
   const edges = snapshot.elements.filter(
     element =>

@@ -1,4 +1,8 @@
-import { canvasTextPrefix } from '../../../../shared';
+import {
+  canvasTextPrefix,
+  orderCanvasCardsForReading,
+  readCanvasCardConnections,
+} from '../../../../shared';
 import type { CanvasCard, CanvasEdge, CanvasSnapshot } from '../../../../shared';
 import type { CanvasProjectionContext } from '../definitions/canvasProjection';
 import { projectCanvasCardBody } from './projectCanvasCardBody';
@@ -34,7 +38,8 @@ export function projectCanvasDocument(
     (element): element is CanvasCard => element.type !== 'edge'
   );
   const edges = snapshot.elements.filter(element => element.type === 'edge');
-  const groups = groupCanvasProjectionRegions(cards);
+  const groups = groupCanvasProjectionRegions(cards),
+    connections = readCanvasCardConnections(snapshot.elements);
   const lines = [
     '这是 Linnya 画布，不是 JSON Canvas。修改使用 linnya-canvas，先读取 Skill canvas。',
     `# 画布：${context.name}（${cards.length} 张卡，${edges.length} 条线）`,
@@ -52,8 +57,7 @@ export function projectCanvasDocument(
     const group = groups.get(region);
     if (!group) continue;
     lines.push(`\n## ${region}`);
-    group.sort((a, b) => a.y - b.y || a.x - b.x || a.id.localeCompare(b.id));
-    for (const card of group) {
+    for (const card of orderCanvasCardsForReading(group, connections)) {
       lines.push(...projectCardSummary(card, context, summary));
     }
   }

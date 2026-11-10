@@ -1,6 +1,7 @@
 import { CanvasSelectionProjection } from './CanvasSelectionProjection';
 import { CanvasCardPreview } from './CanvasCardPreview';
 import { CanvasCardPresentation } from './CanvasCardPresentation';
+import { CanvasMapTitleOrder } from './CanvasMapTitleOrder';
 import { createCanvasCardBackgrounds } from './createCanvasCardBackground';
 import type { CanvasCardView } from './definitions/canvasCardView';
 import type { CanvasKernelOptions } from '../../definitions/canvasKernelOptions';
@@ -85,8 +86,7 @@ export class PixiCanvasKernel implements CanvasKernel {
   private editingCard: CanvasCardId | null = null;
   private readonly text: CanvasKernelText;
   private readonly mapLabels: CanvasMapLabels;
-  private overviewOrder: readonly CanvasCard[] = [];
-  private titleOrder: readonly CanvasCard[] = [];
+  private readonly titleOrder: CanvasMapTitleOrder;
   private edges: readonly CanvasEdge[] = [];
   private ordered: readonly CanvasCard[] = [];
   private readonly spatial = new CanvasSpatialProjection();
@@ -167,6 +167,13 @@ export class PixiCanvasKernel implements CanvasKernel {
     this.identities = caches.identities;
     this.bitmaps = caches.bitmaps;
     this.presentation = this.createPresentation(identityContext);
+    this.titleOrder = new CanvasMapTitleOrder({
+      cards: this.cards,
+      selected: this.selected,
+      retiringLabels: this.retiringLabels,
+      retiringViews: this.retiringViews,
+      keepsThumbnail: card => this.presentation.keepsThumbnail(card),
+    });
     this.scene = new CanvasSceneMotion({
       project: (ids, opacity, camera) => this.projectSceneMotion(ids, opacity, camera),
       removed: id => this.removeRetiringView(id),
@@ -206,14 +213,14 @@ export class PixiCanvasKernel implements CanvasKernel {
     if (!view) return;
     this.retiringViews.delete(id);
     this.retiringLabels.delete(id);
-    this.refreshTitleOrder();
+    this.titleOrder.refresh();
     this.bitmaps.remove(id);
     this.identities.remove(view.label);
     view.container.destroy({ children: true, texture: false });
   }
   private updateLabels(): void {
     this.mapLabels.draw({
-      cards: this.titleOrder,
+      cards: this.titleOrder.read(),
       camera: this.camera,
       width: this.width,
       height: this.height,
@@ -287,15 +294,7 @@ export class PixiCanvasKernel implements CanvasKernel {
       }
       this.spatial.setTranslucent(this.scene.translucentIds());
       this.spatial.setCards(this.presentation.displayCards());
-      this.overviewOrder = nextCards
-        .slice()
-        .sort(
-          (a, b) =>
-            Number(b.color !== 'white') - Number(a.color !== 'white') ||
-            Number(b.type === 'document') - Number(a.type === 'document') ||
-            b.width * b.height - a.width * a.height
-        );
-      this.refreshOverviewCards();
+      this.titleOrder.setCards(nextCards);
       this.presentation.orderViews();
       this.edges = elements.filter((element): element is CanvasEdge => element.type === 'edge');
       this.refreshCamera(true, true);
@@ -384,7 +383,7 @@ export class PixiCanvasKernel implements CanvasKernel {
       maskChanged: () => this.lines.setMask(this.lineMask()),
       hasMotion: id => this.scene.has(id),
       applyMotion: view => this.scene.apply(view),
-      refreshTitleOrder: () => this.refreshTitleOrder(),
+      refreshTitleOrder: () => this.titleOrder.refresh(),
       updateLabels: () => this.updateLabels(),
       schedule: () => this.drawing.schedule(),
     });
@@ -520,7 +519,7 @@ export class PixiCanvasKernel implements CanvasKernel {
       view.lodAlpha = this.camera.zoom < 0.15 && !this.selected.has(id) ? 0.6 : 1;
       this.scene.apply(view);
     }
-    this.refreshTitleOrder();
+    this.titleOrder.refresh();
     this.updateLabels();
     this.lines.setSelection(ids);
     this.repaintSelection();
@@ -561,7 +560,7 @@ export class PixiCanvasKernel implements CanvasKernel {
     this.previewChanged(this.preview.resize(id, frame));
   }
   private previewChanged(starting: boolean): void {
-    if (starting) this.refreshOverviewCards();
+    if (starting) this.titleOrder.refreshCards();
     this.mapLabels.invalidate();
     if (this.camera.zoom < 0.3) this.updateLabels();
     const movingIds = [...this.dragOriginals.keys()];
@@ -573,7 +572,7 @@ export class PixiCanvasKernel implements CanvasKernel {
   }
   clearDragPreview(): void {
     this.spatial.updateCards(this.preview.restore(this.targets));
-    this.refreshOverviewCards();
+    this.titleOrder.refreshCards();
     this.mapLabels.invalidate();
     this.updateLabels();
     this.presentation.projectCards(false);
@@ -582,25 +581,6 @@ export class PixiCanvasKernel implements CanvasKernel {
     this.notify?.({ kind: 'preview-changed' });
   }
 
-  private refreshTitleOrder(): void {
-    const selected: CanvasCard[] = [],
-      remaining: CanvasCard[] = [];
-    for (const card of this.overviewOrder) {
-      if (this.presentation.keepsThumbnail(card)) continue;
-      (this.selected.has(card.id) ? selected : remaining).push(card);
-    }
-    // 只作稳定分区，保留颜色/文档/面积原优先序；选择不需要重新排序整张画布。
-    const retiring = [...this.retiringLabels].flatMap(id => {
-      const view = this.retiringViews.get(id);
-      return view ? [view.card] : [];
-    });
-    // 只保留删除前实际展示的地图标签，不能让原先被去重的旧标题突然冒出来。
-    this.titleOrder = [...retiring, ...selected, ...remaining];
-  }
-  private refreshOverviewCards(): void {
-    this.overviewOrder = this.overviewOrder.map(card => this.cards.get(card.id) ?? card);
-    this.refreshTitleOrder();
-  }
   invalidateBitmaps(): void {
     this.bitmaps.clear();
     this.drawing.schedule();
