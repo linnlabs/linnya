@@ -99,6 +99,13 @@ ID、已复核媒体事实和 data URI；受管路径、`assets`、
 
 Backend 的 `@plugin/backend/imageTranscoding` 是不透明内存图片转码窄门面。插件提交已经在自身领域完成背景合成的 bytes，以及明确 JPEG quality、chroma subsampling 和输入像素门禁，只取得编码后的 bytes；Host 发现真实透明像素时直接拒绝，不能猜测或静默补入白底。文件路径、Sharp pipeline、asset 登记、Conversation 生命周期和业务默认值都留在各自 owner。该门面不能扩成通用图片 manager，也不能接受“自动选择质量”或静默降级参数。
 
+文档预览与引用是 Backend、Renderer 都有的门面，也是超级标签背后的平台能力：
+
+- `@plugin/backend/documentPreview` 提供提供方合同 `DocumentPreviewCapability`（由文档类型 hook 的 `preview` 贡献）和 `createDocumentPreviewReader(db)`；`@plugin/renderer/documentPreview` 提供 `readDocumentPreview`、`listDocumentPreviewTypes`、`readDocumentPreviewTypeIcon` 与 `mountDocumentPreview`。Renderer 挂载由 Host 在 app 层通过 `registerRendererDocumentPreviewPort` 注册实现，插件只调用，不注册。
+- `@plugin/backend/documentReferences.replaceDocumentReferences` 在正文同步事务内登记稳定引用；`@plugin/renderer/documentReferences` 读取引用与反向链接。
+
+两组门面都只做身份、项目范围和启停检查，不解释插件内部模型；用法见 [05 文档类型 · 只读文档预览](./05-document-types.md#只读文档预览与稳定引用)。
+
 ## 门面设计纪律
 
 文档历史通过 `@plugin/backend/documentHistory` 获取窄 capability/error 合同与纯保留计划，不传表名给 Host。
