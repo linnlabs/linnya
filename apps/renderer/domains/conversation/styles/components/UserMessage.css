@@ -267,7 +267,7 @@
   margin-bottom: var(--space-1-5);
 }
 
-/* 引用标签沿用输入框的紧凑标签（AiAssistantQuotePreview.css），这里只排布。 */
+/* 引用沿用输入框的紧凑引用外观（AiAssistantQuotePreview.css），这里只排布。 */
 .user-message-container .quote-tags {
   display: flex;
   flex-wrap: wrap;

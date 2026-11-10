@@ -31,4 +31,4 @@ Worker 页面光栅化管线，不写会话文件。`DocumentTypeContribution.re
 
 Renderer 的近景详情通过 `mountDocumentPreview`
 挂到调用方 DOM 容器，使用 App 的唯一 document-preview
-workflow；接收 mode、widthPx 与 onReady，并可传 AbortSignal，返回独立 disposer。该本地能力不经 IPC，不开放可写文档会话，调用方退出或换目标必须取消并释放。Composer 与超级标签先展示真实首屏再展开，文档卡使用 detail 模式直开；只有聚焦项应挂载详情。
+workflow；接收 mode、widthPx 与 onReady，并可传 AbortSignal，返回独立 disposer。该本地能力不经 IPC，不开放可写文档会话，调用方退出或换目标必须取消并释放。Composer 与行内引用先展示真实首屏再展开，文档卡使用 detail 模式直开；只有聚焦项应挂载详情。

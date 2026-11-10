@@ -105,7 +105,7 @@
     <!-- 编辑模式 -->
     <div v-else class="edit-mode">
       <div class="edit-input-wrapper">
-        <!-- 引用标签展示：与 AiAssistantInput 的标签风格保持一致 -->
+        <!-- 引用展示：与 AiAssistantInput 的引用外观保持一致 -->
         <div v-if="quoteList.length" class="edit-quote-preview">
           <div class="edit-quote-preview-header">
             <span class="edit-quote-label">

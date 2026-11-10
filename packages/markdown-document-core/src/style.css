@@ -19,7 +19,7 @@
 .markdown-document-content [data-type='block-math'] { overflow-x: auto; margin-block: 0.6em; }
 .markdown-document-content [data-type='inline-math'] { display: inline; }
 
-/* 超级标签“淡墨”：所有正文消费者共用这一份。底色和图标只取 currentColor，随纸色/主题走，也不依赖 Host token（渲染 worker 没有）。 */
+/* 行内引用“淡墨”：所有正文消费者共用这一份。底色和图标只取 currentColor，随纸色/主题走，也不依赖 Host token（渲染 worker 没有）。 */
 .markdown-document-reference { display: inline-flex; align-items: baseline; max-width: min(24em, 100%); padding: .08em .32em .08em .26em; margin-inline: .04em; border-radius: 4px; background: color-mix(in srgb, currentColor 6%, transparent); line-height: 1.4; vertical-align: baseline; white-space: nowrap; }
 .markdown-document-reference-icon { display: inline-flex; flex: none; align-self: center; width: 1.06em; height: 1.06em; margin-inline-end: .22em; color: color-mix(in srgb, currentColor 62%, transparent); }
 .markdown-document-reference-icon:empty { display: none; }

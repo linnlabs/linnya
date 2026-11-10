@@ -56,9 +56,9 @@ metadata:
 - 修改已有线的label/direction/lineStyle/linePattern同样用update，保留原eN和端点；direction可none/forward/both，lineStyle可curve/straight，linePattern可solid/dashed。样式后写生效，标签仍按读取版本保护；不要为改样式断开重连。
 - 文档卡用type=document及document=workspace:路径，不接受text字段，显示内容来自真实来源；文字结论另建文字卡。图片卡用type=image及file=会话文件。
 - 行内图片可引用会话文件；远程图先下载到会话目录。CLI不自行联网。
-- 文档标签用标准Markdown链接，例如`[资料](workspace:/资料.md)`；提交时转换成稳定身份。
+- 文档引用用标准Markdown链接，例如`[资料](workspace:/资料.md)`；提交时转换成稳定身份。
 - 读取后引用目标改名、移动或同路径被替换会拒绝旧写；重新show后重试。
-- 含失效/越界标签的全文替换不能无损完成，会明确拒绝；可append，或先在界面处理引用。
+- 含失效/越界引用的全文替换不能无损完成，会明确拒绝；可append，或先在界面处理引用。
 - delete/disconnect必须带show读到的revision，使用本画布cN/eN；不能跨画布引用这些局部编号。若已被修改，重新读取并判断是否仍应删除，不沿用旧意图强删。
 
 具体数组见 [操作与示例](references/operations.md)；可直接解析的示例在 [examples.json](references/examples.json)。

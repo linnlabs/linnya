@@ -67,7 +67,7 @@
 
 引用chip沿用注册的`chip.preview`作为展示文字、`chip.label`作为可访问名称；普通选文保留正文摘要，文档/选区owner返回标题或数量。悬停400ms或键盘聚焦时，宿主懒挂载kind的`previewComponent`，只传标准`reference` DTO；关闭、移除或替换引用时卸载。贡献组件时内边距和正文排版归组件；未贡献组件时显示只读文字预览；kind声明`hoverPreview: false`时不弹悬停层，只在点击失败时借弹层显示错误。弹层打开期间固定在引用一侧并朝远离引用的方向生长，可进入、可聚焦并以Escape关闭。点击通过`onActivate`交回owner；owner负责源文档当前项目与可用性复核。hover读取不修改引用正文，发送前刷新仍独立等待`prepareForSend`并冻结本次结果。App装配的Workspace引用复用正式文档preview与类型贡献的只读详情组件，不在Conversation识别插件类型。
 
-引用标签是超级标签“淡墨”外观的紧凑档：淡墨底、小圆角、无边，13px；kind 声明 `chip.icon` 时在标题前显示类型图标。已发送消息只问注册表“该引用是否声明了对象图标”（`readConversationReferenceIcon`）：声明且可用的显示为同样的静态标签，其余（正文引用、未注册或已停用的 kind）保持引用块，不按具体 kind 分支。
+输入框里的引用是行内引用“淡墨”外观的紧凑档：淡墨底、小圆角、无边，13px；kind 声明 `chip.icon` 时在标题前显示类型图标。已发送消息只问注册表“该引用是否声明了对象图标”（`readConversationReferenceIcon`）：声明且可用的显示为同样的静态引用，其余（正文引用、未注册或已停用的 kind）保持引用块，不按具体 kind 分支。
 
 ### 2.2 Input Extension 契约（宿主内部完整契约）
 

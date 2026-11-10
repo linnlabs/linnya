@@ -1,6 +1,6 @@
 # 通用文档只读预览装配
 
-本 workflow 拥有用户预览的读取、范围订阅、悬停展开、恢复和打开动作。超级标签浮层、Composer 引用和 Canvas 近景都挂载这里；消费者只负责定位与生命周期，不再自己生成摘要、正文或展开按钮。
+本 workflow 拥有用户预览的读取、范围订阅、悬停展开、恢复和打开动作。行内引用浮层、Composer 引用和 Canvas 近景都挂载这里；消费者只负责定位与生命周期，不再自己生成摘要、正文或展开按钮。
 
 `@linnya/document-preview` 拥有唯一的标题、类型图标、间距与正文表面。Markdown 由
 `@linnya/markdown-document-core/workspace-preview` 根据正式 Workspace

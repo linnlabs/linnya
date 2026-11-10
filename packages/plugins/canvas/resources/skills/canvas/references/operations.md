@@ -15,7 +15,7 @@ arrange算一个原始动作，其展开的坐标更新不另占原始动作配�
 
 图文归纳：先添加来源文档卡，再用文字卡记录结论，通过connect标明来源；文字中的证据链接使用当前workspace文档路径或普通外部网页链接。研究联网由既有工具完成，Canvas不自造搜索能力。
 
-局部修改：show读取revision后用update；只加新段落时优先append，原标签与图片节点保持原身份。出现reference_path_changed先重新读取，不按同路径新文档猜原目标。
+局部修改：show读取revision后用update；只加新段落时优先append，原引用与图片节点保持原身份。出现reference_path_changed先重新读取，不按同路径新文档猜原目标。
 
 多幕故事：用groups明确每幕的卡集合，grid+columns=1使每幕为一列；用顺序connect表达场景。为场景补草稿使用新ref与near/after，不改原卡正文。
 

@@ -53,7 +53,7 @@
   gap: var(--space-1-5);
 }
 
-/* 引用标签：超级标签“淡墨”的紧凑档。外形与正文标签同源（淡墨底、4px 圆角、无边），只是字号固定 13px。 */
+/* 输入框引用：行内引用“淡墨”的紧凑档。外形与正文标签同源（淡墨底、4px 圆角、无边），只是字号固定 13px。 */
 .ai-assistant-quote-preview__pill {
   --quote-pill-ink: var(--color-text-primary);
   display: inline-flex;

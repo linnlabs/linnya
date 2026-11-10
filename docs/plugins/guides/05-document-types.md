@@ -68,7 +68,7 @@ hook 实现侧的纪律：**不要从 `ToolContext` 公开插件专属 service �
 
 ## 只读文档预览与稳定引用
 
-用户看到的“超级标签”（在正文或输入框里用 `@` 关联文档，悬停出预览、点击跳转）、对话里的文档引用和画布文档卡，共用这一套平台合同。插件可以站在两侧：作为**提供方**让自己的文档类型能被预览，作为**消费方**预览别的文档。共同 DTO 在 `@app/schemas`，图片是受限 data URI，不公开磁盘路径。实现及边界见 [文档预览](../../../src/domains/document-preview/README.md)，Renderer 侧的读取、悬停展开与打开动作见 [Renderer 文档预览](../../../apps/renderer/app/workflows/document-preview/README.md)。
+用户看到的“引用”（在正文或输入框里用 `@` 关联文档，悬停出预览、点击跳转）、对话里的文档引用和画布文档卡，共用这一套平台合同。插件可以站在两侧：作为**提供方**让自己的文档类型能被预览，作为**消费方**预览别的文档。共同 DTO 在 `@app/schemas`，图片是受限 data URI，不公开磁盘路径。实现及边界见 [文档预览](../../../src/domains/document-preview/README.md)，Renderer 侧的读取、悬停展开与打开动作见 [Renderer 文档预览](../../../apps/renderer/app/workflows/document-preview/README.md)。
 
 ### 提供方：让自己的文档能被预览
 
@@ -81,10 +81,10 @@ Renderer 文档类型可贡献 `readonlyPreviewComponent`，作为详情档的�
 按呈现需要二选一：
 
 1. **读取数据，自己呈现。** Backend 用 `@plugin/backend/documentPreview.createDocumentPreviewReader(db)`，Renderer 用 `@plugin/renderer/documentPreview.readDocumentPreview`，都得到 `DocumentPreviewResult`。可预览的类型集合经 `listDocumentPreviewTypes` 查询，不能在 UI 硬编码。标出文档类型时用 `readDocumentPreviewTypeIcon(nodeType)`，与文件树同一图标；Host 未安装该能力时返回 null，调用方自行兜底。画布卡片位图走的就是这条路。
-2. **请 Host 挂载标准预览。** `@plugin/renderer/documentPreview.mountDocumentPreview({ element, documentId, projectId, mode?, widthPx?, signal?, onReady? })` 把与超级标签相同的只读预览挂进插件提供的容器，返回 `Promise<dispose>`。`mode` 默认首屏（`first-screen`）；`detail` 会加载该类型贡献的 `readonlyPreviewComponent`，目标已删除或不在当前项目时拒绝挂载。Host 在加载前后都核对当前项目；`signal` 可在读取或组件加载途中取消；同一容器再次挂载会替换旧目标，旧 disposer 不会移除后来的目标；`onReady` 在正文呈现完成后回调，可据此撤下占位位图。DOM 和 AbortSignal 不过 IPC，不能借此打开可写 surface 或批量挂载远景组件。
+2. **请 Host 挂载标准预览。** `@plugin/renderer/documentPreview.mountDocumentPreview({ element, documentId, projectId, mode?, widthPx?, signal?, onReady? })` 把与行内引用相同的只读预览挂进插件提供的容器，返回 `Promise<dispose>`。`mode` 默认首屏（`first-screen`）；`detail` 会加载该类型贡献的 `readonlyPreviewComponent`，目标已删除或不在当前项目时拒绝挂载。Host 在加载前后都核对当前项目；`signal` 可在读取或组件加载途中取消；同一容器再次挂载会替换旧目标，旧 disposer 不会移除后来的目标；`onReady` 在正文呈现完成后回调，可据此撤下占位位图。DOM 和 AbortSignal 不过 IPC，不能借此打开可写 surface 或批量挂载远景组件。
 
-标题、状态、类型图标、紧凑排版与首屏范围由仓内私有 workspace 包 `@linnya/document-preview` 统一定义。仓内官方插件可以把它打进自己的产物，与超级标签保持同一外观（Canvas 即如此）；该包不发布，外部插件走上面第 2 条，或读取 DTO 自己呈现。
+标题、状态、类型图标、紧凑排版与首屏范围由仓内私有 workspace 包 `@linnya/document-preview` 统一定义。仓内官方插件可以把它打进自己的产物，与行内引用保持同一外观（Canvas 即如此）；该包不发布，外部插件走上面第 2 条，或读取 DTO 自己呈现。
 
 ### 稳定引用
 
-文档卡片与行内标签把稳定目标 ID 登记进 Core [文档引用](../../../src/domains/document-references/README.md)。`@plugin/backend/documentReferences.replaceDocumentReferences` 必须加入正文当前同步事务；不能自行写 Core 引用表，也不能用路径替换身份。停用/卸载插件保留引用与文本快照。Renderer 用 `@plugin/renderer/documentReferences.readDocumentBacklinks` 按项目和文档读取反向链接（按来源文档分组分页），它不读正文、不打开文档，也不赋予跨项目访问。
+文档卡片与行内引用把稳定目标 ID 登记进 Core [文档引用](../../../src/domains/document-references/README.md)。`@plugin/backend/documentReferences.replaceDocumentReferences` 必须加入正文当前同步事务；不能自行写 Core 引用表，也不能用路径替换身份。停用/卸载插件保留引用与文本快照。Renderer 用 `@plugin/renderer/documentReferences.readDocumentBacklinks` 按项目和文档读取反向链接（按来源文档分组分页），它不读正文、不打开文档，也不赋予跨项目访问。

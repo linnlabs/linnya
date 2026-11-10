@@ -12,7 +12,7 @@ export interface DocumentPreviewSurfaceInput {
   readonly theme: 'light' | 'dark';
   readonly signal: AbortSignal;
   readonly icon?: Component | null;
-  /** 正文里超级标签的类型图标，与文件树同源；后台出图等拿不到时省略，标签用通用文件图标。 */
+  /** 正文里行内引用的类型图标，与文件树同源；后台出图等拿不到时省略，引用用通用文件图标。 */
   readonly referenceTypeIcon?: (nodeType: string) => Component | null;
   readonly onOpen?: () => void;
   /** 类型自己贡献交互详情时，只复用外壳和标题，不在下方再画一张封面。 */

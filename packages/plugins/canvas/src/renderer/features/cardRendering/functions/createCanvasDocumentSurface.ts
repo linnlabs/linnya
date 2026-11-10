@@ -8,7 +8,7 @@ import type {
 
 export const canvasDocumentPreviewMessage = documentPreviewMessage;
 
-/** Canvas 只提供几何和已授权事实，正文、标题与状态均消费超级标签同一个用户预览。 */
+/** Canvas 只提供几何和已授权事实，正文、标题与状态均消费行内引用同一个用户预览。 */
 export async function createCanvasDocumentSurface(
   presentation: CanvasDocumentSurfacePresentation | undefined,
   { document, card, signal, theme }: CanvasDocumentSurfaceContext

@@ -95,7 +95,7 @@ Linnya Core 的静态运行面只有 `platform`。当前产品发行可以随包
 8. 同一定义只有一个真源：常量、类型、工具名单、版本号不许多处手抄（[01](./guides/01-package-structure.md)/[02](./guides/02-manifest.md)/[07](./guides/07-tools.md)）。
 9. 卸载不删数据表；禁用仍迁移；数据迁移版本不等于当前运行 artifact（[06](./guides/06-database.md)/[14](./guides/14-lifecycle.md)）。
 10. 每删一个过渡入口，守卫同步升级为禁止复活；每插件有自己的守卫与 smoke（[16](./guides/16-testing-and-guards.md)）。
-11. Renderer 展示层也必须插件化：插件 CSS、引用标签、外壳样式、workspace read 展示方式都由 renderer/document type contribution 声明，host 不按 pluginId 或 document type 名写分支（[04](./guides/04-renderer-contribution.md)/[12](./guides/12-ai-interaction.md)/[19](./guides/19-conversation-input.md)/[20](./guides/20-subrun-process-ui.md)）。
+11. Renderer 展示层也必须插件化：插件 CSS、引用外观、外壳样式、workspace read 展示方式都由 renderer/document type contribution 声明，host 不按 pluginId 或 document type 名写分支（[04](./guides/04-renderer-contribution.md)/[12](./guides/12-ai-interaction.md)/[19](./guides/19-conversation-input.md)/[20](./guides/20-subrun-process-ui.md)）。
 12. Agent 通过既有 `shell` 调用 `linnya-<plugin>` 薄 client，再由父 execution 的 bridge 回到当前 App； `entry.command` 只供人、开发脚本与 CI。两种 adapter 复用插件领域命令，但通用 command/tool 协议不得硬编码插件字段，bridge 不得拥有第二套 execution owner（[21](./guides/21-plugin-cli.md)/[02](./guides/02-manifest.md)/[17](./guides/17-heavy-plugins.md)）。
 13. 插件版本目录不可变：同一 `pluginId@version` 的 `SHA512SUMS` 不一致必须失败并要求提升版本，不能用同版本覆盖或沿用旧内容（[14](./guides/14-lifecycle.md)/[15](./guides/15-release.md)）。
 

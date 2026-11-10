@@ -66,7 +66,7 @@ async function renderBody(detail: DocumentPreviewDetail, input: DocumentPreviewS
   return { element, dispose: () => element.remove() };
 }
 
-/** 超级标签、对话引用、画布位图和 live 详情的唯一用户预览呈现，不处理持久化或导航授权。 */
+/** 行内引用、对话引用、画布位图和 live 详情的唯一用户预览呈现，不处理持久化或导航授权。 */
 export async function createDocumentPreviewSurface(
   input: DocumentPreviewSurfaceInput
 ): Promise<DocumentPreviewSurface> {
