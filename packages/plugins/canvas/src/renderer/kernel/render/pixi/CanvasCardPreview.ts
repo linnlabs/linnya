@@ -1,4 +1,5 @@
 import type { CanvasCard, CanvasCardId, CanvasRectangle } from '../../../../shared';
+import type { CanvasCardMaterial } from '../../geometry/canvasCardFrame';
 import { CanvasResizeClip } from './CanvasResizeClip';
 import type { CanvasCardView } from './definitions/canvasCardView';
 
@@ -12,21 +13,38 @@ export interface CanvasCardPreviewContext {
   move(view: CanvasCardView): void;
   /** 改了尺寸：纸面、阴影与身份牌按新尺寸重新投影。 */
   resize(view: CanvasCardView): void;
+  /** 改尺寸遮罩与纸面同形，圆角随材质。 */
+  readMaterial(): CanvasCardMaterial;
 }
 
 /**
  * 拖动与改尺寸共用的显示副本：手势中只改副本，提交落地或取消后换回目标卡。
- * 改尺寸时正文仍是旧排版，由 CanvasResizeClip 裁在纸面内。
+ * 改尺寸时及松手后新排版到达前，正文仍是旧排版，由 CanvasResizeClip 裁在纸面内；新排版到达时原地替换。
  */
 export class CanvasCardPreview {
   private resizingId: CanvasCardId | null = null;
   private swapping: CanvasCardId | null = null;
-  private readonly clip = new CanvasResizeClip();
-  constructor(private readonly context: CanvasCardPreviewContext) {}
+  /** 手势开始时的尺寸；originals 在快照落地时会换成新尺寸，判断尺寸是否真的变了只能看这里。 */
+  private resizedFrom: { readonly width: number; readonly height: number } | null = null;
+  private readonly clip: CanvasResizeClip;
+  constructor(private readonly context: CanvasCardPreviewContext) {
+    this.clip = new CanvasResizeClip(() => context.readMaterial());
+  }
 
   /** 正在改尺寸的卡；其显示副本仍是旧修订，不能按它排版正文。 */
   get resizing(): CanvasCardId | null {
     return this.resizingId;
+  }
+  /**
+   * 正文仍是旧排版的卡：拖动中，或松手后新排版还没到。旧排版盖不满新纸面也不撤、不补占位标题，
+   * 否则松手那一帧会空白或叠出两层标题。
+   */
+  showsOldLayout(id: CanvasCardId): boolean {
+    return id === this.resizingId || id === this.swapping;
+  }
+  /** 材质变了：遮罩圆角跟着纸面换。 */
+  refitClip(): void {
+    this.clip.refit();
   }
   /** 返回这次是否是手势的第一帧。 */
   place(
@@ -55,6 +73,10 @@ export class CanvasCardPreview {
   /** 从上边或左边拖时外框原点也会变，所以整框替换；正文旧排版贴着新左上角裁剪。 */
   resize(id: CanvasCardId, frame: CanvasRectangle): boolean {
     this.resizingId = id;
+    if (!this.resizedFrom) {
+      const card = this.context.views.get(id)?.card;
+      if (card) this.resizedFrom = { width: card.width, height: card.height };
+    }
     const starting = this.place([id], card => {
       card.x = frame.x;
       card.y = frame.y;
@@ -76,13 +98,17 @@ export class CanvasCardPreview {
       if (!target || !view) continue;
       cards.set(id, target);
       view.card = target;
-      if (id === this.resizingId) this.context.resize(view);
-      else this.context.move(view);
+      if (id === this.resizingId) {
+        this.context.resize(view);
+        // 取消或提交失败时尺寸没变，不会有新排版到来，不能一直标记成“等新排版”。
+        if (this.resizedFrom?.width !== target.width || this.resizedFrom.height !== target.height)
+          this.swapping = id;
+      } else this.context.move(view);
       restored.push(target);
     }
     originals.clear();
-    this.swapping = this.resizingId ?? this.swapping;
     this.resizingId = null;
+    this.resizedFrom = null;
     this.clip.refit();
     return restored;
   }

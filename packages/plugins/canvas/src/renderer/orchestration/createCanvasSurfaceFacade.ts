@@ -61,6 +61,13 @@ export function createCanvasSurfaceFacade({
     viewport: state.viewport,
     readContentReadiness: (ids: readonly CanvasCardId[]) => raster.readReadiness(ids),
     setDetailVisible: state.setDetailVisible,
+    /** DOM 叠层（文档详情）挡住画布时，按 kernel 右键同一规则选中卡片并弹出菜单。 */
+    openContext: async (id: CanvasCardId, client: CanvasPoint) => {
+      if (readonly.value) return;
+      const box = kernel.canvas.getBoundingClientRect();
+      const point = kernel.screenToWorld({ x: client.x - box.left, y: client.y - box.top });
+      if (await viewport.selectContext({ id })) state.setContext({ point, id, edgeId: null });
+    },
     navigate,
     clearFailure: state.clearFailure,
     locate: viewport.locate,

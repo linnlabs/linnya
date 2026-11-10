@@ -8,6 +8,7 @@ import type {
 } from '../definitions/cardMedia';
 import { createCanvasPreviewInterest } from './createCanvasPreviewInterest';
 import { createCanvasPreviewRequests } from './createCanvasPreviewRequests';
+import { canvasText } from '../../localization';
 
 /** 只预读可见文档，初开远景也能从owner事实发现应保留的缩略图。 */
 export function createCanvasDocumentPreviews(
@@ -41,7 +42,7 @@ export function createCanvasDocumentPreviews(
     const running = pending.get(identity);
     if (running) return running;
     const projectId = port.projectId();
-    if (!projectId) throw new Error('没有当前项目，无法读取文档卡片');
+    if (!projectId) throw new Error(canvasText('canvas.error.projectMissingForCards'));
     const generation = versions.version(card.data.documentId);
     const request = requests
       .read(

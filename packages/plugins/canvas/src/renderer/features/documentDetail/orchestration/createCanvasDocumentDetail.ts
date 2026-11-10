@@ -10,6 +10,8 @@ export function createCanvasDocumentDetail(options: {
   readonly projectId: string;
   readonly element: HTMLElement;
   readonly port: CanvasDocumentDetailPort;
+  /** 每次正文呈现完成（包括改宽后的重排）都会通知。 */
+  readonly rendered?: () => void;
 }) {
   const state = createCanvasDocumentDetailState(),
     cancellation = new AbortController();
@@ -30,6 +32,7 @@ export function createCanvasDocumentDetail(options: {
           if (disposed) return;
           options.port.visible(options.card.id, true);
           state.setReady(true);
+          options.rendered?.();
         },
       });
       if (disposed) {

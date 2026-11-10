@@ -1,15 +1,18 @@
 import { Graphics } from 'pixi.js';
 import type { CanvasCardId } from '../../../../shared';
+import type { CanvasCardMaterial } from '../../geometry/canvasCardFrame';
+import { drawCanvasPaperShape } from './canvasPaperClip';
 import type { CanvasCardView } from './definitions/canvasCardView';
 
 /**
- * 实时改尺寸期间及松手后的交叉淡变里，正文位图仍有旧宽度的排版：纸面缩小时会溢出卡外。
- * 只给最近改过尺寸的那一张卡加矩形遮罩，始终贴合其当前纸面；换卡时移交。
+ * 实时改尺寸期间及松手后新排版到达前，正文位图仍是旧尺寸的排版：纸面缩小时会溢出纸外、压住选中描边。
+ * 只给最近改过尺寸的那一张卡加纸面形状的遮罩（内缩、圆角与纸面相同），始终贴合其当前纸面；换卡时移交。
  * 不给全部卡片常驻遮罩，避免模板缓冲开销。
  */
 export class CanvasResizeClip {
   private view: CanvasCardView | null = null;
   private mask: Graphics | null = null;
+  constructor(private readonly readMaterial: () => CanvasCardMaterial) {}
 
   /** 让遮罩贴合卡片当前显示尺寸；换了卡片时先撤掉旧卡的遮罩。 */
   fit(view: CanvasCardView | undefined): void {
@@ -25,9 +28,9 @@ export class CanvasResizeClip {
     if (this.mask.parent !== view.container) view.container.addChild(this.mask);
     view.body.mask = this.mask;
     this.view = view;
-    this.mask.clear().rect(0, 0, view.card.width, view.card.height).fill(0xffffff);
+    drawCanvasPaperShape(this.mask, view.card, this.readMaterial());
   }
-  /** 按卡片当前尺寸重新贴合；给定 id 时只处理那张卡。 */
+  /** 按卡片当前尺寸与材质重新贴合；给定 id 时只处理那张卡。 */
   refit(id?: CanvasCardId): void {
     if (!this.view || (id !== undefined && this.view.card.id !== id)) return;
     if (this.view.container.destroyed) this.view = null;

@@ -1,35 +1,39 @@
 import type { CanvasAgentGroup, CanvasCommitResult, CanvasElement } from '@plugin/canvas/shared';
 import type { CanvasWithdrawalSummary } from '../definitions/agentReview';
+import { canvasText, projectCanvasFailureText } from '../../localization';
 import { canvasReviewCardTitle, canvasReviewFields } from './projectCanvasReviewTargets';
 
-const reasons: Readonly<Record<string, string>> = {
-  stale_field: '读取后字段已被修改',
-  user_editing: '用户正在编辑',
-  element_locked: '卡片已锁定',
-  stale_layout_size: '测量后卡片尺寸已改变',
-  stale_element: '读取后对象已被修改',
-  element_missing: '对象已不存在',
-  later_fields_preserved: '保留后来修改的字段',
-  later_use_preserved: '保留后来使用的对象',
-  later_existence_preserved: '保留后来变更的对象身份',
-  stale_measurement: '测高依赖的正文或宽度已改变',
-  stale_geometry: '裁剪或尺寸依赖已改变',
-  partial_fields_skipped: '部分字段未执行',
-  dependent_field_changed: '相关字段已有后续修改，已保留以维持内容与尺寸一致',
-  history_dependency_unknown: '历史依赖来源信息不全，已保留',
-  dependency_missing: '依赖已不存在或连线重复',
-  restored_nearby: '原位置被占用，已在附近恢复',
-  stale_revision: '读取后对象已被修改',
-};
-export function canvasReviewReason(reason: string | null): string {
-  return reason ? (reasons[reason] ?? '操作未完整执行（未识别的正式原因）') : '未执行';
+const REASON_CODES = [
+  'stale_field',
+  'user_editing',
+  'element_locked',
+  'stale_layout_size',
+  'stale_element',
+  'element_missing',
+  'later_fields_preserved',
+  'later_use_preserved',
+  'later_existence_preserved',
+  'stale_measurement',
+  'stale_geometry',
+  'partial_fields_skipped',
+  'dependent_field_changed',
+  'history_dependency_unknown',
+  'dependency_missing',
+  'restored_nearby',
+  'stale_revision',
+] as const;
+function isReasonCode(value: string): value is (typeof REASON_CODES)[number] {
+  return REASON_CODES.some(code => code === value);
 }
+export function canvasReviewReason(reason: string | null): string {
+  if (!reason) return canvasText('canvas.review.reason.none');
+  return isReasonCode(reason)
+    ? canvasText(`canvas.review.reason.${reason}`)
+    : canvasText('canvas.review.reason.unknown');
+}
+/** 失败编号换成当前语言文案；请求层已换过的文字原样通过。 */
 export function canvasReviewFailureMessage(error: unknown): string {
-  return error instanceof Error && error.message === 'canvas_history_head_changed'
-    ? '后续操作已改变撤销顺序，请使用画布撤销逐步处理。'
-    : error instanceof Error
-      ? error.message
-      : String(error);
+  return error instanceof Error ? projectCanvasFailureText(error.message) : String(error);
 }
 function titleOf(
   id: string | null,
@@ -41,8 +45,8 @@ function titleOf(
   return element && element.type !== 'edge'
     ? canvasReviewCardTitle(element)
     : element?.type === 'edge'
-      ? element.label || '连线'
-      : '已不存在的对象';
+      ? element.label || canvasText('canvas.review.object.connection')
+      : canvasText('canvas.review.object.gone');
 }
 export function projectCanvasWithdrawalSummary(
   result: CanvasCommitResult,
@@ -64,12 +68,20 @@ export function projectCanvasWithdrawalSummary(
   const details = result.results.flatMap(row => {
     const fields = row.fieldResults?.filter(field => field.status === 'skipped');
     if (fields?.length)
-      return fields.map(
-        field =>
-          `${titleOf(row.id, elements, group)} · ${canvasReviewFields([field.field])}：${canvasReviewReason(field.reason)}`
+      return fields.map(field =>
+        canvasText('canvas.review.detailFields', {
+          title: titleOf(row.id, elements, group),
+          fields: canvasReviewFields([field.field]),
+          reason: canvasReviewReason(field.reason),
+        })
       );
     return row.reason !== null || row.status === 'skipped'
-      ? [`${titleOf(row.id, elements, group)}：${canvasReviewReason(row.reason)}`]
+      ? [
+          canvasText('canvas.review.detail', {
+            title: titleOf(row.id, elements, group),
+            reason: canvasReviewReason(row.reason),
+          }),
+        ]
       : [];
   });
   return {
@@ -86,8 +98,11 @@ export function projectCanvasSkippedWrites(
   group: CanvasAgentGroup,
   elements: readonly CanvasElement[]
 ): string[] {
-  return group.outcomes.skippedWrites.map(
-    row =>
-      `${titleOf(row.id, elements, group)} · ${canvasReviewFields(row.fields)}：${canvasReviewReason(row.reason)}`
+  return group.outcomes.skippedWrites.map(row =>
+    canvasText('canvas.review.detailFields', {
+      title: titleOf(row.id, elements, group),
+      fields: canvasReviewFields(row.fields),
+      reason: canvasReviewReason(row.reason),
+    })
   );
 }

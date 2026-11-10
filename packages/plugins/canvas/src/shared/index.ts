@@ -51,6 +51,7 @@ export type { CanvasComputationRuntime } from './computation/definitions/canvasC
 export * from './history/definitions/canvasUserHistory';
 export * from './agentChanges/definitions/canvasAgentChanges';
 export * from './images/definitions/canvasImageRequests';
+export * from './failures/definitions/canvasUserFailure';
 export * from './context/definitions/canvasSelectionContext';
 export {
   searchCanvasElements,

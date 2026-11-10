@@ -39,6 +39,7 @@
         :show="true"
         direction="up"
         class="conversation-reference-hover__content"
+        :class="{ 'conversation-reference-hover__content--owned': hoverable && presentation.previewComponent }"
       >
         <template v-if="!hoverable" />
         <component

@@ -1,5 +1,6 @@
 import type { CanvasSurfaceOptions, CanvasSurfacePorts } from '../definitions/canvasSurface';
 import { createPixiCanvasKernel, type CanvasKernelIntent } from '../kernel';
+import { canvasKernelText } from '../features/localization';
 import { createCanvasSurfaceRendering } from './createCanvasSurfaceRendering';
 import { createCanvasSurfaceCommands } from './createCanvasSurfaceCommands';
 import { createCanvasSurfaceDisposal } from './createCanvasSurfaceDisposal';
@@ -22,6 +23,7 @@ export async function createCanvasSurface(
   const { readonly, preferences, report, state, readAppearance } = base;
   const kernel = await createPixiCanvasKernel({
     host: options.host,
+    text: canvasKernelText,
     readReadonly: () => readonly.value,
     readInteractionPreferences: () => preferences.preferences,
     onIntent: intent => {

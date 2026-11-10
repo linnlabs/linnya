@@ -22,7 +22,9 @@ export function hydrateCanvasDocumentTags(
       string,
       { readonly title: string; readonly status?: DocumentReferencePresentation['status'] }
     >
-  >
+  >,
+  /** 渲染 worker 不知道界面语言，沿用默认；主界面传入当前语言文案。 */
+  unavailableLabel = '文档当前不可访问'
 ): void {
   for (const tag of element.querySelectorAll<HTMLElement>(
     '[data-document-id][data-reference-id]'
@@ -32,7 +34,7 @@ export function hydrateCanvasDocumentTags(
     const label = tag.querySelector<HTMLElement>('[data-document-reference-label]'),
       icon = tag.querySelector<HTMLElement>('[data-document-reference-icon]');
     if (!label || !icon) throw new Error('document_reference_dom_contract_missing');
-    label.textContent = presentation?.title ?? '文档当前不可访问';
+    label.textContent = presentation?.title ?? unavailableLabel;
     if (!icon.firstChild) icon.append(readIcon(element.ownerDocument));
     if (presentation) tag.dataset.status = presentation.status ?? 'available';
     else delete tag.dataset.status;

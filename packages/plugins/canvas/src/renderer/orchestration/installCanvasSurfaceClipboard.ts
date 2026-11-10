@@ -9,6 +9,7 @@ import {
   installCanvasPastePosition,
 } from '../features/clipboard';
 import { buildDeleteCommands, type createCanvasElementActions } from '../features/elementEditing';
+import { canvasText } from '../features/localization';
 
 export function installCanvasSurfaceClipboard(options: {
   readonly host: HTMLElement;
@@ -37,7 +38,8 @@ export function installCanvasSurfaceClipboard(options: {
         options.selection()
       ),
     prepare: ids => {
-      if (!options.ports.prepareClipboard) throw new Error('当前表面未配置子图复制');
+      if (!options.ports.prepareClipboard)
+        throw new Error(canvasText('canvas.input.surface.noClipboardCopy'));
       return options.ports.prepareClipboard(ids);
     },
     pastePoint: point,
@@ -47,7 +49,8 @@ export function installCanvasSurfaceClipboard(options: {
     },
     pasteText: (text, destination) => options.createText(destination, text),
     pasteImages: (files, destination) => {
-      if (!options.ports.pasteImages) throw new Error('当前表面未配置图片粘贴');
+      if (!options.ports.pasteImages)
+        throw new Error(canvasText('canvas.input.surface.noImagePaste'));
       return options.ports.pasteImages(files, destination);
     },
     cut: async elements => {

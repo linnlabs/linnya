@@ -153,19 +153,35 @@
 .conversation-reference-hover {
   position: fixed;
   z-index: var(--linnya-ui-layer-popover);
-  width: min(360px, calc(100vw - 16px));
+  width: min(22rem, calc(100vw - 16px));
 }
 
-.conversation-reference-hover__content {
-  max-height: min(60vh, 560px);
-  padding: var(--space-3);
+/* DropdownPanel 默认绝对定位：外层高度会变成 0、宽度按加载文案收缩，定位和预览排版都按错的尺寸算。 */
+.conversation-reference-hover .conversation-reference-hover__content {
+  position: relative;
+  width: 100%;
+  max-height: min(60vh, 560px, var(--conversation-reference-available-height, 560px));
   overflow: auto;
   overflow-wrap: anywhere;
 }
 
-.conversation-reference-hover p {
+/* 预览组件自带内边距和正文排版，弹层的文字样式只给没有贡献组件的引用。 */
+.conversation-reference-hover__content:not(.conversation-reference-hover__content--owned) {
+  padding: var(--space-3);
+}
+
+.conversation-reference-hover__content:not(.conversation-reference-hover__content--owned) p {
   margin-block: var(--space-2);
   white-space: pre-wrap;
+}
+
+.conversation-reference-hover__content--owned {
+  --document-preview-fade-color: var(--color-bg-surface);
+  --document-preview-fade-radius: var(--radius-lg);
+}
+
+.conversation-reference-hover__content--owned [role='alert'] {
+  margin: var(--space-2) var(--space-3);
 }
 
 .conversation-reference-hover img {

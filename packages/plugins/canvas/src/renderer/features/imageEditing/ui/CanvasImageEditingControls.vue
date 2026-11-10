@@ -1,7 +1,7 @@
 <template>
   <Modal
     :is-visible="Boolean(draft)"
-    title="编辑图片"
+    :title="t('canvas.selection.editImage')"
     width="560px"
     :close-on-overlay-click="!editor.state.busy.value"
     :close-on-esc="!editor.state.busy.value"
@@ -9,7 +9,7 @@
   >
     <template v-if="draft">
       <p class="canvas-image-edit-hint">
-        在原图上拖出裁剪范围，或用下方滑块精确调整。原图始终保留。
+        {{ t('canvas.imageEdit.hint') }}
       </p>
       <div class="canvas-image-crop-stage">
         <div
@@ -23,12 +23,12 @@
           <img :src="draft.asset.dataUri" :alt="draft.data.alt" draggable="false" />
           <div class="canvas-image-crop-range" :style="cropStyle" />
         </div>
-        <p v-else role="status">正在读取图片…</p>
+        <p v-else role="status">{{ t('canvas.imageEdit.loading') }}</p>
       </div>
       <fieldset class="canvas-image-edit-fields" :disabled="editor.state.busy.value">
-        <legend class="canvas-image-edit-legend">裁剪边界</legend>
+        <legend class="canvas-image-edit-legend">{{ t('canvas.imageEdit.legend') }}</legend>
         <label v-for="side in sides" :key="side.id" class="canvas-image-edit-row">
-          <span class="canvas-image-edit-label">{{ side.label }}</span>
+          <span class="canvas-image-edit-label">{{ t(`canvas.side.${side.id}`) }}</span>
           <CustomSlider
             class="canvas-image-edit-slider"
             :model-value="insets[side.id]"
@@ -36,7 +36,7 @@
             :max="99"
             :step="1"
             variant="compact"
-            :aria-label="`裁剪${side.label}边`"
+            :aria-label="t('canvas.imageEdit.cropSide', { side: t(`canvas.side.${side.id}`) })"
             @update:model-value="inset(side.id, $event)"
           />
           <output>{{ Math.round(insets[side.id]) }}%</output>
@@ -46,10 +46,10 @@
           :disabled="editor.state.busy.value"
           @click="editor.state.patch({ crop: null })"
         >
-          恢复完整原图
+          {{ t('canvas.imageEdit.reset') }}
         </BaseButton>
         <label class="canvas-image-edit-row">
-          <span class="canvas-image-edit-label">图注</span
+          <span class="canvas-image-edit-label">{{ t('canvas.imageEdit.caption') }}</span
           ><CustomTextInput
             class="canvas-image-edit-text"
             :model-value="draft.data.caption"
@@ -57,7 +57,7 @@
             @update:model-value="editor.state.patch({ caption: $event })"
         /></label>
         <label class="canvas-image-edit-row">
-          <span class="canvas-image-edit-label">替代文字</span
+          <span class="canvas-image-edit-label">{{ t('canvas.imageEdit.alt') }}</span
           ><CustomTextInput
             class="canvas-image-edit-text"
             :model-value="draft.data.alt"
@@ -69,7 +69,7 @@
           :disabled="editor.state.busy.value"
           @click="picker?.click()"
         >
-          替换图片
+          {{ t('canvas.imageEdit.replace') }}
         </BaseButton>
         <input
           ref="picker"
@@ -86,11 +86,13 @@
     <template #footer>
       <p v-if="editor.deliveryNotice.value" role="status">
         {{ editor.deliveryNotice.value }}
-        <BaseButton variant="secondary" @click="editor.retryDelivery()"> 重试确认 </BaseButton>
+        <BaseButton variant="secondary" @click="editor.retryDelivery()">
+          {{ t('canvas.status.retryConfirm') }}
+        </BaseButton>
       </p>
       <ActionButtons
-        primary-action-text="应用到卡片"
-        secondary-action-text="取消"
+        :primary-action-text="t('canvas.imageEdit.apply')"
+        :secondary-action-text="t('canvas.imageEdit.cancel')"
         :is-primary-action-disabled="editor.state.busy.value || !draft?.asset"
         :is-secondary-action-disabled="editor.state.busy.value"
         @primary-click="editor.apply()"
@@ -111,6 +113,7 @@ import {
   CustomTextInput,
   Modal,
 } from '@linnya/renderer-ui';
+import { canvasText as t } from '../../localization';
 import type { createCanvasImageEditing } from '../orchestration/createCanvasImageEditing';
 import { createCanvasImageCropGesture } from '../orchestration/createCanvasImageCropGesture';
 import { canvasImageCropInset, fullCanvasImageCrop } from '../functions/canvasImageCrop';
@@ -131,12 +134,7 @@ const insets = computed(() => ({
   right: (1 - crop.value.x - crop.value.width) * 100,
   bottom: (1 - crop.value.y - crop.value.height) * 100,
 }));
-const sides = [
-  { id: 'left', label: '左' },
-  { id: 'top', label: '上' },
-  { id: 'right', label: '右' },
-  { id: 'bottom', label: '下' },
-] as const;
+const sides = [{ id: 'left' }, { id: 'top' }, { id: 'right' }, { id: 'bottom' }] as const;
 function inset(side: (typeof sides)[number]['id'], value: number) {
   props.editor.state.patch({ crop: canvasImageCropInset(crop.value, side, value) });
 }

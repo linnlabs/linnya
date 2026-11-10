@@ -1,5 +1,10 @@
 import { ZodError } from 'zod';
 import { Logger } from '@plugin/backend/workspaceRuntime';
+import {
+  PluginDocumentImageAssetError,
+  type PluginDocumentImageAssetFailure,
+} from '@plugin/backend/documentImageAsset';
+import type { CanvasUserFailureCode } from '../../shared';
 import { CanvasCliFailure, formatCanvasCliInputError } from '../features/canvasCli';
 import { CanvasDocumentFailure } from '../features/canvasDocument';
 import {
@@ -27,6 +32,18 @@ const messages: Readonly<Record<string, string>> = {
   canvas_approval_expired: '待确认操作已失效，请刷新画布查看当前批次。',
   canvas_history_head_changed: '后续操作已改变撤销顺序，请使用画布撤销逐步处理。',
 };
+const imageFailures: Partial<
+  Record<
+    PluginDocumentImageAssetFailure,
+    { readonly code: CanvasUserFailureCode; readonly message: string }
+  >
+> = {
+  invalid_media: {
+    code: 'canvas_image_unsupported',
+    message: '这张图片无法使用，请换成 PNG、JPEG 或 WebP 格式。',
+  },
+  media_limit_exceeded: { code: 'canvas_image_too_large', message: '图片太大，请压缩后重试。' },
+};
 
 /** Renderer 和 CLI 使用同一业务失败投影；只有未识别异常才算运行错误。 */
 export function projectCanvasBusinessFailure(error: unknown) {
@@ -45,6 +62,8 @@ export function projectCanvasBusinessFailure(error: unknown) {
       operation: error.operation,
       field: error.field,
     };
+  if (error instanceof PluginDocumentImageAssetError && imageFailures[error.failure])
+    return imageFailures[error.failure] ?? null;
   if (error instanceof Error && messages[error.message])
     return { code: error.message, message: messages[error.message] };
   if (error instanceof Error && error.name === 'AbortError')

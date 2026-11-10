@@ -17,6 +17,7 @@ export function disposeDocumentPreviewSurface(element: HTMLElement): void {
 
 async function renderBody(detail: DocumentPreviewDetail, input: DocumentPreviewSurfaceInput) {
   const widthPx = Math.max(1, input.widthPx - layout.paddingInline * 2);
+  // 首屏正文一直排到表面底边，由淡出收尾；底部留白只属于读到文末的详情，否则正文会在留白上方被切开。
   const maxHeight =
     input.maxHeight === undefined
       ? undefined
@@ -24,9 +25,9 @@ async function renderBody(detail: DocumentPreviewDetail, input: DocumentPreviewS
           1,
           input.maxHeight -
             layout.paddingTop -
-            layout.paddingBottom -
             layout.titleHeight -
-            layout.titleGap
+            layout.titleGap -
+            (input.visibleInsetPx ?? 0)
         );
   if (detail.format === 'workspace-markdown') {
     const { createWorkspaceMarkdownPreview } = await import(
@@ -73,6 +74,8 @@ export async function createDocumentPreviewSurface(
   element.style.width = `${input.widthPx}px`;
   for (const [key, value] of Object.entries(layout))
     element.style.setProperty(`--preview-${key}`, `${value}px`);
+  if (input.visibleInsetPx)
+    element.style.setProperty('--document-preview-fade-inset', `${input.visibleInsetPx}px`);
   if (input.maxHeight !== undefined) {
     element.style.height = `${input.maxHeight}px`;
     element.classList.add('document-preview-first-screen');
@@ -115,6 +118,10 @@ export async function createDocumentPreviewSurface(
       const rendered = await renderBody(preview.content.detail, input);
       releaseBody = rendered.dispose;
       body.append(rendered.element);
+      element.classList.toggle(
+        'document-preview-clipped',
+        rendered.element.getAttribute('data-preview-clipped') === 'true'
+      );
     } else if (!input.externalBody && preview.status === 'ready' && preview.content?.image) {
       const image = document.createElement('img');
       image.className = 'document-preview-cover';

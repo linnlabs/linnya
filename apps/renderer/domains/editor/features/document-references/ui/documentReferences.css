@@ -19,6 +19,8 @@
   /* FloatingUI通过内联样式更新可用区域；首次定位前沿用相同的视口约束。 */
   --document-reference-available-width: calc(100vw - 1rem);
   --document-reference-available-height: 80vh;
+  --document-preview-fade-color: var(--color-bg-elevated);
+  --document-preview-fade-radius: var(--radius-lg);
 
   padding: 0;
   box-sizing: border-box;

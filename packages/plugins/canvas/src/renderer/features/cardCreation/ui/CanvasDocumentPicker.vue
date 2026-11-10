@@ -3,7 +3,7 @@
     :show="creation.picker.open.value"
     class="canvas-floating-panel canvas-document-picker"
     role="dialog"
-    aria-label="添加文档卡片"
+    :aria-label="t('canvas.picker.label')"
     @pointerdown.stop
     @keydown.stop="keydown"
   >
@@ -14,15 +14,20 @@
         type="search"
         size="compact"
         :model-value="text"
-        aria-label="搜索项目文档"
-        placeholder="搜索当前项目文档…"
+        :aria-label="t('canvas.picker.search')"
+        :placeholder="t('canvas.picker.placeholder')"
         @update:model-value="query"
       />
-      <IconButton label="关闭文档选择" size="sm" @click="creation.picker.close()">
+      <IconButton :label="t('canvas.picker.close')" size="sm" @click="creation.picker.close()">
         <CloseIcon />
       </IconButton>
     </div>
-    <SkeletonRows v-if="creation.picker.loading.value" :rows="4" size="lg" label="正在搜索文档" />
+    <SkeletonRows
+      v-if="creation.picker.loading.value"
+      :rows="4"
+      size="lg"
+      :label="t('canvas.picker.loading')"
+    />
     <p v-if="creation.picker.error.value" class="canvas-panel-error" role="alert">
       {{ creation.picker.error.value }}
     </p>
@@ -44,6 +49,7 @@
 import { nextTick, ref, watch } from 'vue';
 import { CustomTextInput, DropdownPanel, IconButton, SkeletonRows } from '@linnya/renderer-ui';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
+import { canvasText as t } from '../../localization';
 import type { createCanvasCardCreation } from '../orchestration/createCanvasCardCreation';
 const props = defineProps<{ creation: ReturnType<typeof createCanvasCardCreation> }>();
 const input = ref<InstanceType<typeof CustomTextInput> | null>(null),

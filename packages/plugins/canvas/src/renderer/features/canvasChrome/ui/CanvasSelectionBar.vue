@@ -4,14 +4,14 @@
     :position="position"
     class="canvas-selection-bar"
     role="toolbar"
-    :aria-label="`已选 ${count} 张卡片`"
+    :aria-label="t('canvas.selection.label', { count })"
     @pointerdown.stop
   >
     <ToolbarGroup>
       <ToolbarButton
         class="canvas-toolbar-button canvas-selection-ai"
-        label="加入对话"
-        data-linnya-tooltip="加入对话 (⌘K)"
+        :label="t('canvas.selection.converse')"
+        :data-linnya-tooltip="`${t('canvas.selection.converse')} (⌘K)`"
         @click="emit('converse')"
       >
         <LinnyaIcon />
@@ -19,13 +19,13 @@
       </ToolbarButton>
     </ToolbarGroup>
     <ToolbarGroup v-if="count > 1">
-      <span class="canvas-selection-count">已选 {{ count }} 张</span>
+      <span class="canvas-selection-count">{{ t('canvas.selection.count', { count }) }}</span>
     </ToolbarGroup>
     <ToolbarGroup>
       <ToolbarButton
         class="canvas-toolbar-button"
-        label="编辑或打开"
-        data-linnya-tooltip="编辑或打开 (↩)"
+        :label="t('canvas.selection.edit')"
+        :data-linnya-tooltip="`${t('canvas.selection.edit')} (↩)`"
         @click="emit('edit')"
       >
         <EditIcon />
@@ -33,8 +33,8 @@
       <ToolbarButton
         v-if="image"
         class="canvas-toolbar-button"
-        label="编辑图片"
-        data-linnya-tooltip="编辑图片：裁剪、图注、替换"
+        :label="t('canvas.selection.editImage')"
+        :data-linnya-tooltip="t('canvas.selection.editImageTip')"
         :disabled="readonly || imageLocked"
         @click="emit('editImage')"
       >
@@ -42,8 +42,8 @@
       </ToolbarButton>
       <ToolbarButton
         class="canvas-toolbar-button"
-        label="创建副本"
-        data-linnya-tooltip="创建副本 (⌘D)"
+        :label="t('canvas.selection.duplicate')"
+        :data-linnya-tooltip="`${t('canvas.selection.duplicate')} (⌘D)`"
         :disabled="readonly"
         @click="emit('duplicate')"
       >
@@ -52,7 +52,7 @@
       <ToolbarButton
         v-if="count === 2"
         class="canvas-toolbar-button"
-        label="连接两张卡"
+        :label="t('canvas.selection.connect')"
         :disabled="readonly"
         @click="emit('connect')"
       >
@@ -62,7 +62,7 @@
     <ToolbarGroup>
       <CanvasToolbarMenu
         v-if="colorable"
-        label="卡片颜色"
+        :label="t('canvas.selection.color')"
         :options="colorOptions"
         :model-value="color"
         :show-selected-checkmark="true"
@@ -73,7 +73,7 @@
         <CanvasColorSwatch :color="color" />
       </CanvasToolbarMenu>
       <CanvasToolbarMenu
-        label="更多卡片操作"
+        :label="t('canvas.selection.more')"
         :options="moreActions"
         :disabled="readonly"
         min-width="170px"
@@ -104,6 +104,7 @@ import {
 import ConnectorIcon from '../../../icon/ConnectorIcon.vue';
 import type { CanvasColor } from '@plugin/canvas/shared';
 import { canvasColorSwatchOptions } from '../functions/canvasColorMenuOptions';
+import { canvasText as t } from '../../localization';
 import CanvasColorSwatch from './CanvasColorSwatch.vue';
 import CanvasToolbarMenu from './CanvasToolbarMenu.vue';
 

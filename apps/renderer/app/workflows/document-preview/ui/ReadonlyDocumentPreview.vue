@@ -1,6 +1,7 @@
 <template>
   <section
     class="readonly-document-preview"
+    :class="{ 'document-preview-more-below': moreBelow }"
     :aria-label="label || '文档只读预览'"
     @mouseenter="
       pointerInside = true;
@@ -30,6 +31,7 @@
       ref="viewport"
       class="readonly-document-preview__viewport"
       @click="preventPreviewNavigation"
+      @scroll.passive="readMoreBelow"
     />
     <Teleport
       v-if="detailComponent && expanded && surface.body.value && current"
@@ -81,13 +83,25 @@ const scope = useNavigationScope(),
   expanded = ref(Boolean(props.detailOnly)),
   pointerInside = ref(false);
 const viewport = ref<HTMLElement | null>(null),
-  measuredWidth = ref(0);
+  measuredWidth = ref(0),
+  moreBelow = ref(false);
 const theme = ref<'light' | 'dark'>('light');
+// 只差底部留白时不算有下文，和首屏的裁切判断一致，选中前后画面不跳。
+function readMoreBelow() {
+  const element = viewport.value;
+  if (!element) return;
+  moreBelow.value =
+    element.scrollHeight - element.clientHeight - element.scrollTop >
+    DOCUMENT_PREVIEW_LAYOUT.paddingBottom + 1;
+}
 const controller = createDocumentPreviewController(props.readTarget, () => scope.currentProjectId),
   current = controller.result;
 const surface = createReadonlyDocumentSurface({
   element: () => viewport.value,
-  ready: () => emit('ready'),
+  ready: () => {
+    readMoreBelow();
+    emit('ready');
+  },
   report: failure => console.warn('[document-preview] presentation failed', failure),
 });
 const recovery = computed(() =>
@@ -121,6 +135,7 @@ onMounted(() => {
   resize = new ResizeObserver(entries => {
     const entry = entries[0];
     if (entry) measuredWidth.value = entry.contentRect.width;
+    readMoreBelow();
   });
   if (viewport.value) resize.observe(viewport.value);
 });

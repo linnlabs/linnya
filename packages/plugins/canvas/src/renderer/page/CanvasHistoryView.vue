@@ -1,12 +1,12 @@
 <template>
-  <section class="canvas-history-preview" aria-label="画布历史只读预览">
+  <section class="canvas-history-preview" :aria-label="t('canvas.history.label')">
     <div ref="host" class="canvas-stage" />
     <div ref="staging" class="canvas-raster-staging" aria-hidden="true" />
     <BaseButton variant="secondary" size="sm" class="canvas-history-fit" @click="preview?.fit()">
-      显示全部
+      {{ t('canvas.zoom.fit') }}
     </BaseButton>
     <p v-if="preview?.state.phase.value === 'loading'" class="canvas-status" role="status">
-      正在读取历史…
+      {{ t('canvas.history.loading') }}
     </p>
     <p v-if="preview?.state.error.value" class="canvas-status canvas-status-error" role="alert">
       {{ preview.state.error.value }}
@@ -27,6 +27,7 @@
 </template>
 <script setup lang="ts">
 import { BaseButton } from '@linnya/renderer-ui';
+import { canvasText as t } from '../features/localization';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { createCanvasRasterPresentation } from '../orchestration/createCanvasRasterPresentation';
 import { installCanvasResolutionObserver } from '../orchestration/installCanvasResolutionObserver';

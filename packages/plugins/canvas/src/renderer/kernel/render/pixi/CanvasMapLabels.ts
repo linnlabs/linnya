@@ -3,6 +3,7 @@ import {
   readCanvasElementText,
   type CanvasCard,
 } from '../../../../shared';
+import { DEFAULT_CANVAS_KERNEL_TEXT } from '../../definitions/canvasKernelText';
 import type {
   CanvasMapLabelsInput,
   CanvasMapLabelsProjection,
@@ -22,6 +23,7 @@ export class CanvasMapLabels {
   private readonly drawn = new Set<CanvasCard['id']>();
   private readonly titleDependents = new Set<CanvasCard['id']>();
   private readonly fittedTitles = new Map<string, CanvasMapLabelText>();
+  constructor(private readonly blankTitle: () => string = DEFAULT_CANVAS_KERNEL_TEXT.blankTitle) {}
 
   private panCachedProjection(input: CanvasMapLabelsInput): boolean {
     const { width, height, camera } = input;
@@ -51,7 +53,7 @@ export class CanvasMapLabels {
     fontSize: number
   ): CanvasMapLabelText {
     const source =
-      canvasTitlePrefix(readTitle?.(card) ?? readCanvasElementText(card), 18) || '空白卡片';
+      canvasTitlePrefix(readTitle?.(card) ?? readCanvasElementText(card), 18) || this.blankTitle();
     const titleKey = `${fontSize}:${source}`,
       existing = this.fittedTitles.get(titleKey);
     if (existing !== undefined) return existing;

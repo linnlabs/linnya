@@ -2,6 +2,7 @@ import type { CanvasPageCommandSurface as Surface } from '../definitions/canvasP
 import { readCanvasCardMenuColor } from '../functions/canvasMenuActions';
 import type { CanvasPoint } from '@plugin/canvas/shared';
 import { readCanvasConnectionMenuPatch } from '../features/connections';
+import { canvasText } from '../features/localization';
 export function createCanvasPageCommands(options: {
   readSurface(): Surface | null;
   addToConversation(): Promise<void>;
@@ -58,7 +59,7 @@ export function createCanvasPageCommands(options: {
     if (color) await current.color(color);
     else if (patch && edge) await current.connections.patch(edge, patch);
     else {
-      if (!command) throw new Error('未知画布菜单动作');
+      if (!command) throw new Error(canvasText('canvas.error.unknownMenuAction'));
       await command(current);
     }
     current.closeContext();

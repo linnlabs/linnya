@@ -109,17 +109,17 @@ export class CanvasFrameDrawing {
   }
   readRenderStatus(): CanvasRenderStatus {
     if (this.contextLost)
-      return { limited: true, phase: 'restoring', message: '图形渲染正在恢复，内容已保留' };
+      return { limited: true, phase: 'restoring', message: this.options.text.restoring() };
     if (this.identityCapacityLimited)
       return {
         limited: true,
         phase: 'ready',
-        message: '当前视图的卡片标题暂时无法全部显示，请放大或移动画布后重试；文档仍可编辑和保存。',
+        message: this.options.text.titlesLimited(),
       };
     return {
       limited: this.options.software,
       phase: 'ready',
-      message: this.options.software ? '当前使用软件绘图，性能受限' : null,
+      message: this.options.software ? this.options.text.software() : null,
     };
   }
   async captureImage(format: 'png' | 'jpeg', quality: number): Promise<string> {

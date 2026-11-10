@@ -26,14 +26,21 @@ export function resolveCanvasDisplayCard(input: {
 const rasterData = (card: CanvasCard) =>
   JSON.stringify(card.data, (key, value: unknown) => (key === 'heightMode' ? undefined : value));
 
+/** 染纸、类型或正文变了：旧采样的内容本身已过期，不只是排版宽度不同。 */
+export function canvasCardContentChanged(previous: CanvasCard, next: CanvasCard): boolean {
+  return (
+    previous.color !== next.color ||
+    previous.type !== next.type ||
+    rasterData(previous) !== rasterData(next)
+  );
+}
+
 /** 位置与逻辑来源不改变正文，尺寸/染纸/正文改变才撤销当前采样。 */
 export function canvasCardRasterChanged(previous: CanvasCard, next: CanvasCard): boolean {
   return (
     previous.revision !== next.revision &&
     (previous.width !== next.width ||
       previous.height !== next.height ||
-      previous.color !== next.color ||
-      previous.type !== next.type ||
-      rasterData(previous) !== rasterData(next))
+      canvasCardContentChanged(previous, next))
   );
 }

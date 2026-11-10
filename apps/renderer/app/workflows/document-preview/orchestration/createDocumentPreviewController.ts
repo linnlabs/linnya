@@ -9,6 +9,10 @@ import type {
   DocumentPreviewPresentation,
 } from '../definitions/documentPreview';
 import { assertDocumentPreviewScope } from '../functions/assertDocumentPreviewScope';
+import {
+  isSameDocumentPreview,
+  isSameDocumentPreviewTarget,
+} from '../functions/isSameDocumentPreview';
 import { createDocumentPreviewState } from '../store/documentPreviewState';
 
 /** App唯一只读预览读取与订阅生命周期；不改正文、引用快照或文件会话。 */
@@ -26,10 +30,11 @@ export function createDocumentPreviewController(
   };
   async function refresh(): Promise<void> {
     const token = ++generation;
-    state.loading();
     try {
-      const identity = target(),
-        presentation = await readDocumentReference(identity);
+      const identity = target();
+      // 同一目标重新读取时旧内容留在原处，读完再替换，否则每次工作区变更都会闪一下；换目标才撤下。
+      if (!isSameDocumentPreviewTarget(state.peek()?.target, identity)) state.loading();
+      const presentation = await readDocumentReference(identity);
       target();
       if (disposed || token !== generation) return;
       const preview = await readDocumentPreview({
@@ -38,8 +43,11 @@ export function createDocumentPreviewController(
         pixelRatio: Math.min(devicePixelRatio, 2),
       });
       target();
-      if (!disposed && token === generation)
-        state.loaded({ target: identity, presentation, preview });
+      if (disposed || token !== generation) return;
+      const next = { target: identity, presentation, preview },
+        shown = state.peek();
+      // 内容没变就不换结果，消费方也就不重建表面。
+      if (!shown || !isSameDocumentPreview(shown, next)) state.loaded(next);
     } catch (failure) {
       if (!disposed && token === generation)
         state.failed(failure instanceof Error ? failure.message : '无法预览文档');

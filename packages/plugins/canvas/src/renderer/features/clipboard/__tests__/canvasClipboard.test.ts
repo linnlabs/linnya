@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
 import { Blob as NodeBlob } from 'node:buffer';
-import { afterEach, expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { registerMessageCatalogs, useLocalizationStore } from '@app/localization';
 import { CanvasTextCardSchema } from '@plugin/canvas/shared';
 import { CANVAS_CLIPBOARD_MIME, installCanvasClipboard } from '..';
 import type { CanvasClipboardPort } from '../definitions/canvasClipboardPort';
+import { CANVAS_MESSAGE_CATALOG } from '../../localization';
 const card = CanvasTextCardSchema.parse({ id: 'c1', type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white', createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0, x: 0, y: 0, width: 280, height: 180, parentId: null, data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '粗体', marks: [{ type: 'bold' }] }] }] } } });
 class Item { constructor(readonly values: Record<string, Blob | Promise<Blob>>) {} get types() { return Object.keys(this.values); } async getType(type: string) { const value = await this.values[type]; if (!value) throw new Error('missing format'); return value; } }
+beforeEach(() => { setActivePinia(createPinia()); registerMessageCatalogs(CANVAS_MESSAGE_CATALOG); });
 afterEach(() => vi.unstubAllGlobals());
 function fixture() {
   let contents: Item[] = [];
@@ -37,4 +41,25 @@ it('只读仍可复制，等待期间转只读的剪切只复制不删除，粘�
   f.port.canWrite = () => true;
   f.port.prepare = async () => { f.port.canWrite = () => false; return { elements: [card], text: '正文' }; };
   await expect(f.clipboard.cut()).rejects.toThrow('原卡已保留'); expect(f.port.cut).not.toHaveBeenCalled(); f.clipboard.dispose();
+});
+const reading = (write: unknown, read: () => Promise<unknown>) => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { write, read } });
+it('粘贴失败不把浏览器原文或校验明细给用户，并跟随界面语言', async () => {
+  const f = fixture();
+  const denied = () => Promise.reject(new DOMException('Read permission denied.', 'NotAllowedError'));
+  const invalid = async () => [{ types: [`web ${CANVAS_CLIPBOARD_MIME}`], getType: async () => new NodeBlob(['{"version":2,"elements":[]}']) }];
+  reading(f.write, denied); await expect(f.clipboard.paste()).rejects.toThrow('无法读取剪贴板，请回到此窗口后重新粘贴。');
+  reading(f.write, invalid); await expect(f.clipboard.paste()).rejects.toThrow('这段内容暂时不能粘贴到画布。');
+  expect(f.port.pasteElements).not.toHaveBeenCalled();
+  useLocalizationStore().setCurrentLocale('en-US');
+  reading(f.write, denied); await expect(f.clipboard.paste()).rejects.toThrow("Couldn't read the clipboard.");
+  reading(f.write, invalid); await expect(f.clipboard.paste()).rejects.toThrow("This content can't be pasted");
+  f.clipboard.dispose();
+});
+it('写入被浏览器拒绝时翻译文案且不删除原卡，产品失败原样保留', async () => {
+  const f = fixture(); f.write.mockRejectedValueOnce(new DOMException('Write permission denied.', 'NotAllowedError'));
+  await expect(f.clipboard.cut()).rejects.toThrow('无法写入剪贴板，请回到此窗口后重新复制。');
+  expect(f.port.cut).not.toHaveBeenCalled();
+  f.write.mockRejectedValueOnce(new Error('画布已变化'));
+  await expect(f.clipboard.copy()).rejects.toThrow('画布已变化');
+  f.clipboard.dispose();
 });

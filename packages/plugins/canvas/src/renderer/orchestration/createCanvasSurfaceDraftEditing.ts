@@ -4,6 +4,7 @@ import { createCanvasCardMovement } from '../features/elementEditing';
 import { createCanvasTextCreation } from '../features/textCreation';
 
 import type { CanvasSurfaceDraftEditingOptions } from './definitions/canvasSurfaceComposition';
+import { canvasText } from '../features/localization';
 
 /** 正文编辑、创建草稿和位移提交共享同一个保存边界。 */
 export function createCanvasSurfaceDraftEditing({
@@ -18,7 +19,7 @@ export function createCanvasSurfaceDraftEditing({
   const editable = ports.createEditor({
     element: options.editorHost,
     content: JsonValueSchema.parse(createCanvasPlainTextDocument('')),
-    label: '文字卡正文',
+    label: canvasText('canvas.a11y.textEditor'),
     resolveImageSource: ports.resolveImageSource,
     onError: report,
     onNavigate: navigate,
@@ -52,7 +53,7 @@ export function createCanvasSurfaceDraftEditing({
     },
     (operations, historyGroupId, arrangement) => {
       if (!arrangement) return session.commit(operations, historyGroupId);
-      if (!layout) throw new Error('当前表面未配置自动排布');
+      if (!layout) throw new Error(canvasText('canvas.error.noLayoutPort'));
       return layout.run(arrangement, operations, historyGroupId);
     }
   );

@@ -1,6 +1,7 @@
 import type { Container, Texture } from 'pixi.js';
 import type { CanvasCamera, CanvasCard, CanvasCardId } from '../../../../../shared';
 import type { CanvasAppearance } from '../../../definitions/canvasKernel';
+import type { CanvasKernelText } from '../../../definitions/canvasKernelText';
 import type { CanvasBitmapCache } from '../CanvasBitmapCache';
 import type { CanvasIdentityAtlas } from '../CanvasIdentityAtlas';
 import type { CanvasMapLabels } from '../CanvasMapLabels';
@@ -16,13 +17,14 @@ export interface CanvasCardPresentationContext {
   readAppearance(): CanvasAppearance;
   readonly selected: ReadonlySet<CanvasCardId>;
   readEditingCard(): CanvasCardId | null;
-  /** 正在实时改尺寸的卡：旧排版正文盖不满新纸面，但不能因此补画占位标题。 */
-  readResizingCard(): CanvasCardId | null;
+  /** 改尺寸中或松手后新排版未到的卡：旧排版正文盖不满新纸面，但不能因此补画占位标题。 */
+  showsOldLayout(id: CanvasCardId): boolean;
   readRenders(): number;
   readContextLost(): boolean;
   readDestroyed(): boolean;
 }
 export interface CanvasCardPresentationOptions {
+  readonly text: Pick<CanvasKernelText, 'imageTitle' | 'blankTitle' | 'documentTitle'>;
   readonly backgrounds: {
     readonly paper: Texture;
     readonly card: Texture;

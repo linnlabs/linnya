@@ -47,7 +47,12 @@ async function createSurfaceElement(
       projectCanvasDocumentSurface(request.documents[card.data.documentId]),
       {
         document,
-        card: { documentId: card.data.documentId, width: card.width, height: card.height },
+        card: {
+          documentId: card.data.documentId,
+          width: card.width,
+          height: card.height,
+          color: card.color,
+        },
         signal,
         theme: request.theme,
       }

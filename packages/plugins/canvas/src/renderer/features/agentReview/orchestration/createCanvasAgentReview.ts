@@ -10,6 +10,7 @@ import {
   projectCanvasWithdrawalSummary,
 } from '../functions/projectCanvasReviewOutcome';
 import { createCanvasAgentReviewState } from '../store/createCanvasAgentReviewState';
+import { canvasText } from '../../localization';
 
 export function createCanvasAgentReview(
   session: CanvasDocumentSession,
@@ -21,7 +22,7 @@ export function createCanvasAgentReview(
     disposed = false;
   const documentId = () => {
     const id = session.state.snapshot.value?.documentId;
-    if (!id) throw new Error('画布尚未打开');
+    if (!id) throw new Error(canvasText('canvas.error.notOpen'));
     return id;
   };
   const fail = (error: unknown) => state.fail(canvasReviewFailureMessage(error));
@@ -41,7 +42,7 @@ export function createCanvasAgentReview(
     state.start();
     try {
       if (preparesContent && options.beforeMutation && !(await options.beforeMutation())) {
-        state.fail('当前草稿尚未保存，操作未执行。');
+        state.fail(canvasText('canvas.review.draftUnsaved'));
         return;
       }
       if (disposed) {

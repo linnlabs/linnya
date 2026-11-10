@@ -2,6 +2,7 @@ import {
   CanvasDeliveryUnknownError,
   type CanvasConfirmedMutation,
 } from '../definitions/canvasMutation';
+import { canvasText } from '../../localization';
 import { createCanvasMutationState } from '../store/createCanvasMutationState';
 
 /** 当前视图的写确认通道。结果不确定时保留原调用等待显式确认，后续意图不能越过它。 */
@@ -41,9 +42,9 @@ export function createCanvasMutationQueue() {
               if (settled || token !== generation) return;
               if (received || failure instanceof CanvasDeliveryUnknownError) {
                 state.setNotice(
-                  received
-                    ? '修改已提交，但显示尚未同步。请重试确认；后续操作正在等待。'
-                    : '尚不能确认本次修改是否已提交。请重试确认，避免重复创建；后续操作正在等待。'
+                  canvasText(
+                    received ? 'canvas.error.unsyncedAfterCommit' : 'canvas.error.unconfirmedCommit'
+                  )
                 );
               } else {
                 finish();

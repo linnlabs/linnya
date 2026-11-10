@@ -17,6 +17,7 @@
       v-if="detailCard && detailPort && detailProjectId"
       :key="`${detailCard.id}:${detailCard.data.documentId}`"
       :card="detailCard"
+      :frame="surface?.resizePreview.value"
       :camera="camera"
       :project-id="detailProjectId"
       :port="detailPort"
@@ -86,7 +87,7 @@
       :placement="surface.selectionStyle.value"
       :count="selection.length"
       :color="selectedColor"
-      :colors="canvasColorMenuOptions"
+      :colors="colorMenuOptions"
       :more-actions="moreActions"
       :readonly="readonly"
       :image="Boolean(selectedImage)"
@@ -124,7 +125,7 @@
     <CanvasPortalMenu
       v-if="contextAnchor"
       :key="`${contextAnchor.left},${contextAnchor.top}`"
-      label="画布操作"
+      :label="t('canvas.menu.label')"
       :options="contextActions"
       :anchor="contextAnchor"
       min-width="170px"
@@ -139,13 +140,13 @@
       type="file"
       accept="image/*"
       multiple
-      aria-label="选择图片"
+      :aria-label="t('canvas.view.pickImage')"
       @change="imageFiles"
     />
     <ImagePreviewModal
       :is-visible="Boolean(imagePreview)"
       :src="imagePreview?.dataUri"
-      alt="画布图片"
+      :alt="t('canvas.view.imageAlt')"
       @close="imagePreview = null"
     />
     <CanvasImageEditingControls v-if="imageEditing" :editor="imageEditing" />
@@ -173,10 +174,10 @@
     </div>
     <AlertDialog
       :visible="discardVisible"
-      title="使用已保存内容？"
-      message="这会放弃当前未保存的草稿，重新显示已保存内容。请先复制需要保留的文字。"
-      confirm-text="放弃草稿并继续"
-      cancel-text="保留草稿"
+      :title="t('canvas.view.discardTitle')"
+      :message="t('canvas.view.discardMessage')"
+      :confirm-text="t('canvas.view.discardConfirm')"
+      :cancel-text="t('canvas.view.discardCancel')"
       :is-confirmation="true"
       :is-dangerous-action="true"
       :close-is-cancel="true"
@@ -187,6 +188,7 @@
   </section>
 </template>
 <script setup lang="ts">
+import { canvasText as t } from '../features/localization';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import type { DocumentImageAsset } from '@app/schemas';
 import { ImagePreviewModal, AlertDialog } from '@linnya/renderer-ui';
@@ -341,6 +343,7 @@ const shownError = computed(
 const colorable = computed(() =>
   (surface.value?.selectedCards.value ?? []).some(card => card.type !== 'image')
 );
+const colorMenuOptions = computed(() => canvasColorMenuOptions());
 const selectedColor = computed(() => surface.value?.selectedCards.value[0]?.color ?? 'white');
 const selectedImage = computed(() => {
   const selected = surface.value?.selectedCards.value;
@@ -382,9 +385,12 @@ const statusItems = computed(() =>
 const report = (error: unknown) => {
   failure.value = error instanceof Error ? error.message : String(error);
 };
-const run = async (action: () => Promise<unknown> | undefined) => {
+const clearFailure = () => {
   failure.value = null;
   surface.value?.clearFailure();
+};
+const run = async (action: () => Promise<unknown> | undefined) => {
+  clearFailure();
   try {
     await action();
   } catch (error) {
@@ -440,7 +446,8 @@ const addToConversation = () =>
     const current = surface.value,
       projectId = getCurrentWorkspaceProjectId(),
       documentId = current?.session.state.snapshot.value?.documentId;
-    if (!current || !projectId || !documentId) throw new Error('当前画布没有可访问的项目');
+    if (!current || !projectId || !documentId)
+      throw new Error(t('canvas.error.projectInaccessible'));
     await addCanvasSelectionReference(
       { documentId, projectId, elementIds: current.selection.ids.value },
       createCanvasSelectionReferencePort()
@@ -468,7 +475,7 @@ onMounted(async () => {
     editorElement = editorHost.value,
     rasterHost = staging.value;
   if (!session || !host || !editorElement || !rasterHost) {
-    failure.value = '没有可打开的画布文档';
+    failure.value = t('canvas.error.noDocumentToOpen');
     return;
   }
   try {
@@ -499,7 +506,7 @@ onMounted(async () => {
         resolveImageSource: cardContent.resolveImageSource,
         prepareClipboard: ids => readCanvasClipboard(session.documentId, ids),
         pasteImages: async (files, point) => {
-          if (!creation.value) throw new Error('图片导入尚未就绪');
+          if (!creation.value) throw new Error(t('canvas.input.surface.imageNotReady'));
           await creation.value.importFiles(files, point);
         },
         openCard: async card => {
@@ -534,7 +541,12 @@ onMounted(async () => {
       visible: result.setDetailVisible,
       navigate: result.navigate,
       focus: result.focus,
-      open: card => run(() => cardContent.open(card, markCardViewed)),
+      // 与 kernel 的卡身双击/右键同一规则：只读画布不响应。
+      open: card =>
+        result.readonly.value
+          ? Promise.resolve()
+          : run(() => cardContent.open(card, markCardViewed)),
+      context: (id, client) => result.openContext(id, client),
     };
     wheelSuggestion.value = installCanvasWheelSuggestion(host);
     creation.value = createCanvasCardCreation(
@@ -559,6 +571,7 @@ onMounted(async () => {
       worldPoint: result.worldPoint,
       canWrite: () => !result.readonly.value,
       report,
+      clearFailure,
     });
     await review.value.refresh();
   } catch (error) {

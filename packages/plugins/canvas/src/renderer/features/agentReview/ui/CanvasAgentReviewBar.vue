@@ -10,16 +10,27 @@
       v-if="expanded"
       :id="panelId"
       class="canvas-agent-review-panel"
-      aria-label="Agent 改动详情"
+      :aria-label="t('canvas.review.panelLabel')"
     >
       <p v-if="error" class="canvas-panel-error canvas-agent-review-error" role="alert">
         {{ error }}
       </p>
       <div v-if="withdrawal" class="canvas-review-withdrawal" role="status">
         <span>
-          {{ withdrawal.mode === 'redo' ? '重做撤回' : '撤回' }}：{{
-            withdrawal.applied ? `已反转 ${withdrawal.applied} 项` : '未反转任何改动'
-          }}，保留 {{ withdrawal.retained }} 项后续修改，跳过 {{ withdrawal.skipped }} 项
+          {{
+            t('canvas.review.withdrawalSummary', {
+              mode: t(
+                withdrawal.mode === 'redo'
+                  ? 'canvas.review.mode.redo'
+                  : 'canvas.review.mode.withdraw'
+              ),
+              applied: withdrawal.applied
+                ? t('canvas.review.reversed', { count: withdrawal.applied })
+                : t('canvas.review.reversedNone'),
+              retained: withdrawal.retained,
+              skipped: withdrawal.skipped,
+            })
+          }}
         </span>
         <BaseButton
           v-if="withdrawal.canRedo && groups.length"
@@ -28,12 +39,12 @@
           :disabled="busy || readonly"
           @click="review.redoWithdrawal()"
         >
-          重做撤回
+          {{ t('canvas.review.redoWithdrawal') }}
         </BaseButton>
         <details v-if="withdrawal.details.length" class="canvas-review-details">
           <summary>
             <ChevronIcon direction="right" class="canvas-review-details-arrow" aria-hidden="true" />
-            查看保留与跳过原因
+            {{ t('canvas.review.showReasons') }}
           </summary>
           <ul>
             <li v-for="(detail, row) in withdrawal.details" :key="row">
@@ -52,18 +63,18 @@
           :aria-current="activeGroup?.id === group.id ? 'true' : undefined"
           @click="activate(group)"
         >
-          <span class="canvas-panel-row-title"
-            >Agent 改动 · {{ describeCanvasAgentGroupTime(group) }}</span
-          >
+          <span class="canvas-panel-row-title">{{
+            t('canvas.review.groupTime', { time: describeCanvasAgentGroupTime(group) })
+          }}</span>
           <small>{{ describeGroupState(group) }}</small>
         </button>
       </div>
       <template v-if="activeGroup">
         <header v-if="groups.length === 1" class="canvas-agent-review-head">
-          <span class="canvas-agent-title">Agent 改动</span>
+          <span class="canvas-agent-title">{{ t('canvas.review.title') }}</span>
           <span class="canvas-agent-meta">
             {{ describeCanvasAgentGroupTime(activeGroup) }} ·
-            {{ activeGroup.writing ? '正在写入' : '已写完' }}
+            {{ t(activeGroup.writing ? 'canvas.review.writing' : 'canvas.review.written') }}
           </span>
         </header>
         <ul v-if="targets.length" class="canvas-panel-list canvas-review-targets">
@@ -86,7 +97,7 @@
               :disabled="busy || readonly"
               @click="review.withdraw(target.groupId, [target.id])"
             >
-              恢复
+              {{ t('canvas.review.restore') }}
             </BaseButton>
           </li>
         </ul>
@@ -96,9 +107,8 @@
         >
           <summary>
             <ChevronIcon direction="right" class="canvas-review-details-arrow" aria-hidden="true" />
-            跳过 {{ activeGroup.outcomes.skippedWrites.length }} 项{{
-              activeGroup.outcomes.complete ? '' : '（历史信息不全）'
-            }}
+            {{ t('canvas.review.skipped', { count: activeGroup.outcomes.skippedWrites.length })
+            }}{{ activeGroup.outcomes.complete ? '' : t('canvas.review.incomplete') }}
           </summary>
           <ul>
             <li v-for="(text, row) in projectCanvasSkippedWrites(activeGroup, elements)" :key="row">
@@ -118,7 +128,7 @@
               )
             "
           >
-            查看整组
+            {{ t('canvas.review.viewGroup') }}
           </BaseButton>
           <BaseButton
             v-if="!activeGroup.pendingApproval"
@@ -127,12 +137,12 @@
             :disabled="busy || readonly"
             @click="review.withdraw(activeGroup.id)"
           >
-            撤回本组
+            {{ t('canvas.review.withdrawGroup') }}
           </BaseButton>
         </footer>
       </template>
     </section>
-    <div class="canvas-agent-review-bar" role="toolbar" aria-label="Agent 改动审阅">
+    <div class="canvas-agent-review-bar" role="toolbar" :aria-label="t('canvas.review.barLabel')">
       <button
         type="button"
         class="canvas-agent-review-summary"
@@ -161,7 +171,7 @@
           :disabled="busy || readonly"
           @click="review.approve(approval.id, 'deny')"
         >
-          拒绝
+          {{ t('canvas.review.deny') }}
         </BaseButton>
         <BaseButton
           variant="plain"
@@ -170,7 +180,7 @@
           :disabled="busy || readonly"
           @click="review.approve(approval.id, 'allow')"
         >
-          允许本批
+          {{ t('canvas.review.allow') }}
         </BaseButton>
       </template>
       <template v-else-if="activeGroup">
@@ -178,7 +188,7 @@
           <span class="canvas-agent-review-divider" aria-hidden="true" />
           <ToolbarButton
             class="canvas-toolbar-button"
-            label="上一个改动"
+            :label="t('canvas.review.previous')"
             :disabled="busy"
             @click="navigate(-1)"
           >
@@ -187,7 +197,7 @@
           <span class="canvas-review-position">{{ position }} / {{ targets.length }}</span>
           <ToolbarButton
             class="canvas-toolbar-button"
-            label="下一个改动"
+            :label="t('canvas.review.next')"
             :disabled="busy"
             @click="navigate(1)"
           >
@@ -202,7 +212,7 @@
           :disabled="busy || readonly"
           @click="review.complete(activeGroup.id)"
         >
-          完成审阅
+          {{ t('canvas.review.complete') }}
         </BaseButton>
       </template>
       <BaseButton
@@ -212,7 +222,7 @@
         :disabled="busy || readonly"
         @click="review.redoWithdrawal()"
       >
-        重做撤回
+        {{ t('canvas.review.redoWithdrawal') }}
       </BaseButton>
     </div>
   </div>
@@ -228,6 +238,7 @@ import {
 import type { CanvasAgentGroup, CanvasElement, CanvasElementId } from '@plugin/canvas/shared';
 import type { CanvasReviewTarget } from '../definitions/agentReview';
 import type { createCanvasAgentReview } from '../orchestration/createCanvasAgentReview';
+import { canvasText as t } from '../../localization';
 import { projectCanvasReviewTargets } from '../functions/projectCanvasReviewTargets';
 import { projectCanvasSkippedWrites } from '../functions/projectCanvasReviewOutcome';
 import { selectCanvasReviewTarget } from '../functions/selectCanvasReviewTarget';
@@ -244,11 +255,11 @@ const emit = defineEmits<{
   locate: [ids: readonly CanvasElementId[]];
   reveal: [target: CanvasReviewTarget];
 }>();
-const kindLabels: Readonly<Record<CanvasReviewTarget['kind'], string>> = {
-  added: '新增',
-  updated: '修改',
-  deleted: '删除',
-};
+const kindLabels = computed<Readonly<Record<CanvasReviewTarget['kind'], string>>>(() => ({
+  added: t('canvas.review.kind.added'),
+  updated: t('canvas.review.kind.updated'),
+  deleted: t('canvas.review.kind.deleted'),
+}));
 const panelId = `canvas-agent-review-${useId()}`;
 const expanded = ref(false);
 const groups = computed(() => props.review.state.groups.value);
@@ -278,13 +289,25 @@ const error = computed(() => props.review.state.error.value);
 const withdrawal = computed(() => props.review.state.withdrawal.value);
 const summary = computed(() => {
   if (approval.value)
-    return `${approval.value.reason === 'delete_threshold' ? '批量删除' : '大范围整理'}待确认（${approval.value.operationCount} 项）`;
+    return t(
+      approval.value.reason === 'delete_threshold'
+        ? 'canvas.review.approvalDelete'
+        : 'canvas.review.approvalLarge',
+      { count: approval.value.operationCount }
+    );
   if (activeGroup.value)
-    return `Agent ${describeCanvasAgentGroupCounts(activeGroup.value)}${groups.value.length > 1 ? ` · 共 ${groups.value.length} 组` : ''}`;
+    return (
+      t('canvas.review.summary', { counts: describeCanvasAgentGroupCounts(activeGroup.value) }) +
+      (groups.value.length > 1
+        ? t('canvas.review.groupsSuffix', { count: groups.value.length })
+        : '')
+    );
   const result = withdrawal.value;
   if (!result) return '';
-  if (result.mode === 'redo') return '已重做撤回';
-  return result.applied ? `已撤回 ${result.applied} 项` : '未撤回任何改动';
+  if (result.mode === 'redo') return t('canvas.review.redone');
+  return result.applied
+    ? t('canvas.review.withdrew', { count: result.applied })
+    : t('canvas.review.withdrewNone');
 });
 // 审阅动作失败时展开面板给出原因；条目全部消失后下次出现仍从收起态开始。
 watch(error, message => {
@@ -297,7 +320,10 @@ watch(
   }
 );
 function describeGroupState(group: CanvasAgentGroup): string {
-  return `${describeCanvasAgentGroupCounts(group)} · ${group.writing ? '正在写入' : '已写完'}`;
+  return t('canvas.review.groupState', {
+    counts: describeCanvasAgentGroupCounts(group),
+    state: t(group.writing ? 'canvas.review.writing' : 'canvas.review.written'),
+  });
 }
 function activate(group: CanvasAgentGroup) {
   props.review.select(group.id);

@@ -20,6 +20,7 @@ import {
   CanvasReadImageRequestSchema,
   CanvasHistoryPreviewRequestSchema,
   CanvasHistoryBudgetRequestSchema,
+  isCanvasUserFailureCode,
 } from '../../shared';
 import { Logger } from '@plugin/backend/workspaceRuntime';
 import { projectCanvasBusinessFailure } from './projectCanvasCliFailure';
@@ -153,11 +154,12 @@ export function registerCanvasIpc(input: {
         if (code === 'crash') logger.error('Canvas IPC 处理失败', { channel, error });
         return {
           success: false,
+          // 用户可能遇到的失败只回传编号，文案由知道界面语言的 Renderer 决定；其余保留原文。
           error:
-            business?.message ??
-            (error instanceof z.ZodError
-              ? '画布操作字段无效，请刷新后重试。'
-              : '画布操作失败，详细原因已记录到日志。'),
+            (business && isCanvasUserFailureCode(business.code)
+              ? business.code
+              : business?.message) ??
+            (error instanceof z.ZodError ? 'canvas_invalid_request' : 'canvas_operation_failed'),
           diagnostic: { code, reason: business?.code, pluginId: CANVAS_PLUGIN_ID, channel },
         };
       }

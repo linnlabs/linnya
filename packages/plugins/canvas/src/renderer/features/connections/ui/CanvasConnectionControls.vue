@@ -6,7 +6,7 @@
       type="button"
       class="canvas-connection-anchor"
       :style="pointStyle(anchor)"
-      :aria-label="`从卡片${sideNames[anchor.side]}侧开始连线`"
+      :aria-label="t('canvas.connection.startFromSide', { side: t(`canvas.side.${anchor.side}`) })"
       @pointerdown.stop.prevent="
         editing.start({
           kind: 'create',
@@ -24,13 +24,13 @@
     :position="barPosition"
     class="canvas-connection-bar"
     role="toolbar"
-    aria-label="所选连线"
+    :aria-label="t('canvas.connection.selected')"
     @pointerdown.stop
     @keydown.stop
   >
     <ToolbarGroup>
       <CanvasToolbarMenu
-        label="连线样式"
+        :label="t('canvas.connection.styleMenu')"
         :options="styleOptions"
         :disabled="edge.locked"
         :show-selected-checkmark="true"
@@ -43,7 +43,7 @@
         />
       </CanvasToolbarMenu>
       <CanvasToolbarMenu
-        label="连线颜色"
+        :label="t('canvas.connection.colorMenu')"
         :options="colorOptions"
         :model-value="edge.color"
         :disabled="edge.locked"
@@ -57,7 +57,7 @@
     <ToolbarGroup>
       <ToolbarButton
         class="canvas-toolbar-button"
-        label="编辑连线标签"
+        :label="t('canvas.connection.editLabelButton')"
         :disabled="edge.locked"
         @click="run(editing.beginLabel)"
       >
@@ -65,14 +65,14 @@
       </ToolbarButton>
       <ToolbarButton
         class="canvas-toolbar-button"
-        label="删除连线"
+        :label="t('canvas.connection.delete')"
         :disabled="edge.locked"
         @click="run(editing.remove)"
       >
         <DeleteIcon />
       </ToolbarButton>
       <CanvasToolbarMenu
-        label="更多连线操作"
+        :label="t('canvas.connection.more')"
         :options="moreOptions"
         align="end"
         :arrow="false"
@@ -88,7 +88,7 @@
       type="button"
       class="canvas-connection-endpoint"
       :style="pointStyle(geometry.from)"
-      aria-label="移动连线起点"
+      :aria-label="t('canvas.connection.moveStart')"
       @pointerdown.stop.prevent="
         editing.start({
           kind: 'reattach',
@@ -105,7 +105,7 @@
       type="button"
       class="canvas-connection-endpoint"
       :style="pointStyle(geometry.to)"
-      aria-label="移动连线终点"
+      :aria-label="t('canvas.connection.moveEnd')"
       @pointerdown.stop.prevent="
         editing.start({
           kind: 'reattach',
@@ -123,7 +123,7 @@
       variant="floating"
       :style="pointStyle(geometry.midpoint)"
       :model-value="editing.state.label.value.value"
-      aria-label="连线标签"
+      :aria-label="t('canvas.connection.labelInput')"
       @update:model-value="editing.state.updateLabel"
       @commit="finishLabel"
       @cancel="cancelLabel"
@@ -146,9 +146,11 @@ import { DeleteIcon, MoreIcon, TagIcon } from '@linnya/renderer-ui/icons';
 import {
   CanvasColorSwatch,
   CanvasToolbarMenu,
+  canvasColorPalette,
   canvasColorSwatchOptions,
   canvasMenuIcons,
 } from '../../canvasChrome';
+import { canvasText as t } from '../../localization';
 import LineIcon from '../../../icon/LineIcon.vue';
 import {
   CanvasEdgeSchema,
@@ -169,11 +171,14 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ focusCanvas: []; locate: [which: 'from' | 'to'] }>();
 const moreOptions = computed<readonly CustomSelectOption<string>[]>(() => [
-  { value: 'lock', text: edge.value?.locked ? '解锁连线' : '锁定连线' },
-  { value: 'reverse', text: '反转方向', disabled: Boolean(edge.value?.locked) },
+  {
+    value: 'lock',
+    text: t(edge.value?.locked ? 'canvas.connection.unlock' : 'canvas.connection.lock'),
+  },
+  { value: 'reverse', text: t('canvas.connection.reverse'), disabled: Boolean(edge.value?.locked) },
   { isSeparator: true },
-  { value: 'from', text: '跳到起点' },
-  { value: 'to', text: '跳到终点' },
+  { value: 'from', text: t('canvas.connection.jumpFrom') },
+  { value: 'to', text: t('canvas.connection.jumpTo') },
 ]);
 const more = (value: string) => {
   const current = edge.value;
@@ -234,38 +239,38 @@ const preview = computed(() => {
   const value = props.editing.state.preview.value;
   return value ? { from: project(value.from), to: project(value.to) } : null;
 });
-const sideNames = { top: '上', right: '右', bottom: '下', left: '左' };
-const styleGroups = [
-  {
-    label: '方向',
-    field: 'direction',
-    items: [
-      { value: 'none', text: '无箭头' },
-      { value: 'forward', text: '单向' },
-      { value: 'both', text: '双向' },
-    ],
-  },
-  {
-    label: '线形',
-    field: 'lineStyle',
-    items: [
-      { value: 'curve', text: '曲线' },
-      { value: 'straight', text: '直线' },
-    ],
-  },
-  {
-    label: '笔触',
-    field: 'linePattern',
-    items: [
-      { value: 'solid', text: '实线' },
-      { value: 'dashed', text: '虚线' },
-    ],
-  },
-] as const;
+const styleGroups = () =>
+  [
+    {
+      label: t('canvas.connection.direction'),
+      field: 'direction',
+      items: [
+        { value: 'none', text: t('canvas.connection.directionNone') },
+        { value: 'forward', text: t('canvas.connection.directionForward') },
+        { value: 'both', text: t('canvas.connection.directionBoth') },
+      ],
+    },
+    {
+      label: t('canvas.connection.shape'),
+      field: 'lineStyle',
+      items: [
+        { value: 'curve', text: t('canvas.connection.curve') },
+        { value: 'straight', text: t('canvas.connection.straight') },
+      ],
+    },
+    {
+      label: t('canvas.connection.stroke'),
+      field: 'linePattern',
+      items: [
+        { value: 'solid', text: t('canvas.connection.solid') },
+        { value: 'dashed', text: t('canvas.connection.dashed') },
+      ],
+    },
+  ] as const;
 /** 方向、线形、笔触合成一个分组菜单，每组各自标出当前值。 */
 const styleOptions = computed<readonly CustomSelectOption<string>[]>(() => {
   const current = edge.value;
-  return styleGroups.flatMap((group, index) => [
+  return styleGroups().flatMap((group, index) => [
     ...(index ? [{ isSeparator: true }] : []),
     { isGroup: true, label: group.label },
     ...group.items.map(item => ({
@@ -276,15 +281,7 @@ const styleOptions = computed<readonly CustomSelectOption<string>[]>(() => {
     })),
   ]);
 });
-const colorOptions = canvasColorSwatchOptions([
-  { color: 'white', text: '原色' },
-  { color: 'red', text: '红' },
-  { color: 'orange', text: '橙' },
-  { color: 'yellow', text: '黄' },
-  { color: 'green', text: '绿' },
-  { color: 'cyan', text: '青' },
-  { color: 'purple', text: '紫' },
-]);
+const colorOptions = computed(() => canvasColorSwatchOptions(canvasColorPalette()));
 const patch = (value: Parameters<typeof props.editing.patch>[1]) =>
   props.run(async () => {
     const current = edge.value;

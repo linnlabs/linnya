@@ -6,6 +6,7 @@ import {
   type CanvasSelectionReferencePort,
 } from '../definitions/canvasSelectionReference';
 import { buildCanvasSelectionReference } from '../functions/buildCanvasSelectionReference';
+import { canvasText } from '../../localization';
 export function createCanvasSelectionReferenceKind(
   port: CanvasSelectionReferencePort
 ): ConversationReferenceKindContribution {
@@ -21,10 +22,10 @@ export function createCanvasSelectionReferenceKind(
       const metadata = CanvasSelectionReferenceMetadataSchema.parse(reference.metadata);
       context.signal.throwIfAborted();
       if (!(await port.save(metadata.documentId)))
-        throw new Error('画布正文尚未保存，引用没有发送');
+        throw new Error(canvasText('canvas.error.referenceUnsaved'));
       context.signal.throwIfAborted();
       if (!context.conversationId && !context.projectId)
-        throw new Error('当前对话没有项目，无法发送画布引用');
+        throw new Error(canvasText('canvas.error.chatNoProject'));
       const latest = await port.read({
         documentId: metadata.documentId,
         elementIds: metadata.elementIds,

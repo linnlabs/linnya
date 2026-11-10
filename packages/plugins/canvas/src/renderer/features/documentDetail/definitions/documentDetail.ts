@@ -10,4 +10,6 @@ export interface CanvasDocumentDetailPort {
   navigate(intent: EmbeddedMarkdownNavigationIntent): void;
   focus(): void;
   open(card: CanvasDocumentDetailCard): Promise<void>;
+  /** 详情盖在卡片上时，右键仍弹出这张卡的画布菜单；坐标是视口 client 坐标。 */
+  context(id: CanvasCardId, client: { readonly x: number; readonly y: number }): Promise<void>;
 }

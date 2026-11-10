@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { createApp, h } from 'vue';
+import { createApp, h, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { expect, it, vi } from 'vitest';
+import { DOCUMENT_PREVIEW_LAYOUT } from '@linnya/document-preview';
 import type { RendererPluginAvailabilityChange } from '@linnya/plugin-host-contract/renderer/pluginRuntime';
 import { useNavigationScope } from '@/app/navigation';
 import ReadonlyDocumentPreview from '../ui/ReadonlyDocumentPreview.vue';
@@ -302,6 +303,68 @@ it('plugin recovery is explicit and shared preview opening rechecks the current 
     app.unmount();
     host.remove();
     ports.recovery.mockReset();
+    vi.unstubAllGlobals();
+  }
+});
+it('fades the detail viewport only while real content remains below', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  );
+  await import('@linnya/markdown-document-core');
+  ports.read.mockResolvedValue({
+    documentId: 'doc',
+    status: 'available',
+    title: 'Doc',
+    nodeType: 'document',
+    path: 'workspace:/Doc.md',
+  });
+  ports.preview.mockResolvedValue({
+    documentId: 'doc',
+    title: 'Doc',
+    nodeType: 'document',
+    status: 'ready',
+    content: { revisionKey: '1', summary: '', detail: { format: 'markdown', text: '# Long' } },
+  });
+  ports.availability.mockReturnValue(ports.stopAvailability);
+  const host = document.createElement('div'),
+    pinia = createPinia();
+  document.body.append(host);
+  setActivePinia(pinia);
+  useNavigationScope().enterProject('project');
+  const app = createApp({
+    render: () =>
+      h(ReadonlyDocumentPreview, {
+        readTarget: () => ({ documentId: 'doc', projectId: 'project' }),
+        detailOnly: true,
+        widthPx: 320,
+      }),
+  }).use(pinia);
+  try {
+    app.mount(host);
+    await vi.waitFor(() => expect(host.querySelector('h1')?.textContent).toBe('Long'));
+    const viewport = host.querySelector<HTMLElement>('.readonly-document-preview__viewport');
+    if (!viewport) throw new Error('missing viewport');
+    const scrollTo = async (scrollTop: number) => {
+      Object.defineProperties(viewport, {
+        scrollHeight: { configurable: true, value: 1000 },
+        clientHeight: { configurable: true, value: 240 },
+        scrollTop: { configurable: true, value: scrollTop },
+      });
+      viewport.dispatchEvent(new Event('scroll'));
+      await nextTick();
+      return host
+        .querySelector('.readonly-document-preview')
+        ?.classList.contains('document-preview-more-below');
+    };
+    expect(await scrollTo(0)).toBe(true);
+    expect(await scrollTo(760 - DOCUMENT_PREVIEW_LAYOUT.paddingBottom)).toBe(false);
+  } finally {
+    app.unmount();
+    host.remove();
     vi.unstubAllGlobals();
   }
 });

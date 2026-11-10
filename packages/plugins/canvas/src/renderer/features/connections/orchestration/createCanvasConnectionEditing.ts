@@ -12,6 +12,7 @@ import { createCanvasEndpointGesture } from './createCanvasEndpointGesture';
 import { projectCanvasConnectionToolbar } from '../functions/projectCanvasConnectionToolbar';
 import { createCanvasConnectionLabelPreview } from './createCanvasConnectionLabelPreview';
 import { createCanvasConnectionLabelEditing } from './createCanvasConnectionLabelEditing';
+import { canvasText } from '../../localization';
 
 export function createCanvasConnectionEditing(
   session: CanvasDocumentSession,
@@ -33,7 +34,8 @@ export function createCanvasConnectionEditing(
       ) ?? null
   );
   async function patch(edge: CanvasEdge, value: CanvasPatch) {
-    if (edge.locked && value.locked !== false) throw new Error('请先解锁这条连线');
+    if (edge.locked && value.locked !== false)
+      throw new Error(canvasText('canvas.error.edgeLocked'));
     await session.commit([
       { op: 'update', id: edge.id, baseRevision: edge.revision, patch: value },
     ]);
@@ -93,7 +95,7 @@ export function createCanvasConnectionEditing(
     },
     beginLabel: () => labels.begin(selected.value),
     async remove() {
-      if (selected.value?.locked) throw new Error('请先解锁这条连线');
+      if (selected.value?.locked) throw new Error(canvasText('canvas.error.edgeLocked'));
       if (!(await saveLabel())) return;
       const edge = selected.value;
       if (!edge) return;

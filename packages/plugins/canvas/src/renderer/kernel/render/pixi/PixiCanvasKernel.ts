@@ -4,6 +4,10 @@ import { CanvasCardPresentation } from './CanvasCardPresentation';
 import { createCanvasCardBackgrounds } from './createCanvasCardBackground';
 import type { CanvasCardView } from './definitions/canvasCardView';
 import type { CanvasKernelOptions } from '../../definitions/canvasKernelOptions';
+import {
+  DEFAULT_CANVAS_KERNEL_TEXT,
+  type CanvasKernelText,
+} from '../../definitions/canvasKernelText';
 import { Container, type Application } from 'pixi.js';
 import {
   canvasScreenToWorld,
@@ -37,6 +41,7 @@ import { CanvasSceneMotion } from './CanvasSceneMotion';
 import {
   planCanvasSceneMotion,
   resolveCanvasDisplayCard,
+  canvasCardContentChanged,
   canvasCardRasterChanged,
   type CanvasSceneMotionPlan,
 } from '../../motion';
@@ -75,9 +80,11 @@ export class PixiCanvasKernel implements CanvasKernel {
     freeze: ids => this.scene.freeze(ids),
     move: view => this.scene.apply(view),
     resize: view => this.presentation.updateView(view),
+    readMaterial: () => this.appearance.material,
   });
   private editingCard: CanvasCardId | null = null;
-  private readonly mapLabels = new CanvasMapLabels();
+  private readonly text: CanvasKernelText;
+  private readonly mapLabels: CanvasMapLabels;
   private overviewOrder: readonly CanvasCard[] = [];
   private titleOrder: readonly CanvasCard[] = [];
   private edges: readonly CanvasEdge[] = [];
@@ -104,6 +111,8 @@ export class PixiCanvasKernel implements CanvasKernel {
     private width: number,
     private height: number
   ) {
+    this.text = options.text ?? DEFAULT_CANVAS_KERNEL_TEXT;
+    this.mapLabels = new CanvasMapLabels(this.text.blankTitle);
     this.canvas = app.canvas;
     const identityContext = document.createElement('canvas').getContext('2d');
     if (!identityContext) throw new Error('canvas_2d_unavailable');
@@ -126,11 +135,12 @@ export class PixiCanvasKernel implements CanvasKernel {
       }),
       restored: () => this.refreshCamera(true),
       software: this.software,
+      text: this.text,
       notify: this.notify,
     });
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute('role', 'application');
-    this.canvas.setAttribute('aria-label', '自由画布，按空格拖动平移，使用工具栏编辑所选卡片');
+    this.canvas.setAttribute('aria-label', this.text.surfaceLabel());
     this.canvas.style.cssText = 'display:block;touch-action:none;width:100%;height:100%';
     options.host.append(this.canvas);
     this.world.addChild(
@@ -324,7 +334,13 @@ export class PixiCanvasKernel implements CanvasKernel {
     if (!projection.keepMotion) this.scene.forget(card.id);
     this.cards.set(card.id, display);
     // 纯位置变化不重画正文；染纸会改变同色深墨，必须和尺寸/内容变化一起淘汰。
-    if (previous && canvasCardRasterChanged(previous.card, card)) this.bitmaps.remove(card.id);
+    // 改尺寸落地时旧排版仍是同一份正文：留着裁在新纸面里，等新排版原地替换，松手那一帧不空白。
+    if (
+      previous &&
+      canvasCardRasterChanged(previous.card, card) &&
+      !(this.preview.showsOldLayout(card.id) && !canvasCardContentChanged(previous.card, card))
+    )
+      this.bitmaps.remove(card.id);
     if (previous) {
       previous.card = display;
       this.identities.setText(previous.label, this.presentation.identityTitle(card));
@@ -341,6 +357,7 @@ export class PixiCanvasKernel implements CanvasKernel {
   }
   private createPresentation(identityContext: CanvasRenderingContext2D): CanvasCardPresentation {
     return new CanvasCardPresentation({
+      text: this.text,
       backgrounds: this.backgrounds,
       identityContext,
       context: {
@@ -350,7 +367,7 @@ export class PixiCanvasKernel implements CanvasKernel {
         readAppearance: () => this.appearance,
         selected: this.selected,
         readEditingCard: () => this.editingCard,
-        readResizingCard: () => this.preview.resizing,
+        showsOldLayout: id => this.preview.showsOldLayout(id),
         readRenders: () => this.drawing.readRenderCount(),
         readContextLost: () => this.drawing.hasContextLost(),
         readDestroyed: () => this.drawing.isDestroyed(),
@@ -590,7 +607,9 @@ export class PixiCanvasKernel implements CanvasKernel {
   }
   setAppearance(next: CanvasAppearance): void {
     if (next.dark !== this.appearance.dark) this.invalidateBitmaps();
+    const materialChanged = next.material !== this.appearance.material;
     this.appearance = next;
+    if (materialChanged) this.preview.refitClip();
     this.selectionProjection.setAppearance(next);
     this.lines.setAppearance(next);
     this.refreshCamera(true);

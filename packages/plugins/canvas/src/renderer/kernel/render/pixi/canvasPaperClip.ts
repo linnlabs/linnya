@@ -14,17 +14,26 @@ export function fitCanvasPaperClip(view: CanvasCardView, material: CanvasCardMat
   if (view.card.type !== 'image') return;
   if (!view.paperClip || view.paperClip.destroyed) view.paperClip = new Graphics();
   if (view.paperClip.parent !== view.container) view.container.addChild(view.paperClip);
+  drawCanvasPaperShape(view.paperClip, view.card, material);
+  // 改尺寸期间的临时遮罩由 CanvasResizeClip 持有，松手后再交回纸面遮罩。
+  if (!view.body.mask) view.body.mask = view.paperClip;
+}
+
+/** 看得见的纸面：几何框内缩 PAPER_INSET、带材质圆角；纸面遮罩与改尺寸遮罩共用。 */
+export function drawCanvasPaperShape(
+  graphics: Graphics,
+  size: { readonly width: number; readonly height: number },
+  material: CanvasCardMaterial
+): void {
   const inset = CANVAS_CARD_PAPER_INSET;
-  view.paperClip
+  graphics
     .clear()
     .roundRect(
       inset,
       inset,
-      Math.max(0, view.card.width - inset * 2),
-      Math.max(0, view.card.height - inset * 2),
+      Math.max(0, size.width - inset * 2),
+      Math.max(0, size.height - inset * 2),
       CANVAS_CARD_CORNER_RADIUS[material]
     )
     .fill(0xffffff);
-  // 改尺寸期间的临时遮罩由 CanvasResizeClip 持有，松手后再交回纸面遮罩。
-  if (!view.body.mask) view.body.mask = view.paperClip;
 }

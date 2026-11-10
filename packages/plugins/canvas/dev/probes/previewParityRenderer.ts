@@ -42,11 +42,12 @@ function facts(element: HTMLElement) {
 async function prepare(theme: 'light' | 'dark', width: number, firstScreen: boolean, route: 'tag' | 'canvas' | 'worker') {
   document.body.replaceChildren(); document.documentElement.setAttribute('data-linnya-ui-theme', theme);
   const palette = readCanvasCardCssPalette('white', theme === 'dark'), height = firstScreen ? 320 : 1500;
-  document.body.style.cssText = `margin:0;background:${palette.paper};color:${palette.body};width:${width}px;height:${height}px;overflow:hidden`;
+  // 淡出的底色和内缩由消费方提供；tag 基准和画布路线放在同一张纸上比较。
+  document.body.style.cssText = `margin:0;background:${palette.paper};color:${palette.body};width:${width}px;height:${height}px;overflow:hidden;--document-preview-fade-color:${palette.paper};--document-preview-fade-radius:6px`;
   const preview = previewParityFixture(document), card = previewParityCard(width, height), controller = new AbortController();
   let element: HTMLElement, cleanup = () => {};
   if (route === 'tag') {
-    const result = await createDocumentPreviewSurface({ preview, document, widthPx: width, ...(firstScreen ? { maxHeight: height } : {}), theme, signal: controller.signal, onOpen: () => {} });
+    const result = await createDocumentPreviewSurface({ preview, document, widthPx: width, ...(firstScreen ? { maxHeight: height, visibleInsetPx: 3 } : {}), theme, signal: controller.signal, onOpen: () => {} });
     element = result.element; cleanup = result.dispose;
   } else if (route === 'canvas') {
     const content = createCanvasCardContent('canvas-probe', {

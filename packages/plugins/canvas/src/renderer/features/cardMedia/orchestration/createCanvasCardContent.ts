@@ -14,6 +14,15 @@ import {
   createCanvasDocumentSurface,
   canvasDocumentPreviewMessage,
 } from '../../cardRendering/content';
+import { canvasText } from '../../localization';
+
+const previewFailure = (status: Parameters<typeof canvasDocumentPreviewMessage>[0]) =>
+  new Error(canvasDocumentPreviewMessage(status) || canvasText('canvas.error.documentNotOpenable'));
+const hydrateDocumentTags = (
+  element: HTMLElement,
+  presentations: Parameters<typeof hydrateCanvasDocumentTags>[1]
+) =>
+  hydrateCanvasDocumentTags(element, presentations, canvasText('canvas.error.documentUnavailable'));
 
 /** 内容投影只持有有界资源缓存；文档与图片的持久身份仍归各自owner。 */
 export function createCanvasCardContent(
@@ -63,7 +72,7 @@ export function createCanvasCardContent(
         );
         signal.throwIfAborted();
         hydrateCanvasManagedImages(element, assets);
-        hydrateCanvasDocumentTags(element, presentations);
+        hydrateDocumentTags(element, presentations);
       }
       if (card.type === 'image') {
         const source = await images.read(card.data.assetId);
@@ -87,7 +96,12 @@ export function createCanvasCardContent(
           },
           {
             document,
-            card: { documentId: card.data.documentId, width: card.width, height: card.height },
+            card: {
+              documentId: card.data.documentId,
+              width: card.width,
+              height: card.height,
+              color: card.color,
+            },
             signal,
             theme:
               document.documentElement.getAttribute(RENDERER_UI_THEME_ATTRIBUTE) === 'dark'
@@ -101,8 +115,7 @@ export function createCanvasCardContent(
     async open(card, opening) {
       if (card.type !== 'document') return;
       const result = await previews.read(card);
-      if (result.status !== 'ready' || !result.nodeType)
-        throw new Error(canvasDocumentPreviewMessage(result.status) || '文档不可打开');
+      if (result.status !== 'ready' || !result.nodeType) throw previewFailure(result.status);
       // 身份已通过正式预览复核；在导航卸载当前表面前通知调用方记录已查看。
       opening?.(card.id);
       await port.openDocument(card.data.documentId, result.nodeType, result.title);

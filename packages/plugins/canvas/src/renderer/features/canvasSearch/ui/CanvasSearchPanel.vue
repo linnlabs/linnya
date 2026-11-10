@@ -3,7 +3,7 @@
     :show="search.state.open.value"
     class="canvas-floating-panel canvas-search-panel"
     role="search"
-    aria-label="画布内搜索"
+    :aria-label="t('canvas.search.label')"
     @pointerdown.stop
     @keydown="keydown"
   >
@@ -14,14 +14,16 @@
         type="search"
         size="compact"
         :model-value="search.state.query.value"
-        placeholder="搜索卡片内容…"
-        aria-label="搜索卡片内容"
+        :placeholder="t('canvas.search.placeholder')"
+        :aria-label="t('canvas.search.input')"
         @update:model-value="search.state.setQuery($event)"
       />
-      <IconButton label="关闭搜索" size="sm" @click="close"><CloseIcon /></IconButton>
+      <IconButton :label="t('canvas.search.close')" size="sm" @click="close">
+        <CloseIcon />
+      </IconButton>
     </div>
     <p v-if="search.state.query.value" class="canvas-panel-meta" role="status">
-      {{ search.hits.value.length }} 个结果
+      {{ t('canvas.search.results', { count: search.hits.value.length }) }}
     </p>
     <ol class="canvas-panel-list">
       <li v-for="(hit, index) in search.hits.value.slice(0, 100)" :key="hit.id">
@@ -42,6 +44,7 @@
 import { nextTick, ref, watch } from 'vue';
 import { CustomTextInput, DropdownPanel, IconButton } from '@linnya/renderer-ui';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
+import { canvasText as t } from '../../localization';
 import type { createCanvasSearch } from '../orchestration/createCanvasSearch';
 const props = defineProps<{ search: ReturnType<typeof createCanvasSearch> }>();
 const emit = defineEmits<{ close: [] }>();

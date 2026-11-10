@@ -1,6 +1,7 @@
 import { canvasTextPrefix } from '@plugin/canvas/shared';
 import { type CanvasSelectionContextSchema } from '@plugin/canvas/shared';
 import type { z } from 'zod';
+import { canvasText } from '../../localization';
 import { type CanvasSelectionReferenceMetadata } from '../definitions/canvasSelectionReference';
 export function buildCanvasSelectionReference(
   metadata: CanvasSelectionReferenceMetadata,
@@ -10,8 +11,16 @@ export function buildCanvasSelectionReference(
   return {
     deduplicationKey: `${metadata.documentId}:${[...metadata.elementIds].sort().join(',')}`,
     label: count
-      ? `画布 · ${count === metadata.originalCount ? count : `${count}/${metadata.originalCount}`} 张卡`
-      : '画布 · 已删除',
+      ? canvasText('canvas.reference.cards', {
+          count:
+            count === metadata.originalCount
+              ? count
+              : canvasText('canvas.reference.partial', {
+                  count,
+                  original: metadata.originalCount,
+                }),
+        })
+      : canvasText('canvas.reference.deleted'),
     text: context.text,
     previewText: canvasTextPrefix(context.text, 500),
     uri: context.path,

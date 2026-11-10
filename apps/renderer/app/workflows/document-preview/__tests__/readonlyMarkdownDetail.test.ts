@@ -83,3 +83,47 @@ it('cancels a late presentation and releases the old resources when the target c
   expect(host.childNodes).toHaveLength(0);
   expect(report).not.toHaveBeenCalled();
 });
+
+it('keeps the shown surface in place until a re-render for a new width is ready', async () => {
+  const host = document.createElement('div');
+  const preview = (text: string) =>
+    ({
+      documentId: 'doc',
+      title: 'Title',
+      nodeType: 'document',
+      status: 'ready',
+      content: { revisionKey: text, summary: '', detail: { format: 'text', text } },
+    }) as const;
+  let release: (() => void) | undefined;
+  const surface = createReadonlyDocumentSurface({
+    element: () => host,
+    report: vi.fn(),
+    ready: vi.fn(),
+    build: async input => {
+      if (input.widthPx !== 300)
+        await new Promise<void>(resolve => {
+          release = resolve;
+        });
+      const result = await createDocumentPreviewSurface(input);
+      // 正文按构建信号释放自己：已显示的旧表面不能因为新一轮开始就被清空。
+      input.signal.addEventListener('abort', () => result.body.replaceChildren(), { once: true });
+      return result;
+    },
+  });
+  await surface.render(
+    { widthPx: 300, theme: 'light', preview: preview('Old layout') },
+    () => true
+  );
+  const shown = surface.body.value;
+  const pending = surface.render(
+    { widthPx: 200, theme: 'light', preview: preview('New layout') },
+    () => true
+  );
+  await vi.waitFor(() => expect(release).toBeDefined());
+  expect(host.textContent).toContain('Old layout');
+  expect(surface.body.value).toBe(shown);
+  release?.();
+  await pending;
+  expect(host.textContent).toContain('New layout');
+  expect(host.textContent).not.toContain('Old layout');
+});

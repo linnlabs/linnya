@@ -11,6 +11,7 @@ import {
 import type { CanvasArrangementPort } from '../definitions/canvasLayoutCommands';
 import { createCanvasLayoutState } from '../store/createCanvasLayoutState';
 import { planCanvasTreeCreation } from '../functions/planCanvasTreeCreation';
+import { canvasText } from '../../localization';
 
 export function createCanvasLayoutCommands(
   session: CanvasDocumentSession,
@@ -53,7 +54,7 @@ export function createCanvasLayoutCommands(
       historyGroupId?: string
     ) {
       if (disposed) throw new DOMException('Canvas layout disposed', 'AbortError');
-      if (active) throw new Error('排布正在进行，请稍候或先取消');
+      if (active) throw new Error(canvasText('canvas.error.layoutBusy'));
       const { documentId } = requireWritableCanvas(session.state.snapshot.value);
       const job = { documentId, requestId: crypto.randomUUID(), cancelled: false, started: false };
       active = job;
@@ -73,7 +74,8 @@ export function createCanvasLayoutCommands(
         });
         const result = await session.confirmMutation({
           send: () => {
-            if (job.cancelled && !job.started) throw new DOMException('排布已取消', 'AbortError');
+            if (job.cancelled && !job.started)
+              throw new DOMException(canvasText('canvas.error.layoutCancelled'), 'AbortError');
             // 已投递的取消仍须确认原request；不能把“可能已提交”本地改判为未执行。
             job.started = true;
             return port.arrange(request);
@@ -88,7 +90,8 @@ export function createCanvasLayoutCommands(
         requireCanvasUserCommitApplied(result.commit);
         return result.commit;
       } catch (failure) {
-        if (job.cancelled) throw new DOMException('排布已取消', 'AbortError');
+        if (job.cancelled)
+          throw new DOMException(canvasText('canvas.error.layoutCancelled'), 'AbortError');
         throw failure;
       } finally {
         if (active === job) {

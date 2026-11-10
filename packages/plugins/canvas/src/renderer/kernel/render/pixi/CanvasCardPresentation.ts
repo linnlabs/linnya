@@ -93,7 +93,7 @@ export class CanvasCardPresentation {
       this.options.context.readEditingCard() !== card.id &&
       !overview &&
       this.titleExposed(card) &&
-      !(this.options.context.readResizingCard() === card.id && this.options.bitmaps.has(card.id)) &&
+      !(this.options.context.showsOldLayout(card.id) && this.options.bitmaps.has(card.id)) &&
       !this.options.bitmaps.covers(card.id, this.readVisibleCardRegions(card.id))
     );
   }
@@ -104,7 +104,8 @@ export class CanvasCardPresentation {
   }
   identityTitle(card: CanvasCard): string {
     const source =
-      canvasTitlePrefix(this.title(card), 120) || (card.type === 'image' ? '图片' : '空白卡片');
+      canvasTitlePrefix(this.title(card), 120) ||
+      (card.type === 'image' ? this.options.text.imageTitle() : this.options.text.blankTitle());
     const width = this.identityBounds(card).width,
       key = `${width}:${source}`,
       existing = this.identityTitles.get(key);
@@ -126,7 +127,8 @@ export class CanvasCardPresentation {
     );
   }
   title(card: CanvasCard): string {
-    if (card.type === 'document') return this.documentTitles.get(card.data.documentId) ?? '文档';
+    if (card.type === 'document')
+      return this.documentTitles.get(card.data.documentId) ?? this.options.text.documentTitle();
     const cached = this.textTitles.get(card);
     if (cached !== undefined) return cached;
     const value = readCanvasElementText(card);

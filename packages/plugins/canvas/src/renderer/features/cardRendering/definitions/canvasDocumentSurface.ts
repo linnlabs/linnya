@@ -1,5 +1,6 @@
 import type { Component } from 'vue';
 import type { DocumentPreviewResult, DocumentPreviewDetail } from '@app/schemas';
+import type { CanvasColor } from '../../../../shared';
 
 export interface CanvasDocumentSurfacePresentation {
   readonly title: string | null;
@@ -16,7 +17,12 @@ export interface CanvasDocumentSurfacePresentation {
 
 export interface CanvasDocumentSurfaceContext {
   readonly document: Document;
-  readonly card: { readonly documentId: string; readonly width: number; readonly height: number };
+  readonly card: {
+    readonly documentId: string;
+    readonly width: number;
+    readonly height: number;
+    readonly color: CanvasColor;
+  };
   readonly signal: AbortSignal;
   readonly theme: 'light' | 'dark';
 }

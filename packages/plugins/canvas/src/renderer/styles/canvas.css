@@ -84,11 +84,19 @@
   transform-origin: 0 0;
   font-size: var(--canvas-card-font-size);
   line-height: var(--canvas-card-line-height);
+  /* 排版沿用完整卡宽（和位图同样换行），但内容只显示在纸面内，不越过纸边和选框；
+     改尺寸拖动时外框跟随新尺寸、正文保持旧排版，也由这里裁在新纸面内。 */
+  clip-path: inset(var(--canvas-card-inset) round var(--canvas-card-radius));
 }
 .canvas-document-detail-body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  /* 拖大时旧排版比新纸面小：正文也只到它自己的纸边，淡出外那一圈不露出来。 */
+  clip-path: inset(var(--canvas-card-inset) round var(--canvas-card-radius));
+  --document-preview-fade-color: var(--canvas-card-paper-color);
+  --document-preview-fade-inset: var(--canvas-card-inset);
+  --document-preview-fade-radius: var(--canvas-card-radius);
 }
 /* 正文可用滚轮继续往下读，但不画滚动条：滚动条会挤窄正文，选中前后换行就不一样了。 */
 .canvas-document-detail-body * {

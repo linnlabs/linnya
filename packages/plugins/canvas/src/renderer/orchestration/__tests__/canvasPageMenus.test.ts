@@ -24,7 +24,7 @@ it('单卡、多选、空白与只读菜单分别暴露适用入口，子菜单�
   const single = canvasContextMenuActions({ selectionCount: 1, edge: false, readonly: false });
   const multiple = canvasContextMenuActions({ selectionCount: 3, edge: false, readonly: false });
   const empty = canvasContextMenuActions({ selectionCount: 0, edge: false, readonly: false });
-  expect(leaves(single)).toEqual(expect.arrayContaining(canvasColorMenuOptions.map(option => option.value)));
+  expect(leaves(single)).toEqual(expect.arrayContaining(canvasColorMenuOptions().map(option => option.value)));
   expect(leaves(single)).not.toContain('arrange');
   expect(multiple.find(option => option.value === 'arrange')?.text).toBe('自动排布所选');
   expect(empty.find(option => option.value === 'arrange')?.text).toBe('自动排布');

@@ -2,20 +2,18 @@
   <!-- 设置壳“文档与插件”分组里的独立页面；件套不对插件开放，页面与分区按件套同一版式排。 -->
   <div class="canvas-settings-page">
     <section class="canvas-settings-section">
-      <h3 class="canvas-settings-heading">卡片</h3>
+      <h3 class="canvas-settings-heading">{{ t('canvas.settings.cards') }}</h3>
       <div class="canvas-settings">
         <div class="canvas-settings-row is-field">
           <div class="canvas-settings-text">
-            <span class="canvas-settings-label">卡片形状</span>
-            <span class="canvas-settings-description"
-              >圆角：细描边、轻投影；直角：无描边、贴地阴影</span
-            >
+            <span class="canvas-settings-label">{{ t('canvas.settings.shape') }}</span>
+            <span class="canvas-settings-description">{{ t('canvas.settings.shapeHint') }}</span>
           </div>
           <div class="canvas-settings-control">
             <CustomSelect
               :model-value="store.preferences.material"
               :options="materials"
-              trigger-aria-label="卡片形状"
+              :trigger-aria-label="t('canvas.settings.shape')"
               font-size="14px"
               show-selected-checkmark
               @update:model-value="setMaterial"
@@ -24,14 +22,14 @@
         </div>
         <div class="canvas-settings-row is-field">
           <div class="canvas-settings-text">
-            <span class="canvas-settings-label">远景显示</span>
-            <span class="canvas-settings-description">缩小到看不清正文时，卡片上显示什么</span>
+            <span class="canvas-settings-label">{{ t('canvas.settings.overview') }}</span>
+            <span class="canvas-settings-description">{{ t('canvas.settings.overviewHint') }}</span>
           </div>
           <div class="canvas-settings-control">
             <CustomSelect
               :model-value="store.preferences.overview"
               :options="overviews"
-              trigger-aria-label="远景显示"
+              :trigger-aria-label="t('canvas.settings.overview')"
               font-size="14px"
               show-selected-checkmark
               @update:model-value="setOverview"
@@ -41,27 +39,29 @@
       </div>
     </section>
     <section class="canvas-settings-section">
-      <h3 class="canvas-settings-heading">操作</h3>
+      <h3 class="canvas-settings-heading">{{ t('canvas.settings.controls') }}</h3>
       <div class="canvas-settings">
         <div class="canvas-settings-row is-end">
           <div class="canvas-settings-text">
-            <span class="canvas-settings-label">滚轮缩放</span>
-            <span class="canvas-settings-description">关闭时滚轮平移画布；触控板捏合始终缩放</span>
+            <span class="canvas-settings-label">{{ t('canvas.settings.wheelZoom') }}</span>
+            <span class="canvas-settings-description">{{
+              t('canvas.settings.wheelZoomHint')
+            }}</span>
           </div>
           <Switch
             :model-value="store.preferences.wheelZoom"
-            v-bind="{ ariaLabel: '滚轮缩放' }"
+            v-bind="{ ariaLabel: t('canvas.settings.wheelZoom') }"
             @update:model-value="setToggle('wheelZoom', $event)"
           />
         </div>
         <div class="canvas-settings-row is-end">
           <div class="canvas-settings-text">
-            <span class="canvas-settings-label">拖动吸附</span>
-            <span class="canvas-settings-description">拖动时对齐其他卡片；按住 Alt 临时关闭</span>
+            <span class="canvas-settings-label">{{ t('canvas.settings.snapping') }}</span>
+            <span class="canvas-settings-description">{{ t('canvas.settings.snappingHint') }}</span>
           </div>
           <Switch
             :model-value="store.preferences.snapping"
-            v-bind="{ ariaLabel: '拖动吸附' }"
+            v-bind="{ ariaLabel: t('canvas.settings.snapping') }"
             @update:model-value="setToggle('snapping', $event)"
           />
         </div>
@@ -70,18 +70,20 @@
   </div>
 </template>
 <script setup lang="ts">
+import { computed } from 'vue';
 import { CustomSelect, Switch } from '@linnya/renderer-ui';
+import { canvasText as t } from '../../localization';
 import { useCanvasPreferencesStore } from '../store/canvasPreferencesStore';
 import { CanvasPreferencesSchema } from '../definitions/canvasPreferences';
 const store = useCanvasPreferencesStore();
-const materials = [
-  { value: 'card', text: '圆角' },
-  { value: 'paper', text: '直角' },
-];
-const overviews = [
-  { value: 'titles', text: '大标题' },
-  { value: 'thumbnails', text: '内容缩略图' },
-];
+const materials = computed(() => [
+  { value: 'card', text: t('canvas.settings.rounded') },
+  { value: 'paper', text: t('canvas.settings.square') },
+]);
+const overviews = computed(() => [
+  { value: 'titles', text: t('canvas.settings.titles') },
+  { value: 'thumbnails', text: t('canvas.settings.thumbnails') },
+]);
 const setMaterial = (value: string | number | boolean) =>
   store.replace(CanvasPreferencesSchema.parse({ ...store.preferences, material: value }));
 const setOverview = (value: string | number | boolean) =>

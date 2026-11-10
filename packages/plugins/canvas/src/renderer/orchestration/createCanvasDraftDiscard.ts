@@ -1,4 +1,5 @@
 import type { CanvasRestoreDraftParticipant } from '../definitions/canvasHistoryRestoration';
+import { canvasText } from '../features/localization';
 export function createCanvasDraftDiscard(options: {
   readonly participants: readonly CanvasRestoreDraftParticipant[];
   readonly saving: () => boolean;
@@ -6,7 +7,7 @@ export function createCanvasDraftDiscard(options: {
   readonly focus: () => void;
 }) {
   return () => {
-    if (options.saving()) throw new Error('请先等待保存或确认结果，再使用已保存内容');
+    if (options.saving()) throw new Error(canvasText('canvas.error.waitBeforeDiscard'));
     for (const participant of options.participants)
       if (participant.readGeneration() !== null) participant.discard();
     options.changed();

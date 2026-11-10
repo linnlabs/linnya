@@ -1,6 +1,7 @@
 import type { CanvasPoint } from '@plugin/canvas/shared';
 import type { EmbeddedMarkdownInsertion } from '@plugin/renderer/embeddedMarkdownEditor';
 import type { CanvasCardContent } from '../../cardMedia';
+import { canvasText } from '../../localization';
 import type { createCanvasCardCreation } from './createCanvasCardCreation';
 
 export function installCanvasMediaInput(options: {
@@ -11,6 +12,7 @@ export function installCanvasMediaInput(options: {
   readonly captureInsertion: () => EmbeddedMarkdownInsertion;
   readonly worldPoint: (point: CanvasPoint) => CanvasPoint;
   readonly report: (error: unknown) => void;
+  readonly clearFailure: () => void;
   readonly canWrite: () => boolean;
 }) {
   const inline = async (files: readonly File[]) => {
@@ -31,13 +33,15 @@ export function installCanvasMediaInput(options: {
           })),
         })
       )
-        throw new Error('原文字卡已关闭，请重新插入图片');
+        throw new Error(canvasText('canvas.input.image.editorClosed'));
     } finally {
       insertion.cancel();
       options.content.releaseStagedImages(assetIds);
     }
   };
   const paste = (event: ClipboardEvent) => {
+    // 每次粘贴都经过这里；上次的失败不能留到这次的结果上。
+    options.clearFailure();
     const files = Array.from(event.clipboardData?.files ?? []).filter(file =>
       file.type.startsWith('image/')
     );
@@ -45,7 +49,7 @@ export function installCanvasMediaInput(options: {
     event.preventDefault();
     event.stopPropagation();
     if (!options.canWrite()) {
-      options.report(new Error('画布为只读，无法插入图片'));
+      options.report(new Error(canvasText('canvas.input.image.readonly')));
       return;
     }
     void (
@@ -69,7 +73,7 @@ export function installCanvasMediaInput(options: {
     if (!id && !files.length) return;
     event.preventDefault();
     if (!options.canWrite()) {
-      options.report(new Error('画布为只读，无法添加卡片'));
+      options.report(new Error(canvasText('canvas.input.drop.readonly')));
       return;
     }
     const rect = options.stage.getBoundingClientRect(),

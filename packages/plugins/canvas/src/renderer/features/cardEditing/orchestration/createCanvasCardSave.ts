@@ -1,4 +1,5 @@
 import type { CanvasCardSaveOptions, CanvasCardSave } from '../definitions/cardEditing';
+import { canvasText } from '../../localization';
 
 /** 保存串行屏障与成功回执接纳；编辑打开/关闭及lease归属由编辑器生命周期提供。 */
 export function createCanvasCardSave(options: CanvasCardSaveOptions): CanvasCardSave {
@@ -21,7 +22,8 @@ export function createCanvasCardSave(options: CanvasCardSaveOptions): CanvasCard
         const card = session.state.snapshot.value?.elements.find(
           element => element.id === draft.elementId
         );
-        if (!card || card.type !== 'text') throw new Error('文字卡已被移除，草稿仍保留');
+        if (!card || card.type !== 'text')
+          throw new Error(canvasText('canvas.error.textCardRemoved'));
         const result = await session.commit(
           [
             {
@@ -41,11 +43,12 @@ export function createCanvasCardSave(options: CanvasCardSaveOptions): CanvasCard
         if (!owns(lease, draft)) return true;
         const outcome = result.results[0];
         if (outcome?.status !== 'applied')
-          throw new Error(outcome?.reason ?? '文字修改没有提交，请重试');
+          throw new Error(outcome?.reason ?? canvasText('canvas.error.textNotCommitted'));
         const current = session.state.snapshot.value?.elements.find(
           element => element.id === draft.elementId
         );
-        if (!current || current.type !== 'text') throw new Error('文字卡已被移除，草稿仍保留');
+        if (!current || current.type !== 'text')
+          throw new Error(canvasText('canvas.error.textCardRemoved'));
         state.saved(current.revision, draft.editSequence);
         if (finish && state.draft.value?.editSequence === draft.editSequence)
           return await finishDraft(draft, mayFinish);

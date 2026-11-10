@@ -1,5 +1,6 @@
 import type { CanvasCard, CanvasCardId, CanvasElement } from '@plugin/canvas/shared';
 import type { CanvasTreeCreationPlan } from '../definitions/canvasLayoutCommands';
+import { canvasText } from '../../localization';
 function componentIds(elements: readonly CanvasElement[], id: CanvasCardId): CanvasCardId[] {
   const neighbors = new Map<CanvasCardId, CanvasCardId[]>();
   for (const element of elements)
@@ -28,12 +29,12 @@ export function planCanvasTreeCreation(
   kind: 'child' | 'sibling',
   direction: 'right' | 'down'
 ): CanvasTreeCreationPlan {
-  if (selected.length !== 1) throw new Error('树状键盘操作需要选中一张卡');
+  if (selected.length !== 1) throw new Error(canvasText('canvas.error.treeNeedsOne'));
   const card = elements.find(
     (element): element is CanvasCard => element.id === selected[0] && element.type !== 'edge'
   );
-  if (!card) throw new Error('所选卡已被删除');
-  if (card.locked) throw new Error('请先解锁所选卡');
+  if (!card) throw new Error(canvasText('canvas.error.selectedGone'));
+  if (card.locked) throw new Error(canvasText('canvas.error.selectedLocked'));
   const parents = new Set(
     elements.flatMap(element =>
       element.type === 'edge' &&
@@ -45,7 +46,7 @@ export function planCanvasTreeCreation(
     )
   );
   if (kind === 'sibling' && parents.size > 1)
-    throw new Error('这张卡有多个上级，请先选择一个上级，再用 Tab 创建子卡');
+    throw new Error(canvasText('canvas.error.multipleParents'));
   const parent = kind === 'child' ? card.id : ([...parents][0] ?? null);
   const point =
     kind === 'child'

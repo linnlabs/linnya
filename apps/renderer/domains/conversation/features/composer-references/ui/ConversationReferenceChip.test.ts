@@ -20,6 +20,7 @@ it('聚焦才挂载只读预览，进入弹层保持，Escape和移除均释放�
     const trigger = host.querySelector<HTMLButtonElement>('.ai-assistant-quote-preview__pill-action');
     trigger?.focus(); await nextTick(); await nextTick();
     expect(mounted).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.conversation-reference-hover__content--owned')).not.toBeNull();
     host.firstElementChild?.dispatchEvent(new MouseEvent('mouseleave'));
     document.querySelector('.conversation-reference-hover')?.dispatchEvent(new MouseEvent('mouseenter'));
     await vi.advanceTimersByTimeAsync(250);

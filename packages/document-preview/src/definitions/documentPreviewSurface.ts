@@ -7,6 +7,8 @@ export interface DocumentPreviewSurfaceInput {
   /** 容器的逻辑宽度，不含相机缩放或 DPR。 */
   readonly widthPx: number;
   readonly maxHeight?: number;
+  /** 容器比可见范围大时（Canvas 纸面内缩）四周内缩的距离，首屏正文和淡出在可见边缘结束。 */
+  readonly visibleInsetPx?: number;
   readonly theme: 'light' | 'dark';
   readonly signal: AbortSignal;
   readonly icon?: Component | null;

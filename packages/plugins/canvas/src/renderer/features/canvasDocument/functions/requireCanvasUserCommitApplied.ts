@@ -1,4 +1,5 @@
 import type { CanvasCommitResult } from '@plugin/canvas/shared';
+import { canvasText } from '../../localization';
 export class CanvasCommitOutcomeError extends Error {
   constructor(
     message: string,
@@ -15,9 +16,10 @@ export function requireCanvasUserCommitApplied(result: CanvasCommitResult): void
       outcome.fieldResults?.some(field => field.status === 'skipped')
   );
   if (!skipped.length) return;
-  const applied = result.results.filter(outcome => outcome.status === 'applied').length;
+  const applied = result.results.filter(outcome => outcome.status === 'applied').length,
+    changed = canvasText('canvas.error.contentChanged');
   throw new CanvasCommitOutcomeError(
-    `${applied ? `已提交 ${applied} 项，另有 ${skipped.length} 项跳过` : '本次修改未提交'}：${[...new Set(skipped.flatMap(outcome => (outcome.fieldResults ? outcome.fieldResults.filter(field => field.status === 'skipped').map(field => `${field.field}: ${field.reason ?? '内容已变化，请重试'}`) : [outcome.reason ?? '内容已变化，请重试'])))].join('；')}`,
+    `${applied ? canvasText('canvas.error.commitPartial', { applied, skipped: skipped.length }) : canvasText('canvas.error.commitNone')}: ${[...new Set(skipped.flatMap(outcome => (outcome.fieldResults ? outcome.fieldResults.filter(field => field.status === 'skipped').map(field => `${field.field}: ${field.reason ?? changed}`) : [outcome.reason ?? changed])))].join(canvasText('canvas.list.separator'))}`,
     result
   );
 }

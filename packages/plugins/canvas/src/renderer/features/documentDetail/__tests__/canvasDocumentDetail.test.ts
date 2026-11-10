@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { createApp, nextTick } from 'vue';
-import { CanvasDocumentCardSchema } from '@plugin/canvas/shared';
+import { createApp, h, nextTick, render } from 'vue';
+import { CanvasDocumentCardSchema, type CanvasRectangle } from '@plugin/canvas/shared';
 import type { CanvasDocumentDetailPort } from '../definitions/documentDetail';
 import { createCanvasDocumentDetail } from '../orchestration/createCanvasDocumentDetail';
 import { canvasDocumentDetailTarget } from '../functions/canvasDocumentDetailTarget';
@@ -38,7 +38,8 @@ function port(): CanvasDocumentDetailPort {
     }),
     visible: vi.fn(),
     focus: vi.fn(),
-    open: vi.fn(),
+    open: vi.fn(async () => {}),
+    context: vi.fn(async () => {}),
     navigate: vi.fn(),
   };
 }
@@ -243,9 +244,89 @@ describe('单张近景文档详情', () => {
       );
     expect(close).toHaveBeenCalledTimes(1);
     expect(host.focus).toHaveBeenCalledTimes(1);
+    const body = root.querySelector('p');
+    const menu = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 40,
+      clientY: 50,
+    });
+    body?.dispatchEvent(menu);
+    expect(menu.defaultPrevented).toBe(true);
+    expect(host.context).toHaveBeenCalledWith(card().id, { x: 40, y: 50 });
+    body?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+    expect(host.open).toHaveBeenCalledWith(card());
     app.unmount();
     expect(release).toHaveBeenCalledTimes(1);
     expect(host.visible).toHaveBeenLastCalledWith(card().id, false);
+    root.remove();
+  });
+  it('只改高度不重排，松手立即放开正文高度', async () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const props = {
+      card: card(),
+      camera: { x: 0, y: 0, zoom: 1 },
+      projectId: 'project',
+      port: port(),
+      frame: { x: 0, y: 0, width: 280, height: 120 } as CanvasRectangle | null,
+    };
+    render(h(CanvasDocumentDetail, props), root);
+    await nextTick();
+    render(
+      h(CanvasDocumentDetail, { ...props, frame: null, card: { ...card(), height: 120 } }),
+      root
+    );
+    await nextTick();
+    expect(root.querySelector<HTMLElement>('.canvas-document-detail-body')?.style.height).toBe('');
+    render(null, root);
+    root.remove();
+  });
+  it('改尺寸拖动中外框跟随新尺寸，正文保持存储尺寸的旧排版，新排版就绪后恢复填满', async () => {
+    const root = document.createElement('div');
+    document.body.append(root);
+    const host = port();
+    let rendered: (() => void) | undefined;
+    host.mount = async input => {
+      rendered = input.onReady;
+      input.onReady?.();
+      return vi.fn();
+    };
+    const props = {
+      card: card(),
+      camera: { x: 0, y: 0, zoom: 1 },
+      projectId: 'project',
+      port: host,
+      frame: { x: 0, y: 0, width: 160, height: 120 } as CanvasRectangle | null,
+    };
+    render(h(CanvasDocumentDetail, props), root);
+    await nextTick();
+    await vi.waitFor(() => expect(rendered).toBeDefined());
+    await nextTick();
+    const section = root.querySelector<HTMLElement>('section'),
+      body = root.querySelector<HTMLElement>('.canvas-document-detail-body');
+    expect([section?.style.width, section?.style.height]).toEqual(['160px', '120px']);
+    expect([body?.style.width, body?.style.height, body?.style.flexGrow]).toEqual([
+      '280px',
+      '180px',
+      '0',
+    ]);
+    render(
+      h(CanvasDocumentDetail, {
+        ...props,
+        card: { ...card(), revision: 2, width: 160, height: 120 },
+        frame: null,
+      }),
+      root
+    );
+    await nextTick();
+    expect([section?.style.width, section?.style.height]).toEqual(['160px', '120px']);
+    // 宽度放开给重排量取；高度等新排版就绪，旧排版不先露出原来裁掉的部分。
+    expect([body?.style.width, body?.style.height]).toEqual(['', '180px']);
+    rendered?.();
+    await nextTick();
+    expect(body?.style.height).toBe('');
+    render(null, root);
     root.remove();
   });
 });

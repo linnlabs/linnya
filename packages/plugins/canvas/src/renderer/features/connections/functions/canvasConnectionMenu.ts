@@ -1,41 +1,73 @@
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import type { CanvasPatch } from '@plugin/canvas/shared';
-import { canvasChromeColorChoices, canvasMenuIcons } from '../../canvasChrome';
-const directions = [
-  { value: 'direction-none', text: '无箭头', iconComponent: canvasMenuIcons['direction:none'] },
-  { value: 'direction-forward', text: '单向', iconComponent: canvasMenuIcons['direction:forward'] },
-  { value: 'direction-both', text: '双向', iconComponent: canvasMenuIcons['direction:both'] },
-];
-const shapes: readonly CustomSelectOption<string>[] = [
-  { value: 'shape-curve', text: '曲线', iconComponent: canvasMenuIcons['lineStyle:curve'] },
-  { value: 'shape-straight', text: '直线', iconComponent: canvasMenuIcons['lineStyle:straight'] },
-  { isSeparator: true },
-  { value: 'pattern-solid', text: '实线', iconComponent: canvasMenuIcons['linePattern:solid'] },
-  { value: 'pattern-dashed', text: '虚线', iconComponent: canvasMenuIcons['linePattern:dashed'] },
-];
-const colors = canvasChromeColorChoices(
-  [
-    { color: 'white', text: '原色' },
-    { color: 'red', text: '红' },
-    { color: 'orange', text: '橙' },
-    { color: 'yellow', text: '黄' },
-    { color: 'green', text: '绿' },
-    { color: 'cyan', text: '青' },
-    { color: 'purple', text: '紫' },
-  ],
-  color => `color-${color}`
-);
-export const canvasConnectionContextActions: readonly CustomSelectOption<string>[] = [
-  { value: 'label', text: '编辑标签', shortcut: '↩' },
-  { text: '方向', children: directions },
-  { text: '线形', children: shapes },
-  { text: '颜色', children: colors },
-  { value: 'reverse', text: '反转方向' },
-  { value: 'jump-from', text: '跳到起点' },
-  { value: 'jump-to', text: '跳到终点' },
-  { isSeparator: true },
-  { value: 'delete', text: '删除连线', shortcut: '⌫', variant: 'danger' },
-];
+import { canvasChromeColorChoices, canvasColorPalette, canvasMenuIcons } from '../../canvasChrome';
+import { canvasText } from '../../localization';
+function directions(): readonly CustomSelectOption<string>[] {
+  return [
+    {
+      value: 'direction-none',
+      text: canvasText('canvas.connection.directionNone'),
+      iconComponent: canvasMenuIcons['direction:none'],
+    },
+    {
+      value: 'direction-forward',
+      text: canvasText('canvas.connection.directionForward'),
+      iconComponent: canvasMenuIcons['direction:forward'],
+    },
+    {
+      value: 'direction-both',
+      text: canvasText('canvas.connection.directionBoth'),
+      iconComponent: canvasMenuIcons['direction:both'],
+    },
+  ];
+}
+function shapes(): readonly CustomSelectOption<string>[] {
+  return [
+    {
+      value: 'shape-curve',
+      text: canvasText('canvas.connection.curve'),
+      iconComponent: canvasMenuIcons['lineStyle:curve'],
+    },
+    {
+      value: 'shape-straight',
+      text: canvasText('canvas.connection.straight'),
+      iconComponent: canvasMenuIcons['lineStyle:straight'],
+    },
+    { isSeparator: true },
+    {
+      value: 'pattern-solid',
+      text: canvasText('canvas.connection.solid'),
+      iconComponent: canvasMenuIcons['linePattern:solid'],
+    },
+    {
+      value: 'pattern-dashed',
+      text: canvasText('canvas.connection.dashed'),
+      iconComponent: canvasMenuIcons['linePattern:dashed'],
+    },
+  ];
+}
+/** 菜单项按当前语言现取现建；颜色名与卡片菜单同源。 */
+export function canvasConnectionContextActions(): readonly CustomSelectOption<string>[] {
+  return [
+    { value: 'label', text: canvasText('canvas.connection.editLabel'), shortcut: '↩' },
+    { text: canvasText('canvas.connection.direction'), children: directions() },
+    { text: canvasText('canvas.connection.shape'), children: shapes() },
+    {
+      text: canvasText('canvas.color.menu'),
+      children: canvasChromeColorChoices(canvasColorPalette(), color => `color-${color}`),
+    },
+    { value: 'reverse', text: canvasText('canvas.connection.reverse') },
+    { value: 'jump-from', text: canvasText('canvas.connection.jumpFrom') },
+    { value: 'jump-to', text: canvasText('canvas.connection.jumpTo') },
+    { isSeparator: true },
+    {
+      value: 'delete',
+      text: canvasText('canvas.connection.delete'),
+      shortcut: '⌫',
+      variant: 'danger',
+    },
+  ];
+}
 const patches: ReadonlyMap<string, CanvasPatch> = new Map([
   ['direction-none', { direction: 'none' }],
   ['direction-forward', { direction: 'forward' }],

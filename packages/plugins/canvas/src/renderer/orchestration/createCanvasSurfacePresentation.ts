@@ -59,6 +59,8 @@ export function createCanvasSurfacePresentation({
   });
   // 改尺寸拖动中，选区浮条与连线锚点仍按旧外框定位，会压在预览框里；拖动期间收起。
   const resizingCard = computed(() => resizing.state.preview.value !== null);
+  // 改尺寸只对唯一选中的卡开放；拖动到新尺寸落地前，盖在卡上的文档详情按这个外框裁切。
+  const resizePreview = computed(() => resizing.state.preview.value);
   const integrityNotice = computed(() => canvasIntegrityNotice(session.state.snapshot.value));
   const editingDraft = computed(() =>
     Boolean(editor.state.draft.value || creation.state.draft.value)
@@ -87,6 +89,7 @@ export function createCanvasSurfacePresentation({
     selectionStyle,
     resizeFrameStyle,
     resizingCard,
+    resizePreview,
     integrityNotice,
     editingDraft,
     hoveredCard,

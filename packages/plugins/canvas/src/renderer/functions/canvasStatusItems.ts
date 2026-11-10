@@ -1,4 +1,5 @@
 import type { CanvasStatusItem } from '../features/canvasChrome';
+import { canvasText } from '../features/localization';
 import type { createCanvasSurface } from '../orchestration/createCanvasSurface';
 
 type CanvasSurface = Awaited<ReturnType<typeof createCanvasSurface>>;
@@ -18,22 +19,34 @@ export function canvasStatusItems(input: CanvasStatusInput): readonly CanvasStat
   if (layout?.state.busy.value)
     items.push({
       id: 'layout-busy',
-      text: '排布中…',
+      text: canvasText('canvas.status.layoutBusy'),
       tone: 'neutral',
-      actions: [{ label: '取消排布 (Esc)', run: () => void run(() => layout.cancel()) }],
+      actions: [
+        {
+          label: canvasText('canvas.status.cancelLayout'),
+          run: () => void run(() => layout.cancel()),
+        },
+      ],
     });
   else if (layout?.state.diagnostics.value.length)
     items.push({
       id: 'layout-diagnostics',
-      text: layout.state.diagnostics.value.map(item => item.message).join('；'),
+      text: layout.state.diagnostics.value
+        .map(item => item.message)
+        .join(canvasText('canvas.list.separator')),
       tone: 'neutral',
     });
   if (layout?.state.treeKeyboard.value)
     items.push({
       id: 'tree-keyboard',
-      text: '树状键盘模式：Tab 新建子卡，Enter 新建同级',
+      text: canvasText('canvas.status.treeKeyboard'),
       tone: 'neutral',
-      actions: [{ label: '关闭', run: () => layout.state.setTreeKeyboard(false) }],
+      actions: [
+        {
+          label: canvasText('canvas.status.close'),
+          run: () => layout.state.setTreeKeyboard(false),
+        },
+      ],
     });
   const integrity = surface?.integrityNotice.value,
     render = surface?.renderNotice.value;
@@ -46,7 +59,13 @@ export function canvasStatusItems(input: CanvasStatusInput): readonly CanvasStat
       text: error,
       tone: 'error',
       actions: surface?.hasDraft.value
-        ? [{ label: '使用已保存内容', disabled: saving || Boolean(delivery), run: input.discard }]
+        ? [
+            {
+              label: canvasText('canvas.status.useSaved'),
+              disabled: saving || Boolean(delivery),
+              run: input.discard,
+            },
+          ]
         : [],
     });
   if (delivery && surface)
@@ -54,10 +73,15 @@ export function canvasStatusItems(input: CanvasStatusInput): readonly CanvasStat
       id: 'delivery',
       text: delivery,
       tone: 'error',
-      actions: [{ label: '重试确认', run: () => void run(() => surface.session.retryDelivery()) }],
+      actions: [
+        {
+          label: canvasText('canvas.status.retryConfirm'),
+          run: () => void run(() => surface.session.retryDelivery()),
+        },
+      ],
     });
   else if (!surface && !error)
-    items.push({ id: 'opening', text: '正在打开画布…', tone: 'neutral' });
+    items.push({ id: 'opening', text: canvasText('canvas.status.opening'), tone: 'neutral' });
 
   return items;
 }

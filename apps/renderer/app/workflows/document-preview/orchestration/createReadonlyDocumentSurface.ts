@@ -5,7 +5,11 @@ import {
 } from '@linnya/document-preview';
 import { createDocumentPreviewDetailState } from '../store/documentPreviewDetailState';
 
-/** 取消旧呈现后才构建新表面；图片/图表迟到时不能覆盖换范围后的预览。 */
+/**
+ * 新表面构建期间取消旧的在途构建，图片/图表迟到时不能覆盖换范围后的预览。
+ * 已显示的旧表面留到新表面就绪再原地替换：宽度或主题一变就先清空，会空白几帧。
+ * 正文把构建信号当作自己的释放信号，所以已显示表面的信号不再取消，只经 dispose 释放。
+ */
 export function createReadonlyDocumentSurface(input: {
   element: () => HTMLElement | null;
   report: (error: unknown) => void;
@@ -31,7 +35,7 @@ export function createReadonlyDocumentSurface(input: {
       options: Omit<DocumentPreviewSurfaceInput, 'document' | 'signal'>,
       isCurrent: () => boolean
     ) {
-      clear();
+      active?.abort();
       const cancellation = new AbortController();
       active = cancellation;
       state.set('loading');
@@ -49,12 +53,17 @@ export function createReadonlyDocumentSurface(input: {
           return;
         }
         element.replaceChildren(result.element);
+        release?.();
         release = result.dispose;
+        if (active === cancellation) active = undefined;
         body.value = result.body;
         state.set('ready');
         input.ready();
       } catch (failure) {
         if (!cancellation.signal.aborted && isCurrent()) {
+          release?.();
+          release = undefined;
+          body.value = null;
           state.set('failed');
           input.report(failure);
         }

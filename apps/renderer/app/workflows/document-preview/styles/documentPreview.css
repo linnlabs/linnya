@@ -1,5 +1,6 @@
 @import '@linnya/document-preview/style.css';
 .readonly-document-preview {
+  position: relative;
   min-width: 0;
   min-height: 0;
   height: 100%;

@@ -1,5 +1,6 @@
 import { defineAsyncComponent, type Component } from 'vue';
 import type { RendererPluginContribution } from '@plugin/renderer/pluginContribution';
+import { registerMessageCatalogs } from '@app/localization';
 import {
   registerSettingsContribution,
   unregisterSettingsContribution,
@@ -13,6 +14,7 @@ import {
 } from './features/conversationSelection';
 import { createCanvasSelectionReferencePort } from './adapters/createCanvasSelectionReferencePort';
 import { persistCanvasPreferences, CanvasSettingsPage } from './features/materialSetting';
+import { CANVAS_MESSAGE_CATALOG } from './features/localization';
 import canvasStyles from './styles/canvas.css?url';
 import documentPreviewStyles from '@linnya/document-preview/style.css?url';
 import markdownStyles from '@linnya/markdown-document-core/style.css?url';
@@ -46,11 +48,13 @@ export const rendererPlugin: RendererPluginContribution = {
     referenceProviders: [],
   },
   activate() {
+    registerMessageCatalogs(CANVAS_MESSAGE_CATALOG);
     stopPreferences = persistCanvasPreferences();
     // 画布的偏好只影响画布，放在“文档与插件”里自成一页，不混进全局外观。
     registerSettingsContribution({
       id: CANVAS_SETTINGS_ID,
       title: '画布',
+      titleMessageKey: 'canvas.settings.title',
       group: 'document-types',
       order: 40,
       component: CanvasSettingsPage,
@@ -80,6 +84,9 @@ export const rendererPlugin: RendererPluginContribution = {
       label: '画布',
       createLabel: '新建画布',
       defaultName: '未命名画布',
+      labelText: { key: 'canvas.plugin.label', fallback: '画布' },
+      createLabelText: { key: 'canvas.plugin.createLabel', fallback: '新建画布' },
+      defaultNameText: { key: 'canvas.plugin.defaultName', fallback: '未命名画布' },
       iconComponent: CanvasIcon,
       iconClass: 'canvas-icon',
       createPriority: 25,

@@ -4,7 +4,7 @@
     class="canvas-line-label-preview"
     :style="style"
     role="region"
-    aria-label="连线完整标签"
+    :aria-label="t('canvas.connection.fullLabel')"
     tabindex="0"
     @pointerdown.stop
     @pointerenter="editing.labelPreview.enter()"
@@ -17,6 +17,7 @@
 </template>
 <script setup lang="ts">
 import { computed } from 'vue';
+import { canvasText as t } from '../../localization';
 import { DropdownPanel } from '@linnya/renderer-ui';
 import type { CanvasCamera } from '@plugin/canvas/shared';
 import type { createCanvasConnectionEditing } from '../orchestration/createCanvasConnectionEditing';

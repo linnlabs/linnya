@@ -13,6 +13,8 @@ Markdown 的块呈现归
 `disposeDocumentPreviewSurface`。自定义交互详情通过 `externalBody`
 共用标题与正文槽，不能再在消费方复制标题/正文外观。
 
+首屏正文排到表面底边，确实还有下文时在底部淡出；详情滚动区还有下文时使用同一规则（`document-preview-more-below`）。消费方用 `--document-preview-fade-color` 与 `--document-preview-fade-radius` 提供所在面板的底色和底角圆角；容器比可见范围大时（Canvas 纸面内缩），位图传 `visibleInsetPx`，live 详情设置 `--document-preview-fade-inset`，让正文和淡出在可见边缘结束。淡出是渐变覆盖层，不用 `mask-image`：离屏位图绘制时遮罩会让整块正文消失。
+
 表面显式持有明暗主题，加载 Renderer
 UI 正式语义 token。Canvas 不对文档表面额外着墨或覆盖标题颜色；纸张材质属于外层。真实 Workspace 根节点的布局隔离由内容 owner 负责，Host 编辑器的全局留白、图注和字号不得污染预览。
 

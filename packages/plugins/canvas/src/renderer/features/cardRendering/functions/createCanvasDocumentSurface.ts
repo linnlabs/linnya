@@ -1,4 +1,6 @@
 import { createDocumentPreviewSurface, documentPreviewMessage } from '@linnya/document-preview';
+import { readCanvasCardCssPalette } from '../../../../shared';
+import { CANVAS_CARD_CORNER_RADIUS, CANVAS_CARD_PAPER_INSET } from '../../../kernel/cardFrame';
 import type {
   CanvasDocumentSurfacePresentation,
   CanvasDocumentSurfaceContext,
@@ -44,6 +46,17 @@ export async function createCanvasDocumentSurface(
     icon: presentation?.icon,
     widthPx: card.width,
     maxHeight: card.height,
+    // 位图铺满卡片几何框，看得见的纸面四周内缩；正文和淡出在纸边结束，和选中详情一致。
+    visibleInsetPx: CANVAS_CARD_PAPER_INSET,
   });
+  result.element.style.setProperty(
+    '--document-preview-fade-color',
+    readCanvasCardCssPalette(card.color, theme === 'dark').paper
+  );
+  // 与文字卡淡出同一几何：取卡片材质圆角；纸材质圆角更小，多出的角落透出的是同色纸面。
+  result.element.style.setProperty(
+    '--document-preview-fade-radius',
+    `${CANVAS_CARD_CORNER_RADIUS.card}px`
+  );
   return result.element;
 }

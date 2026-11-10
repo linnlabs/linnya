@@ -57,7 +57,7 @@ export function readCanvasClipboard(database: CanvasDatabase, value: unknown) {
   const { context, snapshot } = readSelection(database, { ...input, format: 'markdown' });
   // 发送引用有“已删除”语义；复制/剪切没有有效元素时不能改写剪贴板。
   if (!context.elementIds.length)
-    throw new CanvasDocumentFailure('document_missing', '所选卡片已全部移除，没有可复制的内容');
+    throw new CanvasDocumentFailure('selection_removed', '所选卡片已全部移除，没有可复制的内容');
   const selected = new Set<string>(context.elementIds);
   return CanvasClipboardSchema.parse({
     ...context,

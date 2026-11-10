@@ -9,6 +9,7 @@ export {
   canvasColorSwatchOptions,
   canvasChromeColorChoices,
 } from './functions/canvasColorMenuOptions';
+export { CANVAS_PALETTE_COLORS, canvasColorPalette } from './functions/canvasColorPalette';
 export { default as CanvasPortalMenu } from './ui/CanvasPortalMenu.vue';
 export { canvasMenuIcons } from './functions/canvasMenuIcons';
 export type { CanvasMenuAnchor } from './definitions/canvasMenu';

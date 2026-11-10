@@ -4,6 +4,7 @@ import type { CanvasCardCreationPort, CanvasPreparedImage } from '../definitions
 import { createCanvasDocumentPickerState } from '../store/createCanvasDocumentPickerState';
 import { readImageFile } from '../functions/readImageFile';
 import { buildCanvasImageCards } from '../functions/buildCanvasImageCards';
+import { canvasText } from '../../localization';
 export function createCanvasCardCreation(
   session: CanvasDocumentSession,
   port: CanvasCardCreationPort,
@@ -67,7 +68,8 @@ export function createCanvasCardCreation(
         });
       }
       if (!images.length) return;
-      if (documentId() !== sourceId) throw new DOMException('图片导入的画布已关闭', 'AbortError');
+      if (documentId() !== sourceId)
+        throw new DOMException(canvasText('canvas.input.image.sourceClosed'), 'AbortError');
       // 所有图片完成准备后一次建立卡片/归属/撤销记录；第二张失败不会留下半批。
       const result = await session.commit(buildCanvasImageCards(images, point));
       const ids = images.flatMap((_image, index) => {

@@ -1,4 +1,5 @@
 import type { CustomSelectOption } from '@linnya/renderer-ui';
+import { canvasText } from '../../localization';
 
 /** 与滚轮缩放（canvasZoomCamera）相同的倍率范围；加减按钮每步 1.25 倍。 */
 export const CANVAS_ZOOM_LIMITS = { min: 0.02, max: 4 } as const;
@@ -10,7 +11,7 @@ export type CanvasZoomMenuValue = 'fit' | (typeof PRESETS)[number];
 /** 与 Slides 缩放菜单同序：先“显示全部”，分隔后是常用档位；快捷键与画布键盘一致。 */
 export function canvasZoomMenuOptions(): readonly CustomSelectOption<CanvasZoomMenuValue>[] {
   return [
-    { value: 'fit', text: '显示全部', shortcut: '⌘1' },
+    { value: 'fit', text: canvasText('canvas.zoom.fit'), shortcut: '⌘1' },
     { isSeparator: true },
     ...PRESETS.map(value => ({
       value,

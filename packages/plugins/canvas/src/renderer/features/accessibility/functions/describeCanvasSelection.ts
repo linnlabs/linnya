@@ -3,12 +3,13 @@ import {
   type CanvasElement,
   type CanvasElementId,
 } from '@plugin/canvas/shared';
-const labels: Readonly<Record<CanvasElement['type'], string>> = {
-  text: '文字卡',
-  image: '图片卡',
-  document: '文档卡',
-  edge: '连线',
-};
+import { canvasText } from '../../localization';
+const typeKeys = {
+  text: 'canvas.a11y.text',
+  image: 'canvas.a11y.image',
+  document: 'canvas.a11y.document',
+  edge: 'canvas.a11y.edge',
+} as const;
 /** 有界摘要供读屏与键盘选择共用，正文投影沿用搜索规则，绝不以内部文档ID代替标题。 */
 export function describeCanvasSelection(
   elements: readonly CanvasElement[],
@@ -17,13 +18,26 @@ export function describeCanvasSelection(
 ): string {
   const ids = new Set(selected),
     items = elements.filter(element => ids.has(element.id));
-  if (!items.length)
-    return '未选择内容。按Tab逐张阅读卡片，Command或Control加方向键选择相邻卡片；加F搜索，按Enter定位结果，按Escape返回画布。';
-  const descriptions = items
-    .slice(0, 5)
-    .map(
-      element =>
-        `${labels[element.type]}${element.locked ? '，已锁定' : ''}：${readCanvasElementSearchText(element, { documentTitles }).trim().slice(0, 240) || '无可读正文'}${element.type === 'edge' ? '' : `，位置${Math.round(element.x)},${Math.round(element.y)}`}`
-    );
-  return `已选择${items.length}项。${descriptions.join('；')}${items.length > descriptions.length ? '；其余内容可通过搜索逐项定位。' : ''}`;
+  if (!items.length) return canvasText('canvas.a11y.empty');
+  const descriptions = items.slice(0, 5).map(element =>
+    canvasText('canvas.a11y.item', {
+      type: canvasText(typeKeys[element.type]),
+      locked: element.locked ? canvasText('canvas.a11y.locked') : '',
+      text:
+        readCanvasElementSearchText(element, { documentTitles }).trim().slice(0, 240) ||
+        canvasText('canvas.a11y.noText'),
+      position:
+        element.type === 'edge'
+          ? ''
+          : canvasText('canvas.a11y.position', {
+              x: Math.round(element.x),
+              y: Math.round(element.y),
+            }),
+    })
+  );
+  return canvasText('canvas.a11y.selected', {
+    count: items.length,
+    items: descriptions.join(canvasText('canvas.list.separator')),
+    more: items.length > descriptions.length ? canvasText('canvas.a11y.more') : '',
+  });
 }

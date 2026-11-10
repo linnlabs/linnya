@@ -1,5 +1,6 @@
 import type { CanvasCard, CanvasVersionBudgetStatus } from '@plugin/canvas/shared';
 import { createPixiCanvasKernel, type CanvasKernel } from '../../../kernel';
+import { canvasKernelText, canvasText } from '../../localization';
 import type { CanvasHistoryPreviewOptions } from '../definitions/canvasHistoryPreview';
 import { createCanvasHistoryPreviewState } from '../store/createCanvasHistoryPreviewState';
 
@@ -33,6 +34,7 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
         if (budgetToken === budgetEpoch) state.installBudget(budget);
         const current = await createPixiCanvasKernel({
           host: options.host,
+          text: canvasKernelText,
           readonly: true,
           onIntent: intent => {
             if (intent.kind === 'camera') refresh?.();
@@ -44,7 +46,7 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
           return;
         }
         kernel = current;
-        current.canvas.setAttribute('aria-label', '画布历史预览，只读，可平移和缩放');
+        current.canvas.setAttribute('aria-label', canvasText('canvas.history.canvasLabel'));
         const content = options.createContent(documentId);
         const raster = options.createRaster({
           kernel: current,

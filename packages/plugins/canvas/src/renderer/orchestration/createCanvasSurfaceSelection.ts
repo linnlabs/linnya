@@ -8,6 +8,7 @@ import { installCanvasReadonlyProjection } from './installCanvasReadonlyProjecti
 import { createCanvasSurfaceCreation } from './createCanvasSurfaceCreation';
 import { canvasSelectionOutlineCenter } from '../kernel/cardFrame';
 import type { CanvasSurfaceSelectionOptions } from './definitions/canvasSurfaceComposition';
+import { canvasText } from '../features/localization';
 
 /** 卡片切换、打开和连线编辑的协作边界；切换前统一完成当前草稿。 */
 export function createCanvasSurfaceSelection({
@@ -34,7 +35,7 @@ export function createCanvasSurfaceSelection({
     openText: (id, signal) => editor.open(id, undefined, signal),
     openMedia: card => ports.openCard?.(card),
     opened: ports.cardOpened,
-    unavailable: () => state.setRenderNotice('当前无法生成精确预览，已继续使用正文编辑器。'),
+    unavailable: () => state.setRenderNotice(canvasText('canvas.render.previewUnavailable')),
   });
   async function trySelect(ids: readonly CanvasCardId[], additive = false) {
     opening.cancel();

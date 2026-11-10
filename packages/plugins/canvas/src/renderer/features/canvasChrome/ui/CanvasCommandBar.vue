@@ -1,11 +1,16 @@
 <template>
   <div class="canvas-command-dock">
-    <div class="canvas-command-bar" role="toolbar" aria-label="画布命令" @pointerdown.stop>
+    <div
+      class="canvas-command-bar"
+      role="toolbar"
+      :aria-label="t('canvas.command.label')"
+      @pointerdown.stop
+    >
       <ToolbarGroup>
         <ToolbarButton
           class="canvas-toolbar-button"
-          label="撤销"
-          data-linnya-tooltip="撤销 (⌘Z)"
+          :label="t('canvas.command.undo')"
+          :data-linnya-tooltip="`${t('canvas.command.undo')} (⌘Z)`"
           :disabled="readonly"
           @click="emit('undo')"
         >
@@ -13,8 +18,8 @@
         </ToolbarButton>
         <ToolbarButton
           class="canvas-toolbar-button"
-          label="重做"
-          data-linnya-tooltip="重做 (⇧⌘Z)"
+          :label="t('canvas.command.redo')"
+          :data-linnya-tooltip="`${t('canvas.command.redo')} (⇧⌘Z)`"
           :disabled="readonly"
           @click="emit('redo')"
         >
@@ -24,7 +29,7 @@
       <ToolbarGroup>
         <ToolbarButton
           class="canvas-toolbar-button"
-          label="新建文字卡"
+          :label="t('canvas.command.createText')"
           :disabled="readonly"
           @click="emit('createText')"
         >
@@ -32,7 +37,7 @@
         </ToolbarButton>
         <ToolbarButton
           class="canvas-toolbar-button"
-          label="添加文档"
+          :label="t('canvas.command.addDocument')"
           :disabled="readonly"
           @click="emit('addDocument')"
         >
@@ -40,7 +45,7 @@
         </ToolbarButton>
         <ToolbarButton
           class="canvas-toolbar-button"
-          label="添加图片"
+          :label="t('canvas.command.addImage')"
           :disabled="readonly"
           @click="emit('addImage')"
         >
@@ -50,8 +55,8 @@
       <ToolbarGroup>
         <ToolbarButton
           class="canvas-toolbar-button"
-          label="搜索画布"
-          data-linnya-tooltip="搜索画布 (⌘F)"
+          :label="t('canvas.command.search')"
+          :data-linnya-tooltip="`${t('canvas.command.search')} (⌘F)`"
           @click="emit('search')"
         >
           <SearchIcon />
@@ -67,7 +72,7 @@
       >
         <CheckmarkIcon v-if="saveStatus === 'saved'" class="canvas-save-status-icon" /><span
           class="canvas-save-status-text"
-          >{{ saveStatusText[saveStatus] }}</span
+          >{{ t(`canvas.save.${saveStatus}`) }}</span
         >
       </span>
     </div>
@@ -86,7 +91,8 @@ import {
   UndoIcon,
 } from '@linnya/renderer-ui/icons';
 
-import { useCanvasSaveStatus, type CanvasSaveStatus } from '../orchestration/useCanvasSaveStatus';
+import { canvasText as t } from '../../localization';
+import { useCanvasSaveStatus } from '../orchestration/useCanvasSaveStatus';
 
 /**
  * 画布顶部命令条，与 Slides 编辑命令条同一组织：撤销重做、插入、画布命令，末尾是保存状态。
@@ -94,11 +100,6 @@ import { useCanvasSaveStatus, type CanvasSaveStatus } from '../orchestration/use
  */
 const props = defineProps<{ readonly: boolean; saving: boolean; unsaved: boolean }>();
 const saveStatus = useCanvasSaveStatus(toRef(props, 'saving'), toRef(props, 'unsaved'));
-const saveStatusText: Record<CanvasSaveStatus, string> = {
-  saved: '已保存',
-  saving: '正在保存…',
-  failed: '尚有未保存的修改',
-};
 const emit = defineEmits<{
   undo: [];
   redo: [];

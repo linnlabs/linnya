@@ -14,7 +14,7 @@ export function createCanvasCardResize(
 ) {
   const state = createCanvasResizeState();
   let gesture: CanvasResizeGesture | null = null;
-  const release = (active: CanvasResizeGesture) => {
+  const release = (active: CanvasResizeGesture, keepPreview = false) => {
     active.target.removeEventListener('pointermove', move);
     active.target.removeEventListener('pointerup', up);
     active.target.removeEventListener('pointercancel', cancel);
@@ -23,7 +23,7 @@ export function createCanvasCardResize(
     if (active.target.hasPointerCapture(active.pointer))
       active.target.releasePointerCapture(active.pointer);
     gesture = null;
-    state.set(null);
+    if (!keepPreview) state.set(null);
   };
   const cancel = () => {
     if (gesture) {
@@ -43,7 +43,8 @@ export function createCanvasCardResize(
     if (!gesture || event.pointerId !== gesture.pointer) return;
     const active = gesture,
       size = resolveCanvasResize(active, event);
-    release(active);
+    // 新尺寸落地前预览框一直保留：选区浮条、连线锚点和文档详情不先跳回旧外框再跳到新外框。
+    release(active, true);
     void session
       .commit([
         {
@@ -63,6 +64,7 @@ export function createCanvasCardResize(
       ])
       .catch(report)
       .finally(() => {
+        if (!gesture) state.set(null);
         active.display.clear();
         void session.protect(active.card.id, [], 'resize').catch(report);
       });

@@ -9,6 +9,7 @@ import type {
 } from '../definitions/cardEditing';
 import { createCardEditingState } from '../store/createCardEditingState';
 import { createCanvasTextProtection } from './createCanvasTextProtection';
+import { canvasText } from '../../localization';
 
 export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCardEditor {
   const state = createCardEditingState(),
@@ -23,8 +24,8 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
     const card = requireWritableCanvas(session.state.snapshot.value).elements.find(
       element => element.id === id
     );
-    if (!card || card.type !== 'text') throw new Error('这张卡不能进入文字编辑');
-    if (card.locked) throw new Error('请先解锁这张卡');
+    if (!card || card.type !== 'text') throw new Error(canvasText('canvas.error.cardNotEditable'));
+    if (card.locked) throw new Error(canvasText('canvas.error.cardLocked'));
     return card;
   };
   async function finishDraft(draft: CanvasCardDraft, mayFinish: () => boolean) {
@@ -68,7 +69,7 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
       if (existing && active) return;
       const saved = existing || (await save(true, current));
       if (!current()) return;
-      if (!saved) throw new Error('当前文字草稿尚未保存');
+      if (!saved) throw new Error(canvasText('canvas.error.draftUnsaved'));
       readCard(elementId);
       const lease = protection.create(elementId);
       let accepted = false;
