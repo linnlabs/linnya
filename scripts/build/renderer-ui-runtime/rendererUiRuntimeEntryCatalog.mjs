@@ -26,6 +26,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'HoverTooltip',
     'IconButton',
     'ImagePreviewModal',
+    'InlineTextInput',
     'Modal',
     'NotificationBar',
     'PageSectionHeader',

@@ -120,12 +120,6 @@ export function useConversationSelectors(conversationState: ReturnType<typeof us
     return !hasActiveWindow || !messageWindowStore.hasMoreAfter;
   });
 
-  const activeContextUsageSource = computed(() => (
-    messageWindowStore.conversationId === activeConversationId.value
-      ? messageWindowStore.latestContextUsage
-      : null
-  ));
-
   const latestTodoToolMessageId = computed<string | null>(() => (
     findLatestTodoToolMessageId(
       activeMessages.value,
@@ -137,7 +131,9 @@ export function useConversationSelectors(conversationState: ReturnType<typeof us
     activeConversation,
     hasActiveConversation,
     activeMessages,
-    activeContextUsageSource,
+    activeMessageWindowRevision: computed(() => (
+      messageWindowStore.conversationId === activeConversationId.value ? messageWindowStore.revision : null
+    )),
     activeRenderableMessages,
     hasRenderableMessages,
     activeMessageWindowIncludesConversationTail,

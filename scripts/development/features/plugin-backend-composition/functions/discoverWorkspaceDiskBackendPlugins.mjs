@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { readPluginAdditionalBuilds } from './readPluginAdditionalBuilds.mjs';
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -61,7 +62,8 @@ export function discoverWorkspaceDiskBackendPlugins(repositoryRoot = process.cwd
       || backendWatchConfig.split(/[\\/]/).includes('..')) {
       throw new Error(`${packageJsonPath}: backendWatchConfig 必须是包内相对配置路径`);
     }
-    plugins.push(Object.freeze({ pluginId, packageDir, backendWatchConfig }));
+    const additionalBuilds = readPluginAdditionalBuilds(packageJson, packageDir);
+    plugins.push(Object.freeze({ pluginId, packageDir, backendWatchConfig, ...(additionalBuilds.length ? { additionalBuilds } : {}) }));
   }
 
   return plugins.sort((left, right) => left.pluginId.localeCompare(right.pluginId));

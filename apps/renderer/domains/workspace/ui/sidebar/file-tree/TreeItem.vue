@@ -45,17 +45,14 @@
         {{ workspaceMessage('workspace.sidebar.fileTree.newBadge') }}
       </span>
 
-      <input 
-        v-show="isRenaming" 
-        ref="renameInputRef" 
-        type="text" 
-        v-model="renameValue" 
-        class="rename-input"
-        @blur="onInputBlur"
-        @keydown.enter.prevent="onEnterKey" 
-        @keydown.esc.prevent="cancelRename"
-        @click.stop  
-        @keydown.stop 
+      <!-- 从右键菜单打开：菜单收起会归还焦点，所以关掉自动聚焦，由 startRename 稍后聚焦全选。 -->
+      <InlineTextInput
+        v-if="isRenaming"
+        ref="renameInputRef"
+        v-model="renameValue"
+        :autofocus="false"
+        @commit="commitRename"
+        @cancel="cancelRename"
       />
 
       <!-- 右侧 More 菜单：hover 出现，点击后打开与右键一致的上下文菜单 -->
@@ -129,7 +126,7 @@ import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { ImageIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { DocumentErrorIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, IconButton } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton, InlineTextInput } from '@linnya/renderer-ui';
 import { useTreeItemDragDrop } from '../composables/useTreeItemDragDrop.js';
 import { getNodeMenuOptions } from '../composables/useContextMenu.js';
 import { useFixedDropdownPosition } from '../composables/useFixedDropdownPosition';
@@ -383,15 +380,8 @@ const startRename = () => {
     });
 };
 
-// 新增：单独处理 Enter 和 Blur 事件，避免重复调用
-const onEnterKey = () => {
-    if (!isConfirmingRename.value) {
-        confirmRename();
-    }
-};
-
-const onInputBlur = () => {
-    // 失焦时确认重命名（如果没有正在进行确认操作）
+// 回车与失焦都由就地编辑框发出 commit；正在确认时不重复提交。
+const commitRename = () => {
     if (!isConfirmingRename.value) {
         confirmRename();
     }

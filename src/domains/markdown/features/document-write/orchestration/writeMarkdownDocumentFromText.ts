@@ -106,9 +106,13 @@ export async function writeMarkdownDocumentFromText(params: {
   readonly targetText: string;
   /** file edit 的完整 current 投影快照；全文覆盖写入不传。 */
   readonly expectedCurrentText?: string;
+  readonly projectContent?: (content: import('../../normalization').MarkdownDocJson) => import('../../normalization').MarkdownDocJson;
+  readonly projectPendings?: (pendings: readonly import('../../pending-revisions').MarkdownPendingRevisionLike[]) => readonly import('../../pending-revisions').MarkdownPendingRevisionLike[];
+  readonly assertReferenceBindings?: () => void;
   /** 来源回投准备时捕获的完整结构/来源/pending 版本，不含会话别名。 */
   readonly expectedSourceKey?: string;
   readonly toolName: 'edit_file' | 'write_file';
+  readonly pendingMetaByTargetIndex?: ReadonlyMap<number, PendingRevisionMetadata>;
   readonly pendingMetaByMarkdown?: ReadonlyMap<string, PendingRevisionMetadata>;
   readonly imageSources?: ReadonlyMap<string, MarkdownImageAttrs>;
   readonly annotationAdmission: {
@@ -129,14 +133,16 @@ export async function writeMarkdownDocumentFromText(params: {
   if (params.expectedSourceKey !== undefined && params.expectedSourceKey !== sourceKey) throw new MarkdownFileWriteConflictError();
   // edit_file 的 old_string 来自 citation-aware VFS 文本。写入规划必须复用同一当前视图，
   // 否则持久层里的 UI label（如 `[1]`）会和 Agent 看到的 `[@ref]` 不同，导致未修改的引用块被误写。
+  const projectedPendings = params.projectPendings?.(pendings) ?? pendings;
+  const projectedContent = params.projectContent?.(content) ?? content;
   const currentProjection = buildMarkdownCitationReadProjection({
-    content,
-    pendings,
+    content: projectedContent,
+    pendings: projectedPendings,
     viewMode: 'preview',
   });
   const currentBodyProjection = buildMarkdownCitationReadProjection({
-    content,
-    pendings,
+    content: projectedContent,
+    pendings: projectedPendings,
     viewMode: 'preview',
     includeAnnotations: false,
   });
@@ -148,7 +154,7 @@ export async function writeMarkdownDocumentFromText(params: {
   assertMarkdownWriteSourceCurrent(params.expectedCurrentText, currentText);
 
   const baseline = buildMarkdownCitationReadProjection({
-    content, pendings: [], viewMode: 'original', includeAnnotations: false,
+    content: projectedContent, pendings: [], viewMode: 'original', includeAnnotations: false,
   });
   const pendingByBlock = new Map(pendings.map(pending => [pending.target_block_id, pending]));
   const currentByBlock = new Map(currentBlocks.map(block => [block.blockId, block]));
@@ -187,6 +193,7 @@ export async function writeMarkdownDocumentFromText(params: {
   })) throw new MarkdownFileWriteConflictError();
 
   const writeResult = params.documentStore.runInTransaction(() => {
+    params.assertReferenceBindings?.();
     const annotationMutation = applyMarkdownAnnotationChanges({
       store: params.documentStore,
       documentId: params.documentId,
@@ -208,7 +215,7 @@ export async function writeMarkdownDocumentFromText(params: {
           markdown: imageWrites.get(step.targetIndex)?.markdown ?? step.markdown,
           toolName: params.toolName,
           extraMeta: {
-            ...params.pendingMetaByMarkdown?.get(step.markdown),
+            ...(params.pendingMetaByTargetIndex?.get(step.targetIndex) ?? params.pendingMetaByMarkdown?.get(step.markdown)),
             ...(imageWrites.has(step.targetIndex) ? { image: imageWrites.get(step.targetIndex)?.image } : {}),
             listSeparatorBefore: planned.listSeparators[step.targetIndex] ?? null,
           },
@@ -229,7 +236,7 @@ export async function writeMarkdownDocumentFromText(params: {
           operation: step.kind,
           toolName: params.toolName,
           extraMeta: step.kind === 'update' ? {
-            ...params.pendingMetaByMarkdown?.get(step.markdown),
+            ...(params.pendingMetaByTargetIndex?.get(step.targetIndex) ?? params.pendingMetaByMarkdown?.get(step.markdown)),
             ...(imageWrites.has(step.targetIndex) ? { image: imageWrites.get(step.targetIndex)?.image } : {}),
             listSeparatorBefore: planned.listSeparators[step.targetIndex] ?? null,
           } : undefined,
@@ -246,8 +253,8 @@ export async function writeMarkdownDocumentFromText(params: {
 
     // 必须统计实际提交后的 current（含 pending），不能把输入 token 或局部编辑当成全文。
     const committedProjection = buildMarkdownCitationReadProjection({
-      content: params.documentStore.getDocument(params.documentId),
-      pendings: params.documentStore.getPendingRevisions(params.documentId),
+      content: params.projectContent?.(params.documentStore.getDocument(params.documentId)) ?? params.documentStore.getDocument(params.documentId),
+      pendings: params.projectPendings?.(params.documentStore.getPendingRevisions(params.documentId)) ?? params.documentStore.getPendingRevisions(params.documentId),
       viewMode: 'preview',
     });
     const result: MarkdownFileWriteResult = {

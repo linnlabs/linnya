@@ -8,6 +8,9 @@
  * - port 实现保持窄小，避免把 conversation 细节暴露成插件公共 API。
  */
 
+import { nextTick } from 'vue';
+import { useLayoutStore } from '@/app/layout/store/layoutStore';
+import { focusRegisteredComposerInput } from '@/domains/conversation/features/composer-focus';
 import {
   registerRendererAiInvocationPort,
   type RendererEnsureAiConversationRequest,
@@ -19,11 +22,17 @@ import { registerRendererConversationSubrunInvocationPort } from '@plugin/render
 import { registerRendererInteractiveToolPort } from '@plugin/renderer/interactiveTool';
 import { registerRendererReferenceRuntimePort } from '@plugin/renderer/referenceRuntime';
 import { registerWorkspaceRuntimePort } from '@plugin/renderer/workspaceRuntime';
+import { registerRendererDocumentPreviewPort } from '@plugin/renderer/documentPreview';
+import { createDocumentPreviewRendererPort } from '@/app/workflows/document-preview';
+import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
+import { registerRendererPluginRuntimePort } from '@plugin/renderer/pluginRuntime';
+import { createRendererPluginRuntimePort } from '../orchestration/createRendererPluginRuntimePort';
 import { useNavigationScope } from '@/app/navigation';
 import { useFileStore } from '@/shared/stores/file';
 import { useNotificationStore } from '@/app/notification';
 import { confirm } from '@/shared/composables/confirmDialog';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
+import { subscribeToWorkspaceMutation } from '@/shared/ipc/workspaceMutationSubscription';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { validateWebManualForm } from '@/domains/editor/features/citation/adapters/webCitationAdapter';
 import { useWebManualCitationForm } from '@/domains/editor/features/citation/ui/useWebManualCitationForm';
@@ -224,6 +233,7 @@ async function startHistoryIsolatedRun(request: RendererAiHistoryIsolatedRunRequ
 
 function installWorkspaceRuntimePort(): void {
   registerWorkspaceRuntimePort({
+    subscribeMutations: subscribeToWorkspaceMutation,
     getCurrentProjectId: () => useNavigationScope().currentProjectId,
     getActiveFileSession,
     markActiveFileDirty,
@@ -274,6 +284,12 @@ function installInteractiveToolPort(): void {
 
 function installComposerCommandPort(): void {
   registerRendererComposerCommandPort({
+    async focusInput() {
+      const layout = useLayoutStore();
+      if (layout.state.layoutMode === 'editor-centric' && !layout.state.conversationPane.visible) layout.openConversationInRightPane();
+      await nextTick();
+      return focusRegisteredComposerInput();
+    },
     addReference(input) {
       return useComposerReferences().addReference(input);
     },
@@ -284,6 +300,11 @@ function installComposerCommandPort(): void {
 }
 
 export function installBuiltinRendererPluginPorts(): void {
+  registerRendererPluginRuntimePort(createRendererPluginRuntimePort());
+  registerRendererDocumentPreviewPort({
+    ...createDocumentPreviewRendererPort(),
+    readTypeIcon: readDocumentTypeIcon,
+  });
   registerToolPresentationProjectionPort(createToolPresentationProjectionPort());
   registerToolCompactStepProjectionPort(createToolCompactStepProjectionPort());
   registerKnowledgeSearchHistoryPort({

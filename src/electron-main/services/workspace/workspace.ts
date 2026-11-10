@@ -1,3 +1,4 @@
+import { readActiveWorkspaceSubtreeNodeIds } from '../../../features/workspace/node-deletion';
 /**
  * @file workspace.ts
  * @description WorkspaceService - Electron 与插件调用方的 Workspace 兼容门面。
@@ -312,39 +313,12 @@ export class WorkspaceService {
     // 中文说明：文件夹删除必须是完整子树语义。只标记文件夹会留下不可见但仍可
     // 被“最近文档”和 Agent 工具读取的孤儿 page，前端也无法可靠判断 active page 是否已删除。
     const deleteSubtree = this.db.transaction(() => {
-      const rows = this.db.prepare(`
-        WITH RECURSIVE subtree(id) AS (
-          SELECT id
-          FROM workspace_nodes
-          WHERE id = ? AND deleted_at IS NULL
-          UNION ALL
-          SELECT child.id
-          FROM workspace_nodes child
-          JOIN subtree parent ON child.parent_id = parent.id
-          WHERE child.deleted_at IS NULL
-        )
-        SELECT id FROM subtree
-      `).all(id) as Array<{ id: string }>;
-      const deletedNodeIds = rows.map((row) => row.id);
+      const deletedNodeIds = readActiveWorkspaceSubtreeNodeIds(this.db, [id]);
       if (deletedNodeIds.length === 0) {
         throw new WorkspaceNodeNotFoundError(id);
       }
 
-      this.db.prepare(`
-        WITH RECURSIVE subtree(id) AS (
-          SELECT id
-          FROM workspace_nodes
-          WHERE id = ? AND deleted_at IS NULL
-          UNION ALL
-          SELECT child.id
-          FROM workspace_nodes child
-          JOIN subtree parent ON child.parent_id = parent.id
-          WHERE child.deleted_at IS NULL
-        )
-        UPDATE workspace_nodes
-        SET deleted_at = ?, updated_at = ?
-        WHERE id IN (SELECT id FROM subtree) AND deleted_at IS NULL
-      `).run(id, now, now);
+      this.db.prepare(`UPDATE workspace_nodes SET deleted_at = ?, updated_at = ? WHERE id IN (SELECT value FROM json_each(?)) AND deleted_at IS NULL`).run(now, now, JSON.stringify(deletedNodeIds));
       return deletedNodeIds;
     });
 

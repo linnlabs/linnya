@@ -2,6 +2,8 @@
  * @file workspaceVfsNode.ts
  * @description Workspace Path Layer 暴露给前端和工具层的统一节点契约。
  */
+// namespace import使独立只读消费者只保留实际用到的schema工厂，避免named z对象拉入全部locale。
+import * as z from 'zod';
 
 /** Workspace node type 是平台类型与插件贡献类型共用的开放字符串合同。 */
 export type WorkspaceVfsNodeType = string;
@@ -47,17 +49,10 @@ export interface WorkspaceVfsNode {
   readonly payload?: WorkspaceVfsNodePayload;
 }
 
-export interface WorkspaceNodeRow {
-  readonly id: string;
-  readonly project_id: string | null;
-  readonly parent_id: string | null;
-  readonly type: string;
-  readonly name: string;
-  readonly icon: string | null;
-  readonly created_at: number;
-  readonly updated_at: number;
-  readonly deleted_at: number | null;
-  readonly last_opened_at: number | null;
-  readonly access_count: number;
-  readonly tags: string | null;
-}
+export const WorkspaceNodeRowSchema = z.object({
+  id: z.string(), project_id: z.string().nullable(), parent_id: z.string().nullable(),
+  type: z.string(), name: z.string(), icon: z.string().nullable(),
+  created_at: z.number(), updated_at: z.number(), deleted_at: z.number().nullable(),
+  last_opened_at: z.number().nullable(), access_count: z.number(), tags: z.string().nullable(),
+});
+export type WorkspaceNodeRow = Readonly<z.infer<typeof WorkspaceNodeRowSchema>>;

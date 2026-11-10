@@ -18,22 +18,14 @@
     </div>
     <div class="ai-assistant-quote-preview__body">
       <div class="ai-assistant-quote-preview__list">
-        <div
+        <ConversationReferenceChip
           v-for="chip in referenceChips"
           :key="chip.reference.id"
-          class="ai-assistant-quote-preview__pill"
-          :aria-label="chip.presentation.label"
-        >
-          <span class="ai-assistant-quote-preview__pill-text">{{ chip.presentation.preview }}</span>
-          <button
-            type="button"
-            class="ai-assistant-quote-preview__pill-close"
-            @click.stop="onRemoveReference(chip.reference.id)"
-            :aria-label="conversationMessage('conversation.quote.remove')"
-          >
-            <CloseIcon />
-          </button>
-        </div>
+          :reference="chip.reference"
+          :presentation="chip.presentation"
+          :remove-label="conversationMessage('conversation.quote.remove')"
+          @remove="onRemoveReference(chip.reference.id)"
+        />
       </div>
     </div>
   </div>
@@ -41,7 +33,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { CloseIcon } from '@linnya/renderer-ui/icons';
+import ConversationReferenceChip from '../../features/composer-references/ui/ConversationReferenceChip.vue';
 import type { ConversationReference } from '../../types';
 import {
   resolveConversationReferenceChipPresentation,

@@ -42,6 +42,7 @@ export type ContentFragmentLike =
 export type SupportedInlineMarkName = MarkName
 
 export type MarkdownInlineFragment =
+  | { type: 'documentReference'; attrs: { documentId: string; referenceId: string }; marks: MarkLike[]; textRepresentation: string }
   | {
       type: 'text'
       text: string

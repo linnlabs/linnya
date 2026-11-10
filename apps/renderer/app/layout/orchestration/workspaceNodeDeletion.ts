@@ -1,3 +1,7 @@
+import { previewDocumentDeletionReferences } from '@plugin/renderer/documentReferences';
+import { confirm } from '@/shared/composables/confirmDialog';
+import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
+import { workspaceDeletionReferenceConfirmation } from '../functions/workspaceDeletionReferenceConfirmation';
 import type { WorkspaceNodeDeletedEvent } from '@app/schemas';
 import type {
   WorkspaceNodeDeletionPort,
@@ -81,23 +85,33 @@ export async function handleWorkspaceNodeDeletedMutation(
 
 export function createWorkspaceNodeDeletion(): WorkspaceNodeDeletionPort {
   return {
-    async deleteNodes(targets): Promise<WorkspaceNodeDeletionResult> {
+    async deleteNodes(targets, confirmation): Promise<WorkspaceNodeDeletionResult> {
       const deduplicatedTargets = Array.from(
         new Map(targets.map((target) => [target.id, target])).values(),
       );
       if (deduplicatedTargets.length === 0) {
-        return { deletedNodeIds: [], failures: [] };
+        return { deletedNodeIds: [], failures: [], cancelled: false };
       }
 
       const treeStore = useWorkspaceTreeStore();
       const nodesBeforeDeletion = flattenLoadedWorkspaceTree(treeStore.projectTree);
       const uniqueTargets = removeNestedDeletionTargets(deduplicatedTargets, nodesBeforeDeletion);
+      const preview = await previewDocumentDeletionReferences({ nodeIds: uniqueTargets.map(target => target.id) });
+      const { workspaceMessage } = useWorkspaceLocalization();
+      if (confirmation || preview.referenceCount > 0) {
+        const accepted = await confirm({
+          ...(confirmation ?? { title: workspaceMessage('workspace.sidebar.node.deleteTitle'), message: workspaceMessage('workspace.sidebar.node.batchDeleteMessage', { count: uniqueTargets.length }), confirmText: workspaceMessage('workspace.sidebar.node.deleteConfirm'), cancelText: workspaceMessage('workspace.sidebar.node.deleteCancel') }),
+          ...workspaceDeletionReferenceConfirmation(preview, workspaceMessage), isDangerousAction: true,
+        });
+        if (!accepted) return { deletedNodeIds: [], failures: [], cancelled: true };
+      }
       const activeDocumentId = useLayoutStore().state.activeDocument?.id ?? null;
       const projectId = resolveDeletionProjectId(nodesBeforeDeletion, uniqueTargets);
       const deletedNodeIds = new Set<string>();
       const failures: Array<{ nodeId: string; message: string }> = [];
 
       for (const target of uniqueTargets) {
+        if (deletedNodeIds.has(target.id)) continue;
         markLocalDeletionRoot(target.id);
         try {
           const deletedIds = await treeStore.deleteNode(target.id, target.parentId);
@@ -124,6 +138,7 @@ export function createWorkspaceNodeDeletion(): WorkspaceNodeDeletionPort {
       }
 
       return {
+        cancelled: false,
         deletedNodeIds: Array.from(deletedNodeIds),
         failures,
       };

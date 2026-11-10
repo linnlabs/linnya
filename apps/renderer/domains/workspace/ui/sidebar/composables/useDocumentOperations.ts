@@ -5,7 +5,6 @@
 
 import { ref } from 'vue';
 import { useWorkspaceSelectionStore } from '../../../store/index.js';
-import { confirm } from '../../../../../shared/composables/confirmDialog';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import {
   getDocumentTypeByCreateRequestType,
@@ -212,22 +211,12 @@ export function useDocumentOperations(
    */
   const handleDeleteItem = async (node: WorkspaceSidebarNode | null | undefined) => {
     if (!node) return;
-    // 使用应用内确认框替代 window.confirm，避免 Windows 下原生模态导致焦点恢复异常
-    const confirmed = await confirm({
-      title: workspaceMessage('workspace.sidebar.node.deleteTitle'),
-      message: workspaceMessage('workspace.sidebar.node.deleteMessage', {
-        nodeName: getNodeDisplayName(node, workspaceMessage),
-      }),
-      confirmText: workspaceMessage('workspace.sidebar.node.deleteConfirm'),
-      cancelText: workspaceMessage('workspace.sidebar.node.deleteCancel'),
-      isDangerousAction: true,
-    });
-    if (!confirmed) return;
     try {
       const result = await nodeDeletion.deleteNodes([{
         id: node.id,
         parentId: node.parentId ?? null,
-      }]);
+      }], { title: workspaceMessage('workspace.sidebar.node.deleteTitle'), message: workspaceMessage('workspace.sidebar.node.deleteMessage', { nodeName: getNodeDisplayName(node, workspaceMessage) }), confirmText: workspaceMessage('workspace.sidebar.node.deleteConfirm'), cancelText: workspaceMessage('workspace.sidebar.node.deleteCancel') });
+      if (result.cancelled) return;
       if (result.failures.length > 0) {
         throw new Error(result.failures[0]?.message ?? workspaceMessage('workspace.sidebar.node.deleteFailed'));
       }

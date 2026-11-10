@@ -36,6 +36,14 @@
       </SettingsRow>
     </SettingsSection>
 
+    <SettingsSection
+      v-for="section in appearanceSections"
+      :key="`${section.pluginId}:${section.id}`"
+      :title="section.title"
+    >
+      <component :is="section.component" />
+    </SettingsSection>
+
     <SettingsSection :title="settingsMessage('settings.appearance.fontSmoothing.title')">
       <SettingsSwitchRow
         :model-value="uiStore.fontSmoothing"
@@ -68,6 +76,7 @@
 <script setup lang="ts">
 import { useUIStore, type ThemePreference } from '@/shared/stores/ui';
 import { computed } from 'vue';
+import { listAppearanceSections } from '../../registry/settingsRegistry';
 import { CustomSelect } from '@linnya/renderer-ui';
 import { useLocalization, type LinnyaLocale } from '@app/localization';
 import type { SettingsMessageKey } from '../../definitions/settingsMessages';
@@ -90,6 +99,7 @@ const themeOptions: readonly ThemeOption[] = [
   { value: 'dark', labelKey: 'settings.appearance.theme.dark', scenes: ['night'] },
 ];
 
+const appearanceSections = computed(listAppearanceSections);
 const uiStore = useUIStore();
 const { currentLocale, changeLocale } = useLocalization();
 const { settingsMessage } = useSettingsLocalization();

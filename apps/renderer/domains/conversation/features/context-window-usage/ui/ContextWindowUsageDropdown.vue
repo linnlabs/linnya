@@ -1,6 +1,6 @@
 <template>
   <BaseDropdown
-    v-if="props.presentation.status !== 'unavailable'"
+    v-if="props.presentation.status !== 'hidden'"
     :external-content-ref="panelRef"
   >
     <template #trigger="{ toggle, isOpen }">
@@ -8,18 +8,26 @@
         ref="triggerRef"
         type="button"
         class="context-window-usage-trigger"
-        :class="{
-          'is-unavailable': !available,
-          'is-historical': available?.isHistoricalModel,
-        }"
+        :aria-busy="props.presentation.status === 'loading'"
         :data-linnya-tooltip="triggerAriaLabel"
         :aria-label="triggerAriaLabel"
         aria-haspopup="dialog"
         :aria-expanded="isOpen"
         @click="handleTriggerClick($event, toggle, isOpen)"
       >
-        <svg class="context-window-usage-trigger__ring" viewBox="0 0 20 20" aria-hidden="true">
-          <circle class="context-window-usage-trigger__track" cx="10" cy="10" r="8" />
+        <LinnyaLoadingIcon v-if="props.presentation.status === 'loading'" />
+        <svg
+          v-else
+          class="context-window-usage-trigger__ring"
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+        >
+          <circle
+            class="context-window-usage-trigger__track"
+            cx="10"
+            cy="10"
+            r="8"
+          />
           <circle
             v-if="available"
             class="context-window-usage-trigger__value"
@@ -71,6 +79,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { BaseDropdown, DROPDOWN_SURFACE_CLASSES } from '@linnya/renderer-ui';
+import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 import type {
   ContextWindowUsagePanelDetailRow,
   ContextWindowUsagePanelRow,
@@ -137,6 +146,7 @@ const totalText = computed(() => {
 
 const triggerAriaLabel = computed(() => {
   const current = available.value;
+  if (props.presentation.status === 'loading') return conversationMessage('conversation.contextUsage.trigger.loading');
   if (!current) return conversationMessage('conversation.contextUsage.trigger.unavailable');
   return conversationMessage('conversation.contextUsage.trigger.available', {
     percentage: percentageText.value,
@@ -170,12 +180,7 @@ const panelRows = computed<readonly ContextWindowUsagePanelRow[]>(() => {
   }));
 });
 
-const emptyMessage = computed(() => {
-  if (props.presentation.status === 'tail_unavailable') {
-    return conversationMessage('conversation.contextUsage.empty.tailUnavailable');
-  }
-  return '';
-});
+const emptyMessage = computed(() => available.value ? '' : triggerAriaLabel.value);
 
 const panelStyle = computed(() => ({
   top: `${panelPosition.value.top}px`,

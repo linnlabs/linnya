@@ -6,6 +6,8 @@ import {
 } from './workspaceNodeDeletion';
 
 const mocks = vi.hoisted(() => ({
+  previewReferences: vi.fn(),
+  confirm: vi.fn(),
   projectTree: [] as WorkspaceNode[],
   activeDocument: null as { id: string; projectId: string; type: string } | null,
   sidebarMode: 'files',
@@ -18,6 +20,10 @@ const mocks = vi.hoisted(() => ({
   clearSelection: vi.fn(),
   getRecentDocuments: vi.fn(),
 }));
+
+vi.mock('@plugin/renderer/documentReferences', () => ({ previewDocumentDeletionReferences: mocks.previewReferences }));
+vi.mock('@/shared/composables/confirmDialog', () => ({ confirm: mocks.confirm }));
+vi.mock('@/domains/workspace/ui/useWorkspaceLocalization', () => ({ useWorkspaceLocalization: () => ({ workspaceMessage: (key: string, parameters?: unknown) => `${key}:${JSON.stringify(parameters)}` }) }));
 
 vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({
   useWorkspaceTreeStore: () => ({
@@ -95,6 +101,9 @@ function node(id: string, type = 'document'): WorkspaceNode {
 
 describe('workspaceNodeDeletion', () => {
   beforeEach(() => {
+    mocks.previewReferences.mockReset();
+    mocks.previewReferences.mockResolvedValue({ referenceCount: 0, referencingDocumentCount: 0, documents: [] });
+    mocks.confirm.mockReset(); mocks.confirm.mockResolvedValue(true);
     mocks.projectTree = [];
     mocks.activeDocument = null;
     mocks.sidebarMode = 'files';
@@ -178,4 +187,19 @@ describe('workspaceNodeDeletion', () => {
       documentId: 'doc-before',
     }));
   });
+  it('adds backlink risk to a single confirmation and cancellation leaves deletion and navigation untouched', async () => {
+    mocks.projectTree = [node('target')];
+    mocks.previewReferences.mockResolvedValue({ referenceCount: 4, referencingDocumentCount: 1, documents: [{ sourceDocumentId: 'source', title: 'Source title', nodeType: 'canvas', referenceCount: 4 }] });
+    mocks.confirm.mockResolvedValue(false);
+    const result = await createWorkspaceNodeDeletion().deleteNodes([{ id: 'target', parentId: null }], { title: 'Delete', message: 'Original confirmation' });
+    expect(result).toEqual({ cancelled: true, deletedNodeIds: [], failures: [] });
+    expect(mocks.confirm).toHaveBeenCalledOnce(); expect(mocks.confirm.mock.calls[0][0]).toMatchObject({ message: 'Original confirmation', sections: [{ items: ['Source title'] }], riskMessage: expect.stringContaining('"references":4') });
+    expect(mocks.deleteNode).not.toHaveBeenCalled(); expect(mocks.openDocument).not.toHaveBeenCalled();
+  });
+  it('cannot delete after a failed reference preview', async () => {
+    mocks.previewReferences.mockRejectedValue(new Error('Read failed'));
+    await expect(createWorkspaceNodeDeletion().deleteNodes([{ id: 'target', parentId: null }])).rejects.toThrow('Read failed');
+    expect(mocks.deleteNode).not.toHaveBeenCalled();
+  });
+
 });

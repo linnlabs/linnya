@@ -95,6 +95,12 @@ declare global {
     };
 
     electronAPI: {
+      'document-references:deletion-preview': (request: { nodeIds: readonly string[] }) => Promise<unknown>;
+      'document-references:search': (request: { projectId: string; keyword: string; limit?: number }) => Promise<unknown>;
+      'document-references:backlinks': (request: import('@app/schemas').DocumentBacklinksRequest) => Promise<unknown>;
+      'document-references:resolve': (request: { projectId: string; documentId: string }) => Promise<unknown>;
+      'document-preview:types': () => Promise<unknown>;
+      'document-preview:read': (request: import('@app/schemas').DocumentPreviewRequest) => Promise<unknown>;
       'document-history:list': (request: { documentId: string }) => Promise<unknown>;
       'document-history:restore': (request: import('@app/schemas').DocumentVersionRestoreRequest) => Promise<unknown>;
       readCommandPermissionSettings: () => Promise<unknown>;

@@ -1,3 +1,4 @@
+import { DOCUMENT_REFERENCE_SCHEMAS } from 'src/domains/document-references';
 import { createProjectLifecycle } from 'src/domains/projects';
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
@@ -25,7 +26,7 @@ describe('Markdown citation receipt through Host providers', () => {
     const db = new Database(':memory:');
     try {
       db.pragma('foreign_keys = ON');
-      for (const sql of [...CORE_SCHEMAS, ...ASSET_LEDGER_SCHEMAS, ...MARKDOWN_DOCUMENT_SCHEMAS,
+      for (const sql of [...CORE_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS, ...ASSET_LEDGER_SCHEMAS, ...MARKDOWN_DOCUMENT_SCHEMAS,
         ...PENDING_REVISION_SCHEMAS, ...BLOCK_HISTORY_SCHEMAS, ...IMAGE_BLOCK_SCHEMAS]) db.exec(sql);
       const workspaceService = new WorkspaceService(db);
       const projectId = createProjectLifecycle(db).create({ name: 'Citation receipt' });

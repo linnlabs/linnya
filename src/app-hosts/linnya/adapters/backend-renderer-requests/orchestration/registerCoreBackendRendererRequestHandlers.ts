@@ -26,6 +26,8 @@ import { dispatchPluginInvoke } from 'src/electron-main/ipc/handlers/plugins/plu
 import type { BackendRendererRequestRegistryPort } from '../definitions/backendRendererRequest';
 import { createBackendRendererIpcStyleRegistrar } from './createBackendRendererIpcStyleRegistrar';
 import { registerDocumentHistoryRequests } from './registerDocumentHistoryRequests';
+import { registerDocumentReferenceRequests } from './registerDocumentReferenceRequests';
+import { registerDocumentPreviewRequests } from './registerDocumentPreviewRequests';
 import { registerConversationRunDocumentChangesRequests } from './registerConversationRunDocumentChangesRequests';
 import { registerProjectOverviewRequests } from './registerProjectOverviewRequests';
 import type {
@@ -56,6 +58,8 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   }), ipc, input.runtimeOwner.getProjectDeletion());
   registerWorkspaceHandlers(input.runtimeOwner, ipc);
   registerDocumentHistoryRequests(input.runtimeOwner, input.registry);
+  registerDocumentPreviewRequests(input.runtimeOwner, input.registry);
+  registerDocumentReferenceRequests(input.runtimeOwner, input.registry);
   registerAgentsHandlers(input.runtimeOwner, ipc);
   registerTodoHandlers(input.runtimeOwner, ipc);
   registerProjectKnowledgeBaseLinksHandlers(input.runtimeOwner, ipc);
@@ -74,7 +78,7 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   registerProjectOverviewRequests(input.runtimeOwner, input.registry);
 
   registerRegisteredBackendPluginIpcHandlers(input.runtimeOwner);
-  input.registry.handle('plugin:invoke', request => dispatchPluginInvoke(undefined, request, {
+  input.registry.handleWithContext('plugin:invoke', (context, request) => dispatchPluginInvoke(context, request, {
     getRuntimeState: getPluginRuntimeState,
     listAllowedChannels: getRegisteredBackendPluginIpcChannels,
     invokeHandler: invokeBackendPluginIpcHandler,

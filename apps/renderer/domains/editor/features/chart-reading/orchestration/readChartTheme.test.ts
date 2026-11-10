@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme'
-import { CHART_PALETTES, FALLBACK_CHART_THEME } from '../definitions/chartTheme'
+import { CHART_PALETTES, FALLBACK_CHART_THEME } from '@linnya/markdown-document-core/workspace-charts'
 import { chartSchemeOfTheme, readActiveChartScheme, resolveChartTheme, sanitizeFontFamily } from './readChartTheme'
 
 beforeEach(() => {

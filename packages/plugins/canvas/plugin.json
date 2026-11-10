@@ -1,0 +1,63 @@
+{
+  "id": "canvas",
+  "version": "0.1.0",
+  "name": "Canvas",
+  "description": "用文字、文档、图片和连线组织思考的自由画布。",
+  "developer": "Linnya",
+  "details": [
+    "Canvas 将文字、图片与文档引用放在同一张自由画布上。",
+    "用户与 Agent 可以交错编辑；改动可以按来源查看和撤回。"
+  ],
+  "releaseNotes": [
+    {
+      "version": "0.1.0",
+      "title": "自由画布",
+      "description": "创建、阅读与组织自由画布文档。"
+    }
+  ],
+  "agents": [],
+  "skills": [
+    {
+      "name": "canvas",
+      "description": "通过文本投影和批量 CLI 编辑画布。"
+    }
+  ],
+  "entry": {
+    "backend": "./dist/backend/index.cjs",
+    "renderer": "./dist/renderer/index.js",
+    "command": "./dist/cli/canvas-cli.cjs",
+    "renderWorker": "./dist/render-worker/worker.html"
+  },
+  "dependsOn": [
+    "platform"
+  ],
+  "compat": {
+    "minApp": "0.0.38",
+    "rendererUi": "^3.4.0"
+  },
+  "ownedTables": [
+    "canvas_documents",
+    "canvas_elements",
+    "canvas_changes",
+    "canvas_requests",
+    "canvas_editing_claims",
+    "canvas_history_guards",
+    "canvas_agent_groups",
+    "canvas_pending_approvals",
+    "canvas_versions",
+    "canvas_version_heads"
+  ],
+  "ownedFileTypes": [
+    {
+      "nodeType": "canvas",
+      "extension": ".canvas",
+      "label": "画布"
+    }
+  ],
+  "migrations": [
+    {
+      "version": 1,
+      "description": "Canvas content, bounded request receipts, approvals and reverse history"
+    }
+  ]
+}

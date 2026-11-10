@@ -10,6 +10,7 @@
  */
 
 import { Logger } from 'src/shared/logger';
+import { clearDocumentReferenceMarkdownReader } from 'src/plugin-sdk/backend/documentReferences';
 import {
   generateRuntimeEventId,
   generateToolCallId,
@@ -140,7 +141,8 @@ export class AgentRunnerService {
     };
   }
 
-  async discardCheckpoint(runId: string): Promise<void> {
+  async discardCheckpoint(runId: string, conversationId: string): Promise<void> {
+    clearDocumentReferenceMarkdownReader(this.databaseService.getDb(), JSON.stringify([conversationId, runId]));
     if (this.runtime.recovery) {
       await this.runtime.recovery.releaseTerminalRun(runId);
       return;
@@ -258,8 +260,11 @@ export class AgentRunnerService {
         drainPersistence: hostPorts.drainPersistence,
         runHandle,
         readRunIterationsUsed: async () => (await runHandle.meta()).iterationsUsed,
-        clearCheckpoint: runId => this.discardCheckpoint(runId),
-        releaseRunResources: runId => this.runtime.costCollector.release(runId),
+        clearCheckpoint: runId => this.discardCheckpoint(runId, conversationId),
+        releaseRunResources: runId => {
+          this.runtime.costCollector.release(runId);
+          clearDocumentReferenceMarkdownReader(this.databaseService.getDb(), JSON.stringify([conversationId, runId]));
+        },
         now: () => Date.now(),
         durableContinuation: Boolean(runRequest.recoveryInputs),
       }

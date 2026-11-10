@@ -59,6 +59,7 @@ import { slidesApi } from '../services/slidesApi';
 import { registerMessageCatalogs } from '@app/localization';
 import { SLIDES_TOOL_CARD_MESSAGE_CATALOG } from '../tool-cards/definitions/slidesToolCardMessageCatalog';
 import { SLIDES_PREVIEW_MESSAGE_CATALOG } from '../features/previewRenderState/definitions/slidesPreviewMessageCatalog';
+import { SLIDES_PREVIEW_MESSAGES } from '../features/presentationPreview/definitions/previewMessages';
 import { SLIDES_HISTORY_MESSAGES } from '../features/presentationHistory/definitions/historyMessages';
 import { MANUAL_EDITING_MESSAGE_CATALOG } from '../features/manualEditing/ui';
 import { EDITING_COMMAND_MESSAGE_CATALOG } from '../features/editingCommands';
@@ -103,6 +104,7 @@ export function registerSlidesRendererPorts(): void {
   registerMessageCatalogs(SLIDES_TOOL_CARD_MESSAGE_CATALOG);
   registerMessageCatalogs(SLIDES_PREVIEW_MESSAGE_CATALOG);
   registerMessageCatalogs(SLIDES_HISTORY_MESSAGES);
+  registerMessageCatalogs(SLIDES_PREVIEW_MESSAGES);
   registerMessageCatalogs(MANUAL_EDITING_MESSAGE_CATALOG);
   registerMessageCatalogs(EDITING_COMMAND_MESSAGE_CATALOG);
   registerMessageCatalogs(INSERTION_MESSAGE_CATALOG);

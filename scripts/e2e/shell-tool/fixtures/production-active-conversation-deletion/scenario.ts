@@ -323,7 +323,7 @@ export async function runProductionActiveConversationDeletionScenario(input: {
     supersededCount: 0,
     failures: [],
   });
-  const historyService = new HistoryService(historyRepository, deletion, deletion);
+  const historyService = new HistoryService(historyRepository, deletion, deletion, async () => null);
   const httpApp = express();
   httpApp.use('/api/v1/conversation', createHistoryRouter(historyService));
   const server = http.createServer(httpApp);

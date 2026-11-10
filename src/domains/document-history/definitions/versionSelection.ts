@@ -8,4 +8,5 @@ export interface DocumentHistorySelection {
 export interface DocumentVersionRetentionPlan {
   readonly keepVersionIds: readonly string[];
   readonly removeVersionIds: readonly string[];
+  readonly overBudgetBytes?: number;
 }

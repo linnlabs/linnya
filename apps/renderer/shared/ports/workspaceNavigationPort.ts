@@ -1,4 +1,7 @@
 import type { NavigationScope } from '@/app/navigation';
+import type { WorkspaceNodeDocumentNavigationRequest } from '@linnya/plugin-host-contract/renderer/workspaceNavigation';
+
+export type { WorkspaceNodeDocumentNavigationRequest } from '@linnya/plugin-host-contract/renderer/workspaceNavigation';
 
 /** 已发布的导航端口名称；scope 的唯一内部定义是 NavigationScope。 */
 export type WorkspaceNavigationScope = NavigationScope;
@@ -42,6 +45,7 @@ export interface WorkspaceNavigationPort {
    * 优先复用 fileSession 的保存/关闭生命周期；只读 runtime 文档仍走 documentRuntimeLoaders。
    */
   openDocumentTarget(request: WorkspaceDocumentNavigationRequest): Promise<void>;
+  openDocumentByNodeType(request: WorkspaceNodeDocumentNavigationRequest): Promise<void>;
   openConversation(request: WorkspaceConversationNavigationRequest): Promise<void>;
   openDocument(request: WorkspaceDocumentNavigationRequest): Promise<void>;
   toggleWorkspacePanePlacement(): void;

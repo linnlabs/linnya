@@ -1,0 +1,690 @@
+/*
+ * 画布页面。层级只在 .linnya-canvas 内局部堆叠（isolation），统一用 0–9：
+ * -1 栅格暂存（被舞台底色盖住）· 2 正文编辑/文档详情 · 3 审阅标记 · 4 尺寸手柄
+ * 5 连线手柄与预览 · 6 命令条/浮层面板/底部区。平台浮条自带层级 token；
+ * 工具条菜单与右键菜单移到 body（CanvasPortalMenu）。
+ */
+.linnya-canvas {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  /* clip 而非 hidden：聚焦画面外的元素时容器不能被滚走，整个画布错位。 */
+  overflow: clip;
+  background: var(--color-bg-sidebar);
+  color: var(--color-text-primary);
+}
+.canvas-stage {
+  position: absolute;
+  inset: 0;
+  /* Pixi 画布是透明的；舞台铺上画布底色，盖住下层的位图暂存区（z-index -1），否则暂存正文会透出成残影。 */
+  background: var(--color-bg-sidebar);
+}
+/* 画布本身不画焦点框：键盘操作的对象由卡片选中描边表示；整块画布描边在按过一次键后
+   会一直亮着（随后的鼠标点击仍算键盘焦点），与常见白板一致不画。 */
+.canvas-stage canvas:focus,
+.canvas-stage canvas:focus-visible {
+  outline: none;
+}
+
+/* 卡片正文排版变量由 cardRendering/styles/canvasMediaContent.css 定义，隐藏出图 worker 共用。 */
+/* 编辑器与文档详情叠在所选卡片上，纸面与画布卡片同一外框规则（kernel/cardFrame，页面注入变量）：
+   透明边框留出纸面阴影与选中描边的位置，纸色只铺在内缩后的纸面上；选中描边仍由画布绘制（kernel 的选中外框），
+   编辑态与选中态共用一套描边。内边距扣掉透明边框，正文与画布位图逐像素对齐。 */
+.canvas-editor-overlay {
+  border: var(--canvas-card-inset) solid transparent;
+  border-radius: calc(var(--canvas-card-radius) + var(--canvas-card-inset));
+  padding: calc(var(--canvas-card-padding-top) - var(--canvas-card-inset))
+    calc(var(--canvas-card-padding-inline) - var(--canvas-card-inset))
+    calc(var(--canvas-card-padding-bottom) - var(--canvas-card-inset));
+  background: var(--canvas-card-paper-color) padding-box;
+}
+.canvas-editor-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  transform-origin: 0 0;
+  font-size: var(--canvas-card-font-size);
+  line-height: var(--canvas-card-line-height);
+}
+.canvas-editor-overlay .tiptap {
+  min-height: 1em;
+  outline: none;
+}
+/* 编辑器根带共享正文类以复用首尾外边距规则；该类自带 1.55 行高，须改回卡片行高，
+   否则多行正文比栅格与后台测高矮，自动高度卡一进编辑就缩短。 */
+.canvas-editor-overlay .markdown-document-content {
+  line-height: var(--canvas-card-line-height);
+}
+.canvas-card-content {
+  box-sizing: border-box;
+  padding: var(--canvas-card-padding);
+  font-family: inherit;
+  font-size: var(--canvas-card-font-size);
+  line-height: var(--canvas-card-line-height);
+}
+
+.canvas-document-detail {
+  border: 0;
+  border-radius: calc(var(--canvas-card-radius) + var(--canvas-card-inset));
+  padding: 0;
+  background: transparent;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  transform-origin: 0 0;
+  font-size: var(--canvas-card-font-size);
+  line-height: var(--canvas-card-line-height);
+  /* 排版沿用完整卡宽（和位图同样换行），但内容只显示在纸面内，不越过纸边和选框；
+     改尺寸拖动时外框跟随新尺寸、正文保持旧排版，也由这里裁在新纸面内。 */
+  clip-path: inset(var(--canvas-card-inset) round var(--canvas-card-radius));
+}
+.canvas-document-detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  /* 拖大时旧排版比新纸面小：正文也只到它自己的纸边，淡出外那一圈不露出来。 */
+  clip-path: inset(var(--canvas-card-inset) round var(--canvas-card-radius));
+  --document-preview-fade-color: var(--canvas-card-paper-color);
+  --document-preview-fade-inset: var(--canvas-card-inset);
+  --document-preview-fade-radius: var(--canvas-card-radius);
+}
+/* 正文可用滚轮继续往下读，但不画滚动条：滚动条会挤窄正文，选中前后换行就不一样了。 */
+.canvas-document-detail-body * {
+  scrollbar-width: none;
+}
+.canvas-document-detail-loading {
+  visibility: hidden;
+}
+.canvas-document-detail-notice {
+  margin: 0;
+  background: var(--canvas-card-paper-color);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.canvas-line-label-preview {
+  position: absolute;
+  box-sizing: border-box;
+  width: max-content;
+  padding: var(--space-2) var(--space-3);
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.canvas-line-label-preview p {
+  margin: 0;
+}
+.canvas-raster-staging {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* 历史预览沿用同一套状态外观。 */
+.canvas-status,
+.canvas-read-notice {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  z-index: 7;
+  max-width: calc(100% - var(--space-8));
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-floating-panel);
+  color: var(--color-text-secondary);
+  transform: translateX(-50%);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+.canvas-read-notice {
+  bottom: calc(var(--space-4) + var(--space-10));
+}
+.canvas-read-notice p {
+  margin: 0;
+}
+.canvas-status-error {
+  color: var(--color-error-text);
+}
+.canvas-history-preview {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 440px;
+  overflow: hidden;
+  background: var(--color-bg-sidebar);
+}
+.canvas-history-fit {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 6;
+}
+
+/* 画布设置页（“文档与插件”分组）：件套 SettingsPage / SettingsSection / SettingsRow 不对插件开放，
+   这里按同一版式合同排版：内容列与设置壳标题同宽居中，分区之间一道细线，分区标题与行间距同件套。
+   下拉是 field 行（标签列定宽、字段再收进一段、右缘对齐内容列），开关是 end 行（控件贴右）。 */
+.canvas-settings-page {
+  max-width: 720px; /* scale-exempt: 与设置壳内容列同宽，标题与正文左缘对齐 */
+  margin-inline: auto;
+}
+.canvas-settings-section + .canvas-settings-section {
+  padding-top: 26px; /* scale-exempt: 与件套分区间距一致 */
+  margin-top: 26px; /* scale-exempt: 与件套分区间距一致 */
+  border-top: 1px solid var(--settings-hairline, var(--color-border-default));
+}
+.canvas-settings-heading {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+}
+.canvas-settings {
+  display: flex;
+  flex-direction: column;
+}
+.canvas-settings-row {
+  display: flex;
+  align-items: center;
+}
+.canvas-settings-row + .canvas-settings-row {
+  margin-top: var(--space-5);
+}
+.canvas-settings-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.canvas-settings-row.is-field > .canvas-settings-text {
+  flex-shrink: 0;
+  width: 200px; /* scale-exempt: 与设置件套 SettingsRow 的标签列同宽，跨分节对齐 */
+  padding-right: var(--space-4);
+}
+.canvas-settings-row.is-field > .canvas-settings-control {
+  flex: 1;
+  min-width: 0;
+  margin-left: 100px; /* scale-exempt: 与设置件套 SettingsRow 的字段缩进一致 */
+}
+.canvas-settings-row.is-end > .canvas-settings-text {
+  flex: 1;
+  padding-right: var(--space-6);
+}
+.canvas-settings-label {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+.canvas-settings-description {
+  margin-top: var(--space-1-5);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+/* 底部区靠右纵向排列：状态提示在上，审阅条与缩放同一行；窄画布里审阅条换到缩放上方。边距与顶部命令条一致。 */
+.canvas-bottom-dock {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  left: var(--space-3);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: calc(100% - var(--space-10) - var(--space-10));
+  pointer-events: none;
+}
+.canvas-bottom-dock > * {
+  pointer-events: auto;
+}
+.canvas-bottom-dock > .canvas-bottom-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+.canvas-bottom-row > * {
+  pointer-events: auto;
+}
+/* Agent 审阅：收起时是与缩放同高的一行（外观与缩放同源，见 canvasChrome.css）；详情面板贴着这一行向上展开、与它同宽。 */
+.canvas-agent-review {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+.canvas-agent-review-bar {
+  gap: var(--space-0-5);
+}
+.canvas-agent-review-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  height: var(--control-height-sm);
+  padding: 0 var(--space-1-5) 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+  transition: background-color var(--duration-micro) var(--ease-standard);
+}
+.canvas-agent-review-summary:hover,
+.canvas-agent-review-summary[aria-expanded='true'] {
+  background: var(--color-bg-hover);
+}
+.canvas-agent-review-summary.is-warning {
+  color: var(--color-warning-text);
+}
+.canvas-agent-summary-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.canvas-agent-review-summary .canvas-agent-summary-arrow {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-tertiary);
+}
+.canvas-agent-status,
+.canvas-agent-status-icon {
+  flex-shrink: 0;
+}
+.canvas-agent-status {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+}
+.canvas-agent-status-icon {
+  width: 14px;
+  height: 14px;
+}
+.canvas-agent-review-divider {
+  flex-shrink: 0;
+  width: var(--border-width-hairline);
+  height: var(--space-4);
+  margin: 0 var(--space-1);
+  background: var(--color-border-light);
+}
+.canvas-review-position {
+  min-width: 4ch;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.canvas-agent-review-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-2));
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 300px;
+  max-height: min(420px, 50vh);
+  padding: var(--space-1);
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-floating-panel);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+.canvas-agent-review-panel > * + * {
+  border-top: var(--border-width-hairline) solid var(--color-border-light);
+}
+.canvas-agent-review-error {
+  padding: var(--space-1-5) var(--space-2);
+}
+.canvas-agent-review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-2);
+}
+.canvas-agent-title {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+.canvas-agent-meta {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.canvas-agent-groups {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-1);
+}
+.canvas-review-targets {
+  flex-shrink: 0;
+  padding: var(--space-1) 0;
+}
+.canvas-review-target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.canvas-review-target .canvas-panel-row {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  white-space: nowrap;
+}
+.canvas-review-target-kind {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+}
+.canvas-review-target .canvas-panel-row--active .canvas-review-target-kind {
+  color: inherit;
+}
+.canvas-review-target-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.canvas-agent-review-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-1);
+}
+.canvas-agent-review-foot > :only-child {
+  margin-left: auto;
+}
+.canvas-review-details {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+.canvas-review-details summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1-5) var(--space-2);
+  list-style: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.canvas-review-details summary::-webkit-details-marker {
+  display: none;
+}
+.canvas-review-details-arrow {
+  width: 12px;
+  height: 12px;
+  color: var(--color-text-tertiary);
+  transition: transform var(--duration-short) var(--ease-standard);
+}
+.canvas-review-details[open] .canvas-review-details-arrow {
+  transform: rotate(90deg);
+}
+.canvas-review-details summary:hover {
+  background: var(--color-bg-hover);
+}
+.canvas-review-details ul {
+  margin: 0;
+  padding: 0 var(--space-2) var(--space-1-5);
+  list-style: none;
+}
+.canvas-review-withdrawal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-1-5) var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+.canvas-review-withdrawal .canvas-review-details {
+  width: 100%;
+}
+.canvas-review-withdrawal .canvas-review-details summary {
+  padding-inline: 0;
+}
+
+/*
+ * 改尺寸区：框与选中描边中线重合，四边是跨线的窄带、四角是稍大的方块，全部不可见，只靠光标提示。
+ * 连线圆点叠在上层（z-index 5），边中点留给连线；角排在边之后，交叠处归角。
+ */
+.canvas-card-resize-frame {
+  --canvas-resize-band: 8px;
+  --canvas-resize-corner: 14px;
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+}
+.canvas-card-resize-zone {
+  position: absolute;
+  pointer-events: auto;
+}
+.canvas-card-resize-zone[data-edge='n'],
+.canvas-card-resize-zone[data-edge='s'] {
+  right: calc(var(--canvas-resize-corner) / 2);
+  left: calc(var(--canvas-resize-corner) / 2);
+  height: var(--canvas-resize-band);
+  cursor: ns-resize;
+}
+.canvas-card-resize-zone[data-edge='e'],
+.canvas-card-resize-zone[data-edge='w'] {
+  top: calc(var(--canvas-resize-corner) / 2);
+  bottom: calc(var(--canvas-resize-corner) / 2);
+  width: var(--canvas-resize-band);
+  cursor: ew-resize;
+}
+.canvas-card-resize-zone[data-edge='n'] {
+  top: calc(var(--canvas-resize-band) / -2);
+}
+.canvas-card-resize-zone[data-edge='s'] {
+  bottom: calc(var(--canvas-resize-band) / -2);
+}
+.canvas-card-resize-zone[data-edge='e'] {
+  right: calc(var(--canvas-resize-band) / -2);
+}
+.canvas-card-resize-zone[data-edge='w'] {
+  left: calc(var(--canvas-resize-band) / -2);
+}
+.canvas-card-resize-zone[data-edge='nw'],
+.canvas-card-resize-zone[data-edge='ne'],
+.canvas-card-resize-zone[data-edge='sw'],
+.canvas-card-resize-zone[data-edge='se'] {
+  width: var(--canvas-resize-corner);
+  height: var(--canvas-resize-corner);
+}
+.canvas-card-resize-zone[data-edge='nw'],
+.canvas-card-resize-zone[data-edge='ne'] {
+  top: calc(var(--canvas-resize-corner) / -2);
+}
+.canvas-card-resize-zone[data-edge='sw'],
+.canvas-card-resize-zone[data-edge='se'] {
+  bottom: calc(var(--canvas-resize-corner) / -2);
+}
+.canvas-card-resize-zone[data-edge='ne'],
+.canvas-card-resize-zone[data-edge='se'] {
+  right: calc(var(--canvas-resize-corner) / -2);
+}
+.canvas-card-resize-zone[data-edge='nw'],
+.canvas-card-resize-zone[data-edge='sw'] {
+  left: calc(var(--canvas-resize-corner) / -2);
+}
+.canvas-card-resize-zone[data-edge='nw'],
+.canvas-card-resize-zone[data-edge='se'] {
+  cursor: nwse-resize;
+}
+.canvas-card-resize-zone[data-edge='ne'],
+.canvas-card-resize-zone[data-edge='sw'] {
+  cursor: nesw-resize;
+}
+.canvas-connection-anchor,
+.canvas-connection-endpoint {
+  position: absolute;
+  z-index: 5;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-default);
+  transform: translate(-50%, -50%);
+  cursor: crosshair;
+}
+/* 常态只把描边调淡，底色保持不透明：圆点压在连线端头上时盖住线，而不是透出线来。 */
+.canvas-connection-anchor {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-bg-default));
+  transition: border-color var(--duration-micro) var(--ease-standard);
+}
+.canvas-connection-anchor:hover,
+.canvas-connection-anchor:focus-visible {
+  border-color: var(--color-accent);
+}
+/* 选中线的两端不常驻控制点：选中已由线本身变色表示，端点上只留可拖区域，悬停时显出空心圈提示可改接。 */
+.canvas-connection-endpoint {
+  border-color: transparent;
+  background: transparent;
+  cursor: grab;
+}
+.canvas-connection-endpoint:hover,
+.canvas-connection-endpoint:focus-visible {
+  border-color: var(--color-accent);
+  background: var(--color-bg-default);
+}
+.canvas-connection-bar {
+  white-space: nowrap;
+}
+.canvas-connection-label-input {
+  position: absolute;
+  z-index: 5;
+  font-size: var(--font-size-footnote);
+  transform: translate(-50%, -50%);
+}
+.canvas-connection-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.canvas-connection-preview line {
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
+.canvas-file-input {
+  display: none;
+}
+.canvas-accessible-summary {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 图片编辑弹窗 */
+.canvas-image-edit-hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+.canvas-image-crop-stage {
+  display: flex;
+  justify-content: center;
+  margin-block: var(--space-3);
+}
+.canvas-image-crop-source {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  line-height: 0;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+.canvas-image-crop-source img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: min(45vh, 360px);
+  pointer-events: none;
+}
+.canvas-image-crop-range {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 0 0 999px color-mix(in srgb, var(--color-bg-default) 72%, transparent);
+  pointer-events: none;
+}
+.canvas-image-edit-fields {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.canvas-image-edit-legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+.canvas-image-edit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.canvas-image-edit-label {
+  flex-shrink: 0;
+  width: 5em;
+  color: var(--color-text-secondary);
+}
+.canvas-image-edit-slider,
+.canvas-image-edit-text {
+  flex: 1;
+  min-width: 0;
+}
+.canvas-image-edit-fields output {
+  min-width: 4ch;
+  color: var(--color-text-secondary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* live 与位图共用完整卡宽；纸张内缩只影响背景，不能让正文换行偏移。 */
+.canvas-document-detail-ready::before {
+  content: '';
+  position: absolute;
+  inset: var(--canvas-card-inset);
+  background: var(--canvas-card-paper-color);
+  border-radius: var(--canvas-card-radius);
+  z-index: -1;
+}

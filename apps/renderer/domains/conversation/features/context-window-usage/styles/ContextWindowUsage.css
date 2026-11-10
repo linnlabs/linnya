@@ -58,14 +58,6 @@
   stroke: var(--color-error);
 }
 
-.context-window-usage-trigger.is-unavailable {
-  color: var(--color-text-muted);
-}
-
-.context-window-usage-trigger.is-historical .context-window-usage-trigger__track {
-  stroke-dasharray: 2 2;
-}
-
 .context-window-usage-panel-wrapper.linnya-dropdown-surface {
   position: fixed;
   z-index: 1100;

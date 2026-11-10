@@ -44,6 +44,8 @@ const sampleInput = {
 };
 
 class FakeIpcMain extends EventEmitter {
+  readonly handle = vi.fn();
+  readonly removeHandler = vi.fn();
 }
 
 class FakeWebContents extends EventEmitter {
@@ -107,6 +109,11 @@ class FakeBrowserWindow extends EventEmitter {
   loadedFilePath: string | null = null;
   closed = false;
   private readonly strictDestroyed: boolean;
+  private size: [number, number] = [1, 1];
+
+  getBounds() { return { x: 0, y: 0, width: this.size[0], height: this.size[1] }; }
+  getContentSize(): [number, number] { return this.size; }
+  setContentSize(width: number, height: number): void { this.size = [width, height]; }
 
   constructor(
     private readonly ipcMain: FakeIpcMain,

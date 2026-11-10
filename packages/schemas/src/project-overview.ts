@@ -13,7 +13,7 @@ export const ProjectOverviewRequestSchema = z.object({
 }).strict();
 
 /**
- * 改动是谁做的。`linnya_ai` 是 Linnya 自己的 Agent 运行（含子运行）；`external` 是经外部控制入口直接写入的改动；
+ * 改动是谁做的。`linnya_ai` 是 Linnya 自己的 Agent 运行（含子运行）；`external` 是经外部控制入口（Linnya CLI）写入的改动，分不出调用方是人、脚本还是外部 Agent；
  * `plugin` 是插件的后台自动化。只有账本能说明的才给，说不清时为 null。
  */
 export const ProjectOverviewActorSchema = z.enum(['linnya_ai', 'user', 'external', 'plugin']);

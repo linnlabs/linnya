@@ -25,6 +25,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.clientNotice.reason.missing_message': '原消息已不存在，请重新发送',
   'conversation.clientNotice.reason.agent_choice_not_saved': 'Agent 选择未能保存，请重试',
   'conversation.clientNotice.reason.missing_context': '缺少处理所需的文档信息',
+  'conversation.clientNotice.reason.reference_preparation_failed': '引用读取失败，消息尚未发送。草稿和引用已保留，请检查引用后重试。',
   'conversation.execution.running': '进行中',
   'conversation.execution.paused': '已暂停',
   'conversation.execution.finished': 'AI 输出结束',
@@ -53,6 +54,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.input.reasoning.high': '高',
   'conversation.input.reasoning.xhigh': '超高',
   'conversation.contextUsage.title': '上下文用量',
+  'conversation.contextUsage.trigger.loading': '正在估算上下文用量',
   'conversation.contextUsage.trigger.unavailable': '上下文用量暂不可用',
   'conversation.contextUsage.trigger.available':
     '上下文已使用 {percentage}，{used} / {budget} Tokens',
@@ -61,8 +63,6 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.contextUsage.row.systemPrompt': '系统提示词',
   'conversation.contextUsage.row.conversation': '对话消息',
   'conversation.contextUsage.row.toolDefinitions': '工具定义',
-  'conversation.contextUsage.empty.tailUnavailable':
-    '当前只加载了部分历史消息；回到对话尾部后才能确定最近一次上下文用量。',
   'conversation.contextUsage.conversationInfo.createdAt': '创建时间',
   'conversation.contextUsage.conversationInfo.userMessageCount': '用户消息数',
   'conversation.input.actionMenu.open': '添加',
@@ -764,6 +764,7 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.clientNotice.reason.missing_message': 'The original message is no longer available; send it again',
       'conversation.clientNotice.reason.agent_choice_not_saved': 'The agent selection was not saved; try again',
       'conversation.clientNotice.reason.missing_context': 'The required document information is missing',
+      'conversation.clientNotice.reason.reference_preparation_failed': 'Could not read the references. The message was not sent. Your draft and references are preserved. Check the references and try again.',
       'conversation.view.historyLoading': 'Loading conversation history',
       'conversation.view.empty.title': 'Start a new chat',
       'conversation.view.empty.description': 'Ask a question, or give Linnya a task',
@@ -792,6 +793,7 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.input.reasoning.high': 'High',
       'conversation.input.reasoning.xhigh': 'Extra high',
       'conversation.contextUsage.title': 'Context Usage',
+      'conversation.contextUsage.trigger.loading': 'Estimating context usage',
       'conversation.contextUsage.trigger.unavailable': 'Context usage is not available yet',
       'conversation.contextUsage.trigger.available':
         'Context {percentage} used, {used} / {budget} Tokens',
@@ -800,8 +802,6 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.contextUsage.row.systemPrompt': 'System prompt',
       'conversation.contextUsage.row.conversation': 'Conversation',
       'conversation.contextUsage.row.toolDefinitions': 'Tool definitions',
-      'conversation.contextUsage.empty.tailUnavailable':
-        'Only part of the history is loaded. Return to the conversation tail to resolve the latest context usage.',
       'conversation.contextUsage.conversationInfo.createdAt': 'Created',
       'conversation.contextUsage.conversationInfo.userMessageCount': 'User messages',
       'conversation.input.actionMenu.open': 'Add',

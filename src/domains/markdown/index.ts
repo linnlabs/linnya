@@ -15,3 +15,5 @@ export * from './features/image-content';
 export * from './features/normalization';
 export * from './features/pending-revisions';
 export * from './shared';
+
+export * from './features/document-preview';

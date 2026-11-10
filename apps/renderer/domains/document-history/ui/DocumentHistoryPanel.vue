@@ -124,12 +124,12 @@ import { createHistoryPanelController } from '../orchestration/createHistoryPane
 import { historyPanelIpc } from '../infrastructure/historyPanelIpc';
 import { useHistoryMessages } from '../locales/historyMessages';
 
-const props = defineProps<{ documentId: string; previewComponent: Component }>();
+const props = defineProps<{ documentId: string; previewComponent: Component; clientSessionId?: string }>();
 const emit = defineEmits<{ close: [] }>();
 const { message, locale } = useHistoryMessages();
 const store = createHistoryPanelState();
 const { state } = store;
-const controller = createHistoryPanelController(props.documentId, store, historyPanelIpc);
+const controller = createHistoryPanelController(props.documentId, store, historyPanelIpc, props.clientSessionId);
 const confirming = ref(false);
 const confirmationSections = computed(() => [
   {

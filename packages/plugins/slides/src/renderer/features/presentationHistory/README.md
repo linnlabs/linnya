@@ -2,7 +2,7 @@
 
 由文档类型的 historyPreviewComponent 贡献接入 Core 历史面板，不复用当前文稿 store，不提供编辑或保存操作。
 私有 IPC 返回 [source history](../../../backend/features/presentationSourceHistory/README.md) 重建的单份 RenderModel；
-选中页复用 slideRasterization，在 900×600 以内按真实比例生成预览。取消页面下拉框，
+分页与位图生命周期复用 [presentationPreview](../presentationPreview/README.md) 的公开只读组件，选中页复用 slideRasterization，在 900×600 以内按真实比例生成预览。取消页面下拉框，
 幻灯片在预览区内垂直居中，悬浮的上一页／页码／下一页导航固定在预览区底部；左右方向键只在预览区域内生效，不影响历史列表和确认框。
 首尾不循环，单页禁用两端；无页时显示空状态。不显示或生成页面缩略图。
 

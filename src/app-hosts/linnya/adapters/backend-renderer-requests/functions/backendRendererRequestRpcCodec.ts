@@ -10,6 +10,7 @@ export interface BackendRendererRequestRpcRequest {
   readonly operation_id: string;
   readonly token: string;
   readonly channel: string;
+  readonly renderer_session_id: string | null;
   readonly args: {
     readonly kind: 'inline';
     readonly values: readonly JsonValue[];
@@ -47,11 +48,12 @@ export function parseBackendRendererRequestRpcRequest(
   value: JsonValue,
 ): BackendRendererRequestRpcRequest {
   const record = readRecord(value, 'request');
-  requireKeys(record, ['protocol_version', 'operation_id', 'token', 'channel', 'args']);
+  requireKeys(record, ['protocol_version', 'operation_id', 'token', 'channel', 'args', 'renderer_session_id']);
   if (record.protocol_version !== BACKEND_RENDERER_REQUEST_PROTOCOL_VERSION) {
     throw new Error('Backend Renderer request protocol_version 不匹配');
   }
   const channel = readNonEmptyString(record.channel, 'channel');
+  const renderer_session_id = record.renderer_session_id === null ? null : parseBackendRendererRequestOperationId(record.renderer_session_id);
   const args = readRecord(record.args, 'args');
   if (args.kind === 'inline') {
     requireKeys(args, ['kind', 'values']);
@@ -61,6 +63,7 @@ export function parseBackendRendererRequestRpcRequest(
       operation_id: parseBackendRendererRequestOperationId(record.operation_id),
       token: parseBackendRendererRequestToken(record.token),
       channel,
+      renderer_session_id,
       args: { kind: 'inline', values: args.values },
     };
   }
@@ -71,6 +74,7 @@ export function parseBackendRendererRequestRpcRequest(
       operation_id: parseBackendRendererRequestOperationId(record.operation_id),
       token: parseBackendRendererRequestToken(record.token),
       channel,
+      renderer_session_id,
       args: { kind: 'mailbox' },
     };
   }

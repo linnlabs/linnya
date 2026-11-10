@@ -132,7 +132,7 @@ function createHistoryService(
     },
   },
 ): HistoryService {
-  return new HistoryService(new HistoryRepository(eventStore), deletion, cleanupStatus);
+  return new HistoryService(new HistoryRepository(eventStore), deletion, cleanupStatus, async () => null);
 }
 
 describe('HistoryService.listConversations', () => {

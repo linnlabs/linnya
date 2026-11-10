@@ -28,6 +28,11 @@
   box-shadow: none;
 }
 
+.table-toolbar-root .toolbar-button.is-danger:hover:not(:disabled) {
+  color: var(--color-error-text);
+  background-color: var(--color-error-bg-subtle);
+}
+
 .table-toolbar-root .toolbar-button.is-disabled,
 .table-toolbar-root .toolbar-button:disabled {
   color: var(--color-text-muted);

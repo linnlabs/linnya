@@ -18,3 +18,24 @@ export declare function touchWorkspaceDocument(
   nodeId: string,
   updatedAt: number
 ): void;
+
+export interface WorkspaceDocumentIdentity {
+  readonly id: string;
+  readonly projectId: string | null;
+  readonly name: string;
+  readonly nodeType: string;
+  readonly deletedAt: number | null;
+}
+export declare function readWorkspaceDocumentIdentity(
+  db: Pick<PluginSqliteDatabaseLike, 'prepare'>,
+  nodeId: string,
+): WorkspaceDocumentIdentity | null;
+
+/** 活动文档的当前 VFS 地址；路径用于展示，稳定身份仍是 id。 */
+export declare function readWorkspaceDocumentLocation(
+  db: Pick<PluginSqliteDatabaseLike, 'prepare'>,
+  nodeId: string,
+): { readonly id: string; readonly projectId: string | null; readonly path: string; readonly nodeType: string } | null;
+
+/** 解析当前项目正式持久文档路径；不返回系统视图或文件系统目标。 */
+export declare function resolveWorkspaceDocumentPath(db: Pick<PluginSqliteDatabaseLike, 'prepare'>, input: { readonly projectId: string; readonly path: string }): WorkspaceDocumentIdentity | null;

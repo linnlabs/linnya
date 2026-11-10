@@ -12,11 +12,15 @@ import { useNavigationScope } from '@/app/navigation';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { useWorkspaceTreeStore } from '@/domains/workspace/store';
 import { getDocumentTypeByNodeType } from '@/app/plugins/registry';
+import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
+import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import { useLocalization } from '@/app/localization';
 import { resolveDocumentTypeTextPresentation } from '@/app/plugins/functions/pluginContributionPresentation';
+import { createWorkspaceDocumentReferenceKind } from './conversation-input/createWorkspaceDocumentReferenceKind';
+import { readDocumentReference } from '@plugin/renderer/documentReferences';
+import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import {
   createWorkspaceDocumentReferenceProvider,
-  WORKSPACE_DOCUMENT_REFERENCE_KIND,
 } from './conversation-input/createWorkspaceDocumentReferenceProvider';
 
 /**
@@ -39,14 +43,11 @@ export function installBuiltinConversationInputContributions(): void {
     },
   });
 
-  registerConversationReferenceKind({
-    pluginId: 'platform',
-    kind: WORKSPACE_DOCUMENT_REFERENCE_KIND,
-    chip: {
-      label: (reference) => reference.label,
-      preview: (reference) => reference.previewText,
-    },
-  });
+  registerConversationReferenceKind(createWorkspaceDocumentReferenceKind({
+    currentProjectId: () => navigationScope.currentProjectId, read: readDocumentReference,
+    typeIcon: nodeType => (nodeType ? readDocumentTypeIcon(nodeType) : DocumentIcon),
+    async open(presentation, projectId) { if (presentation.nodeType) await getWorkspaceNavigationPort().openDocumentByNodeType({ documentId: presentation.documentId, projectId, nodeType: presentation.nodeType, displayName: presentation.title }); },
+  }));
 
   registerConversationReferenceProvider(createWorkspaceDocumentReferenceProvider({
     getCurrentProjectId: () => navigationScope.currentProjectId,

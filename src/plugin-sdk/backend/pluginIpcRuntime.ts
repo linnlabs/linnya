@@ -1,8 +1,17 @@
 import type { BackendPluginIpcHandler } from '@linnya/plugin-host-contract/backend/pluginIpcRuntime';
+import type { BackendPluginRendererContext } from '@linnya/plugin-host-contract/backend/pluginIpcRuntime';
 
 export type {
   BackendPluginIpcHandler,
+  BackendPluginRendererContext,
 } from '@linnya/plugin-host-contract/backend/pluginIpcRuntime';
+
+export function readBackendPluginRendererContext(event: unknown): BackendPluginRendererContext | undefined {
+  if (typeof event !== 'object' || event === null
+    || !('rendererSessionId' in event) || typeof event.rendererSessionId !== 'string'
+    || !('signal' in event) || !(event.signal instanceof AbortSignal)) return undefined;
+  return { rendererSessionId: event.rendererSessionId, signal: event.signal };
+}
 
 const handlersByPluginAndChannel = new Map<string, BackendPluginIpcHandler>();
 

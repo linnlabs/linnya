@@ -2,6 +2,7 @@
 import { createApp, defineComponent, h, nextTick, onUnmounted } from 'vue';
 import { createPinia } from 'pinia';
 import { expect, it, vi } from 'vitest';
+import { DocumentVersionRestoreRequestSchema } from '@app/schemas';
 import { useLocalizationStore } from '@/app/localization';
 import DocumentHistoryPanel from './DocumentHistoryPanel.vue';
 
@@ -14,9 +15,13 @@ it('真实面板选历史、确认恢复并刷新 current；切换语言和卸�
     { versionId: 'old', order: 1, createdAt: 1000, isCurrent: false },
   ];
   port.list.mockResolvedValue({ success: true, recent: rows, earlier: [] });
-  port.restore.mockResolvedValue({
-    success: true,
-    current: { versionId: 'restored', order: 3, createdAt: 3000, isCurrent: true },
+  port.restore.mockImplementation(async (request: unknown) => {
+    // 正式严格schema也必须接纳会话身份，不能只在组件内mock看似透传成功。
+    DocumentVersionRestoreRequestSchema.parse(request);
+    return {
+      success: true,
+      current: { versionId: 'restored', order: 3, createdAt: 3000, isCurrent: true },
+    };
   });
   const disposed = vi.fn();
   const preview = defineComponent({
@@ -30,7 +35,7 @@ it('真实面板选历史、确认恢复并刷新 current；切换语言和卸�
   document.body.append(host);
   const pinia = createPinia();
   const app = createApp({
-    render: () => h(DocumentHistoryPanel, { documentId: 'doc', previewComponent: preview }),
+    render: () => h(DocumentHistoryPanel, { documentId: 'doc', previewComponent: preview, clientSessionId: 'view-open-7' }),
   }).use(pinia);
   const flush = async () => {
     await new Promise<void>(resolve => setTimeout(resolve, 0));
@@ -58,12 +63,13 @@ it('真实面板选历史、确认恢复并刷新 current；切换语言和卸�
         restoredFrom: { versionId: 'old', createdAt: 1000 } }],
       earlier: [],
     });
-    restoreButtons().at(-1)?.click();
+    const buttons = restoreButtons(); buttons[buttons.length - 1]?.click();
     await flush();
     expect(port.restore).toHaveBeenCalledExactlyOnceWith({
       documentId: 'doc',
       versionId: 'old',
       expectedCurrentVersionId: 'new',
+      clientSessionId: 'view-open-7',
     });
     expect(document.querySelector('output')?.textContent).toBe('restored');
     expect(document.body.textContent).toContain('已恢复为新版本');

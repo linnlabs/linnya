@@ -1,0 +1,122 @@
+import type { CanvasCard } from '@plugin/canvas/shared';
+import type { CanvasDocumentSession } from '../../canvasDocument';
+import type {
+  CanvasResizeDisplay,
+  CanvasResizeEdge,
+  CanvasResizeGesture,
+} from '../definitions/cardResizing';
+import { createCanvasResizeState } from '../store/createCanvasResizeState';
+import { resolveCanvasResize } from '../functions/resolveCanvasResize';
+
+export function createCanvasCardResize(
+  session: CanvasDocumentSession,
+  report: (error: unknown) => void
+) {
+  const state = createCanvasResizeState();
+  let gesture: CanvasResizeGesture | null = null;
+  const release = (active: CanvasResizeGesture, keepPreview = false) => {
+    active.target.removeEventListener('pointermove', move);
+    active.target.removeEventListener('pointerup', up);
+    active.target.removeEventListener('pointercancel', cancel);
+    window.removeEventListener('keydown', escape, true);
+    window.removeEventListener('blur', cancel);
+    if (active.target.hasPointerCapture(active.pointer))
+      active.target.releasePointerCapture(active.pointer);
+    gesture = null;
+    if (!keepPreview) state.set(null);
+  };
+  const cancel = () => {
+    if (gesture) {
+      const active = gesture;
+      release(active);
+      active.display.clear();
+      void session.protect(active.card.id, [], 'resize').catch(report);
+    }
+  };
+  const move = (event: PointerEvent) => {
+    if (gesture?.pointer !== event.pointerId) return;
+    const size = resolveCanvasResize(gesture, event);
+    state.set(size);
+    gesture.display.show(size);
+  };
+  const up = (event: PointerEvent) => {
+    if (!gesture || event.pointerId !== gesture.pointer) return;
+    const active = gesture,
+      size = resolveCanvasResize(active, event);
+    // 新尺寸落地前预览框一直保留：选区浮条、连线锚点和文档详情不先跳回旧外框再跳到新外框。
+    release(active, true);
+    void session
+      .commit([
+        {
+          op: 'update',
+          id: active.card.id,
+          baseRevision: active.card.revision,
+          patch: {
+            ...(size.x !== active.card.x ? { x: size.x } : {}),
+            ...(size.y !== active.card.y ? { y: size.y } : {}),
+            width: size.width,
+            height: size.height,
+            ...(active.card.type === 'text'
+              ? { data: { ...active.card.data, heightMode: 'fixed' } }
+              : {}),
+          },
+        },
+      ])
+      .catch(report)
+      .finally(() => {
+        if (!gesture) state.set(null);
+        active.display.clear();
+        void session.protect(active.card.id, [], 'resize').catch(report);
+      });
+  };
+  const escape = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      cancel();
+    }
+  };
+  return {
+    state,
+    start(
+      card: CanvasCard,
+      event: PointerEvent,
+      {
+        edge,
+        zoom,
+        display,
+      }: { edge: CanvasResizeEdge; zoom: number; display: CanvasResizeDisplay }
+    ) {
+      if (card.locked || event.button !== 0 || !(event.currentTarget instanceof HTMLElement))
+        return;
+      cancel();
+      gesture = {
+        card,
+        edge,
+        pointer: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        target: event.currentTarget,
+        zoom,
+        display,
+      };
+      gesture.target.setPointerCapture(event.pointerId);
+      state.set(card);
+      gesture.target.addEventListener('pointermove', move);
+      gesture.target.addEventListener('pointerup', up);
+      gesture.target.addEventListener('pointercancel', cancel);
+      window.addEventListener('keydown', escape, true);
+      window.addEventListener('blur', cancel);
+      void session
+        .protect(
+          card.id,
+          card.type === 'text'
+            ? ['x', 'y', 'width', 'height', 'data']
+            : ['x', 'y', 'width', 'height'],
+          'resize'
+        )
+        .catch(report);
+    },
+    dispose: cancel,
+  };
+}

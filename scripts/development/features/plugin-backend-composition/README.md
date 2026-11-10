@@ -22,3 +22,5 @@ artifact，direct dir 只属于开发协作合同。
 
 这里禁止加入插件 ID、私有仓 URL或相邻目录默认值。某个插件是否选择 `disk` 由插件自己的 package
 metadata 决定；外置仓位置由开发者环境决定。
+
+需要 Renderer、受管 Worker 或 preload 等附加产物的插件，可声明 `linnya.development.additionalBuilds`。每项有插件内唯一 id；configured 类型选择 vite/tsup 和包内 config，script 类型引用已声明的 package script。`dependencies` 引用同插件附加构建 id，`backend` 表示本插件主 backend。编排先等待公共 schemas/catalog 与声明依赖，再等待本轮成功；不能用旧 dist 放行 Desktop。Host 不检查插件身份，也不推测某类插件需要哪些 Worker。长期 Vite/tsup watcher 与其他开发进程一起清理，一次性脚本用于 preload 等启动前准备。

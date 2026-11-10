@@ -7,6 +7,7 @@ import {
   BACKEND_RENDERER_REQUEST_INVOKE_RPC_METHOD,
   BACKEND_RENDERER_REQUEST_LIST_RPC_METHOD,
   BACKEND_RENDERER_REQUEST_PROTOCOL_VERSION,
+  BACKEND_RENDERER_SESSION_RELEASE_RPC_METHOD,
 } from '../definitions/backendRendererRequestRpc';
 import {
   cleanupBackendRendererRequestMailbox,
@@ -32,6 +33,9 @@ export function createBackendRendererRequestRpcGateway(input: {
   const createOperationId = input.createOperationId ?? randomUUID;
   const createToken = input.createToken ?? (() => randomBytes(16).toString('hex'));
   const gateway: BackendRendererRequestRpcGatewayPort = {
+    async releaseRendererSession(rendererSessionId) {
+      await input.rpc.request(BACKEND_RENDERER_SESSION_RELEASE_RPC_METHOD, rendererSessionId);
+    },
     async listChannels() {
       return parseBackendRendererRequestChannelList(
         await input.rpc.request(BACKEND_RENDERER_REQUEST_LIST_RPC_METHOD, null),
@@ -57,6 +61,7 @@ export function createBackendRendererRequestRpcGateway(input: {
             args,
           });
         }
+        options?.signal?.throwIfAborted();
         const rawResponse = await input.rpc.request(
           BACKEND_RENDERER_REQUEST_INVOKE_RPC_METHOD,
           {
@@ -64,6 +69,7 @@ export function createBackendRendererRequestRpcGateway(input: {
             operation_id: operationId,
             token,
             channel,
+            renderer_session_id: options?.rendererSessionId ?? null,
             args: inlineValues
               ? { kind: 'inline', values: inlineValues }
               : { kind: 'mailbox' },

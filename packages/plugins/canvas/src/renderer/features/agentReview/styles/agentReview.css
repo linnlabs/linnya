@@ -1,0 +1,126 @@
+/* 卡片上的审阅标记：新增实心点、修改空心点，贴在卡片右上角内侧；删除用虚线占位。 */
+.canvas-review-markers {
+  pointer-events: none;
+}
+.canvas-review-indicator {
+  position: absolute;
+  z-index: 3;
+  pointer-events: auto;
+}
+.canvas-review-indicator-dot {
+  display: block;
+  position: relative;
+  box-sizing: border-box;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  cursor: pointer;
+}
+.canvas-review-indicator:not(.deleted) .canvas-review-indicator-dot {
+  transform: translate(-50%, -50%);
+}
+/* 命中区扩到 18px，点本身保持小。 */
+.canvas-review-indicator:not(.deleted) .canvas-review-indicator-dot::before {
+  position: absolute;
+  inset: -5px;
+  content: '';
+}
+.canvas-review-indicator.updated .canvas-review-indicator-dot {
+  background: var(--color-bg-default);
+}
+.canvas-review-indicator.deleted {
+  border: 1px dashed var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+.canvas-review-indicator.deleted .canvas-review-indicator-dot {
+  width: auto;
+  max-width: calc(100% - var(--space-3));
+  height: auto;
+  margin: var(--space-1-5);
+  padding: var(--space-0-5) var(--space-1-5);
+  overflow: hidden;
+  border-color: var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-default);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.canvas-review-popover {
+  display: none;
+  position: absolute;
+  top: var(--space-1-5);
+  right: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  min-width: 180px;
+  max-width: 280px;
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-floating-panel);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+.canvas-review-indicator:hover .canvas-review-popover,
+.canvas-review-indicator:focus-within .canvas-review-popover {
+  display: block;
+}
+.canvas-review-popover p {
+  margin: 0 0 var(--space-1);
+  padding-inline: var(--space-1);
+  overflow-wrap: anywhere;
+}
+.canvas-review-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+.canvas-review-direction {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  height: var(--control-height-sm);
+  padding: 0 var(--space-2) 0 var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-floating-panel);
+  color: var(--color-accent-text);
+  font: inherit;
+  font-size: var(--font-size-footnote);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.canvas-review-direction:hover {
+  background: var(--color-bg-hover);
+}
+.canvas-review-direction-icon {
+  width: 14px;
+  height: 14px;
+}
+.canvas-review-direction.left {
+  top: 50%;
+  left: var(--space-2);
+}
+.canvas-review-direction.right {
+  top: 50%;
+  right: var(--space-2);
+}
+.canvas-review-direction.top {
+  top: calc(var(--space-3) + var(--control-height-sm) + var(--space-2) + var(--space-3));
+  left: 50%;
+}
+.canvas-review-direction.bottom {
+  bottom: var(--space-3);
+  left: 50%;
+}

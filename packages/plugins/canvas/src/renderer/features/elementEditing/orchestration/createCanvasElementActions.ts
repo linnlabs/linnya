@@ -1,0 +1,88 @@
+import {
+  CanvasCardIdSchema,
+  CanvasEdgeIdSchema,
+  type CanvasCommand,
+  type CanvasElement,
+} from '@plugin/canvas/shared';
+import type { CanvasDocumentSession } from '../../canvasDocument';
+import { buildCanvasDuplication, selectCanvasSubgraph } from '../../clipboard';
+import type {
+  CanvasAlignment,
+  CanvasDistribution,
+  CanvasElementActionSelection,
+} from '../definitions/canvasElementActions';
+import { buildDistributeCommands } from '../functions/buildCanvasDistributionCommands';
+import {
+  buildAlignCommands,
+  buildLayerCommands,
+  buildLockCommands,
+} from '../functions/buildCardLayoutCommands';
+import { canvasText } from '../../localization';
+
+export function createCanvasElementActions(
+  session: CanvasDocumentSession,
+  selection: CanvasElementActionSelection
+) {
+  const elements = () => session.state.snapshot.value?.elements ?? [];
+  const commit = async (commands: readonly CanvasCommand[]) => {
+    if (commands.length) await session.commit(commands);
+  };
+  return {
+    lock: () => commit(buildLockCommands(elements(), selection.read())),
+    layer: (direction: 'front' | 'back') =>
+      commit(buildLayerCommands(elements(), selection.read(), direction)),
+    align: (mode: CanvasAlignment) =>
+      commit(buildAlignCommands(elements(), selection.read(), mode)),
+    distribute: (mode: CanvasDistribution) =>
+      commit(buildDistributeCommands(elements(), selection.read(), mode)),
+    async duplicate(
+      source: readonly CanvasElement[] = selectCanvasSubgraph(elements(), selection.read()),
+      dx = 32,
+      dy = 32
+    ) {
+      const ids = source.filter(element => element.type !== 'edge').map(card => card.id);
+      const plan = buildCanvasDuplication({
+        elements: source,
+        ids,
+        dx,
+        dy,
+        allocateReferenceId: () => crypto.randomUUID(),
+      });
+      if (!plan.operations.length) return;
+      const result = await session.commit(plan.operations);
+      const newIds = plan.cards.flatMap(card => {
+        const ref = plan.refs.get(card.id),
+          id = ref ? result.refs[ref] : undefined;
+        return id ? [CanvasCardIdSchema.parse(id)] : [];
+      });
+      await selection.select(newIds);
+    },
+    async connect() {
+      const [from, to] = selection.read();
+      if (!from || !to || selection.read().length !== 2)
+        throw new Error(canvasText('canvas.error.pickTwoCards'));
+      const existing = elements().find(
+        element =>
+          element.type === 'edge' &&
+          element.from.kind === 'card' &&
+          element.to.kind === 'card' &&
+          element.from.cardId === from &&
+          element.to.cardId === to
+      );
+      if (existing?.type === 'edge') return existing.id;
+      const result = await session.commit([
+        {
+          op: 'connect',
+          ref: '$edge',
+          from,
+          to,
+          label: '',
+          direction: 'forward',
+          lineStyle: 'curve',
+          linePattern: 'solid',
+        },
+      ]);
+      return CanvasEdgeIdSchema.parse(result.refs.$edge);
+    },
+  };
+}

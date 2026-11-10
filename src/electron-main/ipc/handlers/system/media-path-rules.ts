@@ -16,13 +16,21 @@ import {
   MediaPathNotAllowedError,
   MediaPathNotFileError,
 } from '../../../../features/system/media/definitions/mediaErrors';
-import {
-  buildDocImageRelativePath,
-  DOC_IMAGE_MEDIA_OPERATION,
-} from '../../../../features/system/media/functions/docImageLocator';
+import { buildDocImageRelativePath } from '../../../../features/system/media/functions/docImageLocator';
+import { isInsideDirectory } from '../../../../features/system/media/functions/resolveDocImageInputPath';
+export {
+  isInsideDirectory,
+  resolveDocImageInputPath,
+} from '../../../../features/system/media/functions/resolveDocImageInputPath';
 import { isReadGranted } from './file-read-grants';
 
-export type ReadPathOperation = 'image' | 'generated-image' | 'doc-image' | 'audio' | 'metadata' | 'show';
+export type ReadPathOperation =
+  | 'image'
+  | 'generated-image'
+  | 'doc-image'
+  | 'audio'
+  | 'metadata'
+  | 'show';
 
 type AssertReadablePathOptions = {
   readonly operation: ReadPathOperation;
@@ -31,19 +39,16 @@ type AssertReadablePathOptions = {
 };
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg']);
-const AUDIO_EXTENSIONS = new Set(['.webm', '.ogg', '.opus', '.wav', '.mp3', '.m4a', '.aac', '.flac']);
-
-function normalizeForComparison(filePath: string): string {
-  const normalized = path.normalize(filePath);
-  return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
-}
-
-export function isInsideDirectory(filePath: string, directoryPath: string): boolean {
-  const normalizedPath = normalizeForComparison(path.resolve(filePath));
-  const normalizedDirectory = normalizeForComparison(path.resolve(directoryPath));
-  const relativePath = path.relative(normalizedDirectory, normalizedPath);
-  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath));
-}
+const AUDIO_EXTENSIONS = new Set([
+  '.webm',
+  '.ogg',
+  '.opus',
+  '.wav',
+  '.mp3',
+  '.m4a',
+  '.aac',
+  '.flac',
+]);
 
 async function existingDirectoryRealPath(directoryPath: string): Promise<string | null> {
   try {
@@ -60,32 +65,6 @@ export function buildDocImageLocatorRelativePath(documentMediaFilePath: string):
     documentMediaRoot: getDocumentMediaPath(),
     documentMediaFilePath,
   });
-}
-
-export async function resolveDocImageInputPath(relativePath: string): Promise<string> {
-  if (typeof relativePath !== 'string' || relativePath.trim().length === 0) {
-    throw new MediaInvalidFilePathError(DOC_IMAGE_MEDIA_OPERATION);
-  }
-
-  if (path.isAbsolute(relativePath)) {
-    throw new MediaInvalidFilePathError(DOC_IMAGE_MEDIA_OPERATION);
-  }
-
-  const rawSegments = relativePath.split(/[\\/]+/);
-  if (rawSegments.some((segment) => segment === '..')) {
-    throw new MediaInvalidFilePathError(DOC_IMAGE_MEDIA_OPERATION);
-  }
-
-  const normalizedRelativePath = path.normalize(relativePath);
-  const documentMediaRoot = getDocumentMediaPath();
-  const resolvedPath = path.resolve(documentMediaRoot, normalizedRelativePath);
-  const documentMediaRootRealPath = await fs.realpath(documentMediaRoot);
-  const resolvedRealPath = await fs.realpath(resolvedPath);
-  if (!isInsideDirectory(resolvedRealPath, documentMediaRootRealPath)) {
-    throw new MediaPathNotAllowedError(resolvedRealPath);
-  }
-
-  return resolvedRealPath;
 }
 
 export async function getAllowedReadRoots(): Promise<string[]> {
@@ -113,7 +92,10 @@ export async function getAllowedReadRoots(): Promise<string[]> {
 function assertExtensionAllowed(filePath: string, operation: ReadPathOperation): void {
   const extension = path.extname(filePath).toLowerCase();
 
-  if ((operation === 'image' || operation === 'generated-image' || operation === 'doc-image') && !IMAGE_EXTENSIONS.has(extension)) {
+  if (
+    (operation === 'image' || operation === 'generated-image' || operation === 'doc-image') &&
+    !IMAGE_EXTENSIONS.has(extension)
+  ) {
     throw new MediaFileExtensionNotAllowedError(filePath, operation);
   }
 
@@ -124,7 +106,7 @@ function assertExtensionAllowed(filePath: string, operation: ReadPathOperation):
 
 export async function assertReadablePath(
   filePath: string,
-  options: AssertReadablePathOptions,
+  options: AssertReadablePathOptions
 ): Promise<string> {
   if (typeof filePath !== 'string' || filePath.trim().length === 0 || !path.isAbsolute(filePath)) {
     throw new MediaInvalidFilePathError(options.operation);
@@ -137,9 +119,9 @@ export async function assertReadablePath(
     throw new MediaPathNotFileError(realPath);
   }
 
-  const allowedRoots = options.allowedRootPaths ?? await getAllowedReadRoots();
+  const allowedRoots = options.allowedRootPaths ?? (await getAllowedReadRoots());
   const granted = options.isGranted ?? isReadGranted;
-  if (!granted(realPath) && !allowedRoots.some((root) => isInsideDirectory(realPath, root))) {
+  if (!granted(realPath) && !allowedRoots.some(root => isInsideDirectory(realPath, root))) {
     throw new MediaPathNotAllowedError(realPath);
   }
 

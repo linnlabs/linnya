@@ -1,6 +1,5 @@
 import { withActionActor } from 'src/domains/action-ledger';
 import type {
-  BackendRendererRequestHandler,
   BackendRendererRequestRegistryPort,
 } from '../definitions/backendRendererRequest';
 
@@ -23,9 +22,12 @@ const LEGACY_FLAT_CHANNELS = new Set([
 
 /** Backend 唯一 request handler 表；重复 channel 直接失败，不允许后注册覆盖。 */
 export function createBackendRendererRequestRegistry(): BackendRendererRequestRegistryPort {
-  const handlers = new Map<string, BackendRendererRequestHandler>();
+  const handlers = new Map<string, Parameters<BackendRendererRequestRegistryPort['handleWithContext']>[1]>();
   const registry: BackendRendererRequestRegistryPort = {
     handle(channel, handler) {
+      registry.handleWithContext(channel, (_context, ...args) => handler(...args));
+    },
+    handleWithContext(channel, handler) {
       if (!CHANNEL_PATTERN.test(channel) && !LEGACY_FLAT_CHANNELS.has(channel)) {
         throw new Error(`Backend Renderer request channel 不合法: ${channel}`);
       }
@@ -40,12 +42,13 @@ export function createBackendRendererRequestRegistry(): BackendRendererRequestRe
     listChannels() {
       return Object.freeze([...handlers.keys()].sort());
     },
-    async invoke(channel, args) {
+    async invoke(channel, args, context) {
       const handler = handlers.get(channel);
       if (!handler) {
         throw new Error(`Backend Renderer request channel 未注册: ${channel}`);
       }
-      return withActionActor({ kind: 'user' }, () => handler(...args));
+      context?.signal.throwIfAborted();
+      return withActionActor({ kind: 'user' }, () => handler(context, ...args));
     },
   };
   return Object.freeze(registry);

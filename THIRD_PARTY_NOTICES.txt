@@ -97,6 +97,7 @@ PACKAGES
 - @tiptap/extension-gapcursor@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-EBXKb1FrVStsNYCcRGtd9jmzveCvR+eqgg1rVqoONrqFK6U7bga6LN+1dMKroP1kliDVgveYkP3vRYxqw+rFqg==
 - @tiptap/extension-hard-break@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-QAdCvNO4+yW9ATwsrej11NTkDYFqPLIEQr3ARNrKOK1qaiS7A0fia2SEukb/hrkP3A6mbozhoQt2r2RGUf/DpQ==
 - @tiptap/extension-heading@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-rk5VHMAeQcg06SLauN6EGdD2jc0O2qY8QkZYPd0LxNvLblw2BxBx+lxUQSYwLAT9Ie5914gKIK2YbRyO2Ts3ig==
+- @tiptap/extension-highlight@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-97m1nDzTAjJaJZWe5hVOBMC2rjBZvEwTXA39zhjnaE/snb8Cy4H9A3+/sw9HQJBXMoG7tdOPG9kUlM3weYtLcQ==
 - @tiptap/extension-horizontal-rule@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-YnHGy2KShRwvCseAmmxl9VP7R0qaj8QMp3DA6DJWZqp7r5gLGvDkAqhedxqqefqsE4Y43hjkBdjtB9Ce78LkIw==
 - @tiptap/extension-image@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-wWNG9BOtx2Cg4vwxPVGDIJ5DGX+ETkldeoaFJLB1NXUL4OPUiVTf8cHZ+hdYgJWP704BEB7jQgjlpvdi6VigTg==
 - @tiptap/extension-italic@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-ibGvdvAPyfxBMUVNRI43eb9h2/Jka1MRG5GtnGqbcCX/2+Y/y0EOfFrPQPkuYphiWQYyu9+FzPKMB/pjuaLuKQ==
@@ -104,11 +105,15 @@ PACKAGES
 - @tiptap/extension-list@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-LoveGnC0FVdCV4jUNBaG1ZA+KWE07+adzV3kGy6uUYFcJEjbVUHTnPDrBOob3IwOSO3sCwIkvQb6EVYeXn/4yg==
 - @tiptap/extension-list-item@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-4QlKOriJJMvg95QJTEsy9BUYPBQ6UvJyb8WURRwdUtQUkkqb8h32lg/eyQUv2FzW9IT1AdUyNZfVaxH64kRfQA==
 - @tiptap/extension-list-keymap@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-If8UOEdDZbPJU6iYTvLtH6DOp2KBy6BKxg9UELL1AevVetGHEF/7lW8hP50Gn1tHMVpPRqmhSzVrJRpEJJgb/Q==
+- @tiptap/extension-mathematics@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-R19lI2hLSXkQ+aqKvvyrDdI+HnmFtmfTVotrQ5W06i8WxVqRSq5UpsPIRCoeUeBL8uCvKinfmSVJyX2V80Bayg==
 - @tiptap/extension-ordered-list@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-mp3g11NgA/PYu8rj7J7Ez3l4qBy6WfTSmHIG4PZvEGG5w2oUAIkgb9DU7nPPzjmeme27oazFYZw+AtZA0+u4tw==
 - @tiptap/extension-paragraph@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-+iPku7wJfy5hbNDNLX8dveFtYVsZMmh7vztjuq8hT3mipSC4IByDehDbU8fzUCjfXiEzmI7mQn7c8LGmHULuzA==
 - @tiptap/extension-strike@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-G29bhKttYwcKHT+BI6emWVFol3RO/gUXxQVcmr/iT8LXXy7j8J6HFUnsKM+Kg5YlP1rxMRgsa65dbrQVahZi0A==
+- @tiptap/extension-subscript@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-jUMMtg4QF7wIXIvsgBmgJjdQMETOX4KMF+Nl/0nuCKs59lEi1StOJzkiEdm+UbFhxvvY9B30uLVgzogGIlHHyg==
+- @tiptap/extension-superscript@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-WzM84fb8akg1Ni2b1DcE1pE2kkWLbkEVxN2DKElzCVk/kuSNp+VKqOjunHGTnO+kJhXdcmXTVqAO4Vp2kiDxMQ==
 - @tiptap/extension-table@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-7cnVPHhdiGGeauYqca6JVyPLTqZbqFEEk9nn2e2E8+fBo6zVtV07AktJBqth/XEzjZxcUmGxjoeuWYAisWjUHg==
 - @tiptap/extension-text@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-gdsWtF+taeaCu6V+5Ct10fGo0ACUy1GnYtbb+mcathBt8OqbT+Ws60p/yEmKesBDz2Hn+B5IcWy6+2BBZl5ZTg==
+- @tiptap/extension-text-style@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-wgjWWrjZwRZHiaDTQPX2am1y/4ePgRgGWF/2MOfSb7g4d5229p4aVtbT1JT7wu9z8OC482pEqcTlhdvgftvW7A==
 - @tiptap/extension-underline@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-HghdJaOwRqYzsAxqSyNyb+IWyOMcdCl8IoiBETA9BZCJAqdXzFLcuWp7CqCqJPam9dgkWosSoHqTCAO4nTBfpw==
 - @tiptap/extensions@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-8sJNPGGUe8f3aDojcOW5cfVL7I5NrBbE0UWxG08qoi9Tea6qWbvQJsCR9tsrOapr/DaLr3kpbGZ9s1gEEfcNcA==
 - @tiptap/markdown@3.31.3 — MIT — https://github.com/ueberdosis/tiptap — sha512-rBbYSxasseUoaBo15C8Yoaqafo7mJJzxwAwV9Z1OpLBvOroW9nQ0EbOdqaSYRw3/d9pP71B/3LNSzKyfyy+dpQ==
@@ -338,6 +343,7 @@ PACKAGES
 - jsonfile@6.2.0 — MIT — https://github.com/jprichardson/node-jsonfile — sha512-FGuPw30AdOIUTRMC2OMRtQV+jkVj2cfPqSeWXv1NEAJ1qZ5zb1X6z1mFhbfOB/iy3ssJCD+3KuZ8r8C3uVFlAg==
 - jsonrepair@3.15.0 — ISC — https://github.com/josdejong/jsonrepair — sha512-wy8OTjwsJwQRnQJkKnMJJ9vcytRdBPAgIF/Hy6+s1dAj42BHMKiyL8JzEieIl3JY7idt8eyHwBWTO8mh/+mtwA==
 - jszip@3.10.1 — MIT — https://github.com/Stuk/jszip — sha512-xXDvecyTpGLrqFrvkrUSoxxfJI5AH7U8zxxtVclpsUtMCq4JQ290LY8AW5c7Ggnr/Y/oK+bQMbqK2qmtk3pN4g==
+- katex@0.18.10 — MIT — https://github.com/KaTeX/KaTeX — sha512-/B6p9eY9DX7aHBfpkHdpirDTZ5QH9xTwL9y837PWuzuv41O5jFdqNQwVQEQsimY0/iVNkwBY4+4hMfhQ7d4Dbw==
 - katex@0.18.11 — MIT — https://github.com/KaTeX/KaTeX — sha512-yvyz/2VMKqoho/35Hat5w37wIEdWJ5ElVMidTAlWrxr5uW4aBGsEpveTmKh18/zw08v/7lGswCPon4OhqmqrTA==
 - konva@10.2.3 — MIT — https://github.com/konvajs/konva — sha512-NDGeIxm2nsQcp6oqZKS9T764JEi53RpQvpUxV2EK7Awm49fwdd1+EB1Nq1nyspRc0hOAKyKssoTFvPaKwiSUog==
 - lazy-val@1.0.5 — MIT — https://github.com/develar/lazy-val — sha512-0/BnGCCfyUMkBpeDgWihanIAF9JmZhHBgUhEqzvf+adhNGLoP6TaiI5oF8oyb3I45P+PcnrqihSf01M0l0G5+Q==
@@ -8866,7 +8872,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ----- LICENSE 766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3 -----
-Applies to: katex@0.18.11
+Applies to: katex@0.18.10, katex@0.18.11
 Installed file names: LICENSE
 
 The MIT License (MIT)
@@ -13858,7 +13864,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ----- LICENSE c96e5ecb55ac593157ad1d21d1f44a611187f494a0f04c235a1ae692c88d6ba9 -----
-Applies to: @tiptap/core@3.31.3, @tiptap/extension-blockquote@3.31.3, @tiptap/extension-bold@3.31.3, @tiptap/extension-bubble-menu@3.31.3, @tiptap/extension-bullet-list@3.31.3, @tiptap/extension-code-block-lowlight@3.31.3, @tiptap/extension-code-block@3.31.3, @tiptap/extension-code@3.31.3, @tiptap/extension-document@3.31.3, @tiptap/extension-dropcursor@3.31.3, @tiptap/extension-floating-menu@3.31.3, @tiptap/extension-gapcursor@3.31.3, @tiptap/extension-hard-break@3.31.3, @tiptap/extension-heading@3.31.3, @tiptap/extension-horizontal-rule@3.31.3, @tiptap/extension-image@3.31.3, @tiptap/extension-italic@3.31.3, @tiptap/extension-link@3.31.3, @tiptap/extension-list-item@3.31.3, @tiptap/extension-list-keymap@3.31.3, @tiptap/extension-list@3.31.3, @tiptap/extension-ordered-list@3.31.3, @tiptap/extension-paragraph@3.31.3, @tiptap/extension-strike@3.31.3, @tiptap/extension-table@3.31.3, @tiptap/extension-text@3.31.3, @tiptap/extension-underline@3.31.3, @tiptap/extensions@3.31.3, @tiptap/markdown@3.31.3, @tiptap/pm@3.31.3, @tiptap/starter-kit@3.31.3, @tiptap/suggestion@3.31.3, @tiptap/vue-3@3.31.3
+Applies to: @tiptap/core@3.31.3, @tiptap/extension-blockquote@3.31.3, @tiptap/extension-bold@3.31.3, @tiptap/extension-bubble-menu@3.31.3, @tiptap/extension-bullet-list@3.31.3, @tiptap/extension-code-block-lowlight@3.31.3, @tiptap/extension-code-block@3.31.3, @tiptap/extension-code@3.31.3, @tiptap/extension-document@3.31.3, @tiptap/extension-dropcursor@3.31.3, @tiptap/extension-floating-menu@3.31.3, @tiptap/extension-gapcursor@3.31.3, @tiptap/extension-hard-break@3.31.3, @tiptap/extension-heading@3.31.3, @tiptap/extension-highlight@3.31.3, @tiptap/extension-horizontal-rule@3.31.3, @tiptap/extension-image@3.31.3, @tiptap/extension-italic@3.31.3, @tiptap/extension-link@3.31.3, @tiptap/extension-list-item@3.31.3, @tiptap/extension-list-keymap@3.31.3, @tiptap/extension-list@3.31.3, @tiptap/extension-mathematics@3.31.3, @tiptap/extension-ordered-list@3.31.3, @tiptap/extension-paragraph@3.31.3, @tiptap/extension-strike@3.31.3, @tiptap/extension-subscript@3.31.3, @tiptap/extension-superscript@3.31.3, @tiptap/extension-table@3.31.3, @tiptap/extension-text-style@3.31.3, @tiptap/extension-text@3.31.3, @tiptap/extension-underline@3.31.3, @tiptap/extensions@3.31.3, @tiptap/markdown@3.31.3, @tiptap/pm@3.31.3, @tiptap/starter-kit@3.31.3, @tiptap/suggestion@3.31.3, @tiptap/vue-3@3.31.3
 Installed file names: LICENSE, LICENSE.md
 
 MIT License

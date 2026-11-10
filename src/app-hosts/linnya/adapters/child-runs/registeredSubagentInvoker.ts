@@ -540,6 +540,7 @@ export function createRegisteredChildRunInvoker(dependencies: {
   telemetryPort: telemetry.TelemetryPort;
   agentResolver?: RegisteredAgentResolverPort;
   childRunInvoker?: Pick<childRuns.ChildRunInvoker, 'invoke'>;
+  releaseReferenceReads?: (conversationId: string, runId: string) => void;
   commandRuntime:
     | { readonly kind: 'disabled' }
     | {
@@ -565,6 +566,7 @@ export function createRegisteredChildRunInvoker(dependencies: {
       costCollector: dependencies.runtime.costCollector,
       runAdmissionCommit: dependencies.runtime.runAdmissionCommit,
       createCheckpointWriter: dependencies.runtime.createCheckpointWriter,
+      releaseReferenceReads: dependencies.releaseReferenceReads,
     }),
     commandAgentRunLifecycle:
       dependencies.commandRuntime.kind === 'enabled'

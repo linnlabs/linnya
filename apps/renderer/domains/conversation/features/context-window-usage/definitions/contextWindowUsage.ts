@@ -11,16 +11,15 @@ export interface ContextWindowUsageSegment {
 
 export type ContextWindowUsagePresentation =
   | {
-    readonly status: 'unavailable' | 'tail_unavailable';
+    readonly status: 'hidden' | 'loading' | 'unavailable';
   }
   | {
-    readonly status: 'current' | 'historical_model' | 'overflow';
+    readonly status: 'current' | 'overflow';
     readonly usage: ConversationContextUsage;
     readonly contextWindowTokens: number;
     readonly level: ContextWindowUsageLevel;
     readonly ratio: number;
     readonly drawPercent: number;
-    readonly isHistoricalModel: boolean;
     readonly segments: readonly ContextWindowUsageSegment[];
   };
 

@@ -1,3 +1,4 @@
+import { getMarkdownDocumentReferences, projectMarkdownReferenceContent, projectMarkdownReferencePendings, buildMarkdownReferenceReadProjection } from '../../../../domains/markdown/features/document-references';
 import { createMarkdownDocumentStore } from '../../application/markdown-image-assets';
 import { createMarkdownImageSourceResolver, type MarkdownImageSourceContext } from '../../application/markdown-image-assets';
 import type Database from 'better-sqlite3';
@@ -12,6 +13,7 @@ import {
   writeMarkdownDocumentFromText,
   resolveMarkdownEscapeEquivalentText,
   prepareMarkdownFileWrite,
+  prepareMarkdownDocumentReferences,
   projectMarkdownFileEditText,
   projectMarkdownFileWriteSnapshot,
   type MarkdownFileWriteSnapshot,
@@ -65,11 +67,14 @@ function createMarkdownFileWriteProvider(params: {
 }): WorkspaceDocumentFileWriteProvider {
   const documentStore = createMarkdownDocumentStore(params.db);
   const workspaceMutation = createSqliteWorkspaceDocumentMutationPort(params.db);
+  const references = getMarkdownDocumentReferences(params.db);
+  if (!references) throw new Error('Markdown reference capabilities were not bound.');
+  const readerId = JSON.stringify([params.context.conversationId, params.context.runId]);
   const captureSnapshot = (documentId: string): MarkdownFileWriteSnapshot => projectMarkdownFileWriteSnapshot({
     content: documentStore.getDocument(documentId),
     pendings: documentStore.getPendingRevisions(documentId),
     versionNumber: documentStore.getLatestVersion(documentId)?.version_number ?? null,
-  });
+  }, buildMarkdownReferenceReadProjection(references, documentId, documentStore.getDocument(documentId), documentStore.getPendingRevisions(documentId)));
   // 无引用文档不要求引用运行端口；按需调用仍须经过正式Host绑定，不能构造本地替代分配器。
   const allocator: CitationRefAllocatorPort = { allocate: anchors =>
     requireCitationRefAllocator(params.context).allocate(anchors) };
@@ -116,14 +121,19 @@ function createMarkdownFileWriteProvider(params: {
           resolveSourcesByUrl: urls => requireCitationSourceResolver(params.context).resolveSourcesByUrl(urls),
         },
       });
+      const referenced = await prepareMarkdownDocumentReferences({ port: references, readerId, sourceDocumentId: request.identity.documentId, sourceKey: snapshot.sourceKey, existingContent: documentStore.getDocument(request.identity.documentId), pendings: documentStore.getPendingRevisions(request.identity.documentId), targetText: prepared.targetText, pendingMetaByMarkdown: prepared.pendingMetaByMarkdown });
       const write = await writeMarkdownDocumentFromText({
+        projectPendings: pendings => projectMarkdownReferencePendings(references, request.identity.documentId, pendings),
+        projectContent: content => projectMarkdownReferenceContent(references, request.identity.documentId, content).content,
+        assertReferenceBindings: () => references.assertBindings({ sourceDocumentId: request.identity.documentId, bindings: referenced.bindings }),
         documentStore,
         documentId: request.identity.documentId,
-        targetText: prepared.targetText,
+        targetText: referenced.targetText,
         expectedCurrentText: request.expectedCurrentText,
         expectedSourceKey: snapshot.sourceKey,
         toolName: request.operation === 'edit' ? 'edit_file' : 'write_file',
-        pendingMetaByMarkdown: prepared.pendingMetaByMarkdown,
+        pendingMetaByTargetIndex: referenced.pendingMetaByTargetIndex,
+        pendingMetaByMarkdown: referenced.pendingMetaByMarkdown,
         imageSources: imageInput.imageSources,
         annotationAdmission: {
           author: 'AI',

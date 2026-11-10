@@ -20,7 +20,7 @@ import type {
 } from '@/shared/ports/workspaceNavigationPort';
 import { getDocumentSurfaceRuntimePort } from '@/shared/ports/documentSurfaceRuntimePort';
 import { activateFileSession, getActiveFileSession, saveDeactivateThen } from '@/domains/workspace/services/file-manager';
-import { getDocumentRuntimeLoaderByActiveType, getDocumentTypeByActiveType } from '@/app/plugins/registry';
+import { getDocumentRuntimeLoaderByActiveType, getDocumentTypeByActiveType, getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import type {
   DocumentRuntimeLoaderContribution,
   DocumentRuntimeLoadRequest,
@@ -215,7 +215,7 @@ async function saveCurrentSessionBeforeReplacingSurface(
 }
 
 export function createWorkspaceNavigation(): WorkspaceNavigationPort {
-  return {
+  const port: WorkspaceNavigationPort = {
     async openWorkspace(scope) {
       const layoutStore = useLayoutStore();
       const navigationScope = useNavigationScope();
@@ -313,6 +313,13 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       });
     },
 
+    async openDocumentByNodeType({ nodeType, ...request }) {
+      const documentType = getDocumentTypeByNodeType(nodeType);
+      if (!documentType) throw new Error(`[workspaceNavigation] unsupported document node type: ${nodeType}`);
+      // 引用只知道持久nodeType；复用正式打开链，仍等待旧文档保存并核对插件可用性。
+      await port.openDocumentTarget({ ...request, type: documentType.activeDocumentType });
+    },
+
     async openDocumentTarget(request) {
       const projectId = resolveDocumentProjectId(request);
       const documentType = resolveDocumentType(request.type);
@@ -325,6 +332,18 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       setNavigationScope({ kind: 'project', projectId });
       await saveCurrentSessionBeforeReplacingSurface(null);
       if (!isCurrentDocumentOpenIntent(intent)) return;
+      const openFileSession = () => activateFileSession({
+        documentId: request.documentId,
+        displayName: request.displayName ?? null,
+        type: getRequiredFileSessionType(documentType),
+        openSignal: intent.controller.signal,
+        payload: { projectId, parentId: request.parentId ?? null, navigationParameters: request.parameters },
+      });
+      // 引用跳转与侧栏打开遵守同一延迟挂载合同：依赖会话身份的 surface 不能先读旧会话。
+      if (documentType.deferSurfaceUntilOpen) {
+        await openFileSession();
+        if (!isCurrentDocumentOpenIntent(intent)) return;
+      }
       layoutStore.openDocument({
         id: request.documentId,
         projectId,
@@ -347,14 +366,8 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       };
       if (documentRuntimeLoader) {
         await documentRuntimeLoader.load(runtimeLoadRequest);
-      } else {
-        await activateFileSession({
-          documentId: request.documentId,
-          displayName: request.displayName ?? null,
-          type: getRequiredFileSessionType(documentType),
-          openSignal: intent.controller.signal,
-          payload: { projectId, parentId: request.parentId ?? null, navigationParameters: request.parameters },
-        });
+      } else if (!documentType.deferSurfaceUntilOpen) {
+        await openFileSession();
       }
     },
 
@@ -551,4 +564,5 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
     },
 
   };
+  return port;
 }

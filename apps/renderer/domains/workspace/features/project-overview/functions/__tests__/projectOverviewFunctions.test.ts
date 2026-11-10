@@ -140,10 +140,10 @@ describe('展示文案', () => {
     expect(formatProjectOverviewTime(new Date(2025, 9, 3).getTime(), now, 'zh-CN', message)).toBe('2025年10月3日');
   });
 
-  it('来源：Linnya AI、用户、外部 Agent；插件用插件名', () => {
+  it('来源：Linnya AI、用户、Linnya CLI；插件用插件名', () => {
     expect(formatProjectOverviewActor('linnya_ai', null, message)).toBe('Linnya AI');
     expect(formatProjectOverviewActor('user', null, message)).toBe('用户');
-    expect(formatProjectOverviewActor('external', null, message)).toBe('外部 Agent');
+    expect(formatProjectOverviewActor('external', null, message)).toBe('Linnya CLI');
     expect(formatProjectOverviewActor('plugin', 'Slides', message)).toBe('Slides');
     expect(formatProjectOverviewActor('plugin', null, message)).toBe('插件');
   });

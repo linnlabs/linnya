@@ -1,6 +1,7 @@
 import type { DocumentVersionSummary } from '@app/schemas';
 import type { DocumentVersionRetentionPlan } from '../definitions/versionSelection';
 import { selectDocumentHistory } from './selectDocumentHistory';
+import type { DocumentVersionRetentionBudget } from '@linnya/plugin-host-contract/backend/documentHistory';
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -13,6 +14,7 @@ const DAY = 24 * HOUR;
  */
 export function planDocumentVersionRetention(
   rows: readonly DocumentVersionSummary[],
+  budget?: DocumentVersionRetentionBudget,
 ): DocumentVersionRetentionPlan {
   const current = rows[0];
   const first = rows[rows.length - 1];
@@ -39,8 +41,40 @@ export function planDocumentVersionRetention(
       keep.add(row.versionId);
     }
   }
+  if (budget) return applyByteBudget(rows, keep, budget);
   return {
     keepVersionIds: rows.filter(row => keep.has(row.versionId)).map(row => row.versionId),
     removeVersionIds: rows.filter(row => !keep.has(row.versionId)).map(row => row.versionId),
+  };
+}
+
+function applyByteBudget(
+  rows: readonly DocumentVersionSummary[], keep: Set<string>, budget: DocumentVersionRetentionBudget,
+): DocumentVersionRetentionPlan {
+  if (!Number.isSafeInteger(budget.budgetBytes) || budget.budgetBytes < 0) throw new Error('历史预算必须是非负安全整数');
+  const bytes = new Map<string, number>();
+  for (const row of budget.versionBytes) {
+    if (bytes.has(row.versionId) || !Number.isSafeInteger(row.byteLength) || row.byteLength < 0) throw new Error('历史字节统计无效或重复');
+    bytes.set(row.versionId, row.byteLength);
+  }
+  const recent = new Set(rows.slice(0, 5).map(row => row.versionId));
+  let total = 0;
+  for (const row of rows) {
+    const size = bytes.get(row.versionId);
+    if (size === undefined) throw new Error(`历史字节统计缺少版本 ${row.versionId}`);
+    if (recent.has(row.versionId)) keep.add(row.versionId);
+    if (keep.has(row.versionId)) total += size;
+  }
+  for (let index = rows.length - 1; index >= 0 && total > budget.budgetBytes; index -= 1) {
+    const row = rows[index];
+    if (row && keep.has(row.versionId) && !recent.has(row.versionId)) {
+      keep.delete(row.versionId);
+      total -= bytes.get(row.versionId) ?? 0;
+    }
+  }
+  return {
+    keepVersionIds: rows.filter(row => keep.has(row.versionId)).map(row => row.versionId),
+    removeVersionIds: rows.filter(row => !keep.has(row.versionId)).map(row => row.versionId),
+    overBudgetBytes: Math.max(0, total - budget.budgetBytes),
   };
 }

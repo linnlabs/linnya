@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
-import type { ChartLegendItem, ChartLegendPosition } from '../functions/chartLegend'
+import type { ChartLegendItem, ChartLegendPosition } from '@linnya/markdown-document-core/workspace-charts'
 
 defineProps<{
   items: readonly ChartLegendItem[]

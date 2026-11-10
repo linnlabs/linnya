@@ -54,6 +54,8 @@ Host 在插件 Backend 初始化前完成数据库准入；插件文档操作直
 
 Renderer 文档保存 handler 拥有本类型的 dirty 状态：只在确认当前草稿全部落库后清除。Host 不根据 handler 返回成功无条件清除 dirty；保存期间的新输入必须继续保持 dirty，导航离开前再次确认已落库。合同见 [`renderer/workspaceRuntime.ts`](./renderer/workspaceRuntime.ts)。
 
+`WorkspaceNavigationPort.openDocumentByNodeType`接受引用持有的持久`nodeType`，Host按已注册owner映射到界面`activeDocumentType`再进入同一正式导航链。旧`openDocument`/`openDocumentTarget`的`type`仍仅表示界面类型，调用方不能把二者混用；未知或停用owner明确拒绝，不能猜测Markdown等默认类型。
+
 ## 4. Conversation 扩展
 
 `ConversationAgentChoiceContribution.disabled` 只限制新的菜单选择；贡献仍保留在列表中，
@@ -105,6 +107,8 @@ Plugin CLI bridge v1 的 access plan 固定拒绝 external files、network、GUI
 类型本身不是授权事实。当前 registry 只接受 Host 组合根对编译期已知官方插件显式授信的 contribution；
 磁盘插件自己声明的 `meta.builtin=true` 不能建立信任。
 
+Hidden worker 的 `renderingMode` 可选择 `background`（缺省）或 `offscreen`。前者适合排版和计算，不保证 HTML-in-Canvas 有实际像素；需要后台绘制的 provider 显式选择后者。该 data-only 选择沿 Desktop capability 传递，插件不接触 BrowserWindow；目标 DPR 仍由领域请求明确传入。
+
 Hidden worker 的单请求取消是可选能力，但 `cancelChannel` 与 `createCancelPayload` 必须成对声明。支持取消
 的 worker 应按 requestId 传播 AbortSignal；不支持的 worker 在 host abort 时只收口本地 pending，不能发送
 伪造 channel。插件 draining 必须等 Plugin CLI invocation 退出后再注销 worker。
@@ -141,3 +145,31 @@ Renderer 插件通过 `@plugin/renderer/exportArtifact` 请求系统保存框，
 `backend/workspaceDocumentProjection` 提供活动节点归属查询、按项目/类型列出节点身份，以及文档更新时间写入。Workspace 拥有节点事实，插件只用这些身份查询自有正文表。调用方传入当前连接，更新时间写入加入插件现有事务，不自行提交或提前广播事件。该门面没有 App runtime 依赖，standalone CLI 可直接使用。
 
 `workspaceRuntime.hasWorkspaceNodeTextSnapshot` 与既有保存端口供迁移在同一事务内补齐缺失快照；插件不能直接读写 Host 快照表，也不能用回填覆盖已有快照。没有新增持久化字段或版本迁移。
+
+Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。聚焦由 app 先显露当前对话区域，再交给 Conversation 注册的输入能力；插件不能取得编辑器实例或操作 Conversation store。输入框关闭时注销能力，多个暂存表面仅由当前可见的输入框接纳聚焦。
+
+`backend/conversationProjection` 只读取正式会话当前项目 ID，不存在或无项目返回 null。它不打开完整 EventStore、不读取消息或 metadata，发送准备等调用方据此重验会话项目，不能借当前界面项目补齐缺失归属。
+
+`renderer/documentReferences` 提供同项目文档候选及当前展示身份：候选按活动节点名称查询，选择后保存稳定 documentId；标题、类型、路径与插件可用状态在查询时读取。越界或已删除目标不返回标题/路径，插件停用单独标记。Editor 的 @ 与文档型插件的选文档界面共用此门面，不各自读取 Workspace 树或增加专用 IPC。
+
+`renderer/documentReferences.previewDocumentDeletionReferences` 返回完整 Workspace 删除范围之外、当前同项目活动来源的引用影响；只提供总数量及有界标题列表，供 Host 的统一删除确认使用。该提示不会建立文件锁或替代稳定节点身份的删除授权。
+
+引用发送准备上下文同时冻结 conversationId 与 projectId。已有会话的归属仍由 Backend 正式会话记录决定；尚未创建会话时，provider 只能使用 Host 冻结的当前项目，不能从引用自带 metadata 猜测。`deduplicationKey` 只用于当前 composer 内同 owner/kind 的重复引用合并，移除或发送后可以重新加入，不写入 Agent 引用正文。
+
+`subscribeWorkspaceMutations` 转发 Workspace 的正式跨进程 mutation stream，回调只接收 `@app/schemas` 的已验证事件，调用方关闭时取消订阅。引用或预览消费者可据稳定 ID 失效派生资源；不建立第二套 Canvas/标签事件总线，也不能用事件正文代替重新读取后的项目范围验证。
+
+`renderer/pluginRuntime` 只读查询插件 `enabled` / `disabled` / `missing` 并订阅变化；App 从既有 enabledPluginsStore 和文档类型 registry 投影，不向插件暴露 store。变化携带卸载前后相关 nodeType，引用消费者只失效相关身份与派生预览；调用方关闭时取消订阅。编译期解析复用 Renderer catalog 的 `@plugin/renderer/*` facade 目录，artifact 仍须同时登记 Host provider、external URL 与协议具名导出。
+
+`DocumentTypeContribution.historyClientSessionId(documentId)` 可在打开历史面板时提供当前文档编辑会话身份。Host 固定该身份并在用户确认恢复时通过通用 `clientSessionId` 字段透传；插件自己拥有会话注册及撤销栈，Core 不解释其格式。未提供回调或返回 null 时省略身份。
+
+迁移数据库的 statement 明确提供同步 `get/all/run`：Host adapter 三项能力始终齐全，迁移可读取旧事实后在调用方迁移事务内写入，不应以可选方法或空查询结果替代合同缺失。
+
+## Renderer IPC 的投递结果
+
+`pluginIpcClient.invokeRendererPluginIpc` 保留 `failureKind`：正式Handler返回的失败为 `application`；调用通道抛出或返回结构无法验证为 `delivery_unknown`。后者不能证明写入没有执行。需要幂等的写用例必须保留原requestId和完整负载，确认前不能生成另一份写意图；DTO仍由调用方的正式schema接纳。`application`描述返回来源，事务是否已写入由业务owner的提交合同保证。
+
+`renderer/documentReferences.readDocumentBacklinks` 以当前 projectId/documentId 读取同项目活动来源，按来源文档分组分页并返回文档数和引用数。它不读取正文、不打开文档、不赋予跨项目访问；标题与节点类型都是当前派生事实。
+
+`DocumentTypeContribution.readonlyPreviewComponent` 是详情档的可选增强，接收 documentId/projectId。消费者只在用户展开时挂载，离开、换目标或插件不可用时卸载；组件必须只读、核对范围并释放资源，不绑定可写 file session。静态封面和摘要仍走统一 DocumentPreview 数据合同，不能为远景卡片批量挂实时组件。
+
+`renderer/documentPreview.mountDocumentPreview({element,documentId,projectId,mode?,widthPx?,signal?,onReady?})` 是超级标签、Composer 与 Canvas 共用的 Renderer 本地只读挂载口（first-screen 或 detail），返回 Promise<dispose>。Host 在 import 前后核对当前项目，signal 可在 Promise/插件组件加载中取消；旧 disposer 不会移除同容器后来挂载的目标。DOM 和 AbortSignal 不过 IPC，插件不得借此打开可写 surface 或批量挂载远景组件。同一门面的 `readDocumentPreviewTypeIcon(nodeType)` 返回与文件树相同的类型图标，Host 未安装时返回 null，由调用方兜底。

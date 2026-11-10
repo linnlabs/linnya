@@ -213,9 +213,11 @@ function collectFiles(root: string): readonly string[] {
   const files: string[] = [];
   const walk = (directory: string): void => {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      // pnpm的pixi.js是目录链接；第三方依赖不属于本仓生产源码，也不能按扩展名当文件读取。
+      if (entry.name === 'node_modules') continue;
       const target = path.join(directory, entry.name);
       if (entry.isDirectory()) walk(target);
-      else if (isProductionSource(target)) files.push(target);
+      else if (entry.isFile() && isProductionSource(target)) files.push(target);
     }
   };
   walk(root);
