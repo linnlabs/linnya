@@ -36,8 +36,11 @@ export interface ActionRunActor {
   readonly toolCallId: string | null;
 }
 
-/** 当前入账的动作。删除、移动、改名、属性和关系由对应入口接入时扩展。 */
-export type ActionLedgerAction = 'create' | 'update';
+/**
+ * 当前入账的动作。`tag`、`untag`、`set_props` 由语义层登记（部分为 `properties`，版本引用是语义层的对象版本）。
+ * 删除、移动、改名和关系由对应入口接入时扩展。
+ */
+export type ActionLedgerAction = 'create' | 'update' | 'tag' | 'untag' | 'set_props';
 
 /**
  * coarse：Host 分发口按文档记的一条，只证明这次调用成功写入了这份文档。

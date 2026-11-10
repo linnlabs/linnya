@@ -16,7 +16,7 @@ import {
 
 import { pruneDocumentActions } from './pruneDocumentActions';
 
-const ACTIONS: readonly ActionLedgerAction[] = ['create', 'update'];
+const ACTIONS: readonly ActionLedgerAction[] = ['create', 'update', 'tag', 'untag', 'set_props'];
 const ACTOR_KINDS: readonly ActionActorKind[] = ['user', 'run', 'subrun', 'plugin', 'external'];
 const GRANULARITIES: readonly ActionLedgerGranularity[] = ['coarse', 'fine'];
 

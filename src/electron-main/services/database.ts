@@ -29,6 +29,7 @@ import { getKnowledgeBaseSchemaProviders } from '../../features/knowledge-base/i
 import { getAssetSchemaProviders } from '../../domains/assets/features/asset-ledger/infrastructure/sqlite/schemaProviders';
 import { getMarkdownSchemaProviders } from '../../domains/markdown/features/document-storage/infrastructure/sqlite/schemaProviders';
 import { getActionLedgerSchemaProviders } from '../../domains/action-ledger/infrastructure/sqlite/schemaProviders';
+import { getSemanticLayerSchemaProviders } from '../../domains/semantic-layer/infrastructure/sqlite/schemaProviders';
 import { getPluginStateSchemaProviders } from '../../features/plugins/infrastructure/sqlite/schema-providers';
 import { getWorkspaceDataPath } from '../../shared/utils/pathManager';
 import {
@@ -78,6 +79,7 @@ export class DatabaseService {
       ...getActionLedgerSchemaProviders(),
       ...getPluginStateSchemaProviders(),
       ...getConversationSchemaProviders(),
+      ...getSemanticLayerSchemaProviders(),
       ...getProjectDeletionSchemaProviders(),
       ...getCitationRefClaimSchemaProviders(),
       ...getConversationFilesSchemaProviders(),
