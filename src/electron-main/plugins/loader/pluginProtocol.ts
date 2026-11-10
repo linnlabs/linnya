@@ -151,6 +151,7 @@ const host = globalThis.__LINNYA_RENDERER_PLUGIN_HOST_MODULES__?.pinia;
 if (!host) throw new Error('Linnya renderer plugin host Pinia module is not installed.');
 export const createPinia = host.createPinia;
 export const defineStore = host.defineStore;
+export const getActivePinia = host.getActivePinia;
 export const setActivePinia = host.setActivePinia;
 export const storeToRefs = host.storeToRefs;
 export default host;
