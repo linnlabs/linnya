@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { CONVERSATION_IMAGE_MAX_BYTES } from '@app/schemas';
 import {
+  PHYSICAL_PDF_FILE_MAX_BYTES,
   PHYSICAL_TEXT_FILE_MAX_BYTES,
   PhysicalFileReadError,
   classifyUnsupportedPhysicalFile,
@@ -107,6 +108,23 @@ export function createNodePhysicalFileReader(): PhysicalFileReaderPort {
             fileName,
             detectedMediaType: imageMediaType,
             byteLength: stat.size,
+          });
+        }
+
+        if (header.subarray(0, 5).toString('ascii') === '%PDF-') {
+          if (stat.size > PHYSICAL_PDF_FILE_MAX_BYTES) {
+            throw new PhysicalFileReadError(
+              'READ_FILE_FILE_TOO_LARGE',
+              `PDF 超过 read_file 的 ${PHYSICAL_PDF_FILE_MAX_BYTES} 字节上限。`,
+              { actualBytes: stat.size, maxBytes: PHYSICAL_PDF_FILE_MAX_BYTES },
+            );
+          }
+          return Object.freeze({
+            kind: 'pdf_source' as const,
+            resolvedPath,
+            fileName,
+            byteLength: stat.size,
+            modifiedAtMs: stat.mtimeMs,
           });
         }
 

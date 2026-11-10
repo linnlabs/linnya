@@ -58,6 +58,7 @@ function createContext(input: {
 
   if (input.includeClaims) {
     context.managedImageIngress = {
+      ingestImageBytes: vi.fn(),
       ingestLocalImage: vi.fn().mockResolvedValue({
         assetId: 'asset-generated-image',
         uri: 'asset://assets/asset-generated-image',

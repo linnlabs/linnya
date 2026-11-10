@@ -1652,7 +1652,7 @@ describe('list_files / read_file', () => {
     expect(parameters.properties).toHaveProperty('max_chars');
     expect(parameters.properties.offset).not.toHaveProperty('default');
     expect(parameters.properties.limit).not.toHaveProperty('default');
-    expect(parameters.properties.view?.enum).toEqual(['text', 'document']);
+    expect(parameters.properties.view?.enum).toEqual(['text', 'document', 'page_image']);
   });
 
   it('grep 可在当前项目虚拟文件树中定位文本并返回 grep-like observation', async () => {

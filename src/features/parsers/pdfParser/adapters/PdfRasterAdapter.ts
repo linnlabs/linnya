@@ -34,7 +34,8 @@ export async function openPdfRasterDocumentFromPath(pdfPath: string): Promise<Pd
   );
 }
 
-function createPdfRasterDocument(handle: OpenPdfDocument): PdfRasterDocument {
+/** 复用已打开的 PDF.js 文档；文字读取与渲染共用一个句柄时由调用方负责 close。 */
+export function createPdfRasterDocument(handle: OpenPdfDocument): PdfRasterDocument {
   let closed = false;
   let renderQueue: Promise<void> = Promise.resolve();
 

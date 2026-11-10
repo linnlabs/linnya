@@ -1,6 +1,8 @@
 import type { SupportedImageMediaType } from 'src/shared/media/image-inspection';
 
 export const PHYSICAL_TEXT_FILE_MAX_BYTES = 20 * 1024 * 1024;
+/** PDF 按页读取，不整本展开；上限取常见扫描报告与年鉴的体积。 */
+export const PHYSICAL_PDF_FILE_MAX_BYTES = 100 * 1024 * 1024;
 
 export type PhysicalFileReadErrorCode =
   | 'READ_FILE_LOCATOR_INVALID'
@@ -11,7 +13,11 @@ export type PhysicalFileReadErrorCode =
   | 'READ_FILE_TEXT_ENCODING_UNSUPPORTED'
   | 'READ_FILE_UNSUPPORTED_FORMAT'
   | 'READ_FILE_IMAGE_WINDOW_CONFLICT'
-  | 'READ_FILE_IMAGE_INTEGRITY_FAILED';
+  | 'READ_FILE_IMAGE_INTEGRITY_FAILED'
+  | 'READ_FILE_PDF_OPTION_UNSUPPORTED'
+  | 'READ_FILE_PDF_WINDOW_CONFLICT'
+  | 'READ_FILE_PDF_PAGE_OUT_OF_RANGE'
+  | 'READ_FILE_PDF_UNREADABLE';
 
 export class PhysicalFileReadError extends Error {
   readonly name = 'PhysicalFileReadError';
@@ -60,9 +66,19 @@ export interface PhysicalImageFileReadResult {
   readonly byteLength: number;
 }
 
+export interface PhysicalPdfFileReadResult {
+  readonly kind: 'pdf_source';
+  /** 已通过 containment 检查的 canonical 路径；PDF 由 file-read use case 按页打开。 */
+  readonly resolvedPath: string;
+  readonly fileName: string;
+  readonly byteLength: number;
+  readonly modifiedAtMs: number;
+}
+
 export type PhysicalFileReadResult =
   | PhysicalTextFileReadResult
-  | PhysicalImageFileReadResult;
+  | PhysicalImageFileReadResult
+  | PhysicalPdfFileReadResult;
 
 export interface PhysicalFileReaderPort {
   readFile(input: {
@@ -88,6 +104,7 @@ interface PhysicalImageToolReadFacts {
 }
 
 export type PhysicalFileToolReadResult =
+  | (PhysicalPdfFileReadResult & { readonly locator: string })
   | (PhysicalTextFileReadResult & {
       /** 保留调用方的 canonical locator；不能被 symlink target identity 替换。 */
       readonly locator: string;

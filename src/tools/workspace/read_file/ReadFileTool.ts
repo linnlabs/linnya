@@ -9,6 +9,8 @@ import {
   WORKSPACE_READ_FILE_DOCUMENT_DEFAULT_MAX_CHARS,
   WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS,
   WORKSPACE_READ_FILE_MAX_LIMIT,
+  WORKSPACE_READ_FILE_PDF_FIND_MAX_PAGES,
+  WORKSPACE_READ_FILE_PDF_MAX_PAGES,
   WorkspaceReadFileArgsSchema,
   WorkspaceReadFileResultSchema,
 } from '@app/schemas';
@@ -32,13 +34,15 @@ export class ReadFileTool extends BaseTool {
    * DocumentView，不会产出图片，因此不要求模型能力；conversation:/file: 可能按 magic bytes 读成图片，
    * 保留图片要求。ToolNode 只对有要求的调用检查“最近一次成功的模型”，所以无模型的 Host 直接调用
    * （CLI tools call）读 Workspace 文本不会因缺少模型失败，Agent 读图的准入与降级保持不变。
-   * 必须是确定性规则、不做 I/O；locator 非法时由参数校验先拒绝。
+   * 带 pages/find 的 PDF 文字读取也只返回文字（非 PDF 会以错误码拒绝），同样不要求；view="page_image"
+   * 一定产出图片。必须是确定性规则、不做 I/O；locator 非法时由参数校验先拒绝。
    */
   readonly resolveModelInputRequirement = (args: Record<string, unknown>) => {
     const locator = FileLocatorSchema.safeParse(args.locator);
-    return locator.success && !locator.data.startsWith('workspace:')
-      ? READ_FILE_MODEL_INPUT_REQUIREMENT
-      : undefined;
+    if (!locator.success || locator.data.startsWith('workspace:')) return undefined;
+    if (args.view === 'page_image') return READ_FILE_MODEL_INPUT_REQUIREMENT;
+    const pdfTextOnly = args.pages !== undefined || args.find !== undefined;
+    return pdfTextOnly ? undefined : READ_FILE_MODEL_INPUT_REQUIREMENT;
   };
 
   get description() {
@@ -49,7 +53,8 @@ export class ReadFileTool extends BaseTool {
       'Plain-text receipts give character and Han counts for this returned body window and the complete source text. Characters are Unicode code points including whitespace and punctuation; Han uses Unicode Script=Han. Counts exclude line labels, paging hints and citation source appendices. Structured DocumentView and images do not report these text counts.',
       'Structured DocumentView alone uses offset_chars/max_chars. JPEG, PNG, and WebP are verified and attached automatically; identical pixels already attached in the current run are not injected again.',
       'If a tool-output truncation hint appears, use its tool_output_read call to finish this returned window before following the file next-page hint. Blob character offsets are not file line numbers or DocumentView offsets.',
-      'PDF, Office, archives, other binary formats, and unsupported encodings must first be converted with Shell/CLI.',
+      `PDF at conversation:/file: locators is read by page from its text layer (no OCR): pages="15-18" reads up to ${WORKSPACE_READ_FILE_PDF_MAX_PAGES} pages; find="phrase" searches up to ${WORKSPACE_READ_FILE_PDF_FIND_MAX_PAGES} pages per call, ignoring full/half width, case and whitespace, and lists matching pages. view="page_image" with one page renders that page as an image for models that can see images; use it for scans, charts and tables. PDF reads do not use offset/limit.`,
+      'Office, archives, other binary formats, and unsupported encodings must first be converted with Shell/CLI.',
       'Use inode only for Workspace identity. view="document" is also Workspace-only.',
       'Provide exactly one of locator or inode. Never send both. Text and DocumentView window fields cannot be mixed.',
       'Markdown citations appear as canonical [@XXXXXX] tokens with same-window source metadata.',
@@ -94,10 +99,19 @@ export class ReadFileTool extends BaseTool {
         maximum: WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS,
         description: `仅 DocumentView 使用的最大字符数；默认 ${WORKSPACE_READ_FILE_DOCUMENT_DEFAULT_MAX_CHARS}，最大 ${WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS}。`,
       },
+      pages: {
+        type: 'string',
+        description: `仅 PDF：要读的页，如 "17" 或 "15-18"，一次最多 ${WORKSPACE_READ_FILE_PDF_MAX_PAGES} 页；与 find 同用时是查找范围。`,
+      },
+      find: {
+        type: 'string',
+        minLength: 1,
+        description: '仅 PDF：查找文字，返回命中页和上下文；忽略全半角、大小写和空白。',
+      },
       view: {
         type: 'string',
-        enum: ['text', 'document'],
-        description: '省略或 text 为普通阅读；document 只用于 Workspace 结构化视图。',
+        enum: ['text', 'document', 'page_image'],
+        description: '省略或 text 为普通阅读；document 只用于 Workspace 结构化视图；page_image 把 PDF 的一页（pages 给单页）渲染成图片。',
       },
     },
     required: [],

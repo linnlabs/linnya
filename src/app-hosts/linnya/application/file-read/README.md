@@ -17,7 +17,35 @@ Workspace VFS、conversation 工作目录、Assets 和工具运行时之间的 a
   都不能命中；
 - 当前模型连接不接收工具结果图片时（ToolNode 的 `modelInputAdmission.admitted=false`），只校验图片并返回
   `attachment_status=not_delivered` 与尺寸，不进入 ingress、不签发 claim，observation 明确告知模型没有看到像素；
-- PDF、Office、压缩包、数据库和可执行文件不在 generic Read 内提取，由 Shell/CLI 显式转换。
+- PDF 由 Node adapter 按 `%PDF-` 签名识别（100 MiB 门禁），只返回文件身份，不读入正文；按页读取见下节；
+- Office、压缩包、数据库和可执行文件不在 generic Read 内提取，由 Shell/CLI 显式转换。
+
+## PDF 按页读取
+
+`read_file` 对 PDF 复用知识库同一套本地 PDF.js 文字层与几何版面（XY-Cut），不调用模型、不做 OCR，
+也不经过任何解析 API。[`readPdfForTool`](./orchestration/readPdfForTool.ts) 只认三种请求：
+
+- 默认或 `pages:"a-b"`：按页返回文字层，每页以 `[Page n]` 开头。不给 `pages` 时从第 1 页起；范围最多 20 页，
+  超出总页数时截到末页，起始页越界返回 `READ_FILE_PDF_PAGE_OUT_OF_RANGE`。页文字累计超过 15,000 字符或
+  900 行时在页边界停下（第一页总会返回），保证结果不被 Host 的 20,000 字符工具输出预览截断；末尾给出下一段
+  的完整 `read_file` 调用，提前停下时续读本次请求剩余的页；
+- `find`：在 `pages` 范围（默认全书）内查找，NFKC、大小写和空白不敏感，单次最多扫描 300 页、展示 30 处上下文，
+  返回命中页列表并提示按页读取；范围未扫完时给出续查调用；
+- `view:"page_image"` + 单页 `pages`：把该页渲染为 1536px 长边 JPEG，经 `ingestImageBytes` 内容寻址登记后
+  走与普通图片相同的 claim、`already_attached` 和 `not_delivered` 规则。selection id 由 locator 与页码派生。
+
+没有文字层的页列入 `pages_without_text`，版面无法用几何方式稳定排序的页列入 `complex_layout_pages`，
+observation 都建议对这些页用 `page_image` 看图。文字层原样返回，不承诺表格结构。PDF 参数与
+`offset/limit` 互斥（`READ_FILE_PDF_WINDOW_CONFLICT`），用在非 PDF 上返回 `READ_FILE_PDF_OPTION_UNSUPPORTED`，
+PDF.js 打不开返回 `READ_FILE_PDF_UNREADABLE`；这些检查在任何副作用之前完成。
+
+同一进程内 PDF 解析经 `SerialGate` 串行，避免多次并发读取叠加 PDF.js 内存；已取得的页文字按
+`resolvedPath + byteLength + mtime` 缓存在 `PdfPageTextCache`（默认 8M 字符、16 份文件，LRU），
+文件被改写后身份不同，不会读到旧文字。PDF 只在缓存缺页时打开，读完即关闭，不常驻文档句柄。
+
+参考测量（Apple Silicon，tsx 下）：85 页日文政策文件全书解析约 0.6 秒；70 MB、1492 页的关税表单页读取约
+0.5 秒、整本扫描约 27 秒；单页渲染约 70 ms、JPEG 约 170 KB。单页事件循环阻塞约 11–40 ms，首次加载 PDF.js
+约 370 ms。
 
 普通文本在该 use case 中统一投影为 1-based 行窗口，`offset/limit` 分别表示起始行和最大行数；
 模型看到的 `行号 | 原文` 前缀只用于定位，不属于文件字节。Workspace DocumentView 是不同的结构化

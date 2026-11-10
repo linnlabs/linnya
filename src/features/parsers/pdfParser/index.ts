@@ -27,3 +27,11 @@ export * from './layout';
 
 // 适配器（供定制使用）
 export * from './adapters';
+
+// 按页读取（Agent read_file 使用，不调模型）
+export {
+  openPdfPageReader,
+  type PdfPageLayout,
+  type PdfPageReader,
+  type PdfPageText,
+} from './orchestration/openPdfPageReader';

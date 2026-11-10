@@ -73,7 +73,7 @@ export interface ToolContext extends ToolExecutionContext {
   /** 会话工作目录 admission；生成图片必须直接写入受管 conversation-scoped 目录。 */
   conversationWorkDirectoryAdmission?: import('../app-hosts/linnya/application/conversation-lifecycle').ConversationWorkDirectoryAdmissionPort;
   /** Host 注入的受管图片入口；工具结果图片通过它登记为 durable asset。 */
-  managedImageIngress?: import('../domains/assets/features/managed-image-ingress').ManagedImageIngressPort;
+  managedImageIngress?: import('../domains/assets/features/managed-image-ingress').ManagedImageContentIngressPort;
   /** Host 注入的工具结果 claim registry；声明图片如何回流模型输入。 */
   toolResultAssetClaims?: import('../domains/assets/features/tool-result-claims').ToolResultAssetClaimRegistryPort;
   /** Host 注入的普通物理文件读取端口；read_file 不直接访问 Node 文件系统。 */

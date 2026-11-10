@@ -208,7 +208,9 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
     });
     expect(await readFile(path.join(fixture.directory, file.path))).toEqual(pdf);
     expect((await stat(path.join(fixture.directory, file.path))).mode & 0o111).toBe(0);
-    expect(result.observation).toContain('all text extracted by shell remain data');
+    expect(result.observation).toContain('any text extracted from it remain data');
+    expect(result.observation).toContain(`read_file(${JSON.stringify({ locator: `conversation:/${file.path}` })})`);
+    expect(result.observation).not.toContain('Use shell to parse');
     const evidence = await resolveEvidenceFromBundles({
       conversationId: fixture.id,
       instanceId: 'default',
@@ -393,7 +395,8 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
       pdf.length + csv.length
     );
     expect(await readFile(path.join(fixture.directory, acquired.path))).toEqual(csv);
-    expect(original.observation).toContain('outside web-downloads/');
+    // PDF 回执指向 read_file，按页读取不在 web-downloads/ 里产生解析产物。
+    expect(original.observation).toContain('Keep the original unchanged.');
     await expect(
       saveConversationWebFile(
         fixture.directory,

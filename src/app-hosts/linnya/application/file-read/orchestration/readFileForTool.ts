@@ -30,6 +30,7 @@ import { remapWorkspaceCitationRefs } from '../functions/remapWorkspaceCitationR
 import { readDocumentPropertySection } from '../../document-properties';
 import { registerDeliveredDocumentReferences, stripDocumentReferenceReadMetadata } from './registerDeliveredDocumentReferences';
 import { readPhysicalFileForTool } from './readPhysicalFileForTool';
+import { readPdfForTool, type PdfReadRequest } from './readPdfForTool';
 
 const IMAGE_READ_OBSERVATIONS = {
   attached: '已读取图片文件；真实像素已附加到本次工具结果。',
@@ -38,7 +39,7 @@ const IMAGE_READ_OBSERVATIONS = {
     '已读取图片文件的格式和尺寸；当前模型连接不接收工具结果图片，你没有看到像素。不要声称已看过这张图，需要像素判断时在答复中说明未检查。',
 } as const;
 
-type TextReadFileArgs = Extract<WorkspaceReadFileArgs, { readonly view: 'text' }>;
+type PhysicalReadFileArgs = Extract<WorkspaceReadFileArgs, { readonly view: 'text' | 'page_image' }>;
 
 // VFS provider 当前先产出完整字符串，再在边界裁剪。行号分页必须先看到真实换行；
 // 这里把 source admission 与模型 observation 预算分开，避免再次把字符 cursor 暴露给 Agent。
@@ -76,11 +77,25 @@ async function readPhysicalLocator(input: {
     ReturnType<typeof parseFileLocator>,
     { kind: 'conversation' | 'file' }
   >;
-  readonly args: TextReadFileArgs;
+  readonly args: PhysicalReadFileArgs;
   readonly rawArgs: Readonly<Record<string, unknown>>;
   readonly context: ToolContext;
 }): Promise<string> {
   const deps = requirePhysicalReadDependencies(input.context);
+  const sourceKind =
+    input.parsedLocator.kind === 'conversation'
+      ? ('conversation_file' as const)
+      : ('host_file' as const);
+  const pdfRequest: PdfReadRequest = input.args.view === 'page_image'
+    ? { view: 'page_image', pages: input.args.pages }
+    : {
+        view: 'text',
+        ...(input.args.pages !== undefined ? { pages: input.args.pages } : {}),
+        ...(input.args.find !== undefined ? { find: input.args.find } : {}),
+      };
+  const hasPdfOptions = input.args.view === 'page_image'
+    || input.args.pages !== undefined
+    || input.args.find !== undefined;
   const hasAttachedImageContent = (sha256: string): boolean => {
     const { runId, conversationView } = input.context;
     return (
@@ -95,6 +110,27 @@ async function readPhysicalLocator(input: {
   const hasExplicitTextWindow = ['offset', 'limit', 'offset_chars', 'max_chars'].some(key =>
     Object.prototype.hasOwnProperty.call(input.rawArgs, key)
   );
+  const hasExplicitLineWindow = ['offset', 'limit'].some(key =>
+    Object.prototype.hasOwnProperty.call(input.rawArgs, key)
+  );
+  // PDF 必须在同一次目录准入内按页读取，不能在准入释放后再打开文件。
+  const readOrPdf = async (
+    read: Awaited<ReturnType<typeof readPhysicalFileForTool>>,
+  ) => read.kind === 'pdf_source'
+    ? {
+        kind: 'pdf_result' as const,
+        json: await readPdfForTool({
+          ...deps,
+          source: read,
+          sourceKind,
+          request: pdfRequest,
+          hasExplicitLineWindow,
+          imageDelivery,
+          hasAttachedImageContent,
+          ...(input.context.abortSignal ? { signal: input.context.abortSignal } : {}),
+        }),
+      }
+    : read;
   const read = await (async () => {
     if (input.parsedLocator.kind === 'conversation') {
       const conversationLocator = input.parsedLocator;
@@ -104,8 +140,8 @@ async function readPhysicalLocator(input: {
           '[READ_FILE_CONVERSATION_CONTEXT_MISSING] conversation 工作目录准入上下文不完整。'
         );
       }
-      return admission.withAdmission({ conversationId: deps.conversationId }, directory =>
-        readPhysicalFileForTool({
+      return admission.withAdmission({ conversationId: deps.conversationId }, async directory =>
+        readOrPdf(await readPhysicalFileForTool({
           ...deps,
           locator: conversationLocator.locator,
           absolutePath: path.resolve(
@@ -114,9 +150,10 @@ async function readPhysicalLocator(input: {
           ),
           scope: { kind: 'conversation', rootPath: directory.absolutePath },
           hasExplicitTextWindow,
+          hasPdfOptions,
           hasAttachedImageContent,
           imageDelivery,
-        })
+        }))
       );
     }
     let absolutePath: string;
@@ -131,21 +168,19 @@ async function readPhysicalLocator(input: {
     if (absolutePath.includes('\0')) {
       throw new PhysicalFileReadError('READ_FILE_LOCATOR_INVALID', 'file locator 解码后包含 NUL。');
     }
-    return readPhysicalFileForTool({
+    return readOrPdf(await readPhysicalFileForTool({
       ...deps,
       locator: input.parsedLocator.locator,
       absolutePath,
       scope: { kind: 'host' },
       hasExplicitTextWindow,
+      hasPdfOptions,
       hasAttachedImageContent,
       imageDelivery,
-    });
+    }));
   })();
 
-  const sourceKind =
-    input.parsedLocator.kind === 'conversation'
-      ? ('conversation_file' as const)
-      : ('host_file' as const);
+  if (read.kind === 'pdf_result') return read.json;
   if (read.kind === 'image') {
     const attached = read.attachmentStatus === 'attached';
     return JSON.stringify(
@@ -168,6 +203,9 @@ async function readPhysicalLocator(input: {
     );
   }
 
+  if (input.args.view !== 'text') {
+    throw new Error('[READ_FILE_PHYSICAL_STATE_INVALID] page_image 只会返回 PDF 结果。');
+  }
   const window = buildTextLineWindow({
     text: read.text,
     offset: input.args.offset,
@@ -242,6 +280,9 @@ async function readWorkspaceLocator(input: {
   readonly args: WorkspaceReadFileArgs;
   readonly context: ToolContext;
 }): Promise<string> {
+  if (input.args.view === 'page_image') {
+    throw new Error('[READ_FILE_PDF_OPTION_UNSUPPORTED] view="page_image" 只用于 conversation: 或 file: 下的 PDF。');
+  }
   const { runtime, node } = await resolveWorkspaceIdentity(input);
   const locator = formatWorkspaceFileLocator(node.path);
   if (input.args.view === 'document') {
@@ -424,7 +465,7 @@ export async function readFileForTool(input: {
   if (parsedLocator.kind === 'workspace') {
     return readWorkspaceLocator({ args: input.args, context: input.context });
   }
-  if (input.args.view !== 'text') {
+  if (input.args.view === 'document') {
     throw new Error('[READ_FILE_DOCUMENT_VIEW_REQUIRES_WORKSPACE] DocumentView 只支持 Workspace 文件。');
   }
   return readPhysicalLocator({

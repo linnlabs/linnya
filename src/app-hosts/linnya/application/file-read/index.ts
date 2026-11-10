@@ -1,4 +1,5 @@
 export {
+  PHYSICAL_PDF_FILE_MAX_BYTES,
   PHYSICAL_TEXT_FILE_MAX_BYTES,
   PhysicalFileReadError,
   type PhysicalFileImageSelection,
@@ -8,6 +9,7 @@ export {
   type PhysicalFileReadScope,
   type PhysicalFileToolReadResult,
   type PhysicalImageFileReadResult,
+  type PhysicalPdfFileReadResult,
   type PhysicalTextContentType,
   type PhysicalTextFileReadResult,
 } from './definitions/physicalFileRead';

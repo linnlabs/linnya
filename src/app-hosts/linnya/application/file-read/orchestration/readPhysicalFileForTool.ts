@@ -58,6 +58,8 @@ export async function readPhysicalFileForTool(input: {
   readonly scope: PhysicalFileReadScope;
   /** 只能在内容识别为图片后拒绝；拒绝必须发生在 ingress 和 claim 之前。 */
   readonly hasExplicitTextWindow: boolean;
+  /** pages/find/page_image 只对 PDF 有意义；其他格式在任何副作用之前拒绝。 */
+  readonly hasPdfOptions: boolean;
   /** 由 app-level history projection 判断相同像素是否已进入当前 run。 */
   readonly hasAttachedImageContent: (sha256: string) => boolean;
   /** 当前模型连接收不到工具结果图片时只返回元数据，不登记受管副本也不签发 claim。 */
@@ -67,6 +69,15 @@ export async function readPhysicalFileForTool(input: {
     absolutePath: input.absolutePath,
     scope: input.scope,
   });
+  if (physical.kind === 'pdf_source') {
+    return Object.freeze({ ...physical, locator: input.locator });
+  }
+  if (input.hasPdfOptions) {
+    throw new PhysicalFileReadError(
+      'READ_FILE_PDF_OPTION_UNSUPPORTED',
+      'pages、find 和 view="page_image" 只用于 PDF；该文件不是 PDF。',
+    );
+  }
   if (physical.kind === 'text') {
     return Object.freeze({ ...physical, locator: input.locator });
   }

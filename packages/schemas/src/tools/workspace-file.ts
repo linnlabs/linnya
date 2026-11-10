@@ -145,6 +145,19 @@ export const WORKSPACE_READ_FILE_DEFAULT_LIMIT = 2_000;
 export const WORKSPACE_READ_FILE_MAX_LIMIT = 2_000;
 export const WORKSPACE_READ_FILE_DOCUMENT_DEFAULT_MAX_CHARS = 4_000;
 export const WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS = 12_000;
+/** 一次按页读取最多返回的 PDF 页数。 */
+export const WORKSPACE_READ_FILE_PDF_MAX_PAGES = 20;
+/** 一次查找最多扫描的 PDF 页数；更长的文件分段查找，避免一次展开上千页。 */
+export const WORKSPACE_READ_FILE_PDF_FIND_MAX_PAGES = 300;
+export const WORKSPACE_READ_FILE_PDF_FIND_MAX_CHARS = 200;
+
+/** `17` 或 `15-18`，1-based 闭区间。 */
+const PdfPageRangeSchema = z.string().regex(/^[1-9]\d*(?:-[1-9]\d*)?$/u, 'pages must look like "17" or "15-18"');
+
+export function parsePdfPageRange(value: string): { readonly from: number; readonly to: number } {
+  const [from, to = from] = value.split('-').map(Number);
+  return { from: from!, to: to! };
+}
 
 export const WorkspaceCoreFileNodeTypeSchema = z.enum([
   'folder',
@@ -260,11 +273,54 @@ const WorkspaceReadFileArgsInputSchema = z
     limit: PositiveIntegerSchema.max(WORKSPACE_READ_FILE_MAX_LIMIT).optional(),
     offset_chars: NonNegativeIntegerSchema.optional(),
     max_chars: PositiveIntegerSchema.max(WORKSPACE_READ_FILE_DOCUMENT_MAX_CHARS).optional(),
-    view: z.enum(['text', 'document']).default('text'),
+    /** 仅 PDF：要读的页，或查找范围。 */
+    pages: PdfPageRangeSchema.optional(),
+    /** 仅 PDF：查找文字，忽略全半角、大小写和空白。 */
+    find: z
+      .string()
+      .max(WORKSPACE_READ_FILE_PDF_FIND_MAX_CHARS)
+      .refine(value => value.trim().length > 0, 'find must contain non-whitespace content')
+      .optional(),
+    view: z.enum(['text', 'document', 'page_image']).default('text'),
   })
   .strict()
   .superRefine((args, context) => {
     requireExactlyOneWorkspaceFileIdentity(args, context);
+    const pdfKeys = args.pages !== undefined || args.find !== undefined || args.view === 'page_image';
+    if (pdfKeys && (args.inode || (args.locator && parseFileLocator(args.locator).kind === 'workspace'))) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [args.view === 'page_image' ? 'view' : args.pages !== undefined ? 'pages' : 'find'],
+        message: 'pages, find and view="page_image" are for PDF files at conversation: or file: locators',
+      });
+    }
+    if (pdfKeys && (args.offset !== undefined || args.limit !== undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['offset'],
+        message: 'PDF reading uses pages/find, not line offset/limit',
+      });
+    }
+    if (args.pages !== undefined) {
+      const range = parsePdfPageRange(args.pages);
+      if (range.to < range.from) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ['pages'], message: 'pages range must not run backwards' });
+      } else if (args.find === undefined && range.to - range.from + 1 > WORKSPACE_READ_FILE_PDF_MAX_PAGES) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['pages'],
+          message: `read at most ${WORKSPACE_READ_FILE_PDF_MAX_PAGES} PDF pages per call`,
+        });
+      }
+    }
+    if (args.view === 'page_image') {
+      if (args.pages === undefined || args.pages.includes('-')) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ['pages'], message: 'view="page_image" needs exactly one page, e.g. pages:"17"' });
+      }
+      if (args.find !== undefined || args.offset_chars !== undefined || args.max_chars !== undefined) {
+        context.addIssue({ code: z.ZodIssueCode.custom, path: ['view'], message: 'view="page_image" takes only locator and pages' });
+      }
+    }
     if (
       args.view === 'document' &&
       args.locator &&
@@ -331,6 +387,9 @@ export const WorkspaceGrepLifecycleArgsSchema = z
  */
 export const WorkspaceReadFileArgsSchema = WorkspaceReadFileArgsInputSchema.transform(args => {
   const identity = { locator: args.locator, inode: args.inode };
+  if (args.view === 'page_image') {
+    return { ...identity, view: 'page_image' as const, pages: args.pages! };
+  }
   if (args.view === 'document') {
     return {
       ...identity,
@@ -344,6 +403,8 @@ export const WorkspaceReadFileArgsSchema = WorkspaceReadFileArgsInputSchema.tran
     view: 'text' as const,
     offset: args.offset ?? WORKSPACE_READ_FILE_DEFAULT_OFFSET,
     limit: args.limit ?? WORKSPACE_READ_FILE_DEFAULT_LIMIT,
+    ...(args.pages !== undefined ? { pages: args.pages } : {}),
+    ...(args.find !== undefined ? { find: args.find } : {}),
   };
 });
 
@@ -484,6 +545,88 @@ function requireValidTextLineWindow(
   }
 }
 
+const PdfPageSpanSchema = z
+  .object({ from: PositiveIntegerSchema, to: PositiveIntegerSchema })
+  .strict()
+  .refine(span => span.to >= span.from, 'page span must not run backwards');
+
+const PhysicalPdfResultFields = {
+  file_name: NonEmptyStringSchema,
+  content_type: z.literal('application/pdf'),
+  byte_length: PositiveIntegerSchema,
+  page_count: PositiveIntegerSchema,
+  /** pages：返回了这些页的文字；find：在这些页里查找过。 */
+  mode: z.enum(['pages', 'find']),
+  pages: PdfPageSpanSchema,
+  /** 本次范围内没有文字层的页（扫描页或纯图片）。 */
+  pages_without_text: z.array(PositiveIntegerSchema),
+  /** 本次范围内版面不规则、阅读顺序可能不对的页。 */
+  complex_layout_pages: z.array(PositiveIntegerSchema),
+  has_more: z.boolean(),
+  /** has_more 时下一次调用的 pages 参数。 */
+  next_pages: PdfPageRangeSchema.optional(),
+  find: z
+    .object({
+      query: NonEmptyStringSchema,
+      hit_count: NonNegativeIntegerSchema,
+      hit_pages: z.array(PositiveIntegerSchema),
+      /** 命中太多，只列出了前一部分上下文。 */
+      truncated: z.boolean(),
+    })
+    .strict()
+    .optional(),
+};
+
+function requireValidPdfResult(
+  data: {
+    readonly page_count: number;
+    readonly mode: 'pages' | 'find';
+    readonly pages: { readonly from: number; readonly to: number };
+    readonly has_more: boolean;
+    readonly next_pages?: string;
+    readonly find?: unknown;
+  },
+  context: z.RefinementCtx,
+): void {
+  if (data.pages.to > data.page_count) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['pages'], message: 'pages must stay within page_count' });
+  }
+  if (data.has_more !== (data.next_pages !== undefined)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['next_pages'], message: 'next_pages must exist exactly when has_more is true' });
+  }
+  if ((data.mode === 'find') !== (data.find !== undefined)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['find'], message: 'find facts exist exactly in find mode' });
+  }
+}
+
+const WorkspaceReadFileConversationPdfResultSchema = z
+  .object({
+    data: z
+      .object({
+        source_kind: z.literal('conversation_file'),
+        locator: ConversationFileLocatorSchema,
+        ...PhysicalPdfResultFields,
+      })
+      .strict()
+      .superRefine(requireValidPdfResult),
+    observation: NonEmptyPreservedStringSchema,
+  })
+  .strict();
+
+const WorkspaceReadFileHostPdfResultSchema = z
+  .object({
+    data: z
+      .object({
+        source_kind: z.literal('host_file'),
+        locator: HostFileLocatorSchema,
+        ...PhysicalPdfResultFields,
+      })
+      .strict()
+      .superRefine(requireValidPdfResult),
+    observation: NonEmptyPreservedStringSchema,
+  })
+  .strict();
+
 const WorkspaceReadFileConversationTextResultSchema = z
   .object({
     data: z
@@ -500,6 +643,8 @@ const WorkspaceReadFileConversationTextResultSchema = z
 
 const WorkspaceReadFileConversationImageDataSchema = z
   .object({
+    /** 由 PDF 单页渲染而来时的页码；locator 仍是 PDF 本身。 */
+    pdf_page_number: PositiveIntegerSchema.optional(),
     source_kind: z.literal('conversation_file'),
     locator: ConversationFileLocatorSchema,
     file_name: NonEmptyStringSchema,
@@ -536,6 +681,8 @@ const WorkspaceReadFileHostTextResultSchema = z
 
 const WorkspaceReadFileHostImageDataSchema = z
   .object({
+    /** 由 PDF 单页渲染而来时的页码；locator 仍是 PDF 本身。 */
+    pdf_page_number: PositiveIntegerSchema.optional(),
     source_kind: z.literal('host_file'),
     locator: HostFileLocatorSchema,
     file_name: NonEmptyStringSchema,
@@ -587,6 +734,8 @@ const WorkspaceReadFileDocumentResultSchema = z
 export const WorkspaceReadFileEventDataSchema = z.union([
   WorkspaceReadFileVfsResultSchema.shape.data,
   WorkspaceReadFileConversationTextResultSchema.shape.data,
+  WorkspaceReadFileConversationPdfResultSchema.shape.data,
+  WorkspaceReadFileHostPdfResultSchema.shape.data,
   WorkspaceReadFileConversationImageDataSchema,
   WorkspaceReadFileHostTextResultSchema.shape.data,
   WorkspaceReadFileHostImageDataSchema,
@@ -599,6 +748,8 @@ export const WorkspaceReadFileEventDataSchema = z.union([
  * admission 中伪造成 live Tool 返回值。
  */
 export const WorkspaceReadFileEventResultSchema = z.union([
+  WorkspaceReadFileConversationPdfResultSchema,
+  WorkspaceReadFileHostPdfResultSchema,
   z
     .object({
       data: WorkspaceReadFileVfsResultSchema.shape.data,
@@ -639,6 +790,8 @@ export const WorkspaceReadFileEventResultSchema = z.union([
 
 export const WorkspaceReadFileResultSchema = z.union([
   WorkspaceReadFileVfsResultSchema,
+  WorkspaceReadFileConversationPdfResultSchema,
+  WorkspaceReadFileHostPdfResultSchema,
   WorkspaceReadFileConversationTextResultSchema,
   WorkspaceReadFileConversationImageResultSchema,
   WorkspaceReadFileHostTextResultSchema,

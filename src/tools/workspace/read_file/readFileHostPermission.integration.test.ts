@@ -50,7 +50,7 @@ describe('read_file host locator 与命令权限边界', () => {
           runId: RunIdSchema.parse(`agent-run-${permissionLevel}`),
           parentToolCallId: ToolCallIdSchema.parse(`tool-call-${permissionLevel}`),
           physicalFileReader: createNodePhysicalFileReader(),
-          managedImageIngress: { ingestLocalImage },
+          managedImageIngress: { ingestLocalImage, ingestImageBytes: ingestLocalImage },
           toolResultAssetClaims: {
             issueClaims,
             consumeClaims: vi.fn(() => []),
@@ -102,7 +102,7 @@ describe('read_file host locator 与命令权限边界', () => {
     const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-read-file-error-'));
     temporaryRoots.push(root);
     const filePath = path.join(root, '伪装文本.txt');
-    await fsp.writeFile(filePath, '%PDF-1.7\n%%EOF', 'ascii');
+    await fsp.writeFile(filePath, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]));
     const locator = formatHostFileLocator(filePath);
     const context = createToolContextFixture({
       conversationId: 'conv-host-read-error',
@@ -121,6 +121,7 @@ describe('read_file host locator 与命令权限边界', () => {
           }),
         },
         managedImageIngress: {
+          ingestImageBytes: vi.fn(() => Promise.reject(new Error('非图片不应进入图片 ingress。'))),
           ingestLocalImage: vi.fn(() => Promise.reject(new Error('非图片不应进入图片 ingress。'))),
         },
         toolResultAssetClaims: {

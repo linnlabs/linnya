@@ -46,11 +46,20 @@ describe('Node physical file reader', () => {
     });
   });
 
-  it('拒绝非法 UTF-8、ASCII PDF、ZIP/Office 容器和目录', async () => {
+  it('按内容识别 PDF（扩展名不算），交给按页读取，不当作文本解码', async () => {
+    const root = await createRoot();
+    const filePath = path.join(root, 'paper.txt');
+    await fsp.writeFile(filePath, Buffer.from('%PDF-1.7\n%%EOF'));
+    await expect(createNodePhysicalFileReader().readFile({
+      absolutePath: filePath,
+      scope: { kind: 'host' },
+    })).resolves.toMatchObject({ kind: 'pdf_source', fileName: 'paper.txt', byteLength: 14 });
+  });
+
+  it('拒绝非法 UTF-8、ZIP/Office 容器和目录', async () => {
     const root = await createRoot();
     const cases = [
       { name: 'invalid.txt', bytes: Buffer.from([0xc3, 0x28]), code: 'READ_FILE_TEXT_ENCODING_UNSUPPORTED' },
-      { name: 'paper.txt', bytes: Buffer.from('%PDF-1.7\n%%EOF'), code: 'READ_FILE_UNSUPPORTED_FORMAT' },
       { name: 'renamed.txt', bytes: Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]), code: 'READ_FILE_UNSUPPORTED_FORMAT' },
     ] as const;
     const reader = createNodePhysicalFileReader();
@@ -168,6 +177,7 @@ describe('Node physical file reader', () => {
       absolutePath: imagePath,
       scope: { kind: 'host' },
       hasExplicitTextWindow: false,
+      hasPdfOptions: false,
       hasAttachedImageContent: () => false,
       imageDelivery: 'attach',
     });

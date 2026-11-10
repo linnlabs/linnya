@@ -261,7 +261,9 @@ describe('ToolRegistry.getToolSchemas', () => {
         parameters: {
           properties: {
             locator: { type: 'string' },
-            view: { enum: ['text', 'document'] },
+            view: { enum: ['text', 'document', 'page_image'] },
+            pages: { type: 'string' },
+            find: { type: 'string' },
           },
         },
       },
