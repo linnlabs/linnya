@@ -25,6 +25,19 @@ export const ShallowWebSearchArgsSchema = z
       .max(WEB_SEARCH_MAX_TOP_K)
       .default(WEB_SEARCH_DEFAULT_TOP_K),
     recency_days: z.number().int().positive().optional(),
+    /** 自然语言研究目标；支持的服务用它排序，关键词仍放 query。 */
+    objective: boundedNonEmptyString(1000).optional(),
+    /** 单个域名，不带协议和路径。 */
+    site: z
+      .string()
+      .max(253)
+      .regex(/^(?!-)[A-Za-z0-9-]{1,63}(?:\.(?!-)[A-Za-z0-9-]{1,63})+$/u, 'site must be a bare domain such as sec.gov')
+      .optional(),
+    /** BCP 47 语言标签，如 zh-CN、en、ja。 */
+    language: z
+      .string()
+      .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/u, 'language must be a BCP 47 tag such as zh-CN, en or ja')
+      .optional(),
   })
   .strict();
 

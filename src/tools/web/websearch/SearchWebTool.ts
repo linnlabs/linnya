@@ -29,7 +29,7 @@ export class SearchWebTool extends BaseTool {
   readonly name = 'search_web';
   readonly argumentValidationErrorCode = 'SEARCH_WEB_ARGUMENTS_INVALID';
   readonly description =
-    'Search for candidate web sources. Snippets are not article reads. Vary queries to investigate mechanisms, primary sources, opposing evidence and gaps; use web_read to inspect candidates. No recursive deep search.';
+    'Search for candidate web sources. Snippets are not article reads. Vary queries to investigate mechanisms, primary sources, opposing evidence and gaps; use web_read to inspect candidates. No recursive deep search. The result states how site, recency_days, language and objective were applied.';
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     additionalProperties: false,
@@ -46,6 +46,21 @@ export class SearchWebTool extends BaseTool {
         type: 'integer',
         description: 'Publication recency preference in days.',
         minimum: 1,
+      },
+      objective: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 1000,
+        description:
+          'Optional. One sentence on what you need to find out (e.g. "the official filing date and accession number of Apple\'s latest 10-K"). Keep `query` as keywords. Services that cannot use it ignore it.',
+      },
+      site: {
+        type: 'string',
+        description: 'Optional. Restrict to one bare domain, e.g. sec.gov or ndrc.gov.cn (no scheme or path).',
+      },
+      language: {
+        type: 'string',
+        description: 'Optional. Preferred result language as a BCP 47 tag, e.g. zh-CN, en, ja.',
       },
     },
     required: ['query'],

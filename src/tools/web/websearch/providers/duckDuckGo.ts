@@ -4,7 +4,8 @@ import {
   type DuckDuckGoSearchDependencies,
 } from '../../../../infra/adapters/web-search/duckDuckGoSearchAdapter';
 import { createSearchResults } from '../functions/createSearchResults';
-import type { WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import type { WebSearchConditionReport, WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import { describeBucketedRecency, describeSearchConditions, toEndpointIdentity } from '../functions/searchConditions';
 
 export class DuckDuckGoProvider implements WebSearchProvider {
   readonly name = 'duckduckgo';
@@ -15,6 +16,21 @@ export class DuckDuckGoProvider implements WebSearchProvider {
     private readonly dependencies: DuckDuckGoSearchDependencies = {},
   ) {
     this.apiBase = config.baseUrl;
+    this.endpoint = toEndpointIdentity(config.baseUrl, this.name);
+  }
+  readonly endpoint: string;
+
+  /** 语言只能映射成中文或英文地区，其他语言不生效。 */
+  describeConditions(params: WebSearchParams): WebSearchConditionReport[] {
+    const language = params.language?.toLowerCase() ?? '';
+    return describeSearchConditions(params, {
+      site: { execution: 'applied', detail: 'via site: operator' },
+      recency_days: describeBucketedRecency(params.recencyDays),
+      language: language.startsWith('zh') || language.startsWith('en')
+        ? { execution: 'preference', detail: 'as search region' }
+        : 'unsupported',
+      objective: 'unsupported',
+    });
   }
 
   async search(params: WebSearchParams): Promise<WebSearchResult[]> {

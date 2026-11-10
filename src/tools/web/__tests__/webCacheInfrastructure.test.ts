@@ -81,6 +81,18 @@ describe('Web M4 缓存基础合同', () => {
       topK: 10,
       recencyDays: 7,
     }));
+    const base = { query: 'linnya web', provider: 'searxng', topK: 10 };
+    const keys = [
+      createWebSearchCacheKey(base),
+      createWebSearchCacheKey({ ...base, endpoint: 'https://searx-a.example' }),
+      createWebSearchCacheKey({ ...base, endpoint: 'https://searx-b.example' }),
+      createWebSearchCacheKey({ ...base, site: 'sec.gov' }),
+      createWebSearchCacheKey({ ...base, language: 'ja' }),
+      createWebSearchCacheKey({ ...base, objective: 'find the filing date' }),
+    ];
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(createWebSearchCacheKey({ ...base, site: 'SEC.gov', objective: ' Find  the filing date ' }))
+      .toBe(createWebSearchCacheKey({ ...base, site: 'sec.gov', objective: 'find the filing date' }));
     const localRoute = { version: 1, providers: ['LOCAL_HTTP', 'managed_default'] };
     expect(createWebDocumentCacheKey({
       url: 'https://example.com/article/?utm_source=test#section',

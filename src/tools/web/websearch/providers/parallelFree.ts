@@ -4,7 +4,8 @@ import {
   type ParallelFreeSearchDependencies,
 } from '../../../../infra/adapters/web-search/parallelFreeSearchAdapter';
 import { createSearchResults } from '../functions/createSearchResults';
-import type { WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import type { WebSearchConditionReport, WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import { describeSearchConditions, toEndpointIdentity } from '../functions/searchConditions';
 
 const MAX_DENSE_SNIPPET_CHARS = 1_200;
 
@@ -12,8 +13,9 @@ function buildSearchQuery(params: WebSearchParams): string {
   return params.site ? `site:${params.site} ${params.query}` : params.query;
 }
 
+/** 目标用自然语言描述要查明什么；没有目标时退回关键词。条件只能写成偏好句。 */
 function buildObjective(params: WebSearchParams): string {
-  const parts = [params.query];
+  const parts = [params.objective?.trim() || params.query];
   if (params.site) parts.push(`优先查找 ${params.site} 域名中的资料。`);
   if (params.recencyDays) parts.push(`优先查找最近 ${params.recencyDays} 天发布或更新的资料。`);
   if (params.language) parts.push(`优先返回 ${params.language} 内容。`);
@@ -29,6 +31,18 @@ export class ParallelFreeProvider implements WebSearchProvider {
     private readonly dependencies: ParallelFreeSearchDependencies = {},
   ) {
     this.apiBase = config.baseUrl;
+    this.endpoint = toEndpointIdentity(config.baseUrl, this.name);
+  }
+  readonly endpoint: string;
+
+  /** Parallel 免 Key MCP 只接收 objective 与关键词，其他条件写进 objective 作为偏好。 */
+  describeConditions(params: WebSearchParams): WebSearchConditionReport[] {
+    return describeSearchConditions(params, {
+      site: 'preference',
+      recency_days: 'preference',
+      language: 'preference',
+      objective: 'applied',
+    });
   }
 
   async search(params: WebSearchParams): Promise<WebSearchResult[]> {

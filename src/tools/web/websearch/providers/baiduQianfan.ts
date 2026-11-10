@@ -4,7 +4,8 @@
  */
 
 import type { WebSearchServiceRequest } from '../definitions/webSearchService';
-import type { WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import type { WebSearchConditionReport, WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import { describeSearchConditions, toEndpointIdentity } from '../functions/searchConditions';
 import {
   baiduQianfanWebSearch,
   type BaiduQianfanSearchRecencyFilter,
@@ -36,6 +37,20 @@ export class BaiduQianfanProvider implements WebSearchProvider {
         '百度千帆 web_search API Key 未配置。'
       );
     }
+    this.endpoint = toEndpointIdentity(config.baseUrl, this.name);
+  }
+  readonly endpoint: string;
+
+  describeConditions(params: WebSearchParams): WebSearchConditionReport[] {
+    const filter = toRecencyFilter(params.recencyDays);
+    return describeSearchConditions(params, {
+      site: 'applied',
+      recency_days: filter
+        ? { execution: 'applied', detail: `as past ${filter}` }
+        : { execution: 'unsupported', detail: 'longer than the largest time range this service offers' },
+      language: 'unsupported',
+      objective: 'unsupported',
+    });
   }
 
   async search(params: WebSearchParams): Promise<WebSearchResult[]> {

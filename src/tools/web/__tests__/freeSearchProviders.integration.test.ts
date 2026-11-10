@@ -61,6 +61,7 @@ describe('免费 Web Search Provider 真实 HTTP 合同', () => {
   let origin = '';
   const observed = {
     parallelSessionHeader: '',
+    parallelArguments: undefined as Record<string, unknown> | undefined,
     searxQuery: '',
     searxLanguage: '',
     searxTimeRange: '',
@@ -89,6 +90,8 @@ describe('免费 Web Search Provider 真实 HTTP 合同', () => {
           return;
         }
         observed.parallelSessionHeader = String(request.headers['mcp-session-id'] ?? '');
+        const params = body['params'];
+        if (isRecord(params) && isRecord(params['arguments'])) observed.parallelArguments = params['arguments'];
         if (url.pathname === '/parallel-error') {
           respondJson(response, {
             jsonrpc: '2.0', id: 2,
@@ -175,6 +178,22 @@ describe('免费 Web Search Provider 真实 HTTP 合同', () => {
     expect(results[0]?.snippet.length).toBe(1_200);
   });
 
+  it('Parallel Free 把研究目标与关键词分开传，其他条件只能写成偏好', async () => {
+    const provider = new ParallelFreeProvider({ baseUrl: `${origin}/parallel` });
+    await provider.search({ query: 'fixture keywords', topK: 6 });
+    expect(observed.parallelArguments).toEqual({ objective: 'fixture keywords', search_queries: ['fixture keywords'] });
+
+    const params = { query: '136号文 发改价格', objective: '找到 136 号文原文和印发日期', site: 'ndrc.gov.cn', recencyDays: 30, topK: 6 };
+    await provider.search(params);
+    expect(observed.parallelArguments).toEqual({
+      objective: '找到 136 号文原文和印发日期 优先查找 ndrc.gov.cn 域名中的资料。 优先查找最近 30 天发布或更新的资料。',
+      search_queries: ['site:ndrc.gov.cn 136号文 发改价格'],
+    });
+    expect(provider.describeConditions(params).map(report => [report.condition, report.execution])).toEqual([
+      ['site', 'preference'], ['recency_days', 'preference'], ['objective', 'applied'],
+    ]);
+  });
+
   it('Parallel Free 同时接受 Streamable HTTP 的 SSE 响应', async () => {
     const provider = new ParallelFreeProvider({ baseUrl: `${origin}/parallel-sse` });
     const results = await provider.search({ query: 'sse fixture', topK: 2 });
@@ -242,6 +261,9 @@ describe('免费 Web Search Provider 真实 HTTP 合同', () => {
     expect(observed.searxQuery).toBe('site:example.com SearXNG query');
     expect(observed.searxLanguage).toBe('zh-CN');
     expect(observed.searxTimeRange).toBe('week');
+    expect(provider.endpoint).toBe(`http://searx.fixture:${address.port}/searx`);
+    await provider.search({ query: 'SearXNG query', recencyDays: 400 });
+    expect(observed.searxTimeRange).toBe('');
     expect(results[0]).toMatchObject({
       provider: 'searxng',
       title: 'SearXNG fixture',

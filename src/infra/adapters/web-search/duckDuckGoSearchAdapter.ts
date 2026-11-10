@@ -29,7 +29,8 @@ function readFreshness(recencyDays: number | undefined): string | undefined {
   if (recencyDays <= 1) return 'd';
   if (recencyDays <= 7) return 'w';
   if (recencyDays <= 31) return 'm';
-  return 'y';
+  // 超过一年不过滤，避免把更长的时间窗截成一年。
+  return recencyDays <= 366 ? 'y' : undefined;
 }
 
 function readTargetUrl(href: string): string | undefined {

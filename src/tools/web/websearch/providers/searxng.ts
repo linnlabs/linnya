@@ -4,7 +4,8 @@ import {
   type SearXNGSearchDependencies,
 } from '../../../../infra/adapters/web-search/searxngSearchAdapter';
 import { createSearchResults } from '../functions/createSearchResults';
-import type { WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import type { WebSearchConditionReport, WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import { describeBucketedRecency, describeSearchConditions, toEndpointIdentity } from '../functions/searchConditions';
 
 export class SearXNGProvider implements WebSearchProvider {
   readonly name = 'searxng';
@@ -15,6 +16,18 @@ export class SearXNGProvider implements WebSearchProvider {
     private readonly dependencies: SearXNGSearchDependencies = {},
   ) {
     this.apiBase = config.baseUrl;
+    this.endpoint = toEndpointIdentity(config.baseUrl, this.name);
+  }
+  readonly endpoint: string;
+
+  /** 自托管实例的上游引擎各异，site 运算符和语言只能算偏好。 */
+  describeConditions(params: WebSearchParams): WebSearchConditionReport[] {
+    return describeSearchConditions(params, {
+      site: { execution: 'preference', detail: 'via site: operator; depends on the instance engines' },
+      recency_days: describeBucketedRecency(params.recencyDays),
+      language: 'applied',
+      objective: 'unsupported',
+    });
   }
 
   async search(params: WebSearchParams): Promise<WebSearchResult[]> {

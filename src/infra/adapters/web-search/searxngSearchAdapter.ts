@@ -32,7 +32,8 @@ function readTimeRange(recencyDays: number | undefined): string | undefined {
   if (recencyDays <= 1) return 'day';
   if (recencyDays <= 7) return 'week';
   if (recencyDays <= 31) return 'month';
-  return 'year';
+  // 超过一年不过滤，避免把更长的时间窗截成一年。
+  return recencyDays <= 366 ? 'year' : undefined;
 }
 
 function parseSearXNGResponse(value: unknown): SearXNGSearchItem[] {

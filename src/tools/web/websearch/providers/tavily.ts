@@ -1,7 +1,8 @@
 import type { WebSearchServiceRequest } from '../definitions/webSearchService';
 import { tavilySearch } from '../../../../infra/adapters/web-search/tavilySearchAdapter';
 import { createSearchResults } from '../functions/createSearchResults';
-import type { WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import type { WebSearchConditionReport, WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import { bucketRecency, describeBucketedRecency, describeSearchConditions, toEndpointIdentity } from '../functions/searchConditions';
 
 const MAX_TAVILY_SNIPPET_CHARS = 1_200;
 
@@ -14,6 +15,17 @@ export class TavilyProvider implements WebSearchProvider {
     this.apiBase = config.baseUrl;
     this.apiKey = config.apiKey ?? '';
     if (!this.apiKey) throw new Error('Tavily API Key 未配置。');
+    this.endpoint = toEndpointIdentity(config.baseUrl, this.name);
+  }
+  readonly endpoint: string;
+
+  describeConditions(params: WebSearchParams): WebSearchConditionReport[] {
+    return describeSearchConditions(params, {
+      site: 'applied',
+      recency_days: describeBucketedRecency(params.recencyDays),
+      language: 'unsupported',
+      objective: 'unsupported',
+    });
   }
 
   async search(params: WebSearchParams): Promise<WebSearchResult[]> {
@@ -23,7 +35,7 @@ export class TavilyProvider implements WebSearchProvider {
       query: params.query,
       topK: params.topK ?? 10,
       site: params.site,
-      recencyDays: params.recencyDays,
+      timeRange: bucketRecency(params.recencyDays),
       signal: params.signal,
     });
     return createSearchResults({

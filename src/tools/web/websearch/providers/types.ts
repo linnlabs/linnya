@@ -26,12 +26,34 @@ export interface WebSearchParams {
   site?: string;
   /** 语言限定（如 "zh-CN"） */
   language?: string;
+  /** 研究目标（自然语言）；支持的服务用它排序，关键词仍放在 query。 */
+  objective?: string;
+}
+
+export type WebSearchConditionName = 'site' | 'recency_days' | 'language' | 'objective';
+
+/**
+ * applied：服务按条件过滤或接收该字段；preference：只作为排序偏好，结果可能不满足；
+ * unsupported：本服务忽略该条件。
+ */
+export type WebSearchConditionExecution = 'applied' | 'preference' | 'unsupported';
+
+export interface WebSearchConditionReport {
+  readonly condition: WebSearchConditionName;
+  readonly value: string;
+  readonly execution: WebSearchConditionExecution;
+  /** 例如时间窗被取整到“过去一周”。 */
+  readonly detail?: string;
 }
 
 /** Web Search Provider 抽象接口 */
 export interface WebSearchProvider {
   /** Provider 名称标识（用于日志和调试） */
   readonly name: string;
+  /** 服务端点身份（自托管地址等），进入缓存键；不得含凭据。 */
+  readonly endpoint?: string;
+  /** 本次条件在该服务上的实际执行方式；未实现时观察结果标为未报告。 */
+  describeConditions?(params: WebSearchParams): WebSearchConditionReport[];
   /** 执行搜索，返回统一结构的结果列表 */
   search(params: WebSearchParams): Promise<WebSearchResult[]>;
 }

@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server } from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { WebSearchServiceRequest } from '../websearch/definitions/webSearchService';
 import { JinaSearchProvider } from '../websearch/providers/jina';
+import { SerperProvider } from '../websearch/providers/serper';
 import { TavilyProvider } from '../websearch/providers/tavily';
 
 function readBody(request: IncomingMessage): Promise<string> {
@@ -18,7 +19,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function config(
-  serviceId: 'jina_search' | 'tavily',
+  serviceId: 'jina_search' | 'tavily' | 'serper',
   baseUrl: string,
 ): WebSearchServiceRequest {
   return {
@@ -36,6 +37,7 @@ describe('Jina Search 与 Tavily BYOK 真实 HTTP 合同', () => {
     jinaQuery: string;
     tavilyAuthorization: string;
     tavilyBody?: Record<string, unknown>;
+    serperBody?: Record<string, unknown>;
   } = {
     jinaAuthorization: '',
     jinaQuery: '',
@@ -84,6 +86,15 @@ describe('Jina Search 与 Tavily BYOK 真实 HTTP 合同', () => {
         }));
         return;
       }
+      if (url.pathname === '/serper/search') {
+        const requestBody: unknown = JSON.parse(await readBody(request));
+        if (!isRecord(requestBody)) throw new Error('Serper fixture 请求体不是对象');
+        observed.serperBody = requestBody;
+        response.end(JSON.stringify({
+          organic: [{ title: 'Serper fixture', link: 'https://example.com/serper', snippet: 'Serper snippet', date: 'Nov 5, 2026' }],
+        }));
+        return;
+      }
       if (url.pathname === '/invalid-jina') {
         response.end(JSON.stringify({ data: {} }));
         return;
@@ -121,7 +132,7 @@ describe('Jina Search 与 Tavily BYOK 真实 HTTP 合同', () => {
     expect(results[0]?.snippet.length).toBe(1_200);
   });
 
-  it('Tavily 发送 Bearer Key，并透传站点、时效和结果预算', async () => {
+  it('Tavily 发送 Bearer Key，并透传站点、time_range 时间窗和结果预算', async () => {
     const provider = new TavilyProvider(config('tavily', `${origin}/tavily`));
     const results = await provider.search({
       query: 'Tavily query',
@@ -135,15 +146,36 @@ describe('Jina Search 与 Tavily BYOK 真实 HTTP 合同', () => {
       query: 'Tavily query',
       max_results: 3,
       include_domains: ['example.com'],
-      days: 7,
+      time_range: 'week',
       include_raw_content: false,
     });
+    expect(observed.tavilyBody).not.toHaveProperty('days');
+    expect(provider.describeConditions({ query: 'q', site: 'example.com', recencyDays: 7, language: 'ja' })).toEqual([
+      { condition: 'site', value: 'example.com', execution: 'applied' },
+      { condition: 'recency_days', value: '7', execution: 'applied', detail: 'as past week' },
+      { condition: 'language', value: 'ja', execution: 'unsupported' },
+    ]);
     expect(results[0]).toMatchObject({
       provider: 'tavily',
       canonicalUrl: 'https://example.com/tavily',
       snippet: 'Tavily result content',
       providerScore: 0.91,
     });
+  });
+
+  it('Serper 用 site 运算符和 tbs 时间窗，超过一年不缩窄时间范围', async () => {
+    const provider = new SerperProvider(config('serper', `${origin}/serper`));
+    const results = await provider.search({ query: 'Serper query', site: 'sec.gov', recencyDays: 30, language: 'en', topK: 6 });
+
+    expect(observed.serperBody).toEqual({ q: 'site:sec.gov Serper query', num: 6, hl: 'en', tbs: 'qdr:m' });
+    expect(results[0]).toMatchObject({ provider: 'serper', publishedAt: 'Nov 5, 2026' });
+    await provider.search({ query: 'Serper query', recencyDays: 400 });
+    expect(observed.serperBody).not.toHaveProperty('tbs');
+    expect(provider.describeConditions({ query: 'q', recencyDays: 400, language: 'en' })).toEqual([
+      { condition: 'recency_days', value: '400', execution: 'unsupported', detail: 'longer than the largest time range this service offers' },
+      { condition: 'language', value: 'en', execution: 'preference' },
+    ]);
+    expect(provider.endpoint).toBe(`${origin}/serper`);
   });
 
   it('两家响应结构异常时保留统一 invalid_response 失败语义', async () => {

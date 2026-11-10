@@ -13,6 +13,8 @@ export interface SerperSearchRequest {
   query: string;
   topK: number;
   language?: string;
+  /** Google 离散时间窗，映射到 tbs=qdr:*。 */
+  timeRange?: 'day' | 'week' | 'month' | 'year';
 }
 
 export interface SerperOrganicResult {
@@ -74,6 +76,7 @@ export async function serperSearch(args: {
     url,
     topK: args.request.topK,
     hasLanguage: !!args.request.language,
+    timeRange: args.request.timeRange,
   });
 
   const body: Record<string, unknown> = {
@@ -81,6 +84,7 @@ export async function serperSearch(args: {
     num: args.request.topK,
   };
   if (args.request.language) body['hl'] = args.request.language;
+  if (args.request.timeRange) body['tbs'] = `qdr:${args.request.timeRange.charAt(0)}`;
 
   const response = await webHttpFetch({
     url,

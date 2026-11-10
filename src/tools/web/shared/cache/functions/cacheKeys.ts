@@ -5,17 +5,26 @@ function normalizeQuery(query: string): string {
   return query.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+/** 同名服务可能指向不同实例（自托管 SearXNG、改过地址的 BYOK），端点必须进入键。 */
 export function createWebSearchCacheKey(params: {
   query: string;
   provider: string;
+  endpoint?: string;
   topK: number;
   recencyDays?: number;
+  site?: string;
+  language?: string;
+  objective?: string;
 }): string {
   return JSON.stringify({
     query: normalizeQuery(params.query),
     provider: params.provider.trim().toLowerCase(),
+    endpoint: params.endpoint ?? null,
     topK: params.topK,
     recencyDays: params.recencyDays ?? null,
+    site: params.site?.trim().toLowerCase() ?? null,
+    language: params.language?.trim().toLowerCase() ?? null,
+    objective: params.objective ? normalizeQuery(params.objective) : null,
   });
 }
 

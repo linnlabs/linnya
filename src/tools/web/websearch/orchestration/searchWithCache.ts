@@ -26,8 +26,12 @@ export async function searchWebWithCache(args: {
   const key = createWebSearchCacheKey({
     query: args.params.query,
     provider: args.provider.name,
+    endpoint: args.provider.endpoint,
     topK: args.params.topK,
     recencyDays: args.params.recencyDays,
+    site: args.params.site,
+    language: args.params.language,
+    objective: args.params.objective,
   });
 
   let cacheAvailable = true;

@@ -1,7 +1,8 @@
 import type { WebSearchServiceRequest } from '../definitions/webSearchService';
 import { jinaSearch } from '../../../../infra/adapters/web-search/jinaSearchAdapter';
 import { createSearchResults } from '../functions/createSearchResults';
-import type { WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import type { WebSearchConditionReport, WebSearchParams, WebSearchProvider, WebSearchResult } from './types';
+import { describeSearchConditions, toEndpointIdentity } from '../functions/searchConditions';
 
 const MAX_JINA_SNIPPET_CHARS = 1_200;
 
@@ -14,6 +15,17 @@ export class JinaSearchProvider implements WebSearchProvider {
     this.apiBase = config.baseUrl;
     this.apiKey = config.apiKey ?? '';
     if (!this.apiKey) throw new Error('Jina Search API Key 未配置。');
+    this.endpoint = toEndpointIdentity(config.baseUrl, this.name);
+  }
+  readonly endpoint: string;
+
+  describeConditions(params: WebSearchParams): WebSearchConditionReport[] {
+    return describeSearchConditions(params, {
+      site: { execution: 'applied', detail: 'via site: operator' },
+      recency_days: 'unsupported',
+      language: 'unsupported',
+      objective: 'unsupported',
+    });
   }
 
   async search(params: WebSearchParams): Promise<WebSearchResult[]> {

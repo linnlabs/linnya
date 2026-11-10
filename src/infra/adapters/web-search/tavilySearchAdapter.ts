@@ -50,7 +50,8 @@ export async function tavilySearch(args: {
   query: string;
   topK: number;
   site?: string;
-  recencyDays?: number;
+  /** `days` 只对 news 主题生效；通用搜索用 time_range。 */
+  timeRange?: 'day' | 'week' | 'month' | 'year';
   signal?: AbortSignal;
 }): Promise<TavilySearchResult> {
   if (!args.apiBase) throw new Error('Tavily Search API 缺少 apiBase。');
@@ -65,13 +66,13 @@ export async function tavilySearch(args: {
     include_images: false,
   };
   if (args.site) body['include_domains'] = [args.site];
-  if (args.recencyDays !== undefined) body['days'] = args.recencyDays;
+  if (args.timeRange) body['time_range'] = args.timeRange;
 
   logger.info('[tavilySearch] 发起搜索请求', {
     endpoint: new URL(url).origin,
     topK: args.topK,
     hasSite: !!args.site,
-    recencyDays: args.recencyDays,
+    timeRange: args.timeRange,
   });
   const response = await webHttpFetch({
     url,

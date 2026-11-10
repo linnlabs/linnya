@@ -47,6 +47,11 @@ export async function runShallowWebSearch(
   const query = args.query;
   const topK = args.top_k;
   const recencyDays = args.recency_days;
+  const conditions = {
+    ...(args.site ? { site: args.site } : {}),
+    ...(args.language ? { language: args.language } : {}),
+    ...(args.objective ? { objective: args.objective } : {}),
+  };
   const citationOffset = requireCitationSequenceOffset(context);
 
   // 1. 调用 provider 获取原始搜索结果
@@ -57,6 +62,7 @@ export async function runShallowWebSearch(
     provider: provider.name,
     queryLength: query.length,
     topK,
+    conditions: [...Object.keys(conditions), ...(recencyDays ? ['recency_days'] : [])],
   });
 
   let rawResults: WebSearchResult[];
@@ -64,7 +70,7 @@ export async function runShallowWebSearch(
   const cacheRuntime = dependencies.cacheRuntime ?? getWebCacheRuntime();
   try {
     const searchResult = await searchWebWithCache({
-      params: { query, topK, recencyDays, signal: context.abortSignal },
+      params: { query, topK, recencyDays, ...conditions, signal: context.abortSignal },
       provider,
       runtime: cacheRuntime,
     });
@@ -113,6 +119,8 @@ export async function runShallowWebSearch(
   });
 
   // 3. 构建 observation（给 LLM 的可引用文本视图，每条必须包含 [@ref]）
+  const conditionParams = { query, recencyDays, ...conditions };
+  const hasConditions = recencyDays !== undefined || Object.keys(conditions).length > 0;
   const observation = buildWebSearchObservation({
     query,
     results: citations.map(citation => ({
@@ -121,7 +129,13 @@ export async function runShallowWebSearch(
       url: citation.url,
       title: citation.docTitle,
       snippet: citation.snippet,
+      ...(citation.publishedAt ? { publishedAt: citation.publishedAt } : {}),
     })),
+    ...(hasConditions
+      ? provider.describeConditions
+        ? { conditions: provider.describeConditions(conditionParams) }
+        : { conditionsUnreported: true }
+      : {}),
   });
 
   // 4. 构建结构化业务事实；Renderer 在 admission 边界独立派生 presentation。
