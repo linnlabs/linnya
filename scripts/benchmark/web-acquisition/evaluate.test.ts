@@ -60,7 +60,7 @@ describe('web acquisition benchmark evaluation', () => {
     ];
     const metrics = evaluateWebAcquisitionRun(task('site-sec-apple-10k'), calls, usage);
     expect(metrics.searches).toBe(2);
-    expect(metrics.searchesWithConditions).toEqual({ site: 1, language: 0, recency: 1, objective: 0 });
+    expect(metrics.searchesWithConditions).toEqual({ site: 1, language: 0, recency: 1 });
     expect(metrics.reads).toMatchObject({ ok: 1, failed: 1, truncated: 1, errors: { http_404: 1 } });
     expect(metrics.children).toBe(2);
     expect(metrics.usage).toBe(usage);

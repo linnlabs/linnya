@@ -88,11 +88,10 @@ describe('Web M4 缓存基础合同', () => {
       createWebSearchCacheKey({ ...base, endpoint: 'https://searx-b.example' }),
       createWebSearchCacheKey({ ...base, site: 'sec.gov' }),
       createWebSearchCacheKey({ ...base, language: 'ja' }),
-      createWebSearchCacheKey({ ...base, objective: 'find the filing date' }),
     ];
     expect(new Set(keys).size).toBe(keys.length);
-    expect(createWebSearchCacheKey({ ...base, site: 'SEC.gov', objective: ' Find  the filing date ' }))
-      .toBe(createWebSearchCacheKey({ ...base, site: 'sec.gov', objective: 'find the filing date' }));
+    expect(createWebSearchCacheKey({ ...base, site: 'SEC.gov' }))
+      .toBe(createWebSearchCacheKey({ ...base, site: 'sec.gov' }));
     const localRoute = { version: 1, providers: ['LOCAL_HTTP', 'managed_default'] };
     expect(createWebDocumentCacheKey({
       url: 'https://example.com/article/?utm_source=test#section',

@@ -146,7 +146,7 @@ async function analyze(values: Map<string, string>): Promise<void> {
     '',
     '必须取得项按会话真实工具输出核对：原文片段出现在某次成功读取里，且指定来源成功取得过。这是取得事实，不是答案质量分。',
     '',
-    '| 试跑 | 结果 | 必须取得 | 搜索（带 site/语言/时间/目标） | 读取 成功/失败/截断/文件 | Shell 解析 PDF | 子任务 | LLM 调用 | 未缓存/缓存/输出 | 列表价 | 分钟 |',
+    '| 试跑 | 结果 | 必须取得 | 搜索（带 site/语言/时间） | 读取 成功/失败/截断/文件 | Shell 解析 PDF | 子任务 | LLM 调用 | 未缓存/缓存/输出 | 列表价 | 分钟 |',
     '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
     ...results.map(({ runKey, outcome, minutes, metrics }) => {
       if (!metrics) return `| ${runKey} | ${outcome ?? ''} | – | – | – | – | – | – | – | – | ${minutes ?? ''} |`;
@@ -154,7 +154,7 @@ async function analyze(values: Map<string, string>): Promise<void> {
       const failed = metrics.checks.filter(check => !check.passed)
         .map(check => `${check.label}${check.contentRead === false ? '（未读到）' : ''}${check.sourceFetched === false ? '（来源未取得）' : ''}`);
       const condition = metrics.searchesWithConditions;
-      return `| ${runKey} | ${outcome ?? ''} | ${passed}/${metrics.checks.length}${failed.length ? `：缺 ${failed.join('、')}` : ''} | ${metrics.searches}（${condition.site}/${condition.language}/${condition.recency}/${condition.objective}） | ${metrics.reads.ok}/${metrics.reads.failed}/${metrics.reads.truncated}/${metrics.reads.files} | ${metrics.shellPdfAttempts} | ${metrics.children} | ${metrics.usage.calls} | ${metrics.usage.uncachedInput}/${metrics.usage.cachedInput}/${metrics.usage.output} | $${metrics.usage.listCostUsd.toFixed(4)} | ${minutes ?? ''} |`;
+      return `| ${runKey} | ${outcome ?? ''} | ${passed}/${metrics.checks.length}${failed.length ? `：缺 ${failed.join('、')}` : ''} | ${metrics.searches}（${condition.site}/${condition.language}/${condition.recency}） | ${metrics.reads.ok}/${metrics.reads.failed}/${metrics.reads.truncated}/${metrics.reads.files} | ${metrics.shellPdfAttempts} | ${metrics.children} | ${metrics.usage.calls} | ${metrics.usage.uncachedInput}/${metrics.usage.cachedInput}/${metrics.usage.output} | $${metrics.usage.listCostUsd.toFixed(4)} | ${minutes ?? ''} |`;
     }),
     '',
   ];

@@ -44,7 +44,6 @@ function readValue(params: WebSearchParams, condition: WebSearchConditionName): 
     case 'site': return params.site;
     case 'recency_days': return params.recencyDays === undefined ? undefined : String(params.recencyDays);
     case 'language': return params.language;
-    case 'objective': return params.objective;
   }
 }
 
@@ -53,7 +52,7 @@ export function describeSearchConditions(
   params: WebSearchParams,
   rules: Readonly<Record<WebSearchConditionName, ConditionRule>>,
 ): WebSearchConditionReport[] {
-  const order: WebSearchConditionName[] = ['site', 'recency_days', 'language', 'objective'];
+  const order: WebSearchConditionName[] = ['site', 'recency_days', 'language'];
   return order.flatMap((condition) => {
     const value = readValue(params, condition);
     if (value === undefined) return [];

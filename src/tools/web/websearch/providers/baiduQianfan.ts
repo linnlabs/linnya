@@ -49,7 +49,6 @@ export class BaiduQianfanProvider implements WebSearchProvider {
         ? { execution: 'applied', detail: `as past ${filter}` }
         : { execution: 'unsupported', detail: 'longer than the largest time range this service offers' },
       language: 'unsupported',
-      objective: 'unsupported',
     });
   }
 

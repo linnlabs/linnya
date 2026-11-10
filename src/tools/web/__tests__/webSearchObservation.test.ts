@@ -187,7 +187,7 @@ describe('web_search observation 注入隔离', () => {
 describe('web_search 条件执行情况与发布日期', () => {
   const result = { ...createSearchResult({ rank: 1, url: 'https://www.sec.gov/a', title: 'Filing', snippet: 'Snippet' }), publishedAt: 'Nov 3, 2026' };
 
-  it('把服务实际怎样执行 site、时间、语言和目标写进可信骨架，日期标明未核实', async () => {
+  it('把服务实际怎样执行 site、时间和语言写进可信骨架，日期标明未核实', async () => {
     const search = vi.fn().mockResolvedValue([result]);
     const provider: WebSearchProvider = {
       name: 'observation_fixture',
@@ -196,21 +196,19 @@ describe('web_search 条件执行情况与发布日期', () => {
         { condition: 'site', value: 'sec.gov', execution: 'applied', detail: 'via site: operator' },
         { condition: 'recency_days', value: '400', execution: 'unsupported', detail: 'longer than the largest time range this service offers' },
         { condition: 'language', value: 'en', execution: 'preference' },
-        { condition: 'objective', value: 'latest 10-K accession', execution: 'unsupported' },
       ],
     };
     const tool = new WebSearchTool({ provider, evidenceWriter: { save: vi.fn().mockResolvedValue({ bundleId: '0123456789abcdef' }) } });
     const observation = readObservation(await tool.run({
-      query: 'apple 10-k', site: 'sec.gov', recency_days: 400, language: 'en', objective: 'latest 10-K accession',
+      query: 'apple 10-k', site: 'sec.gov', recency_days: 400, language: 'en',
     }, createContext()));
 
     expect(search).toHaveBeenCalledWith(expect.objectContaining({
-      query: 'apple 10-k', site: 'sec.gov', recencyDays: 400, language: 'en', objective: 'latest 10-K accession',
+      query: 'apple 10-k', site: 'sec.gov', recencyDays: 400, language: 'en',
     }));
     expect(observation).toContain('- site=sec.gov: applied (via site: operator)');
     expect(observation).toContain('- recency_days=400: not supported by this search service; ignored (longer than the largest time range this service offers)');
     expect(observation).toContain('- language=en: preference only; results may not match');
-    expect(observation).toContain('- objective="latest 10-K accession": not supported by this search service; ignored');
     expect(observation).toContain('Published: 2026-11-03 (reported by the search service; not verified against the page)');
     expect(observation.indexOf('Search conditions:')).toBeLessThan(observation.indexOf('<<<BEGIN_UNTRUSTED_WEB_CONTENT_'));
   });
@@ -219,7 +217,7 @@ describe('web_search 条件执行情况与发布日期', () => {
     const provider: WebSearchProvider = { name: 'observation_fixture', search: vi.fn().mockResolvedValue([result]) };
     const tool = new WebSearchTool({ provider, evidenceWriter: { save: vi.fn().mockResolvedValue({ bundleId: '0123456789abcdef' }) } });
     expect(readObservation(await tool.run({ query: 'q', site: 'sec.gov' }, createContext())))
-      .toContain('Search conditions: this search service does not report how site, time, language or objective were applied.');
+      .toContain('Search conditions: this search service does not report how site, time or language were applied.');
     expect(readObservation(await tool.run({ query: 'q' }, createContext()))).not.toContain('Search conditions');
   });
 

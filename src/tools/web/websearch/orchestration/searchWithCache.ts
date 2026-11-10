@@ -31,7 +31,6 @@ export async function searchWebWithCache(args: {
     recencyDays: args.params.recencyDays,
     site: args.params.site,
     language: args.params.language,
-    objective: args.params.objective,
   });
 
   let cacheAvailable = true;

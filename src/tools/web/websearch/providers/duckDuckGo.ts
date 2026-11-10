@@ -29,7 +29,6 @@ export class DuckDuckGoProvider implements WebSearchProvider {
       language: language.startsWith('zh') || language.startsWith('en')
         ? { execution: 'preference', detail: 'as search region' }
         : 'unsupported',
-      objective: 'unsupported',
     });
   }
 

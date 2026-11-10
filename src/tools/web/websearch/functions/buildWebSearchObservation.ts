@@ -43,7 +43,7 @@ function describeConditions(conditions: ReadonlyArray<WebSearchConditionReport> 
   return [
     'Search conditions:',
     ...conditions.map(({ condition, value, execution, detail }) =>
-      `- ${condition}=${condition === 'objective' ? JSON.stringify(value) : value}: ${EXECUTION_TEXT[execution]}${detail ? ` (${detail})` : ''}`),
+      `- ${condition}=${value}: ${EXECUTION_TEXT[execution]}${detail ? ` (${detail})` : ''}`),
     '',
   ];
 }
@@ -68,7 +68,7 @@ export function buildWebSearchObservation(params: {
   conditionsUnreported?: boolean;
 }): string {
   const conditionLines = params.conditionsUnreported
-    ? ['Search conditions: this search service does not report how site, time, language or objective were applied.', '']
+    ? ['Search conditions: this search service does not report how site, time or language were applied.', '']
     : describeConditions(params.conditions);
   if (params.results.length === 0) {
     return [...conditionLines, `No web search results found for "${params.query}".`].join('\n');

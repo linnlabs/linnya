@@ -31,7 +31,7 @@ export class WebSearchTool extends BaseTool {
   readonly argumentValidationErrorCode = 'WEB_SEARCH_ARGUMENTS_INVALID';
   readonly description = `Search the web. Default returns titles, URLs and search snippets.
 Use deep_search=true for a focused question needing multi-query discovery, actual reading and selected source excerpts. An internal agent uses the current model; it returns materials and gaps, not a verified answer. At most 4 deep starts per run; further requests explicitly use ordinary search. Internally it can perform multiple searches and reads. Only cite returned [@ref]. Search snippets and metadata-only pages are not full article reads.
-When you pass site, recency_days, language or objective, the result states whether this search service applied each one, treated it as a preference, or ignored it. Published dates come from the search service and are not verified against the page.`;
+When you pass site, recency_days or language, the result states whether this search service applied each one, treated it as a preference, or ignored it. Published dates come from the search service and are not verified against the page.`;
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     additionalProperties: false,
@@ -59,13 +59,6 @@ When you pass site, recency_days, language or objective, the result states wheth
         minimum: 1,
         description:
           'Optional. Prefer results within the last N days (e.g. 7/30/180/365). Availability depends on provider.',
-      },
-      objective: {
-        type: 'string',
-        minLength: 1,
-        maxLength: 1000,
-        description:
-          'Optional. One sentence on what you need to find out (e.g. "the official filing date and accession number of Apple\'s latest 10-K"). Keep `query` as keywords. Services that cannot use it ignore it.',
       },
       site: {
         type: 'string',

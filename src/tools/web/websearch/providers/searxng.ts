@@ -26,7 +26,6 @@ export class SearXNGProvider implements WebSearchProvider {
       site: { execution: 'preference', detail: 'via site: operator; depends on the instance engines' },
       recency_days: describeBucketedRecency(params.recencyDays),
       language: 'applied',
-      objective: 'unsupported',
     });
   }
 

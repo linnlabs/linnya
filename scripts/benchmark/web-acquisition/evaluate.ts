@@ -31,7 +31,7 @@ export interface CheckResult {
 export interface WebAcquisitionRunMetrics {
   readonly checks: readonly CheckResult[];
   readonly searches: number;
-  readonly searchesWithConditions: { readonly site: number; readonly language: number; readonly recency: number; readonly objective: number };
+  readonly searchesWithConditions: { readonly site: number; readonly language: number; readonly recency: number };
   readonly reads: { readonly ok: number; readonly failed: number; readonly truncated: number; readonly files: number; readonly errors: Readonly<Record<string, number>> };
   readonly shellPdfAttempts: number;
   readonly children: number;
@@ -77,7 +77,7 @@ export function evaluateWebAcquisitionRun(task: WebAcquisitionTask, calls: reado
   return {
     checks: task.checks.map(check => evaluateCheck(check, calls)),
     searches: searches.length,
-    searchesWithConditions: { site: withArg('site'), language: withArg('language'), recency: withArg('recency_days'), objective: withArg('objective') },
+    searchesWithConditions: { site: withArg('site'), language: withArg('language'), recency: withArg('recency_days') },
     reads: {
       ok: reads.filter(successful).length,
       failed: reads.filter(call => call.status === 'error').length,

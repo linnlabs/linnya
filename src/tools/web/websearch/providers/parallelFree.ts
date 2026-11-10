@@ -13,9 +13,9 @@ function buildSearchQuery(params: WebSearchParams): string {
   return params.site ? `site:${params.site} ${params.query}` : params.query;
 }
 
-/** 目标用自然语言描述要查明什么；没有目标时退回关键词。条件只能写成偏好句。 */
+/** 免 Key MCP 没有结构化过滤，条件只能写成 objective 里的偏好句。 */
 function buildObjective(params: WebSearchParams): string {
-  const parts = [params.objective?.trim() || params.query];
+  const parts = [params.query];
   if (params.site) parts.push(`优先查找 ${params.site} 域名中的资料。`);
   if (params.recencyDays) parts.push(`优先查找最近 ${params.recencyDays} 天发布或更新的资料。`);
   if (params.language) parts.push(`优先返回 ${params.language} 内容。`);
@@ -35,13 +35,12 @@ export class ParallelFreeProvider implements WebSearchProvider {
   }
   readonly endpoint: string;
 
-  /** Parallel 免 Key MCP 只接收 objective 与关键词，其他条件写进 objective 作为偏好。 */
+  /** Parallel 免 Key MCP 只接收 objective 与关键词，条件写进 objective 作为偏好。 */
   describeConditions(params: WebSearchParams): WebSearchConditionReport[] {
     return describeSearchConditions(params, {
       site: 'preference',
       recency_days: 'preference',
       language: 'preference',
-      objective: 'applied',
     });
   }
 

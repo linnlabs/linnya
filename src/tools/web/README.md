@@ -87,21 +87,24 @@ citation 的 ref、canonical URL 必须唯一，index 必须从当前 execution 
 
 ### 检索条件与执行反馈
 
-`web_search` / `search_web` 的可选条件：`recency_days`、`site`（单个裸域名）、`language`（BCP 47 标签）、
-`objective`（一句话研究目标，关键词仍放 `query`）。条件原样传给当前服务，不在 factory 里换家或改写含义。
+`web_search` / `search_web` 的可选条件：`recency_days`、`site`（单个裸域名）、`language`（BCP 47 标签）。
+条件原样传给当前服务，不在 factory 里换家或改写含义。
+
+不提供单独的研究目标参数：2026-11-10 用 CLI 直接调用 Parallel 对照，把同样信息写进关键词时，
+带与不带目标的原始来源排名基本持平，收益来自信息量而不是字段本身。Parallel 仍以 query 作为 objective。
 
 每个 Provider 用 `describeConditions` 按自己的请求实现声明本次条件的执行方式，结果写进模型可见的
 `Search conditions` 段（可信骨架，位于不可信块之前）：
 
-| 服务 | site | recency_days | language | objective |
-|---|---|---|---|---|
-| Parallel Free | 偏好 | 偏好 | 偏好 | 单独作为 objective 发送 |
-| Serper | `site:` 运算符 | `tbs=qdr:*` 离散窗 | `hl` 偏好 | 不支持 |
-| Tavily | `include_domains` | `time_range` 离散窗 | 不支持 | 不支持 |
-| SearXNG | `site:` 运算符，取决于实例引擎，算偏好 | `time_range` 离散窗 | 执行 | 不支持 |
-| DuckDuckGo | `site:` 运算符 | `df` 离散窗 | 只有中/英映射为地区偏好 | 不支持 |
-| 百度千帆 | 执行 | week/month/semiyear/year | 不支持 | 不支持 |
-| Jina Search | `site:` 运算符 | 不支持 | 不支持 | 不支持 |
+| 服务 | site | recency_days | language |
+|---|---|---|---|
+| Parallel Free | 偏好 | 偏好 | 偏好 |
+| Serper | `site:` 运算符 | `tbs=qdr:*` 离散窗 | `hl` 偏好 |
+| Tavily | `include_domains` | `time_range` 离散窗 | 不支持 |
+| SearXNG | `site:` 运算符，取决于实例引擎，算偏好 | `time_range` 离散窗 | 执行 |
+| DuckDuckGo | `site:` 运算符 | `df` 离散窗 | 只有中/英映射为地区偏好 |
+| 百度千帆 | 执行 | week/month/semiyear/year | 不支持 |
+| Jina Search | `site:` 运算符 | 不支持 | 不支持 |
 
 离散时间窗只向上取整（30 天 → 过去一月），超过一年不加过滤并报告不支持，避免把更长的窗口截成一年。
 未实现 `describeConditions` 的服务整体标为未报告。搜索服务给的发布日期只在能解析为日历日期时以

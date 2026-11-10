@@ -29,7 +29,6 @@ export class SerperProvider implements WebSearchProvider {
       site: { execution: 'applied', detail: 'via site: operator' },
       recency_days: describeBucketedRecency(params.recencyDays),
       language: 'preference',
-      objective: 'unsupported',
     });
   }
 

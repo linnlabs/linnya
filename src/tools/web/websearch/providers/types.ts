@@ -26,11 +26,9 @@ export interface WebSearchParams {
   site?: string;
   /** 语言限定（如 "zh-CN"） */
   language?: string;
-  /** 研究目标（自然语言）；支持的服务用它排序，关键词仍放在 query。 */
-  objective?: string;
 }
 
-export type WebSearchConditionName = 'site' | 'recency_days' | 'language' | 'objective';
+export type WebSearchConditionName = 'site' | 'recency_days' | 'language';
 
 /**
  * applied：服务按条件过滤或接收该字段；preference：只作为排序偏好，结果可能不满足；

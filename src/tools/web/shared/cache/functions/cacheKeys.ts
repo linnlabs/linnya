@@ -14,7 +14,6 @@ export function createWebSearchCacheKey(params: {
   recencyDays?: number;
   site?: string;
   language?: string;
-  objective?: string;
 }): string {
   return JSON.stringify({
     query: normalizeQuery(params.query),
@@ -24,7 +23,6 @@ export function createWebSearchCacheKey(params: {
     recencyDays: params.recencyDays ?? null,
     site: params.site?.trim().toLowerCase() ?? null,
     language: params.language?.trim().toLowerCase() ?? null,
-    objective: params.objective ? normalizeQuery(params.objective) : null,
   });
 }
 

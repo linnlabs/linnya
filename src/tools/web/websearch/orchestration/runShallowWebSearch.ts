@@ -50,7 +50,6 @@ export async function runShallowWebSearch(
   const conditions = {
     ...(args.site ? { site: args.site } : {}),
     ...(args.language ? { language: args.language } : {}),
-    ...(args.objective ? { objective: args.objective } : {}),
   };
   const citationOffset = requireCitationSequenceOffset(context);
 

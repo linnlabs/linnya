@@ -24,7 +24,6 @@ export class TavilyProvider implements WebSearchProvider {
       site: 'applied',
       recency_days: describeBucketedRecency(params.recencyDays),
       language: 'unsupported',
-      objective: 'unsupported',
     });
   }
 

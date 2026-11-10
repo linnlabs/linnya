@@ -24,7 +24,6 @@ export class JinaSearchProvider implements WebSearchProvider {
       site: { execution: 'applied', detail: 'via site: operator' },
       recency_days: 'unsupported',
       language: 'unsupported',
-      objective: 'unsupported',
     });
   }
 

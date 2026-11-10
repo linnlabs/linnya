@@ -178,19 +178,19 @@ describe('免费 Web Search Provider 真实 HTTP 合同', () => {
     expect(results[0]?.snippet.length).toBe(1_200);
   });
 
-  it('Parallel Free 把研究目标与关键词分开传，其他条件只能写成偏好', async () => {
+  it('Parallel Free 用关键词作 objective，条件只能写成偏好', async () => {
     const provider = new ParallelFreeProvider({ baseUrl: `${origin}/parallel` });
     await provider.search({ query: 'fixture keywords', topK: 6 });
     expect(observed.parallelArguments).toEqual({ objective: 'fixture keywords', search_queries: ['fixture keywords'] });
 
-    const params = { query: '136号文 发改价格', objective: '找到 136 号文原文和印发日期', site: 'ndrc.gov.cn', recencyDays: 30, topK: 6 };
+    const params = { query: '136号文 发改价格', site: 'ndrc.gov.cn', recencyDays: 30, topK: 6 };
     await provider.search(params);
     expect(observed.parallelArguments).toEqual({
-      objective: '找到 136 号文原文和印发日期 优先查找 ndrc.gov.cn 域名中的资料。 优先查找最近 30 天发布或更新的资料。',
+      objective: '136号文 发改价格 优先查找 ndrc.gov.cn 域名中的资料。 优先查找最近 30 天发布或更新的资料。',
       search_queries: ['site:ndrc.gov.cn 136号文 发改价格'],
     });
     expect(provider.describeConditions(params).map(report => [report.condition, report.execution])).toEqual([
-      ['site', 'preference'], ['recency_days', 'preference'], ['objective', 'applied'],
+      ['site', 'preference'], ['recency_days', 'preference'],
     ]);
   });
 

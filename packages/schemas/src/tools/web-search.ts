@@ -25,8 +25,6 @@ export const ShallowWebSearchArgsSchema = z
       .max(WEB_SEARCH_MAX_TOP_K)
       .default(WEB_SEARCH_DEFAULT_TOP_K),
     recency_days: z.number().int().positive().optional(),
-    /** 自然语言研究目标；支持的服务用它排序，关键词仍放 query。 */
-    objective: boundedNonEmptyString(1000).optional(),
     /** 单个域名，不带协议和路径。 */
     site: z
       .string()
