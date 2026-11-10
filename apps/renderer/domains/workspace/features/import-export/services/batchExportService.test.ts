@@ -65,6 +65,7 @@ afterEach(() => {
 });
 
 describe('批量导出逐篇处理', () => {
+  // 首次导出会加载正式编辑器 schema，CI 上也要覆盖这条冷路径。
   it('坏文档列为失败、其余全部写出；没有打开任何文档也能导出；插件文档只计数', async () => {
     const tree = [
       node('normal', '正常', 'document'),
@@ -121,7 +122,7 @@ describe('批量导出逐篇处理', () => {
     expect(files[0]?.content).toContain('normal 正文');
     // 缺图不影响导出：图片按现有规则写成块引用。
     expect(files[2]?.content).toContain('linnya-image://image');
-  });
+  }, 30_000);
 
   it('全部失败时不写任何文件，如实报告 0 篇', async () => {
     readDocument.mockResolvedValue({ success: false, error: 'broken' });

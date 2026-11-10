@@ -18,7 +18,9 @@ export type SidebarMode = 'chat' | 'files';
 export type WorkspaceScene =
   | { kind: 'workspace' }
   | { kind: 'knowledge-base' }
-  | { kind: 'plugin-store' };
+  | { kind: 'plugin-store' }
+  /** 项目概览：项目里所有文件的一览表，侧栏保持在该项目。 */
+  | { kind: 'project-overview'; projectId: string };
 
 // 中文说明：ActiveDocumentType 已从闭合 union 改为插件贡献的动态 ID。
 // 具体合法值由 app/plugins/documentTypeRegistry 在注册时校验。
@@ -33,6 +35,7 @@ export interface ActiveDocument {
 export type BypassView =
   | { type: 'knowledge-base' }
   | { type: 'plugin-store' }
+  | { type: 'project-overview'; projectId: string }
   | null;
 
 export interface DocumentPaneState {

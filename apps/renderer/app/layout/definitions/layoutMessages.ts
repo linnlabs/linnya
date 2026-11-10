@@ -47,6 +47,7 @@ export type LayoutMessageKey =
   | 'layout.sidebar.project.viewGroup'
   | 'layout.sidebar.project.chat'
   | 'layout.sidebar.project.files'
+  | 'layout.sidebar.project.overview'
   | 'layout.sidebar.project.newConversation'
   | 'layout.sidebar.project.searchChats'
   | 'layout.sidebar.project.create'

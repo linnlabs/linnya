@@ -7,6 +7,7 @@ Workspace VFS 是项目节点树的路径投影和文档类型能力调度层。
 主要入口：
 
 - `listWorkspaceVfsNodes`：列出项目路径节点；
+- `listWorkspaceProjectDocuments`：一次查询列出项目里全部可见文档和所在文件夹名，供项目概览使用；可见性与逐级列目录一致；
 - `resolveWorkspaceVfsNode`：按 path 或 inode 解析；
 - `readWorkspaceVfsNode`：调用对应文档类型的文本投影；
 - `grepWorkspaceVfsSearchIndex`：维护并查询按 `project_id + inode` 记录覆盖范围的行级 FTS5 搜索索引。

@@ -1,17 +1,18 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 
-interface OpenProjectOverviewModalParams {
+interface OpenProjectKnowledgeBaseModalParams {
   projectId: string;
   projectName?: string | null;
 }
 
-export const useProjectOverviewModalStore = defineStore('workspace-project-overview-modal', () => {
+/** 项目知识库设置弹窗：从项目概览页头和项目首页打开，内容仍是同一个设置面板。 */
+export const useProjectKnowledgeBaseModalStore = defineStore('workspace-project-knowledge-base-modal', () => {
   const visible = ref(false);
   const projectId = ref<string | null>(null);
   const projectName = ref<string | null>(null);
 
-  function open(params: OpenProjectOverviewModalParams): void {
+  function open(params: OpenProjectKnowledgeBaseModalParams): void {
     const normalizedProjectId = params.projectId.trim();
     if (!normalizedProjectId) return;
 

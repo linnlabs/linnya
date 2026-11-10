@@ -214,6 +214,9 @@ declare global {
       listConversationRunDocumentChanges: (
         request: import('@app/schemas').ConversationRunDocumentChangesRequest,
       ) => Promise<unknown>;
+      readProjectOverview: (
+        request: import('@app/schemas').ProjectOverviewRequest,
+      ) => Promise<unknown>;
       resolveConversationFileLink: (
         request: import('@app/schemas').ConversationFileLinkResolveRequest,
       ) => Promise<import('@app/schemas').OperationResult<

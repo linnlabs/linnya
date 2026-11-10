@@ -54,10 +54,9 @@ export function notifyWorkspaceDocumentOpened(params: {
     UPDATE workspace_nodes
     SET
       last_opened_at = ?,
-      access_count = COALESCE(access_count, 0) + 1,
-      updated_at = ?
+      access_count = COALESCE(access_count, 0) + 1
     WHERE id = ? AND deleted_at IS NULL AND type IN (${placeholders})
-  `).run(now, now, params.nodeId, ...documentTypes);
+  `).run(now, params.nodeId, ...documentTypes);
 
   if (result.changes === 0) {
     console.warn(

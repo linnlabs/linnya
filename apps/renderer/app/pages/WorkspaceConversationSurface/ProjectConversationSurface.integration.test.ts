@@ -8,7 +8,7 @@ const dependencies = vi.hoisted(() => ({
   ensureDataLoaded: vi.fn<() => Promise<void>>(async () => undefined),
   ensureProjectTreeLoaded: vi.fn<(projectId: string) => Promise<void>>(async () => undefined),
   setInputText: vi.fn<(text: string) => void>(),
-  openProjectOverview: vi.fn(),
+  openProjectKnowledgeBase: vi.fn(),
 }));
 
 vi.mock('@/app/navigation', () => ({
@@ -38,9 +38,9 @@ vi.mock('@/domains/conversation/store/assistantStore', () => ({
   }),
 }));
 
-vi.mock('@/domains/workspace/features/project-overview/store/projectOverviewModalStore', () => ({
-  useProjectOverviewModalStore: () => ({
-    open: dependencies.openProjectOverview,
+vi.mock('@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore', () => ({
+  useProjectKnowledgeBaseModalStore: () => ({
+    open: dependencies.openProjectKnowledgeBase,
   }),
 }));
 
@@ -107,7 +107,7 @@ describe('ProjectConversationSurface app-level boundaries', () => {
     dependencies.ensureDataLoaded.mockClear();
     dependencies.ensureProjectTreeLoaded.mockClear();
     dependencies.setInputText.mockClear();
-    dependencies.openProjectOverview.mockClear();
+    dependencies.openProjectKnowledgeBase.mockClear();
   });
 
   afterEach(() => {

@@ -26,11 +26,13 @@
       v-else
       :project-name="projectNavProjectName"
       :sidebar-mode="sidebarMode"
+      :overview-selected="activeScene === 'project-overview'"
       :chat-search-query="projectChatSearchQuery"
       :file-search-query="projectFileSearchQuery"
       :show-create-menu="showProjectCreateMenu"
       :create-options="projectCreateOptions"
       @back="handleBackToList"
+      @open-overview="handleOpenCurrentProjectOverview"
       @set-mode="setSidebarMode"
       @new-conversation="handleNewConversation"
       @toggle-create-menu="toggleProjectCreateMenu"
@@ -162,7 +164,7 @@ import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
 import { getNavigationScopeKey, useNavigationScope } from '@/app/navigation';
 import { useSidebarConversationHistoryRevealStore } from '@/app/layout/store/sidebarConversationHistoryRevealStore';
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
-import { useProjectOverviewModalStore } from '@/domains/workspace/features/project-overview/store/projectOverviewModalStore';
+import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { AlertDialog, SkeletonRows } from '@linnya/renderer-ui';
 import AddToKnowledgeBaseModal from '@/domains/knowledgebase/ui/AddToKnowledgeBaseModal.vue';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
@@ -234,7 +236,6 @@ const notificationStore = useNotificationStore();
 const enabledPluginsStore = useEnabledPluginsStore();
 const navigationScope = useNavigationScope();
 const sidebarHistoryRevealStore = useSidebarConversationHistoryRevealStore();
-const projectOverviewModalStore = useProjectOverviewModalStore();
 const { workspaceMessage } = useWorkspaceLocalization();
 
 const isBatchContextMenu = computed(() => (
@@ -551,13 +552,21 @@ const handleOpenProject = async (projectId) => {
 };
 
 const handleOpenProjectOverview = async (projectId) => {
-  const project = projectsStore.projects.find((item) => item.id === projectId);
-  if (!project) return;
+  if (!projectsStore.projects.some((item) => item.id === projectId)) return;
+  try {
+    await ensureViewSwitchSafety();
+    await getWorkspaceNavigationPort().openProjectOverview(projectId);
+    projectsStore.markActiveProject(projectId);
+    rememberExpandedProject(projectId);
+    await treeStore.ensureProjectTreeLoaded(projectId);
+  } catch (error) {
+    console.warn('[WorkspaceSidebarSurface] 打开项目概览已取消：', error);
+  }
+};
 
-  projectOverviewModalStore.open({
-    projectId,
-    projectName: project.name,
-  });
+const handleOpenCurrentProjectOverview = () => {
+  const projectId = navigationScope.currentProjectId;
+  if (projectId) void handleOpenProjectOverview(projectId);
 };
 
 const handleBackToList = () => {

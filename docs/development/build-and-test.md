@@ -227,6 +227,13 @@ Sharp 的公开入口可能是 JavaScript loader；PE 架构校验通过共享
 - 没有提交 secret、绝对本机路径、生成物、临时调试输出或私有源码依赖。
 - 文档和稳定合同与实现保持一致。
 
+## 前端调试与本机界面验收
+
+优先运行 `pnpm -s probe up` 启动独立的真实 Desktop，随后用 `snapshot` 定位界面、
+`shot` 截图、`logs` 查错。拖动类验收使用逐步采样和跟手断言，动效可用曲线或定格拼图取证。
+当前探针支持 macOS，使用本 checkout 的构建产物与源码 Vite，不占用日常开发 profile 或数据。
+首次构建、更新后端、选择隔离实例和清理现场的步骤见 [Desktop 开发探针](../../scripts/development/features/desktop-probe/README.md)。
+
 ## 并行 Desktop 回归
 
 完成 `pnpm run dev:electron --build-only` 后，macOS 可运行 `pnpm run test:development:parallel-desktop`。

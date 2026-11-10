@@ -92,3 +92,20 @@ export interface ActionLedgerChangeList {
 }
 
 export const ACTION_LEDGER_MAX_QUERY_LIMIT = 200;
+
+/** 一份文档在账本里的首尾两条：谁新建的，最近一次是谁改的。 */
+export interface ActionLedgerDocumentSummary {
+  readonly documentId: string;
+  /** 账本里最早的一条是新建时给出；文档早于账本或新建没有入账时为 null。 */
+  readonly creator: {
+    readonly actorKind: ActionActorKind;
+    readonly pluginId: string | null;
+    /** 新建发生在别的项目（文档后来转入）时为 null，与按运行查询的可见规则一致。 */
+    readonly conversationId: string | null;
+  } | null;
+  readonly last: {
+    readonly actorKind: ActionActorKind;
+    readonly pluginId: string | null;
+    readonly recordedAt: number;
+  };
+}

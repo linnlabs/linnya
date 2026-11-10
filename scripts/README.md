@@ -13,7 +13,10 @@
 
 Electron 开发入口由 `development/orchestration/startElectronDevelopment.mjs` 统一持有 Vite
 dev server，再把实际 renderer URL 传给 Electron。服务只绑定 `127.0.0.1`，默认使用
-`5173`，占用时切换到 `5174`；这两个端口与本地 API 的 CORS 安全边界保持一致。
+`5173`，占用时由 Vite 绑定后续可用端口。Backend 只接纳 Host 传入的实际 Renderer origin。
+
+前端调试和本机界面验收优先用 [Desktop 开发探针](./development/features/desktop-probe/README.md)。
+探针从 5175 开始绑定独立 Vite，运行数据、profile、日志和制品放在系统临时目录。
 
 `dev:electron` 的构建会话由 [build-session](./development/features/build-session/README.md)
 持有：按依赖启动 watcher，以本轮首次成功事件放行消费者，随后保留同一个 watcher；不再先全量构建再重启一套监听。
