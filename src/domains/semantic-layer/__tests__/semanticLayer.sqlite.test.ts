@@ -222,3 +222,20 @@ describe('对象的标签与值', () => {
     expect(layer.readObject('p1', docA).revision).toBe(0);
   });
 });
+
+describe('恢复版本', () => {
+  it('恢复到旧版本是一次新写入；0 表示清空', () => {
+    const { layer } = setup();
+    layer.defineProperty({ name: '作者', valueType: 'text' });
+    layer.defineTag({ name: '论文', fields: [{ propertyId: '作者' }] });
+    let state = layer.tagObject({ projectId: 'p1', ref: docA, expectedRevision: 0 }, ['论文']);
+    state = layer.setValues({ projectId: 'p1', ref: docA, expectedRevision: state.revision }, { 作者: 'Ada' });
+    state = layer.setValues({ projectId: 'p1', ref: docA, expectedRevision: state.revision }, { 作者: 'Grace' });
+    state = layer.restoreObject({ projectId: 'p1', ref: docA, expectedRevision: state.revision }, 2);
+    expect(state.revision).toBe(4);
+    expect(Object.values(state.values)).toEqual(['Ada']);
+    state = layer.restoreObject({ projectId: 'p1', ref: docA, expectedRevision: state.revision }, 0);
+    expect(state.tags).toEqual([]);
+    expect(codeOf(() => layer.restoreObject({ projectId: 'p1', ref: docA, expectedRevision: state.revision }, 99))).toBe('invalid_value');
+  });
+});

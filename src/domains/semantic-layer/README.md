@@ -6,8 +6,8 @@
 
 ## 负责与不负责
 
-- 负责：标签、字段定义；对象的标签与值；值的校验与空值合同；对象版本；向[行动账本](../action-ledger/README.md)登记改动。
-- 不负责：查询与面板（另行实现的查询编译器）、`read_file` 属性段、界面、关系字段（随来龙去脉的关系表一起做）。
+- 负责：标签、字段定义；对象的标签与值；值的校验与空值合同；对象版本与恢复；查询描述与编译；向[行动账本](../action-ledger/README.md)登记改动。
+- 不负责：`read_file` 属性段、界面、关系字段（随来龙去脉的关系表一起做）。命令行入口在 [Shell 内建 CLI](../../app-hosts/linnya/application/core-cli/README.md)。
 - 插件不能直接读写这些表，只能经 Host 端口。
 
 ## 对象 =（种类，ID）
@@ -68,6 +68,25 @@
 - 入口绑定了执行者时，写入在同一事务里向账本登记一条细账：动作 `tag`、`untag` 或 `set_props`，部分为
   `properties`，改前、改后版本引用是对象版本号，摘要记加减了几个标签、改了几个值。
 
+## 查询
+
+CLI、面板与以后的界面共用一份查询描述（`SemanticQuery`：项目、标签、条件、排序、分组、上限），由
+`features/query` 编译成只读 SQL。范围是一个项目里未删除的非文件夹节点。
+
+- 标签条件要求同时带有。字段条件只匹配当前标签带这个字段的对象：没打标签的文档不算“为空”；去掉标签后保留的旧值不参与筛选。
+- 文字比较不分大小写并做 NFKC（全角等同半角），经注册的 `semantic_fold` 函数，与名称唯一性同一规则。
+- “不等于”包含未设置；勾选的“未勾选”同时包含 `false` 与未设置。
+- 多选“包含”命中任一给出的选项，“不包含”要求一个都没有；单选、多选按选项名或 ID 匹配，选项名写错时报错并列出选项。
+- 日期按日历日字面比较；日期时间按绝对时刻比较（`unixepoch`），不按字符串。内建 `created`、`updated` 接受 `YYYY-MM-DD`（宿主当地零点）或毫秒时间戳。
+- 排序：数字按数值，单选按选项顺序，没有值的排最后；默认按最近修改。分组支持单选、多选（对象出现在每个选项组）、勾选和内建 `type`。
+- `limit` 为 1–200，另给满足条件的总数与 `truncated`。字段名写错时报 `unknown_property` 并列出可用字段。
+- 字段 ID 只接受安全字符后才内联进 JSON 路径，其余全部参数化；编译结果用 `statement.readonly` 复核。
+
+## 恢复
+
+`restoreObject(write, toRevision)` 把标签与值恢复成某个保留版本（0 表示从未写过的空状态），作为一次新写入：
+加版本、入账，不改写历史。超出保留范围的版本报 `invalid_value`。
+
 ## 存储
 
 值每个对象一行 JSONB（`semantic_object_values.property_values`），键是字段 ID。按本机实测，万级文档任意字段
@@ -78,6 +97,7 @@
 - `definitions/`：合同、错误码与入口参数。
 - `functions/`：名称归一化、相近名称、值校验。
 - `infrastructure/sqlite/`：表结构、schema provider 与读写实现。
+- `features/query/`：查询描述、编译器与执行。
 
 ```bash
 pnpm exec vitest run src/domains/semantic-layer src/domains/action-ledger

@@ -8,3 +8,6 @@ export {
   type SqliteSemanticLayer,
 } from './infrastructure/sqlite/createSqliteSemanticLayer';
 export { getSemanticLayerSchemaProviders } from './infrastructure/sqlite/schemaProviders';
+export * from './features/query/definitions/semanticQuery';
+export { compileSemanticQuery, type CompiledSemanticQuery, type SemanticQueryDefinitions } from './features/query/functions/compileSemanticQuery';
+export { registerSemanticFold, runSemanticQuery } from './features/query/orchestration/runSemanticQuery';

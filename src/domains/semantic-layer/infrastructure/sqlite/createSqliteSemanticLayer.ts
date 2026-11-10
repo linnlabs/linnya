@@ -410,6 +410,28 @@ export function createSqliteSemanticLayer(
       });
     },
 
+    /**
+     * 恢复到某个版本的标签与值（0 表示从未打过标签），用于按运行撤回。恢复本身是一次新写入，
+     * 也要期望版本、也入账；只保留最近 50 个版本，更早的报错。已删除的标签不会被恢复。
+     */
+    restoreObject(write: SemanticObjectWrite, toRevision: number): SemanticObjectState {
+      return commit(write, 'set_props', () => {
+        if (toRevision === 0) return { tagIds: [], values: {} };
+        const row = db.prepare<[string, string, number], { tag_ids_json: string; property_values: string }>(`
+          SELECT tag_ids_json, json(property_values) AS property_values FROM semantic_object_versions
+          WHERE object_kind = ? AND object_id = ? AND revision = ?
+        `).get(write.ref.kind, write.ref.id, toRevision);
+        if (!row) {
+          throw new SemanticLayerError('invalid_value', `版本 ${toRevision} 不在保留范围内（每个对象保留最近 ${KEPT_VERSIONS} 个版本）`);
+        }
+        const active = new Set(tags().map(tag => tag.id));
+        return {
+          tagIds: (JSON.parse(row.tag_ids_json) as string[]).filter(id => active.has(id)),
+          values: JSON.parse(row.property_values) as Values,
+        };
+      });
+    },
+
     /** 写字段值：只能写对象当前标签带来的字段；`null`、空字符串、空列表都表示清除。 */
     setValues(write: SemanticObjectWrite, patch: Readonly<Record<string, unknown>>): SemanticObjectState {
       return commit(write, 'set_props', current => {

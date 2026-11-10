@@ -79,6 +79,7 @@ export type SemanticLayerErrorCode =
   | 'readonly_property'
   | 'invalid_value'
   | 'invalid_definition'
+  | 'invalid_query'
   | 'revision_conflict'
   | 'object_not_found'
   | 'outside_project'

@@ -75,6 +75,10 @@ To learn what was discussed in other conversations of this project, run linnya c
 (--query <text> searches titles and messages), then linnya conversations read <id> (--after <seq> for the
 next page). Only user messages and AI replies are returned, not thinking or tool activity.
 
+Documents can carry tags with fields (e.g. 论文 with 作者, 年份). linnya schema lists them; linnya query
+--tag/--where finds documents; linnya props get|tag|set reads or changes one. Writes without --rev only
+preview and print the exact command to run; that command needs requires_write_access. See linnya <command> --help.
+
 The default working directory is this conversation's physical work directory. Use relative OS
 paths for temporary and derived files. workspace:/ documents live in Linnya's database VFS,
 not as ordinary files on disk; use formal document tools to read or change them. conversation:/

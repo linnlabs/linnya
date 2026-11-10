@@ -1,6 +1,6 @@
 # Agent Shell 内建 CLI
 
-`linnya changes` 查询当前对话所属项目里保留的文档改动，`linnya conversations` 读同一项目里别的对话。它与 `linnya-<插件>` 共用 Shell 的原生客户端、权限、取消和输出通道。Core 命令由 Host 注册，无需启用插件。项目由 Host 查询已授权对话的归属。
+`linnya changes` 查询当前对话所属项目里保留的文档改动，`linnya conversations` 读同一项目里别的对话，`linnya schema`、`props`、`query`、`links` 读写标签与字段并按它们查文档。它与 `linnya-<插件>` 共用 Shell 的原生客户端、权限、取消和输出通道。Core 命令由 Host 注册，无需启用插件。项目由 Host 查询已授权对话的归属。
 
 - `linnya changes --day yesterday` 按宿主当地日历列出昨天的记录。也接受 `today` 或具体日期。
 - `linnya changes --since 2026-11-01 --until 2026-11-06` 包含起日，不含终日。
@@ -32,3 +32,20 @@
 颜色参数可以不带 `#`，因为 Shell 会把未加引号的 `#` 后面当注释。退出码：0 成功，1 业务失败或检查不合格，2 用法错误。失败时 stderr 是 `错误码 一句原因`。
 
 `--preview` 把几套色条画成 PNG 写进工作目录根。文件名带随机后缀并独占创建，不会跟随预先放好的符号链接。
+
+## 标签、字段与查询
+
+标签与字段的定义、空值合同和查询语义归[语义层](../../../../domains/semantic-layer/README.md)，这里只做命令行翻译。路径一律是 `workspace:/` 开头的文档路径，只在当前项目内解析。
+
+- `linnya schema`：列出已有标签（及其字段、默认值）和字段（类型、选项）。新建前先看能否复用。
+- `linnya schema add-field 名称 --type 类型 [--option a,b]`、`add-tag 名称 [--field 字段[=默认值]]...`、`set-fields 标签 [--field ...]`（整体替换）。名称与已有定义相近时报 `similar_name` 并列出候选，确认不是同一个再加 `--allow-similar`。
+- `linnya props get 路径`：当前版本、标签和全部字段（未设置的显示“（空）”）。
+- `linnya props tag|untag 路径... --tag 标签,...`、`set 路径... 字段=值...`、`restore 路径 --to 版本`。`set` 里值留空即清除，多选用逗号分隔，勾选写 `true`/`false`。
+- `linnya query [--tag 标签]... [--where 条件]... [--sort [-]字段]... [--group 字段] [--limit 1..200] [--json]`：条件写成 `字段=值`、`!=`、`>`、`>=`、`<`、`<=`、`~`（包含）、`!~`（不包含）；`字段=` 为空、`字段!=` 不为空。内建字段 `name`、`type`、`created`、`updated`。默认 50 份，超过时首行给出总数。
+- `linnya links 路径`：引用这份文档的文档和它引用的文档，同项目、不在回收站。
+
+**写入要给期望版本。** 写命令不带 `--rev` 时只预览：在事务里按真实写入试一遍再回滚，列出每份文档的当前版本和将要发生的变化，最后一行是加好 `--rev` 的完整命令。带 `--rev`（按路径顺序，逗号分隔）才写入；版本不符时报 `revision_conflict` 并给出当前版本，避免覆盖用户刚在面板里做的修改。批量写入全部成功才提交，任一份失败整体回滚，错误带出是哪份文档。
+
+预览和读命令只要内部数据权限；写入与新建定义还需要 Shell 写权限。属性改动按 Host 冻结的运行编号查出运行、父运行和根运行记入[行动账本](../../../../domains/action-ledger/README.md)；找不到运行记录时记为外部入口。
+
+退出码：0 成功，1 业务失败（stderr 首行是 `错误码 一句原因`，随后是可用字段、相近名称或当前版本），2 用法错误。
