@@ -222,10 +222,27 @@ function validateWebReadData(
 
 const WebReadDataSchema = WebReadDataObjectSchema.superRefine(validateWebReadData);
 
+/**
+ * 仅 Renderer 展示：下载的图片在本机的绝对路径（会话工作目录内）与尺寸，和 generate_image 的 media 同一形状。
+ * 模型只读 observation 与会话相对路径，不读这里。
+ */
+export const WebReadImageMediaSchema = z.object({
+  path: NonEmptyStringSchema,
+  media_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+}).strict();
+export type WebReadImageMedia = z.infer<typeof WebReadImageMediaSchema>;
+
 export const WebReadResultSchema = z.object({
   data: WebReadDataSchema,
   observation: NonEmptyStringSchema,
-}).strict();
+  media: WebReadImageMediaSchema.optional(),
+}).strict().superRefine((result, context) => {
+  if ((result.media !== undefined) && result.data.image === undefined) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['media'], message: 'Image media appears only with an acquired image file' });
+  }
+});
 
 /** 历史 resource_read(http/https) 事件的 replay 结果合同。 */
 export const HistoricalWebResourceReadResultSchema = z.object({

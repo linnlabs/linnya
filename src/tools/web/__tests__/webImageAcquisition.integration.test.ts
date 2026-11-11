@@ -1,5 +1,5 @@
 import { createServer, type Server } from 'node:http';
-import { mkdtemp, mkdir, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, readFile, realpath, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -143,6 +143,12 @@ describe('图片下载、检查与来源记录', () => {
     });
     expect(result.data.image?.source?.attribution).toContain('CC BY-SA 4.0');
     expect(await readFile(path.join(fixture.directory, result.data.file!.path))).toEqual(png);
+    // 界面用的本机路径只在 media 里，observation 只给会话相对路径。
+    expect(result.media).toEqual({
+      path: await realpath(path.join(fixture.directory, result.data.file!.path)),
+      media_type: 'image/png', width: 640, height: 400,
+    });
+    expect(result.observation).not.toContain(fixture.directory);
     expect(result.observation).toContain('Image: 640×400 PNG');
     expect(result.observation).toContain(`read_file(${JSON.stringify({ locator: `conversation:/${result.data.file!.path}` })})`);
     expect(result.observation).toContain('Source record (from image_search');

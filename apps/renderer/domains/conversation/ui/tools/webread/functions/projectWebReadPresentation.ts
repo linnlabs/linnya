@@ -7,6 +7,7 @@ import {
 import type { ToolPresentationProjection, ToolPresentationProjectorInput, ToolCompactStepProjector } from '../../types';
 import { createConversationToolTitleDescriptor } from '../../functions/createConversationToolTitleDescriptor';
 import type { WebReadPresentationData } from '../definitions/webReadPresentation';
+import { WEB_READ_PAGE_UI_KEY } from './resolveWebReadUiKey';
 
 function createWebReadTitle(target: string): ReturnType<typeof createConversationToolTitleDescriptor> {
   return createConversationToolTitleDescriptor('conversation.tool.webRead.configTitleWithTarget', {
@@ -28,7 +29,7 @@ export const projectWebReadCompactStep: ToolCompactStepProjector = input => {
 export function projectWebReadPresentation(
   input: ToolPresentationProjectorInput
 ): ToolPresentationProjection<WebReadPresentationData> & { title: ReturnType<typeof createConversationToolTitleDescriptor> } {
-  if (input.uiKey !== 'web_read') {
+  if (input.uiKey !== WEB_READ_PAGE_UI_KEY) {
     throw new Error(`Unsupported Web read UI key: ${input.uiKey}`);
   }
 

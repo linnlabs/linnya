@@ -7,7 +7,6 @@ vi.mock('../../../../../src/app-hosts/linnya/plugin-registry/registeredContribut
 }));
 import { tableFillToolCards } from '@/app/workflows/table-fill/ui/tool-card/tableFillToolCards';
 import { commonToolConfigs } from '@/domains/conversation/ui/tools/configs/common';
-import { workspaceReadToolConfigs } from '@/domains/conversation/ui/tools/configs/workspace';
 import { platformRendererPlugin } from './platform.renderer';
 import { legacyBuiltinToolClasses } from '../../../../../src/app-hosts/linnya/adapters/tools/legacyToolClasses';
 
@@ -31,13 +30,21 @@ describe('platformRendererPlugin table-fill contribution', () => {
       const toolName = new ToolClass().name;
       const entry = toolCards[toolName];
       expect(entry, toolName).toBeDefined();
-      if (toolName === 'read_file') {
-        expect(entry).toBe(workspaceReadToolConfigs['read_file']);
-        const finalEntry = toolCards['workspace_read_file'];
-        expect(finalEntry && 'presentation' in finalEntry && typeof finalEntry.presentation === 'function')
-          .toBe(true);
-        expect(finalEntry && 'compactStep' in finalEntry && typeof finalEntry.compactStep === 'function')
-          .toBe(true);
+      // 按结果分流的工具：每个最终展示都要有完整卡片与紧凑步骤 projector。
+      const aliasTargets: Readonly<Record<string, readonly string[]>> = {
+        read_file: ['workspace_read_file', 'image_read'],
+        web_read: ['web_read_page', 'web_read_image'],
+      };
+      const targets = aliasTargets[toolName];
+      if (targets) {
+        expect(entry && 'resolveUiKey' in entry, toolName).toBe(true);
+        for (const target of targets) {
+          const finalEntry = toolCards[target];
+          expect(finalEntry && 'presentation' in finalEntry && typeof finalEntry.presentation === 'function', target)
+            .toBe(true);
+          expect(finalEntry && 'compactStep' in finalEntry && typeof finalEntry.compactStep === 'function', target)
+            .toBe(true);
+        }
       } else {
         expect(entry && 'presentation' in entry && typeof entry.presentation === 'function', toolName)
           .toBe(true);

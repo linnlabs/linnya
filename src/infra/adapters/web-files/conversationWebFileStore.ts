@@ -69,7 +69,7 @@ export async function saveConversationWebFile(
             'Downloaded file was modified. Move the modified copy before acquiring the original again.'
           );
         }
-        return receipt;
+        return { receipt, hostPath: target };
       } finally {
         await existing.close();
       }
@@ -110,6 +110,6 @@ export async function saveConversationWebFile(
       await handle.close();
       await unlink(staging);
     }
-    return receipt;
+    return { receipt, hostPath: target };
   });
 }

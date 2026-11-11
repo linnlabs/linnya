@@ -1,0 +1,110 @@
+/* 图片搜索的结果小图条与下载图片的来源行。 */
+.image-search-line,
+.web-read-image {
+  width: 100%;
+  margin: var(--space-0-5) 0;
+}
+
+.image-search-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  margin: var(--space-1) 0 var(--space-1) calc(var(--space-4) + var(--space-2));
+}
+
+.image-search-strip__item {
+  position: relative;
+  height: 80px;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-subtle);
+  cursor: zoom-in;
+}
+
+.image-search-strip__item img {
+  display: block;
+  width: auto;
+  height: 100%;
+  /* 竖图过窄时裁成至少这么宽，许可标签放得下。 */
+  min-width: 80px;
+  max-width: 200px;
+  object-fit: cover;
+}
+
+.image-search-strip__license {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  max-width: calc(100% - var(--space-2));
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text-inverse);
+  background-color: rgb(0 0 0 / 0.55);
+  pointer-events: none;
+}
+
+.image-search-strip__more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 80px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+}
+
+.web-read-image__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin-top: var(--space-1-5);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-placeholder);
+}
+
+.web-read-image__host {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.web-read-image__host:hover {
+  color: var(--color-text-link-hover);
+}
+
+.web-read-image__host-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.web-read-image__license {
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-subtle);
+}
+
+.web-read-image__note {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}

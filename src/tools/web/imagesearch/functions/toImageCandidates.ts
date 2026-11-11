@@ -31,6 +31,20 @@ function safeUrl(value: string | undefined): string | undefined {
   }
 }
 
+/** Commons 缩略图按标准档位生成；把下载用的 1920 档换成 330 档给界面预览。不是缩略图地址时不给。 */
+const COMMONS_PREVIEW_WIDTH = 330;
+function commonsThumbnail(thumbUrl: string | undefined, thumbWidth: number | undefined): string | undefined {
+  if (!thumbUrl || !thumbWidth || !thumbUrl.includes('/thumb/')) return undefined;
+  if (thumbWidth <= COMMONS_PREVIEW_WIDTH) return thumbUrl;
+  const replaced = thumbUrl.replace(new RegExp(`/((?:lossy|lossless)-page\\d+-)?${thumbWidth}px-([^/]+)$`), `/$1${COMMONS_PREVIEW_WIDTH}px-$2`);
+  return replaced === thumbUrl ? undefined : replaced;
+}
+
+/** Openverse 为每张图提供缩略图接口。 */
+function openverseThumbnail(id: string): string | undefined {
+  return /^[0-9a-f-]{36}$/i.test(id) ? `https://api.openverse.org/v1/images/${id}/thumb/` : undefined;
+}
+
 function fileTitle(title: string): string {
   return title.replace(/^File:/i, '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/_/g, ' ').trim();
 }
@@ -54,6 +68,7 @@ export function commonsCandidate(item: CommonsImageItem): ImageCandidateDraft | 
   }
   const description = cleanMetadataText(meta.ImageDescription, 500);
   const downloadWidth = downloadUrl === imageUrl ? item.width : item.thumbWidth;
+  const thumbnailUrl = safeUrl(commonsThumbnail(item.thumbUrl, item.thumbWidth));
   return {
     source: 'wikimedia_commons',
     provider: 'wikimedia_commons',
@@ -61,6 +76,7 @@ export function commonsCandidate(item: CommonsImageItem): ImageCandidateDraft | 
     image_url: imageUrl,
     download_url: downloadUrl,
     page_url: pageUrl,
+    ...(thumbnailUrl ? { thumbnail_url: thumbnailUrl } : {}),
     ...(item.width ? { width: item.width } : {}),
     ...(item.height ? { height: item.height } : {}),
     ...(downloadWidth ? { download_width: downloadWidth } : {}),
@@ -84,6 +100,8 @@ export function openverseCandidate(item: OpenverseImageItem): ImageCandidateDraf
     ...(item.licenseUrl ? { url: item.licenseUrl } : {}),
   });
   const provider = item.source ?? item.provider ?? 'openverse';
+  // 缩略图接口地址由编号拼成，不做规范化：去掉末尾斜杠会多一次 301 跳转。
+  const thumbnailUrl = openverseThumbnail(item.id);
   return {
     source: 'openverse',
     provider: provider.slice(0, 100),
@@ -91,6 +109,7 @@ export function openverseCandidate(item: OpenverseImageItem): ImageCandidateDraf
     image_url: imageUrl,
     download_url: imageUrl,
     page_url: pageUrl,
+    ...(thumbnailUrl ? { thumbnail_url: thumbnailUrl } : {}),
     ...(item.width ? { width: item.width, download_width: item.width } : {}),
     ...(item.height ? { height: item.height } : {}),
     ...(creator ? { creator } : {}),

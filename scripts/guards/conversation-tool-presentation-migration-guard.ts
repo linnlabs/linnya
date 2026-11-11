@@ -30,6 +30,8 @@ export const MIGRATED_TOOL_CARD_PATHS = [
   'apps/renderer/domains/conversation/ui/tools/todo/AgentTodoCard.vue',
   'apps/renderer/domains/conversation/ui/tools/tool_output/ToolOutputReadCard.vue',
   'apps/renderer/domains/conversation/ui/tools/webread/WebReadCard.vue',
+  'apps/renderer/domains/conversation/ui/tools/webread/WebReadImageCard.vue',
+  'apps/renderer/domains/conversation/ui/tools/imagesearch/ImageSearchLine.vue',
   'apps/renderer/domains/conversation/ui/tools/websearch/WebSearchCard.vue',
   'apps/renderer/domains/conversation/ui/tools/workspace/WorkspaceDocumentViewCard.vue',
   'apps/renderer/domains/conversation/ui/tools/sharedmemory/SharedMemoryDocReadCard.vue',

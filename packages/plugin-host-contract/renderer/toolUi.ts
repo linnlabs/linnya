@@ -200,6 +200,12 @@ export interface ToolUiConfig {
      * 只用于失败后仍有可查看过程的卡片或需要明确单次失败语义的卡片，不开放 raw payload。
      */
     readonly retainPresentationOnError?: boolean;
+    /**
+     * 失败时只显示一行“标题：原因”，不套卡片、不折叠。只用于成功时也不套卡片的单行工具
+     * （配合 renderAsGroup，由组件自己画成功态），标题取 projector 在 error 状态给出的 title。
+     * 带修复动作的错误仍由标准 ToolErrorCard 展示。
+     */
+    readonly inlineError?: boolean;
     readonly hideBorder?: boolean;
     readonly hideBackground?: boolean;
     readonly noPadding?: boolean;

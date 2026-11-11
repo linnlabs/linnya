@@ -438,7 +438,7 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
       input,
       pdf.length + csv.length
     );
-    expect(await readFile(path.join(fixture.directory, acquired.path))).toEqual(csv);
+    expect(await readFile(path.join(fixture.directory, acquired.receipt.path))).toEqual(csv);
     // PDF 回执指向 read_file，按页读取不在 web-downloads/ 里产生解析产物。
     expect(original.observation).toContain('Keep the original unchanged.');
     await expect(
@@ -497,7 +497,7 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
     await saveConversationWebFile(fixture.directory, input, pdf.length);
     await expect(
       saveConversationWebFile(fixture.directory, input, pdf.length)
-    ).resolves.toMatchObject({ byteLength: pdf.length });
+    ).resolves.toMatchObject({ receipt: { byteLength: pdf.length } });
     const second = await setup();
     await symlink(
       path.join(fixture.directory, 'web-downloads'),

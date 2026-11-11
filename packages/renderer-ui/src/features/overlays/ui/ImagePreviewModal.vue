@@ -23,6 +23,7 @@
           :src="displayedSrc"
           :alt="displayedAlt"
           :class="classNames.image"
+          :crossorigin="crossOrigin"
           decoding="async"
           @error="emit('error')"
           @click.stop

@@ -61,6 +61,8 @@ export const ImageSearchCandidateSchema = z.object({
   download_url: HttpCitationUrlSchema,
   /** 来源页（许可、作者和描述的原始出处）。 */
   page_url: HttpCitationUrlSchema,
+  /** 来源提供的小缩略图（约 300 像素宽），只用于界面预览，不用于下载。 */
+  thumbnail_url: HttpCitationUrlSchema.optional(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
   download_width: z.number().int().positive().optional(),

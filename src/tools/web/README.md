@@ -540,6 +540,8 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
   保守地按不可商用、不可改动处理，名称原样保留。许可来自来源元数据，未经核验。`commercial_only` 只留可商用的。
 - 两家结果轮流排入，避免一家占满名额；同一原图只留一次。可信骨架（编号、尺寸、许可、地址）在边界外，标题、作者、
   描述和署名文字放进不可信边界。
+- 候选另带 `thumbnail_url` 给界面小图条用（Commons 把 1920 档换成 330 标准档，Openverse 用图片编号的缩略图接口），
+  不进 observation，也不用于下载。
 - 2026-11-11 真机：后母戊鼎（中英文）Commons 各 11 张，含 CC0 复制品照与公有领域拓本；储能集装箱 Commons 0 张、
   Openverse 9 张全是 Flickr 的 NC 许可；台风卫星图主要来自 NASA。通用场景、具体产品在这两家很少，要去原件方网站找。
   本机网络下 Flickr 图床（live.staticflickr.com）CloudFront 回源报 502，Openverse 里 Flickr 来源的图暂时下不了，
@@ -563,6 +565,8 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
   就带上来源页、作者、许可与署名；出现在读过的网页上，就带上图注、署名和页面版权声明（没有结构化许可）。
   记录在本进程内存里（`shared/images/imageSourceRegistry.ts`，最多 2000 条），应用重启后查不到时如实写“来源未记录”。
 - 看图用 `read_file` 读 `conversation:` 路径（模型能看图时）。图片 ref 只说明文件从哪里取得，图片本身按来源记录署名。
+- 结果顶层的 `media`（本机绝对路径、媒体类型与尺寸）只给界面直接显示图片，和 `generate_image` 的 `media` 同一形状；
+  模型只读 observation 与会话相对路径。媒体类型按解码确认的格式给，不用响应头。
 - 正文里出现的图片链接（Markdown 图片）也记下出现在哪一页，页面主图列表不收的图下载时同样带上来源页与页面版权声明。
 - 已知限制：下载不经过公共正文缓存；联系表（多张候选拼一张给模型挑）未做。
 

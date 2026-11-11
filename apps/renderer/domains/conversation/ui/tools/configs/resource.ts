@@ -9,6 +9,7 @@
  */
 
 import type { ToolUiAliasConfig } from '../types';
+import { WEB_READ_PAGE_UI_KEY } from '../webread/functions/resolveWebReadUiKey';
 import { isRecord, readString } from '../registry.helpers';
 
 // ─────────────────── resource_list ───────────────────
@@ -50,7 +51,8 @@ function resolveResourceReadUiKeyFromUri(uri: string): string | null {
   if (uri.startsWith('skill://skills/')) return 'skill_resource_read';
   if (uri.startsWith('asset://assets/')) return 'image_read';
   if (uri.startsWith('conversation_file://files/')) return 'image_read';
-  if (uri.startsWith('http://') || uri.startsWith('https://')) return 'web_read';
+  // 历史 resource_read 读网页时还没有图片下载，只有网页卡。
+  if (uri.startsWith('http://') || uri.startsWith('https://')) return WEB_READ_PAGE_UI_KEY;
   if (uri.startsWith('tool_output://')) return 'tool_output_read';
   if (
     uri.startsWith('shared_memory://') ||

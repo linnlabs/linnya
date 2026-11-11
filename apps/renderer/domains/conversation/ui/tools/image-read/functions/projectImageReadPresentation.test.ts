@@ -34,10 +34,10 @@ function liveImageResult(sourceKind: 'conversation_file' | 'host_file') {
 
 describe('projectImageReadPresentation', () => {
   it('历史 Resource loading 只返回来源无关的图片读取生命周期', () => {
-    expect(project()).toMatchObject({
-      data: { kind: 'lifecycle' },
-      title: { text: { key: 'conversation.tool.imageRead.title' } },
-    });
+    const lifecycle = project();
+    expect(lifecycle.data).toEqual({ kind: 'lifecycle' });
+    // 查看图片不套卡片：组件自己画一行，不给宿主标题。
+    expect(lifecycle.title).toBeUndefined();
   });
 
   it('历史 Resource 图片继续按独立 replay schema 接纳', () => {
@@ -69,9 +69,24 @@ describe('projectImageReadPresentation', () => {
       phase: 'complete',
       result: liveImageResult(sourceKind),
     })).toMatchObject({
-      title: { text: { key: 'conversation.tool.imageRead.title' } },
-      data: { kind: 'image', source: sourceKind, fileName: 'slide-001.png' },
+      data: { kind: 'image', source: sourceKind, fileName: 'slide-001.png', alreadyShown: false },
     });
+  });
+
+  it.each([
+    ['conversation:/web-downloads/' + 'a'.repeat(64) + '.jpg', true],
+    ['conversation:/generated-images/image-1.png', true],
+    ['conversation:/web-downloads/houmuwu_photo.jpg', false],
+    ['conversation:/crops/web-downloads/' + 'a'.repeat(64) + '.jpg', false],
+  ] as const)('下载与生成的图已显示在对话里：%s → %s', (locator, alreadyShown) => {
+    const result = liveImageResult('conversation_file');
+    expect(project({
+      sourceToolName: 'read_file',
+      args: { locator },
+      status: 'success',
+      phase: 'complete',
+      result: { ...result, data: { ...result.data, locator } },
+    }).data).toMatchObject({ kind: 'image', alreadyShown });
   });
 
   it('旧 path read_file 图片仍按 historical schema 回放', () => {

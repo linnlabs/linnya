@@ -203,9 +203,12 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
     presentation: projectImageReadPresentation,
     compactStep: compactStep.imageRead,
     runtime: { attachments: true },
+    // 不套卡片：组件自己画“查看了…”一行与小图。
     layout: {
+      hideBorder: true,
+      hideBackground: true,
+      noPadding: true,
       fullWidth: true,
-      defaultCollapsed: true,
     },
   },
 

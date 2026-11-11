@@ -5,7 +5,7 @@ import { projectWebReadPresentation, projectWebReadCompactStep } from './project
 function project(overrides: Partial<ToolPresentationProjectorInput>) {
   return projectWebReadPresentation({
     sourceToolName: 'web_read',
-    uiKey: 'web_read',
+    uiKey: 'web_read_page',
     args: { url: 'https://requested.example/article' },
     result: undefined,
     status: 'loading',
@@ -58,7 +58,7 @@ describe('projectWebReadPresentation', () => {
     const live = project({ status: 'success', phase: 'complete', result });
     expect(live).toEqual(project({ status: 'success', phase: 'complete', result: JSON.parse(JSON.stringify(result)) }));
     expect(live.data).toMatchObject({ charCount: 0, file: { sha256: hash, byteLength: 400 } });
-    expect(projectWebReadCompactStep({ sourceToolName: 'web_read', uiKey: 'web_read', toolCallId: 'file-call', args: { url: original.data.url },
+    expect(projectWebReadCompactStep({ sourceToolName: 'web_read', uiKey: 'web_read_page', toolCallId: 'file-call', args: { url: original.data.url },
       status: 'success', phase: 'complete', result })).toMatchObject({ title: { key: 'conversation.tool.webRead.fileSaved', params: { format: 'PDF', count: 400 } } });
     expect(project({ status: 'error', phase: 'error', result: undefined }).data.kind).toBe('lifecycle');
   });

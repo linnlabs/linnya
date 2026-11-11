@@ -48,6 +48,8 @@
 @import './TimelineTooltip.css';
 @import './ToolErrorCard.css';
 @import './ToolCallsMessage.css';
+@import './ToolInlineLine.css';
+@import './ConversationImageTools.css';
 @import './ToolOutputReadCard.css';
 @import './UiCardGroup.css';
 @import './UserMessage.css';

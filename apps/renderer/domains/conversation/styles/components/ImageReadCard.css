@@ -1,9 +1,14 @@
 .image-read-card {
-  padding: 0 var(--space-3) var(--space-3);
+  margin: var(--space-0-5) 0;
+}
+
+/* 小图与单行文字左对齐（让开图标）。 */
+.image-read-card__thumbnails,
+.image-read-card__unavailable {
+  margin: var(--space-1) 0 var(--space-1) calc(var(--space-4) + var(--space-2));
 }
 
 .image-read-card__unavailable {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-body);
+  color: var(--color-text-placeholder);
+  font-size: var(--font-size-footnote);
 }

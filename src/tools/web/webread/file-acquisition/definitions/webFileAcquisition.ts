@@ -14,6 +14,12 @@ export interface WebFilePayload {
   readonly image?: { readonly width: number; readonly height: number };
 }
 
+/** 保存回执，以及文件在本机的绝对路径；绝对路径只给 Renderer 显示图片，不进模型上下文。 */
+export interface SavedWebFile {
+  readonly receipt: WebAcquiredFile;
+  readonly hostPath: string;
+}
+
 export interface WebFileStore {
   save(
     input: WebFilePayload & {
@@ -23,5 +29,5 @@ export interface WebFileStore {
       readonly acquiredAt: string;
       readonly signal?: AbortSignal;
     }
-  ): Promise<WebAcquiredFile>;
+  ): Promise<SavedWebFile>;
 }

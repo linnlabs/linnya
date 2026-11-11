@@ -53,6 +53,9 @@ import type { WebImageSource } from '@app/schemas';
 
 const logger = new Logger('ReadWebPage');
 
+/** 媒体类型按解码确认过的格式给，不用响应头（可能是 application/octet-stream）。 */
+const IMAGE_MEDIA_TYPES = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' } as const;
+
 export const MAX_WEB_PAGE_CONTENT_CHARS = WEB_READ_MAX_CONTENT_CHARS;
 export const DEFAULT_WEB_PAGE_RETURN_CHARS = WEB_READ_DEFAULT_RETURN_CHARS;
 const SNIPPET_CHARS = 300;
@@ -260,7 +263,7 @@ export async function runReadWebPage(
   if (readResult.filePayload && !fileStore) {
     throw new Error('Web file acquisition requires a host-admitted conversation file store.');
   }
-  const file =
+  const saved =
     readResult.filePayload && fileStore
       ? await fileStore.save({
           ...readResult.filePayload,
@@ -271,6 +274,7 @@ export async function runReadWebPage(
           signal: context.abortSignal,
         })
       : undefined;
+  const file = saved?.receipt;
   context.abortSignal?.throwIfAborted();
   const imageSources = dependencies.imageSources ?? getImageSourceRegistry();
   // 网页上的图片候选：记下出现在哪一页、图注与署名，之后下载同一地址时写进回执。
@@ -548,6 +552,10 @@ export async function runReadWebPage(
       ...(image ? { image } : {}),
     },
     observation,
+    // 界面直接显示下载的图，和 generate_image 一样用本机路径；模型只看 observation。
+    ...(image && saved && file
+      ? { media: { path: saved.hostPath, media_type: IMAGE_MEDIA_TYPES[file.format as keyof typeof IMAGE_MEDIA_TYPES], width: image.width, height: image.height } }
+      : {}),
   });
   return JSON.stringify(result);
 }

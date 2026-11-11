@@ -85,6 +85,8 @@ describe('runImageSearch', () => {
     ]);
     expect(result.data.candidates[0]!.download_url).toBe('https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/A.jpg/1920px-A.jpg');
     expect(result.data.candidates[0]!.download_width).toBe(1920);
+    expect(result.data.candidates[0]!.thumbnail_url).toBe('https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/A.jpg/330px-A.jpg');
+    expect(result.data.candidates[1]!.thumbnail_url).toBeUndefined();
     expect(result.data.candidates[0]!.attribution).toContain('via Wikimedia Commons is licensed under CC BY 4.0');
     expect(result.data.sources).toEqual([
       { source: 'wikimedia_commons', status: 'ok', result_count: 2 },
@@ -130,5 +132,27 @@ describe('runImageSearch', () => {
     });
     expect(excluded).toBeUndefined();
     expect(JSON.parse(output).observation).toContain('No images found');
+  });
+});
+
+describe('候选缩略图', () => {
+  it('Commons 的 1920 档缩略图换成 330 档；Openverse 用图片编号的缩略图接口', async () => {
+    const output = await runImageSearch({ query: 'ding' }, {}, {
+      imageSources: new ImageSourceRegistry(),
+      searchCommons: async () => ({
+        tookMs: 1,
+        items: [commons('Scan', {
+          thumbUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Scan.tif/lossy-page1-1920px-Scan.tif.jpg',
+          mime: 'image/tiff',
+        })],
+      }),
+      searchOpenverse: async () => ({
+        tookMs: 1,
+        items: [openverse('0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d', 'by')],
+      }),
+    });
+    const [scan, flickr] = ImageSearchResultSchema.parse(JSON.parse(output)).data.candidates;
+    expect(scan!.thumbnail_url).toBe('https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Scan.tif/lossy-page1-330px-Scan.tif.jpg');
+    expect(flickr!.thumbnail_url).toBe('https://api.openverse.org/v1/images/0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d/thumb/');
   });
 });

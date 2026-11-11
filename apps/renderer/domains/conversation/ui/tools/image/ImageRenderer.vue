@@ -6,7 +6,7 @@
     -->
     <div v-if="status === 'loading'" class="image-placeholder">
       <div class="placeholder-content">
-        <ToolActivityIndicator :running-label="conversationMessage('conversation.tool.image.loading')" />
+        <ToolActivityIndicator :running-label="loadingLabel ?? conversationMessage('conversation.tool.image.loading')" />
       </div>
     </div>
 
@@ -137,6 +137,8 @@ import {
 const props = defineProps<{
   images: readonly ImageGenerationPresentationImage[];
   status: 'loading' | 'success' | 'error';
+  /** 加载中的文案；缺省是“正在生成图片”，下载图片时传“正在下载图片”。 */
+  loadingLabel?: string;
 }>();
 
 const { conversationMessage } = useConversationLocalization();
