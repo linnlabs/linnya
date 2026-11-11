@@ -139,7 +139,19 @@ describe('slides-design runnable examples (closed loop)', () => {
   it('media-and-paint.js preserves rich text, Paint, geometry and merged TableCell semantics', async () => {
     const input = await executeAndCompileExample('media-and-paint');
 
-    const tintedShape = input.slides[1]?.elements.find(
+    // 第 2 页：图片形状遮罩用 Shape 几何，容器与 Shape 写同一种投影。
+    const maskSlide = input.slides[1]?.elements ?? [];
+    const masks = maskSlide.flatMap((element) => element.type === 'image' && element.maskShape ? [element.maskShape] : []);
+    expect(masks).toHaveLength(4);
+    expect(masks.every((mask) => typeof mask === 'object' && mask.type === 'path')).toBe(true);
+    const shadowed = maskSlide.filter((element) => element.type === 'shape' && element.style?.shadow);
+    expect(shadowed.map((element) => element.type === 'shape' ? element.geometry : undefined)).toEqual([
+      'roundRect',
+      expect.objectContaining({ type: 'path' }),
+    ]);
+    expect(maskSlide.some((element) => element.type === 'image' && element.shadow?.distance === 6)).toBe(true);
+
+    const tintedShape = input.slides[2]?.elements.find(
       (element) => element.type === 'shape'
         && element.style?.paint?.type === 'solid'
         && element.style.paint.opacity === 0.45,
@@ -150,7 +162,7 @@ describe('slides-design runnable examples (closed loop)', () => {
       opacity: 0.45,
     });
 
-    const geometryKinds = input.slides[2]?.elements
+    const geometryKinds = input.slides[3]?.elements
       .filter((element) => element.type === 'shape')
       .map((element) => typeof element.geometry === 'string' ? element.geometry : element.geometry?.type);
     expect(geometryKinds).toEqual(expect.arrayContaining([
@@ -163,7 +175,7 @@ describe('slides-design runnable examples (closed loop)', () => {
       'path',
     ]));
 
-    const richText = input.slides[3]?.elements.find(
+    const richText = input.slides[4]?.elements.find(
       (element) => element.type === 'text' && Array.isArray(element.content),
     );
     expect(Array.isArray(richText?.content)).toBe(true);
@@ -173,13 +185,13 @@ describe('slides-design runnable examples (closed loop)', () => {
     expect(richText.content[0]?.style).toMatchObject({ bold: true, color: '#141A20' });
     expect(richText.content[2]?.style).toMatchObject({ bold: true, color: '#B4552F' });
 
-    const table = input.slides[4]?.elements.find((element) => element.type === 'table');
+    const table = input.slides[5]?.elements.find((element) => element.type === 'table');
     expect(table?.rows?.[1]?.[0]).toMatchObject({ text: '交付', rowspan: 2 });
     expect(table?.rows?.[4]?.[0]).toMatchObject({ text: '建议', colspan: 2 });
     expect(table?.rows?.[4]?.[1]).toMatchObject({ text: '采用混合方案', colspan: 2 });
 
     const deckSpec = buildDeckSpecFromDirectInput(input);
-    const richSlide = deckSpec.slides[3]?.spec;
+    const richSlide = deckSpec.slides[4]?.spec;
     if (!richSlide || richSlide.type !== 'freeform') {
       throw new Error('media-and-paint rich-text slide did not remain freeform');
     }
@@ -192,7 +204,7 @@ describe('slides-design runnable examples (closed loop)', () => {
     }
     expect(richDeckText.content[0]?.style).toMatchObject({ bold: true, color: '#141A20' });
 
-    const tableSlide = deckSpec.slides[4]?.spec;
+    const tableSlide = deckSpec.slides[5]?.spec;
     if (!tableSlide || tableSlide.type !== 'structured') {
       throw new Error('media-and-paint table slide did not compile to a structured slide');
     }

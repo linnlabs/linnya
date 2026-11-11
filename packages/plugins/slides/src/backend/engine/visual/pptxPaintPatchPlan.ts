@@ -1,4 +1,4 @@
-import type { Paint, StrokePaint } from '@plugin/slides/shared';
+import type { Paint, ResolvedShapeGeometry, StrokePaint } from '@plugin/slides/shared';
 
 const PAINT_MARKER_PREFIX = 'linnya-paint:';
 
@@ -14,10 +14,17 @@ export interface PptxShapePaintPatch {
   fillOpacity?: number;
 }
 
+/** 图片的形状遮罩：PptxGenJS 只会写 rect / ellipse，导出后把图片的 prstGeom 换成这份几何。 */
+export interface PptxPictureGeometryPatch {
+  marker: string;
+  geometry: ResolvedShapeGeometry;
+}
+
 export interface PptxSlidePaintPatch {
   slideIndex: number;
   background?: Paint;
   shapes: PptxShapePaintPatch[];
+  pictures: PptxPictureGeometryPatch[];
 }
 
 /**
@@ -62,6 +69,16 @@ export function registerPptxShapePaint(
   return marker;
 }
 
+export function registerPptxPictureGeometry(
+  context: PptxPaintCompileContext,
+  geometry: ResolvedShapeGeometry,
+): string {
+  const slide = resolveSlidePatch(context);
+  const marker = `${PAINT_MARKER_PREFIX}s${context.slideIndex + 1}-g${slide.pictures.length + 1}`;
+  slide.pictures.push({ marker, geometry });
+  return marker;
+}
+
 export function isPptxPaintMarker(value: string): boolean {
   return value.startsWith(PAINT_MARKER_PREFIX);
 }
@@ -72,6 +89,7 @@ function resolveSlidePatch(context: PptxPaintCompileContext): PptxSlidePaintPatc
   const created: PptxSlidePaintPatch = {
     slideIndex: context.slideIndex,
     shapes: [],
+    pictures: [],
   };
   context.plan.slides.push(created);
   return created;

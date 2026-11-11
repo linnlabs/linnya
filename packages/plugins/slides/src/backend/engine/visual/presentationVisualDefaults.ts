@@ -4,6 +4,7 @@ import type PptxGenJS from 'pptxgenjs';
 import {
   resolveThemeChartPalette,
   toPptxHexColor,
+  DEFAULT_SHADOW_OPACITY,
   DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
   type Box,
   type ImageVisualShadow,
@@ -104,10 +105,19 @@ export function mapImageShadowToProps(shadow: ImageVisualShadow): PptxGenJS.Shad
     type: 'outer',
     color: stripHash(shadow.color ?? '#000000', 'shadow.color'),
     blur: shadow.blur ?? 0,
-    angle: shadow.angle ?? 45,
+    angle: normalizePptxShadowAngle(shadow.angle ?? 45),
     offset: shadow.distance ?? 0,
-    opacity: shadow.opacity ?? 0.3,
+    opacity: shadow.opacity ?? DEFAULT_SHADOW_OPACITY,
   };
+}
+
+/**
+ * PptxGenJS 只收 0–359 的整数角度，越界一律换成 270°（向上）。偏移朝右上时 atan2 给负角，
+ * 所以先折回 0–360 再取整；0 值靠仓库对 PptxGenJS 的补丁按原值写出（上游用 `||` 取默认）。
+ */
+export function normalizePptxShadowAngle(angle: number): number {
+  const degrees = Math.round(((angle % 360) + 360) % 360);
+  return degrees === 360 ? 0 : degrees;
 }
 
 /** 去掉颜色字符串的 # 前缀，并强制要求规范化十六进制颜色。 */
@@ -203,14 +213,14 @@ export function mapTextParagraphLineSpacingToProps(style?: TextStyle): Record<st
 /** ShapeStyle['shadow'] → PptxGenJS.ShadowProps（直角坐标 offsetX/Y → 极坐标 angle/offset） */
 export function mapShapeShadowToProps(shadow: NonNullable<ShapeStyle['shadow']>): PptxGenJS.ShadowProps {
   const angle = Math.atan2(shadow.offsetY, shadow.offsetX) * (180 / Math.PI);
-  const offset = Math.sqrt(shadow.offsetX ** 2 + shadow.offsetY ** 2);
+  const offset = Math.hypot(shadow.offsetX, shadow.offsetY);
   return {
     type: 'outer',
     color: stripHash(shadow.color, 'shadow.color'),
     blur: shadow.blur,
-    angle: Math.round(angle),
-    offset: Math.round(offset),
-    opacity: shadow.opacity ?? 0.4,
+    angle: normalizePptxShadowAngle(angle),
+    offset,
+    opacity: shadow.opacity ?? DEFAULT_SHADOW_OPACITY,
   };
 }
 

@@ -28,6 +28,7 @@ import type {
   ShapeStyle,
   ShapeStrokeStyle,
   ShapeGeometrySpec,
+  ImageMaskShapeSpec,
   SlidesAuthoringObjectRef,
   SourceSpan,
   StructuredElement,
@@ -50,6 +51,7 @@ import {
   normalizeTextStyleColors,
   normalizeSlideLayout,
   parseShapeGeometrySpec,
+  parseImageMaskShape,
   ShapeGeometryError,
   isGeneratedLayoutConstraintEvidence,
   isSlidesAuthoringObjectRef,
@@ -123,7 +125,7 @@ export interface DirectElementInput extends LayoutChartControls {
   fitMode?: 'cover' | 'contain' | 'crop';
   crop?: ImageCropSpec;
   focus?: ImageFocusSpec;
-  maskShape?: 'rect' | 'circle';
+  maskShape?: ImageMaskShapeSpec;
   rounding?: boolean;
   transparency?: number;
   shadow?: ImageVisualShadow;
@@ -538,13 +540,13 @@ function parseElementInput(
   if (imageFocus && 'error' in imageFocus) return { error: imageFocus.error };
 
   let geometry: ShapeGeometrySpec | undefined;
-  if (type === 'shape') {
-    try {
-      geometry = parseShapeGeometrySpec(value.geometry, `${prefix}.geometry`);
-    } catch (error) {
-      if (error instanceof ShapeGeometryError) return { error: error.message };
-      throw error;
-    }
+  let maskShape: ImageMaskShapeSpec | undefined;
+  try {
+    if (type === 'shape') geometry = parseShapeGeometrySpec(value.geometry, `${prefix}.geometry`);
+    if (type === 'image') maskShape = parseImageMaskShape(value.maskShape, `${prefix}.maskShape`);
+  } catch (error) {
+    if (error instanceof ShapeGeometryError) return { error: error.message };
+    throw error;
   }
 
   const rawTextWrap = acceptCompiledFields ? value.textWrap : undefined;
@@ -617,7 +619,7 @@ function parseElementInput(
       : undefined,
     crop: imageCrop?.value,
     focus: imageFocus?.value,
-    maskShape: value.maskShape === 'rect' || value.maskShape === 'circle' ? value.maskShape : undefined,
+    maskShape,
     rounding: typeof value.rounding === 'boolean' ? value.rounding : undefined,
     transparency: isFiniteNumber(value.transparency) ? value.transparency : undefined,
     shadow: normalizedImageShadow && 'value' in normalizedImageShadow ? normalizedImageShadow.value : undefined,

@@ -10,7 +10,7 @@ import type {
   SvgGraphicResolvedAsset,
   TextStyle,
 } from '@plugin/slides/shared';
-import { resolveShapeGeometry } from '@plugin/slides/shared';
+import { resolveImageMaskShape, resolveShapeGeometry } from '@plugin/slides/shared';
 import { buildSlidesAuthoringRenderNodeId } from '@plugin/slides/shared';
 import type {
   GroupRenderNode,
@@ -185,7 +185,7 @@ function mapStructuredElement(
           : undefined,
       };
     case 'image':
-      const imageMaskShape = element.maskShape === 'circle' || element.rounding ? 'circle' : element.maskShape;
+      const imageMaskShape = resolveImageMaskShape(element.maskShape, element.rounding);
       return {
         ...base,
         kind: 'image',
@@ -266,7 +266,7 @@ function mapFreeformElement(
     case 'shape':
       return [mapFreeformShapeNode(base, element, defaults)];
     case 'image':
-      const imageMaskShape = element.maskShape === 'circle' || element.rounding ? 'circle' : element.maskShape;
+      const imageMaskShape = resolveImageMaskShape(element.maskShape, element.rounding);
       return [{
         ...base,
         kind: 'image',

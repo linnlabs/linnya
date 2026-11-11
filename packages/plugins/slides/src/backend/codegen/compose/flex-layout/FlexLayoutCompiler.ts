@@ -32,7 +32,7 @@ import type {
   DirectElementInput,
 } from '../presentationComposeInput.js';
 import { readImageCropInput, readImageFocusInput } from '@plugin/slides/shared/deckSpec/imageFraming';
-import { readThemeSpecInput } from '../inputParsers/styleParsers.js';
+import { parseImageVisualShadow, readThemeSpecInput } from '../inputParsers/styleParsers.js';
 import {
   parseChartDataLike,
   parseSvgGraphicAuthoringSource,
@@ -45,6 +45,7 @@ import {
   normalizeSlideLayout,
   normalizeStrokePaint,
   resolveSlideSizeInches,
+  resolveVisualShadowOffset,
   normalizeMathFormulaSource,
   isSlidesAuthoringKey,
   parseSlidesManualEdits,
@@ -56,6 +57,7 @@ import type {
   LayoutTextRun,
   Paint,
   ShapeStrokeStyle,
+  ShapeStyle,
   SlidesAuthoringObjectRef,
   SlidesManualSlideEdits,
   SourceSpan,
@@ -244,6 +246,9 @@ function collectElements(
   if (isContainerNode(node)) {
     // 容器装饰 → 背景 shape 元素（在子元素之前，确保 z-order 底层）
     const container = node as LayoutContainerNode;
+    if (container.shadow != null && !container.backgroundColor && !container.border) {
+      throw new FlexComposeContractError(`${node._type}.shadow 需要同时写 backgroundColor 或 border：没有底的容器投不出影子。`);
+    }
     if (container.backgroundColor || container.border) {
       const background = attachAuthoringRef(
         buildContainerBackground(container, box),
@@ -324,6 +329,7 @@ function buildContainerBackground(
       border: readOptionalShapeStroke(node.border, 'View.border'),
       borderRadius: node.borderRadius,
       opacity: node.opacity,
+      shadow: readOptionalShadow(node.shadow, `${node._type}.shadow`),
     },
   }, node._sourceSpan);
 }
@@ -495,6 +501,7 @@ function buildShapeElement(node: LayoutShapeNode, position: Box): DirectElementI
       borderRadius: node.borderRadius,
       opacity: node.opacity,
       rotate: node.rotate,
+      shadow: readOptionalShadow(node.shadow, 'Shape.shadow'),
     },
   }, node._sourceSpan);
 }
@@ -660,6 +667,16 @@ function readOptionalShapePaint(value: unknown, path: string): Paint | undefined
   const normalized = normalizeShapeFillInput(value, path);
   if ('error' in normalized) throw new FlexComposeContractError(normalized.error);
   return normalized.value;
+}
+
+/** Shape / View 与图片同一种阴影写法（angle + distance），落到 ShapeStyle 的直角坐标偏移。 */
+function readOptionalShadow(value: unknown, path: string): ShapeStyle['shadow'] {
+  if (value == null) return undefined;
+  const shadow = parseImageVisualShadow(value);
+  if (!shadow) {
+    throw new FlexComposeContractError(`${path} 必须是阴影对象：{ color?, blur?, angle?, distance?, opacity? }，数值为有限数字。`);
+  }
+  return resolveVisualShadowOffset(shadow);
 }
 
 function readOptionalShapeStroke(value: unknown, path: string): ShapeStrokeStyle | undefined {

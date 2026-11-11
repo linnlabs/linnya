@@ -10,7 +10,7 @@ import type { SlideBox } from './boxes';
 import type { SlideSourceSpan } from '../documentSource';
 import type { GeneratedLayoutConstraintEvidence } from '../generatedLayoutConstraints';
 import type { MathFormulaSource } from '../mathFormula';
-import type { ShapeGeometrySpec } from '../shapeGeometry';
+import type { ImageMaskShapeSpec, ShapeGeometrySpec } from '../shapeGeometry';
 import type { SvgGraphicElementSpec } from '../svgGraphic';
 import type { BrushArtworkSourceRef } from '../brushArtwork';
 import type { SlidesAuthoringObjectRef } from '../authoringEditing';
@@ -107,7 +107,8 @@ export interface ImageVisualOptions {
   fitMode?: 'cover' | 'contain' | 'crop';
   crop?: ImageCropSpec;
   focus?: ImageFocusSpec;
-  maskShape?: 'rect' | 'circle';
+  /** 图片遮罩：`circle`，或与 Shape `geometry` 相同的写法；套在实际画面框上。 */
+  maskShape?: ImageMaskShapeSpec;
   rounding?: boolean;
   transparency?: number;
   shadow?: ImageVisualShadow;

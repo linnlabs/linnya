@@ -58,7 +58,7 @@ deck.js 按 JavaScript 检查。在 JavaScript 中，对象字面量**赋值给�
 
 `compose({ manualEdits })` 保存已经提交的前端人工值。version 2 支持 Text 完整正文（字符串或带局部 style 的文字 run 数组）与字号／颜色、带字 Shape 的完整纯文本（同一 shape 记录的 content）、Frame／Shape 纯色、Shape／Image 视觉尺寸、各作者目标累计位移，以及删除任意具备 `editKey` 的作者目标；普通目标删除自身，Frame 删除完整作者子树。位移和尺寸单位是 inches。一个目标的删除值与内容、样式、尺寸和位移互斥；记录是当前值，不是不断追加的操作日志，同一页不能重复写同一个 `editKey`。Agent 修改已有对象时须同时查看对应人工值；正文已有 content 覆盖时，应更新该完整值，避免只修改初始节点而被已有人工值覆盖。Text 中显式 `run.style` 优先于节点或人工记录中继承的字号／颜色；统一整框格式时须同步修改全部 run 的对应字段，保留其他字段。前端整框操作会基于当前修订自动写入这一完整作者值，不改变旧文稿的继承规则。不要手写 arbitrary property path、JSON Patch 或引擎 option。完整、参与 typecheck 的写法见 [`manual-edits.js`](./examples/manual-edits.js)。同一页记录里的 `additions` 是用户在编辑器中插入的文字、形状和图片（各自带 `editKey` 与 inches 单位的 `box`），`paintOrder` 是用户调整过的同级绘制顺序；它们与页面上的其他对象同等重要。改稿时必须原样保留，不要因为在源码里找不到对应的 `create*` 调用而删除；需要修改插入对象时改对应 `additions` 条目，需要删除时整条移除。
 
-Slide 的 `background` 支持纯色、图片或 gradient 三选一，`notes` 用于演讲者备注。Frame/Slide 的 `backgroundColor`、`border`、`borderRadius` 会生成容器装饰 Shape，`opacity` 只作用于这层装饰的 fill；它们不影响页面 background、子节点或 `.add(...)` 关系。
+Slide 的 `background` 支持纯色、图片或 gradient 三选一，`notes` 用于演讲者备注。Frame/Slide 的 `backgroundColor`、`border`、`borderRadius` 会生成容器装饰 Shape，`opacity` 只作用于这层装饰的 fill；它们不影响页面 background、子节点或 `.add(...)` 关系。容器也可以写 `shadow`（写法同 Image，见 §8），投影跟着圆角轮廓走；必须同时有 `backgroundColor` 或 `border`，否则编译失败。
 
 常用容器字段包括 `flexDirection`、`justifyContent`、`alignItems`、`gap`、`padding`、`flex`、固定宽高、背景和边框。先用 Flex 表达主结构，例如页头、内容区、卡片行列和页脚；只有确实要脱离文档流的装饰、角标或精确覆盖层才用 absolute。
 
@@ -174,6 +174,7 @@ Shape 可表达填充、边框、透明度、旋转和几何类型。
 - `radial` 的 `center` / `radius` 是元素边界框内的归一化坐标，默认都是 0.5。
 - 渐变描边写成 `border: { paint: { type: "linear", ... }, width: N }`；`border` 的纯色形式是 `{ color, width }`。radial 描边是明确不支持的能力边界，不要试图绕过。
 - shape 的 `opacity` 只与 fill 相乘，不影响描边。
+- `shadow`：与 Image 同一种写法（见 §8），投影跟着 `geometry` 的轮廓走，预览与 PPTX 一致。
 - Shape 的 `opacity` 使用 0–1。`content` 可以是字符串或 rich runs；它适合形状内的短标签。需要独立对齐、内边距或复杂排版时，使用单独的 Text 覆盖在 Shape 上；含 Chart/Table 的页面仍会把 runs 展平。
 - 正式颜色建议使用 `#RGB` / `#RRGGBB`；支持 `rgb(...)` / `rgba(...)` 的位置会在 admission 时归一化。不要使用 CSS 命名色、HSL、`#RRGGBBAA` 或 CSS `linear-gradient(...)` 字符串。需要 alpha 时使用该字段正式提供的 `transparency`、`opacity` 或 gradient stop opacity。
 
@@ -214,10 +215,12 @@ Workspace 虚拟路径不是图片二进制地址。不要捏造 locator；图�
 - `crop`：`{ top, right, bottom, left }`，从原图这一边裁掉的比例（0–1），省略的边不裁。先裁剪，再按 `fitMode` 放进盒子；cover 时剩下的区域比盒子宽或高，还会再裁掉溢出。
 - `focus`：`{ x, y }`，原图上的点（0–1，左上为 0,0）。cover 裁溢出时取景窗尽量以它为中心，到边就停；用户在编辑器里改盒子尺寸后仍围绕它取景。只想让人脸、器物主体不被裁掉时，写 `focus` 就够了，不必算 `crop`。
 - 比例按原图量：先看图确定主体位置；看不到像素时用读到的像素尺寸换算，不要凭猜测。裁剪后剩下的部分仍要够清晰，质量检查按裁剪后的像素计算清晰度。例如取器物内底铭文做特写：`createImage({ src, fitMode: "cover", crop: { top: 0.55, left: 0.3, right: 0.3 }, focus: { x: 0.5, y: 0.75 } })`。用户在编辑器里换图会清掉原来的 `crop` / `focus`。
-- `maskShape`：`"rect"` 或 `"circle"`，后者适合人像。
+- `maskShape`：图片的轮廓。`"circle"`（椭圆，适合人像），或与 Shape `geometry`（§7）完全相同的写法：preset 名、`polygon`、`path` 都可以，同样必须写在 config 参数里。遮罩套在图片实际显示的画面上：`contain` 留边时只裁画面本身；导出 PPTX 后仍是 PowerPoint 里的形状裁剪。
 - `transparency`：0–1，把图片压成背景层。
-- `shadow`：`{ color, blur, angle, distance, opacity }`。
+- `shadow`：`{ color, blur, angle, distance, opacity }`。`angle` 是度，0° 向右、顺时针增大（90° 向下），默认 45°；`blur` / `distance` 是 pt，默认 0；`opacity` 默认 0.3。投影跟着轮廓走：有 `maskShape` 时跟着遮罩，去背的透明 PNG 跟着主体边缘，不是一个矩形影子。
 - 还有 `rotate`、`flipH`、`flipV`、`rounding`、`alt`。
+
+中式窗洞、扇面这类轮廓没有现成名称，用 `path` 写；拱门、海棠窗、扇面、水滴的现成几何与投影写法见 [`media-and-paint.js`](./examples/media-and-paint.js) 第 2 页。`path` 会被拉伸到盒子，要保持圆弧不扁，就让 viewBox 的宽高比等于盒子的宽高比。同一份几何也可以给 Shape 的 `geometry`，做成描边窗框或色块。
 
 拉伸变形会被诊断为质量问题：盒子宽高比与原图差异过大时应改盒子尺寸或改用 cover，不要靠拉伸填满。
 

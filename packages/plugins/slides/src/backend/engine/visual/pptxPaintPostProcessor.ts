@@ -5,15 +5,19 @@ import {
   type Document as XmlDocument,
   type Element as XmlElement,
 } from '@xmldom/xmldom';
-import type { GradientStop, Paint, StrokePaint } from '@plugin/slides/shared';
+import type { GradientStop, Paint, ResolvedShapeGeometry, StrokePaint } from '@plugin/slides/shared';
+import { presetShapeNameToPptxName } from '../shape/shapeNameRegistry';
 import type {
   PptxPaintPatchPlan,
+  PptxPictureGeometryPatch,
   PptxShapePaintPatch,
 } from './pptxPaintPatchPlan';
 
 const OOXML_ANGLE_UNIT = 60_000;
 const OOXML_PERCENT_UNIT = 100_000;
 const POINT_TO_EMU = 12_700;
+/** custGeom 路径坐标系：viewBox 映射到 0..PATH_UNIT，再由 PowerPoint 拉伸到图片框。 */
+const PATH_UNIT = 100_000;
 
 const parser = new DOMParser();
 const serializer = new XMLSerializer();
@@ -40,6 +44,10 @@ export async function applyPptxPaintPatches(
     }
     for (const shapePatch of slidePatch.shapes) {
       replaceMarkedShapePaint(doc, shapePatch);
+      slideMutated = true;
+    }
+    for (const picturePatch of slidePatch.pictures) {
+      replaceMarkedPictureGeometry(doc, picturePatch);
       slideMutated = true;
     }
     if (slideMutated) {
@@ -94,6 +102,102 @@ function replaceMarkedShapePaint(doc: XmlDocument, patch: PptxShapePaintPatch): 
   }
 
   throw new Error(`PPTX Paint adapter 找不到 shape marker ${patch.marker}。`);
+}
+
+function replaceMarkedPictureGeometry(doc: XmlDocument, patch: PptxPictureGeometryPatch): void {
+  const candidates: XmlElement[] = [
+    ...Array.from(doc.getElementsByTagName('p:pic')),
+    ...Array.from(doc.getElementsByTagName('pic')),
+  ];
+
+  for (const picture of candidates) {
+    const nonVisual = firstElement(picture, ['p:cNvPr', 'cNvPr']);
+    if (nonVisual?.getAttribute('name') !== patch.marker) continue;
+    const shapeProperties = firstElement(picture, ['p:spPr', 'spPr']);
+    if (!shapeProperties) {
+      throw new Error(`PPTX Paint adapter: picture marker ${patch.marker} 缺少 spPr。`);
+    }
+    const current = findDirectChild(shapeProperties, ['a:prstGeom', 'prstGeom', 'a:custGeom', 'custGeom']);
+    const geometry = createGeometryElement(doc, patch.geometry);
+    if (current) shapeProperties.replaceChild(geometry, current);
+    else {
+      const transform = findDirectChild(shapeProperties, ['a:xfrm', 'xfrm']);
+      shapeProperties.insertBefore(geometry, transform?.nextSibling ?? shapeProperties.firstChild);
+    }
+    nonVisual.setAttribute('name', `Picture ${nonVisual.getAttribute('id') ?? ''}`.trim());
+    return;
+  }
+
+  throw new Error(`PPTX Paint adapter 找不到 picture marker ${patch.marker}。`);
+}
+
+/** 与 Shape 同一份规范化几何：预设写 prstGeom（PowerPoint 默认调节值），其余写 custGeom。 */
+function createGeometryElement(doc: XmlDocument, geometry: ResolvedShapeGeometry): XmlElement {
+  if (geometry.type === 'preset') {
+    const preset = doc.createElement('a:prstGeom');
+    preset.setAttribute('prst', presetShapeNameToPptxName(geometry.name));
+    preset.appendChild(doc.createElement('a:avLst'));
+    return preset;
+  }
+
+  const custom = doc.createElement('a:custGeom');
+  for (const tagName of ['a:avLst', 'a:gdLst', 'a:ahLst', 'a:cxnLst']) {
+    custom.appendChild(doc.createElement(tagName));
+  }
+  const textRect = doc.createElement('a:rect');
+  for (const [name, value] of [['l', 'l'], ['t', 't'], ['r', 'r'], ['b', 'b']]) textRect.setAttribute(name, value);
+  custom.appendChild(textRect);
+
+  const pathList = doc.createElement('a:pathLst');
+  const path = doc.createElement('a:path');
+  path.setAttribute('w', String(PATH_UNIT));
+  path.setAttribute('h', String(PATH_UNIT));
+  const scaleX = PATH_UNIT / geometry.viewBox.width;
+  const scaleY = PATH_UNIT / geometry.viewBox.height;
+  const point = (x: number, y: number): XmlElement => {
+    const element = doc.createElement('a:pt');
+    element.setAttribute('x', String(Math.round(x * scaleX)));
+    element.setAttribute('y', String(Math.round(y * scaleY)));
+    return element;
+  };
+  const segment = (tagName: string, points: XmlElement[]): XmlElement => {
+    const element = doc.createElement(tagName);
+    for (const child of points) element.appendChild(child);
+    return element;
+  };
+  // PowerPoint 把图片贴进路径端点的外框，而不是整个图片框：水滴这类端点碰不到四边的轮廓，
+  // 图会被压扁、边缘像素被拉长。先在两个对角各放一个零面积子路径，让外框恒等于图片框，与预览一致。
+  for (const corner of [0, PATH_UNIT]) {
+    path.appendChild(segment('a:moveTo', [point(corner / scaleX, corner / scaleY)]));
+    path.appendChild(segment('a:lnTo', [point(corner / scaleX, corner / scaleY)]));
+    path.appendChild(doc.createElement('a:close'));
+  }
+  for (const command of geometry.commands) {
+    switch (command.type) {
+      case 'moveTo':
+        path.appendChild(segment('a:moveTo', [point(command.x, command.y)]));
+        break;
+      case 'lineTo':
+        path.appendChild(segment('a:lnTo', [point(command.x, command.y)]));
+        break;
+      case 'quadraticTo':
+        path.appendChild(segment('a:quadBezTo', [point(command.x1, command.y1), point(command.x, command.y)]));
+        break;
+      case 'cubicTo':
+        path.appendChild(segment('a:cubicBezTo', [
+          point(command.x1, command.y1),
+          point(command.x2, command.y2),
+          point(command.x, command.y),
+        ]));
+        break;
+      case 'close':
+        path.appendChild(doc.createElement('a:close'));
+        break;
+    }
+  }
+  pathList.appendChild(path);
+  custom.appendChild(pathList);
+  return custom;
 }
 
 function replacePaintChild(

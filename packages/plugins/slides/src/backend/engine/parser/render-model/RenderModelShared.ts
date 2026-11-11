@@ -11,6 +11,7 @@ import type {
   ShapeStyle,
 } from '@plugin/slides/shared';
 import type { ThemeChartPalette } from '@plugin/slides/shared';
+import { resolveVisualShadowOffset } from '@plugin/slides/shared';
 import type {
   EditableTarget,
   SlidesAuthoringEditProjection,
@@ -228,16 +229,7 @@ export function resolveShadow(shadow: ShapeStyle['shadow']): RenderShadow | unde
 export function resolveImageVisualShadow(
   shadow: ImageVisualShadow | undefined | null
 ): RenderShadow | undefined {
-  if (!shadow) return undefined;
-  const angle = shadow.angle ?? 45;
-  const distance = shadow.distance ?? 0;
-  return {
-    color: shadow.color ?? '#000000',
-    blur: shadow.blur ?? 0,
-    offsetX: Math.cos((angle * Math.PI) / 180) * distance,
-    offsetY: Math.sin((angle * Math.PI) / 180) * distance,
-    opacity: shadow.opacity,
-  };
+  return shadow ? resolveVisualShadowOffset(shadow) : undefined;
 }
 
 export function resolveAssetRef(ref: ImageSourceInput | undefined): RenderAssetRef {

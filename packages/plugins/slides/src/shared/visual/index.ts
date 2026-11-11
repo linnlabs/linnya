@@ -12,6 +12,7 @@ export type {
   ThemeSpec,
 } from './themeSpec';
 export * from './paint';
+export { resolveVisualShadowOffset } from './visualShadow';
 export {
   assertCanonicalHexColor,
   normalizeDeckSpecColors,

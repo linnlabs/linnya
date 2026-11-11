@@ -5,8 +5,8 @@ import {
   type Document as XmlDocument,
   type Element as XmlElement,
 } from '@xmldom/xmldom';
-import type { PatchSpec, ShapeStyle } from '@plugin/slides/shared';
-import { stripHash } from '../visual/presentationVisualDefaults';
+import { DEFAULT_SHADOW_OPACITY, type PatchSpec, type ShapeStyle } from '@plugin/slides/shared';
+import { normalizePptxShadowAngle, stripHash } from '../visual/presentationVisualDefaults';
 import type { DirectXmlElementOp, GeometryPatch } from './types.js';
 
 const EMU_PER_INCH = 914400;
@@ -330,16 +330,16 @@ export class PatchXmlEditor {
     const effectList = doc.createElement('a:effectLst');
     const outerShadow = doc.createElement('a:outerShdw');
     const angle = Math.atan2(shadow.offsetY, shadow.offsetX) * (180 / Math.PI);
-    const distance = Math.sqrt(shadow.offsetX ** 2 + shadow.offsetY ** 2);
+    const distance = Math.hypot(shadow.offsetX, shadow.offsetY);
     outerShadow.setAttribute('blurRad', String(Math.round(shadow.blur * 12700)));
     outerShadow.setAttribute('dist', String(Math.round(distance * 12700)));
-    outerShadow.setAttribute('dir', String(Math.round(angle * 60000)));
+    outerShadow.setAttribute('dir', String(normalizePptxShadowAngle(angle) * 60000));
     outerShadow.setAttribute('rotWithShape', '0');
 
     const srgbClr = doc.createElement('a:srgbClr');
     srgbClr.setAttribute('val', stripHash(shadow.color, 'shadow.color'));
     const alpha = doc.createElement('a:alpha');
-    alpha.setAttribute('val', String(Math.round((shadow.opacity ?? 0.4) * 100000)));
+    alpha.setAttribute('val', String(Math.round((shadow.opacity ?? DEFAULT_SHADOW_OPACITY) * 100000)));
     srgbClr.appendChild(alpha);
     outerShadow.appendChild(srgbClr);
     effectList.appendChild(outerShadow);

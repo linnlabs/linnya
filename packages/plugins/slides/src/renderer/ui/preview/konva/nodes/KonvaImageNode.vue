@@ -3,9 +3,16 @@
     :__use-strict-mode="true"
     :config="groupConfig"
   >
+    <!-- 形状遮罩：遮罩路径 + 图片图案填充，阴影沿遮罩外轮廓。 -->
+    <v-shape
+      v-if="maskedConfig"
+      :__use-strict-mode="true"
+      :config="maskedConfig"
+    />
+
     <!-- 只有资源明确加载失败时才会进入占位分支；加载中不会提交新页面。 -->
     <v-rect
-      v-if="!props.imageResource"
+      v-else-if="!props.imageResource"
       :__use-strict-mode="true"
       :config="placeholderConfig"
     />
@@ -27,6 +34,8 @@ import {
   buildImageGroupConfig,
   buildImageNodeConfig,
   buildImagePlaceholderConfig,
+  buildMaskedImageShapeConfig,
+  resolveRenderImageMask,
 } from '../../../../features/konvaPreview';
 
 const props = defineProps<{
@@ -42,4 +51,9 @@ const imageConfig = computed(() => {
 });
 
 const placeholderConfig = computed(() => buildImagePlaceholderConfig(props.node));
+
+const maskedConfig = computed(() => {
+  const mask = resolveRenderImageMask(props.node);
+  return mask ? buildMaskedImageShapeConfig(props.node, mask, props.imageResource) : null;
+});
 </script>

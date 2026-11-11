@@ -194,6 +194,8 @@ interface ContainerDecoration {
   border?: LayoutBorderInput;
   borderRadius?: number;
   opacity?: number;
+  /** 画框投影，跟着圆角轮廓走；需要同时有 `backgroundColor` 或 `border`。 */
+  shadow?: LayoutImageVisualShadowInput;
 }
 
 interface CustomSlideLayout {
@@ -476,7 +478,8 @@ interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfig {
   fitMode?: 'cover' | 'contain' | 'crop';
   crop?: LayoutImageCropInput;
   focus?: LayoutImageFocusInput;
-  maskShape?: 'rect' | 'circle';
+  /** `"circle"`，或与 Shape `geometry` 相同的写法；套在图片实际画面框上。 */
+  maskShape?: 'rect' | 'circle' | ShapeGeometrySpec;
   rounding?: boolean;
   /** 0 表示不透明，1 表示完全透明。 */
   transparency?: number;
@@ -514,6 +517,10 @@ type LayoutImageSourceRef =
   | { kind: 'document_asset'; assetId: string }
   | BrushArtworkSourceRef;
 
+/**
+ * 图片、Shape、View 共用的阴影写法。`angle` 是度：0° 向右、顺时针增大（90° 向下），默认 45°；
+ * `distance` / `blur` 是 pt，默认 0；`opacity` 默认 0.3；`color` 默认黑。
+ */
 interface LayoutImageVisualShadowInput {
   color?: string;
   blur?: number;
@@ -575,6 +582,8 @@ interface LayoutShapeConfig extends FlexProps, LayoutAuthoringTargetConfig {
   borderRadius?: number;
   opacity?: number;
   rotate?: number;
+  /** 投影跟着 `geometry` 的轮廓走。 */
+  shadow?: LayoutImageVisualShadowInput;
   content?: string | LayoutPlainTextRun[];
 }
 

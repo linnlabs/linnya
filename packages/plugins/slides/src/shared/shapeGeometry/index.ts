@@ -29,3 +29,5 @@ export {
   serializeShapePath,
   shapePathToPointArray,
 } from './functions/shapeGeometry';
+export type { ImageMaskShapeSpec, RenderImageMaskShape } from './definitions/imageMask';
+export { parseImageMaskShape, resolveImageMaskGeometry, resolveImageMaskShape } from './functions/imageMask';

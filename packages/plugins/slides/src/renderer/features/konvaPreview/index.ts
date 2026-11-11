@@ -64,6 +64,8 @@ export {
   buildImageGroupConfig,
   buildImageNodeConfig,
   buildImagePlaceholderConfig,
+  buildMaskedImageShapeConfig,
+  resolveRenderImageMask,
 } from './functions/builders/imageBuilder';
 export {
   buildTextGroupConfig,

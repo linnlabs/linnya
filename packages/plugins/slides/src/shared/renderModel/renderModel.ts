@@ -20,7 +20,7 @@ import type { PresentationSourceKind } from '../documentSource';
 import type { GeneratedLayoutConstraintEvidence } from '../generatedLayoutConstraints';
 import type { MathFormulaMetrics, MathFormulaRenderProjection } from '../mathFormula';
 import type { RenderSlideSizeInches } from '../deckSpec';
-import type { ResolvedShapeGeometry } from '../shapeGeometry';
+import type { RenderImageMaskShape, ResolvedShapeGeometry } from '../shapeGeometry';
 import type { SvgGraphicFit, SvgGraphicViewBox } from '../svgGraphic';
 import type {
   SlidesAuthoringEditProjection,
@@ -354,7 +354,8 @@ export interface ImageRenderNode extends RenderNodeBase {
   crop?: { top: number; right: number; bottom: number; left: number };
   /** 原图上的归一化焦点（0~1）；cover 时取景窗尽量以它为中心。 */
   focus?: { x: number; y: number };
-  maskShape?: 'rect' | 'circle';
+  /** 遮罩套在实际画面框上；旧数据是 `rect` / `circle`，新数据是规范化几何。 */
+  maskShape?: RenderImageMaskShape;
   borderRadius?: number;
   shadow?: RenderShadow;
   alt?: string;
@@ -613,6 +614,9 @@ export interface RenderStroke {
   width: number;
   dash?: 'solid' | 'dash' | 'dot' | 'dashDot';
 }
+
+/** 没写 opacity 的阴影按这个不透明度画；Konva 预览与 PPTX 共用，避免两端各取各的默认。 */
+export const DEFAULT_SHADOW_OPACITY = 0.3;
 
 export interface RenderShadow {
   color: string;

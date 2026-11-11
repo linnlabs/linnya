@@ -172,7 +172,7 @@ export class StructuredCompiler {
         this.addTable(slide, el, theme, pageColor);
         break;
       case 'image':
-        this.addImage(slide, el);
+        this.addImage(slide, el, paintContext);
         break;
       case 'svgGraphic':
         if (!svgGraphicContext) {
@@ -391,8 +391,9 @@ export class StructuredCompiler {
   private addImage(
     slide: PptxGenJS.Slide,
     el: Extract<StructuredElement, { type: 'image' }>,
+    paintContext?: PptxPaintCompileContext,
   ): void {
-    slide.addImage(buildPptxImageProps(el, el.position));
+    slide.addImage(buildPptxImageProps(el, el.position, paintContext));
   }
 
   private addShape(

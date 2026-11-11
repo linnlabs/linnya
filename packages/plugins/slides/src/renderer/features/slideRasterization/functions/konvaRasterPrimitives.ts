@@ -2,6 +2,7 @@
 export { Stage } from 'konva/lib/Stage';
 export { Layer } from 'konva/lib/Layer';
 export { Group } from 'konva/lib/Group';
+export { Shape } from 'konva/lib/Shape';
 export { Rect } from 'konva/lib/shapes/Rect';
 export { Ellipse } from 'konva/lib/shapes/Ellipse';
 export { Line } from 'konva/lib/shapes/Line';

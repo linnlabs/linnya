@@ -623,7 +623,7 @@ function isImageRenderNode(value: Record<string, unknown>): boolean {
     && isOptional(value.fitMode, mode => isOneOf(mode, ['fill', 'contain', 'cover', 'stretch']))
     && isOptional(value.crop, isCrop)
     && isOptional(value.focus, isFocusPoint)
-    && isOptional(value.maskShape, shape => isOneOf(shape, ['rect', 'circle']))
+    && isOptional(value.maskShape, shape => isOneOf(shape, ['rect', 'circle']) || isResolvedShapeGeometry(shape))
     && isOptional(value.borderRadius, isFiniteNumber)
     && isOptional(value.shadow, isRenderShadow)
     && isOptional(value.alt, isString)

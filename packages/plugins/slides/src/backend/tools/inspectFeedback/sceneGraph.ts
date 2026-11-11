@@ -1,4 +1,5 @@
 import type {
+  ImageRenderNode,
   PresentationRenderModel,
   RenderNode,
   SpatialAnalysisSummary,
@@ -293,7 +294,7 @@ function summarizeNodeContent(node: RenderNode): Record<string, unknown> | undef
         fitMode: node.fitMode,
         crop: node.crop,
         focus: node.focus,
-        maskShape: node.maskShape,
+        maskShape: describeImageMask(node.maskShape),
         rounding: node.borderRadius != null && node.borderRadius > 0,
         transparency: node.opacity != null ? 1 - node.opacity : undefined,
         rotation: node.rotation,
@@ -378,4 +379,10 @@ function summarizeNodeStyle(node: RenderNode): Record<string, unknown> | undefin
 function readNodeOpacity(node: SceneGraphNodeSummary): number | undefined {
   const opacity = node.style?.opacity;
   return typeof opacity === 'number' ? opacity : undefined;
+}
+
+/** 遮罩只报轮廓名；自定义路径不把整串命令塞进反馈。 */
+function describeImageMask(mask: ImageRenderNode['maskShape']): string | undefined {
+  if (mask == null || typeof mask === 'string') return mask;
+  return mask.type === 'preset' ? mask.name : 'path';
 }

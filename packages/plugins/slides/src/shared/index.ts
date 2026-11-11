@@ -192,6 +192,9 @@ export {
   resolveShapeGeometry,
   serializeShapePath,
   shapePathToPointArray,
+  parseImageMaskShape,
+  resolveImageMaskGeometry,
+  resolveImageMaskShape,
 } from './shapeGeometry';
 export type {
   ParallelogramGeometrySpec,
@@ -208,6 +211,8 @@ export type {
   ShapePoint,
   ShapeViewBox,
   TrapezoidGeometrySpec,
+  ImageMaskShapeSpec,
+  RenderImageMaskShape,
 } from './shapeGeometry';
 export type {
   CanonicalDeck,
@@ -468,6 +473,7 @@ export {
 } from './deckSpec';
 export {
   CHART_DEFAULT_LABEL_FONT_SIZE_PT,
+  DEFAULT_SHADOW_OPACITY,
   TABLE_DEFAULT_BACKGROUND_FILL,
   TABLE_DEFAULT_CELL_PADDING,
   TABLE_DEFAULT_HEADER_FILL,
@@ -770,6 +776,7 @@ export {
   normalizeTextStyleColors,
   normalizeThemeSpecColors,
   resolvePaintOpacity,
+  resolveVisualShadowOffset,
   toPptxHexColor,
 } from './visual';
 

@@ -81,7 +81,139 @@ imageBody.flex = 1;
 imageBody.add(imageTitle, imageRow);
 imageSlide.add(imageBody);
 
-// slide 2 — Paint：纯色、线性渐变、径向渐变与渐变描边。
+// slide 2 — 轮廓与投影：maskShape 接受与 Shape geometry 相同的写法，shadow 跟着轮廓走。
+// path 会被拉伸到盒子；要保持圆弧不扁，viewBox 的宽高比等于盒子的宽高比。
+const k = 0.5523; // 三次贝塞尔近似四分之一圆
+
+// 拱门（门洞、窗洞）：上半圆、下方直边。w、h 是盒子的英寸数。
+// 几何先存进常量或从函数返回时，用 /** @type {const} */ (…) 包住，否则 type 会被放宽成 string。
+function arch(w, h) {
+  const W = w * 100;
+  const H = h * 100;
+  const r = W / 2;
+  const c = r * k;
+  return /** @type {const} */ ({
+    type: "path",
+    viewBox: { width: W, height: H },
+    commands: [
+      { type: "moveTo", x: 0, y: H },
+      { type: "lineTo", x: 0, y: r },
+      { type: "cubicTo", x1: 0, y1: r - c, x2: r - c, y2: 0, x: r, y: 0 },
+      { type: "cubicTo", x1: r + c, y1: 0, x2: W, y2: r - c, x: W, y: r },
+      { type: "lineTo", x: W, y: H },
+      { type: "close" },
+    ],
+  });
+}
+// 月洞门直接用正方形盒子 + maskShape: "circle"。
+// 海棠窗：四瓣，正方形盒子。
+const begonia = /** @type {const} */ ({
+  type: "path",
+  viewBox: { width: 100, height: 100 },
+  commands: [
+    { type: "moveTo", x: 25, y: 25 },
+    { type: "cubicTo", x1: 25, y1: 11.2, x2: 36.2, y2: 0, x: 50, y: 0 },
+    { type: "cubicTo", x1: 63.8, y1: 0, x2: 75, y2: 11.2, x: 75, y: 25 },
+    { type: "cubicTo", x1: 88.8, y1: 25, x2: 100, y2: 36.2, x: 100, y: 50 },
+    { type: "cubicTo", x1: 100, y1: 63.8, x2: 88.8, y2: 75, x: 75, y: 75 },
+    { type: "cubicTo", x1: 75, y1: 88.8, x2: 63.8, y2: 100, x: 50, y: 100 },
+    { type: "cubicTo", x1: 36.2, y1: 100, x2: 25, y2: 88.8, x: 25, y: 75 },
+    { type: "cubicTo", x1: 11.2, y1: 75, x2: 0, y2: 63.8, x: 0, y: 50 },
+    { type: "cubicTo", x1: 0, y1: 36.2, x2: 11.2, y2: 25, x: 25, y: 25 },
+    { type: "close" },
+  ],
+});
+// 扇面：120° 扇环，盒子宽高比约 2.17 : 1。
+const fan = /** @type {const} */ ({
+  type: "path",
+  viewBox: { width: 173.2, height: 80 },
+  commands: [
+    { type: "moveTo", x: 0, y: 50 },
+    { type: "cubicTo", x1: 17.9, y1: 19.1, x2: 50.9, y2: 0, x: 86.6, y: 0 },
+    { type: "cubicTo", x1: 122.3, y1: 0, x2: 155.3, y2: 19.1, x: 173.2, y: 50 },
+    { type: "lineTo", x: 121.2, y: 80 },
+    { type: "cubicTo", x1: 114.1, y1: 67.6, x2: 100.9, y2: 60, x: 86.6, y: 60 },
+    { type: "cubicTo", x1: 72.3, y1: 60, x2: 59.1, y2: 67.6, x: 52, y: 80 },
+    { type: "close" },
+  ],
+});
+// 水滴：尖头朝上，正方形盒子。
+const drop = /** @type {const} */ ({
+  type: "path",
+  viewBox: { width: 100, height: 100 },
+  commands: [
+    { type: "moveTo", x: 50, y: 0 },
+    { type: "lineTo", x: 79.5, y: 46.2 },
+    { type: "cubicTo", x1: 86.4, y1: 56.9, x2: 86.8, y2: 70.6, x: 80.7, y: 81.8 },
+    { type: "cubicTo", x1: 74.6, y1: 93, x2: 62.8, y2: 100, x: 50, y: 100 },
+    { type: "cubicTo", x1: 37.2, y1: 100, x2: 25.4, y2: 93, x: 19.3, y: 81.8 },
+    { type: "cubicTo", x1: 13.2, y1: 70.6, x2: 13.6, y2: 56.9, x: 20.5, y: 46.2 },
+    { type: "close" },
+  ],
+});
+
+const maskSlide = createSlide({ background: { color: sand } });
+
+const maskTitle = createText("轮廓与投影：maskShape 用 Shape 几何，shadow 跟着轮廓走");
+maskTitle.fontSize = 15;
+maskTitle.fontWeight = "bold";
+maskTitle.color = ink;
+maskTitle.height = 0.44;
+
+// 同一张图放进不同轮廓；遮罩套在图片实际显示的画面上，导出 PPTX 仍是可调的形状裁剪。
+const maskRow = createFrame({ flexDirection: "row", gap: 0.4, alignItems: "flex-end" });
+maskRow.marginTop = 0.3;
+maskRow.add(
+  createImage({ src: "conversation:/images/REPLACE-garden.jpg", width: 1.8, height: 2.4, fitMode: "cover", maskShape: arch(1.8, 2.4) }),
+  createImage({ src: "conversation:/images/REPLACE-garden.jpg", width: 2.2, height: 2.2, fitMode: "cover", maskShape: begonia }),
+  createImage({ src: "conversation:/images/REPLACE-garden.jpg", width: 3.3, height: 1.52, fitMode: "cover", maskShape: fan }),
+  createImage({ src: "conversation:/images/REPLACE-garden.jpg", width: 1.8, height: 1.8, fitMode: "cover", maskShape: drop }),
+);
+
+// 投影：容器写 shadow 必须同时有底色或描边；Shape 的投影跟着 geometry；
+// 去背的透明 PNG 投出贴着主体边缘的影子。angle 0° 向右、90° 向下，blur / distance 单位 pt。
+const card = createFrame({
+  backgroundColor: "#FFFFFF",
+  borderRadius: 0.12,
+  padding: 0.24,
+  shadow: { color: "#3A2A18", blur: 14, angle: 90, distance: 4, opacity: 0.18 },
+});
+card.width = 2.6;
+card.height = 1.4;
+const cardText = createText("卡片投影跟着圆角走");
+cardText.fontSize = 12;
+cardText.color = ink;
+card.add(cardText);
+
+const seal = createShape({
+  geometry: begonia,
+  fill: clay,
+  shadow: { color: "#000000", blur: 8, angle: 90, distance: 3 },
+});
+seal.width = 1.2;
+seal.height = 1.2;
+
+const cutout = createImage({
+  src: "conversation:/images/REPLACE-cutout.png",
+  width: 1.6,
+  height: 1.6,
+  fitMode: "contain",
+  shadow: { color: "#2B2118", blur: 12, angle: 60, distance: 6, opacity: 0.35 },
+});
+
+const shadowRow = createFrame({ flexDirection: "row", gap: 0.6, alignItems: "center" });
+shadowRow.marginTop = 0.4;
+shadowRow.add(card, seal, cutout);
+
+const maskBody = createFrame({
+  flexDirection: "column",
+  padding: { left: 0.5, right: 0.5, top: 0.4, bottom: 0.45 },
+});
+maskBody.flex = 1;
+maskBody.add(maskTitle, maskRow, shadowRow);
+maskSlide.add(maskBody);
+
+// slide 3 — Paint：纯色、线性渐变、径向渐变与渐变描边。
 // 渐变至少两个 stop，position 按 0–1 非递减；stop 上的 opacity 也是 0–1。
 // linear 的 angle 以 0° 向右、90° 向下为基准，顺时针增长。
 const paintSlide = createSlide({ background: { color: "#FFFFFF" } });
@@ -180,7 +312,7 @@ paintBody.flex = 1;
 paintBody.add(paintTitle, paintRow);
 paintSlide.add(paintBody);
 
-// slide 3 — 几何：preset、参数化几何、polygon 与 typed path。
+// slide 4 — 几何：preset、参数化几何、polygon 与 typed path。
 // geometry 同样必须写在 createShape(config) 里；先创建再赋值会被 typecheck 拒绝。
 const geometrySlide = createSlide({ background: { color: sand } });
 
@@ -283,7 +415,7 @@ geometryBody.flex = 1;
 geometryBody.add(geometryTitle, geometryRow);
 geometrySlide.add(geometryBody);
 
-// slide 4 — 富文本 run。
+// slide 5 — 富文本 run。
 // Text 在普通页面和含 chart/table 的页面都保留 run 及局部样式。
 // Shape 内文只支持纯文本；需要段落内混合样式时使用独立 Text。
 const richSlide = createSlide({ background: { color: "#FFFFFF" } });
@@ -325,7 +457,7 @@ richBody.flex = 1;
 richBody.add(richTitle, richParagraph, richNote);
 richSlide.add(richBody);
 
-// slide 5 — TableCell 逐格样式：底色、文字样式与强调列。
+// slide 6 — TableCell 逐格样式：底色、文字样式与强调列。
 const tableSlide = createSlide({ background: { color: "#FFFFFF" } });
 
 const tableTitle = createText("TableCell：逐格样式、rowspan 与 colspan");
@@ -370,7 +502,7 @@ tableSlide.add(tableBody);
 
 compose({
   title: "视觉材料与 Paint 能力对照",
-  slides: [imageSlide, paintSlide, geometrySlide, richSlide, tableSlide],
+  slides: [imageSlide, maskSlide, paintSlide, geometrySlide, richSlide, tableSlide],
   theme: {
     colors: { accent1: clay, accent2: "#12233F", background: "#FFFFFF", text: ink, muted: "#6E7781" },
   },

@@ -115,7 +115,7 @@ export class FreeformPptxCompiler {
         this.addShape(slide, el, transform, paintContext, shapeTextContext);
         break;
       case 'image':
-        this.addImage(slide, el, transform);
+        this.addImage(slide, el, transform, paintContext);
         break;
       case 'svgGraphic':
         if (!svgGraphicContext) {
@@ -325,9 +325,10 @@ export class FreeformPptxCompiler {
     slide: PptxGenJS.Slide,
     el: FreeformImageElement,
     transform: FreeformTransform,
+    paintContext?: PptxPaintCompileContext,
   ): void {
     if (!el.src) return;
-    slide.addImage(buildPptxImageProps({ ...el, src: el.src }, this.applyTransform(el.position, transform)));
+    slide.addImage(buildPptxImageProps({ ...el, src: el.src }, this.applyTransform(el.position, transform), paintContext));
   }
 
   private addGroup(

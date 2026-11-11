@@ -61,7 +61,7 @@ describe('shapeBuilder line Paint contract', () => {
     });
 
     expect(instruction.config).toMatchObject({
-      shadowBlur: 4,
+      shadowBlur: 3,
       shadowOffsetX: 2,
       shadowOffsetY: 3,
       shadowOpacity: 0.4,

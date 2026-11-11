@@ -56,7 +56,7 @@ overrides:
 
 patchedDependencies:
   pptxgenjs@4.0.1:
-    hash: efff727b13af61964ed2c0dec9a5cb62d6290060c68cb4d0704874b62c608570
+    hash: 9c65e3bf9a653aacaadd7d1f4adefb6e6f8e09c240022adcbccf6cb38b0dac74
     path: patches/pptxgenjs@4.0.1.patch
 
 importers:
@@ -513,7 +513,7 @@ importers:
         version: 1.8.1
       pptxgenjs:
         specifier: ^4.0.1
-        version: 4.0.1(patch_hash=efff727b13af61964ed2c0dec9a5cb62d6290060c68cb4d0704874b62c608570)
+        version: 4.0.1(patch_hash=9c65e3bf9a653aacaadd7d1f4adefb6e6f8e09c240022adcbccf6cb38b0dac74)
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
@@ -1043,7 +1043,7 @@ importers:
         version: 0.9.3
       pptxgenjs:
         specifier: ^4.0.1
-        version: 4.0.1(patch_hash=efff727b13af61964ed2c0dec9a5cb62d6290060c68cb4d0704874b62c608570)
+        version: 4.0.1(patch_hash=9c65e3bf9a653aacaadd7d1f4adefb6e6f8e09c240022adcbccf6cb38b0dac74)
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
@@ -11220,7 +11220,7 @@ snapshots:
       https: 1.0.0
       jszip: 3.10.1
 
-  pptxgenjs@4.0.1(patch_hash=efff727b13af61964ed2c0dec9a5cb62d6290060c68cb4d0704874b62c608570):
+  pptxgenjs@4.0.1(patch_hash=9c65e3bf9a653aacaadd7d1f4adefb6e6f8e09c240022adcbccf6cb38b0dac74):
     dependencies:
       '@types/node': 22.19.3
       https: 1.0.0

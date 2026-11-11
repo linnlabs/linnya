@@ -12,6 +12,8 @@ import {
   buildImageNodeConfig,
   buildImagePlaceholderConfig,
   buildInnerTextNode,
+  buildMaskedImageShapeConfig,
+  resolveRenderImageMask,
   buildShapeGroupConfig,
   buildShapeRenderInstruction,
   buildTableBackgroundConfig,
@@ -37,6 +39,7 @@ import {
   Line,
   Path,
   Rect,
+  Shape,
   Stage,
   Text,
 } from './konvaRasterPrimitives';
@@ -275,6 +278,11 @@ function createImageNode(
 ): KonvaGroupNode {
   const group = new Group(buildImageGroupConfig(node));
   const loadedImage = images.get(node.id);
+  const mask = resolveRenderImageMask(node);
+  if (mask) {
+    group.add(new Shape(buildMaskedImageShapeConfig(node, mask, loadedImage ?? null)));
+    return group;
+  }
   if (!loadedImage) {
     group.add(new Rect(buildImagePlaceholderConfig(node)));
     return group;

@@ -215,7 +215,7 @@ export function splitElementStyleInput(
 /**
  * 解析 ImageVisualShadow（color/blur/angle/distance/opacity）。
  *
- * 单位契约（参考 §4.4）：`distance` = pt，`angle` = 度（极坐标，0° = 向右逆时针）。
+ * 单位契约：`distance` / `blur` = pt，`angle` = 度（0° 向右、顺时针增大，90° 向下，与 PowerPoint 相同）。
  *
  * 容错宽于 ShapeStyle.shadow：缺字段时返回剩余可识别字段的部分对象，
  * 全部字段缺失则返回 null（与 generated/edit 两条入口保持一致）。

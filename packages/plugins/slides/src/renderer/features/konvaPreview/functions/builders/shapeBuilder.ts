@@ -13,6 +13,7 @@ import {
   type ResolvedPathShapeGeometry,
 } from '@plugin/slides/shared/shapeGeometry';
 import { INCHES_TO_PX } from '../../../../shared/constants';
+import { DEFAULT_SHADOW_OPACITY } from '@plugin/slides/shared/renderModel';
 import {
   resolveKonvaShapeFillConfig,
   resolveKonvaShapeStrokeConfig,
@@ -48,8 +49,18 @@ type KonvaShapeVisualConfig = KonvaShapeFillConfig & KonvaShapeStrokeConfig & Pi
  * 资料显示其默认值为 `16667 / 100000`，即 short side 的约 1/6。
  * 这里直接按 short side 还原，避免再用拍脑袋的视觉经验值。
  */
-const PPT_ROUND_RECT_DEFAULT_ADJUSTMENT = 16667 / 100000;
+export const PPT_ROUND_RECT_DEFAULT_ADJUSTMENT = 16667 / 100000;
 const POINTS_TO_PX = INCHES_TO_PX / 72;
+/**
+ * 同一个 blur（pt），Canvas 的 shadowBlur（σ = 值 / 2）比 PowerPoint 的 blurRad 散得开。
+ * 2026-11-11 用 PowerPoint 导出 PDF 与 Konva 截图逐像素比对 8pt、14pt 两组投影，σ 之比都约 0.75。
+ */
+const POWERPOINT_SHADOW_BLUR_TO_CANVAS = 0.75;
+
+/** deck.js / DeckSpec 的阴影模糊（pt）换成 Konva shadowBlur（px），与 PowerPoint 观感一致。 */
+export function toKonvaShadowBlur(blurPt: number): number {
+  return blurPt * POINTS_TO_PX * POWERPOINT_SHADOW_BLUR_TO_CANVAS;
+}
 
 export function buildShapeGroupConfig(node: ShapeRenderNode) {
   return {
@@ -288,10 +299,10 @@ function buildShadowConfig(
   if (!shadow) return {};
   return {
     shadowColor: shadow.color,
-    shadowBlur: shadow.blur * POINTS_TO_PX,
+    shadowBlur: toKonvaShadowBlur(shadow.blur),
     shadowOffsetX: shadow.offsetX * POINTS_TO_PX,
     shadowOffsetY: shadow.offsetY * POINTS_TO_PX,
-    shadowOpacity: shadow.opacity ?? 0.3,
+    shadowOpacity: shadow.opacity ?? DEFAULT_SHADOW_OPACITY,
     shadowEnabled: true,
   };
 }
