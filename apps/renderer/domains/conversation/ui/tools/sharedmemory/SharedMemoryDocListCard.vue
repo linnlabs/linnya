@@ -50,6 +50,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatStorageBytes } from '@app/localization';
 import { ToolActivityIndicator } from '../../../shared/execution-presentation';
 import { computed } from 'vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
@@ -70,12 +71,7 @@ const { currentLocale, conversationMessage } = useConversationLocalization();
 const status = computed(() => props.presentation.status);
 const data = computed(() => props.presentation.data);
 
-function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes < 0) return '-';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+
 
 function formatTime(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return '-';
@@ -93,7 +89,8 @@ function formatTime(ms: number): string {
 const docs = computed(() => {
   const documents = data.value.kind === 'snapshot' ? data.value.documents : [];
   return documents.map((document) => {
-    const sizeText = formatBytes(document.sizeBytes);
+    const sizeText = Number.isFinite(document.sizeBytes) && document.sizeBytes >= 0
+      ? formatStorageBytes(document.sizeBytes, currentLocale.value) : '-';
     const updatedAtText = formatTime(document.updatedAtMs);
     return {
       name: document.name,

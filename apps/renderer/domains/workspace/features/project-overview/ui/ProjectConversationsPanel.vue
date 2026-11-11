@@ -317,7 +317,7 @@ import {
 } from '@app/schemas';
 import type { WorkspaceMessageKey } from '@/domains/workspace/definitions/workspaceMessages';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
-import { formatStorageBytes } from '@/shared/utils/formatStorageBytes';
+import { formatStorageBytes } from '@app/localization';
 import {
   EMPTY_PROJECT_CONVERSATION_FILTERS,
   PROJECT_CONVERSATION_COLUMN_IDS,

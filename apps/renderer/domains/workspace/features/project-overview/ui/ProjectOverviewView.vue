@@ -454,7 +454,7 @@ import { useProjectOverviewLayoutStore } from '../store/projectOverviewLayoutSto
 import type { ProjectConversationActions, ProjectOverviewPage } from '../definitions/projectConversations';
 import { projectConversationsTotalBytes } from '../functions/projectConversationRows';
 import { useProjectConversationsData } from '../orchestration/useProjectConversationsData';
-import { formatStorageBytes } from '@/shared/utils/formatStorageBytes';
+import { formatStorageBytes } from '@app/localization';
 import ProjectConversationsPanel from './ProjectConversationsPanel.vue';
 import ProjectOverviewColumnsMenu from './ProjectOverviewColumnsMenu.vue';
 import ProjectOverviewFilterMenu from './ProjectOverviewFilterMenu.vue';

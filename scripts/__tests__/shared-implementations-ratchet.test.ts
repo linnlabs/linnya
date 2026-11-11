@@ -7,6 +7,13 @@ import {
 } from '../guards/shared-implementations-ratchet';
 
 describe('共享实现棘轮', () => {
+  it('文件大小只能定义在本地化 owner，业务未知值包装可保留', () => {
+    const source = 'function formatFileSize(bytes: number) { return String(bytes); }';
+    expect(countSharedImplementationHits('apps/renderer/domains/x/presentation.ts', source))
+      .toMatchObject([{ ruleId: 'LOCALIZATION-byte-size', count: 1 }]);
+    expect(countSharedImplementationHits('apps/renderer/app/localization/functions/formatStorageBytes.ts', source)).toEqual([]);
+    expect(countSharedImplementationHits('apps/renderer/domains/x/presentation.ts', 'function formatImageFileSize(bytes) { return bytes < 0 ? "unknown" : formatStorageBytes(bytes, locale); }')).toEqual([]);
+  });
   it('共享位置以外的本地定义算命中，共享位置自己不算', () => {
     const source = 'function isRecord(value: unknown): value is Record<string, unknown> {\n  return true;\n}\n';
     expect(countSharedImplementationHits('src/domains/x/readX.ts', source))

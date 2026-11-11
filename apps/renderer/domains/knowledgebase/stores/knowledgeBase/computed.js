@@ -11,8 +11,9 @@
  */
 
 import { computed } from 'vue'
+import { formatStorageBytes, useLocalizationStore } from '@app/localization'
 import { UPLOAD_STATUS } from '../../constants/index.js'
-import { getKnowledgeBaseById, getKbNameById, formatFileSize } from './utils.js'
+import { getKnowledgeBaseById, getKbNameById } from './utils.js'
 import { resolveCurrentKnowledgeBaseMessage } from '../../functions/resolveCurrentKnowledgeBaseMessage'
 import {
   resolveUploadTaskErrorText,
@@ -41,11 +42,12 @@ export function createCurrentKbComputed(currentKbId, knowledgeBases) {
  * 副作用 (Side-effects): 无
  */
 export function createUploadTasksComputed(uploadTasks, knowledgeBases) {
+  const localization = useLocalizationStore()
   return computed(() => {
     const tasks = Array.from(uploadTasks.values()).map(task => ({
       id: task.id,
       name: task.filename,
-      size: formatFileSize(task.size),
+      size: formatStorageBytes(task.size, localization.currentLocale),
       category: getKbNameById(
         knowledgeBases.value,
         task.kbId,

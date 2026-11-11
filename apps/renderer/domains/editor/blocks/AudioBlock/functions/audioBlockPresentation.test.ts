@@ -82,8 +82,8 @@ describe('audioBlockPresentation', () => {
   });
 
   it('格式化菜单属性展示值', () => {
-    expect(formatAudioBlockFileSize(-1, testMessage)).toBe('Unknown');
-    expect(formatAudioBlockFileSize(2048, testMessage)).toBe('2 KB');
+    expect(formatAudioBlockFileSize(-1, testMessage, 'en-US')).toBe('Unknown');
+    expect(formatAudioBlockFileSize(2048, testMessage, 'en-US')).toBe('2 KB');
     expect(formatAudioBlockDateTime(null, 'en-US', testMessage)).toBe('Unknown');
     expect(formatAudioBlockDateTime(new Date(2026, 10, 9, 14, 32, 5).getTime(), 'zh-CN', testMessage)).toBe('2026年11月9日 14:32');
   });

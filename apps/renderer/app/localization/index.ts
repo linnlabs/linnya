@@ -33,3 +33,4 @@ export { changeLocale } from './orchestration/changeLocale';
 export { initializeLocalization } from './orchestration/initializeLocalization';
 export { useLocalization } from './vue/useLocalization';
 export { useHistoryTime, type UseHistoryTimeResult } from './vue/useHistoryTime';
+export { formatStorageBytes } from './functions/formatStorageBytes';

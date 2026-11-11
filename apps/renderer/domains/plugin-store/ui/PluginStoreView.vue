@@ -122,7 +122,7 @@
               </div>
               <div v-if="selectedDetail.sizeBytes !== undefined" class="plugin-store-detail-fact">
                 <span>{{ pluginStoreMessage('pluginStore.fact.size') }}</span>
-                <strong>{{ formatPluginSize(selectedDetail.sizeBytes) }}</strong>
+                <strong>{{ formatStorageBytes(selectedDetail.sizeBytes, currentLocale) }}</strong>
               </div>
               <button
                 v-if="selectedDetail.homepage"
@@ -285,6 +285,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatStorageBytes, useLocalization } from '@app/localization';
 import type { PluginId, PluginStoreDetail, PluginStoreListItem } from '@app/schemas';
 import { computed, defineComponent, h, onMounted, ref, type Component, type PropType } from 'vue';
 import { storeToRefs } from 'pinia';
@@ -358,6 +359,7 @@ const pluginsStore = useEnabledPluginsStore();
 const notificationStore = useNotificationStore();
 const documentTypes = useDocumentTypes();
 const { pluginStoreMessage } = usePluginStoreLocalization();
+const { currentLocale } = useLocalization();
 const { storeItems, isStoreItemsLoading, storeItemsError, storeDetailsByPluginId, remoteServiceEnabled } =
   storeToRefs(pluginsStore);
 
@@ -478,19 +480,7 @@ function buildCapabilitySectionTitle(kind: 'skill' | 'agent', count: number): st
     : 'pluginStore.section.agents');
 }
 
-function formatPluginSize(sizeBytes: number): string {
-  if (sizeBytes < 1024) {
-    return `${sizeBytes} B`;
-  }
 
-  const kibibytes = sizeBytes / 1024;
-  if (kibibytes < 1024) {
-    return `${kibibytes.toFixed(kibibytes < 10 ? 1 : 0)} KB`;
-  }
-
-  const mebibytes = kibibytes / 1024;
-  return `${mebibytes.toFixed(mebibytes < 10 ? 1 : 0)} MB`;
-}
 
 function isPluginBusy(pluginId: PluginId): boolean {
   return busyPluginIds.value.has(pluginId);

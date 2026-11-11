@@ -43,12 +43,6 @@ const startTranscription = async (ctx: BlockMenuContext) => {
   }
 };
 
-/**
- * 格式化文件大小
- */
-const formatFileSize = (bytes: number): string => {
-  return formatAudioBlockFileSize(bytes, resolveCurrentEditorMessage);
-};
 
 /**
  * 格式化日期时间
@@ -157,12 +151,13 @@ export const audioBlockMenuProvider: BlockMenuProvider = {
     });
     
     // 大小
-    const src: string | null | undefined = runtime.src as any;
+    // legacy JS store 的 src 会由加载链写入；在读取边界验证来源，不能沿用初始 null 的推断。
+    const src: unknown = runtime.src;
     if (typeof src === 'string' && !src.startsWith('blob:') && !src.startsWith('media:')) {
       const fileSize = await getAudioFileSize(src);
       propertiesPanelItems.push({
         label: resolveCurrentEditorMessage('editor.audioBlock.menu.size'),
-        value: formatFileSize(fileSize),
+        value: formatAudioBlockFileSize(fileSize, resolveCurrentEditorMessage, useLocalizationStore().currentLocale),
       });
     } else {
       propertiesPanelItems.push({

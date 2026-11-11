@@ -60,6 +60,8 @@ owner 目录可以按自身复杂度选择 `locales/messageCatalog.ts`、feature
 
 Vue 组件使用 `useLocalization`，以便切换语言和动态注册 catalog 时自动更新。非 Vue 代码使用 `resolveLocalizedText` 并显式提供 locale、fallbackLocale 与 resolver；不要在纯函数中读取 Pinia store。
 
+字节大小统一用公开入口 `formatStorageBytes(bytes, locale)`：以 1024 进位，单位 B/KB/MB/GB/TB，最多一位小数；语言由调用方传入。未知、未保存等业务状态由 owner 先判断，不向格式化函数添加业务开关。知识库、媒体属性、插件商店和存储概览使用同一规则。
+
 ## 跨进程错误
 
 Backend 先生成稳定业务错误和可选的 `UserFacingMessage`，跨进程合同由 [`packages/schemas/src/user-facing-message.ts`](../../../../packages/schemas/src/user-facing-message.ts) 拥有。Renderer 在展示边界用当前 owner 的 catalog 解析 `userMessage`。

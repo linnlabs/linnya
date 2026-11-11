@@ -1,14 +1,9 @@
+import { formatStorageBytes } from '@app/localization';
 import type { EditorMessageResolver } from '../../../definitions/editorMessages';
 
-export function formatImageFileSize(bytes: number, editorMessage: EditorMessageResolver): string {
-  if (bytes === 0) return '0 B';
-  if (bytes < 0) return editorMessage('editor.imageBlock.value.unknown');
-
-  const unitBase = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const unitIndex = Math.floor(Math.log(bytes) / Math.log(unitBase));
-
-  return `${Math.round((bytes / Math.pow(unitBase, unitIndex)) * 100) / 100} ${sizes[unitIndex]}`;
+/** 负数是媒体信息读取失败的业务标记，显示文案仍由块自身负责。 */
+export function formatImageFileSize(bytes: number, editorMessage: EditorMessageResolver, locale: string): string {
+  return bytes < 0 ? editorMessage('editor.imageBlock.value.unknown') : formatStorageBytes(bytes, locale);
 }
 
 export function formatImageDateTime(

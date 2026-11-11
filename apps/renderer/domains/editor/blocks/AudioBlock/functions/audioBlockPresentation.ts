@@ -1,3 +1,4 @@
+import { formatStorageBytes } from '@app/localization';
 import type { EditorMessageKey, EditorMessageResolver } from '../../../definitions/editorMessages';
 import { formatHistoryDateTime } from '@app/schemas';
 
@@ -47,15 +48,9 @@ function isAudioBlockLocalizedMessage(message: unknown): message is AudioBlockLo
   return typeof message.params === 'object' || message.params === undefined;
 }
 
-export function formatAudioBlockFileSize(bytes: number, editorMessage: EditorMessageResolver): string {
-  if (bytes === 0) return '0 B';
-  if (bytes < 0) return editorMessage('editor.audioBlock.menu.unknown');
-
-  const unit = 1024;
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const unitIndex = Math.floor(Math.log(bytes) / Math.log(unit));
-
-  return `${Math.round((bytes / unit ** unitIndex) * 100) / 100} ${units[unitIndex]}`;
+/** 负数是媒体信息读取失败的业务标记，显示文案仍由块自身负责。 */
+export function formatAudioBlockFileSize(bytes: number, editorMessage: EditorMessageResolver, locale: string): string {
+  return bytes < 0 ? editorMessage('editor.audioBlock.menu.unknown') : formatStorageBytes(bytes, locale);
 }
 
 /** 菜单“创建时间”：统一历史时间的完整写法，没有时间时写“未知”。 */

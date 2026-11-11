@@ -16,7 +16,7 @@ import { defineStore } from 'pinia'
 import { ref, reactive, watch } from 'vue'
 
 // 工具函数和计算属性
-import { getKnowledgeBaseById, getDocumentById, getKbNameById, formatFileSize } from './utils.js'
+import { getKnowledgeBaseById, getDocumentById, getKbNameById } from './utils.js'
 import { createCurrentKbComputed, createUploadTasksComputed } from './computed.js'
 
 // 业务操作模块

@@ -122,6 +122,7 @@
 </template>
 
 <script setup>
+import { formatStorageBytes } from '@app/localization';
 import { ref, computed, watch } from 'vue'
 import { useKnowledgeBaseStore } from '../stores/knowledgeBase'
 import { SUPPORTED_FILE_TYPES } from '../constants'
@@ -146,7 +147,7 @@ const emit = defineEmits(['update:selectedKbId', 'open-global-upload'])
 
 const kbStore = useKnowledgeBaseStore()
 const notificationStore = useNotificationStore()
-const { knowledgeBaseMessage } = useKnowledgeBaseLocalization()
+const { currentLocale, knowledgeBaseMessage } = useKnowledgeBaseLocalization()
 const fileInput = ref(null)
 const isDragging = ref(false)
 
@@ -175,7 +176,7 @@ const uploadTasks = computed(() => {
   const tasks = currentKbTasks.map(task => ({
     id: task.id,
     name: task.filename,
-    size: formatFileSize(task.size),
+    size: formatStorageBytes(task.size, currentLocale.value),
     category: getKbNameById(task.kbId),
     status: task.status,
     progress: task.displayProgress.toFixed(1),
@@ -243,13 +244,7 @@ const openGlobalUploadFromHint = () => {
   emit('open-global-upload')
 }
 
-const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
+
 
 const getKbNameById = (kbId) => {
   if (!kbId) {

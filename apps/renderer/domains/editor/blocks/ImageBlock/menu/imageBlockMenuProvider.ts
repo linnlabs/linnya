@@ -100,7 +100,7 @@ export const imageBlockMenuProvider: BlockMenuProvider = {
     const fileSize = await getImageFileSize(imageBlockNode.attrs.src);
     propertiesPanelItems.push({
       label: editorMessage('editor.imageBlock.property.size'),
-      value: formatImageFileSize(fileSize, editorMessage),
+      value: formatImageFileSize(fileSize, editorMessage, locale),
     });
     
     return [

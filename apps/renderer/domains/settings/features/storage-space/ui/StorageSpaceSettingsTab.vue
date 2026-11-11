@@ -72,7 +72,7 @@ import {
   SettingsState,
 } from '../../../ui/kit';
 import { useSettingsLocalization } from '../../../ui/useSettingsLocalization';
-import { formatStorageBytes } from '@/shared/utils/formatStorageBytes';
+import { formatStorageBytes } from '@app/localization';
 import { projectStorageCategoryMessage } from '../functions/projectStorageSpaceMessages';
 import { loadStorageSpaceOverview } from '../orchestration/loadStorageSpaceOverview';
 import { useStorageSpaceStore } from '../store/storageSpaceStore';

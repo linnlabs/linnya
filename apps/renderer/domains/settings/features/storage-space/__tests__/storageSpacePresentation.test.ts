@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatStorageBytes } from '@/shared/utils/formatStorageBytes';
+import { formatStorageBytes } from '@app/localization';
 
 describe('storage-space presentation', () => {
 

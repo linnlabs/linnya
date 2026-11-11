@@ -48,17 +48,3 @@ export function getKbNameById(knowledgeBases, id, fallbackName = 'Unknown knowle
   const kb = getKnowledgeBaseById(knowledgeBases, id);
   return kb ? kb.name : fallbackName;
 }
-
-/**
- * 功能 (What): 格式化文件大小
- * 输入 (Input): 字节数
- * 输出 (Output): 人类可读的文件大小字符串
- * 副作用 (Side-effects): 无
- */
-export function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}

@@ -19,6 +19,13 @@ export interface SharedImplementationRule {
 
 export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = [
   {
+    id: 'LOCALIZATION-byte-size',
+    pattern: /\b(?:function|const)\s+(?:formatFileSize|formatBytes|formatPluginSize|formatStorageBytes)\b/u,
+    scope: ['apps/renderer/'],
+    owners: ['apps/renderer/app/localization/'],
+    use: '界面字节大小用 @app/localization 的 formatStorageBytes(bytes, locale)；未知大小文案由业务调用方保留。',
+  },
+  {
     id: 'FOUNDATION-is-record',
     pattern: /\b(?:function|const)\s+(?:isRecord|isPlainObject)\b/u,
     owners: ['packages/foundation/'],
