@@ -586,8 +586,11 @@ export interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfi
 export interface LayoutImageAdjust {
   /** 去色成灰度；不能与 duotone 同写。 */
   grayscale?: boolean;
-  /** 双色调 [暗部色, 亮部色]：按亮度在两色之间映射，常用于统一一组照片或做单色调背景。 */
-  duotone?: [string, string];
+  /**
+   * 双色调 [暗部色, 亮部色]：按亮度在两色之间映射，常用于统一一组照片或做单色调背景。
+   * 写成普通数组即可（先存进变量也行），必须恰好两个颜色，编译时校验。
+   */
+  duotone?: string[];
   /** 亮度，-1–1，0 不变；0.2 已经明显变亮。 */
   brightness?: number;
   /** 对比度，-1 到小于 1，0 不变；正值更硬，负值更灰。 */

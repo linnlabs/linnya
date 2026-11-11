@@ -125,6 +125,17 @@ compose({ title: "text tracking", slides: [slide] });
     expect(r.records).toEqual([]);
   });
 
+  it('accepts a duotone color pair kept in a variable (plain array, length checked at compile time)', () => {
+    const r = typecheckCodegenSource(`
+const TONE = ["#17100A", "#DCC4A0"];
+const slide = createSlide();
+slide.add(createImage({ src: "data:image/png;base64,AA==", adjust: { duotone: TONE, contrast: 0.05 } }));
+compose({ title: "tone", slides: [slide] });
+`);
+    expect(r.ok).toBe(true);
+    expect(r.records).toEqual([]);
+  });
+
   it('accepts explicit stable authoring keys on slides, frames and elements', () => {
     const r = typecheckCodegenSource(`
 const slide = createSlide({ slideKey: "overview" });
