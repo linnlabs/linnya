@@ -1,3 +1,5 @@
+import * as registeredContributions from '../registeredContributions';
+import { resolveEnabledIds } from '../registeredContributions';
 import { backendPluginRegistry } from '../registry';
 import { platformBackendPlugin } from './platform.backend';
 import type { PluginId, PluginMeta } from '@app/schemas';
@@ -472,12 +474,6 @@ export function listRegisteredBackendPluginMetas() {
   return backendPluginRegistry.listMeta();
 }
 
-function resolveEnabledIds(
-  enabledIds?: ReadonlySet<PluginId> | null
-): ReadonlySet<PluginId> | null {
-  return enabledIds === undefined ? getRuntimeEnabledPluginIds() : enabledIds;
-}
-
 export function getRegisteredToolClasses(enabledIds?: ReadonlySet<PluginId> | null) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
   return backendPluginRegistry.getToolClasses(resolveEnabledIds(enabledIds));
@@ -497,19 +493,17 @@ export function getRegisteredToolContextBindingMigrators(
   enabledIds?: ReadonlySet<PluginId> | null
 ) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
-  return backendPluginRegistry.getToolContextBindingMigrators(resolveEnabledIds(enabledIds));
+  return registeredContributions.getRegisteredToolContextBindingMigrators(enabledIds);
 }
 
 export function getRegisteredAgentFenceDescriptors(enabledIds?: ReadonlySet<PluginId> | null) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
-  return backendPluginRegistry
-    .getAgentFenceRegistrations(resolveEnabledIds(enabledIds))
-    .map(registration => registration.descriptor);
+  return registeredContributions.getRegisteredAgentFenceDescriptors(enabledIds);
 }
 
 export function getBackendPluginRegistryRevision(): number {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
-  return backendPluginRegistry.getRevision();
+  return registeredContributions.getBackendPluginRegistryRevision();
 }
 
 export function registerRegisteredBackendPluginIpcHandlers(serviceManager: unknown): void {
@@ -620,10 +614,7 @@ export function getRegisteredBackendPluginRendererPushChannels(
   enabledIds?: ReadonlySet<PluginId> | null
 ) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
-  return backendPluginRegistry.getRendererPushChannelsForPlugin(
-    pluginId,
-    resolveEnabledIds(enabledIds)
-  );
+  return registeredContributions.getRegisteredBackendPluginRendererPushChannels(pluginId, enabledIds);
 }
 
 export function getRegisteredAgentDefinitions(enabledIds?: ReadonlySet<PluginId>) {
@@ -655,7 +646,7 @@ export function getAllRegisteredAgentDefinitionsForStaticCatalog() {
 
 export function getRegisteredSubagentTypes(enabledIds?: ReadonlySet<PluginId> | null) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
-  return backendPluginRegistry.getSubagentTypes(resolveEnabledIds(enabledIds));
+  return registeredContributions.getRegisteredSubagentTypes(enabledIds);
 }
 
 export function getRegisteredDocumentTypeBackendHook(

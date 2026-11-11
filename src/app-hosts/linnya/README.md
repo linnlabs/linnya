@@ -95,6 +95,7 @@ Conversation Agent run 的 application orchestration：请求接纳、Host sessi
 ### `plugin-registry/`
 
 装配内置和外部插件贡献，消费 `@linnya/plugin-host-contract` 的窄合同。插件内部类型不得泄漏为 Host 全局合同。
+加载装配与 SDK 运行查询的方向见 [Plugin registry](./plugin-registry/README.md)。
 
 ### `application/`
 

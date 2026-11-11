@@ -5,7 +5,7 @@
 
 import { Logger } from '../../../../shared/logger';
 import { TodoService, NewTodoPayload } from '../../../../features/project-todo/infrastructure/sqlite/todo.service';
-import { getBackendRendererIntegrationPort } from '../../../../app-hosts/linnya/desktop-capabilities';
+import { getBackendRendererIntegrationPort } from '../../../../app-hosts/linnya/desktop-capabilities/registry/backendRendererIntegrationRegistry';
 import type { BackendRendererIpcStyleRegistrarPort } from '../../../../app-hosts/linnya/adapters/backend-renderer-requests';
 import { isRecord, errorToString as getErrorMessage } from '@linnya/foundation';
 

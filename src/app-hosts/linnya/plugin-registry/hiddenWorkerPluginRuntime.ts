@@ -1,5 +1,5 @@
 import type { PluginId } from '@app/schemas';
-import { getBackendHiddenWorkerRuntimePort } from '../desktop-capabilities';
+import { getBackendHiddenWorkerRuntimePort } from '../desktop-capabilities/registry/backendHiddenWorkerRuntimeRegistry';
 import { pluginDiagnostics } from './diagnostics';
 import type { BackendPluginHiddenWorkerRegistration } from './registry';
 

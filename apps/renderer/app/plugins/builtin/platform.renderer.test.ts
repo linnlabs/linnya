@@ -2,7 +2,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../../../src/app-hosts/linnya/plugin-registry/builtin', () => ({
+vi.mock('../../../../../src/app-hosts/linnya/plugin-registry/registeredContributions', () => ({
   getRegisteredSubagentTypes: () => [],
 }));
 import { tableFillToolCards } from '@/app/workflows/table-fill/ui/tool-card/tableFillToolCards';

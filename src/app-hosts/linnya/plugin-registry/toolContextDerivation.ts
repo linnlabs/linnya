@@ -3,7 +3,7 @@ import type { ToolContext } from '../../../tools/types';
 import {
   getBackendPluginRegistryRevision,
   getRegisteredToolContextBindingMigrators,
-} from './builtin';
+} from './registeredContributions';
 import { getRuntimeEnabledPluginIds } from './pluginRuntimeState';
 import type { BackendPluginToolContextBindingMigrator } from './types';
 import {

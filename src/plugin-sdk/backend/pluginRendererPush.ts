@@ -8,8 +8,8 @@
  */
 
 import type { RendererPluginPushEnvelope } from '@linnya/plugin-host-contract/backend/pluginRendererPush';
-import { getBackendRendererIntegrationPort } from 'src/app-hosts/linnya/desktop-capabilities';
-import { getRegisteredBackendPluginRendererPushChannels } from 'src/app-hosts/linnya/plugin-registry/builtin';
+import { getBackendRendererIntegrationPort } from 'src/app-hosts/linnya/desktop-capabilities/registry/backendRendererIntegrationRegistry';
+import { getRegisteredBackendPluginRendererPushChannels } from 'src/app-hosts/linnya/plugin-registry/registeredContributions';
 import { getPluginRuntimeState } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
 
 export const PLUGIN_RENDERER_PUSH_CHANNEL = 'plugin:push';
@@ -32,6 +32,7 @@ export function broadcastRendererPluginMessage(
   if (runtimeState !== 'enabled') {
     throw new Error(`[pluginRendererPush] 插件未启用，不能发送 renderer push: ${normalizedPluginId}/${normalizedChannel}`);
   }
+  // App 已完成贡献注册；运行查询不能反向触发加载器，再次装配正在使用的 SDK。
   const declaredChannels = getRegisteredBackendPluginRendererPushChannels(normalizedPluginId);
   if (!declaredChannels.includes(normalizedChannel)) {
     throw new Error(`[pluginRendererPush] 插件未声明 renderer push channel: ${normalizedPluginId}/${normalizedChannel}`);

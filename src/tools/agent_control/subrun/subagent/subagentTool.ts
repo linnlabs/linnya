@@ -4,7 +4,7 @@
  */
 
 import { SubagentArgsSchema, SubagentResultSchema, type SubagentResult } from '@app/schemas';
-import { getRegisteredSubagentTypes } from 'src/app-hosts/linnya/plugin-registry/builtin';
+import { getRegisteredSubagentTypes } from 'src/app-hosts/linnya/plugin-registry/registeredContributions';
 import type { SubagentTypeContribution } from 'src/app-hosts/linnya/plugin-registry/types';
 
 import { BaseTool, type ToolContext, type ToolParameterSchema, type LinnyaToolSchemaContext } from '../../../types';

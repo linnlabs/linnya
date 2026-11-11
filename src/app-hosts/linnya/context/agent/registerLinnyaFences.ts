@@ -3,7 +3,7 @@ import {
   type FenceDescriptor,
   type FenceRegistry,
 } from '@linnlabs/linnkit/context-manager';
-import { getRegisteredAgentFenceDescriptors } from '../../plugin-registry/builtin';
+import { getRegisteredAgentFenceDescriptors } from '../../plugin-registry/registeredContributions';
 
 type LinnyaFenceDescriptor = FenceDescriptor & {
   readonly category?: 'current-view' | 'selection' | 'system-capability' | 'legacy';

@@ -14,6 +14,7 @@ import {
   isPluginRuntimeDatabaseReady,
   setPluginRuntimeStateForTests,
 } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
+import { ensureBuiltinBackendPluginsRegistered } from 'src/app-hosts/linnya/plugin-registry/builtin';
 
 export interface ToolExecutionRecord {
   toolName: string;
@@ -110,6 +111,8 @@ export function createToolRuntimeHarness(
 ): ToolRuntimeHarness {
   const ownsPluginRuntimeState = !isPluginRuntimeDatabaseReady();
   if (ownsPluginRuntimeState) {
+    // 测试组合根和生产启动一样先注册贡献；工具运行查询不再隐式启动加载器。
+    ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
     // 测试夹具默认只启用 platform，避免 child-run 测试在没有真实 SQLite 时
     // 误读成“插件运行态不可用”。生产路径仍由 pluginRuntimeState fail-fast。
     setPluginRuntimeStateForTests({

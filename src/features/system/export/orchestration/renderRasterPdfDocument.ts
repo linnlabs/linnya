@@ -1,5 +1,5 @@
 import type { RasterPdfDocumentRequest } from '@linnya/plugin-host-contract/backend/pdfDocumentRuntime';
-import { getDesktopRasterPdfDocumentPort } from '../../../../app-hosts/linnya/desktop-capabilities';
+import { getDesktopRasterPdfDocumentPort } from '../../../../app-hosts/linnya/desktop-capabilities/registry/desktopRasterPdfDocumentRegistry';
 import { assertRasterPdfDocumentRequest } from '../functions/assertRasterPdfDocumentRequest';
 
 /**

@@ -8,7 +8,7 @@ import {
   configureDefaultTextMeasurementRuntime,
   resetDefaultTextMeasurementRuntime,
 } from '../../../../features/text-measurement/orchestration/configureDefaultTextMeasurementRuntime';
-import { getBackendTextMeasurementRuntimeDependencies } from '../../desktop-capabilities';
+import { getBackendTextMeasurementRuntimeDependencies } from '../../desktop-capabilities/registry/backendTextMeasurementRuntimeRegistry';
 import {
   configureDefaultSystemFontResolution,
   resetDefaultSystemFontResolution,

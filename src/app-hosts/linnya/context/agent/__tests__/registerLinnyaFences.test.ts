@@ -4,7 +4,7 @@ const pluginFenceDescriptorsMock = vi.hoisted(() => ({
   getRegisteredAgentFenceDescriptors: vi.fn((): unknown[] => []),
 }));
 
-vi.mock('../../../plugin-registry/builtin', () => pluginFenceDescriptorsMock);
+vi.mock('../../../plugin-registry/registeredContributions', () => pluginFenceDescriptorsMock);
 
 import { createLinnyaFenceRegistry } from '../registerLinnyaFences';
 

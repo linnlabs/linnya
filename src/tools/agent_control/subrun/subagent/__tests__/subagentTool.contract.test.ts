@@ -12,6 +12,7 @@ import {
   setPluginRuntimeStateForTests,
 } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { backendPluginRegistry } from 'src/app-hosts/linnya/plugin-registry/registry';
+import { ensureBuiltinBackendPluginsRegistered } from 'src/app-hosts/linnya/plugin-registry/builtin';
 import type { PluginBackendContribution } from 'src/app-hosts/linnya/plugin-registry/types';
 import type { ToolContext } from 'src/tools/types';
 import { SubagentTool } from '../subagentTool';
@@ -54,6 +55,7 @@ function successfulToolOutput(
 
 describe('SubagentTool contract', () => {
   beforeEach(() => {
+    ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
     setPluginRuntimeStateForTests({
       installedPluginIds: ['platform'],
       enabledPluginIds: ['platform'],

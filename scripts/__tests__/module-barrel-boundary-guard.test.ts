@@ -46,6 +46,18 @@ test('Revision 投影应用器只依赖状态，不能回引完整运行时', ()
   ).toEqual([]);
 });
 
+test('插件 SDK 只查询已注册贡献，不带入加载器或 Desktop 装配', () => {
+  const file = 'src/plugin-sdk/backend/pluginRendererPush.ts';
+  expect(findModuleBarrelViolations(file,
+    "import { query } from 'src/app-hosts/linnya/plugin-registry/builtin';")).toHaveLength(1);
+  expect(findModuleBarrelViolations(file,
+    "import { getPort } from '../../app-hosts/linnya/desktop-capabilities';")).toHaveLength(1);
+  expect(findModuleBarrelViolations(file,
+    "import { registry } from 'src/app-hosts/linnya/plugin-registry/registry';")).toEqual([]);
+  expect(findModuleBarrelViolations(file,
+    "import type { Port } from '../../app-hosts/linnya/desktop-capabilities';")).toEqual([]);
+});
+
 test('Vue script 原行号与值/类型边正确识别，不把注释、字面量当依赖', () => {
   expect(
     readSourceImports(

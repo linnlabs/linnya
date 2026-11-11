@@ -12,7 +12,7 @@ import type {
   HiddenWorkerDefinition,
   HiddenWorkerRegistrationOptions,
 } from '@linnya/plugin-host-contract/backend/hiddenWorkerRuntime';
-import { getBackendHiddenWorkerRuntimePort } from '../../app-hosts/linnya/desktop-capabilities';
+import { getBackendHiddenWorkerRuntimePort } from '../../app-hosts/linnya/desktop-capabilities/registry/backendHiddenWorkerRuntimeRegistry';
 
 export async function registerHiddenWorker(
   definition: HiddenWorkerDefinition,
