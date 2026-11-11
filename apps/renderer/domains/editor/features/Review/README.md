@@ -14,7 +14,7 @@
 ## AI 调用入口与 Prompt Key（重要）
 
 - **调用入口**：统一使用 `POST /api/v1/conversation/next`（你们的“简单链路”同样走该端点）
-  - 参考：`apps/renderer/shared/services/aiService/unifiedApiService.js`
+  - 参考：`apps/renderer/app/model-inference/orchestration/unifiedApiService.js`
 - **不传历史**：简单链路通过 `options.persist=false` + 不传/传空 `options.conversationHistory` 来实现
 - **Review Prompt Key**：`REVIEW: 'review'`（已在后端注册，见 `src/prompts/types.ts`）
 

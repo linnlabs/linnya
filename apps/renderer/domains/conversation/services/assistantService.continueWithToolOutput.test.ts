@@ -51,7 +51,7 @@ vi.mock('./conversationService', () => ({
   streamConversation: streamConversationMock,
 }));
 
-vi.mock('../../../shared/services/aiService/common', () => ({
+vi.mock('@app/model-inference/orchestration/determineModelId', () => ({
   determineModelId: () => 'test-model',
 }));
 

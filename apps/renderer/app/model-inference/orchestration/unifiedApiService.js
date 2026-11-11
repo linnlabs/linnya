@@ -1,5 +1,5 @@
 /**
- * @file apps/renderer/shared/services/aiService/unifiedApiService.js
+ * @file apps/renderer/app/model-inference/orchestration/unifiedApiService.js
  * 
  * @brief 统一的AI API服务，支持新的统一端点
  * 
@@ -13,8 +13,9 @@
  * 副作用：调用后端AI服务
  */
 
-import { getApiBaseUrl, determineModelId, apiFetch } from './common';
-import { useAiSettingsStore } from '../../stores/aiSettings';
+import { getApiBaseUrl, apiFetch } from '../../../shared/services/aiService/common';
+import { determineModelId } from './determineModelId';
+import { useAiSettingsStore } from '../../../shared/stores/aiSettings';
 import { readPrimaryReasoningEffort } from '@/domains/model-configuration';
 
 function resolveReasoningEffort(requestParams) {

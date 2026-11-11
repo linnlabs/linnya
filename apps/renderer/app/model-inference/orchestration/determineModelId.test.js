@@ -6,7 +6,7 @@ vi.mock('@/domains/model-configuration', () => ({
   readEffectiveModelPurposeBinding: () => 'primary-model',
 }));
 
-import { determineModelId } from './common.js';
+import { determineModelId } from './determineModelId.js';
 
 describe('determineModelId auxiliary purpose selection', () => {
   it('已注册的辅助用途使用对应的有效模型', () => {

@@ -10,7 +10,7 @@
  */
 
 import { streamConversation, type ConversationNextRequest } from './conversationService';
-import { determineModelId } from '../../../shared/services/aiService/common';
+import { determineModelId } from '@app/model-inference';
 import { readPrimaryReasoningEffort } from '@/domains/model-configuration';
 import type {
   AssistantServiceCallbacks,

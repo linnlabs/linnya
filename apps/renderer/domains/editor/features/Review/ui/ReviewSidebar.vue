@@ -28,7 +28,7 @@ import {
 } from '../utils/reviewDocumentChunker';
 import { workspaceGateway } from '@shared/ipc/workspaceGateway';
 import { getWorkspaceContextPort } from '@shared/ports/workspaceContextPort';
-import { generateTextStream } from '@shared/services/aiService/unifiedApiService';
+import { generateTextStream } from '@app/model-inference';
 
 const reviewStore = useReviewStore();
 const uiStore = useUIStore();

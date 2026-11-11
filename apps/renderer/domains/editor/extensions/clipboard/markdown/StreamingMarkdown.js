@@ -23,7 +23,7 @@ import { Plugin, PluginKey } from 'prosemirror-state';
 // 导入极简处理器
 import { processQueue } from './streaming/queueProcessor';
 // 导入统一的API服务
-import { generateTextStream } from '../../../../../shared/services/aiService/unifiedApiService';
+import { generateTextStream } from '@app/model-inference';
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage';
 
 // 创建插件键

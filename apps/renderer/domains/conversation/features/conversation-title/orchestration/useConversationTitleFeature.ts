@@ -1,7 +1,7 @@
 import { PromptKeys } from '@app/schemas';
 import { generateMessageId } from '@shared/utils/idUtils';
 import { readAuxiliaryPurposeLowestReasoningEffort } from '@/domains/model-configuration';
-import { generateText } from '@/shared/services/aiService/unifiedApiService';
+import { generateText } from '@app/model-inference';
 import { useConversationState } from '../../../store/conversationState';
 import { historyApiService } from '../../../history/services/historyApiService';
 import { useHistoryListStore } from '../../../history/store/historyListStore';

@@ -523,7 +523,7 @@ Tab 接受 / 继续输入拒绝
 ### 前端文件
 - **设置 UI**：`apps/renderer/domains/editor/features/DocumentSettings/ui/EditorAiInteractionSettingsSection.vue`
 - **设置 Store**：`apps/renderer/shared/stores/aiSettings.js`
-- **API 服务**：`apps/renderer/shared/services/aiService/unifiedApiService.js`
+- **API 服务**：`apps/renderer/app/model-inference/orchestration/unifiedApiService.js`
 - **上下文工具**：`apps/renderer/domains/editor/features/AutoComplete/config/contextConfig.ts`
 - **拒绝追踪**：`apps/renderer/domains/editor/features/AutoComplete/services/RejectionTracker.ts`
 - **类型定义**：`apps/renderer/domains/editor/features/AutoComplete/types/index.ts`

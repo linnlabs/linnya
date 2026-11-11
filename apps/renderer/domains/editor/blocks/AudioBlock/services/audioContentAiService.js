@@ -11,7 +11,7 @@
  * 使用 unifiedAPI 调用后端，不需要对话历史（单次任务）。
  */
 
-import { generateTextStream } from '@shared/services/aiService/unifiedApiService.js';
+import { generateTextStream } from '@app/model-inference';
 import { TRANSLATION_PROMPT_KEY, AUDIO_SUMMARY_PROMPT_KEY } from '@app/schemas';
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage';
 import { splitSegmentsIntoBatches, calculateSegmentsLength } from '../utils/segmentBatcher.js';

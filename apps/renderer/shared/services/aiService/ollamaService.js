@@ -1,8 +1,8 @@
-import { getApiBaseUrl, determineModelId, apiFetch } from './common';
+import { getApiBaseUrl, apiFetch } from './common';
 import { OllamaModelFetchError } from './ollamaModelFetchError';
 
 // generateTextNonStreaming 函数已废弃并移除
-// 请使用 apps/renderer/shared/services/aiService/unifiedApiService.js 中的 generateText 函数
+// 请使用 apps/renderer/app/model-inference/orchestration/unifiedApiService.js 中的 generateText 函数
 
 /**
  * 调用后端代理 API 获取指定 Ollama URL 的可用模型列表。

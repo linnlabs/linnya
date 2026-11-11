@@ -10,7 +10,7 @@
 
 import type { Editor } from '@tiptap/vue-3';
 import { getAutocompleteStructuredContext } from '../config/contextConfig';
-import { generateText } from '../../../../../shared/services/aiService/unifiedApiService';
+import { generateText } from '@app/model-inference';
 import { AUTOCOMPLETE_PROMPT_KEY } from '@app/schemas';
 import type { RejectionForApi } from '../types';
 import type { IntentPrediction } from './IntentPredictor';

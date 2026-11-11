@@ -3,7 +3,7 @@
  * @brief 编辑器写作功能的使用示例
  */
 
-import { generateTextStream } from '../../../../../shared/services/aiService/unifiedApiService.js';
+import { generateTextStream } from '@app/model-inference';
 import { getWritingStructuredContext } from '../config/contextConfig.js';
 
 /**
