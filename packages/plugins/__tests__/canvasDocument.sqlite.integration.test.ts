@@ -328,3 +328,51 @@ it('reports fresh Renderer arrangement computation and replays no-op receipts wi
     expect(runtime.read(id)).toEqual(after);
   } finally { arrangement.dispose(); await computation.dispose(); }
 });
+it('reports who changed what since a sequence or time, with last-modified source in read and show', async () => {
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os'); const path = await import('node:path');
+  const { executeCanvasCliCommand, createCanvasPluginCli, formatCanvasCliInputError } = await import('@plugin/canvas/backend-test-support');
+  const root = await mkdtemp(path.join(tmpdir(), 'canvas-changes-test-'));
+  const id = runtime.create({ projectId, parentId: null, name: '改动.canvas' });
+  const services: import('@plugin/canvas/backend-test-support').CanvasCliServices = { runtimeFor: () => runtime, referencesFor: () => runtime.references,
+    capabilities: { computation: { async check() { throw new Error('not used'); }, async layout() { throw new Error('not used'); }, async dispose() {} } as never,
+      measurement: { async measureBatch(request) { return request.cards.map(card => ({ ref: card.ref, width: card.width, height: 120 })); }, async measure(request) { return { width: request.width, height: 120 }; } },
+      rendering: { async render() { throw new Error('not used'); } } } };
+  const context = { hostContext: { databaseService: { getDb: () => db } }, projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal };
+  const cli = createCanvasPluginCli((command, execution, directory) => executeCanvasCliCommand(command, execution, directory, services), formatCanvasCliInputError);
+  const run = async (argv: string[]) => {
+    const prepared = cli.prepare({ argv, invocationId: 'invocation', conversationRoot: root });
+    const result = prepared.status === 'completed' ? prepared.result : await prepared.plan.execute(context);
+    return { exitCode: result.exitCode, value: JSON.parse(result.stdout) };
+  };
+  const revision = (cardId: string) => runtime.read(id).elements.find(element => element.id === cardId)!.revision;
+  try {
+    commitInView({ documentId: id, viewId: 'view', requestId: 'seed', operations: [text('保留'), text('将删除')] });
+    const baseline = runtime.read(id).sequence;
+    commitInView({ documentId: id, viewId: 'view', requestId: 'edit', operations: [{ op: 'update', id: 'c1', baseRevision: revision('c1'), patch: { color: 'yellow', x: 40 } }, { op: 'delete', id: 'c2', baseRevision: revision('c2') }, text('先加后删')] });
+    commitInView({ documentId: id, viewId: 'view', requestId: 'drop', operations: [{ op: 'delete', id: 'c3', baseRevision: revision('c3') }] });
+    await writeFile(path.join(root, 'agent.json'), JSON.stringify([{ op: 'add', text: 'Agent 写的' }]));
+    expect((await run(['apply', 'workspace:/改动.canvas', '--ops-file', 'agent.json', '--request-id', 'agent'])).exitCode).toBe(0);
+    const since = await run(['changes', 'workspace:/改动.canvas', '--after', String(baseline)]);
+    expect(since.exitCode, JSON.stringify(since.value)).toBe(0);
+    expect(since.value).toMatchObject({ fromSequence: baseline, complete: true, total: { added: 1, updated: 1, removed: 1 } });
+    expect(since.value.changes).toEqual([
+      expect.objectContaining({ id: 'c1', change: 'updated', fields: expect.arrayContaining(['color', 'x']), by: { kind: 'user' }, text: '保留' }),
+      expect.objectContaining({ id: 'c2', change: 'removed', by: { kind: 'user' }, text: '将删除' }),
+      expect.objectContaining({ id: 'c4', change: 'added', by: { kind: 'agent', currentConversation: true }, text: 'Agent 写的', at: expect.stringMatching(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/) }),
+    ]);
+    // 范围内先加后删的 c3 不出现在净变化里；范围外已存在后被删的 c2 照常报删除。
+    expect(since.value.changes.map((change: { id: string }) => change.id)).not.toContain('c3');
+    const all = await run(['changes', 'workspace:/改动.canvas', '--since', '2000-01-01 00:00']);
+    expect(all.value).toMatchObject({ fromSequence: 0, complete: true, total: { added: 2, updated: 0, removed: 0 } });
+    const read = await run(['read', 'workspace:/改动.canvas']);
+    expect(read.value.text).toMatch(/\[c1\][^\n]*最后修改：用户 \d{4}-/); expect(read.value.text).toMatch(/\[c4\][^\n]*最后修改：Agent /);
+    expect((await run(['show', 'workspace:/改动.canvas', 'c4'])).value.elements[0]).toMatchObject({ updatedBy: 'agent', updatedAt: expect.any(String) });
+    expect((await run(['changes', 'workspace:/改动.canvas', '--after', '999'])).value.error).toMatchObject({ code: 'invalid_sequence' });
+    expect((await run(['changes', 'workspace:/改动.canvas'])).value.error).toMatchObject({ code: 'missing_argument' });
+    // 模拟日志已裁剪：当前序号远超保留窗口时，早于窗口的范围必须如实标为不完整。
+    db.prepare('UPDATE canvas_documents SET sequence = sequence + 600 WHERE node_id = ?').run(id);
+    expect((await run(['changes', 'workspace:/改动.canvas', '--after', String(baseline)])).value).toMatchObject({ complete: false, note: expect.stringContaining('read') });
+    db.prepare('UPDATE canvas_documents SET sequence = sequence - 600 WHERE node_id = ?').run(id);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

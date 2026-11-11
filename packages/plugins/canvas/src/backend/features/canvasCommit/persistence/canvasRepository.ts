@@ -15,6 +15,7 @@ import {
 } from '../../../../shared';
 import { type CanvasCommitResult } from '../../../../shared/changeset/definitions/canvasCommands';
 import { saveCanvasCommittedReceipt } from './canvasRequestRepository';
+import { readCanvasChangeLog } from './canvasChangeLog';
 import type {
   CanvasCommitPlan,
   CanvasCommitState,
@@ -312,26 +313,9 @@ export function readCanvasSynchronization(
         .get(input.documentId)
     );
   if (format.schema_version !== 1 || input.afterSequence > sequence) return snapshot();
-  const rows = database
-    .prepare(
-      'SELECT sequence, source_json, changes_json FROM canvas_changes WHERE node_id = ? AND sequence > ? ORDER BY sequence'
-    )
-    .all(input.documentId, input.afterSequence);
-  const schema = z.object({
-    sequence: z.number(),
-    source_json: z.string(),
-    changes_json: z.string(),
-  });
   let commits: z.infer<typeof CanvasCommitDeltaSchema>[];
   try {
-    commits = rows.map(value => {
-      const row = schema.parse(value);
-      return CanvasCommitDeltaSchema.parse({
-        sequence: row.sequence,
-        source: JSON.parse(row.source_json),
-        changes: JSON.parse(row.changes_json),
-      });
-    });
+    commits = readCanvasChangeLog(database, input).map(({ committedAt: _, ...commit }) => commit);
   } catch (error) {
     if (!(error instanceof z.ZodError || error instanceof SyntaxError)) throw error;
     return snapshot();

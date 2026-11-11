@@ -19,6 +19,13 @@ export type CanvasCliCommand =
   | { readonly kind: 'read'; readonly path: string }
   | { readonly kind: 'check'; readonly path: string }
   | { readonly kind: 'groups'; readonly path: string }
+  | {
+      readonly kind: 'changes';
+      readonly path: string;
+      /** 二选一：提交序号之后，或本机时间（UTC 毫秒）以后。 */
+      readonly after?: number;
+      readonly since?: number;
+    }
   | { readonly kind: 'receipt'; readonly path: string; readonly requestId: string }
   | {
       readonly kind: 'show' | 'find' | 'neighbors' | 'region';

@@ -24,6 +24,7 @@ import { queryCanvas, readCanvasRenderRegion } from '../features/canvasQuery';
 import { publishCanvasImage } from '../features/canvasExport';
 import { readCanvasHostDatabase } from '../functions/readCanvasHostContext';
 import { executeCanvasCliWrite } from './executeCanvasCliWrite';
+import { readCanvasCliChanges } from './readCanvasCliChanges';
 import { projectCanvasCliSnapshot } from './projectCanvasCliSnapshot';
 import { readCanvasRenderingResources } from './readCanvasRenderingResources';
 import type { CanvasCliScope, CanvasCliServices } from './definitions/canvasCliExecution';
@@ -47,6 +48,7 @@ export async function executeCanvasCliCommand(
         command.requestId
       )
     );
+  if (command.kind === 'changes') return readCanvasCliChanges(command, scope, services);
   const snapshot = readCanvasSnapshot(scope.database, scope.documentId);
   if (command.kind === 'check') {
     const result = await services.capabilities.computation.check(snapshot, context.signal);

@@ -9,6 +9,7 @@ import {
 import {
   projectCanvasCardBody,
   projectCanvasDocument,
+  projectCanvasModification,
   type CanvasProjectionContext,
 } from '../../canvasProjection';
 import type { CanvasQuery } from '../definitions/canvasQuery';
@@ -75,6 +76,7 @@ export function queryCanvas(
     revision: card.revision,
     color: card.color,
     locked: card.locked,
+    ...projectCanvasModification(card),
     text: projectCanvasCardBody(card, context),
   }));
   const selectedIds = new Set<string>(selected.map(card => card.id));
@@ -100,6 +102,7 @@ export function queryCanvas(
             from: edge.from.kind === 'card' ? edge.from.cardId : '悬空',
             to: edge.to.kind === 'card' ? edge.to.cardId : '悬空',
             direction: edge.direction,
+            ...projectCanvasModification(edge),
           }
         : null
     ),

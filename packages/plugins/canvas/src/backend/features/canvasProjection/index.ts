@@ -9,3 +9,8 @@ export type {
   CanvasSelectionProjectionInput,
 } from './definitions/canvasProjection';
 export { projectCanvasSelection } from './functions/projectCanvasSelection';
+export {
+  describeCanvasEdge,
+  formatCanvasTime,
+  projectCanvasModification,
+} from './functions/projectCanvasModification';
