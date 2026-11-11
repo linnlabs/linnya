@@ -11,6 +11,9 @@ export async function buildProbeRenderer({ entry, root, output }) {
       { find: /^@plugin\/canvas\/shared$/, replacement: path.join(root, 'packages/plugins/canvas/src/shared/index.ts') },
       { find: /^@app\/schemas$/, replacement: path.join(root, 'packages/schemas/src/index.ts') },
       { find: /^@app\/schemas\/(.+)$/, replacement: path.join(root, 'packages/schemas/src/$1') },
+      // 探针页面没有 Host；用 Host 运行时提供给插件的同一份本地化实现。
+      { find: /^@app\/localization$/, replacement: path.join(root, 'apps/renderer/app/localization/index.ts') },
+      { find: /^@\/(.+)$/, replacement: path.join(root, 'apps/renderer/$1') },
     ], dedupe: ['vue'] },
     build: {
       target: 'es2022', outDir: output, emptyOutDir: false,
