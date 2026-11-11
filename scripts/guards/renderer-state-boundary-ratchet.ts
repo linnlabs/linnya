@@ -3,13 +3,14 @@ import { listWorkingTreePaths } from '../source-analysis/listWorkingTreePaths';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import ts from 'typescript';
 import { readSourceImports } from '../source-analysis/readSourceImports';
 import { resolveLocalSourceImport } from './module-barrel-boundary-guard';
 
 const BASELINE = '.baseline/renderer-state-boundary.txt';
 
 export function findRendererStateEdges(file: string, content: string): string[] {
-  return readSourceImports(file, content).flatMap(edge => {
+  const dependencies = readSourceImports(file, content).flatMap(edge => {
     if (edge.typeOnly) return [];
     const target = resolveLocalSourceImport(file, edge.specifier);
     if (!target) return [];
@@ -20,6 +21,27 @@ export function findRendererStateEdges(file: string, content: string): string[] 
       rules.push('STORE-TO-ORCHESTRATION');
     return rules.map(rule => `${rule}\t${file}\t${edge.specifier}`);
   });
+  return [...dependencies, ...findStoreAsyncImplementations(file, content)];
+}
+
+/** 按函数身份计存量，改行号不会失效；不能把新 async 写在 store 内绕过导入方向门禁。 */
+function findStoreAsyncImplementations(file: string, content: string): string[] {
+  if (!/\/(?:store|stores)\//u.test(file) || file.endsWith('.vue')) return [];
+  const source = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true);
+  const counts = new Map<string, number>();
+  function visit(node: ts.Node): void {
+    if (ts.isFunctionLike(node) && node.body && ts.canHaveModifiers(node)
+      && ts.getModifiers(node)?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) {
+      const parent = node.parent;
+      const name = node.name?.getText(source)
+        ?? (ts.isVariableDeclaration(parent) || ts.isPropertyAssignment(parent) ? parent.name.getText(source) : '<anonymous>');
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  return [...counts].flatMap(([name, count]) => Array.from({ length: count }, (_, index) =>
+    `STORE-ASYNC\t${file}\t${name}#${index + 1}`));
 }
 
 export function compareRendererStateEdges(
@@ -59,7 +81,7 @@ function main(): void {
   const diff = compareRendererStateEdges(current, baseline);
   if (diff.added.length) {
     console.error(
-      `新增了反向依赖：\n${diff.added.join('\n')}\nshared 的业务能力归 domain/app；异步用例调用同步 store action，store 不调用 orchestration。`
+      `新增了状态边界违规：\n${diff.added.join('\n')}\nshared 的业务能力归 domain/app；异步用例调用同步 store action，store 不调用 orchestration，也不自行实现 async 流程。`
     );
     process.exitCode = 1;
     return;

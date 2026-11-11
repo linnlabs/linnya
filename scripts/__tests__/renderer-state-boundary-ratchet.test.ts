@@ -41,3 +41,19 @@ test('新增失败、减少可收紧，不能以另一条新边抵消旧边减�
   expect(compareRendererStateEdges(['new'], ['old'])).toEqual({ added: ['new'], removed: ['old'] });
   expect(compareRendererStateEdges([], ['old'])).toEqual({ added: [], removed: ['old'] });
 });
+
+test('store 内直接实现异步流程也受约束，注释、类型与外部编排不误报', () => {
+  const source = `// async function ignored() {}
+type Loader = () => Promise<void>;
+const useState = defineStore('x', () => {
+  async function load() { await request(); }
+  const retry = async () => load();
+  return { load, retry, setValue(value) { state.value = value; } };
+});`;
+  const file = 'apps/renderer/domains/x/store/state.ts';
+  expect(findRendererStateEdges(file, source)).toEqual([
+    `STORE-ASYNC\t${file}\tload#1`, `STORE-ASYNC\t${file}\tretry#1`,
+  ]);
+  expect(findRendererStateEdges(file, `\n\n${source}`)).toEqual(findRendererStateEdges(file, source));
+  expect(findRendererStateEdges('apps/renderer/domains/x/orchestration/load.ts', source)).toEqual([]);
+});
