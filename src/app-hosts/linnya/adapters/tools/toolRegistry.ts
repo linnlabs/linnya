@@ -192,15 +192,7 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
       parameters: tool.parameters,
       validateArguments: args => tool['validateArguments'](args),
       idempotency: tool.idempotency,
-      modelInputRequirement: tool.modelInputRequirement,
-      modelInputDelivery: tool.modelInputDelivery,
       streaming: tool.streaming,
-      ...(tool.resolveModelInputRequirement
-        ? {
-            resolveModelInputRequirement: (args: ToolArgs) =>
-              tool.resolveModelInputRequirement?.(args),
-          }
-        : {}),
     };
   }
 

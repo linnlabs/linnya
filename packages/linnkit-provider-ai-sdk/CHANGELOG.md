@@ -2,6 +2,9 @@
 
 ## 0.1.0
 
+- 接入正式 Linnkit 0.42.0；peer 最低兼容系列改为 0.42。Provider 不使用已删除的工具图片能力协议，
+  行为不变。
+
 - 升级 AI SDK Core 至 `7.0.162` 与同批 Provider 补丁；Google 保留 `4.0.94`，
   因后续版本的 Gemini 4 自动续请求会改变单 attempt 请求边界，需单独审核。
   新增 `interrupted` 的可重试失败与安全诊断投影，保留 Linnkit 的重试预算所有权。

@@ -8,6 +8,7 @@ import { ConversationControlCommandApprovalsResponseSchema } from './commandAppr
 import { JsonValueSchema } from '../json-value';
 import { ConversationHistoryListItemSchema } from '../conversation/history';
 import { ConversationUiMessageSchema } from '../conversation/ui-message';
+import { ConversationAttachmentRefSchema } from '../conversation/attachment-ref';
 import { ModelPickerReasoningSchema } from '../model-picker';
 import { CONVERSATION_CONTROL_SCHEMA_VERSION } from './protocol';
 import { ConversationControlToolNameSchema } from './commands';
@@ -297,6 +298,15 @@ export const ConversationControlToolsResponseSchema = z.discriminatedUnion('acti
       action: z.literal('call'),
       tool_name: ConversationControlToolNameSchema,
       receipt: ConversationControlAcceptedReceiptSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...ToolsResponseBaseFields,
+      action: z.literal('read_attachment'),
+      attachment: ConversationAttachmentRefSchema,
+      /** 已按受管图片账本复核的原始字节。 */
+      content_base64: z.string().min(1),
     })
     .strict(),
 ]);

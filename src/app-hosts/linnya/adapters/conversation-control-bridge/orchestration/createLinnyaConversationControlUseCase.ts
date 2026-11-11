@@ -15,6 +15,7 @@ import {
   projectConversationControlModels,
   type ConversationControlRunRecord,
   type ConversationControlUseCase,
+  type ConversationControlUseCasePorts,
 } from 'src/app-hosts/linnya/application/conversation-control';
 import {
   createExecutionAuditExportUseCase,
@@ -57,6 +58,8 @@ interface LinnyaConversationControlUseCaseOwners {
   readonly events: ExecutionAuditEventPort;
   readonly auditControl: AuditControlPort;
   readonly tools: Pick<ToolRuntimePort, 'getToolSchemas' | 'getToolDefinition'>;
+  /** 受管图片读取（已复核账本与内容）；会话运行时没有图片存储时缺省。 */
+  readonly attachmentImages?: ConversationControlUseCasePorts['attachmentImages'];
   readonly history: Pick<
     HistoryService,
     | 'listConversations'
@@ -111,6 +114,7 @@ export function createLinnyaConversationControlUseCase(
   });
   return createConversationControlUseCase({
     skills: skillManagement,
+    ...(owners.attachmentImages ? { attachmentImages: owners.attachmentImages } : {}),
     flow: {
       start: request => owners.flow.nextDetached(request),
       respond: request => owners.flow.respondInteractionDetached(request),
@@ -225,15 +229,6 @@ export function createLinnyaConversationControlUseCase(
         const validate = owners.tools.getToolDefinition(toolName)?.validateArguments;
         if (!validate) throw new Error(`CLI tool ${toolName} has no argument admission`);
         return validate({ ...args });
-      },
-      requiresModelInput(toolName, args) {
-        const definition = owners.tools.getToolDefinition(toolName);
-        if (!definition) throw new Error(`CLI tool ${toolName} is not registered`);
-        // 与 ToolNode 相同的声明优先级：参数决定的动态要求覆盖静态要求。
-        const requirement = definition.resolveModelInputRequirement
-          ? definition.resolveModelInputRequirement({ ...args })
-          : definition.modelInputRequirement;
-        return requirement?.requires_image_input === true;
       },
     },
     audit,

@@ -14,7 +14,6 @@ import { SQLiteEventStore } from '../../persistence/event-store';
 import { SqliteCheckpointer } from '../../persistence/checkpointer';
 import { createDefaultLlmNode } from '../../runtime-assembly/graphRuntimeFactory';
 import { defaultObservationPreviewPort } from '../../tools/defaultPorts';
-import { createToolModelInputCapabilityValidator } from '../../tools/modelInputCapabilityValidator';
 import { createToolRuntimeHarness } from '../../../testkit/agent-harness/toolRegistryHarness';
 import { createAgentRunnerRuntimeHarness } from '../../../testkit/agent-harness/agentRunnerRuntimeHarness';
 import { HistoryRepository } from 'src/features/conversation/history/history.repository';
@@ -127,8 +126,6 @@ export async function createDurableFlowHarness(
     new graph.ToolNode({
       toolRuntime: toolHarness.toolRuntime,
       observationPreview: defaultObservationPreviewPort,
-      // 与生产 ToolNode 一致；可选图片能力也需根据实际模型完成准入。
-      modelInputCapabilityValidator: createToolModelInputCapabilityValidator(),
     })
   );
   engine.registerNode(new graph.WaitUserNode());

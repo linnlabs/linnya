@@ -51,7 +51,7 @@ Windows 受限 Shell 的完整 CLI 回归使用 `test:shell-tool:windows-current
 
 macOS 的 `test:shell-tool:production-command-approval-dom` 使用真实 Renderer/Preload，覆盖可见凭据路径的三档权限、本次批准与保存规则。两类 E2E 都会重建 command runner，须顺序运行，不能共享 `dist/main/commands` 并发构建。
 
-产品及官方插件使用正式 npm Linnkit 0.41.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查
+产品及官方插件使用正式 npm Linnkit 0.42.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查
 模型列表的缺省字段、工具错误路径、图表诊断与递归 JSON 输入类型，并重建 schemas 的 CJS/ESM
 产物和生产锁。不能只通过依赖覆盖声明兼容；运行合同与独立打包消费门禁都必须通过。
 

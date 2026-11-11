@@ -1,5 +1,9 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import {
   CONVERSATION_CONTROL_SCHEMA_VERSION,
+  type ConversationAttachmentRef,
   type ConversationUiMessage,
   type ConversationControlToolsRequest,
 } from '@app/schemas';
@@ -17,6 +21,76 @@ interface ExecuteToolCallOptions {
   readonly timeoutMs: number;
   readonly now?: () => number;
   readonly sleep?: (durationMs: number) => Promise<void>;
+  /** 把工具结果图片写成本地文件并返回路径；默认写到系统临时目录。 */
+  readonly saveAttachment?: SaveToolAttachment;
+}
+
+export type SaveToolAttachment = (input: {
+  readonly conversationId: string;
+  readonly attachment: ConversationAttachmentRef;
+  readonly bytes: Uint8Array;
+}) => Promise<string>;
+
+export interface ToolAttachmentFile {
+  readonly id: string;
+  readonly media_type: ConversationAttachmentRef['mediaType'];
+  readonly width: number;
+  readonly height: number;
+  readonly path: string;
+}
+
+const ATTACHMENT_EXTENSIONS: Record<ConversationAttachmentRef['mediaType'], string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+/** 同一内容写同一文件名；目录与文件只对当前用户可读。 */
+const saveAttachmentToTemp: SaveToolAttachment = async ({ conversationId, attachment, bytes }) => {
+  const directory = path.join(os.tmpdir(), 'linnya-cli', 'attachments', conversationId);
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const filePath = path.join(directory, `${attachment.sha256}.${ATTACHMENT_EXTENSIONS[attachment.mediaType]}`);
+  await writeFile(filePath, bytes, { mode: 0o600 });
+  return filePath;
+};
+
+/**
+ * CLI 不运行模型，工具结果里的图片由调用方自己查看：逐个读取已复核的原件写成本地文件，
+ * 输出里给出路径。
+ */
+async function saveToolAttachments(input: {
+  readonly client: ConversationControlClient;
+  readonly conversationId: string;
+  readonly message: Extract<ConversationUiMessage, { message_type: 'tool_calls' }>;
+  readonly save: SaveToolAttachment;
+}): Promise<readonly ToolAttachmentFile[]> {
+  const files: ToolAttachmentFile[] = [];
+  for (const attachment of input.message.attachments ?? []) {
+    const response = await input.client.execute({
+      schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+      command: 'tools',
+      action: 'read_attachment',
+      conversation_id: input.conversationId,
+      message_id: input.message.message_id,
+      attachment_id: attachment.id,
+    });
+    if (response.command !== 'tools' || response.action !== 'read_attachment') {
+      throw new LinnyaCliError('protocol_incompatible', 'Attachment read returned another response type', false, 'tools');
+    }
+    const filePath = await input.save({
+      conversationId: input.conversationId,
+      attachment: response.attachment,
+      bytes: Buffer.from(response.content_base64, 'base64'),
+    });
+    files.push({
+      id: attachment.id,
+      media_type: response.attachment.mediaType,
+      width: response.attachment.width,
+      height: response.attachment.height,
+      path: filePath,
+    });
+  }
+  return files;
 }
 
 /**
@@ -86,6 +160,12 @@ export async function executeToolCall(options: ExecuteToolCallOptions) {
         ),
       );
       if (matches.length === 1 && matches[0]) {
+        const attachmentFiles = await saveToolAttachments({
+          client: options.client,
+          conversationId: accepted.receipt.conversation_id,
+          message: matches[0],
+          save: options.saveAttachment ?? saveAttachmentToTemp,
+        });
         return {
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
           ok: toolCallSucceeded(matches[0]),
@@ -94,6 +174,7 @@ export async function executeToolCall(options: ExecuteToolCallOptions) {
           conversation_id: accepted.receipt.conversation_id,
           run_id: accepted.receipt.run_id,
           tool: matches[0],
+          ...(attachmentFiles.length > 0 ? { attachment_files: attachmentFiles } : {}),
         };
       }
       if (matches.length > 1) {

@@ -18,33 +18,9 @@ import { readFileForTool } from '../../../app-hosts/linnya/application/file-read
 import { BaseTool, type ToolContext, type ToolParameterSchema } from '../../types';
 import { validateWorkspaceFileToolArguments } from '../shared/workspaceFileToolContract';
 
-const READ_FILE_MODEL_INPUT_REQUIREMENT = Object.freeze({
-  requires_image_input: true,
-  placements: Object.freeze(['tool_result_image'] as const),
-});
-
 export class ReadFileTool extends BaseTool {
   readonly name = 'read_file';
   readonly argumentValidationErrorCode = 'READ_FILE_ARGUMENTS_INVALID';
-  // 读文本与读图共用一个工具；模型收不到工具结果图片时读图降级为元数据，不能让 run 失败。
-  readonly modelInputRequirement = READ_FILE_MODEL_INPUT_REQUIREMENT;
-  readonly modelInputDelivery = 'when_supported' as const;
-  /**
-   * 每次调用的模型输入要求只看参数：Workspace 文档（workspace: locator 或 inode）只返回文本或
-   * DocumentView，不会产出图片，因此不要求模型能力；conversation:/file: 可能按 magic bytes 读成图片，
-   * 保留图片要求。ToolNode 只对有要求的调用检查“最近一次成功的模型”，所以无模型的 Host 直接调用
-   * （CLI tools call）读 Workspace 文本不会因缺少模型失败，Agent 读图的准入与降级保持不变。
-   * PDF 的 pages/find 虽只返回文字，也保留要求：ToolNode 据此绑定当前模型能否接收工具结果图片，
-   * 无文字层页的提示按这一结果分流（能看图才建议 page_image）。
-   * 必须是确定性规则、不做 I/O；locator 非法时由参数校验先拒绝。
-   */
-  readonly resolveModelInputRequirement = (args: Record<string, unknown>) => {
-    const locator = FileLocatorSchema.safeParse(args.locator);
-    return locator.success && !locator.data.startsWith('workspace:')
-      ? READ_FILE_MODEL_INPUT_REQUIREMENT
-      : undefined;
-  };
-
   get description() {
     return [
       'Read a project VFS file, a current-conversation file, or a host absolute file through one explicit locator contract.',

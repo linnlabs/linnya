@@ -262,9 +262,9 @@ Skill 卡的新调用只承接 `skill` 三种 action；Skill producer 分 action
 ImageGeneration 卡只消费经过 admission 的图片路径和可选尺寸。流式阶段允许且只允许 `phase='start' + status='loading' + args={}` 这一种早期占位，完整参数到达后必须通过 strict 参数合同；成功结果中的 `data/media/observation` 必须通过同一 owner schema。`data` 是 Agent 可用的 `conversation:` locator，`media.path` 是 Renderer 受控物理展示路径，两者可以不同，不能靠字符串相等伪造同一身份。组件不得把 observation/content 猜成 JSON 或图片路径。live key 是 `generate_image`；`text_to_image` 只通过同一个 strict projector 回放历史事件。标题、布局等展示配置仍只属于 Renderer registry。
 
 图片生成成功与聊天模型看图能力解耦：Renderer 始终消费同一 `media` 成功结果。模型的 `image_input` 只表达图片理解
-能力；生成图能否继续进入模型，还要单独满足实际 route 的 `tool_result_image`。`generate_image` 使用
-`modelInputDelivery='when_supported'`：满足时工具事件另带图片 attachment，不满足时仍返回成功 observation、locator 与
-用户可见图片，但不创建模型附件。这里不能把 placement 缺失投影成工具失败，也不能由 Renderer 根据模型能力补造附件，
+能力；生成图能否继续进入模型，还要单独满足实际 route 的 `tool_result_image`。是否附带由 Host 的
+`toolResultImagePolicy` 判断（Agent 按本 run 模型，CLI 调用方默认接收）：可附带时工具事件另带图片 attachment，
+不可附带时仍返回成功 observation、locator 与用户可见图片，但不创建模型附件。这里不能把 placement 缺失投影成工具失败，也不能由 Renderer 根据模型能力补造附件，
 更不能把图片伪装成后续 user message。
 
 未配置图片生成模型属于 `generate_image` 的真实业务失败：工具向 Agent 返回“尚未配置图片生成模型，请提醒

@@ -69,7 +69,7 @@ import {
   type ToolRuntimeHarness,
 } from 'src/app-hosts/linnya/testkit/agent-harness/toolRegistryHarness';
 import { HistoryRepository } from 'src/features/conversation/history/history.repository';
-import { BaseTool, type ToolContext, type ToolParameterSchema } from 'src/tools/types';
+import { BaseTool, resolveToolResultImageDelivery, type ToolContext, type ToolParameterSchema } from 'src/tools/types';
 import { SubrunBatchTool } from 'src/tools/agent_control/subrun/batch';
 import { WriteToTableTool } from 'src/domains/markdown/tools';
 import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
@@ -147,9 +147,11 @@ class HostOnlyBlockingTool extends BaseTool {
 /** 保留 read_file 的正式参数校验与模型输入声明，只把读取替换成固定文本，检验 ToolNode 准入。 */
 class TextOnlyReadFileTool extends ReadFileTool {
   readonly reads: Record<string, unknown>[] = [];
+  readonly imageDeliveries: string[] = [];
 
-  override async run(args: Record<string, unknown>): Promise<string> {
+  override async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
     this.reads.push(args);
+    this.imageDeliveries.push(resolveToolResultImageDelivery(context));
     return JSON.stringify({ observation: '1 | # Notes', data: { locator: args.locator } });
   }
 }
@@ -358,7 +360,7 @@ describe('Flow host forced-tool integration', () => {
     expect(aiHarness.getConsumedTurnCount()).toBe(0);
   });
 
-  it('无模型的 Host 直接调用：读 Workspace 文本不需要模型；可能交给模型看图的读取被能力门禁拒绝', async () => {
+  it('无模型的 Host 直接调用照常执行；结果交还调用方，Host 判定可附带图片', async () => {
     const readFile = new TextOnlyReadFileTool();
     aiHarness = createScriptedInferenceHarness([{ contentChunks: ['不应被调用'] }]);
     const flow = await createHostToolFlow(readFile, aiHarness);
@@ -384,10 +386,9 @@ describe('Flow host forced-tool integration', () => {
     expect(await readOutput('conv_host_read_text')).toMatchObject({ tool_name: 'read_file', status: 'success' });
 
     await callReadFile('conv_host_read_image', 'conversation:/slide.png');
-    expect(readFile.reads).toHaveLength(1);
-    const denied = await readOutput('conv_host_read_image');
-    expect(denied.status).toBe('error');
-    expect(JSON.stringify(denied)).toContain('llm.unsupported_capability');
+    expect(readFile.reads).toHaveLength(2);
+    expect(await readOutput('conv_host_read_image')).toMatchObject({ tool_name: 'read_file', status: 'success' });
+    expect(readFile.imageDeliveries).toEqual(['attach', 'attach']);
     expect(aiHarness.getConsumedTurnCount()).toBe(0);
   });
 

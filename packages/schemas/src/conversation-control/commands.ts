@@ -197,6 +197,18 @@ export const ConversationControlToolsCallRequestSchema = z.object({
   }
 });
 
+/**
+ * 读取本会话某条工具消息附带的图片原件。CLI 不运行模型，工具结果里的图片交给调用方自己查看；
+ * 只认该消息已登记的附件，不能按任意 asset ID 读取。
+ */
+export const ConversationControlToolsReadAttachmentRequestSchema = z.object({
+  ...ToolsRequestBaseFields,
+  action: z.literal('read_attachment'),
+  conversation_id: OpaqueIdSchema,
+  message_id: OpaqueIdSchema,
+  attachment_id: OpaqueIdSchema,
+}).strict();
+
 /** 当前 Host 生命周期内的临时开放；省略 enabled 只查询，不修改状态。 */
 export const ConversationControlWebToolAccessRequestSchema = z.object({
   ...ToolsRequestBaseFields,
@@ -208,6 +220,7 @@ export const ConversationControlToolsRequestSchema = z.union([
   ConversationControlToolsListRequestSchema,
   ConversationControlToolsDescribeRequestSchema,
   ConversationControlToolsCallRequestSchema,
+  ConversationControlToolsReadAttachmentRequestSchema,
   ConversationControlWebToolAccessRequestSchema,
 ]);
 

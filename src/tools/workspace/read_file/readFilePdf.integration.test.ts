@@ -51,7 +51,7 @@ function createContext(options: { readonly imageAdmitted?: boolean } = {}) {
         ingestLocalImage: vi.fn(() => Promise.reject(new Error('PDF 页面不经本地路径入库。'))),
       },
       toolResultAssetClaims: { issueClaims, consumeClaims: vi.fn(() => []), releaseClaims: vi.fn() },
-      ...(options.imageAdmitted === false ? { modelInputAdmission: { admitted: false } } : {}),
+      ...(options.imageAdmitted === false ? { toolResultImagePolicy: { deliveryFor: () => 'metadata_only' as const } } : {}),
     },
   });
   return { context, ingestImageBytes, issueClaims };
@@ -135,15 +135,7 @@ describe('read_file 读取 PDF', () => {
     expect(notDelivered.ingestImageBytes).not.toHaveBeenCalled();
   });
 
-  it('物理文件的 PDF 读取都声明图片要求，让 ToolNode 绑定当前模型能否看图', () => {
-    const tool = new ReadFileTool();
-    const locator = 'file:///tmp/report.pdf';
-    for (const args of [{ locator }, { locator, pages: '3' }, { locator, find: 'tariff' }, { locator, view: 'page_image', pages: '3' }]) {
-      expect(tool.resolveModelInputRequirement(args)).toMatchObject({ requires_image_input: true });
-    }
-  });
-
-  it('当前模型不收图时，无文字层页说明读不到，不建议 page_image', async () => {
+  it('Host 判定结果接收方不收图时，无文字层页说明读不到，不建议 page_image', async () => {
     const locator = await writePdf([['Cover'], null, ['Appendix']]);
     const { result } = await read({ locator, pages: '1-3' }, { imageAdmitted: false });
     expect(result.data).toMatchObject({ pages_without_text: [2] });

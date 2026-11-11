@@ -15,10 +15,6 @@ vi.mock('src/app-hosts/linnya/application/image-generation', () => ({
 const generateImages = vi.mocked(generateAndPublishImages);
 const conversationId = 'conversation-generate-image';
 const conversationRoot = path.join('/tmp', conversationId);
-const requirement = {
-  requires_image_input: true,
-  placements: ['tool_result_image'] as const,
-};
 const savedImage = {
   filePath: path.join(conversationRoot, 'generated-images', 'image.png'),
   fileName: 'image.png',
@@ -40,11 +36,7 @@ function createContext(input: {
     conversationId,
     parentToolCallId: ToolCallIdSchema.parse('call-generate-image'),
     imageGenerationModelId: 'configured-image-model',
-    modelInputAdmission: {
-      requirement,
-      delivery: 'when_supported',
-      admitted: input.admitted,
-    },
+    toolResultImagePolicy: { deliveryFor: () => (input.admitted ? 'attach' : 'metadata_only') },
     conversationWorkDirectoryAdmission: {
       async withAdmission(_request, admitted) {
         return admitted({

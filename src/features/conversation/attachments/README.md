@@ -110,13 +110,13 @@ tool history、working memory、摘要与 checkpoint 规则。图片退出活动
 
 工具产生的图片先通过现有 `ManagedImageIngressPort` 登记为 durable asset，再由 `ToolResultAssetClaimRegistryPort` 签发 tool-result claim，并通过工具结果的 `modelInput.attachments` 声明明确选择哪些结果进入模型输入。Tool Node 将选中的引用绑定到 tool message；后续与用户图片走同一套能力判断、上下文预算、verified-content 读取和 provider adapter 转换。当前 `generate_image` 已接入这条链路，物理文件直接写入 conversation-scoped 工作区的 `generated-images/`，Agent 结果只返回会话相对路径。
 
-child Agent 复用同一个 Tool Node、模型输入 resolver 和能力准入，因此图片工具结果只进入正在执行的 child 模型上下文。为了让父任务里的 Subrun 详情可见，成功 child `tool_output` 的 durable refs 还会被 parent trace 作为 UI read model 原样投影并写入紧凑历史；完整详情再复用主会话的图片卡和预览端口。这个展示投影不复制图片字节或物理路径，不触发父任务重跑 child 工具，也不会把 child 图片绑定到父模型消息。
+child Agent 复用同一个 Tool Node、模型输入 resolver 与 Host 图片判断（按 child 自己的模型），因此图片工具结果只进入正在执行的 child 模型上下文。为了让父任务里的 Subrun 详情可见，成功 child `tool_output` 的 durable refs 还会被 parent trace 作为 UI read model 原样投影并写入紧凑历史；完整详情再复用主会话的图片卡和预览端口。这个展示投影不复制图片字节或物理路径，不触发父任务重跑 child 工具，也不会把 child 图片绑定到父模型消息。
 
 “用户上传图片”和“工具结果图片”在来源上不同，在读取安全和物化入口上共用同一合同，但可用性必须逐来源判断。
 模型目录的 `image_input` 只表达模型能否理解图片，route 的 `user_image` / `tool_result_image` 分别表达当前 codec
-能否保持原角色编码；有效能力是二者相交。Composer 只检查用户图片位置，Tool Node 只检查本次工具实际需要的位置。
-业务层不按模型名称猜测格式，也不把工具图片改写成 user message。图片生成采用 `when_supported`：route 不支持工具图片时，
-生成、保存和 Renderer 展示仍成功，只省略下一轮模型附件。
+能否保持原角色编码；有效能力是二者相交。Composer 只检查用户图片位置；工具结果图片由 Host 的 `toolResultImagePolicy`
+按本 run 模型判断是否附带（CLI 调用方默认接收），框架不再在工具执行前核对。业务层不按模型名称猜测格式，也不把工具图片
+改写成 user message。route 不支持工具图片时，图片生成、保存和 Renderer 展示仍成功，只省略下一轮模型附件。
 
 ## 图片字节策略
 

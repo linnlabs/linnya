@@ -15,9 +15,6 @@ function readToolDefinitionCompat(toolName: string) {
     return {
       parameters: tool.parameters,
       idempotency: tool.idempotency,
-      modelInputRequirement: tool.modelInputRequirement,
-      modelInputDelivery: tool.modelInputDelivery,
-      resolveModelInputRequirement: tool.resolveModelInputRequirement,
     };
   }
   return undefined;

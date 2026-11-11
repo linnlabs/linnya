@@ -15,7 +15,6 @@ import {
   defaultObservationPreviewPort,
   defaultToolRuntimePort,
 } from 'src/app-hosts/linnya/adapters/tools/defaultPorts';
-import { createToolModelInputCapabilityValidator } from 'src/app-hosts/linnya/adapters/tools/modelInputCapabilityValidator';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 export interface LinnyaChildRunInvokerDependencies {
@@ -30,7 +29,6 @@ export interface LinnyaChildRunInvokerDependencies {
   toolRuntime?: tools.ToolRuntimePort;
   toolManager?: agentTools.ToolManager;
   observationPreview?: tools.ObservationPreviewPort;
-  modelInputCapabilityValidator?: tools.ToolModelInputCapabilityValidatorPort;
   llmImageInputEstimator?: LlmImageInputEstimatorPort;
   eventToMessageConverter?: (events: RuntimeEvent[]) => unknown[];
   defaultJudgeToolName?: string;
@@ -93,8 +91,6 @@ export function createLinnyaChildRunInvoker(
     })),
     toolRuntime,
     observationPreview: dependencies.observationPreview ?? defaultObservationPreviewPort,
-    modelInputCapabilityValidator: dependencies.modelInputCapabilityValidator
-      ?? createToolModelInputCapabilityValidator(dependencies.modelCatalog),
     modelInputResolver: dependencies.modelInputResolver,
     eventToMessageConverter: dependencies.eventToMessageConverter ?? agentUtils.convertEventsToAiMessages,
     defaultJudgeToolName: dependencies.defaultJudgeToolName ?? 'assemble_documents',

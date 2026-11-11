@@ -20,6 +20,7 @@ import {
   type ToolArgs,
   type ToolContext,
   type LinnyaToolSchemaContext,
+  resolveToolResultImageDelivery,
 } from '../types';
 import { ASSET_IMAGE_MAX_PIXELS } from '../../domains/assets/definitions/imageAssetPolicy';
 import type { SavedGeneratedImageInfo } from '../../domains/assets/features/generated-image-publication';
@@ -51,11 +52,6 @@ const IMAGE_GENERATION_SUPPORTED_SIZES = [
   '1440x2560',
   '2560x1440',
 ] as const;
-
-const GENERATED_IMAGE_MODEL_INPUT_REQUIREMENT = Object.freeze({
-  requires_image_input: true,
-  placements: Object.freeze(['tool_result_image'] as const),
-});
 
 function buildImageMedia(savedImages: readonly SavedGeneratedImageInfo[]): ImageGenerationMedia[] {
   return savedImages.map(image => ({
@@ -143,8 +139,6 @@ async function generateImagesInConversationWorkspace(
  */
 export class GenerateImageTool extends BaseTool {
   readonly name = 'generate_image';
-  readonly modelInputRequirement = GENERATED_IMAGE_MODEL_INPUT_REQUIREMENT;
-  readonly modelInputDelivery = 'when_supported' as const;
   readonly streaming = {
     emitPlaceholder: true,
     emitArgumentSnapshots: true,
@@ -312,9 +306,9 @@ Note: The selected size must satisfy the current model constraints.`,
       toConversationImageLocator(generated.rootPath, image.filePath)
     );
     const media = buildImageMedia(savedImages);
-    // 生成是主结果，回图只是增强反馈。只有 ToolNode 已按真实 active model 明确准入时才登记受管副本。
+    // 生成是主结果，回图只是增强反馈。Host 判断结果接收方能看图时才登记受管副本。
     const modelInput =
-      context.modelInputAdmission?.admitted === true
+      resolveToolResultImageDelivery(context) === 'attach'
         ? await issueGeneratedImageClaims(context, savedImages)
         : undefined;
 

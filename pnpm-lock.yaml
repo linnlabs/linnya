@@ -82,8 +82,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(encoding@0.1.13)
       '@linnlabs/linnkit':
-        specifier: 0.41.0
-        version: 0.41.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.42.0
+        version: 0.42.0(vitest@4.1.12)(zod@4.6.7)
       '@linnlabs/linnkit-provider-ai-sdk':
         specifier: workspace:*
         version: link:packages/linnkit-provider-ai-sdk
@@ -694,8 +694,8 @@ importers:
         version: 4.5.0(ai@7.0.162(zod@4.6.7))(zod@4.6.7)
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.41.0
-        version: 0.41.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.42.0
+        version: 0.42.0(vitest@4.1.12)(zod@4.6.7)
       '@types/node':
         specifier: ^24.3.0
         version: 24.9.1
@@ -777,8 +777,8 @@ importers:
         specifier: workspace:*
         version: link:../schemas
       '@linnlabs/linnkit':
-        specifier: 0.41.0
-        version: 0.41.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.42.0
+        version: 0.42.0(vitest@4.1.12)(zod@4.6.7)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -873,8 +873,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.41.0
-        version: 0.41.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.42.0
+        version: 0.42.0(vitest@4.1.12)(zod@4.6.7)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -931,8 +931,8 @@ importers:
         version: 11.1.1
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.41.0
-        version: 0.41.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.42.0
+        version: 0.42.0(vitest@4.1.12)(zod@4.6.7)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -1040,8 +1040,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.41.0
-        version: 0.41.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.42.0
+        version: 0.42.0(vitest@4.1.12)(zod@4.6.7)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -2160,8 +2160,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@linnlabs/linnkit@0.41.0':
-    resolution: {integrity: sha512-HD5t0alqFsGfvFBR0Hv8R/unxGGdMqjM7tGMxlleT3qsDw4zvJL4crr1nmQhr0kGC3V2CUJqBBV+HI0eh8+oGw==}
+  '@linnlabs/linnkit@0.42.0':
+    resolution: {integrity: sha512-UgzsEFD4aeXzEGb4oQ/FFnA7tHDzsO+tag48HCwp35lJs3ux7IahP7iuc8ayFY3Y+b8ODD2EfUtOberFLvuIeQ==}
     hasBin: true
     peerDependencies:
       vitest: ^2.0.0 || ^3.0.0 || ^4.0.0
@@ -7588,7 +7588,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@linnlabs/linnkit@0.41.0(vitest@4.1.12)(zod@4.6.7)':
+  '@linnlabs/linnkit@0.42.0(vitest@4.1.12)(zod@4.6.7)':
     dependencies:
       eventsource-parser: 3.1.0
       tiktoken: 1.0.22

@@ -14,5 +14,10 @@ export function resolveAuthorizedHostToolCall(
   );
   if (firstDecision?.type !== 'tool_call_decision' || firstDecision.tool_name !== request.tool_name)
     return undefined;
-  return { toolName: request.tool_name, toolCallId: firstDecision.tool_call_id };
+  return {
+    toolName: request.tool_name,
+    toolCallId: firstDecision.tool_call_id,
+    // 批次后直接交还 Host 时，结果由发起调用的 Host 调用方接收，而不是本 run 的模型。
+    ...(request.completion_mode === 'yield_after_batch' ? { resultReceiver: 'host_caller' as const } : {}),
+  };
 }

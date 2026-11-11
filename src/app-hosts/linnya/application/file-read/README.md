@@ -15,8 +15,9 @@ Workspace VFS、conversation 工作目录、Assets 和工具运行时之间的 a
 - 图片 ingress 得到内容 SHA-256 后，只查询 admitted working history 中当前 run 的正式附件事实；相同像素
   已附加时返回 `attachment_status=already_attached` 且不再签发 claim。其他 run、已被压缩移除的附件或仅同名文件
   都不能命中；
-- 当前模型连接不接收工具结果图片时（ToolNode 的 `modelInputAdmission.admitted=false`），只校验图片并返回
-  `attachment_status=not_delivered` 与尺寸，不进入 ingress、不签发 claim，observation 明确告知模型没有看到像素；
+- 图片能否附带由 Host 的 `toolResultImagePolicy` 判断（结果交给 Agent 时按本 run 模型在模型目录中的工具结果图片能力，
+  CLI 调用方默认接收）；判定为 `metadata_only` 时只校验图片并返回 `attachment_status=not_delivered` 与尺寸，
+  不进入 ingress、不签发 claim，observation 明确告知模型没有看到像素；
 - PDF 由 Node adapter 按 `%PDF-` 签名识别（100 MiB 门禁），只返回文件身份，不读入正文；按页读取见下节；
 - Office、压缩包、数据库和可执行文件不在 generic Read 内提取，由 Shell/CLI 显式转换。
 
@@ -35,11 +36,10 @@ Workspace VFS、conversation 工作目录、Assets 和工具运行时之间的 a
   走与普通图片相同的 claim、`already_attached` 和 `not_delivered` 规则。selection id 由 locator 与页码派生。
 
 没有文字层的页列入 `pages_without_text`，版面无法用几何方式稳定排序的页列入 `complex_layout_pages`。
-能否看图沿用读图片的同一判断：物理文件的每次 `read_file`（含 PDF 的 `pages`/`find`）都声明工具结果图片要求，
-ToolNode 按当前 Agent 模型在模型目录中的 `input_support` 绑定 `modelInputAdmission`。模型接收图片时，
-observation 建议对无文字层页用 `page_image`；不接收时明确说明这些页读不到、不得猜测内容，`page_image`
-本身也只返回尺寸（`not_delivered`）。这里不调用知识库另配的 PDF OCR 或图片理解模型，用户没有配置它们
-也不影响读取。因此 CLI `tools call`（没有模型）与读图片一样不能读取物理文件中的 PDF。文字层原样返回，不承诺表格结构。PDF 参数与
+能否看图沿用读图片的同一判断（Host 的 `toolResultImagePolicy`）：可附带图片时，observation 建议对无文字层页用
+`page_image`；不可附带时明确说明这些页读不到、不得猜测内容，`page_image` 本身也只返回尺寸（`not_delivered`）。
+这里不调用知识库另配的 PDF OCR 或图片理解模型，用户没有配置它们也不影响读取。CLI `tools call` 的调用方默认接收
+图片，`page_image` 的原件由 CLI 写成本地文件。文字层原样返回，不承诺表格结构。PDF 参数与
 `offset/limit` 互斥（`READ_FILE_PDF_WINDOW_CONFLICT`），用在非 PDF 上返回 `READ_FILE_PDF_OPTION_UNSUPPORTED`，
 PDF.js 打不开返回 `READ_FILE_PDF_UNREADABLE`；这些检查在任何副作用之前完成。
 

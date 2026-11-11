@@ -22,7 +22,7 @@ import type {
   LlmInputMaterializerPort,
 } from '@linnlabs/linnkit/ports';
 import type { telemetry } from '@linnlabs/linnkit/runtime-kernel';
-import { createToolModelInputCapabilityValidator } from 'src/app-hosts/linnya/adapters/tools/modelInputCapabilityValidator';
+import { createToolResultImagePolicy } from 'src/app-hosts/linnya/adapters/tools/toolResultImagePolicy';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import {
   createScriptedChatModelCatalog,
@@ -118,6 +118,9 @@ export function createGraphLoopHarness(options: GraphLoopHarnessOptions): GraphL
               }),
           }
         : {}),
+      // 与生产 ToolContext 一致：Host 按本 run 模型判断工具结果能否附带图片。
+      modelId: options.requestPatch?.model_id ?? SCRIPTED_MODEL_ID,
+      toolResultImagePolicy: createToolResultImagePolicy(modelCatalog),
       ...(options.toolContextPatch ?? {}),
     },
   });
@@ -161,9 +164,6 @@ export function createGraphLoopHarness(options: GraphLoopHarnessOptions): GraphL
     history: options.history ?? [],
     auditPort: options.auditPort,
     telemetryPort: options.telemetryPort,
-    modelInputCapabilityValidator: options.modelInput
-      ? createToolModelInputCapabilityValidator(options.modelInput.modelCatalog)
-      : undefined,
     modelInputResolver: options.modelInput?.toolModelInputResolver,
     runtimeEventSink,
     signal: options.signal,

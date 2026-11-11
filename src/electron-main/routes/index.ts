@@ -138,7 +138,6 @@ import {
   defaultObservationPreviewPort,
   defaultToolRuntimePort,
 } from '../../app-hosts/linnya/adapters/tools/defaultPorts';
-import { createToolModelInputCapabilityValidator } from '../../app-hosts/linnya/adapters/tools/modelInputCapabilityValidator';
 import {
   createConversationFileLinkRuntime,
   registerConversationFileLinkRuntime,
@@ -719,7 +718,6 @@ export async function configureRoutes(
         observationPreview: defaultObservationPreviewPort,
         telemetryPort,
         auditPort,
-        modelInputCapabilityValidator: createToolModelInputCapabilityValidator(),
         modelInputResolver: toolModelInputResolver,
       })
     );
@@ -934,6 +932,7 @@ export async function configureRoutes(
       events: createEventStoreExecutionAuditEventPort(conversationEventStore),
       tools: dependencies.agentToolEnvironment?.toolRuntime ?? defaultToolRuntimePort,
       auditControl: agentRuntime.audit,
+      ...(imagePreview ? { attachmentImages: imagePreview } : {}),
     });
     logger.info('✅ 历史管理服务已初始化');
     logger.info('✅ 流程编排器已初始化');

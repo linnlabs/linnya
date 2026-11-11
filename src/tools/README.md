@@ -133,8 +133,6 @@ export abstract class BaseTool {
 
   // 可选实现（只描述执行语义）
   readonly idempotency?: ToolIdempotencyPolicy;
-  readonly modelInputRequirement?: ModelInputRequirement;
-  readonly modelInputDelivery?: 'required' | 'when_supported';
   getExecutionSummary?(output: string): string;
 
   // 必须实现

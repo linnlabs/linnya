@@ -13,6 +13,7 @@ import type { ConversationWorkDirectoryAdmissionPort } from 'src/app-hosts/linny
 import type { SubrunTraceHistoryProjectorPort } from 'src/app-hosts/linnya/adapters/persistence/subrun-trace-history/definitions/subrunTraceHistory';
 import { createLinnyaChildRunContextInjections } from 'src/app-hosts/linnya/context/agent/createLinnyaFenceInjections';
 import { createWebFileStore } from '../tools/createWebFileStore';
+import { createToolResultImagePolicy } from '../tools/toolResultImagePolicy';
 import { createWebReadAccessHistory } from '../tools/createWebReadAccessHistory';
 
 type CreateSubRunTracePublisher = NonNullable<ToolContext['createSubRunTracePublisher']>;
@@ -29,6 +30,8 @@ export interface ToolContextHostServices {
   conversationWorkDirectoryAdmission?: ConversationWorkDirectoryAdmissionPort;
   managedImageIngress?: ToolContext['managedImageIngress'];
   toolResultAssetClaims?: ToolContext['toolResultAssetClaims'];
+  /** 缺省按默认模型目录判断；测试或独立模型目录的 Host 显式传入。 */
+  toolResultImagePolicy?: ToolContext['toolResultImagePolicy'];
   commandRunPermission: CommandRunPermissionContext;
   signal?: AbortSignal;
 }
@@ -128,6 +131,7 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
     webReadAccessHistory: createWebReadAccessHistory(() => options.hostServices.databaseService.getDb(), options.conversationId),
     managedImageIngress: options.hostServices.managedImageIngress,
     toolResultAssetClaims: options.hostServices.toolResultAssetClaims,
+    toolResultImagePolicy: options.hostServices.toolResultImagePolicy ?? createToolResultImagePolicy(),
     commandRunPermission: options.hostServices.commandRunPermission,
     workspaceProjectId: options.request.project_metadata?.id,
     workspaceProjectMetadata: options.request.project_metadata,

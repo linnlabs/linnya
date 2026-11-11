@@ -1,9 +1,10 @@
+import { createHash } from 'node:crypto';
 import express from 'express';
 import { createConversationControlBridgeRouter } from '../../../adapters/conversation-control-bridge/conversationControlBridge.router';
 import { createLinnyaAuditRuntime } from 'src/domains/audit';
 import { createCommandApprovalHost } from 'src/app-hosts/linnya/adapters/commands/approval-host';
 import { parseCommandApprovalRequest, CommandApprovalReplySubmissionV1Schema } from '@app/schemas/commands';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   ConversationSelectedAgentIdSchema,
   ConversationControlSendRequestSchema,
@@ -290,7 +291,11 @@ const readFileTool = new ReadFileTool();
 
 function fixture(
   initialRuns: ConversationControlRunRecord[] = [],
-  options: { auditAllowed?: boolean } = {}
+  options: {
+    auditAllowed?: boolean;
+    tailMessages?: ReturnType<typeof activeInteractionMessage>[];
+    attachmentImages?: ConversationControlUseCasePorts['attachmentImages'];
+  } = {}
 ) {
   const commandApprovals = createCommandApprovalHost();
   commandApprovals.setControlEndpointAvailable(true);
@@ -311,6 +316,7 @@ function fixture(
   let conversationProjectId: string | null | undefined = 'project-1';
 
   const ports: ConversationControlUseCasePorts = {
+    ...(options.attachmentImages ? { attachmentImages: options.attachmentImages } : {}),
     commandApprovals,
     flow: {
       async start(request) {
@@ -429,7 +435,7 @@ function fixture(
         return {
           status: 'ready',
           conversation_id: conversationId,
-          messages: [activeInteractionMessage()],
+          messages: options.tailMessages ?? [activeInteractionMessage()],
           has_more_before: false,
           has_more_after: false,
           revision: 1,
@@ -479,11 +485,6 @@ function fixture(
       },
       validateArguments(toolName, args) {
         return toolName === 'read_file' ? readFileTool['validateArguments']({ ...args }) : { success: true };
-      },
-      // read_file 使用真实工具声明，其余 CLI 工具不需要模型输入。
-      requiresModelInput(toolName, args) {
-        return toolName === 'read_file'
-          && readFileTool.resolveModelInputRequirement({ ...args })?.requires_image_input === true;
       },
     },
     audit: {
@@ -699,7 +700,7 @@ describe('conversation-control use case', () => {
     });
   });
 
-  it('CLI 没有模型：读 Workspace 文本照常接纳，可能交给模型看图的读取在 Flow 前明确拒绝', async () => {
+  it('CLI 没有模型也接纳任何 read_file 读取，图片由调用方自己接收', async () => {
     const test = fixture();
     const call = { schema_version: 1, command: 'tools', action: 'call', tool_name: 'read_file',
       project_id: 'project-1' } as const;
@@ -709,16 +710,56 @@ describe('conversation-control use case', () => {
     test.setRuns([run('completed')]);
     expect(test.startRequests).toHaveLength(2);
 
-    for (const locator of ['conversation:/slide.png', 'file:///tmp/notes.md']) {
-      const rejected = test.useCase.tools({ ...call, args: { locator } });
-      await expect(rejected).rejects.toMatchObject({ code: 'capability_unavailable' });
-      await expect(rejected).rejects.toThrow(/run without a model/);
+    for (const locator of ['conversation:/slide.png', 'file:///tmp/report.pdf']) {
+      await test.useCase.tools({ ...call, args: { locator } });
+      test.setRuns([run('completed')]);
     }
-    expect(test.startRequests).toHaveLength(2);
+    expect(test.startRequests).toHaveLength(4);
+    expect(test.startRequests[3]).toMatchObject({
+      options: { host_tool_call: { tool_name: 'read_file', completion_mode: 'yield_after_batch' } },
+    });
+  });
+
+  it('read_attachment 只读该会话工具消息已登记的附件，并按记录核对内容', async () => {
+    const bytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 9, 8, 7]);
+    const attachment = {
+      id: 'read-file-pdf-page:2', kind: 'image' as const, assetId: 'asset-page-2', mediaType: 'image/jpeg' as const,
+      byteLength: bytes.byteLength, width: 1087, height: 1536,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    };
+    const toolMessage = ConversationUiMessageSchema.parse({
+      ...activeInteractionMessage(),
+      message_id: 'tool-message-image',
+      attachments: [attachment],
+      payload: { tool_call_id: 'tool-call-2', tool_name: 'read_file', status: 'success', phase: 'complete',
+        data: { attachment_status: 'attached' }, started_at: 105, completed_at: 106 },
+    });
+    const readImage = vi.fn(async (assetId: string) => ({
+      byteLength: bytes.byteLength, bytes: assetId === 'asset-page-2' ? bytes : Buffer.from([1]),
+    }));
+    const test = fixture([], { tailMessages: [toolMessage], attachmentImages: { readImage } });
+    const read = (message_id: string, attachment_id: string) => test.useCase.tools({
+      schema_version: 1, command: 'tools', action: 'read_attachment',
+      conversation_id: 'conversation-1', message_id, attachment_id,
+    });
+
+    await expect(read('tool-message-image', attachment.id)).resolves.toMatchObject({
+      action: 'read_attachment', attachment, content_base64: bytes.toString('base64'),
+    });
+    expect(readImage).toHaveBeenCalledWith('asset-page-2');
+    await expect(read('tool-message-image', 'other')).rejects.toMatchObject({ code: 'invalid_request' });
+    await expect(read('missing-message', attachment.id)).rejects.toMatchObject({ code: 'result_unavailable' });
+
+    readImage.mockResolvedValueOnce({ byteLength: bytes.byteLength, bytes: Buffer.alloc(bytes.byteLength) });
+    await expect(read('tool-message-image', attachment.id)).rejects.toMatchObject({ code: 'result_unavailable' });
+    await expect(fixture([], { tailMessages: [toolMessage] }).useCase.tools({
+      schema_version: 1, command: 'tools', action: 'read_attachment',
+      conversation_id: 'conversation-1', message_id: 'tool-message-image', attachment_id: attachment.id,
+    })).rejects.toMatchObject({ code: 'capability_unavailable' });
   });
 
   it.each(['/notes.md', 'workspace:document-id', 'conversation:notes.md', 'file:relative.md', ' workspace:/notes.md'])(
-    '错误 locator %s 在能力判断与 Flow 之前返回参数错误', async locator => {
+    '错误 locator %s 在 Flow 之前返回参数错误', async locator => {
       const test = fixture();
       const result = test.useCase.tools({ schema_version: 1, command: 'tools', action: 'call',
         tool_name: 'read_file', project_id: 'project-1', args: { locator } });

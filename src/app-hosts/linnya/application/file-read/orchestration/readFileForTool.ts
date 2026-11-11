@@ -23,7 +23,7 @@ import { resolveWorkspaceFileToolRuntime } from 'src/tools/workspace/shared/file
 import { toFileToolEntry } from 'src/tools/workspace/shared/fileToolOutput';
 import { countTextCharacters } from 'src/shared/textCharacterMetrics';
 import { prependReadTextMetrics } from 'src/tools/workspace/shared/textMetricsObservation';
-import type { ToolContext } from 'src/tools/types';
+import { resolveToolResultImageDelivery, type ToolContext } from 'src/tools/types';
 import { PhysicalFileReadError } from '../definitions/physicalFileRead';
 import { hasRunImageAttachment } from '../functions/hasRunImageAttachment';
 import { remapWorkspaceCitationRefs } from '../functions/remapWorkspaceCitationRefs';
@@ -105,8 +105,8 @@ async function readPhysicalLocator(input: {
     );
   };
   // ToolNode 只在真实 active model 不收工具结果图片时才明确拒绝；无 ToolNode 的直接调用仍按附加处理。
-  const imageDelivery =
-    input.context.modelInputAdmission?.admitted === false ? 'metadata_only' : 'attach';
+  // 图片结果交给谁、对方能否看图由 Host 判断（CLI 调用方默认收图，Agent 按本 run 模型）。
+  const imageDelivery = resolveToolResultImageDelivery(input.context);
   const hasExplicitTextWindow = ['offset', 'limit', 'offset_chars', 'max_chars'].some(key =>
     Object.prototype.hasOwnProperty.call(input.rawArgs, key)
   );

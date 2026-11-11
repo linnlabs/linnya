@@ -49,6 +49,17 @@ export type {
  * 工具执行上下文
  * 包含工具执行时需要的所有依赖和配置
  */
+export type ToolResultImageDelivery = 'attach' | 'metadata_only';
+
+export interface ToolResultImagePolicyPort {
+  deliveryFor(context: ToolContext): ToolResultImageDelivery;
+}
+
+/** 未注入策略的上下文（单元测试夹具等）按可附加处理；生产运行由 Host 统一注入。 */
+export function resolveToolResultImageDelivery(context: ToolContext): ToolResultImageDelivery {
+  return context.toolResultImagePolicy?.deliveryFor(context) ?? 'attach';
+}
+
 export interface ToolContext extends ToolExecutionContext {
   /** Host 绑定会话的只读访问历史；Web 不持有全局域名计数或数据库。 */
   webReadAccessHistory?: import('./web/webread/definitions/webReadAccessHistory').WebReadAccessHistoryPort;
@@ -65,7 +76,14 @@ export interface ToolContext extends ToolExecutionContext {
   authorizedHostToolCall?: {
     readonly toolName: string;
     readonly toolCallId: import('@linnlabs/linnkit/contracts').ToolCallId;
+    /** 批次后直接交还 Host 时，结果由 Host 调用方（CLI、外部 Agent）接收，不再交给本 run 的模型。 */
+    readonly resultReceiver?: 'host_caller';
   };
+  /**
+   * Host 判断本次工具结果能否附带图片：结果交给谁、对方能否看图只有 Host 知道。
+   * 返回 metadata_only 时工具只给尺寸等事实，不登记资源、不签发 claim。
+   */
+  toolResultImagePolicy?: ToolResultImagePolicyPort;
   /** 当前 activation 的结果提交窄端口；不能从最新 run 状态反查并补猜身份。 */
   toolResultReceipts?: import('../app-hosts/linnya/application/run-resumption').ToolResultReceiptPort;
   /** 用户这次请求的根运行；根上下文按 RunContext 设定，child run 从父上下文继承，模型和插件不能提供。 */

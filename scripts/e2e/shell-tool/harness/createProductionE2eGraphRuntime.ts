@@ -3,7 +3,6 @@ import type { AgentRunnerRuntimePort } from '../../../../src/app-hosts/linnya/ad
 import type { LinnyaAgentRuntimeScope } from '../../../../src/app-hosts/linnya/adapters/runtime-assembly/agentRuntimeScope';
 import { createDefaultLlmNode } from '../../../../src/app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
 import { defaultObservationPreviewPort, defaultToolRuntimePort } from '../../../../src/app-hosts/linnya/adapters/tools/defaultPorts';
-import { createToolModelInputCapabilityValidator } from '../../../../src/app-hosts/linnya/adapters/tools/modelInputCapabilityValidator';
 import { releaseTerminalRunRecovery } from '../../../../src/app-hosts/linnya/application/run-resumption';
 
 /**
@@ -35,7 +34,6 @@ export function createProductionE2eGraphRuntime(input: {
   executor.registerNode(new graph.ToolNode({
     toolRuntime: defaultToolRuntimePort,
     observationPreview: defaultObservationPreviewPort,
-    modelInputCapabilityValidator: createToolModelInputCapabilityValidator(),
   }));
   executor.registerNode(new graph.WaitUserNode());
   return {
