@@ -78,7 +78,7 @@
 不同 domain 复杂度不同，不要求完全一致，但建议尽量收敛到下面的结构，以便“看目录就能定位到该去哪里改”。
 
 - **`ui/`**：该领域的可视组件（Vue SFC），以及少量与 UI 强绑定的 composables  
-- **`store/`**：Pinia store（领域状态/意图），尽量不要把重副作用塞进 store（除非 store 就是“编排门面”）
+- **`store/`**：只持有状态，暴露同步 action 和 selector；业务规则放 `functions/`，网络请求、多步流程和异步处理放 `orchestration/`。编排计算并校验结果后调用 store action，store 不反向调用编排，也不直接读写其他 domain 的 store。存量副作用不构成新代码的例外。
 - **`services/`**：副作用与对外通信（IPC/HTTP/文件系统/长任务/调度器等），对上层暴露清晰 API
 - **`features/`**：按“特性”拆分的组合模块（通常跨 UI + service + extension + store 的一组能力）
 - **`docs/`**：领域内文档/约束/协议（有复杂约束的 domain 强烈建议维护 docs）
