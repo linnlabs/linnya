@@ -6,6 +6,7 @@
 
 import { Logger } from '@shared/logger';
 import { createWebUpstreamHttpError, webHttpFetch, WebHttpError } from '../web-http/webHttpFetch';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('SerperSearchAdapter');
 
@@ -27,10 +28,6 @@ export interface SerperOrganicResult {
 export interface SerperSearchResult {
   organic: SerperOrganicResult[];
   tookMs: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function parseOrganicItem(value: unknown): SerperOrganicResult | null {

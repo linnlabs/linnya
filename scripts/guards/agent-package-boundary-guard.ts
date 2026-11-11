@@ -402,6 +402,7 @@ function isAllowedPluginTsconfigPathTarget(target: string): boolean {
   return (
     target.startsWith('packages/plugin-host-contract/')
     || target.startsWith('packages/color-core/')
+    || target.startsWith('packages/foundation/')
     || target.startsWith('packages/text-measurement-core/')
     || target.startsWith('packages/plugins/')
     || target.startsWith('packages/schemas/')

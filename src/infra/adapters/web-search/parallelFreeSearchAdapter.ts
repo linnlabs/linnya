@@ -5,6 +5,7 @@ import {
   type WebHttpResponse,
 } from '../web-http/webHttpFetch';
 import { createServerSentEventFrameParser } from '@linnlabs/linnkit/contracts';
+import { isRecord } from '@linnya/foundation';
 
 const PARALLEL_MCP_PROTOCOL_VERSION = '2025-06-18';
 const DEFAULT_PARALLEL_MCP_URL = 'https://search.parallel.ai/mcp';
@@ -23,10 +24,6 @@ export interface ParallelFreeSearchResult {
 
 export interface ParallelFreeSearchDependencies {
   httpFetch?: typeof webHttpFetch;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readJsonRpcMessages(bodyText: string): Record<string, unknown>[] {

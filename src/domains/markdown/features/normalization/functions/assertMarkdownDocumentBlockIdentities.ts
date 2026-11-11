@@ -1,8 +1,5 @@
 import { DocumentBlockIdSchema } from '@app/schemas';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 /**
  * 校验可持久化 Markdown 文档的顶层块身份。

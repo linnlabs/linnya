@@ -106,6 +106,7 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
     'packages/markdown-document-core/src/functions/assertMarkdownDocument.ts',
     'exact'
   ),
+  browser('@linnya/foundation', 'packages/foundation/src/index.ts', 'exact'),
   browser('@linnya/text-measurement-core', 'packages/text-measurement-core/src/index.ts', 'exact'),
   browser(
     '@linnya/citation-domain/conversation-presentation',

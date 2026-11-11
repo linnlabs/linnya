@@ -14,6 +14,7 @@ import {
   readJsonFile,
   resolveInsidePluginDir,
 } from './pluginLayout';
+import { isRecord } from '@linnya/foundation';
 
 export interface DiskBackendPluginLoadOptions {
   readonly pluginRoot?: string;
@@ -29,10 +30,6 @@ export interface DiskBackendPluginLoadOptions {
 export interface LoadedDiskBackendPlugin {
   readonly pluginDir: string;
   readonly contribution: PluginBackendContribution;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readErrorMessage(error: unknown): string {

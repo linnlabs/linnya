@@ -7,15 +7,12 @@ import {
   type WebReadManagedReaderId,
   type WebReadSettings,
 } from '../definitions/webReadConfig';
+import { isRecord } from '@linnya/foundation';
 
 const CREDENTIAL_READER_IDS: readonly WebReadCredentialReaderId[] = [
   'metaso_reader',
   'jina_reader',
 ];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function readOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;

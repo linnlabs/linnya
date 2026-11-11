@@ -33,6 +33,9 @@
       "@linnya/document-preview": [
         "../../packages/document-preview/src/index.ts"
       ],
+      "@linnya/foundation": [
+        "../../packages/foundation/src/index.ts"
+      ],
       "@linnya/markdown-document-core": [
         "../../packages/markdown-document-core/src/index.ts"
       ],

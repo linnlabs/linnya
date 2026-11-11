@@ -1,8 +1,5 @@
 import type { DevelopmentDataStateObservation } from '../definitions/developmentDataState';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 export function parseDevelopmentDataState(source: string): DevelopmentDataStateObservation {
   let value: unknown;

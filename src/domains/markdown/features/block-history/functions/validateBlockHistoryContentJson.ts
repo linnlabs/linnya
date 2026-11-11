@@ -2,10 +2,7 @@ import {
   parseMarkdownDocJson,
   validateMarkdownDocJson,
 } from '../../normalization'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
+import { isRecord } from '@linnya/foundation';
 
 /** 校验并规范化 markdown_block_versions 中的 rootBlock 快照。 */
 export function validateBlockHistoryContentJson(

@@ -1,10 +1,7 @@
 import { CustomApiGroupSchema, type CustomApiGroup } from '../../../definitions/customApiGroup';
 import { USER_MODELS_FILE_VERSION, type StoredUserModelState } from '../definitions/userModelsFile';
 import { projectNamedCustomApiGroups } from './projectNamedCustomApiGroups';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 /** 文件边界读取分组合同；模型与 endpoint 仍由 Catalog 统一准入后才覆盖迁移文件。 */
 export function readStoredUserModelState(value: unknown): StoredUserModelState {

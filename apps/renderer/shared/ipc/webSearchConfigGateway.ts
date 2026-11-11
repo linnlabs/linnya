@@ -5,6 +5,7 @@ import {
   type WebSearchEngineId,
   type WebSearchKeySource,
 } from '../../../../src/tools/web/websearch/definitions/webSearchConfig';
+import { isRecord } from '@linnya/foundation';
 
 export interface WebSearchConnectionTestResult {
   readonly provider: string;
@@ -15,10 +16,6 @@ export interface WebSearchConnectionTestResult {
 export type WebSearchConfigGatewayResult<T> =
   | { readonly success: true; readonly data: T }
   | { readonly success: false; readonly error: string };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function parseFailure(value: Record<string, unknown>): WebSearchConfigGatewayResult<never> | undefined {
   return value.success === false && typeof value.error === 'string'

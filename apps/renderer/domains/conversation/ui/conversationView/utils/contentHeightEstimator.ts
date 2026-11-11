@@ -30,6 +30,7 @@ import {
 import { TextMeasureService } from '../../../../../../../src/features/text-measurement/orchestration/TextMeasureService.js';
 import { HeuristicMeasureAdapter } from '../../../../../../../src/features/text-measurement/adapters/HeuristicMeasureAdapter.js';
 import { BrowserPretextAdapter } from '../../../../../../../src/features/text-measurement/adapters/BrowserPretextAdapter.js';
+import { isRecord } from '@linnya/foundation';
 
 const POINTS_PER_PIXEL = 72 / 96;
 const DEFAULT_ESTIMATION_WIDTH_PX = 720;
@@ -366,10 +367,6 @@ function contentEstimated(height: number, containsTable = false): ContentHeightP
 
 function contentDeterministic(height: number): ContentHeightParts {
   return { estimated: 0, deterministic: height, containsTable: false };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readPositiveNumber(value: unknown): number | undefined {

@@ -3,10 +3,7 @@ import {
   type WebReadSettings,
 } from '../definitions/webReadConfig';
 import { normalizeWebReadConfig } from './normalizeWebReadConfig';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 /** 更新当前 Reader 指针和渲染开关；未提交新 Key 时保留对应 Reader 原有凭证。 */
 export function resolveWebReadConfigUpdate(

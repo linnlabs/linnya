@@ -12,6 +12,7 @@ import {
 } from '@app/schemas';
 import type { WebPageResource } from '../definitions/webDocument';
 import { isWebAccessChallengeSignal, type WebAccessChallengeSignal } from './webAccessChallenge';
+import { isRecord } from '@linnya/foundation';
 
 export type {
   EscalatableWebFailureKind,
@@ -110,10 +111,6 @@ export interface WebFailureDiagnostics {
 
 /** 与渲染 port 的 net 错误名形状一致；任意错误文字不进入诊断。 */
 const NET_ERROR_NAME_PATTERN = /^net::ERR_[A-Z0-9_]{1,64}$/;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 function readStatus(error: Record<string, unknown>): number | undefined {
   return typeof error['status'] === 'number' ? error['status'] : undefined;

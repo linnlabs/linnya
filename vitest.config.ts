@@ -63,6 +63,7 @@ export default defineConfig({
       { find: /^@linnya\/plugin-host-contract\/renderer\/(.+)$/, replacement: path.resolve(import.meta.dirname, 'packages/plugin-host-contract/renderer/$1') },
       { find: /^@linnya\/color-core\/palette$/, replacement: path.resolve(import.meta.dirname, 'packages/color-core/src/palette/index.ts') },
       { find: /^@linnya\/color-core$/, replacement: path.resolve(import.meta.dirname, 'packages/color-core/src/index.ts') },
+      { find: /^@linnya\/foundation$/, replacement: path.resolve(import.meta.dirname, 'packages/foundation/src/index.ts') },
       { find: /^@linnya\/text-measurement-core$/, replacement: path.resolve(import.meta.dirname, 'packages/text-measurement-core/src/index.ts') },
       { find: /^@linnya\/citation-domain\/conversation-presentation$/, replacement: path.resolve(import.meta.dirname, 'src/domains/citation/conversation-presentation.ts') },
       { find: /^@linnya\/citation-domain\/markdown-reference$/, replacement: path.resolve(import.meta.dirname, 'src/domains/citation/markdown-reference.ts') },

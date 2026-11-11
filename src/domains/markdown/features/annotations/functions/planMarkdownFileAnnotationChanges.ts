@@ -11,6 +11,7 @@ import type {
   MarkdownAnnotationDeletion,
   MarkdownAnnotationUpdate,
 } from './applyMarkdownAnnotationMutations';
+import { isRecord } from '@linnya/foundation';
 
 interface JsonNodeLike {
   readonly type?: unknown;
@@ -21,10 +22,6 @@ export interface MarkdownFileAnnotationChangePlan {
   readonly creations: readonly MarkdownAnnotationCreationDraft[];
   readonly updates: readonly MarkdownAnnotationUpdate[];
   readonly deletions: readonly MarkdownAnnotationDeletion[];
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readAnnotationsByBlockId(document: unknown): ReadonlyMap<string, readonly MarkdownAnnotation[]> {

@@ -1,6 +1,4 @@
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 function createRequiredPropertyValue(name: string, schema: unknown): unknown {
   if (!isRecord(schema)) {

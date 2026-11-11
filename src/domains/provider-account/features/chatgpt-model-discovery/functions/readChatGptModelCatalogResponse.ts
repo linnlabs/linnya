@@ -1,9 +1,6 @@
 import type { ChatGptAccountModel } from '../definitions/chatGptModelCatalog';
 import { CHATGPT_MODEL_CATALOG_CONFIG } from '../definitions/chatGptModelCatalog';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 function readNonEmptyString(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value.trim()) {

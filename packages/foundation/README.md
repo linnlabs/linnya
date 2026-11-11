@@ -1,0 +1,24 @@
+# @linnya/foundation
+
+界面、Backend 和插件都能用的零依赖纯函数。这里只放与产品业务无关、到处都要用的机械小工具，目的是让它们只有一份实现和一份测试。什么该放这里、什么不该放，见[代码质量：不重复实现](../../docs/development/code-quality.md)。
+
+## 边界
+
+可以放：不依赖 Node、DOM、Electron、任何 npm 包，也不读时间、语言、环境变量的纯函数。
+
+不放：
+
+- 跨进程数据合同和必须前后端一致的显示规则，归 [`@app/schemas`](../schemas/README.md)；
+- 文件、路径、进程、日志，归 `src/shared`；
+- 界面组件与交互，归 [`@linnya/renderer-ui`](../renderer-ui/README.md)；
+- 任何带业务词的函数。
+
+每个函数一个文件，从 `src/index.ts` 导出，测试在 `__tests__/`。新增函数时在下面的清单加一行，并把对应的本地写法加进 `guard:shared-implementations` 的名单。
+
+## 已有能力
+
+| 函数 | 作用 |
+| --- | --- |
+| `isRecord(value)` | 是不是普通键值对象：非 null、不是数组 |
+| `clamp(value, min, max)` | 把数值限制在范围内 |
+| `sleep(milliseconds)` | 等待若干毫秒 |

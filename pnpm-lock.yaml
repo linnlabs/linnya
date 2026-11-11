@@ -627,6 +627,8 @@ importers:
         specifier: '>=3.5.0 <4'
         version: 3.5.44(typescript@5.9.3)
 
+  packages/foundation: {}
+
   packages/linnkit-provider-ai-sdk:
     dependencies:
       '@ai-sdk/alibaba':

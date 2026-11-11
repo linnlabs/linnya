@@ -3,10 +3,7 @@ import {
   type WebSearchSettings,
 } from '../definitions/webSearchConfig';
 import { normalizeWebSearchConfig } from './normalizeWebSearchConfig';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 /** 单槽更新只切换当前指针；未提交新 Key 时保留该引擎已有凭证。 */
 export function resolveWebSearchConfigUpdate(

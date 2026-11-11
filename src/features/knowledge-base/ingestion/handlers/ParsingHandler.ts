@@ -40,12 +40,9 @@ import {
 import type { DocumentParseDiagnostics } from '../../domain/document';
 import type { PdfParser } from 'src/features/parsers/pdfParser/PdfParser';
 import { getDefaultModelIdByCapability } from 'src/domains/model-catalog';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('knowledge-base:ingestion:parsing-handler');
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function readOptionalNumber(record: Record<string, unknown>, key: string): number | undefined {
   const value = record[key];

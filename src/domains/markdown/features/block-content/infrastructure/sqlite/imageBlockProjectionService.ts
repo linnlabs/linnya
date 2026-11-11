@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3';
+import { isRecord } from '@linnya/foundation';
 
 interface ImageBlockProjection {
   readonly id: string;
@@ -11,10 +12,6 @@ interface ImageBlockProjection {
   readonly height: number | null;
   readonly alignment: string | null;
   readonly uploadedAt: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function readString(value: unknown): string | null {

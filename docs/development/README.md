@@ -25,6 +25,7 @@ Provider 和本地数据，不需要 Linnya 账号或私有仓库。普通贡献
 | --- | --- |
 | 安装依赖、启动、选择测试、构建和提交前检查 | [构建与测试](./build-and-test.md) |
 | 判断什么时候写 README、文档放哪里以及如何避免重复真源 | [文档编写规范](./documentation.md) |
+| 写新函数前怎么查已有实现、共享代码放哪里、重复实现的门禁 | [代码质量：不重复实现](./code-quality.md) |
 | 在 macOS 与 Windows 之间切换、重建平台依赖或重置开发数据 | [跨平台开发](./cross-platform.md) |
 | 配置开发模式、工作区目录、调试开关与本地 API Key | [`.env.local` 开发配置](./env-local.md) |
 | 前端调试与真实 Desktop 界面验收 | [Desktop 开发探针](../../scripts/development/features/desktop-probe/README.md) |

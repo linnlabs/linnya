@@ -104,6 +104,9 @@
       "@linnya/color-core/palette": [
         "packages/color-core/src/palette/index.ts"
       ],
+      "@linnya/foundation": [
+        "packages/foundation/src/index.ts"
+      ],
       "@linnya/text-measurement-core": [
         "packages/text-measurement-core/src/index.ts"
       ],

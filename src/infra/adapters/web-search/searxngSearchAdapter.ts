@@ -5,6 +5,7 @@ import {
 } from '../web-fetch/localHttpFetchAdapter';
 import { WebHttpError } from '../web-http/webHttpFetch';
 import { assertAllowedWebUrl } from '../../../tools/web/shared/urlPolicy';
+import { isRecord } from '@linnya/foundation';
 
 export interface SearXNGSearchItem {
   url: string;
@@ -21,10 +22,6 @@ export interface SearXNGSearchResult {
 
 export interface SearXNGSearchDependencies {
   fetchPage?: (url: string, options: LocalHttpFetchOptions) => Promise<LocalHttpFetchResult>;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readTimeRange(recencyDays: number | undefined): string | undefined {

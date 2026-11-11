@@ -37,6 +37,7 @@ import type {
 } from '@linnlabs/linnkit/ports';
 import type { LinnyaTokenCalibrationCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import { modelCatalog } from 'src/domains/model-catalog';
+import { isRecord } from '@linnya/foundation';
 
 type GraphExecutorContextBuildInput = runtimeKernel.graph.GraphExecutorContextBuildInput;
 type GraphExecutorContextBuildOutput = runtimeKernel.graph.GraphExecutorContextBuildOutput;
@@ -144,10 +145,6 @@ function isContextBuildTokenEstimate(value: unknown): value is ContextBuildToken
     value.source === 'local-estimate' &&
     value.confidence === 'estimate'
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function resolveTokenRouteByModelId(modelId: string): TokenRoute | undefined {

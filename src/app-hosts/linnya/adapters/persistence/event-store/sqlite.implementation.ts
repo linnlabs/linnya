@@ -43,6 +43,7 @@ import {
 } from './functions/runtimeEventStorageCodec';
 import { ConversationSelectedAgentIdSchema, type ConversationSelectedAgentId } from '@app/schemas';
 import { SqliteSubrunTraceHistoryCleanup } from '../subrun-trace-history/sqliteSubrunTraceHistoryCleanup';
+import { isRecord } from '@linnya/foundation';
 
 const logger = getLogger('SQLiteEventStore');
 
@@ -113,10 +114,6 @@ function toConversationListItem(row: ConversationRow): ConversationListItem {
         ? null
         : ConversationSelectedAgentIdSchema.parse(row.selected_agent_id),
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function parseConversationMetadata(

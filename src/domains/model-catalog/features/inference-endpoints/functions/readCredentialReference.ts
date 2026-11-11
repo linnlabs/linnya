@@ -1,8 +1,5 @@
 import type { CredentialReference } from '../../../definitions/inferenceEndpoint';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 export function readCredentialReference(value: unknown): CredentialReference | undefined {
   if (value === undefined) return undefined;

@@ -1,8 +1,5 @@
 import type { JSONContent } from '@tiptap/core'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
+import { isRecord } from '@linnya/foundation';
 
 function isJsonMark(value: unknown): boolean {
   if (!isRecord(value) || typeof value.type !== 'string') return false

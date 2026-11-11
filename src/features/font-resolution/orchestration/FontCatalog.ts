@@ -12,6 +12,7 @@ import {
   hasScriptCoverage,
   isPublicFontFamily,
 } from '../functions/scriptCoverage.js';
+import { isRecord } from '@linnya/foundation';
 
 export interface FontCatalogOptions {
   scanRoots?: readonly string[];
@@ -439,10 +440,6 @@ function readOptionalNumber(value: unknown): number | undefined | null {
     return undefined;
   }
   return typeof value === 'number' ? value : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function defaultScanRoots(): readonly string[] {

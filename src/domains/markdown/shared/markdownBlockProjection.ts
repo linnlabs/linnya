@@ -10,6 +10,7 @@ import {
   type MarkdownInlineTextProjector,
 } from '../features/normalization/markdownJsonSerializer';
 import { DocumentBlockIdSchema } from '@app/schemas';
+import { isRecord } from '@linnya/foundation';
 
 export interface FlattenedMarkdownBlock {
   readonly index: number;
@@ -24,10 +25,6 @@ interface ProseMirrorNode {
   readonly type?: unknown;
   readonly attrs?: unknown;
   readonly content?: unknown;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function asNode(value: unknown): ProseMirrorNode | null {

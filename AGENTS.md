@@ -108,5 +108,6 @@ Host 不 deep import 插件内部实现；插件不 deep import Host 内部。�
 | 构建、测试、本机配置 | [`docs/development/README.md`](./docs/development/README.md) |
 | 打包与测试选择 | [`docs/development/build-and-test.md`](./docs/development/build-and-test.md) |
 | 文档位置与 README 规范 | [`docs/development/documentation.md`](./docs/development/documentation.md) |
+| 共享实现放哪里、不重复实现 | [`docs/development/code-quality.md`](./docs/development/code-quality.md) |
 
-修改前先定位唯一 owner，阅读相邻 README、公开 index、schema 和调用链。跨 domain 协作只走窄 public contract、port、registry、event 或 app-level orchestration；禁止 `any`、不安全断言、旧合同双读和无业务含义的 fallback。完成后运行目标 owner 的最小真实 gate并检查 `git diff --check`，架构、目录、合同或工作流变化同步更新 owner 文档。
+修改前先定位唯一 owner，阅读相邻 README、公开 index、schema 和调用链。新写函数或流程前先查是否已有共享实现；同一条规则只保留一份。跨 domain 协作只走窄 public contract、port、registry、event 或 app-level orchestration；禁止 `any`、不安全断言、旧合同双读和无业务含义的 fallback。完成后运行目标 owner 的最小真实 gate并检查 `git diff --check`，架构、目录、合同或工作流变化同步更新 owner 文档。

@@ -12,6 +12,7 @@ import type {
   LlmStreamAuditEventInput,
   RunTranscriptAuditToolset,
 } from '../definitions/llmEvidence';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('UnifiedAudit');
 const MAX_PROTOCOL_ERRORS_PER_RUN = 16;
@@ -555,8 +556,4 @@ function summarizeRawArguments(rawArguments: string): {
 
 function isChildRun(context: LlmAuditContext): boolean {
   return Boolean(context.subrunId?.trim());
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }

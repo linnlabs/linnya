@@ -11,6 +11,7 @@ import {
   webHttpFetch,
   WebHttpError,
 } from '../web-http/webHttpFetch';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('JinaReaderAdapter');
 
@@ -30,10 +31,6 @@ export interface JinaReaderResult {
   tokenCount?: number;
   charCount: number;
   tookMs: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readTrimmedString(record: Record<string, unknown>, key: string): string | undefined {

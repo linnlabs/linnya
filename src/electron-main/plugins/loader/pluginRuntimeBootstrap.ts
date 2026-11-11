@@ -5,6 +5,7 @@ import { isPluginUserRemoved } from '../../../features/plugins/install/functions
 import { readPluginArtifactIdentity } from '../../../features/plugins/install/functions/readPluginArtifactIdentity';
 import { compareDottedVersions } from '../../../features/plugins/functions/comparePluginVersions';
 import { readJsonFile, readPluginManifestSummary } from './pluginLayout';
+import { isRecord } from '@linnya/foundation';
 
 export type BundledPluginSeedStatus = 'staged' | 'update-staged' | 'already-active' | 'skipped';
 
@@ -85,10 +86,6 @@ export class BundledPluginArtifactConflictError extends Error {
 
 interface ActivePluginPointer {
   readonly version: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readErrorMessage(error: unknown): string {

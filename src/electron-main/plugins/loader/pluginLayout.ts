@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { isRecord } from '@linnya/foundation';
 
 export interface PluginLayoutDiagnostic {
   readonly pluginId: string | null;
@@ -32,10 +33,6 @@ export interface PluginLayoutOptions {
 
 interface ActivePluginPointer {
   readonly version: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readErrorMessage(error: unknown): string {

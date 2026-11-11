@@ -12,6 +12,7 @@ import type { enrichment } from '@linnlabs/linnkit/runtime-kernel';
 import { PromptKeys } from '../../prompt.types';
 import { generateRunId } from '@linnlabs/linnkit/contracts';
 import { Logger } from 'src/shared/logger';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('DeepResearchRequestEnricher');
 
@@ -22,10 +23,6 @@ type EnrichmentResult = enrichment.EnrichmentResult;
 type DbLike = {
   prepare: (sql: string) => { get: (...args: unknown[]) => unknown; run: (...args: unknown[]) => { changes?: number } };
 };
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return !!v && typeof v === 'object' && !Array.isArray(v);
-}
 
 function readNonEmptyString(v: unknown): string | undefined {
   if (typeof v !== 'string') return undefined;

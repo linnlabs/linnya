@@ -1,11 +1,8 @@
 import type { ConversationActiveRunResponse } from '@app/schemas';
 import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
+import { isRecord } from '@linnya/foundation';
 
 type RunSnapshot = runSupervisor.RunSnapshot;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function readRequiredString(record: Record<string, unknown>, key: string, context: string): string {
   const value = record[key];

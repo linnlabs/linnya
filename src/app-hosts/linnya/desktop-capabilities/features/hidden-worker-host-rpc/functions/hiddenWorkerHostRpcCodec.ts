@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 import type { DesktopHiddenWorkerInvocation } from '../../../definitions/desktopHiddenWorkerHostPort';
+import { isRecord } from '@linnya/foundation';
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 const AbsolutePathSchema = NonEmptyStringSchema.refine(value => path.isAbsolute(value), {
@@ -66,8 +67,4 @@ export function parseHiddenWorkerInvocationRpc(
       ? { cancelPayload: value.cancelPayload }
       : {}),
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

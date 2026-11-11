@@ -12,6 +12,7 @@
 
 import { Logger } from '@shared/logger';
 import { createWebUpstreamHttpError, webHttpFetch, WebHttpError } from '../web-http/webHttpFetch';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('BaiduQianfanWebSearchAdapter');
 
@@ -23,10 +24,6 @@ const logger = new Logger('BaiduQianfanWebSearchAdapter');
  * - 目前仅屏蔽百家号域名；如需扩展请在此处集中维护，避免散落在工具层。
  */
 const DEFAULT_BLOCK_WEBSITES = ['baijiahao.baidu.com'] as const;
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return !!v && typeof v === 'object' && !Array.isArray(v);
-}
 
 function readString(v: unknown): string | undefined {
   return typeof v === 'string' ? v : undefined;

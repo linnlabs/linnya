@@ -1,10 +1,8 @@
+import { isRecord } from '@linnya/foundation';
+
 export interface TableTransactionEventSource {
   on(eventName: 'transaction', handler: (payload: unknown) => void): void;
   off(eventName: 'transaction', handler: (payload: unknown) => void): void;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function hasDocumentChange(payload: unknown): boolean {

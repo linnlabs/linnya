@@ -1,3 +1,5 @@
+import { isRecord } from '@linnya/foundation';
+
 export interface WorkspaceNodeTextSnapshotStatement {
   readonly get: (...params: readonly unknown[]) => unknown;
   readonly run: (...params: readonly unknown[]) => unknown;
@@ -23,10 +25,6 @@ interface WorkspaceNodeTextSnapshotRow {
   readonly source_plugin_id: string | null;
   readonly source_node_type: string | null;
   readonly updated_at: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isReadStatement(value: unknown): value is Pick<WorkspaceNodeTextSnapshotStatement, 'get'> {

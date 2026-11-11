@@ -1,5 +1,6 @@
 import { Logger } from '@shared/logger';
 import { createWebUpstreamHttpError, webHttpFetch, WebHttpError } from '../web-http/webHttpFetch';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('JinaSearchAdapter');
 const DEFAULT_JINA_SEARCH_URL = 'https://s.jina.ai/';
@@ -14,10 +15,6 @@ export interface JinaSearchItem {
 export interface JinaSearchResult {
   items: JinaSearchItem[];
   tookMs: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function parseItem(value: unknown): JinaSearchItem | undefined {

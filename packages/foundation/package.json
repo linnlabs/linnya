@@ -1,0 +1,15 @@
+{
+  "name": "@linnya/foundation",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Zero-dependency pure helpers shared by the Linnya renderer, backend and plugins.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

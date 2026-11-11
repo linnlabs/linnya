@@ -3,10 +3,7 @@ import type {
   MockInferenceScript,
   MockInferenceScriptCatalog,
 } from '../definitions/mockInferenceScript';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 function parsePreset(value: unknown, scriptName: string): MockInferencePreset {
   if (value === 'content' || value === 'tool_call') return value;

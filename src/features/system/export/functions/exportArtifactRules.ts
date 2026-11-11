@@ -3,6 +3,7 @@ import type {
   ExportArtifactTargetRequest,
 } from '@linnya/plugin-host-contract';
 import { ExportArtifactRequestInvalidError } from '../definitions/exportErrors';
+import { isRecord } from '@linnya/foundation';
 
 const PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/u;
 const EXTENSION_PATTERN = /^[a-z0-9]{1,16}$/u;
@@ -24,10 +25,6 @@ function requireString(
     throw new ExportArtifactRequestInvalidError(field);
   }
   return value;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function normalizeExportArtifactRequest(

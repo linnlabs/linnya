@@ -4,6 +4,7 @@ import type {
   HeadlessNodeRuntimeCatalog,
   HeadlessNodeRuntimeTarget,
 } from '../definitions/headlessNodeRuntime';
+import { isRecord } from '@linnya/foundation';
 
 export function parseHeadlessNodeRuntimeCatalog(
   value: unknown,
@@ -60,8 +61,4 @@ function parseTarget(value: unknown): HeadlessNodeRuntimeTarget {
     archiveSha256,
     executableRelativePath,
   });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

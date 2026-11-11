@@ -7,6 +7,7 @@ import { Logger } from '../../../../shared/logger';
 import { TodoService, NewTodoPayload } from '../../../../features/project-todo/infrastructure/sqlite/todo.service';
 import { getBackendRendererIntegrationPort } from '../../../../app-hosts/linnya/desktop-capabilities';
 import type { BackendRendererIpcStyleRegistrarPort } from '../../../../app-hosts/linnya/adapters/backend-renderer-requests';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('TodoIPC');
 
@@ -20,10 +21,6 @@ interface TodoHandlerServicesPort {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function readUpdateTodoArgs(value: unknown): { todoId: string; updates: Record<string, unknown> } {

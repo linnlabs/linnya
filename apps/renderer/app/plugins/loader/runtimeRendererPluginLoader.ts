@@ -15,6 +15,7 @@ import {
   registerRendererPlugin,
   unregisterRendererPluginContribution,
 } from '../registry';
+import { isRecord } from '@linnya/foundation';
 
 const rendererPluginLoaderLogPrefix = '[renderer-plugin-loader]';
 const requiredPluginSdkHostModuleIds = [
@@ -204,10 +205,6 @@ function publishRendererPluginLoaderDiagnostics(): void {
 
 export function getRuntimeRendererPluginLoaderDiagnostics(): RuntimeRendererPluginLoaderDiagnostics {
   return latestRendererPluginLoaderDiagnostics;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function isRendererPluginEntry(value: unknown): value is RendererPluginEntry {

@@ -6,10 +6,7 @@ import type {
   EvidenceBundleSnapshot,
   EvidenceBundleStorageIdentity,
 } from '../ports/evidenceBundleRepository';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 function isMissingDirectoryError(error: unknown): boolean {
   return isRecord(error) && error['code'] === 'ENOENT';

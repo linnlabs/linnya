@@ -1,8 +1,5 @@
 import type { MarkdownDocJson, ProseMirrorJsonNode } from '../types';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 function isProseMirrorMark(value: unknown): boolean {
   if (!isRecord(value) || typeof value.type !== 'string') return false;

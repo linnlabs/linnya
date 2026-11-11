@@ -7,6 +7,7 @@ import type {
   HeadlessNodeRuntimeTarget,
   ResolvedHeadlessNodeRuntime,
 } from '../definitions/headlessNodeRuntime';
+import { isRecord } from '@linnya/foundation';
 
 const RUNTIME_MANIFEST_FILE_NAME = 'runtime-manifest.json';
 
@@ -147,10 +148,6 @@ function assertRuntimeManifestMatches(input: {
 
 function normalizeRelativePath(value: string): string {
   return value.replace(/\\/g, '/');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function requireString(value: unknown, label: string): string {

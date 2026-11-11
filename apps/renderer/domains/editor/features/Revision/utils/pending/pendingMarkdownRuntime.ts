@@ -11,6 +11,7 @@ import type {
   MarkdownInlineProjection,
 } from '../../../../services/markdownRuntime/types'
 import type { TextSpan } from '../../protocol/revisionTextSpanTypes'
+import { isRecord } from '@linnya/foundation';
 
 interface PendingMarkdownRuntimeOptions {
   blockId?: string
@@ -83,10 +84,6 @@ export type PendingTopLevelBlockParseResult =
       status: 'unsupported-single-block'
       blockType: string
     }
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 function buildPlainTextFallback(markdown: string): TextSpan[] {
   return markdown.length > 0 ? [{ text: markdown, marks: [] }] : []

@@ -11,6 +11,7 @@ import type {
   DocumentCitationProjection,
   DocumentCitationSource,
 } from '../definitions/documentCitationProjection';
+import { isRecord } from '@linnya/foundation';
 
 interface StructuredNode {
   readonly type?: unknown;
@@ -68,10 +69,6 @@ interface WebCitation {
 
 type ParsedCitation = InvalidCitation | ManualCitation | KnowledgeCitation | WebCitation;
 type RangedCitation = KnowledgeCitation | WebCitation;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 function readNonEmptyString(
   attrs: Readonly<Record<string, unknown>>,

@@ -1,4 +1,5 @@
 import type { ProviderAccountOAuthCredential } from '../../../definitions/providerAccount';
+import { isRecord } from '@linnya/foundation';
 
 interface ChatGptJwtClaims {
   readonly chatgpt_account_id?: string;
@@ -7,10 +8,6 @@ interface ChatGptJwtClaims {
   readonly 'https://api.openai.com/auth'?: {
     readonly chatgpt_account_id?: string;
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function parseJwtClaims(token: string): ChatGptJwtClaims | undefined {

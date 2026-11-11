@@ -7,6 +7,7 @@
  * - 该协议属于 EventStore 会话列表能力，不放到全局 shared，避免变成无边界工具函数。
  */
 import { Buffer } from 'node:buffer';
+import { isRecord } from '@linnya/foundation';
 
 export const CONVERSATION_LIST_PINNED_SORT_OFFSET = 4_000_000_000_000_000;
 
@@ -20,10 +21,6 @@ interface ConversationListSortTarget {
   readonly last_event_at: number;
   readonly is_pinned: boolean;
   readonly pinned_at?: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export function getConversationListSortCursor(conversation: ConversationListSortTarget): number {

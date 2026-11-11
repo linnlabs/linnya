@@ -12,6 +12,7 @@ import type { MarkdownInlineNodeProjector } from '../../normalization';
 import type { MarkdownPendingRevisionLike } from '../../pending-revisions';
 import { flattenMarkdownDocumentBlocks } from '../../../shared/markdownBlockProjection';
 import { buildMarkdownPreviewBlocks } from '../functions/markdownPreviewBlocks';
+import { isRecord } from '@linnya/foundation';
 
 interface PendingCitationFacts {
   readonly snapshots: readonly DocumentCitationNodeSnapshot[];
@@ -22,10 +23,6 @@ export interface MarkdownCitationReadProjection {
   readonly citationProjection: DocumentCitationProjection;
   readonly baseBlocks: readonly FlattenedBlock[];
   readonly viewBlocks: readonly FlattenedBlock[];
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readOptionalString(

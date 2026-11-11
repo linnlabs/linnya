@@ -1,14 +1,11 @@
 import type { ModelInputPlacement } from '@linnlabs/linnkit/runtime-kernel';
 import type { DurableAttachmentPresence } from '../definitions/llmInputMaterializationGuard';
+import { isRecord } from '@linnya/foundation';
 
 const NO_DURABLE_ATTACHMENTS: DurableAttachmentPresence = Object.freeze({
   found: false,
   placements: Object.freeze([]),
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function hasDurableAttachments(message: Record<string, unknown>): boolean {
   const attachments = message.attachments;

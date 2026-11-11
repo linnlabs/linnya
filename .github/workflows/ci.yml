@@ -47,6 +47,7 @@ jobs:
           pnpm run guard:model-inference-boundary
           pnpm run guard:provider-package-boundary
           pnpm run guard:no-empty-catch
+          pnpm run guard:shared-implementations
           pnpm run guard:renderer-module-resolution
           pnpm run lint:style
           pnpm run guard:no-font-binary-fixtures
@@ -78,6 +79,7 @@ jobs:
           pnpm run typecheck:linnya-cli
           pnpm run test:provider-package-gate
           pnpm run test:renderer-ui-package-gate
+          pnpm --filter @linnya/foundation typecheck
           pnpm --filter @linnya/plugin-host-contract typecheck
           pnpm --filter @plugin/mindmap typecheck
           pnpm --filter @plugin/slides lint

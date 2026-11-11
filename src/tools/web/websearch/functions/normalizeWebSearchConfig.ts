@@ -10,10 +10,7 @@ import {
   type WebSearchKeySource,
 } from '../definitions/webSearchConfig';
 import { defaultKeySourceForEngine } from './defaultWebSearchKeySource';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 export function isWebSearchEngineId(value: unknown): value is WebSearchEngineId {
   return typeof value === 'string' && WEB_SEARCH_ENGINE_IDS.some((engine) => engine === value);

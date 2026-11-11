@@ -9,6 +9,7 @@ import { extractPageResources } from './extractPageResources';
 import { extractTabularDom, extractTabularContext } from './extractTabularDom';
 import type { WebPageResource } from '../../definitions/webDocument';
 import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
+import { isRecord } from '@linnya/foundation';
 
 export type ArticleExtractionWarning = WebDocumentWarning;
 
@@ -68,10 +69,6 @@ export interface ExtractArticleOptions {
   readonly url?: string;
   /** 测试可替换第三方抽取器；生产默认仍只调用 Mozilla Readability 一次。 */
   readonly parseReadability?: (document: Document) => ReadabilityResult;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function readString(value: unknown): string | undefined {

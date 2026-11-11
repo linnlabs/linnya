@@ -2,10 +2,7 @@ import { LANGUAGE_INFERENCE_ROUTE_PROFILES } from '@app/schemas/model-inference'
 
 import type { InferenceEndpoint } from '../../../definitions/inferenceEndpoint';
 import { readCredentialReference } from './readCredentialReference';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 function requiredString(record: Record<string, unknown>, key: string): string {
   const value = record[key];

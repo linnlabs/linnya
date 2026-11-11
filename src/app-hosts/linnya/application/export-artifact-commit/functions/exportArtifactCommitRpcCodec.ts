@@ -2,6 +2,7 @@ import type {
   ExportArtifactCommitRequest,
   ExportArtifactCommitResult,
 } from '@linnya/plugin-host-contract/backend/exportArtifact';
+import { isRecord } from '@linnya/foundation';
 
 export function parseExportArtifactCommitMailboxArgs(
   args: readonly unknown[],
@@ -45,10 +46,6 @@ function readRecord(value: unknown, label: string): Record<string, unknown> {
     throw new Error(`Export artifact commit ${label} 必须是对象`);
   }
   return value;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function requireExactKeys(value: Record<string, unknown>, expected: readonly string[]): void {

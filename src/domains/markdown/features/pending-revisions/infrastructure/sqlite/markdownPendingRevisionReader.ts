@@ -3,10 +3,7 @@ import type {
   PendingRevision,
   PendingRevisionMetadata,
 } from '../../definitions/pendingRevision';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 function parsePendingRevision(value: unknown): PendingRevision {
   if (!isRecord(value)) throw new Error('pending revisions query returned a non-object row');

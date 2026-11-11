@@ -8,6 +8,7 @@ import {
   ExportFilesRequiredError,
   ExportInvalidPayloadError,
 } from '../../../../features/system/export/definitions/exportErrors';
+import { isRecord } from '@linnya/foundation';
 
 export type BatchExportFile = {
   readonly fileName: string;
@@ -26,10 +27,6 @@ export const BATCH_EXPORT_LIMITS = {
 const WINDOWS_RESERVED_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/u;
 const WINDOWS_INVALID_CHARACTERS = /[<>:"|?*]/u;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function normalizeForComparison(filePath: string): string {
   const normalized = path.normalize(filePath);

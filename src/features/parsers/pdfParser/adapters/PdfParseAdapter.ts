@@ -1,6 +1,7 @@
 import type { TextItem } from '../types';
 import { extractTextItemsFromPage, loadPdfDocument } from './PdfjsAdapter';
 import { loadPdfJsRuntime } from './pdfJsRuntime';
+import { isRecord } from '@linnya/foundation';
 
 interface PdfParseData {
   numpages: number;
@@ -72,10 +73,6 @@ export function evaluateExtractionQuality(result: { text: string; numpages: numb
         reason: `文本密度较低 (${textDensity.toFixed(1)}字符/页)，适合使用AI视觉识别`,
       }
     : { textDensity, isGoodQuality: true };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function readRecordProperty(value: unknown, property: string): Record<string, unknown> {

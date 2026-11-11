@@ -16,10 +16,7 @@ import {
 } from '@app/schemas';
 
 import type { AdmittedConversationCitations } from '../definitions/admittedConversationCitation';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 function toAdmission(
   citations: readonly ConversationCitation[],

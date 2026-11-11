@@ -305,6 +305,8 @@
     "guard:plugin-table-ownership": "node --import tsx ./scripts/guards/plugin-table-ownership-ratchet.ts",
     "guard:plugin-table-ownership:update": "node --import tsx ./scripts/guards/plugin-table-ownership-ratchet.ts --update-baseline --stage-baseline",
     "guard:renderer-style-scale": "node --import tsx ./scripts/guards/renderer-style-scale-ratchet.ts",
+    "guard:shared-implementations": "node --import tsx ./scripts/guards/shared-implementations-ratchet.ts",
+    "guard:shared-implementations:update": "node --import tsx ./scripts/guards/shared-implementations-ratchet.ts --update-baseline --stage-baseline",
     "guard:renderer-style-scale:update": "node --import tsx ./scripts/guards/renderer-style-scale-ratchet.ts --update-baseline --stage-baseline",
     "guard:application-layer-naming": "node scripts/guards/application-layer-naming-guard.mjs",
     "guard:conversation-agent-control-plane": "node --import tsx ./scripts/guards/conversation-agent-control-plane-guard.ts",

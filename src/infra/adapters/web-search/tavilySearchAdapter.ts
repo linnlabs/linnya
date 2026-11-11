@@ -1,5 +1,6 @@
 import { Logger } from '@shared/logger';
 import { createWebUpstreamHttpError, webHttpFetch, WebHttpError } from '../web-http/webHttpFetch';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('TavilySearchAdapter');
 
@@ -13,10 +14,6 @@ export interface TavilySearchItem {
 export interface TavilySearchResult {
   items: TavilySearchItem[];
   tookMs: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function parseItem(value: unknown): TavilySearchItem | undefined {

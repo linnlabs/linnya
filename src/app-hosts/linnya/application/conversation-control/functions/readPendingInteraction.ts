@@ -4,6 +4,7 @@ import type {
   ConversationControlMessageWindow,
   ConversationControlRunRecord,
 } from '../definitions/conversationControlUseCase';
+import { isRecord } from '@linnya/foundation';
 
 interface PendingInteractionControl {
   readonly interactionId: string;
@@ -13,10 +14,6 @@ interface PendingInteractionControl {
   readonly toolName: string;
   readonly prompt?: string;
   readonly form?: JsonValue;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function readRequiredString(record: Record<string, unknown>, key: string, context: string): string {

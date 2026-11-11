@@ -1,5 +1,6 @@
 import type { PluginRuntimeState } from '../../../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { Logger } from '../../../../shared/logger';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('PluginInvokeDispatcher');
 const PLUGIN_INVOKE_TRACE_ID_FIELD = '__plugin_trace_id';
@@ -36,10 +37,6 @@ export interface PluginInvokeDispatchDependencies {
     event: unknown,
     payload: unknown,
   ) => Promise<unknown> | unknown;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function parsePluginInvokeRequest(value: unknown): {

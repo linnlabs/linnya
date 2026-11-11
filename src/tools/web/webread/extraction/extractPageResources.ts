@@ -1,11 +1,8 @@
 import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
 import type { WebPageResource, WebPageResourceKind } from '../../definitions/webDocument';
+import { isRecord } from '@linnya/foundation';
 
 const MAX_PAGE_RESOURCES = 16;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 function normalizeLabel(value: string | null | undefined): string | undefined {
   const label = (value ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);

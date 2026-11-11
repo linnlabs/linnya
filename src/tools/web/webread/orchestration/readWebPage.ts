@@ -47,6 +47,7 @@ import {
   type WebTextWindow,
 } from '../functions/webReadWindow';
 import { readWebPdfText, type WebPdfTextResult } from './readWebPdfText';
+import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('ReadWebPage');
 
@@ -86,10 +87,6 @@ function resolveMaxChars(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0)
     return DEFAULT_WEB_PAGE_RETURN_CHARS;
   return Math.min(Math.floor(value), MAX_WEB_PAGE_CONTENT_CHARS);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 function tryParseProviderErrorPayload(content: string): { errCode?: number } | null {

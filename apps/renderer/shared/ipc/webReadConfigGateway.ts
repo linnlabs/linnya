@@ -5,6 +5,7 @@ import {
   type WebReadCredentialReaderId,
   type WebReadManagedReaderId,
 } from '../../../../src/tools/web/webread/definitions/webReadConfig';
+import { isRecord } from '@linnya/foundation';
 
 const CREDENTIAL_READER_IDS: readonly WebReadCredentialReaderId[] = [
   'metaso_reader',
@@ -20,10 +21,6 @@ export interface WebReadConnectionTestResult {
 export type WebReadConfigGatewayResult<T> =
   | { readonly success: true; readonly data: T }
   | { readonly success: false; readonly error: string };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function parseFailure(value: Record<string, unknown>): WebReadConfigGatewayResult<never> | undefined {
   return value.success === false && typeof value.error === 'string'

@@ -12,12 +12,9 @@ import type {
   MarkdownInlineProjection,
   SupportedInlineMarkName,
 } from './types'
+import { isRecord } from '@linnya/foundation';
 
 const SUPPORTED_SPAN_MARKS = new Set<SupportedInlineMarkName>(['bold', 'italic', 'strike', 'code'])
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 function toMarkArray(value: unknown): MarkLike[] {
   if (!Array.isArray(value)) {

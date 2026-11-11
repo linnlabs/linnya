@@ -8,6 +8,7 @@ import type {
 } from './sandboxControlProtocol.js';
 import { parseSandboxRunToken } from './sandboxMailboxProtocol.js';
 import { parseSandboxHeapLimitMb } from './sandboxRuntimeLimits.js';
+import { isRecord } from '@linnya/foundation';
 
 export const SANDBOX_UTILITY_ACK_DEADLINE_MS = 2_000;
 export const SANDBOX_UTILITY_MAX_PENDING_ACKNOWLEDGEMENTS = 64;
@@ -323,10 +324,6 @@ function requireExactKeys(
     || expected.some(key => !optional.includes(key) && !keys.includes(key))) {
     throw new Error('sandbox utility object contains invalid fields');
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function requireString(value: unknown, field: string): string {

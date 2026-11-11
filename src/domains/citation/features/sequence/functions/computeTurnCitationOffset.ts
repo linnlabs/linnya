@@ -1,8 +1,5 @@
 import type { CitationSequenceEvent } from '../definitions/citationSequence';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 /**
  * 统计本 turn 已被接纳的 citation 数量。

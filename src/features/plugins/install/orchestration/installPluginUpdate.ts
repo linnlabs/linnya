@@ -19,10 +19,7 @@ import type {
   InstallPluginUpdateResult,
   RemotePluginVersionManifest,
 } from '../definitions/pluginInstall';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@linnya/foundation';
 
 function readErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

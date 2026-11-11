@@ -10,6 +10,7 @@ import { readModelRerankingRoute } from './readModelRerankingRoute';
 import { readModelImageGenerationRoute } from './readModelImageGenerationRoute';
 import { readDocumentOcrRoute } from './readDocumentOcrRoute';
 import { readTranscriptionRoute } from './readTranscriptionRoute';
+import { isRecord } from '@linnya/foundation';
 
 type EditableModelPatch = Pick<
   ModelConfig,
@@ -27,10 +28,6 @@ type EditableModelPatch = Pick<
 export type ParseEditableModelPatchResult =
   | { readonly success: true; readonly patch: Partial<EditableModelPatch> }
   | { readonly success: false; readonly reason: string };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
 
 /** 用户编辑只可保留原身份的 opt-in 事实；新的角色许可由可信注册/刷新用例接纳。 */
 function projectEditedLanguageRoute(
