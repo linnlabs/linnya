@@ -4,7 +4,7 @@
 `pnpm exec tsx scripts/diagnostics/code-quality/auditRepository.ts`，stdout 是 JSON，可重定向到系统临时目录。命令不修改源码、基线、Git
 index 或运行数据。
 
-它盘点 Git 已跟踪及未忽略的候选源码，明确列出排除项；目前排除退役 Mindmap、WASM 生成绑定、标记的生成文件及第三方原件。生产代码、测试、开发脚本、声明分别统计。CSS、Rust、PowerShell 等只计文件与行数，JS/TS 与 Vue 的 script 另使用已有 TypeScript
+它盘点 Git 已跟踪及未忽略的候选源码，明确列出排除项，已从工作区删除的跟踪文件不读取；目前排除退役 Mindmap、WASM 生成绑定、标记的生成文件及第三方原件。生产代码、测试、开发脚本、声明分别统计。CSS、Rust、PowerShell 等只计文件与行数，JS/TS 与 Vue 的 script 另使用已有 TypeScript
 / Vue parser 提取函数及语法线索。所有位置使用原文件行号。
 
 输出包含函数名、范围、异步标记、函数体 token

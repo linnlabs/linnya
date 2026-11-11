@@ -36,3 +36,5 @@ app-level `development-data-lifecycle` workflow 持有。命令不接受路径�
 `src/tools/` 只承载真实 Agent 工具、紧邻 facade 和稳定跨工具合同。数据库检查器、数据重置命令、手工调试 CLI、benchmark 与测试脚本都必须留在 `scripts/`，即使它们会直接调用某个 Agent 工具类。
 
 脚本应复用生产模块的公开入口，不复制业务规则。脚本需要 Electron 原生模块 ABI 时，通过 `scripts/test-runner/run-test-with-electron.cjs` 启动；不要为绕过 ABI 再实现一套数据库访问逻辑。
+
+`source-analysis/` 是诊断与门禁共用的只读技术能力：按工作区而非仅 Git index 枚举文件，提取 JS/TS/Vue 的值/类型导入；不做业务判定，也不改源码或 index。

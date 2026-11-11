@@ -51,6 +51,9 @@ test('真实 Git 盘点保留范围、Vue 原行号与解析缺口，且不修�
     );
     write('apps/renderer/Empty.vue', '');
     // 同时覆盖 tracked / untracked，Git index 的选择不应改变源码覆盖范围。
+    write('src/deleted.ts', 'export const removed = 1;\n');
+    git(['add', 'src/entry.ts', 'src/deleted.ts']);
+    fs.unlinkSync(path.join(root, 'src/deleted.ts'));
     git(['add', 'src/entry.ts']);
     const before = git(['status', '--porcelain=v1', '--untracked-files=all']);
     const indexBefore = fs.readFileSync(path.join(root, '.git/index'));

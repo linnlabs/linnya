@@ -1,9 +1,9 @@
+import { listWorkingTreePaths } from '../source-analysis/listWorkingTreePaths';
 /** 已完成解环的模块不能从自身聚合入口回引；只约束经过复核的边，不追求全仓零循环。 */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { readSourceImports } from './functions/readSourceImports';
+import { readSourceImports } from '../source-analysis/readSourceImports';
 
 const BLOCK_HISTORY = 'apps/renderer/domains/editor/features/BlockHistory';
 const SOURCE_HISTORY = 'packages/plugins/slides/src/backend/features/presentationSourceHistory';
@@ -48,11 +48,7 @@ export function findModuleBarrelViolations(file: string, content: string): strin
 }
 
 function main(): void {
-  const files = execFileSync(
-    'git',
-    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-    { encoding: 'utf8' }
-  ).split('\0');
+  const files = listWorkingTreePaths();
   const violations = files
     .filter(
       file =>

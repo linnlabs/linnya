@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { findModuleBarrelViolations } from '../guards/module-barrel-boundary-guard';
-import { readSourceImports } from '../guards/functions/readSourceImports';
+import { readSourceImports } from '../source-analysis/readSourceImports';
 
 test('模块回引会失败，直接引用定义/能力与外部公开入口可用', () => {
   const file = 'apps/renderer/domains/editor/features/BlockHistory/ui/History.vue';

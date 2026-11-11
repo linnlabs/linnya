@@ -1,9 +1,9 @@
+import { listWorkingTreePaths } from '../source-analysis/listWorkingTreePaths';
 /** Renderer 状态依赖只减不增：shared 不依赖业务值，store 不反向调用编排。 */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { readSourceImports } from './functions/readSourceImports';
+import { readSourceImports } from '../source-analysis/readSourceImports';
 import { resolveLocalSourceImport } from './module-barrel-boundary-guard';
 
 const BASELINE = '.baseline/renderer-state-boundary.txt';
@@ -33,11 +33,7 @@ export function compareRendererStateEdges(
 }
 
 function main(): void {
-  const files = execFileSync(
-    'git',
-    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-    { encoding: 'utf8' }
-  ).split('\0');
+  const files = listWorkingTreePaths();
   const current = [
     ...new Set(
       files

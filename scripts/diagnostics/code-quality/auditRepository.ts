@@ -1,3 +1,4 @@
+import { listWorkingTreePaths } from '../../source-analysis/listWorkingTreePaths';
 /** 只读源码审计：stdout 输出 JSON，不改源码、基线、数据库或 Git index。 */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -12,15 +13,7 @@ import {
 } from './functions/classifySourceFile';
 
 const root = process.cwd();
-const candidates = [
-  ...new Set(
-    execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
-      encoding: 'utf8',
-    })
-      .split('\0')
-      .filter(file => SOURCE_PATTERN.test(file))
-  ),
-].sort();
+const candidates = listWorkingTreePaths().filter(file => SOURCE_PATTERN.test(file));
 const excluded = candidates.filter(file => EXCLUDED_PATTERNS.some(pattern => pattern.test(file)));
 const excludedSet = new Set(excluded);
 const files: SourceAuditFile[] = [];
