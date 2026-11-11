@@ -523,3 +523,13 @@ Renderer 以正式删除结果清理本地目录与用途绑定，再重读投�
 文本单位合同由 `src/text-units.ts` 拥有：中文按 code point、连续 ASCII 字母/数字按词，空白与合同列出的标点不计数；截短不拆英文词或代理对。Editor、知识库、工具输出和插件 SDK 从公开入口复用，不能维护第二份标点表或计数规则。
 
 块引用合同 `src/block-reference.ts` 拥有短 ID 字符表、摘要字节编码、前缀与格式校验。身份按原字符串的 UTF-8 计算 SHA-256，不 trim 或改大小写；Web Crypto/Node crypto 留在各端适配，随后调用 refIdFromDigest。批量碰撞检测与候选查找仍属调用方，迁移不改变已有短 ID。
+
+
+### 基础纯函数与独立制品
+
+对象判断复用 `@linnya/foundation`。Schemas 的双格式构建通过 TypeScript project reference 消费 Foundation 的声明，并由 `scripts/inlineFoundation.mjs` 只内联所用的基础函数。其余 schema 子模块和 zod/semver 的既有模块边界不变。
+
+Foundation 只作为开发依赖；合同 tarball 的运行不依赖工作区源码或未发布包。修改基础纯函数后必须重建并执行 `pack-smoke`，同时验证 CommonJS 与 ESM 的实际导出。
+
+
+开发 watcher 同时观察 Schemas 与 Foundation 源码。基础函数实现变化即使不改变声明，也必须重新生成内联运行代码；两种格式、路径修正与实际导出检查全部成功后才发送 `build-ready`。只有首次启动清理产物，后续刷新复用不清空目录的 `build:runtime`。

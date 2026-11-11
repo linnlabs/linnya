@@ -5,6 +5,10 @@
     "outDir": "dist/esm",
     "declaration": false,
     "declarationMap": false
-  }
+  },
+  "references": [
+    {
+      "path": "../foundation/tsconfig.build.json"
+    }
+  ]
 }
-

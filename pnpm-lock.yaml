@@ -1155,9 +1155,15 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      '@linnya/foundation':
+        specifier: workspace:*
+        version: link:../foundation
       '@types/semver':
         specifier: 7.7.1
         version: 7.7.1
+      esbuild:
+        specifier: ^0.25.11
+        version: 0.25.12
       rimraf:
         specifier: ^6.1.4
         version: 6.1.4

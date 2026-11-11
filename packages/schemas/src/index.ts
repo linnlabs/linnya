@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * @file package/schemas/src/index.ts
  * @description 统一导出所有schemas和工具函数
@@ -182,9 +183,7 @@ export const PACKAGE_VERSION = '1.0.0';
 
 import type { IncrementalEvent } from './api-dtos';
 
-function isRecord(event: unknown): event is Record<string, unknown> {
-  return !!event && typeof event === 'object' && !Array.isArray(event);
-}
+
 
 /**
  * 检查是否为增量事件

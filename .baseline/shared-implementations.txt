@@ -23,8 +23,6 @@
 1	FOUNDATION-is-record	packages/plugins/mindmap/src/shared/mindmapOutline.ts
 1	FOUNDATION-is-record	packages/plugins/slides/dev/powerpoint/rasterizeOfficePdf.ts
 1	FOUNDATION-is-record	packages/plugins/slides/src/shared/valueRecord.ts
-1	FOUNDATION-is-record	packages/schemas/src/conversation/subrun-trace-summary.ts
-1	FOUNDATION-is-record	packages/schemas/src/index.ts
 1	FOUNDATION-is-record	packages/stream-markdown-parser/src/parser/index.ts
 1	FOUNDATION-sleep	packages/plugins/canvas/dev/probes/performanceElectron.ts
 1	FOUNDATION-sleep	packages/plugins/canvas/dev/probes/sceneVisualRenderer.ts

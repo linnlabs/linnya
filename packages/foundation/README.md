@@ -29,3 +29,6 @@
 ## 构建接入
 
 这是编译期源码包，Host 与插件产物将函数内联，不要求安装时解析 TypeScript。独立插件覆盖 `compilerOptions.paths` 时，也要登记 `@linnya/foundation`；验收需要覆盖其独立 esbuild/worker 自检，不能只验证 Host 的解析配置。
+
+
+带独立 `rootDir` 的产物包可先运行 `build:types`，通过 `tsconfig.build.json` project reference 读取生成声明，避免把 Foundation 实现并入调用包的声明目录。Schemas 在自己的制品构建中内联所用纯函数；这是生成物，不是第二份源码实现。

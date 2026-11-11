@@ -77,6 +77,15 @@ function verifyCloudContractRuntime(label, modelInferenceRuntime, documentOcrRun
   );
 }
 
+function verifyObjectAdmissionRuntime(label, runtime) {
+  assert.equal(runtime.isIncrementalEvent({ type: 'user_input', timestamp: 1 }), true, label);
+  assert.equal(runtime.isIncrementalEvent(null), false, label);
+  assert.equal(runtime.isIncrementalEvent(Object.assign([], { type: 'user_input', timestamp: 1 })), false, label);
+  assert.deepEqual(runtime.readSubrunTraceSummary({
+    subrun_ids: ['a', 'a', '', 4, 'b'], event_counts: { a: 2, b: -1, c: '3' },
+  }), { subrun_ids: ['a', 'b'], event_counts: { a: 2 } }, label);
+}
+
 try {
   execFileSync(pnpmExecutable, ['pack', '--pack-destination', temporaryDirectory], {
     cwd: packageRoot,
@@ -140,13 +149,16 @@ try {
     }
   }
 
-  // packed artifact 的依赖声明由 lockfile 管理；smoke 只复用仓库已锁定安装结果，
-  // 验证的重点是 tarball 内容、真实 package exports 与 CJS/ESM 运行时合同。
-  symlinkSync(
-    path.join(packageRoot, 'node_modules'),
-    path.join(packedPackageRoot, 'node_modules'),
-    process.platform === 'win32' ? 'junction' : 'dir'
-  );
+  // 只链接声明的运行依赖；Foundation 是构建期依赖，不能借 devDependencies
+  // 或整个工作区 node_modules 的软链让未内联的引用蒙混过关。
+  for (const dependency of Object.keys(packedManifest.dependencies ?? {})) {
+    const target = path.join(packedPackageRoot, 'node_modules', dependency);
+    mkdirSync(path.dirname(target), { recursive: true });
+    symlinkSync(
+      path.join(packageRoot, 'node_modules', dependency), target,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
+  }
 
   const consumerRoot = path.join(temporaryDirectory, 'consumer');
   const consumerScopeRoot = path.join(consumerRoot, 'node_modules', '@app');
@@ -168,6 +180,9 @@ try {
     await import(pathToFileURL(path.join(packedPackageRoot, 'dist/esm/model-inference/index.js'))),
     await import(pathToFileURL(path.join(packedPackageRoot, 'dist/esm/document-ocr/index.js')))
   );
+
+  verifyObjectAdmissionRuntime('CommonJS packed artifact', consumerRequire('@app/schemas'));
+  verifyObjectAdmissionRuntime('ESM packed artifact', await import(pathToFileURL(path.join(packedPackageRoot, 'dist/esm/index.js'))));
 
   log(`schemas packed Cloud contract smoke passed: ${archives[0]}`);
 } finally {

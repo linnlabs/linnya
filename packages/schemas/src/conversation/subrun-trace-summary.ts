@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * 父工具行上的轻量 subrun 索引。
  *
@@ -86,9 +87,7 @@ export function mergeSubrunTraceSummaryWithAuthoritativeIds(
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 function readUniqueNonEmptyStrings(values: readonly unknown[]): string[] {
   const result: string[] = [];
