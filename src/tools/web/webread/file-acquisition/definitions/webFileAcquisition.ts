@@ -10,6 +10,8 @@ import type { WebAcquiredFile } from '@app/schemas';
 export interface WebFilePayload {
   readonly bytes: Uint8Array;
   readonly format: WebAcquiredFile['format'];
+  /** 仅图片：完整解码后的像素尺寸（按 EXIF 方向）。 */
+  readonly image?: { readonly width: number; readonly height: number };
 }
 
 export interface WebFileStore {

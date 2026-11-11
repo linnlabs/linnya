@@ -7,7 +7,7 @@ import type { WebFileStore } from '../../../tools/web/webread/file-acquisition/d
 
 export const WEB_FILE_CONVERSATION_MAX_BYTES = 50 * 1024 * 1024;
 const pending = new Map<string, Promise<unknown>>();
-const MANAGED_WEB_FILE_NAME = /^[a-f0-9]{64}\.(?:pdf|csv|xlsx)$/;
+const MANAGED_WEB_FILE_NAME = /^[a-f0-9]{64}\.(?:pdf|csv|xlsx|jpg|png|webp)$/;
 
 /** 只序列化同目录的配额/复用事务；生命周期准入仍由 Host 拥有。 */
 async function inDirectory<T>(root: string, operation: () => Promise<T>): Promise<T> {

@@ -17,7 +17,7 @@
 
 ## 取得合同
 
-PDF、`text/csv` / `application/csv`、XLSX 使用独立的 30 MiB 单文件响应预算；网页和错误页仍为 5 MiB。
+PDF、`text/csv` / `application/csv`、XLSX 与 JPEG、PNG、WebP 图片使用独立的 30 MiB 单文件响应预算；网页和错误页仍为 5 MiB。
 在原 GET 收到成功响应头时按 MIME 选择预算，不增加 HEAD 或第二次下载；每跳重定向仍重新检查。
 响应头只决定接收预算，不证明类型可信；类型校验通过后才保存。上限按实际解压后字节执行，
 不信任 Content-Length，压缩响应和无长度的流同样受限。同一判断也把整次抓取截止时间延长到
@@ -36,6 +36,9 @@ CSV 没有魔数：按响应编码检查文本，拒绝二进制和 HTML 伪装�
 原响应 MIME 保留在文件身份中。未知 MIME 不因此扩大到 30 MiB、不额外请求，超过 5 MiB 仍明确失败。
 类型检查不是完整文件有效性或无恶意内容认证。
 
+图片按实际字节签名认格式（不信响应头和 URL），用 `src/shared/media/image-inspection` 完整解码，截断、伪装或超过 1 亿像素的不保存；
+回执带解码尺寸与来源记录，见 [Web README §5.12](../../README.md)。
+
 CSV 同时返回既有文本视图；`max_chars` 只裁剪文本，不裁剪保存的字节。
 XLSX（以及打不开的 PDF）的 `charCount=0`、`extractor=file_download`；能打开的 PDF 返回页文字，`extractor=pdf_text_layer`。
 PDF 回执同时给出 `read_file({"locator":"conversation:/web-downloads/<sha>.pdf"})`，有 read_file 的 Agent 还能按页看图；XLSX 仍由 Shell 解析。
@@ -45,7 +48,7 @@ PDF 回执同时给出 `read_file({"locator":"conversation:/web-downloads/<sha>.
 不采用远程文件名，不自动预览/打开。下载区总量 50 MiB，Host 同目录写入串行计量；
 写完整后才发布 hash 路径。同 hash 复用前校验实际字节；原件被改动则明确拒绝，
 不把旧 hash 套到新内容上。回执明确要求解析文本、表格和脚本放在 `web-downloads/` 之外；Shell 的明确写权限不在此变更。
-配额只计量存储层受管命名候选 `<64位小写sha256>.pdf|csv|xlsx` 的普通文件；解析产物、
+配额只计量存储层受管命名候选 `<64位小写sha256>.pdf|csv|xlsx|jpg|png|webp` 的普通文件；解析产物、
 无关名称、目录和 symlink 不算受管原件，也不会仅因它们存在而阻断取得。受管候选若变成目录或
 symlink 则明确拒绝，不沿链接统计；同 hash 目标复用仍执行实际类型、字节长度和 hash 校验，
 文件名本身不证明来源身份。配额拒绝报告 `used/incoming/max` 字节数。当前 50 MiB 是受管

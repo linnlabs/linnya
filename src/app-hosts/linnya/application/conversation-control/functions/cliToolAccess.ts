@@ -7,7 +7,7 @@ import { ConversationControlError } from '../definitions/conversationControlErro
 
 export function selectCliTools(webEnabled: boolean): readonly ConversationControlToolName[] {
   return webEnabled
-    ? [...CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES, 'web_search', 'web_read', 'tool_output_read']
+    ? [...CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES, 'web_search', 'web_read', 'image_search', 'tool_output_read']
     : CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES;
 }
 

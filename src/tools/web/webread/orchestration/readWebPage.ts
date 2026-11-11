@@ -48,6 +48,8 @@ import {
 } from '../functions/webReadWindow';
 import { readWebPdfText, type WebPdfTextResult } from './readWebPdfText';
 import { isRecord } from '@linnya/foundation';
+import { getImageSourceRegistry, type ImageSourceRegistry, type ImageSourceRecord } from '../../shared/images/imageSourceRegistry';
+import type { WebImageSource } from '@app/schemas';
 
 const logger = new Logger('ReadWebPage');
 
@@ -75,6 +77,22 @@ export interface ReadWebPageDependencies {
   evidenceWriter?: WebEvidenceWriter;
   cacheRuntime?: WebCacheRuntime;
   fileStore?: WebFileStore;
+  imageSources?: ImageSourceRegistry;
+}
+
+function toWebImageSource(record: ImageSourceRecord): WebImageSource {
+  return {
+    found_via: record.foundVia,
+    page_url: record.pageUrl,
+    ...(record.provider ? { provider: record.provider } : {}),
+    ...(record.title ? { title: record.title } : {}),
+    ...(record.creator ? { creator: record.creator } : {}),
+    ...(record.license ? { license: record.license } : {}),
+    ...(record.attribution ? { attribution: record.attribution } : {}),
+    ...(record.caption ? { caption: record.caption } : {}),
+    ...(record.credit ? { credit: record.credit } : {}),
+    ...(record.pageRights ? { page_rights: record.pageRights } : {}),
+  };
 }
 
 function createAbortError(): Error {
@@ -254,6 +272,28 @@ export async function runReadWebPage(
         })
       : undefined;
   context.abortSignal?.throwIfAborted();
+  const imageSources = dependencies.imageSources ?? getImageSourceRegistry();
+  // 网页上的图片候选：记下出现在哪一页、图注与署名，之后下载同一地址时写进回执。
+  for (const pageImage of readResult.images ?? []) {
+    imageSources.remember(pageImage.url, {
+      foundVia: 'web_page',
+      pageUrl: normalizeUrl(readResult.finalUrl),
+      ...(readResult.title.trim() ? { title: readResult.title.trim().slice(0, 300) } : {}),
+      ...(pageImage.caption ?? pageImage.alt ? { caption: (pageImage.caption ?? pageImage.alt)!.slice(0, 500) } : {}),
+      ...(pageImage.credit ? { credit: pageImage.credit } : {}),
+      ...(readResult.pageRights ? { pageRights: readResult.pageRights } : {}),
+    });
+  }
+  const imageRecord = readResult.filePayload?.image
+    ? imageSources.lookup(params.url, readResult.finalUrl)
+    : undefined;
+  const image = readResult.filePayload?.image
+    ? {
+        width: readResult.filePayload.image.width,
+        height: readResult.filePayload.image.height,
+        ...(imageRecord ? { source: toWebImageSource(imageRecord) } : {}),
+      }
+    : undefined;
 
   const providerError = tryParseProviderErrorPayload(readResult.content);
   if (providerError) {
@@ -392,7 +432,10 @@ export async function runReadWebPage(
     captureTruncated,
     warnings: readResult.warnings,
     resources: readResult.resources,
+    ...(readResult.images?.length ? { pageImages: readResult.images } : {}),
+    ...(readResult.pageRights ? { pageRights: readResult.pageRights } : {}),
     file,
+    ...(image ? { image } : {}),
     ...(window ? { window } : {}),
     ...(textFind && params.find !== undefined ? { find: { query: params.find, result: textFind } } : {}),
     ...(pdfText ? { pdf: pdfText, imageDelivery: resolveToolResultImageDelivery(context) } : {}),
@@ -441,6 +484,8 @@ export async function runReadWebPage(
       ...(readResult.resources && readResult.resources.length > 0
         ? { resources: readResult.resources }
         : {}),
+      ...(readResult.images && readResult.images.length > 0 ? { images: readResult.images } : {}),
+      ...(readResult.pageRights ? { page_rights: readResult.pageRights } : {}),
       ...(window
         ? {
             window: {
@@ -487,6 +532,7 @@ export async function runReadWebPage(
       evidence_store: { bundle_id: bundleId },
       cacheStatus,
       ...(file ? { file } : {}),
+      ...(image ? { image } : {}),
     },
     observation,
   });

@@ -161,7 +161,7 @@ export const CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES = [
 ] as const;
 
 export const ConversationControlToolNameSchema = z.enum(
-  [...CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES, 'web_search', 'web_read', 'tool_output_read'],
+  [...CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES, 'web_search', 'web_read', 'image_search', 'tool_output_read'],
 );
 
 const ToolsRequestBaseFields = {

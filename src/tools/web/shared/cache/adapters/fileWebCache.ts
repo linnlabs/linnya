@@ -7,6 +7,8 @@ import {
   WebExtractionFailureStageSchema,
   WebFailureKindSchema,
   WebReadEscalationReasonSchema,
+  WebPageImageSchema,
+  WEB_PAGE_IMAGES_MAX,
 } from '@app/schemas';
 import type {
   WebCacheLookup,
@@ -70,6 +72,8 @@ const webReadResultSchema = z.object({
     url: z.string(),
     label: z.string().optional(),
   }).strict()).max(16).optional(),
+  images: z.array(WebPageImageSchema).max(WEB_PAGE_IMAGES_MAX).optional(),
+  pageRights: z.string().optional(),
   blockedReason: z.string().optional(),
   latencyMs: z.number(),
   estimatedCost: z.number().optional(),

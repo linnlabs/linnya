@@ -93,6 +93,11 @@ export const MIGRATED_HEADER_ONLY_TOOL_CONFIGS: readonly MigratedHeaderOnlyToolC
     exportName: 'commonToolConfigs',
     toolName: 'evidence_resolve',
   },
+  {
+    file: 'apps/renderer/domains/conversation/ui/tools/configs/web.ts',
+    exportName: 'webToolConfigs',
+    toolName: 'image_search',
+  },
 ];
 
 export type ToolPresentationMigrationRule =

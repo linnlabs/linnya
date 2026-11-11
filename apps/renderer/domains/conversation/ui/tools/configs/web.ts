@@ -10,9 +10,13 @@ import { ReadIcon } from '@linnya/renderer-ui/icons';
 import { projectWebSearchPresentation } from '../websearch/functions/projectWebSearchPresentation';
 import { projectWebSearchCompactStep } from '../websearch/functions/projectWebSearchPresentation';
 import { projectWebReadPresentation, projectWebReadCompactStep } from '../webread/functions/projectWebReadPresentation';
+import { projectImageSearchPresentation } from '../imagesearch/functions/projectImageSearchPresentation';
+import { createStaticToolCompactStepProjector } from '../compact-step/functions/createStaticToolCompactStepProjector';
+import { ImageIcon } from '@linnya/renderer-ui/icons';
 
 const WebSearchCard = defineAsyncComponent(() => import('../websearch/WebSearchCard.vue'));
 const WebReadCard = defineAsyncComponent(() => import('../webread/WebReadCard.vue'));
+const NoopToolContent = defineAsyncComponent(() => import('../NoopToolContent.vue'));
 
 export const webToolConfigs: Record<string, ToolUiConfig> = {
   web_search: {
@@ -45,5 +49,13 @@ export const webToolConfigs: Record<string, ToolUiConfig> = {
     presentation: projectWebReadPresentation,
     compactStep: projectWebReadCompactStep,
     layout: { fullWidth: true, defaultCollapsed: true },
+  },
+
+  image_search: {
+    component: NoopToolContent,
+    icon: ImageIcon,
+    presentation: projectImageSearchPresentation,
+    compactStep: createStaticToolCompactStepProjector('conversation.tool.imageSearch.compact'),
+    layout: { fullWidth: true, hideContent: true, disableHeaderHover: true },
   },
 };

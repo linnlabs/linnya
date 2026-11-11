@@ -44,6 +44,7 @@ export const slidesToolManifest = {
       'subagent',
       'web_search',
       'web_read',
+      'image_search',
       'task_write',
       'task_read',
       'skill',

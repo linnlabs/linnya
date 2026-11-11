@@ -32,6 +32,7 @@ const SUBAGENT_GENERAL_TOOLS = [
   'knowledge_read',
   'web_search',
   'web_read',
+  'image_search',
   // Skill（渐进式能力披露：按需加载领域知识与工作流指导）
   'skill',
   'shell',
