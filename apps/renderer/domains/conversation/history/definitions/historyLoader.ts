@@ -44,3 +44,8 @@ export interface PreparedHistoryLoadingShell {
   previousConversationId: string | null;
   fallbackConversation: Conversation | null;
 }
+
+/** 历史窗口加载的 UI 状态，token、缓冲和请求归外部运行器。 */
+export interface HistoryLoadingState {
+ isLoading: boolean; loadingConversationId: string | null; error: string | null; loadedConversationId: string | null;
+}

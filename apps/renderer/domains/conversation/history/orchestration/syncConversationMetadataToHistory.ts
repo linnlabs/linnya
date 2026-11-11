@@ -1,5 +1,5 @@
 import { sleep } from '@linnya/foundation';
-import { useHistoryListStore } from '../store/historyListStore';
+import { useHistoryList } from '../list';
 import { historyApiService, type ConversationListItem } from '../services/historyApiService';
 import type { NavigationScope } from '@/app/navigation';
 
@@ -77,7 +77,7 @@ export function touchConversationHistoryTimestamp(
   const safeLastEventAt = normalizeTimestamp(lastEventAt);
   if (!safeConversationId || safeLastEventAt === undefined) return;
 
-  const listStore = useHistoryListStore();
+  const listStore = useHistoryList();
   listStore.touchConversationTimestamp(safeConversationId, safeLastEventAt);
 }
 
@@ -128,7 +128,7 @@ export function syncConversationMetadataToHistory(
             minimumLastEventAt,
             lastEventAtOverride,
           );
-          const listStore = useHistoryListStore();
+          const listStore = useHistoryList();
           listStore.upsertConversation(nextMetadata);
 
           const metadataIsFreshEnough = lastEventAtOverride !== undefined

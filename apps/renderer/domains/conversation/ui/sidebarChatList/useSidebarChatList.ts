@@ -11,7 +11,7 @@ import {
 import { resolveIconButtonElement } from '@linnya/renderer-ui';
 import { useAssistantStore } from '../../store/assistantStore';
 import type { ConversationListItem } from '../../history/services/historyApiService';
-import { useHistoryListStore } from '../../history/store/historyListStore';
+import { useHistoryList } from '../../history/list';
 import { useConversationDeletionStore } from '../../history/store/conversationDeletionStore';
 import {
   deleteConversationFromHistory,
@@ -67,7 +67,7 @@ export function useSidebarChatList(
   const displayMode = computed(() => props.displayMode ?? 'collapsible');
 
   const assistantStore = useAssistantStore();
-  const historyListStore = useHistoryListStore();
+  const historyListStore = useHistoryList();
   const conversationDeletionStore = useConversationDeletionStore();
   const conversationSelectionStore = useConversationSelectionStore();
   const conversationTitleFeature = useConversationTitleFeature();

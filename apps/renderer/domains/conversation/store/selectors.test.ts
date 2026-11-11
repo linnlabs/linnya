@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useConversationState } from './conversationState';
 import { useConversationSelectors } from './selectors';
-import { useProjectionStore } from './assistant/projectionStore';
+import { useConversationProjection } from '../projection';
 import { useMessageWindowStore } from '../message-window';
 import type { WindowMessageRow } from '../message-window';
 import type { BaseMessage, Conversation } from '../types';
@@ -323,7 +323,7 @@ describe('conversation selectors', () => {
 
   it('clears live-only tail when editing a message that exists only in the window slot', () => {
     const conversationState = useConversationState();
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const windowStore = useMessageWindowStore();
     const selectors = useConversationSelectors(conversationState);
 

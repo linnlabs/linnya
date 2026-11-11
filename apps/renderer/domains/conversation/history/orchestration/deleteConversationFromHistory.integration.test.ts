@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type {
@@ -93,13 +95,13 @@ import { createWorkspaceNavigation } from '../../../../app/layout/orchestration/
 import { useConversationTitleCandidateStore } from '../../features/conversation-title/store/conversationTitleCandidateStore';
 import { useInteractiveRunStore } from '../../features/interactive-run';
 import { useMessageWindowStore } from '../../message-window/store/messageWindowStore';
-import { useProjectionStore } from '../../store/assistant/projectionStore';
+import { useConversationProjection } from '../../projection';
 import { useAssistantStore } from '../../store/assistantStore';
 import { useConversationState } from '../../store/conversationState';
 import { createTestUserMessage } from '../../testing/functions/createConversationTestMessage';
 import { useConversationDeletionStore } from '../store/conversationDeletionStore';
-import { useHistoryListStore } from '../store/historyListStore';
-import { useHistoryLoaderStore } from '../store/historyLoaderStore';
+import { useHistoryList } from '../list';
+import { useHistoryLoader } from '../loader';
 import {
   deleteConversationFromHistory,
   retryConversationCleanupFromHistory,
@@ -137,7 +139,7 @@ function seedConversation(
   const navigationScope = useNavigationScope();
   const conversationState = useConversationState();
   const assistantStore = useAssistantStore();
-  const historyListStore = useHistoryListStore();
+  const historyListStore = useHistoryList();
   const titleCandidateStore = useConversationTitleCandidateStore();
 
   conversationState.createConversation({
@@ -164,7 +166,7 @@ function seedConversation(
     useMessageWindowStore().setPreparing(conversationId);
   }
 
-  assistantStore.appendMessage(
+  useConversationProjectionActions().appendMessage(
     createTestUserMessage({ id: `message-${conversationId}` }),
     conversationId,
   );
@@ -174,11 +176,11 @@ function seedConversation(
 }
 
 function expectConversationFactsPresent(conversationId: string): void {
-  expect(useHistoryListStore().getConversationsByScope(assistantScope)).toEqual(
+  expect(useHistoryList().getConversationsByScope(assistantScope)).toEqual(
     expect.arrayContaining([expect.objectContaining({ conversation_id: conversationId })]),
   );
   expect(useConversationState().conversations.some(conversation => conversation.id === conversationId)).toBe(true);
-  expect(useProjectionStore().messageProjectionStates.has(conversationId)).toBe(true);
+  expect(useConversationProjection().messageProjectionStates.has(conversationId)).toBe(true);
   expect(useInteractiveRunStore().snapshotFor(conversationId)).toMatchObject({
     conversationId,
     status: 'starting',
@@ -228,12 +230,12 @@ describe('deleteConversationFromHistory', () => {
     await firstDeletion;
 
     expect(useConversationDeletionStore().isDeletingConversation('conversation-active')).toBe(false);
-    expect(useHistoryListStore().getConversationsByScope(assistantScope)).toHaveLength(0);
+    expect(useHistoryList().getConversationsByScope(assistantScope)).toHaveLength(0);
     expect(useConversationState().conversations).toHaveLength(0);
     expect(useConversationState().activeConversationId).toBeNull();
     expect(useAssistantStore().selectedConversationId).toBeNull();
     expect(useMessageWindowStore().conversationId).toBeNull();
-    expect(useProjectionStore().messageProjectionStates.has('conversation-active')).toBe(false);
+    expect(useConversationProjection().messageProjectionStates.has('conversation-active')).toBe(false);
     expect(useInteractiveRunStore().snapshotFor('conversation-active')).toBeUndefined();
     expect(runController.signal.aborted).toBe(true);
     expect(useConversationTitleCandidateStore().getCandidate('conversation-active')).toBeNull();
@@ -269,7 +271,7 @@ describe('deleteConversationFromHistory', () => {
   it('工作目录清理重试成功后解除持久状态，但保留对话事实', async () => {
     retryPendingCleanupMock.mockResolvedValue('work_directory_cleared');
     seedConversation('conversation-clear-retry', { active: false });
-    useHistoryListStore().updateConversation('conversation-clear-retry', {
+    useHistoryList().updateConversation('conversation-clear-retry', {
       cleanup_pending: true,
     });
 
@@ -279,7 +281,7 @@ describe('deleteConversationFromHistory', () => {
     });
 
     expectConversationFactsPresent('conversation-clear-retry');
-    expect(useHistoryListStore().getConversationsByScope(assistantScope)[0])
+    expect(useHistoryList().getConversationsByScope(assistantScope)[0])
       .toMatchObject({ cleanup_pending: false });
   });
 
@@ -292,15 +294,15 @@ describe('deleteConversationFromHistory', () => {
       scope: assistantScope,
     });
 
-    expect(useHistoryListStore().getConversationsByScope(assistantScope)).toHaveLength(0);
+    expect(useHistoryList().getConversationsByScope(assistantScope)).toHaveLength(0);
     expect(useConversationState().activeConversationId).toBeNull();
-    expect(useProjectionStore().messageProjectionStates.has('conversation-delete-retry')).toBe(false);
+    expect(useConversationProjection().messageProjectionStates.has('conversation-delete-retry')).toBe(false);
   });
 
   it('重试仍失败时保留 cleanup 状态和全部本地事实', async () => {
     retryPendingCleanupMock.mockRejectedValue(new Error('cleanup failed again'));
     seedConversation('conversation-cleanup-still-failed', { active: false });
-    useHistoryListStore().updateConversation('conversation-cleanup-still-failed', {
+    useHistoryList().updateConversation('conversation-cleanup-still-failed', {
       cleanup_pending: true,
     });
 
@@ -310,7 +312,7 @@ describe('deleteConversationFromHistory', () => {
     })).rejects.toThrow('cleanup failed again');
 
     expectConversationFactsPresent('conversation-cleanup-still-failed');
-    expect(useHistoryListStore().getConversationsByScope(assistantScope)[0])
+    expect(useHistoryList().getConversationsByScope(assistantScope)[0])
       .toMatchObject({ cleanup_pending: true });
   });
 
@@ -327,13 +329,13 @@ describe('deleteConversationFromHistory', () => {
     expect(useConversationState().activeConversationId).toBe('conversation-visible');
     expect(useAssistantStore().selectedConversationId).toBe('conversation-visible');
     expect(useMessageWindowStore().conversationId).toBe('conversation-visible');
-    expect(useProjectionStore().messageProjectionStates.has('conversation-visible')).toBe(true);
+    expect(useConversationProjection().messageProjectionStates.has('conversation-visible')).toBe(true);
     expect(useInteractiveRunStore().snapshotFor('conversation-visible')).toBeDefined();
     expect(useNavigationScope().isCurrentScopeDraft).toBe(false);
     expect(useConversationState().conversations.map(conversation => conversation.id)).toEqual([
       'conversation-visible',
     ]);
-    expect(useProjectionStore().messageProjectionStates.has('conversation-background')).toBe(false);
+    expect(useConversationProjection().messageProjectionStates.has('conversation-background')).toBe(false);
     expect(useInteractiveRunStore().snapshotFor('conversation-background')).toBeUndefined();
   });
 
@@ -397,7 +399,7 @@ describe('deleteConversationFromHistory', () => {
     const deferredMetadata = createDeferredPromise<null>();
     fetchMetadataMock.mockReturnValue(deferredMetadata.promise);
     deleteConversationMock.mockResolvedValue(true);
-    const historyLoaderStore = useHistoryLoaderStore();
+    const historyLoaderStore = useHistoryLoader();
     const loadPromise = historyLoaderStore.loadConversation('conversation-loading', {
       initialConversation: {
         title: '加载中的对话',
@@ -465,7 +467,7 @@ describe('deleteConversationFromHistory', () => {
     fetchListMock.mockReturnValue(deferredList.promise);
     deleteConversationMock.mockResolvedValue(true);
     seedConversation('conversation-late-list', { active: true });
-    const historyListStore = useHistoryListStore();
+    const historyListStore = useHistoryList();
     const refreshPromise = historyListStore.loadScopeList(assistantScope, {
       refresh: true,
       limit: 100,

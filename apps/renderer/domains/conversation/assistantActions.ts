@@ -2,3 +2,5 @@
 export { cancelAssistantActivity } from './services/orchestration/cancelAssistantActivity';
 export { useToolingFlowOrchestrator } from './services/orchestration/toolingFlowOrchestrator';
 export { useAnnotationRunOrchestrator } from './services/orchestration/annotationRunOrchestrator';
+
+export { useConversationProjectionActions } from './projectionActions';

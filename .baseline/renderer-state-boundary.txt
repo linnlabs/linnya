@@ -1,12 +1,2 @@
-STORE-ASYNC	apps/renderer/domains/conversation/history/store/historyListStore.ts	loadList#1
-STORE-ASYNC	apps/renderer/domains/conversation/history/store/historyListStore.ts	loadScopeList#1
-STORE-ASYNC	apps/renderer/domains/conversation/history/store/historyListStore.ts	refresh#1
-STORE-ASYNC	apps/renderer/domains/conversation/history/store/historyListStore.ts	updatePinned#1
-STORE-ASYNC	apps/renderer/domains/conversation/history/store/historyLoaderStore.ts	loadConversation#1
-STORE-ASYNC	apps/renderer/domains/conversation/store/assistant/projectionStore.ts	handleSseEvent#1
-STORE-ASYNC	apps/renderer/domains/conversation/store/assistant/projectionStore.ts	processSseEvent#1
-STORE-ASYNC	apps/renderer/domains/conversation/store/assistant/projectionStore.ts	replayBufferedHistoryLoadingEvents#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionActionPerf.ts	measureAsync#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionPendingPerf.ts	measureRevisionPendingStageAsync#1
-STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/history/store/historyLoaderStore.ts	../orchestration/historyWindowTailLoader
-STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/store/assistant/projectionStore.ts	../../services/orchestration/projectionCommitPipeline

@@ -92,3 +92,9 @@ API 保留 request、HTTP、JSON 解码和响应合同校验阶段；loader 记�
 长轮次回归：完成开发构建后运行 `LINNYA_CONVERSATION_E2E_SCENARIO=bottom-return node scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs`。
 隔离 SQLite 注入 400 条连续助手消息，对照实际回底按钮与手动滚动；验证按钮只请求 tail、不额外 before 分页，
 两条路径的真实底部和用量环一致，即使来源用户已不在任何保留行中。
+
+## 状态与运行入口
+
+历史列表使用 `list.ts` 的 `useHistoryList`，窗口加载使用 `loader.ts` 的 `useHistoryLoader`。Pinia store 仅保存快照和加载状态；订阅、分页、加载壳、request token 与 tail 请求由 `orchestration/` 持有。列表排序、作用域与合并规则在 `functions/historyListProjection.ts` 中计算，写入通过同步 action 完成，保留快照对象身份。
+
+实时消息投影通过 Conversation 的 `projectionActions.ts` 进入。Reducer 工作区、延迟提交与 SSE 缓冲属于运行期流程，不是 UI 状态；UI 继续订阅 `conversationState`。聚合 assistant store 不再转发投影命令，内部流程直接引用窄命令入口，避免从公开动作聚合入口回引。

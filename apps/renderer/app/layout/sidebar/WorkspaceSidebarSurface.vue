@@ -156,7 +156,7 @@ import { useChatFlowOrchestrator } from '@/domains/conversation/services/orchest
 import { applyConversationAgentChoice } from '@/domains/conversation/features/agent-choice/orchestration/applyConversationAgentChoice';
 import { useConversationAgentChoices } from '@/app/plugins/composables';
 import { startProjectPlanningConversation } from '@/app/layout/orchestration/startProjectPlanningConversation';
-import { useHistoryListStore } from '@/domains/conversation/history/store/historyListStore';
+import { useHistoryList } from '@/domains/conversation/history/list';
 import { useUIStore } from '@/shared/stores/ui';
 import { useFileStore } from '@/app/active-document';
 import { useNotificationStore } from '@/app/notification';
@@ -231,7 +231,7 @@ const projectExpansionStore = useSidebarProjectExpansionStore();
 const assistantStore = useAssistantStore();
 const chatFlowOrchestrator = useChatFlowOrchestrator();
 const conversationAgentChoices = useConversationAgentChoices();
-const historyListStore = useHistoryListStore();
+const historyListStore = useHistoryList();
 const uiStore = useUIStore();
 const fileStore = useFileStore();
 const notificationStore = useNotificationStore();

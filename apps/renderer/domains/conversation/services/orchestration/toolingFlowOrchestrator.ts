@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 /**
  * @file apps/renderer/domains/conversation/services/orchestration/toolingFlowOrchestrator.ts
  * @description 工具交互流程编排器 (Tooling Flow Orchestrator)
@@ -156,7 +158,7 @@ export function useToolingFlowOrchestrator() {
           ),
         },
         abortController.signal,
-        assistantStore.handleSseEvent,
+        useConversationProjectionActions().handleSseEvent,
         {
           ...options.interactionResponse,
           submittedAt: options.interactionResponse.submittedAt ?? Date.now(),

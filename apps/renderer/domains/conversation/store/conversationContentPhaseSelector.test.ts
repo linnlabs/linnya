@@ -50,8 +50,8 @@ vi.mock('../services/orchestration/annotationRunOrchestrator', () => ({
 vi.mock('../services/assistantService', () => ({
 }));
 
-vi.mock('../history/store/historyLoaderStore', () => ({
-  useHistoryLoaderStore: () => ({
+vi.mock('../history/loader', () => ({
+  useHistoryLoader: () => ({
     loadConversation: vi.fn(),
   }),
 }));

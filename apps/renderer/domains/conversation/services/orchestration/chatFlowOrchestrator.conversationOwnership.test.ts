@@ -107,6 +107,10 @@ vi.mock('./context/contextHelper', () => ({
   getSidebarDocumentFragmentContext: vi.fn(async () => ({ document_fragment: '' })),
 }));
 
+vi.mock('@/domains/conversation/projectionActions', () => ({
+  useConversationProjectionActions: () => harness.assistantStore,
+}));
+
 vi.mock('../../store/assistantStore', () => ({
   useAssistantStore: () => harness.assistantStore,
 }));

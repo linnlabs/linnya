@@ -16,6 +16,7 @@ const BACKEND_SDK = 'src/plugin-sdk/backend';
 const PLUGIN_REGISTRY = 'src/app-hosts/linnya/plugin-registry';
 const DESKTOP_CAPABILITIES = 'src/app-hosts/linnya/desktop-capabilities';
 const RASTER_PDF = 'src/features/system/export/orchestration/renderRasterPdfDocument.ts';
+const CONVERSATION = 'apps/renderer/domains/conversation';
 const RUNTIME_QUERY_CONSUMERS = [
   `${PLUGIN_REGISTRY}/registeredContributions.ts`,
   `${PLUGIN_REGISTRY}/toolContextDerivation.ts`,
@@ -71,9 +72,12 @@ export function findModuleBarrelViolations(file: string, content: string): strin
     const runtimeImportsComposition = target === DESKTOP_CAPABILITIES
       && (file.startsWith(`${BACKEND_SDK}/`) || file.startsWith(`${PLUGIN_REGISTRY}/`) || file === RASTER_PDF);
     const broadRead = NARROW_READS[file]?.includes(target);
-    return ownBarrel || historyPersistenceBackEdge || revisionRuntimeBackEdge || sdkLoadsPlugins || runtimeImportsComposition || broadRead
+    const conversationActionBarrel = file.startsWith(`${CONVERSATION}/`)
+      && /\/orchestration\//u.test(file)
+      && target === `${CONVERSATION}/assistantActions`;
+    return ownBarrel || historyPersistenceBackEdge || revisionRuntimeBackEdge || sdkLoadsPlugins || runtimeImportsComposition || broadRead || conversationActionBarrel
       ? [
-          `${file}:${edge.line} → ${edge.specifier}：内部引用应指向具体 definitions/functions/store，不回引聚合 index。`,
+          `${file}:${edge.line} → ${edge.specifier}：内部引用应指向具体 owner 入口或叶子模块，不回引聚合 index。`,
         ]
       : [];
   });
@@ -86,7 +90,7 @@ function main(): void {
       file =>
         /\.(?:ts|tsx|js|vue)$/u.test(file) &&
         !/(?:__tests__|fixtures)\/|\.(?:test|spec|example)\./u.test(file) &&
-        ([...MODULES, REVISION_PENDING, BACKEND_SDK, PLUGIN_REGISTRY].some(root => file.startsWith(`${root}/`))
+        ([...MODULES, REVISION_PENDING, BACKEND_SDK, PLUGIN_REGISTRY, CONVERSATION].some(root => file.startsWith(`${root}/`))
           || file === RASTER_PDF || RUNTIME_QUERY_CONSUMERS.includes(file) || file in NARROW_READS)
     )
     .flatMap(file => findModuleBarrelViolations(file, fs.readFileSync(file, 'utf8')));

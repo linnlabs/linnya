@@ -4,7 +4,7 @@ import { useNotificationStore } from '@/app/notification';
 import { useConversationTitleFeature } from '@/domains/conversation/features/conversation-title';
 import { useInteractiveRunStore } from '@/domains/conversation/features/interactive-run';
 import { deleteConversationFromHistory } from '@/domains/conversation/history/orchestration/deleteConversationFromHistory';
-import { useHistoryListStore } from '@/domains/conversation/history/store/historyListStore';
+import { useHistoryList } from '@/domains/conversation/history/list';
 import { resolveRunExecutionActivity } from '@/domains/conversation/shared/execution-presentation';
 import { useConversationLocalization } from '@/domains/conversation/ui/useConversationLocalization';
 import type { ProjectConversationActions } from '@/domains/workspace/features/project-overview/definitions/projectConversations';
@@ -16,7 +16,7 @@ import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPo
  * “正在回复”取本窗口观察到的运行状态，不读数据库里可能残留的运行状态。
  */
 export function useProjectOverviewConversations(projectId: Readonly<Ref<string>>) {
-  const historyListStore = useHistoryListStore();
+  const historyListStore = useHistoryList();
   const interactiveRunStore = useInteractiveRunStore();
   const titleFeature = useConversationTitleFeature();
   const notifications = useNotificationStore();

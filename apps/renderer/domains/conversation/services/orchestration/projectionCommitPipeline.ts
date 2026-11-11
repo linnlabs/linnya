@@ -5,7 +5,7 @@ import type { Conversation } from '../../types';
 type ConversationStateStore = ReturnType<typeof useConversationState>;
 
 interface ProjectionCommitPipelineDeps {
-  conversationState: Pick<ConversationStateStore, 'conversations'>;
+  conversationState: Pick<ConversationStateStore, 'conversations' | 'replaceConversationRecord'>;
 }
 
 export interface ProjectionCommitPipeline {
@@ -26,7 +26,7 @@ const COMMIT_DELAY_MS = 50;
  */
 export function mergeProjectedConversation(
   current: Conversation,
-  projected: Conversation,
+  projected: Conversation
 ): Conversation {
   return {
     ...current,
@@ -43,7 +43,7 @@ export function mergeProjectedConversation(
  * 历史加载期间的 live 事件拒绝统一留在 projectionStore.handleSseEvent 入口，避免同一不变量散落两处。
  */
 export function createProjectionCommitPipeline(
-  deps: ProjectionCommitPipelineDeps,
+  deps: ProjectionCommitPipelineDeps
 ): ProjectionCommitPipeline {
   const pendingProjectionStates = new Map<string, MessageProjectionState>();
   const commitTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -61,7 +61,8 @@ export function createProjectionCommitPipeline(
     pendingProjectionStates.clear();
   };
 
-  const hasPendingCommit = (conversationId: string): boolean => pendingProjectionStates.has(conversationId);
+  const hasPendingCommit = (conversationId: string): boolean =>
+    pendingProjectionStates.has(conversationId);
   const hasCommitTimer = (conversationId: string): boolean => commitTimers.has(conversationId);
   const hasPending = (conversationId: string): boolean => {
     return hasPendingCommit(conversationId) || hasCommitTimer(conversationId);
@@ -83,13 +84,15 @@ export function createProjectionCommitPipeline(
         const latest = pendingProjectionStates.get(conversationId);
         if (!latest) return;
 
-        const idx = deps.conversationState.conversations.findIndex(conv => conv.id === conversationId);
+        const idx = deps.conversationState.conversations.findIndex(
+          conv => conv.id === conversationId
+        );
         if (idx !== -1) {
           const current = deps.conversationState.conversations[idx];
           if (current) {
-            deps.conversationState.conversations[idx] = mergeProjectedConversation(
-              current,
-              latest.conversation,
+            deps.conversationState.replaceConversationRecord(
+              idx,
+              mergeProjectedConversation(current, latest.conversation)
             );
           }
         }
@@ -109,13 +112,15 @@ export function createProjectionCommitPipeline(
 
     const latest = pendingProjectionStates.get(conversationId);
     if (latest) {
-      const idx = deps.conversationState.conversations.findIndex(conv => conv.id === conversationId);
+      const idx = deps.conversationState.conversations.findIndex(
+        conv => conv.id === conversationId
+      );
       if (idx !== -1) {
         const current = deps.conversationState.conversations[idx];
         if (current) {
-          deps.conversationState.conversations[idx] = mergeProjectedConversation(
-            current,
-            latest.conversation,
+          deps.conversationState.replaceConversationRecord(
+            idx,
+            mergeProjectedConversation(current, latest.conversation)
           );
         }
       }

@@ -2,21 +2,24 @@
  * @file projectionStore.ts
  * @description 投影状态管理模块
  */
-import { defineStore } from 'pinia';
-import type { MessageProjectionState } from '../../services/messageProjection';
-import { reduceEvent, createInitialProjectionState } from '../../services/messageProjection';
+import type { MessageProjectionState } from '../messageProjection';
+import { reduceEvent, createInitialProjectionState } from '../messageProjection';
 import {
   appendMessage as appendProjectionMessage,
   getMessageById as getProjectionMessageById,
   getMessageIndexById as getProjectionMessageIndexById,
   replaceMessageById,
   updateMessage as updateProjectionMessage,
-} from '../../services/messageProjection/helpers/messageAccess';
+} from '../messageProjection/helpers/messageAccess';
 import type { BaseMessage, Conversation } from '../../types';
 import type { EventDispatchResult } from '../../definitions/eventDispatch';
-import { useConversationState } from '../conversationState';
-import { createProjectionCommitPipeline } from '../../services/orchestration/projectionCommitPipeline';
-import { SSEEvent as SSEEventSchema, type SSEEvent, type SSEEventInput } from '@linnlabs/linnkit/contracts';
+import { useConversationState } from '../../store/conversationState';
+import { createProjectionCommitPipeline } from './projectionCommitPipeline';
+import {
+  SSEEvent as SSEEventSchema,
+  type SSEEvent,
+  type SSEEventInput,
+} from '@linnlabs/linnkit/contracts';
 import type { ConversationUserInputCommittedEvent } from '@app/schemas';
 import { mapCommittedUserInputToMessage } from '../../functions/committedUserInput';
 import { useInteractiveRunStore } from '../../features/interactive-run';
@@ -42,7 +45,7 @@ interface HistoryLoadingSseBuffer {
 
 export type { MessageProjectionState };
 
-export const useProjectionStore = defineStore('projection', () => {
+export function createAssistantProjectionRuntime() {
   const conversationState = useConversationState();
   const interactiveRunStore = useInteractiveRunStore();
   const messageWindowStore = useMessageWindowStore();
@@ -79,7 +82,7 @@ export const useProjectionStore = defineStore('projection', () => {
   const rollbackRejectedProjectionRuntime = (
     conversationId: string,
     committedConversation: Conversation,
-    committedCitationWorkspace?: MessageProjectionState['citationWorkspace'],
+    committedCitationWorkspace?: MessageProjectionState['citationWorkspace']
   ): void => {
     commitPipeline.discard(conversationId);
     const rebuilt = createInitialProjectionState(committedConversation);
@@ -212,7 +215,7 @@ export const useProjectionStore = defineStore('projection', () => {
         rollbackRejectedProjectionRuntime(
           targetConversationId,
           targetConversation,
-          committedCitationWorkspace,
+          committedCitationWorkspace
         );
         return {
           success: false,
@@ -518,4 +521,4 @@ export const useProjectionStore = defineStore('projection', () => {
     replayBufferedHistoryLoadingEvents,
     mergeConversationMetadata,
   };
-});
+}

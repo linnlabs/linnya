@@ -24,7 +24,7 @@ vi.mock('../services/historyApiService', () => ({
 
 import { useNavigationScope } from '@/app/navigation';
 import type { ConversationListResponse } from '../services/historyApiService';
-import { useHistoryListStore } from './historyListStore';
+import { useHistoryList } from '../list';
 
 describe('historyListStore scope loading', () => {
   beforeEach(() => {
@@ -38,7 +38,7 @@ describe('historyListStore scope loading', () => {
 
   it('Linnya 助手 scope 加载无项目历史', async () => {
     const scopeStore = useNavigationScope();
-    const listStore = useHistoryListStore();
+    const listStore = useHistoryList();
     scopeStore.startDraft({ kind: 'linnya-assistant' });
 
     await listStore.loadList(true);
@@ -50,7 +50,7 @@ describe('historyListStore scope loading', () => {
 
   it('项目 scope 加载对应项目历史', async () => {
     const scopeStore = useNavigationScope();
-    const listStore = useHistoryListStore();
+    const listStore = useHistoryList();
     scopeStore.startDraft({ kind: 'project', projectId: 'project-1' });
 
     await listStore.loadList(true);
@@ -61,7 +61,7 @@ describe('historyListStore scope loading', () => {
   });
 
   it('按 scope 维护同一份历史数据源', () => {
-    const listStore = useHistoryListStore();
+    const listStore = useHistoryList();
 
     listStore.upsertConversation({
       conversation_id: 'assistant-1',
@@ -91,7 +91,7 @@ describe('historyListStore scope loading', () => {
   });
 
   it('置顶、重命名和删除会同步到所有入口读取的 scoped 数据', () => {
-    const listStore = useHistoryListStore();
+    const listStore = useHistoryList();
     const scope = { kind: 'linnya-assistant' as const };
 
     listStore.upsertConversation({
@@ -121,7 +121,7 @@ describe('historyListStore scope loading', () => {
   });
 
   it('新建 scope 快照后的 loading 和列表变更应触发响应式更新', async () => {
-    const listStore = useHistoryListStore();
+    const listStore = useHistoryList();
     const scope = { kind: 'project' as const, projectId: 'project-reactive' };
     const observedStates: string[] = [];
     let resolveFetch: (value: ConversationListResponse) => void = () => {
@@ -174,7 +174,7 @@ describe('historyListStore scope loading', () => {
   });
 
   it('加载失败时只保存稳定错误状态，不保存后端自然语言错误', async () => {
-    const listStore = useHistoryListStore();
+    const listStore = useHistoryList();
     const scope = { kind: 'linnya-assistant' as const };
 
     fetchListMock.mockRejectedValueOnce(new Error('Backend natural-language failure'));

@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -49,8 +51,8 @@ vi.mock('../services/orchestration/reconcileTerminalConversationView', () => ({
 
 vi.mock('../services/assistantService', () => ({}));
 
-vi.mock('../history/store/historyLoaderStore', () => ({
-  useHistoryLoaderStore: () => ({
+vi.mock('../history/loader', () => ({
+  useHistoryLoader: () => ({
     loadConversation: vi.fn(),
   }),
 }));
@@ -141,7 +143,7 @@ describe('assistantStore interrupted follow-up e2e regression', () => {
     const firstController = new AbortController();
     assistantStore.startInteractiveRun(firstController);
 
-    await assistantStore.handleSseEvent(conversationId, {
+    await useConversationProjectionActions().handleSseEvent(conversationId, {
       type: 'final_answer_chunk',
       id: 'evt_turn_1_chunk_1',
       conversation_id: conversationId,
@@ -164,7 +166,7 @@ describe('assistantStore interrupted follow-up e2e regression', () => {
     expect(assistantStore.isStreaming).toBe(false);
     expect(assistantStore.isLoading).toBe(false);
 
-    assistantStore.commitUserInput({
+    useConversationProjectionActions().commitUserInput({
       type: 'user_input_committed',
       id: 'message_followup',
       timestamp: 4,
@@ -186,7 +188,7 @@ describe('assistantStore interrupted follow-up e2e regression', () => {
     const secondController = new AbortController();
     assistantStore.startInteractiveRun(secondController);
 
-    await assistantStore.handleSseEvent(conversationId, {
+    await useConversationProjectionActions().handleSseEvent(conversationId, {
       type: 'final_answer_chunk',
       id: 'evt_turn_2_chunk_1',
       conversation_id: conversationId,

@@ -94,3 +94,9 @@ const load = () => import('lazy');
     { specifier: 'lazy', typeOnly: false, line: 8 },
   ]);
 });
+
+ test('Conversation 编排使用投影命令叶子入口，UI 可以使用公开动作入口', () => {
+  expect(findModuleBarrelViolations('apps/renderer/domains/conversation/services/orchestration/flow.ts', 'import { useConversationProjectionActions } from "../../assistantActions";')).toHaveLength(1);
+  expect(findModuleBarrelViolations('apps/renderer/domains/conversation/services/orchestration/flow.ts', 'import { useConversationProjectionActions } from "../../projectionActions";')).toEqual([]);
+  expect(findModuleBarrelViolations('apps/renderer/domains/conversation/ui/View.vue', 'import { cancelAssistantActivity } from "../assistantActions";')).toEqual([]);
+ });

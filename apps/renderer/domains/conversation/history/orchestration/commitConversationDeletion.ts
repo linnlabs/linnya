@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 import type { NavigationScope } from '@/app/navigation';
 import {
   areNavigationScopesEqual,
@@ -8,8 +10,8 @@ import { useInteractiveRunStore } from '../../features/interactive-run';
 import { useMessageWindowStore } from '../../message-window/store/messageWindowStore';
 import { useAssistantStore } from '../../store/assistantStore';
 import { useConversationState } from '../../store/conversationState';
-import { useHistoryListStore } from '../store/historyListStore';
-import { useHistoryLoaderStore } from '../store/historyLoaderStore';
+import { useHistoryList } from '../list';
+import { useHistoryLoader } from '../loader';
 
 /**
  * 后端已经完成完整删除后，Renderer 才一次性丢弃本地 read model。普通删除与失败
@@ -22,8 +24,8 @@ export function prepareConversationDeletionCommit(input: {
   const { conversationId, scope } = input;
   const assistantStore = useAssistantStore();
   const conversationState = useConversationState();
-  const historyListStore = useHistoryListStore();
-  const historyLoaderStore = useHistoryLoaderStore();
+  const historyListStore = useHistoryList();
+  const historyLoaderStore = useHistoryLoader();
   const interactiveRunStore = useInteractiveRunStore();
   const messageWindowStore = useMessageWindowStore();
   const titleFeature = useConversationTitleFeature();
@@ -33,7 +35,7 @@ export function prepareConversationDeletionCommit(input: {
     titleFeature.discardConversation(conversationId);
     const loadingInvalidation = historyLoaderStore.forgetConversation(conversationId);
     if (loadingInvalidation.bufferRequestToken !== null) {
-      assistantStore.discardHistoryLoadingSseBuffer(
+      useConversationProjectionActions().discardHistoryLoadingSseBuffer(
         conversationId,
         loadingInvalidation.bufferRequestToken,
         'conversation-deleted',
@@ -45,7 +47,7 @@ export function prepareConversationDeletionCommit(input: {
     ) {
       conversationState.setHistoryLoadingConversation(null);
     }
-    assistantStore.cleanupConversationProjection(conversationId);
+    useConversationProjectionActions().cleanupConversationProjection(conversationId);
     interactiveRunStore.abortTransport(conversationId);
     interactiveRunStore.synchronizeSnapshot(conversationId, undefined);
 

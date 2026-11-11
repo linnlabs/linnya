@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 /**
  * @file apps/renderer/domains/conversation/services/orchestration/helpers/useWorkspaceMetadata.ts
  * @description 工作区元数据组装 composable
@@ -160,7 +162,7 @@ export function useWorkspaceMetadata() {
   ): void => {
     const { projectId, projectMetadata, documentMetadata } = payload;
     if (projectMetadata || documentMetadata) {
-      assistantStore.mergeConversationMetadata(conversationId, {
+      useConversationProjectionActions().mergeConversationMetadata(conversationId, {
         projectId: projectMetadata?.id ?? projectId,
         projectName: projectMetadata?.name,
         projectDescription: projectMetadata?.description,

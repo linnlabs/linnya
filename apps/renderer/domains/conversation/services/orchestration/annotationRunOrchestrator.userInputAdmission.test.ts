@@ -56,6 +56,10 @@ vi.mock('../assistantService', () => ({
   invokeAssistant: harness.invokeAssistant,
 }));
 
+vi.mock('@/domains/conversation/projectionActions', () => ({
+  useConversationProjectionActions: () => harness.assistantStore,
+}));
+
 vi.mock('../../store/assistantStore', () => ({
   useAssistantStore: () => harness.assistantStore,
 }));
