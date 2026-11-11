@@ -6,6 +6,7 @@ import {
 import type { CanvasCard, CanvasEdge, CanvasSnapshot } from '../../../../shared';
 import type { CanvasProjectionContext } from '../definitions/canvasProjection';
 import { projectCanvasCardBody } from './projectCanvasCardBody';
+import { describeCanvasEdge, describeCanvasModification } from './projectCanvasModification';
 import {
   canvasProjectionRegions,
   groupCanvasProjectionRegions,
@@ -19,15 +20,13 @@ function projectCardSummary(
   const body = projectCanvasCardBody(card, context),
     limit = summary ? 100 : 800;
   return [
-    `- [${card.id}] ${card.type}〔${card.color}〕 revision=${card.revision}${card.locked ? '〔已锁定〕' : ''}`,
+    `- [${card.id}] ${card.type}〔${card.color}〕 revision=${card.revision}${card.locked ? '〔已锁定〕' : ''} ${describeCanvasModification(card)}`,
     `  ${canvasTextPrefix(body, limit).replace(/\n/g, '\n  ')}${body.length > limit ? `\n  … 已截断，用 show ${card.id} 读取全文。` : ''}`,
   ];
 }
 
 function projectEdge(edge: CanvasEdge): string {
-  const from = edge.from.kind === 'card' ? edge.from.cardId : '悬空端点';
-  const to = edge.to.kind === 'card' ? edge.to.cardId : '悬空端点';
-  return `- [${edge.id}] ${from} ${edge.direction === 'both' ? '↔' : edge.direction === 'forward' ? '→' : '—'} ${to}${edge.label ? `「${edge.label}」` : ''}`;
+  return `- [${edge.id}] ${describeCanvasEdge(edge)} ${describeCanvasModification(edge)}`;
 }
 
 export function projectCanvasDocument(

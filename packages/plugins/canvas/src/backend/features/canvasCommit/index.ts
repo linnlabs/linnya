@@ -62,3 +62,10 @@ export {
 export { replaceCanvasEditingClaims } from './persistence/replaceCanvasEditingClaims';
 
 export { readCanvasUpdateFieldUnits } from './functions/readCanvasUpdateFieldUnits';
+export { CANVAS_CHANGE_LOG_LIMIT } from './definitions/canvasCommit';
+export {
+  readCanvasChangeLog,
+  readCanvasChangeLogStart,
+  readCanvasSequenceBefore,
+} from './persistence/canvasChangeLog';
+export type { CanvasLoggedCommit } from './persistence/canvasChangeLog';

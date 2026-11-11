@@ -21,7 +21,8 @@ async function main(): Promise<void> {
     command.kind === 'apply' ||
     command.kind === 'arrange' ||
     command.kind === 'render' ||
-    command.kind === 'groups'
+    command.kind === 'groups' ||
+    command.kind === 'changes'
   )
     throw new CanvasCliFailure(
       'read_only',

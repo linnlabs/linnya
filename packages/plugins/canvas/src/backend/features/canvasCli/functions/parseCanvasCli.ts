@@ -14,6 +14,7 @@ export const CANVAS_CLI_HELP = {
     'region <workspace:path> <方位>',
     'check <workspace:path>',
     'groups <workspace:path>',
+    'changes <workspace:path> --after <提交序号> | --since "2026-11-11 19:20"',
     'receipt <workspace:path> <request-id>',
     'apply <workspace:path> --ops-file batch.json --request-id stable-id [--dry-run]',
     'arrange <workspace:path> --request-id stable-id [--algorithm tree|grid|layered] [--scope c1,c2] [--direction right|down] [--columns 3] [--dry-run]',
@@ -40,6 +41,11 @@ const commands: Readonly<Record<string, CommandParser>> = {
   read: { arity: 1, options: {}, parse: ({ path }) => ({ kind: 'read', path }) },
   check: { arity: 1, options: {}, parse: ({ path }) => ({ kind: 'check', path }) },
   groups: { arity: 1, options: {}, parse: ({ path }) => ({ kind: 'groups', path }) },
+  changes: {
+    arity: 1,
+    options: { after: { type: 'string' }, since: { type: 'string' } },
+    parse: parseChanges,
+  },
   receipt: {
     arity: 2,
     options: {},
@@ -186,4 +192,28 @@ function parseRender({ path, flags }: CliArguments): CanvasCliCommand {
   )
     throw new CanvasCliFailure('invalid_region', '--region使用九宫格方位，如左上或正中。');
   return { kind: 'render', path, format, theme, width, height, elementIds, region };
+}
+
+/** read 给出的提交序号或 read/show 给出的本机时间；两者只能给一个。 */
+function parseChanges({ path, flags }: CliArguments): CanvasCliCommand {
+  const after = flags.after,
+    since = flags.since;
+  if ((typeof after === 'string') === (typeof since === 'string'))
+    throw new CanvasCliFailure(
+      'missing_argument',
+      '需要且只能给一个 --after <提交序号> 或 --since "年-月-日 时:分"。'
+    );
+  if (typeof after === 'string') {
+    const sequence = Number(after);
+    if (!/^\d+$/.test(after.trim()) || !Number.isSafeInteger(sequence))
+      throw new CanvasCliFailure('invalid_sequence', '--after 必须是 read 输出的提交序号。');
+    return { kind: 'changes', path, after: sequence };
+  }
+  const time = new Date(String(since).trim()).getTime();
+  if (!Number.isFinite(time))
+    throw new CanvasCliFailure(
+      'invalid_time',
+      '--since 用 read/show 输出的时间格式，例如 "2026-11-11 19:20"。'
+    );
+  return { kind: 'changes', path, since: time };
 }

@@ -26,3 +26,9 @@ it('bounds raw model operations while allowing a final semantic arrange and stri
   expect(() => CanvasCliBatchSchema.parse([{ op: 'add', text: '不允许坐标', x: 10 }])).toThrow();
   expect(() => CanvasCliBatchSchema.parse([{ op: 'update', id: 'c1', text: '缺版本' }])).toThrow();
 });
+it('changes 只接受一个范围：read 给出的提交序号，或 read/show 同格式的本机时间', () => {
+  expect(parseCanvasCli(['changes', 'workspace:/讨论.canvas', '--after', '12'])).toEqual({ kind: 'changes', path: 'workspace:/讨论.canvas', after: 12 });
+  expect(parseCanvasCli(['changes', 'workspace:/讨论.canvas', '--since', '2026-11-11 19:20'])).toEqual({ kind: 'changes', path: 'workspace:/讨论.canvas', since: new Date('2026-11-11 19:20').getTime() });
+  for (const argv of [[], ['--after', '1', '--since', '2026-11-11 19:20'], ['--after', '-1'], ['--after', '1.5'], ['--since', '昨天']])
+    expect(() => parseCanvasCli(['changes', 'workspace:/讨论.canvas', ...argv])).toThrow();
+});
