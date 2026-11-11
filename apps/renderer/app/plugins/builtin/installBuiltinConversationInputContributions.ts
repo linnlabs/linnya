@@ -10,7 +10,7 @@ import {
 } from '@/app/workflows/table-fill';
 import { useNavigationScope } from '@/app/navigation';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
-import { useWorkspaceTreeStore } from '@/domains/workspace/store';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
@@ -31,7 +31,7 @@ import {
  */
 export function installBuiltinConversationInputContributions(): void {
   const navigationScope = useNavigationScope();
-  const workspaceTreeStore = useWorkspaceTreeStore();
+  const workspaceTreeStore = useWorkspaceTree();
   const { t } = useLocalization();
 
   registerConversationReferenceKind({

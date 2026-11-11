@@ -1,4 +1,4 @@
-import type { WorkspaceNode } from '../store/WorkspaceTreeStore';
+import type { WorkspaceNode } from '../definitions/workspaceTree';
 
 function normalizeTreeSearchQuery(query: string): string {
   return query.trim().toLowerCase();

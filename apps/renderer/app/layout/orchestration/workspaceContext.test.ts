@@ -6,8 +6,8 @@ vi.mock('@/domains/workspace/services/file-manager', () => ({
 }));
 vi.mock('@/domains/workspace/store', () => ({
   useWorkspaceProjectsStore: vi.fn(),
-  useWorkspaceTreeStore: vi.fn(),
 }));
+vi.mock('@/domains/workspace/tree', () => ({ useWorkspaceTree: vi.fn() }));
 vi.mock('@/app/plugins/registry', () => ({
   getDocumentTypeByFileSessionType: (type: string) => type === 'slides' ? { nodeType: 'presentation' } : null,
   getDocumentTypeByNodeType: vi.fn(),

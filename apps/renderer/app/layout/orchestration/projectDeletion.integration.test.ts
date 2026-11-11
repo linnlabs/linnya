@@ -33,8 +33,8 @@ vi.mock('@/domains/conversation/store/assistantStore', () => ({
 vi.mock('@/shared/ports/workspaceNavigationPort', () => ({
   getWorkspaceNavigationPort: () => ({ openWorkspace: mocks.openWorkspace }),
 }));
-vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({
-  useWorkspaceTreeStore: () => ({
+vi.mock('@/domains/workspace/tree', () => ({
+  useWorkspaceTree: () => ({
     get loadedProjectId() {
       return mocks.loadedProjectId;
     },

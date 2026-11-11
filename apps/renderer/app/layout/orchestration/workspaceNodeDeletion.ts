@@ -11,7 +11,7 @@ import type {
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import { useWorkspaceSelectionStore } from '@/domains/workspace/store/WorkspaceSelectionStore';
-import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { deactivateIfActiveDocument } from '@/domains/workspace/services/file-manager';
 import type { PageSelectionNode } from '@/domains/workspace/features/page-selection-after-removal/definitions/pageSelectionAfterRemoval';
 import {
@@ -64,7 +64,7 @@ export async function handleWorkspaceNodeDeletedMutation(
 ): Promise<void> {
   if (localDeletionRootIds.delete(event.nodeId)) return;
 
-  const treeStore = useWorkspaceTreeStore();
+  const treeStore = useWorkspaceTree();
   const nodesBeforeDeletion = flattenLoadedWorkspaceTree(treeStore.projectTree);
   const activeDocumentId = useLayoutStore().state.activeDocument?.id ?? null;
   const deletedNodeIds = new Set(event.deletedNodeIds);
@@ -93,7 +93,7 @@ export function createWorkspaceNodeDeletion(): WorkspaceNodeDeletionPort {
         return { deletedNodeIds: [], failures: [], cancelled: false };
       }
 
-      const treeStore = useWorkspaceTreeStore();
+      const treeStore = useWorkspaceTree();
       const nodesBeforeDeletion = flattenLoadedWorkspaceTree(treeStore.projectTree);
       const uniqueTargets = removeNestedDeletionTargets(deduplicatedTargets, nodesBeforeDeletion);
       const preview = await previewDocumentDeletionReferences({ nodeIds: uniqueTargets.map(target => target.id) });

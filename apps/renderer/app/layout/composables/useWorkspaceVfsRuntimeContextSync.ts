@@ -3,7 +3,7 @@ import { useLayoutStore } from '../store/layoutStore';
 import { shouldReloadProjectTreeForVfsRuntimeContextChange } from '../functions/workspaceVfsRuntimeContext';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
-import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 
 /**
  * 同步 conversation runtime context 到 workspace VFS。
@@ -15,7 +15,7 @@ import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeSt
  */
 export function useWorkspaceVfsRuntimeContextSync(): void {
   const assistantStore = useAssistantStore();
-  const treeStore = useWorkspaceTreeStore();
+  const treeStore = useWorkspaceTree();
   const projectsStore = useWorkspaceProjectsStore();
   const layoutStore = useLayoutStore();
 

@@ -39,7 +39,8 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import { useNavigationScope } from '@/app/navigation';
-import { useWorkspaceProjectsStore, useWorkspaceTreeStore } from '@/domains/workspace/store';
+import { useWorkspaceProjectsStore} from '@/domains/workspace/store';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { useKnowledgeBase } from '@/domains/knowledgebase/runtime.js';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { LinnyaIcon } from '@linnya/renderer-ui/icons';
@@ -67,7 +68,7 @@ const props = withDefaults(defineProps<{
 
 const navigationScope = useNavigationScope();
 const projectsStore = useWorkspaceProjectsStore();
-const treeStore = useWorkspaceTreeStore();
+const treeStore = useWorkspaceTree();
 const kbStore = useKnowledgeBase();
 const assistantStore = useAssistantStore();
 const projectKnowledgeBaseModalStore = useProjectKnowledgeBaseModalStore();

@@ -194,7 +194,7 @@ import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import BatchExportMarkdownModal from '../../../features/import-export/ui/export/BatchExportMarkdownModal.vue';
 import { batchExportProjectAsMarkdown } from '../../../features/import-export/services/batchExportService';
 import { describeBatchExportResult } from '../../../functions/describeBatchExportResult';
-import { useWorkspaceTreeStore } from '../../../store/index.js';
+import { useWorkspaceTree } from '../../../tree';
 import { useNotificationStore } from '@/app/notification';
 import { useFixedDropdownPosition } from '../composables/useFixedDropdownPosition';
 import { useLocalizedCreatableDocumentTypes } from '@/app/plugins/ui/useDocumentTypePresentation';
@@ -226,7 +226,7 @@ const props = defineProps({
 const emit = defineEmits(['item-click', 'create-file', 'create-folder', 'show-context-menu', 'edit-project-info', 'ai-init-project']);
 
 const isHeaderHovered = ref(false);
-const treeStore = useWorkspaceTreeStore();
+const treeStore = useWorkspaceTree();
 const notificationStore = useNotificationStore();
 const { workspaceMessage } = useWorkspaceLocalization();
 

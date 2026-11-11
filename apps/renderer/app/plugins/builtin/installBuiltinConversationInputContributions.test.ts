@@ -37,8 +37,8 @@ vi.mock('@/app/navigation', () => ({
   useNavigationScope: () => ({ currentProjectId: null }),
 }));
 
-vi.mock('@/domains/workspace/store', () => ({
-  useWorkspaceTreeStore: () => ({
+vi.mock('@/domains/workspace/tree', () => ({
+  useWorkspaceTree: () => ({
     loadedProjectId: null,
     projectTree: [],
   }),

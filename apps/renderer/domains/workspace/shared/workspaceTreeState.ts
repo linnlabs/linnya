@@ -1,41 +1,26 @@
-import type { WorkspaceNode } from '../definitions/workspaceTree';
+import type { WorkspaceNodeDTO } from '@/shared/ipc/workspaceGateway';
+import type { WorkspaceNode, WorkspaceNodePatch, WorkspaceNodeReconciliation, WorkspaceNodeStatePatch } from '../definitions/workspaceTree';
 
-export interface WorkspaceNodeDTO {
-  id: string;
-  inode?: string;
-  path?: string;
-  project_id: string | null;
-  parent_id: string | null;
-  type: string;
-  name: string;
-  display_name?: string;
-  icon: string | null;
-  created_at: number;
-  updated_at: number;
-  deleted_at: number | null;
-  is_virtual?: boolean;
-  source?: string;
-  payload?: Record<string, unknown>;
-}
-
-/** 合并后端节点事实，同时保留已加载子树和展开状态。 */
-export function reconcileNodeArrays(
+/** 只规划事实变化；同步 action 落地时保留旧节点身份、已加载子树和展开状态。 */
+export function planNodeReconciliation(
   oldNodes: WorkspaceNode[] | null | undefined,
   newDataArray: WorkspaceNodeDTO[],
   depth: number,
   expandedIdsSet: Set<string> = new Set(),
-): WorkspaceNode[] {
+): WorkspaceNodeReconciliation {
   if (!oldNodes) {
-    return newDataArray.map((node) => createNodeFromData(node, depth, expandedIdsSet));
+    return { nodes: newDataArray.map((node) => createNodeFromData(node, depth, expandedIdsSet)), patches: [] };
   }
 
   const oldNodesById = new Map(oldNodes.map((node) => [node.id, node]));
-  return newDataArray.map((newData) => {
+  const patches: WorkspaceNodeStatePatch[] = [];
+  const nodes = newDataArray.map((newData) => {
     const existingNode = oldNodesById.get(newData.id);
     if (!existingNode) return createNodeFromData(newData, depth, expandedIdsSet);
-    updateNodeData(existingNode, newData);
+    patches.push({ node: existingNode, changes: projectUpdatedNodeData(existingNode, newData) });
     return existingNode;
   });
+  return { nodes, patches };
 }
 
 /** 把持久化 DTO 投影为 Renderer 树节点。 */
@@ -67,17 +52,19 @@ export function createNodeFromData(
 }
 
 /** 只更新持久化事实，不能覆盖展开状态或已加载 children。 */
-export function updateNodeData(node: WorkspaceNode, newData: WorkspaceNodeDTO): void {
-  node.type = newData.type;
-  node.name = newData.name;
-  node.displayName = newData.display_name;
-  node.icon = newData.icon ?? undefined;
-  node.inode = newData.inode;
-  node.path = newData.path;
-  node.isVirtual = newData.is_virtual === true;
-  node.source = newData.source;
-  node.payload = newData.payload;
-  node.updatedAt = newData.updated_at ? String(newData.updated_at) : node.updatedAt;
+export function projectUpdatedNodeData(node: WorkspaceNode, newData: WorkspaceNodeDTO): WorkspaceNodePatch {
+  return {
+    type: newData.type,
+    name: newData.name,
+    displayName: newData.display_name,
+    icon: newData.icon ?? undefined,
+    inode: newData.inode,
+    path: newData.path,
+    isVirtual: newData.is_virtual === true,
+    source: newData.source,
+    payload: newData.payload,
+    updatedAt: newData.updated_at ? String(newData.updated_at) : node.updatedAt,
+  };
 }
 
 export function findNodeById(

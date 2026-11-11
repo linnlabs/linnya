@@ -34,8 +34,8 @@ vi.mock('@/domains/workspace/store/WorkspaceProjectsStore', () => ({
   }),
 }));
 
-vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({
-  useWorkspaceTreeStore: () => ({
+vi.mock('@/domains/workspace/tree', () => ({
+  useWorkspaceTree: () => ({
     ensureProjectTreeLoaded: mocks.ensureProjectTreeLoaded,
   }),
 }));

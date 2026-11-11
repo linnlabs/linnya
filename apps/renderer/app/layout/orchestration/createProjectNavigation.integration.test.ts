@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { useNavigationScope } from '@/app/navigation';
 import { useLayoutStore } from '../store/layoutStore';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
-import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { useProjectOperations } from '@/domains/workspace/ui/sidebar/composables/useProjectOperations';
 import { registerWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { createWorkspaceNavigation } from './workspaceNavigation';
@@ -54,7 +54,7 @@ describe('project creation navigation', () => {
     io.listNodes.mockResolvedValueOnce({ success: true, data: [{
       id: 'old-document', name: 'Old document', type: 'document', projectId: 'old-project', parentId: null,
     }] }).mockResolvedValue({ success: true, data: [] });
-    await useWorkspaceTreeStore().loadProjectTree('old-project');
+    await useWorkspaceTree().loadProjectTree('old-project');
     io.save.mockImplementation(async () => {
       // 保存时必须仍是旧项目；提前改 scope 会让导航误判成重复进入。
       expect(useNavigationScope().currentProjectId).toBe('old-project');
@@ -88,8 +88,8 @@ describe('project creation navigation', () => {
     expect(useWorkspaceProjectsStore().activeProjectId).toBe('new-project');
     expect(useLayoutStore().state.activeDocument).toBeNull();
     expect(useLayoutStore().state.documentPane.visible).toBe(false);
-    expect(useWorkspaceTreeStore().loadedProjectId).toBe('new-project');
-    expect(useWorkspaceTreeStore().projectTree).toEqual([]);
+    expect(useWorkspaceTree().loadedProjectId).toBe('new-project');
+    expect(useWorkspaceTree().projectTree).toEqual([]);
     expect(io.draft).toHaveBeenCalledOnce();
     expect(io.send).toHaveBeenCalledTimes(mode === 'ai' ? 1 : 0);
   });
@@ -103,7 +103,7 @@ describe('project creation navigation', () => {
     expect(useNavigationScope().currentProjectId).toBe('old-project');
     expect(useWorkspaceProjectsStore().activeProjectId).toBe('old-project');
     expect(useLayoutStore().state.activeDocument?.id).toBe('old-document');
-    expect(useWorkspaceTreeStore().loadedProjectId).toBe('old-project');
+    expect(useWorkspaceTree().loadedProjectId).toBe('old-project');
     expect(io.send).not.toHaveBeenCalled();
   });
 });

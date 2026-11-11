@@ -27,7 +27,7 @@ import type {
   DocumentTypeContribution,
 } from '@/app/plugins/types';
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
-import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { useHistoryLoaderStore } from '@/domains/conversation/history/store/historyLoaderStore';
 import type { HistoryLoadingIntent } from '@/domains/conversation/history/definitions/historyLoader';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
@@ -156,7 +156,7 @@ function cloneNavigationScope(scope: NavigationScope): NavigationScope {
 function resolveDocumentProjectId(request: WorkspaceDocumentNavigationRequest): string {
   if (request.projectId) return request.projectId;
 
-  const treeStore = useWorkspaceTreeStore();
+  const treeStore = useWorkspaceTree();
   const node = treeStore.findNodeById(request.documentId);
   if (node?.projectId) return node.projectId;
 

@@ -1,5 +1,5 @@
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
-import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import {
@@ -33,5 +33,5 @@ export async function openProjectWorkspaceFromSidebar(
     startDraftConversation(targetScope);
   }
 
-  await useWorkspaceTreeStore().ensureProjectTreeLoaded(projectId);
+  await useWorkspaceTree().ensureProjectTreeLoaded(projectId);
 }

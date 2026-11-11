@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { WorkspaceNode } from '@/domains/workspace/store/WorkspaceTreeStore';
+import type { WorkspaceNode } from '@/domains/workspace/definitions/workspaceTree';
 import {
   createWorkspaceNodeDeletion,
   handleWorkspaceNodeDeletedMutation,
@@ -25,8 +25,8 @@ vi.mock('@plugin/renderer/documentReferences', () => ({ previewDocumentDeletionR
 vi.mock('@/shared/composables/confirmDialog', () => ({ confirm: mocks.confirm }));
 vi.mock('@/domains/workspace/ui/useWorkspaceLocalization', () => ({ useWorkspaceLocalization: () => ({ workspaceMessage: (key: string, parameters?: unknown) => `${key}:${JSON.stringify(parameters)}` }) }));
 
-vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({
-  useWorkspaceTreeStore: () => ({
+vi.mock('@/domains/workspace/tree', () => ({
+  useWorkspaceTree: () => ({
     projectTree: mocks.projectTree,
     deleteNode: mocks.deleteNode,
     findNodeById: vi.fn(() => null),

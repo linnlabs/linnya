@@ -20,9 +20,10 @@ vi.mock('@/shared/ipc/workspaceGateway', () => {
     };
 });
 
-import { useWorkspaceTreeStore } from '../WorkspaceTreeStore';
+import { useWorkspaceTree } from './tree';
+import { useWorkspaceTreeStateStore } from './store/WorkspaceTreeStore';
 
-describe('WorkspaceTreeStore.deleteNode', () => {
+describe('WorkspaceTree.deleteNode', () => {
     beforeEach(() => {
         setActivePinia(createPinia());
         mocks.deleteNodeMock.mockReset();
@@ -32,8 +33,8 @@ describe('WorkspaceTreeStore.deleteNode', () => {
     });
 
     it('删除节点后返回后端确认的完整删除 ID', async () => {
-        const store = useWorkspaceTreeStore();
-        store.projectTree = [
+        const store = useWorkspaceTree();
+        useWorkspaceTreeStateStore().setProjectTree([
             {
                 id: 'proj-1',
                 name: 'P',
@@ -55,7 +56,7 @@ describe('WorkspaceTreeStore.deleteNode', () => {
                 isExpanded: true,
                 depth: 0,
             },
-        ];
+        ]);
 
         const deletedNodeIds = await store.deleteNode('doc-1', 'proj-1');
 
@@ -64,8 +65,8 @@ describe('WorkspaceTreeStore.deleteNode', () => {
     });
 
     it('删除文件夹时透传后端确认的子树 ID', async () => {
-        const store = useWorkspaceTreeStore();
-        store.projectTree = [
+        const store = useWorkspaceTree();
+        useWorkspaceTreeStateStore().setProjectTree([
             {
                 id: 'proj-1',
                 name: 'P',
@@ -98,7 +99,7 @@ describe('WorkspaceTreeStore.deleteNode', () => {
                 isExpanded: true,
                 depth: 0,
             },
-        ];
+        ]);
 
         mocks.deleteNodeMock.mockResolvedValue({
             success: true,
@@ -112,8 +113,8 @@ describe('WorkspaceTreeStore.deleteNode', () => {
     });
 
     it('删除不相关节点时只刷新对应父节点', async () => {
-        const store = useWorkspaceTreeStore();
-        store.projectTree = [
+        const store = useWorkspaceTree();
+        useWorkspaceTreeStateStore().setProjectTree([
             {
                 id: 'proj-1',
                 name: 'P',
@@ -145,7 +146,7 @@ describe('WorkspaceTreeStore.deleteNode', () => {
                 isExpanded: true,
                 depth: 0,
             },
-        ];
+        ]);
 
         mocks.deleteNodeMock.mockResolvedValue({ success: true, data: { deletedNodeIds: ['doc-2'] } });
 

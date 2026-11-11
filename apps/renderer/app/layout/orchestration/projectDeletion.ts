@@ -1,7 +1,7 @@
 import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
-import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { refreshProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { projectGateway } from '@/shared/ipc/projectGateway';
 import { WorkspaceOperationError } from '@/domains/workspace/definitions/workspaceOperationError';
@@ -35,7 +35,7 @@ export async function handleProjectDeleted(projectId: string): Promise<void> {
   }
   const projects = useWorkspaceProjectsStore();
   if (projects.activeProjectId === projectId) projects.clearActiveProject();
-  const tree = useWorkspaceTreeStore();
+  const tree = useWorkspaceTree();
   if (tree.loadedProjectId === projectId) tree.clearTree();
   navigation.forgetLastActiveConversation({ kind: 'project', projectId });
 }

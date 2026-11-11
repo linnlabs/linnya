@@ -1,8 +1,7 @@
-import type { Ref } from 'vue';
+import type { WorkspaceTreeLoader, WorkspaceTreeLoaderState } from '../definitions/workspaceTreeLoader';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import type {
   WorkspaceNode,
-  WorkspaceVfsRuntimeContext,
 } from '@/domains/workspace/definitions/workspaceTree';
 import { resolveCurrentWorkspaceMessage } from '@/domains/workspace/functions/resolveCurrentWorkspaceMessage';
 import {
@@ -12,28 +11,9 @@ import {
 import {
   createNodeFromData,
   findNodeById,
-  reconcileNodeArrays,
+  planNodeReconciliation,
 } from '@/domains/workspace/shared/workspaceTreeState';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
-
-interface WorkspaceTreeLoaderState {
-  readonly projectTree: Ref<WorkspaceNode[]>;
-  readonly loadedProjectId: Ref<string | null>;
-  readonly loadingProjectId: Ref<string | null>;
-  readonly isLoading: Ref<boolean>;
-  readonly error: Ref<string | null>;
-  readonly vfsRuntimeContext: Ref<WorkspaceVfsRuntimeContext>;
-}
-
-export interface WorkspaceTreeLoader {
-  loadProjectTree(projectId: string): Promise<void>;
-  ensureProjectTreeLoaded(projectId: string): Promise<void>;
-  reloadActiveProjectTree(): Promise<void>;
-  loadNodeChildren(node: WorkspaceNode): Promise<void>;
-  refreshAfterMove(oldParentId: string | null, newParentId: string | null): Promise<void>;
-  toggleExpand(nodeId: string): Promise<void>;
-  clearTree(): void;
-}
 
 export function createWorkspaceTreeLoader(state: WorkspaceTreeLoaderState): WorkspaceTreeLoader {
   let latestLoadRequestId = 0;
@@ -44,14 +24,14 @@ export function createWorkspaceTreeLoader(state: WorkspaceTreeLoaderState): Work
   } | null = null;
 
   function findLoadedNode(nodeId: string): WorkspaceNode | null {
-    return findNodeById(state.projectTree.value, nodeId);
+    return findNodeById(state.projectTree, nodeId);
   }
 
   async function listVfsNodes(args: { projectId: string; parentId: string | null }) {
     const result = await workspaceGateway['list-vfs-nodes']({
       ...args,
-      conversationId: state.vfsRuntimeContext.value.conversationId,
-      instanceId: state.vfsRuntimeContext.value.instanceId ?? 'default',
+      conversationId: state.vfsRuntimeContext.conversationId,
+      instanceId: state.vfsRuntimeContext.instanceId ?? 'default',
     });
     if (result.success) return result;
 
@@ -61,31 +41,33 @@ export function createWorkspaceTreeLoader(state: WorkspaceTreeLoaderState): Work
   }
 
   async function loadNodeChildren(node: WorkspaceNode): Promise<void> {
-    node.isLoading = true;
+    state.patchNode(node, { isLoading: true });
     try {
       const result = await listVfsNodes({ projectId: node.projectId, parentId: node.id });
       if (!result.success) throw new Error(result.error);
 
       const expandedIds = new Set(readExpandedWorkspaceNodeIds(node.projectId));
-      node.children = reconcileNodeArrays(node.children, result.data, node.depth + 1, expandedIds);
-      const expandedChildren = node.children.filter(
+      const plan = planNodeReconciliation(node.children, result.data, node.depth + 1, expandedIds);
+      state.applyNodePatches(plan.patches);
+      state.patchNode(node, { children: plan.nodes });
+      const expandedChildren = plan.nodes.filter(
         (child) => child.isExpanded && child.children === null,
       );
       await Promise.all(expandedChildren.map(loadNodeChildren));
     } catch (error: unknown) {
       console.error(`[WorkspaceTreeLoader] Failed to load children for node ${node.id}:`, error);
-      node.children = [];
+      state.patchNode(node, { children: [] });
     } finally {
-      node.isLoading = false;
+      state.patchNode(node, { isLoading: false });
     }
   }
 
   async function loadProjectTree(projectId: string): Promise<void> {
     const requestId = latestLoadRequestId + 1;
     latestLoadRequestId = requestId;
-    state.isLoading.value = true;
-    state.loadingProjectId.value = projectId;
-    state.error.value = null;
+    state.setLoading(true);
+    state.setLoadingProjectId(projectId);
+    state.setError(null);
 
     const promise = (async () => {
       const expandedIds = new Set(readExpandedWorkspaceNodeIds(projectId));
@@ -94,22 +76,22 @@ export function createWorkspaceTreeLoader(state: WorkspaceTreeLoaderState): Work
         if (requestId !== latestLoadRequestId) return;
         if (!result.success) throw new Error(result.error);
 
-        state.projectTree.value = result.data.map((node) => createNodeFromData(node, 0, expandedIds));
-        state.loadedProjectId.value = projectId;
-        const expandedRoots = state.projectTree.value.filter(
+        state.setProjectTree(result.data.map((node) => createNodeFromData(node, 0, expandedIds)));
+        state.setLoadedProjectId(projectId);
+        const expandedRoots = state.projectTree.filter(
           (node) => node.isExpanded && node.children === null,
         );
         await Promise.all(expandedRoots.map(loadNodeChildren));
       } catch (error: unknown) {
         if (requestId !== latestLoadRequestId) return;
         console.error(`[WorkspaceTreeLoader] Failed to load root nodes for project ${projectId}:`, error);
-        state.error.value = resolveCurrentWorkspaceMessage('workspace.sidebar.fileTree.loadFailed');
-        state.projectTree.value = [];
-        state.loadedProjectId.value = null;
+        state.setError(resolveCurrentWorkspaceMessage('workspace.sidebar.fileTree.loadFailed'));
+        state.setProjectTree([]);
+        state.setLoadedProjectId(null);
       } finally {
         if (requestId === latestLoadRequestId) {
-          state.isLoading.value = false;
-          state.loadingProjectId.value = null;
+          state.setLoading(false);
+          state.setLoadingProjectId(null);
         }
         if (activeLoadRequest?.requestId === requestId) activeLoadRequest = null;
       }
@@ -120,7 +102,7 @@ export function createWorkspaceTreeLoader(state: WorkspaceTreeLoaderState): Work
   }
 
   async function ensureProjectTreeLoaded(projectId: string): Promise<void> {
-    if (state.loadedProjectId.value === projectId && !state.error.value) return;
+    if (state.loadedProjectId === projectId && !state.error) return;
     if (activeLoadRequest?.projectId === projectId) {
       await activeLoadRequest.promise;
       return;
@@ -135,27 +117,29 @@ export function createWorkspaceTreeLoader(state: WorkspaceTreeLoaderState): Work
     const requestId = latestLoadRequestId + 1;
     latestLoadRequestId = requestId;
     activeLoadRequest = null;
-    state.isLoading.value = true;
-    state.loadingProjectId.value = projectId;
-    state.error.value = null;
+    state.setLoading(true);
+    state.setLoadingProjectId(projectId);
+    state.setError(null);
     try {
       const result = await listVfsNodes({ projectId, parentId: null });
       if (requestId !== latestLoadRequestId) return;
       if (!result.success) throw new Error(result.error);
 
       const expandedIds = new Set(readExpandedWorkspaceNodeIds(projectId));
-      state.projectTree.value = reconcileNodeArrays(state.projectTree.value, result.data, 0, expandedIds);
-      state.loadedProjectId.value = projectId;
+      const plan = planNodeReconciliation(state.projectTree, result.data, 0, expandedIds);
+      state.applyNodePatches(plan.patches);
+      state.setProjectTree(plan.nodes);
+      state.setLoadedProjectId(projectId);
     } catch (error: unknown) {
       if (requestId !== latestLoadRequestId) return;
       console.error('[WorkspaceTreeLoader] Failed to reload root nodes:', error);
-      state.error.value = resolveCurrentWorkspaceMessage('workspace.sidebar.fileTree.loadFailed');
-      state.projectTree.value = [];
-      state.loadedProjectId.value = null;
+      state.setError(resolveCurrentWorkspaceMessage('workspace.sidebar.fileTree.loadFailed'));
+      state.setProjectTree([]);
+      state.setLoadedProjectId(null);
     } finally {
       if (requestId === latestLoadRequestId) {
-        state.isLoading.value = false;
-        state.loadingProjectId.value = null;
+        state.setLoading(false);
+        state.setLoadingProjectId(null);
       }
     }
   }
@@ -174,7 +158,7 @@ export function createWorkspaceTreeLoader(state: WorkspaceTreeLoaderState): Work
     if (newParentId && newParentId !== oldParentId) {
       const newParent = findLoadedNode(newParentId);
       if (newParent) {
-        newParent.isExpanded = true;
+        state.patchNode(newParent, { isExpanded: true });
         await loadNodeChildren(newParent);
       }
     } else if (!newParentId && oldParentId) {
@@ -188,7 +172,7 @@ export function createWorkspaceTreeLoader(state: WorkspaceTreeLoaderState): Work
     if (node.children === null) await loadNodeChildren(node);
     if (node.children === null) return;
 
-    node.isExpanded = !node.isExpanded;
+    state.patchNode(node, { isExpanded: !node.isExpanded });
     const expandedIds = new Set(readExpandedWorkspaceNodeIds(node.projectId));
     if (node.isExpanded) expandedIds.add(node.id);
     else expandedIds.delete(node.id);
@@ -199,10 +183,10 @@ export function createWorkspaceTreeLoader(state: WorkspaceTreeLoaderState): Work
     // 中文说明：清空树也要使在途请求失效，否则旧项目响应可能在切换后重新写回 Store。
     latestLoadRequestId += 1;
     activeLoadRequest = null;
-    state.projectTree.value = [];
-    state.loadedProjectId.value = null;
-    state.loadingProjectId.value = null;
-    state.isLoading.value = false;
+    state.setProjectTree([]);
+    state.setLoadedProjectId(null);
+    state.setLoadingProjectId(null);
+    state.setLoading(false);
   }
 
   return {

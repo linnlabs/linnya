@@ -82,8 +82,8 @@ vi.mock('@/domains/workspace/services/file-manager', () => ({
   saveDeactivateThen: vi.fn(async (action: () => void | Promise<void>) => action()),
 }));
 
-vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({
-  useWorkspaceTreeStore: () => ({
+vi.mock('@/domains/workspace/tree', () => ({
+  useWorkspaceTree: () => ({
     findNodeById: vi.fn(() => null),
   }),
 }));

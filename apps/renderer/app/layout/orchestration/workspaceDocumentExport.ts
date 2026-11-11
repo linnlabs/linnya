@@ -5,8 +5,9 @@ import {
 import {
   useWorkspaceProjectsStore,
   useWorkspaceSelectionStore,
-  useWorkspaceTreeStore,
 } from '@/domains/workspace/store';
+import {
+  useWorkspaceTree} from '@/domains/workspace/tree';
 import { getMarkdownDocumentEditorRuntimePort } from '@/shared/ports/markdownDocumentEditorRuntimePort';
 import type {
   SaveWorkspaceHtmlDocumentResult,
@@ -17,7 +18,7 @@ import { resolveCurrentLayoutMessage } from '../functions/resolveCurrentLayoutMe
 
 function getParentIdForNewDocument(): string | null {
   const selectionStore = useWorkspaceSelectionStore();
-  const treeStore = useWorkspaceTreeStore();
+  const treeStore = useWorkspaceTree();
   const selectedNodeId = selectionStore.lastSelectedNodeId;
   if (!selectedNodeId) return null;
 
@@ -38,7 +39,7 @@ export function createWorkspaceDocumentExport(): WorkspaceDocumentExportPort {
         };
       }
 
-      const treeStore = useWorkspaceTreeStore();
+      const treeStore = useWorkspaceTree();
       const parentId = getParentIdForNewDocument();
       const documentId = await treeStore.createDocument({
         name: params.name,

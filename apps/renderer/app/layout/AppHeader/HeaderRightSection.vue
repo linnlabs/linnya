@@ -365,7 +365,8 @@ import { useFileStore } from '@/app/active-document';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { useSidebarLayoutWidth } from '@/app/layout/composables/useSidebarLayoutWidth';
 import { useWorkspacePaneGeometry } from '@/app/layout/composables/useWorkspacePaneGeometry';
-import { useWorkspaceProjectsStore, useWorkspaceTreeStore } from '@/domains/workspace/store';
+import { useWorkspaceProjectsStore} from '@/domains/workspace/store';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { useNotificationStore } from '@/app/notification';
 import { useKnowledgeBase } from '@/domains/knowledgebase/runtime.js';
 import { useDocumentActionMenu, useDocumentTypeAvailabilityByActiveType } from '@/app/plugins/composables';
@@ -468,7 +469,7 @@ const swapPaneTooltip = computed(() => {
     : layoutMessage('layout.header.swap.conversationToMain');
 });
 const fileStore = useFileStore();
-const treeStore = useWorkspaceTreeStore();
+const treeStore = useWorkspaceTree();
 const notificationStore = useNotificationStore();
 const kbStore = useKnowledgeBase();
 

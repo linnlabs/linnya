@@ -4,7 +4,6 @@
  */
 
 export { useWorkspaceProjectsStore } from './WorkspaceProjectsStore';
-export { useWorkspaceTreeStore } from './WorkspaceTreeStore';
 export { useWorkspaceSelectionStore } from './WorkspaceSelectionStore';
 
 export type { Project } from '../definitions/project';

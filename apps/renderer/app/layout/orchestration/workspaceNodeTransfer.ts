@@ -10,7 +10,7 @@ import {
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import { useNavigationScope } from '@/app/navigation';
-import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { WorkspaceOperationError } from '@/domains/workspace/definitions/workspaceOperationError';
 import {
   deactivateIfActiveDocument,
@@ -74,12 +74,12 @@ export async function handleWorkspaceNodeTransferredMutation(
 
   const currentProjectId = useNavigationScope().currentProjectId;
   if (currentProjectId === event.targetProjectId) {
-    await useWorkspaceTreeStore().reloadActiveProjectTree();
+    await useWorkspaceTree().reloadActiveProjectTree();
     return;
   }
   if (currentProjectId !== event.sourceProjectId) return;
 
-  const treeStore = useWorkspaceTreeStore();
+  const treeStore = useWorkspaceTree();
   const nodesBeforeRemoval = flattenLoadedWorkspaceTree(treeStore.projectTree);
   const activeDocumentId = useLayoutStore().state.activeDocument?.id ?? null;
   await reconcileSourceProjectAfterTransfer({
@@ -98,7 +98,7 @@ export function createWorkspaceNodeTransfer(): WorkspaceNodeTransferPort {
   return {
     async transferNode(request): Promise<WorkspaceNodeTransferResult> {
       const inspection = await inspectTransfer(request);
-      const treeStore = useWorkspaceTreeStore();
+      const treeStore = useWorkspaceTree();
       const nodesBeforeRemoval = flattenLoadedWorkspaceTree(treeStore.projectTree);
       const activeDocumentId = useLayoutStore().state.activeDocument?.id ?? null;
       const activeDocumentWillMove = Boolean(

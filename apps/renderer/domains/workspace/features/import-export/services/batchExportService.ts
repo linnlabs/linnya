@@ -16,7 +16,7 @@ import { createMarkdownSerializer, type MarkdownExportSettings } from '../../../
 import type { MessageParams } from '@app/localization';
 import type { WorkspaceMessageKey, WorkspaceMessageResolver } from '../../../definitions/workspaceMessages';
 import { buildWorkspaceMarkdownSerializerLabels } from '../../../functions/markdownSerializerLabels';
-import type { WorkspaceNode } from '../../../store/WorkspaceTreeStore';
+import type { WorkspaceNode } from '../../../definitions/workspaceTree';
 import { parseMarkdownDocumentForExport } from '../../../../editor/document-export';
 
 type TreeStoreLike = {

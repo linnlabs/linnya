@@ -68,7 +68,7 @@ apps/renderer/domains/workspace/
 - 批量导出 Markdown 逐篇处理：某篇读取或解析失败时记下文档名继续，写出全部成功的文档，结束时提示“已导出 N 篇，M 篇失败：…”，并说明有几份插件文档不在 Markdown 导出范围内；不另写结果清单文件。正文由 Editor 公开入口 `parseMarkdownDocumentForExport` 解析，不取自活动编辑器。
 - Markdown PDF 导出通过 Editor 公开入口 `prepareMarkdownHtmlForPdf` 生成完整静态内容后再交给 Electron；Workspace 只拥有纸张、打印 CSS、保存框与交付。图表不能直接使用 `editor.getHTML()` 中仅用于往返的标题和规格，也不能截取可能被虚拟化卸载的 NodeView；任一图表生成失败时中止导出并提示错误。
 - 工作区同一项目、同一父目录下的未删除节点名必须唯一；历史重名由数据库迁移自动改为 `名称 (1)`、`名称 (2)`。
-- `WorkspaceTreeStore` 只持有响应式状态、同步 action 和 feature 组合；VFS 加载/刷新归属 `tree-loading`，异步节点变更归属 `tree-node-mutations`。树 DTO 投影属于 workspace domain shared，禁止全局 shared 反向依赖 Store 内部类型。
+- `WorkspaceTreeStore` 只持有响应式状态、同步 action；VFS 加载/刷新归属 `tree-loading`，异步节点变更归属 `tree-node-mutations`。公开入口 `tree.ts` 按 Pinia 实例装配流程，调用方通过 `useWorkspaceTree` 发命令和读取状态。树 DTO 投影和无副作用的节点变更计划属于 workspace domain shared，禁止全局 shared 反向依赖 Store 内部类型。
 - 文件树刷新由 Workspace Mutation Bus 驱动；普通 node CRUD 走已注入 publisher 的 `WorkspaceService`，跨项目转移走独立 `node-transfer` feature 并在提交后发布 `workspace.node.transferred`。完整规则见 [Workspace Mutation Bus](../../../../docs/workspace-mutation-bus.md)。
 - 节点删除由 `workspaceNodeDeletionPort` 进入 app-level 编排；UI 不得在单删、批量删除入口各自维护 active page 回退。page 只由已启用 document type 定义，图片和附件资源不属于 page。
 - 真实文件和文件夹通过“移动到项目”转移到另一个项目根目录；一期只允许单节点入口，文件夹包含完整子树，不选择目标文件夹、不批量移动、不跨项目拖拽。转移保持 `workspace_nodes.id` 与文档卫星表身份，目标根目录同名时拒绝，不覆盖或自动改名。
@@ -114,6 +114,6 @@ apps/renderer/domains/workspace/
 - 文件树 More 菜单和右键菜单必须来自 `ui/sidebar/functions/nodeContextMenuModel.ts` 的节点能力模型；
 - “移动到项目”的目标列表来自项目 store，但执行必须交给 app-level `workspaceNodeTransferPort`；Vue 和菜单 composable 不得直接编排保存、IPC、active page 或双项目刷新；
 - 文件树的 Shift 范围选择由 workspace store 持有锚点和状态，但有序区间合并必须调用 `shared/selection`，与对话列表共用同一纯函数；
-- AI/导出创建的文件如果需要显示 `New` 标签，应通过 `WorkspaceTreeStore.createDocument({ markAsNew: true })` 或工具输出副作用显式标记；
+- AI/导出创建的文件如果需要显示 `New` 标签，应通过 `useWorkspaceTree().createDocument({ markAsNew: true })` 或工具输出副作用显式标记；
 - “展开显示 / 折叠显示”属于对话列表轻量文本操作，hover 只改变文字色，不显示行背景；
 - 长时间 hover 文件不应出现浏览器原生 title 弹窗，文件树需要自定义悬浮信息时应使用统一 tooltip/popover。

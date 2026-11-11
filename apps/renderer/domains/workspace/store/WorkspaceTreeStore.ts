@@ -2,8 +2,8 @@
  * @file WorkspaceTreeStore.ts
  * @description Workspace 树的响应式状态与公开 action 门面。
  *
- * 异步加载和节点变更流程分别归属 tree-loading、tree-node-mutations feature；
- * Store 只持有状态、同步 action，并在组合根注入依赖。
+ * 异步加载和节点变更由 domain 的 tree.ts 运行入口装配；
+ * Store 只持有状态、查询与同步 action，不反向创建编排。
  */
 
 import { computed, ref } from 'vue';
@@ -11,15 +11,15 @@ import { defineStore } from 'pinia';
 import type {
   WorkspaceNode,
   WorkspaceVfsRuntimeContext,
+  WorkspaceNodePatch,
+  WorkspaceNodeStatePatch,
 } from '../definitions/workspaceTree';
 import { flattenVisibleWorkspaceTree } from '../functions/flattenVisibleWorkspaceTree';
 import { findNodeById, isDescendant } from '../shared/workspaceTreeState';
-import { createWorkspaceTreeLoader } from '../features/tree-loading/orchestration/createWorkspaceTreeLoader';
-import { createWorkspaceTreeNodeMutations } from '../features/tree-node-mutations/orchestration/createWorkspaceTreeNodeMutations';
 
 export type { WorkspaceNode } from '../definitions/workspaceTree';
 
-export const useWorkspaceTreeStore = defineStore('workspace-tree', () => {
+export const useWorkspaceTreeStateStore = defineStore('workspace-tree', () => {
   const projectTree = ref<WorkspaceNode[]>([]);
   const loadedProjectId = ref<string | null>(null);
   const loadingProjectId = ref<string | null>(null);
@@ -76,22 +76,15 @@ export const useWorkspaceTreeStore = defineStore('workspace-tree', () => {
     };
   }
 
-  const treeLoader = createWorkspaceTreeLoader({
-    projectTree,
-    loadedProjectId,
-    loadingProjectId,
-    isLoading,
-    error,
-    vfsRuntimeContext,
-  });
-  const nodeMutations = createWorkspaceTreeNodeMutations({
-    error,
-    findNodeById: findNodeByIdInTree,
-    loadNodeChildren: treeLoader.loadNodeChildren,
-    reloadActiveProjectTree: treeLoader.reloadActiveProjectTree,
-    setRenameRequestNodeId,
-    markNodeAsNew,
-  });
+  function setProjectTree(nodes: WorkspaceNode[]): void { projectTree.value = nodes; }
+  function setLoadedProjectId(id: string | null): void { loadedProjectId.value = id; }
+  function setLoadingProjectId(id: string | null): void { loadingProjectId.value = id; }
+  function setLoading(value: boolean): void { isLoading.value = value; }
+  function setError(value: string | null): void { error.value = value; }
+  function patchNode(node: WorkspaceNode, changes: WorkspaceNodePatch): void { Object.assign(node, changes); }
+  function applyNodePatches(patches: readonly WorkspaceNodeStatePatch[]): void {
+    for (const patch of patches) patchNode(patch.node, patch.changes);
+  }
 
   return {
     projectTree,
@@ -102,18 +95,8 @@ export const useWorkspaceTreeStore = defineStore('workspace-tree', () => {
     error,
     newNodeFlags,
     flatProjectTree,
-    loadProjectTree: treeLoader.loadProjectTree,
-    ensureProjectTreeLoaded: treeLoader.ensureProjectTreeLoaded,
-    reloadActiveProjectTree: treeLoader.reloadActiveProjectTree,
-    loadNodeChildren: treeLoader.loadNodeChildren,
-    refreshAfterMove: treeLoader.refreshAfterMove,
-    toggleExpand: treeLoader.toggleExpand,
-    clearTree: treeLoader.clearTree,
-    createFolder: nodeMutations.createFolder,
-    createDocument: nodeMutations.createDocument,
-    renameNode: nodeMutations.renameNode,
-    duplicateNode: nodeMutations.duplicateNode,
-    deleteNode: nodeMutations.deleteNode,
+    vfsRuntimeContext,
+    setProjectTree, setLoadedProjectId, setLoadingProjectId, setLoading, setError, patchNode, applyNodePatches,
     setRenameRequestNodeId,
     markNodeAsNew,
     clearNodeNewFlag,

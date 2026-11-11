@@ -16,7 +16,7 @@ vi.mock('../../../../../shared/services/markdownService', () => ({
   parseMarkdownToBlocksByStreaming: vi.fn(),
 }));
 
-import type { WorkspaceNode } from '../../../store/WorkspaceTreeStore';
+import type { WorkspaceNode } from '../../../definitions/workspaceTree';
 import { describeBatchExportResult } from '../../../functions/describeBatchExportResult';
 import { batchExportProjectAsMarkdown, type BatchExportResult } from './batchExportService';
 

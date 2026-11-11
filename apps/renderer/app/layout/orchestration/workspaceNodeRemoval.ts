@@ -5,9 +5,9 @@ import { resolveDocumentTypeByNodeType } from '@/app/plugins/registry';
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
 import { useWorkspaceSelectionStore } from '@/domains/workspace/store/WorkspaceSelectionStore';
 import {
-  useWorkspaceTreeStore,
+  useWorkspaceTree,
   type WorkspaceNode,
-} from '@/domains/workspace/store/WorkspaceTreeStore';
+} from '@/domains/workspace/tree';
 import type { PageSelectionNode } from '@/domains/workspace/features/page-selection-after-removal/definitions/pageSelectionAfterRemoval';
 import { resolvePageSelectionAfterRemoval } from '@/domains/workspace/features/page-selection-after-removal/functions/resolvePageSelectionAfterRemoval';
 import { showEmptyProjectFilesAfterRemoval } from './workspaceNavigation';
@@ -129,7 +129,7 @@ export async function reconcilePageSelectionAfterRemoval(input: {
 }
 
 export async function refreshRemovedNodeParent(parentId: string | null): Promise<void> {
-  const treeStore = useWorkspaceTreeStore();
+  const treeStore = useWorkspaceTree();
   if (!parentId) {
     await treeStore.reloadActiveProjectTree();
     return;

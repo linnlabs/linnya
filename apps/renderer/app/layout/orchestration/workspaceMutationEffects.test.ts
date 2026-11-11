@@ -33,8 +33,8 @@ vi.mock('@/app/navigation', () => ({
   useNavigationScope: () => ({ currentProjectId: mocks.currentProjectId }),
 }));
 
-vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({
-  useWorkspaceTreeStore: () => ({
+vi.mock('@/domains/workspace/tree', () => ({
+  useWorkspaceTree: () => ({
     reloadActiveProjectTree: mocks.reloadActiveProjectTree,
     loadNodeChildren: mocks.loadNodeChildren,
     refreshAfterMove: mocks.refreshAfterMove,

@@ -118,7 +118,8 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted, nextTick, watch, inject } from 'vue';
 // import TreeItem from './TreeItem.vue'; 
-import { useWorkspaceTreeStore, useWorkspaceSelectionStore } from '../../../store/index.js';
+import { useWorkspaceSelectionStore } from '../../../store/index.js';
+import { useWorkspaceTree} from '../../../tree';
 import { useNotificationStore } from '@/app/notification';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
@@ -147,7 +148,7 @@ const props = defineProps({
 });
 
 // Get Store instance
-const treeStore = useWorkspaceTreeStore();
+const treeStore = useWorkspaceTree();
 const selectionStore = useWorkspaceSelectionStore();
 const notificationStore = useNotificationStore();
 const { workspaceMessage } = useWorkspaceLocalization();

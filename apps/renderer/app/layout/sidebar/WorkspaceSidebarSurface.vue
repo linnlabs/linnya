@@ -149,7 +149,8 @@
 <script setup>
 import { loadProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
-import { useWorkspaceProjectsStore, useWorkspaceSelectionStore, useWorkspaceTreeStore } from '@/domains/workspace/store';
+import { useWorkspaceProjectsStore, useWorkspaceSelectionStore} from '@/domains/workspace/store';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { useChatFlowOrchestrator } from '@/domains/conversation/services/orchestration/chatFlowOrchestrator';
 import { applyConversationAgentChoice } from '@/domains/conversation/features/agent-choice/orchestration/applyConversationAgentChoice';
@@ -224,7 +225,7 @@ const emit = defineEmits([
 ]);
 
 const projectsStore = useWorkspaceProjectsStore();
-const treeStore = useWorkspaceTreeStore();
+const treeStore = useWorkspaceTree();
 const selectionStore = useWorkspaceSelectionStore();
 const projectExpansionStore = useSidebarProjectExpansionStore();
 const assistantStore = useAssistantStore();

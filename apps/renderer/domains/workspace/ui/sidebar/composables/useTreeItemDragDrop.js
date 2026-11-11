@@ -10,14 +10,14 @@
 
 import { ref, computed, inject } from 'vue';
 import { useUIStore } from '../../../../../shared/stores/ui';
-import { useWorkspaceTreeStore } from '../../../store';
+import { useWorkspaceTree } from '../../../tree';
 import { workspaceGateway } from '../../../../../shared/ipc/workspaceGateway';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 import { resolveWorkspaceOperationFailure } from '@/domains/workspace/functions/resolveWorkspaceOperationFailure';
 
 export function useTreeItemDragDrop(props, showError) {
   const uiStore = useUIStore();
-  const treeStore = useWorkspaceTreeStore();
+  const treeStore = useWorkspaceTree();
   const { workspaceMessage } = useWorkspaceLocalization();
   
   // 从父组件注入的重置函数

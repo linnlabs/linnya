@@ -5,16 +5,15 @@ import {
 } from '@/domains/workspace/services/file-manager';
 import {
   useWorkspaceProjectsStore,
-  useWorkspaceTreeStore,
 } from '@/domains/workspace/store';
-import type { WorkspaceNode } from '@/domains/workspace/store/WorkspaceTreeStore';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
+import type { WorkspaceNode } from '@/domains/workspace/definitions/workspaceTree';
 import type {
   WorkspaceActiveDocumentSession,
   WorkspaceContextDocumentType,
   WorkspaceContextPort,
   WorkspaceDocumentSummary,
   WorkspaceProjectFileSummary,
-  WorkspaceProjectSummary,
 } from '@/shared/ports/workspaceContextPort';
 import { getDocumentTypeByNodeType, getDocumentTypeByFileSessionType } from '@/app/plugins/registry';
 import { resolveWorkspaceNodeDisplayName } from '@/domains/workspace/functions/resolveWorkspaceNodeDisplayName';
@@ -70,7 +69,7 @@ export function createWorkspaceContext(): WorkspaceContextPort {
 
     findDocumentSummary(documentId) {
       if (!documentId) return null;
-      const treeStore = useWorkspaceTreeStore();
+      const treeStore = useWorkspaceTree();
       return toDocumentSummary(treeStore.findNodeById(documentId));
     },
 
@@ -90,7 +89,7 @@ export function createWorkspaceContext(): WorkspaceContextPort {
     getProjectFileSummaries(projectId, options = {}) {
       if (!projectId) return [];
       const limit = options.limit ?? 10;
-      const treeStore = useWorkspaceTreeStore();
+      const treeStore = useWorkspaceTree();
       const summaries: WorkspaceProjectFileSummary[] = [];
       for (const node of treeStore.flatProjectTree) {
         if (node.projectId !== projectId) continue;

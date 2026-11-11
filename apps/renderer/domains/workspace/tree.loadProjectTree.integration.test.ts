@@ -7,7 +7,7 @@ import {
   clearPluginDocumentCreationHandlersForTest,
   registerPluginDocumentCreationHandler,
 } from '@plugin/renderer/pluginDocumentCreationPort';
-import { useWorkspaceProjectsStore } from '../WorkspaceProjectsStore';
+import { useWorkspaceProjectsStore } from './store/WorkspaceProjectsStore';
 
 function createDeferred<T>() {
   let resolvePromise: (value: T) => void = () => {
@@ -45,9 +45,9 @@ vi.mock('@/domains/workspace/services/file-manager/index', () => ({
   deactivateIfActiveDocument: mocks.deactivateIfActiveDocumentMock,
 }));
 
-import { useWorkspaceTreeStore } from '../WorkspaceTreeStore';
+import { useWorkspaceTree } from './tree';
 
-describe('WorkspaceTreeStore.loadProjectTree', () => {
+describe('WorkspaceTree.loadProjectTree', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     localStorage.clear();
@@ -74,7 +74,7 @@ describe('WorkspaceTreeStore.loadProjectTree', () => {
       ],
     });
 
-    const store = useWorkspaceTreeStore();
+    const store = useWorkspaceTree();
 
     await store.ensureProjectTreeLoaded('project-1');
     await store.ensureProjectTreeLoaded('project-1');
@@ -88,7 +88,7 @@ describe('WorkspaceTreeStore.loadProjectTree', () => {
     const listRequest = createDeferred<{ success: true; data: [] }>();
     mocks.listNodesMock.mockReturnValue(listRequest.promise);
 
-    const store = useWorkspaceTreeStore();
+    const store = useWorkspaceTree();
     const firstLoad = store.ensureProjectTreeLoaded('project-1');
     const secondLoad = store.ensureProjectTreeLoaded('project-1');
 
@@ -99,6 +99,37 @@ describe('WorkspaceTreeStore.loadProjectTree', () => {
     expect(store.loadedProjectId).toBe('project-1');
   });
 
+  it('刷新事实时保留节点身份、展开状态和已加载子树', async () => {
+    const folder = {
+      id: 'folder-1', name: '原目录', type: 'folder', project_id: 'project-1',
+      parent_id: null, created_at: 1, updated_at: 1, deleted_at: null, icon: null,
+    };
+    const child = { ...folder, id: 'doc-1', name: '原文档', type: 'document', parent_id: folder.id };
+    mocks.listNodesMock
+      .mockResolvedValueOnce({ success: true, data: [folder] })
+      .mockResolvedValueOnce({ success: true, data: [child] })
+      .mockResolvedValueOnce({ success: true, data: [{ ...folder, name: '新目录', updated_at: 2 }] })
+      .mockResolvedValueOnce({ success: true, data: [{ ...child, name: '新文档', updated_at: 3 }] });
+    useWorkspaceProjectsStore().markActiveProject('project-1');
+    const tree = useWorkspaceTree();
+    await tree.loadProjectTree('project-1');
+    await tree.toggleExpand(folder.id);
+    const existingFolder = tree.findNodeById(folder.id)!;
+    const existingChild = tree.findNodeById(child.id)!;
+    const existingChildren = existingFolder.children;
+
+    await tree.reloadActiveProjectTree();
+
+    expect(tree.findNodeById(folder.id)).toBe(existingFolder);
+    expect(existingFolder).toMatchObject({ name: '新目录', updatedAt: '2', isExpanded: true });
+    expect(existingFolder.children).toBe(existingChildren);
+    expect(tree.findNodeById(child.id)).toBe(existingChild);
+    await tree.loadNodeChildren(existingFolder);
+    expect(tree.findNodeById(child.id)).toBe(existingChild);
+    expect(existingChild).toMatchObject({ name: '新文档', updatedAt: '3' });
+    expect(existingFolder.isExpanded).toBe(true);
+  });
+
   it('清空树后忽略仍在途的旧项目响应', async () => {
     const listRequest = createDeferred<{
       success: true;
@@ -106,7 +137,7 @@ describe('WorkspaceTreeStore.loadProjectTree', () => {
     }>();
     mocks.listNodesMock.mockReturnValue(listRequest.promise);
 
-    const store = useWorkspaceTreeStore();
+    const store = useWorkspaceTree();
     const loading = store.loadProjectTree('project-1');
     store.clearTree();
     listRequest.resolve({
@@ -138,7 +169,7 @@ describe('WorkspaceTreeStore.loadProjectTree', () => {
     mocks.listNodesMock.mockReturnValue(listRequest.promise);
     useWorkspaceProjectsStore().markActiveProject('project-1');
 
-    const store = useWorkspaceTreeStore();
+    const store = useWorkspaceTree();
     const reloading = store.reloadActiveProjectTree();
     store.clearTree();
     listRequest.resolve({
@@ -197,7 +228,7 @@ describe('WorkspaceTreeStore.loadProjectTree', () => {
 
     const projectsStore = useWorkspaceProjectsStore();
     projectsStore.markActiveProject('project-1');
-    const store = useWorkspaceTreeStore();
+    const store = useWorkspaceTree();
 
     const documentId = await store.createDocument({
       name: '插件文档',

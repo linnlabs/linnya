@@ -10,7 +10,7 @@ import type {
 import type { WorkspaceMutationEffectsPort } from '@/shared/ports/workspaceMutationEffectsPort';
 import { useNavigationScope } from '@/app/navigation';
 import { refreshProjectCatalog } from '@/domains/workspace/features/project-catalog';
-import { useWorkspaceTreeStore } from '@/domains/workspace/store/WorkspaceTreeStore';
+import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { notifyRendererDocumentMutationHandlers } from '@plugin/renderer/documentMutationPort';
 import { applyPendingRevisionsToOpenMarkdownDocument } from './shared/markdownPendingRevisionRefresh';
 import { resolveCurrentOpenDocument } from './resolveCurrentOpenDocument';
@@ -39,7 +39,7 @@ function isCurrentProjectMutation(projectId: string | null): boolean {
 }
 
 async function refreshParentOrRoot(parentId: string | null): Promise<void> {
-  const treeStore = useWorkspaceTreeStore();
+  const treeStore = useWorkspaceTree();
   if (!parentId) {
     await treeStore.reloadActiveProjectTree();
     return;
@@ -56,7 +56,7 @@ async function refreshParentOrRoot(parentId: string | null): Promise<void> {
 
 async function handleNodeCreated(event: WorkspaceNodeCreatedEvent): Promise<void> {
   if (!isCurrentProjectMutation(event.projectId)) return;
-  const treeStore = useWorkspaceTreeStore();
+  const treeStore = useWorkspaceTree();
   treeStore.markNodeAsNew(event.nodeId);
   await refreshParentOrRoot(event.parentId);
 }
@@ -68,7 +68,7 @@ async function handleNodeRenamed(event: WorkspaceNodeRenamedEvent): Promise<void
 
 async function handleNodeMoved(event: WorkspaceNodeMovedEvent): Promise<void> {
   if (!isCurrentProjectMutation(event.projectId)) return;
-  await useWorkspaceTreeStore().refreshAfterMove(event.oldParentId, event.parentId);
+  await useWorkspaceTree().refreshAfterMove(event.oldParentId, event.parentId);
 }
 
 async function handleNodeTransferred(event: WorkspaceNodeTransferredEvent): Promise<void> {

@@ -28,7 +28,7 @@ vi.mock('@/app/plugins/registry', () => ({ getDocumentTypeByActiveType: (type: s
 getDocumentTypeByNodeType: (type: string) => type === 'persisted-document' ? ({ activeDocumentType: 'editable' }) : null,
 }));
 vi.mock('@/app/plugins/enabledPluginsStore', () => ({ useEnabledPluginsStore: () => ({ isPluginEnabled: () => state.enabled }) }));
-vi.mock('@/domains/workspace/store/WorkspaceTreeStore', () => ({ useWorkspaceTreeStore: vi.fn() }));
+vi.mock('@/domains/workspace/tree', () => ({ useWorkspaceTree: vi.fn() }));
 vi.mock('@/domains/conversation/history/store/historyLoaderStore', () => ({ useHistoryLoaderStore: vi.fn() }));
 vi.mock('@/domains/conversation/store/assistantStore', () => ({ useAssistantStore: vi.fn() }));
 vi.mock('@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore', () => ({

@@ -21,9 +21,9 @@ vi.mock('@/domains/workspace/store', () => ({
   useWorkspaceProjectsStore: () => ({
     projects: [{ id: 'project-1', name: '测试项目' }],
   }),
-  useWorkspaceTreeStore: () => ({
-    ensureProjectTreeLoaded: dependencies.ensureProjectTreeLoaded,
-  }),
+}));
+vi.mock('@/domains/workspace/tree', () => ({
+  useWorkspaceTree: () => ({ ensureProjectTreeLoaded: dependencies.ensureProjectTreeLoaded }),
 }));
 
 vi.mock('@/domains/knowledgebase/runtime.js', () => ({
