@@ -23,6 +23,9 @@ export function toProjectOverviewRow(document: ProjectOverviewDocument): Project
     lastModifiedPluginId: document.last_modified_by?.plugin_id ?? null,
     pendingRevisionCount: document.pending_revision_count,
     tags: document.tags,
+    fieldRevision: document.properties.revision,
+    fieldIds: document.properties.field_ids,
+    fieldValues: document.properties.values,
   };
 }
 
@@ -48,7 +51,12 @@ function isInLocation(row: ProjectOverviewRow, location: readonly string[]): boo
 export function filterProjectOverviewRows(
   rows: readonly ProjectOverviewRow[],
   filters: ProjectOverviewFilters,
-  options: { readonly now: Date; readonly contentMatches: ReadonlySet<string> | null },
+  options: {
+    readonly now: Date;
+    readonly contentMatches: ReadonlySet<string> | null;
+    /** 字段条件的求值结果；`filters.where` 为空时不看。 */
+    readonly fieldMatches?: ReadonlySet<string> | null;
+  },
 ): ProjectOverviewRow[] {
   const query = filters.query.trim().toLocaleLowerCase();
   const since = modifiedRangeStart(filters.modified, options.now);
@@ -57,6 +65,7 @@ export function filterProjectOverviewRows(
     if (since !== null && row.lastModifiedAt < since) return false;
     if (filters.location !== null && !isInLocation(row, filters.location)) return false;
     if (!filters.tags.every(tagId => row.tags.some(tag => tag.id === tagId))) return false;
+    if (filters.where.length > 0 && !options.fieldMatches?.has(row.documentId)) return false;
     if (query) {
       const nameMatches = row.title.toLocaleLowerCase().includes(query);
       if (!nameMatches && !options.contentMatches?.has(row.documentId)) return false;

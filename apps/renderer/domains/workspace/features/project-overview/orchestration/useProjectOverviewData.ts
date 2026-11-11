@@ -1,5 +1,5 @@
 import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
-import { PROJECT_OVERVIEW_MAX_DOCUMENT_IDS } from '@app/schemas';
+import { PROJECT_OVERVIEW_MAX_DOCUMENT_IDS, type ProjectOverviewField } from '@app/schemas';
 import { subscribeToWorkspaceMutation } from '@/shared/ipc/workspaceMutationSubscription';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import type { ProjectOverviewRow, ProjectOverviewRefreshPlan } from '../definitions/projectOverview';
@@ -12,6 +12,8 @@ const REFRESH_THROTTLE_MS = 600;
 
 export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) {
   const rows = shallowRef<ReadonlyMap<string, ProjectOverviewRow>>(new Map());
+  /** 挂在标签上的字段定义：字段条件的文字、看板分列用。 */
+  const fields = shallowRef<readonly ProjectOverviewField[]>([]);
   const folderCount = ref<number | null>(null);
   const characterCount = ref<number | null>(null);
   const status = ref<'loading' | 'ready' | 'error'>('loading');
@@ -27,6 +29,7 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
       const overview = await readProjectOverview({ project_id: target });
       if (current !== generation) return;
       rows.value = new Map(overview.documents.map(document => [document.document_id, toProjectOverviewRow(document)]));
+      fields.value = overview.fields;
       folderCount.value = overview.folder_count;
       status.value = 'ready';
       revision.value += 1;
@@ -56,6 +59,7 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
       for (const id of ids) next.delete(id);
       for (const document of overview.documents) next.set(document.document_id, toProjectOverviewRow(document));
       rows.value = next;
+      fields.value = overview.fields;
       revision.value += 1;
     } catch (error: unknown) {
       console.error('[ProjectOverview] 刷新文档失败:', error);
@@ -104,6 +108,7 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
     refreshAll = false;
     refreshIds.clear();
     rows.value = new Map();
+    fields.value = [];
     folderCount.value = null;
     characterCount.value = null;
     status.value = 'loading';
@@ -116,5 +121,15 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
     unsubscribe();
   });
 
-  return { rows, folderCount, characterCount, status, revision };
+  /**
+   * 语义层的写入（看板拖动改值、Agent 打标签）不发工作区变更事件，由发起方点名补读。
+   * 立即排进下一轮，不等节流。
+   */
+  function refreshDocuments(ids: readonly string[]): void {
+    for (const id of ids) refreshIds.add(id);
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => void flush(), 0);
+  }
+
+  return { rows, fields, folderCount, characterCount, status, revision, refreshDocuments };
 }

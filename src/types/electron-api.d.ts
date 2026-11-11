@@ -223,6 +223,15 @@ declare global {
       readProjectOverview: (
         request: import('@app/schemas').ProjectOverviewRequest,
       ) => Promise<unknown>;
+      projectSavedFilters: (
+        request: import('@app/schemas').ProjectSavedFiltersRequest,
+      ) => Promise<unknown>;
+      matchProjectFields: (
+        request: import('@app/schemas').ProjectOverviewMatchRequest,
+      ) => Promise<unknown>;
+      setProjectField: (
+        request: import('@app/schemas').ProjectOverviewSetFieldRequest,
+      ) => Promise<unknown>;
       resolveConversationFileLink: (
         request: import('@app/schemas').ConversationFileLinkResolveRequest,
       ) => Promise<import('@app/schemas').OperationResult<

@@ -42,6 +42,9 @@ const row = (overrides: Partial<ProjectOverviewRow> & { readonly documentId: str
   lastModifiedPluginId: null,
   pendingRevisionCount: null,
   tags: [],
+  fieldRevision: 0,
+  fieldIds: [],
+  fieldValues: {},
   ...overrides,
 });
 

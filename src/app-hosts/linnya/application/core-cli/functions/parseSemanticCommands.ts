@@ -19,7 +19,9 @@ export const PROPS_USAGE = [
 ].join('\n');
 
 export const QUERY_USAGE = [
-  'linnya query [--tag 标签]... [--where 条件]... [--sort [-]字段]... [--group 字段] [--limit 1..200] [--json]',
+  'linnya query [--tag 标签]... [--where 条件]... [--sort [-]字段]... [--group 字段] [--limit 1..200] [--json] [--save 名称 [--suggest]]',
+  '  --save 把条件存成项目概览文件页的筛选（用户明确要求时）；--suggest 只放进“Agent 建议”，用户点固定才上那一排',
+  '  一次性问题直接查完回答，不要保存；按单选字段 --group 时保存为看板',
   '  条件：字段=值 字段!=值 字段>值 字段>=值 字段<值 字段<=值 字段~值（包含） 字段!~值（不包含）',
   '        字段= 为空，字段!= 不为空；多选的 ~ 可给多个选项（逗号分隔），命中任一即算',
   '  内建字段：name type created updated；--sort -年份 表示降序',
@@ -70,6 +72,8 @@ export type QueryCommand =
     readonly kind: 'query'; readonly tags: readonly string[]; readonly where: readonly RawQueryFilter[];
     readonly sort: readonly { readonly field: string; readonly direction: 'asc' | 'desc' }[];
     readonly groupBy: string | null; readonly limit: number; readonly json: boolean;
+    /** 存成保存的筛选；null 为只查询。 */
+    readonly save: { readonly name: string; readonly suggest: boolean } | null;
   };
 
 export type LinksCommand = { readonly kind: 'help' } | { readonly kind: 'links'; readonly path: string; readonly limit: number };
@@ -233,9 +237,13 @@ export function parseQueryCommand(argv: readonly string[]): QueryCommand {
       tag: { type: 'string', multiple: true }, where: { type: 'string', multiple: true },
       sort: { type: 'string', multiple: true }, group: { type: 'string' },
       limit: { type: 'string', default: '50' }, json: { type: 'boolean', default: false },
+      save: { type: 'string' }, suggest: { type: 'boolean', default: false },
     },
   });
   if (positionals.length) throw new Error(`无法识别的参数：${positionals.join(' ')}（条件用 --where）`);
+  const saveName = values.save?.trim() ?? '';
+  if (values.save !== undefined && !saveName) throw new Error('--save 需要筛选名称');
+  if (values.suggest && !saveName) throw new Error('--suggest 要和 --save 名称一起用');
   return {
     kind: 'query',
     tags: names(values.tag),
@@ -248,6 +256,7 @@ export function parseQueryCommand(argv: readonly string[]): QueryCommand {
     groupBy: values.group?.trim() || null,
     limit: limitOf(values.limit),
     json: values.json,
+    save: saveName ? { name: saveName, suggest: values.suggest } : null,
   };
 }
 

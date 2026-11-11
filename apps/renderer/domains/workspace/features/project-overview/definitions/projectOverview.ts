@@ -1,5 +1,5 @@
 import type { Component } from 'vue';
-import type { ProjectOverviewActor } from '@app/schemas';
+import type { ProjectFieldCondition, ProjectOverviewActor } from '@app/schemas';
 
 /** 名称列固定在最前、占满剩余宽度，不进列配置。 */
 export const PROJECT_OVERVIEW_COLUMN_IDS = [
@@ -16,8 +16,7 @@ export const PROJECT_OVERVIEW_COLUMN_IDS = [
 export type ProjectOverviewColumnId = (typeof PROJECT_OVERVIEW_COLUMN_IDS)[number];
 
 /**
- * 列配置按以后“面板”里布局那部分的格式存：带版本号，只记列的显示、顺序和宽度。
- * 保存面板时直接放进面板定义，不另换格式。
+ * 列配置：带版本号，只记列的显示、顺序和宽度，所有项目共用本机偏好；不进保存的筛选。
  */
 export const PROJECT_OVERVIEW_LAYOUT_VERSION = 1;
 
@@ -51,6 +50,9 @@ export interface ProjectOverviewFilters {
   readonly location: readonly string[] | null;
   /** 同时带有这些标签（ID）；空数组为不按标签筛选。 */
   readonly tags: readonly string[];
+  /** 字段条件（字段 ID），全部同时成立；由 Backend 用查询编译器求值。 */
+  readonly where: readonly ProjectFieldCondition[];
+  /** 搜索是一次性的，不进保存的筛选。 */
   readonly query: string;
 }
 
@@ -59,8 +61,21 @@ export const EMPTY_PROJECT_OVERVIEW_FILTERS: ProjectOverviewFilters = Object.fre
   modified: 'any',
   location: null,
   tags: [],
+  where: [],
   query: '',
 });
+
+/** 文件页的布局：表格或按单选字段分列的看板。 */
+export type ProjectOverviewViewKind = 'table' | 'board';
+
+export interface ProjectOverviewView {
+  readonly kind: ProjectOverviewViewKind;
+  /** 看板按哪个单选字段分列（字段 ID）。 */
+  readonly groupBy: string | null;
+}
+
+export const DEFAULT_PROJECT_OVERVIEW_SORT: ProjectOverviewSort = Object.freeze({ key: 'modified', direction: 'desc' });
+export const DEFAULT_PROJECT_OVERVIEW_VIEW: ProjectOverviewView = Object.freeze({ kind: 'table', groupBy: null });
 
 /** 界面用的一行：只保留展示、筛选和排序需要的事实。 */
 export interface ProjectOverviewRow {
@@ -80,6 +95,10 @@ export interface ProjectOverviewRow {
   readonly pendingRevisionCount: number | null;
   /** 当前标签，按打标签的先后。 */
   readonly tags: readonly { readonly id: string; readonly name: string }[];
+  /** 标签带来的字段：版本、当前可用字段与已填的值（键是字段 ID）。 */
+  readonly fieldRevision: number;
+  readonly fieldIds: readonly string[];
+  readonly fieldValues: Readonly<Record<string, unknown>>;
 }
 
 /** 打开一份文档需要的身份；文件页的行和对话详情里改过的文档都给出这些。 */

@@ -1,6 +1,7 @@
 <!--
   项目概览：文件、对话两页。文件页是项目里所有文件的一览表：页头、工具条固定，表头吸顶，表体按行虚拟渲染。
-  对话页见 ProjectConversationsPanel。数据只读；打开文件、对话、知识库设置和对话的写操作交给页面装配层。
+  文件页另有保存的筛选那一排与看板布局。对话页见 ProjectConversationsPanel。
+  打开文件、对话、知识库设置和对话的写操作交给页面装配层；保存的筛选与看板改值经本 feature 的网关。
 -->
 <template>
   <section class="project-overview">
@@ -34,6 +35,19 @@
           <span v-if="pageCount(item.id) !== null" class="project-overview__page-count">{{ pageCount(item.id) }}</span>
         </button>
       </nav>
+
+      <ProjectSavedFiltersBar
+        v-show="page === 'files'"
+        :pinned="savedFilters.pinned.value"
+        :suggestions="savedFilters.suggestions.value"
+        :active-id="activeFilterId"
+        :labels="savedFiltersBarLabels"
+        :summary="savedFilterSummary"
+        @select="selectSavedFilter"
+        @rename="startRename"
+        @remove="removeSavedFilter"
+        @pin="pinSavedFilter"
+      />
 
       <div v-show="page === 'files'" class="project-overview__toolbar">
         <label class="project-overview__search">
@@ -87,11 +101,52 @@
           @update:model-value="setTagFilter"
           @clear="setTagFilter(ALL)"
         />
+        <ProjectOverviewConditionChip
+          v-for="(condition, index) in filters.where"
+          :key="`${condition.field}:${condition.op}:${index}`"
+          :text="conditionText(condition)"
+          :clear-label="workspaceMessage('workspace.projectOverview.clearFilter')"
+          @clear="removeCondition(index)"
+        />
         <div class="project-overview__spacer" />
         <span v-if="isFiltering && status === 'ready'" class="project-overview__count" aria-live="polite">
           {{ workspaceMessage('workspace.projectOverview.resultCount', { count: sortedRows.length }) }}
         </span>
+        <span v-if="saveState === 'new'" ref="saveAnchorRef" class="project-overview__save-anchor">
+          <BaseButton variant="plain" size="md" @click="startSave">
+            <template #icon><SaveIcon /></template>
+            {{ workspaceMessage('workspace.projectOverview.savedFilters.save') }}
+          </BaseButton>
+        </span>
+        <span v-else-if="saveState === 'changed'" ref="saveAnchorRef" class="project-overview__save-anchor">
+          <span class="project-overview__changed">{{ workspaceMessage('workspace.projectOverview.savedFilters.changed') }}</span>
+          <BaseButton variant="plain" size="md" @click="startSave">
+            {{ workspaceMessage('workspace.projectOverview.savedFilters.saveAsNew') }}
+          </BaseButton>
+          <BaseButton variant="tint" size="md" @click="saveChanges">
+            {{ workspaceMessage('workspace.projectOverview.savedFilters.saveChanges') }}
+          </BaseButton>
+        </span>
+        <ProjectOverviewFilterMenu
+          v-if="view.kind === 'board' && groupFieldOptions.length > 0"
+          :label="workspaceMessage('workspace.projectOverview.board.groupBy')"
+          :value-text="boardField?.name ?? null"
+          :active-text="filterText('workspace.projectOverview.board.groupBy', boardField?.name ?? null)"
+          :clear-label="workspaceMessage('workspace.projectOverview.board.backToTable')"
+          :model-value="boardField?.id ?? ''"
+          :options="groupFieldOptions"
+          @update:model-value="setGroupBy"
+          @clear="setViewKind('table')"
+        />
+        <SegmentedTabs
+          class="project-overview__layout"
+          :model-value="view.kind"
+          :tabs="layoutTabs"
+          :aria-label="workspaceMessage('workspace.projectOverview.layout.label')"
+          @update:model-value="setViewKind"
+        />
         <ProjectOverviewColumnsMenu
+          v-if="view.kind === 'table'"
           :layout="layoutStore.layout"
           @toggle="layoutStore.toggleColumn"
           @move="layoutStore.moveColumn"
@@ -100,6 +155,12 @@
       </div>
       <p v-if="page === 'files' && searchFailed" class="project-overview__hint" role="status">
         {{ workspaceMessage('workspace.projectOverview.searchFailed') }}
+      </p>
+      <p v-if="page === 'files' && fieldMatchFailure" class="project-overview__hint" role="status">
+        {{ workspaceMessage('workspace.projectOverview.fieldMatchFailed', { message: fieldMatchFailure }) }}
+      </p>
+      <p v-if="page === 'files' && actionError" class="project-overview__hint project-overview__hint--error" role="alert">
+        {{ actionError }}
       </p>
       <p v-if="page === 'files' && searchTruncated" class="project-overview__hint">
         {{ workspaceMessage('workspace.projectOverview.searchTruncated', { count: CONTENT_SEARCH_LIMIT }) }}
@@ -113,7 +174,32 @@
       data-overlay-scroll-theme="linnya"
     >
       <div ref="scrollMountRef" class="project-overview__scroll" data-overlayscrollbars-initialize>
-        <div class="project-overview__table" role="table" :style="tableStyle">
+        <div v-if="view.kind === 'board'" class="project-overview__board-wrap">
+          <div v-if="status === 'loading'" class="project-overview__state">
+            <SkeletonRows :label="workspaceMessage('workspace.projectOverview.loading')" :rows="6" />
+          </div>
+          <p v-else-if="status === 'error'" class="project-overview__state project-overview__state--text">
+            {{ workspaceMessage('workspace.projectOverview.loadFailed') }}
+          </p>
+          <p v-else-if="boardField === null" class="project-overview__state project-overview__state--text">
+            {{ workspaceMessage('workspace.projectOverview.board.noSelectField') }}
+          </p>
+          <template v-else>
+            <ProjectOverviewBoard
+              :lanes="board.lanes"
+              :field="boardField"
+              :fields="fields"
+              :readonly="boardField.readonly"
+              :when-text="boardWhenText"
+              @open="openRow"
+              @move="moveCard"
+            />
+            <p v-if="board.excluded > 0" class="project-overview__board-note">
+              {{ workspaceMessage('workspace.projectOverview.board.excluded', { count: board.excluded, field: boardField.name }) }}
+            </p>
+          </template>
+        </div>
+        <div v-else class="project-overview__table" role="table" :style="tableStyle">
           <div class="project-overview__header" role="row">
             <div
               v-for="column in headerColumns"
@@ -215,11 +301,11 @@
                     v-if="column.id === 'tags'"
                     class="project-overview__tags"
                   >
-                    <span
+                    <TagChip
                       v-for="tag in sortedRows[item.index]!.tags"
                       :key="tag.id"
-                      class="project-overview__tag"
-                    >{{ tag.name }}</span>
+                      :label="tag.name"
+                    />
                   </span>
                   <template v-else-if="column.id === 'conversation'">
                     <button
@@ -267,6 +353,32 @@
       @open-document="target => emit('open-document', target)"
       @remeasure="remeasureConversation"
     />
+
+    <ProjectSaveFilterPopover
+      :open="saveDialog !== null"
+      :anchor="saveDialog?.anchor ?? null"
+      :align="saveDialog?.mode === 'rename' ? 'start' : 'end'"
+      :title="saveDialog?.mode === 'rename'
+        ? workspaceMessage('workspace.projectOverview.savedFilters.dialog.renameTitle')
+        : workspaceMessage('workspace.projectOverview.savedFilters.dialog.title')"
+      :initial-name="saveDialog?.initialName ?? ''"
+      :placeholder="workspaceMessage('workspace.projectOverview.savedFilters.dialog.namePlaceholder')"
+      :primary-text="saveDialog?.mode === 'rename'
+        ? workspaceMessage('workspace.projectOverview.savedFilters.dialog.rename')
+        : workspaceMessage('workspace.projectOverview.savedFilters.dialog.save')"
+      :cancel-text="workspaceMessage('workspace.projectOverview.savedFilters.dialog.cancel')"
+      :hint="saveDialog?.mode === 'create' ? workspaceMessage('workspace.projectOverview.savedFilters.dialog.hint') : null"
+      :duplicate-notice="saveDialog?.duplicate
+        ? workspaceMessage('workspace.projectOverview.savedFilters.dialog.duplicate', { name: saveDialog.duplicate.name })
+        : null"
+      :open-duplicate-text="saveDialog?.duplicate
+        ? workspaceMessage('workspace.projectOverview.savedFilters.dialog.openExisting', { name: saveDialog.duplicate.name })
+        : ''"
+      :save-anyway-text="workspaceMessage('workspace.projectOverview.savedFilters.dialog.saveAnyway')"
+      @submit="submitSaveDialog"
+      @open-duplicate="openDuplicate"
+      @cancel="saveDialog = null"
+    />
   </section>
 </template>
 
@@ -278,12 +390,15 @@ const lastPageByProject = new Map<string, 'files' | 'conversations'>();
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRef, watch } from 'vue';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
-import { SkeletonRows } from '@linnya/renderer-ui';
-import type { CustomSelectOption } from '@linnya/renderer-ui';
-import { ChatIcon, ChevronIcon, LibraryIcon, SearchIcon } from '@linnya/renderer-ui/icons';
+import { BaseButton, SegmentedTabs, SkeletonRows, TagChip } from '@linnya/renderer-ui';
+import type { CustomSelectOption, SegmentedTabItem } from '@linnya/renderer-ui';
+import { ChatIcon, ChevronIcon, LibraryIcon, SaveIcon, SearchIcon } from '@linnya/renderer-ui/icons';
+import type { ProjectFieldCondition, ProjectSavedFilter } from '@app/schemas';
 import type { WorkspaceMessageKey } from '@/domains/workspace/definitions/workspaceMessages';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
 import {
+  DEFAULT_PROJECT_OVERVIEW_SORT,
+  DEFAULT_PROJECT_OVERVIEW_VIEW,
   EMPTY_PROJECT_OVERVIEW_FILTERS,
   type ProjectOverviewColumnId,
   type ProjectOverviewDocumentTarget,
@@ -293,7 +408,18 @@ import {
   type ProjectOverviewRow,
   type ProjectOverviewSort,
   type ProjectOverviewSortKey,
+  type ProjectOverviewView,
+  type ProjectOverviewViewKind,
 } from '../definitions/projectOverview';
+import { groupProjectOverviewBoard, isBoardGroupField } from '../functions/projectOverviewBoard';
+import { defaultSavedFilterName, fieldConditionText, type FieldConditionLabels } from '../functions/projectSavedFilters';
+import { setProjectField } from '../infrastructure/projectOverviewGateway';
+import { useProjectFieldMatches } from '../orchestration/useProjectFieldMatches';
+import { useProjectOverviewSavedFilterState } from '../orchestration/useProjectOverviewSavedFilterState';
+import ProjectOverviewBoard from './ProjectOverviewBoard.vue';
+import ProjectOverviewConditionChip from './ProjectOverviewConditionChip.vue';
+import ProjectSaveFilterPopover from './ProjectSaveFilterPopover.vue';
+import ProjectSavedFiltersBar, { type ProjectSavedFiltersBarLabels } from './ProjectSavedFiltersBar.vue';
 import { DEFAULT_PROJECT_OVERVIEW_LAYOUT, clampColumnWidth, clampNameWidth } from '../functions/projectOverviewLayout';
 import {
   defaultProjectOverviewSortDirection,
@@ -348,7 +474,7 @@ const CONTENT_SEARCH_LIMIT = PROJECT_OVERVIEW_CONTENT_SEARCH_MAX_MATCHES;
 const { workspaceMessage, currentLocale } = useWorkspaceLocalization();
 const layoutStore = useProjectOverviewLayoutStore();
 const projectIdRef = toRef(props, 'projectId');
-const { rows, folderCount, characterCount, status, revision } = useProjectOverviewData(projectIdRef);
+const { rows, fields, folderCount, characterCount, status, revision, refreshDocuments } = useProjectOverviewData(projectIdRef);
 
 // 页：每个项目记住上次看的页（本次运行内）。对话页第一次打开时才挂载。
 const PAGES: readonly { readonly id: ProjectOverviewPage; readonly key: WorkspaceMessageKey }[] = [
@@ -390,7 +516,8 @@ function pageCount(id: ProjectOverviewPage): number | null {
 }
 
 const filters = ref<ProjectOverviewFilters>({ ...EMPTY_PROJECT_OVERVIEW_FILTERS });
-const sort = ref<ProjectOverviewSort>({ key: 'modified', direction: 'desc' });
+const sort = ref<ProjectOverviewSort>(DEFAULT_PROJECT_OVERVIEW_SORT);
+const view = ref<ProjectOverviewView>(DEFAULT_PROJECT_OVERVIEW_VIEW);
 const query = computed({
   get: () => filters.value.query,
   set: value => { filters.value = { ...filters.value, query: value }; },
@@ -399,6 +526,47 @@ const { matches: contentMatches, truncated: searchTruncated, failed: searchFaile
 
 watch(projectIdRef, () => {
   filters.value = { ...EMPTY_PROJECT_OVERVIEW_FILTERS };
+  sort.value = DEFAULT_PROJECT_OVERVIEW_SORT;
+  view.value = DEFAULT_PROJECT_OVERVIEW_VIEW;
+  actionError.value = null;
+});
+
+// 写入失败（保存筛选、看板改值）的一句提示，几秒后自动消失。
+const actionError = ref<string | null>(null);
+let actionErrorTimer: ReturnType<typeof setTimeout> | null = null;
+function reportError(message: string): void {
+  actionError.value = message;
+  if (actionErrorTimer) clearTimeout(actionErrorTimer);
+  actionErrorTimer = setTimeout(() => { actionError.value = null; }, 6_000);
+}
+onBeforeUnmount(() => { if (actionErrorTimer) clearTimeout(actionErrorTimer); });
+
+const { matches: fieldMatches, failure: fieldMatchFailure } = useProjectFieldMatches(
+  projectIdRef,
+  computed(() => filters.value.where),
+  revision,
+);
+
+const {
+  savedFilters,
+  activeFilterId,
+  saveState,
+  saveDialog,
+  select: selectSavedFilter,
+  startSave: openSaveDialog,
+  startRename,
+  submitSaveDialog,
+  openDuplicate,
+  saveChanges,
+  remove: removeSavedFilter,
+  pin: pinSavedFilter,
+} = useProjectOverviewSavedFilterState({
+  projectId: projectIdRef,
+  filters,
+  sort,
+  view,
+  reportError,
+  saveFailedMessage: () => workspaceMessage('workspace.projectOverview.savedFilters.saveFailed'),
 });
 
 // 相对时间（“12 分钟前”）需要随时间走；半分钟刷新一次足够。
@@ -430,6 +598,7 @@ const isFiltering = computed(() => (
   || filters.value.modified !== 'any'
   || filters.value.location !== null
   || filters.value.tags.length > 0
+  || filters.value.where.length > 0
   || filters.value.query.trim().length > 0
 ));
 const typeLabel = (nodeType: string): string => props.presentation.documentType(nodeType).label;
@@ -437,12 +606,148 @@ const sortedRows = computed(() => {
   const filtered = filterProjectOverviewRows(allRows.value, filters.value, {
     now: now.value,
     contentMatches: contentMatches.value,
+    fieldMatches: fieldMatches.value,
   });
   return sortProjectOverviewRows(filtered, sort.value, { typeLabel });
 });
 
 function clearFilters(): void {
   filters.value = { ...EMPTY_PROJECT_OVERVIEW_FILTERS };
+}
+
+// 保存的筛选：那一排、保存与重命名弹层、字段条件的文字。
+const savedFiltersBarLabels = computed<ProjectSavedFiltersBarLabels>(() => ({
+  ariaLabel: workspaceMessage('workspace.projectOverview.savedFilters.label'),
+  allFiles: workspaceMessage('workspace.projectOverview.savedFilters.all'),
+  more: count => workspaceMessage('workspace.projectOverview.savedFilters.more', { count }),
+  suggestions: count => workspaceMessage('workspace.projectOverview.savedFilters.suggestions', { count }),
+  suggestionActive: name => workspaceMessage('workspace.projectOverview.savedFilters.suggestionActive', { name }),
+  pin: workspaceMessage('workspace.projectOverview.savedFilters.pin'),
+  suggestionsFooter: workspaceMessage('workspace.projectOverview.savedFilters.suggestionsFooter'),
+  rename: workspaceMessage('workspace.projectOverview.savedFilters.menu.rename'),
+  remove: workspaceMessage('workspace.projectOverview.savedFilters.menu.delete'),
+}));
+
+const BUILTIN_FIELD_KEYS: Readonly<Record<string, WorkspaceMessageKey>> = {
+  name: 'workspace.projectOverview.condition.builtin.name',
+  type: 'workspace.projectOverview.condition.builtin.type',
+  created: 'workspace.projectOverview.condition.builtin.created',
+  updated: 'workspace.projectOverview.condition.builtin.updated',
+};
+const conditionLabels = computed<FieldConditionLabels>(() => ({
+  fieldName: id => fields.value.find(field => field.id === id)?.name ?? null,
+  builtinName: field => (BUILTIN_FIELD_KEYS[field] ? workspaceMessage(BUILTIN_FIELD_KEYS[field]) : null),
+  unknownField: workspaceMessage('workspace.projectOverview.condition.unknownField'),
+  checked: workspaceMessage('workspace.projectOverview.condition.checked'),
+  unchecked: workspaceMessage('workspace.projectOverview.condition.unchecked'),
+  empty: workspaceMessage('workspace.projectOverview.condition.empty'),
+  notEmpty: workspaceMessage('workspace.projectOverview.condition.notEmpty'),
+  negated: value => workspaceMessage('workspace.projectOverview.condition.not', { value }),
+  contains: value => workspaceMessage('workspace.projectOverview.condition.contains', { value }),
+  notContains: value => workspaceMessage('workspace.projectOverview.condition.notContains', { value }),
+  join: workspaceMessage('workspace.projectOverview.condition.join'),
+  pair: (label, value) => workspaceMessage('workspace.projectOverview.filterValue', { label, value }),
+}));
+function conditionText(condition: ProjectFieldCondition): string {
+  return fieldConditionText(condition, fields.value, conditionLabels.value);
+}
+function removeCondition(index: number): void {
+  filters.value = { ...filters.value, where: filters.value.where.filter((_, position) => position !== index) };
+}
+
+function savedFilterSummary(filter: ProjectSavedFilter): string {
+  const definition = filter.definition;
+  return [
+    ...definition.tags.map(id => projectTags.value.find(tag => tag.id === id)?.name ?? null),
+    ...definition.where.map(conditionText),
+    definition.node_type === null ? null : typeLabel(definition.node_type),
+  ].filter((part): part is string => part !== null).join(' · ');
+}
+
+const saveAnchorRef = ref<HTMLElement | null>(null);
+function startSave(): void {
+  if (!saveAnchorRef.value) return;
+  const fallback = view.value.kind === 'board'
+    ? workspaceMessage('workspace.projectOverview.layout.board')
+    : workspaceMessage('workspace.projectOverview.savedFilters.defaultName');
+  openSaveDialog(saveAnchorRef.value, defaultSavedFilterName([
+    tagFilterText.value,
+    ...filters.value.where.map(conditionText),
+    typeFilterText.value,
+    modifiedFilterText.value,
+    locationFilterText.value,
+  ], fallback));
+}
+
+// 布局：表格 / 看板。看板按单选字段分列，第一次切过去时自动选一个本页文档用到的单选字段。
+const layoutTabs = computed<SegmentedTabItem[]>(() => [
+  { id: 'table', label: workspaceMessage('workspace.projectOverview.layout.table') },
+  { id: 'board', label: workspaceMessage('workspace.projectOverview.layout.board') },
+]);
+const groupFields = computed(() => fields.value.filter(isBoardGroupField));
+const groupFieldOptions = computed<CustomSelectOption<string>[]>(() => groupFields.value.map(field => ({ value: field.id, text: field.name })));
+const boardField = computed(() => groupFields.value.find(field => field.id === view.value.groupBy) ?? null);
+function setViewKind(kind: string): void {
+  const next: ProjectOverviewViewKind = kind === 'board' ? 'board' : 'table';
+  if (next === 'table') {
+    view.value = { kind: 'table', groupBy: null };
+    return;
+  }
+  const used = new Set(sortedRows.value.flatMap(row => row.fieldIds));
+  const groupBy = boardField.value?.id
+    ?? groupFields.value.find(field => used.has(field.id))?.id
+    ?? groupFields.value[0]?.id
+    ?? null;
+  view.value = { kind: 'board', groupBy };
+}
+function setGroupBy(id: string): void {
+  view.value = { kind: 'board', groupBy: id };
+}
+
+// 看板拖动：先在界面上挪过去，写入成功后补读这份文档；失败时挪回并说明原因。
+const boardOverrides = ref<ReadonlyMap<string, string | null>>(new Map());
+watch(rows, () => { boardOverrides.value = new Map(); });
+const board = computed(() => (boardField.value === null
+  ? { lanes: [], excluded: 0 }
+  : groupProjectOverviewBoard(
+      sortedRows.value,
+      boardField.value,
+      workspaceMessage('workspace.projectOverview.board.unset'),
+      boardOverrides.value,
+    )));
+async function moveCard(row: ProjectOverviewRow, optionId: string | null): Promise<void> {
+  const field = boardField.value;
+  if (!field) return;
+  boardOverrides.value = new Map([...boardOverrides.value, [row.documentId, optionId]]);
+  const valueName = optionId === null
+    ? workspaceMessage('workspace.projectOverview.board.unset')
+    : field.options.find(option => option.id === optionId)?.name ?? optionId;
+  try {
+    const result = await setProjectField({
+      project_id: props.projectId,
+      document_id: row.documentId,
+      field_id: field.id,
+      value: optionId,
+      expected_revision: row.fieldRevision,
+    });
+    if (!result.ok) {
+      reportError(result.code === 'revision_conflict'
+        ? workspaceMessage('workspace.projectOverview.board.moveConflict')
+        : workspaceMessage('workspace.projectOverview.board.moveFailed', { value: valueName, message: result.message }));
+    }
+  } catch (error: unknown) {
+    console.error('[ProjectOverview] 看板改值失败:', error);
+    reportError(workspaceMessage('workspace.projectOverview.board.moveFailed', {
+      value: valueName, message: error instanceof Error ? error.message : String(error),
+    }));
+  }
+  // 成功与否都补读：成功拿到新版本，失败（如版本冲突）拿到当前值并撤掉界面上的挪动。
+  refreshDocuments([row.documentId]);
+}
+function boardWhenText(row: ProjectOverviewRow): string {
+  const actor = modifiedActorText(row);
+  const time = timeText(row.lastModifiedAt);
+  return actor ? `${actor} · ${time}` : time;
 }
 
 function filterText(labelKey: WorkspaceMessageKey, value: string | null): string {
@@ -515,8 +820,9 @@ const tagOptions = computed<CustomSelectOption<string>[]>(() => projectTags.valu
   ...projectTags.value.map(tag => ({ value: tag.id, text: tag.name })),
 ]);
 const tagFilterText = computed(() => {
-  const id = filters.value.tags[0];
-  return id === undefined ? null : projectTags.value.find(tag => tag.id === id)?.name ?? null;
+  if (filters.value.tags.length === 0) return null;
+  // 保存的筛选可能同时要求几个标签（Agent 用 CLI 建的）。
+  return filters.value.tags.map(id => projectTags.value.find(tag => tag.id === id)?.name ?? id).join('、');
 });
 function setTagFilter(value: string): void {
   filters.value = { ...filters.value, tags: value === ALL ? [] : [value] };

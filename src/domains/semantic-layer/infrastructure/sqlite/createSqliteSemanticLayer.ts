@@ -335,6 +335,38 @@ export function createSqliteSemanticLayer(
       return result;
     },
 
+    /**
+     * 一批对象各自的版本与字段值，只含当前标签带来的字段（与 readObject 一致）；给列表一次读出。
+     * 从未写过的对象不在结果里，调用方按版本 0、没有值处理。范围由调用方给出的 ID 决定。
+     */
+    listObjectValues(kind: SemanticObjectKind, objectIds: readonly string[]): ReadonlyMap<string, { readonly revision: number; readonly values: Readonly<Values> }> {
+      const wanted = new Set(objectIds);
+      const result = new Map<string, { revision: number; values: Values }>();
+      if (!wanted.size) return result;
+      const tagIdsByObject = new Map<string, string[]>();
+      for (const row of db.prepare<[string], { object_id: string; tag_id: string }>(`
+        SELECT object_tag.object_id, object_tag.tag_id FROM semantic_object_tags object_tag
+        JOIN semantic_tags tag ON tag.id = object_tag.tag_id AND tag.deleted_at IS NULL
+        WHERE object_tag.object_kind = ?
+      `).all(kind)) {
+        if (!wanted.has(row.object_id)) continue;
+        tagIdsByObject.set(row.object_id, [...(tagIdsByObject.get(row.object_id) ?? []), row.tag_id]);
+      }
+      const fieldsByTag = new Map(tags().map(tag => [tag.id, tag.fields.map(field => field.propertyId)]));
+      for (const row of db.prepare<[string], { object_id: string; revision: number; property_values: string }>(`
+        SELECT object_id, revision, json(property_values) AS property_values
+        FROM semantic_object_values WHERE object_kind = ?
+      `).all(kind)) {
+        if (!wanted.has(row.object_id)) continue;
+        const visible = new Set((tagIdsByObject.get(row.object_id) ?? []).flatMap(id => fieldsByTag.get(id) ?? []));
+        const all = JSON.parse(row.property_values) as Values;
+        const values: Values = {};
+        for (const [id, value] of Object.entries(all)) if (visible.has(id)) values[id] = value;
+        result.set(row.object_id, { revision: row.revision, values });
+      }
+      return result;
+    },
+
     /** 新建前查相近名称，给调用方提示复用。 */
     findSimilar(kind: 'tag' | 'property', name: string) {
       const existing: readonly { readonly id: string; readonly name: string }[] = kind === 'tag' ? tags() : properties();

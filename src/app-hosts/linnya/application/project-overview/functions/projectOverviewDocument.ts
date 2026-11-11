@@ -33,6 +33,7 @@ export function projectOverviewDocument(input: {
   readonly conversationTitles: ReadonlyMap<string, string>;
   readonly pendingRevisionCount: number | null;
   readonly tags: readonly { readonly id: string; readonly name: string }[];
+  readonly properties: ProjectOverviewDocument['properties'];
 }): ProjectOverviewDocument {
   const { document, summary } = input;
   const ledgerAt = summary?.last.recordedAt ?? null;
@@ -64,5 +65,6 @@ export function projectOverviewDocument(input: {
       : null,
     pending_revision_count: input.pendingRevisionCount,
     tags: input.tags.map(tag => ({ id: tag.id, name: tag.name })),
+    properties: input.properties,
   };
 }

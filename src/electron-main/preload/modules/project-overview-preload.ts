@@ -1,11 +1,29 @@
 import type { IpcRenderer } from 'electron';
-import { PROJECT_OVERVIEW_CHANNEL, type ProjectOverviewRequest } from '@app/schemas';
+import {
+  PROJECT_OVERVIEW_CHANNEL,
+  PROJECT_OVERVIEW_MATCH_CHANNEL,
+  PROJECT_OVERVIEW_SET_FIELD_CHANNEL,
+  PROJECT_SAVED_FILTERS_CHANNEL,
+  type ProjectOverviewMatchRequest,
+  type ProjectOverviewRequest,
+  type ProjectOverviewSetFieldRequest,
+  type ProjectSavedFiltersRequest,
+} from '@app/schemas';
 
+/** 返回值都未校验；Renderer 必须用对应的 Result Schema 解析。 */
 export function buildProjectOverviewPreloadApi(ipcRenderer: IpcRenderer) {
   return {
-    /** 返回值未校验；Renderer 必须用 ProjectOverviewSchema 解析。 */
     readProjectOverview: (request: ProjectOverviewRequest): Promise<unknown> => (
       ipcRenderer.invoke(PROJECT_OVERVIEW_CHANNEL, request)
+    ),
+    projectSavedFilters: (request: ProjectSavedFiltersRequest): Promise<unknown> => (
+      ipcRenderer.invoke(PROJECT_SAVED_FILTERS_CHANNEL, request)
+    ),
+    matchProjectFields: (request: ProjectOverviewMatchRequest): Promise<unknown> => (
+      ipcRenderer.invoke(PROJECT_OVERVIEW_MATCH_CHANNEL, request)
+    ),
+    setProjectField: (request: ProjectOverviewSetFieldRequest): Promise<unknown> => (
+      ipcRenderer.invoke(PROJECT_OVERVIEW_SET_FIELD_CHANNEL, request)
     ),
   };
 }

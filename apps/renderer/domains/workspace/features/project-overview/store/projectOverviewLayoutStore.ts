@@ -11,8 +11,7 @@ import {
 } from '../functions/projectOverviewLayout';
 
 /**
- * “全部文件”的列配置。所有项目共用一份，保存在本机界面偏好里；以后保存面板时，
- * 同一格式随面板定义存进项目。
+ * 文件页表格的列配置。所有项目、所有保存的筛选共用一份，保存在本机界面偏好里。
  */
 export const useProjectOverviewLayoutStore = defineStore('workspace-project-overview-layout', () => {
   // Pinia hydrate 会合并普通对象，不能把冻结的默认常量放进可写 state。

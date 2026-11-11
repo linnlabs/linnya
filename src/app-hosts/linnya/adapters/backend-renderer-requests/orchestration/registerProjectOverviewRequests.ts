@@ -1,5 +1,19 @@
-import { PROJECT_OVERVIEW_CHANNEL, ProjectOverviewRequestSchema } from '@app/schemas';
-import { readProjectOverview } from 'src/app-hosts/linnya/application/project-overview';
+import {
+  PROJECT_OVERVIEW_CHANNEL,
+  PROJECT_OVERVIEW_MATCH_CHANNEL,
+  PROJECT_OVERVIEW_SET_FIELD_CHANNEL,
+  PROJECT_SAVED_FILTERS_CHANNEL,
+  ProjectOverviewMatchRequestSchema,
+  ProjectOverviewRequestSchema,
+  ProjectOverviewSetFieldRequestSchema,
+  ProjectSavedFiltersRequestSchema,
+} from '@app/schemas';
+import {
+  handleProjectSavedFilters,
+  matchProjectFields,
+  readProjectOverview,
+  setProjectField,
+} from 'src/app-hosts/linnya/application/project-overview';
 import type { BackendRuntimeOwner } from '../../../backend-runtime/orchestration/backendRuntimeOwner';
 import type { BackendRendererRequestRegistryPort } from '../definitions/backendRendererRequest';
 
@@ -12,5 +26,17 @@ export function registerProjectOverviewRequests(
   registry.handle(PROJECT_OVERVIEW_CHANNEL, request => readProjectOverview(
     databaseService.getDb(),
     ProjectOverviewRequestSchema.parse(request),
+  ));
+  registry.handle(PROJECT_SAVED_FILTERS_CHANNEL, request => handleProjectSavedFilters(
+    databaseService.getDb(),
+    ProjectSavedFiltersRequestSchema.parse(request),
+  ));
+  registry.handle(PROJECT_OVERVIEW_MATCH_CHANNEL, request => matchProjectFields(
+    databaseService.getDb(),
+    ProjectOverviewMatchRequestSchema.parse(request),
+  ));
+  registry.handle(PROJECT_OVERVIEW_SET_FIELD_CHANNEL, request => setProjectField(
+    databaseService.getDb(),
+    ProjectOverviewSetFieldRequestSchema.parse(request),
   ));
 }

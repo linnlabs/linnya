@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
 
 import type { SemanticTagDefinition } from '../../../definitions/semanticLayer';
+import { semanticNameKey } from '../../../functions/normalizeSemanticName';
 import { compileSemanticQuery, type SemanticQueryDefinitions } from '../functions/compileSemanticQuery';
 import type { SemanticQuery, SemanticQueryGroup, SemanticQueryResult, SemanticQueryRow } from '../definitions/semanticQuery';
 
@@ -74,6 +75,14 @@ export function runSemanticQuery(
       key: group.kind === 'checkbox' && row.group_key !== null ? row.group_key === 1 : row.group_key === null ? null : String(row.group_key),
       count: row.count,
     }));
+    // 数量相同时按选项顺序（单选、多选），空组最后；不按随机生成的选项 ID 排。
+    const property = definitions.properties.find(candidate => candidate.id === query.groupBy)
+      ?? definitions.properties.find(candidate => semanticNameKey(candidate.name) === semanticNameKey(query.groupBy ?? ''));
+    const rank = (key: SemanticQueryGroup['key']) => {
+      if (key === null) return Number.MAX_SAFE_INTEGER;
+      return property?.options.findIndex(option => option.id === key) ?? -1;
+    };
+    groups.sort((left, right) => right.count - left.count || rank(left.key) - rank(right.key));
   }
 
   return {
@@ -89,4 +98,18 @@ export function runSemanticQuery(
     truncated: total > rows.length,
     ...(groups ? { groups } : {}),
   };
+}
+
+/**
+ * 只取满足条件的文档 ID，不设上限、不排序：给项目概览把字段条件和界面上的其他筛选叠在一起用，
+ * 条件含义与 `runSemanticQuery` 同一份编译结果。
+ */
+export function matchSemanticQuery(
+  db: Database.Database,
+  query: Omit<SemanticQuery, 'limit' | 'sort' | 'groupBy'>,
+  definitions: SemanticQueryDefinitions
+): string[] {
+  registerSemanticFold(db);
+  const compiled = compileSemanticQuery({ ...query, limit: 1 }, definitions);
+  return readonly<{ id: string }>(db, `SELECT node.id ${compiled.from}`).all(...compiled.params).map(row => row.id);
 }

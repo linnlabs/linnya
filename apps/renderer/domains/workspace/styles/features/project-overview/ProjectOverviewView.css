@@ -608,7 +608,7 @@ body.project-overview-is-resizing {
   color: var(--color-accent-text);
 }
 
-/* 标签：纸面上的淡灰小签，不分颜色；放不下的截掉，不换行 */
+/* 标签：用共享的 TagChip；放不下的截掉，不换行 */
 .project-overview__tags {
   display: flex;
   gap: var(--space-1);
@@ -616,14 +616,8 @@ body.project-overview-is-resizing {
   overflow: hidden;
 }
 
-.project-overview__tag {
+.project-overview__tags .tt-tag-chip {
   flex: none;
-  padding: 1px var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-subtle);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  line-height: 18px;
   white-space: nowrap;
 }
 
@@ -713,8 +707,334 @@ body.project-overview-is-resizing {
   font-variant-numeric: tabular-nums;
 }
 
-.project-overview__pages + .project-overview__toolbar {
+.project-overview__pages + .project-overview__toolbar,
+.project-overview__saved + .project-overview__toolbar {
   margin-top: var(--space-3);
+}
+
+/* 保存的筛选：全部文件 + 固定的筛选 + Agent 建议，在文件页工具条上方一排。 */
+.project-overview__saved {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-top: var(--space-3);
+}
+
+.project-overview__saved-tabs {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.project-overview__saved-separator {
+  flex: none;
+  width: 1px;
+  height: 14px;
+  background-color: var(--color-border-light);
+}
+
+.project-overview__saved-suggest {
+  display: inline-flex;
+  flex: none;
+}
+
+.project-overview__saved-suggest.is-active button {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-subtle);
+}
+
+.project-overview-suggestions {
+  box-sizing: border-box;
+  width: 340px;
+  min-width: 0;
+  max-width: calc(100vw - 16px);
+  max-height: none;
+  padding: var(--space-1-5);
+  overflow: visible;
+}
+
+.project-overview-suggestions.linnya-dropdown-surface,
+.project-overview-save.linnya-dropdown-surface {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+  min-width: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+/* 共享浮层的 panel 变体把内边距清零，这里按内容补回。 */
+.project-overview-suggestions.linnya-dropdown-surface--panel {
+  padding: var(--space-1-5);
+}
+
+.project-overview-save.linnya-dropdown-surface--panel {
+  padding: 14px;
+}
+
+.project-overview-suggestions__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) 0;
+  border-radius: var(--radius-md);
+}
+
+.project-overview-suggestions__item:hover,
+.project-overview-suggestions__item.is-active {
+  background-color: var(--color-bg-hover);
+}
+
+.project-overview-suggestions__open {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-overview-suggestions__name {
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+.project-overview-suggestions__meta {
+  overflow: hidden;
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-overview-suggestions__foot {
+  margin: var(--space-1-5) var(--space-2) var(--space-1);
+  font-size: var(--font-size-footnote);
+  line-height: 1.6;
+  color: var(--color-text-tertiary);
+}
+
+/* 保存筛选条件 / 重命名的小弹层 */
+.project-overview-save {
+  box-sizing: border-box;
+  width: 300px;
+  min-width: 0;
+  max-width: calc(100vw - 16px);
+  max-height: none;
+  padding: 14px;
+  overflow: visible;
+}
+
+.project-overview-save__title {
+  margin: 0 0 var(--space-2-5);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.project-overview-save__hint,
+.project-overview-save__notice {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-footnote);
+  line-height: 1.6;
+  color: var(--color-text-tertiary);
+}
+
+.project-overview-save__notice {
+  color: var(--color-text-secondary);
+}
+
+.project-overview-save__actions {
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+/* 工具条右侧：保存筛选 / 已改动、布局切换 */
+.project-overview__save-anchor {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.project-overview__changed {
+  margin: 0 var(--space-1);
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.project-overview__layout {
+  flex: none;
+  margin: 0 var(--space-1);
+}
+
+.project-overview-condition__text {
+  cursor: default;
+}
+
+.project-overview__hint--error {
+  color: var(--color-error);
+}
+
+/* 看板：每列等宽，卡片是纸——直角、无边、贴地阴影。 */
+.project-overview__board-wrap {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(var(--project-overview-content-width) + 2 * var(--project-overview-gutter));
+  margin: 0 auto;
+  padding: var(--space-3) var(--project-overview-gutter) var(--space-8);
+}
+
+.project-overview-board {
+  display: grid;
+  grid-template-columns: repeat(var(--project-overview-board-lanes), minmax(220px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.project-overview-board__lane {
+  min-width: 0;
+  min-height: 120px;
+  padding-bottom: var(--space-2);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.project-overview-board__lane.is-drop-target {
+  background-color: color-mix(in srgb, var(--color-text-primary) 2.5%, transparent);
+}
+
+.project-overview-board__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1-5);
+  margin: 0 0 var(--space-2);
+  padding: 0 2px;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.project-overview-board__lane--unset .project-overview-board__head {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-tertiary);
+}
+
+.project-overview-board__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-overview-board__count {
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.project-overview-board__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.project-overview-board__card {
+  box-sizing: border-box;
+  padding: 10px 12px 9px;
+  background-color: var(--color-bg-default);
+  box-shadow:
+    0 0 0 1px var(--shadow-color-xs),
+    0 1px 2px var(--shadow-color-xs),
+    0 2px 6px var(--shadow-color-xs);
+  cursor: grab;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.project-overview-board.is-dragging .project-overview-board__card,
+body.project-overview-board-is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+/* 拖起的卡片：一张微微倾斜、阴影加深的纸跟着指针走。 */
+.project-overview-board__card--floating {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+  transform: rotate(-1.2deg);
+  box-shadow:
+    0 0 0 1px var(--shadow-color-xs),
+    0 10px 28px var(--shadow-color-md),
+    0 2px 6px var(--shadow-color-sm);
+  pointer-events: none;
+}
+
+.project-overview-board__card:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.project-overview-board__card.is-source {
+  opacity: 0.35;
+}
+
+.project-overview-board__title {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-primary);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.project-overview-board__title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.project-overview-board__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: 7px;
+}
+
+.project-overview-board__fields,
+.project-overview-board__when {
+  margin: 7px 0 0;
+  overflow: hidden;
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-overview-board__when {
+  margin-top: 2px;
+  color: var(--color-text-tertiary);
+}
+
+.project-overview-board__placeholder {
+  height: 96px;
+  background-color: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
+}
+
+.project-overview__board-note {
+  margin: var(--space-4) 0 0;
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
 }
 
 /* 对话页：工具条在上，下面是对话表和右侧详情。 */

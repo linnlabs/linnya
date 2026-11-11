@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ACTION_LEDGER_SCHEMAS } from 'src/domains/action-ledger/infrastructure/sqlite/actionLedger.schema';
 import { DOCUMENT_REFERENCE_SCHEMAS } from 'src/domains/document-references';
 import { SEMANTIC_LAYER_SCHEMAS } from 'src/domains/semantic-layer/infrastructure/sqlite/semanticLayer.schema';
+import { PROJECT_SAVED_FILTER_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/saved-filters';
 import { parseQueryFilter } from '../functions/parseSemanticCommands';
 import { createCoreCli } from '../orchestration/createCoreCli';
 
@@ -26,9 +27,10 @@ function setup() {
     CREATE TABLE conversations (conversation_id TEXT PRIMARY KEY);
     CREATE TABLE runs (id TEXT PRIMARY KEY, parent_run_id TEXT, agent_spec_id TEXT);
     INSERT INTO projects VALUES ('p1');
+    INSERT INTO conversations VALUES ('conv');
     INSERT INTO runs VALUES ('root', NULL, 'default'), ('child', 'root', 'research_v1');
   `);
-  for (const statement of [...ACTION_LEDGER_SCHEMAS, ...SEMANTIC_LAYER_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS]) db.exec(statement);
+  for (const statement of [...ACTION_LEDGER_SCHEMAS, ...SEMANTIC_LAYER_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS, ...PROJECT_SAVED_FILTER_SCHEMAS]) db.exec(statement);
   const insert = db.prepare('INSERT INTO workspace_nodes (id, project_id, parent_id, type, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
   insert.run('folder', 'p1', null, 'folder', '论文', 1, 1);
   insert.run('a', 'p1', 'folder', 'document', 'Attention', 2, 30);
@@ -136,6 +138,32 @@ describe('linnya schema / props / query / links', () => {
     expect(typo.stderr).toContain('可用：作者');
     const links = await run(['links', 'workspace:/论文/Attention']);
     expect(links.stdout).toBe('workspace:/论文/Attention\n引用它的文档（1）：\n- workspace:/读书笔记  2 处\n它引用的文档（0）：\n');
+  });
+
+  it('query --save 存成筛选：标签、字段、选项换成 ID；--suggest 进建议；条件相同不重复保存', async () => {
+    const { db, run } = setup();
+    await defineReading(run);
+    const save = await run(['query', '--tag', '论文', '--where', '状态=待读', '--group', '状态', '--save', '待读论文']);
+    expect(save.access).toMatchObject({ conversationFiles: 'write' });
+    expect(save.stdout.split('\n')[1]).toBe('已保存为项目概览文件页的筛选“待读论文”（看板）。');
+    const rows = db.prepare('SELECT name, origin, pinned, conversation_id, definition_json FROM project_saved_filters').all() as {
+      name: string; origin: string; pinned: number; conversation_id: string; definition_json: string;
+    }[];
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ name: '待读论文', origin: 'agent', pinned: 1, conversation_id: 'conv' });
+    const tag = db.prepare("SELECT id FROM semantic_tags WHERE name = '论文'").get() as { id: string };
+    const status = db.prepare("SELECT id, options_json FROM semantic_properties WHERE name = '状态'").get() as { id: string; options_json: string };
+    const waiting = (JSON.parse(status.options_json) as { id: string; name: string }[]).find(option => option.name === '待读');
+    expect(JSON.parse(rows[0].definition_json)).toMatchObject({
+      tags: [tag.id], where: [{ field: status.id, op: 'eq', value: waiting?.id }], layout: { kind: 'board', group_by: status.id },
+    });
+
+    const again = await run(['query', '--where', '状态=待读', '--tag', '论文', '--save', '另一个']);
+    expect(again.stdout).toContain('已有条件相同的筛选“待读论文”，没有重复保存。');
+    const suggest = await run(['query', '--where', '已读=false', '--save', '没读的', '--suggest']);
+    expect(suggest.stdout).toContain('已放进项目概览文件页的“Agent 建议”：“没读的”');
+    expect(db.prepare("SELECT pinned FROM project_saved_filters WHERE name = '没读的'").get()).toEqual({ pinned: 0 });
+    expect((await run(['query', '--suggest'])).stderr).toContain('--suggest 要和 --save 名称一起用');
   });
 
   it('条件解析：两字符运算符优先，空值表示为空/不为空', () => {

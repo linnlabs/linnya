@@ -46,6 +46,22 @@ export const ProjectOverviewDocumentSchema = z.object({
   pending_revision_count: z.number().int().nonnegative().nullable(),
   /** 当前标签，按打标签的先后；没有标签时为空数组。 */
   tags: z.array(z.object({ id: z.string().min(1), name: z.string().min(1) }).strict()),
+  /** 标签带来的字段：版本（从未写过为 0）、当前可用字段（ID，按打标签先后）与已填的值（键是字段 ID；单选、多选存选项 ID）。 */
+  properties: z.object({
+    revision: z.number().int().nonnegative(),
+    field_ids: z.array(z.string().min(1)),
+    values: z.record(z.string(), z.unknown()),
+  }).strict(),
+}).strict();
+
+/** 字段定义：界面按它显示字段条件、给看板分列。 */
+export const ProjectOverviewFieldSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  value_type: z.enum(['text', 'number', 'date', 'datetime', 'checkbox', 'select', 'multi_select', 'url']),
+  options: z.array(z.object({ id: z.string().min(1), name: z.string().min(1) }).strict()),
+  /** 插件声明的字段，用户不能改。 */
+  readonly: z.boolean(),
 }).strict();
 
 export const ProjectOverviewSchema = z.object({
@@ -54,9 +70,12 @@ export const ProjectOverviewSchema = z.object({
   documents: z.array(ProjectOverviewDocumentSchema),
   /** 整表读取时给出；按文档补读时为 null。 */
   folder_count: z.number().int().nonnegative().nullable(),
+  /** 至少挂在一个标签上的字段定义（工作区级）。 */
+  fields: z.array(ProjectOverviewFieldSchema),
 }).strict();
 
 export type ProjectOverviewRequest = z.infer<typeof ProjectOverviewRequestSchema>;
 export type ProjectOverviewActor = z.infer<typeof ProjectOverviewActorSchema>;
 export type ProjectOverviewDocument = z.infer<typeof ProjectOverviewDocumentSchema>;
 export type ProjectOverview = z.infer<typeof ProjectOverviewSchema>;
+export type ProjectOverviewField = z.infer<typeof ProjectOverviewFieldSchema>;

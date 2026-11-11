@@ -10,4 +10,4 @@ export {
 export { getSemanticLayerSchemaProviders } from './infrastructure/sqlite/schemaProviders';
 export * from './features/query/definitions/semanticQuery';
 export { compileSemanticQuery, type CompiledSemanticQuery, type SemanticQueryDefinitions } from './features/query/functions/compileSemanticQuery';
-export { registerSemanticFold, runSemanticQuery } from './features/query/orchestration/runSemanticQuery';
+export { matchSemanticQuery, registerSemanticFold, runSemanticQuery } from './features/query/orchestration/runSemanticQuery';

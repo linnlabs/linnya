@@ -13,6 +13,7 @@ import {
   SemanticLayerError,
   type SemanticObjectState,
   type SemanticPropertyDefinition,
+  type SemanticQueryFilter,
   type SemanticTagField,
   type SqliteSemanticLayer,
 } from 'src/domains/semantic-layer';
@@ -48,6 +49,9 @@ import {
   type SchemaCommand,
 } from '../functions/parseSemanticCommands';
 import { coerceCliValue, coerceQueryFilter, displayValue, findProperty, jsonValue } from '../functions/semanticCliValues';
+import { savedFilterFromQuery } from '../functions/savedFilterFromQuery';
+import { projectSavedFilterConditionKey } from '@app/schemas';
+import { createSqliteSavedFilterStore } from '../../../adapters/persistence/saved-filters';
 
 export const SEMANTIC_CLI_COMMANDS = ['schema', 'props', 'query', 'links'] as const;
 export type SemanticCliCommand = (typeof SEMANTIC_CLI_COMMANDS)[number];
@@ -223,13 +227,48 @@ function executeProps(
   }
 }
 
-function executeQuery(runtime: Runtime, projectId: string, command: Extract<QueryCommand, { kind: 'query' }>): BackendPluginCliResult {
+/**
+ * `--save`：查询成功后存成项目概览的筛选。用户明确要求的直接固定，`--suggest` 进“Agent 建议”。
+ * 已有条件相同的筛选时不重复保存，告诉 Agent 用哪一个。
+ */
+function saveQuery(
+  runtime: Runtime,
+  projectId: string,
+  conversationId: string | null,
+  command: Extract<QueryCommand, { kind: 'query' }>,
+  where: readonly SemanticQueryFilter[],
+): string {
+  if (!command.save) return '';
+  const definition = savedFilterFromQuery({
+    tags: command.tags, where, sort: command.sort, groupBy: command.groupBy,
+    tagDefinitions: runtime.layer.listTags(), properties: runtime.layer.listProperties(),
+  });
+  const store = createSqliteSavedFilterStore(runtime.db);
+  const key = projectSavedFilterConditionKey(definition);
+  const same = store.list(projectId).find(filter => projectSavedFilterConditionKey(filter.definition) === key);
+  if (same) return `已有条件相同的筛选“${same.name}”，没有重复保存。`;
+  const saved = store.create({
+    projectId, name: command.save.name, origin: 'agent', pinned: !command.save.suggest, conversationId, definition,
+  });
+  const layout = definition.layout.kind === 'board' ? '（看板）' : '';
+  return command.save.suggest
+    ? `已放进项目概览文件页的“Agent 建议”：“${saved.name}”${layout}。用户点“固定”后才出现在那一排，30 天没打开会自动清理。`
+    : `已保存为项目概览文件页的筛选“${saved.name}”${layout}。`;
+}
+
+function executeQuery(
+  runtime: Runtime,
+  projectId: string,
+  conversationId: string | null,
+  command: Extract<QueryCommand, { kind: 'query' }>,
+): BackendPluginCliResult {
   const tags = runtime.layer.listTags();
   const properties = runtime.layer.listProperties();
+  const where = command.where.map(filter => coerceQueryFilter(filter, properties));
   const result = runSemanticQuery(runtime.db, {
     projectId,
     tags: command.tags,
-    where: command.where.map(filter => coerceQueryFilter(filter, properties)),
+    where,
     sort: command.sort,
     ...(command.groupBy ? { groupBy: command.groupBy } : {}),
     limit: command.limit,
@@ -239,6 +278,7 @@ function executeQuery(runtime: Runtime, projectId: string, command: Extract<Quer
   const groupLabel = (key: string | boolean | null) => key === null
     ? '（空）'
     : groupProperty ? displayValue(groupProperty, key) : String(key);
+  const saved = saveQuery(runtime, projectId, conversationId, command, where);
   const rows = result.rows.map(row => ({
     row,
     path: pathOf(runtime.db, row.documentId),
@@ -254,6 +294,7 @@ function executeQuery(runtime: Runtime, projectId: string, command: Extract<Quer
         values: Object.fromEntries(values.map(property => [property.name, jsonValue(property, row.values[property.id])])),
       })),
       ...(result.groups ? { groups: result.groups.map(group => ({ key: groupLabel(group.key), count: group.count })) } : {}),
+      ...(saved ? { saved } : {}),
     });
   }
   const header = result.truncated
@@ -267,6 +308,8 @@ function executeQuery(runtime: Runtime, projectId: string, command: Extract<Quer
   if (result.groups) {
     lines.push(`按“${command.groupBy}”分组：${result.groups.map(group => `${groupLabel(group.key)} ${group.count}`).join(' · ')}`);
   }
+  // 保存结果放在第一行之后，截断时也不会丢。
+  if (saved) lines.splice(1, 0, saved);
   return ok(fitLines(lines, runtime.maxOutputCharacters, TRUNCATED));
 }
 
@@ -325,6 +368,7 @@ export function prepareSemanticCli(input: {
   }
   if (parsed.kind === 'help') return { status: 'completed', result: ok(`${USAGE[input.command]}\n`) };
   const write = (parsed.kind === 'write' && parsed.revisions !== null)
+    || (parsed.kind === 'query' && parsed.save !== null)
     || parsed.kind === 'add-field' || parsed.kind === 'add-tag' || parsed.kind === 'set-fields';
   const command = parsed;
   return {
@@ -345,7 +389,7 @@ export function prepareSemanticCli(input: {
             case 'write':
               return executeProps(runtime, projectId, input.argv, command, () => actorFor(input.db, context));
             case 'query':
-              return executeQuery(runtime, projectId, command);
+              return executeQuery(runtime, projectId, context.conversationId ?? null, command);
             case 'links':
               return executeLinks(runtime, projectId, command.path, command.limit);
           }
