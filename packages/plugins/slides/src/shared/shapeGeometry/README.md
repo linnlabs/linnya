@@ -9,6 +9,7 @@
 - deck.js/DeckSpec 使用 `ShapeGeometrySpec`；compiler、RenderModel 和 renderer 使用 `ResolvedShapeGeometry`。
 - 未提供 geometry 时默认 rect；显式未知 preset 或非法 geometry 必须失败，禁止回退 rect。
 - polygon 最多 256 点，typed path 最多 512 commands；超过上限在 admission 失败，禁止截断。
+- typed path 可以有多个子路径；多于一个时每段都必须 close。填充一律按奇偶规则（PowerPoint 对同一 `a:path` 内的子路径就是这样画的，2026-11-11 实测），PPTX 写成一个 `a:path`，Konva 用 `Path` 加 `fillRule: 'evenodd'`，不能交给 `Line` 点阵。
 - backend PPTX lowering 位于 `backend/engine/shape`；Konva adapter 位于 `renderer/features/konvaPreview`；OOXML 回读位于 `backend/engine/parser/xml`。
 
 ## 扩展规则

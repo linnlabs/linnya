@@ -102,6 +102,55 @@ describe('图片形状遮罩：预览与 PPTX 用同一份几何', () => {
   });
 });
 
+/** 外方内方的“回”字框：两个闭合子路径，中间按奇偶规则挖空。 */
+const FRAME_PATH = {
+  type: 'path',
+  viewBox: { width: 10, height: 10 },
+  commands: [
+    { type: 'moveTo', x: 0, y: 0 },
+    { type: 'lineTo', x: 10, y: 0 },
+    { type: 'lineTo', x: 10, y: 10 },
+    { type: 'lineTo', x: 0, y: 10 },
+    { type: 'close' },
+    { type: 'moveTo', x: 3, y: 3 },
+    { type: 'lineTo', x: 7, y: 3 },
+    { type: 'lineTo', x: 7, y: 7 },
+    { type: 'lineTo', x: 3, y: 7 },
+    { type: 'close' },
+  ],
+};
+
+describe('多个闭合子路径：镂空与分离笔画', () => {
+  it('Shape 与图片遮罩都把全部子路径写进同一个 a:path（PowerPoint 按奇偶规则挖空）', async () => {
+    const { nodes, xml } = await compileSlide([
+      { _type: 'Shape', width: 2, height: 2, fill: '#B4552F', geometry: FRAME_PATH },
+      image({ maskShape: FRAME_PATH }),
+    ]);
+
+    const shape = onlyNode(nodes, 'shape');
+    expect(shape.kind === 'shape' && shape.geometry?.type === 'path' && shape.geometry.commands.filter((command) => command.type === 'moveTo')).toHaveLength(2);
+
+    const paths = xml.match(/<a:path [^>]*>[\s\S]*?<\/a:path>/g) ?? [];
+    expect(paths).toHaveLength(2);
+    // Shape：两段各自 moveTo/close；图片：前面另有两个零面积的角点子路径。
+    expect(paths[0].match(/<a:moveTo>/g)).toHaveLength(2);
+    expect(paths[0].match(/<a:close ?\/>/g)).toHaveLength(2);
+    expect(paths[1].match(/<a:moveTo>/g)).toHaveLength(4);
+    expect(paths[1]).toContain('<a:moveTo><a:pt x="30000" y="30000"/></a:moveTo>');
+  });
+
+  it('多个子路径里有没闭合的一段时报错', async () => {
+    const open = {
+      ...FRAME_PATH,
+      commands: [
+        { type: 'moveTo', x: 0, y: 0 }, { type: 'lineTo', x: 10, y: 0 },
+        { type: 'moveTo', x: 3, y: 3 }, { type: 'lineTo', x: 7, y: 3 }, { type: 'lineTo', x: 7, y: 7 }, { type: 'close' },
+      ],
+    };
+    expect(await compileError([{ _type: 'Shape', width: 2, height: 2, fill: '#B4552F', geometry: open }])).toMatch(/每一段都要闭合/);
+  });
+});
+
 describe('Shape / View 的投影：与图片同一种写法', () => {
   it('Shape.shadow 的 angle/distance 换成直角偏移；PPTX 的 0° 和 0 模糊按原值写出', async () => {
     const { deck, nodes, xml } = await compileSlide([{

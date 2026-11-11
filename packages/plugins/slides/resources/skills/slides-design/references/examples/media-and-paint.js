@@ -426,6 +426,28 @@ const bladePath = createShape({
   fill: "#1F6F5C",
 });
 
+// 8) 多个闭合子路径：每段 moveTo … close，重叠处按奇偶规则挖空（回字窗、圆环、镂空花窗、分离笔画）。
+// 多个子路径时每一段都必须 close；导出 PPTX 后仍是一个可编辑的形状。
+const windowFrame = createShape({
+  geometry: {
+    type: "path",
+    viewBox: { width: 100, height: 100 },
+    commands: [
+      { type: "moveTo", x: 0, y: 0 },
+      { type: "lineTo", x: 100, y: 0 },
+      { type: "lineTo", x: 100, y: 100 },
+      { type: "lineTo", x: 0, y: 100 },
+      { type: "close" },
+      { type: "moveTo", x: 24, y: 24 },
+      { type: "lineTo", x: 76, y: 24 },
+      { type: "lineTo", x: 76, y: 76 },
+      { type: "lineTo", x: 24, y: 76 },
+      { type: "close" },
+    ],
+  },
+  fill: "#8A5A3B",
+});
+
 const geometryRow = createFrame({ flexDirection: "row", gap: 0.2 });
 geometryRow.flex = 1;
 geometryRow.marginTop = 0.24;
@@ -437,6 +459,7 @@ geometryRow.add(
   makeGeometryDemo("parallelogram", parallelogram),
   makeGeometryDemo("polygon（箭头）", arrowPolygon),
   makeGeometryDemo("path（曲线）", bladePath),
+  makeGeometryDemo("path（挖空）", windowFrame),
 );
 
 const geometryBody = createFrame({

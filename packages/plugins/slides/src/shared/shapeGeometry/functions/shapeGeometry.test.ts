@@ -96,18 +96,37 @@ describe('shapeGeometry 业务合同', () => {
     expect(serializeShapePath(geometry, 200, 100)).toBe('M 0 100 Q 100 0 200 100');
   });
 
-  it('首期拒绝多个闭合子路径，避免 hole/fill rule 跨端漂移', () => {
+  it('多个闭合子路径可用（镂空、分离笔画），不再走 Line 点阵', () => {
+    const geometry = resolveShapeGeometry({
+      type: 'path',
+      viewBox: { width: 10, height: 10 },
+      commands: [
+        { type: 'moveTo', x: 0, y: 0 },
+        { type: 'lineTo', x: 10, y: 0 },
+        { type: 'lineTo', x: 10, y: 10 },
+        { type: 'close' },
+        { type: 'moveTo', x: 2, y: 2 },
+        { type: 'lineTo', x: 8, y: 2 },
+        { type: 'lineTo', x: 8, y: 8 },
+        { type: 'close' },
+      ],
+    });
+    expect(geometry.type === 'path' && geometry.closed).toBe(true);
+    if (geometry.type !== 'path') return;
+    expect(shapePathToPointArray(geometry, 100, 100)).toBeUndefined();
+  });
+
+  it('多个子路径时，没闭合的那段直接报错', () => {
     expect(() => resolveShapeGeometry({
       type: 'path',
       viewBox: { width: 10, height: 10 },
       commands: [
         { type: 'moveTo', x: 0, y: 0 },
         { type: 'lineTo', x: 10, y: 0 },
-        { type: 'close' },
         { type: 'moveTo', x: 2, y: 2 },
         { type: 'lineTo', x: 8, y: 2 },
         { type: 'close' },
       ],
-    })).toThrow('只支持一个闭合子路径');
+    })).toThrow('每一段都要闭合');
   });
 });

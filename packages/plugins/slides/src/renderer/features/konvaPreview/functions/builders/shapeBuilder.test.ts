@@ -86,4 +86,22 @@ describe('shapeBuilder line Paint contract', () => {
       config: { closed: false },
     });
   });
+
+  it('多个子路径走 Konva.Path 并按奇偶规则填充，内圈挖空而不是被 Line 连成一笔', () => {
+    const instruction = buildShapeRenderInstruction(createLine({
+      geometry: {
+        type: 'path',
+        viewBox: { width: 10, height: 10 },
+        commands: [
+          { type: 'moveTo', x: 0, y: 0 }, { type: 'lineTo', x: 10, y: 0 }, { type: 'lineTo', x: 10, y: 10 }, { type: 'close' },
+          { type: 'moveTo', x: 3, y: 3 }, { type: 'lineTo', x: 7, y: 3 }, { type: 'lineTo', x: 7, y: 7 }, { type: 'close' },
+        ],
+        closed: true,
+      },
+    }));
+
+    expect(instruction.primitive).toBe('path');
+    expect(instruction.config).toMatchObject({ fillRule: 'evenodd' });
+    expect(instruction.primitive === 'path' && instruction.config.data.match(/M /g)).toHaveLength(2);
+  });
 });

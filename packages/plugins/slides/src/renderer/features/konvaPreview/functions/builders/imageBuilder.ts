@@ -76,6 +76,8 @@ export function buildMaskedImageShapeConfig(
     height,
     ...paint,
     ...buildImageShadowConfig(node),
+    // 与 PowerPoint 一致：多个子路径的遮罩按奇偶规则挖洞。
+    fillRule: 'evenodd' as const,
     sceneFunc: (context: Context, shape: KonvaShapeLike) => {
       traceImageMask(context, mask, width, height, flipH, flipV);
       context.fillStrokeShape(shape);

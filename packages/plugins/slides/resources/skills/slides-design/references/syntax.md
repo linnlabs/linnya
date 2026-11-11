@@ -195,7 +195,7 @@ Shape 可表达填充、边框、透明度、旋转和几何类型。
 - preset 完整形式：`geometry: { type: "preset", name: "chevron" }`。
 - 参数化：`{ type: "regularPolygon", sides: 6, rotation? }`、`{ type: "trapezoid", topLeftInset, topRightInset }`、`{ type: "parallelogram", slant, direction? }`。inset 与 slant 都是相对宽度的比例。
 - `{ type: "polygon", points: [...] }`：顶点使用 shape 内的归一化坐标（0–1），最多 256 点。
-- `{ type: "path", viewBox, commands }`：需要曲线时使用，坐标属于自定义 viewBox，最多 512 条命令；命令类型为 `moveTo` / `lineTo` / `quadraticTo` / `cubicTo` / `close`。
+- `{ type: "path", viewBox, commands }`：需要曲线时使用，坐标属于自定义 viewBox，最多 512 条命令；命令类型为 `moveTo` / `lineTo` / `quadraticTo` / `cubicTo` / `close`。一份 path 可以有多个闭合子路径（每段 `moveTo` … `close`）：重叠处按奇偶规则挖空，用来画回字框、圆环、镂空花窗和分离的笔画；此时每一段都必须 `close`。
 - 未提供 geometry 时默认为 `rect`。写错的 preset 名不会降级成矩形，会直接失败。
 
 absolute 节点按父容器内的添加顺序形成层级。需要让装饰位于内容后方时，先添加装饰，再添加正文；不要依赖未声明的 z-index 字段。

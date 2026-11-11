@@ -219,6 +219,8 @@ function buildPathInstruction(
       x: 0,
       y: 0,
       data: serializeShapePath(geometry, width, height),
+      // PowerPoint 对同一 a:path 里的多个子路径按奇偶规则填充：内圈挖空，不是叠色。
+      fillRule: 'evenodd',
     },
   };
 }

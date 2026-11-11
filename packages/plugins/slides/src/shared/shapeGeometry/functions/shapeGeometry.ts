@@ -164,12 +164,13 @@ export function serializeShapePath(
   }).join(' ');
 }
 
-/** 只含 move/line/close 的 path 可直接交给 Konva.Line。 */
+/** 只含 move/line/close 的单个子路径可直接交给 Konva.Line；多个子路径会被 Line 连成一笔。 */
 export function shapePathToPointArray(
   geometry: ResolvedPathShapeGeometry,
   outputWidth: number,
   outputHeight: number,
 ): number[] | undefined {
+  if (countShapeSubpaths(geometry) > 1) return undefined;
   const points: number[] = [];
   const sx = outputWidth / geometry.viewBox.width;
   const sy = outputHeight / geometry.viewBox.height;
@@ -297,8 +298,10 @@ function resolvePath(input: PathGeometrySpec, fieldPath: string): ResolvedPathSh
     validateCommand(command, input.viewBox, `${fieldPath}.commands[${index}]`);
     if (command.type === 'moveTo') {
       moveCount += 1;
-      if (moveCount > 1) {
-        throw new ShapeGeometryError(`${fieldPath}.commands 首期只支持一个闭合子路径。`);
+      // 多个子路径按奇偶规则填充（PowerPoint 同一 a:path 内的行为），用来挖洞和画分离笔画；
+      // 开放的线段混在里面时两端填充语义不一致，所以每一段都必须先闭合。
+      if (moveCount > 1 && !closed) {
+        throw new ShapeGeometryError(`${fieldPath}.commands[${index}] 之前的子路径没有 close；多个子路径时每一段都要闭合。`);
       }
       subpathOpen = true;
       closed = false;
@@ -320,6 +323,10 @@ function resolvePath(input: PathGeometrySpec, fieldPath: string): ResolvedPathSh
     // 不应被物化层擅自闭合为带填充的轮廓。
     closed: closed && !subpathOpen,
   };
+}
+
+function countShapeSubpaths(geometry: ResolvedPathShapeGeometry): number {
+  return geometry.commands.filter((command) => command.type === 'moveTo').length;
 }
 
 function polygonPath(points: readonly (readonly [number, number])[]): ResolvedPathShapeGeometry {

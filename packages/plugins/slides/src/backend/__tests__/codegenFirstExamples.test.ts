@@ -181,6 +181,10 @@ describe('slides-design runnable examples (closed loop)', () => {
       'polygon',
       'path',
     ]));
+    const holed = input.slides[3]?.elements.find((element) => element.type === 'shape'
+      && typeof element.geometry === 'object' && element.geometry.type === 'path'
+      && element.geometry.commands.filter((command) => command.type === 'moveTo').length === 2);
+    expect(holed).toBeDefined();
 
     const richText = input.slides[4]?.elements.find(
       (element) => element.type === 'text' && Array.isArray(element.content),
