@@ -218,3 +218,4 @@ export * from './document-image-asset';
 export * from './document-assets';
 
 export { countTextUnitsZhEn, sliceTextByUnitsZhEn, type TextUnitKind } from './text-units';
+export { refIdFromDigest, normalizeRef, stripRefPrefix, isValidRef, BLOCK_REF_PREFIX, type RefIdOptions } from './block-reference';

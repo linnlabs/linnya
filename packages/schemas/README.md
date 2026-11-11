@@ -521,3 +521,5 @@ Renderer 以正式删除结果清理本地目录与用途绑定，再重读投�
 `DocumentImageAssetSchema` 是受管图片跨进程结果的唯一合同，保存媒体类型、尺寸、字节数、内容哈希与 data URI；Host 插件合同从该 schema 推导类型，Renderer 在接纳 IPC 结果时执行 parse，不读取物理文件路径。`width/height` 保持原始编码尺寸身份，`displayWidth/displayHeight` 必填并表达应用 EXIF 方向后的显示尺寸；等比布局消费显示尺寸，不能借此改变资产账本或历史引用的完整性校验。
 
 文本单位合同由 `src/text-units.ts` 拥有：中文按 code point、连续 ASCII 字母/数字按词，空白与合同列出的标点不计数；截短不拆英文词或代理对。Editor、知识库、工具输出和插件 SDK 从公开入口复用，不能维护第二份标点表或计数规则。
+
+块引用合同 `src/block-reference.ts` 拥有短 ID 字符表、摘要字节编码、前缀与格式校验。身份按原字符串的 UTF-8 计算 SHA-256，不 trim 或改大小写；Web Crypto/Node crypto 留在各端适配，随后调用 refIdFromDigest。批量碰撞检测与候选查找仍属调用方，迁移不改变已有短 ID。

@@ -19,10 +19,16 @@ export interface SharedImplementationRule {
 
 export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = [
   {
+    id: 'SCHEMAS-block-reference',
+    pattern: /\b(?:(?<!declare )function|const)\s+(?:hashToBase62|refIdFromDigest|normalizeRef|stripRefPrefix|isValidRef|BASE62_CHARSET)\b/u,
+    owners: ['packages/schemas/'],
+    use: '块引用编码/规范化/校验使用 @app/schemas；平台适配只负责摘要计算和同步/异步调用。',
+  },
+  {
     id: 'SCHEMAS-text-units',
-    pattern: /\b(?:function|const)\s+(?:countTextUnitsZhEn|sliceTextByUnitsZhEn)\b/u,
-    // Host contract 只有 declare 签名；运行实现仍只有 schemas 一份。
-    owners: ['packages/schemas/', 'packages/plugin-host-contract/backend/textUnitRuntime.ts'],
+    pattern: /\b(?:(?<!declare )function|const)\s+(?:countTextUnitsZhEn|sliceTextByUnitsZhEn)\b/u,
+    // declare 只描述 Host 合同，不是另一份运行实现。
+    owners: ['packages/schemas/'],
     use: '字数与按单位截短使用 @app/schemas 的 countTextUnitsZhEn / sliceTextByUnitsZhEn。',
   },
   {
