@@ -40,10 +40,9 @@ const fileStore = {
     setDirty: (dirty) => {
         fileStore.isDirty = dirty;
     },
-    runPreSaveHooks: async () => true,
 };
 
-vi.mock('@/shared/stores/file', () => ({ useFileStore: () => fileStore }));
+vi.mock('@/app/active-document', () => ({ useFileStore: () => fileStore }));
 
 // file-manager/index.ts 会 re-export 内置 handlers；这里 mock 掉以避免其模块加载触发 IPC 单例
 vi.mock('../handlers/markdown', () => ({ markdownHandler: { type: 'markdown', open: async () => {} } }));

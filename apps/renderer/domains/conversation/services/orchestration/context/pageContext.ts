@@ -9,7 +9,7 @@
  * 插件页面通过 RendererPageContextProvider 参与，Host 不依赖具体插件。
  */
 
-import { useFileStore } from '../../../../../shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { getWorkspaceContextPort } from '../../../../../shared/ports/workspaceContextPort';
 import {
   getRendererPageContextProviderByDocumentType,

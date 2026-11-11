@@ -95,8 +95,7 @@ File Manager 需要同时面对多个“并发入口”：
    ```
 
 3. **保存/自动保存**  
-   - Module 内部会调用 `fileStore.registerPreSaveHook`（只注册一次）
-   - Hook 触发时，根据 `activeSession.type` 找到对应 handler 执行 `save()`
+   - 根据 `activeSession.type` 找到对应 handler 执行 `save()`；保存前的业务收尾由文档 owner 负责
    - 视图切换 / before-unload 场景需要触发保存时，调用 `requestSave('view-switch' | 'before-unload')`
    - 自动保存由模块内部的统一定时器（基于 `fileStore.autoSaveInterval`）触发
 

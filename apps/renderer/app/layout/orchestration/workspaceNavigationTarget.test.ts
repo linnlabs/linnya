@@ -12,7 +12,7 @@ vi.mock('@/app/layout/store/layoutStore', () => ({ useLayoutStore: () => ({
   openDocument: () => state.events.push('mount'),
 }) }));
 vi.mock('@/app/navigation', () => ({ useNavigationScope: () => ({ enterProject: vi.fn() }) }));
-vi.mock('@/shared/stores/file', () => ({ useFileStore: () => ({ setFilePath: vi.fn() }) }));
+vi.mock('@/app/active-document', () => ({ useFileStore: () => ({ setFilePath: vi.fn() }) }));
 vi.mock('@/shared/ports/documentSurfaceRuntimePort', () => ({ getDocumentSurfaceRuntimePort: () => ({
   waitForSurfaceReady: async () => { state.events.push('ready'); },
 }) }));

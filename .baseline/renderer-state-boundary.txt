@@ -1,5 +1,3 @@
-SHARED-TO-DOMAIN	apps/renderer/shared/services/viewSwitchSafety.ts	@/domains/workspace/services/file-manager
-SHARED-TO-DOMAIN	apps/renderer/shared/stores/file.ts	../../domains/workspace/services/file-manager/index
 SHARED-TO-DOMAIN	apps/renderer/shared/utils/aiContextUtils.js	../../domains/editor/extensions/position/NodeFinder
 SHARED-TO-DOMAIN	apps/renderer/shared/utils/documentViewSerializer.ts	../../domains/editor/extensions/position/NodeFinder
 STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/history/store/historyLoaderStore.ts	../orchestration/historyWindowTailLoader

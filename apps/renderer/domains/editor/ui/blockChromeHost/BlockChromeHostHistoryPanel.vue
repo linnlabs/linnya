@@ -122,7 +122,7 @@ import {
   type RestoreBlockHistoryVersionMode,
 } from '../../features/BlockHistory'
 import { useRenderVirtualizationKeepAliveLease } from '../../features/RenderVirtualization/state/useRenderVirtualizationKeepAliveLease'
-import { useFileStore } from '../../../../shared/stores/file'
+import { useFileStore } from '@/app/active-document'
 import { useEditorLocalization } from '../useEditorLocalization'
 
 const HistorySideBySide = defineAsyncComponent(

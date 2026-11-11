@@ -157,7 +157,7 @@ import { useConversationAgentChoices } from '@/app/plugins/composables';
 import { startProjectPlanningConversation } from '@/app/layout/orchestration/startProjectPlanningConversation';
 import { useHistoryListStore } from '@/domains/conversation/history/store/historyListStore';
 import { useUIStore } from '@/shared/stores/ui';
-import { useFileStore } from '@/shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { useNotificationStore } from '@/app/notification';
 import { saveDeactivateThen } from '@/domains/workspace/services/file-manager/index';
 import { useLocalizedCreatableDocumentTypes } from '@/app/plugins/ui/useDocumentTypePresentation';

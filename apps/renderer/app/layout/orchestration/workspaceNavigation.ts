@@ -11,7 +11,7 @@ import {
   useNavigationScope,
   type NavigationScope,
 } from '@/app/navigation';
-import { useFileStore } from '@/shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import type {
   WorkspaceDocumentNavigationRequest,
   WorkspaceNavigationDocumentType,

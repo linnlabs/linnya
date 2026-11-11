@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => {
   }
 })
 
-vi.mock('../../../../../shared/stores/file', () => ({
+vi.mock('@/app/active-document', () => ({
   useFileStore: () => mocks.fileStore,
 }))
 

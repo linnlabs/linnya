@@ -1,6 +1,6 @@
 // src/renderer/services/exportService.js
 
-import { useFileStore } from '../../../../../shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { useNotificationStore } from '@/app/notification';
 import { resolveCurrentWorkspaceMessage } from '../../../functions/resolveCurrentWorkspaceMessage';
 import { buildWorkspaceMarkdownSerializerLabels } from '../../../functions/markdownSerializerLabels';

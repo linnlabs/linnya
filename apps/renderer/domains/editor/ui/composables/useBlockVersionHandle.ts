@@ -13,7 +13,7 @@ import { computed, watch, type ComputedRef, type Ref } from 'vue';
 import { useBlockVersionHandleSummary } from '../../features/BlockHistory/readModel';
 import { ensureBlockHistoryLoadedForRootBlockId } from '../../features/BlockHistory/orchestration/ensureBlockHistoryLoadedForRootBlockId';
 import { toggleBlockHistoryForRootBlockId } from '../../features/BlockHistory/orchestration/toggleBlockHistoryForRootBlockId';
-import { useFileStore } from '../../../../shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 
 // ==================== 类型定义 ====================
 

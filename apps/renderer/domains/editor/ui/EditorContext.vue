@@ -18,7 +18,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch, on
 // [REMOVED] - 大部分 Tiptap 扩展导入已被移至 editorFactory.js
 
 // --- Pinia 状态管理导入 ---
-import { useFileStore } from '../../../shared/stores/file'
+import { useFileStore } from '@/app/active-document'
 import { useNotificationStore } from '@/app/notification'
 import { useUIStore } from '../../../shared/stores/ui'
 import { useFindReplaceStore } from '../features/FindReplace'

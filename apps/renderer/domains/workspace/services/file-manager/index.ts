@@ -11,7 +11,7 @@
  * 3. 让各文档类型通过 register 的方式接入（开放-封闭原则）
  */
 
-import { useFileStore } from '@/shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { storeToRefs } from 'pinia';
 import { watch } from 'vue';
 import { FileManagerOrchestrator } from './orchestrator';
@@ -71,7 +71,6 @@ export interface FileSaveContext {
 export type SaveReason =
   | 'manual' // 用户主动保存 (Ctrl+S)
   | 'auto' // 自动保存计时器
-  | 'pre-save-hook' // fileStore.registerPreSaveHook
   | 'view-switch' // 切换视图前
   | 'before-unload' // 关闭应用/窗口
   | 'ai-invoke'; // 在调用 AI 前主动保存，避免前后端文档内容不一致
@@ -233,13 +232,11 @@ export function getRegisteredFileTypes(): string[] {
 // ---------------------------------------------------------------------------
 
 /**
- * 确保只注册一次 fileStore 的 pre-save hook
+ * 确保只启动一次自动保存调度
  */
 function ensureHooks() {
   if (hooksInitialized) return;
   const fileStore = useFileStore();
-  // 注意：preSaveHooks 的真正执行发生在 runActiveSave 内部。
-  // 这里不再用“保存触发保存”的方式注册，避免递归和逻辑混乱。
   initAutoSaveScheduler(fileStore);
   hooksInitialized = true;
 }
@@ -304,16 +301,7 @@ async function runActiveSaveInternal(reason: SaveReason): Promise<boolean> {
   console.log('[file-manager] runActiveSave: 准备调用 handler.save', { type: activeSession.type });
 
   try {
-    // -----------------------------------------------------------------------
-    // 保存前钩子：让各模块有机会在“内容快照保存”前完成异步收尾
-    // 典型场景：AudioBlock 正在录音时，先停止录音并写入“已保存/可重试失败”态，最后再保存文档。
-    // -----------------------------------------------------------------------
     const fileStore = useFileStore();
-    const hooksOk = await fileStore.runPreSaveHooks(reason);
-    if (!hooksOk) {
-      return false;
-    }
-
     const ok = await handler.save({
       reason,
       session: activeSession,

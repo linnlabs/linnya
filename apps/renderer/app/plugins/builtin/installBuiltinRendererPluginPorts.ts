@@ -29,7 +29,7 @@ import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
 import { registerRendererPluginRuntimePort } from '@plugin/renderer/pluginRuntime';
 import { createRendererPluginRuntimePort } from '../orchestration/createRendererPluginRuntimePort';
 import { useNavigationScope } from '@/app/navigation';
-import { useFileStore } from '@/shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { useNotificationStore } from '@/app/notification';
 import { confirm } from '@/shared/composables/confirmDialog';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';

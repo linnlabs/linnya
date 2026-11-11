@@ -16,7 +16,7 @@
 import { onMounted, onBeforeUnmount, computed, watch, ref } from 'vue';
 import { useReviewStore } from '../store/reviewStore';
 import { useUIStore } from '@shared/stores/ui';
-import { useFileStore } from '@shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import ReviewSetup from './views/ReviewSetup.vue';
 import ReviewAgentCreator from './views/ReviewAgentCreator.vue';
 import ReviewProcessing from './views/ReviewProcessing.vue';

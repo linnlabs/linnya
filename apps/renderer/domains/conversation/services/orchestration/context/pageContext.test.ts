@@ -46,7 +46,7 @@ const workspaceContextMock = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../../../../shared/stores/file', () => ({
+vi.mock('@/app/active-document', () => ({
   useFileStore: () => ({
     currentFilePath: null,
     currentFileName: null,

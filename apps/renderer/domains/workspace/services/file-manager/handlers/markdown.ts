@@ -23,7 +23,7 @@ import {
   type FileSessionDescriptor,
   type FileSaveContext,
 } from '../index';
-import { useFileStore } from '../../../../../shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { useUIStore } from '../../../../../shared/stores/ui';
 import { useNotificationStore } from '@/app/notification';
 import { getMarkdownDocumentEditorRuntimePort } from '../../../../../shared/ports/markdownDocumentEditorRuntimePort';

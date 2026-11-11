@@ -44,7 +44,7 @@ import { useBlockVersionHandleSummary } from '../../features/BlockHistory/readMo
 import { ensureBlockHistoryLoadedForRootBlockId } from '../../features/BlockHistory/orchestration/ensureBlockHistoryLoadedForRootBlockId';
 import { toggleBlockHistoryForRootBlockId } from '../../features/BlockHistory/orchestration/toggleBlockHistoryForRootBlockId';
 import { useRenderVirtualizationKeepAliveLease } from '../../features/RenderVirtualization/state/useRenderVirtualizationKeepAliveLease';
-import { useFileStore } from '../../../../shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 
 const props = defineProps<{
   editor: Editor;

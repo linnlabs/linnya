@@ -35,7 +35,7 @@ interface EmbedImageByFileInput {
 }
 
 async function getCurrentDocumentNodeId(): Promise<string | null> {
-  const { useFileStore } = await import('../../../../../shared/stores/file');
+  const { useFileStore } = await import('@/app/active-document');
   const documentNodeId = useFileStore().currentFilePath;
   return typeof documentNodeId === 'string' && documentNodeId.trim().length > 0
     ? documentNodeId.trim()

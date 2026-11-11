@@ -10,7 +10,7 @@
  */
 
 import { defineStore } from 'pinia';
-import { useFileStore } from '../../../../../shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { audioBlockRepository } from '../repository/audioRepository';
 import { createEmptyTranscriptDocument } from '../types/audioBlock';
 

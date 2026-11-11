@@ -361,7 +361,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type CSSPro
 import { useUIStore } from '@/shared/stores/ui';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import { useNavigationScope } from '@/app/navigation';
-import { useFileStore } from '@/shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { useSidebarLayoutWidth } from '@/app/layout/composables/useSidebarLayoutWidth';
 import { useWorkspacePaneGeometry } from '@/app/layout/composables/useWorkspacePaneGeometry';

@@ -8,7 +8,7 @@
 
 import { onMounted, onBeforeUnmount } from 'vue';
 import { useUIStore } from '@/shared/stores/ui';
-import { useFileStore } from '@/shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { useNotificationStore } from '@/app/notification';
 import { requestSave } from '@/domains/workspace/services/file-manager/index';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';

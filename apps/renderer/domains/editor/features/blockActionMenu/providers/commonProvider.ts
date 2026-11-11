@@ -11,7 +11,7 @@
 
 import type { BlockMenuProvider, BlockMenuContext } from '../types';
 import { useNotificationStore } from '@/app/notification';
-import { useFileStore } from '../../../../../shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { useBlockHistoryStore } from '../../BlockHistory';
 import { PositionUtils } from '../../../extensions/position/PositionUtils';
 import { positionTextSelectionWithHandshake } from '../../RenderVirtualization';

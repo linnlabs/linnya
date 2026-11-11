@@ -13,7 +13,7 @@ import { useBlockHistoryUi } from './useBlockHistoryUi'
 const restoreBlockHistoryVersionForRootBlockMock = vi.fn()
 const useBlockHistoryStoreMock = vi.fn()
 
-vi.mock('../../../../shared/stores/file', () => ({
+vi.mock('@/app/active-document', () => ({
   useFileStore: () => ({
     currentFilePath: 'doc-a',
   }),

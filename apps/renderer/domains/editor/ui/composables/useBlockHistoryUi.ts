@@ -13,7 +13,7 @@ import {
   type BlockHistoryUiState,
   type BlockHistoryStore,
 } from '../../features/BlockHistory/store/useBlockHistoryStore';
-import { useFileStore } from '../../../../shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import type { BlockVersion } from '../../../../shared/ipc/blockHistoryGateway';
 import {
   findSelectedBlockHistoryVersion,

@@ -8,7 +8,7 @@
  */
 
 import { useAssistantStore } from '../../../store/assistantStore';
-import { useFileStore } from '../../../../../shared/stores/file';
+import { useFileStore } from '@/app/active-document';
 import { useConversationState } from '../../../store/conversationState';
 import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceContextPort } from '../../../../../shared/ports/workspaceContextPort';

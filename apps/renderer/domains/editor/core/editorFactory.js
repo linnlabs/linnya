@@ -55,7 +55,7 @@ import '../features/RenderVirtualization/debug/renderVirtualizationDiagnostics'
  * 创建 Tiptap 编辑器实例
  * @param {object} options - 创建编辑器的选项
  * @param {object} options.initialContent - 编辑器的初始内容
- * @param {import('../shared/stores/file').useFileStore} options.fileStore - File Store
+ * @param {import('@/app/active-document').useFileStore} options.fileStore - File Store
  * @param {import('../shared/stores/ui').useUIStore} options.uiStore - UI Store
  * @param {import('@/app/notification').useNotificationStore} options.notificationStore - Notification Store
  * @param {import('vue').Ref<object|null>} options.annotationStoreInstance - 批注存储实例的 Ref

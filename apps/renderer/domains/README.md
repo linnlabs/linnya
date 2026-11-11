@@ -29,6 +29,7 @@
 - **关键 store 预热**：
   - `shared/stores/ui`：纯 UI 偏好、弹窗等非导航状态
   - `app/navigation`：当前项目 / Linnya 助手 scope 与草稿对话状态
+  - [`app/active-document`](../app/active-document/README.md)：当前活动文档状态；内部存储位于 `app/store`，不执行保存流程
   - `domains/model-configuration/features/model-catalog`：模型目录 lifecycle 与预加载
   - `domains/knowledgebase/stores/knowledgeBase`：知识库列表预加载
   - `app/update/store/updateStore`：更新弹窗 IPC 监听（含 renderer-ready 握手）

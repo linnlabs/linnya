@@ -31,12 +31,11 @@ const fileStore = {
   setDirty(dirty: boolean) {
     this.isDirty = dirty;
   },
-  runPreSaveHooks: async () => true,
 };
 
 const closeMindmap = vi.fn(async () => {});
 
-vi.mock('@/shared/stores/file', () => ({ useFileStore: () => fileStore }));
+vi.mock('@/app/active-document', () => ({ useFileStore: () => fileStore }));
 vi.mock('../handlers/markdown', () => ({ markdownHandler: { type: 'markdown', open: async () => {} } }));
 vi.mock('@/app/plugins/builtin', () => ({
   ensureBuiltinRendererPluginsRegistered: vi.fn(),

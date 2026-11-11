@@ -30,7 +30,7 @@ import {
   workspaceGateway,
   type PendingRevisionDTO as WorkspacePendingRevisionDTO,
 } from '../../../../../shared/ipc/workspaceGateway'
-import { useFileStore } from '../../../../../shared/stores/file'
+import { useFileStore } from '@/app/active-document'
 import { useRevisionStore } from '../useRevisionStore'
 import { scanBlockForRevisions } from '../functions/revisionMarkScan'
 import { findRootBlockPosById } from '../utils/pending/pendingRevisionHelpers'

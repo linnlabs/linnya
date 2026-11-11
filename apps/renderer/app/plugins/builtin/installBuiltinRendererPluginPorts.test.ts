@@ -199,7 +199,7 @@ vi.mock('@/app/plugins/enabledPluginsStore', () => ({
   }),
 }));
 
-vi.mock('@/shared/stores/file', () => ({
+vi.mock('@/app/active-document', () => ({
   useFileStore: () => ({
     isDirty: false,
     setDirty: vi.fn(),

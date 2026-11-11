@@ -6,7 +6,7 @@
 import {
   getSidebarDocumentContextOptions,
 } from './contextConfig.js';
-import { useFileStore } from '../../../../../shared/stores/file.js';
+import { useFileStore } from '@/app/active-document';
 import {
   getRendererPageContextProviderForContext,
   type RendererPageContextLike,

@@ -7,7 +7,7 @@ const { prepare, savePdf, notify } = vi.hoisted(() => ({
   notify: vi.fn(),
 }));
 vi.mock('@/domains/editor/document-export', () => ({ prepareMarkdownHtmlForPdf: prepare }));
-vi.mock('../../../../../shared/stores/file', () => ({ useFileStore: () => ({ fileName: '研究.md' }) }));
+vi.mock('@/app/active-document', () => ({ useFileStore: () => ({ fileName: '研究.md' }) }));
 vi.mock('@/app/notification', () => ({ useNotificationStore: () => ({ show: notify }) }));
 vi.mock('../../../functions/resolveCurrentWorkspaceMessage', () => ({ resolveCurrentWorkspaceMessage: key => key }));
 
