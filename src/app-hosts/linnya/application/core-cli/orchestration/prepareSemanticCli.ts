@@ -229,7 +229,7 @@ function executeProps(
 
 /**
  * `--save`：查询成功后存成项目概览的筛选。用户明确要求的直接固定，`--suggest` 进“Agent 建议”。
- * 已有条件相同的筛选时不重复保存，告诉 Agent 用哪一个。
+ * 用户要保存时，同名或同条件的 Agent 建议被固定并换成这次的条件；其余同条件不重复保存，同名不覆盖。
  */
 function saveQuery(
   runtime: Runtime,
@@ -244,13 +244,25 @@ function saveQuery(
     tagDefinitions: runtime.layer.listTags(), properties: runtime.layer.listProperties(),
   });
   const store = createSqliteSavedFilterStore(runtime.db);
+  const existing = store.list(projectId);
   const key = projectSavedFilterConditionKey(definition);
-  const same = store.list(projectId).find(filter => projectSavedFilterConditionKey(filter.definition) === key);
+  const nameKey = (name: string) => name.trim().toLocaleLowerCase();
+  const sameName = existing.find(filter => nameKey(filter.name) === nameKey(command.save!.name));
+  const same = existing.find(filter => projectSavedFilterConditionKey(filter.definition) === key);
+  const layout = definition.layout.kind === 'board' ? '（看板）' : '';
+  // 用户要保存时，之前留下的同名或同条件建议就是它：固定那一条，不再并排出现两个。
+  const suggestion = !command.save.suggest
+    ? [sameName, same].find(filter => filter !== undefined && filter.origin === 'agent' && !filter.pinned)
+    : undefined;
+  if (suggestion && (!sameName || sameName.id === suggestion.id)) {
+    const pinned = store.update(projectId, suggestion.id, { name: command.save.name, definition, pinned: true });
+    return `已把 Agent 建议“${suggestion.name}”固定为项目概览文件页的筛选“${pinned.name}”${layout}，条件按这次查询更新。`;
+  }
   if (same) return `已有条件相同的筛选“${same.name}”，没有重复保存。`;
+  if (sameName) return `已有同名筛选“${sameName.name}”，没有覆盖；换个名字，或直接沿用它。`;
   const saved = store.create({
     projectId, name: command.save.name, origin: 'agent', pinned: !command.save.suggest, conversationId, definition,
   });
-  const layout = definition.layout.kind === 'board' ? '（看板）' : '';
   return command.save.suggest
     ? `已放进项目概览文件页的“Agent 建议”：“${saved.name}”${layout}。用户点“固定”后才出现在那一排，30 天没打开会自动清理。`
     : `已保存为项目概览文件页的筛选“${saved.name}”${layout}。`;

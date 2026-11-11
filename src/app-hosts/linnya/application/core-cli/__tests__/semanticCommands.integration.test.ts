@@ -164,6 +164,20 @@ describe('linnya schema / props / query / links', () => {
     expect(suggest.stdout).toContain('已放进项目概览文件页的“Agent 建议”：“没读的”');
     expect(db.prepare("SELECT pinned FROM project_saved_filters WHERE name = '没读的'").get()).toEqual({ pinned: 0 });
     expect((await run(['query', '--suggest'])).stderr).toContain('--suggest 要和 --save 名称一起用');
+
+    // 用户要保存时，同名的建议被固定并换成这次的条件，不并排出现两个。
+    const promote = await run(['query', '--where', '已读=false', '--tag', '论文', '--save', '没读的']);
+    expect(promote.stdout).toContain('已把 Agent 建议“没读的”固定为项目概览文件页的筛选“没读的”');
+    const unread = db.prepare("SELECT pinned, definition_json FROM project_saved_filters WHERE name = '没读的'").all() as {
+      pinned: number; definition_json: string;
+    }[];
+    expect(unread).toHaveLength(1);
+    expect(unread[0]?.pinned).toBe(1);
+    expect(JSON.parse(unread[0]?.definition_json ?? '{}')).toMatchObject({ tags: [tag.id] });
+    // 已固定的同名筛选不覆盖。
+    const clash = await run(['query', '--where', '状态=在读', '--save', '待读论文']);
+    expect(clash.stdout).toContain('已有同名筛选“待读论文”，没有覆盖');
+    expect(db.prepare('SELECT count(*) AS n FROM project_saved_filters').get()).toEqual({ n: 2 });
   });
 
   it('条件解析：两字符运算符优先，空值表示为空/不为空', () => {

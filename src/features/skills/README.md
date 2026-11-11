@@ -35,6 +35,7 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 | [deep-research](./builtin/skills/deep-research/SKILL.md) | 深入研究、证据检验与面向读者的长文；也支持固定材料编辑和研究更新 |
 | [mckinsey-research](./builtin/skills/mckinsey-research/SKILL.md) | 既有咨询式商业战略流程；不作为一般深度文章的必经入口 |
 | [linnya-markdown](./builtin/skills/linnya-markdown/SKILL.md) | Linnya Annotation、图片与 `linnya-chart` 图表围栏的操作指引；语法事实仍归 Markdown domain |
+| [linnya-tags](./builtin/skills/linnya-tags/SKILL.md) | 何时打标签（收集、整理、跟踪三种场景）、标签表示“是什么”而字段表示“到哪一步”、`linnya schema/props/query` 的预览与写入、何时保存筛选、改完怎样告诉用户；CLI 合同仍归 [Shell 内建 CLI](../../app-hosts/linnya/application/core-cli/README.md) |
 
 `deep-research` 服务报道、财经、时政、评论、学术综述、投研和预测文章。深入研究回答问题、比较解释并交付可追溯的文章；决策支持还需要决策者的目标、约束、备选行动与代价，两者共享证据与建模方法，但不能要求每份研究都填写行动收益表。研究请求不会自动触发决策流程。
 
