@@ -3,7 +3,7 @@
  * @description AI 助手的 Pinia 状态管理聚合根
  * @brief
  *  此 Store 作为聚合入口，负责组合所有拆分出去的子模块 (projection, scope, task)。
- *  它自身不包含核心业务逻辑，仅作为依赖注入容器和对外的统一接口。
+ *  它自身不包含核心业务逻辑，仅只组合状态、同步 action 与选择器；异步用例从 assistantActions 公开入口调用。
  */
 
 import { defineStore, storeToRefs } from 'pinia';
@@ -14,27 +14,22 @@ import { useExecutionState } from './executionState';
 import { useConversationState } from './conversationState';
 import { useConversationSelectors } from './selectors';
 import {
-  cancelInteractiveRun,
   isInteractiveRunBusy,
   useInteractiveRunStore,
 } from '../features/interactive-run';
 
-import type { BaseMessage, InteractiveToolSubmissionMetadata } from '../types';
+import type { BaseMessage } from '../types';
 import type { ConversationUserInputCommittedEvent } from '@app/schemas';
 
-import { useToolingFlowOrchestrator } from '../services/orchestration/toolingFlowOrchestrator';
 
 // 阶段性拆分导入
 import { useProjectionStore } from './assistant';
-import type { AnnotationRunParams } from '../definitions/annotationRun';
 import type { SSEEventInput } from '@linnlabs/linnkit/contracts';
 import { useAnnotationRunExecutionStore } from '../features/annotation-run/store/annotationRunExecutionStore';
 import {
   selectConversationSurfaceError,
   type ConversationSurfaceErrorSource,
 } from '../features/error-surface';
-import { useAnnotationRunOrchestrator } from '../services/orchestration/annotationRunOrchestrator';
-import { cancelContributedAssistantRuns } from '../ports/contributedAssistantRunCancellationPort';
 
 export const useAssistantStore = defineStore('aiAssistant', () => {
   // ===============================
@@ -128,18 +123,6 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
   // ===============================
   // 统一的取消操作
   // ===============================
-  const cancelCurrentStream = () => {
-    const conversationId = conversationState.activeConversationId;
-    if (conversationId) {
-      void cancelInteractiveRun(conversationId).catch((error: unknown) => {
-        console.error('[AssistantStore] foreground run cancellation workflow failed', error);
-      });
-    }
-    executionState.cancelCurrentStream();
-    useAnnotationRunOrchestrator().cancelAnnotationRun(conversationId ?? undefined);
-    cancelContributedAssistantRuns();
-  };
-
   const startConversationExecution = (controller: AbortController): void => {
     const conversationId = conversationState.activeConversationId;
     if (!conversationId) {
@@ -181,53 +164,6 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
       }
     }
   );
-
-  // ===============================
-  // 工具与任务流程 (转发)
-  // ===============================
-  const concludeAskQuestionsInteraction = async (options: {
-    observation: string;
-    isSkipped: boolean;
-    toolCallId: string;
-    toolName: string;
-    answersPayload?: Record<string, unknown>;
-  }) => {
-    if (!options.toolCallId) {
-      throw new Error(
-        '[AssistantStore] concludeAskQuestionsInteraction 需要明确的 toolCallId 参数'
-      );
-    }
-
-    const toolingOrchestrator = useToolingFlowOrchestrator();
-    return toolingOrchestrator.concludeAskQuestionsInteraction({
-      ...options,
-      toolCallId: options.toolCallId,
-    });
-  };
-
-  const concludeInteractiveToolInteraction = async (options: {
-    observation: string;
-    toolCallId: string;
-    toolName: string;
-    data: Record<string, unknown>;
-    interactionResponse: InteractiveToolSubmissionMetadata;
-  }) => {
-    if (!options.toolCallId) {
-      throw new Error(
-        '[AssistantStore] concludeInteractiveToolInteraction 需要明确的 toolCallId 参数'
-      );
-    }
-
-    const toolingOrchestrator = useToolingFlowOrchestrator();
-    return toolingOrchestrator.concludeInteractiveToolInteraction({
-      ...options,
-      toolCallId: options.toolCallId,
-    });
-  };
-
-  const executeAnnotationRun = (params: AnnotationRunParams) => {
-    return useAnnotationRunOrchestrator().executeAnnotationRun(params);
-  };
 
   // ===============================
   // 实例化子模块
@@ -361,7 +297,6 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
     setStreaming: executionState.setStreaming,
     setError: executionState.setError,
     clearError: clearActiveError,
-    cancelCurrentStream: cancelCurrentStream,
     setAbortController: executionState.setAbortController,
     clearAbortController: executionState.clearAbortController,
     clearAbortControllerIfCurrent: executionState.clearAbortControllerIfCurrent,
@@ -370,11 +305,8 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
     startExecution: executionState.startExecution,
 
     // 工具交互
-    concludeAskQuestionsInteraction,
-    concludeInteractiveToolInteraction,
 
     // 编辑器任务
-    executeAnnotationRun,
 
     // 统一事件投影
     handleSseEvent,

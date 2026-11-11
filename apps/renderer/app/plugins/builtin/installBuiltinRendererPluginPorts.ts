@@ -1,3 +1,4 @@
+import { useToolingFlowOrchestrator } from '@/domains/conversation/assistantActions';
 /**
  * @file installBuiltinRendererPluginPorts.ts
  * @description 安装内置渲染端插件 port 的 host 实现。
@@ -277,7 +278,7 @@ function installReferenceRuntimePort(): void {
 function installInteractiveToolPort(): void {
   registerRendererInteractiveToolPort({
     concludeInteractiveToolInteraction(options) {
-      return useAssistantStore().concludeInteractiveToolInteraction(options);
+      return useToolingFlowOrchestrator().concludeInteractiveToolInteraction(options);
     },
   });
 }

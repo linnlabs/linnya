@@ -11,8 +11,8 @@ import type {
 
 const concludeAskQuestionsInteractionMock = vi.fn();
 
-vi.mock('../../../../store/assistantStore', () => ({
-  useAssistantStore: () => ({
+vi.mock('../../../../assistantActions', () => ({
+  useToolingFlowOrchestrator: () => ({
     concludeAskQuestionsInteraction: concludeAskQuestionsInteractionMock,
   }),
 }));

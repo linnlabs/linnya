@@ -83,3 +83,5 @@ apps/renderer/domains/conversation/
 ├── utils/                       # 域内工具函数
 └── docs/                        # 本目录
 ```
+
+工具交互提交、批注运行和取消从 `../assistantActions.ts` 公共动作入口调用。聚合 assistantStore 只持有/投影状态并暴露同步 action，不反向实例化 tooling/annotation 编排；外部 Editor 和插件装配也不借聚合 store 转发这些流程。

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { useAssistantStore } from './assistantStore';
+import { cancelAssistantActivity } from '../services/orchestration/cancelAssistantActivity';
 import { useConversationState } from './conversationState';
 import {
   createTestAnswerMessage,
@@ -155,7 +156,7 @@ describe('assistantStore interrupted follow-up e2e regression', () => {
     expect(assistantStore.isStreaming).toBe(true);
     expect(vi.getTimerCount()).toBe(1);
 
-    assistantStore.cancelCurrentStream();
+    cancelAssistantActivity();
 
     await vi.waitFor(() => {
       expect(firstController.signal.aborted).toBe(true);

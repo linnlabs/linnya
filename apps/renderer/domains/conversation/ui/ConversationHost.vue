@@ -90,6 +90,7 @@
 </template>
 
 <script setup lang="ts">
+import { cancelAssistantActivity } from '../assistantActions';
 import { useConversationWindowNavigation } from './conversationView/composables/useConversationWindowNavigation';
 import { computed, ref, onBeforeUnmount, onMounted, nextTick, provide, watch } from 'vue';
 import type { ConversationMessageId } from '@app/schemas';
@@ -261,7 +262,7 @@ const inputExecution = useConversationInputExecution({
   isBusy: () => assistantStore.isBusy,
   isLoading: () => assistantStore.isLoading,
   isStreaming: () => assistantStore.isStreaming,
-  cancel: () => assistantStore.cancelCurrentStream(),
+  cancel: () => cancelAssistantActivity(),
 });
 const isLoading = inputExecution.isLoading;
 const isStreaming = inputExecution.isStreaming;

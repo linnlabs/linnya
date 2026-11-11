@@ -3,13 +3,13 @@
  * @description 问卷逻辑 composable（ask 工具）。
  *
  * 设计原则：
- * - **单向数据流**：UI 只驱动本地状态，提交/跳过走 Store 的统一入口；
+ * - **单向数据流**：UI 只驱动本地状态，提交/跳过走用例编排入口；
  * - **严格类型**：不使用 any，不做随意断言，通过 type guard 逐步收敛；
  * - **统一协议**：原始 args/result/interaction 已在 admission projector 中转为 presentation。
  */
 
 import { computed, reactive, ref, watch } from 'vue';
-import { useAssistantStore } from '../../../../store/assistantStore';
+import { useToolingFlowOrchestrator } from '../../../../assistantActions';
 import type { ConversationMessageResolver } from '../../../../definitions/conversationMessages';
 import type { ToolCardPresentation } from '../../types';
 import type {
@@ -48,7 +48,7 @@ export function useQuestionnaire(
   }>,
   conversationMessage: ConversationMessageResolver
 ) {
-  const assistantStore = useAssistantStore();
+  const toolingFlow = useToolingFlowOrchestrator();
 
   // ===============================
   // 本地状态（高内聚）
@@ -308,7 +308,7 @@ export function useQuestionnaire(
     try {
       const answersText = compileAnswersToText(canonicalQuestionnaire.questionnaireId);
       const answersPayload = compileAnswersToObject();
-      await assistantStore.concludeAskQuestionsInteraction({
+      await toolingFlow.concludeAskQuestionsInteraction({
         observation: answersText,
         isSkipped: false,
         answersPayload,
@@ -333,7 +333,7 @@ export function useQuestionnaire(
     try {
       const qid = canonicalQuestionnaire.questionnaireId;
       const skipText = `问卷(ID: ${qid}) - 用户选择跳过回答。请继续提供帮助。`;
-      await assistantStore.concludeAskQuestionsInteraction({
+      await toolingFlow.concludeAskQuestionsInteraction({
         observation: skipText,
         isSkipped: true,
         toolCallId: props.presentation.data.toolCallId,

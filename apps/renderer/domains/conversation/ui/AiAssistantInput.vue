@@ -138,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+import { cancelAssistantActivity } from '../assistantActions';
 import { registerComposerInputFocus } from '../features/composer-focus';
 import { captureConversationClientNotice, currentClientNoticeDraftKey } from '../features/client-notices';
 import { computed, ref, shallowRef, watch, onMounted, onBeforeUnmount } from 'vue';
@@ -277,7 +278,7 @@ const inputExecution = useConversationInputExecution({
   isBusy: () => assistantStore.isBusy,
   isLoading: () => assistantStore.isLoading,
   isStreaming: () => assistantStore.isStreaming,
-  cancel: () => assistantStore.cancelCurrentStream(),
+  cancel: () => cancelAssistantActivity(),
 });
 const activeInputExtension = inputExecution.activeExtension;
 const referenceSuggestion = useConversationReferenceSuggestion({

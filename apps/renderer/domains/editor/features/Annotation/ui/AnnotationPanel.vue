@@ -73,7 +73,7 @@
  * @description Vue 组件，用于显示和管理批注，包括 AI 辅助内容生成功能。
  *
  * AI 服务调用说明 (handleAiAction 函数):
- * - 服务函数: assistantStore.executeAnnotationRun (统一的 AI 任务执行接口)
+ * - 服务函数: annotationRun.executeAnnotationRun (统一的 AI 任务执行接口)
  * - 后端 API 端点: POST /api/v1/conversation/next
  * - 请求体 (Payload): { prompt: annotationContent, prompt_key: ANNOTATION_PROMPT_KEY, context_before, context_after, current_paragraph, metadata }
  * - 响应处理: 通过 streamHandlers.onStreamChunk 接收流式文本块，通过 onThought 接收思考内容（已从 SSE 事件中结构化提取）。
@@ -116,7 +116,7 @@ import {
 } from '../definitions/injectionKeys';
 // import { appendAnnotationReply } from '../commands/AnnoReplyCommands'; // API 已保留，DEV 入口移除
 // +++ 新增：导入 Assistant Store +++
-import { useAssistantStore } from '../../../../conversation/store/assistantStore';
+import { useAnnotationRunOrchestrator } from '../../../../conversation/assistantActions';
 
 // 注入共享状态。
 // 中文说明：批注面板只依赖 Annotation feature 暴露的窄契约，不再消费字符串 key。
@@ -469,10 +469,10 @@ async function handleAiAction(annotationId) {
     return;
   }
 
-  // 4. 调用统一的 assistantStore.executeAnnotationRun
-  const assistantStore = useAssistantStore();
+  // 4. 调用统一的 annotationRun.executeAnnotationRun
+  const annotationRun = useAnnotationRunOrchestrator();
   
-  assistantStore.executeAnnotationRun({
+  annotationRun.executeAnnotationRun({
     prompt: annotationContent,
     mode: 'agent',
     options: {

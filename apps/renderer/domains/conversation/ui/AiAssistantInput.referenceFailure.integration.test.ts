@@ -10,6 +10,8 @@ import { currentClientNoticeDraftKey, useClientNoticeStore } from '../features/c
 import { clearConversationReferenceKindsForTest, registerConversationReferenceKind, useComposerReferences } from '../features/composer-references';
 import ConversationChatSurface from './ConversationChatSurface.vue';
 
+vi.mock('../assistantActions', () => ({ cancelAssistantActivity: vi.fn() }));
+
 const boundary = vi.hoisted(() => ({ send: vi.fn(), legacyError: vi.fn() }));
 const input = reactive({ conversationId: null as string | null, text: 'KEEP-DRAFT' });
 

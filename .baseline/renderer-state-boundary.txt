@@ -6,7 +6,5 @@ SHARED-TO-DOMAIN	apps/renderer/shared/utils/aiContextUtils.js	../../domains/edit
 SHARED-TO-DOMAIN	apps/renderer/shared/utils/documentViewSerializer.ts	../../domains/editor/extensions/position/NodeFinder
 STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/history/store/historyLoaderStore.ts	../orchestration/historyWindowTailLoader
 STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/store/assistant/projectionStore.ts	../../services/orchestration/projectionCommitPipeline
-STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/store/assistantStore.ts	../services/orchestration/annotationRunOrchestrator
-STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/store/assistantStore.ts	../services/orchestration/toolingFlowOrchestrator
 STORE-TO-ORCHESTRATION	apps/renderer/domains/workspace/store/WorkspaceTreeStore.ts	../features/tree-loading/orchestration/createWorkspaceTreeLoader
 STORE-TO-ORCHESTRATION	apps/renderer/domains/workspace/store/WorkspaceTreeStore.ts	../features/tree-node-mutations/orchestration/createWorkspaceTreeNodeMutations

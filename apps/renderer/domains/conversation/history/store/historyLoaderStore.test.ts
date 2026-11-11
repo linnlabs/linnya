@@ -206,7 +206,6 @@ describe('historyLoaderStore loading shell handoff', () => {
       interaction_status: 'pending',
       form: { fields: [] },
     });
-    const cancelSpy = vi.spyOn(assistantStore, 'cancelCurrentStream');
 
     await loaderStore.loadConversation('conversation-b', {
       initialConversation: {
@@ -217,7 +216,6 @@ describe('historyLoaderStore loading shell handoff', () => {
       },
     });
 
-    expect(cancelSpy).not.toHaveBeenCalled();
     expect(controller.signal.aborted).toBe(false);
     expect(interactiveRunStore.snapshotFor(conversationA)).toMatchObject({
       runId: 'run-a',

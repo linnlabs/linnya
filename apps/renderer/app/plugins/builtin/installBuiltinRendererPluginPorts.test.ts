@@ -167,6 +167,8 @@ const scopeHarness = vi.hoisted(() => ({
   },
 }));
 
+vi.mock('@/domains/conversation/assistantActions', () => ({ useToolingFlowOrchestrator: () => assistantHarness.store }));
+
 vi.mock('@/domains/conversation/store/assistantStore', () => ({
   useAssistantStore: () => assistantHarness.store,
 }));
