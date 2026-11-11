@@ -768,7 +768,7 @@ body.project-overview-is-resizing {
 }
 
 .project-overview-save.linnya-dropdown-surface--panel {
-  padding: 14px;
+  padding: var(--space-3);
 }
 
 .project-overview-suggestions__item {
@@ -788,7 +788,7 @@ body.project-overview-is-resizing {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
   min-width: 0;
   padding: var(--space-1) var(--space-2);
   border: 0;
@@ -814,7 +814,7 @@ body.project-overview-is-resizing {
 .project-overview-suggestions__foot {
   margin: var(--space-1-5) var(--space-2) var(--space-1);
   font-size: var(--font-size-footnote);
-  line-height: 1.6;
+  line-height: var(--line-height-relaxed);
   color: var(--color-text-tertiary);
 }
 
@@ -825,7 +825,7 @@ body.project-overview-is-resizing {
   min-width: 0;
   max-width: calc(100vw - 16px);
   max-height: none;
-  padding: 14px;
+  padding: var(--space-3);
   overflow: visible;
 }
 
@@ -840,7 +840,7 @@ body.project-overview-is-resizing {
 .project-overview-save__notice {
   margin: var(--space-2) 0 0;
   font-size: var(--font-size-footnote);
-  line-height: 1.6;
+  line-height: var(--line-height-relaxed);
   color: var(--color-text-tertiary);
 }
 
@@ -901,7 +901,7 @@ body.project-overview-is-resizing {
   min-width: 0;
   min-height: 120px;
   padding-bottom: var(--space-2);
-  transition: background-color var(--duration-fast) var(--ease-standard);
+  transition: background-color var(--duration-short) var(--ease-standard);
 }
 
 .project-overview-board__lane.is-drop-target {
@@ -913,7 +913,7 @@ body.project-overview-is-resizing {
   align-items: baseline;
   gap: var(--space-1-5);
   margin: 0 0 var(--space-2);
-  padding: 0 2px;
+  padding: 0 var(--space-0-5);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
@@ -945,14 +945,14 @@ body.project-overview-is-resizing {
 
 .project-overview-board__card {
   box-sizing: border-box;
-  padding: 10px 12px 9px;
+  padding: var(--space-2-5) var(--space-3) var(--space-2);
   background-color: var(--color-bg-default);
   box-shadow:
     0 0 0 1px var(--shadow-color-xs),
     0 1px 2px var(--shadow-color-xs),
     0 2px 6px var(--shadow-color-xs);
   cursor: grab;
-  transition: opacity var(--duration-fast) var(--ease-standard);
+  transition: opacity var(--duration-short) var(--ease-standard);
 }
 
 .project-overview-board.is-dragging .project-overview-board__card,
@@ -1008,12 +1008,12 @@ body.project-overview-board-is-dragging {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
-  margin-top: 7px;
+  margin-top: var(--space-1-5);
 }
 
 .project-overview-board__fields,
 .project-overview-board__when {
-  margin: 7px 0 0;
+  margin: var(--space-1-5) 0 0;
   overflow: hidden;
   font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
@@ -1022,7 +1022,7 @@ body.project-overview-board-is-dragging {
 }
 
 .project-overview-board__when {
-  margin-top: 2px;
+  margin-top: var(--space-0-5);
   color: var(--color-text-tertiary);
 }
 
