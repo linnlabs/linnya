@@ -143,10 +143,10 @@ const isKnowledgeBaseStoreLike = (value: unknown): value is KnowledgeBaseStoreLi
 async function getKnowledgeBaseStoreLike(): Promise<KnowledgeBaseStoreLike | null> {
   try {
     // 中文说明：动态导入，避免知识库 modal 和全局布局形成静态循环依赖。
-    const mod: unknown = await import('../../domains/knowledgebase/stores/knowledgeBase.js');
+    const mod: unknown = await import('../../domains/knowledgebase/runtime.js');
     if (!isObjectLike(mod)) return null;
 
-    const useStore = mod.useKnowledgeBaseStore;
+    const useStore = mod.useKnowledgeBase;
     if (!isFunction(useStore)) return null;
 
     const store: unknown = useStore();

@@ -1,7 +1,7 @@
 import { loadProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useNotificationStore } from '@/app/notification';
-import { useKnowledgeBaseStore } from '../stores/knowledgeBase';
+import { useKnowledgeBase } from '../runtime.js';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
 import type { Project } from '@/domains/workspace/store';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
@@ -29,7 +29,7 @@ export function useKnowledgeBaseSettings(
   knowledgeBaseMessage: KnowledgeBaseMessageResolver
 ) {
   // 使用知识库 store 以便从现有知识库列表中获取名称等信息
-  const kbStore = useKnowledgeBaseStore();
+  const kbStore = useKnowledgeBase();
 
   // 使用全局通知 store，在保存成功或失败时给用户反馈
   const notificationStore = useNotificationStore();

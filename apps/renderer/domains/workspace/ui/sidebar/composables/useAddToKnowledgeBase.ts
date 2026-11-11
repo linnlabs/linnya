@@ -10,7 +10,7 @@
 import { ref } from 'vue';
 import { useUIStore } from '../../../../../shared/stores/ui.js';
 import { useNotificationStore } from '@/app/notification';
-import { useKnowledgeBaseStore } from '../../../../knowledgebase/stores/knowledgeBase';
+import { useKnowledgeBase } from '../../../../knowledgebase/runtime.js';
 import { addCurrentDocumentToKb } from '../../../../knowledgebase/services/addCurrentDocumentToKb';
 import { useKnowledgeBaseLocalization } from '../../../../knowledgebase/ui/useKnowledgeBaseLocalization';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
@@ -21,7 +21,7 @@ import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 export function useAddToKnowledgeBase() {
   const uiStore = useUIStore();
   const notificationStore = useNotificationStore();
-  const kbStore = useKnowledgeBaseStore();
+  const kbStore = useKnowledgeBase();
   const { workspaceMessage } = useWorkspaceLocalization();
   const { knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 

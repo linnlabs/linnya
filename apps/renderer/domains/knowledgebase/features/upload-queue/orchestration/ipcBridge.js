@@ -1,5 +1,5 @@
 /**
- * @file apps/renderer/features/KnowledgeBase/stores/knowledgeBase/actions/ipcBridge.js
+ * @file apps/renderer/domains/knowledgebase/features/upload-queue/orchestration/ipcBridge.js
  * 
  * @brief IPC桥接与监听管理
  * 
@@ -41,10 +41,10 @@ export function createSetupIpcStatusListener(state, updateTaskState, pendingUpda
         if (matchedTasks.length === 0) {
           if (hasTaskId && state.pendingUpdatesByTaskId) {
             console.warn('[IPC状态更新] ⚠️ 未找到匹配任务，按 taskId 缓存等待回放:', statusUpdate.taskId);
-            state.pendingUpdatesByTaskId.set(statusUpdate.taskId, statusUpdate);
+            state.setPendingTaskUpdate(statusUpdate.taskId, statusUpdate);
           } else if (statusUpdate.docId) {
             console.warn('[IPC状态更新] ⚠️ 未找到匹配任务，按 docId 缓存等待回放:', statusUpdate.docId);
-            pendingUpdatesByDocId.set(statusUpdate.docId, statusUpdate);
+            state.setPendingDocumentUpdate(statusUpdate.docId, statusUpdate);
           } else {
             console.warn('[IPC状态更新] ⚠️ 无法缓存（缺少 taskId 与 docId）:', statusUpdate);
           }

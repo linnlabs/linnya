@@ -123,7 +123,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { ActionButtons, BaseButton, SkeletonRows } from '@linnya/renderer-ui';
 import { LibraryIcon } from '@linnya/renderer-ui/icons';
-import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';
+import { useKnowledgeBase } from '@/domains/knowledgebase/runtime.js';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
 import { useNotificationStore } from '@/app/notification';
 import { useWorkspaceLocalization } from '../useWorkspaceLocalization';
@@ -137,7 +137,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 const notificationStore = useNotificationStore();
 const { workspaceMessage } = useWorkspaceLocalization();
 

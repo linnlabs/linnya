@@ -24,7 +24,8 @@
       <div class="main-content">
         <FileUploadTab 
           v-show="activeTab === 'upload'" 
-          v-model:selectedKbId="kbStore.currentKbId"
+          :selectedKbId="kbStore.currentKbId"
+          @update:selectedKbId="kbStore.setCurrentKnowledgeBase"
         />
         <FileManageTab 
           v-show="activeTab === 'manage'" 
@@ -45,7 +46,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { useKnowledgeBaseStore } from '../stores/knowledgeBase'
+import { useKnowledgeBase } from '../runtime.js'
 import { Modal } from '@linnya/renderer-ui'
 import FileUploadTab from './FileUploadTab.vue'
 import FileManageTab from './FileManageTab.vue'
@@ -60,7 +61,7 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 // --- Stores ---
-const kbStore = useKnowledgeBaseStore()
+const kbStore = useKnowledgeBase()
 const { knowledgeBaseMessage } = useKnowledgeBaseLocalization()
 
 // --- State ---

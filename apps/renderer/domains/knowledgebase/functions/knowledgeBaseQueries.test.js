@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getKbNameById } from './utils.js';
+import { getKbNameById } from './knowledgeBaseQueries.js';
 
 describe('getKbNameById', () => {
   it('uses the injected fallback label when knowledge base is missing', () => {

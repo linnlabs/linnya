@@ -1,5 +1,5 @@
 /**
- * @file apps/renderer/features/KnowledgeBase/stores/knowledgeBase/actions/fetchers.js
+ * @file apps/renderer/domains/knowledgebase/features/catalog/orchestration/fetchers.js
  * 
  * @brief 知识库数据获取actions
  * 
@@ -20,10 +20,10 @@ import { readEffectiveModelPurposeBinding } from '@/domains/model-configuration'
  * 输出 (Output): 异步函数，无返回值
  * 副作用 (Side-effects): 更新knowledgeBases、currentKbId、isLoading、error状态
  */
-export function createFetchKnowledgeBases(state, fetchDocuments) {
+export function createFetchKnowledgeBases(state) {
   return async function fetchKnowledgeBases() {
-    state.isLoading.value = true
-    state.error.value = null
+    state.setLoading(true)
+    state.setError(null)
     
     try {
       const response = await knowledgeBaseService.getAllKnowledgeBases()
@@ -31,16 +31,16 @@ export function createFetchKnowledgeBases(state, fetchDocuments) {
       // 🔧 修复：正确提取知识库数组
       const kbs = response.knowledge_bases || []
 
-      state.knowledgeBases.value = kbs
+      state.setKnowledgeBases(kbs)
       // ❌ 不再在这里自动选择第一个知识库：
       // - 这会导致进入「知识库首页」时直接跳到默认知识库详情，而不是展示知识库列表
       // - 当前设计下，谁需要默认选中哪个知识库，应由调用方主动调用 setCurrentKnowledgeBase
     } catch (err) {
       console.error('[KnowledgeBase Store] 💥 获取知识库列表失败:', err);
-      state.error.value = resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.fetchListFailed')
-      state.knowledgeBases.value = []
+      state.setError(resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.fetchListFailed'))
+      state.setKnowledgeBases([])
     } finally {
-      state.isLoading.value = false
+      state.setLoading(false)
     }
   }
 }
@@ -51,7 +51,7 @@ export function createFetchKnowledgeBases(state, fetchDocuments) {
  * 输出 (Output): 函数
  * 副作用 (Side-effects): 更新currentKbId状态，watcher会自动触发文档加载
  */
-export function createSetCurrentKnowledgeBase(state, fetchDocuments) {
+export function createSetCurrentKnowledgeBase(state) {
   return function setCurrentKnowledgeBase(kbId) {
     // 支持两种模式：
     // 1) 传入具体 kbId：切换当前知识库
@@ -61,16 +61,16 @@ export function createSetCurrentKnowledgeBase(state, fetchDocuments) {
         return
       }
       console.log('[KnowledgeBase Store] 🔄 清空当前知识库选择，回到列表视图')
-      state.currentKbId.value = null
+      state.setCurrentKbId(null)
       // 清空当前文档列表，避免旧数据在 UI 中造成误导
-      state.documents.value = []
+      state.setDocuments([])
       return
     }
 
     // 统一通道：只设置ID，文档加载由 Store 内的 watcher 自动处理
     if (!kbId || state.currentKbId.value === kbId) return
     console.log(`[KnowledgeBase Store] 🔄 切换知识库: ${kbId}`)
-    state.currentKbId.value = kbId
+    state.setCurrentKbId(kbId)
     // fetchDocuments 调用已移除，由 watcher 统一处理
   }
 }
@@ -93,8 +93,8 @@ export function createFetchDocuments(state) {
     const requestSeq = state._fetchDocsSeq;
     
     console.log(`[KnowledgeBase Store] 📋 开始获取文档列表: kbId=${kbId}`);
-    state.isLoading.value = true
-    state.error.value = null
+    state.setLoading(true)
+    state.setError(null)
     try {
       const response = await knowledgeBaseService.getDocuments(kbId)
       
@@ -121,7 +121,7 @@ export function createFetchDocuments(state) {
         console.log(`[KnowledgeBase Store] 📋 文档详细信息:`, newDocuments);
       }
       
-      state.documents.value = newDocuments;
+      state.setDocuments(newDocuments)
     } catch (err) {
       // 若请求已过期则不覆盖错误状态
       if (requestSeq !== state._fetchDocsSeq) {
@@ -129,12 +129,12 @@ export function createFetchDocuments(state) {
         return;
       }
       console.error(`[KnowledgeBase Store] 📋 获取文档列表失败:`, err);
-      state.error.value = resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.fetchDocumentsFailed')
-      state.documents.value = [] // 确保在出错时也是数组
+      state.setError(resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.fetchDocumentsFailed'))
+      state.setDocuments([]) // 确保在出错时也是数组
     } finally {
       // 仅当当前仍为最新请求时，才落 isLoading=false
       if (requestSeq === state._fetchDocsSeq) {
-        state.isLoading.value = false
+        state.setLoading(false)
       }
     }
   }
@@ -159,7 +159,7 @@ export function createDeleteDocument(state, fetchDocuments) {
         state.currentKbId.value === kbId &&
         Array.isArray(state.documents.value)
       ) {
-        state.documents.value = state.documents.value.filter((d) => d && d.id !== documentId)
+        state.setDocuments(state.documents.value.filter((d) => d && d.id !== documentId))
       }
 
       await fetchDocuments(kbId)
@@ -176,7 +176,7 @@ export function createDeleteDocument(state, fetchDocuments) {
  * 输出 (Output): 后端增量续跑结果
  * 副作用 (Side-effects): 调用后端续跑接口，并刷新当前知识库文档列表
  */
-export function createContinueFailedPdfPages(state, fetchDocuments) {
+export function createContinueFailedPdfPages(fetchDocuments) {
   return async function continueFailedPdfPages(kbId, documentId) {
     if (!kbId || !documentId) return null
     try {
@@ -207,10 +207,10 @@ export function createUpdateKbModelSettings(state) {
       
       const index = state.knowledgeBases.value.findIndex(kb => kb.id === kbId)
       if (index !== -1) {
-        state.knowledgeBases.value[index] = { ...state.knowledgeBases.value[index], ...updatedKb }
+        state.replaceKnowledgeBaseAt(index, { ...state.knowledgeBases.value[index], ...updatedKb })
       }
     } catch (err) {
-      state.error.value = resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.updateModelSettingsFailed')
+      state.setError(resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.updateModelSettingsFailed'))
       throw err 
     }
   }
@@ -229,18 +229,18 @@ export function createDeleteKnowledgeBase(state) {
       await knowledgeBaseService.deleteKnowledgeBase(kbId)
 
       // 从本地列表移除对应知识库
-      state.knowledgeBases.value = state.knowledgeBases.value.filter(
+      state.setKnowledgeBases(state.knowledgeBases.value.filter(
         (kb) => kb.id !== kbId
-      )
+      ))
 
       // 如果当前选中的是被删除的知识库，则清空当前选择，回到列表视图
       if (state.currentKbId.value === kbId) {
-        state.currentKbId.value = null
-        state.documents.value = []
+        state.setCurrentKbId(null)
+        state.setDocuments([])
       }
     } catch (err) {
       console.error('[KnowledgeBase Store] 💥 删除知识库失败:', err)
-      state.error.value = resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.deleteKnowledgeBaseFailed')
+      state.setError(resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.deleteKnowledgeBaseFailed'))
       throw err
     }
   }

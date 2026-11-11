@@ -40,7 +40,7 @@
 import { computed, watch } from 'vue';
 import { useNavigationScope } from '@/app/navigation';
 import { useWorkspaceProjectsStore, useWorkspaceTreeStore } from '@/domains/workspace/store';
-import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase/index.js';
+import { useKnowledgeBase } from '@/domains/knowledgebase/runtime.js';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import ConversationChatSurface from '@/domains/conversation/ui/ConversationChatSurface.vue';
@@ -68,7 +68,7 @@ const props = withDefaults(defineProps<{
 const navigationScope = useNavigationScope();
 const projectsStore = useWorkspaceProjectsStore();
 const treeStore = useWorkspaceTreeStore();
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 const assistantStore = useAssistantStore();
 const projectKnowledgeBaseModalStore = useProjectKnowledgeBaseModalStore();
 const startupEmptySubtitle = useStartupEmptySubtitle();

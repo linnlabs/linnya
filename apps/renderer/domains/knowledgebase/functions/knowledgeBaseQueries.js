@@ -1,5 +1,5 @@
 /**
- * @file apps/renderer/features/KnowledgeBase/stores/knowledgeBase/utils.js
+ * @file apps/renderer/domains/knowledgebase/functions/knowledgeBaseQueries.js
  * 
  * @brief 知识库Store工具函数
  * 

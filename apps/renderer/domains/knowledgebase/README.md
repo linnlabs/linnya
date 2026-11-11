@@ -1,38 +1,15 @@
-apps/renderer/domains/knowledgebase/
-├── constants/
-│   └── index.js
-├── index.js
-├── stores/
-│   ├── knowledgeBase.js          # 重导出 useKnowledgeBaseStore（拆分后的入口）
-│   ├── knowledgeGraphProgressStore.js
-│   └── knowledgeBase/
-│       ├── index.js              # Pinia Store 定义入口
-│       ├── computed.js           # 计算属性相关逻辑
-│       ├── utils.js              # Store 内部工具函数
-│       └── actions/
-│           ├── fetchers.js       # 知识库数据获取 actions
-│           ├── ipcBridge.js      # IPC 桥接与监听管理
-│           ├── statusSync.js     # 状态同步
-│           ├── uploadQueue.js    # 上传队列
-│           └── polling.js        # 轮询
-├── services/
-│   ├── knowledgeBaseService.js   # 与 App Server Backend 交互的请求封装
-│   └── progressAnimator.js       # 进度动画相关逻辑
-└── ui/
-    ├── AddToKnowledgeBaseModal.vue
-    ├── GlobalUploadModal.vue
-    ├── KnowledgeGraphProgressBar.vue
-    ├── FileManageTab.vue
-    ├── FileUploadTab.vue                 # 上传区与任务列表；强制 OCR 时提示模型页数上限
-    ├── ParsingSettingsTab.vue
-    ├── KnowledgeBaseSettingsTab.vue   # 知识库设置页（主要负责 UI 拼装）
-    ├── useKnowledgeBaseSettings.ts    # 知识库设置页组合函数：基础信息 / 项目关联 / 删除逻辑等
-    ├── KnowledgeBaseModal.vue
-    ├── CreateKnowledgeBaseModal.vue
-    └── page/
-        ├── KnowledgeBaseList.vue
-        ├── KnowledgeBaseDetail.vue
-        └── KnowledgeBaseView.vue
+# Knowledge Base Renderer
+
+公开运行入口为 `runtime.js` 的 `useKnowledgeBase()`：只读事实与业务命令不等同于 Pinia store。按 Pinia 实例缓存一个运行 owner，不复制状态，不受第一个消费组件的卸载影响。
+
+- `stores/knowledgeBase/index.js` 只保存知识库、文档、上传队列与进度事实，action 仅同步写入。
+- `definitions/knowledgeBaseRuntime.ts`、`knowledgeBaseUpload.ts` 与 `knowledgeBaseCommands.ts` 定义状态、展示消息与窄命令合同。
+- `features/catalog/orchestration/` 负责请求列表、切换选择、删除、续跑和设置更新。
+- `features/upload-queue/orchestration/` 负责队列调度、上传回执、IPC、轮询与取消重试。
+- `orchestration/createKnowledgeBaseRuntime.js` 是组合根，持有订阅、技术计数、请求代次、设置持久化及应用退出清理。
+- `functions/` 持有状态权重、阶段进度与文档数量等纯规则；`composables/knowledgeBaseReadModel.js` 提供展示投影。
+
+状态写入只经过同步 action。UI 选择知识库使用 `setCurrentKnowledgeBase`，不对内部 store 做双向绑定；跨 domain 只消费 `runtime.js` 或 definitions 中的窄合同，不读取内部 Pinia 结构。
 
 ---
 
@@ -74,7 +51,7 @@ apps/renderer/domains/knowledgebase/
   - 无 partial 诊断：显示“已完成”。
   - `isPartial=true`：显示“部分成功 x/y”。
 - partial PDF 行会显示“继续解析”操作，触发 `continueFailedPdfPages(kbId, docId)`。
-- Store action 负责调用后端并刷新当前知识库文档列表；组件只负责展示和发起用户动作。
+- catalog 编排负责调用后端并刷新当前知识库文档列表；组件只负责展示和发起用户动作。
 - “继续解析”只对失败页生效，成功页已经入库的内容不应被前端重置或重新上传。
 
 维护约束：
@@ -82,4 +59,4 @@ apps/renderer/domains/knowledgebase/
 - 文件管理列表必须按当前 `selectedKbId` 过滤，不能依赖 store “当前只装当前 KB 文档”的隐式假设。
 - 不为该按钮写 UI snapshot；测试应优先覆盖后端增量提交、回滚，以及前端 action 调用后刷新文档列表的关键交互。
 
-上传队列与 IPC 早到进度共用装配层传入的 pendingUpdatesByTaskId；上传回执绑定任务 ID 后消费并删除对应缓存，不反向 require store 的聚合入口。只读 state/同步 action 与其他异步流程的分离继续按能力逐批完成，旧 actions 目录不是新编排的落点。
+上传队列与 IPC 早到进度共用装配层传入的 pendingUpdatesByTaskId；上传回执绑定任务 ID 后消费并删除对应缓存，不反向 require store 的聚合入口。上传回执、取消和重试保持既有调度顺序；状态权重与时间戳拒绝过期进度，终态释放槽位后再启动下一项。退出时清理真实 IPC 订阅、轮询、重试定时器与应用 watcher，不把清理函数本身登记成它要清理的资源。

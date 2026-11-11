@@ -59,7 +59,7 @@
 import { isObjectLike } from '@linnya/foundation';
 import { computed, ref, watch } from 'vue';
 import FileUploadTab from './FileUploadTab.vue';
-import { useKnowledgeBaseStore } from '../stores/knowledgeBase';
+import { useKnowledgeBase } from '../runtime.js';
 import { CustomSelect, Modal } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useKnowledgeBaseLocalization } from './useKnowledgeBaseLocalization';
@@ -105,7 +105,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 const { knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 
 const knowledgeBases = computed<KnowledgeBaseItem[]>(() => {

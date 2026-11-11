@@ -13,14 +13,7 @@ import { createMarkdownSerializer } from '../../../shared/utils/markdownSerializ
 import type { Editor } from '@tiptap/core';
 import type { KnowledgeBaseMessageResolver } from '../definitions/knowledgeBaseMessages';
 
-/**
- * 知识库 Store 的最小接口（避免循环依赖，使用 duck typing）
- */
-type KnowledgeBaseStoreLike = {
-  ensureDataLoaded: () => Promise<void>;
-  addFilesToQueue: (kbId: string, files: File[]) => void;
-  startParsing: () => Promise<void>;
-};
+import type { KnowledgeBaseCommands } from '../definitions/knowledgeBaseCommands';
 
 /**
  * 添加文档到知识库的参数
@@ -33,7 +26,7 @@ export interface AddDocumentToKbParams {
   /** Tiptap 编辑器实例 */
   editor: Editor;
   /** 知识库 Store 实例 */
-  kbStore: KnowledgeBaseStoreLike;
+  kbStore: KnowledgeBaseCommands;
   /** 用户可见文案解析器 */
   message: KnowledgeBaseMessageResolver;
 }

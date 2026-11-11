@@ -72,7 +72,7 @@
 import { computed, ref, watch } from 'vue';
 import { ActionButtons, CustomSelect, Modal } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
-import { useKnowledgeBaseStore } from '../stores/knowledgeBase';
+import { useKnowledgeBase } from '../runtime.js';
 import { useKnowledgeBaseLocalization } from './useKnowledgeBaseLocalization';
 
 // 知识库 Store 返回数据的轻量类型
@@ -123,7 +123,7 @@ const emit = defineEmits<{
   (e: 'confirm', kbId: string): void;
 }>();
 
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 const { knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 
 // 加载状态

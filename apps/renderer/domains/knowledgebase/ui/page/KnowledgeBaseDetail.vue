@@ -100,7 +100,7 @@
 import { isObjectLike } from '@linnya/foundation';
 import { IconButton } from '@linnya/renderer-ui';
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
-import { useKnowledgeBaseStore } from '../../stores/knowledgeBase';
+import { useKnowledgeBase } from '../../runtime.js';
 import { useKnowledgeGraphProgressStore } from '../../stores/knowledgeGraphProgressStore';
 import FileUploadTab from '../../ui/FileUploadTab.vue';
 import FileManageTab from '../../ui/FileManageTab.vue';
@@ -120,7 +120,7 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>();
 
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 const kgProgressStore = useKnowledgeGraphProgressStore();
 const { currentLocale, knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 

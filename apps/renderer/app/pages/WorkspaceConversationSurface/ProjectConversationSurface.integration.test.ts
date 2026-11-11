@@ -26,8 +26,8 @@ vi.mock('@/domains/workspace/store', () => ({
   }),
 }));
 
-vi.mock('@/domains/knowledgebase/stores/knowledgeBase/index.js', () => ({
-  useKnowledgeBaseStore: () => ({
+vi.mock('@/domains/knowledgebase/runtime.js', () => ({
+  useKnowledgeBase: () => ({
     ensureDataLoaded: dependencies.ensureDataLoaded,
   }),
 }));

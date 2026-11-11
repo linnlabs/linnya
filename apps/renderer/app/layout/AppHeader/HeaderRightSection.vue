@@ -367,7 +367,7 @@ import { useSidebarLayoutWidth } from '@/app/layout/composables/useSidebarLayout
 import { useWorkspacePaneGeometry } from '@/app/layout/composables/useWorkspacePaneGeometry';
 import { useWorkspaceProjectsStore, useWorkspaceTreeStore } from '@/domains/workspace/store';
 import { useNotificationStore } from '@/app/notification';
-import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';
+import { useKnowledgeBase } from '@/domains/knowledgebase/runtime.js';
 import { useDocumentActionMenu, useDocumentTypeAvailabilityByActiveType } from '@/app/plugins/composables';
 import { DocumentBacklinksPanel, useBacklinksMessages } from '@/domains/document-references';
 import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
@@ -470,7 +470,7 @@ const swapPaneTooltip = computed(() => {
 const fileStore = useFileStore();
 const treeStore = useWorkspaceTreeStore();
 const notificationStore = useNotificationStore();
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 
 const rightPaneContentWidth = computed(() => {
   if (!hasWorkspaceFileSurface.value) return 0;

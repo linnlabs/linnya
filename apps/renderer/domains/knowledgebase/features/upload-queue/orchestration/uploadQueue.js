@@ -1,5 +1,5 @@
 /**
- * @file apps/renderer/features/KnowledgeBase/stores/knowledgeBase/actions/uploadQueue.js
+ * @file apps/renderer/domains/knowledgebase/features/upload-queue/orchestration/uploadQueue.js
  * 
  * @brief 上传队列管理与任务调度
  * 
@@ -13,7 +13,6 @@
 import { knowledgeBaseService } from '../../../services/knowledgeBaseService.js'
 import { stopAnimation } from '../../../services/progressAnimator.js'
 import { UPLOAD_STATUS, MAX_CONCURRENT_UPLOADS } from '../../../constants/index.js'
-import { resolveCurrentKnowledgeBaseMessage } from '../../../functions/resolveCurrentKnowledgeBaseMessage'
 import { createKnowledgeBaseUploadMessage } from '../../../functions/knowledgeBaseUploadPresentation'
 import {
   readEffectiveAuxiliaryModelPurposeBinding,
@@ -95,10 +94,10 @@ export function createAddFilesToQueue(state) {
         docId: null,
       }
 
-      state.uploadTasks.set(id, task)
+      state.setUploadTask(id, task)
       // [V166 修复] 将新任务推入待处理队列
       // [V168 修复] 移除此处的自动调度，将控制权交还给"开始解析"按钮
-      state.uploadQueue.value.push(task);
+      state.enqueueTask(task);
       addedCount++;
       // _scheduleNext();
     }
@@ -125,10 +124,8 @@ export function createAddFilesToQueue(state) {
 export function createPerformUpload(
   state,
   updateTaskState,
-  scheduleNext,
   fetchInitialTaskStatus,
-  replayPendingUpdates,
-  message = resolveCurrentKnowledgeBaseMessage
+  replayPendingUpdates
 ) {
   return async function performUpload(task) {
     console.log(`[任务开始] 开始处理任务: ${task.id} (${task.filename})`);
@@ -140,7 +137,7 @@ export function createPerformUpload(
         message: createKnowledgeBaseUploadMessage('knowledgeBase.upload.status.uploading'),
       });
 
-      const onUploadProgress = (progressEvent) => {
+      const onUploadProgress = () => {
          // 这里可以根据需要更新一个纯粹的上传进度，但当前方案已将其包含在阶段内
       }
       
@@ -186,7 +183,7 @@ export function createPerformUpload(
         const exists = state.documents.value.some((d) => d && d.id === createdDocument.id)
         if (!exists) {
           // 新文档放到最前面，符合“最近上传更靠前”的直觉
-          state.documents.value = [createdDocument, ...state.documents.value]
+          state.setDocuments([createdDocument, ...state.documents.value])
         }
       }
       
@@ -203,7 +200,7 @@ export function createPerformUpload(
           const documentId = response.document?.id;
           const backendTaskId = response.task_id; // 🔥 修复：保存后端返回的taskId
           if (documentId) {
-            taskInMap.docId = documentId;
+            state.patchUploadTask(taskInMap, { docId: documentId })
             console.log(`[任务提交] ✅ 文档ID已设置: ${task.id} -> docId: ${documentId}`);
 
             // [优化] 立即进行一次乐观更新：直接显示"解析中"标签，消除短暂空白
@@ -227,13 +224,13 @@ export function createPerformUpload(
           
           // 🔥 修复：保存后端返回的taskId，用于任务控制操作
           if (backendTaskId) {
-            taskInMap.backendTaskId = backendTaskId;
+            state.patchUploadTask(taskInMap, { backendTaskId: backendTaskId })
             console.log(`[任务提交] ✅ 后端任务ID已设置: ${task.id} -> backendTaskId: ${backendTaskId}`);
             // [新增] 如有按 taskId 缓存的早到状态，立即回放
             // 使用装配时传入的同一缓存，不从 store 入口反向取实例，也不吞掉模块加载错误。
             if (state.pendingUpdatesByTaskId.has(backendTaskId)) {
               const cached = state.pendingUpdatesByTaskId.get(backendTaskId);
-              state.pendingUpdatesByTaskId.delete(backendTaskId);
+              state.removePendingTaskUpdate(backendTaskId);
               updateTaskState(task.id, {
                 status: cached.status,
                 message: cached.message,
@@ -290,7 +287,7 @@ export function createStartParsing(state, scheduleNext) {
       return; // 防止重复启动
     }
     
-    state.isParsing.value = true;
+    state.setParsing(true)
     console.log(`[开始解析] ✅ 设置isParsing=true，开始调度任务`);
     
     // [V169 修复] 初始时，尝试填满所有并发槽位
@@ -309,8 +306,7 @@ export function createStartParsing(state, scheduleNext) {
 export function createScheduleNext(
   state,
   performUpload,
-  updateTaskState,
-  message = resolveCurrentKnowledgeBaseMessage
+  updateTaskState
 ) {
   return function scheduleNext() {
     console.log(`[调度器] 调度检查: 活动任务=${state.activeUploads.size}/${MAX_CONCURRENT_UPLOADS}, 队列剩余=${state.uploadQueue.value.length}`);
@@ -319,7 +315,7 @@ export function createScheduleNext(
     if (state.activeUploads.size >= MAX_CONCURRENT_UPLOADS || state.uploadQueue.value.length === 0) {
       // 如果没有新任务需要启动，检查是否所有任务都已完成
       if (state.uploadQueue.value.length === 0 && state.activeUploads.size === 0) {
-        state.isParsing.value = false;
+        state.setParsing(false)
         console.log("[调度器] ✅ 所有上传任务已处理完成，重置isParsing=false");
       } else {
         console.log(`[调度器] ⏸️ 调度暂停: 并发已满或队列为空 (活动=${state.activeUploads.size}, 队列=${state.uploadQueue.value.length})`);
@@ -327,8 +323,8 @@ export function createScheduleNext(
       return; // 没有可做的事情，直接返回
     }
 
-    const task = state.uploadQueue.value.shift(); // 从队列中获取下一个任务
-    state.activeUploads.set(task.id, task);     // 将其标记为活动状态
+    const task = state.shiftQueuedTask(); // 从队列中获取下一个任务
+    state.setActiveUpload(task.id, task);     // 将其标记为活动状态
     
     console.log(`[调度器] 启动新任务: ${task.id} (${task.filename}), 当前活动任务: ${state.activeUploads.size}/${MAX_CONCURRENT_UPLOADS}, 队列剩余: ${state.uploadQueue.value.length}`);
 
@@ -382,7 +378,7 @@ export function createCancelUploadTask(state, scheduleNext, updateTaskState) {
       // 🔥 修复：无论是否在活动池，均应从待处理队列中移除该任务，避免后续被调度
       const idx = state.uploadQueue.value.findIndex(t => t.id === id);
       if (idx !== -1) {
-        state.uploadQueue.value.splice(idx, 1);
+        state.removeQueuedTaskAt(idx);
         console.log(`[取消任务] 🧹 从待处理队列移除: ${id}, 队列长度=${state.uploadQueue.value.length}`);
       }
       
@@ -392,11 +388,11 @@ export function createCancelUploadTask(state, scheduleNext, updateTaskState) {
       console.error(`取消任务失败: ${error.message}`);
       // 即使API调用失败，也继续前端清理
       stopAnimation(task);
-      state.uploadTasks.delete(id);
+      state.removeUploadTask(id);
       
       // 🔥 修复：确保即使取消失败也要清理activeUploads
       if (state.activeUploads.has(id)) {
-        state.activeUploads.delete(id);
+        state.removeActiveUpload(id);
         console.log(`[取消任务] ⚠️ API失败但仍清理活动池: ${id}, 剩余活动任务: ${state.activeUploads.size}`);
         scheduleNext();
       }
@@ -425,19 +421,19 @@ export function createDeleteUploadTask(state) {
 
     // 从活动池移除（通常不会发生，因为活跃态按钮是“取消”）
     if (state.activeUploads.has(id)) {
-      state.activeUploads.delete(id);
+      state.removeActiveUpload(id);
       console.log(`[删除任务] 从活动池移除: ${id}`);
     }
 
     // 从待处理队列移除
     const idx = state.uploadQueue.value.findIndex(t => t.id === id);
     if (idx !== -1) {
-      state.uploadQueue.value.splice(idx, 1);
+      state.removeQueuedTaskAt(idx);
       console.log(`[删除任务] 从待处理队列移除: ${id}, 队列长度=${state.uploadQueue.value.length}`);
     }
 
     // 从任务映射移除（UI将不再显示）
-    state.uploadTasks.delete(id);
+    state.removeUploadTask(id);
     console.log(`[删除任务] ✅ 已从UI移除任务: ${id}`);
   }
 }
@@ -448,7 +444,7 @@ export function createDeleteUploadTask(state) {
  * 输出 (Output): 重试函数
  * 副作用 (Side-effects): 重置任务状态，重新加入队列
  */
-export function createRetryUploadTask(state, startParsing, updateTaskState) {
+export function createRetryUploadTask(state, startParsing) {
   return async function retryUploadTask(taskId) {
     const task = state.uploadTasks.get(taskId);
     if (task && (task.status === UPLOAD_STATUS.FAILED)) {
@@ -465,11 +461,11 @@ export function createRetryUploadTask(state, startParsing, updateTaskState) {
         backendTaskId: null, // 🔥 修复：清空后端任务ID
       });
 
-      state.uploadTasks.set(task.id, newTask);
+      state.setUploadTask(task.id, newTask);
       stopAnimation(task);
       
       // 🔥 修复：重新添加任务到队列中
-      state.uploadQueue.value.push(newTask);
+      state.enqueueTask(newTask);
       console.log(`[重试任务] 任务已重新加入队列: ${taskId}, 队列长度: ${state.uploadQueue.value.length}`);
       
       await startParsing();

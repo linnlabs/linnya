@@ -131,7 +131,7 @@ import { ActionButtons, applyTextareaAutoResize, CustomSelect, IconButton, Modal
 import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
-import { useKnowledgeBaseStore } from '@/domains/knowledgebase/stores/knowledgeBase';
+import { useKnowledgeBase } from '@/domains/knowledgebase/runtime.js';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 import type { ProjectFormValues } from '../definitions/projectOperations';
 
@@ -178,7 +178,7 @@ type KnowledgeBaseOption = {
   text: string;
 };
 
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 const selectedKnowledgeBaseId = ref<string | null>(null);
 const linkedKnowledgeBaseIds = ref<string[]>([]);
 

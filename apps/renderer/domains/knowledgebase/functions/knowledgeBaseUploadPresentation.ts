@@ -3,34 +3,12 @@ import type {
   KnowledgeBaseMessageResolver,
 } from '../definitions/knowledgeBaseMessages';
 
-export type KnowledgeBaseUploadStatus =
-  | 'pending'
-  | 'queued'
-  | 'processing'
-  | 'uploading'
-  | 'completed'
-  | 'duplicate'
-  | 'failed'
-  | 'error';
-
-export interface KnowledgeBaseUploadTaskLike {
-  readonly status: KnowledgeBaseUploadStatus | string;
-  readonly message?: KnowledgeBaseUploadMessage | null;
-  readonly error?: KnowledgeBaseUploadMessage | null;
-}
-
-type KnowledgeBaseUploadMessageParams = Parameters<KnowledgeBaseMessageResolver>[1];
-
-export interface KnowledgeBaseUploadLocalizedMessage {
-  readonly key: KnowledgeBaseMessageKey;
-  readonly params?: KnowledgeBaseUploadMessageParams;
-}
-
-export type KnowledgeBaseUploadMessage = string | KnowledgeBaseUploadLocalizedMessage;
+import type { KnowledgeBaseUploadTaskLike, KnowledgeBaseUploadMessage, KnowledgeBaseUploadLocalizedMessage } from '../definitions/knowledgeBaseUpload';
+export type { KnowledgeBaseUploadStatus, KnowledgeBaseUploadTaskLike, KnowledgeBaseUploadMessage, KnowledgeBaseUploadLocalizedMessage } from '../definitions/knowledgeBaseUpload';
 
 export function createKnowledgeBaseUploadMessage(
   key: KnowledgeBaseMessageKey,
-  params?: KnowledgeBaseUploadMessageParams,
+  params?: Parameters<KnowledgeBaseMessageResolver>[1],
 ): KnowledgeBaseUploadLocalizedMessage {
   return params === undefined ? { key } : { key, params };
 }

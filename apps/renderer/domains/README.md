@@ -31,7 +31,7 @@
   - `app/navigation`：当前项目 / Linnya 助手 scope 与草稿对话状态
   - [`app/active-document`](../app/active-document/README.md)：当前活动文档状态；内部存储位于 `app/store`，不执行保存流程
   - `domains/model-configuration/features/model-catalog`：模型目录 lifecycle 与预加载
-  - `domains/knowledgebase/stores/knowledgeBase`：知识库列表预加载
+  - `domains/knowledgebase/runtime.js`：知识库列表预加载
   - `app/update/store/updateStore`：更新弹窗 IPC 监听（含 renderer-ready 握手）
 
 如果你在排查“启动阶段才会发生”的问题，优先从这里顺藤摸瓜。

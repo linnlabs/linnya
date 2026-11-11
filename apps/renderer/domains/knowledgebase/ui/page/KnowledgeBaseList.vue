@@ -115,7 +115,7 @@
 <script setup lang="ts">
 import { isObjectLike } from '@linnya/foundation';
 import { computed, ref, onMounted, watch } from 'vue';
-import { useKnowledgeBaseStore } from '../../stores/knowledgeBase';
+import { useKnowledgeBase } from '../../runtime.js';
 import { useKnowledgeGraphProgressStore } from '../../stores/knowledgeGraphProgressStore';
 import { LibraryIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
@@ -126,7 +126,7 @@ import GlobalUploadModal from '../GlobalUploadModal.vue';
 import KnowledgeGraphProgressBar from '../KnowledgeGraphProgressBar.vue';
 import { useKnowledgeBaseLocalization } from '../useKnowledgeBaseLocalization';
 
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 const kgProgressStore = useKnowledgeGraphProgressStore();
 const { knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 

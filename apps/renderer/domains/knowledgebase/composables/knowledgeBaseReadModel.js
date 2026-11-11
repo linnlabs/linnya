@@ -1,5 +1,5 @@
 /**
- * @file apps/renderer/features/KnowledgeBase/stores/knowledgeBase/computed.js
+ * @file apps/renderer/domains/knowledgebase/composables/knowledgeBaseReadModel.js
  * 
  * @brief 知识库Store计算属性
  * 
@@ -12,13 +12,13 @@
 
 import { computed } from 'vue'
 import { formatStorageBytes, useLocalizationStore } from '@app/localization'
-import { UPLOAD_STATUS } from '../../constants/index.js'
-import { getKnowledgeBaseById, getKbNameById } from './utils.js'
-import { resolveCurrentKnowledgeBaseMessage } from '../../functions/resolveCurrentKnowledgeBaseMessage'
+import { UPLOAD_STATUS } from '../constants/index.js'
+import { getKbNameById } from '../functions/knowledgeBaseQueries.js'
+import { resolveCurrentKnowledgeBaseMessage } from '../functions/resolveCurrentKnowledgeBaseMessage'
 import {
   resolveUploadTaskErrorText,
   resolveUploadTaskStatusText,
-} from '../../functions/knowledgeBaseUploadPresentation'
+} from '../functions/knowledgeBaseUploadPresentation'
 
 /**
  * 功能 (What): 创建当前知识库的计算属性

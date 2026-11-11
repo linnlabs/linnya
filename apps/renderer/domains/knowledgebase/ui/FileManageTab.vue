@@ -92,7 +92,7 @@
   <script setup>
 import { formatStorageBytes } from '@app/localization';
   import { computed, ref } from 'vue'
-  import { useKnowledgeBaseStore } from '../stores/knowledgeBase'
+  import { useKnowledgeBase } from '../runtime.js'
   import { AlertDialog } from '@linnya/renderer-ui'
   import { confirm } from '@shared/composables/confirmDialog'
   import { useKnowledgeBaseLocalization } from './useKnowledgeBaseLocalization'
@@ -103,7 +103,7 @@ import { formatStorageBytes } from '@app/localization';
   })
   
   // --- Store ---
-  const kbStore = useKnowledgeBaseStore()
+  const kbStore = useKnowledgeBase()
   const { currentLocale, knowledgeBaseMessage } = useKnowledgeBaseLocalization()
   
   // --- Refs for Dialogs and Loading State ---

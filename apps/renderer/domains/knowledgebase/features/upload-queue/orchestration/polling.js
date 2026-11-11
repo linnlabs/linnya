@@ -1,5 +1,5 @@
 /**
- * @file apps/renderer/features/KnowledgeBase/stores/knowledgeBase/actions/polling.js
+ * @file apps/renderer/domains/knowledgebase/features/upload-queue/orchestration/polling.js
  * 
  * @brief 统一的轮询管理器
  * 

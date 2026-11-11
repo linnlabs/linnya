@@ -60,7 +60,7 @@ function globalAnimationLoop(now) {
  * V35 专家方案: 核心动画更新逻辑
  */
 function updateTaskAnimation(now, task, animationState) {
-  const { realProgress, seed, status } = task;
+  const { realProgress, seed } = task;
   let displayProgress = task.displayProgress; 
   const { time } = animationState;
   
@@ -109,7 +109,7 @@ function updateTaskAnimation(now, task, animationState) {
   
   // --- 4. 更新显示进度 ---
   displayProgress += step;
-  task.displayProgress = Math.min(displayProgress, 100);
+  animationState.commitTask(task, { displayProgress: Math.min(displayProgress, 100) });
 }
 
 
@@ -118,7 +118,7 @@ function updateTaskAnimation(now, task, animationState) {
  * @param {object} task - 任务对象
  * @param {function} onComplete - 动画完成时的回调函数
  */
-export function startAnimation(task, onComplete) {
+export function startAnimation(task, onComplete, commitTask) {
   if (!task || !task.id) return;
   
   const taskId = task.id;
@@ -128,6 +128,7 @@ export function startAnimation(task, onComplete) {
   // 如果任务已在运行，只更新其回调
   if (activeTasks.has(taskId)) {
     const existingState = activeTasks.get(taskId);
+    existingState.commitTask = commitTask;
     
     // 检测task对象是否被替换
     if (existingState.task !== task) {
@@ -145,6 +146,7 @@ export function startAnimation(task, onComplete) {
   const animationState = {
     task: task,
     onComplete: onComplete,
+    commitTask,
     
     // --- 动画状态 & 基因 ---
     lastRealProgress: task.realProgress,

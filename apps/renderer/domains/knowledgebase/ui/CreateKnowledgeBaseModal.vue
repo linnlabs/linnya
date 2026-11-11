@@ -161,7 +161,7 @@
 import { isObjectLike } from '@linnya/foundation';
 import { loadProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { computed, nextTick, ref, watch } from 'vue';
-import { useKnowledgeBaseStore } from '../stores/knowledgeBase';
+import { useKnowledgeBase } from '../runtime.js';
 import { ActionButtons, CustomSelect, IconButton, Modal, TagChip } from '@linnya/renderer-ui';
 import { knowledgeBaseService } from '../services/knowledgeBaseService.js';
 import { AddIcon } from '@linnya/renderer-ui/icons';
@@ -205,7 +205,7 @@ function normalizeCreatedKnowledgeBase(value: unknown): KnowledgeBaseItem | null
   return { id, name, description };
 }
 
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 const workspaceProjectsStore = useWorkspaceProjectsStore();
 const { knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 

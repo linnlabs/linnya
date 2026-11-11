@@ -24,12 +24,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { useKnowledgeBaseStore } from '../../stores/knowledgeBase';
+import { useKnowledgeBase } from '../../runtime.js';
 import KnowledgeBaseList from './KnowledgeBaseList.vue';
 import KnowledgeBaseDetail from './KnowledgeBaseDetail.vue';
 import { usePdfOcrPageLimitTaskNotification } from '../usePdfOcrPageLimitTaskNotification';
 
-const kbStore = useKnowledgeBaseStore();
+const kbStore = useKnowledgeBase();
 
 usePdfOcrPageLimitTaskNotification({
   getUploadTasks: () => kbStore.uploadTasks.values(),

@@ -71,7 +71,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useUIStore } from '@shared/stores/ui'
-import { useKnowledgeBaseStore } from '../stores/knowledgeBase'
+import { useKnowledgeBase } from '../runtime.js'
 import { useNotificationStore } from '@/app/notification'
 import { useKnowledgeBaseLocalization } from './useKnowledgeBaseLocalization'
 import { SettingsIcon } from '@linnya/renderer-ui/icons';
@@ -92,7 +92,7 @@ const props = defineProps({
 
 // --- Stores ---
 const uiStore = useUIStore()
-const kbStore = useKnowledgeBaseStore()
+const kbStore = useKnowledgeBase()
 const notificationStore = useNotificationStore()
 const { knowledgeBaseMessage } = useKnowledgeBaseLocalization()
 

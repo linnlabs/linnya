@@ -124,7 +124,7 @@
 <script setup>
 import { formatStorageBytes } from '@app/localization';
 import { ref, computed, watch } from 'vue'
-import { useKnowledgeBaseStore } from '../stores/knowledgeBase'
+import { useKnowledgeBase } from '../runtime.js'
 import { SUPPORTED_FILE_TYPES } from '../constants'
 import { useNotificationStore } from '@/app/notification'
 import { ActionButtons } from '@linnya/renderer-ui';
@@ -145,7 +145,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:selectedKbId', 'open-global-upload'])
 
-const kbStore = useKnowledgeBaseStore()
+const kbStore = useKnowledgeBase()
 const notificationStore = useNotificationStore()
 const { currentLocale, knowledgeBaseMessage } = useKnowledgeBaseLocalization()
 const fileInput = ref(null)
@@ -159,8 +159,8 @@ const supportedFileTypesText = computed(() => {
 })
 
 // 🐛 修复：移除了 onUnmounted 钩子。
-// cleanupIpcListener 是一个全局清理函数，应在应用退出时调用，
-// 而不应由任何一个组件的生命周期来管理，这是导致无限递归的根源。
+// cleanupIpcListener 属于知识库应用运行 owner，应在应用退出时调用，
+// 组件卸载只结束本次展示，不能停止后台上传或进度订阅。
 
 const uploadTasks = computed(() => {
   const allTasks = Array.from(kbStore.uploadTasks.values());

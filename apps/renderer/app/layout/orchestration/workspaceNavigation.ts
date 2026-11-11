@@ -256,8 +256,8 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
 
       // 中文说明：知识库页面的数据预热属于导航进入该 scene 的编排职责，
       // 不能散落在 UI 偏好 store 或页面组件里。
-      const { useKnowledgeBaseStore } = await import('@/domains/knowledgebase/stores/knowledgeBase');
-      const kbStore = useKnowledgeBaseStore();
+      const { useKnowledgeBase } = await import('@/domains/knowledgebase/runtime.js');
+      const kbStore = useKnowledgeBase();
       await kbStore.ensureDataLoaded();
     },
 

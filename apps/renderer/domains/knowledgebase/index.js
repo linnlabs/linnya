@@ -12,7 +12,7 @@ export { default as FileManageTab } from './ui/FileManageTab.vue'
 export { knowledgeBaseService } from './services/knowledgeBaseService.js'
 
 // Store
-export { useKnowledgeBaseStore } from './stores/knowledgeBase.js'
+export { useKnowledgeBase } from './runtime.js'
 
 // 常量和类型（如果有）
 export * from './constants/index.js'
