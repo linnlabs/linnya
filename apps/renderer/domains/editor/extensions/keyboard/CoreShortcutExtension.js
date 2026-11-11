@@ -1,8 +1,7 @@
 import { Extension } from '@tiptap/core';
 
 // 导入所有共享快捷键处理函数
-// 注意：handleSaveShortcut 已移至 AppLayout.vue 作为全局快捷键处理
-// import { handleSaveShortcut } from './handlers/FileKeys';
+// 保存快捷键由 app/layout 的全局快捷键入口处理。
 import { handleEnter, handleBackspace, handleDeleteOnEmptyBlock } from './handlers/BlockEditing';
 import { handleTab, handleShiftTab } from './handlers/Indentation';
 import { handleMoveBlockUp, handleMoveBlockDown } from './handlers/BlockMove';
@@ -10,7 +9,6 @@ import { handleBlockArrowUp, handleBlockArrowDown, handleBlockArrowLeft, handleB
 
 // 使用具有描述性前缀的ID，便于管理和调试
 const ID_PREFIX = {
-  FILE: 'file',
   BLOCK_EDITING: 'block-editing',
   INDENTATION: 'indentation',
   BLOCK_MOVE: 'block-move',
@@ -21,7 +19,6 @@ const ID_PREFIX = {
  * CoreShortcutExtension
  * 
  * 一个聚合性的扩展，处理所有共享快捷键，包括：
- * - 文件操作（如保存）
  * - 块编辑（Enter, Backspace, Delete）
  * - 缩进（Tab, Shift+Tab）
  * - 块移动（Alt+ArrowUp, Alt+ArrowDown）
@@ -37,17 +34,6 @@ export const CoreShortcutExtension = Extension.create({
       console.warn('[CoreShortcutExtension] KeyboardRegistry not found on editor storage. Core shortcuts not registered.');
       return;
     }
-
-    // ========== 文件操作快捷键 ==========
-    // 注意：保存快捷键 (Ctrl+S/Cmd+S) 已在 AppLayout.vue 中作为全局快捷键处理
-    // 这样可以确保在 editor-shell 的任意位置按下都能保存，而不仅限于编辑器获得焦点时
-    // editor.storage.keyboardRegistry.register({
-    //   keys: 'Mod-s',
-    //   handler: handleSaveShortcut,
-    //   phase: 'normal',
-    //   priority: 100,
-    //   id: `${ID_PREFIX.FILE}-save`,
-    // });
 
     // ========== 块编辑快捷键 ==========
     editor.storage.keyboardRegistry.register({
@@ -151,8 +137,6 @@ export const CoreShortcutExtension = Extension.create({
     if (!editor.storage.keyboardRegistry) return;
 
     // 注销所有处理器
-    // 文件操作（保存快捷键已在 AppLayout.vue 中全局处理，无需注销）
-    // editor.storage.keyboardRegistry.unregister(`${ID_PREFIX.FILE}-save`);
     
     // 块编辑
     editor.storage.keyboardRegistry.unregister(`${ID_PREFIX.BLOCK_EDITING}-enter`);
