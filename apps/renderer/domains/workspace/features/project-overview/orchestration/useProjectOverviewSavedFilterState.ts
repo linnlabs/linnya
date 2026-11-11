@@ -135,6 +135,16 @@ export function useProjectOverviewSavedFilterState(input: {
     await guarded(() => savedFilters.remove(id));
   }
 
+  /** 标签或字段改动后重读；正在看的那项若被改写，按新定义重新套用，不显示成“已改动”。 */
+  async function reloadAfterSchemaChange(): Promise<void> {
+    const before = activeFilter.value?.definition ?? null;
+    await savedFilters.reload();
+    const after = activeFilter.value;
+    if (after && before && JSON.stringify(after.definition) !== JSON.stringify(before)) {
+      apply(fileViewFromSavedFilter(after.definition, input.filters.value.query));
+    }
+  }
+
   async function pin(id: string): Promise<void> {
     await guarded(() => savedFilters.update(id, { pinned: true }));
   }
@@ -152,5 +162,6 @@ export function useProjectOverviewSavedFilterState(input: {
     saveChanges,
     remove,
     pin,
+    reloadAfterSchemaChange,
   };
 }

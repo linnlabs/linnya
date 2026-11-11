@@ -17,17 +17,17 @@ function setup() {
   databases.push(db);
   db.pragma('foreign_keys = ON');
   db.exec(`
-    CREATE TABLE projects (id TEXT PRIMARY KEY);
+    CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '');
     CREATE TABLE workspace_nodes (
       id TEXT PRIMARY KEY, project_id TEXT, parent_id TEXT, type TEXT NOT NULL, name TEXT NOT NULL, icon TEXT,
       created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, deleted_at INTEGER, last_opened_at INTEGER,
       access_count INTEGER NOT NULL DEFAULT 0
     );
     CREATE INDEX idx_workspace_nodes_project ON workspace_nodes(project_id, deleted_at);
-    CREATE TABLE conversations (conversation_id TEXT PRIMARY KEY);
+    CREATE TABLE conversations (conversation_id TEXT PRIMARY KEY, title TEXT);
     CREATE TABLE runs (id TEXT PRIMARY KEY, parent_run_id TEXT, agent_spec_id TEXT);
-    INSERT INTO projects VALUES ('p1');
-    INSERT INTO conversations VALUES ('conv');
+    INSERT INTO projects VALUES ('p1', '读书');
+    INSERT INTO conversations VALUES ('conv', '整理资料');
     INSERT INTO runs VALUES ('root', NULL, 'default'), ('child', 'root', 'research_v1');
   `);
   for (const statement of [...ACTION_LEDGER_SCHEMAS, ...SEMANTIC_LAYER_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS, ...PROJECT_SAVED_FILTER_SCHEMAS]) db.exec(statement);
@@ -178,6 +178,62 @@ describe('linnya schema / props / query / links', () => {
     const clash = await run(['query', '--where', '状态=在读', '--save', '待读论文']);
     expect(clash.stdout).toContain('已有同名筛选“待读论文”，没有覆盖');
     expect(db.prepare('SELECT count(*) AS n FROM project_saved_filters').get()).toEqual({ n: 2 });
+  });
+
+  it('schema 管理：不加 --yes 只预览，执行后可整批撤回；保存的筛选一起改写与恢复；记下 Agent 与对话', async () => {
+    const { db, run } = setup();
+    await defineReading(run);
+    await run(['schema', 'add-tag', '文献', '--field', '作者'], { agentRunId: 'child' });
+    expect(db.prepare("SELECT created_by_kind, created_conversation_id, created_agent_id FROM semantic_tags WHERE name = '文献'").get())
+      .toEqual({ created_by_kind: 'subrun', created_conversation_id: 'conv', created_agent_id: 'research_v1' });
+    await run(['props', 'tag', 'workspace:/论文/Attention', '--tag', '文献', '--rev', '0'], { agentRunId: 'child' });
+    await run(['query', '--tag', '文献', '--save', '文献清单']);
+
+    const preview = await run(['schema', 'merge-tags', '文献', '论文']);
+    expect(preview.access).toMatchObject({ conversationFiles: 'none' });
+    expect(preview.stdout).toContain('将把标签“文献”合并到“论文”');
+    expect(preview.stdout).toContain('- 1 份文档改带“论文”，字段值不变');
+    expect(preview.stdout).toContain('- 改写保存的筛选：“文献清单”（读书）');
+    expect(preview.stdout).toContain('加 --yes 执行');
+    expect(db.prepare("SELECT COUNT(*) AS n FROM semantic_tags WHERE name = '文献' AND deleted_at IS NULL").get()).toEqual({ n: 1 });
+
+    const merged = await run(['schema', 'merge-tags', '文献', '论文', '--yes'], { agentRunId: 'child' });
+    expect(merged.access).toMatchObject({ conversationFiles: 'write' });
+    expect(merged.stdout).toContain('已执行：合并标签：文献 → 论文（1 份文档），改写了 1 个保存的筛选');
+    const changeId = /改动编号 (\S+)；/u.exec(merged.stdout)?.[1];
+    expect(changeId).toBeTruthy();
+    expect((await run(['props', 'get', 'workspace:/论文/Attention'])).stdout).toContain('论文');
+
+    const changes = await run(['schema', 'changes']);
+    expect(changes.stdout).toContain(`${changeId}  合并标签：文献 → 论文（1 份文档），改写 1 个保存的筛选  research_v1，对话“整理资料”`);
+
+    const undoPreview = await run(['schema', 'undo', changeId!]);
+    expect(undoPreview.stdout).toContain('将撤回：合并标签：文献 → 论文');
+    const undone = await run(['schema', 'undo', changeId!, '--yes']);
+    expect(undone.stdout).toContain('已撤回：合并标签：文献 → 论文');
+    expect(db.prepare("SELECT COUNT(*) AS n FROM semantic_tags WHERE name = '文献' AND deleted_at IS NULL").get()).toEqual({ n: 1 });
+    const again = await run(['schema', 'undo', changeId!, '--yes']);
+    expect(again).toMatchObject({ exitCode: 1 });
+    expect(again.stderr).toContain('already_undone');
+  });
+
+  it('schema 改类型与改选项：预览列出能转与转不了的值；旧名=新名 改名', async () => {
+    const { run } = setup();
+    await defineReading(run);
+    await run(['props', 'tag', 'workspace:/论文/Attention', 'workspace:/论文/BERT', '--tag', '论文', '--rev', '0,0']);
+    await run(['props', 'set', 'workspace:/论文/Attention', 'workspace:/论文/BERT', '状态=在读', '--rev', '1,1']);
+    await run(['props', 'set', 'workspace:/论文/Attention', '年份=2017', '--rev', '2']);
+    const retype = await run(['schema', 'retype-field', '年份', '--type', 'select']);
+    expect(retype.stdout).toContain('- 1 个已填的值：1 个能转，0 个转不了，0 个会变空');
+    expect(retype.stdout).toContain('能转：“2017” → 2017（Attention）');
+    const options = await run(['schema', 'set-options', '状态', '--option', '待读,在读=正在读']);
+    expect(options.stdout).toContain('删除选项 “读完”，0 份文档用到它们的值清除');
+    const renamed = await run(['schema', 'set-options', '状态', '--option', '待读,在读=正在读,读完', '--yes']);
+    expect(renamed.stdout).toContain('字段“状态”的选项：改名 在读→正在读');
+    expect((await run(['props', 'get', 'workspace:/论文/BERT'])).stdout).toContain('正在读');
+    const missing = await run(['schema', 'set-options', '状态', '--option', '不存在=新']);
+    expect(missing).toMatchObject({ exitCode: 1 });
+    expect(missing.stderr).toContain('没有选项“不存在”');
   });
 
   it('条件解析：两字符运算符优先，空值表示为空/不为空', () => {

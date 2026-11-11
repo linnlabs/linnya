@@ -6,6 +6,16 @@ export const SCHEMA_USAGE = [
   'linnya schema add-field 名称 --type text|number|date|datetime|checkbox|select|multi_select|url [--option 选项,...] [--allow-similar]',
   'linnya schema add-tag 名称 [--field 字段[=默认值]]... [--allow-similar]',
   'linnya schema set-fields 标签 [--field 字段[=默认值]]...   整体替换标签带的字段',
+  '管理（标签和字段整个工作区共用，改动影响所有项目；不加 --yes 只预览影响，加上才执行，执行后可整批撤回）：',
+  'linnya schema rename-tag 标签 新名 [--allow-similar] [--yes]',
+  'linnya schema merge-tags 来源标签 目标标签 [--yes]   来源的文档改带目标，目标补上来源的字段，来源删除',
+  'linnya schema delete-tag 标签 [--yes]   从文档上去掉并删除标签；字段值保留',
+  'linnya schema rename-field 字段 新名 [--allow-similar] [--yes]',
+  'linnya schema delete-field 字段 [--yes]',
+  'linnya schema retype-field 字段 --type 类型 [--yes]   转不了的值清除，原值记在改动里',
+  'linnya schema set-options 字段 --option 选项,... [--yes]   按给出的顺序；旧名=新名 改名，新名称新建，没列出的删除',
+  'linnya schema changes [--limit 1..50]   最近的标签和字段改动',
+  'linnya schema undo 改动编号 [--yes]   整批撤回，保存的筛选一起恢复',
 ].join('\n');
 
 export const PROPS_USAGE = [
@@ -37,7 +47,22 @@ export type SchemaCommand =
     readonly options: readonly string[]; readonly allowSimilar: boolean;
   }
   | { readonly kind: 'add-tag'; readonly name: string; readonly fields: readonly RawTagField[]; readonly allowSimilar: boolean }
-  | { readonly kind: 'set-fields'; readonly tag: string; readonly fields: readonly RawTagField[] };
+  | { readonly kind: 'set-fields'; readonly tag: string; readonly fields: readonly RawTagField[] }
+  | { readonly kind: 'manage'; readonly operation: SchemaManageOperation; readonly confirmed: boolean }
+  | { readonly kind: 'changes'; readonly limit: number }
+  | { readonly kind: 'undo'; readonly changeId: string; readonly confirmed: boolean };
+
+/** 管理命令的操作；选项先按原文给出，读到字段定义后再对应到已有选项。 */
+export type SchemaManageOperation =
+  | { readonly op: 'rename_tag'; readonly tag: string; readonly name: string; readonly allowSimilar: boolean }
+  | { readonly op: 'merge_tags'; readonly source: string; readonly target: string }
+  | { readonly op: 'delete_tag'; readonly tag: string }
+  | { readonly op: 'rename_property'; readonly property: string; readonly name: string; readonly allowSimilar: boolean }
+  | { readonly op: 'delete_property'; readonly property: string }
+  | { readonly op: 'change_property_type'; readonly property: string; readonly valueType: SemanticValueType }
+  | { readonly op: 'update_options'; readonly property: string; readonly options: readonly { readonly from: string | null; readonly name: string }[] };
+
+const CHANGES_MAX_LIMIT = 50;
 
 /** 字段默认值的原文；按字段类型转换要等读到定义后才能做。 */
 export interface RawTagField {
@@ -121,9 +146,55 @@ export function parseSchemaCommand(argv: readonly string[]): SchemaCommand {
     args: rest, allowPositionals: true, options: {
       json: { type: 'boolean', default: false }, type: { type: 'string' }, option: { type: 'string', multiple: true },
       field: { type: 'string', multiple: true }, 'allow-similar': { type: 'boolean', default: false },
+      yes: { type: 'boolean', default: false }, limit: { type: 'string' },
     },
   });
+  const pair = (first: string, second: string): [string, string] => {
+    if (positionals.length !== 2) throw new Error(`需要${first}和${second}两个参数`);
+    return [positionals[0].trim(), positionals[1].trim()];
+  };
+  const manage = (operation: SchemaManageOperation): SchemaCommand => ({ kind: 'manage', operation, confirmed: values.yes });
   switch (sub) {
+    case 'rename-tag': {
+      const [tag, name] = pair('标签', '新名');
+      return manage({ op: 'rename_tag', tag, name, allowSimilar: values['allow-similar'] });
+    }
+    case 'merge-tags': {
+      const [source, target] = pair('来源标签', '目标标签');
+      return manage({ op: 'merge_tags', source, target });
+    }
+    case 'delete-tag':
+      return manage({ op: 'delete_tag', tag: single(positionals, '标签名') });
+    case 'rename-field': {
+      const [property, name] = pair('字段', '新名');
+      return manage({ op: 'rename_property', property, name, allowSimilar: values['allow-similar'] });
+    }
+    case 'delete-field':
+      return manage({ op: 'delete_property', property: single(positionals, '字段名') });
+    case 'retype-field': {
+      const valueType = SEMANTIC_VALUE_TYPES.find(type => type === values.type);
+      if (!valueType) throw new Error(`--type 须为 ${SEMANTIC_VALUE_TYPES.join('|')}`);
+      return manage({ op: 'change_property_type', property: single(positionals, '字段名'), valueType });
+    }
+    case 'set-options': {
+      const options = names(values.option).map(item => {
+        const index = item.indexOf('=');
+        if (index < 0) return { from: null, name: item };
+        const [from, name] = [item.slice(0, index).trim(), item.slice(index + 1).trim()];
+        if (!from || !name) throw new Error(`改名写成 旧名=新名：${item}`);
+        return { from, name };
+      });
+      if (!options.length) throw new Error('需要 --option，至少留一个选项');
+      return manage({ op: 'update_options', property: single(positionals, '字段名'), options });
+    }
+    case 'changes': {
+      if (positionals.length) throw new Error('changes 不带参数');
+      const limit = values.limit === undefined ? 20 : Number(values.limit);
+      if (!Number.isInteger(limit) || limit < 1 || limit > CHANGES_MAX_LIMIT) throw new Error(`--limit 须为 1..${CHANGES_MAX_LIMIT}`);
+      return { kind: 'changes', limit };
+    }
+    case 'undo':
+      return { kind: 'undo', changeId: single(positionals, '改动编号'), confirmed: values.yes };
     case 'list':
       if (positionals.length) throw new Error('list 不带参数');
       return { kind: 'list', json: values.json };

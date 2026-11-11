@@ -36,6 +36,10 @@ export function useProjectSavedFilters(projectId: Readonly<Ref<string | null>>) 
     pinned,
     suggestions,
     find: (id: string) => filters.value.find(filter => filter.id === id) ?? null,
+    /** 标签或字段改动会改写保存的筛选，之后重读整份列表。 */
+    async reload(): Promise<void> {
+      await send({ action: 'list', project_id: requireProject() });
+    },
     async create(name: string, definition: ProjectSavedFilterDefinition): Promise<string | null> {
       return send({ action: 'create', project_id: requireProject(), name, definition });
     },

@@ -232,6 +232,9 @@ declare global {
       setProjectField: (
         request: import('@app/schemas').ProjectOverviewSetFieldRequest,
       ) => Promise<unknown>;
+      manageSemanticSchema: (
+        request: import('@app/schemas').SemanticSchemaManageRequest,
+      ) => Promise<unknown>;
       resolveConversationFileLink: (
         request: import('@app/schemas').ConversationFileLinkResolveRequest,
       ) => Promise<import('@app/schemas').OperationResult<

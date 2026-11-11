@@ -263,7 +263,7 @@ function toDocumentChange(row: ChangeRow): ActionLedgerDocumentChange {
  * Agent 身份由 Host 从运行记录里查，不由工具上下文或 owner 提供：Linnkit 的工具上下文不带 Agent，
  * 运行记录在工具执行前已由对话持久化写入。没有运行表的装配（只建账本的测试）记为 null。
  */
-function createRunAgentIdReader(db: Database.Database): (runId: string) => string | null {
+export function createRunAgentIdReader(db: Database.Database): (runId: string) => string | null {
   const hasRuns = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'runs'").get();
   if (!hasRuns) return () => null;
   const select = db.prepare<[string], { agent_spec_id: string | null }>('SELECT agent_spec_id FROM runs WHERE id = ?');

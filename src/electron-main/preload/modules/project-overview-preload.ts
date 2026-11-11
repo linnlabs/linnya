@@ -4,10 +4,12 @@ import {
   PROJECT_OVERVIEW_MATCH_CHANNEL,
   PROJECT_OVERVIEW_SET_FIELD_CHANNEL,
   PROJECT_SAVED_FILTERS_CHANNEL,
+  SEMANTIC_SCHEMA_MANAGE_CHANNEL,
   type ProjectOverviewMatchRequest,
   type ProjectOverviewRequest,
   type ProjectOverviewSetFieldRequest,
   type ProjectSavedFiltersRequest,
+  type SemanticSchemaManageRequest,
 } from '@app/schemas';
 
 /** 返回值都未校验；Renderer 必须用对应的 Result Schema 解析。 */
@@ -24,6 +26,9 @@ export function buildProjectOverviewPreloadApi(ipcRenderer: IpcRenderer) {
     ),
     setProjectField: (request: ProjectOverviewSetFieldRequest): Promise<unknown> => (
       ipcRenderer.invoke(PROJECT_OVERVIEW_SET_FIELD_CHANNEL, request)
+    ),
+    manageSemanticSchema: (request: SemanticSchemaManageRequest): Promise<unknown> => (
+      ipcRenderer.invoke(SEMANTIC_SCHEMA_MANAGE_CHANNEL, request)
     ),
   };
 }

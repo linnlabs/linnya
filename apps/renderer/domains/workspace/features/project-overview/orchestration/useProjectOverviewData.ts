@@ -131,5 +131,12 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
     timer = setTimeout(() => void flush(), 0);
   }
 
-  return { rows, fields, folderCount, characterCount, status, revision, refreshDocuments };
+  /** 标签或字段本身改了（改名、合并、删除）：所有文档的标签和字段都可能变，整份重读。 */
+  function reloadAll(): void {
+    refreshAll = true;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => void flush(), 0);
+  }
+
+  return { rows, fields, folderCount, characterCount, status, revision, refreshDocuments, reloadAll };
 }

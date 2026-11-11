@@ -23,7 +23,10 @@ export const SEMANTIC_LAYER_SCHEMAS = [
     name_key TEXT NOT NULL,
     color TEXT,
     created_at INTEGER NOT NULL,
-    deleted_at INTEGER
+    deleted_at INTEGER,
+    created_by_kind TEXT,
+    created_conversation_id TEXT,
+    created_agent_id TEXT
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_semantic_tags_name_key
     ON semantic_tags(name_key) WHERE deleted_at IS NULL`,
@@ -79,4 +82,22 @@ export const SEMANTIC_LAYER_SCHEMAS = [
     ON semantic_object_versions(document_id) WHERE document_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS idx_semantic_object_versions_conversation
     ON semantic_object_versions(conversation_id) WHERE conversation_id IS NOT NULL`,
+  // 标签与字段本身的改动（改名、合并、删除、改类型、改选项），一批一行，供“最近改动”列出和整批撤回。
+  // undo_json 是撤回所需的差量；attachments_json 由调用方附上自己的部分（如保存的筛选改写前的定义）。
+  // 对话和运行只记身份文字，不设外键：对话删除后这条改动仍可撤回。
+  `CREATE TABLE IF NOT EXISTS semantic_schema_changes (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    summary_json TEXT NOT NULL,
+    undo_json TEXT NOT NULL,
+    attachments_json TEXT NOT NULL DEFAULT '{}',
+    actor_kind TEXT NOT NULL,
+    conversation_id TEXT,
+    run_id TEXT,
+    agent_id TEXT,
+    created_at INTEGER NOT NULL,
+    undone_at INTEGER
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_semantic_schema_changes_created
+    ON semantic_schema_changes(created_at)`,
 ] as const;

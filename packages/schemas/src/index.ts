@@ -206,6 +206,7 @@ export * from './skills';
 export * from './project';
 export * from './project-overview';
 export * from './project-saved-filters';
+export * from './semantic-schema-management';
 export * from './project-conversations';
 export * from './project-mutation-events';
 

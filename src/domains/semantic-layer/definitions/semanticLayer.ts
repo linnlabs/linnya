@@ -39,11 +39,19 @@ export interface SemanticTagField {
   readonly defaultValue?: SemanticValue;
 }
 
+/** 新建标签的是谁：用户直接建的只有种类；Agent 建的带对话与 Agent，迁移前建的没有记录。 */
+export interface SemanticCreator {
+  readonly kind: 'user' | 'run' | 'subrun' | 'plugin' | 'external';
+  readonly conversationId: string | null;
+  readonly agentId: string | null;
+}
+
 export interface SemanticTagDefinition {
   readonly id: string;
   readonly name: string;
   readonly fields: readonly SemanticTagField[];
   readonly createdAt: number;
+  readonly createdBy?: SemanticCreator;
 }
 
 export interface SemanticObjectRef {
@@ -83,7 +91,10 @@ export type SemanticLayerErrorCode =
   | 'revision_conflict'
   | 'object_not_found'
   | 'outside_project'
-  | 'unsupported_kind';
+  | 'unsupported_kind'
+  | 'change_not_found'
+  | 'undo_conflict'
+  | 'already_undone';
 
 export class SemanticLayerError extends Error {
   constructor(

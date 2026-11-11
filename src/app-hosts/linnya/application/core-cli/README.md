@@ -39,6 +39,8 @@
 
 - `linnya schema`：列出已有标签（及其字段、默认值）和字段（类型、选项）。新建前先看能否复用。
 - `linnya schema add-field 名称 --type 类型 [--option a,b]`、`add-tag 名称 [--field 字段[=默认值]]...`、`set-fields 标签 [--field ...]`（整体替换）。名称与已有定义相近时报 `similar_name` 并列出候选，确认不是同一个再加 `--allow-similar`。
+- `linnya schema rename-tag | merge-tags | delete-tag | rename-field | delete-field | retype-field | set-options`：管理标签和字段本身。不加 `--yes` 只预览影响（文档数、合并补上的字段、改类型时每个值能否转换及样例、要改写的保存的筛选），加上才执行，需要 Shell 写权限。`set-options` 按给出的顺序，`旧名=新名` 改名，没列出的删除。执行与界面同一条路径（[标签管理](../semantic-schema/README.md)），保存的筛选一起改写；输出改动编号。新建标签与这些改动都记下发起的运行与对话。
+- `linnya schema changes [--limit n]` 列出最近的改动；`linnya schema undo 编号 [--yes]` 整批撤回，之后又被改过的保存的筛选不恢复并说明个数。
 - `linnya props get 路径`：当前版本、标签和全部字段（未设置的显示“（空）”）。
 - `linnya props tag|untag 路径... --tag 标签,...`、`set 路径... 字段=值...`、`restore 路径 --to 版本`。`set` 里值留空即清除，多选用逗号分隔，勾选写 `true`/`false`。
 - `linnya query [--tag 标签]... [--where 条件]... [--sort [-]字段]... [--group 字段] [--limit 1..200] [--json]`：条件写成 `字段=值`、`!=`、`>`、`>=`、`<`、`<=`、`~`（包含）、`!~`（不包含）；`字段=` 为空、`字段!=` 不为空。内建字段 `name`、`type`、`created`、`updated`。默认 50 份，超过时首行给出总数。

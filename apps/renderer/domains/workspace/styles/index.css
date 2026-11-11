@@ -1,4 +1,5 @@
 @import './components/index.css';
 @import './features/project-overview/index.css';
+@import './features/semantic-schema/SemanticSchemaModal.css';
 @import './features/todo/index.css';
 @import './features/import-export/index.css';

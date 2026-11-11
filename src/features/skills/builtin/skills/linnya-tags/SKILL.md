@@ -1,10 +1,10 @@
 ---
 name: linnya-tags
-description: Classify and track Workspace documents with Linnya tags and fields through the linnya CLI. Use when collecting material into a project, sorting a messy project (drafts vs finals, kinds of material), tracking progress (status, board), saving a filter the user wants to keep, or answering questions by document type or status. Not for topics — search covers what a document is about.
+description: Classify and track Workspace documents with Linnya tags and fields through the linnya CLI. Use when collecting material into a project, sorting a messy project (drafts vs finals, kinds of material), tracking progress (status, board), saving a filter the user wants to keep, answering questions by document type or status, or managing the tags themselves (merge, rename, delete, change a field's type or options, undo). Not for topics — search covers what a document is about.
 compatibility: Linnya agents with Shell (built-in linnya CLI) and Workspace file tools.
 metadata:
   author: linnya
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Linnya 标签
@@ -82,6 +82,30 @@ linnya query --tag 论文 --group 状态          # 各状态多少份
 - 一次性问题不保存。按单选字段 `--group` 保存会成为按它分列的看板。
 - 之前放过建议、用户现在要留着看时，用同一个名字 `--save`：那条建议会被固定，不会多出一个同名的。
 
+## 管理标签和字段
+
+用户要求整理标签本身时才做（“把‘研究论文’并到‘论文’”“删掉没用的标签”“年份改成数字”），不顺手清理。
+标签和字段整个工作区共用：改动影响所有项目，也会改写用户保存的筛选。
+
+```bash
+linnya schema merge-tags 研究论文 论文          # 先预览
+linnya schema merge-tags 研究论文 论文 --yes    # 核对后执行
+linnya schema rename-tag 文献 论文
+linnya schema delete-tag 待核实
+linnya schema rename-field 年代 年份
+linnya schema retype-field 年份 --type number
+linnya schema set-options 状态 --option 待读,在读=正在读,读完
+linnya schema changes
+linnya schema undo 改动编号 --yes
+```
+
+- 不加 `--yes` 只预览：受影响的文档数、合并要补上的字段、改类型时每个值能不能转、要改写的保存的筛选。核对后再加 `--yes`。
+- 意思相同的两个标签用合并，不要删掉一个再给文档重新打：合并保留字段值，也能整批撤回。
+- 改类型会清除转不了的值（原值记在改动里）。预览里转不了的不少时，先把例子告诉用户，等确认再执行。
+- 选项按给出的顺序排；`旧名=新名` 改名，没列出的选项被删除，用到它的值清除。
+- 执行后在回复里说清改了什么和改动编号。用户要撤回时 `linnya schema undo 改动编号 --yes`，
+  标签、字段、文档上的标签与值和保存的筛选一起恢复。
+
 ## 改完告诉用户
 
 在回复里用一两句话说清：
@@ -90,5 +114,6 @@ linnya query --tag 论文 --group 状态          # 各状态多少份
 - 给多少份文档打了什么、改了什么，有例外就点名；
 - 去哪里看：项目概览的文件页，按“标签：xx”筛选，或切到看板按“状态”分列。
 
-用户不满意要撤回时，用 `linnya changes`（`--run <运行ID>` 或 `--day today`）找出改过的文档，`linnya props get` 看当前版本，
+改的是标签和字段本身（合并、删除、改名、改类型、改选项）时，用 `linnya schema changes` 找到改动编号再 `linnya schema undo`。
+给文档打标签、填值不满意要撤回时，用 `linnya changes`（`--run <运行ID>` 或 `--day today`）找出改过的文档，`linnya props get` 看当前版本，
 再用 `linnya props restore 路径 --to 改前版本` 恢复。

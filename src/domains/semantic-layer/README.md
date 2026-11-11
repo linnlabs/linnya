@@ -6,8 +6,8 @@
 
 ## 负责与不负责
 
-- 负责：标签、字段定义；对象的标签与值；值的校验与空值合同；对象版本与恢复；查询描述与编译；向[行动账本](../action-ledger/README.md)登记改动。
-- 不负责：界面、关系字段（随来龙去脉的关系表一起做）。命令行入口在 [Shell 内建 CLI](../../app-hosts/linnya/application/core-cli/README.md)，给 Agent 看的 `read_file` 属性段在 [文档属性段](../../app-hosts/linnya/application/document-properties/README.md)。
+- 负责：标签、字段定义；对象的标签与值；值的校验与空值合同；对象版本与恢复；标签与字段本身的改动（改名、合并、删除、改类型、改选项）及整批撤回；查询描述与编译；向[行动账本](../action-ledger/README.md)登记改动。
+- 不负责：界面、保存的筛选（改动时由 [Host 的标签管理](../../app-hosts/linnya/application/semantic-schema/README.md)在同一事务里改写）、关系字段（随来龙去脉的关系表一起做）。命令行入口在 [Shell 内建 CLI](../../app-hosts/linnya/application/core-cli/README.md)，给 Agent 看的 `read_file` 属性段在 [文档属性段](../../app-hosts/linnya/application/document-properties/README.md)。
 - 插件不能直接读写这些表，只能经 Host 端口。
 
 ## 对象 =（种类，ID）
@@ -22,7 +22,7 @@
 
 ## 定义
 
-- 标签与字段都是工作区级的，各有稳定 ID，可软删除（删除、合并、改名的入口另行实现）。
+- 标签与字段都是工作区级的，各有稳定 ID，可软删除。新建标签时记下是谁建的（种类、对话、Agent），迁移前建的没有记录。
 - 名称先做 NFKC 归一化、合并空白，再做大小写折叠，结果在未删除的定义里唯一。折叠在 JS 里做：SQLite 的
   `lower()` 只折叠 ASCII。名称最多 64 字，不能以 `#` 或 `@` 开头。
 - 新建前程序先查相近名称：去掉空格、连字符、下划线后相同，一方包含另一方（两字以上），或编辑距离很小（短名 1、
@@ -91,6 +91,28 @@ CLI、面板与以后的界面共用一份查询描述（`SemanticQuery`：项�
 `restoreObject(write, toRevision)` 把标签与值恢复成某个保留版本（0 表示从未写过的空状态），作为一次新写入：
 加版本、入账，不改写历史。超出保留范围的版本报 `invalid_value`。
 
+## 改动标签与字段本身
+
+`features/schema-changes` 定义改动种类与摘要，`infrastructure/sqlite/sqliteSemanticSchemaChanges.ts` 实现。每次操作是一个事务，
+在 `semantic_schema_changes` 记一行“批次”：摘要（名称取当时的名称、受影响对象数）、撤回差量、执行者（来自入口绑定的执行者，
+Agent 由运行记录查出）。受影响的对象各加一个版本、留快照，别处按旧版本的写入会报冲突；批量操作不逐个入账本。
+
+| 操作 | 做什么 | 撤回 |
+|---|---|---|
+| 改名（标签、字段） | 查重名与相近名（排除自己）；插件字段只读，字段名不能含 `.` | 名称已被占用或之后又改过名时报 `undo_conflict` |
+| 合并标签 | 带来源标签的对象改带目标（已带的只去掉来源，保留原打标签时间）；目标补上来源有而它没有的字段；来源软删除；值不动 | 来源恢复，对象重新带上来源，之前没有目标标签的去掉目标，补上的字段去掉 |
+| 删除标签 | 从对象上去掉，标签软删除，值保留 | 标签与对象上的标签回来 |
+| 删除字段 | 软删除，从所有标签的字段里消失，值不动 | 原样显示 |
+| 改类型 | 先预览每个已填的值能转、转不了、会变空；执行时能转的换成新值，其余清除，原值全记进差量 | 类型、选项与这些值恢复；之后又改过类型或选项时报冲突 |
+| 改选项 | 带 ID 的保留（可改名、调顺序），不带的新建，没列出的删除；用到被删选项的值清除（多选只去掉那一项） | 选项与这些值恢复 |
+
+改类型统一先把值转成文字再按目标类型解析（单选、多选之间按选项 ID 直接转）：数字去掉千分位，勾选认是/否、true/false 等，
+日期认 `-` `/` `.` 和年月日写法，只有日期的转日期时间补当地零点并带那天的时区。改成单选、多选时，原来就是单选、多选的沿用选项，
+否则按已有文字出现的先后生成，多选按逗号、顿号、分号拆开，超过 50 种报错。
+
+撤回按差量反向应用，不整份覆盖：之后别处对同一对象的改动保留；已被物理删除的文档跳过。调用方可在同一事务里用
+`attachToChange` 附上自己的撤回数据，`undoChange` 原样交还。已撤回的再撤回报 `already_undone`，找不到报 `change_not_found`。
+
 ## 存储
 
 值每个对象一行 JSONB（`semantic_object_values.property_values`），键是字段 ID。按本机实测，万级文档任意字段
@@ -102,6 +124,7 @@ CLI、面板与以后的界面共用一份查询描述（`SemanticQuery`：项�
 - `functions/`：名称归一化、相近名称、值校验。
 - `infrastructure/sqlite/`：表结构、schema provider 与读写实现。
 - `features/query/`：查询描述、编译器与执行。
+- `features/schema-changes/`：改动种类、摘要与预览合同，值的类型转换。
 
 ```bash
 pnpm exec vitest run src/domains/semantic-layer src/domains/action-ledger

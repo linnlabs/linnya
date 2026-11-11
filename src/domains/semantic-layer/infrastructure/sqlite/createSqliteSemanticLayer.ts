@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 
-import { createSqliteActionLedger, currentActionActor, type ActionLedgerAction } from '../../../action-ledger';
+import { createRunAgentIdReader, createSqliteActionLedger, currentActionActor, type ActionLedgerAction } from '../../../action-ledger';
 import {
   SEMANTIC_VALUE_TYPES,
   SemanticLayerError,
   type DefineSemanticPropertyInput,
   type DefineSemanticTagInput,
+  type SemanticCreator,
   type SemanticDocumentPort,
   type SemanticObjectField,
   type SemanticObjectKind,
@@ -21,6 +22,7 @@ import {
 import { findSimilarSemanticNames } from '../../functions/findSimilarSemanticNames';
 import { cleanSemanticName, semanticNameKey } from '../../functions/normalizeSemanticName';
 import { normalizeSemanticValue } from '../../functions/normalizeSemanticValue';
+import { createSqliteSemanticSchemaChanges } from './sqliteSemanticSchemaChanges';
 
 const KEPT_VERSIONS = 50;
 
@@ -32,7 +34,20 @@ interface PropertyRow {
   readonly owner_plugin_id: string | null;
   readonly created_at: number;
 }
-interface TagRow { readonly id: string; readonly name: string; readonly created_at: number }
+interface TagRow {
+  readonly id: string;
+  readonly name: string;
+  readonly created_at: number;
+  readonly created_by_kind: string | null;
+  readonly created_conversation_id: string | null;
+  readonly created_agent_id: string | null;
+}
+const CREATOR_KINDS = ['user', 'run', 'subrun', 'plugin', 'external'] as const;
+
+function toCreator(row: TagRow): SemanticCreator | undefined {
+  const kind = CREATOR_KINDS.find(candidate => candidate === row.created_by_kind);
+  return kind ? { kind, conversationId: row.created_conversation_id, agentId: row.created_agent_id } : undefined;
+}
 interface TagFieldRow { readonly tag_id: string; readonly property_id: string; readonly default_json: string | null }
 interface ValueRow { readonly revision: number; readonly property_values: string }
 
@@ -78,13 +93,26 @@ export function createSqliteSemanticLayer(
 ) {
   const now = options.now ?? Date.now;
   const newId = options.newId ?? randomUUID;
+  const readRunAgentId = createRunAgentIdReader(db);
+
+  function creator(): SemanticCreator {
+    const actor = currentActionActor();
+    const run = actor?.kind === 'run' || actor?.kind === 'subrun' ? actor
+      : actor?.kind === 'external' ? actor.run : undefined;
+    return {
+      kind: actor?.kind ?? 'user',
+      conversationId: run?.conversationId ?? null,
+      agentId: run ? readRunAgentId(run.runId) : null,
+    };
+  }
 
   const listPropertyRows = db.prepare<[], PropertyRow>(`
     SELECT id, name, value_type, options_json, owner_plugin_id, created_at
     FROM semantic_properties WHERE deleted_at IS NULL ORDER BY name_key
   `);
   const listTagRows = db.prepare<[], TagRow>(
-    'SELECT id, name, created_at FROM semantic_tags WHERE deleted_at IS NULL ORDER BY name_key'
+    `SELECT id, name, created_at, created_by_kind, created_conversation_id, created_agent_id
+     FROM semantic_tags WHERE deleted_at IS NULL ORDER BY name_key`
   );
   const listTagFieldRows = db.prepare<[], TagFieldRow>(`
     SELECT field.tag_id, field.property_id, field.default_json
@@ -116,9 +144,13 @@ export function createSqliteSemanticLayer(
         : { propertyId: row.property_id, defaultValue: JSON.parse(row.default_json) as SemanticValue });
       fieldsByTag.set(row.tag_id, fields);
     }
-    return listTagRows.all().map(row => ({
-      id: row.id, name: row.name, createdAt: row.created_at, fields: fieldsByTag.get(row.id) ?? [],
-    }));
+    return listTagRows.all().map(row => {
+      const createdBy = toCreator(row);
+      return {
+        id: row.id, name: row.name, createdAt: row.created_at, fields: fieldsByTag.get(row.id) ?? [],
+        ...(createdBy ? { createdBy } : {}),
+      };
+    });
   }
 
   function resolveProperty(all: readonly SemanticPropertyDefinition[], idOrName: string): SemanticPropertyDefinition {
@@ -308,7 +340,12 @@ export function createSqliteSemanticLayer(
     }).immediate();
   }
 
+  const schemaChanges = createSqliteSemanticSchemaChanges({
+    db, now, newId, documents, tags, properties, resolveTag, resolveProperty, assertNewName,
+  });
+
   return {
+    ...schemaChanges,
     listProperties: properties,
     listTags: tags,
 
@@ -416,8 +453,11 @@ export function createSqliteSemanticLayer(
         assertNewName('tag', name, tags(), input.allowSimilar === true);
         const fields = normalizeFields(input.fields ?? [], properties());
         const tag = { id: newId(), name, createdAt: now() };
-        db.prepare('INSERT INTO semantic_tags (id, name, name_key, color, created_at) VALUES (?, ?, ?, NULL, ?)')
-          .run(tag.id, name, semanticNameKey(name), tag.createdAt);
+        const by = creator();
+        db.prepare(`
+          INSERT INTO semantic_tags (id, name, name_key, color, created_at, created_by_kind, created_conversation_id, created_agent_id)
+          VALUES (?, ?, ?, NULL, ?, ?, ?, ?)
+        `).run(tag.id, name, semanticNameKey(name), tag.createdAt, by.kind, by.conversationId, by.agentId);
         writeTagFields(tag.id, fields);
         return tags().find(item => item.id === tag.id) ?? { ...tag, fields: [] };
       }).immediate();

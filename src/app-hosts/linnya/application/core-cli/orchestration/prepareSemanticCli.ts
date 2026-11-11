@@ -47,11 +47,19 @@ import {
   type QueryCommand,
   type RawTagField,
   type SchemaCommand,
+  type SchemaManageOperation,
 } from '../functions/parseSemanticCommands';
 import { coerceCliValue, coerceQueryFilter, displayValue, findProperty, jsonValue } from '../functions/semanticCliValues';
 import { savedFilterFromQuery } from '../functions/savedFilterFromQuery';
-import { projectSavedFilterConditionKey } from '@app/schemas';
+import { projectSavedFilterConditionKey, SemanticSchemaChangeSummarySchema, type SemanticSchemaOperation } from '@app/schemas';
 import { createSqliteSavedFilterStore } from '../../../adapters/persistence/saved-filters';
+import {
+  applySemanticSchemaOperation,
+  previewSemanticSchemaOperation,
+  readSemanticSchemaOverview,
+  undoSemanticSchemaChange,
+} from '../../semantic-schema';
+import { formatSchemaApplied, formatSchemaChanges, formatSchemaPreview, schemaChangeText } from '../functions/formatSchemaChanges';
 
 export const SEMANTIC_CLI_COMMANDS = ['schema', 'props', 'query', 'links'] as const;
 export type SemanticCliCommand = (typeof SEMANTIC_CLI_COMMANDS)[number];
@@ -121,9 +129,55 @@ function tagFields(raw: readonly RawTagField[], properties: readonly SemanticPro
   });
 }
 
+/** 命令行的选项写法对应到已有选项：旧名=新名 改名，与已有同名的保留，其余新建。 */
+function contractOperation(layer: SqliteSemanticLayer, operation: SchemaManageOperation): SemanticSchemaOperation {
+  switch (operation.op) {
+    case 'rename_tag': return { op: 'rename_tag', tag: operation.tag, name: operation.name, allow_similar: operation.allowSimilar };
+    case 'merge_tags': return operation;
+    case 'delete_tag': return operation;
+    case 'rename_property':
+      return { op: 'rename_property', property: operation.property, name: operation.name, allow_similar: operation.allowSimilar };
+    case 'delete_property': return operation;
+    case 'change_property_type': return { op: 'change_property_type', property: operation.property, value_type: operation.valueType };
+    case 'update_options': {
+      const property = findProperty(layer.listProperties(), operation.property);
+      if (!property) throw new SemanticLayerError('unknown_property', `没有字段“${operation.property}”`);
+      const existing = (name: string) => property.options.find(option => option.name.toLowerCase() === name.toLowerCase());
+      return {
+        op: 'update_options',
+        property: property.id,
+        options: operation.options.map(option => {
+          const match = existing(option.from ?? option.name);
+          if (option.from !== null && !match) {
+            throw new CliFailure(`invalid_definition “${property.name}”没有选项“${option.from}”；现有选项：${property.options.map(item => item.name).join('、')}`);
+          }
+          return match ? { id: match.id, name: option.name } : { name: option.name };
+        }),
+      };
+    }
+  }
+}
+
 function executeSchema(runtime: Runtime, command: Exclude<SchemaCommand, { kind: 'help' }>): BackendPluginCliResult {
   const { layer } = runtime;
   switch (command.kind) {
+    case 'manage': {
+      const operation = contractOperation(layer, command.operation);
+      if (!command.confirmed) return ok(formatSchemaPreview(command.operation, previewSemanticSchemaOperation(runtime.db, operation)));
+      return ok(formatSchemaApplied(applySemanticSchemaOperation(runtime.db, operation)));
+    }
+    case 'changes':
+      return ok(formatSchemaChanges(readSemanticSchemaOverview(runtime.db).changes.slice(0, command.limit)));
+    case 'undo': {
+      if (!command.confirmed) {
+        const change = layer.readChange(command.changeId);
+        if (change.undoneAt !== null) throw new SemanticLayerError('already_undone', '这批改动已经撤回过了');
+        return ok(`将撤回：${schemaChangeText(SemanticSchemaChangeSummarySchema.parse(change.summary))}。标签、字段、文档上的标签与值和保存的筛选一起回到改动前。确认后加 --yes 执行。\n`);
+      }
+      const { change, savedFiltersSkipped } = undoSemanticSchemaChange(runtime.db, command.changeId);
+      const skipped = savedFiltersSkipped ? `；${savedFiltersSkipped} 个保存的筛选之后又被改过，没有恢复` : '';
+      return ok(`已撤回：${schemaChangeText(change.summary)}${skipped}。\n`);
+    }
     case 'list':
       return command.json ? json(schemaJson(layer.listTags(), layer.listProperties())) : ok(formatSchema(layer.listTags(), layer.listProperties()));
     case 'add-field': {
@@ -381,7 +435,8 @@ export function prepareSemanticCli(input: {
   if (parsed.kind === 'help') return { status: 'completed', result: ok(`${USAGE[input.command]}\n`) };
   const write = (parsed.kind === 'write' && parsed.revisions !== null)
     || (parsed.kind === 'query' && parsed.save !== null)
-    || parsed.kind === 'add-field' || parsed.kind === 'add-tag' || parsed.kind === 'set-fields';
+    || parsed.kind === 'add-field' || parsed.kind === 'add-tag' || parsed.kind === 'set-fields'
+    || ((parsed.kind === 'manage' || parsed.kind === 'undo') && parsed.confirmed);
   const command = parsed;
   return {
     status: 'ready',
@@ -390,8 +445,12 @@ export function prepareSemanticCli(input: {
       async execute(context) {
         context.signal.throwIfAborted();
         const runtime = createRuntime(input.db, input.maxOutputCharacters);
-        if (command.kind === 'list' || command.kind === 'add-field' || command.kind === 'add-tag' || command.kind === 'set-fields') {
-          return guarded(() => executeSchema(runtime, command));
+        if (
+          command.kind === 'list' || command.kind === 'add-field' || command.kind === 'add-tag' || command.kind === 'set-fields'
+          || command.kind === 'manage' || command.kind === 'changes' || command.kind === 'undo'
+        ) {
+          // 标签与字段改动记下是谁做的（新建标签的来源、改动批次的执行者）。
+          return guarded(() => withActionActor(actorFor(input.db, context), () => executeSchema(runtime, command)));
         }
         const { projectId } = context;
         if (!projectId) return fail(2, '当前对话没有所属项目。');

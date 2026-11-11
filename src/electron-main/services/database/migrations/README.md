@@ -1,7 +1,7 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v77。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v78。
 
 v67→v68 为 image_blocks 增加默认空字符串的 caption；已有 alt/title、尺寸、来源保持不变，旧图片不会自动显示文件名题注。
 
@@ -22,6 +22,8 @@ v75→v76 为行动账本加 `agent_id`，从仍在的运行记录回填，运�
 v76→v77 建立可读对话的全文索引（FTS5 trigram，外部内容指向可读消息视图，合同见 [06 Read model §8](../../../../../docs/conversation-platform/06-read-model.md#8-可读对话)），并从已有 UI 消息整体重建一次。同一版本新增 `conversation_storage_usage`（对话占用的测量缓存，随对话级联删除），表由 schema provider 建立，不需要迁移步骤。索引只是投影，丢失或损坏时可用 `rebuild` 恢复。
 
 语义层的标签与字段表（[语义层](../../../../domains/semantic-layer/README.md)）在 v77 内由 schema provider 建立，已有库启动时补建空表，不提升版本、没有迁移步骤。
+
+v77→v78 给 `semantic_tags` 加 `created_by_kind`、`created_conversation_id`、`created_agent_id`，标签管理里显示是谁在哪个对话里新建的；已有标签来源留空。还没有这张表的库跳过，随后由 provider 按当前 DDL 建表。同一版本新增 `semantic_schema_changes`（标签与字段改动的批次，供整批撤回），由 provider 建立。
 
 v72→v73 将含思考消息的界面投影标记为待重建，同一思考的正文改为引用实际提供该值的事件。迁移逐项比较子运行工具输出、思考及回答，通过同一来源精确还原的内容只存一份；其余轨迹完整保存。工具决策事件的两份参数相同时使用存储标记，读取恢复原有字段。迁移和新写入遵循同一合同。2026-11 在 4,227 个会话的开发库副本上实测：v72 约 6 秒、v73 约 43 秒，随后投影重建约 80 秒；迁移前后的事件、子运行轨迹和界面消息逐条读回一致，三张表合计从约 3.5 GB 降到 2.2 GB。旧库释放的页留在文件内，由后续写入复用。
 

@@ -135,6 +135,22 @@ export function createSqliteSavedFilterStore(
       if (result.changes === 0) throw new SavedFilterNotFoundError(id);
     },
 
+    /** 整个工作区的保存的筛选（标签与字段改动要一起改写）；不做建议过期清理。 */
+    listAll(): { readonly projectId: string; readonly projectName: string; readonly filter: ProjectSavedFilter }[] {
+      return db.prepare<[], Row & { project_id: string; project_name: string }>(`
+        SELECT ${columns.split(', ').map(column => `filter.${column}`).join(', ')}, filter.project_id, project.name AS project_name
+        FROM project_saved_filters filter JOIN projects project ON project.id = filter.project_id
+        ORDER BY project.name, filter.pinned DESC, filter.position, filter.created_at, filter.id
+      `).all().map(row => ({ projectId: row.project_id, projectName: row.project_name, filter: toFilter(row) }));
+    },
+
+    /** 标签与字段改动时改写条件（或撤回时改回）：不算用户编辑，不动更新时间与位置。 */
+    replaceDefinition(projectId: string, id: string, definition: ProjectSavedFilterDefinition): void {
+      const result = db.prepare('UPDATE project_saved_filters SET definition_json = ? WHERE project_id = ? AND id = ?')
+        .run(JSON.stringify(ProjectSavedFilterDefinitionSchema.parse(definition)), projectId, id);
+      if (result.changes === 0) throw new SavedFilterNotFoundError(id);
+    },
+
     /** 记下打开时间：Agent 建议按它判断是否 30 天没用过。 */
     markOpened(projectId: string, id: string): void {
       const result = db.prepare('UPDATE project_saved_filters SET last_opened_at = ? WHERE project_id = ? AND id = ?')

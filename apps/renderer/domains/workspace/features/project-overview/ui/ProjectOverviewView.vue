@@ -379,6 +379,16 @@
       @open-duplicate="openDuplicate"
       @cancel="saveDialog = null"
     />
+
+    <SemanticSchemaModal
+      v-if="schemaModalMounted"
+      :is-visible="schemaModalOpen"
+      :current-project-id="projectId"
+      :agent-name="presentation.agentName"
+      @close="schemaModalOpen = false"
+      @changed="handleSchemaChanged"
+      @open-document="openSchemaDocument"
+    />
   </section>
 </template>
 
@@ -392,6 +402,7 @@ import { useVirtualizer } from '@tanstack/vue-virtual';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import { BaseButton, SegmentedTabs, SkeletonRows, TagChip } from '@linnya/renderer-ui';
 import type { CustomSelectOption, SegmentedTabItem } from '@linnya/renderer-ui';
+import type { SemanticSchemaOverview } from '@app/schemas';
 import { ChatIcon, ChevronIcon, LibraryIcon, SaveIcon, SearchIcon } from '@linnya/renderer-ui/icons';
 import type { ProjectFieldCondition, ProjectSavedFilter } from '@app/schemas';
 import type { WorkspaceMessageKey } from '@/domains/workspace/definitions/workspaceMessages';
@@ -447,6 +458,7 @@ import { formatStorageBytes } from '@/shared/utils/formatStorageBytes';
 import ProjectConversationsPanel from './ProjectConversationsPanel.vue';
 import ProjectOverviewColumnsMenu from './ProjectOverviewColumnsMenu.vue';
 import ProjectOverviewFilterMenu from './ProjectOverviewFilterMenu.vue';
+import SemanticSchemaModal from '@/domains/workspace/features/semantic-schema/ui/SemanticSchemaModal.vue';
 
 const props = defineProps<{
   projectId: string;
@@ -474,7 +486,7 @@ const CONTENT_SEARCH_LIMIT = PROJECT_OVERVIEW_CONTENT_SEARCH_MAX_MATCHES;
 const { workspaceMessage, currentLocale } = useWorkspaceLocalization();
 const layoutStore = useProjectOverviewLayoutStore();
 const projectIdRef = toRef(props, 'projectId');
-const { rows, fields, folderCount, characterCount, status, revision, refreshDocuments } = useProjectOverviewData(projectIdRef);
+const { rows, fields, folderCount, characterCount, status, revision, refreshDocuments, reloadAll } = useProjectOverviewData(projectIdRef);
 
 // 页：每个项目记住上次看的页（本次运行内）。对话页第一次打开时才挂载。
 const PAGES: readonly { readonly id: ProjectOverviewPage; readonly key: WorkspaceMessageKey }[] = [
@@ -560,6 +572,7 @@ const {
   saveChanges,
   remove: removeSavedFilter,
   pin: pinSavedFilter,
+  reloadAfterSchemaChange,
 } = useProjectOverviewSavedFilterState({
   projectId: projectIdRef,
   filters,
@@ -814,10 +827,13 @@ function setLocationFilter(value: string): void {
 }
 
 const projectTags = computed(() => listProjectOverviewTags(allRows.value));
+const MANAGE_TAGS = '__manage_tags__';
 const tagOptions = computed<CustomSelectOption<string>[]>(() => projectTags.value.length === 0 ? [] : [
   { value: ALL, text: workspaceMessage('workspace.projectOverview.filter.tagAll') },
   { isSeparator: true },
   ...projectTags.value.map(tag => ({ value: tag.id, text: tag.name })),
+  { isSeparator: true },
+  { value: MANAGE_TAGS, text: workspaceMessage('workspace.projectOverview.filter.manageTags') },
 ]);
 const tagFilterText = computed(() => {
   if (filters.value.tags.length === 0) return null;
@@ -825,7 +841,46 @@ const tagFilterText = computed(() => {
   return filters.value.tags.map(id => projectTags.value.find(tag => tag.id === id)?.name ?? id).join('、');
 });
 function setTagFilter(value: string): void {
+  if (value === MANAGE_TAGS) {
+    schemaModalMounted.value = true;
+    schemaModalOpen.value = true;
+    return;
+  }
   filters.value = { ...filters.value, tags: value === ALL ? [] : [value] };
+}
+
+// 标签管理弹窗：第一次打开时才挂载。
+const schemaModalMounted = ref(false);
+const schemaModalOpen = ref(false);
+
+/**
+ * 标签或字段本身改了：文档的标签和字段整份重读，保存的筛选重读（Backend 已一并改写）；
+ * 界面上临时的条件里引用了已删除的标签或字段时去掉。
+ */
+function handleSchemaChanged(overview: SemanticSchemaOverview): void {
+  reloadAll();
+  const tagIds = new Set(overview.tags.map(tag => tag.id));
+  const fieldIds = new Set(overview.properties.map(property => property.id));
+  void reloadAfterSchemaChange().then(() => {
+    const current = filters.value;
+    const tags = current.tags.filter(id => tagIds.has(id));
+    const where = current.where.filter(condition => fieldIds.has(condition.field) || !looksLikeFieldId(condition.field));
+    if (tags.length !== current.tags.length || where.length !== current.where.length) {
+      filters.value = { ...current, tags, where };
+    }
+  }).catch((error: unknown) => console.error('[ProjectOverview] 重读保存的筛选失败:', error));
+}
+
+/** 内建字段（name、type、created、updated）不是语义层字段，不因字段删除而去掉。 */
+function looksLikeFieldId(field: string): boolean {
+  return !['name', 'type', 'created', 'updated'].includes(field);
+}
+
+function openSchemaDocument(documentId: string): void {
+  const row = rows.value.get(documentId);
+  if (!row) return;
+  schemaModalOpen.value = false;
+  openRow(row);
 }
 
 // 列：名称固定在最前；其余按列配置。拖动列宽时先改草稿，松手再保存。
