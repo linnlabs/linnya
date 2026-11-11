@@ -34,6 +34,7 @@ import type {
   WorkspaceVfsStatement,
 } from 'src/features/workspace/vfs/orchestration/listWorkspaceVfsNodes';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
+import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 import { WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/node-text-snapshot.schema';
 import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
 import { DOCUMENT_REFERENCE_SCHEMAS } from 'src/domains/document-references';
@@ -527,6 +528,7 @@ function createMindMapFileToolFixture(): {
   db.pragma('foreign_keys = ON');
   for (const statement of [
     ...CORE_SCHEMAS,
+    ...CONVERSATION_SCHEMAS,
     ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS,
     ...ASSET_LEDGER_SCHEMAS,
     ...MARKDOWN_DOCUMENT_SCHEMAS,
@@ -578,6 +580,7 @@ function createMarkdownFileToolFixture(events: WorkspaceMutationEvent[]): {
   db.pragma('foreign_keys = ON');
   for (const statement of [
     ...CORE_SCHEMAS,
+    ...CONVERSATION_SCHEMAS,
     ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS,
     ...ASSET_LEDGER_SCHEMAS,
     ...MARKDOWN_DOCUMENT_SCHEMAS,
@@ -2413,8 +2416,6 @@ describe('list_files / read_file', () => {
   it('read_file 在正文前给出只读属性段；原样带回可写，改动属性段被拒绝并提示 linnya props', async () => {
     const fixture = createMarkdownFileToolFixture([]);
     try {
-      // 语义层的对话外键在生产库里指向对话表；本夹具只建文档表，补一张最小对话表。
-      fixture.db.exec('CREATE TABLE conversations (conversation_id TEXT PRIMARY KEY)');
       const { id } = fixture.db.prepare("SELECT id FROM workspace_nodes WHERE name = '研究.md'").get() as { id: string };
       const layer = createSqliteSemanticLayer(fixture.db, { read: nodeId => readWorkspaceDocumentIdentity(fixture.db, nodeId) });
       layer.defineProperty({ name: '作者', valueType: 'text' });
