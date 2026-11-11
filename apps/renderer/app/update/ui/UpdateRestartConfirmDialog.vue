@@ -34,7 +34,7 @@
           :primary-action-text="updateMessage('update.restartConfirm.actions.confirm')"
           :is-primary-action-disabled="store.requestingRestart"
           @secondary-click="store.declineRestart()"
-          @primary-click="store.confirmRestart()"
+          @primary-click="actions.confirmRestart()"
         />
       </div>
     </template>
@@ -51,6 +51,7 @@ import type {
 } from '../../../../../src/shared/update/definitions/updateMessage';
 import type { UpdateMessageKey } from '../definitions/updateMessages';
 import { useUpdateStore } from '../store/updateStore';
+import { useUpdateActions } from '../runtime';
 import { useUpdateLocalization } from './useUpdateLocalization';
 
 const KIND_KEYS: Readonly<Record<AppUpdateActivityKind, UpdateMessageKey>> = {
@@ -60,6 +61,7 @@ const KIND_KEYS: Readonly<Record<AppUpdateActivityKind, UpdateMessageKey>> = {
 };
 
 const store = useUpdateStore();
+const actions = useUpdateActions();
 const { pendingActivities: activities } = storeToRefs(store);
 const { updateMessage } = useUpdateLocalization();
 

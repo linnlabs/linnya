@@ -17,7 +17,7 @@
           class="app-update-entry__pill"
           :disabled="status === 'installing' || store.requestingRestart"
           :aria-label="tooltipText"
-          @click="store.requestRestart()"
+          @click="actions.requestRestart()"
         >
           <RefreshIcon :spinning="status === 'installing'" />
           <span>{{ updateMessage(presentation.labelKey) }}</span>
@@ -137,6 +137,7 @@ import {
   resolveUpdateEntryPresentation,
 } from '../functions/resolveUpdateEntryPresentation';
 import { useUpdateStore } from '../store/updateStore';
+import { useUpdateActions } from '../runtime';
 import { useUpdateLocalization } from './useUpdateLocalization';
 
 const PANEL_WIDTH = 280;
@@ -144,6 +145,7 @@ const PANEL_GAP = 6;
 const VIEWPORT_MARGIN = 8;
 
 const store = useUpdateStore();
+const actions = useUpdateActions();
 const { state, status } = storeToRefs(store);
 const { updateMessage } = useUpdateLocalization();
 const notifications = useNotificationStore();
@@ -226,7 +228,7 @@ function positionPanel(): void {
 
 function handleIconClick(event: MouseEvent, toggle: (event?: Event) => void, isOpen: boolean): void {
   if (!presentation.value?.opensPanel) {
-    void store.download();
+    void actions.download();
     return;
   }
   if (!isOpen) positionPanel();
@@ -236,12 +238,12 @@ function handleIconClick(event: MouseEvent, toggle: (event?: Event) => void, isO
 
 function cancelAndClose(close: () => void): void {
   close();
-  void store.cancelDownload();
+  void actions.cancelDownload();
 }
 
 function retryAndClose(close: () => void): void {
   close();
-  void store.download();
+  void actions.download();
 }
 
 // 更新后第一次打开：提示一次新版本号，然后告诉 Main 已经提示过。
@@ -250,7 +252,7 @@ watch(
   installed => {
     if (!installed) return;
     notifications.show(updateMessage('update.installed', { version: installed }), 'success', 5_000);
-    void store.acknowledgeInstalled();
+    void actions.acknowledgeInstalled();
   },
   { immediate: true },
 );

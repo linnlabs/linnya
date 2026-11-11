@@ -59,7 +59,7 @@ import {
   startModelPickerLifecycle,
 } from '../domains/model-configuration'
 import { useKnowledgeBase } from '../domains/knowledgebase/runtime.js'
-import { useUpdateStore } from './update/store/updateStore'
+import { useUpdateActions } from './update/runtime'
 
 const conversationFixtureId = import.meta.env.DEV
   ? new window.URLSearchParams(window.location.search).get('fixture')
@@ -171,7 +171,7 @@ if (!isConversationFixture) {
  * renderer-ready 完成其他 App 生命周期订阅，不能在 Renderer 自行猜发行身份。
  */
 if (!isConversationFixture) {
-  void useUpdateStore().connect()
+  void useUpdateActions().connect()
 }
 
 app.mount('#app')

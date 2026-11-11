@@ -1,9 +1,3 @@
-STORE-ASYNC	apps/renderer/app/update/store/updateStore.ts	acknowledgeInstalled#1
-STORE-ASYNC	apps/renderer/app/update/store/updateStore.ts	cancelDownload#1
-STORE-ASYNC	apps/renderer/app/update/store/updateStore.ts	confirmRestart#1
-STORE-ASYNC	apps/renderer/app/update/store/updateStore.ts	connect#1
-STORE-ASYNC	apps/renderer/app/update/store/updateStore.ts	download#1
-STORE-ASYNC	apps/renderer/app/update/store/updateStore.ts	requestRestart#1
 STORE-ASYNC	apps/renderer/domains/conversation/history/store/historyListStore.ts	loadList#1
 STORE-ASYNC	apps/renderer/domains/conversation/history/store/historyListStore.ts	loadScopeList#1
 STORE-ASYNC	apps/renderer/domains/conversation/history/store/historyListStore.ts	refresh#1
