@@ -6,6 +6,8 @@
 
 此包不拥有文档 ID/路径解析、引用权限、保存、修订、图片接管或模型调用。HTML 块默认显示源文，不执行嵌入内容；Host 如需 HTML 预览，应在自己的 NodeView 使用既有净化器。
 
+`assertMarkdownDocument` 返回已通过 `Node.check()` 的 Node，可接收诊断 owner 名；不修改传入 JSON 或 Editor state。Editor 与存储层共用 node/mark/attrs 的严格规则。
+
 `./validation` 是纯 JSON/schema 校验子路径，只有类型依赖；只需校验的存储消费者使用此入口，避免初始化正文扩展、Markdown parser 或公式 renderer。CSS 明确列为 package side effects，其余模块允许正常裁剪。
 
 运行本包 typecheck 及 Node/DOM 业务测试；正文定义变更必须同时验证交互编辑和 Worker 投影，不能复制出另一套渲染 schema。

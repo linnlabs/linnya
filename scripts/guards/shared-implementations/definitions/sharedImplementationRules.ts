@@ -19,6 +19,13 @@ export interface SharedImplementationRule {
 
 export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = [
   {
+    id: 'MARKDOWN-strict-json',
+    pattern: /\bfunction\s+(?:assertKnownAttributes|assertMarkJson|assertNodeJson)\b/u,
+    scope: ['apps/renderer/domains/editor/', 'src/domains/markdown/', 'packages/markdown-document-core/'],
+    owners: ['packages/markdown-document-core/'],
+    use: 'Markdown JSON 严格 node/mark/attrs 校验使用 @linnya/markdown-document-core/validation 的 assertMarkdownDocument。',
+  },
+  {
     id: 'SCHEMAS-block-reference',
     pattern: /\b(?:(?<!declare )function|const)\s+(?:hashToBase62|refIdFromDigest|normalizeRef|stripRefPrefix|isValidRef|BASE62_CHARSET)\b/u,
     owners: ['packages/schemas/'],

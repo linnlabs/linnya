@@ -7,6 +7,18 @@ import {
 } from '../guards/shared-implementations-ratchet';
 
 describe('共享实现棘轮', () => {
+  it.each([
+    ['apps/renderer/shared/utils/textUnits.ts', 'function countTextUnitsZhEn(text) {}', 'SCHEMAS-text-units'],
+    ['src/shared/utils/refIdGenerator.ts', 'function hashToBase62(hash) {}', 'SCHEMAS-block-reference'],
+    ['apps/renderer/domains/editor/functions/parse.ts', 'function assertNodeJson(value) {}', 'MARKDOWN-strict-json'],
+  ])('阻止 %s 恢复已经迁走的规则', (file, source, ruleId) => {
+    expect(countSharedImplementationHits(file, source)).toMatchObject([{ ruleId, count: 1 }]);
+  });
+
+  it('合同 declare 和共享 owner 不算第二份运行实现', () => {
+    expect(countSharedImplementationHits('packages/plugin-host-contract/renderer/refId.ts', 'export declare function normalizeRef(ref: string): string;')).toEqual([]);
+    expect(countSharedImplementationHits('packages/schemas/src/text-units.ts', 'function countTextUnitsZhEn(text) {}')).toEqual([]);
+  });
   it('文件大小只能定义在本地化 owner，业务未知值包装可保留', () => {
     const source = 'function formatFileSize(bytes: number) { return String(bytes); }';
     expect(countSharedImplementationHits('apps/renderer/domains/x/presentation.ts', source))
