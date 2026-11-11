@@ -66,3 +66,5 @@
 - 先确认调用方、输入、输出、默认值、失败与取消行为，再决定复用范围。相似的 schema 声明、平台 adapter 和独立测试不能为了降低比例被强行合并；规则相同的则应回到现有 owner。
 
 已完成解环的 BlockHistory、transcription、Slides 源码历史/持久化与来源选择模块由 `pnpm run guard:module-barrel-boundary` 约束：模块内部依赖具体 store、functions 或 definitions，不从聚合 index 回引。示例可演示公共入口；正常 parser/树形渲染递归不在此门禁范围。
+
+`pnpm run guard:renderer-state-boundary` 对 Renderer shared→domain 的值依赖和 store→orchestration 的反向调用逐边记基线；类型引用不算运行边，编排→store 是正常方向。新边不能抵消旧边减少；修复后用 `pnpm run guard:renderer-state-boundary:update` 收紧，命令拒绝新增。尚未搬离 legacy store 的流程仍需逐 domain 迁移。

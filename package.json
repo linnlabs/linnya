@@ -355,7 +355,9 @@
     "guard:canvas": "pnpm --filter @plugin/canvas guard",
     "package:plugin:canvas": "pnpm --dir packages/plugins/canvas run package:artifact",
     "smoke:plugin:canvas:artifact": "pnpm run build:schemas && pnpm run package:plugin:canvas && node packages/plugins/canvas/scripts/smoke-artifact.mjs",
-    "guard:module-barrel-boundary": "node --import tsx scripts/guards/module-barrel-boundary-guard.ts"
+    "guard:module-barrel-boundary": "node --import tsx scripts/guards/module-barrel-boundary-guard.ts",
+    "guard:renderer-state-boundary": "node --import tsx scripts/guards/renderer-state-boundary-ratchet.ts",
+    "guard:renderer-state-boundary:update": "node --import tsx scripts/guards/renderer-state-boundary-ratchet.ts --update"
   },
   "keywords": [],
   "author": "",
