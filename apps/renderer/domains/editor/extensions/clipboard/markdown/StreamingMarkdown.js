@@ -18,16 +18,15 @@
  */
 
 import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey } from 'prosemirror-state';
+import { Plugin } from 'prosemirror-state';
+import { STREAMING_PLUGIN_KEY } from './definitions/streamingPluginKey';
+export { STREAMING_PLUGIN_KEY } from './definitions/streamingPluginKey';
 
 // 导入极简处理器
 import { processQueue } from './streaming/queueProcessor';
 // 导入统一的API服务
 import { generateTextStream } from '@app/model-inference';
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage';
-
-// 创建插件键
-export const STREAMING_PLUGIN_KEY = new PluginKey('streamingMarkdown');
 
 // 定义扩展
 export const StreamingMarkdown = Extension.create({

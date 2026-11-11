@@ -1,11 +1,12 @@
 import type { ModelSourceRemovalResult } from '../definitions/modelSourceRemoval';
-import { deleteModelFromCatalog, type ModelCatalogGateway } from '../features/model-catalog';
+import { deleteModelFromCatalog } from '../features/model-catalog/orchestration/modelCatalogOperations';
+import type { ModelCatalogGateway } from '../features/model-catalog/definitions/modelCatalogGateway';
 import {
   loadModelPicker,
   removeCommittedModelsFromPicker,
   type ModelPickerGateway,
 } from '../features/model-picker';
-import { clearBindingsForModel } from '../features/purpose-model-bindings';
+import { clearBindingsForModel } from '../features/purpose-model-bindings/orchestration/modelPurposeBindings';
 
 /** 正式 Provider 的每个归属删除仍走 Host durable intent；整批结束后再同步一次列表。 */
 export async function removeModelSource(

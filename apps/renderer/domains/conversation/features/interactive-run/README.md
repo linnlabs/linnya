@@ -48,3 +48,5 @@ cancel 的成功响应不是固定 `cancelled`：Host 会返回 `cancelled` 或
 运行终态经过 exact-run settlement 的持久化屏障；先完成可见窗口同步，再收敛控制状态，revision 未变也必须清除 busy。窗口读取失败保持 reconnecting，下次继续观察；projection preparing 保留原窗口并继续观察。导航、分页、编辑和新 transport 会使迟到刷新失效。
 
 无 reader 时接纳窗口会绑定本 feature 的技术 `transportGeneration`。每次发送、提交或继续取得新 transport 时递增代次，结束时不回退；selector 仅在同代次且无 reader 时让同身份 durable 工具行接管 lifecycle/presentation，并保留 live trace。新 reader 再次断线、尚未刷新前，旧交接标记不能压过新 live。该标记不改变 run status，也不清除 live thought/answer 或未落盘消息。
+
+同 domain 的执行展示只读取 `store/interactiveRunStore.ts` 暴露的控制快照；该模块是窄状态入口，不经包含网络命令的聚合 index。

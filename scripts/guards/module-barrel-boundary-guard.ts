@@ -22,6 +22,22 @@ const RUNTIME_QUERY_CONSUMERS = [
   'src/app-hosts/linnya/context/agent/registerLinnyaFences.ts',
   'src/tools/agent_control/subrun/subagent/subagentTool.ts',
 ];
+// 经过依赖图与 owner 复核的窄读取：不能因读取状态/合同带入 UI 或持久化装配。
+const NARROW_READS: Readonly<Record<string, readonly string[]>> = {
+  'apps/renderer/domains/conversation/shared/execution-presentation/composables/useExecutionActivity.ts': ['apps/renderer/domains/conversation/features/interactive-run'],
+  'apps/renderer/domains/conversation/services/orchestration/reconcileTerminalConversationView.ts': ['apps/renderer/domains/conversation/features/subrun-trace'],
+  'apps/renderer/domains/conversation/services/orchestration/refreshDetachedConversationView.ts': ['apps/renderer/domains/conversation/features/subrun-trace'],
+  'apps/renderer/domains/conversation/features/subrun-card/ui/SubrunProgressCard.vue': ['apps/renderer/domains/conversation/features/subrun-detail'],
+  'apps/renderer/domains/conversation/features/subrun-detail/ui/SubrunDetailSurface.vue': ['apps/renderer/domains/conversation/features/subrun-card'],
+  'apps/renderer/domains/conversation/message-window/orchestration/messageWindowLoader.ts': ['apps/renderer/domains/conversation/features/client-notices'],
+  'apps/renderer/domains/model-configuration/features/purpose-model-bindings/orchestration/modelPurposeBindings.ts': ['apps/renderer/domains/model-configuration/features/model-catalog'],
+  'apps/renderer/domains/model-configuration/orchestration/removeModelSource.ts': ['apps/renderer/domains/model-configuration/features/model-catalog', 'apps/renderer/domains/model-configuration/features/purpose-model-bindings'],
+  'src/domains/markdown/features/document-references/functions/markdownReferenceContent.ts': ['src/domains/markdown/features/pending-revisions'],
+  'src/domains/markdown/features/document-references/functions/prepareRemainingReferenceRevision.ts': ['src/domains/markdown/features/pending-revisions'],
+  'src/domains/markdown/infrastructure/sqlite/markdownReadDatabaseAdapter.ts': ['src/domains/markdown/features/document-references'],
+  'apps/renderer/domains/editor/extensions/clipboard/markdown/streaming/queueProcessor.js': ['apps/renderer/domains/editor/extensions/clipboard/markdown/StreamingMarkdown'],
+  'apps/renderer/domains/workspace/services/file-manager/handlers/markdown.ts': ['apps/renderer/domains/workspace/services/file-manager'],
+};
 const MODULES = [BLOCK_HISTORY, SOURCE_HISTORY, PERSISTENCE, SOURCE_SELECTION, TRANSCRIPTION];
 
 export function resolveLocalSourceImport(file: string, specifier: string): string | undefined {
@@ -54,7 +70,8 @@ export function findModuleBarrelViolations(file: string, content: string): strin
       && (target === `${PLUGIN_REGISTRY}/builtin` || target.startsWith(`${PLUGIN_REGISTRY}/builtin/`));
     const runtimeImportsComposition = target === DESKTOP_CAPABILITIES
       && (file.startsWith(`${BACKEND_SDK}/`) || file.startsWith(`${PLUGIN_REGISTRY}/`) || file === RASTER_PDF);
-    return ownBarrel || historyPersistenceBackEdge || revisionRuntimeBackEdge || sdkLoadsPlugins || runtimeImportsComposition
+    const broadRead = NARROW_READS[file]?.includes(target);
+    return ownBarrel || historyPersistenceBackEdge || revisionRuntimeBackEdge || sdkLoadsPlugins || runtimeImportsComposition || broadRead
       ? [
           `${file}:${edge.line} → ${edge.specifier}：内部引用应指向具体 definitions/functions/store，不回引聚合 index。`,
         ]
@@ -70,7 +87,7 @@ function main(): void {
         /\.(?:ts|tsx|js|vue)$/u.test(file) &&
         !/(?:__tests__|fixtures)\/|\.(?:test|spec|example)\./u.test(file) &&
         ([...MODULES, REVISION_PENDING, BACKEND_SDK, PLUGIN_REGISTRY].some(root => file.startsWith(`${root}/`))
-          || file === RASTER_PDF || RUNTIME_QUERY_CONSUMERS.includes(file))
+          || file === RASTER_PDF || RUNTIME_QUERY_CONSUMERS.includes(file) || file in NARROW_READS)
     )
     .flatMap(file => findModuleBarrelViolations(file, fs.readFileSync(file, 'utf8')));
   if (violations.length) {

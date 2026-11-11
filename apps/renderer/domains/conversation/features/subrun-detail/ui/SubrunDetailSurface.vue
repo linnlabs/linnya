@@ -38,7 +38,7 @@ import { cloneEstimationRegistry } from '../../../ui/conversationView/utils/esti
 import { useConversationLocalization } from '../../../ui/useConversationLocalization';
 import { CONVERSATION_RENDER_SCOPE_KEY } from '../../../definitions/conversationRenderScope';
 import { MESSAGE_ENTRY_ANIMATION_PORT_KEY } from '../../../definitions/messageEntryAnimation';
-import { useSubrunCardTrace } from '../../subrun-card';
+import { useSubrunCardTrace } from '../../subrun-card/orchestration/useSubrunCardTrace';
 import { SUBRUN_TRACE_SUBRUN_CARD_KINDS } from '../../subrun-trace';
 import type { SubrunDetailScope } from '../definitions/subrunDetail';
 import { resolveSubrunDetailParentMessage } from '../functions/resolveSubrunDetailParentMessage';

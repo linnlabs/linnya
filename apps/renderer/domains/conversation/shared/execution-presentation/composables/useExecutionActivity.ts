@@ -1,6 +1,6 @@
 import { computed, inject, provide, type ComputedRef } from 'vue';
 import type { ConversationToolMessageStatus } from '@app/schemas';
-import { useInteractiveRunStore } from '../../../features/interactive-run';
+import { useInteractiveRunStore } from '../../../features/interactive-run/store/interactiveRunStore';
 import { useAnnotationRunExecutionStore } from '../../../features/annotation-run';
 import { CONVERSATION_RENDER_SCOPE_KEY } from '../../../definitions/conversationRenderScope';
 import {

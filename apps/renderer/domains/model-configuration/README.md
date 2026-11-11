@@ -514,3 +514,5 @@ domain 重构不要求 Windows/macOS 安装包验收。
 
 正式 Provider 的批量移除保留逐模型 durable intent，结束后统一重读列表；失败结果带已删除 ID 与失败 ID，
 界面显示实际完成数量。单模型删除共用该流程，已提交的删除不会因 Picker 重读失败被详情界面误报成删除失败。
+
+同 domain 的模型删除与用途绑定使用 model-catalog 的 `store/modelCatalogStore.ts`、`orchestration/modelCatalogOperations.ts` 和 `definitions/modelCatalogGateway.ts` 窄能力；删除收尾通过 purpose-model-bindings 的 `orchestration/modelPurposeBindings.ts`。这些入口不加载 ModelDetailsModal，避免规则与 UI 相互回引。

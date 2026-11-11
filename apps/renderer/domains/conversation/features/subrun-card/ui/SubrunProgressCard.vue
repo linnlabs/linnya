@@ -31,7 +31,7 @@ import type { ConversationMessageId } from '@app/schemas';
 
 import { CONVERSATION_RENDER_SCOPE_KEY } from '../../../definitions/conversationRenderScope';
 import { useConversationLocalization } from '../../../ui/useConversationLocalization';
-import { SUBRUN_DETAIL_NAVIGATION_PORT_KEY } from '../../subrun-detail';
+import { SUBRUN_DETAIL_NAVIGATION_PORT_KEY } from '../../subrun-detail/definitions/subrunDetail';
 import {
   SUBRUN_TRACE_STEP_KINDS,
   SubrunTracePanel,

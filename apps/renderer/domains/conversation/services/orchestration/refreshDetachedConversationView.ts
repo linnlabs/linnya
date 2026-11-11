@@ -1,5 +1,5 @@
 import { refreshCurrentWindow, readConversationLiveMessages, useMessageWindowStore } from '../../message-window';
-import { useSubrunTraceInvalidationStore } from '../../features/subrun-trace';
+import { useSubrunTraceInvalidationStore } from '../../features/subrun-trace/store/subrunTraceInvalidationStore';
 
 /** 接纳变化的 durable revision 后才失效 lazy trace；相同 revision 不触发窗口或 trace 重读。 */
 export async function refreshDetachedConversationView(

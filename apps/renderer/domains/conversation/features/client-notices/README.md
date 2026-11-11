@@ -15,3 +15,5 @@ UI 仅呈现消息列表中的无背景文字。文案通过 [error-surface](../
 历史窗口读取失败由 message-window 持有当前状态，不创建持久 notice；成功接纳或下一次请求时清除。旧版本已保存的 `operation=load` 记录仍可内部读取，但在统一消息可见性规则和本地 outbox 展示中隐藏，不计入空态内容，不修改数据库或分页游标。
 
 组件样式由 Conversation 的 `styles/features/client-notices/ClientNoticeMessage.css` 持有，经 `styles/features/index.css` 聚合加载；颜色使用全局语义 token，Vue 内不定义样式块。
+
+窗口读取只通过 `orchestration/conversationClientNotices.ts` 的公开事实查询接纳本地通知，不加载 `useClientNoticePresentation` 的 UI 生命周期。

@@ -1,4 +1,4 @@
-import { getConversationClientNotices } from '../../features/client-notices';
+import { getConversationClientNotices } from '../../features/client-notices/orchestration/conversationClientNotices';
 import type { MessageWindowApiPort } from '../definitions/messageWindowApi';
 import type { MessageWindowSnapshot } from '../definitions/messageWindow';
 import type { UiMessagesWindowDto, UiMessagesWindowReadyDto } from '../definitions/uiMessagesDto';

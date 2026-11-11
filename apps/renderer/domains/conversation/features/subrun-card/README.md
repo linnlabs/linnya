@@ -46,3 +46,5 @@ child 工具消息 ID 必须由 `conversationSubrunMessageIdFromToolIdentity(sub
 - schema/projector 失败不改变上一快照，且不在 reactive flush 中抛错。
 - 真实 parent projection 与 async registry card 证明 Host 父 row 使用 `SubrunTracePanel`，不存在独立父卡步骤 DOM。
 - Electron 真机证明 exact ready 快照复用后，详情返回仍保持父消息精确锚点。
+
+同 domain 的详情表面可直接消费公开读模型 `orchestration/useSubrunCardTrace.ts`；导航能力的公开合同为 `subrun-detail/definitions/subrunDetail.ts`，纯合同读取不经过包含对方 UI 的聚合入口。

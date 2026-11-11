@@ -1,5 +1,5 @@
 import { reconcileTerminalConversationWindow } from '../../message-window';
-import { useSubrunTraceInvalidationStore } from '../../features/subrun-trace';
+import { useSubrunTraceInvalidationStore } from '../../features/subrun-trace/store/subrunTraceInvalidationStore';
 
 export interface ReconcileTerminalConversationViewDeps {
   readonly reconcileWindow?: (conversationId: string) => Promise<void>;

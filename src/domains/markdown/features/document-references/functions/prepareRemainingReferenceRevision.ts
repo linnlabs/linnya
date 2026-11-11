@@ -2,7 +2,9 @@ import { JsonValueSchema } from '@app/schemas';
 import type { MarkdownDocJson } from '../../normalization/runtime';
 import { attachCitationNodesToDocJson } from '../../normalization/runtime';
 import { flattenMarkdownDocumentBlocks, serializeMarkdownBlocks } from '../../../shared';
-import { extractPendingCitationHydration, extractPendingCitationLinkHydration, parsePendingMetadata, type PendingRevision, type PendingRevisionMetadata } from '../../pending-revisions';
+import { parsePendingMetadata } from '../../pending-revisions/functions/pendingRevisionApplyRules';
+import { extractPendingCitationHydration, extractPendingCitationLinkHydration } from '../../pending-revisions/functions/admitPendingCitationHydration';
+import type { PendingRevision, PendingRevisionMetadata } from '../../pending-revisions/definitions/pendingRevision';
 import type { MarkdownDocumentReferencesPort } from '../definitions/markdownDocumentReferences';
 import { collectMarkdownDocumentReferences, readPendingDocumentReferenceBindings, referenceBaselineContent, projectMarkdownReferenceContent } from './markdownReferenceContent';
 

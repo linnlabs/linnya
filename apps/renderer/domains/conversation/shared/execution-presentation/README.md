@@ -36,3 +36,5 @@ Subrun 只有经显式 `conversationId + subrunId` 绑定才继承父调用活�
 ## 验证
 
 业务回归覆盖真实父工具投影到虚拟行与完整 Subrun 详情：运行 → 暂停收尾 → 已暂停 → 继续，等待用户/重连/停止，跨会话隔离、已完成步骤不复活、消息事实保持未结算。Backend SQLite 测试确认可继续暂停允许 durable 工具仍为 loading；Electron projection-settlement 场景验证真实 DOM 的动画与静态状态切换。
+
+终态与 detached 刷新编排只消费 `subrun-trace/store/subrunTraceInvalidationStore.ts` 的公开失效动作，不为发出失效信号加载 TracePanel UI。

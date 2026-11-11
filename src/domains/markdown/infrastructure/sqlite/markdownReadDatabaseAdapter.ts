@@ -1,4 +1,4 @@
-import { getMarkdownDocumentReferences } from '../../features/document-references';
+import { getMarkdownDocumentReferences } from '../../features/document-references/registry/markdownDocumentReferencesRegistry';
 import type {
   MarkdownReadDatabase,
   MarkdownSqliteReadSource,

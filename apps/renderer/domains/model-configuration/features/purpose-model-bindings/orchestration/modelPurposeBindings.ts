@@ -2,7 +2,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { isValidReasoningEffort, type ReasoningEffort } from '@linnlabs/linnkit/contracts';
 
-import { useModelCatalogStore } from '../../model-catalog';
+import { useModelCatalogStore } from '../../model-catalog/store/modelCatalogStore';
 import type { ModelBindingSlot, ModelPurposeSelections } from '../definitions/modelPurposeBindings';
 import {
   AUXILIARY_MODEL_PURPOSE_KEYS,

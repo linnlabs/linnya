@@ -134,3 +134,4 @@ handler 保存成功代表其快照已持久化，dirty 是否清除由 owner �
 
 即可自动获得统一的保存/自动保存/关闭前保存能力。
 
+会话公开合同独立位于 `definitions/fileSession.ts`，取消规则位于 `functions/fileSessionCancellation.ts`。类型 handler 依赖这些窄入口，不回引加载 handler 的 index；原 index 继续重导出，取消错误的类身份保持唯一。

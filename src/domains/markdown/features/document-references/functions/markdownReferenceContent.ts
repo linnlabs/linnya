@@ -2,7 +2,8 @@ import { DocumentReferenceMarkdownBindingSchema, InlineDocumentReferenceAttrsSch
 import type { MarkdownPendingRevisionLike } from '../../pending-revisions';
 import { importMarkdownToDocJsonSync, validateMarkdownDocJson, parseMarkdownDocJson, attachCitationNodesToDocJson } from '../../normalization/runtime';
 import { flattenMarkdownDocumentBlocks, serializeMarkdownBlocks } from '../../../shared';
-import { parsePendingMetadata, extractPendingCitationHydration, extractPendingCitationLinkHydration } from '../../pending-revisions';
+import { parsePendingMetadata } from '../../pending-revisions/functions/pendingRevisionApplyRules';
+import { extractPendingCitationHydration, extractPendingCitationLinkHydration } from '../../pending-revisions/functions/admitPendingCitationHydration';
 import type { MarkdownDocumentReferencesPort } from '../definitions/markdownDocumentReferences';
 
 export function collectMarkdownDocumentReferences(content: unknown): DocumentReferenceInput[] {

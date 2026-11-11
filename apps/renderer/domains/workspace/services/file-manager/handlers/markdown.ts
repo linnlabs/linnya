@@ -16,13 +16,8 @@
  * - 保存时: 从全局编辑器实例获取内容，序列化后通过 workspaceGateway 保存
  */
 
-import {
-  isFileSessionOpenCancelledError,
-  throwIfFileSessionOpenCancelled,
-  type FileTypeLifecycleHandler,
-  type FileSessionDescriptor,
-  type FileSaveContext,
-} from '../index';
+import { isFileSessionOpenCancelledError, throwIfFileSessionOpenCancelled } from '../functions/fileSessionCancellation';
+import type { FileTypeLifecycleHandler, FileSessionDescriptor, FileSaveContext } from '../definitions/fileSession';
 import { useFileStore } from '@/app/active-document';
 import { useUIStore } from '../../../../../shared/stores/ui';
 import { useNotificationStore } from '@/app/notification';

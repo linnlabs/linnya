@@ -2,7 +2,7 @@
 // 流式处理器 - 基于 WASM BlockEvent
 
 import { Fragment } from '@tiptap/pm/model';
-import { STREAMING_PLUGIN_KEY } from '../StreamingMarkdown';
+import { STREAMING_PLUGIN_KEY } from '../definitions/streamingPluginKey';
 import { generateBlockId } from '../../../../../../shared/utils/idUtils';
 import { NodeFinder } from '../../../position/NodeFinder';
 import { isMarkdownChartSpecInvalidError, admitMarkdownImageEvent, MarkdownImageInvalidError } from '@app/schemas';

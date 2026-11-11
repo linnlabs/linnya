@@ -58,6 +58,21 @@ test('插件 SDK 只查询已注册贡献，不带入加载器或 Desktop 装配
     "import type { Port } from '../../app-hosts/linnya/desktop-capabilities';")).toEqual([]);
 });
 
+test('读模型和会话 handler 不能通过聚合入口加载对方 UI/装配', () => {
+  expect(findModuleBarrelViolations(
+    'apps/renderer/domains/conversation/features/subrun-card/ui/SubrunProgressCard.vue',
+    '<script setup>import { KEY } from "../../subrun-detail";</script>',
+  )).toHaveLength(1);
+  expect(findModuleBarrelViolations(
+    'apps/renderer/domains/workspace/services/file-manager/handlers/markdown.ts',
+    'import { throwIfFileSessionOpenCancelled } from "../index";',
+  )).toHaveLength(1);
+  expect(findModuleBarrelViolations(
+    'apps/renderer/domains/workspace/services/file-manager/handlers/markdown.ts',
+    'import { throwIfFileSessionOpenCancelled } from "../functions/fileSessionCancellation";',
+  )).toEqual([]);
+});
+
 test('Vue script 原行号与值/类型边正确识别，不把注释、字面量当依赖', () => {
   expect(
     readSourceImports(
