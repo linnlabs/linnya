@@ -29,18 +29,95 @@ export async function settlePage(cdp) {
   })`, 2600);
 }
 
-/** text= 目标：先找直接含有这段文字的可见元素；文字被拆成多段时，取包含它的最内层可见元素。 */
+/**
+ * text= 目标，返回候选元素数组（已按优先级收窄）：
+ * 1. 直接含这段文字的可见元素；文字被拆成多段时，取包含它的最内层可见元素。
+ * 2. 文字完全相同的优先于只是包含（“论文”不选“研究论文”）。
+ * 3. 指针点得到的（中心点命中自身或子孙）优先于被遮挡或在视口外的。
+ * 4. 仍有多个时，弹出层（菜单、列表框、对话框、popover、fixed 定位层）里的优先：它们挂在 body 末尾，按文档顺序总排在后面。
+ * 收窄后仍多于一个就是歧义，由调用方报错并列出候选。
+ */
 function findByText(text) {
   return `(() => {
+    const normalize = value => (value ?? '').replace(/\\s+/g, ' ').trim();
     const needle = ${JSON.stringify(text)};
+    const exactNeedle = normalize(needle);
+    const found = new Map();
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) {
       const element = walker.currentNode.parentElement;
-      if (walker.currentNode.data.includes(needle) && element?.checkVisibility()) return element;
+      if (!walker.currentNode.data.includes(needle) || !element?.checkVisibility()) continue;
+      const exact = normalize(walker.currentNode.data) === exactNeedle || normalize(element.innerText) === exactNeedle;
+      found.set(element, (found.get(element) ?? false) || exact);
     }
-    return [...document.body.querySelectorAll('*')]
-      .filter(element => element.checkVisibility() && element.innerText?.includes(needle)).at(-1) ?? null;
+    if (found.size === 0) {
+      const innermost = [...document.body.querySelectorAll('*')]
+        .filter(element => element.checkVisibility() && element.innerText?.includes(needle)).at(-1);
+      return innermost ? [innermost] : [];
+    }
+    const reachable = element => {
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return false;
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return false;
+      const hit = document.elementFromPoint(x, y);
+      return Boolean(hit) && (hit === element || element.contains(hit) || hit.contains(element));
+    };
+    const inLayer = element => {
+      if (element.closest('[role=menu],[role=listbox],[role=dialog],[role=alertdialog],[role=tooltip],[popover],dialog')) return true;
+      for (let node = element; node && node !== document.body; node = node.parentElement) {
+        if (getComputedStyle(node).position === 'fixed') return true;
+      }
+      return false;
+    };
+    let pool = [...found.keys()];
+    for (const prefer of [element => found.get(element), reachable, inLayer]) {
+      const narrowed = pool.filter(prefer);
+      if (narrowed.length > 0) pool = narrowed;
+      if (pool.length === 1) break;
+    }
+    return pool;
   })()`;
+}
+
+/** 歧义时列出候选：@引用、标签名和文字，便于改用 @引用。 */
+async function describeCandidates(cdp, objectIds) {
+  const lines = [];
+  for (const objectId of objectIds.slice(0, 6)) {
+    const { node } = await cdp.send('DOM.describeNode', { objectId });
+    const label = unwrapCdpResult(await cdp.send('Runtime.callFunctionOn', {
+      objectId, returnByValue: true,
+      functionDeclaration: `function () {
+        const layer = this.closest('[role=menu],[role=listbox],[role=dialog],[role=tooltip],[popover],dialog');
+        const text = (this.innerText ?? '').replace(/\\s+/g, ' ').trim().slice(0, 40);
+        return this.tagName.toLowerCase() + ' “' + text + '”' + (layer ? '（弹出层）' : '');
+      }`,
+    }));
+    lines.push(`@n${node.backendNodeId} ${label}`);
+  }
+  return lines;
+}
+
+async function resolveText(cdp, text) {
+  const response = await cdp.send('Runtime.evaluate', { expression: findByText(text), objectGroup: 'probe' });
+  unwrapCdpResult(response);
+  const { result } = await cdp.send('Runtime.getProperties', { objectId: response.result.objectId, ownProperties: true });
+  const objectIds = result
+    .filter(property => /^\d+$/.test(property.name) && property.value?.objectId)
+    .map(property => property.value.objectId);
+  if (objectIds.length === 0) {
+    throw new ProbeError('NOT_FOUND', `找不到可见文字 ${text}`, '用 probe snapshot --grep 查看页面上的实际文字');
+  }
+  if (objectIds.length > 1) {
+    const candidates = await describeCandidates(cdp, objectIds);
+    throw new ProbeError(
+      'AMBIGUOUS_TARGET',
+      `text=${text} 命中 ${objectIds.length} 个同样可点的元素`,
+      `改用 @引用：${candidates.join('；')}${objectIds.length > candidates.length ? '；……' : ''}`,
+    );
+  }
+  return objectIds[0];
 }
 
 export async function resolveTarget(cdp, target) {
@@ -54,17 +131,14 @@ export async function resolveTarget(cdp, target) {
       throw new ProbeError('STALE_REF', error.message, '重新运行 probe snapshot');
     }
   }
+  if (target.text !== undefined) return resolveText(cdp, target.text);
   const response = await cdp.send('Runtime.evaluate', {
-    expression: target.text === undefined ? `document.querySelector(${JSON.stringify(target.selector)})` : findByText(target.text),
+    expression: `document.querySelector(${JSON.stringify(target.selector)})`,
     objectGroup: 'probe',
   });
   unwrapCdpResult(response);
   const objectId = response.result?.objectId;
-  if (!objectId) {
-    throw target.text === undefined
-      ? new ProbeError('NOT_FOUND', `找不到 ${target.selector}`)
-      : new ProbeError('NOT_FOUND', `找不到可见文字 ${target.text}`, '用 probe snapshot --grep 查看页面上的实际文字');
-  }
+  if (!objectId) throw new ProbeError('NOT_FOUND', `找不到 ${target.selector}`);
   return objectId;
 }
 

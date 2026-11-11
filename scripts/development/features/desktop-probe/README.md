@@ -12,19 +12,19 @@
 4. 拖动验收用 `drag --by 80,0 --steps 8 --sample '<求值表达式>' --expect-follow x`。表达式返回分隔线或目标的 CSS 像素坐标，探针比较每一步的值与指针位移。
 5. `pnpm -s probe logs --level error` 查看 Renderer 报错。验证完成用 `stop` 保留日志和截图，或用 `stop --clean` 回收整个探针实例。
 
-`pnpm -s probe` 每次输出一行 JSON。失败返回非零退出码与 `error.code`、`message`、必要时的 `hint`。截图、完整快照和录制数据用 `artifacts[].path` 打开。短命令可直接用 `node scripts/development/features/desktop-probe/bin/probe.mjs`，省去 pnpm 启动时间。
+`pnpm -s probe` 每次输出一行 JSON。失败返回非零退出码与 `error.code`、`message`、必要时的 `hint`；命令或选项写错时 `hint` 给出最接近的写法（如 `list` → `status --all`、`screenshot` → `shot`）。截图、完整快照和录制数据用 `artifacts[].path` 打开。短命令可直接用 `node scripts/development/features/desktop-probe/bin/probe.mjs`，省去 pnpm 启动时间。
 
 ## 命令
 
 | 命令 | 用法 |
 | --- | --- |
 | `up` / `restart` | `--name <实例>`、`--window hidden\|inactive\|visible`、`--mode dev\|bundled`、`--size 1400x900`、`--fresh`、`--no-build`。默认 `dev` 加载当前工作区的开发插件。仅在停止后用 `up --fresh` 清空隔离数据。用 `restart` 应用新启动选项。 |
-| `up --clone-data <目录>` | 停止状态下把一份 Linnya 数据目录（含 `workspace/workspace.sqlite`，如 `_dev_data`）以 APFS 写时复制克隆进实例，替换实例原有 Workspace。同卷克隆瞬时完成，几乎不占空间。只读源目录，不打开源库。跳过基准结果、对话工作目录、日志、缓存与运行锁。源库正在写入时在副本上做 `quick_check`，不一致则报 `CLONE_INCONSISTENT`。 |
+| `up --clone-data <目录>` | 停止状态下把一份 Linnya 数据目录（含 `workspace/workspace.sqlite`，如 `_dev_data`）以 APFS 写时复制克隆进实例，替换实例原有 Workspace。同卷克隆瞬时完成，几乎不占空间。只读源目录，不打开源库。跳过基准结果、对话工作目录、日志、缓存与运行锁。模型凭据在 Electron profile 里，不随数据克隆，克隆实例里用户配置的模型显示缺少凭据；需要真实模型的 Agent 试跑在日常开发实例里做。源库正在写入时在副本上做 `quick_check`，不一致则报 `CLONE_INCONSISTENT`。 |
 | `open` | `open <ID>` 只读查询实例数据库，识别对话、文档或项目，再通过 Vite 取 Renderer 正在使用的导航端口打开，与用户点击走同一条链。`open assistant` 回到 Linnya 助手，`open <ID> --overview` 打开该对象所在项目的概览。仅 `--mode dev`。 |
-| `status` / `stop` | `status --all` 列出当前 worktree 的实例。状态含 CDP、Vite、API 端口和日志位置。停止会先关 Desktop 再关 Vite。 |
+| `status` / `stop` | `status --all` 列出当前 worktree 的实例。状态含 CDP、Vite、API 端口、日志位置和 `workspaceDb`（实例 Workspace 数据库，只读核对数据时用；`up` 结果里也有）。停止会先关 Desktop 再关 Vite。 |
 | `snapshot` / `shot` | `snapshot --within @n25 --all --max-lines 100 --json`。`--grep <文字>` 按名称和值过滤（不分大小写，含正文），`--role button,link` 按角色过滤，两者只保留命中项及其祖先链。截图接受引用、`--selector <css>` 或 `--clip x,y,w,h`，支持 `--pad`、`--device`、`--jpeg`。默认 1× CSS 像素。`timing` 分别报告等待画面稳定和 CDP 抓取的耗时。 |
 | `fonts` | `fonts @n25 text=workspace` 返回每个目标的声明字体栈、字号字重与 Chromium 实际排版字体（`CSS.getPlatformFontsForNode`）。首个具名字体未生效时 `firstDeclaredUsed` 为 `false`，常见于字体名写错或系统匹配不到。 |
-| `click` / `dblclick` / `hover` | 目标为 `@n25`、`text=<文字>`、`--selector <css>` 或 `--at x,y`。`text=` 取直接含该文字的可见元素，文字被拆成多段时取包含它的最内层可见元素。选择器和引用会检查可见性、位置稳定和命中。坐标用于明确指定像素位置。 |
+| `click` / `dblclick` / `hover` | 目标为 `@n25`、`text=<文字>`、`--selector <css>` 或 `--at x,y`。`text=` 取直接含该文字的可见元素，文字被拆成多段时取包含它的最内层可见元素；多个命中时依次优先文字完全相同的、指针点得到的、弹出层（菜单、列表框、对话框、fixed 层）里的。仍分不出就报 `AMBIGUOUS_TARGET`，`hint` 列出候选的 `@n` 引用，不静默挑第一个。选择器和引用会检查可见性、位置稳定和命中。坐标用于明确指定像素位置。 |
 | `type` / `press` | `type '中文' [@n25]`，`press Meta+A`、`press Escape`。macOS 编辑快捷键支持 `Meta+A/C/X/V/Z` 和 `Shift+Meta+Z`。复制、剪切和粘贴使用系统剪贴板。 |
 | `drag` / `scroll` | `drag <目标> --by=80,0` 或 `--to <目标>`。支持 `--sample`、`--expect-follow x\|y`、`--tolerance 2`。`scroll <目标> --dy 400`。 |
 | `wait` / `eval` / `reload` | `wait --selector <css> --state attached\|visible\|hidden\|detached`，或 `--text`、`--expr`、`--settle`。`eval` 的表达式在 Renderer 执行，返回 JSON 值。 |

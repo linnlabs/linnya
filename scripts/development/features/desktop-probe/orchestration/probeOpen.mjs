@@ -1,13 +1,13 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { ProbeError } from '../definitions/probeContract.mjs';
 import { evaluate } from '../infrastructure/cdpClient.mjs';
+import { instanceWorkspaceDb } from '../infrastructure/instanceStore.mjs';
 import { pageFacts, settlePage } from './probePage.mjs';
 
 /** 只读查询本实例 Workspace，识别 ID 属于对话、文档还是项目，并取得导航所需的项目与类型。 */
 async function resolveWorkspaceObject(session, id) {
   if (id === 'assistant') return { kind: 'assistant' };
-  const path = join(session.root, 'workspace', 'workspace', 'workspace.sqlite');
+  const path = instanceWorkspaceDb(session.root);
   if (!existsSync(path)) throw new ProbeError('NOT_FOUND', '该实例还没有 Workspace 数据库');
   const { DatabaseSync } = await import('node:sqlite');
   const db = new DatabaseSync(path, { readOnly: true });

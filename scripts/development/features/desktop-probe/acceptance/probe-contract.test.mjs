@@ -67,6 +67,24 @@ test('目标写法：@引用、text= 文字、其余按选择器', () => {
   assert.deepEqual(parseProbeArgs(['snapshot', '--grep', '设置', '--role', 'button,link']).values.role, 'button,link');
 });
 
+test('写错命令或选项时给出最接近的写法', () => {
+  const hintOf = argv => {
+    try {
+      parseProbeArgs(argv);
+    } catch (error) {
+      assert.equal(error.code, 'USAGE');
+      return error.hint;
+    }
+    assert.fail('应当报 USAGE');
+  };
+  assert.match(hintOf(['list']), /status --all/);
+  assert.match(hintOf(['screnshot']), /probe shot/);
+  assert.match(hintOf(['shot', '--out', 'a.png']), /artifacts\[\]\.path/);
+  assert.match(hintOf(['click', '--selecter', '.a']), /--selector/);
+  assert.match(hintOf(['wait', '--selector', 'text=设置']), /wait --text/);
+  assert.match(hintOf(['record', 'curve', '--target', 'text=菜单', '--', 'click', '@n1']), /@引用/);
+});
+
 test('克隆数据只复制用户数据，跳过缓存、锁与 shm，源目录不变', async () => {
   const temp = mkdtempSync(join(tmpdir(), 'probe-clone-'));
   try {

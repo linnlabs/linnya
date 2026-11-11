@@ -8,7 +8,7 @@ import { sameProcess, signalOwner } from '../infrastructure/processTree.mjs';
 import { acceptance } from './probeAcceptance.mjs';
 
 const test = acceptance(`real-${process.pid}`);
-const { run } = test;
+const { run, probe } = test;
 async function checkSettingsTooltip() {
   await run('hover', '--selector', '[data-linnya-tooltip="设置"]');
   await run('wait', '--expr', `[...document.querySelectorAll('[role="tooltip"]')]
@@ -57,6 +57,21 @@ try {
   assert.equal(new Set(frames.frames.map(frame => frame.sha256)).size, 3, '真实菜单的三个定格时刻应呈现不同画面');
   copyFileSync(frames.artifacts[0].path, join(evidence, 'overview-filter-frames.png'));
   await run('press', 'Escape');
+  await run('wait', '--selector', menu, '--state', 'detached');
+  // 两行的“位置”都是“资料”：分不出时报歧义并给出 @引用；位置菜单打开时，菜单项优先于表格里的同名文字。
+  const ambiguous = await probe('click', 'text=资料');
+  assert.equal(ambiguous.error?.code, 'AMBIGUOUS_TARGET', JSON.stringify(ambiguous));
+  assert.match(ambiguous.error.hint, /@n\d+ .*；@n\d+ /);
+  const locationFilter = (await run('snapshot', '--grep', '位置', '--json')).entries
+    .find(entry => entry.role === 'button' && entry.name === '位置' && 'expanded' in entry.states);
+  assert.ok(locationFilter?.ref, '找不到位置筛选按钮');
+  await run('click', locationFilter.ref);
+  await run('wait', '--selector', menu, '--state', 'visible');
+  await run('click', 'text=资料');
+  await run('wait', '--expr', `[...document.querySelectorAll('.project-overview-filter__trigger')]
+    .some(trigger => trigger.innerText.includes('位置：资料'))`);
+  await run('click', 'text=位置：资料');
+  await run('click', 'text=全部位置');
   await run('wait', '--selector', menu, '--state', 'detached');
   const handle = '.project-overview__resize';
   const divider = `(() => {const r=document.querySelector('${handle}').getBoundingClientRect();return r.x+r.width/2})()`;

@@ -7,7 +7,7 @@ import { waitFor } from '../infrastructure/cdpClient.mjs';
 import { cloneWorkspaceData } from '../infrastructure/workspaceClone.mjs';
 import { buildFreshness, ensureFreshBuild } from './probeBuild.mjs';
 import {
-  instanceRoot, instancesRoot, prepareInstance, readSession, touchInstance, withLifecycleLock, writeSession,
+  instanceRoot, instanceWorkspaceDb, instancesRoot, prepareInstance, readSession, touchInstance, withLifecycleLock, writeSession,
 } from '../infrastructure/instanceStore.mjs';
 import { observeTree, readProcessTable, sameProcess, signalOwner, stopOwnedTree } from '../infrastructure/processTree.mjs';
 
@@ -17,6 +17,8 @@ function sessionSummary(session) {
   // 子进程的完整命令只用于核对归属，留在实例目录，避免进入工具输出。
   const summary = { ...session };
   delete summary.processes;
+  // 只读查库（核对标签、行动账本等）时直接用这个路径；玩具应用没有 Workspace。
+  if (session.root && session.options?.entry !== 'toy') summary.workspaceDb = instanceWorkspaceDb(session.root);
   return summary;
 }
 

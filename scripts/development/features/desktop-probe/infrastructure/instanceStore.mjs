@@ -18,6 +18,11 @@ export function instanceRoot(name) {
   return join(instancesRoot, name);
 }
 
+/** 实例的 Workspace 数据库：Desktop 以 `<实例>/workspace` 为 LINNYA_WORKSPACE_DIR，库在其下的 workspace/。 */
+export function instanceWorkspaceDb(root) {
+  return join(root, 'workspace', 'workspace', 'workspace.sqlite');
+}
+
 export function readOptional(path) {
   try {
     return readFileSync(path, 'utf8');
