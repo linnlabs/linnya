@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import type {
   PluginDiagnosticView,
   PluginId,
@@ -75,15 +76,13 @@ interface PluginMutationFailure {
 
 type PluginMutationResult = PluginMutationSuccess | PluginMutationFailure;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object');
-}
+
 
 function isPluginStateView(value: unknown): value is PluginStateView {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   const record = value;
   const meta = record.meta;
-  if (!isRecord(meta)) return false;
+  if (!isObjectLike(meta)) return false;
   const metaRecord = meta;
   return (
     typeof metaRecord.id === 'string' &&
@@ -97,7 +96,7 @@ function isPluginStateView(value: unknown): value is PluginStateView {
 }
 
 function isPluginDiagnosticView(value: unknown): value is PluginDiagnosticView {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   return (
     (value.level === 'error' || value.level === 'warn' || value.level === 'info') &&
     (typeof value.pluginId === 'string' || value.pluginId === null) &&
@@ -108,14 +107,14 @@ function isPluginDiagnosticView(value: unknown): value is PluginDiagnosticView {
 }
 
 function isPluginStoreListItem(value: unknown): value is PluginStoreListItem {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   return isPluginStateView(value);
 }
 
 function isPluginStoreCapability(
   value: unknown
 ): value is NonNullable<PluginStoreDetail['skills']>[number] {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   return (
     typeof value.name === 'string' &&
     value.name.trim().length > 0 &&
@@ -126,7 +125,7 @@ function isPluginStoreCapability(
 function isPluginReleaseNote(
   value: unknown
 ): value is NonNullable<PluginStoreDetail['releaseNotes']>[number] {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   return (
     typeof value.version === 'string' &&
     value.version.trim().length > 0 &&
@@ -136,7 +135,7 @@ function isPluginReleaseNote(
 }
 
 function isPluginStoreDetail(value: unknown): value is PluginStoreDetail {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   const detailRecord = value;
   if (!isPluginStateView(value)) return false;
 
@@ -162,7 +161,7 @@ function isPluginStoreDetail(value: unknown): value is PluginStoreDetail {
 }
 
 function isPluginRemoteInstallResult(value: unknown): value is PluginRemoteInstallResult {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   if (value.status === 'installed') {
     return (
       typeof value.pluginId === 'string' &&
@@ -190,7 +189,7 @@ function isPluginRemoteInstallResult(value: unknown): value is PluginRemoteInsta
 }
 
 function isPluginRemoteUpdateCheckResult(value: unknown): value is PluginRemoteUpdateCheckResult {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   if (value.status === 'available') {
     return (
       typeof value.pluginId === 'string' &&
@@ -227,7 +226,7 @@ function isPluginRemoteUpdateCheckResult(value: unknown): value is PluginRemoteU
 }
 
 function parsePluginListResult(result: unknown): PluginListIpcResult {
-  if (!isRecord(result)) {
+  if (!isObjectLike(result)) {
     return { success: false, error: createPluginRuntimeError('pluginStateResponseInvalid') };
   }
 
@@ -249,7 +248,7 @@ function parsePluginListResult(result: unknown): PluginListIpcResult {
 }
 
 function parsePluginStoreListResult(result: unknown): PluginStoreListIpcResult {
-  if (!isRecord(result)) {
+  if (!isObjectLike(result)) {
     return { success: false, error: createPluginRuntimeError('pluginStoreListResponseInvalid') };
   }
 
@@ -264,7 +263,7 @@ function parsePluginStoreListResult(result: unknown): PluginStoreListIpcResult {
   }
 
   const data = record.data;
-  if (!isRecord(data)
+  if (!isObjectLike(data)
     || typeof data.remoteServiceEnabled !== 'boolean'
     || !Array.isArray(data.items)
     || !data.items.every(isPluginStoreListItem)) {
@@ -275,7 +274,7 @@ function parsePluginStoreListResult(result: unknown): PluginStoreListIpcResult {
 }
 
 function parsePluginStoreDetailResult(result: unknown): PluginStoreDetailIpcResult {
-  if (!isRecord(result)) {
+  if (!isObjectLike(result)) {
     return { success: false, error: createPluginRuntimeError('pluginStoreDetailResponseInvalid') };
   }
 
@@ -297,7 +296,7 @@ function parsePluginStoreDetailResult(result: unknown): PluginStoreDetailIpcResu
 }
 
 function parsePluginRemoteInstallResult(result: unknown): PluginRemoteInstallIpcResult {
-  if (!isRecord(result)) {
+  if (!isObjectLike(result)) {
     return { success: false, error: createPluginRuntimeError('pluginRemoteInstallResponseInvalid') };
   }
 
@@ -319,7 +318,7 @@ function parsePluginRemoteInstallResult(result: unknown): PluginRemoteInstallIpc
 }
 
 function parsePluginRemoteUpdateCheckResult(result: unknown): PluginRemoteUpdateCheckIpcResult {
-  if (!isRecord(result)) {
+  if (!isObjectLike(result)) {
     return { success: false, error: createPluginRuntimeError('pluginRemoteUpdateCheckResponseInvalid') };
   }
 
@@ -341,7 +340,7 @@ function parsePluginRemoteUpdateCheckResult(result: unknown): PluginRemoteUpdate
 }
 
 function parsePluginDiagnosticsResult(result: unknown): PluginDiagnosticsIpcResult {
-  if (!isRecord(result)) {
+  if (!isObjectLike(result)) {
     return { success: false, error: createPluginRuntimeError('pluginDiagnosticsResponseInvalid') };
   }
 
@@ -362,7 +361,7 @@ function parsePluginDiagnosticsResult(result: unknown): PluginDiagnosticsIpcResu
 }
 
 function parsePluginMutationResult(result: unknown): PluginMutationResult {
-  if (!isRecord(result)) {
+  if (!isObjectLike(result)) {
     return { success: false, error: createPluginRuntimeError('pluginMutationResponseInvalid') };
   }
   if (result.success === true) {

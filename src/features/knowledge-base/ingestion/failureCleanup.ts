@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/knowledge-base/ingestion/failureCleanup.ts
  * 
@@ -41,9 +42,7 @@ interface QdrantPoint {
   [key: string]: unknown;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 /**
  * **功能 (What):** 从Qdrant集合中获取所有唯一的文档ID
@@ -96,7 +95,7 @@ async function getQdrantDocIds(qdrantRepository: QdrantRepository, collectionNam
       totalPoints += page.points.length;
       for (const point of page.points) {
         const payload = point.payload;
-        const docId = isRecord(payload) ? payload['doc_id'] : undefined;
+        const docId = isObjectLike(payload) ? payload['doc_id'] : undefined;
         if (typeof docId === 'string' && docId.trim().length > 0) {
           docIds.add(docId);
         }

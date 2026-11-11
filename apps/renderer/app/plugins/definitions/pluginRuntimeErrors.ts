@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import type { PluginId } from '@app/schemas';
 
 export type PluginRuntimeErrorCode =
@@ -58,13 +59,11 @@ export class PluginRuntimeError extends Error {
 
 export type PluginRuntimeUserError = string | PluginRuntimeError;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object');
-}
+
 
 export function isPluginRuntimeError(value: unknown): value is PluginRuntimeError {
   return (
-    isRecord(value) &&
+    isObjectLike(value) &&
     value.kind === PLUGIN_RUNTIME_ERROR_KIND &&
     typeof value.code === 'string' &&
     typeof value.message === 'string'

@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file pluginPushClient.ts
  * @description 渲染端插件 push 事件订阅客户端。
@@ -11,13 +12,11 @@ interface PluginPushElectronApi {
   ) => (() => void) | undefined;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function getPluginPushApi(): PluginPushElectronApi {
   const api = (window as Window & { electronAPI?: unknown }).electronAPI;
-  if (!isRecord(api) || typeof api['plugin:onPush'] !== 'function') {
+  if (!isObjectLike(api) || typeof api['plugin:onPush'] !== 'function') {
     throw new Error('[pluginPushClient] window.electronAPI.plugin:onPush is not available');
   }
   return {

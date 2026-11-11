@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/infra/adapters/vector-store/qdrant/guards.ts
  *
@@ -9,16 +10,14 @@
 
 import type { QdrantScrollOffset, SparseVector } from './types';
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 export function isNumberArray(value: unknown): value is number[] {
   return Array.isArray(value) && value.every((n) => typeof n === 'number' && Number.isFinite(n));
 }
 
 export function isSparseVector(value: unknown): value is SparseVector {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   return isNumberArray(value['indices']) && isNumberArray(value['values']);
 }
 
@@ -26,7 +25,7 @@ export function isQdrantScrollOffset(value: unknown): value is QdrantScrollOffse
   if (value === null) return true;
   if (typeof value === 'string') return true;
   if (typeof value === 'number' && Number.isFinite(value)) return true;
-  if (isRecord(value)) return true;
+  if (isObjectLike(value)) return true;
   return false;
 }
 
@@ -41,7 +40,7 @@ export function getStringProp(obj: Record<string, unknown>, key: string): string
 }
 
 export function hasNameAndVector(value: unknown): value is { name: string; vector: unknown } {
-  return isRecord(value) && typeof value['name'] === 'string' && 'vector' in value;
+  return isObjectLike(value) && typeof value['name'] === 'string' && 'vector' in value;
 }
 
 

@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import {
   RENDER_VIRTUALIZATION_META_KEY,
   renderVirtualizationPluginKey,
@@ -7,12 +8,10 @@ interface TransactionMetaReader {
   getMeta: (key: unknown) => unknown
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
+
 
 function isTransactionMetaReader(value: unknown): value is TransactionMetaReader {
-  if (!isRecord(value)) return false
+  if (!isObjectLike(value)) return false
   return typeof value.getMeta === 'function'
 }
 
@@ -32,6 +31,6 @@ export function hasRenderVirtualizationTransactionMeta(transaction: unknown): bo
 }
 
 export function hasRenderVirtualizationTransactionPayload(payload: unknown): boolean {
-  if (!isRecord(payload)) return false
+  if (!isObjectLike(payload)) return false
   return hasRenderVirtualizationTransactionMeta(payload.transaction)
 }

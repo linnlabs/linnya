@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/knowledge-base/infrastructure/QdrantRepositoryImpl.ts
  *
@@ -66,12 +67,12 @@ export class QdrantRepositoryImpl implements QdrantRepository {
     points: Array<{ id: string; payload: Record<string, unknown> }>;
     nextOffset?: unknown;
   }> {
-    const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+
     const isScrollOffset = (v: unknown): v is QdrantScrollOffset => {
       if (v === null) return true;
       if (typeof v === 'string') return true;
       if (typeof v === 'number' && Number.isFinite(v)) return true;
-      if (isRecord(v)) return true;
+      if (isObjectLike(v)) return true;
       return false;
     };
 

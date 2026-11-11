@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * 根据 PDF.js 文本坐标判断页面是否适合直接提取、规则分栏或视觉识别。
  */
@@ -76,11 +77,7 @@ export async function analyzePageLayout(page: PDFPageProxy): Promise<LayoutCompl
 }
 
 export function hasValidReadingOrder(structTree: unknown): boolean {
-  if (!isRecord(structTree)) return false;
+  if (!isObjectLike(structTree)) return false;
   const children = structTree.children;
   return Array.isArray(children) && children.length > 0;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }

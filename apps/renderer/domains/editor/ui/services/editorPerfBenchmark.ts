@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * editorPerfBenchmark.ts
  *
@@ -573,32 +574,30 @@ function getEditorInstance(): unknown | null {
   return null
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
+
 
 function isBenchmarkEditor(value: unknown): value is BenchmarkEditor {
-  if (!isRecord(value)) return false
+  if (!isObjectLike(value)) return false
   const commands = value.commands
   const view = value.view
   return (
-    isRecord(commands) &&
+    isObjectLike(commands) &&
     typeof commands.setContent === 'function' &&
-    isRecord(view) &&
+    isObjectLike(view) &&
     typeof view.updateState === 'function' &&
-    isRecord(value.schema) &&
-    isRecord(value.state)
+    isObjectLike(value.schema) &&
+    isObjectLike(value.state)
   )
 }
 
 function callNoArg(value: unknown, methodName: string): unknown {
-  if (!isRecord(value)) return null
+  if (!isObjectLike(value)) return null
   const method = value[methodName]
   return typeof method === 'function' ? method() : null
 }
 
 function callWithArgs(value: unknown, methodName: string, ...args: unknown[]): unknown {
-  if (!isRecord(value)) return null
+  if (!isObjectLike(value)) return null
   const method = value[methodName]
   return typeof method === 'function' ? method(...args) : null
 }
@@ -626,7 +625,7 @@ function readString(value: unknown): string | null {
 function readNestedValue(value: unknown, path: readonly string[]): unknown {
   let current: unknown = value
   for (const key of path) {
-    if (!isRecord(current)) return null
+    if (!isObjectLike(current)) return null
     current = current[key]
   }
   return current
@@ -1282,7 +1281,7 @@ function findFirstHydratedRootBlock(): HTMLElement {
 }
 
 function resetBenchmarkAnnotations(editor: unknown): void {
-  if (!isRecord(editor)) return
+  if (!isObjectLike(editor)) return
   const annotationStore = editor.annotationStore
   const result = callWithArgs(annotationStore, 'loadAnnotations', [])
   if (result !== null) {

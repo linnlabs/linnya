@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/features/knowledge-base/infrastructure/qdrant-repository/segmentPolicy.ts
  *
@@ -17,9 +18,7 @@ const SEGMENT_POLICY_RULES: SegmentPolicyRule[] = [
   { maxPointsInclusive: 500_000, targetSegmentCount: 4 },
 ];
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function readFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
@@ -56,7 +55,7 @@ export function readConfiguredTargetSegmentCount(
   config: Record<string, unknown>
 ): CollectionTargetSegmentCount {
   const optimizerConfig = config['optimizer_config'];
-  if (!isRecord(optimizerConfig)) {
+  if (!isObjectLike(optimizerConfig)) {
     return 0;
   }
 

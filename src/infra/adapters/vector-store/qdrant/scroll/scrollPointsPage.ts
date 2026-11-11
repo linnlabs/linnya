@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/infra/adapters/vector-store/qdrant/scroll/scrollPointsPage.ts
  *
@@ -7,7 +8,7 @@
 import type { QdrantClient } from '@qdrant/js-client-rest';
 import type { Logger } from 'src/shared/logger';
 import type { QdrantScrollOffset } from '../types';
-import { isQdrantScrollOffset, isRecord } from '../guards';
+import { isQdrantScrollOffset } from '../guards';
 
 export async function scrollPointsPageImpl(
   client: QdrantClient,
@@ -40,8 +41,8 @@ export async function scrollPointsPageImpl(
 
   const raw = await client.scroll(collectionName, scrollParams);
 
-  const pointsRaw: unknown = isRecord(raw) ? raw['points'] : undefined;
-  const nextOffsetRaw: unknown = isRecord(raw) ? raw['next_page_offset'] : undefined;
+  const pointsRaw: unknown = isObjectLike(raw) ? raw['points'] : undefined;
+  const nextOffsetRaw: unknown = isObjectLike(raw) ? raw['next_page_offset'] : undefined;
 
   // Qdrant 在末尾可能返回 null，这里统一转换成 undefined，便于上层判断结束
   const nextOffset =
@@ -50,12 +51,12 @@ export async function scrollPointsPageImpl(
   const points: Array<{ id: string; payload: Record<string, unknown> }> = Array.isArray(pointsRaw)
     ? pointsRaw
         .map((p: unknown) => {
-          if (!isRecord(p)) return undefined;
+          if (!isObjectLike(p)) return undefined;
           const id = p['id'];
           const payload = p['payload'];
           if (typeof id !== 'string' && typeof id !== 'number') return undefined;
           const normalizedId = typeof id === 'string' ? id : String(id);
-          const normalizedPayload: Record<string, unknown> = isRecord(payload) ? payload : {};
+          const normalizedPayload: Record<string, unknown> = isObjectLike(payload) ? payload : {};
           return { id: normalizedId, payload: normalizedPayload };
         })
         .filter((x): x is { id: string; payload: Record<string, unknown> } => x !== undefined)

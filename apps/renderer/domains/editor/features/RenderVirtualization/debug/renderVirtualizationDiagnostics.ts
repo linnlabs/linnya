@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * renderVirtualizationDiagnostics.ts
  *
@@ -76,18 +77,16 @@ export interface RenderVirtualizationKeyProbeResult {
   after: RenderVirtualizationDiagnosticsSnapshot
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
+
 
 function isEditorViewLike(value: unknown): value is RenderVirtualizationDiagnosticsEditorView {
-  if (!isRecord(value)) return false
-  return isRecord(value.state) && value.dom instanceof HTMLElement
+  if (!isObjectLike(value)) return false
+  return isObjectLike(value.state) && value.dom instanceof HTMLElement
 }
 
 function isEditorLike(value: unknown): value is RenderVirtualizationDiagnosticsEditor {
-  if (!isRecord(value)) return false
-  return isRecord(value.state) && isEditorViewLike(value.view)
+  if (!isObjectLike(value)) return false
+  return isObjectLike(value.state) && isEditorViewLike(value.view)
 }
 
 function readGlobalEditor(): RenderVirtualizationDiagnosticsEditor | null {

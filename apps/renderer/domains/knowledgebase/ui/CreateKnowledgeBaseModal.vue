@@ -158,6 +158,7 @@
 </template>
 
 <script setup lang="ts">
+import { isObjectLike } from '@linnya/foundation';
 import { loadProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useKnowledgeBaseStore } from '../stores/knowledgeBase';
@@ -188,15 +189,13 @@ type KnowledgeBaseItem = {
   description?: string;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function normalizeCreatedKnowledgeBase(value: unknown): KnowledgeBaseItem | null {
-  if (!isRecord(value)) return null;
+  if (!isObjectLike(value)) return null;
 
   const source = value.knowledge_base;
-  if (!isRecord(source)) return null;
+  if (!isObjectLike(source)) return null;
 
   const id = typeof source.id === 'string' ? source.id : null;
   const name = typeof source.name === 'string' ? source.name : null;

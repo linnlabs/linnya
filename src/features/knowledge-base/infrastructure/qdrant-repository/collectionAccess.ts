@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/features/knowledge-base/infrastructure/qdrant-repository/collectionAccess.ts
  *
@@ -135,14 +136,12 @@ export interface CollectionAccessControllableQdrantRepository extends QdrantRepo
   ): Promise<T>;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 export function hasCollectionAccessCoordinator(
   repository: unknown
 ): repository is CollectionAccessControllableQdrantRepository {
-  if (!isRecord(repository)) {
+  if (!isObjectLike(repository)) {
     return false;
   }
 

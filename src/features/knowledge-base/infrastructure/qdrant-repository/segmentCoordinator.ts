@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/features/knowledge-base/infrastructure/qdrant-repository/segmentCoordinator.ts
  *
@@ -35,9 +36,7 @@ export type CollectionSegmentReconcileResult = {
   updated: boolean;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 /**
  * 功能：执行一次 collection 目标段数校准。
@@ -105,7 +104,7 @@ export interface SegmentTunableQdrantRepository extends QdrantRepository {
 export function hasSegmentTargetReconciler(
   repository: unknown
 ): repository is SegmentTunableQdrantRepository {
-  if (!isRecord(repository)) {
+  if (!isObjectLike(repository)) {
     return false;
   }
 

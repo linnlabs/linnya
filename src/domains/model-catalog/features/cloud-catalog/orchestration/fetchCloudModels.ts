@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/domains/model-catalog/features/cloud-catalog/orchestration/fetchCloudModels.ts
  *
@@ -54,9 +55,7 @@ interface CloudModelItem {
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string');
@@ -85,7 +84,7 @@ function assertLinnyaCloudRouteIdentity(
 
 function isCloudModelItem(value: unknown): value is CloudModelItem {
   if (
-    !isRecord(value) ||
+    !isObjectLike(value) ||
     typeof value.id !== 'string' ||
     typeof value.client_base_url !== 'string' ||
     !isLinnyaCloudClientBaseUrl(value.client_base_url)
@@ -93,7 +92,7 @@ function isCloudModelItem(value: unknown): value is CloudModelItem {
     return false;
   }
   if (
-    !isRecord(value.limits) ||
+    !isObjectLike(value.limits) ||
     typeof value.limits.daily !== 'number' ||
     !Number.isFinite(value.limits.daily) ||
     typeof value.limits.monthly !== 'number' ||
@@ -189,7 +188,7 @@ export async function fetchCloudModels(): Promise<CloudModelsFetchResult> {
     clearTimeout(timer);
   }
 
-  if (!isRecord(data) || !Array.isArray(data.models)) {
+  if (!isObjectLike(data) || !Array.isArray(data.models)) {
     logger.warn('云端模型列表响应格式异常');
     return {
       success: false,
@@ -269,7 +268,7 @@ export async function fetchCloudModels(): Promise<CloudModelsFetchResult> {
   });
 
   logger.info(`从云端加载了 ${models.length} 个模型`);
-  const purposeDefaults = isRecord(data.task_defaults)
+  const purposeDefaults = isObjectLike(data.task_defaults)
     ? Object.fromEntries(
         Object.entries(data.task_defaults)
           .filter((entry): entry is [string, string] => {

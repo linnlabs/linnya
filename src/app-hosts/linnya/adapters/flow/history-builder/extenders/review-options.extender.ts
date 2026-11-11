@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file review-options.extender.ts
  * @description Review（审阅）请求字段透传：从 ConversationNextRequest.options 提取 Review 扩展字段
@@ -14,9 +15,7 @@ import type {
   HistoryBuilderOptionsExtenderContext,
 } from '../history-builder-options-extender.types';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function getOptionalString(obj: Record<string, unknown>, key: string): string | undefined {
   const v = obj[key];
@@ -37,7 +36,7 @@ export class ReviewOptionsExtender implements HistoryBuilderOptionsExtender {
 
   extend(ctx: HistoryBuilderOptionsExtenderContext): Partial<AgentInvokeRequest> {
     const options = ctx.options;
-    if (!options || !isRecord(options)) {
+    if (!options || !isObjectLike(options)) {
       return {};
     }
 

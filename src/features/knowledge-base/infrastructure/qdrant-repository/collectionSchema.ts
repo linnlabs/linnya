@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/features/knowledge-base/infrastructure/qdrant-repository/collectionSchema.ts
  *
@@ -6,13 +7,11 @@
 
 import type { Logger } from '@shared/logger';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function getRecordProp(obj: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
   const v = obj[key];
-  return isRecord(v) ? v : undefined;
+  return isObjectLike(v) ? v : undefined;
 }
 
 /**

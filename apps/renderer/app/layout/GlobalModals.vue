@@ -86,6 +86,7 @@
 </template>
 
 <script setup lang="ts">
+import { isObjectLike } from '@linnya/foundation';
 import { useUIStore } from '@/shared/stores/ui';
 import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
@@ -124,16 +125,14 @@ type KnowledgeBaseStoreLike = {
   setCurrentKnowledgeBase?: (kbId: string | null) => unknown;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null;
-};
+
 
 const isFunction = (value: unknown): value is (...args: unknown[]) => unknown => {
   return typeof value === 'function';
 };
 
 const isKnowledgeBaseStoreLike = (value: unknown): value is KnowledgeBaseStoreLike => {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   const ensureDataLoadedOk =
     !('ensureDataLoaded' in value) || typeof value.ensureDataLoaded === 'function';
   const setCurrentKnowledgeBaseOk =
@@ -145,7 +144,7 @@ async function getKnowledgeBaseStoreLike(): Promise<KnowledgeBaseStoreLike | nul
   try {
     // 中文说明：动态导入，避免知识库 modal 和全局布局形成静态循环依赖。
     const mod: unknown = await import('../../domains/knowledgebase/stores/knowledgeBase.js');
-    if (!isRecord(mod)) return null;
+    if (!isObjectLike(mod)) return null;
 
     const useStore = mod.useKnowledgeBaseStore;
     if (!isFunction(useStore)) return null;
@@ -160,7 +159,7 @@ async function getKnowledgeBaseStoreLike(): Promise<KnowledgeBaseStoreLike | nul
 }
 
 const normalizeDocId = (input: unknown): string | null => {
-  if (!isRecord(input)) return null;
+  if (!isObjectLike(input)) return null;
   const id = input.id;
   return typeof id === 'string' && id.trim().length > 0 ? id : null;
 };
@@ -210,7 +209,7 @@ async function resolveKbIdForDocId(docId: string): Promise<string | null> {
       const all = await knowledgeBaseService.getAllKnowledgeBases();
       const list = Array.isArray(all.knowledge_bases) ? all.knowledge_bases : [];
       candidateKbIds = list
-        .map((kb: unknown) => (isRecord(kb) && typeof kb.id === 'string' ? kb.id : null))
+        .map((kb: unknown) => (isObjectLike(kb) && typeof kb.id === 'string' ? kb.id : null))
         .filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
     } catch (error) {
       console.error('[GlobalModals] 获取全量 KB 列表失败:', error);
@@ -221,7 +220,7 @@ async function resolveKbIdForDocId(docId: string): Promise<string | null> {
   for (const kbId of candidateKbIds) {
     try {
       const docsResponse = await knowledgeBaseService.getDocuments(kbId);
-      const rawDocs = isRecord(docsResponse) ? docsResponse.documents : null;
+      const rawDocs = isObjectLike(docsResponse) ? docsResponse.documents : null;
       const docs = Array.isArray(rawDocs) ? rawDocs : [];
 
       for (const d of docs) {

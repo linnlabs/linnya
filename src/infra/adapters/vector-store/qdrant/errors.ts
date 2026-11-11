@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/infra/adapters/vector-store/qdrant/errors.ts
  *
@@ -11,7 +12,7 @@
  * 注意：这里严格避免 any 与不安全断言，只用类型守卫安全取值。
  */
 
-import { getNumberProp, isRecord } from './guards';
+import { getNumberProp } from './guards';
 
 /**
  * Qdrant 请求错误（用于把“不存在”与“不可用”区分开）
@@ -51,13 +52,13 @@ export function isQdrantRequestError(err: unknown): err is QdrantRequestError {
  */
 export function extractHttpStatusCode(err: unknown, depth: number = 0): number | undefined {
   if (depth > 3) return undefined;
-  if (!isRecord(err)) return undefined;
+  if (!isObjectLike(err)) return undefined;
 
   const direct = getNumberProp(err, 'status') ?? getNumberProp(err, 'statusCode');
   if (typeof direct === 'number') return direct;
 
   const response = err['response'];
-  if (isRecord(response)) {
+  if (isObjectLike(response)) {
     const nested = getNumberProp(response, 'status') ?? getNumberProp(response, 'statusCode');
     if (typeof nested === 'number') return nested;
   }

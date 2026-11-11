@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import type { ConversationNextRequest } from '@app/schemas';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import {
@@ -19,9 +20,7 @@ import { createModelFacingUserInput } from 'src/app-hosts/linnya/context/agent/u
 
 const logger = new Logger('HistoryBuilder');
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function isUserInputEvent(event: unknown): event is {
   type: 'user_input';
@@ -32,14 +31,14 @@ function isUserInputEvent(event: unknown): event is {
   attachments?: unknown[];
   metadata?: Record<string, unknown>;
 } {
-  if (!isRecord(event)) return false;
+  if (!isObjectLike(event)) return false;
   if (event.type !== 'user_input') return false;
   if (typeof event.content !== 'string') return false;
   if (event.id !== undefined && typeof event.id !== 'string') return false;
   if (event.raw_content !== undefined && typeof event.raw_content !== 'string') return false;
   if (event.timestamp !== undefined && typeof event.timestamp !== 'number') return false;
   if (event.attachments !== undefined && !Array.isArray(event.attachments)) return false;
-  if (event.metadata !== undefined && !isRecord(event.metadata)) return false;
+  if (event.metadata !== undefined && !isObjectLike(event.metadata)) return false;
   return true;
 }
 

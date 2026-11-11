@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file imageAssetSource.ts
  * @description 渲染端插件读取本地图片为 data URL 的宿主门面。
@@ -29,9 +30,7 @@ type LocalImageStatReader = (filePath: string) => Promise<{
   error?: string;
 }>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function isLocalImageLoader(value: unknown): value is LocalImageLoader {
   return typeof value === 'function';
@@ -43,7 +42,7 @@ function isLocalImageStatReader(value: unknown): value is LocalImageStatReader {
 
 function getLocalImageLoader(): LocalImageLoader | null {
   const api: unknown = Reflect.get(window, 'electronAPI');
-  if (!isRecord(api)) {
+  if (!isObjectLike(api)) {
     return null;
   }
 
@@ -53,7 +52,7 @@ function getLocalImageLoader(): LocalImageLoader | null {
 
 function getLocalImageStatReader(): LocalImageStatReader | null {
   const api: unknown = Reflect.get(window, 'electronAPI');
-  if (!isRecord(api)) {
+  if (!isObjectLike(api)) {
     return null;
   }
 

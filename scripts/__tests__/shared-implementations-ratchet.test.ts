@@ -41,6 +41,12 @@ describe('共享实现棘轮', () => {
     expect(countSharedImplementationHits('packages/foundation/src/isRecord.ts', source)).toEqual([]);
   });
 
+  it('同名宽松对象判断也只允许共享 owner 定义', () => {
+    const source = 'function isObjectLike(value: unknown) { return typeof value === "object" && value !== null; }';
+    expect(countSharedImplementationHits('src/features/x/read.ts', source)).toMatchObject([{ ruleId: 'FOUNDATION-object-like', count: 1 }]);
+    expect(countSharedImplementationHits('packages/foundation/src/isObjectLike.ts', source)).toEqual([]);
+  });
+
   it('调用共享实现、名字只是前缀相同的都不算', () => {
     const source = [
       "import { isRecord, clamp, sleep } from '@linnya/foundation';",

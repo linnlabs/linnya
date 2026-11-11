@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file apps/renderer/domains/editor/features/Review/services/reviewAgentsService.ts
  * @description Review（审阅）自定义角色的 IPC 访问层
@@ -22,17 +23,15 @@ export type OperationResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function getElectronAPI(): Record<string, unknown> {
   const w: unknown = window;
-  if (!isRecord(w) || !('electronAPI' in w)) {
+  if (!isObjectLike(w) || !('electronAPI' in w)) {
     throw new Error('[reviewAgentsService] window.electronAPI 不可用');
   }
   const api = (w as { electronAPI: unknown }).electronAPI;
-  if (!isRecord(api)) {
+  if (!isObjectLike(api)) {
     throw new Error('[reviewAgentsService] window.electronAPI 类型不合法');
   }
   return api;
@@ -47,7 +46,7 @@ async function invoke<T>(channel: string, args: unknown): Promise<OperationResul
 
   try {
     const result = await (fn as (a: unknown) => Promise<unknown>)(args);
-    if (!isRecord(result) || typeof result.success !== 'boolean') {
+    if (!isObjectLike(result) || typeof result.success !== 'boolean') {
       return { success: false, error: `IPC channel "${channel}" 返回值不符合约定` };
     }
     return result as OperationResult<T>;

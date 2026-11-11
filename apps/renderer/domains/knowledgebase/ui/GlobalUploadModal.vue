@@ -56,6 +56,7 @@
 </template>
 
 <script setup lang="ts">
+import { isObjectLike } from '@linnya/foundation';
 import { computed, ref, watch } from 'vue';
 import FileUploadTab from './FileUploadTab.vue';
 import { useKnowledgeBaseStore } from '../stores/knowledgeBase';
@@ -79,9 +80,7 @@ function isUnknownArray(value: unknown): value is unknown[] {
   return Array.isArray(value);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 /**
  * 判断是否为知识库条目
@@ -91,7 +90,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * - 守卫越窄，越不容易把后端额外字段或异常结构泄漏到 UI
  */
 function isKnowledgeBaseItem(value: unknown): value is KnowledgeBaseItem {
-  return isRecord(value) && typeof value.id === 'string' && typeof value.name === 'string';
+  return isObjectLike(value) && typeof value.id === 'string' && typeof value.name === 'string';
 }
 
 const props = defineProps<{

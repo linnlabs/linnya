@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file knowledge-base-ipc.ts
  * @description 知识库基础能力（CRUD/查询）的 IPC 处理器
@@ -42,9 +43,7 @@ function readAliasedSetting(
   return undefined;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 /**
  * 注册知识库基础操作的 IPC 处理器
@@ -111,7 +110,7 @@ export function registerKnowledgeBaseHandlers(
         const kbService = getKbService();
 
         // 参数校验：严格收窄，不使用 any
-        if (!isRecord(args)) {
+        if (!isObjectLike(args)) {
           throw new KnowledgeBaseInvalidRequestError('create');
         }
         const name = typeof args.name === 'string' ? args.name : '';
@@ -176,7 +175,7 @@ export function registerKnowledgeBaseHandlers(
     try {
       const kbService = getKbService();
 
-      if (!isRecord(args)) {
+      if (!isObjectLike(args)) {
         throw new KnowledgeBaseInvalidRequestError('update');
       }
 
@@ -185,7 +184,7 @@ export function registerKnowledgeBaseHandlers(
         throw new KnowledgeBaseIdRequiredError('update');
       }
 
-      if (!isRecord(args.settings)) {
+      if (!isObjectLike(args.settings)) {
         throw new KnowledgeBaseInvalidRequestError('update');
       }
 

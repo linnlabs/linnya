@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import type {
   ExportArtifactTargetRequest,
   ExportArtifactTargetResult,
@@ -8,13 +9,11 @@ type ExportArtifactTargetRequester = (
   request: ExportArtifactTargetRequest,
 ) => Promise<unknown>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function getExportArtifactTargetRequester(): ExportArtifactTargetRequester {
   const api: unknown = Reflect.get(window, 'electronAPI');
-  if (!isRecord(api)) {
+  if (!isObjectLike(api)) {
     throw new Error('[exportArtifact] window.electronAPI is not available');
   }
   const requestTarget = api.requestExportArtifactTarget;

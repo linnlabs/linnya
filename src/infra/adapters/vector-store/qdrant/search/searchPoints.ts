@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/infra/adapters/vector-store/qdrant/search/searchPoints.ts
  *
@@ -11,7 +12,7 @@
 import type { QdrantClient } from '@qdrant/js-client-rest';
 import type { Logger } from 'src/shared/logger';
 import type { SearchParams, SearchResult, SparseVector } from '../types';
-import { hasNameAndVector, isNumberArray, isRecord, isSparseVector } from '../guards';
+import { hasNameAndVector, isNumberArray, isSparseVector } from '../guards';
 
 type QdrantSearchVector =
   | number[]
@@ -45,13 +46,13 @@ function buildSearchVector(params: SearchParams): QdrantSearchVector {
 function parseSearchResults(raw: unknown): SearchResult[] {
   // QdrantClient.search 在不同版本可能返回数组或对象，这里统一兼容解析
   const pointsRaw: unknown =
-    Array.isArray(raw) ? raw : (isRecord(raw) ? raw['points'] : undefined);
+    Array.isArray(raw) ? raw : (isObjectLike(raw) ? raw['points'] : undefined);
 
   if (!Array.isArray(pointsRaw)) return [];
 
   return pointsRaw
     .map((point: unknown) => {
-      if (!isRecord(point)) return undefined;
+      if (!isObjectLike(point)) return undefined;
       const id = point['id'];
       const score = point['score'];
       const payload = point['payload'];
@@ -62,7 +63,7 @@ function parseSearchResults(raw: unknown): SearchResult[] {
       return {
         id: typeof id === 'string' ? id : String(id),
         score,
-        payload: isRecord(payload) ? payload : {}
+        payload: isObjectLike(payload) ? payload : {}
       };
     })
     .filter((x): x is SearchResult => x !== undefined);

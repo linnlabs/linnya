@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import { defineStore } from 'pinia';
 import { getRendererPersistStorage } from '@/shared/persistence/rendererPersistStorage';
 
@@ -11,9 +12,7 @@ interface PersistedEditorDocumentSettings {
   spellcheckEnabled: boolean;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function readBoolean(record: Record<string, unknown>, key: string, fallback: boolean): boolean {
   const value = record[key];
@@ -37,7 +36,7 @@ export function migrateLegacyEditorDocumentSettings(): void {
 
   try {
     const legacySettings: unknown = JSON.parse(legacyRaw);
-    if (!isRecord(legacySettings)) {
+    if (!isObjectLike(legacySettings)) {
       return;
     }
 

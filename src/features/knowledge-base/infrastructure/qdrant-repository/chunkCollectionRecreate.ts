@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/features/knowledge-base/infrastructure/qdrant-repository/chunkCollectionRecreate.ts
  *
@@ -73,16 +74,14 @@ const SCROLL_PAGE_SIZE = 1000;
 const UPSERT_BATCH_SIZE = 200;
 const SEGMENT_SHRINK_TOLERANCE = 1;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function isFiniteNumberArray(value: unknown): value is number[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'number' && Number.isFinite(item));
 }
 
 function isSparseVector(value: unknown): value is SparseVector {
-  if (!isRecord(value)) {
+  if (!isObjectLike(value)) {
     return false;
   }
 
@@ -117,7 +116,7 @@ function normalizeStoredVector(vector: unknown, collectionName: string, pointId:
     };
   }
 
-  if (!isRecord(vector)) {
+  if (!isObjectLike(vector)) {
     throw new Error(
       `[ChunkCollectionRecreate] 向量结构非法: collection=${collectionName}, pointId=${pointId}`
     );

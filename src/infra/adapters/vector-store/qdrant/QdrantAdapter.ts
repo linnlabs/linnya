@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/infra/adapters/vector-store/qdrant/QdrantAdapter.ts
  *
@@ -211,9 +212,9 @@ export class QdrantAdapter {
       exact?: boolean;
     }
   ): Promise<number> {
-    const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+
     const extractCountOrThrow = (v: unknown): number => {
-      if (!isRecord(v)) {
+      if (!isObjectLike(v)) {
         throw new Error(`[QdrantAdapter] countPoints 返回非对象响应: ${String(v)}`);
       }
       const count = v['count'];

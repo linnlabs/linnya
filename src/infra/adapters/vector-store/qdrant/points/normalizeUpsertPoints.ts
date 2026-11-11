@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/infra/adapters/vector-store/qdrant/points/normalizeUpsertPoints.ts
  *
@@ -12,7 +13,7 @@
 
 import type { Logger } from 'src/shared/logger';
 import type { SparseVector, UpsertResult, UpsertVector, VectorPoint } from '../types';
-import { isNumberArray, isRecord, isSparseVector } from '../guards';
+import { isNumberArray, isSparseVector } from '../guards';
 
 type QdrantNamedVector = Record<string, number[] | SparseVector>;
 
@@ -27,7 +28,7 @@ function toNamedVector(pointId: string, vector: UpsertVector, logger: Logger): Q
   }
 
   // 新格式：命名向量（default + 可选 bm25）
-  if (!isRecord(vector) || !isNumberArray(vector['default'])) {
+  if (!isObjectLike(vector) || !isNumberArray(vector['default'])) {
     throw new Error(`[QdrantAdapter] Point ${pointId} 缺少 default 稠密向量`);
   }
 
@@ -60,7 +61,7 @@ export function normalizeUpsertPoints(points: VectorPoint[], logger: Logger): Ar
 }
 
 export function parseUpsertResult(raw: unknown): UpsertResult {
-  if (!isRecord(raw)) {
+  if (!isObjectLike(raw)) {
     throw new Error(`[QdrantAdapter] upsert 返回值不是对象，无法解析`);
   }
   const operationId = raw['operation_id'];

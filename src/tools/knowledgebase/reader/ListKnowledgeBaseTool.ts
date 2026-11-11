@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/tools/knowledgebase/reader/ListKnowledgeBaseTool.ts
  *
@@ -47,9 +48,7 @@ interface DocumentSummary {
   kb_name?: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function isString(value: unknown): value is string {
   return typeof value === 'string';
@@ -60,7 +59,7 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 function isDocumentSummary(value: unknown): value is DocumentSummary {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   return (
     isString(value.id) &&
     isString(value.title) &&
@@ -109,9 +108,9 @@ export class ListKnowledgeBaseTool extends BaseTool {
   getExecutionSummary(output: string): string {
     try {
       const parsedUnknown: unknown = JSON.parse(output);
-      if (!isRecord(parsedUnknown)) return '无法解析文档列表结果。';
+      if (!isObjectLike(parsedUnknown)) return '无法解析文档列表结果。';
       const dataUnknown = parsedUnknown.data;
-      if (!isRecord(dataUnknown)) return '无法解析文档列表结果。';
+      if (!isObjectLike(dataUnknown)) return '无法解析文档列表结果。';
 
       const documentsUnknown = dataUnknown.documents;
       const kbsUnknown = dataUnknown.knowledge_bases;
@@ -121,7 +120,7 @@ export class ListKnowledgeBaseTool extends BaseTool {
         : [];
 
       const kbCount =
-        Array.isArray(kbsUnknown) && kbsUnknown.every(isRecord) ? kbsUnknown.length : 0;
+        Array.isArray(kbsUnknown) && kbsUnknown.every(isObjectLike) ? kbsUnknown.length : 0;
 
       if (documents.length === 0) {
         return kbCount > 0

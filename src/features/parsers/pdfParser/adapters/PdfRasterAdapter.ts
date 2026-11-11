@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import fs from 'node:fs/promises';
 
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
@@ -136,10 +137,10 @@ function createCanvasHandle(
     throw new Error('PDF.js Node CanvasFactory 不可用');
   }
   const candidate: unknown = Reflect.apply(create, factory, [width, height]);
-  if (!isRecord(candidate)) throw new Error('PDF.js CanvasFactory 返回值无效');
+  if (!isObjectLike(candidate)) throw new Error('PDF.js CanvasFactory 返回值无效');
   const canvas = candidate.canvas;
   const context = candidate.context;
-  if (!isRecord(canvas) || !isRecord(context)) {
+  if (!isObjectLike(canvas) || !isObjectLike(context)) {
     throw new Error('PDF.js CanvasFactory 未返回 canvas/context');
   }
   return { canvas, context };
@@ -149,7 +150,7 @@ async function renderPdfPage(page: PDFPageProxy, parameters: object): Promise<vo
   const render = Reflect.get(page, 'render');
   if (typeof render !== 'function') throw new Error('PDF.js 页面缺少 render()');
   const renderTask: unknown = Reflect.apply(render, page, [parameters]);
-  if (!isRecord(renderTask)) throw new Error('PDF.js render() 返回值无效');
+  if (!isObjectLike(renderTask)) throw new Error('PDF.js render() 返回值无效');
 
   // 复杂页面可能包含大量绘制操作。每个内部绘制片段都回到事件循环后再继续，
   // 因而即便该入口临时运行在 App Server，也不会长时间独占其事件循环。
@@ -181,10 +182,8 @@ function destroyCanvasHandle(document: PDFDocumentProxy, canvasHandle: PdfJsCanv
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
-  return isRecord(value) && typeof value.then === 'function';
+  return isObjectLike(value) && typeof value.then === 'function';
 }

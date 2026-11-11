@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/parsers/pdfParser/strategies/VisionRecognitionStrategy.ts
  *
@@ -56,9 +57,7 @@ import { assertDocumentOcrPageLimit } from 'src/domains/document-ocr';
  */
 const PAGE_BLOCK_INDEX_STRIDE = 10000;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 /**
  * 视觉识别“单次尝试”的硬超时。
@@ -103,7 +102,7 @@ function readRetryDelayMs(
   classification: OcrErrorClassification,
   attempt: number
 ): number {
-  if (isRecord(error)) {
+  if (isObjectLike(error)) {
     const retryAfterMs = error.retryAfterMs;
     if (typeof retryAfterMs === 'number' && Number.isFinite(retryAfterMs) && retryAfterMs > 0) {
       return Math.min(retryAfterMs, 120_000);

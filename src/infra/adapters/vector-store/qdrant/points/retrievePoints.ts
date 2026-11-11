@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/infra/adapters/vector-store/qdrant/points/retrievePoints.ts
  *
@@ -6,7 +7,7 @@
 
 import type { QdrantClient } from '@qdrant/js-client-rest';
 import type { Logger } from 'src/shared/logger';
-import { isRecord } from '../guards';
+
 
 export async function retrievePointsImpl(
   client: QdrantClient,
@@ -26,13 +27,13 @@ export async function retrievePointsImpl(
   const pointsRaw: unknown[] = Array.isArray(raw) ? raw : [];
   return pointsRaw
     .map((point: unknown) => {
-      if (!isRecord(point)) return undefined;
+      if (!isObjectLike(point)) return undefined;
       const id = point['id'];
       const payload = point['payload'];
       if (typeof id !== 'string' && typeof id !== 'number') return undefined;
       return {
         id: typeof id === 'string' ? id : String(id),
-        payload: isRecord(payload) ? payload : {},
+        payload: isObjectLike(payload) ? payload : {},
       };
     })
     .filter((point): point is { id: string; payload: Record<string, unknown> } => point !== undefined);

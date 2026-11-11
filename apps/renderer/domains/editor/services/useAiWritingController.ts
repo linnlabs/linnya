@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * AI 写作控制器 Composable
  * 封装 AI 提示提交与编辑器内流式写入逻辑
@@ -61,24 +62,22 @@ interface BlockInfoFromPos {
   baseBlock?: BlockNodeInfo | null
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
+
 
 function isBlockNodeInfo(value: unknown): value is BlockNodeInfo {
-  if (!isRecord(value)) return false
+  if (!isObjectLike(value)) return false
   if (typeof value.pos !== 'number') return false
-  if (!isRecord(value.node)) return false
-  if (!isRecord(value.node.type)) return false
+  if (!isObjectLike(value.node)) return false
+  if (!isObjectLike(value.node.type)) return false
   if (typeof value.node.type.name !== 'string') return false
-  if (!isRecord(value.node.content)) return false
+  if (!isObjectLike(value.node.content)) return false
   if (typeof value.node.content.size !== 'number') return false
   if (typeof value.node.nodeSize !== 'number') return false
   return true
 }
 
 function parseBlockInfoFromPos(value: unknown): BlockInfoFromPos | null {
-  if (!isRecord(value)) return null
+  if (!isObjectLike(value)) return null
 
   const contentBlockRaw = value.contentBlock
   const rootBlockRaw = value.rootBlock

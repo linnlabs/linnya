@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/features/knowledge-base/infrastructure/qdrant-repository/startupChunkCollectionMaintenance.ts
  *
@@ -14,14 +15,12 @@ export interface ChunkCollectionMaintenanceCapableRepository extends QdrantRepos
   recreateChunkCollectionIfNeeded(collectionName: string): Promise<ChunkCollectionRecreateResult>;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 export function hasChunkCollectionMaintenanceCapability(
   repository: unknown
 ): repository is ChunkCollectionMaintenanceCapableRepository {
-  if (!isRecord(repository)) {
+  if (!isObjectLike(repository)) {
     return false;
   }
 

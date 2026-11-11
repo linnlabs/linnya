@@ -1,10 +1,9 @@
+import { isObjectLike } from '@linnya/foundation';
 import fs from 'fs/promises';
 
 const grantedReadRealPaths = new Set<string>();
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 export function clearSessionReadGrantsForTests(): void {
   grantedReadRealPaths.clear();
@@ -26,7 +25,7 @@ export async function issueReadGrant(filePath: string): Promise<string | null> {
 }
 
 export async function issueReadGrantsFromDialogResult(dialogResult: unknown): Promise<void> {
-  if (!isRecord(dialogResult)) {
+  if (!isObjectLike(dialogResult)) {
     return;
   }
 

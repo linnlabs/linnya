@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * rootBlockRenderMode.ts
  *
@@ -16,11 +17,7 @@ export type RootBlockRenderMode = 'hydrated' | 'placeholder'
 export const ROOT_BLOCK_RENDER_MODE_SPEC_KEY = 'rootBlockRenderMode'
 export const ROOT_BLOCK_RENDER_MODE_DATA_ATTR = ROOT_BLOCK_DOM_ATTRS.renderMode
 
-type UnknownRecord = Record<string, unknown>
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null
-}
 
 function normalizeRootBlockRenderMode(value: unknown): RootBlockRenderMode | null {
   if (value === 'hydrated' || value === 'placeholder') {
@@ -30,10 +27,10 @@ function normalizeRootBlockRenderMode(value: unknown): RootBlockRenderMode | nul
 }
 
 function readModeFromDecorationSpec(decoration: unknown): RootBlockRenderMode | null {
-  if (!isRecord(decoration)) return null
+  if (!isObjectLike(decoration)) return null
 
   const spec = decoration.spec
-  if (!isRecord(spec)) return null
+  if (!isObjectLike(spec)) return null
 
   return (
     normalizeRootBlockRenderMode(spec[ROOT_BLOCK_RENDER_MODE_SPEC_KEY]) ||
@@ -42,13 +39,13 @@ function readModeFromDecorationSpec(decoration: unknown): RootBlockRenderMode | 
 }
 
 function readModeFromDecorationAttrs(decoration: unknown): RootBlockRenderMode | null {
-  if (!isRecord(decoration)) return null
+  if (!isObjectLike(decoration)) return null
 
   const attrs = decoration.type
-  if (!isRecord(attrs)) return null
+  if (!isObjectLike(attrs)) return null
 
   const decorationAttrs = attrs.attrs
-  if (!isRecord(decorationAttrs)) return null
+  if (!isObjectLike(decorationAttrs)) return null
 
   return normalizeRootBlockRenderMode(decorationAttrs[ROOT_BLOCK_RENDER_MODE_DATA_ATTR])
 }

@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file pluginIpcClient.ts
  * @description 渲染端插件 IPC 泛型调用客户端。
@@ -15,19 +16,17 @@ interface PluginInvokeElectronApi {
   'plugin:invoke': (pluginId: string, channel: string, payload: unknown) => Promise<unknown>;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function isOperationResult(value: unknown): value is OperationResult<unknown> {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   if (value.success === true) return true;
   return value.success === false && typeof value.error === 'string';
 }
 
 function getPluginInvokeApi(): PluginInvokeElectronApi {
   const api = (window as Window & { electronAPI?: unknown }).electronAPI;
-  if (!isRecord(api) || typeof api['plugin:invoke'] !== 'function') {
+  if (!isObjectLike(api) || typeof api['plugin:invoke'] !== 'function') {
     throw new Error('[pluginIpcClient] window.electronAPI.plugin:invoke is not available');
   }
   return {

@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/features/knowledge-base/infrastructure/qdrant-repository/payload.ts
  *
@@ -6,9 +7,7 @@
 
 import type { PointPayload } from '../qdrantRepository';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 /**
  * 功能：将适配器层返回的 payload（Record<string, unknown>）严格转换为领域所需的 PointPayload。
@@ -69,7 +68,7 @@ export function toPointPayload(payload: Record<string, unknown>): PointPayload {
   }
 
   const metadata = payload['metadata'];
-  if (isRecord(metadata)) {
+  if (isObjectLike(metadata)) {
     result.metadata = metadata;
   }
 

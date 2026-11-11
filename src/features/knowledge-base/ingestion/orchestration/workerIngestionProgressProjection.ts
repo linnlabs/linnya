@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/features/knowledge-base/ingestion/orchestration/workerIngestionProgressProjection.ts
  *
@@ -12,9 +13,7 @@
 
 import { updateIngestionProgress } from '../store/ingestionProgressStore';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function readString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];
@@ -42,7 +41,7 @@ function readIngestionStatus(value: unknown): 'pending' | 'processing' | 'comple
  * 副作用 (Side-effects): 更新内存 IngestionProgressStore
  */
 export function syncProgressToIngestionStore(frontendState: unknown, ctx?: { filename?: string }): void {
-  if (!isRecord(frontendState)) return;
+  if (!isObjectLike(frontendState)) return;
   const docId = readString(frontendState, 'doc_id');
   if (!docId) return;
 
@@ -79,12 +78,12 @@ export function syncProgressToIngestionStore(frontendState: unknown, ctx?: { fil
  * 副作用 (Side-effects): 更新内存 IngestionProgressStore
  */
 export function syncCompletionToIngestionStore(result: unknown, ctx?: { filename?: string }): void {
-  if (!isRecord(result)) return;
+  if (!isObjectLike(result)) return;
   const docId = readString(result, 'docId');
   if (!docId) return;
 
   const isDuplicate = result.duplicate === true;
-  const frontendState = isRecord(result.frontendState) ? result.frontendState : undefined;
+  const frontendState = isObjectLike(result.frontendState) ? result.frontendState : undefined;
   const filename = frontendState ? readString(frontendState, 'filename') ?? ctx?.filename ?? '' : ctx?.filename ?? '';
   const status = isDuplicate ? 'duplicate' : 'completed';
   const message = isDuplicate ? '重复文件' : '已完成';

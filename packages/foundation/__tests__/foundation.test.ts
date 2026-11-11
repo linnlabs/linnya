@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clamp, isRecord, sleep, errorToString } from '../src/index.js';
+import { clamp, isRecord, sleep, errorToString, isObjectLike } from '../src/index.js';
 
 describe('isRecord', () => {
   it('普通对象算，null、数组和基本类型不算', () => {
@@ -42,5 +42,15 @@ describe('errorToString', () => {
     expect(errorToString(undefined)).toBe('undefined');
     expect(errorToString({ message: 'payload' })).toBe('[object Object]');
     expect(errorToString({ toString: () => 'custom diagnostic' })).toBe('custom diagnostic');
+  });
+});
+
+
+describe('isObjectLike', () => {
+  it('保留旧宽松边界的数组与实例语义，并与 isRecord 的数组规则区分', () => {
+    const values = [[], new Error('failure'), new Date(0), new Map(), Object.create(null), {}];
+    for (const value of values) expect(isObjectLike(value)).toBe(true);
+    for (const value of [null, undefined, 'text', 0, false, Symbol('value'), () => 1]) expect(isObjectLike(value)).toBe(false);
+    expect(isRecord([])).toBe(false);
   });
 });

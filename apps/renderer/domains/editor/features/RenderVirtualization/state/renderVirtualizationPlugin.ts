@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * renderVirtualizationPlugin.ts
  *
@@ -126,9 +127,7 @@ function freezeState(state: MutableRenderVirtualizationState): RenderVirtualizat
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
+
 
 function readOptionalBoolean(
   record: Record<string, unknown>,
@@ -152,7 +151,7 @@ function readOptionalStringArray(
 }
 
 function parseRenderVirtualizationMeta(value: unknown): RenderVirtualizationMeta | null {
-  if (!isRecord(value)) return null
+  if (!isObjectLike(value)) return null
 
   const setEnabled = readOptionalBoolean(value, 'setEnabled')
   if (setEnabled === null) {

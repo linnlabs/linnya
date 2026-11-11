@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file apps/renderer/domains/knowledgebase/stores/knowledgeGraphProgressStore.ts
  *
@@ -21,12 +22,10 @@ export type KbGraphProgress = {
   updatedAtSeconds: number | null;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function coerceKbGraphProgress(payload: unknown): KbGraphProgress | null {
-  if (!isRecord(payload)) return null;
+  if (!isObjectLike(payload)) return null;
   const kbId = typeof payload.kbId === 'string' ? payload.kbId : '';
   const percent = typeof payload.percent === 'number' ? payload.percent : null;
   const totalUnits = typeof payload.totalUnits === 'number' ? payload.totalUnits : null;

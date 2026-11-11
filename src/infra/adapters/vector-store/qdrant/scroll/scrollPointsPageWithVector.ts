@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/infra/adapters/vector-store/qdrant/scroll/scrollPointsPageWithVector.ts
  *
@@ -11,7 +12,7 @@
 import type { QdrantClient } from '@qdrant/js-client-rest';
 import type { Logger } from 'src/shared/logger';
 import type { QdrantScrollOffset } from '../types';
-import { isQdrantScrollOffset, isRecord } from '../guards';
+import { isQdrantScrollOffset } from '../guards';
 
 export async function scrollPointsPageWithVectorImpl(
   client: QdrantClient,
@@ -46,8 +47,8 @@ export async function scrollPointsPageWithVectorImpl(
 
   const raw = await client.scroll(collectionName, scrollParams);
 
-  const pointsRaw: unknown = isRecord(raw) ? raw['points'] : undefined;
-  const nextOffsetRaw: unknown = isRecord(raw) ? raw['next_page_offset'] : undefined;
+  const pointsRaw: unknown = isObjectLike(raw) ? raw['points'] : undefined;
+  const nextOffsetRaw: unknown = isObjectLike(raw) ? raw['next_page_offset'] : undefined;
 
   // Qdrant 在末尾可能返回 null，这里统一转换成 undefined，便于上层判断结束
   const nextOffset =
@@ -56,14 +57,14 @@ export async function scrollPointsPageWithVectorImpl(
   const points: Array<{ id: string; payload: Record<string, unknown>; vector: unknown }> = Array.isArray(pointsRaw)
     ? pointsRaw
         .map((p: unknown) => {
-          if (!isRecord(p)) return undefined;
+          if (!isObjectLike(p)) return undefined;
           const id = p['id'];
           const payload = p['payload'];
           const vector = p['vector'];
 
           if (typeof id !== 'string' && typeof id !== 'number') return undefined;
           const normalizedId = typeof id === 'string' ? id : String(id);
-          const normalizedPayload: Record<string, unknown> = isRecord(payload) ? payload : {};
+          const normalizedPayload: Record<string, unknown> = isObjectLike(payload) ? payload : {};
 
           // 向量可能是 number[] 或命名向量对象；这里保持 unknown（诊断场景只需要“存在性/结构”）
           return { id: normalizedId, payload: normalizedPayload, vector };

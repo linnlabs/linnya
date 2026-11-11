@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file __devRevisionTest.ts
  * @description 开发调试工具：在控制台注入大量假修订，验证全局统计与页面切换持久化。
@@ -99,9 +100,7 @@ function isValidEditorNodeId(id: unknown): id is string {
   return typeof id === 'string' && VALID_EDITOR_NODE_ID_RE.test(id)
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
+
 
 function readStringArrayField(record: Record<string, unknown>, key: string): string[] {
   const value = record[key]
@@ -115,12 +114,12 @@ function readLatestPendingProjectionPerf(): PerfBlockIdSample {
   }
 
   const api = (window as unknown as Record<string, unknown>).__SHELL_PENDING_PROJECTION_PERF__
-  if (!isRecord(api) || typeof api.getLast !== 'function') {
+  if (!isObjectLike(api) || typeof api.getLast !== 'function') {
     return { candidateBlockIds: [], skippedActiveBlockIds: [], skippedNonPendingBlockIds: [] }
   }
 
   const sample = api.getLast()
-  if (!isRecord(sample)) {
+  if (!isObjectLike(sample)) {
     return { candidateBlockIds: [], skippedActiveBlockIds: [], skippedNonPendingBlockIds: [] }
   }
 
@@ -142,7 +141,7 @@ function readLatestShellHeaderPerf(): HeaderBlockIdSample {
   }
 
   const api = (window as unknown as Record<string, unknown>).__SHELL_REVISION_HEADER_PERF__
-  if (!isRecord(api) || typeof api.getLast !== 'function') {
+  if (!isObjectLike(api) || typeof api.getLast !== 'function') {
     return {
       renderedBlockIds: [],
       sessionMissBlockIds: [],
@@ -152,7 +151,7 @@ function readLatestShellHeaderPerf(): HeaderBlockIdSample {
   }
 
   const sample = api.getLast()
-  if (!isRecord(sample)) {
+  if (!isObjectLike(sample)) {
     return {
       renderedBlockIds: [],
       sessionMissBlockIds: [],
@@ -175,12 +174,12 @@ function readLatestRenderVirtualizationPerf(): EngineBlockIdSample {
   }
 
   const api = (window as unknown as Record<string, unknown>).__RENDER_VIRT_ENGINE_PERF__
-  if (!isRecord(api) || typeof api.getLast !== 'function') {
+  if (!isObjectLike(api) || typeof api.getLast !== 'function') {
     return { visibleBlockIds: [], hydratedBlockIds: [], missingHydratedBlockIds: [] }
   }
 
   const sample = api.getLast()
-  if (!isRecord(sample)) {
+  if (!isObjectLike(sample)) {
     return { visibleBlockIds: [], hydratedBlockIds: [], missingHydratedBlockIds: [] }
   }
 

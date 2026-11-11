@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/infra/adapters/vector-store/qdrant/collections/getCollection.ts
  *
@@ -7,7 +8,7 @@
 import type { QdrantClient } from '@qdrant/js-client-rest';
 import type { Logger } from 'src/shared/logger';
 import type { QdrantCollectionInfo } from '../types';
-import { isRecord } from '../guards';
+
 
 export async function getCollectionImpl(
   client: QdrantClient,
@@ -17,7 +18,7 @@ export async function getCollectionImpl(
   logger.debug(`[QdrantAdapter] Getting info for collection: ${collectionName}`);
   const raw = await client.getCollection(collectionName);
 
-  if (!isRecord(raw)) {
+  if (!isObjectLike(raw)) {
     // 不做容错“猜测”，直接返回空对象（上层会自行兜底默认值）
     return {};
   }
@@ -41,7 +42,7 @@ export async function getCollectionImpl(
   if (typeof segmentsCount === 'number' && Number.isFinite(segmentsCount)) {
     info.segments_count = segmentsCount;
   }
-  if (isRecord(configRaw)) {
+  if (isObjectLike(configRaw)) {
     info.config = configRaw;
   }
 

@@ -80,10 +80,16 @@ export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = 
     use: '界面字节大小用 @app/localization 的 formatStorageBytes(bytes, locale)；未知大小文案由业务调用方保留。',
   },
   {
+    id: 'FOUNDATION-object-like',
+    pattern: /\b(?:function|const)\s+isObjectLike\b/u,
+    owners: ['packages/foundation/'],
+    use: '非 null 对象（包含数组和类实例）判断使用 @linnya/foundation 的 isObjectLike；不要与排除数组的 isRecord 混用同名。',
+  },
+  {
     id: 'FOUNDATION-is-record',
     pattern: /\b(?:function|const)\s+(?:isRecord|isPlainObject)\b/u,
     owners: ['packages/foundation/'],
-    use: "用 @linnya/foundation 的 isRecord（非 null、不是数组）。要同时接受数组时写 Array.isArray(value) || isRecord(value)。",
+    use: '用 @linnya/foundation 的 isRecord（非 null、不是数组）。需要保留数组语义时使用 isObjectLike；具体数据形状仍由 schema 校验。',
   },
   {
     id: 'FOUNDATION-clamp',

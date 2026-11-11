@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 /**
  * @file autocomplete-options.extender.ts
  * @description Autocomplete（自动补全）请求字段透传：从 ConversationNextRequest.options 提取 Autocomplete 扩展字段
@@ -18,9 +19,7 @@ import type {
   HistoryBuilderOptionsExtenderContext,
 } from '../history-builder-options-extender.types';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function getOptionalString(obj: Record<string, unknown>, key: string): string | undefined {
   const v = obj[key];
@@ -54,7 +53,7 @@ interface RejectedSuggestion {
 }
 
 function isRejectedSuggestion(value: unknown): value is RejectedSuggestion {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   return typeof value.suggestionText === 'string';
 }
 
@@ -100,7 +99,7 @@ function getStringArray(obj: Record<string, unknown>, keys: readonly string[]): 
 }
 
 function isBehaviorSummary(value: unknown): value is AgentAutocompleteBehaviorSummary {
-  if (!isRecord(value)) return false;
+  if (!isObjectLike(value)) return false;
   return (
     typeof value.totalEvents === 'number' &&
     typeof value.totalInsertedChars === 'number' &&
@@ -122,7 +121,7 @@ export class AutocompleteOptionsExtender implements HistoryBuilderOptionsExtende
 
   extend(ctx: HistoryBuilderOptionsExtenderContext): Partial<AgentInvokeRequest> {
     const options = ctx.options;
-    if (!options || !isRecord(options)) {
+    if (!options || !isObjectLike(options)) {
       return {};
     }
 

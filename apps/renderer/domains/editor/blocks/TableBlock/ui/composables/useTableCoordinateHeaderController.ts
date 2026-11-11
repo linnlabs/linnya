@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import { computed, onUnmounted, ref, shallowRef, watch, type Ref } from 'vue';
 import { hasRenderVirtualizationTransactionMeta } from '../../../../features/RenderVirtualization';
 import {
@@ -35,24 +36,22 @@ interface TransactionLike {
 const EMPTY_TABLE_RECT: RectMetrics = { left: 0, top: 0, width: 0, height: 0 };
 const EMPTY_POINT: PointMetrics = { left: 0, top: 0 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function isHTMLElement(value: unknown): value is HTMLElement {
   return typeof HTMLElement !== 'undefined' && value instanceof HTMLElement;
 }
 
 function readTablePos(tableInfo: unknown): number | null {
-  if (!isRecord(tableInfo)) return null;
+  if (!isObjectLike(tableInfo)) return null;
   const pos = tableInfo.pos;
   return typeof pos === 'number' && Number.isFinite(pos) ? pos : null;
 }
 
 function readTransaction(payload: unknown): TransactionLike | null {
-  if (!isRecord(payload)) return null;
+  if (!isObjectLike(payload)) return null;
   const transaction = payload.transaction;
-  if (!isRecord(transaction)) return null;
+  if (!isObjectLike(transaction)) return null;
   const getMeta = transaction.getMeta;
   if (typeof getMeta !== 'function') return null;
 

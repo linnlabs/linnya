@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import {
   EmptyOcrContentError,
   OcrTimeoutError,
@@ -14,9 +15,7 @@ export interface OcrErrorClassification {
   shouldSplitSmaller: boolean;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+
 
 function readStatusCode(error: unknown): number | undefined {
   if (error instanceof TextGenerationFailure) {
@@ -27,26 +26,26 @@ function readStatusCode(error: unknown): number | undefined {
   if (error instanceof OcrProviderError && typeof error.statusCode === 'number') {
     return error.statusCode;
   }
-  if (!isRecord(error)) return undefined;
+  if (!isObjectLike(error)) return undefined;
   const statusCode = error['statusCode'] ?? error['status'];
   return typeof statusCode === 'number' && Number.isFinite(statusCode) ? statusCode : undefined;
 }
 
 function readErrorName(error: unknown): string | undefined {
   if (error instanceof Error) return error.name;
-  if (!isRecord(error)) return undefined;
+  if (!isObjectLike(error)) return undefined;
   const name = error['name'];
   return typeof name === 'string' ? name : undefined;
 }
 
 function readErrorCode(error: unknown): string | undefined {
-  if (!isRecord(error)) return undefined;
+  if (!isObjectLike(error)) return undefined;
   const code = error['code'];
   return typeof code === 'string' ? code : undefined;
 }
 
 function readErrorCause(error: unknown): unknown {
-  if (!isRecord(error)) return undefined;
+  if (!isObjectLike(error)) return undefined;
   return error['cause'];
 }
 
@@ -54,7 +53,7 @@ function readExplicitRetryable(error: unknown): boolean | undefined {
   if (error instanceof TextGenerationFailure || error instanceof OcrProviderError) {
     return error.retryable;
   }
-  if (!isRecord(error)) return undefined;
+  if (!isObjectLike(error)) return undefined;
   const retryable = error['retryable'];
   return typeof retryable === 'boolean' ? retryable : undefined;
 }

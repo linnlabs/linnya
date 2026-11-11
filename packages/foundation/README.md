@@ -19,7 +19,8 @@
 
 | 函数 | 作用 |
 | --- | --- |
-| `isRecord(value)` | 是不是普通键值对象：非 null、不是数组 |
+| `isRecord(value)` | 非 null 且不是数组的对象；不代替数据 schema 校验 |
+| `isObjectLike(value)` | 非 null 对象，包含数组和类实例；用于宿主能力、错误对象与既有宽松边界 |
 | `clamp(value, min, max)` | 把数值限制在范围内 |
 | `sleep(milliseconds)` | 等待若干毫秒 |
 | `errorToString(error)` | 原样提取错误消息或转为字符串；不生成业务文案 |

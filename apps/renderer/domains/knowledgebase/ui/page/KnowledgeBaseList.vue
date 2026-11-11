@@ -113,6 +113,7 @@
 </template>
 
 <script setup lang="ts">
+import { isObjectLike } from '@linnya/foundation';
 import { computed, ref, onMounted, watch } from 'vue';
 import { useKnowledgeBaseStore } from '../../stores/knowledgeBase';
 import { useKnowledgeGraphProgressStore } from '../../stores/knowledgeGraphProgressStore';
@@ -145,11 +146,9 @@ type KnowledgeBaseItem = {
  * - 不使用不规范的类型断言
  */
 const normalizeKnowledgeBaseItem = (input: unknown): KnowledgeBaseItem | null => {
-  const isRecord = (value: unknown): value is Record<string, unknown> => {
-    return typeof value === 'object' && value !== null;
-  };
 
-  if (!isRecord(input)) return null;
+
+  if (!isObjectLike(input)) return null;
   const obj = input;
 
   const id = typeof obj.id === 'string' ? obj.id : null;
