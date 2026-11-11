@@ -77,9 +77,9 @@ describe('slides-design Skill 产品合同', () => {
     const design = fs.readFileSync(path.join(skillRoot, 'references/design.md'), 'utf-8');
     const syntax = fs.readFileSync(path.join(skillRoot, 'references/syntax.md'), 'utf-8');
     const cultural = fs.readFileSync(path.join(skillRoot, 'references/style-cultural-imagery.md'), 'utf-8');
-    // 表格默认灰表头白底不跟主题；卡片侧边色条是 AI 模板感；字少的稿子页数要多。
+    // 表格默认底色跟主题，但页面底色不同时要逐格写；卡片侧边色条是 AI 模板感；字少的稿子页数要多。
     expect(design).toContain('**表格默认样式**');
-    expect(syntax).toContain('不跟随主题和页面底色');
+    expect(syntax).toContain('某页底色和主题底色不同，就按那页逐格写 `fill`');
     expect(design).toContain('左侧加一条竖色条');
     expect(design).toContain('字越少，页数越多');
     expect(cultural).toContain('30 页以上');

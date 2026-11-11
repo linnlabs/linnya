@@ -13,6 +13,12 @@
 不能用正文最小行高扩大表格、把表头压成零。过小或零高度仍由质量链报告，不能在 mapper
 补尺寸或丢弃节点。rowspan 占据的列由本模块统一跳过，渲染端不重新放置单元格。
 
+没写逐格 `fill` 的单元格由 `resolveTableDefaultFills` 按主题定底色：正文取 `colors.background`，
+表头取 `accent1` 往底色里染 14%；主题没写颜色时是白底、`#F2F2F2` 表头。RenderModel mapper 与
+PPTX compiler 都把结果写进每个单元格，预览和导出不再各自兜底。
+测试 `../../__tests__/table-border-and-fills.integration.test.ts` 同时锁住 `Table.border` 穿过
+compose JSON 回读（Flex 编译写 `tableBorder`，Host reader 读编译字段）后预览与 PPTX 格线一致。
+
 实现位于 `functions/`，输入与结果位于 `definitions/`。旧列宽权重和密度规则复用
 `../visual/presentationVisualDefaults`；PptxGenJS、数据库与 Renderer 不进入计算函数。
 测试 `../../__tests__/table-intrinsic-layout.integration.test.ts` 穿过 compose JSON 回读、

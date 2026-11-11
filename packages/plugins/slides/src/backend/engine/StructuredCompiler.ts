@@ -15,7 +15,6 @@ import type {
   TableCell as DomainTableCell,
   ThemeSpec,
 } from '@plugin/slides/shared';
-import { TABLE_DEFAULT_HEADER_FILL } from '@plugin/slides/shared';
 import {
   mapPosition,
   mapShapeShadowToProps,
@@ -23,7 +22,7 @@ import {
   resolveShapeTextLayout,
   stripHash,
 } from './visual/presentationVisualDefaults';
-import { resolveGeneratedTableLayout } from './table';
+import { resolveGeneratedTableLayout, resolveTableDefaultFills } from './table';
 import { resolveImageAsset, toPptxImageSource } from './assets/imageAssetResolver';
 import { buildPptxImageProps } from './assets/pptxImageProps';
 import { PptxPackageSanitizer } from './pptx/PptxPackageSanitizer';
@@ -163,7 +162,7 @@ export class StructuredCompiler {
         addNativeChart(slide, el, theme, chartContext);
         break;
       case 'table':
-        this.addTable(slide, el);
+        this.addTable(slide, el, theme);
         break;
       case 'image':
         this.addImage(slide, el);
@@ -315,7 +314,9 @@ export class StructuredCompiler {
   private addTable(
     slide: PptxGenJS.Slide,
     el: Extract<StructuredElement, { type: 'table' }>,
+    theme: ThemeSpec | undefined,
   ): void {
+    const fills = resolveTableDefaultFills(theme?.colors);
     const layout = resolveGeneratedTableLayout({
       width: el.position.w, height: el.position.h, headers: el.headers, rows: el.rows,
       fontSize: typeof el.options?.fontSize === 'number' ? el.options.fontSize : undefined,
@@ -323,14 +324,14 @@ export class StructuredCompiler {
     const baseFontSize = layout.fontSize;
     const rows: PptxGenJS.TableRow[] = [];
 
-    // 表头行（B8：fill 走 TABLE_DEFAULT_HEADER_FILL 共享常量，与 render-model / 前端三端对齐）
+    // 表头与正文的默认底色跟主题走，与 RenderModel 用同一个 resolveTableDefaultFills。
     if (el.headers && el.headers.length > 0) {
       rows.push(
         el.headers.map((h) => ({
           text: h,
           options: {
             bold: true,
-            fill: { color: stripHash(TABLE_DEFAULT_HEADER_FILL, 'table.headerFill') },
+            fill: { color: stripHash(fills.header, 'table.headerFill') },
             fontSize: layout.headerFontSize,
             margin: layout.padding,
             fit: 'shrink',
@@ -341,7 +342,7 @@ export class StructuredCompiler {
 
     // 数据行
     for (const row of el.rows) {
-      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, padding: layout.padding })));
+      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, padding: layout.padding, fill: fills.body })));
     }
 
     // PptxGenJS 类型上 TableProps 未包含 fit（fit 在 TextPropsOptions）；运行时表格 opt 会下发到单元格文本体，库会读取 options.fit
@@ -362,14 +363,14 @@ export class StructuredCompiler {
 
   private mapTableCell(
     cell: DomainTableCell,
-    defaults: { fontSize: number; padding: number },
+    defaults: { fontSize: number; padding: number; fill: string },
   ): PptxGenJS.TableCell {
     const opts: PptxGenJS.TableCellProps = {
       ...mapTextParagraphStyleToProps(cell.style),
       fontSize: cell.style?.fontSize ?? defaults.fontSize,
       margin: defaults.padding,
     };
-    if (cell.fill) opts.fill = { color: stripHash(cell.fill, 'table.fill') };
+    opts.fill = { color: stripHash(cell.fill ?? defaults.fill, 'table.fill') };
     if (cell.colspan != null) opts.colspan = cell.colspan;
     if (cell.rowspan != null) opts.rowspan = cell.rowspan;
     return { text: cell.text, options: opts };

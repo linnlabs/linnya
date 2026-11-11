@@ -11,7 +11,6 @@ import type {
   TablePptxHints,
   TableRenderNode,
 } from '@plugin/slides/shared';
-import { TABLE_DEFAULT_HEADER_FILL } from '@plugin/slides/shared';
 import {
   resolveGeneratedRenderChartType,
 } from '../../visual/presentationVisualDefaults';
@@ -260,7 +259,7 @@ export function mapStructuredTableNode(
           : cell.style, defaults.minorFontFamily, layout.fontSize),
         lineSpacing: resolveTextStyleLineSpacing(cell.style?.lineSpacing),
       }],
-      fill: placement.isHeader ? TABLE_DEFAULT_HEADER_FILL : cell.fill,
+      fill: placement.isHeader ? defaults.tableFills.header : cell.fill ?? defaults.tableFills.body,
       ...(cellBorders ? { borders: cellBorders } : {}),
       padding: { top: layout.padding, right: layout.padding, bottom: layout.padding, left: layout.padding },
       verticalAlign: 'middle',

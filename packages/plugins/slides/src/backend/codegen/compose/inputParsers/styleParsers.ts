@@ -77,6 +77,13 @@ export function parseTableBorder(value: unknown): ShapeStrokeStyle | null {
   return parsed?.border ?? null;
 }
 
+/** Flex 编译产物里已归一化的表格描边（{ width, paint, dash? }）；表格只接受纯色。 */
+export function parseCompiledTableBorder(value: unknown): ShapeStrokeStyle | null {
+  const parsed = parseShapeStyle({ border: value });
+  const border = parsed?.border;
+  return border?.paint?.type === 'solid' ? border : null;
+}
+
 /**
  * `parseTextStyle` / `parseShapeStyle` 各自识别的字段全集，导出给 reader 在
  * 错误消息里回灌"合法字段"——避免 AI 拿到 "style is invalid" 这种零信息错误时

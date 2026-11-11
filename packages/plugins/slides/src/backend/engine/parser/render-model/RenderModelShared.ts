@@ -35,6 +35,7 @@ import {
   type FreeformTransform,
 } from '../../text/generatedTextRenderInput';
 import { resolveChartPalette, resolveThemeFonts } from '../../visual/presentationVisualDefaults';
+import { resolveTableDefaultFills, type TableDefaultFills } from '../../table';
 
 export { IDENTITY_TRANSFORM, applyFreeformTransform, buildGroupTransform, type FreeformTransform };
 
@@ -47,6 +48,7 @@ export interface RenderDefaultsContext {
   chartPalette: ThemeChartPalette;
   majorFontFamily: string;
   minorFontFamily: string;
+  tableFills: TableDefaultFills;
 }
 
 export interface RenderBaseNode {
@@ -72,6 +74,7 @@ export function resolveRenderDefaults(
     chartPalette: resolveChartPalette(theme),
     majorFontFamily: fonts.major,
     minorFontFamily: fonts.minor,
+    tableFills: resolveTableDefaultFills(theme?.colors),
   };
 }
 

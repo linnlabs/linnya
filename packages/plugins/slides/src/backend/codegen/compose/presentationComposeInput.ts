@@ -66,6 +66,7 @@ import {
 } from './inputParsers/parseContext.js';
 import {
   parseImageVisualShadow,
+  parseCompiledTableBorder,
   parseTableBorder,
   parseTextStyle,
   parseShapeStyle,
@@ -470,11 +471,16 @@ function parseElementInput(
   const chartStyle = chartStyleResult?.value;
   const chartControls = type === 'chart' ? parseChartControls(value) : { value: {} };
   if ('error' in chartControls) return { error: `${prefix}: ${chartControls.error}` };
-  const tableBorder = type === 'table' && value.border != null
-    ? parseTableBorder(value.border) ?? undefined
-    : undefined;
-  if (type === 'table' && value.border != null && tableBorder == null) {
-    return { error: `${prefix}.border 必须是 { color, width } 描边对象。` };
+  // 公开输入写 border: { color, width }；Flex 编译后写已归一化的 tableBorder（{ width, paint }）。
+  const compiledTableBorder = type === 'table' && acceptCompiledFields && value.tableBorder != null;
+  const rawTableBorder = type !== 'table' ? undefined : compiledTableBorder ? value.tableBorder : value.border;
+  const tableBorder = rawTableBorder == null
+    ? undefined
+    : (compiledTableBorder ? parseCompiledTableBorder(rawTableBorder) : parseTableBorder(rawTableBorder)) ?? undefined;
+  if (rawTableBorder != null && tableBorder == null) {
+    return compiledTableBorder
+      ? { error: `${prefix}.tableBorder 必须是纯色描边。` }
+      : { error: `${prefix}.border 必须是 { color, width } 描边对象。` };
   }
   const imageSource: ReturnType<typeof parseImageSourceInput> = type === 'image'
     ? parseImageSourceInput(value.src)

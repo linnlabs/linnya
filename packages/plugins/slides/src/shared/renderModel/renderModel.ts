@@ -423,7 +423,9 @@ export interface TablePptxHints {
 }
 
 /**
- * 表格视觉默认值（B8 三端共享契约 / CONTRACTS §2.5）：
+ * 表格视觉默认值（B8 三端共享契约 / CONTRACTS §2.5）。生成表格的默认底色由
+ * `backend/engine/table` 的 resolveTableDefaultFills 按主题算出，写进每个单元格；
+ * 下面两个颜色是主题没写颜色时的结果，也是渲染端遇到没有 fill 的单元格时的兜底：
  *
  * render-model（mapStructuredTableNode）/ compiler（StructuredCompiler.addTable）/ 前端
  * （tableBuilder.buildCellRectConfig）三端必须使用同一组默认色，避免预览与导出不一致。

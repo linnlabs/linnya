@@ -332,7 +332,7 @@ createTable({
 })
 ```
 
-`width` 单位为 pt；当前语义是整张表的外框和内部网格线，前端预览与 PPTX 导出使用同一描边事实。第一版不开放逐单元格边框、`tableOptions`、`colW` 或 `rowH`，也不把底层 PptxGenJS/ECharts 参数泄漏到 deck.js。用逐格 `fill` 与 `style` 表达表头、强调列和结论行，比在表格外另加色块更可靠。不写 `fill` 时表头是固定的浅灰、正文是白色，不跟随主题和页面底色，所以几乎每张表都要逐格写 `fill`（做法见 [`design.md`](./design.md) 高频问题第 6 条）。
+`width` 单位为 pt；当前语义是整张表的外框和内部网格线，前端预览与 PPTX 导出使用同一描边事实。第一版不开放逐单元格边框、`tableOptions`、`colW` 或 `rowH`，也不把底层 PptxGenJS/ECharts 参数泄漏到 deck.js。用逐格 `fill` 与 `style` 表达表头、强调列和结论行，比在表格外另加色块更可靠。不写 `fill` 时，正文用主题 `colors.background`，表头用主题 `accent1` 往底色里淡淡染一层；某页底色和主题底色不同，就按那页逐格写 `fill`。强调表头、强调列和结论行仍逐格写 `fill` 与 `style`（做法见 [`design.md`](./design.md) 高频问题第 8 条）。
 
 `tableData/body/data` 只用于兼容旧 source。原始 `tableOptions`、`colW`、`rowH` 不是 deck.js 正式语法；当前列宽与行高由表格布局链计算，不能借 PptxGenJS 参数绕过。原生表格也没有单元格内边距，窄列的文字会贴得很近或单字成行；对列距有明确要求的核心证据表，可以改用 Text 加细线手排，代价是它不再是原生表格（做法见 [`style-consulting-report.md`](./style-consulting-report.md)）。
 
