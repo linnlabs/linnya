@@ -8,30 +8,22 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
-import {
-  WORKSPACE_READ_FILE_PDF_FIND_MAX_PAGES,
-  WORKSPACE_READ_FILE_PDF_MAX_PAGES,
-  WorkspaceReadFileResultSchema,
-  parsePdfPageRange,
-} from '@app/schemas';
+import { WorkspaceReadFileResultSchema, parsePdfPageRange } from '@app/schemas';
 import type { ManagedImageContentIngressPort } from 'src/domains/assets/features/managed-image-ingress';
 import type { ToolResultAssetClaimRegistryPort } from 'src/domains/assets/features/tool-result-claims';
-import { openPdfPageReader, type PdfPageReader, type PdfPageText } from 'src/features/parsers/pdfParser';
+import {
+  PdfOpenError,
+  PdfPageOutOfRangeError,
+  PdfPageTextCache,
+  collectPdfPageWindow,
+  findInPdfPages,
+  formatPdfPageSpan as formatSpan,
+  withPdfTextSession,
+  type PdfPageText,
+  type PdfTextSession as PdfSession,
+  type SerialGate,
+} from 'src/features/parsers/pdfParser';
 import { PhysicalFileReadError, type PhysicalPdfFileReadResult } from '../definitions/physicalFileRead';
-import { findInPageText } from '../functions/findInPageText';
-import { PdfPageTextCache, SerialGate } from '../functions/pdfPageTextCache';
-
-/**
- * 一次返回的页文字在页边界停下的预算（UTF-16 字符与行数）。Host 的工具输出预览为 20,000 字符 / 1,200 行，
- * 超出会截成前缀，末尾的下一段页码提示随之丢失；这里留出页头、布局说明和续读提示的空间。
- * 第一页总会返回；单页本身超长时才交给 ToolOutputStore 续读。
- */
-const WINDOW_CHARS = 15_000;
-const WINDOW_LINES = 900;
-const MAX_FIND_CONTEXTS = 30;
-
-const defaultCache = new PdfPageTextCache();
-const defaultGate = new SerialGate();
 
 export type PdfReadRequest =
   | { readonly view: 'text'; readonly pages?: string; readonly find?: string }
@@ -53,12 +45,6 @@ export interface PdfReadInput {
   readonly gate?: SerialGate;
 }
 
-interface PdfSession {
-  readonly pageCount: number;
-  text(pageNumber: number): Promise<PdfPageText>;
-  render(pageNumber: number): ReturnType<PdfPageReader['renderPageToJpeg']>;
-}
-
 function throwIfAborted(signal: AbortSignal | undefined): void {
   if (!signal?.aborted) return;
   const error = new Error('The user aborted a request.');
@@ -66,58 +52,25 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
   throw error;
 }
 
-async function withPdfSession<T>(input: PdfReadInput, task: (session: PdfSession) => Promise<T>): Promise<T> {
-  const cache = input.cache ?? defaultCache;
-  return (input.gate ?? defaultGate).run(async () => {
-    throwIfAborted(input.signal);
-    const key = PdfPageTextCache.key(input.source);
-    let reader: PdfPageReader | undefined;
-    const open = async (): Promise<PdfPageReader> => {
-      if (reader) return reader;
-      const bytes = await readFile(input.source.resolvedPath);
-      try {
-        reader = await openPdfPageReader(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
-      } catch (error: unknown) {
-        const reason = error instanceof Error ? error.message : String(error);
-        throw new PhysicalFileReadError(
-          'READ_FILE_PDF_UNREADABLE',
-          `PDF 无法打开（可能已加密或损坏）：${reason.slice(0, 200)}`,
-        );
-      }
-      return reader;
-    };
-    try {
-      const pageCount = cache.pageCount(key) ?? (await open()).pageCount;
-      return await task({
-        pageCount,
-        async text(pageNumber) {
-          const cached = cache.get(key, pageNumber);
-          if (cached) return cached;
-          const page = await (await open()).readPageText(pageNumber);
-          cache.put(key, pageCount, page);
-          return page;
-        },
-        async render(pageNumber) {
-          return (await open()).renderPageToJpeg(pageNumber);
-        },
-      });
-    } finally {
-      await reader?.close().catch(() => undefined);
-    }
-  });
+function requirePageInRange(pageNumber: number, pageCount: number): void {
+  if (pageNumber > pageCount) throw new PdfPageOutOfRangeError(pageNumber, pageCount);
 }
 
-function requirePageInRange(pageNumber: number, pageCount: number): void {
-  if (pageNumber > pageCount) {
-    throw new PhysicalFileReadError(
+/** 共用会话的错误映射成 read_file 的正式错误码。 */
+function toReadFileError(error: unknown): unknown {
+  if (error instanceof PdfOpenError) {
+    return new PhysicalFileReadError('READ_FILE_PDF_UNREADABLE', `PDF 无法打开（可能已加密或损坏）：${error.reason}`);
+  }
+  if (error instanceof PdfPageOutOfRangeError) {
+    return new PhysicalFileReadError(
       'READ_FILE_PDF_PAGE_OUT_OF_RANGE',
-      `PDF 只有 ${pageCount} 页，没有第 ${pageNumber} 页。`,
-      { pageCount },
+      `PDF 只有 ${error.pageCount} 页，没有第 ${error.pageNumber} 页。`,
+      { pageCount: error.pageCount },
     );
   }
+  return error;
 }
 
-const formatSpan = (from: number, to: number) => (from === to ? String(from) : `${from}-${to}`);
 const call = (args: Record<string, string>) => `read_file(${JSON.stringify(args)})`;
 
 /**
@@ -150,43 +103,16 @@ function pdfData(input: PdfReadInput, session: PdfSession, pages: readonly PdfPa
   };
 }
 
-function countLines(text: string): number {
-  let count = 1;
-  for (let index = 0; index < text.length; index += 1) if (text.charCodeAt(index) === 0x0a) count += 1;
-  return count;
-}
-
 async function readPages(input: PdfReadInput, session: PdfSession, pagesArg: string | undefined): Promise<string> {
   const locator = input.source.locator;
-  const requested = pagesArg ? parsePdfPageRange(pagesArg) : undefined;
-  const from = requested?.from ?? 1;
-  requirePageInRange(from, session.pageCount);
-  const lastAllowed = Math.min(requested?.to ?? from + WORKSPACE_READ_FILE_PDF_MAX_PAGES - 1, session.pageCount);
-  const pages: PdfPageText[] = [];
-  let chars = 0;
-  let lines = 0;
-  for (let pageNumber = from; pageNumber <= lastAllowed; pageNumber += 1) {
-    throwIfAborted(input.signal);
-    const page = await session.text(pageNumber);
-    const pageLines = countLines(page.text) + 2;
-    if (pages.length > 0 && (chars + page.text.length > WINDOW_CHARS || lines + pageLines > WINDOW_LINES)) break;
-    pages.push(page);
-    chars += page.text.length;
-    lines += pageLines;
-  }
-  const to = pages[pages.length - 1]!.pageNumber;
-  const stoppedEarly = to < lastAllowed;
-  const hasMore = to < session.pageCount;
-  // 预算提前停下时续读本次请求剩余的页；完整返回时按同样页数向后翻。
-  const nextPages = hasMore
-    ? formatSpan(to + 1, stoppedEarly ? lastAllowed : Math.min(to + pages.length, session.pageCount))
-    : undefined;
+  const window = await collectPdfPageWindow(session, pagesArg ? parsePdfPageRange(pagesArg) : undefined, input.signal);
+  const { from, to, pages, stoppedEarly, hasMore, nextPages } = window;
   const body = pages.map(page => (page.layout === 'no_text'
     ? `[Page ${page.pageNumber}: no text layer]`
     : `[Page ${page.pageNumber}]\n${page.text}`));
   const observation = [
     `PDF ${locator}: ${session.pageCount} pages; returned pages ${formatSpan(from, to)}. Text comes from the PDF text layer; no OCR was run.`,
-    ...(requested && requested.to > session.pageCount ? [`Requested pages beyond ${session.pageCount} do not exist.`] : []),
+    ...(window.requestedBeyondEnd ? [`Requested pages beyond ${session.pageCount} do not exist.`] : []),
     ...(stoppedEarly ? [`Stopped after page ${to} to keep this result within the output limit; continue with the next pages call below.`] : []),
     ...describeLayout(pages, input),
     '',
@@ -207,28 +133,9 @@ async function readPages(input: PdfReadInput, session: PdfSession, pagesArg: str
 
 async function findPages(input: PdfReadInput, session: PdfSession, query: string, pagesArg: string | undefined): Promise<string> {
   const locator = input.source.locator;
-  const requested = pagesArg ? parsePdfPageRange(pagesArg) : undefined;
-  const from = requested?.from ?? 1;
-  requirePageInRange(from, session.pageCount);
-  const scopeEnd = Math.min(requested?.to ?? session.pageCount, session.pageCount);
-  const to = Math.min(scopeEnd, from + WORKSPACE_READ_FILE_PDF_FIND_MAX_PAGES - 1);
-  const pages: PdfPageText[] = [];
-  const contexts: string[] = [];
-  const hitPages: number[] = [];
-  let hitCount = 0;
-  for (let pageNumber = from; pageNumber <= to; pageNumber += 1) {
-    throwIfAborted(input.signal);
-    const page = await session.text(pageNumber);
-    pages.push(page);
-    const found = findInPageText(page.text, query, MAX_FIND_CONTEXTS - contexts.length);
-    if (found.count === 0) continue;
-    hitCount += found.count;
-    hitPages.push(pageNumber);
-    contexts.push(...found.matches.map(match => `[Page ${pageNumber}] ${match.context}`));
-  }
-  const hasMore = to < scopeEnd;
-  const nextPages = hasMore ? formatSpan(to + 1, Math.min(to + WORKSPACE_READ_FILE_PDF_FIND_MAX_PAGES, scopeEnd)) : undefined;
-  const truncated = contexts.length < hitCount;
+  const found = await findInPdfPages(session, query, pagesArg ? parsePdfPageRange(pagesArg) : undefined, input.signal);
+  const { from, to, pages, hitCount, hitPages, truncated, hasMore, nextPages } = found;
+  const contexts = found.contexts.map(match => `[Page ${match.pageNumber}] ${match.context}`);
   const observation = [
     `PDF ${locator}: ${session.pageCount} pages. Searched pages ${formatSpan(from, to)} for ${JSON.stringify(query)}, ignoring full/half width, case and whitespace: ${hitCount} ${hitCount === 1 ? 'match' : 'matches'}${hitPages.length ? ` on pages ${hitPages.join(', ')}` : ''}.`,
     ...describeLayout(pages, input).map(line => (line.startsWith('Pages without') ? `${line} Text on those pages was not searched.` : line)),
@@ -301,12 +208,28 @@ export async function readPdfForTool(input: PdfReadInput): Promise<string> {
       'PDF 按页读取：用 pages（如 "15-18"）或 find，不用 offset/limit。',
     );
   }
-  return withPdfSession(input, session => {
-    if (input.request.view === 'page_image') {
-      return renderPage(input, session, parsePdfPageRange(input.request.pages).from);
-    }
-    return input.request.find !== undefined
-      ? findPages(input, session, input.request.find, input.request.pages)
-      : readPages(input, session, input.request.pages);
-  });
+  try {
+    return await withPdfTextSession(
+      {
+        key: PdfPageTextCache.key(input.source),
+        loadBytes: async () => {
+          const bytes = await readFile(input.source.resolvedPath);
+          return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        },
+        ...(input.signal ? { signal: input.signal } : {}),
+        ...(input.cache ? { cache: input.cache } : {}),
+        ...(input.gate ? { gate: input.gate } : {}),
+      },
+      session => {
+        if (input.request.view === 'page_image') {
+          return renderPage(input, session, parsePdfPageRange(input.request.pages).from);
+        }
+        return input.request.find !== undefined
+          ? findPages(input, session, input.request.find, input.request.pages)
+          : readPages(input, session, input.request.pages);
+      },
+    );
+  } catch (error: unknown) {
+    throw toReadFileError(error);
+  }
 }

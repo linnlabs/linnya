@@ -16,7 +16,16 @@ const WebPageResourceSchema = z.object({
   url: HttpCitationUrlSchema,
   label: NonEmptyStringSchema.optional(),
 }).strict();
+/** 单次返回给模型的正文上限（显式 max_chars 可到此值）。 */
 export const WEB_READ_MAX_CONTENT_CHARS = 50_000;
+/**
+ * 默认单次返回。Host 工具输出预览为 20,000 字符，超出只显示前缀，末尾的续读提示会丢；
+ * 留出标题、来源和续读提示的空间。与 read_file 的 PDF 页窗口预算一致。
+ */
+export const WEB_READ_DEFAULT_RETURN_CHARS = 15_000;
+/** 正文快照保存上限：offset / find 在这段全文里读，重读不重新抓取。 */
+export const WEB_READ_MAX_CAPTURE_CHARS = 500_000;
+export const WEB_READ_FIND_MAX_CHARS = 200;
 /** 单文件字节上限由 HTTP 取得、存储回执及历史投影共同遵守；会话总量另由存储拥有。 */
 export const WEB_ACQUIRED_FILE_MAX_BYTES = 30 * 1024 * 1024;
 
@@ -38,12 +47,32 @@ export const WebAcquiredFileSchema = z.object({
 });
 export type WebAcquiredFile = z.infer<typeof WebAcquiredFileSchema>;
 
+/** `17` 或 `15-18`，1-based 闭区间；与 read_file 的 PDF pages 同一写法。 */
+const WebReadPdfPagesSchema = z.string().regex(/^[1-9]\d*(?:-[1-9]\d*)?$/u, 'pages must look like "17" or "15-18"');
+
 export const WebReadArgsSchema = z.object({
   url: HttpCitationUrlSchema,
   // 读取编排会把非正数恢复为默认预算，并把正数向下取整、限制到最大预算。
   max_chars: z.number().finite().optional(),
   title_hint: z.string().optional(),
-}).strict();
+  /** 从已保存正文的第几个字符（UTF-16，0 起）开始返回；用上次结果给出的 next_offset。 */
+  offset: z.number().int().nonnegative().optional(),
+  /** 在已保存正文（或 PDF 各页文字）里查找，返回命中位置与上下文。 */
+  find: z.string().trim().min(1).max(WEB_READ_FIND_MAX_CHARS).optional(),
+  /** 仅 PDF：要读的页；与 find 同用时是查找范围。 */
+  pages: WebReadPdfPagesSchema.optional(),
+}).strict().superRefine((args, context) => {
+  if (args.offset !== undefined && args.find !== undefined) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['offset'], message: 'use offset or find, not both' });
+  }
+  if (args.pages !== undefined && args.offset !== undefined) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['offset'], message: 'PDF is read by pages; offset applies to page text only' });
+  }
+  if (args.pages !== undefined) {
+    const [from, to = from] = args.pages.split('-').map(Number);
+    if (to! < from!) context.addIssue({ code: z.ZodIssueCode.custom, path: ['pages'], message: 'pages range must not run backwards' });
+  }
+});
 
 /** 历史 resource_read(http/https) 事件的 replay 参数合同。 */
 export const HistoricalWebResourceReadArgsSchema = HistoricalResourceReadArgsSchema.extend({
@@ -78,6 +107,31 @@ const WebReadDataObjectSchema = z.object({
   /** 提取器启发式信号，不代表来源可信度或全文完整性。 */
   warnings: z.array(WebDocumentWarningSchema).max(8).optional(),
   resources: z.array(WebPageResourceSchema).max(16).optional(),
+  /** 本次返回的是已保存正文的哪一段；缺省表示旧回执（从开头返回）。 */
+  window: z.object({
+    offset: z.number().int().nonnegative(),
+    end: z.number().int().nonnegative(),
+    total_chars: z.number().int().nonnegative(),
+    next_offset: z.number().int().positive().optional(),
+    /** 保存的正文已在快照上限处截断，total_chars 之后还有原文。 */
+    capture_truncated: z.boolean(),
+  }).strict().optional(),
+  find: z.object({
+    query: NonEmptyStringSchema,
+    hit_count: z.number().int().nonnegative(),
+    /** 网页正文的命中偏移（可作 offset 续读）；PDF 给 hit_pages。 */
+    hit_offsets: z.array(z.number().int().nonnegative()).max(30).optional(),
+    hit_pages: z.array(z.number().int().positive()).optional(),
+    truncated: z.boolean(),
+  }).strict().optional(),
+  /** 仅 PDF：从文字层返回的页。 */
+  pdf: z.object({
+    page_count: z.number().int().positive(),
+    pages: z.object({ from: z.number().int().positive(), to: z.number().int().positive() }).strict(),
+    next_pages: z.string().optional(),
+    pages_without_text: z.array(z.number().int().positive()),
+    complex_layout_pages: z.array(z.number().int().positive()),
+  }).strict().optional(),
   file: WebAcquiredFileSchema.optional(),
   citations: z.object({
     query: HttpCitationUrlSchema,
@@ -95,8 +149,13 @@ function validateWebReadData(
   context: z.RefinementCtx,
 ): void {
   const citation = data.citations.citations[0];
-  if (data.file && data.file.format !== 'csv' && (data.charCount !== 0 || data.extractor !== 'file_download')) {
+  // PDF 可以带文字层页文字（extractor=pdf_text_layer，并给出 pdf 页范围）；XLSX 不提取正文。
+  const pdfText = data.file?.format === 'pdf' && data.extractor === 'pdf_text_layer' && data.pdf !== undefined;
+  if (data.file && data.file.format !== 'csv' && !pdfText && (data.charCount !== 0 || data.extractor !== 'file_download')) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['file'], message: 'Binary file acquisition cannot claim extracted page text' });
+  }
+  if (data.pdf && data.file?.format !== 'pdf') {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['pdf'], message: 'PDF page text requires an acquired PDF file' });
   }
   if (citation.url !== data.url) {
     context.addIssue({

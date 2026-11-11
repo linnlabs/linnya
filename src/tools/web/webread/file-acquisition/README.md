@@ -1,7 +1,7 @@
 # Web 原文件取得
 
 这项能力只取得原件、登记来源并把原始字节物化到当前 Conversation 的物理工作目录。
-它不提取 PDF 页面、不解释表格，不调用知识库 ingestion/OCR，不安装解析库；PDF 页面读取归 `read_file`。
+它本身不提取 PDF 页面、不解释表格，不调用知识库 ingestion/OCR，不安装解析库。取得的 PDF 由 `web_read` 编排调用与 `read_file` 共用的 PDF 文字会话按页返回文字（见 [Web README §5.4](../../README.md)）。
 
 ## 边界与调用链
 
@@ -37,8 +37,8 @@ CSV 没有魔数：按响应编码检查文本，拒绝二进制和 HTML 伪装�
 类型检查不是完整文件有效性或无恶意内容认证。
 
 CSV 同时返回既有文本视图；`max_chars` 只裁剪文本，不裁剪保存的字节。
-PDF/XLSX 的 `charCount=0`、`extractor=file_download`。PDF 回执给出 `read_file({"locator":"conversation:/web-downloads/<sha>.pdf"})`，
-由 `read_file` 按页、按关键词或按页看图读取；XLSX 仍由 Shell 解析。
+XLSX（以及打不开的 PDF）的 `charCount=0`、`extractor=file_download`；能打开的 PDF 返回页文字，`extractor=pdf_text_layer`。
+PDF 回执同时给出 `read_file({"locator":"conversation:/web-downloads/<sha>.pdf"})`，有 read_file 的 Agent 还能按页看图；XLSX 仍由 Shell 解析。
 超限、403、验证码和不支持的类型保持显式失败，不额外下载、不绕过访问限制。
 
 原件保存为 `web-downloads/<sha256>.<format>`（相对于当前会话 Shell cwd），模式 0600。

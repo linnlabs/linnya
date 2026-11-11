@@ -25,6 +25,7 @@ import { buildMarkdownDocumentFromText } from '../../../domains/markdown/feature
 import { importMarkdownToDocJson } from '../../../domains/markdown/features/normalization';
 import type { ToolContext } from '../../types';
 import type { WebFileStore } from '../webread/file-acquisition/definitions/webFileAcquisition';
+import { createTextPdf } from '../../../features/parsers/pdfParser/testkit/createTextPdf';
 
 const pdf = Buffer.from('%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF');
 // CSV 没有魔数，合法字段也可能以 MZ 开头，不能仅凭两个字母当成可执行文件。
@@ -71,6 +72,15 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
       { mime: string; bytes: Buffer; encoding?: string; chunked?: boolean }
     > = {
       '/report.pdf': { mime: 'application/pdf', bytes: pdf },
+      '/text-report.pdf': {
+        mime: 'application/pdf',
+        bytes: Buffer.from(createTextPdf([
+          ['Annual report', 'Scope and method'],
+          null,
+          ['Appendix B', 'Methodology: household survey of 1,200 respondents'],
+          ['Closing notes'],
+        ])),
+      },
       '/data.csv': { mime: 'application/csv; charset=utf-8', bytes: csv },
       '/text.csv': { mime: 'text/csv', bytes: csv },
       '/book.xlsx': { mime: xlsxMime, bytes: xlsx },
@@ -185,6 +195,40 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
         WebReadResultSchema.parse(JSON.parse(await tool.run({ url: origin + urlPath }, context))),
     };
   }
+
+  it('有文字层的 PDF 直接按页返回文字，可按页跳读和跨页查找，扫描页列出', async () => {
+    const fixture = await setup();
+    const readWith = async (args: Record<string, unknown>) =>
+      WebReadResultSchema.parse(JSON.parse(await fixture.tool.run({ url: origin + '/text-report.pdf', ...args }, fixture.context)));
+
+    const first = await readWith({});
+    expect(first.data.file?.format).toBe('pdf');
+    expect(first.data.extractor).toBe('pdf_text_layer');
+    expect(first.data.pdf).toMatchObject({
+      page_count: 4,
+      pages: { from: 1, to: 4 },
+      pages_without_text: [2],
+    });
+    expect(first.data.charCount).toBeGreaterThan(0);
+    expect(first.observation).toContain('[Page 1]');
+    expect(first.observation).toContain('Annual report');
+    expect(first.observation).toContain('[Page 2: no text layer]');
+    expect(first.observation).toContain('Pages without a text layer: 2');
+    expect(first.observation).toContain('The page text below comes from this file');
+    expect(first.observation).not.toContain('File identity only');
+
+    const page3 = await readWith({ pages: '3' });
+    expect(page3.data.pdf?.pages).toEqual({ from: 3, to: 3 });
+    expect(page3.observation).toContain('household survey');
+    expect(page3.observation).not.toContain('Annual report');
+
+    const found = await readWith({ find: 'HOUSEHOLD survey' });
+    expect(found.data.find).toMatchObject({ hit_count: 1, hit_pages: [3] });
+    expect(found.observation).toContain('[Page 3]');
+    expect(found.observation).toContain(`web_read(${JSON.stringify({ url: origin + '/text-report.pdf', pages: '3' })})`);
+
+    await expect(readWith({ offset: 10 })).rejects.toThrow();
+  });
 
   it('重定向 PDF 一次取得原字节；Evidence、实时/历史 Citation 和 Markdown 均保留身份而不伪造正文', async () => {
     const fixture = await setup();

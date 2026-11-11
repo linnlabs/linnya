@@ -17,7 +17,8 @@ import { readWebPageWithLadder } from './readLadder';
 const logger = new Logger('WebReadCache');
 // 正文抽取器或 DOM 规范化语义变化时必须升级，避免 24 小时稳定页面缓存
 // 继续返回旧算法结果。
-const WEB_READ_CACHE_ROUTE_VERSION = 9;
+// 10：快照保存上限从 5 万字提高到 50 万字，旧条目可能在 5 万字处截断。
+const WEB_READ_CACHE_ROUTE_VERSION = 10;
 const DEFAULT_LOCAL_PROVIDER_IDENTITY = 'local_http';
 const DEFAULT_RENDER_PROVIDER_IDENTITY = 'local_render';
 
@@ -62,7 +63,13 @@ export function resolveWebReadCacheRouteIdentity(dependencies: {
 }
 
 export async function readWebPageWithCache(
-  params: WebReadParams,
+  params: WebReadParams & {
+    /**
+     * 续读（offset / find）要读同一份快照：已过期但仍保留的快照直接使用，不重新抓取，
+     * 否则页面变化后偏移会错位。快照已被清理时照常抓取。
+     */
+    readonly acceptStaleSnapshot?: boolean;
+  },
   dependencies: {
     provider?: WebReadProvider;
     renderProvider?: WebReadProvider | null;
@@ -93,7 +100,15 @@ export async function readWebPageWithCache(
         cacheStatus: 'hit',
       };
     }
-    if (cached.state === 'stale') staleResult = cached.value;
+    if (cached.state === 'stale') {
+      if (params.acceptStaleSnapshot) {
+        return {
+          ladderResult: asCacheHit(cached.value, cached.storedAtMs),
+          cacheStatus: 'hit',
+        };
+      }
+      staleResult = cached.value;
+    }
   } catch (error: unknown) {
     cacheAvailable = false;
     logger.warn('[readWebPageWithCache] URL 缓存读取失败，本次绕过缓存', {
@@ -115,7 +130,8 @@ export async function readWebPageWithCache(
     async (sharedSignal) => {
       const ladderResult = await readWebPageWithLadder(
         {
-          ...params,
+          url: params.url,
+          maxChars: params.maxChars,
           signal: sharedSignal,
           ...(canRevalidate && staleDocument
             ? {

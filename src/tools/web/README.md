@@ -348,12 +348,12 @@ Reader 服务地址与环境变量名由 Web Read 自己的静态服务定义拥
 - HTML 相对链接依据最终 URL 与有效 base URL 还原，只保留符合既有同步 URL 策略的地址；链接出现不代表目标已读取，后续请求仍须完整校验 DNS 和连接
 - 表格保留精简 HTML 中的空单元格、caption、rowspan/colspan 和表头关联属性；不展开跨度、不猜测会计口径。保留的 HTML 删除事件、样式等非内容属性。静态抽取不承诺解析外部样式表的完整可见性或理解图片里的数字
 - 同一安全 GET 通过 Accept 优先请求来源站点的 Markdown；按实际 Content-Type 分流，不额外请求或自动换 Provider。原生 Markdown 保留来源表示（包括相对链接），不伪造未取得的标题/日期元数据；HTML 不支持协商时继续走原抽取链
-- GitHub `blob` 地址在本地 HTTP 首跳自动转换为 `raw.githubusercontent.com`，转换后的域名仍完整执行 URL/DNS 校验与 IP 钉扎；`web_read` 读取 HTML/文本，并在独立 30 MiB 单文件上限内保存通过类型检查的 PDF/CSV/XLSX 原文件（网页正文仍为 5 MiB，会话文件总量 50 MiB），PDF 交给 `read_file`、XLSX 交给 Shell（见下节）
+- GitHub `blob` 地址在本地 HTTP 首跳自动转换为 `raw.githubusercontent.com`，转换后的域名仍完整执行 URL/DNS 校验与 IP 钉扎；`web_read` 读取 HTML/文本，并在独立 30 MiB 单文件上限内保存通过类型检查的 PDF/CSV/XLSX 原文件（网页正文仍为 5 MiB，会话文件总量 50 MiB）；PDF 同时按页返回文字层，XLSX 交给 Shell（见下节）
 - 本地抓取每一跳都做 URL/DNS 校验，并用已校验 IP 建立连接；禁止改回 fetch 自动重定向
 - 当前读取路由可观察边界是 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted`；失败日志还会记录状态码、响应 MIME、最终 URL、重定向数、请求尝试次数和重试次数（不记录响应正文）。`initialFailureStage` 仅用于 `dom_canonicalization/readability` 抽取阶段。尚未记录每一跳 DNS 解析地址、代理 fake-IP 判定或 DNS/连接分段耗时，不得从现有日志推断这些事实
 - 兼容 TUN 代理 fake-IP：仅域名 DNS 结果允许 `198.18/15`，字面 fake-IP、内网地址及混入内网地址的解析结果仍拒绝
 - `WebPageRenderer` port 由 Electron main 显式注入 backend bundle；渲染 worker/runtime 禁止进入 backend bundle。默认渲染 provider 只在质量信号命中后惰性创建
-- 缓存路由身份 version 9 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略及误删折叠正文的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss
+- 缓存路由身份 version 10 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略、误删折叠正文及 5 万字截断快照的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss
 
 ### 5.3 与 citations 的关系（V1：页级引用先行）
 
@@ -390,16 +390,25 @@ Reader 服务地址与环境变量名由 Web Read 自己的静态服务定义拥
 
 | 预算 | Owner | 含义 |
 |---|---|---|
-| `50,000` 字符 | Web | 单次页面读取和缓存允许保留的正文硬上限；调用方可用 `max_chars` 请求更小窗口 |
+| `500,000` 字符 | Web | 正文快照保存上限（`WEB_READ_MAX_CAPTURE_CHARS`）；`offset` / `find` 在这段全文里读，超过时 `window.capture_truncated=true` |
+| `15,000` 默认 / `50,000` 最大字符 | Web | 单次返回窗口（`max_chars`）。默认值在换行处停下，留在 observation 预览上限内，续读提示不被截掉 |
 | `20,000` 字符 / `1,200` 行 | Linnkit observation governance | 完整工具 observation 何时由 Host 写入 ToolOutputStore；不是 Web 抓取上限 |
 | 旧 `8,000` 字符 / `300` 行 | 已退役的 Web 摘录层 | 原先为了绕开通用治理并通过 Evidence 续读而存在；现已删除，禁止恢复 |
 | `6,000` 默认 / `9,000` 最大字符 | ToolOutput reader | `tool_output_read` 单次续读窗口，保证续读结果不会再次触发落盘套娃 |
 
-> 中文备注：web_read 读取到的是网页正文（最多 50,000 字符，调用方也可请求更小上限），不是 web_search 的 snippet。
+> 中文备注：web_read 读取到的是网页正文（快照最多 50 万字，单次默认返回 1.5 万字），不是 web_search 的 snippet。
+
+#### 长正文续读与查找
+
+- 第一次读取保存全文快照，返回 `data.window`（`offset/end/total_chars/next_offset/capture_truncated`），observation 末尾给出可原样复制的续读调用。
+- `offset`：从快照的第几个字符（UTF-16）开始返回；`find`：在快照里查找（忽略全半角、大小写和空白，与 read_file 的 PDF 查找同一函数 `src/shared/text/findInText.ts`），返回最多 20 处命中的偏移与前后各约 200 字原文，`data.find.hit_offsets` 可直接作为 `offset`。两者不能同用。
+- 续读（带 `offset` / `find`）接受已过期但仍保留的快照，不重新抓取，避免页面变化后偏移错位；快照已被清理时重新抓取，observation 说明偏移可能错位。不带二者的新读取仍按 TTL 与条件请求规则刷新。
+- 偏移越界报 `WEB_READ_OFFSET_OUT_OF_RANGE`；网页用 `pages` 报 `WEB_READ_PAGES_NOT_PDF`；PDF 用 `offset` 报 `WEB_READ_PDF_USES_PAGES`。
+- 参照：OpenAI gpt-oss 浏览器工具（页面缓存 + 定位 + 页内查找）、Claude Code WebFetch（字符偏移续读）。
 
 ### 5.4 原文件取得与后续解析
 
-PDF、CSV、XLSX 通过同一安全 GET 取得，限额内自动保存到会话物理目录；CSV 保留直接文本视图，PDF/XLSX 不假造正文；PDF 由 `read_file` 按页读取，XLSX 由 Shell 解析。Web 只调用物化窄 port，Host 绑定会话生命周期，文件 IO 在 infra adapter。`data.file` 记录实际 URL、时间、字节数、hash 与相对路径，Citation 快照保留文件身份，页码由作者核对后在正文注明。完整合同、配额、类型检查与限制见 [原文件取得](./webread/file-acquisition/README.md)。
+PDF、CSV、XLSX 通过同一安全 GET 取得，限额内自动保存到会话物理目录；CSV 保留直接文本视图。PDF 用与 `read_file` 共用的 PDF.js 文字层与版面分析（`src/features/parsers/pdfParser/orchestration/pdfTextSession.ts`）按页返回文字（`extractor=pdf_text_layer`，`data.pdf` 给页数、页范围、续读页、无文字层页与复杂版面页），支持 `pages` 与 `find`；页文字按 sha256 缓存，不调用模型、不做 OCR，扫描页按当前模型能否收图给出去向。打不开的 PDF 退回只登记文件身份（`extractor=file_download`）。已知限制：文件不进公共正文缓存，同一 PDF 每次翻页或查找都会重新下载一次（同内容不重复保存，页文字按 sha256 命中缓存不再解析）；arXiv 15 页 2.2 MB 实测每次约 3 秒。真实样本显示下载成为瓶颈时，再给文件取得加会话内的 URL→原件复用。XLSX 不提取正文，由 Shell 解析。Web 只调用物化窄 port，Host 绑定会话生命周期，文件 IO 在 infra adapter。`data.file` 记录实际 URL、时间、字节数、hash 与相对路径，Citation 快照保留文件身份，页码由作者核对后在正文注明。完整合同、配额、类型检查与限制见 [原文件取得](./webread/file-acquisition/README.md)。
 
 ### 5.5 本机与增强解析策略
 
@@ -440,6 +449,7 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 
 - 查询缓存 key = 规范化 query + provider + topK + recency；正文缓存 key = canonical URL + 阶梯版本 + provider 序列，`contentHash` 保存在值中，不参与首次查找
 - 生产使用 `<workspace-root>/WebCache/v1` 下按 key 分文件的持久缓存；测试通过 `WebCachePort` 注入内存实现，不依赖 Electron 或 SQLite native ABI
+- 正文只落盘一份：`text` / `markdown` 与 `content` 相同时不重复写，读回时按 `contentFormat` 还原。每类条目最多 500 条、100 MB，超出先删最久未写的条目。2026-11-11 本机样本 58 条：中位 17.8 KB、最大 155 KB（三份正文），去重后约为三分之一；50 万字上限下单条最大约 0.5 MB（英文）或 1.5 MB（中文）
 - URL 过期且上游提供 validator 时发送 ETag/Last-Modified 条件请求；304 必须有 stale 正文才能复用
 - 原文件只参加调用期 in-flight，不保存到公共正文缓存；每个会话分别物化受控副本。
 - in-flight 只共享 Provider/读取阶梯的纯结果；citation、observation 与调用级正文裁剪仍按每次调用生成
@@ -458,8 +468,8 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - Web 层只拥有 `WebEvidenceCaptureItem` 和 `WebEvidenceWriter`，不依赖 Evidence DTO、bundle 存储或 concrete writer
 - `src/app-hosts/linnya/adapters/tools/webEvidenceWriterToolContextDecorator.ts` 是唯一的 Web → Evidence 字段映射和 conversation scope 注入点
 - `web_search`：每条结果会保存为 `capture_kind='web_search_result'` 的 web evidence
-- `web_read`：正文读取保存 `capture_kind='web_page'`；原文件取得保存 `web_file` 身份说明，不能当作已读 PDF 正文
-- `web_read` observation 提交本次完整捕获正文；超出通用阈值时由 ToolOutputStore 保存，模型通过 `tool_output_read` 分页
+- `web_read`：正文读取保存 `capture_kind='web_page'`；原文件取得保存 `web_file` 身份说明，PDF 附本次返回的页文字（只代表这几页）
+- `web_read` observation 提交本次窗口的正文；默认窗口在通用阈值内，长页面用 `offset` / `find` 在快照里续读。显式请求大窗口超出通用阈值时仍由 ToolOutputStore 保存，模型通过 `tool_output_read` 分页
 - EvidenceStore 保存独立的冻结来源快照，用于 ref 校验、审计与 Citation fallback；不参与 Web 正文分页
 - Deep Research 协作文档通过 Workspace citation hydration 保留引用；已退役的 Writer/Evidence snapshot 特殊链不得恢复
 

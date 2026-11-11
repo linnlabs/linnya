@@ -17,6 +17,8 @@ import type {
 import type { WebCachePort } from '../ports/webCache';
 
 const DEFAULT_MAX_ENTRIES = 500;
+/** 每类条目的目录字节上限；正文快照单条最多约 1.5 MB（50 万个中文字），条数上限之外的保险。 */
+const DEFAULT_MAX_BYTES = 100 * 1024 * 1024;
 const DEFAULT_STALE_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000;
 
 const searchResultSchema = z.object({
@@ -47,8 +49,10 @@ const webReadResultSchema = z.object({
   siteName: z.string().optional(),
   publishedAt: z.string().optional(),
   language: z.string().optional(),
-  text: z.string(),
+  // 读取结果的 text/markdown 与 content 相同；落盘只存 content 一份，读回时按 contentFormat 还原。
+  text: z.string().optional(),
   markdown: z.string().optional(),
+  contentFormat: z.enum(['text', 'markdown']).optional(),
   rawHtmlRef: z.string().optional(),
   extractor: z.string(),
   renderMode: z.enum(['http', 'js', 'managed']),
@@ -76,7 +80,13 @@ const webReadResultSchema = z.object({
 });
 
 const webReadLadderSchema = z.object({
-  readResult: webReadResultSchema,
+  readResult: webReadResultSchema.transform(({ contentFormat, ...stored }) => ({
+    ...stored,
+    text: stored.text ?? stored.content,
+    ...(stored.markdown !== undefined || contentFormat === 'markdown'
+      ? { markdown: stored.markdown ?? stored.content }
+      : {}),
+  })),
   initialProvider: z.string(),
   selectedProvider: z.string(),
   renderAttempted: z.boolean(),
@@ -93,6 +103,20 @@ function isNodeErrorWithCode(error: unknown, code: string): boolean {
     && error.code === code;
 }
 
+/** 正文只落盘一份：text/markdown 与 content 相同时去掉，记下格式。 */
+function compactDocumentForStorage(value: WebDocumentCacheValue): unknown {
+  const { text, markdown, ...readResult } = value.readResult;
+  return {
+    ...value,
+    readResult: {
+      ...readResult,
+      ...(text !== readResult.content ? { text } : {}),
+      ...(markdown !== undefined && markdown !== readResult.content ? { markdown } : {}),
+      ...(markdown === readResult.content ? { contentFormat: 'markdown' } : {}),
+    },
+  };
+}
+
 function fileNameForKey(key: string): string {
   return `${createHash('sha256').update(key).digest('hex')}.json`;
 }
@@ -107,6 +131,7 @@ export class FileWebCache implements WebCachePort {
     private readonly options: {
       now?: () => number;
       maxEntries?: number;
+      maxBytes?: number;
       staleRetentionMs?: number;
     } = {},
   ) {
@@ -126,13 +151,13 @@ export class FileWebCache implements WebCachePort {
   }
 
   writeDocument(entry: WebCacheWrite<WebDocumentCacheValue>): Promise<void> {
-    return this.enqueueWrite(() => this.write('document', entry));
+    return this.enqueueWrite(() => this.write('document', { ...entry, value: compactDocumentForStorage(entry.value) }));
   }
 
   private async read<T>(
     kind: 'search' | 'document',
     key: string,
-    valueSchema: z.ZodType<T>,
+    valueSchema: z.ZodType<T, unknown>,
   ): Promise<WebCacheLookup<T>> {
     const filePath = this.entryPath(kind, key);
     let text: string;
@@ -178,7 +203,7 @@ export class FileWebCache implements WebCachePort {
     };
   }
 
-  private async write<T>(kind: 'search' | 'document', entry: WebCacheWrite<T>): Promise<void> {
+  private async write(kind: 'search' | 'document', entry: WebCacheWrite<unknown>): Promise<void> {
     if (entry.ttlMs <= 0) return;
     const now = this.now();
     const filePath = this.entryPath(kind, entry.key);
@@ -212,16 +237,25 @@ export class FileWebCache implements WebCachePort {
     const dirents = await fsp.readdir(dir, { withFileTypes: true });
     const files = dirents.filter((entry) => entry.isFile() && entry.name.endsWith('.json'));
     const maxEntries = this.options.maxEntries ?? DEFAULT_MAX_ENTRIES;
-    if (files.length <= maxEntries) return;
 
-    const withStats = await Promise.all(files.map(async (entry) => ({
-      filePath: path.join(dir, entry.name),
-      mtimeMs: (await fsp.stat(path.join(dir, entry.name))).mtimeMs,
-    })));
+    const maxBytes = this.options.maxBytes ?? DEFAULT_MAX_BYTES;
+    const withStats = await Promise.all(files.map(async (entry) => {
+      const stat = await fsp.stat(path.join(dir, entry.name));
+      return { filePath: path.join(dir, entry.name), mtimeMs: stat.mtimeMs, size: stat.size };
+    }));
+    let totalBytes = withStats.reduce((sum, entry) => sum + entry.size, 0);
+    if (files.length <= maxEntries && totalBytes <= maxBytes) return;
+    // 先删最久未写的条目，直到条数与字节都回到上限内。
     withStats.sort((left, right) => left.mtimeMs - right.mtimeMs);
-    await Promise.all(withStats.slice(0, files.length - maxEntries).map((entry) => (
-      fsp.rm(entry.filePath, { force: true })
-    )));
+    let remaining = withStats.length;
+    const removals: string[] = [];
+    for (const entry of withStats) {
+      if (remaining <= maxEntries && totalBytes <= maxBytes) break;
+      removals.push(entry.filePath);
+      remaining -= 1;
+      totalBytes -= entry.size;
+    }
+    await Promise.all(removals.map((filePath) => fsp.rm(filePath, { force: true })));
   }
 
   private entryPath(kind: 'search' | 'document', key: string): string {

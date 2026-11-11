@@ -14,11 +14,12 @@
    - 通用视觉模型通过 `PdfRasterAdapter` 把页面渲染成 JPEG，再逐页调用
      `TextGenerationPort`。
 
-Agent 的 `read_file` 不走上述整份解析链，而是用 [`openPdfPageReader`](./orchestration/openPdfPageReader.ts)
+Agent 的 `read_file` 与 `web_read` 不走上述整份解析链，而是用 [`openPdfPageReader`](./orchestration/openPdfPageReader.ts)
 按页取得文字层：同一 PDF 打开一次，单页依次做文字提取、`LayoutAnalyzer` 版面判断和多栏 XY-Cut 分组，
 返回 `direct | columns | complex | no_text` 页类型；`renderPageToJpeg` 复用 `PdfRasterAdapter` 渲染单页。
-它不做 OCR、不注入任何模型端口，调用方负责缓存和串行（见
-[App Host File Read](../../../app-hosts/linnya/application/file-read/README.md#pdf-按页读取)）。
+它不做 OCR、不注入任何模型端口。[`pdfTextSession`](./orchestration/pdfTextSession.ts) 在它之上提供按页窗口
+（15,000 字符 / 900 行在页边界停下）、跨页查找、页文字 LRU 缓存和串行闸门，供 `read_file` 与 `web_read`
+共用（见 [App Host File Read](../../../app-hosts/linnya/application/file-read/README.md#pdf-按页读取)）。
 
 已知限制：`PeakDetector` 跳过首尾直方图桶，且只比较排序后相邻桶，没有页眉、页脚或缩进等其他横坐标的
 规整两栏页可能被判为单栏。按页读取与知识库共用该判断，修复时需同时回归两边。

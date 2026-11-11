@@ -43,9 +43,12 @@ Workspace VFS、conversation 工作目录、Assets 和工具运行时之间的 a
 `offset/limit` 互斥（`READ_FILE_PDF_WINDOW_CONFLICT`），用在非 PDF 上返回 `READ_FILE_PDF_OPTION_UNSUPPORTED`，
 PDF.js 打不开返回 `READ_FILE_PDF_UNREADABLE`；这些检查在任何副作用之前完成。
 
-同一进程内 PDF 解析经 `SerialGate` 串行，避免多次并发读取叠加 PDF.js 内存；已取得的页文字按
-`resolvedPath + byteLength + mtime` 缓存在 `PdfPageTextCache`（默认 8M 字符、16 份文件，LRU），
-文件被改写后身份不同，不会读到旧文字。PDF 只在缓存缺页时打开，读完即关闭，不常驻文档句柄。
+页窗口、跨页查找、缓存与串行由 pdfParser 的共用会话
+[`pdfTextSession`](../../../../features/parsers/pdfParser/orchestration/pdfTextSession.ts) 提供，`web_read` 读网页下载的
+PDF 也用它；本目录只把结果映射成 read_file 的回执与错误码。同一进程内 PDF 解析经 `SerialGate` 串行，避免多次并发读取
+叠加 PDF.js 内存；已取得的页文字按 `resolvedPath + byteLength + mtime`（网页下载的 PDF 按 sha256）缓存在
+`PdfPageTextCache`（默认 8M 字符、16 份文件，LRU），文件被改写后身份不同，不会读到旧文字。PDF 只在缓存缺页时打开，
+读完即关闭，不常驻文档句柄。
 
 参考测量（Apple Silicon，tsx 下）：85 页日文政策文件全书解析约 0.6 秒；70 MB、1492 页的关税表单页读取约
 0.5 秒、整本扫描约 27 秒；单页渲染约 70 ms、JPEG 约 170 KB。单页事件循环阻塞约 11–40 ms，首次加载 PDF.js

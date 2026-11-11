@@ -140,6 +140,53 @@ describe('Web M4 缓存基础合同', () => {
     });
   });
 
+  it('正文只落盘一份，读回时还原 text 与 markdown', async () => {
+    const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-web-cache-dedupe-'));
+    tempRoots.push(root);
+    const cache = new FileWebCache(root);
+    const body = '长正文'.repeat(2_000);
+    const base = createLadderResult();
+    const value: WebReadLadderResult = {
+      ...base,
+      readResult: { ...base.readResult, content: body, text: body, markdown: body, charCount: body.length },
+    };
+    await cache.writeDocument({ key: 'k', value, ttlMs: 60_000 });
+    const [file] = await fsp.readdir(path.join(root, 'document'));
+    const stored = await fsp.readFile(path.join(root, 'document', file!), 'utf-8');
+    expect(stored.split(body).length - 1).toBe(1);
+    const lookup = await cache.readDocument('k');
+    if (lookup.state === 'miss') throw new Error('expected cache entry');
+    expect(lookup.value.readResult.text).toBe(body);
+    expect(lookup.value.readResult.markdown).toBe(body);
+
+    const plain: WebReadLadderResult = { ...base, readResult: { ...base.readResult } };
+    await cache.writeDocument({ key: 'plain', value: plain, ttlMs: 60_000 });
+    const plainLookup = await cache.readDocument('plain');
+    if (plainLookup.state === 'miss') throw new Error('expected cache entry');
+    expect(plainLookup.value.readResult.text).toBe(plain.readResult.content);
+    expect(plainLookup.value.readResult).not.toHaveProperty('markdown');
+  });
+
+  it('目录超过字节上限时先删最久未写的条目', async () => {
+    const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-web-cache-bytes-'));
+    tempRoots.push(root);
+    const cache = new FileWebCache(root, { maxBytes: 30_000 });
+    const base = createLadderResult();
+    for (let index = 0; index < 26; index += 1) {
+      const body = String(index).repeat(4_000);
+      await cache.writeDocument({
+        key: `k${index}`,
+        value: { ...base, readResult: { ...base.readResult, content: body, text: body } },
+        ttlMs: 60_000,
+      });
+    }
+    const files = await fsp.readdir(path.join(root, 'document'));
+    const sizes = await Promise.all(files.map(async (name) => (await fsp.stat(path.join(root, 'document', name))).size));
+    expect(sizes.reduce((sum, size) => sum + size, 0)).toBeLessThanOrEqual(30_000);
+    expect((await cache.readDocument('k25')).state).toBe('fresh');
+    expect((await cache.readDocument('k0')).state).toBe('miss');
+  });
+
   it('文件 cache hit 保持常数级读取，p95 不超过 100ms', async () => {
     const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya_web_cache_latency_'));
     tempRoots.push(root);

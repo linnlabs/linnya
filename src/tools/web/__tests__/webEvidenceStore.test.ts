@@ -352,7 +352,8 @@ describe('web evidence store integration', () => {
         research: { instanceId: 'inst_long_observation' },
       });
 
-      const raw = await new WebReadTool().run({ url: 'https://example.com/long-article' }, ctx);
+      // 显式要大窗口，验证超过预览上限的单次结果仍由 ToolOutputStore 续读。
+      const raw = await new WebReadTool().run({ url: 'https://example.com/long-article', max_chars: 50_000 }, ctx);
       const parsed = readStructuredResult(raw);
       const data = parsed.data;
       const observation = parsed.observation;

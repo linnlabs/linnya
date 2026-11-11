@@ -35,3 +35,20 @@ export {
   type PdfPageReader,
   type PdfPageText,
 } from './orchestration/openPdfPageReader';
+export {
+  PDF_FIND_MAX_PAGES,
+  PDF_TEXT_MAX_PAGES,
+  PDF_TEXT_WINDOW_CHARS,
+  PDF_TEXT_WINDOW_LINES,
+  PdfOpenError,
+  PdfPageOutOfRangeError,
+  PdfPageTextCache,
+  SerialGate,
+  collectPdfPageWindow,
+  findInPdfPages,
+  formatPdfPageSpan,
+  withPdfTextSession,
+  type PdfFindResult,
+  type PdfPageWindow,
+  type PdfTextSession,
+} from './orchestration/pdfTextSession';

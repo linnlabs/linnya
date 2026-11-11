@@ -134,7 +134,7 @@ describe('Web M4 缓存业务链路', () => {
     expect(second['cacheStatus']).toBe('hit');
     expect(second['charCount']).toBe(4_000);
     expect(provider.read).toHaveBeenCalledTimes(1);
-    expect(provider.read).toHaveBeenCalledWith(expect.objectContaining({ maxChars: 50_000 }));
+    expect(provider.read).toHaveBeenCalledWith(expect.objectContaining({ maxChars: 500_000 }));
   });
 
   it('相同 URL 只要渲染层身份不同就不会串用正文缓存', async () => {

@@ -1,10 +1,12 @@
 import { Logger } from '@shared/logger';
 import {
+  WEB_READ_DEFAULT_RETURN_CHARS,
+  WEB_READ_MAX_CAPTURE_CHARS,
   WEB_READ_MAX_CONTENT_CHARS,
   WebReadResultSchema,
   type WebReadCitation,
 } from '@app/schemas';
-import type { ToolContext } from '../../../types';
+import { resolveToolResultImageDelivery, type ToolContext } from '../../../types';
 import { requireToolConversationScope } from 'src/app-hosts/linnya/adapters/tools/conversation-scope';
 import { assertAllowedWebUrl } from '../../shared/urlPolicy';
 import { normalizeUrl } from '../../websearch/citations/normalizeUrl';
@@ -37,16 +39,31 @@ import type { WebFileStore } from '../file-acquisition/definitions/webFileAcquis
 import { buildWebReadBlockFeedback } from '../functions/buildWebReadBlockFeedback';
 import { buildWebReadFailureFeedback } from '../functions/buildWebReadFailureFeedback';
 import { formatWebReadPartialContent, formatWebReadRecoveryResources } from '../functions/webReadRecoveryResources';
+import {
+  findInWebText,
+  sliceWebTextWindow,
+  WebReadWindowError,
+  type WebTextFindResult,
+  type WebTextWindow,
+} from '../functions/webReadWindow';
+import { readWebPdfText, type WebPdfTextResult } from './readWebPdfText';
 
 const logger = new Logger('ReadWebPage');
 
 export const MAX_WEB_PAGE_CONTENT_CHARS = WEB_READ_MAX_CONTENT_CHARS;
+export const DEFAULT_WEB_PAGE_RETURN_CHARS = WEB_READ_DEFAULT_RETURN_CHARS;
 const SNIPPET_CHARS = 300;
 
 export interface ReadWebPageParams {
   url: string;
   maxChars?: number;
   titleHint?: string;
+  /** 已保存正文的起始字符偏移（UTF-16）。 */
+  offset?: number;
+  /** 在已保存正文或 PDF 页文字里查找。 */
+  find?: string;
+  /** 仅 PDF：页范围。 */
+  pages?: string;
 }
 
 export interface ReadWebPageDependencies {
@@ -67,7 +84,7 @@ function createAbortError(): Error {
 
 function resolveMaxChars(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0)
-    return MAX_WEB_PAGE_CONTENT_CHARS;
+    return DEFAULT_WEB_PAGE_RETURN_CHARS;
   return Math.min(Math.floor(value), MAX_WEB_PAGE_CONTENT_CHARS);
 }
 
@@ -157,10 +174,11 @@ export async function runReadWebPage(
     const cachedRead = await readWebPageWithCache(
       {
         url: allowedUrl.toString(),
-        // 缓存统一保存工具允许的最大正文，调用级 limit 只在下方裁剪。
-        // 否则先读 1k 会污染同 URL 缓存，后续 50k 请求永远拿不到全文。
-        maxChars: MAX_WEB_PAGE_CONTENT_CHARS,
+        // 缓存统一保存快照上限内的全文，调用级窗口只在下方截取。
+        // 否则先读 1k 会污染同 URL 缓存，后续续读永远拿不到全文。
+        maxChars: WEB_READ_MAX_CAPTURE_CHARS,
         signal: context.abortSignal,
+        acceptStaleSnapshot: params.offset !== undefined || params.find !== undefined,
       },
       {
         ...(dependencies.provider ? { provider: dependencies.provider } : {}),
@@ -259,8 +277,42 @@ export async function runReadWebPage(
     throw error;
   }
 
-  const truncated = readResult.truncated || readResult.content.length > maxChars;
-  const content = truncated ? readResult.content.slice(0, maxChars) : readResult.content;
+  const captureTruncated = readResult.truncated;
+  let window: WebTextWindow | undefined;
+  let textFind: WebTextFindResult | undefined;
+  let pdfText: WebPdfTextResult | undefined;
+  let pdfUnreadableReason: string | undefined;
+  if (file?.format === 'pdf' && readResult.filePayload) {
+    if (params.offset !== undefined) {
+      throw new WebReadWindowError(
+        '[WEB_READ_PDF_USES_PAGES] This URL is a PDF; read it with pages (e.g. "15-18") or find, not offset.',
+      );
+    }
+    const outcome = await readWebPdfText({
+      file,
+      bytes: readResult.filePayload.bytes,
+      ...(params.pages ? { pages: params.pages } : {}),
+      ...(params.find !== undefined ? { find: params.find } : {}),
+      ...(context.abortSignal ? { signal: context.abortSignal } : {}),
+    });
+    if (outcome.status === 'read') pdfText = outcome.result;
+    else pdfUnreadableReason = outcome.reason;
+  } else if (params.pages !== undefined) {
+    throw new WebReadWindowError(
+      '[WEB_READ_PAGES_NOT_PDF] pages applies only to PDF URLs; this response is not a PDF. Use offset or find.',
+    );
+  } else if (!file || file.format === 'csv') {
+    if (params.find !== undefined) textFind = findInWebText(readResult.content, params.find);
+    else window = sliceWebTextWindow(readResult.content, params.offset ?? 0, maxChars);
+  }
+  const content = pdfText
+    ? pdfText.content
+    : textFind
+      ? textFind.matches.map(match => `[offset ${match.offset}] ${match.context}`).join('\n')
+      : window?.content ?? '';
+  const truncated = captureTruncated || window?.nextOffset !== undefined || pdfText?.nextPages !== undefined;
+  const snapshotRefetched = (params.offset !== undefined || params.find !== undefined)
+    && (cacheStatus === 'miss' || cacheStatus === 'revalidated');
   const canonicalUrl = normalizeUrl(readResult.finalUrl);
   requireToolConversationScope({ context, errorPrefix: '[read_web_page]' });
 
@@ -339,11 +391,16 @@ export async function runReadWebPage(
     siteName: readResult.siteName,
     content,
     contentHash: file?.sha256 ?? readResult.contentHash,
-    capturedCharCount: content.length,
-    captureTruncated: truncated,
+    capturedCharCount: readResult.content.length,
+    captureTruncated,
     warnings: readResult.warnings,
     resources: readResult.resources,
     file,
+    ...(window ? { window } : {}),
+    ...(textFind && params.find !== undefined ? { find: { query: params.find, result: textFind } } : {}),
+    ...(pdfText ? { pdf: pdfText, imageDelivery: resolveToolResultImageDelivery(context) } : {}),
+    ...(pdfUnreadableReason ? { pdfUnreadableReason } : {}),
+    snapshotRefetched,
   });
 
   logger.info('[runReadWebPage] 读取完成', {
@@ -373,7 +430,7 @@ export async function runReadWebPage(
       truncated,
       provider: ladderResult.selectedProvider,
       renderMode: readResult.renderMode,
-      extractor: readResult.extractor,
+      extractor: pdfText ? 'pdf_text_layer' : readResult.extractor,
       renderAttempted: ladderResult.renderAttempted,
       escalated: ladderResult.escalated,
       ...(ladderResult.escalationReason ? { escalationReason: ladderResult.escalationReason } : {}),
@@ -386,6 +443,48 @@ export async function runReadWebPage(
       ...(readResult.warnings.length > 0 ? { warnings: readResult.warnings } : {}),
       ...(readResult.resources && readResult.resources.length > 0
         ? { resources: readResult.resources }
+        : {}),
+      ...(window
+        ? {
+            window: {
+              offset: window.offset,
+              end: window.end,
+              total_chars: window.totalChars,
+              ...(window.nextOffset !== undefined ? { next_offset: window.nextOffset } : {}),
+              capture_truncated: captureTruncated,
+            },
+          }
+        : {}),
+      ...(textFind && params.find !== undefined
+        ? {
+            find: {
+              query: params.find,
+              hit_count: textFind.hitCount,
+              hit_offsets: textFind.matches.map(match => match.offset),
+              truncated: textFind.truncated,
+            },
+          }
+        : {}),
+      ...(pdfText?.find
+        ? {
+            find: {
+              query: pdfText.find.query,
+              hit_count: pdfText.find.hitCount,
+              hit_pages: [...pdfText.find.hitPages],
+              truncated: pdfText.find.truncated,
+            },
+          }
+        : {}),
+      ...(pdfText
+        ? {
+            pdf: {
+              page_count: pdfText.pageCount,
+              pages: { from: pdfText.from, to: pdfText.to },
+              ...(pdfText.nextPages ? { next_pages: pdfText.nextPages } : {}),
+              pages_without_text: [...pdfText.pagesWithoutText],
+              complex_layout_pages: [...pdfText.complexLayoutPages],
+            },
+          }
         : {}),
       citations,
       evidence_store: { bundle_id: bundleId },
