@@ -289,3 +289,5 @@ host 不复制 presentation 字段。
 画布没有单独的编辑模式：ready 的生成文稿打开即可选中、修改或交给 AI。现支持空白页创作、Shift 多选/框选、键盘微移、吸附、对齐/分布、粗斜体/下划线/文字对齐、文字宽度、基础对象插入、同稿复制/重复、图片替换/适应、同级绘制层序、页面拖动重排，以及最多 50 步的会话撤销/重做。所有写入仍进入 deck.js 和统一修订链；PPTX 延迟到导出物化。
 
 操作、焦点/保存语义、复制和动态源码限制、模块 owner 及验证入口统一见[网页编辑体验](./src/renderer/docs/editing-experience.md)。复杂对象列表/锁定、表格和图表内容、自由裁剪焦点等仍作为独立能力演进。
+
+基础对象判断与普通数值夹紧复用 `@linnya/foundation`；PDF.js 的 Canvas/RenderTask 实例用 `isObjectLike`，不收紧为排除数组的记录判断。保留 `shared/valueRecord.ts` 的 codec 公共出口，判断规则只有共享实现一份。

@@ -1,3 +1,4 @@
+import { clamp } from '@linnya/foundation';
 import { INCHES_TO_PX } from '../../../shared/constants';
 import type {
   SourceSelectableElement,
@@ -97,8 +98,4 @@ function unionTargetBounds(boundsList: readonly SourceSelectionRect[]): SourceSe
     w: maxX - minX,
     h: maxY - minY,
   };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(value, max));
 }

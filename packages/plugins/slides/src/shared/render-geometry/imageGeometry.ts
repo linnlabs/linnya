@@ -1,3 +1,4 @@
+import { clamp } from '@linnya/foundation';
 /**
  * 图片适配的跨端几何合同。
  *
@@ -163,8 +164,4 @@ function resolveCoverWindow(
     width: windowWidth * region.width,
     height: windowHeight * region.height,
   };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }

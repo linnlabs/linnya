@@ -1,9 +1,6 @@
 # Shared implementation debt (docs/development/code-quality.md)
 # 格式：count<TAB>rule<TAB>file。只允许数量减少；新代码必须使用共享实现。
 1	FOUNDATION-clamp	packages/plugins/mindmap/src/renderer/shared/utils/layout/generateBranch.ts
-1	FOUNDATION-clamp	packages/plugins/slides/src/renderer/features/sourceSelection/functions/sourceSelectionPromptPosition.ts
-1	FOUNDATION-clamp	packages/plugins/slides/src/renderer/shared/stageViewport.ts
-1	FOUNDATION-clamp	packages/plugins/slides/src/shared/render-geometry/imageGeometry.ts
 1	FOUNDATION-is-record	packages/plugins/mindmap/src/backend/documentTypeHook.ts
 1	FOUNDATION-is-record	packages/plugins/mindmap/src/backend/ipc/mindmap_document/ipc-payloads.ts
 1	FOUNDATION-is-record	packages/plugins/mindmap/src/backend/persistence/migrations/index.ts
@@ -15,8 +12,6 @@
 1	FOUNDATION-is-record	packages/plugins/mindmap/src/renderer/shared/utils/events/eventBus.ts
 1	FOUNDATION-is-record	packages/plugins/mindmap/src/renderer/tool-cards/functions/projectMindmapToolPresentation.ts
 1	FOUNDATION-is-record	packages/plugins/mindmap/src/shared/mindmapOutline.ts
-1	FOUNDATION-is-record	packages/plugins/slides/dev/powerpoint/rasterizeOfficePdf.ts
-1	FOUNDATION-is-record	packages/plugins/slides/src/shared/valueRecord.ts
 1	FOUNDATION-is-record	packages/stream-markdown-parser/src/parser/index.ts
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/features/context-window-usage/functions/projectConversationInformation.ts
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/ui/message/SummaryMessage.vue

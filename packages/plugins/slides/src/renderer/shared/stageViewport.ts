@@ -1,3 +1,4 @@
+import { clamp } from '@linnya/foundation';
 export interface ScrollableStageLayoutInput {
   viewportWidth: number;
   viewportHeight: number;
@@ -45,9 +46,6 @@ export interface AnchoredScrollPositionInput {
   nextLayout: ScrollableStageLayout;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
 
 function getMaxScroll(content: number, viewport: number): number {
   return Math.max(content - viewport, 0);

@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
@@ -10,11 +11,8 @@ function method(target: object, name: string): (...args: unknown[]) => unknown {
   return (...args) => Reflect.apply(value, target, args);
 }
 function record(value: unknown): Record<string, unknown> {
-  if (!isRecord(value)) throw new Error('PDF.js returned invalid object');
+  if (!isObjectLike(value)) throw new Error('PDF.js returned invalid object');
   return value;
-}
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }
 export async function rasterizeOfficePdf(
   pdf: string,

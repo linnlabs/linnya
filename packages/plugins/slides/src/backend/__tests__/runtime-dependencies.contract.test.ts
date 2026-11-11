@@ -17,6 +17,8 @@ const nodeBuiltins = new Set([
 const slidesRuntimePackagesProvidedOutsideDependencies = new Set([
   '@app/localization',
   '@app/schemas',
+  // Foundation 是构建期源码依赖，tsup/Vite 内联后不要求消费者安装。
+  '@linnya/foundation',
   '@linnya/renderer-ui',
   '@linnya/slides-mathjax-runtime',
   '@plugin/backend',
