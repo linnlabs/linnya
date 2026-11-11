@@ -40,7 +40,8 @@
     "@tiptap/pm": "3.31.3",
     "@tiptap/starter-kit": "3.31.3",
     "katex": "0.18.10",
-    "echarts": "6.1.0"
+    "echarts": "6.1.0",
+    "@linnya/foundation": "workspace:*"
   },
   "sideEffects": [
     "**/*.css"

@@ -32,7 +32,8 @@
     "vue": ">=3.5.0 <4"
   },
   "dependencies": {
-    "overlayscrollbars": "2.15.1"
+    "overlayscrollbars": "2.15.1",
+    "@linnya/foundation": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",

@@ -1,3 +1,4 @@
+import { clamp } from '@linnya/foundation';
 import type {
   DraggablePanelBounds,
   DraggablePanelGeometry,
@@ -108,8 +109,4 @@ export function resizeDraggablePanelGeometry(
   }
 
   return constrainDraggablePanelGeometry({ x, y, width, height }, bounds, minimumSize);
-}
-
-function clamp(value: number, minimum: number, maximum: number): number {
-  return Math.max(minimum, Math.min(maximum, value));
 }

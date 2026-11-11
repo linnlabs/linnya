@@ -305,3 +305,6 @@ Host 只加载一次 `/styles.css`，顺序固定为：Host reset/document basel
 运行 `pnpm --dir packages/renderer-ui run gate`。该命令独立执行 Vue/TypeScript 检查、ActionButtons/font-stack/selection/theme/scroll/localization/Tooltip/Notification 行为测试、CSS token/theme/资产闭包审计，并把真实 tarball 解包后交给一个最小 Vite/Vue consumer 构建。consumer 会真实导入并渲染 ActionButtons、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar 与 `/icons` 图标，并调用 `/font-stack`、颜色/面板/Tooltip 定位纯函数和 `/localization` fallback；发布内容、显式 exports、runtime dependency、Vue SFC、CSS side-effect 与固定 `tokens.css`/`styles.css` 身份因此不依赖 Host 源码碰巧存在。
 
 菜单尺寸、滚动或焦点时序改动另运行 `pnpm --dir packages/renderer-ui run test:browser`：使用本仓 Electron/Chromium 与独立临时 profile、Vite 页面和端口验证原生按键／滚轮、170/171 项、两级、manual/Teleport、三主题及自定义内容，不连接 Desktop Backend。完整 Workspace 转移、Editor 与插件页面仍按消费者验收，不能以此 harness 代替。
+
+
+浮层的数值范围复用 `@linnya/foundation`；本包仍拥有几何与交互规则。Source tarball 显式声明该基础依赖，独立 packed consumer 继续验证真实解析。

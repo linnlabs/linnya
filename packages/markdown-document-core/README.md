@@ -43,3 +43,6 @@ Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因
 验证入口：`pnpm --dir packages/markdown-document-core typecheck`；仓库根运行 `pnpm exec vitest run packages/markdown-document-core/src apps/renderer/domains/editor/features/chart-reading apps/renderer/domains/editor/features/citation apps/renderer/domains/editor/core/extensionRegistry.conformance.test.ts src/domains/markdown/features/normalization`。DOM 业务测试覆盖真实 ECharts SSR、公式、引用、受管/历史图片、屏下资源跳过与中途取消；实际字体、换行、主题和静态/详情一致性仍须在浏览器验收。
 
 图表沿用 [ECharts SVG SSR](https://echarts.apache.org/handbook/en/how-to/cross-platform/server/) 的固定尺寸、关闭动画与 finally dispose 模式；无需在每张卡中保留交互实例。
+
+
+对象判断直接复用 `@linnya/foundation`，不在校验器内维护另一份机械 guard。

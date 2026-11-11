@@ -1,3 +1,4 @@
+import { clamp } from '@linnya/foundation'
 import type { Oklab, Oklch, RgbChannels } from '../../definitions/color.js'
 import { deltaEOK, maxSrgbChroma, oklabToOklch, oklchToOklab, rgbToOklab } from '../../functions/colorSpace.js'
 import { contrastRatio } from '../../functions/contrast.js'
@@ -79,9 +80,6 @@ interface Anchor {
   readonly source: Oklch
 }
 
-function clamp(value: number, range: RangeValue): number {
-  return Math.min(range.max, Math.max(range.min, value))
-}
 
 function between(recipe: PaletteRecipe, range: RangeValue): number {
   return randomBetween(recipe.random, range.min, range.max)
@@ -198,8 +196,8 @@ function accentAt(recipe: PaletteRecipe, anchor: Anchor, tone: PaletteTone, back
   let target: Oklch
   if (tone === 'native') {
     const preferred = recipe.base === 'dark' ? anchor.source.l + NATIVE_DARK_LIGHTNESS_LIFT : anchor.source.l
-    const lightness = clamp(preferred + randomBetween(recipe.random, -ACCENT_LIGHTNESS_JITTER, ACCENT_LIGHTNESS_JITTER), spec.lightness)
-    const chroma = clamp(anchor.source.c * (1 + randomBetween(recipe.random, -ACCENT_CHROMA_JITTER, ACCENT_CHROMA_JITTER)), NATIVE_ACCENT_CHROMA)
+    const lightness = clamp(preferred + randomBetween(recipe.random, -ACCENT_LIGHTNESS_JITTER, ACCENT_LIGHTNESS_JITTER), spec.lightness.min, spec.lightness.max)
+    const chroma = clamp(anchor.source.c * (1 + randomBetween(recipe.random, -ACCENT_CHROMA_JITTER, ACCENT_CHROMA_JITTER)), NATIVE_ACCENT_CHROMA.min, NATIVE_ACCENT_CHROMA.max)
     target = { l: lightness, c: chroma, h: hue }
   } else {
     const lightness = between(recipe, spec.lightness)
@@ -318,7 +316,7 @@ function pinnedChartHues(recipe: PaletteRecipe): number[] {
 
 function chartRamp(recipe: PaletteRecipe, accent: Oklch, hues: readonly number[], lightness: readonly [number, number]): Oklch[] {
   const [from, to] = lightness
-  const firstRelative = clamp(relativeChromaOf(accent) * randomBetween(recipe.random, 0.8, 1), CHART_RELATIVE_CHROMA)
+  const firstRelative = clamp(relativeChromaOf(accent) * randomBetween(recipe.random, 0.8, 1), CHART_RELATIVE_CHROMA.min, CHART_RELATIVE_CHROMA.max)
   const taper = between(recipe, CHART_CHROMA_TAPER)
   return hues.map((hue, index) => {
     const t = hues.length === 1 ? 0 : index / (hues.length - 1)

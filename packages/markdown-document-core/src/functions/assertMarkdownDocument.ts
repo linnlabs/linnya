@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import type { Schema, Node as ProseMirrorNode } from '@tiptap/pm/model';
 
 type SchemaTypeWithAttributes = {
@@ -6,9 +7,6 @@ type SchemaTypeWithAttributes = {
   };
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function assertKnownAttributes(params: {
   value: unknown;
