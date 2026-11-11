@@ -56,6 +56,8 @@ owner 目录可以按自身复杂度选择 `locales/messageCatalog.ts`、feature
 - 普通字符串表示已经由调用方确定、无需再次查表的文本；需要跨边界延迟解析时使用带 `key`、`fallback`、`params` 的 `LocalizedText`；
 - 不根据错误消息文本、模型名、URL 或 locale 写业务分支。本地化只决定展示，不决定业务行为。
 
+历史时间（列表里的“刚刚”“昨天 14:32”、详情里的“2026年11月9日 14:32”）一律用 [`vue/useHistoryTime.ts`](./vue/useHistoryTime.ts)：规则在 `@app/schemas` 的 history-time，与 Backend、命令行同一份；本模块只补当前语言和一个共用的 30 秒时钟。不要在业务模块里再写“今天 / 昨天 / 今年”的判断或为它们加文案 key。
+
 Vue 组件使用 `useLocalization`，以便切换语言和动态注册 catalog 时自动更新。非 Vue 代码使用 `resolveLocalizedText` 并显式提供 locale、fallbackLocale 与 resolver；不要在纯函数中读取 Pinia store。
 
 ## 跨进程错误

@@ -398,6 +398,7 @@ const lastPageByProject = new Map<string, 'files' | 'conversations'>();
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRef, watch } from 'vue';
+import { useHistoryTime } from '@app/localization';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import { BaseButton, SegmentedTabs, SkeletonRows, TagChip } from '@linnya/renderer-ui';
@@ -436,7 +437,6 @@ import {
   defaultProjectOverviewSortDirection,
   formatProjectOverviewActor,
   formatProjectOverviewCharacters,
-  formatProjectOverviewTime,
   projectOverviewColumnMessageKey,
 } from '../functions/projectOverviewPresentation';
 import {
@@ -582,11 +582,9 @@ const {
   saveFailedMessage: () => workspaceMessage('workspace.projectOverview.savedFilters.saveFailed'),
 });
 
-// 相对时间（“12 分钟前”）需要随时间走；半分钟刷新一次足够。
-const now = shallowRef(new Date());
-let clock: ReturnType<typeof setInterval> | null = null;
-onMounted(() => { clock = setInterval(() => { now.value = new Date(); }, 30_000); });
-onBeforeUnmount(() => { if (clock) clearInterval(clock); });
+// 相对时间与“最近 N 天”筛选共用一个时钟，见 useHistoryTime。
+const { historyTime, now: historyClock } = useHistoryTime();
+const now = computed(() => new Date(historyClock.value));
 
 const displayProjectName = computed(() => (
   props.projectName?.trim() || workspaceMessage('workspace.projectOverview.untitledProject')
@@ -1010,7 +1008,7 @@ function moveSelection(index: number, offset: -1 | 1): void {
 }
 
 function timeText(timestamp: number): string {
-  return formatProjectOverviewTime(timestamp, now.value, currentLocale.value, workspaceMessage);
+  return historyTime(timestamp);
 }
 
 function actorText(actor: ProjectOverviewRow['creatorActor'], pluginId: string | null): string {

@@ -5,7 +5,6 @@ import {
   buildAudioBlockCreateOptions,
   buildAudioBlockFileTooLargeError,
   buildAudioBlockPanelTabs,
-  formatAudioBlockContentTime,
   formatAudioBlockDateTime,
   formatAudioBlockFileSize,
   resolveAudioBlockRenderPlaceholder,
@@ -34,7 +33,6 @@ const testMessage: EditorMessageResolver = (key, params) => {
     'editor.audioBlock.panel.transcript': 'Transcript',
     'editor.audioBlock.panel.summary': 'Summary',
     'editor.audioBlock.create.group': 'Create',
-    'editor.audioBlock.content.yesterday': 'Yesterday',
   };
 
   const raw = messages[key] ?? key;
@@ -86,13 +84,7 @@ describe('audioBlockPresentation', () => {
   it('格式化菜单属性展示值', () => {
     expect(formatAudioBlockFileSize(-1, testMessage)).toBe('Unknown');
     expect(formatAudioBlockFileSize(2048, testMessage)).toBe('2 KB');
-    expect(formatAudioBlockDateTime(null, testMessage)).toBe('Unknown');
-  });
-
-  it('格式化内容面板相对时间时使用当前语言标签', () => {
-    const now = new Date();
-    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0);
-
-    expect(formatAudioBlockContentTime(yesterday.getTime(), testMessage)).toBe('Yesterday');
+    expect(formatAudioBlockDateTime(null, 'en-US', testMessage)).toBe('Unknown');
+    expect(formatAudioBlockDateTime(new Date(2026, 10, 9, 14, 32, 5).getTime(), 'zh-CN', testMessage)).toBe('2026年11月9日 14:32');
   });
 });

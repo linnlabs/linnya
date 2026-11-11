@@ -79,6 +79,7 @@ import { CopyIcon } from '@linnya/renderer-ui/icons';
 import { TranslateIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect } from '@linnya/renderer-ui';
 import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
+import { useHistoryTime } from '@app/localization'
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization'
 import { 
   TranscriptDocument, 
@@ -93,7 +94,6 @@ import { Placeholder, UndoRedo as History } from '@tiptap/extensions'
 import {
   buildAudioBlockTranslationLanguages,
   buildAudioBlockTranslationOptions,
-  formatAudioBlockContentTime,
 } from '../../functions/audioBlockPresentation'
 
 const props = defineProps({
@@ -106,6 +106,7 @@ const editorsStore = useAudioEditorsStore()
 const notificationStore = useNotificationStore()
 const findReplaceStore = useFindReplaceStore()
 const { editorMessage } = useEditorLocalization()
+const { historyTime } = useHistoryTime()
 
 // --- 状态访问 ---
 
@@ -185,8 +186,8 @@ const translateButtonText = computed(() => {
 })
 
 // 获取转录创建和编辑时间
-const createdAt = computed(() => formatAudioBlockContentTime(content.value.transcriptCreatedAt, editorMessage))
-const lastEditedAt = computed(() => formatAudioBlockContentTime(content.value.transcriptLastEditedAt, editorMessage))
+const createdAt = computed(() => historyTime(content.value.transcriptCreatedAt))
+const lastEditedAt = computed(() => historyTime(content.value.transcriptLastEditedAt))
 
 const displayCreatedAt = computed(() => {
   if (hasRealContent.value) {

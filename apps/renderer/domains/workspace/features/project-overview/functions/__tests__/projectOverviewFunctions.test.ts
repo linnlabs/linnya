@@ -12,7 +12,7 @@ import {
   resizeProjectOverviewColumn,
   toggleProjectOverviewColumn,
 } from '../projectOverviewLayout';
-import { formatProjectOverviewActor, formatProjectOverviewTime } from '../projectOverviewPresentation';
+import { formatProjectOverviewActor } from '../projectOverviewPresentation';
 import {
   filterProjectOverviewRows,
   listProjectOverviewTags,
@@ -150,16 +150,6 @@ describe('筛选与排序', () => {
 });
 
 describe('展示文案', () => {
-  const now = new Date(2026, 10, 9, 15, 0);
-  it('刚刚、几分钟前、今天、昨天、今年、往年', () => {
-    expect(formatProjectOverviewTime(now.getTime() - 10_000, now, 'zh-CN', message)).toBe('刚刚');
-    expect(formatProjectOverviewTime(now.getTime() - 12 * 60_000, now, 'zh-CN', message)).toBe('12 分钟前');
-    expect(formatProjectOverviewTime(new Date(2026, 10, 9, 9, 5).getTime(), now, 'zh-CN', message)).toBe('09:05');
-    expect(formatProjectOverviewTime(new Date(2026, 10, 8, 18, 20).getTime(), now, 'zh-CN', message)).toBe('昨天 18:20');
-    expect(formatProjectOverviewTime(new Date(2026, 10, 7).getTime(), now, 'zh-CN', message)).toBe('11月7日');
-    expect(formatProjectOverviewTime(new Date(2025, 9, 3).getTime(), now, 'zh-CN', message)).toBe('2025年10月3日');
-  });
-
   it('来源：Linnya AI、用户、Linnya CLI；插件用插件名', () => {
     expect(formatProjectOverviewActor('linnya_ai', null, message)).toBe('Linnya AI');
     expect(formatProjectOverviewActor('user', null, message)).toBe('用户');

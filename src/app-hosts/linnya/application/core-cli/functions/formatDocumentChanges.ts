@@ -1,3 +1,4 @@
+import { formatAgentTimestamp } from '@app/schemas';
 import type { ActionLedgerChangeList, ActionLedgerDocumentChange } from 'src/domains/action-ledger';
 
 const coverage = '仅覆盖已接入入口的文档新建和更新。历史会精简；删除、移动、改名和其他未登记的操作无法从此查询判断。';
@@ -10,8 +11,8 @@ function projectChange(change: ActionLedgerDocumentChange, path: string | null) 
     ...(change.agentId ? { agent: change.agentId } : {}),
     ...(change.pluginId ? { pluginId: change.pluginId } : {}),
     entryCount: change.entryCount,
-    firstRecordedAt: new Date(change.firstRecordedAt).toISOString(),
-    lastRecordedAt: new Date(change.lastRecordedAt).toISOString(),
+    firstRecordedAt: formatAgentTimestamp(change.firstRecordedAt),
+    lastRecordedAt: formatAgentTimestamp(change.lastRecordedAt),
   };
 }
 

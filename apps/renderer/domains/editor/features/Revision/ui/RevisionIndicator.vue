@@ -24,13 +24,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useHistoryTime } from '@app/localization'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
-import {
-  formatRevisionIndicatorTitle,
-  formatRevisionTimeLabel,
-} from '../functions/revisionPresentation'
+import { formatRevisionIndicatorTitle } from '../functions/revisionPresentation'
 
 const { editorMessage } = useEditorLocalization()
+const { historyTime } = useHistoryTime()
 
 const props = defineProps<{
   /** 修订状态 */
@@ -57,7 +56,7 @@ const hasRevisions = computed(() => {
 
 // 格式化时间
 const formattedTime = computed(() => {
-  return formatRevisionTimeLabel(props.createdAt, editorMessage)
+  return historyTime(props.createdAt)
 })
 
 // 指示器提示文字

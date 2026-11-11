@@ -1,4 +1,4 @@
-import type { ProjectConversationRow } from '@app/schemas';
+import { formatAgentTimestamp, type ProjectConversationRow } from '@app/schemas';
 import type { ConversationTranscriptPage } from '../../project-conversations';
 
 const listNotice = '结果超过条数或输出上限，只列出最近活动的一部分。可用 --query 缩小范围。';
@@ -12,8 +12,8 @@ function projectRow(row: ProjectConversationRow, excerpt: string | null | undefi
     agent: row.agent_id ?? 'default',
     turns: row.turn_count,
     changedDocuments: row.changed_document_count,
-    createdAt: new Date(row.created_at).toISOString(),
-    lastActivityAt: new Date(row.last_event_at).toISOString(),
+    createdAt: formatAgentTimestamp(row.created_at),
+    lastActivityAt: formatAgentTimestamp(row.last_event_at),
     ...(excerpt ? { excerpt } : {}),
   };
 }
@@ -56,7 +56,7 @@ export function formatConversationTranscript(page: ConversationTranscriptPage, m
   let nextAfterSeq = page.nextAfterSeq;
   let lastSeq: number | null = null;
   for (const message of page.messages) {
-    const item = { seq: message.seq, role: message.role, type: message.type, at: new Date(message.at).toISOString(), text: message.text };
+    const item = { seq: message.seq, role: message.role, type: message.type, at: formatAgentTimestamp(message.at), text: message.text };
     const size = JSON.stringify(item).length + (messages.length ? 1 : 0);
     if (used + size <= maxCharacters) {
       messages.push(item);

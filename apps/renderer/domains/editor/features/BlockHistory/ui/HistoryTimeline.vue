@@ -77,7 +77,7 @@ import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useBlockHistoryStore, type BlockVersion } from '../index'
 import { ActionButtons } from '@linnya/renderer-ui'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
-import { formatBlockHistoryShortTime } from '../functions/blockHistoryPresentation'
+import { useHistoryTime } from '@app/localization'
 
 // ==================== Props ====================
 
@@ -99,7 +99,8 @@ const emit = defineEmits<{
 // ==================== Store ====================
 
 const blockHistoryStore = useBlockHistoryStore()
-const { currentLocale, editorMessage } = useEditorLocalization()
+const { editorMessage } = useEditorLocalization()
+const { historyTime } = useHistoryTime()
 
 // ==================== Refs ====================
 
@@ -225,7 +226,7 @@ const handleStyle = computed(() => {
 
 /** 格式化时间（简短版，相对时间优先） */
 function formatTime(timestamp: number): string {
-  return formatBlockHistoryShortTime(timestamp, currentLocale.value, editorMessage)
+  return historyTime(timestamp)
 }
 
 /** 获取来源类型样式类 */

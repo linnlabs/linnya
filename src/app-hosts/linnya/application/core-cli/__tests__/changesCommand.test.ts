@@ -24,3 +24,15 @@ it('超过 Shell 可展示的范围时只返回完整行，且留下看得见的
   expect(JSON.parse(output)).toMatchObject({ truncated: true, notice: expect.any(String),
     changes: [expect.objectContaining({ documentId: 'first' })] });
 });
+
+it('时间给 Agent 的是带时区偏移的本地时间，不是 UTC 的 Z', () => {
+  const recordedAt = new Date(2028, 2, 1, 14, 32, 5).getTime();
+  const entry: ActionLedgerDocumentChange = {
+    documentId: 'doc', documentType: 'document', actorKind: 'user', pluginId: null,
+    runId: null, rootRunId: null, parentRunId: null, conversationId: null, agentId: null,
+    actions: ['update'], entryCount: 1, granularity: 'coarse', firstRecordedAt: recordedAt, lastRecordedAt: recordedAt,
+  };
+  const { changes: [row] } = JSON.parse(formatDocumentChanges({ truncated: false, changes: [entry] }, () => null, 10_000));
+  expect(row.lastRecordedAt).toMatch(/^2028-03-01T14:32:05[+-]\d{2}:\d{2}$/);
+  expect(Date.parse(row.lastRecordedAt)).toBe(recordedAt);
+});

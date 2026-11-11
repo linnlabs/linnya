@@ -1,8 +1,9 @@
-import type {
-  SemanticSchemaActor,
-  SemanticSchemaChangeItem,
-  SemanticSchemaChangeSummaryValue,
-  SemanticSchemaPreview,
+import {
+  formatAgentTimestamp,
+  type SemanticSchemaActor,
+  type SemanticSchemaChangeItem,
+  type SemanticSchemaChangeSummaryValue,
+  type SemanticSchemaPreview,
 } from '@app/schemas';
 import type { SchemaManageOperation } from './parseSemanticCommands';
 
@@ -45,7 +46,7 @@ export function formatSchemaChanges(changes: readonly SemanticSchemaChangeItem[]
   return `${changes.map(change => {
     const filters = change.saved_filter_count ? `，改写 ${change.saved_filter_count} 个保存的筛选` : '';
     const state = change.undone_at === null ? '' : '（已撤回）';
-    return `${change.id}  ${schemaChangeText(change.summary)}${filters}${state}  ${actorText(change.actor)} ${new Date(change.created_at).toISOString()}`;
+    return `${change.id}  ${schemaChangeText(change.summary)}${filters}${state}  ${actorText(change.actor)} ${formatAgentTimestamp(change.created_at)}`;
   }).join('\n')}\n`;
 }
 

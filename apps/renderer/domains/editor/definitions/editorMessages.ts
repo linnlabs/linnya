@@ -259,8 +259,6 @@ export type EditorMessageKey =
   | 'editor.blockHistory.origin.ai'
   | 'editor.blockHistory.origin.manual'
   | 'editor.blockHistory.origin.restore'
-  | 'editor.blockHistory.time.justNow'
-  | 'editor.blockHistory.time.minutesAgo'
   | 'editor.blockHistory.applyDialog.title'
   | 'editor.blockHistory.applyDialog.message'
   | 'editor.blockHistory.applyDialog.confirm'
@@ -309,7 +307,6 @@ export type EditorMessageKey =
   | 'editor.annotation.action.create'
   | 'editor.annotation.placeholder.edit'
   | 'editor.annotation.placeholder.create'
-  | 'editor.annotation.time.yesterday'
   | 'editor.audioBlock.status.checkingDevice'
   | 'editor.audioBlock.status.microphoneConnected'
   | 'editor.audioBlock.status.defaultMicrophone'
@@ -401,7 +398,6 @@ export type EditorMessageKey =
   | 'editor.audioBlock.transcript.language.spanish'
   | 'editor.audioBlock.content.createdAt'
   | 'editor.audioBlock.content.editedAt'
-  | 'editor.audioBlock.content.yesterday'
   | 'editor.audioBlock.notes.placeholder'
   | 'editor.audioBlock.summary.placeholder'
   | 'editor.audioBlock.toast.transcriptionCompleted'
@@ -579,7 +575,6 @@ export type EditorMessageKey =
   | 'editor.revision.mark.acceptDelete'
   | 'editor.revision.mark.rejectInsert'
   | 'editor.revision.mark.rejectDelete'
-  | 'editor.revision.time.yesterday'
   | 'editor.review.agent.logicCheck.name'
   | 'editor.review.agent.structure.name'
   | 'editor.review.agent.polish.name'
@@ -715,7 +710,6 @@ export type EditorMessageKey =
   | 'editor.chart.revision.showBaseline'
   | 'editor.chart.revision.showProposed'
   | 'editor.chart.revision.baselineNotChart'
-  | 'editor.review.message.yesterday';
 
 export type EditorMessageResolver = (
   key: EditorMessageKey,

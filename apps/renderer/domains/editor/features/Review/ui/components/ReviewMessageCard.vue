@@ -31,7 +31,7 @@ import { computed } from 'vue';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
 import type { ReviewAnnotation } from '../../types/reviewAnnotation';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
-import { formatReviewMessageTime } from '../../functions/reviewTimePresentation';
+import { useHistoryTime } from '@app/localization';
 
 interface Props {
   annotation: ReviewAnnotation;
@@ -40,13 +40,14 @@ interface Props {
 
 const props = defineProps<Props>();
 const { editorMessage } = useEditorLocalization();
+const { historyTime } = useHistoryTime();
 const emit = defineEmits<{
   click: [annotation: ReviewAnnotation];
   delete: [annotationId: string];
 }>();
 
 const formattedTime = computed(() => {
-  return formatReviewMessageTime(props.annotation.createdAt, editorMessage);
+  return historyTime(props.annotation.createdAt);
 });
 
 const handleClick = () => {

@@ -1,5 +1,5 @@
 import type { EditorMessageKey, EditorMessageResolver } from '../../../definitions/editorMessages';
-import { formatTime } from '../../../../../shared/utils/dateFormatter.js';
+import { formatHistoryDateTime } from '@app/schemas';
 
 type AudioBlockMessageParams = Parameters<EditorMessageResolver>[1];
 
@@ -58,36 +58,13 @@ export function formatAudioBlockFileSize(bytes: number, editorMessage: EditorMes
   return `${Math.round((bytes / unit ** unitIndex) * 100) / 100} ${units[unitIndex]}`;
 }
 
+/** 菜单“创建时间”：统一历史时间的完整写法，没有时间时写“未知”。 */
 export function formatAudioBlockDateTime(
   timestamp: number | null,
+  locale: string,
   editorMessage: EditorMessageResolver,
 ): string {
-  if (!timestamp) return editorMessage('editor.audioBlock.menu.unknown');
-
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return editorMessage('editor.audioBlock.menu.unknown');
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-}
-
-export function formatAudioBlockContentTime(
-  timestamp: number | string | null | undefined,
-  editorMessage: EditorMessageResolver,
-): string {
-  if (!timestamp) return '';
-
-  return formatTime(timestamp, {
-    relativeLabels: {
-      yesterday: editorMessage('editor.audioBlock.content.yesterday'),
-    },
-  });
+  return formatHistoryDateTime(timestamp, { locale }) || editorMessage('editor.audioBlock.menu.unknown');
 }
 
 export function resolveAudioBlockTranscriptionButtonTitle(

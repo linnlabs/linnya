@@ -80,8 +80,8 @@ import { HeadingIcon } from '@linnya/renderer-ui/icons';
 import { ClockIcon } from '@linnya/renderer-ui/icons';
 import { marked } from 'marked';
 import { SubEditorFindReplaceExtension } from './SubEditorFindReplaceExtension.js';
+import { useHistoryTime } from '@app/localization';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
-import { formatAudioBlockContentTime } from '../../functions/audioBlockPresentation';
 
 const props = defineProps({
   blockId: { type: String, required: true }
@@ -90,6 +90,7 @@ const props = defineProps({
 const contentStore = useAudioContentStore();
 const editorsStore = useAudioEditorsStore();
 const { editorMessage } = useEditorLocalization();
+const { historyTime } = useHistoryTime();
 
 // 配置 marked 解析器
 marked.setOptions({
@@ -155,8 +156,8 @@ const showPlaceholder = computed(() => {
 
 // 获取纪要创建和编辑时间
 const content = computed(() => contentStore.getContent(props.blockId));
-const createdAt = computed(() => formatAudioBlockContentTime(content.value.summaryCreatedAt, editorMessage));
-const lastEditedAt = computed(() => formatAudioBlockContentTime(content.value.summaryLastEditedAt, editorMessage));
+const createdAt = computed(() => historyTime(content.value.summaryCreatedAt));
+const lastEditedAt = computed(() => historyTime(content.value.summaryLastEditedAt));
 
 // 初始化编辑器内容（支持 Markdown 解析）
 const getInitialContent = () => {

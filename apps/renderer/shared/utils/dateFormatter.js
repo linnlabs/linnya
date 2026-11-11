@@ -1,44 +1,4 @@
 /**
- * 格式化时间为用户友好的日期格式
- * @param {number} timestamp - 时间戳（毫秒）
- * @returns {string} 格式化后的日期字符串
- */
-export function formatTime(timestamp, options) {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
-  const now = new Date();
-
-  // 将时间归零以便比较日期
-  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  // 计算天数差（过去为正数，未来为负数）
-  const daysDiff = Math.floor((nowOnly - dateOnly) / (1000 * 60 * 60 * 24));
-
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const seconds = date.getSeconds().toString().padStart(2, '0');
-
-  // 如果是今天，显示时分秒
-  if (daysDiff === 0) {
-    return `${hours}:${minutes}:${seconds}`;
-  }
-  // 如果是昨天
-  if (daysDiff === 1) {
-    return options.relativeLabels.yesterday;
-  }
-  // 如果是今年（但不是今天或昨天）
-  if (year === now.getFullYear()) {
-    return `${month}-${day}`;
-  }
-  // 如果不是今年，显示年-月-日
-  return `${year}-${month}-${day}`;
-}
-
-/**
  * 格式化音频时长为 MM:SS 或 HH:MM:SS 格式
  * @param {number} seconds - 时长（秒）
  * @returns {string} 格式化后的时长字符串

@@ -304,7 +304,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
+import { useHistoryTime } from '@app/localization';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import { InlineTextInput, SkeletonRows, type CustomSelectOption } from '@linnya/renderer-ui';
 import { ChatIcon, ChevronIcon, PinIcon, SearchIcon } from '@linnya/renderer-ui/icons';
@@ -335,7 +336,6 @@ import {
   sortProjectConversationRows,
 } from '../functions/projectConversationRows';
 import { isExcerptShown } from '../functions/projectConversationExcerpt';
-import { formatProjectOverviewTime } from '../functions/projectOverviewPresentation';
 import { clearProjectConversationWorkFiles } from '../orchestration/clearProjectConversationWorkFiles';
 import { useProjectConversationDetail } from '../orchestration/useProjectConversationDetail';
 import { useProjectConversationSearch } from '../orchestration/useProjectConversationSearch';
@@ -375,11 +375,9 @@ const { matches, truncated: searchTruncated, failed: searchFailed } = useProject
 
 watch(projectIdRef, () => { filters.value = { ...EMPTY_PROJECT_CONVERSATION_FILTERS }; });
 
-// 相对时间随时间走；半分钟刷新一次足够。
-const now = shallowRef(new Date());
-let clock: ReturnType<typeof setInterval> | null = null;
-onMounted(() => { clock = setInterval(() => { now.value = new Date(); }, 30_000); });
-onBeforeUnmount(() => { if (clock) clearInterval(clock); });
+// 相对时间与活跃度筛选共用一个时钟，见 useHistoryTime。
+const { historyTime, now: historyClock } = useHistoryTime();
+const now = computed(() => new Date(historyClock.value));
 
 function agentText(agentId: string | null): string {
   return props.presentation.agentName(agentId) ?? agentId ?? message('workspace.projectOverview.actor.linnyaAi');
@@ -388,7 +386,7 @@ function titleText(row: ProjectConversationRow): string {
   return row.title.trim() || message('workspace.projectOverview.untitledConversation');
 }
 function timeText(timestamp: number): string {
-  return formatProjectOverviewTime(timestamp, now.value, currentLocale.value, message);
+  return historyTime(timestamp);
 }
 function bytesText(bytes: number): string {
   return formatStorageBytes(bytes, currentLocale.value);

@@ -21,7 +21,6 @@ const testMessage: EditorMessageResolver = (key) => {
     'editor.revision.indicator.pendingTitleDeferred': 'Pending revisions: detailed diff not projected yet',
     'editor.revision.indicator.insertStat': '{count} additions',
     'editor.revision.indicator.deleteStat': '{count} deletions',
-    'editor.revision.time.yesterday': 'Yesterday',
   }
 
   return messages[key] ?? key
@@ -30,6 +29,7 @@ const testMessage: EditorMessageResolver = (key) => {
 const renderOptions = {
   locale: 'en-US' as const,
   editorMessage: testMessage,
+  timeText: () => '14:32',
 }
 
 function createShellOuter(blockId: string): HTMLElement {

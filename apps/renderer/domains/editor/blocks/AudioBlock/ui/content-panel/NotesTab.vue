@@ -79,8 +79,8 @@ import { BulletListIcon } from '@linnya/renderer-ui/icons';
 import { HeadingIcon } from '@linnya/renderer-ui/icons';
 import { ClockIcon } from '@linnya/renderer-ui/icons';
 import { SubEditorFindReplaceExtension } from './SubEditorFindReplaceExtension.js';
+import { useHistoryTime } from '@app/localization';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
-import { formatAudioBlockContentTime } from '../../functions/audioBlockPresentation';
 
 const props = defineProps({
   blockId: { type: String, required: true }
@@ -90,6 +90,7 @@ const contentStore = useAudioContentStore();
 const runtimeStore = useAudioRuntimeStore();
 const editorsStore = useAudioEditorsStore();
 const { editorMessage } = useEditorLocalization();
+const { historyTime } = useHistoryTime();
 
 // 计算属性：是否显示占位符
 const showPlaceholder = computed(() => {
@@ -101,8 +102,8 @@ const showPlaceholder = computed(() => {
 // 获取笔记创建和编辑时间
 const content = computed(() => contentStore.getContent(props.blockId));
 const runtime = computed(() => runtimeStore.getRuntime(props.blockId));
-const createdAt = computed(() => formatAudioBlockContentTime(content.value.notesCreatedAt, editorMessage));
-const lastEditedAt = computed(() => formatAudioBlockContentTime(content.value.notesLastEditedAt, editorMessage));
+const createdAt = computed(() => historyTime(content.value.notesCreatedAt));
+const lastEditedAt = computed(() => historyTime(content.value.notesLastEditedAt));
 
 // 初始化 Tiptap 编辑器
 const editor = useEditor({

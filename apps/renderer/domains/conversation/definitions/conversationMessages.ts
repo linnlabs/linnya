@@ -667,7 +667,6 @@ export type ConversationMessageKey =
   | 'conversation.image.loading'
   | 'conversation.image.error'
   | 'conversation.image.alt'
-  | 'conversation.date.yesterday'
   | 'conversation.project.fallbackName'
   | 'conversation.project.inputPlaceholder'
   | 'conversation.project.suggestion.status'

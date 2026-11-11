@@ -40,7 +40,7 @@ import { getWorkspaceNavigationPort } from '@shared/ports/workspaceNavigationPor
 import type { ConversationListItem } from '../services/historyApiService';
 import { HistoryIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect } from '@linnya/renderer-ui';
-import { formatConversationListTime } from '../../functions/conversationListTime';
+import { useHistoryTime } from '@app/localization';
 import { useConversationLocalization } from '../../ui/useConversationLocalization';
 
 interface Props {
@@ -73,6 +73,7 @@ const listStore = useHistoryListStore();
 const assistantStore = useAssistantStore();
 const navigationScope = useNavigationScope();
 const { conversationMessage } = useConversationLocalization();
+const { historyTime } = useHistoryTime();
 const dropdownWrapperRef = ref<HTMLElement | null>(null);
 const dropdownStyle = ref<CSSProperties>({});
 
@@ -109,7 +110,7 @@ const historyOptions = computed<HistoryDropdownOption[]>(() => {
     options.push(...displayedConversations.value.map(conversation => ({
       value: `conversation:${conversation.conversation_id}` as const,
       text: conversation.title || conversationMessage('conversation.sidebar.untitled'),
-      shortcut: formatConversationListTime(conversation.last_event_at, conversationMessage),
+      shortcut: historyTime(conversation.last_event_at),
     })));
   }
 

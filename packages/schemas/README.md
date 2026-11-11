@@ -34,6 +34,7 @@
 - Provider Account 授权状态、授权结果和脱敏错误的 HTTP 合同；OAuth token 与刷新凭据不属于共享合同。
 - 配色建议与配色检查的入参、DTO 和错误码（`./color-palette`）；算法归 `@linnya/color-core/palette`，流程归 [color-palette domain](../../src/domains/color-palette/README.md)。
 - Custom API 注册的 strict wire request、Host admission command 与模型发现 DTO；request 和 admission 后的类型不得混用。
+- [历史时间](./src/history-time.ts)（某件事发生在什么时候）的唯一写法：界面短写法 `formatHistoryTime`（刚刚 / 12 分钟前 / 14:32 / 昨天 14:32 / 11月9日 / 2025年11月9日）、完整写法 `formatHistoryDateTime`，以及给 Agent 与命令行的 `formatAgentTimestamp`（本地时间带时区偏移，不用 UTC 的 `Z`）。Renderer 经 `@app/localization` 的 `useHistoryTime` 取用；不得在业务模块里另写同类格式化。截止日期、时长与日志时间不归这里；存储与跨进程 wire 继续用毫秒或 UTC ISO。
 
 Language route 的图片来源与模型视觉能力分别接纳。Profile 的 `tool_result_image`
 为 `false`、`true` 或 `opt_in`：`opt_in` 只允许已验收的配置生产者显式补充模型政策，

@@ -32,3 +32,4 @@ export { useLocalizationStore } from './store/localizationStore';
 export { changeLocale } from './orchestration/changeLocale';
 export { initializeLocalization } from './orchestration/initializeLocalization';
 export { useLocalization } from './vue/useLocalization';
+export { useHistoryTime, type UseHistoryTimeResult } from './vue/useHistoryTime';

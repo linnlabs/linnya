@@ -10,6 +10,7 @@
  */
 
 import type { BlockMenuProvider, BlockMenuContext } from '../../../features/blockActionMenu/types';
+import { useLocalizationStore } from '@app/localization';
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage';
 import {
   formatAudioBlockDateTime,
@@ -53,7 +54,7 @@ const formatFileSize = (bytes: number): string => {
  * 格式化日期时间
  */
 const formatDateTime = (timestamp: number | null): string => {
-  return formatAudioBlockDateTime(timestamp, resolveCurrentEditorMessage);
+  return formatAudioBlockDateTime(timestamp, useLocalizationStore().currentLocale, resolveCurrentEditorMessage);
 };
 
 /**

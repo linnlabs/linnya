@@ -1,10 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { EditorMessageResolver } from '../../../definitions/editorMessages'
 import {
   formatRevisionBlockCount,
   formatRevisionIndicatorTitle,
   formatRevisionStatsParts,
-  formatRevisionTimeLabel,
   resolveRevisionMarkAcceptTitle,
   resolveRevisionMarkRejectTitle,
 } from './revisionPresentation'
@@ -22,7 +21,6 @@ const testMessage: EditorMessageResolver = (key, params) => {
     'editor.revision.mark.acceptDelete': 'Accept deletion',
     'editor.revision.mark.rejectInsert': 'Reject inserted content',
     'editor.revision.mark.rejectDelete': 'Reject deletion',
-    'editor.revision.time.yesterday': 'Yesterday',
   }
 
   const raw = messages[key] ?? key
@@ -61,15 +59,5 @@ describe('revisionPresentation', () => {
     expect(resolveRevisionMarkAcceptTitle('delete', testMessage)).toBe('Accept deletion')
     expect(resolveRevisionMarkRejectTitle('insert', testMessage)).toBe('Reject inserted content')
     expect(resolveRevisionMarkRejectTitle('delete', testMessage)).toBe('Reject deletion')
-  })
-
-  it('格式化 Revision 自己的相对时间标签', () => {
-    vi.setSystemTime(new Date('2026-06-22T10:30:40'))
-
-    expect(formatRevisionTimeLabel(new Date('2026-06-22T09:01:02').getTime(), testMessage)).toBe('09:01:02')
-    expect(formatRevisionTimeLabel(new Date('2026-06-21T09:01:02').getTime(), testMessage)).toBe('Yesterday')
-    expect(formatRevisionTimeLabel(undefined, testMessage)).toBe('')
-
-    vi.useRealTimers()
   })
 })

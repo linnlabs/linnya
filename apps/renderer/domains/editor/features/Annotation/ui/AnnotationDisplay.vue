@@ -88,7 +88,7 @@
       <div v-for="reply in panel.replies" :key="reply.id" class="annotation-reply-item">
         <div class="annotation-reply-header">
           <span class="annotation-reply-author">{{ resolveReplyAuthorName(reply.author) }}</span>
-          <span class="annotation-reply-time">{{ formatAnnotationTime(reply.createdAt, editorMessage) }}</span>
+          <span class="annotation-reply-time">{{ historyTime(reply.createdAt) }}</span>
         </div>
         <div class="annotation-reply-content">{{ reply.content }}</div>
       </div>
@@ -105,10 +105,8 @@ import { EditIcon } from '@linnya/renderer-ui/icons';
 import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon as NoIcon } from '@linnya/renderer-ui/icons';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
-import {
-  formatAnnotationTime,
-  resolveAnnotationAuthorName,
-} from '../functions/annotationPresentation';
+import { useHistoryTime } from '@app/localization';
+import { resolveAnnotationAuthorName } from '../functions/annotationPresentation';
 
 // 定义props
 const props = defineProps({
@@ -122,9 +120,10 @@ const props = defineProps({
 defineEmits(['edit', 'resolve', 'reopen', 'delete', 'ai-action']);
 
 const { editorMessage } = useEditorLocalization();
+const { historyTime } = useHistoryTime();
 
 const authorName = computed(() => resolveAnnotationAuthorName(props.panel.author, editorMessage));
-const formattedCreatedAt = computed(() => formatAnnotationTime(props.panel.createdAt, editorMessage));
+const formattedCreatedAt = computed(() => historyTime(props.panel.createdAt));
 const resolveReplyAuthorName = (author) => resolveAnnotationAuthorName(author, editorMessage);
 
 const isAI = computed(() => {

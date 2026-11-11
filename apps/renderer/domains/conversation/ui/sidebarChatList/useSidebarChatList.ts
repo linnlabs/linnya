@@ -31,7 +31,7 @@ import {
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { confirm } from '@shared/composables/confirmDialog';
 import { useNotificationStore } from '@/app/notification';
-import { formatConversationListTime } from '../../functions/conversationListTime';
+import { useHistoryTime } from '@app/localization';
 import { useConversationLocalization } from '../useConversationLocalization';
 import {
   buildChatMenuOptions,
@@ -74,6 +74,7 @@ export function useSidebarChatList(
   const navigation = getWorkspaceNavigationPort();
   const notificationStore = useNotificationStore();
   const { conversationMessage } = useConversationLocalization();
+  const { historyTime } = useHistoryTime();
 
   const editingConversationId = ref<string | null>(null);
   const editingTitle = ref('');
@@ -365,9 +366,7 @@ export function useSidebarChatList(
     buildChatMenuOptions(activeMenuConversation.value, conversationMessage)
   ));
 
-  const formatListTime = (timestamp: number | null | undefined): string => (
-    formatConversationListTime(timestamp, conversationMessage)
-  );
+  const formatListTime = (timestamp: number | null | undefined): string => historyTime(timestamp);
 
   const setMenuButtonRef = (conversationId: string, element: Element | ComponentPublicInstance | null): void => {
     const button = resolveIconButtonElement(element);

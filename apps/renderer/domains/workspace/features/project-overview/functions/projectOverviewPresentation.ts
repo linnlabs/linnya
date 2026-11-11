@@ -3,33 +3,6 @@ import type { LinnyaLocale } from '@app/localization';
 import type { WorkspaceMessageKey, WorkspaceMessageResolver } from '@/domains/workspace/definitions/workspaceMessages';
 import type { ProjectOverviewSortKey } from '../definitions/projectOverview';
 
-const MINUTE_MS = 60_000;
-
-/** 刚刚、几分钟前、今天几点、昨天几点、今年几月几日、更早带年份。 */
-export function formatProjectOverviewTime(
-  timestamp: number,
-  now: Date,
-  locale: LinnyaLocale,
-  message: WorkspaceMessageResolver,
-): string {
-  const date = new Date(timestamp);
-  const diff = now.getTime() - timestamp;
-  if (diff >= 0 && diff < MINUTE_MS) return message('workspace.projectOverview.time.justNow');
-  if (diff >= 0 && diff < 60 * MINUTE_MS) {
-    return message('workspace.projectOverview.time.minutesAgo', { count: Math.floor(diff / MINUTE_MS) });
-  }
-  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
-  if (date.toDateString() === now.toDateString()) return time;
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) {
-    return message('workspace.projectOverview.time.yesterday', { time });
-  }
-  if (date.getFullYear() === now.getFullYear()) {
-    return new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric' }).format(date);
-  }
-  return new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
-}
-
 /** 插件的显示名由调用方从插件注册表查；查不到时统称“插件”。 */
 export function formatProjectOverviewActor(
   actor: ProjectOverviewActor,

@@ -62,9 +62,9 @@ import { BaseButton, IconButton } from '@linnya/renderer-ui';
 import { computed, onMounted, onBeforeUnmount } from 'vue'
 import { useBlockHistoryStore, type BlockVersion } from '../index'
 import { extractLinesFromContentJson, type VersionLine } from '../utils/lineExtractor'
+import { useHistoryTime } from '@app/localization'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 import {
-  formatBlockHistoryFullTime,
   readBlockHistoryOriginLabel,
 } from '../functions/blockHistoryPresentation'
 
@@ -116,7 +116,8 @@ const emit = defineEmits<{
 // ==================== Store ====================
 
 const blockHistoryStore = useBlockHistoryStore()
-const { currentLocale, editorMessage } = useEditorLocalization()
+const { editorMessage } = useEditorLocalization()
+const { historyDateTime } = useHistoryTime()
 
 // ==================== 计算属性 ====================
 
@@ -147,7 +148,7 @@ const versionBadgeText = computed(() => {
 /** 格式化时间 */
 const formattedTime = computed(() => {
   if (!selectedVersion.value) return ''
-  return formatBlockHistoryFullTime(selectedVersion.value.created_at, currentLocale.value)
+  return historyDateTime(selectedVersion.value.created_at)
 })
 
 /** 版本来源类型 */

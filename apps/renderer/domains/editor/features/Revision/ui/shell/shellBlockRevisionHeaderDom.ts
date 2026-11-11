@@ -1,9 +1,6 @@
 import type { LinnyaLocale } from '@app/localization'
 import type { EditorMessageResolver } from '../../../../definitions/editorMessages'
-import {
-  formatRevisionIndicatorTitle,
-  formatRevisionTimeLabel,
-} from '../../functions/revisionPresentation'
+import { formatRevisionIndicatorTitle } from '../../functions/revisionPresentation'
 
 export const ROOT_BLOCK_SHELL_REVISION_HEADER_ATTR =
   'data-root-block-shell-revision-header'
@@ -39,6 +36,8 @@ interface ShellRevisionHeaderViewModel {
 export interface ShellRevisionHeaderRenderOptions {
   locale: LinnyaLocale
   editorMessage: EditorMessageResolver
+  /** 统一历史时间写法（useHistoryTime）；结果进 render key，时钟走动时文字会更新。 */
+  timeText: (createdAt: number) => string
 }
 
 function toViewModel(session: ShellRevisionHeaderSession): ShellRevisionHeaderViewModel {
@@ -54,10 +53,12 @@ function toViewModel(session: ShellRevisionHeaderSession): ShellRevisionHeaderVi
 
 function buildRenderKey(
   viewModel: ShellRevisionHeaderViewModel,
-  locale: LinnyaLocale
+  locale: LinnyaLocale,
+  timeText: string
 ): string {
   return [
     locale,
+    timeText,
     viewModel.blockId,
     viewModel.insertCount,
     viewModel.deleteCount,
@@ -87,7 +88,8 @@ function createTextSpan(className: string, text: string): HTMLSpanElement {
 
 function createIndicator(
   viewModel: ShellRevisionHeaderViewModel,
-  editorMessage: EditorMessageResolver
+  editorMessage: EditorMessageResolver,
+  formattedTime: string
 ): HTMLElement {
   const indicator = document.createElement('div')
   indicator.className = 'shell-revision-indicator is-pending'
@@ -114,7 +116,6 @@ function createIndicator(
     ))
   }
 
-  const formattedTime = formatRevisionTimeLabel(viewModel.createdAt, editorMessage)
   if (formattedTime) {
     indicator.append(createTextSpan('shell-revision-time', formattedTime))
   }
@@ -150,10 +151,11 @@ export function renderShellRevisionHeader(
   if (!header) return false
 
   const viewModel = toViewModel(session)
-  const renderKey = buildRenderKey(viewModel, options.locale)
+  const timeText = options.timeText(viewModel.createdAt)
+  const renderKey = buildRenderKey(viewModel, options.locale, timeText)
   if (header.dataset.renderKey === renderKey && !header.hidden) return false
 
-  header.replaceChildren(createIndicator(viewModel, options.editorMessage))
+  header.replaceChildren(createIndicator(viewModel, options.editorMessage, timeText))
   header.hidden = false
   header.dataset.renderKey = renderKey
   header.setAttribute('aria-label', buildTitle(viewModel, options.editorMessage))

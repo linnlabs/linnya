@@ -123,6 +123,7 @@
 
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from 'vue';
+import { useHistoryTime } from '@app/localization';
 import type {
   SemanticSchemaOperation,
   SemanticSchemaOverview,
@@ -132,7 +133,6 @@ import type {
 } from '@app/schemas';
 import { AlertDialog, CustomTextInput, Modal, SegmentedTabs, type AlertDialogSection } from '@linnya/renderer-ui';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
-import { formatProjectOverviewTime } from '@/domains/workspace/features/project-overview/functions/projectOverviewPresentation';
 import { matchesQuery, quotedNames, type SemanticSchemaTextContext } from '../functions/semanticSchemaText';
 import { useSemanticSchemaManager, type SemanticSchemaFailure } from '../orchestration/useSemanticSchemaManager';
 import SemanticSchemaFieldPane from './SemanticSchemaFieldPane.vue';
@@ -164,18 +164,16 @@ const emit = defineEmits<{
   'open-document': [documentId: string];
 }>();
 
-const { workspaceMessage: message, currentLocale } = useWorkspaceLocalization();
-const now = ref(new Date());
+const { workspaceMessage: message } = useWorkspaceLocalization();
+const { historyTime } = useHistoryTime();
 const context: SemanticSchemaTextContext = {
   message,
   agentName: id => props.agentName(id),
-  timeText: timestamp => formatProjectOverviewTime(timestamp, now.value, currentLocale.value, message),
+  timeText: historyTime,
 };
 
 const manager = useSemanticSchemaManager({ onChanged: overview => emit('changed', overview) });
 const overview = computed(() => manager.overview.value);
-// 相对时间以数据更新时为准，刚做的改动显示“刚刚”。
-watch(overview, () => { now.value = new Date(); });
 const page = ref<Page>('tags');
 const query = ref('');
 const selectedTagId = ref<string | null>(null);
@@ -190,7 +188,6 @@ const typePreview = shallowRef<TypePreview | null>(null);
 
 watch(() => props.isVisible, visible => {
   if (!visible) return;
-  now.value = new Date();
   query.value = '';
   notice.value = null;
   undoErrors.value = {};

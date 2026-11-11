@@ -6,6 +6,7 @@ import {
   getFlag,
 } from '../../../../ui/services/editorFeatureFlags'
 import { findRootBlockOuterById } from '../../../../ui/composables/rootBlockViewportSnapshot'
+import { useHistoryTime } from '@app/localization'
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization'
 import type { RenderVirtualizationEngine } from '../../../RenderVirtualization'
 import { useRevisionStore, type RevisionStore } from '../../useRevisionStore'
@@ -98,6 +99,7 @@ export function useShellBlockRevisionHeader(
   const renderedBlockIds = new Set<string>()
   const renderVirtualizationEngine = options.renderVirtualizationEngine
   const { currentLocale, editorMessage } = useEditorLocalization()
+  const { historyTime, now: historyClock } = useHistoryTime()
   let refreshRaf: number | null = null
 
   const revisionStore = computed<RevisionStore | null>(() => {
@@ -224,6 +226,7 @@ export function useShellBlockRevisionHeader(
       const didChange = renderShellRevisionHeader(outer, session, {
         locale: currentLocale.value,
         editorMessage,
+        timeText: historyTime,
       })
       if (didChange) renderedCount += 1
       pushPerfBlockIdSample(renderedBlockIdsSample, blockId)
@@ -311,6 +314,7 @@ export function useShellBlockRevisionHeader(
       () => revisionStore.value?.canonicalPendingStats.value.insertCount ?? 0,
       () => revisionStore.value?.canonicalPendingStats.value.deleteCount ?? 0,
       () => currentLocale.value,
+      () => historyClock.value,
     ],
     () => scheduleSync()
   )
