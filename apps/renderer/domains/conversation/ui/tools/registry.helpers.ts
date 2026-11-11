@@ -8,9 +8,7 @@
 
 export type UnknownRecord = Record<string, unknown>;
 
-export function isRecord(v: unknown): v is UnknownRecord {
-  return !!v && typeof v === 'object' && !Array.isArray(v);
-}
+
 
 export function readNumber(value: unknown): number | undefined {
   if (typeof value !== 'number') return undefined;
@@ -49,3 +47,5 @@ export function isTruthyEnvFlag(value: unknown): boolean {
   const s = value.trim().toLowerCase();
   return s === '1' || s === 'true' || s === 'yes' || s === 'on';
 }
+
+export { isRecord } from '@linnya/foundation';

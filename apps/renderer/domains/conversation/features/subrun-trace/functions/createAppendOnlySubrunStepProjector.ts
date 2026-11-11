@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import type { ToolLocalizedTextDescriptor } from '@linnya/plugin-host-contract/renderer/toolUi';
 import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 
@@ -203,9 +204,7 @@ function createUnknownToolTitle(toolName: string): ToolLocalizedTextDescriptor {
   };
 }
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 function readNonEmptyString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;

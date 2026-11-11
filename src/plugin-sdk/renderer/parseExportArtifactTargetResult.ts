@@ -1,8 +1,7 @@
+import { isRecord } from '@linnya/foundation';
 import type { ExportArtifactTargetResult } from '@linnya/plugin-host-contract/renderer/exportArtifact';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 function requireString(
   record: Readonly<Record<string, unknown>>,

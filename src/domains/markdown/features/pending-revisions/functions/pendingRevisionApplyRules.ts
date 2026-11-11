@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import type {
   MarkdownDocJson,
   ProseMirrorJsonNode,
@@ -16,9 +17,7 @@ import { preserveInlinePresentation } from '../../edit-preservation';
 
 type RootBlockSlot = MarkdownRootBlockJson | ProseMirrorJsonNode | null;
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 export function isMarkdownDocJson(value: unknown): value is MarkdownDocJson {
   return isRecord(value) && value.type === 'doc' && Array.isArray(value.content);
@@ -187,3 +186,5 @@ export function applyRejectedPendingsToDocument(input: {
 
   return withoutRemovedSlots(input.docJson, slots);
 }
+
+export { isRecord } from '@linnya/foundation';

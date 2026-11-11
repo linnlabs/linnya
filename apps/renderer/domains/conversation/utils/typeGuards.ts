@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import type { ActivityBinding } from '../types';
 
 /**
@@ -12,12 +13,8 @@ import type { ActivityBinding } from '../types';
 
 export type UnknownRecord = Record<string, unknown>;
 
-/**
- * 判断一个值是否为普通对象（非数组）。
- */
-export function isRecord(v: unknown): v is UnknownRecord {
-  return !!v && typeof v === 'object' && !Array.isArray(v);
-}
+
+
 
 /**
  * 判断一个 unknown 是否符合 ActivityBinding 协议。
@@ -33,3 +30,5 @@ export function isActivityBinding(v: unknown): v is ActivityBinding {
   return true;
 }
 
+
+export { isRecord } from '@linnya/foundation';

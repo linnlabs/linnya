@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import {
   ToolOutputBlobIdSchema,
   type SubagentArtifactRef,
@@ -6,11 +7,8 @@ import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
 import { isWorkspaceVfsInode } from '../../../../../shared/artifacts/artifactReference';
 
-type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 function appendUnique(
   artifact: SubagentArtifactRef,

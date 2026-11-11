@@ -1,8 +1,7 @@
+import { isRecord } from '@linnya/foundation';
 import type { SerializableJsonRecord, SerializableJsonValue } from '@linnlabs/linnkit/contracts';
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 export function readNonEmptyString(value: unknown): string | null {
   if (typeof value !== 'string') {
@@ -79,3 +78,5 @@ export function compactRecord(
   return output;
 }
 
+
+export { isRecord } from '@linnya/foundation';

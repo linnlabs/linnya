@@ -1,3 +1,4 @@
+import { sleep } from '@linnya/foundation';
 import { generateToolCallId, toSerializableJsonRecord } from '@linnlabs/linnkit/contracts';
 import type { CanonicalInferenceEvent } from '@linnlabs/linnkit/ports';
 import {
@@ -9,8 +10,9 @@ import type { InferenceCapability } from '../../../definitions/inferenceCapabili
 
 export const MOCK_INFERENCE_CAPABILITY_ID = 'host:mock';
 
-function delay(ms: number): Promise<void> {
-  return ms > 0 ? new Promise(resolve => setTimeout(resolve, ms)) : Promise.resolve();
+// 零延迟保持即时完成的 Promise；不能改成 setTimeout(0) 延后一个 timer turn。
+function waitForMockChunkDelay(ms: number): Promise<void> {
+  return ms > 0 ? sleep(ms) : Promise.resolve();
 }
 
 async function* textEvents(
@@ -25,7 +27,7 @@ async function* textEvents(
       return;
     }
     yield { type, text: chunk };
-    await delay(delayMs);
+    await waitForMockChunkDelay(delayMs);
   }
 }
 

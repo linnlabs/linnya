@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import {
   parseUserFacingMessage,
   type UserFacingMessage,
@@ -14,11 +15,8 @@ import {
  * - 业务侧只关心 quotaId（例如 deep_research）
  */
 
-type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 export interface QuotaInfo {
   success: true;

@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import { CellSelection, selectedRect } from '@tiptap/pm/tables';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { EditorState, Selection } from '@tiptap/pm/state';
@@ -7,7 +8,6 @@ import {
   refreshTableInfoSnapshot,
 } from '../../position/tableIdentity';
 
-type UnknownRecord = Record<string, unknown>;
 
 export type TableAiContextSource = 'current-selection' | 'saved-context';
 
@@ -67,9 +67,7 @@ interface ExtractedColumnReferenceContext {
   targetColumn: TargetColumn;
 }
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 export function isTableRect(value: unknown): value is TableRect {
   if (!isRecord(value)) return false;

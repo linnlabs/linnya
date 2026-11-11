@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * @file markdownJsonSerializer.ts
  * @description 将 Workspace Markdown 文档的 Tiptap/ProseMirror JSON（content_json）序列化为 Markdown 文本（后端纯函数版）
@@ -74,9 +75,7 @@ export interface SerializeRootBlockToMarkdownOptions {
   readonly includeAnnotations?: boolean;
 }
 
-function isRecord(value: unknown): value is JsonRecord {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 function asNode(value: unknown): JsonNode | null {
   if (!isRecord(value)) return null;

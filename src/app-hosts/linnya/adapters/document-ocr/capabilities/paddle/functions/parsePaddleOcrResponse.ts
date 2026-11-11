@@ -1,8 +1,7 @@
+import { isRecord } from '@linnya/foundation';
 import type { OcrDocumentPage } from 'src/domains/document-ocr';
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 function readStringRecord(value: unknown): Record<string, string> | undefined {
   if (!isRecord(value)) return undefined;
@@ -43,3 +42,5 @@ export function parsePaddleLayoutPages(
     };
   });
 }
+
+export { isRecord } from '@linnya/foundation';

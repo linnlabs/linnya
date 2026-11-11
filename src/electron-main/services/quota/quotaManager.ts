@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * @file src/electron-main/services/quota/quotaManager.ts
  *
@@ -17,11 +18,8 @@ import { store } from '../../store/index.js';
 import { getIsoWeekKeyLocal, startOfNextIsoWeekLocal } from '../../../shared/utils/isoWeek.js';
 import { QuotaPolicyNotFoundError } from '../../../features/system/quota/definitions/quotaErrors.js';
 
-type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 export type QuotaWindowType = 'iso_week';
 

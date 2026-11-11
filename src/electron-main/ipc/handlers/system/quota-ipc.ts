@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * @file src/electron-main/ipc/handlers/system/quota-ipc.ts
  *
@@ -19,11 +20,8 @@ import { createQuotaOperationFailure } from './quota-operation-failure';
 
 const logger = new Logger('quota-ipc');
 
-type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 function readQuotaId(payload: unknown): string | null {
   if (!isRecord(payload)) return null;

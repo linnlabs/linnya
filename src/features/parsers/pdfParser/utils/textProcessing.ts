@@ -137,13 +137,6 @@ export function processTableRow(line: string): { cells: string[]; rowText: strin
   return { cells, rowText };
 }
 
-/**
- * **功能 (What):** 睡眠指定时间
- * **输入 (Input / @param):** 
- * @param ms - 睡眠时间（毫秒）
- * **输出 (Output):** Promise
- * **副作用 (Side-effects):** 阻塞执行指定时间
- */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-} 
+
+
+export { sleep } from '@linnya/foundation';

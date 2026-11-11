@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * @file parserAdapterNode.ts
  * @description Node/Electron main 侧的 parser-wasm 适配器。
@@ -9,7 +10,6 @@ import path from 'path';
 import { getProjectRoot } from '../../../../shared/utils/pathManager';
 import type { WasmBlockEventLike } from './types';
 
-type UnknownRecord = Record<string, unknown>;
 
 type StreamingParserInstance = {
   process_chunk: (chunk: string) => Promise<unknown> | unknown;
@@ -24,9 +24,7 @@ type WasmParserApi = {
 let cachedApiPromise: Promise<WasmParserApi> | null = null;
 const NODE_WASM_ENTRY_RELATIVE_PATH = 'packages/parser-wasm/pkg-node/parser_wasm.js';
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 function isCallable(value: unknown): value is (...args: unknown[]) => unknown {
   return typeof value === 'function';

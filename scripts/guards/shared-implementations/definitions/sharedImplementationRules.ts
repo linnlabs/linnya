@@ -93,7 +93,7 @@ export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = 
   },
   {
     id: 'FOUNDATION-clamp',
-    pattern: /\b(?:function\s+clamp\s*\(|const\s+clamp\s*=)/u,
+    pattern: /\b(?:function\s+clamp\s*\(|const\s+clamp\s*=\s*(?:function\b|(?:\([^)]*\)|[\w$]+)\s*(?::[^=]+)?=>))/u,
     owners: ['packages/foundation/'],
     use: '用 @linnya/foundation 的 clamp(value, min, max)。',
   },

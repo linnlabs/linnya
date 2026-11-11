@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * @file src/electron-main/services/quota/quotaRegistry.ts
  *
@@ -15,11 +16,8 @@ import { store } from '../../store/index.js';
 // 单例（主进程内共享）
 export const quotaManager = new QuotaManager();
 
-type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 /**
  * 兼容迁移：旧的 deep-research 存储 key -> 新的 quota storeKey

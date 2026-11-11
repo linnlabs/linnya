@@ -1,3 +1,4 @@
+import { sleep } from '@linnya/foundation';
 import { useHistoryListStore } from '../store/historyListStore';
 import { historyApiService, type ConversationListItem } from '../services/historyApiService';
 import type { NavigationScope } from '@/app/navigation';
@@ -26,9 +27,7 @@ function normalizePositiveInteger(value: number | undefined, fallback: number): 
     : fallback;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+
 
 function normalizeTimestamp(value: number | undefined): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value > 0

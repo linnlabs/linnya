@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import type { LlmRequestMessage } from '@linnlabs/linnkit/ports';
 
 export interface FunctionToolDefinition {
@@ -12,9 +13,7 @@ export interface FunctionToolCall {
   readonly input: Record<string, unknown>;
 }
 
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 export function appendEndpoint(baseURL: string, endpoint: string): string {
   const normalizedBase = baseURL.replace(/\/+$/, '');
@@ -102,3 +101,5 @@ export function readToolCallId(message: LlmRequestMessage): string {
   }
   return message.tool_call_id;
 }
+
+export { isRecord } from '@linnya/foundation';

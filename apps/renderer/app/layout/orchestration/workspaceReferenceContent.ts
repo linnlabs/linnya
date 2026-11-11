@@ -1,11 +1,9 @@
+import { isRecord } from '@linnya/foundation';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import type { WorkspaceReferenceContentPort } from '@/shared/ports/workspaceReferenceContentPort';
 
-type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 function extractRootBlockIdsFromProseMirrorDoc(content: unknown): string[] {
   if (!isRecord(content) || !Array.isArray(content.content)) return [];

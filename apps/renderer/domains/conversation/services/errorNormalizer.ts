@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * @file apps/renderer/domains/conversation/services/errorNormalizer.ts
  * @description 会话错误友好化（前端统一入口）
@@ -51,7 +52,7 @@ type ErrorNormalizerOptions = {
   resolveMessage?: ConversationMessageResolver;
 };
 
-const isRecord = (v: unknown): v is UnknownRecord => !!v && typeof v === 'object' && !Array.isArray(v);
+
 
 const getString = (obj: UnknownRecord, key: string): string | undefined => {
   const v = obj[key];

@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import { projectSubrunExecutionNotice } from './projectSubrunExecutionNotice';
 import type { SSESubRunTraceEvent } from '@linnlabs/linnkit/contracts';
 
@@ -38,11 +39,8 @@ import {
   projectMessageCitationDependencies,
 } from '../../citation-presentation';
 
-type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 function readString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;

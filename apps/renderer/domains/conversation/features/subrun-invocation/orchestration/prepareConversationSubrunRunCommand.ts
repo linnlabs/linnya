@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import { generateMessageId } from '@shared/utils/idUtils';
 import type { ConversationMessageExtension } from '@app/schemas';
 
@@ -12,11 +13,8 @@ import type {
   PrepareConversationSubrunRunCommandResult,
 } from '../definitions/conversationSubrunRunCommand';
 
-type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+
 
 export interface PrepareConversationSubrunRunCommandOptions {
   readonly runId: string;

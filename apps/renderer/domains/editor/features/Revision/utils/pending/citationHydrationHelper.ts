@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /** Pending Markdown citation admission -> Revision Citation atom 投影。 */
 import {
   parseMarkdownCitationTokens,
@@ -11,11 +12,8 @@ import type {
 import type { CitationInlineMeta, MarkName, TextSpan } from '../../protocol/revisionTextSpanTypes'
 import { infoRevisionDebug } from '../revisionDebugLogging'
 
-type UnknownRecord = Record<string, unknown>
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
+
 
 function isCitationHydrationData(value: unknown): value is CitationHydrationData {
   if (!isRecord(value) || typeof value.title !== 'string' || typeof value.snippet !== 'string') {

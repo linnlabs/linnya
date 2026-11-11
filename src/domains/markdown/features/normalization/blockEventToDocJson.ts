@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * @file blockEventToDocJson.ts
  * @description 将 WASM Markdown BlockEvent[] 转换为后端可落库的 doc JSON。
@@ -45,9 +46,7 @@ const admitImportedAnnotationComment: MarkdownAnnotationCommentAdmitter = commen
 
 type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 function readNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;

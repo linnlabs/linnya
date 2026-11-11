@@ -30,7 +30,7 @@ import {
 import { TextMeasureService } from '../../../../../../../src/features/text-measurement/orchestration/TextMeasureService.js';
 import { HeuristicMeasureAdapter } from '../../../../../../../src/features/text-measurement/adapters/HeuristicMeasureAdapter.js';
 import { BrowserPretextAdapter } from '../../../../../../../src/features/text-measurement/adapters/BrowserPretextAdapter.js';
-import { isRecord } from '@linnya/foundation';
+import { isRecord, clamp } from '@linnya/foundation';
 
 const POINTS_PER_PIXEL = 72 / 96;
 const DEFAULT_ESTIMATION_WIDTH_PX = 720;
@@ -99,9 +99,6 @@ const MAX_CACHE_BUCKETS_PER_MESSAGE = 8;
  */
 const contentHeightCache = new WeakMap<BaseMessage, Map<string, CachedContentHeight>>();
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
 
 function normalizeWidth(widthPx: number | undefined): number {
   if (typeof widthPx !== 'number' || !Number.isFinite(widthPx) || widthPx <= 0) {

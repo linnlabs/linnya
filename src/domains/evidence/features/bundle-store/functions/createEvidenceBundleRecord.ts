@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import { createHash } from 'crypto';
 import type { LiveEvidenceBundleKind } from '../../../definitions/evidence';
 import type { LiveEvidenceBundleRecordV1 } from '../definitions/evidenceBundleRecord';
@@ -5,9 +6,7 @@ import type { SaveEvidenceBundleCommand } from '../definitions/evidenceBundleWri
 
 type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 function stableStringify(value: unknown): string {
   if (value === null) return 'null';

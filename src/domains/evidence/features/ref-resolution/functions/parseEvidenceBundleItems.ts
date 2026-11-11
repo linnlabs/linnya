@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import { normalizeCitationRef } from '../../../../citation';
 import type {
   KnowledgeEvidenceCaptureKind,
@@ -10,9 +11,7 @@ import type {
 
 type UnknownRecord = Record<string, unknown>;
 
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+
 
 function readTrimmedString(record: UnknownRecord, key: string): string {
   return typeof record[key] === 'string' ? record[key].trim() : '';

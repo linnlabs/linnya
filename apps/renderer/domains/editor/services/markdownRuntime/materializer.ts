@@ -1,3 +1,4 @@
+import { isRecord as isPlainObject } from '@linnya/foundation';
 import type { Node as ProseMirrorNode, Schema } from 'prosemirror-model'
 import {
   admitMarkdownAnnotationComment,
@@ -27,9 +28,7 @@ function normalizeBlockTypeName(blockType: string): string {
   return String(blockType || '').trim()
 }
 
-function isPlainObject(obj: unknown): obj is Record<string, unknown> {
-  return typeof obj === 'object' && obj !== null && !Array.isArray(obj)
-}
+
 
 export interface TableRowsMaterializationOptions {
   hydrateProjection?: (projection: MarkdownInlineProjection) => MarkdownInlineProjection

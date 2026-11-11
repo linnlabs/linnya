@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 /**
  * @file src/shared/errorClassifier.ts
  * 
@@ -58,8 +59,7 @@ export class ErrorClassifier {
    * @returns 错误分类结果
    */
   static classify(error: Error, context?: { logPrefix?: string }): ErrorClassification {
-    type UnknownRecord = Record<string, unknown>;
-    const isRecord = (v: unknown): v is UnknownRecord => !!v && typeof v === 'object' && !Array.isArray(v);
+
 
     const baseMsg = (error.message || '').toLowerCase();
     const causeMsg = (() => {

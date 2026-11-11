@@ -51,6 +51,7 @@ describe('共享实现棘轮', () => {
     const source = [
       "import { isRecord, clamp, sleep } from '@linnya/foundation';",
       'const delay = Math.max(a - b, 0);',
+      'const clamp = id === "name" ? clampNameWidth : clampColumnWidth;',
       'function clampColumnWidth(width: number) { return clamp(width, 80, 600); }',
       'if (isRecord(value)) await sleep(10);',
     ].join('\n');

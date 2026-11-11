@@ -1,11 +1,9 @@
+import { clamp } from '@linnya/foundation';
 import type {
   ContextUsagePanelPosition,
   ContextUsagePanelPositionInput,
 } from '../definitions/contextWindowUsage';
 
-function clamp(value: number, minimum: number, maximum: number): number {
-  return Math.min(Math.max(value, minimum), maximum);
-}
 
 export function resolveContextUsagePanelPosition(
   input: ContextUsagePanelPositionInput,

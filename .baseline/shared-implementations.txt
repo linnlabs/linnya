@@ -1,8 +1,5 @@
 # Shared implementation debt (docs/development/code-quality.md)
 # 格式：count<TAB>rule<TAB>file。只允许数量减少；新代码必须使用共享实现。
-1	FOUNDATION-clamp	apps/renderer/domains/conversation/features/context-window-usage/functions/resolveContextUsagePanelPosition.ts
-1	FOUNDATION-clamp	apps/renderer/domains/conversation/ui/conversationView/utils/contentHeightEstimator.ts
-1	FOUNDATION-clamp	apps/renderer/domains/workspace/features/project-overview/ui/ProjectOverviewView.vue
 1	FOUNDATION-clamp	packages/color-core/src/palette/functions/buildPalette.ts
 1	FOUNDATION-clamp	packages/plugins/mindmap/src/renderer/shared/utils/layout/generateBranch.ts
 1	FOUNDATION-clamp	packages/plugins/slides/src/renderer/features/sourceSelection/functions/sourceSelectionPromptPosition.ts
@@ -10,17 +7,6 @@
 1	FOUNDATION-clamp	packages/plugins/slides/src/shared/render-geometry/imageGeometry.ts
 1	FOUNDATION-clamp	packages/renderer-ui/src/features/floating-panels/functions/draggablePanelGeometry.ts
 1	FOUNDATION-is-record	apps/linnya-cli/src/adapters/readConnectionDescriptor.ts
-1	FOUNDATION-is-record	apps/renderer/app/layout/orchestration/workspaceReferenceContent.ts
-1	FOUNDATION-is-record	apps/renderer/domains/conversation/features/subrun-card/functions/projectSubrunTraceEvent.ts
-1	FOUNDATION-is-record	apps/renderer/domains/conversation/features/subrun-invocation/orchestration/prepareConversationSubrunRunCommand.ts
-1	FOUNDATION-is-record	apps/renderer/domains/conversation/features/subrun-trace/functions/createAppendOnlySubrunStepProjector.ts
-1	FOUNDATION-is-record	apps/renderer/domains/conversation/services/errorNormalizer.ts
-1	FOUNDATION-is-record	apps/renderer/domains/conversation/ui/tools/registry.helpers.ts
-1	FOUNDATION-is-record	apps/renderer/domains/conversation/utils/typeGuards.ts
-1	FOUNDATION-is-record	apps/renderer/domains/editor/blocks/TableBlock/ui/composables/tableAiSelectionContext.ts
-1	FOUNDATION-is-record	apps/renderer/domains/editor/features/Revision/utils/pending/citationHydrationHelper.ts
-1	FOUNDATION-is-record	apps/renderer/domains/editor/services/markdownRuntime/materializer.ts
-1	FOUNDATION-is-record	apps/renderer/shared/quota/quotaClient.ts
 1	FOUNDATION-is-record	packages/linnkit-provider-ai-sdk/src/features/failure-projection/functions/classifyAiSdkFailure.ts
 1	FOUNDATION-is-record	packages/linnkit-provider-ai-sdk/src/functions/projectAiSdkContinuation.ts
 1	FOUNDATION-is-record	packages/markdown-document-core/src/functions/assertMarkdownDocument.ts
@@ -40,28 +26,9 @@
 1	FOUNDATION-is-record	packages/schemas/src/conversation/subrun-trace-summary.ts
 1	FOUNDATION-is-record	packages/schemas/src/index.ts
 1	FOUNDATION-is-record	packages/stream-markdown-parser/src/parser/index.ts
-1	FOUNDATION-is-record	src/app-hosts/linnya/adapters/document-ocr/capabilities/paddle/functions/parsePaddleOcrResponse.ts
-1	FOUNDATION-is-record	src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/json.ts
-1	FOUNDATION-is-record	src/app-hosts/linnya/adapters/token-accounting/functions/tokenCountCodecPrimitives.ts
-1	FOUNDATION-is-record	src/domains/evidence/features/bundle-store/functions/createEvidenceBundleRecord.ts
-1	FOUNDATION-is-record	src/domains/evidence/features/ref-resolution/functions/parseEvidenceBundleItems.ts
-1	FOUNDATION-is-record	src/domains/markdown/features/normalization/blockEventToDocJson.ts
-1	FOUNDATION-is-record	src/domains/markdown/features/normalization/markdownJsonSerializer.ts
-1	FOUNDATION-is-record	src/domains/markdown/features/normalization/parserAdapterNode.ts
-1	FOUNDATION-is-record	src/domains/markdown/features/pending-revisions/functions/pendingRevisionApplyRules.ts
-1	FOUNDATION-is-record	src/electron-main/ipc/handlers/system/quota-ipc.ts
-1	FOUNDATION-is-record	src/electron-main/services/quota/quotaManager.ts
-1	FOUNDATION-is-record	src/electron-main/services/quota/quotaRegistry.ts
-1	FOUNDATION-is-record	src/plugin-sdk/renderer/parseExportArtifactTargetResult.ts
-1	FOUNDATION-is-record	src/shared/errorClassifier.ts
-1	FOUNDATION-is-record	src/tools/agent_control/subrun/subagent/functions/extractSubagentArtifactRefs.ts
-1	FOUNDATION-sleep	apps/renderer/domains/conversation/history/orchestration/syncConversationMetadataToHistory.ts
 1	FOUNDATION-sleep	packages/plugins/canvas/dev/probes/performanceElectron.ts
 1	FOUNDATION-sleep	packages/plugins/canvas/dev/probes/sceneVisualRenderer.ts
 1	FOUNDATION-sleep	packages/plugins/canvas/dev/probes/visibilityElectron.ts
-1	FOUNDATION-sleep	src/app-hosts/linnya/adapters/inference/capabilities/mock/orchestration/createMockInferenceCapability.ts
-1	FOUNDATION-sleep	src/electron-main/web-render/WebPageRenderWorker.ts
-1	FOUNDATION-sleep	src/features/parsers/pdfParser/utils/textProcessing.ts
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/features/context-window-usage/functions/projectConversationInformation.ts
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/ui/message/SummaryMessage.vue
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/ui/tools/questionnaire/components/QuestionActions.vue

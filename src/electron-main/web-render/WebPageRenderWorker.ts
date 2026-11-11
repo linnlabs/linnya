@@ -1,4 +1,4 @@
-import { errorToString as toErrorMessage } from '@linnya/foundation';
+import { errorToString as toErrorMessage, sleep as delay } from '@linnya/foundation';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import {
@@ -88,9 +88,7 @@ async function runWithTimeout<T>(
   }
 }
 
-function delay(delayMs: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, delayMs));
-}
+
 
 /** Electron loadURL 拒绝时附带的数值 net 错误码；只接纳负整数。 */
 function readNetErrorCode(error: unknown): number | undefined {
