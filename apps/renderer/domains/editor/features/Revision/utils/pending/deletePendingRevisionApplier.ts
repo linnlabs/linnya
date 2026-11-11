@@ -17,7 +17,7 @@ import {
   executePendingPlanToTr,
 } from './pendingExecutionPlan'
 import { buildDeleteExecutionPlan } from './pendingPlanBuilder'
-import { useRevisionStore } from '../../useRevisionStore'
+import { getRevisionState } from '../../store/revisionState'
 import { logRevisionDebug } from '../revisionDebugLogging'
 import { markPendingRevisionProjectionTransaction } from '../../../../core/transactions/editorTransactionMeta'
 
@@ -98,7 +98,7 @@ export function applyDeletePendingRevision(
 
   // 8. 在 RevisionStore 中注册修订状态
   try {
-    const revisionStore = useRevisionStore(editor)
+    const revisionStore = getRevisionState(editor)
     revisionStore.startRevision({
       blockId,
       revisionId,
@@ -228,7 +228,7 @@ export async function batchApplyDeletePendingRevisions(
     }
 
     try {
-      const revisionStore = useRevisionStore(editor)
+      const revisionStore = getRevisionState(editor)
       revisionStore.startRevision({
         blockId: item.blockId,
         revisionId: item.revisionId,

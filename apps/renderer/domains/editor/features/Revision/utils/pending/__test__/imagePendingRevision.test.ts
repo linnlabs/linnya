@@ -19,8 +19,8 @@ import { commitFigureCaptionAttributes } from '../../../../figure-caption';
 const mocks = vi.hoisted(() => ({ startRevision: vi.fn(), parse: vi.fn() }));
 vi.mock('@tiptap/vue-3', () => ({ VueNodeViewRenderer: vi.fn(() => vi.fn()) }));
 vi.mock('../../../../../blocks/ImageBlock/ui/ImageBlockView.vue', () => ({ default: {} }));
-vi.mock('../../../useRevisionStore', () => ({
-  useRevisionStore: () => ({ startRevision: mocks.startRevision }),
+vi.mock('../../../store/revisionState', () => ({
+  getRevisionState: () => ({ startRevision: mocks.startRevision }),
 }));
 vi.mock('../../../../../services/markdownRuntime/parser', () => ({
   parseMarkdownToBlockEvents: mocks.parse,

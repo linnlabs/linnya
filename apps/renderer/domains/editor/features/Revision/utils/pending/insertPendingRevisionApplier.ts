@@ -20,7 +20,7 @@ import {
   resolvePendingMarkdownForSingleBlock,
 } from './pendingRevisionHelpers'
 import { linearizeRootBlock } from '../linearizeBlock'
-import { useRevisionStore } from '../../useRevisionStore'
+import { getRevisionState } from '../../store/revisionState'
 import { processCitationHydration } from './citationHydrationHelper'
 import { hasRevisionMarksInBlock, scanBlockForRevisions } from '../../functions/revisionMarkScan'
 import {
@@ -211,7 +211,7 @@ export async function applyInsertPendingRevision(
 
   // 9. 在 RevisionStore 中注册修订状态
   try {
-    const revisionStore = useRevisionStore(editor)
+    const revisionStore = getRevisionState(editor)
     revisionStore.startRevision({
       blockId,
       revisionId,
@@ -448,7 +448,7 @@ export async function batchApplyInsertPendingRevisions(
     if (!diffStats || (diffStats.insertCount === 0 && diffStats.deleteCount === 0)) continue
 
     try {
-      const revisionStore = useRevisionStore(editor)
+      const revisionStore = getRevisionState(editor)
       revisionStore.startRevision({
         blockId: item.blockId,
         revisionId: item.revisionId,

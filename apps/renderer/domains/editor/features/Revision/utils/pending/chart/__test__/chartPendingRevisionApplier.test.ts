@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({ startRevision: vi.fn() }))
 
 vi.mock('@tiptap/vue-3', () => ({ VueNodeViewRenderer: vi.fn(() => vi.fn()) }))
 vi.mock('../../../../../../blocks/ChartBlock/ui/ChartBlockView.vue', () => ({ default: {} }))
-vi.mock('../../../../useRevisionStore', () => ({ useRevisionStore: () => ({ startRevision: mocks.startRevision }) }))
+vi.mock('../../../../store/revisionState', () => ({ getRevisionState: () => ({ startRevision: mocks.startRevision }) }))
 
 import { BaseBlock } from '../../../../../../blocks/BaseBlock'
 import { ChartBlock } from '../../../../../../blocks/ChartBlock/ChartBlock'

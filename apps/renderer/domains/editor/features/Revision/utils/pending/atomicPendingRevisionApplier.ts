@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import type { Transaction } from '@tiptap/pm/state';
 import { markPendingRevisionProjectionTransaction } from '../../../../core/transactions/editorTransactionMeta';
-import { useRevisionStore } from '../../useRevisionStore';
+import { getRevisionState } from '../../store/revisionState';
 import { getParsedOperation } from './pendingOperation';
 import { findRootBlockPosByIdInDoc } from './pendingRevisionHelpers';
 import type { ApplyDetail } from './pendingRevisionTypes';
@@ -25,7 +25,7 @@ export function applyAtomicPendingItems<Plan>(
 ): ApplyDetail[] {
   if (items.length === 0) return [];
 
-  const store = useRevisionStore(editor);
+  const store = getRevisionState(editor);
   const tr = editor.state.tr;
   const results: ApplyDetail[] = [];
   const registrations: Array<{

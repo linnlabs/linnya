@@ -10,6 +10,8 @@ export const RENDERER_TEST_INCLUDE = [
 // 这些测试使用真实 Host schema / normalization / plugin manifest，验证跨进程合同。
 // 新增跨层场景在此登记；普通 UI 测试不能借用 Host resolver。
 export const RENDERER_HOST_INTEGRATION_TESTS = [
+  // 文档引用 Pending 夹具使用真实 Host Markdown parser，与其他 Revision 跨层测试同一 resolver。
+  'apps/renderer/domains/editor/features/Revision/utils/pending/__test__/documentReferencePending.test.ts',
   // Conversation durable/live parity 直接读取 App Host 的正式投影。
   'apps/renderer/domains/conversation/services/messageProjection/__tests__/executionNoticeLifecycle.integration.test.ts',
   'apps/renderer/domains/conversation/services/messageProjection/__tests__/uiProjectionParity.spec.ts',

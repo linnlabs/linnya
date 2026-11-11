@@ -103,3 +103,5 @@ Teleport 到该视口后以局部绝对定位居中。不能再使用整个窗�
 
 独立公式及多块失败的生产 schema、真实 parser、KaTeX NodeView 与只读对照回归位于
 `utils/pending/__test__/latexPendingRevision.test.ts`；后端真实 SQLite 写入/决策与准入失败保留见 Markdown domain 的 document-write 测试。
+
+投影应用器只从 `store/revisionState.ts` 取得同一 Editor 的状态并同步登记统计；不回引 `useRevisionStore` 来实例化运行时。`useRevisionStore` 是现有文档会话的运行时门面（不是 Pinia state store）；编排继续由 `createRevisionRuntime` 持有，缓存和文档状态结构保持不变。

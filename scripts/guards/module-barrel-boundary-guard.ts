@@ -10,6 +10,8 @@ const SOURCE_HISTORY = 'packages/plugins/slides/src/backend/features/presentatio
 const PERSISTENCE = 'packages/plugins/slides/src/backend/persistence';
 const SOURCE_SELECTION = 'packages/plugins/slides/src/renderer/features/sourceSelection';
 const TRANSCRIPTION = 'src/features/transcription';
+const REVISION_PENDING = 'apps/renderer/domains/editor/features/Revision/utils/pending';
+const REVISION_RUNTIME = 'apps/renderer/domains/editor/features/Revision/useRevisionStore';
 const MODULES = [BLOCK_HISTORY, SOURCE_HISTORY, PERSISTENCE, SOURCE_SELECTION, TRANSCRIPTION];
 
 export function resolveLocalSourceImport(file: string, specifier: string): string | undefined {
@@ -35,7 +37,9 @@ export function findModuleBarrelViolations(file: string, content: string): strin
     const historyPersistenceBackEdge =
       (file.startsWith(`${SOURCE_HISTORY}/`) && target === PERSISTENCE) ||
       (file.startsWith(`${PERSISTENCE}/`) && target === SOURCE_HISTORY);
-    return ownBarrel || historyPersistenceBackEdge
+    const revisionRuntimeBackEdge =
+      file.startsWith(`${REVISION_PENDING}/`) && target === REVISION_RUNTIME;
+    return ownBarrel || historyPersistenceBackEdge || revisionRuntimeBackEdge
       ? [
           `${file}:${edge.line} → ${edge.specifier}：内部引用应指向具体 definitions/functions/store，不回引聚合 index。`,
         ]
@@ -54,7 +58,7 @@ function main(): void {
       file =>
         /\.(?:ts|tsx|js|vue)$/u.test(file) &&
         !/(?:__tests__|fixtures)\/|\.(?:test|spec|example)\./u.test(file) &&
-        MODULES.some(root => file.startsWith(`${root}/`))
+        [...MODULES, REVISION_PENDING].some(root => file.startsWith(`${root}/`))
     )
     .flatMap(file => findModuleBarrelViolations(file, fs.readFileSync(file, 'utf8')));
   if (violations.length) {

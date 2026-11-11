@@ -2,7 +2,7 @@ import { createRevisionPendingPerfSession } from '../store/revisionPendingPerf';
 import type { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { MarkdownRevisionCommit } from '@app/schemas';
-import { createRevisionState } from '../store/revisionState';
+import { getRevisionState } from '../store/revisionState';
 import type { RevisionStore, PendingProjectionResult } from '../definitions/revision';
 import { readRevisionBaseline, stripRevisionProjection } from '../functions/revisionProjectionBaseline';
 import { batchPendingDispatches } from './batchPendingProjection';
@@ -19,7 +19,7 @@ import { assertPendingDecisionPreview } from '../functions/assertPendingDecision
 
 /** 装载、显示与用户动作的编排门面；数据库提交能力由文档会话绑定。 */
 export function createRevisionRuntime(editor: Editor): RevisionStore {
-  const state = createRevisionState();
+  const state = getRevisionState(editor);
   let epoch = 0;
   let commit: (decision?: MarkdownRevisionCommit['decision'], draft?: ProseMirrorNode) => Promise<void> = async () => {
     throw new Error('当前编辑器尚未绑定文档会话');

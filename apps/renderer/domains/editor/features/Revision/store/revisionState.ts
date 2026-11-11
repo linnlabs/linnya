@@ -1,3 +1,4 @@
+import type { Editor } from '@tiptap/core';
 import { computed, ref } from 'vue';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { PendingRevisionDTO } from '../../../../../shared/ipc/workspaceGateway';
@@ -49,4 +50,14 @@ export function createRevisionState() {
     activeRevisionCount: computed(() => Object.keys(activeRevisions.value).length),
     pendingProjectionDeferred: computed(() => Object.values(canonicalPendingSessions.value).some(s => s.projection === 'deferred')),
   };
+}
+
+// 投影应用器只需要登记统计，不能为此反向实例化完整运行时。状态与原运行时一样按 Editor 隔离。
+const editorStates = new WeakMap<Editor, ReturnType<typeof createRevisionState>>();
+export function getRevisionState(editor: Editor): ReturnType<typeof createRevisionState> {
+  const current = editorStates.get(editor);
+  if (current) return current;
+  const state = createRevisionState();
+  editorStates.set(editor, state);
+  return state;
 }

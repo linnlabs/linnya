@@ -19,7 +19,7 @@ import {
   resolvePendingMarkdownForSingleBlock,
 } from './pendingRevisionHelpers'
 import { linearizeRootBlock } from '../linearizeBlock'
-import { useRevisionStore } from '../../useRevisionStore'
+import { getRevisionState } from '../../store/revisionState'
 import { processCitationHydration } from './citationHydrationHelper'
 import {
   executePendingPlanToDocument,
@@ -181,7 +181,7 @@ export async function applyUpdatePendingRevision(
 
   // 8. 在 RevisionStore 中注册修订状态
   try {
-    const revisionStore = useRevisionStore(editor)
+    const revisionStore = getRevisionState(editor)
     revisionStore.startRevision({
       blockId,
       revisionId,

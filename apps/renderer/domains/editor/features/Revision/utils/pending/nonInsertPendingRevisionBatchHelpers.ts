@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core'
 import type { ApplyDetail, ParsedPendingRevision, PendingRevisionOperation } from './pendingRevisionTypes'
 import type { PendingExecutionPlan } from './pendingExecutionPlan'
-import { useRevisionStore } from '../../useRevisionStore'
+import { getRevisionState } from '../../store/revisionState'
 
 export interface RegisterablePreparedRevision {
   parsed: ParsedPendingRevision
@@ -25,7 +25,7 @@ export function registerPreparedRevisions(
     if (item.appliedDiffStats.insertCount === 0 && item.appliedDiffStats.deleteCount === 0) continue
 
     try {
-      const revisionStore = useRevisionStore(editor)
+      const revisionStore = getRevisionState(editor)
       revisionStore.startRevision({
         blockId: item.blockId,
         revisionId: item.revisionId,

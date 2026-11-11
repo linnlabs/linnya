@@ -25,9 +25,9 @@ const {
 }))
 
 const {
-  useRevisionStore,
+  getRevisionState,
 } = vi.hoisted(() => ({
-  useRevisionStore: vi.fn(),
+  getRevisionState: vi.fn(),
 }))
 
 vi.mock('../pendingRevisionHelpers', async () => {
@@ -50,8 +50,8 @@ vi.mock('../citationHydrationHelper', () => ({
   attachCitationHydrationToSpans,
 }))
 
-vi.mock('../../../useRevisionStore', () => ({
-  useRevisionStore,
+vi.mock('../../../store/revisionState', () => ({
+  getRevisionState,
 }))
 
 import {
@@ -144,7 +144,7 @@ describe('batchApplyUpdatePendingRevisions', () => {
     vi.mocked(parsePendingMarkdownToInlineProjection).mockReset()
     vi.mocked(processCitationHydration).mockReset()
     vi.mocked(attachCitationHydrationToSpans).mockReset()
-    vi.mocked(useRevisionStore).mockReset()
+    vi.mocked(getRevisionState).mockReset()
 
     vi.mocked(processCitationHydration).mockImplementation(async (markdown: string) => ({
       markdown,
@@ -159,7 +159,7 @@ describe('batchApplyUpdatePendingRevisions', () => {
       sourceBlockCount: 1,
       droppedBlockCount: 0,
     })
-    vi.mocked(useRevisionStore).mockReturnValue({
+    vi.mocked(getRevisionState).mockReturnValue({
       startRevision: vi.fn(),
     } as any)
   })
@@ -167,9 +167,9 @@ describe('batchApplyUpdatePendingRevisions', () => {
   it('applies content updates and table history updates inside one transaction dispatch', async () => {
     const editor = createMockEditor(createDoc())
     const startRevision = vi.fn()
-    vi.mocked(useRevisionStore).mockReturnValue({
+    vi.mocked(getRevisionState).mockReturnValue({
       startRevision,
-    } as unknown as ReturnType<typeof useRevisionStore>)
+    })
 
     vi.mocked(resolvePendingMarkdownForSingleBlock)
       .mockResolvedValueOnce({
@@ -239,7 +239,7 @@ describe('batchApplyUpdatePendingRevisions', () => {
   it('prepares unique block updates in parallel before applying one transaction', async () => {
     const editor = createMockEditor(createDoc())
     const startRevision = vi.fn()
-    vi.mocked(useRevisionStore).mockReturnValue({
+    vi.mocked(getRevisionState).mockReturnValue({
       startRevision,
     } as any)
 
@@ -308,7 +308,7 @@ describe('batchApplyUpdatePendingRevisions', () => {
   it('does not dispatch or register a revision when an update batch item has no diff', async () => {
     const editor = createMockEditor(createDoc())
     const startRevision = vi.fn()
-    vi.mocked(useRevisionStore).mockReturnValue({
+    vi.mocked(getRevisionState).mockReturnValue({
       startRevision,
     } as any)
 
@@ -350,7 +350,7 @@ describe('batchApplyUpdatePendingRevisions', () => {
   it('reuses the evolving mega-transaction doc when the same block receives consecutive updates', async () => {
     const editor = createMockEditor(createDoc())
     const startRevision = vi.fn()
-    vi.mocked(useRevisionStore).mockReturnValue({
+    vi.mocked(getRevisionState).mockReturnValue({
       startRevision,
     } as any)
 
@@ -407,7 +407,7 @@ describe('batchApplyUpdatePendingRevisions', () => {
   it('batches delete together with updates inside one mega-transaction', async () => {
     const editor = createMockEditor(createDoc())
     const startRevision = vi.fn()
-    vi.mocked(useRevisionStore).mockReturnValue({
+    vi.mocked(getRevisionState).mockReturnValue({
       startRevision,
     } as any)
 
@@ -454,9 +454,9 @@ describe('batchApplyUpdatePendingRevisions', () => {
   it('replaces blocks with an atomic block resolution inside one dispatch and counts whole blocks', async () => {
     const editor = createMockEditor(createDoc())
     const startRevision = vi.fn()
-    vi.mocked(useRevisionStore).mockReturnValue({
+    vi.mocked(getRevisionState).mockReturnValue({
       startRevision,
-    } as unknown as ReturnType<typeof useRevisionStore>)
+    })
 
     vi.mocked(resolvePendingMarkdownForSingleBlock).mockImplementation(async () => ({
       kind: 'atomic-block',
@@ -512,9 +512,9 @@ describe('batchApplyUpdatePendingRevisions', () => {
       const editor = createMockEditor(createDocWithRule())
       const before = editor.state.doc
       const startRevision = vi.fn()
-      vi.mocked(useRevisionStore).mockReturnValue({
+      vi.mocked(getRevisionState).mockReturnValue({
       startRevision,
-    } as unknown as ReturnType<typeof useRevisionStore>)
+    })
       vi.mocked(resolvePendingMarkdownForSingleBlock).mockResolvedValue({
         kind: 'content-block',
         source: 'runtime-single-block',
