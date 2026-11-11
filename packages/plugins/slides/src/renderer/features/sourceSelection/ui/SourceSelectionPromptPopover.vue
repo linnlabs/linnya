@@ -61,10 +61,8 @@ import {
   EnterIcon,
   LinnyaIcon,
 } from '@linnya/renderer-ui/icons';
-import type {
-  SourceSelectableElement,
-  SourceSelectionPromptPosition,
-} from '..';
+import type { SourceSelectableElement } from '../definitions/sourceSelectionTypes';
+import type { SourceSelectionPromptPosition } from '../functions/sourceSelectionPromptPosition';
 
 const props = defineProps<{
   targets: readonly SourceSelectableElement[];

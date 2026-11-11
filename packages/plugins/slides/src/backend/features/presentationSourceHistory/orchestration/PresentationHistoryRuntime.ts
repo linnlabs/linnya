@@ -1,7 +1,7 @@
 import { DocumentHistoryError, planDocumentVersionRetention } from '@plugin/backend/documentHistory';
 import type { DocumentVersionRestoreRequest, DocumentVersionSummary } from '@app/schemas';
 import type { SlidesManualEditExpectedBase, DeckSpec, PresentationRenderModel } from '@plugin/slides/shared';
-import { PresentationStaleBaseError, type PresentationRepositoryPort } from '../../../persistence';
+import { PresentationStaleBaseError, type PresentationRepositoryPort } from '../../../persistence/definitions/presentationRepository';
 import { PresentationHistoryRepository } from '../infrastructure/PresentationHistoryRepository';
 import { PresentationRevisionScope, type PresentationRevisionAsset } from './PresentationRevisionScope';
 import { planPresentationSourceCompaction } from '../functions/planPresentationSourceCompaction';

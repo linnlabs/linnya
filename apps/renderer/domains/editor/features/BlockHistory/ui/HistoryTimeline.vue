@@ -74,7 +74,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
-import { useBlockHistoryStore, type BlockVersion } from '../index'
+import { useBlockHistoryStore } from '../store/useBlockHistoryStore'
+import type { BlockVersion } from '../../../../../shared/ipc/blockHistoryGateway'
 import { ActionButtons } from '@linnya/renderer-ui'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
 import { useHistoryTime } from '@app/localization'

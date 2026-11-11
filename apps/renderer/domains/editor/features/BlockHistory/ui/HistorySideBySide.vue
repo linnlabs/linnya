@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { useBlockHistoryStore } from '../index'
+import { useBlockHistoryStore } from '../store/useBlockHistoryStore'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { createHistoryEditorOptions } from '../utils/createHistoryEditor'
 import { buildHistoryVersionDocument } from '../functions/buildHistoryVersionDocument'

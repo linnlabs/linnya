@@ -64,3 +64,5 @@
 - 依赖图使用各运行面的正式解析配置，区分静态值导入、类型导入和动态加载；记录未解析的边。一个互相可达的模块组不是一个已复现的运行故障，树形组件递归和 parser 递归必须结合 owner 合同判断。
 - 同步 I/O、空 catch、异步 store、全局点击监听是复核入口，不能直接批量替换。启动读取、SQLite 同步事务、生命周期清理与可取消等待各有自己的语义。
 - 先确认调用方、输入、输出、默认值、失败与取消行为，再决定复用范围。相似的 schema 声明、平台 adapter 和独立测试不能为了降低比例被强行合并；规则相同的则应回到现有 owner。
+
+已完成解环的 BlockHistory、transcription、Slides 源码历史/持久化与来源选择模块由 `pnpm run guard:module-barrel-boundary` 约束：模块内部依赖具体 store、functions 或 definitions，不从聚合 index 回引。示例可演示公共入口；正常 parser/树形渲染递归不在此门禁范围。

@@ -354,7 +354,8 @@
     "release:checklist": "node --import tsx ./scripts/release/orchestration/printUploadChecklist.ts",
     "guard:canvas": "pnpm --filter @plugin/canvas guard",
     "package:plugin:canvas": "pnpm --dir packages/plugins/canvas run package:artifact",
-    "smoke:plugin:canvas:artifact": "pnpm run build:schemas && pnpm run package:plugin:canvas && node packages/plugins/canvas/scripts/smoke-artifact.mjs"
+    "smoke:plugin:canvas:artifact": "pnpm run build:schemas && pnpm run package:plugin:canvas && node packages/plugins/canvas/scripts/smoke-artifact.mjs",
+    "guard:module-barrel-boundary": "node --import tsx scripts/guards/module-barrel-boundary-guard.ts"
   },
   "keywords": [],
   "author": "",

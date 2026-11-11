@@ -65,3 +65,5 @@ draft base 必保；存在失败草稿时仍可压缩源码，但暂停资产释
 源码差异压缩的搜索预算为 10ms；到时 diff 算法产生更粗但仍精确可恢复的替换记录，再按体积决定 patch/checkpoint。定期 checkpoint 和累计体积已达阈值时直接保存全文，不先计算无用 diff。该预算限制压缩搜索，不是整个提交的硬超时，不会丢弃用户修改。重建继续校验 base/source hash。
 
 `PresentationRevisionScope` 是文稿写入口的必需依赖；人工编辑和普通源码写入都使用带作用域的 builder，不向调用方暴露 raw builder 的避锁约定。
+
+持久化与历史运行时的窄协作合同：仓储直接消费 `functions/presentationSourceRevisionCodec.ts` 的纯编码能力与 `definitions/presentationSourceRevision.ts` 的版本合同；历史运行时直接消费 persistence/definitions 的错误与端口。两边不经对方的聚合 index 引入整套运行时。

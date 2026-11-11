@@ -47,6 +47,7 @@ jobs:
           pnpm run guard:model-inference-boundary
           pnpm run guard:provider-package-boundary
           pnpm run guard:no-empty-catch
+          pnpm run guard:module-barrel-boundary
           pnpm run guard:shared-implementations
           pnpm run guard:renderer-module-resolution
           pnpm run lint:style

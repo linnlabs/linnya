@@ -2,7 +2,7 @@ import type { DeckSpec, TemplateSpec, TemplateSummary } from '@plugin/slides/sha
 import type { SlidesDocumentBuildState } from '@plugin/slides/shared/documentSource';
 import type { DocumentVersionSummary } from '@app/schemas';
 import type { PresentationBuildFailureCode } from '../../features/presentationBuildFailure';
-import type { PresentationRevisionStorageKind } from '../../features/presentationSourceHistory/index.js';
+import type { PresentationRevisionStorageKind } from '../../features/presentationSourceHistory/definitions/presentationSourceRevision.js';
 
 export type PresentationRevisionOrigin =
   | 'create'

@@ -13,10 +13,8 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import busboy from 'busboy';
-import { 
-  TranscriptionService,
-  LongAudioTranscriptionService,
-} from '../index';
+import { TranscriptionService } from '../transcriptionService';
+import { LongAudioTranscriptionService } from '../longAudioTranscriptionService';
 import { Logger } from '@shared/logger';
 import {
   TranscriptionAudioFileMissingError,

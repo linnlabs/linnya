@@ -16,10 +16,9 @@ import {
   buildPresentationSourceRevision,
   hashPresentationSource,
   normalizePresentationSource,
-  PresentationSourceConsistencyError,
   reconstructPresentationSource,
-  type PresentationStoredSourceRevision,
-} from '../../features/presentationSourceHistory/index.js';
+} from '../../features/presentationSourceHistory/functions/presentationSourceRevisionCodec.js';
+import { PresentationSourceConsistencyError, type PresentationStoredSourceRevision } from '../../features/presentationSourceHistory/definitions/presentationSourceRevision.js';
 import {
   PresentationStaleBaseError,
   PresentationDraftConflictError,
