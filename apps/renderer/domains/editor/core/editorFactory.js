@@ -12,7 +12,7 @@ import { Editor } from '@tiptap/vue-3'
 import { isPendingProjectionBatch } from '../features/Revision/runtime'
 import { nextTick } from 'vue'
 import { createMarkdownSerializer } from '../../../shared/utils/markdownSerializer'
-import { countTextUnitsZhEn } from '../../../shared/utils/textUnits'
+import { countTextUnitsZhEn } from '@app/schemas'
 import { useEditorDocumentSettingsStore } from '../features/DocumentSettings'
 import { resolveCurrentEditorMessage } from '../functions/resolveCurrentEditorMessage'
 import { buildEditorMarkdownSerializerLabels } from '../functions/markdownSerializerLabels'
@@ -45,7 +45,7 @@ import '../features/Revision/orchestration/devRevisionTest'
 import '../features/RenderVirtualization/debug/renderVirtualizationDiagnostics'
 
 // 中文备注：文本长度口径必须统一，禁止在各处复制粘贴不同实现。
-// 这里统一使用 shared/utils/textUnits.ts：中文按“字”，英文/数字按“词”。
+// 这里统一使用 @app/schemas 的文本单位合同：中文按“字”，英文/数字按“词”。
 
 // ================================================================================
 // 编辑器创建函数

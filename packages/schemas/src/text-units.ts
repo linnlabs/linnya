@@ -1,21 +1,4 @@
-/**
- * @file src/shared/utils/textUnits.ts
- *
- * @description
- * 统一的“文本长度单位”统计与截断工具（用于知识库 chunk 切分 & deep_search 拼装预览）。
- *
- * 设计目标：
- * - 统一口径：同一段文本在不同模块（切分/拼装/展示）长度判断结果一致；
- * - 面向中文/英文：中文按“汉字数”计，英文按“单词数”计；
- * - 稳健：对混合文本、标点、空白、emoji 等字符有确定性行为，且不会陷入死循环。
- *
- * 计数规则（当前版本）：
- * - 中文（汉字，CJK Unified Ideographs）：每个汉字计 1；
- * - 英文/数字：连续的 [A-Za-z0-9] 视为一个“词”，计 1；
- * - 空白与常见标点：不计数（0）；
- * - 其他字符（例如 emoji、其他语种字母）：计 1（保证不会出现“无单位但无限长”的文本）。
- */
-
+/** 前后端共同的字/词计量合同；按 code point 计汉字与其他字符，连续 ASCII 字母/数字计一个词。 */
 export type TextUnitKind = 'han' | 'en_word' | 'other' | 'ignored';
 
 function isWhitespace(ch: string): boolean {
@@ -52,16 +35,17 @@ function isHanCodePoint(cp: number): boolean {
 /**
  * 常见标点判断：不计数。
  * - 这里仅覆盖最常见的一批，避免误把正文符号计入长度；
- * - 对“未覆盖的符号”按 other=1 计，保证稳定。
+ * - 对未覆盖的符号按 other=1 计，保证稳定。
  */
+// 模块级常量：避免每次调用 isCommonPunctuation 时重复创建 Set
+const COMMON_PUNCT_SET: ReadonlySet<string> = new Set<string>([
+  '。', '，', '、', '；', '：', '？', '！', '（', '）', '【', '】', '《', '》', '“', '”', '‘', '’', '—', '…',
+  '.', ',', ';', ':', '?', '!', '(', ')', '[', ']', '{', '}', '"', "'", '-', '–', '—',
+  '/', '\\', '|', '@', '#', '$', '%', '^', '&', '*', '+', '=', '<', '>', '~', '`',
+]);
+
 function isCommonPunctuation(ch: string): boolean {
-  // 中英文标点 + 常见符号
-  const punct = new Set<string>([
-    '。', '，', '、', '；', '：', '？', '！', '（', '）', '【', '】', '《', '》', '“', '”', '‘', '’', '—', '…',
-    '.', ',', ';', ':', '?', '!', '(', ')', '[', ']', '{', '}', '"', '\'', '-', '–', '—',
-    '/', '\\', '|', '@', '#', '$', '%', '^', '&', '*', '+', '=', '<', '>', '~', '`',
-  ]);
-  return punct.has(ch);
+  return COMMON_PUNCT_SET.has(ch);
 }
 
 /**
@@ -163,7 +147,7 @@ export function sliceTextByUnitsZhEn(text: string, maxUnits: number): string {
 
     // 其他字符：计 1
     if (units + 1 > maxUnits) {
-      // 如果刚好处在英文单词内部（理论上不会，因为 ascii 分支已 continue），做一次防御性回退
+      // 如果刚好处在英文单词内部（理论上不会，因为 ascii 分支已 continue），回退到单词开始前
       if (asciiWordStartedAt >= 0) return text.slice(0, asciiWordStartedAt);
       return text.slice(0, i);
     }

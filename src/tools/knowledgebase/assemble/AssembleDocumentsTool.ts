@@ -24,7 +24,7 @@ import {
   type AssembleDocumentsResultData,
 } from '@app/schemas';
 import type { DocumentSoT } from '../../../features/knowledge-base/domain/block';
-import { sliceTextByUnitsZhEn } from '../../../shared/utils/textUnits';
+import { sliceTextByUnitsZhEn } from '@app/schemas';
 
 export class AssembleDocumentsTool extends BaseTool {
   readonly name = 'assemble_documents';

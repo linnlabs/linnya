@@ -19,6 +19,13 @@ export interface SharedImplementationRule {
 
 export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = [
   {
+    id: 'SCHEMAS-text-units',
+    pattern: /\b(?:function|const)\s+(?:countTextUnitsZhEn|sliceTextByUnitsZhEn)\b/u,
+    // Host contract 只有 declare 签名；运行实现仍只有 schemas 一份。
+    owners: ['packages/schemas/', 'packages/plugin-host-contract/backend/textUnitRuntime.ts'],
+    use: '字数与按单位截短使用 @app/schemas 的 countTextUnitsZhEn / sliceTextByUnitsZhEn。',
+  },
+  {
     id: 'LOCALIZATION-byte-size',
     pattern: /\b(?:function|const)\s+(?:formatFileSize|formatBytes|formatPluginSize|formatStorageBytes)\b/u,
     scope: ['apps/renderer/'],

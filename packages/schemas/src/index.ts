@@ -216,3 +216,5 @@ export * from './document-preview';
 export * from './document-image-asset';
 
 export * from './document-assets';
+
+export { countTextUnitsZhEn, sliceTextByUnitsZhEn, type TextUnitKind } from './text-units';

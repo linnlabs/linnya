@@ -2,7 +2,7 @@ import {
   HistoricalSharedMemoryWriteArgsSchema,
   HistoricalSharedMemoryWriteResultSchema,
 } from '@app/schemas';
-import { countTextUnitsZhEn } from '@/shared/utils/textUnits';
+import { countTextUnitsZhEn } from '@app/schemas';
 import type { ToolPresentationProjection, ToolPresentationProjectorInput } from '../../types';
 import { createConversationToolTitleDescriptor } from '../../functions/createConversationToolTitleDescriptor';
 import type { SharedMemoryWritePresentationData } from '../definitions/sharedMemoryWritePresentation';

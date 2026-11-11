@@ -13,7 +13,7 @@ import path from 'path';
 import iconv from 'iconv-lite';
 import { Logger } from 'src/shared/logger';
 import { generateBlockId as generateDeterministicBlockId, generateSubBlockId } from 'src/shared/utils/idUtils';
-import { countTextUnitsZhEn, sliceTextByUnitsZhEn } from 'src/shared/utils/textUnits';
+import { countTextUnitsZhEn, sliceTextByUnitsZhEn } from '@app/schemas';
 import { BlockType, type Block, type DocumentSoT } from '../domain/block';
 import type { ParsedContentBlock } from './ingestionTypes';
 // import { IngestionProgressUpdater } from './progressUpdater';

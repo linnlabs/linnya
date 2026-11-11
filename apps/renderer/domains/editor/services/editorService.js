@@ -2,7 +2,7 @@
 // 该文件封装了与编辑器状态和文件内容交互的核心业务逻辑。
 
 import { nextTick } from 'vue';
-import { countTextUnitsZhEn } from '../../../shared/utils/textUnits';
+import { countTextUnitsZhEn } from '@app/schemas';
 import { useEditorDocumentSettingsStore } from '../features/DocumentSettings';
 // Pending Revisions 相关逻辑通过门面模块集中导出，保持调用方路径简洁
 import { beginMarkdownDocumentSession, loadMarkdownDocumentSession } from '../features/document-session';
@@ -32,7 +32,7 @@ import {
 import { resetOutlinePresence } from '../features/outline/store/useOutlineRuntimeState';
 
 // 中文备注：文本长度口径必须统一，禁止在各处复制粘贴不同实现。
-// 这里统一使用 shared/utils/textUnits.ts：中文按“字”，英文/数字按“词”。
+// 这里统一使用 @app/schemas 的文本单位合同：中文按“字”，英文/数字按“词”。
 
 /** 装载必须可等待：文件切换直到基线、Pending 和 UI 状态全部安装后才完成。 */
 export async function loadDocumentFromDatabase({ editor, stores, documentId, documentName, throwIfCancelled }) {

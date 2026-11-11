@@ -1,4 +1,4 @@
-import { sliceTextByUnitsZhEn } from '../../../shared/utils/textUnits';
+import { sliceTextByUnitsZhEn } from '@app/schemas';
 import {
   TOOL_OUTPUT_READ_MAX_LINES,
   TOOL_OUTPUT_READ_MAX_UNITS,

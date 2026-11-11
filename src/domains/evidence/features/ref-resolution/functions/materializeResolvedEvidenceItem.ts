@@ -1,4 +1,4 @@
-import { sliceTextByUnitsZhEn } from '../../../../../shared/utils/textUnits';
+import { sliceTextByUnitsZhEn } from '@app/schemas';
 import type {
   CompleteEvidenceCandidate,
   ResolvedEvidenceItem,
