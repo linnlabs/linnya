@@ -22,7 +22,12 @@ import {
   resolveShapeTextLayout,
   stripHash,
 } from './visual/presentationVisualDefaults';
-import { resolveGeneratedTableLayout, resolveTableDefaultFills } from './table';
+import {
+  resolveGeneratedTableLayout,
+  resolveTableDefaultFills,
+  resolveTablePageColor,
+  resolveTableTextColor,
+} from './table';
 import { resolveImageAsset, toPptxImageSource } from './assets/imageAssetResolver';
 import { buildPptxImageProps } from './assets/pptxImageProps';
 import { PptxPackageSanitizer } from './pptx/PptxPackageSanitizer';
@@ -88,8 +93,9 @@ export class StructuredCompiler {
     }
 
     // 元素
+    const pageColor = resolveTablePageColor(spec.background);
     for (const el of spec.elements) {
-      this.compileElement(slide, el, inst, theme, paintContext, svgGraphicContext, formulaContext, chartContext);
+      this.compileElement(slide, el, inst, theme, paintContext, svgGraphicContext, formulaContext, chartContext, pageColor);
     }
 
     // 演讲者备注
@@ -144,6 +150,7 @@ export class StructuredCompiler {
     svgGraphicContext?: SvgGraphicCompileContext,
     formulaContext?: FormulaPptxCompileContext,
     chartContext?: ChartPptxContext,
+    pageColor?: string,
   ): void {
     switch (el.type) {
       case 'title':
@@ -162,7 +169,7 @@ export class StructuredCompiler {
         addNativeChart(slide, el, theme, chartContext);
         break;
       case 'table':
-        this.addTable(slide, el, theme);
+        this.addTable(slide, el, theme, pageColor);
         break;
       case 'image':
         this.addImage(slide, el);
@@ -315,8 +322,10 @@ export class StructuredCompiler {
     slide: PptxGenJS.Slide,
     el: Extract<StructuredElement, { type: 'table' }>,
     theme: ThemeSpec | undefined,
+    pageColor: string | undefined,
   ): void {
-    const fills = resolveTableDefaultFills(theme?.colors);
+    const colors = theme?.colors;
+    const fills = resolveTableDefaultFills(colors, pageColor);
     const layout = resolveGeneratedTableLayout({
       width: el.position.w, height: el.position.h, headers: el.headers, rows: el.rows,
       fontSize: typeof el.options?.fontSize === 'number' ? el.options.fontSize : undefined,
@@ -331,6 +340,7 @@ export class StructuredCompiler {
           text: h,
           options: {
             bold: true,
+            color: stripHash(resolveTableTextColor(fills.header, colors), 'table.headerColor'),
             fill: { color: stripHash(fills.header, 'table.headerFill') },
             fontSize: layout.headerFontSize,
             margin: layout.padding,
@@ -342,7 +352,7 @@ export class StructuredCompiler {
 
     // 数据行
     for (const row of el.rows) {
-      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, padding: layout.padding, fill: fills.body })));
+      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, padding: layout.padding, fill: fills.body, colors })));
     }
 
     // PptxGenJS 类型上 TableProps 未包含 fit（fit 在 TextPropsOptions）；运行时表格 opt 会下发到单元格文本体，库会读取 options.fit
@@ -363,14 +373,16 @@ export class StructuredCompiler {
 
   private mapTableCell(
     cell: DomainTableCell,
-    defaults: { fontSize: number; padding: number; fill: string },
+    defaults: { fontSize: number; padding: number; fill: string; colors: Readonly<Record<string, string>> | undefined },
   ): PptxGenJS.TableCell {
     const opts: PptxGenJS.TableCellProps = {
       ...mapTextParagraphStyleToProps(cell.style),
       fontSize: cell.style?.fontSize ?? defaults.fontSize,
       margin: defaults.padding,
     };
-    opts.fill = { color: stripHash(cell.fill ?? defaults.fill, 'table.fill') };
+    const fill = cell.fill ?? defaults.fill;
+    opts.fill = { color: stripHash(fill, 'table.fill') };
+    if (!cell.style?.color) opts.color = stripHash(resolveTableTextColor(fill, defaults.colors), 'table.color');
     if (cell.colspan != null) opts.colspan = cell.colspan;
     if (cell.rowspan != null) opts.rowspan = cell.rowspan;
     return { text: cell.text, options: opts };

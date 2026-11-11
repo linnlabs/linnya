@@ -14,7 +14,7 @@ import type {
 import {
   resolveGeneratedRenderChartType,
 } from '../../visual/presentationVisualDefaults';
-import { resolveGeneratedTableLayout } from '../../table';
+import { resolveGeneratedTableLayout, resolveTableDefaultFills, resolveTableTextColor } from '../../table';
 import {
   resolveChartLegend,
   resolveChartType,
@@ -246,20 +246,24 @@ export function mapStructuredTableNode(
     left: tableBorder,
   } : undefined;
 
+  const fills = resolveTableDefaultFills(defaults.themeColors, defaults.pageColor);
   for (const placement of layout.cells) {
     const cell = placement.cell;
+    const fill = placement.isHeader ? fills.header : cell.fill ?? fills.body;
+    const style = placement.isHeader ? { bold: true, fontSize: layout.headerFontSize } : cell.style;
     cells.push({
       row: placement.row,
       col: placement.column,
       rowSpan: cell.rowspan,
       colSpan: cell.colspan,
       paragraphs: [{
-        runs: textStyleToRuns(cell.text, placement.isHeader
-          ? { bold: true, fontSize: layout.headerFontSize }
-          : cell.style, defaults.minorFontFamily, layout.fontSize),
+        runs: textStyleToRuns(cell.text, {
+          ...style,
+          color: style?.color ?? resolveTableTextColor(fill, defaults.themeColors),
+        }, defaults.minorFontFamily, layout.fontSize),
         lineSpacing: resolveTextStyleLineSpacing(cell.style?.lineSpacing),
       }],
-      fill: placement.isHeader ? defaults.tableFills.header : cell.fill ?? defaults.tableFills.body,
+      fill,
       ...(cellBorders ? { borders: cellBorders } : {}),
       padding: { top: layout.padding, right: layout.padding, bottom: layout.padding, left: layout.padding },
       verticalAlign: 'middle',

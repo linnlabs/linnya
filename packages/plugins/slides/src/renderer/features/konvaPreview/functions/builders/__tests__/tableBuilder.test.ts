@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TableRenderNode } from '../../../../../types/render';
-import { buildCellBorderConfig, buildCellTextNode } from '../tableBuilder';
+import { buildCellBorderConfig, buildCellTextNode, buildTableBackgroundConfig } from '../tableBuilder';
 import { buildTableCellLayouts } from '../../konvaTable';
 
 function makeTable(): TableRenderNode {
@@ -51,5 +51,14 @@ describe('tableBuilder shared text layout contract', () => {
       stroke: '#94A3B8',
       strokeWidth: 1,
     });
+  });
+});
+
+describe('tableBuilder table background', () => {
+  it('有格子没写底色时垫白底；每格都有底色时不垫，免得接缝透出白线', () => {
+    const table = makeTable();
+    expect(buildTableBackgroundConfig(table).fill).toBe('#FFFFFF');
+    const filled = { ...table, cells: table.cells.map(cell => ({ ...cell, fill: '#000000' })) };
+    expect(buildTableBackgroundConfig(filled).fill).toBeUndefined();
   });
 });

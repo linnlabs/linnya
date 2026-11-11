@@ -21,6 +21,7 @@ import type {
   TextRenderNode,
 } from '@plugin/slides/shared';
 import { buildCanonicalEditableTarget } from './RenderModelEditable.js';
+import { resolveTablePageColor } from '../../table';
 import {
   makeBaseNode,
   relativizeGroupChildren,
@@ -61,7 +62,12 @@ export function mapCanonicalSlide(
       : {
           paint: slide.backgroundPaint ?? { type: 'solid', color: '#FFFFFF' },
         },
-    elements: mapCanonicalElements(slide.elements, spec, defaults),
+    elements: mapCanonicalElements(slide.elements, spec, {
+      ...defaults,
+      pageColor: spec?.background
+        ? resolveTablePageColor(spec.background)
+        : slide.backgroundPaint?.type === 'solid' ? slide.backgroundPaint.color : '#FFFFFF',
+    }),
   };
 }
 

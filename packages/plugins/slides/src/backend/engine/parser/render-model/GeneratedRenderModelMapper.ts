@@ -20,6 +20,7 @@ import type {
   TextRenderNode,
 } from '@plugin/slides/shared';
 import { buildGeneratedEditableTarget } from './RenderModelEditable.js';
+import { resolveTablePageColor } from '../../table';
 import {
   makeBaseNode,
   relativizeGroupChildren,
@@ -66,7 +67,12 @@ export function mapGeneratedSlide(
     index,
     layoutKey: resolveGeneratedLayoutKey(entry.spec),
     background: resolveBackground(entry.spec),
-    elements: mapGeneratedElements(entry.slideNumber, entry.spec, defaults, svgAssets),
+    elements: mapGeneratedElements(
+      entry.slideNumber,
+      entry.spec,
+      { ...defaults, pageColor: resolveTablePageColor(entry.spec.background) },
+      svgAssets,
+    ),
   };
 }
 

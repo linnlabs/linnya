@@ -19,12 +19,14 @@ export function buildTableGroupConfig(node: TableRenderNode) {
 }
 
 export function buildTableBackgroundConfig(node: TableRenderNode) {
+  // 每格都有底色时不再垫白底：格子接缝处会透出白线，深色页上很明显。
+  const everyCellFilled = node.cells.length > 0 && node.cells.every((cell) => cell.fill != null);
   return {
     x: 0,
     y: 0,
     width: node.box.w * INCHES_TO_PX,
     height: node.box.h * INCHES_TO_PX,
-    fill: node.pptxHints?.tableFill ?? TABLE_DEFAULT_BACKGROUND_FILL,
+    fill: node.pptxHints?.tableFill ?? (everyCellFilled ? undefined : TABLE_DEFAULT_BACKGROUND_FILL),
   };
 }
 
