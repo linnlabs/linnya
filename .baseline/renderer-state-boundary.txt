@@ -18,9 +18,6 @@ STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.st
 STORE-ASYNC	apps/renderer/domains/editor/blocks/LatexBlock/store/latexEditor.js	cancelEdit#1
 STORE-ASYNC	apps/renderer/domains/editor/blocks/LatexBlock/store/latexEditor.js	hidePanel#1
 STORE-ASYNC	apps/renderer/domains/editor/blocks/LatexBlock/store/latexEditor.js	submitCurrentLatex#1
-STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	addCustomAgent#1
-STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	loadCustomAgents#1
-STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	updateCustomAgent#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionActionPerf.ts	measureAsync#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionPendingPerf.ts	measureRevisionPendingStageAsync#1
 STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/history/store/historyLoaderStore.ts	../orchestration/historyWindowTailLoader

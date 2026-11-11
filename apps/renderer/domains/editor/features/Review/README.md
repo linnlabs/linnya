@@ -93,7 +93,7 @@ Review 必须走 Agent 模式（`options.mode='agent'`），因为：
 ### 总体数据流（前端）
 
 - `ReviewSetup.vue` 点击“开始审阅” →
-- `reviewStore.startReview()`：
+- `useReviewActions().startReview()`：
   - 进入 `processing` 状态
   - 生成 `currentReviewRunId`
   - 向 window 派发事件：**`review-started`**
@@ -241,3 +241,5 @@ Review 批注由后端工具批量附加到目标 root block；前端读取最�
   - 自定义角色：改 `reviewAgentsService.ts`（agents IPC）与 `ReviewAgentCreator.vue`
 - **调整分段策略**：改 `config/contextConfig.ts`（例如 `maxBlocksPerChunk`）
 - **调整调用/并发策略**：改 `ReviewSidebar.vue` 的执行循环；当前严格顺序用于保证每次工具调用都基于上一版文档继续写入
+
+状态与流程边界：`store/reviewStore.ts` 仅同步保存状态；`runtime.ts` 按 Pinia 实例装配角色 IPC 和启动事件。自定义角色投影、合并与最多三个角色的选择规则位于 `functions/reviewAgentState.ts`；UI 保留原有 store selector 和同步编辑 action。
