@@ -14,7 +14,7 @@
 
 import type { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from 'prosemirror-model';
-import { useBlockIndexSnapshotStore } from '../../../../shared/stores/blockIndexSnapshotStore';
+import { registerBlockRefSnapshot } from '@/shared/block-references/orchestration/registerBlockRefSnapshot';
 
 export interface SetupBlockRefSnapshotSyncOptions {
   editor: Editor;
@@ -57,7 +57,6 @@ function collectRootBlockIds(editor: Editor): string[] {
  */
 export function setupBlockRefSnapshotSync(options: SetupBlockRefSnapshotSyncOptions): () => void {
   const { editor, getDocumentId, debounceMs = 300 } = options;
-  const snapshotStore = useBlockIndexSnapshotStore();
 
   let timer: ReturnType<typeof setTimeout> | null = null;
   let destroyed = false;
@@ -69,7 +68,7 @@ export function setupBlockRefSnapshotSync(options: SetupBlockRefSnapshotSyncOpti
     }
 
     const blockIds = collectRootBlockIds(editor);
-    await snapshotStore.register(documentId, blockIds);
+    await registerBlockRefSnapshot(documentId, blockIds);
   };
 
   const scheduleSync = () => {

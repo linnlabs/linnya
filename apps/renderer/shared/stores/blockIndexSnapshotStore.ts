@@ -18,46 +18,15 @@
  */
 
 import { defineStore } from 'pinia';
-import { generateRefId, normalizeRef } from '../utils/refIdGenerator';
+import { normalizeRef } from '../utils/refIdGenerator';
+import type {
+  BlockRefSnapshot,
+  BlockIndexSnapshotState,
+} from '../block-references/definitions/blockRefSnapshot';
 
 // ============================================================================
 // 类型定义
 // ============================================================================
-
-/**
- * ref 快照结构（仅前端内存使用）
- */
-export interface BlockRefSnapshot {
-  documentId: string;
-  createdAt: number;
-  /**
-   * 当前文档的 rootBlockId 列表快照。
-   *
-   * 说明：
-   * - 解析 ref 时理论上只需要 refToBlockId；
-   * - 但为了调试与可观测性（日志 sample / blocks 数量），这里保留一份 blockIds；
-   * - 该字段必须与 register(documentId, blockIds) 的入参保持一致，否则会导致运行期异常。
-   */
-  blockIds: string[];
-  /** ref -> blockId */
-  refToBlockId: Map<string, string>;
-}
-
-/**
- * Store 状态
- */
-interface BlockIndexSnapshotState {
-  /**
-   * 快照存储：key 为 documentId
-   * 前端通常同时只编辑一个文档，所以简单用 documentId 作为 key
-   */
-  snapshots: Map<string, BlockRefSnapshot>;
-
-  /**
-   * TTL 超时时间（毫秒），默认 10 分钟
-   */
-  ttlMs: number;
-}
 
 // ============================================================================
 // Pinia Store 定义
@@ -66,14 +35,14 @@ interface BlockIndexSnapshotState {
 export const useBlockIndexSnapshotStore = defineStore('blockIndexSnapshot', {
   state: (): BlockIndexSnapshotState => ({
     snapshots: new Map(),
-    ttlMs: 10 * 60 * 1000 // 10 分钟
+    ttlMs: 10 * 60 * 1000, // 10 分钟
   }),
 
   getters: {
     /**
      * 获取当前存储的快照数量
      */
-    snapshotCount: (state) => state.snapshots.size
+    snapshotCount: state => state.snapshots.size,
   },
 
   actions: {
@@ -83,35 +52,8 @@ export const useBlockIndexSnapshotStore = defineStore('blockIndexSnapshot', {
      * @param documentId - 文档 ID
      * @param blockIds - 当前文档的 blockId 列表（rootBlock.attrs.id）
      */
-    async register(documentId: string, blockIds: string[]): Promise<void> {
-      const refToBlockId = new Map<string, string>();
-
-      for (const blockId of blockIds) {
-        const ref = await generateRefId(blockId);
-        const normalized = normalizeRef(ref);
-
-        const existed = refToBlockId.get(normalized);
-        if (existed && existed !== blockId) {
-          // 极低概率事件：同一文档内 ref 碰撞
-          throw new Error(
-            `[blockIndexSnapshotStore] ref 碰撞：${normalized} 同时对应多个 blockId（${existed}, ${blockId}）。请增大 ref 长度或联系开发者。`
-          );
-        }
-        refToBlockId.set(normalized, blockId);
-      }
-
-      const snapshot: BlockRefSnapshot = {
-        documentId,
-        createdAt: Date.now(),
-        // 重要：保留一份数组副本，避免外部对入参数组进行原地修改导致快照与日志不一致
-        blockIds: [...blockIds],
-        refToBlockId
-      };
-
-      this.snapshots.set(documentId, snapshot);
-      console.log(
-        `[blockIndexSnapshotStore] 注册 ref 快照: documentId=${documentId}, blocks=${blockIds.length}`
-      );
+    setSnapshot(snapshot: BlockRefSnapshot): void {
+      this.snapshots.set(snapshot.documentId, snapshot);
     },
 
     /**
@@ -156,7 +98,9 @@ export const useBlockIndexSnapshotStore = defineStore('blockIndexSnapshot', {
       const normalized = normalizeRef(ref);
       const blockId = snapshot.refToBlockId.get(normalized);
       if (!blockId) {
-        console.warn(`[blockIndexSnapshotStore] ref ${normalized} 不存在于 documentId=${documentId} 的快照中`);
+        console.warn(
+          `[blockIndexSnapshotStore] ref ${normalized} 不存在于 documentId=${documentId} 的快照中`
+        );
         return null;
       }
 
@@ -212,27 +156,6 @@ export const useBlockIndexSnapshotStore = defineStore('blockIndexSnapshot', {
      */
     setTtl(ttlMs: number): void {
       this.ttlMs = ttlMs;
-    }
-  }
+    },
+  },
 });
-
-// ============================================================================
-// 便捷工具函数
-// ============================================================================
-
-/**
- * 注册 ref 快照的便捷函数（不需要先获取 store 实例）
- */
-export async function registerBlockRefSnapshot(
-  documentId: string,
-  blockIds: string[]
-): Promise<void> {
-  await useBlockIndexSnapshotStore().register(documentId, blockIds);
-}
-
-/**
- * 解析 blockId 的便捷函数
- */
-export function resolveBlockIdFromRefSnapshot(documentId: string, ref: string): string | null {
-  return useBlockIndexSnapshotStore().resolveBlockId(documentId, ref);
-}
