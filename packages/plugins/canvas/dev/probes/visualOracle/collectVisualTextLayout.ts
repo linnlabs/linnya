@@ -1,16 +1,31 @@
 /// <reference lib="es2022.intl" />
 import { VisualTextLayoutSchema, type VisualColor, type VisualRect, type VisualTextLayout, type VisualDocumentVector } from './definitions';
 import { readVisualFontFacts } from './readVisualFontFacts';
+import { compositeVisualColor, parseVisualColor, type VisualParsedColor } from './visualColor';
 
-function rgb(value: string): VisualColor {
-  const channels = value.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
-  if (!channels || (channels[4] !== undefined && Number(channels[4]) !== 1)) throw new Error(`visual_opaque_color_required:${value}`);
-  return [Number(channels[1]), Number(channels[2]), Number(channels[3])];
+function readColor(value: string): VisualParsedColor {
+  const color = parseVisualColor(value);
+  if (!color) throw new Error(`visual_color_unsupported:${value}`);
+  return color;
 }
+function rgb(value: string): VisualColor {
+  const color = readColor(value);
+  if (color.alpha !== 1) throw new Error(`visual_opaque_color_required:${value}`);
+  return color.rgb;
+}
+/** 半透明底色按 source-over 叠到下层实际底色上，得到肉眼看到的颜色。 */
 function background(element: Element, root: HTMLElement, paper: VisualColor): VisualColor {
+  const under = () => (element === root || !element.parentElement ? paper : background(element.parentElement, root, paper));
   const value = getComputedStyle(element).backgroundColor;
-  if (value !== 'rgba(0, 0, 0, 0)' && value !== 'transparent') return rgb(value);
-  return element === root || !element.parentElement ? paper : background(element.parentElement, root, paper);
+  if (value === 'transparent') return under();
+  const color = readColor(value);
+  if (color.alpha === 1) return color.rgb;
+  return color.alpha === 0 ? under() : compositeVisualColor(color, under());
+}
+/** 文字与图标色若半透明，同样叠到它所在位置的实际底色上。 */
+function visibleColors(element: Element, root: HTMLElement, paper: VisualColor, color: string) {
+  const under = background(element, root, paper);
+  return { color: compositeVisualColor(readColor(color), under), background: under };
 }
 function localRect(rect: DOMRect, origin: DOMRect): VisualRect {
   return { x: rect.x - origin.x, y: rect.y - origin.y, width: rect.width, height: rect.height };
@@ -31,7 +46,7 @@ function readStyle(element: Element, root: HTMLElement, paper: VisualColor, comp
   }
   return { ...font, lineHeight: computed.lineHeight, letterSpacing: computed.letterSpacing, direction: computed.direction,
     fontFeatureSettings: computed.fontFeatureSettings, fontVariationSettings: computed.fontVariationSettings,
-    transform: computed.transform, visibility: computed.visibility, color: rgb(computed.color), background: background(element, root, paper),
+    transform: computed.transform, visibility: computed.visibility, ...visibleColors(element, root, paper, computed.color),
     fontAvailable };
 }
 function firstLine(listItem: HTMLElement, origin: DOMRect): VisualRect {
@@ -63,7 +78,7 @@ function collectMarkers(root: HTMLElement, origin: DOMRect, paper: VisualColor):
 
 function readVectorPaint(element: Element, root: HTMLElement, paper: VisualColor): VisualDocumentVector['paint'] {
   const style = getComputedStyle(element);
-  return { fill: style.fill, stroke: style.stroke, color: rgb(style.color), background: background(element, root, paper),
+  return { fill: style.fill, stroke: style.stroke, ...visibleColors(element, root, paper, style.color),
     strokeWidth: style.strokeWidth, strokeLinecap: style.strokeLinecap, strokeLinejoin: style.strokeLinejoin,
     strokeDasharray: style.strokeDasharray, strokeDashoffset: style.strokeDashoffset, vectorEffect: style.vectorEffect,
     opacity: style.opacity, fillOpacity: style.fillOpacity, strokeOpacity: style.strokeOpacity,

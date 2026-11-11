@@ -12,7 +12,7 @@ layout元数据使用version4，required `vectors` 独立于文字Range与marker
 
 唯一图形入口是正式文档标签的`[data-document-reference-icon] > svg[data-icon=document]`，由公开RendererUI DocumentIcon产生。collector记录真实SVG viewport的getBoundingClientRect、viewBox、子path身份及computed fill/stroke/width/transform/opacity等绘制属性，reference与每个真实paint clone逐项比较。它不冒充字簇，也不按旧失败像素位置推导区域。SVG [viewport与几何bbox](https://www.w3.org/TR/SVG/coords.html#BoundingBoxes)不是同一概念；这里使用实际DOM viewport，避免把路径形状当CSS排版盒。
 
-仅该已知24×24 viewBox、两条非空path、无fill、同角色色1单位round描边、无filter/mask/transform且不透明的真实图标获单色stroke→background模型资格。未知绘制属性保持失败/严格outside，不能因为某个SVG同样有AA就准入。图形像素独立接受原非空、质量比0.7–1.35、质心0.5物理像素、20%非AA结构、颜色8及90%角色内核/前景峰守卫；文字与图形重叠时未知/emoji仍严格优先。仅强资格图标的真实局部加入已有ROI，其他位置的outside通道8保持不变。缺图标、换蓝色、一物理像素位移均由独立真实raster源SVG损坏产生，必须分别由raster/Pixi的图形像素本身拒绝，不能只靠layout不同。旧Linux的15个outside红点仍按旧source保留，只有新metadata/真实采样能取得图形资格。
+仅该已知24×24 viewBox、两条非空path、无fill、round描边（宽度为正式样式的1.15单位，或此前原件的1单位）、无filter/mask/transform的真实图标获单色stroke→background模型资格。描边可为半透明墨色，但叠到底色上必须正好等于collector记录的可见颜色；文字色与底色同样按source-over叠成可见颜色后再比较。未知绘制属性保持失败/严格outside，不能因为某个SVG同样有AA就准入。图形像素独立接受原非空、质量比0.7–1.35、质心0.5物理像素、20%非AA结构、颜色8及90%角色内核/前景峰守卫；文字与图形重叠时未知/emoji仍严格优先。仅强资格图标的真实局部加入已有ROI，其他位置的outside通道8保持不变。缺图标、换蓝色、一物理像素位移均由独立真实raster源SVG损坏产生，必须分别由raster/Pixi的图形像素本身拒绝，不能只靠layout不同。旧Linux的15个outside红点仍按旧source保留，只有新metadata/真实采样能取得图形资格。
 
 原生`::marker`的`font-variant-numeric: tabular-nums`不能由CSS `font` shorthand表示，真实computed shorthand可以为空；[CSS Fonts规范](https://drafts.csswg.org/css-fonts-3/#font-prop)没有承诺所有长属性都可序列化为该简写。因此字体可用性查询始终从本元素的font-style/weight/size/family构成，原shorthand及variant/stretch等长属性仍保存，不使用shorthand或父字体回退。`fontAvailable`只是FontFaceSet查询事实，不能当作实际painted-face ID；同环境/字体样式资格与像素验证仍必须成立。
 
