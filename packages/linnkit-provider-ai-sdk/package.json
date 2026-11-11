@@ -68,6 +68,7 @@
     "tsx": "^4.20.3",
     "typescript": "^5.5.4",
     "vitest": "^4.1.12",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@linnya/foundation": "workspace:*"
   }
 }

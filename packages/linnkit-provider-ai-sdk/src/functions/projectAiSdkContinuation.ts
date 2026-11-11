@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import type { ProviderMetadata } from 'ai';
 import type { ProviderContinuation, SerializableJsonValue } from '@linnlabs/linnkit/contracts';
 import { AI_SDK_INFERENCE_CAPABILITY_IDS } from '../definitions/aiSdkCapabilityIds';
@@ -10,10 +11,6 @@ export type AiSdkContinuationTarget =
   | { readonly type: 'reasoning'; readonly text: string }
   | { readonly type: 'text'; readonly text: string }
   | { readonly type: 'tool_call'; readonly tool_call_id: string };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function readProviderRecord(
   metadata: ProviderMetadata | undefined,

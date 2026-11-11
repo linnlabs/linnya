@@ -1,3 +1,4 @@
+import { isObjectLike } from '@linnya/foundation';
 import { promises as fs } from 'node:fs';
 import {
   CONVERSATION_CONTROL_PROTOCOL_VERSION,
@@ -5,10 +6,6 @@ import {
   type ConversationControlConnectionDescriptor,
 } from '@app/schemas';
 import { LinnyaCliError } from '../definitions/cli';
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null;
-}
 
 function isMissingFile(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';
@@ -38,7 +35,7 @@ export async function readConnectionDescriptor(
     throw new LinnyaCliError('stale_connection', 'Linnya connection file is invalid', true);
   }
   if (
-    isRecord(decoded)
+    isObjectLike(decoded)
     && decoded.protocol_version !== undefined
     && decoded.protocol_version !== CONVERSATION_CONTROL_PROTOCOL_VERSION
   ) {

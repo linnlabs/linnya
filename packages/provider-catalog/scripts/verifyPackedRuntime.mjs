@@ -1,7 +1,8 @@
+import { linkPackedRuntimeDependencies } from '../../../scripts/test-runner/linkPackedRuntimeDependencies.mjs';
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -70,12 +71,8 @@ try {
   );
   assert.equal(packedManifest.private, true, 'Provider Catalog 必须保持 workspace 私有包身份');
 
-  // 打包制品只声明正式依赖；smoke 通过仓库已锁定依赖验证真实 Node 解析和入口格式。
-  symlinkSync(
-    path.join(packageRoot, 'node_modules'),
-    path.join(packedPackageRoot, 'node_modules'),
-    process.platform === 'win32' ? 'junction' : 'dir'
-  );
+  // 只提供 manifest 声明的运行依赖，开发依赖不能掩盖制品缺失。
+  linkPackedRuntimeDependencies(packageRoot, packedPackageRoot, packedManifest);
 
   const esmCatalogRuntime = await import(
     pathToFileURL(path.join(packedPackageRoot, 'dist/index.js'))

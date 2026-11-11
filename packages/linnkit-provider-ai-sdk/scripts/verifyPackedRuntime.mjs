@@ -1,3 +1,4 @@
+import { linkPackedRuntimeDependencies } from '../../../scripts/test-runner/linkPackedRuntimeDependencies.mjs';
 import { execFileSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
 import { createRequire } from 'node:module';
@@ -7,7 +8,6 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
-  symlinkSync,
 } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -159,11 +159,7 @@ try {
     true,
     '打包制品缺少 LICENSE 文件'
   );
-  symlinkSync(
-    path.join(packageRoot, 'node_modules'),
-    path.join(packedPackageRoot, 'node_modules'),
-    process.platform === 'win32' ? 'junction' : 'dir'
-  );
+  linkPackedRuntimeDependencies(packageRoot, packedPackageRoot, packedManifest);
 
   const esmRuntime = await import(pathToFileURL(path.join(packedPackageRoot, 'dist/index.js')));
   const esmConformance = await import(

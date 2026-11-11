@@ -17,7 +17,7 @@ export default defineConfig({
   treeshake: true,
   // OpenRouter 当前未导出 VERSION，仅将其 package.json 内联为构建诊断值，
   // 避免 packed ESM 在运行时加载 JSON 子路径。Provider 实现本身仍保持 external。
-  noExternal: ['@openrouter/ai-sdk-provider/package.json'],
+  noExternal: ['@linnya/foundation', '@openrouter/ai-sdk-provider/package.json'],
   external: [
     '@linnlabs/linnkit-provider-ai-sdk',
     '@linnlabs/linnkit',

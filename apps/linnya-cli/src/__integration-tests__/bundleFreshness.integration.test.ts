@@ -16,7 +16,8 @@ async function copyDistribution(withSources = false) {
   const files = ['apps/linnya-cli/bin', 'apps/linnya-cli/dist'];
   if (withSources) files.push('apps/linnya-cli/build', 'apps/linnya-cli/src',
     'apps/linnya-cli/package.json', 'apps/linnya-cli/tsconfig.json', 'apps/linnya-cli/tsup.config.ts',
-    'packages/schemas/src', 'src/shared/runtime-paths', 'pnpm-workspace.yaml', 'pnpm-lock.yaml');
+    'packages/schemas/src', 'packages/foundation/src', 'packages/foundation/package.json',
+    'src/shared/runtime-paths', 'pnpm-workspace.yaml', 'pnpm-lock.yaml');
   for (const file of files) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
     await fs.cp(path.join(repoRoot, file), path.join(root, file), { recursive: true });
@@ -54,7 +55,8 @@ bundleSuite('actual built CLI launcher freshness', () => {
     expect(result.error).toContain('do not match');
   });
 
-  it.each(['apps/linnya-cli/src/main.ts', 'packages/schemas/src/index.ts', 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity.ts'])(
+  it.each(['apps/linnya-cli/src/main.ts', 'packages/schemas/src/index.ts',
+    'packages/foundation/src/isRecord.ts', 'src/shared/runtime-paths/functions/readSourceCheckoutIdentity.ts'])(
     '版本号不变但构建输入 %s 变化时拒绝旧 bundle', async file => {
       const root = await copyDistribution(true);
       expect((await runVersion(root)).code).toBe(0);

@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import {
   AISDKError,
   APICallError,
@@ -105,10 +106,6 @@ type ProviderErrorDetailCategory =
   | 'unsupported'
   | 'invalid_prompt'
   | 'invalid_request';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];

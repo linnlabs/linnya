@@ -87,7 +87,7 @@ approval，并只接受 Host 声明的选择；stdout 仍只保留机器可读 J
 `runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品。
 
 独立分发必须同时携带 `bin/linnya.cjs`、`dist/cli.cjs` 和
-`dist/build.json`。launcher 核对产物 SHA-256；在包含源码的仓库内还核对 CLI、公共 Schema、构建输入与锁文件的内容指纹。产物缺失、损坏或源码变更后未重建会以退出码 4 明确拒绝，不自动切换运行入口。版本号不变也能发现旧 bundle。`--version`
+`dist/build.json`。launcher 核对产物 SHA-256；在包含源码的仓库内还核对 CLI、公共 Schema、构建输入与锁文件的内容指纹。产物缺失、损坏或源码变更后未重建会以退出码 4 明确拒绝，不自动切换运行入口。版本号不变也能发现旧 bundle；指纹同时覆盖静态内联的 Schemas 与 Foundation 源码。`--version`
 显示 `source` 或 bundle 指纹；`doctor`
 只读显示 CLI 身份、所连 App 的真实源码目录、分支、当前审计默认档位、协议与能力，并在 `unavailable_capabilities` 列出握手缺席的能力及原因。源码 `off` 仍提供审计查询和切档能力，不打印连接 token 或描述文件。
 

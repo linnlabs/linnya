@@ -1,3 +1,4 @@
+import { linkPackedRuntimeDependencies } from '../../../scripts/test-runner/linkPackedRuntimeDependencies.mjs';
 import { strict as assert } from 'node:assert';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -151,14 +152,7 @@ try {
 
   // 只链接声明的运行依赖；Foundation 是构建期依赖，不能借 devDependencies
   // 或整个工作区 node_modules 的软链让未内联的引用蒙混过关。
-  for (const dependency of Object.keys(packedManifest.dependencies ?? {})) {
-    const target = path.join(packedPackageRoot, 'node_modules', dependency);
-    mkdirSync(path.dirname(target), { recursive: true });
-    symlinkSync(
-      path.join(packageRoot, 'node_modules', dependency), target,
-      process.platform === 'win32' ? 'junction' : 'dir',
-    );
-  }
+  linkPackedRuntimeDependencies(packageRoot, packedPackageRoot, packedManifest);
 
   const consumerRoot = path.join(temporaryDirectory, 'consumer');
   const consumerScopeRoot = path.join(consumerRoot, 'node_modules', '@app');

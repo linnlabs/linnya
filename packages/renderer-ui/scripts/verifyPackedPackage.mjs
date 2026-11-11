@@ -1,3 +1,4 @@
+import { linkPackedRuntimeDependencies } from '../../../scripts/test-runner/linkPackedRuntimeDependencies.mjs';
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import console from 'node:console';
@@ -63,7 +64,7 @@ try {
     existsSync(path.join(packedPackageRoot, 'docs/release-checklist.md')),
     'package tarball 缺少发布检查表',
   );
-  linkPackedRuntimeDependencies(packedPackageRoot, packedManifest.dependencies ?? {});
+  linkPackedRuntimeDependencies(packageRoot, packedPackageRoot, packedManifest);
 
   const consumerRoot = path.join(temporaryDirectory, 'consumer');
   const packageScopeRoot = path.join(consumerRoot, 'node_modules/@linnya');
@@ -139,23 +140,6 @@ try {
   console.log(`Renderer UI packed consumer smoke 通过：${archives[0]}`);
 } finally {
   rmSync(temporaryDirectory, { recursive: true, force: true });
-}
-
-function linkPackedRuntimeDependencies(packedPackageRoot, dependencies) {
-  for (const dependencyName of Object.keys(dependencies)) {
-    const installedDependency = path.join(packageRoot, 'node_modules', dependencyName);
-    assert.ok(
-      existsSync(installedDependency),
-      `Renderer UI runtime dependency 未安装，无法执行 tarball smoke：${dependencyName}`,
-    );
-    const packedDependency = path.join(packedPackageRoot, 'node_modules', dependencyName);
-    mkdirSync(path.dirname(packedDependency), { recursive: true });
-    symlinkSync(
-      installedDependency,
-      packedDependency,
-      process.platform === 'win32' ? 'junction' : 'dir',
-    );
-  }
 }
 
 function linkConsumerDependency(consumerRoot, dependencyName) {

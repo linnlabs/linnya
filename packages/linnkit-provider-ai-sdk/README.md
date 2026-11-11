@@ -295,3 +295,6 @@ packages 的运行时下限是 Node.js 22，因此本 package 不伪装支持 No
 
 当前只有宿主应用这个真实消费者。未来只有出现第二个真实 Host 和明确的外部安装需求，才重新评估独立公开与分发；不得仅为了删除示例代码中的少量重复实现而制造发布义务。生产链仍禁止保留旧 Host
 language 实现、兼容 re-export、双 registry 或运行时动态 package 下载。
+
+
+基础对象判断复用 `@linnya/foundation`，仅作为开发依赖并内联到 CJS/ESM 制品。公开声明与运行时都不要求消费方安装 Linnya 私有基础包；packed conformance 只链接声明的运行依赖与 peer。

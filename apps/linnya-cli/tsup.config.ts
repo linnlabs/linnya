@@ -23,7 +23,7 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   dts: false,
-  noExternal: ['@app/schemas', 'zod'],
+  noExternal: ['@app/schemas', '@linnya/foundation', 'zod'],
   define: { __LINNYA_CLI_BUILD_ID__: JSON.stringify(sourceHash) },
   async onSuccess() {
     if (createCliSourceFingerprint(cliRoot) !== sourceHash) {

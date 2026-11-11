@@ -7,6 +7,7 @@ function createCliSourceFingerprint(cliRoot) {
   const repoRoot = path.resolve(cliRoot, '../..');
   const inputs = [
     'pnpm-lock.yaml',
+    'packages/foundation/package.json',
     'apps/linnya-cli/package.json',
     'apps/linnya-cli/tsconfig.json',
     'apps/linnya-cli/tsup.config.ts',
@@ -24,6 +25,8 @@ function createCliSourceFingerprint(cliRoot) {
   collect('apps/linnya-cli/src');
   // CLI 静态内联公共 Schema，指纹必须覆盖这份源码，而不能只检查 CLI 自身。
   collect('packages/schemas/src');
+  // Schemas 与 CLI 的基础判断会内联进制品，实现变化也必须使旧 bundle 失效。
+  collect('packages/foundation/src');
   collect('src/shared/runtime-paths');
   const hash = createHash('sha256');
   for (const input of inputs.sort()) {
