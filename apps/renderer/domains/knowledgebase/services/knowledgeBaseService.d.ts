@@ -85,6 +85,8 @@ declare module '@/domains/knowledgebase/services/knowledgeBaseService' {
   }
 
   export interface KnowledgeBaseService {
+    getKbGraphProgress(kbId: string): Promise<unknown>;
+    onKbGraphProgressUpdated(callback: (payload: unknown) => void): (() => void) | null;
     getAllKnowledgeBases(): Promise<GetAllKnowledgeBasesResponse>;
     getDocuments(kbId: string): Promise<GetKnowledgeBaseDocumentsResponse>;
     continueFailedPdfPages(

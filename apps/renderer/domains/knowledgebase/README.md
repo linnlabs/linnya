@@ -5,6 +5,7 @@
 - `stores/knowledgeBase/index.js` 只保存知识库、文档、上传队列与进度事实，action 仅同步写入。
 - `definitions/knowledgeBaseRuntime.ts`、`knowledgeBaseUpload.ts` 与 `knowledgeBaseCommands.ts` 定义状态、展示消息与窄命令合同。
 - `features/catalog/orchestration/` 负责请求列表、切换选择、删除、续跑和设置更新。
+- `features/graph-progress/runtime.ts` 提供图谱进度查询与订阅；预取时间戳和订阅清理归该 feature 的运行编排，不进入业务状态。
 - `features/upload-queue/orchestration/` 负责队列调度、上传回执、IPC、轮询与取消重试。
 - `orchestration/createKnowledgeBaseRuntime.js` 是组合根，持有订阅、技术计数、请求代次、设置持久化及应用退出清理。
 - `functions/` 持有状态权重、阶段进度与文档数量等纯规则；`composables/knowledgeBaseReadModel.js` 提供展示投影。

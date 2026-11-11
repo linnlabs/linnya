@@ -116,7 +116,7 @@
 import { isObjectLike } from '@linnya/foundation';
 import { computed, ref, onMounted, watch } from 'vue';
 import { useKnowledgeBase } from '../../runtime.js';
-import { useKnowledgeGraphProgressStore } from '../../stores/knowledgeGraphProgressStore';
+import { useKnowledgeGraphProgress } from '../../features/graph-progress/runtime';
 import { LibraryIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { UploadIcon } from '@linnya/renderer-ui/icons';
@@ -127,7 +127,7 @@ import KnowledgeGraphProgressBar from '../KnowledgeGraphProgressBar.vue';
 import { useKnowledgeBaseLocalization } from '../useKnowledgeBaseLocalization';
 
 const kbStore = useKnowledgeBase();
-const kgProgressStore = useKnowledgeGraphProgressStore();
+const kgProgressStore = useKnowledgeGraphProgress();
 const { knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 
 // 将后端返回的数据用轻量类型约束，显式声明可选简介字段

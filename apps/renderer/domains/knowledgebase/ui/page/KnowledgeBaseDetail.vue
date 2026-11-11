@@ -101,7 +101,7 @@ import { isObjectLike } from '@linnya/foundation';
 import { IconButton } from '@linnya/renderer-ui';
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useKnowledgeBase } from '../../runtime.js';
-import { useKnowledgeGraphProgressStore } from '../../stores/knowledgeGraphProgressStore';
+import { useKnowledgeGraphProgress } from '../../features/graph-progress/runtime';
 import FileUploadTab from '../../ui/FileUploadTab.vue';
 import FileManageTab from '../../ui/FileManageTab.vue';
 import KnowledgeBaseSettingsTab from '../../ui/KnowledgeBaseSettingsTab.vue';
@@ -121,7 +121,7 @@ const emit = defineEmits<{
 }>();
 
 const kbStore = useKnowledgeBase();
-const kgProgressStore = useKnowledgeGraphProgressStore();
+const kgProgressStore = useKnowledgeGraphProgress();
 const { currentLocale, knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 
 // --- State ---

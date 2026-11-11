@@ -34,8 +34,6 @@ STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	lo
 STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	updateCustomAgent#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionActionPerf.ts	measureAsync#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionPendingPerf.ts	measureRevisionPendingStageAsync#1
-STORE-ASYNC	apps/renderer/domains/knowledgebase/stores/knowledgeGraphProgressStore.ts	fetchKbProgress#1
-STORE-ASYNC	apps/renderer/domains/knowledgebase/stores/knowledgeGraphProgressStore.ts	prefetchForKbIds#1
 STORE-ASYNC	apps/renderer/domains/workspace/features/todo/store/todoStore.ts	addTodo#1
 STORE-ASYNC	apps/renderer/domains/workspace/features/todo/store/todoStore.ts	deleteTodo#1
 STORE-ASYNC	apps/renderer/domains/workspace/features/todo/store/todoStore.ts	fetchTodos#1
