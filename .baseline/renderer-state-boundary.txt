@@ -15,9 +15,6 @@ STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.st
 STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.store.js	requestMicrophonePermission#1
 STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.store.js	resolveAudioForTranscription#1
 STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.store.js	terminateAllRecordingsForSave#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/LatexBlock/store/latexEditor.js	cancelEdit#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/LatexBlock/store/latexEditor.js	hidePanel#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/LatexBlock/store/latexEditor.js	submitCurrentLatex#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionActionPerf.ts	measureAsync#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionPendingPerf.ts	measureRevisionPendingStageAsync#1
 STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/history/store/historyLoaderStore.ts	../orchestration/historyWindowTailLoader
