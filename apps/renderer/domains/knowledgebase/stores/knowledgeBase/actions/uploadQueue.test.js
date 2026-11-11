@@ -48,6 +48,8 @@ describe('knowledge base upload model config', () => {
           },
         ],
       },
+      // 上传回执到达前已经收到后端任务进度，必须从注入缓存消费一次。
+      pendingUpdatesByTaskId: new Map([['task-1', { status: 'processing', progress: 37, stage: 'parsing' }]]),
       parsingSettings: { forceVisionMode: false },
       uploadTasks: new Map([[task.id, task]]),
       currentKbId: { value: null },
@@ -64,6 +66,8 @@ describe('knowledge base upload model config', () => {
     )
 
     await performUpload(task)
+    expect(state.pendingUpdatesByTaskId.size).toBe(0)
+    expect(updateTaskState).toHaveBeenCalledWith(task.id, expect.objectContaining({ progress: 37, stage: 'parsing' }))
 
     expect(knowledgeBaseService.uploadDocument).toHaveBeenCalledWith(
       'kb-1',

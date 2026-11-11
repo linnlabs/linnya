@@ -230,24 +230,20 @@ export function createPerformUpload(
             taskInMap.backendTaskId = backendTaskId;
             console.log(`[任务提交] ✅ 后端任务ID已设置: ${task.id} -> backendTaskId: ${backendTaskId}`);
             // [新增] 如有按 taskId 缓存的早到状态，立即回放
-            try {
-              const kbStore = require('../index.js').useKnowledgeBaseStore?.();
-              if (kbStore && kbStore.pendingUpdatesByTaskId && kbStore.pendingUpdatesByTaskId.has(backendTaskId)) {
-                const cached = kbStore.pendingUpdatesByTaskId.get(backendTaskId);
-                kbStore.pendingUpdatesByTaskId.delete(backendTaskId);
-                updateTaskState(task.id, {
-                  status: cached.status,
-                  message: cached.message,
-                  progress: cached.progress,
-                  error: cached.error,
-                  stage: cached.stage,
-                  stage_progress: cached.stage_progress,
-                  updated_at: cached.updated_at,
-                  timestamp: cached.timestamp
-                });
-              }
-            } catch (e) {
-              // 忽略索引引入失败（避免循环依赖），不影响主流程
+            // 使用装配时传入的同一缓存，不从 store 入口反向取实例，也不吞掉模块加载错误。
+            if (state.pendingUpdatesByTaskId.has(backendTaskId)) {
+              const cached = state.pendingUpdatesByTaskId.get(backendTaskId);
+              state.pendingUpdatesByTaskId.delete(backendTaskId);
+              updateTaskState(task.id, {
+                status: cached.status,
+                message: cached.message,
+                progress: cached.progress,
+                error: cached.error,
+                stage: cached.stage,
+                stage_progress: cached.stage_progress,
+                updated_at: cached.updated_at,
+                timestamp: cached.timestamp
+              });
             }
           } else {
             console.error(`[任务提交] ❌ 响应中缺少任务ID:`, response);

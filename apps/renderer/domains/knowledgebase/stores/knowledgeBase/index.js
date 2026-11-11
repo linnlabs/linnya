@@ -99,6 +99,7 @@ export const useKnowledgeBaseStore = defineStore('knowledgeBase', () => {
     parsingSettings, // 🔥 新增：包含解析设置状态
     taskCounter: () => taskCounter++, // 包装为函数
     pendingUpdatesByDocId,
+    pendingUpdatesByTaskId,
     get ipcCleanup() { return ipcCleanup; },
     set ipcCleanup(value) { ipcCleanup = value; }
   }

@@ -81,3 +81,5 @@ apps/renderer/domains/knowledgebase/
 
 - 文件管理列表必须按当前 `selectedKbId` 过滤，不能依赖 store “当前只装当前 KB 文档”的隐式假设。
 - 不为该按钮写 UI snapshot；测试应优先覆盖后端增量提交、回滚，以及前端 action 调用后刷新文档列表的关键交互。
+
+上传队列与 IPC 早到进度共用装配层传入的 pendingUpdatesByTaskId；上传回执绑定任务 ID 后消费并删除对应缓存，不反向 require store 的聚合入口。只读 state/同步 action 与其他异步流程的分离继续按能力逐批完成，旧 actions 目录不是新编排的落点。
