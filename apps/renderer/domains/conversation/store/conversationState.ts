@@ -324,6 +324,11 @@ export const useConversationState = defineStore('conversationState', () => {
     }))
   });
 
+  /** 编排提交已经确定的记录，保持原数组身份和位置。 */
+  function replaceConversationRecord(index: number, conversation: Conversation): void { conversations.value[index] = conversation; }
+  function appendConversationRecord(conversation: Conversation): void { conversations.value.push(conversation); }
+  function removeConversationRecordAt(index: number): void { conversations.value.splice(index,1); }
+
   // ===============================
   // 返回状态和操作接口
   // ===============================
@@ -335,6 +340,7 @@ export const useConversationState = defineStore('conversationState', () => {
     inputText,
     historyLoadingConversationId,
     
+    replaceConversationRecord, appendConversationRecord, removeConversationRecordAt,
     // 基础操作
     createNewConversation,
     createConversation, // 新增的 createConversation 方法

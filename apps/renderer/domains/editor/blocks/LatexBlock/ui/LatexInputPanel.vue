@@ -34,6 +34,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import { useLatexEditorStore } from '../store/latexEditor';
+import { useLatexEditorActions } from '../runtime';
 import { computePosition, offset, flip, shift, autoUpdate } from '@floating-ui/dom';
 import { NodeFinder } from '../../../extensions/position/NodeFinder';
 import SymbolPalette from './SymbolPalette.vue'; // ++ 导入符号面板组件 ++
@@ -42,6 +43,7 @@ import { applyTextareaAutoResize, BaseButton } from '@linnya/renderer-ui';
 
 // --- Store and Editor ---
 const latexStore = useLatexEditorStore();
+const latexActions = useLatexEditorActions();
 const { editorMessage } = useEditorLocalization();
 
 // --- Refs ---
@@ -135,18 +137,18 @@ const restoreEditorFocus = (editor, nodeIdToFocusAfter) => {
 };
 
 // +++ NEW: Central Submit Handler +++
-const handleSubmit = () => {
+const handleSubmit = async () => {
   const editor = latexStore.editorInstance;
   
   if (!editor) {
     console.warn('[LatexInputPanel] Cannot submit: Editor instance missing.');
-    latexStore.hidePanel(); 
+    latexActions.hidePanel();
     return;
   }
   
-  const success = latexStore.submitCurrentLatex(); 
+  const success = await latexActions.submitCurrentLatex();
   
-  latexStore.hidePanel(); 
+  latexActions.hidePanel();
   
   if (success) {
     nextTick(() => {
@@ -182,7 +184,7 @@ const handleCancel = async () => {
     }
   }
 
-  await latexStore.cancelEdit();
+  await latexActions.cancelEdit();
 
   restoreEditorFocus(editor, nodeId);
 };

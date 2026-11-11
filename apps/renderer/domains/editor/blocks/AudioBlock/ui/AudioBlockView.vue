@@ -57,6 +57,8 @@
 </template>
 
 <script setup>
+import { useAudioContentActions, useAudioRuntimeActions } from '../runtime.js';
+
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAudioContentStore, useAudioRuntimeStore } from '../store'
@@ -84,7 +86,9 @@ const keepAlive = useBlockKeepAlive()
 const audioBlockId = computed(() => props.node.attrs.id)
 
 const contentStore = useAudioContentStore()
+const contentActions = useAudioContentActions();
 const runtimeStore = useAudioRuntimeStore()
+const runtimeActions = useAudioRuntimeActions();
 const { editorMessage } = useEditorLocalization()
 
 const audioPlayerRef = ref(null)
@@ -164,7 +168,7 @@ const shouldShowStatusMessage = computed(() => {
 
 const recordingService = new AudioRecordingService(
   audioBlockId.value,
-  runtimeStore,
+  runtimeActions.recordingPort,
   (attrs) => props.updateAttributes(attrs)
 )
 
@@ -193,11 +197,11 @@ const loadAudio = async (src) => {
 
   try {
     if (src.startsWith('blob:')) {
-      runtimeStore.setAudioBlobUrl(audioBlockId.value, src)
+      runtimeActions.setAudioBlobUrl(audioBlockId.value, src)
     } else if (src.startsWith('data:')) {
-      runtimeStore.setAudioDataUrl(audioBlockId.value, src)
+      runtimeActions.setAudioDataUrl(audioBlockId.value, src)
     } else {
-      await runtimeStore.loadAudioFile(audioBlockId.value, src)
+      await runtimeActions.loadAudioFile(audioBlockId.value, src)
     }
   } catch (error) {
     console.error('[AudioBlockView] 加载音频失败:', error)
@@ -285,12 +289,12 @@ const handleToggleNotes = () => {
 
 const checkMicrophoneDevices = async () => {
   if (!isNodeFinalized.value) {
-    await runtimeStore.checkMicrophoneForBlock(audioBlockId.value)
+    await runtimeActions.checkMicrophoneForBlock(audioBlockId.value)
   }
 }
 
 const retryDeviceCheck = async () => {
-  await runtimeStore.checkMicrophoneForBlock(audioBlockId.value, true)
+  await runtimeActions.checkMicrophoneForBlock(audioBlockId.value, true)
 }
 
 const selectAudioBlock = () => {
@@ -344,7 +348,7 @@ watch(() => props.node.attrs.duration, (newVal, oldVal) => {
 
 onMounted(async () => {
   console.log(`[AudioBlockView] 挂载 - ID: ${audioBlockId.value}`)
-  await contentStore.loadContent(audioBlockId.value)
+  await contentActions.loadContent(audioBlockId.value)
 
   const missingReason = resolveCurrentMissingReason()
 
@@ -375,6 +379,6 @@ onUnmounted(() => {
   console.log(`[AudioBlockView] 已卸载 - ID: ${audioBlockId.value}`)
   contentStore.cleanupBlock(audioBlockId.value)
   runtimeStore.unregisterRecordingController(audioBlockId.value)
-  runtimeStore.cleanupBlock(audioBlockId.value)
+  runtimeActions.cleanupBlock(audioBlockId.value)
 })
 </script>

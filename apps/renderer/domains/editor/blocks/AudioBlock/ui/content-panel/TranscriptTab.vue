@@ -70,6 +70,8 @@
 </template>
 
 <script setup>
+import { useAudioContentActions } from '../../runtime.js';
+
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, provide, watch } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import { useAudioContentStore, useAudioRuntimeStore, useAudioEditorsStore } from '../../store/index.js'
@@ -101,6 +103,7 @@ const props = defineProps({
 })
 
 const contentStore = useAudioContentStore()
+const contentActions = useAudioContentActions();
 const runtimeStore = useAudioRuntimeStore()
 const editorsStore = useAudioEditorsStore()
 const notificationStore = useNotificationStore()
@@ -123,12 +126,12 @@ const isTranslating = ref(false)
 // 从 store 读取翻译状态
 const selectedLanguage = computed({
   get: () => content.value.translationLanguage || 'en',
-  set: (value) => contentStore.setTranslationState(props.blockId, { language: value })
+  set: (value) => contentActions.setTranslationState(props.blockId, { language: value })
 })
 
 const showTranslation = computed({
   get: () => content.value.translationVisible || false,
-  set: (value) => contentStore.setTranslationState(props.blockId, { visible: value })
+  set: (value) => contentActions.setTranslationState(props.blockId, { visible: value })
 })
 
 // 全局分割线悬停状态
@@ -248,7 +251,7 @@ function saveEditorContent(editorInstance) {
 
   const doc = editorInstance.getJSON()
   
-  contentStore.setTranscriptContentDraft(props.blockId, doc)
+  contentActions.setTranscriptContentDraft(props.blockId, doc)
 }
 
 // 复制全文
@@ -334,7 +337,7 @@ const selectLanguage = async (langCode) => {
           const updatedDoc = segmentsToProseMirrorDoc(translatedSegments)
           
           // *** 根本性修复：使用 Draft 方法更新内容以触发保存 ***
-          contentStore.setTranscriptContentDraft(props.blockId, updatedDoc);
+          contentActions.setTranscriptContentDraft(props.blockId, updatedDoc);
           
           // 显示翻译列
           showTranslation.value = true

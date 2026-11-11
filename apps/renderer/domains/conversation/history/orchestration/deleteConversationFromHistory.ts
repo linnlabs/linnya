@@ -2,7 +2,7 @@ import { getConversationClientNotices } from '../../features/client-notices';
 import type { NavigationScope } from '@/app/navigation';
 import { historyApiService } from '../services/historyApiService';
 import { useConversationDeletionStore } from '../store/conversationDeletionStore';
-import { useHistoryListStore } from '../store/historyListStore';
+import { useHistoryList } from '../list';
 import { prepareConversationDeletionCommit } from './commitConversationDeletion';
 
 export interface DeleteConversationFromHistoryInput {
@@ -42,7 +42,7 @@ async function performPendingCleanupRetry(input: DeleteConversationFromHistoryIn
     if (outcome === 'still_pending') {
       throw new Error('conversation cleanup is still pending');
     }
-    useHistoryListStore().updateConversation(conversationId, { cleanup_pending: false });
+    useHistoryList().updateConversation(conversationId, { cleanup_pending: false });
   } finally {
     deletionStore.finishDeletion(conversationId);
   }

@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type { ConversationMetadata } from '../services/historyApiService';
@@ -72,7 +74,7 @@ vi.mock('../../services/assistantService', () => ({}));
 
 import { useAssistantStore } from '../../store/assistantStore';
 import { useConversationState } from '../../store/conversationState';
-import { useHistoryLoaderStore } from './historyLoaderStore';
+import { useHistoryLoader } from '../loader';
 import { useInteractiveRunStore } from '../../features/interactive-run';
 import type { BaseMessage } from '../../types';
 import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
@@ -137,11 +139,11 @@ describe('historyLoaderStore loading shell handoff', () => {
   });
 
   it('复用 navigation 已准备的 loading 壳，不清理 conversation-scoped projection runtime', async () => {
-    const loaderStore = useHistoryLoaderStore();
-    const assistantStore = useAssistantStore();
+    const loaderStore = useHistoryLoader();
+    useAssistantStore();
     const conversationState = useConversationState();
-    const cleanupProjectionSpy = vi.spyOn(assistantStore, 'cleanupConversationProjection');
-    const beginBufferSpy = vi.spyOn(assistantStore, 'beginHistoryLoadingSseBuffer');
+    const cleanupProjectionSpy = vi.spyOn(useConversationProjectionActions(), 'cleanupConversationProjection');
+    const beginBufferSpy = vi.spyOn(useConversationProjectionActions(), 'beginHistoryLoadingSseBuffer');
     const conversationId = 'conversation-handoff';
     const initialConversation = {
       title: '历史会话',
@@ -178,8 +180,8 @@ describe('historyLoaderStore loading shell handoff', () => {
   });
 
   it('切换到另一条对话只切换 read model，不取消原对话等待中的 foreground run', async () => {
-    const loaderStore = useHistoryLoaderStore();
-    const assistantStore = useAssistantStore();
+    const loaderStore = useHistoryLoader();
+    useAssistantStore();
     const conversationState = useConversationState();
     const interactiveRunStore = useInteractiveRunStore();
     const conversationA = conversationState.createConversation({
@@ -229,8 +231,8 @@ describe('historyLoaderStore loading shell handoff', () => {
   });
 
   it('回答流出后切走再切回时，后台 final seal 必须继续命中原 conversation projection', async () => {
-    const loaderStore = useHistoryLoaderStore();
-    const assistantStore = useAssistantStore();
+    const loaderStore = useHistoryLoader();
+    useAssistantStore();
     const conversationState = useConversationState();
     const conversationA = conversationState.createConversation({
       id: 'conversation-streaming-a',
@@ -246,7 +248,7 @@ describe('historyLoaderStore loading shell handoff', () => {
     };
 
     await expect(
-      assistantStore.handleSseEvent(conversationA, {
+      useConversationProjectionActions().handleSseEvent(conversationA, {
         type: 'final_answer_chunk',
         id: 'chunk-background-switch-0',
         conversation_id: conversationA,
@@ -284,7 +286,7 @@ describe('historyLoaderStore loading shell handoff', () => {
     await Promise.resolve();
 
     await expect(
-      assistantStore.handleSseEvent(conversationA, {
+      useConversationProjectionActions().handleSseEvent(conversationA, {
         type: 'final_answer',
         id: answerId,
         conversation_id: conversationA,
@@ -324,7 +326,7 @@ describe('historyLoaderStore loading shell handoff', () => {
   });
 
   it('旧 navigation intent 迟到时直接退出，不创建新 token 干扰当前加载', async () => {
-    const loaderStore = useHistoryLoaderStore();
+    const loaderStore = useHistoryLoader();
     const firstIntent = loaderStore.beginConversationLoadingIntent('conversation-old', {
       initialConversation: {
         title: '旧会话',
@@ -375,7 +377,7 @@ describe('historyLoaderStore loading shell handoff', () => {
   });
 
   it('旧加载被新会话打断时，应回滚自己写入的 loading 壳', async () => {
-    const loaderStore = useHistoryLoaderStore();
+    const loaderStore = useHistoryLoader();
     const conversationState = useConversationState();
     const oldConversationId = conversationState.createConversation({
       id: 'conversation-aborted-old',
@@ -452,9 +454,9 @@ describe('historyLoaderStore loading shell handoff', () => {
 
   it('read model 仍在 preparing 时应明确清理本次缓冲', async () => {
     loadHistoryWindowTailMock.mockResolvedValueOnce('preparing');
-    const loaderStore = useHistoryLoaderStore();
-    const assistantStore = useAssistantStore();
-    const discardBufferSpy = vi.spyOn(assistantStore, 'discardHistoryLoadingSseBuffer');
+    const loaderStore = useHistoryLoader();
+    useAssistantStore();
+    const discardBufferSpy = vi.spyOn(useConversationProjectionActions(), 'discardHistoryLoadingSseBuffer');
     const conversationId = 'conversation-preparing';
 
     await loaderStore.loadConversation(conversationId, {
@@ -474,8 +476,8 @@ describe('historyLoaderStore loading shell handoff', () => {
   });
 
   it('删除失效只清理 Loader 自身世代，并把跨 store 清理责任返回给编排层', () => {
-    const loaderStore = useHistoryLoaderStore();
-    const assistantStore = useAssistantStore();
+    const loaderStore = useHistoryLoader();
+    useAssistantStore();
     const conversationState = useConversationState();
     const conversationId = 'conversation-loader-invalidation-boundary';
     const loadingIntent = loaderStore.beginConversationLoadingIntent(conversationId, {
@@ -489,7 +491,7 @@ describe('historyLoaderStore loading shell handoff', () => {
     if (!loadingIntent) {
       throw new Error('loading intent should be created');
     }
-    const discardBufferSpy = vi.spyOn(assistantStore, 'discardHistoryLoadingSseBuffer');
+    const discardBufferSpy = vi.spyOn(useConversationProjectionActions(), 'discardHistoryLoadingSseBuffer');
     const clearHistoryLoadingSpy = vi.spyOn(conversationState, 'setHistoryLoadingConversation');
 
     const result = loaderStore.forgetConversation(conversationId);
@@ -506,11 +508,11 @@ describe('historyLoaderStore loading shell handoff', () => {
   });
 
   it('缓冲回放期间加载世代失效时应中止旧会话落地', async () => {
-    const loaderStore = useHistoryLoaderStore();
-    const assistantStore = useAssistantStore();
+    const loaderStore = useHistoryLoader();
+    useAssistantStore();
     const conversationState = useConversationState();
     const oldConversationId = 'conversation-replay-stale';
-    vi.spyOn(assistantStore, 'replayBufferedHistoryLoadingEvents').mockImplementationOnce(
+    vi.spyOn(useConversationProjectionActions(), 'replayBufferedHistoryLoadingEvents').mockImplementationOnce(
       async () => {
         const nextIntent = loaderStore.beginConversationLoadingIntent(
           'conversation-after-replay-stale',

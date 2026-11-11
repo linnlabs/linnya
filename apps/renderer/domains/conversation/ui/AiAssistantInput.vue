@@ -138,6 +138,8 @@
 </template>
 
 <script setup lang="ts">
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
+
 import { cancelAssistantActivity } from '../assistantActions';
 import { registerComposerInputFocus } from '../features/composer-focus';
 import { captureConversationClientNotice, currentClientNoticeDraftKey } from '../features/client-notices';
@@ -206,7 +208,7 @@ import {
   useContextWindowUsagePresentation,
 } from '../features/context-window-usage';
 import { prepareComposerReferencesForSubmit } from '../features/composer-references';
-import { useHistoryListStore } from '../history/store/historyListStore';
+import { useHistoryList } from '../history/list';
 import { useUIStore } from '../../../shared/stores/ui';
 import {
   useInteractiveRunStore,
@@ -232,7 +234,7 @@ const interactiveRunStore = useInteractiveRunStore();
 useDetachedInteractiveRunObservation(() => assistantStore.activeConversationId);
 const conversationState = useConversationState();
 const conversationSelectors = useConversationSelectors(conversationState);
-const historyListStore = useHistoryListStore();
+const historyListStore = useHistoryList();
 const composerReferences = useComposerReferences();
 let referencePreparation: AbortController | undefined;
 const modelCatalog = useModelCatalogReadModel();
@@ -646,7 +648,7 @@ const handleSubmit = async () => {
     if (!conversationId) return;
     try {
       if (primaryAction.value === 'pause') await pauseInteractiveRun(conversationId);
-      else await continueInteractiveRun(conversationId, assistantStore.handleSseEvent);
+      else await continueInteractiveRun(conversationId, useConversationProjectionActions().handleSseEvent);
     } catch (error) {
       console.error('[AiAssistantInput] 运行控制失败:', error);
     }

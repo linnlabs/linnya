@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/assistantActions';
 import { PromptKeys, type ConversationMessageExtension } from '@app/schemas';
 import type { SSETransportEndEvent } from '@linnlabs/linnkit/contracts';
 import type {
@@ -53,7 +55,7 @@ async function executeConversationSubruns(options: {
   };
   readonly batchArgs: ReturnType<typeof buildConversationSubrunBatchArgs>;
   readonly controller: AbortController;
-  readonly eventDispatcher: ReturnType<typeof useAssistantStore>['handleSseEvent'];
+  readonly eventDispatcher: ReturnType<typeof useConversationProjectionActions>['handleSseEvent'];
   readonly userInputAdmission: ConversationUserInputAdmission;
 }): Promise<void> {
   let failure: Error | null = null;
@@ -152,7 +154,7 @@ export function createConversationSubrunInvocationPort(): RendererConversationSu
           messageId: prepared.run.messageId,
           operation: 'append',
         },
-        commitUserInput: assistantStore.commitUserInput,
+        commitUserInput: useConversationProjectionActions().commitUserInput,
         onCommitted: (_message, event) => {
           orchestrateCommittedConversationTitle({
             event,
@@ -177,7 +179,7 @@ export function createConversationSubrunInvocationPort(): RendererConversationSu
         run: prepared.run,
         batchArgs,
         controller,
-        eventDispatcher: assistantStore.handleSseEvent,
+        eventDispatcher: useConversationProjectionActions().handleSseEvent,
         userInputAdmission: admission,
       }).finally(() => {
         unregisterCancellation();

@@ -7,7 +7,7 @@ import {
   createTestUserMessage,
 } from '../../testing/functions/createConversationTestMessage';
 import { useConversationState } from '../conversationState';
-import { useProjectionStore } from './projectionStore';
+import { useConversationProjection } from '../../projection';
 
 vi.mock('@/app/navigation', () => ({
   useNavigationScope: () => ({ currentProjectId: null }),
@@ -64,7 +64,7 @@ describe('projectionStore.commitUserInput', () => {
   it('按稳定消息 ID 幂等追加，并保留 durable 附件身份与顺序', () => {
     const conversationState = useConversationState();
     conversationState.createConversation({ id: 'conversation-1', autoActivate: true });
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const event = createCommittedEvent({
       attachments: [
         firstAttachment(),
@@ -101,7 +101,7 @@ describe('projectionStore.commitUserInput', () => {
       createTestUserMessage({ id: 'user-2', content: 'old', timestamp: 3 }),
       createTestAnswerMessage({ id: 'answer-2', content: 'stale', timestamp: 4 }),
     ] satisfies BaseMessage[];
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
 
     projectionStore.commitUserInput(createCommittedEvent({
       operation: 'replace',

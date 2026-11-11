@@ -68,6 +68,6 @@
 
 已完成解环的 BlockHistory、transcription、Slides 源码历史/持久化与来源选择模块由 `pnpm run guard:module-barrel-boundary` 约束：模块内部依赖具体 store、functions 或 definitions，不从聚合 index 回引。示例可演示公共入口；正常 parser/树形渲染递归不在此门禁范围。
 
-`pnpm run guard:renderer-state-boundary` 对 Renderer shared→domain 的值依赖和 store→orchestration 的反向调用逐边记基线，并按函数身份记录 store/stores 内的 async 实现；类型引用不算运行边，编排→store 是正常方向。新边或新异步函数不能抵消旧项减少；修复后用 `pnpm run guard:renderer-state-boundary:update` 收紧，命令拒绝新增。尚未搬离 legacy store 的流程仍需逐 domain 迁移。
+`pnpm run guard:renderer-state-boundary` 对 Renderer shared→domain 的值依赖和 store→orchestration 的反向调用逐边记基线，并按函数身份记录 store/stores 内的 async 实现；类型引用不算运行边，编排→store 是正常方向。已拆分的公开命令入口同样不能从 store 回引，不能隔一层门面绕过方向门禁。新边或新异步函数不能抵消旧项减少；修复后用 `pnpm run guard:renderer-state-boundary:update` 收紧，命令拒绝新增。尚未搬离 legacy store 的流程仍需逐 domain 迁移。
 
 Host 插件 SDK、fence 与工具上下文派生读取已注册贡献，不能回引 `plugin-registry/builtin` 启动加载器；SDK 和 registry 的窄 Desktop 能力直接引用对应端口 registry，不能带入 Desktop 装配总入口。这些经过复核的边也由 module-barrel 门禁约束，所有权见 [Plugin registry](../../src/app-hosts/linnya/plugin-registry/README.md)。

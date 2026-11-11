@@ -1,49 +1,16 @@
-/**
- * @file revisionPendingPerf.ts
- * @description Revision pending 注入性能采样。
- *
- * 中文说明：
- * - 默认只在“大批量或明显耗时”的注入结束时输出一条汇总日志；
- * - 所有采样都会保存到 window.__REVISION_PERF__，便于手动或自动读取；
- * - 不依赖 Vue / Tiptap，避免为了看性能引入额外运行时耦合。
- */
-
-export type RevisionPendingPerfStage =
-  | 'shadow'
-  | 'canonical'
-  | 'parse'
-  | 'plan'
-  | 'apply'
-  | 'flush'
-  | 'citation';
-
-export interface RevisionPendingPerfSample {
-  id: number;
-  startedAt: number;
-  pendingCount: number;
-  canonicalBlockCount: number;
-  activeRevisionCount: number;
-  successCount: number;
-  failedCount: number;
-  forceCitation: boolean;
-  totalMs: number;
-  stages: Partial<Record<RevisionPendingPerfStage, number>>;
-  error?: string;
-}
-
-export interface RevisionPendingPerfSession {
-  addStage: (stage: RevisionPendingPerfStage, durationMs: number) => void;
-  finish: (summary: Omit<RevisionPendingPerfSample, 'id' | 'startedAt' | 'pendingCount' | 'totalMs' | 'stages'>) => RevisionPendingPerfSample;
-}
-
-interface RevisionPerfApi {
-  getLast: () => RevisionPendingPerfSample | null;
-  getHistory: () => RevisionPendingPerfSample[];
-  clear: () => void;
-  setConsoleEnabled: (enabled: boolean) => void;
-  setVerbose: (enabled: boolean) => void;
-}
-
+import type {
+  RevisionPendingPerfStage,
+  RevisionPendingPerfSample,
+  RevisionPendingPerfSession,
+  RevisionPendingPerfApi,
+} from '../definitions/revisionPendingPerf';
+export type {
+  RevisionPendingPerfStage,
+  RevisionPendingPerfSample,
+  RevisionPendingPerfSession,
+  RevisionPendingPerfApi,
+} from '../definitions/revisionPendingPerf';
+/** Revision 动作/注入性能观测；不持有编辑器业务状态。 */
 const history: RevisionPendingPerfSample[] = [];
 let nextId = 1;
 let consoleEnabled = true;
@@ -66,7 +33,10 @@ function roundMs(value: number): number {
 function shouldLog(sample: RevisionPendingPerfSample): boolean {
   return (
     consoleEnabled &&
-    (verbose || sample.pendingCount >= LOG_PENDING_THRESHOLD || sample.totalMs >= LOG_DURATION_THRESHOLD_MS || !!sample.error)
+    (verbose ||
+      sample.pendingCount >= LOG_PENDING_THRESHOLD ||
+      sample.totalMs >= LOG_DURATION_THRESHOLD_MS ||
+      !!sample.error)
   );
 }
 
@@ -143,21 +113,20 @@ export async function measureRevisionPendingStageAsync<T>(
 
 function installWindowApi(): void {
   if (typeof window === 'undefined') return;
-  const root = window as unknown as Record<string, unknown>;
-  const api: RevisionPerfApi = {
+  const api: RevisionPendingPerfApi = {
     getLast: () => history[history.length - 1] ?? null,
     getHistory: () => [...history],
     clear: () => {
       history.length = 0;
     },
-    setConsoleEnabled: (enabled) => {
+    setConsoleEnabled: enabled => {
       consoleEnabled = enabled;
     },
-    setVerbose: (enabled) => {
+    setVerbose: enabled => {
       verbose = enabled;
     },
   };
-  root.__REVISION_PERF__ = api;
+  window.__REVISION_PERF__ = api;
 }
 
 installWindowApi();

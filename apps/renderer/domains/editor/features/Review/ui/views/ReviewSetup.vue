@@ -113,7 +113,7 @@
         size="lg"
         block
         :disabled="reviewStore.activeAgentIds.length === 0"
-        @click="reviewStore.startReview()"
+        @click="reviewActions.startReview()"
       >
         {{ editorMessage('editor.review.setup.start') }}
       </BaseButton>
@@ -125,6 +125,7 @@
 import { computed, ref, onMounted, nextTick, watch } from 'vue';
 import type { Component } from 'vue';
 import { useReviewStore } from '../../store/reviewStore';
+import { useReviewActions } from '../../runtime';
 import { useUIStore } from '@shared/stores/ui';
 import { BaseButton, CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
@@ -138,6 +139,7 @@ import type { ReviewAgent } from '../../definitions/reviewAgent';
 import { applyTextareaAutoResize } from '@linnya/renderer-ui';
 
 const reviewStore = useReviewStore();
+const reviewActions = useReviewActions();
 const uiStore = useUIStore();
 const { editorMessage } = useEditorLocalization();
 const backgroundTextarea = ref<HTMLTextAreaElement | null>(null);

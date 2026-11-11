@@ -1,4 +1,4 @@
-import { createRevisionPendingPerfSession } from '../store/revisionPendingPerf';
+import { createRevisionPendingPerfSession } from '../observability/revisionPendingPerf';
 import type { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { MarkdownRevisionCommit } from '@app/schemas';

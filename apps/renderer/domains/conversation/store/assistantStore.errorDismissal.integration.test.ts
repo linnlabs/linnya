@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useAnnotationRunExecutionStore } from '../features/annotation-run/store/annotationRunExecutionStore';
@@ -42,8 +44,8 @@ vi.mock('../services/orchestration/annotationRunOrchestrator', () => ({
 
 vi.mock('../services/assistantService', () => ({}));
 
-vi.mock('../history/store/historyLoaderStore', () => ({
-  useHistoryLoaderStore: () => ({
+vi.mock('../history/loader', () => ({
+  useHistoryLoader: () => ({
     loadConversation: vi.fn(),
   }),
 }));
@@ -103,7 +105,7 @@ describe('assistantStore error dismissal', () => {
     conversationState.createConversation({ id: 'conversation-429', autoActivate: true });
     const assistantStore = useAssistantStore();
 
-    const result = await assistantStore.handleSseEvent('conversation-429', {
+    const result = await useConversationProjectionActions().handleSseEvent('conversation-429', {
       type: 'error',
       id: 'event-provider-429',
       timestamp: 1,
@@ -137,12 +139,12 @@ describe('assistantStore error dismissal', () => {
       run_id: 'run-401', execution_id: 'execution-401',
       lane: 'foreground', visibility: 'conversation', timestamp: 1,
     } as const;
-    const sendError = () => assistant.handleSseEvent('conversation-401', {
+    const sendError = () => useConversationProjectionActions().handleSseEvent('conversation-401', {
       ...scope, type: 'error', id: 'event-401',
       error: 'Canonical inference failed: provider_http_401',
       error_code: 'llm.provider_http_401', retryable: false,
     });
-    await assistant.handleSseEvent('conversation-401', {
+    await useConversationProjectionActions().handleSseEvent('conversation-401', {
       ...scope, type: 'run_status', id: 'running-401', status: 'running',
     });
     await sendError();
@@ -151,11 +153,11 @@ describe('assistantStore error dismissal', () => {
     expect(visibleError).not.toContain('Canonical inference');
     // 错误不代表逻辑 run 已失败；Host 随后会在可恢复边界暂停。
     expect(store.snapshotFor('conversation-401')?.status).toBe('running');
-    await assistant.handleSseEvent('conversation-401', {
+    await useConversationProjectionActions().handleSseEvent('conversation-401', {
       ...scope, type: 'run_status', id: 'paused-401', status: 'paused',
     });
     expect(assistant.error).toBe(visibleError);
-    await assistant.handleSseEvent('conversation-401', {
+    await useConversationProjectionActions().handleSseEvent('conversation-401', {
       ...scope, type: 'transport_end', id: 'end-401', reason: 'complete',
     });
     const run = {
@@ -184,7 +186,7 @@ describe('assistantStore error dismissal', () => {
     // 旧 reader 的迟到错误不得污染新一次恢复。
     await sendError();
     expect(assistant.error).toBeNull();
-    await assistant.handleSseEvent(scope.conversation_id, {
+    await useConversationProjectionActions().handleSseEvent(scope.conversation_id, {
       ...scope, execution_id: 'execution-retry', type: 'error', id: 'retry-401',
       error: 'Canonical inference failed: provider_http_401',
       error_code: 'llm.provider_http_401', retryable: false,

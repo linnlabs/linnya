@@ -15,6 +15,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, computed, watch, ref } from 'vue';
 import { useReviewStore } from '../store/reviewStore';
+import { useReviewActions } from '../runtime';
 import { useUIStore } from '@shared/stores/ui';
 import { useFileStore } from '@/app/active-document';
 import ReviewSetup from './views/ReviewSetup.vue';
@@ -31,6 +32,7 @@ import { getWorkspaceContextPort } from '@shared/ports/workspaceContextPort';
 import { generateTextStream } from '@app/model-inference';
 
 const reviewStore = useReviewStore();
+const reviewActions = useReviewActions();
 const uiStore = useUIStore();
 const fileStore = useFileStore();
 
@@ -231,7 +233,7 @@ const handleReviewStarted = async () => {
 onMounted(() => {
   if (typeof window !== 'undefined') {
     // 拉取一次自定义角色（agents 表）
-    reviewStore.loadCustomAgents().catch((e: unknown) => {
+    reviewActions.loadCustomAgents().catch((e: unknown) => {
       console.warn('[ReviewSidebar] 初始化加载自定义角色失败:', e);
     });
 

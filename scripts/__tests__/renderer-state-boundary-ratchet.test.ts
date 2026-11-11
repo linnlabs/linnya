@@ -35,6 +35,10 @@ test('shared 运行值与 store 编排边受约束，类型和正常编排→sto
       'import { useState } from "../store/state";'
     )
   ).toEqual([]);
+  expect(findRendererStateEdges(
+    'apps/renderer/domains/x/store/state.ts',
+    'import { useConversationProjectionActions } from "@/domains/conversation/projectionActions";',
+  )).toHaveLength(1);
 });
 
 test('新增失败、减少可收紧，不能以另一条新边抵消旧边减少', () => {

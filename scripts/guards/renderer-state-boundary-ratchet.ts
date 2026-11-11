@@ -8,6 +8,23 @@ import { readSourceImports } from '../source-analysis/readSourceImports';
 import { resolveLocalSourceImport } from './module-barrel-boundary-guard';
 
 const BASELINE = '.baseline/renderer-state-boundary.txt';
+// 已拆分的公开命令入口同样不能被 store 回引，避免只隔一层门面就绕过流程方向。
+const STORE_FLOW_ENTRY_POINTS = new Set([
+  'apps/renderer/domains/knowledgebase/runtime',
+  'apps/renderer/domains/knowledgebase/features/graph-progress/runtime',
+  'apps/renderer/domains/workspace/tree',
+  'apps/renderer/domains/workspace/features/todo/runtime',
+  'apps/renderer/app/update/runtime',
+  'apps/renderer/domains/editor/features/BlockHistory/runtime',
+  'apps/renderer/domains/editor/features/Review/runtime',
+  'apps/renderer/domains/editor/blocks/LatexBlock/runtime',
+  'apps/renderer/domains/editor/blocks/AudioBlock/runtime',
+  'apps/renderer/domains/conversation/assistantActions',
+  'apps/renderer/domains/conversation/projectionActions',
+  'apps/renderer/domains/conversation/projection',
+  'apps/renderer/domains/conversation/history/loader',
+  'apps/renderer/domains/conversation/history/list',
+]);
 
 export function findRendererStateEdges(file: string, content: string): string[] {
   const dependencies = readSourceImports(file, content).flatMap(edge => {
@@ -17,7 +34,10 @@ export function findRendererStateEdges(file: string, content: string): string[] 
     const rules: string[] = [];
     if (file.startsWith('apps/renderer/shared/') && target.startsWith('apps/renderer/domains/'))
       rules.push('SHARED-TO-DOMAIN');
-    if (/\/(?:store|stores)\//u.test(file) && /\/orchestration(?:\/|$)/u.test(target))
+    if (/\/(?:store|stores)\//u.test(file) && (
+      /\/orchestration(?:\/|$)/u.test(target)
+      || STORE_FLOW_ENTRY_POINTS.has(target.replace(/\.[cm]?[jt]s$/u, ''))
+    ))
       rules.push('STORE-TO-ORCHESTRATION');
     return rules.map(rule => `${rule}\t${file}\t${edge.specifier}`);
   });
@@ -88,7 +108,7 @@ function main(): void {
   }
   if (args.has('--update')) fs.writeFileSync(BASELINE, `${current.join('\n')}\n`);
   console.log(
-    `Renderer state boundary passed: ${current.length} edges, reduced ${diff.removed.length}`
+    `Renderer state boundary passed: ${current.filter(item => !item.startsWith('STORE-ASYNC\t')).length} reverse dependencies, ${current.filter(item => item.startsWith('STORE-ASYNC\t')).length} async implementations, reduced ${diff.removed.length}`
   );
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href)

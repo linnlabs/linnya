@@ -64,10 +64,12 @@
 <script setup lang="ts">
 import { reactive, computed, ref, onMounted, nextTick, watch } from 'vue';
 import { useReviewStore } from '../../store/reviewStore';
+import { useReviewActions } from '../../runtime';
 import { useEditorLocalization } from '../../../../ui/useEditorLocalization';
 import { applyTextareaAutoResize, BaseButton } from '@linnya/renderer-ui';
 
 const reviewStore = useReviewStore();
+const reviewActions = useReviewActions();
 const { editorMessage } = useEditorLocalization();
 // 背景知识限制：中文按汉字计数，英文按单词计数（混合文本两者相加）
 const KNOWLEDGE_LIMIT = 1500;
@@ -258,7 +260,7 @@ const handleSaveAgent = async () => {
   
   // 编辑：更新已有自定义角色
   if (editingAgent.value) {
-    await reviewStore.updateCustomAgent(editingAgent.value.id, {
+    await reviewActions.updateCustomAgent(editingAgent.value.id, {
       name: newAgentForm.name,
       systemPrompt: newAgentForm.systemPrompt,
       knowledge: newAgentForm.knowledge
@@ -267,7 +269,7 @@ const handleSaveAgent = async () => {
   }
 
   // 新建：新增自定义角色
-  await reviewStore.addCustomAgent({
+  await reviewActions.addCustomAgent({
     name: newAgentForm.name,
     systemPrompt: newAgentForm.systemPrompt,
     knowledge: newAgentForm.knowledge

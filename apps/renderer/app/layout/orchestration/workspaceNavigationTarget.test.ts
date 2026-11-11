@@ -29,7 +29,7 @@ getDocumentTypeByNodeType: (type: string) => type === 'persisted-document' ? ({ 
 }));
 vi.mock('@/app/plugins/enabledPluginsStore', () => ({ useEnabledPluginsStore: () => ({ isPluginEnabled: () => state.enabled }) }));
 vi.mock('@/domains/workspace/tree', () => ({ useWorkspaceTree: vi.fn() }));
-vi.mock('@/domains/conversation/history/store/historyLoaderStore', () => ({ useHistoryLoaderStore: vi.fn() }));
+vi.mock('@/domains/conversation/history/loader', () => ({ useHistoryLoader: vi.fn() }));
 vi.mock('@/domains/conversation/store/assistantStore', () => ({ useAssistantStore: vi.fn() }));
 vi.mock('@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore', () => ({
   useProjectKnowledgeBaseModalStore: () => ({ close: vi.fn() }),

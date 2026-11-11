@@ -1,6 +1,6 @@
 /**
  * AudioBlock 特性模块出口。
- * 
+ *
  * Store 已拆分为多个独立模块（content/runtime/editors）
  */
 
@@ -18,4 +18,5 @@ export {
 export * from './types/audioBlock';
 
 // 导出菜单
-export { audioBlockMenuProvider } from './menu/audioBlockMenuProvider'; 
+export { audioBlockMenuProvider } from './menu/audioBlockMenuProvider';
+export { useAudioContentActions, useAudioRuntimeActions, useAudioDeviceActions } from './runtime';

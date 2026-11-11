@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 import { captureConversationClientNotice, clientTransportNotice } from '../../features/client-notices';
 /**
  * @file apps/renderer/domains/conversation/services/orchestration/annotationRunOrchestrator.ts
@@ -133,7 +135,7 @@ export function useAnnotationRunOrchestrator() {
             messageId: runInfo.messageId,
             operation: 'append',
           },
-          commitUserInput: assistantStore.commitUserInput,
+          commitUserInput: useConversationProjectionActions().commitUserInput,
           onCommitted: (_message, event) => {
             orchestrateCommittedConversationTitle({
               event,
@@ -181,7 +183,7 @@ export function useAnnotationRunOrchestrator() {
         activity: { runId, feature: 'annotation' },
       },
       // 纯编辑器任务不注入 conversation 投影端口，避免在侧边栏创建消息。
-      eventDispatcher: runInfo.persistsToConversation ? assistantStore.handleSseEvent : undefined,
+      eventDispatcher: runInfo.persistsToConversation ? useConversationProjectionActions().handleSseEvent : undefined,
     };
 
     try {

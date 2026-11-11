@@ -3,7 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import type { BaseMessage } from '../../types';
 import { useConversationState } from '../conversationState';
-import { useProjectionStore } from './projectionStore';
+import { useConversationProjection } from '../../projection';
 import { useInteractiveRunStore } from '../../features/interactive-run';
 import { useMessageWindowStore } from '../../message-window';
 import { useConversationSelectors } from '../selectors';
@@ -65,7 +65,7 @@ function createMessage(message: {
 }
 
 async function enqueueBufferedAnswer(
-  projectionStore: ReturnType<typeof useProjectionStore>,
+  projectionStore: ReturnType<typeof useConversationProjection>,
   input: {
     readonly conversationId: string;
     readonly turnId: string;
@@ -142,7 +142,7 @@ describe('projectionStore interrupted follow-up regression', () => {
     }
     conversation.messages = buildBaseHistory();
 
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
 
     await projectionStore.handleSseEvent(conversationId, {
       type: 'final_answer_chunk',
@@ -198,7 +198,7 @@ describe('projectionStore interrupted follow-up regression', () => {
       title: 'live truncate',
       autoActivate: true,
     });
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
 
     projectionStore.appendMessage(
       createMessage({
@@ -284,7 +284,7 @@ describe('projectionStore interrupted follow-up regression', () => {
       revision: 1,
     });
 
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const result = await projectionStore.handleSseEvent(conversationId, {
       type: 'final_answer_chunk',
       id: 'event-conflicting-answer-chunk',
@@ -370,7 +370,7 @@ describe('projectionStore interrupted follow-up regression', () => {
       revision: 1,
     });
 
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const executionScope = createExecutionScope('run-new-attempt', 'execution-new-attempt');
     await expect(
       projectionStore.handleSseEvent(conversationId, {
@@ -462,7 +462,7 @@ describe('projectionStore interrupted follow-up regression', () => {
       revision: 1,
     });
 
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const runId = RunIdSchema.parse('run-citation-rollback');
     const parentToolCallId = ToolCallIdSchema.parse('call-citation-parent');
     const executionId = 'execution-citation-rollback';
@@ -568,7 +568,7 @@ describe('projectionStore interrupted follow-up regression', () => {
       title: 'window target truncate',
       autoActivate: true,
     });
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
 
     projectionStore.appendMessage(
       createMessage({
@@ -609,7 +609,7 @@ describe('projectionStore interrupted follow-up regression', () => {
     }
     conversation.messages = buildBaseHistory();
 
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
 
     projectionStore.truncateProjectionStateAfterMessage(conversationId, 'window-only-message');
 
@@ -633,7 +633,7 @@ describe('projectionStore interrupted follow-up regression', () => {
     }
     conversation.messages = buildBaseHistory();
 
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const controller = new AbortController();
     interactiveRunStore.beginStart(conversationId, controller);
 
@@ -721,7 +721,7 @@ describe('projectionStore interrupted follow-up regression', () => {
     }
     conversation.messages = buildBaseHistory();
 
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const previousTurnResult = await projectionStore.handleSseEvent(conversationId, {
       type: 'transport_end',
       id: 'evt_previous_transport_end',
@@ -770,7 +770,7 @@ describe('projectionStore interrupted follow-up regression', () => {
       title: '无损缓冲',
       autoActivate: true,
     });
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const requestToken = 2;
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     projectionStore.beginHistoryLoadingSseBuffer(conversationId, requestToken);
@@ -808,7 +808,7 @@ describe('projectionStore interrupted follow-up regression', () => {
       title: '过期回放',
       autoActivate: true,
     });
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const requestToken = 3;
     projectionStore.beginHistoryLoadingSseBuffer(conversationId, requestToken);
 
@@ -845,7 +845,7 @@ describe('projectionStore interrupted follow-up regression', () => {
       title: '非法封口',
       autoActivate: true,
     });
-    const projectionStore = useProjectionStore();
+    const projectionStore = useConversationProjection();
     const requestToken = 4;
     projectionStore.beginHistoryLoadingSseBuffer(conversationId, requestToken);
 

@@ -13,18 +13,9 @@ import { resolveRunExecutionActivity } from '../shared/execution-presentation/fu
 import { useExecutionState } from './executionState';
 import { useConversationState } from './conversationState';
 import { useConversationSelectors } from './selectors';
-import {
-  isInteractiveRunBusy,
-  useInteractiveRunStore,
-} from '../features/interactive-run';
-
-import type { BaseMessage } from '../types';
-import type { ConversationUserInputCommittedEvent } from '@app/schemas';
-
+import { isInteractiveRunBusy, useInteractiveRunStore } from '../features/interactive-run';
 
 // 阶段性拆分导入
-import { useProjectionStore } from './assistant';
-import type { SSEEventInput } from '@linnlabs/linnkit/contracts';
 import { useAnnotationRunExecutionStore } from '../features/annotation-run/store/annotationRunExecutionStore';
 import {
   selectConversationSurfaceError,
@@ -67,9 +58,10 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
       isInteractiveRunBusy(activeConversationInteractiveRun.value) ||
       annotationRunExecutionStore.isStreamingFor(conversationState.activeConversationId)
   );
-  const activeConversationIsStreaming = computed(() =>
-    resolveRunExecutionActivity(activeConversationInteractiveRun.value).isExecuting ||
-    annotationRunExecutionStore.isStreamingFor(conversationState.activeConversationId)
+  const activeConversationIsStreaming = computed(
+    () =>
+      resolveRunExecutionActivity(activeConversationInteractiveRun.value).isExecuting ||
+      annotationRunExecutionStore.isStreamingFor(conversationState.activeConversationId)
   );
   const activeConversationRunIds = computed(() => {
     const runIds: string[] = [];
@@ -100,11 +92,14 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
    * 结论：
    * - 一律用 computed(() => executionState.xxx) 包一层再导出。
    */
-  const activeSurfaceError = computed(() => selectConversationSurfaceError({
-    interactiveRun: interactiveRunStore.snapshotFor(conversationState.activeConversationId)?.error,
-    legacyExecution: executionState.error,
-    annotationRun: annotationRunExecutionStore.errorFor(conversationState.activeConversationId),
-  }));
+  const activeSurfaceError = computed(() =>
+    selectConversationSurfaceError({
+      interactiveRun: interactiveRunStore.snapshotFor(conversationState.activeConversationId)
+        ?.error,
+      legacyExecution: executionState.error,
+      annotationRun: annotationRunExecutionStore.errorFor(conversationState.activeConversationId),
+    })
+  );
   const globalError = computed(() => activeSurfaceError.value?.message ?? null);
 
   /** 只关闭当前横幅真正的 owner；其它执行域的错误继续留在自己的生命周期中。 */
@@ -165,95 +160,7 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
     }
   );
 
-  // ===============================
-  // 实例化子模块
-  // ===============================
-  const projectionStore = useProjectionStore();
-
-  // ===============================
-  // 从 sub-stores 提取响应式引用
-  // ===============================
   const { inputText: conversationInputText } = storeToRefs(conversationState);
-
-  const mergeConversationMetadata = (
-    conversationId: string,
-    metadata: Record<string, unknown>
-  ): void => {
-    conversationState.mergeConversationMetadata(conversationId, metadata);
-    projectionStore.mergeConversationMetadata(conversationId, metadata);
-  };
-
-  // ===============================
-  // 事件系统与投影 (转发到 ProjectionStore)
-  // ===============================
-  const handleSseEvent = (conversationId: string | undefined, event: SSEEventInput) => {
-    return projectionStore.handleSseEvent(conversationId, event);
-  };
-
-  const commitUserInput = (event: ConversationUserInputCommittedEvent): BaseMessage =>
-    projectionStore.commitUserInput(event);
-
-  const cleanupConversationProjection = (conversationId: string): void => {
-    projectionStore.cleanupConversationProjection(conversationId);
-  };
-
-  const beginHistoryLoadingSseBuffer = (conversationId: string, requestToken: number): void => {
-    projectionStore.beginHistoryLoadingSseBuffer(conversationId, requestToken);
-  };
-
-  const discardHistoryLoadingSseBuffer = (
-    conversationId: string,
-    requestToken: number,
-    reason: string
-  ): void => {
-    projectionStore.discardHistoryLoadingSseBuffer(conversationId, requestToken, reason);
-  };
-
-  const replayBufferedHistoryLoadingEvents = (
-    conversationId: string,
-    requestToken: number,
-    shouldContinue: () => boolean
-  ): Promise<'replayed' | 'stale'> => {
-    return projectionStore.replayBufferedHistoryLoadingEvents(
-      conversationId,
-      requestToken,
-      shouldContinue
-    );
-  };
-
-  const resetAllProjectionStates = (): void => {
-    projectionStore.resetAllProjectionStates();
-  };
-
-  const truncateProjectionStateAfterMessage = (conversationId: string, messageId: string): void => {
-    projectionStore.truncateProjectionStateAfterMessage(conversationId, messageId);
-  };
-
-  const appendMessage = (message: BaseMessage, conversationId?: string): void => {
-    projectionStore.appendMessage(message, conversationId);
-  };
-
-  const updateMessageById = (
-    messageId: string,
-    updater: (message: BaseMessage) => void,
-    conversationId?: string
-  ): boolean => {
-    return projectionStore.updateMessageById(messageId, updater, conversationId);
-  };
-
-  const updateTaskProgressMessage = (
-    messageId: string,
-    newContent: string,
-    isStreaming: boolean,
-    conversationId?: string
-  ): boolean => {
-    return projectionStore.updateTaskProgressMessage(
-      messageId,
-      newContent,
-      isStreaming,
-      conversationId
-    );
-  };
 
   // ===============================
   // 导出 API
@@ -286,7 +193,6 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
     setInputText: conversationState.setInputText,
     setConversationSelectedAgent: conversationState.setConversationSelectedAgent,
     /** 合并展示/上下文 metadata；控制面字段必须使用显式 store action。 */
-    mergeConversationMetadata,
 
     clearActiveConversation: () => {
       conversationState.setActiveConversation(null);
@@ -309,14 +215,6 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
     // 编辑器任务
 
     // 统一事件投影
-    handleSseEvent,
-    commitUserInput,
-    cleanupConversationProjection,
-    beginHistoryLoadingSseBuffer,
-    discardHistoryLoadingSseBuffer,
-    replayBufferedHistoryLoadingEvents,
-    resetAllProjectionStates,
-    truncateProjectionStateAfterMessage,
 
     // 作用域
     selectedConversationId: computed(() => selectedConversationId.value),
@@ -326,8 +224,5 @@ export const useAssistantStore = defineStore('aiAssistant', () => {
     resetTimelineCollapsed,
 
     // 统一消息追加
-    appendMessage,
-    updateMessageById,
-    updateTaskProgressMessage,
   };
 });

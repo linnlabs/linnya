@@ -32,8 +32,8 @@ vi.mock('../../../store/conversationState', () => ({
   useConversationState: () => ({ updateConversationTitle: harness.updateConversationTitle }),
 }));
 
-vi.mock('../../../history/store/historyListStore', () => ({
-  useHistoryListStore: () => ({ updateConversation: harness.updateHistoryConversation }),
+vi.mock('../../../history/list', () => ({
+  useHistoryList: () => ({ updateConversation: harness.updateHistoryConversation }),
 }));
 
 const CONVERSATION_ID = 'conversation-1';

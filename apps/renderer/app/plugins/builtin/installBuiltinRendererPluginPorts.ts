@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/assistantActions';
 import { useToolingFlowOrchestrator } from '@/domains/conversation/assistantActions';
 /**
  * @file installBuiltinRendererPluginPorts.ts
@@ -141,7 +143,7 @@ async function startHistoryIsolatedRun(request: RendererAiHistoryIsolatedRunRequ
   const activity = { runId, feature: request.activityFeature };
   const userInputAdmission = createConversationUserInputAdmission({
     expectation: { conversationId: conversation.id, messageId, operation: 'append' },
-    commitUserInput: assistantStore.commitUserInput,
+    commitUserInput: useConversationProjectionActions().commitUserInput,
     onCommitted: (_message, event) => {
       orchestrateCommittedConversationTitle({
         event,
@@ -195,7 +197,7 @@ async function startHistoryIsolatedRun(request: RendererAiHistoryIsolatedRunRequ
             : {}),
           activity,
         },
-        eventDispatcher: assistantStore.handleSseEvent,
+        eventDispatcher: useConversationProjectionActions().handleSseEvent,
       },
       {
         onUserInputCommitted: (event) => {

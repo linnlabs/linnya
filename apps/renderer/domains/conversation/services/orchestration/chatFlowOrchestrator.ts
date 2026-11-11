@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 import type { UiEditorInstance } from '@/shared/types';
 import { captureConversationClientNotice } from '../../features/client-notices';
 /**
@@ -222,7 +224,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
     const messageId = generateMessageId();
     const admission = createConversationUserInputAdmission({
       expectation: { conversationId, messageId, operation: 'append' },
-      commitUserInput: assistantStore.commitUserInput,
+      commitUserInput: useConversationProjectionActions().commitUserInput,
       onCommitted: (committedMessage, event) => {
         orchestrateCommittedConversationTitle({
           event,
@@ -345,7 +347,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
         messageId,
         operation: 'replace',
       },
-      commitUserInput: assistantStore.commitUserInput,
+      commitUserInput: useConversationProjectionActions().commitUserInput,
       onCommitted: (committedMessage) => {
         if (messageWindowStore.conversationId === conversation.id) {
           messageWindowStore.truncateAfterMessage(messageId, { replacement: committedMessage });
@@ -550,7 +552,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
             documentMetadata: documentMetadata ?? options?.documentMetadata,
             projectFileList: projectFileList ?? options?.projectFileList,
           },
-          eventDispatcher: assistantStore.handleSseEvent,
+          eventDispatcher: useConversationProjectionActions().handleSseEvent,
         },
         // 空回调集合：所有业务事件都通过请求级 dispatcher + messageProjection 处理，
         // 这里只保留最基本的生命周期钩子和错误日志，避免重复消费 SSE 文本流。

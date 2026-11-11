@@ -28,7 +28,7 @@ import type {
 } from '@/app/plugins/types';
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
 import { useWorkspaceTree } from '@/domains/workspace/tree';
-import { useHistoryLoaderStore } from '@/domains/conversation/history/store/historyLoaderStore';
+import { useHistoryLoader } from '@/domains/conversation/history/loader';
 import type { HistoryLoadingIntent } from '@/domains/conversation/history/definitions/historyLoader';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { useProjectKnowledgeBaseModalStore } from '@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore';
@@ -374,7 +374,7 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
     async openConversation(request) {
       const layoutStore = useLayoutStore();
       const navigationScope = useNavigationScope();
-      const historyLoaderStore = useHistoryLoaderStore();
+      const historyLoaderStore = useHistoryLoader();
       const previousScope = cloneNavigationScope(navigationScope.currentScope);
       const plan = resolveConversationNavigationPlan(
         layoutStore.state,

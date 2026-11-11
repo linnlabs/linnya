@@ -1,13 +1,15 @@
+import { useAudioContentActions, useAudioRuntimeActions } from '../../runtime.js';
 import { onBeforeUnmount, ref } from 'vue'
 import { useNotificationStore } from '@/app/notification'
-import { useAudioContentStore, useAudioRuntimeStore } from '../../store/index.js'
+import { useAudioRuntimeStore } from '../../store/index.js'
 import { resolveCurrentEditorMessage } from '../../../../functions/resolveCurrentEditorMessage'
 import { createAudioBlockMessage } from '../../functions/audioBlockPresentation'
 
 export function useTranscriptionRequest(props) {
   const notificationStore = useNotificationStore()
-  const contentStore = useAudioContentStore()
+const contentActions = useAudioContentActions();
   const runtimeStore = useAudioRuntimeStore()
+const runtimeActions = useAudioRuntimeActions();
 
   const resetTimer = ref(null)
 
@@ -52,7 +54,7 @@ export function useTranscriptionRequest(props) {
     }
 
     try {
-      const { blob, mimeType, filename, duration } = await runtimeStore.resolveAudioForTranscription(blockId)
+      const { blob, mimeType, filename, duration } = await runtimeActions.resolveAudioForTranscription(blockId)
       const { transcribeAudio } = await import('../../services/transcriptionService.js')
       const result = await transcribeAudio(blob, mimeType, filename, duration)
 
@@ -69,7 +71,7 @@ export function useTranscriptionRequest(props) {
       if (segments.length > 0) {
         const { segmentsToProseMirrorDoc } = await import('../content-panel/transcriptDataConverter.js')
         transcriptDoc = segmentsToProseMirrorDoc(segments)
-        contentStore.setTranscriptContentDraft(blockId, transcriptDoc)
+        contentActions.setTranscriptContentDraft(blockId, transcriptDoc)
       }
 
       runtimeStore.updateRuntime(blockId, {

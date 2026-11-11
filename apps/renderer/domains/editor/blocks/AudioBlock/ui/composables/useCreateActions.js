@@ -1,3 +1,4 @@
+import { useAudioContentActions } from '../../runtime.js';
 /**
  * @file useCreateActions.js
  * @brief 创建内容动作（纪要等）
@@ -57,6 +58,7 @@ const getTranscriptText = (transcriptContent) => {
 export function useCreateActions(props) {
   const notificationStore = useNotificationStore();
   const contentStore = useAudioContentStore();
+const contentActions = useAudioContentActions();
   const runtimeStore = useAudioRuntimeStore();
   const { requestTranscription } = useTranscriptionRequest(props);
 
@@ -99,7 +101,7 @@ export function useCreateActions(props) {
           console.log('✅ [AudioPlayer] 纪要生成完成');
           
           // 保存到 Store
-          contentStore.setSummaryContentDraft(props.blockId, summaryContent);
+          contentActions.setSummaryContentDraft(props.blockId, summaryContent);
           // 自动显示面板并切换到纪要 tab
           runtimeStore.updateRuntime(props.blockId, {
             isPanelVisible: true,
@@ -130,7 +132,6 @@ export function useCreateActions(props) {
     
     // 总是获取最新的状态
     const content = contentStore.getContent(props.blockId);
-    const runtime = runtimeStore.getRuntime(props.blockId);
     
     try {
       if (actionId === 'summary') {

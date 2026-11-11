@@ -93,7 +93,7 @@ Teleport 到该视口后以局部绝对定位居中。不能再使用整个窗�
 
 ## 性能与观测
 
-`store/revisionPendingPerf.ts` 保留投影批次耗时采样，公开到 `window.__REVISION_PERF__`；文档首次装载指标由 Editor 的 open perf 采集。Shell 窗口调度的日志与采样仍由 `orchestration/shellPendingProjection/` 管理。
+`observability/revisionPendingPerf.ts` 保留投影批次耗时采样，公开到 `window.__REVISION_PERF__`；文档首次装载指标由 Editor 的 open perf 采集。Shell 窗口调度的日志与采样仍由 `orchestration/shellPendingProjection/` 管理。
 
 出现计数与行内预览差异时，先检查当前文档会话、后端 Pending 清单与每块投影状态。计数非零而没有 mark，可能是未展开或预览失败，不能据此修改数据库。提交失败日志包含文档身份、预期版本、Pending 数量和操作类型，不打印正文。
 
@@ -105,3 +105,5 @@ Teleport 到该视口后以局部绝对定位居中。不能再使用整个窗�
 `utils/pending/__test__/latexPendingRevision.test.ts`；后端真实 SQLite 写入/决策与准入失败保留见 Markdown domain 的 document-write 测试。
 
 投影应用器只从 `store/revisionState.ts` 取得同一 Editor 的状态并同步登记统计；不回引 `useRevisionStore` 来实例化运行时。`useRevisionStore` 是现有文档会话的运行时门面（不是 Pinia state store）；编排继续由 `createRevisionRuntime` 持有，缓存和文档状态结构保持不变。
+
+性能采样的类型与浏览器观测合同在 `definitions/revisionActionPerf.ts`、`definitions/revisionPendingPerf.ts`，运行实现位于 `observability/`。它们只记录修订动作/注入耗时，不拥有业务状态；`store/` 仅保留同步状态和投影批次登记。

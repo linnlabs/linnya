@@ -37,6 +37,7 @@ import { computed, ref, watch, onMounted, nextTick, inject } from 'vue';
 import { NodeViewWrapper, nodeViewProps, NodeViewContent } from '@tiptap/vue-3'; // Added NodeViewContent if needed, maybe not
 import { renderWorkspaceLatex } from '@linnya/markdown-document-core/workspace-presentation';
 import { useLatexEditorStore } from '../store/latexEditor';
+import { useLatexEditorActions } from '../runtime';
 import { useCurrentBlockActivation } from '../../../ui/composables/useCurrentBlockActivation';
 import { EDITOR_KEY } from '../../../core/tokens';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
@@ -45,6 +46,7 @@ import { useLatexRevisionView } from '../orchestration/useLatexRevisionView';
 
 const props = defineProps(nodeViewProps);
 const latexStore = useLatexEditorStore();
+const latexActions = useLatexEditorActions();
 const injectedEditor = inject(EDITOR_KEY, null);
 const { currentLocale, editorMessage } = useEditorLocalization();
 
@@ -125,7 +127,7 @@ watch(currentLocale, () => {
 });
 
 watch(revision.pending, pending => {
-  if (pending && latexStore.isPanelVisible && latexStore.targetNodeId === props.node.attrs.id) void latexStore.hidePanel();
+  if (pending && latexStore.isPanelVisible && latexStore.targetNodeId === props.node.attrs.id) void latexActions.hidePanel();
 });
 
 // --- Lifecycle ---
@@ -149,7 +151,7 @@ onMounted(() => {
 const openLatexPanel = () => {
   if (!props.editor.isEditable || revision.pending.value) return;
   if (latexStore.isPanelVisible && latexStore.targetNodeId === props.node.attrs.id) {
-    latexStore.submitCurrentLatex();
+    latexActions.submitCurrentLatex();
     return;
   }
 

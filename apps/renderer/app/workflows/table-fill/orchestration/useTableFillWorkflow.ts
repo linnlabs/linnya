@@ -1,3 +1,5 @@
+
+import { useConversationProjectionActions } from '@/domains/conversation/assistantActions';
 import { generateMessageId } from '@shared/utils/idUtils';
 import { getCurrentScope, onScopeDispose } from 'vue';
 import { useUIStore } from '@/shared/stores/ui';
@@ -105,7 +107,7 @@ export function useTableFillWorkflow(): TableFillWorkflow {
                 messageId: run.messageId,
                 operation: 'append',
               },
-              commitUserInput: assistantStore.commitUserInput,
+              commitUserInput: useConversationProjectionActions().commitUserInput,
               onCommitted: (_message, event) => {
                 orchestrateCommittedConversationTitle({
                   event,
@@ -132,7 +134,7 @@ export function useTableFillWorkflow(): TableFillWorkflow {
           invokeAssistant: (params, callbacks, signal) => invokeAssistant(
             {
               ...params,
-              eventDispatcher: assistantStore.handleSseEvent,
+              eventDispatcher: useConversationProjectionActions().handleSseEvent,
             },
             callbacks,
             signal,

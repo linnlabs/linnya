@@ -4,7 +4,7 @@ import { readAuxiliaryPurposeLowestReasoningEffort } from '@/domains/model-confi
 import { generateText } from '@app/model-inference';
 import { useConversationState } from '../../../store/conversationState';
 import { historyApiService } from '../../../history/services/historyApiService';
-import { useHistoryListStore } from '../../../history/store/historyListStore';
+import { useHistoryList } from '../../../history/list';
 import type { ConversationTitleCoordinator } from '../definitions/conversationTitle';
 import { buildAutomaticConversationTitlePrompt } from '../functions/conversationTitleText';
 import { useConversationTitleCandidateStore } from '../store/conversationTitleCandidateStore';
@@ -20,7 +20,7 @@ export function useConversationTitleFeature(): ConversationTitleCoordinator {
 
   const settingsStore = useConversationTitleSettingsStore();
   const conversationState = useConversationState();
-  const historyListStore = useHistoryListStore();
+  const historyListStore = useHistoryList();
   const coordinator = createConversationTitleCoordinator({
     candidates: candidateStore,
     isAutomaticTitleEnabled: () => settingsStore.isAutomaticTitleEnabled,

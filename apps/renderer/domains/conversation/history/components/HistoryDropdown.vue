@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch, type Component, type CSSProperties } from 'vue';
-import { useHistoryListStore } from '../store/historyListStore';
+import { useHistoryList } from '../list';
 import { useAssistantStore } from '../../store/assistantStore';
 import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceNavigationPort } from '@shared/ports/workspaceNavigationPort';
@@ -69,7 +69,7 @@ interface HistoryDropdownOption {
   className?: string;
 }
 
-const listStore = useHistoryListStore();
+const listStore = useHistoryList();
 const assistantStore = useAssistantStore();
 const navigationScope = useNavigationScope();
 const { conversationMessage } = useConversationLocalization();
