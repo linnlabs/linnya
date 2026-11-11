@@ -158,6 +158,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useTodoStore } from '../store/todoStore';
+import { useTodoActions } from '../runtime';
 import type { Todo } from '../types';
 import TodoItem from './TodoItem.vue';
 import CreateTodoCard from './CreateTodoCard.vue';
@@ -174,23 +175,24 @@ const projectsStore = useWorkspaceProjectsStore();
 const { activeProjectId } = storeToRefs(projectsStore);
 const { workspaceMessage } = useWorkspaceLocalization();
  
- const todoStore = useTodoStore();
+const todoStore = useTodoStore();
+const todoActions = useTodoActions();
  
 onMounted(() => {
   // 首次挂载时，如果当前视图是激活的，加载一次数据
   if (props.isActive && activeProjectId.value) {
     console.log('[TodoSidebar] Mounted and active, fetching initial todos for project:', activeProjectId.value);
-    todoStore.fetchTodos(activeProjectId.value);
+    todoActions.fetchTodos(activeProjectId.value);
   }
   // 注册监听器以接收实时更新
-  todoStore.listenForChanges();
+  todoActions.listenForChanges();
 });
 
 // 当项目切换时，自动加载新项目的待办事项
 watch(activeProjectId, (newProjectId, oldProjectId) => {
   if (newProjectId && newProjectId !== oldProjectId) {
     console.log(`[TodoSidebar] Project changed to ${newProjectId}, fetching todos.`);
-    todoStore.fetchTodos(newProjectId);
+    todoActions.fetchTodos(newProjectId);
   }
 });
 
@@ -234,7 +236,7 @@ const toggleSection = (section: keyof typeof expandedSections) => {
 
 const handleAddTodo = (todo: Omit<Todo, 'id'>) => {
   if (activeProjectId.value) {
-    todoStore.addTodo(activeProjectId.value, todo);
+    todoActions.addTodo(activeProjectId.value, todo);
   } else {
     console.error("No project selected, cannot add todo.");
   }
@@ -242,10 +244,10 @@ const handleAddTodo = (todo: Omit<Todo, 'id'>) => {
 };
 
 const handleToggleComplete = (id: string) => {
-  todoStore.toggleComplete(id);
+  todoActions.toggleComplete(id);
 };
 
 const handleDelete = (id: string) => {
-  todoStore.deleteTodo(id);
+  todoActions.deleteTodo(id);
 };
 </script>

@@ -34,11 +34,6 @@ STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	lo
 STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	updateCustomAgent#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionActionPerf.ts	measureAsync#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionPendingPerf.ts	measureRevisionPendingStageAsync#1
-STORE-ASYNC	apps/renderer/domains/workspace/features/todo/store/todoStore.ts	addTodo#1
-STORE-ASYNC	apps/renderer/domains/workspace/features/todo/store/todoStore.ts	deleteTodo#1
-STORE-ASYNC	apps/renderer/domains/workspace/features/todo/store/todoStore.ts	fetchTodos#1
-STORE-ASYNC	apps/renderer/domains/workspace/features/todo/store/todoStore.ts	toggleComplete#1
-STORE-ASYNC	apps/renderer/domains/workspace/features/todo/store/todoStore.ts	updateTodo#1
 STORE-ASYNC	apps/renderer/shared/stores/blockIndexSnapshotStore.ts	register#1
 STORE-ASYNC	apps/renderer/shared/stores/blockIndexSnapshotStore.ts	registerBlockRefSnapshot#1
 STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/history/store/historyLoaderStore.ts	../orchestration/historyWindowTailLoader
