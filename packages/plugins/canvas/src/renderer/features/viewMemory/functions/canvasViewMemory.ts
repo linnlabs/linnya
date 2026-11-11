@@ -1,3 +1,4 @@
+import { isRecord } from '@linnya/foundation';
 import type { CanvasCamera } from '@plugin/canvas/shared';
 
 /** 每份画布在本机记住的最后视口；超过上限时丢弃最久没打开的。 */
@@ -10,11 +11,15 @@ export type CanvasViewMemory = Readonly<Record<string, CanvasViewMemoryEntry>>;
 export const canvasViewMemoryLimit = 200;
 
 function readCamera(value: unknown): CanvasCamera | null {
-  if (!value || typeof value !== 'object') return null;
-  const { x, y, zoom } = value as Record<string, unknown>;
-  return typeof x === 'number' && Number.isFinite(x) &&
-    typeof y === 'number' && Number.isFinite(y) &&
-    typeof zoom === 'number' && Number.isFinite(zoom) && zoom > 0
+  if (!isRecord(value)) return null;
+  const { x, y, zoom } = value;
+  return typeof x === 'number' &&
+    Number.isFinite(x) &&
+    typeof y === 'number' &&
+    Number.isFinite(y) &&
+    typeof zoom === 'number' &&
+    Number.isFinite(zoom) &&
+    zoom > 0
     ? { x, y, zoom }
     : null;
 }
@@ -28,12 +33,12 @@ export function parseCanvasViewMemory(raw: string | null): CanvasViewMemory {
   } catch {
     return {};
   }
-  if (!parsed || typeof parsed !== 'object') return {};
+  if (!isRecord(parsed)) return {};
   const memory: Record<string, CanvasViewMemoryEntry> = {};
   for (const [documentId, entry] of Object.entries(parsed)) {
-    const camera = readCamera((entry as { camera?: unknown } | null)?.camera);
-    const at = (entry as { at?: unknown } | null)?.at;
-    if (camera && typeof at === 'number') memory[documentId] = { camera, at };
+    if (!isRecord(entry)) continue;
+    const camera = readCamera(entry.camera);
+    if (camera && typeof entry.at === 'number') memory[documentId] = { camera, at: entry.at };
   }
   return memory;
 }
@@ -41,11 +46,12 @@ export function parseCanvasViewMemory(raw: string | null): CanvasViewMemory {
 export function rememberCanvasView(
   memory: CanvasViewMemory,
   documentId: string,
-  camera: CanvasCamera,
-  at: number,
+  view: CanvasViewMemoryEntry,
   limit = canvasViewMemoryLimit
 ): CanvasViewMemory {
-  const entries = Object.entries({ ...memory, [documentId]: { camera, at } });
+  const entries = Object.entries({ ...memory, [documentId]: view });
   if (entries.length <= limit) return Object.fromEntries(entries);
-  return Object.fromEntries(entries.sort(([, left], [, right]) => right.at - left.at).slice(0, limit));
+  return Object.fromEntries(
+    entries.sort(([, left], [, right]) => right.at - left.at).slice(0, limit)
+  );
 }

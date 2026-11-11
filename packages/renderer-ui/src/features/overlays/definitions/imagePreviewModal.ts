@@ -12,5 +12,7 @@ export interface ImagePreviewModalProps {
    * 不传、元素已不在屏幕上、浏览器不支持或系统开启“减少动态效果”时退回淡入淡出。
    */
   readonly sourceElement?: HTMLElement | null;
+  /** 远程图片在跨源隔离的页面里要按 CORS 方式加载（服务器须返回 Access-Control-Allow-Origin）；本地图片不传。 */
+  readonly crossOrigin?: 'anonymous';
   readonly classNames?: ImagePreviewModalClassNames;
 }

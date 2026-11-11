@@ -308,8 +308,7 @@ describe('Subrun full-message admission', () => {
       }],
       toolPresentation: {
         uiKey: 'image_read',
-        data: { kind: 'image', source: 'conversation_file', fileName: 'slide-007.png' },
-        title: { text: { key: 'conversation.tool.imageRead.title' } },
+        data: { kind: 'image', source: 'conversation_file', fileName: 'slide-007.png', alreadyShown: false },
       },
     });
   });

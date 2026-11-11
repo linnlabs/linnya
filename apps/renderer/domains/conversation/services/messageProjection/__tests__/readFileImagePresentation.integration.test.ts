@@ -148,9 +148,10 @@ describe('read_file image presentation integration', () => {
         kind: 'image',
         source: 'conversation_file',
         fileName: 'slide-007.png',
+        alreadyShown: false,
       },
-      title: { text: { key: 'conversation.tool.imageRead.title' } },
     });
+    expect(success.toolPresentation?.title).toBeUndefined();
     expect(success.attachments).toMatchObject([{
       assetId: 'asset-read-image',
       fileName: 'slide-007.png',

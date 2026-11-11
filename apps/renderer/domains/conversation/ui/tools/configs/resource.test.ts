@@ -39,7 +39,7 @@ describe('readResourceReadUiKeyFromResult', () => {
           uri: 'https://example.com/article',
         },
       }),
-    ).toBe('web_read');
+    ).toBe('web_read_page');
   });
 
   it('应从 result.data.uri 识别 tool output 续读卡片', () => {

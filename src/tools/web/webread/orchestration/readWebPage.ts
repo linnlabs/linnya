@@ -48,8 +48,13 @@ import {
 } from '../functions/webReadWindow';
 import { readWebPdfText, type WebPdfTextResult } from './readWebPdfText';
 import { isRecord } from '@linnya/foundation';
+import { getImageSourceRegistry, type ImageSourceRegistry, type ImageSourceRecord } from '../../shared/images/imageSourceRegistry';
+import type { WebImageSource } from '@app/schemas';
 
 const logger = new Logger('ReadWebPage');
+
+/** 媒体类型按解码确认过的格式给，不用响应头（可能是 application/octet-stream）。 */
+const IMAGE_MEDIA_TYPES = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' } as const;
 
 export const MAX_WEB_PAGE_CONTENT_CHARS = WEB_READ_MAX_CONTENT_CHARS;
 export const DEFAULT_WEB_PAGE_RETURN_CHARS = WEB_READ_DEFAULT_RETURN_CHARS;
@@ -75,6 +80,22 @@ export interface ReadWebPageDependencies {
   evidenceWriter?: WebEvidenceWriter;
   cacheRuntime?: WebCacheRuntime;
   fileStore?: WebFileStore;
+  imageSources?: ImageSourceRegistry;
+}
+
+function toWebImageSource(record: ImageSourceRecord): WebImageSource {
+  return {
+    found_via: record.foundVia,
+    page_url: record.pageUrl,
+    ...(record.provider ? { provider: record.provider } : {}),
+    ...(record.title ? { title: record.title } : {}),
+    ...(record.creator ? { creator: record.creator } : {}),
+    ...(record.license ? { license: record.license } : {}),
+    ...(record.attribution ? { attribution: record.attribution } : {}),
+    ...(record.caption ? { caption: record.caption } : {}),
+    ...(record.credit ? { credit: record.credit } : {}),
+    ...(record.pageRights ? { page_rights: record.pageRights } : {}),
+  };
 }
 
 function createAbortError(): Error {
@@ -242,7 +263,7 @@ export async function runReadWebPage(
   if (readResult.filePayload && !fileStore) {
     throw new Error('Web file acquisition requires a host-admitted conversation file store.');
   }
-  const file =
+  const saved =
     readResult.filePayload && fileStore
       ? await fileStore.save({
           ...readResult.filePayload,
@@ -253,7 +274,43 @@ export async function runReadWebPage(
           signal: context.abortSignal,
         })
       : undefined;
+  const file = saved?.receipt;
   context.abortSignal?.throwIfAborted();
+  const imageSources = dependencies.imageSources ?? getImageSourceRegistry();
+  // 网页上的图片候选：记下出现在哪一页、图注与署名，之后下载同一地址时写进回执。
+  // 正文里的图片链接（Markdown 图片）也记下出现在哪一页：页面主图列表只收有尺寸依据的大图，
+  // 模型可能从正文里拿到别的图片地址去下载。列表里的图后写入，带上图注与署名。
+  if (!readResult.filePayload) {
+    for (const match of readResult.content.matchAll(/!\[([^\]\n]{0,300})\]\((https?:\/\/[^\s)]+)/gu)) {
+      imageSources.remember(match[2]!, {
+        foundVia: 'web_page',
+        pageUrl: normalizeUrl(readResult.finalUrl),
+        ...(readResult.title.trim() ? { title: readResult.title.trim().slice(0, 300) } : {}),
+        ...(match[1]?.trim() ? { caption: match[1].trim().slice(0, 500) } : {}),
+        ...(readResult.pageRights ? { pageRights: readResult.pageRights } : {}),
+      });
+    }
+  }
+  for (const pageImage of readResult.images ?? []) {
+    imageSources.remember(pageImage.url, {
+      foundVia: 'web_page',
+      pageUrl: normalizeUrl(readResult.finalUrl),
+      ...(readResult.title.trim() ? { title: readResult.title.trim().slice(0, 300) } : {}),
+      ...(pageImage.caption ?? pageImage.alt ? { caption: (pageImage.caption ?? pageImage.alt)!.slice(0, 500) } : {}),
+      ...(pageImage.credit ? { credit: pageImage.credit } : {}),
+      ...(readResult.pageRights ? { pageRights: readResult.pageRights } : {}),
+    });
+  }
+  const imageRecord = readResult.filePayload?.image
+    ? imageSources.lookup(params.url, readResult.finalUrl)
+    : undefined;
+  const image = readResult.filePayload?.image
+    ? {
+        width: readResult.filePayload.image.width,
+        height: readResult.filePayload.image.height,
+        ...(imageRecord ? { source: toWebImageSource(imageRecord) } : {}),
+      }
+    : undefined;
 
   const providerError = tryParseProviderErrorPayload(readResult.content);
   if (providerError) {
@@ -392,7 +449,10 @@ export async function runReadWebPage(
     captureTruncated,
     warnings: readResult.warnings,
     resources: readResult.resources,
+    ...(readResult.images?.length ? { pageImages: readResult.images } : {}),
+    ...(readResult.pageRights ? { pageRights: readResult.pageRights } : {}),
     file,
+    ...(image ? { image } : {}),
     ...(window ? { window } : {}),
     ...(textFind && params.find !== undefined ? { find: { query: params.find, result: textFind } } : {}),
     ...(pdfText ? { pdf: pdfText, imageDelivery: resolveToolResultImageDelivery(context) } : {}),
@@ -441,6 +501,8 @@ export async function runReadWebPage(
       ...(readResult.resources && readResult.resources.length > 0
         ? { resources: readResult.resources }
         : {}),
+      ...(readResult.images && readResult.images.length > 0 ? { images: readResult.images } : {}),
+      ...(readResult.pageRights ? { page_rights: readResult.pageRights } : {}),
       ...(window
         ? {
             window: {
@@ -487,8 +549,13 @@ export async function runReadWebPage(
       evidence_store: { bundle_id: bundleId },
       cacheStatus,
       ...(file ? { file } : {}),
+      ...(image ? { image } : {}),
     },
     observation,
+    // 界面直接显示下载的图，和 generate_image 一样用本机路径；模型只看 observation。
+    ...(image && saved && file
+      ? { media: { path: saved.hostPath, media_type: IMAGE_MEDIA_TYPES[file.format as keyof typeof IMAGE_MEDIA_TYPES], width: image.width, height: image.height } }
+      : {}),
   });
   return JSON.stringify(result);
 }

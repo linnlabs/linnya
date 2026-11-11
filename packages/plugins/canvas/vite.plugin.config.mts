@@ -9,7 +9,8 @@ const rendererEntry = path.resolve(packageDir, 'src/renderer/index.ts');
 export default defineConfig({
   root: packageDir,
   plugins: [vue(), rendererStylesheetManifestPlugin({ entryPath: rendererEntry })],
-  define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+  // 插件 renderer 不能读 Node process；与 Slides 一致，依赖里的 process 探测在构建时折叠掉。
+  define: { 'process.env.NODE_ENV': JSON.stringify('production'), process: 'undefined' },
   resolve: { alias: [
     { find: /^@plugin\/canvas\/shared$/, replacement: path.resolve(packageDir, 'src/shared/index.ts') },
     { find: /^@app\/schemas$/, replacement: path.resolve(repository, 'packages/schemas/src/index.ts') },

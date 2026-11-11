@@ -10,6 +10,14 @@ import type { WebAcquiredFile } from '@app/schemas';
 export interface WebFilePayload {
   readonly bytes: Uint8Array;
   readonly format: WebAcquiredFile['format'];
+  /** 仅图片：完整解码后的像素尺寸（按 EXIF 方向）。 */
+  readonly image?: { readonly width: number; readonly height: number };
+}
+
+/** 保存回执，以及文件在本机的绝对路径；绝对路径只给 Renderer 显示图片，不进模型上下文。 */
+export interface SavedWebFile {
+  readonly receipt: WebAcquiredFile;
+  readonly hostPath: string;
 }
 
 export interface WebFileStore {
@@ -21,5 +29,5 @@ export interface WebFileStore {
       readonly acquiredAt: string;
       readonly signal?: AbortSignal;
     }
-  ): Promise<WebAcquiredFile>;
+  ): Promise<SavedWebFile>;
 }

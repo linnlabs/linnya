@@ -11,15 +11,12 @@ import type {
   ImageReadPresentationData,
   ImageReadSource,
 } from '../definitions/imageReadPresentation';
-import { createConversationToolTitleDescriptor } from '../../functions/createConversationToolTitleDescriptor';
 import { isSupportedReadFileImageContentType } from './resolveReadFileUiKey';
 
 const ASSET_IMAGE_PREFIX = 'asset://assets/';
+/** web_read 按内容哈希保存的下载图与 generate_image 的生成图：成功时已直接显示在对话里。 */
+const SHOWN_IMAGE_LOCATOR = /^conversation:\/(?:web-downloads\/[a-f0-9]{64}\.(?:jpg|png|webp)|generated-images\/[^/]+)$/;
 const CONVERSATION_FILE_IMAGE_PREFIX = 'conversation_file://files/';
-
-function createImageReadTitle() {
-  return createConversationToolTitleDescriptor('conversation.tool.imageRead.title');
-}
 
 function readHistoricalResourceImageSource(uri: string): ImageReadSource | undefined {
   if (uri.startsWith(ASSET_IMAGE_PREFIX)) return 'asset';
@@ -33,7 +30,6 @@ function projectHistoricalResourceImage(
   if (input.status !== 'success') {
     return {
       data: { kind: 'lifecycle' },
-      title: createImageReadTitle(),
     };
   }
 
@@ -54,11 +50,11 @@ function projectHistoricalResourceImage(
   }
 
   return {
-    title: createImageReadTitle(),
     data: {
       kind: 'image',
       source,
       ...(result.data.file_name ? { fileName: result.data.file_name } : {}),
+      alreadyShown: false,
     },
   };
 }
@@ -81,11 +77,11 @@ function projectReadFileImage(
       throw new Error('read_file image presentation received a non-image live result.');
     }
     return {
-      title: createImageReadTitle(),
       data: {
         kind: 'image',
         source: data.source_kind,
         fileName: data.file_name,
+        alreadyShown: SHOWN_IMAGE_LOCATOR.test(data.locator),
       },
     };
   }
@@ -100,11 +96,11 @@ function projectReadFileImage(
     throw new Error('read_file image presentation received a non-image historical result.');
   }
   return {
-    title: createImageReadTitle(),
     data: {
       kind: 'image',
       source: 'conversation_file',
       fileName: historical.data.file_name,
+      alreadyShown: false,
     },
   };
 }

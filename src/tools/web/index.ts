@@ -9,4 +9,5 @@
 
 export * from './websearch';
 export * from './webread';
+export * from './imagesearch';
 

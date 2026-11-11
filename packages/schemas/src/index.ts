@@ -167,6 +167,7 @@ export * from './tools/image-generation';
 export * from './tools/web-common';
 export * from './tools/web-search';
 export * from './tools/web-read';
+export * from './tools/image-search';
 export * from './tools/assemble-documents';
 export * from './tools/historical-assemble-evidence';
 export * from './tools/evidence-resolve';

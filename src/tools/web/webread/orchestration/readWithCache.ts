@@ -18,7 +18,8 @@ const logger = new Logger('WebReadCache');
 // 正文抽取器或 DOM 规范化语义变化时必须升级，避免 24 小时稳定页面缓存
 // 继续返回旧算法结果。
 // 10：快照保存上限从 5 万字提高到 50 万字，旧条目可能在 5 万字处截断。
-const WEB_READ_CACHE_ROUTE_VERSION = 10;
+// 11：保存正文主要图片候选与页面版权声明，旧条目没有这两项。
+const WEB_READ_CACHE_ROUTE_VERSION = 11;
 const DEFAULT_LOCAL_PROVIDER_IDENTITY = 'local_http';
 const DEFAULT_RENDER_PROVIDER_IDENTITY = 'local_render';
 

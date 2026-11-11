@@ -70,6 +70,9 @@ export interface CanvasSurfaceOperationsOptions extends CanvasSurfaceBindingsOpt
   readonly presentation: SurfacePresentation;
   readonly viewport: SurfaceViewport;
 }
+export interface CanvasSurfaceViewMemoryOptions extends CanvasSurfaceComposition {
+  readonly options: CanvasSurfaceOptions;
+}
 export interface CanvasSurfaceDisposalOptions extends CanvasSurfaceComposition {
   readonly drafts: SurfaceDrafts;
   readonly selection: SurfaceSelection;

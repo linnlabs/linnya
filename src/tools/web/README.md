@@ -13,6 +13,7 @@ Electron 隐藏渲染窗的生命周期与网络准入见[本地网页渲染](..
 
 - **web_search**：联网搜索（多 provider 可替换），输出结构化 citations，支持 `[@ref]` 引用体系与 hover/导出。
 - **web_read**：按确定 URL 读取页面正文。默认只使用本地 HTTP → 按需 Electron JS 渲染；用户可在“网络搜索”设置的“第三方网页解析”中主动配置秘塔/Jina。
+- **image_search**：在免 key 的开放图片来源（Wikimedia Commons、Openverse）找图，带回尺寸、许可与署名；下载仍走 `web_read`（见 §5.12）。
 - **历史 Resource wrapper**：`resource_read(http/https)` 已退出 live runtime；旧事件仍由 strict schema 与 Renderer replay projector 接纳，不再作为 Agent 心智。
 - **统一证据接入**：`web_search` / 网页读取成功时都通过 `WebEvidenceWriter` 窄 port 交付 Web 自有 capture DTO；Host 组合层映射为 Evidence command。同 URL 从搜索摘要升级为页面正文后，Resolver 优先回放完整正文。
 - **开发 CLI**：可通过临时开关调用同一搜索/读取工具，默认关闭。开关和普通搜索限制归 Conversation Control，不进入 Web 实现；使用说明见 [CLI 工具入口](../../../apps/linnya-cli/README.md#31-调用工具)。
@@ -235,7 +236,13 @@ src/tools/web/webread/
     ├── localHttp.ts
     └── localRender.ts
 
+src/tools/web/imagesearch/            # image_search（§5.12）
+├── ImageSearchTool.ts
+├── orchestration/runImageSearch.ts
+└── functions/                       # 许可归一、候选转换、observation
+
 src/tools/web/shared/
+├── images/imageSourceRegistry.ts    # 图片来源记录（进程内）
 ├── cache/
 │   ├── adapters/
 │   ├── definitions/
@@ -266,6 +273,10 @@ src/infra/adapters/web-read/
 
 src/infra/adapters/web-fetch/
 └── localHttpFetchAdapter.ts
+
+src/infra/adapters/image-search/
+├── commonsImageSearchAdapter.ts
+└── openverseImageSearchAdapter.ts
 ```
 
 ### 4.2 搜索服务目录与凭据边界
@@ -510,6 +521,60 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - 删除 `previousFailureMessage` 任意文案传递；Chromium/供应商原始异常文字、message/detail/body、凭据与 URL 查询参数不进入新诊断。MIME 只保留合法类型，URL 去用户信息/查询/fragment。网络日志同样不再序列化原始 cause 链。
 - 失败消息只例外展示这次已捕获的有界资源链接，并使用与成功内容相同的动态不可信边界；它们不进入安全诊断/日志。HTTP 错误正文仍不返回，也不从挑战页推导资源。
 
+
+### 5.12 图片：搜索、页面图片候选与下载
+
+找图分三条路，都是通用能力，不专属 Slides：联网搜索找到原件所在网站；`image_search` 查开放图片库；
+`web_read` 读网页时列出页面上的主要图片。三者下载都走 `web_read`。
+
+**`image_search`**（`imagesearch/`，适配器在 `src/infra/adapters/image-search/`）
+
+- 来源只用免 key 的两家：Wikimedia Commons（MediaWiki CirrusSearch，`filetype:bitmap`，一次请求带回尺寸、地址与许可元数据）
+  和 Openverse（聚合 Flickr、Europeana、史密森尼、大都会、NASA、克利夫兰等约 50 个来源）。两家都查时 Openverse 排除
+  `wikimedia`，避免重复。需要 API key 的图库（Unsplash、Pexels、Pixabay）不接（用户 2026-11-11 定）。
+- 匿名限额：Openverse 每分钟 20 次、每天 200 次（按 IP，2026-11-11 读响应头实测）；Commons 按 Wikimedia
+  User-Agent 政策带产品标识。一家失败时照常返回另一家并在 `sources` 标出失败；两家都失败才报错。
+- 候选给原图地址、下载地址、来源页、尺寸、作者、描述和一行署名。Commons 下载地址是 1920 宽的标准缩略图
+  （原图更小时就是原图；TIFF 等格式的缩略图是 JPEG），Openverse 用原图地址。不能下载的格式（GIF、SVG 等）不列。
+- 许可按 CC 目录归一为代码与三项事实（能否商用、能否改动、是否须署名）；不属于 CC 族的条款记为 `other`，
+  保守地按不可商用、不可改动处理，名称原样保留。许可来自来源元数据，未经核验。`commercial_only` 只留可商用的。
+- 两家结果轮流排入，避免一家占满名额；同一原图只留一次。可信骨架（编号、尺寸、许可、地址）在边界外，标题、作者、
+  描述和署名文字放进不可信边界。
+- 候选另带 `thumbnail_url` 给界面小图条用（Commons 把 1920 档换成 330 标准档，Openverse 用图片编号的缩略图接口），
+  不进 observation，也不用于下载。
+- 2026-11-11 真机：后母戊鼎（中英文）Commons 各 11 张，含 CC0 复制品照与公有领域拓本；储能集装箱 Commons 0 张、
+  Openverse 9 张全是 Flickr 的 NC 许可；台风卫星图主要来自 NASA。通用场景、具体产品在这两家很少，要去原件方网站找。
+  本机网络下 Flickr 图床（live.staticflickr.com）CloudFront 回源报 502，Openverse 里 Flickr 来源的图暂时下不了，
+  Wikimedia 的原图与缩略图正常。
+
+**页面图片候选**（`extraction/extractPageImages.ts`）
+
+- 在正文清理前的原始 DOM 上读：带图注的 `figure`、正文区（`article/main/[role=main]`，没有时为 body）里有尺寸依据的大图
+  （宽高属性都 ≥300，或 srcset ≥600w）、`og:image`。懒加载属性优先于占位 `src`，srcset 取最大一张。
+  导航、页眉页脚、侧栏和 logo、图标、头像类小图不列；同一路径的不同尺寸或裁切只列一次；最多 8 张。
+- 图注取 `figcaption`；署名取 figure 或只包着这张图的容器里 credit/copyright/source 类元素，或图注里“©、Photo:、图片来源、摄影”等字样的那一句。
+- 页面版权声明取页脚或版权块里含版权字样的最小元素原文（`page_rights`）。
+- 这些都是外部原文，放在不可信边界内；地址未下载、未检查。正文缓存路由升到 11。
+
+**图片下载**（`web_read` 图片 URL）
+
+- JPEG、PNG、WebP 与 PDF 等文件同一条取得链：30 MiB 单文件预算、会话 `web-downloads/<sha256>.<ext>`、同 hash 复用。
+  格式以实际字节签名为准（响应头和 URL 只决定预算），再用 sharp 完整解码一遍；截断、伪装或超过 1 亿像素的不保存。
+  `application/octet-stream` 也按签名识别。
+- 回执 `data.image` 给解码后的尺寸（按 EXIF 方向），以及当时记下的来源：同一地址最近出现在 `image_search` 候选里，
+  就带上来源页、作者、许可与署名；出现在读过的网页上，就带上图注、署名和页面版权声明（没有结构化许可）。
+  记录在本进程内存里（`shared/images/imageSourceRegistry.ts`，最多 2000 条），应用重启后查不到时如实写“来源未记录”。
+- 看图用 `read_file` 读 `conversation:` 路径（模型能看图时）。图片 ref 只说明文件从哪里取得，图片本身按来源记录署名。
+- 结果顶层的 `media`（本机绝对路径、媒体类型与尺寸）只给界面直接显示图片，和 `generate_image` 的 `media` 同一形状；
+  模型只读 observation 与会话相对路径。媒体类型按解码确认的格式给，不用响应头。
+- 正文里出现的图片链接（Markdown 图片）也记下出现在哪一页，页面主图列表不收的图下载时同样带上来源页与页面版权声明。
+- 已知限制：下载不经过公共正文缓存；联系表（多张候选拼一张给模型挑）未做。
+
+2026-11-11 真实 Agent 试跑（默认 Agent，DeepSeek V4.1 Flash high，两题）：
+- 课件要后母戊鼎照片和铭文拓片：多词查询（5 个词）两家都返回 0，换成 2 个词得到 20 张；下载 CC BY-SA 原件实拍与公有领域全形拓，
+  自己裁出铭文局部，交付说明写清许可与署名。之后在工具说明和 0 结果提示里加了“1–3 个关键词”。
+- 宁德时代储能集装箱实拍：`image_search` 0 张后转去官网和新闻页，用页面图片候选下载 7 张、逐张看图，分辨出官网产品图是渲染稿，
+  选定中国日报的供图实拍，按页面版权声明说明“仅内部引用、须署名”。其中 5 张的地址来自正文图片链接，当时没有来源记录，因此加了上一条。
 
 ### 5.11 同主机访问拦截反馈
 

@@ -6,7 +6,7 @@ Markdown 的块呈现归
 `markdown-document-core/workspace-preview`；其他类型继续消费其正式封面及 Host 类型贡献的交互详情。
 
 调用方显式提供 Document、逻辑容器宽度、主题、AbortSignal 与可选首屏高度。宽度不包含相机缩放或 DPR；正文默认 14px、按可用宽度换行。主窗口与隐藏 worker 显式导入同一个
-`style.css`，不注入另一份样式。调用方负责身份和项目范围、数据读取、订阅与打开文档的授权；本包不接触 Host、数据库或可写编辑会话。
+`style.css`，不注入另一份样式。`style.css` 不带设计变量：主窗口由 Host 提供 `@linnya/renderer-ui/tokens.css`，隐藏 worker 等独立页面在导入本样式前显式导入它，插件制品不重复打包 Renderer UI 样式。调用方负责身份和项目范围、数据读取、订阅与打开文档的授权；本包不接触 Host、数据库或可写编辑会话。
 
 正文里的行内引用沿用 `markdown-document-core` 的同一外观。调用方可传 `referenceTypeIcon(nodeType)`，引用显示与文件树同一的类型图标；隐藏 worker 等拿不到类型图标的消费方省略它，引用用通用文件图标，与标题图标的降级一致。
 

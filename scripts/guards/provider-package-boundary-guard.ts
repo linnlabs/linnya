@@ -124,6 +124,10 @@ function adapterForbidden(moduleName: string): boolean {
   );
 }
 
+function isRepositoryOnlyPackageScript(file: string, packageRoot: string): boolean {
+  return normalize(file).startsWith(`${packageRoot}/scripts/`);
+}
+
 function inspectPackage(
   packageRoot: string,
   forbidden: (moduleName: string) => boolean,
@@ -141,7 +145,8 @@ function inspectPackage(
           detail: `禁止依赖 ${moduleName}`,
         });
       }
-      if (escapesPackage(file, moduleName, packageRoot)) {
+      // `scripts/` 是只在仓库内运行的打包自检，不进 package files；可复用根目录 test-runner 的共享实现。
+      if (!isRepositoryOnlyPackageScript(file, packageRoot) && escapesPackage(file, moduleName, packageRoot)) {
         violations.push({
           file,
           line,

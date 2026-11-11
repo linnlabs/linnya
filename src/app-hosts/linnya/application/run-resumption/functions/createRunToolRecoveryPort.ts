@@ -13,6 +13,7 @@ const replayableTools = new Set([
   'search_web',
   'assemble_web_sources',
   'web_read',
+  'image_search',
   'task_read',
   'skill',
   'subagent',

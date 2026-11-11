@@ -6,6 +6,8 @@ import { parseCanonicalHtmlDocument } from './parseCanonicalHtmlDocument';
 import { prepareReadableDocument } from './prepareReadableDocument';
 import { renderReadableMarkdown } from './renderReadableMarkdown';
 import { extractPageResources } from './extractPageResources';
+import { extractPageImages } from './extractPageImages';
+import type { WebPageImage } from '@app/schemas';
 import { extractTabularDom, extractTabularContext } from './extractTabularDom';
 import type { WebPageResource } from '../../definitions/webDocument';
 import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
@@ -29,6 +31,9 @@ export interface ExtractArticleResult {
   accessBarrier?: WebPageAccessBarrier;
   diagnostics: ArticleExtractionDiagnostics;
   resources: WebPageResource[];
+  /** 正文主要图片候选与页面版权声明，从清理前的原始 DOM 读取。 */
+  images: WebPageImage[];
+  pageRights?: string;
 }
 
 export interface ArticleExtractionDiagnostics {
@@ -200,6 +205,8 @@ function extractArticleBaseline(
     extractPageResources(document, options.url, { anchors: false })
       .map(resource => [resource.url, resource] as const),
   );
+  // 懒加载属性、figure 图注和页脚版权声明在正文清理时会被删改，先从原始 DOM 读取。
+  const pageImages = extractPageImages(document, options.url);
   // Readability.parse() 会原地清理 DOM；语义备选必须先读取原始主区域，
   // 否则它只能看到 Readability 已经删减过的节点，无法补回遗漏正文。
   prepareReadableDocument(document, options.url);
@@ -311,6 +318,8 @@ function extractArticleBaseline(
       readabilitySucceeded: article !== null,
     },
     resources: [...resourcesByUrl.values()].slice(0, 16),
+    images: pageImages.images,
+    ...(pageImages.pageRights ? { pageRights: pageImages.pageRights } : {}),
     ...(accessBarrier ? { accessBarrier } : {}),
     ...(byline ? { byline } : {}),
     ...(publishedAt ? { publishedAt } : {}),

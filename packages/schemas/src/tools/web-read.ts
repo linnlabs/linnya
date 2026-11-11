@@ -8,6 +8,7 @@ import {
   WebReadEscalationReasonSchema,
 } from './web-common';
 import { HistoricalResourceReadArgsSchema } from './resource-read';
+import { ImageLicenseSchema } from './image-search';
 
 const NonEmptyStringSchema = z.string()
   .refine(value => value.trim().length > 0, 'String must contain non-whitespace content');
@@ -31,8 +32,8 @@ export const WEB_ACQUIRED_FILE_MAX_BYTES = 30 * 1024 * 1024;
 
 /** 文件取得事实，不表示正文、页码或模型解析结果已经核验。路径相对于当前会话 cwd。 */
 export const WebAcquiredFileSchema = z.object({
-  path: z.string().regex(/^web-downloads\/[a-f0-9]{64}\.(pdf|csv|xlsx)$/),
-  format: z.enum(['pdf', 'csv', 'xlsx']),
+  path: z.string().regex(/^web-downloads\/[a-f0-9]{64}\.(pdf|csv|xlsx|jpg|png|webp)$/),
+  format: z.enum(['pdf', 'csv', 'xlsx', 'jpg', 'png', 'webp']),
   mimeType: NonEmptyStringSchema,
   byteLength: z.number().int().positive().max(WEB_ACQUIRED_FILE_MAX_BYTES),
   sha256: z.string().regex(/^[a-f0-9]{64}$/),
@@ -46,6 +47,39 @@ export const WebAcquiredFileSchema = z.object({
   }
 });
 export type WebAcquiredFile = z.infer<typeof WebAcquiredFileSchema>;
+
+export const WEB_IMAGE_FILE_FORMATS = ['jpg', 'png', 'webp'] as const;
+
+/**
+ * 下载的图片在哪里被看到：image_search 的候选或网页上的图片候选。只陈述当时记下的来源说明，
+ * 许可来自来源元数据，未经核验；网页上的图只有图注、署名和页面版权声明原文。
+ */
+export const WebImageSourceSchema = z.object({
+  found_via: z.enum(['image_search', 'web_page']),
+  page_url: HttpCitationUrlSchema,
+  provider: NonEmptyStringSchema.max(100).optional(),
+  title: NonEmptyStringSchema.max(300).optional(),
+  creator: NonEmptyStringSchema.max(300).optional(),
+  license: ImageLicenseSchema.optional(),
+  attribution: NonEmptyStringSchema.max(600).optional(),
+  caption: NonEmptyStringSchema.max(500).optional(),
+  credit: NonEmptyStringSchema.max(300).optional(),
+  page_rights: NonEmptyStringSchema.max(300).optional(),
+}).strict();
+export type WebImageSource = z.infer<typeof WebImageSourceSchema>;
+
+/** 网页正文里的主要图片：og:image、带图注的 figure 与正文大图。地址未下载、未检查。 */
+export const WebPageImageSchema = z.object({
+  url: HttpCitationUrlSchema,
+  kind: z.enum(['og', 'figure', 'content']),
+  alt: NonEmptyStringSchema.max(300).optional(),
+  caption: NonEmptyStringSchema.max(500).optional(),
+  credit: NonEmptyStringSchema.max(300).optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+}).strict();
+export type WebPageImage = z.infer<typeof WebPageImageSchema>;
+export const WEB_PAGE_IMAGES_MAX = 8;
 
 /** `17` 或 `15-18`，1-based 闭区间；与 read_file 的 PDF pages 同一写法。 */
 const WebReadPdfPagesSchema = z.string().regex(/^[1-9]\d*(?:-[1-9]\d*)?$/u, 'pages must look like "17" or "15-18"');
@@ -107,6 +141,15 @@ const WebReadDataObjectSchema = z.object({
   /** 提取器启发式信号，不代表来源可信度或全文完整性。 */
   warnings: z.array(WebDocumentWarningSchema).max(8).optional(),
   resources: z.array(WebPageResourceSchema).max(16).optional(),
+  /** 网页上的主要图片候选（最多 8 张）与页面版权声明；下载用 web_read 读图片地址。 */
+  images: z.array(WebPageImageSchema).max(WEB_PAGE_IMAGES_MAX).optional(),
+  page_rights: NonEmptyStringSchema.max(300).optional(),
+  /** 仅图片文件：解码后的尺寸与当时记下的来源说明。 */
+  image: z.object({
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    source: WebImageSourceSchema.optional(),
+  }).strict().optional(),
   /** 本次返回的是已保存正文的哪一段；缺省表示旧回执（从开头返回）。 */
   window: z.object({
     offset: z.number().int().nonnegative(),
@@ -154,6 +197,10 @@ function validateWebReadData(
   if (data.file && data.file.format !== 'csv' && !pdfText && (data.charCount !== 0 || data.extractor !== 'file_download')) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['file'], message: 'Binary file acquisition cannot claim extracted page text' });
   }
+  const imageFile = data.file !== undefined && (WEB_IMAGE_FILE_FORMATS as readonly string[]).includes(data.file.format);
+  if ((data.image !== undefined) !== imageFile) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['image'], message: 'Image facts appear exactly when an image file was acquired' });
+  }
   if (data.pdf && data.file?.format !== 'pdf') {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['pdf'], message: 'PDF page text requires an acquired PDF file' });
   }
@@ -175,10 +222,27 @@ function validateWebReadData(
 
 const WebReadDataSchema = WebReadDataObjectSchema.superRefine(validateWebReadData);
 
+/**
+ * 仅 Renderer 展示：下载的图片在本机的绝对路径（会话工作目录内）与尺寸，和 generate_image 的 media 同一形状。
+ * 模型只读 observation 与会话相对路径，不读这里。
+ */
+export const WebReadImageMediaSchema = z.object({
+  path: NonEmptyStringSchema,
+  media_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+}).strict();
+export type WebReadImageMedia = z.infer<typeof WebReadImageMediaSchema>;
+
 export const WebReadResultSchema = z.object({
   data: WebReadDataSchema,
   observation: NonEmptyStringSchema,
-}).strict();
+  media: WebReadImageMediaSchema.optional(),
+}).strict().superRefine((result, context) => {
+  if ((result.media !== undefined) && result.data.image === undefined) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['media'], message: 'Image media appears only with an acquired image file' });
+  }
+});
 
 /** 历史 resource_read(http/https) 事件的 replay 结果合同。 */
 export const HistoricalWebResourceReadResultSchema = z.object({

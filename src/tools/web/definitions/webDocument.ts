@@ -1,4 +1,4 @@
-import type { WebDocumentWarning } from '@app/schemas';
+import type { WebDocumentWarning, WebPageImage } from '@app/schemas';
 export type { WebDocumentWarning } from '@app/schemas';
 
 /** Web 页面读取在 Provider 与编排之间传递的稳定业务文档。 */
@@ -28,6 +28,9 @@ export interface WebDocument {
   publishedAt?: string;
   language?: string;
   resources?: WebPageResource[];
+  /** 正文主要图片候选（未下载）与页面版权声明原文。 */
+  images?: WebPageImage[];
+  pageRights?: string;
   text: string;
   markdown?: string;
   rawHtmlRef?: string;

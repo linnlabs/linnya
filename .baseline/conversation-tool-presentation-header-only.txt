@@ -7,4 +7,5 @@ apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.
 apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.grep
 apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.list_files
 apps/renderer/domains/conversation/ui/tools/configs/common.ts#commonToolConfigs.write_file
+apps/renderer/domains/conversation/ui/tools/configs/web.ts#webToolConfigs.image_search
 apps/renderer/domains/conversation/ui/tools/configs/workspace.ts#workspaceReadToolConfigs.workspace_read_file

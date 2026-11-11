@@ -11,7 +11,21 @@
     />
   </div>
 
-  <!-- 0.1 普通错误：默认折叠；点击 Header 后直接展示真实错误。 -->
+  <!-- 0.1 单行工具的错误：一行“标题：原因”，不套卡片；完整原因在悬停提示里。 -->
+  <div
+    v-else-if="status === 'error' && registryConfig?.layout?.inlineError"
+    class="tool-calls-message tool-inline-line tool-inline-line--error"
+    role="status"
+  >
+    <component v-if="registryIconComponent" :is="registryIconComponent" class="tool-inline-line__icon" />
+    <span class="tool-inline-line__text" :data-linnya-tooltip="toolErrorMessage">
+      {{ registryTitleText
+        ? conversationMessage('conversation.tool.error.inline', { title: registryTitleText, message: inlineErrorSummary })
+        : inlineErrorSummary }}
+    </span>
+  </div>
+
+  <!-- 0.2 普通错误：默认折叠；点击 Header 后直接展示真实错误。 -->
   <div v-else-if="status === 'error'" class="tool-calls-message tool-card tool-error-wrapper">
     <div class="tool-card__header" @click="toggleErrorCollapse">
       <div class="tool-card__title">
@@ -364,6 +378,8 @@ const toolErrorMessage = computed(() => {
     fallback: conversationMessage('conversation.tool.error.unknown'),
   });
 });
+/** 单行错误只放原因的第一行；诊断细节在悬停提示里。 */
+const inlineErrorSummary = computed(() => toolErrorMessage.value.split('\n')[0]?.trim() || toolErrorMessage.value);
 const toolErrorActionLabel = computed(() => {
   const action = toolErrorAction.value;
   return action ? conversationMessage(action.actionLabelKey) : undefined;

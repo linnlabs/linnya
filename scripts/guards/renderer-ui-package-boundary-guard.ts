@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -217,6 +218,21 @@ async function readPublicPackageSpecifiers(): Promise<ReadonlySet<string>> {
   );
 }
 
+/**
+ * 带 worker.html 的目录是插件自己的隐藏页面，不在 Host 文档里运行，拿不到 Host 装载的 token，
+ * 需要自己导入 tokens.css；插件 renderer 制品仍由 artifact 校验禁止重复携带 Renderer UI CSS。
+ */
+function isIsolatedPluginWorkerDocument(filePath: string, pluginRendererRoot: string): boolean {
+  for (
+    let directory = path.posix.dirname(filePath);
+    directory.startsWith(pluginRendererRoot);
+    directory = path.posix.dirname(directory)
+  ) {
+    if (existsSync(path.join(repositoryRoot, directory, 'worker.html'))) return true;
+  }
+  return false;
+}
+
 function validatePluginRendererBoundaries(
   files: readonly AuditedFile[],
   publicPackageSpecifiers: ReadonlySet<string>,
@@ -240,7 +256,11 @@ function validatePluginRendererBoundaries(
       }
       if (
         specifier === '@linnya/renderer-ui/styles.css' ||
-        specifier === '@linnya/renderer-ui/tokens.css'
+        (specifier === '@linnya/renderer-ui/tokens.css' &&
+          !isIsolatedPluginWorkerDocument(
+            file.path,
+            `packages/plugins/${pluginMatch[1]}/src/renderer`
+          ))
       ) {
         failures.push(`Renderer plugin 禁止重复装载 Renderer UI CSS：${specifier} @ ${file.path}`);
       }

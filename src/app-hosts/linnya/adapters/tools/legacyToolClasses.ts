@@ -13,7 +13,7 @@ import { workspaceToolClasses } from '../../../../tools/workspace';
 import { todoToolClasses } from '../../../../tools/todo';
 import { toolOutputToolClasses } from '../../../../tools/tool_output';
 import { deepResearchToolClasses } from '../../../../tools/deep_research';
-import { webSearchToolClasses, webReadToolClasses } from '../../../../tools/web';
+import { webSearchToolClasses, webReadToolClasses, imageSearchToolClasses } from '../../../../tools/web';
 import { skillToolClasses } from '../../../../tools/skill';
 import { ProcessTool, ShellTool } from '../../../../tools/commands';
 import { markdownToolClasses } from '../../../../domains/markdown/tools';
@@ -41,6 +41,7 @@ export const legacyBuiltinToolClasses = [
   ...deepResearchToolClasses,
   ...webSearchToolClasses,
   ...webReadToolClasses,
+  ...imageSearchToolClasses,
   ...skillToolClasses,
   ShellTool,
   ProcessTool,

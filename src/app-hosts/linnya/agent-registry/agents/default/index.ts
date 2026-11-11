@@ -30,6 +30,7 @@ const DEFAULT_AGENT_TOOLS = [
   'knowledge_read',
   'web_search',
   'web_read',
+  'image_search',
 
   'subagent',
   'task_write',

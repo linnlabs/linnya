@@ -5,6 +5,7 @@ import process from 'node:process';
 const rootDir = process.cwd();
 const rendererDir = path.join(rootDir, 'apps/renderer');
 const rendererUiStylesDir = path.join(rootDir, 'packages/renderer-ui/src/styles');
+const markdownDocumentCoreDir = path.join(rootDir, 'packages/markdown-document-core/src');
 const strict = process.argv.includes('--strict');
 
 const sourceExtensions = new Set(['.vue', '.css', '.ts', '.js']);
@@ -339,6 +340,15 @@ const darkModeHits = [];
 const scopedDarkModeHits = [];
 const oversizedScopedStyles = [];
 const vueStyleBlocks = [];
+
+/*
+ * Renderer 引入 markdown-document-core 的正式文档样式（块颜色等变量在那里定义）。
+ * 只把它的 CSS 计入定义闭包；该 package 自身的颜色与主题规则不在本审计范围。
+ */
+for (const file of await walk(markdownDocumentCoreDir)) {
+  if (path.extname(file) !== '.css') continue;
+  collectCustomPropertyDefinitions(await readFile(file, 'utf8'), definitions);
+}
 
 for (const file of files) {
   const ext = path.extname(file);

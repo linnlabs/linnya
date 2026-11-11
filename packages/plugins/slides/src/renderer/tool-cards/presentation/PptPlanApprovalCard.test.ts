@@ -533,7 +533,7 @@ describe('PptPlanApprovalCard', () => {
       await nextTick();
 
       const submitted = vi.mocked(concludeInteractiveToolInteraction).mock.calls[0]?.[0];
-      const { id: _id, ...lightPalette } = light;
+      const lightPalette = { backgrounds: light.backgrounds, ink: light.ink, accents: light.accents };
       expect(JSON.parse(submitted?.observation ?? '{}')).toMatchObject({
         action: 'modify',
         paletteChanged: true,

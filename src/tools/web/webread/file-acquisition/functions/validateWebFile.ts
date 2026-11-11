@@ -2,9 +2,18 @@ import { fromBuffer, type Entry } from 'yauzl';
 import { load } from 'cheerio';
 import { WebFailureError } from '../../../shared/webFailure';
 import type { WebFilePayload } from '../definitions/webFileAcquisition';
+import {
+  detectSupportedImageMediaType,
+  imageFileExtensionForMediaType,
+  ImageInspectionError,
+  inspectImageBytes,
+} from '../../../../../shared/media/image-inspection';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const CSV_MIMES = new Set(['text/csv', 'application/csv']);
+const IMAGE_MIMES = new Set(['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/webp']);
+/** 解码前的像素上限：约 1 亿像素，防止小文件声明超大画布耗尽内存。 */
+const MAX_IMAGE_PIXELS = 100_000_000;
 const XLSX_WORKBOOK_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml';
 
@@ -14,6 +23,8 @@ export function getWebFileFormat(contentType: string): WebFilePayload['format'] 
   if (mimeType === 'application/pdf') return 'pdf';
   if (mimeType === XLSX_MIME) return 'xlsx';
   if (mimeType && CSV_MIMES.has(mimeType)) return 'csv';
+  // 图片格式以实际字节为准（见 validateImage），这里只用于选择文件下载预算。
+  if (mimeType && IMAGE_MIMES.has(mimeType)) return mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
   return undefined;
 }
 
@@ -118,6 +129,31 @@ async function validateXlsx(bytes: Uint8Array): Promise<void> {
   });
 }
 
+/** 按签名认格式，再完整解码一遍：截断、伪装或超大画布都不保存。格式取实际字节，不取响应头或 URL。 */
+async function validateImage(bytes: Uint8Array): Promise<WebFilePayload> {
+  const buffer = Buffer.from(bytes);
+  const mediaType = detectSupportedImageMediaType(buffer);
+  if (!mediaType) {
+    throw new WebFailureError('unsupported_mime', '图片内容不是 JPEG、PNG 或 WebP；未保存文件。');
+  }
+  try {
+    const inspected = await inspectImageBytes({ bytes: buffer, maxImagePixels: MAX_IMAGE_PIXELS });
+    return {
+      bytes,
+      format: imageFileExtensionForMediaType(inspected.mediaType),
+      image: { width: inspected.displayWidth, height: inspected.displayHeight },
+    };
+  } catch (error) {
+    if (!(error instanceof ImageInspectionError)) throw error;
+    throw new WebFailureError(
+      'unsupported_mime',
+      error.code === 'image_pixel_limit_exceeded'
+        ? '图片像素数超过 1 亿上限；未保存文件。'
+        : '图片无法完整解码（可能已截断或损坏）；未保存文件。',
+    );
+  }
+}
+
 export async function validateWebFile(input: {
   mimeType: string;
   bytes: Uint8Array;
@@ -131,6 +167,7 @@ export async function validateWebFile(input: {
     // 通用 MIME 不足以证明类型。PDF 看签名，ZIP 仍须通过完整 XLSX 容器检查。
     if (/^%PDF-[12]\.\d(?:\s|$)/.test(prefix)) format = 'pdf';
     else if (prefix.startsWith('PK\x03\x04')) format = 'xlsx';
+    else if (detectSupportedImageMediaType(Buffer.from(bytes.subarray(0, 16)))) format = 'jpg';
     else if (input.finalUrl && /\.csv$/i.test(new URL(input.finalUrl).pathname)) {
       // CSV 无魔数：还需明确的格式线索和表格文本形状；不把任意文本当 CSV 保存。
       const lines = input.decodedText.trim().split(/\r?\n/, 2);
@@ -138,6 +175,7 @@ export async function validateWebFile(input: {
         lines.every(line => line.includes(delimiter)))) format = 'csv';
     }
   }
+  if (format === 'jpg' || format === 'png' || format === 'webp') return validateImage(bytes);
   if (format === 'pdf') {
     if (!/^%PDF-[12]\.\d(?:\s|$)/.test(prefix)) throw invalidFile();
     return { bytes, format: 'pdf' };

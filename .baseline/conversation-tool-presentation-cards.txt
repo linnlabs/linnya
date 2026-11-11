@@ -6,6 +6,7 @@ apps/renderer/domains/conversation/features/subrun-card/ui/SubrunProgressCard.vu
 apps/renderer/domains/conversation/features/subrun-collection/ui/SubrunBatchCollection.vue
 apps/renderer/domains/conversation/ui/tools/image-read/ImageReadCard.vue
 apps/renderer/domains/conversation/ui/tools/image/ImageGenerationCard.vue
+apps/renderer/domains/conversation/ui/tools/imagesearch/ImageSearchLine.vue
 apps/renderer/domains/conversation/ui/tools/knowledge/DocumentContentCard.vue
 apps/renderer/domains/conversation/ui/tools/knowledge/DocumentListCard.vue
 apps/renderer/domains/conversation/ui/tools/knowledgebasesearchcard/KnowledgeSearchCard.vue
@@ -18,5 +19,6 @@ apps/renderer/domains/conversation/ui/tools/taskstate/TaskStateCard.vue
 apps/renderer/domains/conversation/ui/tools/todo/AgentTodoCard.vue
 apps/renderer/domains/conversation/ui/tools/tool_output/ToolOutputReadCard.vue
 apps/renderer/domains/conversation/ui/tools/webread/WebReadCard.vue
+apps/renderer/domains/conversation/ui/tools/webread/WebReadImageCard.vue
 apps/renderer/domains/conversation/ui/tools/websearch/WebSearchCard.vue
 apps/renderer/domains/conversation/ui/tools/workspace/WorkspaceDocumentViewCard.vue
