@@ -1,2 +1,1 @@
-STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionActionPerf.ts	measureAsync#1
-STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionPendingPerf.ts	measureRevisionPendingStageAsync#1
+
