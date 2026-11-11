@@ -191,7 +191,7 @@ Shape 可表达填充、边框、透明度、旋转和几何类型。
 
 **几何**（`geometry`，同样必须写在 config 参数里）：
 
-- preset 简写：`geometry: "star5"`。可用名称见 `.d.ts` 的 `PresetShapeName`，含 `rect`、`roundRect`、`ellipse`、`triangle`、`rightTriangle`、`diamond`、`pentagon`、`hexagon`、`star5`、`rightArrow`、`line`、`callout`、`parallelogram`、`trapezoid`、`nonIsoscelesTrapezoid`、`chevron`。
+- preset 简写：`geometry: "star5"`。可用名称见 `.d.ts` 的 `PresetShapeName`，含 `rect`、`roundRect`、`ellipse`、`triangle`、`rightTriangle`、`diamond`、`pentagon`、`hexagon`、`star5`、`rightArrow`、`line`、`callout`、`parallelogram`、`trapezoid`、`nonIsoscelesTrapezoid`、`chevron`。轮廓与 PowerPoint 的同名形状一致：`hexagon` 是平顶、左右两尖；`hexagon`、`chevron`、`parallelogram`、`trapezoid`、`rightArrow` 的斜边和箭头按盒子短边计算，盒子拉长时斜角不变；`callout` 的尾巴伸出盒子下方约 1/8 高度，下方要留出空间。
 - preset 完整形式：`geometry: { type: "preset", name: "chevron" }`。
 - 参数化：`{ type: "regularPolygon", sides: 6, rotation? }`、`{ type: "trapezoid", topLeftInset, topRightInset }`、`{ type: "parallelogram", slant, direction? }`。inset 与 slant 都是相对宽度的比例。
 - `{ type: "polygon", points: [...] }`：顶点使用 shape 内的归一化坐标（0–1），最多 256 点。

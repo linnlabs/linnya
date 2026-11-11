@@ -184,30 +184,114 @@ export function shapePathToPointArray(
   return points;
 }
 
-/** renderer 对 native preset 的 local-space 权威展开；rect/ellipse/line 由原语处理。 */
-export function resolvePresetShapePath(name: PresetShapeName): ResolvedPathShapeGeometry | undefined {
+/**
+ * renderer 对 native preset 的权威展开，与 PPTX 写出的 `prstGeom`（默认调节值）逐点一致。
+ * 公式取自 ECMA-376 presetShapeDefinitions：很多预设的斜边、箭头、内缩按短边 `ss = min(w, h)` 计算，
+ * 所以必须传入盒子宽高，坐标系就是这个宽高（任意单位）。`callout` 的尾巴按 PowerPoint 伸到盒子下方。
+ * rect / ellipse / line / roundRect 由原语处理，返回 undefined。2026-11-11 用 PowerPoint 导出 PDF 两种宽高比核对。
+ */
+export function resolvePresetShapePath(
+  name: PresetShapeName,
+  width: number,
+  height: number,
+): ResolvedPathShapeGeometry | undefined {
+  const w = width;
+  const h = height;
+  const ss = Math.min(w, h);
+  const hc = w / 2;
+  const vc = h / 2;
+  const polygon = (points: Array<readonly [number, number]>) => boxPolygonPath(points, w, h);
   switch (name) {
-    case 'triangle': return polygonPath([[0.5, 0], [1, 1], [0, 1]]);
-    case 'rightTriangle': return polygonPath([[0, 0], [0, 1], [1, 1]]);
-    case 'diamond': return polygonPath([[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]]);
-    case 'pentagon': return regularPolygonPath(5, -90);
-    case 'hexagon': return regularPolygonPath(6, -90);
-    case 'star5': return starPath(5, 0.4);
-    case 'rightArrow':
-      return polygonPath([[0, 0.25], [0.7, 0.25], [0.7, 0], [1, 0.5], [0.7, 1], [0.7, 0.75], [0, 0.75]]);
-    case 'callout':
-      return polygonPath([[0, 0], [1, 0], [1, 0.78], [0.36, 0.78], [0.252, 1], [0.18, 0.78], [0, 0.78]]);
-    case 'parallelogram':
-      return polygonPath([[0.2, 0], [1, 0], [0.8, 1], [0, 1]]);
+    case 'triangle': return polygon([[0, h], [hc, 0], [w, h]]);
+    case 'rightTriangle': return polygon([[0, h], [0, 0], [w, h]]);
+    case 'diamond': return polygon([[0, vc], [hc, 0], [w, vc], [hc, h]]);
+    case 'pentagon': {
+      // hf = 105146、vf = 110557：把正五边形拉满外框。
+      const swd2 = (w / 2) * 1.05146;
+      const shd2 = (h / 2) * 1.10557;
+      const svc = vc * 1.10557;
+      const dx1 = swd2 * Math.cos(deg(18));
+      const dx2 = swd2 * Math.cos(deg(306));
+      const y1 = svc - shd2 * Math.sin(deg(18));
+      const y2 = svc - shd2 * Math.sin(deg(306));
+      return polygon([[hc - dx1, y1], [hc, 0], [hc + dx1, y1], [hc + dx2, y2], [hc - dx2, y2]]);
+    }
+    case 'hexagon': {
+      // adj = 25000、vf = 115470：平顶，左右两尖，横向内缩 0.25·ss。
+      const x1 = ss * Math.min(0.25, 0.5 * w / ss);
+      const dy1 = (h / 2) * 1.1547 * Math.sin(deg(60));
+      return polygon([[0, vc], [x1, vc - dy1], [w - x1, vc - dy1], [w, vc], [w - x1, vc + dy1], [x1, vc + dy1]]);
+    }
+    case 'star5': {
+      // adj = 19098、hf = 105146、vf = 110557。
+      const swd2 = (w / 2) * 1.05146;
+      const shd2 = (h / 2) * 1.10557;
+      const svc = vc * 1.10557;
+      const dx1 = swd2 * Math.cos(deg(18));
+      const dx2 = swd2 * Math.cos(deg(306));
+      const y1 = svc - shd2 * Math.sin(deg(18));
+      const y2 = svc - shd2 * Math.sin(deg(306));
+      const iwd2 = swd2 * 19098 / 50000;
+      const ihd2 = shd2 * 19098 / 50000;
+      const sdx1 = iwd2 * Math.cos(deg(342));
+      const sdx2 = iwd2 * Math.cos(deg(54));
+      const sy1 = svc - ihd2 * Math.sin(deg(54));
+      const sy2 = svc - ihd2 * Math.sin(deg(342));
+      return polygon([
+        [hc - dx1, y1], [hc - sdx2, sy1], [hc, 0], [hc + sdx2, sy1], [hc + dx1, y1],
+        [hc + sdx1, sy2], [hc + dx2, y2], [hc, svc + ihd2], [hc - dx2, y2], [hc - sdx1, sy2],
+      ]);
+    }
+    case 'rightArrow': {
+      // adj1 = 50000（箭身占高一半）、adj2 = 50000（箭头长 0.5·ss）。
+      const x1 = w - ss * Math.min(0.5, w / ss);
+      return polygon([[0, h * 0.25], [x1, h * 0.25], [x1, 0], [w, vc], [x1, h], [x1, h * 0.75], [0, h * 0.75]]);
+    }
+    case 'callout': {
+      // wedgeRectCallout，adj1 = -20833、adj2 = 62500：尾尖在盒子下方 h/8，根部 w/6–5w/12。
+      const tipX = hc - w * 0.20833;
+      const tipY = vc + h * 0.625;
+      return polygon([[0, 0], [w, 0], [w, h], [w * 5 / 12, h], [tipX, tipY], [w / 6, h], [0, h]]);
+    }
+    case 'parallelogram': {
+      const x2 = ss * Math.min(0.25, w / ss);
+      return polygon([[0, h], [x2, 0], [w, 0], [w - x2, h]]);
+    }
     case 'trapezoid':
-      return polygonPath([[0.2, 0], [0.8, 0], [1, 1], [0, 1]]);
-    case 'nonIsoscelesTrapezoid':
-      return polygonPath([[0, 0], [0.8, 0], [1, 1], [0, 1]]);
-    case 'chevron':
-      return polygonPath([[0, 0], [0.75, 0], [1, 0.5], [0.75, 1], [0, 1], [0.25, 0.5]]);
+    case 'nonIsoscelesTrapezoid': {
+      // 两者默认调节值相同：上边两侧各内缩 0.25·ss。
+      const x3 = ss * Math.min(0.25, 0.5 * w / ss);
+      return polygon([[0, h], [x3, 0], [w - x3, 0], [w, h]]);
+    }
+    case 'chevron': {
+      const x1 = ss * Math.min(0.5, w / ss);
+      return polygon([[0, 0], [w - x1, 0], [w, vc], [w - x1, h], [0, h], [x1, vc]]);
+    }
     default:
       return undefined;
   }
+}
+
+function deg(value: number): number {
+  return value * Math.PI / 180;
+}
+
+function boxPolygonPath(
+  points: ReadonlyArray<readonly [number, number]>,
+  width: number,
+  height: number,
+): ResolvedPathShapeGeometry {
+  const [first, ...rest] = points.map(([x, y]) => [round6(x), round6(y)] as const);
+  return {
+    type: 'path',
+    viewBox: { width, height },
+    commands: [
+      { type: 'moveTo', x: first[0], y: first[1] },
+      ...rest.map(([x, y]): ShapePathCommand => ({ type: 'lineTo', x, y })),
+      { type: 'close' },
+    ],
+    closed: true,
+  };
 }
 
 function resolveRegularPolygon(
@@ -352,16 +436,6 @@ function regularPolygonPath(sides: number, rotationDegree: number): ResolvedPath
     points.push([round6(0.5 + 0.5 * Math.cos(angle)), round6(0.5 + 0.5 * Math.sin(angle))]);
   }
   return polygonPath(points);
-}
-
-function starPath(points: number, innerRatio: number): ResolvedPathShapeGeometry {
-  const vertices: Array<readonly [number, number]> = [];
-  for (let index = 0; index < points * 2; index++) {
-    const radius = index % 2 === 0 ? 0.5 : 0.5 * innerRatio;
-    const angle = -Math.PI / 2 + Math.PI * index / points;
-    vertices.push([round6(0.5 + radius * Math.cos(angle)), round6(0.5 + radius * Math.sin(angle))]);
-  }
-  return polygonPath(vertices);
 }
 
 function validateCommand(command: ShapePathCommand, viewBox: ShapeViewBox, fieldPath: string): void {

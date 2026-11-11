@@ -140,7 +140,7 @@ function buildBaseShapeRenderInstruction(node: ShapeRenderNode): KonvaShapeRende
     case 'rect':
       return rectInstruction(node, width, height, baseVisual, /* roundRectMode */ false);
     default: {
-      const path = resolvePresetShapePath(node.geometry.name);
+      const path = resolvePresetShapePath(node.geometry.name, width, height);
       if (!path) {
         throw new Error(`preset geometry ${node.geometry.name} 缺少 Konva adapter。`);
       }

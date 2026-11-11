@@ -75,6 +75,7 @@ konva-builders/
 - 有形状遮罩（`circle` 或任意 Shape 几何）时不用 `clipFunc`，改由 `buildMaskedImageShapeConfig` 画一个以图片为 pattern 填充的 Shape：遮罩套在 fit 之后的实际画面框上（`contain` 时与 PPTX 收缩后的图片框一致），阴影跟着遮罩轮廓投出
 - 不用遮罩的图片不裁剪：fit 几何本身保证画面不出框，Konva 的阴影因此跟着 PNG 透明通道走（去背图投出贴合轮廓的影子）；只有 `borderRadius` 仍用 `clipFunc`
 - 遮罩路径与 Shape 共用 `resolvePresetShapePath` / 规范化 path，PPTX 端按同一几何写 `prstGeom` 或 `custGeom`
+- `resolvePresetShapePath(name, width, height)` 按 ECMA-376 presetShapeDefinitions 的默认调节值展开，必须传实际宽高：多个预设的斜边按短边计算，`callout` 尾巴在盒子外
 - `flipH/V` 用 `scaleX/Y = -1` + 镜像 `x/y` 偏移，避免 Konva 反转后位置错位
 - shadow 偏移是 `pt × POINTS_TO_PX`；模糊经 `toKonvaShadowBlur` 再乘 0.75，与 PowerPoint 的 blurRad 观感一致（按 PowerPoint 导出逐像素比对得出）。图片与 Shape 共用这一个换算
 

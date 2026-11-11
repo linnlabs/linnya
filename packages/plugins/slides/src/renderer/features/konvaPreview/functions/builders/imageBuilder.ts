@@ -176,7 +176,7 @@ function traceImageMask(
         traceRoundRect(context, width, height, Math.min(width, height) * PPT_ROUND_RECT_DEFAULT_ADJUSTMENT, false);
         return;
       default: {
-        const path = resolvePresetShapePath(mask.name);
+        const path = resolvePresetShapePath(mask.name, width, height);
         if (!path) throw new Error(`图片遮罩 ${mask.name} 缺少 Konva 路径。`);
         tracePath(context, path, width, height, flipH, flipV);
         return;
