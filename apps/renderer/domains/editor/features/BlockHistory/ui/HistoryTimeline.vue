@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onBeforeUnmount } from 'vue'
-import { useBlockHistoryStore } from '../store/useBlockHistoryStore'
+import { useBlockHistory } from '../runtime'
 import type { BlockVersion } from '../../../../../shared/ipc/blockHistoryGateway'
 import { ActionButtons } from '@linnya/renderer-ui'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
@@ -99,7 +99,7 @@ const emit = defineEmits<{
 
 // ==================== Store ====================
 
-const blockHistoryStore = useBlockHistoryStore()
+const blockHistoryStore = useBlockHistory()
 const { editorMessage } = useEditorLocalization()
 const { historyTime } = useHistoryTime()
 

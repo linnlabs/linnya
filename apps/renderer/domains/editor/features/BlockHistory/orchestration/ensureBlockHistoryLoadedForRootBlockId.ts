@@ -42,7 +42,7 @@ export async function ensureBlockHistoryLoadedForRootBlockId(
   const blockId = normalizeRequiredId(input.blockId);
   if (!blockId) return { ok: false, reason: 'missing-block-id' };
 
-  const store = input.store ?? (await import('../store/useBlockHistoryStore')).useBlockHistoryStore();
+  const store = input.store ?? (await import('../runtime')).useBlockHistory();
   if (Object.prototype.hasOwnProperty.call(store.versionsByBlock.value, blockId)) {
     return { ok: true, action: 'already-known' };
   }

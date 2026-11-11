@@ -18,11 +18,6 @@ STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.st
 STORE-ASYNC	apps/renderer/domains/editor/blocks/LatexBlock/store/latexEditor.js	cancelEdit#1
 STORE-ASYNC	apps/renderer/domains/editor/blocks/LatexBlock/store/latexEditor.js	hidePanel#1
 STORE-ASYNC	apps/renderer/domains/editor/blocks/LatexBlock/store/latexEditor.js	submitCurrentLatex#1
-STORE-ASYNC	apps/renderer/domains/editor/features/BlockHistory/store/useBlockHistoryStore.ts	<anonymous>#1
-STORE-ASYNC	apps/renderer/domains/editor/features/BlockHistory/store/useBlockHistoryStore.ts	createVersion#1
-STORE-ASYNC	apps/renderer/domains/editor/features/BlockHistory/store/useBlockHistoryStore.ts	deleteVersion#1
-STORE-ASYNC	apps/renderer/domains/editor/features/BlockHistory/store/useBlockHistoryStore.ts	loadBlockHistory#1
-STORE-ASYNC	apps/renderer/domains/editor/features/BlockHistory/store/useBlockHistoryStore.ts	restoreVersion#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	addCustomAgent#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	loadCustomAgents#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Review/store/reviewStore.ts	updateCustomAgent#1

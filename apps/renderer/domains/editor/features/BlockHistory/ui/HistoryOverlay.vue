@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { BaseButton, IconButton } from '@linnya/renderer-ui';
 import { computed, onMounted, onBeforeUnmount } from 'vue'
-import { useBlockHistoryStore } from '../store/useBlockHistoryStore'
+import { useBlockHistory } from '../runtime'
 import type { BlockVersion } from '../../../../../shared/ipc/blockHistoryGateway'
 import { extractLinesFromContentJson, type VersionLine } from '../utils/lineExtractor'
 import { useHistoryTime } from '@app/localization'
@@ -116,7 +116,7 @@ const emit = defineEmits<{
 
 // ==================== Store ====================
 
-const blockHistoryStore = useBlockHistoryStore()
+const blockHistoryStore = useBlockHistory()
 const { editorMessage } = useEditorLocalization()
 const { historyDateTime } = useHistoryTime()
 

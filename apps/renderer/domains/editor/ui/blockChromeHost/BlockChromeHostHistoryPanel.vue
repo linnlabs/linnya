@@ -118,7 +118,7 @@ import {
   readSelectedBlockHistoryVersionLabel,
   restoreBlockHistoryVersionForRootBlock,
   shouldPromptBeforeBlockHistoryRestore,
-  useBlockHistoryStore,
+  useBlockHistory,
   type RestoreBlockHistoryVersionMode,
 } from '../../features/BlockHistory'
 import { useRenderVirtualizationKeepAliveLease } from '../../features/RenderVirtualization/state/useRenderVirtualizationKeepAliveLease'
@@ -145,7 +145,7 @@ const props = defineProps<{
   getRootBlockPos: () => number | null
 }>()
 
-const blockHistoryStore = useBlockHistoryStore()
+const blockHistoryStore = useBlockHistory()
 const fileStore = useFileStore()
 const { currentLocale, editorMessage } = useEditorLocalization()
 const editorStateVersion = ref(0)

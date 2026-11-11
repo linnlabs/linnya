@@ -55,7 +55,7 @@ export async function toggleBlockHistoryForRootBlockId(
   const blockId = normalizeRequiredId(input.blockId);
   if (!blockId) return { ok: false, reason: 'missing-block-id' };
 
-  const store = input.store ?? (await import('../store/useBlockHistoryStore')).useBlockHistoryStore();
+  const store = input.store ?? (await import('../runtime')).useBlockHistory();
   if (store.isInHistoryMode(blockId)) {
     store.exitHistoryMode(blockId);
     return { ok: true, action: 'closed' };

@@ -1,4 +1,4 @@
-import type { BlockHistoryUiState } from '../store/useBlockHistoryStore'
+import type { BlockHistoryUiState } from '../definitions/blockHistory'
 
 export type BlockHistoryUiStateByBlockId = Readonly<Record<string, BlockHistoryUiState | undefined>>
 

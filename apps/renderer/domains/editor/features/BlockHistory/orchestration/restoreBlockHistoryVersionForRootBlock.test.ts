@@ -8,7 +8,7 @@ import { Editor as VueTiptapEditor } from '@tiptap/vue-3'
 import { computed, ref } from 'vue'
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { BlockVersion, CreateBlockVersionParams } from '../../../../../shared/ipc/blockHistoryGateway'
-import type { BlockHistoryStore, BlockHistoryUiState } from '../store/useBlockHistoryStore'
+import type { BlockHistoryStore, BlockHistoryUiState } from '../definitions/blockHistory'
 import { restoreBlockHistoryVersionForRootBlock } from './restoreBlockHistoryVersionForRootBlock'
 
 const RootBlock = Node.create({

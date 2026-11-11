@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { BlockHistoryUiState } from '../store/useBlockHistoryStore'
+import type { BlockHistoryUiState } from '../definitions/blockHistory'
 import { readHistoryModeBlockIds } from './readHistoryModeBlockIds'
 
 function state(mode: BlockHistoryUiState['mode']): BlockHistoryUiState {

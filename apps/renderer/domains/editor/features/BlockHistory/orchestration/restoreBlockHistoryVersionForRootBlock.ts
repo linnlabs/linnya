@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/vue-3'
 import { Fragment } from 'prosemirror-model'
 import type { BlockVersion } from '../../../../../shared/ipc/blockHistoryGateway'
-import type { BlockHistoryStore } from '../store/useBlockHistoryStore'
+import type { BlockHistoryStore } from '../definitions/blockHistory'
 
 export type RestoreBlockHistoryVersionMode = 'create-current-snapshot' | 'discard-current'
 
@@ -86,8 +86,8 @@ async function resolveBlockHistoryStore(store?: BlockHistoryStore): Promise<Bloc
   if (store) return store
 
   // 中文说明：默认 store 懒加载，避免纯函数 / 编排单测在导入模块时触发 IPC 单例初始化。
-  const module = await import('../store/useBlockHistoryStore')
-  return module.useBlockHistoryStore()
+  const module = await import('../runtime')
+  return module.useBlockHistory()
 }
 
 /**

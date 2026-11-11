@@ -4,12 +4,12 @@
  */
 
 // Store
-export { useBlockHistoryStore } from './store/useBlockHistoryStore'
+export { useBlockHistory } from './runtime'
 export type {
   BlockHistoryStore,
   BlockHistoryUiState,
   HistoryViewMode,
-} from './store/useBlockHistoryStore'
+} from './definitions/blockHistory'
 
 // 只读运行态
 export {

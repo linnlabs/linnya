@@ -6,12 +6,12 @@ import type { BlockVersion } from '../../../../shared/ipc/blockHistoryGateway'
 import type {
   BlockHistoryStore,
   BlockHistoryUiState,
-} from '../../features/BlockHistory/store/useBlockHistoryStore'
+} from '../../features/BlockHistory/definitions/blockHistory'
 import type { RestoreBlockHistoryVersionForRootBlockInput } from '../../features/BlockHistory/orchestration/restoreBlockHistoryVersionForRootBlock'
 import { useBlockHistoryUi } from './useBlockHistoryUi'
 
 const restoreBlockHistoryVersionForRootBlockMock = vi.fn()
-const useBlockHistoryStoreMock = vi.fn()
+const useBlockHistoryMock = vi.fn()
 
 vi.mock('@/app/active-document', () => ({
   useFileStore: () => ({
@@ -19,8 +19,8 @@ vi.mock('@/app/active-document', () => ({
   }),
 }))
 
-vi.mock('../../features/BlockHistory/store/useBlockHistoryStore', () => ({
-  useBlockHistoryStore: () => useBlockHistoryStoreMock(),
+vi.mock('../../features/BlockHistory/runtime', () => ({
+  useBlockHistory: () => useBlockHistoryMock(),
 }))
 
 vi.mock('../../features/BlockHistory/orchestration/restoreBlockHistoryVersionForRootBlock', () => ({
@@ -109,12 +109,12 @@ describe('useBlockHistoryUi', () => {
       ok: true,
       appliedVersionId: 'version-a',
     })
-    useBlockHistoryStoreMock.mockReset()
+    useBlockHistoryMock.mockReset()
   })
 
   it('恢复已存在快照的版本时直接委托 BlockHistory orchestration', async () => {
     const version = createVersion('current-json')
-    useBlockHistoryStoreMock.mockReturnValue(createStore([version]))
+    useBlockHistoryMock.mockReturnValue(createStore([version]))
 
     const { editor, getRootBlockPos, history } = createHistoryUi({
       currentContentJson: 'current-json',
@@ -137,7 +137,7 @@ describe('useBlockHistoryUi', () => {
 
   it('当前内容没有快照时先弹确认，再按用户选择创建当前快照', async () => {
     const version = createVersion('version-json')
-    useBlockHistoryStoreMock.mockReturnValue(createStore([version]))
+    useBlockHistoryMock.mockReturnValue(createStore([version]))
 
     const { getRootBlockPos, history } = createHistoryUi({
       currentContentJson: 'dirty-json',

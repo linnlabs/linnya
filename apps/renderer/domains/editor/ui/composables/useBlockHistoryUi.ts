@@ -8,11 +8,8 @@
  */
 
 import { computed, ref, type ComputedRef } from 'vue';
-import {
-  useBlockHistoryStore,
-  type BlockHistoryUiState,
-  type BlockHistoryStore,
-} from '../../features/BlockHistory/store/useBlockHistoryStore';
+import { useBlockHistory } from '../../features/BlockHistory/runtime';
+import type { BlockHistoryUiState, BlockHistoryStore } from '../../features/BlockHistory/definitions/blockHistory';
 import { useFileStore } from '@/app/active-document';
 import type { BlockVersion } from '../../../../shared/ipc/blockHistoryGateway';
 import {
@@ -95,7 +92,7 @@ export function useBlockHistoryUi(options: UseBlockHistoryUiOptions): UseBlockHi
 
   // ==================== Store 获取 ====================
 
-  const blockHistoryStore: BlockHistoryStore = useBlockHistoryStore();
+  const blockHistoryStore: BlockHistoryStore = useBlockHistory();
   const fileStore = useFileStore();
   const { currentLocale, editorMessage } = useEditorLocalization();
 

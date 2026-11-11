@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { useBlockHistoryStore } from '../store/useBlockHistoryStore'
+import { useBlockHistory } from '../runtime'
 import { EditorContent, useEditor } from '@tiptap/vue-3'
 import { createHistoryEditorOptions } from '../utils/createHistoryEditor'
 import { buildHistoryVersionDocument } from '../functions/buildHistoryVersionDocument'
@@ -53,7 +53,7 @@ const emit = defineEmits<{
 
 // ==================== Store ====================
 
-const blockHistoryStore = useBlockHistoryStore()
+const blockHistoryStore = useBlockHistory()
 
 // ==================== Editor ====================
 

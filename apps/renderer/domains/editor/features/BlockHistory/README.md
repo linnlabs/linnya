@@ -8,11 +8,11 @@
 
 ```text
 BlockHistory/
-  index.ts                  # 对外统一导出：Store、UI 组件、工具类型
+  index.ts                  # 对外统一导出：运行入口、UI 组件、工具类型
   README.md                 # 本文件
 
   store/
-    useBlockHistoryStore.ts # 全局单例 Store，管理版本数据与 UI 状态
+    useBlockHistory.ts # 全局单例 Store，管理版本数据与 UI 状态
 
   functions/
     readBlockHistoryPanelState.ts # 历史面板展示状态与恢复前确认规则
@@ -58,17 +58,18 @@ BlockHistory/
     - 避免在历史视图中引入图片、音频等复杂块带来的交互和 schema 负担。
 
 - **单例 Store，跨组件共享**
-  - `useBlockHistoryStore` 通过模块级 `singletonStore` 实现全局单例：
+  - `runtime.ts` 的 `useBlockHistory` 与状态入口 `useBlockHistoryState` 保留 Renderer 单例：
     - 菜单 Provider、`BlockView`、`History*` 组件都读写同一份状态；
     - `setViewMode / selectVersion` 一次更新，所有相关 UI 自动响应。
 
 ## 数据流与 IPC 交互
 
-- **前端 Store：`useBlockHistoryStore.ts`**
+- **前端 Store：`useBlockHistory.ts`**
   - 状态：
     - `versionsByBlock: Record<string, BlockVersion[]>`
     - `uiStateByBlock: Record<string, BlockHistoryUiState>`
-  - 关键方法：
+  - 公开入口 `runtime.ts` 装配状态和异步命令；store 不加载 Gateway、不反向调用编排。删除后的邻居选择在 `functions/projectBlockHistoryAfterDeletion.ts` 计算，再通过同步 action 提交。
+- 关键方法：
     - `loadBlockHistory(documentNodeId, blockId)`：从后端加载指定块的版本列表。
     - `createVersion(params)`：为当前 `RootBlock` 内容创建新版本（手动 / AI / 恢复）。
     - `restoreVersion(documentNodeId, blockId, versionId)`：请求后端基于某个版本恢复，并刷新本地列表。
@@ -214,5 +215,5 @@ Host 不直接理解版本恢复规则：
   - 点击即可直接进入历史视图，无需打开菜单
 
 - **开发调试**
-  - 可以在 `useBlockHistoryStore` 中临时打印 `versionsByBlock` 与 `uiStateByBlock` 观察状态流转。
+  - 可以在 `useBlockHistory` 中临时打印 `versionsByBlock` 与 `uiStateByBlock` 观察状态流转。
   - 配合 `apps/renderer/docs/AI-REVISION&TRACK-CHANGES-V3.md` 理解整体「修订 + 历史」系统的分层与演进方向。

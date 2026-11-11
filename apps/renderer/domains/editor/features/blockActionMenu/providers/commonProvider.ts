@@ -12,7 +12,7 @@
 import type { BlockMenuProvider, BlockMenuContext } from '../types';
 import { useNotificationStore } from '@/app/notification';
 import { useFileStore } from '@/app/active-document';
-import { useBlockHistoryStore } from '../../BlockHistory';
+import { useBlockHistory } from '../../BlockHistory';
 import { PositionUtils } from '../../../extensions/position/PositionUtils';
 import { positionTextSelectionWithHandshake } from '../../RenderVirtualization';
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage';
@@ -188,7 +188,7 @@ const SYSTEM_BLOCK_TYPES = ['bibliographyBlock'];
 const openBlockHistory = async (ctx: BlockMenuContext) => {
   try {
     const fileStore = useFileStore();
-    const blockHistoryStore = useBlockHistoryStore();
+    const blockHistoryStore = useBlockHistory();
     const notificationStore = useNotificationStore();
     const editorMessage = resolveCurrentEditorMessage;
 
@@ -278,7 +278,7 @@ const openBlockHistory = async (ctx: BlockMenuContext) => {
 const createBlockVersion = async (ctx: BlockMenuContext) => {
   const notificationStore = useNotificationStore();
   const fileStore = useFileStore();
-  const blockHistoryStore = useBlockHistoryStore();
+  const blockHistoryStore = useBlockHistory();
   const editorMessage = resolveCurrentEditorMessage;
 
   try {
@@ -424,7 +424,7 @@ export const commonProvider: BlockMenuProvider = {
      * - 这里只在「非原子块」且「documentNodeId / blockId 均有效」时才触发加载；
      * - 首次未知时不做同步 IO，这是为了避免块菜单在大文档中出现 1 秒级延迟。
      */
-    const blockHistoryStore = useBlockHistoryStore();
+    const blockHistoryStore = useBlockHistory();
     const fileStore = useFileStore();
     const documentNodeId = fileStore.currentFilePath;
 

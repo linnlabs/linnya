@@ -2,7 +2,7 @@ import { computed, type ComputedRef } from 'vue'
 import type { BlockVersionHandleSummary } from './definitions/blockVersionHandleSummary'
 import { readBlockVersionHandleSummary } from './functions/readBlockVersionHandleSummary'
 import { readHistoryModeBlockIds } from './functions/readHistoryModeBlockIds'
-import { useBlockHistoryStore } from './store/useBlockHistoryStore'
+import { useBlockHistory } from './runtime'
 
 /**
  * 块历史 feature 的只读运行态。
@@ -11,7 +11,7 @@ import { useBlockHistoryStore } from './store/useBlockHistoryStore'
  * 这里暴露窄读模型，避免 Host 直接依赖 History UI 组件或遍历 DOM。
  */
 export function useHistoryModeRootBlockIds(): ComputedRef<string[]> {
-  const store = useBlockHistoryStore()
+  const store = useBlockHistory()
 
   return computed(() => {
     return readHistoryModeBlockIds(store.uiStateByBlock.value)
@@ -27,7 +27,7 @@ export function useHistoryModeRootBlockIds(): ComputedRef<string[]> {
 export function useBlockVersionHandleSummary(
   blockId: ComputedRef<string | null | undefined>
 ): ComputedRef<BlockVersionHandleSummary> {
-  const store = useBlockHistoryStore()
+  const store = useBlockHistory()
 
   return computed(() => {
     const currentBlockId = blockId.value?.trim()
