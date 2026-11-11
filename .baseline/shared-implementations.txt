@@ -18,9 +18,6 @@
 1	FOUNDATION-is-record	packages/plugins/slides/dev/powerpoint/rasterizeOfficePdf.ts
 1	FOUNDATION-is-record	packages/plugins/slides/src/shared/valueRecord.ts
 1	FOUNDATION-is-record	packages/stream-markdown-parser/src/parser/index.ts
-1	FOUNDATION-sleep	packages/plugins/canvas/dev/probes/performanceElectron.ts
-1	FOUNDATION-sleep	packages/plugins/canvas/dev/probes/sceneVisualRenderer.ts
-1	FOUNDATION-sleep	packages/plugins/canvas/dev/probes/visibilityElectron.ts
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/features/context-window-usage/functions/projectConversationInformation.ts
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/ui/message/SummaryMessage.vue
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/ui/tools/questionnaire/components/QuestionActions.vue

@@ -131,6 +131,8 @@ Agent几何动效只消费正式增量中每张卡最后一次来源；用户提
 
 ## 制品闭包
 
+开发探针的普通定时等待复用 `@linnya/foundation`。Backend/CLI/计算 worker 构建把 Markdown Core 间接使用的 Foundation 一并内联，独立制品不依赖 Host 安装这个源码包。
+
 独立只读CLI还支持按显式项目、对话和request-id读取持久回执。它与App facade复用`agentChanges/queries.ts`；正式制品门禁仅允许该只读闭包，仍禁止审批、写入与历史运行态进入CLI。查看回执不重新执行原命令，也不推测已丢失的模型输出。
 
 `pnpm run smoke:plugin:canvas:artifact`先构建schemas和Canvas独立制品，再用临时隔离根验证checksum/content BOM、正式disk Backend加载、Skill/worker/migration发现、无数据库的CLI help、编译CLI真实只读SQLite与写入拒绝、编译Node计算worker及正式Host HiddenWorker的PNG/JPEG/取消/字体/标签/图片路径。临时制品根与数据库测试后删除；Canvas不进入默认官方发行目标。

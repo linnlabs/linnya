@@ -1,3 +1,4 @@
+import { sleep } from '@linnya/foundation';
 import { readCanvasVisualSampling, assertSoftwareVisualSampling } from './visualSampling';
 import { CanvasCardSchema, readCanvasCardPalette, type CanvasCard } from '../../src/shared';
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';
@@ -9,7 +10,6 @@ function card(id: string, x: number, y = 30): CanvasCard {
     createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, x, y, width: 200, height: 140, parentId: null,
     data: { contentVersion: 1, content: { type: 'doc', content: [] } } });
 }
-const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 const drawn = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 function bitmap(color: string): ImageBitmap {
   const canvas = new OffscreenCanvas(200, 140), context = canvas.getContext('2d'); if (!context) throw new Error('scene_bitmap_context_missing');

@@ -1,3 +1,4 @@
+import { sleep as delay } from '@linnya/foundation';
 import { app, BrowserWindow, powerMonitor, screen, type WebContents } from 'electron';
 import os from 'node:os';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
@@ -36,7 +37,6 @@ if (inputDiagnostic && offscreenProfile) throw new Error('input_trace_requires_v
 if (zoomPaintDiagnostic && process.env.CANVAS_PERFORMANCE_ZOOM_TRACE !== '1') throw new Error('zoom_paint_diagnostic_requires_chromium_trace');
 if (softwareProfile) { app.commandLine.appendSwitch('use-angle', 'swiftshader'); app.commandLine.appendSwitch('enable-unsafe-swiftshader'); }
 app.on('window-all-closed', () => {});
-const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 async function run() {
   await app.whenReady();

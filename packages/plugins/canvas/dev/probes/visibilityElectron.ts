@@ -1,3 +1,4 @@
+import { sleep as delay } from '@linnya/foundation';
 import { app, BrowserWindow, nativeImage } from 'electron';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -9,7 +10,6 @@ const output = process.argv[2]; if (!output) throw new Error('Visibility output 
 app.setPath('userData', path.join(output, 'profile')); app.on('window-all-closed', () => {});
 const stateSchema = z.object({ visibility: z.enum(['hidden', 'visible']), revision: z.number(), failures: z.array(z.string()),
   queue: z.object({ pending: z.number(), running: z.boolean(), failed: z.number() }), scene: z.object({ bitmaps: z.number() }) });
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 async function run() {
   await app.whenReady(); if (process.platform === 'darwin') app.setActivationPolicy('accessory');
   const sessionBefore = readNativeSessionState();
