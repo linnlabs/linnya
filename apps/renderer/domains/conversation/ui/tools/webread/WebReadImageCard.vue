@@ -1,11 +1,12 @@
 <template>
   <!-- 下载的图片和生成的图片一样直接显示，不套卡片；下面一行写来源、尺寸与许可。 -->
   <div class="web-read-image">
-    <ImageRenderer
+    <!-- 结果到达前只按地址猜是图片，不占大块位置，只给一行。 -->
+    <ToolInlineLine
       v-if="presentation.status === 'loading'"
-      :images="[]"
-      status="loading"
-      :loading-label="conversationMessage('conversation.tool.webReadImage.loading')"
+      :icon="ImageIcon"
+      loading
+      :text="conversationMessage('conversation.tool.webReadImage.loading')"
     />
     <template v-else-if="data.kind === 'image'">
       <ImageRenderer

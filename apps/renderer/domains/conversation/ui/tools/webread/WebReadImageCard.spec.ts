@@ -47,9 +47,10 @@ function mount(presentation: ToolCardPresentation<WebReadImagePresentationData>)
 }
 
 describe('WebReadImageCard', () => {
-  it('下载中显示“正在下载图片”占位，不套卡片', () => {
+  it('下载中只显示一行“正在下载图片”，不占图片大小的位置，不套卡片', () => {
     const root = mount({ uiKey: 'web_read_image', status: 'loading', phase: 'start', data: { kind: 'lifecycle' } });
-    expect(root.querySelector('.image-placeholder')?.textContent).toContain('conversation.tool.webReadImage.loading');
+    expect(root.querySelector('.tool-inline-line')?.textContent).toContain('conversation.tool.webReadImage.loading');
+    expect(root.querySelector('.image-placeholder')).toBeNull();
     expect(root.querySelector('.tool-card')).toBeNull();
   });
 
