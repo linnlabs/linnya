@@ -56,6 +56,7 @@ function listSourceFiles(directory: string, files: string[]): void {
 }
 
 function ruleApplies(rule: SharedImplementationRule, file: string): boolean {
+  if (rule.exclude?.some(prefix => file.startsWith(prefix))) return false;
   if (rule.owners.some(owner => file.startsWith(owner))) return false;
   return rule.scope === undefined || rule.scope.some(scope => file.startsWith(scope));
 }
@@ -68,7 +69,7 @@ export function countSharedImplementationHits(
   if (applicable.length === 0) return [];
   const lines = source.split(/\r?\n/u);
   return applicable
-    .map(rule => ({ ruleId: rule.id, file, count: lines.filter(line => rule.pattern.test(line)).length }))
+    .map(rule => ({ ruleId: rule.id, file, count: rule.wholeSource ? [...source.matchAll(rule.pattern)].length : lines.filter(line => rule.pattern.test(line)).length }))
     .filter(entry => entry.count > 0);
 }
 

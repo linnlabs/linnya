@@ -1,3 +1,4 @@
+import { errorToString as toErrorMessage } from '@linnya/foundation';
 import type Database from 'better-sqlite3';
 import type { PluginDiagnosticLevel, PluginId } from '@app/schemas';
 import type { PluginMigrationDefinition } from '@plugin/backend/pluginMigration';
@@ -335,8 +336,4 @@ export class PluginUpgradeRunner {
       message,
     });
   }
-}
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

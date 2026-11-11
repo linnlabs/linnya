@@ -1,3 +1,4 @@
+import { errorToString as readErrorMessage } from '@linnya/foundation';
 import type Database from 'better-sqlite3';
 import type { PluginId } from '@app/schemas';
 
@@ -25,10 +26,6 @@ export interface ReconcilePluginActiveVersionResult {
   readonly version: string;
   readonly status: 'already-synced' | 'synced' | 'rollback-adopted' | 'skipped-current-drift' | 'failed';
   readonly error?: string;
-}
-
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export function reconcilePluginActiveVersions(

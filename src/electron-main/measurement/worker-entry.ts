@@ -1,3 +1,4 @@
+import { errorToString as toErrorMessage } from '@linnya/foundation';
 import { BrowserPretextAdapter } from '../../features/text-measurement/adapters/BrowserPretextAdapter.js';
 import type { NormalizedTextMeasureInput } from '../../features/text-measurement/index.js';
 import {
@@ -9,10 +10,6 @@ declare global {
   interface Window {
     __measurementBridge: MeasurementWorkerBridge;
   }
-}
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 // H5：notifyReady 之前先跑一次自检 measure。如果 BrowserPretextAdapter / Canvas

@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 import {
   createOperationFailure,
   createUserFacingMessage,
@@ -9,10 +10,6 @@ import {
 } from './transcriptionErrors';
 
 export type TranscriptionOperationFallbackKey = 'system.transcription.failed';
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 function failure(error: unknown, key: string) {
   const diagnostic = getErrorMessage(error);

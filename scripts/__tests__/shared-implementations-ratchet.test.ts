@@ -58,6 +58,16 @@ describe('共享实现棘轮', () => {
     expect(countSharedImplementationHits('src/domains/x/formatX.ts', source)).toEqual([]);
   });
 
+  it('只拦同体错误转换函数，不扩展到内联表达式或业务错误规则', () => {
+    const file = 'src/features/x/failure.ts';
+    const body = 'function getErrorMessage(error: unknown): string {\n return error instanceof Error ? error.message : String(error);\n}';
+    expect(countSharedImplementationHits(file, body)).toMatchObject([{ ruleId: 'FOUNDATION-error-to-string', count: 1 }]);
+    expect(countSharedImplementationHits(file, 'const diagnostic = error instanceof Error ? error.message : String(error);')).toEqual([]);
+    expect(countSharedImplementationHits(file, 'function getErrorMessage(error: unknown): string { return error instanceof Error ? error.message : "unknown"; }')).toEqual([]);
+    expect(countSharedImplementationHits('packages/foundation/src/errorToString.ts', body)).toEqual([]);
+    expect(countSharedImplementationHits('packages/plugins/mindmap/src/backend/failure.ts', body)).toEqual([]);
+  });
+
   it('只许减少：新增报 expanded，减少报 reduced，基线可往返', () => {
     const baseline = parseSharedImplementationBaseline(formatSharedImplementationBaseline([
       { ruleId: 'FOUNDATION-clamp', file: 'a.ts', count: 2 },

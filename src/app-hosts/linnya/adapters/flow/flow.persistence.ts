@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 import type {
   AppendEventToRunOptions,
   ReplaceUserInputEventOptions,
@@ -95,10 +96,6 @@ export function createFlowConversationAdmissionPort(
       }, () => input.admitted());
     },
   });
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 async function markRunFailedBestEffort(

@@ -1,6 +1,6 @@
 import type { PluginRuntimeState } from '../../../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { Logger } from '../../../../shared/logger';
-import { isRecord } from '@linnya/foundation';
+import { isRecord, errorToString as readErrorMessage } from '@linnya/foundation';
 
 const logger = new Logger('PluginInvokeDispatcher');
 const PLUGIN_INVOKE_TRACE_ID_FIELD = '__plugin_trace_id';
@@ -71,10 +71,6 @@ function buildPluginInvokeFailure(params: {
     error: params.diagnostic.message,
     diagnostic: params.diagnostic,
   };
-}
-
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function classifyPluginInvokeError(params: {

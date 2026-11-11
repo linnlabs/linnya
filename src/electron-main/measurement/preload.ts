@@ -1,3 +1,4 @@
+import { errorToString as toErrorMessage } from '@linnya/foundation';
 import { contextBridge, ipcRenderer } from 'electron';
 import {
   MEASUREMENT_BATCH_REQUEST_CHANNEL,
@@ -14,10 +15,6 @@ import {
 type BatchHandler = (request: MeasurementBatchRequest) => MeasurementBatchResponse | Promise<MeasurementBatchResponse>;
 
 let handler: BatchHandler | null = null;
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 ipcRenderer.on(MEASUREMENT_BATCH_REQUEST_CHANNEL, async (_event, payload: unknown) => {
   let request: MeasurementBatchRequest;

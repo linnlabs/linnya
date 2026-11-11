@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 /**
  * @file src/task-queue/workers/graph-extraction.worker.ts
  *
@@ -194,12 +195,6 @@ async function processGraphExtractionJob(): Promise<void> {
      */
     const sleepMs = async (ms: number): Promise<void> => {
       await new Promise<void>((resolve) => setTimeout(resolve, ms));
-    };
-
-    const getErrorMessage = (err: unknown): string => {
-      if (err instanceof Error) return err.message;
-      if (typeof err === 'string') return err;
-      return String(err);
     };
 
     const getErrorName = (err: unknown): string | null => {

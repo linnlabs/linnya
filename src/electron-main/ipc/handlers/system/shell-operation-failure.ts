@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 import {
   createOperationFailure,
   createUserFacingMessage,
@@ -12,10 +13,6 @@ import {
 export type ShellOperationFallbackKey =
   | 'system.shell.external.openFailed'
   | 'system.shell.item.showInFolderFailed';
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 function failure(error: unknown, key: string) {
   const diagnostic = getErrorMessage(error);

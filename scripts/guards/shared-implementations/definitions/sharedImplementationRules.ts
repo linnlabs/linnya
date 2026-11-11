@@ -9,8 +9,12 @@ export interface SharedImplementationRule {
   readonly id: string;
   /** 逐行匹配；一行算一次。 */
   readonly pattern: RegExp;
+  /** 仅完整函数体这类跨行规则使用；不把同样的内联表达式算成本地实现。 */
+  readonly wholeSource?: boolean;
   /** 只在这些目录下检查；省略表示全部扫描范围。 */
   readonly scope?: readonly string[];
+  /** 明确不参与本条新规则的源码范围；不改动旧规则的存量口径。 */
+  readonly exclude?: readonly string[];
   /** 共享实现自己所在的位置，不检查。 */
   readonly owners: readonly string[];
   /** 失败时告诉开发者该用什么。 */
@@ -18,6 +22,15 @@ export interface SharedImplementationRule {
 }
 
 export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = [
+  {
+    id: 'FOUNDATION-error-to-string',
+    // 退役 Mindmap 不参与本轮迁移；旧规则的 Mindmap 基线仍保留。
+    exclude: ['packages/plugins/mindmap/'],
+    wholeSource: true,
+    pattern: /\bfunction\s+(?:getErrorMessage|readErrorMessage|toErrorMessage|errorToString)\s*\(\s*(\w+)\s*:\s*unknown\s*\)\s*:\s*string\s*\{\s*return\s+\1\s+instanceof\s+Error\s*\?\s*\1\.message\s*:\s*String\(\1\)\s*;?\s*\}/gu,
+    owners: ['packages/foundation/'],
+    use: '原始错误转文字的同体本地函数使用 @linnya/foundation 的 errorToString；翻译、业务默认文案、DTO 错误字段读取仍归各 owner。',
+  },
   {
     id: 'SLIDES-image-props',
     pattern: /\b(?:function|const)\s+buildPptxImageProps\b|\bconst\s+imgOpts\s*:\s*PptxGenJS\.ImageProps/u,

@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 import { DefaultProjectDeleteBlockedError, ProjectNameConflictError, ProjectNotFoundError } from 'src/domains/projects';
 import { ProjectDeletionIncompleteError } from 'src/app-hosts/linnya/application/project-deletion';
 import {
@@ -33,10 +34,6 @@ export type WorkspaceOperationFallbackKey =
   | 'workspace.sidebar.node.transferFailed'
   | 'workspace.sidebar.node.duplicateFailed'
   | 'workspace.sidebar.node.operationFailed';
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 function failure(
   error: unknown,

@@ -1,3 +1,4 @@
+import { errorToString as toErrorMessage } from '@linnya/foundation';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import {
@@ -60,10 +61,6 @@ export interface WebPageRenderWorkerOptions {
 
 interface WindowLifecycle {
   readonly cleanups: readonly (() => void)[];
-}
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function raceCancellation<T>(operation: Promise<T>, cancellation: Promise<never>): Promise<T> {

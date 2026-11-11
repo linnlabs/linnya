@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { parsePluginManifest, type PluginId } from '@app/schemas';
-import { isRecord } from '@linnya/foundation';
+import { isRecord, errorToString as readErrorMessage } from '@linnya/foundation';
 
 interface ActivePluginPointer {
   readonly version: string;
@@ -67,10 +67,6 @@ export interface RollbackActivePluginVersionOptions {
   readonly userPluginRoot: string;
   readonly pluginId: PluginId;
   readonly failedVersion?: string;
-}
-
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function getPluginInstallDir(userPluginRoot: string, pluginId: PluginId): string {

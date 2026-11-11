@@ -1,3 +1,4 @@
+import { errorToString as readErrorMessage } from '@linnya/foundation';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -25,10 +26,6 @@ function report(
   message: string
 ): void {
   reporter?.({ pluginId, message });
-}
-
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function readManifestFromPluginDir(pluginDir: string) {

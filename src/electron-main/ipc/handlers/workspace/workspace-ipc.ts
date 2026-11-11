@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 /**
  * Workspace IPC Handlers - 新数据库架构的 IPC 通道
  * 
@@ -23,10 +24,6 @@ import { inspectWorkspaceNodeTransfer } from '../../../../features/workspace/nod
 import { transferWorkspaceNode } from '../../../../features/workspace/node-transfer/orchestration/transferWorkspaceNode';
 
 const logger = new Logger('WorkspaceIPC');
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 /**
  * 注册所有 workspace 相关的 IPC 处理器

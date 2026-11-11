@@ -1,3 +1,4 @@
+import { errorToString as readErrorMessage } from '@linnya/foundation';
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
@@ -33,10 +34,6 @@ export interface InstallPluginFromRemoteAndActivateOptions {
   readonly resolveUpgradePlan: PluginUpgradePlanResolver;
   readonly fetch?: typeof fetch;
   readonly recordDiagnostic?: (diagnostic: PluginUpgradeDiagnostic) => void;
-}
-
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function resolvePluginVersionDir(userPluginRoot: string, pluginId: PluginId, version: string): string {

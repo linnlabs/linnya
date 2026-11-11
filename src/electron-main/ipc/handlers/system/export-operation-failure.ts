@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 import {
   createOperationFailure,
   createUserFacingMessage,
@@ -19,10 +20,6 @@ export type ExportOperationFallbackKey =
   | 'system.export.file.saveFailed'
   | 'system.export.pdf.saveFailed'
   | 'system.export.batch.writeFailed';
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 function failure(error: unknown, key: string) {
   const diagnostic = getErrorMessage(error);

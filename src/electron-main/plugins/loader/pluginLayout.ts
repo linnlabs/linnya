@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { isRecord } from '@linnya/foundation';
+import { isRecord, errorToString as readErrorMessage } from '@linnya/foundation';
 
 export interface PluginLayoutDiagnostic {
   readonly pluginId: string | null;
@@ -33,10 +33,6 @@ export interface PluginLayoutOptions {
 
 interface ActivePluginPointer {
   readonly version: string;
-}
-
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function readStringField(record: Record<string, unknown>, key: string): string | null {

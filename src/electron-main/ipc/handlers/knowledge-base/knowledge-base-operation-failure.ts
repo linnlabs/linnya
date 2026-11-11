@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 import {
   createOperationFailure,
   createUserFacingMessage,
@@ -20,10 +21,6 @@ export type KnowledgeBaseOperationFallbackKey =
   | 'knowledgeBase.service.error.getDocumentsIpcFailed'
   | 'knowledgeBase.service.error.updateSettingsIpcFailed'
   | 'knowledgeBase.graph.error.progressLoadFailed';
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 function failure(error: unknown, key: string): OperationFailure {
   const diagnostic = getErrorMessage(error);

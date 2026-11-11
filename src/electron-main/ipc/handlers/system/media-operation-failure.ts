@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 import {
   createOperationFailure,
   createUserFacingMessage,
@@ -22,10 +23,6 @@ export type MediaOperationFallbackKey =
   | 'system.media.audio.saveFailed'
   | 'system.media.audio.loadFailed'
   | 'system.media.file.sizeFailed';
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 function failure(error: unknown, key: string): OperationFailure {
   const diagnostic = getErrorMessage(error);

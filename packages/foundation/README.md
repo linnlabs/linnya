@@ -22,6 +22,7 @@
 | `isRecord(value)` | 是不是普通键值对象：非 null、不是数组 |
 | `clamp(value, min, max)` | 把数值限制在范围内 |
 | `sleep(milliseconds)` | 等待若干毫秒 |
+| `errorToString(error)` | 原样提取错误消息或转为字符串；不生成业务文案 |
 
 
 ## 构建接入

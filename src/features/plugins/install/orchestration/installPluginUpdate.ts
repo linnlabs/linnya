@@ -19,11 +19,7 @@ import type {
   InstallPluginUpdateResult,
   RemotePluginVersionManifest,
 } from '../definitions/pluginInstall';
-import { isRecord } from '@linnya/foundation';
-
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+import { isRecord, errorToString as readErrorMessage } from '@linnya/foundation';
 
 function formatPluginManifestError(error: ZodError): string {
   const fields = error.issues

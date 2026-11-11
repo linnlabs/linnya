@@ -1,3 +1,4 @@
+import { errorToString as getErrorMessage } from '@linnya/foundation';
 import {
   createOperationFailure,
   createUserFacingMessage,
@@ -10,10 +11,6 @@ import {
 export type QuotaOperationFallbackKey =
   | 'system.quota.getFailed'
   | 'system.quota.consumeFailed';
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 function failure(error: unknown, key: string) {
   const diagnostic = getErrorMessage(error);
