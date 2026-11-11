@@ -25,7 +25,7 @@ export class ImageSearchTool extends BaseTool {
 
 Returns candidates with size, license (commercial use, modifications, attribution), creator, source page, a ready attribution line and a download URL. Download a chosen image with web_read using its download URL; the receipt carries the same source and license record.
 
-Search tips: name the specific object or scene; try the subject's names in other languages, the holding museum, or the English name. These sources rarely have current products, people or stock-style photos; for a specific object or product, the original is usually on the website of whoever holds or makes it, so find that page with web_search and read it with web_read, which lists the page's main images with captions and credits.`;
+Search tips: use 1–3 key words (on Wikimedia Commons every word must match, so long queries often return nothing); name the specific object or scene; try the subject's names in other languages, the holding museum, or the English name. These sources rarely have current products, people or stock-style photos; for a specific object or product, the original is usually on the website of whoever holds or makes it, so find that page with web_search and read it with web_read, which lists the page's main images with captions and credits.`;
 
   readonly parameters: ToolParameterSchema = {
     type: 'object',

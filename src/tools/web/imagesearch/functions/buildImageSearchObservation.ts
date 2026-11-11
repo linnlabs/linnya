@@ -44,8 +44,10 @@ export function buildImageSearchObservation(params: {
     `Image search for ${JSON.stringify(params.query)}${params.commercialOnly ? ' (commercial-use licenses only)' : ''}. Sources: ${sourceLine}.`,
   ];
   if (params.candidates.length === 0) {
+    const wordCount = params.query.trim().split(/\s+/).length;
     return [
       ...header,
+      ...(wordCount > 3 ? [`The query has ${wordCount} words; Wikimedia Commons requires every word to match. Retry with the 1–3 most distinctive words.`] : []),
       'No images found. Try other names for the subject (another language, the holding museum, an English or Latin name), or look for the original on the website of whoever holds it with web_search and web_read.',
     ].join('\n');
   }

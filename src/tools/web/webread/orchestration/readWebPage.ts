@@ -274,6 +274,19 @@ export async function runReadWebPage(
   context.abortSignal?.throwIfAborted();
   const imageSources = dependencies.imageSources ?? getImageSourceRegistry();
   // 网页上的图片候选：记下出现在哪一页、图注与署名，之后下载同一地址时写进回执。
+  // 正文里的图片链接（Markdown 图片）也记下出现在哪一页：页面主图列表只收有尺寸依据的大图，
+  // 模型可能从正文里拿到别的图片地址去下载。列表里的图后写入，带上图注与署名。
+  if (!readResult.filePayload) {
+    for (const match of readResult.content.matchAll(/!\[([^\]\n]{0,300})\]\((https?:\/\/[^\s)]+)/gu)) {
+      imageSources.remember(match[2]!, {
+        foundVia: 'web_page',
+        pageUrl: normalizeUrl(readResult.finalUrl),
+        ...(readResult.title.trim() ? { title: readResult.title.trim().slice(0, 300) } : {}),
+        ...(match[1]?.trim() ? { caption: match[1].trim().slice(0, 500) } : {}),
+        ...(readResult.pageRights ? { pageRights: readResult.pageRights } : {}),
+      });
+    }
+  }
   for (const pageImage of readResult.images ?? []) {
     imageSources.remember(pageImage.url, {
       foundVia: 'web_page',

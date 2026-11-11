@@ -198,5 +198,11 @@ describe('图片下载、检查与来源记录', () => {
     });
     expect(image.data.image?.source?.license).toBeUndefined();
     expect(image.observation).toContain('No structured license');
+
+    // 页面主图列表不收的小图，只要出现在正文里，下载时也带上出现的页面。
+    const small = await fixture.read('/thumb.jpg').catch(error => error);
+    expect(String(small)).toMatch(/404|Not Found|不存在/);
+    fixture.imageSources.remember(`${origin}/never-seen.png`, { foundVia: 'web_page', pageUrl: `${origin}/page` });
+    expect(fixture.imageSources.lookup(`${origin}/thumb.jpg`)).toMatchObject({ foundVia: 'web_page', pageUrl: `${origin}/page` });
   });
 });

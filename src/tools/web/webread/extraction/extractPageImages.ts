@@ -18,9 +18,12 @@ const CREDIT_TEXT = /©|\(c\)|\bphoto(?:graph)?\s*(?:by|:)|\bcredit\s*:|\bcourte
 const RIGHTS_TEXT = /©|copyright|all rights reserved|版权所有|著作权|保留所有权利|無斷転載|저작권/i;
 const EXCLUDED_ANCESTORS = 'nav, header, footer, aside, [role="navigation"], [role="banner"], [role="contentinfo"], [aria-hidden="true"]';
 
+/** 只有文件名或一串编号的 alt/图注不算说明文字。 */
+const FILENAME_LIKE = /^[\w-]+\.(?:jpe?g|png|webp|gif|avif)$|^[0-9a-f-]{16,}$/i;
+
 function clean(value: string | null | undefined, maxChars: number): string | undefined {
   const text = (value ?? '').replace(/\s+/g, ' ').trim();
-  if (!text) return undefined;
+  if (!text || FILENAME_LIKE.test(text)) return undefined;
   return text.length > maxChars ? `${text.slice(0, maxChars - 1).trimEnd()}…` : text;
 }
 
