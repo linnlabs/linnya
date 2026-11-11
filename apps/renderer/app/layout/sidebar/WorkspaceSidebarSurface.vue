@@ -147,6 +147,7 @@
 </template>
 
 <script setup>
+import { loadProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue';
 import { useWorkspaceProjectsStore, useWorkspaceSelectionStore, useWorkspaceTreeStore } from '@/domains/workspace/store';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
@@ -622,7 +623,7 @@ const handleCreateFile = async (payload) => {
 };
 
 onMounted(() => {
-  projectsStore.loadProjects();
+  loadProjectCatalog();
   void ensureSidebarOverlayScroll();
 });
 

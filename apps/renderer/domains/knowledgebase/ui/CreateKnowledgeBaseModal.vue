@@ -158,6 +158,7 @@
 </template>
 
 <script setup lang="ts">
+import { loadProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useKnowledgeBaseStore } from '../stores/knowledgeBase';
 import { ActionButtons, CustomSelect, IconButton, Modal, TagChip } from '@linnya/renderer-ui';
@@ -263,7 +264,7 @@ watch(
       // 打开弹窗时，确保已经加载项目列表
       if (workspaceProjectsStore.projects.length === 0 && !workspaceProjectsStore.isLoading) {
         try {
-          await workspaceProjectsStore.loadProjects();
+          await loadProjectCatalog();
         } catch (error) {
           console.error('[CreateKnowledgeBaseModal] 加载项目列表失败:', error);
         }

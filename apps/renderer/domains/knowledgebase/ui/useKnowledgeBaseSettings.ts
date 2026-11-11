@@ -1,3 +1,4 @@
+import { loadProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useNotificationStore } from '@/app/notification';
 import { useKnowledgeBaseStore } from '../stores/knowledgeBase';
@@ -87,7 +88,7 @@ export function useKnowledgeBaseSettings(
       !workspaceProjectsStore.isLoading
     ) {
       try {
-        await workspaceProjectsStore.loadProjects();
+        await loadProjectCatalog();
       } catch (error) {
         console.error('[KnowledgeBaseSettingsTab] 加载项目列表失败:', error);
       }

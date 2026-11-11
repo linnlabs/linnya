@@ -10,3 +10,8 @@ export interface Project {
   createdAt: number;
   updatedAt: number;
 }
+
+export interface ProjectUpdate {
+  readonly name?: string;
+  readonly description?: string;
+}

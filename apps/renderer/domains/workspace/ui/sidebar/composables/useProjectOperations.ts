@@ -13,7 +13,7 @@ import type { NotificationStore } from '@/app/notification';
 import type { useWorkspaceProjectsStore } from '../../../store/WorkspaceProjectsStore';
 import type { Project } from '../../../definitions/project';
 import type { ProjectEditData, ProjectFormValues, ProjectOperationsOptions } from '../definitions/projectOperations';
-import { refreshProjectCatalog } from '../../../features/project-catalog';
+import { refreshProjectCatalog, updateProjectCatalog } from '../../../features/project-catalog';
 
 export function useProjectOperations(
   workspaceStore: ReturnType<typeof useWorkspaceProjectsStore>,
@@ -140,7 +140,7 @@ export function useProjectOperations(
     if (!editProjectData.value) return;
     
     try {
-      await workspaceStore.updateProject(editProjectData.value.id, {
+      await updateProjectCatalog(editProjectData.value.id, {
         name,
         description
       });

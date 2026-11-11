@@ -1,3 +1,4 @@
+import { loadProjectCatalog } from '@/domains/workspace/features/project-catalog';
 import { onMounted } from 'vue';
 import { useNavigationScope } from '@/app/navigation';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
@@ -29,7 +30,7 @@ export function useStartupNavigationScope(): void {
   const navigation = getWorkspaceNavigationPort();
 
   onMounted(async () => {
-    await projectsStore.loadProjects();
+    await loadProjectCatalog();
 
     const startupProjectId = findStartupProjectId(
       navigationScope.currentProjectId,

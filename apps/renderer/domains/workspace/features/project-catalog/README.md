@@ -11,8 +11,7 @@
 创建回执和 mutation 通知可以各自读取正式目录，但内容与顺序相同时不重复写入 store。
 否则迟到的相同快照会使正在移动的 TransitionGroup 重算位置，造成下移动画被打断并重新播放。
 
-历史启动入口 `loadProjects` 在空列表时会创建默认项目，不能用于事件刷新。现有 store 的旧异步动作
-尚未整体迁出，本 feature 的新增流程遵循 orchestration 调用纯 store action 的方向。
+启动入口 `loadProjectCatalog` 在空列表时会创建默认项目，不能用于事件刷新。项目列表加载、默认项目初始化和更新流程均由本 feature 编排，store 只同步写入列表、加载状态、错误和项目字段。状态结构与失败展示保持原样。
 
 验证：`refreshProjectCatalog.integration.test.ts` 使用真实 Pinia 与导航状态，覆盖其他项目创建、
 当前项目改名、草稿保留和空列表只读行为。跨进程事件传输由 Renderer integration RPC 集成测试覆盖。

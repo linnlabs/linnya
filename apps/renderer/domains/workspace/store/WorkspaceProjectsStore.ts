@@ -1,21 +1,17 @@
 /**
  * @file WorkspaceProjectsStore.ts
  * @description 项目列表管理 Store
- * 
+ *
  * 职责：
- * - 管理项目列表（加载、创建、更新）
+ * - 同步保存项目列表与已接纳的项目更新
  * - 管理当前活动项目 ID
- * - 处理加载状态和错误信息
+ * - 保存加载状态和错误信息；异步加载/默认初始化/更新归 project-catalog 编排
  */
 
 import { defineStore } from 'pinia';
-import { projectGateway } from '@/shared/ipc/projectGateway';
 import { ref, computed } from 'vue';
 import type { Ref, ComputedRef } from 'vue';
-import { toProject } from '../shared/projectRecord';
-import type { Project } from '../definitions/project';
-import { resolveCurrentWorkspaceMessage } from '../functions/resolveCurrentWorkspaceMessage';
-import { WorkspaceOperationError } from '../definitions/workspaceOperationError';
+import type { Project, ProjectUpdate } from '../definitions/project';
 
 export const useWorkspaceProjectsStore = defineStore('workspace-projects', () => {
   // ==========================================================================
@@ -52,87 +48,21 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
     projects.value = next;
   }
 
-  /**
-   * 加载所有项目列表，如果为空则自动创建默认项目
-   */
-  async function loadProjects(): Promise<void> {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      const result = await projectGateway.list();
-      if (result.success) {
-        projects.value = result.data.projects.map(toProject);
-
-        // 如果没有任何项目，自动创建默认项目
-        if (projects.value.length === 0) {
-          console.log('[WorkspaceProjectsStore] 没有项目，创建默认项目...');
-          await createDefaultProject();
-          // 重新加载项目列表
-          const reloadResult = await projectGateway.list();
-          if (reloadResult.success) {
-            projects.value = reloadResult.data.projects.map(toProject);
-          }
-        }
-      } else {
-        throw new WorkspaceOperationError(result);
-      }
-    } catch (e) {
-      console.error('[WorkspaceProjectsStore] Failed to load projects:', e);
-      error.value = resolveCurrentWorkspaceMessage('workspace.sidebar.state.error');
-      projects.value = [];
-    } finally {
-      isLoading.value = false;
-    }
+  function setProjectsLoading(value: boolean): void {
+    isLoading.value = value;
   }
-
-  /**
-   * 确保系统默认项目存在
-   */
-  async function createDefaultProject(): Promise<string> {
-    try {
-      const result = await projectGateway.ensureDefault();
-      if (!result.success) {
-        throw new WorkspaceOperationError(result);
-      }
-      console.log('[WorkspaceProjectsStore] 默认项目已就绪:', result.data.projectId);
-      return result.data.projectId;
-    } catch (error) {
-      console.error('[WorkspaceProjectsStore] 创建默认项目失败:', error);
-      throw error;
-    }
+  function setProjectsError(value: string | null): void {
+    error.value = value;
   }
-
-  /**
-   * 更新项目信息
-   */
-  async function updateProject(
-    projectId: string,
-    updates: { name?: string; description?: string }
-  ): Promise<void> {
-    try {
-      const result = await projectGateway.update({
-        projectId,
-        name: updates.name,
-        description: updates.description
-      });
-
-      if (result.success) {
-        // 更新本地项目列表
-        const project = projects.value.find(p => p.id === projectId);
-        if (project) {
-          if (updates.name !== undefined) {
-            project.name = updates.name;
-          }
-          if (updates.description !== undefined) {
-            project.description = updates.description;
-          }
-        }
-      } else {
-        throw new WorkspaceOperationError(result);
+  function applyProjectUpdate(projectId: string, updates: ProjectUpdate): void {
+    const project = projects.value.find(p => p.id === projectId);
+    if (project) {
+      if (updates.name !== undefined) {
+        project.name = updates.name;
       }
-    } catch (e) {
-      console.error(`[WorkspaceProjectsStore] Failed to update project ${projectId}:`, e);
-      throw e;
+      if (updates.description !== undefined) {
+        project.description = updates.description;
+      }
     }
   }
 
@@ -163,9 +93,10 @@ export const useWorkspaceProjectsStore = defineStore('workspace-projects', () =>
     activeProject,
 
     // Actions
-    loadProjects,
+    setProjectsLoading,
+    setProjectsError,
     replaceProjects,
-    updateProject,
+    applyProjectUpdate,
     markActiveProject,
     clearActiveProject,
   };
