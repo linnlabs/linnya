@@ -14,7 +14,7 @@ import { assembleWebMaterials } from './functions/assembleWebMaterials';
 export class AssembleWebSourcesTool extends BaseTool {
   readonly name = 'assemble_web_sources';
   readonly description =
-    'Finish this web research child by selecting acquired refs with brief relevance notes. Do not repeat excerpts or supply URLs; the tool fills the web list and short source snippets from captures. Use latest captures only. Include source limitations, conflicting clues and unresolved gaps. This ends the child; no final prose answer is needed.';
+    'Finish this web research child by selecting acquired refs with brief relevance notes. For each read source, give up to two anchors: short phrases copied exactly from the text you read (for example the sentence fragment with the key number). The tool cuts about 600 characters of original text around each anchor from your reads and reports anchors it cannot find; without anchors the parent only sees the start of the page. Do not repeat excerpts or supply URLs. Include source limitations, conflicting clues and unresolved gaps. This ends the child; no final prose answer is needed.';
   readonly parameters: ToolParameterSchema = {
     type: 'object',
     additionalProperties: false,
@@ -40,6 +40,13 @@ export class AssembleWebSourcesTool extends BaseTool {
               maxLength: 10000,
               description:
                 'One short sentence on relevance (aim under 150 characters). Do not summarize the whole source. Model assessment, not verified fact.',
+            },
+            anchors: {
+              type: 'array',
+              maxItems: 2,
+              description:
+                'Up to two short phrases (5-20 words, max 200 characters) copied exactly from the text you read, at the passages that support the purpose. Each locates one excerpt for the parent.',
+              items: { type: 'string', description: 'Exact phrase from the source text.', minLength: 1, maxLength: 200 },
             },
           },
           required: ['ref', 'purpose'],
@@ -93,7 +100,7 @@ export class AssembleWebSourcesTool extends BaseTool {
       .join('; ');
     return {
       success: false,
-      error: `[${this.argumentValidationErrorCode}] assemble_web_sources 参数不符合合同: ${details}\n只提交 selected.ref、简短 purpose、summary、gaps、conflicts；不要提交 URL 或原文摘录。`,
+      error: `[${this.argumentValidationErrorCode}] assemble_web_sources 参数不符合合同: ${details}\n只提交 selected.ref、简短 purpose、可选 anchors（最多两条、每条 200 字以内的原文短语）、summary、gaps、conflicts；不要提交 URL 或大段原文。`,
     };
   }
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {

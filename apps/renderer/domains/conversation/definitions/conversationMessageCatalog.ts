@@ -491,7 +491,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.webSearch.limit': '已达四次深搜上限，本次为普通搜索。',
   'conversation.tool.webSearch.materialNotice':
     '以下为取得资料；用途、冲突和缺口是模型判断，未验证结论。',
-  'conversation.tool.webSearch.truncated': '已截断',
+  'conversation.tool.webSearch.truncated': '只读了部分',
   'conversation.tool.webSearch.extractionFlags': '页面抽取提示：{flags}',
   'conversation.tool.webSearch.summary': '资料概述：',
   'conversation.tool.webSearch.notesTruncated': '部分模型说明已缩短；必要时继续阅读原网页。',
@@ -1270,7 +1270,7 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.webSearch.limit': 'Deep search limit reached; ordinary search executed.',
       'conversation.tool.webSearch.materialNotice':
         'Captured material; relevance, conflicts and gaps are model assessments, not verified conclusions.',
-      'conversation.tool.webSearch.truncated': 'Truncated',
+      'conversation.tool.webSearch.truncated': 'Partially read',
       'conversation.tool.webSearch.extractionFlags': 'Extraction signals: {flags}',
       'conversation.tool.webSearch.summary': 'Material summary:',
       'conversation.tool.webSearch.notesTruncated':

@@ -56,6 +56,23 @@ export const WebSearchCitationSchema = z
   })
   .strict();
 
+/** 深搜交接：每个来源最多两段原文摘录，每段约 600 字；定位短语至多 200 字。 */
+export const DEEP_WEB_MAX_EXCERPTS = 2;
+export const DEEP_WEB_EXCERPT_CHARS = 600;
+export const DEEP_WEB_ANCHOR_MAX_CHARS = 200;
+
+/**
+ * 一段交接原文由程序从子 Agent 实际读到的正文中截取：anchor 命中时以它为中心，
+ * 没给或没命中时退回正文开头（located=start）。page 只对 PDF 页文字给出。
+ */
+export const DeepWebExcerptSchema = z
+  .object({
+    located: z.enum(['anchor', 'start']),
+    anchor: boundedNonEmptyString(DEEP_WEB_ANCHOR_MAX_CHARS).optional(),
+    page: z.number().int().positive().optional(),
+  })
+  .strict();
+
 /** 附加说明不复制网页列表；用途、总结、冲突和缺口均为模型判断。 */
 export const DeepWebSourceNoteSchema = z
   .object({
@@ -66,6 +83,12 @@ export const DeepWebSourceNoteSchema = z
     truncated: z.boolean(),
     warnings: z.array(z.string()).max(8),
     purpose: boundedNonEmptyString(300),
+    /** 摘录如何定位；缺省表示旧记录（snippet 是正文前 800 字）。 */
+    excerpts: z.array(DeepWebExcerptSchema).max(DEEP_WEB_MAX_EXCERPTS).optional(),
+    /** 子 Agent 未找到的定位短语：说明它引的话不在已读原文里（转述有误、格式不同或在未读部分）。 */
+    unmatched_anchors: z.array(boundedNonEmptyString(DEEP_WEB_ANCHOR_MAX_CHARS)).max(DEEP_WEB_MAX_EXCERPTS).optional(),
+    /** 子 Agent 实际读到了这个来源的哪些部分（程序根据读取回执生成）。 */
+    acquired_range: boundedNonEmptyString(400).optional(),
   })
   .strict();
 export const DeepWebResearchNotesSchema = z
@@ -196,6 +219,8 @@ export const AssembleWebSourcesArgsSchema = z
             ref: CitationRefSchema,
             // 允许一次提交较长说明，再由领域规则裁剪并标记，避免已取得来源因说明过长整包失败。
             purpose: boundedNonEmptyString(10000),
+            /** 从已读原文中原样复制的短语，程序据此截取并核对交接原文。 */
+            anchors: z.array(boundedNonEmptyString(DEEP_WEB_ANCHOR_MAX_CHARS)).max(DEEP_WEB_MAX_EXCERPTS).optional(),
           })
           .strict()
       )
