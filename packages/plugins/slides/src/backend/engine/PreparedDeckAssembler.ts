@@ -7,7 +7,7 @@ import { createShapeTextAutofitPlan } from './text/shapeTextAutofitPptx';
  * 支持 structured + freeform 混合 deck
  */
 
-import PptxGenJS from 'pptxgenjs';
+import { createPptxDocument } from './pptx/createPptxDocument.cjs';
 import type { DeckSpec } from '@plugin/slides/shared';
 import type {
   DeckAssembleOptions,
@@ -46,13 +46,6 @@ export class PreparedDeckAssembler {
     private readonly svgGraphicAssetResolver?: SvgGraphicAssetResolverPort,
     private readonly svgGraphicFallbackRasterizer?: SvgGraphicFallbackRasterizerPort,
   ) {}
-
-  private createPptx(): PptxGenJS {
-    const ctor =
-      (PptxGenJS as unknown as { default?: new () => PptxGenJS }).default ??
-      (PptxGenJS as unknown as new () => PptxGenJS);
-    return new ctor();
-  }
 
   /** 组装完整 deck，支持 structured + freeform 混合 */
   async assemble(deckSpec: DeckSpec, options: DeckAssembleOptions & { readonly shapeTextAutofit: ShapeTextAutofitLayouts }): Promise<Buffer> {
@@ -120,7 +113,7 @@ export class PreparedDeckAssembler {
     }
 
     // 混合 deck：用同一个 PptxGenJS 实例按顺序编译
-    const pptx = this.createPptx();
+    const pptx = createPptxDocument();
     const paintPlan = createPptxPaintPatchPlan();
     const formulaPlan = createFormulaPptxPatchPlan();
     const shapeTextPlan = createShapeTextAutofitPlan();

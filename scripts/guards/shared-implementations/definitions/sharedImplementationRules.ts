@@ -19,6 +19,27 @@ export interface SharedImplementationRule {
 
 export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = [
   {
+    id: 'SLIDES-image-props',
+    pattern: /\b(?:function|const)\s+buildPptxImageProps\b|\bconst\s+imgOpts\s*:\s*PptxGenJS\.ImageProps/u,
+    scope: ['packages/plugins/slides/src/backend/engine/'],
+    owners: ['packages/plugins/slides/src/backend/engine/assets/pptxImageProps.ts'],
+    use: 'Slides 普通图片的 PPTX 参数使用 assets/pptxImageProps 的 buildPptxImageProps；编译器只确定最终位置。',
+  },
+  {
+    id: 'SLIDES-freeform-transform',
+    pattern: /\b(?:function|const)\s+(?:buildFreeformGroupTransform|measureFreeformChildrenBounds)\b|\bprivate\s+(?:buildGroupTransform|measureChildrenBounds)\s*\(/u,
+    scope: ['packages/plugins/slides/src/backend/engine/'],
+    owners: ['packages/plugins/slides/src/backend/engine/shared/freeformTransform.ts'],
+    use: 'Freeform 坐标使用 shared/freeformTransform；OOXML parser 自己的 group transform 合同不在此规则内。',
+  },
+  {
+    id: 'SLIDES-resource-consumer',
+    pattern: /\bfunction\s+(?:waitForConsumer|waitForResourceConsumer|evictSettledRenderResources)\b/u,
+    scope: ['packages/plugins/slides/src/renderer/'],
+    owners: ['packages/plugins/slides/src/renderer/shared/renderResourceCache.ts'],
+    use: '已完成资源淘汰和消费者等待使用 renderer/shared/renderResourceCache，保留 feature 自己的资源身份、容量与诊断。',
+  },
+  {
     id: 'MARKDOWN-strict-json',
     pattern: /\bfunction\s+(?:assertKnownAttributes|assertMarkJson|assertNodeJson)\b/u,
     scope: ['apps/renderer/domains/editor/', 'src/domains/markdown/', 'packages/markdown-document-core/'],

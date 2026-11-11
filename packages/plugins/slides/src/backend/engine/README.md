@@ -112,3 +112,8 @@ PresentationInfo 或 RenderModel
 - pptx 包处理：`packages/plugins/slides/src/backend/engine/pptx/__tests__/*.test.ts`
 - template、text、visual、SVG：对应子目录 `*.test.ts`
 - 插件全量：`pnpm run test:plugin:slides`
+
+
+图片的 fit/crop/focus、透明度、圆形遮罩、阴影、旋转和翻转统一由 `assets/pptxImageProps.ts` 投影；编译器只提供最终位置。PptxGenJS 由 `pptx/createPptxDocument.cjs` 明确消费安装包的官方 `require` 导出，规避 tsx 对 `.es.js` 的互操作差异，不维护嵌套 default 的兼容猜测。
+
+Freeform 坐标计算统一消费 `shared/freeformTransform.ts`。PPTX 编译路径通过组边界投影保留既存的三位小数量化时点；文本测量和 patch 路径继续保留输入精度，不能把导出量化施加到它们。

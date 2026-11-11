@@ -239,3 +239,6 @@ renderer 不接收 PPTX 或 ZIP bytes，也不读取保存路径。菜单顺序�
 分屏同时打开多个 Slides 尚不受支持，接入前必须把文稿、交互、资源和提交状态按 surface 实例隔离。
 页面上下文与舞台 AI 输入共用 `sourceSelection.selectSourceTargets`，作者选区优先，Frame 使用其可定位成员；
 Host 的 Workspace 上下文先通过文档注册表把 file session type 转成 node type，再寻找 provider。
+
+
+图片与图表注册表只共享 `shared/renderResourceCache.ts` 的已完成资源淘汰和消费者等待机制。资源身份、解码/绘制、容量（图片64、图表48）与诊断仍归各自 feature；取消一个消费者不会取消共享任务，pending 资源不会作为已完成 LRU 淘汰。

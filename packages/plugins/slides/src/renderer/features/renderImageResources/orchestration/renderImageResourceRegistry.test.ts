@@ -99,6 +99,25 @@ describe('renderImageResourceRegistry', () => {
     expect(ControlledImage.instances).toHaveLength(1);
   });
 
+  it('keeps in-flight work above capacity until a settled resource can be evicted', async () => {
+    const registry = createRenderImageResourceRegistry({ maxEntries: 1 });
+    const first = registry.load('data:image/png;base64,FIRST');
+    const second = registry.load('data:image/png;base64,SECOND');
+    await waitForDecodeCount(2);
+    const firstAgain = registry.load('data:image/png;base64,FIRST');
+    expect(registry.size).toBe(2);
+    ControlledImage.decodeLatches[0]?.resolve();
+    const [loaded, shared] = await Promise.all([first, firstAgain]);
+    expect(shared).toBe(loaded);
+    expect(ControlledImage.instances).toHaveLength(2);
+    // 第二份资源尚未完成，不能为容量上限丢掉其共享任务。
+    expect(registry.size).toBe(2);
+    ControlledImage.decodeLatches[1]?.resolve();
+    await second;
+    expect(registry.size).toBe(1);
+    expect(registry.decodedBytes).toBe(320 * 180 * 4);
+  });
+
   it('evicts least-recently-used decoded resources within the configured bound', async () => {
     const registry = createRenderImageResourceRegistry({
       maxEntries: 1,

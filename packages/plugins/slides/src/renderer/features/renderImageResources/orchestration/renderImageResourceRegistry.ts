@@ -1,3 +1,4 @@
+import { evictSettledRenderResources, waitForResourceConsumer } from '../../../shared/renderResourceCache';
 import type { RenderAssetRef } from '../../../types/render';
 import {
   resolveRenderableImageResource,
@@ -61,13 +62,7 @@ export function createRenderImageResourceRegistry(
   }
 
   function evictSettledEntries(protectedKey: string): void {
-    while (entries.size > maxEntries || decodedBytes > maxDecodedBytes) {
-      const candidate = Array.from(entries.values()).find(entry => (
-        entry.cacheKey !== protectedKey && entry.loaded !== null
-      ));
-      if (!candidate) return;
-      deleteEntry(candidate.cacheKey);
-    }
+    decodedBytes = evictSettledRenderResources(entries, protectedKey, { maxEntries, maxDecodedBytes, decodedBytes });
   }
 
   async function load(
@@ -84,7 +79,7 @@ export function createRenderImageResourceRegistry(
     const cached = entries.get(resolved.cacheKey);
     if (cached?.resolvedSource === resolved.source) {
       touch(cached);
-      return await waitForConsumer(cached.pending, signal);
+      return await waitForResourceConsumer(cached.pending, signal);
     }
 
     // 摘要碰撞时以完整 source 比较兜住正确性；碰撞只会损失一次缓存命中。
@@ -132,7 +127,7 @@ export function createRenderImageResourceRegistry(
     };
     entries.set(entry.cacheKey, entry);
     evictSettledEntries(entry.cacheKey);
-    return await waitForConsumer(pending, signal);
+    return await waitForResourceConsumer(pending, signal);
   }
 
   return {
@@ -164,26 +159,6 @@ async function decodeImage(source: string): Promise<LoadedRenderImage> {
 
 function estimateDecodedBytes(image: LoadedRenderImage): number {
   return image.naturalWidth * image.naturalHeight * 4;
-}
-
-function waitForConsumer<T>(pending: Promise<T>, signal?: AbortSignal): Promise<T> {
-  if (!signal) return pending;
-  signal.throwIfAborted();
-
-  return new Promise<T>((resolve, reject) => {
-    const abort = (): void => reject(signal.reason);
-    signal.addEventListener('abort', abort, { once: true });
-    pending.then(
-      (value) => {
-        signal.removeEventListener('abort', abort);
-        resolve(value);
-      },
-      (error: unknown) => {
-        signal.removeEventListener('abort', abort);
-        reject(error);
-      },
-    );
-  });
 }
 
 export const sharedRenderImageResourceRegistry = createRenderImageResourceRegistry();

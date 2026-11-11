@@ -5,7 +5,6 @@
 1	FOUNDATION-clamp	apps/renderer/domains/workspace/features/project-overview/ui/ProjectOverviewView.vue
 1	FOUNDATION-clamp	packages/color-core/src/palette/functions/buildPalette.ts
 1	FOUNDATION-clamp	packages/plugins/mindmap/src/renderer/shared/utils/layout/generateBranch.ts
-1	FOUNDATION-clamp	packages/plugins/slides/src/backend/engine/visual/presentationVisualDefaults.ts
 1	FOUNDATION-clamp	packages/plugins/slides/src/renderer/features/sourceSelection/functions/sourceSelectionPromptPosition.ts
 1	FOUNDATION-clamp	packages/plugins/slides/src/renderer/shared/stageViewport.ts
 1	FOUNDATION-clamp	packages/plugins/slides/src/shared/render-geometry/imageGeometry.ts

@@ -1,3 +1,4 @@
+import { evictSettledRenderResources, waitForResourceConsumer } from '../../../shared/renderResourceCache';
 import type { ChartRenderNode } from '../../../types/render';
 import { logSlidesVerbose, warnSlides } from '../../../shared/diagnosticLogging';
 import type { LoadedRenderChart } from '../definitions/renderChartResource';
@@ -60,13 +61,7 @@ export function createRenderChartResourceRegistry(
   }
 
   function evictSettledEntries(protectedKey: string): void {
-    while (entries.size > maxEntries || decodedBytes > maxDecodedBytes) {
-      const candidate = Array.from(entries.values()).find(entry => (
-        entry.cacheKey !== protectedKey && entry.loaded !== null
-      ));
-      if (!candidate) return;
-      deleteEntry(candidate.cacheKey);
-    }
+    decodedBytes = evictSettledRenderResources(entries, protectedKey, { maxEntries, maxDecodedBytes, decodedBytes });
   }
 
   async function load(
@@ -79,7 +74,7 @@ export function createRenderChartResourceRegistry(
     const cached = entries.get(identity.cacheKey);
     if (cached?.signature === identity.signature) {
       touch(cached);
-      return await waitForConsumer(cached.pending, signal);
+      return await waitForResourceConsumer(cached.pending, signal);
     }
 
     // 哈希碰撞时以完整签名确认正确性；绝不把另一张图表的 PNG 当作命中结果。
@@ -134,7 +129,7 @@ export function createRenderChartResourceRegistry(
     };
     entries.set(entry.cacheKey, entry);
     evictSettledEntries(entry.cacheKey);
-    return await waitForConsumer(pending, signal);
+    return await waitForResourceConsumer(pending, signal);
   }
 
   return {
@@ -154,26 +149,6 @@ export function createRenderChartResourceRegistry(
 
 function estimateDecodedBytes(chart: LoadedRenderChart): number {
   return chart.naturalWidth * chart.naturalHeight * 4;
-}
-
-function waitForConsumer<T>(pending: Promise<T>, signal?: AbortSignal): Promise<T> {
-  if (!signal) return pending;
-  signal.throwIfAborted();
-
-  return new Promise<T>((resolve, reject) => {
-    const abort = (): void => reject(signal.reason);
-    signal.addEventListener('abort', abort, { once: true });
-    pending.then(
-      (value) => {
-        signal.removeEventListener('abort', abort);
-        resolve(value);
-      },
-      (error: unknown) => {
-        signal.removeEventListener('abort', abort);
-        reject(error);
-      },
-    );
-  });
 }
 
 export const sharedRenderChartResourceRegistry = createRenderChartResourceRegistry();

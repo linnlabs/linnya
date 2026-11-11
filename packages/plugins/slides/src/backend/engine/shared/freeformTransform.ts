@@ -124,8 +124,11 @@ export function measureFreeformChildrenBounds(
 export function buildFreeformGroupTransform(
   group: Extract<FreeformElement, { type: 'group' }>,
   parent: FreeformTransform,
+  projectBox?: (box: Box) => Box,
 ): FreeformTransform {
-  const groupBox = applyFreeformTransform(group.position, parent);
+  // PPTX 编译器有既存的组级量化合同，其他调用方不提前舍入。
+  const transformedBox = applyFreeformTransform(group.position, parent);
+  const groupBox = projectBox ? projectBox(transformedBox) : transformedBox;
   const bounds = measureFreeformChildrenBounds(group.children);
   if (!bounds || bounds.w <= 0 || bounds.h <= 0) {
     return {

@@ -98,11 +98,6 @@ export function resolveGeneratedRenderChartType(chartType: string | undefined): 
   return chartType ?? 'column';
 }
 
-/** 将 value 限制在 [min, max] 范围内 */
-export function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
 /** 将 ImageVisualShadow 领域模型转换为 PptxGenJS 阴影属性 */
 export function mapImageShadowToProps(shadow: ImageVisualShadow): PptxGenJS.ShadowProps {
   return {

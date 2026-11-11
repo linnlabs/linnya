@@ -1,3 +1,4 @@
+import { createPptxDocument } from './pptx/createPptxDocument.cjs';
 import type { DeckSpec } from '@plugin/slides/shared';
 import { FreeformPptxCompiler } from './FreeformPptxCompiler';
 import { PptxPackageSanitizer } from './pptx/PptxPackageSanitizer';
@@ -19,7 +20,7 @@ export class FreeformCompiler extends FreeformPptxCompiler {
   /** 编译完整 freeform deck */
   async compileDeck(deckSpec: DeckSpec): Promise<Buffer> {
     const shapeTextLayouts = await prepareShapeTextAutofit(deckSpec);
-    const pptx = this.createPptx();
+    const pptx = createPptxDocument();
     initializePptxDocument(pptx, deckSpec);
 
     const paintPlan = createPptxPaintPatchPlan();

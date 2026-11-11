@@ -8,11 +8,19 @@ import {
 
 describe('共享实现棘轮', () => {
   it.each([
+    ['packages/plugins/slides/src/backend/engine/Compiler.ts', 'const imgOpts: PptxGenJS.ImageProps = {};', 'SLIDES-image-props'],
+    ['packages/plugins/slides/src/backend/engine/Compiler.ts', 'private buildGroupTransform(group, parent) {}', 'SLIDES-freeform-transform'],
+    ['packages/plugins/slides/src/renderer/features/other/registry.ts', 'function waitForConsumer(pending, signal) {}', 'SLIDES-resource-consumer'],
     ['apps/renderer/shared/utils/textUnits.ts', 'function countTextUnitsZhEn(text) {}', 'SCHEMAS-text-units'],
     ['src/shared/utils/refIdGenerator.ts', 'function hashToBase62(hash) {}', 'SCHEMAS-block-reference'],
     ['apps/renderer/domains/editor/functions/parse.ts', 'function assertNodeJson(value) {}', 'MARKDOWN-strict-json'],
   ])('阻止 %s 恢复已经迁走的规则', (file, source, ruleId) => {
     expect(countSharedImplementationHits(file, source)).toMatchObject([{ ruleId, count: 1 }]);
+  });
+
+  it('Slides 的共享 owner 与 OOXML parser 变换不会被误判', () => {
+    expect(countSharedImplementationHits('packages/plugins/slides/src/renderer/shared/renderResourceCache.ts', 'function waitForResourceConsumer(pending, signal) {}')).toEqual([]);
+    expect(countSharedImplementationHits('packages/plugins/slides/src/backend/engine/parser/xml/GeometryParser.ts', 'export function buildGroupTransform(xfrm, parent) {}')).toEqual([]);
   });
 
   it('合同 declare 和共享 owner 不算第二份运行实现', () => {

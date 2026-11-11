@@ -5,7 +5,8 @@
  * 使用 PptxGenJS 生成原生 PowerPoint 对象
  */
 
-import PptxGenJS from 'pptxgenjs';
+import type PptxGenJS from 'pptxgenjs';
+import { createPptxDocument } from './pptx/createPptxDocument.cjs';
 import type {
   DeckSpec,
   Paint,
@@ -16,8 +17,6 @@ import type {
 } from '@plugin/slides/shared';
 import { TABLE_DEFAULT_HEADER_FILL } from '@plugin/slides/shared';
 import {
-  clamp,
-  mapImageShadowToProps,
   mapPosition,
   mapShapeShadowToProps,
   mapTextParagraphStyleToProps,
@@ -26,7 +25,7 @@ import {
 } from './visual/presentationVisualDefaults';
 import { resolveGeneratedTableLayout } from './table';
 import { resolveImageAsset, toPptxImageSource } from './assets/imageAssetResolver';
-import { resolvePptxImageFitOptions } from './assets/imageSizing';
+import { buildPptxImageProps } from './assets/pptxImageProps';
 import { PptxPackageSanitizer } from './pptx/PptxPackageSanitizer';
 import {
   addPptxCustomGeometryShape,
@@ -60,13 +59,6 @@ import {
 
 export class StructuredCompiler {
   private readonly sanitizer = new PptxPackageSanitizer();
-
-  private createPptx(): PptxGenJS {
-    const ctor = (
-      PptxGenJS as unknown as { default?: new () => PptxGenJS }
-    ).default ?? (PptxGenJS as unknown as new () => PptxGenJS);
-    return new ctor();
-  }
 
   /** 编译单页 */
   compileSlide(
@@ -109,7 +101,7 @@ export class StructuredCompiler {
 
   /** 编译完整 deck */
   async compileDeck(deckSpec: DeckSpec): Promise<Buffer> {
-    const pptx = this.createPptx();
+    const pptx = createPptxDocument();
     initializePptxDocument(pptx, deckSpec);
 
     const paintPlan = createPptxPaintPatchPlan();
@@ -387,21 +379,7 @@ export class StructuredCompiler {
     slide: PptxGenJS.Slide,
     el: Extract<StructuredElement, { type: 'image' }>,
   ): void {
-    const asset = resolveImageAsset(el.src);
-    const fitOptions = resolvePptxImageFitOptions(el.position, asset, el.fitMode, { crop: el.crop, focus: el.focus });
-    const imgOpts: PptxGenJS.ImageProps = {
-      ...fitOptions,
-      ...toPptxImageSource(asset),
-    };
-    if (el.alt) imgOpts.altText = el.alt;
-    if (fitOptions.sizing) imgOpts.sizing = fitOptions.sizing;
-    if (el.rounding != null || el.maskShape === 'circle') imgOpts.rounding = el.maskShape === 'circle' ? true : el.rounding;
-    if (el.transparency != null) imgOpts.transparency = clamp(Math.round(el.transparency * 100), 0, 100);
-    if (el.shadow) imgOpts.shadow = mapImageShadowToProps(el.shadow);
-    if (el.rotate != null) imgOpts.rotate = el.rotate;
-    if (el.flipH != null) imgOpts.flipH = el.flipH;
-    if (el.flipV != null) imgOpts.flipV = el.flipV;
-    slide.addImage(imgOpts);
+    slide.addImage(buildPptxImageProps(el, el.position));
   }
 
   private addShape(

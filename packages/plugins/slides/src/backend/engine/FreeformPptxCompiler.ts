@@ -18,8 +18,6 @@ import type {
   ThemeSpec,
 } from '@plugin/slides/shared';
 import {
-  clamp,
-  mapImageShadowToProps,
   mapPosition,
   mapShapeShadowToProps,
   mapTextParagraphLineSpacingToProps,
@@ -28,7 +26,8 @@ import {
   resolveShapeTextLayout,
 } from './visual/presentationVisualDefaults';
 import { resolveImageAsset, toPptxImageSource } from './assets/imageAssetResolver';
-import { resolvePptxImageFitOptions } from './assets/imageSizing';
+import { buildPptxImageProps } from './assets/pptxImageProps';
+import { applyFreeformTransform, buildFreeformGroupTransform, IDENTITY_FREEFORM_TRANSFORM, type FreeformTransform } from './shared/freeformTransform';
 import {
   addPptxCustomGeometryShape,
   addPptxShapeText,
@@ -53,29 +52,7 @@ import {
 
 import { registerShapeTextAutofit, type ShapeTextAutofitContext } from './text/shapeTextAutofitPptx';
 
-interface Transform {
-  offsetX: number;
-  offsetY: number;
-  scaleX: number;
-  scaleY: number;
-}
-
-const IDENTITY_TRANSFORM: Transform = {
-  offsetX: 0,
-  offsetY: 0,
-  scaleX: 1,
-  scaleY: 1,
-};
-
-
 export class FreeformPptxCompiler {
-
-  protected createPptx(): PptxGenJS {
-    const ctor = (
-      PptxGenJS as unknown as { default?: new () => PptxGenJS }
-    ).default ?? (PptxGenJS as unknown as new () => PptxGenJS);
-    return new ctor();
-  }
 
   /** 编译单页到已有 pptx 实例 */
   compileSlide(
@@ -108,7 +85,7 @@ export class FreeformPptxCompiler {
       this.compileElement(
         slide,
         el,
-        IDENTITY_TRANSFORM,
+        IDENTITY_FREEFORM_TRANSFORM,
         paintContext,
         svgGraphicContext,
         formulaContext,
@@ -124,7 +101,7 @@ export class FreeformPptxCompiler {
   private compileElement(
     slide: PptxGenJS.Slide,
     el: FreeformElement,
-    transform: Transform = IDENTITY_TRANSFORM,
+    transform: FreeformTransform = IDENTITY_FREEFORM_TRANSFORM,
     paintContext?: PptxPaintCompileContext,
     svgGraphicContext?: SvgGraphicCompileContext,
     formulaContext?: FormulaPptxCompileContext,
@@ -165,7 +142,7 @@ export class FreeformPptxCompiler {
   private addFormula(
     slide: PptxGenJS.Slide,
     el: Extract<FreeformElement, { type: 'formula' }>,
-    transform: Transform,
+    transform: FreeformTransform,
     formulaContext: FormulaPptxCompileContext,
   ): void {
     const position = this.applyTransform(el.position, transform);
@@ -183,7 +160,7 @@ export class FreeformPptxCompiler {
   private addText(
     slide: PptxGenJS.Slide,
     el: FreeformTextElement,
-    transform: Transform,
+    transform: FreeformTransform,
     formulaContext?: FormulaPptxCompileContext,
   ): void {
     const textStyle = mapTextParagraphStyleToProps(el.style);
@@ -250,7 +227,7 @@ export class FreeformPptxCompiler {
   private addShape(
     slide: PptxGenJS.Slide,
     el: FreeformShapeElement,
-    transform: Transform,
+    transform: FreeformTransform,
     paintContext?: PptxPaintCompileContext,
     shapeTextContext?: ShapeTextAutofitContext,
   ): void {
@@ -347,31 +324,16 @@ export class FreeformPptxCompiler {
   private addImage(
     slide: PptxGenJS.Slide,
     el: FreeformImageElement,
-    transform: Transform,
+    transform: FreeformTransform,
   ): void {
     if (!el.src) return;
-    const asset = resolveImageAsset(el.src);
-    const position = this.applyTransform(el.position, transform);
-    const fitOptions = resolvePptxImageFitOptions(position, asset, el.fitMode, { crop: el.crop, focus: el.focus });
-    const imgOpts: PptxGenJS.ImageProps = {
-      ...fitOptions,
-      ...toPptxImageSource(asset),
-    };
-    if (el.alt) imgOpts.altText = el.alt;
-    if (fitOptions.sizing) imgOpts.sizing = fitOptions.sizing;
-    if (el.rounding != null || el.maskShape === 'circle') imgOpts.rounding = el.maskShape === 'circle' ? true : el.rounding;
-    if (el.transparency != null) imgOpts.transparency = clamp(Math.round(el.transparency * 100), 0, 100);
-    if (el.shadow) imgOpts.shadow = mapImageShadowToProps(el.shadow);
-    if (el.rotate != null) imgOpts.rotate = el.rotate;
-    if (el.flipH != null) imgOpts.flipH = el.flipH;
-    if (el.flipV != null) imgOpts.flipV = el.flipV;
-    slide.addImage(imgOpts);
+    slide.addImage(buildPptxImageProps({ ...el, src: el.src }, this.applyTransform(el.position, transform)));
   }
 
   private addGroup(
     slide: PptxGenJS.Slide,
     el: FreeformGroupElement,
-    transform: Transform,
+    transform: FreeformTransform,
     paintContext?: PptxPaintCompileContext,
     svgGraphicContext?: SvgGraphicCompileContext,
     formulaContext?: FormulaPptxCompileContext,
@@ -379,7 +341,7 @@ export class FreeformPptxCompiler {
   ): void {
     if (!el.children?.length) return;
 
-    const groupTransform = this.buildGroupTransform(el, transform);
+    const groupTransform = buildFreeformGroupTransform(el, transform, quantizePptxBox);
     for (const child of el.children) {
       this.compileElement(
         slide,
@@ -393,60 +355,8 @@ export class FreeformPptxCompiler {
     }
   }
 
-  private applyTransform(box: Box, transform: Transform): Box {
-    return {
-      x: r3(transform.offsetX + box.x * transform.scaleX),
-      y: r3(transform.offsetY + box.y * transform.scaleY),
-      w: r3(box.w * transform.scaleX),
-      h: r3(box.h * transform.scaleY),
-    };
-  }
-
-  private buildGroupTransform(group: FreeformGroupElement, parent: Transform): Transform {
-    const groupBox = this.applyTransform(group.position, parent);
-    const bounds = this.measureChildrenBounds(group.children);
-    if (!bounds || bounds.w <= 0 || bounds.h <= 0) {
-      return {
-        offsetX: groupBox.x,
-        offsetY: groupBox.y,
-        scaleX: parent.scaleX,
-        scaleY: parent.scaleY,
-      };
-    }
-
-    return {
-      offsetX: groupBox.x - bounds.x * (groupBox.w / bounds.w),
-      offsetY: groupBox.y - bounds.y * (groupBox.h / bounds.h),
-      scaleX: groupBox.w / bounds.w,
-      scaleY: groupBox.h / bounds.h,
-    };
-  }
-
-  private measureChildrenBounds(children?: FreeformElement[]): Box | null {
-    if (!children?.length) return null;
-
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-
-    for (const child of children) {
-      minX = Math.min(minX, child.position.x);
-      minY = Math.min(minY, child.position.y);
-      maxX = Math.max(maxX, child.position.x + child.position.w);
-      maxY = Math.max(maxY, child.position.y + child.position.h);
-    }
-
-    if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
-      return null;
-    }
-
-    return {
-      x: minX,
-      y: minY,
-      w: maxX - minX,
-      h: maxY - minY,
-    };
+  private applyTransform(box: Box, transform: FreeformTransform): Box {
+    return quantizePptxBox(applyFreeformTransform(box, transform));
   }
 }
 
@@ -464,6 +374,8 @@ function resolveShapePaint(style: NonNullable<FreeformShapeElement['style']>): P
     ?? (style.fill ? { type: 'solid', color: style.fill } : undefined);
 }
 
-function r3(n: number): number {
-  return Math.round(n * 1000) / 1000;
+/** 保留旧 PPTX 输出的量化时点；测量与 patch 路径继续使用完整精度。 */
+function quantizePptxBox(box: Box): Box {
+  const r3 = (value: number): number => Math.round(value * 1000) / 1000;
+  return { x: r3(box.x), y: r3(box.y), w: r3(box.w), h: r3(box.h) };
 }

@@ -22,3 +22,8 @@
 | `isRecord(value)` | 是不是普通键值对象：非 null、不是数组 |
 | `clamp(value, min, max)` | 把数值限制在范围内 |
 | `sleep(milliseconds)` | 等待若干毫秒 |
+
+
+## 构建接入
+
+这是编译期源码包，Host 与插件产物将函数内联，不要求安装时解析 TypeScript。独立插件覆盖 `compilerOptions.paths` 时，也要登记 `@linnya/foundation`；验收需要覆盖其独立 esbuild/worker 自检，不能只验证 Host 的解析配置。
