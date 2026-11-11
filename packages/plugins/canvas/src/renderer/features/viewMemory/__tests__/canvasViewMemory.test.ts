@@ -5,12 +5,16 @@ import { parseCanvasViewMemory, rememberCanvasView } from '../functions/canvasVi
 import { resolveCanvasOpeningCamera } from '../functions/resolveCanvasOpeningCamera';
 import { createCanvasViewMemory } from '../orchestration/createCanvasViewMemory';
 
-const card = (x: number, y: number) => ({ type: 'text', x, y, width: 400, height: 200 }) as unknown as CanvasElement;
+const card = (x: number, y: number) =>
+  ({ type: 'text', x, y, width: 400, height: 200 }) as unknown as CanvasElement;
 const edge = { type: 'edge' } as unknown as CanvasElement;
 
 describe('打开画布时的视口', () => {
   it('第一次打开把远离原点的全部卡片放进视口，连线不参与计算', () => {
-    const camera = resolveCanvasOpeningCamera(null, [card(1040, 0), card(3700, 3800), edge], { width: 660, height: 864 });
+    const camera = resolveCanvasOpeningCamera(null, [card(1040, 0), card(3700, 3800), edge], {
+      width: 660,
+      height: 864,
+    });
     expect(camera).not.toBeNull();
     const zoom = camera!.zoom;
     // 左上角卡片与右下角卡片都落在视口内。
@@ -21,7 +25,9 @@ describe('打开画布时的视口', () => {
 
   it('本机记得上次视口时直接回到那里；空画布或视口未布局时保持默认', () => {
     const remembered = { x: -900, y: -300, zoom: 0.8 };
-    expect(resolveCanvasOpeningCamera(remembered, [card(1040, 0)], { width: 660, height: 864 })).toBe(remembered);
+    expect(
+      resolveCanvasOpeningCamera(remembered, [card(1040, 0)], { width: 660, height: 864 })
+    ).toBe(remembered);
     expect(resolveCanvasOpeningCamera(null, [edge], { width: 660, height: 864 })).toBeNull();
     expect(resolveCanvasOpeningCamera(null, [card(1040, 0)], { width: 0, height: 0 })).toBeNull();
   });
@@ -35,10 +41,22 @@ describe('视口记忆', () => {
 
   it('坏记录当作没有，超过上限丢弃最久没打开的', () => {
     expect(parseCanvasViewMemory('not json')).toEqual({});
-    expect(parseCanvasViewMemory(JSON.stringify({ a: { camera: { x: 1, y: 2, zoom: 0 }, at: 1 }, b: { camera: { x: 1, y: 2, zoom: 1 }, at: 2 } })))
-      .toEqual({ b: { camera: { x: 1, y: 2, zoom: 1 }, at: 2 } });
+    expect(
+      parseCanvasViewMemory(
+        JSON.stringify({
+          a: { camera: { x: 1, y: 2, zoom: 0 }, at: 1 },
+          b: { camera: { x: 1, y: 2, zoom: 1 }, at: 2 },
+        })
+      )
+    ).toEqual({ b: { camera: { x: 1, y: 2, zoom: 1 }, at: 2 } });
     let memory = {};
-    for (let index = 0; index < 4; index++) memory = rememberCanvasView(memory, `d${index}`, { x: index, y: 0, zoom: 1 }, index, 3);
+    for (let index = 0; index < 4; index++)
+      memory = rememberCanvasView(
+        memory,
+        `d${index}`,
+        { camera: { x: index, y: 0, zoom: 1 }, at: index },
+        3
+      );
     expect(Object.keys(memory).sort()).toEqual(['d1', 'd2', 'd3']);
   });
 

@@ -19,7 +19,10 @@ export function createCanvasViewMemory(documentId: string) {
     pending = null;
     try {
       const memory = parseCanvasViewMemory(localStorage.getItem(storageKey));
-      localStorage.setItem(storageKey, JSON.stringify(rememberCanvasView(memory, documentId, camera, Date.now())));
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify(rememberCanvasView(memory, documentId, { camera, at: Date.now() }))
+      );
     } catch {
       // 存储不可用或已满时只是下次打开不再恢复视口，不影响编辑。
     }

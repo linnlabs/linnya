@@ -6,10 +6,11 @@ import path from 'node:path';
 export async function buildProbeRenderer({ entry, root, output }) {
   await build({
     configFile: false, root: path.dirname(entry), base: './', logLevel: 'warn', plugins: [vue()],
-    define: { 'process.env.NODE_ENV': '"production"' },
+    define: { 'process.env.NODE_ENV': '"production"', process: 'undefined' },
     resolve: { alias: [
       { find: /^@plugin\/canvas\/shared$/, replacement: path.join(root, 'packages/plugins/canvas/src/shared/index.ts') },
       { find: /^@app\/schemas$/, replacement: path.join(root, 'packages/schemas/src/index.ts') },
+      { find: /^@app\/schemas\/(.+)$/, replacement: path.join(root, 'packages/schemas/src/$1') },
     ], dedupe: ['vue'] },
     build: {
       target: 'es2022', outDir: output, emptyOutDir: false,

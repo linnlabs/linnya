@@ -1,3 +1,4 @@
+import '@linnya/renderer-ui/tokens.css';
 import '@linnya/document-preview/style.css';
 import { CanvasCardSchema, CanvasEdgeSchema, type CanvasCard, type CanvasElement } from '../../src/shared';
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';

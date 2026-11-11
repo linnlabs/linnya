@@ -1,4 +1,5 @@
 import './previewTimingRenderer';
+import '@linnya/renderer-ui/tokens.css';
 import '@linnya/document-preview/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
