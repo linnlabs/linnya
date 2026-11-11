@@ -65,8 +65,8 @@ bundleSuite('actual built CLI launcher freshness', () => {
       expect(result.code).toBe(4);
       expect(result.error).toContain('bundle is stale');
       expect(JSON.parse(result.error)).toMatchObject({
-        // 启动器同步解析身份；Windows 的异步 realpath 可能把同一目录的 8.3 别名展开成长路径。
-        connection: { source_root: realpathSync(root), state: 'not_connected', instance: null },
+        // 启动器用 realpathSync.native 解析身份，Windows 8.3 短名会展开成长路径；这里用同一解析。
+        connection: { source_root: realpathSync.native(root), state: 'not_connected', instance: null },
       });
     },
   );
