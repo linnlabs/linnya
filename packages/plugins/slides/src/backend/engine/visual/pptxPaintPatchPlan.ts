@@ -1,4 +1,4 @@
-import type { Paint, ResolvedShapeGeometry, StrokePaint } from '@plugin/slides/shared';
+import type { Paint, ResolvedShapeGeometry, StrokePaint, TextEffects } from '@plugin/slides/shared';
 
 const PAINT_MARKER_PREFIX = 'linnya-paint:';
 
@@ -20,11 +20,18 @@ export interface PptxPictureGeometryPatch {
   geometry: ResolvedShapeGeometry;
 }
 
+/** 文字效果：PptxGenJS 写不出渐变、空心和字符阴影，导出后改写该文本框里每个 `a:rPr`。 */
+export interface PptxTextEffectsPatch {
+  marker: string;
+  effects: TextEffects;
+}
+
 export interface PptxSlidePaintPatch {
   slideIndex: number;
   background?: Paint;
   shapes: PptxShapePaintPatch[];
   pictures: PptxPictureGeometryPatch[];
+  texts: PptxTextEffectsPatch[];
 }
 
 /**
@@ -79,6 +86,33 @@ export function registerPptxPictureGeometry(
   return marker;
 }
 
+export function registerPptxTextEffects(
+  context: PptxPaintCompileContext,
+  effects: TextEffects,
+): string {
+  const slide = resolveSlidePatch(context);
+  const marker = `${PAINT_MARKER_PREFIX}s${context.slideIndex + 1}-t${slide.texts.length + 1}`;
+  slide.texts.push({ marker, effects });
+  return marker;
+}
+
+/**
+ * 带文字效果的文本框登记补丁并返回 objectName。行内公式文本框的 objectName 已被公式补丁占用，
+ * 合同层已拒绝两者同用；这里再挡一次，避免 DeckSpec 绕过合同时静默丢效果。
+ */
+export function resolveTextEffectsObjectName(
+  element: { content?: string | readonly object[]; style?: { effects?: TextEffects } },
+  context: PptxPaintCompileContext | undefined,
+): string | undefined {
+  const effects = element.style?.effects;
+  if (!effects) return undefined;
+  if (Array.isArray(element.content) && element.content.some((run) => 'formula' in run)) {
+    throw new Error('文字效果不能用在含行内公式的文本上。');
+  }
+  if (!context) throw new Error('文字效果导出需要 PPTX Paint 上下文。');
+  return registerPptxTextEffects(context, effects);
+}
+
 export function isPptxPaintMarker(value: string): boolean {
   return value.startsWith(PAINT_MARKER_PREFIX);
 }
@@ -90,6 +124,7 @@ function resolveSlidePatch(context: PptxPaintCompileContext): PptxSlidePaintPatc
     slideIndex: context.slideIndex,
     shapes: [],
     pictures: [],
+    texts: [],
   };
   context.plan.slides.push(created);
   return created;

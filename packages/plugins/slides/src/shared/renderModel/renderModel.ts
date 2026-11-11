@@ -254,6 +254,18 @@ export interface TextRenderNode extends RenderNodeBase {
   preparedTextLayout?: PreparedTextLayout;
   /** generated Shape 的声明字号；缺省时保留原尺寸驱动的默认值语义。 */
   shapeTextSizing?: { readonly fontSize?: number; readonly rotated: boolean };
+  /** 字形效果：渐变或不填充、描边、外阴影、透明度；整段共用，渐变坐标是文本框。 */
+  textEffects?: RenderTextEffects;
+}
+
+export interface RenderTextEffects {
+  /** 渐变或 none；存在时代替各 run 的纯色。 */
+  fill?: Paint;
+  /** width 单位 pt。 */
+  stroke?: { color: string; width: number };
+  shadow?: RenderShadow;
+  /** 字形填充与描边的不透明度，不影响阴影。 */
+  opacity?: number;
 }
 
 export interface RenderParagraph {

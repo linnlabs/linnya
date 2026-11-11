@@ -275,3 +275,62 @@ describe('textBuilder', () => {
       .not.toHaveProperty('clipWidth');
   });
 });
+
+describe('textBuilder 文字效果', () => {
+  const layout: TextRenderNode['layout'] = {
+    lines: [{
+      paragraphIndex: 0, y: 0.15, baseline: 0.13, height: 0.2, width: 1, align: 'left',
+      slices: [
+        { paragraphIndex: 0, runIndex: 0, text: 'Red', x: 0, width: 0.3, textY: 0.15 },
+        { paragraphIndex: 0, runIndex: 1, text: ' Bold', x: 0.3, width: 0.5, textY: 0.15 },
+      ],
+    }],
+    contentHeightInches: 0.2,
+    appliedFontScale: 1,
+    appliedLineSpacingReduction: 0,
+    advanceSource: 'heuristic',
+    overflow: { horizontal: false, vertical: false, hiddenLineCount: 0 },
+  };
+
+  it('渐变按整行文字的外框铺（同 PowerPoint）：同一行的两段连成一条，不铺到文本框空白处', () => {
+    const node = makeTextNode({
+      layout,
+      textEffects: { fill: { type: 'linear', angle: 0, stops: [{ position: 0, color: '#000000' }, { position: 1, color: '#FFFFFF' }] } },
+    });
+    const [first, second] = buildTextLineConfigs(node);
+    expect(first.fill).toBeUndefined();
+    // 行宽 0.8 英寸：第一段从 0 开始，第二段的起点在它左边 0.3 英寸，终点同为行尾。
+    expect(first.fillLinearGradientStartPoint?.x).toBeCloseTo(0);
+    expect(first.fillLinearGradientEndPoint?.x).toBeCloseTo(0.8 * 96);
+    expect(second.fillLinearGradientStartPoint?.x).toBeCloseTo(-0.3 * 96);
+    expect(second.fillLinearGradientEndPoint?.x).toBeCloseTo(0.5 * 96);
+    expect(buildTextGroupConfig(node)).toHaveProperty('clipWidth');
+  });
+
+  it('空心字关掉填充，描边按 pt 换算并乘透明度；投影和描边时文本框不裁剪', () => {
+    const node = makeTextNode({
+      layout,
+      textEffects: {
+        fill: { type: 'none' },
+        stroke: { color: '#1F3A5F', width: 1.5 },
+        shadow: { color: '#000000', blur: 4, offsetX: 0, offsetY: 3 },
+        opacity: 0.5,
+      },
+    });
+    const [first] = buildTextLineConfigs(node);
+    expect(first).toMatchObject({
+      fillEnabled: false,
+      strokeWidth: 1.5 * (96 / 72),
+      shadowEnabled: true,
+      shadowOpacity: 0.3,
+      shadowOffsetY: 3 * (96 / 72),
+    });
+    expect(first.stroke).toMatch(/^rgba\(31, ?58, ?95, ?0\.5\)$/);
+    expect(buildTextGroupConfig(node)).not.toHaveProperty('clipWidth');
+  });
+
+  it('只写透明度时把原纯色转成半透明', () => {
+    const [first] = buildTextLineConfigs(makeTextNode({ layout, textEffects: { opacity: 0.25 } }));
+    expect(first.fill).toMatch(/^rgba\(255, ?0, ?0, ?0\.25\)$/);
+  });
+});

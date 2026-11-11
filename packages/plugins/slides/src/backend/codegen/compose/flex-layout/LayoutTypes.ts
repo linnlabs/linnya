@@ -17,6 +17,7 @@ export type {
   FlexProps,
   LayoutAuthoringTargetConfig,
   LayoutBorderInput,
+  LayoutTextStroke,
   LayoutChartConfig,
   LayoutChartDataLike,
   LayoutChartLegendPosition,

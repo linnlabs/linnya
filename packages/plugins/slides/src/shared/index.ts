@@ -323,6 +323,7 @@ export type {
   FlexComposeInput,
   FlexProps,
   LayoutBorderInput,
+  LayoutTextStroke,
   LayoutAuthoringTargetConfig,
   LayoutChartConfig,
   LayoutChartControls,
@@ -573,6 +574,7 @@ export type {
   RenderPadding,
   RenderParagraph,
   RenderShadow,
+  RenderTextEffects,
   RenderSlideSize,
   RenderSolidFill,
   RenderSourceSpan,
@@ -706,6 +708,7 @@ export type {
   PatchSpec,
   PatchTarget,
   ResolvedImageAsset,
+  ShapeShadow,
   ShapeStyle,
   SlideBackgroundGradient,
   SlideBackgroundGradientStop,
@@ -716,6 +719,7 @@ export type {
   StructuredFormulaElement,
   StructuredSlideSpec,
   TableCell,
+  TextEffects,
   TextStyle,
 } from './deckSpec';
 

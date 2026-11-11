@@ -38,6 +38,7 @@ export type {
   RenderPadding,
   RenderParagraph,
   RenderShadow,
+  RenderTextEffects,
   RenderSlideSize,
   RenderSolidFill,
   RenderSourceSpan,

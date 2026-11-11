@@ -5,12 +5,14 @@ import {
   type Document as XmlDocument,
   type Element as XmlElement,
 } from '@xmldom/xmldom';
-import type { GradientStop, Paint, ResolvedShapeGeometry, StrokePaint } from '@plugin/slides/shared';
+import { DEFAULT_SHADOW_OPACITY, type GradientStop, type Paint, type ResolvedShapeGeometry, type StrokePaint, type TextEffects } from '@plugin/slides/shared';
+import { normalizePptxShadowAngle } from './presentationVisualDefaults';
 import { presetShapeNameToPptxName } from '../shape/shapeNameRegistry';
 import type {
   PptxPaintPatchPlan,
   PptxPictureGeometryPatch,
   PptxShapePaintPatch,
+  PptxTextEffectsPatch,
 } from './pptxPaintPatchPlan';
 
 const OOXML_ANGLE_UNIT = 60_000;
@@ -48,6 +50,10 @@ export async function applyPptxPaintPatches(
     }
     for (const picturePatch of slidePatch.pictures) {
       replaceMarkedPictureGeometry(doc, picturePatch);
+      slideMutated = true;
+    }
+    for (const textPatch of slidePatch.texts) {
+      applyMarkedTextEffects(doc, textPatch);
       slideMutated = true;
     }
     if (slideMutated) {
@@ -102,6 +108,71 @@ function replaceMarkedShapePaint(doc: XmlDocument, patch: PptxShapePaintPatch): 
   }
 
   throw new Error(`PPTX Paint adapter 找不到 shape marker ${patch.marker}。`);
+}
+
+function applyMarkedTextEffects(doc: XmlDocument, patch: PptxTextEffectsPatch): void {
+  const candidates: XmlElement[] = [
+    ...Array.from(doc.getElementsByTagName('p:sp')),
+    ...Array.from(doc.getElementsByTagName('sp')),
+  ];
+  for (const shape of candidates) {
+    const nonVisual = firstElement(shape, ['p:cNvPr', 'cNvPr']);
+    if (nonVisual?.getAttribute('name') !== patch.marker) continue;
+    const runProperties = [
+      ...Array.from(shape.getElementsByTagName('a:rPr')),
+      ...Array.from(shape.getElementsByTagName('a:endParaRPr')),
+    ];
+    for (const properties of runProperties) applyTextEffectsToRunProperties(doc, properties, patch.effects);
+    nonVisual.setAttribute('name', `Text ${nonVisual.getAttribute('id') ?? ''}`.trim());
+    return;
+  }
+  throw new Error(`PPTX Paint adapter 找不到 text marker ${patch.marker}。`);
+}
+
+/**
+ * `a:rPr` 的子元素顺序是 ln → 填充 → effectLst → highlight → … → latin；这三项都排在最前，
+ * 所以先删旧的再按顺序插到开头。没写渐变时保留 PptxGenJS 写的纯色，只把不透明度乘上去。
+ */
+function applyTextEffectsToRunProperties(doc: XmlDocument, properties: XmlElement, effects: TextEffects): void {
+  const replacesFill = effects.fill != null || effects.opacity != null;
+  const existingSolid = findDirectChild(properties, ['a:solidFill', 'solidFill']);
+  const solidColor = existingSolid ? firstElement(existingSolid, ['a:srgbClr', 'srgbClr'])?.getAttribute('val') : null;
+  removeDirectChildren(properties, [
+    'a:ln', 'ln', 'a:effectLst', 'effectLst',
+    ...(replacesFill ? ['a:noFill', 'noFill', 'a:solidFill', 'solidFill', 'a:gradFill', 'gradFill'] : []),
+  ]);
+
+  const leading: XmlElement[] = [];
+  if (effects.stroke) {
+    const line = doc.createElement('a:ln');
+    line.setAttribute('w', String(Math.round(effects.stroke.width * POINT_TO_EMU)));
+    line.appendChild(createPaintElement(doc, { type: 'solid', color: effects.stroke.color }, effects.opacity));
+    leading.push(line);
+  }
+  if (effects.fill) leading.push(createPaintElement(doc, effects.fill, effects.opacity));
+  else if (replacesFill && solidColor) leading.push(createPaintElement(doc, { type: 'solid', color: `#${solidColor}` }, effects.opacity));
+  if (effects.shadow) {
+    const effectList = doc.createElement('a:effectLst');
+    const shadow = doc.createElement('a:outerShdw');
+    const { offsetX, offsetY } = effects.shadow;
+    shadow.setAttribute('blurRad', String(Math.round(effects.shadow.blur * POINT_TO_EMU)));
+    shadow.setAttribute('dist', String(Math.round(Math.hypot(offsetX, offsetY) * POINT_TO_EMU)));
+    shadow.setAttribute('dir', String(normalizePptxShadowAngle(Math.atan2(offsetY, offsetX) * (180 / Math.PI)) * OOXML_ANGLE_UNIT));
+    shadow.setAttribute('algn', 'tl');
+    shadow.setAttribute('rotWithShape', '0');
+    shadow.appendChild(createColorElement(doc, effects.shadow.color, effects.shadow.opacity ?? DEFAULT_SHADOW_OPACITY));
+    effectList.appendChild(shadow);
+    leading.push(effectList);
+  }
+  // 只改字效时保留的原纯色要排在 ln 之后、effectLst 之前。
+  const keptFill = replacesFill ? null : findDirectChild(properties, ['a:solidFill', 'solidFill', 'a:noFill', 'noFill', 'a:gradFill', 'gradFill']);
+  if (keptFill) {
+    properties.removeChild(keptFill);
+    const lineIndex = effects.stroke ? 1 : 0;
+    leading.splice(lineIndex, 0, keptFill);
+  }
+  const first = properties.firstChild;
+  for (const element of leading) properties.insertBefore(element, first);
 }
 
 function replaceMarkedPictureGeometry(doc: XmlDocument, patch: PptxPictureGeometryPatch): void {

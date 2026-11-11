@@ -24,6 +24,7 @@ export type {
   FlexComposeInput,
   FlexProps,
   LayoutBorderInput,
+  LayoutTextStroke,
   LayoutChartConfig,
   LayoutChartDataLike,
   LayoutChartLegendPosition,

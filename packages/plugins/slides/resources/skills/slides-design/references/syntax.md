@@ -101,13 +101,13 @@ Flex 子项可以使用 `flex`、`width`、`height`、margin 与父容器的 gap
 | 兼容 | `chartData`、`tableData`、`datasets`、`xLabels`、Text 的 `bold/italic/underline/align/valign/lineSpacing` 旧别名 | 只用于理解和维护旧 source；不要主动生成 |
 | 稳定编辑身份 | Slide 使用 `slideKey`；作者对象使用 `editKey` | 新文稿必须显式、稳定、唯一；不要使用随机值或执行序号 |
 | 内部/不支持 | `_type`、`children`、`_sourceSpan`、`_authoringRef`、`styleDecision`、`chartOptions`、`tableOptions`、`editPresentation` | 不要写；工厂 config 不接受，部分字段也不可赋值 |
-| 猜测式语法 | `style`、`style.gradient`、`shapeType`、`zIndex`、Text 的 `padding/opacity/transparency`、任意 CSS/PptxGenJS 字段 | 不支持；改用本文对应的正式字段 |
+| 猜测式语法 | `style`、`style.gradient`、`shapeType`、`zIndex`、Text 的 `padding/transparency`、任意 CSS/PptxGenJS 字段 | 不支持；改用本文对应的正式字段 |
 
 工厂返回节点上的 `_type` 与 `children` 由运行时创建，`_sourceSpan` 与 `_authoringRef` 由源码定位及编译链维护。它们出现在 node 类型中是为了让编译器理解运行时对象，不是 authoring 输入。`Layout*Config` 才是可传给工厂的字段全集。
 
 ## 6. Text
 
-Text 的核心语义是内容、排版和盒子。常用字段包括字体族、字号、粗细、字体样式、颜色、对齐、行高、字间距（`letterSpacing`，单位 pt）与尺寸。Text 没有 `padding`、`opacity` 或 `transparency`；需要内边距、底色或整体透明效果时，用 Frame/Shape 承载。
+Text 的核心语义是内容、排版和盒子。常用字段包括字体族、字号、粗细、字体样式、颜色、对齐、行高、字间距（`letterSpacing`，单位 pt）与尺寸。Text 没有 `padding` 或 `transparency`；需要内边距或底色时，用 Frame/Shape 承载。字形的渐变、空心、投影与透明度见下文“字形效果”。
 
 Text 的宽度语义与 PowerPoint 一致：
 
@@ -122,6 +122,17 @@ Text 的宽度语义与 PowerPoint 一致：
 行距必须区分宿主与单位，不能互换：Text 节点使用 `lineHeight: 1.2`，数字表示倍数（旧 source 的 `lineSpacing: 1.2` 只是同义别名）；富文本 `run.style.lineSpacing` 才使用 `{ kind: "multiple", value: 1.2 }` 或 `{ kind: "exactPt", value: 18 }`，分别表示倍数与精确 pt。不要把带 `kind` 的对象赋给 Text 节点。
 
 Text 可以用 `backgroundColor` 和纯色 `border: { color, width, dash? }` 装饰自己的盒子，但仍没有 padding。需要可靠的文字内边距、圆角底或卡片阴影时，使用 Frame 包住 Text。
+
+### 字形效果
+
+标题、封面大字和装饰字可以给整个 Text 加字形效果，写在 `createText({ … })` 的 config 里（先创建再赋值会被 typecheck 放宽成 string）：
+
+- `fill`：线性渐变（写法同 Shape `fill` 的 `linear`），或 `"none"` 只留描边的空心字。渐变按每行文字铺开：同一行里的多段文字共用一条，换行后下一行重新开始，所以多行标题的每行都是完整的一段渐变。纯色仍写 `color`；写了 `fill` 就不能再写 `color`，富文本 run 也不能单独写 `style.color`。
+- `stroke`：`{ color, width }`，`width` 单位 pt。`fill: "none"` 时必须写。
+- `shadow`：与 Image 同一种写法（§8），投影跟着字形走。
+- `opacity`：0–1，只乘到字形填充和描边上，不影响投影；常用于淡淡的背景大字。
+
+效果作用于整个文本框，不能只给其中一段；含行内公式的 Text 不能加效果。预览与 PowerPoint 一致，但 Keynote、WPS 等其他软件可能只显示纯色：正文、数据和关键信息不要只靠渐变或空心来传达。示例见 [`media-and-paint.js`](./examples/media-and-paint.js) 的 Paint 页。
 
 主题字体放在 deck theme 中，局部字体只用于明确的层级或语言需求。不要在每个节点重复同一个全局字体。字体是否真实可用要通过 CLI `fonts check/list` 查询，不凭经验猜系统字体。
 

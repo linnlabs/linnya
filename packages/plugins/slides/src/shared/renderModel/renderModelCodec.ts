@@ -318,7 +318,9 @@ function isTextRenderNode(value: Record<string, unknown>): boolean {
       'shapeTextSizing',
       'padding',
       'layout',
+      'textEffects',
     ])
+    && isOptional(value.textEffects, isRenderTextEffects)
     && isArrayOf(value.paragraphs, isRenderParagraph)
     && isOptional(value.verticalAlign, align => isOneOf(align, ['top', 'middle', 'bottom']))
     && isOptional(value.writingMode, mode => mode === 'vertical-rl')
@@ -988,6 +990,18 @@ function isRenderStroke(value: unknown): boolean {
     && value.paint.type !== 'radial'
     && isFiniteNumber(value.width)
     && isOptional(value.dash, dash => isOneOf(dash, ['solid', 'dash', 'dot', 'dashDot']));
+}
+
+function isRenderTextEffects(value: unknown): boolean {
+  return isRecord(value)
+    && hasOnlyKeys(value, ['fill', 'stroke', 'shadow', 'opacity'])
+    && isOptional(value.fill, isPaint)
+    && isOptional(value.stroke, stroke => isRecord(stroke)
+      && hasOnlyKeys(stroke, ['color', 'width'])
+      && isString(stroke.color)
+      && isFiniteNumber(stroke.width))
+    && isOptional(value.shadow, isRenderShadow)
+    && isOptional(value.opacity, isFiniteNumber);
 }
 
 function isRenderShadow(value: unknown): boolean {

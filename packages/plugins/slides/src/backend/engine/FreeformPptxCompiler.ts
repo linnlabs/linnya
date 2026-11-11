@@ -42,6 +42,7 @@ import {
 import {
   registerPptxBackgroundPaint,
   registerPptxShapePaint,
+  resolveTextEffectsObjectName,
   type PptxPaintCompileContext,
 } from './visual/pptxPaintPatchPlan';
 import { buildSvgGraphicImageProps } from './svgGraphic/rendering/svgGraphicPptx';
@@ -109,7 +110,7 @@ export class FreeformPptxCompiler {
   ): void {
     switch (el.type) {
       case 'text':
-        this.addText(slide, el, transform, formulaContext);
+        this.addText(slide, el, transform, formulaContext, paintContext);
         break;
       case 'shape':
         this.addShape(slide, el, transform, paintContext, shapeTextContext);
@@ -162,9 +163,11 @@ export class FreeformPptxCompiler {
     el: FreeformTextElement,
     transform: FreeformTransform,
     formulaContext?: FormulaPptxCompileContext,
+    paintContext?: PptxPaintCompileContext,
   ): void {
     const textStyle = mapTextParagraphStyleToProps(el.style);
     const pos = mapPosition(this.applyTransform(el.position, transform));
+    const effectsObjectName = resolveTextEffectsObjectName(el, paintContext);
 
     if (typeof el.content === 'string') {
       slide.addText(el.content, {
@@ -176,6 +179,7 @@ export class FreeformPptxCompiler {
           'plain-textbox',
           { wrap: el.textWrap, verticalAlign: el.style?.valign },
         ),
+        ...(effectsObjectName ? { objectName: effectsObjectName } : {}),
       } as PptxGenJS.TextPropsOptions);
     } else if (Array.isArray(el.content)) {
       // 富文本行距由首个 run 承载，避免 textbox 再叠加一次。
@@ -220,6 +224,7 @@ export class FreeformPptxCompiler {
           { wrap: el.textWrap, verticalAlign: el.style?.valign },
         ),
         ...(textBox ? { objectName: textBox.objectName } : {}),
+        ...(effectsObjectName ? { objectName: effectsObjectName } : {}),
       } as PptxGenJS.TextPropsOptions);
     }
   }

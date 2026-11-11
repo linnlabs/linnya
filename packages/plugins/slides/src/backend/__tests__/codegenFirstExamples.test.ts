@@ -162,6 +162,13 @@ describe('slides-design runnable examples (closed loop)', () => {
       opacity: 0.45,
     });
 
+    // 同一页：字形效果（渐变标题、空心背景字）只写在 Text 上，保留到 DeckSpec。
+    const effects = input.slides[2]?.elements.flatMap((element) => element.type === 'text' && element.style?.effects ? [element.style.effects] : []);
+    expect(effects).toEqual([
+      expect.objectContaining({ fill: expect.objectContaining({ type: 'linear' }), shadow: expect.any(Object) }),
+      expect.objectContaining({ fill: { type: 'none' }, stroke: { color: '#12233F', width: 1 }, opacity: 0.4 }),
+    ]);
+
     const geometryKinds = input.slides[3]?.elements
       .filter((element) => element.type === 'shape')
       .map((element) => typeof element.geometry === 'string' ? element.geometry : element.geometry?.type);

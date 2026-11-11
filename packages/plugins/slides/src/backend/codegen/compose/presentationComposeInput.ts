@@ -70,6 +70,7 @@ import {
   parseImageVisualShadow,
   parseCompiledTableBorder,
   parseTableBorder,
+  parseTextEffects,
   parseTextStyle,
   parseShapeStyle,
   readThemeSpecInput,
@@ -431,6 +432,11 @@ function parseElementInput(
       return { error: normalized.error };
     }
     normalizedShapeStyle = normalized.value;
+  }
+  if (type === 'text' && isRecord(value.style) && value.style.effects != null) {
+    const effects = parseTextEffects(value.style.effects, `${prefix}.style.effects`);
+    if ('error' in effects) return { error: effects.error };
+    normalizedTextStyle = { ...normalizedTextStyle, effects: effects.value };
   }
   const mergedStyle: Partial<ShapeStyle & TextStyle> | undefined =
     normalizedTextStyle || normalizedShapeStyle

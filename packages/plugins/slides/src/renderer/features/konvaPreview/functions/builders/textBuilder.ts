@@ -6,6 +6,13 @@ import { INCHES_TO_PX, SLIDES_RENDER_COLORS } from '../../../../shared/constants
 import {
   resolveRenderableFontFamily,
 } from '../konvaText';
+import {
+  resolveKonvaShapeFillConfig,
+  resolveKonvaShapeStrokeConfig,
+  type KonvaShapeFillConfig,
+} from '../konvaVisualMapping';
+import { DEFAULT_SHADOW_OPACITY } from '@plugin/slides/shared/renderModel';
+import { toKonvaShadowBlur } from './shapeBuilder';
 
 const POINTS_TO_PX = INCHES_TO_PX / 72;
 /** 横排字形的逗号句号在字格左下，竖排应移到右上。 */
@@ -29,6 +36,19 @@ export interface TextLineConfig {
   rotation?: number;
 }
 
+/** 字形效果落到每段 Konva Text 上的属性；渐变坐标换算到所在行的文字外框。 */
+type TextEffectConfig = KonvaShapeFillConfig & {
+  fillEnabled?: boolean;
+  stroke?: string;
+  strokeWidth?: number;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+  shadowEnabled?: boolean;
+};
+
 export function buildTextGroupConfig(node: TextRenderNode) {
   const config = {
     ...resolveBoxRotation(node.box, node.rotation, INCHES_TO_PX),
@@ -37,7 +57,9 @@ export function buildTextGroupConfig(node: TextRenderNode) {
     opacity: node.opacity ?? 1,
     visible: node.visible !== false,
   };
-  if (node.overflow !== 'visible') {
+  // 投影和描边会伸出字形，按文本框裁剪会把它们切掉（PowerPoint 不裁）。
+  const effects = node.textEffects;
+  if (node.overflow !== 'visible' && !effects?.shadow && !effects?.stroke) {
     return {
       ...config,
       // padding 决定断行与文字起点，但不是字形裁剪边界。PowerPoint 允许超宽
@@ -51,7 +73,73 @@ export function buildTextGroupConfig(node: TextRenderNode) {
   return config;
 }
 
-export function buildTextLineConfigs(node: TextRenderNode): TextLineConfig[] {
+export function buildTextLineConfigs(node: TextRenderNode): Array<TextLineConfig & TextEffectConfig> {
+  const lineIndexes: number[] = [];
+  const configs = buildPlainTextLineConfigs(node, lineIndexes);
+  if (!node.textEffects) return configs;
+  return configs.map((config, index) => ({
+    ...config,
+    ...buildTextEffectConfig(node, config, resolveGradientBox(node, lineIndexes[index])),
+  }));
+}
+
+interface PixelBox { x: number; y: number; width: number; height: number }
+
+/**
+ * PowerPoint 的字形渐变按每一行文字的外框铺：多段 run 在一行里共用一条，居中时只铺文字本身，
+ * 换行后下一行重新开始（2026-11-11 PowerPoint 实测 0°、45°、90°）。竖排没有实测，铺整个内容区。
+ */
+function resolveGradientBox(node: TextRenderNode, lineIndex: number): PixelBox {
+  const padLeft = (node.padding?.left ?? 0) * INCHES_TO_PX;
+  const padTop = (node.padding?.top ?? 0) * INCHES_TO_PX;
+  const line = node.layout?.lines[lineIndex];
+  const slices = line?.slices.filter((slice) => slice.kind !== 'inlineBox' && !slice.verticalGlyphRuns) ?? [];
+  if (!line || slices.length === 0) {
+    return { x: 0, y: 0, width: node.box.w * INCHES_TO_PX, height: node.box.h * INCHES_TO_PX };
+  }
+  const start = Math.min(...slices.map((slice) => slice.x));
+  const end = Math.max(...slices.map((slice) => slice.x + slice.width));
+  return {
+    x: padLeft + start * INCHES_TO_PX,
+    y: padTop + line.y * INCHES_TO_PX,
+    width: Math.max((end - start) * INCHES_TO_PX, 1),
+    height: Math.max(line.height * INCHES_TO_PX, 1),
+  };
+}
+
+/**
+ * 每段 Text 的局部坐标原点在它自己的 x/y，所以把所在行的渐变轴平移到段内。
+ * 不透明度只乘到字形填充和描边上，不影响投影。
+ */
+function buildTextEffectConfig(node: TextRenderNode, line: TextLineConfig, box: PixelBox): TextEffectConfig {
+  const effects = node.textEffects!;
+  const width = node.box.w * INCHES_TO_PX;
+  const height = node.box.h * INCHES_TO_PX;
+  const config: TextEffectConfig = {};
+  if (effects.fill?.type === 'none') {
+    config.fillEnabled = false;
+  } else if (effects.fill?.type === 'linear') {
+    const origin = { x: box.x - line.x, y: box.y - line.y };
+    Object.assign(config, { fill: undefined }, resolveKonvaShapeFillConfig(effects.fill, box.width, box.height, effects.opacity, origin));
+  } else if (effects.opacity != null) {
+    Object.assign(config, resolveKonvaShapeFillConfig({ type: 'solid', color: line.fill }, width, height, effects.opacity));
+  }
+  if (effects.stroke) {
+    Object.assign(config, resolveKonvaShapeStrokeConfig({ type: 'solid', color: effects.stroke.color, opacity: effects.opacity }, width, height));
+    config.strokeWidth = effects.stroke.width * POINTS_TO_PX;
+  }
+  if (effects.shadow) {
+    config.shadowColor = effects.shadow.color;
+    config.shadowBlur = toKonvaShadowBlur(effects.shadow.blur);
+    config.shadowOffsetX = effects.shadow.offsetX * POINTS_TO_PX;
+    config.shadowOffsetY = effects.shadow.offsetY * POINTS_TO_PX;
+    config.shadowOpacity = effects.shadow.opacity ?? DEFAULT_SHADOW_OPACITY;
+    config.shadowEnabled = true;
+  }
+  return config;
+}
+
+function buildPlainTextLineConfigs(node: TextRenderNode, lineIndexes: number[] = []): TextLineConfig[] {
   if (node.layout == null) {
     throw new Error(`TextRenderNode ${node.id} is missing shared text layout.`);
   }
@@ -61,7 +149,7 @@ export function buildTextLineConfigs(node: TextRenderNode): TextLineConfig[] {
   const appliedFontScale = node.layout.appliedFontScale;
   const configs: TextLineConfig[] = [];
 
-  for (const line of node.layout.lines) {
+  for (const [lineIndex, line] of node.layout.lines.entries()) {
     for (const slice of line.slices) {
       if (slice.kind === 'inlineBox') continue;
       const style = resolveLayoutSliceStyle(node, slice);
@@ -71,6 +159,7 @@ export function buildTextLineConfigs(node: TextRenderNode): TextLineConfig[] {
         const column = resolveVerticalLineColumn(line, contentWidth);
         const columnCenter = padLeft + (column.x + column.width / 2) * INCHES_TO_PX;
         for (const glyph of slice.verticalGlyphRuns) {
+          lineIndexes.push(lineIndex);
           configs.push({
             ...buildVerticalGlyphPlacement(glyph, columnCenter, padTop + (slice.x + glyph.offset) * INCHES_TO_PX, fontSize),
             text: glyph.text,
@@ -90,6 +179,7 @@ export function buildTextLineConfigs(node: TextRenderNode): TextLineConfig[] {
         }
         continue;
       }
+      lineIndexes.push(lineIndex);
       configs.push({
         x: padLeft + slice.x * INCHES_TO_PX,
         y: padTop + slice.textY * INCHES_TO_PX,

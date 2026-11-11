@@ -68,6 +68,7 @@ export type {
   PatchSpec,
   PatchTarget,
   ResolvedImageAsset,
+  ShapeShadow,
   ShapeStyle,
   SlideBackgroundGradient,
   SlideBackgroundGradientStop,
@@ -78,5 +79,6 @@ export type {
   StructuredFormulaElement,
   StructuredSlideSpec,
   TableCell,
+  TextEffects,
   TextStyle,
 } from './slideSpec';

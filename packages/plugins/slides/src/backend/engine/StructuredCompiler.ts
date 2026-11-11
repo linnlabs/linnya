@@ -47,6 +47,7 @@ import {
   createPptxPaintPatchPlan,
   registerPptxBackgroundPaint,
   registerPptxShapePaint,
+  resolveTextEffectsObjectName,
   type PptxPaintCompileContext,
 } from './visual/pptxPaintPatchPlan';
 import { initializePptxDocument } from './pptx/initializePptxDocument';
@@ -157,7 +158,7 @@ export class StructuredCompiler {
         this.addTitle(slide, el);
         break;
       case 'text':
-        this.addText(slide, el, formulaContext);
+        this.addText(slide, el, formulaContext, paintContext);
         break;
       case 'bulletList':
         this.addBulletList(slide, el);
@@ -234,7 +235,9 @@ export class StructuredCompiler {
     slide: PptxGenJS.Slide,
     el: Extract<StructuredElement, { type: 'text' }>,
     formulaContext?: FormulaPptxCompileContext,
+    paintContext?: PptxPaintCompileContext,
   ): void {
+    const effectsObjectName = resolveTextEffectsObjectName(el, paintContext);
     const baseOptions: PptxGenJS.TextPropsOptions = {
       ...mapPosition(el.position),
       ...mapTextParagraphStyleToProps(el.style),
@@ -244,9 +247,17 @@ export class StructuredCompiler {
         'plain-textbox',
         { wrap: el.textWrap, verticalAlign: el.style?.valign },
       ),
+      ...(effectsObjectName ? { objectName: effectsObjectName } : {}),
     };
     if (typeof el.content === 'string') {
       slide.addText(el.content, baseOptions);
+      return;
+    }
+    if (!el.content.some((run) => 'formula' in run)) {
+      slide.addText(el.content.map((run) => ({
+        text: 'text' in run ? run.text : '',
+        options: 'text' in run ? mapTextParagraphStyleToProps(run.style) : {},
+      })), baseOptions);
       return;
     }
     if (!formulaContext) {

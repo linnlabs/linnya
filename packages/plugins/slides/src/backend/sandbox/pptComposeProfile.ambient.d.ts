@@ -734,6 +734,17 @@ interface LayoutTextConfig extends FlexProps, LayoutAuthoringTargetConfig {
   letterSpacing?: number;
   backgroundColor?: string;
   border?: LayoutBorderInput;
+  /**
+   * 字形填充：线性渐变（写法同 Shape fill 的 linear），或 `"none"` 只留描边的空心字。
+   * 纯色仍写 `color`，两者只写一个；渐变按每行文字铺开：同一行的多段共用一条，换行后重新开始。
+   */
+  fill?: LayoutLinearGradient | 'none';
+  /** 字形描边，width 单位 pt；`fill: "none"` 时必须写。 */
+  stroke?: LayoutTextStroke;
+  /** 字形投影，写法同 Image.shadow。 */
+  shadow?: LayoutImageVisualShadowInput;
+  /** 字形不透明度 0–1，只作用于填充和描边，不影响投影。 */
+  opacity?: number;
   /** @deprecated 使用 fontWeight: 'bold'。 */
   bold?: boolean;
   /** @deprecated 使用 fontStyle: 'italic'。 */
@@ -757,6 +768,12 @@ interface LayoutTextNode extends LayoutTextConfig, LayoutSourceMetadata {
 }
 
 type LayoutTextRun = LayoutPlainTextRun | LayoutFormulaTextRun;
+
+interface LayoutTextStroke {
+  color: string;
+  /** pt，大于 0。 */
+  width: number;
+}
 
 interface LayoutTextStyleInput {
   fontSize?: number;

@@ -46,6 +46,7 @@ import {
   normalizeStrokePaint,
   resolveSlideSizeInches,
   resolveVisualShadowOffset,
+  normalizeOpaqueColor,
   normalizeMathFormulaSource,
   isSlidesAuthoringKey,
   parseSlidesManualEdits,
@@ -59,6 +60,8 @@ import type {
   ShapeStrokeStyle,
   ShapeStyle,
   SlidesAuthoringObjectRef,
+  TextEffects,
+  TextStyle,
   SlidesManualSlideEdits,
   SourceSpan,
 } from '@plugin/slides/shared';
@@ -453,8 +456,60 @@ function buildTextElement(node: LayoutTextNode, position: Box): DirectElementInp
       letterSpacing: node.letterSpacing,
       paint: readOptionalShapePaint(node.backgroundColor, 'Text.backgroundColor'),
       border: readOptionalShapeStroke(node.border, 'Text.border'),
+      ...readTextEffectsStyle(node),
     },
   }, node._sourceSpan);
+}
+
+/**
+ * Text 的 fill / stroke / shadow / opacity 是字形效果，整段共用。渐变或空心字时 `color` 写成代表色
+ * （渐变首个色标、空心字的描边色），供对比度检查和不认渐变的软件使用；PPTX 导出时再换成真正的填充。
+ */
+function readTextEffectsStyle(node: LayoutTextNode): Pick<TextStyle, 'effects' | 'color'> {
+  const { fill, stroke, shadow, opacity } = node;
+  if (fill == null && stroke == null && shadow == null && opacity == null) return {};
+  if (Array.isArray(node.content) && node.content.some((run) => !('text' in run))) {
+    throw new FlexComposeContractError('含行内公式的 Text 不支持 fill / stroke / shadow / opacity；把公式放进独立的 Text。');
+  }
+  const effects: TextEffects = {};
+  let representative: string | undefined;
+  if (fill != null) {
+    if (node.color != null) {
+      throw new FlexComposeContractError('Text.fill 与 color 只写一个：纯色用 color，渐变或空心字用 fill。');
+    }
+    if (Array.isArray(node.content) && node.content.some((run) => 'text' in run && run.style?.color != null)) {
+      throw new FlexComposeContractError('Text.fill 作用于整段文字，content 里的 run 不要再写 style.color。');
+    }
+    if (fill === 'none') {
+      effects.fill = { type: 'none' };
+    } else {
+      const paint = readOptionalShapePaint(fill, 'Text.fill');
+      if (!paint || paint.type !== 'linear') {
+        throw new FlexComposeContractError('Text.fill 只接受线性渐变（type: "linear"）或 "none"；纯色写 color。');
+      }
+      effects.fill = paint;
+      representative = paint.stops[0].color;
+    }
+  }
+  if (stroke != null) {
+    if (!isRecord(stroke) || typeof stroke.width !== 'number' || !Number.isFinite(stroke.width) || stroke.width <= 0) {
+      throw new FlexComposeContractError('Text.stroke 必须是 { color, width }，width 是大于 0 的 pt 数。');
+    }
+    const color = normalizeOpaqueColor(stroke.color, 'Text.stroke.color');
+    if ('error' in color) throw new FlexComposeContractError(color.error);
+    effects.stroke = { color: color.value, width: stroke.width };
+    if (effects.fill?.type === 'none') representative = color.value;
+  } else if (effects.fill?.type === 'none') {
+    throw new FlexComposeContractError('Text.fill 为 "none" 时必须写 stroke，否则文字看不见。');
+  }
+  if (shadow != null) effects.shadow = readOptionalShadow(shadow, 'Text.shadow');
+  if (opacity != null) {
+    if (typeof opacity !== 'number' || !Number.isFinite(opacity) || opacity < 0 || opacity > 1) {
+      throw new FlexComposeContractError('Text.opacity 必须是 0 到 1 之间的数字。');
+    }
+    effects.opacity = opacity;
+  }
+  return representative ? { effects, color: representative } : { effects };
 }
 
 function resolveLayoutTextWritingMode(node: LayoutTextNode): 'vertical-rl' | undefined {

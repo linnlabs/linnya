@@ -53,5 +53,6 @@ export type {
   RenderGradientFill,
   RenderStroke,
   RenderShadow,
+  RenderTextEffects,
   RenderPadding,
 } from '@plugin/slides/shared/renderModel';

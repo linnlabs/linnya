@@ -323,7 +323,8 @@ describe('typecheckCodegenSource — rejects semantic errors against ambient.d.t
 
   it.each([
     ['rich-text style at run top level', 'createText([{ text: "x", bold: true }]);'],
-    ['Text opacity', 'createText({ content: "x", opacity: 0.5 });'],
+    ['Text transparency', 'createText({ content: "x", transparency: 50 });'],
+    ['Text radial fill', 'createText({ content: "x", fill: { type: "radial", stops: [{ color: "#000000", position: 0 }, { color: "#FFFFFF", position: 1 }] } });'],
     ['Text padding', 'createText({ content: "x", padding: 0.2 });'],
     ['unknown chart preset', 'createChart({ preset: "executive-mega-chart", categories: ["A"], series: [{ name: "S", values: [1] }] });'],
     ['unknown legend position', 'createChart({ categories: ["A"], series: [{ name: "S", values: [1] }], legendPosition: "center" });'],

@@ -1,6 +1,7 @@
 import { isEditableTextContent, readCopyableAuthoringValue } from '@plugin/slides/shared/authoringEditing';
 import type {
   FreeformElement,
+  TextEffects,
   FreeformShapeElement,
   SlidesAuthoringEditCapability,
   SlidesAuthoringEditProjection,
@@ -135,6 +136,7 @@ function mapStructuredElement(
           ...base,
           kind: 'text',
           paragraphs,
+          ...resolveTextEffects(element.style?.effects),
         },
         paragraphs,
         resolveTextVerticalAlign(element.style?.valign),
@@ -460,6 +462,19 @@ function requireSvgGraphicAsset(
   return asset;
 }
 
+/** DeckSpec 的字形效果 → RenderModel；阴影已是直角坐标。 */
+function resolveTextEffects(effects: TextEffects | undefined): Pick<TextRenderNode, 'textEffects'> {
+  if (!effects) return {};
+  return {
+    textEffects: {
+      ...(effects.fill ? { fill: effects.fill } : {}),
+      ...(effects.stroke ? { stroke: { ...effects.stroke } } : {}),
+      ...(effects.shadow ? { shadow: resolveShadow(effects.shadow) } : {}),
+      ...(effects.opacity != null ? { opacity: effects.opacity } : {}),
+    },
+  };
+}
+
 function mapFreeformTextNode(
   base: RenderBaseNode,
   element: Extract<FreeformElement, { type: 'text' }>,
@@ -472,6 +487,7 @@ function mapFreeformTextNode(
       ...base,
       kind: 'text',
       paragraphs,
+      ...resolveTextEffects(element.style?.effects),
     },
     paragraphs,
     resolveTextVerticalAlign(style.valign),

@@ -8,6 +8,7 @@ import type {
   ImageVisualShadow,
   ShapeStyle,
   ShapeStrokeStyle,
+  TextEffects,
   TextStyle,
   ThemeSpec,
 } from '@plugin/slides/shared';
@@ -66,6 +67,40 @@ export function parseTextStyle(value: unknown): TextStyle | null {
   }
   if (isFiniteNumber(value.letterSpacing)) style.letterSpacing = value.letterSpacing;
   return style;
+}
+
+/**
+ * 编译后 compose 里 Text 的 `style.effects`（FlexLayoutCompiler 已把渐变、颜色、阴影归一化）。
+ * 只在文本元素级读取；写错任何一项都返回错误，不静默丢掉效果。
+ */
+export function parseTextEffects(value: unknown, path: string): { value: TextEffects } | { error: string } {
+  if (!isRecord(value)) return { error: `${path} 必须是对象。` };
+  const effects: TextEffects = {};
+  if (value.fill != null) {
+    const fill = normalizePaint(value.fill, `${path}.fill`);
+    if ('error' in fill) return fill;
+    if (fill.value.type !== 'linear' && fill.value.type !== 'none') return { error: `${path}.fill 只接受线性渐变或 none。` };
+    effects.fill = fill.value;
+  }
+  if (value.stroke != null) {
+    const stroke = value.stroke;
+    if (!isRecord(stroke) || !isNonEmptyString(stroke.color) || !isFiniteNumber(stroke.width) || stroke.width <= 0) {
+      return { error: `${path}.stroke 必须是 { color, width }。` };
+    }
+    effects.stroke = { color: stroke.color, width: stroke.width };
+  }
+  if (value.shadow != null) {
+    const shadow = parseShapeStyle({ shadow: value.shadow })?.shadow;
+    if (!shadow) return { error: `${path}.shadow 必须是 { color, blur, offsetX, offsetY, opacity? }。` };
+    effects.shadow = shadow;
+  }
+  if (value.opacity != null) {
+    if (!isFiniteNumber(value.opacity) || value.opacity < 0 || value.opacity > 1) {
+      return { error: `${path}.opacity 必须是 0 到 1 之间的数字。` };
+    }
+    effects.opacity = value.opacity;
+  }
+  return { value: effects };
 }
 
 /** 表格沿用统一描边合同，避免再造一套 border 字段。 */

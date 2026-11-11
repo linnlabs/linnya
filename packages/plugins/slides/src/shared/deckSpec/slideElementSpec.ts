@@ -20,6 +20,8 @@ import type { LayoutChartControls, LayoutChartSeriesInput, LayoutChartStyle, Lay
 import type {
   GradientPaint,
   GradientStop,
+  LinearGradientPaint,
+  NoPaint,
   Paint,
   ShapeStrokeStyle,
 } from '../visual/paint/definitions/paint';
@@ -46,6 +48,31 @@ export interface TextStyle {
   letterSpacing?: number;
   /** 段落行距；内部只接受明确的 multiple / exactPt 语义。 */
   lineSpacing?: TextLineSpacing;
+  /** 字形本身的效果（不是文本框的底色和边框）；只在文本元素级生效，整段文字共用。 */
+  effects?: TextEffects;
+}
+
+/**
+ * 文字效果，对应 PowerPoint 字符属性：渐变或不填充、描边、外阴影、透明度。
+ * 渐变按每行文字的外框铺：同一行的多段 run 共用一条，换行后重新开始（PowerPoint 实测）。
+ */
+export interface TextEffects {
+  /** 线性渐变，或不填充（只剩描边的空心字）；纯色仍用 TextStyle.color。 */
+  fill?: LinearGradientPaint | NoPaint;
+  /** 字形描边，width 单位 pt。 */
+  stroke?: { color: string; width: number };
+  shadow?: ShapeShadow;
+  /** 字形填充与描边的不透明度 0–1，不影响阴影。 */
+  opacity?: number;
+}
+
+/** 直角坐标的外阴影；偏移与模糊单位 pt。 */
+export interface ShapeShadow {
+  color: string;
+  blur: number;
+  offsetX: number;
+  offsetY: number;
+  opacity?: number;
 }
 
 /** 形状样式 */
@@ -58,13 +85,7 @@ export interface ShapeStyle {
   gradient?: GradientPaint;
   border?: ShapeStrokeStyle;
   borderRadius?: number;
-  shadow?: {
-    color: string;
-    blur: number;
-    offsetX: number;
-    offsetY: number;
-    opacity?: number;
-  };
+  shadow?: ShapeShadow;
   opacity?: number;
   rotate?: number;
 }

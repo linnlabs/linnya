@@ -42,6 +42,7 @@ export type {
   ImageVisualOptions,
   ImageVisualShadow,
   ResolvedImageAsset,
+  ShapeShadow,
   ShapeStyle,
   SlideBackgroundGradient,
   SlideBackgroundGradientStop,
@@ -51,6 +52,7 @@ export type {
   StructuredFormulaElement,
   StructuredSlideSpec,
   TableCell,
+  TextEffects,
   TextStyle,
 } from './slideElementSpec';
 

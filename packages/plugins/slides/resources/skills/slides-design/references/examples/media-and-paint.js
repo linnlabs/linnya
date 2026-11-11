@@ -304,12 +304,44 @@ paintRow.add(
   makeSwatch("linear 渐变描边", strokeSwatch),
 );
 
+// 字形效果写在 createText(config) 里：fill 只接受 linear 或 "none"（空心字须配 stroke）；
+// 渐变按每行文字铺开。写了 fill 就不再写 color。效果只用在标题和装饰字上，正文保持纯色。
+const goldTitle = createText({
+  content: "金秋献礼",
+  fill: {
+    type: "linear",
+    angle: 90,
+    stops: [
+      { color: "#F3D98B", position: 0 },
+      { color: "#A8742A", position: 1 },
+    ],
+  },
+  shadow: { color: "#5A3A12", blur: 4, angle: 90, distance: 2, opacity: 0.35 },
+});
+goldTitle.fontSize = 40;
+goldTitle.fontWeight = "bold";
+
+// 空心的背景大字：opacity 只作用于字形，不影响旁边的正文。
+const ghostWord = createText({
+  content: "CONTENTS",
+  fill: "none",
+  stroke: { color: "#12233F", width: 1 },
+  opacity: 0.4,
+});
+ghostWord.fontSize = 44;
+ghostWord.fontWeight = "bold";
+
+const effectRow = createFrame({ flexDirection: "row", gap: 0.6, alignItems: "center" });
+effectRow.height = 1;
+effectRow.marginTop = 0.2;
+effectRow.add(goldTitle, ghostWord);
+
 const paintBody = createFrame({
   flexDirection: "column",
   padding: { left: 0.5, right: 0.5, top: 0.4, bottom: 0.45 },
 });
 paintBody.flex = 1;
-paintBody.add(paintTitle, paintRow);
+paintBody.add(paintTitle, paintRow, effectRow);
 paintSlide.add(paintBody);
 
 // slide 4 — 几何：preset、参数化几何、polygon 与 typed path。
