@@ -63,3 +63,7 @@ AudioBlock/
     └── useAudioAnalyser.js          # 音频分析器（音量可视化等）
 ```
 
+
+## 状态与副作用
+
+`runtime.js` 按 Pinia 实例装配内容、设备和媒体动作，类型由 `definitions/audioActions.ts` 公开。Store 只保存内容/运行/设备状态并同步写入；IPC、权限、流与 URL 释放、文档 dirty 通知都由 `orchestration/` 调用状态 action。录音服务只接收七项 `AudioRecordingPort` 能力。已存在的保存入口接线问题另行处理，本次保留原调用链。

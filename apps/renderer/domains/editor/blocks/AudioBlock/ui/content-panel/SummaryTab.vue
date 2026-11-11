@@ -68,6 +68,8 @@
 </template>
 
 <script setup>
+import { useAudioContentActions } from '../../runtime.js';
+
 import { computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useEditor, EditorContent } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
@@ -88,6 +90,7 @@ const props = defineProps({
 });
 
 const contentStore = useAudioContentStore();
+const contentActions = useAudioContentActions();
 const editorsStore = useAudioEditorsStore();
 const { editorMessage } = useEditorLocalization();
 const { historyTime } = useHistoryTime();
@@ -209,7 +212,7 @@ const editor = useEditor({
   onUpdate: ({ editor }) => {
     // 只更新本地状态，标记为"脏"，不直接持久化
     const html = editor.getHTML();
-    contentStore.setSummaryContentDraft(props.blockId, html);
+    contentActions.setSummaryContentDraft(props.blockId, html);
     
     // 确保滚动到可见区域
     requestAnimationFrame(() => {

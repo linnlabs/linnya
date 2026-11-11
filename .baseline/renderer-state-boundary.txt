@@ -6,15 +6,6 @@ STORE-ASYNC	apps/renderer/domains/conversation/history/store/historyLoaderStore.
 STORE-ASYNC	apps/renderer/domains/conversation/store/assistant/projectionStore.ts	handleSseEvent#1
 STORE-ASYNC	apps/renderer/domains/conversation/store/assistant/projectionStore.ts	processSseEvent#1
 STORE-ASYNC	apps/renderer/domains/conversation/store/assistant/projectionStore.ts	replayBufferedHistoryLoadingEvents#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioContent.store.js	loadContent#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioContent.store.js	persistDirtyContent#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioDevice.js	getAvailableMicrophoneDevices#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioDevice.js	requestMicrophonePermission#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.store.js	checkMicrophoneForBlock#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.store.js	loadAudioFile#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.store.js	requestMicrophonePermission#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.store.js	resolveAudioForTranscription#1
-STORE-ASYNC	apps/renderer/domains/editor/blocks/AudioBlock/store/audioRuntime.store.js	terminateAllRecordingsForSave#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionActionPerf.ts	measureAsync#1
 STORE-ASYNC	apps/renderer/domains/editor/features/Revision/store/revisionPendingPerf.ts	measureRevisionPendingStageAsync#1
 STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/history/store/historyLoaderStore.ts	../orchestration/historyWindowTailLoader
