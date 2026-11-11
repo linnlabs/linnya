@@ -1,10 +1,7 @@
-// src/renderer/utils/aiContextUtils.js
-
-// 导入 NodeFinder 用于查找特定类型的节点
-// 注意：这里使用相对于 apps/renderer 根目录的实际路径，避免打包/测试环境下解析失败
-import { NodeFinder } from '../../domains/editor/extensions/position/NodeFinder';
+// Markdown 上下文只认识 Editor 节点与选区；模型调用和应用状态由调用方负责。
+import { NodeFinder } from '../../extensions/position/NodeFinder';
 // 🆕 导入 Markdown 序列化器
-import { createMarkdownSerializer } from './markdownSerializer';
+import { createMarkdownSerializer } from '@/shared/utils/markdownSerializer';
 // 🆕 导入 DocumentView 序列化工具（用于构建 [#ref] 文本 + DocumentView）
 import {
   flattenBlocksFromEditor,

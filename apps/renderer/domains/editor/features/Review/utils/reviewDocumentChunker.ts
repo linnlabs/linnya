@@ -13,7 +13,7 @@ import {
   buildDocumentView,
   flattenBlocksFromEditor,
   type FlattenedBlock,
-} from '../../../../../shared/utils/documentViewSerializer';
+} from '@/domains/editor/context';
 import type { DocumentViewMeta } from '@app/schemas';
 import { generateRefId } from '../../../../../shared/utils/refIdGenerator';
 import type { ReviewContextConfig } from '../config/contextConfig';

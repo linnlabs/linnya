@@ -3,7 +3,7 @@
  * @brief 侧边栏对话的文档上下文配置
  * 
  * @description
- * 🎯 定义传给 shared/utils/aiContextUtils.js 的配置参数
+ * 🎯 定义传给 domains/editor/context.ts 的配置参数
  * 直接调用: getDefaultBlockContext(editor, SIDEBAR_DOCUMENT_CONTEXT_OPTIONS)
  */
 

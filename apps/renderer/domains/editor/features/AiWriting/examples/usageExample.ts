@@ -79,7 +79,7 @@ export async function exampleCustomWritingContext(editor: any, userPrompt: strin
   };
 
   // 直接调用底层函数
-  const { getDefaultBlockContext } = await import('../../../../../shared/utils/aiContextUtils.js');
+  const { getDefaultBlockContext } = await import('@/domains/editor/context');
   const context = getDefaultBlockContext(editor, customOptions);
   
   console.log('🎯 自定义写作上下文:', {

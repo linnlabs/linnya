@@ -11,9 +11,9 @@
  */
 
 import type { Editor } from '@tiptap/core';
-import { NodeFinder } from '../../domains/editor/extensions/position/NodeFinder';
-import { createMarkdownSerializer } from './markdownSerializer';
-import { generateRefId } from './refIdGenerator';
+import { NodeFinder } from '../../extensions/position/NodeFinder';
+import { createMarkdownSerializer } from '@/shared/utils/markdownSerializer';
+import { generateRefId } from '@/shared/utils/refIdGenerator';
 
 // 从共享 schemas 包导入类型和函数
 import {
@@ -21,7 +21,7 @@ import {
   type DocumentViewMeta,
   DocumentBlockIdSchema,
   buildDocumentView as buildDocumentViewFromSchema
-} from '../../../../packages/schemas/src/document-view';
+} from '@app/schemas';
 
 // 重新导出类型供外部使用
 export type { DocumentViewDocType, DocumentViewMeta };

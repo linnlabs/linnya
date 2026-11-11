@@ -1,3 +1,4 @@
+import type { UiEditorInstance } from '@/shared/types';
 /**
  * @file apps/renderer/domains/conversation/services/orchestration/context/contextHelper.ts
  * @brief 侧边栏对话上下文构造编排
@@ -31,7 +32,7 @@ type PageContextLike = RendererPageContextLike;
  * 使用示例：
  * const { document_fragment } = await getSidebarDocumentContext(editor);
  */
-export async function getSidebarDocumentContext(editor: unknown) {
+export async function getSidebarDocumentContext(editor: UiEditorInstance) {
   if (!editor) return { document_fragment: null };
 
   try {
@@ -39,7 +40,7 @@ export async function getSidebarDocumentContext(editor: unknown) {
 
     // 🎯 使用 aiContextUtils 提供的 DocumentView 能力，保持所有上下文逻辑集中在 aiContextUtils 中
     const { getViewportDocumentView } = await import(
-      '../../../../../shared/utils/aiContextUtils.js'
+      '@/domains/editor/context'
     );
 
     // 获取当前文档 ID
@@ -96,7 +97,7 @@ export async function getSidebarDocumentContext(editor: unknown) {
  * - Host 不理解插件内部快照结构，也不按文档类型分支
  */
 export async function getSidebarDocumentFragmentContext(params: {
-  editor: unknown;
+  editor: UiEditorInstance;
   pageContext?: PageContextLike;
 }): Promise<{ document_fragment: string | null }> {
   const { editor, pageContext } = params;

@@ -54,12 +54,12 @@ export function getAutocompleteContextConfig(): AutocompleteContextConfig {
 interface AiContextResult {
   /**
    * 光标前上下文（可能为空）
-   * - 与 `apps/renderer/shared/utils/aiContextUtils.js#getAutocompleteContext` 返回保持一致
+   * - 与 `apps/renderer/domains/editor/context.ts#getAutocompleteContext` 返回保持一致
    */
   contextBefore: string | null;
   /**
    * 光标后上下文（可能为空）
-   * - 与 `apps/renderer/shared/utils/aiContextUtils.js#getAutocompleteContext` 返回保持一致
+   * - 与 `apps/renderer/domains/editor/context.ts#getAutocompleteContext` 返回保持一致
    */
   contextAfter: string | null;
 }
@@ -84,7 +84,7 @@ export async function getAutocompleteStructuredContext(
 
   try {
     // 🎯 自动补全：使用专门的自动补全函数
-    const { getAutocompleteContext } = await import('@/shared/utils/aiContextUtils.js');
+    const { getAutocompleteContext } = await import('@/domains/editor/context');
     const context: AiContextResult = getAutocompleteContext(
       editor,
       toAutocompleteContextOptions(AUTOCOMPLETE_CONTEXT)

@@ -65,6 +65,10 @@ YAML 头独立保存；打开、外部刷新和撤销到初始状态均保留原
 
 正式 Workspace Markdown 的预览入口是 [`markdown-document-core`](../../../../packages/markdown-document-core/README.md) 的 `workspace-preview` 子路径。文本/图片 renderHTML、根块颜色/内容语义、公式排版、列表编号、引用派生与图表纯能力在该包只有一个实现；本域反向消费公开子路径。预览不通过 `getAllExtensions` 或 History Editor 建立可写实例，也不使用面向 Agent 的 Markdown 代替正式正文。跨文档外壳、加载与打开行为由应用级文档预览负责。
 
+### Markdown 上下文公开入口
+
+[`context.ts`](./context.ts) 提供光标、块、批注和视口上下文，以及 Editor → DocumentView 的转换。实现属于 `shared/context`，只在 Editor 多 feature 间复用；Conversation 通过此窄合同读取文档片段，不回引 Editor UI 或运行时聚合入口。通用 Markdown 序列化与 Web Crypto adapter 仍属 Renderer 基础能力。
+
 ### 块身份
 
 - `rootBlock.attrs.id` 是块实体身份，创建规则由 Editor schema/命令拥有；序列化器不生成、修剪或替换它。

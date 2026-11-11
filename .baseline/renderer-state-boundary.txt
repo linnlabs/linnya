@@ -1,5 +1,3 @@
-SHARED-TO-DOMAIN	apps/renderer/shared/utils/aiContextUtils.js	../../domains/editor/extensions/position/NodeFinder
-SHARED-TO-DOMAIN	apps/renderer/shared/utils/documentViewSerializer.ts	../../domains/editor/extensions/position/NodeFinder
 STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/history/store/historyLoaderStore.ts	../orchestration/historyWindowTailLoader
 STORE-TO-ORCHESTRATION	apps/renderer/domains/conversation/store/assistant/projectionStore.ts	../../services/orchestration/projectionCommitPipeline
 STORE-TO-ORCHESTRATION	apps/renderer/domains/workspace/store/WorkspaceTreeStore.ts	../features/tree-loading/orchestration/createWorkspaceTreeLoader

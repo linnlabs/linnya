@@ -1,11 +1,12 @@
 export interface GenerateTextRequestParams {
   prompt: string;
   prompt_key?: string;
-  model_id?: string;
-  context_before?: string;
-  context_after?: string;
-  current_block_content?: string;
-  document_fragment?: string;
+  /** null 与未传都表示使用当前模型；实现会在请求体中省略空值。 */
+  model_id?: string | null;
+  context_before?: string | null;
+  context_after?: string | null;
+  current_block_content?: string | null;
+  document_fragment?: string | null;
   conversationId?: string;
   turn_id?: string;
   fences?: Array<{
@@ -43,9 +44,11 @@ export interface GenerateTextResponse {
 }
 
 export interface GenerateTextStreamCallbacks {
-  onStart?: () => void;
-  onChunk?: (chunk: string) => void;
-  onComplete?: (fullText: string) => void;
+  onOpen?: () => void;
+  onTextChunk?: (chunk: string) => void;
+  onThought?: (eventData: unknown) => void;
+  onSummarizationStart?: (eventData: unknown) => void;
+  onSummarizationEnd?: (eventData: unknown) => void;
   onError?: (error: Error) => void;
   onStreamEnd?: (eventData?: unknown) => void;
 }

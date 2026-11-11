@@ -73,7 +73,7 @@ export async function getWritingStructuredContext(editor: any) {
 
   try {
     // 🎯 编辑器写作：使用结构化上下文函数
-    const { getDefaultBlockContext } = await import('../../../../../shared/utils/aiContextUtils.js');
+    const { getDefaultBlockContext } = await import('@/domains/editor/context');
     const context = getDefaultBlockContext(editor, toWritingContextOptions(WRITING_CONTEXT));
     
     console.log('[WritingContext] 获取结构化上下文:', {

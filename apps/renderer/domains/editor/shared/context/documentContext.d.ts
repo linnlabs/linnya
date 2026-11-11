@@ -1,0 +1,10 @@
+import type { Editor } from '@tiptap/core';
+import type { BlockContextOptions, DocumentTextContext } from './definitions/documentContext';
+import type { SerializeDocumentViewResult } from './documentViewSerializer';
+export function getContextAroundSelection(editor: Editor | null, options?: { charsLimit?: number }): DocumentTextContext;
+export function getBlockContextByCounts(editor: Editor | null, options?: BlockContextOptions): DocumentTextContext;
+export function getDefaultBlockContext(editor: Editor | null, options: BlockContextOptions): DocumentTextContext;
+export function getAnnotationContext(editor: Editor | null, blockId: string, options: BlockContextOptions): DocumentTextContext | null;
+export function getViewportContext(editor: Editor | null, options: BlockContextOptions): DocumentTextContext;
+export function getViewportDocumentView(editor: Editor | null, options?: BlockContextOptions, extra?: { documentId?: string; maxChars?: number }): Promise<SerializeDocumentViewResult | null>;
+export function getAutocompleteContext(editor: Editor | null, options: BlockContextOptions): DocumentTextContext;

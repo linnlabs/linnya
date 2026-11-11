@@ -1,3 +1,4 @@
+import type { UiEditorInstance } from '@/shared/types';
 import { captureConversationClientNotice } from '../../features/client-notices';
 /**
  * @file apps/renderer/domains/conversation/services/orchestration/chatFlowOrchestrator.ts
@@ -154,7 +155,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
    * - 页面是否显示文档不再由 UI 视图枚举决定；
    * - file-manager 的 activeSession 才是“当前文档 runtime 类型”的权威来源。
    */
-  function getEditorIfEditorView(): unknown {
+  function getEditorIfEditorView(): UiEditorInstance {
     const activeSession = getWorkspaceContextPort().getActiveDocumentSession();
     return activeSession?.type === 'markdown' ? uiStore.getEditor() : null;
   }

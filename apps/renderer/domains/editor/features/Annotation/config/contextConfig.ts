@@ -81,7 +81,7 @@ export async function getAnnotationStructuredContext(editor: any, blockId: strin
 
   try {
     // 🎯 批注：使用结构化上下文函数
-    const { getAnnotationContext } = await import('../../../../../shared/utils/aiContextUtils.js');
+    const { getAnnotationContext } = await import('@/domains/editor/context');
     const config = toAnnotationContextOptions(ANNOTATION_CONTEXT);
     console.log('[AnnotationContext] 使用配置:', config);
     
