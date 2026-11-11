@@ -1,4 +1,4 @@
-import type { Paint, ResolvedShapeGeometry, StrokePaint, TextEffects } from '@plugin/slides/shared';
+import type { ImageAdjust, Paint, ResolvedShapeGeometry, StrokePaint, TextEffects } from '@plugin/slides/shared';
 
 const PAINT_MARKER_PREFIX = 'linnya-paint:';
 
@@ -15,9 +15,11 @@ export interface PptxShapePaintPatch {
 }
 
 /** 图片的形状遮罩：PptxGenJS 只会写 rect / ellipse，导出后把图片的 prstGeom 换成这份几何。 */
-export interface PptxPictureGeometryPatch {
+/** 图片：形状遮罩换掉 prstGeom，调色写进 a:blip；两者共用一个标记。 */
+export interface PptxPicturePatch {
   marker: string;
-  geometry: ResolvedShapeGeometry;
+  geometry?: ResolvedShapeGeometry;
+  adjust?: ImageAdjust;
 }
 
 /** 文字效果：PptxGenJS 写不出渐变、空心和字符阴影，导出后改写该文本框里每个 `a:rPr`。 */
@@ -30,7 +32,7 @@ export interface PptxSlidePaintPatch {
   slideIndex: number;
   background?: Paint;
   shapes: PptxShapePaintPatch[];
-  pictures: PptxPictureGeometryPatch[];
+  pictures: PptxPicturePatch[];
   texts: PptxTextEffectsPatch[];
 }
 
@@ -76,13 +78,13 @@ export function registerPptxShapePaint(
   return marker;
 }
 
-export function registerPptxPictureGeometry(
+export function registerPptxPicture(
   context: PptxPaintCompileContext,
-  geometry: ResolvedShapeGeometry,
+  patch: Omit<PptxPicturePatch, 'marker'>,
 ): string {
   const slide = resolveSlidePatch(context);
   const marker = `${PAINT_MARKER_PREFIX}s${context.slideIndex + 1}-g${slide.pictures.length + 1}`;
-  slide.pictures.push({ marker, geometry });
+  slide.pictures.push({ marker, ...patch });
   return marker;
 }
 

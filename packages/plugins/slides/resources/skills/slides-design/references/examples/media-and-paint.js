@@ -63,6 +63,13 @@ const fadedDemo = createImage({
   transparency: 0.55,
 });
 
+// adjust 调色：duotone 按亮度映射到两色之间，统一一组来源不同的照片；也可写 grayscale / brightness / contrast。
+const toneDemo = createImage({
+  src: "conversation:/images/REPLACE-tone.jpg",
+  fitMode: "cover",
+  adjust: { duotone: ["#12233F", "#E9DCC0"], contrast: 0.1 },
+});
+
 const imageRow = createFrame({ flexDirection: "row", gap: 0.26 });
 imageRow.flex = 1;
 imageRow.marginTop = 0.24;
@@ -71,6 +78,7 @@ imageRow.add(
   makeImageDemo('fitMode "contain"（完整放下）', containDemo),
   makeImageDemo('maskShape "circle" + shadow', portraitDemo),
   makeImageDemo("transparency 0.55（退为背景）", fadedDemo),
+  makeImageDemo("adjust duotone（统一色调）", toneDemo),
 );
 
 const imageBody = createFrame({

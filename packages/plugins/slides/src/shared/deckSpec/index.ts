@@ -82,3 +82,6 @@ export type {
   TextEffects,
   TextStyle,
 } from './slideSpec';
+
+export type { ImageAdjust } from './imageAdjust';
+export { applyImageAdjustToPixels, readImageAdjustInput } from './imageAdjust';

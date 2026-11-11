@@ -301,6 +301,7 @@ function summarizeNodeContent(node: RenderNode): Record<string, unknown> | undef
         flipH: node.flipH,
         flipV: node.flipV,
         shadow: node.shadow,
+        adjust: node.adjust,
       };
     case 'svgGraphic':
       return {

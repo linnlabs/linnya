@@ -19,7 +19,7 @@ import type { PreparedTextLayout } from '../textLayout/definitions/preparedTextL
 import type { PresentationSourceKind } from '../documentSource';
 import type { GeneratedLayoutConstraintEvidence } from '../generatedLayoutConstraints';
 import type { MathFormulaMetrics, MathFormulaRenderProjection } from '../mathFormula';
-import type { RenderSlideSizeInches } from '../deckSpec';
+import type { ImageAdjust, RenderSlideSizeInches } from '../deckSpec';
 import type { RenderImageMaskShape, ResolvedShapeGeometry } from '../shapeGeometry';
 import type { SvgGraphicFit, SvgGraphicViewBox } from '../svgGraphic';
 import type {
@@ -368,6 +368,8 @@ export interface ImageRenderNode extends RenderNodeBase {
   focus?: { x: number; y: number };
   /** 遮罩套在实际画面框上；旧数据是 `rect` / `circle`，新数据是规范化几何。 */
   maskShape?: RenderImageMaskShape;
+  /** 调色；预览在图片加载后按 PowerPoint 的公式算一次像素。 */
+  adjust?: ImageAdjust;
   borderRadius?: number;
   shadow?: RenderShadow;
   alt?: string;

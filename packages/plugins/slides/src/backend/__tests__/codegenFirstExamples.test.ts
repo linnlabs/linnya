@@ -139,6 +139,10 @@ describe('slides-design runnable examples (closed loop)', () => {
   it('media-and-paint.js preserves rich text, Paint, geometry and merged TableCell semantics', async () => {
     const input = await executeAndCompileExample('media-and-paint');
 
+    expect(input.slides[0]?.elements.find((element) => element.type === 'image' && element.adjust)).toEqual(expect.objectContaining({
+      adjust: { duotone: ['#12233F', '#E9DCC0'], contrast: 0.1 },
+    }));
+
     // 第 2 页：图片形状遮罩用 Shape 几何，容器与 Shape 写同一种投影。
     const maskSlide = input.slides[1]?.elements ?? [];
     const masks = maskSlide.flatMap((element) => element.type === 'image' && element.maskShape ? [element.maskShape] : []);

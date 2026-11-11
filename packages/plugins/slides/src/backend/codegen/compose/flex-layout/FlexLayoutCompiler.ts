@@ -32,6 +32,7 @@ import type {
   DirectElementInput,
 } from '../presentationComposeInput.js';
 import { readImageCropInput, readImageFocusInput } from '@plugin/slides/shared/deckSpec/imageFraming';
+import { readImageAdjustInput } from '@plugin/slides/shared/deckSpec/imageAdjust';
 import { parseImageVisualShadow, readThemeSpecInput } from '../inputParsers/styleParsers.js';
 import {
   parseChartDataLike,
@@ -612,6 +613,8 @@ function buildImageElement(node: LayoutImageNode, position: Box): DirectElementI
   if (crop && 'error' in crop) throw new FlexComposeContractError(crop.error);
   const focus = node.focus == null ? undefined : readImageFocusInput(node.focus, 'Image.focus');
   if (focus && 'error' in focus) throw new FlexComposeContractError(focus.error);
+  const adjust = node.adjust == null ? undefined : readImageAdjustInput(node.adjust, 'Image.adjust');
+  if (adjust && 'error' in adjust) throw new FlexComposeContractError(adjust.error);
   return attachSourceSpan({
     type: 'image',
     position,
@@ -624,6 +627,7 @@ function buildImageElement(node: LayoutImageNode, position: Box): DirectElementI
     rounding: node.rounding,
     transparency: node.transparency,
     shadow: node.shadow,
+    adjust: adjust?.value,
     rotate: node.rotate,
     flipH: node.flipH,
     flipV: node.flipV,

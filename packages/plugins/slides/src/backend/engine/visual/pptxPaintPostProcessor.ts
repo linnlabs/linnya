@@ -5,12 +5,12 @@ import {
   type Document as XmlDocument,
   type Element as XmlElement,
 } from '@xmldom/xmldom';
-import { DEFAULT_SHADOW_OPACITY, type GradientStop, type Paint, type ResolvedShapeGeometry, type StrokePaint, type TextEffects } from '@plugin/slides/shared';
+import { DEFAULT_SHADOW_OPACITY, type GradientStop, type ImageAdjust, type Paint, type ResolvedShapeGeometry, type StrokePaint, type TextEffects } from '@plugin/slides/shared';
 import { normalizePptxShadowAngle } from './presentationVisualDefaults';
 import { presetShapeNameToPptxName } from '../shape/shapeNameRegistry';
 import type {
   PptxPaintPatchPlan,
-  PptxPictureGeometryPatch,
+  PptxPicturePatch,
   PptxShapePaintPatch,
   PptxTextEffectsPatch,
 } from './pptxPaintPatchPlan';
@@ -49,7 +49,7 @@ export async function applyPptxPaintPatches(
       slideMutated = true;
     }
     for (const picturePatch of slidePatch.pictures) {
-      replaceMarkedPictureGeometry(doc, picturePatch);
+      applyMarkedPicturePatch(doc, picturePatch);
       slideMutated = true;
     }
     for (const textPatch of slidePatch.texts) {
@@ -175,7 +175,7 @@ function applyTextEffectsToRunProperties(doc: XmlDocument, properties: XmlElemen
   for (const element of leading) properties.insertBefore(element, first);
 }
 
-function replaceMarkedPictureGeometry(doc: XmlDocument, patch: PptxPictureGeometryPatch): void {
+function applyMarkedPicturePatch(doc: XmlDocument, patch: PptxPicturePatch): void {
   const candidates: XmlElement[] = [
     ...Array.from(doc.getElementsByTagName('p:pic')),
     ...Array.from(doc.getElementsByTagName('pic')),
@@ -184,22 +184,51 @@ function replaceMarkedPictureGeometry(doc: XmlDocument, patch: PptxPictureGeomet
   for (const picture of candidates) {
     const nonVisual = firstElement(picture, ['p:cNvPr', 'cNvPr']);
     if (nonVisual?.getAttribute('name') !== patch.marker) continue;
-    const shapeProperties = firstElement(picture, ['p:spPr', 'spPr']);
-    if (!shapeProperties) {
-      throw new Error(`PPTX Paint adapter: picture marker ${patch.marker} 缺少 spPr。`);
-    }
-    const current = findDirectChild(shapeProperties, ['a:prstGeom', 'prstGeom', 'a:custGeom', 'custGeom']);
-    const geometry = createGeometryElement(doc, patch.geometry);
-    if (current) shapeProperties.replaceChild(geometry, current);
-    else {
-      const transform = findDirectChild(shapeProperties, ['a:xfrm', 'xfrm']);
-      shapeProperties.insertBefore(geometry, transform?.nextSibling ?? shapeProperties.firstChild);
-    }
+    if (patch.geometry) replacePictureGeometry(doc, picture, patch.marker, patch.geometry);
+    if (patch.adjust) appendPictureAdjust(doc, picture, patch.marker, patch.adjust);
     nonVisual.setAttribute('name', `Picture ${nonVisual.getAttribute('id') ?? ''}`.trim());
     return;
   }
 
   throw new Error(`PPTX Paint adapter 找不到 picture marker ${patch.marker}。`);
+}
+
+function replacePictureGeometry(doc: XmlDocument, picture: XmlElement, marker: string, geometryValue: ResolvedShapeGeometry): void {
+  const shapeProperties = firstElement(picture, ['p:spPr', 'spPr']);
+  if (!shapeProperties) {
+    throw new Error(`PPTX Paint adapter: picture marker ${marker} 缺少 spPr。`);
+  }
+  const current = findDirectChild(shapeProperties, ['a:prstGeom', 'prstGeom', 'a:custGeom', 'custGeom']);
+  const geometry = createGeometryElement(doc, geometryValue);
+  if (current) shapeProperties.replaceChild(geometry, current);
+  else {
+    const transform = findDirectChild(shapeProperties, ['a:xfrm', 'xfrm']);
+    shapeProperties.insertBefore(geometry, transform?.nextSibling ?? shapeProperties.firstChild);
+  }
+}
+
+/**
+ * 调色写成 a:blip 的子元素，PowerPoint 按先后顺序作用：先 a:lum（亮度对比），再 a:grayscl 或 a:duotone。
+ * 它们与 PptxGenJS 写的 a:alphaModFix 同属一组无序选择，只需排在 a:extLst 之前。
+ */
+function appendPictureAdjust(doc: XmlDocument, picture: XmlElement, marker: string, adjust: ImageAdjust): void {
+  const blip = firstElement(picture, ['a:blip', 'blip']);
+  if (!blip) throw new Error(`PPTX Paint adapter: picture marker ${marker} 缺少 a:blip。`);
+  const effects: XmlElement[] = [];
+  if (adjust.brightness != null || adjust.contrast != null) {
+    const luminance = doc.createElement('a:lum');
+    if (adjust.brightness) luminance.setAttribute('bright', String(Math.round(adjust.brightness * OOXML_PERCENT_UNIT)));
+    if (adjust.contrast) luminance.setAttribute('contrast', String(Math.round(adjust.contrast * OOXML_PERCENT_UNIT)));
+    effects.push(luminance);
+  }
+  if (adjust.grayscale) effects.push(doc.createElement('a:grayscl'));
+  if (adjust.duotone) {
+    const duotone = doc.createElement('a:duotone');
+    for (const color of adjust.duotone) duotone.appendChild(createColorElement(doc, color));
+    effects.push(duotone);
+  }
+  const extension = findDirectChild(blip, ['a:extLst', 'extLst']);
+  for (const effect of effects) blip.insertBefore(effect, extension);
 }
 
 /** 与 Shape 同一份规范化几何：预设写 prstGeom（PowerPoint 默认调节值），其余写 custGeom。 */

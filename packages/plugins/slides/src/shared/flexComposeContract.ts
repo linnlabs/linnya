@@ -576,9 +576,22 @@ export interface LayoutImageConfig extends FlexProps, LayoutAuthoringTargetConfi
   /** 0 表示不透明，1 表示完全透明。 */
   transparency?: number;
   shadow?: LayoutImageVisualShadowInput;
+  /** 调色：去色、双色调、亮度对比。导出后仍是 PowerPoint 里可改可去掉的图片颜色与校正。 */
+  adjust?: LayoutImageAdjust;
   rotate?: number;
   flipH?: boolean;
   flipV?: boolean;
+}
+
+export interface LayoutImageAdjust {
+  /** 去色成灰度；不能与 duotone 同写。 */
+  grayscale?: boolean;
+  /** 双色调 [暗部色, 亮部色]：按亮度在两色之间映射，常用于统一一组照片或做单色调背景。 */
+  duotone?: [string, string];
+  /** 亮度，-1–1，0 不变；0.2 已经明显变亮。 */
+  brightness?: number;
+  /** 对比度，-1 到小于 1，0 不变；正值更硬，负值更灰。 */
+  contrast?: number;
 }
 
 export interface LayoutImageNode extends LayoutImageConfig, LayoutSourceMetadata {

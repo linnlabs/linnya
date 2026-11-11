@@ -59,6 +59,7 @@ import {
   normalizeMathFormulaSource,
 } from '@plugin/slides/shared';
 import { readImageCropInput, readImageFocusInput } from '@plugin/slides/shared/deckSpec/imageFraming';
+import { readImageAdjustInput, type ImageAdjust } from '@plugin/slides/shared/deckSpec/imageAdjust';
 import { isRecord, isNonEmptyString, isFiniteNumber } from './inputParsers/typeGuards.js';
 import {
   createParseContext,
@@ -130,6 +131,7 @@ export interface DirectElementInput extends LayoutChartControls {
   rounding?: boolean;
   transparency?: number;
   shadow?: ImageVisualShadow;
+  adjust?: ImageAdjust;
   rotate?: number;
   flipH?: boolean;
   flipV?: boolean;
@@ -544,6 +546,10 @@ function parseElementInput(
     ? readImageFocusInput(value.focus, `${prefix}.focus`)
     : undefined;
   if (imageFocus && 'error' in imageFocus) return { error: imageFocus.error };
+  const imageAdjust = type === 'image' && value.adjust != null
+    ? readImageAdjustInput(value.adjust, `${prefix}.adjust`)
+    : undefined;
+  if (imageAdjust && 'error' in imageAdjust) return { error: imageAdjust.error };
 
   let geometry: ShapeGeometrySpec | undefined;
   let maskShape: ImageMaskShapeSpec | undefined;
@@ -629,6 +635,7 @@ function parseElementInput(
     rounding: typeof value.rounding === 'boolean' ? value.rounding : undefined,
     transparency: isFiniteNumber(value.transparency) ? value.transparency : undefined,
     shadow: normalizedImageShadow && 'value' in normalizedImageShadow ? normalizedImageShadow.value : undefined,
+    adjust: imageAdjust?.value,
     rotate: isFiniteNumber(value.rotate) ? value.rotate : undefined,
     flipH: typeof value.flipH === 'boolean' ? value.flipH : undefined,
     flipV: typeof value.flipV === 'boolean' ? value.flipV : undefined,
@@ -827,6 +834,7 @@ function buildStructuredElement(el: DirectElementInput): StructuredElement {
         rounding: el.rounding,
         transparency: el.transparency,
         shadow: el.shadow,
+        adjust: el.adjust,
         rotate: el.rotate,
         flipH: el.flipH,
         flipV: el.flipV,
@@ -919,6 +927,7 @@ function buildFreeformElement(el: DirectElementInput): FreeformElement {
         rounding: el.rounding,
         transparency: el.transparency,
         shadow: el.shadow,
+        adjust: el.adjust,
         rotate: el.rotate,
         flipH: el.flipH,
         flipV: el.flipV,

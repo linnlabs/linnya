@@ -7,6 +7,7 @@ import type { LayoutReplay } from '../generatedLayoutReplay';
  */
 
 import type { SlideBox } from './boxes';
+import type { ImageAdjust } from './imageAdjust';
 import type { SlideSourceSpan } from '../documentSource';
 import type { GeneratedLayoutConstraintEvidence } from '../generatedLayoutConstraints';
 import type { MathFormulaSource } from '../mathFormula';
@@ -133,6 +134,8 @@ export interface ImageVisualOptions {
   rounding?: boolean;
   transparency?: number;
   shadow?: ImageVisualShadow;
+  /** 调色；公式与 PowerPoint 的 a:lum / a:grayscl / a:duotone 一致。 */
+  adjust?: ImageAdjust;
   rotate?: number;
   flipH?: boolean;
   flipV?: boolean;
@@ -261,6 +264,7 @@ export type StructuredElement =
       rounding?: boolean;
       transparency?: number;
       shadow?: ImageVisualShadow;
+      adjust?: ImageAdjust;
       rotate?: number;
       flipH?: boolean;
       flipV?: boolean;
@@ -380,6 +384,7 @@ export interface FreeformImageElement extends FreeformElementBase {
   rounding?: boolean;
   transparency?: number;
   shadow?: ImageVisualShadow;
+  adjust?: ImageAdjust;
   rotate?: number;
   flipH?: boolean;
   flipV?: boolean;

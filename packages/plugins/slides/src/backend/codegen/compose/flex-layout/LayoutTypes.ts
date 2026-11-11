@@ -18,6 +18,7 @@ export type {
   LayoutAuthoringTargetConfig,
   LayoutBorderInput,
   LayoutTextStroke,
+  LayoutImageAdjust,
   LayoutChartConfig,
   LayoutChartDataLike,
   LayoutChartLegendPosition,

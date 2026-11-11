@@ -151,6 +151,36 @@ describe('多个闭合子路径：镂空与分离笔画', () => {
   });
 });
 
+describe('图片调色：PowerPoint 里仍是可改的颜色与校正', () => {
+  it('亮度对比写 a:lum，双色调写 a:duotone，顺序是先校正后着色；与遮罩共用一个标记', async () => {
+    const { deck, nodes, xml } = await compileSlide([image({
+      maskShape: 'hexagon',
+      adjust: { duotone: ['#12233F', '#F3D98B'], brightness: 0.1, contrast: -0.2 },
+    })]);
+
+    expect(deck.slides[0].spec.elements[0]).toEqual(expect.objectContaining({
+      adjust: { duotone: ['#12233F', '#F3D98B'], brightness: 0.1, contrast: -0.2 },
+    }));
+    expect(onlyNode(nodes, 'image')).toEqual(expect.objectContaining({ adjust: expect.objectContaining({ brightness: 0.1 }) }));
+    const [picture] = pictures(xml);
+    expect(picture).toContain('<a:prstGeom prst="hexagon">');
+    expect(picture).toMatch(/<a:blip [^>]*>[\s\S]*<a:lum bright="10000" contrast="-20000"\/><a:duotone><a:srgbClr val="12233F"\/><a:srgbClr val="F3D98B"\/><\/a:duotone>/);
+    expect(xml).not.toContain('linnya-paint:');
+  });
+
+  it('圆形遮罩仍走 rounding，去色单独登记补丁', async () => {
+    const { xml } = await compileSlide([image({ maskShape: 'circle', adjust: { grayscale: true } })]);
+    const [picture] = pictures(xml);
+    expect(picture).toContain('prst="ellipse"');
+    expect(picture).toContain('<a:grayscl/>');
+  });
+
+  it('写错直接报错', async () => {
+    expect(await compileError([image({ adjust: { grayscale: true, duotone: ['#000000', '#FFFFFF'] } })])).toMatch(/只写一个/);
+    expect(await compileError([image({ adjust: { contrast: 1 } })])).toMatch(/contrast/);
+  });
+});
+
 describe('Shape / View 的投影：与图片同一种写法', () => {
   it('Shape.shadow 的 angle/distance 换成直角偏移；PPTX 的 0° 和 0 模糊按原值写出', async () => {
     const { deck, nodes, xml } = await compileSlide([{

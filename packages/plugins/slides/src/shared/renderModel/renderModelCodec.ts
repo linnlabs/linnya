@@ -15,6 +15,7 @@ import {
   isSlidesAuthoringEditProjection,
   isSlidesAuthoringObjectRef,
 } from '../authoringEditing';
+import { isImageAdjust } from '../deckSpec/imageAdjust';
 
 const NODE_BASE_KEYS = [
   'id',
@@ -614,6 +615,7 @@ function isImageRenderNode(value: Record<string, unknown>): boolean {
       'crop',
       'focus',
       'maskShape',
+      'adjust',
       'borderRadius',
       'shadow',
       'alt',
@@ -626,6 +628,7 @@ function isImageRenderNode(value: Record<string, unknown>): boolean {
     && isOptional(value.crop, isCrop)
     && isOptional(value.focus, isFocusPoint)
     && isOptional(value.maskShape, shape => isOneOf(shape, ['rect', 'circle']) || isResolvedShapeGeometry(shape))
+    && isOptional(value.adjust, isImageAdjust)
     && isOptional(value.borderRadius, isFiniteNumber)
     && isOptional(value.shadow, isRenderShadow)
     && isOptional(value.alt, isString)

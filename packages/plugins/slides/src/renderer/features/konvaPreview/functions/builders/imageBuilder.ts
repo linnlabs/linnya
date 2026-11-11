@@ -12,6 +12,7 @@ import {
 } from '@plugin/slides/shared/shapeGeometry';
 import { resolveKonvaImageFitConfig, type KonvaImageFitConfig } from '../konvaVisualMapping';
 import { PPT_ROUND_RECT_DEFAULT_ADJUSTMENT, toKonvaShadowBlur } from './shapeBuilder';
+import { resolveAdjustedImageSource } from '../konvaImageAdjust';
 
 const POINTS_TO_PX = INCHES_TO_PX / 72;
 
@@ -63,7 +64,7 @@ export function buildMaskedImageShapeConfig(
   const flipH = node.flipH === true;
   const flipV = node.flipV === true;
   const paint = loadedImage
-    ? buildMaskPatternFill(loadedImage, fit, flipH, flipV)
+    ? buildMaskPatternFill(loadedImage, fit, flipH, flipV, node)
     : {
       fill: SLIDES_RENDER_COLORS.imagePlaceholderFill,
       stroke: SLIDES_RENDER_COLORS.imagePlaceholderStroke,
@@ -105,7 +106,7 @@ export function buildImageNodeConfig(
     ...fit,
     x: node.flipH ? fit.x + fit.width : fit.x,
     y: node.flipV ? fit.y + fit.height : fit.y,
-    image: loadedImage.image,
+    image: resolveAdjustedImageSource(loadedImage.image, node.adjust),
     scaleX: node.flipH ? -1 : 1,
     scaleY: node.flipV ? -1 : 1,
     ...buildImageShadowConfig(node),
@@ -133,12 +134,14 @@ function buildMaskPatternFill(
   fit: KonvaImageFitConfig,
   flipH: boolean,
   flipV: boolean,
+  node: ImageRenderNode,
 ) {
   const source = fit.crop ?? { x: 0, y: 0, width: loadedImage.naturalWidth, height: loadedImage.naturalHeight };
   const scaleX = fit.width / source.width;
   const scaleY = fit.height / source.height;
   return {
-    fillPatternImage: loadedImage.image,
+    // Konva 的类型只写了 HTMLImageElement，运行时 createPattern 同样接受调色后的画布。
+    fillPatternImage: resolveAdjustedImageSource(loadedImage.image, node.adjust) as HTMLImageElement,
     fillPatternRepeat: 'no-repeat',
     fillPatternX: flipH ? fit.width : 0,
     fillPatternY: flipV ? fit.height : 0,
