@@ -203,8 +203,10 @@ onBeforeUnmount(() => observer.disconnect());
 const edge = computed(() => props.editing.selected.value);
 const anchors = computed(() => {
   if (props.camera.zoom < 0.3) return [];
-  const target = props.editing.state.preview.value?.target,
-    cards = props.card && !props.card.locked ? [props.card] : [];
+  const target = props.editing.state.preview.value?.target;
+  // 分区不提供连线起点：它是底，不是可连线的卡。
+  const card = props.card?.type === 'section' ? null : props.card,
+    cards: CanvasCard[] = card && !card.locked ? [card] : [];
   if (target && !cards.some(card => card.id === target.id)) cards.push(target);
   const inset = props.editing.anchorInset(props.camera.zoom);
   return cards.flatMap(card =>

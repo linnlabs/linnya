@@ -3,7 +3,8 @@ const messages = {
   canvas_self_connection: '不支持自连线，请连接两张不同的卡片。',
   canvas_duplicate_connection: '同方向连线已存在，请更新原连线而非重复创建。',
   canvas_group_cycle: '分组不能成环，请检查 parentId。',
-  canvas_group_parent_missing: '分组父卡不存在，请重新读取画布。',
+  canvas_group_parent_missing: '所属分区不存在，请重新读取画布。',
+  canvas_section_parent_invalid: '只能放进分区，分区本身不能再放进别的分区。',
   canvas_placement_target_missing:
     '放置目标不存在，请重新 read/show 确认 near/after/in 的卡片编号。',
   canvas_agent_coordinates: 'Agent 不能指定坐标，请使用 near/side 或连接卡片。',

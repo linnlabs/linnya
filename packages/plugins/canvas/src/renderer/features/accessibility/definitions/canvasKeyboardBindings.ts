@@ -1,6 +1,7 @@
 import type { CanvasNavigationDirection, CanvasShortcut } from './canvasKeyboard';
 export const canvasModifiedKeys: Readonly<Partial<Record<string, CanvasShortcut>>> = {
   d: 'duplicate',
+  g: 'group',
   a: 'all',
   '0': 'actual',
   '1': 'fit',

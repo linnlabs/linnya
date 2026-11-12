@@ -376,3 +376,61 @@ it('reports who changed what since a sequence or time, with last-modified source
     db.prepare('UPDATE canvas_documents SET sequence = sequence - 600 WHERE node_id = ?').run(id);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+it('keeps named sections as one-level containers that fit their members through the semantic CLI', async () => {
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os'); const path = await import('node:path');
+  const { executeCanvasCliCommand, createCanvasPluginCli, formatCanvasCliInputError } = await import('@plugin/canvas/backend-test-support');
+  const root = await mkdtemp(path.join(tmpdir(), 'canvas-section-test-'));
+  const id = runtime.create({ projectId, parentId: null, name: '分区.canvas' });
+  const services: import('@plugin/canvas/backend-test-support').CanvasCliServices = { runtimeFor: () => runtime, referencesFor: () => runtime.references,
+    capabilities: { computation: { async check() { throw new Error('not used'); }, async layout() { throw new Error('not used'); }, async dispose() {} } as never,
+      measurement: { async measureBatch(request) { return request.cards.map(card => ({ ref: card.ref, width: card.width, height: 120 })); }, async measure(request) { return { width: request.width, height: 120 }; } },
+      rendering: { async render() { throw new Error('not used'); } } } };
+  const context = { hostContext: { databaseService: { getDb: () => db } }, projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal };
+  const cli = createCanvasPluginCli((command, execution, directory) => executeCanvasCliCommand(command, execution, directory, services), formatCanvasCliInputError);
+  let request = 0;
+  const apply = async (operations: unknown[]) => {
+    await writeFile(path.join(root, 'ops.json'), JSON.stringify(operations));
+    const prepared = cli.prepare({ argv: ['apply', 'workspace:/分区.canvas', '--ops-file', 'ops.json', '--request-id', `r${++request}`], invocationId: 'invocation', conversationRoot: root });
+    const result = prepared.status === 'completed' ? prepared.result : await prepared.plan.execute(context);
+    return { exitCode: result.exitCode, value: JSON.parse(result.stdout) };
+  };
+  const element = (cardId: string) => runtime.read(id).elements.find(item => item.id === cardId)! as import('@plugin/canvas/shared').CanvasCard;
+  const inside = (cardId: string, sectionId: string) => {
+    const card = element(cardId), section = element(sectionId);
+    return card.x >= section.x && card.y >= section.y + 48 && card.x + card.width <= section.x + section.width && card.y + card.height <= section.y + section.height;
+  };
+  try {
+    const created = await apply([{ op: 'add', type: 'section', title: '预算', ref: '$budget' }, { op: 'add', text: '房租上限', section: '$budget' }, { op: 'add', text: '一次性支出', section: '$budget' },
+      { op: 'add', type: 'section', title: '房源', ref: '$homes', near: '$budget' }, { op: 'add', text: '朝阳两居', section: '$homes' }, { op: 'add', text: '区外的卡', near: '$homes' }]);
+    expect(created.exitCode, JSON.stringify(created.value)).toBe(0);
+    expect(element('c1')).toMatchObject({ type: 'section', data: { title: '预算' }, parentId: null });
+    expect([element('c2').parentId, element('c3').parentId, element('c5').parentId, element('c6').parentId]).toEqual(['c1', 'c1', 'c4', null]);
+    // 分区自动长到包住成员，成员不越界；区外的卡不压在任何分区上。
+    for (const [card, section] of [['c2', 'c1'], ['c3', 'c1'], ['c5', 'c4']]) expect(inside(card, section), `${card} in ${section}`).toBe(true);
+    const loose = element('c6'), homes = element('c4');
+    expect(loose.x >= homes.x + homes.width || loose.y >= homes.y + homes.height || loose.x + loose.width <= homes.x).toBe(true);
+    const read = (await apply([])).value;
+    expect(read).toBeDefined();
+    const projected = runtime.read(id);
+    expect(projected.elements.filter(item => item.type === 'section')).toHaveLength(2);
+    const { executeCanvasCliCommand: execute } = await import('@plugin/canvas/backend-test-support');
+    const text = (await execute({ kind: 'read', path: 'workspace:/分区.canvas' }, context as never, root, services) as { text: string }).text;
+    expect(text).toMatch(/- \[c1\] section[^\n]*\n  分区：预算\n  - \[c2\] text[^\n]*\n    房租上限/);
+    // 只改归属：移到别的分区会排进该区，移出分区会挪到原区外。
+    const moved = await apply([{ op: 'update', id: 'c3', revision: element('c3').revision, section: 'c4' }, { op: 'update', id: 'c2', revision: element('c2').revision, section: null }]);
+    expect(moved.exitCode, JSON.stringify(moved.value)).toBe(0);
+    expect(element('c3').parentId).toBe('c4'); expect(inside('c3', 'c4')).toBe(true);
+    expect(element('c2').parentId).toBeNull(); expect(inside('c2', 'c1')).toBe(false);
+    const renamed = await apply([{ op: 'update', id: 'c1', revision: element('c1').revision, title: '开销' }]);
+    expect(renamed.exitCode).toBe(0); expect(element('c1')).toMatchObject({ data: { title: '开销' } });
+    const wrong = await apply([{ op: 'update', id: 'c2', revision: element('c2').revision, title: 'x' }]); expect(wrong.value.error).toMatchObject({ code: 'invalid_arguments', message: 'title 只适用于分区。' });
+    const nested = { message: '只能放进分区，分区本身不能再放进别的分区。' };
+    expect((await apply([{ op: 'add', type: 'section', title: '套娃', section: 'c4' }])).value.error).toMatchObject(nested);
+    expect((await apply([{ op: 'add', text: '放进卡里', section: 'c2' }])).value.error).toMatchObject(nested);
+    // 删除分区只删分区：成员留在原位并离开分区。
+    const before = { x: element('c5').x, y: element('c5').y };
+    expect((await apply([{ op: 'delete', id: 'c4', revision: element('c4').revision }])).exitCode).toBe(0);
+    expect(element('c5')).toMatchObject({ parentId: null, ...before }); expect(element('c3').parentId).toBeNull();
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

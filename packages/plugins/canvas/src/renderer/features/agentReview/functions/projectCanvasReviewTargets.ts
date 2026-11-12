@@ -74,7 +74,11 @@ export function projectCanvasReviewTargets(
             ? canvasText('canvas.review.describe.deleted')
             : canvasText('canvas.review.describe.updated', {
                 fields: canvasReviewFields(
-                  change.fields.filter(field => !['x', 'y', 'order', 'parentId'].includes(field))
+                  change.fields.filter(
+                    field =>
+                      !['x', 'y', 'order', 'parentId'].includes(field) &&
+                      !(card.type === 'section' && (field === 'width' || field === 'height'))
+                  )
                 ),
               });
       return [

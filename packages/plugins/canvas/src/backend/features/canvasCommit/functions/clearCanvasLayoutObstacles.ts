@@ -26,8 +26,12 @@ export function clearCanvasLayoutObstacles(
     );
     const bounds = canvasBounds(cards);
     if (!bounds) continue;
+    // 成员所在的分区包着成员本身，不能当作要避开的障碍。
+    const parents = new Set(cards.flatMap(card => (card.parentId ? [card.parentId] : [])));
     const occupied: CanvasRectangle[] = [...rows.values()].flatMap(row =>
-      row.element.type !== 'edge' && !ids.has(row.element.id) ? [row.element] : []
+      row.element.type !== 'edge' && !ids.has(row.element.id) && !parents.has(row.element.id)
+        ? [row.element]
+        : []
     );
     occupied.push(...reserved);
     const candidates = (['right', 'left', 'bottom', 'top'] as const).map(side =>

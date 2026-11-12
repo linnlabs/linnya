@@ -11,6 +11,7 @@ const typeKeys = {
   text: 'canvas.a11y.text',
   image: 'canvas.a11y.image',
   document: 'canvas.a11y.document',
+  section: 'canvas.a11y.section',
   edge: 'canvas.a11y.edge',
 } as const;
 /** 有界摘要供读屏与键盘选择共用：按画布阅读顺序列出并报第几张，正文投影沿用搜索规则，绝不以内部文档ID代替标题。 */

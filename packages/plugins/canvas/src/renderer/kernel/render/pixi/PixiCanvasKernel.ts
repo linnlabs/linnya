@@ -51,6 +51,7 @@ import type { CanvasIdentityAtlas } from './CanvasIdentityAtlas';
 import { CanvasFrameDrawing } from './CanvasFrameDrawing';
 import { canvasStandaloneChrome } from './canvasStandaloneChrome';
 import { createCanvasCardTextureCaches } from './createCanvasCardTextureCaches';
+import * as sectionScene from './canvasSectionScene';
 
 const TEXTURE_BUDGET_BYTES = 256 * 1024 * 1024;
 
@@ -59,6 +60,7 @@ export class PixiCanvasKernel implements CanvasKernel {
   private readonly world = new Container({ isRenderGroup: true });
   private readonly lines = new CanvasLines();
   private readonly cardLayer = new Container();
+  private readonly sectionLayer = new Container();
   private readonly backgrounds = createCanvasCardBackgrounds();
   private readonly views = new Map<CanvasCardId, CanvasCardView>();
   private installingElements = false;
@@ -148,6 +150,7 @@ export class PixiCanvasKernel implements CanvasKernel {
       this.selectionProjection.guideLayer,
       this.selectionProjection.selectionLayer
     );
+    this.app.stage.addChild(this.sectionLayer);
     this.app.stage.addChild(this.lines.below, this.world, this.lines.above, this.mapLabels.sprite);
     const caches = createCanvasCardTextureCaches({
       textureBudgetBytes: TEXTURE_BUDGET_BYTES,
@@ -244,15 +247,14 @@ export class PixiCanvasKernel implements CanvasKernel {
   }
   private lineMask(): CanvasRectangle[] {
     return [...this.presentation.readRegions()].flatMap(([id, regions]) =>
-      this.scene.opaque(id) ? regions : []
+      this.scene.opaque(id) && this.cards.get(id)?.type !== 'section' ? regions : []
     );
   }
   private redrawEdges(): void {
     this.lines.setElements(this.edges, this.cards, this.lineMask());
   }
   private refreshCamera(styleChanged = false, edgesChanged = false): void {
-    this.world.position.set(this.camera.x, this.camera.y);
-    this.world.scale.set(this.camera.zoom);
+    sectionScene.placeCanvasWorldLayers([this.world, this.sectionLayer], this.camera);
     this.presentation.projectCards(styleChanged);
     this.updateLabels();
     if (styleChanged) this.selectionProjection.drawSelection(this.camera.zoom);
@@ -284,7 +286,7 @@ export class PixiCanvasKernel implements CanvasKernel {
         this.installCard(card, byId.get(card.id));
       }
       this.targets = new Map(nextCards.map(card => [card.id, card]));
-      this.ordered = nextCards.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+      this.ordered = sectionScene.orderCanvasSceneCards(nextCards);
       const started = performance.now();
       for (const plan of plans) {
         if (plan.kind === 'remove') continue;
@@ -372,6 +374,7 @@ export class PixiCanvasKernel implements CanvasKernel {
         readDestroyed: () => this.drawing.isDestroyed(),
       },
       layer: this.cardLayer,
+      sectionLayer: this.sectionLayer,
       bitmaps: this.bitmaps,
       identities: this.identities,
       mapLabels: this.mapLabels,
@@ -613,13 +616,7 @@ export class PixiCanvasKernel implements CanvasKernel {
   hitTest(point: CanvasPoint): CanvasCard | null {
     return this.spatial.hitTest(point, card => {
       const view = this.views.get(card.id);
-      if (!view || view.container.alpha <= 0) return false;
-      return (
-        point.x >= view.container.x &&
-        point.y >= view.container.y &&
-        point.x <= view.container.x + card.width * view.container.scale.x &&
-        point.y <= view.container.y + card.height * view.container.scale.y
-      );
+      return view ? sectionScene.hitsCanvasCardView(card, view, point) : false;
     });
   }
   readCard(id: CanvasCardId): CanvasCard | null {

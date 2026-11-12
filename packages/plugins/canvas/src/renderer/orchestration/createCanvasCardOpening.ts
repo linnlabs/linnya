@@ -11,6 +11,8 @@ export function createCanvasCardOpening(options: {
   readonly prepare: (id: CanvasCardId) => Promise<'ready' | 'unavailable'>;
   readonly openText: (id: CanvasCardId, signal: AbortSignal) => Promise<void>;
   readonly openMedia: (card: CanvasCard) => Promise<void> | undefined;
+  /** 分区没有正文：打开就是就地改标题。 */
+  readonly openSection: (id: CanvasCardId) => void;
   readonly unavailable: () => void;
   readonly opened?: (id: CanvasCardId) => void;
 }) {
@@ -28,6 +30,10 @@ export function createCanvasCardOpening(options: {
       options.kernel.finishTransitions([id]);
       const card = options.readCard(id);
       if (!card) return;
+      if (card.type === 'section') {
+        options.openSection(id);
+        return;
+      }
       if (card.type !== 'text') {
         await options.openMedia(card);
         return;

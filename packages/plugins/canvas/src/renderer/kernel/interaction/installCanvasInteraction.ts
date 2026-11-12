@@ -40,9 +40,18 @@ class CanvasPointerInteraction {
         ? [gesture.id]
         : [];
   }
+  /** 拖动分区时区内可见的卡一起预览；屏外成员由提交方按同一位移补齐。 */
+  private movingIds(gesture: CanvasPointerGesture): readonly CanvasCardId[] {
+    const ids = this.selectedIds(gesture),
+      selected = new Set(ids);
+    const members = this.kernel
+      .visibleCards()
+      .filter(card => card.parentId && selected.has(card.parentId) && !selected.has(card.id));
+    return members.length ? [...ids, ...members.map(card => card.id)] : ids;
+  }
   private beginMove(gesture: CanvasPointerGesture) {
     if (gesture.origins) return;
-    const ids = this.selectedIds(gesture);
+    const ids = this.movingIds(gesture);
     // 真正越过拖动阈值时冻结当前视觉位置；不能用已提交的动画终点替代鼠标下的卡片。
     this.kernel.setDragPreview(ids, 0, 0);
     gesture.origins = ids.flatMap(id => {
@@ -133,10 +142,9 @@ class CanvasPointerInteraction {
     const world = this.kernel.screenToWorld(current);
     if (gesture.id && !gesture.locked) {
       this.beginMove(gesture);
-      const ids = this.selectedIds(gesture);
-      this.onIntent({ kind: 'select', ids, additive: false });
+      this.onIntent({ kind: 'select', ids: this.selectedIds(gesture), additive: false });
       const delta = this.movement(event, gesture);
-      this.kernel.setDragPreview(ids, delta.x, delta.y);
+      this.kernel.setDragPreview(this.movingIds(gesture), delta.x, delta.y);
       return;
     }
     if (gesture.id || gesture.edgeId) return;
@@ -152,7 +160,8 @@ class CanvasPointerInteraction {
     const ids = this.kernel
       .visibleCards()
       .filter(card =>
-        event.metaKey || event.ctrlKey
+        // 分区必须整块框住才选中，否则从区内空白处起框就会把整个分区带上。
+        event.metaKey || event.ctrlKey || card.type === 'section'
           ? card.x >= rectangle.x &&
             card.y >= rectangle.y &&
             card.x + card.width <= right &&

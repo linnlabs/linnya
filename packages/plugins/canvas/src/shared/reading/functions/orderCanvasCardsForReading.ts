@@ -76,11 +76,7 @@ function readTreeOrder(
   return order.length === ids.length ? order : null;
 }
 
-/**
- * 画布唯一阅读顺序：Tab、搜索结果、读屏序号、选区与 Agent 投影共用。
- * 按版面从左上到右下按行读；连线成树的一组卡作为一块参与排行，块内从根开始一支读完再读下一支。
- */
-export function orderCanvasCardsForReading<T extends CanvasCard>(
+function orderLayout<T extends CanvasCard>(
   cards: readonly T[],
   connections: readonly CanvasCardConnection[]
 ): T[] {
@@ -99,4 +95,31 @@ export function orderCanvasCardsForReading<T extends CanvasCard>(
     items.push({ ...bounds, tie: tree[0], ids: tree });
   }
   return readRows(items).flatMap(item => item.ids.map(id => byId.get(id)!));
+}
+
+/**
+ * 画布唯一阅读顺序：Tab、搜索结果、读屏序号、选区与 Agent 投影共用。
+ * 按版面从左上到右下按行读；连线成树的一组卡作为一块参与排行，块内从根开始一支读完再读下一支。
+ * 分区整体作为一块参与排行：先读分区本身，再按同样规则读完区内成员，才轮到区外的下一项。
+ */
+export function orderCanvasCardsForReading<T extends CanvasCard>(
+  cards: readonly T[],
+  connections: readonly CanvasCardConnection[]
+): T[] {
+  const sections = new Set(cards.filter(card => card.type === 'section').map(card => card.id));
+  if (!sections.size) return orderLayout(cards, connections);
+  const members = new Map<CanvasCardId, T[]>(),
+    top: T[] = [];
+  for (const card of cards) {
+    if (card.parentId && sections.has(card.parentId)) {
+      const list = members.get(card.parentId);
+      if (list) list.push(card);
+      else members.set(card.parentId, [card]);
+    } else top.push(card);
+  }
+  return orderLayout(top, connections).flatMap(card =>
+    card.type === 'section'
+      ? [card, ...orderLayout(members.get(card.id) ?? [], connections)]
+      : [card]
+  );
 }

@@ -17,6 +17,7 @@ export function createCanvasPageCommands(options: {
     ['fit', surface => surface.fit()],
     ['edit', surface => surface.edit()],
     ['duplicate', surface => surface.actions.duplicate()],
+    ['section', surface => surface.sections.group(surface.selection.ids.value)],
     ['copy', surface => surface.clipboard.copy()],
     ['cut', surface => surface.clipboard.cut()],
     ['paste', surface => surface.clipboard.paste()],

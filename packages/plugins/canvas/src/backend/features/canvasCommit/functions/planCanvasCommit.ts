@@ -14,6 +14,7 @@ import { mutateCanvasElement } from './mutateCanvasElement';
 import { validateCanvasCommandContent } from './validateCanvasContent';
 import { validateCanvasGraph } from './validateCanvasGraph';
 import { clearCanvasLayoutObstacles } from './clearCanvasLayoutObstacles';
+import { fitCanvasPlanSections } from './fitCanvasPlanSections';
 
 export function planCanvasCommit(input: {
   readonly state: CanvasCommitState;
@@ -59,6 +60,7 @@ export function planCanvasCommit(input: {
       });
     }
   }
+  if (plan.changes.length) fitCanvasPlanSections(plan);
   validateCanvasGraph([...plan.elements.values()].map(row => row.element));
   const result: CanvasCommitPlan = {
     origin: input.origin,

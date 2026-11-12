@@ -25,6 +25,8 @@ export function readCanvasElementText(element: CanvasElement): string {
       return element.data.caption || element.data.alt;
     case 'document':
       return '文档';
+    case 'section':
+      return element.data.title;
     case 'edge':
       return element.label;
   }

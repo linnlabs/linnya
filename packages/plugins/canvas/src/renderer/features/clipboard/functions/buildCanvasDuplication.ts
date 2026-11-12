@@ -44,6 +44,7 @@ export function buildCanvasDuplication({
         heightMode: card.data.heightMode,
       };
     if (card.type === 'image') return { ...placement, op: 'addImage', data: card.data };
+    if (card.type === 'section') return { ...placement, op: 'addSection', title: card.data.title };
     return { ...placement, op: 'addDocument', data: card.data };
   });
   const edges = elements.filter(

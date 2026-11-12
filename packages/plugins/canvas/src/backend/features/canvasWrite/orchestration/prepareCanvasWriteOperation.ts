@@ -1,4 +1,9 @@
-import { CanvasCommandSchema, canvasImageHeight, type CanvasCommand } from '../../../../shared';
+import {
+  CANVAS_SECTION_DEFAULT_HEIGHT,
+  CanvasCommandSchema,
+  canvasImageHeight,
+  type CanvasCommand,
+} from '../../../../shared';
 import type { CanvasCliOperation } from '../../../../shared/cli/definitions/canvasCli';
 import { CanvasWriteFailure } from '../definitions/canvasWriteFailure';
 import type { CanvasWritePorts } from '../definitions/canvasWritePorts';
@@ -20,8 +25,19 @@ async function prepareAddition(
     width: operation.width,
     color: operation.color,
     near: operation.near ?? operation.after ?? operation.in,
-    side: operation.side ?? 'right',
+    side: operation.side,
+    parentId: operation.section,
   };
+  if (operation.type === 'section')
+    return {
+      command: CanvasCommandSchema.parse({
+        op: 'addSection',
+        ...placement,
+        height: CANVAS_SECTION_DEFAULT_HEIGHT,
+        title: operation.title,
+        ...(operation.members ? { members: operation.members } : {}),
+      }),
+    };
   if (operation.type === 'text') {
     const content = await ports.parseText(operation.text);
     return {

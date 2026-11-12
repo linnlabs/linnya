@@ -106,3 +106,37 @@ it('连续任务复用真实线程；运行中取消终止旧线程再执行下�
     expect(await readStarts()).toBe(first + 1);
   } finally { await runtime.dispose(); }
 }, 15_000);
+it('按分区排布：区内连线卡成行、无连线卡成格，分区收紧后按阅读顺序紧挨着，区外卡避开分区', async () => {
+  const section = (index: number, x: number, y: number) => CanvasCardSchema.parse({ ...identity, id: `c${index}`, type: 'section', order: String(index).padStart(6, '0'),
+    x, y, width: 360, height: 240, parentId: null, data: { title: `区${index}` } });
+  const member = (index: number, parent: number, x: number, y: number) => CanvasCardSchema.parse({ ...card(index), x, y, parentId: `c${parent}` });
+  const link = (index: number, from: number, to: number) => CanvasEdgeSchema.parse({ ...identity, id: `e${index}`, type: 'edge', lineStyle: 'curve', direction: 'forward', label: '',
+    from: { kind: 'card', cardId: `c${from}`, side: 'auto' }, to: { kind: 'card', cardId: `c${to}`, side: 'auto' } });
+  // 新增时的临时位置故意拉得很开：排布结果必须与它无关。
+  const snapshot = CanvasSnapshotSchema.parse({ schemaVersion: 1, documentId: 'sections', sequence: 3, elements: [
+    section(1, 0, 0), member(2, 1, 9000, 40), member(3, 1, 200, 8000), member(4, 1, -4000, 300), member(5, 1, 50, 50),
+    section(6, 20000, 0), member(7, 6, 20100, 100), member(8, 6, 20400, 5000),
+    card(9), link(1, 2, 3), link(2, 3, 4)] });
+  const runtime = createCanvasComputationRuntime({ workerPath });
+  try {
+    const result = await runtime.layout({ requestId: 'sections', snapshot, algorithm: 'layered', direction: 'right' });
+    const after = applyPositions(snapshot, result), at = (id: string) => after.find(element => element.id === id)!;
+    const inside = (child: string, parent: string) => { const c = at(child), p = at(parent);
+      return c.x >= p.x + 24 && c.y >= p.y + 48 && c.x + c.width <= p.x + p.width - 24 + 0.5 && c.y + c.height <= p.y + p.height - 24 + 0.5; };
+    for (const [child, parent] of [['c2', 'c1'], ['c3', 'c1'], ['c4', 'c1'], ['c5', 'c1'], ['c7', 'c6'], ['c8', 'c6']]) expect(inside(child, parent), `${child} in ${parent}`).toBe(true);
+    // 连成链的三张卡在同一行从左到右；无连线的 c5 排在链下方。
+    expect(new Set(['c2', 'c3', 'c4'].map(id => at(id).y + at(id).height / 2)).size).toBe(1);
+    expect(at('c2').x).toBeLessThan(at('c3').x); expect(at('c3').x).toBeLessThan(at('c4').x);
+    expect(at('c5').y).toBeGreaterThan(Math.max(...['c2', 'c3', 'c4'].map(id => at(id).y + at(id).height)));
+    // 分区收紧：成员外框加内边距正好是分区大小。
+    const tight = (parent: string, members: string[]) => { const p = at(parent);
+      expect(Math.min(...members.map(id => at(id).x))).toBeCloseTo(p.x + 24); expect(Math.max(...members.map(id => at(id).x + at(id).width))).toBeCloseTo(p.x + p.width - 24);
+      expect(Math.min(...members.map(id => at(id).y))).toBeCloseTo(p.y + 48); expect(Math.max(...members.map(id => at(id).y + at(id).height))).toBeCloseTo(p.y + p.height - 24); };
+    tight('c1', ['c2', 'c3', 'c4', 'c5']); tight('c6', ['c7', 'c8']);
+    // 两区紧挨着：不重叠，间隔只有一道窄缝。
+    const [a, b] = [at('c1'), at('c6')];
+    expect(canvasRectanglesOverlap(a, b)).toBe(false);
+    expect(Math.min(Math.abs(b.x - (a.x + a.width)), Math.abs(b.y - (a.y + a.height)))).toBeCloseTo(24);
+    for (const id of ['c1', 'c6']) expect(canvasRectanglesOverlap(at('c9'), at(id))).toBe(false);
+  } finally { await runtime.dispose(); }
+});

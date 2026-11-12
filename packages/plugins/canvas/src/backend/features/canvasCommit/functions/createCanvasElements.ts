@@ -1,52 +1,109 @@
 import { generateKeyBetween } from 'fractional-indexing';
 import {
+  canvasSectionContentBounds,
   CanvasCardIdSchema,
   CanvasEdgeIdSchema,
   CanvasElementSchema,
+  type CanvasCard,
   type CanvasElementId,
   type CanvasEndpoint,
+  type CanvasSectionCard,
 } from '../../../../shared';
 import type { CanvasCommand } from '../../../../shared/changeset/definitions/canvasCommands';
 import type { CanvasWorkingPlan } from '../definitions/canvasWorkingPlan';
 import { findCanvasPlacement } from './findCanvasPlacement';
+import { placeCanvasCardInSection } from './placeCanvasCardInSection';
+import { amendCanvasPlanElement } from './fitCanvasPlanSections';
 import { appendCanvasPlanChange, resolveCanvasPlanElement } from './canvasPlanChanges';
 import type { CanvasOperationResult } from '../../../../shared';
 import { CanvasCommitFailure } from '../definitions/canvasCommitFailure';
 
-type CardCommand = Extract<CanvasCommand, { op: 'addText' | 'addImage' | 'addDocument' }>;
+type CardCommand = Extract<
+  CanvasCommand,
+  { op: 'addText' | 'addImage' | 'addDocument' | 'addSection' }
+>;
+
+function resolveSection(plan: CanvasWorkingPlan, command: CardCommand): CanvasSectionCard | null {
+  if (!command.parentId) return null;
+  const id = resolveCanvasPlanElement(plan, command.parentId),
+    parent = id ? plan.elements.get(id)?.element : undefined;
+  if (!parent) throw new CanvasCommitFailure('canvas_group_parent_missing');
+  if (parent.type !== 'section' || command.op === 'addSection')
+    throw new CanvasCommitFailure('canvas_section_parent_invalid');
+  return parent;
+}
+
+/** 归入新分区的卡：锁定的不动它的归属，分区不能再进分区。 */
+function resolveMembers(plan: CanvasWorkingPlan, ids: readonly string[]): CanvasCard[] {
+  return ids.flatMap(value => {
+    const id = resolveCanvasPlanElement(plan, value),
+      card = id ? plan.elements.get(id)?.element : undefined;
+    if (!card || card.type === 'edge')
+      throw new CanvasCommitFailure('canvas_placement_target_missing');
+    if (card.type === 'section') throw new CanvasCommitFailure('canvas_section_parent_invalid');
+    return card.locked ? [] : [card];
+  });
+}
+
+function resolveNear(plan: CanvasWorkingPlan, command: CardCommand): CanvasCard | undefined {
+  if (!command.near) return undefined;
+  const id = resolveCanvasPlanElement(plan, command.near),
+    near = id ? plan.elements.get(id)?.element : undefined;
+  if (!near || near.type === 'edge')
+    throw new CanvasCommitFailure('canvas_placement_target_missing');
+  return near;
+}
 
 function cardPosition(plan: CanvasWorkingPlan, command: CardCommand) {
-  if (plan.actor.source.kind === 'agent' && (command.x !== undefined || command.y !== undefined)) {
+  const agent = plan.actor.source.kind === 'agent';
+  if (agent && (command.x !== undefined || command.y !== undefined))
     throw new CanvasCommitFailure('canvas_agent_coordinates');
-  }
-  const nearId = command.near ? resolveCanvasPlanElement(plan, command.near) : undefined;
-  const near = nearId ? plan.elements.get(nearId)?.element : undefined;
-  if (command.near && (!near || near.type === 'edge'))
-    throw new CanvasCommitFailure('canvas_placement_target_missing');
-  if (plan.actor.source.kind === 'user' && command.x !== undefined && command.y !== undefined)
+  const near = resolveNear(plan, command);
+  if (!agent && command.x !== undefined && command.y !== undefined)
     return { x: command.x, y: command.y };
-  const cards = [...plan.elements.values()].flatMap(row =>
-    row.element.type === 'edge' ? [] : [row.element]
+  const section = resolveSection(plan, command);
+  if (section && !near) return placeCanvasCardInSection(plan, command, section);
+  const occupied = [...plan.elements.values()].flatMap(row =>
+    row.element.type === 'edge' || row.element.id === section?.id ? [] : [row.element]
   );
   return findCanvasPlacement({
     width: command.width,
     height: command.height,
-    near: near?.type === 'edge' ? undefined : near,
+    near,
     side: command.side ?? 'right',
-    occupied: [...cards, ...plan.reservedRectangles],
+    occupied: [...occupied, ...plan.reservedRectangles],
   });
+}
+
+const cardTypes = {
+  addText: 'text',
+  addImage: 'image',
+  addDocument: 'document',
+  addSection: 'section',
+} as const;
+function cardData(command: CardCommand) {
+  if (command.op === 'addText')
+    return {
+      contentVersion: 1,
+      content: command.content,
+      heightMode: command.heightMode ?? 'auto',
+    };
+  return command.op === 'addSection' ? { title: command.title } : command.data;
+}
+/** 带成员新建的分区围着成员建，不另找空位；其余按放置规则找位置。 */
+function cardFrame(plan: CanvasWorkingPlan, command: CardCommand, members: readonly CanvasCard[]) {
+  const around = canvasSectionContentBounds(members);
+  return around ?? { ...cardPosition(plan, command), width: command.width, height: command.height };
 }
 
 export function createCanvasCard(plan: CanvasWorkingPlan, command: CardCommand): CanvasElementId {
   if (command.ref && plan.refs[command.ref]) throw new CanvasCommitFailure('canvas_duplicate_ref');
-  const position = cardPosition(plan, command);
-  const data =
-    command.op === 'addText'
-      ? { contentVersion: 1, content: command.content, heightMode: command.heightMode ?? 'auto' }
-      : command.data;
+  const section = resolveSection(plan, command);
+  const members = command.op === 'addSection' ? resolveMembers(plan, command.members ?? []) : [];
+  const frame = cardFrame(plan, command, members);
   const element = CanvasElementSchema.parse({
     id: `c${plan.nextCard++}`,
-    type: command.op === 'addText' ? 'text' : command.op === 'addImage' ? 'image' : 'document',
+    type: cardTypes[command.op],
     schemaVersion: 1,
     revision: 1,
     order: generateKeyBetween(plan.lastOrder, null),
@@ -56,16 +113,14 @@ export function createCanvasCard(plan: CanvasWorkingPlan, command: CardCommand):
     updatedBy: plan.actor.source,
     createdAt: plan.now,
     updatedAt: plan.now,
-    ...position,
-    width: command.width,
-    height: command.height,
-    parentId: command.parentId
-      ? CanvasCardIdSchema.parse(resolveCanvasPlanElement(plan, command.parentId))
-      : null,
-    data,
+    ...frame,
+    parentId: section ? CanvasCardIdSchema.parse(section.id) : null,
+    data: cardData(command),
   });
   appendCanvasPlanChange(plan, null, element, Object.keys(element));
   if (command.ref) plan.refs[command.ref] = element.id;
+  for (const member of members)
+    amendCanvasPlanElement(plan, member.id, { parentId: element.id }, ['parentId']);
   return element.id;
 }
 

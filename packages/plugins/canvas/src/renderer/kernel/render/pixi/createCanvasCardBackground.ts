@@ -75,9 +75,20 @@ export function createCanvasCardShadow(): Texture {
   });
 }
 
+/** 分区底：铺满几何矩形的平面染纸，直角、无边框、无投影，按分区颜色整体着色。 */
+export function createCanvasSectionBackground(): Texture {
+  return drawTexture(BACKGROUND_SIDE, context => {
+    context.fillStyle = '#fff';
+    context.beginPath();
+    context.roundRect(0, 0, BACKGROUND_SIDE, BACKGROUND_SIDE, CANVAS_CARD_CORNER_RADIUS.paper);
+    context.fill();
+  });
+}
+
 /** 在挂载主画布前创建纸面资源，保持构造失败时尚未安装 DOM/上下文监听。 */
 export function createCanvasCardBackgrounds() {
   return {
+    section: createCanvasSectionBackground(),
     paper: createCanvasCardBackground('paper'),
     card: createCanvasCardBackground('card'),
     shadow: createCanvasCardShadow(),

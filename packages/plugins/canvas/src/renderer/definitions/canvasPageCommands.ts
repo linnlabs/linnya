@@ -26,4 +26,6 @@ export interface CanvasPageCommandSurface
     'selected' | 'patch' | 'reverse' | 'beginLabel'
   >;
   readonly session: { readonly state: Pick<Surface['session']['state'], 'snapshot'> };
+  readonly sections: Pick<Surface['sections'], 'group'>;
+  readonly selection: { readonly ids: Pick<Surface['selection']['ids'], 'value'> };
 }

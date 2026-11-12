@@ -36,3 +36,32 @@ export function readCanvasCardCssPalette(
     muted: css(palette.muted),
   };
 }
+
+// 分区是比卡纸更淡的染纸底：浅色在页面底与卡纸之间，深色略亮于页面底；标题用同色系弱墨。
+const sectionLight: Readonly<Record<CanvasColor, number>> = {
+  white: 0xf0f0ee,
+  red: 0xfbf1ee,
+  orange: 0xfbf3ea,
+  yellow: 0xfaf5e6,
+  green: 0xf2f7ef,
+  cyan: 0xeef7fa,
+  purple: 0xf7f1f7,
+};
+const sectionDark: Readonly<Record<CanvasColor, number>> = {
+  white: 0x2e2e2c,
+  red: 0x352b28,
+  orange: 0x342c24,
+  yellow: 0x332d22,
+  green: 0x2c3128,
+  cyan: 0x283033,
+  purple: 0x312b32,
+};
+export function readCanvasSectionPalette(
+  color: CanvasColor,
+  isDark: boolean
+): { readonly fill: number; readonly title: number } {
+  return {
+    fill: (isDark ? sectionDark : sectionLight)[color],
+    title: readCanvasCardPalette(color, isDark).muted,
+  };
+}

@@ -7,6 +7,7 @@ export const canvasKernelText: CanvasKernelText = {
   imageTitle: () => canvasText('canvas.card.image'),
   blankTitle: () => canvasText('canvas.card.blank'),
   documentTitle: () => canvasText('canvas.card.document'),
+  sectionTitle: () => canvasText('canvas.card.section'),
   restoring: () => canvasText('canvas.render.restoring'),
   titlesLimited: () => canvasText('canvas.render.titlesLimited'),
   software: () => canvasText('canvas.render.software'),

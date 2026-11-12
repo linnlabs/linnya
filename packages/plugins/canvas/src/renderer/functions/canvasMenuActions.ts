@@ -134,6 +134,7 @@ function cardContextItems(): readonly CustomSelectOption<string>[] {
     { value: 'copy', text: canvasText('canvas.menu.copy'), shortcut: '⌘C' },
     { value: 'cut', text: canvasText('canvas.menu.cut'), shortcut: '⌘X' },
     { value: 'duplicate', text: canvasText('canvas.selection.duplicate'), shortcut: '⌘D' },
+    { value: 'section', text: canvasText('canvas.menu.section'), shortcut: '⌘G' },
   ];
 }
 function emptyContextItems(): readonly CustomSelectOption<string>[] {

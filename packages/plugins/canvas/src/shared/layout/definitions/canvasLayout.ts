@@ -48,7 +48,15 @@ export const CanvasLayoutMoveSchema = z
     op: z.literal('update'),
     id: CanvasCardIdSchema,
     baseRevision: z.number().int().nonnegative(),
-    patch: z.object({ x: z.number().finite(), y: z.number().finite() }).strict(),
+    // 宽高只用于分区：按分区排布后收紧到刚好包住成员。
+    patch: z
+      .object({
+        x: z.number().finite(),
+        y: z.number().finite(),
+        width: z.number().finite().positive().optional(),
+        height: z.number().finite().positive().optional(),
+      })
+      .strict(),
   })
   .strict();
 export const CanvasLayoutComputationSchema = z

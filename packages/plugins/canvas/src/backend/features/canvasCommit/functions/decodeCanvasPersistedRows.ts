@@ -14,7 +14,7 @@ const rowSchema = z.object({
 });
 const versions = z.record(z.string(), z.number().int().nonnegative());
 const origins = z.record(z.string(), z.string());
-const knownTypes = new Set(['text', 'image', 'document', 'edge']);
+const knownTypes = new Set(['text', 'image', 'document', 'section', 'edge']);
 
 /** 解码与隔离属于读取规则，仓储只取原始列；绝不把未知数据改写成占位节点。 */
 export function decodeCanvasPersistedRows(values: readonly unknown[]) {

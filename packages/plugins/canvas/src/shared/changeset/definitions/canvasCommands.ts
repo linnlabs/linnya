@@ -7,6 +7,7 @@ import {
   CanvasElementIdSchema,
   CanvasEndpointSchema,
   CanvasImageCardSchema,
+  CanvasSectionCardSchema,
   CanvasTextCardSchema,
   CanvasTextDocumentSchema,
 } from '../../model/definitions/canvasElement';
@@ -27,6 +28,7 @@ export const CanvasPatchSchema = z
         CanvasTextCardSchema.shape.data,
         CanvasImageCardSchema.shape.data,
         CanvasDocumentCardSchema.shape.data,
+        CanvasSectionCardSchema.shape.data,
       ])
       .optional(),
     from: CanvasEndpointSchema.optional(),
@@ -71,6 +73,15 @@ export const CanvasCommandSchema = z.discriminatedUnion('op', [
       ...placement,
       op: z.literal('addDocument'),
       data: CanvasDocumentCardSchema.shape.data,
+    })
+    .strict(),
+  z
+    .object({
+      ...placement,
+      op: z.literal('addSection'),
+      title: CanvasSectionCardSchema.shape.data.shape.title,
+      /** 已有的卡（ID 或本批 ref）一并归入新分区；分区围着它们建。 */
+      members: z.array(z.string().min(1)).max(500).optional(),
     })
     .strict(),
   z

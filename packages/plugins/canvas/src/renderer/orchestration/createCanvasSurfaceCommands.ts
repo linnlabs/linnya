@@ -21,7 +21,7 @@ export function createCanvasSurfaceCommands({
   const { camera } = state;
   const { kernel } = rendering;
   const { creation, finish, movement } = drafts;
-  const { connections, actions, opening, select, createTree } = commands;
+  const { connections, actions, opening, select, createTree, sections } = commands;
   const { draftParticipants, changedDraft } = bindings;
   const { fit, zoom } = viewport;
   const discardDraft = createCanvasDraftDiscard({
@@ -77,6 +77,7 @@ export function createCanvasSurfaceCommands({
     createTree,
     zoomValue: () => camera.value.zoom,
     duplicate: () => actions.duplicate(),
+    group: () => sections.group(selection.ids.value),
     undo,
     remove,
     edit,

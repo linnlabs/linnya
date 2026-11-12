@@ -2,6 +2,7 @@ import {
   canvasTextPrefix,
   orderCanvasCardsForReading,
   readCanvasCardConnections,
+  readCanvasSectionMembers,
 } from '../../../../shared';
 import type { CanvasCard, CanvasEdge, CanvasSnapshot } from '../../../../shared';
 import type { CanvasProjectionContext } from '../definitions/canvasProjection';
@@ -15,13 +16,15 @@ import {
 function projectCardSummary(
   card: CanvasCard,
   context: CanvasProjectionContext,
-  summary: boolean
+  summary: boolean,
+  indent = ''
 ): readonly string[] {
   const body = projectCanvasCardBody(card, context),
-    limit = summary ? 100 : 800;
+    limit = summary ? 100 : 800,
+    inner = `${indent}  `;
   return [
-    `- [${card.id}] ${card.type}〔${card.color}〕 revision=${card.revision}${card.locked ? '〔已锁定〕' : ''} ${describeCanvasModification(card)}`,
-    `  ${canvasTextPrefix(body, limit).replace(/\n/g, '\n  ')}${body.length > limit ? `\n  … 已截断，用 show ${card.id} 读取全文。` : ''}`,
+    `${indent}- [${card.id}] ${card.type}〔${card.color}〕 revision=${card.revision}${card.locked ? '〔已锁定〕' : ''} ${describeCanvasModification(card)}`,
+    `${inner}${canvasTextPrefix(body, limit).replace(/\n/g, `\n${inner}`)}${body.length > limit ? `\n${inner}… 已截断，用 show ${card.id} 读取全文。` : ''}`,
   ];
 }
 
@@ -37,7 +40,10 @@ export function projectCanvasDocument(
     (element): element is CanvasCard => element.type !== 'edge'
   );
   const edges = snapshot.elements.filter(element => element.type === 'edge');
-  const groups = groupCanvasProjectionRegions(cards),
+  // 方位按区外的卡与分区本身划分；成员紧跟所属分区缩进列出。
+  const sections = readCanvasSectionMembers(snapshot.elements),
+    members = new Set([...sections.values()].flat().map(card => card.id));
+  const groups = groupCanvasProjectionRegions(cards.filter(card => !members.has(card.id))),
     connections = readCanvasCardConnections(snapshot.elements);
   const lines = [
     '这是 Linnya 画布，不是 JSON Canvas。修改使用 linnya-canvas，先读取 Skill canvas。',
@@ -56,8 +62,9 @@ export function projectCanvasDocument(
     const group = groups.get(region);
     if (!group) continue;
     lines.push(`\n## ${region}`);
-    for (const card of orderCanvasCardsForReading(group, connections)) {
-      lines.push(...projectCardSummary(card, context, summary));
+    const inRegion = group.flatMap(card => [card, ...(sections.get(card.id) ?? [])]);
+    for (const card of orderCanvasCardsForReading(inRegion, connections)) {
+      lines.push(...projectCardSummary(card, context, summary, members.has(card.id) ? '  ' : ''));
     }
   }
   lines.push('\n## 连线');

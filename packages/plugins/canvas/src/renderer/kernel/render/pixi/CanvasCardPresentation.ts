@@ -5,8 +5,11 @@ import {
   CANVAS_CARD_SHADOW_SLICE,
 } from './createCanvasCardBackground';
 import {
+  CANVAS_SECTION_HEADER,
+  CANVAS_SECTION_PADDING,
   readCanvasElementText,
   readCanvasCardPalette,
+  readCanvasSectionPalette,
   type CanvasCard,
   type CanvasCardId,
   type CanvasRectangle,
@@ -40,10 +43,44 @@ export class CanvasCardPresentation {
     const views = [...this.options.retiringViews.values(), ...this.options.views.values()].sort(
       (a, b) => (a.card.order < b.card.order ? -1 : a.card.order > b.card.order ? 1 : 0)
     );
-    for (let i = 0; i < views.length; i++) this.options.layer.setChildIndex(views[i].container, i);
+    // 分区与卡片各在自己的层里排序，下标按层分别计数。
+    const index = new Map<Container, number>();
+    for (const view of views) {
+      const layer = view.container.parent;
+      if (!layer) continue;
+      const next = index.get(layer) ?? 0;
+      layer.setChildIndex(view.container, next);
+      index.set(layer, next + 1);
+    }
+  }
+  /** 分区只画染纸底和标题：没有投影、正文位图或图片裁切。 */
+  private updateSectionView(view: CanvasCardView): void {
+    const { card, shadow, background, body, label, container } = view;
+    container.visible = this.exposedIds.has(card.id);
+    background.texture = this.options.backgrounds.section;
+    background.width = card.width;
+    background.height = card.height;
+    shadow.visible = false;
+    body.visible = false;
+    const palette = readCanvasSectionPalette(
+      card.color,
+      this.options.context.readAppearance().dark
+    );
+    background.tint = palette.fill;
+    label.tint = palette.title;
+    label.visible = this.identityVisible(card);
+    this.options.identities.setActive(label, container.visible && label.visible);
+    const bounds = this.identityBounds(card);
+    label.position.set(bounds.x, bounds.y);
+    view.lodAlpha = 1;
+    this.options.applyMotion(view);
   }
 
   updateView(view: CanvasCardView): void {
+    if (view.card.type === 'section') {
+      this.updateSectionView(view);
+      return;
+    }
     const { card, shadow, background, body, label, container } = view;
     const wasVisible = container.visible && body.visible;
     container.visible = this.exposedIds.has(card.id);
@@ -98,6 +135,13 @@ export class CanvasCardPresentation {
     );
   }
   private identityBounds(card: CanvasCard): CanvasRectangle {
+    if (card.type === 'section')
+      return {
+        x: CANVAS_SECTION_PADDING,
+        y: 14,
+        width: Math.max(1, card.width - CANVAS_SECTION_PADDING * 2),
+        height: Math.min(CANVAS_SECTION_HEADER - 14, card.height),
+      };
     const x = Math.min(14, card.width / 8),
       y = Math.min(12, card.height / 8);
     return { x, y, width: card.width - x * 2, height: card.height - y * 2 };
@@ -105,7 +149,11 @@ export class CanvasCardPresentation {
   identityTitle(card: CanvasCard): string {
     const source =
       canvasTitlePrefix(this.title(card), 120) ||
-      (card.type === 'image' ? this.options.text.imageTitle() : this.options.text.blankTitle());
+      (card.type === 'image'
+        ? this.options.text.imageTitle()
+        : card.type === 'section'
+          ? this.options.text.sectionTitle()
+          : this.options.text.blankTitle());
     const width = this.identityBounds(card).width,
       key = `${width}:${source}`,
       existing = this.identityTitles.get(key);
@@ -157,7 +205,7 @@ export class CanvasCardPresentation {
     body.visible = false;
     const label = this.options.identities.create(this.identityTitle(card));
     container.addChild(shadow, background, body, label);
-    this.options.layer.addChild(container);
+    (card.type === 'section' ? this.options.sectionLayer : this.options.layer).addChild(container);
     const view: CanvasCardView = {
       card,
       container,
@@ -346,14 +394,16 @@ export class CanvasCardPresentation {
       return card && this.visible(card) ? [card] : [];
     });
   }
+  /** 分区没有正文或媒体内容，只画底色和标题，不进入内容与位图管线。 */
   renderableCards(): readonly CanvasCard[] {
-    return this.exposed;
+    return this.exposed.filter(card => card.type !== 'section');
   }
   rasterCards(): readonly CanvasCard[] {
+    const cards = this.renderableCards();
     return this.options.context.readAppearance().overview === 'thumbnails' ||
       this.options.context.readCamera().zoom >= 0.3
-      ? this.exposed
-      : this.exposed.filter(card => this.keepsThumbnail(card));
+      ? cards
+      : cards.filter(card => this.keepsThumbnail(card));
   }
   readVisibleCardRegions(id: CanvasCardId): readonly CanvasRectangle[] {
     const card = this.options.cards.get(id);
@@ -396,6 +446,7 @@ export class CanvasCardPresentation {
     this.identityTitles.clear();
   }
   destroyBackgrounds(): void {
+    this.options.backgrounds.section.destroy(true);
     this.options.backgrounds.paper.destroy(true);
     this.options.backgrounds.card.destroy(true);
     this.options.backgrounds.shadow.destroy(true);

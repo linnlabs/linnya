@@ -24,8 +24,12 @@ export interface CanvasCardPresentationContext {
   readDestroyed(): boolean;
 }
 export interface CanvasCardPresentationOptions {
-  readonly text: Pick<CanvasKernelText, 'imageTitle' | 'blankTitle' | 'documentTitle'>;
+  readonly text: Pick<
+    CanvasKernelText,
+    'imageTitle' | 'blankTitle' | 'documentTitle' | 'sectionTitle'
+  >;
   readonly backgrounds: {
+    readonly section: Texture;
     readonly paper: Texture;
     readonly card: Texture;
     readonly shadow: Texture;
@@ -33,6 +37,8 @@ export interface CanvasCardPresentationOptions {
   readonly identityContext: CanvasRenderingContext2D;
   readonly context: CanvasCardPresentationContext;
   readonly layer: Container;
+  /** 分区画在连线与卡片之下的独立底层。 */
+  readonly sectionLayer: Container;
   readonly bitmaps: CanvasBitmapCache;
   readonly identities: CanvasIdentityAtlas;
   readonly mapLabels: CanvasMapLabels;

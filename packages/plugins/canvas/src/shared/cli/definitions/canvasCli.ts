@@ -18,7 +18,10 @@ const placement = {
   side: z.enum(['right', 'left', 'top', 'bottom']).optional(),
   width: z.number().finite().positive().max(4096).default(280),
   color: CanvasColorSchema.optional(),
+  /** 放进哪个分区（分区 ID 或本批 ref）。 */
+  section: CanvasLayoutTargetSchema.optional(),
 };
+const sectionTitle = z.string().max(200);
 export const CanvasArrangeOptionsSchema = CanvasArrangementOptionsSchema;
 export const CanvasCliOperationSchema = z.union([
   z
@@ -49,6 +52,16 @@ export const CanvasCliOperationSchema = z.union([
     .strict(),
   z
     .object({
+      ...placement,
+      op: z.literal('add'),
+      type: z.literal('section'),
+      title: sectionTitle,
+      /** 把已有的卡归进这个新分区；分区围着它们建，卡片不挪位置。 */
+      members: z.array(CanvasLayoutTargetSchema).min(1).max(500).optional(),
+    })
+    .strict(),
+  z
+    .object({
       op: z.literal('update'),
       id,
       revision: z.number().int().positive(),
@@ -59,6 +72,14 @@ export const CanvasCliOperationSchema = z.union([
       width: z.number().finite().positive().max(4096).optional(),
       caption: z.string().optional(),
       alt: z.string().optional(),
+      /** 分区标题。 */
+      title: sectionTitle.optional(),
+      /** 移进某分区；null 移出分区。 */
+      section: z
+        .string()
+        .regex(/^c[1-9]\d*$/)
+        .nullable()
+        .optional(),
       label: z.string().optional(),
       direction: CanvasEdgeSchema.shape.direction.optional(),
       lineStyle: CanvasEdgeSchema.shape.lineStyle.optional(),

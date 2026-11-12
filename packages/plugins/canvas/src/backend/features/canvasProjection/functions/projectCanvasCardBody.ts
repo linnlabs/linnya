@@ -32,6 +32,8 @@ export function projectCanvasCardBody(card: CanvasCard, context: CanvasProjectio
       return context.documentPaths.get(card.data.documentId) ?? '〔文档当前不可访问〕';
     case 'image':
       return `图片：${card.data.caption || card.data.alt || '未命名图片'}`;
+    case 'section':
+      return `分区：${card.data.title || '未命名分区'}`;
   }
 }
 

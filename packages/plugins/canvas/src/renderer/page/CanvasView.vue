@@ -48,6 +48,13 @@
       @locate="surface.locateEndpoint($event)"
       @focus-canvas="surface?.focus()"
     />
+    <CanvasSectionTitleEditor
+      v-if="surface && !readonly"
+      :editing="surface.sections"
+      :camera="camera"
+      :run="run"
+      @focus-canvas="surface?.focus()"
+    />
     <CanvasConnectionLabelPreview
       v-if="surface"
       :editing="surface.connections"
@@ -234,6 +241,7 @@ import {
 import { createCanvasImageEditing, CanvasImageEditingControls } from '../features/imageEditing';
 import { createCanvasSearch, CanvasSearchPanel } from '../features/canvasSearch';
 import { CanvasConnectionControls, CanvasConnectionLabelPreview } from '../features/connections';
+import { CanvasSectionTitleEditor } from '../features/sectionEditing';
 import { CanvasLayoutControls } from '../features/layoutCommands';
 import { CANVAS_RESIZE_EDGES } from '../features/cardResizing';
 import {

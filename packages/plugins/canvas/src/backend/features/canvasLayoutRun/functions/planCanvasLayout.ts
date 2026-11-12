@@ -14,6 +14,7 @@ import { resolveCanvasLayoutScope } from './resolveCanvasLayoutScope';
 import { layoutCanvasGrid } from './layoutCanvasGrid';
 import { layoutCanvasTree } from './layoutCanvasTree';
 import { placeCanvasLayoutApart } from './placeCanvasLayoutApart';
+import { layoutCanvasSections } from './layoutCanvasSections';
 
 /** 每张卡只属于一个排布组；未显式分组的选中卡形成最后一组。 */
 function resolveCanvasLayoutGroups(
@@ -41,9 +42,18 @@ export async function planCanvasLayout(
 ): Promise<CanvasLayoutPlan> {
   const scope = resolveCanvasLayoutScope(request);
   const diagnostics: CanvasLayoutDiagnostic[] = [...scope.diagnostics];
-  const groups = resolveCanvasLayoutGroups(scope.cards, request.groups);
-  const positions: CanvasLayoutPosition[] = [],
-    obstacles: CanvasRectangle[] = [...scope.obstacles];
+  // 分区与成员先按分区排好；其余卡仍按原规则分组，并避开排好的分区。
+  const sectioned = await layoutCanvasSections(request, scope, layered);
+  diagnostics.push(...(sectioned?.diagnostics ?? []));
+  const groups = resolveCanvasLayoutGroups(
+    scope.cards.filter(card => !sectioned?.handled.has(card.id)),
+    request.groups
+  );
+  const positions: CanvasLayoutPosition[] = [...(sectioned?.positions ?? [])],
+    obstacles: CanvasRectangle[] = [
+      ...scope.obstacles.filter(card => !sectioned?.handled.has(card.id)),
+      ...(sectioned?.occupied ?? []),
+    ];
   for (const cards of groups) {
     const ids = new Set(cards.map(card => card.id));
     const edges = scope.edges.filter(
@@ -80,14 +90,16 @@ export async function planCanvasLayout(
   const operations: CanvasLayoutResult['operations'] = positions.flatMap(position => {
     const card = byId.get(position.id);
     if (!card) throw new Error('canvas_layout_unexpected_node');
-    return position.x === card.x && position.y === card.y
+    const size = sectioned?.sizes.get(card.id);
+    const resized = size && (size.width !== card.width || size.height !== card.height);
+    return position.x === card.x && position.y === card.y && !resized
       ? []
       : [
           {
             op: 'update',
             id: card.id,
             baseRevision: card.revision,
-            patch: { x: position.x, y: position.y },
+            patch: { x: position.x, y: position.y, ...(resized ? size : {}) },
           },
         ];
   });

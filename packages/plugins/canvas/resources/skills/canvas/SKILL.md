@@ -53,7 +53,8 @@ metadata:
 - 操作判别字段是op，update/delete/disconnect用id指定已有对象；其余字段按[操作与示例](references/operations.md)和[可解析数组](references/examples.json)填写，不套用其他画布API的action/target字段。
 - 文字写Markdown；只选颜色white/red/orange/yellow/green/cyan/purple；不写坐标、字体或色值。
 - 新增只找空位，不挪动既有卡。near/after/in用于附近定位，side可right/left/top/bottom。
-- parentId预留分组，**不是树父子**。树父子通过connect表达。
+- 分区是带标题的底区，用来把一类卡圈在一起：`{"op":"add","type":"section","title":"预算","members":["c2","c5"]}` 围着已有卡建区，卡不挪位；不带members则建空区。新卡放进分区用add的`section`（分区cN或本批ref），已有卡用update的`section`（cN；null移出），只给归属时程序替它在区内找空位。分区改名用update的`title`。
+- 分区只有一层，分区不能放进分区；分区会自动长大包住成员。删除分区只删底区，成员留在原位。分区归属**不是树父子**，树父子通过connect表达；连线不属于任何分区。
 - update必须带show读到的revision；text替换全文，append只追加新Markdown块并保留原节点。
 - 修改已有线的label/direction/lineStyle/linePattern同样用update，保留原eN和端点；direction可none/forward/both，lineStyle可curve/straight，linePattern可solid/dashed。样式后写生效，标签仍按读取版本保护；不要为改样式断开重连。
 - 文档卡用type=document及document=workspace:路径，不接受text字段，显示内容来自真实来源；文字结论另建文字卡。图片卡用type=image及file=会话文件。
@@ -76,6 +77,7 @@ metadata:
 - 批量新增后需要局部排布时，优先把arrange放在同批末尾，并用elementIds明确本批ref。500条限制按原始CLI动作计算，arrange本身算一条；例如300次add加一次arrange共301条，布局展开的坐标更新仍在同一事务内。
 - 不带布局的大批新增可能沿默认空位搜索形成长横排；“显示全部”受最小缩放约束，未必能同时展示全部卡。新增与局部布局同批提交可避免这种暂态长横排。
 - groups是二维ID/ref数组，每组直接是一个数组，例如`[["$a","$b"],["$c"]]`，不是带elementIds或columns的对象数组；columns对整次grid生效。groups只把多个集合分开排，不建立二阶段的分组实体。锁定/编辑中的位置不会被挪动。
+- 排布范围含分区或分区成员时按分区排：每个区内有连线的卡按所选算法排，零散卡排在下方，分区收紧到刚好包住成员，各区按阅读顺序紧挨着摆。要整理分区，把分区本身放进elementIds。
 
 ## 用户确认与撤回
 

@@ -585,6 +585,15 @@
   font-size: var(--font-size-footnote);
   transform: translate(-50%, -50%);
 }
+.canvas-section-title-input {
+  position: absolute;
+  z-index: 5;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-weight: 600;
+  line-height: 1;
+}
 .canvas-connection-preview {
   position: absolute;
   inset: 0;

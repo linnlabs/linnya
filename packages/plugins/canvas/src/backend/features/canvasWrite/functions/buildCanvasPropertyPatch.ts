@@ -1,4 +1,4 @@
-import type { CanvasElement, CanvasPatch } from '../../../../shared';
+import { CanvasCardIdSchema, type CanvasElement, type CanvasPatch } from '../../../../shared';
 import type { CanvasCliOperation } from '../../../../shared/cli/definitions/canvasCli';
 import { CanvasWriteFailure } from '../definitions/canvasWriteFailure';
 
@@ -27,6 +27,29 @@ function buildCanvasEdgePropertyPatch(
   };
 }
 
+/** 分区标题只属于分区；归属只属于卡片，分区本身不进分区。 */
+function buildCanvasSectionPatch(
+  operation: Extract<CanvasCliOperation, { op: 'update' }>,
+  current: CanvasElement
+): CanvasPatch {
+  let patch: CanvasPatch = {};
+  if (operation.title !== undefined) {
+    if (current.type !== 'section')
+      throw new CanvasWriteFailure('wrong_element_type', 'title 只适用于分区。');
+    patch = { data: { title: operation.title } };
+  }
+  if (operation.section === undefined) return patch;
+  if (current.type === 'edge' || current.type === 'section')
+    throw new CanvasWriteFailure(
+      'wrong_element_type',
+      'section 只适用于卡片，分区不能再放进分区。'
+    );
+  return {
+    ...patch,
+    parentId: operation.section === null ? null : CanvasCardIdSchema.parse(operation.section),
+  };
+}
+
 export function buildCanvasPropertyPatch(
   operation: Extract<CanvasCliOperation, { op: 'update' }>,
   current: CanvasElement
@@ -39,6 +62,7 @@ export function buildCanvasPropertyPatch(
       throw new CanvasWriteFailure('wrong_element_type', '连线不能设置卡片宽度。');
     patch = { ...patch, width: operation.width };
   }
+  patch = { ...patch, ...buildCanvasSectionPatch(operation, current) };
   if (operation.caption !== undefined || operation.alt !== undefined) {
     if (current.type !== 'image')
       throw new CanvasWriteFailure('wrong_element_type', 'caption/alt 只适用于图片卡。');

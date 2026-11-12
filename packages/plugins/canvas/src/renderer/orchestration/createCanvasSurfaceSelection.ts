@@ -1,6 +1,7 @@
 import { type CanvasCardId } from '@plugin/canvas/shared';
 import { createCanvasConnectionEditing } from '../features/connections';
 import { createCanvasElementActions } from '../features/elementEditing';
+import { createCanvasSectionEditing } from '../features/sectionEditing';
 import { mergeCanvasSelection } from '../features/selection';
 import { createCanvasCardOpening } from './createCanvasCardOpening';
 import { installCanvasReadonlyProjection } from './installCanvasReadonlyProjection';
@@ -34,6 +35,7 @@ export function createCanvasSurfaceSelection({
     prepare: id => raster.prepareEditing(id),
     openText: (id, signal) => editor.open(id, undefined, signal),
     openMedia: card => ports.openCard?.(card),
+    openSection: id => sections.begin(id),
     opened: ports.cardOpened,
     unavailable: () => state.setRenderNotice(canvasText('canvas.render.previewUnavailable')),
   });
@@ -71,6 +73,11 @@ export function createCanvasSurfaceSelection({
     readAnchorInset: zoom => canvasSelectionOutlineCenter(base.readAppearance().material, zoom),
   });
   const actions = createCanvasElementActions(session, { read: () => selection.ids.value, select });
+  const sections = createCanvasSectionEditing({
+    session,
+    select,
+    readDark: () => base.readAppearance().dark,
+  });
   const { createText, createTree } = createCanvasSurfaceCreation({
     options,
     base,
@@ -99,6 +106,7 @@ export function createCanvasSurfaceSelection({
   return {
     opening,
     connections,
+    sections,
     trySelect,
     select,
     installReadonly,

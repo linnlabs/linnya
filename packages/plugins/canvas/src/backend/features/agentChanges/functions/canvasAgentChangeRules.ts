@@ -79,9 +79,12 @@ function classifyCardChanges(
     return null;
   if (!first.before && last.after) return 'added';
   if (first.before && !last.after) return 'deleted';
-  return records.some(record =>
-    record.fields.some(field => !['x', 'y', 'order', 'parentId'].includes(field))
-  )
+  // 分区随成员长大或被排布收紧只是版面变化，宽高与位置同属布局字段。
+  const layout =
+    (first.before ?? last.after)?.type === 'section'
+      ? ['x', 'y', 'width', 'height', 'order', 'parentId']
+      : ['x', 'y', 'order', 'parentId'];
+  return records.some(record => record.fields.some(field => !layout.includes(field)))
     ? 'updated'
     : null;
 }

@@ -9,6 +9,7 @@ export function createCanvasRasterDom(input: CanvasCardRasterInput): HTMLElement
     element.append(
       createMarkdownDocumentFragment(JsonValueSchema.parse(input.card.data.content), document)
     );
+  else if (input.card.type === 'section') element.textContent = input.card.data.title;
   else
     element.textContent =
       input.card.type === 'document' ? '文档' : input.card.data.caption || '图片';

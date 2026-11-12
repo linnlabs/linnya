@@ -14,6 +14,7 @@ export function createCanvasKeyboardHandler(actions: CanvasKeyboardActions) {
     Record<Exclude<CanvasShortcut, 'navigate'>, (event: KeyboardEvent) => void | Promise<void>>
   > = {
     duplicate: () => actions.duplicate(),
+    group: () => actions.group(),
     undo: () => actions.undo('undo'),
     redo: () => actions.undo('redo'),
     delete: () => actions.remove(),

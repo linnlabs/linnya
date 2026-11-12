@@ -180,6 +180,14 @@ export const CanvasDocumentCardSchema = z
     data: z.object({ documentId: z.string().min(1) }).strict(),
   })
   .strict();
+/** 分区：一块命名的染纸底区，成员卡用 parentId 指向它。标题只是普通文字，画布不赋予含义。 */
+export const CanvasSectionCardSchema = z
+  .object({
+    ...card,
+    type: z.literal('section'),
+    data: z.object({ title: z.string().max(200) }).strict(),
+  })
+  .strict();
 export const CanvasEndpointSchema = z.discriminatedUnion('kind', [
   z
     .object({
@@ -208,16 +216,19 @@ export const CanvasCardSchema = z.discriminatedUnion('type', [
   CanvasTextCardSchema,
   CanvasImageCardSchema,
   CanvasDocumentCardSchema,
+  CanvasSectionCardSchema,
 ]);
 export const CanvasElementSchema = z.discriminatedUnion('type', [
   CanvasTextCardSchema,
   CanvasImageCardSchema,
   CanvasDocumentCardSchema,
+  CanvasSectionCardSchema,
   CanvasEdgeSchema,
 ]);
 export type CanvasTextDocument = z.infer<typeof CanvasTextDocumentSchema>;
 export type CanvasColor = z.infer<typeof CanvasColorSchema>;
 export type CanvasCard = z.infer<typeof CanvasCardSchema>;
+export type CanvasSectionCard = z.infer<typeof CanvasSectionCardSchema>;
 export type CanvasEdge = z.infer<typeof CanvasEdgeSchema>;
 export type CanvasElement = z.infer<typeof CanvasElementSchema>;
 export type CanvasEndpoint = z.infer<typeof CanvasEndpointSchema>;

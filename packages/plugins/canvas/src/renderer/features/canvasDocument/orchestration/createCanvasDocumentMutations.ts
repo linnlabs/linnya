@@ -1,4 +1,5 @@
 import {
+  assignCanvasSections,
   CanvasRendererCommitRequestSchema,
   CanvasUndoRequestSchema,
   type CanvasCommand,
@@ -47,7 +48,8 @@ export function createCanvasDocumentMutations(options: CanvasDocumentMutationOpt
         documentId: document.documentId,
         requestId: crypto.randomUUID(),
         viewId,
-        operations,
+        // 界面里的放置按落点决定所在分区；Agent 经 CLI 显式指定，不走这里。
+        operations: assignCanvasSections(document.elements, operations),
         ...(historyGroupId ? { historyGroupId } : {}),
       });
       return confirmMutation({

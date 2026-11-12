@@ -6,6 +6,8 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 选中图片卡可打开[图片属性编辑](./src/renderer/features/imageEditing/README.md)，非破坏性裁剪、图注与替换保存为一次正式内容变更，并进入现有用户撤销链。
 
+分区是带标题的染纸底区，用 `parentId` 把一类卡圈在一起，只有一层，自动长大包住成员；拖进拖出即改归属，拖标题条整区一起移动，删除分区不删成员。命名与“放进新分区”见[分区编辑](./src/renderer/features/sectionEditing/README.md)，提交规则见 canvasCommit，按区排布见 [canvasLayoutRun](./src/backend/features/canvasLayoutRun/README.md)。
+
 ## 边界与入口
 
 - `shared/model` 拥有卡片、连线、正文及提交快照合同；类型来自唯一 schema。

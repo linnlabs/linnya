@@ -25,6 +25,7 @@ export function readCanvasElementSearchText(
   if (element.type === 'text') return bodyText(element.data.content, context);
   if (element.type === 'image') return [element.data.caption, element.data.alt].join(' ');
   if (element.type === 'document') return context.documentTitles.get(element.data.documentId) ?? '';
+  if (element.type === 'section') return element.data.title;
   return element.label;
 }
 

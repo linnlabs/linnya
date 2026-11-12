@@ -30,6 +30,8 @@
 
 标题前缀与宽度拟合共用浏览器[`Intl.Segmenter`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Segmenter)的grapheme边界，保留ZWJ emoji、旗帜及组合音标。UTF-16长度已不超过18/120上限且没有换行的完整短标题直接保留原串，因为grapheme数不会超过UTF-16长度；其余地图首行18组、近景首行120组的前缀仍按需迭代，不为五万字正文展开整篇字符数组；地图继续无省略号、近景与线标签继续使用省略号，既有缓存上限不变。
 
+分区在独立的 `sectionLayer` 绘制，位于连线与卡片之下，与 world 共用相机变换（`placeCanvasWorldLayers`）；排序时分区总在最前（`orderCanvasSceneCards`）。分区是染纸平底加标题，不进遮罩（`CanvasSpatialProjection` 视其为非不透明）、不做正文或位图分片，只在标题条命中（`hitsCanvasCardView`），区内空白点击落到画布上，可以照常框选或双击新建。拖动分区时可见成员一起进入拖动预览；框选只有完整框住分区才选中它。
+
 线条纯几何来自 shared/geometry，前后台共用卡边裁切、同侧排开、迟滞与收敛曲线。Pixi 线适配使用静态世界 Mesh 和相机 uniform 保持 1 CSS px；远景直线与近景曲线缓存分开，缩放不反复 stroke 三角化。线层提供点击、高亮、端点、标签、纸面淡影和超过 3000 条可见线时的选中关系简化。`readEdgeGeometry` 给 DOM 交互实际排开后的坐标，不能由另一个表面猜曲线中点。线画在卡片下方、标签画在最上层，标签锚点取几何中点；中点落进卡片可见纸面时改取线上露在卡片外最长一段的中点，整条被挡住则不画，避免标签盖住正文。`readEdgeGeometry` 返回同一锚点，DOM 标签编辑与连线工具条与画布标签对齐。
 
 拖动时关联边与静态线分层。`createCanvasEdgeLayout` 缓存端点分组，只更新移动卡的连接和同侧排开的邻线，未关联曲线保留原对象。Bézier按控制点凸包到弦段的1/4屏幕像素误差自适应细分，不能按一段长直线的长度生成上百个冗余点。world使用[Pixi RenderGroup](https://pixijs.com/8.x/guides/concepts/render-groups)使相机变换在GPU整组执行，保留图文缩略的原层级。

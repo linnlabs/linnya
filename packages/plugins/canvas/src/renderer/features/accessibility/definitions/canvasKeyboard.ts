@@ -8,6 +8,8 @@ export interface CanvasKeyboardActions {
   allIds(): readonly CanvasCardId[];
   zoomValue(): number;
   duplicate(): Promise<void>;
+  /** 把选中的卡放进新分区。 */
+  group(): Promise<void>;
   undo(direction: 'undo' | 'redo'): Promise<void>;
   remove(): Promise<void>;
   edit(): Promise<void>;
@@ -31,6 +33,7 @@ export type CanvasShortcut =
   | 'undo'
   | 'redo'
   | 'duplicate'
+  | 'group'
   | 'left'
   | 'right'
   | 'up'

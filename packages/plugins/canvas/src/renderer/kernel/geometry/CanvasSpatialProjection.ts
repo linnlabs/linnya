@@ -44,11 +44,13 @@ export class CanvasSpatialProjection {
   setTranslucent(ids: ReadonlySet<CanvasCardId>): void {
     this.translucent = ids;
     for (const entry of this.entries.values())
-      if (entry.opaque === ids.has(entry.card.id)) this.install(entry.card, entry.rank);
+      if (entry.opaque === (ids.has(entry.card.id) || entry.card.type === 'section'))
+        this.install(entry.card, entry.rank);
   }
   private install(card: CanvasCard, rank: number): void {
     const previous = this.entries.get(card.id);
-    const opaque = !this.translucent.has(card.id);
+    // 分区是铺在卡片下面的底，不遮挡任何卡。
+    const opaque = !this.translucent.has(card.id) && card.type !== 'section';
     if (
       previous &&
       previous.opaque === opaque &&
