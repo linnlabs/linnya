@@ -13,12 +13,14 @@
     <HeaderLeftSection
       :is-mac="isMac"
       :is-window-maximized="isWindowMaximized"
+      @update-entry-width-change="updateEntryWidth = $event"
     />
 
     <!-- 右侧按钮区域 -->
     <HeaderRightSection
       :is-mac="isMac"
       :is-window-maximized="isWindowMaximized"
+      :update-entry-width="updateEntryWidth"
     />
   </header>
 </template>
@@ -35,6 +37,8 @@ const uiStore = useUIStore();
 const isMac = ref(false);
 // 窗口最大化状态
 const isWindowMaximized = ref(false);
+// 左侧更新入口的实际宽度：侧栏收起时主区域标题要让开它。
+const updateEntryWidth = ref(0);
 let cleanupListener: (() => void) | null = null;
 
 onMounted(() => {

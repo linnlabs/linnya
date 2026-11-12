@@ -410,6 +410,7 @@ import { startDraftConversation } from '@/domains/conversation/services/orchestr
 const props = defineProps<{
   isMac: boolean;
   isWindowMaximized: boolean;
+  updateEntryWidth: number;
 }>();
 
 const uiStore = useUIStore();
@@ -513,6 +514,7 @@ const headerPaneGeometry = computed(() => computeHeaderPaneGeometry({
   isMac: props.isMac,
   isWindowMaximized: props.isWindowMaximized,
   sidebarOccupiedWidth: sidebarOccupiedWidth.value,
+  updateEntryWidth: props.updateEntryWidth,
   rightPaneWidth: rightPaneFrameWidth.value,
 }));
 

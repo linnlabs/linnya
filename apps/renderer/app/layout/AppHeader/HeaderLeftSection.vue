@@ -33,12 +33,16 @@
           <SettingsIcon />
         </IconButton>
       </HoverTooltip>
-      <UpdateEntry />
+      <UpdateEntry
+        :available-width="updateEntryAvailableWidth"
+        @width-change="emit('updateEntryWidthChange', $event)"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useUIStore } from '@/shared/stores/ui';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { SettingsIcon } from '@linnya/renderer-ui/icons';
@@ -47,13 +51,25 @@ import { SidebarIcon } from '@linnya/renderer-ui/icons';
 import { HoverTooltip, IconButton } from '@linnya/renderer-ui';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 import UpdateEntry from '@/app/update/ui/UpdateEntry.vue';
+import { useSidebarLayoutWidth } from '@/app/layout/composables/useSidebarLayoutWidth';
+import { computeHeaderUpdateEntryAvailableWidth } from '@/app/layout/functions/headerPaneGeometry';
 
 const props = defineProps<{
   isMac: boolean;
   isWindowMaximized: boolean;
 }>();
 
+const emit = defineEmits<{
+  updateEntryWidthChange: [width: number];
+}>();
+
 const uiStore = useUIStore();
+const { sidebarOccupiedWidth } = useSidebarLayoutWidth();
+const updateEntryAvailableWidth = computed(() => computeHeaderUpdateEntryAvailableWidth({
+  isMac: props.isMac,
+  isWindowMaximized: props.isWindowMaximized,
+  sidebarOccupiedWidth: sidebarOccupiedWidth.value,
+}));
 const navigation = getWorkspaceNavigationPort();
 const { layoutMessage } = useLayoutLocalization();
 

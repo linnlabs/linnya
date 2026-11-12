@@ -1,6 +1,7 @@
 <template>
   <BaseDropdown
     v-if="presentation"
+    ref="entryRef"
     class="app-update-entry"
     :external-content-ref="panelRef"
   >
@@ -15,12 +16,13 @@
           ref="triggerRef"
           type="button"
           class="app-update-entry__pill"
+          :class="{ 'is-compact': compact }"
           :disabled="status === 'installing' || store.requestingRestart"
           :aria-label="tooltipText"
           @click="actions.requestRestart()"
         >
           <RefreshIcon :spinning="status === 'installing'" />
-          <span>{{ updateMessage(presentation.labelKey) }}</span>
+          <span class="app-update-entry__label">{{ updateMessage(presentation.labelKey) }}</span>
         </button>
         <span
           v-else
@@ -39,6 +41,16 @@
           </IconButton>
         </span>
       </HoverTooltip>
+      <!-- 量完整按钮的宽度，用来判断放不放得下；不参与布局，也不进无障碍树。 -->
+      <span
+        v-if="presentation.shape === 'pill'"
+        ref="measureRef"
+        class="app-update-entry__pill app-update-entry__measure"
+        aria-hidden="true"
+      >
+        <RefreshIcon />
+        <span class="app-update-entry__label">{{ updateMessage(presentation.labelKey) }}</span>
+      </span>
     </template>
 
     <template #content="{ isOpen, close }">
@@ -119,7 +131,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch, type ComponentPublicInstance } from 'vue';
+import { useElementSize } from '@vueuse/core';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import { storeToRefs } from 'pinia';
@@ -140,6 +153,16 @@ import { useUpdateStore } from '../store/updateStore';
 import { useUpdateActions } from '../runtime';
 import { useUpdateLocalization } from './useUpdateLocalization';
 
+const props = withDefaults(defineProps<{
+  /** 入口最多能占的宽度；放不下完整按钮时只显示图标。null 表示不限宽。 */
+  availableWidth?: number | null;
+}>(), { availableWidth: null });
+
+const emit = defineEmits<{
+  /** 入口当前实际占的宽度，没有入口时为 0；标题栏用它给主区域让位。 */
+  widthChange: [width: number];
+}>();
+
 const PANEL_WIDTH = 280;
 const PANEL_GAP = 6;
 const VIEWPORT_MARGIN = 8;
@@ -150,6 +173,8 @@ const { state, status } = storeToRefs(store);
 const { updateMessage } = useUpdateLocalization();
 const notifications = useNotificationStore();
 
+const entryRef = ref<ComponentPublicInstance | null>(null);
+const measureRef = ref<HTMLElement | null>(null);
 const triggerRef = ref<HTMLElement | null>(null);
 const panelRef = ref<HTMLElement | null>(null);
 const panelPosition = ref({ top: 0, left: 0 });
@@ -166,6 +191,17 @@ const tooltipText = computed(() => {
   }
   return updateMessage(current.labelKey, current.labelParams);
 });
+
+const { width: entryWidth } = useElementSize(entryRef, undefined, { box: 'border-box' });
+const { width: fullPillWidth } = useElementSize(measureRef, undefined, { box: 'border-box' });
+
+const compact = computed(() => (
+  props.availableWidth !== null
+  && fullPillWidth.value > 0
+  && fullPillWidth.value > props.availableWidth
+));
+
+watch(entryWidth, width => emit('widthChange', presentation.value ? Math.round(width) : 0), { immediate: true });
 
 const failureKey = computed<UpdateMessageKey>(() => (
   `update.panel.failed.${state.value?.failure?.kind ?? 'unknown'}` as UpdateMessageKey

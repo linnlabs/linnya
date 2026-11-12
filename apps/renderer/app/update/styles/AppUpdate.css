@@ -1,5 +1,6 @@
 /* 标题栏更新入口：位于设置按钮右侧，只在有更新相关状态时出现。 */
 .app-update-entry {
+  position: relative;
   display: inline-flex;
   -webkit-app-region: no-drag;
   animation: app-update-entry-in var(--duration-medium) var(--ease-enter);
@@ -59,6 +60,25 @@
   flex-shrink: 0;
   width: 14px;
   height: 14px;
+}
+
+/* 侧栏太窄放不下文字时只留图标，宽度与其他标题栏按钮相同；悬停提示仍说明是重启更新。 */
+.app-update-entry__pill.is-compact {
+  justify-content: center;
+  width: 24px;
+  padding: 0;
+}
+
+.app-update-entry__pill.is-compact > .app-update-entry__label {
+  display: none;
+}
+
+.app-update-entry__measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 @keyframes app-update-entry-in {

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   computeHeaderLeftChromeWidth,
   computeHeaderPaneGeometry,
+  computeHeaderUpdateEntryAvailableWidth,
+  computeHeaderUpdateEntryStart,
   computeWindowsControlWidth,
 } from './headerPaneGeometry';
 
@@ -64,5 +66,49 @@ describe('headerPaneGeometry', () => {
       rightPaneWidth: 0,
       trailingChromeWidth: 138,
     });
+  });
+
+  it('更新入口紧跟设置按钮，侧栏展开时只能用到分隔线热区之前', () => {
+    expect(computeHeaderUpdateEntryStart({ isMac: true, isWindowMaximized: false })).toBe(174);
+    expect(computeHeaderUpdateEntryStart({ isMac: false, isWindowMaximized: false })).toBe(102);
+
+    // 侧栏最窄 200：完整的“重启更新”放不下，只够收成图标。
+    expect(computeHeaderUpdateEntryAvailableWidth({
+      isMac: true,
+      isWindowMaximized: false,
+      sidebarOccupiedWidth: 200,
+    })).toBe(22);
+    // 默认宽度 260 下仍能放下约 80px 的完整按钮。
+    expect(computeHeaderUpdateEntryAvailableWidth({
+      isMac: true,
+      isWindowMaximized: false,
+      sidebarOccupiedWidth: 260,
+    })).toBe(82);
+    // 侧栏收起时不限宽。
+    expect(computeHeaderUpdateEntryAvailableWidth({
+      isMac: true,
+      isWindowMaximized: false,
+      sidebarOccupiedWidth: 0,
+    })).toBeNull();
+  });
+
+  it('侧栏收起时主 pane 让开更新入口，展开时不受它影响', () => {
+    expect(computeHeaderLeftChromeWidth({ isMac: true, isWindowMaximized: false, updateEntryWidth: 80 })).toBe(266);
+
+    expect(computeHeaderPaneGeometry({
+      isMac: true,
+      isWindowMaximized: false,
+      sidebarOccupiedWidth: 0,
+      rightPaneWidth: 0,
+      updateEntryWidth: 80,
+    }).mainPaneLeft).toBe(266);
+
+    expect(computeHeaderPaneGeometry({
+      isMac: true,
+      isWindowMaximized: false,
+      sidebarOccupiedWidth: 200,
+      rightPaneWidth: 0,
+      updateEntryWidth: 24,
+    }).mainPaneLeft).toBe(200);
   });
 });
