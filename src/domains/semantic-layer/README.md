@@ -8,7 +8,7 @@
 
 - 负责：标签、字段定义；对象的标签与值；值的校验与空值合同；对象版本与恢复；标签与字段本身的改动（改名、合并、删除、改类型、改选项）及整批撤回；查询描述与编译；向[行动账本](../action-ledger/README.md)登记改动。
 - 不负责：界面、保存的筛选（改动时由 [Host 的标签管理](../../app-hosts/linnya/application/semantic-schema/README.md)在同一事务里改写）、关系字段（随来龙去脉的关系表一起做）。命令行入口在 [Shell 内建 CLI](../../app-hosts/linnya/application/core-cli/README.md)，给 Agent 看的 `read_file` 属性段在 [文档属性段](../../app-hosts/linnya/application/document-properties/README.md)。
-- 插件不能直接读写这些表，只能经 Host 端口。
+- 插件不能直接读写这些表，只能经 Host 端口。只读端口 `@plugin/backend/semanticTags`（`infrastructure/sqlite/semanticTagProjection.ts`）给插件列出标签、按 ID 读当前名称、按名称解析。插件在自己内容里存的标签 ID 不进 `semantic_object_tags`：合并后由端口按未撤回的合并记录跟到目标，删除后不再返回；删除、合并的影响预览只统计文档，不含插件内容里的引用。
 
 ## 对象 =（种类，ID）
 

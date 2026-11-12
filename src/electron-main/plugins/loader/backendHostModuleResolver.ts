@@ -38,6 +38,7 @@ import * as textMeasurement from '../../../plugin-sdk/backend/textMeasurement';
 import * as textUnitRuntime from '../../../plugin-sdk/backend/textUnitRuntime';
 import * as toolRuntime from '../../../plugin-sdk/backend/toolRuntime';
 import * as workspaceDocumentProjection from '../../../plugin-sdk/backend/workspaceDocumentProjection';
+import * as semanticTags from '../../../plugin-sdk/backend/semanticTags';
 import * as workspaceRuntime from '../../../plugin-sdk/backend/workspaceRuntime';
 import * as workspaceDatabasePath from '../../../plugin-sdk/backend/workspaceDatabasePath';
 
@@ -60,6 +61,7 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/childRunDelivery', childRunDelivery],
   ['@plugin/backend/colorPalette', colorPalette],
   ['@plugin/backend/runInputQuote', runInputQuote],
+  ['@plugin/backend/semanticTags', semanticTags],
   ['@plugin/backend/documentTypeBackendHook', documentTypeBackendHook],
   ['@plugin/backend/documentImageAsset', documentImageAsset],
   ['@plugin/backend/documentHistory', documentHistory],
