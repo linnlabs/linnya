@@ -508,10 +508,10 @@ export class AgentRunnerService {
                     },
                   })
                 : execution.kind === 'resume'
-                  ? await this.engine.resumeSession(checkpointKey, {
+                  ? // 起点由 Linnkit 决定：同批还有未执行的调用时先跑完，再回到模型。
+                    await this.engine.resumeSession(checkpointKey, {
                       expectedRevision: execution.expectedCheckpointRevision,
                       expectedNodeId: 'wait_user',
-                      nodeId: 'llm',
                       localPatch: sessionLocal,
                       maxSteps: finalReq.maxSteps,
                     })

@@ -32,7 +32,7 @@
     "@linnya/renderer-ui": "^3.0.0"
   },
   "devDependencies": {
-    "@linnlabs/linnkit": "0.42.0",
+    "@linnlabs/linnkit": "0.43.0",
     "@linnya/plugin-host-contract": "workspace:*",
     "@linnya/renderer-ui": "workspace:*",
     "@types/node": "^24.0.0",

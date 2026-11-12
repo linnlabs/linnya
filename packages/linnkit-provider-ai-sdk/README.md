@@ -133,7 +133,7 @@ Core 和具体 Provider packages。
 - production → `@linnlabs/linnkit-provider-ai-sdk/conformance`。
 
 `@linnlabs/linnkit` 是显式 peer dependency，本 package 只使用公开 `/ports` 和
-`/contracts`。当前 peer 为 `^0.42.0`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
+`/contracts`。当前 peer 为 `^0.43.0`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
 `ai`、`@ai-sdk/provider`、全部 language Provider
 package、OpenRouter 官方 package 和经过审核的 `ai-sdk-ollama` community package 是本
 package 的精确直接依赖；根应用不再替它拥有这些版本。Embedding、Image

@@ -280,6 +280,62 @@ describe('durable root Flow continuation, production Audit off', () => {
     resumed.ai.assertAllTurnsConsumed();
   });
 
+  it('提问与读取同批发出：回答后先执行同批的读取，模型同时看到回答与读取结果', async () => {
+    class BatchRead extends BaseTool {
+      readonly name = 'lookup_fixture';
+      readonly description = 'Read fixture';
+      readonly parameters = { type: 'object' as const, properties: {}, required: [] };
+      async run(): Promise<string> {
+        return JSON.stringify({ data: { ok: true }, observation: 'Batch read content' });
+      }
+    }
+    const fixture = await open(
+      [
+        {
+          toolCalls: [
+            {
+              id: 'batch-ask',
+              name: 'ask',
+              argumentsJson: JSON.stringify({
+                questions: [{ id: 'answer', type: 'text', question: 'Choose' }],
+              }),
+            },
+            { id: 'batch-read', name: 'lookup_fixture', argumentsJson: '{}' },
+          ],
+        },
+        { contentChunks: ['Both seen'] },
+      ],
+      [new AskTool(), new BatchRead()]
+    );
+    await fixture.flow.next(request, () => {});
+    const waiting = (await fixture.flow.getActiveForegroundRun(conversationId)).run;
+    if (!waiting?.pending_interaction) throw new Error('Expected the ask to wait for the user');
+    expect(fixture.getToolExecutions().map(execution => execution.toolName)).toEqual(['ask']);
+
+    await fixture.flow.respondInteraction(
+      {
+        conversation_id: conversationId,
+        ...waiting.pending_interaction,
+        tool_name: 'ask',
+        observation: 'User picked option B',
+        data: { answers: { answer: 'B' } },
+        interaction_status: 'submitted',
+        interaction_submitted_at: Date.now(),
+      },
+      () => {}
+    );
+
+    expect(fixture.getToolExecutions().map(execution => execution.toolName)).toEqual([
+      'ask',
+      'lookup_fixture',
+    ]);
+    const modelInput = JSON.stringify(fixture.ai.getCalls()[1]?.messages ?? []);
+    expect(modelInput).toContain('User picked option B');
+    expect(modelInput).toContain('Batch read content');
+    expect(await fixture.flow.getActiveForegroundRun(conversationId)).toMatchObject({ run: null });
+    fixture.ai.assertAllTurnsConsumed();
+  });
+
   it('未知外部效果在重启后保持受阻，绝不重放调用', async () => {
     class UnknownEffect extends BaseTool {
       readonly name = 'shell';
