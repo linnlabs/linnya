@@ -86,7 +86,12 @@ export async function planCanvasLayout(
       obstacles.push({ ...position, width: card.width, height: card.height });
     }
   }
-  const byId = new Map<string, CanvasCard>(scope.cards.map(card => [card.id, card]));
+  // 随分区整体平移的成员不在范围内，也要从快照里取到原卡。
+  const byId = new Map<string, CanvasCard>(
+    request.snapshot.elements.flatMap(element =>
+      element.type === 'edge' ? [] : [[element.id, element] as const]
+    )
+  );
   const operations: CanvasLayoutResult['operations'] = positions.flatMap(position => {
     const card = byId.get(position.id);
     if (!card) throw new Error('canvas_layout_unexpected_node');

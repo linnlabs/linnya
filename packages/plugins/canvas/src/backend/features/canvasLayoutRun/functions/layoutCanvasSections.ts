@@ -119,15 +119,37 @@ function collectSections(request: CanvasLayoutRequest, scope: CanvasLayoutScope)
 }
 
 interface SectionMembersLayout {
+  /** 这次要摆的成员：范围内重排的，加上随分区整体平移的。 */
   readonly members: readonly CanvasCard[];
+  /** 相对内容区左上角（标题下、内边距内）的位置。 */
   readonly positions: readonly CanvasLayoutPosition[];
+  /** 区内有锁定或正在编辑的成员：分区不动，免得框和卡分开。 */
+  readonly pinned: boolean;
+  /** 范围内有成员要重排；否则分区整体平移，大小不变。 */
+  readonly arranged: boolean;
 }
+const offsetIn = (section: CanvasSectionCard, card: CanvasCard): CanvasLayoutPosition => ({
+  id: card.id,
+  x: card.x - section.x - CANVAS_SECTION_PADDING,
+  y: card.y - section.y - CANVAS_SECTION_HEADER,
+});
+/**
+ * 范围内的成员重排；不在范围内的成员保持在区内的相对位置，随分区一起走，
+ * 重排的成员接在它们下方。只给分区 ID 时就是整区平移，区内摆放不变。
+ */
 async function layoutSection(
   section: CanvasSectionCard,
   scope: CanvasLayoutScope,
   context: MemberLayoutContext
 ): Promise<SectionMembersLayout> {
-  const members = scope.cards.filter(card => card.parentId === section.id);
+  const scoped = new Set(scope.cards.map(card => card.id));
+  const all = context.request.snapshot.elements.filter(
+    (element): element is CanvasCard => element.type !== 'edge' && element.parentId === section.id
+  );
+  const members = all.filter(card => scoped.has(card.id)),
+    rest = all.filter(card => !scoped.has(card.id));
+  const protectedIds = new Set(context.request.protectedElementIds);
+  const pinned = rest.some(card => card.locked || protectedIds.has(card.id));
   const ids = new Set(members.map(card => card.id));
   const edges = scope.edges.filter(
     edge =>
@@ -136,12 +158,23 @@ async function layoutSection(
       ids.has(edge.from.cardId) &&
       ids.has(edge.to.cardId)
   );
-  return { members, positions: await layoutMembers(members, edges, context) };
+  const kept = rest.map(card => offsetIn(section, card));
+  const top = rest.length ? extent(kept, rest).height + BLOCK_GAP : 0;
+  const arranged = (await layoutMembers(members, edges, context)).map(p => ({
+    ...p,
+    y: p.y + top,
+  }));
+  return {
+    members: pinned ? members : [...rest, ...members],
+    positions: pinned ? arranged : [...kept, ...arranged],
+    pinned,
+    arranged: members.length > 0,
+  };
 }
 
-/** 可移动且有成员的分区收紧到刚好包住成员；其余保持原尺寸。 */
+/** 有成员重排且可移动的分区收紧到刚好包住成员；整区平移或不可移动的保持原尺寸。 */
 function sizeSection(section: CanvasSectionCard, layout: SectionMembersLayout, movable: boolean) {
-  if (!layout.members.length || !movable) return section;
+  if (!layout.arranged || !movable || layout.pinned) return section;
   const size = extent(layout.positions, layout.members);
   return {
     ...section,
@@ -161,13 +194,14 @@ export async function layoutCanvasSections(
 ): Promise<CanvasSectionLayout | null> {
   const sections = collectSections(request, scope);
   if (!sections.size) return null;
-  const movable = new Set(scope.cards.map(card => card.id));
+  const movable = new Set<CanvasCardId>(scope.cards.map(card => card.id));
   const context: MemberLayoutContext = { request, layered, diagnostics: [] };
   const handled = new Set<CanvasCardId>(sections.keys());
   const local = new Map<CanvasCardId, readonly CanvasLayoutPosition[]>();
   const sized: CanvasSectionCard[] = [];
   for (const section of sections.values()) {
     const layout = await layoutSection(section, scope, context);
+    if (layout.pinned) movable.delete(section.id);
     for (const card of layout.members) handled.add(card.id);
     local.set(section.id, layout.positions);
     sized.push(sizeSection(section, layout, movable.has(section.id)));
@@ -176,9 +210,13 @@ export async function layoutCanvasSections(
     sized.filter(section => movable.has(section.id)),
     readCanvasCardConnections(request.snapshot.elements)
   );
-  const obstacles = scope.obstacles.filter(
-    card => !sections.has(card.id) && !(card.parentId && sections.has(card.parentId))
-  );
+  // 留在原地的分区（不可移动或被区内锁定成员钉住）也是要避开的障碍。
+  const obstacles: CanvasRectangle[] = [
+    ...scope.obstacles.filter(
+      card => !sections.has(card.id) && !(card.parentId && sections.has(card.parentId))
+    ),
+    ...sized.filter(section => !movable.has(section.id)),
+  ];
   const origin = moving.length
     ? placeCanvasLayoutApart(packSections(moving, request.direction), moving, obstacles, 'down')
     : [];

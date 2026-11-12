@@ -55,7 +55,7 @@ metadata:
 - 新增只找空位，不挪动既有卡。near/after/in用于附近定位，side可right/left/top/bottom。
 - 分区是带标题的底区，用来把一类卡圈在一起：`{"op":"add","type":"section","title":"预算","members":["c2","c5"]}` 围着已有卡建区，卡不挪位；不带members则建空区。新卡放进分区用add的`section`（分区cN或本批ref），已有卡用update的`section`（cN；null移出），只给归属时程序替它在区内找空位。分区改名用update的`title`。
 - 卡片可挂工作区标签（与文档的 #标签 同一套）：add/update 的`tags`是标签名数组（update 整体替换，`[]`清除，最多12个），`status`是一个标签名，显示为卡片右上角的状态角标（update 用 null 清除）。只能用已有标签；没有时先用`linnya schema`看有哪些，确实需要再`linnya schema add-tag 名称`新建，不要为同义词另建。按标签找卡用`find <画布路径> --tag 名称`、`--status 名称`，可与文字同用。
-- 分区只有一层，分区不能放进分区；分区会自动长大包住成员。删除分区只删底区，成员留在原位。分区归属**不是树父子**，树父子通过connect表达；连线不属于任何分区。
+- 分区只有一层，分区不能放进分区；分区会自动长大包住成员，但不会推开相邻分区。apply/arrange的diagnostics出现`section_overlap`时，按提示用arrange的scope只列全部分区ID整理分区：成员随分区整体移动，区内摆放与分区大小不变。删除分区只删底区，成员留在原位。分区归属**不是树父子**，树父子通过connect表达；连线不属于任何分区。
 - update必须带show读到的revision；text替换全文，append只追加新Markdown块并保留原节点。
 - 修改已有线的label/direction/lineStyle/linePattern同样用update，保留原eN和端点；direction可none/forward/both，lineStyle可curve/straight，linePattern可solid/dashed。样式后写生效，标签仍按读取版本保护；不要为改样式断开重连。
 - 文档卡用type=document及document=workspace:路径，不接受text字段，显示内容来自真实来源；文字结论另建文字卡。图片卡用type=image及file=会话文件。
@@ -78,7 +78,7 @@ metadata:
 - 批量新增后需要局部排布时，优先把arrange放在同批末尾，并用elementIds明确本批ref。500条限制按原始CLI动作计算，arrange本身算一条；例如300次add加一次arrange共301条，布局展开的坐标更新仍在同一事务内。
 - 不带布局的大批新增可能沿默认空位搜索形成长横排；“显示全部”受最小缩放约束，未必能同时展示全部卡。新增与局部布局同批提交可避免这种暂态长横排。
 - groups是二维ID/ref数组，每组直接是一个数组，例如`[["$a","$b"],["$c"]]`，不是带elementIds或columns的对象数组；columns对整次grid生效。groups只把多个集合分开排，不建立二阶段的分组实体。锁定/编辑中的位置不会被挪动。
-- 排布范围含分区或分区成员时按分区排：每个区内有连线的卡按所选算法排，零散卡排在下方，分区收紧到刚好包住成员，各区按阅读顺序紧挨着摆。要整理分区，把分区本身放进elementIds。
+- 排布范围含分区或分区成员时按分区排：每个区内有连线的卡按所选算法排，零散卡排在下方，分区收紧到刚好包住成员，各区按阅读顺序紧挨着摆。要整理分区，把分区本身放进elementIds；只列分区不列成员时，成员原样随分区平移，分区不收紧。区内有锁定或正在编辑的卡时，该分区留在原地。
 
 ## 用户确认与撤回
 

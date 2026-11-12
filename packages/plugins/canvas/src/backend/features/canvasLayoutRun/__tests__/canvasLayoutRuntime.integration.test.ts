@@ -140,3 +140,32 @@ it('按分区排布：区内连线卡成行、无连线卡成格，分区收紧�
     for (const id of ['c1', 'c6']) expect(canvasRectanglesOverlap(at('c9'), at(id))).toBe(false);
   } finally { await runtime.dispose(); }
 });
+it('只整理分区时成员随框整体平移，区内摆放与分区大小不变；区内有锁定成员的分区留在原地', async () => {
+  const section = (index: number, x: number, y: number, height: number) => CanvasCardSchema.parse({ ...identity, id: `c${index}`, type: 'section', order: String(index).padStart(6, '0'),
+    x, y, width: 500, height, parentId: null, data: { title: `区${index}` } });
+  const member = (index: number, parent: number, x: number, y: number) => CanvasCardSchema.parse({ ...card(index), x, y, parentId: `c${parent}` });
+  // 区1 长高后压住了下面的区4。
+  const snapshot = CanvasSnapshotSchema.parse({ schemaVersion: 1, documentId: 'section-move', sequence: 5, elements: [
+    section(1, 0, 0, 900), member(2, 1, 30, 70), member(3, 1, 260, 600),
+    section(4, 0, 500, 400), member(5, 4, 40, 560), member(6, 4, 300, 700)] });
+  const runtime = createCanvasComputationRuntime({ workerPath });
+  try {
+    const result = await runtime.layout({ requestId: 'section-move', snapshot, algorithm: 'layered', direction: 'right', elementIds: ['c1', 'c4'] });
+    const before = (id: string) => snapshot.elements.find(element => element.id === id) as CanvasCard;
+    const after = applyPositions(snapshot, result), at = (id: string) => after.find(element => element.id === id)!;
+    expect(canvasRectanglesOverlap(at('c1'), at('c4'))).toBe(false);
+    for (const [child, parent] of [['c2', 'c1'], ['c3', 'c1'], ['c5', 'c4'], ['c6', 'c4']]) {
+      expect(at(child).x - at(parent).x, child).toBe(before(child).x - before(parent).x);
+      expect(at(child).y - at(parent).y, child).toBe(before(child).y - before(parent).y);
+    }
+    for (const id of ['c1', 'c4']) expect([at(id).width, at(id).height]).toEqual([before(id).width, before(id).height]);
+    expect(result.operations.every(operation => operation.op === 'update' && operation.baseRevision === 7)).toBe(true);
+
+    const pinned = CanvasSnapshotSchema.parse({ ...snapshot, elements: snapshot.elements.map(element => element.id === 'c3' ? { ...element, locked: true } : element) });
+    const kept = applyPositions(pinned, await runtime.layout({ requestId: 'section-pinned', snapshot: pinned, algorithm: 'layered', direction: 'right', elementIds: ['c1', 'c4'] }));
+    const still = (id: string) => kept.find(element => element.id === id)!;
+    for (const id of ['c1', 'c2', 'c3']) expect(still(id)).toMatchObject({ x: before(id).x, y: before(id).y, width: before(id).width, height: before(id).height });
+    expect(canvasRectanglesOverlap(still('c1'), still('c4'))).toBe(false);
+    expect(still('c5').y - still('c4').y).toBe(before('c5').y - before('c4').y);
+  } finally { await runtime.dispose(); }
+});

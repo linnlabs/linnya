@@ -8,6 +8,7 @@ import {
 } from '../../shared';
 import { readCanvasInputFile, type CanvasCliCommand } from '../features/canvasCli';
 import { prepareCanvasWrite } from '../features/canvasWrite';
+import { findCanvasSectionOverlaps } from '../features/canvasQuery';
 import { createCanvasWritePreparationPorts } from '../adapters/createCanvasWritePreparationPorts';
 import type { CanvasCliScope, CanvasCliServices } from './definitions/canvasCliExecution';
 
@@ -88,29 +89,17 @@ export async function executeCanvasCliWrite(
   });
   if (command.dryRun) {
     const preview = document.editing.preview({ request, actor: scope.actor, now: Date.now() });
+    const after = preview.state.elements.map(row => row.element);
     return {
       status: 'dry-run',
       tentative: true,
       sequence: preview.state.sequence,
       refs: preview.refs,
       results: preview.results,
-      diagnostics,
+      diagnostics: [...diagnostics, ...findCanvasSectionOverlaps(snapshot.elements, after)],
       computation,
       replayed: false,
-      planned: preview.state.elements
-        .filter(row => preview.changes.some(change => change.id === row.element.id))
-        .map(row =>
-          row.element.type === 'edge'
-            ? { id: row.element.id, type: row.element.type }
-            : {
-                id: row.element.id,
-                type: row.element.type,
-                x: row.element.x,
-                y: row.element.y,
-                width: row.element.width,
-                height: row.element.height,
-              }
-        ),
+      planned: projectCanvasPlannedElements(after, new Set(preview.changes.map(c => c.id))),
       note: '没有写入。ID/位置仅为预测，正式提交仍按最新占用计算；使用本批临时ref连接新卡。',
     };
   }
@@ -121,7 +110,40 @@ export async function executeCanvasCliWrite(
     intent: prepared.arrange ? 'arrange' : 'apply',
     payloadIdentity,
   });
-  return { ...projectCanvasAgentReceipt(result), diagnostics, computation, replayed: false };
+  // 分区长大压到邻区时提醒 Agent 只整理分区；提交本身不自动推开。
+  const overlaps =
+    result.kind === 'committed'
+      ? findCanvasSectionOverlaps(
+          snapshot.elements,
+          document.read(scope.documentId, scope.projectId).elements
+        )
+      : [];
+  return {
+    ...projectCanvasAgentReceipt(result),
+    diagnostics: [...diagnostics, ...overlaps],
+    computation,
+    replayed: false,
+  };
+}
+/** dry-run 只回本批改动到的元素：卡给出预测的位置与大小，连线只给身份。 */
+function projectCanvasPlannedElements(
+  elements: readonly import('../../shared').CanvasElement[],
+  changed: ReadonlySet<string>
+) {
+  return elements
+    .filter(element => changed.has(element.id))
+    .map(element =>
+      element.type === 'edge'
+        ? { id: element.id, type: element.type }
+        : {
+            id: element.id,
+            type: element.type,
+            x: element.x,
+            y: element.y,
+            width: element.width,
+            height: element.height,
+          }
+    );
 }
 function projectCanvasAgentReceipt(result: import('../../shared').CanvasAgentCommitResult) {
   if (result.kind === 'committed')

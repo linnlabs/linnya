@@ -496,3 +496,44 @@ it('stores workspace tag ids on cards and reads, filters and follows merges thro
     expect((await apply([{ op: 'update', id: 'e1', revision: 1, status: '待查' }])).value.error).toMatchObject({ message: 'tags/status 只适用于卡片。' });
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+it('keeps cards added to a section inside it and tells the Agent to arrange sections when it grows over a neighbor', async () => {
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os'); const path = await import('node:path');
+  const { executeCanvasCliCommand, createCanvasPluginCli, formatCanvasCliInputError } = await import('@plugin/canvas/backend-test-support');
+  const root = await mkdtemp(path.join(tmpdir(), 'canvas-section-overlap-test-'));
+  const id = runtime.create({ projectId, parentId: null, name: '分区重叠.canvas' });
+  const services: import('@plugin/canvas/backend-test-support').CanvasCliServices = { runtimeFor: () => runtime, referencesFor: () => runtime.references,
+    capabilities: { computation: { async check() { throw new Error('not used'); }, async layout() { throw new Error('not used'); }, async dispose() {} } as never,
+      measurement: { async measureBatch(request) { return request.cards.map(card => ({ ref: card.ref, width: card.width, height: 120 })); }, async measure(request) { return { width: request.width, height: 120 }; } },
+      rendering: { async render() { throw new Error('not used'); } } } };
+  const context = { hostContext: { databaseService: { getDb: () => db } }, projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal };
+  const cli = createCanvasPluginCli((command, execution, directory) => executeCanvasCliCommand(command, execution, directory, services), formatCanvasCliInputError);
+  let request = 0;
+  const apply = async (operations: unknown[], dryRun = false) => {
+    await writeFile(path.join(root, 'ops.json'), JSON.stringify(operations));
+    const argv = ['apply', 'workspace:/分区重叠.canvas', '--ops-file', 'ops.json', '--request-id', `o${++request}`, ...(dryRun ? ['--dry-run'] : [])];
+    const prepared = cli.prepare({ argv, invocationId: 'invocation', conversationRoot: root });
+    const result = prepared.status === 'completed' ? prepared.result : await prepared.plan.execute(context);
+    return { exitCode: result.exitCode, value: JSON.parse(result.stdout) };
+  };
+  const element = (cardId: string) => runtime.read(id).elements.find(item => item.id === cardId)! as import('@plugin/canvas/shared').CanvasCard;
+  try {
+    const created = await apply([{ op: 'add', type: 'section', title: '证据', ref: '$a' }, { op: 'add', text: '第一条', section: '$a' },
+      { op: 'add', type: 'section', title: '行动', ref: '$b', near: '$a', side: 'bottom' }, { op: 'add', text: '下一步', section: '$b' }]);
+    expect(created.exitCode, JSON.stringify(created.value)).toBe(0);
+    expect(created.value.diagnostics).toEqual([]);
+    const more = Array.from({ length: 8 }, (_, index) => ({ op: 'add', text: `证据${index}`, section: 'c1' }));
+    const preview = await apply(more, true);
+    const hint = { code: 'section_overlap', elementIds: ['c1', 'c3'], message: expect.stringContaining('arrange --scope c1,c3') };
+    expect(preview.value.diagnostics).toEqual([hint]);
+    const grown = await apply(more);
+    expect(grown.exitCode, JSON.stringify(grown.value)).toBe(0);
+    expect(grown.value.diagnostics).toEqual([hint]);
+    // 新卡都留在“证据”区里：不为躲开下方分区跳到区外。
+    const a = element('c1');
+    for (const card of runtime.read(id).elements.filter(item => item.type === 'text' && item.parentId === 'c1') as import('@plugin/canvas/shared').CanvasCard[])
+      expect(card.y + card.height <= a.y + a.height && card.y >= a.y + 48, card.id).toBe(true);
+    // 已经重叠、这批没动分区的，不再重复提醒。
+    expect((await apply([{ op: 'update', id: 'c2', revision: element('c2').revision, text: '第一条（改）' }])).value.diagnostics).toEqual([]);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

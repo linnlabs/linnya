@@ -37,6 +37,7 @@ export const CanvasLayoutDiagnosticSchema = z
       'cycle_or_multiple_parents',
       'disconnected',
       'unchanged',
+      'section_overlap',
     ]),
     elementIds: z.array(z.string()),
     message: z.string(),

@@ -14,8 +14,9 @@ const GAP = 32;
 const ROW_CARDS = 3;
 
 /**
- * 放进分区时只避开其他卡与别的分区，本区不是障碍：空区放在标题下方，
- * 否则接在最后一张成员右边，超过一行的宽度就换到最下一行开头。
+ * 放进分区时只避开本区成员与不在任何分区里的卡；本区和相邻分区都不是障碍，
+ * 卡不会为了躲开邻区跳到区外，本区长大后压到邻区由批次结果提示再整理分区。
+ * 空区放在标题下方，否则接在最后一张成员右边，超过一行的宽度就换到最下一行开头。
  */
 export function placeCanvasCardInSection(
   plan: CanvasWorkingPlan,
@@ -31,7 +32,11 @@ export function placeCanvasCardInSection(
     row.element.type === 'edge' || row.element.id === self ? [] : [row.element]
   );
   const members = cards.filter(item => item.parentId === section.id);
-  const occupied = [...cards.filter(item => item.id !== section.id), ...plan.reservedRectangles];
+  const occupied = [
+    ...members,
+    ...cards.filter(item => item.type !== 'section' && !item.parentId),
+    ...plan.reservedRectangles,
+  ];
   const last = members.reduce<CanvasCard | undefined>(
     (latest, item) => (!latest || item.order > latest.order ? item : latest),
     undefined

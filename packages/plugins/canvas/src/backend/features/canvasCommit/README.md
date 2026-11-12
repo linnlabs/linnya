@@ -20,7 +20,7 @@ Agent 删除和断开连线必须提供读取时的revision；Core缺失基线�
 
 ## 分区
 
-分区是 `type: 'section'` 的卡，成员用 `parentId` 指向它，只有一层：`parentId` 只能指向分区，分区自身的 `parentId` 必须为空，违反时返回 `canvas_section_parent_invalid`。`fitCanvasPlanSections` 在最终图校验前按序处理同批计划：只改归属、没给位置的卡（Agent 不能给坐标）由程序挪位，放进分区排到区内空位（`placeCanvasCardInSection`），移出却仍压在原区上就挪到原区右侧；被删分区的成员清空 `parentId` 并留在原位；每个分区只向外长到包住全部成员加内边距，不自动缩小。这些附带修改并入同批已有变更，不额外增加修订或回执项。
+分区是 `type: 'section'` 的卡，成员用 `parentId` 指向它，只有一层：`parentId` 只能指向分区，分区自身的 `parentId` 必须为空，违反时返回 `canvas_section_parent_invalid`。`fitCanvasPlanSections` 在最终图校验前按序处理同批计划：只改归属、没给位置的卡（Agent 不能给坐标）由程序挪位，放进分区排到区内空位（`placeCanvasCardInSection`：只避开本区成员与不属于任何分区的卡，相邻分区及其成员不算障碍，卡不会为躲开邻区跳出本区），移出却仍压在原区上就挪到原区右侧；被删分区的成员清空 `parentId` 并留在原位；每个分区只向外长到包住全部成员加内边距，不自动缩小，也不推开相邻分区；分区因此压到邻区时，CLI 写入结果追加 `section_overlap` 诊断（只报本批位置或大小变过的分区对），提示 Agent 只整理分区。这些附带修改并入同批已有变更，不额外增加修订或回执项。
 
 `add type:section` 带 members 时围着成员建区、成员不移动；布局清障时移动卡所在的分区不算障碍。连线不属于分区。
 
