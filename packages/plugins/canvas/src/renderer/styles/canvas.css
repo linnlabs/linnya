@@ -589,9 +589,9 @@
   position: absolute;
   z-index: 5;
   box-sizing: border-box;
-  padding: 0 4px;
-  border-radius: 2px;
-  font-weight: 600;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-xs);
+  font-weight: var(--font-weight-semibold);
   line-height: 1;
 }
 .canvas-connection-preview {
