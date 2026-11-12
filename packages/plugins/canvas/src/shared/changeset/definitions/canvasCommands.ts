@@ -8,7 +8,9 @@ import {
   CanvasEndpointSchema,
   CanvasImageCardSchema,
   CanvasSectionCardSchema,
+  CanvasTagIdSchema,
   CanvasTextCardSchema,
+  CANVAS_CARD_TAG_LIMIT,
   CanvasTextDocumentSchema,
 } from '../../model/definitions/canvasElement';
 
@@ -23,6 +25,8 @@ export const CanvasPatchSchema = z
     locked: z.boolean().optional(),
     order: z.string().min(1).optional(),
     parentId: CanvasCardIdSchema.nullable().optional(),
+    tags: z.array(CanvasTagIdSchema).max(CANVAS_CARD_TAG_LIMIT).optional(),
+    status: CanvasTagIdSchema.nullable().optional(),
     data: z
       .union([
         CanvasTextCardSchema.shape.data,
@@ -55,6 +59,8 @@ const placement = {
   color: CanvasColorSchema.optional(),
   locked: z.boolean().optional(),
   parentId: z.string().min(1).optional(),
+  tags: z.array(CanvasTagIdSchema).max(CANVAS_CARD_TAG_LIMIT).optional(),
+  status: CanvasTagIdSchema.optional(),
 };
 export const CanvasCommandSchema = z.discriminatedUnion('op', [
   z

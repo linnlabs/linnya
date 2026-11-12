@@ -7,6 +7,7 @@ import type {
   CanvasElement,
   CanvasPoint,
   CanvasRectangle,
+  CanvasTagNames,
 } from '../../../shared';
 import type { CanvasSpatialProjectionStats } from './canvasSpatialProjection';
 import type { CanvasEdgeGeometry } from '../geometry/canvasEdgeGeometry';
@@ -130,6 +131,8 @@ export interface CanvasKernel {
   setHoveredCard(id: CanvasCardId | null): void;
   setDocumentTitles(titles: ReadonlyMap<string, string>): void;
   setThumbnailCards(ids: ReadonlySet<CanvasCardId>): void;
+  /** 卡片上存的工作区标签 ID → 当前名称；状态印签与卡下标签按它显示。 */
+  setTagNames(names: CanvasTagNames): void;
   readEdgeGeometry(id: CanvasEdgeId): CanvasEdgeGeometry | null;
   readCard(id: CanvasCardId): CanvasCard | null;
   visibleCards(): readonly CanvasCard[];

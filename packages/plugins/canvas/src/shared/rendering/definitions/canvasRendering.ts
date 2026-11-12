@@ -10,6 +10,7 @@ import {
   CanvasSnapshotSchema,
   CanvasTextDocumentSchema,
 } from '../../model/definitions/canvasElement';
+import { CanvasTagNameSchema } from '../../tags/definitions/canvasTags';
 
 export const CANVAS_RENDER_WORKER_ID = 'canvas-render';
 export const CANVAS_RENDER_PROTOCOL = 1;
@@ -102,6 +103,8 @@ export const CanvasRenderRequestSchema = z
     format: z.enum(['png', 'jpeg']),
     quality: finite.min(0.1).max(1),
     material: z.enum(['paper', 'card']),
+    /** 卡片上存的工作区标签 ID → 当前标签，用来画状态印签与卡下标签。 */
+    tags: z.record(z.string(), CanvasTagNameSchema).default({}),
   })
   .strict()
   .refine(

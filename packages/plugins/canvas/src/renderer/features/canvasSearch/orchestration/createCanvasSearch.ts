@@ -1,17 +1,24 @@
 import { computed } from 'vue';
-import { searchCanvasElements, type CanvasElementId } from '@plugin/canvas/shared';
+import {
+  searchCanvasElements,
+  type CanvasElementId,
+  type CanvasSearchContext,
+} from '@plugin/canvas/shared';
 import type { CanvasDocumentSession } from '../../canvasDocument';
 import { createCanvasSearchState } from '../store/createCanvasSearchState';
 export function createCanvasSearch(
   session: CanvasDocumentSession,
-  documentTitles: () => ReadonlyMap<string, string>,
+  /** 文档标题与卡片标签名；标签可按“#名称”搜到。 */
+  readContext: () => CanvasSearchContext,
   locate: (ids: readonly CanvasElementId[]) => void
 ) {
   const state = createCanvasSearchState();
   const hits = computed(() =>
-    searchCanvasElements(session.state.snapshot.value?.elements ?? [], state.query.value, {
-      documentTitles: documentTitles(),
-    })
+    searchCanvasElements(
+      session.state.snapshot.value?.elements ?? [],
+      state.query.value,
+      readContext()
+    )
   );
   return {
     state,

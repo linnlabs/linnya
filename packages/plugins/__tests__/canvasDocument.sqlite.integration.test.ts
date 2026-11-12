@@ -434,3 +434,65 @@ it('keeps named sections as one-level containers that fit their members through 
     expect(element('c5')).toMatchObject({ parentId: null, ...before }); expect(element('c3').parentId).toBeNull();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+it('stores workspace tag ids on cards and reads, filters and follows merges through the semantic CLI', async () => {
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os'); const path = await import('node:path');
+  const { SEMANTIC_LAYER_SCHEMAS } = await import('src/domains/semantic-layer/infrastructure/sqlite/semanticLayer.schema');
+  const { ACTION_LEDGER_SCHEMAS } = await import('src/domains/action-ledger/infrastructure/sqlite/actionLedger.schema');
+  const { createSqliteSemanticLayer } = await import('src/domains/semantic-layer');
+  for (const ddl of [...ACTION_LEDGER_SCHEMAS, ...SEMANTIC_LAYER_SCHEMAS]) db.exec(ddl);
+  const layer = createSqliteSemanticLayer(db, { read: () => null });
+  const pending = layer.defineTag({ name: '待查' }), evidence = layer.defineTag({ name: '证据' }), budget = layer.defineTag({ name: '预算' });
+  const { executeCanvasCliCommand, createCanvasPluginCli, formatCanvasCliInputError } = await import('@plugin/canvas/backend-test-support');
+  const root = await mkdtemp(path.join(tmpdir(), 'canvas-tag-test-'));
+  const id = runtime.create({ projectId, parentId: null, name: '标签.canvas' });
+  const services: import('@plugin/canvas/backend-test-support').CanvasCliServices = { runtimeFor: () => runtime, referencesFor: () => runtime.references,
+    capabilities: { computation: { async check() { throw new Error('not used'); }, async layout() { throw new Error('not used'); }, async dispose() {} } as never,
+      measurement: { async measureBatch(request) { return request.cards.map(card => ({ ref: card.ref, width: card.width, height: 120 })); }, async measure(request) { return { width: request.width, height: 120 }; } },
+      rendering: { async render() { throw new Error('not used'); } } } };
+  const context = { hostContext: { databaseService: { getDb: () => db } }, projectId, conversationId: 'chat', agentRunId: 'run', signal: new AbortController().signal };
+  const cli = createCanvasPluginCli((command, execution, directory) => executeCanvasCliCommand(command, execution, directory, services), formatCanvasCliInputError);
+  let request = 0;
+  const run = async (argv: string[]) => {
+    const prepared = cli.prepare({ argv, invocationId: 'invocation', conversationRoot: root });
+    const result = prepared.status === 'completed' ? prepared.result : await prepared.plan.execute(context);
+    return { exitCode: result.exitCode, value: JSON.parse(result.stdout) };
+  };
+  const apply = async (operations: unknown[]) => {
+    await writeFile(path.join(root, 'ops.json'), JSON.stringify(operations));
+    return run(['apply', 'workspace:/标签.canvas', '--ops-file', 'ops.json', '--request-id', `t${++request}`]);
+  };
+  const element = (cardId: string) => runtime.read(id).elements.find(item => item.id === cardId)! as import('@plugin/canvas/shared').CanvasCard;
+  try {
+    const created = await apply([{ op: 'add', text: '房租上限', tags: ['证据', '证据'], status: '待查' }, { op: 'add', text: '押金一次性', tags: ['预算', '证据'] }, { op: 'add', text: '通勤' }]);
+    expect(created.exitCode, JSON.stringify(created.value)).toBe(0);
+    // 卡片只存工作区标签 ID，名称不进画布内容。
+    expect(element('c1')).toMatchObject({ tags: [evidence.id], status: pending.id });
+    expect(element('c2').tags).toEqual([budget.id, evidence.id]);
+    expect(element('c3')).not.toHaveProperty('tags');
+    const read = (await run(['read', 'workspace:/标签.canvas'])).value.text as string;
+    expect(read).toMatch(/\[c1\] text[^\n]* 状态：待查 标签：#证据/);
+    expect((await run(['show', 'workspace:/标签.canvas', 'c2'])).value.elements[0]).toMatchObject({ tags: ['预算', '证据'] });
+    const ids = (value: { matches: { id: string }[] }) => value.matches.map(match => match.id);
+    expect(ids((await run(['find', 'workspace:/标签.canvas', '--tag', '证据'])).value)).toEqual(['c1', 'c2']);
+    expect(ids((await run(['find', 'workspace:/标签.canvas', '--status', '待查'])).value)).toEqual(['c1']);
+    expect(ids((await run(['find', 'workspace:/标签.canvas', '押金', '--tag', '证据'])).value)).toEqual(['c2']);
+    expect(ids((await run(['find', 'workspace:/标签.canvas', '#预算'])).value)).toEqual(['c2']);
+    expect((await run(['find', 'workspace:/标签.canvas', '--tag', '证据们'])).value.error).toMatchObject({ message: '没有标签“证据们”；相近的有：证据。' });
+    // 不存在的标签整批拒绝，提示用 Core CLI 新建；画布不新建标签。
+    const missing = await apply([{ op: 'update', id: 'c3', revision: element('c3').revision, tags: ['假设'] }]);
+    expect(missing.value.error).toMatchObject({ message: expect.stringContaining('linnya schema add-tag 假设') });
+    expect(layer.listTags()).toHaveLength(3);
+    // 整体替换与清除状态。
+    const cleared = await apply([{ op: 'update', id: 'c1', revision: element('c1').revision, tags: [], status: null }]);
+    expect(cleared.exitCode, JSON.stringify(cleared.value)).toBe(0);
+    expect(element('c1')).toMatchObject({ tags: [], status: null });
+    // 标签合并后，卡片上的旧 ID 按合并目标显示与筛选；连线不能挂标签。
+    layer.mergeTags(budget.id, evidence.id);
+    expect((await run(['show', 'workspace:/标签.canvas', 'c2'])).value.elements[0]).toMatchObject({ tags: ['证据'] });
+    expect(ids((await run(['find', 'workspace:/标签.canvas', '--tag', '证据'])).value)).toEqual(['c2']);
+    await apply([{ op: 'connect', from: 'c1', to: 'c2' }]);
+    expect((await apply([{ op: 'update', id: 'e1', revision: 1, status: '待查' }])).value.error).toMatchObject({ message: 'tags/status 只适用于卡片。' });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

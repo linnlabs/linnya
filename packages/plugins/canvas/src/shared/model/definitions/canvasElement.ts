@@ -115,6 +115,9 @@ export const CanvasTextDocumentSchema = z.preprocess(
 );
 
 const finite = z.number().finite();
+/** 一张卡最多挂的标签数。 */
+export const CANVAS_CARD_TAG_LIMIT = 12;
+export const CanvasTagIdSchema = z.string().min(1).max(64);
 const identity = {
   schemaVersion: z.literal(1),
   revision: z.number().int().nonnegative(),
@@ -134,6 +137,10 @@ const card = {
   width: finite.positive(),
   height: finite.positive(),
   parentId: CanvasCardIdSchema.nullable(),
+  /** 工作区标签（语义层 #标签）的 ID，按添加先后；画布只存储与显示，不解释含义。 */
+  tags: z.array(CanvasTagIdSchema).max(CANVAS_CARD_TAG_LIMIT).optional(),
+  /** 状态角标：一个工作区标签的 ID，null 与缺省都表示没有。 */
+  status: CanvasTagIdSchema.nullable().optional(),
 };
 
 export const CanvasTextCardSchema = z

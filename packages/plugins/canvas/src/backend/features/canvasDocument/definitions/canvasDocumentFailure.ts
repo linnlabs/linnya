@@ -5,7 +5,8 @@ export type CanvasDocumentFailureCode =
   | 'wrong_document_type'
   | 'projection_read_only'
   | 'runtime_closed'
-  | 'view_closed';
+  | 'view_closed'
+  | 'tag_unavailable';
 export class CanvasDocumentFailure extends Error {
   constructor(
     readonly code: CanvasDocumentFailureCode,

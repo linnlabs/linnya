@@ -8,6 +8,7 @@ export class CanvasWriteFailure extends Error {
       | 'invalid_content'
       | 'image_unavailable'
       | 'document_unavailable'
+      | 'tag_unavailable'
       | DocumentReferenceMarkdownError['code'],
     message: string,
     readonly operation?: number,

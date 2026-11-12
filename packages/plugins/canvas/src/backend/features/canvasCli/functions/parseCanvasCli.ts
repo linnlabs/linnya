@@ -9,7 +9,7 @@ export const CANVAS_CLI_HELP = {
   usage: [
     'read <workspace:path>',
     'show <workspace:path> <cN>',
-    'find <workspace:path> <text>',
+    'find <workspace:path> [text] [--tag 标签名] [--status 标签名]',
     'neighbors <workspace:path> <cN> [--depth 1]',
     'region <workspace:path> <方位>',
     'check <workspace:path>',
@@ -30,6 +30,8 @@ interface CliArguments {
 }
 interface CommandParser {
   readonly arity: number;
+  /** 第二个位置参数可省（find 只按标签筛选时）。 */
+  readonly optionalValue?: boolean;
   readonly options: NonNullable<ParseArgsConfig['options']>;
   parse(input: CliArguments): CanvasCliCommand;
 }
@@ -55,7 +57,12 @@ const commands: Readonly<Record<string, CommandParser>> = {
     },
   },
   show: { arity: 2, options: {}, parse: input => parseQuery('show', input) },
-  find: { arity: 2, options: {}, parse: input => parseQuery('find', input) },
+  find: {
+    arity: 2,
+    optionalValue: true,
+    options: { tag: { type: 'string' }, status: { type: 'string' } },
+    parse: parseFind,
+  },
   region: { arity: 2, options: {}, parse: input => parseQuery('region', input) },
   neighbors: {
     arity: 2,
@@ -118,7 +125,11 @@ export function parseCanvasCli(argv: readonly string[]): CanvasCliCommand {
       'invalid_path',
       '请使用 workspace:/目录/画布.canvas；不接受磁盘路径。'
     );
-  if (parsed.positionals.length !== definition.arity)
+  const positionals = parsed.positionals.length;
+  if (
+    positionals !== definition.arity &&
+    !(definition.optionalValue && positionals === definition.arity - 1)
+  )
     throw new CanvasCliFailure(
       'invalid_arguments',
       `参数数量不正确；请运行 linnya-canvas help 查看 ${kind} 用法。`
@@ -147,6 +158,20 @@ function parseQuery(
   if (!Number.isInteger(depth) || depth < 1 || depth > 8)
     throw new CanvasCliFailure('invalid_depth', '--depth 必须是 1–8 的整数。');
   return { kind, path: input.path, value: input.value, depth };
+}
+function parseFind(input: CliArguments): CanvasCliCommand {
+  const tag = typeof input.flags.tag === 'string' ? input.flags.tag.trim() : '',
+    status = typeof input.flags.status === 'string' ? input.flags.status.trim() : '';
+  if (!input.value?.trim() && !tag && !status)
+    throw new CanvasCliFailure('missing_argument', '缺少搜索词，或用 --tag/--status 按标签找。');
+  return {
+    kind: 'find',
+    path: input.path,
+    value: input.value ?? '',
+    depth: 1,
+    ...(tag ? { tag } : {}),
+    ...(status ? { status } : {}),
+  };
 }
 function parseArrangement({ path, flags }: CliArguments): CanvasCliCommand {
   return {

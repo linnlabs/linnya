@@ -12,6 +12,7 @@ export function configureCanvasWorkerScene(
   kernel.setDocumentTitles(
     new Map(Object.entries(request.documents).map(([id, presentation]) => [id, presentation.title]))
   );
+  kernel.setTagNames(new Map(Object.entries(request.tags)));
   kernel.setThumbnailCards(
     new Set(
       request.snapshot.elements

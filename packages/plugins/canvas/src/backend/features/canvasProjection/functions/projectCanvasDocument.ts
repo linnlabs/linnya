@@ -2,6 +2,7 @@ import {
   canvasTextPrefix,
   orderCanvasCardsForReading,
   readCanvasCardConnections,
+  readCanvasCardTags,
   readCanvasSectionMembers,
 } from '../../../../shared';
 import type { CanvasCard, CanvasEdge, CanvasSnapshot } from '../../../../shared';
@@ -13,6 +14,14 @@ import {
   groupCanvasProjectionRegions,
 } from './groupCanvasProjectionRegions';
 
+/** 状态与标签按当前工作区名称列出，没有时不占位。 */
+export function describeCanvasCardTags(card: CanvasCard, context: CanvasProjectionContext): string {
+  const { status, tags } = readCanvasCardTags(card, context.tags);
+  return `${status ? ` 状态：${status.name}` : ''}${
+    tags.length ? ` 标签：${tags.map(tag => `#${tag.name}`).join(' ')}` : ''
+  }`;
+}
+
 function projectCardSummary(
   card: CanvasCard,
   context: CanvasProjectionContext,
@@ -23,7 +32,7 @@ function projectCardSummary(
     limit = summary ? 100 : 800,
     inner = `${indent}  `;
   return [
-    `${indent}- [${card.id}] ${card.type}〔${card.color}〕 revision=${card.revision}${card.locked ? '〔已锁定〕' : ''} ${describeCanvasModification(card)}`,
+    `${indent}- [${card.id}] ${card.type}〔${card.color}〕 revision=${card.revision}${card.locked ? '〔已锁定〕' : ''}${describeCanvasCardTags(card, context)} ${describeCanvasModification(card)}`,
     `${inner}${canvasTextPrefix(body, limit).replace(/\n/g, `\n${inner}`)}${body.length > limit ? `\n${inner}… 已截断，用 show ${card.id} 读取全文。` : ''}`,
   ];
 }

@@ -2,6 +2,6 @@
 
 公开入口为本feature的index.ts。正文只从canonical结构化内容生成；文档卡与内联标签只消费调用方提供的当前同项目路径，越界或删除目标输出不可访问说明，不泄漏稳定目标ID、路径或标题。
 
-`projectCanvasCardBody` 拥有卡片正文与标签的Markdown投影；`groupCanvasProjectionRegions` 只生成九宫格阅读分片；`projectCanvasDocument` 组织全文/大画布摘要与连线；`projectCanvasSearchText` 生成有UTF-8字节上限的检索快照。正文序列化不依赖前台编辑器。分区投影为“分区：标题”，成员缩进列在所属分区下；九宫格分片按顶层项（分区或区外卡）计算，分区与成员不被切到不同区域。
+`projectCanvasCardBody` 拥有卡片正文与标签的Markdown投影；`groupCanvasProjectionRegions` 只生成九宫格阅读分片；`projectCanvasDocument` 组织全文/大画布摘要与连线；`projectCanvasSearchText` 生成有UTF-8字节上限的检索快照。正文序列化不依赖前台编辑器。卡片行附“状态：名称 标签：#名称…”，名称来自投影上下文的 `tags`（卡片存的工作区标签 ID → 当前标签）。分区投影为“分区：标题”，成员缩进列在所属分区下；九宫格分片按顶层项（分区或区外卡）计算，分区与成员不被切到不同区域。
 
 `projectCanvasSelection({snapshot,elementIds,path,context,format?})` 基于一次已提交快照冻结选择内容，支持有预算的对话上下文和Markdown复制。默认上下文正文预算8000字符，卡片放不下时保留摘要及继续读取方法，不扩选区。发送前刷新由调用方的通用provider协调，不由投影函数追赶并发写入。

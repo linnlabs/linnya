@@ -10,6 +10,7 @@ import { CanvasCliFailure, type CanvasCliCommand } from '../features/canvasCli';
 import {
   readCanvasDocumentIdentity,
   readCanvasProjectionContext,
+  resolveCanvasQueryTags,
 } from '../features/canvasDocument';
 import { canvasSourceKey, readCanvasSnapshot } from '../features/canvasCommit';
 import {
@@ -141,7 +142,11 @@ export async function executeCanvasCliCommand(
     services.referencesFor(scope.database),
     scope.readerId
   );
-  return queryCanvas(projected, readCanvasProjectionContext(scope.database, snapshot), command);
+  return queryCanvas(
+    projected,
+    readCanvasProjectionContext(scope.database, snapshot),
+    resolveCanvasQueryTags(scope.database, command)
+  );
 }
 function resolveScope(
   path: string,

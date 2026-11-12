@@ -7,6 +7,7 @@ import {
 import { readCanvasSnapshot } from '../features/canvasCommit';
 import {
   readCanvasProjectionContext,
+  resolveCanvasQueryTags,
   readCanvasDocumentIdentity,
 } from '../features/canvasDocument';
 import { queryCanvas, checkCanvas } from '../features/canvasQuery';
@@ -36,7 +37,11 @@ export function readCanvasStandalone(
       const snapshot = readCanvasSnapshot(database, node.id);
       return command.kind === 'check'
         ? checkCanvas(snapshot)
-        : queryCanvas(snapshot, readCanvasProjectionContext(database, snapshot), command);
+        : queryCanvas(
+            snapshot,
+            readCanvasProjectionContext(database, snapshot),
+            resolveCanvasQueryTags(database, command)
+          );
     })
     .deferred();
 }

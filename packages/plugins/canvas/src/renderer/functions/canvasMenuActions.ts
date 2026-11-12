@@ -154,8 +154,11 @@ export function canvasContextMenuActions(input: {
   readonly colorable?: boolean;
   readonly edge: boolean;
   readonly readonly: boolean;
+  /** 选中卡片的“标签”“状态”子菜单，排在颜色后面。 */
+  readonly tags?: readonly CustomSelectOption<string>[];
 }): readonly CustomSelectOption<string>[] {
   const { colors, align, distribute, layer, separator, deleteItem } = menuGroups();
+  const tags = input.tags ?? [];
   const fitSelection = {
     value: 'fit-selection',
     text: canvasText('canvas.zoom.fitSelection'),
@@ -169,11 +172,12 @@ export function canvasContextMenuActions(input: {
           distribute,
           { value: 'arrange', text: canvasText('canvas.menu.arrangeSelected') },
           colors,
+          ...tags,
           layer,
           separator,
           deleteItem,
         ]
-      : [...cardContextItems(), colors, layer, fitSelection, separator, deleteItem];
+      : [...cardContextItems(), colors, ...tags, layer, fitSelection, separator, deleteItem];
   const actions = input.edge
     ? canvasConnectionContextActions()
     : input.selectionCount

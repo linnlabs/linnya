@@ -7,7 +7,11 @@ import { resolveDocumentReference } from '@plugin/backend/documentReferences';
 import { CANVAS_DOCUMENT_TYPE, type CanvasSnapshot } from '../../shared';
 import type { CanvasRenderRequest } from '../../shared/rendering';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
-import { collectCanvasAssetIds, readCanvasDocumentIdentity } from '../features/canvasDocument';
+import {
+  collectCanvasAssetIds,
+  readCanvasDocumentIdentity,
+  readCanvasTagNames,
+} from '../features/canvasDocument';
 import { listCanvasReferencedDocuments } from '../features/canvasProjection';
 interface ResourceInput {
   readonly database: CanvasDatabase;
@@ -155,16 +159,18 @@ export async function readCanvasResources(input: ResourceInput) {
   );
   return { assets, documents };
 }
-export function readCanvasRenderingResources(input: {
+export async function readCanvasRenderingResources(input: {
   readonly database: CanvasDatabase;
   readonly snapshot: CanvasSnapshot;
   readonly signal: AbortSignal;
   readonly covers: boolean;
 }) {
-  return readCanvasResources({
+  const resources = await readCanvasResources({
     ...input,
     documentId: input.snapshot.documentId,
     assetIds: collectCanvasAssetIds(input.snapshot.elements),
     documentIds: listCanvasReferencedDocuments(input.snapshot.elements),
   });
+  const tags = readCanvasTagNames(input.database, input.snapshot.elements);
+  return { ...resources, tags: Object.fromEntries(tags) };
 }

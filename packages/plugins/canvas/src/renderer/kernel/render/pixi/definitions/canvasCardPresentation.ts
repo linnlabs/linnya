@@ -20,6 +20,8 @@ export interface CanvasCardPresentationContext {
   /** 改尺寸中或松手后新排版未到的卡：旧排版正文盖不满新纸面，但不能因此补画占位标题。 */
   showsOldLayout(id: CanvasCardId): boolean;
   readRenders(): number;
+  /** 画布输出的设备像素比，标记文字按它采样。 */
+  readResolution(): number;
   readContextLost(): boolean;
   readDestroyed(): boolean;
 }

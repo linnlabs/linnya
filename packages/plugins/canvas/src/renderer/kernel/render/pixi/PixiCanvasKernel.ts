@@ -372,6 +372,7 @@ export class PixiCanvasKernel implements CanvasKernel {
         readRenders: () => this.drawing.readRenderCount(),
         readContextLost: () => this.drawing.hasContextLost(),
         readDestroyed: () => this.drawing.isDestroyed(),
+        readResolution: () => this.app.renderer.resolution,
       },
       layer: this.cardLayer,
       sectionLayer: this.sectionLayer,
@@ -396,6 +397,9 @@ export class PixiCanvasKernel implements CanvasKernel {
   }
   setThumbnailCards(ids: ReadonlySet<CanvasCardId>): void {
     this.presentation.setThumbnailCards(ids);
+  }
+  setTagNames(names: Parameters<CanvasKernel['setTagNames']>[0]): void {
+    this.presentation.setTagNames(names);
   }
   setRasterContentKey(id: CanvasCardId, key: string): void {
     this.presentation.setRasterContentKey(id, key);

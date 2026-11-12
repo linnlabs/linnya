@@ -29,6 +29,7 @@ import {
   readCanvasSelectionContext,
 } from '../orchestration/readCanvasSelectionContext';
 import type { CanvasIpcServices } from '../definitions/canvasIpcServices';
+import { readCanvasTagCatalog } from '../features/canvasDocument';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
 
 export const CANVAS_IPC_CHANNELS = [
@@ -52,6 +53,7 @@ export const CANVAS_IPC_CHANNELS = [
   'canvas:cancel-arrange',
   'canvas:history-preview',
   'canvas:history-budget',
+  'canvas:tags',
 ] as const;
 
 export function registerCanvasIpc(input: {
@@ -131,6 +133,7 @@ export function registerCanvasIpc(input: {
       return services().runtime.history.budget(value.documentId);
     },
     'canvas:context': (payload: unknown) => readCanvasSelectionContext(database, payload),
+    'canvas:tags': (payload: unknown) => readCanvasTagCatalog(database, payload),
   };
   for (const channel of CANVAS_IPC_CHANNELS) {
     register(CANVAS_PLUGIN_ID, channel, async (event, payload) => {

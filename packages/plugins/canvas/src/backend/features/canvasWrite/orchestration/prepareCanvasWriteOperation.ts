@@ -3,6 +3,8 @@ import {
   CanvasCommandSchema,
   canvasImageHeight,
   type CanvasCommand,
+  type CanvasElement,
+  type CanvasPatch,
 } from '../../../../shared';
 import type { CanvasCliOperation } from '../../../../shared/cli/definitions/canvasCli';
 import { CanvasWriteFailure } from '../definitions/canvasWriteFailure';
@@ -27,6 +29,8 @@ async function prepareAddition(
     near: operation.near ?? operation.after ?? operation.in,
     side: operation.side,
     parentId: operation.section,
+    tags: operation.tags && ports.resolveTags(operation.tags, 'tags'),
+    status: operation.status && ports.resolveTags([operation.status], 'status')[0],
   };
   if (operation.type === 'section')
     return {
@@ -66,6 +70,22 @@ async function prepareAddition(
     }),
   };
 }
+/** 标签与状态角标只属于卡片；名称在这里换成工作区标签 ID。 */
+function prepareCanvasTagPatch(
+  operation: Extract<CanvasCliOperation, { op: 'update' }>,
+  current: CanvasElement,
+  ports: CanvasWritePorts
+): CanvasPatch {
+  if (operation.tags === undefined && operation.status === undefined) return {};
+  if (current.type === 'edge')
+    throw new CanvasWriteFailure('wrong_element_type', 'tags/status 只适用于卡片。');
+  return {
+    ...(operation.tags === undefined ? {} : { tags: ports.resolveTags(operation.tags, 'tags') }),
+    ...(operation.status === undefined
+      ? {}
+      : { status: operation.status && ports.resolveTags([operation.status], 'status')[0] }),
+  };
+}
 async function prepareUpdate(
   operation: Extract<CanvasCliOperation, { op: 'update' }>,
   context: CanvasWriteOperationContext,
@@ -80,12 +100,13 @@ async function prepareUpdate(
       'id'
     );
   const patch = buildCanvasPropertyPatch(operation, current),
+    tags = prepareCanvasTagPatch(operation, current, ports),
     text = await prepareCanvasTextUpdate(operation, current, ports);
   const command: Extract<CanvasCommand, { op: 'update' }> = {
     op: 'update',
     id: operation.id,
     baseRevision: operation.revision,
-    patch: { ...patch, ...text },
+    patch: { ...patch, ...tags, ...text },
   };
   const measurement = readCanvasUpdateMeasurement(current, command);
   return {

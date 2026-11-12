@@ -11,13 +11,14 @@ export function createCanvasSurfaceDisposal({
   const { session, layout, editor, dragging, resizing, report } = base;
   const { kernel, raster } = rendering;
   const { editable } = drafts;
-  const { opening, connections } = commands;
+  const { opening, connections, tags } = commands;
   const { clipboard, removeSave, removeHistory, stopDisplay, projection, stopDoubleClick } =
     bindings;
   return () => {
     opening.dispose();
     void layout?.dispose().catch(report);
     connections.dispose();
+    tags.dispose();
     dragging.dispose();
     resizing.dispose();
     clipboard.dispose();

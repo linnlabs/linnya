@@ -32,6 +32,9 @@ export type CanvasCliCommand =
       readonly path: string;
       readonly value: string;
       readonly depth: number;
+      /** find 的标签、状态筛选：工作区标签名。 */
+      readonly tag?: string;
+      readonly status?: string;
     }
   | {
       readonly kind: 'render';

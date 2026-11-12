@@ -54,6 +54,7 @@ metadata:
 - 文字写Markdown；只选颜色white/red/orange/yellow/green/cyan/purple；不写坐标、字体或色值。
 - 新增只找空位，不挪动既有卡。near/after/in用于附近定位，side可right/left/top/bottom。
 - 分区是带标题的底区，用来把一类卡圈在一起：`{"op":"add","type":"section","title":"预算","members":["c2","c5"]}` 围着已有卡建区，卡不挪位；不带members则建空区。新卡放进分区用add的`section`（分区cN或本批ref），已有卡用update的`section`（cN；null移出），只给归属时程序替它在区内找空位。分区改名用update的`title`。
+- 卡片可挂工作区标签（与文档的 #标签 同一套）：add/update 的`tags`是标签名数组（update 整体替换，`[]`清除，最多12个），`status`是一个标签名，显示为卡片右上角的状态角标（update 用 null 清除）。只能用已有标签；没有时先用`linnya schema`看有哪些，确实需要再`linnya schema add-tag 名称`新建，不要为同义词另建。按标签找卡用`find <画布路径> --tag 名称`、`--status 名称`，可与文字同用。
 - 分区只有一层，分区不能放进分区；分区会自动长大包住成员。删除分区只删底区，成员留在原位。分区归属**不是树父子**，树父子通过connect表达；连线不属于任何分区。
 - update必须带show读到的revision；text替换全文，append只追加新Markdown块并保留原节点。
 - 修改已有线的label/direction/lineStyle/linePattern同样用update，保留原eN和端点；direction可none/forward/both，lineStyle可curve/straight，linePattern可solid/dashed。样式后写生效，标签仍按读取版本保护；不要为改样式断开重连。
@@ -91,7 +92,7 @@ metadata:
 ## 查询与图像
 
 - `show <画布路径> <cN|eN>`：单卡全文/线属性。
-- `find <画布路径> <文字>`：按当前正文与可访问标题搜索。
+- `find <画布路径> [文字] [--tag 标签名] [--status 标签名]`：按当前正文、可访问标题与标签搜索；文字里写`#名称`也能搜到标签。
 - `neighbors <画布路径> <cN> --depth 2`：相邻卡与连接。
 - `region <画布路径> 左上`：九宫格区域；也支持上方/右上/左侧/正中/右侧/左下/下方/右下。
 - `check <画布路径>`：共享正式曲线几何的检查；不移动任何卡。

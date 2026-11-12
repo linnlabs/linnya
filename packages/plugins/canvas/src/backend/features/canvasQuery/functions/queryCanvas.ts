@@ -1,6 +1,8 @@
 import {
   canvasBounds,
+  canvasCardHasTag,
   orderCanvasCardsForReading,
+  readCanvasCardTags,
   readCanvasCardConnections,
   searchCanvasElements,
   type CanvasCard,
@@ -13,6 +15,13 @@ import {
   type CanvasProjectionContext,
 } from '../../canvasProjection';
 import type { CanvasQuery } from '../definitions/canvasQuery';
+function projectCardTags(card: CanvasCard, context: CanvasProjectionContext) {
+  const { status, tags } = readCanvasCardTags(card, context.tags);
+  return {
+    ...(status ? { status: status.name } : {}),
+    ...(tags.length ? { tags: tags.map(item => item.name) } : {}),
+  };
+}
 const regions = ['左上', '上方', '右上', '左侧', '正中', '右侧', '左下', '下方', '右下'];
 function regionFor(card: CanvasCard, bounds: NonNullable<ReturnType<typeof canvasBounds>>): string {
   const column = Math.min(
@@ -40,6 +49,33 @@ function neighbors(snapshot: CanvasSnapshot, id: string, depth: number): Readonl
   }
   return result;
 }
+/** 按文字、标签、状态找卡：条件同时满足；只给标签或状态时列出全部带它的卡。 */
+function findCanvasElements(
+  snapshot: CanvasSnapshot,
+  context: CanvasProjectionContext,
+  query: Extract<CanvasQuery, { kind: 'find' | 'show' | 'neighbors' | 'region' }>
+) {
+  const { tag, status } = query;
+  const tagged = (element: CanvasSnapshot['elements'][number]) =>
+    element.type !== 'edge' &&
+    (!tag || canvasCardHasTag(element, context.tags, tag)) &&
+    (!status || readCanvasCardTags(element, context.tags).status?.id === status);
+  const candidates = tag || status ? snapshot.elements.filter(tagged) : snapshot.elements;
+  const ids = new Set(candidates.map(element => element.id));
+  if (query.value.trim())
+    return searchCanvasElements(snapshot.elements, query.value, context).filter(hit =>
+      ids.has(hit.id)
+    );
+  const cards = candidates.filter((element): element is CanvasCard => element.type !== 'edge');
+  return orderCanvasCardsForReading(cards, readCanvasCardConnections(snapshot.elements)).map(
+    card => ({
+      id: card.id,
+      type: card.type,
+      text: projectCanvasCardBody(card, context).slice(0, 136),
+    })
+  );
+}
+
 export function queryCanvas(
   snapshot: CanvasSnapshot,
   context: CanvasProjectionContext,
@@ -48,7 +84,7 @@ export function queryCanvas(
   if (query.kind === 'read')
     return { sequence: snapshot.sequence, text: projectCanvasDocument(snapshot, context) };
   if (query.kind === 'find') {
-    const matches = searchCanvasElements(snapshot.elements, query.value, context);
+    const matches = findCanvasElements(snapshot, context, query);
     return { sequence: snapshot.sequence, total: matches.length, matches: matches.slice(0, 100) };
   }
   const cards = snapshot.elements.filter(
@@ -76,6 +112,7 @@ export function queryCanvas(
     revision: card.revision,
     color: card.color,
     locked: card.locked,
+    ...projectCardTags(card, context),
     ...projectCanvasModification(card),
     text: projectCanvasCardBody(card, context),
   }));

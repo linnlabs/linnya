@@ -2,6 +2,7 @@ import { type CanvasCardId } from '@plugin/canvas/shared';
 import { createCanvasConnectionEditing } from '../features/connections';
 import { createCanvasElementActions } from '../features/elementEditing';
 import { createCanvasSectionEditing } from '../features/sectionEditing';
+import { createCanvasCardTags } from '../features/cardTags';
 import { mergeCanvasSelection } from '../features/selection';
 import { createCanvasCardOpening } from './createCanvasCardOpening';
 import { installCanvasReadonlyProjection } from './installCanvasReadonlyProjection';
@@ -78,6 +79,14 @@ export function createCanvasSurfaceSelection({
     select,
     readDark: () => base.readAppearance().dark,
   });
+  const tags = createCanvasCardTags({
+    session,
+    read: ports.readTags,
+    selection: () => selection.ids.value,
+    installed: names => kernel.setTagNames(names),
+    menuOpened: () => Boolean(state.context.value),
+    report,
+  });
   const { createText, createTree } = createCanvasSurfaceCreation({
     options,
     base,
@@ -107,6 +116,7 @@ export function createCanvasSurfaceSelection({
     opening,
     connections,
     sections,
+    tags,
     trySelect,
     select,
     installReadonly,

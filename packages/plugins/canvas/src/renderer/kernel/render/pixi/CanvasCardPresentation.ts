@@ -13,7 +13,9 @@ import {
   type CanvasCard,
   type CanvasCardId,
   type CanvasRectangle,
+  type CanvasTagNames,
 } from '../../../../shared';
+import { createCanvasCardMarks, updateCanvasCardMarks } from './canvasCardMarks';
 import type { CanvasRasterTile } from '../../definitions/canvasKernel';
 import { intersectCanvasRegion } from '../../geometry/canvasVisibleRegions';
 import { canvasFitText } from '../../geometry/canvasFitText';
@@ -29,6 +31,7 @@ export class CanvasCardPresentation {
   private visibleRegions: ReadonlyMap<CanvasCardId, readonly CanvasRectangle[]> = new Map();
   private documentTitles: ReadonlyMap<string, string> = new Map();
   private thumbnailCards: ReadonlySet<CanvasCardId> = new Set();
+  private tagNames: CanvasTagNames = new Map();
   private readonly identityTitles = new Map<string, string>();
   private readonly textTitles = new WeakMap<CanvasCard, string>();
   constructor(private readonly options: CanvasCardPresentationOptions) {}
@@ -73,6 +76,7 @@ export class CanvasCardPresentation {
     const bounds = this.identityBounds(card);
     label.position.set(bounds.x, bounds.y);
     view.lodAlpha = 1;
+    this.updateMarks(view);
     this.options.applyMotion(view);
   }
 
@@ -118,7 +122,29 @@ export class CanvasCardPresentation {
       this.options.context.readCamera().zoom < 0.15 && !this.options.context.selected.has(card.id)
         ? 0.6
         : 1;
+    this.updateMarks(view);
     this.options.applyMotion(view);
+  }
+  /** 卡片带状态或标签时才建标记；名称、尺寸、主题或缩放档变了才重画。 */
+  private updateMarks(view: CanvasCardView): void {
+    const { card } = view;
+    if (!view.marks && !card.status && !card.tags?.length) return;
+    if (!view.marks) {
+      view.marks = createCanvasCardMarks();
+      view.container.addChild(view.marks.container);
+    }
+    updateCanvasCardMarks(view.marks, {
+      card,
+      names: this.tagNames,
+      zoom: this.options.context.readCamera().zoom,
+      dark: this.options.context.readAppearance().dark,
+      dpr: this.options.context.readResolution(),
+    });
+  }
+  setTagNames(names: CanvasTagNames): void {
+    this.tagNames = names;
+    for (const view of this.options.views.values()) this.updateMarks(view);
+    this.options.schedule();
   }
   identityVisible(card: CanvasCard): boolean {
     const overview =
@@ -218,6 +244,7 @@ export class CanvasCardPresentation {
       rasterContentKey: undefined,
       lodAlpha: 1,
       paperClip: null,
+      marks: null,
     };
     return view;
   }
@@ -366,6 +393,7 @@ export class CanvasCardPresentation {
         }
         if (view.container.visible) {
           view.label.visible = this.identityVisible(view.card);
+          this.updateMarks(view);
         }
       }
       if (view.container.visible && this.options.context.readCamera().zoom >= 0.3) {

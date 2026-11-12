@@ -6,6 +6,7 @@ import {
   type CanvasProjectionContext,
 } from '../../canvasProjection';
 import { readCanvasDocumentIdentity } from './readCanvasDocumentIdentity';
+import { readCanvasTagNames } from './readCanvasTags';
 
 export function readCanvasProjectionContext(
   database: Pick<CanvasDatabase, 'prepare'>,
@@ -21,5 +22,10 @@ export function readCanvasProjectionContext(
       documentTitles.set(targetId, target.path.slice(target.path.lastIndexOf('/') + 1));
     }
   }
-  return { name: source.name, documentPaths, documentTitles };
+  return {
+    name: source.name,
+    documentPaths,
+    documentTitles,
+    tags: readCanvasTagNames(database, snapshot.elements),
+  };
 }

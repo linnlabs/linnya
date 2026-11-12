@@ -6,6 +6,7 @@ import type {
 import { readCanvasCardConnections } from '../../reading/functions/canvasCardConnections';
 import { orderCanvasCardsForReading } from '../../reading/functions/orderCanvasCardsForReading';
 import type { CanvasSearchContext, CanvasSearchHit } from '../definitions/canvasSearch';
+import { readCanvasCardTags } from '../../tags/functions/readCanvasCardTags';
 
 function bodyText(node: CanvasContentNode, context: CanvasSearchContext): string {
   if (node.type === 'documentReference')
@@ -18,10 +19,23 @@ function bodyText(node: CanvasContentNode, context: CanvasSearchContext): string
   if (node.type === 'hardBreak') return '\n';
   return node.content?.map(child => bodyText(child, context)).join(' ') ?? '';
 }
+/** 状态与标签排在正文后面，标签带 # 前缀，可搜“#证据”。 */
+function tagText(element: CanvasElement, context: CanvasSearchContext): string {
+  if (element.type === 'edge' || !context.tags) return '';
+  const { status, tags } = readCanvasCardTags(element, context.tags);
+  return [status?.name, ...tags.map(tag => `#${tag.name}`)].filter(Boolean).join(' ');
+}
+
 export function readCanvasElementSearchText(
   element: CanvasElement,
   context: CanvasSearchContext
 ): string {
+  const tags = tagText(element, context);
+  const body = readCanvasElementBodyText(element, context);
+  return tags ? `${body} ${tags}` : body;
+}
+
+function readCanvasElementBodyText(element: CanvasElement, context: CanvasSearchContext): string {
   if (element.type === 'text') return bodyText(element.data.content, context);
   if (element.type === 'image') return [element.data.caption, element.data.alt].join(' ');
   if (element.type === 'document') return context.documentTitles.get(element.data.documentId) ?? '';

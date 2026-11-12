@@ -260,6 +260,7 @@ import {
 } from '../features/materialSetting';
 import { CANVAS_CARD_CORNER_RADIUS, CANVAS_CARD_PAPER_INSET } from '../kernel/cardFrame';
 import { createCanvasArrangementPort } from '../adapters/createCanvasArrangementPort';
+import { readCanvasTags } from '../adapters/readCanvasTags';
 import {
   CanvasDocumentDetail,
   canvasDocumentDetailTarget,
@@ -377,6 +378,7 @@ const contextActions = computed(() =>
     colorable: colorable.value,
     edge: Boolean(surface.value?.connections.selected.value),
     readonly: readonly.value,
+    tags: surface.value?.tags.menu(surface.value.selectedCards.value),
   })
 );
 const statusItems = computed(() =>
@@ -512,6 +514,7 @@ onMounted(async () => {
         retryContent: cardContent.retry,
         subscribeContent: cardContent.subscribe,
         resolveImageSource: cardContent.resolveImageSource,
+        readTags: readCanvasTags,
         prepareClipboard: ids => readCanvasClipboard(session.documentId, ids),
         pasteImages: async (files, point) => {
           if (!creation.value) throw new Error(t('canvas.input.surface.imageNotReady'));
@@ -567,7 +570,11 @@ onMounted(async () => {
       readImage: mediaPort.readImage,
       prepare: creation.value.prepare,
     });
-    search.value = createCanvasSearch(result.session, cardContent.documentTitles, ids => {
+    const searchContext = () => ({
+      documentTitles: cardContent.documentTitles(),
+      tags: result.tags.state.names.value,
+    });
+    search.value = createCanvasSearch(result.session, searchContext, ids => {
       void run(() => result.focusElements(ids));
     });
     removeMediaInput = installCanvasMediaInput({

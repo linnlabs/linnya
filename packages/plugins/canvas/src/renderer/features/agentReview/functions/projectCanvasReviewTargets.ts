@@ -18,6 +18,8 @@ const FIELD_KEYS = {
   y: 'canvas.review.field.y',
   order: 'canvas.review.field.order',
   parentId: 'canvas.review.field.parentId',
+  tags: 'canvas.review.field.tags',
+  status: 'canvas.review.field.status',
   $entity: 'canvas.review.field.entity',
   $existence: 'canvas.review.field.existence',
   from: 'canvas.review.field.from',

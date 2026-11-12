@@ -6,8 +6,8 @@ arrange算一个原始动作，其展开的坐标更新不另占原始动作配�
 
 | op | 主要字段 |
 | --- | --- |
-| add | text，或type=document+document，或type=image+file，或type=section+title（可选members）；可选ref/near/after/in/side/width/color/section |
-| update | id/revision；可选text或append、color、locked、width、图片caption/alt、分区title、所属section（cN或null）、连线label/direction/lineStyle/linePattern；省略字段保持原值 |
+| add | text，或type=document+document，或type=image+file，或type=section+title（可选members）；可选ref/near/after/in/side/width/color/section/tags/status |
+| update | id/revision；可选text或append、color、locked、width、图片caption/alt、分区title、所属section（cN或null）、tags（标签名数组，整体替换）、status（标签名或null）、连线label/direction/lineStyle/linePattern；省略字段保持原值 |
 | delete | id、revision（show读取的版本）；连在被删卡上的线一起删除 |
 | connect | from/to，可选ref/label/direction(none/forward/both)/lineStyle(curve/straight)/linePattern(solid/dashed) |
 | disconnect | 线id、revision（show读取的版本） |

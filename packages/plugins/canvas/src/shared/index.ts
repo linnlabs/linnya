@@ -2,6 +2,8 @@ export * from './model/definitions/canvasElement';
 export * from './model/functions/readCanvasContent';
 export * from './model/functions/canvasCardSizing';
 export * from './model/functions/canvasSections';
+export * from './tags/definitions/canvasTags';
+export * from './tags/functions/readCanvasCardTags';
 export * from './history/functions/canvasHistorySession';
 export {
   readCanvasCardPalette,

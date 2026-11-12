@@ -115,6 +115,8 @@ export function createCanvasCard(plan: CanvasWorkingPlan, command: CardCommand):
     updatedAt: plan.now,
     ...frame,
     parentId: section ? CanvasCardIdSchema.parse(section.id) : null,
+    ...(command.tags?.length ? { tags: [...new Set(command.tags)] } : {}),
+    ...(command.status ? { status: command.status } : {}),
     data: cardData(command),
   });
   appendCanvasPlanChange(plan, null, element, Object.keys(element));

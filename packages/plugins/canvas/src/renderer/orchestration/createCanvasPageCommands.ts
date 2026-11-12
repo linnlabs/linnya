@@ -3,6 +3,7 @@ import { readCanvasCardMenuColor } from '../functions/canvasMenuActions';
 import type { CanvasPoint } from '@plugin/canvas/shared';
 import { readCanvasConnectionMenuPatch } from '../features/connections';
 import { canvasText } from '../features/localization';
+import { readCanvasTagMenuChoice } from '../features/cardTags';
 export function createCanvasPageCommands(options: {
   readSurface(): Surface | null;
   addToConversation(): Promise<void>;
@@ -55,9 +56,11 @@ export function createCanvasPageCommands(options: {
     if (!current) return;
     const command = typeof value === 'string' ? commands.get(value) : undefined;
     const color = typeof value === 'string' ? readCanvasCardMenuColor(value) : null;
+    const tag = typeof value === 'string' ? readCanvasTagMenuChoice(value) : null;
     const patch = typeof value === 'string' ? readCanvasConnectionMenuPatch(value) : null,
       edge = current.connections.selected.value;
     if (color) await current.color(color);
+    else if (tag) await current.tags.choose(tag);
     else if (patch && edge) await current.connections.patch(edge, patch);
     else {
       if (!command) throw new Error(canvasText('canvas.error.unknownMenuAction'));

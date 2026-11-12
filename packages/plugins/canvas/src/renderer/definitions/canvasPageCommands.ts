@@ -27,5 +27,6 @@ export interface CanvasPageCommandSurface
   >;
   readonly session: { readonly state: Pick<Surface['session']['state'], 'snapshot'> };
   readonly sections: Pick<Surface['sections'], 'group'>;
+  readonly tags: Pick<Surface['tags'], 'choose'>;
   readonly selection: { readonly ids: Pick<Surface['selection']['ids'], 'value'> };
 }

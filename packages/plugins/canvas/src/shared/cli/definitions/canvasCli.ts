@@ -1,11 +1,16 @@
 import { z } from 'zod';
-import { CanvasColorSchema, CanvasEdgeSchema } from '../../model/definitions/canvasElement';
+import {
+  CANVAS_CARD_TAG_LIMIT,
+  CanvasColorSchema,
+  CanvasEdgeSchema,
+} from '../../model/definitions/canvasElement';
 import {
   CanvasArrangementOptionsSchema,
   CanvasLayoutTargetSchema,
 } from '../../layout/definitions/canvasLayout';
 
 export const CANVAS_CLI_VERSION = 1;
+const tagName = z.string().min(1).max(64);
 const id = z.string().regex(/^(?:[ce][1-9]\d*|\$[A-Za-z][A-Za-z0-9_-]*)$/);
 const placement = {
   ref: z
@@ -20,6 +25,10 @@ const placement = {
   color: CanvasColorSchema.optional(),
   /** 放进哪个分区（分区 ID 或本批 ref）。 */
   section: CanvasLayoutTargetSchema.optional(),
+  /** 工作区已有的标签名，按给出的顺序挂上。 */
+  tags: z.array(tagName).max(CANVAS_CARD_TAG_LIMIT).optional(),
+  /** 状态角标：一个工作区已有的标签名。 */
+  status: tagName.optional(),
 };
 const sectionTitle = z.string().max(200);
 export const CanvasArrangeOptionsSchema = CanvasArrangementOptionsSchema;
@@ -74,6 +83,10 @@ export const CanvasCliOperationSchema = z.union([
       alt: z.string().optional(),
       /** 分区标题。 */
       title: sectionTitle.optional(),
+      /** 整体替换卡片标签（工作区已有的标签名），空数组清除。 */
+      tags: z.array(tagName).max(CANVAS_CARD_TAG_LIMIT).optional(),
+      /** 状态角标（工作区已有的标签名）；null 清除。 */
+      status: tagName.nullable().optional(),
       /** 移进某分区；null 移出分区。 */
       section: z
         .string()

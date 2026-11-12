@@ -1,5 +1,6 @@
 import type { Container, Graphics, NineSliceSprite, Sprite } from 'pixi.js';
 import type { CanvasMotionView } from '../CanvasSceneMotion';
+import type { CanvasCardMarks } from '../canvasCardMarks';
 
 export interface CanvasCardView extends CanvasMotionView {
   /** 卡片材质的投影，纸材质隐藏（纸的贴地阴影烘在纸面贴图里）。 */
@@ -12,4 +13,6 @@ export interface CanvasCardView extends CanvasMotionView {
   visibleAfterRender: number;
   firstVisibleAfterRender: number;
   rasterContentKey: string | undefined;
+  /** 状态印签与卡下标签；卡片带标签时才创建。 */
+  marks: CanvasCardMarks | null;
 }

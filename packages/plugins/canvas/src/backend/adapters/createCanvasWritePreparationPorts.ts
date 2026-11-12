@@ -9,6 +9,7 @@ import {
   readWorkspaceDocumentLocation,
 } from '@plugin/backend/workspaceDocumentProjection';
 import type { BackendPluginCliExecutionContext } from '@plugin/backend/pluginCli';
+import { resolveSemanticTagNames } from '@plugin/backend/semanticTags';
 import { CanvasTextDocumentSchema, type CanvasSnapshot } from '../../shared';
 import { CanvasMeasureBatchRequestSchema } from '../../shared/rendering';
 import {
@@ -27,7 +28,27 @@ import { listCanvasContentReferencedDocuments } from '../features/canvasProjecti
 import { createCanvasImagePreparation } from './createCanvasImagePreparation';
 import { readCanvasResources } from '../orchestration/readCanvasRenderingResources';
 
-export function createCanvasWritePreparationPorts(input: {
+/** 工作区标签名换成 ID；没有的标签整批拒绝并提示用 Core CLI 新建，画布不新建标签。 */
+function resolveCanvasWriteTags(
+  database: CanvasDatabase,
+  names: readonly string[],
+  field: 'tags' | 'status'
+): string[] {
+  const { found, missing } = resolveSemanticTagNames(database, names);
+  const [first] = missing;
+  if (first)
+    throw new CanvasWriteFailure(
+      'tag_unavailable',
+      `没有标签“${first.name}”。先用 linnya schema add-tag ${first.name} 新建${
+        first.similar.length ? `，或改用已有的：${first.similar.join('、')}` : ''
+      }。`,
+      undefined,
+      field
+    );
+  return [...new Set(names.flatMap(name => found.get(name)?.id ?? []))];
+}
+
+interface CanvasWritePreparationInput {
   readonly database: CanvasDatabase;
   readonly snapshot: CanvasSnapshot;
   readonly context: BackendPluginCliExecutionContext;
@@ -38,7 +59,9 @@ export function createCanvasWritePreparationPorts(input: {
   readonly dryRun: boolean;
   readonly references: ReturnType<typeof createDocumentReferenceMarkdownRuntime>;
   readonly capabilities: CanvasBackendCapabilities;
-}) {
+}
+
+export function createCanvasWritePreparationPorts(input: CanvasWritePreparationInput) {
   const bindings: DocumentReferenceMarkdownBinding[] = [];
   const images = createCanvasImagePreparation({
     ...input,
@@ -118,6 +141,7 @@ export function createCanvasWritePreparationPorts(input: {
       });
       return resolved.id;
     },
+    resolveTags: (names, field) => resolveCanvasWriteTags(input.database, names, field),
     prepareImage: (file, dryRun) => images.prepare(file, dryRun),
     async measure(cards, signal) {
       const resources = await readCanvasResources({

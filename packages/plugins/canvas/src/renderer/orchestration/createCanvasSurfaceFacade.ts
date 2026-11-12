@@ -19,7 +19,7 @@ export function createCanvasSurfaceFacade({
   const { session, editor, readonly, layout, selection, state, report } = base;
   const { kernel, raster, navigate } = rendering;
   const { creation, editable } = drafts;
-  const { connections, actions, createText, select, sections } = commands;
+  const { connections, actions, createText, select, sections, tags } = commands;
   const { projection, clipboard } = bindings;
   const { camera, error, context } = state;
   const { fit, zoom } = viewport;
@@ -32,6 +32,7 @@ export function createCanvasSurfaceFacade({
     layout,
     connections,
     sections,
+    tags,
     selection,
     ...presentation,
     setComposing: (value: boolean) => {

@@ -13,6 +13,8 @@ export interface CanvasWritePorts {
     }
   ): Promise<CanvasTextDocument>;
   resolveDocument(path: string): Promise<string>;
+  /** 工作区标签名换成稳定 ID，保持给出的顺序；没有的标签整批拒绝，画布不新建标签。 */
+  resolveTags(names: readonly string[], field: 'tags' | 'status'): string[];
   prepareImage(
     file: string,
     dryRun: boolean

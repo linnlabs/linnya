@@ -12,6 +12,7 @@ import type {
   CanvasElementId,
   CanvasPoint,
   CanvasRectangle,
+  CanvasTagsResult,
 } from '@plugin/canvas/shared';
 import type { CanvasDocumentPort } from '../features/canvasDocument';
 import type { CanvasArrangementPort } from '../features/layoutCommands';
@@ -46,6 +47,8 @@ export interface CanvasSurfacePorts {
   openCard?(card: CanvasCard): Promise<void>;
   cardOpened?(id: CanvasCardId): void;
   resolveImageSource?(source: string): Promise<string>;
+  /** 工作区标签目录与卡片上标签 ID 的当前名称；不提供时卡片不显示标签。 */
+  readTags?(ids: readonly string[]): Promise<CanvasTagsResult>;
 }
 export interface CanvasSurfaceState {
   readonly camera: Readonly<Ref<CanvasCamera>>;
