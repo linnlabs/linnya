@@ -81,10 +81,8 @@ Backend 的“引用”不允许再放进泛化 `referenceRuntime`：
 - Knowledge `PluginDocumentSoT` 属于工具上下文契约，直接从
   `@plugin/backend/toolRuntime` 引用。
 
-`@plugin/renderer/referenceRuntime` 是 Renderer 的引用搜索/UI port，与上述 backend 能力无关；不得因名字相似把
-两者重新合并。它的 Web/Manual 表单行为、校验和 `.web-manual-citation-form` 样式由 Editor Citation 的公开
-Renderer 合同唯一拥有，Host composition 负责装载 CSS，插件只通过该 port 消费，不复制样式或 deep import
-Editor 内部路径。这是带 Citation 语义的 Host 业务能力，不属于 `@linnya/renderer-ui` 基础组件。
+Editor Citation 的 Web/Manual 来源表单、知识库引用搜索不对插件开放（原 `@plugin/renderer/referenceRuntime`
+只有已删除的 Mindmap 使用过，已移除）。插件需要文献引用时按实际需求设计新合同，不 deep import Editor 内部路径。
 
 Backend 的 `@plugin/backend/workspaceDatabasePath`
 只给 standalone 插件进程解析宿主权威 `workspace.sqlite`

@@ -14,7 +14,6 @@ export type * from './pluginContribution';
 export type * from './pluginIpcClient';
 export type * from './pluginPushClient';
 export type * from './referenceLinkUi';
-export type * from './referenceRuntime';
 export type * from './refId';
 export type * from './settingsContribution';
 export type * from './structuredContextRequirementPort';

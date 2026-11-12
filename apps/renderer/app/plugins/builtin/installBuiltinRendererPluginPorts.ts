@@ -23,7 +23,6 @@ import {
 import { registerRendererComposerCommandPort } from '@plugin/renderer/composerCommandPort';
 import { registerRendererConversationSubrunInvocationPort } from '@plugin/renderer/conversationSubrunInvocationPort';
 import { registerRendererInteractiveToolPort } from '@plugin/renderer/interactiveTool';
-import { registerRendererReferenceRuntimePort } from '@plugin/renderer/referenceRuntime';
 import { registerWorkspaceRuntimePort } from '@plugin/renderer/workspaceRuntime';
 import { registerRendererDocumentPreviewPort } from '@plugin/renderer/documentPreview';
 import { createDocumentPreviewRendererPort } from '@/app/workflows/document-preview';
@@ -37,8 +36,6 @@ import { confirm } from '@/shared/composables/confirmDialog';
 import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
 import { subscribeToWorkspaceMutation } from '@/shared/ipc/workspaceMutationSubscription';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
-import { validateWebManualForm } from '@/domains/editor/features/citation/adapters/webCitationAdapter';
-import { useWebManualCitationForm } from '@/domains/editor/features/citation/ui/useWebManualCitationForm';
 import {
   getActiveFileSession,
   markActiveFileDirty,
@@ -254,29 +251,6 @@ function installWorkspaceRuntimePort(): void {
   });
 }
 
-function installReferenceRuntimePort(): void {
-  registerRendererReferenceRuntimePort({
-    async searchInMultipleKbs(request) {
-      const { searchInMultipleKbs } = await import(
-        '@/domains/editor/features/citation/services/citationKbSearchService'
-      );
-      return searchInMultipleKbs(request);
-    },
-    useWebManualCitationForm,
-    validateWebManualForm,
-    async listKnowledgeBasesForPlugin() {
-      const { knowledgeBaseService } = await import(
-        '@/domains/knowledgebase/services/knowledgeBaseService'
-      );
-      const response = await knowledgeBaseService.getAllKnowledgeBases();
-      return (response.knowledge_bases ?? []).map((kb) => ({
-        id: kb.id,
-        name: kb.name,
-      }));
-    },
-  });
-}
-
 function installInteractiveToolPort(): void {
   registerRendererInteractiveToolPort({
     concludeInteractiveToolInteraction(options) {
@@ -323,7 +297,6 @@ export function installBuiltinRendererPluginPorts(): void {
     },
   });
   installWorkspaceRuntimePort();
-  installReferenceRuntimePort();
   installInteractiveToolPort();
   installComposerCommandPort();
   registerRendererConversationSubrunInvocationPort(createConversationSubrunInvocationPort());

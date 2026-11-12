@@ -190,12 +190,6 @@ const rendererHostShims = new Map<string, string>([
     'startConversationSubruns',
   ])],
   ['/plugin-renderer/refId.js', buildNamedHostShim('@plugin/renderer/refId', ['generateRefMap', 'normalizeRef', 'isValidRef'])],
-  ['/plugin-renderer/referenceRuntime.js', buildNamedHostShim('@plugin/renderer/referenceRuntime', [
-    'searchInMultipleKbs',
-    'useWebManualCitationForm',
-    'validateWebManualForm',
-    'listKnowledgeBasesForPlugin',
-  ])],
   ['/plugin-renderer/documentReferences.js', buildNamedHostShim('@plugin/renderer/documentReferences', ['queryDocumentReferences', 'readDocumentReference', 'readDocumentBacklinks', 'previewDocumentDeletionReferences'])],
   ['/plugin-renderer/pluginRuntime.js', buildNamedHostShim('@plugin/renderer/pluginRuntime', ['readRendererPluginAvailability', 'subscribeRendererPluginAvailability'])],
   ['/plugin-renderer/documentPreview.js', buildNamedHostShim('@plugin/renderer/documentPreview', ['readDocumentPreview', 'listDocumentPreviewTypes', 'readDocumentPreviewTypeIcon', 'mountDocumentPreview'])],

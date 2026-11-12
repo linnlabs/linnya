@@ -3,11 +3,10 @@ import type { WebManualFormInput } from '../adapters/webCitationAdapter'
 import { applyTextareaAutoResize } from '@linnya/renderer-ui'
 
 /**
- * Web/Manual 引用表单 Store 适配器，是 Citation feature 暴露给 Renderer referenceRuntime 的公开 UI 合同。
+ * Web/Manual 引用表单的 Store 适配器。
  *
  * 中文说明：
- * - editor 与消费该端口的插件表单状态保持同构（visible/activeTab/webManualForm/...）；
- * - 用这个最小接口解耦具体 store，实现“同一套交互控制逻辑复用”。
+ * - 只描述表单需要的状态（visible/activeTab/webManualForm/...），用这个最小接口解耦具体 store。
  */
 export interface WebManualCitationFormStoreAdapter {
   visible: boolean

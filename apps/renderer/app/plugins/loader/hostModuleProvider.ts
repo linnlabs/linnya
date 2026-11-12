@@ -30,7 +30,6 @@ import * as pluginIpcClient from '@plugin/renderer/pluginIpcClient';
 import * as pluginPushClient from '@plugin/renderer/pluginPushClient';
 import * as refId from '@plugin/renderer/refId';
 import * as referenceLinkUi from '@plugin/renderer/referenceLinkUi';
-import * as referenceRuntime from '@plugin/renderer/referenceRuntime';
 import * as settingsContribution from '@plugin/renderer/settingsContribution';
 import * as executionPresentation from '@plugin/renderer/executionPresentation';
 import * as subrunToolUi from '@plugin/renderer/subrunToolUi';
@@ -96,7 +95,6 @@ export function installRendererPluginHostModules(): void {
       '@plugin/renderer/pluginPushClient': pluginPushClient,
       '@plugin/renderer/refId': refId,
       '@plugin/renderer/referenceLinkUi': referenceLinkUi,
-      '@plugin/renderer/referenceRuntime': referenceRuntime,
       '@plugin/renderer/settingsContribution': settingsContribution,
       '@plugin/renderer/executionPresentation': executionPresentation,
       '@plugin/renderer/subrunToolUi': subrunToolUi,

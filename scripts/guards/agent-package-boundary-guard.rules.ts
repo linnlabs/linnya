@@ -101,7 +101,6 @@ const PLUGIN_SDK_RENDERER_PORT_SOURCES = new Set([
   'src/plugin-sdk/renderer/composerCommandPort',
   'src/plugin-sdk/renderer/conversationSubrunInvocationPort',
   'src/plugin-sdk/renderer/interactiveTool',
-  'src/plugin-sdk/renderer/referenceRuntime',
 ]);
 
 export const IGNORE_DIRS = new Set([

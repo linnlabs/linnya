@@ -1,4 +1,4 @@
-/* Citation feature 的公开 Renderer UI 合同；Host referenceRuntime 同时供插件引用能力消费。 */
+/* Citation feature 的 Web/Manual 来源表单样式。 */
 
 .web-manual-citation-form {
   display: flex;

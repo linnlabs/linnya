@@ -12,15 +12,6 @@ import {
   registerRendererDocumentMutationHandler,
 } from './documentMutationPort';
 import {
-  clearRendererReferenceRuntimePortForTest,
-  listKnowledgeBasesForPlugin,
-  registerRendererReferenceRuntimePort,
-  searchInMultipleKbs,
-  useWebManualCitationForm,
-  validateWebManualForm,
-  type WebManualFormInput,
-} from './referenceRuntime';
-import {
   clearRendererToolRefreshHandlersForTest,
   registerRendererToolRefreshHandler,
   useRegisteredRendererToolRefreshTriggers,
@@ -37,23 +28,10 @@ import {
   startConversationSubruns,
 } from './conversationSubrunInvocationPort';
 
-function createWebManualForm(): WebManualFormInput {
-  return {
-    url: '',
-    title: '',
-    authors: '',
-    date: '',
-    containerTitle: '',
-    snippet: '',
-    isManual: false,
-  };
-}
-
 describe('renderer SDK ports', () => {
   beforeEach(() => {
     clearRendererInteractiveToolPortForTest();
     clearRendererDocumentMutationHandlersForTest();
-    clearRendererReferenceRuntimePortForTest();
     clearRendererToolRefreshHandlersForTest();
     clearRendererComposerCommandPortForTest();
     clearRendererConversationSubrunInvocationPortForTest();
@@ -151,63 +129,6 @@ describe('renderer SDK ports', () => {
         response: { ok: true },
       },
     });
-  });
-
-  it('fails fast when reference runtime port is not registered', async () => {
-    await expect(listKnowledgeBasesForPlugin()).rejects.toThrow(/reference runtime port 尚未注册/);
-    expect(() => validateWebManualForm(createWebManualForm())).toThrow(/reference runtime port 尚未注册/);
-  });
-
-  it('forwards reference runtime operations through the registered port', async () => {
-    const search = vi.fn(async () => ({
-      results: [],
-      errorsByKbId: {},
-      hasPartialFailure: false,
-    }));
-    const validate = vi.fn(() => ({ title: '标题不能为空' }));
-    const listKnowledgeBases = vi.fn(async () => [{ id: 'kb-1', name: 'KB' }]);
-    const useForm = vi.fn(() => ({
-      sourceType: ref<'web' | 'manual'>('web'),
-      urlInputRef: ref<HTMLInputElement | null>(null),
-      titleInputRef: ref<HTMLInputElement | null>(null),
-      snippetTextareaRef: ref<HTMLTextAreaElement | null>(null),
-      handleSourceTypeChange: vi.fn(),
-      handleFieldChange: vi.fn(),
-      handleSnippetInput: vi.fn(),
-      handleReset: vi.fn(),
-    }));
-    registerRendererReferenceRuntimePort({
-      searchInMultipleKbs: search,
-      validateWebManualForm: validate,
-      listKnowledgeBasesForPlugin: listKnowledgeBases,
-      useWebManualCitationForm: useForm,
-    });
-
-    const form = createWebManualForm();
-    await searchInMultipleKbs({
-      kbIds: ['kb-1'],
-      kbIdToName: { 'kb-1': 'KB' },
-      query: 'topic',
-    });
-    expect(validateWebManualForm(form)).toEqual({ title: '标题不能为空' });
-    expect(await listKnowledgeBasesForPlugin()).toEqual([{ id: 'kb-1', name: 'KB' }]);
-    useWebManualCitationForm({
-      visible: true,
-      activeTab: 'web',
-      webManualForm: form,
-      updateWebManualForm: vi.fn(),
-      setWebManualError: vi.fn(),
-      resetWebManualForm: vi.fn(),
-    });
-
-    expect(search).toHaveBeenCalledWith({
-      kbIds: ['kb-1'],
-      kbIdToName: { 'kb-1': 'KB' },
-      query: 'topic',
-    });
-    expect(validate).toHaveBeenCalledWith(form);
-    expect(listKnowledgeBases).toHaveBeenCalled();
-    expect(useForm).toHaveBeenCalled();
   });
 
   it('installs every renderer tool refresh trigger so each handler can react to later tool name updates', () => {

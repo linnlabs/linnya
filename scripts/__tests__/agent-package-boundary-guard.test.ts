@@ -489,8 +489,8 @@ describe('PLUGIN-GUARD-10 renderer SDK port ownership', () => {
   it('flags renderer SDK ports importing host shared composables directly', () => {
     expect(
       ruleIdsFor(
-        'src/plugin-sdk/renderer/referenceRuntime.ts',
-        "import { useWebManualCitationForm } from '@/shared/composables/useWebManualCitationForm';",
+        'src/plugin-sdk/renderer/interactiveTool.ts',
+        "import { useInteractiveToolState } from '@/shared/composables/useInteractiveToolState';",
       ),
     ).toContain('PLUGIN-GUARD-10-no-renderer-sdk-port-host-domain-import');
   });

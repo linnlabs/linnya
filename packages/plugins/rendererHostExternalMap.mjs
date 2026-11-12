@@ -26,7 +26,6 @@ export const hostRendererExternalUrls = Object.freeze({
   '@plugin/renderer/pluginPushClient': 'plugin://host/plugin-renderer/pluginPushClient.js',
   '@plugin/renderer/refId': 'plugin://host/plugin-renderer/refId.js',
   '@plugin/renderer/referenceLinkUi': 'plugin://host/plugin-renderer/referenceLinkUi.js',
-  '@plugin/renderer/referenceRuntime': 'plugin://host/plugin-renderer/referenceRuntime.js',
   '@plugin/renderer/settingsContribution': 'plugin://host/plugin-renderer/settingsContribution.js',
   '@plugin/renderer/subrunToolUi': 'plugin://host/plugin-renderer/subrunToolUi.js',
   '@plugin/renderer/textMeasurement': 'plugin://host/plugin-renderer/textMeasurement.js',
