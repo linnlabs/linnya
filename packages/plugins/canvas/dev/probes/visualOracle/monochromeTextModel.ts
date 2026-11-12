@@ -3,8 +3,14 @@ import { meanChannelAlpha } from './visualInkCoverage';
 
 type Grapheme = VisualTextLayout['graphemes'][number];
 const potentialColorSequence = /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Regional_Indicator}|\p{Emoji_Modifier}|[\u200d\u20e3\ufe0e\ufe0f\u{E0020}-\u{E007F}]/u;
-// 只收本正式fixture的精确CSS family；来源分别为请求system-ui、core pre/code、KaTeX0.18.10。
-const fixtureFamilies = new Set(['system-ui', 'monospace', 'KaTeX_Math', 'KaTeX_Main, math, "Times New Roman", serif']);
+// 只收本正式fixture的精确CSS family；来源分别为请求system-ui、markdown-document-core style.css 的 code、KaTeX0.18.10。
+// 代码字体随正式样式变化时这里同步更新，否则 Linux/Windows 的 LCD 彩边会被当成差异。
+const fixtureFamilies = new Set([
+  'system-ui',
+  'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+  'KaTeX_Math',
+  'KaTeX_Main, math, "Times New Roman", serif',
+]);
 
 /** 资格只覆盖固定fixture的已知family普通文字；未知/潜彩字簇仍禁止，不按单码点猜。 */
 export function qualifiesMonochromeModel(grapheme: Grapheme): boolean {
