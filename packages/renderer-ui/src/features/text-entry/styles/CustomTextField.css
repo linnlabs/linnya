@@ -111,7 +111,8 @@
   padding-right: var(--space-8);
 }
 
-.tt-text-field--clearable .tt-text-field__control::-webkit-search-cancel-button {
+/* 浏览器给 type="search" 自带的清除 × 与设计不一致；要清除按钮就用 clearable 的 IconButton。 */
+.tt-text-field__control::-webkit-search-cancel-button {
   appearance: none;
 }
 
