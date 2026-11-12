@@ -90,10 +90,16 @@ describe('runSlidesDesignBatch', () => {
   it('runs every brief in a fresh project and records facts for each run', async () => {
     let active = 0;
     let peak = 0;
+    // 运行停在这里直到第二个也开始，峰值不受机器快慢影响；若实现只能串行，2 秒后放行，峰值为 1，断言照样失败。
+    let releaseConcurrentPair = () => {};
+    const concurrentPair = new Promise<void>(resolve => {
+      releaseConcurrentPair = resolve;
+    });
     runBenchmarkCase.mockImplementation(async (request: RunBenchmarkCaseRequest) => {
       active += 1;
       peak = Math.max(peak, active);
-      await new Promise(resolve => setTimeout(resolve, 5));
+      if (active === 2) releaseConcurrentPair();
+      await Promise.race([concurrentPair, new Promise(resolve => setTimeout(resolve, 2_000))]);
       active -= 1;
       return facts(request);
     });
