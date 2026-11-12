@@ -100,6 +100,22 @@ describe('slides-design Skill 产品合同', () => {
     }
   });
 
+  it('素材参考教“原件在谁手里”与许可三档，纹样按题材现找，风格指南不另立许可口径', () => {
+    const assets = fs.readFileSync(path.join(skillRoot, 'references/assets.md'), 'utf-8');
+    expect(assets).toContain('## 去哪找：先想原件在谁手里');
+    expect(assets).toContain('原件方所在地的语言');
+    expect(assets).toContain('image_search');
+    expect(assets).toContain('## 许可：按用途分三档');
+    expect(assets).toContain('B 署名引用');
+    expect(assets).toContain('仅限非商用引用');
+    expect(assets).toContain('没有现成的纹样库');
+    // 用途默认按非商用；旧口径“看不出用途时按商用处理”不能留在任何指南里。
+    for (const file of ['assets', 'style-cultural-imagery', 'style-catalog-handout']) {
+      const text = fs.readFileSync(path.join(skillRoot, `references/${file}.md`), 'utf-8');
+      expect(text, file).not.toContain('按商用处理');
+    }
+  });
+
   it('人文展示与图录阅读两份指南互相指向，图录的栅格规则只在图录指南里', () => {
     const cultural = fs.readFileSync(path.join(skillRoot, 'references/style-cultural-imagery.md'), 'utf-8');
     const catalog = fs.readFileSync(path.join(skillRoot, 'references/style-catalog-handout.md'), 'utf-8');

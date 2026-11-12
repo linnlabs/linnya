@@ -50,7 +50,7 @@
 
 ## 素材
 
-来源、许可核对和下载方式与 [`style-cultural-imagery.md`](./style-cultural-imagery.md) 的“素材”一节相同；只用许可明确允许当前用途的素材，把出处和许可写进备注或末页致谢。
+找法和下载方式与 [`style-cultural-imagery.md`](./style-cultural-imagery.md) 的“素材”一节相同；许可分档和署名见 [`assets.md`](./assets.md)。
 
 ## 检查
 
