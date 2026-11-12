@@ -106,7 +106,7 @@ export const TECHNIQUE_CARDS: readonly TechniqueCard[] = [
     colorLogics: ['duotone-print'], typeStrategies: ['heavy-sans', 'display-image', 'condensed-label'],
     imageStrategies: ['documentary-color', 'archival-bw', 'cutout-objects'],
     apply: '全稿只用两种油墨色，照片都转成双色调；标题大而重，可以出血。图表也只用这两色和叠印色。',
-    pitfalls: '两色要有足够明度差，正文要能读清。',
+    pitfalls: '两色要有足够明度差，正文要能读清。主体本色是信息的照片（文物、产品、食物）保留原色，只给氛围图和背景图调色。',
   },
   {
     id: 'book-frontispiece', family: 'print', name: '书籍扉页',
@@ -153,7 +153,7 @@ export const TECHNIQUE_CARDS: readonly TechniqueCard[] = [
     colorLogics: ['bw-signal', 'mono-depth'], typeStrategies: ['mono-technical', 'serif-sans-mix'],
     imageStrategies: ['archival-bw', 'macro-detail', 'maps-plans'],
     apply: '每页像一份案卷：左上案卷号与日期，标题下一行写来源与状态；照片统一去色，信号色只标关键数字与红线。图表黑灰配一个信号色。',
-    pitfalls: '不要加做旧纸纹；“档案感”来自编号和秩序。',
+    pitfalls: '不要加做旧纸纹；“档案感”来自编号和秩序。主体本色是信息的照片（文物、产品、食物）保留原色，只给氛围图和背景图调色。',
   },
   {
     id: 'index-card', family: 'archive', name: '卡片目录',
@@ -550,7 +550,7 @@ export const TECHNIQUE_CARDS: readonly TechniqueCard[] = [
     colorLogics: ['duotone-print', 'primary-blocks'], typeStrategies: ['heavy-sans', 'display-image'],
     imageStrategies: ['documentary-color', 'cutout-objects', 'generated-illustration'],
     apply: '照片转成两三色平涂，故意让套色错位一点；标题大块平涂。',
-    pitfalls: '错位要轻；数据页不做错位。',
+    pitfalls: '错位要轻；数据页不做错位。主体本色是信息的照片（文物、产品、食物）保留原色，只给氛围图和背景图调色。',
   },
   {
     id: 'monochrome-minimal', family: 'art', name: '单色极简',

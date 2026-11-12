@@ -228,7 +228,7 @@ Workspace 虚拟路径不是图片二进制地址。不要捏造 locator；图�
 - 比例按原图量：先看图确定主体位置；看不到像素时用读到的像素尺寸换算，不要凭猜测。裁剪后剩下的部分仍要够清晰，质量检查按裁剪后的像素计算清晰度。例如取器物内底铭文做特写：`createImage({ src, fitMode: "cover", crop: { top: 0.55, left: 0.3, right: 0.3 }, focus: { x: 0.5, y: 0.75 } })`。用户在编辑器里换图会清掉原来的 `crop` / `focus`。
 - `maskShape`：图片的轮廓。`"circle"`（椭圆，适合人像），或与 Shape `geometry`（§7）完全相同的写法：preset 名、`polygon`、`path` 都可以，同样必须写在 config 参数里。遮罩套在图片实际显示的画面上：`contain` 留边时只裁画面本身；导出 PPTX 后仍是 PowerPoint 里的形状裁剪。
 - `transparency`：0–1，把图片压成背景层。
-- `adjust`：调色，`{ grayscale?, duotone?: [暗部色, 亮部色], brightness?, contrast? }`。`grayscale: true` 去色；`duotone` 按亮度把图映射到两色之间（例如 `["#12233F", "#E9DCC0"]`），常用于统一一组来源不同的照片，或把照片退成单色调背景，与 `grayscale` 只写一个；`brightness` 为 -1–1，`contrast` 为 -1 到小于 1，0 不变，0.2 已经很明显。先亮度对比、后着色。预览与 PowerPoint 一致，导出后仍是 PowerPoint 里可改、可去掉的图片颜色与校正，所以统一调色直接写 `adjust`，不要用命令行另存调过色的图。
+- `adjust`：调色，`{ grayscale?, duotone?: [暗部色, 亮部色], brightness?, contrast? }`。`grayscale: true` 去色；`duotone` 按亮度把图映射到两色之间（例如 `["#12233F", "#E9DCC0"]`），常用于统一一组来源不同的照片，或把照片退成单色调背景，与 `grayscale` 只写一个；`brightness` 为 -1–1，`contrast` 为 -1 到小于 1，0 不变，0.2 已经很明显。先亮度对比、后着色。预览与 PowerPoint 一致，导出后仍是 PowerPoint 里可改、可去掉的图片颜色与校正，所以统一调色直接写 `adjust`，不要用命令行另存调过色的图。主体的真实颜色本身是信息时（文物、产品、食物、标本、建筑材料）不要给它调色，青铜锈色、瓷器釉色这类颜色就是要讲的内容；调色用在氛围图、背景图和人物现场照上。
 - `shadow`：`{ color, blur, angle, distance, opacity }`。`angle` 是度，0° 向右、顺时针增大（90° 向下），默认 45°；`blur` / `distance` 是 pt，默认 0；`opacity` 默认 0.3。投影跟着轮廓走：有 `maskShape` 时跟着遮罩，去背的透明 PNG 跟着主体边缘，不是一个矩形影子。
 - 还有 `rotate`、`flipH`、`flipV`、`rounding`、`alt`。
 
