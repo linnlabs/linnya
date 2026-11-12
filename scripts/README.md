@@ -16,6 +16,8 @@ Electron 开发入口由 `development/orchestration/startElectronDevelopment.mjs
 dev server，再把实际 renderer URL 传给 Electron。服务只绑定 `127.0.0.1`，默认使用
 `5173`，占用时由 Vite 绑定后续可用端口。Backend 只接纳 Host 传入的实际 Renderer origin。
 
+推送前的 CI 自查用 [本地 CI](./development/features/local-ci/README.md)：`pnpm run ci:local` 读取 `.github/workflows`，在临时干净检出里跑 macOS 步骤并汇总全部失败。
+
 前端调试和本机界面验收优先用 [Desktop 开发探针](./development/features/desktop-probe/README.md)。
 探针从 5175 开始绑定独立 Vite，运行数据、profile、日志和制品放在系统临时目录。
 

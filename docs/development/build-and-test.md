@@ -228,6 +228,7 @@ Sharp 的公开入口可能是 JavaScript loader；PE 架构校验通过共享
 - 已运行与风险相称的 owner gate 和必要集成测试。
 - 没有提交 secret、绝对本机路径、生成物、临时调试输出或私有源码依赖。
 - 文档和稳定合同与实现保持一致。
+- 推送公共 `main` 前，用 `pnpm run ci:local` 在本机干净检出里跑 CI 的 macOS 步骤，失败不停、一次汇总；Linux/Windows 组合仍由 GitHub 验证。说明见[本地 CI](../../scripts/development/features/local-ci/README.md)。
 
 ## 前端调试与本机界面验收
 
