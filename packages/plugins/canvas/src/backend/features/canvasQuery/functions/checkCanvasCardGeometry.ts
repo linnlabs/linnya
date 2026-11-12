@@ -1,14 +1,31 @@
 import { canvasRectanglesOverlap, type CanvasCard } from '../../../../shared';
 import type { CanvasGeometryPairReport } from '../definitions/canvasGeometryChecks';
 
-/** 空间排序只剪掉不可能相交的配对，总数与最多100对样本分别维护。 */
+/** 分区本来就包着自己的成员：成员完整落在所属分区里不算重叠，伸出分区边的仍要报。 */
+function containsOwnMember(a: CanvasCard, b: CanvasCard): boolean {
+  const [section, member] = a.type === 'section' ? [a, b] : [b, a];
+  return (
+    section.type === 'section' &&
+    member.parentId === section.id &&
+    member.x >= section.x &&
+    member.y >= section.y &&
+    member.x + member.width <= section.x + section.width &&
+    member.y + member.height <= section.y + section.height
+  );
+}
+
+/**
+ * 空间排序只剪掉不可能相交的配对，总数与最多100对样本分别维护。
+ * 分区与非成员卡、分区与分区之间的重叠照常计入。
+ */
 export function checkCanvasCardOverlaps(cards: readonly CanvasCard[]): CanvasGeometryPairReport {
   const order = [...cards].sort((a, b) => a.x - b.x),
     samples: string[][] = [];
   let total = 0;
   for (let i = 0; i < order.length; i++)
     for (let j = i + 1; j < order.length && order[j].x < order[i].x + order[i].width; j++) {
-      if (!canvasRectanglesOverlap(order[i], order[j])) continue;
+      if (!canvasRectanglesOverlap(order[i], order[j]) || containsOwnMember(order[i], order[j]))
+        continue;
       total++;
       if (samples.length < 100) samples.push([order[i].id, order[j].id]);
     }

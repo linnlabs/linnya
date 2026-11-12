@@ -33,3 +33,15 @@ it('renders semantic scopes and includes free endpoints in whole-document framin
   expect(bottomRight && bottomRight.x + bottomRight.width).toBeGreaterThan(6000);
   expect(canvasRenderRectangles(snapshot.elements)).toHaveLength(4);
 });
+it('does not count a section containing its own members as overlaps but still reports everything else', () => {
+  const section = (id: string, x: number, y: number, width: number, height: number) => ({ ...identity, id, type: 'section', x, y, width, height, parentId: null, data: { title: id } });
+  const placed = (id: string, x: number, y: number, parentId: string | null, width = 100) => ({ ...card(id, x, y), width, height: 60, parentId });
+  const snapshot = CanvasSnapshotSchema.parse({ schemaVersion: 1, documentId: 'canvas', sequence: 3, elements: [
+    section('c1', 0, 0, 600, 400), placed('c2', 30, 60, 'c1'), placed('c3', 550, 60, 'c1'), placed('c4', 200, 200, null),
+    section('c5', 500, 300, 400, 300), placed('c6', 520, 310, 'c5', 60),
+  ] });
+  const report = checkCanvas(snapshot);
+  // 成员伸出分区、压在分区上的非成员、分区之间、别的分区的成员压在这个分区上，都要报；包在自己分区里的不报。
+  expect(report.overlaps.map(pair => [...pair].sort().join('-')).sort()).toEqual(['c1-c3', 'c1-c4', 'c1-c5', 'c1-c6']);
+  expect(report.overlapCount).toBe(4);
+});
