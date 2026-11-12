@@ -328,7 +328,7 @@ type SendMessageOptionsBase = SendMessageAgentRouting & {
    *
    * 约定：
    * - 只包含最多若干个节点（前端会控制数量，例如最多 10 个），避免占用过多 token；
-   * - 主要包含文档 / 思维导图节点，必要时可补充少量文件夹，帮助模型理解项目结构；
+   * - 主要包含文档节点，必要时可补充少量文件夹，帮助模型理解项目结构；
    * - 该字段只用于构造 workspace_context，不直接在 UI 中展示。
    */
   projectFileList?: ProjectFileSummary[];

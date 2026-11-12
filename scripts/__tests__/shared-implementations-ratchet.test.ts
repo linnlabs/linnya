@@ -72,7 +72,6 @@ describe('共享实现棘轮', () => {
     expect(countSharedImplementationHits(file, 'const diagnostic = error instanceof Error ? error.message : String(error);')).toEqual([]);
     expect(countSharedImplementationHits(file, 'function getErrorMessage(error: unknown): string { return error instanceof Error ? error.message : "unknown"; }')).toEqual([]);
     expect(countSharedImplementationHits('packages/foundation/src/errorToString.ts', body)).toEqual([]);
-    expect(countSharedImplementationHits('packages/plugins/mindmap/src/backend/failure.ts', body)).toEqual([]);
   });
 
   it('只许减少：新增报 expanded，减少报 reduced，基线可往返', () => {

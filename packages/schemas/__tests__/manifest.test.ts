@@ -1,42 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
-import mindmapManifest from '../../plugins/mindmap/plugin.json';
+import canvasManifest from '../../plugins/canvas/plugin.json';
 import slidesManifest from '../../plugins/slides/plugin.json';
 import { parsePluginManifest, pluginMetaFromManifest } from '../src/plugins/manifest';
 
 describe('PluginManifestSchema', () => {
-  it('parses the Mindmap builtin plugin manifest', () => {
-    expect(parsePluginManifest(mindmapManifest)).toMatchObject({
-      id: 'mindmap',
-      version: '2.0.0',
-      name: 'Mindmap',
+  it('parses the Canvas builtin plugin manifest', () => {
+    const manifest = parsePluginManifest(canvasManifest);
+    expect(manifest).toMatchObject({
+      id: 'canvas',
+      name: 'Canvas',
       developer: 'Linnya',
       entry: {
         backend: './dist/backend/index.cjs',
         renderer: './dist/renderer/index.js',
+        command: './dist/cli/canvas-cli.cjs',
+        renderWorker: './dist/render-worker/worker.html',
       },
       dependsOn: ['platform'],
-      compat: {
-        minApp: '0.0.36',
-        rendererUi: '^3.0.0',
-      },
       ownedFileTypes: [{
-        nodeType: 'mindmap',
-        extension: '.mindmap',
-        label: '思维导图',
+        nodeType: 'canvas',
+        extension: '.canvas',
+        label: '画布',
       }],
-      ownedTables: ['mindmap_versions'],
-      migrations: [
-        {
-          version: 1,
-          description: 'baseline adoption',
-        },
-        {
-          version: 2,
-          description: 'workspace text snapshot backfill',
-        },
-      ],
     });
+    expect(manifest.ownedTables).toEqual(canvasManifest.ownedTables);
+    expect(manifest.migrations).toEqual(canvasManifest.migrations);
   });
 
   it('parses the Slides builtin plugin manifest without losing ownership or migration declarations', () => {

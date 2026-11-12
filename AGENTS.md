@@ -85,7 +85,7 @@ Command 不是普通 `child_process` 包装。不要绕过 Commands domain 直�
 
 ## 6. Linnya Core 与插件
 
-Core 只提供 `platform` 能力和稳定扩展合同，不持有 Mindmap、Slides 等具体插件的 ID、表名、Prompt、Agent 或业务分支。插件可以同时贡献 backend、renderer、shared schema、文档类型、数据库 migration、Agent、工具、CLI、Skill 与 artifact，并独立版本化和发布。
+Core 只提供 `platform` 能力和稳定扩展合同，不持有 Slides、Canvas 等具体插件的 ID、表名、Prompt、Agent 或业务分支。插件可以同时贡献 backend、renderer、shared schema、文档类型、数据库 migration、Agent、工具、CLI、Skill 与 artifact，并独立版本化和发布。
 
 开发入口：
 

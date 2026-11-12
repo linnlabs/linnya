@@ -12,7 +12,7 @@ Linnya is built around Markdown and offers extensive plugin support. Plugins can
 
 ## Official plugins
 
-The 0.1.0 desktop release bundles Slides. Mindmap and experimental Decision source remain available for development, but are not included in this release.
+The 0.1.0 desktop release bundles Slides. Experimental Decision source remains available for development, but is not included in this release.
 
 ### [Slides](packages/plugins/slides)
 
@@ -25,7 +25,7 @@ Linnya Slides is the first open-source AI presentation system that draws high-fi
 - The Linnya desktop host and Vue renderer.
 - Integration with the published `@linnlabs/linnkit` host-neutral agent runtime.
 - Shared schemas, plugin host contracts, and Renderer UI primitives.
-- The open-source official Mindmap and Slides plugins.
+- The open-source official Slides and Canvas plugins.
 - CLI, benchmark, build, test, and release-validation tooling required by the public source tree.
 
 Public documentation contains the stable contracts and maintenance rules needed by contributors. See [documentation governance](docs/documentation-governance.md).
@@ -97,5 +97,3 @@ Do not post API keys, database contents, private documents, full user directorie
 Unless a path states a different license, Linnya and its documentation are licensed under [Apache License 2.0](LICENSE). Copyright © 2024–present BCAutumn and Linnya contributors.
 
 Linnkit, the Linnkit AI SDK provider adapter, and the vendored Stream Markdown Parser retain their separately declared MIT licenses. Third-party components and redistributed assets may have additional notices in `THIRD_PARTY_NOTICES.txt`. The Linnya name and official icons are covered by [TRADEMARKS.md](TRADEMARKS.md).
-
-Mindmap renderer derivatives also retain the Mind Elixir and Viselect MIT notices.

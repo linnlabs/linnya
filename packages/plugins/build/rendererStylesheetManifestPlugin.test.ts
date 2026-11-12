@@ -20,7 +20,7 @@ describe('renderer stylesheet source order', () => {
       await expect(build({ configFile: false, root, logLevel: 'silent', plugins: [rendererStylesheetManifestPlugin({ entryPath: entry })], build: { write: false, lib: { entry, formats: ['es'], fileName: () => 'index.js', cssFileName: 'runtime' } } })).rejects.toThrow('contribution 未声明的 CSS');
     } finally { fs.rmSync(root, { recursive: true, force: true }); }
   });
-  it.each(['mindmap', 'slides'])('从 %s contribution 接纳无重复、无遗漏的样式声明', (pluginId) => {
+  it.each(['canvas', 'slides'])('从 %s contribution 接纳无重复、无遗漏的样式声明', (pluginId) => {
     const sources = readRendererStylesheetSourceOrder(
       path.join(pluginsRoot, pluginId, 'src/renderer/index.ts'),
     );

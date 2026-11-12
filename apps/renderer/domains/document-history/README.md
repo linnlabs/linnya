@@ -13,7 +13,7 @@ Core 负责通用交互，不理解插件版本载荷。入口在 Header More；
   恢复产生的版本另显示“恢复自 {来源时间}”，刷新和后续成为历史时仍保留标注，不把主时间改成来源时间。
 
 插件通过 document type contribution 提供 historyPreviewComponent，接收 documentId/versionId。
-Header More 仅在当前文档类型已启用且贡献历史预览时显示入口。Slides 与 Canvas 已开放；Editor 与 Mindmap 不显示文档级历史入口，也不删除其后台版本存储。Editor 原有块级历史是独立功能，不受此入口控制。
+Header More 仅在当前文档类型已启用且贡献历史预览时显示入口。Slides 与 Canvas 已开放；Editor 不显示文档级历史入口，也不删除其后台版本存储。Editor 原有块级历史是独立功能，不受此入口控制。
 切换版本会卸载旧组件；关闭、切换文档、插件停用均卸载面板。插件组件自行释放预览资源，不能更新当前编辑状态。
 恢复当前版本禁用；恢复其他版本先确认，携带已看到的 current identity。冲突时只刷新，不自动重试覆盖。
 

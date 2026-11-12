@@ -2,7 +2,7 @@
 
 > **全链路权威规范**：[`docs/conversation-platform/`](../../../../../docs/conversation-platform/README.md)。不变量以 [`00-invariants.md`](../../../../../docs/conversation-platform/00-invariants.md) 的 `INV-nn` 为准；本文是实现级说明，冲突时以规范为准。
 
-> 本文定义 conversation 输入框的**贡献框架**：输入框是一个中立宿主，「引用什么、弹什么 UI、提交给谁、发起什么执行」由各 domain / 插件按契约注册。conversation 域永远不认识 table、列、slides 元素、mindmap 节点等业务数据形状。
+> 本文定义 conversation 输入框的**贡献框架**：输入框是一个中立宿主，「引用什么、弹什么 UI、提交给谁、发起什么执行」由各 domain / 插件按契约注册。conversation 域永远不认识 table、列、slides 元素、canvas 卡片等业务数据形状。
 >
 > 本文是客观契约规范，不记录施工过程（迭代历史见 git）。插件开发规则见 `docs/plugins/guides/19-conversation-input.md`（输入贡献）与 `docs/plugins/guides/12-ai-interaction.md`（AI 调用 / subrun 发起）。
 >
@@ -36,7 +36,7 @@
 
 | 途径 | 形态 | 实例 |
 |---|---|---|
-| **外部动词** | 其他 domain / 插件调 composer port 的动词：`addReference(ref)` / `activateExtension(id, payload)` | 点击 mindmap 节点、slides 元素、editor 表格工具栏 |
+| **外部动词** | 其他 domain / 插件调 composer port 的动词：`addReference(ref)` / `activateExtension(id, payload)` | 点击 canvas 卡片、slides 元素、editor 表格工具栏 |
 | **inline 触发** | 输入框内打 `@` 唤起候选面板，候选由注册的 provider 提供 | @ 文件、未来 @ 页面元素 |
 | **选区工具栏** | `TextSelectionToolbar` 经 composer port 走统一动词 | 选中文本加引用 |
 
@@ -139,7 +139,7 @@ startConversationSubruns({
 
 | # | 红线（禁止） | 正确做法 |
 |---|---|---|
-| N1 | conversation 新增任何「认识具体业务数据形状」的代码（table 列、slides 元素、mindmap 节点……） | 只加通用动词或通用挂载点 |
+| N1 | conversation 新增任何「认识具体业务数据形状」的代码（table 列、slides 元素、canvas 卡片……） | 只加通用动词或通用挂载点 |
 | N2 | 扩展 / 附件组件拿「插件特定 props」 | 只拿 opaque payload + 宿主句柄 |
 | N3 | 双状态源过渡期跨阶段存活 | 每阶段收尾时涉及状态只剩单一真源 |
 | N4 | 为单一消费者把契约进 SDK | 两个真实消费者验证后才开放 SDK 字段（table + @ 已达成） |

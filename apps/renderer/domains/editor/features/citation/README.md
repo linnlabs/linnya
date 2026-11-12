@@ -93,16 +93,16 @@ Editor 块复制/剪切仍为外部应用输出语义 HTML，但其中的 Citati
 
 ## Renderer referenceRuntime 公共 UI 合同
 
-Mindmap evidence 与 Editor Citation 使用同一套 Web/Manual 来源输入结构、交互控制和视觉规则。真源位于：
+Editor Citation 的 Web/Manual 来源输入结构、交互控制和视觉规则。真源位于：
 
 - `ui/useWebManualCitationForm.ts`：聚焦、来源类型切换、字段同步、重置和 textarea 自动高度；
 - `ui/styles/WebManualCitationForm.css`：以 `.web-manual-citation-form` 为根的稳定表单样式；
 - `adapters/webCitationAdapter.ts`：输入类型与校验规则。
 
-App installer 通过 `@plugin/renderer/referenceRuntime` 向 Mindmap 暴露行为和校验，Host composition 在 domain/plugin
+App installer 通过 `@plugin/renderer/referenceRuntime` 向插件暴露行为和校验（目前没有官方插件消费），Host composition 在 domain/plugin
 样式之后按固定顺序装载公共 CSS。该合同带有 Citation 业务语义，因此不进入 `@linnya/renderer-ui`；插件不得
 deep import Editor 文件，也不得复制或覆盖这份样式。调整 DOM class、字段行为或校验结果时，必须同时验证 Editor 与
-Mindmap 两个消费者。
+使用该 port 的插件。
 
 ## 风险与不变量
 

@@ -8,20 +8,20 @@
 
 - **domains/\*/ui/\***（领域 UI）
   - **关注点**：某个「能力」本身怎么工作。
-  - 例子：`domains/editor/ui/EditorContext.vue`、`domains/mindmap/ui/MindMapView.vue`、`domains/conversation/ui/LinnyaAssistantChatSurface.vue`。
-  - 里面会有：领域自己的 store / IPC / 内部子组件（如 MindMapToolbar / ContextMenu / NodeEditor）。
+  - 例子：`domains/editor/ui/EditorContext.vue`、`domains/conversation/ui/LinnyaAssistantChatSurface.vue`。
+  - 里面会有：领域自己的 store / IPC / 内部子组件（如工具条 / 右键菜单 / 子编辑器）。
   - **不关心**自己出现在什么页面，只要能被挂载使用即可。
 
 - **app/pages/\***（页面 / 场景壳）
   - **关注点**：在「某个应用场景」下，如何组合/摆放各个领域 UI。
-  - 例子：`ChatCentricPage`、`MarkdownEditorPage`、`MindmapPage`；Sheet / Slides 这类插件文档 surface 由 renderer contribution 注册。
+  - 例子：`ChatCentricPage`、`MarkdownEditorPage`；Sheet / Slides 这类插件文档 surface 由 renderer contribution 注册。
   - 未来会负责：跨领域组合、路由参数解析、权限/守卫、场景级 Header / 操作条等。
   - **不实现具体领域业务逻辑**，只做「装配」。
 
 这与 `apps/renderer/docs/DIRECTORY-STRUCTURE-PLAN.md` 中的设计是一致的：
 
-- `domains/*` = 领域能力（Editor / Mindmap / Workspace / Conversation / KnowledgeBase / Settings）。
-- `app/pages/*` = 场景页面（编辑模式、项目对话、导图视图等）。
+- `domains/*` = 领域能力（Editor / Workspace / Conversation / KnowledgeBase / Settings）。
+- `app/pages/*` = 场景页面（编辑模式、项目对话等）。
 
 ### 当前工作台模型
 
@@ -30,7 +30,7 @@
 - `WorkspaceStage`：左侧 sidebar、主区、右 pane 的几何壳。
 - `ChatCentricPage`：对话主区的首页壳。
 - `WorkspaceConversationSurface`：主区与右侧共用的工作区对话装配面，统一分派项目 / `Linnya 助手`，并把应用场景映射为空态 composer 位置。
-- `DocumentSurface`：统一承载 Markdown / Mindmap / Sheet / Slides 的文档 runtime surface。
+- `DocumentSurface`：统一承载 Markdown 与 Slides、Canvas 等插件文档的 runtime surface。
 - `KnowledgeBasePage`：旁路全屏视图。
 
 顶层场景由 `app/layout/store/layoutStore.ts` 中的 `scene` 表达；当前项目、Linnya 助手、草稿对话和历史会话由
@@ -59,7 +59,7 @@
 ### `DocumentSurface`
 
 - **作用**：文档 runtime surface。
-- 当前实现：根据 `activeDocument.type` 分发到 Markdown / Mindmap / Sheet / Slides，并在挂载后向 `documentRuntime` 注册 ready。
+- 当前实现：根据 `activeDocument.type` 分发到 Markdown 或插件注册的文档 surface，并在挂载后向 `documentRuntime` 注册 ready。
 
 约束：折叠/展开 pane 只能改变可见性和占位宽度，不能销毁文档 runtime；关闭文档和切换文档必须通过 `workspaceNavigation` 编排 save/deactivate。
 
@@ -73,21 +73,6 @@
 - `home` 与 `side-pane` 统一装配、内容相位、消息列和输入框规格；页面排版仅有一项差异：前者使用居中首页输入框，后者复用历史对话空态视觉并把同一个 regular 输入框放在底部 footer。禁止把 `side-pane` 映射成 `compact`，否则消息边距和“+ / Agent”选择区会一起被压缩。
 - 中央对话面板统一复用 `domains/conversation/ui/ConversationChatSurface.vue`，项目概览、知识库关联与统计保留在 workspace domain。
 - 项目对话容器 `WorkspaceConversationSurface/ProjectConversationSurface.vue` 只负责 app-level 装配：conversation 提供对话表面，workspace 提供项目与项目概览，knowledgebase 只在 `home` presentation 通过幂等入口准备首页数据。
-
-### `MindmapPage/MindmapPage.vue`
-
-- **作用**：思维导图视图的页面壳。
-- 当前实现：
-
-```vue
-<MindMapView />
-```
-
-- 注意：
-  - 真正的 Mindmap 能力在 `domains/mindmap/ui/MindMapView.vue`。
-  - 工具栏 / 右键菜单 / NodeEditor / RichContentHost 都在领域内部组装。
-  - Page 层只关心「在这个场景下展示一个 MindMap 视图」。
-- 未来如果需要**场景级工具条**（例如「返回项目主页」「导出为图片」「和 Workspace 联动」），应加在 `MindmapPage.vue` 中，而不是侵入 `MindMapView.vue`。
 
 ### 插件文档 surface（Sheet / Slides 等）
 
@@ -129,7 +114,7 @@
 ## 4. 记忆小结（给未来的自己）
 
 - **当纠结「要不要再建一个 Page 文件/目录」时：**
-  - 如果这是一个**host 自有顶层视图模式**（WORKSPACE / EDITOR / MINDMAP 等），**就应该有对应的 Page**；插件文档 surface 则放到对应插件 renderer 包。
+  - 如果这是一个**host 自有顶层视图模式**（WORKSPACE / EDITOR 等），**就应该有对应的 Page**；插件文档 surface 则放到对应插件 renderer 包。
   - 哪怕现在只是一层简单包裹，将来也很可能慢慢长成「场景组合中心」。
 
 - **当纠结「这个东西是 Page 还是 Domain」时：**

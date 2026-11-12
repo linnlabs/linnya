@@ -379,7 +379,6 @@ pnpm run smoke:plugins:official:r2
 单插件本地 artifact 验证：
 
 ```bash
-pnpm run smoke:plugin:mindmap:artifact
 pnpm run smoke:plugin:sheet:artifact
 pnpm run smoke:plugin:slides:artifact
 ```
@@ -413,5 +412,5 @@ clone 的默认发行集合会自然收缩，不需要在 Core 中维护私有�
 | `LINNYA_PLUGIN_CATALOG_OUTPUT`                                                                                 | catalog 输出路径                                                                 |
 | `LINNYA_PLUGIN_UPLOAD_DRY_RUN`                                                                                 | `1` 时只打印 Wrangler 命令，不上传                                               |
 
-废弃别名 `LINNYA_MINDMAP_PLUGIN_LATEST_URL`、`LINNYA_SLIDES_PLUGIN_LATEST_URL`
+废弃别名 `LINNYA_SLIDES_PLUGIN_LATEST_URL`
 不再读取；新脚本一律使用 `LINNYA_PLUGIN_<ID>_LATEST_URL`。

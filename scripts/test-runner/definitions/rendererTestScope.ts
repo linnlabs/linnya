@@ -2,7 +2,6 @@
 export const RENDERER_TEST_INCLUDE = [
   'apps/renderer/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
   'packages/renderer-ui/**/*.{test,spec}.{ts,tsx}',
-  'packages/plugins/mindmap/src/renderer/**/*.{test,spec}.{ts,tsx}',
   'packages/plugins/slides/src/renderer/**/*.{test,spec}.{ts,tsx}',
   'scripts/build/renderer-module-resolution/**/*.{test,spec}.ts',
 ];
@@ -44,7 +43,6 @@ export const RENDERER_HOST_INTEGRATION_TESTS = [
   'apps/renderer/domains/editor/features/Revision/utils/pending/__test__/updatePendingRevisionApplier.spec.ts',
   'apps/renderer/domains/editor/features/Revision/utils/pending/chart/__test__/chartPendingPlan.test.ts',
   'apps/renderer/domains/editor/features/Revision/utils/pending/chart/__test__/chartPendingProjection.test.ts',
-  'packages/plugins/mindmap/src/renderer/__tests__/rendererContract.test.ts',
   'packages/plugins/slides/src/renderer/__tests__/rendererContract.test.ts',
   'apps/renderer/domains/editor/features/document-session/__tests__/markdownDocumentSession.test.ts',
   'apps/renderer/domains/editor/features/Revision/utils/pending/__test__/horizontalRulePendingRevision.test.ts',

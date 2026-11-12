@@ -83,7 +83,7 @@ Backend 的“引用”不允许再放进泛化 `referenceRuntime`：
 
 `@plugin/renderer/referenceRuntime` 是 Renderer 的引用搜索/UI port，与上述 backend 能力无关；不得因名字相似把
 两者重新合并。它的 Web/Manual 表单行为、校验和 `.web-manual-citation-form` 样式由 Editor Citation 的公开
-Renderer 合同唯一拥有，Host composition 负责装载 CSS，Mindmap 只通过该 port 消费，不复制样式或 deep import
+Renderer 合同唯一拥有，Host composition 负责装载 CSS，插件只通过该 port 消费，不复制样式或 deep import
 Editor 内部路径。这是带 Citation 语义的 Host 业务能力，不属于 `@linnya/renderer-ui` 基础组件。
 
 Backend 的 `@plugin/backend/workspaceDatabasePath`
@@ -122,7 +122,7 @@ Backend 的 `@plugin/backend/imageTranscoding` 是不透明内存图片转码窄
   是启停门禁唯一通用入口，插件可在包内用自己的 `pluginMeta.id/name` 做薄封装。
 - **插件上下文预算归插件**：树深、节点数、页面数、元素数这类上下文裁剪参数属于具体文档类型的模型可见协议，不放在 host
   conversation config。Host 若要提供预算平台能力，只能提供“按 document
-  type 查询/传入预算”的通用接口，不能新增 `getMindMapXxx` / `getSlidesXxx`
+  type 查询/传入预算”的通用接口，不能新增 `getCanvasXxx` / `getSlidesXxx`
   之类函数。
 - **隐藏 host 内部 schema**：能力背后是 SQL /
   host 表结构时，SQL 实现留 host，门面只给「解析意图」。否则 artifact 嵌入对 host 表结构的依赖，host 改 schema 时旧版插件直接坏。

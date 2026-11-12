@@ -7,8 +7,6 @@ import type {
 } from '../definitions/aiSdkThirdPartyNotice';
 import {
   CRAFT_AGENTS_OAUTH_NOTICE,
-  MIND_ELIXIR_NOTICE,
-  VISELECT_NOTICE,
   FLUENT_SYSTEM_ICONS_NOTICE,
   MODELS_DEV_CATALOG_NOTICE,
 } from '../definitions/sourceDependencyBom';
@@ -214,10 +212,6 @@ export function validateAiSdkThirdPartyNotice(
         ...packages.map(packageInfo => `- ${packageInfo.name}@${packageInfo.version}`),
         'https://github.com/OpenRouterTeam/ai-sdk-provider',
         'https://github.com/jagreehal/ai-sdk-ollama',
-        MIND_ELIXIR_NOTICE.title,
-        MIND_ELIXIR_NOTICE.source,
-        VISELECT_NOTICE.title,
-        VISELECT_NOTICE.source,
         MODELS_DEV_CATALOG_NOTICE.title,
         MODELS_DEV_CATALOG_NOTICE.source,
         'Copyright (c) 2025 models.dev',

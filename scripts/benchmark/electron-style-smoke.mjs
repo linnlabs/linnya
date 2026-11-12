@@ -20,7 +20,7 @@ const requiredTexts = {
   main: ['新对话', '新项目'],
   settings: ['设置', '外观', '跟随系统'],
   knowledgebase: ['知识库', '新建知识库'],
-  pluginstore: ['插件', 'Mindmap'],
+  pluginstore: ['插件', 'Slides'],
 };
 
 const forbiddenTexts = {

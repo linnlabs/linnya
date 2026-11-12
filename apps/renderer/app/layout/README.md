@@ -144,7 +144,7 @@ app/layout/
 
 - 进入项目 workspace 或 Linnya 助手 workspace；
 - 打开草稿对话或历史对话；
-- 打开 Markdown、Mindmap、Sheet、Slides；
+- 打开 Markdown、Sheet、Slides；
 - 交换对话和文档位置；
 - 折叠/展开右 pane；
 - 进入知识库和项目设置；
@@ -175,7 +175,7 @@ conversation domain 只能通过 `workspaceContextPort` 获取这些信息，避
 - 在指定会话里发送带 `fences` / `userQuote` 的消息；
 - 把业务域错误展示到平台对话错误面板。
 
-slides/mindmap 这类可安装插件应在自己的包内生产业务引用和 AI 上下文，再通过 `@plugin/renderer/aiInvocationPort` 交给 conversation。插件不能直接 import Host 的 conversation store、navigationScope 或 chatFlowOrchestrator。Host 内部 domain 可以通过 `app/navigation` 公开合同读取导航状态和操作草稿；涉及文档与布局的导航仍走 `workspaceNavigationPort`。
+slides/canvas 这类可安装插件应在自己的包内生产业务引用和 AI 上下文，再通过 `@plugin/renderer/aiInvocationPort` 交给 conversation。插件不能直接 import Host 的 conversation store、navigationScope 或 chatFlowOrchestrator。Host 内部 domain 可以通过 `app/navigation` 公开合同读取导航状态和操作草稿；涉及文档与布局的导航仍走 `workspaceNavigationPort`。
 
 `orchestration/workspaceReferenceContent.ts` 是 workspace `[#ref]` 引用解析所需内容的 app-level 读取入口。conversation domain 可以计算和展示引用，但不能直接通过 `workspaceGateway` 读取 Markdown 文档内容；需要候选根块 ID 时，只能通过 `workspaceReferenceContentPort` 获取。
 
@@ -217,7 +217,7 @@ Workspace Mutation Bus 的完整契约、发布规则和插件接入规范见 [W
 
 规则：
 
-- Markdown / Mindmap / Slides：先挂 surface，等 surface ready，再激活 file-manager 或加载 deck；
+- Markdown / Slides：先挂 surface，等 surface ready，再激活 file-manager 或加载 deck；
 - Sheet：先由 file-manager handler 准备 pending open context，再挂 `SheetCanvas`；
 - 每次打开文档都有 AbortController，旧 intent 不能继续写入新 surface；
 - 折叠右 pane 只改变 `visible/occupied`，不关闭文档；
@@ -403,7 +403,7 @@ AnswerMessage 等 domain 内部的同名局部 class。
 
 ```bash
 # app/layout 内不应重新出现旧顶层导航入口
-rg "activeView|useActiveViewLayoutSync|safeSwitchView|uiStore\\.show(Editor|Mindmap|Sheet|Slides|ProjectWorkspace|LinnyaAssistantWorkspace|KnowledgeBase|ProjectSetup)|currentDocumentId|setCurrentDocumentContext" apps/renderer/app/layout -g'*.ts' -g'*.vue' -g'*.js'
+rg "activeView|useActiveViewLayoutSync|safeSwitchView|uiStore\\.show(Editor|Sheet|Slides|ProjectWorkspace|LinnyaAssistantWorkspace|KnowledgeBase|ProjectSetup)|currentDocumentId|setCurrentDocumentContext" apps/renderer/app/layout -g'*.ts' -g'*.vue' -g'*.js'
 
 # domain 不应反向依赖 app/layout
 rg "from ['\\\"]@/app/layout|useLayoutStore" apps/renderer/domains -g'*.vue' -g'*.ts' -g'*.js'

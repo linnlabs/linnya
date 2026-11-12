@@ -366,7 +366,7 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 - `tone="danger"` 静止保持中性、悬停显示错误色，用于行内删除与移除；不可撤销的删除仍需确认。
 - `label` 必填，同时作为可访问名称与悬停提示（共享提示服务绘制，规则见 7.4）；外层已有 `HoverTooltip` 时传 `:tooltip="false"`，提示需要附加快捷键时传 `tooltip-text`。
 - 图标尺寸由 `size` 决定，业务不再给图标写宽高；需要锚定浮层时通过组件暴露的 `element`（或 `resolveIconButtonElement`）取得原生按钮。
-- **什么时候不用 `IconButton`**：形状或状态本身就是设计的一部分时保留自己的样式，不要为了统一抹掉它。例如批注面板里按语义着色的圆形按钮（AI、编辑、解决、删除各有色调和悬停放大）、紧贴输入框的分段按钮（密码显隐）、缩略图角上带边框的操作小块、窗口控制与分段页签、带多种状态色的转写按钮。编辑器与思维导图的格式工具条用 `ToolbarButton`。
+- **什么时候不用 `IconButton`**：形状或状态本身就是设计的一部分时保留自己的样式，不要为了统一抹掉它。例如批注面板里按语义着色的圆形按钮（AI、编辑、解决、删除各有色调和悬停放大）、紧贴输入框的分段按钮（密码显隐）、缩略图角上带边框的操作小块、窗口控制与分段页签、带多种状态色的转写按钮。编辑器的格式工具条用 `ToolbarButton`。
 - 按钮所在的行已经处于 hover 或选中底色时，在行的操作容器上把 `--linnya-ui-icon-button-hover-bg` 设为 `var(--linnya-ui-icon-button-hover-bg-raised)`：它在三套主题里都与行底色保持约 6 的 L\* 差，第二层悬停一眼可见。其它已有底色的容器（如代码块）可以设为更高一档的 hover 语义 token。这是唯一允许调用方调整的视觉入口。
 
 ### 9.4 卡片与面板
@@ -443,7 +443,7 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 
 ## 12. 刻度棘轮
 
-`pnpm run guard:renderer-style-scale` 扫描 `apps/renderer`、`packages/renderer-ui/src` 与官方插件 `packages/plugins/*/src` 的 CSS（token owner 文件与即将退役的 Mindmap 除外），统计绕过 token 的写死值与基础色阶引用：
+`pnpm run guard:renderer-style-scale` 扫描 `apps/renderer`、`packages/renderer-ui/src` 与官方插件 `packages/plugins/*/src` 的 CSS（token owner 文件除外），统计绕过 token 的写死值与基础色阶引用：
 
 | 规则 | 统计内容 |
 | --- | --- |

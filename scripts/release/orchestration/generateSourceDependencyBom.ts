@@ -14,8 +14,6 @@ import {
   CRAFT_AGENTS_OAUTH_NOTICE,
   FLUENT_SYSTEM_ICONS_NOTICE,
   MODELS_DEV_CATALOG_NOTICE,
-  MIND_ELIXIR_NOTICE,
-  VISELECT_NOTICE,
   NAPI_RS_CANVAS_NATIVE_NOTICE_EVIDENCE,
   type SourceDependencySupplementalNotice,
 } from '../definitions/sourceDependencyBom';
@@ -103,8 +101,6 @@ export function generateSourceDependencyBom(
     supplementalNotices: [
       CRAFT_AGENTS_OAUTH_NOTICE,
       MODELS_DEV_CATALOG_NOTICE,
-      MIND_ELIXIR_NOTICE,
-      VISELECT_NOTICE,
       FLUENT_SYSTEM_ICONS_NOTICE,
       napiCanvasNativeNotice,
     ],

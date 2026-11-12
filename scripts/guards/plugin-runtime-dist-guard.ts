@@ -25,23 +25,7 @@ const textExtensions = new Set([
   '.txt',
 ]);
 
-const forbiddenMindmapBusinessSymbols = [
-  'MindMapCreateNodeTool',
-  'MindMapDocumentSchemaProvider',
-  'MindMapDocumentService',
-  'MindMapToolCards',
-  'MindMapToolbar',
-  'MindMapView',
-  'MindmapPage',
-  'buildMindMapNodeRefView',
-  'mindmapAgentDefinitions',
-  'mindmapDocumentTypeBackendHook',
-  'mindmapPluginMigrations',
-  'mindmapToolClasses',
-] as const;
-
 const forbiddenPluginBusinessSymbols = {
-  mindmap: forbiddenMindmapBusinessSymbols,
   sheet: [
     'SheetClearRangeTool',
     'SheetClipboardService',

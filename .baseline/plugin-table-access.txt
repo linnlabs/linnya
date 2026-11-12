@@ -1,10 +1,6 @@
 # 插件跨表访问基线：<插件> <访问方式> <表>
 # 访问方式：read 读取、write 增删改、schema 建表改表建索引、reference 外键引用（指向 workspace_nodes、projects 的外键不计）。
 # 只允许删除。新增跨表访问先改用 Host 端口；确需新增时手工加行，并在提交说明里写明理由。
-mindmap read workspace_node_text_snapshots
-mindmap read workspace_nodes
-mindmap write workspace_node_text_snapshots
-mindmap write workspace_nodes
 slides read <dynamic:src/backend/features/presentationSourceHistory/infrastructure/PresentationHistoryRepository.ts>
 slides read presentation_versions
 slides read slides_legacy_presentation_drafts

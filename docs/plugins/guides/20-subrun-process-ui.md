@@ -146,4 +146,3 @@ plugin 注册，并由 enabled 快照决定是否进入可用工具卡表；插�
 | 工具卡 registry              | `apps/renderer/app/plugins/registry.ts`                                                                  |
 | 历史 lazy source 门控        | `apps/renderer/domains/conversation/ui/message/ToolCallsMessage.vue`                                     |
 | SubrunCard 实时/历史选择     | `apps/renderer/domains/conversation/features/subrun-card/ui/SubrunCard.vue`、`apps/renderer/domains/conversation/features/subrun-card/orchestration/useSubrunCardTrace.ts` |
-| 并行 subrun 插件示例         | `packages/plugins/mindmap/src/renderer/tool-cards/`                                                      |

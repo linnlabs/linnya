@@ -54,7 +54,6 @@ try {
       // Standalone CLI 本身就是 Electron Desktop Host，不经过 Linnya App composition。
       // 在构建根显式选择现有 Electron adapter，禁止 SDK 在运行时偷偷 fallback。
       '--alias:@plugin/backend/hiddenWorkerRuntime=../../../src/electron-main/hidden-worker/standaloneHiddenWorkerRuntime.ts',
-      '--alias:@plugin/mindmap/shared=../mindmap/src/shared/index.ts',
       '--external:electron',
       '--external:better-sqlite3',
       '--external:fontkit',

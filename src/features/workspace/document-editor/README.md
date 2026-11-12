@@ -1,6 +1,6 @@
 # Workspace Document Editor
 
-本 feature 负责富文档 Editor 读写入口的 Workspace 边界：确认 `workspace_nodes` 身份，再按节点类型调用 Host 注入的窄 provider。它不拥有 Markdown、Slides、MindMap 等文档内部格式。
+本 feature 负责富文档 Editor 读写入口的 Workspace 边界：确认 `workspace_nodes` 身份，再按节点类型调用 Host 注入的窄 provider。它不拥有 Markdown、Slides、Canvas 等文档内部格式。
 
 ```text
 IPC / Document Surface

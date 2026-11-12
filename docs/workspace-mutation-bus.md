@@ -13,14 +13,13 @@ Workspace Mutation Bus 负责：
 - Project 创建、修改与空项目删除后的项目列表刷新；
 - workspace node 结构变更：创建、重命名、同项目移动、跨项目转移、删除；
 - Markdown 文档 pending revision 或正式 version 变化；
-- 插件文档正式 version 变化，如 Slides / MindMap / Sheet；
+- 插件文档正式 version 变化，如 Slides / Sheet；
 - 当前打开文档 surface 的刷新触发。
 
 Workspace Mutation Bus 不负责：
 
 - conversation SSE、`tool_output`、`subrun_trace` 的 agent 运行协议；
 - Sheet ops 的实时同步主链，Sheet ops 继续走 `sheet-ops-appended`；
-- MindMap `attach_evidence` 的证据卫星表版本化，它由证据增量刷新 handler 处理；
 - 具体文档如何重新加载或恢复视图，bus 只替换触发，不替换各 domain 的执行层。
 
 ## 文件地图
@@ -155,7 +154,6 @@ Markdown 规范化写入当前没有 UI 消费者，暂不发布事件。
 当前收口点：
 
 - Slides：`PresentationRepository.createPresentation/saveVersion`
-- MindMap：`MindMapDocumentService.createDocument/updateDocument`
 - Sheet：`SheetDocumentService.saveCheckpoint`
 
 插件 persistence 同样使用 `setTimeout(0)` + 重查版本存在性，避免外层事务回滚后发布假事件。
@@ -227,7 +225,6 @@ renderer 订阅：
 | 插件 | Bus handler 行为 | 保留的非 bus 刷新 |
 |---|---|---|
 | Slides | `refreshDeck(documentId)` | 无 |
-| MindMap | `requestRefresh({ reason: 'push:document_updated' })` | `attach_evidence` 证据 count/list 增量刷新 |
 | Sheet | 非 dirty 时 `reloadRemoteSnapshot()` | ops 补拉与 `sheet-ops-appended` |
 
 ## 开发规范
@@ -271,7 +268,6 @@ npm run test -- src/plugin-sdk/renderer/rendererPorts.test.ts
 
 ```bash
 pnpm exec vitest run packages/plugins/slides/src/backend/persistence/presentation-repository.test.ts
-pnpm exec vitest run packages/plugins/mindmap/src/backend/persistence/mindmap_document/services/mindmap_document.service.test.ts
 pnpm exec vitest run packages/plugins/__tests__/rendererPluginBoundary.test.ts apps/renderer/app/plugins/loader/rendererHostExternalBoundary.test.ts
 ```
 
@@ -281,7 +277,6 @@ pnpm exec vitest run packages/plugins/__tests__/rendererPluginBoundary.test.ts a
 npm run build:backend
 pnpm run build:frontend
 npm run build:plugin:slides
-npm run build:plugin:mindmap
 npm run build:plugin:sheet
 pnpm run guard:tsc-baseline
 ```

@@ -14,7 +14,6 @@ import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
 } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
-import { mindmapBackendPlugin } from '@plugin/mindmap/backend';
 import { slidesBackendPlugin } from '@plugin/slides/backend';
 import type { PluginBackendContribution } from '@plugin/backend/pluginContribution';
 
@@ -150,11 +149,6 @@ class FakeStatement implements WorkspaceVfsStatement {
       return latestByNodeId(this.db.documentVersions, nodeId);
     }
 
-    if (this.sql.includes('FROM mindmap_versions')) {
-      const [nodeId] = params;
-      return latestByNodeId(this.db.mindmapVersions, nodeId);
-    }
-
     if (this.sql.includes('FROM workspace_node_text_snapshots')) {
       const [nodeId] = params;
       return this.db.textSnapshots.find((snapshot) => snapshot.node_id === nodeId);
@@ -201,7 +195,6 @@ class FakeStatement implements WorkspaceVfsStatement {
 class FakeVfsDatabase implements WorkspaceVfsDatabase {
   readonly nodes: WorkspaceNodeRow[] = [];
   readonly documentVersions: VersionRow[] = [];
-  readonly mindmapVersions: VersionRow[] = [];
   readonly presentationVersions: PresentationVersionRow[] = [];
   readonly presentationDrafts: PresentationDraftRow[] = [];
   readonly pendingRevisions: PendingRevisionRow[] = [];
@@ -297,18 +290,14 @@ let db: FakeVfsDatabase;
 // Host 信任来源和专项测试，不能因为读取文档而顺带注册整套插件运行面。
 const workspaceVfsPluginContributions = [
   {
-    meta: mindmapBackendPlugin.meta,
-    documentTypeHooks: mindmapBackendPlugin.documentTypeHooks,
-  },
-  {
     meta: slidesBackendPlugin.meta,
     documentTypeHooks: slidesBackendPlugin.documentTypeHooks,
   },
 ] satisfies readonly PluginBackendContribution[];
 
-const denyMindmapContentPolicy: WorkspaceVfsNodeTypeAccessPolicy = {
-  canReadContent: (nodeType) => nodeType !== 'mindmap',
-  buildDisabledMessage: (_nodeType, action) => `Mindmap disabled while trying to ${action}`,
+const denySlidesContentPolicy: WorkspaceVfsNodeTypeAccessPolicy = {
+  canReadContent: (nodeType) => nodeType !== 'presentation',
+  buildDisabledMessage: (_nodeType, action) => `Slides disabled while trying to ${action}`,
 };
 
 const SLIDES_SOURCE_WITH_TWO_PAGES = [
@@ -328,14 +317,13 @@ describe('readWorkspaceVfsNode / searchWorkspaceVfsNodes', () => {
       }
     }
     setPluginRuntimeStateForTests({
-      installedPluginIds: ['platform', 'mindmap', 'slides'],
-      enabledPluginIds: ['platform', 'mindmap', 'slides'],
+      installedPluginIds: ['platform', 'slides'],
+      enabledPluginIds: ['platform', 'slides'],
     });
     db = new FakeVfsDatabase();
 
     db.insertNode({ id: 'folder-1', projectId: 'project-1', type: 'folder', name: '项目资料' });
     db.insertNode({ id: 'doc-1', projectId: 'project-1', parentId: 'folder-1', type: 'document', name: '研究.md' });
-    db.insertNode({ id: 'mindmap-1', projectId: 'project-1', parentId: 'folder-1', type: 'mindmap', name: '路线图.mindmap' });
     db.insertNode({ id: 'slides-1', projectId: 'project-1', parentId: 'folder-1', type: 'presentation', name: '方案.slides' });
 
     db.documentVersions.push({
@@ -346,25 +334,6 @@ describe('readWorkspaceVfsNode / searchWorkspaceVfsNodes', () => {
       char_count: 16,
       created_at: 1000,
       author_id: null,
-    });
-    db.mindmapVersions.push({
-      id: 'mindmap-v1',
-      node_id: 'mindmap-1',
-      version_number: 1,
-      content_json: JSON.stringify({
-        nodeData: {
-          topic: '统一路径层',
-          children: [{ topic: '读取 MindMap' }],
-        },
-      }),
-    });
-    db.saveTextSnapshot({
-      nodeId: 'mindmap-1',
-      contentType: 'text/markdown',
-      text: '# 统一路径层\n\n- 读取 MindMap',
-      sourcePluginId: 'mindmap',
-      sourceNodeType: 'mindmap',
-      updatedAt: 1000,
     });
     db.presentationVersions.push({
       node_id: 'slides-1',
@@ -384,9 +353,6 @@ describe('readWorkspaceVfsNode / searchWorkspaceVfsNodes', () => {
     const markdown = await readWorkspaceVfsNode({ db, projectId: 'project-1', path: '/项目资料/研究.md' });
     expect(markdown).toMatchObject({ ok: true, contentType: 'text/markdown' });
     expect(markdown.ok ? markdown.text : '').toContain('统一路径层可以读取 Markdown');
-
-    const mindmap = await readWorkspaceVfsNode({ db, projectId: 'project-1', path: '/项目资料/路线图.mindmap' });
-    expect(mindmap.ok ? mindmap.text : '').toContain('读取 MindMap');
 
     const slides = await readWorkspaceVfsNode({ db, projectId: 'project-1', path: '/项目资料/方案.slides' });
     expect(slides.ok ? slides.text : '').toContain('统一路径层 Slides');
@@ -457,39 +423,46 @@ describe('readWorkspaceVfsNode / searchWorkspaceVfsNodes', () => {
     expect(result.matches.map((match) => match.node.name).sort()).toEqual([
       '方案.slides',
       '研究.md',
-      '路线图.mindmap',
     ].sort());
   });
 
-  it('节点类型访问策略保留 Mindmap 文件名，并通过 host 快照读取和搜索事实文本', async () => {
+  it('节点类型访问策略保留插件文档文件名，并通过 host 快照读取和搜索事实文本', async () => {
+    db.saveTextSnapshot({
+      nodeId: 'slides-1',
+      contentType: 'text/markdown',
+      text: '# 统一路径层 Slides\n\n- 快照里的第二页',
+      sourcePluginId: 'slides',
+      sourceNodeType: 'presentation',
+      updatedAt: 1000,
+    });
     const children = await listWorkspaceVfsNodes({
       db,
       projectId: 'project-1',
       parentId: 'folder-1',
-      nodeTypeAccessPolicy: denyMindmapContentPolicy,
+      nodeTypeAccessPolicy: denySlidesContentPolicy,
     });
-    expect(children.map((node) => node.name)).toContain('路线图.mindmap');
+    expect(children.map((node) => node.name)).toContain('方案.slides');
 
     const read = await readWorkspaceVfsNode({
       db,
       projectId: 'project-1',
-      path: '/项目资料/路线图.mindmap',
-      nodeTypeAccessPolicy: denyMindmapContentPolicy,
+      path: '/项目资料/方案.slides',
+      nodeTypeAccessPolicy: denySlidesContentPolicy,
     });
     expect(read.ok).toBe(true);
     if (!read.ok) throw new Error(read.message);
-    expect(read.text).toContain('读取 MindMap');
+    expect(read.text).toContain('快照里的第二页');
     expect(read.metadata?.view).toBe('workspace_node_text_snapshot');
 
     const search = await searchWorkspaceVfsNodes({
       db,
       projectId: 'project-1',
-      pattern: '读取 MindMap',
-      nodeTypeAccessPolicy: denyMindmapContentPolicy,
+      pattern: '快照里的第二页',
+      nodeTypeAccessPolicy: denySlidesContentPolicy,
     });
     expect(search.ok).toBe(true);
     if (!search.ok) throw new Error(search.message);
-    expect(search.matches.map((match) => match.node.name)).toContain('路线图.mindmap');
+    expect(search.matches.map((match) => match.node.name)).toContain('方案.slides');
   });
 
   it('Markdown 读取和搜索返回 base + pending 合并后的当前视图', async () => {

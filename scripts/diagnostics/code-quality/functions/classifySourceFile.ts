@@ -4,8 +4,7 @@ export const SOURCE_PATTERN =
   /\.(?:[cm]?[jt]sx?|vue|css|scss|rs|py|sh|ps1|cs|html|nsh|bat|cmd|applescript|patch)$/u;
 export const AST_PATTERN = /\.(?:[cm]?[jt]sx?|vue)$/u;
 export const EXCLUDED_PATTERNS = [
-  // 退役插件、生成绑定与第三方原件不能算成自有实现的债务。
-  /^packages\/plugins\/mindmap\//u,
+  // 生成绑定与第三方原件不能算成自有实现的债务。
   /^packages\/parser-wasm\/pkg(?:-node)?\//u,
   /(?:^|\/)(?:vendor|vendored|third-party|__snapshots__)\//u,
   /\.generated\.[cm]?[jt]s$/u,

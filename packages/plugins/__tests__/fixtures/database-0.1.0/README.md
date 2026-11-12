@@ -1,7 +1,7 @@
 # Desktop 0.1.0 升级夹具
 
 `workspace.sqlite` 来自公开源码提交 `9c8186a8` 的真实 DatabaseService、schema providers 和
-Slides plugin migrations，Host 版本为 v68。0.1.0 正式随包插件集合只有 Slides；Mindmap、Decision 不属于此发行基线。
+Slides plugin migrations，Host 版本为 v68。0.1.0 正式随包插件集合只有 Slides；Decision 不属于此发行基线。
 此夹具被冻结用于后续升级，不能拿当前结构重新生成来掩盖升级差异。
 
 数据全部为合成内容：一个项目、Markdown 文档版本和 update Pending、一条 Conversation 的 run/event 和

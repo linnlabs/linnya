@@ -56,7 +56,7 @@ Core Header 自动提供统一 More 入口和面板。未启用或缺少贡献�
 - 读取和搜索既有事实可以走 host 的 `workspace_node_text_snapshots` 降级。这个快照只服务 read/grep，不代表插件可以编辑。
 - 插件启用时，创建和更新应同步写入事实文本快照，建议由插件自己的 DocumentService 在同一事务里保存。
 - `workspace:create-document` 的默认名称来自 hook 的 `displayName` / `fileExtension`，不在 workspace IPC 里按具体插件写“未命名演示文稿”这类字符串。
-- AI project metadata 与前端引用不维护 `markdown/mindmap` 二元模型：文档类型、图标、可定位引用能力都从 document type registry / document reference runtime 读取。新增文档类型时，Host 不应再改 conversation 组件里的 switch。
+- AI project metadata 与前端引用不维护“Markdown + 某个插件类型”的二元模型：文档类型、图标、可定位引用能力都从 document type registry / document reference runtime 读取。新增文档类型时，Host 不应再改 conversation 组件里的 switch。
 
 ## ToolContext 派生（与通用工具协作时）
 

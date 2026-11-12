@@ -102,10 +102,10 @@ budget、metafile 依赖类别、初始 contribution 加载、首次延迟 runti
    `requiredSkills` ↔ 随包 skill 资源——一律加契约测试。官方插件禁止再用旧
    `ipcChannels` / `ipcRegistrars` 双字段，`PLUGIN-GUARD-05` 会拦截。
 6. **Host 旧白名单**：workspace/read/create/reference/pageContext 里出现
-   `document/mindmap/sheet` 这类封闭插件文档集合时，优先写 fake
+   `document/slides/sheet` 这类封闭插件文档集合时，优先写 fake
    plugin 回归测试证明新增 docType 无需改 Host。
 7. **插件 ID 特判**：商店图标、默认名称、AI
-   fence、workspace 引用、工具卡显示不能出现 `pluginId === 'slides'/'mindmap'`
+   fence、workspace 引用、工具卡显示不能出现 `pluginId === 'slides'/'canvas'`
    的业务特判。已有图标 fallback 走 manifest/meta，文档 UI 走 document type
    registry。
 

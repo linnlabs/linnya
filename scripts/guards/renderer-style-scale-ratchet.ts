@@ -16,8 +16,6 @@ const REPO_ROOT = process.cwd();
 /* 官方插件的 Renderer 样式与 Host 遵守同一套刻度；只扫各插件的 src。 */
 const SCAN_ROOTS = ['apps/renderer', 'packages/renderer-ui/src', 'packages/plugins'] as const;
 const PLUGIN_ROOT = 'packages/plugins/';
-/* Mindmap 已决定由画布取代，退役前不再收敛其样式。 */
-const RETIRING_PLUGINS = new Set(['mindmap']);
 const BASELINE_PATH = '.baseline/renderer-style-scale.txt';
 const IGNORE_DIRS = new Set(['node_modules', 'dist', 'coverage', '__snapshots__']);
 
@@ -262,7 +260,7 @@ function isExempt(file: string): boolean {
 function isScannedPluginFile(file: string): boolean {
   if (!file.startsWith(PLUGIN_ROOT)) return true;
   const [plugin, area] = file.slice(PLUGIN_ROOT.length).split('/');
-  return area === 'src' && plugin !== undefined && !RETIRING_PLUGINS.has(plugin);
+  return area === 'src' && plugin !== undefined;
 }
 
 function collectCssFiles(directory: string): string[] {

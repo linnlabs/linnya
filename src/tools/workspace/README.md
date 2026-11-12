@@ -2,7 +2,7 @@
 
 > 说明：本文件只讲 **Workspace 相关工具的设计与约定**。
 >
-> 背景：Workspace 文档（Markdown / MindMap）都已经迁移到 `workspace.sqlite`，不再使用旧的 `.ablk` 文件架构。
+> 背景：Workspace 文档（Markdown 与插件文档）都已经迁移到 `workspace.sqlite`，不再使用旧的 `.ablk` 文件架构。
 
 ---
 
@@ -17,7 +17,7 @@
   - Citation 定位：页码或表号写在 token 外，如 `[@ref]（第5页）`；不支持 `[@ref, p. 5]`。只讨论引用语法时用行内代码或 fenced code，避免被接纳为真实引用。
   - Markdown 新建：`write_file(locator="workspace:/name.md", content="...")` 会创建新 Markdown 文件，并复用 normalization 与同一 Citation admission 生成结构化 CitationMark。
   - 中间目录：新建路径会自动创建缺失的普通 Workspace 文件夹，成功回执的 `created_folders` 返回本次新增目录的 locator/inode；模型 observation 同步列出，已有目录和更新文件返回空数组。Markdown 的目录、文档首版和回执同事务提交，失败全部回滚。插件异步创建失败时保留已创建目录，在 error observation 明确列出 `created_folders`；不回删可能已被其他调用复用的目录。文件/隐藏节点/只读系统视图不能当目录，停用或不支持的格式不会先建目录。目录属于 VFS，Shell `mkdir` 不等价。事务边界见 [文件创建 owner](../../features/workspace/document-file-create/README.md)。
-  - 新建规则：尚不存在的节点没有 inode，因此新建 Markdown、MindMap、Slides 等文档只能传 locator。禁止发明 `workspace:dummy`、随机 UUID，禁止同时传 locator 与 inode。
+  - 新建规则：尚不存在的节点没有 inode，因此新建 Markdown、Slides、Canvas 等文档只能传 locator。禁止发明 `workspace:dummy`、随机 UUID，禁止同时传 locator 与 inode。
   - Slides：读写 `.slides` source，并通过 `ppt_inspect` 做布局诊断。
   - Sheet：`read_file` / `grep` 读取 checkpoint + `sheet_ops` 回放后的可见展示值预览；写入仍使用 `sheet_*` 专用工具，避免绕过 Sheet oplog。
 
@@ -27,7 +27,7 @@
 
 有标签或被引用的文档，第一页正文前另有一段不编行号的只读属性段（`[属性 · 只读 …]` 到 `[/属性]`）。它不属于文件内容：`write_file` / `edit_file` 原样带回时去掉，改动它则整次写入被拒绝（`DOCUMENT_PROPERTIES_READONLY`），提示改用 Shell 的 `linnya props`。规则见[文档属性段](../../app-hosts/linnya/application/document-properties/README.md)。
 
-结构化 DocumentView（例如 MindMap 的 `[#ref]`、outline 和插件 presentation）属于同一工具的显式读取模式，字符窗口只能使用语义明确的 `offset_chars/max_chars`，不复用普通文本的 `offset/limit`。超长普通文本 observation 继续由既有 ToolOutputStore 接管；即使一行很长，也不为 `read_file` 增加第二套字符分页语义。
+结构化 DocumentView（例如 outline 和插件 presentation）属于同一工具的显式读取模式，字符窗口只能使用语义明确的 `offset_chars/max_chars`，不复用普通文本的 `offset/limit`。超长普通文本 observation 继续由既有 ToolOutputStore 接管；即使一行很长，也不为 `read_file` 增加第二套字符分页语义。
 
 普通文本读回及支持真实 current 文本的写入 provider 返回可选 `text_metrics`：`characters` 按 Unicode
 code point 计数（含空白、标点、Markdown 语法和正文引用 token），`han_characters` 按 Unicode `Script=Han`
@@ -246,7 +246,6 @@ block 身份规则：
 Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实链路：
 
 - Markdown：`write_file(locator="workspace:/name.md") -> read_file -> edit_file/update -> read_file`
-- MindMap：`write_file(locator="workspace:/name.mindmap") -> list_files -> read_file(locator="workspace:/name.mindmap", view="document")`
 - Sheet：当前停用；未来恢复时仍应使用 `list_files -> read_file(view="document")`，精细操作走插件 CLI/Skill。
 
 当前回归测试入口：
@@ -335,11 +334,6 @@ Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实�
 - **共享：**
   - `src/tools/workspace/shared/numberUtils.ts`
 
-- **MindMap 工具（插件包内）：**
-  - 详见 `packages/plugins/mindmap/src/backend/tools/mindmap/README.md`
-  - `packages/plugins/mindmap/src/shared/mindmapOutline.ts`
-  - `packages/plugins/mindmap/src/backend/tools/mindmap/read/mindmapNodeRefViewBuilder.ts`（NodeRef View 构建）
-
 - **ToolContext / 工具注册：**
   - `src/tools/types.ts`（`ToolContext`、`BaseTool` 等）
   - `src/tools/registry.ts`（工具注册与执行）
@@ -349,9 +343,7 @@ Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实�
 - **Workspace / 文档服务：**
   - `src/electron-main/services/workspace/workspace.ts`（`WorkspaceService`，项目与节点树）
   - `src/domains/markdown/features/document-storage/infrastructure/sqlite/markdownDocumentService.ts`
-  - `packages/plugins/mindmap/src/backend/persistence/mindmap_document/services/mindmap_document.service.ts`
   - `src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/document.schema.ts`
-  - `packages/plugins/mindmap/src/backend/persistence/mindmap_document/schemas/core.schema.ts`
 
 - **编辑器前端逻辑：**
   - Markdown：
@@ -359,16 +351,10 @@ Workspace 工具不要只测单工具参数校验，至少应覆盖这些真实�
     - `apps/renderer/shared/services/markdownService.js`（WASM 解析器）
     - `apps/renderer/domains/editor/extensions/clipboard/PlainTextMarkdownHandler.js`（粘贴入口编排；底层节点 materialization 已复用统一 markdown runtime）
     - `apps/renderer/shared/utils/markdownSerializer.ts`（块结构 → Markdown 导出）
-  - MindMap：
-    - `packages/plugins/mindmap/src/renderer/domain/types/index.ts`（`MindMapData` / `NodeObj` 定义）
-    - `packages/plugins/mindmap/src/renderer/domain/core/methods.ts`（`mind.init` 等核心方法）
-    - `packages/plugins/mindmap/src/renderer/domain/store/mindmapStore.ts`（插件内状态）
-    - `packages/plugins/mindmap/src/renderer/page/MindmapPage.vue`（Document Surface 页面入口）
 
 - **IPC 入口：**
   - `src/electron-main/ipc/handlers/workspace/workspace-ipc.ts`（Workspace 主 IPC）
   - `src/electron-main/ipc/handlers/workspace/documents/markdown_document/document-ipc.ts`
-  - `packages/plugins/mindmap/src/backend/ipc/mindmap_document/document-ipc.ts`（MindMap 插件 IPC）
   - `src/electron-main/preload/index.ts`（`workspace:*` 与 `plugin:invoke` 通道暴露）
 
 ### Markdown 转义等价匹配

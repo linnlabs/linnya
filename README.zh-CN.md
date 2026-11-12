@@ -12,7 +12,7 @@ Linnya 基于 Markdown 构建，并提供丰富的插件支持，可以带来新
 
 ## 官方插件
 
-0.1.0 桌面发行版随包提供 Slides。Mindmap 与实验性的 Decision 保留源码和开发入口，本次不随正式安装包发布。
+0.1.0 桌面发行版随包提供 Slides。实验性的 Decision 保留源码和开发入口，本次不随正式安装包发布。
 
 ### [Slides](packages/plugins/slides)
 
@@ -25,7 +25,7 @@ Linnya Slides 是首个开源的、由 AI 通过代码绘制高保真演示文�
 - Linnya Desktop Host 与 Vue Renderer；
 - 对已发布通用 Agent runtime `@linnlabs/linnkit` 的产品接入；
 - 跨端 Schemas、插件 Host 合同和 Renderer UI 基础能力；
-- 已开源的 Mindmap 与 Slides 官方插件；
+- 已开源的 Slides 与 Canvas 官方插件；
 - 公共源码构建、测试、Benchmark 和发布验证所需的工程工具。
 
 公共文档只保存贡献者需要的稳定合同与维护规则。具体规则见[文档治理](docs/documentation-governance.md)。
@@ -97,5 +97,3 @@ pnpm run dev:electron
 除非具体路径另有声明，Linnya 与文档使用 [Apache License 2.0](LICENSE)。Copyright © 2024–present BCAutumn and Linnya contributors。
 
 Linnkit、Linnkit AI SDK Provider Adapter 以及仓内维护的 Stream Markdown Parser 保留各自明确声明的 MIT 许可证。第三方组件和再分发资产可能还有 `THIRD_PARTY_NOTICES.txt` 中的附加声明；Linnya 名称和官方图标的使用边界见 [TRADEMARKS.md](TRADEMARKS.md)。
-
-Mindmap 渲染引擎的派生代码也保留 Mind Elixir 与 Viselect 的 MIT 许可声明。

@@ -380,12 +380,12 @@ describe('PLUGIN-GUARD-05 plugin IPC contribution', () => {
 
   it('allows the single atomic IPC contribution field', () => {
     const violations = analyzeSourceText(
-      'packages/plugins/mindmap/src/backend/index.ts',
+      'packages/plugins/canvas/src/backend/index.ts',
       [
-        'export const mindmapBackendPlugin = {',
+        'export const canvasBackendPlugin = {',
         '  ipc: {',
-        "    channels: ['mindmap-document:read'],",
-        '    register(serviceManager, registrar) { registrar("mindmap", "mindmap-document:read", async () => ({})); },',
+        "    channels: ['canvas-document:read'],",
+        '    register(serviceManager, registrar) { registrar("canvas", "canvas-document:read", async () => ({})); },',
         '  },',
         '} satisfies PluginBackendContribution;',
       ].join('\n'),
@@ -398,11 +398,11 @@ describe('PLUGIN-GUARD-05 plugin IPC contribution', () => {
 describe('PLUGIN-GUARD-06 plugin database migrations', () => {
   it('flags official plugin backend entries declaring schemaProviders', () => {
     const violations = analyzeSourceText(
-      'packages/plugins/mindmap/src/backend/index.ts',
+      'packages/plugins/canvas/src/backend/index.ts',
       [
-        'export const mindmapBackendPlugin = {',
-        '  schemaProviders: [new MindMapDocumentSchemaProvider()],',
-        '  pluginMigrations: mindmapPluginMigrations,',
+        'export const canvasBackendPlugin = {',
+        '  schemaProviders: [new CanvasDocumentSchemaProvider()],',
+        '  pluginMigrations: canvasPluginMigrations,',
         '} satisfies PluginBackendContribution;',
       ].join('\n'),
     );
@@ -559,7 +559,7 @@ describe('PLUGIN-GUARD-13 renderer shell contribution ownership', () => {
     expect(
       sourceRuleIdsFor(
         'apps/renderer/app/layout/AppLayout.vue',
-        ":class=\"{ 'for-mindmap': shellDocumentType === 'mindmap' }\"",
+        ":class=\"{ 'for-slides': shellDocumentType === 'slides' }\"",
       ),
     ).toContain('PLUGIN-GUARD-13-no-plugin-type-branch-in-app-layout');
   });
@@ -585,43 +585,14 @@ describe('PLUGIN-GUARD-13 renderer shell contribution ownership', () => {
   it('allows plugins to declare their shell class in document type contribution', () => {
     expect(
       sourceRuleIdsFor(
-        'packages/plugins/mindmap/src/renderer/index.ts',
-        "shellClass: 'for-mindmap',",
+        'packages/plugins/canvas/src/renderer/index.ts',
+        "shellClass: 'for-canvas',",
       ),
     ).not.toContain('PLUGIN-GUARD-13-no-plugin-type-branch-in-app-layout');
   });
 });
 
-describe('PLUGIN-GUARD-14 document reference labels', () => {
-  it('flags host conversation reference UI hardcoding mindmap runtime lookup', () => {
-    expect(
-      sourceRuleIdsFor(
-        'apps/renderer/domains/conversation/ui/tools/shared/WorkspaceRefLink.vue',
-        "return getDocumentReferenceRuntimeHandler('mindmap')?.getCurrentDocumentId() ?? null",
-      ),
-    ).toContain('PLUGIN-GUARD-14-no-mindmap-reference-label-in-host-conversation');
-  });
-
-  it('allows the MindMap plugin to own its reference label', () => {
-    expect(
-      sourceRuleIdsFor(
-        'packages/plugins/mindmap/src/renderer/ports/registerMindmapRendererPorts.ts',
-        "referenceLabel: '节点引用',",
-      ),
-    ).not.toContain('PLUGIN-GUARD-14-no-mindmap-reference-label-in-host-conversation');
-  });
-});
-
-describe('PLUGIN-GUARD-15/16 conversation document interaction contract', () => {
-  it('flags host conversation reintroducing the MindMap reference resolver wrapper', () => {
-    expect(
-      sourceRuleIdsFor(
-        'apps/renderer/domains/conversation/ui/shared/workspaceReferenceResolver.ts',
-        "export function resolveMindMapReferenceInDocument(documentId: string, ref: string) { return null; }",
-      ),
-    ).toContain('PLUGIN-GUARD-15-no-mindmap-reference-resolver-wrapper');
-  });
-
+describe('PLUGIN-GUARD-16 conversation document interaction contract', () => {
   it('flags host workspace read card parsing plugin private NodeRef text', () => {
     expect(
       sourceRuleIdsFor(
@@ -634,172 +605,84 @@ describe('PLUGIN-GUARD-15/16 conversation document interaction contract', () => 
   it('allows plugins to own their private NodeRef text format', () => {
     expect(
       sourceRuleIdsFor(
-        'packages/plugins/mindmap/src/backend/tools/mindmap/read/mindmapNodeRefViewBuilder.ts',
+        'packages/plugins/canvas/src/backend/read/canvasNodeRefView.ts',
         "lines.push(`[#ABC123] ${topic} (Root) ⟦tag⟧`);",
       ),
     ).not.toContain('PLUGIN-GUARD-16-no-outline-private-text-parsing-in-host-conversation');
   });
 });
 
-describe('MINDMAP-PKG-01-no-host-internal-import', () => {
-  const includeMindmapPackageRules = { includeMindmapPackageRules: true } as const;
+describe('CANVAS-PKG-01-no-host-internal-import', () => {
+  const includeRuntimePluginPackageRules = { includeRuntimePluginPackageRules: true } as const;
 
   it('flags package production code importing host internals', () => {
     expect(
       ruleIdsFor(
-        'packages/plugins/mindmap/src/backend/tools/example.ts',
+        'packages/plugins/canvas/src/backend/tools/example.ts',
         "import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';",
-        includeMindmapPackageRules,
+        includeRuntimePluginPackageRules,
       ),
-    ).toContain('MINDMAP-PKG-01-no-host-internal-import');
+    ).toContain('CANVAS-PKG-01-no-host-internal-import');
   });
 
   it('flags package production code importing renderer app aliases', () => {
     expect(
       ruleIdsFor(
-        'packages/plugins/mindmap/src/renderer/index.ts',
-        "import MindmapPage from '@/app/pages/MindmapPage/MindmapPage.vue';",
-        includeMindmapPackageRules,
+        'packages/plugins/canvas/src/renderer/index.ts',
+        "import CanvasPage from '@/app/pages/CanvasPage/CanvasPage.vue';",
+        includeRuntimePluginPackageRules,
       ),
-    ).toContain('MINDMAP-PKG-01-no-host-internal-import');
+    ).toContain('CANVAS-PKG-01-no-host-internal-import');
   });
 
   it('allows package code importing host plugin SDK ports', () => {
     expect(
       ruleIdsFor(
-        'packages/plugins/mindmap/src/backend/documentTypeHook.ts',
+        'packages/plugins/canvas/src/backend/documentTypeHook.ts',
         "import type { DocumentTypeBackendHook } from '@plugin/backend/documentTypeBackendHook';",
-        includeMindmapPackageRules,
+        includeRuntimePluginPackageRules,
       ),
-    ).not.toContain('MINDMAP-PKG-01-no-host-internal-import');
+    ).not.toContain('CANVAS-PKG-01-no-host-internal-import');
   });
 
   it('allows package code importing the app localization facade', () => {
     expect(
       ruleIdsFor(
-        'packages/plugins/mindmap/src/renderer/domain/orchestration/registerLocalization.ts',
+        'packages/plugins/canvas/src/renderer/domain/orchestration/registerLocalization.ts',
         "import { registerMessageCatalogs } from '@app/localization';",
-        includeMindmapPackageRules,
+        includeRuntimePluginPackageRules,
       ),
-    ).not.toContain('MINDMAP-PKG-01-no-host-internal-import');
+    ).not.toContain('CANVAS-PKG-01-no-host-internal-import');
   });
 
   it('allows package-local relative imports', () => {
     expect(
       ruleIdsFor(
-        'packages/plugins/mindmap/src/backend/index.ts',
-        "import { mindmapDocumentTypeHook } from './documentTypeHook';",
-        includeMindmapPackageRules,
+        'packages/plugins/canvas/src/backend/index.ts',
+        "import { canvasDocumentTypeHook } from './documentTypeHook';",
+        includeRuntimePluginPackageRules,
       ),
-    ).not.toContain('MINDMAP-PKG-01-no-host-internal-import');
+    ).not.toContain('CANVAS-PKG-01-no-host-internal-import');
   });
 
   it('allows package code importing its own plugin manifest', () => {
     expect(
       ruleIdsFor(
-        'packages/plugins/mindmap/src/shared/pluginMeta.ts',
+        'packages/plugins/canvas/src/shared/pluginMeta.ts',
         "import manifestJson from '../../plugin.json';",
-        includeMindmapPackageRules,
+        includeRuntimePluginPackageRules,
       ),
-    ).not.toContain('MINDMAP-PKG-01-no-host-internal-import');
+    ).not.toContain('CANVAS-PKG-01-no-host-internal-import');
   });
 
   it('still flags package code importing arbitrary package-root files', () => {
     expect(
       ruleIdsFor(
-        'packages/plugins/mindmap/src/shared/pluginMeta.ts',
+        'packages/plugins/canvas/src/shared/pluginMeta.ts',
         "import readme from '../../README.md';",
-        includeMindmapPackageRules,
+        includeRuntimePluginPackageRules,
       ),
-    ).toContain('MINDMAP-PKG-01-no-host-internal-import');
-  });
-});
-
-describe('MINDMAP-PKG-02-no-mindmap-package-deep-import', () => {
-  const includeMindmapPackageRules = { includeMindmapPackageRules: true } as const;
-  const mindmapRendererEntry = `@plugin/mindmap/${'renderer'}`;
-
-  it('flags host code importing package source internals', () => {
-    expect(
-      ruleIdsFor(
-        'src/app-hosts/linnya/plugin-registry/builtin/mindmap.backend.ts',
-        "import { mindmapToolClasses } from 'packages/plugins/mindmap/src/backend/tools';",
-        includeMindmapPackageRules,
-      ),
-    ).toContain('MINDMAP-PKG-02-no-mindmap-package-deep-import');
-  });
-
-  it('flags host code importing private @plugin/mindmap subpaths', () => {
-    expect(
-      ruleIdsFor(
-        'apps/renderer/app/plugins/builtin/platform.renderer.ts',
-        `import { MindmapPage } from '${mindmapRendererEntry}/page/MindmapPage';`,
-        includeMindmapPackageRules,
-      ),
-    ).toContain('MINDMAP-PKG-02-no-mindmap-package-deep-import');
-  });
-
-  it('allows public package entries', () => {
-    expect(
-      ruleIdsFor(
-        'packages/plugins/mindmap/src/renderer/index.ts',
-        `import { mindmapRendererPlugin } from '${mindmapRendererEntry}';`,
-        includeMindmapPackageRules,
-      ),
-    ).not.toContain('MINDMAP-PKG-02-no-mindmap-package-deep-import');
-  });
-
-  it('flags host renderer code importing the concrete Mindmap renderer entry', () => {
-    expect(
-      ruleIdsFor(
-        'apps/renderer/app/plugins/builtin/platform.renderer.ts',
-        `import { mindmapRendererPlugin } from '${mindmapRendererEntry}';`,
-        includeMindmapPackageRules,
-      ),
-    ).toContain('MINDMAP-PKG-08-no-host-renderer-plugin-entry-import');
-  });
-});
-
-describe('MINDMAP-PKG-03-backend-entry-not-from-host', () => {
-  const includeMindmapPackageRules = { includeMindmapPackageRules: true } as const;
-
-  it('flags host code importing the Mindmap backend entry', () => {
-    expect(
-      ruleIdsFor(
-        'src/tools/workspace/read_file/ReadFileTool.ts',
-        "import { MindMapDocumentService } from '@plugin/mindmap/backend';",
-        includeMindmapPackageRules,
-      ),
-    ).toContain('MINDMAP-PKG-03-backend-entry-not-from-host');
-  });
-
-  it('forbids Core from reviving a Mindmap backend glue', () => {
-    expect(
-      ruleIdsFor(
-        'src/app-hosts/linnya/plugin-registry/builtin/mindmap.backend.ts',
-        "import { mindmapBackendPlugin } from '@plugin/mindmap/backend';",
-        includeMindmapPackageRules,
-      ),
-    ).toContain('MINDMAP-PKG-03-backend-entry-not-from-host');
-  });
-});
-
-describe('MINDMAP-PKG backend public entry rules', () => {
-  it('forbids reviving Mindmap persistence or tool exports in the public backend entry', () => {
-    expect(sourceRuleIdsFor(
-      'packages/plugins/mindmap/src/backend/index.ts',
-      [
-        "export { MindMapDocumentService } from './persistence/mindmap_document/services/mindmap_document.service';",
-        "export { mindmapToolManifest } from './tools/mindmap';",
-      ].join('\n'),
-    )).toContain('MINDMAP-PKG-08-no-public-backend-persistence-export');
-
-    expect(sourceRuleIdsFor(
-      'packages/plugins/mindmap/src/backend/test-support.ts',
-      [
-        "export { MindMapDocumentService } from './persistence/mindmap_document/services/mindmap_document.service';",
-      ].join('\n'),
-    )).not.toContain('MINDMAP-PKG-08-no-public-backend-persistence-export');
+    ).toContain('CANVAS-PKG-01-no-host-internal-import');
   });
 });
 
@@ -1071,7 +954,7 @@ describe('SLIDES-PKG package rules', () => {
 
     expect(
       ruleIdsFor(
-        'packages/plugins/mindmap/src/backend/index.ts',
+        'packages/plugins/canvas/src/backend/index.ts',
         "import { presentationToolClasses } from '@plugin/backend/slidesLegacyBackend';",
         includeRuntimePluginPackageRules,
       ),
@@ -1315,38 +1198,10 @@ describe('PLUGIN-GUARD-01-no-legacy-vfs-policy-import', () => {
   });
 });
 
-describe('PLUGIN-GUARD-02-no-plugin-specific-runtime-access-in-workspace-runtime', () => {
-  it('keeps the document projection facade generic and permits its public node queries', () => {
+describe('workspace document projection facade', () => {
+  it('lets plugins use the public node queries', () => {
     expect(ruleIdsFor('packages/plugins/slides/src/backend/index.ts',
       "import { readWorkspaceDocumentMetadata } from '@plugin/backend/workspaceDocumentProjection';")).toEqual([]);
-    expect(ruleIdsFor('src/plugin-sdk/backend/workspaceDocumentProjection.ts',
-      "export { assertMindmapPluginRuntimeEnabled } from 'src/app-hosts/linnya/plugin-registry/mindmapPluginAccess';"))
-      .toContain('PLUGIN-GUARD-02-no-plugin-specific-runtime-access-in-workspace-runtime');
-  });
-
-  it('forbids consuming plugin-specific runtime gates through workspaceRuntime', () => {
-    expect(
-      ruleIdsFor(
-        'packages/plugins/mindmap/src/backend/index.ts',
-        "import { isMindmapPluginRuntimeEnabled } from '@plugin/backend/workspaceRuntime';",
-      ),
-    ).toContain('PLUGIN-GUARD-02-no-plugin-specific-runtime-access-in-workspace-runtime');
-
-    expect(
-      ruleIdsFor(
-        'packages/plugins/mindmap/src/backend/index.ts',
-        "import { isPluginRuntimeEnabled } from '@plugin/backend/pluginRuntime';",
-      ),
-    ).not.toContain('PLUGIN-GUARD-02-no-plugin-specific-runtime-access-in-workspace-runtime');
-  });
-
-  it('forbids re-exporting plugin-specific runtime gates from the generic workspace SDK', () => {
-    expect(
-      ruleIdsFor(
-        'src/plugin-sdk/backend/workspaceRuntime.ts',
-        "export { assertMindmapPluginRuntimeEnabled } from 'src/app-hosts/linnya/plugin-registry/mindmapPluginAccess';",
-      ),
-    ).toContain('PLUGIN-GUARD-02-no-plugin-specific-runtime-access-in-workspace-runtime');
   });
 });
 
@@ -1539,9 +1394,9 @@ describe('final enforce mode', () => {
     expect(
       validateDeepImportBaselineState(
         parseBaselineEntries([
-          "packages/plugins/mindmap/src/backend/index.ts:1:import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';",
+          "packages/plugins/canvas/src/backend/index.ts:1:import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';",
         ]),
-        path.join(repoRoot, '.baseline/mindmap-package-boundary-baseline.txt'),
+        path.join(repoRoot, '.baseline/canvas-package-boundary-baseline.txt'),
         false,
       ),
     ).toBeNull();

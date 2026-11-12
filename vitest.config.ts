@@ -70,11 +70,6 @@ export default defineConfig({
       // 与 vite.config.mjs / tsconfig.json 保持一致，renderer 集成测试直接读取仓内 Markdown 解析器源码。
       { find: /^stream-markdown-parser$/, replacement: path.resolve(import.meta.dirname, 'packages/stream-markdown-parser/src/index.ts') },
 
-      // Mindmap repo 内插件包公开入口。使用精确正则，避免 @plugin 前缀解析把子入口吞掉。
-      { find: /^@plugin\/mindmap\/shared$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/mindmap/src/shared/index.ts') },
-      { find: /^@plugin\/mindmap\/backend$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/mindmap/src/backend/index.ts') },
-      { find: /^@plugin\/mindmap\/renderer$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/mindmap/src/renderer/index.ts') },
-      { find: /^@plugin\/mindmap\/backend-test-support$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/mindmap/src/backend/test-support.ts') },
       { find: /^@plugin\/slides\/shared$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/shared/index.ts') },
       { find: /^@plugin\/slides\/shared\/(.+)$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/shared/$1') },
       { find: /^@plugin\/slides\/backend$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/backend/index.ts') },

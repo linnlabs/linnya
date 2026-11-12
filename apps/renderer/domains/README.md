@@ -10,7 +10,7 @@
   - 顶层场景分发在 `apps/renderer/app/App.vue`（按 `layoutStore.state.scene` 渲染 workspace / knowledge-base / plugin-store）
   - 全局布局在 `apps/renderer/app/layout/*`
   - 页面/场景壳在 `apps/renderer/app/pages/*`
-- **`domains/` = 领域能力（Capabilities）**：Editor / Workspace / Conversation / MindMap / KnowledgeBase / Settings / Sheets 等“能独立成立的业务模块”。
+- **`domains/` = 领域能力（Capabilities）**：Editor / Workspace / Conversation / KnowledgeBase / Settings / Sheets 等“能独立成立的业务模块”。
   - 领域模块应该尽量做到：**可以被不同 Page 复用**，而不是绑定某个具体页面布局
 - **`shared/` = 跨域稳定基础设施（Infrastructure）**：通用 UI primitive、平台 IPC 封装和不含业务规则的基础能力。
   - 被多个 domain 使用不是上提 `shared/` 的充分条件。有明确 owner 的业务能力应保留在原 domain，其他 domain 通过 public contract、port 或 application use case 协作；禁止用 `shared/` 规避所有权设计。
@@ -89,7 +89,6 @@
 你可以在这些现有模块里看到不同程度的落地：
 
 - `domains/editor/`：典型“强领域”结构（blocks/extensions/features/services/ui/core）
-- `domains/mindmap/`：典型“多子系统”结构（domain/interaction/presentation/features/docs/shared）
 - `domains/conversation/`：典型“事件驱动 + 投影”结构（services/messageProjection、orchestration、history、store、ui）
 - `domains/workspace/`：典型“文件/项目管理”结构（store + file-manager service + sidebar/home UI）
 - `domains/knowledgebase/`：典型“IPC/HTTP 混合通信边界”结构
@@ -213,7 +212,6 @@ apps/renderer/domains/<domain>/
 - **Workspace**：`apps/renderer/domains/workspace/README.md`
   - 文件管理与会话打开：`apps/renderer/domains/workspace/services/file-manager/README.md`
 - **Conversation（AI 助手）**：`apps/renderer/domains/conversation/docs/README.md`
-- **MindMap**：已迁入插件包，见 `packages/plugins/mindmap/src/renderer/docs/README.md`
 - **KnowledgeBase**：`apps/renderer/domains/knowledgebase/README.md`
 - **Settings**：`apps/renderer/domains/settings/`（设置壳、contribution registry、Settings Kit 与本地化集成）
 - **Model Configuration**：`apps/renderer/domains/model-configuration/`（Provider 连接、自定义模型注册、目录 projection 与用途绑定；不拥有推理运行时）

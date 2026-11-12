@@ -19,7 +19,7 @@
           <FolderAddIcon />
         </IconButton>
 
-        <!-- 新建文件下拉菜单：文档 / 思维导图 / 表格 / 演示文稿 -->
+        <!-- 新建文件下拉菜单：文档与已启用插件提供的文档类型 -->
         <div class="more-menu-container">
           <IconButton
             :label="workspaceMessage('workspace.sidebar.fileTree.newFile')"

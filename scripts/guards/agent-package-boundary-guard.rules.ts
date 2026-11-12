@@ -25,8 +25,6 @@ export type ExtractedImport = {
 
 export type AnalyzeImportOptions = {
   readonly includeRuntimePluginPackageRules?: boolean;
-  /** @deprecated use includeRuntimePluginPackageRules */
-  readonly includeMindmapPackageRules?: boolean;
 };
 
 type ImportRule = {
@@ -38,7 +36,6 @@ export const repoRoot = process.cwd();
 export const LINNKIT_SOURCE_PREFIX = 'packages/linnkit/src';
 export const LINNKIT_PACKAGE_NAME = '@linnlabs/linnkit';
 export const LEGACY_AGENT_SOURCE_PREFIX = 'src/agent';
-export const MINDMAP_PACKAGE_PREFIX = 'packages/plugins/mindmap/src';
 export const SLIDES_PACKAGE_PREFIX = 'packages/plugins/slides/src';
 export const SHEET_PACKAGE_PREFIX = 'packages/plugins/sheet/src';
 export const SUPPLYSTRATA_PACKAGE_PREFIX = 'packages/plugins/supplystrata/src';
@@ -58,11 +55,6 @@ const RUNTIME_PLUGIN_PACKAGES: readonly RuntimePluginPackageDefinition[] = [
     id: 'decision',
     packagePrefix: 'packages/plugins/decision/src',
     rulePrefix: 'DECISION-PKG',
-  },
-  {
-    id: 'mindmap',
-    packagePrefix: MINDMAP_PACKAGE_PREFIX,
-    rulePrefix: 'MINDMAP-PKG',
   },
   {
     id: 'slides',
@@ -111,10 +103,6 @@ const PLUGIN_SDK_RENDERER_PORT_SOURCES = new Set([
   'src/plugin-sdk/renderer/interactiveTool',
   'src/plugin-sdk/renderer/referenceRuntime',
 ]);
-const MINDMAP_RUNTIME_ACCESS_SYMBOLS = [
-  'assertMindmapPluginRuntimeEnabled',
-  'isMindmapPluginRuntimeEnabled',
-] as const;
 
 export const IGNORE_DIRS = new Set([
   '.git',
@@ -181,8 +169,6 @@ export const BASELINE_ELIGIBLE_RULE_IDS = new Set([
   'AGENT-GUARD-07-no-host-deep-import',
   'AGENT-GUARD-08-no-cross-submodule-deep-import',
   'AGENT-GUARD-09-no-internal-only-import',
-  'MINDMAP-PKG-01-no-host-internal-import',
-  'MINDMAP-PKG-02-no-mindmap-package-deep-import',
   'SLIDES-PKG-01-no-host-internal-import',
   'SLIDES-PKG-02-no-slides-package-deep-import',
   'SHEET-PKG-01-no-host-internal-import',
@@ -1073,11 +1059,10 @@ export function analyzeImport(
     ...analyzeLegacyLinnkitPackageImportRule(file, line, preview, importPath),
     ...analyzePluginHostContractImportRule(file, line, preview, importPath),
     ...analyzeLegacyWorkspaceVfsPolicyImportRule(file, line, preview, importPath),
-    ...analyzePluginWorkspaceRuntimeMindmapAccessRule(file, line, preview, importPath),
     ...analyzeSdkPluginContributionHostRegistryTypesRule(file, line, preview, importPath),
     ...analyzeRendererSdkPluginContributionHostTypesRule(file, line, preview, importPath),
     ...analyzeRendererSdkPortHostDomainImportRule(file, line, preview, importPath),
-    ...(options.includeRuntimePluginPackageRules || options.includeMindmapPackageRules
+    ...(options.includeRuntimePluginPackageRules
       ? analyzeRuntimePluginPackageRules(file, line, preview, importPath)
       : []),
   ];
@@ -1147,33 +1132,6 @@ function analyzeLegacyWorkspaceVfsPolicyImportRule(
 
   return [
     createViolation('PLUGIN-GUARD-01-no-legacy-vfs-policy-import', file, line, preview, importPath),
-  ];
-}
-
-function analyzePluginWorkspaceRuntimeMindmapAccessRule(
-  file: string,
-  line: number,
-  preview: string,
-  importPath: string,
-): Violation[] {
-  const resolvedImportPath = normalizeResolvedImportPath(file, importPath);
-  const normalizedImportPath = stripKnownExtension(normalizeFilePath(importPath));
-  const normalizedFilePath = stripKnownExtension(normalizeFilePath(file));
-  const importsWorkspaceRuntime =
-    (normalizedImportPath === '@plugin/backend/workspaceRuntime' || normalizedImportPath === '@plugin/backend/workspaceDocumentProjection')
-    || PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCES.has(normalizedImportPath)
-    || PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCES.has(resolvedImportPath ?? '');
-  const isWorkspaceRuntimeSdkFile = PLUGIN_SDK_BACKEND_WORKSPACE_RUNTIME_SOURCES.has(normalizedFilePath);
-  if (!importsWorkspaceRuntime && !isWorkspaceRuntimeSdkFile) {
-    return [];
-  }
-
-  if (!MINDMAP_RUNTIME_ACCESS_SYMBOLS.some(symbol => preview.includes(symbol))) {
-    return [];
-  }
-
-  return [
-    createViolation('PLUGIN-GUARD-02-no-plugin-specific-runtime-access-in-workspace-runtime', file, line, preview, importPath),
   ];
 }
 

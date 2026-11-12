@@ -44,7 +44,7 @@
 - App shell、update、system 与跨 domain workflow 的 catalog 放在对应 `apps/renderer/app/*` owner；
 - Conversation、Editor、Workspace、Knowledge Base、Settings、Plugin Store 等文案放在各自 `apps/renderer/domains/*`；
 - `@linnya/renderer-ui` 只拥有真正跨业务的基础控件默认文案；业务标题、实体名、错误解释和操作结果由调用方提供；
-- Mindmap、Slides 等插件在自己的 renderer 注册阶段注册 catalog，并随插件生命周期演进。
+- Slides、Canvas 等插件在自己的 renderer 注册阶段注册 catalog，并随插件生命周期演进。
 
 owner 目录可以按自身复杂度选择 `locales/messageCatalog.ts`、feature-local catalog 或其他清晰结构，不要求为了形式统一创建固定五件套。单个 catalog 已明显影响查找和审阅时，应在同一 owner 内按 locale 或稳定 feature 边界拆分，再由一个公开 contribution 聚合；不能上移到本模块规避拆分。
 

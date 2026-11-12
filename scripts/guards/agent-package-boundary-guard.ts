@@ -45,7 +45,6 @@ type CliOptions = {
   baselinePath: string;
   emitBaseline: boolean;
   allowNonEmptyBaseline: boolean;
-  includeMindmapPackageRules: boolean;
   includeRuntimePluginPackageRules: boolean;
 };
 
@@ -533,16 +532,13 @@ function isSourceTextGuardFile(filePath: string): boolean {
     || filePath === 'apps/renderer/app/layout/styles/components/DocumentSurface.css'
     || filePath === 'apps/renderer/domains/conversation/styles/components/index.css'
     || filePath === 'apps/renderer/domains/conversation/ui/tools/workspace/WorkspaceDocumentViewCard.vue'
-    || filePath === 'apps/renderer/domains/conversation/ui/shared/workspaceReferenceResolver.ts'
   );
 }
 
 const PLUGIN_DOCUMENT_PRESENTATION_MARKERS = [
-  'for-mindmap',
   'for-sheet',
   'for-slides',
   'for-supplystrata',
-  'document-surface--mindmap',
   'document-surface--sheet',
   'document-surface--slides',
   'document-surface--supplystrata',
@@ -573,7 +569,7 @@ function sourceLineViolations(filePath: string, content: string): Violation[] {
 
     if (
       filePath === 'apps/renderer/app/layout/AppLayout.vue'
-      && /shellDocumentType\s*={2,3}\s*['"](?:mindmap|sheet|presentation|slides|supplystrata)['"]/.test(line)
+      && /shellDocumentType\s*={2,3}\s*['"](?:sheet|presentation|slides|supplystrata)['"]/.test(line)
     ) {
       push('PLUGIN-GUARD-13-no-plugin-type-branch-in-app-layout', i);
     }
@@ -588,26 +584,6 @@ function sourceLineViolations(filePath: string, content: string): Violation[] {
       push('PLUGIN-GUARD-13-no-plugin-type-branch-in-app-layout', i);
     }
 
-    if (
-      (
-        filePath === 'apps/renderer/domains/conversation/ui/message/components/markstream/ConversationReferenceNode.vue'
-        || filePath === 'apps/renderer/domains/conversation/ui/tools/shared/WorkspaceRefLink.vue'
-      )
-      && (
-        /getDocumentReferenceRuntimeHandler\(\s*['"]mindmap['"]\s*\)/.test(line)
-        || /docTypeHint\s*={2,3}\s*['"]mindmap['"]/.test(line)
-        || /return\s+['"]节点引用['"]/.test(line)
-      )
-    ) {
-      push('PLUGIN-GUARD-14-no-mindmap-reference-label-in-host-conversation', i);
-    }
-
-    if (
-      filePath === 'apps/renderer/domains/conversation/ui/shared/workspaceReferenceResolver.ts'
-      && /resolveMindMapReferenceInDocument/.test(line)
-    ) {
-      push('PLUGIN-GUARD-15-no-mindmap-reference-resolver-wrapper', i);
-    }
 
     if (
       filePath === 'apps/renderer/domains/conversation/ui/tools/workspace/WorkspaceDocumentViewCard.vue'
@@ -642,33 +618,6 @@ type BackendPublicEntryGuard = {
 };
 
 const BACKEND_PUBLIC_ENTRY_GUARDS: readonly BackendPublicEntryGuard[] = [
-  {
-    rulePrefix: 'MINDMAP-PKG',
-    backendImportPath: '@plugin/mindmap/backend',
-    publicEntryPath: 'packages/plugins/mindmap/src/backend/index.ts',
-    forbiddenPublicExports: new Set([
-      'MINDMAP_DOCUMENT_SCHEMAS',
-      'MindMapDocumentService',
-      'CreateMindMapParams',
-      'UpdateMindMapParams',
-      'MindMapData',
-      'buildMindMapNodeRefView',
-      'buildMindMapObservation',
-      'MindMapNodeRefViewResult',
-      'MindMapUiLimits',
-      'registerMindMapDocumentHandlers',
-      'mindmapToolClasses',
-      'mindmapToolManifest',
-      'mindmapToolNames',
-      'MindmapBackendToolClass',
-    ]),
-    forbiddenPublicExportPathFragments: [
-      'persistence/mindmap_document/schemas/',
-      'persistence/mindmap_document/services/',
-      'ipc/mindmap_document/',
-      'tools/mindmap',
-    ],
-  },
   {
     rulePrefix: 'SHEET-PKG',
     backendImportPath: '@plugin/sheet/backend',
@@ -1011,7 +960,6 @@ function parseCliOptions(args: string[]): CliOptions {
   let baselinePath = defaultBaselinePath;
   let emitBaseline = false;
   let allowNonEmptyBaseline = false;
-  let includeMindmapPackageRules = false;
   let includeRuntimePluginPackageRules = true;
 
   for (const arg of args) {
@@ -1022,12 +970,6 @@ function parseCliOptions(args: string[]): CliOptions {
 
     if (arg === '--allow-non-empty-baseline') {
       allowNonEmptyBaseline = true;
-      continue;
-    }
-
-    if (arg === '--include-mindmap-package-rules') {
-      includeMindmapPackageRules = true;
-      includeRuntimePluginPackageRules = true;
       continue;
     }
 
@@ -1048,7 +990,6 @@ function parseCliOptions(args: string[]): CliOptions {
     baselinePath,
     emitBaseline,
     allowNonEmptyBaseline,
-    includeMindmapPackageRules,
     includeRuntimePluginPackageRules,
   };
 }
@@ -1058,7 +999,6 @@ export function main(args: string[] = process.argv.slice(2)): void {
   const violations = [
     ...collectViolations({
       includeRuntimePluginPackageRules: options.includeRuntimePluginPackageRules,
-      includeMindmapPackageRules: options.includeMindmapPackageRules,
     }),
     ...collectPluginContractGuardViolations(),
   ];

@@ -124,7 +124,6 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
 
   facade('@plugin/renderer', 'src/plugin-sdk/renderer', 'subpath'),
   pluginEntry('@plugin/canvas/shared', 'packages/plugins/canvas/src/shared/index.ts', 'exact'),
-  pluginEntry('@plugin/mindmap/shared', 'packages/plugins/mindmap/src/shared/index.ts', 'exact'),
   pluginEntry('@plugin/slides/shared', 'packages/plugins/slides/src/shared/index.ts', 'exact'),
   pluginEntry('@plugin/slides/shared', 'packages/plugins/slides/src/shared', 'subpath'),
 ] as const satisfies readonly RendererModuleResolutionEntry[];

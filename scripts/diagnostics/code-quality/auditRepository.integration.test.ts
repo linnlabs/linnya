@@ -35,7 +35,7 @@ test('真实 Git 盘点保留范围、Vue 原行号与解析缺口，且不修�
     write('src/example.test.ts', 'export const fixture = 1;\n');
     write('src/model.d.ts', 'export declare const model: string;\n');
     write('packages/plugins/canvas/src/model.ts', 'export const model = 1;\n');
-    write('packages/plugins/mindmap/src/model.ts', 'export const retired = 1;\n');
+    write('packages/parser-wasm/pkg/binding.ts', 'export const binding = 1;\n');
     write('ignored/output.ts', 'export const generated = 1;\n');
     write(
       'apps/renderer/store/view.vue',
@@ -74,7 +74,7 @@ test('真实 Git 盘点保留范围、Vue 原行号与解析缺口，且不修�
           test: { files: 1 },
           declaration: { files: 1 },
         },
-        excluded: ['packages/plugins/mindmap/src/model.ts'],
+        excluded: ['packages/parser-wasm/pkg/binding.ts'],
       },
       functions: [
         { file: 'apps/renderer/store/view.vue', name: 'read', line: 3 },

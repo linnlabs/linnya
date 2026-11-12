@@ -35,14 +35,14 @@ list 只返回选中的元数据；restore 携带 expectedCurrentVersionId，插
 停用、缺失和版本冲突使用标准错误码，不能转发到其他文档类型或覆盖新版本。
 
 插件通过 `@plugin/backend/documentHistory` 消费纯保留计划，通过 `@plugin/backend/documentAssetOwnership`
-精确释放文档资产归属。Markdown、Mindmap 已迁移到统一规则和各自的 SQL 删除；原表名式 pruneVersionTable 已移除。
+精确释放文档资产归属。Markdown 已迁移到统一规则和自己的 SQL 删除；原表名式 pruneVersionTable 已移除。
 Header 的统一 More 菜单合并平台操作、历史入口和插件操作，不再单独渲染插件 More 按钮。
 仅启用且贡献 `historyPreviewComponent` 的文档类型显示历史入口；停用或切换文档会卸载面板。
 Core 面板管理列表、实际时间、恢复确认和冲突刷新，插件组件仅接收 documentId/versionId，负责只读内容。
 恢复新建版本，恢复前的成功版本因此仍在最近五条内，可立即再次恢复；后续继续保存时也受保留规则约束。
 版本摘要可携带 `restoredFrom`（来源版本身份和当时的提交时间）；列表主时间仍为本次恢复时间，另行标注“恢复自……”。
 来源快照不参与排序、时间锚点或保留计算，也不要求来源永久保留；普通修改不继承标注。
-Slides 是首个完整接入者。Markdown、Mindmap 本轮只迁移保留规则，不额外开放历史 UI。
+Slides 是首个完整接入者。Markdown 本轮只迁移保留规则，不额外开放历史 UI。
 
 前端实现见 [历史面板](../../../apps/renderer/domains/document-history/README.md)，
 Slides 存储与恢复见 [source history](../../../packages/plugins/slides/src/backend/features/presentationSourceHistory/README.md)。

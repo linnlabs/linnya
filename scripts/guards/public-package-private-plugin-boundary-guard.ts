@@ -23,7 +23,6 @@ const PUBLIC_OWNER_ROOTS = [
   'packages/parser-wasm',
   'packages/plugin-host-contract',
   'packages/plugins/build',
-  'packages/plugins/mindmap',
   'packages/plugins/slides',
   'packages/provider-catalog',
   'packages/renderer-ui',

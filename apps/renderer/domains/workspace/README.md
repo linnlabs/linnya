@@ -24,9 +24,7 @@ apps/renderer/domains/workspace/
 ├── services/
 │   └── file-manager/
 │       ├── handlers/
-│       │   ├── markdown.ts
-│       │   └── mindmap.ts
-│       ├── mindmapAdapterBridge.ts
+│       │   └── markdown.ts
 │       ├── index.ts
 │       ├── setup.ts
 │       └── README.md

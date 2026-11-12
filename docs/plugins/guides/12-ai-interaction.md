@@ -53,7 +53,7 @@ history-isolated run 会响应宿主的全局 conversation 取消操作；取消
 ## 3. 插件文档进入 AI 上下文：pageContextProvider（`@plugin/renderer/pageContextProvider`）
 
 - 插件为自己的文档类型注册 page context provider，使 AI `page_context` 能拿到正确的 document type、标题与内容摘要。
-- provider 可按需提供多个 builder：`buildSummary`（当前文档摘要）、`buildDocument`（完整文档）、`buildSelection`（选区：sheet 单元格 / mindmap 节点 / slides 元素等，官方插件均已实现）、`buildDocumentFragment`（sidebar 发送片段）。
+- provider 可按需提供多个 builder：`buildSummary`（当前文档摘要）、`buildDocument`（完整文档）、`buildSelection`（选区：sheet 单元格 / canvas 卡片 / slides 元素等，官方插件均已实现）、`buildDocumentFragment`（sidebar 发送片段）。
 - `buildSummary` 的返回使用通用 `sections: [{ sectionName, lines }]`。section 名是插件 own 的模型可见协议，conversation 只排序和串联，不读 `summary.slides` 这类插件专属字段。
 - 文档类型映射必须从 renderer document type registry 读取；不要在 pageContext 编排里再写一套 switch。新增插件文档进入 AI 上下文不应修改 conversation 的类型枚举。
 - provider 实现要尊重启停：`activate()` 注册、`deactivate()` 注销。禁用后不得再从残留 store 伪造当前文档摘要。
@@ -87,7 +87,7 @@ LLM fence 描述符由拥有语义的插件贡献。例如 Slides 的 `selected-
 插件文档若在 AI 输出里产生 `#ref@docType:documentId` 引用，必须在 renderer `activate()` 注册 document reference runtime：
 
 - `documentType`：插件文档类型。
-- `referenceLabel`：引用在 conversation 里的展示名，例如 MindMap 的“节点引用”。这个文案归插件所有，Host conversation 不写 `docType === 'mindmap'` 之类分支。
+- `referenceLabel`：引用在 conversation 里的展示名，例如 Slides 的“幻灯片引用”。这个文案归插件所有，Host conversation 不写 `docType === 'slides'` 之类分支。
 - `getCurrentDocumentId()`：用于无显式 `@docType:documentId` 时识别当前插件文档上下文。
 - `listReferenceIds()` / `focusReference()` / `waitForDocumentReady()`：用于解析和定位引用目标。
 
@@ -112,7 +112,7 @@ LLM fence 描述符由拥有语义的插件贡献。例如 Slides 的 `selected-
 ## 通用纪律
 
 - 插件 enabled 状态在前端只有一个真相源（enabled 状态 store），AI 链路读取插件能力前先过 enabled 快照。
-- workspace/project metadata、工具结果卡、`#ref@docType:documentId` 引用解析都以 document type / reference runtime 为入口，不维护 `markdown/mindmap` 二元模型。插件 read hook 读到内容以后，前端卡片和引用也必须能靠 registry 打开和定位。
+- workspace/project metadata、工具结果卡、`#ref@docType:documentId` 引用解析都以 document type / reference runtime 为入口，不维护“Markdown + 某个插件类型”的二元模型。插件 read hook 读到内容以后，前端卡片和引用也必须能靠 registry 打开和定位。
 - 所有 AI 注册物都必须支持随插件禁用而注销：page context provider、structured context requirement、tool refresh handler、document reference runtime handler、agent fence。
 
 ## 延伸：conversation 域交互的契约演进

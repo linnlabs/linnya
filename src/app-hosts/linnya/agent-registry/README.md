@@ -298,7 +298,6 @@ src/app-hosts/linnya/agent-registry/
 │   ├── slides_agent/
 │   ├── review/
 │   ├── subagent_document_editor/
-│   ├── subagent_mindmap_editor/
 │   ├── subagent_general/
 │   ├── project_planning/
 │   ├── single_turn/

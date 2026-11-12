@@ -158,15 +158,15 @@ try {
         window.__developmentFirstLoadMarker = 'keep-page';
         const parser = await import('/packages/stream-markdown-parser/src/index.ts');
         const html = parser.getMarkdown().render('# Warm Markdown');
-        const plugin = await import('/packages/plugins/mindmap/src/renderer/index.ts');
-        const imageExport = await import('/packages/plugins/mindmap/src/renderer/shared/utils/export/index.ts');
+        const plugin = await import('/packages/plugins/slides/src/renderer/index.ts');
+        const chartRuntime = await import('/packages/plugins/slides/src/renderer/features/renderChartResources/functions/runtime/echartsCoreRuntime.ts');
         return { markdown: html.includes('<h1>Warm Markdown</h1>'),
-          plugin: plugin.mindmapRendererPlugin.meta.id,
-          imageExport: typeof imageExport.exportPng };
+          plugin: plugin.slidesRendererPlugin.meta.id,
+          chartRuntime: typeof chartRuntime.echarts.init };
       })()`);
       assert.equal(firstLoad.markdown, true);
-      assert.equal(firstLoad.plugin, 'mindmap');
-      assert.equal(firstLoad.imageExport, 'function');
+      assert.equal(firstLoad.plugin, 'slides');
+      assert.equal(firstLoad.chartRuntime, 'function');
       // 依赖预构建迟到曾触发整页刷新；首次动态加载后仍须保留同一页面。
       await pause(1_000);
       assert.equal(await app.cdp.evaluate('window.__developmentFirstLoadMarker'), 'keep-page');
@@ -194,7 +194,7 @@ try {
   assert.equal((await fetch(`${qdrantUrls[1]}/readyz`)).status, 200);
   await Promise.all(instances.slice(1).map(closeApp));
   console.info(JSON.stringify({ success: true, desktopInstances: 3, rendererOrigins: renderers.map(item => item.url),
-    apiPorts: descriptors.map(item => item.port), qdrantUrls, duplicateRejected: true, independentShutdown: true, markdownAndMindmapFirstLoad: true }));
+    apiPorts: descriptors.map(item => item.port), qdrantUrls, duplicateRejected: true, independentShutdown: true, markdownAndPluginFirstLoad: true }));
 } catch (error) {
   console.error(error);
   // 诊断保存在运行目录外；finally 仍回收临时数据库与 profile。

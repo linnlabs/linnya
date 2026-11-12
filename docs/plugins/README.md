@@ -15,7 +15,7 @@ Linnya 支持的是 **官方可信 runtime 插件**：
 
 ## Core 与发行组合面
 
-Linnya Core 的静态运行面只有 `platform`。当前产品发行可以随包组合 Mindmap、Slides 等插件，但这些身份只存在于插件 owner 与发行清单；Core 不持有具体插件的 ID、业务名称、Agent、Prompt、文档类型、数据库表或环境开关。
+Linnya Core 的静态运行面只有 `platform`。当前产品发行可以随包组合 Slides、Canvas 等插件，但这些身份只存在于插件 owner 与发行清单；Core 不持有具体插件的 ID、业务名称、Agent、Prompt、文档类型、数据库表或环境开关。
 
 默认运行面和默认发布面是两个相邻但不同的入口：
 
@@ -67,7 +67,6 @@ Linnya Core 的静态运行面只有 `platform`。当前产品发行可以随包
 
 参考实现（仅供对照，规则本身与具体插件无关）：
 
-- **轻型插件样例**（引擎在 Renderer、结构化数据持久化、无宿主重型设施）：`packages/plugins/mindmap`。
 - **重型插件样例**（App Server backend 重引擎 + Profiled Code Sandbox + Desktop 隐藏预览）：`packages/plugins/slides`。
 - 重型功能「事后插件化」的现行参考见 [Slides 插件说明](../../packages/plugins/slides/README.md)；旧的 `docs/archive/slides-pluginization/` 归档不在仓库内。
 

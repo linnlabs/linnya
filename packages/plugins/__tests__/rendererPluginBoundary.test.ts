@@ -6,12 +6,10 @@ const root = process.cwd();
 const HOST_RENDERER_ROOT = path.join(root, 'apps/renderer');
 const CONCRETE_RENDERER_IMPORTS = [
   `@plugin/slides/${'renderer'}`,
-  `@plugin/mindmap/${'renderer'}`,
+  `@plugin/canvas/${'renderer'}`,
 ] as const;
 const DELETED_BUILTIN_RENDERER_FILES = [
   ['slides', 'renderer', 'ts'],
-  ['mindmap', 'renderer', 'ts'],
-  ['mindmap', 'renderer', 'absent', 'ts'],
 ] as const;
 
 function readRepoFile(relativePath: string): string {
@@ -37,15 +35,15 @@ function listSourceFiles(directory: string): string[] {
 describe('renderer plugin boundary', () => {
   it('keeps renderer plugin entries free of top-level port registration side effects', () => {
     const slidesSource = readRepoFile('packages/plugins/slides/src/renderer/index.ts');
-    const mindmapSource = readRepoFile('packages/plugins/mindmap/src/renderer/index.ts');
+    const canvasSource = readRepoFile('packages/plugins/canvas/src/renderer/index.ts');
 
     expect(slidesSource).toContain('activate: registerSlidesRendererPorts');
     expect(slidesSource).toContain('deactivate: unregisterSlidesRendererPorts');
     expect(slidesSource).not.toMatch(/^registerSlidesRendererPorts\(\);$/m);
 
-    expect(mindmapSource).toContain('activate: registerMindmapRendererPorts');
-    expect(mindmapSource).toContain('deactivate: unregisterMindmapRendererPorts');
-    expect(mindmapSource).not.toMatch(/^registerMindmapRendererPorts\(\);$/m);
+    expect(canvasSource).toMatch(/^  activate\(\) \{$/m);
+    expect(canvasSource).toMatch(/^  deactivate\(\) \{$/m);
+    expect(canvasSource).not.toMatch(/^register\w+\(.*\);$/m);
   });
 
   it('keeps presentation document type owned by slides renderer contribution', () => {
@@ -74,30 +72,29 @@ describe('renderer plugin boundary', () => {
     expect(pluginRendererSource).toContain('registerSlidesRendererPorts');
 
     expect(builtinIndexSource).not.toContain('slidesRendererPlugin');
-    expect(builtinIndexSource).not.toContain('mindmapRendererPlugin');
     expect(fs.existsSync(path.join(root, 'packages/plugins/slides/src/renderer/icon/SlidesIcon.vue'))).toBe(true);
   });
 
   it('keeps official document type icons owned by their plugin packages', () => {
-    const mindmapSource = readRepoFile('packages/plugins/mindmap/src/renderer/index.ts');
+    const canvasSource = readRepoFile('packages/plugins/canvas/src/renderer/index.ts');
 
-    expect(mindmapSource).toContain('MindMapIcon');
-    expect(mindmapSource).toContain('./icon/MindMapIcon.vue');
-    expect(mindmapSource).not.toContain('@/shared/components/icons/MindMapIcon.vue');
+    expect(canvasSource).toContain('CanvasIcon');
+    expect(canvasSource).toContain('./icon/CanvasIcon.vue');
+    expect(canvasSource).not.toContain('@/shared/components/icons/CanvasIcon.vue');
     expect(fs.existsSync(path.join(root, 'src/plugin-sdk/renderer/toolUi.ts'))).toBe(false);
-    expect(fs.existsSync(path.join(root, 'packages/plugins/mindmap/src/renderer/icon/MindMapIcon.vue'))).toBe(true);
-    expect(fs.existsSync(path.join(root, 'apps/renderer/shared/components/icons/MindMapIcon.vue'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'packages/plugins/canvas/src/renderer/icon/CanvasIcon.vue'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'apps/renderer/shared/components/icons/CanvasIcon.vue'))).toBe(false);
     expect(fs.existsSync(path.join(root, 'apps/renderer/shared/components/icons/SlidesIcon.vue'))).toBe(false);
   });
 
   it('keeps official plugin manifests free of static icon assets', () => {
     const slidesManifestSource = readRepoFile('packages/plugins/slides/plugin.json');
-    const mindmapManifestSource = readRepoFile('packages/plugins/mindmap/plugin.json');
+    const canvasManifestSource = readRepoFile('packages/plugins/canvas/plugin.json');
 
     expect(JSON.parse(slidesManifestSource)).not.toHaveProperty('icon');
-    expect(JSON.parse(mindmapManifestSource)).not.toHaveProperty('icon');
+    expect(JSON.parse(canvasManifestSource)).not.toHaveProperty('icon');
     expect(fs.existsSync(path.join(root, 'packages/plugins/slides/assets/icon.svg'))).toBe(false);
-    expect(fs.existsSync(path.join(root, 'packages/plugins/mindmap/assets/icon.svg'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'packages/plugins/canvas/assets/icon.svg'))).toBe(false);
   });
 
   it('keeps generic conversation UI off direct slides refresh imports', () => {

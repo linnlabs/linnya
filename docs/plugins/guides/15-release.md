@@ -11,7 +11,7 @@
 
 每个插件和主应用都是独立发布线：主应用 bump 不自动 bump 插件；一个插件发布也不自动修改 Linnya 主应用或其他插件版本。桌面安装包可以预置锁定插件版本，安装后仍允许按插件独立升级、回滚或撤回。
 
-源码可见性与生产发布正交：Slides/Mindmap 可以在公共仓发布，SupplyStrata 可以在私有下游发布，但所有正式 artifact 都由受保护流程写入 Cloudflare
+源码可见性与生产发布正交：Slides/Canvas 可以在公共仓发布，SupplyStrata 可以在私有下游发布，但所有正式 artifact 都由受保护流程写入 Cloudflare
 R2。“Linnya
 Cloud 发布插件”是这条 R2 分发能力的产品统称，并不表示另有一个常驻插件发布服务。通用上传脚本可以跟随源码，正式 R2 凭据和签名材料不能进入 Git。
 

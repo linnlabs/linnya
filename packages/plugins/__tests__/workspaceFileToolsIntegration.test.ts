@@ -19,7 +19,6 @@ import type {
   PresentationDocumentRecord,
   PresentationRepositoryPort,
 } from '@plugin/slides/backend-coordinator';
-import { serializeMindmapToMarkdownOutline } from '@plugin/mindmap/shared';
 import {
   CodegenPresentationService,
   DeckReadStateRegistry,
@@ -44,10 +43,6 @@ import { readWorkspaceDocumentIdentity } from 'src/features/workspace/infrastruc
 import { MARKDOWN_DOCUMENT_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/document.schema';
 import { PENDING_REVISION_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/pending-revision.schema';
 import { IMAGE_BLOCK_SCHEMAS } from 'src/domains/markdown/features/document-storage/infrastructure/sqlite/schemas/blocks/image.schema';
-import {
-  MINDMAP_DOCUMENT_SCHEMAS,
-  MindMapDocumentService,
-} from '@plugin/mindmap/backend-test-support';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
 import { MarkdownDocumentService } from 'src/domains/markdown';
 import { ListFilesTool } from 'src/tools/workspace/list_files/ListFilesTool';
@@ -67,7 +62,6 @@ import {
 } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { ensureBuiltinBackendPluginsRegistered } from 'src/app-hosts/linnya/plugin-registry/builtin';
 import { backendPluginRegistry } from 'src/app-hosts/linnya/plugin-registry/registry';
-import { mindmapBackendPlugin } from '@plugin/mindmap/backend';
 import { slidesBackendPlugin } from '@plugin/slides/backend';
 import { pluginWorkspaceVfsNodeTypeAccessPolicy } from 'src/app-hosts/linnya/plugin-registry/pluginWorkspaceVfsNodeTypeAccessPolicy';
 import { resolveWorkspaceFileToolRuntime } from 'src/tools/workspace/shared/fileToolContext';
@@ -161,7 +155,7 @@ class FakeStatement implements WorkspaceVfsStatement {
       const [projectId, ...typeParams] = params;
       const nodeTypes = typeParams.filter((param): param is string => typeof param === 'string');
       const effectiveNodeTypes =
-        nodeTypes.length > 0 ? nodeTypes : ['document', 'presentation', 'sheet', 'mindmap'];
+        nodeTypes.length > 0 ? nodeTypes : ['document', 'presentation', 'sheet'];
       return this.db.nodes.filter(
         node =>
           node.project_id === projectId &&
@@ -206,17 +200,6 @@ class FakeStatement implements WorkspaceVfsStatement {
     if (this.sql.includes('FROM document_versions')) {
       const [nodeId, versionNumber] = params;
       const versions = this.db.documentVersions
-        .filter(row => row.node_id === nodeId)
-        .sort((a, b) => b.version_number - a.version_number);
-      if (typeof versionNumber === 'number') {
-        return versions.find(row => row.version_number === versionNumber);
-      }
-      return versions[0];
-    }
-
-    if (this.sql.includes('FROM mindmap_versions')) {
-      const [nodeId, versionNumber] = params;
-      const versions = this.db.mindmapVersions
         .filter(row => row.node_id === nodeId)
         .sort((a, b) => b.version_number - a.version_number);
       if (typeof versionNumber === 'number') {
@@ -378,7 +361,6 @@ class FakeVfsDatabase implements WorkspaceVfsDatabase {
   inTransaction = false;
   readonly nodes: WorkspaceNodeRow[] = [];
   readonly documentVersions: MarkdownVersionRow[] = [];
-  readonly mindmapVersions: VersionRow[] = [];
   readonly presentationDocuments: PresentationDocumentRow[] = [];
   readonly presentationDrafts: PresentationDraftRow[] = [];
   readonly textSnapshots: TextSnapshotRow[] = [];
@@ -515,61 +497,6 @@ function toDatabaseServiceStub(db: WorkspaceVfsDatabase): ToolContext['databaseS
       return db;
     },
   } as unknown as ToolContext['databaseService'];
-}
-
-function createMindMapFileToolFixture(): {
-  readonly db: Database.Database;
-  readonly workspaceService: WorkspaceService;
-  readonly mindMapService: MindMapDocumentService;
-  readonly folderId: string;
-  readonly context: ToolContext;
-} {
-  const db = new Database(':memory:');
-  db.pragma('foreign_keys = ON');
-  for (const statement of [
-    ...CORE_SCHEMAS,
-    ...CONVERSATION_SCHEMAS,
-    ...WORKSPACE_NODE_TEXT_SNAPSHOT_SCHEMAS,
-    ...ASSET_LEDGER_SCHEMAS,
-    ...MARKDOWN_DOCUMENT_SCHEMAS,
-    ...MINDMAP_DOCUMENT_SCHEMAS,
-    ...DOCUMENT_REFERENCE_SCHEMAS,
-    ...SEMANTIC_LAYER_SCHEMAS,
-  ]) {
-    db.exec(statement);
-  }
-  db.prepare(
-    `
-    INSERT INTO projects (id, name, description, icon, system_role, created_at, updated_at)
-    VALUES ('project-1', '测试项目', NULL, NULL, NULL, 1, 1)
-  `
-  ).run();
-  const workspaceService = new WorkspaceService(db);
-  const folder = workspaceService.createNode({
-    type: 'folder',
-    name: '项目资料',
-    projectId: 'project-1',
-    parentId: null,
-  });
-  if (folder.id.length === 0) {
-    throw new Error('failed to create mindmap test folder');
-  }
-  const context = createToolContextFixture({
-    conversationId: 'conv-vfs-tools',
-    turnId: 'turn-vfs-tools',
-    patch: {
-      databaseService: toDatabaseServiceStub(db),
-      workspaceService,
-      workspaceProjectId: 'project-1',
-    },
-  });
-  return {
-    db,
-    workspaceService,
-    mindMapService: new MindMapDocumentService(db, workspaceService),
-    folderId: folder.id,
-    context,
-  };
 }
 
 function createMarkdownFileToolFixture(events: WorkspaceMutationEvent[]): {
@@ -951,7 +878,7 @@ describe('list_files / read_file', () => {
   let context: ToolContext;
 
   afterEach(async () => {
-    // Mindmap 的版本事件在事务提交后的下一轮事件循环发布；等它完成后再卸载
+    // 插件文档的版本事件可能在事务提交后的下一轮事件循环发布；等它完成后再卸载
     // Host 测试端口，避免把真实异步边界误报成未处理异常。
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     clearPluginRuntimeStateForTests();
@@ -961,14 +888,14 @@ describe('list_files / read_file', () => {
   beforeEach(() => {
     installWorkspaceMutationPublisher(() => undefined);
     ensureBuiltinBackendPluginsRegistered();
-    for (const contribution of [mindmapBackendPlugin, slidesFileToolContribution]) {
+    for (const contribution of [slidesFileToolContribution]) {
       if (!backendPluginRegistry.has(contribution.meta.id)) {
         backendPluginRegistry.register(contribution);
       }
     }
     setPluginRuntimeStateForTests({
-      installedPluginIds: ['platform', 'mindmap', 'slides'],
-      enabledPluginIds: ['platform', 'mindmap', 'slides'],
+      installedPluginIds: ['platform', 'slides'],
+      enabledPluginIds: ['platform', 'slides'],
     });
     db = new FakeVfsDatabase();
     db.insertNode({ id: 'folder-1', projectId: 'project-1', type: 'folder', name: '项目资料' });
@@ -2297,8 +2224,8 @@ describe('list_files / read_file', () => {
 
   it('禁用 Slides 后 write_file / edit_file 不能创建或编辑演示文稿', async () => {
     setPluginRuntimeStateForTests({
-      installedPluginIds: ['platform', 'mindmap', 'slides'],
-      enabledPluginIds: ['platform', 'mindmap'],
+      installedPluginIds: ['platform', 'slides'],
+      enabledPluginIds: ['platform'],
     });
     db.insertNode({
       id: 'slides-disabled',
@@ -2493,188 +2420,10 @@ describe('list_files / read_file', () => {
     expect(read.observation).toContain('正文内容');
   });
 
-  it('write_file 可通过 .mindmap 路径创建纯 MindMap outline 文件', async () => {
-    const tool = new WriteFileTool();
-    const fixture = createMindMapFileToolFixture();
-
-    const result = parseToolOutput<{
-      locator: string;
-      inode: string;
-      operation: 'create' | 'update';
-      documentId: string;
-    }>(
-      await tool.run(
-        {
-          locator: 'workspace:/项目资料/策略拆解.mindmap',
-          content: '# 策略拆解\n\n- 市场\n  - 需求\n- 进入路径',
-        },
-        fixture.context
-      )
-    );
-
-    expect(result.data.locator).toBe('workspace:/项目资料/策略拆解.mindmap');
-    expect(result.data.operation).toBe('create');
-    expect(result.observation).toContain('已创建 MindMap 文件：/项目资料/策略拆解.mindmap');
-
-    const read = parseToolOutput<unknown>(
-      await new ReadFileTool().run({ inode: result.data.inode }, fixture.context)
-    );
-    expect(read.observation).toContain('# 策略拆解');
-    expect(read.observation).toContain('- 市场');
-    expect(read.observation).toContain('  - 需求');
-  });
-
-  it('edit_file 可编辑已有 MindMap 的纯 outline 文本', async () => {
-    const fixture = createMindMapFileToolFixture();
-    fixture.mindMapService.createDocument({
-      projectId: 'project-1',
-      parentId: fixture.folderId,
-      name: '旧导图.mindmap',
-      content: {
-        nodeData: {
-          id: 'root',
-          topic: '旧导图',
-          children: [
-            {
-              id: 'old-node',
-              topic: '旧节点',
-              children: [{ id: 'child-node', topic: '子节点', children: [] }],
-            },
-          ],
-        },
-        arrows: [],
-        summaries: [],
-        direction: 1,
-      },
-    });
-    const result = parseToolOutput<{
-      locator: string;
-      replaced: number;
-      operation?: string;
-    }>(
-      await new EditFileTool().run(
-        {
-          locator: 'workspace:/项目资料/旧导图.mindmap',
-          old_string: '- 旧节点',
-          new_string: '- 新节点',
-        },
-        fixture.context
-      )
-    );
-
-    expect(result.data.locator).toBe('workspace:/项目资料/旧导图.mindmap');
-    expect(result.data.replaced).toBe(1);
-    expect(result.observation).toContain('已编辑 MindMap 文件');
-
-    const read = parseToolOutput<unknown>(
-      await new ReadFileTool().run(
-        { locator: 'workspace:/项目资料/旧导图.mindmap' },
-        fixture.context
-      )
-    );
-    expect(read.observation).toContain('# 旧导图');
-    expect(read.observation).toContain('- 新节点');
-    expect(read.observation).toContain('  - 子节点');
-  });
-
-  it('禁用 Mindmap 后保留文件名可见，read/grep 读取快照但 write/edit 仍被拒绝', async () => {
-    setPluginRuntimeStateForTests({
-      installedPluginIds: ['platform', 'mindmap'],
-      enabledPluginIds: ['platform'],
-    });
-    db.insertNode({
-      id: 'mindmap-disabled',
-      projectId: 'project-1',
-      parentId: 'folder-1',
-      type: 'mindmap',
-      name: '禁用后保留.mindmap',
-    });
-    const disabledContent = {
-      nodeData: {
-        topic: '禁用后保留',
-        children: [{ topic: '可读的快照内容' }],
-      },
-      direction: 1,
-    };
-    db.mindmapVersions.push({
-      id: 'mindmap-disabled-v1',
-      node_id: 'mindmap-disabled',
-      version_number: 1,
-      content_json: JSON.stringify(disabledContent),
-    });
-    db.saveTextSnapshot({
-      nodeId: 'mindmap-disabled',
-      contentType: 'text/markdown',
-      text: serializeMindmapToMarkdownOutline(disabledContent),
-      sourcePluginId: 'mindmap',
-      sourceNodeType: 'mindmap',
-      updatedAt: 1000,
-    });
-
-    const toolContext = createToolContextFixture({
-      conversationId: 'conv-vfs-tools',
-      turnId: 'turn-vfs-tools',
-      patch: {
-        databaseService: toDatabaseServiceStub(db),
-        workspaceProjectId: 'project-1',
-      },
-    });
-
-    const list = parseToolOutput<{
-      entries: Array<{ name: string; locator: string; type: string }>;
-    }>(await new ListFilesTool().run({ locator: 'workspace:/项目资料' }, toolContext));
-    expect(list.data.entries).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: '禁用后保留.mindmap', type: 'mindmap' }),
-      ])
-    );
-
-    const read = parseToolOutput<unknown>(
-      await new ReadFileTool().run(
-        { locator: 'workspace:/项目资料/禁用后保留.mindmap' },
-        toolContext
-      )
-    );
-    expect(read.observation).toContain('禁用后保留');
-    expect(read.observation).toContain('可读的快照内容');
-
-    const grep = parseToolOutput<{
-      matches: Array<{ locator: string; preview: string }>;
-    }>(await new GrepTool().run({ pattern: '可读的快照内容' }, toolContext));
-    expect(grep.data.matches).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          locator: 'workspace:/项目资料/禁用后保留.mindmap',
-          preview: expect.stringContaining('可读的快照内容'),
-        }),
-      ])
-    );
-
-    await expect(
-      new WriteFileTool().run(
-        {
-          locator: 'workspace:/项目资料/新导图.mindmap',
-          content: '# 新导图',
-        },
-        toolContext
-      )
-    ).rejects.toThrow('Mindmap 插件未启用');
-    await expect(
-      new EditFileTool().run(
-        {
-          locator: 'workspace:/项目资料/禁用后保留.mindmap',
-          old_string: '禁用后保留',
-          new_string: '仍保留',
-        },
-        toolContext
-      )
-    ).rejects.toThrow('Mindmap 插件未启用');
-  });
-
   it('禁用 Slides 后 read/grep 走快照，不再穿透到 live document hook', async () => {
     setPluginRuntimeStateForTests({
-      installedPluginIds: ['platform', 'mindmap', 'slides'],
-      enabledPluginIds: ['platform', 'mindmap'],
+      installedPluginIds: ['platform', 'slides'],
+      enabledPluginIds: ['platform'],
     });
     db.insertNode({
       id: 'slides-disabled',
@@ -2771,8 +2520,8 @@ describe('list_files / read_file', () => {
     try {
       await new WriteFileTool().run(
         {
-          locator: 'workspace:/项目资料/卸载后不应创建.mindmap',
-          content: '# 卸载后不应创建',
+          locator: 'workspace:/项目资料/卸载后不应创建.slides',
+          content: 'compose({ title: "卸载后不应创建", slides: [] })',
         },
         context
       );
@@ -2780,9 +2529,9 @@ describe('list_files / read_file', () => {
       errorMessage = error instanceof Error ? error.message : String(error);
     }
 
-    expect(errorMessage).toContain('Mindmap 插件未安装');
+    expect(errorMessage).toContain('Slides 插件未安装');
     expect(errorMessage).not.toContain('已有数据会保留');
-    expect(db.nodes.some(node => node.name === '卸载后不应创建.mindmap')).toBe(false);
+    expect(db.nodes.some(node => node.name === '卸载后不应创建.slides')).toBe(false);
   });
 
   it('未知归属后缀不会被当成同名插件安装提示', async () => {

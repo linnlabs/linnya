@@ -2,7 +2,7 @@
 
 本目录是平台 Markdown 文档基于 **Tiptap / ProseMirror** 的块级富文本运行时，目标是提供类似 Notion 的“以块为中心”的编辑体验（块级拖拽、块级菜单、结构化扩展、Markdown 输入/流式写入等）。
 
-这里的 `editor` 是平台 Markdown 文档的历史技术 domain 和 `activeDocumentType` 身份，不是插件体系中所有文档类型的通用“编辑器”。通用前端贡献统一称为 **Document Surface**：Markdown 使用本 domain，MindMap、Slides 和未来插件使用各自 surface，不实现或依赖 Tiptap 接口。
+这里的 `editor` 是平台 Markdown 文档的历史技术 domain 和 `activeDocumentType` 身份，不是插件体系中所有文档类型的通用“编辑器”。通用前端贡献统一称为 **Document Surface**：Markdown 使用本 domain，Slides、Canvas 和未来插件使用各自 surface，不实现或依赖 Tiptap 接口。
 
 跨 domain 边界也按这个口径拆分：`documentSurfaceRuntimePort` 只负责任意文档 surface 的 ready 生命周期；`markdownDocumentEditorRuntimePort` 才负责取得或等待平台 Markdown Tiptap 实例。Workspace Markdown handler 只能通过后者访问实例，不能 deep import 本 domain 的 store 或实现。
 

@@ -212,14 +212,14 @@ role = user
 问题：
 
 - `document-context` 当前同时承担“文件身份”“当前编辑器上下文”“用户当前视图”的职责。
-- 插件视图，如 slides 当前页、mindmap 当前节点周边、supplychain 当前图谱状态，未来也需要同类能力。
+- 插件视图，如 slides 当前页、canvas 当前选区周边、supplychain 当前图谱状态，未来也需要同类能力。
 
 目标：
 
 - 抽象为 `current-view-context`。
 - 不强制统一外层 `<current_view_context>` 标签。
 - host 内置 editor/document 继续输出 `<document_context>`。
-- 插件继续注册自己的 fence kind 和 formatter，例如 `<slides_context>`、`<mindmap_context>`、`<supplychain_context>`。
+- 插件继续注册自己的 fence kind 和 formatter，例如 `<slides_context>`、`<canvas_context>`、`<supplychain_context>`。
 - 插件可以选择把当前可见状态暴露给 agent，但必须在插件自己的 agent 开发文档中说明标签语义、字段含义、生命周期和适用工具。
 
 概念上这些都属于“当前视图上下文”，但物理标签由各 host/plugin 自己声明：
@@ -227,7 +227,7 @@ role = user
 ```text
 <document_context>...</document_context>
 <slides_context>...</slides_context>
-<mindmap_context>...</mindmap_context>
+<canvas_context>...</canvas_context>
 ```
 
 理由：
@@ -408,14 +408,14 @@ type BackendPluginAgentFenceCategory =
 示例：
 
 - Slides：当前页、总页数、当前 deck 状态、可见 warnings。
-- MindMap：当前节点、附近节点、当前画布焦点。
+- Canvas：当前选区、附近卡片、当前视口焦点。
 - 第三方图谱插件：当前实体、当前图谱范围、当前筛选条件。
 
 概念上归类为 current view，但物理标签由插件自己声明：
 
 ```text
 <slides_context>...</slides_context>
-<mindmap_context>...</mindmap_context>
+<canvas_context>...</canvas_context>
 <plugin_context>...</plugin_context>
 ```
 
@@ -426,7 +426,7 @@ type BackendPluginAgentFenceCategory =
 示例：
 
 - Slides element
-- MindMap node
+- Canvas element
 - 第三方插件 entity / relation
 
 概念上归类为 selection，但物理标签由插件自己声明：

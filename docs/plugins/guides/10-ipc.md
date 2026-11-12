@@ -36,7 +36,7 @@ Core 统一历史列表/恢复使用 Host 的 `document-history:list`、`documen
 - `plugin:invoke` 网关必须注册在真实 `app-server-backend.cjs` 的 registry 上；Electron Main 只转发 App Server 已登记的 data-only channel，原因见 [13 构建边界与双进程 Bundle](./13-build-and-bundles.md)。
 - `ipc.register` 只注册 channel handler，**不得夹带全局副作用**（worker 拉起、adapter 装配等放 `runtimeEffects`，见 [03](./03-backend-contribution.md)）。
 - 插件业务 channel 不会被直接挂到 Electron `ipcMain.handle`；Electron 只暴露统一 `plugin:invoke`，真实 handler 存在插件 IPC runtime 的内部分发表里。
-- 插件前端 SDK 的 `OperationResult` 保留 `diagnostic` 字段；Slides/Mindmap 这类官方插件也要透传，不要在包内把 typed diagnostic 抹平成纯字符串。
+- 插件前端 SDK 的 `OperationResult` 保留 `diagnostic` 字段；Slides/Canvas 这类官方插件也要透传，不要在包内把 typed diagnostic 抹平成纯字符串。
 - 迁移旧功能时，先把请求-响应 channel 移入插件 `ipc` contribution，再删 preload 专属 facade 和 raw request 白名单；renderer 只改调用路由，不要顺手把 push/listener 协议一起重写。
 
 ## 传输形态选型

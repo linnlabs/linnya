@@ -24,8 +24,6 @@ export interface SharedImplementationRule {
 export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = [
   {
     id: 'FOUNDATION-error-to-string',
-    // 退役 Mindmap 不参与本轮迁移；旧规则的 Mindmap 基线仍保留。
-    exclude: ['packages/plugins/mindmap/'],
     wholeSource: true,
     pattern: /\bfunction\s+(?:getErrorMessage|readErrorMessage|toErrorMessage|errorToString)\s*\(\s*(\w+)\s*:\s*unknown\s*\)\s*:\s*string\s*\{\s*return\s+\1\s+instanceof\s+Error\s*\?\s*\1\.message\s*:\s*String\(\1\)\s*;?\s*\}/gu,
     owners: ['packages/foundation/'],

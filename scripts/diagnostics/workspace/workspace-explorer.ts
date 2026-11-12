@@ -17,7 +17,7 @@
  *  - 查看最近打开的文档：
  *    pnpm run test:workspace-explorer -- recent-docs [limit]
  *
- *  - 查看文档 JSON 内容（自动判断 markdown / mindmap）：
+ *  - 查看文档 JSON 内容（Markdown 或插件文档类型）：
  *    pnpm run test:workspace-explorer -- show-doc-json <documentId>
  */
 
@@ -101,7 +101,7 @@ Workspace Explorer - Workspace 浏览与调试工具
   show-doc-json <documentId>
       显示指定文档的底层 JSON 内容：
       - type=document 时，从 document_versions 读取最新版本 content_json；
-      - type=mindmap 时，通过文档类型 hook 读取后端视图结果。
+      - 插件文档类型通过其文档类型 hook 读取后端视图结果。
 `);
 }
 
@@ -215,7 +215,7 @@ async function handleRecentDocs(ctx: ExplorerContext, limitArg: string | undefin
 }
 
 /**
- * 显示文档 JSON 内容（自动判断 markdown / mindmap）
+ * 显示文档 JSON 内容（Markdown 或插件文档类型）
  */
 async function handleShowDocJson(ctx: ExplorerContext, documentId: string | undefined): Promise<void> {
   if (!documentId || documentId.trim().length === 0) {
@@ -233,35 +233,31 @@ async function handleShowDocJson(ctx: ExplorerContext, documentId: string | unde
     return;
   }
 
-  if (node.type === 'mindmap') {
+  if (node.type !== 'document') {
     const [pluginRegistry, backendContract] = await Promise.all([
       import('src/app-hosts/linnya/plugin-registry/builtin'),
       import('@plugin/backend/documentTypeBackendHook'),
     ]);
     pluginRegistry.ensureBuiltinBackendPluginsRegistered();
-    const { getDocumentTypeBackendHook } = backendContract;
-    const hook = getDocumentTypeBackendHook('mindmap', { includeDisabled: true });
-    if (!hook?.readVfsContent) {
+    const hook = backendContract.getDocumentTypeBackendHook(node.type, { includeDisabled: true });
+    if (hook?.readVfsContent) {
+      const doc = hook.readVfsContent({
+        db: toDocumentTypeBackendReadDatabase(ctx.database),
+        nodeId: trimmedId,
+        nodeName: node.name,
+        nodePath: node.name,
+      });
+      if (!doc) {
+        // eslint-disable-next-line no-console
+        console.error(`❌ ${node.type} 文档类型 hook 未读到文档：${trimmedId}`);
+        return;
+      }
       // eslint-disable-next-line no-console
-      console.error('❌ MindMap 后端 hook 未注册，无法读取文档内容');
+      console.log(`\n${node.type} 文档 hook 读取结果（node_id=${trimmedId}）：\n`);
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify(doc, null, 2));
       return;
     }
-    const doc = hook.readVfsContent({
-      db: toDocumentTypeBackendReadDatabase(ctx.database),
-      nodeId: trimmedId,
-      nodeName: node.name,
-      nodePath: node.name,
-    });
-    if (!doc) {
-      // eslint-disable-next-line no-console
-      console.error(`❌ mindmap_versions 中未找到文档：${trimmedId}`);
-      return;
-    }
-    // eslint-disable-next-line no-console
-    console.log(`\nMindMap 文档 hook 读取结果（node_id=${trimmedId}）：\n`);
-    // eslint-disable-next-line no-console
-    console.log(JSON.stringify(doc, null, 2));
-    return;
   }
 
   // 其余类型统一按 markdown 文档处理

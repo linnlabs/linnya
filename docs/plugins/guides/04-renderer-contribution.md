@@ -53,7 +53,7 @@
 
 ## 图标
 
-- 平台通用图标直接从 `@linnya/renderer-ui/icons` 导入，不再经过 `@plugin/renderer/toolUi`。Slides/Mindmap 这类插件语义图标必须留在各自插件包内，并由 renderer contribution 暴露给 host registry；不得把插件语义图标混入平台图标入口。
+- 平台通用图标直接从 `@linnya/renderer-ui/icons` 导入，不再经过 `@plugin/renderer/toolUi`。Slides/Canvas 这类插件语义图标必须留在各自插件包内，并由 renderer contribution 暴露给 host registry；不得把插件语义图标混入平台图标入口。
 - 插件商店的插件图标同样走 renderer registry：已加载 contribution 时使用插件自己的 Vue 图标；未注册或未加载到 contribution 时，只能用宿主通用 Vue 图标占位。
 - 文件树里已注册的插件文档使用 document type contribution 的 Vue 图标；未安装、未注册或 renderer 加载失败的遗留文件由宿主统一降级到不可用文档图标。
 - `plugin.json` 不声明 `icon`，artifact/R2/catalog 也不发布静态图标文件。图标是 renderer contribution 能力，不是 manifest 静态资源。

@@ -39,7 +39,7 @@ export async function verifySlidesCliBundle({ bundlePath, metafilePath }) {
 
   const metafile = JSON.parse(rawMetafile);
   // esbuild 记录的是相对构建 cwd 的路径；先还原绝对身份，避免门禁因 metafile
-  // 使用 `../mindmap` 或 `../../schemas` 形式而漏检跨插件与宽 barrel 依赖。
+  // 使用 `../canvas` 或 `../../schemas` 形式而漏检跨插件与宽 barrel 依赖。
   const inputPaths = Object.keys(metafile.inputs ?? {}).map((inputPath) => (
     normalizePath(path.resolve(inputPath))
   ));
