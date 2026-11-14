@@ -122,7 +122,9 @@ jobs:
       - name: Build Electron Main
         run: pnpm run build:main
       - name: Run tests without external credentials
-        run: pnpm exec vitest run --shard=${{ matrix.shard }}/3
+        # 部分恢复用例会再起一个 Vitest 子进程；给冷编译和子进程留出 runner 资源，
+        # 避免全核并发把计算型测试与进程就绪检查一起挤出各自的期限。
+        run: pnpm exec vitest run --maxWorkers=2 --shard=${{ matrix.shard }}/3
 
   tests:
     # 保留原必需检查名称；任一分片失败、取消或未运行都不能给出绿灯。

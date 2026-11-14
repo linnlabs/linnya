@@ -2,7 +2,6 @@ import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawn } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { graph } from '@linnlabs/linnkit/runtime-kernel';
@@ -15,6 +14,7 @@ import {
   createDurableFlowHarness,
   installRecoveryModelFixture,
 } from '../__test-helpers__/createDurableFlowHarness';
+import { FLOW_CRASH_TEST_TIMEOUT_MS, runFlowCrashFixture } from '../__test-helpers__/runFlowCrashFixture';
 import {
   installResearchCarrierFixture,
   ResearchCarrierFixtureTool,
@@ -183,50 +183,16 @@ async function assertCompleteTree(fixture: Fixture, parentRunId: string, crashCo
   fixture.ai.assertAllTurnsConsumed();
 }
 
-async function crashAt(boundary: CarrierBoundary, projectId: string) {
-  const started = performance.now();
-  return new Promise<CarrierCrashEvidence>((resolve, reject) => {
-    const child = spawn(
-      process.execPath,
-      [
-        'node_modules/vitest/vitest.mjs',
-        'run',
-        '--pool=threads',
-        '--maxWorkers=1',
-        'src/app-hosts/linnya/adapters/flow/__test-helpers__/researchCarrierCrash.fixture.test.ts',
-      ],
-      {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          LINNYA_CARRIER_CRASH_DB: join(directory, 'workspace.sqlite'),
-          LINNYA_CARRIER_CRASH_PROJECT: projectId,
-          LINNYA_CARRIER_CRASH_BOUNDARY: boundary,
-        },
-        stdio: ['ignore', 'pipe', 'pipe'],
-      }
-    );
-    let output = '';
-    // 超时发 SIGTERM，不能冒充夹具在指定边界自发 SIGKILL。
-    const timeout = setTimeout(() => {
-      child.kill('SIGTERM');
-    }, 20_000);
-    child.stdout.on('data', chunk => {
-      output = (output + String(chunk)).slice(-20_000);
-    });
-    child.stderr.on('data', chunk => {
-      output = (output + String(chunk)).slice(-20_000);
-    });
-    child.once('error', error => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-    // close 等待 stdout/stderr 完整关闭，避免 SIGKILL 诊断丢失末尾 carrier 输出。
-    child.once('close', (exitCode, signal) => {
-      clearTimeout(timeout);
-      resolve({ boundary, signal, exitCode, elapsedMs: performance.now() - started, output });
-    });
-  });
+async function crashAt(boundary: CarrierBoundary, projectId: string): Promise<CarrierCrashEvidence> {
+  const result = await runFlowCrashFixture(
+    'src/app-hosts/linnya/adapters/flow/__test-helpers__/researchCarrierCrash.fixture.test.ts',
+    {
+      LINNYA_CARRIER_CRASH_DB: join(directory, 'workspace.sqlite'),
+      LINNYA_CARRIER_CRASH_PROJECT: projectId,
+      LINNYA_CARRIER_CRASH_BOUNDARY: boundary,
+    },
+  );
+  return { boundary, ...result };
 }
 
 // 通用 Host entry 仍支持其它 consumer；这里使用 default 与合成工具，不是 research_v1 新入口。
@@ -426,7 +392,7 @@ describe('Generic Host carrier through SQLite and published Linnkit', () => {
       ).toEqual(originalChildFacts);
       expect(resumed.ai.getConsumedTurnCount()).toBe(boundary === 'draft_completed' ? 3 : 0);
     },
-    30_000
+    FLOW_CRASH_TEST_TIMEOUT_MS
   );
 
   it('父结果已返回但 terminal 未提交时恢复完整 receipt，不再进入工具或 child', async () => {
