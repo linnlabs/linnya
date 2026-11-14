@@ -1,5 +1,5 @@
 import {
-  DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+  resolveLineHeightEm,
   EMU_PER_INCH,
   PPTX_DEFAULT_TEXT_INSET,
   flattenSlideElements,
@@ -99,9 +99,7 @@ function resolveLintLineHeightMultiplier(
   paragraphs: readonly SlideElementParagraphInfo[] | undefined,
   fontSizePt: number,
 ): number {
-  const spacing = paragraphs?.[0]?.lineSpacing;
-  if (!spacing) return DEFAULT_TEXT_LINE_SPACING_MULTIPLE;
-  return spacing.kind === 'multiple' ? spacing.value : spacing.value / fontSizePt;
+  return resolveLineHeightEm(paragraphs?.[0]?.lineSpacing, fontSizePt);
 }
 
 export class LayoutLint {

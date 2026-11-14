@@ -102,7 +102,7 @@ interface ExpectedLayoutCase {
 const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
   'layout-symbol-breaks.pptx': {
     'case-pass-at-one-word-wrap': {
-      contentHeightInches: 1.5625,
+      contentHeightInches: 1.875,
       lines: [
         'pass@1 status ',
         'update should ',
@@ -113,7 +113,7 @@ const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
       ],
     },
     'case-currency-pound-word-wrap': {
-      contentHeightInches: 1.302083,
+      contentHeightInches: 1.5625,
       lines: [
         '£720 due ',
         'before renewal ',
@@ -123,7 +123,7 @@ const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
       ],
     },
     'case-url-email-boundaries': {
-      contentHeightInches: 0.916667,
+      contentHeightInches: 1.1,
       lines: [
         'Contact ops-',
         'team@example.com before ',
@@ -132,7 +132,7 @@ const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
       ],
     },
     'case-no-wrap-long-token': {
-      contentHeightInches: 0.21875,
+      contentHeightInches: 0.2625,
       lines: [
         'NO_WRAP_SENTINEL_pass@1_£720_https://example.test/very-long-token',
       ],
@@ -140,14 +140,14 @@ const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
   },
   'layout-mixed-runs-cjk.pptx': {
     'case-mixed-runs-cjk-currency': {
-      contentHeightInches: 0.5,
+      contentHeightInches: 0.6,
       lines: [
         'Release v2.6：价格£720，然后继续验证中文标',
         '点。不要让，。？！出现在行首。',
       ],
     },
     'case-missing-font-latin-fallback': {
-      contentHeightInches: 1.145833,
+      contentHeightInches: 1.375,
       lines: [
         'Missing font request: ',
         'FidelityMissingDisplay. The ',
@@ -157,7 +157,7 @@ const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
       ],
     },
     'case-cjk-punctuation-stress': {
-      contentHeightInches: 1,
+      contentHeightInches: 1.2,
       lines: [
         '这是一个用于断行压力测试的中文',
         '段落：当宽度变窄时，逗号、句号、问',
@@ -166,7 +166,7 @@ const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
       ],
     },
     'case-run-slice-sentinel': {
-      contentHeightInches: 0.479167,
+      contentHeightInches: 0.575,
       lines: [
         'Plain bold italic 中文 after-run boundary ',
         'keeps slices.',
@@ -176,15 +176,15 @@ const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
   'layout-autofit-bullets-justify.pptx': {
     'case-shrink-text-title': {
       appliedFontScale: 0.75,
-      contentHeightInches: 0.445313,
+      contentHeightInches: 0.534375,
       lines: [
         'A deliberately long title that must shrink ',
         'instead of overflowing its fixed text box',
       ],
     },
     'case-resize-shape-body': {
-      contentHeightInches: 0.916667,
-      requiredHeightInches: 1.124667,
+      contentHeightInches: 1.1,
+      requiredHeightInches: 1.308,
       lines: [
         'Resize-shape keeps the authored font size ',
         'and expands the box when the generated ',
@@ -193,7 +193,7 @@ const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
       ],
     },
     'case-justify-alignment': {
-      contentHeightInches: 0.916667,
+      contentHeightInches: 1.1,
       lines: [
         'Justify alignment should remain semantic ',
         'data even when the renderer chooses not to ',
@@ -202,7 +202,7 @@ const EXPECTED_LAYOUTS: Record<string, Record<string, ExpectedLayoutCase>> = {
       ],
     },
     'case-multi-level-bullets': {
-      contentHeightInches: 1.09375,
+      contentHeightInches: 1.3125,
       lines: [
         'Contract: padding, wrap, and autofit come ',
         'from one source.',

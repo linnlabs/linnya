@@ -119,7 +119,7 @@ Text 的宽度语义与 PowerPoint 一致：
 
 `createText()` 也接受 run 数组，用于在一段文字内混合样式：`createText([{ text: "结论：", style: { bold: true } }, { text: "…" }])`。前端可对纯文字 run 数组原位改字，并选中部分文字修改字号／颜色，保存时仍写源码同型的完整正文。含公式的正文与 Shape 分段样式不在当前前端编辑范围。文字 run 只能有 `text` 与可选的 `style`；把 `bold/color` 等写在 run 顶层不支持。run style 的精确字段见 `.d.ts`。
 
-行距必须区分宿主与单位，不能互换：Text 节点使用 `lineHeight: 1.2`，数字表示倍数（旧 source 的 `lineSpacing: 1.2` 只是同义别名）；富文本 `run.style.lineSpacing` 才使用 `{ kind: "multiple", value: 1.2 }` 或 `{ kind: "exactPt", value: 18 }`，分别表示倍数与精确 pt。不要把带 `kind` 的对象赋给 Text 节点。
+行距必须区分宿主与单位，不能互换：Text 节点使用 `lineHeight: 1.2`，数字是 PowerPoint 的行距倍数，不是 CSS line-height：1 为单倍行距，行高已是字号的 1.2 倍（旧 source 的 `lineSpacing: 1.2` 只是同义别名）；富文本 `run.style.lineSpacing` 才使用 `{ kind: "multiple", value: 1.2 }` 或 `{ kind: "exactPt", value: 18 }`，分别表示倍数与精确 pt。不要把带 `kind` 的对象赋给 Text 节点。
 
 Text 可以用 `backgroundColor` 和纯色 `border: { color, width, dash? }` 装饰自己的盒子，但仍没有 padding。需要可靠的文字内边距、圆角底或卡片阴影时，使用 Frame 包住 Text。
 

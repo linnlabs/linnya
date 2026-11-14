@@ -488,6 +488,7 @@ export {
   DEFAULT_TEXT_LINE_BREAK_POLICY,
   DEFAULT_TEXT_LINE_SPACING,
   DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+  SINGLE_SPACING_LINE_HEIGHT_EM,
   DEFAULT_TEXT_OVERFLOW_POLICY,
   DEFAULT_TEXT_VERTICAL_ALIGN,
   DEFAULT_TEXT_WRAP_POLICY,
@@ -505,8 +506,10 @@ export {
   segmentClusters,
   createMultipleTextLineSpacing,
   isTextLineSpacing,
+  multipleLineHeightEm,
   normalizeLegacyTextLineSpacing,
   parseTextLineSpacingInput,
+  resolveLineHeightEm,
   resizeTextBoxForAutoFit,
   summarizeSlideTextLayoutProvenance,
 } from './textLayout';

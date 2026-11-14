@@ -6,6 +6,7 @@ import type {
 } from '@plugin/slides/shared';
 import {
   NORM_AUTOFIT_FONT_SCALE_CANDIDATES,
+  SINGLE_SPACING_LINE_HEIGHT_EM,
   layoutTextNode,
   resolveTextLayoutFontScaleCandidates,
 } from '../index';
@@ -139,7 +140,7 @@ describe('layoutTextNode', () => {
     const result = layoutTextNode(
       layoutInput({
         contract: baseContract({
-          box: { x: 0, y: 0, w: 3, h: 0.13 },
+          box: { x: 0, y: 0, w: 3, h: 0.13 * SINGLE_SPACING_LINE_HEIGHT_EM },
           autoFitPolicy: 'shrink-text',
         }),
         paragraphs: [{
@@ -169,7 +170,7 @@ describe('layoutTextNode', () => {
     layoutTextNode(
       layoutInput({
         contract: baseContract({
-          box: { x: 0, y: 0, w: 3, h: 0.13 },
+          box: { x: 0, y: 0, w: 3, h: 0.13 * SINGLE_SPACING_LINE_HEIGHT_EM },
           autoFitPolicy: 'shrink-text',
         }),
         paragraphs: [{
@@ -268,7 +269,7 @@ describe('layoutTextNode', () => {
     const result = layoutTextNode(
       layoutInput({
         contract: baseContract({
-          box: { x: 0, y: 0, w: 0.45, h: 0.17 },
+          box: { x: 0, y: 0, w: 0.45, h: 0.17 * SINGLE_SPACING_LINE_HEIGHT_EM },
           overflow: 'ellipsis',
         }),
       }),
@@ -307,7 +308,7 @@ describe('layoutTextNode', () => {
   it('reports clip overflow without dropping backend layout lines', () => {
     const result = layoutTextNode(
       layoutInput({
-        contract: baseContract({ box: { x: 0, y: 0, w: 0.45, h: 0.17 } }),
+        contract: baseContract({ box: { x: 0, y: 0, w: 0.45, h: 0.17 * SINGLE_SPACING_LINE_HEIGHT_EM } }),
       }),
       fixedAdvanceProvider,
     );

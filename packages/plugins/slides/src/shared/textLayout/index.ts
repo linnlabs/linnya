@@ -13,10 +13,13 @@ export {
 export {
   DEFAULT_TEXT_LINE_SPACING,
   DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+  SINGLE_SPACING_LINE_HEIGHT_EM,
   createMultipleTextLineSpacing,
   isTextLineSpacing,
+  multipleLineHeightEm,
   normalizeLegacyTextLineSpacing,
   parseTextLineSpacingInput,
+  resolveLineHeightEm,
 } from './definitions/lineSpacing';
 export type {
   SlideTextLayoutProvenance,

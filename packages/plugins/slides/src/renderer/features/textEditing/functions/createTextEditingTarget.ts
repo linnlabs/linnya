@@ -1,3 +1,4 @@
+import { resolveLineHeightEm } from '@plugin/slides/shared/textLayout';
 import type { RenderNode, TextRenderNode } from '../../../types/render';
 import type { RenderNodeSelectionGeometry } from '../../renderNodeSelection';
 import type { TextEditingTarget } from '../definitions/textEditingTypes';
@@ -73,10 +74,9 @@ export function createTextEditingTarget(
     ...(textDecoration ? { textDecoration } : {}),
     color: rich ? text.baseStyle?.color ?? DEFAULT_TEXT_COLOR : firstRun?.color ?? DEFAULT_TEXT_COLOR,
     textAlign: node.paragraphs[0]?.align ?? 'left',
-    lineHeight: rich ? (text.baseStyle?.lineSpacing?.kind === 'exactPt'
-      ? text.baseStyle.lineSpacing.value / fontSizePt : text.baseStyle?.lineSpacing?.value ?? 1) : firstLineHeight && scaledFontHeight > 0
+    lineHeight: !rich && firstLineHeight && scaledFontHeight > 0
       ? firstLineHeight / scaledFontHeight
-      : 1.2,
+      : resolveLineHeightEm(rich ? text.baseStyle?.lineSpacing : undefined, fontSizePt),
     ...(firstRun?.letterSpacing === undefined
       ? {}
       : { letterSpacingPt: firstRun.letterSpacing * appliedFontScale }),

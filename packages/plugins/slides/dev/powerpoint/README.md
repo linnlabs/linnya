@@ -105,7 +105,8 @@ macOS PDF SaveAs 已在 PowerPoint 16.110.2 实跑；Windows COM adapter 仍须�
 PowerPoint 16.110.2 的原六页合成产物已用于比较回归，仓库仅保留小尺寸 PNG 裁片，来源与坐标见
 [fixtures 说明](./fixtures/README.md)。两张柱图现在只报告图例差异：专色内区 preview 为 `(107,57,796,353)`，
 Office 为 `(107,58,797,353)`；各系列三根柱子，几何差约 1px。文字边界页的位置/溢出差异、multiple 行距
-45px 对 54px 的差异均保留。新增五页已验证实际 PPTX XML，尚需重新生成并进行真实 Office 验收。
+45px 对 54px 的差异均保留在裁片里，作为比较器的回归样本。后者是当时预览把单倍行距按 1.0 倍字号计算；2026-11-14 起预览改按
+PowerPoint 的 1.2 倍（见 textLayout 行距合同），重新生成的产物不应再有这项差异。新增五页已验证实际 PPTX XML，尚需重新生成并进行真实 Office 验收。
 
 若复制的存档只有 manifest、preview、office、render-model，仍会输出每页比较结果，但缺少 `sample.pptx` 导致
 完整性校验失败，整份报告为 `incomplete`、退出码为 1。不要伪造 PPTX 或修改哈希来消除这个状态。

@@ -1,5 +1,5 @@
 import { defaultTextMeasureService } from '@linnya/text-measurement-core';
-import { DEFAULT_TEXT_LINE_SPACING_MULTIPLE, type TableCell, type TextStyle } from '@plugin/slides/shared';
+import { resolveLineHeightEm, type TableCell, type TextStyle } from '@plugin/slides/shared';
 import { buildTableColumnWidths, estimateTableDensity } from '../../visual/presentationVisualDefaults';
 import type {
   GeneratedTableCell, GeneratedTableLayout, GeneratedTableLayoutInput,
@@ -106,9 +106,7 @@ function measureCell(text: string, style: TextStyle & { fontSize: number }, widt
       bold: style.bold,
       italic: style.italic,
       letterSpacingPt: style.letterSpacing,
-      lineHeightMultiplier: style.lineSpacing?.kind === 'exactPt'
-        ? style.lineSpacing.value / style.fontSize
-        : style.lineSpacing?.value ?? DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+      lineHeightMultiplier: resolveLineHeightEm(style.lineSpacing, style.fontSize),
     },
     box: { widthInches: width, wrap, padding: { top: padding, right: padding, bottom: padding, left: padding } },
     sourceKind: 'generated',

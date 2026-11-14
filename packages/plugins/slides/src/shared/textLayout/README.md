@@ -85,8 +85,9 @@ HarfBuzz 完整 run 的原始 fontUnits 与 metricsInEm 可在任意字号下同
 { kind: 'exactPt', value: number }
 ```
 
-- generated 未声明行距时固定为 `multiple: 1`，与 PowerPoint 单倍行距一致。
-- `multiple` 的行步进是“当前 run 字号 × 倍数”；混合字号取本行最大步进。
+- generated 未声明行距时固定为 `multiple: 1`，即 PowerPoint 单倍行距。
+- `multiple` 的行步进是“当前 run 字号 × 1.2 × 倍数”；混合字号取本行最大步进。1.2 是 PowerPoint `spcPct` 100% 的行高与字号之比，与字体无关（2026-11-14 用 PowerPoint 导 PDF 实测 10 种字体）。它只定义在 `definitions/lineSpacing.ts` 的 `SINGLE_SPACING_LINE_HEIGHT_EM`；布局、Yoga 估高、inspect、表格测量和编辑器 CSS 一律经 `multipleLineHeightEm` / `resolveLineHeightEm` 换算，不各自乘数。
+- deck.js 的 `lineHeight` 与 PPTX 的 `spcPct` 同义，不是 CSS line-height：`lineHeight: 1.25` 的行高是字号的 1.5 倍。
 - `exactPt` 的行步进是固定 pt，不再乘字体 OS/2 行框。
 - 字体 ascent/descent 只决定公共 baseline 和各 run 的 `textY`，不能反向放大声明行距。
 - 数字 `<= 4` / `> 4` 的历史判定只允许出现在 `definitions/lineSpacing.ts` 的 admission；持久化和布局主链不得重复猜测。

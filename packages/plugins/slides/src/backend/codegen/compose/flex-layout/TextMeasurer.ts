@@ -3,6 +3,7 @@ import { defaultTextMeasureService } from '@linnya/text-measurement-core';
 import {
   DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
   PPTX_DEFAULT_TEXT_INSET,
+  multipleLineHeightEm,
 } from '@plugin/slides/shared';
 import type { LayoutTextNode } from './LayoutTypes.js';
 
@@ -37,7 +38,7 @@ export function measureIntrinsicTextBox(node: LayoutTextNode): IntrinsicTextBoxS
         || (typeof node.fontWeight === 'number' && node.fontWeight >= 700)
         || node.bold === true,
       italic: node.fontStyle === 'italic' || node.italic === true,
-      lineHeightMultiplier: lineSpacing,
+      lineHeightMultiplier: multipleLineHeightEm(lineSpacing),
       letterSpacingPt: node.letterSpacing,
     },
     box: {
@@ -77,7 +78,7 @@ export function measureVerticalTextBox(node: LayoutTextNode, inlineLimitInches?:
         || (typeof node.fontWeight === 'number' && node.fontWeight >= 700)
         || node.bold === true,
       italic: node.fontStyle === 'italic' || node.italic === true,
-      lineHeightMultiplier: node.lineHeight ?? node.lineSpacing ?? DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+      lineHeightMultiplier: multipleLineHeightEm(node.lineHeight ?? node.lineSpacing ?? DEFAULT_TEXT_LINE_SPACING_MULTIPLE),
       letterSpacingPt: node.letterSpacing,
     },
     box: {
@@ -115,7 +116,7 @@ export function estimateTextHeight(
     paragraphs: [{ text: content }],
     style: {
       fontSizePt: fontSize,
-      lineHeightMultiplier: lineSpacing,
+      lineHeightMultiplier: multipleLineHeightEm(lineSpacing),
       letterSpacingPt: letterSpacing,
     },
     box: {

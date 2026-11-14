@@ -5,6 +5,7 @@ import { resizeVerticalTextBoxForAutoFit } from '../functions/resizeTextBoxForAu
 import { buildVerticalGlyphRuns, classifyVerticalGlyph, resolveVerticalLineColumn } from '../functions/verticalText';
 import { layoutTextNode } from '../orchestration/layoutTextNode';
 import type { RunAdvanceProvider } from '../definitions/types';
+import { SINGLE_SPACING_LINE_HEIGHT_EM } from '../definitions/lineSpacing';
 
 const EM = 0.5;
 const provider: RunAdvanceProvider = {
@@ -39,7 +40,8 @@ describe('vertical-rl text layout', () => {
   it('keeps a single column per paragraph without wrapping and reports the required width', () => {
     const result = layout({ wrap: 'none', autoFitPolicy: 'resize-shape', box: { x: 1, y: 1, w: 0.1, h: 0.5 } });
     expect(result.lines).toHaveLength(1);
-    expect(result.requiredWidthInches).toBeCloseTo(0.5 + padding.left + padding.right);
+    // 列宽即行高：36pt 单倍行距。
+    expect(result.requiredWidthInches).toBeCloseTo((36 / 72) * SINGLE_SPACING_LINE_HEIGHT_EM + padding.left + padding.right);
     // 列高与列宽都已由 required* 撑开，不残留旧外框造成的假溢出。
     expect(result.requiredHeightInches).toBeCloseTo(4 + padding.top + padding.bottom);
     expect(result.overflow).toMatchObject({ horizontal: false, vertical: false });

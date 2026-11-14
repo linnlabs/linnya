@@ -3,6 +3,7 @@ import type { RenderParagraph } from '../../renderModel';
 import type { FontMetricsProvider, RunMeasureStyle } from '../index';
 import {
   DEFAULT_TEXT_LINE_SPACING_MULTIPLE,
+  SINGLE_SPACING_LINE_HEIGHT_EM,
   measureLineMetrics,
 } from '../index';
 
@@ -36,7 +37,7 @@ describe('measureLineMetrics', () => {
       }],
     }, 1);
 
-    expect(metrics.height).toBeCloseTo((12 * DEFAULT_TEXT_LINE_SPACING_MULTIPLE) / 72, 6);
+    expect(metrics.height).toBeCloseTo((12 * SINGLE_SPACING_LINE_HEIGHT_EM * DEFAULT_TEXT_LINE_SPACING_MULTIPLE) / 72, 6);
   });
 
   it('uses paragraph multiple line spacing as the line-height authority', () => {
@@ -59,7 +60,7 @@ describe('measureLineMetrics', () => {
       }],
     }, 1);
 
-    expect(metrics.height).toBeCloseTo((12 * 1.5) / 72, 6);
+    expect(metrics.height).toBeCloseTo((12 * SINGLE_SPACING_LINE_HEIGHT_EM * 1.5) / 72, 6);
   });
 
   it('keeps PowerPoint multiple spacing independent from oversized font metadata', () => {
@@ -98,7 +99,7 @@ describe('measureLineMetrics', () => {
       script: 'eastAsian',
     }));
 
-    expect(metrics.height * 72).toBeCloseTo(8.732, 3);
+    expect(metrics.height * 72).toBeCloseTo(7.4 * SINGLE_SPACING_LINE_HEIGHT_EM * 1.18, 3);
   });
 
   it('preserves exact point line spacing as a fixed line height', () => {
@@ -149,8 +150,9 @@ describe('measureLineMetrics', () => {
       italic: false,
     }));
 
-    expect(metrics.height).toBeCloseTo(12 / 72, 6);
-    expect(metrics.baseline).toBeCloseTo(0.14, 6);
+    expect(metrics.height).toBeCloseTo((12 * SINGLE_SPACING_LINE_HEIGHT_EM) / 72, 6);
+    // 行高高出字形框的部分上下平分，baseline 只随它下移，不改行高。
+    expect(metrics.baseline).toBeCloseTo(0.14 + (metrics.height - 0.14 - 0.04) / 2, 6);
   });
 
   it('keeps glyph metrics intact when exact point spacing is smaller than the glyph box', () => {

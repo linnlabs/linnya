@@ -5,6 +5,7 @@ import {
   type NormalizedTextMeasureInput,
   type TextMeasureAdapter,
 } from 'src/features/text-measurement';
+import { PPTX_DEFAULT_TEXT_INSET, SINGLE_SPACING_LINE_HEIGHT_EM } from '@plugin/slides/shared';
 import { compileFlexInput, compileSlide } from '../FlexLayoutCompiler.js';
 import { buildDeckSpecFromDirectInput, readCompiledDirectComposeInput } from '../../presentationComposeInput.js';
 import { initYoga } from '../YogaAdapter.js';
@@ -758,7 +759,11 @@ describe('FlexLayoutCompiler', () => {
       const text = compileSlide(slide, SLIDE_W, SLIDE_H).elements[0]!;
       expect(text.textWrap).toBe('none');
       expect(text.position.w).toBeCloseTo(0.372, 3);
-      expect(text.position.h).toBeCloseTo(0.378, 3);
+      // 两行 10pt 单倍行距加上下默认 inset。
+      expect(text.position.h).toBeCloseTo(
+        2 * (10 / 72) * SINGLE_SPACING_LINE_HEIGHT_EM + PPTX_DEFAULT_TEXT_INSET.top + PPTX_DEFAULT_TEXT_INSET.bottom,
+        3,
+      );
     });
   });
 

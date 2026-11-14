@@ -56,7 +56,7 @@ freeform 形状内文字的 `prepareShapeTextAutofit` 复用正式 mapper、字�
 
 ## 不变量
 
-- generated 未声明行距为 1.0；不能从字体 metrics 推导默认倍数。
+- generated 未声明行距为单倍（`multiple: 1`，行高 = 字号 × 1.2，见 textLayout 行距合同）；不能从字体 metrics 推导默认倍数。
 - prewarm 与同步 measure 必须使用相同 clusters、run style 和字号档位。
 - 字体解析写入的 `resolvedFontWeight/resolvedFontStyle` 是底层字面的二档样式事实；prewarm、HarfBuzz 与行 metrics 使用它们，不能拿另一张 face 测量。绘制保留作者请求的 bold/italic：缺少对应字面时允许浏览器合成强调，不能因为 resolved 为 normal 而静默取消作者样式。平台将 Semibold 归入 bold 二档，确保 PingFang 粗体测量与浏览器的实际字面匹配；合成效果的字形绘制边界与排版 advance 仍分开。
 - `RunAdvanceProvider` 的长度不匹配立即失败，不做启发式补齐。

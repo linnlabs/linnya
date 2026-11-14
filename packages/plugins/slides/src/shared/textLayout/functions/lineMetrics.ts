@@ -1,5 +1,5 @@
 import type { RenderInlineRun, RenderLineSpacing, RenderParagraph, RenderTextRun } from '../../renderModel';
-import { DEFAULT_TEXT_LINE_SPACING } from '../definitions/lineSpacing';
+import { DEFAULT_TEXT_LINE_SPACING, multipleLineHeightEm } from '../definitions/lineSpacing';
 import type {
   FontLineMetrics,
   FontMetricsProvider,
@@ -156,7 +156,7 @@ function resolveLineSpacingHeight(
   fontSizeInches: number,
 ): number {
   if (spacing.kind === 'multiple') {
-    return fontSizeInches * spacing.value;
+    return fontSizeInches * multipleLineHeightEm(spacing.value);
   }
   return spacing.value / POINTS_PER_INCH;
 }

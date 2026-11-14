@@ -1,4 +1,5 @@
 import { HeuristicMeasureAdapter, normalizeTextMeasureInput } from '@linnya/text-measurement-core';
+import { multipleLineHeightEm } from '../../textLayout/definitions/lineSpacing';
 import type { GeneratedTextHeightMeasurement } from '../definitions/generatedLayoutConstraintEvidence';
 
 const adapter = new HeuristicMeasureAdapter();
@@ -7,7 +8,7 @@ const adapter = new HeuristicMeasureAdapter();
 export function measureGeneratedTextHeight(content: string, width: number, input: GeneratedTextHeightMeasurement): number {
   if (!content || width <= 0) return 0;
   return adapter.measure(normalizeTextMeasureInput({ paragraphs: [{ text: content }],
-    style: { fontSizePt: input.fontSizePt, lineHeightMultiplier: input.lineSpacingMultiple, letterSpacingPt: input.letterSpacingPt },
+    style: { fontSizePt: input.fontSizePt, lineHeightMultiplier: multipleLineHeightEm(input.lineSpacingMultiple), letterSpacingPt: input.letterSpacingPt },
     box: { widthInches: width, wrap: 'word' }, sourceKind: 'generated',
   })).totalHeightInches;
 }
