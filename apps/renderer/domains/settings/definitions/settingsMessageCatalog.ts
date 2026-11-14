@@ -412,16 +412,16 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelDetails.inferenceRouteMissing': '该模型缺少正式推理路由，请删除后重新添加。',
   'settings.modelDetails.updateFailed': '更新模型失败',
   'settings.about.release.title': 'Linnya v{version}',
-  'settings.about.release.note.dataCompatibility':
-    '0.2.0 正式开放下载，作为后续数据兼容的起点。数据格式变化随版本升级，耗时较长时显示升级进度。',
-  'settings.about.release.note.dataStorage':
-    '统一应用数据目录，对话与工具输出共用已有内容，减少重复存储。',
-  'settings.about.release.note.actionHistory':
-    '可在对话中查询某天或某次运行改了哪些文件。文档跨项目移动后保留记录，并隔离原项目的会话信息。',
+  'settings.about.release.note.contextUsage':
+    '打开对话后自动估算当前上下文，切换模型、编辑与运行结束后更新，翻阅历史时继续显示。',
+  'settings.about.release.note.imageTools':
+    '可搜索和下载图片并保留来源，在对话中直接查看图片与下载进度。',
+  'settings.about.release.note.projectOverview':
+    '新增项目概览，集中查看文件与最近改动，可筛选并设置显示列。',
   'settings.about.release.note.slidesDesign':
-    'Slides 提供更丰富的视觉方向，先展示封面、颜色和字体，并按阅读方式检查字号。',
+    'Slides 增加图片调色、形状裁切与文字效果，改进表格、字体和 PowerPoint 导出。',
   'settings.about.release.note.desktopReliability':
-    '完善项目侧栏、Markdown 修订、文件引用与后台退出，验证两端安装与更新。',
+    '改进批量提问的回答保留、模型配置、引用展示与桌面更新入口。',
   'settings.about.release.note.pluginAvailability':
     '本版随包提供 Slides，远程插件安装与更新暂未开放。',
   'settings.about.release.note.modelSetup':
@@ -887,16 +887,16 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
         'This model has no explicit inference route. Delete it and add it again.',
       'settings.modelDetails.updateFailed': 'Failed to update model',
       'settings.about.release.title': 'Linnya v{version}',
-      'settings.about.release.note.dataCompatibility':
-        'Version 0.2.0 opens public downloads and starts ongoing data compatibility. Future format changes run during upgrades, with progress shown for longer operations.',
-      'settings.about.release.note.dataStorage':
-        'Application data now shares one storage root. Conversations and tool results reuse existing content to reduce duplicate storage.',
-      'settings.about.release.note.actionHistory':
-        'Ask which files changed on a date or during a run. History follows transferred documents while the source project’s conversation details stay private.',
+      'settings.about.release.note.contextUsage':
+        'Current context usage is estimated when a conversation opens and refreshed after model changes, edits and runs. It stays visible while browsing history.',
+      'settings.about.release.note.imageTools':
+        'Search and download images with source records, and see images and download progress directly in conversations.',
+      'settings.about.release.note.projectOverview':
+        'The new project overview brings files and recent changes together, with filters and configurable columns.',
       'settings.about.release.note.slidesDesign':
-        'Slides offers more visual directions, previews the cover, colors and fonts, and checks font sizes for the intended reading mode.',
+        'Slides adds image adjustments, shape masks and text effects, with improvements to tables, fonts and PowerPoint export.',
       'settings.about.release.note.desktopReliability':
-        'Improved project navigation, Markdown revisions, file references and backend exit, with installation and update checks on both platforms.',
+        'Improved answer retention for batched questions, model configuration, references and the desktop update entry.',
       'settings.about.release.note.pluginAvailability':
         'Slides is bundled. Remote plugin installation and updates remain unavailable.',
       'settings.about.release.note.modelSetup':
