@@ -68,7 +68,8 @@ function generateStablePackageLock(tempRoot) {
 
 export function updateProductionPackageLock(input = {}) {
   const fresh = input.fresh === true;
-  const verify = input.verify === true;
+  const audit = input.audit === true;
+  const verify = input.verify === true || audit;
   const verifyInstall = input.verifyInstall === true;
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-production-lock-'));
   try {
@@ -102,6 +103,15 @@ export function updateProductionPackageLock(input = {}) {
     } else {
       fs.writeFileSync(outputPath, serialized, 'utf8');
     }
+    if (audit) {
+      // Desktop 安装的是这棵 npm 冻结图；pnpm 的安全覆盖不会自动进入成品。
+      // 先核对受跟踪 lock，再只读审计，避免审计了临时解析的新树却放行旧成品。
+      execFileSync('npm', ['audit', '--package-lock-only', '--omit=dev', '--audit-level=low'], {
+        cwd: tempRoot,
+        env: createCleanNpmEnvironment(tempRoot),
+        stdio: 'inherit',
+      });
+    }
     process.stdout.write(
       `[production-package-lock] ${verify ? 'verified' : 'updated'} ${path.relative(rootDir, outputPath)}\n`
     );
@@ -116,5 +126,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     fresh: args.includes('--fresh'),
     verify: args.includes('--verify'),
     verifyInstall: args.includes('--verify-install'),
+    audit: args.includes('--audit'),
   });
 }

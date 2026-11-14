@@ -31,7 +31,7 @@ pnpm run dev:electron
 间接依赖；检查 lock diff，避免同时刷新无关 peer 依赖。原生图像依赖升级后，除冻结安装、
 类型和业务测试外，还需执行 Slides 的 `smoke:raster-worker`，验证真实 Electron 像素链路。
 同步使用 `release:lock:production:update` 更新发行专用 `production-package-lock.json`，
-通过 `release:lock:production:verify` 与 `release:lock:production:install-smoke` 验证；
+通过 `release:lock:production:audit`（冻结一致性和生产依赖安全审计）与 `release:lock:production:install-smoke` 验证；
 重新生成第三方 NOTICE，并核对原生包的许可证补充证据版本。源码 lock 更新不代表发行锁、
 独立 fixture 或 NOTICE 已自动同步，macOS 冒烟也不能代替 Windows 真机验收。
 

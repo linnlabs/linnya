@@ -56,7 +56,7 @@ jobs:
           pnpm run test:dependency-license-evidence
           pnpm run guard:dependency-license-evidence:public
           pnpm run test:production-package-lock
-          pnpm run release:lock:production:verify
+          pnpm run release:lock:production:audit
           pnpm run test:artifact-content-bom
 
   packages:

@@ -68,7 +68,14 @@
     "node-forge": "1.4.3",
     "@anthropic-ai/sandbox-runtime": {
       "zod": "4.6.7"
-    }
+    },
+    "body-parser": "2.4.0",
+    "brace-expansion@1": "1.1.21",
+    "fast-uri": "3.1.9",
+    "markdown-it": "14.3.3",
+    "proxy-addr": "2.0.8",
+    "qs": "6.16.1",
+    "undici@7": "7.30.1"
   },
   "scripts": {
     "sync:provider-catalog": "pnpm --filter @linnya/provider-catalog sync",
@@ -344,6 +351,7 @@
     "release:evidence:desktop-bundle-map": "node --import tsx ./scripts/release/orchestration/generateDesktopArtifactBundleComponentMap.ts",
     "release:lock:production:update": "node scripts/build/orchestration/updateProductionPackageLock.mjs",
     "release:lock:production:verify": "node scripts/build/orchestration/updateProductionPackageLock.mjs --verify",
+    "release:lock:production:audit": "node scripts/build/orchestration/updateProductionPackageLock.mjs --verify --audit",
     "release:lock:production:install-smoke": "node scripts/build/orchestration/updateProductionPackageLock.mjs --verify-install",
     "test:production-package-lock": "vitest run scripts/build/functions/productionPackageManifest.test.ts scripts/build/functions/productionPackageLock.test.ts",
     "release:checklist": "node --import tsx ./scripts/release/orchestration/printUploadChecklist.ts",
@@ -602,7 +610,7 @@
     "lodash-es": "^4.17.21",
     "lowlight": "^3.3.0",
     "mammoth": "^1.9.1",
-    "markdown-it": "^14.1.0",
+    "markdown-it": "14.3.3",
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-ins": "^4.0.0",
     "markdown-it-mark": "^4.0.0",
