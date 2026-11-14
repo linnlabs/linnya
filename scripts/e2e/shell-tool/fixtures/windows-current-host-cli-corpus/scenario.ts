@@ -217,7 +217,7 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
   const lifecycle = createConversationRouteLifecycle({ db, eventStore, storageRoot: appDataRoot, artifactsRoot: artifactRoot });
   const audit = createCollectingCommandExecutionAuditPort();
   const environment = input.commandHostProcessEnvironment;
-  const runtimeFacts = resolveCommandRuntimeFacts({
+  const runtimeFacts = await resolveCommandRuntimeFacts({
       platform: process.platform,
       environment: environment.entries,
       revision: ENVIRONMENT_REVISION,

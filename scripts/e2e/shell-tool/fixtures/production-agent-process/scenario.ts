@@ -178,7 +178,7 @@ export async function runProductionAgentProcessScenario(input: {
       auditPort: agentRuntime.auditPort,
       runs: agentRuntime.supervisor,
     }),
-    runtimeFacts: resolveCommandRuntimeFacts({
+    runtimeFacts: await resolveCommandRuntimeFacts({
       platform: process.platform,
       environment: process.env,
       revision: randomUUID(),
