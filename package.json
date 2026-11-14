@@ -58,14 +58,14 @@
       "ws@8": "8.21.3",
       "yaml": "2.8.3",
       "zod@4": "4.6.7",
-      "node-forge": "1.4.2",
+      "node-forge": "1.4.3",
       "@anthropic-ai/sandbox-runtime>zod": "4.6.7"
     }
   },
   "overrides": {
     "follow-redirects": "1.16.2",
     "tar@6": "7.5.22",
-    "node-forge": "1.4.2",
+    "node-forge": "1.4.3",
     "@anthropic-ai/sandbox-runtime": {
       "zod": "4.6.7"
     }

@@ -51,7 +51,7 @@ overrides:
   ws@8: 8.21.3
   yaml: 2.8.3
   zod@4: 4.6.7
-  node-forge: 1.4.2
+  node-forge: 1.4.3
   '@anthropic-ai/sandbox-runtime>zod': 4.6.7
 
 patchedDependencies:
@@ -5175,8 +5175,8 @@ packages:
       encoding:
         optional: true
 
-  node-forge@1.4.2:
-    resolution: {integrity: sha512-rRtAR5XLJ8gCKd9du4qrKAsgCG1ObGP4gLeNJMa4vYSeq4bmBMOJk5IHkrviBV0q7uoAJlVd8HEQYQSVUb4FGQ==}
+  node-forge@1.4.3:
+    resolution: {integrity: sha512-P6wzfh6t70avmV8FrVEAd/36sOPJQ+hkaJVX1Laap9J/77m7M0eyozDvc8SwnDf4P7MP94gwbAAo0rg3YVXT+g==}
     engines: {node: '>= 6.13.0'}
 
   node-gyp@12.4.0:
@@ -6877,7 +6877,7 @@ snapshots:
     dependencies:
       '@pondwader/socks5-server': 1.0.10
       commander: 12.1.0
-      node-forge: 1.4.2
+      node-forge: 1.4.3
       zod: 4.6.7
 
   '@asamuzakjp/css-color@4.1.1':
@@ -10819,7 +10819,7 @@ snapshots:
     optionalDependencies:
       encoding: 0.1.13
 
-  node-forge@1.4.2: {}
+  node-forge@1.4.3: {}
 
   node-gyp@12.4.0:
     dependencies:
