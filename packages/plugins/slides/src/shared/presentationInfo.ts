@@ -232,6 +232,8 @@ export interface SlideElementInfo {
    * - 缺省时 lint 视该元素为"主题色"，不参与规则
    */
   textColor?: string;
+  /** 字形填充的不透明度（RenderModel textEffects.opacity）；淡字水印与正文压叠不算撞字。 */
+  textOpacity?: number;
   /**
    * 图片适应模式（仅 image 类型）。
    * - RenderModel 路径：从 ImageRenderNode.fitMode 透传

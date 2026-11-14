@@ -23,6 +23,8 @@ export interface GeneratedTableLayout {
   cells: GeneratedTableCell[];
   width: number;
   height: number;
+  /** 盒高小于固有高度时的压缩比例（1 = 未压缩）；fontSize、headerFontSize、padding 已乘过它。 */
+  fontScale: number;
   fontSize: number;
   headerFontSize: number;
   padding: number;

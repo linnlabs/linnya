@@ -60,6 +60,15 @@ describe('parseTableCell — 单元格背景色字段兼容', () => {
     expect(cell).toBeNull();
   });
 
+  it('空字符串是合法的空单元格，三种 text 写法都一样；null 仍然非法', () => {
+    expect(parseTableCell('')).toEqual({ text: '' });
+    expect(parseTableCell('   ')).toEqual({ text: '' });
+    expect(parseTableCell({ text: '', fill: '#1F2A44' })).toEqual({ text: '', fill: '#1F2A44' });
+    expect(parseTableCell({ content: '' })).toEqual({ text: '' });
+    expect(parseTableCell(null)).toBeNull();
+    expect(parseTableCell({ fill: '#1F2A44' })).toBeNull();
+  });
+
   it('text 别名 content / value 仍然有效（回归保护）', () => {
     expect(parseTableCell({ content: 'hi' })).toEqual({ text: 'hi' });
     expect(parseTableCell({ value: 'hi' })).toEqual({ text: 'hi' });

@@ -11,7 +11,9 @@
 
 显式或 Flex 分配的高度是作者布局事实。空间不足时所有行同比压缩，富余空间分配给正文，行高总和必须等于盒高，
 不能用正文最小行高扩大表格、把表头压成零。过小或零高度仍由质量链报告，不能在 mapper
-补尺寸或丢弃节点。rowspan 占据的列由本模块统一跳过，渲染端不重新放置单元格。
+补尺寸或丢弃节点。PowerPoint 表格不执行 normAutofit，行放不下字时会撑高整张表；因此压缩时字号、逐格
+声明字号与 padding 按同一比例（`fontScale`）写定，RenderModel 与 PPTX 拿到同一组字号，预览不必再靠缩字
+把文字塞进行里。缩到过小的字号由 inspect 的 `font_size_below_floor` 报告。rowspan 占据的列由本模块统一跳过，渲染端不重新放置单元格。
 
 没写逐格 `fill` 的单元格由 `resolveTableDefaultFills` 定底色：正文取表格所在页的纯色底
 （`resolveTablePageColor`；页底是图片或渐变时取主题 `colors.background`），表头取 `accent1`

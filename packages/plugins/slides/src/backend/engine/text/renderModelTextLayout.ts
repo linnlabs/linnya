@@ -299,7 +299,10 @@ export function fontMetadataToLineMetrics(
   style: RunMeasureStyle,
 ): FontLineMetrics {
   const emInches = style.fontSizePt / 72;
-  const selected = metadata.useTypoMetrics
+  // Apple Color Emoji 等字体的 usWinAscent/usWinDescent 写成 0 且不设 USE_TYPO_METRICS；
+  // 照用 win 值会让行高为零、字形落到基线以下被裁掉，只能退回 typo 值。
+  const winMetricsUsable = metadata.winAscent + Math.abs(metadata.winDescent) > 0;
+  const selected = metadata.useTypoMetrics || !winMetricsUsable
     ? {
         ascent: metadata.typoAscent,
         descent: Math.abs(metadata.typoDescent),

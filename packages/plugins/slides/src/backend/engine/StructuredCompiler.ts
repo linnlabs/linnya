@@ -27,6 +27,7 @@ import {
   resolveTableDefaultFills,
   resolveTablePageColor,
   resolveTableTextColor,
+  scaleTableFontSize,
 } from './table';
 import { resolveImageAsset, toPptxImageSource } from './assets/imageAssetResolver';
 import { buildPptxImageProps } from './assets/pptxImageProps';
@@ -363,7 +364,7 @@ export class StructuredCompiler {
 
     // 数据行
     for (const row of el.rows) {
-      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, padding: layout.padding, fill: fills.body, colors })));
+      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, fontScale: layout.fontScale, padding: layout.padding, fill: fills.body, colors })));
     }
 
     // PptxGenJS 类型上 TableProps 未包含 fit（fit 在 TextPropsOptions）；运行时表格 opt 会下发到单元格文本体，库会读取 options.fit
@@ -384,11 +385,11 @@ export class StructuredCompiler {
 
   private mapTableCell(
     cell: DomainTableCell,
-    defaults: { fontSize: number; padding: number; fill: string; colors: Readonly<Record<string, string>> | undefined },
+    defaults: { fontSize: number; fontScale: number; padding: number; fill: string; colors: Readonly<Record<string, string>> | undefined },
   ): PptxGenJS.TableCell {
     const opts: PptxGenJS.TableCellProps = {
       ...mapTextParagraphStyleToProps(cell.style),
-      fontSize: cell.style?.fontSize ?? defaults.fontSize,
+      fontSize: cell.style?.fontSize != null ? scaleTableFontSize(cell.style.fontSize, defaults.fontScale) : defaults.fontSize,
       margin: defaults.padding,
     };
     const fill = cell.fill ?? defaults.fill;

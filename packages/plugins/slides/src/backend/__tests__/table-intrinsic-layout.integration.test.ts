@@ -60,6 +60,31 @@ describe('generated table intrinsic layout through compose, preview and native P
     expect(node.rows.every(height => height > 0 && height < 0.05)).toBe(true);
   });
 
+  it('压缩表格的字号按同一比例写进预览和 PPTX（PowerPoint 表格不会缩字，只会撑高行）', async () => {
+    const { node, document } = await compileTable({
+      _type: 'Table', width: 4, height: 1.2, headers: ['序号', '值'],
+      rows: [
+        [{ text: '第 1 行', style: { fontSize: 14 } }, '0'],
+        ...Array.from({ length: 11 }, (_, index) => [`第 ${index + 2} 行`, String(index)]),
+      ],
+    });
+    const runSizes = (row: number, col: number) => node.cells
+      .find(cell => cell.row === row && cell.col === col)?.paragraphs[0]?.runs[0]?.fontSize;
+    const header = runSizes(0, 0) ?? 0;
+    const body = runSizes(2, 0) ?? 0;
+    const explicit = runSizes(1, 0) ?? 0;
+    expect(body).toBeLessThan(9.5);
+    expect(header).toBeLessThan(10);
+    expect(explicit).toBeLessThan(14);
+    expect(explicit / body).toBeCloseTo(14 / 9.5, 1);
+    // PPTX 每格写同一组字号（sz 单位为百分之一磅）。
+    const pptxSizes = Array.from(document.getElementsByTagName('a:tc')).map(cell =>
+      Number(cell.getElementsByTagName('a:rPr')[0]?.getAttribute('sz')) / 100);
+    expect(pptxSizes[0]).toBeCloseTo(header, 5);
+    expect(pptxSizes[2]).toBeCloseTo(explicit, 5);
+    expect(pptxSizes[4]).toBeCloseTo(body, 5);
+  });
+
   it('自动尺寸测量与渲染共同跳过跨行合并占据的列，保留跨列和换行内容', async () => {
     const { node } = await compileTable({
       _type: 'Table', width: 4,

@@ -222,8 +222,9 @@ export class LayoutLint {
    * 现在统一走 `classifyOverlap`：
    *   - `'background'` / `'container'` / `'decorative'` / `'overlay'` / `'none'`
    *     → 视为有明确空间语义，跳过
-   *   - `'forbidden'` 且占较小元素面积 > 35% → 产出 issue 并把分类挂到
-   *     `issue.overlapType`，下游 findings 直接消费
+   *   - `'forbidden'` 且占较小元素面积 > 35% → 产出 medium issue
+   *   - `'forbidden'` 的两段文字最终字行相交 → 不论盒交叠多少都产出；两段都是实色、
+   *     字号相近时为 high（确定撞字），淡字或展示大字仍为 medium
    */
   private lintOverlaps(
     slideNumber: number,
@@ -251,35 +252,47 @@ export class LayoutLint {
         if (overlapClass !== 'forbidden') continue;
 
         const smallerCoveredRatio = smallerBoxCoveredRatio(left.position, right.position);
+        // 盒相交只说明“可能压住”；两段文字最终排版的字行相交才是确定撞字，盒交叠再小也要报。
+        const lineCollision = findTextLineCollision(left, right);
+        if (smallerCoveredRatio <= 0.35 && !lineCollision) continue;
 
-        if (smallerCoveredRatio > 0.35) {
-          const overlapBox = intersectionBox(left.position, right.position);
-          if (!overlapBox) continue;
-          const orderedNodes = [
-            buildDiagnosticNodeRef(left),
-            buildDiagnosticNodeRef(right),
-          ].sort((first, second) => first.nodeId.localeCompare(second.nodeId));
-          const firstNode = orderedNodes[0];
-          const secondNode = orderedNodes[1];
-          if (!firstNode || !secondNode || firstNode.nodeId === secondNode.nodeId) continue;
-          issues.push({
-            code: 'element_overlap',
-            severity: 'warning',
-            confidence: 'medium',
-            slides: [slideNumber],
-            evidence: {
-              kind: 'node_overlap',
-              nodes: [firstNode, secondNode],
-              intersection: { ...overlapBox, unit: 'in' },
-              smallerCoveredRatio,
-              overlapClass: 'forbidden',
-              intent: {
-                assessment: 'unknown',
-                signals: ['两个独立元素大面积相交，需要结合最终渲染确认设计意图。'],
-              },
-            },
-          });
-        }
+        const overlapBox = lineCollision?.intersection ?? intersectionBox(left.position, right.position);
+        if (!overlapBox) continue;
+        const orderedNodes = [
+          buildDiagnosticNodeRef(left),
+          buildDiagnosticNodeRef(right),
+        ].sort((first, second) => first.nodeId.localeCompare(second.nodeId));
+        const firstNode = orderedNodes[0];
+        const secondNode = orderedNodes[1];
+        if (!firstNode || !secondNode || firstNode.nodeId === secondNode.nodeId) continue;
+        const certain = lineCollision?.certain === true;
+        issues.push({
+          code: 'element_overlap',
+          severity: 'warning',
+          confidence: certain ? 'high' : 'medium',
+          slides: [slideNumber],
+          evidence: {
+            kind: 'node_overlap',
+            nodes: [firstNode, secondNode],
+            intersection: { ...overlapBox, unit: 'in' },
+            smallerCoveredRatio,
+            overlapClass: 'forbidden',
+            intent: certain
+              ? {
+                assessment: 'likely_unintentional',
+                signals: ['两段字号相近的实色文字，最终排版的字行互相压住。'],
+              }
+              : lineCollision
+                ? {
+                  assessment: 'unknown',
+                  signals: ['两段文字的字行相交，但其中一段是淡字或大字号展示字，可能是有意压叠。'],
+                }
+                : {
+                  assessment: 'unknown',
+                  signals: ['两个独立元素大面积相交，需要结合最终渲染确认设计意图。'],
+                },
+          },
+        });
       }
     }
     return issues;
@@ -683,4 +696,50 @@ function toRenderableBasis(
     case 'other':
       throw new Error('Non-renderable element cannot produce zero-sized renderable evidence');
   }
+}
+
+/** 展示用大字（书法字、巨型数字）常与正文有意压叠；字号相差这么多时不认定为误撞。 */
+const DISPLAY_TEXT_SIZE_RATIO = 2.5;
+const FAINT_TEXT_OPACITY = 0.5;
+
+type PositionedElement = SlideElementInfo & { position: NonNullable<SlideElementInfo['position']> };
+
+/**
+ * 两段文字最终字行的相交。行盒含行距留白，只有交叠超过行粗细的四分之一才算字形真的压上。
+ * certain=false 表示一方是淡字或字号悬殊，可能是有意的水印 / 展示字压叠。
+ */
+function findTextLineCollision(
+  left: PositionedElement,
+  right: PositionedElement,
+): { intersection: { x: number; y: number; w: number; h: number }; certain: boolean } | undefined {
+  if (!left.text?.trim() || !right.text?.trim() || !left.textLayout || !right.textLayout) return undefined;
+  const rightLines = buildFinalTextLineOccupancies(right);
+  for (const leftLine of buildFinalTextLineOccupancies(left)) {
+    for (const rightLine of rightLines) {
+      const intersection = intersectionBox(leftLine.box, rightLine.box);
+      if (!intersection) continue;
+      const thickness = Math.min(
+        Math.min(leftLine.box.w, leftLine.box.h),
+        Math.min(rightLine.box.w, rightLine.box.h),
+      );
+      if (intersection.w < thickness / 4 || intersection.h < thickness / 4) continue;
+      return { intersection, certain: !isFaintText(left) && !isFaintText(right) && !hasDisplaySizeGap(left, right) };
+    }
+  }
+  return undefined;
+}
+
+function isFaintText(element: PositionedElement): boolean {
+  return (element.opacity ?? 1) * (element.textOpacity ?? 1) <= FAINT_TEXT_OPACITY;
+}
+
+function hasDisplaySizeGap(left: PositionedElement, right: PositionedElement): boolean {
+  const leftSize = effectiveFontSize(left);
+  const rightSize = effectiveFontSize(right);
+  if (!leftSize || !rightSize) return false;
+  return Math.max(leftSize, rightSize) / Math.min(leftSize, rightSize) >= DISPLAY_TEXT_SIZE_RATIO;
+}
+
+function effectiveFontSize(element: PositionedElement): number | undefined {
+  return element.fontSize == null ? undefined : element.fontSize * (element.textLayout?.appliedFontScale ?? 1);
 }

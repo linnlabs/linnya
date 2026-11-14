@@ -306,6 +306,29 @@ describe('FontResolutionService', () => {
     expect(service.resolve(makeRequest({ family: 'Unknown Serif', script: 'eastAsian' })).resolvedFamily)
       .not.toBe('Songti SC');
   });
+
+  it('Office 西文字体本机缺失时落到同书体的 Mac 系统字体，不落到宋体的西文字形', () => {
+    const latin = (family: string) => makeMeta({ family, postscriptName: family.replace(/ /g, '') });
+    const songti = makeMeta({ family: 'SimSong', postscriptName: 'SimSong-Regular', unicodeRanges: rangesWithBits([0, 1, 59]) });
+    const futura = latin('Futura');
+    const helvetica = latin('Helvetica Neue');
+    const georgia = latin('Georgia');
+    const menlo = latin('Menlo');
+    const service = new FontResolutionService({
+      catalog: new FakeCatalog([songti, futura, helvetica, georgia, menlo]),
+      // 模拟通用打分偏向宋体：没有对照时会选中它。
+      scoreSubstitution: (_request, candidate) => (candidate === songti ? 1 : 10),
+    });
+    const resolvedFamily = (family: string) => service.resolve(makeRequest({ family, script: 'latin' })).resolvedFamily;
+
+    expect(resolvedFamily('Tw Cen MT')).toBe('Futura');
+    expect(resolvedFamily('Century Gothic')).toBe('Futura');
+    expect(resolvedFamily('Aptos')).toBe('Helvetica Neue');
+    expect(resolvedFamily('Segoe UI')).toBe('Helvetica Neue');
+    expect(resolvedFamily('Cambria')).toBe('Georgia');
+    expect(resolvedFamily('Consolas')).toBe('Menlo');
+    expect(resolvedFamily('Unknown Sans')).toBe('SimSong');
+  });
 });
 
 class FakeCatalog implements FontResolutionCatalog {

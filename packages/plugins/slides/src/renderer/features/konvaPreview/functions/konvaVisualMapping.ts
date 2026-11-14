@@ -79,10 +79,7 @@ export function resolveKonvaShapeFillConfig(
     throw new Error('Radial Paint requires the shared elliptical scene renderer');
   }
 
-  // 0° 向右、90° 向下、顺时针测量；OOXML adapter 必须复用同一角度合同。
-  //
-  // 关键：方向矢量必须按 max(|dx|,|dy|) 归一化（不能用 1 兜底），再乘以 box 的半边长，
-  // 这样渐变线两端会贴 bounding box 对侧边缘 —— 与 PowerPoint 的 OOXML lin@ang 渲染行为一致。
+  // 0° 向右、90° 向下、顺时针测量；OOXML adapter 必须复用同一角度合同（scaled="1"）。
   const axis = resolveLinearGradientAxis(fill.angle, width, height);
 
   return {
@@ -114,32 +111,32 @@ export function resolveKonvaShapeStrokeConfig(
   };
 }
 
+/**
+ * 与导出写的 `a:lin scaled="1"` 一致：角度定义在单位正方形里，再随盒子拉伸。
+ * 于是 45° 在 2:1 的盒子里等值线沿另一条对角线，而不是在像素空间里与 45° 方向垂直。
+ * 单位正方形里 f(q) = (q - ½)·u / (|cos|+|sin|) + ½；映射回像素后梯度为
+ * g = (cos/w, sin/h) / (|cos|+|sin|)，Konva 端点取 center ± g/|g|²/2。
+ */
 function resolveLinearGradientAxis(
   angle: number,
   width: number,
   height: number,
 ): { start: KonvaPoint; end: KonvaPoint } {
   const radians = (angle * Math.PI) / 180;
-  const dx = Math.cos(radians);
-  const dy = Math.sin(radians);
-  const norm = Math.max(Math.abs(dx), Math.abs(dy));
-  // norm 在 angle 合法时一定 > 0（cos/sin 至少有一个绝对值 ≥ √2/2 ≈ 0.707）
-  const ux = norm > 0 ? dx / norm : 1;
-  const uy = norm > 0 ? dy / norm : 0;
-
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const extent = Math.abs(cos) + Math.abs(sin);
   const center = { x: width / 2, y: height / 2 };
-  const halfX = (width / 2) * ux;
-  const halfY = (height / 2) * uy;
-
+  const gx = width > 0 ? cos / width / extent : 0;
+  const gy = height > 0 ? sin / height / extent : 0;
+  const length = gx * gx + gy * gy;
+  if (length <= 0) return { start: { x: 0, y: round3(center.y) }, end: { x: round3(width), y: round3(center.y) } };
+  const halfX = gx / length / 2;
+  const halfY = gy / length / 2;
+  // `+ 0` 把 round3 产生的 -0 规整成 0。
   return {
-    start: {
-      x: round3(center.x - halfX),
-      y: round3(center.y - halfY),
-    },
-    end: {
-      x: round3(center.x + halfX),
-      y: round3(center.y + halfY),
-    },
+    start: { x: round3(center.x - halfX) + 0, y: round3(center.y - halfY) + 0 },
+    end: { x: round3(center.x + halfX) + 0, y: round3(center.y + halfY) + 0 },
   };
 }
 

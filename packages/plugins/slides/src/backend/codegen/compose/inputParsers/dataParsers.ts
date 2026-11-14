@@ -135,18 +135,23 @@ export function parseChartDataLike(
 
 // ─── 表格 ─────────────────────────────────────────────────────────────────
 
+/** 表格里的空字符串是合法的空单元格（矩阵表左上角、暂无数据），图表标签等其他地方仍要求非空。 */
+function parseTableCellText(value: unknown): string | null {
+  return typeof value === 'string' ? value.trim() : parseDisplayString(value);
+}
+
 export function parseTableCell(value: unknown): TableCell | null {
-  const directText = parseDisplayString(value);
-  if (directText) {
+  const directText = parseTableCellText(value);
+  if (directText != null) {
     return { text: directText };
   }
   if (!isRecord(value)) {
     return null;
   }
-  const text = parseDisplayString(value.text)
-    ?? parseDisplayString(value.content)
-    ?? parseDisplayString(value.value);
-  if (!text) {
+  const text = parseTableCellText(value.text)
+    ?? parseTableCellText(value.content)
+    ?? parseTableCellText(value.value);
+  if (text == null) {
     return null;
   }
   const cell: TableCell = { text };
@@ -253,7 +258,7 @@ export function parseTableDataLike(
 
   // ── headers 双形态兼容 ──
   //
-  //   形态 A：plain headers（string[] / 数字 / 布尔数组）—— 走原有 parseLabelArray，
+  //   形态 A：plain headers（string[] / 数字 / 布尔数组，空字符串是空表头格），
   //          作为 NormalizedTableData.headers 输出，下游 PptxGenJS 会用默认表头样式渲染。
   //
   //   形态 B：styled headers（含 TableCell-like 对象，带 fill/style/bgColor 等）——
@@ -285,7 +290,9 @@ export function parseTableDataLike(
       rows = [...headerCells, ...rows];
       headers = undefined;
     } else {
-      const labelHeaders = parseLabelArray(rawHeaders);
+      const labelHeaders = rawHeaders.every((item) => parseTableCellText(item) != null)
+        ? rawHeaders.map((item) => parseTableCellText(item) ?? '')
+        : null;
       if (labelHeaders == null) {
         return { error: '表头必须是字符串、数字或布尔数组；支持 headers/header/columns/cols。' };
       }

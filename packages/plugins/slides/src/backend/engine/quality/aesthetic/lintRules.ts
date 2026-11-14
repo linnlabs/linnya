@@ -457,8 +457,9 @@ export function lintFontSizeFloor(
 ): AestheticLintIssue[] {
   const issues: AestheticLintIssue[] = [];
   for (const element of elements) {
+    issues.push(...lintTableCellFontSizeFloor(slideNumber, element));
     if (element.type !== 'text' && element.paragraphs == null) continue;
-    const sizes = collectElementFontSizes(element);
+    const sizes = scaleFontSizes(collectElementFontSizes(element), element.textLayout);
     if (sizes.length === 0) continue;
     const size = Math.min(...sizes);
     const recommendedFloor = readingMode
@@ -509,6 +510,49 @@ export function lintFontSizeFloor(
 }
 
 const SMALL_TEXT_ROLES = new Set(['annotation', 'axis-label', 'caption', 'footnote', 'label', 'source']);
+
+/**
+ * 表格格子放不下时整格缩字（shrink-text），作者写的字号不变、实际显示更小。表格不按阅读方式套正文下限，
+ * 只拦缩到近不可读的格子：一格实际字号低于 5pt 时报告，证据给缩放后的字号。
+ */
+function lintTableCellFontSizeFloor(slideNumber: number, element: SlideElementInfo): AestheticLintIssue[] {
+  const cells = element.tableInfo?.cells ?? [];
+  const sizes = cells.flatMap((cell) => scaleFontSizes(
+    cell.paragraphs.flatMap((paragraph) => paragraph.runs)
+      .map((run) => run.fontSize)
+      .filter((size): size is number => typeof size === 'number' && Number.isFinite(size) && size > 0),
+    cell.textLayout,
+  ));
+  if (sizes.length === 0) return [];
+  const size = Math.min(...sizes);
+  // 表格默认 9.5pt 起步，阅读模式的正文下限（14pt 起）对表格太严；只用通用建议下限与近不可读阈值。
+  if (size >= FONT_SIZE_RECOMMENDED_FLOOR_PT) return [];
+  const unreadable = size < FONT_SIZE_NEAR_UNREADABLE_PT;
+  return [{
+    code: 'font_size_below_floor',
+    severity: 'warning',
+    confidence: unreadable ? 'high' : 'medium',
+    slides: [slideNumber],
+    evidence: {
+      kind: 'scalar_metric',
+      metric: 'font_size',
+      actual: size,
+      operator: 'lt',
+      threshold: unreadable ? FONT_SIZE_NEAR_UNREADABLE_PT : FONT_SIZE_RECOMMENDED_FLOOR_PT,
+      unit: 'pt',
+      sampleCount: sizes.length,
+      samples: [...new Set(sizes)],
+      node: buildDiagnosticNodeRef(element),
+      semanticRole: element.semanticRole ?? 'general_text',
+    },
+  }];
+}
+
+/** 自动缩字后的实际字号；保留两位小数，证据里不出现浮点尾巴。 */
+function scaleFontSizes(sizes: number[], layout: SlideElementInfo['textLayout']): number[] {
+  const scale = layout?.appliedFontScale ?? 1;
+  return scale === 1 ? sizes : sizes.map((size) => Math.round(size * scale * 100) / 100);
+}
 
 function collectElementFontSizes(element: SlideElementInfo): number[] {
   const runSizes = element.paragraphs

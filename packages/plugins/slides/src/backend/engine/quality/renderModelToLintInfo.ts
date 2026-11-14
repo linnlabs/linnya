@@ -87,6 +87,7 @@ function renderNodeToElementInfo(node: RenderNode, parentNodeId?: string): Slide
     info.textLayout = node.layout;
     const textColor = extractFirstRunColor(node.paragraphs);
     if (textColor) info.textColor = textColor;
+    if (node.textEffects?.opacity != null) info.textOpacity = node.textEffects.opacity;
   }
 
   if (node.kind === 'shape') {

@@ -14,7 +14,7 @@ import type {
 import {
   resolveGeneratedRenderChartType,
 } from '../../visual/presentationVisualDefaults';
-import { resolveGeneratedTableLayout, resolveTableDefaultFills, resolveTableTextColor } from '../../table';
+import { resolveGeneratedTableLayout, resolveTableDefaultFills, resolveTableTextColor, scaleTableFontSize } from '../../table';
 import {
   resolveChartLegend,
   resolveChartType,
@@ -250,7 +250,11 @@ export function mapStructuredTableNode(
   for (const placement of layout.cells) {
     const cell = placement.cell;
     const fill = placement.isHeader ? fills.header : cell.fill ?? fills.body;
-    const style = placement.isHeader ? { bold: true, fontSize: layout.headerFontSize } : cell.style;
+    const style = placement.isHeader
+      ? { bold: true, fontSize: layout.headerFontSize }
+      : cell.style?.fontSize != null
+        ? { ...cell.style, fontSize: scaleTableFontSize(cell.style.fontSize, layout.fontScale) }
+        : cell.style;
     cells.push({
       row: placement.row,
       col: placement.column,

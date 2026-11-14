@@ -17,6 +17,7 @@ import { applyFormulaPptxPatches } from '../mathFormula/pptx/applyFormulaPptxPat
 import type { FormulaPptxPatchPlan } from '../mathFormula/pptx/formulaPptxPlan';
 import type { ChartPptxPatch } from '../chart/chartPptx';
 import { applyChartPptxStyles } from '../chart/applyChartPptxStyles';
+import { applyEastAsianRunLanguage } from '../text/eastAsianRunLanguagePptx';
 
 export interface PptxPackageSanitizeOptions {
   readonly shapeTextPlan?: ShapeTextAutofitPlan;
@@ -115,6 +116,8 @@ export class PptxPackageSanitizer {
     mutated = mutated || formulaMutated;
     const chartMutated = await applyChartPptxStyles(zip, options.chartPlan);
     mutated = mutated || chartMutated;
+    const languageMutated = await applyEastAsianRunLanguage(zip);
+    mutated = mutated || languageMutated;
 
     if (!mutated) {
       return buffer;

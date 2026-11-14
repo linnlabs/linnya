@@ -599,6 +599,58 @@ describe('AestheticLint', () => {
       expect(report.aesthetic.find((issue) => issue.code === 'font_size_below_floor')).toBeUndefined();
     });
 
+    function shrunkTextLayout(appliedFontScale: number): NonNullable<PresentationInfo['slides'][number]['elements'][number]['textLayout']> {
+      return {
+        lines: [], contentHeightInches: 0, appliedFontScale, appliedLineSpacingReduction: 0,
+        advanceSource: 'harfbuzz', overflow: { horizontal: false, vertical: false, hiddenLineCount: 0 },
+      };
+    }
+
+    it('checks the size after auto shrink, not the authored size', () => {
+      const shrunkLayout = shrunkTextLayout(0.4);
+      const report = lint.lint(makeInfo({
+        slides: [{
+          number: 1,
+          elements: [{
+            name: 'Shrunk', type: 'text', text: 'body',
+            position: { x: 1, y: 1, w: 4, h: 0.3 },
+            paragraphs: [{ runs: [{ text: 'body', fontSize: 12 }] }],
+            textLayout: shrunkLayout,
+          }],
+        }],
+      }));
+      expect(report.aesthetic.find((issue) => issue.code === 'font_size_below_floor')?.evidence)
+        .toMatchObject({ actual: 4.8, threshold: 5 });
+    });
+
+    it('reports table cells below the general floor (high under 5pt), but not normal small table text', () => {
+      const cell = (fontSize: number, appliedFontScale: number) => ({
+        rowIndex: 0, columnIndex: 0, position: { x: 1, y: 1, w: 1, h: 0.1 },
+        paragraphs: [{ runs: [{ text: '第 1 行', fontSize }] }],
+        padding: { top: 0, right: 0, bottom: 0, left: 0 },
+        textLayout: shrunkTextLayout(appliedFontScale),
+      });
+      const tableInfo = (fontSize: number, appliedFontScale: number): PresentationInfo => makeInfo({
+        slides: [{
+          number: 1,
+          elements: [{
+            name: 'Table', type: 'table', text: '',
+            position: { x: 1, y: 1, w: 5, h: 3 },
+            tableInfo: { cells: [cell(fontSize, 1), cell(fontSize, appliedFontScale)] },
+          }],
+        }],
+      });
+      const floorOf = (info: PresentationInfo) =>
+        lint.lint(info, { readingMode: 'present' }).aesthetic.find((issue) => issue.code === 'font_size_below_floor');
+      // 30 行表格塞进固定高度：9.5pt 被整格缩到一半。
+      expect(floorOf(tableInfo(9.5, 0.5))).toMatchObject({ confidence: 'high', evidence: { actual: 4.75, threshold: 5 } });
+      // 压缩后的表格字号直接写进单元格（PowerPoint 表格不缩字），低于 6.5pt 建议下限作 medium 复核。
+      expect(floorOf(tableInfo(5.9, 1))).toMatchObject({ confidence: 'medium', evidence: { actual: 5.9, threshold: 6.5 } });
+      // 默认 9.5pt 表格不按阅读模式的正文下限报告。
+      expect(floorOf(tableInfo(9.5, 1))).toBeUndefined();
+      expect(floorOf(tableInfo(9.5, 0.7))).toBeUndefined();
+    });
+
     describe('reading mode floors for generated decks', () => {
       function textInfo(width: number, fontSize: number, semanticRole?: string): PresentationInfo {
         return makeInfo({

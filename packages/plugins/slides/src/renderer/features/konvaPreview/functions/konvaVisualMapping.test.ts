@@ -61,11 +61,20 @@ describe('konvaVisualMapping', () => {
       expect(c.fillLinearGradientEndPoint).toEqual({ x: 200, y: 0 });
     });
 
-    it('angle = 45° 渐变线贴 box 对角（修复前会短于对角线）', () => {
+    it('angle = 45° 按 scaled="1" 随盒子拉伸：两角为 0 和 1，另一条对角线是中间等值线', () => {
       const c = resolveKonvaShapeFillConfig(gradient(45), 400, 200);
-      // ux=uy=1（max-norm），halfX=200, halfY=100，渐变线 = box 完整对角线
-      expect(c.fillLinearGradientStartPoint).toEqual({ x: 0, y: 0 });
-      expect(c.fillLinearGradientEndPoint).toEqual({ x: 400, y: 200 });
+      const start = c.fillLinearGradientStartPoint!;
+      const end = c.fillLinearGradientEndPoint!;
+      const at = (x: number, y: number) => {
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        return ((x - start.x) * dx + (y - start.y) * dy) / (dx * dx + dy * dy);
+      };
+      expect(at(0, 0)).toBeCloseTo(0, 6);
+      expect(at(400, 200)).toBeCloseTo(1, 6);
+      // PowerPoint 导出 PDF 实测：2:1 盒子里 45° 的等值线从左下角到右上角。
+      expect(at(400, 0)).toBeCloseTo(0.5, 6);
+      expect(at(0, 200)).toBeCloseTo(0.5, 6);
     });
   });
 

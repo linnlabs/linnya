@@ -75,7 +75,8 @@ export const SLIDES_RENDER_COLORS = {
   chartDataLabelFill: '#000000',
   imagePlaceholderFill: '#F5F5F5',
   imagePlaceholderStroke: '#DDDDDD',
-  textFallbackFill: '#333333',
+  /** 没写字色时与 PPTX 一致：PptxGenJS 默认写 000000，编辑器默认也是黑色。 */
+  textFallbackFill: '#000000',
   tableBorderStroke: '#D1D5DB',
   /** 画布上唯一的选择色：选中、悬停、框选、手柄和占位框都用它，标准见 shared/selectionOutline.ts。 */
   selectionStroke: '#347B45',

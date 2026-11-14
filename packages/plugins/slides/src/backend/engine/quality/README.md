@@ -99,7 +99,8 @@ PresentationRenderModel
 - 新空间关系语义优先放 `SpatialSemantics.ts`，避免多个 lint 规则各自判断 overlap 是否合理。当前分类会综合 containment、显式组件 parent、线—节点邻接、z-order、opacity、semanticRole 和面积比例；调用方必须传递已有事实，不能退化为只传 kind/box。只有非 slide 的共同 parent 且至少一方为 Shape 时才表示组件装饰关系；另一个明确例外是较低 z-order 的 Shape 完整承载 Chart，此时 Shape 是图表面板。反向层叠、部分覆盖、同页普通顶层元素和组件内的 text-text 重叠都不能因此互相豁免。
 - Frame 编译后会扁平化。lint 与 inspect 都从 `authoringAncestorRefs` 派生最近的 `authoringFrameId`，独立于 render parent，空间分析保留 `svgGraphic` kind。Frame 背景与直属作者子节点按显式父子关系处理；同一可识别 Frame 中，较低层的 SVG 完整承载 Text 且两者都未旋转时归为承载关系。旋转后的轴对齐盒不能证明承载，因此不豁免。无 Frame、不同 Frame、反向层叠、部分覆盖及 text-text 仍接受原有重叠检查，不能仅凭几何相交认定是标签。
 - `origin_stacking` 只聚合同锚点且无法由上述语义解释的独立内容；Group 与显式背景/装饰不参与。Shape path 的外盒可以是共用 viewBox，不能把已声明的装饰路径当成定位失败。细盒的装饰推断仅适用于 Shape，不能豁免小字号文字或窄表格。两个 Text 共用锚点不等于父子容器。
-- 普通 `element_overlap` 仍是 medium-confidence 盒相交复核事实；例如表格压住页脚可有真实交集，但仅凭盒与 z-order 不足以证明具体字形被不透明内容遮住。它不因人工在某张图上确认遮挡而统一升级 high-confidence；规则优先级与最终可读性不能互相替代。
+- 两段文字最终排版的字行相交（交叠超过行粗细四分之一）时，`element_overlap` 不受 35% 盒覆盖门槛限制；两段都是实色且字号相差不到 2.5 倍时为 high-confidence 撞字，淡字（不透明度 ≤ 0.5）或展示大字压正文仍是 medium 复核。
+- 其余 `element_overlap` 仍是 medium-confidence 盒相交复核事实；例如表格压住页脚可有真实交集，但仅凭盒与 z-order 不足以证明具体字形被不透明内容遮住。它不因人工在某张图上确认遮挡而统一升级 high-confidence；规则优先级与最终可读性不能互相替代。
 - 面积覆盖率等数学上有界的几何派生值必须在 `SpatialSemantics` 的生产端消除浮点越界，再进入 strict evidence schema；CLI 和 Agent 投影不得各自修正数值。
 - 新规则不得增加综合评分或美学 passed 阈值；无法构建的事实进入 build-failure feature，视觉现象进入 findings。
 - finding 文案应说明对象、证据、置信度、可能的设计意图和可行动线索，禁止使用“必须修复”描述启发式判断。

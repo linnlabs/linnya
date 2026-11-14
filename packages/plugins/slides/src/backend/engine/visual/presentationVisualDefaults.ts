@@ -44,6 +44,8 @@ export function resolveChartPalette(theme?: ThemeLike): ThemeChartPalette {
   return resolveThemeChartPalette(theme);
 }
 
+const MULTILINE_BIAS_MAX_ROWS = 3;
+
 export function buildTableColumnWidths(
   totalWidth: number,
   headers: string[] | undefined,
@@ -59,7 +61,10 @@ export function buildTableColumnWidths(
   const weights = Array.from({ length: columnCount }, (_, index) => {
     const headerWeight = (headers?.[index]?.length ?? 0) * 1.1;
     const maxCell = rows.reduce((max, row) => Math.max(max, row[index]?.text.length ?? 0), 0);
-    const multilineBias = rows.reduce((sum, row) => sum + ((row[index]?.text.includes(' ') ?? false) ? 2 : 0), 0);
+    // 多词文字会换行，给这一列略多一点宽度；按行累加时最多计 3 行，否则长表里带空格的短格子
+    // （“第 1 行”、英文人名）会把其他列挤到最小宽度。
+    const multiWordRows = rows.filter((row) => row[index]?.text.includes(' ') ?? false).length;
+    const multilineBias = Math.min(multiWordRows, MULTILINE_BIAS_MAX_ROWS) * 2;
     return Math.max(8, headerWeight, maxCell + multilineBias + 6);
   });
 

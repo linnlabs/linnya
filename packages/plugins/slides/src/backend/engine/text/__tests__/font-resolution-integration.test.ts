@@ -260,6 +260,16 @@ describe('Slides font resolution integration', () => {
     expect(metrics.lineGap).toBeCloseTo(0.2 * 20 / 72, 6);
   });
 
+  it('falls back to typo metrics when the win metrics are zero (Apple Color Emoji)', () => {
+    // Apple Color Emoji 实测：usWinAscent/usWinDescent 为 0，typo 为 0.9375 / -0.3125，未设 USE_TYPO_METRICS。
+    const metrics = fontMetadataToLineMetrics(makeMeta({
+      winAscent: 0, winDescent: 0, typoAscent: 0.9375, typoDescent: -0.3125, typoLineGap: 0, useTypoMetrics: false,
+    }), { fontFamily: 'Apple Color Emoji', fontSizePt: 20, bold: false, italic: false, script: 'latin' });
+
+    expect(metrics.ascent).toBeCloseTo(0.9375 * 20 / 72, 6);
+    expect(metrics.descent).toBeCloseTo(0.3125 * 20 / 72, 6);
+  });
+
   it('keeps east Asian font metrics in the same OS/2 coordinate system', () => {
     const metrics = fontMetadataToLineMetrics(makeMeta(), {
       fontFamily: 'Resolved Sans',

@@ -217,7 +217,8 @@ describe('presentationComposeInput', () => {
               position: { x: 0.5, y: 0.8, w: 4.2, h: 2.4 },
               rows: [
                 ['ok'],
-                [{ text: '' }],
+                // 空字符串是合法的空格子；没有任何文字字段的对象才是坏格子。
+                [{ fill: '#123456' }],
               ],
             },
           ],

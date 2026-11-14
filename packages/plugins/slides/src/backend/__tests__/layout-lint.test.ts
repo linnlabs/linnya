@@ -63,6 +63,45 @@ function makeInfo(overrides?: Partial<PresentationInfo>): PresentationInfo {
   };
 }
 
+/** 每行宽 width、高 height 的最终排版，用来构造字行真实相交的文字。 */
+function makeLineLayout(lineCount: number, width: number, height: number): TextLayoutResult {
+  return {
+    ...makeTextLayout(Array.from({ length: lineCount }, (_, index) => `line ${index}`)),
+    lines: Array.from({ length: lineCount }, (_, index) => ({
+      paragraphIndex: 0,
+      slices: [{ paragraphIndex: 0, runIndex: 0, text: `line ${index}`, x: 0, width, textY: index * height }],
+      y: index * height,
+      baseline: height * 0.8,
+      height,
+      width,
+      align: 'left' as const,
+    })),
+    contentHeightInches: lineCount * height,
+  };
+}
+
+/** 上段 3 行（底行落在 y≈1.38–1.66），下段首行从 y≈1.45 起；盒只交叠约两成。 */
+function makeLineCollisionInfo(lower?: Partial<PresentationInfo['slides'][number]['elements'][number]>): PresentationInfo {
+  return makeInfo({
+    slides: [{
+      number: 1,
+      elements: [
+        {
+          name: 'Upper', elementId: 'upper', type: 'text', text: '上段三行文字', fontSize: 20,
+          position: { x: 0.5, y: 0.4, w: 2.8, h: 1.31 },
+          textLayout: makeLineLayout(3, 2.5, 0.4),
+        },
+        {
+          name: 'Lower', elementId: 'lower', type: 'text', text: '下段文字', fontSize: 20,
+          position: { x: 0.5, y: 1.4, w: 2.8, h: 0.93 },
+          textLayout: makeLineLayout(2, 2.5, 0.4),
+          ...lower,
+        },
+      ],
+    }],
+  });
+}
+
 function makeConstraintEvidence(input: {
   layoutNodeId: string;
   positionMode: 'flow' | 'absolute';
@@ -602,6 +641,32 @@ describe('LayoutLint', () => {
     /* 与 SpatialSemantics 单一真值源对齐：独立 text 互压 = forbidden */
     expect(overlap?.evidence.overlapClass).toBe('forbidden');
     expect(overlap?.evidence.nodes.map((node) => node.nodeId)).toEqual(['text-0', 'text-1']);
+  });
+
+  it('两段实色文字的字行相交时，盒交叠不到 35% 也报 high-confidence 撞字', () => {
+    const report = lint.lint(makeLineCollisionInfo());
+    const overlap = report.issues.find((issue) => issue.code === 'element_overlap');
+    expect(overlap?.confidence).toBe('high');
+    expect(overlap?.evidence.smallerCoveredRatio).toBeLessThan(0.35);
+    expect(overlap?.evidence.intent?.assessment).toBe('likely_unintentional');
+    expect(overlap?.evidence.intersection.y).toBeCloseTo(1.45, 2);
+  });
+
+  it('盒交叠但字行没碰到时不报撞字', () => {
+    const report = lint.lint(makeLineCollisionInfo({
+      textLayout: makeLineLayout(1, 2.5, 0.4),
+      position: { x: 0.5, y: 1.6, w: 2.8, h: 0.5 },
+    }));
+    expect(report.issues.some((issue) => issue.code === 'element_overlap')).toBe(false);
+  });
+
+  it('淡字或展示大字与正文字行相交时只作 medium 复核', () => {
+    for (const lower of [{ textOpacity: 0.3 }, { opacity: 0.4 }, { fontSize: 60 }]) {
+      const report = lint.lint(makeLineCollisionInfo(lower));
+      const overlap = report.issues.find((issue) => issue.code === 'element_overlap');
+      expect(overlap?.confidence, JSON.stringify(lower)).toBe('medium');
+      expect(overlap?.evidence.intent?.assessment).toBe('unknown');
+    }
   });
 
   it('normalizes floating-point coverage before producing strict overlap evidence', () => {

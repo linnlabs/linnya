@@ -586,9 +586,10 @@ export class CodegenDeckBuilder {
 
     const direct = readCompiledDirectComposeInput(compiled.input);
     if (direct.error || !direct.input) {
+      // 编译通过、回读却失败说明两侧代码不一致（例如执行器与主进程版本不同），属于内部缺陷；带上回读原因，否则只能看到“请重试”。
       failBuild(
         'slides.environment.build_executor_unavailable',
-        'The Slides build executor returned an invalid compose result.',
+        `The Slides build executor returned an invalid compose result${direct.error ? `: ${direct.error}` : '.'}`,
       );
     }
     return {

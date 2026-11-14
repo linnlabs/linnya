@@ -1,7 +1,8 @@
 /**
- * Windows / Office 与 macOS 之间同字形风格的 CJK 字体对照，按优先级排列。
+ * Windows / Office 与 macOS 之间同字形风格的字体对照，按优先级排列。
  *
- * 请求字体本机没有时，通用打分只知道“同脚本”，可能把宋体换成日文明朝、把中宋换成繁体黑体；
+ * 请求字体本机没有时，通用打分只知道“同脚本”，可能把宋体换成日文明朝、把中宋换成繁体黑体，
+ * 西文的 Office 字体（Tw Cen MT、Aptos、Cambria）缺少参考度量时甚至会落到宋体的西文字形；
  * 这里先给出同书体、同地区字形的候选。候选仍须本机已安装且 cmap 覆盖正文，否则回到通用打分。
  * 只收录系统自带或系统按需下载的字体，不写入任何第三方字体。
  */
@@ -37,6 +38,13 @@ const EQUIVALENT_GROUPS: ReadonlyArray<readonly [readonly string[], readonly str
   [['Batang', '바탕', 'Gungsuh', '궁서'], ['AppleMyungjo', 'Batang']],
   [['Apple SD Gothic Neo'], ['Malgun Gothic']],
   [['AppleMyungjo'], ['Batang']],
+  // 西文：Office 字体在 Mac 上常缺（未装 Office 字体包），按书体对到系统字体
+  [['Tw Cen MT', 'Tw Cen MT Condensed', 'Century Gothic'], ['Futura', 'Avenir Next', 'Helvetica Neue']],
+  [['Aptos', 'Aptos Display', 'Aptos Narrow', 'Segoe UI', 'Franklin Gothic Book', 'Franklin Gothic Medium'], ['Helvetica Neue', 'Arial']],
+  [['Cambria'], ['Georgia', 'Times New Roman']],
+  [['Consolas'], ['Menlo', 'Monaco', 'Courier New']],
+  [['Helvetica Neue', 'Helvetica'], ['Arial']],
+  [['Menlo', 'Monaco'], ['Consolas', 'Courier New']],
 ];
 
 const EQUIVALENT_INDEX: ReadonlyMap<string, readonly string[]> = new Map(

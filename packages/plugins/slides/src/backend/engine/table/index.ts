@@ -1,4 +1,4 @@
-export { resolveGeneratedTableLayout } from './functions/resolveGeneratedTableLayout';
+export { resolveGeneratedTableLayout, scaleTableFontSize } from './functions/resolveGeneratedTableLayout';
 export {
   resolveTableDefaultFills,
   resolveTablePageColor,

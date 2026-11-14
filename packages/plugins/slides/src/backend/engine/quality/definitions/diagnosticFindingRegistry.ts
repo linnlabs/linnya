@@ -88,7 +88,7 @@ export const DIAGNOSTIC_CODE_REGISTRY = {
   // 显式背景/装饰仍保留越界事实，但其设计意图由 producer 表达为 info；不能在准入时丢失整份检查。
   out_of_bounds: policy('node', 'geometry', 'node_bounds', ['warning', 'info'], ['high'], 'fix', ['inspect', 'render']),
   element_edge_margin: policy('node', 'composition', 'node_bounds', ['info'], ['medium'], 'review', ['render']),
-  element_overlap: policy('node_relation', 'geometry', 'node_overlap', ['warning'], ['medium'], 'review', ['inspect', 'render'], 'symptom'),
+  element_overlap: policy('node_relation', 'geometry', 'node_overlap', ['warning'], ['medium', 'high'], 'review', ['inspect', 'render'], 'symptom'),
   text_decoration_collision: policy('node_relation', 'text_layout', 'node_overlap', ['warning'], ['high'], 'fix', ['inspect', 'render'], 'symptom'),
   origin_stacking: policy('node_relation', 'geometry', 'origin_stacking', ['warning'], ['high'], 'fix', ['inspect', 'render'], 'symptom'),
   text_overflow_risk: policy('node', 'text_layout', 'text_layout', ['warning'], ['high', 'medium'], 'fix', ['inspect', 'render'], 'symptom'),

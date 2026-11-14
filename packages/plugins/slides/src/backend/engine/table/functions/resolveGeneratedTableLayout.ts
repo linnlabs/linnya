@@ -48,7 +48,20 @@ export function resolveGeneratedTableLayout(input: GeneratedTableLayoutInput): G
   const rows = naturalRows.map((value, index) => height < naturalHeight
     ? value * height / naturalHeight
     : value + (index >= firstExpandableRow ? extraPerRow : 0));
-  return { columns, rows, cells, width, height, fontSize, headerFontSize, padding };
+  // PowerPoint 表格不执行 normAutofit：行高放不下时撑高行、整张表越出盒子，预览却按缩字放进去。
+  // 压缩时把字号与内边距按同一比例写定，预览与导出拿到同一组字号，过小的字号由 inspect 报告。
+  const fontScale = height < naturalHeight ? height / naturalHeight : 1;
+  return {
+    columns, rows, cells, width, height, fontScale,
+    fontSize: scaleTableFontSize(fontSize, fontScale),
+    headerFontSize: scaleTableFontSize(headerFontSize, fontScale),
+    padding: padding * fontScale,
+  };
+}
+
+/** 单元格声明字号与表格压缩比例的乘积；向下取到 0.1pt，保证不比行高要求的大。 */
+export function scaleTableFontSize(fontSize: number, fontScale: number): number {
+  return fontScale >= 1 ? fontSize : Math.floor(fontSize * fontScale * 10) / 10;
 }
 
 function placeCells(input: GeneratedTableLayoutInput): GeneratedTableCell[] {

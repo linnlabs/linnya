@@ -113,6 +113,15 @@ describe('parseTableDataLike — styled headers promote 到 rows[0]', () => {
 });
 
 describe('parseTableDataLike — headers 字段非法形态拒绝', () => {
+  it('矩阵表左上角的空表头和正文空格子都保留为空单元格', () => {
+    const result = parseTableDataLike({ headers: ['', '2024', '2025'], rows: [['营收', '', 12]] });
+    expect(result.error).toBeUndefined();
+    expect(result.data).toEqual({
+      headers: ['', '2024', '2025'],
+      rows: [[{ text: '营收' }, { text: '' }, { text: '12' }]],
+    });
+  });
+
   it('headers 是字符串而非数组 → error', () => {
     const result = parseTableDataLike({ headers: 'A,B', rows: [['x']] });
     expect(result.error).toMatch(/表头必须是数组/);
