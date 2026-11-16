@@ -1,3 +1,4 @@
+import { createTimer } from '@linnya/renderer-ui';
 import { watch } from 'vue';
 import {
   useNotificationStore,
@@ -7,29 +8,20 @@ import {
 export function startNotificationAutoDismissal(
   notificationStore: NotificationStore = useNotificationStore(),
 ): () => void {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  function clearScheduledDismissal(): void {
-    if (timeoutId === null) return;
-    clearTimeout(timeoutId);
-    timeoutId = null;
-  }
+  const dismissal = createTimer();
 
   const stopWatching = watch(
     () => [notificationStore.isVisible, notificationStore.presentationRevision] as const,
     ([isVisible]) => {
-      clearScheduledDismissal();
+      dismissal.cancel();
       if (!isVisible || notificationStore.duration <= 0) return;
-
-      timeoutId = setTimeout(() => {
-        notificationStore.hide();
-      }, notificationStore.duration);
+      dismissal.start(() => notificationStore.hide(), notificationStore.duration);
     },
     { flush: 'sync' },
   );
 
   return () => {
     stopWatching();
-    clearScheduledDismissal();
+    dismissal.cancel();
   };
 }

@@ -1,4 +1,5 @@
 import { nextTick } from 'vue';
+import { onNextPaint } from '@linnya/renderer-ui';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import type { ActiveDocument, ActiveDocumentType } from '@/app/layout/definitions/layoutState';
 import {
@@ -42,17 +43,6 @@ let documentOpenIntentSeq = 0;
 let currentDocumentOpenIntent: DocumentOpenIntent | null = null;
 let panePlacementSwapTransitionToken = 0;
 
-function scheduleAfterNextPaint(callback: () => void): void {
-  if (typeof globalThis.requestAnimationFrame !== 'function') {
-    globalThis.setTimeout(callback, 0);
-    return;
-  }
-
-  globalThis.requestAnimationFrame(() => {
-    globalThis.requestAnimationFrame(callback);
-  });
-}
-
 function runWithoutWorkspacePanePlacementTransition(action: () => void): void {
   const body = globalThis.document?.body;
   if (!body) {
@@ -69,7 +59,7 @@ function runWithoutWorkspacePanePlacementTransition(action: () => void): void {
   } finally {
     // 交换主/侧 pane 是语义位置切换，不能播放展开/折叠动画；
     // 等浏览器完成本次布局提交后再恢复普通右侧栏动画。
-    scheduleAfterNextPaint(() => {
+    onNextPaint(() => {
       if (panePlacementSwapTransitionToken === token) {
         body.classList.remove('workspace-pane-placement-swapping');
       }

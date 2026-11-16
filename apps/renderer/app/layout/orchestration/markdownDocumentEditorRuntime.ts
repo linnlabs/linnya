@@ -1,4 +1,5 @@
 import { nextTick, watch } from 'vue';
+import { createTimer } from '@linnya/renderer-ui';
 import { useUIStore } from '@/shared/stores/ui';
 import type {
   MarkdownDocumentEditorRuntimePort,
@@ -41,10 +42,11 @@ export function createMarkdownDocumentEditorRuntime(): MarkdownDocumentEditorRun
 
       return new Promise<ReadyMarkdownDocumentEditor>((resolve, reject) => {
         let settled = false;
+        const deadline = createTimer();
 
         const cleanup = () => {
           stopWatch();
-          window.clearTimeout(timeoutId);
+          deadline.cancel();
           options.signal?.removeEventListener('abort', handleAbort);
         };
 
@@ -73,7 +75,7 @@ export function createMarkdownDocumentEditorRuntime(): MarkdownDocumentEditorRun
           fail(createAbortError());
         };
 
-        const timeoutId = window.setTimeout(() => {
+        deadline.start(() => {
           fail(new Error(
             '[markdownDocumentEditorRuntime] Markdown editor is not ready within timeout',
           ));

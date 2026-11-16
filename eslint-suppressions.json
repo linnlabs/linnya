@@ -29,6 +29,41 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/conversation/features/client-notices/orchestration/useClientNoticePresentation.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/features/command-execution-presentation/ui/CommandExecutionCard.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/features/composer-references/orchestration/createComposerReferenceHover.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/conversation/features/context-window-usage/orchestration/useContextWindowUsagePresentation.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/features/interactive-run/composables/useDetachedInteractiveRunObservation.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/conversation/features/run-document-changes/orchestration/useRunDocumentChanges.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/features/subrun-card/orchestration/createSubrunMessageAdmissionScheduler.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/conversation/features/subrun-trace/__tests__/subrunTrace.test.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -36,6 +71,34 @@
   },
   "apps/renderer/domains/conversation/features/subrun-trace/orchestration/useAppendOnlySubrunTrace.ts": {
     "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/features/timeline/orchestration/useTimelineTurnIndex.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/features/timeline/orchestration/waitForTimelineVisualTurnMounted.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/features/virtualizer-spike/functions/recordVirtualizerSpikeFrames.ts": {
+    "no-restricted-globals": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/conversation/features/virtualizer-spike/orchestration/useConversationVirtualizerSpike.ts": {
+    "no-restricted-properties": {
+      "count": 4
+    }
+  },
+  "apps/renderer/domains/conversation/features/virtualizer-spike/ui/VirtualizerSpikeMessage.vue": {
+    "no-restricted-properties": {
       "count": 1
     }
   },
@@ -64,13 +127,134 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/conversation/services/orchestration/projectionCommitPipeline.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/AiAssistantInput/AiAssistantInputFooter.vue": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/conversation/ui/Message.vue": {
     "vue/multi-word-component-names": {
       "count": 1
     }
   },
+  "apps/renderer/domains/conversation/ui/components/UiCardGroup.vue": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/conversation/ui/components/timeline/TimelineNav.vue": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/components/timeline/composables/useTimelineSync.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    },
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/conversationView/composables/useConversationScrollController.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/conversationView/composables/useSettledConversationContentWidth.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/conversationView/composables/useStreamingScrollGlide.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/conversationView/composables/useStreamingWaitingIndicator.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/conversationView/composables/useTanstackConversationVirtualizer.ts": {
+    "no-restricted-properties": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/conversation/ui/conversationView/composables/useTimelineLayoutReserveAnimation.ts": {
+    "no-restricted-properties": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/conversation/ui/message/ExecutionNoticeMessage.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/message/ThoughtMessage.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/message/UserMessage.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/conversation/ui/message/components/SmartCodeBlock.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "vue/no-v-html": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/message/components/citation/ConversationCitationNode.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/message/components/stream/ConversationMathBlockNode.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/message/components/stream/StreamingText.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/message/components/stream/createMarkdownParseScheduler.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/message/components/stream/useStreamingRevealContent.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/messageCanvas/components/ConversationVisualRowActions.vue": {
+    "no-restricted-properties": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/conversation/ui/sidebarChatList/useSidebarChatList.ts": {
+    "no-restricted-globals": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/conversation/ui/tools/image/ImageRenderer.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/tools/knowledge/clipboard/orchestration/useRenderedAnswerTransferHost.ts": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -94,6 +278,11 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/editor/blocks/AudioBlock/orchestration/createAudioDeviceActions.js": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/editor/blocks/AudioBlock/services/audioContentAiService.js": {
     "no-unused-vars": {
       "count": 2
@@ -105,7 +294,30 @@
     }
   },
   "apps/renderer/domains/editor/blocks/AudioBlock/ui/RecordingControls.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "vue/no-side-effects-in-computed-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/ui/WaveformRenderer.js": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/ui/composables/useTranscriptionRequest.js": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/ui/content-panel/NotesTab.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/ui/content-panel/SummaryTab.vue": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -122,6 +334,11 @@
   "apps/renderer/domains/editor/blocks/CodeBlock/keyboard/CodeBlockKeys.js": {
     "no-unused-vars": {
       "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/CodeBlock/ui/CodeBlockView.vue": {
+    "no-restricted-globals": {
+      "count": 1
     }
   },
   "apps/renderer/domains/editor/blocks/HeadingBlock.js": {
@@ -142,6 +359,16 @@
   "apps/renderer/domains/editor/blocks/ImageBlock/plugins/ImageDropPlugin.js": {
     "no-unused-vars": {
       "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/ImageBlock/ui/ImageBlockView.vue": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/ImageBlock/ui/ImageResizePanel.vue": {
+    "no-restricted-properties": {
+      "count": 1
     }
   },
   "apps/renderer/domains/editor/blocks/LatexBlock/InlineLatexNode.js": {
@@ -180,6 +407,11 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/editor/blocks/LatexBlock/ui/LatexInputPanel.vue": {
+    "no-restricted-globals": {
+      "count": 3
+    }
+  },
   "apps/renderer/domains/editor/blocks/ListItemBlock.js": {
     "no-unused-vars": {
       "count": 1
@@ -210,6 +442,11 @@
       "count": 3
     }
   },
+  "apps/renderer/domains/editor/blocks/TableBlock/commands/tableCellCommands.js": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/editor/blocks/TableBlock/commands/tableColumnDeletion.js": {
     "no-unused-vars": {
       "count": 1
@@ -223,6 +460,11 @@
   "apps/renderer/domains/editor/blocks/TableBlock/commands/tableFillCommands.js": {
     "no-unused-vars": {
       "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/commands/tableToolbarCommands.js": {
+    "no-restricted-globals": {
+      "count": 2
     }
   },
   "apps/renderer/domains/editor/blocks/TableBlock/extensions/TableCellInteractionExtension.js": {
@@ -275,9 +517,55 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/editor/blocks/TableBlock/toolbar/TableSimpleToolbar.vue": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/ui/TableCoordinateHeaders.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/ui/TableSizeSelector.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/ui/composables/useTableAiActions.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/ui/composables/useTableCellHandlePosition.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/ui/composables/useTableCoordinateHeaderController.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    },
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/ui/composables/useTableCoordinateHeaderLayoutSync.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    },
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/editor/blocks/TableBlock/utils/tableContentUtils.js": {
     "no-unused-vars": {
       "count": 6
+    }
+  },
+  "apps/renderer/domains/editor/core/editorFactory.js": {
+    "no-restricted-globals": {
+      "count": 1
     }
   },
   "apps/renderer/domains/editor/core/extensionRegistry.ts": {
@@ -288,6 +576,11 @@
       "count": 1
     },
     "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/core/initialFocusPolicy.js": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -338,6 +631,9 @@
     }
   },
   "apps/renderer/domains/editor/extensions/core/commands/MoveCommands.js": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "no-unused-vars": {
       "count": 1
     }
@@ -358,6 +654,9 @@
     }
   },
   "apps/renderer/domains/editor/extensions/interaction/drag/DropCursorPlugin.js": {
+    "no-restricted-globals": {
+      "count": 2
+    },
     "no-unused-vars": {
       "count": 5
     }
@@ -440,12 +739,20 @@
       "count": 5
     }
   },
+  "apps/renderer/domains/editor/features/AiWriting/ui/AiWriting.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/editor/features/Annotation/AnnoHighlightState.js": {
     "no-unused-vars": {
       "count": 1
     }
   },
   "apps/renderer/domains/editor/features/Annotation/AnnoLayoutPlugin.js": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "no-unused-vars": {
       "count": 2
     }
@@ -488,6 +795,16 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/editor/features/AutoComplete/services/AutocompleteTriggerManager.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/AutoComplete/services/BehaviorTracker.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/editor/features/AutoComplete/services/FeatureExtractor.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 4
@@ -508,13 +825,66 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/editor/features/BlockHistory/utils/scrollSync.ts": {
+    "no-restricted-globals": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/features/FindReplace/extension/FindReplaceExtension.js": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/editor/features/RenderVirtualization/controller/keyboardPreHydration.test.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
     }
   },
+  "apps/renderer/domains/editor/features/RenderVirtualization/controller/renderVirtualizationEngineDefaults.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    },
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/RenderVirtualization/controller/scrollHandshake.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/RenderVirtualization/controller/viewportTracker.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/RenderVirtualization/runtime/RootBlockRuntimeRegistry.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/RenderVirtualization/state/nodeViewLifecycle.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
   "apps/renderer/domains/editor/features/RenderVirtualization/state/positionKeepAlive.test.ts": {
     "@typescript-eslint/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/orchestration/devRevisionTest.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/ui/overlay/useRevisionOverlayLayer.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/ui/shell/useShellBlockRevisionHeader.ts": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -543,6 +913,16 @@
       "count": 10
     }
   },
+  "apps/renderer/domains/editor/features/Revision/utils/pending/insertPendingRevisionApplier.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/utils/pending/nonInsertPendingRevisionBatchApplier.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/editor/features/Revision/utils/pending/pendingRevisionHelpers.ts": {
     "@typescript-eslint/ban-ts-comment": {
       "count": 4
@@ -569,8 +949,28 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/editor/features/blockActionMenu/service.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "apps/renderer/domains/editor/features/blockActionMenu/types.ts": {
     "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/blockActionMenu/ui/BlockActionMenu.vue": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/chart-editing/orchestration/useChartEditDraft.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/chart-reading/orchestration/useChartSurfaceRuntime.ts": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -586,6 +986,49 @@
   },
   "apps/renderer/domains/editor/features/citation/store/useCitationPanelStore.ts": {
     "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/citation/ui/CitationPopover.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/document-references/ui/createDocumentReferenceNodeView.ts": {
+    "no-restricted-globals": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/features/floating-toolbar/FloatingToolbarExtension.js": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/outline/OutlineSidebar.vue": {
+    "no-restricted-globals": {
+      "count": 3
+    },
+    "no-restricted-properties": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/outline/OutlineToggleButton.vue": {
+    "no-restricted-properties": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/table-ai-mode/functions/waitForTableDocumentChange.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/table-ai-mode/orchestration/tableAiColumnReferenceRuntime.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/table-ai-mode/orchestration/tableAiModeLifecycle.ts": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
@@ -607,8 +1050,18 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/editor/services/editorService.js": {
+    "no-restricted-globals": {
+      "count": 3
+    }
+  },
   "apps/renderer/domains/editor/services/useAiWritingController.ts": {
     "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/services/usePanelPositioning.ts": {
+    "no-restricted-properties": {
       "count": 1
     }
   },
@@ -630,8 +1083,144 @@
       "count": 1
     }
   },
+  "apps/renderer/domains/editor/shared/utils/blockNavigation.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/shared/utils/blockRefSnapshotSync.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/ui/EditorContent.vue": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/ui/EditorContext.vue": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/ui/composables/useBlockActivation.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/ui/composables/useBlockAnnotations.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/ui/composables/useBlockViewPostMountWork.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    },
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/ui/composables/useShellBlockVisibilityBridge.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/ui/scheduling/editorIdleScheduler.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/ui/services/editorMemoryPerf.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/ui/services/editorPerfBenchmark.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    },
+    "no-restricted-properties": {
+      "count": 11
+    }
+  },
+  "apps/renderer/domains/knowledgebase/features/upload-queue/orchestration/polling.js": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/knowledgebase/orchestration/createKnowledgeBaseRuntime.js": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/knowledgebase/services/progressAnimator.js": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/model-configuration/features/direct-provider-onboarding/ui/DirectProviderOnboardingForm.vue": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/model-configuration/features/ollama-model-registration/ui/OllamaModelRegistrationForm.vue": {
+    "no-restricted-properties": {
+      "count": 2
+    }
+  },
   "apps/renderer/domains/workspace/features/import-export/services/exportService.js": {
     "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectConversationSearch.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectConversationsData.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectOverviewContentSearch.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectOverviewData.ts": {
+    "no-restricted-globals": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/workspace/features/project-overview/ui/ProjectConversationsPanel.vue": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/features/project-overview/ui/ProjectOverviewBoard.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/features/project-overview/ui/ProjectOverviewView.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/features/project-overview/ui/ProjectSaveFilterPopover.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/services/file-manager/index.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/ui/sidebar/file-tree/TreeItem.vue": {
+    "no-restricted-properties": {
       "count": 1
     }
   },
@@ -681,6 +1270,101 @@
       "count": 2
     }
   },
+  "packages/plugins/canvas/src/renderer/adapters/createCanvasDocumentPort.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/capabilities/textRasterization/functions/htmlCanvasPaint.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/capabilities/textRasterization/orchestration/createLatestRasterQueue.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/features/canvasChrome/orchestration/useCanvasSaveStatus.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/features/canvasDocument/orchestration/createCanvasDocumentSynchronization.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/features/canvasDocument/orchestration/createCanvasEditingClaims.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/features/cardMedia/orchestration/createCanvasContentNotifications.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/features/cardMedia/orchestration/createCanvasDocumentPreviews.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/features/connections/orchestration/createCanvasConnectionLabelPreview.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/features/conversationSelection/ports/canvasReferenceFocus.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/features/viewMemory/orchestration/createCanvasViewMemory.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/functions/createCanvasRasterCadence.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "packages/plugins/canvas/src/renderer/hidden-render-worker/workerEntry.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/kernel/render/pixi/CanvasBitmapFades.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/kernel/render/pixi/CanvasFrameDrawing.ts": {
+    "no-restricted-globals": {
+      "count": 3
+    }
+  },
+  "packages/plugins/canvas/src/renderer/kernel/render/pixi/CanvasSceneMotion.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/kernel/render/pixi/PixiCanvasKernel.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/orchestration/createCanvasRasterPresentation.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/canvas/src/renderer/orchestration/installCanvasDisplayProjection.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "packages/plugins/slides/resources/skills/slides-design/references/examples/style-consulting.js": {
     "no-irregular-whitespace": {
       "count": 1
@@ -691,8 +1375,96 @@
       "count": 13
     }
   },
+  "packages/plugins/slides/src/renderer/features/deckNavigator/orchestration/scheduleThumbnailWork.ts": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/deckNavigator/ui/DeckFilmstrip.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/documentBuildFailure/ui/SlidesDraftFailureLog.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/documentRuntime/orchestration/usePresentedFrame.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/editingCommands/orchestration/useDelayedSaveStatus.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/elementProperties/orchestration/useCustomColorSubmenu.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/konvaPreview/orchestration/useKonvaRasterScale.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/renderVisualResources/orchestration/useReadySlideVisualResources.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/sourceSelection/ui/SourceSelectionPromptPopover.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/stageZoom/orchestration/useSlideStageViewport.ts": {
+    "no-restricted-properties": {
+      "count": 2
+    }
+  },
+  "packages/plugins/slides/src/renderer/features/textEditing/orchestration/createRichTextEditor.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/src/renderer/ports/registerSlidesRendererPorts.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
   "packages/renderer-ui/src/features/feedback/ui/Skeleton.vue": {
     "vue/multi-word-component-names": {
+      "count": 1
+    }
+  },
+  "packages/renderer-ui/src/features/feedback/vue/hoverTooltipService.ts": {
+    "no-restricted-properties": {
+      "count": 3
+    }
+  },
+  "packages/renderer-ui/src/features/floating-panels/ui/DraggablePanel.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    }
+  },
+  "packages/renderer-ui/src/features/number-entry/ui/NumberSpinButtons.vue": {
+    "no-restricted-globals": {
+      "count": 2
+    }
+  },
+  "packages/renderer-ui/src/features/select-menu/composables/useDropdown.ts": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
+  "packages/renderer-ui/src/features/select-menu/composables/useSubmenu.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    },
+    "no-restricted-properties": {
       "count": 1
     }
   },
@@ -701,13 +1473,37 @@
       "count": 1
     }
   },
+  "packages/renderer-ui/src/features/select-menu/ui/CustomSelect.vue": {
+    "no-restricted-properties": {
+      "count": 1
+    }
+  },
   "packages/renderer-ui/src/features/select-menu/ui/TextPopover.vue": {
+    "no-restricted-globals": {
+      "count": 1
+    },
+    "no-restricted-properties": {
+      "count": 2
+    },
     "vue/no-v-html": {
+      "count": 1
+    }
+  },
+  "packages/renderer-ui/src/features/selection/ui/SegmentedTabs.vue": {
+    "no-restricted-globals": {
       "count": 1
     }
   },
   "packages/renderer-ui/src/features/selection/ui/Switch.vue": {
     "vue/multi-word-component-names": {
+      "count": 1
+    }
+  },
+  "packages/renderer-ui/src/scroll/useOverlayScrollViewport.ts": {
+    "no-restricted-globals": {
+      "count": 3
+    },
+    "no-restricted-properties": {
       "count": 1
     }
   },

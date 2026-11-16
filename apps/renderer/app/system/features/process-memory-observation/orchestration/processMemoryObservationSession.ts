@@ -1,13 +1,15 @@
+import { createRepeatingTimer } from '@linnya/renderer-ui';
 import { processMemoryObservationGateway } from '../infrastructure/processMemoryObservationGateway';
 import { useProcessMemoryObservationStore } from '../store/processMemoryObservationStore';
 import { ProcessMemoryObservationRuntime } from './ProcessMemoryObservationRuntime';
 
 const SAMPLE_INTERVAL_MS = 1000;
 
-const runtime = new ProcessMemoryObservationRuntime(processMemoryObservationGateway, {
-  setInterval: (callback, intervalMs) => window.setInterval(callback, intervalMs),
-  clearInterval: timerId => window.clearInterval(timerId),
-});
+// 模块级单例，录制由 stop 显式结束，不跟随任何组件卸载。
+const runtime = new ProcessMemoryObservationRuntime(
+  processMemoryObservationGateway,
+  createRepeatingTimer(),
+);
 
 export async function startProcessMemoryObservation(): Promise<void> {
   if (runtime.isRecording) return;

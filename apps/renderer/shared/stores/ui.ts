@@ -71,11 +71,6 @@ export const useUIStore = defineStore('ui', {
     // Drag and Drop state
     draggedOverItemId: null as string | null,
 
-    // 布局过渡状态机（供动画等逻辑使用）
-    isSidebarTransitioning: false,
-    layoutTransitionSeq: 0,
-    transitionStartedAt: 0,
-
     // 修订模式开关（文档级 Track Changes）
     revisionModeEnabled: false,
   }),
@@ -214,10 +209,6 @@ export const useUIStore = defineStore('ui', {
     setDraggedOverItemId(itemId: string | null) {
       this.draggedOverItemId = itemId;
     },
-
-    // 🔥 清理：移除不再需要的布局过渡状态管理
-    // markLayoutTransitionStart() { ... },
-    // markLayoutTransitionEnd() { ... },
 
     // ==================== 修订模式相关 Actions ====================
 

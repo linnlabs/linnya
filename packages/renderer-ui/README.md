@@ -17,7 +17,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -239,6 +239,23 @@ Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决�
 `DraggablePanel` 支持五种初始位置、数字或四边 position offset、可选容器边界、固定/auto 尺寸、拖拽和八方向 resize。`variant="mini"` 保留轻量筛选/查找面板的既有密度；auto 宽度或高度会隐藏对应方向的 resize 手柄。组件继续阻止根节点和拖拽手柄的 `mousedown`/`touchstart` 冒泡，避免画布把面板交互误判为框选、节点拖拽或平移。
 
 普通原生属性会落在面板根节点；业务需要交互标记时由自身显式传入。指定内部节点的业务样式只能通过 `classNames.header/title/closeButton/body` 注入业务命名空间 class，不得覆盖 `.draggable-panel .panel-*` 等内部 selector。位置与 resize 规则同时以纯函数公开，供不渲染 Vue 的边界测试和同语义编排复用。
+
+## 界面时序
+
+渲染端（Host、本包、插件 renderer）不直接调用 `setTimeout`、`setInterval`、`requestAnimationFrame`、`requestIdleCallback` 与 `queueMicrotask`，由 ESLint 检查，旧用法记在 `eslint-suppressions.json` 里只减不增。直接调用的问题是组件卸载后它照样执行，而且常被用来“推迟一下”掩盖时序问题；名字说明意图的封装让读者知道为什么要等。
+
+| 要做的事 | 组件 setup 里 | 组件外 |
+| --- | --- | --- |
+| 延迟、防抖、节流、自动关闭、悬停意图 | `useTimer()` | `createTimer()` |
+| 轮询、时钟 | `useRepeatingTimer()` | `createRepeatingTimer()` |
+| 滚动、拖拽、尺寸变化时每帧合并一次 | `useFrameBatch(cb)` | `createFrameBatch(cb)` |
+| 动画、平滑进度 | `useFrameLoop(cb)` | `createFrameLoop(cb)` |
+
+`use…` 把取消挂到当前组件（或 store 等 effect scope）上，卸载时自动执行，只在 setup 里调用。`create…` 不做任何绑定，由调用方在自己的收尾里 `cancel` / `stop`，用于模块级单例、编排函数和类；这样全局编排不会因为某个组件卸载被意外取消。`Timer.start` 会取消还在等待的上一次（相当于重新计时），`startIfIdle` 在等待中时保持原计时，用来做“最多每隔多久一次”。
+
+读布局或开始一段过渡用 `onNextFrame(cb)`；等初始样式画到屏幕上之后再触发过渡用 `onNextPaint(cb)`（两帧）。二者返回取消函数，不随组件卸载取消；`await nextFrame()` / `await nextPaint()` 是 Promise 写法。没有 `requestAnimationFrame` 的环境（Node 测试等）用定时器代替。等若干毫秒用 `@linnya/foundation` 的 `sleep`；Vue 的 `nextTick` 照常使用。
+
+如果只是想推迟一下等某个状态生效，先找到它真正就绪的信号（事件、Promise、watch），不要用定时器猜时间。
 
 ## 悬浮提示
 

@@ -1,26 +1,26 @@
 import { formatHistoryDateTime, formatHistoryTime, type HistoryTimeInput } from '@app/schemas';
 import { getCurrentScope, onScopeDispose, readonly, ref, type Ref } from 'vue';
+import { createRepeatingTimer } from '@linnya/renderer-ui';
 import { useLocalizationStore } from '../store/localizationStore';
 
 /** 相对时间（“12 分钟前”）的刷新间隔；所有组件共用一个时钟，没人用时停掉。 */
 const CLOCK_INTERVAL_MS = 30_000;
 
 const sharedNow: Ref<number> = ref(Date.now());
-let clock: ReturnType<typeof setInterval> | undefined;
+const clock = createRepeatingTimer();
 let subscribers = 0;
 
 function subscribeClock(): void {
   subscribers += 1;
-  if (clock !== undefined) return;
+  if (clock.running) return;
   sharedNow.value = Date.now();
-  clock = setInterval(() => { sharedNow.value = Date.now(); }, CLOCK_INTERVAL_MS);
+  clock.start(() => { sharedNow.value = Date.now(); }, CLOCK_INTERVAL_MS);
 }
 
 function unsubscribeClock(): void {
   subscribers = Math.max(0, subscribers - 1);
-  if (subscribers > 0 || clock === undefined) return;
-  clearInterval(clock);
-  clock = undefined;
+  if (subscribers > 0 || !clock.running) return;
+  clock.stop();
 }
 
 export interface UseHistoryTimeResult {

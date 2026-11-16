@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.5.0 - 2026-11-16
+
+- 新增界面调度函数，替代直接调用 `setTimeout`、`setInterval`、`requestAnimationFrame`：`Timer`（延迟、防抖、节流、自动关闭，`start` 重新计时、`startIfIdle` 保持原计时）、`RepeatingTimer`（轮询、时钟）、`FrameBatch`（同一帧内多次请求只执行一次，用于滚动、拖拽、尺寸变化）、`FrameLoop`（每帧执行直到停止，callback 返回 `false` 自动停止），以及 `onNextFrame` / `onNextPaint`（返回取消函数）与 `nextFrame` / `nextPaint`（Promise）。组件 setup 里用 `useTimer` / `useRepeatingTimer` / `useFrameBatch` / `useFrameLoop`，卸载时自动取消；组件外用对应的 `create…` 版本，由调用方收尾。没有 `requestAnimationFrame` 的环境用定时器代替。新增导出，现有 `^3.0.0` 插件保持兼容；使用新函数的插件需声明 `^3.5.0`。
+
 ## 3.4.1 - 2026-11-09
 
 - `CustomSelect` 的菜单项不再显示全局焦点环：键盘操作时当前项用与悬停相同的底色表达；用鼠标打开菜单时首项拿到焦点但不显示任何效果（此前先按过键再右键，首项会出现焦点环）。公开 props、事件与键盘导航不变。 现有 `^3.0.0` 插件保持兼容。

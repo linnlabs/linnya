@@ -83,7 +83,7 @@ import { computed, ref, watch } from 'vue';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { FolderOpenIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, IconButton, type IconButtonExposed } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton, onNextFrame, type IconButtonExposed } from '@linnya/renderer-ui';
 import SidebarChatList from '@/domains/conversation/ui/SidebarChatList.vue';
 import type { Project } from '@/domains/workspace/store';
 import {
@@ -178,7 +178,8 @@ function handleCollapseEnter(element: Element): void {
   const collapseElement = getCollapseElement(element);
   if (!collapseElement) return;
 
-  requestAnimationFrame(() => {
+  // 高度先停在 0 一帧，过渡才会从 0 展开。
+  onNextFrame(() => {
     collapseElement.style.height = `${collapseElement.scrollHeight}px`;
   });
 }

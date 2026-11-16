@@ -1,4 +1,5 @@
 import { nextTick, ref, watch } from 'vue';
+import { createTimer } from '@linnya/renderer-ui';
 import type {
   DocumentSurfaceRuntimePort,
   DocumentSurfaceReadyRef,
@@ -31,10 +32,11 @@ async function waitForSurfaceReadyOnly(
 
   return new Promise<void>((resolve, reject) => {
     let settled = false;
+    const deadline = createTimer();
 
     const cleanup = () => {
       stopWatch();
-      window.clearTimeout(timeoutId);
+      deadline.cancel();
       options.signal?.removeEventListener('abort', handleAbort);
     };
 
@@ -62,7 +64,7 @@ async function waitForSurfaceReadyOnly(
       fail(createAbortError());
     };
 
-    const timeoutId = window.setTimeout(() => {
+    deadline.start(() => {
       fail(new Error(`[documentRuntime] ${surface.type} surface is not ready within timeout`));
     }, timeoutMs);
 

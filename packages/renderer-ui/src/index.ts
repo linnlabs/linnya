@@ -176,3 +176,24 @@ export type {
 
 export { FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from './features/toolbars';
 export type { FloatingToolbarPosition, FloatingToolbarProps, ToolbarButtonProps, ToolbarColorButtonProps } from './features/toolbars';
+export {
+  createFrameBatch,
+  createFrameLoop,
+  createRepeatingTimer,
+  createTimer,
+  nextFrame,
+  nextPaint,
+  onNextFrame,
+  onNextPaint,
+  useFrameBatch,
+  useFrameLoop,
+  useRepeatingTimer,
+  useTimer,
+} from './features/scheduling';
+export type {
+  FrameBatch,
+  FrameCallback,
+  FrameLoop,
+  RepeatingTimer,
+  Timer,
+} from './features/scheduling';
