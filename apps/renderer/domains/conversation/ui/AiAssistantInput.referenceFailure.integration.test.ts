@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-/* eslint-disable vue/one-component-per-file -- 集成场景在此装配外围入口，输入组件与错误出口仍使用生产实现。 */
 import { createApp, defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

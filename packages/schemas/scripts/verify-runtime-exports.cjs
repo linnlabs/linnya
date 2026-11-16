@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * 验证公开入口能被 Node 按真实 package exports 解析。
  *

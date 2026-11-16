@@ -79,7 +79,6 @@ async function initExplorerContext(): Promise<ExplorerContext> {
  * 打印帮助信息
  */
 function showHelp(): void {
-  // eslint-disable-next-line no-console
   console.log(`
 Workspace Explorer - Workspace 浏览与调试工具
 
@@ -112,23 +111,16 @@ async function handleListProjects(ctx: ExplorerContext): Promise<void> {
   const projects = ctx.workspaceService.getAllProjects();
 
   if (projects.length === 0) {
-    // eslint-disable-next-line no-console
     console.log('当前没有任何项目。');
     return;
   }
 
-  // eslint-disable-next-line no-console
   console.log(`共 ${projects.length} 个项目：\n`);
   for (const project of projects) {
-    // eslint-disable-next-line no-console
     console.log(`- id: ${project.id}`);
-    // eslint-disable-next-line no-console
     console.log(`  name: ${project.name}`);
-    // eslint-disable-next-line no-console
     console.log(`  description: ${project.description ?? '无'}`);
-    // eslint-disable-next-line no-console
     console.log(`  created_at: ${new Date(project.created_at).toLocaleString()}`);
-    // eslint-disable-next-line no-console
     console.log('');
   }
 }
@@ -142,7 +134,6 @@ async function handleListNodes(
   parentNodeId: string | undefined
 ): Promise<void> {
   if (!projectId || projectId.trim().length === 0) {
-    // eslint-disable-next-line no-console
     console.error('❌ list-nodes 需要提供 <projectId> 参数');
     return;
   }
@@ -154,25 +145,17 @@ async function handleListNodes(
   const nodes = ctx.workspaceService.getChildNodes(parentId, trimmedProjectId);
 
   if (nodes.length === 0) {
-    // eslint-disable-next-line no-console
     console.log('没有找到任何子节点。');
     return;
   }
 
-  // eslint-disable-next-line no-console
   console.log(`共 ${nodes.length} 个节点：\n`);
   nodes.forEach((node: WorkspaceNode) => {
-    // eslint-disable-next-line no-console
     console.log(`- id: ${node.id}`);
-    // eslint-disable-next-line no-console
     console.log(`  name: ${node.name}`);
-    // eslint-disable-next-line no-console
     console.log(`  type: ${node.type}`);
-    // eslint-disable-next-line no-console
     console.log(`  parent_id: ${node.parent_id ?? 'null'}`);
-    // eslint-disable-next-line no-console
     console.log(`  updated_at: ${new Date(node.updated_at).toLocaleString()}`);
-    // eslint-disable-next-line no-console
     console.log('');
   });
 }
@@ -187,29 +170,20 @@ async function handleRecentDocs(ctx: ExplorerContext, limitArg: string | undefin
   const docs = ctx.workspaceService.getRecentDocuments(limit);
 
   if (docs.length === 0) {
-    // eslint-disable-next-line no-console
     console.log('最近没有打开过任何文档。');
     return;
   }
 
-  // eslint-disable-next-line no-console
   console.log(`最近打开的文档（最多 ${limit} 个）：\n`);
   docs.forEach((doc: RecentDocumentInfo) => {
-    // eslint-disable-next-line no-console
     console.log(`- id: ${doc.id}`);
-    // eslint-disable-next-line no-console
     console.log(`  name: ${doc.name}`);
-    // eslint-disable-next-line no-console
     console.log(`  type: ${doc.type}`);
-    // eslint-disable-next-line no-console
     console.log(`  project_id: ${doc.project_id ?? 'null'}`);
     if (doc.last_opened_at) {
-      // eslint-disable-next-line no-console
       console.log(`  last_opened_at: ${new Date(doc.last_opened_at).toLocaleString()}`);
     }
-    // eslint-disable-next-line no-console
     console.log(`  updated_at: ${new Date(doc.updated_at).toLocaleString()}`);
-    // eslint-disable-next-line no-console
     console.log('');
   });
 }
@@ -219,7 +193,6 @@ async function handleRecentDocs(ctx: ExplorerContext, limitArg: string | undefin
  */
 async function handleShowDocJson(ctx: ExplorerContext, documentId: string | undefined): Promise<void> {
   if (!documentId || documentId.trim().length === 0) {
-    // eslint-disable-next-line no-console
     console.error('❌ show-doc-json 需要提供 <documentId> 参数');
     return;
   }
@@ -228,7 +201,6 @@ async function handleShowDocJson(ctx: ExplorerContext, documentId: string | unde
   const node = ctx.workspaceService.getNode(trimmedId);
 
   if (!node) {
-    // eslint-disable-next-line no-console
     console.error(`❌ 未找到节点：${trimmedId}`);
     return;
   }
@@ -248,13 +220,10 @@ async function handleShowDocJson(ctx: ExplorerContext, documentId: string | unde
         nodePath: node.name,
       });
       if (!doc) {
-        // eslint-disable-next-line no-console
         console.error(`❌ ${node.type} 文档类型 hook 未读到文档：${trimmedId}`);
         return;
       }
-      // eslint-disable-next-line no-console
       console.log(`\n${node.type} 文档 hook 读取结果（node_id=${trimmedId}）：\n`);
-      // eslint-disable-next-line no-console
       console.log(JSON.stringify(doc, null, 2));
       return;
     }
@@ -264,12 +233,9 @@ async function handleShowDocJson(ctx: ExplorerContext, documentId: string | unde
   try {
     const { MarkdownDocumentService } = await import('src/domains/markdown');
     const content = new MarkdownDocumentService(ctx.database).getDocument(trimmedId);
-    // eslint-disable-next-line no-console
     console.log(`\nMarkdown 文档 JSON（node_id=${trimmedId}）：\n`);
-    // eslint-disable-next-line no-console
     console.log(JSON.stringify(content, null, 2));
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error(`❌ 读取 Markdown 文档失败：${(error as Error).message}`);
   }
 }
@@ -298,7 +264,6 @@ async function main(): Promise<void> {
     } else if (command === 'show-doc-json') {
       await handleShowDocJson(ctx, args[1]);
     } else {
-      // eslint-disable-next-line no-console
       console.error(`未知命令: ${command}`);
       showHelp();
     }

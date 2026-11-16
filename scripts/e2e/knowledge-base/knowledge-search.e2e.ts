@@ -189,7 +189,6 @@ function resolveSingleProjectIdFromDb(db: ReturnType<DatabaseServiceType['getDb'
 }
 
 function showHelp(): void {
-  // eslint-disable-next-line no-console
   console.log(`
 KnowledgeBase Search CLI
 
@@ -714,7 +713,6 @@ async function initCliDeps(params: {
   // 否则 formatSearchResultsForLLM 无法读取相邻块，Prev/Next 会缺失（你刚刚看到的就是这个问题）。
   pathManager.setWorkspaceRoot(workspaceRoot);
 
-  // eslint-disable-next-line no-console
   console.log('[kb-search-cli] 使用 workspace.sqlite', {
     workspaceDbPath,
     workspaceRoot,
@@ -790,12 +788,10 @@ async function handleQdrantInfoStandalone(argv: string[]): Promise<void> {
     { label: 'kg_edges', name: getGraphEdgesCollectionNameCli(kbId) },
   ];
 
-  // eslint-disable-next-line no-console
   console.log(`[qdrant-info] kbId=${kbId}, qdrantUrl=${qdrantUrl}`);
   for (const c of collections) {
     try {
       const info: QdrantCollectionInfo = await qdrantAdapter.getCollection(c.name);
-      // eslint-disable-next-line no-console
       console.log(
         [
           `- ${c.label}: ${c.name}`,
@@ -807,7 +803,6 @@ async function handleQdrantInfoStandalone(argv: string[]): Promise<void> {
         ].join('\n')
       );
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.log(
         `- ${c.label}: ${c.name}\n  ❌ getCollectionInfo failed: ${e instanceof Error ? e.message : String(e)}`
       );
@@ -842,7 +837,6 @@ async function handleQdrantCountStandalone(argv: string[]): Promise<void> {
   const qdrantUrl = resolveQdrantUrlFromArgv(argv);
   const collectionName = readNonEmptyString(pickFlagValue(argv, '--collection'));
   if (!collectionName) {
-    // eslint-disable-next-line no-console
     console.error('❌ qdrant-count 需要 --collection <name>');
     return;
   }
@@ -855,7 +849,6 @@ async function handleQdrantCountStandalone(argv: string[]): Promise<void> {
   const qdrantAdapter = QdrantAdapter.getInstance({ url: qdrantUrl });
   const count = await qdrantAdapter.countPoints(collectionName, filter ? { filter } : undefined);
 
-  // eslint-disable-next-line no-console
   console.log(
     [
       `[qdrant-count] collection=${collectionName}, qdrantUrl=${qdrantUrl}`,
@@ -902,7 +895,6 @@ async function handleQdrantPeekStandalone(argv: string[]): Promise<void> {
   const qdrantUrl = resolveQdrantUrlFromArgv(argv);
   const collectionName = readNonEmptyString(pickFlagValue(argv, '--collection'));
   if (!collectionName) {
-    // eslint-disable-next-line no-console
     console.error('❌ qdrant-peek 需要 --collection <name>');
     return;
   }
@@ -935,10 +927,8 @@ async function handleQdrantPeekStandalone(argv: string[]): Promise<void> {
     return { kind: 'unknown', type: typeof v };
   };
 
-  // eslint-disable-next-line no-console
   console.log(`[qdrant-peek] collection=${collectionName}, qdrantUrl=${qdrantUrl}, limit=${limit}`);
   for (const p of points) {
-    // eslint-disable-next-line no-console
     console.log(
       `- id=${p.id}\n  preview=${JSON.stringify(pickSafePreviewFields(p.payload))}\n  vector=${JSON.stringify(
         summarizeVector(p.vector)
@@ -952,12 +942,10 @@ async function handleQdrantSearchStandalone(argv: string[]): Promise<void> {
   const collectionName = readNonEmptyString(pickFlagValue(argv, '--collection'));
   const text = readNonEmptyString(pickFlagValue(argv, '--text'));
   if (!collectionName) {
-    // eslint-disable-next-line no-console
     console.error('❌ qdrant-search 需要 --collection <name>');
     return;
   }
   if (!text) {
-    // eslint-disable-next-line no-console
     console.error('❌ qdrant-search 需要 --text <query>');
     return;
   }
@@ -1014,7 +1002,6 @@ async function handleQdrantSearchStandalone(argv: string[]): Promise<void> {
     return typeof v === 'string' && v.trim().length > 0 ? v : undefined;
   };
 
-  // eslint-disable-next-line no-console
   console.log(
     [
       `[qdrant-search] collection=${collectionName}, qdrantUrl=${qdrantUrl}`,
@@ -1034,7 +1021,6 @@ async function handleQdrantSearchStandalone(argv: string[]): Promise<void> {
     const kind = pickMeta(payload, 'kind') ?? '';
     const nodeId = pickMeta(payload, 'node_id') ?? '';
     const edgeId = pickMeta(payload, 'edge_id') ?? '';
-    // eslint-disable-next-line no-console
     console.log(
       `- score=${r.score.toFixed(4)} id=${r.id} block_type=${bt} meta.kind=${kind} meta.node_id=${nodeId} meta.edge_id=${edgeId} doc_id=${docId} block_id=${blockId}`
     );
@@ -1052,7 +1038,6 @@ async function handleListProjects(deps: CliDeps, argv: string[]): Promise<void> 
     : (db.prepare(sql).all(DEFAULT_PROJECT_SYSTEM_ROLE) as CliProjectRow[]);
 
   if (rows.length === 0) {
-    // eslint-disable-next-line no-console
     console.log(
       showAll
         ? '当前没有任何项目。'
@@ -1061,10 +1046,8 @@ async function handleListProjects(deps: CliDeps, argv: string[]): Promise<void> 
     return;
   }
 
-  // eslint-disable-next-line no-console
   console.log(`共 ${rows.length} 个项目：\n`);
   for (const r of rows) {
-    // eslint-disable-next-line no-console
     console.log(formatProjectRow(r));
   }
 }
@@ -1075,7 +1058,6 @@ async function handleListProjectKbs(
 ): Promise<void> {
   const projectId = readNonEmptyString(projectIdRaw);
   if (!projectId) {
-    // eslint-disable-next-line no-console
     console.error('❌ list-project-kbs 需要提供 <projectId>');
     return;
   }
@@ -1088,15 +1070,12 @@ async function handleListProjectKbs(
     .all(projectId) as Array<{ kb_id: string; created_at: number }>;
 
   if (rows.length === 0) {
-    // eslint-disable-next-line no-console
     console.log(`项目 ${projectId} 当前未关联任何知识库（工具层将回退到 default）。`);
     return;
   }
 
-  // eslint-disable-next-line no-console
   console.log(`项目 ${projectId} 关联的知识库：\n`);
   for (const r of rows) {
-    // eslint-disable-next-line no-console
     console.log(`- kb_id: ${r.kb_id} (linked_at: ${new Date(r.created_at).toLocaleString()})`);
   }
 }
@@ -1114,12 +1093,10 @@ async function handleSearch(deps: CliDeps, argv: string[]): Promise<void> {
   const printMode = parsePrintMode(pickFlagValue(argv, '--print')) ?? 'ai';
 
   if (!query) {
-    // eslint-disable-next-line no-console
     console.error('❌ search 必须提供 --query <text>');
     return;
   }
   if (topK <= 0) {
-    // eslint-disable-next-line no-console
     console.error('❌ --topK 必须是正整数');
     return;
   }
@@ -1130,7 +1107,6 @@ async function handleSearch(deps: CliDeps, argv: string[]): Promise<void> {
   const singleProjectId = resolveSingleProjectIdFromDb(db);
   const projectId = projectIdFromFlag ?? defaultProjectId ?? singleProjectId;
   if (!projectId) {
-    // eslint-disable-next-line no-console
     console.error(
       `❌ 无法确定 projectId：请传 --projectId <id>，或先用 list-projects --all 查看项目列表。`
     );
@@ -1222,18 +1198,15 @@ async function handleSearch(deps: CliDeps, argv: string[]): Promise<void> {
   const observation = readObservationFromToolOutput(output);
 
   if (printMode === 'json') {
-    // eslint-disable-next-line no-console
     console.log(output);
     return;
   }
 
   if (printMode === 'both') {
-    // eslint-disable-next-line no-console
     console.log(output);
   }
 
   // ✅ 对齐“最终发给 AI 的 tool content”：只打印 observation 原文，不添加任何包裹字符
-  // eslint-disable-next-line no-console
   console.log(observation ?? output);
 }
 
@@ -1287,7 +1260,6 @@ async function main(): Promise<number> {
       return 0;
     }
 
-    // eslint-disable-next-line no-console
     console.error(`未知命令: ${command}`);
     showHelp();
     return 1;
@@ -1296,14 +1268,12 @@ async function main(): Promise<number> {
   }
 }
 
-// eslint-disable-next-line no-console
 main()
   .then(code => {
     // CLI 工具必须确定性退出，否则 Electron-run-as-node 会因为残留句柄导致需要手动 Ctrl+C
     process.exit(code);
   })
   .catch(e => {
-    // eslint-disable-next-line no-console
     console.error(e);
     process.exit(1);
   });

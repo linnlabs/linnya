@@ -147,7 +147,6 @@ export const knowledgeBaseService = {
    * - Web 环境（无 preload）继续走 HTTP。
    */
   _getIpcApi() {
-    // eslint-disable-next-line no-undef
     if (typeof window === 'undefined' || !window.electronAPI) {
       return null;
     }

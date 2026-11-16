@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-/* eslint-disable vue/one-component-per-file -- 用同一集成场景验证宿主和动态贡献组件的挂载边界。 */
 import { createApp, defineComponent, h, nextTick, onMounted, onUnmounted } from 'vue';
 import { afterEach, expect, it, vi } from 'vitest';
 import ConversationReferenceChip from './ConversationReferenceChip.vue';

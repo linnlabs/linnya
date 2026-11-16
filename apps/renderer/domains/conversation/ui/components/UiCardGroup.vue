@@ -365,7 +365,6 @@ const onEnter = (el: Element) => {
   element.style.height = '0';
   element.style.opacity = '0';
   // 强制重绘后再过渡到内容高度。
-  // eslint-disable-next-line no-unused-expressions
   element.offsetHeight;
   element.style.height = `${element.scrollHeight}px`;
   element.style.opacity = '1';
@@ -382,7 +381,6 @@ const onLeave = (el: Element) => {
   element.style.height = `${element.scrollHeight}px`;
   element.style.opacity = '1';
   // 强制重绘后再过渡到折叠态。
-  // eslint-disable-next-line no-unused-expressions
   element.offsetHeight;
   element.style.height = '0';
   element.style.opacity = '0';

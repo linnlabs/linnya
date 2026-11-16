@@ -32,7 +32,6 @@ export function fillTemplate(template: string, variables: TemplateVariables = {}
   if (process.env.NODE_ENV !== 'production') {
     const remainingVars = extractTemplateVariables(filledTemplate);
     if (remainingVars.length > 0) {
-      // eslint-disable-next-line no-console
       console.warn(`Warning: Template still contains unfilled variables: ${remainingVars.join(', ')}`);
     }
   }

@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-/* eslint-disable vue/one-component-per-file -- 两个设置页夹具用于验证切换时页头所有权不会重复或丢失。 */
 import { createApp, defineComponent, h, nextTick, type App } from 'vue';
 import { createPinia } from 'pinia';
 import { afterEach, describe, expect, it } from 'vitest';

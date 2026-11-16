@@ -23,6 +23,11 @@ export default [
     ],
   },
   {
+    // 每条规则只有 error 或 off：警告没人看，只会淹没信号。旧问题记在 eslint-suppressions.json，
+    // 见 docs/development/build-and-test.md 的“代码检查基线”。
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
+  },
+  {
     ...js.configs.recommended,
     files: ['**/*.{cjs,js,mjs}'],
     languageOptions: {
@@ -34,7 +39,14 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       'no-console': 'off',
+      // 模块里的 /* global */ 注释重复声明 Node 内置全局不会覆盖任何东西，不算重复声明。
+      'no-redeclare': ['error', { builtinGlobals: false }],
     },
+  },
+  {
+    // Slides 示例在沙箱里运行，createSlide 等 DSL 全局由 slides-skill 门禁按沙箱声明做类型检查。
+    files: ['packages/plugins/slides/resources/skills/slides-design/references/examples/**/*.js'],
+    rules: { 'no-undef': 'off' },
   },
   {
     files: ['**/*.{cts,mts,ts,tsx}'],
@@ -57,7 +69,19 @@ export default [
     files: ['packages/plugins/slides/src/backend/sandbox/pptComposeProfile.ambient.d.ts'],
     rules: { '@typescript-eslint/no-unused-vars': 'off' },
   },
-  ...vuePlugin.configs['flat/recommended'],
+  // ESLint 不检查排版：Vue 只启用防错规则（essential），再加几条有语义的规则。
+  ...vuePlugin.configs['flat/essential'],
+  {
+    files: ['**/*.vue'],
+    rules: {
+      'vue/no-v-html': 'error',
+      'vue/require-explicit-emits': 'error',
+      'vue/no-template-shadow': 'error',
+      'vue/no-lone-template': 'error',
+      'vue/no-multiple-slot-args': 'error',
+      'vue/no-required-prop-with-default': 'error',
+    },
+  },
   {
     files: ['apps/renderer/**/*.vue', 'packages/**/*.vue'],
     languageOptions: {
@@ -69,17 +93,6 @@ export default [
         extraFileExtensions: ['.vue'],
       },
       globals: globals.browser,
-    },
-  },
-  {
-    // Canvas guard已由Prettier负责排版；关闭与其冲突的Vue排版规则，语义规则继续生效。
-    files: ['packages/plugins/canvas/src/**/*.vue'],
-    rules: {
-      'vue/max-attributes-per-line': 'off',
-      'vue/html-indent': 'off',
-      'vue/singleline-html-element-content-newline': 'off',
-      'vue/html-closing-bracket-newline': 'off',
-      'vue/html-self-closing': 'off',
     },
   },
   {

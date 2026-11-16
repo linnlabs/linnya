@@ -1,0 +1,1240 @@
+{
+  "apps/linnya-benchmark/src/features/research-workflow/functions/projectionFacts.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/app/layout/AppHeader/index.vue": {
+    "vue/multi-word-component-names": {
+      "count": 1
+    }
+  },
+  "apps/renderer/app/model-inference/orchestration/unifiedApiService.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/app/plugins/composables.ts": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 10
+    }
+  },
+  "apps/renderer/app/plugins/orchestration/createToolCompactStepProjectionPort.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/app/update/ui/UpdateEntry.vue": {
+    "vue/no-v-html": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/features/subrun-trace/__tests__/subrunTrace.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/features/subrun-trace/orchestration/useAppendOnlySubrunTrace.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/history/services/historyApiService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/services/assistantService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/services/messageProjection/__tests__/activityBindingProjection.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/services/messageProjection/index.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/conversation/services/messageProjection/projectors/finalAnswer.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/Message.vue": {
+    "vue/multi-word-component-names": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/message/components/SmartCodeBlock.vue": {
+    "vue/no-v-html": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/conversation/ui/tools/tool_output/functions/projectToolOutputReadPresentation.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/conversation/ui/tools/types.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/composables/useAudioAnalyser.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/menu/audioBlockMenuProvider.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/services/audioContentAiService.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/types/audioBlock.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/ui/RecordingControls.vue": {
+    "vue/no-side-effects-in-computed-properties": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/AudioBlock/ui/content-panel/TimestampExtension.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/BaseBlock.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/blocks/CodeBlock/keyboard/CodeBlockKeys.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/HeadingBlock.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/HorizontalRuleBlock.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/blocks/ImageBlock/menu/imageBlockMenuProvider.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/ImageBlock/plugins/ImageDropPlugin.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/LatexBlock/InlineLatexNode.js": {
+    "no-unused-vars": {
+      "count": 1
+    },
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/LatexBlock/LatexBlock.js": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "apps/renderer/domains/editor/blocks/LatexBlock/commands/LatexCommands.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/LatexBlock/ui/InlineLatexView.vue": {
+    "vue/no-v-html": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/LatexBlock/ui/KatexRenderer.vue": {
+    "vue/no-v-html": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/LatexBlock/ui/LatexBlockView.vue": {
+    "vue/no-v-html": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/ListItemBlock.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/QuoteBlock.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/TableBlock.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/ai/tableAiPositionUtils.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/ai/tableAiUtils.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/commands/tableAlignCommands.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/commands/tableColumnDeletion.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/commands/tableCoreOperations.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/commands/tableFillCommands.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/extensions/TableCellInteractionExtension.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/extensions/TableColumnResizeExtension.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/extensions/TableHeaderSyncPlugin.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/extensions/TableKeyboardExtension.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/extensions/TablePasteExtension.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/extensions/TableSelectionDecoratorExtension.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/extensions/TableVerticalNavigationState.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/position/tableCoordinateUtils.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/position/tablePositionUtils.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/tableKeys.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/blocks/TableBlock/utils/tableContentUtils.js": {
+    "no-unused-vars": {
+      "count": 6
+    }
+  },
+  "apps/renderer/domains/editor/core/extensionRegistry.ts": {
+    "@typescript-eslint/ban-ts-comment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/extensions/clipboard/ClipboardListener.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/extensions/clipboard/markdown/InlineMarkdownInputRules.js": {
+    "no-unused-vars": {
+      "count": 3
+    },
+    "no-useless-escape": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/extensions/clipboard/markdown/StreamingMarkdown.js": {
+    "no-prototype-builtins": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/extensions/core/UniqueIdsExtension.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/extensions/core/commands/BlockQueryCommands.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/extensions/core/commands/ConversionCommands.js": {
+    "no-unused-vars": {
+      "count": 7
+    }
+  },
+  "apps/renderer/domains/editor/extensions/core/commands/HorizontalRuleCommands.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/extensions/core/commands/MergeCommands.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/extensions/core/commands/MoveCommands.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/extensions/core/commands/RemoveCommands.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/extensions/core/commands/SplitCommands.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/extensions/interaction/MouseListener.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/extensions/interaction/drag/DropCursorPlugin.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/extensions/keyboard/KeyboardListener.js": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/extensions/keyboard/KeyboardRegistry.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/extensions/keyboard/handlers/BlockEditing.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/extensions/keyboard/handlers/BlockMove.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/extensions/keyboard/handlers/BlockNavigation.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/extensions/keyboard/handlers/Indentation.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/extensions/position/NodeFinder.js": {
+    "no-dupe-class-members": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/extensions/position/PositionResolver.js": {
+    "no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/extensions/position/blockPosIndex.bench.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "apps/renderer/domains/editor/extensions/position/blockPosIndex.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "apps/renderer/domains/editor/extensions/position/index.js": {
+    "no-undef": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/AiWriting/AiWritingExtension.js": {
+    "no-constant-condition": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/AiWriting/config/contextConfig.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/AiWriting/examples/usageExample.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/AiWriting/keyboard/AiInteraction.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/features/Annotation/AnnoHighlightState.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/Annotation/AnnoLayoutPlugin.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/Annotation/commands/AnnoDeleteCommands.js": {
+    "no-empty": {
+      "count": 1
+    },
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/Annotation/config/contextConfig.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/Annotation/extensions/AnnoKeyboardExtension.js": {
+    "no-constant-condition": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/Annotation/ui/NewAnnotation.vue": {
+    "vue/no-mutating-props": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/AutoComplete/Autocomplete.js": {
+    "no-unused-vars": {
+      "count": 4
+    }
+  },
+  "apps/renderer/domains/editor/features/AutoComplete/handlers/AutocompleteEventHandler.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/AutoComplete/services/AutocompleteStateManager.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/AutoComplete/services/FeatureExtractor.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "apps/renderer/domains/editor/features/AutoComplete/services/IntentPredictor.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/AutoComplete/ui/AutocompleteSuggestionWidget.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/BlockHistory/ui/HistoryTimeline.vue": {
+    "vue/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/RenderVirtualization/controller/keyboardPreHydration.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/features/RenderVirtualization/state/positionKeepAlive.test.ts": {
+    "@typescript-eslint/no-empty-object-type": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/utils/diffUtils.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/utils/linearizeBlock.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/utils/pending/__test__/pendingExecutionPlan.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/utils/pending/__test__/pendingTableBlockApplier.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 14
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/utils/pending/__test__/updatePendingRevisionApplier.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/utils/pending/pendingRevisionHelpers.ts": {
+    "@typescript-eslint/ban-ts-comment": {
+      "count": 4
+    }
+  },
+  "apps/renderer/domains/editor/features/Revision/utils/revisionInlineRevisionSupport.spec.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "apps/renderer/domains/editor/features/SlashMenu/extension/SlashMenuExtension.js": {
+    "no-unused-vars": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/features/blockActionMenu/providers/commonProvider.ts": {
+    "@typescript-eslint/ban-ts-comment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/blockActionMenu/types.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/features/citation/extension/CitationInlineTriggerExtension.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 10
+    }
+  },
+  "apps/renderer/domains/editor/features/citation/plugins/bibliographyAutoMaintain.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "apps/renderer/domains/editor/features/citation/store/useCitationPanelStore.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/index.ts": {
+    "@typescript-eslint/ban-ts-comment": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/services/bootstrapEditorServices.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/services/editorDocumentStateLoader.test.ts": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/services/useAiWritingController.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/editor/services/useStreamingHandlers.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "apps/renderer/domains/editor/services/useStreamingHandlers.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    }
+  },
+  "apps/renderer/domains/editor/shared/utils/NodeUtils.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/domains/workspace/features/import-export/services/exportService.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/env.d.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    },
+    "@typescript-eslint/triple-slash-reference": {
+      "count": 1
+    }
+  },
+  "apps/renderer/global-frontend-modules.d.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "apps/renderer/shared/ipc/audioBlockGateway.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "apps/renderer/shared/ipc/todoGateway.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "apps/renderer/shared/ipc/workspaceGateway.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "apps/renderer/shared/utils/DebugUtils.js": {
+    "no-unreachable": {
+      "count": 2
+    }
+  },
+  "apps/renderer/shims-vue.d.ts": {
+    "@typescript-eslint/no-empty-object-type": {
+      "count": 2
+    },
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/plugin-host-contract/backend/toolRuntime.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "packages/plugins/slides/resources/skills/slides-design/references/examples/style-consulting.js": {
+    "no-irregular-whitespace": {
+      "count": 1
+    }
+  },
+  "packages/plugins/slides/resources/skills/slides-design/references/layoutPrimitives.d.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 13
+    }
+  },
+  "packages/renderer-ui/src/features/feedback/ui/Skeleton.vue": {
+    "vue/multi-word-component-names": {
+      "count": 1
+    }
+  },
+  "packages/renderer-ui/src/features/select-menu/functions/selectOptionValue.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "packages/renderer-ui/src/features/select-menu/ui/TextPopover.vue": {
+    "vue/no-v-html": {
+      "count": 1
+    }
+  },
+  "packages/renderer-ui/src/features/selection/ui/Switch.vue": {
+    "vue/multi-word-component-names": {
+      "count": 1
+    }
+  },
+  "packages/schemas/src/conversation/tool-message.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/index.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    },
+    "@typescript-eslint/triple-slash-reference": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/parser/index.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/parser/inline-parsers/checkbox-parser.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/parser/inline-parsers/emphasis-parser.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/parser/inline-parsers/image-parser.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "packages/stream-markdown-parser/src/parser/inline-parsers/index.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 14
+    }
+  },
+  "packages/stream-markdown-parser/src/parser/node-parsers/block-token-parser.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "packages/stream-markdown-parser/src/parser/node-parsers/container-parser.ts": {
+    "regexp/no-super-linear-backtracking": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/parser/node-parsers/footnote-parser.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/parser/node-parsers/table-parser.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/plugins/containers.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "packages/stream-markdown-parser/src/plugins/fixHtmlInline.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 34
+    }
+  },
+  "packages/stream-markdown-parser/src/plugins/fixLinkTokens.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 7
+    }
+  },
+  "packages/stream-markdown-parser/src/plugins/fixListItem.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/plugins/fixStrongTokens.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/plugins/fixTableTokens.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/src/plugins/math.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "unused-imports/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/test/html-block-parser.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 8
+    }
+  },
+  "packages/stream-markdown-parser/test/html-inline-plugin.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "packages/stream-markdown-parser/test/html-inline.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 6
+    }
+  },
+  "packages/stream-markdown-parser/test/inline-code-multi.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "packages/stream-markdown-parser/test/parse-markdown-to-structure.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "packages/stream-markdown-parser/test/strict-strong.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "packages/stream-markdown-parser/test/strong-link.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "packages/stream-markdown-parser/test/table-br.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "packages/stream-markdown-parser/test/text-special.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "scripts/codegen/layoutDts/__tests__/fixtures/sample-types.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/guards/agent-package-boundary-guard.rules.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/guards/application-layer-naming-guard.mjs": {
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "scripts/native/rebuild-native.cjs": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "scripts/test-runner/run-test-with-electron.cjs": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app-hosts/linnya/adapters/commands/process-owner/orchestration/createLocalCommandExecutionOwner.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app-hosts/linnya/adapters/flow/__integration-tests__/agentRunner.interrupted.integration.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/app-hosts/linnya/adapters/flow/__integration-tests__/flow.followup-tool-history.integration.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app-hosts/linnya/adapters/flow/__integration-tests__/summarization.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 3
+    }
+  },
+  "src/app-hosts/linnya/adapters/flow/__test-helpers__/mocks.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 17
+    }
+  },
+  "src/app-hosts/linnya/adapters/flow/flow.history-handler.service.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app-hosts/linnya/adapters/flow/functions/admitConversationAgentChoice.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app-hosts/linnya/adapters/inference/__tests__/hostCanonicalInferencePort.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    }
+  },
+  "src/app-hosts/linnya/adapters/inference/orchestration/createTextGenerationPort.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app-hosts/linnya/adapters/persistence/event-store/__tests__/sqlite.event-asset-links.contract.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app-hosts/linnya/application/file-link/orchestration/createConversationFileLinkRuntime.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/app-hosts/linnya/context-policies/defaultAgentProviderRegistry.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/core/di/ServiceRegistry.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "src/domains/evidence/features/ref-resolution/orchestration/__tests__/evidenceResolution.test.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "src/domains/markdown/features/block-content/infrastructure/sqlite/audioBlockService.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/domains/markdown/features/block-content/infrastructure/sqlite/codeBlockService.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/domains/markdown/features/block-content/infrastructure/sqlite/tableBlockService.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/domains/model-catalog/features/catalog-admission/__tests__/inferModelCapabilitiesById.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/electron-main/preload/modules/knowledge-base-preload.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/electron-main/preload/modules/models-preload.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/electron-main/preload/modules/system-preload.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 5
+    }
+  },
+  "src/electron-main/routes/knowledgeBaseRouter.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/electron-main/routes/ollamaRouter.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    },
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "src/electron-main/routes/staticRouter.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/features/knowledge-base/application/KnowledgeBaseCoordinator.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/application/knowledgeBaseService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/application/search/defaultSearchService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/application/search/graphEnhancedAgentSearch.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/application/services/__tests__/IngestionService.status-publisher.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/features/knowledge-base/graph/__tests__/connectivity/graphConnectivityService.test.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  },
+  "src/features/knowledge-base/graph/application/graphExtractionService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/features/knowledge-base/graph/application/knowledgeGraphQueueOrchestrator.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/graph/application/merger/graphResultMerger.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/features/knowledge-base/infrastructure/qdrant-repository/errors.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/infrastructure/sqlite/project-knowledge-base-links.types.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/ingestion/IngestionStateMachineManager.ts": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/features/knowledge-base/ingestion/failureCleanup.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/ingestion/handlers/ParsingHandler.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "src/features/knowledge-base/ingestion/handlers/StoringHandler.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/features/knowledge-base/ingestion/handlers/embeddingProvenanceConsistency.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/knowledge-base/ingestion/postprocessor.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "src/features/knowledge-base/utils/ranking.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/parsers/docxParser.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/plugins/install/orchestration/reconcilePluginActiveVersions.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/system/export/orchestration/exportArtifactTargetRuntime.integration.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/text-measurement/orchestration/defaultTextMeasureService.ts": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 1
+    }
+  },
+  "src/features/transcription/audio-preprocessing/audioLoader.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "src/features/transcription/audio-preprocessing/audioSaver.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/transcription/audio-preprocessing/index.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "src/features/transcription/audio-preprocessing/vadProcessor.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/transcription/audio-preprocessing/vadProcessor.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/transcription/longAudioTranscriptionService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "src/features/transcription/routes/transcriptionRouter.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/transcription/transcriptionMerger.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/features/transcription/transcriptionService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/features/transcription/utils/textDeduplicator.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/infra/adapters/vector-store/qdrant/QdrantAdapter.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 2
+    }
+  },
+  "src/infra/adapters/web-read/metasoReaderAdapter.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/infra/task-queue/workers/audio-processing.worker.ts": {
+    "@typescript-eslint/no-require-imports": {
+      "count": 2
+    }
+  },
+  "src/plugin-sdk/backend/documentTypeBackendHook.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    }
+  },
+  "src/plugin-sdk/backend/workspaceRuntime.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/shared/utils/TokenCalculator.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/tools/agent_control/task/__tests__/taskstateTools.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/tools/knowledgebase/reader/ListKnowledgeBaseTool.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/tools/knowledgebase/search/SearchInKnowledgeBaseTool.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/tools/knowledgebase/search/types.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/types/electron-api.d.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 15
+    }
+  },
+  "src/types/lodash-es.d.ts": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
+    }
+  }
+}

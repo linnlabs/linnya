@@ -30,6 +30,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Lint code
+        run: pnpm run lint:code
       - name: Run public architecture gates
         run: |
           pnpm run guard:github-actions-pinned

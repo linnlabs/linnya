@@ -91,8 +91,8 @@ Renderer 业务代码由 Rollup 按依赖图和动态 import 分块；不要按 
 | Schemas package | `pnpm run test:schemas-package-gate` |
 | Provider catalog | `pnpm run test:provider-catalog-package-gate` |
 | Slides plugin | `pnpm --filter @plugin/slides typecheck` 与 `pnpm --filter @plugin/slides test` |
-| 全仓 TypeScript 存量债务 | `pnpm run guard:tsc-baseline` |
-| 代码边界与格式 | 对修改文件运行 ESLint，并执行 `pnpm run lint:style`、`git diff --check` |
+| 全仓与 Renderer TypeScript 存量债务 | `pnpm run guard:tsc-baseline` |
+| 代码边界与格式 | `pnpm run lint:code`、`pnpm run lint:style`、`git diff --check` |
 
 凭据持久化变更需覆盖 App Server 的 `credentialPersistence.integration.test.ts` 与
 Backend Worker 的 `workerModelCredentials.integration.test.ts`：前者验证模型、OAuth、插件的
@@ -126,7 +126,9 @@ Vitest 不自动沿用 `.gitignore`，新增源码根或生成目录时必须同
 
 公共源码净化门禁使用 `pnpm run guard:public-source-sanitization`。它扫描 Git 已跟踪和未忽略的候选文本文件，拒绝开发者用户目录、机器卷、盘符根开发 checkout、父级个人工作区路径、macOS 用户临时目录、绝对符号链接和已退役产品身份；文档与测试只能使用 `name`、`example`、`${变量}` 或 `<用户名>` 一类明确占位符，门禁本身不得记录真实用户名、本机路径或旧名称字面量。
 
-全仓仍有来自渐进式 JavaScript/TypeScript 迁移的存量类型错误。`guard:tsc-baseline` 将错误总数与 `.baseline/typescript-errors.txt` 对比，只允许减少、不允许增加，并在公共 CI 执行；错误减少后运行 `pnpm run guard:tsc-baseline:update` 收紧基线。Shell E2E 的 `fixtures/` 与 `harness/` 已纳入根 TypeScript 发现范围，并在同一门禁中强制零错误；
+**代码检查基线。** `pnpm run lint:code` 在公共 CI 执行。规则只有 error 和 off 两档，只管正确性与边界，不检查排版（Canvas 的排版由它自己的 guard 用 Prettier 检查）。接入 CI 前已有的问题按文件和规则计数记在根目录 `eslint-suppressions.json`（ESLint 自带的批量压制），同一文件再出现同类问题就会失败；修掉旧问题后 lint 会提示基线过宽，运行 `pnpm run lint:code:prune` 收紧。不要用 `--suppress-all` 把新问题写进基线，也不要为过门禁加 `eslint-disable`；确需例外时写成 `eslint-disable-next-line <规则> -- <原因>`。反复纠正 Agent 的同一种错误时，优先在 `eslint.config.js` 加一条带说明的规则，而不是在文档里多写一句提醒。
+
+全仓仍有来自渐进式 JavaScript/TypeScript 迁移的存量类型错误。`guard:tsc-baseline` 分别统计根项目（`tsc -p tsconfig.json`，基线 `.baseline/typescript-errors.txt`）和 Renderer（`vue-tsc -p apps/renderer/tsconfig.json`，基线 `.baseline/renderer-typescript-errors.txt`）的错误总数，只允许减少、不允许增加，并在公共 CI 执行；错误减少后运行 `pnpm run guard:tsc-baseline:update` 收紧基线。Shell E2E 的 `fixtures/` 与 `harness/` 已纳入根 TypeScript 发现范围，并在同一门禁中强制零错误；
 其错误不能被其他模块的基线下降抵消，也不能通过更新基线接纳。这个债务门禁不能代替改动 owner 的严格 typecheck，新代码不得以“总数没有增加”为理由引入新的类型问题。
 
 依赖升级后若大量错误集中在命名空间类型、公开导出或推断链上，应先验证实际 npm 包的声明产物，

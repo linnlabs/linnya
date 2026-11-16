@@ -6,8 +6,6 @@ import os from 'node:os';
 import path from 'node:path';
 
 const repoRoot = process.cwd();
-const BASELINE_RELATIVE_PATH = '.baseline/typescript-errors.txt';
-const baselinePath = path.join(repoRoot, BASELINE_RELATIVE_PATH);
 const args = new Set(process.argv.slice(2));
 const shouldUpdateBaseline = args.has('--update-baseline');
 const shouldStageBaseline = args.has('--stage-baseline');
@@ -19,47 +17,80 @@ const explicitLogPath = explicitLogFileArg
   ? path.resolve(repoRoot, explicitLogFileArg.slice('--log-file='.length))
   : null;
 
+/**
+ * 每个项目各有一份只降不升的错误总数基线。根项目覆盖迁移期的 aggregate graph；
+ * Renderer 用 vue-tsc 的独立 profile，才能看到 .vue 文件里的类型错误。
+ */
+const PROJECTS = [
+  {
+    key: 'repo',
+    label: '全仓 tsc',
+    bin: 'tsc',
+    tsconfig: 'tsconfig.json',
+    baseline: '.baseline/typescript-errors.txt',
+    // 这部分必须零错误：既不能被其他模块的下降抵消，也不能通过更新基线接纳。
+    strictZero: {
+      label: 'Shell E2E fixtures/harness',
+      pattern: /^scripts\/e2e\/shell-tool\/(fixtures|harness)\/.*error TS\d+/u,
+    },
+  },
+  {
+    key: 'renderer',
+    label: 'Renderer vue-tsc',
+    bin: 'vue-tsc',
+    tsconfig: 'apps/renderer/tsconfig.json',
+    baseline: '.baseline/renderer-typescript-errors.txt',
+  },
+];
+
 function fail(message, exitCode = 1) {
   console.error(message);
   process.exit(exitCode);
 }
 
-function readBaseline() {
+function readBaseline(project) {
+  const baselinePath = path.join(repoRoot, project.baseline);
   if (!existsSync(baselinePath)) {
-    fail(`❌ tsc baseline 文件不存在：${path.relative(repoRoot, baselinePath)}`, 2);
+    fail(`❌ tsc baseline 文件不存在：${project.baseline}`, 2);
   }
 
   const content = readFileSync(baselinePath, 'utf8');
   const match = content.match(/^Total errors:\s*(\d+)\s*$/m);
   if (!match) {
-    fail(`❌ 无法从 ${BASELINE_RELATIVE_PATH} 解析 tsc baseline（缺少 "Total errors: N"）。`, 2);
+    fail(`❌ 无法从 ${project.baseline} 解析 tsc baseline（缺少 "Total errors: N"）。`, 2);
   }
 
   return {
+    path: baselinePath,
     content,
     value: Number(match[1]),
   };
 }
 
-function runTsc() {
-  const tscBin = process.platform === 'win32'
-    ? path.join(repoRoot, 'node_modules/.bin/tsc.cmd')
-    : path.join(repoRoot, 'node_modules/.bin/tsc');
+function logPathFor(project) {
+  if (explicitLogPath) {
+    return `${explicitLogPath.replace(/\.log$/u, '')}.${project.key}.log`;
+  }
+  return path.join(os.tmpdir(), `linnya-tsc-baseline-${project.key}-${process.pid}-${Date.now()}.log`);
+}
 
-  if (!existsSync(tscBin)) {
-    fail('❌ 找不到 node_modules/.bin/tsc；请先安装依赖。', 2);
+function runTypecheck(project) {
+  const binName = process.platform === 'win32' ? `${project.bin}.cmd` : project.bin;
+  const bin = path.join(repoRoot, 'node_modules/.bin', binName);
+
+  if (!existsSync(bin)) {
+    fail(`❌ 找不到 node_modules/.bin/${binName}；请先安装依赖。`, 2);
   }
 
-  const logPath = explicitLogPath
-    ?? path.join(os.tmpdir(), `linnya-tsc-baseline-${process.pid}-${Date.now()}.log`);
-  const result = spawnSync(tscBin, ['--noEmit', '-p', 'tsconfig.json', '--pretty', 'false'], {
+  const logPath = logPathFor(project);
+  const result = spawnSync(bin, ['--noEmit', '-p', project.tsconfig, '--pretty', 'false'], {
     cwd: repoRoot,
     encoding: 'utf8',
     maxBuffer: TSC_OUTPUT_MAX_BUFFER_BYTES,
   });
 
   if (result.error) {
-    fail(`❌ tsc 执行失败：${result.error.message}`, 2);
+    fail(`❌ ${project.label} 执行失败：${result.error.message}`, 2);
   }
 
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
@@ -70,12 +101,15 @@ function runTsc() {
     .filter((line) => /error TS\d+/u.test(line))
     .length;
 
-  const strictFixtureErrors = portableOutput.split(/\r?\n/u).filter(line => (
-    /^scripts\/e2e\/shell-tool\/(fixtures|harness)\/.*error TS\d+/u.test(line.replaceAll('\\', '/'))
-  ));
+  const strictZeroErrors = project.strictZero
+    ? portableOutput
+      .split(/\r?\n/u)
+      .filter((line) => project.strictZero.pattern.test(line.replaceAll('\\', '/')))
+    : [];
+
   return {
     current,
-    strictFixtureErrors,
+    strictZeroErrors,
     logPath,
   };
 }
@@ -86,21 +120,21 @@ function removeLogIfTemporary(logPath) {
   }
 }
 
-function updateBaseline(content, current) {
-  let next = content.replace(/^Total errors:\s*\d+\s*$/m, `Total errors: ${current}`);
+function updateBaseline(project, baseline, current) {
+  let next = baseline.content.replace(/^Total errors:\s*\d+\s*$/m, `Total errors: ${current}`);
   next = next.replace(
     /^(- tsc total errors:\s*<=\s*)\d+(\s.*)?$/m,
     (_, prefix, suffix = '') => `${prefix}${current}${suffix}`,
   );
 
-  if (next === content) {
-    fail('❌ tsc baseline 未能写回：没有找到可更新的 baseline 行。', 2);
+  if (next === baseline.content) {
+    fail(`❌ ${project.baseline} 未能写回：没有找到可更新的 baseline 行。`, 2);
   }
 
-  writeFileSync(baselinePath, next);
+  writeFileSync(baseline.path, next);
 
   if (shouldStageBaseline) {
-    const stageResult = spawnSync('git', ['add', '--', path.relative(repoRoot, baselinePath)], {
+    const stageResult = spawnSync('git', ['add', '--', project.baseline], {
       cwd: repoRoot,
       encoding: 'utf8',
     });
@@ -110,43 +144,58 @@ function updateBaseline(content, current) {
   }
 }
 
-const baseline = readBaseline();
-const tsc = runTsc();
-if (tsc.strictFixtureErrors.length > 0) {
-  console.error(tsc.strictFixtureErrors.join('\n'));
-  fail(`Shell E2E fixtures/harness 必须零类型错误；完整 log: ${tsc.logPath}`);
+/** 返回该项目是否通过；不在第一个失败处退出，好让一次运行报告全部项目。 */
+function checkProject(project) {
+  const baseline = readBaseline(project);
+  const result = runTypecheck(project);
+
+  console.log(`${project.label}（${project.tsconfig}）`);
+
+  if (project.strictZero) {
+    if (result.strictZeroErrors.length > 0) {
+      console.error(result.strictZeroErrors.join('\n'));
+      console.error(`❌ ${project.strictZero.label} 必须零类型错误；完整 log: ${result.logPath}`);
+      return false;
+    }
+    console.log(`  ${project.strictZero.label}: 0 type errors`);
+  }
+
+  console.log(`  baseline = ${baseline.value}`);
+  console.log(`  current  = ${result.current}`);
+
+  if (result.current > baseline.value) {
+    const delta = result.current - baseline.value;
+    console.error('');
+    console.error(`❌ ${project.label} 错误数净增 ${delta} 条（${baseline.value} → ${result.current}）`);
+    console.error('   baseline 只能下降，不能上调。请修掉新增类型错误后重试。');
+    console.error(`   完整 log: ${result.logPath}`);
+    return false;
+  }
+
+  if (result.current < baseline.value) {
+    if (!shouldUpdateBaseline) {
+      console.error('');
+      console.error(`❌ ${project.label} baseline 已过宽（baseline ${baseline.value}，current ${result.current}）。`);
+      console.error('   baseline 必须随错误数下降而收紧；请运行：pnpm run guard:tsc-baseline:update');
+      console.error(`   完整 log: ${result.logPath}`);
+      return false;
+    }
+
+    updateBaseline(project, baseline, result.current);
+    removeLogIfTemporary(result.logPath);
+    console.log(`  baseline tightened: ${baseline.value} -> ${result.current}`);
+    if (shouldStageBaseline) {
+      console.log('  baseline file staged');
+    }
+    return true;
+  }
+
+  removeLogIfTemporary(result.logPath);
+  console.log('  baseline is exact');
+  return true;
 }
 
-console.log('  Shell E2E fixtures/harness: 0 type errors');
-console.log(`  baseline = ${baseline.value}`);
-console.log(`  current  = ${tsc.current}`);
-
-if (tsc.current > baseline.value) {
-  const delta = tsc.current - baseline.value;
-  console.error('');
-  console.error(`❌ tsc 错误数净增 ${delta} 条（${baseline.value} → ${tsc.current}）`);
-  console.error('   baseline 只能下降，不能上调。请修掉新增类型错误后重试。');
-  console.error(`   完整 log: ${tsc.logPath}`);
+const results = PROJECTS.map(checkProject);
+if (results.includes(false)) {
   process.exit(1);
 }
-
-if (tsc.current < baseline.value) {
-  if (!shouldUpdateBaseline) {
-    console.error('');
-    console.error(`❌ tsc baseline 已过宽（baseline ${baseline.value}，current ${tsc.current}）。`);
-    console.error('   baseline 必须随错误数下降而收紧；请运行：pnpm run guard:tsc-baseline:update');
-    console.error(`   完整 log: ${tsc.logPath}`);
-    process.exit(1);
-  }
-
-  updateBaseline(baseline.content, tsc.current);
-  removeLogIfTemporary(tsc.logPath);
-  console.log(`  baseline tightened: ${baseline.value} -> ${tsc.current}`);
-  if (shouldStageBaseline) {
-    console.log('  baseline file staged');
-  }
-  process.exit(0);
-}
-
-removeLogIfTemporary(tsc.logPath);
-console.log('  baseline is exact');

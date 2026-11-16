@@ -161,11 +161,9 @@ export async function dumpGraphExtractionBatchIfEnabled(data: GraphExtractionDum
       { encoding: 'utf8' }
     );
     // 仅提示路径：避免把大 JSON 打到 stdout
-    // eslint-disable-next-line no-console
     console.log(`[KG-DUMP] graph extraction batch dumped: ${filePath}`);
   } catch (error) {
     // 注意：这是开发者调试能力，写盘失败不应影响抽取主流程
-    // eslint-disable-next-line no-console
     console.warn('[KG-DUMP] graph extraction dump failed:', error);
   }
 }

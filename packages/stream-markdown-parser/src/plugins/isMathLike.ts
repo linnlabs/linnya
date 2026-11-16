@@ -36,7 +36,6 @@ const TEX_SPECIFIC_RE = /\\(?:text|frac|left|right|times)/
 // regex literal on some platforms/linters.
 
 // Avoid lookbehind for older iOS: use a non-capturing prefix instead
-// eslint-disable-next-line prefer-regex-literals
 const OPS_RE = new RegExp('(?:^|[^+])\\+(?!\\+)|[=\\-*/^<>]|\\\\times|\\\\pm|\\\\cdot|\\\\le|\\\\ge|\\\\neq')
 // Hyphenated multi-word (like "Quasi-Streaming") should not be treated
 // as a math operator. But single-letter-variable hyphens (e.g. "x-y") are
@@ -57,7 +56,6 @@ export function isMathLike(s: string) {
   // Convert the handful of control characters that collide with common TeX
   // commands (\b, \f, \v) back into their two-character escaped forms so our
   // regexes can match the intent reliably without flagging real newlines/tabs.
-  // eslint-disable-next-line no-control-regex
   const norm = s.replace(/[\u0008\v\f]/g, (ch) => {
     switch (ch) {
       case '\u0008':

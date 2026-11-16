@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * 中文说明：
  * - `tsc` 直接输出的 ESM（module=ES2020）会保留 `export * from './x'` 这种“无扩展名”相对路径；
