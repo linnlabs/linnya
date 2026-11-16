@@ -2,13 +2,13 @@ import { createProjectLifecycle } from 'src/domains/projects';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { spawn } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import {
   createDurableFlowHarness,
   installRecoveryModelFixture,
 } from '../__test-helpers__/createDurableFlowHarness';
+import { FLOW_CRASH_TEST_TIMEOUT_MS, runFlowCrashFixture } from '../__test-helpers__/runFlowCrashFixture';
 import {
   setPluginRuntimeStateForTests,
   clearPluginRuntimeStateForTests,
@@ -57,48 +57,13 @@ describe('real process crash recovery with Audit off', () => {
     initial.close();
     closeFixtures.pop();
     resetAgentRuntimeSingletonsForTest();
-    const processResult = await new Promise<{
-      code: number | null;
-      signal: NodeJS.Signals | null;
-      output: string;
-    }>((resolve, reject) => {
-      const child = spawn(
-        process.execPath,
-        [
-          'node_modules/vitest/vitest.mjs',
-          'run',
-          '--pool=threads',
-          '--maxWorkers=1',
-          'src/app-hosts/linnya/adapters/flow/__test-helpers__/durableProcessCrash.fixture.test.ts',
-        ],
-        {
-          cwd: process.cwd(),
-          env: {
-            ...process.env,
-            LINNYA_TEST_CRASH_DB: join(directory, 'workspace.sqlite'),
-            LINNYA_TEST_CRASH_PROJECT: projectId,
-          },
-          stdio: ['ignore', 'pipe', 'pipe'],
-        }
-      );
-      let output = '';
-      // watchdog 必须与夹具自己的边界 SIGKILL 不同，不能把启动超时冒认为有效崩溃。
-      const timeout = setTimeout(() => child.kill('SIGTERM'), 20_000);
-      child.stdout.on('data', chunk => {
-        output = (output + String(chunk)).slice(-12_000);
-      });
-      child.stderr.on('data', chunk => {
-        output = (output + String(chunk)).slice(-12_000);
-      });
-      child.once('error', error => {
-        clearTimeout(timeout);
-        reject(error);
-      });
-      child.once('close', (code, signal) => {
-        clearTimeout(timeout);
-        resolve({ code, signal, output });
-      });
-    });
+    const processResult = await runFlowCrashFixture(
+      'src/app-hosts/linnya/adapters/flow/__test-helpers__/durableProcessCrash.fixture.test.ts',
+      {
+        LINNYA_TEST_CRASH_DB: join(directory, 'workspace.sqlite'),
+        LINNYA_TEST_CRASH_PROJECT: projectId,
+      },
+    );
     expect(processResult.signal, processResult.output).toBe('SIGKILL');
     const resumed = await open(
       [{ contentChunks: ['Recovered original run'] }],
@@ -128,5 +93,5 @@ describe('real process crash recovery with Audit off', () => {
       )
     ).toHaveLength(1);
     expect(await resumed.flow.getActiveForegroundRun(conversationId)).toMatchObject({ run: null });
-  }, 30_000);
+  }, FLOW_CRASH_TEST_TIMEOUT_MS);
 });

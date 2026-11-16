@@ -351,7 +351,7 @@ export async function runProductionCommandApprovalDomScenario(input: {
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost,
     commandExecutionAudit: createCollectingCommandExecutionAuditPort(),
-    runtimeFacts: resolveCommandRuntimeFacts({
+    runtimeFacts: await resolveCommandRuntimeFacts({
       platform: process.platform,
       environment: process.env,
       revision: randomUUID(),

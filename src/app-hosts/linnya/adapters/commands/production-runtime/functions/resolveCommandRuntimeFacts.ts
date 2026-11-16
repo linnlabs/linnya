@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
 import {
@@ -7,45 +6,43 @@ import {
 } from '@app/schemas/commands';
 import type { LocalProcessPlatformRuntime } from 'src/infra/adapters/local-process-runtime/platform-runtime';
 import type { CommandRuntimeFacts } from '../definitions/commandRuntimeFacts';
+import { probeCommandShell } from './probeCommandShell';
+
+// Windows 冷启动在并发负载下实测超过 4 秒；保留有界探测，两个 Shell 的最坏路径
+// 连同 where 仍在 App Server 30 秒 ready 预算内，不把正常冷启动误判成不可用。
+const WINDOWS_SHELL_VERSION_TIMEOUT_MS = 10_000;
 
 export interface CommandShellProbePort {
-  resolveExecutable(command: string, environment: Readonly<Record<string, string>>): string | undefined;
+  resolveExecutable(command: string, environment: Readonly<Record<string, string>>): Promise<string | undefined>;
   readVersion(input: {
     readonly executablePath: string;
     readonly argv: readonly string[];
     readonly environment: Readonly<Record<string, string>>;
-  }): string | undefined;
+    readonly timeoutMs: number;
+  }): Promise<string | undefined>;
 }
 
 const nodeShellProbe: CommandShellProbePort = Object.freeze({
-  resolveExecutable(
+  async resolveExecutable(
     command: string,
     environment: Readonly<Record<string, string>>,
   ) {
     if (process.platform !== 'win32') return command.startsWith('/') ? command : undefined;
-    const result = spawnSync('where.exe', [command], {
-      encoding: 'utf8',
-      env: environment,
-      timeout: 2_000,
-      windowsHide: true,
+    return probeCommandShell({
+      executablePath: 'where.exe',
+      argv: [command],
+      environment,
+      timeoutMs: 2_000,
+      kind: 'executable',
     });
-    if (result.status !== 0) return undefined;
-    return result.stdout.split(/\r?\n/u).map(value => value.trim()).find(Boolean);
   },
   readVersion(input: {
     readonly executablePath: string;
     readonly argv: readonly string[];
     readonly environment: Readonly<Record<string, string>>;
+    readonly timeoutMs: number;
   }) {
-    const result = spawnSync(input.executablePath, [...input.argv], {
-      encoding: 'utf8',
-      env: input.environment,
-      timeout: 3_000,
-      windowsHide: true,
-    });
-    if (result.status !== 0) return undefined;
-    const version = result.stdout.trim().split(/\r?\n/u)[0]?.trim();
-    return version || undefined;
+    return probeCommandShell({ ...input, kind: 'version' });
   },
 });
 
@@ -73,13 +70,13 @@ function freezeEnvironment(
 /**
  * App owner 启动时只解析一次 Shell、版本和环境；单条命令不得重新读取 PATH 或 profile。
  */
-export function resolveCommandRuntimeFacts(input: {
+export async function resolveCommandRuntimeFacts(input: {
   readonly platform: NodeJS.Platform;
   readonly environment: NodeJS.ProcessEnv;
   readonly revision: string;
   readonly platformRuntime: LocalProcessPlatformRuntime;
   readonly probe?: CommandShellProbePort;
-}): CommandRuntimeFacts {
+}): Promise<CommandRuntimeFacts> {
   const probe = input.probe ?? nodeShellProbe;
   const environmentEntries = freezeEnvironment(input.platform, input.environment);
   const environment = CommandLaunchEnvironmentV1Schema.parse({
@@ -92,10 +89,11 @@ export function resolveCommandRuntimeFacts(input: {
       throw new Error('macOS Shell received another local process platform runtime');
     }
     const executablePath = '/bin/zsh';
-    const shellVersion = probe.readVersion({
+    const shellVersion = await probe.readVersion({
       executablePath,
       argv: ['--version'],
       environment: environmentEntries,
+      timeoutMs: 3_000,
     });
     if (!shellVersion) throw new Error('macOS command runtime could not probe /bin/zsh');
     return Object.freeze({
@@ -121,12 +119,13 @@ export function resolveCommandRuntimeFacts(input: {
     throw new Error('Windows Shell received another local process platform runtime');
   }
 
-  const powershell7Path = probe.resolveExecutable('pwsh.exe', environmentEntries);
+  const powershell7Path = await probe.resolveExecutable('pwsh.exe', environmentEntries);
   const powershell7Version = powershell7Path
-    ? probe.readVersion({
+    ? await probe.readVersion({
         executablePath: powershell7Path,
         argv: ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '$PSVersionTable.PSVersion.ToString()'],
         environment: environmentEntries,
+        timeoutMs: WINDOWS_SHELL_VERSION_TIMEOUT_MS,
       })
     : undefined;
   const windowsRoot = Object.entries(environmentEntries).find(
@@ -142,10 +141,11 @@ export function resolveCommandRuntimeFacts(input: {
   );
   const executablePath = powershell7Version ? powershell7Path : fallbackPath;
   if (!executablePath) throw new Error('Windows PowerShell 7 path is unavailable');
-  const shellVersion = powershell7Version ?? probe.readVersion({
+  const shellVersion = powershell7Version ?? await probe.readVersion({
     executablePath,
     argv: ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '$PSVersionTable.PSVersion.ToString()'],
     environment: environmentEntries,
+    timeoutMs: WINDOWS_SHELL_VERSION_TIMEOUT_MS,
   });
   if (!shellVersion) throw new Error('Windows command runtime could not probe PowerShell');
   return Object.freeze({

@@ -123,6 +123,7 @@ macOS 正式构建接受 `security find-identity` 显示的完整 Developer ID A
 pnpm run release:bump 0.0.39
 pnpm run release:generate
 pnpm run release:lock:production:verify
+pnpm run release:lock:production:audit
 pnpm run release:verify
 pnpm run release:checklist
 ```
@@ -135,6 +136,8 @@ diff。正式构建不会重新解析依赖，而是把经过合同校验的 loc
 
 两份 lock 中的同名依赖可能版本不同；更新生产 lock 时，须同时核对新增版本的随包许可文本，
 在 `dependencyLegalPolicy.ts` 登记需要选择的精确版本，不能只用 pnpm Source BOM 代替成品验证。
+安全修复也必须覆盖两棵依赖图：`pnpm.overrides` 只约束源码安装，生产投影使用根 `overrides`。
+`release:lock:production:audit` 先复核受跟踪的冻结 npm lock，再只读审计实际生产依赖；公共 CI 必须通过这道门禁，不能只凭 pnpm 审计结果放行安装包。
 正式打包通过当前 Node 直接启动已安装的 electron-builder CLI，两端平台 CI 验证该真实入口，
 避免 Windows 的命令脚本启动失败被推迟到构建末尾。
 两端还使用真实 ASAR 验证 Desktop 内容盘点；ASAR 列表的虚拟根按宿主分隔符转换，

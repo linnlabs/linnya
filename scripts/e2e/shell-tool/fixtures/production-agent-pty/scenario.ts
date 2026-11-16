@@ -196,7 +196,7 @@ export async function runProductionAgentPtyScenario(input: {
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost: createCommandApprovalHost(),
     commandExecutionAudit: createCollectingCommandExecutionAuditPort(),
-    runtimeFacts: resolveCommandRuntimeFacts({
+    runtimeFacts: await resolveCommandRuntimeFacts({
       platform: process.platform,
       environment: process.env,
       revision: randomUUID(),

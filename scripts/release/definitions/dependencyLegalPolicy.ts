@@ -86,7 +86,7 @@ export const DEPENDENCY_LICENSE_SELECTIONS = [
   },
   {
     packageName: 'node-forge',
-    version: '1.4.2',
+    version: '1.4.3',
     declaredExpression: '(BSD-3-Clause OR GPL-2.0)',
     selectedExpression: 'BSD-3-Clause',
   },

@@ -10,9 +10,9 @@ export interface AboutReleasePresentation {
 }
 
 const ABOUT_RELEASE_NOTE_KEYS: readonly SettingsMessageKey[] = [
-  'settings.about.release.note.dataCompatibility',
-  'settings.about.release.note.dataStorage',
-  'settings.about.release.note.actionHistory',
+  'settings.about.release.note.contextUsage',
+  'settings.about.release.note.imageTools',
+  'settings.about.release.note.projectOverview',
   'settings.about.release.note.slidesDesign',
   'settings.about.release.note.desktopReliability',
   'settings.about.release.note.pluginAvailability',

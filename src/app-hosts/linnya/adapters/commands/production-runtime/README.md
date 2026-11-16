@@ -21,3 +21,8 @@ Electron Desktop Host / Headless App Server
 
 迁移或新增 adapter 时必须复用这里的 composition；不得复制组合代码。测试应穿过真实 Shell/process 生命周期，
 覆盖审批、长短命令、PTY、取消、终态、对话删除与 App end。
+
+Shell 版本通过异步子进程探测，在 scope 创建完成前冻结真实结果；不得同步阻塞 App Server 的启动协议或 RPC。
+Windows 探测保留 10 秒上限，覆盖冷启动和 x64 模拟环境中的 CPU 争用；macOS zsh 保持 3 秒。
+PowerShell 7 不可用时仍使用系统 5.1；两者都失败则终止组合，不能伪造版本或跳过进程安全合同。
+失败日志只记录探测种类、耗时、预算与退出原因，不记录环境变量、原始输出或宿主路径。

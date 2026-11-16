@@ -83,6 +83,8 @@ cost 不随断点释放而删除；随其正式 owner 生命周期管理。用�
 
 ## 验证与当前限制
 
+真实崩溃夹具先完成 Vitest 冷编译和 Host/数据库装配，再报告就绪；父进程分别给启动 60 秒、就绪后的业务执行 20 秒。看门狗只发 SIGTERM，只有夹具在已提交边界自行发出的 SIGKILL 才能通过恢复验收。
+
 Flow 的 `flow.durable-continuation.integration.test.ts` 和
 `flow.process-crash.integration.test.ts` 使用真实 SQLite、生产 Audit
 off、正式 npm

@@ -1,6 +1,7 @@
 import { it } from 'vitest';
 import { createDurableFlowHarness, installRecoveryModelFixture } from './createDurableFlowHarness';
 import { setPluginRuntimeStateForTests } from '../../../plugin-registry/pluginRuntimeState';
+import { markFlowCrashFixtureReady } from './runFlowCrashFixture';
 import {
   installResearchCarrierFixture,
   ResearchCarrierFixtureTool,
@@ -34,6 +35,7 @@ it.skipIf(!process.env.LINNYA_CARRIER_CRASH_DB)('crash at a fixed child handoff'
     ...researchCarrierDraftTurns,
     ...researchCarrierFollowingTurns,
   ]);
+  await markFlowCrashFixtureReady();
   await fixture.flow.next(researchCarrierRequest(projectId), () => {});
   throw new Error('Crash boundary was not reached');
-});
+}, 20_000);

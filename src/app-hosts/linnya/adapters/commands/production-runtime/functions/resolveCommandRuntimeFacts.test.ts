@@ -8,8 +8,8 @@ function probe(input: {
   readonly versions: Readonly<Record<string, string | undefined>>;
 }): CommandShellProbePort {
   return {
-    resolveExecutable: vi.fn(() => input.pwshPath),
-    readVersion: vi.fn(request => input.versions[request.executablePath]),
+    resolveExecutable: vi.fn(async () => input.pwshPath),
+    readVersion: vi.fn(async request => input.versions[request.executablePath]),
   };
 }
 
@@ -28,10 +28,10 @@ const WINDOWS_PLATFORM_RUNTIME = Object.freeze({
 });
 
 describe('resolveCommandRuntimeFacts', () => {
-  it('macOS 启动时只冻结一次 zsh、环境与同一 revision', () => {
+  it('macOS 启动时只冻结一次 zsh、环境与同一 revision', async () => {
     const shellProbe = probe({ versions: { '/bin/zsh': 'zsh 5.9' } });
     const environment = { PATH: '/usr/bin:/bin', OMITTED: undefined };
-    const facts = resolveCommandRuntimeFacts({
+    const facts = await resolveCommandRuntimeFacts({
       platform: 'darwin',
       environment,
       revision: 'app-owner-1',
@@ -55,12 +55,12 @@ describe('resolveCommandRuntimeFacts', () => {
     expect(shellProbe.readVersion).toHaveBeenCalledOnce();
   });
 
-  it('Windows 优先使用能真实启动的 PowerShell 7', () => {
+  it('Windows 优先使用能真实启动的 PowerShell 7', async () => {
     const shellProbe = probe({
       pwshPath: 'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
       versions: { 'C:\\Program Files\\PowerShell\\7\\pwsh.exe': '7.5.2' },
     });
-    const facts = resolveCommandRuntimeFacts({
+    const facts = await resolveCommandRuntimeFacts({
       platform: 'win32',
       environment: { SystemRoot: 'C:\\Windows', PATH: 'C:\\Windows\\System32' },
       revision: 'app-owner-2',
@@ -79,7 +79,7 @@ describe('resolveCommandRuntimeFacts', () => {
     });
   });
 
-  it('PowerShell 7 不可运行时回退系统 Windows PowerShell 5.1', () => {
+  it('PowerShell 7 不可运行时回退系统 Windows PowerShell 5.1', async () => {
     const fallbackPath = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
     const shellProbe = probe({
       pwshPath: 'C:\\broken\\pwsh.exe',
@@ -88,7 +88,7 @@ describe('resolveCommandRuntimeFacts', () => {
         [fallbackPath]: '5.1.19041.5608',
       },
     });
-    const facts = resolveCommandRuntimeFacts({
+    const facts = await resolveCommandRuntimeFacts({
       platform: 'win32',
       environment: { SystemRoot: 'C:\\Windows' },
       revision: 'app-owner-3',
@@ -104,10 +104,10 @@ describe('resolveCommandRuntimeFacts', () => {
     expect(shellProbe.readVersion).toHaveBeenCalledTimes(2);
   });
 
-  it('Windows 启动快照按大小写合并环境且不合成缺失变量', () => {
+  it('Windows 启动快照按大小写合并环境且不合成缺失变量', async () => {
     const fallbackPath = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
     const shellProbe = probe({ versions: { [fallbackPath]: '5.1.26100.8875' } });
-    const facts = resolveCommandRuntimeFacts({
+    const facts = await resolveCommandRuntimeFacts({
       platform: 'win32',
       environment: {
         PATH: 'C:\\old',
@@ -133,9 +133,9 @@ describe('resolveCommandRuntimeFacts', () => {
     }));
   });
 
-  it('Windows 启动快照保留显式关键变量且不自行刷新 PATH', () => {
+  it('Windows 启动快照保留显式关键变量且不自行刷新 PATH', async () => {
     const fallbackPath = 'D:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
-    const facts = resolveCommandRuntimeFacts({
+    const facts = await resolveCommandRuntimeFacts({
       platform: 'win32',
       environment: {
         SystemRoot: 'D:\\Windows',
@@ -155,13 +155,23 @@ describe('resolveCommandRuntimeFacts', () => {
     });
   });
 
-  it('拒绝 Shell 与公共平台 owner 事实错配', () => {
-    expect(() => resolveCommandRuntimeFacts({
+  it('拒绝 Shell 与公共平台 owner 事实错配', async () => {
+    await expect(resolveCommandRuntimeFacts({
       platform: 'darwin',
       environment: { PATH: '/usr/bin:/bin' },
       revision: 'app-owner-mismatch',
       platformRuntime: WINDOWS_PLATFORM_RUNTIME,
       probe: probe({ versions: { '/bin/zsh': 'zsh 5.9' } }),
-    })).toThrow('macOS Shell received another local process platform runtime');
+    })).rejects.toThrow('macOS Shell received another local process platform runtime');
+  });
+
+  it('系统 PowerShell 也无法启动时仍拒绝组合，不伪造可用 Shell', async () => {
+    await expect(resolveCommandRuntimeFacts({
+      platform: 'win32',
+      environment: { SystemRoot: 'C:\\Windows' },
+      revision: 'unavailable-shell',
+      platformRuntime: WINDOWS_PLATFORM_RUNTIME,
+      probe: probe({ versions: {} }),
+    })).rejects.toThrow('Windows command runtime could not probe PowerShell');
   });
 });

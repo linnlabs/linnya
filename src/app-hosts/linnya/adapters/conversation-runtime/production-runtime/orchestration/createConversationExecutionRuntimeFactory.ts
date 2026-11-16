@@ -105,7 +105,7 @@ export function createConversationExecutionRuntimeFactory(input: {
         macOsEnvironment?.snapshot.entries ?? input.commandHostProcessEnvironment.entries,
         pluginCliLauncherDirectory,
       );
-      const commandRuntimeFacts = resolveCommandRuntimeFacts({
+      const commandRuntimeFacts = await resolveCommandRuntimeFacts({
         platform: input.bootstrap.platform,
         environment: shellEnvironment,
         revision: commandEnvironmentRevision,

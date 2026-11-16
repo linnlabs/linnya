@@ -279,7 +279,7 @@ export async function runCurrentHostCliCorpusScenario(input: {
     conversationAdmission: lifecycle.workDirectoryAdmission,
     approvalHost: createCommandApprovalHost(),
     commandExecutionAudit: audit,
-    runtimeFacts: resolveCommandRuntimeFacts({
+    runtimeFacts: await resolveCommandRuntimeFacts({
       platform: process.platform,
       environment: environmentResolution.snapshot.entries,
       revision: ENVIRONMENT_REVISION,

@@ -3,6 +3,7 @@ import { createDurableFlowHarness, installRecoveryModelFixture } from './createD
 import { WriteFileTool } from 'src/tools/workspace/write_file/WriteFileTool';
 import type { ToolContext } from 'src/tools/types';
 import { setPluginRuntimeStateForTests } from '../../../plugin-registry/pluginRuntimeState';
+import { markFlowCrashFixtureReady } from './runFlowCrashFixture';
 
 /** 只由进程验收显式选择；SIGKILL 不运行 finally，模拟 owner 提交后的真实 Backend 崩溃。 */
 it.skipIf(!process.env.LINNYA_TEST_CRASH_DB)('crash after managed owner commit', async () => {
@@ -40,6 +41,7 @@ it.skipIf(!process.env.LINNYA_TEST_CRASH_DB)('crash after managed owner commit',
     ],
     [new CrashAfterWrite()]
   );
+  await markFlowCrashFixtureReady();
   await fixture.flow.next(
     {
       conversation_id: 'durable-conversation',
@@ -61,4 +63,4 @@ it.skipIf(!process.env.LINNYA_TEST_CRASH_DB)('crash after managed owner commit',
     () => {}
   );
   throw new Error(`Crash boundary was not reached: ${JSON.stringify(fixture.getToolExecutions())}`);
-});
+}, 20_000);
