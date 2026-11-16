@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PluginWorkspaceDocumentUpdatedPayload } from '@plugin/backend/workspaceRuntime';
 import type { DeckSpec } from '@plugin/slides/shared';
+import { DECK_LAYOUT_VERSION } from '@plugin/slides/shared/deckSpec';
 import {
   PresentationSourceConsistencyError,
   buildPresentationSourceRevision,
@@ -310,6 +311,39 @@ describe('PresentationRepository current materialization and source revisions', 
     const artifact = await repo.getPresentationPptxArtifactSource('deck-deferred');
     expect(artifact?.artifact.state === 'ready'
       && artifact.artifact.buffer.equals(Buffer.from('pptx-v2'))).toBe(true);
+  });
+
+  it('排版合同升级只替换 current revision 的物化并作废 PPTX，不追加 revision', async () => {
+    insertWorkspaceNode(db, 'deck-layout');
+    const created = await repo.createPresentation('deck-layout', makeDeckSpec('Revision 1'), {
+      pptxBuffer: Buffer.from('pptx-v1'),
+      deckSource: SOURCE_V1,
+      origin: 'create',
+    });
+    await expect(repo.getPresentationLayoutState('deck-layout')).resolves.toEqual({
+      currentRevisionId: created.revisionId,
+      layoutVersion: null,
+    });
+
+    const refreshed = { ...makeDeckSpec('Revision 1'), layoutVersion: DECK_LAYOUT_VERSION };
+    expect(await repo.refreshPresentationDeckSpec('deck-layout', 'other-revision', refreshed)).toBe(false);
+    expect(await repo.refreshPresentationDeckSpec('deck-layout', created.revisionId, refreshed)).toBe(true);
+
+    await expect(repo.getPresentationLayoutState('deck-layout')).resolves.toEqual({
+      currentRevisionId: created.revisionId,
+      layoutVersion: DECK_LAYOUT_VERSION,
+    });
+    await expect(repo.getPresentationRenderSource('deck-layout')).resolves.toMatchObject({
+      currentRevisionId: created.revisionId,
+      currentRevision: 1,
+      deckSource: SOURCE_V1,
+      deckSpec: { layoutVersion: DECK_LAYOUT_VERSION },
+    });
+    await expect(repo.getPresentationPptxArtifactSource('deck-layout')).resolves.toMatchObject({
+      artifact: { state: 'deferred' },
+    });
+    expect(await repo.listRevisions('deck-layout')).toHaveLength(1);
+    await expect(repo.getPresentationLayoutState('missing')).resolves.toBeNull();
   });
 
   it('拒绝 stale base，且不会追加孤立 revision', async () => {
