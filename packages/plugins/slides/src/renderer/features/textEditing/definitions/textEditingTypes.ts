@@ -24,6 +24,7 @@ export interface TextEditingTarget {
   readonly height: number;
   readonly rotation: number;
   readonly padding: TextEditingPadding;
+  /** 首行行框顶部相对内容区的偏移（英寸），已含垂直对齐，使编辑态基线与画布重合。 */
   readonly verticalOffset: number;
   readonly writingMode?: 'vertical-rl';
   readonly fontFamily: string;

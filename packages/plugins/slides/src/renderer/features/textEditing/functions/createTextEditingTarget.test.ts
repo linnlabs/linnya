@@ -79,6 +79,50 @@ describe('createTextEditingTarget', () => {
     }));
   });
 
+  it('centres the first CSS line box on the canvas em box so baselines match', () => {
+    // 20pt 单倍行距（行高 1.2em）。排版按字体文件度量把字形顶部放在 textY=0.05，已含垂直对齐。
+    const fontSizeInches = 20 / 72;
+    const lineHeightInches = fontSizeInches * 1.2;
+    const node: TextRenderNode = {
+      id: 'spaced-text',
+      kind: 'text',
+      box: { x: 0, y: 0, w: 4, h: 2, unit: 'in' },
+      zIndex: 0,
+      verticalAlign: 'middle',
+      paragraphs: [{ runs: [{ text: '单倍行距', fontSize: 20 }] }],
+      layout: {
+        contentHeightInches: lineHeightInches,
+        appliedFontScale: 1,
+        lines: [{
+          paragraphIndex: 0,
+          slices: [{ paragraphIndex: 0, runIndex: 0, text: '单倍行距', x: 0, width: 1, textY: 0.05 }],
+          width: 1,
+          height: lineHeightInches,
+          baseline: 0.3,
+          y: 0.01,
+        }],
+      },
+      authoringRef: { slideKey: 'overview', editKey: 'spaced', targetKind: 'text' },
+      authoringEdit: {
+        capabilities: ['set_text_content'],
+        text: { kind: 'plain_text', content: '单倍行距' },
+      },
+    };
+
+    const target = createTextEditingTarget({
+      elementId: node.id,
+      nodeKind: node.kind,
+      node,
+      bounds: { x: 0, y: 0, w: 4, h: 2 },
+      polygon: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 2 }, { x: 0, y: 2 }],
+      zPath: [0],
+    });
+
+    expect(target?.lineHeight).toBeCloseTo(1.2, 6);
+    // 行框中心 = 画布 em 框中心（textY + 字号/2），不是排版行框顶部 y。
+    expect(target!.verticalOffset + lineHeightInches / 2).toBeCloseTo(0.05 + fontSizeInches / 2, 6);
+  });
+
   it('rejects text without an editable original author value', () => {
     const node: TextRenderNode = {
       id: 'rich-text',

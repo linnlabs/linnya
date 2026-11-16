@@ -8,6 +8,7 @@
 - `createTextEditingTarget` 消费 compiler 提供的原始正文和基准文字样式；不能从排版后拆分的 render runs 重建作者正文。既有加粗、斜体、下划线、字体、字距和行距保留，即使本期没有相应按钮。
 - `richTextDocument` 的 schema 只有单段、文字、显式换行和作者样式 mark。选区格式事务只覆盖选中范围的指定字段；其他字段保持。普通 Enter 与 Shift+Enter 插入换行，粘贴接纳纯文本；不增加标题、列表、HTML 格式导入或公式编辑。
 - 外层使用 inches/pt 到屏幕坐标的既有投影，局部字号使用 em 继承画布缩放和 autofit，不能把屏幕像素写回源码。输入期间的 DOM 流式换行仍不是正式 HarfBuzz finalization。
+- 编辑态与画布的基线对齐：画布把字形顶部放在排版的 `textY`，再按浏览器字体度量居中 em 框；CSS 把 em 框放在行框正中。`createTextEditingTarget` 让首行行框中心对准 `textY + 字号/2`，偏移已含垂直对齐。不能用排版行框顶部 `y`：排版按字体文件 ascent/descent 平分多出的行距，与浏览器度量不同，行高大于字形框时会差 2–4px。行高按整框行距投影；run 上的 `lineSpacing` 不进 CSS，因为排版和 PPTX 都不用它。
 
 ## 输入与工具条
 

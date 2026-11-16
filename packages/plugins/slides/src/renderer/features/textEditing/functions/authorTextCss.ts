@@ -1,8 +1,10 @@
 import type { TextStyle } from '@plugin/slides/shared/deckSpec';
-import { multipleLineHeightEm } from '@plugin/slides/shared/textLayout';
 import type { TextEditingTarget } from '../definitions/textEditingTypes';
 
-/** 作者字号保持 pt，CSS em 继承外层的幻灯片缩放与 autofit；绝不反写屏幕像素。 */
+/**
+ * 作者字号保持 pt，CSS em 继承外层的幻灯片缩放与 autofit；绝不反写屏幕像素。
+ * run 上的 lineSpacing 不投影：行距属于段落，排版与 PPTX 都只用整框行距，编辑态跟随它们。
+ */
 export function authorTextCss(style: TextStyle | undefined, target: TextEditingTarget): Record<string, string> {
   if (!style) return {};
   return {
@@ -13,8 +15,5 @@ export function authorTextCss(style: TextStyle | undefined, target: TextEditingT
     ...(style.italic !== undefined ? { fontStyle: style.italic ? 'italic' : 'normal' } : {}),
     ...(style.underline !== undefined ? { textDecoration: style.underline ? 'underline' : 'none' } : {}),
     ...(style.letterSpacing !== undefined ? { letterSpacing: `${style.letterSpacing / (style.fontSize ?? target.fontSizePt)}em` } : {}),
-    ...(style.lineSpacing ? { lineHeight: style.lineSpacing.kind === 'multiple'
-      ? String(multipleLineHeightEm(style.lineSpacing.value))
-      : `${style.lineSpacing.value / (style.fontSize ?? target.fontSizePt)}em` } : {}),
   };
 }

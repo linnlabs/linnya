@@ -36,13 +36,17 @@ export function createTextEditingTarget(
   const contentHeight = node.layout?.contentHeightInches ?? 0;
   const remainingHeight = Math.max(0, innerHeight - contentHeight);
   const vertical = node.writingMode === 'vertical-rl';
-  const verticalOffset = vertical ? 0 : node.verticalAlign === 'bottom'
-    ? remainingHeight
-    : node.verticalAlign === 'middle'
-      ? remainingHeight / 2
-      : 0;
   const firstLineHeight = node.layout?.lines[0]?.height;
   const scaledFontHeight = fontSizePt / 72 * appliedFontScale;
+  const lineHeight = !rich && firstLineHeight && scaledFontHeight > 0
+    ? firstLineHeight / scaledFontHeight
+    : resolveLineHeightEm(rich ? text.baseStyle?.lineSpacing : undefined, fontSizePt);
+  const verticalOffset = vertical ? 0 : resolveFirstLineTop(node, lineHeight, scaledFontHeight) ?? (
+    node.verticalAlign === 'bottom'
+      ? remainingHeight
+      : node.verticalAlign === 'middle'
+        ? remainingHeight / 2
+        : 0);
 
   const textDecoration = rich ? (text.baseStyle?.underline ? 'underline' : undefined) : buildTextDecoration(firstRun);
 
@@ -74,14 +78,24 @@ export function createTextEditingTarget(
     ...(textDecoration ? { textDecoration } : {}),
     color: rich ? text.baseStyle?.color ?? DEFAULT_TEXT_COLOR : firstRun?.color ?? DEFAULT_TEXT_COLOR,
     textAlign: node.paragraphs[0]?.align ?? 'left',
-    lineHeight: !rich && firstLineHeight && scaledFontHeight > 0
-      ? firstLineHeight / scaledFontHeight
-      : resolveLineHeightEm(rich ? text.baseStyle?.lineSpacing : undefined, fontSizePt),
+    lineHeight,
     ...(firstRun?.letterSpacing === undefined
       ? {}
       : { letterSpacingPt: firstRun.letterSpacing * appliedFontScale }),
     opacity: owner.opacity ?? 1,
   };
+}
+
+/**
+ * 编辑器首行行框顶部相对内容区的位置（英寸）。画布用 Konva 把字形顶部放在排版的 `textY`，
+ * em 框中心在 `textY + 字号/2`；CSS 把 em 框放在行框正中。两边居中 em 框用的是同一套浏览器
+ * 字体度量，所以让行框中心对准 `textY + 字号/2`，各行基线就与画布重合，且已含垂直对齐。
+ * 排版按字体文件 ascent/descent 平分多出的行距，与浏览器度量不同，不能直接用行框顶部。
+ */
+function resolveFirstLineTop(node: TextRenderNode, lineHeightEm: number, fontSizeInches: number): number | undefined {
+  const slice = node.layout?.lines[0]?.slices?.find((candidate) => 'textY' in candidate);
+  if (!slice || !('textY' in slice)) return undefined;
+  return slice.textY + fontSizeInches * (1 - lineHeightEm) / 2;
 }
 
 function findFirstTextRun(node: TextRenderNode) {

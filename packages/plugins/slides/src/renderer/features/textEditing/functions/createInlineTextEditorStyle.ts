@@ -21,7 +21,8 @@ export function createInlineTextEditorStyle(
     top: `${viewport.slideTop + target.origin.y * INCHES_TO_CSS_PX * scale}px`,
     width: `${target.width * INCHES_TO_CSS_PX * scale}px`,
     height: `${target.height * INCHES_TO_CSS_PX * scale}px`,
-    paddingTop: `${(target.padding.top + target.verticalOffset) * INCHES_TO_CSS_PX * scale}px`,
+    // 行距小于字号时首行行框可能高出内容区；CSS padding 不能为负，只能贴到框顶。
+    paddingTop: `${Math.max(0, target.padding.top + target.verticalOffset) * INCHES_TO_CSS_PX * scale}px`,
     paddingRight: `${target.padding.right * INCHES_TO_CSS_PX * scale}px`,
     paddingBottom: `${target.padding.bottom * INCHES_TO_CSS_PX * scale}px`,
     paddingLeft: `${target.padding.left * INCHES_TO_CSS_PX * scale}px`,
