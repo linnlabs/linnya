@@ -1,0 +1,37 @@
+# 业务验收入口
+
+先按用户行为选择已有入口，再读对应 owner。这里是少量高价值回归的索引，不是另一套测试框架，也不是整包发布认证。命令都在当前 checkout 根目录运行；首轮先按[构建与测试](./build-and-test.md)准备依赖。改过 Backend 时，探针会检查构建新鲜度；独立 Electron E2E 则按对应 package script 准备产物。
+
+## 首批场景
+
+| 用户行为 | 最小夹具和必须成立的结果 | 自动化入口 | Owner |
+| --- | --- | --- | --- |
+| 从有文件的项目新建空项目，展开后再删除 | 两个独立项目、一个打开的文件及项目内对话。新项目不带旧文件；空历史展开不先撑高再回跳；删除只清理目标项目的对话及关联数据，不能把它们移到顶层。 | 项目导航 Electron 场景 `project-creation`；已有 `test:conversation-resource-link:electron` 还串联删除；后端级联与前端状态见下面定向命令。 | [项目生命周期](../../src/domains/projects/README.md)、[删除编排](../../src/app-hosts/linnya/application/project-deletion/README.md) |
+| 打开长对话、向上翻历史、切换模型 | 带工具结果的对话和独立于消息窗口的上下文估算。显示当前模型的用量；上翻历史不清空；加载态、失败态和重新估算不互相冒充。 | `projectContextWindowUsage.test.ts`、`ContextWindowUsageDropdown.integration.test.ts`；涉及后端读取还跑 `sqliteUiMessagesReader.test.ts`。界面时序使用隔离探针，不把展示投影测试当作全链路估算验收。 | [上下文用量](../../apps/renderer/domains/conversation/features/context-window-usage/README.md) |
+| 接受文档修订，再关闭重开 | 一篇带嵌套格式、引用、未保存编辑和 pending 修订的文档。接受只改变提议部分，格式与块身份保留，重读仍有效；冲突失败不丢正文或 pending。 | `pendingRevisionApplyService.test.ts`、`pendingInsertEditorIdentity.integration.test.ts`。修改解析器或编辑器时再补相应 owner 测试与探针视觉验证。 | [Markdown](../../src/domains/markdown/README.md) |
+| 快速拖动侧栏或表格列 | 独立项目和可见分隔线。逐步拖动采样必须跟手；结束宽度正确、期间不跟手仍算失败；重启后偏好保留。 | 项目导航 Electron 场景 `sidebar-resize`；`test:desktop-probe:real` 覆盖真实概览列宽。不要只比较起点和终点截图。 | [Desktop 探针](../../scripts/development/features/desktop-probe/README.md) |
+| 后台异常后关闭 App | 仅对测试自己启动的后台/受管进程制造异常。关闭不能静默卡住；存储准备失败允许重试；退出后自有进程无残留。 | `createMainWindowCloseLifecycle.integration.test.ts`、`createWindowClosePreparationHost.integration.test.ts`；进程所有权变更还跑 `test:shell-tool:production-app-owner-close`。探针看管器异常不等同于产品后台异常。 | [Electron Main](../../src/electron-main/README.md)、[Shell 运行合同](../../src/tools/commands/shell/README.md) |
+
+项目与文档的定向命令：
+
+```bash
+pnpm exec vitest run src/app-hosts/linnya/application/project-deletion/__tests__/projectDeletion.integration.test.ts apps/renderer/app/layout/orchestration/projectDeletion.integration.test.ts apps/renderer/app/layout/orchestration/openProjectWorkspaceFromSidebar.test.ts
+pnpm exec vitest run apps/renderer/domains/conversation/features/context-window-usage/functions/projectContextWindowUsage.test.ts apps/renderer/domains/conversation/features/context-window-usage/ui/ContextWindowUsageDropdown.integration.test.ts src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/__tests__/sqliteUiMessagesReader.test.ts
+pnpm exec vitest run src/domains/markdown/features/pending-revisions/orchestration/__tests__/pendingRevisionApplyService.test.ts src/domains/markdown/features/pending-revisions/orchestration/__tests__/pendingInsertEditorIdentity.integration.test.ts
+pnpm exec vitest run src/electron-main/app-lifecycle/orchestration/createMainWindowCloseLifecycle.integration.test.ts src/electron-main/app-lifecycle/orchestration/createWindowClosePreparationHost.integration.test.ts
+```
+
+项目导航 E2E 已有多种场景，共用正式启动入口。选择其中一个运行即可，例如：
+
+```bash
+pnpm exec cross-env LINNYA_CONVERSATION_E2E_SCENARIO=project-creation pnpm run test:conversation-navigation:electron
+pnpm exec cross-env LINNYA_CONVERSATION_E2E_SCENARIO=sidebar-resize pnpm run test:conversation-navigation:electron
+```
+
+这些旧 Electron E2E 可能显示窗口并取得焦点；无人值守的界面排查优先用隐藏探针。新增回归优先复用已有业务夹具、正式 CLI/导航和探针动作，不再添加固定睡眠或另一套点击 DSL。
+
+## 证据和收尾
+
+每次结果至少记录被测 commit、未提交源码摘要、具体场景/夹具、命令、退出状态以及日志和必要截图路径。拖动/动效保留原始采样，持久化用正式读取结果断言。截图负责检查视觉，不能替代业务数据正确性；源码变化后旧结果不能当作新候选已通过。索引本身不表示这些场景已经在当前候选执行。
+
+只在独立测试数据内创建、删除和制造故障，不写日常 `_dev_data`，不依赖相邻 checkout。探针成功后先保存必要截图/日志，再 `stop --clean`；失败先 `stop` 保留复现现场，定位完成后仅回收自己这次实例。原生系统对话框、签名、安装、更新与 Windows 行为仍走各自平台验收。

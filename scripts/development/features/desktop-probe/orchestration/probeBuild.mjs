@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { closeSync, openSync, statSync } from 'node:fs';
+import { discoverWorkspaceDiskBackendPlugins } from '../../plugin-backend-composition/functions/discoverWorkspaceDiskBackendPlugins.mjs';
 import { join } from 'node:path';
 import { ProbeError, repoRoot } from '../definitions/probeContract.mjs';
 import { feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
@@ -9,16 +10,24 @@ const outputs = ['dist/main/main.cjs', 'dist/main/preload.js', 'dist/main/app-se
 const buildLog = join(instancesRoot, 'build.log');
 const buildTimeoutMs = 10 * 60_000;
 
-function mtime(path) {
-  return statSync(join(repoRoot, path), { throwIfNoEntry: false })?.mtimeMs;
+function mtime(root, path) {
+  return statSync(join(root, path), { throwIfNoEntry: false })?.mtimeMs;
 }
 
-export function buildFreshness() {
+export function buildFreshness(root = repoRoot) {
+  // 插件自己声明运行必需的产物；主 bundle 较新不代表上一次插件构建已完成。
+  for (const plugin of discoverWorkspaceDiskBackendPlugins(root)) {
+    for (const output of plugin.requiredOutputs ?? []) {
+      if (!statSync(join(plugin.packageDir, output), { throwIfNoEntry: false })?.isFile()) {
+        return { stale: true, reason: `插件 ${plugin.pluginId} 缺少 ${output}` };
+      }
+    }
+  }
   const sources = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'src', 'packages'], {
-    cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
+    cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
   }).split('\0').filter(path => path && feedsDesktopBundle(path))
-    .map(path => ({ path, mtimeMs: mtime(path) ?? 0 }));
-  return judgeBuildFreshness(outputs.map(path => ({ path, mtimeMs: mtime(path) })), sources);
+    .map(path => ({ path, mtimeMs: mtime(root, path) ?? 0 }));
+  return judgeBuildFreshness(outputs.map(path => ({ path, mtimeMs: mtime(root, path) })), sources);
 }
 
 function runBuild() {

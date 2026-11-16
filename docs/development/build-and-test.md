@@ -234,6 +234,8 @@ Sharp 的公开入口可能是 JavaScript loader；PE 架构校验通过共享
 
 ## 前端调试与本机界面验收
 
+按用户行为选测试入口，见[业务验收入口](./acceptance-scenarios.md)。
+
 优先运行 `pnpm -s probe up` 启动独立的真实 Desktop，随后用 `snapshot` 定位界面、
 `shot` 截图、`logs` 查错。拖动类验收使用逐步采样和跟手断言，动效可用曲线或定格拼图取证。
 当前探针支持 macOS，使用本 checkout 的构建产物与源码 Vite，不占用日常开发 profile 或数据。
