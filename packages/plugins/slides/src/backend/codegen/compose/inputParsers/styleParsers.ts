@@ -17,6 +17,7 @@ import { isReadingMode } from '@plugin/slides/shared/readingMode';
 import {
   isFontDeliveryTarget,
   normalizeGradientPaint,
+  normalizeOpaqueColor,
   normalizePaint,
   normalizeStrokePaint,
   normalizeThemeSpecColors,
@@ -87,12 +88,19 @@ export function parseTextEffects(value: unknown, path: string): { value: TextEff
     if (!isRecord(stroke) || !isNonEmptyString(stroke.color) || !isFiniteNumber(stroke.width) || stroke.width <= 0) {
       return { error: `${path}.stroke 必须是 { color, width }。` };
     }
-    effects.stroke = { color: stroke.color, width: stroke.width };
+    const color = normalizeOpaqueColor(stroke.color, `${path}.stroke.color`);
+    if ('error' in color) return color;
+    effects.stroke = { color: color.value, width: stroke.width };
   }
   if (value.shadow != null) {
     const shadow = parseShapeStyle({ shadow: value.shadow })?.shadow;
     if (!shadow) return { error: `${path}.shadow 必须是 { color, blur, offsetX, offsetY, opacity? }。` };
-    effects.shadow = shadow;
+    const color = normalizeOpaqueColor(shadow.color, `${path}.shadow.color`);
+    if ('error' in color) return color;
+    if (shadow.opacity != null && (shadow.opacity < 0 || shadow.opacity > 1)) {
+      return { error: `${path}.shadow.opacity 必须是 0 到 1 之间的数字。` };
+    }
+    effects.shadow = { ...shadow, color: color.value };
   }
   if (value.opacity != null) {
     if (!isFiniteNumber(value.opacity) || value.opacity < 0 || value.opacity > 1) {

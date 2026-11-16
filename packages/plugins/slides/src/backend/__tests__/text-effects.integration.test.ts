@@ -6,6 +6,7 @@ import { compilePresentationComposePayload } from '../features/presentationBuild
 import { preparePresentationMaterialization } from '../features/presentationBuildExecution/orchestration/preparePresentationMaterialization';
 import { materializePresentationPptx } from '../features/presentationBuildExecution';
 import { buildDeckSpecFromDirectInput, readCompiledDirectComposeInput } from '../codegen/compose/presentationComposeInput';
+import { parseTextEffects } from '../codegen/compose/inputParsers/styleParsers';
 import { renderDeck } from './helpers/render-model-mapping-harness';
 
 /** deck.js Text → compose 回读 → DeckSpec → RenderModel 与原生 PPTX，走真实链路。 */
@@ -116,5 +117,13 @@ describe('文字效果：渐变、空心、字符阴影', () => {
     expect(await compileError([text({ fill: 'none' })])).toMatch(/stroke/);
     expect(await compileError([text({ stroke: { color: '#000000', width: 0 } })])).toMatch(/width/);
     expect(await compileError([text({ opacity: 1.5 })])).toMatch(/opacity/);
+  });
+
+  it('直接 compose 的描边色、阴影色必须是合法颜色，规范成 #RRGGBB 再写进 PPTX', () => {
+    expect(parseTextEffects({ stroke: { color: 'red', width: 1 } }, 'effects')).toMatchObject({ error: expect.stringMatching(/stroke\.color/) });
+    expect(parseTextEffects({ stroke: { color: '#fff', width: 1 } }, 'effects')).toEqual({ value: { stroke: { color: '#FFFFFF', width: 1 } } });
+    const shadow = { blur: 4, offsetX: 1, offsetY: 1 };
+    expect(parseTextEffects({ shadow: { ...shadow, color: 'black' } }, 'effects')).toMatchObject({ error: expect.stringMatching(/shadow\.color/) });
+    expect(parseTextEffects({ shadow: { ...shadow, color: '#000000', opacity: 2 } }, 'effects')).toMatchObject({ error: expect.stringMatching(/shadow\.opacity/) });
   });
 });
