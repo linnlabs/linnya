@@ -129,6 +129,7 @@ import {
   useSidebarSelectionVisibility,
 } from './composables';
 import { getDocumentTypeByActiveType } from '@/app/plugins/registry';
+import { installDocumentTabsSync } from './orchestration/documentTabs';
 
 // Store
 const uiStore = useUIStore();
@@ -172,6 +173,7 @@ const notificationReservedTrailingWidth = computed(() => {
 
 // 初始化 composables
 useGlobalKeyboardShortcuts();
+installDocumentTabsSync();
 useThemeManager();
 useFontSmoothingManager();
 useStartupNavigationScope();
