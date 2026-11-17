@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import '../../../../../../apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseList.css';
 import { IconButton, TagChip } from '@linnya/renderer-ui';
 import {
   ChatIcon,
@@ -28,9 +29,9 @@ const ROWS: readonly ListRow[] = [
 const ICONS = { chat: ChatIcon, document: DocumentIcon, folder: FolderIcon, table: TableIcon } as const;
 
 const CARDS = [
-  { title: '行业报告', body: '12 份文档 · 3 个画布', status: 'success', statusText: '已同步' },
-  { title: '竞品调研', body: '8 份文档 · 引用 34 处', status: 'warning', statusText: '2 个来源已失效' },
-  { title: '用户访谈', body: '21 段录音转写', status: 'info', statusText: '正在转写' },
+  { title: '默认知识库', body: '未归类的资料都放在这里', count: '24 个文档', isDefault: true },
+  { title: '行业报告', body: '券商研报与行业白皮书', count: '12 个文档', isDefault: false },
+  { title: '用户访谈', body: '访谈录音转写与纪要', count: '21 个文档', isDefault: false },
 ] as const;
 
 const selected = ref('b');
@@ -62,21 +63,24 @@ const selected = ref('b');
 
       <div class="list-example__content">
         <div class="list-example__heading">知识库</div>
-        <div class="list-example__cards">
-          <article v-for="card in CARDS" :key="card.title" class="list-example__card" tabindex="0">
-            <div class="list-example__card-title">
-              <LibraryIcon class="list-example__icon" />
-              <span>{{ card.title }}</span>
-            </div>
-            <p class="list-example__card-body">{{ card.body }}</p>
-            <span
-              class="list-example__badge"
-              :style="{ backgroundColor: `var(--color-${card.status}-bg)`, color: `var(--color-${card.status}-text)` }"
-            >
-              {{ card.statusText }}
-            </span>
-          </article>
-        </div>
+        <!-- 卡片直接沿用知识库列表页的真实样式（边框 + 柔和阴影），不在画廊里另写一份。 -->
+        <section class="kb-list-view list-example__kb">
+          <div class="kb-grid">
+            <article v-for="card in CARDS" :key="card.title" class="kb-card" role="button" tabindex="0">
+              <div class="card-main">
+                <div class="card-title-row">
+                  <span class="card-icon-inline"><LibraryIcon class="kb-icon" /></span>
+                  <h3 class="card-title">{{ card.title }}</h3>
+                  <span v-if="card.isDefault" class="default-badge">默认</span>
+                </div>
+                <p class="card-subtitle">{{ card.body }}</p>
+                <div class="card-meta">
+                  <span class="meta-item">{{ card.count }}</span>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
         <div class="list-example__tags">
           <TagChip label="路线图" />
           <TagChip label="季度复盘" closable />
@@ -184,52 +188,15 @@ const selected = ref('b');
   background-color: var(--color-bg-default);
 }
 
-.list-example__cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* scale-exempt: 版面尺寸 */
-  gap: var(--space-3);
-}
 
-.list-example__card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border: var(--border-width-hairline) solid var(--color-border-light);
-  border-radius: var(--radius-lg);
-  background-color: var(--color-bg-surface);
-  cursor: pointer;
-  transition: border-color var(--duration-micro) var(--ease-standard);
-}
 
-.list-example__card:hover {
-  border-color: var(--color-border-hover);
-}
 
-.list-example__card-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-subtitle);
-  line-height: var(--line-height-subtitle);
-  font-weight: var(--font-weight-semibold);
-}
 
-.list-example__card-body {
-  color: var(--color-text-tertiary);
-  font-size: var(--font-size-footnote);
-  line-height: var(--line-height-footnote);
-}
 
-.list-example__badge {
-  display: inline-flex;
-  align-items: center;
-  height: 20px; /* scale-exempt: 徽标高度 */
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-caption);
-  line-height: var(--line-height-caption);
+
+/* 知识库页自带整页高度和背景，嵌在示例里只保留卡片网格。 */
+.list-example__kb {
+  min-height: 0;
 }
 
 .list-example__tags {
