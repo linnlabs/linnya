@@ -1,3 +1,4 @@
+import { setTimeout as wait } from 'node:timers/promises';
 /**
  * @file src/parsers/imageParser.ts
  *
@@ -23,7 +24,7 @@
 
 import { Parser, ParsedBlock, ProgressUpdater, generateBlockId } from './types';
 import type { TextGenerationPort } from 'src/domains/model-inference';
-import imageDescriptionPrompt from 'src/app-hosts/linnya/agent-registry/internals/ingestion/image_description';
+import { IMAGE_DESCRIPTION_PROMPT_CONTENT } from './definitions/imageDescriptionPrompt';
 
 /**
  * **功能 (What):** 图像文件解析器类
@@ -54,8 +55,10 @@ export class ImageParser implements Parser {
     docId: string,
     textGeneration: TextGenerationPort,
     visionModelId: string,
-    updater?: ProgressUpdater
+    updater?: ProgressUpdater,
+    signal?: AbortSignal
   ): Promise<ParsedBlock[]> {
+    signal?.throwIfAborted();
     console.log(`[ImageParser] 开始使用AI视觉模型解析图像: ${docId}`);
     
     try {
@@ -79,8 +82,10 @@ export class ImageParser implements Parser {
         textGeneration,
         visionModelId,
         5, // maxRetries
-        updater
+        updater,
+        signal
       );
+      signal?.throwIfAborted();
 
       if (updater) {
         updater(80, '处理AI识别结果...');
@@ -116,6 +121,7 @@ export class ImageParser implements Parser {
       }
 
     } catch (error) {
+      signal?.throwIfAborted();
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       console.error(`[ImageParser] 处理图像时发生错误:`, error);
       
@@ -143,9 +149,11 @@ export class ImageParser implements Parser {
     textGeneration: TextGenerationPort,
     visionModelId: string,
     maxRetries: number = 5,
-    updater?: ProgressUpdater
+    updater?: ProgressUpdater,
+    signal?: AbortSignal
   ): Promise<string> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      signal?.throwIfAborted();
       try {
         console.log(`[ImageParser] 🤖 第 ${attempt} 次AI调用开始`);
         console.log(`[ImageParser] 📝 使用模型: ${visionModelId}`);
@@ -154,7 +162,7 @@ export class ImageParser implements Parser {
         const response = await textGeneration.generate({
           modelId: visionModelId,
           messages: [
-            { role: 'system', content: imageDescriptionPrompt.content },
+            { role: 'system', content: IMAGE_DESCRIPTION_PROMPT_CONTENT },
             {
               role: 'user',
               content: [{ type: 'image', mediaType: 'image/jpeg', bytes: imageBytes }],
@@ -162,7 +170,9 @@ export class ImageParser implements Parser {
           ],
           maxOutputTokens: 4_000,
           temperature: 0.1,
+          ...(signal ? { signal } : {}),
         });
+        signal?.throwIfAborted();
         const content = response.text.trim();
 
         console.log(`[ImageParser] 📄 处理后内容长度: ${content.length}`);
@@ -183,10 +193,11 @@ export class ImageParser implements Parser {
             updater(40 + (attempt * 8), `AI重试中，等待 ${backoffDelay/1000}s...`);
           }
           
-          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          await wait(backoffDelay, undefined, { signal });
         }
 
       } catch (error) {
+      signal?.throwIfAborted();
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[ImageParser] ❌ AI识别第 ${attempt} 次尝试失败: ${errorMessage}`);
         console.error(`[ImageParser] 📊 错误详情:`, error);
@@ -203,7 +214,7 @@ export class ImageParser implements Parser {
           updater(40 + (attempt * 8), `AI重试中，等待 ${backoffDelay/1000}s...`);
         }
         
-        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+        await wait(backoffDelay, undefined, { signal });
       }
     }
 
@@ -254,8 +265,9 @@ export async function parseImageWithAi(
   docId: string,
   textGeneration: TextGenerationPort,
   visionModelId: string,
-  updater?: ProgressUpdater
+  updater?: ProgressUpdater,
+  signal?: AbortSignal
 ): Promise<ParsedBlock[]> {
   const parser = new ImageParser();
-  return parser.parseImageWithAi(data, docId, textGeneration, visionModelId, updater);
+  return parser.parseImageWithAi(data, docId, textGeneration, visionModelId, updater, signal);
 } 

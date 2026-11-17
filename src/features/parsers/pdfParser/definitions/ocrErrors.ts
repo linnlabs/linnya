@@ -1,14 +1,4 @@
-export type OcrErrorKind =
-  | 'timeout'
-  | 'rate_limited'
-  | 'auth'
-  | 'bad_request'
-  | 'payload_too_large'
-  | 'server'
-  | 'network'
-  | 'empty_content'
-  | 'local_conversion'
-  | 'unknown';
+export type { OcrErrorKind } from '@linnya/plugin-host-contract/backend/documentParsingRuntime';
 
 export class OcrTimeoutError extends Error {
   readonly provider?: string;

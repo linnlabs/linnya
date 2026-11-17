@@ -15,11 +15,6 @@ import { tryQuickTextExtraction } from './strategies/TextExtractionStrategy';
 import { tryGeometricExtraction } from './strategies/GeometricAnalysisStrategy';
 import { processWithVisionDiagnostics } from './strategies/VisionRecognitionStrategy';
 import { Logger } from '../../../shared/logger';
-import { resolveModelIdFromPolicy } from 'src/app-hosts/linnya/agent-registry/modelPolicyResolver';
-import {
-  PDF_OCR_DEFAULT_FALLBACK_MODEL_ID,
-  PDF_OCR_MODEL_POLICY,
-} from 'src/app-hosts/linnya/agent-registry/internals/ingestion/pdf_ocr';
 import { getPdfPageCountCrossPlatform } from './adapters/PdfParseAdapter';
 import type { PdfParseOutcome } from './definitions/pdfParseOutcome';
 import { createPdfParseDiagnostics } from './definitions/pdfParseOutcome';
@@ -45,7 +40,7 @@ export class PdfParser implements Parser {
     documentOcr: DocumentOcrPort | null;
     filename?: string;
     visionModelId: string;
-    resolveModelByCapability?: (capability: string) => string | undefined;
+    signal?: AbortSignal;
     targetPixels: number;
     tpmLimitPerWorker: number;
     maxRetries: number;
@@ -66,7 +61,7 @@ export class PdfParser implements Parser {
       documentOcr: options.documentOcr ?? null,
       filename: options.filename,
       visionModelId: options.visionModelId || '',
-      resolveModelByCapability: options.resolveModelByCapability,
+      signal: options.signal,
       targetPixels: normalizePdfRasterTargetPixels(
         options.targetPixels ?? PDF_RASTER_DEFAULT_TARGET_PIXELS
       ),
@@ -98,6 +93,7 @@ export class PdfParser implements Parser {
     docId: string,
     updater?: ProgressUpdater
   ): Promise<PdfParseOutcome> {
+    this.options.signal?.throwIfAborted();
     if (updater) {
       updater(0, '开始解析PDF文件...');
     }
@@ -134,6 +130,7 @@ export class PdfParser implements Parser {
       logger.info(`执行完整的3层解析策略`);
 
       const strategyResult = await tryQuickTextExtraction(data, docId);
+      this.options.signal?.throwIfAborted();
       if (strategyResult.success) {
         const blocks = strategyResult.blocks ?? [];
         const totalPages = await getPdfPageCountCrossPlatform(data);
@@ -163,6 +160,7 @@ export class PdfParser implements Parser {
 
       // Layer 2: 几何分析
       const geometryResult = await tryGeometricExtraction(data, docId, progressTrackingUpdater);
+      this.options.signal?.throwIfAborted();
       if (geometryResult.success) {
         const blocks = geometryResult.blocks ?? [];
         const totalPages = await getPdfPageCountCrossPlatform(data);
@@ -208,6 +206,7 @@ export class PdfParser implements Parser {
       logger.error(`所有解析策略失败: ${visionResult.error}`);
       throw new Error(visionResult.error || '所有解析策略失败');
     } catch (error) {
+      this.options.signal?.throwIfAborted();
       const errorMessage = `PDF解析失败: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(`${errorMessage}`, error);
       throw new Error(errorMessage);
@@ -226,7 +225,7 @@ export class PdfParser implements Parser {
     try {
       const textGeneration = this.options.textGeneration;
       const documentOcr = this.options.documentOcr;
-      let visionModelId = this.options.visionModelId;
+      const visionModelId = this.options.visionModelId;
 
       if (!textGeneration) {
         return {
@@ -241,13 +240,7 @@ export class PdfParser implements Parser {
         };
       }
       if (!visionModelId) {
-        visionModelId =
-          resolveModelIdFromPolicy(PDF_OCR_MODEL_POLICY, {
-            kbVisionModelId: this.options.visionModelId,
-            defaultVisionModelId: PDF_OCR_DEFAULT_FALLBACK_MODEL_ID,
-            resolveByCapability: this.options.resolveModelByCapability,
-          }) ?? PDF_OCR_DEFAULT_FALLBACK_MODEL_ID;
-        logger.info(`使用默认视觉模型: ${visionModelId}`);
+        return { success: false, error: 'PDF 视觉解析缺少已选择的模型，请先配置 OCR 模型' };
       }
 
       // 创建支持起始进度的updater包装器
@@ -268,6 +261,7 @@ export class PdfParser implements Parser {
         {
           filename: this.options.filename,
           temporaryDirectory: this.options.temporaryDirectory,
+          signal: this.options.signal,
           targetPixels: this.options.targetPixels,
           maxRetries: this.options.maxRetries || 3,
           tpmLimitPerWorker: this.options.tpmLimitPerWorker || 20,
@@ -277,6 +271,7 @@ export class PdfParser implements Parser {
 
       return visionResult;
     } catch (error) {
+      this.options.signal?.throwIfAborted();
       return {
         success: false,
         error: `AI视觉识别过程失败: ${error instanceof Error ? error.message : String(error)}`,

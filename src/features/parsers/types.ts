@@ -11,38 +11,8 @@
  * - `ParserOptions` 类型：定义了解析器可能需要的额外选项。
  */
 
-export type BlockId = string;
-
-/**
- * 解析器的进度更新器函数类型
- */
-export type ProgressUpdater = (progress: number, message: string) => void;
-
-/**
- * 解析器输出的标准数据块结构
- */
-export interface ParsedBlock {
-  /** 块的唯一ID，由解析器生成 */
-  blockId: BlockId;
-  
-  /** 块的文本内容 */
-  text: string;
-  
-  /** 块的类型（如段落、标题、列表项、表格行） */
-  type: 'paragraph' | 'heading1' | 'heading2' | 'heading3' | 'list_item' | 'table_row' | 'image';
-  
-  /** 块的元数据 */
-  metadata?: Record<string, unknown>;
-
-  /** 块的来源信息（例如页码、坐标等） */
-  source_info?: SourceInfo;
-}
-
-export interface SourceInfo {
-  page_number?: number;
-  table_id?: string;
-  row_idx?: number;
-}
+import type { BlockId, ParsedBlock, ProgressUpdater } from '@linnya/plugin-host-contract/backend/documentParsingRuntime';
+export type { BlockId, ParsedBlock, ProgressUpdater, SourceInfo } from '@linnya/plugin-host-contract/backend/documentParsingRuntime';
 
 /**
  * 解析器函数的类型定义

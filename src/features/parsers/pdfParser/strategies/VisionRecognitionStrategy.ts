@@ -1,3 +1,5 @@
+import { setTimeout as wait } from 'node:timers/promises';
+import { withAttemptTimeout } from '../functions/runOcrAttempt';
 import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/parsers/pdfParser/strategies/VisionRecognitionStrategy.ts
@@ -35,12 +37,11 @@ import {
   calculateVisionTokensForOurImages,
   estimateTextTokens,
 } from '../../../../shared/utils/tokenUtils';
-import pdfOcrPrompt from 'src/app-hosts/linnya/agent-registry/internals/ingestion/pdf_ocr';
+import { PDF_OCR_PROMPT_CONTENT } from '../../definitions/pdfOcrPrompt';
 import type { ParsedBlock } from '../../types';
 import { classifyOcrError, type OcrErrorClassification } from '../functions/errorClassification';
-import { EmptyOcrContentError, OcrTimeoutError } from '../definitions/ocrErrors';
+import { EmptyOcrContentError } from '../definitions/ocrErrors';
 import type {
-  PdfParseDiagnostics,
   PdfPageDiagnostic,
   PdfParsePipeline,
 } from '../definitions/pdfParseOutcome';
@@ -130,11 +131,12 @@ async function waitBeforeRetry(args: {
   attempt: number;
   delayMs: number;
   classification: OcrErrorClassification;
+  signal?: AbortSignal;
 }): Promise<void> {
   console.log(
     `[VisionRecognitionStrategy] ${args.scope} 将因 ${args.classification.kind} 重试第 ${args.attempt} 次，等待 ${args.delayMs / 1000}s`
   );
-  await new Promise(resolve => setTimeout(resolve, args.delayMs));
+  await wait(args.delayMs, undefined, { signal: args.signal });
 }
 
 function describeOcrFailureForUser(error: unknown): string {
@@ -218,6 +220,7 @@ async function processRasterPagesWithAdaptiveConcurrency(args: {
   maxRetries: number;
   attemptTimeoutMs: number;
   initialConcurrency: number;
+  signal?: AbortSignal;
   onPageRasterized?: (pageNumber: number) => void;
   onPageSettled?: (pageNumber: number) => void;
 }): Promise<VisionPageImageResult[]> {
@@ -229,6 +232,7 @@ async function processRasterPagesWithAdaptiveConcurrency(args: {
 
   return new Promise(resolve => {
     const launchNext = () => {
+      if (args.signal?.aborted) abortScheduling = true;
       if ((abortScheduling || nextIndex >= args.pageNumbers.length) && activeCount === 0) {
         resolve(results.sort((a, b) => a.pageNum - b.pageNum));
         return;
@@ -246,6 +250,7 @@ async function processRasterPagesWithAdaptiveConcurrency(args: {
         const recognition = args.rasterDocument
           .renderPageToJpeg(pageNum, { targetPixels: args.targetPixels })
           .then(page => {
+            args.signal?.throwIfAborted();
             args.onPageRasterized?.(pageNum);
             return args.documentOcrProfile
               ? recognizeDocumentImageByOcrPort({
@@ -256,6 +261,7 @@ async function processRasterPagesWithAdaptiveConcurrency(args: {
                   retryOptions: {
                     maxRetries: args.maxRetries,
                     attemptTimeoutMs: args.attemptTimeoutMs,
+                    signal: args.signal,
                   },
                 })
               : recognizeImageBytes(
@@ -266,6 +272,7 @@ async function processRasterPagesWithAdaptiveConcurrency(args: {
                   {
                     maxRetries: args.maxRetries,
                     attemptTimeoutMs: args.attemptTimeoutMs,
+                    signal: args.signal,
                   }
                 );
           });
@@ -297,7 +304,7 @@ async function processRasterPagesWithAdaptiveConcurrency(args: {
             });
           })
           .finally(() => {
-            args.onPageSettled?.(pageNum);
+            if (!args.signal?.aborted) args.onPageSettled?.(pageNum);
             activeCount -= 1;
             launchNext();
           });
@@ -312,17 +319,19 @@ async function recognizeDocumentByUpload(args: {
   pdfPath: string;
   documentOcr: DocumentOcrPort;
   profile: DocumentOcrModelProfile;
-  retryOptions: { maxRetries: number; attemptTimeoutMs: number };
+  retryOptions: { maxRetries: number; attemptTimeoutMs: number; signal?: AbortSignal };
 }): Promise<OcrDocumentPage[]> {
   const { pdfPath, documentOcr, profile, retryOptions } = args;
-  const { maxRetries, attemptTimeoutMs } = retryOptions;
+  const { maxRetries, attemptTimeoutMs, signal } = retryOptions;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    signal?.throwIfAborted();
     const requestStartTime = Date.now();
     try {
       const timeoutMessage = `AI识别超时（${Math.round(attemptTimeoutMs / 1000)}秒）`;
       const pages = await withAttemptTimeout({
         timeoutMs: attemptTimeoutMs,
+        signal,
         timeoutMessage,
         enableAbortSignal: profile.supportsAbortSignal,
         work: async (signal?: AbortSignal) => {
@@ -335,6 +344,7 @@ async function recognizeDocumentByUpload(args: {
         },
       });
 
+      signal?.throwIfAborted();
       const nonEmptyPages = pages.filter(page => page.markdown.trim().length > 0);
       if (nonEmptyPages.length > 0) {
         return pages;
@@ -350,12 +360,14 @@ async function recognizeDocumentByUpload(args: {
         });
       }
       await waitBeforeRetry({
+        signal,
         scope: 'PDF上传解析空内容',
         attempt,
         delayMs: readRetryDelayMs(emptyContentError, classification, attempt),
         classification,
       });
     } catch (error) {
+      signal?.throwIfAborted();
       if (error instanceof OcrRetryExhaustedError) {
         throw error;
       }
@@ -372,6 +384,7 @@ async function recognizeDocumentByUpload(args: {
           : error;
       }
       await waitBeforeRetry({
+        signal,
         scope: 'PDF上传解析',
         attempt,
         delayMs: readRetryDelayMs(error, classification, attempt),
@@ -388,17 +401,19 @@ async function recognizeDocumentImageByOcrPort(args: {
   profile: DocumentOcrModelProfile;
   imageBytes: Buffer;
   pageNum: number;
-  retryOptions: { maxRetries: number; attemptTimeoutMs: number };
+  retryOptions: { maxRetries: number; attemptTimeoutMs: number; signal?: AbortSignal };
 }): Promise<string> {
   const { documentOcr, profile, imageBytes, pageNum, retryOptions } = args;
-  const { maxRetries, attemptTimeoutMs } = retryOptions;
+  const { maxRetries, attemptTimeoutMs, signal } = retryOptions;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    signal?.throwIfAborted();
     const requestStartTime = Date.now();
     try {
       const timeoutMessage = `AI识别超时（${Math.round(attemptTimeoutMs / 1000)}秒）`;
       const pages = await withAttemptTimeout({
         timeoutMs: attemptTimeoutMs,
+        signal,
         timeoutMessage,
         enableAbortSignal: profile.supportsAbortSignal,
         work: async (signal?: AbortSignal) => {
@@ -416,6 +431,7 @@ async function recognizeDocumentImageByOcrPort(args: {
         },
       });
 
+      signal?.throwIfAborted();
       const content = pages
         .filter(page => page.pageNumber === pageNum || pages.length === 1)
         .map(page => page.markdown.trim())
@@ -439,12 +455,14 @@ async function recognizeDocumentImageByOcrPort(args: {
         });
       }
       await waitBeforeRetry({
+        signal,
         scope: `页面 ${pageNum} Document OCR 空内容`,
         attempt,
         delayMs: readRetryDelayMs(emptyContentError, classification, attempt),
         classification,
       });
     } catch (error) {
+      signal?.throwIfAborted();
       if (error instanceof OcrRetryExhaustedError) {
         throw error;
       }
@@ -465,6 +483,7 @@ async function recognizeDocumentImageByOcrPort(args: {
           : error;
       }
       await waitBeforeRetry({
+        signal,
         scope: `页面 ${pageNum} Document OCR`,
         attempt,
         delayMs: readRetryDelayMs(error, classification, attempt),
@@ -474,36 +493,6 @@ async function recognizeDocumentImageByOcrPort(args: {
   }
 
   throw new Error(`页面 ${pageNum} Document OCR 重试 ${maxRetries} 次后仍失败`);
-}
-
-async function withAttemptTimeout<T>(args: {
-  timeoutMs: number;
-  timeoutMessage: string;
-  enableAbortSignal: boolean;
-  work: (signal?: AbortSignal) => Promise<T>;
-}): Promise<T> {
-  const { timeoutMs, timeoutMessage, enableAbortSignal, work } = args;
-
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  const controller = enableAbortSignal ? new AbortController() : null;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      try {
-        controller?.abort(new Error(timeoutMessage));
-      } catch {
-        controller?.abort();
-      }
-      reject(new OcrTimeoutError(timeoutMessage, { timeoutMs }));
-    }, timeoutMs);
-  });
-
-  try {
-    const workPromise = work(controller?.signal);
-    return await Promise.race([workPromise, timeoutPromise]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
 }
 
 /**
@@ -554,17 +543,8 @@ export async function processWithVision(
   };
 }
 
-export type VisionStrategyDiagnosticResult =
-  | {
-      success: true;
-      blocks: ParsedBlock[];
-      diagnostics: PdfParseDiagnostics;
-    }
-  | {
-      success: false;
-      error: string;
-      diagnostics?: PdfParseDiagnostics;
-    };
+export type { VisionStrategyDiagnosticResult } from '@linnya/plugin-host-contract/backend/documentParsingRuntime';
+import type { VisionStrategyDiagnosticResult } from '@linnya/plugin-host-contract/backend/documentParsingRuntime';
 
 export async function processWithVisionDiagnostics(
   data: Uint8Array,
@@ -573,6 +553,7 @@ export async function processWithVisionDiagnostics(
   documentOcr: DocumentOcrPort,
   visionModelId: string,
   options: {
+    signal?: AbortSignal;
     filename?: string;
     temporaryDirectory?: string;
     targetPixels?: number;
@@ -581,6 +562,8 @@ export async function processWithVisionDiagnostics(
   } = {},
   updater?: (progress: number, message: string) => void
 ): Promise<VisionStrategyDiagnosticResult> {
+  const { signal } = options;
+  signal?.throwIfAborted();
   const { filename = `${docId}.pdf`, maxRetries = 5, tpmLimitPerWorker } = options;
   const targetPixels = normalizePdfRasterTargetPixels(
     options.targetPixels ?? PDF_RASTER_DEFAULT_TARGET_PIXELS
@@ -595,6 +578,7 @@ export async function processWithVisionDiagnostics(
   try {
     console.log('[VisionRecognitionStrategy] 开始AI视觉处理...');
     const documentOcrProfile = await documentOcr.resolveModelProfile(visionModelId);
+    signal?.throwIfAborted();
     const attemptTimeoutMs = getAiRecognitionAttemptTimeoutMs(documentOcrProfile);
     let pdfPath: string | null = null;
     let totalPages: number;
@@ -637,6 +621,7 @@ export async function processWithVisionDiagnostics(
         documentOcr,
         profile: documentOcrProfile,
         retryOptions: {
+          signal,
           maxRetries,
           attemptTimeoutMs,
         },
@@ -698,6 +683,7 @@ export async function processWithVisionDiagnostics(
       visionModelId,
       maxRetries,
       attemptTimeoutMs,
+      signal,
       initialConcurrency: PDF_VISION_MAX_IN_FLIGHT_PAGES,
       onPageRasterized(pageNumber) {
         rasterizedPages += 1;
@@ -715,6 +701,7 @@ export async function processWithVisionDiagnostics(
       },
     });
 
+    signal?.throwIfAborted();
     for (const result of pageImageResults) {
       const pageNum = result.pageNum;
 
@@ -826,6 +813,7 @@ export async function processWithVisionDiagnostics(
       }),
     };
   } catch (error) {
+    signal?.throwIfAborted();
     const errorMessage = `AI视觉处理失败: ${describeOcrFailureForUser(error)}`;
     return {
       success: false,
@@ -859,12 +847,16 @@ export async function processPdfPagesWithVisionDiagnostics(
   documentOcr: DocumentOcrPort,
   visionModelId: string,
   options: {
+    signal?: AbortSignal;
+    temporaryDirectory?: string;
     targetPixels?: number;
     maxRetries?: number;
     tpmLimitPerWorker?: number;
   } = {},
   updater?: (progress: number, message: string) => void
 ): Promise<VisionStrategyDiagnosticResult> {
+  const { signal } = options;
+  signal?.throwIfAborted();
   const { maxRetries = 5, tpmLimitPerWorker } = options;
   const targetPixels = normalizePdfRasterTargetPixels(
     options.targetPixels ?? PDF_RASTER_DEFAULT_TARGET_PIXELS
@@ -876,12 +868,14 @@ export async function processPdfPagesWithVisionDiagnostics(
   const allBlocks: ParsedBlock[] = [];
   const pageDiagnostics: PdfPageDiagnostic[] = [];
   const documentOcrProfile = await documentOcr.resolveModelProfile(visionModelId);
+  signal?.throwIfAborted();
   const attemptTimeoutMs = getAiRecognitionAttemptTimeoutMs(documentOcrProfile);
   const useDedicatedDocumentOcr = documentOcrProfile !== undefined;
   const rasterDocument = await openPdfRasterDocumentFromPath(pdfPath);
 
   try {
     for (let index = 0; index < uniquePages.length; index += 1) {
+      signal?.throwIfAborted();
       const pageNum = uniquePages[index];
       if (updater) {
         updater((index / uniquePages.length) * 90, `重新解析第 ${pageNum} 页...`);
@@ -889,6 +883,7 @@ export async function processPdfPagesWithVisionDiagnostics(
 
       try {
         const pageImage = await rasterDocument.renderPageToJpeg(pageNum, { targetPixels });
+        signal?.throwIfAborted();
         const markdownContent = useDedicatedDocumentOcr
           ? await recognizeDocumentImageByOcrPort({
               documentOcr,
@@ -896,6 +891,7 @@ export async function processPdfPagesWithVisionDiagnostics(
               imageBytes: pageImage.jpegBytes,
               pageNum,
               retryOptions: {
+                signal,
                 maxRetries,
                 attemptTimeoutMs,
               },
@@ -903,6 +899,7 @@ export async function processPdfPagesWithVisionDiagnostics(
           : await recognizeImageBytes(pageImage.jpegBytes, pageNum, textGeneration, visionModelId, {
               maxRetries,
               attemptTimeoutMs,
+              signal,
             });
 
         if (!markdownContent) {
@@ -923,6 +920,7 @@ export async function processPdfPagesWithVisionDiagnostics(
           );
         }
       } catch (error) {
+        signal?.throwIfAborted();
         const classification = classifyOcrError(error);
         pageDiagnostics.push({
           pageNumber: pageNum,
@@ -1012,6 +1010,7 @@ export async function recognizeImageContent(
     | {
         maxRetries?: number;
         attemptTimeoutMs?: number;
+        signal?: AbortSignal;
       }
     | number = 5
 ): Promise<string> {
@@ -1033,9 +1032,11 @@ async function recognizeImageBytes(
     | {
         maxRetries?: number;
         attemptTimeoutMs?: number;
+        signal?: AbortSignal;
       }
     | number = 5
 ): Promise<string> {
+  const signal = typeof retryOptions === 'number' ? undefined : retryOptions.signal;
   const resolvedMaxRetries =
     typeof retryOptions === 'number' ? retryOptions : (retryOptions.maxRetries ?? 5);
   const defaultAttemptTimeoutMs = getAiRecognitionAttemptTimeoutMs();
@@ -1045,6 +1046,7 @@ async function recognizeImageBytes(
       : (retryOptions.attemptTimeoutMs ?? defaultAttemptTimeoutMs);
 
   for (let attempt = 1; attempt <= resolvedMaxRetries; attempt++) {
+    signal?.throwIfAborted();
     const requestStartTime = Date.now(); // 记录每次尝试耗时，便于定位长尾/超时
 
     try {
@@ -1052,6 +1054,7 @@ async function recognizeImageBytes(
 
       const response = await withAttemptTimeout({
         timeoutMs: attemptTimeoutMs,
+        signal,
         timeoutMessage,
         // canonical inference 的正式合同支持 AbortSignal，超时必须中断本次 Provider 调用。
         enableAbortSignal: true,
@@ -1059,7 +1062,7 @@ async function recognizeImageBytes(
           return textGeneration.generate({
             modelId: visionModelId,
             messages: [
-              { role: 'system', content: pdfOcrPrompt.content },
+              { role: 'system', content: PDF_OCR_PROMPT_CONTENT },
               {
                 role: 'user',
                 content: [
@@ -1078,6 +1081,7 @@ async function recognizeImageBytes(
         },
       });
 
+      signal?.throwIfAborted();
       const content = response.text.trim();
 
       if (content && content.length > 0) {
@@ -1105,12 +1109,14 @@ async function recognizeImageBytes(
         });
       }
       await waitBeforeRetry({
+        signal,
         scope: `页面 ${pageNum} 空内容`,
         attempt,
         delayMs: readRetryDelayMs(emptyContentError, classification, attempt),
         classification,
       });
     } catch (error) {
+      signal?.throwIfAborted();
       if (error instanceof OcrRetryExhaustedError) {
         throw error;
       }
@@ -1138,6 +1144,7 @@ async function recognizeImageBytes(
       }
 
       await waitBeforeRetry({
+        signal,
         scope: `页面 ${pageNum} AI识别`,
         attempt,
         delayMs: readRetryDelayMs(error, classification, attempt),

@@ -40,6 +40,11 @@ Backend 的 `storageRuntime` 只借用已迁移连接的 prepare/transaction 和
 
 插件不得 deep import 其它插件、Host 内部实现或本包未导出的文件。`src/plugin-sdk/` 是带行为的 Host facade，不是第二份合同 owner；它必须从本包导入类型。
 
+`backend/documentParsingRuntime` 提供整份解析、PDF 页数和指定页解析；调用方冻结模型、素材与任务临时目录，
+并显式注入文字生成/OCR 窄端口。`backend/worker/documentParsingRuntime` 使用同一合同与实现，但必须内联到 Worker，
+不能依赖主线程模块加载 hook。该门面按需加载通用 parser，不接触模型目录、凭据、知识库状态或存储。
+原文/索引写入仍归消费方，取消贯穿推理和页调度，不表示上游已受理任务被撤销。详见 [解析 owner](../../src/features/parsers/README.md)。
+
 ## 3. Workspace 文档读取
 
 Workspace runtime 只暴露当前数据库能力，不提供 `isUsingNewDatabase` 新旧切换探测。

@@ -32,6 +32,7 @@ import * as pluginIpcRuntime from '../../../plugin-sdk/backend/pluginIpcRuntime'
 import * as pluginMigration from '../../../plugin-sdk/backend/pluginMigration';
 import * as pluginRendererPush from '../../../plugin-sdk/backend/pluginRendererPush';
 import * as pluginRuntime from '../../../plugin-sdk/backend/pluginRuntime';
+import * as documentParsingRuntime from '../../../plugin-sdk/backend/documentParsingRuntime';
 import * as pdfDocumentRuntime from '../../../plugin-sdk/backend/pdfDocumentRuntime';
 import * as sandboxRuntime from '../../../plugin-sdk/backend/sandboxRuntime';
 import * as textMeasurement from '../../../plugin-sdk/backend/textMeasurement';
@@ -88,6 +89,7 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/pluginRendererPush', pluginRendererPush],
   ['@plugin/backend/pluginRuntime', pluginRuntime],
   ['@plugin/backend/pdfDocumentRuntime', pdfDocumentRuntime],
+  ['@plugin/backend/documentParsingRuntime', documentParsingRuntime],
   ['@plugin/backend/sandboxRuntime', sandboxRuntime],
   ['@plugin/backend/textMeasurement', textMeasurement],
   ['@plugin/backend/textUnitRuntime', textUnitRuntime],
