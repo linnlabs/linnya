@@ -6,6 +6,7 @@
  */
 
 .linnya-ui-icon-button {
+  user-select: none;
   --linnya-ui-icon-button-box: 24px;
   --linnya-ui-icon-button-icon: 18px;
 

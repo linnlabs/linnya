@@ -176,6 +176,12 @@
 }
 
 /* 预览只消费原文的投影；排版跟随本页 token，不借用 Conversation 或文档编辑器的内部样式。 */
+/* 技能文件内容是正文，可选中复制（应用默认不可选）。 */
+.skills-markdown-preview,
+.skills-source-preview {
+  user-select: text;
+}
+
 .skills-markdown-preview {
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-body);

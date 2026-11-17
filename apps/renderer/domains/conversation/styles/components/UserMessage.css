@@ -47,6 +47,7 @@
 }
 
 .user-message-container .user-message-actions {
+  user-select: none;
   display: flex;
   justify-content: space-between;
   align-items: center;

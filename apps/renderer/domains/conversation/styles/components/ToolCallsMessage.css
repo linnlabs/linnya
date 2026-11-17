@@ -53,6 +53,7 @@
 }
 
 .tool-calls-message .tool-card__header {
+  user-select: none;
   padding: 7px var(--space-3);
   background-color: var(--color-bg-surface);
   display: flex;

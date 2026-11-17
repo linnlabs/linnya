@@ -5,6 +5,7 @@
 ## 3.8.0 - 2026-11-17
 
 - `DraggablePanel` 不再提供高度调整：去掉上下边缘与四个角的 resize 手柄，只保留左右边缘调整宽度；手柄悬停只换成 `ew-resize` 光标，不再画蓝色条。`resizeDraggablePanelGeometry` 与 `DraggablePanelResizeDirection` 的公开签名不变。
+- `BaseButton`、`IconButton` 的文字不可被拖选（`user-select: none`），放进可选正文区域里也一样。
 
 ## 3.7.1 - 2026-11-17
 

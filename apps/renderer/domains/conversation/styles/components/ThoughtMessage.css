@@ -5,6 +5,7 @@
 }
 
 .thought-container .thought-header {
+  user-select: none;
   display: flex;
   align-items: center;
   gap: var(--space-1-5);

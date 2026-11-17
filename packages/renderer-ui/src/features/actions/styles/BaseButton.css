@@ -1,5 +1,7 @@
 /* Renderer UI actions feature：通用按钮。视觉层级、尺寸与颜色规则见 docs/design.md。 */
 .linnya-ui-button {
+  /* 按钮文字是界面，不是正文：放进可选的正文区域里也不能被拖选。 */
+  user-select: none;
   --linnya-ui-button-icon-size: 14px;
   --linnya-ui-button-state-transition:
     background-color var(--duration-medium) var(--ease-standard),
