@@ -52,78 +52,27 @@
   overflow: auto;
 }
 
+/* 宽度手柄只换光标，不画色条。 */
 .draggable-panel .resize-handle {
   position: absolute;
   z-index: 10;
   background: transparent;
 }
 
-.draggable-panel .resize-handle:hover {
-  background: color-mix(in srgb, var(--color-info) 20%, transparent);
-}
-
-.draggable-panel .resize-se {
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  height: 16px;
-  cursor: se-resize;
-}
-
-.draggable-panel .resize-nw {
-  top: 0;
-  left: 0;
-  width: 16px;
-  height: 16px;
-  cursor: nw-resize;
-}
-
-.draggable-panel .resize-ne {
-  top: 0;
-  right: 0;
-  width: 16px;
-  height: 16px;
-  cursor: ne-resize;
-}
-
-.draggable-panel .resize-sw {
-  bottom: 0;
-  left: 0;
-  width: 16px;
-  height: 16px;
-  cursor: sw-resize;
-}
-
 .draggable-panel .resize-e {
-  top: 16px;
+  top: 0;
   right: 0;
-  bottom: 16px;
+  bottom: 0;
   width: 8px;
-  cursor: e-resize;
+  cursor: ew-resize;
 }
 
 .draggable-panel .resize-w {
-  top: 16px;
-  bottom: 16px;
+  top: 0;
+  bottom: 0;
   left: 0;
   width: 8px;
-  cursor: w-resize;
-}
-
-.draggable-panel .resize-s {
-  right: 16px;
-  bottom: 0;
-  left: 16px;
-  height: 8px;
-  cursor: s-resize;
-}
-
-.draggable-panel .resize-n {
-  top: 0;
-  right: 16px;
-  left: 16px;
-  height: 8px;
-  cursor: n-resize;
+  cursor: ew-resize;
 }
 
 .draggable-panel--mini {

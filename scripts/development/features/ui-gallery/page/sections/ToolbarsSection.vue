@@ -64,7 +64,7 @@ const TOOLBAR_POSITION = Object.freeze({ top: 16, left: 16 });
       </GalleryRow>
     </GalleryBlock>
 
-    <GalleryBlock title="可拖拽面板" note="编辑器、画布里的浮层；拖动标题栏移动，右下角调整大小。">
+    <GalleryBlock title="可拖拽面板" note="编辑器、画布里的浮层；拖动标题栏移动，拖动左右边缘调整宽度，高度跟内容走。">
       <div class="toolbars__panel-stage">
         <DraggablePanel
           :visible="panelVisible"

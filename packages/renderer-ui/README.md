@@ -237,7 +237,7 @@ Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决�
 
 ## 可拖拽面板
 
-`DraggablePanel` 支持五种初始位置、数字或四边 position offset、可选容器边界、固定/auto 尺寸、拖拽和八方向 resize。`variant="mini"` 保留轻量筛选/查找面板的既有密度；auto 宽度或高度会隐藏对应方向的 resize 手柄。组件继续阻止根节点和拖拽手柄的 `mousedown`/`touchstart` 冒泡，避免画布把面板交互误判为框选、节点拖拽或平移。
+`DraggablePanel` 支持五种初始位置、数字或四边 position offset、可选容器边界、固定/auto 尺寸、拖拽和左右边缘调整宽度（3.8.0 起不再提供高度与角落手柄，手柄悬停只换光标、不画色条）。`variant="mini"` 保留轻量筛选/查找面板的既有密度；auto 宽度会隐藏宽度手柄。组件继续阻止根节点和拖拽手柄的 `mousedown`/`touchstart` 冒泡，避免画布把面板交互误判为框选、节点拖拽或平移。
 
 普通原生属性会落在面板根节点；业务需要交互标记时由自身显式传入。指定内部节点的业务样式只能通过 `classNames.header/title/closeButton/body` 注入业务命名空间 class，不得覆盖 `.draggable-panel .panel-*` 等内部 selector。位置与 resize 规则同时以纯函数公开，供不渲染 Vue 的边界测试和同语义编排复用。
 

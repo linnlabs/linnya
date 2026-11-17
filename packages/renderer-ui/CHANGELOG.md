@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.8.0 - 2026-11-17
+
+- `DraggablePanel` 不再提供高度调整：去掉上下边缘与四个角的 resize 手柄，只保留左右边缘调整宽度；手柄悬停只换成 `ew-resize` 光标，不再画蓝色条。`resizeDraggablePanelGeometry` 与 `DraggablePanelResizeDirection` 的公开签名不变。
+
 ## 3.7.1 - 2026-11-17
 
 - `CustomSelect` 触发器与 `SecretInput` 由 36px 收到 `--control-height-md`（32px），字号统一为 13px（`--font-size-body`），文字距边 10px，与单行输入、md 按钮同高同字号，表单同一行对齐；选择器箭头 16px → 14px，密文显隐按钮宽 40px → 36px。`minimal` 选择器不变。现有 `^3.0.0` 插件保持兼容。
