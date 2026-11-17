@@ -1,5 +1,6 @@
+/* 底部控件高度取 IconButton 的档位：常规 28（md）、紧凑 24（sm），“+”与模型选择器、图片按钮同高。 */
 .ai-assistant-input-footer {
-  --input-footer-control-height: 26px;
+  --input-footer-control-height: 28px;
   --input-footer-control-line-height: 18px;
 
   display: flex;
@@ -124,10 +125,6 @@
 }
 
 /* IconButton xs 为 20px，居中放进原来的 26px / 24px 控件高度里，让右侧选择器位置不变。 */
-.ai-assistant-input-footer .input-action-menu-button {
-  margin-inline: calc((var(--input-footer-control-height) - var(--space-5)) / 2);
-}
-
 .ai-assistant-input-footer__input-action-menu-wrapper {
   --conversation-input-action-menu-width: calc(var(--space-10) * 5);
 
