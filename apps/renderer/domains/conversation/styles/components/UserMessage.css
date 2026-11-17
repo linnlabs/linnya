@@ -18,8 +18,8 @@
 }
 
 .user-message-container .message-bubble {
-  /* 气泡底取 subtle 与 hover-strong 的中间档：比 subtle 有轮廓，又不至于压过正文。 */
-  background-color: color-mix(in srgb, var(--color-bg-subtle) 95%, var(--color-bg-hover-strong));
+  /* 气泡底比 subtle 深一点点（主文字色 0.6%）：比 subtle 有轮廓，又不至于压过正文；保持不透明。 */
+  background-color: color-mix(in srgb, var(--color-text-primary) 0.6%, var(--color-bg-subtle));
   color: var(--color-text-primary);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-lg);

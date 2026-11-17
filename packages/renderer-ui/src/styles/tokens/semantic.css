@@ -13,9 +13,10 @@
   --color-bg-disabled: var(--color-gray-100);
   --color-bg-search: var(--color-gray-125);
   --color-bg-search-light: var(--color-gray-100);
-  --color-bg-hover: color-mix(in srgb, var(--color-gray-125) 50%, var(--color-gray-150));
-  --color-bg-hover-light: var(--color-gray-100);
-  --color-bg-hover-strong: var(--color-gray-200);
+  /* 悬停是主文字色的半透明叠加，任何底色上都同样明显；hover-light 并入 hover，hover-strong 是加深一档。 */
+  --color-bg-hover: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+  --color-bg-hover-light: var(--color-bg-hover);
+  --color-bg-hover-strong: color-mix(in srgb, var(--color-text-primary) 12%, transparent);
   --color-bg-active: color-mix(in srgb, var(--color-black) 10%, transparent);
   --color-bg-active-subtle: color-mix(in srgb, var(--color-black) 7%, transparent);
   --color-bg-active-control-hover: var(--color-gray-250);
@@ -83,9 +84,9 @@
   --color-bg-disabled: var(--color-gray-750);
   --color-bg-search: var(--color-gray-750);
   --color-bg-search-light: var(--color-gray-700);
-  --color-bg-hover: color-mix(in srgb, var(--color-gray-750) 50%, var(--color-gray-725));
-  --color-bg-hover-light: var(--color-gray-850);
-  --color-bg-hover-strong: var(--color-gray-725);
+  --color-bg-hover: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  --color-bg-hover-light: var(--color-bg-hover);
+  --color-bg-hover-strong: color-mix(in srgb, var(--color-text-primary) 16%, transparent);
   /* 深底上压黑不可见，按下与选中改为提亮。 */
   --color-bg-active: color-mix(in srgb, var(--color-white) 8%, transparent);
   --color-bg-active-subtle: color-mix(in srgb, var(--color-white) 5%, transparent);
@@ -157,9 +158,9 @@
   --color-bg-disabled: color-mix(in srgb, var(--color-blue-50) 64%, var(--color-gray-100));
   --color-bg-search: color-mix(in srgb, var(--color-blue-75) 56%, var(--color-white));
   --color-bg-search-light: color-mix(in srgb, var(--color-blue-50) 68%, var(--color-white));
-  --color-bg-hover: color-mix(in srgb, var(--color-blue-100) 42%, var(--color-white));
-  --color-bg-hover-light: color-mix(in srgb, var(--color-blue-50) 62%, var(--color-white));
-  --color-bg-hover-strong: color-mix(in srgb, var(--color-blue-125) 54%, var(--color-white));
+  --color-bg-hover: color-mix(in srgb, var(--color-text-primary) 7%, transparent);
+  --color-bg-hover-light: var(--color-bg-hover);
+  --color-bg-hover-strong: color-mix(in srgb, var(--color-text-primary) 12%, transparent);
   --color-bg-active: color-mix(in srgb, var(--color-blue-400) 16%, transparent);
   --color-bg-active-subtle: color-mix(in srgb, var(--color-blue-300) 10%, transparent);
   --color-bg-active-control-hover: color-mix(in srgb, var(--color-blue-125) 60%, var(--color-white));

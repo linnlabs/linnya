@@ -300,7 +300,7 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 
 | 状态 | 表达方式 |
 | --- | --- |
-| hover | 透明底控件显示 `--color-bg-hover`；文字或图标可提升一级文字色 |
+| hover | 透明底控件显示 `--color-bg-hover`（主文字色半透明叠加，任何底色上同样明显；叠在已悬停行上的控件用 `--color-bg-hover-strong`）；文字或图标可提升一级文字色。悬停色是半透明的，不要拿它和别的颜色 `color-mix` 当不透明底用 |
 | active（按下） | `--color-bg-active`；需要触感时可加 `scale(0.98)`，时长用 micro |
 | selected | `--color-accent-bg` 底色配 `--color-accent` 文字，或 `--color-bg-active-subtle` 中性选中 |
 | disabled | 使用原生 `disabled` 语义，配合 `--color-text-placeholder` 或整体 0.5–0.6 透明度；不能只改颜色 |
