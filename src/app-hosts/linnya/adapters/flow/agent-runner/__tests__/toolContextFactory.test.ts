@@ -30,7 +30,6 @@ afterEach(() => {
 
 function createHostServices() {
   return {
-    knowledgeBaseService: {} as never,
     databaseService,
     commandRunPermission: {
       status: 'available',

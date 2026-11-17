@@ -50,7 +50,7 @@ function isLargePayloadRoute(req: Request): boolean {
     return true;
   }
 
-  return /^\/api\/v1\/knowledge-base\/[^/]+\/documents$/.test(req.path);
+  return /^\/api\/v1\/plugins\/[^/]+\/documents\/upload$/.test(req.path);
 }
 
 export interface ApiServerOptions {
@@ -97,9 +97,11 @@ export class ApiServer {
   }
 
   public setupMiddleware(): void {
-    this.app.use(helmet({
-      contentSecurityPolicy: false
-    }));
+    this.app.use(
+      helmet({
+        contentSecurityPolicy: false,
+      })
+    );
 
     this.app.use(cors({
       origin: (origin, callback) => resolveApiCorsOrigin(origin, callback, this.rendererOrigin),
@@ -176,7 +178,9 @@ export class ApiServer {
     });
   }
 
-  public async configureRoutes(routeDependencies: RouteDependencies): Promise<RouteConfigurationResult> {
+  public async configureRoutes(
+    routeDependencies: RouteDependencies
+  ): Promise<RouteConfigurationResult> {
     console.log('[Backend Service] 🚦 开始配置应用路由...');
     
     const routeResult = await configureRoutes(this.app, routeDependencies, {

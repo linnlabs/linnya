@@ -1,15 +1,40 @@
 import type { BackendPluginIpcHandler } from '@linnya/plugin-host-contract/backend/pluginIpcRuntime';
 import type { BackendPluginRendererContext } from '@linnya/plugin-host-contract/backend/pluginIpcRuntime';
+import type { BackendPluginUploadContext } from '@linnya/plugin-host-contract/backend/pluginIpcRuntime';
 
 export type {
   BackendPluginIpcHandler,
   BackendPluginRendererContext,
+  BackendPluginUploadContext,
 } from '@linnya/plugin-host-contract/backend/pluginIpcRuntime';
 
-export function readBackendPluginRendererContext(event: unknown): BackendPluginRendererContext | undefined {
-  if (typeof event !== 'object' || event === null
-    || !('rendererSessionId' in event) || typeof event.rendererSessionId !== 'string'
-    || !('signal' in event) || !(event.signal instanceof AbortSignal)) return undefined;
+const uploadContexts = new WeakMap<object, BackendPluginUploadContext>();
+
+/** 仅 Host 路由使用；不在公共合同导出创建器。 */
+export function createBackendPluginUploadEvent(context: BackendPluginUploadContext): object {
+  const event = Object.freeze({});
+  uploadContexts.set(event, context);
+  return event;
+}
+
+export function readBackendPluginUploadContext(
+  event: unknown
+): BackendPluginUploadContext | undefined {
+  return typeof event === 'object' && event !== null ? uploadContexts.get(event) : undefined;
+}
+
+export function readBackendPluginRendererContext(
+  event: unknown
+): BackendPluginRendererContext | undefined {
+  if (
+    typeof event !== 'object' ||
+    event === null ||
+    !('rendererSessionId' in event) ||
+    typeof event.rendererSessionId !== 'string' ||
+    !('signal' in event) ||
+    !(event.signal instanceof AbortSignal)
+  )
+    return undefined;
   return { rendererSessionId: event.rendererSessionId, signal: event.signal };
 }
 

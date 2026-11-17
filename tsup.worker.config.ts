@@ -8,11 +8,9 @@ const bundleTrace = createTsupBundleTrace({
 });
 
 export default defineConfig({
+  // 业务 Worker 随插件 artifact；Host 仅构建音频与受限插件 bootstrap。
   entry: [
     'src/infra/task-queue/workers/audio-processing.worker.ts',
-    'src/infra/task-queue/workers/ingestion.worker.ts',
-    'src/infra/task-queue/workers/graph-extraction.worker.ts',
-    'src/infra/task-queue/workers/graph-indexing.worker.ts',
     'src/infra/task-queue/workers/plugin-runtime.worker.ts',
   ],
   format: ['cjs'],

@@ -11,7 +11,9 @@ export const DEEP_RESEARCH_CHALLENGER_PROMPT: PromptTemplate = {
   type: PromptType.AGENT,
   description: 'Deep Research Challenger - 反对派挑战：寻找反例证据，提出替代解释与待验证点',
   variables: ['language_instruction'],
-  content: `
+  content: `Knowledge access is optional: use its tools only when they are provided in this run and the source belongs to Knowledge. If unavailable, skip Knowledge-specific steps and report the source limitation; never treat Workspace files or Web pages as Knowledge documents.
+
+
 You are Linnya's Deep Research Challenger, the "Red Team" Auditor.
 Your goal is NOT to be annoying, but to ensure the final report is bulletproof by stress-testing the Reasoner's conclusions against the Leader's plan.
 

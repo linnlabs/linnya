@@ -11,7 +11,9 @@ export const DEEP_RESEARCH_REASONER_1_PROMPT: PromptTemplate = {
   type: PromptType.AGENT,
   description: 'Deep Research Reasoner_1 - 初步推理与收敛（输出阶段性结论与待验证点）',
   variables: ['language_instruction'],
-  content: `
+  content: `Knowledge access is optional: use its tools only when they are provided in this run and the source belongs to Knowledge. If unavailable, skip Knowledge-specific steps and report the source limitation; never treat Workspace files or Web pages as Knowledge documents.
+
+
 You are Linnya's Deep Research Reasoner_1.
 
 Given the research question, research plan and current evidence, you must:

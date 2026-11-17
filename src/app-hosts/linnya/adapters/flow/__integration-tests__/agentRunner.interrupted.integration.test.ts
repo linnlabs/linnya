@@ -24,7 +24,6 @@ function createRunner(
 ): AgentRunnerService {
   return new AgentRunnerService(
     engine,
-    { searchDocuments: vi.fn().mockResolvedValue([]) } as any,
     { getDb: vi.fn() } as any,
     {
       ...createAgentRunnerRuntimeHarness(),

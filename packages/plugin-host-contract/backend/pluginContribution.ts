@@ -1,23 +1,10 @@
 import type { PluginMeta } from '@app/schemas';
-import type {
-  AgentDefinition,
-  SubagentTypeContribution,
-} from './agentRegistry';
-import type {
-  DocumentTypeBackendSystemViewSpec,
-} from './documentTypeBackendHook';
-import type {
-  BackendPluginIpcHandler,
-} from './pluginIpcRuntime';
-import type {
-  BaseTool,
-} from './toolRuntime';
-import type {
-  PluginMigrationDefinition,
-} from './pluginMigration';
-import type {
-  HiddenWorkerDefinition,
-} from './hiddenWorkerRuntime';
+import type { AgentDefinition, SubagentTypeContribution } from './agentRegistry';
+import type { DocumentTypeBackendSystemViewSpec } from './documentTypeBackendHook';
+import type { BackendPluginIpcHandler } from './pluginIpcRuntime';
+import type { BaseTool } from './toolRuntime';
+import type { PluginMigrationDefinition } from './pluginMigration';
+import type { HiddenWorkerDefinition } from './hiddenWorkerRuntime';
 import type { BackendPluginCliContribution } from './pluginCli';
 import type {
   SandboxJsonValue,
@@ -46,10 +33,7 @@ export interface BackendPluginToolContextDecoratorParams {
 
 export interface BackendPluginToolContextDecorator {
   readonly toolNames: readonly string[];
-  decorate(
-    context: unknown,
-    params: BackendPluginToolContextDecoratorParams,
-  ): void | Promise<void>;
+  decorate(context: unknown, params: BackendPluginToolContextDecoratorParams): void | Promise<void>;
   /** @deprecated use `toolContextBindingMigrators` on PluginBackendContribution. */
   copyBinding?(
     source: unknown,
@@ -73,6 +57,10 @@ export interface BackendPluginToolContextBindingMigrator {
 
 export interface BackendPluginRuntimeEffect {
   readonly id: string;
+  /** 同步准入检查，必须在 enabled/active artifact 状态改变前执行。 */
+  assertCanDeactivate?(): void;
+  /** 退出与更新只读取是否存在真实工作，不取得插件队列或业务对象。 */
+  hasActiveWork?(): boolean;
   activate(): void | Promise<void>;
   deactivate(): void | Promise<void>;
 }
@@ -153,6 +141,8 @@ export interface BackendPluginIpcGatewayContribution {
    * 分裂漂移。旧 `ipcChannels` / `ipcRegistrars` 仅用于兼容历史 artifact。
    */
   readonly ipc?: BackendPluginIpcContribution;
+  /** 单文件流式上传只转发至已声明的 IPC；路径、限额和临时文件生命周期归 Host。 */
+  readonly multipartUpload?: { readonly channel: string };
 }
 
 export interface BackendPluginRendererPushContribution {

@@ -19,8 +19,9 @@ tool的设计思想是：用最少的token，传递最多的信息。因此在�
   管理平台通用能力族；某个文档领域或插件独占、且离开该领域就没有意义的专属工具，应与领域实现放在
   `src/domains/<domain>/tools/` 或插件包内，再由 App Host 汇集其 `toolClasses`
   contribution。不要为了让所有类都位于 `src/tools/` 而拆散业务领域。
+- 知识库工具位于 `packages/plugins/knowledge/src/backend/tools`，由插件贡献清单与活动期服务；Host ToolContext 不持有知识库服务。
 - `src/tools/` 第一层优先表达稳定能力族，例如
-  `workspace/`、`commands/`、`agent_control/`、`knowledgebase/`、`web/`；第二层才是单个工具或紧密协作的 feature。
+  `workspace/`、`commands/`、`agent_control/`、`web/`；第二层才是单个工具或紧密协作的 feature。
 - 只被工具消费的存储 reader、历史回放、Host
   ToolContext 适配或领域规则，仍然必须回到它们自己的 domain / app-host
   feature；“工具会用到”不等于“它属于 `src/tools/`”。
@@ -230,8 +231,7 @@ readonly parameters: ToolParameterSchema = {
 - **规范**:
   - **签名**: `async run(args: ToolArgs, context: ToolContext): Promise<string>`
   - **`args`**: 一个包含所有已验证参数的对象。
-  - **`context`**: 一个包含额外上下文信息（如
-    `knowledgeBaseService`）的对象，按需使用。
+  - **`context`**: Host 冻结的项目、Conversation、run 身份以及 abort、引用等窄能力，不能由工具参数替换。
   - **返回值**: **必须**返回一个
     `Promise<string>`，并且**强制要求返回 JSON 字符串**（`JSON.stringify(...)`
     的结果），不要返回纯文本。

@@ -38,10 +38,6 @@ const mockEventStore = {
   truncateAndReplace: vi.fn(),
 };
 
-const mockKnowledgeBaseService = {
-  searchDocuments: vi.fn(),
-  getDocument: vi.fn(),
-};
 
 const mockDatabaseService = {
   getDb: vi.fn(),
@@ -116,7 +112,6 @@ describe('上下文压缩宿主边界', () => {
 
     agentRunner = new AgentRunnerService(
       mockGraphExecutor as any,
-      mockKnowledgeBaseService as any,
       mockDatabaseService as any,
       createAgentRunnerRuntimeHarness()
     );

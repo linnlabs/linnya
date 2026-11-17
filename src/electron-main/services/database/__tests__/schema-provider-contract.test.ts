@@ -17,7 +17,6 @@ import { getCommandApprovalsSchemaProviders } from '../../../../app-hosts/linnya
 import { getCommandCardSettlementsSchemaProviders } from '../../../../app-hosts/linnya/adapters/persistence/command-card-settlements/schema-providers';
 import { getCheckpointerSchemaProviders } from '../../../../app-hosts/linnya/adapters/persistence/checkpointer/schema-providers';
 import { getTelemetrySchemaProviders } from '../../../../app-hosts/linnya/adapters/telemetry/schema-providers';
-import { getKnowledgeBaseSchemaProviders } from '../../../../features/knowledge-base/infrastructure/sqlite/schema-providers';
 import { getWorkspaceSchemaProviders } from '../../../../features/workspace/infrastructure/sqlite/schema-providers';
 import { getAssetSchemaProviders } from '../../../../domains/assets/features/asset-ledger/infrastructure/sqlite/schemaProviders';
 import { getMarkdownSchemaProviders } from '../../../../domains/markdown/features/document-storage/infrastructure/sqlite/schemaProviders';
@@ -45,7 +44,6 @@ function getCoreSchemaProviders(): ISchemaProvider[] {
     ...getCommandCardSettlementsSchemaProviders(),
     ...getCheckpointerSchemaProviders(),
     ...getTelemetrySchemaProviders(),
-    ...getKnowledgeBaseSchemaProviders(),
   ];
 }
 

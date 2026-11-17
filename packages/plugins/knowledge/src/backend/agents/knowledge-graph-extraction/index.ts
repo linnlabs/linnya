@@ -1,0 +1,95 @@
+/**
+ * @file packages/plugins/knowledge/src/backend/agents/knowledge-graph-extraction/index.ts
+ *
+ * @description
+ * 软知识图谱抽取（Soft Knowledge Graph Extraction）内部模块统一出口：
+ * - prompt：见 `prompt.ts`
+ * - 模型策略（功能默认模型 + 重试次数）：在本文件集中管理
+ */
+
+import {
+  KNOWLEDGE_GRAPH_EXTRACTION_MAX_ATTEMPTS,
+  KNOWLEDGE_GRAPH_DOCUMENT_MAX_RETRIES,
+} from '../../graph/definitions/extractionRetryPolicy';
+
+import type { AgentConfiguration } from '@plugin/backend/agentRegistry';
+import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfiguration';
+import { PromptKeys } from '@app/schemas';
+
+export {
+  KNOWLEDGE_GRAPH_EXTRACTION_SYSTEM_PROMPT,
+  buildKnowledgeGraphExtractionBatchMessages,
+  type GraphExtractionLimits,
+  type KnowledgeGraphExtractionBatchInput,
+} from './prompt';
+
+export type KnowledgeGraphExtractionModelPolicy = {
+  /**
+   * 主抽取模型 ID。没有功能默认时为 null，由用户在设置里选择。
+   */
+  primaryModelId: string | null;
+
+  /**
+   * 当 payload.retry=true 时，每个模型最多尝试次数（批次级）。
+   *
+   * 策略：只重试同一个模型，不切换到其他模型。
+   */
+  maxAttemptsPerModelWhenRetryEnabled: number;
+
+  /**
+   * doc 级自动重试上限（orchestrator 监听 taskFailed 后重新入队）
+   */
+  maxDocAutoRetryAttempts: number;
+};
+
+/**
+ * 获取知识图谱抽取重试与兜底策略。
+ *
+ * 注意：用户上传快照优先；没有上传快照的入口才使用这里的功能默认，没有默认时不抽取。
+ */
+export function getKnowledgeGraphExtractionModelPolicy(): KnowledgeGraphExtractionModelPolicy {
+  return {
+    primaryModelId:
+      getPluginModelConfigurationPort().readAuxiliaryModelBinding(PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION) ??
+      null,
+    maxAttemptsPerModelWhenRetryEnabled: KNOWLEDGE_GRAPH_EXTRACTION_MAX_ATTEMPTS,
+    maxDocAutoRetryAttempts: KNOWLEDGE_GRAPH_DOCUMENT_MAX_RETRIES,
+  };
+}
+
+export const KNOWLEDGE_GRAPH_EXTRACTION_CONTEXT_POLICY: NonNullable<
+  AgentConfiguration['contextPolicy']
+> = {
+  profileId: 'agent',
+  toolHistory: {
+    strategy: 'per-pair',
+    keepLatestToolPairs: 0,
+    maxInteractionGroups: 4,
+    overflowStrategy: 'fail-fast',
+  },
+};
+
+type ModelCatalogLike = {
+  getModel: (id: string) => { id: string; enabled?: boolean } | null | undefined;
+};
+
+/**
+ * 解析"图谱抽取应使用的主模型 ID"。
+ *
+ * 优先级：
+ * 1. 功能默认 ID（policy.primaryModelId）
+ *
+ * 中文说明：图谱抽取不再随机挑选 chat 模型做隐式降级。功能默认不可用时返回 null，
+ * 由 orchestrator 跳过并记录告警，避免同一批数据混用不同模型。
+ */
+export function resolveKnowledgeGraphExtractionModelId(args: {
+  modelCatalog: ModelCatalogLike;
+}): string | null {
+  const { modelCatalog } = args;
+
+  const policy = getKnowledgeGraphExtractionModelPolicy();
+  if (!policy.primaryModelId) return null;
+  const forced = modelCatalog.getModel(policy.primaryModelId);
+  if (forced && forced.enabled !== false) return forced.id;
+  return null;
+}

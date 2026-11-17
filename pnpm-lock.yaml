@@ -926,12 +926,30 @@ importers:
       '@linnya/foundation':
         specifier: workspace:*
         version: link:../../foundation
+      '@node-rs/jieba':
+        specifier: ^2.0.1
+        version: 2.0.1
+      '@qdrant/js-client-rest':
+        specifier: ^1.15.0
+        version: 1.15.1(typescript@5.9.3)
+      adler-32:
+        specifier: ^1.3.1
+        version: 1.3.1
+      crc-32:
+        specifier: ^1.2.2
+        version: 1.2.2
+      iconv-lite:
+        specifier: ^0.6.3
+        version: 0.6.3
       open-simplex-noise:
         specifier: ^2.5.0
         version: 2.5.0
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.9.3)(vue@3.5.44(typescript@5.9.3))
+      uuid:
+        specifier: ^11.1.1
+        version: 11.1.1
       vue:
         specifier: ^3.5.44
         version: 3.5.44(typescript@5.9.3)
@@ -948,9 +966,18 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.9.1
+      '@vitejs/plugin-vue':
+        specifier: ^5.2.1
+        version: 5.2.4(vite@6.4.5(@types/node@24.9.1)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3))(vue@3.5.44(typescript@5.9.3))
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.0(@swc/core@1.13.5(@swc/helpers@0.5.23))(jiti@2.6.1)(postcss@8.5.28)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.3)
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
+      vite:
+        specifier: 6.4.5
+        version: 6.4.5(@types/node@24.9.1)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.3)
       vue-tsc:
         specifier: ~3.1.0
         version: 3.1.8(typescript@5.9.3)

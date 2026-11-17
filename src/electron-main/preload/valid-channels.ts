@@ -16,22 +16,8 @@
 // - `api:get-port`：根因修复新增，可通过 invoke 随时获取端口，不再依赖广播时序
 const API_CHANNELS = ['set-api-port', 'api:get-port'] as const;
 
-// --- 知识库操作 ---
-const KNOWLEDGE_BASE_CHANNELS = [
-  'get-all-kbs',
-  'create-kb',
-  'delete-kb',
-  'get-documents-in-kb',
-  'update-kb-settings',
-  'add-document-to-kb',
-  'delete-document-in-kb',
-  'get-tasks-status',
-  'search-kb',
-  'read-sot-document',
-  'open-file-dialog',
-  'open-directory-dialog',
-  'get-default-kb',
-] as const;
+// 文件选择仍属于 Host 系统能力。
+const FILE_DIALOG_CHANNELS = ['open-file-dialog', 'open-directory-dialog'] as const;
 
 // --- 模型管理 ---
 // 中文说明：
@@ -88,7 +74,6 @@ const FILE_CHANNELS = ['get-file-size', 'show-item-in-folder'] as const;
 const SHELL_CHANNELS = ['open-external-url'] as const;
 
 // --- 任务状态 ---
-const TASK_STATUS_CHANNELS = ['task-status-update'] as const;
 
 // --- 转录进度 ---
 const TRANSCRIPTION_CHANNELS = ['transcription:progress'] as const;
@@ -191,28 +176,13 @@ const BLOCK_HISTORY_CHANNELS = [
   'block-history:delete-version',
 ] as const;
 
-// --- Project ↔ KnowledgeBase 关联通道 ---
-const PROJECT_KB_LINK_CHANNELS = [
-  'project-kb-links:link',
-  'project-kb-links:unlink',
-  'project-kb-links:list-kb-ids',
-  'project-kb-links:list-kb-details',
-  'project-kb-links:list-project-ids',
-  'project-kb-links:list-project-details',
-  'project-kb-links:get-link-detail',
-  'project-kb-links:link-multiple',
-  'project-kb-links:is-linked',
-  'project-kb-links:clear-project',
-  'project-kb-links:clear-kb',
-] as const;
-
 /**
  * 预加载层的总白名单。
  * 注意：顺序不影响安全性，但我们保留语义分组，方便审查。
  */
 export const VALID_CHANNELS = [
   ...API_CHANNELS,
-  ...KNOWLEDGE_BASE_CHANNELS,
+  ...FILE_DIALOG_CHANNELS,
   ...MODEL_CHANNELS,
   ...UPDATE_CHANNELS,
   ...WINDOW_CLOSE_CHANNELS,
@@ -221,7 +191,6 @@ export const VALID_CHANNELS = [
   ...EXPORT_CHANNELS,
   ...FILE_CHANNELS,
   ...SHELL_CHANNELS,
-  ...TASK_STATUS_CHANNELS,
   ...TRANSCRIPTION_CHANNELS,
   ...QUOTA_CHANNELS,
   ...WEB_SEARCH_CONFIG_CHANNELS,
@@ -233,5 +202,4 @@ export const VALID_CHANNELS = [
   ...TODO_NOTIFY_CHANNELS,
   ...PLUGIN_CHANNELS,
   ...BLOCK_HISTORY_CHANNELS,
-  ...PROJECT_KB_LINK_CHANNELS,
 ] as const;

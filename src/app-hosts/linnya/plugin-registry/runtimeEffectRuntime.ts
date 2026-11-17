@@ -6,10 +6,26 @@ import type { BackendPluginRuntimeEffectRegistration } from './registry';
 interface ActiveRuntimeEffect {
   readonly pluginId: PluginId;
   readonly effectId: string;
+  readonly effect: BackendPluginRuntimeEffectRegistration['effect'];
   readonly deactivate: () => void | Promise<void>;
+  deactivationFailed?: boolean;
 }
 
 const activeEffects = new Map<string, ActiveRuntimeEffect>();
+
+export function assertBackendPluginCanDeactivate(pluginId: string): void {
+  for (const active of activeEffects.values())
+    if (active.pluginId === pluginId) active.effect.assertCanDeactivate?.();
+}
+
+export function hasActiveBackendPluginWork(): boolean {
+  return [...activeEffects.values()].some(active => active.effect.hasActiveWork?.() === true);
+}
+
+/** App 正常退出已经停止 ingress；不再要求用户等待插件工具结束，直接交 owner 取消收尾。 */
+export async function stopBackendPluginRuntimeEffects(): Promise<void> {
+  await deactivateStaleRuntimeEffects(new Map());
+}
 
 export async function syncBackendPluginRuntimeEffects(
   registrations: readonly BackendPluginRuntimeEffectRegistration[],
@@ -37,7 +53,11 @@ async function deactivateStaleRuntimeEffects(
   desired: ReadonlyMap<string, BackendPluginRuntimeEffectRegistration>,
 ): Promise<void> {
   for (const [effectKey, active] of activeEffects) {
-    if (!desired.has(effectKey)) {
+    // 同 ID 的新版 artifact 仍是新的 contribution 实例；先等待旧资源完全停止，
+    // 才能激活新实例。仅按 ID 判等会把旧 Worker/闭包永久留到下一次重启。
+    if (active.deactivationFailed || desired.get(effectKey)?.effect !== active.effect) {
+      // 半停实例不能在重新启用时复用；失败仍保留 owner，下一次同步先完成旧清理。
+      active.deactivationFailed = true;
       await runEffectStep(active.pluginId, active.effectId, 'deactivate', active.deactivate);
       activeEffects.delete(effectKey);
     }
@@ -60,6 +80,7 @@ async function activateDesiredRuntimeEffects(
     activeEffects.set(effectKey, {
       pluginId: registration.pluginId,
       effectId: registration.effect.id,
+      effect: registration.effect,
       deactivate: registration.effect.deactivate,
     });
   }

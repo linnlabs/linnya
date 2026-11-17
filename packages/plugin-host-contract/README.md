@@ -2,6 +2,8 @@
 
 本包是 Linnya Host 与插件包之间的**纯类型公开合同**。它让 backend 插件、renderer 插件和 Host SDK facade 依赖同一组窄接口，不承载实现、状态或业务流程。
 
+Backend 的 `storageRuntime` 只借用已迁移连接的 prepare/transaction 和产品映射的数据目录；不提供 exec、close 或任意路径。`vectorRuntime` 只创建产品已装配的本地向量进程，暴露按需就绪与停止，不开放 binary、端口或环境。原知识库资料的接管沿 App 已准入的官方来源判定，不依赖插件自报 builtin。`modelConfiguration` 仅返回当前实际消费的默认 OCR 角色、功能模型 ID 和显示名；用户显式用途选择由请求冻结，不把它混同于默认 capability，也不输出目录或凭据。
+
 ## 1. 边界
 
 本包拥有：
@@ -19,6 +21,9 @@
 
 插件工具可以通过本包引用 Linnkit 的通用工具合同（包括流式生命周期 policy），但合同 owner
 仍然是 Linnkit；本包只提供 Host 与插件之间的类型门面，不增加工具名、UI 或产品领域语义。
+
+`backend/toolRuntime` 的注册子运行接口保留 Host 已接纳的 `judgeToolOutput`，调用标签由 Host 依据既有 subrun/source/父工具身份接线；取消与实际执行仍走原 child invoker。来源正文的动态边界函数也只重用 Host 原规则。
+`backend/citationSourceRuntime` 为来源生产者提供 allocator、offset、稳定来源身份及正文捕获。claim WeakMap、会话范围、EvidenceStore、bundle 和路径始终留在 Host；捕获只接受本次实际展示的来源事实，不把历史引用身份变成当前资料的读取授权。
 
 需要运行时校验的跨边界 DTO 应由 `@app/schemas` 提供 Zod schema；本包引用该 DTO，不复制近似 shape。
 

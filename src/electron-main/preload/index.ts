@@ -8,7 +8,6 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { VALID_CHANNELS } from './valid-channels';
 import { buildCommonIpcApi } from './modules/common-ipc';
 import { buildSystemPreloadApi } from './modules/system-preload';
-import { buildKnowledgeBasePreloadApi } from './modules/knowledge-base-preload';
 import { buildModelsPreloadApi } from './modules/models-preload';
 import { buildCommandPermissionSettingsPreloadApi } from './modules/command-permission-settings-preload';
 import { buildCommandRuntimePreloadApi } from './modules/command-runtime-preload';
@@ -24,7 +23,6 @@ import { buildProjectOverviewPreloadApi } from './modules/project-overview-prelo
 // 向渲染进程暴露安全的 API（保持 window.electronAPI 的字段与行为不变）
 contextBridge.exposeInMainWorld('electronAPI', {
   ...buildSystemPreloadApi(ipcRenderer),
-  ...buildKnowledgeBasePreloadApi(ipcRenderer),
   ...buildModelsPreloadApi(ipcRenderer),
   ...buildCommandPermissionSettingsPreloadApi(ipcRenderer),
   ...buildCommandRuntimePreloadApi(ipcRenderer),

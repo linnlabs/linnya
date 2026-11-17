@@ -1,0 +1,243 @@
+# Knowledge Base Feature
+
+知识库（Knowledge Base）模块负责管理非结构化文档的摄入、解析、切片、向量化存储以及基于 RAG（Retrieval-Augmented Generation）和 Soft Knowledge Graph（软知识图谱）的检索服务。
+
+## 启动与向量运行时
+
+App Server 启动只装配元数据、原文仓储和轻量队列，不启动 Qdrant 或知识库 Worker。Renderer 不在启动时预取知识库列表。浏览知识库、项目关联、原文和已有证据不依赖向量进程。
+
+- 创建 default 或普通知识库只落元数据；首次摄入由 `StoringHandler` 按实际 embedding 维度创建带 BM25 的集合，不创建猜测维度的空集合。既有集合、索引来源和路径保持不变。
+- 空库搜索直接返回空结果，不请求模型。真正检索、摄入、图谱索引或集合删除通过同一个受管 runtime 取得实际端口；并发首次请求共享启动结果。
+- 启动故障明确传播为 `QdrantRuntimeUnavailableError`，不能被召回降级解释为空结果。原有 rerank 可重试故障策略不变。
+- 首次向量就绪后才调度知识库维护。退出先停止维护及队列，再等待已开始的向量启动和进程收口。冷态退出不创建进程；启动故障不随每次查询自动重试。
+- 删除知识库先通过 Qdrant 正式 API 删除 chunk 与两类图谱集合，全部成功后才清原文、原始 PDF 和元数据。任何向量服务错误均停止后续删除，不直接删除活动索引目录；中途可能已删部分可重建向量，但保留全部原文与库记录，不声称跨集合回滚。未摄入的冷库可以尚无集合，删除仍正常完成。
+- 历史 CitationSnapshot 路由归 Host，保持旧 URL，但独立于活知识库服务挂载。停用或向量故障不撤掉已有会话证据。
+
+## 存储与项目边界
+
+元数据、图谱仓储只接收当前 Workspace SQLite 连接的 `prepare/transaction` 窄端口；不接收 DatabaseService、迁移控制或连接生命周期。仓储 SQL 只属于知识库拥有的表。项目关联的存在性、选择列表和摘要通过 Host 的 `projectReadRuntime` 读取，不跨域查询 `projects`。项目删除仍由既有外键级联解除关联。
+
+项目/库设置的关联列表通过单次 SQLite 事务替换；仍保留的关联不更改角色和创建时间，任何新关联写入失败都回滚整批修改。文件管理中的 `hasSource` 从 SoT 目录投影，不重复保存状态；读取已保存内容先核对库与文档身份，并返回完整原文，不启动向量服务。
+
+这是官方受信代码的职责边界，不是针对不可信插件的 SQL 安全沙箱。
+
+## 检索索引空间与恢复
+
+`index-rebuild` 拥有 `knowledge_bases.embedding_space_id`，它记录实际向量空间，不从本地模型 ID 猜测。既有非空库迁移后没有空间身份时要求显式重建；不回填、删除原文或自动重建。首次追加在 SQLite immediate 事务里认领空间，保证并发 Worker 不混写不同空间。
+
+重建清除可用身份后才替换向量，完整校验后才发布新的身份。中途取消、错误或退出留下 NULL，重新打开仍能识别索引需重建，文档与原文继续保留。所有重建只重做检索向量，不能借机更改文档 ID、关联或图谱实体。
+
+### 显式重建与故障语义
+
+文件管理工具条的“重建检索索引”按确认时冻结的模型执行，确认框展示实际模型名。空库不入队、不启动向量服务。首次真实 embedding 同时验证配置、协议和维度，成功后才清除可用身份并替换三个向量集合；不另发试调用。SoT 按文档批次读取，chunk、图谱节点和边统一使用同一空间，每批持久化后回读计数，全部成功才发布身份。保留原文字节、文档 ID、解析诊断、关联角色及图谱实体；已有有效 SoT 的失败摄入在成功重建后恢复完成状态。
+
+同库维护、删除与重建使用 Backend 活动 owner 独占准入，摄入/图谱 Worker 在进入队列之前取得租约，真实线程及其 Host 请求收口后才释放。不会把各 Worker 的本地 Map 锁当作跨线程互斥。其他库和元数据/原文阅读不等待该库的向量锁。运行中重建阻止冲突导入、查询和删除，任务进度与取消沿用现有 HTTP/文件管理界面；退出查询包含该活动。
+
+启动维护和摄入存储失败都不得因向量缺失删除有效 SoT 或原始 PDF。维护保留资料并标记索引需重建；存储失败只清理本次文档的未完成向量，清理失败则标记索引不可用。既有未知空间即使只有 failed/processing 文档，也必须检查真实 SoT 与向量残留，不能直接用当前配置认领旧索引。显式用户删除仍执行正式级联删除。
+
+队列拒绝入队会保留资料并发布明确失败，不在 Backend 偷偷改走同步摄入。删除取消根据队列实际 task ID 与文档/库身份匹配，不假设 task ID 等于 doc ID。
+
+## 目录结构
+
+```text
+knowledge-base/
+├── citations/                              # Knowledge 引用领域能力
+│   └── functions/                          # 基于 docId + blockId 生成稳定短 ref
+├── document-read/                          # 已知 docId 的原文分块阅读能力
+│   ├── definitions/                        # 阅读请求、结果与窄依赖合同
+│   ├── functions/                          # 范围裁剪、glance 投影、citation 组装
+│   └── orchestration/                      # 授权、SoT 加载与阅读流程
+├── domain/                                 # 领域模型
+│   ├── block.ts                            # 文档块（Chunk）定义
+│   ├── document.ts                         # 文档实体与状态枚举
+│   └── knowledgeBase.ts                    # 知识库聚合根
+├── application/
+│   ├── KnowledgeBaseCoordinator.ts         # 协调器：编排搜索与管理
+│   ├── knowledgeBaseService.ts             # 核心服务接口定义
+│   ├── searchService.ts                    # ✅ 搜索服务 Barrel（Re-export）
+│   ├── search/                             # ✅ 搜索核心模块（拆分自原 searchService）
+│   │   ├── defaultSearchService.ts         # 搜索编排实现：RAG + Graph 流程控制
+│   │   ├── defaultSearchRanker.ts          # 排序实现：Layered Sorting + RerankingPort
+│   │   ├── graphEnhancedAgentSearch.ts     # 软图谱增强组装器（Light/Full 模式输出构建）
+│   │   ├── queryVectorBuilder.ts           # Query 向量统一生成（避免重复 Embed）
+│   │   ├── documentExistenceFilter.ts      # 孤儿文档过滤器
+│   │   └── types.ts                        # 搜索内部类型定义
+│   └── services/                           # 业务服务子模块
+│       ├── DocumentService.ts              # 文档 CRUD 与状态管理
+│       ├── IngestionService.ts             # 摄入任务触发
+│       ├── KnowledgeBaseMgmtService.ts     # ✅ KB 元数据/集合级联管理
+│       └── TaskService.ts                  # 任务状态查询
+├── graph/                                  # ✅ Soft Knowledge Graph 核心引擎
+│   ├── application/
+│   │   ├── anchor/
+│   │   │   └── graphNodeAnchorService.ts   # Entity-Driven Anchor (Full V3)
+│   │   ├── connectivity/
+│   │   │   └── graphConnectivityService.ts # 孤岛检测与连通性回溯
+│   │   ├── merger/
+│   │   │   └── graphResultMerger.ts        # Path A/B 结果合并与去重
+│   │   ├── traversal/
+│   │   │   ├── graphAdjacencyCache.ts      # 邻接查询 TTL 缓存
+│   │   │   └── graphMultiHopService.ts     # Multi-hop Beam Search (Full V2)
+│   │   ├── entityNormalization.ts          # 实体归一化逻辑
+│   │   ├── graphBudget.ts                  # ✅ 图谱预算与模式定义 (GraphBudget)
+│   │   ├── graphDiscoveryService.ts        # ✅ Edge-Driven Discovery (Path B)
+│   │   ├── graphExtractionService.ts       # 图谱抽取与严格结构投影 (Chunk -> Nodes/Edges)
+│   │   ├── graphProgressService.ts         # 进度聚合推送
+│   │   ├── graphSearchService.ts           # ✅ Chunk-Driven Search (Path A / Light)
+│   │   └── knowledgeGraphQueueOrchestrator.ts # 队列编排与状态回填
+│   ├── infrastructure/
+│   │   ├── better-sqlite-knowledge-graph.repository.ts
+│   │   ├── knowledgeGraphRepository.ts     # 仓储接口
+│   │   └── qdrantCollections.ts            # 向量集合命名规范
+│   └── __tests__/                          # 图谱模块单测
+├── infrastructure/                         # 基础实施层
+│   ├── metadataRepository.ts               # 元数据仓储接口
+│   ├── originalDocumentRepository.ts       # 原始 PDF 仓储接口（用于 partial 失败页续跑）
+│   ├── fileOriginalDocumentRepository.ts   # 文件系统版原始 PDF 仓储
+│   ├── qdrantRepository.ts                 # 向量仓储接口
+│   ├── sotRepository.ts                    # Source of Truth (原文) 仓储接口
+│   ├── QdrantRepositoryImpl.ts             # Qdrant 实现
+│   ├── qdrant-repository/                  # Qdrant 内部模块 (Filters, Payload, Schema, SegmentPolicy)
+│   └── sqlite/                             # SQLite Schema & Providers
+│       ├── knowledge-base.schema.ts
+│       ├── knowledge-graph.schema.ts
+│       └── schema-providers.ts             # Schema 聚合入口
+├── ingestion/                              # 📥 摄入管道
+│   ├── README.md                            # 状态、进度、Worker/轮询边界与修改地图
+│   ├── stateMachine.ts                     # 摄入状态机
+│   ├── IngestionStateMachineManager.ts     # 状态机管理器
+│   ├── handlers/                           # 各阶段处理器 (Parsing, Embedding, Storing)
+│   ├── orchestration/workerIngestionProgressProjection.ts # Worker 消息到摄取读模型的投影
+│   ├── store/ingestionProgressStore.ts      # 摄取进度状态与查询入口
+│   └── failureCleanup.ts                   # 失败清理逻辑
+├── utils/
+│   ├── searchUtils.ts                      # 搜索结果格式化 (Formatter)
+│   └── ranking.ts                          # RRF 与智能分层排序纯算法
+├── README.md                               # 本文档
+└── SOFT_KNOWLEDGE_GRAPH.md                 # 📘 软知识图谱架构与实现细节 (Deep Dive)
+```
+
+`document-read` 只拥有 Knowledge 阅读事实和 canonical citation 组装，不依赖 Evidence 存储。Linnya Tool
+adapter 在 owner result 通过 strict schema 后负责把 Agent 实际看到的 glance/full 内容投影为
+Knowledge 自有 capture DTO；只有 `src/tools/knowledgebase/evidence/knowledgeEvidenceBundleAdapter.ts`
+可以再映射为 Evidence write command。这是跨 domain 的 app-level 组合，不应下沉进本 feature。
+
+`shared/agent-observation` 是 Knowledge domain 内搜索与阅读共同使用的模型安全边界：owner 生成的 canonical
+ref 和 `doc_id/block_id` 留在可信骨架，标题、摘要、正文及图谱来源文本进入动态不可信边界。边界格式复用
+全局稳定的 `shared/ai-observation` 安全原语，但该原语不理解 Knowledge、Evidence 或 Web 业务。
+
+文档摄入的状态机、进度读模型、Worker/轮询链路和当前前端映射漂移见 [`ingestion/README.md`](./ingestion/README.md)。
+
+### PDF partial 诊断与失败页续跑
+
+- `Document.parseDiagnostics` 保存 PDF 页级解析事实，当前落库字段是 `parse_diagnostics_json`。
+- partial 文档仍保持 `DocumentStatus.COMPLETED`，UI 和续跑逻辑通过 `parseDiagnostics.isPartial` 判断是否存在失败页。
+- `Source of Truth` 只保存结构化 `DocumentSoT` JSON，不保存上传原文件；上传临时文件在摄入完成后会被清理。
+- `OriginalDocumentRepository` 独立保存原始 PDF，是“继续解析失败页”的前置数据。
+- 用户明确删除文档 / 知识库时同步清理原始 PDF。摄入或向量失败保留已有原文与元数据；再次上传同名文件不删除旧失败记录，避免新任务再次失败时丢掉恢复入口。
+- 失败页续跑位于 `application/orchestration/continueFailedPdfPages.ts`：
+  - 读取原始 PDF 和 `parseDiagnostics.failedPages`。
+  - 只解析失败页，只向量化新增 blocks。
+  - 增量合并 SoT，新增 Qdrant points，并更新 diagnostics。
+  - 不复用全量摄入的 `StoringHandler.cleanupOnFailure`，避免误删已成功页面。
+
+增量提交约束：
+
+- 提交点校验必须检查“本次新增 point ids”，不能只检查 docId 下是否已有点。
+- SoT/Qdrant/diagnostics 属于同一次增量提交；任一步失败，都只回滚本次新增 point ids 和 SoT 合并结果。
+- 页码单一来源：parser 可输出 `source_info.page_number`，后处理统一归一化到 `source_info.page_num`，Qdrant payload 使用 `page_number` 对外检索。
+
+---
+
+## 跨模块集成文件索引（Cross-Module Integration）
+
+Backend、3 类 Worker、Agent 与工具均归本插件；正式入口为 `index.ts`。
+Host 持有模型目录/凭据、工作区连接与 Qdrant 进程，插件通过公共 SDK 取得窄能力。完整边界见[插件 README](../../README.md)。
+
+- `database/`：8 张表的插件迁移，保留旧路径和身份，Host 历史迁移不搬移。
+- `runtime/orchestration/createKnowledgeRuntime.ts`：一次 activation 的资源与任务收尾。
+- `runtime/orchestration/createKnowledgeIpc.ts`：管理、原文、检索、重建与项目关联正式 IPC。
+- `queue/`：仅本插件的任务准入与 Worker payload；`workers/`：摄入、图谱抽取和图谱索引。
+- `tools/`：5 个工具的参数、权限与引用；`agents/`：深度搜索与图谱纯提示。
+- `../renderer/`：页面/项目关联/文档动作贡献，通过 plugin IPC、push 与 scoped multipart 访问 Backend。
+
+Worker 使用 `backend/worker/inferenceRuntime`；摄入请求 embedding/text/OCR，图谱抽取只用 text，图谱索引只用 embedding，rerank 留在 Backend。
+队列按任务冻结模型和输入/临时素材，取消等待线程及全部 Host 请求 settled 后才释放活动租约。
+Paddle 已受理的远端 Job 不等于已远端撤单。历史引用证据始终由 Host 读取，不依赖本插件启用状态。
+
+---
+
+## 开发规范 (Developer Norms)
+
+### 0. Agent 阅读边界
+
+- Knowledge 文档阅读的业务入口位于 `document-read` feature；工具层只能负责参数 admission、上下文适配和结果序列化。
+- provider 使用 1-based chunk 范围，不复用 Workspace 文件分页或 Web 页面读取合同。
+- 项目 scope 必须在读取 SoT 前完成校验；Knowledge feature 通过窄授权函数接收边界规则，不依赖 `ToolContext`。
+- `resource_read(kb://...)` 在迁移期只能适配 0-based wrapper，禁止实例化另一个 Tool 共享业务实现。
+- 搜索、glance、full 与 deep reading view 都必须使用同一 Knowledge 来源边界；正文内形似 `[@XXXXXX]`
+  的字符串没有 citation 身份，Agent 只能引用边界外 owner header 中的 canonical ref。
+
+### 1. 软知识图谱 (Soft Graph)
+*   **核心文档**: 详见 [SOFT_KNOWLEDGE_GRAPH.md](./SOFT_KNOWLEDGE_GRAPH.md)。
+*   **Ref 语义**: 在 Light/Full 模式下，`ref: in_rag` 的语义为 **“该证据块也在本次工具输出的列表中（可直接阅读）”**，**不再等同于** “RAG TopK”。
+*   **Text Generation**: 图谱抽取只依赖 `domains/model-inference` 的 `TextGenerationPort`。App Server 构造 Host adapter，Worker 只通过任务消息端口执行；抽取服务拥有 prompt、JSON/Zod 校验和图谱规则，不得依赖 `LlmCaller`、`AIEngine` 或 Provider SDK。
+*   **Embedding**: 摄入、查询向量、PDF 失败页续跑、Graph Discovery 与 Graph Indexing 只依赖 `domains/model-inference` 的 `EmbeddingPort`。App Server 构造 Host adapter，Worker 不加载 Model Catalog 或凭据；KB 拥有分批进度、sparse vector、Qdrant 写入、索引 provenance 与重建策略，不得读 Model Catalog 或导入 AI SDK。
+*   **Reranking**: 搜索编排只依赖 `domains/model-inference` 的 `RerankingPort`。候选身份以 Provider 返回的 `originalIndex` 为准，禁止按文本反查；只有标记为 retryable 的上游可用性故障可保留已有 RRF/分层排序，配置、凭据、schema、Abort 与编程错误必须继续失败。KB 不读取 Model Catalog，也不导入 AI SDK。
+
+### 2. 类型安全
+*   **Strict Typing**: 禁止使用 `any`。Qdrant Payload 取出后必须通过 Zod 或手动校验转换为 Domain Object。
+*   **Vector Typing**: Domain port 输出 readonly 向量；只在写入 KB 实体/Qdrant DTO 边界复制为 `number[]`。向量数量、维度与有限值由 Host port 统一校验，业务编排不重复猜测 Provider 响应形状。
+
+### 3. 资源清理
+*   **级联删除**: 删除文档/KB 时，必须同步清理：
+    1.  SQLite 元数据 (Metadata & Graph Tables)
+    2.  Qdrant Collections (Chunks & Graph Nodes/Edges)
+    3.  Source of Truth (File System)
+    *   参考 `KnowledgeBaseMgmtService.deleteKnowledgeBase` 实现。
+
+### 4. Qdrant 存储策略
+*   **Collection 粒度**: 当前 chunk 向量以 `kbId` 作为 collection 名，即“一个知识库对应一个 chunk collection”；图谱向量若启用，则额外使用 `kg_nodes_${kbId}` / `kg_edges_${kbId}`。
+*   **固定底座成本**: 小 collection 的磁盘占用往往不是由文档篇数直接决定，而是由 Qdrant 的 segment / WAL / payload page 固定开销决定；因此多个小知识库会比一个大知识库更浪费磁盘。
+*   **目标段数规则**: chunk collection 仍然按 `points_count` 推导目标段数：
+    1. `0 ~ 20_000 points`：目标 `1` 段
+    2. `20_001 ~ 100_000 points`：目标 `2` 段
+    3. `100_001 ~ 500_000 points`：目标 `4` 段
+    4. `> 500_000 points`：回退到 Qdrant 自动策略（`0`）
+*   **创建时一次到位**: chunk collection 在首次创建时就直接带上目标 `default_segment_number`，避免先按 Qdrant 默认多段起步，再在线尝试收敛。
+*   **首次向量就绪后后台重建**: 已存在的历史 chunk collection 会在启动维护阶段检查两类情况，并在后台执行 `scroll(with vector) -> delete -> create -> upsert -> count 校验`，无须用户手工干预：
+    1. `segments_count` 明显高于目标值，需要收缩
+    2. `points_count` 跨阈值后，当前配置的目标段数已落后于新目标值，需要在下次启动时自动升段重建
+*   **并发安全**: 同一个 chunk collection 在后台重建期间，会通过 collection 级访问协调器阻塞该库的搜索 / 上传 / 删除，避免“scroll 漏点”“collection 短暂不存在”或部分结果可见。
+*   **图谱范围**: 当前启动收缩只覆盖 chunk collection；`kg_nodes_${kbId}` / `kg_edges_${kbId}` 先保持现状，但创建参数已预留相同扩展入口。
+
+---
+
+## 开发者诊断与维护命令
+
+用于开发/验收阶段的数据重置与调试。
+
+### 1. 重建图谱向量 (推荐)
+仅重置 Qdrant 索引与向量状态，**不**重新触发 LLM 抽取（省钱、快）。
+```bash
+pnpm run kg:reset-vectors -- --kbId <kbId>
+```
+
+### 2. 全量重置图谱
+清空 SQLite 图谱表与 Qdrant，触发全量 LLM 重新抽取（耗时、耗 Token）。
+```bash
+pnpm run kg:reset -- --kbId <kbId>
+```
+
+### 3. 搜索集成验收 CLI
+用于在终端运行真实 Knowledge 搜索链并观察图谱输出；它不是 Agent 工具。搜索命令会初始化当前开发数据库和模型依赖，纯 Qdrant 子命令不会初始化 Workspace。
+```bash
+# 观察 Full 模式
+pnpm run test:knowledge-search -- search --query "..." --graph full
+
+# 查看 Qdrant 状态
+pnpm run test:knowledge-search -- qdrant-info
+```
+*   `qdrant-info` 现会输出 `points_count`、`segments_count` 与 `target_segment_number`，可用于观察动态段数策略是否生效。
+
+维护命令通过 Electron ABI 下的 `better-sqlite3` 参数绑定事务修改 SQLite；不依赖宿主系统的 `sqlite3` CLI，也不拼接外部值。需要删除不兼容的历史 Qdrant collection 时，使用 `kb:delete-vector-collection`，并以同名 `--confirm` 明确确认不可恢复的目标。

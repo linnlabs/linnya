@@ -15,6 +15,8 @@ import {
 } from '@linnlabs/linnkit/contracts';
 
 vi.mock('src/domains/model-catalog', () => ({
+  // 默认 inference 装配会绑定此凭据接口；本组只验证上下文策略，不访问设备凭据。
+  getLinnyaCloudDeviceId: vi.fn(async () => null),
   CLOUD_DEEPSEEK_CHAT_MODEL_ID: 'cloud-deepseek-chat',
   CLOUD_DEEPSEEK_REASONER_MODEL_ID: 'cloud-deepseek-reasoner',
   modelCatalog: {

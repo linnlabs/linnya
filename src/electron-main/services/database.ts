@@ -26,7 +26,6 @@ import { getCheckpointerSchemaProviders } from '../../app-hosts/linnya/adapters/
 import { getRunDescriptorSchemaProviders } from '../../app-hosts/linnya/adapters/persistence/run-descriptors/schema-providers';
 import { getRunCostSchemaProviders } from '../../app-hosts/linnya/adapters/token-accounting/schema-providers';
 import { getTelemetrySchemaProviders } from '../../app-hosts/linnya/adapters/telemetry/schema-providers';
-import { getKnowledgeBaseSchemaProviders } from '../../features/knowledge-base/infrastructure/sqlite/schema-providers';
 import { getAssetSchemaProviders } from '../../domains/assets/features/asset-ledger/infrastructure/sqlite/schemaProviders';
 import { getMarkdownSchemaProviders } from '../../domains/markdown/features/document-storage/infrastructure/sqlite/schemaProviders';
 import { getActionLedgerSchemaProviders } from '../../domains/action-ledger/infrastructure/sqlite/schemaProviders';
@@ -91,7 +90,6 @@ export class DatabaseService {
       ...getRunDescriptorSchemaProviders(),
       ...getRunCostSchemaProviders(),
       ...getTelemetrySchemaProviders(),
-      ...getKnowledgeBaseSchemaProviders(),
     ];
 
     console.log(`[DB-LIFECYCLE] CONSTRUCTOR | Database path set to: ${this.dbPath}`);

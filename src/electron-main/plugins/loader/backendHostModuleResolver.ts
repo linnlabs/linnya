@@ -48,6 +48,9 @@ import * as inferenceFailures from '../../../plugin-sdk/backend/inferenceFailure
 import * as loggingRuntime from '../../../plugin-sdk/backend/loggingRuntime';
 import * as textSegmentationRuntime from '../../../plugin-sdk/backend/textSegmentationRuntime';
 import * as workerQueue from '../../../plugin-sdk/backend/workerQueue';
+import * as storageRuntime from '../../../plugin-sdk/backend/storageRuntime';
+import * as vectorRuntime from '../../../plugin-sdk/backend/vectorRuntime';
+import * as modelConfiguration from '../../../plugin-sdk/backend/modelConfiguration';
 
 type CommonJsLoad = (
   request: string,
@@ -100,9 +103,12 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/projectReadRuntime', projectReadRuntime],
   ['@plugin/backend/workspaceDatabasePath', workspaceDatabasePath],
   ['@plugin/backend/workerQueue', workerQueue],
+  ['@plugin/backend/storageRuntime', storageRuntime],
+  ['@plugin/backend/vectorRuntime', vectorRuntime],
+  ['@plugin/backend/modelConfiguration', modelConfiguration],
   ['@plugin/backend/loggingRuntime', loggingRuntime],
-  ['@plugin/backend/inferenceFailures', inferenceFailures],
   ['@plugin/backend/textSegmentationRuntime', textSegmentationRuntime],
+  ['@plugin/backend/inferenceFailures', inferenceFailures],
 ]);
 
 function isCommonJsLoad(value: unknown): value is CommonJsLoad {

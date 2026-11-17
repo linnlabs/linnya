@@ -70,6 +70,7 @@ export interface BackendPluginCliRegistration {
 export interface BackendPluginRegistrationTrust {
   /** 只能由验证过 artifact 来源的 Host 组合根设置，插件 contribution 不能自行声明。 */
   readonly allowPluginCli: boolean;
+  readonly allowMultipartUpload?: boolean;
 }
 
 export interface BackendPluginIpcRegistration {
@@ -143,6 +144,13 @@ class BackendPluginRegistry {
       });
       throw new Error(`[plugin-registry] ${message}: ${id}`);
     }
+    if (contribution.multipartUpload) {
+      if (!trust.allowMultipartUpload)
+        throw new Error(`[plugin-registry] 上传仅允许来自 Host 可信装配源: ${id}`);
+      if (!contribution.ipc?.channels.includes(contribution.multipartUpload.channel)) {
+        throw new Error(`[plugin-registry] 上传 channel 必须在 IPC 中声明: ${id}`);
+      }
+    }
     const registeredHooks: DocumentTypeBackendHook[] = [];
     for (const hook of contribution.documentTypeHooks ?? []) {
       try {
@@ -167,6 +175,14 @@ class BackendPluginRegistry {
 
   getRevision(): number {
     return this.revision;
+  }
+
+  getMultipartUploadChannel(
+    pluginId: PluginId,
+    enabledIds: ReadonlySet<PluginId> | null
+  ): string | undefined {
+    if (enabledIds !== null && !enabledIds.has(pluginId)) return undefined;
+    return this.contributions.get(pluginId)?.multipartUpload?.channel;
   }
 
   has(pluginId: PluginId): boolean {
@@ -212,7 +228,7 @@ class BackendPluginRegistry {
   }
 
   getPluginCliRegistrations(
-    enabledIds: ReadonlySet<PluginId> | null,
+    enabledIds: ReadonlySet<PluginId> | null
   ): BackendPluginCliRegistration[] {
     return this.effective(enabledIds).flatMap((contribution) => (
       contribution.pluginCli
@@ -242,7 +258,7 @@ class BackendPluginRegistry {
   }
 
   getIpcRegistrations(enabledIds: ReadonlySet<PluginId> | null): BackendPluginIpcRegistration[] {
-    return this.effective(enabledIds).flatMap((contribution) => (
+    return this.effective(enabledIds).flatMap(contribution =>
       this.normalizeIpcRegistrations(contribution)
     ));
   }
@@ -268,7 +284,7 @@ class BackendPluginRegistry {
   }
 
   getSandboxProfileRegistrations(
-    enabledIds: ReadonlySet<PluginId> | null,
+    enabledIds: ReadonlySet<PluginId> | null
   ): BackendPluginSandboxProfileRegistration[] {
     return this.effective(enabledIds).flatMap((contribution) =>
       (contribution.sandboxProfiles ?? []).map((profile) => ({
@@ -297,7 +313,7 @@ class BackendPluginRegistry {
   }
 
   getSkillResourceRootRegistrations(
-    enabledIds: ReadonlySet<PluginId> | null,
+    enabledIds: ReadonlySet<PluginId> | null
   ): BackendPluginSkillResourceRootRegistration[] {
     return this.effective(enabledIds).flatMap((contribution) =>
       (contribution.skillResourceRoots ?? []).map((root) => ({
@@ -358,8 +374,8 @@ class BackendPluginRegistry {
     enabledIds: ReadonlySet<PluginId> | null,
   ): BackendPluginAgentDefinitionRegistration[] {
     return this.effective(enabledIds)
-      .filter((contribution) => (contribution.agentDefinitions ?? []).length > 0)
-      .map((contribution) => ({
+      .filter(contribution => (contribution.agentDefinitions ?? []).length > 0)
+      .map(contribution => ({
         pluginId: contribution.meta.id,
         definitions: (contribution.agentDefinitions ?? [])
           .map((definition) => toHostAgentDefinition(contribution.meta.id, definition)),

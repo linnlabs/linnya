@@ -2,6 +2,22 @@ import { describe, expect, it, vi } from 'vitest';
 import { createOnDemandQdrantRuntime } from './createOnDemandQdrantRuntime';
 
 describe('on-demand vector process ownership', () => {
+  it('取消一个请求的等待不会杀掉其他请求共用的启动', async () => {
+    let ready: ((url: string) => void) | undefined;
+    const owner = { start: vi.fn(() => new Promise<string>(resolve => { ready = resolve; })), stop: vi.fn(async () => undefined) };
+    const runtime = createOnDemandQdrantRuntime(owner);
+    const controller = new AbortController();
+    const cancelled = runtime.ensureReady(controller.signal);
+    const surviving = runtime.ensureReady();
+    controller.abort(new Error('request ended'));
+    await expect(cancelled).rejects.toThrow('request ended');
+    expect(owner.stop).not.toHaveBeenCalled();
+    ready?.('http://127.0.0.1:49001');
+    await expect(surviving).resolves.toBe('http://127.0.0.1:49001');
+    expect(owner.start).toHaveBeenCalledOnce();
+    await runtime.stop();
+  });
+
   it('冷态退出不创建进程；启动中退出等待同一进程并禁止新请求', async () => {
     const cold = { start: vi.fn(async () => 'url'), stop: vi.fn(async () => undefined) };
     await createOnDemandQdrantRuntime(cold).stop();

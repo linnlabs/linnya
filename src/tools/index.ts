@@ -5,15 +5,10 @@
  *
  * @description
  * 导出所有可用的工具类和工具注册函数。
- * 包括知识库搜索工具、阅读工具和判别工具。
+ * 插件领域工具通过各包的 contribution 注册，不从平台工具聚合重导出。
  */
 
-// 导出知识库工具（统一归档到 knowledgebase/）
-export * from './knowledgebase/search';
-export * from './knowledgebase/reader';
-export * from './knowledgebase/assemble';
 export * from './evidence';
-export * from './knowledgebase/scope/projectKnowledgeBaseScope';
 
 // 导出图片生成工具
 export * from './image_generation';

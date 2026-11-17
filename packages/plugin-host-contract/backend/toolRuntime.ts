@@ -46,15 +46,6 @@ export interface PluginSqliteDatabasePort {
   transaction<T>(fn: () => T): PluginSqliteTransactionPort<T>;
 }
 
-export interface PluginKnowledgeBaseServicePort {
-  getRawSoTDocument(docId: string): Promise<PluginDocumentSoT | null | undefined>;
-  getDocumentById(docId: string): Promise<{ readonly filename?: string } | null | undefined>;
-}
-
-export interface PluginDocumentSoT {
-  readonly content_blocks?: Readonly<Record<string, { readonly text?: string }>>;
-}
-
 export interface PluginWorkspaceProjectMetadata {
   readonly id?: string;
   readonly name?: string;
@@ -66,7 +57,6 @@ export interface PluginToolContext extends ToolExecutionContext {
   readonly workspaceService?: PluginWorkspaceServicePort;
   readonly workspaceProjectId?: string;
   readonly workspaceProjectMetadata?: PluginWorkspaceProjectMetadata;
-  readonly knowledgeBaseService?: PluginKnowledgeBaseServicePort;
 }
 
 export type PluginBaseToolConstructor = new () => {
@@ -85,6 +75,14 @@ export type PluginBaseToolConstructor = new () => {
 
 export type PluginStructuredToolResult<T = unknown> = StructuredToolResult<T>;
 export type ToolContext = PluginToolContext;
+
+/** 来源正文仅作资料；复用 Host 动态边界，不让插件复制 token/转义规则。 */
+export declare function createUntrustedContentBoundaryToken(seed: string): string;
+export declare function wrapUntrustedContentBoundary(params: {
+  readonly namespace: string;
+  readonly token: string;
+  readonly body: string;
+}): string[];
 
 export interface RunRegisteredSubagentParams {
   readonly context: PluginToolContext;
@@ -107,6 +105,8 @@ export interface RunRegisteredSubagentResult {
   readonly finalAnswer: string;
   readonly lastProgress?: string;
   readonly error?: string;
+  /** 子运行最终工具的真实结构化结果；Host runner 已接纳，插件不能从历史猜测。 */
+  readonly judgeToolOutput?: string;
 }
 
 export interface RunRegisteredSubagentsInParallelParams {

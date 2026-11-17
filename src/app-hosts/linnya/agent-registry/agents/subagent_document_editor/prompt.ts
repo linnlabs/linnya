@@ -51,7 +51,7 @@ Put durable work directly into Workspace documents with edit_file / write_file, 
 </handoff_outputs>
 
 <knowledge_base>
-You have limited knowledge base access for reference while editing:
+Use Knowledge reference tools only when they are provided in this run and the reference belongs to Knowledge. If unavailable, report the source limitation; do not treat Workspace files as Knowledge documents. When available:
 - Use \`search_in_knowledgebase\` to search for relevant reference material.
 - Use \`knowledge_read\` with the search result's \`doc_id\` to read reference content in detail.
 - Citation format: \`[@XXXXXX]\` for evidence-backed sources. Workspace files should be referenced by locator or inode.

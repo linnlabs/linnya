@@ -60,6 +60,7 @@ function registerBackendPluginIfMissing(
   if (!backendPluginRegistry.has(contribution.meta.id)) {
     backendPluginRegistry.register(contribution, {
       allowPluginCli: options.allowPluginCli === true,
+      allowMultipartUpload: options.allowPluginCli === true,
     });
   }
 }
@@ -608,6 +609,11 @@ export function getRegisteredBackendPluginIpcChannels(
 ) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
   return backendPluginRegistry.getIpcChannelsForPlugin(pluginId, resolveEnabledIds(enabledIds));
+}
+
+export function getRegisteredBackendPluginUploadChannel(pluginId: PluginId): string | undefined {
+  ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
+  return backendPluginRegistry.getMultipartUploadChannel(pluginId, resolveEnabledIds());
 }
 
 export function getRegisteredBackendPluginRendererPushChannels(

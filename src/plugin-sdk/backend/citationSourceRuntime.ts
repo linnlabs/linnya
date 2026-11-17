@@ -2,6 +2,7 @@ import { readToolContextWorkingHistory } from '@linnlabs/linnkit/runtime-kernel'
 import type {
   PluginCitationSource,
   PluginCitationSourceResolverPort,
+  PluginKnowledgeCitationEvidence,
 } from '@linnya/plugin-host-contract/backend/citationSourceRuntime';
 import type { ToolContext } from '@linnya/plugin-host-contract/backend/toolRuntime';
 import {
@@ -15,6 +16,26 @@ import {
 import {
   createCitationSourceResolver as createHostCitationSourceResolver,
 } from '../../app-hosts/linnya/adapters/tools/citation-source-resolution/orchestration/createCitationSourceResolver';
+import { saveEvidenceBundleFromToolContext } from '../../tools/evidence/evidenceBundleToolContextAdapter';
+
+export { requireCitationRefAllocator, requireCitationSequenceOffset, createCitationSourceIdentity, isCanonicalCitationRef } from '../../domains/citation';
+export type { CitationRefAllocatorPort, PluginCitationSourceAnchor, PluginKnowledgeCitationEvidence } from '@linnya/plugin-host-contract/backend/citationSourceRuntime';
+
+export async function captureKnowledgeCitationEvidence(params: {
+  readonly context: ToolContext;
+  readonly query: string;
+  readonly items: readonly PluginKnowledgeCitationEvidence[];
+}): Promise<void> {
+  await saveEvidenceBundleFromToolContext({
+    context: params.context, kind: 'knowledge_evidence', query: params.query,
+    items: params.items.map(item => ({
+      ref_id: item.ref, source_type: 'knowledge_base', title: item.title,
+      snippet: item.snippet, content_text: item.contentText, captured_at_ms: item.capturedAtMs,
+      capture_kind: item.captureKind, doc_id: item.documentId, block_id: item.blockId,
+      ...(item.documentName ? { doc_name: item.documentName } : {}),
+    })),
+  });
+}
 
 export type {
   PluginCitationSource,
