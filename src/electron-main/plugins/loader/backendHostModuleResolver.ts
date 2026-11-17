@@ -44,6 +44,7 @@ import * as workspaceRuntime from '../../../plugin-sdk/backend/workspaceRuntime'
 import * as inferenceRuntime from '../../../plugin-sdk/backend/inferenceRuntime';
 import * as projectReadRuntime from '../../../plugin-sdk/backend/projectReadRuntime';
 import * as workspaceDatabasePath from '../../../plugin-sdk/backend/workspaceDatabasePath';
+import * as loggingRuntime from '../../../plugin-sdk/backend/loggingRuntime';
 import * as workerQueue from '../../../plugin-sdk/backend/workerQueue';
 import * as storageRuntime from '../../../plugin-sdk/backend/storageRuntime';
 import * as vectorRuntime from '../../../plugin-sdk/backend/vectorRuntime';
@@ -103,6 +104,7 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/storageRuntime', storageRuntime],
   ['@plugin/backend/vectorRuntime', vectorRuntime],
   ['@plugin/backend/modelConfiguration', modelConfiguration],
+  ['@plugin/backend/loggingRuntime', loggingRuntime],
 ]);
 
 function isCommonJsLoad(value: unknown): value is CommonJsLoad {

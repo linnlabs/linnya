@@ -51,18 +51,8 @@ export declare function createConversationFilePathResolver(
   contextValue: unknown,
 ): PluginConversationFilePathResolverPort | undefined;
 
-export type PluginLoggerDetails = unknown;
-
-export interface PluginLoggerPort {
-  debug(message: string, details?: PluginLoggerDetails): void;
-  info(message: string, details?: PluginLoggerDetails): void;
-  warn(message: string, details?: PluginLoggerDetails): void;
-  error(message: string, details?: PluginLoggerDetails): void;
-}
-
-export interface PluginLoggerConstructor {
-  new (moduleName: string): PluginLoggerPort;
-}
+export { Logger } from './loggingRuntime';
+export type { PluginLoggerDetails, PluginLoggerPort, PluginLoggerConstructor } from './loggingRuntime';
 
 export interface PluginSchemaProvider {
   readonly name: string;
@@ -149,14 +139,6 @@ export interface PluginWorkspaceDocumentUpdatedPayload {
 export declare function publishWorkspaceDocumentUpdated(
   payload: PluginWorkspaceDocumentUpdatedPayload,
 ): void;
-
-export declare class Logger implements PluginLoggerPort {
-  constructor(moduleName: string);
-  debug(message: string, details?: PluginLoggerDetails): void;
-  info(message: string, details?: PluginLoggerDetails): void;
-  warn(message: string, details?: PluginLoggerDetails): void;
-  error(message: string, details?: PluginLoggerDetails): void;
-}
 
 export declare function saveWorkspaceNodeTextSnapshot(params: {
   readonly db: PluginSqliteDatabaseLike;
