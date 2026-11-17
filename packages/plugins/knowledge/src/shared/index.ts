@@ -6,3 +6,4 @@ export {
   ProjectSummarySchema as KnowledgeProjectSummarySchema,
   type ProjectSummary as KnowledgeProjectSummary,
 } from '@app/schemas';
+export { knowledgeManifest, knowledgePluginMeta } from './definitions/pluginMeta';

@@ -1,0 +1,32 @@
+{
+  "id": "knowledge",
+  "version": "0.1.0",
+  "name": "知识库",
+  "description": "管理资料、检索知识并在项目中关联使用。",
+  "developer": "Linnya",
+  "details": [
+    "保存资料原文与检索索引，支持项目关联、知识检索和引用。",
+    "停用保留资料与历史证据；恢复启用后可继续使用。"
+  ],
+  "entry": {
+    "backend": "./dist/backend/index.cjs",
+    "renderer": "./dist/renderer/index.js"
+  },
+  "dependsOn": [
+    "platform"
+  ],
+  "compat": {
+    "minApp": "0.2.1",
+    "rendererUi": "^3.5.0"
+  },
+  "ownedTables": [
+    "knowledge_bases",
+    "kb_documents",
+    "project_knowledge_base_links",
+    "knowledge_graph_nodes",
+    "knowledge_graph_edges",
+    "knowledge_graph_doc_status",
+    "knowledge_graph_index_status",
+    "knowledge_graph_vector_doc_status"
+  ]
+}
