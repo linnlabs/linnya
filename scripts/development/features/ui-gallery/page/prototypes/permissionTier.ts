@@ -75,3 +75,31 @@ export function fullAccessDialogCopy(context: 'conversation' | 'scheduled-task')
     riskMessage: `${SETTINGS_FULL_ACCESS_DIALOG.riskMessage}\n\n${SCHEDULED_TASK_WARNING}`,
   };
 }
+
+/**
+ * 定时任务确认框的英文草稿：设置页部分取自现有英文文案，警告与中文同样分行、同样两处空行，
+ * 每行控制在 560px 宽的框里不折行，确认框在 800px 高的窗口不滚动；正式文案实现时进文案目录。
+ */
+const SCHEDULED_TASK_WARNING_EN = [
+  'Scheduled tasks run on their own while you are away:',
+  'the agent may do any of the above, or visit suspicious websites, unseen;',
+  'malicious web pages or files can push it to, and no one is there to stop it.',
+  '',
+  "Unless you know how to handle these risks, don't schedule this kind of work.",
+].join('\n');
+
+export const SCHEDULED_TASK_FULL_ACCESS_DIALOG_EN: FullAccessDialogCopy = {
+  title: 'Enable full access for a scheduled task',
+  message:
+    'Without asking for your permission, Linnya will be able to run any command on this computer, access the internet, and create or edit files.\n\nThis includes, but is not limited to:',
+  sections: [
+    { title: 'Files and folders', items: ['Read, create, modify, upload, or delete files'] },
+    {
+      title: 'Terminal commands',
+      items: ['Run commands, install software, and change system settings', 'Access the internet, download files, and send data'],
+    },
+  ],
+  riskMessage: `This can cause sensitive data loss, disclosure, prompt injection, or other risks.\n\n${SCHEDULED_TASK_WARNING_EN}`,
+  confirmText: 'Accept risk and enable',
+  cancelText: 'Cancel',
+};

@@ -16,6 +16,7 @@ import {
   PERMISSION_TIERS,
   TIER_DESCRIPTIONS,
   TIER_LABELS,
+  SCHEDULED_TASK_FULL_ACCESS_DIALOG_EN,
   fullAccessDialogCopy,
   resolveTier,
   tierSettingText,
@@ -60,8 +61,12 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenuOnOut
 
 /* ---------- 切到完全访问：每次确认 ---------- */
 
-const dialogContext = ref<'conversation' | 'scheduled-task' | null>(null);
-const dialogCopy = computed(() => fullAccessDialogCopy(dialogContext.value ?? 'conversation'));
+const dialogContext = ref<'conversation' | 'scheduled-task' | 'scheduled-task-en' | null>(null);
+const dialogCopy = computed(() => (
+  dialogContext.value === 'scheduled-task-en'
+    ? SCHEDULED_TASK_FULL_ACCESS_DIALOG_EN
+    : fullAccessDialogCopy(dialogContext.value ?? 'conversation')
+));
 let pendingSetting: ConversationTierSetting | null = null;
 
 function selectSetting(value: ConversationTierSetting) {
@@ -230,6 +235,7 @@ function abortLowering() {
       <GalleryRow label="打开">
         <BaseButton variant="secondary" size="md" @click="dialogContext = 'conversation'">对话切到完全访问</BaseButton>
         <BaseButton variant="secondary" size="md" @click="dialogContext = 'scheduled-task'">定时任务选完全访问</BaseButton>
+        <BaseButton variant="secondary" size="md" @click="dialogContext = 'scheduled-task-en'">定时任务选完全访问（英文）</BaseButton>
       </GalleryRow>
     </GalleryBlock>
 
@@ -254,7 +260,7 @@ function abortLowering() {
       :visible="dialogContext !== null"
       is-confirmation
       is-dangerous-action
-      :width="dialogContext === 'scheduled-task' ? '560px' : '520px'"
+      :width="dialogContext === 'conversation' ? '520px' : '560px'"
       :title="dialogCopy.title"
       :message="dialogCopy.message"
       :sections="dialogCopy.sections"
