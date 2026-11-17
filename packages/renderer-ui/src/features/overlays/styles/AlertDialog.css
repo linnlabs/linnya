@@ -51,6 +51,7 @@
   color: var(--color-error-text);
   font-size: var(--font-size-prose);
   line-height: var(--line-height-normal);
+  white-space: pre-wrap;
 }
 
 .alert-dialog-content .alert-dialog-copy::-webkit-scrollbar {

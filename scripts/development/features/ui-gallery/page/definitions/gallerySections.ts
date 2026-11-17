@@ -66,6 +66,16 @@ export const GALLERY_SECTIONS = [
     description: 'Markdown 工具栏改悬浮、文档栏改标签页的对比预览。用真实工具条组件拼的示意，不是真实页面。',
   },
   {
+    id: 'conversation-tier',
+    label: '方向对比：对话档位',
+    description: '每个对话单独的命令权限档位：输入框里的显示位置、切换菜单、完全访问确认框、调低全局设置时的提示。用真实组件拼的示意，不是真实页面。',
+  },
+  {
+    id: 'scheduled-tasks',
+    label: '方向对比：定时任务',
+    description: '定时任务的入口、任务视图与运行记录、新建表单、Agent 建任务后的提示和相关确认框。用真实组件拼的示意，不是真实页面。',
+  },
+  {
     id: 'list-example',
     label: '组合：列表与卡片',
     description: '按设计规范 9.4、9.6 拼出的列表行与卡片，用来看层级与留白；不是真实侧栏。',

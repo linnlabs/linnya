@@ -29,6 +29,7 @@ import {
 } from './orchestration/galleryDocument.ts';
 import ButtonsSection from './sections/ButtonsSection.vue';
 import CandidatesSection from './sections/CandidatesSection.vue';
+import ConversationTierSection from './sections/ConversationTierSection.vue';
 import DialogsSection from './sections/DialogsSection.vue';
 import DocumentTopSection from './sections/DocumentTopSection.vue';
 import FeedbackSection from './sections/FeedbackSection.vue';
@@ -38,6 +39,7 @@ import IconsSection from './sections/IconsSection.vue';
 import InputsSection from './sections/InputsSection.vue';
 import ListExampleSection from './sections/ListExampleSection.vue';
 import MenusSection from './sections/MenusSection.vue';
+import ScheduledTasksSection from './sections/ScheduledTasksSection.vue';
 import SelectionSection from './sections/SelectionSection.vue';
 import ToolbarsSection from './sections/ToolbarsSection.vue';
 import GalleryCompare from './ui/GalleryCompare.vue';
@@ -64,6 +66,8 @@ const SECTION_COMPONENTS: Readonly<Record<Exclude<GallerySectionId, 'dialogs'>, 
   'list-example': ListExampleSection,
   candidates: CandidatesSection,
   'document-top': DocumentTopSection,
+  'conversation-tier': ConversationTierSection,
+  'scheduled-tasks': ScheduledTasksSection,
 };
 
 const schemeIds = gallerySchemes.map(scheme => scheme.id);
