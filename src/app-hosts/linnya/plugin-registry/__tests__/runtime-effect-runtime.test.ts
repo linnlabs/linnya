@@ -67,7 +67,7 @@ describe('backend plugin runtime effects', () => {
     await syncBackendPluginRuntimeEffects([next]);
     expect(calls).toEqual(['old:start', 'old:stop', 'old:stop', 'old:settled', 'new:start']);
     await syncBackendPluginRuntimeEffects([]);
-    expect(calls.at(-1)).toBe('new:stop');
+    expect(calls[calls.length - 1]).toBe('new:stop');
   });
 
   it('拒绝同一插件重复声明同一个 runtime effect id', async () => {
