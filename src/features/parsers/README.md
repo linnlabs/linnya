@@ -21,3 +21,5 @@
 验证入口：`src/plugin-sdk/backend/documentParsingRuntime.integration.test.ts` 与 `pdfParser/`、`imageParser.test.ts`。PDF 性能和页级行为见 [PDF owner](./pdfParser/README.md)。
 
 `generateParsedBlockId` 仅重导既有确定性块 ID 函数；解析结果与知识库后处理使用同一 UUID namespace/算法，不开放其他 ID 工具。
+
+PDF 内部 Logger 使用无文件 IO 的同一诊断实现，仍共享 Host 安装的输出。文档直传 OCR 必须收到调用方任务临时目录；知识库入队和 SDK 已显式提供，不从用户数据根猜目录。真实组合 Worker 验证文字解析、直传 OCR 素材清理和日志 envelope，产物不得内联路径管理或文件 writer。

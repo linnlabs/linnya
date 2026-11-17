@@ -85,3 +85,12 @@ it('正在OCR时取消会中断在途请求、停止后续页，等待已启动�
   expect(signals.every(signal => signal.aborted)).toBe(true);
   expect(ports.textGeneration.generate.mock.calls.length).toBeLessThanOrEqual(2);
 });
+
+it('缺少任务临时目录时不向用户数据根落盘，也不发送文档直传请求', async () => {
+  const ports = inference();
+  ports.documentOcr.resolveModelProfile.mockResolvedValue({ modelId: 'ocr', displayName: 'OCR', mode: 'document_upload', supportsAbortSignal: true, attemptTimeoutMs: 5000 });
+  const { PdfParser } = await import('../../features/parsers/pdfParser/PdfParser');
+  const parser = new PdfParser({ textGeneration: ports.textGeneration, documentOcr: ports.documentOcr, visionModelId: 'ocr', forceVisionMode: true });
+  await expect(parser.parse(createTextPdf([null]), 'unscoped')).rejects.toThrow('当前任务的临时目录');
+  expect(ports.documentOcr.recognizeDocument).not.toHaveBeenCalled();
+});

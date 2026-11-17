@@ -12,7 +12,6 @@ import { isObjectLike } from '@linnya/foundation';
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { pathManager } from '../../../../shared/utils/pathManager';
 
 import { StrategyResult } from '../types';
 import type { TextGenerationPort } from 'src/domains/model-inference';
@@ -584,9 +583,8 @@ export async function processWithVisionDiagnostics(
     let totalPages: number;
     if (documentOcrProfile?.mode === 'document_upload') {
       totalPages = await getPdfPageCountCrossPlatform(data);
-      const debugImagesPath =
-        options.temporaryDirectory ?? path.join(pathManager.getAppDataPath(), 'debug_images');
-      tempDir = path.join(debugImagesPath, `pdf-vision-${docId}-${Date.now()}`);
+      if (!options.temporaryDirectory) throw new Error('文档直传 OCR 缺少当前任务的临时目录');
+      tempDir = path.join(options.temporaryDirectory, `pdf-vision-${docId}-${Date.now()}`);
       await fs.mkdir(tempDir, { recursive: true });
       pdfPath = path.join(tempDir, `${docId}.pdf`);
       await fs.writeFile(pdfPath, data);
