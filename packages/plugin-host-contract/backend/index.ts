@@ -35,5 +35,5 @@ export type * from './conversationProjection';
 
 export type * from './projectReadRuntime';
 export type * from './inferenceRuntime';
-export type * from './inferenceWorkerRuntime';
-export type * from './workerRequests';
+export type * from './worker/inferenceRuntime';
+export type * from './worker/requests';

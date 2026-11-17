@@ -1,5 +1,5 @@
 import { parentPort, workerData } from 'node:worker_threads';
-import { createPluginWorkerInferencePort } from 'src/plugin-sdk/backend/inferenceWorkerRuntime';
+import { createPluginWorkerInferencePort } from 'src/plugin-sdk/backend/worker/inferenceRuntime';
 
 const input: unknown = workerData;
 if (typeof input !== 'object' || input === null || !('inputPath' in input) || typeof input.inputPath !== 'string') {

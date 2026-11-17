@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { parentPort } from 'node:worker_threads';
 import type { z } from 'zod';
-import type { PluginWorkerInferencePort } from '@linnya/plugin-host-contract/backend/inferenceWorkerRuntime';
+import type { PluginWorkerInferencePort } from '@linnya/plugin-host-contract/backend/worker/inferenceRuntime';
 import {
   PluginWorkerEmbeddingResultSchema, PluginWorkerTextResultSchema, PluginWorkerOcrProfileSchema,
   PluginWorkerOcrResultSchema, PluginWorkerOcrProgressSchema, PluginWorkerInferenceFailureSchema,

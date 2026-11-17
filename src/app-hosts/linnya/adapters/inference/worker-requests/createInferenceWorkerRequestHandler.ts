@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { realpath } from 'node:fs/promises';
 import type { PluginInferencePort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
-import type { WorkerHostRequestHandler, WorkerHostFailure } from '@linnya/plugin-host-contract/backend/workerRequests';
+import type { WorkerHostRequestHandler, WorkerHostFailure } from '@linnya/plugin-host-contract/backend/worker/requests';
 import {
   PluginWorkerEmbeddingInputSchema, PluginWorkerTextInputSchema,
   PluginWorkerOcrProfileInputSchema, PluginWorkerOcrInputSchema,
