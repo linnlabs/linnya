@@ -46,6 +46,7 @@ import * as projectReadRuntime from '../../../plugin-sdk/backend/projectReadRunt
 import * as workspaceDatabasePath from '../../../plugin-sdk/backend/workspaceDatabasePath';
 import * as inferenceFailures from '../../../plugin-sdk/backend/inferenceFailures';
 import * as loggingRuntime from '../../../plugin-sdk/backend/loggingRuntime';
+import * as textSegmentationRuntime from '../../../plugin-sdk/backend/textSegmentationRuntime';
 import * as workerQueue from '../../../plugin-sdk/backend/workerQueue';
 
 type CommonJsLoad = (
@@ -101,6 +102,7 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/workerQueue', workerQueue],
   ['@plugin/backend/loggingRuntime', loggingRuntime],
   ['@plugin/backend/inferenceFailures', inferenceFailures],
+  ['@plugin/backend/textSegmentationRuntime', textSegmentationRuntime],
 ]);
 
 function isCommonJsLoad(value: unknown): value is CommonJsLoad {
