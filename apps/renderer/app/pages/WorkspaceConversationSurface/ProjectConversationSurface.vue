@@ -24,8 +24,9 @@
       >
         {{ conversationMessage(chip.messageKey) }}
       </button>
-      <span class="project-chat-suggestion-divider" aria-hidden="true" />
+      <span v-if="knowledgeAssociationAvailable" class="project-chat-suggestion-divider" aria-hidden="true" />
       <button
+        v-if="knowledgeAssociationAvailable"
         class="project-chat-suggestion-chip"
         type="button"
         @click="handleOpenKnowledgeBaseManager"
@@ -41,7 +42,7 @@ import { computed, watch } from 'vue';
 import { useNavigationScope } from '@/app/navigation';
 import { useWorkspaceProjectsStore} from '@/domains/workspace/store';
 import { useWorkspaceTree } from '@/domains/workspace/tree';
-import { useKnowledgeBase } from '@/domains/knowledgebase/runtime.js';
+import { useApplicationSurface } from '@/app/plugins/composables';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { LinnyaIcon } from '@linnya/renderer-ui/icons';
 import ConversationChatSurface from '@/domains/conversation/ui/ConversationChatSurface.vue';
@@ -69,7 +70,8 @@ const props = withDefaults(defineProps<{
 const navigationScope = useNavigationScope();
 const projectsStore = useWorkspaceProjectsStore();
 const treeStore = useWorkspaceTree();
-const kbStore = useKnowledgeBase();
+const knowledgeSurface = useApplicationSurface('knowledge-base');
+const knowledgeAssociationAvailable = computed(() => Boolean(knowledgeSurface.value?.contribution.projectAssociationComponent));
 const assistantStore = useAssistantStore();
 const projectKnowledgeBaseModalStore = useProjectKnowledgeBaseModalStore();
 const startupEmptySubtitle = useStartupEmptySubtitle();
@@ -94,7 +96,7 @@ const projectAssistantPlaceholder = computed(() => {
 });
 
 const handleOpenKnowledgeBaseManager = () => {
-  if (!projectId.value) return;
+  if (!projectId.value || !knowledgeAssociationAvailable.value) return;
   projectKnowledgeBaseModalStore.open({
     projectId: projectId.value,
     projectName: currentProject.value?.name ?? null,
@@ -149,15 +151,6 @@ const handleSuggestionClick = (prompt: string) => {
   if (!projectId.value) return;
   assistantStore.setInputText(prompt);
 };
-
-watch(
-  () => props.showHomeActions,
-  async (shouldLoadHomeData) => {
-    if (!shouldLoadHomeData) return;
-    await kbStore.ensureDataLoaded();
-  },
-  { immediate: true },
-);
 
 watch(
   projectId,

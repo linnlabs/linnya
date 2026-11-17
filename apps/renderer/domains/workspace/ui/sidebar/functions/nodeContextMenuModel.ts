@@ -12,6 +12,7 @@ import type { DocumentTypeContribution } from '@/app/plugins/types';
 import type { WorkspaceMessageResolver } from '@/domains/workspace/definitions/workspaceMessages';
 import {
   getDocumentTypeByNodeType,
+  getDocumentActionMenuByActiveType,
   listCreatableDocumentTypes,
   listEnabledCreatableDocumentTypes,
 } from '@/app/plugins/registry';
@@ -65,7 +66,6 @@ export interface BuildNodeContextMenuOptionsOptions {
   readonly message: WorkspaceMessageResolver;
   readonly getDocumentTypeLabel?: (documentType: DocumentTypeContribution) => string;
   readonly hideKnowledgeBaseAction?: boolean;
-  readonly disableUnsupportedKnowledgeBaseAction?: boolean;
   readonly moveTargetProjects?: readonly WorkspaceMoveTargetProject[];
 }
 
@@ -105,9 +105,17 @@ export function isRealWorkspaceDocumentNode(node: WorkspaceSidebarNodeLike | nul
   return Boolean(node && getDocumentTypeByNodeType(String(node.type)) && node.isVirtual !== true);
 }
 
-export function isAddToKnowledgeBaseNode(node: WorkspaceSidebarNodeLike | null | undefined): boolean {
+export function isAddToKnowledgeBaseNode(
+  node: WorkspaceSidebarNodeLike | null | undefined,
+  enabledPluginIds: ReadonlySet<PluginId> = new Set(),
+): boolean {
   const documentType = node ? getDocumentTypeByNodeType(String(node.type)) : null;
-  return Boolean(documentType?.canAddToKnowledgeBase && node?.isVirtual !== true);
+  if (!node?.id || !node.projectId || node.isVirtual || !documentType) return false;
+  const menu = getDocumentActionMenuByActiveType(documentType.activeDocumentType, enabledPluginIds);
+  const context = { projectId: node.projectId, documentId: node.id,
+    activeDocumentType: documentType.activeDocumentType, displayName: node.name ?? '' };
+  return Boolean(menu?.isAvailable(context)
+    && menu.getOptions(context).some(option => option.value === 'add-to-kb' && !option.disabled));
 }
 
 export function buildNodeContextMenuOptions(
@@ -124,12 +132,10 @@ export function buildNodeContextMenuOptions(
     const knowledgeBaseAction = {
       value: 'add-to-kb' as const,
       text: options.message('workspace.sidebar.node.context.addToKnowledgeBase'),
-      ...(!isAddToKnowledgeBaseNode(node) && options.disableUnsupportedKnowledgeBaseAction
-        ? { disabled: true }
-        : {}),
+
     };
     return [
-      ...(!options.hideKnowledgeBaseAction ? [knowledgeBaseAction] : []),
+      ...(!options.hideKnowledgeBaseAction && isAddToKnowledgeBaseNode(node, options.enabledPluginIds ?? new Set()) ? [knowledgeBaseAction] : []),
       { value: 'duplicate', text: options.message('workspace.sidebar.node.context.duplicate') },
       { value: 'rename', text: options.message('workspace.sidebar.node.context.rename') },
       buildMoveToProjectOption(options),

@@ -11,7 +11,7 @@
           <h1 class="project-overview__title" :title="displayProjectName">{{ displayProjectName }}</h1>
           <p class="project-overview__stats">{{ page === 'files' ? statsText : conversationStatsText }}</p>
         </div>
-        <button type="button" class="project-overview__knowledge-base" @click="emit('open-knowledge-base')">
+        <button v-if="knowledgeBaseAvailable" type="button" class="project-overview__knowledge-base" @click="emit('open-knowledge-base')">
           <LibraryIcon />
           <span>{{ workspaceMessage('workspace.projectOverview.knowledgeBase') }}</span>
           <span v-if="knowledgeBaseCount !== null" class="project-overview__knowledge-base-count">
@@ -464,6 +464,7 @@ const props = defineProps<{
   projectId: string;
   projectName: string | null;
   knowledgeBaseCount: number | null;
+  knowledgeBaseAvailable: boolean;
   presentation: ProjectOverviewPresentation;
   conversationActions: ProjectConversationActions;
   /** 本窗口观察到正在回复的对话。 */

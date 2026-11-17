@@ -55,6 +55,15 @@ Host 在插件 Backend 初始化前完成数据库准入；插件文档操作直
 
 Renderer 文档保存 handler 拥有本类型的 dirty 状态：只在确认当前草稿全部落库后清除。Host 不根据 handler 返回成功无条件清除 dirty；保存期间的新输入必须继续保持 dirty，导航离开前再次确认已落库。合同见 [`renderer/workspaceRuntime.ts`](./renderer/workspaceRuntime.ts)。
 
+`ApplicationSurfaceContribution` 是产品组合根授信的固定应用表面，不接纳任意路由。标题、图标、页面、
+可选项目关联/全局弹层属于贡献；scene 与入口位置、启停和返回属于 Host。`prepare(signal)` 与 `openSource`
+在取消后不能回写选择；来源 callback 接收冻结的项目与引用身份，资料解析和项目范围验证由贡献 owner 完成。
+磁盘插件自报 `builtin` 不能获得应用槽位，详见 [Renderer plugin owner](../../apps/renderer/app/plugins/README.md)。
+
+`DocumentActionMenuContext` 的身份来自用户实际操作的文档，不来自另一个当前编辑器。Markdown 的可选
+`readMarkdownSnapshot(signal)` 只交付该目标的内容与名称；它不授予其他文档读取或 Editor 访问。
+Host 先确认选项归属再委派，插件动作不能吞掉平台导出/历史等未声明选项。
+
 `WorkspaceNavigationPort.openDocumentByNodeType`接受引用持有的持久`nodeType`，Host按已注册owner映射到界面`activeDocumentType`再进入同一正式导航链。旧`openDocument`/`openDocumentTarget`的`type`仍仅表示界面类型，调用方不能把二者混用；未知或停用owner明确拒绝，不能猜测Markdown等默认类型。
 
 ## 4. Conversation 扩展

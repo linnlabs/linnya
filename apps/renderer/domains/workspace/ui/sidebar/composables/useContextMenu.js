@@ -18,6 +18,7 @@ import {
   getTargetProjectIdFromContextMenuAction,
   isNodeContextMenuActionAllowed,
 } from '../functions/nodeContextMenuModel';
+import { useRendererPluginRegistryRevision } from '@/app/plugins/registry';
 import { getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import { useLocalization } from '@/app/localization';
 import { resolveDocumentTypeTextPresentation } from '@/app/plugins/functions/pluginContributionPresentation';
@@ -50,6 +51,7 @@ function getNodeDisplayName(item, workspaceMessage) {
  * - 虚拟资源不会得到 rename/delete/duplicate 等真实节点动作。
  */
 export function getNodeMenuOptions(item, presentationOptions = {}) {
+  void useRendererPluginRegistryRevision().value;
   const enabledPluginsStore = useEnabledPluginsStore();
   const { workspaceMessage } = useWorkspaceLocalization();
   const { t } = useLocalization();
@@ -59,7 +61,6 @@ export function getNodeMenuOptions(item, presentationOptions = {}) {
     message: workspaceMessage,
     getDocumentTypeLabel: (documentType) => resolveDocumentTypeTextPresentation(documentType, t).label,
     hideKnowledgeBaseAction: presentationOptions.surface === 'batch-context',
-    disableUnsupportedKnowledgeBaseAction: presentationOptions.surface !== 'batch-context',
     moveTargetProjects: getMoveTargetProjects(projectsStore, item),
   });
   return presentationOptions.batchSelection
@@ -88,7 +89,7 @@ export function useContextMenu(treeStore, fileStore, notificationStore, options 
    */
   const handleContextMenuRequest = ({ event, item }) => {
     event.preventDefault();
-    contextMenu.value = { item, x: event.clientX, y: event.clientY, visible: true };
+    contextMenu.value = { item: Object.freeze({ ...item }), x: event.clientX, y: event.clientY, visible: true };
   };
 
   const copyTextToClipboard = async (text, successMessage) => {
@@ -162,7 +163,6 @@ export function useContextMenu(treeStore, fileStore, notificationStore, options 
       enabledPluginIds: enabledPluginsStore.enabledPluginIds,
       message: workspaceMessage,
       getDocumentTypeLabel: (documentType) => resolveDocumentTypeTextPresentation(documentType, t).label,
-      disableUnsupportedKnowledgeBaseAction: true,
       moveTargetProjects: getMoveTargetProjects(projectsStore, item),
     })) {
       notificationStore.show(workspaceMessage('workspace.sidebar.node.actionUnsupported'), 'warning');
@@ -203,7 +203,7 @@ export function useContextMenu(treeStore, fileStore, notificationStore, options 
         }
       } else if (action === 'add-to-kb') {
         if (typeof onAddToKnowledgeBase === 'function') {
-          onAddToKnowledgeBase(item);
+          await onAddToKnowledgeBase(item);
         } else {
           notificationStore.show(workspaceMessage('workspace.sidebar.node.addToKnowledgeBaseUnsupported'), 'warning');
         }

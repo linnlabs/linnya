@@ -20,12 +20,13 @@
 
     <button
       class="sidebar-entry"
+      v-if="applicationSurface"
       :class="{ 'is-selected': activeScene === 'knowledge-base' }"
       type="button"
       @click="$emit('knowledge-base-click')"
     >
-      <LibraryIcon class="nav-icon" />
-      <span class="nav-label">{{ layoutMessage('layout.sidebar.nav.knowledgeBase') }}</span>
+      <component :is="applicationSurface.contribution.iconComponent" class="nav-icon" />
+      <span class="nav-label">{{ t(applicationSurface.contribution.title) }}</span>
     </button>
 
     <button
@@ -43,7 +44,8 @@
 </template>
 
 <script setup lang="ts">
-import { LibraryIcon } from '@linnya/renderer-ui/icons';
+import { useApplicationSurface } from '@/app/plugins/composables';
+import { useLocalization } from '@/app/localization';
 import { AppsIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { AddCircleIcon } from '@linnya/renderer-ui/icons';
@@ -60,6 +62,9 @@ defineEmits<{
   'knowledge-base-click': [];
   'plugin-store-click': [];
 }>();
+
+const applicationSurface = useApplicationSurface('knowledge-base');
+const { t } = useLocalization();
 
 const { layoutMessage } = useLayoutLocalization();
 </script>

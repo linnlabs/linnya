@@ -14,7 +14,6 @@ export { useProjectOperations } from './composables/useProjectOperations';
 export { useContextMenu } from './composables/useContextMenu.js';
 export { useSidebarDragDrop } from './composables/useSidebarDragDrop.js';
 export { useDocumentOperations } from './composables/useDocumentOperations';
-export { useAddToKnowledgeBase } from './composables/useAddToKnowledgeBase';
 export { useFixedDropdownPosition } from './composables/useFixedDropdownPosition';
 
 export {

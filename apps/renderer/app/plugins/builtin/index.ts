@@ -1,4 +1,5 @@
 import { registerRendererPlugin } from '../registry';
+import { knowledgeRendererPlugin } from './knowledge.renderer';
 import { platformRendererPlugin } from './platform.renderer';
 import { installBuiltinRendererPluginPorts } from './installBuiltinRendererPluginPorts';
 import { installBuiltinConversationInputContributions } from './installBuiltinConversationInputContributions';
@@ -10,5 +11,6 @@ export function ensureBuiltinRendererPluginsRegistered(): void {
   installBuiltinRendererPluginPorts();
   installBuiltinConversationInputContributions();
   registerRendererPlugin(platformRendererPlugin);
+  registerRendererPlugin(knowledgeRendererPlugin, { applicationSurfaceSlot: 'knowledge-base' });
   registered = true;
 }

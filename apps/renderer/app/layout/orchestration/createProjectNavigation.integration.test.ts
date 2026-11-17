@@ -17,6 +17,7 @@ const io = vi.hoisted(() => ({
   listNodes: vi.fn(),
   send: vi.fn(async () => true),
   draft: vi.fn(),
+  link: vi.fn(async () => ({ success: true })),
 }));
 
 vi.mock('@/shared/ipc/projectGateway', () => ({ projectGateway: {
@@ -27,7 +28,7 @@ vi.mock('@/shared/ipc/projectGateway', () => ({ projectGateway: {
   }] } }),
 } }));
 vi.mock('@/shared/ipc/projectKbLinksGateway', () => ({ projectKbLinksGateway: {
-  replaceProjectKnowledgeBaseLinks: async () => ({ success: true }),
+  replaceProjectKnowledgeBaseLinks: io.link,
 } }));
 vi.mock('@/shared/ipc/workspaceGateway', () => ({ workspaceGateway: {
   'list-vfs-nodes': io.listNodes,
@@ -92,6 +93,15 @@ describe('project creation navigation', () => {
     expect(useWorkspaceTree().projectTree).toEqual([]);
     expect(io.draft).toHaveBeenCalledOnce();
     expect(io.send).toHaveBeenCalledTimes(mode === 'ai' ? 1 : 0);
+    expect(io.link).not.toHaveBeenCalled();
+  });
+
+  it('关联失败仍保留已创建项目并正常导航，不把项目创建回执改为失败', async () => {
+    io.link.mockRejectedValueOnce(new Error('knowledge unavailable'));
+    await operations().handleProjectDialogConfirm({ name: 'New project', description: '', kbIds: ['kb-a'] });
+    expect(io.link).toHaveBeenCalledOnce();
+    expect(useNavigationScope().currentProjectId).toBe('new-project');
+    expect(useWorkspaceProjectsStore().activeProjectId).toBe('new-project');
   });
 
   it.each(['manual', 'ai'] as const)('%s creation preserves the old document and scope when saving fails', async (mode) => {

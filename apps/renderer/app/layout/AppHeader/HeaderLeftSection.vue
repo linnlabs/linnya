@@ -13,14 +13,14 @@
           <SidebarIcon />
         </IconButton>
       </HoverTooltip>
-      <HoverTooltip :text="layoutMessage('layout.header.knowledgeBase')" placement="bottom">
+      <HoverTooltip v-if="applicationSurface" :text="t(applicationSurface.contribution.title)" placement="bottom">
         <IconButton
-          :label="layoutMessage('layout.header.knowledgeBase')"
+          :label="t(applicationSurface.contribution.title)"
           :tooltip="false"
           class="knowledge-base-button"
           @click="toggleKnowledgeBase"
         >
-          <LibraryIcon />
+          <component :is="applicationSurface.contribution.iconComponent" />
         </IconButton>
       </HoverTooltip>
       <HoverTooltip :text="layoutMessage('layout.header.settings')" placement="bottom">
@@ -46,13 +46,17 @@ import { computed } from 'vue';
 import { useUIStore } from '@/shared/stores/ui';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { SettingsIcon } from '@linnya/renderer-ui/icons';
-import { LibraryIcon } from '@linnya/renderer-ui/icons';
+import { useApplicationSurface } from '@/app/plugins/composables';
+import { useLocalization } from '@/app/localization';
 import { SidebarIcon } from '@linnya/renderer-ui/icons';
 import { HoverTooltip, IconButton } from '@linnya/renderer-ui';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 import UpdateEntry from '@/app/update/ui/UpdateEntry.vue';
 import { useSidebarLayoutWidth } from '@/app/layout/composables/useSidebarLayoutWidth';
 import { computeHeaderUpdateEntryAvailableWidth } from '@/app/layout/functions/headerPaneGeometry';
+
+const applicationSurface = useApplicationSurface('knowledge-base');
+const { t } = useLocalization();
 
 const props = defineProps<{
   isMac: boolean;

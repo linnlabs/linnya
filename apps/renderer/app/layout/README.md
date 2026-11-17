@@ -16,6 +16,11 @@
 
 文档引用持有Workspace的`nodeType`，与界面注册的`activeDocumentType`不是同一个名称空间。引用、反向链接和插件文档卡通过`openDocumentByNodeType`交给Host registry映射，再复用`openDocumentTarget`的保存、停用、挂载与可用性检查。`openDocument`和`openDocumentTarget`的`type`只接受界面类型，不尝试另一种身份回退。
 
+知识库场景使用官方 `applicationSurface` 固定槽。Header、Sidebar、项目首页与概览只投影当前可用贡献，
+不加载知识库数据。导航保存后调用贡献准备口，停用/换导航撤销旧准备；全局弹层卸载并返回原项目工作区。
+`GlobalModals` 只冻结引用身份后委派 `openSource`，不得列举知识库或把关联读取失败解释成默认库。
+文件树与 Header 菜单冻结实际目标；Markdown 快照由 Host 文档 owner 读取，插件只接收目标内容。
+
 ## 当前目录
 
 ```text

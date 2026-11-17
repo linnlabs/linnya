@@ -33,6 +33,8 @@ export function useProjectOperations(
    * - 使用 replace 接口保证幂等与最终一致（即使用户在弹窗里多次增删）。
    */
   const applyProjectKnowledgeBaseLinks = async (projectId: string, kbIds: string[]) => {
+    // 这里只处理刚创建的项目，空草稿本来就没有关联；停用插件不应触发无意义的写请求。
+    if (kbIds.length === 0) return;
     try {
       const result =
         await projectKbLinksGateway.replaceProjectKnowledgeBaseLinks({

@@ -23,3 +23,23 @@ Host 挂载 namespace 不代表 ESM shim 已导出它们。发布验收要在真
 `documentTypePresentation` 是 Host 文档 UI 的窄展示装配：图标取已有文档类型贡献，恢复动作按正式 availability 状态选择启用插件或打开商店。App 将该能力注入 Editor 的 `DocumentTypePresentationPort`；只有用户点击动作才调用既有 store 流程，不开放插件任意启用 SDK，也不绕过 loader 操作 registry。
 
 详情档通过同一 `documentTypePresentation` 读取可选 readonlyPreviewComponent，Editor 获得延迟挂载回调，不解释文档正文 DTO。可用状态变化与弹层关闭负责卸载，组件自己拥有只读内容加载和资源释放。
+
+## 官方应用表面
+
+`applicationSurface` 只供产品组合根显式授信的固定应用槽使用。当前槽位为 `knowledge-base`，
+Host 决定 scene、侧边栏和标题栏的位置；插件只提供标题、图标、页面及必要的项目关联和全局弹层组件。
+它不是任意路由、窗口或导航注册器。普通注册和磁盘 loader 不能授予槽位，`meta.builtin` 也不是信任来源。
+
+新建项目使用独立的 `projectCreationComponent`：组件持有目录加载与选择交互，只向 Host 交付关联 ID 草稿。
+已选下拉项即使未点“+”仍进入提交；停用时仅撤销尚未提交的新建草稿，不清空已有项目关联。
+名称输入不等待目录，编辑项目也不预加载知识库。关联写入失败独立提示，已成功创建的项目仍正常打开。
+
+查询必须同时满足正式启用状态和 Renderer 激活成功。停用、激活失败或注销后，入口、项目关联及弹层一同
+撤销；正在看的旁路页面返回原导航 scope 的工作区，保留项目身份。`prepare(signal)` 在保存原文档之后、
+挂载之前执行；切换导航和撤销贡献会取消旧准备。历史引用快照仍由 Host 读取，来源跳转则只将冻结的
+source/container/project 身份交给贡献 `openSource`，授权与资料检索由知识库 owner 负责。
+
+文档菜单继续复用 `documentActionMenus`。Host 提供菜单打开时冻结的 projectId、documentId 和实际目标类型，
+只委派贡献列出的选项，不拦截平台导出。Markdown 动作可获得仅针对该目标的 `readMarkdownSnapshot`：
+活动会话身份吻合时捕获允许的未保存内容，否则走正式文档读取；不向插件暴露 Editor、全局 store 或任意读取函数。
+选知识库前已经取得同一文档快照，切换项目、停用或关闭会取消未完成的本地动作。

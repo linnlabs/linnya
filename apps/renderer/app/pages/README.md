@@ -31,7 +31,7 @@
 - `ChatCentricPage`：对话主区的首页壳。
 - `WorkspaceConversationSurface`：主区与右侧共用的工作区对话装配面，统一分派项目 / `Linnya 助手`，并把应用场景映射为空态 composer 位置。
 - `DocumentSurface`：统一承载 Markdown 与 Slides、Canvas 等插件文档的 runtime surface。
-- `KnowledgeBasePage`：旁路全屏视图。
+- `KnowledgeBasePage`：固定旁路全屏壳，只挂载当前已启用且激活的官方应用表面贡献。
 
 顶层场景由 `app/layout/store/layoutStore.ts` 中的 `scene` 表达；当前项目、Linnya 助手、草稿对话和历史会话由
 `app/navigation/index.ts` 作为唯一 scope 权威表达。Page 层只做场景装配，不保存第二份导航状态。
@@ -72,7 +72,7 @@
 - 两个位置都必须进入 `WorkspaceConversationSurface/WorkspaceConversationSurface.vue`。scope 分派、项目活动态同步和 presentation 映射只能在这里装配，禁止右侧直接挂载 `ConversationHost` 或复制内容相位判断。
 - `home` 与 `side-pane` 统一装配、内容相位、消息列和输入框规格；页面排版仅有一项差异：前者使用居中首页输入框，后者复用历史对话空态视觉并把同一个 regular 输入框放在底部 footer。禁止把 `side-pane` 映射成 `compact`，否则消息边距和“+ / Agent”选择区会一起被压缩。
 - 中央对话面板统一复用 `domains/conversation/ui/ConversationChatSurface.vue`，项目概览、知识库关联与统计保留在 workspace domain。
-- 项目对话容器 `WorkspaceConversationSurface/ProjectConversationSurface.vue` 只负责 app-level 装配：conversation 提供对话表面，workspace 提供项目与项目概览，knowledgebase 只在 `home` presentation 通过幂等入口准备首页数据。
+- 项目对话容器 `WorkspaceConversationSurface/ProjectConversationSurface.vue` 只负责 app-level 装配：conversation 提供对话表面，workspace 提供项目与项目概览。知识库管理入口仅在相应应用表面可用时显示，首页不预热知识库数据；关联组件挂载后自己加载。
 
 ### 插件文档 surface（Sheet / Slides 等）
 

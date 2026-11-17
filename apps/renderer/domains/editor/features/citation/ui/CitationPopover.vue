@@ -66,11 +66,12 @@
 
         <!-- 底部操作栏 -->
         <div class="popover-footer">
-          <!-- 跳转来源（仅 KB 来源且文档存在时） -->
+          <!-- 插件停用仍展示历史快照；原件入口保留禁用原因，避免变成无响应按钮。 -->
           <BaseButton
             variant="plain"
             v-if="sourceType === 'knowledge_base'"
-            :title="editorMessage('editor.citation.popover.jumpToSourceTitle')"
+            :disabled="!sourceAvailable"
+            :title="sourceAvailable ? editorMessage('editor.citation.popover.jumpToSourceTitle') : sourceUnavailableReason"
             @click="handleJumpToSource"
           >
             <template #icon><ExternalLinkIcon /></template>
@@ -139,6 +140,8 @@ interface Props {
   sourceId: string
   /** 来源类型 */
   sourceType: CitationSourceType
+  sourceAvailable: boolean
+  sourceUnavailableReason: string
   /** 标题 */
   title: string
   /** 引用片段 */

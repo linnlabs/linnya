@@ -3,6 +3,7 @@ import { ref, type Ref } from 'vue';
 import { ConversationSelectedAgentIdSchema } from '@app/schemas';
 import type { RuntimeRendererPluginLoaderDiagnostics } from './loader/runtimeRendererPluginLoader';
 import type {
+  ApplicationSurfaceContribution,
   DocumentActionMenuContribution,
   ConversationAgentChoiceContribution,
   DocumentRuntimeLoaderContribution,
@@ -110,6 +111,16 @@ interface DocumentActionMenuRegistration {
   pluginId: PluginId;
   contribution: DocumentActionMenuContribution;
 }
+
+/** 固定槽的许可来自编译期组合根，不能由 contribution meta 或磁盘入口自报。 */
+export interface RendererPluginRegistrationOptions {
+  readonly applicationSurfaceSlot?: 'knowledge-base';
+}
+export interface RegisteredApplicationSurface {
+  readonly pluginId: PluginId;
+  readonly contribution: ApplicationSurfaceContribution;
+}
+const applicationSurfaces = new Map<'knowledge-base', RegisteredApplicationSurface>();
 
 interface DocumentRuntimeLoaderRegistration {
   pluginId: PluginId;
@@ -373,7 +384,10 @@ function logEnabledPluginDocumentTypeLoadFailed(options: {
   });
 }
 
-export function registerRendererPlugin(contribution: RendererPluginContribution): void {
+export function registerRendererPlugin(
+  contribution: RendererPluginContribution,
+  options: RendererPluginRegistrationOptions = {},
+): void {
   if (!contribution.meta.id.trim()) {
     throw new Error('[rendererPluginRegistry] 插件 ID 不能为空');
   }
@@ -382,10 +396,19 @@ export function registerRendererPlugin(contribution: RendererPluginContribution)
   }
 
   const pluginId = contribution.meta.id;
+  if (contribution.applicationSurface && !options.applicationSurfaceSlot) {
+    throw new Error('[rendererPluginRegistry] 应用页面贡献需要产品组合根显式授信');
+  }
+  if (options.applicationSurfaceSlot && applicationSurfaces.has(options.applicationSurfaceSlot)) {
+    throw new Error('[rendererPluginRegistry] 应用页面槽已被占用');
+  }
   validateSubrunWorkers(contribution);
   try {
     pluginMetas.set(pluginId, contribution.meta);
     rendererPluginContributions.set(pluginId, contribution);
+    if (contribution.applicationSurface && options.applicationSurfaceSlot) {
+      applicationSurfaces.set(options.applicationSurfaceSlot, { pluginId, contribution: contribution.applicationSurface });
+    }
 
     for (const documentType of contribution.documentTypes ?? []) {
       registerDocumentType(documentType);
@@ -434,6 +457,9 @@ export function unregisterRendererPluginContribution(
   activeRendererPlugins.delete(pluginId);
   for (const documentType of currentContribution.documentTypes ?? []) {
     unregisterDocumentType(documentType.activeDocumentType, documentType);
+  }
+  for (const [slot, surface] of applicationSurfaces) {
+    if (surface.pluginId === pluginId) applicationSurfaces.delete(slot);
   }
   unregisterToolCardsForPlugin(pluginId);
   unregisterDocumentActionMenusForPlugin(pluginId);
@@ -739,12 +765,24 @@ export function getConversationAgentChoiceById(
   return registration.contribution;
 }
 
+/** 配置启用与 renderer activate 均成功后才暴露可交互入口。 */
+export function getApplicationSurface(
+  slot: 'knowledge-base',
+  enabledPluginIds: ReadonlySet<PluginId>,
+): RegisteredApplicationSurface | null {
+  const surface = applicationSurfaces.get(slot);
+  return surface && enabledPluginIds.has(surface.pluginId) && readRendererPluginActiveState(surface.pluginId)
+    ? surface : null;
+}
+
 export function getDocumentActionMenuByActiveType(
   activeDocumentType: string,
   enabledPluginIds: ReadonlySet<PluginId>,
 ): DocumentActionMenuContribution | null {
   const registration = documentActionMenus.get(activeDocumentType);
-  if (!registration || !isEnabledPlugin(registration.pluginId, enabledPluginIds)) {
+  if (!registration || !isEnabledPlugin(registration.pluginId, enabledPluginIds)
+    || (rendererPluginContributions.get(registration.pluginId)?.applicationSurface
+      && !readRendererPluginActiveState(registration.pluginId))) {
     return null;
   }
   return registration.contribution;
@@ -767,6 +805,7 @@ export function clearRendererPluginRegistryForTest(): void {
       unregisterPluginConversationInputContribution(contribution.conversationInput);
     }
   }
+  applicationSurfaces.clear();
   pluginMetas.clear();
   rendererPluginContributions.clear();
   toolCards.clear();

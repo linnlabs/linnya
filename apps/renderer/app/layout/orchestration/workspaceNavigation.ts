@@ -1,4 +1,4 @@
-import { nextTick } from 'vue';
+import { nextTick, watch } from 'vue';
 import { onNextPaint } from '@linnya/renderer-ui';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import type { ActiveDocument, ActiveDocumentType } from '@/app/layout/definitions/layoutState';
@@ -21,7 +21,7 @@ import type {
 } from '@/shared/ports/workspaceNavigationPort';
 import { getDocumentSurfaceRuntimePort } from '@/shared/ports/documentSurfaceRuntimePort';
 import { activateFileSession, getActiveFileSession, saveDeactivateThen } from '@/domains/workspace/services/file-manager';
-import { getDocumentRuntimeLoaderByActiveType, getDocumentTypeByActiveType, getDocumentTypeByNodeType } from '@/app/plugins/registry';
+import { getDocumentRuntimeLoaderByActiveType, getDocumentTypeByActiveType, getDocumentTypeByNodeType, getApplicationSurface, useRendererPluginRegistryRevision } from '@/app/plugins/registry';
 import type {
   DocumentRuntimeLoaderContribution,
   DocumentRuntimeLoadRequest,
@@ -207,6 +207,7 @@ async function saveCurrentSessionBeforeReplacingSurface(
 export function createWorkspaceNavigation(): WorkspaceNavigationPort {
   const port: WorkspaceNavigationPort = {
     async openWorkspace(scope) {
+      cancelDocumentOpenIntent();
       const layoutStore = useLayoutStore();
       const navigationScope = useNavigationScope();
       const isSameScope = areNavigationScopesEqual(navigationScope.currentScope, scope);
@@ -238,17 +239,30 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
     },
 
     async openKnowledgeBase() {
-      await leaveDocumentRuntimeThen(() => {
-        const layoutStore = useLayoutStore();
-        useProjectKnowledgeBaseModalStore().close();
-        layoutStore.openBypassView({ type: 'knowledge-base' });
+      const enabled = useEnabledPluginsStore();
+      const surface = getApplicationSurface('knowledge-base', enabled.enabledPluginIds);
+      if (!surface) throw new Error('知识库插件当前不可用');
+      const revision = useRendererPluginRegistryRevision().value;
+      await leaveDocumentRuntimeThen(async () => {
+        // 保存等待期间可能停用/换版；旧打开动作不能重新挂回已撤销的页面。
+        if (revision !== useRendererPluginRegistryRevision().value
+          || getApplicationSurface('knowledge-base', enabled.enabledPluginIds) !== surface) return;
+        const intent = beginDocumentOpenIntent();
+        const stop = watch([useRendererPluginRegistryRevision(), () => enabled.enabledPluginIds], () => {
+          if (getApplicationSurface('knowledge-base', enabled.enabledPluginIds) !== surface) intent.controller.abort();
+        }, { flush: 'sync' });
+        try {
+          await surface.contribution.prepare?.(intent.controller.signal);
+          if (!isCurrentDocumentOpenIntent(intent)) return;
+          useProjectKnowledgeBaseModalStore().close();
+          useLayoutStore().openBypassView({ type: 'knowledge-base' });
+        } catch (error) {
+          if (!intent.controller.signal.aborted) throw error;
+        } finally {
+          stop();
+          if (currentDocumentOpenIntent === intent) currentDocumentOpenIntent = null;
+        }
       });
-
-      // 中文说明：知识库页面的数据预热属于导航进入该 scene 的编排职责，
-      // 不能散落在 UI 偏好 store 或页面组件里。
-      const { useKnowledgeBase } = await import('@/domains/knowledgebase/runtime.js');
-      const kbStore = useKnowledgeBase();
-      await kbStore.ensureDataLoaded();
     },
 
     async openProjectOverview(projectId) {
