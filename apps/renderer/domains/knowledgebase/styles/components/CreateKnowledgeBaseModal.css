@@ -45,9 +45,9 @@
   font-size: var(--font-size-prose);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background-color: var(--color-bg-search-light);
+  background-color: var(--color-bg-field);
   color: var(--color-text-primary);
-  transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
+  transition: border-color var(--duration-medium) var(--ease-standard);
   font-family: inherit;
 }
 
@@ -60,17 +60,11 @@
   transition: height var(--duration-micro) var(--ease-standard);
 }
 
-.create-kb-content .settings-input:hover:not(:disabled),
-.create-kb-content .settings-textarea:hover:not(:disabled) {
-  background-color: var(--color-bg-hover);
-  border-color: transparent;
-}
-
+/* 底色在静止、悬停、聚焦时保持不变（与 renderer-ui 输入框一致），聚焦只加强调色描边。 */
 .create-kb-content .settings-input:focus:not(:disabled),
 .create-kb-content .settings-textarea:focus:not(:disabled) {
   outline: none;
   border-color: var(--color-accent);
-  background-color: var(--color-bg-hover);
 }
 
 .create-kb-content .settings-input:disabled,

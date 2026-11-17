@@ -18,19 +18,12 @@
   color: var(--color-text-primary);
   font: inherit;
   outline: none;
-  transition:
-    border-color var(--duration-micro),
-    background-color var(--duration-micro);
+  transition: border-color var(--duration-micro);
 }
 
-.tt-text-field__control:hover:not(:disabled) {
-  background: var(--color-bg-field-hover);
-}
-
-/* focus 与 hover 保持同等选择器权重，确保后声明的焦点态不会被 hover 覆盖。 */
+/* 底色在静止、悬停、聚焦时保持不变，聚焦只加强调色描边。 */
 .tt-text-field__control:focus:not(:disabled) {
   border-color: var(--color-accent);
-  background: var(--color-bg-surface);
 }
 
 .tt-text-field__control:disabled {
