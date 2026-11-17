@@ -25,6 +25,8 @@ it('真实普通Worker内联同一解析SDK，无Host hook、模型目录或凭�
     expect(Object.keys(bundle.metafile.inputs).filter(file => /src\/(?:domains\/(?:model-catalog|provider-account)|.*credential-storage|.*agent-registry|.*backendHostModuleResolver|domains\/model-inference\/.*providers)/.test(file))).toEqual([]);
     expect(Object.values(bundle.metafile.outputs).flatMap(output => output.imports).filter(item => item.external && item.path.startsWith('@plugin/'))).toEqual([]);
     expect(Object.keys(bundle.metafile.inputs).filter(file => /pathManager|runtime-paths|createDiagnosticLogFileSink|createDiagnosticLogWriter/.test(file))).toEqual([]);
+    // 错误分类只需要原错误身份，不能让解析 Worker 内联推理域的宽入口和校验流程。
+    expect(Object.keys(bundle.metafile.inputs).filter(file => /src\/domains\/model-inference\/(?:index\.ts$|.*\/functions\/)/.test(file))).toEqual([]);
     const temporaryDirectory = path.join(root, 'task');
     await mkdir(temporaryDirectory);
     worker = new Worker(outfile, { env: { PATH: process.env.PATH }, workerData: temporaryDirectory });
