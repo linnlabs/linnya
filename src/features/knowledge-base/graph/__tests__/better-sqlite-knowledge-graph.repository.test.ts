@@ -39,7 +39,7 @@ describe('BetterSqliteKnowledgeGraphRepository (M1)', () => {
       Date.now() / 1000
     );
 
-    repo = new BetterSqliteKnowledgeGraphRepository(databaseService);
+    repo = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
   });
 
   afterEach(() => {

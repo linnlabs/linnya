@@ -13,6 +13,7 @@
 import { ServiceRegistry } from '@core/di/ServiceRegistry';
 import { SQLiteRunRegistryStore } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
 import { selectRunRecoveryRetention } from 'src/app-hosts/linnya/application/run-resumption';
+import { getPluginProjectReadPort } from 'src/plugin-sdk/backend/projectReadRuntime';
 import { randomUUID } from 'node:crypto';
 import {
   KnowledgeBaseService,
@@ -412,7 +413,7 @@ export class ServiceInitializer {
     // 创建仓储实例 - 使用新的 BetterSqliteMetadataRepository
     const qdrantRepository = new QdrantRepositoryImpl(resolveAdapter);
     const databaseService = getDatabaseService();
-    const metadataRepository = new BetterSqliteMetadataRepository(databaseService);
+    const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
     const sotRepository = new FileSotRepository(sotPath);
     const originalDocumentRepository = new FileOriginalDocumentRepository(originalDocumentsPath);
     console.log('[ServiceInitializer] ✅ Step 6: 知识库存储库初始化完成');
@@ -420,7 +421,7 @@ export class ServiceInitializer {
     // 创建搜索服务
     console.log('[ServiceInitializer] 🔍 Step 7: 创建搜索服务...');
 
-    const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(databaseService);
+    const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
     const textGeneration = createTextGenerationPort({
       inferencePort: createDefaultHostInferencePort(),
     });
@@ -472,11 +473,12 @@ export class ServiceInitializer {
     console.log('[ServiceInitializer] 🔗 Step 6.5: 初始化项目-知识库关联服务...');
 
     // 获取 metadataRepository 实例（从 knowledgeBaseService 获取）
-    const metadataRepository = new BetterSqliteMetadataRepository(databaseService);
+    const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
 
     const projectKnowledgeBaseLinksService = new ProjectKnowledgeBaseLinksService(
-      databaseService,
-      metadataRepository
+      databaseService.getDb(),
+      metadataRepository,
+      getPluginProjectReadPort()
     );
 
     console.log('[ServiceInitializer] ✅ Step 6.5: 项目-知识库关联服务初始化完成');

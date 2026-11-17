@@ -75,7 +75,7 @@ export function registerKnowledgeBaseHandlers(
 
   // 图谱进度服务（M4）：只用于“读取 + 节流推送”，不侵入 KB 业务服务
   const graphProgressService = new GraphProgressService(
-    new BetterSqliteKnowledgeGraphRepository(getDatabaseService())
+    new BetterSqliteKnowledgeGraphRepository(getDatabaseService().getDb())
   );
 
   const getKnowledgeGraphQueueOrchestrator = (): KnowledgeGraphQueueOrchestrator | null => {

@@ -40,6 +40,7 @@ import * as toolRuntime from '../../../plugin-sdk/backend/toolRuntime';
 import * as workspaceDocumentProjection from '../../../plugin-sdk/backend/workspaceDocumentProjection';
 import * as semanticTags from '../../../plugin-sdk/backend/semanticTags';
 import * as workspaceRuntime from '../../../plugin-sdk/backend/workspaceRuntime';
+import * as projectReadRuntime from '../../../plugin-sdk/backend/projectReadRuntime';
 import * as workspaceDatabasePath from '../../../plugin-sdk/backend/workspaceDatabasePath';
 
 type CommonJsLoad = (
@@ -88,6 +89,7 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/toolRuntime', toolRuntime],
   ['@plugin/backend/workspaceRuntime', workspaceRuntime],
   ['@plugin/backend/workspaceDocumentProjection', workspaceDocumentProjection],
+  ['@plugin/backend/projectReadRuntime', projectReadRuntime],
   ['@plugin/backend/workspaceDatabasePath', workspaceDatabasePath],
 ]);
 

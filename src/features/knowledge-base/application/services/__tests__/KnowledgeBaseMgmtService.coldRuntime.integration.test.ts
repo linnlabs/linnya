@@ -17,7 +17,7 @@ describe('knowledge metadata with a cold vector runtime', () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'linnya-kb-cold-'));
     const database = new DatabaseService(path.join(root, 'workspace.sqlite'));
     database.initialize();
-    const metadataRepository = new BetterSqliteMetadataRepository(database);
+    const metadataRepository = new BetterSqliteMetadataRepository(database.getDb());
     const resolveAdapter = vi.fn(async () => { throw new QdrantRuntimeUnavailableError('qdrant unavailable'); });
     const sotRepository = new FileSotRepository(path.join(root, 'sot'));
     const originalDocumentRepository = new FileOriginalDocumentRepository(path.join(root, 'originals'));

@@ -13,6 +13,12 @@ App Server 启动只装配元数据、原文仓储和轻量队列，不启动 Qd
 - 删除知识库在删除原文前确认向量服务可用；未摄入的冷库可以尚无集合，删除仍正常完成。
 - 历史 CitationSnapshot 路由归 Host，保持旧 URL，但独立于活知识库服务挂载。停用或向量故障不撤掉已有会话证据。
 
+## 存储与项目边界
+
+元数据、图谱仓储只接收当前 Workspace SQLite 连接的 `prepare/transaction` 窄端口；不接收 DatabaseService、迁移控制或连接生命周期。仓储 SQL 只属于知识库拥有的表。项目关联的存在性和摘要通过 Host 的 `projectReadRuntime` 读取，不跨域查询 `projects`。项目删除仍由既有外键级联解除关联。
+
+这是官方受信代码的职责边界，不是针对不可信插件的 SQL 安全沙箱。
+
 ## 目录结构
 
 ```text

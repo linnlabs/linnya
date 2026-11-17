@@ -746,8 +746,8 @@ async function initCliDeps(params: {
   );
 
   // 6) 元数据 / 图谱仓储（SQLite）
-  const metadataRepository = new BetterSqliteMetadataRepository(databaseService);
-  const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(databaseService);
+  const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
+  const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
 
   // 7) SearchService + KnowledgeBaseService（默认：生产一致，包含 embedding/rerank）
   const searchService = new DefaultSearchService({
@@ -1153,10 +1153,10 @@ async function handleSearch(deps: CliDeps, argv: string[]): Promise<void> {
       'http://localhost:6333';
     const qdrantAdapter = QdrantAdapter.getInstance({ url: qdrantUrl });
     const qdrantRepository = new QdrantRepositoryImpl(async () => qdrantAdapter);
-    const metadataRepository = new BetterSqliteMetadataRepository(deps.databaseService);
+    const metadataRepository = new BetterSqliteMetadataRepository(deps.databaseService.getDb());
     const sotPath = await pathManager.getSourceOfTruthPath();
     const sotRepository = new FileSotRepository(sotPath);
-    const kgRepo = new BetterSqliteKnowledgeGraphRepository(deps.databaseService);
+    const kgRepo = new BetterSqliteKnowledgeGraphRepository(deps.databaseService.getDb());
 
     // baseKnowledgeBaseService 继续用 toolContextBase 里的（生产一致），只作为委托对象
     const base = deps.toolContextBase.knowledgeBaseService;

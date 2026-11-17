@@ -3,17 +3,17 @@
  * @description 知识库元数据仓储 - better-sqlite3 实现
  * 
  * 功能 (What): 使用 better-sqlite3 操作 workspace.sqlite 中的知识库元数据表
- * 输入 (Input): 通过依赖注入获取 DatabaseService
+ * 输入 (Input): 通过依赖注入获取现有 SQLite 连接的窄端口
  * 输出 (Output): 实现 MetadataRepository 接口的所有方法
  * 副作用 (Side-effects): 读写 workspace.sqlite 的 knowledge_bases 和 kb_documents 表
  * 
  * 关键设计：
- * - 不持有独立的数据库连接，通过 DatabaseService 获取统一的 db 实例
+ * - 不持有独立的数据库连接，仅持有 prepare/transaction，不获得 Host 数据库管理能力
  * - 所有操作在主进程串行执行，无需手工 reload/save
  * - 依赖 WAL 模式支持并发读
  */
 
-import type Database from 'better-sqlite3';
+import type { KnowledgeDatabase } from '../../definitions/knowledgeDatabase';
 import { MetadataRepository } from '../metadataRepository';
 import { KnowledgeBase, createKnowledgeBase, DEFAULT_KB_CONFIG as DEFAULT_KB_DOMAIN_CONFIG } from '../../domain/knowledgeBase';
 import {
@@ -22,7 +22,6 @@ import {
   DocumentParseDiagnosticsSchema,
   DocumentStatus,
 } from '../../domain/document';
-import { DatabaseService } from '../../../../electron-main/services/database';
 
 // 默认知识库配置
 const DEFAULT_KB_CONFIG = {
@@ -100,14 +99,14 @@ function mapKnowledgeBaseModelFields(row: {
  * better-sqlite3 版本的元数据仓储实现
  */
 export class BetterSqliteMetadataRepository implements MetadataRepository {
-  private readonly databaseService: DatabaseService;
+  private readonly database: KnowledgeDatabase;
 
   /**
    * 构造函数
-   * @param databaseService 数据库服务实例
+   * @param database 当前 Workspace 的窄数据库端口
    */
-  constructor(databaseService: DatabaseService) {
-    this.databaseService = databaseService;
+  constructor(database: KnowledgeDatabase) {
+    this.database = database;
     console.log('[BetterSqliteMetadataRepository] 初始化完成');
     
     // 确保默认知识库存在
@@ -117,8 +116,8 @@ export class BetterSqliteMetadataRepository implements MetadataRepository {
   /**
    * 获取数据库实例
    */
-  private getDb(): Database.Database {
-    return this.databaseService.getDb();
+  private getDb(): KnowledgeDatabase {
+    return this.database;
   }
 
   /**

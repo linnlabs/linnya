@@ -258,7 +258,7 @@ async function processGraphIndexingJob(): Promise<void> {
   // Worker 线程内需要独立的 DB 连接，只建连接 + 设 pragma，不重跑迁移/插件 lifecycle（F1-02）
   const databaseService = getDatabaseService();
   databaseService.initializeConnectionOnly();
-  const graphRepo = new BetterSqliteKnowledgeGraphRepository(databaseService);
+  const graphRepo = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
 
   /**
    * ✅ 根因修复：为图谱向量点补齐 doc_title

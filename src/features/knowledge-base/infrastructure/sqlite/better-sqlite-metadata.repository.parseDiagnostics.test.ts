@@ -17,7 +17,7 @@ describe('BetterSqliteMetadataRepository parse diagnostics', () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-kb-metadata-'));
     databaseService = new DatabaseService(path.join(tempDir, 'workspace.sqlite'));
     databaseService.initialize();
-    repository = new BetterSqliteMetadataRepository(databaseService);
+    repository = new BetterSqliteMetadataRepository(databaseService.getDb());
   });
 
   afterEach(() => {
@@ -74,7 +74,7 @@ describe('BetterSqliteMetadataRepository knowledge base model overrides', () => 
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-kb-model-overrides-'));
     databaseService = new DatabaseService(path.join(tempDir, 'workspace.sqlite'));
     databaseService.initialize();
-    repository = new BetterSqliteMetadataRepository(databaseService);
+    repository = new BetterSqliteMetadataRepository(databaseService.getDb());
   });
 
   afterEach(() => {

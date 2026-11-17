@@ -334,7 +334,7 @@ async function runKnowledgeBaseMaintenance(
         knowledgeBase.metadataRepository,
         knowledgeBase.qdrantRepository,
         knowledgeBase.sotRepository,
-        new BetterSqliteKnowledgeGraphRepository(databaseService),
+        new BetterSqliteKnowledgeGraphRepository(databaseService.getDb()),
         knowledgeBase.originalDocumentRepository
       );
       logger.info(
