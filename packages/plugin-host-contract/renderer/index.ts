@@ -13,6 +13,8 @@ export type * from './pluginDocumentCreationPort';
 export type * from './pluginContribution';
 export type * from './pluginIpcClient';
 export type * from './pluginPushClient';
+export type * from './pluginMultipartUpload';
+export type * from './modelConfiguration';
 export type * from './referenceLinkUi';
 export type * from './refId';
 export type * from './settingsContribution';

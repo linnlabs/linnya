@@ -12,6 +12,7 @@ import { useToolingFlowOrchestrator } from '@/domains/conversation/assistantActi
  */
 
 import { nextTick } from 'vue';
+import { installApplicationSurfaceHostPorts } from './installApplicationSurfaceHostPorts';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import { focusRegisteredComposerInput } from '@/domains/conversation/features/composer-focus';
 import {
@@ -278,6 +279,7 @@ function installComposerCommandPort(): void {
 
 export function installBuiltinRendererPluginPorts(): void {
   registerRendererPluginRuntimePort(createRendererPluginRuntimePort());
+  installApplicationSurfaceHostPorts();
   registerRendererDocumentPreviewPort({
     ...createDocumentPreviewRendererPort(),
     readTypeIcon: readDocumentTypeIcon,

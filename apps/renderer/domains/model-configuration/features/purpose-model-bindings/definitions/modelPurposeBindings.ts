@@ -14,11 +14,4 @@ export interface ModelPurposeSelections {
   readonly transcriptionModelId: string | null;
 }
 
-export type ModelBindingSlot =
-  | 'primary'
-  | 'embedding'
-  | 'rerank'
-  | 'pdf_ocr'
-  | 'image_vision'
-  | 'image_generation'
-  | 'transcription';
+export type { ModelBindingSlot } from '@linnya/plugin-host-contract/renderer/modelConfiguration';

@@ -24,6 +24,8 @@ export const hostRendererExternalUrls = Object.freeze({
   '@plugin/renderer/pluginDocumentCreationPort': 'plugin://host/plugin-renderer/pluginDocumentCreationPort.js',
   '@plugin/renderer/pluginIpcClient': 'plugin://host/plugin-renderer/pluginIpcClient.js',
   '@plugin/renderer/pluginPushClient': 'plugin://host/plugin-renderer/pluginPushClient.js',
+  '@plugin/renderer/pluginMultipartUpload': 'plugin://host/plugin-renderer/pluginMultipartUpload.js',
+  '@plugin/renderer/modelConfiguration': 'plugin://host/plugin-renderer/modelConfiguration.js',
   '@plugin/renderer/refId': 'plugin://host/plugin-renderer/refId.js',
   '@plugin/renderer/referenceLinkUi': 'plugin://host/plugin-renderer/referenceLinkUi.js',
   '@plugin/renderer/settingsContribution': 'plugin://host/plugin-renderer/settingsContribution.js',

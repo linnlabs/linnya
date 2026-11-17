@@ -28,6 +28,11 @@ import * as pageContextProvider from '@plugin/renderer/pageContextProvider';
 import * as pluginDocumentCreationPort from '@plugin/renderer/pluginDocumentCreationPort';
 import * as pluginIpcClient from '@plugin/renderer/pluginIpcClient';
 import * as pluginPushClient from '@plugin/renderer/pluginPushClient';
+import { uploadRendererPluginMultipart } from '@plugin/renderer/pluginMultipartUpload';
+import {
+  readPurposeModelId, readAuxiliaryModelId, readModelDisplayName,
+  subscribeModelConfigurationChanges, openModelConfiguration, registerEmbeddingModelChangeImpactPort,
+} from '@plugin/renderer/modelConfiguration';
 import * as refId from '@plugin/renderer/refId';
 import * as referenceLinkUi from '@plugin/renderer/referenceLinkUi';
 import * as settingsContribution from '@plugin/renderer/settingsContribution';
@@ -93,6 +98,11 @@ export function installRendererPluginHostModules(): void {
       '@plugin/renderer/pluginDocumentCreationPort': pluginDocumentCreationPort,
       '@plugin/renderer/pluginIpcClient': pluginIpcClient,
       '@plugin/renderer/pluginPushClient': pluginPushClient,
+      '@plugin/renderer/pluginMultipartUpload': { uploadRendererPluginMultipart },
+      '@plugin/renderer/modelConfiguration': {
+        readPurposeModelId, readAuxiliaryModelId, readModelDisplayName,
+        subscribeModelConfigurationChanges, openModelConfiguration, registerEmbeddingModelChangeImpactPort,
+      },
       '@plugin/renderer/refId': refId,
       '@plugin/renderer/referenceLinkUi': referenceLinkUi,
       '@plugin/renderer/settingsContribution': settingsContribution,

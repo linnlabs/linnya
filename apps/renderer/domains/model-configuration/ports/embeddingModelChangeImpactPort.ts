@@ -1,13 +1,5 @@
-export interface EmbeddingModelChangeImpact {
-  readonly id: string;
-  readonly name: string;
-  readonly documentCount: number;
-}
-
-export interface EmbeddingModelChangeImpactPort {
-  findImpactedKnowledgeBases(nextModelId: string): Promise<readonly EmbeddingModelChangeImpact[]>;
-  findKnowledgeBasesUsingModel(modelId: string): Promise<readonly EmbeddingModelChangeImpact[]>;
-}
+import type { EmbeddingModelChangeImpactPort } from '@linnya/plugin-host-contract/renderer/modelConfiguration';
+export type { EmbeddingModelChangeImpact, EmbeddingModelChangeImpactPort } from '@linnya/plugin-host-contract/renderer/modelConfiguration';
 
 let registeredPort: EmbeddingModelChangeImpactPort | null = null;
 

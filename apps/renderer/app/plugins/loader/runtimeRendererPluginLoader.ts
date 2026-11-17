@@ -34,6 +34,8 @@ const requiredPluginSdkHostModuleIds = [
   '@plugin/renderer/pluginDocumentCreationPort',
   '@plugin/renderer/pluginIpcClient',
   '@plugin/renderer/pluginPushClient',
+  '@plugin/renderer/pluginMultipartUpload',
+  '@plugin/renderer/modelConfiguration',
   '@plugin/renderer/refId',
   '@plugin/renderer/referenceLinkUi',
   '@plugin/renderer/settingsContribution',
