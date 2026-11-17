@@ -17,6 +17,7 @@ import {
   TableIcon,
   WrenchIcon,
 } from '@linnya/renderer-ui/icons';
+import MarkdownFloatingToolbar from '../prototypes/MarkdownFloatingToolbar.vue';
 import GalleryBlock from '../ui/GalleryBlock.vue';
 import GalleryRow from '../ui/GalleryRow.vue';
 
@@ -76,7 +77,7 @@ const TAB_STYLES: SegmentedTabItem[] = [
   { id: 'browser', label: 'A 浏览器式' },
   { id: 'pill', label: 'B 轻量式' },
 ];
-const tabStyle = ref<'browser' | 'pill'>('browser');
+const tabStyle = ref<'browser' | 'pill'>('pill');
 
 const tabs = ref<OpenTab[]>([
   { id: 'report', preview: false },
@@ -126,7 +127,7 @@ function openMany() {
   <div class="gallery-section doc-top">
     <GalleryBlock
       title="Markdown 工具栏：顶部整行 → 悬浮"
-      note="现状的格式工具栏单独占一整行（37px）。A、B 都改成和 Slides、Canvas 一样的顶部居中悬浮胶囊，顶部只剩标题栏一行。B 在打字或向下滚动时淡出，移动鼠标或向上滚动时回来。三个框都可以滚动、可以打字试。"
+      note="现状的格式工具栏单独占一整行（37px）。A、B 都改成和 Slides、Canvas 一样的顶部居中悬浮胶囊，顶部只剩标题栏一行，并缩减为 标题▾ | 列表▾ 引用 | 图片 表格 | …：粗体、斜体交给选中文字时的工具栏和快捷键，“…”与斜杠菜单同一份清单。B 在打字或向下滚动时淡出，移动鼠标或向上滚动时回来。三个框都可以滚动、可以打字试。"
     >
       <GalleryRow label="三种对比" align="start">
         <div class="doc-top__grid">
@@ -172,31 +173,7 @@ function openMany() {
                 <span class="doc-frame__actions"><MoreIcon /><RefreshIcon /></span>
               </header>
               <div class="doc-frame__stage">
-                <div
-                  class="doc-frame__pill"
-                  :class="{ 'is-hidden': variant === 'auto' && autoHidden }"
-                  role="toolbar"
-                  aria-label="格式"
-                >
-                  <ToolbarGroup>
-                    <ToolbarButton label="标题"><HeadingIcon /></ToolbarButton>
-                    <ToolbarButton label="粗体"><BoldIcon /></ToolbarButton>
-                    <ToolbarButton label="斜体"><ItalicIcon /></ToolbarButton>
-                  </ToolbarGroup>
-                  <ToolbarGroup>
-                    <ToolbarButton label="无序列表"><BulletListIcon /></ToolbarButton>
-                    <ToolbarButton label="有序列表"><NumberedListIcon /></ToolbarButton>
-                    <ToolbarButton label="引用"><QuoteIcon /></ToolbarButton>
-                  </ToolbarGroup>
-                  <ToolbarGroup>
-                    <ToolbarButton label="图片"><ImageIcon /></ToolbarButton>
-                    <ToolbarButton label="表格"><TableIcon /></ToolbarButton>
-                  </ToolbarGroup>
-                  <ToolbarGroup>
-                    <ToolbarButton label="工具"><WrenchIcon /></ToolbarButton>
-                    <ToolbarButton label="AI"><span class="doc-frame__ai">AI</span></ToolbarButton>
-                  </ToolbarGroup>
-                </div>
+                <MarkdownFloatingToolbar :hidden="variant === 'auto' && autoHidden" />
                 <article
                   class="doc-frame__body doc-frame__body--floating"
                   contenteditable="true"
@@ -266,22 +243,7 @@ function openMany() {
               <span class="doc-frame__actions"><MoreIcon /><RefreshIcon /></span>
             </header>
             <div class="doc-frame__stage">
-              <div class="doc-frame__pill" role="toolbar" aria-label="格式">
-                <ToolbarGroup>
-                  <ToolbarButton label="标题"><HeadingIcon /></ToolbarButton>
-                  <ToolbarButton label="粗体"><BoldIcon /></ToolbarButton>
-                  <ToolbarButton label="斜体"><ItalicIcon /></ToolbarButton>
-                </ToolbarGroup>
-                <ToolbarGroup>
-                  <ToolbarButton label="无序列表"><BulletListIcon /></ToolbarButton>
-                  <ToolbarButton label="有序列表"><NumberedListIcon /></ToolbarButton>
-                  <ToolbarButton label="引用"><QuoteIcon /></ToolbarButton>
-                </ToolbarGroup>
-                <ToolbarGroup>
-                  <ToolbarButton label="图片"><ImageIcon /></ToolbarButton>
-                  <ToolbarButton label="表格"><TableIcon /></ToolbarButton>
-                </ToolbarGroup>
-              </div>
+              <MarkdownFloatingToolbar />
               <article
                 v-if="tabs.length"
                 class="doc-frame__body doc-frame__body--floating"
@@ -334,6 +296,7 @@ function openMany() {
 }
 
 .doc-frame {
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   height: 460px;
@@ -407,32 +370,6 @@ function openMany() {
   position: relative;
   flex: 1;
   min-height: 0;
-}
-
-/* 与 Slides、Canvas 命令栏相同的胶囊外观；实施时应收成 renderer-ui 的一个公共样式，不再各写一份。 */
-.doc-frame__pill {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 4px;
-  border-radius: 10px;
-  background-color: var(--color-bg-default);
-  box-shadow:
-    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 6%, transparent),
-    0 1px 3px var(--shadow-color-xs),
-    0 8px 24px -4px var(--shadow-color-md);
-  transform: translateX(-50%);
-  transition: opacity 160ms ease, transform 160ms ease;
-}
-
-.doc-frame__pill.is-hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, -6px);
 }
 
 .doc-frame__body {
