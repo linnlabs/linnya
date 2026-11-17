@@ -21,10 +21,6 @@ vi.mock('./adapters/PdfParseAdapter', () => ({
   getPdfPageCountCrossPlatform: mocks.getPdfPageCountCrossPlatform,
 }));
 
-vi.mock('src/app-hosts/linnya/agent-registry/modelPolicyResolver', () => ({
-  resolveModelIdFromPolicy: vi.fn(() => 'ocr-model'),
-}));
-
 function makeTextGeneration(): TextGenerationPort {
   return { generate: vi.fn() };
 }

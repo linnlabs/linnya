@@ -9,6 +9,12 @@ const mocks = vi.hoisted(() => ({
   close: vi.fn(),
 }));
 
+// Node 内建 Promise timer 不受 Vitest 全局假时钟控制；此组只检验既有退避策略。
+// 真正 AbortSignal/推理请求取消由 documentParsingRuntime 集成测试用真实 timer 覆盖。
+vi.mock('node:timers/promises', () => ({
+  setTimeout: (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds)),
+}));
+
 vi.mock('../adapters/PdfRasterAdapter', () => ({
   openPdfRasterDocumentFromBytes: mocks.openPdfRasterDocumentFromBytes,
   openPdfRasterDocumentFromPath: vi.fn(),

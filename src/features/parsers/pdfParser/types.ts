@@ -52,7 +52,7 @@ export interface PdfParserOptions {
   documentOcr?: DocumentOcrPort; // 专用文档 OCR 端口（仅视觉路径需要）
   filename?: string; // 原始文件名，用于解析阶段错误提示
   visionModelId?: string; // 视觉模型ID（可选）
-  resolveModelByCapability?: (capability: string) => string | undefined; // 按能力解析默认模型（可选）
+  signal?: AbortSignal; // 当前解析任务取消：停止后续 OCR 请求、页调度和退避
   targetPixels?: number; // 目标图像像素数
   tpmLimitPerWorker?: number; // Token速率限制
   maxRetries?: number; // 重试次数

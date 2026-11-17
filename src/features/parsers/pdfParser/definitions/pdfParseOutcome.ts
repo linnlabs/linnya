@@ -1,35 +1,6 @@
 import type { ParsedBlock } from '../../types';
-import type { OcrErrorKind } from './ocrErrors';
-
-export type PdfParsePipeline =
-  | 'text_extraction'
-  | 'geometric_analysis'
-  | 'vision_document_upload'
-  | 'vision_page_image';
-
-export interface PdfPageDiagnostic {
-  pageNumber: number;
-  errorKind: OcrErrorKind;
-  message: string;
-  retryable: boolean;
-  shouldReduceConcurrency: boolean;
-  shouldSplitSmaller: boolean;
-}
-
-export interface PdfParseDiagnostics {
-  parser: 'pdf';
-  pipeline: PdfParsePipeline;
-  totalPages: number;
-  parsedPages: number[];
-  failedPages: PdfPageDiagnostic[];
-  isPartial: boolean;
-  createdAt: number;
-}
-
-export interface PdfParseOutcome {
-  blocks: ParsedBlock[];
-  diagnostics: PdfParseDiagnostics;
-}
+import type { PdfParseDiagnostics, PdfPageDiagnostic, PdfParsePipeline } from '@linnya/plugin-host-contract/backend/documentParsingRuntime';
+export type { PdfParseDiagnostics, PdfPageDiagnostic, PdfParsePipeline, PdfParseOutcome } from '@linnya/plugin-host-contract/backend/documentParsingRuntime';
 
 function readPageNumber(block: ParsedBlock): number | undefined {
   const pageNumber = block.source_info?.page_number;
