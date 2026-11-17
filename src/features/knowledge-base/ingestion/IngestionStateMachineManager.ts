@@ -51,6 +51,8 @@ export interface IngestionTaskParams {
   kbId: string;
   filename: string;
   filePath: string;
+  ocrTemporaryDirectory?: string;
+  signal?: AbortSignal;
   embeddingModelId: string;
   pdfOcrModelId?: string;
   imageVisionModelId?: string;
@@ -163,7 +165,10 @@ export class IngestionStateMachineManager {
    * 副作用 (Side-effects): 向状态机注册所有处理器
    */
   private registerStateHandlers(stateMachine: IngestionStateMachine): void {
-    const pendingHandler = new PendingHandler(this.repositories.metadataRepository, this.repositories.sotRepository);
+    const pendingHandler = new PendingHandler(
+      this.repositories.metadataRepository,
+      this.repositories.sotRepository
+    );
     stateMachine.registerHandler(InternalStage.PENDING, pendingHandler);
 
     // 🔥 新增：为ParsingHandler创建进度回调，实现实时进度更新
@@ -409,6 +414,8 @@ export class IngestionStateMachineManager {
         kbId: params.kbId,
         filename: params.filename,
         filePath: params.filePath,
+        ocrTemporaryDirectory: params.ocrTemporaryDirectory,
+        signal: params.signal,
         embeddingModelId: params.embeddingModelId,
         pdfOcrModelId: params.pdfOcrModelId,
         imageVisionModelId: params.imageVisionModelId,

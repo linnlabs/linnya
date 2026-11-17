@@ -1,6 +1,6 @@
 /**
  * src/pipeline/jobs.ts
- * 
+ *
  * 定义任务队列中各种任务的负载(payload)类型
  * 使用Zod验证确保类型安全和运行时验证
  */
@@ -15,12 +15,14 @@ export const IngestionJobPayloadSchema = z.object({
   taskId: z.string().min(1),
   docId: z.string().min(1),
   kbId: z.string().min(1),
-  
+
   // 文件信息
   filename: z.string().min(1),
   filePath: z.string().min(1),
   fileHash: z.string().optional(),
-  
+  /** 本任务 OCR 临时素材根，由 Host 入队时冻结。 */
+  ocrTemporaryDirectory: z.string().optional(),
+
   // 模型配置
   embeddingModelId: z.string().min(1),
   pdfOcrModelId: z.string().optional(),
@@ -28,10 +30,10 @@ export const IngestionJobPayloadSchema = z.object({
   visionModelId: z.string().optional(),
   rerankModelId: z.string().optional(),
   graphExtractionModelId: z.string().optional(),
-  
+
   // 🔥 新增：PDF解析配置
   forceVisionMode: z.boolean().optional().default(false),
-  
+
   // 任务控制标志
   priority: z.number().int().min(1).max(10).default(5),
   retry: z.boolean().default(true),
@@ -149,14 +151,14 @@ export const CollectionMaintenanceJobPayloadSchema = z.object({
   // 核心标识
   taskId: z.string().min(1),
   kbId: z.string().min(1),
-  
+
   // 操作类型
   operationType: z.enum(['optimize', 'recreate', 'cleanup']),
-  
+
   // 任务控制标志
   priority: z.number().int().min(1).max(10).default(3),
   retry: z.boolean().default(true),
-  
+
   // 针对不同操作类型的特定参数
   params: z.record(z.string(), z.unknown()).optional(),
 });
@@ -174,19 +176,19 @@ export const SearchJobPayloadSchema = z.object({
   // 核心标识
   taskId: z.string().min(1),
   kbId: z.string().min(1),
-  
+
   // 搜索参数
   query: z.string().min(1),
   limit: z.number().int().min(1).max(100).default(10),
-  
+
   // 模型配置
   embeddingModelId: z.string().min(1),
   rerankModelId: z.string().optional(),
-  
+
   // 搜索选项
   useHybridSearch: z.boolean().default(true),
   filters: z.record(z.string(), z.unknown()).optional(),
-  
+
   // 任务控制标志
   priority: z.number().int().min(1).max(10).default(8), // 搜索通常优先级较高
 });
@@ -222,7 +224,10 @@ export type AudioProcessingJobPayload = z.infer<typeof AudioProcessingJobPayload
  * 任务负载验证错误类
  */
 export class JobPayloadValidationError extends Error {
-  constructor(message: string, public readonly issues: z.ZodIssue[]) {
+  constructor(
+    message: string,
+    public readonly issues: z.ZodIssue[]
+  ) {
     super(message);
     this.name = 'JobPayloadValidationError';
   }
@@ -230,7 +235,7 @@ export class JobPayloadValidationError extends Error {
 
 /**
  * 验证任务负载并返回类型化结果
- * 
+ *
  * @param schema Zod验证模式
  * @param payload 要验证的负载对象
  * @returns 验证通过的类型化负载

@@ -57,8 +57,6 @@ import { assertDocumentOcrPageLimit } from 'src/domains/document-ocr';
  */
 const PAGE_BLOCK_INDEX_STRIDE = 10000;
 
-
-
 /**
  * 视觉识别“单次尝试”的硬超时。
  *
@@ -576,6 +574,7 @@ export async function processWithVisionDiagnostics(
   visionModelId: string,
   options: {
     filename?: string;
+    temporaryDirectory?: string;
     targetPixels?: number;
     maxRetries?: number;
     tpmLimitPerWorker?: number;
@@ -601,7 +600,8 @@ export async function processWithVisionDiagnostics(
     let totalPages: number;
     if (documentOcrProfile?.mode === 'document_upload') {
       totalPages = await getPdfPageCountCrossPlatform(data);
-      const debugImagesPath = path.join(pathManager.getAppDataPath(), 'debug_images');
+      const debugImagesPath =
+        options.temporaryDirectory ?? path.join(pathManager.getAppDataPath(), 'debug_images');
       tempDir = path.join(debugImagesPath, `pdf-vision-${docId}-${Date.now()}`);
       await fs.mkdir(tempDir, { recursive: true });
       pdfPath = path.join(tempDir, `${docId}.pdf`);

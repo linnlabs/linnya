@@ -1,8 +1,8 @@
 /**
  * @file src/knowledge-base/ingestion/stateMachine.ts
- * 
+ *
  * @brief 文档摄入状态机 - 核心架构
- * 
+ *
  * @description
  * 功能 (What): 基于状态机模式的文档摄入流程管理
  * 输入 (Input): 状态转换事件和动作
@@ -122,7 +122,10 @@ export class IngestionStateMachine {
    * 输出 (Output): 状态转换结果
    * 副作用 (Side-effects): 执行业务逻辑，更新状态，通知监听器
    */
-  async executeState(context: TaskContext, currentStage: InternalStage): Promise<StateTransitionResult> {
+  async executeState(
+    context: TaskContext,
+    currentStage: InternalStage
+  ): Promise<StateTransitionResult> {
     logger.info(`[StateMachine] 执行状态: ${currentStage} (任务: ${context.taskId})`);
 
     // 获取状态处理器
@@ -143,7 +146,7 @@ export class IngestionStateMachine {
         logger.warn(`[StateMachine] 状态处理器 ${handler.getName()} 返回失败，将交由 run() 处理`);
         return result;
       }
-      
+
       // 验证状态转换
       if (!this.isValidTransition(currentStage, result.newStage)) {
         const error = `非法状态转换: ${currentStage} -> ${result.newStage}`;
@@ -152,7 +155,7 @@ export class IngestionStateMachine {
 
       // 更新上下文
       result.context.lastUpdated = Date.now();
-      
+
       // 通知监听器
       this.listeners.forEach(listener => {
         try {
@@ -165,11 +168,10 @@ export class IngestionStateMachine {
 
       logger.info(`[StateMachine] 状态转换成功: ${currentStage} -> ${result.newStage}`);
       return result;
-
     } catch (error) {
       const errorMessage = `状态处理器执行失败: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(`[StateMachine] ${errorMessage}`, error);
-      
+
       return await this.handleFailure(context, errorMessage);
     }
   }
@@ -182,7 +184,7 @@ export class IngestionStateMachine {
    */
   async run(initialContext: TaskContext): Promise<StateTransitionResult> {
     logger.info(`[StateMachine] 开始运行状态机流程: ${initialContext.taskId}`);
-    
+
     let currentStage = InternalStage.PENDING;
     let context = initialContext;
     let result: StateTransitionResult;
@@ -190,10 +192,10 @@ export class IngestionStateMachine {
     // 状态机主循环
     while (true) {
       result = await this.executeState(context, currentStage);
-      
+
       if (!result.success) {
         logger.error(`[StateMachine] 状态机执行失败: ${result.error}`);
-        
+
         // 🔥 修复：调用 handleFailure 进行失败清理，而不是直接退出
         result = await this.handleFailure(context, result.error || '未知错误');
         break;
@@ -201,7 +203,7 @@ export class IngestionStateMachine {
 
       // 更新上下文
       context = result.context;
-      
+
       // 检查是否到达终态
       if (this.isTerminalState(result.newStage)) {
         logger.info(`[StateMachine] 到达终态: ${result.newStage}`);
@@ -223,11 +225,7 @@ export class IngestionStateMachine {
    * 副作用 (Side-effects): 无
    */
   private isTerminalState(stage: InternalStage): boolean {
-    return [
-      InternalStage.COMPLETED,
-      InternalStage.FAILED,
-      InternalStage.DUPLICATE
-    ].includes(stage);
+    return [InternalStage.COMPLETED, InternalStage.FAILED, InternalStage.DUPLICATE].includes(stage);
   }
 
   /**
@@ -238,11 +236,13 @@ export class IngestionStateMachine {
    */
   private async handleFailure(context: TaskContext, error: string): Promise<StateTransitionResult> {
     logger.error(`[StateMachine] 处理失败: ${context.docId} - ${error}`);
-    
+
     try {
       logger.info(`[StateMachine] 🧹 开始调用cleanupFailedDocument清理失败文档: ${context.docId}`);
-      logger.info(`[StateMachine] 🔍 repository实例状态: metadata=${!!this.metadataRepository}, qdrant=${!!this.qdrantRepository}, sot=${!!this.sotRepository}`);
-      
+      logger.info(
+        `[StateMachine] 🔍 repository实例状态: metadata=${!!this.metadataRepository}, qdrant=${!!this.qdrantRepository}, sot=${!!this.sotRepository}`
+      );
+
       // 清理失败文档的三大数据源
       await cleanupFailedDocument(
         context.docId,
@@ -253,20 +253,25 @@ export class IngestionStateMachine {
         this.knowledgeGraphRepository,
         this.originalDocumentRepository
       );
-      
+
       logger.info(`[StateMachine] ✅ cleanupFailedDocument调用完成: ${context.docId}`);
     } catch (cleanupError) {
-      logger.error(`[StateMachine] ❌ cleanupFailedDocument调用失败: ${context.docId}`, cleanupError);
-      logger.error(`[StateMachine] ❌ 清理错误详情: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`);
+      logger.error(
+        `[StateMachine] ❌ cleanupFailedDocument调用失败: ${context.docId}`,
+        cleanupError
+      );
+      logger.error(
+        `[StateMachine] ❌ 清理错误详情: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`
+      );
     }
-    
+
     const failureResult = {
       success: false,
       newStage: InternalStage.FAILED,
       context: { ...context, errorMessage: error },
-      error
+      error,
     };
-    
+
     // 🔥 修复：确保失败状态也触发监听器，推送到前端
     this.listeners.forEach(listener => {
       try {
@@ -275,7 +280,7 @@ export class IngestionStateMachine {
         logger.error(`[StateMachine] 失败状态监听器执行失败:`, listenerError);
       }
     });
-    
+
     return failureResult;
   }
 
@@ -285,24 +290,27 @@ export class IngestionStateMachine {
    * 输出 (Output): 前端状态对象
    * 副作用 (Side-effects): 无
    */
-  static createFrontendState(context: TaskContext, internalStage: InternalStage): IngestionFrontendState {
+  static createFrontendState(
+    context: TaskContext,
+    internalStage: InternalStage
+  ): IngestionFrontendState {
     const frontendStatus = INTERNAL_TO_FRONTEND_STATUS_MAP[internalStage];
     const baseProgress = STAGE_TO_PROGRESS_MAP[internalStage];
-    
+
     // 🔥 重构修复：根据不同阶段的实际占比计算进度
     let totalProgress = baseProgress;
     if (frontendStatus === FrontendStatus.PROCESSING) {
       // 计算每个阶段的占比范围
       const stageRanges: Record<InternalStage, { start: number; end: number } | undefined> = {
         [InternalStage.PENDING]: undefined,
-        [InternalStage.PARSING]: { start: 5, end: 85 },    // 80%占比
-        [InternalStage.EMBEDDING]: { start: 85, end: 95 }, // 10%占比  
-        [InternalStage.STORING]: { start: 95, end: 100 },  // 5%占比
+        [InternalStage.PARSING]: { start: 5, end: 85 }, // 80%占比
+        [InternalStage.EMBEDDING]: { start: 85, end: 95 }, // 10%占比
+        [InternalStage.STORING]: { start: 95, end: 100 }, // 5%占比
         [InternalStage.COMPLETED]: undefined,
         [InternalStage.FAILED]: undefined,
-        [InternalStage.DUPLICATE]: undefined
+        [InternalStage.DUPLICATE]: undefined,
       };
-      
+
       const range = stageRanges[internalStage];
       if (range) {
         // 在阶段范围内根据stageProgress计算具体进度
@@ -316,13 +324,14 @@ export class IngestionStateMachine {
       stage: internalStage,
       progress: Math.floor(totalProgress),
       stage_progress: context.stageProgress,
-      message: internalStage === InternalStage.DUPLICATE && context.duplicateReason === 'retained_source'
-        ? RETAINED_SOURCE_DUPLICATE_MESSAGE
-        : STAGE_MESSAGES[internalStage],
+      message:
+        internalStage === InternalStage.DUPLICATE && context.duplicateReason === 'retained_source'
+          ? RETAINED_SOURCE_DUPLICATE_MESSAGE
+          : STAGE_MESSAGES[internalStage],
       error: context.errorMessage,
       doc_id: context.docId,
       filename: context.filename,
-      updated_at: context.lastUpdated
+      updated_at: context.lastUpdated,
     };
   }
 }
@@ -341,6 +350,8 @@ export function createInitialContext(options: {
   kbId: string;
   filename: string;
   filePath: string;
+  ocrTemporaryDirectory?: string;
+  signal?: AbortSignal;
   embeddingModelId: string;
   pdfOcrModelId?: string;
   imageVisionModelId?: string;
@@ -352,7 +363,7 @@ export function createInitialContext(options: {
     ...options,
     currentProgress: 0,
     stageProgress: 0,
-    lastUpdated: Date.now()
+    lastUpdated: Date.now(),
   };
 }
 

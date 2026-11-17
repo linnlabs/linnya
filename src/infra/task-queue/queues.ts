@@ -1,8 +1,12 @@
+import type { WorkerHostRequestHandler } from '@linnya/plugin-host-contract/backend/worker/requests';
 import type { KnowledgeActivityOwner } from '../../features/knowledge-base/runtime/orchestration/createKnowledgeActivityOwner';
-import type { KnowledgeActivityLease, KnowledgeActivityKind } from '../../features/knowledge-base/runtime/definitions/knowledgeActivity';
+import type {
+  KnowledgeActivityLease,
+  KnowledgeActivityKind,
+} from '../../features/knowledge-base/runtime/definitions/knowledgeActivity';
 /**
  * src/pipeline/queues.ts
- * 
+ *
  * 任务队列管理器 - 基于 Worker Threads 的轻量级实现
  * 适合 Electron 桌面应用，无需外部依赖
  */
@@ -29,7 +33,7 @@ import type { DistributionIdentity } from '../../shared/distribution-identity';
 
 /**
  * src/pipeline/queues.ts
- * 
+ *
  * 任务队列管理器 - 基于 Worker Threads 的轻量级实现
  * 适合 Electron 桌面应用，无需外部依赖
  */
@@ -47,17 +51,31 @@ export type QueueManagerEvents = {
   'ingestion:taskCompleted': (payload: { taskId: string; result: unknown }) => void;
   'ingestion:taskFailed': (payload: { taskId: string; error?: string }) => void;
 
-  'graphExtraction:taskProgress': (payload: { taskId: string; progress: number; data: unknown }) => void;
+  'graphExtraction:taskProgress': (payload: {
+    taskId: string;
+    progress: number;
+    data: unknown;
+  }) => void;
   'graphExtraction:taskCompleted': (payload: { taskId: string; result: unknown }) => void;
   'graphExtraction:taskFailed': (payload: { taskId: string; error?: string }) => void;
 
-  'graphIndexing:taskProgress': (payload: { taskId: string; progress: number; data: unknown }) => void;
+  'graphIndexing:taskProgress': (payload: {
+    taskId: string;
+    progress: number;
+    data: unknown;
+  }) => void;
   'graphIndexing:taskCompleted': (payload: { taskId: string; result: unknown }) => void;
   'graphIndexing:taskFailed': (payload: { taskId: string; error?: string }) => void;
 };
 
 export interface QueueManagerInitializeOptions {
   workerRuntime: QueueWorkerRuntime;
+  prepareIngestionJob?: (payload: IngestionJobPayload) => IngestionJobPayload;
+  workerInference?: {
+    ingestion(payload: IngestionJobPayload): WorkerHostRequestHandler;
+    graphExtraction(payload: GraphExtractionJobPayloadInput): WorkerHostRequestHandler;
+    graphIndexing(payload: GraphIndexingJobPayloadInput): WorkerHostRequestHandler;
+  };
   runtimePathRoots: RuntimePathRoots;
   distributionIdentity: DistributionIdentity;
   maxConcurrency?: number;
@@ -73,6 +91,7 @@ export class QueueManager extends EventEmitter {
   private graphExtractionQueue: WorkerThreadQueue<GraphExtractionJobPayloadInput> | null = null;
   private graphIndexingQueue: WorkerThreadQueue<GraphIndexingJobPayloadInput> | null = null;
   private readonly audioProcessingQueue = new AudioProcessingQueue();
+  private prepareIngestionJob?: QueueManagerInitializeOptions['prepareIngestionJob'];
   private resolveQdrantUrl: (() => Promise<string>) | undefined;
   private knowledgeActivity?: KnowledgeActivityOwner;
   private readonly knowledgeLeases = new Map<string, KnowledgeActivityLease>();
@@ -117,26 +136,32 @@ export class QueueManager extends EventEmitter {
   private async initializeQueues(options: QueueManagerInitializeOptions): Promise<void> {
     console.log('[QueueManager] 正在初始化任务队列系统...');
     this.resolveQdrantUrl = options.resolveQdrantUrl;
+    this.prepareIngestionJob = options.prepareIngestionJob;
     this.knowledgeActivity = options.knowledgeActivity;
+    const workerInference = options.workerInference;
 
     // 初始化文档摄入队列
     this.ingestionQueue = new WorkerThreadQueue<IngestionJobPayload>({
       maxConcurrency: options.maxConcurrency,
       workerScript: options.workerRuntime.ingestionScriptPath,
+      hostRequestHandler: workerInference ? job => workerInference.ingestion(job.data) : undefined,
       lifecycleObserver: options.ingestionLifecycleObserver,
       runtimePathRoots: options.runtimePathRoots,
       distributionIdentity: options.distributionIdentity,
     });
 
     // 监听队列事件并发布任务事实，同时对外提供通用事件订阅（扩展点）。
-    this.ingestionQueue.on('taskProgress', (eventData: { taskId: string; progress: number; data: unknown }) => {
-      options.jobPresentationPublisher?.publishProgress({
-        jobId: eventData.taskId,
-        progress: eventData.progress,
-        data: eventData.data,
-      });
-      this.emit('ingestion:taskProgress', eventData);
-    });
+    this.ingestionQueue.on(
+      'taskProgress',
+      (eventData: { taskId: string; progress: number; data: unknown }) => {
+        options.jobPresentationPublisher?.publishProgress({
+          jobId: eventData.taskId,
+          progress: eventData.progress,
+          data: eventData.data,
+        });
+        this.emit('ingestion:taskProgress', eventData);
+      }
+    );
 
     this.ingestionQueue.on('taskCompleted', (eventData: { taskId: string; result: unknown }) => {
       options.jobPresentationPublisher?.publishCompletion({
@@ -165,6 +190,9 @@ export class QueueManager extends EventEmitter {
       this.graphExtractionQueue = new WorkerThreadQueue<GraphExtractionJobPayloadInput>({
         maxConcurrency: 1,
         workerScript: options.workerRuntime.graphExtractionScriptPath,
+        hostRequestHandler: workerInference
+          ? job => workerInference.graphExtraction(job.data)
+          : undefined,
         runtimePathRoots: options.runtimePathRoots,
         distributionIdentity: options.distributionIdentity,
       });
@@ -175,9 +203,12 @@ export class QueueManager extends EventEmitter {
           this.emit('graphExtraction:taskProgress', eventData);
         }
       );
-      this.graphExtractionQueue.on('taskCompleted', (eventData: { taskId: string; result: unknown }) => {
-        this.emit('graphExtraction:taskCompleted', eventData);
-      });
+      this.graphExtractionQueue.on(
+        'taskCompleted',
+        (eventData: { taskId: string; result: unknown }) => {
+          this.emit('graphExtraction:taskCompleted', eventData);
+        }
+      );
       this.graphExtractionQueue.on('taskFailed', (task: { id: string; error?: string }) => {
         this.emit('graphExtraction:taskFailed', { taskId: task.id, error: task.error });
       });
@@ -191,6 +222,9 @@ export class QueueManager extends EventEmitter {
       this.graphIndexingQueue = new WorkerThreadQueue<GraphIndexingJobPayloadInput>({
         maxConcurrency: 1,
         workerScript: options.workerRuntime.graphIndexingScriptPath,
+        hostRequestHandler: workerInference
+          ? job => workerInference.graphIndexing(job.data)
+          : undefined,
         runtimePathRoots: options.runtimePathRoots,
         distributionIdentity: options.distributionIdentity,
       });
@@ -201,9 +235,12 @@ export class QueueManager extends EventEmitter {
           this.emit('graphIndexing:taskProgress', eventData);
         }
       );
-      this.graphIndexingQueue.on('taskCompleted', (eventData: { taskId: string; result: unknown }) => {
-        this.emit('graphIndexing:taskCompleted', eventData);
-      });
+      this.graphIndexingQueue.on(
+        'taskCompleted',
+        (eventData: { taskId: string; result: unknown }) => {
+          this.emit('graphIndexing:taskCompleted', eventData);
+        }
+      );
       this.graphIndexingQueue.on('taskFailed', (task: { id: string; error?: string }) => {
         this.emit('graphIndexing:taskFailed', { taskId: task.id, error: task.error });
       });
@@ -232,18 +269,23 @@ export class QueueManager extends EventEmitter {
       throw this.unavailableError('摄入队列未初始化');
     }
     const queue = this.ingestionQueue;
-    return this.admitKnowledgeJob(taskData, 'ingestion', () => queue.cancelTask(taskData.taskId), async () => {
-    if (!this.resolveQdrantUrl) throw new Error('向量运行时没有装配');
-    const qdrantUrl = await this.resolveQdrantUrl();
-    const taskWithWorkerEnv: IngestionJobPayload = {
-      ...taskData,
-      envVars: {
-        ...taskData.envVars,
-        QDRANT_URL: qdrantUrl,
-      },
-    };
-    return await queue.addTask(taskWithWorkerEnv);
-    });
+    return this.admitKnowledgeJob(
+      taskData,
+      'ingestion',
+      () => queue.cancelTask(taskData.taskId),
+      async () => {
+        if (!this.resolveQdrantUrl) throw new Error('向量运行时没有装配');
+        const qdrantUrl = await this.resolveQdrantUrl();
+        const taskWithWorkerEnv: IngestionJobPayload = {
+          ...(this.prepareIngestionJob?.(taskData) ?? taskData),
+          envVars: {
+            ...taskData.envVars,
+            QDRANT_URL: qdrantUrl,
+          },
+        };
+        return await queue.addTask(taskWithWorkerEnv);
+      }
+    );
   }
 
   /**
@@ -257,9 +299,14 @@ export class QueueManager extends EventEmitter {
       throw new Error('图谱抽取队列未初始化');
     }
     const queue = this.graphExtractionQueue;
-    return this.admitKnowledgeJob(taskData, 'graph', () => queue.cancelTask(taskData.taskId), async () => {
-    return await queue.addTask(taskData);
-    });
+    return this.admitKnowledgeJob(
+      taskData,
+      'graph',
+      () => queue.cancelTask(taskData.taskId),
+      async () => {
+        return await queue.addTask(taskData);
+      }
+    );
   }
 
   /**
@@ -273,17 +320,22 @@ export class QueueManager extends EventEmitter {
       throw new Error('图谱索引队列未初始化');
     }
     const queue = this.graphIndexingQueue;
-    return this.admitKnowledgeJob(taskData, 'graph', () => queue.cancelTask(taskData.taskId), async () => {
-    if (!this.resolveQdrantUrl) throw new Error('向量运行时没有装配');
-    const qdrantUrl = await this.resolveQdrantUrl();
-    return await queue.addTask({
-      ...taskData,
-      envVars: {
-        ...taskData.envVars,
-        QDRANT_URL: qdrantUrl,
-      },
-    });
-    });
+    return this.admitKnowledgeJob(
+      taskData,
+      'graph',
+      () => queue.cancelTask(taskData.taskId),
+      async () => {
+        if (!this.resolveQdrantUrl) throw new Error('向量运行时没有装配');
+        const qdrantUrl = await this.resolveQdrantUrl();
+        return await queue.addTask({
+          ...taskData,
+          envVars: {
+            ...taskData.envVars,
+            QDRANT_URL: qdrantUrl,
+          },
+        });
+      }
+    );
   }
 
   /**
@@ -298,12 +350,16 @@ export class QueueManager extends EventEmitter {
   }
 
   private async admitKnowledgeJob(
-    task: { taskId: string; kbId: string }, kind: KnowledgeActivityKind,
-    cancel: () => Promise<boolean>, enqueue: () => Promise<string>,
+    task: { taskId: string; kbId: string },
+    kind: KnowledgeActivityKind,
+    cancel: () => Promise<boolean>,
+    enqueue: () => Promise<string>
   ): Promise<string> {
     const lease = this.knowledgeActivity?.begin(task.kbId, kind);
     if (lease) this.knowledgeLeases.set(task.taskId, lease);
-    const abort = () => { void cancel(); };
+    const abort = () => {
+      void cancel();
+    };
     lease?.signal.addEventListener('abort', abort, { once: true });
     try {
       lease?.signal.throwIfAborted();
@@ -311,7 +367,8 @@ export class QueueManager extends EventEmitter {
       if (lease?.signal.aborted) await cancel();
       return id;
     } catch (error) {
-      lease?.release(); this.knowledgeLeases.delete(task.taskId);
+      lease?.release();
+      this.knowledgeLeases.delete(task.taskId);
       throw error;
     }
   }
@@ -461,7 +518,7 @@ export class QueueManager extends EventEmitter {
    */
   async shutdown(): Promise<void> {
     console.log('[QueueManager] 正在关闭任务队列系统...');
-    
+
     // 关闭文档摄入队列
     if (this.ingestionQueue) {
       await this.ingestionQueue.shutdown();
@@ -479,10 +536,10 @@ export class QueueManager extends EventEmitter {
       await this.graphIndexingQueue.shutdown();
       this.graphIndexingQueue = null;
     }
-    
+
     // 关闭音频处理队列
     await this.audioProcessingQueue.shutdown();
-    
+
     console.log('[QueueManager] 任务队列系统已关闭');
   }
 }

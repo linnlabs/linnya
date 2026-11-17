@@ -31,15 +31,8 @@ import { inspect } from 'util'; // 导入inspect
 import type { ParseResult } from '../ingestionTypes';
 import type { TextGenerationPort } from 'src/domains/model-inference';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
-import { resolveModelIdFromPolicy } from 'src/app-hosts/linnya/agent-registry/modelPolicyResolver';
-import { IMAGE_DESCRIPTION_MODEL_POLICY } from 'src/app-hosts/linnya/agent-registry/internals/ingestion/image_description';
-import {
-  PDF_OCR_DEFAULT_FALLBACK_MODEL_ID,
-  PDF_OCR_MODEL_POLICY,
-} from 'src/app-hosts/linnya/agent-registry/internals/ingestion/pdf_ocr';
 import type { DocumentParseDiagnostics } from '../../domain/document';
 import type { PdfParser } from 'src/features/parsers/pdfParser/PdfParser';
-import { getDefaultModelIdByCapability } from 'src/domains/model-catalog';
 import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('knowledge-base:ingestion:parsing-handler');
@@ -137,28 +130,23 @@ export class ParsingHandler implements StateHandler {
         logger.info(
           `[ParsingHandler] 为 PDF 创建知识库定制解析器: ${context.filename}, forceVisionMode=${context.forceVisionMode === true}`
         );
-        const visionModelId =
-          resolveModelIdFromPolicy(PDF_OCR_MODEL_POLICY, {
-            kbPdfOcrModelId: context.pdfOcrModelId,
-            kbVisionModelId: context.visionModelId,
-            defaultVisionModelId: PDF_OCR_DEFAULT_FALLBACK_MODEL_ID,
-            resolveByCapability: getDefaultModelIdByCapability,
-          }) ?? PDF_OCR_DEFAULT_FALLBACK_MODEL_ID;
+        // 默认模型已由 Host 入队时冻结，Worker 不加载目录或凭据。
+        const visionModelId = context.pdfOcrModelId;
 
         pdfParser = context.forceVisionMode
-          ? createVisionPdfParser(this.textGeneration, visionModelId, {
+          ? createVisionPdfParser(this.textGeneration, visionModelId ?? '', {
               documentOcr: this.documentOcr,
               filename: context.filename,
               forceVisionMode: true,
               maxRetries: 5,
-              resolveModelByCapability: getDefaultModelIdByCapability,
+              temporaryDirectory: context.ocrTemporaryDirectory,
             })
-          : createSmartPdfParser(this.textGeneration, visionModelId, {
+          : createSmartPdfParser(this.textGeneration, visionModelId ?? '', {
               documentOcr: this.documentOcr,
               filename: context.filename,
               forceVisionMode: false,
               maxRetries: 5,
-              resolveModelByCapability: getDefaultModelIdByCapability,
+              temporaryDirectory: context.ocrTemporaryDirectory,
             });
         parser = pdfParser;
       } else {
@@ -191,10 +179,7 @@ export class ParsingHandler implements StateHandler {
       const parsedBlocks = await (async () => {
         // ✅ 根因修复：图片解析必须使用 KB 的图片视觉模型，不能与 PDF OCR 共用一个字段
         if (['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'].includes(fileExtension)) {
-          const visionModelId = resolveModelIdFromPolicy(IMAGE_DESCRIPTION_MODEL_POLICY, {
-            kbImageVisionModelId: context.imageVisionModelId,
-            kbVisionModelId: context.visionModelId,
-          });
+          const visionModelId = context.imageVisionModelId ?? context.visionModelId;
           if (!visionModelId) {
             throw new Error('缺少图片视觉模型，无法解析图片文档');
           }

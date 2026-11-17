@@ -1,3 +1,7 @@
+import {
+  KNOWLEDGE_GRAPH_EXTRACTION_MAX_ATTEMPTS,
+  KNOWLEDGE_GRAPH_DOCUMENT_MAX_RETRIES,
+} from 'src/features/knowledge-base/graph/definitions/extractionRetryPolicy';
 /**
  * @file src/app-hosts/linnya/agent-registry/internals/knowledge_graph_extraction/index.ts
  *
@@ -44,13 +48,17 @@ export type KnowledgeGraphExtractionModelPolicy = {
  */
 export function getKnowledgeGraphExtractionModelPolicy(): KnowledgeGraphExtractionModelPolicy {
   return {
-    primaryModelId: defaultModelCatalog.getFunctionalDefaultModelId(PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION) ?? null,
-    maxAttemptsPerModelWhenRetryEnabled: 3,
-    maxDocAutoRetryAttempts: 3,
+    primaryModelId:
+      defaultModelCatalog.getFunctionalDefaultModelId(PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION) ??
+      null,
+    maxAttemptsPerModelWhenRetryEnabled: KNOWLEDGE_GRAPH_EXTRACTION_MAX_ATTEMPTS,
+    maxDocAutoRetryAttempts: KNOWLEDGE_GRAPH_DOCUMENT_MAX_RETRIES,
   };
 }
 
-export const KNOWLEDGE_GRAPH_EXTRACTION_CONTEXT_POLICY: NonNullable<AgentConfiguration['contextPolicy']> = {
+export const KNOWLEDGE_GRAPH_EXTRACTION_CONTEXT_POLICY: NonNullable<
+  AgentConfiguration['contextPolicy']
+> = {
   profileId: 'agent',
   toolHistory: {
     strategy: 'per-pair',

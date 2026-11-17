@@ -12,7 +12,7 @@ import { resolveWorkerQdrantUrl } from '../functions/resolveWorkerQdrantUrl';
  */
 
 import { parentPort, workerData } from 'worker_threads';
-import { initializeWorkerModelServices } from '../../../app-hosts/linnya/backend-runtime/workerModelServices';
+import { createPluginWorkerInferencePort } from 'src/plugin-sdk/backend/worker/inferenceRuntime';
 import { IngestionJobPayload } from '../jobs';
 import {
   IngestionStateMachineManager,
@@ -20,25 +20,11 @@ import {
 } from '../../../features/knowledge-base/ingestion/IngestionStateMachineManager';
 import { InternalStage } from '../../../features/knowledge-base/ingestion/definitions/state';
 
-import { modelCatalog } from 'src/domains/model-catalog';
-import {
-  readProviderConnectionLookup,
-  type ProviderConnectionLookup,
-} from 'src/domains/provider-configuration';
-
 // 🔥 新增：导入并配置日志记录器
 import { enableDiagnosticLogForwarding, Logger } from '../../../shared/logger';
 
-import fs from 'fs';
 import { pathManager } from '../../../shared/utils/pathManager';
-import {
-  installRuntimePathRoots,
-  type RuntimePathRoots,
-} from '../../../shared/runtime-paths';
-import {
-  installDistributionIdentity,
-  type DistributionIdentity,
-} from '../../../shared/distribution-identity';
+import { installRuntimePathRoots, type RuntimePathRoots } from '../../../shared/runtime-paths';
 import { getDatabaseService } from '../../../electron-main/services/database';
 import { BetterSqliteMetadataRepository } from '../../../features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
 import { cleanupFailedDocument } from '../../../features/knowledge-base/ingestion/failureCleanup';
@@ -48,13 +34,6 @@ import { QdrantRepositoryImpl } from '../../../features/knowledge-base/infrastru
 import { QdrantAdapter } from '../../../infra/adapters/vector-store/index';
 import { BetterSqliteKnowledgeGraphRepository } from '../../../features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
 import type { IngestionStateMachineRepositories } from '../../../features/knowledge-base/ingestion/IngestionStateMachineManager';
-import {
-  createDefaultHostInferencePort,
-  createEmbeddingPort,
-  createTextGenerationPort,
-} from '../../../app-hosts/linnya/adapters/inference';
-import type { EmbeddingPort } from '../../../domains/model-inference';
-import { createDocumentOcrPort } from '../../../app-hosts/linnya/adapters/document-ocr';
 
 if (parentPort) {
   const diagnosticPort = parentPort;
@@ -66,30 +45,6 @@ const logger = new Logger('IngestionWorker');
 // Worker线程启动
 logger.info(`🚀 Worker脚本启动`);
 
-// 🔥 立即诊断Worker环境
-function immediateWorkerDiagnostics() {
-  logger.info(`=== 🔍 Worker线程环境诊断开始 ===`);
-  logger.info(`📁 当前工作目录: ${process.cwd()}`);
-  logger.info(`🔑 重要环境变量:`);
-  logger.info(
-    `  - MODEL_REGISTRY_DEFAULTS_PATH: ${process.env.MODEL_REGISTRY_DEFAULTS_PATH || '未设置'}`
-  );
-  logger.info(`  - LINNYA_DEV_MODE: ${process.env.LINNYA_DEV_MODE || '未设置'}`);
-  logger.info(`  - NODE_ENV: ${process.env.NODE_ENV || '未设置'}`);
-
-  // 立即检查模型文件路径
-  if (process.env.MODEL_REGISTRY_DEFAULTS_PATH) {
-    const exists = fs.existsSync(process.env.MODEL_REGISTRY_DEFAULTS_PATH);
-    logger.info(
-      `📄 默认模型文件: ${process.env.MODEL_REGISTRY_DEFAULTS_PATH} - ${exists ? '存在' : '不存在'}`
-    );
-  }
-  logger.info(`=== 🔍 Worker线程环境诊断结束 ===`);
-}
-
-// 立即运行诊断
-immediateWorkerDiagnostics();
-
 function installWorkerRuntimePathRoots(): RuntimePathRoots {
   const runtimePathRoots = (
     workerData as { readonly runtimePathRoots?: RuntimePathRoots } | undefined
@@ -100,18 +55,10 @@ function installWorkerRuntimePathRoots(): RuntimePathRoots {
   return installRuntimePathRoots(runtimePathRoots);
 }
 
-function installWorkerDistributionIdentity(): DistributionIdentity {
-  const distributionIdentity = (
-    workerData as { readonly distributionIdentity?: DistributionIdentity } | undefined
-  )?.distributionIdentity;
-  if (!distributionIdentity) {
-    throw new Error('[IngestionWorker] 缺少 owner 传入的 Desktop distribution identity');
-  }
-  return installDistributionIdentity(distributionIdentity);
-}
-
 // 全局状态标志
 let isCancelled = false;
+const cancellation = new AbortController();
+const inference = createPluginWorkerInferencePort();
 let isPaused = false;
 
 function createIngestionRepositories(
@@ -119,7 +66,9 @@ function createIngestionRepositories(
 ): IngestionStateMachineRepositories {
   databaseService.initializeConnectionOnly();
   const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
-  const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
+  const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(
+    databaseService.getDb()
+  );
   const sotRepository = new FileSotRepository(pathManager.getSourceOfTruthPath());
   const originalDocumentRepository = new FileOriginalDocumentRepository(
     pathManager.getKnowledgeBaseOriginalsPath()
@@ -142,28 +91,8 @@ function createIngestionRepositories(
  * 输出 (Output): 无
  * 副作用 (Side-effects): 在 Worker 线程中初始化必要的窄能力端口与仓储
  */
-async function initializeWorkerServices(): Promise<EmbeddingPort> {
-  logger.info(`🔧 初始化Worker环境服务...`);
-
-  // 🔥 新增：首先修复Worker环境
-  const runtimePathRoots = installWorkerRuntimePathRoots();
-  const distributionIdentity = installWorkerDistributionIdentity();
-
-  try {
-    // 路径合法性由 Model Catalog 唯一入口校验，worker 不重复探测或选择目录。
-    await initializeWorkerModelServices({ runtimePathRoots, distributionIdentity });
-
-    const embeddingModels = modelCatalog.getModelsByCapability('embedding');
-    logger.info(`🔍 可用的嵌入模型: [${embeddingModels.map(m => m.id).join(', ')}]`);
-
-    const embedding = createEmbeddingPort({ catalog: modelCatalog });
-
-    logger.info(`✅ Worker环境服务初始化完成`);
-    return embedding;
-  } catch (error) {
-    logger.error(`❌ Worker环境服务初始化失败:`, error);
-    throw error;
-  }
+function initializeWorkerServices(): void {
+  installWorkerRuntimePathRoots();
 }
 
 /**
@@ -182,12 +111,8 @@ async function processIngestionJob(): Promise<void> {
 
   logger.info(`开始处理: ${jobData.filename}`);
 
-  let embedding: EmbeddingPort;
-  let resolveProviderConnectionId: ProviderConnectionLookup;
   try {
-    embedding = await initializeWorkerServices();
-    // App Server 已完成迁移与 intent 恢复，Worker 只冻结当前已提交归属，避免并发写配置。
-    resolveProviderConnectionId = await readProviderConnectionLookup();
+    initializeWorkerServices();
   } catch (error) {
     logger.error(`Worker环境初始化失败: ${error}`);
     sendMessage(
@@ -216,17 +141,10 @@ async function processIngestionJob(): Promise<void> {
     // 重要：Worker 线程内需要独立的 DB 连接（与主线程不共享内存）。
     // 只建连接 + 设 pragma，不重跑迁移/插件 lifecycle（F1-02）：主进程启动时已完成 initialize()。
     const repositories = createIngestionRepositories();
-    const textGeneration = createTextGenerationPort({
-      inferencePort: createDefaultHostInferencePort({
-        resolve_provider_connection_id: resolveProviderConnectionId,
-      }),
-    });
-    const documentOcr = createDocumentOcrPort({ catalog: modelCatalog });
-
     const manager = IngestionStateMachineManager.create({
-      embedding,
-      textGeneration,
-      documentOcr,
+      embedding: inference.embedding,
+      textGeneration: inference.textGeneration,
+      documentOcr: inference.documentOcr,
       repositories,
       progressCallback: (stage, progress, message, error) => {
         // 在每个回调中检查取消状态
@@ -253,7 +171,7 @@ async function processIngestionJob(): Promise<void> {
 
     let result;
     try {
-      result = await manager.processDocument(jobData);
+      result = await manager.processDocument({ ...jobData, signal: cancellation.signal });
       logger.info(
         `[IngestionWorker] 状态机流程执行完成: ${jobData.taskId}, success=${result.success}, stage=${result.newStage}`
       );
@@ -383,11 +301,10 @@ function sendMessage(type: WorkerMessageType, data: unknown): void {
 // 监听主线程消息（任务控制）
 if (parentPort) {
   parentPort.on('message', message => {
-    logger.info(`收到主线程消息:`, message);
-
     if (message.cmd === 'cancel') {
       logger.info(`收到取消信号`);
       isCancelled = true;
+      cancellation.abort();
     } else if (message.cmd === 'pause') {
       logger.info(`收到暂停信号`);
       isPaused = true;
@@ -397,6 +314,6 @@ if (parentPort) {
 
 // 启动处理
 // 🔥 移除顶层catch，所有逻辑移入processIngestionJob的try-catch中
-processIngestionJob();
+void processIngestionJob().finally(() => inference.dispose());
 
 export default processIngestionJob;

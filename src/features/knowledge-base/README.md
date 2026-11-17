@@ -169,6 +169,13 @@ ref 和 `doc_id/block_id` 留在可信骨架，标题、摘要、正文及图谱
 *   `apps/renderer/domains/knowledgebase/services/knowledgeBaseService.js`: 前端 Service；Desktop 下优先使用 preload facade，Web 下直接调用 App Server HTTP。
 
 ### 4. 任务队列 (Worker Threads)
+
+摄入、图谱抽取和图谱索引的模型请求均经 `backend/worker/inferenceRuntime` 消息客户端返回 Host。
+App Server 入队时冻结 PDF 默认模型与本任务 OCR 临时素材目录，桥只接纳该任务的操作、模型和文件。
+摄入使用 embedding/text/OCR，图谱抽取只用 text，图谱索引只用 embedding；rerank 留在 Backend 搜索。
+Worker 退出或取消时，通用队列中止并等待其全部 Host 请求，再发出 settled 释放知识库活动租约。
+该取消保证本机请求和后续写入收口；Paddle 已受理的远端 Job 不等于已远端撤单。
+
 *   `src/infra/task-queue/jobs.ts`: 定义 `GraphExtractionJob`, `GraphIndexingJob` Payload。
 *   `src/infra/task-queue/workers/graph-extraction.worker.ts`: 图谱抽取 Worker (LLM)。
 *   `src/infra/task-queue/workers/graph-indexing.worker.ts`: 图谱向量化 Worker (Embedding -> Qdrant)。
@@ -190,8 +197,8 @@ ref 和 `doc_id/block_id` 留在可信骨架，标题、摘要、正文及图谱
 ### 1. 软知识图谱 (Soft Graph)
 *   **核心文档**: 详见 [SOFT_KNOWLEDGE_GRAPH.md](./SOFT_KNOWLEDGE_GRAPH.md)。
 *   **Ref 语义**: 在 Light/Full 模式下，`ref: in_rag` 的语义为 **“该证据块也在本次工具输出的列表中（可直接阅读）”**，**不再等同于** “RAG TopK”。
-*   **Text Generation**: 图谱抽取只依赖 `domains/model-inference` 的 `TextGenerationPort`。Worker composition root 负责构造 Host adapter；抽取服务拥有 prompt、JSON/Zod 校验和图谱规则，不得依赖 `LlmCaller`、`AIEngine` 或 Provider SDK。
-*   **Embedding**: 摄入、查询向量、PDF 失败页续跑、Graph Discovery 与 Graph Indexing 只依赖 `domains/model-inference` 的 `EmbeddingPort`。App Server / Worker composition root 构造 Host adapter；KB 拥有分批进度、sparse vector、Qdrant 写入、索引 provenance 与重建策略，不得读 Model Catalog 或导入 AI SDK。
+*   **Text Generation**: 图谱抽取只依赖 `domains/model-inference` 的 `TextGenerationPort`。App Server 构造 Host adapter，Worker 只通过任务消息端口执行；抽取服务拥有 prompt、JSON/Zod 校验和图谱规则，不得依赖 `LlmCaller`、`AIEngine` 或 Provider SDK。
+*   **Embedding**: 摄入、查询向量、PDF 失败页续跑、Graph Discovery 与 Graph Indexing 只依赖 `domains/model-inference` 的 `EmbeddingPort`。App Server 构造 Host adapter，Worker 不加载 Model Catalog 或凭据；KB 拥有分批进度、sparse vector、Qdrant 写入、索引 provenance 与重建策略，不得读 Model Catalog 或导入 AI SDK。
 *   **Reranking**: 搜索编排只依赖 `domains/model-inference` 的 `RerankingPort`。候选身份以 Provider 返回的 `originalIndex` 为准，禁止按文本反查；只有标记为 retryable 的上游可用性故障可保留已有 RRF/分层排序，配置、凭据、schema、Abort 与编程错误必须继续失败。KB 不读取 Model Catalog，也不导入 AI SDK。
 
 ### 2. 类型安全

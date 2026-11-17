@@ -18,22 +18,11 @@ import { errorToString as getErrorMessage } from '@linnya/foundation';
  */
 
 import { parentPort, workerData } from 'worker_threads';
-import { initializeWorkerModelServices } from '../../../app-hosts/linnya/backend-runtime/workerModelServices';
+import { createPluginWorkerInferencePort } from 'src/plugin-sdk/backend/worker/inferenceRuntime';
 
 import { enableDiagnosticLogForwarding, Logger } from '../../../shared/logger';
-import {
-  readProviderConnectionLookup,
-  type ProviderConnectionLookup,
-} from 'src/domains/provider-configuration';
 import { pathManager } from '../../../shared/utils/pathManager';
-import {
-  installRuntimePathRoots,
-  type RuntimePathRoots,
-} from '../../../shared/runtime-paths';
-import {
-  installDistributionIdentity,
-  type DistributionIdentity,
-} from '../../../shared/distribution-identity';
+import { installRuntimePathRoots, type RuntimePathRoots } from '../../../shared/runtime-paths';
 import { getDatabaseService } from '../../../electron-main/services/database';
 import { BetterSqliteMetadataRepository } from '../../../features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
 import { FileSotRepository } from '../../../features/knowledge-base/infrastructure/sotRepository';
@@ -45,11 +34,7 @@ import type {
   KnowledgeGraphNodeUpsertInput,
 } from '../../../features/knowledge-base/graph/infrastructure/knowledgeGraphRepository';
 import { collectExtractableTextBlocks } from '../../../features/knowledge-base/graph/application/extractableBlocks';
-import { getKnowledgeGraphExtractionModelPolicy } from 'src/app-hosts/linnya/agent-registry/internals/knowledge_graph_extraction';
-import {
-  createDefaultHostInferencePort,
-  createTextGenerationPort,
-} from 'src/app-hosts/linnya/adapters/inference';
+import { KNOWLEDGE_GRAPH_EXTRACTION_MAX_ATTEMPTS } from 'src/features/knowledge-base/graph/definitions/extractionRetryPolicy';
 import {
   GraphExtractionJobPayloadSchema,
   validateJobPayload,
@@ -66,6 +51,7 @@ logger.info('🚀 Worker脚本启动');
 
 // 全局状态标志
 let isCancelled = false;
+const inference = createPluginWorkerInferencePort();
 let isPaused = false;
 
 type WorkerMessageType = 'progress' | 'completed' | 'failed';
@@ -96,22 +82,8 @@ function installWorkerRuntimePathRoots(): RuntimePathRoots {
   return installRuntimePathRoots(runtimePathRoots);
 }
 
-function installWorkerDistributionIdentity(): DistributionIdentity {
-  const distributionIdentity = (
-    workerData as { readonly distributionIdentity?: DistributionIdentity } | undefined
-  )?.distributionIdentity;
-  if (!distributionIdentity) {
-    throw new Error('[GraphExtractionWorker] 缺少 owner 传入的 Desktop distribution identity');
-  }
-  return installDistributionIdentity(distributionIdentity);
-}
-
-async function initializeWorkerServices(): Promise<void> {
-  const runtimePathRoots = installWorkerRuntimePathRoots();
-  const distributionIdentity = installWorkerDistributionIdentity();
-
-  await initializeWorkerModelServices({ runtimePathRoots, distributionIdentity });
-
+function initializeWorkerServices(): void {
+  installWorkerRuntimePathRoots();
 }
 
 async function processGraphExtractionJob(): Promise<void> {
@@ -130,18 +102,17 @@ async function processGraphExtractionJob(): Promise<void> {
     return;
   }
 
-  logger.info(`开始图谱抽取: kbId=${jobData.kbId}, docId=${jobData.docId}, taskId=${jobData.taskId}`);
+  logger.info(
+    `开始图谱抽取: kbId=${jobData.kbId}, docId=${jobData.docId}, taskId=${jobData.taskId}`
+  );
 
   if (isCancelled) {
     sendMessage('failed', '任务已取消');
     return;
   }
 
-  let resolveProviderConnectionId: ProviderConnectionLookup;
   try {
-    await initializeWorkerServices();
-    // 每个任务只读一次已提交归属；图谱批次共享快照，Worker 不恢复 intent 或写配置。
-    resolveProviderConnectionId = await readProviderConnectionLookup();
+    initializeWorkerServices();
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     sendMessage('failed', `Worker环境初始化失败: ${msg}`);
@@ -164,7 +135,10 @@ async function processGraphExtractionJob(): Promise<void> {
     const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
     const doc = await metadataRepository.getDocumentById(jobData.docId);
     if (!doc || doc.kbId !== jobData.kbId) {
-      sendMessage('failed', `文档不存在或不属于该知识库（可能已被删除）: docId=${jobData.docId}, kbId=${jobData.kbId}`);
+      sendMessage(
+        'failed',
+        `文档不存在或不属于该知识库（可能已被删除）: docId=${jobData.docId}, kbId=${jobData.kbId}`
+      );
       return;
     }
 
@@ -173,12 +147,7 @@ async function processGraphExtractionJob(): Promise<void> {
     failureKbId = jobData.kbId;
     failureDocId = jobData.docId;
     // Graph worker 拥有批次级重试；TextGenerationPort 只执行一次 Provider attempt。
-    const textGeneration = createTextGenerationPort({
-      inferencePort: createDefaultHostInferencePort({
-        resolve_provider_connection_id: resolveProviderConnectionId,
-      }),
-    });
-    const extractor = new GraphExtractionService(textGeneration);
+    const extractor = new GraphExtractionService(inference.textGeneration);
 
     /**
      * 对“可恢复的瞬时错误”做有限重试（网络抖动 + 结构抖动）。
@@ -194,7 +163,7 @@ async function processGraphExtractionJob(): Promise<void> {
      * - 如果是数据前置条件问题（SoT 缺失/文档被删）在进入 batch 前已拦截，不属于此处重试范围。
      */
     const sleepMs = async (ms: number): Promise<void> => {
-      await new Promise<void>((resolve) => setTimeout(resolve, ms));
+      await new Promise<void>(resolve => setTimeout(resolve, ms));
     };
 
     const getErrorName = (err: unknown): string | null => {
@@ -279,8 +248,10 @@ async function processGraphExtractionJob(): Promise<void> {
         text: string;
       }>;
       limits: { maxEntitiesPerChunk: number; maxEdgesPerChunk: number };
-    }): Promise<{ nodes: KnowledgeGraphNodeUpsertInput[]; edges: KnowledgeGraphEdgeUpsertInput[] }> => {
-      const policy = getKnowledgeGraphExtractionModelPolicy();
+    }): Promise<{
+      nodes: KnowledgeGraphNodeUpsertInput[];
+      edges: KnowledgeGraphEdgeUpsertInput[];
+    }> => {
       /**
        * ✅ jobData.retry 是队列层的开关；这里只对图谱抽取生效
        *
@@ -289,7 +260,7 @@ async function processGraphExtractionJob(): Promise<void> {
        * - 可恢复错误最多同模型重试 N 次；
        * - 不切换备用模型，避免同一篇文档混用不同抽取模型。
        */
-      const maxAttemptsPerModel = jobData.retry ? policy.maxAttemptsPerModelWhenRetryEnabled : 1;
+      const maxAttemptsPerModel = jobData.retry ? KNOWLEDGE_GRAPH_EXTRACTION_MAX_ATTEMPTS : 1;
       const baseBackoffMs = 1500;
 
       let lastError: unknown = null;
@@ -373,7 +344,9 @@ async function processGraphExtractionJob(): Promise<void> {
      * - 若 SoT 发生变化导致 chunkCount 改变，我们将从 0 重新开始（避免错位导致漏抽/重抽）。
      */
     const existingDoneChunks =
-      existing && existing.chunkCount === chunkCount && existing.doneChunks > 0 ? existing.doneChunks : 0;
+      existing && existing.chunkCount === chunkCount && existing.doneChunks > 0
+        ? existing.doneChunks
+        : 0;
 
     const acquired = await graphRepo.tryAcquireDocExtractionLock(
       jobData.kbId,
@@ -432,7 +405,7 @@ async function processGraphExtractionJob(): Promise<void> {
        */
       const startedAtMs = Date.now();
       const batch = blocks.slice(offset, offset + chunksPerCall);
-      const batchBlockIds = batch.map((b) => b.blockId);
+      const batchBlockIds = batch.map(b => b.blockId);
       logger.info(
         `[GraphExtractionWorker] 批量调用 LLM 做图谱抽取: kbId=${jobData.kbId}, docId=${jobData.docId}, batchSize=${batch.length}, blockIds=${batchBlockIds.join(
           ','
@@ -443,15 +416,16 @@ async function processGraphExtractionJob(): Promise<void> {
       let edges: KnowledgeGraphEdgeUpsertInput[] = [];
       try {
         const extracted = await extractFromChunksWithRetry({
-        llmModelId: jobData.llmModelId,
-        chunks: batch.map((b) => ({
-          kbId: jobData.kbId,
-          docId: jobData.docId,
-          blockId: b.blockId,
-          text: b.text,
-        })),
+          llmModelId: jobData.llmModelId,
+          chunks: batch.map(b => ({
+            kbId: jobData.kbId,
+            docId: jobData.docId,
+            blockId: b.blockId,
+            text: b.text,
+          })),
           limits: { maxEntitiesPerChunk, maxEdgesPerChunk },
         });
+        if (isCancelled) throw new DOMException('任务已取消', 'AbortError');
         nodes = extracted.nodes;
         edges = extracted.edges;
       } catch (e) {
@@ -537,7 +511,12 @@ async function processGraphExtractionJob(): Promise<void> {
     // 否则下次启动回填会看到 running/queued 而误判“已经在跑”，从而永远不再入队。
     try {
       if (graphRepoForFailure && failureKbId && failureDocId) {
-        await graphRepoForFailure.updateDocProgress(failureKbId, failureDocId, failureDoneChunks, 'failed');
+        await graphRepoForFailure.updateDocProgress(
+          failureKbId,
+          failureDocId,
+          failureDoneChunks,
+          'failed'
+        );
       }
     } catch (e) {
       logger.warn('异常时写回 doc_status=failed 失败（将仅上报 failed 消息）', e as Error);
@@ -561,6 +540,6 @@ if (parentPort) {
   });
 }
 
-processGraphExtractionJob();
+void processGraphExtractionJob().finally(() => inference.dispose());
 
 export default processGraphExtractionJob;

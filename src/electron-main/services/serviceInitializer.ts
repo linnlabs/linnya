@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { createKnowledgeWorkerInference } from 'src/app-hosts/linnya/adapters/inference/worker-requests/createKnowledgeWorkerInference';
 import { createKnowledgeActivityOwner } from '../../features/knowledge-base/runtime/orchestration/createKnowledgeActivityOwner';
 /**
  * @file src/electron-main/services/serviceInitializer.ts
@@ -52,9 +54,7 @@ import { providerCatalog } from '@linnya/provider-catalog';
 import { providerConfigurationRegistry } from 'src/domains/provider-configuration';
 import { modelPickerPreferencesRegistry } from 'src/domains/model-picker-preferences';
 import { providerAccountRegistry } from 'src/domains/provider-account';
-import {
-  getBackendRendererIntegrationPort,
-} from 'src/app-hosts/linnya/desktop-capabilities';
+import { getBackendRendererIntegrationPort } from 'src/app-hosts/linnya/desktop-capabilities';
 import { providerOnboardingRuntimeBindingRegistry } from 'src/app-hosts/linnya/adapters/inference';
 import { runProviderConfigurationMigration } from 'src/app-hosts/linnya/application/provider-configuration-migration';
 import { runCustomApiGroupMigration } from 'src/app-hosts/linnya/application/custom-api-onboarding';
@@ -165,7 +165,10 @@ export class ServiceInitializer {
       } catch (error: unknown) {
         const failure = Object.freeze({
           capability,
-          message: describeStartupCapabilityFailure(CAPABILITY_FAILURE_SUMMARIES[capability], error),
+          message: describeStartupCapabilityFailure(
+            CAPABILITY_FAILURE_SUMMARIES[capability],
+            error
+          ),
         });
         capabilityFailures.push(failure);
         console.error(`[ServiceInitializer] 能力未启动: ${capability}`, error);
@@ -237,7 +240,9 @@ export class ServiceInitializer {
       const transcriptionService = await this.initializeTranscriptionService();
 
       // 步骤8：初始化队列系统（能力：知识库导入与长音频预处理不可用）
-      await runCapabilityStep('background-tasks', () => this.initializeQueueSystem(resolveQdrantUrl));
+      await runCapabilityStep('background-tasks', () =>
+        this.initializeQueueSystem(resolveQdrantUrl)
+      );
 
       if (capabilityFailures.length === 0) {
         console.log('[ServiceInitializer] ✨ 所有服务初始化成功!');
@@ -308,10 +313,7 @@ export class ServiceInitializer {
   private async prepareEnvironmentVariables(): Promise<void> {
     console.log('[ServiceInitializer] 📋 Step 2: 准备环境变量映射...');
 
-    const apiKeyEnvVars = [
-      'OPENAI_API_KEY',
-      'DEEPSEEK_API_KEY',
-    ];
+    const apiKeyEnvVars = ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY'];
 
     for (const envVar of apiKeyEnvVars) {
       if (process.env[envVar]) {
@@ -366,7 +368,8 @@ export class ServiceInitializer {
     //   首次成功的事件可能在此之前就已经 emit（彼时无监听器，自然丢弃，无副作用）；
     // - 渲染进程在 main.js 启动时会主动 fetchModels 一次，所以"丢失首次事件"无害；
     // - 真正需要广播的是后台重试链路里成功的那一次——监听器一定能收到。
-    const disconnectUpdates = await getBackendRendererIntegrationPort().connectModelCatalogUpdates();
+    const disconnectUpdates =
+      await getBackendRendererIntegrationPort().connectModelCatalogUpdates();
     return disconnectUpdates;
   }
 
@@ -423,7 +426,9 @@ export class ServiceInitializer {
     // 创建搜索服务
     console.log('[ServiceInitializer] 🔍 Step 7: 创建搜索服务...');
 
-    const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
+    const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(
+      databaseService.getDb()
+    );
     const textGeneration = createTextGenerationPort({
       inferencePort: createDefaultHostInferencePort(),
     });
@@ -510,6 +515,17 @@ export class ServiceInitializer {
     const queueManager = QueueManager.getInstance();
     // 队列内部初始化失败由 QueueManager 自行回收；后续图谱装配失败由当前编排层回收。
     await queueManager.initialize({
+      ...createKnowledgeWorkerInference(
+        {
+          embedding: createEmbeddingPort(),
+          reranking: createRerankingPort(),
+          textGeneration: createTextGenerationPort({
+            inferencePort: createDefaultHostInferencePort(),
+          }),
+          documentOcr: createDocumentOcrPort(),
+        },
+        path.join(pathManager.getKbDataPath(), 'temporary')
+      ),
       workerRuntime: this.queueWorkerRuntime,
       knowledgeActivity: this.knowledgeActivity,
       runtimePathRoots: this.runtimePathRoots,
