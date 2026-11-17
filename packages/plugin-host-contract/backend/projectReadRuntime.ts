@@ -4,6 +4,7 @@ import type { ProjectSummary as PluginProjectSummary } from '@app/schemas';
 
 export interface PluginProjectReadPort {
   get(projectId: string): PluginProjectSummary | undefined;
+  list(): readonly PluginProjectSummary[];
 }
 
 export declare function getPluginProjectReadPort(): PluginProjectReadPort;

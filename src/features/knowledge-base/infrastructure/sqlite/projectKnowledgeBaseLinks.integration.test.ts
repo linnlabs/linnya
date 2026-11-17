@@ -20,6 +20,7 @@ describe('project knowledge associations', () => {
     const metadata = new BetterSqliteMetadataRepository(database);
     const links = new ProjectKnowledgeBaseLinksService(database, metadata, {
       get: id => projects.get(id),
+      list: () => [...projects.values()],
     });
     try {
       await links.linkKnowledgeBaseToProject('project-a', 'default', 'read_only');
@@ -29,6 +30,22 @@ describe('project knowledge associations', () => {
       expect(await links.listKnowledgeBasesForProject('unrelated-project')).toEqual([]);
       expect((await links.listDetailedProjectsForKnowledgeBase('default')).map(p => p.name))
         .toEqual(['研究 A', '研究 B']);
+      // 原子替换不会把仍选中的只读关联提升为可写。
+      const original = await links.getLinkDetail('project-a', 'default');
+      await links.replaceKnowledgeBasesForProject('project-a', ['default']);
+      expect(await links.getLinkDetail('project-a', 'default')).toEqual(original);
+      // 模拟正式 SQLite 写入故障：删除旧关联后，新插入失败，必须整批回滚。
+      database.exec(`CREATE TRIGGER refuse_project_a BEFORE INSERT ON project_knowledge_base_links
+        WHEN NEW.project_id = 'project-a' BEGIN SELECT RAISE(ABORT, 'fixture write rejected'); END`);
+      await expect(links.replaceProjectsForKnowledgeBase('default', ['project-a']))
+        .rejects.toThrow('fixture write rejected');
+      expect(await links.listProjectsForKnowledgeBase('default')).toEqual(['project-a', 'project-b']);
+      database.exec('DROP TRIGGER refuse_project_a');
+      await expect(links.replaceKnowledgeBasesForProject('project-a', ['missing-library'])).rejects.toThrow('知识库不存在');
+      expect(await links.getLinkDetail('project-a', 'default')).toEqual(original);
+      await links.replaceProjectsForKnowledgeBase('default', ['project-a']);
+      expect(await links.listProjectsForKnowledgeBase('default')).toEqual(['project-a']);
+      await links.linkKnowledgeBaseToProject('project-b', 'default');
       projects.delete('project-b');
       expect((await links.listDetailedProjectsForKnowledgeBase('default')).map(p => p.id))
         .toEqual(['project-a']);

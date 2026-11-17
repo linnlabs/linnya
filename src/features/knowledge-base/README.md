@@ -15,7 +15,9 @@ App Server 启动只装配元数据、原文仓储和轻量队列，不启动 Qd
 
 ## 存储与项目边界
 
-元数据、图谱仓储只接收当前 Workspace SQLite 连接的 `prepare/transaction` 窄端口；不接收 DatabaseService、迁移控制或连接生命周期。仓储 SQL 只属于知识库拥有的表。项目关联的存在性和摘要通过 Host 的 `projectReadRuntime` 读取，不跨域查询 `projects`。项目删除仍由既有外键级联解除关联。
+元数据、图谱仓储只接收当前 Workspace SQLite 连接的 `prepare/transaction` 窄端口；不接收 DatabaseService、迁移控制或连接生命周期。仓储 SQL 只属于知识库拥有的表。项目关联的存在性、选择列表和摘要通过 Host 的 `projectReadRuntime` 读取，不跨域查询 `projects`。项目删除仍由既有外键级联解除关联。
+
+项目/库设置的关联列表通过单次 SQLite 事务替换；仍保留的关联不更改角色和创建时间，任何新关联写入失败都回滚整批修改。文件管理中的 `hasSource` 从 SoT 目录投影，不重复保存状态；读取已保存内容先核对库与文档身份，并返回完整原文，不启动向量服务。
 
 这是官方受信代码的职责边界，不是针对不可信插件的 SQL 安全沙箱。
 

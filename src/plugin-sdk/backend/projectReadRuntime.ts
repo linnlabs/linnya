@@ -6,6 +6,12 @@ import { getDatabaseService } from 'src/electron-main/services/database';
 export function getPluginProjectReadPort(): PluginProjectReadPort {
   const projects = createProjectLifecycle(getDatabaseService().getDb());
   return {
+    list: () => projects.list().map(project => ({
+      id: project.id,
+      name: project.name,
+      description: project.description ?? undefined,
+      icon: project.icon ?? undefined,
+    })),
     get(projectId) {
       try {
         const project = projects.get(projectId);

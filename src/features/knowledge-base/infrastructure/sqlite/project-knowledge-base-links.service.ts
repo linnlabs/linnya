@@ -268,6 +268,50 @@ export class ProjectKnowledgeBaseLinksService {
     return successCount;
   }
 
+  /** 列表保存是一个事务；保留未改变关联的角色和创建时间。 */
+  async replaceKnowledgeBasesForProject(projectId: string, kbIds: readonly string[]): Promise<void> {
+    if (!this.projects.get(projectId)) throw new Error(`项目不存在: ${projectId}`);
+    const nextIds = new Set(kbIds);
+    for (const kbId of nextIds) {
+      if (!await this.metadataRepository.getKnowledgeBaseById(kbId)) throw new Error(`知识库不存在: ${kbId}`);
+    }
+    const db = this.getDb();
+    db.transaction(() => {
+      const previous = db.prepare<[string], { kb_id: string }>('SELECT kb_id FROM project_knowledge_base_links WHERE project_id = ?')
+        .all(projectId);
+      for (const { kb_id } of previous) {
+        if (!nextIds.has(kb_id)) db.prepare('DELETE FROM project_knowledge_base_links WHERE project_id = ? AND kb_id = ?').run(projectId, kb_id);
+      }
+      const now = Date.now();
+      for (const kbId of nextIds) {
+        db.prepare(`INSERT INTO project_knowledge_base_links (project_id, kb_id, role, created_at, updated_at)
+          VALUES (?, ?, 'read_write', ?, ?) ON CONFLICT(project_id, kb_id) DO NOTHING`).run(projectId, kbId, now, now);
+      }
+    }).immediate();
+  }
+
+  /** 从库设置编辑项目关联，失败时旧关联仍完整保留。 */
+  async replaceProjectsForKnowledgeBase(kbId: string, projectIds: readonly string[]): Promise<void> {
+    if (!await this.metadataRepository.getKnowledgeBaseById(kbId)) throw new Error(`知识库不存在: ${kbId}`);
+    const nextIds = new Set(projectIds);
+    for (const projectId of nextIds) {
+      if (!this.projects.get(projectId)) throw new Error(`项目不存在: ${projectId}`);
+    }
+    const db = this.getDb();
+    db.transaction(() => {
+      const previous = db.prepare<[string], { project_id: string }>('SELECT project_id FROM project_knowledge_base_links WHERE kb_id = ?')
+        .all(kbId);
+      for (const { project_id } of previous) {
+        if (!nextIds.has(project_id)) db.prepare('DELETE FROM project_knowledge_base_links WHERE project_id = ? AND kb_id = ?').run(project_id, kbId);
+      }
+      const now = Date.now();
+      for (const projectId of nextIds) {
+        db.prepare(`INSERT INTO project_knowledge_base_links (project_id, kb_id, role, created_at, updated_at)
+          VALUES (?, ?, 'read_write', ?, ?) ON CONFLICT(project_id, kb_id) DO NOTHING`).run(projectId, kbId, now, now);
+      }
+    }).immediate();
+  }
+
   /**
    * 检查项目是否关联了某个知识库
    * 
