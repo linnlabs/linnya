@@ -25,13 +25,6 @@ function unavailable(capability: string): CliRuntimeCapabilityUnavailableError {
 export function createCliRuntimeRendererIntegrationPort(): BackendRendererIntegrationPort {
   return Object.freeze({
     async connectModelCatalogUpdates() { return () => undefined; },
-    publishIngestionStatus() {},
-    queueJobPresentationPublisher: Object.freeze({
-      publishProgress() {},
-      publishCompletion() {},
-      publishFailure() {},
-    }),
-    publishKnowledgeGraphProgress() {},
     publishTranscriptionProgress() {},
     publishWorkspaceMutation() {},
     publishPluginRendererPush() {},

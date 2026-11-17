@@ -6,15 +6,11 @@
 凭据文件由 App Server 自己拥有，不属于 Desktop capability，不提供凭据加解密或插件凭据的 reverse RPC。
 文件合同见[文件凭据存储](../../../infra/adapters/credential-storage/file/README.md)。
 
-Backend renderer integration 只发布已有 Model Catalog、Ingestion/任务队列、知识图谱、转录进度、Workspace mutation 和已校验的插件 push
-事实，并拥有 Model Catalog 订阅的释放函数。Backend 不读取 BrowserWindow；迁移前由 Electron adapter 投影到原
-IPC，迁移后由 App Server reverse RPC 投影，Renderer channel、payload 和 UI 行为保持不变。通用 task-queue、
-Transcription、Knowledge Graph、Workspace feature 与插件 SDK 都只看到自己的窄数据合同。插件是否启用与 channel
-声明仍在 Backend 内校验；Desktop adapter 只负责把已通过校验的 envelope 发到既有 `plugin:push` channel。
-Model Catalog bridge 会等待 Desktop 订阅安装完成后才允许 Backend 启动继续；其它已有事实通过逐类严格 DTO 的
-单向 publish RPC 投影，Backend 不能提交任意 Renderer channel 名。
-Worker 结构化克隆中的可选 `undefined` 对象字段，在 RPC 编码前按 JSON 约定省略；数组和其它非法值不会被改写。
-DTO 校验失败与传输失败统一送入发布者诊断口，不能从队列进度监听器抛出并把正常摄入误判为失败，或二次击穿失败回报。
+Backend renderer integration 只发布 Model Catalog、转录进度、Workspace mutation、Todo 与已校验的插件 push 事实，并拥有 Model Catalog 订阅的释放函数。Backend 不读取 BrowserWindow；App Server reverse RPC 经严格 DTO 到 Desktop adapter，再投影到既有 Renderer channel。Audio 的 `transcription:progress` 维持单主窗口行为，Workspace 和 `plugin:push` 保持多窗口广播。
+
+插件是否启用与 channel 声明仍由 Backend 校验。知识库的任务与图谱进度由插件正式 schema 生成后走同一 `plugin:push` envelope，Host 不再拥有知识库专属 RPC、任务字段映射或通知 channel。Model Catalog bridge 会等待 Desktop 订阅安装完成后才允许 Backend 启动继续；其余事实通过单向 publish RPC 投影，Backend 不能提交任意 Renderer channel 名。
+
+Worker 结构化克隆中的可选 `undefined` 对象字段，在 RPC 编码前按 JSON 约定省略；数组和其它非法值不会被改写。DTO 校验失败与传输失败统一送入发布者诊断口，不能从任务进度监听器抛出并把正常处理误判为失败，或二次击穿失败回报。相邻真实 pipe RPC 回归覆盖插件任务和图谱投影、非法值诊断，以及非插件通知不变。
 
 App Server 自己完成的账号目录同步通过 `publishModelsChanged()` 发出无 payload 的目录失效通知，
 Desktop 投影到既有 `models-updated` channel；它不借用只覆盖 Cloud 的目录订阅。Renderer 先订阅再初次读取，

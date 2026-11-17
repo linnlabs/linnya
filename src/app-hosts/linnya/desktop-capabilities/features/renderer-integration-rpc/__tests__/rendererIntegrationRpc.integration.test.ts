@@ -4,19 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createAppServerRpcPeer } from '../../../../app-server-rpc';
 import type { BackendRendererIntegrationPort } from '../../../definitions/backendRendererIntegrationPort';
-import {
-  FrontendStatus,
-  InternalStage,
-} from '../../../../../../features/knowledge-base/ingestion/definitions/state';
+import { KnowledgeTaskStatusViewSchema, KnowledgeGraphProgressSchema } from '@plugin/knowledge/shared';
 import { DESKTOP_RENDERER_TODOS_CHANGED_RPC_METHOD } from '../definitions/rendererIntegrationRpc';
 import { createBackendRendererIntegrationRpcClient } from '../orchestration/createBackendRendererIntegrationRpcClient';
 import { createDesktopRendererIntegrationRpcHandlers } from '../orchestration/createDesktopRendererIntegrationRpcHandlers';
-
-const LEGACY_INGESTION_ID_FIELD = resolveLegacyIngestionIdField();
-
-function resolveLegacyIngestionIdField(): 'taskId' {
-  return 'taskId';
-}
 
 describe('Backend Renderer integration RPC', () => {
   it('保持既有业务 port 与投影事实，不把 channel 选择交给 Backend', async () => {
@@ -30,13 +21,6 @@ describe('Backend Renderer integration RPC', () => {
     });
 
     const disposeModelCatalog = await client.connectModelCatalogUpdates();
-    client.publishKnowledgeGraphProgress({
-      kbId: 'kb-1',
-      percent: 50,
-      totalUnits: 4,
-      doneUnits: 2,
-      updatedAtSeconds: 123,
-    });
     client.publishTranscriptionProgress({
       stage: 'merge',
       percent: 80,
@@ -76,13 +60,6 @@ describe('Backend Renderer integration RPC', () => {
       expect(port.publishModelsChanged).toHaveBeenCalledOnce();
     });
     expect(port.connectModelCatalogUpdates).toHaveBeenCalledOnce();
-    expect(port.publishKnowledgeGraphProgress).toHaveBeenCalledWith({
-      kbId: 'kb-1',
-      percent: 50,
-      totalUnits: 4,
-      doneUnits: 2,
-      updatedAtSeconds: 123,
-    });
     expect(port.publishTranscriptionProgress).toHaveBeenCalledWith({
       stage: 'merge',
       percent: 80,
@@ -109,59 +86,35 @@ describe('Backend Renderer integration RPC', () => {
     pair.dispose();
   });
 
-  it('往返 ingestion 与三种 queue job 事实', async () => {
+  it('知识库正式任务与图谱schema经通用plugin push往返，可选undefined按JSON省略', async () => {
     const port = createRendererPort();
     const pair = createPeerPair(port);
     const failures: Error[] = [];
-    const client = createBackendRendererIntegrationRpcClient({
-      rpc: pair.backend,
-      onAsyncFailure: error => failures.push(error),
-    });
-
-    client.publishIngestionStatus({
-      [LEGACY_INGESTION_ID_FIELD]: 'task-1',
-      docId: 'doc-1',
-      filename: 'a.pdf',
-      stage: InternalStage.PARSING,
-      frontendState: {
-        status: FrontendStatus.PROCESSING,
-        stage: InternalStage.PARSING,
-        progress: 35,
-        stage_progress: 70,
-        message: '解析中',
-        doc_id: 'doc-1',
-        filename: 'a.pdf',
-        updated_at: 123,
-      },
-    });
-    client.queueJobPresentationPublisher.publishProgress({
-      jobId: 'task-1',
-      progress: 35,
-      data: { status: 'processing', error: undefined },
-    });
-    client.queueJobPresentationPublisher.publishCompletion({
-      jobId: 'task-1',
-      result: { docId: 'doc-1', frontendState: { error: undefined } },
-    });
-    client.queueJobPresentationPublisher.publishFailure({
-      jobId: 'task-2',
-      jobData: { docId: 'doc-2', graphExtractionModelId: undefined },
-      errorMessage: 'boom',
-      failedMessage: '处理失败',
-    });
-
-    await vi.waitFor(() => {
-      expect(port.queueJobPresentationPublisher.publishFailure).toHaveBeenCalledOnce();
-    });
-    expect(port.publishIngestionStatus).toHaveBeenCalledOnce();
-    expect(port.queueJobPresentationPublisher.publishProgress).toHaveBeenCalledWith({
-      jobId: 'task-1',
-      progress: 35,
-      data: { status: 'processing' },
-    });
-    expect(port.queueJobPresentationPublisher.publishCompletion).toHaveBeenCalledOnce();
-    expect(failures).toEqual([]);
-    pair.dispose();
+    const client = createBackendRendererIntegrationRpcClient({ rpc: pair.backend, onAsyncFailure: error => failures.push(error) });
+    try {
+      for (const status of ['processing', 'completed', 'failed']) {
+        const payload = KnowledgeTaskStatusViewSchema.parse({
+          taskId: `task-${status}`, docId: 'doc-1', status, progress: status === 'completed' ? 100 : 35,
+          stage: status === 'processing' ? 'parsing' : status, stage_progress: undefined,
+          message: status, error: status === 'failed' ? 'provider unavailable' : undefined, updatedAt: 123,
+          estimatedTimeRemaining: undefined,
+        });
+        client.publishPluginRendererPush({ pluginId: 'knowledge', channel: 'task-status-updated', payload });
+      }
+      const graph = KnowledgeGraphProgressSchema.parse({ kbId: 'kb-1', percent: 50, totalUnits: 4, doneUnits: 2, updatedAtSeconds: 123 });
+      client.publishPluginRendererPush({ pluginId: 'knowledge', channel: 'graph-progress-updated', payload: graph });
+      await vi.waitFor(() => expect(port.publishPluginRendererPush).toHaveBeenCalledTimes(4));
+      expect(port.publishPluginRendererPush).toHaveBeenNthCalledWith(1, {
+        pluginId: 'knowledge', channel: 'task-status-updated',
+        payload: { taskId: 'task-processing', docId: 'doc-1', status: 'processing', progress: 35, stage: 'parsing', message: 'processing', updatedAt: 123 },
+      });
+      expect(port.publishPluginRendererPush).toHaveBeenNthCalledWith(3, {
+        pluginId: 'knowledge', channel: 'task-status-updated',
+        payload: { taskId: 'task-failed', docId: 'doc-1', status: 'failed', progress: 35, stage: 'failed', message: 'failed', error: 'provider unavailable', updatedAt: 123 },
+      });
+      expect(port.publishPluginRendererPush).toHaveBeenLastCalledWith({ pluginId: 'knowledge', channel: 'graph-progress-updated', payload: graph });
+      expect(failures).toEqual([]);
+    } finally { pair.dispose(); }
   });
 
   it('无效通知交给现有诊断口，不能让任务失败回报再次抛错', () => {
@@ -171,15 +124,11 @@ describe('Backend Renderer integration RPC', () => {
       rpc: { request },
       onAsyncFailure: error => failures.push(error),
     });
-    expect(() =>
-      client.queueJobPresentationPublisher.publishFailure({
-        jobId: 'task-invalid',
-        jobData: { score: Number.NaN },
-        failedMessage: '失败',
-      })
-    ).not.toThrow();
+    for (const payload of [{ score: Number.NaN }, { values: [undefined] }]) {
+      expect(() => client.publishPluginRendererPush({ pluginId: 'knowledge', channel: 'task-status-updated', payload })).not.toThrow();
+    }
     expect(request).not.toHaveBeenCalled();
-    expect(failures).toHaveLength(1);
+    expect(failures).toHaveLength(2);
   });
 
   it('Desktop handler 严格拒绝错型 payload', async () => {
@@ -204,13 +153,6 @@ function createRendererPort(
 ): BackendRendererIntegrationPort {
   return {
     connectModelCatalogUpdates: vi.fn(connectModelCatalogUpdates),
-    publishIngestionStatus: vi.fn(),
-    queueJobPresentationPublisher: {
-      publishProgress: vi.fn(),
-      publishCompletion: vi.fn(),
-      publishFailure: vi.fn(),
-    },
-    publishKnowledgeGraphProgress: vi.fn(),
     publishTranscriptionProgress: vi.fn(),
     publishWorkspaceMutation: vi.fn(),
     publishPluginRendererPush: vi.fn(),
