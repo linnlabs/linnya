@@ -29,7 +29,9 @@
 
 .shared-color-picker-panel__grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  /* 色块定宽：面板比色块宽时均匀铺到两边，最后一列右缘与右对齐的“清除颜色”按钮对齐。 */
+  grid-template-columns: repeat(5, 32px);
+  justify-content: space-between;
   gap: var(--space-2);
 }
 

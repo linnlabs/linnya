@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.5.1 - 2026-11-17
+
+- `ColorPickerPanel` 的色块网格改为五列定宽 32px、两端对齐：面板比色块宽时（如 Slides 属性面板），此前每列按 `1fr` 分配、色块靠在列的左侧，最后一列右侧空出一截，与右对齐的“清除颜色”按钮对不齐；现在色块均匀铺满，首列贴左、末列贴右。面板宽度恰好容纳色块时外观不变。公开 props、事件与 DOM 不变，现有 `^3.0.0` 插件保持兼容。
+
 ## 3.5.0 - 2026-11-16
 
 - 新增界面调度函数，替代直接调用 `setTimeout`、`setInterval`、`requestAnimationFrame`：`Timer`（延迟、防抖、节流、自动关闭，`start` 重新计时、`startIfIdle` 保持原计时）、`RepeatingTimer`（轮询、时钟）、`FrameBatch`（同一帧内多次请求只执行一次，用于滚动、拖拽、尺寸变化）、`FrameLoop`（每帧执行直到停止，callback 返回 `false` 自动停止），以及 `onNextFrame` / `onNextPaint`（返回取消函数）与 `nextFrame` / `nextPaint`（Promise）。组件 setup 里用 `useTimer` / `useRepeatingTimer` / `useFrameBatch` / `useFrameLoop`，卸载时自动取消；组件外用对应的 `create…` 版本，由调用方收尾。没有 `requestAnimationFrame` 的环境用定时器代替。新增导出，现有 `^3.0.0` 插件保持兼容；使用新函数的插件需声明 `^3.5.0`。
