@@ -120,7 +120,7 @@ try {
   });
   await evidence.check('旧项目query/detail响应受控延迟到切项目后送达，不能覆盖新项目或产生404', async () => {
     await run('click', '--selector', '.project-conversations__row[data-conversation-id="query-b"]');
-    await run('wait', '--expr', `document.querySelector('.project-conversations__detail')?.textContent.includes('报价乙：可读回答')`);
+    await run('wait', '--expr', `document.querySelector('.project-conversations__detail')?.textContent.includes('报价乙：请分析报价')`);
     // 仅在隔离探针页面延迟真实HTTP响应，不改变Host数据、生产接口或查询实现。
     await run('eval', `(() => {
       const original = window.fetch;
@@ -141,7 +141,7 @@ try {
     await run('wait', '--expr', `window.__conversationQueryDelay.pending.some(item => item.path.endsWith('/query')) && window.__conversationQueryDelay.pending.some(item => item.path.endsWith('/conversations/query-a'))`);
     await run('open', otherProject, '--overview');
     await run('click', '--selector', '.project-overview__pages [role="tab"]:nth-child(2)');
-    await run('wait', '--expr', `JSON.stringify(${rowIds}) === '["query-private"]' && document.querySelector('.project-conversations__detail')?.textContent.includes('范围外秘密：可读回答')`);
+    await run('wait', '--expr', `JSON.stringify(${rowIds}) === '["query-private"]' && document.querySelector('.project-conversations__detail')?.textContent.includes('范围外秘密：请分析报价')`);
     const delayed = await run('eval', `(async () => {
       const { original, pending } = window.__conversationQueryDelay;
       window.fetch = original;
@@ -154,8 +154,8 @@ try {
     evidence.json('delayed-old-project-responses', delayed.value);
     assert.deepEqual((await run('eval', rowIds)).value, ['query-private']);
     const detail = (await run('eval', `document.querySelector('.project-conversations__detail')?.textContent`)).value;
-    assert.ok(detail.includes('范围外秘密：可读回答'));
-    assert.ok(!detail.includes('报价甲：可读回答'));
+    assert.ok(detail.includes('范围外秘密：请分析报价'));
+    assert.ok(!detail.includes('报价甲：请分析报价'));
     await run('shot', '--selector', '.project-overview');
     const logs = await run('logs', '--level', 'error');
     assert.equal(logs.total, 0, JSON.stringify(logs.entries));

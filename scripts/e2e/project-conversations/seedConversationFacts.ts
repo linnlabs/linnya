@@ -22,7 +22,7 @@ try {
     const session = await store.openRunSession(row.conversation_id, runId);
     const routing = { run_id: runId, lane: 'foreground' as const, visibility: 'conversation' as const };
     await store.appendEventToRun(session, routeRuntimeEvent(createUserInputEvent(
-      `question-${row.conversation_id}`, row.conversation_id, turnId, '请分析报价', { timestamp: row.last_event_at - 1 },
+      `question-${row.conversation_id}`, row.conversation_id, turnId, `${row.title}：请分析报价`, { timestamp: row.last_event_at - 1 },
     ), routing));
     await store.appendEventToRun(session, routeRuntimeEvent(createFinalAnswerEvent(
       `answer-${row.conversation_id}`, row.conversation_id, turnId, `${row.title}：可读回答`,
