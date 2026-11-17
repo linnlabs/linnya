@@ -94,7 +94,7 @@ describe('documentTabsState', () => {
     const ids = Array.from({ length: DOCUMENT_TABS_CLOSED_LIMIT + 5 }, (_, index) => `d${index}`);
     const state = closeDocumentTabs(openAll(ids), ids).state;
     expect(state.closed).toHaveLength(DOCUMENT_TABS_CLOSED_LIMIT);
-    expect(state.closed.at(-1)?.id).toBe(ids.at(-1));
+    expect(state.closed[state.closed.length - 1]?.id).toBe(ids[ids.length - 1]);
   });
 
   it('removes deleted documents everywhere without adding them to the closed history', () => {
