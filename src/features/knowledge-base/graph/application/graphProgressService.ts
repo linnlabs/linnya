@@ -9,18 +9,13 @@
  * - 对频繁的 chunk 级更新做节流，避免过度刷库/过度推送；
  * - 不依赖 Electron/IPC：由上层注入回调实现推送（高内聚低耦合）。
  */
-import type { KnowledgeGraphKbProgress, KnowledgeGraphRepository } from '../infrastructure/knowledgeGraphRepository';
+import type {
+  KnowledgeGraphKbProgress,
+  KnowledgeGraphRepository,
+} from '../infrastructure/knowledgeGraphRepository';
 
-export type KbGraphProgressPayload = {
-  kbId: string;
-  /**
-   * 0~100 的百分比（四舍五入到整数）。
-   */
-  percent: number;
-  totalUnits: number;
-  doneUnits: number;
-  updatedAtSeconds: number | null;
-};
+import type { KnowledgeGraphProgress as KbGraphProgressPayload } from '@plugin/knowledge/shared';
+export type { KnowledgeGraphProgress as KbGraphProgressPayload } from '@plugin/knowledge/shared';
 
 export type GraphProgressServiceOptions = {
   /**
@@ -49,7 +44,8 @@ export class GraphProgressService {
 
   constructor(repo: KnowledgeGraphRepository, options: GraphProgressServiceOptions = {}) {
     this.repo = repo;
-    this.throttleMs = typeof options.throttleMs === 'number' && options.throttleMs > 0 ? options.throttleMs : 250;
+    this.throttleMs =
+      typeof options.throttleMs === 'number' && options.throttleMs > 0 ? options.throttleMs : 250;
     this.onProgressUpdated = options.onProgressUpdated;
   }
 
@@ -64,7 +60,9 @@ export class GraphProgressService {
     // 否则会破坏 worker 的断点续跑（doneChunks 变成 0 -> 又整篇重跑）。
     const existing = await this.repo.getDocStatus(kbId, docId);
     const preservedDoneChunks =
-      existing && existing.chunkCount === chunkCount && existing.doneChunks > 0 ? existing.doneChunks : 0;
+      existing && existing.chunkCount === chunkCount && existing.doneChunks > 0
+        ? existing.doneChunks
+        : 0;
     await this.repo.upsertDocStatus({
       kbId,
       docId,
@@ -130,5 +128,3 @@ export class GraphProgressService {
     };
   }
 }
-
-

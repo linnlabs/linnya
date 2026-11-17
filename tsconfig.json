@@ -29,6 +29,7 @@
       "@transcription/*": [
         "src/features/transcription/*"
       ],
+      "@plugin/knowledge/shared": ["packages/plugins/knowledge/src/shared/index.ts"],
       "@plugin/slides/shared": [
         "packages/plugins/slides/src/shared/index.ts"
       ],

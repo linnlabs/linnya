@@ -1,0 +1,29 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@app/schemas": [
+        "packages/schemas/src/index.ts"
+      ],
+      "@app/schemas/*": [
+        "packages/schemas/src/*"
+      ],
+      "@plugin/backend/*": [
+        "packages/plugin-host-contract/backend/*.ts"
+      ],
+      "@plugin/renderer/*": [
+        "packages/plugin-host-contract/renderer/*.ts"
+      ],
+      "@app/localization": [
+        "packages/plugin-host-contract/renderer/localization.ts"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/__tests__/**"
+  ]
+}
