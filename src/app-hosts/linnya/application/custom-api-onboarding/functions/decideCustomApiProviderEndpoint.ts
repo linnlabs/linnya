@@ -56,6 +56,12 @@ export function decideCustomApiProviderEndpoint(
   if (input.hasNewSecret) return { kind: 'create_with_secret' };
 
   const firstReference = onlyEndpoint?.credential_reference;
+  if (
+    firstReference?.kind === 'none' &&
+    input.groupEndpoints.every(endpoint => endpoint.auth_profile === 'none')
+  ) {
+    return { kind: 'create_with_credential', credential_reference: firstReference };
+  }
   const sharesOneUsableCredential =
     firstReference?.kind === 'stored_secret' &&
     input.groupEndpoints.every(

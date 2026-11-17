@@ -1,3 +1,4 @@
+import { LANGUAGE_INFERENCE_ROUTE_PROFILES } from '@app/schemas/model-inference';
 import { isDeepStrictEqual } from 'node:util';
 
 import type { ResolvedProviderOnboardingModelRuntimeBinding } from 'src/app-hosts/linnya/adapters/inference';
@@ -17,6 +18,11 @@ export interface BuildRefreshedDirectProviderModelInput {
 export function buildRefreshedDirectProviderModel(
   input: BuildRefreshedDirectProviderModelInput
 ): ModelConfig | undefined {
+  const profile = LANGUAGE_INFERENCE_ROUTE_PROFILES.find(
+    item => item.id === input.endpoint.route_profile_id
+  );
+  const auth = input.endpoint.auth_profile;
+  if (!profile || auth === 'token') throw new Error('正式对话 Provider 的连接必须使用语言模型协议');
   const plan = buildDirectProviderModelRegistration({
     modelId: input.existingModel.id,
     endpointResourceId: input.endpoint.id,
@@ -25,8 +31,8 @@ export function buildRefreshedDirectProviderModel(
     binding: {
       ...input.binding,
       base_url: input.endpoint.base_url,
-      auth_profile: input.endpoint.auth_profile,
-      route_profile_id: input.endpoint.route_profile_id,
+      auth_profile: auth,
+      route_profile_id: profile.id,
     },
     reusableEndpoint: input.endpoint,
   });

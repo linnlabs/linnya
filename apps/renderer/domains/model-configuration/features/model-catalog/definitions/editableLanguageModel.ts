@@ -12,6 +12,7 @@ export type EditableLanguageModelIssue =
   | 'display_name_required'
   | 'model_name_required'
   | 'inference_route_missing'
+  | 'model_route_missing'
   | 'token_limits_invalid';
 
 export type EditableLanguageModelUpdateResult =

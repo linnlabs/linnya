@@ -1,5 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import {
+  CustomCapabilityModelCommandSchema,
+  CustomCapabilityProviderUpdateCommandSchema,
   CustomApiModelRegistrationCommandSchema,
   CustomApiProviderUpdateCommandSchema,
   CustomApiProviderRemovalCommandSchema,
@@ -36,6 +38,62 @@ export function createCustomApiOnboardingRouter(
   discoveryService: ModelDiscoveryService = new ModelDiscoveryService()
 ): Router {
   const router = Router();
+
+  for (const action of ['models', 'test'] as const) {
+    router.post(`/capabilities/${action}`, async (request: Request, response: Response) => {
+      const parsed = CustomCapabilityModelCommandSchema.safeParse(request.body);
+      if (!parsed.success) {
+        sendError(response, 400, {
+          code: 'custom_api_onboarding.invalid_command',
+          message: parsed.error.issues[0]?.message ?? '模型配置内容无效',
+        });
+        return;
+      }
+      const controller = new AbortController();
+      response.on('close', () => {
+        if (!response.writableEnded) controller.abort();
+      });
+      try {
+        const result =
+          action === 'test'
+            ? await useCase.testCapabilityModel(parsed.data, controller.signal)
+            : await useCase.registerCapabilityModel(parsed.data);
+        response.status(action === 'test' ? 200 : 201).json(result);
+      } catch (error: unknown) {
+        if (error instanceof CustomApiOnboardingError) {
+          sendError(response, error.statusCode, { code: error.code, message: error.message });
+          return;
+        }
+        sendError(response, 500, {
+          code: 'custom_api_onboarding.registration_failed',
+          message: '模型操作失败，请检查连接后重试',
+        });
+      }
+    });
+  }
+
+  router.put('/capabilities/providers', async (request: Request, response: Response) => {
+    const parsed = CustomCapabilityProviderUpdateCommandSchema.safeParse(request.body);
+    if (!parsed.success) {
+      sendError(response, 400, {
+        code: 'custom_api_onboarding.invalid_command',
+        message: '连接配置无效',
+      });
+      return;
+    }
+    try {
+      response.json(await useCase.updateCapabilityProvider(parsed.data));
+    } catch (error: unknown) {
+      if (error instanceof CustomApiOnboardingError) {
+        sendError(response, error.statusCode, { code: error.code, message: error.message });
+        return;
+      }
+      sendError(response, 500, {
+        code: 'custom_api_onboarding.update_failed',
+        message: '连接保存失败，请重试',
+      });
+    }
+  });
 
   router.delete('/providers', async (request: Request, response: Response) => {
     const parsed = CustomApiProviderRemovalCommandSchema.safeParse(request.body);

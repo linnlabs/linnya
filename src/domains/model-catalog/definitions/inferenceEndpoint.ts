@@ -1,7 +1,7 @@
 import type {
-  InferenceAuthProfile,
-  LanguageInferenceRouteProfileId,
-} from '@app/schemas/model-inference';
+  InferenceEndpointAuthProfile,
+  InferenceEndpointProfileId,
+} from './inferenceEndpointProfiles';
 
 export type EndpointCredentialStatus = 'available';
 
@@ -14,10 +14,10 @@ export type CredentialReference =
 
 export interface InferenceEndpoint {
   readonly id: string;
-  readonly route_profile_id: LanguageInferenceRouteProfileId;
+  readonly route_profile_id: InferenceEndpointProfileId;
   readonly endpoint_id: string;
   readonly base_url: string;
-  readonly auth_profile: InferenceAuthProfile;
+  readonly auth_profile: InferenceEndpointAuthProfile;
   readonly credential_reference: CredentialReference;
 }
 
@@ -27,10 +27,10 @@ export interface InferenceEndpointView extends InferenceEndpoint {
 
 export interface NewInferenceEndpoint {
   readonly id: string;
-  readonly route_profile_id: LanguageInferenceRouteProfileId;
+  readonly route_profile_id: InferenceEndpointProfileId;
   readonly endpoint_id: string;
   readonly base_url: string;
-  readonly auth_profile: InferenceAuthProfile;
+  readonly auth_profile: InferenceEndpointAuthProfile;
   readonly credential_reference?: CredentialReference;
   readonly credential_secret?: string;
 }

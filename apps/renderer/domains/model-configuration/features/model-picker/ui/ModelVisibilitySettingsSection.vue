@@ -42,6 +42,7 @@
                     <button
                       type="button"
                       class="model-visibility-source-tab"
+                      :data-model-source-id="source.id"
                       :aria-pressed="source.id === selectedSourceId"
                       @click="selectedSourceId = source.id"
                     >
@@ -64,6 +65,7 @@
                       <button
                         type="button"
                         class="model-visibility-source-tab"
+                        :data-model-source-id="source.id"
                         :aria-pressed="source.id === selectedSourceId"
                         @click="selectedSourceId = source.id"
                       >
@@ -77,22 +79,23 @@
           </div>
         </aside>
 
-        <div
-          v-if="selectedSource"
-          class="model-visibility-models"
-        >
+        <div v-if="selectedSource" class="model-visibility-models">
           <header class="model-visibility-models-header">
             <div class="model-visibility-models-header-left">
               <h4>{{ selectedSource.displayName }}</h4>
               <HoverTooltip
-                v-if="selectedSource.kind === 'provider' || selectedSource.kind === 'custom_provider'"
+                v-if="
+                  selectedSource.kind === 'provider' || selectedSource.kind === 'custom_provider'
+                "
                 :text="refreshUnavailableMessage || refreshLabel"
               >
                 <IconButton
                   :label="refreshLabel"
                   size="xs"
                   class="model-visibility-refresh-btn"
-                  :disabled="!canRefreshSelectedSource || isRefreshingSourceId !== null || isMutating"
+                  :disabled="
+                    !canRefreshSelectedSource || isRefreshingSourceId !== null || isMutating
+                  "
                   @click.stop="refreshSourceModels(selectedSource)"
                 >
                   <RefreshIcon
@@ -179,15 +182,13 @@
                   <SettingsListRow
                     v-for="model in filteredModels"
                     :key="modelKey(model)"
+                    :data-model-id="model.materialized ? model.model_config_id : undefined"
                     :title="model.display_name"
                     :meta="modelStateLabel(model)"
                     :interactive="isCustomModelEditable(model)"
                     @select="openCustomModelDetails(model)"
                   >
-                    <template
-                      v-if="selectedSource.kind !== 'cloud'"
-                      #trailing
-                    >
+                    <template v-if="selectedSource.kind !== 'cloud'" #trailing>
                       <Switch
                         :model-value="model.materialized && model.picker_enabled"
                         v-bind="{ ariaLabel: model.display_name }"
@@ -204,10 +205,7 @@
             v-if="selectedSource.kind === 'provider' && !selectedSource.credentialAvailable"
             class="model-visibility-credential-actions"
           >
-            <SettingsFeedback
-              kind="error"
-              :message="credentialUnavailableMessage"
-            />
+            <SettingsFeedback kind="error" :message="credentialUnavailableMessage" />
             <ActionButtons
               v-if="selectedSource.credentialKind === 'api_key'"
               :primary-action-text="settingsMessage('settings.modelPicker.replaceApiKey')"
@@ -263,7 +261,13 @@ import {
   type CustomApiProviderConnection,
 } from '../../custom-model-registration';
 import { DirectProviderCredentialModal } from '../../direct-provider-onboarding';
-import { ActionButtons, CustomTextInput, HoverTooltip, IconButton, Switch } from '@linnya/renderer-ui';
+import {
+  ActionButtons,
+  CustomTextInput,
+  HoverTooltip,
+  IconButton,
+  Switch,
+} from '@linnya/renderer-ui';
 import { DeleteIcon, EditIcon, RefreshIcon } from '@linnya/renderer-ui/icons';
 import { confirm } from '@shared/composables/confirmDialog';
 import {
@@ -312,7 +316,9 @@ const modelPickerErrorMessage = computed(() =>
 const sourceQuery = ref('');
 const modelQuery = ref('');
 const selectedSourceId = ref<string | null>(
-  modelPicker.managementProviderId.value ? `provider:${modelPicker.managementProviderId.value}` : null
+  modelPicker.managementProviderId.value
+    ? `provider:${modelPicker.managementProviderId.value}`
+    : null
 );
 const selectedModelDetails = ref<ModelCatalogItem | null>(null);
 const isRemovingProvider = ref(false);
@@ -383,6 +389,8 @@ const canRefreshSelectedSource = computed(() => {
 });
 const refreshUnavailableMessage = computed(() => {
   const source = selectedSource.value;
+  if (source?.kind === 'custom_provider' && source.capabilityApiFormat)
+    return settingsMessage('settings.addModel.capability.manualModels');
   if (source?.kind !== 'provider' || source.canRefreshModels) return '';
   return settingsMessage(
     source.credentialKind === 'none'
@@ -530,7 +538,9 @@ function openCustomProviderEdit(
 ): void {
   editingCustomProvider.value = {
     providerName: source.providerName,
+    modelIds: source.models.map(model => model.model_config_id),
     ...(source.apiFormat ? { apiFormat: source.apiFormat } : {}),
+    ...(source.capabilityApiFormat ? { capabilityApiFormat: source.capabilityApiFormat } : {}),
     ...(source.baseUrl ? { baseUrl: source.baseUrl } : {}),
   };
 }

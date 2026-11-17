@@ -1,5 +1,6 @@
 import type {
   CustomApiFormat,
+  CustomCapabilityApiFormat,
   CustomApiProviderUpdateRequest,
   CustomApiProviderUpdateResponse,
 } from '@app/schemas/custom-api-onboarding';
@@ -7,7 +8,9 @@ import type {
 /** 模型管理中当前自定义分组的连接事实，由 Host picker 快照投影。 */
 export interface CustomApiProviderConnection {
   readonly providerName: string;
+  readonly modelIds?: readonly string[];
   readonly apiFormat?: CustomApiFormat;
+  readonly capabilityApiFormat?: CustomCapabilityApiFormat;
   readonly baseUrl?: string;
 }
 

@@ -1,3 +1,4 @@
+import { assertCustomApiGroupModelKind } from '../functions/assertCustomApiGroupModelKind';
 import type {
   CustomApiModelRegistrationCommand,
   CustomApiModelRegistrationResponse,
@@ -12,6 +13,12 @@ export async function registerCustomApiModels(
   dependencies: CustomApiOnboardingDependencies
 ): Promise<CustomApiModelRegistrationResponse> {
   const revision = dependencies.modelCatalog.getUserRevision();
+  assertCustomApiGroupModelKind(
+    command.provider_name,
+    undefined,
+    dependencies.modelCatalog.getCustomApiGroups(),
+    dependencies.modelCatalog.getInferenceEndpoints()
+  );
   const firstModelId = dependencies.idFactory.create();
   const endpointResourceId = dependencies.idFactory.create();
   const { registrations, preferences } = planCustomApiModelRegistration(

@@ -2,10 +2,41 @@ import type { MessageCatalogContribution } from '@app/localization';
 import type { SettingsMessageKey } from './settingsMessages';
 
 export const SETTINGS_MESSAGE_FALLBACKS = {
+  'settings.addModel.capability.connectionName': '连接名称',
+  'settings.addModel.capability.displayNamePlaceholder': '留空使用模型 ID',
+  'settings.addModel.capability.manualModels':
+    '此类型不提供模型列表；已手动添加的模型会保留，可在添加模型中继续添加。',
+
+  'settings.addModel.modelKind.label': '模型类型',
+  'settings.addModel.modelKind.chat': '对话',
+  'settings.addModel.modelKind.embedding': '嵌入',
+  'settings.addModel.modelKind.rerank': '重排',
+  'settings.addModel.modelKind.documentOcr': '文档识别（OCR）',
+  'settings.addModel.modelKind.imageGeneration': '图片生成',
+  'settings.addModel.capability.modelId': '模型 ID',
+  'settings.addModel.capability.layoutModelIdHint':
+    '此接口的模型由服务地址决定；ID用于本地标识，不会作为 model 参数发送。',
+  'settings.addModel.capability.modelIdHint':
+    '填写服务商提供的模型 ID；这类接口通常不提供模型列表。',
+  'settings.addModel.capability.cancelHint':
+    '取消仅停止本地等待和后续调用；服务已受理的任务可能继续处理或计费。',
+  'settings.addModel.capability.cancelTest': '取消测试',
+  'settings.addModel.capability.testing': '正在测试…',
+  'settings.addModel.capability.test': '测试调用',
+  'settings.addModel.capability.testHint': '发送少量示例内容验证调用，可能产生服务费用。',
+  'settings.addModel.capability.imageSizes': '允许的图片尺寸',
+  'settings.addModel.capability.imageSizesHint':
+    '用逗号分隔，例如 1024x1024, 1536x1024；留空时由服务端校验。',
+  'settings.addModel.capability.ocrMode': '输入方式',
+  'settings.addModel.capability.documentUpload': '整份文档',
+  'settings.addModel.capability.pageImage': '逐页图片',
+
   'settings.addModel.provider.connected': '已连接',
   'settings.modelPicker.refreshingModels': '正在更新模型列表…',
-  'settings.modelPicker.refreshUnavailable': '此连接尚未接入在线模型查询，当前显示随应用发布的目录。',
-  'settings.modelPicker.localRefreshUnavailable': '本地模型请在“添加模型”的 Ollama 本地入口查询和添加。',
+  'settings.modelPicker.refreshUnavailable':
+    '此连接尚未接入在线模型查询，当前显示随应用发布的目录。',
+  'settings.modelPicker.localRefreshUnavailable':
+    '本地模型请在“添加模型”的 Ollama 本地入口查询和添加。',
   'settings.modal.title': '设置',
   'settings.modal.close': '关闭设置',
   'settings.groups.general': '通用',
@@ -156,8 +187,7 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.webRead.apiKey.label': 'API Key',
   'settings.webRead.apiKey.placeholder': '请输入 API Key',
   'settings.webRead.apiKey.availablePlaceholder': '已有可用凭证，留空则继续使用',
-  'settings.webRead.apiKey.savedDescription':
-    'Key 已保存在本机；新输入会替换当前服务的 Key。',
+  'settings.webRead.apiKey.savedDescription': 'Key 已保存在本机；新输入会替换当前服务的 Key。',
   'settings.webRead.apiKey.registryDescription': '当前服务已有可用的本机凭证。',
   'settings.webRead.apiKey.obtain': '获取 API Key',
   'settings.webRead.actions.save': '保存',
@@ -176,7 +206,8 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.appearance.theme.dark': '深色',
   'settings.appearance.fontSmoothing.title': '文字渲染',
   'settings.appearance.fontSmoothing.label': '字体抗锯齿',
-  'settings.appearance.fontSmoothing.description': '让文字边缘更平滑、笔画更纤细，仅在 macOS 上有明显差别。关闭后使用系统默认渲染，文字会略粗。',
+  'settings.appearance.fontSmoothing.description':
+    '让文字边缘更平滑、笔画更纤细，仅在 macOS 上有明显差别。关闭后使用系统默认渲染，文字会略粗。',
   'settings.appearance.language.title': '语言',
   'settings.appearance.language.selectTitle': '选择语言',
   'settings.appearance.language.description': '切换 Linnya 的界面语言。',
@@ -248,9 +279,15 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelConfig.embedding.selectTitle': '选择知识库嵌入模型',
   'settings.modelConfig.embedding.description':
     '用于新文档向量化与语义检索。已建索引的知识库会继续按索引出身模型检索。',
+  'settings.modelConfig.embedding.editConfirm.title': '修改嵌入模型',
+  'settings.modelConfig.embedding.editConfirm.message':
+    '这次修改会改变 {count} 个知识库的向量来源。保存后，请在知识库中使用“重建检索索引”，原文和关联会保留。受影响：{names}',
+  'settings.modelConfig.embedding.editConfirm.unavailable':
+    '暂时无法核对已有知识库索引。这次修改可能需要重建检索索引；请在知识库可用后使用“重建检索索引”，原文和关联会保留。',
+  'settings.modelConfig.embedding.editConfirm.confirm': '保存配置',
   'settings.modelConfig.embedding.changeConfirm.title': '切换知识库嵌入模型',
   'settings.modelConfig.embedding.changeConfirm.message':
-    '当前已有 {count} 个知识库使用其它嵌入模型建立索引。切换后，这些知识库需要清空并重新导入后才能继续搜索。受影响：{names}',
+    '当前已有 {count} 个知识库使用其它嵌入模型建立索引。切换后，请在这些知识库中使用“重建检索索引”，原文和关联会保留。受影响：{names}',
   'settings.modelConfig.embedding.changeConfirm.confirm': '继续切换',
   'settings.modelConfig.embedding.changeConfirm.cancel': '取消',
   'settings.modelConfig.rerank.label': '知识库重排模型',
@@ -441,10 +478,45 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
   catalogs: {
     'zh-CN': SETTINGS_MESSAGE_FALLBACKS,
     'en-US': {
+      'settings.addModel.capability.connectionName': 'Connection name',
+      'settings.addModel.capability.displayNamePlaceholder': 'Leave empty to use the model ID',
+      'settings.addModel.capability.manualModels':
+        'This model type uses manually entered IDs. Saved models are preserved; add more in Add model.',
+      'settings.addModel.modelKind.label': 'Model type',
+      'settings.addModel.modelKind.chat': 'Chat',
+      'settings.addModel.modelKind.embedding': 'Embedding',
+      'settings.addModel.modelKind.rerank': 'Rerank',
+      'settings.addModel.modelKind.documentOcr': 'Document recognition (OCR)',
+      'settings.addModel.modelKind.imageGeneration': 'Image generation',
+      'settings.addModel.capability.modelId': 'Model ID',
+      'settings.addModel.capability.layoutModelIdHint':
+        'This endpoint determines the deployed model. The ID is a local label, not a model request parameter.',
+      'settings.addModel.capability.modelIdHint': 'Enter the exact model ID accepted by this API.',
+      'settings.addModel.capability.ocrMode': 'OCR input',
+      'settings.addModel.capability.documentUpload': 'Upload document',
+      'settings.addModel.capability.pageImage': 'Page image',
+      'settings.addModel.capability.imageSizes': 'Image sizes',
+      'settings.addModel.capability.imageSizesHint':
+        'Optional. Separate supported sizes with commas.',
+      'settings.addModel.capability.test': 'Test connection',
+      'settings.addModel.capability.cancelHint':
+        'Cancel stops local waiting and further calls. Accepted remote jobs may continue processing or incur charges.',
+      'settings.addModel.capability.cancelTest': 'Cancel test',
+      'settings.addModel.capability.testing': 'Testing…',
+      'settings.addModel.capability.testHint':
+        'Sends a small synthetic request. Your provider may charge for this test. It does not save the configuration.',
+      'settings.modelConfig.embedding.editConfirm.title': 'Change embedding model',
+      'settings.modelConfig.embedding.editConfirm.message':
+        'This change affects the vector source of {count} knowledge base(s). After saving, use Rebuild search index in the knowledge base; source documents and links are preserved. Affected: {names}',
+      'settings.modelConfig.embedding.editConfirm.unavailable':
+        'Existing knowledge base indexes cannot be checked right now. This change may require rebuilding their search indexes. Use Rebuild search index when the knowledge base is available; source documents and links are preserved.',
+      'settings.modelConfig.embedding.editConfirm.confirm': 'Save configuration',
       'settings.addModel.provider.connected': 'Connected',
       'settings.modelPicker.refreshingModels': 'Updating model list…',
-      'settings.modelPicker.refreshUnavailable': 'Online model discovery is not integrated for this connection. The bundled catalog is shown.',
-      'settings.modelPicker.localRefreshUnavailable': 'Discover and add local models through Ollama Local in Add model.',
+      'settings.modelPicker.refreshUnavailable':
+        'Online model discovery is not integrated for this connection. The bundled catalog is shown.',
+      'settings.modelPicker.localRefreshUnavailable':
+        'Discover and add local models through Ollama Local in Add model.',
       'settings.modal.title': 'Settings',
       'settings.modal.close': 'Close settings',
       'settings.groups.general': 'General',
@@ -624,14 +696,16 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.webRead.status.connectionOk': 'Connected in {tookMs} ms.',
       'settings.appearance.theme.title': 'Theme',
       'settings.appearance.theme.label': 'Theme',
-      'settings.appearance.theme.description': 'System switches between light and dark with your system appearance.',
+      'settings.appearance.theme.description':
+        'System switches between light and dark with your system appearance.',
       'settings.appearance.theme.system': 'System',
       'settings.appearance.theme.light': 'Light',
       'settings.appearance.theme.moonBlue': 'Moon blue',
       'settings.appearance.theme.dark': 'Dark',
       'settings.appearance.fontSmoothing.title': 'Text rendering',
       'settings.appearance.fontSmoothing.label': 'Font smoothing',
-      'settings.appearance.fontSmoothing.description': 'Smooths text edges for finer strokes. Only visibly different on macOS. Turn it off to use the system default, which renders text slightly bolder.',
+      'settings.appearance.fontSmoothing.description':
+        'Smooths text edges for finer strokes. Only visibly different on macOS. Turn it off to use the system default, which renders text slightly bolder.',
       'settings.appearance.language.title': 'Language',
       'settings.appearance.language.selectTitle': 'Choose language',
       'settings.appearance.language.description': 'Change the Linnya interface language.',
@@ -709,7 +783,7 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
         'Used to vectorize new documents and run semantic search. Existing indexes keep using the embedding model they were built with.',
       'settings.modelConfig.embedding.changeConfirm.title': 'Change knowledge base embedding model',
       'settings.modelConfig.embedding.changeConfirm.message':
-        '{count} knowledge base(s) already have indexes built with another embedding model. After switching, they must be cleared and re-imported before search can continue. Affected: {names}',
+        '{count} knowledge base(s) already have indexes built with another embedding model. After switching, they need their search indexes rebuilt while preserving source documents before search can continue. Affected: {names}',
       'settings.modelConfig.embedding.changeConfirm.confirm': 'Continue',
       'settings.modelConfig.embedding.changeConfirm.cancel': 'Cancel',
       'settings.modelConfig.rerank.label': 'Knowledge base rerank model',

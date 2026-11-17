@@ -4,7 +4,10 @@ import type {
   ModelPickerProviderModel,
   ModelPickerSnapshot,
 } from '@app/schemas/model-picker';
-import { readCustomApiFormatForRouteProfileId } from '@app/schemas/custom-api-onboarding';
+import {
+  readCustomApiFormatForRouteProfileId,
+  readCustomCapabilityFormatForProfile,
+} from '@app/schemas/custom-api-onboarding';
 import type { ProviderConnectionDefinition } from '@linnya/provider-catalog';
 import type { ModelConfig } from 'src/domains/model-catalog';
 import type {
@@ -108,8 +111,7 @@ function providerCredentialStatus(
       : { available: false, reason: status === 'available' ? 'missing' : status };
   }
   const status = input.get_credential_status(firstModelConfigId);
-  const resolvedStatus =
-    endpoint.credential_status === 'missing' ? 'missing' : status;
+  const resolvedStatus = endpoint.credential_status === 'missing' ? 'missing' : status;
   return resolvedStatus === 'available'
     ? { available: true }
     : { available: false, reason: resolvedStatus };
@@ -250,17 +252,23 @@ export function composeSelectableModelMenu(
     const endpoint = input.inference_endpoints.find(
       candidate => candidate.id === group.inference_endpoint_ids[0]
     );
-    const models = input.models.filter(model =>
-      model.catalog_source === 'user' &&
-      !configuredModelIds.has(model.id) &&
-      readCustomApiProviderName(model) === group.name &&
-      model.inference_endpoint_id !== undefined &&
-      group.inference_endpoint_ids.includes(model.inference_endpoint_id)
+    const models = input.models.filter(
+      model =>
+        model.catalog_source === 'user' &&
+        !configuredModelIds.has(model.id) &&
+        readCustomApiProviderName(model) === group.name &&
+        model.inference_endpoint_id !== undefined &&
+        group.inference_endpoint_ids.includes(model.inference_endpoint_id)
     );
     return {
       provider_id: `custom:${group.name}`,
       provider_name: group.name,
-      api_format: endpoint ? readCustomApiFormatForRouteProfileId(endpoint.route_profile_id) : undefined,
+      api_format: endpoint
+        ? readCustomApiFormatForRouteProfileId(endpoint.route_profile_id)
+        : undefined,
+      capability_api_format: endpoint
+        ? readCustomCapabilityFormatForProfile(endpoint.route_profile_id)
+        : undefined,
       base_url: endpoint?.base_url,
       endpoint_id: endpoint?.id,
       models: models.map(model => projectMaterializedModel(model, input, true)),

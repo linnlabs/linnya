@@ -1,4 +1,4 @@
-import { LANGUAGE_INFERENCE_ROUTE_PROFILES } from '@app/schemas/model-inference';
+import { INFERENCE_ENDPOINT_PROFILES } from '../../../definitions/inferenceEndpointProfiles';
 
 import type { InferenceEndpoint } from '../../../definitions/inferenceEndpoint';
 import { readCredentialReference } from './readCredentialReference';
@@ -13,9 +13,7 @@ function requiredString(record: Record<string, unknown>, key: string): string {
 export function readInferenceEndpoint(value: unknown): InferenceEndpoint {
   if (!isRecord(value)) throw new Error('InferenceEndpoint 必须是对象');
   const routeProfileId = requiredString(value, 'route_profile_id');
-  const profile = LANGUAGE_INFERENCE_ROUTE_PROFILES.find(
-    candidate => candidate.id === routeProfileId
-  );
+  const profile = INFERENCE_ENDPOINT_PROFILES.find(candidate => candidate.id === routeProfileId);
   if (!profile) throw new Error(`未知 InferenceEndpoint route profile: ${routeProfileId}`);
   const rawAuthProfile = requiredString(value, 'auth_profile');
   const authProfile = profile.auth_profiles.find(candidate => candidate === rawAuthProfile);

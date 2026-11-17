@@ -1,7 +1,7 @@
 # Custom API Onboarding Use Case
 
 本 use case 拥有“用户按 URL、API
-Key、API 格式和模型资料注册自定义语言模型”的跨 domain 顺序。它不是 Provider
+Key、API 格式和模型资料注册自定义模型”的跨 domain 顺序。它不是 Provider
 onboarding，不创建 `ProviderDefinition`、`ProviderAccount` 或模型 `provider`
 字段。
 
@@ -105,3 +105,49 @@ Renderer 按响应中的真实已删除 ID 清理用途绑定；投影读取失�
 - 列表结构错误不能被解释为“没有模型”；能力推断只在 Model Discovery 中执行并标注 confidence。
 - 凭据持久化和目录文件仍是两个物理落点，异常时执行回滚，但不声称拥有跨文件的进程崩溃事务。
   自定义分组仍以名称表达，重命名冲突由用例拒绝；独立连接引用与模型在同一目录文件原子保存。
+
+
+## 非对话能力模型
+
+添加页按显式模型类型注册 embedding、rerank、document OCR 和 image generation。继续复用正式 Host
+推理 adapters、Model Catalog endpoint/credential 事务、能力筛选和用途绑定；不引入新 Provider SDK、
+Python 网关或知识库私有模型目录。模型名称不用于猜类型，非对话连接的协议不能在编辑时切成另一能力。
+
+| 用户选择 | API 地址语义 | 鉴权与响应 |
+| --- | --- | --- |
+| OpenAI Embeddings | 基础地址，纯域名补 `/v1`，请求追加 `/embeddings` | 可选 Bearer；`data[].embedding` |
+| Cohere Rerank | 基础地址，纯域名补 `/v2`，追加 `/rerank`；网关显式 `/v1` 原样保留 | Bearer；`results[].index/relevance_score` |
+| OpenAI Images | 基础地址，纯域名补 `/v1`，追加 `/images/generations` | 可选 Bearer；要求 `b64_json`，目前每次一张 |
+| Paddle Layout Parsing | 完整 endpoint，不追加路径 | `token`；layoutParsingResults 的 Markdown |
+| Paddle OCR Jobs | 服务基础地址，追加 `/api/v2/ocr/jobs` | Bearer 上传，轮询 job，下载 JSONL 不透传 Key |
+
+`POST /capabilities/models` 注册单个手填模型 ID；`POST /capabilities/test` 使用同一份严格命令进行一次
+合成文本/图片/PDF调用，最长 120 秒，可取消，不保存目录、凭据或用途。图片测试也可能产生供应商费用，
+UI 在按钮旁明确提示。取消会中止本地请求、轮询与后续调用，保留草稿；Paddle Jobs 已受理任务没有本轮接入的远端撤销端口，不能承诺停止供应商处理或费用。成功仅证明这次协议调用可解码，不代表模型质量、额度或配置已保存。
+`PUT /capabilities/providers` 原子更新连接名称、地址和可选新 Key；改地址时按原 endpoint 规则重新绑定，
+同一连接内各个模型本地 ID 保持不变。该类模型不使用 `/models` 发现；刷新被明确拒绝，手填列表不被清空。
+
+名称/Key 变更不改变 embedding 向量空间；地址或上游模型 ID 变化由实际请求的 `spaceId` 识别，
+详见 [Embedding 合同](../../../../domains/model-inference/README.md)。设置页通过窄 metadata port 列出
+受影响知识库，提示使用“重建检索索引”并保留原文与关联，绝不以清空原文代替重建；插件不可用时明确未知影响。
+模型目录与来源合同本身不拥有索引迁移，调用方必须持久化并传回 expectedSpaceId 才构成完整保护。
+
+Paddle Layout Parsing 的部署模型由 endpoint 决定，其手填 ID 仅是本地身份标签，不向 payload 增加不存在的 `model` 参数。
+
+本轮不接 Mistral `/ocr`、任意重排格式、URL-only 生图返回或新的本地网关进程。视觉对话仍使用既有
+`image_vision` 用途，不冒充 PDF OCR。用户自建的 LiteLLM/兼容网关只在其实际协议符合上表时使用。
+
+### 协议验收资料
+
+协议 fixture 通过本机 TCP + 正式 adapters/已安装 SDK 验证请求路径、认证、payload、响应解码、鉴权/格式错误，
+不是供应商真实连通或质量认证；fixture 只处理合成输入。官方合同来源：
+
+- [OpenAI Embeddings](https://developers.openai.com/api/reference/resources/embeddings/methods/create)
+- [OpenAI Images](https://developers.openai.com/api/reference/resources/images)
+- [Cohere Rerank](https://docs.cohere.com/reference/rerank)
+- [PaddleOCR-VL 服务](https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PaddleOCR-VL.html)
+- [Paddle OCR Jobs](https://ai.baidu.com/ai-doc/AISTUDIO/Mml7n69e7)
+- [AI SDK OpenAI-compatible Provider](https://ai-sdk.dev/providers/openai-compatible-providers)
+
+定向协议和重启持久化回归在相邻 `orchestration/customCapability*.integration.test.ts`；错误回显不包含原始
+远端正文或 secret。Desktop 验收复用同一个本地 fixture，覆盖测试/保存分离、手填列表和用途配置。
