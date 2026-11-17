@@ -54,7 +54,7 @@ const STATUS_TABS: SegmentedTabItem[] = [
 const neutralHueMode = ref('brand');
 /** 色偏强度 0–100；0 即现状纯灰。 */
 const neutralAmount = ref(20);
-const buttonMode = ref<ButtonMode>('brand-dark');
+const buttonMode = ref<ButtonMode>('deep');
 /** 用户 2026-11-17 选定：薄荷、协调状态色、中性色跟随强调色轻微色偏。 */
 const greenId = ref('g2');
 const customL = ref(72);
