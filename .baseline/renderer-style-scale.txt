@@ -12,7 +12,7 @@
 3	SCALE-03-line-height	apps/renderer/domains/conversation/styles/components/AgentTodoCard.css
 1	SCALE-04-radius	apps/renderer/domains/conversation/styles/components/AgentTodoCard.css
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/AiAssistantInput.css
-4	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/AiAssistantInputFooter.css
+2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/AiAssistantInputFooter.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/styles/components/AiAssistantInputFooter.css
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/ConversationChatSurface.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/styles/components/ConversationHost.css

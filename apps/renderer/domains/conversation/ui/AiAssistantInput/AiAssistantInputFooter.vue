@@ -18,7 +18,7 @@
           <IconButton
             ref="inputActionMenuButtonComponentRef"
             class="input-action-menu-button"
-            :size="variant === 'compact' ? 'sm' : 'md'"
+            size="sm"
             :label="conversationMessage('conversation.input.actionMenu.open')"
             :disabled="isInputControlsDisabled"
             aria-haspopup="menu"

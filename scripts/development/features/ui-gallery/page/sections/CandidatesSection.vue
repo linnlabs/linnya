@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { BaseButton } from '@linnya/renderer-ui';
-import { AddIcon, ChatIcon, LibraryIcon, LoadingIcon } from '@linnya/renderer-ui/icons';
+import { AddIcon, LibraryIcon, LoadingIcon } from '@linnya/renderer-ui/icons';
 import StatusBadge, { type BadgeTone } from '../prototypes/StatusBadge.vue';
 import CollapsibleSection from '../prototypes/CollapsibleSection.vue';
 import EmptyState from '../prototypes/EmptyState.vue';
@@ -52,13 +52,13 @@ function resetRows() {
 
 <template>
   <div class="gallery-section">
-    <GalleryBlock title="侧栏：Agent 运行状态" note="行尾显示状态，无运行时显示时间。等你回答、等你审批是必须处理的，带淡光环；中断只提示看一眼，点开该对话后消失。悬停圆点可看说明。">
+    <GalleryBlock title="侧栏：Agent 运行状态" note="对话行前面没有图标，状态就放在行首这块预留的位置，标题对齐不变，行尾始终显示时间。等你回答、等你审批是必须处理的，带淡光环；中断只提示看一眼，点开该对话后消失。悬停圆点可看说明。">
       <GalleryRow label="图例">
         <span v-for="status in (['running', 'awaiting-answer', 'awaiting-approval', 'interrupted'] as const)" :key="status" class="candidates__legend">
           <RunStatusIndicator :status="status" />
           <span>{{ { running: '进行中', 'awaiting-answer': '需要回答', 'awaiting-approval': '需要审批', interrupted: '中断（查看后消失）' }[status] }}</span>
         </span>
-        <span class="candidates__legend candidates__legend--muted">无运行：显示时间</span>
+        <span class="candidates__legend candidates__legend--muted">无运行：行首留空</span>
       </GalleryRow>
       <GalleryRow label="侧栏列表" align="start">
         <div class="candidates__sidebar">
@@ -72,10 +72,11 @@ function resetRows() {
             @click="openRow(row)"
             @keydown.enter="openRow(row)"
           >
-            <ChatIcon class="candidates__row-icon" />
+            <span class="candidates__row-status">
+              <RunStatusIndicator v-if="row.status !== 'idle'" :status="row.status" />
+            </span>
             <span class="candidates__row-title">{{ row.title }}</span>
-            <RunStatusIndicator v-if="row.status !== 'idle'" :status="row.status" />
-            <span v-else class="candidates__row-time">{{ row.time }}</span>
+            <span class="candidates__row-time">{{ row.time }}</span>
           </div>
         </div>
         <BaseButton variant="plain" size="sm" @click="resetRows">重置状态</BaseButton>
@@ -196,6 +197,16 @@ function resetRows() {
   width: 16px;
   height: 16px;
   color: var(--color-text-tertiary);
+}
+
+/* 行首状态槽：与产品侧栏行的图标槽同宽（18px），没有状态时留空，标题位置不随状态跳动。 */
+.candidates__row-status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
 }
 
 .candidates__row-title {

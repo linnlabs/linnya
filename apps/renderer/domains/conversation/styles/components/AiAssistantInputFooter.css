@@ -1,7 +1,9 @@
-/* 底部控件高度取 IconButton 的档位：常规 28（md）、紧凑 24（sm），“+”与模型选择器、图片按钮同高。 */
+/*
+ * 底部控件统一 24px（IconButton sm 档），“+”、模型选择器与图片按钮同高；常规与紧凑只差字号和左右留白。
+ * 高度来自这个变量加 flex 居中，不靠上下内边距与行高相加。
+ */
 .ai-assistant-input-footer {
-  --input-footer-control-height: 28px;
-  --input-footer-control-line-height: 18px;
+  --input-footer-control-height: 24px;
 
   display: flex;
   justify-content: space-between;
@@ -13,9 +15,6 @@
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact {
-  --input-footer-control-height: 24px;
-  --input-footer-control-line-height: 16px;
-
   padding: var(--space-1-5) var(--space-2-5) var(--space-2);
   align-items: flex-end;
 }
@@ -30,7 +29,7 @@
 
 .ai-assistant-input-footer.input-bottom-section--compact .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
   min-width: 0;
-  padding: 3px var(--space-5) 3px 7px;
+  padding: 0 var(--space-5) 0 7px;
   font-size: var(--font-size-caption);
 }
 
@@ -92,14 +91,14 @@
 .ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
   min-width: 60px;
   width: auto;
-  padding: var(--space-1) var(--space-6) var(--space-1) var(--space-2);
+  padding: 0 var(--space-6) 0 var(--space-2);
   font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
   background: transparent;
   border: none;
   border-radius: var(--radius-md);
   height: var(--input-footer-control-height);
-  line-height: var(--input-footer-control-line-height);
+  line-height: 1;
 }
 
 .ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled {
@@ -183,7 +182,7 @@
 .ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger {
   position: relative;
   /* 左侧放 icon（默认 research，hover 变 close） */
-  padding: var(--space-1) var(--space-2) var(--space-1) 26px; /* 为左侧图标预留空间（收紧 icon 与“研究”的间距） */
+  padding: 0 var(--space-2) 0 26px; /* 为左侧图标预留空间（收紧 icon 与“研究”的间距） */
   background-color: var(--color-accent-bg);
   color: var(--color-accent);
 }
