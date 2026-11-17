@@ -61,6 +61,11 @@ export const GALLERY_SECTIONS = [
     description: '计划进入 renderer-ui 的组件原型：侧栏 Agent 运行状态、徽标、空状态、折叠区与加载。原型在画廊 prototypes/，还不是包内组件。',
   },
   {
+    id: 'document-top',
+    label: '方向对比：文档顶部',
+    description: 'Markdown 工具栏改悬浮、文档栏改标签页的对比预览。用真实工具条组件拼的示意，不是真实页面。',
+  },
+  {
     id: 'list-example',
     label: '组合：列表与卡片',
     description: '按设计规范 9.4、9.6 拼出的列表行与卡片，用来看层级与留白；不是真实侧栏。',
