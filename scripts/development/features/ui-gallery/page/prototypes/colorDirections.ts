@@ -145,16 +145,63 @@ export function accentTokens(theme: PreviewTheme, candidate: GreenCandidate | Ok
   };
 }
 
-/** 墨色操作：主按钮、勾选、焦点改墨色，绿色只留给品牌与成功。 */
-export const INK_TOKENS: Readonly<Record<PreviewTheme, TokenMap>> = {
-  light: {
-    accent: '#262626', 'accent-solid': '#2d2d2d', 'accent-solid-hover': '#171717', 'accent-hover': '#171717',
-    'accent-text': '#262626', 'accent-bg': '#ededed', 'accent-bg-hover': '#e5e5e5', 'accent-bg-subtle': '#f5f5f5',
-    'accent-light': '#525252', 'border-accent-light': '#bcbcbc', 'focus-ring': '#737373', 'text-on-accent': '#ffffff',
-  },
-  dark: {
-    accent: '#e5e5e5', 'accent-solid': '#e5e5e5', 'accent-solid-hover': '#fafafa', 'accent-hover': '#fafafa',
-    'accent-text': '#ededed', 'accent-bg': '#3a3a3a', 'accent-bg-hover': '#404040', 'accent-bg-subtle': '#2d2d2d',
-    'accent-light': '#d4d4d4', 'border-accent-light': '#737373', 'focus-ring': '#a3a3a3', 'text-on-accent': '#171717',
-  },
-};
+export type ButtonMode = 'deep' | 'brand-dark' | 'brand-white' | 'ink' | 'tonal';
+
+export interface ButtonStyle {
+  readonly bg: Oklch;
+  readonly fg: Oklch;
+  readonly hover: Oklch;
+}
+
+const INK_LIGHT: ButtonStyle = { bg: hexToOklch('#2d2d2d'), fg: WHITE, hover: hexToOklch('#171717') };
+const INK_DARK: ButtonStyle = { bg: hexToOklch('#e5e5e5'), fg: hexToOklch('#171717'), hover: hexToOklch('#fafafa') };
+
+/**
+ * 主按钮的五种做法：
+ * - deep：现状，实底比品牌色深，保证白字 4.5:1；
+ * - brand-dark：品牌色本色作实底、同色相深色字（Radix 对薄荷、天蓝、黄等亮色 step 9 的做法）；
+ * - brand-white：品牌色本色加白字（Apple 系统绿的做法），白字对比度不足 4.5:1；
+ * - ink：墨色主按钮，绿色只用于选中、勾选、状态；
+ * - tonal：品牌色浅底加深色字（Material 3 浅色调按钮）。
+ */
+export function buttonStyle(theme: PreviewTheme, candidate: GreenCandidate | Oklch, mode: ButtonMode): ButtonStyle {
+  const ramp = greenRamp(candidate);
+  const { c, h } = ramp.brand;
+  const brandFill = theme === 'light' ? ramp.brand : { ...ramp.brand, l: Math.max(ramp.brand.l, 0.7) };
+  switch (mode) {
+    case 'brand-dark':
+      return { bg: brandFill, fg: { l: 0.25, c: c * 0.5, h }, hover: { ...brandFill, l: brandFill.l - 0.04 } };
+    case 'brand-white':
+      return { bg: brandFill, fg: WHITE, hover: { ...brandFill, l: brandFill.l - 0.04 } };
+    case 'ink':
+      return theme === 'light' ? INK_LIGHT : INK_DARK;
+    case 'tonal':
+      return theme === 'light'
+        ? { bg: { l: 0.925, c: c * 0.32, h }, fg: ramp.text, hover: { l: 0.9, c: c * 0.4, h } }
+        : { bg: { l: 0.38, c: c * 0.5, h }, fg: ramp.darkText, hover: { l: 0.42, c: c * 0.55, h } };
+    default:
+      return theme === 'light'
+        ? { bg: ramp.solid, fg: WHITE, hover: { ...ramp.solid, l: ramp.solid.l - 0.05 } }
+        : { bg: ramp.solid, fg: WHITE, hover: { ...ramp.solid, l: ramp.solid.l - 0.05 } };
+  }
+}
+
+/** 预览容器上的按钮与标记变量；brand-* 模式下勾选、开关、页签指示也用品牌色本色。 */
+export function buttonTokens(theme: PreviewTheme, candidate: GreenCandidate | Oklch, mode: ButtonMode): TokenMap {
+  const style = buttonStyle(theme, candidate, mode);
+  const tokens: TokenMap = {
+    'preview-btn-bg': css(style.bg),
+    'preview-btn-fg': css(style.fg),
+    'preview-btn-hover': css(style.hover),
+  };
+  if (mode === 'brand-dark' || mode === 'brand-white') {
+    tokens['preview-mark'] = css(style.bg);
+    tokens['preview-mark-fg'] = css(style.fg);
+  }
+  return tokens;
+}
+
+export function buttonContrast(theme: PreviewTheme, candidate: GreenCandidate | Oklch, mode: ButtonMode): number {
+  const style = buttonStyle(theme, candidate, mode);
+  return contrast(style.bg, style.fg);
+}

@@ -13,7 +13,10 @@ import {
   accentTokens,
   GREEN_CANDIDATES,
   greenRamp,
-  INK_TOKENS,
+  buttonContrast,
+  buttonStyle,
+  buttonTokens,
+  type ButtonMode,
   NEUTRAL_MAX_CHROMA,
   neutralTokens,
   type GreenCandidate,
@@ -35,10 +38,14 @@ const NEUTRAL_HUE_TABS: SegmentedTabItem[] = [
   { id: 'cool', label: '冷（蓝灰）' },
   { id: 'warm', label: '暖（米灰）' },
 ];
-const ACCENT_MODE_TABS: SegmentedTabItem[] = [
-  { id: 'green', label: '绿色' },
-  { id: 'ink', label: '墨色操作' },
+const BUTTON_MODES: readonly { id: ButtonMode; label: string; note: string }[] = [
+  { id: 'deep', label: '加深实底 + 白字', note: '现状做法：为白字 4.5:1 把实底压深，按钮比所选颜色深。' },
+  { id: 'brand-dark', label: '品牌色实底 + 深字', note: 'Radix 对薄荷、天蓝、黄等亮色的做法：实底就是品牌色本身，勾选、开关、页签指示同色。' },
+  { id: 'brand-white', label: '品牌色实底 + 白字', note: 'Apple 系统绿的做法：颜色最准，但白字对比度不足。' },
+  { id: 'ink', label: '墨色实底', note: 'Notion、ChatGPT 一类：主按钮用墨色，绿色只做选中、勾选、状态。' },
+  { id: 'tonal', label: '浅色调', note: 'Material 3 的浅色调按钮：品牌色浅底加深色字，最轻。' },
 ];
+const BUTTON_MODE_TABS: SegmentedTabItem[] = BUTTON_MODES.map(mode => ({ id: mode.id, label: mode.label }));
 const STATUS_TABS: SegmentedTabItem[] = [
   { id: 'current', label: '现状' },
   { id: 'tuned', label: '协调' },
@@ -46,13 +53,14 @@ const STATUS_TABS: SegmentedTabItem[] = [
 
 const neutralHueMode = ref('brand');
 /** 色偏强度 0–100；0 即现状纯灰。 */
-const neutralAmount = ref(0);
-const accentMode = ref('green');
-const greenId = ref('current');
-const customL = ref(70);
-const customC = ref(90);
-const customH = ref(160);
-const status = ref('current');
+const neutralAmount = ref(20);
+const buttonMode = ref<ButtonMode>('brand-dark');
+/** 用户 2026-11-17 选定：薄荷、协调状态色、中性色跟随强调色轻微色偏。 */
+const greenId = ref('g2');
+const customL = ref(72);
+const customC = ref(100);
+const customH = ref(158);
+const status = ref('tuned');
 
 const agree = ref(true);
 const notify = ref(true);
@@ -133,7 +141,8 @@ const customRamp = computed(() => greenRamp(customGreen.value));
 const candidateStyle = computed(() => {
   const tokens: Record<string, string> = {
     ...neutralTokens(theme.value, neutralHue.value, neutralAmount.value / 100),
-    ...(accentMode.value === 'ink' ? INK_TOKENS[theme.value] : accentTokens(theme.value, selectedGreen.value)),
+    ...accentTokens(theme.value, selectedGreen.value),
+    ...buttonTokens(theme.value, selectedGreen.value, buttonMode.value),
     ...(status.value === 'tuned' ? TUNED_STATUS_TOKENS[theme.value] : {}),
   };
   if (tokens['text-primary']) {
@@ -141,8 +150,20 @@ const candidateStyle = computed(() => {
     tokens['bg-hover'] = `color-mix(in srgb, ${tokens['text-primary']} ${alpha[0]}%, transparent)`;
     tokens['bg-hover-strong'] = `color-mix(in srgb, ${tokens['text-primary']} ${alpha[1]}%, transparent)`;
   }
-  return Object.fromEntries(Object.entries(tokens).map(([name, value]) => [`--color-${name}`, value]));
+  return Object.fromEntries(Object.entries(tokens).map(([name, value]) => [name.startsWith('preview-') ? `--${name}` : `--color-${name}`, value]));
 });
+
+const buttonSamples = computed(() =>
+  BUTTON_MODES.map(mode => {
+    const style = buttonStyle(theme.value, selectedGreen.value, mode.id);
+    return {
+      ...mode,
+      style: { '--preview-btn-bg': css(style.bg), '--preview-btn-fg': css(style.fg), '--preview-btn-hover': css(style.hover) },
+      contrast: buttonContrast(theme.value, selectedGreen.value, mode.id),
+    };
+  })
+);
+const buttonNote = computed(() => BUTTON_MODES.find(mode => mode.id === buttonMode.value)?.note ?? '');
 
 const PANES = [
   { id: 'current', label: '现状' },
@@ -156,8 +177,7 @@ const PANES = [
       title="颜色方向（计划中）"
       note="强调色、中性色、状态色分开调，右侧即时组合。色板卡片依次是：品牌色、浅色主按钮（白字 ≥4.5:1）、浅底文字、深色模式。研究用候选值，不是产品 token；只覆盖浅色与深色。"
     >
-      <GalleryRow label="强调色"><SegmentedTabs v-model="accentMode" :tabs="ACCENT_MODE_TABS" /></GalleryRow>
-      <GalleryRow v-if="accentMode === 'green'" label="绿色色板" align="start">
+      <GalleryRow label="绿色色板" align="start">
         <div class="color-dir__swatches">
           <button
             v-for="item in swatches"
@@ -178,13 +198,28 @@ const PANES = [
           </button>
         </div>
       </GalleryRow>
-      <GalleryRow v-if="accentMode === 'green'" label="自定义（拖动即选用）" align="start">
+      <GalleryRow label="自定义（拖动即选用）" align="start">
         <div class="color-dir__sliders">
           <label class="color-dir__slider">明度 L {{ (customL / 100).toFixed(2) }}<CustomSlider v-model="customL" :min="55" :max="80" aria-label="明度" @update:model-value="editCustom" /></label>
           <label class="color-dir__slider">彩度 C {{ (customC / 1000).toFixed(3) }}<CustomSlider v-model="customC" :min="30" :max="150" aria-label="彩度" @update:model-value="editCustom" /></label>
           <label class="color-dir__slider">色相 H {{ customH }}<CustomSlider v-model="customH" :min="130" :max="200" aria-label="色相" @update:model-value="editCustom" /></label>
           <span class="color-dir__custom-chip" :style="{ backgroundColor: css(customRamp.brand) }" />
           <span class="color-dir__swatch-meta">主按钮白字 {{ customRamp.solidContrast.toFixed(1) }}:1</span>
+        </div>
+      </GalleryRow>
+      <GalleryRow label="主按钮做法" align="start">
+        <div class="color-dir__buttons">
+          <div v-for="sample in buttonSamples" :key="sample.id" class="color-dir__button-sample" :style="sample.style">
+            <BaseButton variant="primary" size="md"><template #icon><AddIcon /></template>新建文档</BaseButton>
+            <span class="color-dir__swatch-label">{{ sample.label }}</span>
+            <span class="color-dir__swatch-meta">文字对比度 {{ sample.contrast.toFixed(1) }}:1{{ sample.contrast < 4.5 ? '（不足 4.5）' : '' }}</span>
+          </div>
+        </div>
+      </GalleryRow>
+      <GalleryRow label="下方组合用" align="start">
+        <div class="color-dir__sliders">
+          <SegmentedTabs v-model="buttonMode" :tabs="BUTTON_MODE_TABS" />
+          <span class="color-dir__swatch-meta">{{ buttonNote }}</span>
         </div>
       </GalleryRow>
       <GalleryRow label="中性色色偏" align="start">
@@ -199,7 +234,7 @@ const PANES = [
       <div class="color-dir__panes">
         <div v-for="pane in PANES" :key="pane.id" class="color-dir__pane-wrap">
           <p class="color-dir__pane-label">{{ pane.label }}</p>
-          <div class="color-dir__pane" :style="pane.id === 'candidate' ? candidateStyle : undefined">
+          <div class="color-dir__pane" :class="`color-dir__pane--${pane.id}`" :style="pane.id === 'candidate' ? candidateStyle : undefined">
             <aside class="color-dir__sidebar">
               <div class="color-dir__nav is-selected"><FolderIcon class="color-dir__icon" />项目文档</div>
               <div class="color-dir__nav"><LibraryIcon class="color-dir__icon" />知识库</div>
@@ -340,6 +375,52 @@ const PANES = [
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
+}
+
+.color-dir__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.color-dir__button-sample {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+
+/* 预览专用：主按钮与勾选、开关、页签指示读预览变量，未设置时回到组件自身的 token。 */
+.color-dir__button-sample .linnya-ui-button--primary,
+.color-dir__pane .linnya-ui-button--primary {
+  background-color: var(--preview-btn-bg, var(--color-accent-solid));
+  color: var(--preview-btn-fg, var(--color-text-on-accent));
+}
+
+.color-dir__button-sample .linnya-ui-button--primary:hover:not(:disabled),
+.color-dir__pane .linnya-ui-button--primary:hover:not(:disabled) {
+  background-color: var(--preview-btn-hover, var(--color-accent-solid-hover));
+}
+
+.color-dir__pane .checkbox-item input[type="checkbox"]:checked ~ .checkbox-custom {
+  border-color: var(--preview-mark, var(--color-accent));
+  background-color: var(--preview-mark, var(--color-accent));
+}
+
+.color-dir__pane .checkbox-item .check-icon {
+  color: var(--preview-mark-fg, var(--color-text-on-accent));
+}
+
+.color-dir__pane .switch-control-input:checked + .switch-control-track {
+  background-color: var(--preview-mark, var(--color-accent));
+}
+
+.color-dir__pane .segmented-tabs__indicator {
+  background: var(--preview-mark, var(--color-accent));
+}
+
+.color-dir__pane--candidate .segmented-tabs__button.is-active {
+  color: var(--color-accent-text);
 }
 
 .color-dir__moon {
