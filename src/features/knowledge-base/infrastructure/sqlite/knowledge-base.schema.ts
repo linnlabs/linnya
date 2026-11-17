@@ -23,7 +23,6 @@ export const KNOWLEDGE_BASE_SCHEMAS = [
     -- JSON 编码的标签数组，例如 '["产品","内部","重要"]'
     tags_json TEXT,
     embedding_model_id TEXT,
-    embedding_space_id TEXT,
     rerank_model_id TEXT,
     pdf_ocr_model_id TEXT,
     image_vision_model_id TEXT,
@@ -34,7 +33,9 @@ export const KNOWLEDGE_BASE_SCHEMAS = [
     -- - 0: 关闭（不再对新文档入队抽取/索引；已存在图谱不受影响）
     enable_graph_indexing INTEGER NOT NULL DEFAULT 1,
     created_at REAL NOT NULL,
-    updated_at REAL
+    updated_at REAL,
+    -- 与升级路径的 ADD COLUMN 保持同一列顺序，确保新建与升级后的结构一致。
+    embedding_space_id TEXT
   )`,
 
   // 知识库索引
