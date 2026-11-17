@@ -1,4 +1,5 @@
-import { execFileSync, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { listGitFiles } from '../../../../source-analysis/listGitFiles.mjs';
 import { closeSync, openSync, statSync } from 'node:fs';
 import { discoverWorkspaceDiskBackendPlugins } from '../../plugin-backend-composition/functions/discoverWorkspaceDiskBackendPlugins.mjs';
 import { join } from 'node:path';
@@ -23,9 +24,8 @@ export function buildFreshness(root = repoRoot) {
       }
     }
   }
-  const sources = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'src', 'packages'], {
-    cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
-  }).split('\0').filter(path => path && feedsDesktopBundle(path))
+  const sources = listGitFiles(['--cached', '--others', '--exclude-standard', '--', 'src', 'packages'], { cwd: root })
+    .filter(path => feedsDesktopBundle(path))
     .map(path => ({ path, mtimeMs: mtime(root, path) ?? 0 }));
   return judgeBuildFreshness(outputs.map(path => ({ path, mtimeMs: mtime(root, path) })), sources);
 }

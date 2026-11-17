@@ -5,7 +5,7 @@
  * 同时阻止已退役的产品身份回流。规则不记录维护者用户名、真实本机路径或旧名称
  * 的完整字面量，也不维护“已知泄露内容”基线。
  */
-import { execFileSync } from 'node:child_process';
+import { listGitFiles } from '../source-analysis/listGitFiles.mjs';
 import fs, { type Stats } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -165,12 +165,7 @@ export function analyzePublicTextForSourceSanitization(
 }
 
 function listPublicCandidateFiles(repoRoot: string): string[] {
-  return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  })
-    .split('\0')
-    .filter(Boolean)
+  return listGitFiles(['--cached', '--others', '--exclude-standard'], { cwd: repoRoot })
     .sort((left, right) => left.localeCompare(right));
 }
 

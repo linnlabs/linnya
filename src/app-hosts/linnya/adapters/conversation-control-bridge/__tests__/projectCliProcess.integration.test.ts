@@ -18,6 +18,9 @@ import { controlProjects } from 'src/app-hosts/linnya/application/conversation-c
 import { createConversationControlBridgeRouter } from 'src/app-hosts/linnya/adapters/conversation-control-bridge/conversationControlBridge.router';
 import { runCliProcess } from '../../../../../../apps/linnya-cli/src/__integration-tests__/__test-helpers__/scriptedCliBridge';
 
+// 每次调用都启动一个新的 CLI 进程并用 tsx 加载源码；机器忙时单次约 2–3 秒，单个用例最多串行调用 9 次。
+const CLI_PROCESS_TEST_TIMEOUT_MS = 60_000;
+
 describe('Project CLI process → real HTTP bridge → Project SQLite', () => {
   let root: string;
   let db: Database.Database;
@@ -131,7 +134,7 @@ describe('Project CLI process → real HTTP bridge → Project SQLite', () => {
     expect(await execute('list')).toMatchObject({
       projects: [{ project_id: id, name: 'Renamed' }],
     });
-  }, 20_000);
+  }, CLI_PROCESS_TEST_TIMEOUT_MS);
 
   it('重名、不存在和非法更新有稳定退出码，失败不会写入或发布通知', async () => {
     const first = await execute('create', 'First');
@@ -172,7 +175,7 @@ describe('Project CLI process → real HTTP bridge → Project SQLite', () => {
     expect(events).toEqual(initialEvents);
     expect(createProjectLifecycle(db).get(id).name).toBe('First');
     expect(createProjectLifecycle(db).list()).toHaveLength(2);
-  }, 20_000);
+  }, CLI_PROCESS_TEST_TIMEOUT_MS);
 
   it('删除要求明确确认，只删除空普通项目；关联内容和默认项目保持原样', async () => {
     const creation = await execute('create', 'Temporary');
@@ -232,5 +235,5 @@ describe('Project CLI process → real HTTP bridge → Project SQLite', () => {
     expect(events.map(event => event.type)).toEqual([
       'project.created', 'project.created', 'project.created', 'project.deleted',
     ]);
-  }, 20_000);
+  }, CLI_PROCESS_TEST_TIMEOUT_MS);
 });

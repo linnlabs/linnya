@@ -135,7 +135,7 @@ export function runSlidesSkillCheck(options: {
     problems.push({
       kind: 'resource-budget',
       path: relativePath(skillRoot, skillRoot),
-      message: `Skill 资源共 ${resourceFiles.length} 个，超过 ${SLIDES_SKILL_RESOURCE_BUDGET} 个的上下文预算。`,
+      message: `Skill 资源共 ${resourceFiles.length} 个，超过 ${SLIDES_SKILL_RESOURCE_BUDGET} 个的上下文预算。基准证明有效的规则不要为过门禁删减；先用设计基准证明成稿变好，再调高 scripts/codegen/slidesSkillContract.ts 里的预算并在常量旁写明依据。`,
     });
   }
 
@@ -146,7 +146,7 @@ export function runSlidesSkillCheck(options: {
     problems.push({
       kind: 'instruction-budget',
       path: 'SKILL.md',
-      message: `SKILL.md 估算为 ${estimatedInstructionTokens} tokens，超过 ${SLIDES_SKILL_INSTRUCTION_TOKEN_BUDGET}。`,
+      message: `SKILL.md 估算为 ${estimatedInstructionTokens} tokens，超过 ${SLIDES_SKILL_INSTRUCTION_TOKEN_BUDGET}。基准证明有效的规则不要为过门禁删减；先用设计基准证明成稿变好，再调高 scripts/codegen/slidesSkillContract.ts 里的预算并在常量旁写明依据。`,
     });
   }
 
