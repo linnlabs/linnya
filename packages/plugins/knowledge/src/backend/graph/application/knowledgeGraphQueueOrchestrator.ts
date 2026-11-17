@@ -241,14 +241,14 @@ export class KnowledgeGraphQueueOrchestrator {
 
   private findGraphExtractionTaskPayload(taskId: string): GraphExtractionJobPayloadInput | null {
     const tasks = this.queueManager.listGraphExtractionTasks();
-    const found = tasks.find((t) => t.id === taskId);
+    const found = tasks.find(t => t.id === taskId);
     if (!found) return null;
     return found.data ?? null;
   }
 
   private findGraphIndexingTaskPayload(taskId: string): GraphIndexingJobPayloadInput | null {
     const tasks = this.queueManager.listGraphIndexingTasks();
-    const found = tasks.find((t) => t.id === taskId);
+    const found = tasks.find(t => t.id === taskId);
     if (!found) return null;
     return found.data ?? null;
   }
@@ -488,7 +488,9 @@ export class KnowledgeGraphQueueOrchestrator {
    * 注意：
    * - RUNNING 的任务不在本方法的职责范围内（避免打断正在执行的 worker，保持语义可预测）。
    */
-  async cancelPendingGraphTasksByKb(kbId: string): Promise<{ cancelledExtraction: number; cancelledIndexing: number }> {
+  async cancelPendingGraphTasksByKb(
+    kbId: string
+  ): Promise<{ cancelledExtraction: number; cancelledIndexing: number }> {
     let cancelledExtraction = 0;
     let cancelledIndexing = 0;
 
@@ -607,7 +609,9 @@ export class KnowledgeGraphQueueOrchestrator {
   private async tryEnqueueAfterIngestion(taskId: string): Promise<void> {
     const task = this.queueManager.getTaskById(taskId);
     if (!task) {
-      this.logger.warn(`摄入完成后入队失败：未找到 ingestion task（可能已被清理）: taskId=${taskId}`);
+      this.logger.warn(
+        `摄入完成后入队失败：未找到 ingestion task（可能已被清理）: taskId=${taskId}`
+      );
       return;
     }
 
@@ -628,10 +632,11 @@ export class KnowledgeGraphQueueOrchestrator {
       return;
     }
 
-    const graphExtractionModelSnapshot = typeof task.data?.graphExtractionModelId === 'string'
-      && task.data.graphExtractionModelId.trim().length > 0
-      ? task.data.graphExtractionModelId.trim()
-      : null;
+    const graphExtractionModelSnapshot =
+      typeof task.data?.graphExtractionModelId === 'string' &&
+      task.data.graphExtractionModelId.trim().length > 0
+        ? task.data.graphExtractionModelId.trim()
+        : null;
     const llmModelId = graphExtractionModelSnapshot ?? resolveGraphExtractionModelId();
     if (!llmModelId) {
       this.logger.warn('跳过图谱抽取：未找到可用的聊天模型', { kbId, docId });
@@ -640,7 +645,9 @@ export class KnowledgeGraphQueueOrchestrator {
 
     const sot = (await this.sotRepo.get(docId)) as DocumentSoT | null;
     if (!sot) {
-      this.logger.warn(`跳过入队：SoT 不存在（文档可能未完成摄入/已删除）: kbId=${kbId}, docId=${docId}`);
+      this.logger.warn(
+        `跳过入队：SoT 不存在（文档可能未完成摄入/已删除）: kbId=${kbId}, docId=${docId}`
+      );
       return;
     }
     const chunkCount = collectExtractableTextBlocks(sot).length;
@@ -667,7 +674,10 @@ export class KnowledgeGraphQueueOrchestrator {
           if (this.stopped) return;
           await this.graphRepo.updateDocProgress(kbId, docId, existing.doneChunks, 'failed');
         } catch (e) {
-          this.logger.warn(`回收僵尸 running 状态失败（将继续尝试入队）: kbId=${kbId}, docId=${docId}`, e as Error);
+          this.logger.warn(
+            `回收僵尸 running 状态失败（将继续尝试入队）: kbId=${kbId}, docId=${docId}`,
+            e as Error
+          );
         }
       } else {
         // queued 且不在队列：直接允许重新入队（不额外改状态）
@@ -738,7 +748,9 @@ export class KnowledgeGraphQueueOrchestrator {
 
     const doc = await this.metadataRepo.getDocumentById(docId);
     if (!doc || doc.kbId !== kbId || doc.status !== DocumentStatus.COMPLETED) {
-      this.logger.warn(`跳过图谱抽取：文档不存在、归属不匹配或尚未完成: kbId=${kbId}, docId=${docId}`);
+      this.logger.warn(
+        `跳过图谱抽取：文档不存在、归属不匹配或尚未完成: kbId=${kbId}, docId=${docId}`
+      );
       return;
     }
 
@@ -756,7 +768,9 @@ export class KnowledgeGraphQueueOrchestrator {
       existing.doneChunks >= existing.chunkCount &&
       existing.chunkCount === chunkCount
     ) {
-      this.logger.info(`跳过入队：图谱抽取已覆盖当前 SoT chunk 数: kbId=${kbId}, docId=${docId}, chunkCount=${chunkCount}`);
+      this.logger.info(
+        `跳过入队：图谱抽取已覆盖当前 SoT chunk 数: kbId=${kbId}, docId=${docId}, chunkCount=${chunkCount}`
+      );
       return;
     }
     if (existing && (existing.status === 'running' || existing.status === 'queued')) {
@@ -829,7 +843,7 @@ export class KnowledgeGraphQueueOrchestrator {
 
       // 预读取该 KB 下的索引状态，避免对每个 doc 单独 get
       const indexStatuses = await this.graphRepo.listVectorDocStatusByKb(kbId);
-      const indexStatusByDocId = new Map(indexStatuses.map((s) => [s.docId, s]));
+      const indexStatusByDocId = new Map(indexStatuses.map(s => [s.docId, s]));
       const embeddingModelIdForKb = await this.resolveEmbeddingModelIdForKb(kbId);
 
       for (const doc of docs) {
@@ -864,9 +878,7 @@ export class KnowledgeGraphQueueOrchestrator {
           // 抽取已完成 -> 尝试补齐“向量索引”
           const idx = indexStatusByDocId.get(doc.id);
           const needIndex =
-            !idx ||
-            idx.status !== 'completed' ||
-            idx.embeddingModelId !== embeddingModelIdForKb;
+            !idx || idx.status !== 'completed' || idx.embeddingModelId !== embeddingModelIdForKb;
           if (needIndex && !this.hasGraphIndexingTaskForDoc(kbId, doc.id)) {
             const payload: GraphIndexingJobPayloadInput = {
               taskId: generateTaskId(),
@@ -904,7 +916,10 @@ export class KnowledgeGraphQueueOrchestrator {
               if (this.stopped) return;
               await this.graphRepo.updateDocProgress(kbId, doc.id, existing.doneChunks, 'failed');
             } catch (e) {
-              this.logger.warn(`回填回收僵尸 running 失败（将继续尝试入队）: kbId=${kbId}, docId=${doc.id}`, e as Error);
+              this.logger.warn(
+                `回填回收僵尸 running 失败（将继续尝试入队）: kbId=${kbId}, docId=${doc.id}`,
+                e as Error
+              );
             }
           } else {
             this.logger.warn(`回填发现僵尸 queued 状态，将重新入队: kbId=${kbId}, docId=${doc.id}`);

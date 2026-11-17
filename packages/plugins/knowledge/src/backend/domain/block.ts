@@ -23,7 +23,7 @@ export enum BlockType {
   TABLE_ROW = 'table_row',
   LIST_ITEM = 'list_item',
   IMAGE = 'image',
-  CODE = 'code'
+  CODE = 'code',
 }
 
 /**
@@ -32,16 +32,16 @@ export enum BlockType {
 export const SourceInfoSchema = z.object({
   /** 页码 - 🔥 新规范：统一使用 page_num */
   page_num: z.number().optional(),
-  
+
   /** 段落索引 */
   para_idx: z.number().optional(),
-  
+
   /** 历史 SoT 兼容字段；新写入优先使用 page_num。 */
   page_number: z.number().optional(),
-  
+
   /** (未来使用) 源位置 */
   source_location: z.unknown().optional().nullable(),
-  
+
   /** 表格ID (用于关联表格行) */
   table_id: z.string().optional(),
 
@@ -49,9 +49,12 @@ export const SourceInfoSchema = z.object({
   row_idx: z.number().optional(),
 
   /** 块在页面上的位置信息 (用于排序) */
-  position: z.object({
-    y: z.number()
-  }).passthrough().optional(),
+  position: z
+    .object({
+      y: z.number(),
+    })
+    .passthrough()
+    .optional(),
 });
 
 /**
@@ -60,13 +63,13 @@ export const SourceInfoSchema = z.object({
 export const BaseBlockSchema = z.object({
   /** 当前 SoT 持久化字段名 */
   block_type: z.nativeEnum(BlockType),
-  
+
   /** 当前 SoT 持久化字段名 */
   text: z.string(),
 
   /** 标题/列表层级 */
   level: z.number().nullable().optional(),
-  
+
   /** 来源信息 */
   source_info: SourceInfoSchema.optional(),
 
@@ -83,7 +86,7 @@ export const BaseBlockSchema = z.object({
  * 段落块的Zod模式
  */
 export const ParagraphBlockSchema = BaseBlockSchema.extend({
-  block_type: z.literal(BlockType.PARAGRAPH)
+  block_type: z.literal(BlockType.PARAGRAPH),
 });
 
 /**
@@ -91,7 +94,7 @@ export const ParagraphBlockSchema = BaseBlockSchema.extend({
  */
 export const HeadingBlockSchema = BaseBlockSchema.extend({
   block_type: z.literal(BlockType.HEADING),
-  level: z.number().min(1).max(6).nullable() // 允许为null
+  level: z.number().min(1).max(6).nullable(), // 允许为null
 });
 
 /**
@@ -99,7 +102,7 @@ export const HeadingBlockSchema = BaseBlockSchema.extend({
  */
 export const TableRowBlockSchema = BaseBlockSchema.extend({
   block_type: z.literal(BlockType.TABLE_ROW),
-  cells: z.array(z.string()).optional()
+  cells: z.array(z.string()).optional(),
 });
 
 /**
@@ -107,7 +110,7 @@ export const TableRowBlockSchema = BaseBlockSchema.extend({
  */
 export const ListItemBlockSchema = BaseBlockSchema.extend({
   block_type: z.literal(BlockType.LIST_ITEM),
-  level: z.number().optional()
+  level: z.number().optional(),
 });
 
 /**
@@ -116,7 +119,7 @@ export const ListItemBlockSchema = BaseBlockSchema.extend({
 export const ImageBlockSchema = BaseBlockSchema.extend({
   block_type: z.literal(BlockType.IMAGE),
   image_url: z.string().optional(),
-  alt_text: z.string().optional()
+  alt_text: z.string().optional(),
 });
 
 /**
@@ -124,7 +127,7 @@ export const ImageBlockSchema = BaseBlockSchema.extend({
  */
 export const CodeBlockSchema = BaseBlockSchema.extend({
   block_type: z.literal(BlockType.CODE),
-  language: z.string().optional()
+  language: z.string().optional(),
 });
 
 /**
@@ -136,7 +139,7 @@ export const BlockSchema = z.discriminatedUnion('block_type', [
   TableRowBlockSchema,
   ListItemBlockSchema,
   ImageBlockSchema,
-  CodeBlockSchema
+  CodeBlockSchema,
 ]);
 
 /**
@@ -157,52 +160,52 @@ export type CodeBlock = z.infer<typeof CodeBlockSchema>;
 export const DocumentSoTSchema = z.object({
   /** 文档ID */
   doc_id: z.string(),
-  
+
   /** 文档标题 */
   doc_title: z.string(),
-  
+
   /** 文档元数据 */
   metadata: z.object({
     /** 原始文件名 */
     source_file: z.string().optional(),
-    
+
     /** (兼容) 原始文件路径 */
     source_file_path: z.string().optional(),
-    
+
     /** 解析时间 */
     parsed_at: z.string().datetime().optional(),
-    
+
     /** (兼容) 创建时间戳 */
     created_at: z.number().optional(),
-    
+
     /** 解析器版本 */
     parser_version: z.string().optional(),
-    
+
     /** 文件大小 */
     file_size: z.number().optional(),
-    
+
     /** 页数 */
     page_count: z.number().optional(),
-    
+
     /** MIME类型 */
     mime_type: z.string().optional(),
-    
+
     /** 摄入时间戳 */
     ingestion_timestamp: z.number().optional(),
-    
+
     /** 任务ID */
     task_id: z.string().optional(),
-    
+
     /** 向量模型 */
     vector_model: z.string().optional(),
-    
+
     /** 视觉模型 */
     vision_model: z.string().optional(),
   }),
-  
+
   /** 内容块映射 - key为block_id，value为块对象 */
   content_blocks: z.record(z.string(), BlockSchema),
-  
+
   /** 文档结构 */
   structure: z.object({
     /** 根节点包含的块ID列表，按原始文档顺序排列 */
@@ -214,8 +217,8 @@ export const DocumentSoTSchema = z.object({
      * - 当前后处理器会生成 toc，用于未来 UI/导航能力
      * - SoT 的核心可用性只依赖 root，因此 toc 允许缺失以兼容历史数据
      */
-    toc: z.array(z.unknown()).optional()
-  })
+    toc: z.array(z.unknown()).optional(),
+  }),
 });
 
 /**
@@ -242,7 +245,7 @@ export function createDocumentSoT(
   // 创建块的映射 - 使用block_id作为key
   const contentBlocks: Record<string, Block> = {};
   const rootIds: string[] = [];
-  
+
   /**
    * 重要说明（稳定性约束）：
    * - SoT 的 key 是 block_id，必须稳定且唯一；
@@ -261,7 +264,7 @@ export function createDocumentSoT(
     contentBlocks[blockId] = blockForSot;
     rootIds.push(blockId);
   }
-  
+
   return {
     doc_id: doc.id,
     doc_title: doc.filename,
@@ -271,11 +274,11 @@ export function createDocumentSoT(
       parser_version: parserVersion,
       file_size: doc.fileSize,
       page_count: pageCount,
-      mime_type: mimeType
+      mime_type: mimeType,
     },
     content_blocks: contentBlocks,
     structure: {
-      root: rootIds
-    }
+      root: rootIds,
+    },
   };
 }

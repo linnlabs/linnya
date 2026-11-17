@@ -12,24 +12,26 @@ describe('GraphExtractionService (M3)', () => {
   it('batchSize=1：应把 LLM 输出规范化为稳定的 node/edge（含稳定 edgeId）', async () => {
     const llm = {
       async generate(): Promise<TextGenerationResult> {
-        return generation(JSON.stringify([
-          {
-            chunk_id: 'b1',
-            entities: [
-              { name: 'Apple Inc.', type: 'Company' },
-              { name: 'iPhone', type: 'Product' },
-            ],
-            edges: [
-              {
-                source: 'Apple Inc.',
-                target: 'iPhone',
-                relation_type: 'produces',
-                statement: 'Apple produces iPhone.',
-                confidence: 0.9,
-              },
-            ],
-          },
-        ]));
+        return generation(
+          JSON.stringify([
+            {
+              chunk_id: 'b1',
+              entities: [
+                { name: 'Apple Inc.', type: 'Company' },
+                { name: 'iPhone', type: 'Product' },
+              ],
+              edges: [
+                {
+                  source: 'Apple Inc.',
+                  target: 'iPhone',
+                  relation_type: 'produces',
+                  statement: 'Apple produces iPhone.',
+                  confidence: 0.9,
+                },
+              ],
+            },
+          ])
+        );
       },
     };
 
@@ -41,7 +43,7 @@ describe('GraphExtractionService (M3)', () => {
       { maxEntitiesPerChunk: 32, maxEdgesPerChunk: 64 }
     );
 
-    expect(r1.nodes.map((n) => n.id).sort()).toEqual(['apple-inc', 'iphone']);
+    expect(r1.nodes.map(n => n.id).sort()).toEqual(['apple-inc', 'iphone']);
     expect(r1.edges).toHaveLength(1);
     expect(r1.edges[0].sourceEntityId).toBe('apple-inc');
     expect(r1.edges[0].targetEntityId).toBe('iphone');
@@ -51,8 +53,16 @@ describe('GraphExtractionService (M3)', () => {
     expect(r1.edges[0].evidenceBlockId).toBe('b1');
 
     // edgeId 稳定：基于 seed 的 crc32（与实现一致）
-    const seed = ['kb1', 'apple-inc', 'RELATED_TO', 'iphone', 'doc1', 'b1', 'apple produces iphone'].join('|');
-    const expected = `edge_${((crc32.str(seed) >>> 0).toString(16)).padStart(8, '0')}`;
+    const seed = [
+      'kb1',
+      'apple-inc',
+      'RELATED_TO',
+      'iphone',
+      'doc1',
+      'b1',
+      'apple produces iphone',
+    ].join('|');
+    const expected = `edge_${(crc32.str(seed) >>> 0).toString(16).padStart(8, '0')}`;
     expect(r1.edges[0].id).toBe(expected);
 
     // 再跑一次应得到完全一致的 id（幂等基础）
@@ -67,26 +77,28 @@ describe('GraphExtractionService (M3)', () => {
   it('批量抽取：应要求 LLM 返回 chunk_id，并把 edges 归属到对应 evidence_block_id', async () => {
     const llm = {
       async generate(): Promise<TextGenerationResult> {
-        return generation(JSON.stringify([
-          {
-            chunk_id: 'b1',
-            entities: [{ name: 'Apple Inc.', type: 'Company' }],
-            edges: [],
-          },
-          {
-            chunk_id: 'b2',
-            entities: [{ name: 'iPhone', type: 'Product' }],
-            edges: [
-              {
-                source: 'iPhone',
-                target: 'Apple Inc.',
-                relation_type: 'DEPENDS_ON',
-                statement: 'iPhone 的供应链高度依赖 Apple Inc.',
-                confidence: 0.7,
-              },
-            ],
-          },
-        ]));
+        return generation(
+          JSON.stringify([
+            {
+              chunk_id: 'b1',
+              entities: [{ name: 'Apple Inc.', type: 'Company' }],
+              edges: [],
+            },
+            {
+              chunk_id: 'b2',
+              entities: [{ name: 'iPhone', type: 'Product' }],
+              edges: [
+                {
+                  source: 'iPhone',
+                  target: 'Apple Inc.',
+                  relation_type: 'DEPENDS_ON',
+                  statement: 'iPhone 的供应链高度依赖 Apple Inc.',
+                  confidence: 0.7,
+                },
+              ],
+            },
+          ])
+        );
       },
     };
 
@@ -101,7 +113,7 @@ describe('GraphExtractionService (M3)', () => {
     );
 
     // nodes 至少包含 apple-inc / iphone（批量合并，允许重复 upsert）
-    const nodeIds = Array.from(new Set(r.nodes.map((n) => n.id))).sort();
+    const nodeIds = Array.from(new Set(r.nodes.map(n => n.id))).sort();
     expect(nodeIds).toEqual(['apple-inc', 'iphone']);
 
     // edge 归属到 b2
@@ -119,7 +131,7 @@ describe('GraphExtractionService (M3)', () => {
       'b2',
       'iphone 的供应链高度依赖 apple inc',
     ].join('|');
-    const expected = `edge_${((crc32.str(seed) >>> 0).toString(16)).padStart(8, '0')}`;
+    const expected = `edge_${(crc32.str(seed) >>> 0).toString(16).padStart(8, '0')}`;
     expect(r.edges[0].id).toBe(expected);
   });
 
@@ -164,7 +176,7 @@ describe('GraphExtractionService (M3)', () => {
     );
 
     // 只解析第一段数组，因此只会产生 apple 相关节点
-    const nodeIds = Array.from(new Set(r.nodes.map((n) => n.id))).sort();
+    const nodeIds = Array.from(new Set(r.nodes.map(n => n.id))).sort();
     expect(nodeIds).toEqual(['apple']);
   });
 
@@ -189,4 +201,3 @@ describe('GraphExtractionService (M3)', () => {
     ).rejects.toThrow(/JSON 数组不完整/);
   });
 });
-

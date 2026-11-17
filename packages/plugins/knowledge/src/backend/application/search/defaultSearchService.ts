@@ -79,7 +79,7 @@ export class DefaultSearchService implements SearchService {
   }
 
   private async hasDocuments(kbId: string): Promise<boolean> {
-    if (!await this.metadataRepository.getKnowledgeBaseById(kbId)) {
+    if (!(await this.metadataRepository.getKnowledgeBaseById(kbId))) {
       throw new Error(`找不到知识库: ${kbId}`);
     }
     const counts = await this.metadataRepository.getDocumentCountsByKnowledgeBaseIds([kbId]);
@@ -95,7 +95,7 @@ export class DefaultSearchService implements SearchService {
 
     try {
       // 新库尚未摄入，没有索引和模型来源；空结果不能触发猜测维度建集合。
-      if (!await this.hasDocuments(kbId)) {
+      if (!(await this.hasDocuments(kbId))) {
         return { semanticResults: [], keywordResults: [], combinedResults: [] };
       }
       // 1) 生成查询向量（统一校验 number[]）
@@ -245,7 +245,14 @@ export class DefaultSearchService implements SearchService {
   ): Promise<AgentKnowledgeSearchOutput> {
     if (!(await this.hasDocuments(kbId))) {
       return {
-        observation: await formatSearchResultsForLLM([], this.sotRepository, docId, query, citationOffset, []),
+        observation: await formatSearchResultsForLLM(
+          [],
+          this.sotRepository,
+          docId,
+          query,
+          citationOffset,
+          []
+        ),
         hits: [],
       };
     }

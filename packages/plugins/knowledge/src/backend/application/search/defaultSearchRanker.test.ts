@@ -35,13 +35,15 @@ describe('DefaultSearchRanker reranking', () => {
       },
     };
 
-    await expect(new DefaultSearchRanker().rerankResults(
-      reranking,
-      'reranking-model',
-      'query',
-      searchResults,
-      2,
-    )).resolves.toMatchObject([
+    await expect(
+      new DefaultSearchRanker().rerankResults(
+        reranking,
+        'reranking-model',
+        'query',
+        searchResults,
+        2
+      )
+    ).resolves.toMatchObject([
       { id: 'second', rerankScore: 0.95 },
       { id: 'first', rerankScore: 0.6 },
     ]);
@@ -55,12 +57,9 @@ describe('DefaultSearchRanker reranking', () => {
       },
     };
 
-    await expect(new DefaultSearchRanker().rerankResults(
-      reranking,
-      'reranking-model',
-      'query',
-      searchResults,
-    )).resolves.toBe(searchResults);
+    await expect(
+      new DefaultSearchRanker().rerankResults(reranking, 'reranking-model', 'query', searchResults)
+    ).resolves.toBe(searchResults);
   });
 
   it('不吞掉路由和凭据等不可重试配置错误', async () => {
@@ -70,11 +69,10 @@ describe('DefaultSearchRanker reranking', () => {
       },
     };
 
-    await expect(new DefaultSearchRanker().rerankResults(
-      reranking,
-      'reranking-model',
-      'query',
-      [point('first', 'first text', 0.8)],
-    )).rejects.toMatchObject({ code: 'credential_missing', retryable: false });
+    await expect(
+      new DefaultSearchRanker().rerankResults(reranking, 'reranking-model', 'query', [
+        point('first', 'first text', 0.8),
+      ])
+    ).rejects.toMatchObject({ code: 'credential_missing', retryable: false });
   });
 });

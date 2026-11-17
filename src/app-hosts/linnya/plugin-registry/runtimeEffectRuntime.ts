@@ -28,7 +28,7 @@ export async function stopBackendPluginRuntimeEffects(): Promise<void> {
 }
 
 export async function syncBackendPluginRuntimeEffects(
-  registrations: readonly BackendPluginRuntimeEffectRegistration[],
+  registrations: readonly BackendPluginRuntimeEffectRegistration[]
 ): Promise<void> {
   const desired = buildDesiredEffectMap(registrations);
   await deactivateStaleRuntimeEffects(desired);
@@ -36,21 +36,21 @@ export async function syncBackendPluginRuntimeEffects(
 }
 
 export async function deactivateStaleBackendPluginRuntimeEffects(
-  registrations: readonly BackendPluginRuntimeEffectRegistration[],
+  registrations: readonly BackendPluginRuntimeEffectRegistration[]
 ): Promise<void> {
   const desired = buildDesiredEffectMap(registrations);
   await deactivateStaleRuntimeEffects(desired);
 }
 
 export async function activateDesiredBackendPluginRuntimeEffects(
-  registrations: readonly BackendPluginRuntimeEffectRegistration[],
+  registrations: readonly BackendPluginRuntimeEffectRegistration[]
 ): Promise<void> {
   const desired = buildDesiredEffectMap(registrations);
   await activateDesiredRuntimeEffects(desired);
 }
 
 async function deactivateStaleRuntimeEffects(
-  desired: ReadonlyMap<string, BackendPluginRuntimeEffectRegistration>,
+  desired: ReadonlyMap<string, BackendPluginRuntimeEffectRegistration>
 ): Promise<void> {
   for (const [effectKey, active] of activeEffects) {
     // 同 ID 的新版 artifact 仍是新的 contribution 实例；先等待旧资源完全停止，
@@ -65,7 +65,7 @@ async function deactivateStaleRuntimeEffects(
 }
 
 async function activateDesiredRuntimeEffects(
-  desired: ReadonlyMap<string, BackendPluginRuntimeEffectRegistration>,
+  desired: ReadonlyMap<string, BackendPluginRuntimeEffectRegistration>
 ): Promise<void> {
   for (const [effectKey, registration] of desired) {
     if (activeEffects.has(effectKey)) {
@@ -75,7 +75,7 @@ async function activateDesiredRuntimeEffects(
       registration.pluginId,
       registration.effect.id,
       'activate',
-      registration.effect.activate,
+      registration.effect.activate
     );
     activeEffects.set(effectKey, {
       pluginId: registration.pluginId,
@@ -94,7 +94,7 @@ export async function clearSyncedBackendPluginRuntimeEffectsForTests(): Promise<
 }
 
 function buildDesiredEffectMap(
-  registrations: readonly BackendPluginRuntimeEffectRegistration[],
+  registrations: readonly BackendPluginRuntimeEffectRegistration[]
 ): Map<string, BackendPluginRuntimeEffectRegistration> {
   const desired = new Map<string, BackendPluginRuntimeEffectRegistration>();
   for (const registration of registrations) {
@@ -114,7 +114,7 @@ async function runEffectStep(
   pluginId: PluginId,
   effectId: string,
   step: 'activate' | 'deactivate',
-  fn: () => void | Promise<void>,
+  fn: () => void | Promise<void>
 ): Promise<void> {
   try {
     await withActionActor({ kind: 'plugin', pluginId }, fn);

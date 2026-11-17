@@ -2,7 +2,7 @@
  * @file src/knowledge-base/application/services/DocumentService.ts
  *
  * @brief 文档服务 - 负责文档的CRUD操作和状态管理
- * 
+ *
  * @description
  * 功能 (What): 处理文档的增删改查、状态查询、批量状态获取等操作
  * 输入 (Input): 文档ID、知识库ID、文档列表等参数
@@ -18,7 +18,10 @@ import { QdrantRepository } from '../../infrastructure/qdrantRepository';
 import { SotRepository } from '../../infrastructure/sotRepository';
 import type { OriginalDocumentRepository } from '../../infrastructure/originalDocumentRepository';
 import type { KnowledgeGraphRepository } from '../../graph/infrastructure/knowledgeGraphRepository';
-import { getGraphEdgesCollectionName, getGraphNodesCollectionName } from '../../graph/infrastructure/qdrantCollections';
+import {
+  getGraphEdgesCollectionName,
+  getGraphNodesCollectionName,
+} from '../../graph/infrastructure/qdrantCollections';
 import { hasCollectionAccessCoordinator } from '../../infrastructure/qdrant-repository/collectionAccess';
 import {
   getIngestionProgress,
@@ -68,14 +71,14 @@ export class DocumentService {
 
   /**
    * **功能 (What):** 获取指定知识库中的所有文档列表。
-   * **输入 (Input / @param):** 
+   * **输入 (Input / @param):**
    * @param kbId - (string) 知识库的ID。
    * **输出 (Output / @returns):** `Promise<Document[]>` - 该知识库中所有文档的数组。
    * **副作用 (Side-effects):** 从元数据仓储中查询文档信息。
    */
   async getDocumentsInKnowledgeBase(kbId: string): Promise<Document[]> {
     logger.info(`获取知识库 ${kbId} 中的文档列表`);
-    
+
     try {
       const documents = await this.metadataRepository.getDocumentsInKnowledgeBase(kbId);
       logger.info(`知识库 ${kbId} 包含 ${documents.length} 个文档`);
@@ -88,7 +91,7 @@ export class DocumentService {
 
   /**
    * **功能 (What):** 批量获取多个文档（任务）的处理状态，将任务状态转换为前端友好的格式。
-   * **输入 (Input / @param):** 
+   * **输入 (Input / @param):**
    * @param docIds - (string[]) 文档ID数组，这些ID同时也作为任务ID使用。
    * **输出 (Output / @returns):** `Promise<Record<string, TaskStatusView>>` - 以文档ID为键，状态视图对象为值的字典。
    * **副作用 (Side-effects):** 查询摄取进度读模型，并进行状态映射转换。
@@ -97,11 +100,11 @@ export class DocumentService {
     logger.info(`批量获取 ${docIds.length} 个任务的状态: [${docIds.join(', ')}]`);
 
     const result: Record<string, TaskStatusView> = {};
-    
+
     for (const docId of docIds) {
       try {
         const progressSnapshot = getIngestionProgress(docId);
-        
+
         if (progressSnapshot) {
           /**
            * 轮询接口必须返回摄取进度读模型的权威字段，不得降级为粗粒度 50%。
@@ -119,11 +122,13 @@ export class DocumentService {
           const status = progressSnapshot.status;
           const stage = typeof progressSnapshot.stage === 'string' ? progressSnapshot.stage : '';
           const stageProgress =
-            typeof progressSnapshot.stage_progress === 'number' && Number.isFinite(progressSnapshot.stage_progress)
+            typeof progressSnapshot.stage_progress === 'number' &&
+            Number.isFinite(progressSnapshot.stage_progress)
               ? progressSnapshot.stage_progress
               : undefined;
           const progress =
-            typeof progressSnapshot.progress === 'number' && Number.isFinite(progressSnapshot.progress)
+            typeof progressSnapshot.progress === 'number' &&
+            Number.isFinite(progressSnapshot.progress)
               ? progressSnapshot.progress
               : this.calculateProgressFromStatus(status);
 
@@ -139,7 +144,7 @@ export class DocumentService {
             updatedAt: progressSnapshot.updated_at,
             estimatedTimeRemaining: this.calculateEstimatedTimeRemaining(progressSnapshot),
           };
-          
+
           result[docId] = statusView;
           logger.debug(`任务 ${docId} 状态: ${statusView.status} (${statusView.progress}%)`);
         } else {
@@ -157,7 +162,7 @@ export class DocumentService {
                 message: document.status === DocumentStatus.COMPLETED ? '已完成' : '等待中',
                 error: undefined,
                 updatedAt: document.updatedAt || document.createdAt,
-                estimatedTimeRemaining: undefined
+                estimatedTimeRemaining: undefined,
               };
               logger.debug(`从元数据获取任务 ${docId} 状态: ${document.status}`);
             }
@@ -176,11 +181,11 @@ export class DocumentService {
           stage: 'failed',
           error: `获取状态失败: ${error instanceof Error ? error.message : String(error)}`,
           updatedAt: Date.now(),
-          estimatedTimeRemaining: undefined
+          estimatedTimeRemaining: undefined,
         };
       }
     }
-    
+
     logger.info(`批量状态查询完成，返回 ${Object.keys(result).length} 个任务状态`);
     return result;
   }
@@ -198,7 +203,7 @@ export class DocumentService {
    */
   async deleteDocument(kbId: string, docId: string): Promise<void> {
     logger.info(`从知识库 ${kbId} 删除文档 ${docId}`);
-    
+
     try {
       const executeDelete = async (): Promise<void> => {
         /**
@@ -272,7 +277,7 @@ export class DocumentService {
 
   /**
    * **功能 (What):** 根据ID获取单个文档的元数据。
-   * **输入 (Input / @param):** 
+   * **输入 (Input / @param):**
    * @param docId - (string) 文档的ID。
    * **输出 (Output / @returns):** `Promise<Document | undefined>` - 文档对象或未找到则为undefined。
    * **副作用 (Side-effects):** 查询元数据仓储。
@@ -301,12 +306,17 @@ export class DocumentService {
    */
   private calculateProgressFromStatus(status: string): number {
     switch (status) {
-      case 'pending': return 0;
-      case 'processing': return 50; // 默认50%，实际会被stage_progress覆盖
-      case 'completed': 
-      case 'duplicate': return 100;
-      case 'failed': return 0;
-      default: return 0;
+      case 'pending':
+        return 0;
+      case 'processing':
+        return 50; // 默认50%，实际会被stage_progress覆盖
+      case 'completed':
+      case 'duplicate':
+        return 100;
+      case 'failed':
+        return 0;
+      default:
+        return 0;
     }
   }
 
@@ -316,7 +326,9 @@ export class DocumentService {
    * **输出 (Output):** 预估剩余时间（秒）或undefined
    * **副作用 (Side-effects):** 无
    */
-  private calculateEstimatedTimeRemaining(progressSnapshot: IngestionProgressSnapshot): number | undefined {
+  private calculateEstimatedTimeRemaining(
+    progressSnapshot: IngestionProgressSnapshot
+  ): number | undefined {
     // 简单的预估逻辑，可以根据实际需要扩展
     if (progressSnapshot.status === 'processing') {
       // 假设处理中的任务还需要60秒（简化实现）
@@ -324,5 +336,4 @@ export class DocumentService {
     }
     return undefined;
   }
-
 }

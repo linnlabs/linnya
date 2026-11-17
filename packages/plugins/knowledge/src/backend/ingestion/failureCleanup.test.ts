@@ -16,7 +16,7 @@ type LogEntry = {
 };
 
 const mocked = vi.hoisted(() => ({
-  logEntries: [] as LogEntry[]
+  logEntries: [] as LogEntry[],
 }));
 
 vi.mock('@plugin/backend/loggingRuntime', () => ({
@@ -62,11 +62,11 @@ function createDocument(id: string, status: DocumentStatus): Document {
 }
 
 function createMetadataRepositoryStub(docs: Document[]): MetadataRepository {
-  const store = new Map(docs.map((doc) => [doc.id, { ...doc }]));
+  const store = new Map(docs.map(doc => [doc.id, { ...doc }]));
 
   return {
     indexState: createKnowledgeIndexFixture(['default'], { modelId: 'model', spaceId: 'space' }),
-    createKnowledgeBase: async (kb) => kb,
+    createKnowledgeBase: async kb => kb,
     getAllKnowledgeBases: async () => [
       {
         id: 'default',
@@ -84,13 +84,13 @@ function createMetadataRepositoryStub(docs: Document[]): MetadataRepository {
     setKnowledgeBaseEmbeddingProvenance: async () => undefined,
     deleteKnowledgeBase: async () => true,
     updateKnowledgeBase: async () => undefined,
-    addDocument: async (doc) => {
+    addDocument: async doc => {
       store.set(doc.id, { ...doc });
       return doc;
     },
-    getDocumentById: async (docId) => store.get(docId),
-    getDocumentsInKnowledgeBase: async (kbId) =>
-      Array.from(store.values()).filter((doc) => doc.kbId === kbId),
+    getDocumentById: async docId => store.get(docId),
+    getDocumentsInKnowledgeBase: async kbId =>
+      Array.from(store.values()).filter(doc => doc.kbId === kbId),
     getAllDocuments: async () => Array.from(store.values()),
     updateDocumentStatus: async (docId, status, errorMessage) => {
       const doc = store.get(docId);
@@ -111,14 +111,14 @@ function createMetadataRepositoryStub(docs: Document[]): MetadataRepository {
       });
       return true;
     },
-    deleteDocument: async (docId) => store.delete(docId),
+    deleteDocument: async docId => store.delete(docId),
     close: () => undefined,
   };
 }
 
 function createSotRepositoryStub(docIds: string[]): SotRepository {
   const store = new Map<string, DocumentSoT>(
-    docIds.map((docId) => [
+    docIds.map(docId => [
       docId,
       {
         doc_id: docId,
@@ -140,25 +140,28 @@ function createSotRepositoryStub(docIds: string[]): SotRepository {
     save: async (docId, data) => {
       store.set(docId, data);
     },
-    get: async (docId) => store.get(docId),
-    delete: async (docId) => store.delete(docId),
+    get: async docId => store.get(docId),
+    delete: async docId => store.delete(docId),
     listAllDocumentIds: async () => Array.from(store.keys()),
   };
 }
 
 function createQdrantRepositoryStub(collectionDocs: Record<string, string[]>): QdrantRepository {
   const collections = new Map(
-    Object.entries(collectionDocs).map(([collectionName, docIds]) => [collectionName, new Set(docIds)])
+    Object.entries(collectionDocs).map(([collectionName, docIds]) => [
+      collectionName,
+      new Set(docIds),
+    ])
   );
 
   return {
     // 这些能力与当前测试无关，保留最小实现以满足完整仓储接口。
-    getOrCreateCollection: async (collectionName) => {
+    getOrCreateCollection: async collectionName => {
       if (!collections.has(collectionName)) {
         collections.set(collectionName, new Set());
       }
     },
-    deleteCollection: async (collectionName) => {
+    deleteCollection: async collectionName => {
       collections.delete(collectionName);
     },
     addPoints: async (collectionName, points) => {
@@ -187,7 +190,7 @@ function createQdrantRepositoryStub(collectionDocs: Record<string, string[]>): Q
       config: {},
     }),
     getAllPoints: async (collectionName: string) =>
-      Array.from(collections.get(collectionName) ?? []).map((docId) => ({
+      Array.from(collections.get(collectionName) ?? []).map(docId => ({
         id: docId,
         payload: { doc_id: docId },
       })),
@@ -198,7 +201,7 @@ function createQdrantRepositoryStub(collectionDocs: Record<string, string[]>): Q
       const nextIndex = startIndex + pageDocIds.length;
 
       return {
-        points: pageDocIds.map((docId) => ({
+        points: pageDocIds.map(docId => ({
           id: docId,
           payload: { doc_id: docId },
         })),
@@ -228,7 +231,7 @@ function createQdrantRepositoryStub(collectionDocs: Record<string, string[]>): Q
     countPointsByIds: async (collectionName, pointIds) => {
       const docs = collections.get(collectionName);
       if (!docs) return 0;
-      return pointIds.filter((pointId) => docs.has(pointId)).length;
+      return pointIds.filter(pointId => docs.has(pointId)).length;
     },
   };
 }
@@ -247,7 +250,7 @@ function createKnowledgeGraphRepositoryStub(): KnowledgeGraphRepository {
     getDocStatus: async () => undefined,
     tryAcquireDocExtractionLock: async () => true,
     updateDocProgress: async () => undefined,
-    getKbProgress: async (kbId) => ({
+    getKbProgress: async kbId => ({
       kbId,
       totalUnits: 0,
       doneUnits: 0,
@@ -300,9 +303,7 @@ describe('failureCleanup logging aggregation', () => {
       sotCleared: 0,
     });
 
-    const summaryLog = mocked.logEntries.find((entry) =>
-      entry.message.includes('一致性检查汇总')
-    );
+    const summaryLog = mocked.logEntries.find(entry => entry.message.includes('一致性检查汇总'));
 
     expect(summaryLog).toBeDefined();
     expect(summaryLog?.data).toMatchObject({
@@ -315,7 +316,7 @@ describe('failureCleanup logging aggregation', () => {
 
     expect(
       mocked.logEntries.some(
-        (entry) =>
+        entry =>
           entry.message.includes('检查文档') ||
           entry.message.includes('状态分析') ||
           entry.message.includes('已完成文档数据完整')
@@ -339,8 +340,13 @@ describe('failureCleanup logging aggregation', () => {
       deleteByKnowledgeBase: async () => 0,
     };
     const before = await sot.get(ids[0]);
-    const stats = await runKnowledgeBaseStartupMaintenanceOnce(metadata, createQdrantRepositoryStub({ default: [] }), sot,
-      createKnowledgeGraphRepositoryStub(), originals);
+    const stats = await runKnowledgeBaseStartupMaintenanceOnce(
+      metadata,
+      createQdrantRepositoryStub({ default: [] }),
+      sot,
+      createKnowledgeGraphRepositoryStub(),
+      originals
+    );
     expect(stats.totalFailed).toBe(0);
     expect(await metadata.getAllDocuments()).toHaveLength(3);
     expect(await sot.get(ids[0])).toEqual(before);
@@ -348,6 +354,9 @@ describe('failureCleanup logging aggregation', () => {
     expect(originals.delete).not.toHaveBeenCalled();
     expect(metadata.indexState.read('default').spaceId).toBeNull();
     const summary = mocked.logEntries.find(entry => entry.message.includes('一致性检查汇总'));
-    expect(summary?.data).toMatchObject({ anomalies: { preservedSourceNeedsRebuild: 3 }, cleanupCandidateCount: 0 });
+    expect(summary?.data).toMatchObject({
+      anomalies: { preservedSourceNeedsRebuild: 3 },
+      cleanupCandidateCount: 0,
+    });
   });
 });

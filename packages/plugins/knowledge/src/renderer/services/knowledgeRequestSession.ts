@@ -1,7 +1,10 @@
 import { resolveKnowledgeBaseOperationFailure } from '../functions/resolveKnowledgeBaseOperationFailure';
 import { resolveCurrentKnowledgeBaseMessage } from '../functions/resolveCurrentKnowledgeBaseMessage';
 import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
-import { uploadRendererPluginMultipart, type RendererPluginUploadProgress } from '@plugin/renderer/pluginMultipartUpload';
+import {
+  uploadRendererPluginMultipart,
+  type RendererPluginUploadProgress,
+} from '@plugin/renderer/pluginMultipartUpload';
 
 let activeSession: AbortController | null = null;
 
@@ -21,7 +24,11 @@ function requestSignal(signal?: AbortSignal): AbortSignal {
 }
 
 /** IPC 已受理的业务仍归 Backend；这里只取消页面等待与迟到呈现，不宣称远端撤单。 */
-export async function invokeKnowledgeRequest(channel: string, payload: unknown, signal?: AbortSignal): Promise<unknown> {
+export async function invokeKnowledgeRequest(
+  channel: string,
+  payload: unknown,
+  signal?: AbortSignal
+): Promise<unknown> {
   const scope = requestSignal(signal);
   scope.throwIfAborted();
   let onAbort: () => void = () => {};
@@ -57,10 +64,14 @@ export async function invokeKnowledgeRequest(channel: string, payload: unknown, 
 export async function uploadKnowledgeMultipart(
   formData: FormData,
   onProgress?: (progress: RendererPluginUploadProgress) => void,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<unknown> {
   const scope = requestSignal(signal);
-  const result = await uploadRendererPluginMultipart('knowledge', 'documents/upload', { formData, signal: scope, onProgress });
+  const result = await uploadRendererPluginMultipart('knowledge', 'documents/upload', {
+    formData,
+    signal: scope,
+    onProgress,
+  });
   scope.throwIfAborted();
   return result;
 }

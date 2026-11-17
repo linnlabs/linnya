@@ -3,7 +3,7 @@ import type { KnowledgeActivityLease } from '../runtime/definitions/knowledgeAct
 import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/knowledge-base/ingestion/failureCleanup.ts
- * 
+ *
  * **功能 (What):** 失败清理工具 - 清理三大数据源
  * **输入 (Input):** 文档ID、知识库ID和相关仓储实例
  * **输出 (Output):** 无
@@ -44,17 +44,18 @@ interface QdrantPoint {
   [key: string]: unknown;
 }
 
-
-
 /**
  * **功能 (What):** 从Qdrant集合中获取所有唯一的文档ID
- * **输入 (Input):** 
+ * **输入 (Input):**
  * @param qdrantRepository - Qdrant仓储实例
  * @param collectionName - 集合名称
  * **输出 (Output):** 文档ID的Set集合
  * **副作用 (Side-effects):** 查询Qdrant数据库
  */
-async function getQdrantDocIds(qdrantRepository: QdrantRepository, collectionName: string): Promise<Set<string>> {
+async function getQdrantDocIds(
+  qdrantRepository: QdrantRepository,
+  collectionName: string
+): Promise<Set<string>> {
   try {
     // 🔥 获取集合信息（用于诊断），但不要把 points_count 当成“是否为空”的唯一证据
     const collectionInfo = await qdrantRepository.getCollectionInfo(collectionName);
@@ -88,7 +89,9 @@ async function getQdrantDocIds(qdrantRepository: QdrantRepository, collectionNam
 
       // “计数=0且首屏为空”才认为确实为空（双证据）
       if (firstPage && pointsCount === 0 && page.points.length === 0) {
-        logger.info(`[FailureCleanup] 📊 Qdrant集合 ${collectionName} 为空（points_count=0 且 scroll 为空）`);
+        logger.info(
+          `[FailureCleanup] 📊 Qdrant集合 ${collectionName} 为空（points_count=0 且 scroll 为空）`
+        );
         return new Set();
       }
 
@@ -124,15 +127,16 @@ async function getQdrantDocIds(qdrantRepository: QdrantRepository, collectionNam
      *
      * 因此这里必须把错误显式抛出，让上层跳过本轮一致性维护（等待下次重试），而不是继续做删除决策。
      */
-    logger.error(`[FailureCleanup] 获取Qdrant文档ID失败（将中止本轮一致性维护，避免误删）: ${error}`);
+    logger.error(
+      `[FailureCleanup] 获取Qdrant文档ID失败（将中止本轮一致性维护，避免误删）: ${error}`
+    );
     throw error;
   }
 }
 
-
 /**
  * **功能 (What):** 清理失败文档的三大数据源
- * **输入 (Input):** 
+ * **输入 (Input):**
  * @param docId - 文档ID
  * @param kbId - 知识库ID
  * @param metadataRepository - 元数据仓储实例
@@ -142,7 +146,7 @@ async function getQdrantDocIds(qdrantRepository: QdrantRepository, collectionNam
  * **副作用 (Side-effects):** 删除SQLite记录、Qdrant向量、SOT文件
  */
 export async function cleanupFailedDocument(
-  docId: string, 
+  docId: string,
   kbId: string = '',
   metadataRepository?: MetadataRepository,
   qdrantRepository?: QdrantRepository,
@@ -187,11 +191,11 @@ export async function cleanupFailedDocument(
   await documentService.deleteDocument(resolvedKbId, docId);
 
   logger.info(`[FailureCleanup] 🧹 失败文档清理完成: ${docId}`);
-} 
+}
 
 /**
  * **功能 (What):** 应用启动时批量清理所有失败文档的三大数据源
- * **输入 (Input):** 
+ * **输入 (Input):**
  * @param metadataRepository - 元数据仓储实例
  * @param qdrantRepository - Qdrant仓储实例（可选）
  * @param sotRepository - SOT仓储实例（可选）
@@ -212,12 +216,12 @@ export async function cleanupAllFailedDocuments(
   sotCleared: number;
 }> {
   logger.info(`[FailureCleanup] 🧹 开始三大数据源一致性检查和清理...`);
-  
+
   const stats = {
     totalFailed: 0,
     sqliteCleared: 0,
     qdrantCleared: 0,
-    sotCleared: 0
+    sotCleared: 0,
   };
 
   if (!metadataRepository) {
@@ -242,8 +246,12 @@ export async function cleanupAllFailedDocuments(
   const libraries = await metadataRepository.getAllKnowledgeBases();
   for (const library of libraries) {
     // 重建失败的部分索引不参加一致性清理；原文是下次显式重建的输入。
-    if (!metadataRepository.indexState.read(library.id).spaceId || activity?.hasActivity(library.id)) {
-      protectedLibraries.add(library.id); continue;
+    if (
+      !metadataRepository.indexState.read(library.id).spaceId ||
+      activity?.hasActivity(library.id)
+    ) {
+      protectedLibraries.add(library.id);
+      continue;
     }
     const lease = activity?.begin(library.id, 'maintenance');
     if (lease) leases.push(lease);
@@ -275,15 +283,19 @@ export async function cleanupAllFailedDocuments(
 
     // 1. 收集三大数据源的数据
     logger.info(`[FailureCleanup] 📊 正在收集三大数据源数据...`);
-    
+
     // 获取所有元数据记录
     const allDocuments = await metadataRepository.getAllDocuments();
-    const protectedDocumentIds = new Set(allDocuments.filter(document => protectedLibraries.has(document.kbId)).map(document => document.id));
+    const protectedDocumentIds = new Set(
+      allDocuments
+        .filter(document => protectedLibraries.has(document.kbId))
+        .map(document => document.id)
+    );
     const allDocs = allDocuments.filter(document => !protectedDocumentIds.has(document.id));
     const metadataIds = new Set(allDocs.map((doc: Document) => doc.id));
     const metadataById = new Map(allDocs.map((doc: Document) => [doc.id, doc] as const));
     logger.info(`[FailureCleanup] 📊 元数据库: ${metadataIds.size} 个文档`);
-    
+
     // 获取所有SOT文件ID
     let sotIds = new Set<string>();
     try {
@@ -301,7 +313,7 @@ export async function cleanupAllFailedDocuments(
       );
       return stats;
     }
-    
+
     // 检查Qdrant集合并获取所有文档ID（根因修复：覆盖所有知识库集合，而不是仅 default）
     const qdrantDocIdsByKb = new Map<string, Set<string>>();
     const qdrantDocIds = new Set<string>();
@@ -322,7 +334,9 @@ export async function cleanupAllFailedDocuments(
         }
       }
 
-      logger.info(`[FailureCleanup] 📊 Qdrant向量: ${qdrantDocIds.size} 个唯一文档（跨所有集合汇总）`);
+      logger.info(
+        `[FailureCleanup] 📊 Qdrant向量: ${qdrantDocIds.size} 个唯一文档（跨所有集合汇总）`
+      );
     } catch (error) {
       /**
        * 根因修复（误删）：
@@ -347,7 +361,7 @@ export async function cleanupAllFailedDocuments(
       qdrantDocIdsByKb,
       originalDocumentRepository,
     });
-    
+
     /**
      * 移除旧的“向量库缺失→全量判失败”分支。
      *
@@ -360,14 +374,14 @@ export async function cleanupAllFailedDocuments(
      * - Qdrant 可达但集合确实为空：这更像“索引缺失/迁移/配置错误”，应走重建索引/重新向量化策略，
      *   不应在启动维护里做全量删除（破坏性过强）。
      */
-    
+
     stats.totalFailed = failedDocIds.size;
     emitConsistencyScanLogs({
       metadataCount: metadataIds.size,
       sotCount: sotIds.size,
       qdrantCount: qdrantDocIds.size,
       cleanupCandidateCount: stats.totalFailed,
-      report: scanReport
+      report: scanReport,
     });
     logger.info(`[FailureCleanup] 🔍 检测到 ${stats.totalFailed} 个不一致的文档需要清理`);
 
@@ -379,19 +393,18 @@ export async function cleanupAllFailedDocuments(
     // 3. 清理不一致的文档（根因修复：按“文档实际所在集合”清理，而不是固定 default）
     for (const failedDocId of failedDocIds) {
       try {
-        const meta = allDocs.find((d) => d.id === failedDocId);
+        const meta = allDocs.find(d => d.id === failedDocId);
         const kbIdsFromQdrant: string[] = [];
         for (const [kbId, ids] of qdrantDocIdsByKb.entries()) {
           if (ids.has(failedDocId)) kbIdsFromQdrant.push(kbId);
         }
 
         // 优先使用元数据里的 kbId；否则使用Qdrant里出现过的集合列表；都没有则回退 default 以兼容旧逻辑
-        const kbIdsToCleanup =
-          meta?.kbId
-            ? [meta.kbId]
-            : kbIdsFromQdrant.length > 0
-              ? kbIdsFromQdrant
-              : ['default'];
+        const kbIdsToCleanup = meta?.kbId
+          ? [meta.kbId]
+          : kbIdsFromQdrant.length > 0
+            ? kbIdsFromQdrant
+            : ['default'];
 
         for (const kbId of kbIdsToCleanup) {
           await cleanupFailedDocument(
@@ -416,11 +429,12 @@ export async function cleanupAllFailedDocuments(
 
     logger.info(`[FailureCleanup] 🎉 三大数据源一致性清理完成:`, stats);
     return stats;
-
   } catch (error) {
     logger.error(`[FailureCleanup] ❌ 一致性检查失败: ${error}`);
     return stats;
-  } finally { for (const lease of leases) lease.release(); }
+  } finally {
+    for (const lease of leases) lease.release();
+  }
 }
 
 /**
@@ -440,7 +454,7 @@ async function getAllKnowledgeBaseIdsForCleanup(
     const ids = kbs
       .map(kb => kb.id)
       .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
-      .map((id) => id.trim());
+      .map(id => id.trim());
     return Array.from(new Set(ids.length > 0 ? ids : ['default']));
   } catch (error) {
     logger.warn(`[FailureCleanup] 获取知识库列表失败，回退到 default: ${error}`);
@@ -462,7 +476,7 @@ export async function performStartupCleanup(
   originalDocumentRepository?: OriginalDocumentRepository
 ): Promise<void> {
   logger.info(`[FailureCleanup] 🚀 应用启动 - 开始后台清理任务...`);
-  
+
   try {
     // 延迟10秒再开始清理，为Qdrant数据加载提供更充足的时间
     setTimeout(async () => {
@@ -473,18 +487,17 @@ export async function performStartupCleanup(
         knowledgeGraphRepository,
         originalDocumentRepository
       );
-      
+
       if (stats.totalFailed > 0) {
         logger.info(`[FailureCleanup] 🧹 启动清理完成: 清理了 ${stats.totalFailed} 个失败文档`);
       } else {
         logger.info(`[FailureCleanup] ✅ 启动清理完成: 数据状态良好，无需清理`);
       }
     }, 10000);
-    
   } catch (error) {
     logger.error(`[FailureCleanup] ❌ 启动清理任务失败: ${error}`);
   }
-} 
+}
 
 /**
  * Phase 2（启动后一次性维护）的“知识库一致性维护”入口：

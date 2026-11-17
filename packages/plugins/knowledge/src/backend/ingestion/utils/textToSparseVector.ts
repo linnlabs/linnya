@@ -50,8 +50,8 @@ export async function textToSparseVector(text: string): Promise<SparseVector> {
 
   // 排序输出：按 hash 升序（稳定且便于 debug）
   const hashes = Object.keys(hashToCount)
-    .map((k) => Number(k))
-    .filter((n) => Number.isFinite(n))
+    .map(k => Number(k))
+    .filter(n => Number.isFinite(n))
     .sort((a, b) => a - b);
 
   const indices: number[] = [];
@@ -68,7 +68,5 @@ export async function textToSparseVector(text: string): Promise<SparseVector> {
  * 功能 (What): 批量生成稀疏向量（保持输入输出一一对应）
  */
 export async function textsToSparseVectors(texts: string[]): Promise<SparseVector[]> {
-  return await Promise.all(texts.map((t) => textToSparseVector(t)));
+  return await Promise.all(texts.map(t => textToSparseVector(t)));
 }
-
-

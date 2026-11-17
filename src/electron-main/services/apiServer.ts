@@ -103,10 +103,12 @@ export class ApiServer {
       })
     );
 
-    this.app.use(cors({
-      origin: (origin, callback) => resolveApiCorsOrigin(origin, callback, this.rendererOrigin),
-      credentials: true
-    }));
+    this.app.use(
+      cors({
+        origin: (origin, callback) => resolveApiCorsOrigin(origin, callback, this.rendererOrigin),
+        credentials: true,
+      })
+    );
 
     // CORS 只能控制浏览器是否暴露响应；这里在路由前直接拒绝非桌面端来源的网页请求。
     this.app.use((req: Request, res: Response, next: NextFunction) => {
@@ -129,15 +131,17 @@ export class ApiServer {
         : this.rendererSessionToken;
       if (suppliedToken !== requiredToken) {
         if (isConversationControl) {
-          res.status(401).json(ConversationControlErrorResponseSchema.parse({
-            schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
-            ok: false,
-            error: {
-              code: 'unauthorized',
-              message: 'Invalid conversation-control session token',
-              retryable: false,
-            },
-          }));
+          res.status(401).json(
+            ConversationControlErrorResponseSchema.parse({
+              schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
+              ok: false,
+              error: {
+                code: 'unauthorized',
+                message: 'Invalid conversation-control session token',
+                retryable: false,
+              },
+            })
+          );
           return;
         }
         res.status(401).json({ error: 'unauthorized' });
@@ -147,7 +151,10 @@ export class ApiServer {
     });
 
     const defaultJsonParser = express.json({ limit: DEFAULT_BODY_LIMIT });
-    const defaultUrlencodedParser = express.urlencoded({ extended: true, limit: DEFAULT_BODY_LIMIT });
+    const defaultUrlencodedParser = express.urlencoded({
+      extended: true,
+      limit: DEFAULT_BODY_LIMIT,
+    });
 
     // SEC-07：默认请求体收紧到 10mb；大 payload 路由必须在各自 router 中显式声明限额。
     this.app.use((req: Request, res: Response, next: NextFunction) => {
@@ -182,7 +189,7 @@ export class ApiServer {
     routeDependencies: RouteDependencies
   ): Promise<RouteConfigurationResult> {
     console.log('[Backend Service] 🚦 开始配置应用路由...');
-    
+
     const routeResult = await configureRoutes(this.app, routeDependencies, {
       conversationControl: { appInstanceId: this.appInstanceId },
     });
@@ -201,7 +208,7 @@ export class ApiServer {
         throw error;
       }
     }
-    
+
     const routeSummary = getRouteSummary(routeDependencies, routeResult);
     console.log('[Backend Service] 📋 路由配置摘要:', JSON.stringify(routeSummary, null, 2));
 
@@ -264,7 +271,7 @@ export class ApiServer {
         });
         this.boundPort = address.port;
         console.log(
-          `[Backend Service] ✅ Express HTTP server is now listening on http://${API_SERVER_BIND_HOST}:${address.port}`,
+          `[Backend Service] ✅ Express HTTP server is now listening on http://${API_SERVER_BIND_HOST}:${address.port}`
         );
         resolve(address.port);
       };

@@ -7,7 +7,9 @@ vi.mock('../../../../electron-main/services/apiServer', () => ({
       return port;
     }
     async stop(): Promise<void> {}
-    getToken(): string { return 'test-token'; }
+    getToken(): string {
+      return 'test-token';
+    }
   },
 }));
 
@@ -24,7 +26,9 @@ vi.mock('../../../../electron-main/services/qdrantManager', () => ({
   QdrantManager: class TestQdrantManager {
     async start(): Promise<void> {}
     async stop(): Promise<void> {}
-    getConfig() { return { host: '127.0.0.1', port: 6333, url: 'http://127.0.0.1:6333' }; }
+    getConfig() {
+      return { host: '127.0.0.1', port: 6333, url: 'http://127.0.0.1:6333' };
+    }
   },
 }));
 
@@ -78,7 +82,9 @@ describe('BackendRuntimeOwner 能力降级', () => {
       .spyOn(QdrantManager.prototype, 'start')
       .mockRejectedValue(new Error('spawn qdrant ENOENT'));
     const stop = vi.spyOn(QdrantManager.prototype, 'stop').mockResolvedValue();
-    const initialize = vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockResolvedValue(initializedServices([]));
+    const initialize = vi
+      .spyOn(ServiceInitializer.prototype, 'initializeServices')
+      .mockResolvedValue(initializedServices([]));
     const manager = new TestBackendRuntimeOwner();
     await expect(manager.start(BACKEND_CONFIGURATION)).resolves.toBe(34000);
     expect(start).not.toHaveBeenCalled();
@@ -97,14 +103,18 @@ describe('BackendRuntimeOwner 能力降级', () => {
   it('首次向量请求共享启动并返回实际地址，退出后拒绝新请求', async () => {
     const start = vi.spyOn(QdrantManager.prototype, 'start').mockResolvedValue();
     const stop = vi.spyOn(QdrantManager.prototype, 'stop').mockResolvedValue();
-    const initialize = vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockResolvedValue(initializedServices([]));
+    const initialize = vi
+      .spyOn(ServiceInitializer.prototype, 'initializeServices')
+      .mockResolvedValue(initializedServices([]));
     const manager = new TestBackendRuntimeOwner();
     await manager.start(BACKEND_CONFIGURATION);
     const vectorStore = initialize.mock.calls[0]?.[1];
     if (!vectorStore) throw new Error('向量运行时未传入');
     expect(start).not.toHaveBeenCalled();
-    expect(await Promise.all([vectorStore.ensureReady(), vectorStore.ensureReady()]))
-      .toEqual(['http://127.0.0.1:6333', 'http://127.0.0.1:6333']);
+    expect(await Promise.all([vectorStore.ensureReady(), vectorStore.ensureReady()])).toEqual([
+      'http://127.0.0.1:6333',
+      'http://127.0.0.1:6333',
+    ]);
     expect(start).toHaveBeenCalledOnce();
     vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
     await manager.stop();
@@ -114,7 +124,7 @@ describe('BackendRuntimeOwner 能力降级', () => {
 
   it('任务队列没有启动时，退出前查询导入任务直接返回没有，不去读未启动的队列', async () => {
     vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockResolvedValue(
-      initializedServices([{ capability: 'background-tasks', message: '后台任务队列没有启动成功' }]),
+      initializedServices([{ capability: 'background-tasks', message: '后台任务队列没有启动成功' }])
     );
     const stats = vi.spyOn(QueueManager.getInstance(), 'getQueueStats');
     const manager = new TestBackendRuntimeOwner();

@@ -16,8 +16,6 @@ export interface ChunkCollectionMaintenanceCapableRepository extends QdrantRepos
   recreateChunkCollectionIfNeeded(collectionName: string): Promise<ChunkCollectionRecreateResult>;
 }
 
-
-
 export function hasChunkCollectionMaintenanceCapability(
   repository: unknown
 ): repository is ChunkCollectionMaintenanceCapableRepository {
@@ -102,14 +100,18 @@ export async function runChunkCollectionStartupMaintenanceOnce(
       knowledgeBases
         .map(kb => kb.id)
         .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
-        .map((id) => id.trim())
+        .map(id => id.trim())
     )
   );
 
   for (const collectionName of collectionNames) {
     stats.scannedCollections += 1;
-    if (activity?.hasActivity(collectionName) || !metadataRepository.indexState.read(collectionName).spaceId) {
-      stats.skippedCollections += 1; continue;
+    if (
+      activity?.hasActivity(collectionName) ||
+      !metadataRepository.indexState.read(collectionName).spaceId
+    ) {
+      stats.skippedCollections += 1;
+      continue;
     }
     const lease = activity?.begin(collectionName, 'maintenance');
     try {
@@ -122,13 +124,17 @@ export async function runChunkCollectionStartupMaintenanceOnce(
         stats.skippedCollections += 1;
       }
 
-      logger.info(`[ChunkCollectionStartupMaintenance] ${formatCollectionMaintenanceSummary(result)}`);
+      logger.info(
+        `[ChunkCollectionStartupMaintenance] ${formatCollectionMaintenanceSummary(result)}`
+      );
     } catch (error) {
       stats.failedCollections += 1;
       logger.error(
         `[ChunkCollectionStartupMaintenance] collection=${collectionName} 收缩失败: ${error instanceof Error ? error.message : String(error)}`
       );
-    } finally { lease?.release(); }
+    } finally {
+      lease?.release();
+    }
   }
 
   return stats;

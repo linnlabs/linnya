@@ -146,7 +146,13 @@ const AUDIO_BLOCK_CHANNELS = [
 ] as const;
 
 // --- Todo 数据库架构通道 ---
-const TODO_CHANNELS = ['todo:get-overview', 'todo:get-for-project', 'todo:add', 'todo:update', 'todo:delete'] as const;
+const TODO_CHANNELS = [
+  'todo:get-overview',
+  'todo:get-for-project',
+  'todo:add',
+  'todo:update',
+  'todo:delete',
+] as const;
 const TODO_NOTIFY_CHANNELS = ['todos-changed'] as const;
 
 // --- Plugins 安装/启停通道 ---

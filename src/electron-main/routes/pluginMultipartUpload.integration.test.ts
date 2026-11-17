@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
-import { createServer } from 'node:http';
+import { createServer, request } from 'node:http';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -74,6 +74,41 @@ describe('plugin multipart upload ownership', () => {
     const missing = await fetch(url, { method: 'POST', body: noFile });
     expect(missing.status).toBe(400);
     expect(await missing.json()).toEqual({ error: '未找到上传的文件' });
+  });
+
+  it('超限和多文件都拒绝且清理未接纳文件，不执行插件处理', async () => {
+    const url = await server();
+    const handler = vi.fn();
+    registerBackendPluginIpcHandler('fixture', 'upload', handler);
+    for (const files of [[new Blob([new Uint8Array(50 * 1024 * 1024 + 1)])], [new Blob(['one']), new Blob(['two'])]]) {
+      const form = new FormData();
+      for (const file of files) form.append('file', file, 'source.md');
+      const result = await fetch(url, { method: 'POST', body: form });
+      expect(result.status).toBe(400);
+      expect((await result.json()).error).toMatch(/50 MiB|一个文件/);
+      await vi.waitFor(async () => expect(await readdir(path.join(state.directory, 'temp'))).toEqual([]));
+    }
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it.each(['disconnect', 'disable'] as const)('上传中途 %s 时不接纳文件并删除暂存', async mode => {
+    const url = await server();
+    const handler = vi.fn();
+    registerBackendPluginIpcHandler('fixture', 'upload', handler);
+    const boundary = 'fixture-boundary';
+    const body = request(url, { method: 'POST', headers: { 'content-type': `multipart/form-data; boundary=${boundary}` } });
+    const response = new Promise<number | undefined>((resolve, reject) => {
+      body.on('response', result => { result.resume(); result.on('end', () => resolve(result.statusCode)); });
+      body.on('error', error => mode === 'disconnect' ? resolve(undefined) : reject(error));
+    });
+    body.write(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="partial.md"\r\nContent-Type: text/plain\r\n\r\n`);
+    body.write('partial bytes');
+    await vi.waitFor(async () => expect(await readdir(path.join(state.directory, 'temp'))).toHaveLength(1));
+    if (mode === 'disconnect') body.destroy();
+    else { state.enabled = false; body.end(`\r\n--${boundary}--\r\n`); }
+    expect(await response).toBe(mode === 'disconnect' ? undefined : 400);
+    await vi.waitFor(async () => expect(await readdir(path.join(state.directory, 'temp'))).toEqual([]));
+    expect(handler).not.toHaveBeenCalled();
   });
 
   it('停用的插件在读文件前拒绝上传', async () => {

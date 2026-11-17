@@ -21,7 +21,10 @@ import { QdrantRepository } from '../../infrastructure/qdrantRepository';
 import { SotRepository } from '../../infrastructure/sotRepository';
 import type { OriginalDocumentRepository } from '../../infrastructure/originalDocumentRepository';
 import { KnowledgeBaseWithDocumentCount } from '../knowledgeBaseService';
-import { getGraphEdgesCollectionName, getGraphNodesCollectionName } from '../../graph/infrastructure/qdrantCollections';
+import {
+  getGraphEdgesCollectionName,
+  getGraphNodesCollectionName,
+} from '../../graph/infrastructure/qdrantCollections';
 import {
   KnowledgeBaseDefaultDeleteBlockedError,
   KnowledgeBaseIdRequiredError,
@@ -87,10 +90,10 @@ export class KnowledgeBaseMgmtService {
     logger.info('获取所有知识库列表');
     try {
       const knowledgeBases = await this.metadataRepository.getAllKnowledgeBases();
-      const kbIds = knowledgeBases.map((kb) => kb.id);
+      const kbIds = knowledgeBases.map(kb => kb.id);
       const countsByKbId = await this.metadataRepository.getDocumentCountsByKnowledgeBaseIds(kbIds);
 
-      const withCounts: KnowledgeBaseWithDocumentCount[] = knowledgeBases.map((kb) => {
+      const withCounts: KnowledgeBaseWithDocumentCount[] = knowledgeBases.map(kb => {
         const raw = countsByKbId[kb.id];
         const documentCount =
           typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? Math.trunc(raw) : 0;
@@ -202,7 +205,7 @@ export class KnowledgeBaseMgmtService {
         // 避免日志过长：只打印前 20 个文档的 id + 文件名预览
         const preview = documents
           .slice(0, 20)
-          .map((d) => `${d.id}:${d.filename}`)
+          .map(d => `${d.id}:${d.filename}`)
           .join(', ');
         logger.info(
           `待清理文档预览（最多 20 个）: ${preview}${documents.length > 20 ? ' ...' : ''}`
@@ -226,7 +229,8 @@ export class KnowledgeBaseMgmtService {
         `SoT 清理完成: deleted=${sotDeletedCount}, missingOrFailed=${sotMissingOrFailedCount}`
       );
 
-      const originalDeletedCount = await this.originalDocumentRepository.deleteByKnowledgeBase(kbId);
+      const originalDeletedCount =
+        await this.originalDocumentRepository.deleteByKnowledgeBase(kbId);
       logger.info(`原始 PDF 清理完成: deleted=${originalDeletedCount}`);
 
       // 4) 删除元数据（这会级联删除所有文档元数据）

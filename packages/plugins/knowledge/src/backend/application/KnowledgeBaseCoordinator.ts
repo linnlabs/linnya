@@ -160,7 +160,6 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
       metadataRepository: this.metadataRepository,
       originalDocumentRepository: this.originalDocumentRepository,
       statusUpdatePublisher: deps.statusUpdatePublisher,
-
     };
     this.ingestionService = new IngestionService(ingestionServiceDeps);
 
@@ -225,19 +224,21 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
   ): Promise<{ taskId: string; document: Document }> {
     const lease = this.activity.begin(kbId, 'ingestion');
     try {
-    return await this.ingestionService.addDocument(
-      kbId,
-      filePath,
-      fileName,
-      fileSize,
-      embeddingModelId,
-      pdfOcrModelId,
-      imageVisionModelId,
-      rerankModelId,
-      forceVisionMode,
-      graphExtractionModelId
-    );
-    } finally { lease.release(); }
+      return await this.ingestionService.addDocument(
+        kbId,
+        filePath,
+        fileName,
+        fileSize,
+        embeddingModelId,
+        pdfOcrModelId,
+        imageVisionModelId,
+        rerankModelId,
+        forceVisionMode,
+        graphExtractionModelId
+      );
+    } finally {
+      lease.release();
+    }
   }
 
   async getDocumentsInKnowledgeBase(kbId: string): Promise<Document[]> {
@@ -248,20 +249,27 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     return this.documentService.getDocumentById(docId);
   }
 
-  hasActiveTasks(): boolean { return this.activity.hasActivity(); }
-  stopTasks(): Promise<void> { return this.activity.drain(); }
+  hasActiveTasks(): boolean {
+    return this.activity.hasActivity();
+  }
+  stopTasks(): Promise<void> {
+    return this.activity.drain();
+  }
   async rebuildIndex(kbId: string, modelId: string) {
     if (!this.rebuildOwner) throw new Error('知识库推理能力未就绪');
     return this.rebuildOwner.start(kbId, modelId);
   }
-  getIndexRebuildStatus(kbId: string) { return this.rebuildOwner?.get(kbId) ?? null; }
+  getIndexRebuildStatus(kbId: string) {
+    return this.rebuildOwner?.get(kbId) ?? null;
+  }
 
   async getTasksStatus(docIds: string[]): Promise<Record<string, TaskStatusView>> {
     return this.documentService.getTasksStatus(docIds);
   }
 
   async deleteDocument(kbId: string, docId: string): Promise<void> {
-    if (this.rebuildOwner?.get(kbId)?.status === 'running') throw new KnowledgeActivityBusyError(kbId);
+    if (this.rebuildOwner?.get(kbId)?.status === 'running')
+      throw new KnowledgeActivityBusyError(kbId);
     // 删除生命周期编排：
     // 1) 先取消后台任务（摄入/图谱抽取），避免删除后 worker 继续写回
     // 2) 再执行真正的数据删除（向量库/SoT/图谱/元数据）
@@ -270,9 +278,11 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     await this.activity.whenIdle(kbId);
     const lease = this.activity.begin(kbId, 'delete');
     try {
-    await this.documentService.deleteDocument(kbId, docId);
-    await this.taskService.refreshKbGraphProgress(kbId);
-    } finally { lease.release(); }
+      await this.documentService.deleteDocument(kbId, docId);
+      await this.taskService.refreshKbGraphProgress(kbId);
+    } finally {
+      lease.release();
+    }
   }
 
   async continueFailedPdfPages(
@@ -326,7 +336,8 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
    * **副作用 (Side-effects):** 删除知识库的所有相关数据
    */
   async deleteKnowledgeBase(kbId: string): Promise<void> {
-    if (this.rebuildOwner?.get(kbId)?.status === 'running') throw new KnowledgeActivityBusyError(kbId);
+    if (this.rebuildOwner?.get(kbId)?.status === 'running')
+      throw new KnowledgeActivityBusyError(kbId);
     // 删除生命周期编排：
     // - 先取消该 KB 下所有后台任务（摄入/图谱抽取），避免删除期间出现写回竞态；
     // - 再删除 KB 及其全部数据（向量库/SoT/元数据/图谱）。
@@ -334,8 +345,10 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     await this.activity.whenIdle(kbId);
     const lease = this.activity.begin(kbId, 'delete');
     try {
-    await this.knowledgeBaseMgmtService.deleteKnowledgeBase(kbId);
-    } finally { lease.release(); }
+      await this.knowledgeBaseMgmtService.deleteKnowledgeBase(kbId);
+    } finally {
+      lease.release();
+    }
   }
 
   /**
@@ -375,9 +388,9 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     try {
       logger.info(`执行知识库搜索: ${request.query} (知识库: ${request.kbId || 'default'})`);
 
-    try {
-      // 如果没有指定知识库ID，使用默认知识库
-      const kbId = request.kbId || 'default';
+      try {
+        // 如果没有指定知识库ID，使用默认知识库
+        const kbId = request.kbId || 'default';
 
         // 确保默认知识库存在
         if (kbId === 'default') {
@@ -402,24 +415,8 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
         logger.error(`知识库搜索失败: ${error}`);
         throw error;
       }
-
-      // 转换为内部（已解析 kbId）的搜索请求格式
-      const searchRequest: ResolvedKnowledgeBaseSearchRequest = {
-        query: request.query,
-        kbId,
-        topK: request.topK || 5,
-        filter: request.filter,
-        useReranking: request.useReranking !== false,
-        embeddingModelId: request.embeddingModelId ?? null,
-        rerankModelId: request.rerankModelId ?? null,
-      };
-
-      const response = await this.searchService.search(searchRequest);
-      logger.info(`知识库搜索完成，返回 ${response.results.length} 个结果`);
-      return response;
-    } catch (error) {
-      logger.error(`知识库搜索失败: ${error}`);
-      throw error;
+    } finally {
+      lease.release();
     }
   }
 
@@ -459,7 +456,9 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
         const response = await this.searchService.search(searchRequest);
         logger.info(`文档内搜索完成，返回 ${response.results.length} 个结果`);
         return response;
-      } finally { lease.release(); }
+      } finally {
+        lease.release();
+      }
     } catch (error) {
       logger.error(`文档内搜索失败: ${error}`);
       throw error;
@@ -639,10 +638,25 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     try {
       logger.info(`执行原始格式搜索: ${query} (知识库: ${kbId})`);
 
-    try {
-      // 如果知识库ID是'default'，确保默认知识库存在
-      if (kbId === 'default') {
-        await this.getOrCreateDefaultKnowledgeBase();
+      try {
+        // 如果知识库ID是'default'，确保默认知识库存在
+        if (kbId === 'default') {
+          await this.getOrCreateDefaultKnowledgeBase();
+        }
+
+        const results = await this.searchService.searchRawResults(
+          kbId,
+          query,
+          topK,
+          docIds,
+          useReranking,
+          options
+        );
+        logger.info(`原始格式搜索完成，返回 ${results.length} 个结果`);
+        return results;
+      } catch (error) {
+        logger.error(`原始格式搜索失败: ${error}`);
+        throw error;
       }
     } finally {
       lease.release();
@@ -670,10 +684,27 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     try {
       logger.info(`执行Agent搜索: ${query} (知识库: ${kbId}${docId ? `, 文档: ${docId}` : ''})`);
 
-    try {
-      // 如果知识库ID是'default'，确保默认知识库存在
-      if (kbId === 'default') {
-        await this.getOrCreateDefaultKnowledgeBase();
+      try {
+        // 如果知识库ID是'default'，确保默认知识库存在
+        if (kbId === 'default') {
+          await this.getOrCreateDefaultKnowledgeBase();
+        }
+
+        // 🔥 传递引用偏移量
+        const result = await this.searchService.searchForAgent(
+          kbId,
+          query,
+          citationRefAllocator,
+          topK,
+          docId,
+          citationOffset,
+          graph
+        );
+        logger.info(`Agent搜索完成`);
+        return result;
+      } catch (error) {
+        logger.error(`Agent搜索失败: ${error}`);
+        throw error;
       }
     } finally {
       lease.release();

@@ -49,17 +49,24 @@ describe('BetterSqliteMetadataRepository parse diagnostics', () => {
       createdAt: 1_800_000_000_000,
     };
 
-    await expect(repository.updateDocumentParseDiagnostics(document.id, diagnostics)).resolves.toBe(true);
+    await expect(repository.updateDocumentParseDiagnostics(document.id, diagnostics)).resolves.toBe(
+      true
+    );
 
     const loaded = await repository.getDocumentById(document.id);
 
     expect(loaded?.parseDiagnostics).toEqual(diagnostics);
 
-    const raw = databaseService.getDb().prepare(`
+    const raw = databaseService
+      .getDb()
+      .prepare(
+        `
       SELECT parse_diagnostics_json
       FROM kb_documents
       WHERE id = ?
-    `).get(document.id) as { parse_diagnostics_json: string | null };
+    `
+      )
+      .get(document.id) as { parse_diagnostics_json: string | null };
 
     expect(raw.parse_diagnostics_json).toBe(JSON.stringify(diagnostics));
   });
@@ -85,13 +92,15 @@ describe('BetterSqliteMetadataRepository knowledge base model overrides', () => 
 
   it('does not treat legacy vision_model_id as a PDF OCR override', async () => {
     const db = databaseService.getDb();
-    db.prepare(`
+    db.prepare(
+      `
       UPDATE knowledge_bases
       SET pdf_ocr_model_id = NULL,
           image_vision_model_id = NULL,
           vision_model_id = ?
       WHERE id = 'default'
-    `).run('PaddlePaddle/PaddleOCR-VL-1.5');
+    `
+    ).run('PaddlePaddle/PaddleOCR-VL-1.5');
 
     const kb = await repository.getKnowledgeBaseById('default');
 
@@ -101,12 +110,14 @@ describe('BetterSqliteMetadataRepository knowledge base model overrides', () => 
 
   it('keeps explicit PDF OCR overrides from the new field', async () => {
     const db = databaseService.getDb();
-    db.prepare(`
+    db.prepare(
+      `
       UPDATE knowledge_bases
       SET pdf_ocr_model_id = ?,
           vision_model_id = ?
       WHERE id = 'default'
-    `).run('custom-ocr-model', 'legacy-vision-model');
+    `
+    ).run('custom-ocr-model', 'legacy-vision-model');
 
     const kb = await repository.getKnowledgeBaseById('default');
 
@@ -126,11 +137,16 @@ describe('BetterSqliteMetadataRepository knowledge base model overrides', () => 
 
     await repository.createKnowledgeBase(kb);
 
-    const raw = databaseService.getDb().prepare(`
+    const raw = databaseService
+      .getDb()
+      .prepare(
+        `
       SELECT embedding_model_id, rerank_model_id, pdf_ocr_model_id, image_vision_model_id, vision_model_id
       FROM knowledge_bases
       WHERE id = ?
-    `).get(kb.id) as {
+    `
+      )
+      .get(kb.id) as {
       embedding_model_id: string | null;
       rerank_model_id: string | null;
       pdf_ocr_model_id: string | null;

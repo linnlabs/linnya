@@ -418,7 +418,10 @@ function createMetadataRepository(
   };
 
   return {
-    indexState: createKnowledgeIndexFixture([KB_ID], { modelId: 'embedding-model', spaceId: 'test-embedding-space' }),
+    indexState: createKnowledgeIndexFixture([KB_ID], {
+      modelId: 'embedding-model',
+      spaceId: 'test-embedding-space',
+    }),
     createKnowledgeBase: async input => input,
     getAllKnowledgeBases: async () => [kb],
     getDocumentCountsByKnowledgeBaseIds: async () => ({}),

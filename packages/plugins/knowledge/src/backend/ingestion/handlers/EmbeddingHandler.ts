@@ -2,7 +2,7 @@
  * @file src/knowledge-base/ingestion/handlers/EmbeddingHandler.ts
  *
  * @brief EMBEDDING状态处理器
- * 
+ *
  * @description
  * 功能 (What): 处理文档向量化阶段的业务逻辑
  * 输入 (Input): TaskContext包含解析结果和向量化参数
@@ -36,7 +36,7 @@ export class EmbeddingHandler implements StateHandler {
   constructor(embedding: EmbeddingPort) {
     this.embedding = embedding;
   }
-  
+
   getName(): string {
     return 'EmbeddingHandler';
   }
@@ -53,58 +53,62 @@ export class EmbeddingHandler implements StateHandler {
       const contentBlocks: ParsedContentBlock[] = context.parseResult.contentBlocks;
       if (contentBlocks.length === 0) {
         logger.warn(`[EmbeddingHandler] 无内容块需要向量化: ${context.docId}`);
-        
+
         // 无内容时直接跳到存储阶段
         return {
           success: true,
           newStage: InternalStage.STORING,
-          context: { 
-            ...context, 
+          context: {
+            ...context,
             vectorizeResult: { vectorizedBlocks: [], metadata: { empty: true } },
             stageProgress: 100,
             currentProgress: 80,
           },
-          message: '无内容需要向量化，跳过向量化阶段'
+          message: '无内容需要向量化，跳过向量化阶段',
         };
       }
 
       logger.info(`[EmbeddingHandler] 开始向量化 ${contentBlocks.length} 个内容块`);
-      
+
       // 初始化进度
       context.stageProgress = 0;
 
       // 步骤 1: 准备文本列表（与后处理产物一一对应，禁止在此处再次切分，避免 block_id/point_id 覆盖）
-      const textsToEmbed = contentBlocks.map((block) => (block.text || '').trim());
+      const textsToEmbed = contentBlocks.map(block => (block.text || '').trim());
       const totalBlocks = textsToEmbed.length;
 
       // 步骤 2: 分批向量化（稠密向量 + 稀疏向量）
       const batchSize = this.calculateBatchSize(totalBlocks);
       const vectorizedBlocks: VectorizedBlock[] = [];
-      
+
       logger.info(`[EmbeddingHandler] 使用批量大小: ${batchSize}, 总共 ${totalBlocks} 个块`);
 
       for (let i = 0; i < totalBlocks; i += batchSize) {
         const batchEnd = Math.min(i + batchSize, totalBlocks);
         const batchTexts = textsToEmbed.slice(i, batchEnd);
-        
+
         // 更新进度：正在处理批次
         const batchProgress = Math.floor((i / totalBlocks) * 85); // 0-85%，留15%给稀疏向量和后处理
         context.stageProgress = batchProgress;
-        
-        logger.debug(`[EmbeddingHandler] 处理批次 ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalBlocks / batchSize)}: ${i + 1}-${batchEnd}/${totalBlocks}`);
+
+        logger.debug(
+          `[EmbeddingHandler] 处理批次 ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalBlocks / batchSize)}: ${i + 1}-${batchEnd}/${totalBlocks}`
+        );
 
         // 🔥 步骤 2.1: 调用稠密向量化服务
         context.signal?.throwIfAborted();
         const result = await this.embedding.embed({
-          modelId: context.embeddingModelId, values: batchTexts,
-          expectedSpaceId: context.embeddingSpaceId, signal: context.signal,
+          modelId: context.embeddingModelId,
+          values: batchTexts,
+          expectedSpaceId: context.embeddingSpaceId,
+          signal: context.signal,
         });
         context.embeddingSpaceId = result.spaceId;
         const batchVectors = result.vectors.map(vector => [...vector]);
-        
+
         // 🔥 步骤 2.2: 生成稀疏向量（BM25）
         const batchSparseVectors = await this.generateSparseVectors(batchTexts);
-        
+
         // 将稠密向量和稀疏向量附加到对应的内容块（严格一一对应）
         for (let j = 0; j < batchTexts.length; j++) {
           const originalIndex = i + j;
@@ -116,7 +120,7 @@ export class EmbeddingHandler implements StateHandler {
             sparse_vector: batchSparseVectors[j],
             vectorModel: context.embeddingModelId,
             sparseVectorModel: 'bm25',
-            vectorTimestamp: Date.now()
+            vectorTimestamp: Date.now(),
           };
           vectorizedBlocks.push(vectorizedBlock);
         }
@@ -124,18 +128,24 @@ export class EmbeddingHandler implements StateHandler {
         // 更新完成进度
         const completedProgress = Math.floor(((i + batchTexts.length) / totalBlocks) * 85);
         context.stageProgress = completedProgress;
-        
-        logger.debug(`[EmbeddingHandler] 批次完成: ${i + batchTexts.length}/${totalBlocks} (${completedProgress}%)`);
+
+        logger.debug(
+          `[EmbeddingHandler] 批次完成: ${i + batchTexts.length}/${totalBlocks} (${completedProgress}%)`
+        );
       }
 
       // 步骤 3: 向量化后处理
       context.stageProgress = 95;
       logger.info(`[EmbeddingHandler] 向量化完成，开始后处理...`);
-      
+
       // 验证向量结果
       const vectorDimension = vectorizedBlocks[0]?.vector?.length;
-      const sparseVectorCount = vectorizedBlocks.filter(block => block.sparse_vector && block.sparse_vector.indices.length > 0).length;
-      logger.info(`[EmbeddingHandler] 稠密向量维度: ${vectorDimension}, 稀疏向量数量: ${sparseVectorCount}/${vectorizedBlocks.length}`);
+      const sparseVectorCount = vectorizedBlocks.filter(
+        block => block.sparse_vector && block.sparse_vector.indices.length > 0
+      ).length;
+      logger.info(
+        `[EmbeddingHandler] 稠密向量维度: ${vectorDimension}, 稀疏向量数量: ${sparseVectorCount}/${vectorizedBlocks.length}`
+      );
 
       // 步骤 4: 准备向量化结果
       const vectorizeResult: VectorizeResult = {
@@ -148,12 +158,14 @@ export class EmbeddingHandler implements StateHandler {
           totalVectors: vectorizedBlocks.length,
           totalSparseVectors: sparseVectorCount, // 🔥 新增：稀疏向量统计
           batchSize,
-          processingTime: Date.now() - context.lastUpdated
-        }
+          processingTime: Date.now() - context.lastUpdated,
+        },
       };
 
       context.stageProgress = 100;
-      logger.info(`[EmbeddingHandler] 混合向量化完成: ${vectorizedBlocks.length} 个稠密向量 + ${sparseVectorCount} 个稀疏向量，维度: ${vectorDimension}`);
+      logger.info(
+        `[EmbeddingHandler] 混合向量化完成: ${vectorizedBlocks.length} 个稠密向量 + ${sparseVectorCount} 个稀疏向量，维度: ${vectorDimension}`
+      );
 
       // 🔥 调试：打印最终的向量化结果 - 已移除
       // logger.info(`[EmbeddingHandler] DEBUG: Final vectorizeResult: \n${inspect(vectorizeResult, { depth: null, colors: false })}`);
@@ -161,25 +173,24 @@ export class EmbeddingHandler implements StateHandler {
       return {
         success: true,
         newStage: InternalStage.STORING,
-        context: { 
-          ...context, 
+        context: {
+          ...context,
           vectorizeResult,
           stageProgress: 100,
-          currentProgress: 80  // 向量化完成，整体进度80%
+          currentProgress: 80, // 向量化完成，整体进度80%
         },
         message: `混合向量化完成: ${vectorizedBlocks.length} 个向量（稠密+稀疏）`,
       };
-
     } catch (error) {
       const errorMessage = `向量化失败: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(`[EmbeddingHandler] ${errorMessage}`, error);
-      
+
       // 🔥 简化：失败清理现在在状态机层面统一处理
       return {
         success: false,
         newStage: InternalStage.FAILED,
         context: { ...context, errorMessage },
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -193,9 +204,9 @@ export class EmbeddingHandler implements StateHandler {
   private calculateBatchSize(totalTexts: number): number {
     // 根据文本数量动态调整批量大小
     if (totalTexts <= 10) return totalTexts; // 小量数据一次处理
-    if (totalTexts <= 50) return 5;          // 中等数据5个一批
-    if (totalTexts <= 200) return 10;        // 较多数据10个一批
-    return 20;                               // 大量数据20个一批
+    if (totalTexts <= 50) return 5; // 中等数据5个一批
+    if (totalTexts <= 200) return 10; // 较多数据10个一批
+    return 20; // 大量数据20个一批
   }
 
   /**
@@ -215,13 +226,14 @@ export class EmbeddingHandler implements StateHandler {
     try {
       // BM25 分词、停用词和哈希规则由共享 sparse-vector 实现统一维护。
       const sparseVectors = await textsToSparseVectors(texts);
-      
+
       logger.debug(`[EmbeddingHandler] 稀疏向量化完成: ${sparseVectors.length} 个向量`);
       return sparseVectors;
-      
     } catch (error) {
       logger.error(`[EmbeddingHandler] 稀疏向量化API调用失败:`, error);
-      throw new Error(`稀疏向量化API调用失败: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `稀疏向量化API调用失败: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -244,9 +256,9 @@ export class EmbeddingHandler implements StateHandler {
     // 检查所有向量维度是否一致
     for (let i = 1; i < vectors.length; i++) {
       if (vectors[i].length !== firstDimension) {
-        return { 
-          isValid: false, 
-          error: `向量维度不一致: 第1个向量${firstDimension}维，第${i + 1}个向量${vectors[i].length}维` 
+        return {
+          isValid: false,
+          error: `向量维度不一致: 第1个向量${firstDimension}维，第${i + 1}个向量${vectors[i].length}维`,
         };
       }
     }
@@ -256,9 +268,9 @@ export class EmbeddingHandler implements StateHandler {
       for (let j = 0; j < vectors[i].length; j++) {
         const value = vectors[i][j];
         if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
-          return { 
-            isValid: false, 
-            error: `向量包含无效数值: 第${i + 1}个向量，第${j + 1}个维度，值: ${value}` 
+          return {
+            isValid: false,
+            error: `向量包含无效数值: 第${i + 1}个向量，第${j + 1}个维度，值: ${value}`,
           };
         }
       }

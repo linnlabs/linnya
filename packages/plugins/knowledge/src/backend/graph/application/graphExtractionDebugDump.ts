@@ -166,5 +166,3 @@ export async function dumpGraphExtractionBatchIfEnabled(
     console.warn('[KG-DUMP] graph extraction dump failed:', error);
   }
 }
-
-

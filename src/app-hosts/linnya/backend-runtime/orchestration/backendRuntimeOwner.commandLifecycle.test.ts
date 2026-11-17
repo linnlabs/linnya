@@ -7,7 +7,9 @@ vi.mock('../../../../electron-main/services/apiServer', () => ({
       return port;
     }
     async stop(): Promise<void> {}
-    getToken(): string { return 'test-token'; }
+    getToken(): string {
+      return 'test-token';
+    }
   },
 }));
 
@@ -24,7 +26,9 @@ vi.mock('../../../../electron-main/services/qdrantManager', () => ({
   QdrantManager: class TestQdrantManager {
     async start(): Promise<void> {}
     async stop(): Promise<void> {}
-    getConfig(): Record<string, never> { return {}; }
+    getConfig(): Record<string, never> {
+      return {};
+    }
   },
 }));
 
@@ -75,14 +79,17 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     const initializationFailure = new Error('service initialization failed');
     const qdrantStop = vi.spyOn(QdrantManager.prototype, 'stop').mockResolvedValue();
     vi.spyOn(QdrantManager.prototype, 'start').mockResolvedValue();
-    vi.spyOn(ServiceInitializer.prototype, 'initializeServices')
-      .mockImplementation(async (_config, vectorStore) => {
+    vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockImplementation(
+      async (_config, vectorStore) => {
         await vectorStore.ensureReady();
         throw initializationFailure;
-      });
+      }
+    );
     const queueStop = vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
 
-    await expect(new TestBackendRuntimeOwner().start(BACKEND_CONFIGURATION)).rejects.toBe(initializationFailure);
+    await expect(new TestBackendRuntimeOwner().start(BACKEND_CONFIGURATION)).rejects.toBe(
+      initializationFailure
+    );
     expect(queueStop).toHaveBeenCalledOnce();
     expect(qdrantStop).toHaveBeenCalledOnce();
   });
@@ -92,11 +99,12 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     const cleanupFailure = new Error('qdrant cleanup failed');
     const qdrantStart = vi.spyOn(QdrantManager.prototype, 'start').mockResolvedValue();
     vi.spyOn(QdrantManager.prototype, 'stop').mockRejectedValue(cleanupFailure);
-    vi.spyOn(ServiceInitializer.prototype, 'initializeServices')
-      .mockImplementation(async (_config, vectorStore) => {
+    vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockImplementation(
+      async (_config, vectorStore) => {
         await vectorStore.ensureReady();
         throw initializationFailure;
-      });
+      }
+    );
     vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
 
     const manager = new TestBackendRuntimeOwner();
@@ -116,8 +124,11 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
 
   it('先取消启动维护，再按 API、命令 owner、Sandbox owner、后台队列顺序停止', async () => {
     const order: string[] = [];
-    vi.spyOn(ServiceInitializer.prototype, 'stopStartupMaintenance')
-      .mockImplementation(async () => { order.push('maintenance'); });
+    vi.spyOn(ServiceInitializer.prototype, 'stopStartupMaintenance').mockImplementation(
+      async () => {
+        order.push('maintenance');
+      }
+    );
     const manager = new TestBackendRuntimeOwner();
     vi.spyOn(manager.getApiServer(), 'stop').mockImplementation(async () => {
       order.push('api');
@@ -126,11 +137,17 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
       order.push('queue');
     });
     manager.registerCommandOwnerLifecycle({
-      hasExecutingCommands() { return true; },
-      async endOwnerAndWait() { order.push('command'); },
+      hasExecutingCommands() {
+        return true;
+      },
+      async endOwnerAndWait() {
+        order.push('command');
+      },
     });
     manager.registerSandboxOwnerLifecycle({
-      async endOwnerAndWait() { order.push('sandbox'); },
+      async endOwnerAndWait() {
+        order.push('sandbox');
+      },
     });
 
     await manager.stop();
@@ -181,7 +198,8 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     vi.spyOn(manager.getApiServer(), 'stop').mockResolvedValue();
     vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
     const cleanupFailure = new Error('owner drain failed');
-    const endOwnerAndWait = vi.fn()
+    const endOwnerAndWait = vi
+      .fn()
       .mockRejectedValueOnce(cleanupFailure)
       .mockResolvedValueOnce(undefined);
     manager.registerCommandOwnerLifecycle({
@@ -202,7 +220,8 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     vi.spyOn(manager.getApiServer(), 'stop').mockResolvedValue();
     vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
     const commandFailure = new Error('command owner drain failed');
-    const commandStop = vi.fn()
+    const commandStop = vi
+      .fn()
       .mockRejectedValueOnce(commandFailure)
       .mockResolvedValueOnce(undefined);
     const sandboxStop = vi.fn().mockResolvedValue(undefined);
@@ -227,7 +246,8 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     const queueStop = vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
     const commandStop = vi.fn().mockResolvedValue(undefined);
     const sandboxFailure = new Error('sandbox owner drain failed');
-    const sandboxStop = vi.fn()
+    const sandboxStop = vi
+      .fn()
       .mockRejectedValueOnce(sandboxFailure)
       .mockResolvedValueOnce(undefined);
     manager.registerCommandOwnerLifecycle({
@@ -252,10 +272,12 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
     const commandFailure = new Error('command owner drain failed');
     const sandboxFailure = new Error('sandbox owner drain failed');
-    const commandStop = vi.fn()
+    const commandStop = vi
+      .fn()
       .mockRejectedValueOnce(commandFailure)
       .mockResolvedValueOnce(undefined);
-    const sandboxStop = vi.fn()
+    const sandboxStop = vi
+      .fn()
       .mockRejectedValueOnce(sandboxFailure)
       .mockResolvedValueOnce(undefined);
     manager.registerCommandOwnerLifecycle({
@@ -308,8 +330,12 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
 
     await expect(manager.start(BACKEND_CONFIGURATION)).rejects.toThrow('App 运行时已经结束');
     await expect(manager.restart(BACKEND_CONFIGURATION)).rejects.toThrow('不支持进程内重启');
-    expect(() => manager.registerCommandOwnerLifecycle(commandLifecycle)).toThrow('命令运行时已经结束');
-    expect(() => manager.registerSandboxOwnerLifecycle(sandboxLifecycle)).toThrow('Sandbox 运行时已经结束');
+    expect(() => manager.registerCommandOwnerLifecycle(commandLifecycle)).toThrow(
+      '命令运行时已经结束'
+    );
+    expect(() => manager.registerSandboxOwnerLifecycle(sandboxLifecycle)).toThrow(
+      'Sandbox 运行时已经结束'
+    );
   });
 
   it('路由初始化失败已收口两个 scope 时，同时冻结两个 App owner', async () => {
@@ -318,13 +344,17 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
 
     await expect(manager.start(BACKEND_CONFIGURATION)).rejects.toThrow('App 运行时已经结束');
     await expect(manager.restart(BACKEND_CONFIGURATION)).rejects.toThrow('不支持进程内重启');
-    expect(() => manager.registerCommandOwnerLifecycle({
-      hasExecutingCommands: () => false,
-      async endOwnerAndWait() {},
-    })).toThrow('命令运行时已经结束');
-    expect(() => manager.registerSandboxOwnerLifecycle({
-      async endOwnerAndWait() {},
-    })).toThrow('Sandbox 运行时已经结束');
+    expect(() =>
+      manager.registerCommandOwnerLifecycle({
+        hasExecutingCommands: () => false,
+        async endOwnerAndWait() {},
+      })
+    ).toThrow('命令运行时已经结束');
+    expect(() =>
+      manager.registerSandboxOwnerLifecycle({
+        async endOwnerAndWait() {},
+      })
+    ).toThrow('Sandbox 运行时已经结束');
   });
 
   it('并发退出共享同一个后端收口任务，停止期间拒绝重新启动', async () => {
