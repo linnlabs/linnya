@@ -9,7 +9,7 @@
 
 .alert-dialog-content .alert-dialog-copy {
   flex: 1;
-  max-height: min(360px, 50vh);
+  max-height: min(420px, 50vh);
   min-height: 20px;
   display: grid;
   gap: var(--space-4);

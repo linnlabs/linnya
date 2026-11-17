@@ -61,6 +61,7 @@ const SCHEDULED_TASK_WARNING = [
   '定时任务会在您不在场时自动运行：',
   'Agent 可能在您不知情的情况下执行上面这些操作，或访问可疑网站；',
   '网页或文件里的恶意内容也可能诱导它这么做，没有人能当场阻止。',
+  '',
   '除非您明确知道如何应对，请不要在定时任务里安排这类工作。',
 ].join('\n');
 
@@ -71,6 +72,6 @@ export function fullAccessDialogCopy(context: 'conversation' | 'scheduled-task')
   return {
     ...SETTINGS_FULL_ACCESS_DIALOG,
     title: '定时任务开启完全访问',
-    riskMessage: `${SETTINGS_FULL_ACCESS_DIALOG.riskMessage}\n${SCHEDULED_TASK_WARNING}`,
+    riskMessage: `${SETTINGS_FULL_ACCESS_DIALOG.riskMessage}\n\n${SCHEDULED_TASK_WARNING}`,
   };
 }
