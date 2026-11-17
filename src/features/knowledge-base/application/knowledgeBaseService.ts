@@ -30,60 +30,16 @@ export type KnowledgeBaseGraphSearchOptions = {
   budget: GraphBudget;
 };
 
-/**
- * 知识库摘要（用于 API / UI 展示）
- *
- * 设计说明：
- * - `KnowledgeBase` 仍然是领域模型，不承载统计字段；
- * - `documentCount` 属于视图/统计信息，因此以“交叉类型”的方式附加在返回结构中。
- */
-export type KnowledgeBaseWithDocumentCount = KnowledgeBase & { documentCount: number };
-
-/**
- * 任务状态视图，用于前端展示
- */
-export interface TaskStatusView {
-  /** 任务ID */
-  taskId: string;
-
-  /** 文档ID */
-  docId: string;
-
-  /** 任务状态 */
-  status: string;
-
-  /** 进度 (0-100) */
-  progress: number;
-
-  /** 当前阶段 */
-  stage: string;
-
-  /**
-   * 阶段内进度（0-100）。
-   *
-   * 说明：
-   * - 该字段用于前端把 stage 映射为 0~100 的绝对进度；
-   * - IPC 与轮询接口必须保持一致，否则“校准轮询”会覆盖 IPC 造成进度卡死。
-   */
-  stage_progress?: number;
-
-  /**
-   * 用户可见的状态消息（例如：解析中/已完成/失败原因等）。
-   *
-   * 说明：
-   * - IPC 推送与轮询拉取都应尽可能提供该字段，避免前端出现空白标签或误导文案。
-   */
-  message?: string;
-
-  /** 错误信息 */
-  error?: string;
-
-  /** 更新时间 */
-  updatedAt: number;
-
-  /** 预计完成时间 */
-  estimatedTimeRemaining?: number;
-}
+import type {
+  KnowledgeBaseSummary as KnowledgeBaseWithDocumentCount,
+  KnowledgeTaskStatusView as TaskStatusView,
+  KnowledgeSearchResponse as SearchResponse,
+} from '@plugin/knowledge/shared';
+export type {
+  KnowledgeBaseSummary as KnowledgeBaseWithDocumentCount,
+  KnowledgeTaskStatusView as TaskStatusView,
+  KnowledgeSearchResponse as SearchResponse,
+} from '@plugin/knowledge/shared';
 
 export interface SearchFilter {
   docIds?: string[];
@@ -144,53 +100,6 @@ export interface SearchRequest {
 
   /** 是否包含全文 */
   includeFullText?: boolean;
-}
-
-/**
- * 搜索响应结果
- */
-export interface SearchResponse {
-  /** 搜索结果 */
-  results: Array<{
-    /** 文本内容 */
-    text: string;
-
-    /** 文档ID */
-    docId: string;
-
-    /** 文档名称 */
-    docTitle: string;
-
-    /** 分数 */
-    score: number;
-
-    /** 匹配类型 */
-    matchType: string;
-
-    /** 块类型 */
-    blockType: string;
-
-    /** 块ID */
-    blockId: string;
-
-    /** 页码 */
-    page?: number;
-  }>;
-
-  /** 搜索的元信息 */
-  meta?: {
-    /** 查询处理时间（毫秒） */
-    processingTimeMs: number;
-
-    /** 使用的向量模型 */
-    vectorModel?: string;
-
-    /** 使用的重排序模型 */
-    rerankModel?: string;
-
-    /** 总结果数量 */
-    totalResults: number;
-  };
 }
 
 /**

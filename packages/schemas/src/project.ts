@@ -22,6 +22,13 @@ export const ProjectRecordSchema = z
 
 export type ProjectRecord = z.infer<typeof ProjectRecordSchema>;
 
+/** 关联选择器只需要项目摘要，不获得生命周期字段或写权限。 */
+export const ProjectSummarySchema = ProjectRecordSchema.pick({ id: true, name: true }).extend({
+  description: ProjectRecordSchema.shape.description.unwrap().optional(),
+  icon: ProjectRecordSchema.shape.icon.unwrap().optional(),
+});
+export type ProjectSummary = z.infer<typeof ProjectSummarySchema>;
+
 export const ProjectCreateInputSchema = z
   .object({
     name: z.string().trim().min(1),

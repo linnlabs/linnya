@@ -123,6 +123,7 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
   browser('stream-markdown-parser', 'packages/stream-markdown-parser/src', 'subpath'),
 
   facade('@plugin/renderer', 'src/plugin-sdk/renderer', 'subpath'),
+  pluginEntry('@plugin/knowledge/shared', 'packages/plugins/knowledge/src/shared/index.ts', 'exact'),
   pluginEntry('@plugin/canvas/shared', 'packages/plugins/canvas/src/shared/index.ts', 'exact'),
   pluginEntry('@plugin/slides/shared', 'packages/plugins/slides/src/shared/index.ts', 'exact'),
   pluginEntry('@plugin/slides/shared', 'packages/plugins/slides/src/shared', 'subpath'),
