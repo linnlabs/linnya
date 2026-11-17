@@ -194,7 +194,6 @@ import {
   CONVERSATION_WORK_DIRECTORY_CONTENT_DIRECTORY,
   CONVERSATION_WORK_DIRECTORY_NAMESPACE,
 } from 'src/domains/conversation-files';
-import { createSqliteConversationStorageCatalogPort } from 'src/app-hosts/linnya/adapters/persistence/storage-space/createSqliteConversationStorageCatalogPort';
 import {
   createStorageSpaceUseCase,
   type StorageSpaceUseCasePort,
@@ -863,7 +862,6 @@ export async function configureRoutes(
       conversations: conversationCleanup,
     }));
     storageSpaceUseCase = createStorageSpaceUseCase({
-      catalog: createSqliteConversationStorageCatalogPort(db),
       inventory: createLocalManagedStorageInventoryPort({
         appDataRoot,
         workspaceRoot,
@@ -877,7 +875,6 @@ export async function configureRoutes(
         diagnosticLogRoot: path.join(workspaceRoot, 'logs'),
         artifactsRoot: path.join(workspaceRoot, 'Artifacts', 'v1'),
       }),
-      workDirectoryUsage: conversationLifecycle.workDirectoryUsage,
       cleanup: conversationCleanup,
     });
     projectConversationMeasurer = createProjectConversationStorageMeasurer({

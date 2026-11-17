@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   STORAGE_SPACE_CATEGORY_ORDER,
+  StorageSpaceConversationIdSchema,
   StorageSpaceErrorResponseSchema,
   StorageSpaceOverviewResponseSchema,
 } from './http';
@@ -14,42 +15,15 @@ function createOverview() {
       kind,
       byte_size: index + 1,
     })),
-    conversations: [
-      {
-        conversation_id: 'conversation/with\\path',
-        title: '中文对话',
-        project_id: null,
-        work_files_state: 'available',
-        byte_size: 1,
-        file_count: 1,
-      },
-      {
-        conversation_id: 'conversation-cleared',
-        title: '已清理',
-        project_id: 'project-1',
-        work_files_state: 'previous_files_unavailable',
-        byte_size: 0,
-        file_count: 0,
-      },
-      {
-        conversation_id: 'conversation-unavailable',
-        title: '无法计量',
-        project_id: null,
-        work_files_state: 'unavailable',
-        byte_size: null,
-        file_count: null,
-      },
-    ],
   } as const;
 }
 
 describe('storage-space HTTP wire contract', () => {
-  it('accepts six exclusive categories and preserves current conversation identity semantics', () => {
+  it('accepts six exclusive categories without conversation details', () => {
     const parsed = StorageSpaceOverviewResponseSchema.parse(createOverview());
 
     expect(parsed.total_byte_size).toBe(21);
-    expect(parsed.conversations[0]?.conversation_id).toBe('conversation/with\\path');
-    expect(parsed.conversations[1]?.project_id).toBe('project-1');
+    expect(parsed).not.toHaveProperty('conversations');
   });
 
   it('does not make category order a schema concern', () => {
@@ -82,7 +56,7 @@ describe('storage-space HTTP wire contract', () => {
     }).success).toBe(false);
   });
 
-  it('rejects unsafe counts and impossible unavailable-work-file projections', () => {
+  it('rejects unsafe counts', () => {
     const overview = createOverview();
 
     for (const invalidByteSize of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
@@ -93,42 +67,13 @@ describe('storage-space HTTP wire contract', () => {
         )),
       }).success).toBe(false);
     }
-    expect(StorageSpaceOverviewResponseSchema.safeParse({
-      ...overview,
-      conversations: [{
-        ...overview.conversations[1],
-        byte_size: 1,
-      }],
-    }).success).toBe(false);
-    expect(StorageSpaceOverviewResponseSchema.safeParse({
-      ...overview,
-      conversations: [{
-        ...overview.conversations[2],
-        byte_size: 0,
-        file_count: 0,
-      }],
-    }).success).toBe(false);
-    expect(StorageSpaceOverviewResponseSchema.safeParse({
-      ...overview,
-      conversations: [{
-        ...overview.conversations[0],
-        byte_size: null,
-        file_count: null,
-      }],
-    }).success).toBe(false);
   });
 
   it('rejects empty, padded, or NUL conversation identities without banning path characters', () => {
-    const overview = createOverview();
     for (const conversationId of ['', ' padded', 'padded ', 'nul\0identity']) {
-      expect(StorageSpaceOverviewResponseSchema.safeParse({
-        ...overview,
-        conversations: [{
-          ...overview.conversations[0],
-          conversation_id: conversationId,
-        }],
-      }).success).toBe(false);
+      expect(StorageSpaceConversationIdSchema.safeParse(conversationId).success).toBe(false);
     }
+    expect(StorageSpaceConversationIdSchema.parse('conversation/with\\path')).toBe('conversation/with\\path');
   });
 
   it('keeps successful and error payloads strict', () => {
@@ -139,10 +84,7 @@ describe('storage-space HTTP wire contract', () => {
     }).success).toBe(false);
     expect(StorageSpaceOverviewResponseSchema.safeParse({
       ...overview,
-      conversations: [{
-        ...overview.conversations[0],
-        absolute_path: '/private/storage',
-      }],
+      conversations: [],
     }).success).toBe(false);
 
     const codes = [

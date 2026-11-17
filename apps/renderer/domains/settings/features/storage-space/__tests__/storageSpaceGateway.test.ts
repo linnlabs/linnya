@@ -19,7 +19,6 @@ const VALID_OVERVIEW = {
     { kind: 'diagnostic_logs', byte_size: 0 },
     { kind: 'application_data', byte_size: 0 },
   ],
-  conversations: [],
 };
 
 describe('storage-space HTTP gateway', () => {

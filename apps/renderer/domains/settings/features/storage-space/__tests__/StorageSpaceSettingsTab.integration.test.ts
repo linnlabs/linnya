@@ -41,14 +41,6 @@ function overview() {
       { kind: 'diagnostic_logs', byte_size: 0 },
       { kind: 'application_data', byte_size: 0 },
     ],
-    conversations: [{
-      conversation_id: 'conversation-a',
-      title: '报告整理',
-      project_id: null,
-      work_files_state: 'available',
-      byte_size: workBytes,
-      file_count: 1,
-    }],
   });
 }
 
@@ -92,7 +84,6 @@ describe('StorageSpaceSettingsTab', () => {
     expect(mocks.readOverview).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain('settings.storageSpace.total');
     expect(container.textContent).toContain('settings.storageSpace.category.conversationWorkFiles');
-    expect(container.textContent).not.toContain('报告整理');
   });
 
   it('进入 tab 自动读取概览，失败时在错误状态提供重试入口', async () => {
