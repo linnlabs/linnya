@@ -7,6 +7,8 @@ import {
   DeleteIcon,
   DownloadIcon,
   FullscreenIcon,
+  HistoryIcon,
+  LinnyaIcon,
   MoreIcon,
   RefreshIcon,
   SettingsIcon,
@@ -105,10 +107,39 @@ const ICON_SIZES = ['xs', 'sm', 'md', 'lg'] as const;
       <GalleryRow label="胶囊 · ghost 次操作"><ActionButtons shape="pill" secondary-variant="ghost" primary-action-text="确认" secondary-action-text="返回" /></GalleryRow>
       <GalleryRow label="主操作不可用"><ActionButtons is-primary-action-disabled primary-action-text="发送" secondary-action-text="取消" /></GalleryRow>
     </GalleryBlock>
+
+    <GalleryBlock title="轻强调的实际用处" note="soft（ActionButtons 的 accent）目前用在这三处：新建项目弹窗、文件树空状态、审阅面板。">
+      <GalleryRow label="新建项目 · 由 Linnya 创建">
+        <ActionButtons primary-variant="accent" :show-secondary-action="false" primary-action-text="AI 辅助创建">
+          <template #primary-content><LinnyaIcon class="buttons__linnya" /><span>AI 辅助创建</span></template>
+        </ActionButtons>
+        <ActionButtons primary-action-text="创建" secondary-action-text="取消" />
+      </GalleryRow>
+      <GalleryRow label="文件树空状态">
+        <div class="gallery-field">
+          <ActionButtons class="buttons__full" primary-variant="accent" :show-secondary-action="false" primary-action-text="让 Linnya 初始化项目" :primary-button-attributes="{ class: 'buttons__full-button' }">
+            <template #primary-content><LinnyaIcon class="buttons__linnya" /><span>让 Linnya 初始化项目</span></template>
+          </ActionButtons>
+        </div>
+      </GalleryRow>
+      <GalleryRow label="审阅面板">
+        <BaseButton variant="soft" size="md"><template #icon><HistoryIcon /></template>查看 3 条审阅历史</BaseButton>
+      </GalleryRow>
+    </GalleryBlock>
   </div>
 </template>
 
 <style>
+.buttons__linnya {
+  width: 14px;
+  height: 14px;
+}
+
+.buttons__full,
+.buttons__full-button {
+  width: 100%;
+}
+
 .buttons__media {
   display: flex;
   align-items: flex-end;
