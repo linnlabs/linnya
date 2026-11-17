@@ -13,6 +13,7 @@ import {
 } from 'src/domains/provider-diagnostics/features/provider-outbound';
 import { embedWithAiSdk } from '../capabilities/ai-sdk/orchestration/embedWithAiSdk';
 import { classifyAiSdkFailure } from '@linnlabs/linnkit-provider-ai-sdk';
+import { resolveEmbeddingSpaceId } from '../functions/resolveEmbeddingSpaceId';
 
 export interface EmbeddingModelCatalog {
   initialize(): Promise<void>;
@@ -31,7 +32,8 @@ export function createEmbeddingPort(
 ): EmbeddingPort {
   const catalog = dependencies.catalog ?? defaultCatalog;
   const invoke = dependencies.invoke ?? embedWithAiSdk;
-  const outboundDiagnostics = dependencies.outbound_diagnostics ?? defaultProviderOutboundDiagnostics;
+  const outboundDiagnostics =
+    dependencies.outbound_diagnostics ?? defaultProviderOutboundDiagnostics;
   return {
     async embed(request) {
       await catalog.initialize();
@@ -44,13 +46,23 @@ export function createEmbeddingPort(
           `Embedding 模型 '${request.modelId}' 不存在`
         );
       }
-      const route = model.embedding_route;
-      if (!route) {
+      if (!model.embedding_route) {
         throw new EmbeddingFailure(
           'protocol',
           'route_missing',
           false,
           `Embedding 模型 '${request.modelId}' 缺少 embedding_route`
+        );
+      }
+      // route 与来源身份在 await Provider 前一起冻结，不能完成后重读已被设置页编辑的目录。
+      const route = { ...model.embedding_route };
+      const spaceId = resolveEmbeddingSpaceId(route);
+      if (request.expectedSpaceId !== undefined && request.expectedSpaceId !== spaceId) {
+        throw new EmbeddingFailure(
+          'protocol',
+          'embedding_space_mismatch',
+          false,
+          '嵌入模型的接口或上游模型已变化，请重建原索引后继续'
         );
       }
       const credential = catalog.resolveCredential(request.modelId);
@@ -96,7 +108,7 @@ export function createEmbeddingPort(
               }
             : { provenance: 'not_reported' },
         });
-        return result;
+        return { ...result, spaceId };
       } catch (error) {
         const failure =
           error instanceof EmbeddingFailure ? error : classifyAiSdkFailure(error, request.signal);

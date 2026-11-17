@@ -6,7 +6,7 @@ import { GraphDiscoveryService } from '../application/graphDiscoveryService';
 
 class FakeEmbedder implements EmbeddingPort {
   async embed(request: Parameters<EmbeddingPort['embed']>[0]) {
-    return { vectors: request.values.map(() => [0.1, 0.2, 0.3]) };
+    return { spaceId: 'fixture-space', vectors: request.values.map(() => [0.1, 0.2, 0.3]) };
   }
 }
 
@@ -17,7 +17,9 @@ class FakeQdrantRepository implements QdrantRepository {
     this.points = points;
   }
 
-  async semanticSearch(): Promise<import('../../infrastructure/qdrantRepository').RetrievedPoint[]> {
+  async semanticSearch(): Promise<
+    import('../../infrastructure/qdrantRepository').RetrievedPoint[]
+  > {
     return this.points;
   }
 
@@ -37,7 +39,9 @@ class FakeQdrantRepository implements QdrantRepository {
   async keywordSearch(): Promise<import('../../infrastructure/qdrantRepository').RetrievedPoint[]> {
     throw new Error('Not implemented in FakeQdrantRepository');
   }
-  async searchWithMetadata(): Promise<import('../../infrastructure/qdrantRepository').RetrievedPoint[]> {
+  async searchWithMetadata(): Promise<
+    import('../../infrastructure/qdrantRepository').RetrievedPoint[]
+  > {
     throw new Error('Not implemented in FakeQdrantRepository');
   }
   async deletePointsByDocId(): Promise<void> {
@@ -58,7 +62,13 @@ class FakeQdrantRepository implements QdrantRepository {
   async countPointsByIds(): Promise<number> {
     throw new Error('Not implemented in FakeQdrantRepository');
   }
-  async getCollectionInfo(): Promise<{ vectors_count: number; indexed_vectors_count: number; points_count: number; segments_count: number; config: Record<string, unknown> }> {
+  async getCollectionInfo(): Promise<{
+    vectors_count: number;
+    indexed_vectors_count: number;
+    points_count: number;
+    segments_count: number;
+    config: Record<string, unknown>;
+  }> {
     throw new Error('Not implemented in FakeQdrantRepository');
   }
   async getAllPoints(): Promise<Array<{ id: string; payload: Record<string, unknown> }>> {

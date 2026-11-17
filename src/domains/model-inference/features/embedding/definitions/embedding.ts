@@ -3,6 +3,8 @@ export interface EmbeddingRequest {
   readonly values: readonly string[];
   readonly signal?: AbortSignal;
   readonly maxParallelCalls?: number;
+  /** 已存在向量索引的来源；不匹配时 Host 必须在发送请求前拒绝。 */
+  readonly expectedSpaceId?: string;
 }
 
 export interface EmbeddingUsage {
@@ -11,6 +13,8 @@ export interface EmbeddingUsage {
 }
 
 export interface EmbeddingResult {
+  /** 本次请求实际使用的向量空间配置身份；名称与凭据变更不影响该身份。 */
+  readonly spaceId: string;
   readonly vectors: readonly (readonly number[])[];
   readonly usage?: EmbeddingUsage;
 }
@@ -22,7 +26,7 @@ export class EmbeddingFailure extends Error {
     readonly kind: EmbeddingFailureKind,
     readonly code: string,
     readonly retryable: boolean,
-    message: string,
+    message: string
   ) {
     super(message);
     this.name = 'EmbeddingFailure';
