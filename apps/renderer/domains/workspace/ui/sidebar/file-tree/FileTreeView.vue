@@ -113,61 +113,47 @@
         {{ workspaceMessage('workspace.sidebar.fileTree.searchEmpty') }}
       </div>
   
+      <!-- 空项目：一行说明 + 与文件行同形的类型行；常用类型直接露出，其余收进“更多类型”，插件再多也不堆按钮。 -->
       <div v-else class="empty-directory-state">
-        <div class="empty-directory-card">
-          <div class="empty-content">
-            <div class="empty-title-row">
-              <span class="empty-title">{{ workspaceMessage('workspace.sidebar.fileTree.emptyTitle') }}</span>
-              <span class="empty-badge">{{ workspaceMessage('workspace.sidebar.fileTree.emptyBadge') }}</span>
-            </div>
-            <p class="empty-subtitle">
-              {{ workspaceMessage('workspace.sidebar.fileTree.emptySubtitle') }}
-            </p>
-            <div class="empty-actions">
-              <ActionButtons 
-                v-if="primaryCreateAction"
-                class="empty-action"
-                :show-primary-action="true"
-                :show-secondary-action="Boolean(secondaryCreateAction)"
-                @primary-click="emitCreateFile(primaryCreateAction)"
-                @secondary-click="secondaryCreateAction && emitCreateFile(secondaryCreateAction)"
-              >
-                <template #primary-content>
-                  <component :is="primaryCreateAction.iconComponent" class="button-icon" />
-                  <span>{{ primaryCreateAction.localizedText.createLabel }}</span>
-                </template>
-                <template #secondary-content>
-                  <component v-if="secondaryCreateAction" :is="secondaryCreateAction.iconComponent" class="button-icon" />
-                  <span v-if="secondaryCreateAction">{{ secondaryCreateAction.localizedText.createLabel }}</span>
-                </template>
-              </ActionButtons>
-              <ActionButtons
-                v-for="action in remainingCreateActions"
-                :key="action.createRequestType"
-                class="empty-action empty-action--full"
-                :show-primary-action="true"
-                :show-secondary-action="false"
-                @primary-click="emitCreateFile(action)"
-              >
-                <template #primary-content>
-                  <component :is="action.iconComponent" class="button-icon" />
-                  <span>{{ action.localizedText.createLabel }}</span>
-                </template>
-              </ActionButtons>
-              <ActionButtons 
-                class="empty-action--full"
-                :show-primary-action="true"
-                :show-secondary-action="false"
-                primary-variant="accent"
-                @primary-click="$emit('ai-init-project')"
-              >
-                <template #primary-content>
-                  <LinnyaIcon class="button-icon" />
-                  <span>{{ workspaceMessage('workspace.sidebar.fileTree.aiInit') }}</span>
-                </template>
-              </ActionButtons>
-            </div>
-              </div>
+        <p class="empty-hint">{{ workspaceMessage('workspace.sidebar.fileTree.emptyHint') }}</p>
+        <div class="workspace-sidebar-row-list empty-create-list">
+          <button
+            v-for="action in shownCreateActions"
+            :key="action.createRequestType"
+            type="button"
+            class="workspace-sidebar-row empty-create-row"
+            @click="emitCreateFile(action)"
+          >
+            <span class="workspace-sidebar-row-icon">
+              <component :is="action.iconComponent" />
+            </span>
+            <span class="workspace-sidebar-row-label">{{ action.localizedText.label }}</span>
+          </button>
+          <button
+            v-if="hiddenCreateActionCount > 0"
+            type="button"
+            class="workspace-sidebar-row empty-create-row empty-create-row--toggle"
+            :aria-expanded="showAllCreateActions"
+            @click="showAllCreateActions = !showAllCreateActions"
+          >
+            <span class="workspace-sidebar-row-icon" />
+            <span class="workspace-sidebar-row-label">
+              {{ showAllCreateActions
+                ? workspaceMessage('workspace.sidebar.fileTree.fewerTypes')
+                : workspaceMessage('workspace.sidebar.fileTree.moreTypes', { count: hiddenCreateActionCount }) }}
+            </span>
+            <ChevronIcon :direction="showAllCreateActions ? 'up' : 'down'" class="empty-create-chevron" />
+          </button>
+          <button
+            type="button"
+            class="workspace-sidebar-row empty-create-row empty-create-row--ai"
+            @click="$emit('ai-init-project')"
+          >
+            <span class="workspace-sidebar-row-icon">
+              <LinnyaIcon class="empty-create-ai-icon" />
+            </span>
+            <span class="workspace-sidebar-row-label">{{ workspaceMessage('workspace.sidebar.fileTree.aiInit') }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -185,12 +171,12 @@
 <script setup>
 import { provide, ref, computed } from 'vue';
 import TreeItem from './TreeItem.vue';
-import { ActionButtons, IconButton } from '@linnya/renderer-ui';
+import { IconButton } from '@linnya/renderer-ui';
 import { FolderAddIcon } from '@linnya/renderer-ui/icons';
 import { DocumentAddIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect } from '@linnya/renderer-ui';
-import { LinnyaIcon } from '@linnya/renderer-ui/icons';
+import { ChevronIcon, LinnyaIcon } from '@linnya/renderer-ui/icons';
 import BatchExportMarkdownModal from '../../../features/import-export/ui/export/BatchExportMarkdownModal.vue';
 import { batchExportProjectAsMarkdown } from '../../../features/import-export/services/batchExportService';
 import { describeBatchExportResult } from '../../../functions/describeBatchExportResult';
@@ -245,9 +231,15 @@ const {
 } = useFixedDropdownPosition();
 
 const documentCreateActions = useLocalizedCreatableDocumentTypes();
-const primaryCreateAction = computed(() => documentCreateActions.value[0] ?? null);
-const secondaryCreateAction = computed(() => documentCreateActions.value[1] ?? null);
-const remainingCreateActions = computed(() => documentCreateActions.value.slice(2));
+// 空项目直接露出的类型数（按 createPriority 排序后的前几种），其余收进“更多类型”。
+const VISIBLE_CREATE_ACTION_COUNT = 3;
+const showAllCreateActions = ref(false);
+const shownCreateActions = computed(() => (
+  showAllCreateActions.value
+    ? documentCreateActions.value
+    : documentCreateActions.value.slice(0, VISIBLE_CREATE_ACTION_COUNT)
+));
+const hiddenCreateActionCount = computed(() => Math.max(0, documentCreateActions.value.length - VISIBLE_CREATE_ACTION_COUNT));
 
 // “新建”下拉选项：从 documentType 贡献生成，并补上文件夹入口。
 const createOptions = computed(() => [
