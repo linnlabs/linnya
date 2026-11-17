@@ -1,21 +1,15 @@
 import { mapTrustedRendererApplicationSurfaces } from '../../../../app-hosts/linnya/plugin-registry/rendererApplicationSurfaceTrust';
 import { getRegisteredBackendPluginDirectory } from '../../../../app-hosts/linnya/plugin-registry/builtin';
 import type { BackendRuntimeOwner } from '../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
-import type {
-  BackendRendererIpcStyleRegistrarPort,
-} from '../../../../app-hosts/linnya/adapters/backend-renderer-requests';
-import type {
-  BackendRendererIntegrationPort,
-} from '../../../../app-hosts/linnya/desktop-capabilities';
+import type { BackendRendererIpcStyleRegistrarPort } from '../../../../app-hosts/linnya/adapters/backend-renderer-requests';
+import type { BackendRendererIntegrationPort } from '../../../../app-hosts/linnya/desktop-capabilities';
 import { PluginStateService } from '../../../../features/plugins/infrastructure/sqlite/plugin-state.service';
 import {
   listRegisteredBackendPluginMetas,
   registerRegisteredBackendPluginIpcHandlers,
   syncRegisteredBackendPluginRuntimeResources,
 } from '../../../../app-hosts/linnya/plugin-registry/builtin';
-import {
-  isPluginRuntimeDatabaseReady,
-} from '../../../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
+import { isPluginRuntimeDatabaseReady } from '../../../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { pluginDiagnostics } from '../../../../app-hosts/linnya/plugin-registry/diagnostics';
 import { toolRegistry } from '../../../../app-hosts/linnya/adapters/tools/toolRegistry';
 import { clearRegisteredAgentTaskCache } from '../../../../app-hosts/linnya/agent-registry/agentTaskResolver';
@@ -80,7 +74,9 @@ function resolveKnownPluginLatestManifestUrl(pluginId: string): string {
 function shouldPreferSourceRendererPluginEntries(packaged: boolean): boolean {
   const rawMode = process.env.LINNYA_PLUGIN_RENDERER_BUNDLE;
   if (rawMode && rawMode !== 'inline' && rawMode !== 'disk') {
-    logger.warn(`[plugins:renderer-entries] 未知 renderer 插件加载模式，已按开发态源码入口处理: ${rawMode}`);
+    logger.warn(
+      `[plugins:renderer-entries] 未知 renderer 插件加载模式，已按开发态源码入口处理: ${rawMode}`
+    );
   }
   return shouldPreferSourceRendererPluginEntriesForEnvironment({
     rendererBundleMode: rawMode,
@@ -91,7 +87,11 @@ function shouldPreferSourceRendererPluginEntries(packaged: boolean): boolean {
 }
 
 function resolveBundledPluginRoot(): string | null {
-  return process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT ?? process.env.LINNYA_BUNDLED_PLUGIN_ROOT ?? null;
+  return (
+    process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT ??
+    process.env.LINNYA_BUNDLED_PLUGIN_ROOT ??
+    null
+  );
 }
 
 export async function registerPluginsHandlers(input: {
@@ -148,7 +148,7 @@ export async function registerPluginsHandlers(input: {
         ...new Set([...readBackendDirectPluginDirsFromEnv(), ...readDirectPluginDirsFromEnv()]),
       ];
       const states = getService().listStates(listRegisteredBackendPluginMetas());
-      const state = states.find((item) => item.meta.id === pluginId);
+      const state = states.find(item => item.meta.id === pluginId);
       if (!state) {
         throw new Error(`未知插件: ${pluginId}`);
       }
@@ -162,7 +162,7 @@ export async function registerPluginsHandlers(input: {
           pluginRoot: process.env.LINNYA_PLUGIN_ROOT,
           directPluginDirs,
           bundledPluginRoot,
-          reportDiagnostic: (diagnostic) => {
+          reportDiagnostic: diagnostic => {
             pluginDiagnostics.record({
               level: 'warn',
               pluginId: diagnostic.pluginId,
@@ -196,10 +196,12 @@ export async function registerPluginsHandlers(input: {
           .filter(pluginId => knownPluginIds.has(pluginId))
       );
       const directPluginDirs = readDirectPluginDirsFromEnv();
-      const officialPluginPackageDirs = [...new Set([
-        ...discoverOfficialPluginPackageDirsFromWorkspace(process.cwd(), [...knownPluginIds]),
-        ...readBackendDirectPluginDirsFromEnv(),
-      ])];
+      const officialPluginPackageDirs = [
+        ...new Set([
+          ...discoverOfficialPluginPackageDirsFromWorkspace(process.cwd(), [...knownPluginIds]),
+          ...readBackendDirectPluginDirsFromEnv(),
+        ]),
+      ];
       const preferSourceEntries = shouldPreferSourceRendererPluginEntries(input.packaged);
       const entries = listRendererPluginEntriesFromLayout({
         pluginRoot: process.env.LINNYA_PLUGIN_ROOT,
@@ -207,7 +209,7 @@ export async function registerPluginsHandlers(input: {
         officialPluginPackageDirs,
         preferSourceEntries,
         enabledIds,
-        reportDiagnostic: (diagnostic) => {
+        reportDiagnostic: diagnostic => {
           pluginDiagnostics.record({
             level: 'warn',
             pluginId: diagnostic.pluginId,
@@ -263,7 +265,7 @@ export async function registerPluginsHandlers(input: {
         return { success: false, error: error instanceof Error ? error.message : String(error) };
       }
     }
-  });
+  );
 
   input.ipc.handle('plugins:checkRemoteUpdate', async (_event, rawPluginId: unknown) => {
     try {
@@ -273,7 +275,7 @@ export async function registerPluginsHandlers(input: {
       const pluginId = parsePluginId(rawPluginId, 'plugins:checkRemoteUpdate');
       const service = getService();
       const states = service.listStates(listRegisteredBackendPluginMetas());
-      const state = states.find((item) => item.meta.id === pluginId);
+      const state = states.find(item => item.meta.id === pluginId);
       if (!state) {
         throw new Error(`未知插件: ${pluginId}`);
       }
@@ -324,7 +326,7 @@ export async function registerPluginsHandlers(input: {
             rendererUiVersion: RENDERER_UI_VERSION,
             knownPlugins,
             resolveUpgradePlan: resolveDiskPluginUpgradePlan,
-            recordDiagnostic: (diagnostic) => pluginDiagnostics.record(diagnostic),
+            recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
           });
           if (result.status === 'failed') {
             throw new Error(result.error);

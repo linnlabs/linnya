@@ -46,26 +46,29 @@ export function projectGraphVectorPoints(
     },
   }));
 
-  const edgePoints = edges.map((e) => ({
-      // 根因修复：Qdrant point id 必须是 UUID/无符号整数；图谱 edge.id 可能是 edge_xxx 这类字符串
-      id: generateGraphVectorPointId(kbId, 'kg_edge', e.id),
-      blockId: typeof e.evidenceBlockId === 'string' && e.evidenceBlockId.trim().length > 0 ? e.evidenceBlockId : e.id,
-      text: buildEdgeText(e.statement, `${e.sourceEntityId} ${e.relationType} ${e.targetEntityId}`),
-      metadata: {
-        kb_id: kbId,
-        kind: 'kg_edge',
-        edge_id: e.id,
-        source_entity_id: e.sourceEntityId,
-        target_entity_id: e.targetEntityId,
-        relation_type: e.relationType,
-        statement: e.statement,
-        confidence: e.confidence,
-        sentiment: e.sentiment,
-        time: e.time,
-        evidence_doc_id: e.evidenceDocId,
-        evidence_block_id: e.evidenceBlockId,
-      },
-    }));
+  const edgePoints = edges.map(e => ({
+    // 根因修复：Qdrant point id 必须是 UUID/无符号整数；图谱 edge.id 可能是 edge_xxx 这类字符串
+    id: generateGraphVectorPointId(kbId, 'kg_edge', e.id),
+    blockId:
+      typeof e.evidenceBlockId === 'string' && e.evidenceBlockId.trim().length > 0
+        ? e.evidenceBlockId
+        : e.id,
+    text: buildEdgeText(e.statement, `${e.sourceEntityId} ${e.relationType} ${e.targetEntityId}`),
+    metadata: {
+      kb_id: kbId,
+      kind: 'kg_edge',
+      edge_id: e.id,
+      source_entity_id: e.sourceEntityId,
+      target_entity_id: e.targetEntityId,
+      relation_type: e.relationType,
+      statement: e.statement,
+      confidence: e.confidence,
+      sentiment: e.sentiment,
+      time: e.time,
+      evidence_doc_id: e.evidenceDocId,
+      evidence_block_id: e.evidenceBlockId,
+    },
+  }));
 
   return { nodePoints, edgePoints };
 }

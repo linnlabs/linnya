@@ -63,11 +63,30 @@ export class GraphDiscoveryService {
      */
     minSemanticScore: number;
   }): Promise<GraphDiscoveredEvidenceBlock[]> {
-    const { kbId, query, embeddingModelId, queryVector: queryVectorFromCaller, topKEdges, maxBlocks, excludeKeys, minSemanticScore } = args;
+    const {
+      kbId,
+      query,
+      embeddingModelId,
+      queryVector: queryVectorFromCaller,
+      topKEdges,
+      maxBlocks,
+      excludeKeys,
+      minSemanticScore,
+    } = args;
     if (maxBlocks <= 0) return [];
     if (topKEdges <= 0) return [];
-    if (kbId.trim().length === 0 || query.trim().length === 0 || embeddingModelId.trim().length === 0) return [];
-    if (typeof minSemanticScore !== 'number' || !Number.isFinite(minSemanticScore) || minSemanticScore < 0 || minSemanticScore > 1) {
+    if (
+      kbId.trim().length === 0 ||
+      query.trim().length === 0 ||
+      embeddingModelId.trim().length === 0
+    )
+      return [];
+    if (
+      typeof minSemanticScore !== 'number' ||
+      !Number.isFinite(minSemanticScore) ||
+      minSemanticScore < 0 ||
+      minSemanticScore > 1
+    ) {
       throw new Error('图谱补漏召回失败：minSemanticScore 必须是 [0, 1] 区间内的有限数字');
     }
 
@@ -80,7 +99,11 @@ export class GraphDiscoveryService {
         queryVector.push(n);
       }
     } else {
-      const result = await this.embedding.embed({ modelId: embeddingModelId, values: [query], expectedSpaceId: args.expectedSpaceId });
+      const result = await this.embedding.embed({
+        modelId: embeddingModelId,
+        values: [query],
+        expectedSpaceId: args.expectedSpaceId,
+      });
       const embedding = result.vectors[0];
 
       // 这里不做“防御性容错”，严格要求 embedding 是 number[]

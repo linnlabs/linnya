@@ -2,7 +2,10 @@ import path from 'node:path';
 import { getRegisteredBackendPluginDirectory } from './registeredPluginDirectories';
 import { assertPluginRuntimeEnabled } from './pluginRuntimeAccess';
 import { isTrustedKnowledgePluginSource } from './rendererApplicationSurfaceTrust';
-import { readBackendDirectPluginDirsFromEnv, readPluginManifestSummary } from 'src/electron-main/plugins/loader/pluginLayout';
+import {
+  readBackendDirectPluginDirsFromEnv,
+  readPluginManifestSummary,
+} from 'src/electron-main/plugins/loader/pluginLayout';
 import { requireInstalledDistributionIdentity } from 'src/shared/distribution-identity';
 import { readInstalledRuntimePathRoots } from 'src/shared/runtime-paths';
 

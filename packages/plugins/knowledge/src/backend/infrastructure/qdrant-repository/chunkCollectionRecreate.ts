@@ -71,7 +71,9 @@ const UPSERT_BATCH_SIZE = 200;
 const SEGMENT_SHRINK_TOLERANCE = 1;
 
 function isFiniteNumberArray(value: unknown): value is number[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'number' && Number.isFinite(item));
+  return (
+    Array.isArray(value) && value.every(item => typeof item === 'number' && Number.isFinite(item))
+  );
 }
 
 function isSparseVector(value: unknown): value is SparseVector {
@@ -85,8 +87,10 @@ function isSparseVector(value: unknown): value is SparseVector {
     return false;
   }
 
-  return indices.every((item) => typeof item === 'number' && Number.isFinite(item)) &&
-    values.every((item) => typeof item === 'number' && Number.isFinite(item));
+  return (
+    indices.every(item => typeof item === 'number' && Number.isFinite(item)) &&
+    values.every(item => typeof item === 'number' && Number.isFinite(item))
+  );
 }
 
 function isSegmentCountMateriallyAboveTarget(
@@ -103,7 +107,11 @@ function isSegmentCountMateriallyAboveTarget(
   return segmentsCount > targetSegmentCount + SEGMENT_SHRINK_TOLERANCE;
 }
 
-function normalizeStoredVector(vector: unknown, collectionName: string, pointId: string): VectorData {
+function normalizeStoredVector(
+  vector: unknown,
+  collectionName: string,
+  pointId: string
+): VectorData {
   if (isFiniteNumberArray(vector)) {
     return {
       default: vector,
@@ -207,7 +215,9 @@ export async function recreateChunkCollectionIfNeeded(
       ? Math.trunc(info.points_count)
       : 0;
   const segmentsCount =
-    Number.isFinite(info.segments_count) && info.segments_count >= 0 ? Math.trunc(info.segments_count) : 0;
+    Number.isFinite(info.segments_count) && info.segments_count >= 0
+      ? Math.trunc(info.segments_count)
+      : 0;
   const configuredTargetSegmentCount = readConfiguredTargetSegmentCount(info.config);
   const targetSegmentCount = resolveTargetSegmentCountByPointsCount(pointsCount);
 

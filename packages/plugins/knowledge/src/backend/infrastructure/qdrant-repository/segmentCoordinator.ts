@@ -36,8 +36,6 @@ export type CollectionSegmentReconcileResult = {
   updated: boolean;
 };
 
-
-
 /**
  * 功能：执行一次 collection 目标段数校准。
  *
@@ -54,7 +52,9 @@ export async function reconcileCollectionSegmentTarget(
       ? Math.trunc(info.points_count)
       : 0;
   const segmentsCount =
-    Number.isFinite(info.segments_count) && info.segments_count >= 0 ? Math.trunc(info.segments_count) : 0;
+    Number.isFinite(info.segments_count) && info.segments_count >= 0
+      ? Math.trunc(info.segments_count)
+      : 0;
 
   const previousTargetSegmentCount = readConfiguredTargetSegmentCount(info.config);
   const nextTargetSegmentCount = resolveTargetSegmentCountByPointsCount(pointsCount);
@@ -93,7 +93,9 @@ export async function reconcileCollectionSegmentTarget(
 }
 
 export interface SegmentTunableQdrantRepository extends QdrantRepository {
-  reconcileCollectionSegmentTarget(collectionName: string): Promise<CollectionSegmentReconcileResult>;
+  reconcileCollectionSegmentTarget(
+    collectionName: string
+  ): Promise<CollectionSegmentReconcileResult>;
 }
 
 /**
@@ -112,4 +114,3 @@ export function hasSegmentTargetReconciler(
 
   return typeof repository['reconcileCollectionSegmentTarget'] === 'function';
 }
-

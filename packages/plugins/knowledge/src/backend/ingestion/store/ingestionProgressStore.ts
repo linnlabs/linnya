@@ -2,7 +2,7 @@
  * @file src/features/knowledge-base/ingestion/store/ingestionProgressStore.ts
  *
  * @brief 摄取进度读模型 - 连接状态机与前端轮询的桥梁
- * 
+ *
  * @description
  * 功能 (What): 提供全局单例的摄取进度读模型，连接后台 Worker 和前端轮询
  * 输入 (Input): 摄取进度快照更新操作
@@ -28,9 +28,9 @@ export interface IngestionProgressSnapshot {
   error?: string;
   updated_at: number;
   // 🔥 新增：统一进度字段（用于轮询与前端校准）
-  progress?: number;        // 0-100 的绝对进度
-  stage?: string;           // '', 'parsing', 'embedding', 'storing', 'completed'
-  stage_progress?: number;  // 0-100 的阶段内进度
+  progress?: number; // 0-100 的绝对进度
+  stage?: string; // '', 'parsing', 'embedding', 'storing', 'completed'
+  stage_progress?: number; // 0-100 的阶段内进度
 }
 
 /**
@@ -46,7 +46,7 @@ export interface IngestionProgressEvents {
 /**
  * 功能 (What): 全局任务状态存储类
  * 输入 (Input): 各种状态操作请求
- * 输出 (Output): 状态数据和事件通知  
+ * 输出 (Output): 状态数据和事件通知
  * 副作用 (Side-effects): 管理内存状态、发射事件
  */
 export class IngestionProgressStore extends EventEmitter {
@@ -80,7 +80,10 @@ export class IngestionProgressStore extends EventEmitter {
    */
   public setState(docId: string, newState: IngestionProgressSnapshot): void {
     if (!docId || !newState) {
-      logger.error('[IngestionProgressStore] 无效的进度更新请求', `docId: ${docId}, state: ${JSON.stringify(newState)}`);
+      logger.error(
+        '[IngestionProgressStore] 无效的进度更新请求',
+        `docId: ${docId}, state: ${JSON.stringify(newState)}`
+      );
       return;
     }
 
@@ -108,7 +111,7 @@ export class IngestionProgressStore extends EventEmitter {
       ...newState,
       progress: mergedProgress,
       // 统一更新时间（毫秒）
-      updated_at: Date.now()
+      updated_at: Date.now(),
     };
 
     this.states.set(docId, mergedState);
@@ -118,7 +121,9 @@ export class IngestionProgressStore extends EventEmitter {
 
     // 如果状态发生了实质性变化，记录日志
     if (!previousState || previousState.status !== newState.status) {
-      logger.info(`[IngestionProgressStore] 状态更新: ${docId} - ${previousState ? previousState.status : 'new'} -> ${newState.status} (${newState.message})`);
+      logger.info(
+        `[IngestionProgressStore] 状态更新: ${docId} - ${previousState ? previousState.status : 'new'} -> ${newState.status} (${newState.message})`
+      );
     }
 
     // 发射终态事件
@@ -147,7 +152,7 @@ export class IngestionProgressStore extends EventEmitter {
    */
   public getBatchStates(docIds: string[]): Record<string, IngestionProgressSnapshot> {
     const result: Record<string, IngestionProgressSnapshot> = {};
-    
+
     for (const docId of docIds) {
       const state = this.states.get(docId);
       if (state) {
@@ -206,8 +211,12 @@ export class IngestionProgressStore extends EventEmitter {
     let cleanedCount = 0;
 
     for (const [docId, state] of this.states.entries()) {
-      if ((state.status === 'completed' || state.status === 'failed' || state.status === 'duplicate') &&
-          (now - state.updated_at) > maxAge) {
+      if (
+        (state.status === 'completed' ||
+          state.status === 'failed' ||
+          state.status === 'duplicate') &&
+        now - state.updated_at > maxAge
+      ) {
         this.states.delete(docId);
         cleanedCount++;
       }
@@ -229,7 +238,7 @@ export class IngestionProgressStore extends EventEmitter {
   public getStats(): { total: number; byStatus: Record<string, number> } {
     const stats = {
       total: this.states.size,
-      byStatus: {} as Record<string, number>
+      byStatus: {} as Record<string, number>,
     };
 
     for (const state of this.states.values()) {
@@ -269,7 +278,9 @@ export function getIngestionProgress(docId: string): IngestionProgressSnapshot |
  * 输出 (Output): 按文档 ID 索引的摄取进度快照
  * 副作用 (Side-effects): 无
  */
-export function getBatchIngestionProgress(docIds: string[]): Record<string, IngestionProgressSnapshot> {
+export function getBatchIngestionProgress(
+  docIds: string[]
+): Record<string, IngestionProgressSnapshot> {
   return ingestionProgressStore.getBatchStates(docIds);
 }
 

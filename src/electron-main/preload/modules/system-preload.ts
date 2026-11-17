@@ -44,12 +44,15 @@ type WindowFocusIpcListener = (_event: unknown, value: unknown) => void;
 
 interface WindowFocusIpcPort {
   on(channel: typeof WINDOW_FOCUS_STATE_CHANNEL, listener: WindowFocusIpcListener): unknown;
-  removeListener(channel: typeof WINDOW_FOCUS_STATE_CHANNEL, listener: WindowFocusIpcListener): unknown;
+  removeListener(
+    channel: typeof WINDOW_FOCUS_STATE_CHANNEL,
+    listener: WindowFocusIpcListener
+  ): unknown;
 }
 
 export const subscribeWindowFocusState = (
   ipcRenderer: WindowFocusIpcPort,
-  callback: (focused: boolean) => void,
+  callback: (focused: boolean) => void
 ): (() => void) => {
   const listener: WindowFocusIpcListener = (_event, value) => {
     const parsed = WindowFocusStateMessageSchema.safeParse(value);
@@ -64,7 +67,9 @@ export const subscribeWindowFocusState = (
 
 export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
   // preload 每次 document 生命周期只生成一次。主进程用它区分同一 WebContents 导航前后的页面。
-  const rendererSessionId = WindowCloseRendererSessionIdSchema.parse(globalThis.crypto.randomUUID());
+  const rendererSessionId = WindowCloseRendererSessionIdSchema.parse(
+    globalThis.crypto.randomUUID()
+  );
 
   return {
     /**
@@ -95,7 +100,7 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
     /** 保存成功才允许主进程继续退出；失败必须保留窗口，让用户修复后重试。 */
     completeWindowClosePreparation: (
       requestId: WindowCloseRequestId,
-      result: WindowClosePreparationResult,
+      result: WindowClosePreparationResult
     ) => {
       ipcRenderer.send(WINDOW_CLOSE_PREPARATION_RESULT_CHANNEL, {
         schema_version: 1,
@@ -112,10 +117,10 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
       check: (): Promise<AppUpdateCheckResult> => ipcRenderer.invoke(APP_UPDATE_CHECK_CHANNEL),
       download: (): Promise<void> => ipcRenderer.invoke(APP_UPDATE_DOWNLOAD_CHANNEL),
       cancelDownload: (): Promise<void> => ipcRenderer.invoke(APP_UPDATE_CANCEL_DOWNLOAD_CHANNEL),
-      install: (request: AppUpdateInstallRequest): Promise<AppUpdateInstallResult> => (
-        ipcRenderer.invoke(APP_UPDATE_INSTALL_CHANNEL, request)
-      ),
-      acknowledgeInstalled: (): Promise<void> => ipcRenderer.invoke(APP_UPDATE_ACKNOWLEDGE_INSTALLED_CHANNEL),
+      install: (request: AppUpdateInstallRequest): Promise<AppUpdateInstallResult> =>
+        ipcRenderer.invoke(APP_UPDATE_INSTALL_CHANNEL, request),
+      acknowledgeInstalled: (): Promise<void> =>
+        ipcRenderer.invoke(APP_UPDATE_ACKNOWLEDGE_INSTALLED_CHANNEL),
       onState: (callback: (state: AppUpdateState) => void) => {
         const listener = (_event: IpcRendererEvent, state: AppUpdateState) => callback(state);
         ipcRenderer.on(APP_UPDATE_STATE_CHANNEL, listener);
@@ -160,14 +165,16 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
       fileName?: string;
     }) => ipcRenderer.invoke('media:embed-image-bytes', request),
 
-    pickAndEmbedImage: (request: { documentNodeId: string; title?: string; imageFilterName?: string }) =>
-      ipcRenderer.invoke('media:pick-and-embed-image', request),
+    pickAndEmbedImage: (request: {
+      documentNodeId: string;
+      title?: string;
+      imageFilterName?: string;
+    }) => ipcRenderer.invoke('media:pick-and-embed-image', request),
 
     loadImageAsDataURL: (filePath: string) =>
       ipcRenderer.invoke('load-image-as-data-url', filePath),
 
-    statImageFile: (filePath: string) =>
-      ipcRenderer.invoke('stat-image-file', filePath),
+    statImageFile: (filePath: string) => ipcRenderer.invoke('stat-image-file', filePath),
 
     saveAudioFile: (audioDataBuffer: ArrayBuffer, mimeType: string) => {
       console.log(`[Preload] Requesting to save audio file. MimeType: ${mimeType}`);
@@ -196,14 +203,16 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
     exportFile: (
       defaultFileName: string,
       content: unknown,
-      options: string | { fileType: string; title?: string; buttonLabel?: string; filterName?: string },
-    ) =>
-      ipcRenderer.invoke('export-file', defaultFileName, content, options),
+      options:
+        | string
+        | { fileType: string; title?: string; buttonLabel?: string; filterName?: string }
+    ) => ipcRenderer.invoke('export-file', defaultFileName, content, options),
     exportPDF: (
       defaultFileName: string,
-      payload: string | { htmlContent: string; title?: string; buttonLabel?: string; filterName?: string },
-    ) =>
-      ipcRenderer.invoke('export-pdf', defaultFileName, payload),
+      payload:
+        | string
+        | { htmlContent: string; title?: string; buttonLabel?: string; filterName?: string }
+    ) => ipcRenderer.invoke('export-pdf', defaultFileName, payload),
     requestExportArtifactTarget: (request: ExportArtifactTargetRequest) =>
       ipcRenderer.invoke('export-artifact:request-target', request),
     /**
@@ -220,7 +229,12 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
 
     // --- 转录进度 ---
     onTranscriptionProgress: (
-      callback: (progress: { stage: string; percent: number; message: string; timestamp: number }) => void
+      callback: (progress: {
+        stage: string;
+        percent: number;
+        message: string;
+        timestamp: number;
+      }) => void
     ) => {
       const listener = (_event: any, progress: any) => callback(progress);
       ipcRenderer.on('transcription:progress', listener);

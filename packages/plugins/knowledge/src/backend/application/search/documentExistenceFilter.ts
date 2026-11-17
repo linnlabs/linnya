@@ -23,11 +23,13 @@ export class DocumentExistenceFilter {
     this.metadataRepository = args.metadataRepository;
   }
 
-  async filterResultsByExistingDocuments(results: RankedRetrievedPoint[]): Promise<RankedRetrievedPoint[]> {
+  async filterResultsByExistingDocuments(
+    results: RankedRetrievedPoint[]
+  ): Promise<RankedRetrievedPoint[]> {
     const docIds = Array.from(
       new Set(
         results
-          .map((r) => r.payload?.doc_id)
+          .map(r => r.payload?.doc_id)
           .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
       )
     );
@@ -35,14 +37,14 @@ export class DocumentExistenceFilter {
     if (docIds.length === 0) return [];
 
     const existence = await Promise.all(
-      docIds.map(async (docId) => {
+      docIds.map(async docId => {
         const doc = await this.metadataRepository.getDocumentById(docId);
         return { docId, exists: !!doc };
       })
     );
 
-    const existing = new Set(existence.filter((x) => x.exists).map((x) => x.docId));
-    const filtered = results.filter((r) => existing.has(r.payload?.doc_id));
+    const existing = new Set(existence.filter(x => x.exists).map(x => x.docId));
+    const filtered = results.filter(r => existing.has(r.payload?.doc_id));
 
     const dropped = results.length - filtered.length;
     if (dropped > 0) {
@@ -52,4 +54,3 @@ export class DocumentExistenceFilter {
     return filtered;
   }
 }
-

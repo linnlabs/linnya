@@ -12,5 +12,5 @@ export type RendererPluginIpcResult<T> =
 export declare function invokeRendererPluginIpc<T>(
   pluginId: string,
   channel: string,
-  payload: unknown,
+  payload: unknown
 ): Promise<RendererPluginIpcResult<T>>;

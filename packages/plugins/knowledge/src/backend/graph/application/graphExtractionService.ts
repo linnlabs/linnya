@@ -74,7 +74,9 @@ function normalizeRelationType(raw: string): AllowedRelationType {
     .replace(/__+/g, '_')
     .toUpperCase();
 
-  return (ALLOWED_RELATION_TYPES as readonly string[]).includes(normalized) ? (normalized as AllowedRelationType) : 'RELATED_TO';
+  return (ALLOWED_RELATION_TYPES as readonly string[]).includes(normalized)
+    ? (normalized as AllowedRelationType)
+    : 'RELATED_TO';
 }
 
 const GraphExtractionResponseSchema = z.object({
@@ -200,7 +202,10 @@ function getRelationTypePriorityForDedup(relationType: string): number {
   return 1;
 }
 
-function pickBetterEdge(a: KnowledgeGraphEdgeUpsertInput, b: KnowledgeGraphEdgeUpsertInput): KnowledgeGraphEdgeUpsertInput {
+function pickBetterEdge(
+  a: KnowledgeGraphEdgeUpsertInput,
+  b: KnowledgeGraphEdgeUpsertInput
+): KnowledgeGraphEdgeUpsertInput {
   // 1) 关系类型优先级：非 RELATED_TO 优先
   const pa = getRelationTypePriorityForDedup(a.relationType);
   const pb = getRelationTypePriorityForDedup(b.relationType);
@@ -391,7 +396,10 @@ export class GraphExtractionService {
         const sigSeed = [sId, relationType, tId, chunk.docId, chunk.blockId].join('|');
         const signature = buildCanonicalEdgeSignature(sigSeed);
         const existing = bestEdgeBySignature.get(signature);
-        bestEdgeBySignature.set(signature, existing ? pickBetterEdge(existing, edgeRecord) : edgeRecord);
+        bestEdgeBySignature.set(
+          signature,
+          existing ? pickBetterEdge(existing, edgeRecord) : edgeRecord
+        );
       }
 
       for (const e of bestEdgeBySignature.values()) {
@@ -409,16 +417,15 @@ export class GraphExtractionService {
      * - 这里用代码做硬校验，确保行为可依赖。
      */
     if (seenChunkIds.size !== promptChunks.length) {
-      const expected = new Set(promptChunks.map((c) => c.chunkId));
+      const expected = new Set(promptChunks.map(c => c.chunkId));
       const missing: string[] = [];
       for (const id of expected) {
         if (!seenChunkIds.has(id)) missing.push(id);
       }
       throw new Error(
-        `LLM 输出未覆盖全部 chunk_id：expected=${promptChunks.length}, got=${seenChunkIds.size}, missing=${missing.slice(
-          0,
-          5
-        ).join(',')}${missing.length > 5 ? `...(+${missing.length - 5})` : ''}`
+        `LLM 输出未覆盖全部 chunk_id：expected=${promptChunks.length}, got=${seenChunkIds.size}, missing=${missing
+          .slice(0, 5)
+          .join(',')}${missing.length > 5 ? `...(+${missing.length - 5})` : ''}`
       );
     }
 

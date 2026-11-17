@@ -2,11 +2,11 @@
  * @file src/shared/utils/idUtils.ts
  *
  * **功能 (What):** 提供一个中心化的ID生成工具，确保系统中所有ID的生成逻辑统一、稳定且可维护。
- * 
+ *
  * **输入 (Input):** 根据不同函数接收文件字节数组、文档ID、块索引等参数
  *
  * **输出 (Output):** 返回格式化的、确定性的或随机的唯一标识符字符串
- * 
+ *
  * **副作用 (Side-effects):** 无副作用，纯函数实现
  */
 
@@ -23,11 +23,11 @@ const DETERMINISTIC_NAMESPACE = 'f3f4a9d4-1a39-4467-b52b-7c85b6b3b5d7';
  *
  * **输入 (Input / @param):**
  * @param fileBytes - 文件的原始二进制内容 (Buffer)
- * 
+ *
  * **输出 (Output / @returns):** 一个格式为 "doc-..." 的字符串ID
  *
  * **副作用 (Side-effects):** 无副作用，纯函数
- * 
+ *
  * @description
  * 这种方法的核心优势是ID与文件内容绑定，而不是文件名。
  * 即使用户重命名文件，只要内容不变，ID就保持不变，从而避免了重复入库。
@@ -42,16 +42,16 @@ export function generateDocId(fileBytes: Buffer): string {
 
 /**
  * **功能 (What):** 为文档中的一个块（block）生成一个唯一的、确定性的ID
- * 
- * **输入 (Input / @param):** 
+ *
+ * **输入 (Input / @param):**
  * @param docId - 该块所属文档的ID
  * @param blockIndex - 该块在文档中的顺序索引（从0开始）
  * @param blockText - 该块的文本内容
- * 
+ *
  * **输出 (Output / @returns):** 一个32位的十六进制字符串，作为 Qdrant 的 Point ID
  *
  * **副作用 (Side-effects):** 无副作用，纯函数
- * 
+ *
  * @description
  * 确定性意味着只要输入（doc_id, index, text）相同，输出的block_id就永远相同。
  * 这对于重新入库或更新操作至关重要。
@@ -60,7 +60,7 @@ export function generateDocId(fileBytes: Buffer): string {
 export function generateBlockId(docId: string, blockIndex: number, blockText: string): string {
   // 构建一个能唯一代表该块的字符串
   const uniqueName = `${docId}-${blockIndex}-${blockText}`;
-  
+
   // 🔥 修复：使用UUIDv5，返回完整的带连字符的UUID格式
   // Qdrant 要求 point ID 必须是完整的 UUID 或无符号整数，不能是去掉连字符的字符串
   return uuidv5(uniqueName, DETERMINISTIC_NAMESPACE);
@@ -70,11 +70,11 @@ export function generateBlockId(docId: string, blockIndex: number, blockText: st
  * **功能 (What):** 生成一个用于异步任务的、完全随机的唯一ID
  *
  * **输入 (Input / @param):** 无参数
- * 
+ *
  * **输出 (Output / @returns):** 一个格式为 "task-..." 的字符串ID
  *
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
- * 
+ *
  * @description
  * [V60] 格式与前端对齐，采用 "prefix-short_hash" 格式。
  * 每次调用都会生成一个全新的、不与任何其他ID重复的ID。
@@ -86,11 +86,11 @@ export function generateTaskId(): string {
 
 /**
  * **功能 (What):** 生成一个用于聊天消息的、完全随机的唯一ID
- * 
+ *
  * **输入 (Input / @param):** 无参数
  *
  * **输出 (Output / @returns):** 一个格式为 "msg-..." 的字符串ID
- * 
+ *
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
  */
 export function generateMessageId(): string {
@@ -99,11 +99,11 @@ export function generateMessageId(): string {
 
 /**
  * **功能 (What):** 生成一个用于对话的、完全随机的唯一ID
- * 
+ *
  * **输入 (Input / @param):** 无参数
  *
  * **输出 (Output / @returns):** 一个格式为 "conv-..." 的字符串ID
- * 
+ *
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
  */
 export function generateConversationId(): string {
@@ -112,11 +112,11 @@ export function generateConversationId(): string {
 
 /**
  * **功能 (What):** 生成一个用于对话轮次的、完全随机的唯一ID
- * 
+ *
  * **输入 (Input / @param):** 无参数
  *
  * **输出 (Output / @returns):** 一个格式为 "run-..." 的字符串ID
- * 
+ *
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
  */
 export function generateRunId(): string {
@@ -125,11 +125,11 @@ export function generateRunId(): string {
 
 /**
  * **功能 (What):** 生成一个用于执行流程的、完全随机的唯一ID
- * 
+ *
  * **输入 (Input / @param):** 无参数
  *
  * **输出 (Output / @returns):** 一个格式为 "exec-..." 的字符串ID
- * 
+ *
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
  */
 export function generateExecutionId(): string {
@@ -138,16 +138,16 @@ export function generateExecutionId(): string {
 
 /**
  * **功能 (What):** 生成一个用于链路追踪的、完全随机的唯一ID
- * 
+ *
  * **输入 (Input / @param):** 无参数
  *
  * **输出 (Output / @returns):** 一个格式为 "trace-..." 的字符串ID
- * 
+ *
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
  */
 export function generateTraceId(): string {
   return `trace-${uuidv4().replace(/-/g, '').slice(0, 12)}`;
-} 
+}
 
 /**
  * **功能 (What):** 生成与编辑器持久化结构一致的内容块 ID。

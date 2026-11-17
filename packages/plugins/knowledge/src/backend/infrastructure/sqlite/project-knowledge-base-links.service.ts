@@ -2,12 +2,12 @@ import { z } from 'zod';
 /**
  * @file project-knowledge-base-links.service.ts
  * @description 项目与知识库关联关系管理服务
- * 
+ *
  * 功能 (What): 管理项目和知识库之间的多对多关联关系
  * 输入 (Input): 项目ID、知识库ID
  * 输出 (Output): 关联操作结果、关联列表
  * 副作用 (Side-effects): 读写 workspace.sqlite 的 project_knowledge_base_links 表
- * 
+ *
  * 核心能力：
  * - 创建/删除项目与知识库的关联
  * - 查询项目关联的所有知识库
@@ -49,7 +49,7 @@ export class ProjectKnowledgeBaseLinksService {
 
   /**
    * 关联知识库到项目
-   * 
+   *
    * @param projectId 项目ID
    * @param kbId 知识库ID
    * @param role 角色（默认 read_write）
@@ -84,37 +84,40 @@ export class ProjectKnowledgeBaseLinksService {
 
     if (existingLink) {
       // 更新现有关联（幂等操作）
-      db.prepare(`
+      db.prepare(
+        `
         UPDATE project_knowledge_base_links
         SET role = ?, updated_at = ?
         WHERE project_id = ? AND kb_id = ?
       `
       ).run(role, now, projectId, kbId);
 
-      console.log(`[ProjectKnowledgeBaseLinksService] 更新关联: 项目 ${projectId} <-> 知识库 ${kbId}`);
+      console.log(
+        `[ProjectKnowledgeBaseLinksService] 更新关联: 项目 ${projectId} <-> 知识库 ${kbId}`
+      );
     } else {
       // 创建新关联
-      db.prepare(`
+      db.prepare(
+        `
         INSERT INTO project_knowledge_base_links (project_id, kb_id, role, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?)
       `
       ).run(projectId, kbId, role, now, now);
 
-      console.log(`[ProjectKnowledgeBaseLinksService] 创建关联: 项目 ${projectId} <-> 知识库 ${kbId}`);
+      console.log(
+        `[ProjectKnowledgeBaseLinksService] 创建关联: 项目 ${projectId} <-> 知识库 ${kbId}`
+      );
     }
   }
 
   /**
    * 解除项目与知识库的关联
-   * 
+   *
    * @param projectId 项目ID
    * @param kbId 知识库ID
    * @returns 是否成功删除
    */
-  async unlinkKnowledgeBaseFromProject(
-    projectId: string,
-    kbId: string
-  ): Promise<boolean> {
+  async unlinkKnowledgeBaseFromProject(projectId: string, kbId: string): Promise<boolean> {
     const db = this.getDb();
 
     const result = db
@@ -128,7 +131,9 @@ export class ProjectKnowledgeBaseLinksService {
         `[ProjectKnowledgeBaseLinksService] 删除关联: 项目 ${projectId} <-> 知识库 ${kbId}`
       );
     } else {
-      console.warn(`[ProjectKnowledgeBaseLinksService] 关联不存在: 项目 ${projectId} <-> 知识库 ${kbId}`);
+      console.warn(
+        `[ProjectKnowledgeBaseLinksService] 关联不存在: 项目 ${projectId} <-> 知识库 ${kbId}`
+      );
     }
 
     return success;
@@ -136,7 +141,7 @@ export class ProjectKnowledgeBaseLinksService {
 
   /**
    * 获取项目关联的所有知识库ID列表
-   * 
+   *
    * @param projectId 项目ID
    * @returns 知识库ID数组
    */
@@ -163,7 +168,7 @@ export class ProjectKnowledgeBaseLinksService {
 
   /**
    * 获取项目关联的所有知识库详细信息
-   * 
+   *
    * @param projectId 项目ID
    * @returns 知识库对象数组
    */
@@ -177,7 +182,9 @@ export class ProjectKnowledgeBaseLinksService {
       if (kb) {
         knowledgeBases.push(kb);
       } else {
-        console.warn(`[ProjectKnowledgeBaseLinksService] 知识库 ${kbId} 不存在，但有关联记录（可能是脏数据）`);
+        console.warn(
+          `[ProjectKnowledgeBaseLinksService] 知识库 ${kbId} 不存在，但有关联记录（可能是脏数据）`
+        );
       }
     }
 
@@ -186,7 +193,7 @@ export class ProjectKnowledgeBaseLinksService {
 
   /**
    * 获取使用某个知识库的所有项目ID列表
-   * 
+   *
    * @param kbId 知识库ID
    * @returns 项目ID数组
    */
@@ -194,18 +201,22 @@ export class ProjectKnowledgeBaseLinksService {
     const db = this.getDb();
 
     const rows = db
-      .prepare('SELECT project_id FROM project_knowledge_base_links WHERE kb_id = ? ORDER BY created_at ASC')
+      .prepare(
+        'SELECT project_id FROM project_knowledge_base_links WHERE kb_id = ? ORDER BY created_at ASC'
+      )
       .all(kbId) as Array<{ project_id: string }>;
 
     const projectIds = rows.map(row => row.project_id);
-    console.log(`[ProjectKnowledgeBaseLinksService] 知识库 ${kbId} 被 ${projectIds.length} 个项目引用`);
+    console.log(
+      `[ProjectKnowledgeBaseLinksService] 知识库 ${kbId} 被 ${projectIds.length} 个项目引用`
+    );
 
     return projectIds;
   }
 
   /**
    * 获取使用某个知识库的所有项目详细信息
-   * 
+   *
    * @param kbId 知识库ID
    * @returns 项目信息数组
    */
@@ -219,7 +230,7 @@ export class ProjectKnowledgeBaseLinksService {
 
   /**
    * 获取项目与知识库的关联详情
-   * 
+   *
    * @param projectId 项目ID
    * @param kbId 知识库ID
    * @returns 关联记录，如果不存在则返回 undefined
@@ -232,13 +243,15 @@ export class ProjectKnowledgeBaseLinksService {
 
     const row = db
       .prepare('SELECT * FROM project_knowledge_base_links WHERE project_id = ? AND kb_id = ?')
-      .get(projectId, kbId) as {
-        project_id: string;
-        kb_id: string;
-        role: string;
-        created_at: number;
-        updated_at: number;
-      } | undefined;
+      .get(projectId, kbId) as
+      | {
+          project_id: string;
+          kb_id: string;
+          role: string;
+          created_at: number;
+          updated_at: number;
+        }
+      | undefined;
 
     if (!row) {
       return undefined;
@@ -249,13 +262,13 @@ export class ProjectKnowledgeBaseLinksService {
       kbId: row.kb_id,
       role: row.role as 'read_only' | 'read_write',
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
     };
   }
 
   /**
    * 批量关联知识库到项目
-   * 
+   *
    * @param projectId 项目ID
    * @param kbIds 知识库ID数组
    * @param role 角色（默认 read_write）
@@ -282,11 +295,15 @@ export class ProjectKnowledgeBaseLinksService {
   }
 
   /** 列表保存是一个事务；保留未改变关联的角色和创建时间。 */
-  async replaceKnowledgeBasesForProject(projectId: string, kbIds: readonly string[]): Promise<void> {
+  async replaceKnowledgeBasesForProject(
+    projectId: string,
+    kbIds: readonly string[]
+  ): Promise<void> {
     if (!this.projects.get(projectId)) throw new Error(`项目不存在: ${projectId}`);
     const nextIds = new Set(kbIds);
     for (const kbId of nextIds) {
-      if (!await this.metadataRepository.getKnowledgeBaseById(kbId)) throw new Error(`知识库不存在: ${kbId}`);
+      if (!(await this.metadataRepository.getKnowledgeBaseById(kbId)))
+        throw new Error(`知识库不存在: ${kbId}`);
     }
     const db = this.getDb();
     db.transaction(() => {
@@ -302,15 +319,21 @@ export class ProjectKnowledgeBaseLinksService {
       }
       const now = Date.now();
       for (const kbId of nextIds) {
-        db.prepare(`INSERT INTO project_knowledge_base_links (project_id, kb_id, role, created_at, updated_at)
-          VALUES (?, ?, 'read_write', ?, ?) ON CONFLICT(project_id, kb_id) DO NOTHING`).run(projectId, kbId, now, now);
+        db.prepare(
+          `INSERT INTO project_knowledge_base_links (project_id, kb_id, role, created_at, updated_at)
+          VALUES (?, ?, 'read_write', ?, ?) ON CONFLICT(project_id, kb_id) DO NOTHING`
+        ).run(projectId, kbId, now, now);
       }
     }).immediate();
   }
 
   /** 从库设置编辑项目关联，失败时旧关联仍完整保留。 */
-  async replaceProjectsForKnowledgeBase(kbId: string, projectIds: readonly string[]): Promise<void> {
-    if (!await this.metadataRepository.getKnowledgeBaseById(kbId)) throw new Error(`知识库不存在: ${kbId}`);
+  async replaceProjectsForKnowledgeBase(
+    kbId: string,
+    projectIds: readonly string[]
+  ): Promise<void> {
+    if (!(await this.metadataRepository.getKnowledgeBaseById(kbId)))
+      throw new Error(`知识库不存在: ${kbId}`);
     const nextIds = new Set(projectIds);
     for (const projectId of nextIds) {
       if (!this.projects.get(projectId)) throw new Error(`项目不存在: ${projectId}`);
@@ -329,30 +352,29 @@ export class ProjectKnowledgeBaseLinksService {
       }
       const now = Date.now();
       for (const projectId of nextIds) {
-        db.prepare(`INSERT INTO project_knowledge_base_links (project_id, kb_id, role, created_at, updated_at)
-          VALUES (?, ?, 'read_write', ?, ?) ON CONFLICT(project_id, kb_id) DO NOTHING`).run(projectId, kbId, now, now);
+        db.prepare(
+          `INSERT INTO project_knowledge_base_links (project_id, kb_id, role, created_at, updated_at)
+          VALUES (?, ?, 'read_write', ?, ?) ON CONFLICT(project_id, kb_id) DO NOTHING`
+        ).run(projectId, kbId, now, now);
       }
     }).immediate();
   }
 
   /**
    * 检查项目是否关联了某个知识库
-   * 
+   *
    * @param projectId 项目ID
    * @param kbId 知识库ID
    * @returns 是否已关联
    */
-  async isKnowledgeBaseLinkedToProject(
-    projectId: string,
-    kbId: string
-  ): Promise<boolean> {
+  async isKnowledgeBaseLinkedToProject(projectId: string, kbId: string): Promise<boolean> {
     const link = await this.getLinkDetail(projectId, kbId);
     return link !== undefined;
   }
 
   /**
    * 清理某个项目的所有知识库关联
-   * 
+   *
    * @param projectId 项目ID
    * @returns 删除的关联数量
    */
@@ -363,13 +385,15 @@ export class ProjectKnowledgeBaseLinksService {
       .prepare('DELETE FROM project_knowledge_base_links WHERE project_id = ?')
       .run(projectId);
 
-    console.log(`[ProjectKnowledgeBaseLinksService] 清理项目 ${projectId} 的所有关联: ${result.changes} 条`);
+    console.log(
+      `[ProjectKnowledgeBaseLinksService] 清理项目 ${projectId} 的所有关联: ${result.changes} 条`
+    );
     return result.changes;
   }
 
   /**
    * 清理某个知识库的所有项目关联
-   * 
+   *
    * @param kbId 知识库ID
    * @returns 删除的关联数量
    */
@@ -378,8 +402,9 @@ export class ProjectKnowledgeBaseLinksService {
 
     const result = db.prepare('DELETE FROM project_knowledge_base_links WHERE kb_id = ?').run(kbId);
 
-    console.log(`[ProjectKnowledgeBaseLinksService] 清理知识库 ${kbId} 的所有关联: ${result.changes} 条`);
+    console.log(
+      `[ProjectKnowledgeBaseLinksService] 清理知识库 ${kbId} 的所有关联: ${result.changes} 条`
+    );
     return result.changes;
   }
 }
-

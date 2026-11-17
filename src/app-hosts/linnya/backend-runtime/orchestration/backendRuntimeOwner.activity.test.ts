@@ -7,7 +7,9 @@ vi.mock('../../../../electron-main/services/apiServer', () => ({
       return port;
     }
     async stop(): Promise<void> {}
-    getToken(): string { return 'test-token'; }
+    getToken(): string {
+      return 'test-token';
+    }
   },
 }));
 
@@ -24,7 +26,9 @@ vi.mock('../../../../electron-main/services/qdrantManager', () => ({
   QdrantManager: class TestQdrantManager {
     async start(): Promise<void> {}
     async stop(): Promise<void> {}
-    getConfig(): Record<string, never> { return {}; }
+    getConfig(): Record<string, never> {
+      return {};
+    }
   },
 }));
 
@@ -65,7 +69,9 @@ class TestBackendRuntimeOwner extends BackendRuntimeOwner {
 
 function createActivity(): ForegroundAgentRunActivityPort {
   return {
-    listActive: vi.fn(async () => [{ conversationId: 'conversation-a', conversationTitle: '周报' }]),
+    listActive: vi.fn(async () => [
+      { conversationId: 'conversation-a', conversationTitle: '周报' },
+    ]),
     pauseAll: vi.fn(async () => ({
       pausedConversationIds: ['conversation-a'],
       unpausableConversationIds: [],

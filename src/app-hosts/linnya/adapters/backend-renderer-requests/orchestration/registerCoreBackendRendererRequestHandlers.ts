@@ -16,9 +16,7 @@ import {
   getRegisteredBackendPluginIpcChannels,
   registerRegisteredBackendPluginIpcHandlers,
 } from '../../../plugin-registry/builtin';
-import {
-  getPluginRuntimeState,
-} from '../../../plugin-registry/pluginRuntimeState';
+import { getPluginRuntimeState } from '../../../plugin-registry/pluginRuntimeState';
 import { invokeBackendPluginIpcHandler } from '@plugin/backend/pluginIpcRuntime';
 import { dispatchPluginInvoke } from 'src/electron-main/ipc/handlers/plugins/pluginInvokeDispatcher';
 import type { BackendRendererRequestRegistryPort } from '../definitions/backendRendererRequest';
@@ -51,9 +49,14 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   const ipc = createBackendRendererIpcStyleRegistrar(input.registry);
   const database = input.runtimeOwner.getServices().databaseService;
   if (!database) throw new Error('DatabaseService unavailable for project handlers');
-  registerProjectHandlers(() => createProjectLifecycle(database.getDb(), {
-    publish: event => input.rendererIntegration.publishWorkspaceMutation(event),
-  }), ipc, input.runtimeOwner.getProjectDeletion());
+  registerProjectHandlers(
+    () =>
+      createProjectLifecycle(database.getDb(), {
+        publish: event => input.rendererIntegration.publishWorkspaceMutation(event),
+      }),
+    ipc,
+    input.runtimeOwner.getProjectDeletion()
+  );
   registerWorkspaceHandlers(input.runtimeOwner, ipc);
   registerDocumentHistoryRequests(input.runtimeOwner, input.registry);
   registerDocumentPreviewRequests(input.runtimeOwner, input.registry);
@@ -74,11 +77,13 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   registerProjectOverviewRequests(input.runtimeOwner, input.registry);
 
   registerRegisteredBackendPluginIpcHandlers(input.runtimeOwner);
-  input.registry.handleWithContext('plugin:invoke', (context, request) => dispatchPluginInvoke(context, request, {
-    getRuntimeState: getPluginRuntimeState,
-    listAllowedChannels: getRegisteredBackendPluginIpcChannels,
-    invokeHandler: invokeBackendPluginIpcHandler,
-  }));
+  input.registry.handleWithContext('plugin:invoke', (context, request) =>
+    dispatchPluginInvoke(context, request, {
+      getRuntimeState: getPluginRuntimeState,
+      listAllowedChannels: getRegisteredBackendPluginIpcChannels,
+      invokeHandler: invokeBackendPluginIpcHandler,
+    })
+  );
   await registerPluginsHandlers({
     runtimeOwner: input.runtimeOwner,
     ipc,

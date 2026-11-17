@@ -2,7 +2,7 @@
  * src/knowledge-base/ingestion/postprocessor.ts
  *
  * 文件作用: 对解析器产生的原始块进行统一后处理，生成标准化的文档结构和向量块
- * 
+ *
  * 职责:
  * - 为块生成唯一且稳定的ID
  * - 提取标题和层次结构
@@ -34,7 +34,7 @@ function isUuidString(id: string): boolean {
 
 /**
  * **功能 (What):** 修复文件名编码问题 (兜底函数)
- * **输入 (Input / @param):** 
+ * **输入 (Input / @param):**
  * @param filename - 可能存在编码问题的文件名
  * **输出 (Output / @returns):** 正确编码的文件名
  * **副作用 (Side-effects):** 无副作用，纯编码转换函数
@@ -122,9 +122,7 @@ interface ChunkPolicy {
 function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy): RawBlock[] {
   const sentenceSplit = (text: string): string[] => {
     // 优先按句号/问号/感叹号（中英文）切分，再退化到逗号/顿号，最后硬切
-    const primary = text
-      .replace(/([。！？!?])+/g, '$1\n')
-      .replace(/([\.\?\!])+/g, '$1\n');
+    const primary = text.replace(/([。！？!?])+/g, '$1\n').replace(/([\.\?\!])+/g, '$1\n');
     const lines = primary.split(/\n+/).flatMap(line => {
       const l = line.trim();
       if (!l) return [];
@@ -175,7 +173,8 @@ function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy
     }
     if (buf) chunks.push(buf);
 
-    const baseId = typeof block.id === 'string' && block.id.trim().length > 0 ? block.id.trim() : undefined;
+    const baseId =
+      typeof block.id === 'string' && block.id.trim().length > 0 ? block.id.trim() : undefined;
     return chunks.map((t, idx) => {
       /**
        * 根因修复（P1-3）：
@@ -193,8 +192,8 @@ function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy
         metadata: {
           ...(block.metadata || {}),
           split_from_block_id: baseId,
-          split_index: idx
-        }
+          split_index: idx,
+        },
       };
     });
   };
@@ -205,11 +204,11 @@ function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy
   // 2) 再并短：只在同页、同类型（paragraph）且非 heading 时，向右合并直至接近 max 或遇到边界
   const merged: RawBlock[] = [];
   let i = 0;
-  
+
   // 开始合并短块
   let mergeAttempts = 0;
   let successfulMerges = 0;
-  
+
   while (i < afterSplit.length) {
     const cur = afterSplit[i];
     const curType = (cur.type || 'paragraph').toLowerCase();
@@ -229,13 +228,13 @@ function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy
       let combined = cur.text.trim();
       let j = i + 1;
       let mergedCount = 0;
-      
+
       while (j < afterSplit.length) {
         const nxt = afterSplit[j];
         const nxtType = (nxt.type || 'paragraph').toLowerCase();
         const nxtPage = nxt.metadata?.page ?? nxt.source_info?.page_number ?? null;
         const nxtIsHeading = nxtType.startsWith('heading');
-        
+
         // 边界条件检查
         if (nxtIsHeading || nxtType !== 'paragraph' || nxtPage !== curPage) {
           break;
@@ -243,11 +242,11 @@ function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy
         if (countTextUnitsZhEn(combined + '\n' + nxt.text) > policy.maxUnits) {
           break;
         }
-        
+
         combined = `${combined}\n${nxt.text.trim()}`.trim();
         mergedCount++;
         j++;
-        
+
         if (countTextUnitsZhEn(combined) >= policy.minUnits) {
           break;
         }
@@ -263,8 +262,8 @@ function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy
         text: combined,
         metadata: {
           ...(cur.metadata || {}),
-          merged_from: afterSplit.slice(i, Math.max(j, i + 1)).map(b => b.id)
-        }
+          merged_from: afterSplit.slice(i, Math.max(j, i + 1)).map(b => b.id),
+        },
       };
       merged.push(mergedBlock);
       i = Math.max(j, i + 1);
@@ -275,13 +274,15 @@ function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy
     i++;
   }
 
-  logger.info(`[normalizeBlocksByChunkPolicy] 合并完成: ${afterSplit.length}块 -> ${merged.length}块 (${successfulMerges}个成功合并)`);
+  logger.info(
+    `[normalizeBlocksByChunkPolicy] 合并完成: ${afterSplit.length}块 -> ${merged.length}块 (${successfulMerges}个成功合并)`
+  );
   return merged;
 }
 
 /**
  * 对解析器返回的原始块列表进行统一的最终处理
- * 
+ *
  * 主要职责:
  * 1. 对所有块进行分词，并为整篇文档构建一个统一的关键词词汇表
  * 2. 为每个块生成唯一的、稳定的block_id
@@ -294,7 +295,7 @@ export async function postProcessBlocks({
   sourceFilePath,
   docId,
   originalFilename,
-  updater
+  updater,
 }: {
   rawBlocks: RawBlock[];
   sourceFilePath: string;
@@ -303,17 +304,24 @@ export async function postProcessBlocks({
   updater?: unknown;
 }): Promise<PostProcessResult> {
   if (!docId) {
-    throw new Error("postProcessBlocks 必须接收一个有效的 docId。");
+    throw new Error('postProcessBlocks 必须接收一个有效的 docId。');
   }
 
   logger.info(`开始后处理 ${rawBlocks.length} 个块...`);
 
   // 输入块统计信息
-  const inputStats = rawBlocks.reduce((acc, block) => {
-    acc[block.type] = (acc[block.type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  logger.info(`[postProcessBlocks] 输入块统计: ${Object.entries(inputStats).map(([type, count]) => `${type}=${count}`).join(', ')}`);
+  const inputStats = rawBlocks.reduce(
+    (acc, block) => {
+      acc[block.type] = (acc[block.type] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+  logger.info(
+    `[postProcessBlocks] 输入块统计: ${Object.entries(inputStats)
+      .map(([type, count]) => `${type}=${count}`)
+      .join(', ')}`
+  );
 
   // 🎯 应用标准化块策略（先切长后并短）
   // ✅ 统一口径：中文按汉字/英文按单词计数；最大 500 字/词（与 deep_search 拼装预览一致）
@@ -329,14 +337,16 @@ export async function postProcessBlocks({
   const h1Blocks = normalizedBlocks.filter(
     block => block.type === 'heading' && block.heading_level === 1
   );
-  
+
   if (h1Blocks.length > 0) {
     const candidateTitle = h1Blocks[0].text.trim();
     // 只有当标题非空且不是默认/自动生成标题时才使用
-    if (candidateTitle && 
-        !candidateTitle.includes('Untitled') &&
-        !candidateTitle.includes('Document') &&
-        candidateTitle.length < 100) {
+    if (
+      candidateTitle &&
+      !candidateTitle.includes('Untitled') &&
+      !candidateTitle.includes('Document') &&
+      candidateTitle.length < 100
+    ) {
       docTitle = candidateTitle;
     }
   }
@@ -351,13 +361,13 @@ export async function postProcessBlocks({
       source_file: originalFilename,
       source_file_path: sourceFilePath,
       created_at: Date.now(),
-      parser_version: 'postprocessor'
+      parser_version: 'postprocessor',
     },
     content_blocks: {},
     structure: {
       root: [],
-      toc: []
-    }
+      toc: [],
+    },
   };
 
   const processedBlocks: ParsedContentBlock[] = [];
@@ -365,7 +375,7 @@ export async function postProcessBlocks({
   // 步骤3: 处理每个块，确保生成稳定且 Qdrant 合法的ID
   for (let i = 0; i < normalizedBlocks.length; i++) {
     const block = normalizedBlocks[i];
-    
+
     if (!block.text || block.text.trim().length === 0) {
       logger.debug(`跳过空块 #${i}`);
       continue;
@@ -384,19 +394,25 @@ export async function postProcessBlocks({
         : generateDeterministicBlockId(docId, i, block.text);
 
     // 规范化 block_type（与 BlockType 枚举对齐）
-    const normalizeBlockType = (rawType: string): { block_type: BlockType; level: number | null } => {
+    const normalizeBlockType = (
+      rawType: string
+    ): { block_type: BlockType; level: number | null } => {
       const t = (rawType || '').trim().toLowerCase();
       if (t === 'paragraph') return { block_type: BlockType.PARAGRAPH, level: null };
       if (t === 'table_row') return { block_type: BlockType.TABLE_ROW, level: null };
       if (t === 'list_item') return { block_type: BlockType.LIST_ITEM, level: null };
       if (t === 'image') return { block_type: BlockType.IMAGE, level: null };
       if (t === 'code') return { block_type: BlockType.CODE, level: null };
-      if (t === 'heading') return { block_type: BlockType.HEADING, level: block.heading_level ?? null };
+      if (t === 'heading')
+        return { block_type: BlockType.HEADING, level: block.heading_level ?? null };
 
       const headingMatch = /^heading(\d+)$/.exec(t);
       if (headingMatch) {
         const lvl = Number.parseInt(headingMatch[1], 10);
-        return { block_type: BlockType.HEADING, level: Number.isFinite(lvl) ? lvl : (block.heading_level ?? null) };
+        return {
+          block_type: BlockType.HEADING,
+          level: Number.isFinite(lvl) ? lvl : (block.heading_level ?? null),
+        };
       }
 
       // 这里不做“兜底吞掉”，避免未知类型悄悄污染 SoT/检索质量
@@ -410,11 +426,14 @@ export async function postProcessBlocks({
     const textWithNewline = block.text.endsWith('\n') ? block.text : block.text + '\n';
 
     const parentBlockId =
-      typeof block.metadata?.split_from_block_id === 'string' && block.metadata.split_from_block_id.trim().length > 0
+      typeof block.metadata?.split_from_block_id === 'string' &&
+      block.metadata.split_from_block_id.trim().length > 0
         ? block.metadata.split_from_block_id.trim()
         : undefined;
     const partIndex =
-      typeof block.metadata?.split_index === 'number' && Number.isFinite(block.metadata.split_index) && block.metadata.split_index >= 0
+      typeof block.metadata?.split_index === 'number' &&
+      Number.isFinite(block.metadata.split_index) &&
+      block.metadata.split_index >= 0
         ? block.metadata.split_index
         : undefined;
 
@@ -432,12 +451,12 @@ export async function postProcessBlocks({
               ? block.source_info.page_number
               : undefined,
         para_idx: typeof block.metadata?.paraIdx === 'number' ? block.metadata.paraIdx : undefined,
-        source_location: null // 占位符
+        source_location: null, // 占位符
       },
       ...(parentBlockId ? { parent_block_id: parentBlockId } : {}),
       ...(partIndex === undefined ? {} : { part_index: partIndex }),
     };
-    
+
     // 步骤5: 将完整的块对象存入SoT和待处理列表
     // SoT 中存储的对象不应包含 id 字段（id 作为 key）
     const { id, ...blockForSotBase } = finalBlock;
@@ -460,6 +479,8 @@ export async function postProcessBlocks({
           if (level === null) {
             return { ...rest, block_type: BlockType.LIST_ITEM };
           }
+          return { ...rest, level, block_type: BlockType.LIST_ITEM };
+        }
         case BlockType.IMAGE:
           return { ...blockForSotBase, block_type: BlockType.IMAGE };
         case BlockType.CODE:
@@ -468,7 +489,7 @@ export async function postProcessBlocks({
     })();
 
     sourceDoc.content_blocks[blockId] = sotBlock;
-    
+
     sourceDoc.structure.root.push(blockId);
     processedBlocks.push(finalBlock); // 包含id的完整对象，用于后续步骤
   }
@@ -486,7 +507,7 @@ export async function postProcessBlocks({
   return {
     sourceDoc,
     processedBlocks,
-    finalDocId: docId
+    finalDocId: docId,
   };
 }
 
@@ -509,7 +530,7 @@ function buildHierarchicalStructure(blocks: ParsedContentBlock[]): { toc: TocEnt
         id: block.id,
         text: block.text,
         level: level,
-        children: []
+        children: [],
       };
 
       // 寻找正确的父节点
@@ -525,4 +546,4 @@ function buildHierarchicalStructure(blocks: ParsedContentBlock[]): { toc: TocEnt
   }
 
   return { toc };
-} 
+}

@@ -22,7 +22,9 @@ describe('knowledge metadata with a cold vector runtime', () => {
       throw new QdrantRuntimeUnavailableError('qdrant unavailable');
     });
     const sotRepository = new FileSotRepository(path.join(root, 'sot'));
-    const originalDocumentRepository = new FileOriginalDocumentRepository(path.join(root, 'originals'));
+    const originalDocumentRepository = new FileOriginalDocumentRepository(
+      path.join(root, 'originals')
+    );
     const deleteOriginal = vi.spyOn(originalDocumentRepository, 'deleteByKnowledgeBase');
     const deleteSot = vi.spyOn(sotRepository, 'delete');
     const service = new KnowledgeBaseMgmtService({
@@ -46,15 +48,24 @@ describe('knowledge metadata with a cold vector runtime', () => {
         reranking: { rerank: async () => ({ ranking: [] }) },
       });
       expect((await search.search({ kbId: created.id, query: '资料' })).results).toEqual([]);
-      expect((await search.searchForAgent(created.id, '资料', { allocate: async () => [] })).hits).toEqual([]);
+      expect(
+        (await search.searchForAgent(created.id, '资料', { allocate: async () => [] })).hits
+      ).toEqual([]);
       expect(embed).not.toHaveBeenCalled();
       expect(resolveAdapter).not.toHaveBeenCalled();
 
       // 有资料后服务故障必须传播，不能被空召回降级吞掉；已建索引来源保持不变。
       await metadataRepository.addDocument(createDocument('doc-1', created.id, '资料.txt', 20));
-      metadataRepository.indexState.publishRebuilt(created.id, { modelId: 'existing-model', spaceId: 'fixture-space' });
-      await expect(search.search({ kbId: created.id, query: '资料' })).rejects.toThrow('qdrant unavailable');
-      expect(await metadataRepository.getKnowledgeBaseEmbeddingProvenance(created.id)).toBe('existing-model');
+      metadataRepository.indexState.publishRebuilt(created.id, {
+        modelId: 'existing-model',
+        spaceId: 'fixture-space',
+      });
+      await expect(search.search({ kbId: created.id, query: '资料' })).rejects.toThrow(
+        'qdrant unavailable'
+      );
+      expect(await metadataRepository.getKnowledgeBaseEmbeddingProvenance(created.id)).toBe(
+        'existing-model'
+      );
       await expect(service.deleteKnowledgeBase(created.id)).rejects.toThrow('qdrant unavailable');
       expect(deleteOriginal).not.toHaveBeenCalled();
       expect(deleteSot).not.toHaveBeenCalled();

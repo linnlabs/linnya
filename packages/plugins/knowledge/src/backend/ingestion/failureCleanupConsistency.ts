@@ -40,7 +40,7 @@ export type ConsistencyScanReport = {
 function createDocIdBucket(): DocIdBucket {
   return {
     count: 0,
-    sampleDocIds: []
+    sampleDocIds: [],
   };
 }
 
@@ -64,7 +64,7 @@ function summarizeDocBucket(bucket: DocIdBucket): {
   return {
     count: bucket.count,
     sampleDocIds: bucket.sampleDocIds,
-    omittedDocIds: Math.max(0, bucket.count - bucket.sampleDocIds.length)
+    omittedDocIds: Math.max(0, bucket.count - bucket.sampleDocIds.length),
   };
 }
 
@@ -82,7 +82,7 @@ function createConsistencyScanReport(scannedDocs: number): ConsistencyScanReport
     orphanRepaired: createDocIdBucket(),
     orphanUnrepairable: createDocIdBucket(),
     statusCorrectionFailures: [],
-    checkFailures: []
+    checkFailures: [],
   };
 }
 
@@ -96,7 +96,11 @@ function emitDocBucketLog(level: 'info' | 'warn', message: string, bucket: DocId
   logger.info(message, data);
 }
 
-function emitFailureDetailsLog(level: 'warn' | 'error', message: string, details: FailureDetail[]): void {
+function emitFailureDetailsLog(
+  level: 'warn' | 'error',
+  message: string,
+  details: FailureDetail[]
+): void {
   if (details.length === 0) return;
   if (level === 'error') {
     logger.error(message, details);
@@ -119,15 +123,15 @@ export function emitConsistencyScanLogs(params: {
     sources: {
       metadata: metadataCount,
       sot: sotCount,
-      qdrant: qdrantCount
+      qdrant: qdrantCount,
     },
     healthy: {
-      completed: report.completedHealthy
+      completed: report.completedHealthy,
     },
     corrected: {
       pendingToCompleted: report.pendingCorrectedToCompleted.count,
       pendingToFailed: report.pendingCorrectedToFailed.count,
-      orphanMetadataRepaired: report.orphanRepaired.count
+      orphanMetadataRepaired: report.orphanRepaired.count,
     },
     anomalies: {
       preservedSourceNeedsRebuild: report.sourcePreserved.count,
@@ -139,7 +143,7 @@ export function emitConsistencyScanLogs(params: {
       statusCorrectionFailures: report.statusCorrectionFailures.length,
       checkFailures: report.checkFailures.length,
     },
-    cleanupCandidateCount
+    cleanupCandidateCount,
   });
 
   emitDocBucketLog('warn', '[FailureCleanup] 原文已保留，索引需要重建', report.sourcePreserved);
@@ -153,11 +157,7 @@ export function emitConsistencyScanLogs(params: {
     '[FailureCleanup] 🔁 状态纠偏汇总: pending/processing -> failed',
     report.pendingCorrectedToFailed
   );
-  emitDocBucketLog(
-    'info',
-    '[FailureCleanup] 🔁 孤儿元数据修复汇总',
-    report.orphanRepaired
-  );
+  emitDocBucketLog('info', '[FailureCleanup] 🔁 孤儿元数据修复汇总', report.orphanRepaired);
 
   emitDocBucketLog(
     'warn',
@@ -189,11 +189,7 @@ export function emitConsistencyScanLogs(params: {
     '[FailureCleanup] ⚠️ 状态纠偏失败明细',
     report.statusCorrectionFailures
   );
-  emitFailureDetailsLog(
-    'warn',
-    '[FailureCleanup] ⚠️ 文档一致性检查失败明细',
-    report.checkFailures
-  );
+  emitFailureDetailsLog('warn', '[FailureCleanup] ⚠️ 文档一致性检查失败明细', report.checkFailures);
 }
 
 async function repairOrphanMetadataIfPossible(params: {
@@ -207,17 +203,21 @@ async function repairOrphanMetadataIfPossible(params: {
   const sot = (await sotRepository.get(docId)) as DocumentSoT | undefined;
   if (!sot) return { repaired: false };
 
-  const filenameFromSot = typeof sot.metadata.source_file === 'string' ? sot.metadata.source_file.trim() : '';
+  const filenameFromSot =
+    typeof sot.metadata.source_file === 'string' ? sot.metadata.source_file.trim() : '';
   const filename = filenameFromSot.length > 0 ? filenameFromSot : `未知文件-${docId}`;
 
   const ingestionTsMs =
     typeof sot.metadata.ingestion_timestamp === 'number'
       ? sot.metadata.ingestion_timestamp
       : undefined;
-  const createdAtSeconds = typeof ingestionTsMs === 'number' ? ingestionTsMs / 1000 : Date.now() / 1000;
+  const createdAtSeconds =
+    typeof ingestionTsMs === 'number' ? ingestionTsMs / 1000 : Date.now() / 1000;
 
   const fileSizeBytes =
-    typeof sot.metadata.file_size === 'number' && Number.isFinite(sot.metadata.file_size) && sot.metadata.file_size >= 0
+    typeof sot.metadata.file_size === 'number' &&
+    Number.isFinite(sot.metadata.file_size) &&
+    sot.metadata.file_size >= 0
       ? sot.metadata.file_size
       : 0;
 
@@ -241,7 +241,7 @@ async function repairOrphanMetadataIfPossible(params: {
     createdAt: createdAtSeconds,
     updatedAt: createdAtSeconds,
     errorMessage: null,
-    taskId: null
+    taskId: null,
   };
 
   await metadataRepository.addDocument(repairedDoc);
@@ -270,11 +270,15 @@ export async function analyzeDocumentConsistency(params: {
     metadataIds,
     sotIds,
     qdrantDocIds,
-    qdrantDocIdsByKb
+    qdrantDocIdsByKb,
   } = params;
 
   const failedDocIds = new Set<string>();
-  const allDocIds = new Set([...Array.from(metadataIds), ...Array.from(sotIds), ...Array.from(qdrantDocIds)]);
+  const allDocIds = new Set([
+    ...Array.from(metadataIds),
+    ...Array.from(sotIds),
+    ...Array.from(qdrantDocIds),
+  ]);
 
   logger.info(`[FailureCleanup] 🔍 开始检查 ${allDocIds.size} 个文档的数据一致性...`);
 
@@ -293,7 +297,8 @@ export async function analyzeDocumentConsistency(params: {
 
         // 索引是派生物。缺向量或上次摄入失败不能成为删除有效原文/PDF 的依据。
         // 对需要修复的库清除可用身份，交给明确重建；保持原文和用户可见文档记录。
-        const hasOriginal = inSot || Boolean(await params.originalDocumentRepository?.getPath(meta.kbId, docId));
+        const hasOriginal =
+          inSot || Boolean(await params.originalDocumentRepository?.getPath(meta.kbId, docId));
         if (hasOriginal && (!inQdrant || isFailed || !inSot)) {
           metadataRepository.indexState.invalidateForRebuild(meta.kbId);
           recordDocId(report.sourcePreserved, docId);
@@ -303,7 +308,10 @@ export async function analyzeDocumentConsistency(params: {
         if (isPendingLike) {
           if (inSot && inQdrant) {
             try {
-              const ok = await metadataRepository.updateDocumentStatus(docId, DocumentStatus.COMPLETED);
+              const ok = await metadataRepository.updateDocumentStatus(
+                docId,
+                DocumentStatus.COMPLETED
+              );
               if (ok) {
                 recordDocId(report.pendingCorrectedToCompleted, docId);
               } else {
@@ -317,7 +325,9 @@ export async function analyzeDocumentConsistency(params: {
               recordFailureDetail(
                 report.statusCorrectionFailures,
                 docId,
-                e instanceof Error ? `pending/processing -> completed 失败: ${e.message}` : String(e)
+                e instanceof Error
+                  ? `pending/processing -> completed 失败: ${e.message}`
+                  : String(e)
               );
             }
             continue;
@@ -390,7 +400,7 @@ export async function analyzeDocumentConsistency(params: {
           docId,
           kbIdCandidates: kbIdsFromQdrant,
           metadataRepository,
-          sotRepository
+          sotRepository,
         });
 
         if (repaired.repaired) {
@@ -412,6 +422,6 @@ export async function analyzeDocumentConsistency(params: {
 
   return {
     failedDocIds,
-    report
+    report,
   };
 }

@@ -621,7 +621,10 @@ export function getRegisteredBackendPluginRendererPushChannels(
   enabledIds?: ReadonlySet<PluginId> | null
 ) {
   ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
-  return registeredContributions.getRegisteredBackendPluginRendererPushChannels(pluginId, enabledIds);
+  return registeredContributions.getRegisteredBackendPluginRendererPushChannels(
+    pluginId,
+    enabledIds
+  );
 }
 
 export function getRegisteredAgentDefinitions(enabledIds?: ReadonlySet<PluginId>) {

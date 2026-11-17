@@ -82,7 +82,7 @@ export class FileOriginalDocumentRepository implements OriginalDocumentRepositor
     try {
       const entries = await fs.readdir(dir);
       await fs.rm(dir, { recursive: true, force: true });
-      return entries.filter((entry) => entry.endsWith(PDF_EXTENSION)).length;
+      return entries.filter(entry => entry.endsWith(PDF_EXTENSION)).length;
     } catch (error) {
       if (this.isNotFoundError(error)) return 0;
       logger.error(`删除知识库原始 PDF 目录失败: kbId=${kbId}, error=${String(error)}`);
