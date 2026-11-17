@@ -32,6 +32,7 @@ vi.mock('../../../../electron-main/services/qdrantManager', () => ({
   },
 }));
 
+import { createRegisteredPluginVectorRuntime } from '../../plugin-registry/pluginVectorRuntimeFactory';
 import { QueueManager } from '../../../../infra/task-queue/queues';
 import { QdrantManager } from '../../../../electron-main/services/qdrantManager';
 import { ServiceInitializer } from '../../../../electron-main/services/serviceInitializer';
@@ -79,12 +80,10 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     const initializationFailure = new Error('service initialization failed');
     const qdrantStop = vi.spyOn(QdrantManager.prototype, 'stop').mockResolvedValue();
     vi.spyOn(QdrantManager.prototype, 'start').mockResolvedValue();
-    vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockImplementation(
-      async (_config, vectorStore) => {
-        await vectorStore.ensureReady();
-        throw initializationFailure;
-      }
-    );
+    vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockImplementation(async () => {
+      await createRegisteredPluginVectorRuntime().ensureReady();
+      throw initializationFailure;
+    });
     const queueStop = vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
 
     await expect(new TestBackendRuntimeOwner().start(BACKEND_CONFIGURATION)).rejects.toBe(
@@ -99,12 +98,10 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     const cleanupFailure = new Error('qdrant cleanup failed');
     const qdrantStart = vi.spyOn(QdrantManager.prototype, 'start').mockResolvedValue();
     vi.spyOn(QdrantManager.prototype, 'stop').mockRejectedValue(cleanupFailure);
-    vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockImplementation(
-      async (_config, vectorStore) => {
-        await vectorStore.ensureReady();
-        throw initializationFailure;
-      }
-    );
+    vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockImplementation(async () => {
+      await createRegisteredPluginVectorRuntime().ensureReady();
+      throw initializationFailure;
+    });
     vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
 
     const manager = new TestBackendRuntimeOwner();
@@ -120,6 +117,9 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     });
     await expect(manager.start(BACKEND_CONFIGURATION)).rejects.toThrow('生命周期尚未收口');
     expect(qdrantStart).toHaveBeenCalledOnce();
+    // 本例刻意保留失败 owner 以验证重试拒绝；断言完成后恢复关闭，避免污染下一例工厂注册。
+    vi.mocked(QdrantManager.prototype.stop).mockResolvedValue();
+    await manager.stop();
   });
 
   it('先取消启动维护，再按 API、命令 owner、Sandbox owner、后台队列顺序停止', async () => {
@@ -377,5 +377,32 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     await expect(firstStop).resolves.toBeUndefined();
     expect(apiStop).toHaveBeenCalledOnce();
     expect(ownerStop).toHaveBeenCalledOnce();
+  });
+  it('服务在领取向量资源前失败，也释放 factory，使下一次启动可以重新装配', async () => {
+    const failure = new Error('workspace database unavailable');
+    const initialize = vi
+      .spyOn(ServiceInitializer.prototype, 'initializeServices')
+      .mockRejectedValueOnce(failure);
+    const first = new TestBackendRuntimeOwner();
+    await expect(first.start(BACKEND_CONFIGURATION)).rejects.toBe(failure);
+    initialize.mockResolvedValue({
+      get transcriptionService(): never {
+        throw new Error('unused transcription');
+      },
+      get databaseService(): never {
+        throw new Error('unused database');
+      },
+      get documentOcr(): never {
+        throw new Error('unused OCR');
+      },
+      capabilityFailures: [],
+      disposeRendererIntegration() {},
+    });
+    const next = new TestBackendRuntimeOwner();
+    try {
+      await expect(next.start(BACKEND_CONFIGURATION)).resolves.toBe(34000);
+    } finally {
+      await next.stop();
+    }
   });
 });

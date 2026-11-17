@@ -32,6 +32,10 @@ vi.mock('../../../../electron-main/services/qdrantManager', () => ({
   },
 }));
 
+import {
+  syncBackendPluginRuntimeEffects,
+  clearSyncedBackendPluginRuntimeEffectsForTests,
+} from '../../plugin-registry/runtimeEffectRuntime';
 import { QueueManager } from '../../../../infra/task-queue/queues';
 import type { ForegroundAgentRunActivityPort } from '../../adapters/flow/interactive-run/orchestration/foregroundAgentRunActivity';
 import { BackendRuntimeOwner } from './backendRuntimeOwner';
@@ -79,7 +83,10 @@ function createActivity(): ForegroundAgentRunActivityPort {
   };
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(async () => {
+  await clearSyncedBackendPluginRuntimeEffectsForTests();
+  vi.restoreAllMocks();
+});
 
 describe('BackendRuntimeOwner activity source', () => {
   it('Agent runtime 注册前返回空 run 列表与空暂停结果', async () => {
@@ -108,32 +115,35 @@ describe('BackendRuntimeOwner activity source', () => {
     expect(() => owner.registerAgentRunActivity(createActivity())).toThrow('另一套 Agent run');
   });
 
-  it('知识库摄入只在 Backend 运行期间读取队列待处理与执行中任务', async () => {
+  it('Backend 只聚合正式插件活动和独立 Audio，停止后不再报告旧 owner', async () => {
     const queue = QueueManager.getInstance();
-    const stats = vi.spyOn(queue, 'getQueueStats').mockReturnValue({
-      total: 3,
-      pending: 0,
-      running: 0,
-      completed: 2,
-      failed: 1,
-    });
+    const audioActive = vi.spyOn(queue, 'hasActiveTasks').mockReturnValue(false);
     vi.spyOn(queue, 'shutdown').mockResolvedValue();
+    let pluginActive = false;
+    const hasActiveWork = vi.fn(() => pluginActive);
+    const deactivate = vi.fn();
     const owner = new TestBackendRuntimeOwner();
-
     expect(owner.hasActiveKnowledgeIngestion()).toBe(false);
-    expect(stats).not.toHaveBeenCalled();
-
+    expect(audioActive).not.toHaveBeenCalled();
     await owner.start(BACKEND_CONFIGURATION);
+    await syncBackendPluginRuntimeEffects([
+      {
+        pluginId: 'fixture',
+        effect: { id: 'tasks', activate() {}, deactivate, hasActiveWork },
+      },
+    ]);
     expect(owner.hasActiveKnowledgeIngestion()).toBe(false);
-    stats.mockReturnValue({ total: 1, pending: 1, running: 0, completed: 0, failed: 0 });
+    pluginActive = true;
     expect(owner.hasActiveKnowledgeIngestion()).toBe(true);
-    stats.mockReturnValue({ total: 1, pending: 0, running: 1, completed: 0, failed: 0 });
+    pluginActive = false;
+    audioActive.mockReturnValue(true);
     expect(owner.hasActiveKnowledgeIngestion()).toBe(true);
-
+    audioActive.mockReturnValue(false);
+    expect(owner.hasActiveKnowledgeIngestion()).toBe(false);
     owner.registerAgentRunActivity(createActivity());
     await owner.stop();
+    expect(deactivate).toHaveBeenCalledOnce();
     expect(owner.hasActiveKnowledgeIngestion()).toBe(false);
-    // 收口后不再报告或暂停已释放 Flow 的 run。
     await expect(owner.listActiveAgentRuns()).resolves.toEqual([]);
   });
 });

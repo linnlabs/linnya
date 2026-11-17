@@ -9,8 +9,6 @@ import { describe, expect, it, vi } from 'vitest';
 import type { PluginInferencePort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
 import { WorkerThreadQueue } from 'src/infra/task-queue/WorkerThreadQueue';
 import { createInferenceWorkerRequestHandler } from '../createInferenceWorkerRequestHandler';
-import { createKnowledgeWorkerInference } from '../createKnowledgeWorkerInference';
-import type { IngestionJobPayload } from 'src/infra/task-queue/jobs';
 
 function ports(): PluginInferencePort {
   return {
@@ -70,32 +68,22 @@ describe('worker inference Host boundary', () => {
       )
     ).toEqual([]);
     const inference = ports();
-    const production = createKnowledgeWorkerInference(inference, path.join(root, 'ocr'));
-    const payload: IngestionJobPayload = {
-      taskId: 'protocol',
-      docId: 'doc',
-      kbId: 'kb',
-      filename: 'input.pdf',
-      filePath: inputPath,
-      embeddingModelId: 'embedding',
-      imageVisionModelId: 'language',
-      pdfOcrModelId: 'ocr',
-      priority: 1,
-      retry: false,
-      forceVisionMode: true,
-    };
-    const queue = new WorkerThreadQueue<IngestionJobPayload & { inputPath: string }>({
+    const admission = {
+      allowedOperations: new Set(['embed', 'text', 'ocr-profile', 'ocr']),
+      modelIds: new Set(['embedding', 'language', 'ocr']),
+      inputFiles: [inputPath],
+      temporaryDirectory: path.join(root, 'ocr'),
+    } satisfies Parameters<typeof createInferenceWorkerRequestHandler>[1];
+    const queue = new WorkerThreadQueue<{ taskId: string; inputPath: string }>({
       workerScript,
-      hostRequestHandler: job => {
-        return production.workerInference.ingestion(job.data);
-      },
+      hostRequestHandler: () => createInferenceWorkerRequestHandler(inference, admission),
     });
     try {
       const complete = new Promise<unknown>((resolve, reject) => {
         queue.once('taskCompleted', ({ result }: { result: unknown }) => resolve(result));
         queue.once('taskFailed', ({ error }: { error: string }) => reject(new Error(error)));
       });
-      await queue.addTask({ ...production.prepareIngestionJob(payload), inputPath });
+      await queue.addTask({ taskId: 'protocol', inputPath });
       await expect(complete).resolves.toMatchObject({
         embedding: {
           vectors: [
@@ -112,13 +100,22 @@ describe('worker inference Host boundary', () => {
         expect.objectContaining({ expectedSpaceId: 'space-one', signal: expect.any(AbortSignal) })
       );
       expect(inference.reranking.rerank).not.toHaveBeenCalled();
-      vi.mocked(inference.embedding.embed).mockRejectedValueOnce(new EmbeddingFailure('protocol', 'embedding_space_mismatch', false, 'Index requires rebuild'));
+      vi.mocked(inference.embedding.embed).mockRejectedValueOnce(
+        new EmbeddingFailure(
+          'protocol',
+          'embedding_space_mismatch',
+          false,
+          'Index requires rebuild'
+        )
+      );
       const rejectedRequest = new Promise<unknown>((resolve, reject) => {
         queue.once('taskCompleted', ({ result }: { result: unknown }) => resolve(result));
         queue.once('taskFailed', ({ error }: { error: string }) => reject(new Error(error)));
       });
-      await queue.addTask({ ...production.prepareIngestionJob({ ...payload, taskId: 'rejected' }), inputPath });
-      await expect(rejectedRequest).resolves.toEqual({ failure: { kind: 'protocol', code: 'embedding_space_mismatch', retryable: false } });
+      await queue.addTask({ taskId: 'rejected', inputPath });
+      await expect(rejectedRequest).resolves.toEqual({
+        failure: { kind: 'protocol', code: 'embedding_space_mismatch', retryable: false },
+      });
     } finally {
       await queue.shutdown();
       await rm(root, { recursive: true, force: true });
@@ -163,35 +160,27 @@ describe('worker inference Host boundary', () => {
       await rm(root, { recursive: true, force: true });
     }
   });
-  it('生产摄入仅允许本任务的 OCR 临时文件，不能读取另一任务的素材', async () => {
+  it('冻结准入仅允许本任务的 OCR 临时文件，不能读取另一任务的素材', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'linnya-knowledge-ocr-owner-'));
     const inference = ports();
-    const production = createKnowledgeWorkerInference(inference, root);
-    const payload: IngestionJobPayload = {
-      taskId: 'current-task',
-      docId: 'doc',
-      kbId: 'kb',
-      filename: 'input.pdf',
-      filePath: path.join(root, 'input.pdf'),
-      embeddingModelId: 'embedding',
-      pdfOcrModelId: 'ocr',
-      priority: 1,
-      retry: false,
-      forceVisionMode: true,
-    };
-    const prepared = production.prepareIngestionJob(payload);
-    if (!prepared.ocrTemporaryDirectory) throw new Error('missing OCR temporary scope');
-    const mine = path.join(prepared.ocrTemporaryDirectory, 'page.pdf');
+    const inputPath = path.join(root, 'input.pdf');
+    const temporaryDirectory = path.join(root, 'current-task');
+    const mine = path.join(temporaryDirectory, 'page.pdf');
     const other = path.join(root, 'other-task.pdf');
     const context = { signal: new AbortController().signal, progress: vi.fn() };
     try {
-      await mkdir(prepared.ocrTemporaryDirectory);
+      await mkdir(temporaryDirectory);
       await Promise.all([
         writeFile(mine, 'page'),
         writeFile(other, 'other'),
-        writeFile(payload.filePath, 'input'),
+        writeFile(inputPath, 'input'),
       ]);
-      const handler = production.workerInference.ingestion(prepared);
+      const handler = createInferenceWorkerRequestHandler(inference, {
+        allowedOperations: new Set(['ocr']),
+        modelIds: new Set(['ocr']),
+        inputFiles: [inputPath],
+        temporaryDirectory,
+      });
       await expect(
         handler.execute('ocr', { modelId: 'ocr', input: { kind: 'pdf_path', path: mine } }, context)
       ).resolves.toMatchObject({ pages: [{ markdown: 'source' }] });
@@ -204,14 +193,11 @@ describe('worker inference Host boundary', () => {
       ).rejects.toThrow('不属于当前任务');
       expect(inference.documentOcr.recognizeDocument).toHaveBeenCalledTimes(1);
       await expect(
-        production.workerInference
-          .graphIndexing({
-            taskId: 'index',
-            kbId: 'kb',
-            docId: 'doc',
-            embeddingModelId: 'embedding',
-          })
-          .execute('text', { modelId: 'embedding', messages: [] }, context)
+        createInferenceWorkerRequestHandler(inference, {
+          allowedOperations: new Set(['embed']),
+          modelIds: new Set(['embedding']),
+          inputFiles: [],
+        }).execute('text', { modelId: 'embedding', messages: [] }, context)
       ).rejects.toThrow('未授权');
     } finally {
       await rm(root, { recursive: true, force: true });
