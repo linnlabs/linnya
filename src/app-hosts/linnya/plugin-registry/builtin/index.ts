@@ -52,6 +52,11 @@ export type BuiltinBackendPluginRegistrationPhase = 'empty' | 'platform-only' | 
 let registrationPhase: BuiltinBackendPluginRegistrationPhase = 'empty';
 const diskPluginDirsById = new Map<PluginId, string>();
 
+/** Renderer 来源校验读取已准入路径；此事实本身不授予高信任能力。 */
+export function getRegisteredBackendPluginDirectory(pluginId: PluginId): string | undefined {
+  return diskPluginDirsById.get(pluginId);
+}
+
 function registerBackendPluginIfMissing(
   contribution: PluginBackendContribution,
   options: { readonly allowPluginCli?: boolean } = {}
