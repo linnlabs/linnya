@@ -4,7 +4,7 @@ import type { RendererPluginEntry } from 'src/electron-main/plugins/loader/rende
 import { readPluginManifestSummary } from 'src/electron-main/plugins/loader/pluginLayout';
 import { readPluginArtifactIdentity } from 'src/features/plugins/install/functions/readPluginArtifactIdentity';
 
-interface ApplicationSurfaceTrustInput {
+export interface ApplicationSurfaceTrustInput {
   readonly packaged: boolean;
   readonly workspaceRoot: string;
   readonly backendDirectDirs: readonly string[];
@@ -12,7 +12,14 @@ interface ApplicationSurfaceTrustInput {
   readonly getRegisteredPluginDirectory: (pluginId: string) => string | undefined;
 }
 
-function matchesBundledArtifact(entry: RendererPluginEntry, bundledRoot: string | undefined): boolean {
+interface KnowledgePluginSource {
+  readonly pluginId: string;
+  readonly version: string;
+  readonly pluginDir?: string;
+  readonly sourceKind?: RendererPluginEntry['sourceKind'];
+}
+
+function matchesBundledArtifact(entry: KnowledgePluginSource, bundledRoot: string | undefined): boolean {
   if (!bundledRoot || !entry.pluginDir || entry.sourceKind !== 'active') return false;
   const bundledDirectory = path.join(bundledRoot, entry.pluginId);
   if (!fs.existsSync(bundledDirectory)) return false;
@@ -22,20 +29,25 @@ function matchesBundledArtifact(entry: RendererPluginEntry, bundledRoot: string 
   return readPluginArtifactIdentity(bundledDirectory) === readPluginArtifactIdentity(entry.pluginDir);
 }
 
+/** 同一官方来源准入同时约束页面入口与原地资料接管；不依赖 Renderer 元素或插件自报 builtin。 */
+export function isTrustedKnowledgePluginSource(entry: KnowledgePluginSource, input: ApplicationSurfaceTrustInput): boolean {
+  if (entry.pluginId !== 'knowledge' || !entry.pluginDir) return false;
+  const pluginDirectory = path.resolve(entry.pluginDir);
+  const registeredDirectory = input.getRegisteredPluginDirectory(entry.pluginId);
+  if (!registeredDirectory || path.resolve(registeredDirectory) !== pluginDirectory) return false;
+  const developmentSource = !input.packaged && (
+    (entry.sourceKind === 'official-source' && pluginDirectory === path.resolve(input.workspaceRoot, 'packages/plugins/knowledge')) ||
+    input.backendDirectDirs.some(directory => path.resolve(directory) === pluginDirectory)
+  );
+  return developmentSource || matchesBundledArtifact(entry, input.bundledPluginRoot);
+}
+
 /** 产品组合根只授一个已约定场景；插件 manifest/meta 不能自授页面或固定入口。 */
 export function mapTrustedRendererApplicationSurfaces(
   entries: readonly RendererPluginEntry[], input: ApplicationSurfaceTrustInput,
 ): RendererPluginEntry[] {
   return entries.map(entry => {
-    if (entry.pluginId !== 'knowledge' || !entry.pluginDir) return entry;
-    const pluginDirectory = path.resolve(entry.pluginDir);
-    const registeredDirectory = input.getRegisteredPluginDirectory(entry.pluginId);
-    if (!registeredDirectory || path.resolve(registeredDirectory) !== pluginDirectory) return entry;
-    const developmentSource = !input.packaged && (
-      (entry.sourceKind === 'official-source' && pluginDirectory === path.resolve(input.workspaceRoot, 'packages/plugins/knowledge')) ||
-      input.backendDirectDirs.some(directory => path.resolve(directory) === pluginDirectory)
-    );
-    if (!developmentSource && !matchesBundledArtifact(entry, input.bundledPluginRoot)) return entry;
+    if (!isTrustedKnowledgePluginSource(entry, input)) return entry;
     return { ...entry, applicationSurfaceSlot: 'knowledge-base' };
   });
 }

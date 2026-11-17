@@ -1,5 +1,5 @@
 export interface OnDemandQdrantRuntime {
-  ensureReady(): Promise<string>;
+  ensureReady(signal?: AbortSignal): Promise<string>;
   stop(): Promise<void>;
 }
 
@@ -15,10 +15,23 @@ export function createOnDemandQdrantRuntime(owner: {
   let stopping: Promise<void> | undefined;
   let accepting = true;
   return {
-    ensureReady() {
+    ensureReady(signal) {
       if (!accepting) return Promise.reject(new Error('向量服务正在停止，不能接收新请求'));
-      start ??= owner.start();
-      return start;
+      if (signal?.aborted) return Promise.reject(signal.reason);
+      const pending = start ??= owner.start();
+      if (!signal) return pending;
+      // 取消单次检索等待不能终止别的请求共享的向量进程启动。
+      return new Promise<string>((resolve, reject) => {
+        const abort = () => reject(signal.reason);
+        signal.addEventListener('abort', abort, { once: true });
+        pending.then(value => {
+          signal.removeEventListener('abort', abort);
+          resolve(value);
+        }, error => {
+          signal.removeEventListener('abort', abort);
+          reject(error);
+        });
+      });
     },
     stop() {
       accepting = false;
