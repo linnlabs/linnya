@@ -65,7 +65,7 @@ describe('DraggablePanel', () => {
     expect(panel?.querySelector('.business-panel-header')).not.toBeNull();
     expect(panel?.querySelector('.business-panel-title')?.textContent).toBe('面板标题');
     expect(panel?.querySelector('.business-panel-body')?.textContent).toBe('面板内容');
-    expect(panel?.querySelectorAll('.resize-handle')).toHaveLength(8);
+    expect(panel?.querySelectorAll('.resize-handle')).toHaveLength(2);
 
     panel?.querySelector<HTMLButtonElement>('.business-panel-close')?.click();
     expect(closeCount).toBe(1);
@@ -94,7 +94,7 @@ describe('DraggablePanel', () => {
     expect(panel?.style.top).toBe('0px');
   });
 
-  it('auto 高度保持横向 resize 手柄并隐藏纵向与角落手柄', async () => {
+  it('只渲染左右宽度手柄，固定高度也没有纵向与角落手柄', async () => {
     const host = mountPanel({ height: 'auto' });
     await nextTick();
     const panel = host.querySelector<HTMLElement>('.draggable-panel');
@@ -105,5 +105,19 @@ describe('DraggablePanel', () => {
     expect(panel?.querySelector('.resize-n')).toBeNull();
     expect(panel?.querySelector('.resize-s')).toBeNull();
     expect(panel?.querySelector('.resize-se')).toBeNull();
+
+    const fixedHost = mountPanel({ height: '300px' });
+    await nextTick();
+    const fixedPanel = fixedHost.querySelectorAll<HTMLElement>('.draggable-panel');
+    const last = fixedPanel[fixedPanel.length - 1];
+    expect(last?.querySelector('.resize-n')).toBeNull();
+    expect(last?.querySelector('.resize-s')).toBeNull();
+    expect(last?.querySelector('.resize-nw')).toBeNull();
+  });
+
+  it('auto 宽度时不渲染宽度手柄', async () => {
+    const host = mountPanel({ width: 'auto', height: 'auto' });
+    await nextTick();
+    expect(host.querySelector('.draggable-panel .resize-handle')).toBeNull();
   });
 });

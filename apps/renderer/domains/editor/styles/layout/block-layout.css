@@ -1,3 +1,8 @@
+/* 编辑器正文可选（应用默认不可选，见 app/styles/global.css）；只读的历史、审阅视图同样需要能选中复制。 */
+.ProseMirror {
+  user-select: text;
+}
+
 /* src/assets/styles/layout/block-layout.css */
 /* block-layout.css - 内容块布局 */
 

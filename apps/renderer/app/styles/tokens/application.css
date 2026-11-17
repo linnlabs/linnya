@@ -13,12 +13,16 @@
   --color-bg-inline-code: color-mix(in srgb, var(--color-text-primary) 12%, transparent);
 }
 
+/* 导航选中底保持不透明：浅色、深色用主文字色 6% 压在侧栏底上；月白蓝用淡蓝灰的固定一档。 */
 [data-linnya-ui-theme='light'],
-[data-linnya-ui-theme='dark'],
-[data-linnya-ui-theme='moon-blue'] {
+[data-linnya-ui-theme='dark'] {
   --color-bg-navigation-highlight: color-mix(
     in srgb,
     var(--color-brand-200) 4%,
-    color-mix(in srgb, var(--color-bg-hover-strong) 60%, var(--color-bg-sidebar))
+    color-mix(in srgb, var(--color-text-primary) 6%, var(--color-bg-sidebar))
   );
+}
+
+[data-linnya-ui-theme='moon-blue'] {
+  --color-bg-navigation-highlight: var(--color-moon-130);
 }

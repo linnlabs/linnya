@@ -2,6 +2,8 @@
   --linnya-ui-color-picker-cell-border-color: transparent;
 
   position: relative;
+  /* 宽度跟着色块走：行距与列距相同，右对齐的“清除颜色”与最后一列对齐。 */
+  width: fit-content;
   padding: var(--space-3);
   outline: none;
   background-color: transparent;
@@ -29,7 +31,7 @@
 
 .shared-color-picker-panel__grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, 32px);
   gap: var(--space-2);
 }
 

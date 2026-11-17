@@ -2,6 +2,48 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.9.0 - 2026-11-17
+
+- 配色换成薄荷绿：`--color-brand-*` 整条色阶改为 H158 的薄荷（500 `#6bb88d`，强调实底 600 `#3d825d` 白字 4.62:1，选中浅底文字 700 `#337251` 在 125 上 5.09:1），`--color-accent-rgb` 同步；`--color-gray-*` 明度不变，加一点跟随品牌色相的色偏。token 名不变，引用语义 token 的组件与插件无需修改。
+- 新增状态色阶 `--color-signal-{success,error,warning,info}-{50,200,400,500,600,900}`：四色同一明度带、彩度接近旧值，成功绿与品牌色分开。`--color-success*`、`--color-error*`、`--color-warning*`、`--color-info*` 改为引用它们；浅色下文字在各自浅底上 4.86–5.54:1。
+- `moon-blue` 改为很淡的月白蓝：新增 `--color-moon-*`（底色与边框）、`--color-moon-accent-*`（强调蓝，实底 `#4079ac` 白字 4.62:1）与 `--color-moon-shadow`；底色彩度降到 C0.003–0.009，文字改为带一点蓝的墨色，链接用强调文字色。
+- 少边框：新增 `--color-bg-field` / `--color-bg-field-hover`（主文字色 5% / 8% 叠加）。`CustomTextField`、`CustomSelect`（bordered）、`SecretInput`、`CustomNumberInput`、`TimePicker` 与 `BaseButton` 的 `secondary` 静止时不画边框，用浅底表达边界，聚焦时才出现强调色描边；输入框的底色在悬停、聚焦时不变，选择器、时间选择与 `secondary` 悬停加深；`ghost` 改为透明底无描边。
+- 弹窗与可拖拽面板四边同距：新增 `--modal-inset`（24px）与 `--floating-panel-inset`（20px）。`Modal` 默认滚动模式下由 Modal 负责正文与 footer 的左右、底部边距，标题行与关闭钮按笔画对齐到同一边距；调用方原来给正文或 footer 写的左右内边距需要删掉，否则会叠加。`internal` 模式的调用方用 `var(--modal-inset)` 写左右边距。`AlertDialog` 与 `DraggablePanel` 已按新边距调整；`height="auto"` 的 `DraggablePanel` 不再受 180px 最小高度约束。
+- `LinnyaIcon` 的默认颜色由 `--color-brand-500` 改为 `--color-accent`（浅色主题是加深的品牌色 `#3d825d`），与主按钮、选中态同一个绿；调用方不必再各自写颜色，需要别的颜色时仍在图标自身的 class 上覆盖。
+- `IconButton` 新增 `size="composer"`（26px 外框、18px 图标），只用于对话输入框底栏，与模型选择器同高；别处继续用 xs / sm / md / lg。
+- `SidebarIcon` 的方框由 14 放到 15（墨迹 16，圆角 2.75），与同排的 `LibraryIcon`、`SettingsIcon` 一样大；组件名与 `data-icon` 不变。
+- 新增 `measureFloatingLayoutSize(element)`：返回弹层的布局宽高（`offsetWidth` / `offsetHeight`）。弹层入场从 0.96 缩放，打开当帧用 `getBoundingClientRect()` 量到的是缩小后的尺寸，按它把弹层放到按钮上方会贴住按钮，动画结束再重算就会跳一下；量弹层自身尺寸改用这个函数，锚点仍用 `getBoundingClientRect()`。`TextPopover`、`SimpleDatePicker` 与下拉面板定位已改用布局尺寸。
+
+## 3.8.0 - 2026-11-17
+
+- `DraggablePanel` 不再提供高度调整：去掉上下边缘与四个角的 resize 手柄，只保留左右边缘调整宽度；手柄悬停只换成 `ew-resize` 光标，不再画蓝色条。`resizeDraggablePanelGeometry` 与 `DraggablePanelResizeDirection` 的公开签名不变。
+- `BaseButton`、`IconButton` 的文字不可被拖选（`user-select: none`），放进可选正文区域里也一样。
+
+## 3.7.1 - 2026-11-17
+
+- `CustomSelect` 触发器与 `SecretInput` 由 36px 收到 `--control-height-md`（32px），字号统一为 13px（`--font-size-body`），文字距边 10px，与单行输入、md 按钮同高同字号，表单同一行对齐；选择器箭头 16px → 14px，密文显隐按钮宽 40px → 36px。`minimal` 选择器不变。现有 `^3.0.0` 插件保持兼容。
+
+## 3.7.0 - 2026-11-17
+
+- 悬停底色改为主文字色的半透明叠加：`--color-bg-hover` 浅色 7%、深色 10%、月白蓝 7%，`--color-bg-hover-strong` 为 12% / 16% / 12%，`--color-bg-hover-light` 并入 `--color-bg-hover`。此前三档是固定实色，可见度取决于下面的底色：深色工具条上 hover-light 只比底色亮 1.075:1（几乎看不出），浮起表面上反而更暗；月白蓝下各档只有 1.01–1.06:1。现在各底色上一致：浅色 1.15:1（与原 hover 相同）、深色约 1.3:1、月白蓝约 1.14:1。token 名不变；把悬停色当作不透明底参与 `color-mix` 的调用方，混合结果会带透明度，需改为与所在底色混合主文字色。现有 `^3.0.0` 插件保持兼容。
+
+## 3.6.2 - 2026-11-17
+
+- `ToolbarButton` 为直接子级图标提供 16px 方形图标槽（`:where` 低优先级，调用方仍可覆盖）：此前按钮不定尺寸，图标按自带 class 变成 12px、16px 或被拉成 16×20 并上移 2px。
+- 深色主题下的阴影不再发光：`DraggablePanel`（含 mini）与 `CustomSlider` 拇指悬停的扩散阴影由主文字色改为黑色；主文字色在深色主题里接近白色，原写法让阴影变成一圈亮光。贴边 0 偏移的细环保持主文字色。浅色主题观感不变。现有 `^3.0.0` 插件保持兼容。
+
+## 3.6.1 - 2026-11-17
+
+- 按视觉平衡调整三枚图标的路径，组件名、属性与 `data-icon` 不变：`SidebarIcon` 方框中心线由 13 放到 14（圆角 2.5），与同排的知识库、设置图标一样大；`BulletListIcon` 圆点半径由 1 放到 1.5，行位不变，与 `NumberedListIcon` 等重；`UnderlineIcon` 的 U 由 9×13 放到 10×14，与 `HeadingIcon` 同高。现有 `^3.0.0` 插件保持兼容。
+
+## 3.6.0 - 2026-11-17
+
+- 弃用 `BaseButton` 的 `soft` variant：删除它的样式（渐变浅底、描边与悬停投影），传入 `soft` 时按 `tint` 渲染，下一个 major 删除该类型成员。`ActionButtons` 的 `primaryVariant="accent"` 改为对应 `tint`。`tint` 的用途扩展为与 `primary` 并列、推荐但不抢主操作的动作。props 与类型保持兼容，现有 `^3.0.0` 插件无需修改；新代码改用 `tint`。
+
+## 3.5.1 - 2026-11-17
+
+- `ColorPickerPanel` 的宽度改为跟随色块（`width: fit-content`），色块网格为五列定宽 32px，行距与列距同为 8px：此前每列按 `1fr` 分配，放进比色块宽的容器（如 Slides 属性面板）时色块靠在各列左侧、列距被拉大，最后一列右侧空出一截，与右对齐的“清除颜色”按钮对不齐。现在面板不再被容器撑宽，按钮与最后一列对齐。公开 props、事件与 DOM 不变，现有 `^3.0.0` 插件保持兼容。
+
 ## 3.5.0 - 2026-11-16
 
 - 新增界面调度函数，替代直接调用 `setTimeout`、`setInterval`、`requestAnimationFrame`：`Timer`（延迟、防抖、节流、自动关闭，`start` 重新计时、`startIfIdle` 保持原计时）、`RepeatingTimer`（轮询、时钟）、`FrameBatch`（同一帧内多次请求只执行一次，用于滚动、拖拽、尺寸变化）、`FrameLoop`（每帧执行直到停止，callback 返回 `false` 自动停止），以及 `onNextFrame` / `onNextPaint`（返回取消函数）与 `nextFrame` / `nextPaint`（Promise）。组件 setup 里用 `useTimer` / `useRepeatingTimer` / `useFrameBatch` / `useFrameLoop`，卸载时自动取消；组件外用对应的 `create…` 版本，由调用方收尾。没有 `requestAnimationFrame` 的环境用定时器代替。新增导出，现有 `^3.0.0` 插件保持兼容；使用新函数的插件需声明 `^3.5.0`。

@@ -1,0 +1,245 @@
+/*
+ * 画廊自己的外壳样式。外壳也只用 Renderer UI token，切换主题和候选方案时跟着变化，
+ * 不在页面上留下与被审阅界面无关的颜色。
+ */
+
+html,
+body {
+  background-color: var(--color-bg-default);
+  color: var(--color-text-primary);
+}
+
+body {
+  overflow: auto;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr); /* scale-exempt: 版面尺寸 */
+  min-height: 100%;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.gallery__nav {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  height: 100vh;
+  padding: var(--space-4) var(--space-2);
+  overflow: auto;
+  background-color: var(--color-bg-sidebar);
+  border-right: var(--border-width-hairline) solid var(--color-border-sidebar);
+}
+
+.gallery__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2) var(--space-4);
+  font-weight: var(--font-weight-semibold);
+}
+
+.gallery__brand-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.gallery__nav-item {
+  display: flex;
+  align-items: center;
+  height: var(--control-height-md);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  text-align: left;
+  transition: background-color var(--duration-micro) var(--ease-standard);
+}
+
+.gallery__nav-item:hover {
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.gallery__nav-item.is-active {
+  background-color: var(--color-bg-active-subtle);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.gallery__main {
+  min-width: 0;
+  padding: 0 var(--space-10) var(--space-10);
+}
+
+.gallery__header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6) 0 var(--space-4);
+  margin-bottom: var(--space-6);
+  background-color: var(--color-bg-default);
+  border-bottom: var(--border-width-hairline) solid var(--color-border-light);
+}
+
+.gallery__title {
+  font-size: var(--font-size-headline);
+  line-height: var(--line-height-headline);
+  font-weight: var(--font-weight-semibold);
+}
+
+.gallery__description {
+  max-width: 640px; /* scale-exempt: 版面尺寸 */
+  margin-top: var(--space-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.gallery__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.gallery__scheme {
+  width: 200px; /* scale-exempt: 版面尺寸 */
+}
+
+.gallery__hint {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.gallery-embed {
+  padding: var(--space-6);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+/* 分区与行 */
+
+.gallery-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.gallery-block__header {
+  margin-bottom: var(--space-4);
+}
+
+.gallery-block__title {
+  font-size: var(--font-size-subtitle);
+  line-height: var(--line-height-subtitle);
+  font-weight: var(--font-weight-semibold);
+}
+
+.gallery-block__note {
+  margin-top: var(--space-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.gallery-block__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gallery-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr); /* scale-exempt: 版面尺寸 */
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.gallery-row.is-align-start {
+  align-items: start;
+}
+
+.gallery-row__label {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.gallery-row__content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.gallery-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.gallery-field {
+  width: 280px; /* scale-exempt: 版面尺寸 */
+}
+
+.gallery-caption {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 对比视图 */
+
+.gallery-compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.gallery-compare__pickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.gallery-compare__picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.gallery-compare__grid {
+  display: grid;
+  gap: var(--space-4);
+  overflow-x: auto;
+}
+
+.gallery-compare__cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.gallery-compare__frame {
+  width: 100%;
+  min-height: 240px; /* scale-exempt: 版面尺寸 */
+  /* 描边用阴影画，不占内容高度：iframe 高度等于嵌入页上报的内容高度，不出现内部滚动条。 */
+  border: none;
+  box-shadow: 0 0 0 var(--border-width-hairline) var(--color-border-light);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-bg-default);
+}

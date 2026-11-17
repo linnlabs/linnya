@@ -55,9 +55,9 @@
   font-size: var(--font-size-body); /* Smaller font size */
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background-color: var(--color-bg-search-light);
+  background-color: var(--color-bg-field);
   color: var(--color-text-primary);
-  transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
+  transition: border-color var(--duration-medium) var(--ease-standard);
   font-family: inherit;
 }
 
@@ -74,16 +74,11 @@
   line-height: var(--line-height-normal);
 }
 
-.todo-sidebar .create-todo-card .form-input:hover:not(:disabled),
-.todo-sidebar .create-todo-card .form-textarea:hover:not(:disabled) {
-  background-color: var(--color-bg-hover);
-}
-
+/* 底色在静止、悬停、聚焦时保持不变（与 renderer-ui 输入框一致），聚焦只加强调色描边。 */
 .todo-sidebar .create-todo-card .form-input:focus:not(:disabled),
 .todo-sidebar .create-todo-card .form-textarea:focus:not(:disabled) {
   outline: none;
   border-color: var(--color-accent);
-  background-color: var(--color-bg-hover);
 }
 
 .todo-sidebar .create-todo-card .control-wrapper {

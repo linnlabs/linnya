@@ -1,0 +1,14 @@
+{
+  "extends": [
+    "../../../../tsconfig.bundler-base.json",
+    "../../../../apps/renderer/tsconfig.paths.generated.json"
+  ],
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "types": ["node", "vite/client"]
+  },
+  "include": ["**/*.ts", "**/*.vue"],
+  "exclude": ["**/*.test.ts"]
+}

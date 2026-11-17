@@ -7,15 +7,12 @@
 }
 
 /*
- * 修订“新增”标记：语义沿用成功色，但文字色单独取满足 AA 的最亮一档。
- * 全局 --color-success-text 还要在接受按钮的悬停底（success-bg 混入 18% 基础色）上保持 4.5:1，
- * 只能取更深更淡的一档；行内标记与图表提议条始终落在 success-bg 实色上，可以用更饱和的绿。
- * 文字对比度（落在 success-bg 上）：light 5.1:1、dark 4.6:1、moon-blue 5.1:1。
- * 下划线是文字之外的冗余提示，用基础成功色，保持鲜明。
+ * 修订“新增”标记：浅底用 success-bg，文字用 success-text，下划线用基础成功色。
+ * 2026-11-17 信号色重做后 success-text 在 success-bg 上：浅色 / 月白蓝 5.1:1、深色 7.8:1，不再需要单独的亮一档文字色。
  */
 [data-linnya-ui-theme='light'] {
   --editor-revision-insert-bg: var(--color-success-bg);
-  --editor-revision-insert-text: #157b3e;
+  --editor-revision-insert-text: var(--color-success-text);
   --editor-revision-insert-line: var(--color-success);
   --editor-hr-color: var(--color-gray-300);
   --editor-block-hover-bg: var(--color-gray-125);
@@ -45,7 +42,7 @@
 
 [data-linnya-ui-theme='dark'] {
   --editor-revision-insert-bg: var(--color-success-bg);
-  --editor-revision-insert-text: #65c07e;
+  --editor-revision-insert-text: var(--color-success-text);
   --editor-revision-insert-line: var(--color-success);
   --editor-hr-color: var(--color-gray-550);
   --editor-block-hover-bg: var(--color-gray-800);
@@ -81,22 +78,22 @@
 
 [data-linnya-ui-theme='moon-blue'] {
   --editor-revision-insert-bg: var(--color-success-bg);
-  --editor-revision-insert-text: #157b3e;
+  --editor-revision-insert-text: var(--color-success-text);
   --editor-revision-insert-line: var(--color-success);
-  --editor-hr-color: color-mix(in srgb, var(--color-blue-150) 62%, var(--color-gray-200));
-  --editor-block-hover-bg: color-mix(in srgb, var(--color-blue-50) 70%, var(--color-white));
+  --editor-hr-color: var(--color-moon-200);
+  --editor-block-hover-bg: var(--color-moon-100);
   --block-action-menu-bg: var(--color-bg-surface);
   --block-action-menu-border: var(--color-border-default);
   --block-action-menu-item-hover-bg: var(--color-bg-hover);
   --drag-handle-bg: var(--color-bg-surface);
   --drag-handle-hover-bg: var(--color-bg-hover);
   --drag-handle-active-bg: var(--color-bg-hover-strong);
-  --dragging-bg-color: color-mix(in srgb, var(--color-blue-500) 8%, transparent);
-  --drag-indicator-color: var(--color-blue-300);
+  --dragging-bg-color: color-mix(in srgb, var(--color-moon-accent-600) 8%, transparent);
+  --drag-indicator-color: var(--color-moon-accent-300);
   --drag-indicator-shadow: var(--shadow-color-sm);
   --drag-image-bg: var(--drag-handle-bg);
   --drag-image-shadow: var(--shadow-md);
-  --root-marker-color: color-mix(in srgb, var(--color-blue-500) 72%, transparent);
+  --root-marker-color: color-mix(in srgb, var(--color-moon-accent-600) 72%, transparent);
   --heading-marker-color: color-mix(in srgb, var(--color-yellow-500) 64%, transparent);
   --base-marker-color: color-mix(in srgb, var(--color-brand-500) 58%, transparent);
   --annotation-panel-bg: var(--color-bg-surface);

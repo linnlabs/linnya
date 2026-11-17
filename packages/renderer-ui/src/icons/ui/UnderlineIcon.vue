@@ -16,6 +16,6 @@
     aria-hidden="true"
     focusable="false"
   >
-    <path d="M7.5 5.5v6.45a4.5 4.5 0 0 0 9 0V5.5M7.5 18.5h9"/>
+    <path d="M7 5.5v6a5 5 0 0 0 10 0v-6M7 18.5h10"/>
   </svg>
 </template>

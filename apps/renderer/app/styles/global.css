@@ -20,6 +20,15 @@ body {
   font-family: var(--font-family-active);
 }
 
+/*
+ * 桌面应用的选中规则：界面文字（按钮、导航、标题、标签、说明、卡片标题）默认不可选，
+ * 只有正文类内容由各自 owner 显式写 `user-select: text`：编辑器（.ProseMirror）、对话消息、文档预览、画布等。
+ * 输入框、文本域与可编辑区域不受影响。新增正文区域时在它自己的样式里开启选中，不要在这里列举。
+ */
+body {
+  user-select: none;
+}
+
 /* 全局文本选区样式 */
 ::selection {
   background-color: var(--color-text-selection);

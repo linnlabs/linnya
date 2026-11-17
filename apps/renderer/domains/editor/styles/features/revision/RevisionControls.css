@@ -46,7 +46,7 @@
   background-color: var(--color-bg-default);
   box-shadow:
     0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 4%, transparent),
-    0 2px 8px color-mix(in srgb, var(--color-text-primary) 15%, transparent);
+    0 2px 8px color-mix(in srgb, var(--color-black) 15%, transparent);
   user-select: none;
 }
 
