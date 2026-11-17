@@ -17,7 +17,7 @@ it('真实普通Worker内联同一解析SDK，无Host hook、模型目录或凭�
     const bundle = await build({
       entryPoints: [fileURLToPath(new URL('./fixtures/documentParsing.worker.ts', import.meta.url))],
       outfile, bundle: true, platform: 'node', format: 'cjs', target: 'node24',
-      metafile: true, logLevel: 'silent', tsconfig: path.resolve('tsconfig.json'),
+      metafile: true, logLevel: 'silent', tsconfig: path.resolve('packages/plugins/knowledge/tsconfig.json'),
       alias: pluginWorkerSdkAliases(process.cwd()),
       external: ['pdfjs-dist', '@napi-rs/canvas', 'sharp', 'better-sqlite3', 'electron', '@node-rs/jieba'],
     });
