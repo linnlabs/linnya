@@ -1,5 +1,5 @@
 import type {
-  EmbeddingModelChangeImpactPort,
+  EmbeddingIndexChangeImpactPort,
   PluginAuxiliaryModelPurpose,
   PluginModelPurpose,
   RendererModelConfigurationPort,
@@ -34,6 +34,6 @@ export function subscribeModelConfigurationChanges(listener: () => void): () => 
 export function openModelConfiguration(): void {
   port().openModelConfiguration();
 }
-export function registerEmbeddingModelChangeImpactPort(impactPort: EmbeddingModelChangeImpactPort): () => void {
+export function registerEmbeddingIndexChangeImpactPort(impactPort: EmbeddingIndexChangeImpactPort): () => void {
   return port().registerEmbeddingImpact(impactPort);
 }

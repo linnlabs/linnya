@@ -11,14 +11,14 @@ export type ModelBindingSlot =
 export type PluginModelPurpose = Extract<ModelBindingSlot, 'embedding' | 'rerank' | 'pdf_ocr' | 'image_vision'>;
 export type PluginAuxiliaryModelPurpose = 'graph_extraction';
 
-export interface EmbeddingModelChangeImpact {
+export interface EmbeddingIndexChangeImpact {
   readonly id: string;
   readonly name: string;
   readonly documentCount: number;
 }
-export interface EmbeddingModelChangeImpactPort {
-  findImpactedKnowledgeBases(nextModelId: string): Promise<readonly EmbeddingModelChangeImpact[]>;
-  findKnowledgeBasesUsingModel(modelId: string): Promise<readonly EmbeddingModelChangeImpact[]>;
+export interface EmbeddingIndexChangeImpactPort {
+  findImpactedIndexes(nextModelId: string): Promise<readonly EmbeddingIndexChangeImpact[]>;
+  findIndexesUsingModel(modelId: string): Promise<readonly EmbeddingIndexChangeImpact[]>;
 }
 
 export interface RendererModelConfigurationPort {
@@ -27,7 +27,7 @@ export interface RendererModelConfigurationPort {
   readModelDisplayName(modelId: string): string | null;
   subscribeChanges(listener: () => void): () => void;
   openModelConfiguration(): void;
-  registerEmbeddingImpact(port: EmbeddingModelChangeImpactPort): () => void;
+  registerEmbeddingImpact(port: EmbeddingIndexChangeImpactPort): () => void;
 }
 
 export declare function readPurposeModelId(purpose: PluginModelPurpose): string | null;
@@ -35,4 +35,4 @@ export declare function readAuxiliaryModelId(purpose: PluginAuxiliaryModelPurpos
 export declare function readModelDisplayName(modelId: string): string | null;
 export declare function subscribeModelConfigurationChanges(listener: () => void): () => void;
 export declare function openModelConfiguration(): void;
-export declare function registerEmbeddingModelChangeImpactPort(port: EmbeddingModelChangeImpactPort): () => void;
+export declare function registerEmbeddingIndexChangeImpactPort(port: EmbeddingIndexChangeImpactPort): () => void;

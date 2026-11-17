@@ -30,6 +30,9 @@ export function createRendererModelConfigurationPort(): RendererModelConfigurati
       ], listener, { deep: true });
     },
     openModelConfiguration: () => useUIStore().openSettingsModal('model-config'),
-    registerEmbeddingImpact: registerEmbeddingModelChangeImpactPort,
+    registerEmbeddingImpact: port => registerEmbeddingModelChangeImpactPort({
+      findImpactedKnowledgeBases: modelId => port.findImpactedIndexes(modelId),
+      findKnowledgeBasesUsingModel: modelId => port.findIndexesUsingModel(modelId),
+    }),
   };
 }

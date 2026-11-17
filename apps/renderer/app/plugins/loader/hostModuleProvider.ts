@@ -31,7 +31,7 @@ import * as pluginPushClient from '@plugin/renderer/pluginPushClient';
 import { uploadRendererPluginMultipart } from '@plugin/renderer/pluginMultipartUpload';
 import {
   readPurposeModelId, readAuxiliaryModelId, readModelDisplayName,
-  subscribeModelConfigurationChanges, openModelConfiguration, registerEmbeddingModelChangeImpactPort,
+  subscribeModelConfigurationChanges, openModelConfiguration, registerEmbeddingIndexChangeImpactPort,
 } from '@plugin/renderer/modelConfiguration';
 import * as refId from '@plugin/renderer/refId';
 import * as referenceLinkUi from '@plugin/renderer/referenceLinkUi';
@@ -101,7 +101,7 @@ export function installRendererPluginHostModules(): void {
       '@plugin/renderer/pluginMultipartUpload': { uploadRendererPluginMultipart },
       '@plugin/renderer/modelConfiguration': {
         readPurposeModelId, readAuxiliaryModelId, readModelDisplayName,
-        subscribeModelConfigurationChanges, openModelConfiguration, registerEmbeddingModelChangeImpactPort,
+        subscribeModelConfigurationChanges, openModelConfiguration, registerEmbeddingIndexChangeImpactPort,
       },
       '@plugin/renderer/refId': refId,
       '@plugin/renderer/referenceLinkUi': referenceLinkUi,
