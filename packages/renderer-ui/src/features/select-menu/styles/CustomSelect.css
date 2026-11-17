@@ -1,7 +1,7 @@
 .custom-select {
   /* 箭头的位置与尺寸只在这里定义：触发器右侧为文字预留的空间由它们推出，文字与箭头之间始终有 gap。 */
-  --linnya-ui-select-arrow-size: 16px;
-  --linnya-ui-select-arrow-inset: var(--space-3);
+  --linnya-ui-select-arrow-size: 14px;
+  --linnya-ui-select-arrow-inset: 10px; /* scale-exempt: 与单行输入的 10px 文字内边距对齐 */
   --linnya-ui-select-arrow-gap: var(--space-2);
 
   position: relative;
@@ -15,9 +15,10 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  height: 36px;
-  padding: var(--space-2) calc(var(--linnya-ui-select-arrow-inset) + var(--linnya-ui-select-arrow-size) + var(--linnya-ui-select-arrow-gap)) var(--space-2) var(--space-3);
-  font-size: inherit;
+  /* 与单行输入、md 按钮同高（32px）、同字号，表单同一行对齐。 */
+  height: var(--control-height-md);
+  padding: 0 calc(var(--linnya-ui-select-arrow-inset) + var(--linnya-ui-select-arrow-size) + var(--linnya-ui-select-arrow-gap)) 0 9px; /* scale-exempt: 与单行输入一致：9px + 1px 边框，文字距边 10px */
+  font-size: var(--font-size-body);
   color: var(--color-text-primary);
   text-align: left;
   cursor: pointer;

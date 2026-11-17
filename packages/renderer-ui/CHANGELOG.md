@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.7.1 - 2026-11-17
+
+- `CustomSelect` 触发器与 `SecretInput` 由 36px 收到 `--control-height-md`（32px），字号统一为 13px（`--font-size-body`），文字距边 10px，与单行输入、md 按钮同高同字号，表单同一行对齐；选择器箭头 16px → 14px，密文显隐按钮宽 40px → 36px。`minimal` 选择器不变。现有 `^3.0.0` 插件保持兼容。
+
 ## 3.7.0 - 2026-11-17
 
 - 悬停底色改为主文字色的半透明叠加：`--color-bg-hover` 浅色 7%、深色 10%、月白蓝 7%，`--color-bg-hover-strong` 为 12% / 16% / 12%，`--color-bg-hover-light` 并入 `--color-bg-hover`。此前三档是固定实色，可见度取决于下面的底色：深色工具条上 hover-light 只比底色亮 1.075:1（几乎看不出），浮起表面上反而更暗；月白蓝下各档只有 1.01–1.06:1。现在各底色上一致：浅色 1.15:1（与原 hover 相同）、深色约 1.3:1、月白蓝约 1.14:1。token 名不变；把悬停色当作不透明底参与 `color-mix` 的调用方，混合结果会带透明度，需改为与所在底色混合主文字色。现有 `^3.0.0` 插件保持兼容。

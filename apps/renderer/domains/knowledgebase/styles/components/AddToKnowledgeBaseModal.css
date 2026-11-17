@@ -45,8 +45,7 @@
 }
 
 .add-to-kb-body .kb-target-select-trigger {
-  height: 36px;
-  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
+  padding-right: var(--space-8);
 }
 
 .add-to-kb-body .select-chevron {
