@@ -176,7 +176,7 @@ export type {
   FloatingLayoutSize,
 } from './features/floating-panels';
 
-export { FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from './features/toolbars';
+export { CommandBar, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from './features/toolbars';
 export type { FloatingToolbarPosition, FloatingToolbarProps, ToolbarButtonProps, ToolbarColorButtonProps } from './features/toolbars';
 export {
   createFrameBatch,

@@ -18,6 +18,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'CustomSlider',
     'CustomTextarea',
     'CustomTextInput',
+    'CommandBar',
     'DROPDOWN_SURFACE_CLASSES',
     'DraggablePanel',
     'DropdownPanel',

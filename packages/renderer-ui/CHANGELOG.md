@@ -2,6 +2,11 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.10.0 - 2026-11-17
+
+- 新增 `CommandBar`：停靠在画布或文档顶部的命令条表面（`role="toolbar"`，4px 内边距、10px 圆角、默认底色），内部用 `ToolbarGroup` / `ToolbarButton`。只拥有外观，位置、显隐与命令由调用方负责；class、style、aria 与事件落在根元素。Slides、Canvas 的顶部命令条与 Markdown 的悬浮格式条都改用它，不再各写一份表面样式。
+- 新增 `--shadow-command-bar`：命令条与同族小浮起控件（Canvas 缩放、审阅条）的阴影，取值与原先各处手写的三层阴影相同。
+
 ## 3.9.0 - 2026-11-17
 
 - 配色换成薄荷绿：`--color-brand-*` 整条色阶改为 H158 的薄荷（500 `#6bb88d`，强调实底 600 `#3d825d` 白字 4.62:1，选中浅底文字 700 `#337251` 在 125 上 5.09:1），`--color-accent-rgb` 同步；`--color-gray-*` 明度不变，加一点跟随品牌色相的色偏。token 名不变，引用语义 token 的组件与插件无需修改。

@@ -64,8 +64,6 @@
 2	SCALE-05-spacing	apps/renderer/domains/editor/styles/components/Block.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/components/Block.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/components/BlockVersionHandle.css
-1	SCALE-05-spacing	apps/renderer/domains/editor/styles/components/EditorMenuBar.css
-2	SCALE-06-z-index	apps/renderer/domains/editor/styles/components/EditorMenuBar.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/features/ai-writing/AiWriting.css
 1	SCALE-05-spacing	apps/renderer/domains/editor/styles/features/block-history/BlockHistoryLayout.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/features/block-history/HistoryOverlay.css
@@ -118,8 +116,6 @@
 2	SCALE-08-easing	packages/plugins/slides/src/renderer/features/deckNavigator/ui/SlideThumbnail.css
 1	SCALE-08-easing	packages/plugins/slides/src/renderer/features/documentBuildFailure/ui/SlidesDraftFailureLog.css
 15	SCALE-09-legacy-alias	packages/plugins/slides/src/renderer/features/documentBuildFailure/ui/SlidesDraftFailureLog.css
-1	SCALE-04-radius	packages/plugins/slides/src/renderer/features/editingCommands/ui/SlideEditingCommandBar.css
-1	SCALE-05-spacing	packages/plugins/slides/src/renderer/features/editingCommands/ui/SlideEditingCommandBar.css
 1	SCALE-06-z-index	packages/plugins/slides/src/renderer/features/editingCommands/ui/SlideEditingCommandBar.css
 9	COLOR-02-raw-color-literal	packages/plugins/slides/src/renderer/features/elementProperties/ui/ElementPropertyToolbar.css
 5	SCALE-05-spacing	packages/plugins/slides/src/renderer/features/elementProperties/ui/ElementPropertyToolbar.css

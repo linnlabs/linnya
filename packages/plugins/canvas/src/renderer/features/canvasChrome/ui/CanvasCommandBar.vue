@@ -1,8 +1,7 @@
 <template>
   <div class="canvas-command-dock">
-    <div
+    <CommandBar
       class="canvas-command-bar"
-      role="toolbar"
       :aria-label="t('canvas.command.label')"
       @pointerdown.stop
     >
@@ -75,11 +74,11 @@
           >{{ t(`canvas.save.${saveStatus}`) }}</span
         >
       </span>
-    </div>
+    </CommandBar>
   </div>
 </template>
 <script setup lang="ts">
-import { ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
+import { CommandBar, ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
 import { toRef } from 'vue';
 import {
   CheckmarkIcon,

@@ -18,7 +18,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -28,7 +28,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 - `/tokens.css`：只包含公开/内部 token 与内置主题映射。
 - `/styles.css`：Host 唯一加载的完整 package 样式。
 
-`FloatingToolbar` 与 `ToolbarGroup` 由 Editor 选区／修订条和 Slides 对象属性共同消费。共享包拥有表面、分组、按钮、颜色标识与下拉动效；Editor 的选区保护与 Slides 的锚点、属性草稿和提交仍由各自 owner 负责。
+`CommandBar` 是停靠在画布或文档顶部的命令条表面，由 Slides、Canvas 的顶部命令条和 Markdown 的悬浮格式条共用；位置与命令归调用方。`FloatingToolbar` 与 `ToolbarGroup` 由 Editor 选区／修订条和 Slides 对象属性共同消费。共享包拥有表面、分组、按钮、颜色标识与下拉动效；Editor 的选区保护与 Slides 的锚点、属性草稿和提交仍由各自 owner 负责。
 
 `package.json` 显式列举全部入口。未列出的 `src/**`、组件文件和内部 CSS 都不是 API。
 

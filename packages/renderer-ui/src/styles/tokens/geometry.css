@@ -48,6 +48,11 @@
   --shadow-md: 0 2px 8px var(--shadow-color-md);
   --shadow-lg: 0 8px 24px var(--shadow-color-lg);
   --shadow-xl: 0 16px 48px var(--shadow-color-xl);
+  /* 停靠命令条与同族的小浮起控件（缩放、审阅条）：细描边 + 近影 + 远影。 */
+  --shadow-command-bar:
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 6%, transparent),
+    0 1px 3px var(--shadow-color-xs),
+    0 8px 24px -4px var(--shadow-color-md);
   --shadow-floating-panel:
     0 14px 28px -9px color-mix(in srgb, var(--color-black) 10%, transparent),
     0 2px 4px -1px color-mix(in srgb, var(--color-black) 6%, transparent),

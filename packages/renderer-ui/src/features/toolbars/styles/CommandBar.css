@@ -1,0 +1,15 @@
+/* 停靠命令条：细描边 + 近影 + 远影的小元素阴影，不加边框。位置由调用方决定。 */
+.linnya-command-bar {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  box-sizing: border-box;
+  padding: var(--space-1);
+  border-radius: calc(var(--radius-lg) + var(--space-0-5));
+  background-color: var(--color-bg-default);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  line-height: normal;
+  white-space: nowrap;
+  box-shadow: var(--shadow-command-bar);
+}
