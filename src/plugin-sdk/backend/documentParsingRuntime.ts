@@ -7,6 +7,7 @@ import type {
   VisionStrategyDiagnosticResult,
 } from '@linnya/plugin-host-contract/backend/documentParsingRuntime';
 
+export { hasDocumentOcrPageLimit, assertDocumentOcrPageLimit } from '../../domains/document-ocr/features/recognition/functions/assertDocumentOcrPageLimit';
 export type * from '@linnya/plugin-host-contract/backend/documentParsingRuntime';
 export { generateBlockId as generateParsedBlockId } from '../../shared/utils/idUtils';
 

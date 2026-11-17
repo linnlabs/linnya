@@ -2,6 +2,8 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { EmbeddingFailure } from 'src/domains/model-inference';
+import { pluginWorkerSdkAliases } from '../../../../../../../scripts/build/plugin-worker-sdk.mjs';
 import { build } from 'esbuild';
 import { describe, expect, it, vi } from 'vitest';
 import type { PluginInferencePort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
@@ -60,6 +62,7 @@ describe('worker inference Host boundary', () => {
       metafile: true,
       logLevel: 'silent',
       tsconfig: path.resolve('tsconfig.json'),
+      alias: pluginWorkerSdkAliases(process.cwd()),
     });
     expect(
       Object.keys(bundle.metafile.inputs).filter(file =>
@@ -109,6 +112,13 @@ describe('worker inference Host boundary', () => {
         expect.objectContaining({ expectedSpaceId: 'space-one', signal: expect.any(AbortSignal) })
       );
       expect(inference.reranking.rerank).not.toHaveBeenCalled();
+      vi.mocked(inference.embedding.embed).mockRejectedValueOnce(new EmbeddingFailure('protocol', 'embedding_space_mismatch', false, 'Index requires rebuild'));
+      const rejectedRequest = new Promise<unknown>((resolve, reject) => {
+        queue.once('taskCompleted', ({ result }: { result: unknown }) => resolve(result));
+        queue.once('taskFailed', ({ error }: { error: string }) => reject(new Error(error)));
+      });
+      await queue.addTask({ ...production.prepareIngestionJob({ ...payload, taskId: 'rejected' }), inputPath });
+      await expect(rejectedRequest).resolves.toEqual({ failure: { kind: 'protocol', code: 'embedding_space_mismatch', retryable: false } });
     } finally {
       await queue.shutdown();
       await rm(root, { recursive: true, force: true });
