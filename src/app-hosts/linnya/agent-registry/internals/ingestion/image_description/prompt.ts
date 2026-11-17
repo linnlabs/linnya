@@ -1,6 +1,7 @@
+import { IMAGE_DESCRIPTION_PROMPT_CONTENT } from 'src/features/parsers/definitions/imageDescriptionPrompt';
 /**
  * @file src/app-hosts/linnya/agent-registry/internals/ingestion/image_description/prompt.ts
- * @description 图像描述内部提示词（内聚到 ingestion 目录）
+ * @description 图像描述Host Prompt 注册视图（正文真源归通用 parser owner）
  */
 
 import type { PromptTemplate } from '../../../prompt.types';
@@ -13,12 +14,7 @@ import { PromptKeys, PromptType } from '../../../prompt.types';
 export const IMAGE_DESCRIPTION_PROMPT: PromptTemplate = {
   id: PromptKeys.IMAGE_DESCRIPTION,
   type: PromptType.INTERNAL,
-  content: `请详细描述此图像的内容。包括:
-1. 主体对象和场景
-2. 颜色、形状和布局
-3. 可见的文字或标签
-4. 图像可能传达的主要信息或目的
-描述应该清晰、全面且客观。`,
+  content: IMAGE_DESCRIPTION_PROMPT_CONTENT,
   variables: [],
   description: '图像描述生成提示词模板',
 };
