@@ -11,8 +11,8 @@ export const pageFacts = cdp => evaluate(cdp, `({
     }))
 })`);
 
-export async function settlePage(cdp) {
-  return evaluate(cdp, `new Promise(resolve => {
+/** 页面内等画面稳定：至少两帧，且没有会结束的动画仍在运行；1.5 秒仍未稳定返回 false。 */
+export const settleExpression = `new Promise(resolve => {
     let frames = 0;
     let next;
     const finish = settled => { clearTimeout(timer); cancelAnimationFrame(next); resolve(settled); };
@@ -26,7 +26,10 @@ export async function settlePage(cdp) {
       }
     };
     next = requestAnimationFrame(frame);
-  })`, 2600);
+  })`;
+
+export async function settlePage(cdp) {
+  return evaluate(cdp, settleExpression, 2600);
 }
 
 /**

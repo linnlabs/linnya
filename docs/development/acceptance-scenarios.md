@@ -33,6 +33,7 @@ pnpm exec cross-env LINNYA_CONVERSATION_E2E_SCENARIO=sidebar-resize pnpm run tes
 ## 证据和收尾
 
 项目概览、通用菜单、表格拖动或探针本身的改动，先运行 `pnpm -s probe accept overview`。
+标题栏、侧栏宽度、更新入口或界面文案长度的改动，运行 `pnpm -s probe accept header`，按侧栏宽度、语言、更新状态、全屏和窗口宽度组合扫标题栏几何不变量；断言读元素矩形，截图只作证据。
 这一命令已经自动生成具名业务断言、截图、菜单定格、逐步拖动采样、操作步骤和进程清理结果。
 其他业务仍按上表选择对应入口；不要把概览场景通过当成对话、文档编辑或数据迁移已验收。
 新场景复用[验收证据](../../scripts/test-runner/features/acceptance-evidence/README.md)及探针动作，自动保存附件，不再手工复制截图。
