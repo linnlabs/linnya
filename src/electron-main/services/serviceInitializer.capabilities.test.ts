@@ -197,11 +197,6 @@ describe('服务初始化：能力步骤失败只停掉这项能力', () => {
     installDistributionIdentity({ kind: 'source', packaged: false });
     vi.spyOn(rendererIntegration, 'getBackendRendererIntegrationPort').mockReturnValue({
       connectModelCatalogUpdates: async () => () => undefined,
-      publishIngestionStatus: vi.fn(),
-      queueJobPresentationPublisher: {
-        publishProgress: vi.fn(), publishCompletion: vi.fn(), publishFailure: vi.fn(),
-      },
-      publishKnowledgeGraphProgress: vi.fn(),
       publishTranscriptionProgress: vi.fn(),
       publishWorkspaceMutation: vi.fn(),
       publishPluginRendererPush: vi.fn(),

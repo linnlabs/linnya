@@ -3,29 +3,18 @@ import type { ZodType } from 'zod';
 
 import type { AppServerRpcPeer } from '../../../../app-server-rpc';
 import type { BackendRendererIntegrationPort } from '../../../definitions/backendRendererIntegrationPort';
-import type { QueueJobPresentationPublisher } from '../../../../../../infra/task-queue/definitions/queueJobPresentationPublisher';
 import {
-  DESKTOP_RENDERER_INGESTION_STATUS_RPC_METHOD,
-  DESKTOP_RENDERER_KNOWLEDGE_GRAPH_PROGRESS_RPC_METHOD,
   DESKTOP_RENDERER_MODEL_CATALOG_CONNECT_RPC_METHOD,
   DESKTOP_RENDERER_MODEL_CATALOG_DISCONNECT_RPC_METHOD,
   DESKTOP_RENDERER_PLUGIN_PUSH_RPC_METHOD,
   DESKTOP_RENDERER_PLUGINS_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_MODELS_CHANGED_RPC_METHOD,
-  DESKTOP_RENDERER_QUEUE_COMPLETION_RPC_METHOD,
-  DESKTOP_RENDERER_QUEUE_FAILURE_RPC_METHOD,
-  DESKTOP_RENDERER_QUEUE_PROGRESS_RPC_METHOD,
   DESKTOP_RENDERER_TODOS_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_TRANSCRIPTION_PROGRESS_RPC_METHOD,
   DESKTOP_RENDERER_WORKSPACE_MUTATION_RPC_METHOD,
 } from '../definitions/rendererIntegrationRpc';
 import {
-  RendererIntegrationIngestionStatusRpcSchema,
-  RendererIntegrationKnowledgeGraphProgressRpcSchema,
   RendererIntegrationPluginPushRpcSchema,
-  RendererIntegrationQueueCompletionRpcSchema,
-  RendererIntegrationQueueFailureRpcSchema,
-  RendererIntegrationQueueProgressRpcSchema,
   RendererIntegrationTodosChangedRpcSchema,
   RendererIntegrationTranscriptionProgressRpcSchema,
   RendererIntegrationVoidRpcSchema,
@@ -51,30 +40,6 @@ export function createBackendRendererIntegrationRpcClient(input: {
       .catch((error: unknown) => input.onAsyncFailure(toError(error)));
   };
 
-  const queueJobPresentationPublisher: QueueJobPresentationPublisher = {
-    publishProgress(event) {
-      publish(
-        DESKTOP_RENDERER_QUEUE_PROGRESS_RPC_METHOD,
-        event,
-        RendererIntegrationQueueProgressRpcSchema
-      );
-    },
-    publishCompletion(event) {
-      publish(
-        DESKTOP_RENDERER_QUEUE_COMPLETION_RPC_METHOD,
-        event,
-        RendererIntegrationQueueCompletionRpcSchema
-      );
-    },
-    publishFailure(event) {
-      publish(
-        DESKTOP_RENDERER_QUEUE_FAILURE_RPC_METHOD,
-        event,
-        RendererIntegrationQueueFailureRpcSchema
-      );
-    },
-  };
-
   const port: BackendRendererIntegrationPort = {
     async connectModelCatalogUpdates() {
       const response = await input.rpc.request(
@@ -83,21 +48,6 @@ export function createBackendRendererIntegrationRpcClient(input: {
       );
       RendererIntegrationVoidRpcSchema.parse(response);
       return () => publish(DESKTOP_RENDERER_MODEL_CATALOG_DISCONNECT_RPC_METHOD, null);
-    },
-    publishIngestionStatus(event) {
-      publish(
-        DESKTOP_RENDERER_INGESTION_STATUS_RPC_METHOD,
-        event,
-        RendererIntegrationIngestionStatusRpcSchema
-      );
-    },
-    queueJobPresentationPublisher: Object.freeze(queueJobPresentationPublisher),
-    publishKnowledgeGraphProgress(event) {
-      publish(
-        DESKTOP_RENDERER_KNOWLEDGE_GRAPH_PROGRESS_RPC_METHOD,
-        event,
-        RendererIntegrationKnowledgeGraphProgressRpcSchema
-      );
     },
     publishTranscriptionProgress(event) {
       publish(
