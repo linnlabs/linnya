@@ -104,6 +104,7 @@ export function createNodeAppServerProcessSupervisor(input: {
   };
 
   const failProtocol = (error: Error): void => {
+    input.stderrSink?.write(`[App Server supervisor] 协议失败: ${error.message}\n`);
     clearDeferredStartupFailure();
     clearStartTimeout();
     startReject?.(error);

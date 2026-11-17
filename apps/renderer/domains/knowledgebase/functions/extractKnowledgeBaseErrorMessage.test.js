@@ -4,15 +4,15 @@ import { extractKnowledgeBaseErrorMessage } from './extractKnowledgeBaseErrorMes
 
 describe('extractKnowledgeBaseErrorMessage', () => {
   it('透出后端返回的 embedding 出身不一致错误消息', () => {
-    const message = '知识库 kb-1 的索引用 embedding-a 构建，当前全局嵌入模型是 embedding-b。请清空并重新导入该知识库后再搜索。'
+    const message = '知识库 kb-1 的索引用 embedding-a 构建，当前全局嵌入模型是 embedding-b。请重建检索索引后再搜索，原文保持不变。'
 
-    expect(extractKnowledgeBaseErrorMessage({
+    expect(extractKnowledgeBaseErrorMessage(Object.assign(new Error('Request failed with status code 500'), {
       response: {
         data: {
           error: message,
         },
       },
-    })).toBe(message)
+    }))).toBe(message)
   })
 
   it('优先使用 detail/message/error 中第一个明确文案', () => {

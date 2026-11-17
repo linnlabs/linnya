@@ -19,6 +19,7 @@ import { buildDeepSearchCitationMetadata } from './buildDeepSearchCitations';
 import { buildGraphDigestForSelectedBlocks } from './buildGraphDigest';
 import { captureDeepKnowledgeSearchEvidence } from '../knowledgeSearchEvidenceAdapter';
 import { requireCitationRefAllocator } from '../../../../domains/citation';
+import { resolveKnowledgeDocumentsInScope } from '../../scope/resolveKnowledgeDocumentsInScope';
 
 export class DeepSearchFailedError extends Error {
   constructor(message: string) {
@@ -56,6 +57,9 @@ export async function runDeepSearch(params: {
     err.name = 'AbortError';
     throw err;
   }
+
+  // 在启动有成本的子运行前接纳项目及显式文档；范围错误不能当成检索失败降级。
+  await resolveKnowledgeDocumentsInScope(context, docId ? [docId] : []);
 
   const { DEEP_SEARCH_CONFIG } = await import(
     'src/app-hosts/linnya/agent-registry/agents/deep_search'
@@ -126,6 +130,8 @@ export async function runDeepSearch(params: {
   }
 
   const documents = parseAssembleToolOutputToDocuments(result.judgeToolOutput);
+  // 子运行期间可能解绑，且judge输出也可能来自已保存的结果；物化前重读当前授权。
+  await resolveKnowledgeDocumentsInScope(context, documents.map(document => document.doc_id));
   // 🔥 关键：deep_search 的“搜索工具摘要”必须复用 assemble 的 summary，供 ToolHistoryCompressor 使用
   const summary = parseAssembleToolOutputSummary(result.judgeToolOutput);
 

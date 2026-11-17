@@ -69,7 +69,7 @@ function createQueueJobPresentationPublisher(): QueueJobPresentationPublisher {
         filename: readField(frontendState, 'filename'),
         status: duplicate ? 'duplicate' : 'completed',
         progress: 100,
-        message: duplicate ? '重复文件' : '已完成',
+        message: duplicate ? readField(frontendState, 'message') ?? '重复文件' : '已完成',
         error: null,
         stage: 'completed',
         stage_progress: 100,

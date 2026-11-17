@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -15,6 +15,9 @@ import { FileSotRepository } from '../../infrastructure/sotRepository';
 import type { QdrantPoint } from '../../infrastructure/qdrantRepository';
 import { getGraphNodesCollectionName, getGraphEdgesCollectionName } from '../../graph/infrastructure/qdrantCollections';
 import { createKnowledgeActivityOwner } from '../../runtime/orchestration/createKnowledgeActivityOwner';
+import { PendingHandler } from '../../ingestion/handlers/PendingHandler';
+import { InternalStage } from '../../ingestion/definitions/state';
+import { IngestionStateMachine } from '../../ingestion/stateMachine';
 import { rebuildKnowledgeIndex, type KnowledgeIndexRebuildDependencies } from './rebuildKnowledgeIndex';
 import { createKnowledgeIndexRebuildOwner } from './createKnowledgeIndexRebuildOwner';
 
@@ -104,6 +107,44 @@ describe('rebuild retained knowledge sources', () => {
     expect(f.deps.metadata.indexState.requireReady('default')).toEqual({ modelId: 'new-model', spaceId: 'new-space' });
     expect((await f.deps.graph.getVectorDocStatus('default', 'doc'))?.embeddingModelId).toBe('new-model');
     expect(f.deps.metadata.indexState.requireReady('other').spaceId).toBe('other-space');
+  });
+
+  it('reimport of retained failed content guides rebuild without duplicating source or losing its identity', async () => {
+    const f = await fixture();
+    const before = await f.sourceBytes();
+    const upload = path.join(f.root, 'retry.md');
+    await writeFile(upload, 'x'.repeat(42));
+    await f.deps.metadata.addDocument(createDocument('retry', 'default', 'source.md', 42));
+    const result = await new PendingHandler(f.deps.metadata, f.deps.sot).execute({
+      taskId: 'retry-task', docId: 'retry', kbId: 'default', filename: 'source.md', filePath: upload,
+      embeddingModelId: 'old-model', currentProgress: 0, stageProgress: 0, lastUpdated: Date.now(),
+    });
+    expect(result.newStage).toBe(InternalStage.DUPLICATE);
+    expect(result.message).toContain('重建');
+    expect(IngestionStateMachine.createFrontendState(result.context, result.newStage).message).toContain('重建');
+    expect(await f.deps.metadata.getDocumentById('retry')).toBeUndefined();
+    // 重传按重复收口，不启动第二次解析/向量写；旧资料仍由同一 ID 重建。
+    expect(await f.deps.metadata.getDocumentById('doc')).toMatchObject({ id: 'doc', kbId: 'default', status: DocumentStatus.FAILED });
+    expect(await f.sourceBytes()).toBe(before);
+    await rebuildKnowledgeIndex(f.input());
+    expect(await f.deps.metadata.getDocumentById('doc')).toMatchObject({ id: 'doc', kbId: 'default', status: DocumentStatus.COMPLETED });
+    expect(f.collections.get('default')?.size).toBe(25);
+    expect(await f.sourceBytes()).toBe(before);
+  });
+
+  it('failed uploads without saved content can retry while retaining the previous record', async () => {
+    const f = await fixture(0);
+    const upload = path.join(f.root, 'retry.md');
+    await writeFile(upload, 'x'.repeat(42));
+    await f.deps.metadata.addDocument({ ...createDocument('failed-original', 'default', 'source.md', 42), status: DocumentStatus.FAILED });
+    await f.deps.metadata.addDocument(createDocument('retry', 'default', 'source.md', 42));
+    const result = await new PendingHandler(f.deps.metadata, f.deps.sot).execute({
+      taskId: 'retry-task', docId: 'retry', kbId: 'default', filename: 'source.md', filePath: upload,
+      embeddingModelId: 'old-model', currentProgress: 0, stageProgress: 0, lastUpdated: Date.now(),
+    });
+    expect(result.newStage).toBe(InternalStage.PARSING);
+    expect(await f.deps.metadata.getDocumentById('failed-original')).toMatchObject({ status: DocumentStatus.FAILED });
+    expect(await f.deps.metadata.getDocumentById('retry')).toBeDefined();
   });
 
   it('first model rejection leaves the existing index usable and never starts vectors', async () => {

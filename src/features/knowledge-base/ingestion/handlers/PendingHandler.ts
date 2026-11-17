@@ -19,7 +19,8 @@ import {
 } from '../definitions/state';
 import { promises as fs } from 'fs';
 import { MetadataRepository } from '../../infrastructure/metadataRepository';
-import { cleanupFailedDocument as globalCleanupFailedDocument } from '../failureCleanup';
+import type { SotRepository } from '../../infrastructure/sotRepository';
+import { RETAINED_SOURCE_DUPLICATE_MESSAGE } from '../definitions/stateMapping';
 
 const logger = new Logger('PendingHandler');
 
@@ -30,16 +31,7 @@ const logger = new Logger('PendingHandler');
  * 副作用 (Side-effects): 文件系统检查、重复文件检测、参数验证
  */
 export class PendingHandler implements StateHandler {
-  private readonly metadataRepository?: MetadataRepository;
-
-  constructor(metadataRepository?: MetadataRepository) {
-    this.metadataRepository = metadataRepository;
-    // 🔥 调试：记录MetadataRepository注入状态
-    console.log(`[PendingHandler] 构造函数: MetadataRepository ${metadataRepository ? '已注入' : '未注入'}`);
-    if (metadataRepository) {
-      console.log(`[PendingHandler] MetadataRepository类型:`, metadataRepository.constructor.name);
-    }
-  }
+  constructor(private readonly metadataRepository: MetadataRepository, private readonly sotRepository: Pick<SotRepository, 'get'>) {}
   
   getName(): string {
     return 'PendingHandler';
@@ -95,7 +87,7 @@ export class PendingHandler implements StateHandler {
             stageProgress: 100,
             currentProgress: 100 
           },
-          message: '检测到重复文件，跳过处理'
+          message: context.duplicateReason === 'retained_source' ? RETAINED_SOURCE_DUPLICATE_MESSAGE : '检测到重复文件，跳过处理'
         };
       }
 
@@ -183,11 +175,6 @@ export class PendingHandler implements StateHandler {
    * - 更换向量空间前必须显式重建该 KB，避免同一 collection 混入不同向量空间。
    */
   private async validateEmbeddingProvenance(context: TaskContext): Promise<{ isValid: boolean; error?: string }> {
-    if (!this.metadataRepository) {
-      logger.warn(`[PendingHandler] MetadataRepository未注入，跳过索引出身校验`);
-      return { isValid: true };
-    }
-
     const state = this.metadataRepository.indexState.read(context.kbId);
     if (state.spaceId) context.embeddingSpaceId = state.spaceId;
     else {
@@ -207,12 +194,6 @@ export class PendingHandler implements StateHandler {
    */
   private async checkDuplicateDocumentInKnowledgeBase(context: TaskContext): Promise<boolean> {
     try {
-      // 如果没有注入MetadataRepository，跳过重复检测
-      if (!this.metadataRepository) {
-        logger.warn(`[PendingHandler] MetadataRepository未注入，跳过重复文件检测`);
-        return false;
-      }
-      
       // 获取文件信息进行重复检测
       const stats = await fs.stat(context.filePath);
       const fileSize = stats.size;
@@ -224,19 +205,19 @@ export class PendingHandler implements StateHandler {
       const existingDocs = await this.metadataRepository.getDocumentsInKnowledgeBase(context.kbId);
       logger.info(`[PendingHandler] 📋 知识库中共有 ${existingDocs.length} 个文档`);
       
-      // 🔥 关键修复：排除当前文档本身，只检查其他已存在的文档
-      // 🔥 新增修复：排除FAILED状态的文档，允许重试失败的文件
-      const otherDocs = existingDocs.filter(doc => 
-        doc.id !== context.docId && doc.status !== 'failed'
-      );
-      
-      logger.info(`[PendingHandler] 📋 排除当前文档和失败文档后，剩余 ${otherDocs.length} 个文档待比较`);
-      
-      // 首先检查是否有成功或处理中的重复文档
-      const duplicateDoc = otherDocs.find(doc => 
-        doc.filename === fileName && doc.fileSize === fileSize
-      );
-      
+      const candidates = existingDocs.filter(doc => doc.id !== context.docId && doc.filename === fileName && doc.fileSize === fileSize);
+      let duplicateDoc = candidates.find(doc => doc.status !== 'failed');
+      if (!duplicateDoc) {
+        // 已保存正文的失败资料只需重建索引；重传不能另建一份内容后被同时检索。
+        for (const candidate of candidates) {
+          if (await this.sotRepository.get(candidate.id)) {
+            duplicateDoc = candidate;
+            context.duplicateReason = 'retained_source';
+            break;
+          }
+        }
+      }
+
       if (duplicateDoc) {
         logger.info(`[PendingHandler] ⚠️ 发现重复文档:`);
         logger.info(`[PendingHandler]   - 当前文件: ${fileName} (${fileSize} bytes)`);
@@ -247,25 +228,9 @@ export class PendingHandler implements StateHandler {
       
       const isDuplicate = !!duplicateDoc;
       
-      // 🔥 新增：检查是否有失败的同名文件，如果有则清理它们
-      const failedDuplicates = existingDocs.filter(doc => 
-        doc.id !== context.docId && 
-        doc.status === 'failed' && 
-        doc.filename === fileName && 
-        doc.fileSize === fileSize
-      );
-
-      if (failedDuplicates.length > 0) {
-        logger.info(`[PendingHandler] 发现 ${failedDuplicates.length} 个失败的同名文件，将清理它们`);
-        for (const failedDoc of failedDuplicates) {
-          try {
-            await this.metadataRepository.deleteDocument(failedDoc.id);
-            logger.info(`[PendingHandler] ✅ 已清理失败的重复文档: ${failedDoc.id}`);
-          } catch (cleanupError) {
-            logger.error(`[PendingHandler] ❌ 清理失败文档时出错: ${cleanupError}`);
-          }
-        }
-      }
+      // 失败不代表没有资料：向量写入失败可能已保留 SoT/原始 PDF。
+      // 再次上传只负责新任务，不能在它成功前删除旧文档身份与用户的恢复入口。
+      // 旧失败记录由显式删除或已有无源维护规则处理，不在重复检测中清理。
 
       if (isDuplicate) {
         logger.info(`[PendingHandler] 发现重复文档: ${fileName} (已存在文档ID: ${duplicateDoc?.id})`);
@@ -287,32 +252,9 @@ export class PendingHandler implements StateHandler {
       
     } catch (error) {
       logger.error(`[PendingHandler] 重复文件检测失败: ${error}`);
-      // 检测失败时，继续处理（假设不重复）
-      return false;
+      // 无法确认来源时不能继续导入第二份，交由现有失败状态提供重试。
+      throw error;
     }
   }
 
-  /**
-   * 功能 (What): 清理失败的文档数据
-   * 输入 (Input): 失败文档的ID
-   * 输出 (Output): 无
-   * 副作用 (Side-effects): 删除三大数据源，允许重试
-   */
-  private async cleanupFailedDocument(docId: string): Promise<void> {
-    // 使用统一的清理函数，在PendingHandler阶段通常只会清理SQLite
-    // 因为还没有Qdrant和SOT数据，清理函数会安全跳过
-    await globalCleanupFailedDocument(docId, '', this.metadataRepository);
-  }
-
-  /**
-   * 功能 (What): 检查是否为重复文档（原有方法，保持兼容）
-   * 输入 (Input): 任务上下文
-   * 输出 (Output): 是否为重复文档的布尔值
-   * 副作用 (Side-effects): 文件系统检查
-   */
-  private async checkDuplicateDocument(context: TaskContext): Promise<boolean> {
-    // 🔥 重构：这个方法现在被checkDuplicateDocumentInKnowledgeBase替代
-    // 保留是为了向后兼容，实际逻辑已迁移
-    return this.checkDuplicateDocumentInKnowledgeBase(context);
-  }
 }

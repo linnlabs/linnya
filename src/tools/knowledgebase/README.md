@@ -46,6 +46,7 @@
   - **输出**：从 SoT 回填 `snippet/doc_name`，并返回结构化 `kept/stats` 作为标准 `tool_output`。
   - **重要**：判别逻辑由子 Agent 完成；本工具只做确定性“id→原文片段”映射与结构化输出，不分配
     citation ref。上层 deep-search 在接纳 `kept` 后统一批量分配，避免子工具创建另一套命名域。
+  - **项目授权**：整批文档先按当前项目关联核对归属，再读取任何 SoT。子运行返回的 judge 结果也会在父深搜物化前重新核对，不能把旧选择或引用身份当作读取授权；无项目、范围外文档与子运行期间解绑均明确失败，不降级浅搜索。
 
 `assemble_documents` 与 `evidence_resolve` 分别使用 `@app/schemas` 中的工具专属合同，不得合并为通用
 Evidence payload。旧 `assemble_evidence` 已退出 live registry；其 schema 和 Renderer projector 只以

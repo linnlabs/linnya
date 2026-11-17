@@ -13,6 +13,8 @@ Transcription、Knowledge Graph、Workspace feature 与插件 SDK 都只看到�
 声明仍在 Backend 内校验；Desktop adapter 只负责把已通过校验的 envelope 发到既有 `plugin:push` channel。
 Model Catalog bridge 会等待 Desktop 订阅安装完成后才允许 Backend 启动继续；其它已有事实通过逐类严格 DTO 的
 单向 publish RPC 投影，Backend 不能提交任意 Renderer channel 名。
+Worker 结构化克隆中的可选 `undefined` 对象字段，在 RPC 编码前按 JSON 约定省略；数组和其它非法值不会被改写。
+DTO 校验失败与传输失败统一送入发布者诊断口，不能从队列进度监听器抛出并把正常摄入误判为失败，或二次击穿失败回报。
 
 App Server 自己完成的账号目录同步通过 `publishModelsChanged()` 发出无 payload 的目录失效通知，
 Desktop 投影到既有 `models-updated` channel；它不借用只覆盖 Cloud 的目录订阅。Renderer 先订阅再初次读取，

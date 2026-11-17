@@ -53,3 +53,6 @@ export const STATE_TRANSITION_RULES: Record<InternalStage, InternalStage[]> = {
   [InternalStage.DUPLICATE]: [],
 };
 
+
+/** 保留原文的失败资料重新上传时，不另建同内容索引。 */
+export const RETAINED_SOURCE_DUPLICATE_MESSAGE = '已有保存内容，请在文件管理中重建检索索引；如需重新解析，请先删除旧文件。';

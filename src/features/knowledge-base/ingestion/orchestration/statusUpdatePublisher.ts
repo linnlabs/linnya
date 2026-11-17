@@ -19,7 +19,7 @@ export function createRendererStatusUpdatePublisher(
         filename: frontendState.filename,
         status: stage === InternalStage.DUPLICATE ? 'duplicate' : 'completed',
         progress: 100,
-        message: stage === InternalStage.DUPLICATE ? '重复文件' : '已完成',
+        message: stage === InternalStage.DUPLICATE ? frontendState.message : '已完成',
         error: null,
         stage: 'completed',
         stage_progress: 100,

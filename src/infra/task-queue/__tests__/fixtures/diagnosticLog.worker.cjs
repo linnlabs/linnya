@@ -1,5 +1,8 @@
 const { parentPort, workerData } = require('node:worker_threads');
 
+console.log('worker-plain-stdout-diagnostic');
+console.error('worker-plain-stderr-diagnostic');
+
 const line = '[2026-07-31T12:00:00.000Z] [WARN] [FixtureWorker] bounded worker summary';
 parentPort.postMessage({
   type: 'diagnostic_log',

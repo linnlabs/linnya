@@ -31,7 +31,7 @@ describe('embedding provenance consistency in ingestion', () => {
 
   it('Pending 将已有空间传给实际 embedding 调用；不能仅凭本地模型 ID 拒绝同空间别名', async () => {
     const metadata = createMetadataRepository('embedding-a');
-    const handler = new PendingHandler(metadata);
+    const handler = new PendingHandler(metadata, createSotRepository());
 
     const result = await handler.execute(createTaskContext({
       filePath: sourcePath,

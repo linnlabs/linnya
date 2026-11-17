@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { Logger } from 'src/shared/logger';
+import { resolveKnowledgeIndexFailureMessage } from '../functions/resolveKnowledgeIndexFailureMessage';
+
 import type { KnowledgeActivityOwner } from '../../runtime/orchestration/createKnowledgeActivityOwner';
 import type { KnowledgeIndexTaskStatus } from '../definitions/knowledgeIndex';
 import { rebuildKnowledgeIndex, type KnowledgeIndexRebuildDependencies } from './rebuildKnowledgeIndex';
+
+const logger = new Logger('KnowledgeIndexRebuild');
 
 /** 每库只保留最近一次任务；运行中取消、关 App 由相同 activity owner 收口。 */
 export function createKnowledgeIndexRebuildOwner(deps: KnowledgeIndexRebuildDependencies, activity: KnowledgeActivityOwner) {
@@ -26,8 +31,9 @@ export function createKnowledgeIndexRebuildOwner(deps: KnowledgeIndexRebuildDepe
       }).then(() => {
         status = { ...status, status: 'completed', progress: 100, message: '检索索引重建完成', updatedAt: Date.now() };
       }, (error: unknown) => {
+        if (!signal.aborted) logger.error('检索索引重建失败', { kbId, modelId, error });
         status = { ...status, status: signal.aborted ? 'cancelled' : 'failed',
-          message: signal.aborted ? '重建已取消，原文保留，可再次重建' : `${error instanceof Error ? error.message : String(error)}；原文保留，可再次重建`,
+          message: signal.aborted ? '重建已取消，原文保留，可再次重建' : `${resolveKnowledgeIndexFailureMessage(error)}；原文保留，可再次重建`,
           updatedAt: Date.now() };
       }).finally(() => lease.release());
       return status;

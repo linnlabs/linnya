@@ -18,6 +18,7 @@ const shutdownWorkerPath = fileURLToPath(new URL('./fixtures/workerShutdown.work
 const runtimePathRootsWorkerPath = fileURLToPath(new URL('./fixtures/runtimePathRoots.worker.cjs', import.meta.url));
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(temporaryDirectories.splice(0).map(directory => rm(directory, {
     recursive: true,
     force: true,
@@ -52,6 +53,8 @@ describe('WorkerThreadQueue 诊断日志与退出合同', () => {
   });
 
   it('worker 有界摘要经主线程队列进入 App 唯一文件 writer', async () => {
+    const stdout = vi.spyOn(process.stdout, 'write');
+    const stderr = vi.spyOn(process.stderr, 'write');
     const directory = await mkdtemp(path.join(os.tmpdir(), 'linnya-worker-log-'));
     temporaryDirectories.push(directory);
     const logPath = path.join(directory, 'backend-2026-07-31.log');
@@ -71,6 +74,11 @@ describe('WorkerThreadQueue 诊断日志与退出合同', () => {
     const shutdown = await shutdownDiagnosticLogging();
     enableFileLogging(false);
 
+    expect(stdout.mock.calls.map(call => String(call[0])).join('')).not.toContain('worker-plain-stdout-diagnostic');
+    expect(stderr.mock.calls.map(call => String(call[0])).join('')).toContain('worker-plain-stdout-diagnostic');
+    expect(stderr.mock.calls.map(call => String(call[0])).join('')).toContain('worker-plain-stderr-diagnostic');
+    stdout.mockRestore();
+    stderr.mockRestore();
     expect(shutdown?.complete).toBe(true);
     expect(await readFile(logPath, 'utf8')).toContain('[FixtureWorker] bounded worker summary');
   });
