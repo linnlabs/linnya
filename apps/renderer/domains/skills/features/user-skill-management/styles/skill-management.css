@@ -379,7 +379,7 @@
 
 .skills-detail-summary {
   margin: 0;
-  padding: 0 var(--space-6) var(--space-3);
+  padding: 0 var(--modal-inset) var(--space-3);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   color: var(--color-text-secondary);
@@ -518,7 +518,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-6);
+  padding-top: var(--space-3);
   border-top: var(--border-width-hairline) solid var(--color-border-light);
 }
 

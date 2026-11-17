@@ -12,9 +12,9 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--color-border-default);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--color-bg-surface);
+  background: var(--color-bg-field);
   color: var(--color-text-primary);
   font: inherit;
   outline: none;
@@ -24,18 +24,20 @@
 }
 
 .tt-text-field__control:hover:not(:disabled) {
-  border-color: var(--color-accent);
+  background: var(--color-bg-field-hover);
 }
 
 /* focus 与 hover 保持同等选择器权重，确保后声明的焦点态不会被 hover 覆盖。 */
 .tt-text-field__control:focus:not(:disabled) {
   border-color: var(--color-accent);
+  background: var(--color-bg-surface);
 }
 
 .tt-text-field__control:disabled {
-  background: var(--color-bg-disabled);
+  background: var(--color-bg-field);
   color: var(--color-text-tertiary);
   cursor: default;
+  opacity: 0.55;
 }
 
 .tt-text-field--borderless .tt-text-field__control {

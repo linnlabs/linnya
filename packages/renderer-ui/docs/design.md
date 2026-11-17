@@ -47,10 +47,13 @@
 - 暗色主题的边框是叠加在表面上的透明白色，在任何一级表面上都保持同样的可见度；新增暗色视觉不要用某个固定灰色当边框。
 - 需要细线时使用 `--border-width-hairline`：高分屏上是物理 1px（0.5 CSS px），普通屏为 1px。
 - 区域内部分组用单边分隔线（`border-top` / `border-bottom`），不再嵌套闭合方框。
+- 输入类控件（单行与多行输入、选择器、数字输入、密文输入、时间选择）和 `secondary` 按钮不画边框，用 `--color-bg-field`（主文字色 5% 叠加）的浅底表达边界，悬停 `--color-bg-field-hover`（8%）；只有聚焦时出现 `--color-border-focus` 描边并换成 `--color-bg-surface` 底。叠加写法让同一个 token 在页面、卡片、对话框各级表面上都可见。新增输入类控件沿用这组 token，不要再加静止描边。
 
 ### 2.4 强调色
 
-`--color-accent*` 是品牌绿的语义映射，用于主按钮、选中项、激活中的开关与 Tab、焦点环和可交互链接性强调。`moon-blue` 主题把强调色映射为蓝色，因此组件只能引用 `--color-accent*`，不能直接写品牌色阶。
+品牌色是薄荷绿（`--color-brand-500` `#6bb88d`，OKLCH L0.72 C0.100 H158）：比旧品牌绿更冷、更亮、彩度更低。浅色主题的强调色取能承载白字的深一档 `brand-600`（`#3d825d`，白字 4.62:1），选中浅底上的文字取 `brand-700`（`#337251`，在 `brand-125` 上 5.09:1）。灰阶带一点跟随品牌色相的色偏（最深处 C≈0.0024），明度与旧纯灰相同。
+
+`--color-accent*` 是品牌绿的语义映射，用于主按钮、选中项、激活中的开关与 Tab、焦点环和可交互链接性强调。`moon-blue` 主题把强调色映射为很淡的蓝（`--color-moon-accent-*`，实底 `#4079ac` 白字 4.62:1），底色与边框只带极少的蓝（`--color-moon-*`，C0.003–0.014），文字是带一点蓝的墨色；因此组件只能引用 `--color-accent*`，不能直接写品牌色阶。
 
 强调色有三种用法，不能混用：作文字、图标、描边时用 `--color-accent`（暗色下偏亮，保证在深底上可读）；作承载反色文字的实底（主按钮等）时用 `--color-accent-solid` 与 `--color-accent-solid-hover`（暗色下更深一档，保证白字 4.5:1）；文字落在强调色浅底（选中、激活的工具条按钮与标签）上时用 `--color-accent-text`，它与 `--color-accent-bg` 的对比度在三套主题里都不低于 4.5:1，`--color-accent` 在暗色浅底上只有约 3.3:1。落在 hover 底（`--color-bg-hover`）这类带色的中性底上时也用 `--color-accent-text`：`--color-accent` 在上面浅色只有 4.49:1、暗色只有 3.9:1。
 
@@ -68,7 +71,9 @@
 
 基础色不保证作为文字可读（例如警示黄），状态文字必须使用 `*-text`。状态语义固定为：错误和失败用 error；需要用户处理但未失败（不可用、已过期、配额将尽）用 warning；完成用 success；中性提示用 info。状态不能只靠颜色表达，必须同时有文字或图标。
 
-错误文字色 `--color-error-text`（浅色与月蓝 `red-415`，`#d42020`）在白底 5.2:1、`--color-error-bg` 上 4.8:1，是满足 AA 的最亮一档红；不要为了更鲜艳再调浅，也不要换回 `red-450`（`#b91c1c`，6.5:1，偏暗偏褐）。同一错误态里的文字、描边、危险按钮实底保持 `--color-error-text`、`--color-error`、`--color-error` 这一组，不要另写一个红。
+四种状态色是一组“协调”的状态色阶 `--color-signal-{success,error,warning,info}-*`：同一明度带，彩度保持接近旧 Tailwind 值（不压低，否则轮廓按钮和修订标记会发灰），成功绿（H150）与品牌薄荷分开。浅色与月蓝取 500 作基础色、600 作文字、50 作底；深色取 400 / 200 / 900。浅色下文字在各自浅底上：成功 5.12:1、错误 5.16:1、警示 5.54:1、信息 4.86:1。语义 token 只引用 `--color-signal-*`，不再引用 `red-*`、`blue-*` 等通用色阶。
+
+错误文字色 `--color-error-text`（浅色与月蓝 `signal-error-600`，`#cb131c`）在白底 5.75:1、`--color-error-bg` 上 5.16:1；不要为了更鲜艳再调浅。同一错误态里的文字、描边、危险按钮实底保持 `--color-error-text`、`--color-error`、`--color-error` 这一组，不要另写一个红。
 
 文字所在的底必须是 `--color-*-bg` 实色，不要用基础色的半透明做文字底：半透明底的对比度随下面的内容变化，`red-415` 文字在 18% 红底上只有 3.9:1，info 文字在 18% 蓝底上也只有 4.25:1。透明控件悬停、行内错误底这类轻量背景用 `--color-error-bg-subtle`：浅色与月蓝取 `--color-error-bg`，暗色保持 8% 半透明，避免大块深红。`NotificationBar` 的四种类型在浅色与月蓝用 `--color-*-bg`，暗色的 `*-bg` 是大块饱和色，仍用基础色 18% 半透明轻底。
 
@@ -330,8 +335,8 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 | variant | 视觉 | 用途 |
 | --- | --- | --- |
 | `primary` | 强调色实底（`--color-accent-solid`）、反色文字 | 当前区域唯一的主操作：保存、发送、插入、创建确认 |
-| `secondary` | 表面底色加描边 | 与主操作并列的次操作：取消、返回 |
-| `ghost` | 透明底加描边 | 已有容器内的次要操作：重置、更多选项 |
+| `secondary` | `--color-bg-field` 浅底、无描边 | 与主操作并列的次操作：取消、返回 |
+| `ghost` | 透明底、无描边，悬停出现 `--color-bg-field-hover` | 已有容器内的次要操作：重置、更多选项 |
 | `plain` | 无底无描边，次级文字色；`tone` 可选 accent / info / danger | 工具栏、标题行、列表行与浮层里的轻操作；accent 用于面板内的确认，danger 用于行内删除、清理（静止中性、悬停显红） |
 | `danger` | 错误色实底 | 删除、清空等不可撤销操作；需要二次确认的放在确认对话框里 |
 | `tint` | 品牌色平涂浅底（`--color-accent-bg`）、深色文字（`--color-accent-text`） | 占满宽度（`block`）或位于大片留白里的主操作：设置表单底部整条的“添加”“开始分析”；也用于与 `primary` 并列、推荐但不抢主操作的动作，例如新建项目里的“AI 辅助创建”。同一个主操作用 `primary` 实底，面积一大视觉重量会失衡。`soft` 自 3.6.0 起按 `tint` 渲染，新代码不要使用 |
@@ -375,12 +380,14 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 - 卡片：`--color-bg-surface` 底、`--color-border-light` 描边、`--radius-lg`、内边距 `--space-3`～`--space-4`；可点击卡片 hover 时提升描边到 `--color-border-hover`，不使用位移动画。
 - 面板与浮层：`--color-bg-elevated` 底、`--shadow-floating-panel`、`--radius-lg`；对话框使用 `Modal`。
 - 卡片内的分组用单边分隔线或间距，不再嵌套卡片。
+- `DraggablePanel` 四边同距 `--floating-panel-inset`（20px）：标题、正文、底部共用这一边距，关闭钮框距上、右各 14px，让 × 的笔画也落在约 20px。面板只能左右调宽，不能调高；`height="auto"` 的面板高度完全由内容决定（不受固定高度面板的 180px 下限约束）。正文由面板给边距，调用方不要再给 `.panel-body` 内容写左右内边距。
 
 ### 9.5 弹窗
 
 - 使用 `Modal`。标题是弹窗的第一层级：`subtitle`（15/22）、semibold、`--color-text-primary`；不要用比正文还浅的灰色做标题。
 - 来源或状态标签放在标题旁，通过 `title-extra` 插槽接入，使用状态徽标的字阶与颜色，不能抢占标题层级。
 - 关闭按钮固定在标题行右侧，28px 圆角方块，静止为 `--color-text-tertiary`，悬停提亮到主文字色并出现 hover 底色；形状不随状态变化。
+- 边距由 `Modal` 统一给：四边都是 `--modal-inset`（24px），按看得见的笔画对齐而不是按元素框——标题行上内边距 16px（标题字形顶在 22px 行框里还有约 4px 空白），关闭钮框距上、右各 16px（× 在 28px 框里有约 10px 空白），这样标题字形顶、× 笔画、正文与底部按钮的边线都落在约 24px。默认滚动模式下正文和 `#footer` 的左右与底部边距都由 `Modal` 负责，调用方只写上下间距；`scroll-mode="internal"` 时调用方的根节点自己用 `var(--modal-inset)` 写左右边距，并写 `flex: 1; min-width: 0` 占满宽度（内部模式的内容区是横向 flex）。
 - 底部操作区主操作在右、次操作在左，使用 `ActionButtons`；正文过长时由内容区滚动，标题与操作区保持可见。
 - 点击遮罩与 Esc 关闭当前最上层弹窗；含未保存输入的表单弹窗应关闭 `closeOnOverlayClick`，避免误触丢失内容。
 

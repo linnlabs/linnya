@@ -30,12 +30,13 @@
 }
 
 .custom-select .select-trigger--bordered {
-  background-color: var(--color-bg-surface);
-  border-color: var(--color-border-default);
+  background-color: var(--color-bg-field);
+  border-color: transparent;
 }
 
 .custom-select .select-trigger--bordered:hover:not(:disabled) {
-  border-color: var(--color-accent);
+  background-color: var(--color-bg-field-hover);
+  border-color: transparent;
 }
 
 .custom-select .select-trigger:focus {
@@ -44,7 +45,6 @@
 
 .custom-select .select-trigger:focus-visible {
   border-color: var(--color-accent);
-  background-color: var(--color-bg-hover);
 }
 
 .custom-select .select-trigger:not(.select-trigger--bordered):hover:not(:disabled) {
@@ -54,9 +54,9 @@
 .custom-select .select-trigger:disabled {
   color: var(--color-text-muted);
   cursor: not-allowed;
-  background-color: var(--color-bg-disabled);
-  border-color: var(--color-border-default);
-  opacity: 0.7;
+  background-color: var(--color-bg-field);
+  border-color: transparent;
+  opacity: 0.55;
 }
 
 .custom-select .select-trigger:disabled .arrow-icon {

@@ -136,18 +136,17 @@ function close() {
   object-fit: cover;
 }
 
-/* 正文与底部的内边距由调用方提供，取值与“新建项目”弹窗、AlertDialog 一致。 */
+/* 左右与底部按钮的边距由 Modal 负责（--modal-inset），调用方只写上下间距，与“新建项目”弹窗一致。 */
 .dialogs__form {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-3) var(--space-8) 0;
+  padding: var(--space-3) 0 0;
 }
 
 .dialogs__footer {
   display: flex;
   justify-content: flex-end;
-  padding: var(--space-6) var(--space-8);
 }
 
 .dialogs__field {

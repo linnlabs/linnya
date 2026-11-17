@@ -133,7 +133,7 @@
 2	SCALE-02-font-weight	packages/plugins/slides/src/renderer/features/presentationExport/ui/PresentationExportModal.css
 1	SCALE-03-line-height	packages/plugins/slides/src/renderer/features/presentationExport/ui/PresentationExportModal.css
 2	SCALE-04-radius	packages/plugins/slides/src/renderer/features/presentationExport/ui/PresentationExportModal.css
-12	SCALE-05-spacing	packages/plugins/slides/src/renderer/features/presentationExport/ui/PresentationExportModal.css
+8	SCALE-05-spacing	packages/plugins/slides/src/renderer/features/presentationExport/ui/PresentationExportModal.css
 1	SCALE-07-duration	packages/plugins/slides/src/renderer/features/presentationExport/ui/PresentationExportModal.css
 1	SCALE-08-easing	packages/plugins/slides/src/renderer/features/presentationExport/ui/PresentationExportModal.css
 7	SCALE-09-legacy-alias	packages/plugins/slides/src/renderer/features/presentationPreview/ui/PresentationReadonlyPreview.css
@@ -192,7 +192,6 @@
 1	SCALE-05-spacing	packages/renderer-ui/src/features/feedback/styles/CharacterCount.css
 1	SCALE-06-z-index	packages/renderer-ui/src/features/feedback/styles/ScrollToBottomButton.css
 1	SCALE-04-radius	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css
-1	SCALE-05-spacing	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css
 1	SCALE-06-z-index	packages/renderer-ui/src/features/floating-panels/styles/DraggablePanel.css
 2	SCALE-05-spacing	packages/renderer-ui/src/features/select-menu/styles/CustomSelect.css
 1	SCALE-03-line-height	packages/renderer-ui/src/features/text-entry/styles/CustomTextField.css

@@ -1,6 +1,6 @@
 /* Modal slot 内容会进入 shared Modal 容器，必须用内容根类承接样式边界。 */
 .model-details-content {
-  padding: var(--space-3) var(--space-8) var(--space-6);
+  padding: var(--space-3) 0 0;
   color: var(--color-text-primary);
 }
 
@@ -92,7 +92,7 @@
   display: flex;
   gap: var(--space-2-5);
   justify-content: flex-end;
-  padding: 0 var(--space-8) var(--space-6);
+  padding: 0;
 }
 
 .model-details-content .select-chevron {

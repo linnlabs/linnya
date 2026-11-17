@@ -148,17 +148,15 @@
     transform var(--duration-micro) var(--ease-standard);
 }
 
-/* secondary / ghost / plain：从表面到透明逐级减弱的次操作。 */
+/* secondary / ghost / plain：从填充浅底到透明逐级减弱的次操作；静止时不描边（少边框）。 */
 .linnya-ui-button--secondary {
   color: var(--color-text-primary);
-  background-color: var(--color-bg-surface);
-  box-shadow: inset 0 0 0 1px var(--color-border-default);
+  background-color: var(--color-bg-field);
 }
 
 .linnya-ui-button--ghost {
   color: var(--color-text-secondary);
   background-color: transparent;
-  box-shadow: inset 0 0 0 1px var(--color-border-default);
 }
 
 .linnya-ui-button--plain {
@@ -167,7 +165,11 @@
 }
 
 .linnya-ui-button--secondary:hover:not(:disabled),
-.linnya-ui-button--ghost:hover:not(:disabled),
+.linnya-ui-button--ghost:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-field-hover);
+}
+
 .linnya-ui-button--plain:hover:not(:disabled) {
   color: var(--color-text-primary);
   background-color: var(--color-bg-hover);

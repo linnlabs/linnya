@@ -2,6 +2,14 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.9.0 - 2026-11-17
+
+- 配色换成薄荷绿：`--color-brand-*` 整条色阶改为 H158 的薄荷（500 `#6bb88d`，强调实底 600 `#3d825d` 白字 4.62:1，选中浅底文字 700 `#337251` 在 125 上 5.09:1），`--color-accent-rgb` 同步；`--color-gray-*` 明度不变，加一点跟随品牌色相的色偏。token 名不变，引用语义 token 的组件与插件无需修改。
+- 新增状态色阶 `--color-signal-{success,error,warning,info}-{50,200,400,500,600,900}`：四色同一明度带、彩度接近旧值，成功绿与品牌色分开。`--color-success*`、`--color-error*`、`--color-warning*`、`--color-info*` 改为引用它们；浅色下文字在各自浅底上 4.86–5.54:1。
+- `moon-blue` 改为很淡的月白蓝：新增 `--color-moon-*`（底色与边框）、`--color-moon-accent-*`（强调蓝，实底 `#4079ac` 白字 4.62:1）与 `--color-moon-shadow`；底色彩度降到 C0.003–0.009，文字改为带一点蓝的墨色，链接用强调文字色。
+- 少边框：新增 `--color-bg-field` / `--color-bg-field-hover`（主文字色 5% / 8% 叠加）。`CustomTextField`、`CustomSelect`（bordered）、`SecretInput`、`CustomNumberInput`、`TimePicker` 与 `BaseButton` 的 `secondary` 静止时不画边框，用浅底表达边界，聚焦时才出现强调色描边；`ghost` 改为透明底无描边。
+- 弹窗与可拖拽面板四边同距：新增 `--modal-inset`（24px）与 `--floating-panel-inset`（20px）。`Modal` 默认滚动模式下由 Modal 负责正文与 footer 的左右、底部边距，标题行与关闭钮按笔画对齐到同一边距；调用方原来给正文或 footer 写的左右内边距需要删掉，否则会叠加。`internal` 模式的调用方用 `var(--modal-inset)` 写左右边距。`AlertDialog` 与 `DraggablePanel` 已按新边距调整；`height="auto"` 的 `DraggablePanel` 不再受 180px 最小高度约束。
+
 ## 3.8.0 - 2026-11-17
 
 - `DraggablePanel` 不再提供高度调整：去掉上下边缘与四个角的 resize 手柄，只保留左右边缘调整宽度；手柄悬停只换成 `ew-resize` 光标，不再画蓝色条。`resizeDraggablePanelGeometry` 与 `DraggablePanelResizeDirection` 的公开签名不变。

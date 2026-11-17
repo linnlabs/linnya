@@ -1,1 +1,1 @@
-export const RENDERER_UI_VERSION = '3.8.0' as const;
+export const RENDERER_UI_VERSION = '3.9.0' as const;
