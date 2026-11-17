@@ -1,14 +1,15 @@
 import { parseArgs } from 'node:util';
+import { ProjectConversationQueryOptionsSchema, type ProjectConversationQueryOptions } from '@app/schemas';
 
 export const CONVERSATIONS_USAGE = [
-  'linnya conversations list [--query TEXT] [--limit 1..200]',
+  'linnya conversations list [--query TEXT] [--agent ID] [--activity any|today|week|month] [--documents any|changed|unchanged] [--sort activity|title|turns|documents|storage] [--direction asc|desc] [--limit 1..200]',
   'linnya conversations read CONVERSATION_ID [--after SEQ] [--limit 1..200]',
 ].join('\n');
 
 export const CONVERSATIONS_MAX_LIMIT = 200;
 
 export type ConversationsCommand =
-  | { readonly kind: 'list'; readonly query: string | null; readonly limit: number }
+  | { readonly kind: 'list'; readonly query: ProjectConversationQueryOptions; readonly limit: number }
   | { readonly kind: 'read'; readonly conversationId: string; readonly afterSeq: number | null; readonly limit: number };
 
 function parseLimit(value: string): number {
@@ -22,12 +23,20 @@ export function parseConversationsCommand(argv: readonly string[]): Conversation
   if (subcommand === 'list') {
     const { values } = parseArgs({
       args: rest,
-      options: { query: { type: 'string' }, limit: { type: 'string', default: '30' } },
+      options: {
+        query: { type: 'string' }, limit: { type: 'string', default: '30' },
+        agent: { type: 'string' }, activity: { type: 'string' }, documents: { type: 'string' },
+        sort: { type: 'string' }, direction: { type: 'string' },
+      },
     });
     const query = values.query?.trim() ?? '';
     if (values.query !== undefined && !query) throw new Error('query 不能为空');
     if (query.length > 200) throw new Error('query 最多 200 个字符');
-    return { kind: 'list', query: query || null, limit: parseLimit(values.limit) };
+    const options = ProjectConversationQueryOptionsSchema.parse({
+      query, agent: values.agent, activity: values.activity, documents: values.documents,
+      sort: values.sort, direction: values.direction ?? (values.sort === 'title' ? 'asc' : 'desc'),
+    });
+    return { kind: 'list', query: options, limit: parseLimit(values.limit) };
   }
   if (subcommand === 'read') {
     const { values, positionals } = parseArgs({

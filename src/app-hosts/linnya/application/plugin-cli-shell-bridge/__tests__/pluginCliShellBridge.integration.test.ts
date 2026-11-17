@@ -1,3 +1,4 @@
+import { createConversationActivityPorts } from '../../../adapters/persistence/run-registry';
 import { createCoreCli } from '../../core-cli';
 import { createNodePhysicalFileReader } from '../../../adapters/file-read';
 import { ColorPaletteSuggestionSchema } from '@app/schemas/color-palette';
@@ -244,6 +245,64 @@ async function invoke(input: {
 }
 
 describe('Plugin CLI Shell bridge', () => {
+  it.runIf(Boolean(process.env.LINNYA_PLUGIN_CLI_NATIVE_CLIENT_E2E_PATH))('真实 Shell 内建 conversations：过滤、状态、项目作用域与只读全文', async () => {
+    const client = process.env.LINNYA_PLUGIN_CLI_NATIVE_CLIENT_E2E_PATH;
+    if (!client) throw new Error('native client path is required');
+    const database = new DatabaseService(':memory:');
+    database.initialize();
+    const db = database.getDb();
+    const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-conversation-cli-'));
+    temporaryRoots.push(root);
+    const facade = path.join(root, process.platform === 'win32' ? 'linnya.exe' : 'linnya');
+    await fsp.copyFile(client, facade);
+    await fsp.chmod(facade, 0o700);
+    const projects = createProjectLifecycle(db);
+    const projectId = projects.create({ name: 'Shell conversations' });
+    const otherProject = projects.create({ name: 'Other project' });
+    for (const [id, project, title] of [['conversation-plugin-cli-bridge', projectId, '来源'], ['target', projectId, '定价'], ['private', otherProject, '私密']] as const) {
+      db.prepare('INSERT INTO conversations (conversation_id, project_id, title, created_at, last_event_at) VALUES (?, ?, ?, 1, ?)').run(id, project, title, Date.now());
+      db.prepare(`INSERT INTO runs (id, conversation_id, kind, status, agent_spec_id, start_ts, metadata_json) VALUES (?, ?, 'agent', 'cancelled', 'research_v1', 1, ?)`)
+        .run(`run-${id}`, id, JSON.stringify({ lane: 'foreground' }));
+      db.prepare(`INSERT INTO conversation_ui_messages (message_id, conversation_id, turn_id, role, message_type, sort_seq, timestamp, content, run_id)
+        VALUES (?, ?, 'turn', 'assistant', 'partial_answer', 1, 1, ?, ?)`)
+        .run(`message-${id}`, id, `${title}的回答`, `run-${id}`);
+    }
+    const bridge = await startPluginCliShellBridgeRuntime({
+      resolveCli: () => { throw new Error('Core must not resolve plugin'); },
+      coreCli: createCoreCli(db, 8000, createNodePhysicalFileReader(), createConversationActivityPorts(db, { readControlPending: () => [] })),
+      readConversationProjectId: async id => db.prepare<[string], { project_id: string }>('SELECT project_id FROM conversations WHERE conversation_id = ?').get(id)?.project_id,
+      internalDataContext: {}, diagnostics: { recordUnexpectedFailure: ({ error }) => { throw error; } },
+    });
+    bridges.push(bridge);
+    try {
+      const launch = createLaunch({ internalDataAccess: 'allowed', conversationRoot: root });
+      const prepared = createPreparedRuntime(launch);
+      const scope = bridge.prepareExecution(launch);
+      const runtime = scope.decorate(prepared.runtime);
+      await runtime.start();
+      const invokeCli = (...argv: string[]) => runNativeFacade({
+        executablePath: process.platform === 'darwin' ? '/bin/zsh' : facade,
+        argv: process.platform === 'darwin' ? ['-c', 'exec "$@"', 'conversation-cli', facade, 'conversations', ...argv] : ['conversations', ...argv],
+        internalEnvironment: scope.internalEnvironment,
+      });
+      const listed = await invokeCli('list', '--query', '定价', '--agent', 'research_v1', '--activity', 'today', '--documents', 'unchanged', '--sort', 'title');
+      expect(listed.exitCode).toBe(0);
+      expect(JSON.parse(listed.stdout)).toMatchObject({ conversations: [{ id: 'target', activity: { state: 'interrupted', reason: 'cancelled' } }] });
+      const read = await invokeCli('read', 'target');
+      expect(read.exitCode).toBe(0);
+      expect(JSON.parse(read.stdout)).toMatchObject({ messages: [{ text: '定价的回答' }], conversation: { activity: { state: 'interrupted' } } });
+      expect((await invokeCli('read', 'private')).stderr).toBe((await invokeCli('read', 'missing')).stderr);
+      expect((await invokeCli('list', '--project', otherProject)).exitCode).toBe(2);
+      expect((await invokeCli('list', '--conversation', 'private')).exitCode).toBe(2);
+      expect((await invokeCli('list', '--sort', 'agent')).exitCode).toBe(2);
+      prepared.terminal.resolve(createTerminal(launch));
+      await runtime.terminal;
+    } finally {
+      await bridge.closeAndWait();
+      database.close();
+    }
+  });
+
   it('内建 changes 只按父对话读取昨日记录，拒绝跨项目参数、拒绝未授权读取，并明说截断', async () => {
     const database = new DatabaseService(':memory:');
     database.initialize();
@@ -268,7 +327,7 @@ describe('Plugin CLI Shell bridge', () => {
       const readProject = vi.fn(async () => projectId);
       const bridge = await startPluginCliShellBridgeRuntime({
         resolveCli: () => { throw new Error('Core commands must not resolve a plugin'); },
-        coreCli: createCoreCli(db, 8000, createNodePhysicalFileReader()), readConversationProjectId: readProject,
+        coreCli: createCoreCli(db, 8000, createNodePhysicalFileReader(), createConversationActivityPorts(db, { readControlPending: () => [] })), readConversationProjectId: readProject,
         internalDataContext: {}, diagnostics: { recordUnexpectedFailure: () => {} },
       });
       bridges.push(bridge);
@@ -601,7 +660,7 @@ describe('Plugin CLI Shell bridge', () => {
       const bridge = await startPluginCliShellBridgeRuntime({
         resolveCli: () => { throw new Error('Core commands must not resolve a plugin'); },
         // palette 不读数据库；传入任何数据库访问都会让测试失败。
-        coreCli: createCoreCli(null as never, 8000, createNodePhysicalFileReader()),
+        coreCli: createCoreCli(null as never, 8000, createNodePhysicalFileReader(), { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } }),
         internalDataContext: {},
         diagnostics: { recordUnexpectedFailure: ({ error }) => { throw error; } },
       });

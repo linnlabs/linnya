@@ -1,15 +1,17 @@
-import { formatAgentTimestamp, type ProjectConversationRow } from '@app/schemas';
+import { formatAgentTimestamp, type ConversationActivity, type ProjectConversationRow, type ProjectConversationsQuery } from '@app/schemas';
 import type { ConversationTranscriptPage } from '../../project-conversations';
 
-const listNotice = '结果超过条数或输出上限，只列出最近活动的一部分。可用 --query 缩小范围。';
+const listNotice = '结果超过条数或输出上限，只列出按所选条件排序的一部分。可用 --query、--agent、--activity 或 --documents 缩小范围。';
 const readNotice = '没有读完。用 nextAfterSeq 作为 --after 继续读下一页。';
 const scopeNote = '只含当前项目的对话；内容只含用户的话与 AI 的答复，不含思考和工具过程。';
 
-function projectRow(row: ProjectConversationRow, excerpt: string | null | undefined) {
+function projectRow(row: ProjectConversationRow, activity: ConversationActivity, excerpt: string | null | undefined) {
   return {
     id: row.conversation_id,
     title: row.title,
     agent: row.agent_id ?? 'default',
+    respondents: row.respondent_agent_ids,
+    activity,
     turns: row.turn_count,
     changedDocuments: row.changed_document_count,
     createdAt: formatAgentTimestamp(row.created_at),
@@ -18,23 +20,20 @@ function projectRow(row: ProjectConversationRow, excerpt: string | null | undefi
   };
 }
 
-/** 对话列表按最近活动排列；先给完整 JSON 与截断提示留出空间，只输出完整的行。 */
+/** Host 已筛选排序；这里只预算输出，不改变列表顺序。 */
 export function formatConversationList(input: {
-  readonly rows: readonly ProjectConversationRow[];
-  /** 有搜索时为命中的对话与片段；结果按这个范围过滤。 */
-  readonly matches: ReadonlyMap<string, string | null> | null;
-  readonly searchTruncated: boolean;
+  readonly result: ProjectConversationsQuery;
   readonly limit: number;
   readonly maxCharacters: number;
 }): string {
-  const ordered = [...input.rows]
-    .filter(row => input.matches === null || input.matches.has(row.conversation_id))
-    .sort((left, right) => right.last_event_at - left.last_event_at);
+  const ordered = input.result.conversations;
   const conversations: ReturnType<typeof projectRow>[] = [];
-  let truncated = input.searchTruncated || ordered.length > input.limit;
+  let truncated = input.result.truncated || ordered.length > input.limit;
   let used = JSON.stringify({ truncated: true, notice: listNotice, scope: scopeNote, conversations }).length + 1;
   for (const row of ordered.slice(0, input.limit)) {
-    const item = projectRow(row, input.matches?.get(row.conversation_id));
+    const activity = input.result.activities[row.conversation_id];
+    if (!activity) throw new Error('Conversation query did not return activity');
+    const item = projectRow(row, activity, input.result.excerpts[row.conversation_id]);
     used += JSON.stringify(item).length + (conversations.length ? 1 : 0);
     if (used > input.maxCharacters) {
       truncated = true;
@@ -49,8 +48,8 @@ export function formatConversationList(input: {
  * 一页可读消息。放不下的消息留给下一页；连第一条都放不下时截短这一条的正文并标出，
  * 不让一条超长答复卡住翻页。
  */
-export function formatConversationTranscript(page: ConversationTranscriptPage, maxCharacters: number): string {
-  const conversation = { id: page.conversationId, title: page.title };
+export function formatConversationTranscript(page: ConversationTranscriptPage, maxCharacters: number, activity: ConversationActivity): string {
+  const conversation = { id: page.conversationId, title: page.title, activity };
   const messages: Record<string, unknown>[] = [];
   let used = JSON.stringify({ conversation, scope: scopeNote, messages, nextAfterSeq: Number.MAX_SAFE_INTEGER, notice: readNotice }).length + 1;
   let nextAfterSeq = page.nextAfterSeq;

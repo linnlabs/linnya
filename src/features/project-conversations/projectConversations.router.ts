@@ -9,14 +9,18 @@ import {
   ProjectConversationsSchema,
   ProjectConversationsSearchRequestSchema,
   ProjectConversationsSearchSchema,
+  ProjectConversationsQueryRequestSchema,
+  ProjectConversationsQuerySchema,
 } from '@app/schemas';
 import {
   readProjectConversationDetail,
   readProjectConversations,
   searchProjectConversations,
+  queryProjectConversations,
   type ProjectConversationStorageMeasurer,
 } from '../../app-hosts/linnya/application/project-conversations';
 import { getLogger } from '../../shared/logger';
+import type { ConversationActivityPorts } from '../../app-hosts/linnya/application/conversation-activity';
 
 const logger = getLogger('ProjectConversationsRouter');
 
@@ -34,9 +38,25 @@ function fail(response: Response, status: number, code: string, error?: unknown)
 export function createProjectConversationsRouter(input: {
   readonly db: Database.Database;
   readonly measurer: ProjectConversationStorageMeasurer;
+  readonly activity: ConversationActivityPorts;
 }): Router {
   const router = Router();
   router.use(express.json({ limit: '64kb', strict: true }));
+
+  router.post('/:projectId/query', async (request, response) => {
+    const body: unknown = request.body;
+    const parsed = ProjectConversationsQueryRequestSchema.safeParse({
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      project_id: request.params.projectId,
+    });
+    if (!parsed.success) return fail(response, 400, 'project_conversations.invalid_request');
+    try {
+      response.setHeader('Cache-Control', 'no-store');
+      response.json(ProjectConversationsQuerySchema.parse(await queryProjectConversations(input.db, parsed.data, input.activity)));
+    } catch (error: unknown) {
+      fail(response, 500, 'project_conversations.query_failed', error);
+    }
+  });
 
   router.get('/:projectId', (request, response) => {
     const parsed = ProjectConversationsRequestSchema.safeParse({ project_id: request.params.projectId });

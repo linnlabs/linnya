@@ -201,6 +201,7 @@ import {
 import { createLocalManagedStorageInventoryPort } from 'src/infra/adapters/storage-space/local-inventory';
 import { createStorageSpaceRouter } from 'src/features/storage-space/storageSpace.router';
 import { createProjectConversationsRouter } from 'src/features/project-conversations/projectConversations.router';
+import { createConversationActivityPorts } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
 import {
   createProjectConversationStorageMeasurer,
   type ProjectConversationStorageMeasurer,
@@ -1011,7 +1012,8 @@ export async function configureRoutes(
         history: createHistoryRouter(historyService),
         flow: createConversationFlowRouter(flowOrchestrator),
         storageSpace: createStorageSpaceRouter(storageSpaceUseCase),
-        projectConversations: createProjectConversationsRouter({ db, measurer: projectConversationMeasurer }),
+        projectConversations: createProjectConversationsRouter({ db, measurer: projectConversationMeasurer,
+          activity: createConversationActivityPorts(db, dependencies.commandApprovalControl) }),
       }),
       registerCommandOwner: lifecycle =>
         dependencies.commandOwnerLifecycleRegistration.register(lifecycle),

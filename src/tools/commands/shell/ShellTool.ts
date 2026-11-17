@@ -72,8 +72,11 @@ or --day today for local dates, --run <root-run-id> for a run, or linnya changes
 Report only recorded creations and updates; mention truncation. An empty result cannot rule out other actions.
 
 To learn what was discussed in other conversations of this project, run linnya conversations list
-(--query <text> searches titles and messages), then linnya conversations read <id> (--after <seq> for the
-next page). Only user messages and AI replies are returned, not thinking or tool activity.
+(--query <text> searches titles and messages; --agent <id> filters actual respondents,
+--activity today|week|month and --documents changed|unchanged match the project panel), then
+linnya conversations read <id> (--after <seq> for the next page). Both include current run activity;
+interrupted keeps its reason and is not cleared by reading. Only user messages and AI replies are
+returned, not thinking or tool activity. See linnya conversations --help for supported sorting.
 
 Documents can carry tags with fields (e.g. 论文 with 作者, 年份). linnya schema lists them; linnya query
 --tag/--where finds documents; linnya props get|tag|set reads or changes one. Writes without --rev only

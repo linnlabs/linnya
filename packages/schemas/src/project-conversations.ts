@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConversationActivitySchema } from './conversation-activity';
 
 /**
  * 项目概览的对话页：列出项目里的对话、每个对话改过的文档与占用的存储。
@@ -47,6 +48,8 @@ export const ProjectConversationRowSchema = z.object({
   title: z.string(),
   /** 对话选定的 Agent 注册表 ID；null 是默认 Agent。显示名由 Renderer 从注册表取。 */
   agent_id: z.string().min(1).nullable(),
+  /** 真正向用户回复过的前台根运行 Agent；未回复或缺失事实时为空，不用当前选择冒认。 */
+  respondent_agent_ids: z.array(z.string().min(1)),
   /** 用户发了几条消息。 */
   turn_count: NonNegativeInt,
   /** 账本里这个对话在本项目改过的文档数（去重）。 */
@@ -62,6 +65,32 @@ export const ProjectConversationsSchema = z.object({
   project_id: Id,
   conversations: z.array(ProjectConversationRowSchema),
 }).strict();
+
+export const ProjectConversationQueryOptionsSchema = z.object({
+  query: z.string().trim().max(200).default(''),
+  agent: Id.nullable().default(null),
+  activity: z.enum(['any', 'today', 'week', 'month']).default('any'),
+  documents: z.enum(['any', 'changed', 'unchanged']).default('any'),
+  sort: z.enum(['title', 'turns', 'documents', 'activity', 'storage']).default('activity'),
+  direction: z.enum(['asc', 'desc']).default('desc'),
+}).strict();
+
+export const ProjectConversationsQueryRequestSchema = z.object({
+  project_id: Id,
+  ...ProjectConversationQueryOptionsSchema.shape,
+}).strict();
+
+export const ProjectConversationsQuerySchema = z.object({
+  project_id: Id,
+  conversations: z.array(ProjectConversationRowSchema),
+  excerpts: z.record(z.string(), z.string().nullable()),
+  activities: z.record(z.string(), ConversationActivitySchema),
+  truncated: z.boolean(),
+}).strict();
+
+export type ProjectConversationQueryOptions = z.infer<typeof ProjectConversationQueryOptionsSchema>;
+export type ProjectConversationsQueryRequest = z.infer<typeof ProjectConversationsQueryRequestSchema>;
+export type ProjectConversationsQuery = z.infer<typeof ProjectConversationsQuerySchema>;
 
 export const ProjectConversationChangedDocumentSchema = z.object({
   document_id: Id,

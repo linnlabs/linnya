@@ -1,6 +1,7 @@
 import type { CommandExecutionOwnerBindingV1 } from '@app/schemas/commands';
 import type {
   CommandApprovalPort,
+  CommandApprovalControlPort,
   CommandCardSettlementPort,
   CommandExecutionLifecycleObservationPort,
   CommandProcessControlPort,
@@ -10,7 +11,7 @@ import type {
 } from 'src/domains/audit';
 
 /** Commands 只需要审批宿主的业务 port 和 App owner 收口，不感知 Renderer page。 */
-export interface CommandApprovalHostPort extends CommandApprovalPort {
+export interface CommandApprovalHostPort extends CommandApprovalPort, Pick<CommandApprovalControlPort, 'readControlPending'> {
   endOwner(): void;
 }
 

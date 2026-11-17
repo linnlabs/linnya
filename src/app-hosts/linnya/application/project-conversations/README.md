@@ -6,6 +6,9 @@
 
 - 列表：对话持久化里属于本项目的对话。Agent 只取对话选定的 Agent，选的就是默认 Agent 或没选时为 `null`；
   不从运行记录推断，标题生成等内部运行也是对话里的根运行。轮次是用户消息数。置顶在前，再按最近活动。
+- `respondent_agent_ids` 单独给实际回复者：可读 AI 消息关联 canonical 前台根运行的 Agent，支持同一对话中途换 Agent；无回复/缺失事实为空，后台标题与子运行不算。筛选使用它，不拿选中 Agent 替代。
+- `queryProjectConversations` / `POST /:projectId/query` 是面板和 Shell 的同一查询，统一 query、Agent、活动日历窗口、文档有无及五种排序。结构化筛选先于全文搜索的 200 条上限；置顶在前，未测占用组内末尾。活动是宿主当地今天、含今天的七天/三十天，跨夏令时按日历计算。Agent 本地化名称排序仍归 Renderer 展示层，CLI 不开放该排序。
+- 查询返回[当前执行事实](../conversation-activity/README.md)，基于 RunRegistry 与 Commands 审批 owner，不新增状态表、不消费“已查看”。list/read 的项目范围都由已授权调用方给出。
 - 改过的文档：[行动账本](../../../../domains/action-ledger/README.md)按对话去重计数；详情另给每份文档的类型、最近改动时间、
   是否已删除（已删除不可打开），内建 Markdown 再给待审阅修订数。
 - 详情的第一个问题与最后的答复取自[可读对话](../../../../../docs/conversation-platform/06-read-model.md#8-可读对话)，
@@ -24,8 +27,12 @@
 测量时间早于对话最近活动即视为过期，列表里给 `null`，由界面在打开对话页时分批（每批 8 个）补测。
 清理过程文件复用存储空间的接口，清理后界面重测这个对话。删除对话时缓存随对话级联删除。
 
-不负责：对话的写操作（置顶、改名、删除）归对话领域；跨对话的任务状态尚未开放。
+不负责：对话的写操作（置顶、改名、删除）归对话领域；状态读取不授权跨对话执行、恢复、停止或审批。
 
 ```bash
 pnpm exec vitest run src/app-hosts/linnya/application/project-conversations src/app-hosts/linnya/adapters/persistence/readable-conversation
 ```
+
+## 真实入口验收
+
+`scripts/e2e/project-conversations/desktop.acceptance.mjs` 启动隔离 Desktop，用 canonical event facts 建夹具，对照面板与 Host 的筛选/排序、项目切换与错误日志，输出验收清单和截图。Shell 的 native bridge 业务测试覆盖真实 zsh 调用与跨项目拒绝。`scripts/e2e/project-conversations/benchmarkProjectQuery.ts` 使用内存数据库观测 500 个对话在不同历史运行规模下的查询耗时与返回候选行数，不连接开发库。

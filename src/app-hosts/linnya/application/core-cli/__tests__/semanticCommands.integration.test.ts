@@ -38,7 +38,7 @@ function setup() {
   insert.run('c', 'p1', null, 'document', '读书笔记', 4, 10);
   db.prepare('INSERT INTO document_references VALUES (?, ?, ?, ?)').run('c', 'r1', 'a', 'inline');
   db.prepare('INSERT INTO document_references VALUES (?, ?, ?, ?)').run('c', 'r2', 'a', 'inline');
-  const cli = createCoreCli(db, 4000, { readFile: async () => { throw new Error('unused'); } });
+  const cli = createCoreCli(db, 4000, { readFile: async () => { throw new Error('unused'); } }, { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } });
   const run = async (argv: string[], context: { agentRunId?: string; readOnly?: boolean } = {}) => {
     const preparation = cli.prepare({ argv, invocationId: 'i', conversationRoot: '/tmp/none' });
     if (preparation.status === 'completed') return { ...preparation.result, access: null };

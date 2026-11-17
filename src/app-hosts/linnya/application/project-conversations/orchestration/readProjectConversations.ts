@@ -33,6 +33,24 @@ export function readProjectConversations(
     ORDER BY c.is_pinned DESC, c.last_event_at DESC
   `).all(request.project_id);
   const documentCounts = createSqliteActionLedger(db).countDocumentsByConversation(request.project_id);
+  // 只有写给用户的 AI 消息才能证明回复过；选中但未执行、后台标题和子运行都不算。
+  const respondents = db.prepare<[string], { conversation_id: string; agent_id: string }>(`
+    SELECT DISTINCT m.conversation_id, r.agent_spec_id AS agent_id
+    FROM conversation_ui_messages m
+    JOIN runs r ON r.id = m.run_id AND r.conversation_id = m.conversation_id
+    JOIN conversations c ON c.conversation_id = m.conversation_id
+    WHERE c.project_id = ? AND m.role = 'assistant' AND m.content IS NOT NULL AND length(trim(m.content)) > 0
+      AND m.message_type IN ('final_answer', 'partial_answer', 'tool_preamble')
+      AND r.parent_run_id IS NULL AND json_extract(r.metadata_json, '$.lane') = 'foreground'
+      AND r.agent_spec_id IS NOT NULL
+    ORDER BY r.agent_spec_id
+  `).all(request.project_id);
+  const respondentIds = new Map<string, string[]>();
+  for (const respondent of respondents) {
+    const ids = respondentIds.get(respondent.conversation_id) ?? [];
+    ids.push(respondent.agent_id);
+    respondentIds.set(respondent.conversation_id, ids);
+  }
   return {
     project_id: request.project_id,
     conversations: rows.map(row => ({
@@ -40,6 +58,7 @@ export function readProjectConversations(
       title: row.title,
       // 默认 Agent 选定后也会记成它的 ID；合同里统一为 null。
       agent_id: row.agent_id === PromptKeys.DEFAULT ? null : row.agent_id,
+      respondent_agent_ids: respondentIds.get(row.conversation_id) ?? [],
       turn_count: row.user_message_count,
       changed_document_count: documentCounts.get(row.conversation_id) ?? 0,
       created_at: row.created_at,

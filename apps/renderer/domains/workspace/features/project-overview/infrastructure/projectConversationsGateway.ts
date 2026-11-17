@@ -4,6 +4,9 @@ import {
   ProjectConversationsMeasureSchema,
   ProjectConversationsSchema,
   ProjectConversationsSearchSchema,
+  ProjectConversationsQuerySchema,
+  type ProjectConversationQueryOptions,
+  type ProjectConversationsQuery,
   type ProjectConversationDetail,
   type ProjectConversations,
   type ProjectConversationsMeasure,
@@ -23,6 +26,12 @@ const project = (projectId: string) => `/${encodeURIComponent(projectId)}`;
 
 export async function readProjectConversations(projectId: string): Promise<ProjectConversations> {
   return ProjectConversationsSchema.parse(await request(project(projectId)));
+}
+
+export async function queryProjectConversations(projectId: string, options: ProjectConversationQueryOptions): Promise<ProjectConversationsQuery> {
+  return ProjectConversationsQuerySchema.parse(await request(`${project(projectId)}/query`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(options),
+  }));
 }
 
 export async function readProjectConversationDetail(projectId: string, conversationId: string): Promise<ProjectConversationDetail> {

@@ -79,6 +79,7 @@ describe('Headless Node conversation runtime composition', () => {
       write: vi.fn(() => ({ status: 'written' as const })),
     };
     const commandApprovalHost = {
+      readControlPending: () => [],
       request: vi.fn(async () => ({
         status: 'failed' as const,
         reason: 'authorization_unavailable' as const,

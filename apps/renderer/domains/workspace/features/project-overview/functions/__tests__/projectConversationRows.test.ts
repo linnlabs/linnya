@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ProjectConversationRow } from '@app/schemas';
-import { EMPTY_PROJECT_CONVERSATION_FILTERS } from '../../definitions/projectConversations';
 import {
   chunkConversationIds,
-  filterProjectConversationRows,
   projectConversationsTotalBytes,
-  sortProjectConversationRows,
+  sortProjectConversationsByAgentLabel,
 } from '../projectConversationRows';
 import { isExcerptShown } from '../projectConversationExcerpt';
 
@@ -17,6 +15,7 @@ function row(id: string, extra: Partial<ProjectConversationRow> = {}): ProjectCo
     conversation_id: id,
     title: id,
     agent_id: null,
+    respondent_agent_ids: [],
     turn_count: 1,
     changed_document_count: 0,
     created_at: NOW.getTime() - 10 * HOUR,
@@ -36,42 +35,12 @@ const storage = (bytes: number) => ({
   measured_at: 1,
 });
 
-const labels = { title: (item: ProjectConversationRow) => item.title, agent: (item: ProjectConversationRow) => item.agent_id ?? 'Linnya AI' };
 
 describe('项目对话行', () => {
-  it('筛选：Agent 空字符串是默认 Agent，最近活动按本地日历日，改过文档分有无', () => {
-    const rows = [
-      row('a', { agent_id: 'research_v1', changed_document_count: 2 }),
-      row('b', { last_event_at: NOW.getTime() - 40 * 24 * HOUR }),
-      row('c', { changed_document_count: 1 }),
-    ];
-    const ids = (filters: Partial<typeof EMPTY_PROJECT_CONVERSATION_FILTERS>) => filterProjectConversationRows(
-      rows,
-      { ...EMPTY_PROJECT_CONVERSATION_FILTERS, ...filters },
-      { now: NOW, matches: null },
-    ).map(item => item.conversation_id);
-    expect(ids({ agent: '' })).toEqual(['b', 'c']);
-    expect(ids({ agent: 'research_v1' })).toEqual(['a']);
-    expect(ids({ activity: 'month' })).toEqual(['a', 'c']);
-    expect(ids({ documents: 'changed' })).toEqual(['a', 'c']);
-    expect(ids({ documents: 'unchanged' })).toEqual(['b']);
-    expect(filterProjectConversationRows(rows, EMPTY_PROJECT_CONVERSATION_FILTERS, {
-      now: NOW,
-      matches: new Map([['c', '命中']]),
-    }).map(item => item.conversation_id)).toEqual(['c']);
-  });
-
-  it('排序：置顶始终在前；没测过占用的排在最后，与升降序无关', () => {
-    const rows = [
-      row('small', { storage: storage(10) }),
-      row('unknown'),
-      row('pinned', { is_pinned: true, storage: storage(1) }),
-      row('large', { storage: storage(100) }),
-    ];
-    const ids = (direction: 'asc' | 'desc') => sortProjectConversationRows(rows, { key: 'storage', direction }, labels)
-      .map(item => item.conversation_id);
-    expect(ids('desc')).toEqual(['pinned', 'large', 'small', 'unknown']);
-    expect(ids('asc')).toEqual(['pinned', 'small', 'large', 'unknown']);
+  it('Agent 展示名排序保留置顶、中文名称与稳定活动顺序', () => {
+    const rows = [row('b'), row('pinned', { is_pinned: true }), row('a')];
+    expect(sortProjectConversationsByAgentLabel(rows, 'asc', item => item.title).map(item => item.conversation_id))
+      .toEqual(['pinned', 'a', 'b']);
   });
 
   it('总占用要等全部测完；测量按批发送', () => {
