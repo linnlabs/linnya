@@ -9,7 +9,8 @@ import {
 import { useStyleRevision } from '../orchestration/useStyleRevision.ts';
 import GalleryBlock from '../ui/GalleryBlock.vue';
 import GalleryRow from '../ui/GalleryRow.vue';
-import GalleryScrollArea from '../ui/GalleryScrollArea.vue';
+import OverlayScrollArea from '../prototypes/OverlayScrollArea.vue';
+import '../prototypes/native-scrollbar.css';
 
 interface TokenUse {
   readonly token: string;
@@ -300,11 +301,26 @@ function ratio(value: number): string {
       </GalleryRow>
     </GalleryBlock>
 
-    <GalleryBlock title="滚动条" note="产品里的长列表、表格用 OverlayScrollbars 浮层滚动条（useOverlayScrollViewport），悬停或滚动时出现。">
-      <GalleryRow label="浮层滚动条" align="start">
-        <GalleryScrollArea>
+    <GalleryBlock title="滚动条（候选组件，计划中）" note="原型，还没进 renderer-ui。浮层滚动条：<OverlayScrollArea>内容</OverlayScrollArea>，overflow-x / overflow-y 选方向，expose getViewport、scheduleUpdate。原生滚动条：全局默认样式，各处不再自写 ::-webkit-scrollbar。">
+      <GalleryRow label="OverlayScrollArea 纵向" align="start">
+        <OverlayScrollArea class="foundations__scroll-box">
           <p v-for="index in 24" :key="index" class="foundations__scroll-line">第 {{ index }} 行：滚动或悬停查看滚动条</p>
-        </GalleryScrollArea>
+        </OverlayScrollArea>
+      </GalleryRow>
+      <GalleryRow label="OverlayScrollArea 横向" align="start">
+        <OverlayScrollArea class="foundations__scroll-box foundations__scroll-box--short" overflow-x="scroll" overflow-y="hidden">
+          <div class="foundations__scroll-wide">横向内容：表格、看板、胶片栏这类宽于容器的内容</div>
+        </OverlayScrollArea>
+      </GalleryRow>
+      <GalleryRow label="原生 · 现状（未设样式）" align="start">
+        <div class="foundations__scroll-box gallery-native-scroll">
+          <p v-for="index in 24" :key="index" class="foundations__scroll-line">第 {{ index }} 行：Chromium 默认滚动条</p>
+        </div>
+      </GalleryRow>
+      <GalleryRow label="原生 · 候选默认" align="start">
+        <div class="foundations__scroll-box gallery-native-scroll gallery-native-scroll--proposed">
+          <p v-for="index in 24" :key="index" class="foundations__scroll-line">第 {{ index }} 行：统一的细滚动条</p>
+        </div>
       </GalleryRow>
     </GalleryBlock>
   </div>
@@ -512,6 +528,29 @@ function ratio(value: number): string {
   padding-bottom: var(--space-1);
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-elevated);
+}
+
+.foundations__scroll-box {
+  width: 280px; /* scale-exempt: 版面尺寸 */
+  height: 160px; /* scale-exempt: 版面尺寸 */
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-surface);
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-border-light);
+}
+
+.foundations__scroll-box--short {
+  height: 56px; /* scale-exempt: 版面尺寸 */
+}
+
+.gallery-native-scroll {
+  overflow-y: auto;
+}
+
+.foundations__scroll-wide {
+  width: 720px; /* scale-exempt: 版面尺寸 */
+  padding: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
 }
 
 .foundations__scroll-line {
