@@ -35,7 +35,7 @@ describe('knowledge metadata with a cold vector runtime', () => {
       expect(defaultKb.id).toBe('default');
       expect((await service.getAllKnowledgeBases()).map(kb => kb.id)).toContain(created.id);
       expect(resolveAdapter).not.toHaveBeenCalled();
-      const embed = vi.fn(async () => ({ vectors: [[1, 0, 0]] }));
+      const embed = vi.fn(async () => ({ vectors: [[1, 0, 0]], spaceId: 'fixture-space' }));
       const search = new DefaultSearchService({
         metadataRepository,
         sotRepository,

@@ -178,3 +178,11 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 ### 项目摘要读取
 
 `backend/projectReadRuntime` 仅开放 `get(projectId)` 的项目摘要。项目的存在性、软删除和字段投影仍由 Host 的 Projects owner 决定；插件不能借这个口创建、删除项目或取得 Projects repository。知识库关联表只持有项目 ID/FK，通过此口校验并投影关联列表。
+
+### 非 Agent 模型推理与受管 Worker
+
+`backend/inferenceRuntime` 是 embedding、reranking、文本生成和文档 OCR 端口的纯类型真源，Host 的原有 domain 入口重导出相同类型。SDK 只暴露执行能力，不开放模型目录、路由、凭据或 Provider 实现。嵌入请求可携带 `expectedSpaceId`，响应总是包含实际冻结路由的 `spaceId`；名称/密钥变化不影响空间，真正空间变化在请求上游前失败。
+
+`backend/inferenceWorkerRuntime` 只桥接当前 Worker 使用的 embedding、文本和 OCR（包含模式查询/进度）；rerank 继续在 Backend 搜索执行。DTO 由 `@app/schemas/plugins/inference-worker` 校验。Worker 只持有任务模型 ID 和素材，Host 组合根为每个任务冻结允许操作/模型/文件，再执行正式端口。PDF 路径必须属于任务输入或任务独占临时目录；不能拿 wire 路径当授权。请求失败只回传错误分类/码/重试事实，不回传配置、凭据或任意错误 cause。
+
+队列只拥有消息和取消生命周期，不识别这些模型操作。取消、Worker 意外退出和队列 shutdown 必须中止并等待该 Worker 的 Host 请求，不能留下已退出任务继续调用模型。此能力不隐含 Plugin CLI 的网络或 Host 推理授权；CLI 仍须经自己的 access plan / invocation gate。

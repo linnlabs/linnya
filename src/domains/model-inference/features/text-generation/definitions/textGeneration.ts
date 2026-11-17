@@ -1,39 +1,5 @@
-import type { CanonicalLlmUsage } from '@linnlabs/linnkit/contracts';
-
-export type TextGenerationImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp';
-
-export type TextGenerationContentBlock =
-  | { readonly type: 'text'; readonly text: string }
-  | {
-      readonly type: 'image';
-      readonly mediaType: TextGenerationImageMediaType;
-      readonly bytes: Uint8Array;
-    };
-
-export type TextGenerationMessage =
-  | { readonly role: 'system'; readonly content: string }
-  | { readonly role: 'user'; readonly content: readonly TextGenerationContentBlock[] };
-
-export interface TextGenerationRequest {
-  readonly modelId: string;
-  readonly messages: readonly TextGenerationMessage[];
-  readonly temperature?: number;
-  readonly topP?: number;
-  readonly maxOutputTokens?: number;
-  readonly reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
-  readonly signal?: AbortSignal;
-}
-
-export type TextGenerationFinishReason = 'stop' | 'length' | 'content_filter';
-
-export interface TextGenerationResult {
-  readonly text: string;
-  readonly reasoning: string;
-  readonly finishReason: TextGenerationFinishReason;
-  readonly usage?: CanonicalLlmUsage;
-}
-
-export type TextGenerationFailureKind = 'aborted' | 'transport' | 'provider' | 'protocol';
+import type { TextGenerationFailureKind } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
+export type { TextGenerationImageMediaType, TextGenerationContentBlock, TextGenerationMessage, TextGenerationRequest, TextGenerationFinishReason, TextGenerationResult, TextGenerationFailureKind, TextGenerationPort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
 
 export class TextGenerationFailure extends Error {
   constructor(
@@ -45,8 +11,4 @@ export class TextGenerationFailure extends Error {
     super(message);
     this.name = 'TextGenerationFailure';
   }
-}
-
-export interface TextGenerationPort {
-  generate(request: TextGenerationRequest): Promise<TextGenerationResult>;
 }

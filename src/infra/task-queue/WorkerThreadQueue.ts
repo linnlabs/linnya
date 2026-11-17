@@ -10,6 +10,8 @@
  * 副作用 (Side-effects): 创建/终止 worker 线程，并把通用生命周期通知给显式注入的 observer
  */
 
+import type { WorkerHostRequestHandler } from '@linnya/plugin-host-contract/backend/workerRequests';
+import { createWorkerHostRequestSession } from './orchestration/createWorkerHostRequestSession';
 import { Worker } from 'worker_threads';
 import { EventEmitter } from 'events';
 import { calculateOptimalConcurrency } from './concurrency';
@@ -76,6 +78,8 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
   private readonly runtimePathRoots?: RuntimePathRoots;
   private readonly distributionIdentity?: DistributionIdentity;
   private shuttingDown = false;
+  private readonly hostRequestHandler?: (job: Readonly<WorkerJob<TPayload>>) => WorkerHostRequestHandler;
+  private readonly hostRequestSessions = new Map<Worker, ReturnType<typeof createWorkerHostRequestSession>>();
 
   constructor(options: {
     maxConcurrency?: number;
@@ -83,6 +87,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
     lifecycleObserver?: WorkerJobLifecycleObserver<TPayload>;
     runtimePathRoots?: RuntimePathRoots;
     distributionIdentity?: DistributionIdentity;
+    hostRequestHandler?: (job: Readonly<WorkerJob<TPayload>>) => WorkerHostRequestHandler;
   }) {
     super();
     // 注意：maxConcurrency=0 在语义上表示“暂停队列，不自动启动任何任务”
@@ -92,6 +97,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
     this.lifecycleObserver = options.lifecycleObserver;
     this.runtimePathRoots = options.runtimePathRoots;
     this.distributionIdentity = options.distributionIdentity;
+    this.hostRequestHandler = options.hostRequestHandler;
 
     // 🔍 初始化诊断日志
     console.log(`[WorkerQueue] 初始化: maxConcurrency=${this.maxConcurrency}, workerScript=${this.workerScript}`);
@@ -172,8 +178,17 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
       this.workers.push(worker);
       this.workerJobMap.set(job.id, worker);
 
+      const requestSession = this.hostRequestHandler
+        ? createWorkerHostRequestSession(this.hostRequestHandler(job), message => worker.postMessage(message))
+        : undefined;
+      if (requestSession) this.hostRequestSessions.set(worker, requestSession);
       worker.on('message', (message: unknown) => {
-        this.handleWorkerMessage(job.id, message);
+        try {
+          if (requestSession?.handle(message)) return;
+          this.handleWorkerMessage(job.id, message);
+        } catch (error) {
+          this.handleJobFailure(job.id, error instanceof Error ? error.message : String(error));
+        }
       });
 
       worker.on('error', (error: Error) => {
@@ -182,6 +197,9 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
       });
 
       worker.on('exit', (code: number) => {
+        if (requestSession) {
+          void requestSession.stop().finally(() => this.hostRequestSessions.delete(worker));
+        }
         this.cleanupWorker(worker);
         this.workerJobMap.delete(job.id);
         this.clearForcedTerminationTimer(job.id);
@@ -303,6 +321,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
 
   private terminateFinishedWorker(worker: Worker): void {
     // terminate() resolve 前仍保留在 workers registry；否则 App shutdown 会误判线程已归零。
+    this.hostRequestSessions.get(worker)?.abort();
     void worker.terminate()
       .catch(error => console.warn('[WorkerQueue] 终止已完成 Worker 失败:', error))
       .finally(() => {
@@ -410,13 +429,15 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
     console.log('[WorkerQueue] 正在关闭任务队列...');
     this.shuttingDown = true;
 
+    const hostRequests = [...this.hostRequestSessions.values()].map(session => session.stop());
     const terminatePromises = this.workers.map(worker => 
       worker.terminate().catch(err => 
         console.warn('[WorkerQueue] 终止Worker失败:', err)
       )
     );
 
-    await Promise.all(terminatePromises);
+    await Promise.all([...terminatePromises, ...hostRequests]);
+    this.hostRequestSessions.clear();
 
     for (const timer of this.forcedTerminationTimers.values()) {
       clearTimeout(timer);
@@ -457,6 +478,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
     if (job.state === WorkerJobState.RUNNING) {
       const worker = this.workerJobMap.get(taskId);
       if (worker) {
+        this.hostRequestSessions.get(worker)?.abort();
         worker.postMessage({ cmd: 'cancel' });
 
         this.clearForcedTerminationTimer(taskId);
