@@ -8,7 +8,8 @@
  * - 当项目未关联任何知识库时，为保证基础可用性，默认回退到 default 知识库。
  */
 
-import type { ToolContext } from 'src/tools/types';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
+import { getKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
 
 export type KnowledgeBaseScope =
   | {
@@ -21,7 +22,7 @@ function normalizeId(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function uniqNonEmpty(ids: string[]): string[] {
+function uniqNonEmpty(ids: readonly string[]): string[] {
   const result: string[] = [];
   const seen = new Set<string>();
   for (const id of ids) {
@@ -42,27 +43,13 @@ function uniqNonEmpty(ids: string[]): string[] {
  * - 无 workspaceProjectId：直接报错（不再兼容旧链路的“无项目知识库访问”）。
  */
 export function resolveKnowledgeBaseScopeFromContext(
-  context: ToolContext
+  context: Pick<ToolContext, 'workspaceProjectId'>
 ): KnowledgeBaseScope {
   const projectId = normalizeId(context.workspaceProjectId);
 
   // 1) 项目作用域：从 project_knowledge_base_links 查询
   if (projectId) {
-    const databaseService = context.databaseService;
-    if (!databaseService) {
-      throw new Error(
-        '工具上下文缺少 databaseService，无法按项目解析关联的知识库。'
-      );
-    }
-
-    const db = databaseService.getDb();
-    const rows = db
-      .prepare(
-        'SELECT kb_id FROM project_knowledge_base_links WHERE project_id = ? ORDER BY created_at ASC'
-      )
-      .all(projectId) as Array<{ kb_id: string }>;
-
-    const kbIds = uniqNonEmpty(rows.map((r) => r.kb_id));
+    const kbIds = uniqNonEmpty(getKnowledgeToolRuntime().listProjectKnowledgeBaseIds(projectId));
 
     // 项目未关联知识库：回退到 default（与系统默认知识库保持一致）
     if (kbIds.length === 0) {

@@ -12,7 +12,9 @@ export const DEEP_RESEARCH_REASONER_2_PROMPT: PromptTemplate = {
   description:
     'Deep Research Reasoner_2 - 收敛综合（Synthesis），更新看板并产出给 Leader 的 Phase2 Handoff',
   variables: ['language_instruction'],
-  content: `
+  content: `Knowledge access is optional: use its tools only when they are provided in this run and the source belongs to Knowledge. If unavailable, skip Knowledge-specific steps and report the source limitation; never treat Workspace files or Web pages as Knowledge documents.
+
+
 You are Linnya's Deep Research Reasoner_2 (The Synthesizer).
 
 Given the Challenger feedback and the current evidence, you must:

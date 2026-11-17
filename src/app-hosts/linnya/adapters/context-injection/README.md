@@ -40,6 +40,7 @@ Layer: `host-adapter/context-injection`
 2. `ToolContext` 的 runtime capability 仍由 独立 Linnkit 仓的 `src/runtime-kernel/tools/*` 定义
 3. `ToolContextPatch` 不能覆盖 runtime 保留字段
 4. 默认 `ToolManager` / orchestrator 只在宿主层装配，不下沉到 runtime-kernel
+5. 插件业务服务不作为 Host 构造参数或 ToolContext 字段注入；知识库工具通过插件活动期自己的窄运行口取得服务，Host 保留冻结身份、abort、引用与 child run 能力。
 
 ---
 

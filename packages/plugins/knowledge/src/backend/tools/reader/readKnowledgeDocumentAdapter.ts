@@ -1,5 +1,6 @@
+import { getKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
 import type { KnowledgeReadArgs } from '@app/schemas';
-import type { ToolContext } from 'src/tools/types';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
 import type { KnowledgeDocumentReadResult } from '../../document-read/definitions/knowledgeDocumentRead';
 import { readKnowledgeDocumentByChunks } from '../../document-read/orchestration/readKnowledgeDocumentByChunks';
 import {
@@ -9,16 +10,13 @@ import {
 import {
   requireCitationRefAllocator,
   requireCitationSequenceOffset,
-} from 'src/domains/citation';
+} from '@plugin/backend/citationSourceRuntime';
 
 export async function readKnowledgeDocumentForTool(
   args: KnowledgeReadArgs,
   context: ToolContext
 ): Promise<KnowledgeDocumentReadResult> {
-  const knowledgeBaseService = context.knowledgeBaseService;
-  if (!knowledgeBaseService) {
-    throw new Error('Knowledge base service not available in context');
-  }
+  const knowledgeBaseService = getKnowledgeToolRuntime().service;
   try {
     const scope = resolveKnowledgeBaseScopeFromContext(context);
     return await readKnowledgeDocumentByChunks(

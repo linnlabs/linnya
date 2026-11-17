@@ -24,7 +24,7 @@
     - 档位由业务/编排层决定，并通过 `ToolContext` 注入：
       - 默认策略：`deepSearchDepth=0 -> light`，`deepSearchDepth>=1 -> full`
       - 业务如需关闭图谱增强：注入 `graphMode='off'`
-    - 代码落点：`src/tools/knowledgebase/search/graphPolicy.ts`
+    - 代码落点：`packages/plugins/knowledge/src/backend/tools/search/graphPolicy.ts`
 
 - **`search_in_knowledgebase`**（`search/SearchInKnowledgeBaseTool.ts`）
   - **职责**：对单个知识库执行“浅搜索”（不包含 deep_search 参数，避免递归）。
@@ -34,7 +34,7 @@
   - **职责**：按 chunk/段落范围阅读已知 Knowledge 文档（docx/txt 等），并输出稳定 `block_id` 的引用锚点。
   - **约束**：读取范围会按 mode（full/glance）做上限裁剪，避免一次读取撑爆上下文。
   - **引用捕获**：返回前校验 chunk、owner citation、`doc_id/block_id` 与 AI 可见 canonical header 同位；full/glance 分别保存本次实际返回的正文/预览。Evidence 写入失败会使读取明确失败，bundle 身份不进入 Agent 结果。
-  - **实现边界**：业务流程位于 `features/knowledge-base/document-read`；facade 只做 admission 与序列化。旧 `resource_read(kb://...)` adapter 已退出 live runtime，仅由 Renderer 回放历史 wrapper。
+  - **实现边界**：业务流程位于 `packages/plugins/knowledge/src/backend/document-read`；facade 只做 admission 与序列化。旧 `resource_read(kb://...)` adapter 已退出 live runtime，仅由 Renderer 回放历史 wrapper。
   - **历史边界**：旧 `browse_document_by_chunk` 不再注册为可执行工具，只由 Renderer projector 接纳已持久化事件。
 
 - **`list_knowledge_base`**（`reader/ListKnowledgeBaseTool.ts`）
@@ -68,8 +68,8 @@ Knowledge/Web producer 在返回成功前自动保存 Agent 实际看到的来�
 
 Knowledge 产生者不复用 Evidence persistence DTO：`definitions/knowledgeEvidenceCapture.ts`
 拥有 camelCase capture 合同，搜索/阅读 builder 只依赖该合同。
-`evidence/knowledgeEvidenceBundleAdapter.ts` 是唯一的 Knowledge → Evidence 字段映射与 ToolContext scope
-边界；Knowledge feature 和其他工具文件禁止 import Evidence domain/adapter。
+`evidence/knowledgeEvidenceBundleAdapter.ts` 通过 `@plugin/backend/citationSourceRuntime` 提交 capture。
+Host SDK 复用 Evidence owner 的字段映射、冻结的 ToolContext scope 与受管路径；插件不能取得 bundle 路径、数据库或改写 Conversation 身份，禁止 import Evidence domain/adapter。
 
 ---
 
@@ -78,7 +78,7 @@ Knowledge 产生者不复用 Evidence persistence DTO：`definitions/knowledgeEv
 ### 3.1 `[@ref]` 是统一证据引用标记，KnowledgeBase 负责其中的 KB 适配器
 
 - 来源锚点：Knowledge owner 提交 canonical `docId + blockId`，不提交自造 seed 或候选 ref。
-- 分配入口：`src/domains/citation` 的 `CitationRefAllocatorPort`；Host 在 producer 执行前按当前 Conversation
+- 分配入口：`@plugin/backend/citationSourceRuntime` 的 `CitationRefAllocatorPort`；Host 在 producer 执行前按当前 Conversation
   绑定原子 allocator。
 - 设计目标：
   - **短**：固定 6 位
@@ -93,7 +93,7 @@ Knowledge 产生者不复用 Evidence persistence DTO：`definitions/knowledgeEv
 
 ### 3.2 observation 必须与 canonical citations 一致
 
-浅搜索的 observation 由 `features/knowledge-base/utils/searchUtils.ts` 的 formatter 生成，核心结构是：
+浅搜索的 observation 由 `packages/plugins/knowledge/src/backend/utils/searchUtils.ts` 的 formatter 生成，核心结构是：
 
 - `Result N [@ref]: Document 'xxx' | Page: ...`
 - `├─ Hit: "..."`（命中文本）
@@ -111,7 +111,7 @@ Knowledge 产生者不复用 Evidence persistence DTO：`definitions/knowledgeEv
 shallow、deep 与 `knowledge_read` 共享同一个 Knowledge 来源安全合同：canonical ref 和稳定锚点在动态边界
 外，文档标题、命中摘要、上下文预览、图谱来源文本与原文 chunk 在边界内。来源正文里看似
 `[@XXXXXX]` 的文本只是数据；只有 owner header 中的 ref 才能被 Agent 引用。动态 BEGIN/END 格式由
-`src/shared/ai-observation` 的稳定原语生成，各 formatter 不得自行复制边界字符串。
+`@plugin/backend/toolRuntime` 重导出的原有稳定原语生成，各 formatter 不得自行复制边界字符串。
 
 ---
 
@@ -141,8 +141,6 @@ deep_search 的目标：让子 Agent 做“检索 + 阅读 + 智能筛选”，�
 - `search/deep/buildGraphDigest.ts`：构建图谱摘要（给上层 AI 解释用，不透出 full graph）
 - `search/format/formatObservation.ts`：Deep Search Reading View formatter
 
-拆分计划与后续步骤见：`src/tools/knowledgebase/search/SPLIT_PLAN.md`
-
 > 重要说明（避免误解）：
 > - `SearchInKnowledgeBaseTool.ts` 中原先那段“一百多行浅搜索实现”没有丢功能；
 > - 已收敛为复用 `runShallowSearch.ts`（两份工具共享同一份浅搜索执行器），以防工具文件膨胀与逻辑漂移。
@@ -158,7 +156,12 @@ deep_search 的目标：让子 Agent 做“检索 + 阅读 + 智能筛选”，�
 
 ---
 
-## 7. Scope 与安全边界（项目对话）
+## 7. 插件运行与 Scope 边界（项目对话）
+
+- `tools/index.ts` 只贡献工具清单；`agents/index.ts` 贡献深搜 Agent，图谱提取 prompt 同属插件。Host 不再静态注册这些实现。
+- 激活时注册 `runtime/knowledgeToolRuntime.ts` 的 service、当前项目关联读取口与活动任务计数；每个公开工具入场后持有租约，成功、失败与取消均释放。停用后的旧工具实例不得再调用服务。
+- ToolContext 只提供 Host 已冻结的项目、Conversation、run、abort 与引用能力，不再注入完整知识库服务或用于读取项目关联的数据库。
+- 深搜通过公共 runner 调用真实 child invoker，保留 subrun、parentToolCallId、审计 source、judgeToolOutput 与取消传播。插件撤销只阻止新执行，不删除 Host 持久化的子运行与引用证据。
 
 - **项目知识库 scope**：通过 `resolveKnowledgeBaseScopeFromContext(context)` 解析当前会话允许访问的 kbId 集合。
 - **跨项目禁止**：`assertDocumentKbAllowedInScope` 强制校验 doc/kb 是否在 scope 内，避免越权读取。
@@ -168,24 +171,24 @@ deep_search 的目标：让子 Agent 做“检索 + 阅读 + 智能筛选”，�
 ## 8. 源码索引（按职责分组）
 
 - **搜索：**
-  - `src/tools/knowledgebase/search/KnowledgeSearchTool.ts`
-  - `src/tools/knowledgebase/search/SearchInKnowledgeBaseTool.ts`
-  - `src/tools/knowledgebase/search/types.ts`
-  - `src/tools/knowledgebase/search/graphPolicy.ts`
-  - `src/tools/knowledgebase/search/shallow/runShallowSearch.ts`
-  - `src/tools/knowledgebase/search/deep/runDeepSearch.ts`
-  - `src/tools/knowledgebase/search/deep/parseAssembleToolOutput.ts`
-  - `src/tools/knowledgebase/search/deep/taskMessageBuilder.ts`
-  - `src/tools/knowledgebase/search/format/formatObservation.ts`
+  - `packages/plugins/knowledge/src/backend/tools/search/KnowledgeSearchTool.ts`
+  - `packages/plugins/knowledge/src/backend/tools/search/SearchInKnowledgeBaseTool.ts`
+  - `packages/plugins/knowledge/src/backend/tools/search/types.ts`
+  - `packages/plugins/knowledge/src/backend/tools/search/graphPolicy.ts`
+  - `packages/plugins/knowledge/src/backend/tools/search/shallow/runShallowSearch.ts`
+  - `packages/plugins/knowledge/src/backend/tools/search/deep/runDeepSearch.ts`
+  - `packages/plugins/knowledge/src/backend/tools/search/deep/parseAssembleToolOutput.ts`
+  - `packages/plugins/knowledge/src/backend/tools/search/deep/taskMessageBuilder.ts`
+  - `packages/plugins/knowledge/src/backend/tools/search/format/formatObservation.ts`
 - **阅读：**
-  - `src/features/knowledge-base/document-read/definitions/knowledgeDocumentRead.ts`
-  - `src/features/knowledge-base/document-read/functions/buildKnowledgeDocumentReadResult.ts`
-  - `src/features/knowledge-base/document-read/orchestration/readKnowledgeDocumentByChunks.ts`
-  - `src/tools/knowledgebase/reader/readKnowledgeDocumentAdapter.ts`
-  - `src/tools/knowledgebase/reader/KnowledgeReadTool.ts`
-  - `src/tools/knowledgebase/reader/ListKnowledgeBaseTool.ts`
+  - `packages/plugins/knowledge/src/backend/document-read/definitions/knowledgeDocumentRead.ts`
+  - `packages/plugins/knowledge/src/backend/document-read/functions/buildKnowledgeDocumentReadResult.ts`
+  - `packages/plugins/knowledge/src/backend/document-read/orchestration/readKnowledgeDocumentByChunks.ts`
+  - `packages/plugins/knowledge/src/backend/tools/reader/readKnowledgeDocumentAdapter.ts`
+  - `packages/plugins/knowledge/src/backend/tools/reader/KnowledgeReadTool.ts`
+  - `packages/plugins/knowledge/src/backend/tools/reader/ListKnowledgeBaseTool.ts`
 - **结果组装：**
-  - `src/tools/knowledgebase/assemble/AssembleDocumentsTool.ts`
+  - `packages/plugins/knowledge/src/backend/tools/assemble/AssembleDocumentsTool.ts`
   - `packages/schemas/src/tools/assemble-documents.ts`
 - **历史回放：**
   - `packages/schemas/src/tools/historical-assemble-evidence.ts`
@@ -194,15 +197,15 @@ deep_search 的目标：让子 Agent 做“检索 + 阅读 + 智能筛选”，�
   - `src/domains/citation/features/reference/`（候选规则、批量 allocator 与 ToolContext admission）
   - `src/domains/citation/shared/definitions/citationSourceAnchor.ts`（Knowledge/Web 稳定来源锚点）
 - **证据：**
-  - `src/tools/knowledgebase/definitions/knowledgeEvidenceCapture.ts`（Knowledge owner-owned capture DTO）
-  - `src/tools/knowledgebase/evidence/knowledgeEvidenceBundleAdapter.ts`（唯一 Knowledge → Evidence command adapter）
-  - `src/tools/knowledgebase/evidence/knowledgeEvidenceBoundary.test.ts`（跨 domain 依赖方向门禁）
+  - `packages/plugins/knowledge/src/backend/tools/definitions/knowledgeEvidenceCapture.ts`（Knowledge owner-owned capture DTO）
+  - `packages/plugins/knowledge/src/backend/tools/evidence/knowledgeEvidenceBundleAdapter.ts`（唯一 Knowledge → Evidence command adapter）
+  - `packages/plugins/knowledge/src/backend/tools/evidence/knowledgeEvidenceBoundary.test.ts`（跨 domain 依赖方向门禁）
   - `src/domains/evidence/index.ts`（跨 Knowledge/Web 的 Evidence 公开合同）
   - `src/tools/evidence/evidenceBundleToolContextAdapter.ts`
   - `src/tools/evidence/EvidenceResolveTool.ts`
   - `src/app-hosts/linnya/adapters/tools/citation-source-resolution/`（从正式 owner event 与 Evidence fallback 解析已接纳来源）
   - `packages/schemas/src/tools/evidence-resolve.ts`
 - **scope：**
-  - `src/tools/knowledgebase/scope/projectKnowledgeBaseScope.ts`
+  - `packages/plugins/knowledge/src/backend/tools/scope/projectKnowledgeBaseScope.ts`
 - **统一 formatter：**
-  - `src/features/knowledge-base/utils/searchUtils.ts`（`formatSearchResultsForLLM*`）
+  - `packages/plugins/knowledge/src/backend/utils/searchUtils.ts`（`formatSearchResultsForLLM*`）

@@ -1,6 +1,5 @@
-import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/tools/knowledgebase/reader/ListKnowledgeBaseTool.ts
+ * @file packages/plugins/knowledge/src/backend/tools/reader/ListKnowledgeBaseTool.ts
  *
  * @brief 列出当前项目可访问的知识库及其文档的工具
  *
@@ -11,7 +10,10 @@ import { isObjectLike } from '@linnya/foundation';
  * 这是探索知识库的起点。
  */
 
-import { BaseTool, ToolParameterSchema, ToolContext } from 'src/tools/types';
+import { getKnowledgeToolRuntime, runWithKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
+import { isObjectLike } from '@linnya/foundation';
+
+import { BaseTool, ToolParameterSchema, ToolContext } from '@plugin/backend/toolRuntime';
 import {
   ListKnowledgeBaseArgsSchema,
   ListKnowledgeBaseResultSchema,
@@ -54,9 +56,7 @@ function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string');
-}
+
 
 function isDocumentSummary(value: unknown): value is DocumentSummary {
   if (!isObjectLike(value)) return false;
@@ -143,12 +143,13 @@ export class ListKnowledgeBaseTool extends BaseTool {
   }
 
   async run(_args: Record<string, unknown>, context: ToolContext): Promise<string> {
-    const args = ListKnowledgeBaseArgsSchema.parse(_args);
-    const { knowledgeBaseService } = context;
+    return runWithKnowledgeToolRuntime(() => this.runAdmitted(_args, context));
+  }
 
-    if (!knowledgeBaseService) {
-      throw new Error('Knowledge base service not available in context');
-    }
+  private async runAdmitted(_args: Record<string, unknown>, context: ToolContext): Promise<string> {
+    const args = ListKnowledgeBaseArgsSchema.parse(_args);
+    const { service: knowledgeBaseService } = getKnowledgeToolRuntime();
+
 
     try {
       // 项目对话：默认限定到“当前项目关联的知识库”；非项目对话：回退到单一知识库

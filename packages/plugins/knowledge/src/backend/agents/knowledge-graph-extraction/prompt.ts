@@ -1,5 +1,5 @@
 /**
- * @file src/app-hosts/linnya/agent-registry/internals/knowledge_graph_extraction/prompt.ts
+ * @file packages/plugins/knowledge/src/backend/agents/knowledge-graph-extraction/prompt.ts
  *
  * @description
  * 软知识图谱（Soft Knowledge Graph）抽取提示词（System Prompt + Message Builder）。

@@ -1,4 +1,4 @@
-import type { ToolContext } from 'src/tools/types';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
 
 export function readDeepSearchRuntimeDepth(context: ToolContext): number {
   if (typeof context.childRunDepth === 'number' && Number.isFinite(context.childRunDepth)) {

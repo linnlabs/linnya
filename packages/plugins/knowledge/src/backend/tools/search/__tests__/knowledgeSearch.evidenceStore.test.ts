@@ -1,3 +1,4 @@
+import { registerKnowledgeToolRuntime } from '../../runtime/knowledgeToolRuntime';
 import { describe, expect, it, vi } from 'vitest';
 import os from 'os';
 import path from 'path';
@@ -138,6 +139,7 @@ describe('knowledge_search: deep_search canonical result', () => {
   it('deep_search 应直接返回完整结果结构，而不是退化成 bundle 指针', async () => {
     const tmpRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'temp_search_evidence_'));
     setWorkspaceRoot(tmpRoot);
+    const unregister = registerKnowledgeToolRuntime({ service: new MockKnowledgeBaseService(), listProjectKnowledgeBaseIds: () => [], enterTool: () => () => {} });
 
     try {
       const tool = new KnowledgeSearchTool();
@@ -147,7 +149,6 @@ describe('knowledge_search: deep_search canonical result', () => {
         turnId: 'turn_test',
         parentToolCallId: ToolCallIdSchema.parse('call_1'),
         // deep_search 会读取 knowledgeBaseService 来保证工具链完整，这里注入一个最小 stub
-        knowledgeBaseService: new MockKnowledgeBaseService(),
         createSubRunTracePublisher: (): SubRunTracePublisher => {
           return {
             publish: () => {},
@@ -165,6 +166,7 @@ describe('knowledge_search: deep_search canonical result', () => {
       // ✅ deep_search 不应指针化：不应包含 citation_snapshot_bundle_id
       expect('citation_snapshot_bundle_id' in parsed.data).toBe(false);
     } finally {
+      unregister();
       resetWorkspaceRootToDefault();
       await fsp.rm(tmpRoot, { recursive: true, force: true });
     }

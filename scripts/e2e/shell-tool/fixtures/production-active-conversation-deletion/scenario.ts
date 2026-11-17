@@ -20,7 +20,6 @@ import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import { LlmCaller } from '@linnlabs/linnkit/runtime-kernel';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 
-import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { HistoryRepository } from '../../../../../src/features/conversation/history/history.repository';
 import { HistoryService } from '../../../../../src/features/conversation/history/history.service';
 import { createHistoryRouter } from '../../../../../src/features/conversation/history/history.router';
@@ -82,41 +81,6 @@ const OTHER_CONVERSATION_ID = 'conversation-active-deletion-other-e2e';
 const TURN_ID = 'turn-active-deletion-e2e';
 const MODEL_ID = 'deterministic-active-deletion-model';
 
-function unavailableKnowledgeBaseOperation<T>(): Promise<T> {
-  return Promise.reject(new Error('knowledge-base capability is outside deletion E2E'));
-}
-
-const unavailableKnowledgeBase: KnowledgeBaseService = {
-  hasActiveTasks: () => false,
-  stopTasks: async () => undefined,
-  rebuildIndex: () => unavailableKnowledgeBaseOperation(),
-  getIndexRebuildStatus: () => null,
-  createKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  getAllKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
-  getOrCreateDefaultKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  addDocument: () => unavailableKnowledgeBaseOperation(),
-  getDocumentsInKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  getDocumentById: () => unavailableKnowledgeBaseOperation(),
-  getTasksStatus: () => unavailableKnowledgeBaseOperation(),
-  cancelTask: () => unavailableKnowledgeBaseOperation(),
-  pauseTask: () => unavailableKnowledgeBaseOperation(),
-  resumeTask: () => unavailableKnowledgeBaseOperation(),
-  deleteDocument: () => unavailableKnowledgeBaseOperation(),
-  continueFailedPdfPages: () => unavailableKnowledgeBaseOperation(),
-  deleteKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  updateKnowledgeBaseSettings: () => unavailableKnowledgeBaseOperation(),
-  search: () => unavailableKnowledgeBaseOperation(),
-  searchKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  searchInDocument: () => unavailableKnowledgeBaseOperation(),
-  searchRawResults: () => unavailableKnowledgeBaseOperation(),
-  searchForAgent: () => unavailableKnowledgeBaseOperation(),
-  searchForAgentAcrossKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
-  getGraphAugmentationsForEvidenceBlocks: () => unavailableKnowledgeBaseOperation(),
-  getRawSoTDocument: () => unavailableKnowledgeBaseOperation(),
-  getSoTDocumentForAgent: () => unavailableKnowledgeBaseOperation(),
-  getSoTTableForAgent: () => unavailableKnowledgeBaseOperation(),
-  getDocumentContent: () => unavailableKnowledgeBaseOperation(),
-};
 
 function userInput(conversationId: string, turnId: string): RuntimeEvent {
   return {
@@ -292,7 +256,7 @@ export async function runProductionActiveConversationDeletionScenario(input: {
       readSubrunTrace(db, conversationId, parentToolCallId, subrunId, options)
     ),
   });
-  const runner = new AgentRunnerService(executor, unavailableKnowledgeBase, databaseService, {
+  const runner = new AgentRunnerService(executor, databaseService, {
     recovery,
     // 场景没有 Renderer，Workspace 展示通知显式不连接 UI。
     workspaceMutationPublisher: { publish: () => undefined },

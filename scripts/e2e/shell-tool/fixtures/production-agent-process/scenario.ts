@@ -9,7 +9,6 @@ import { ConversationToolMessagePayloadSchema } from '@app/schemas';
 import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import { LlmCaller } from '@linnlabs/linnkit/runtime-kernel';
 
-import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { DatabaseService } from '../../../../../src/electron-main/services/database';
 import { bootstrapAgentRuntimeSingletons } from '../../../../../src/electron-main/services/agentRuntimeSingletons';
 import { createEventStoreCommandExecutionAuditPort } from '../../../../../src/app-hosts/linnya/adapters/persistence/command-execution-audit';
@@ -65,41 +64,6 @@ const CONVERSATION_ID = 'conversation-agent-process-e2e';
 const TURN_ID = 'turn-agent-process-e2e';
 const MODEL_ID = 'deterministic-agent-process-model';
 
-function unavailableKnowledgeBaseOperation<T>(): Promise<T> {
-  return Promise.reject(new Error('knowledge-base capability is outside this process E2E scenario'));
-}
-
-const unavailableKnowledgeBase: KnowledgeBaseService = {
-  hasActiveTasks: () => false,
-  stopTasks: async () => undefined,
-  rebuildIndex: () => unavailableKnowledgeBaseOperation(),
-  getIndexRebuildStatus: () => null,
-  createKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  getAllKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
-  getOrCreateDefaultKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  addDocument: () => unavailableKnowledgeBaseOperation(),
-  getDocumentsInKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  getDocumentById: () => unavailableKnowledgeBaseOperation(),
-  getTasksStatus: () => unavailableKnowledgeBaseOperation(),
-  cancelTask: () => unavailableKnowledgeBaseOperation(),
-  pauseTask: () => unavailableKnowledgeBaseOperation(),
-  resumeTask: () => unavailableKnowledgeBaseOperation(),
-  deleteDocument: () => unavailableKnowledgeBaseOperation(),
-  continueFailedPdfPages: () => unavailableKnowledgeBaseOperation(),
-  deleteKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  updateKnowledgeBaseSettings: () => unavailableKnowledgeBaseOperation(),
-  search: () => unavailableKnowledgeBaseOperation(),
-  searchKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  searchInDocument: () => unavailableKnowledgeBaseOperation(),
-  searchRawResults: () => unavailableKnowledgeBaseOperation(),
-  searchForAgent: () => unavailableKnowledgeBaseOperation(),
-  searchForAgentAcrossKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
-  getGraphAugmentationsForEvidenceBlocks: () => unavailableKnowledgeBaseOperation(),
-  getRawSoTDocument: () => unavailableKnowledgeBaseOperation(),
-  getSoTDocumentForAgent: () => unavailableKnowledgeBaseOperation(),
-  getSoTTableForAgent: () => unavailableKnowledgeBaseOperation(),
-  getDocumentContent: () => unavailableKnowledgeBaseOperation(),
-};
 
 async function listFilesRecursively(root: string): Promise<string[]> {
   const files: string[] = [];
@@ -245,7 +209,7 @@ export async function runProductionAgentProcessScenario(input: {
       readSubrunTrace(db, conversationId, parentToolCallId, subrunId, options)
     ),
   });
-  const runner = new AgentRunnerService(executor, unavailableKnowledgeBase, databaseService, {
+  const runner = new AgentRunnerService(executor, databaseService, {
     recovery,
     // 场景没有 Renderer，Workspace 展示通知显式不连接 UI。
     workspaceMutationPublisher: { publish: () => undefined },

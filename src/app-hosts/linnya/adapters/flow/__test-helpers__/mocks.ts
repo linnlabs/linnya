@@ -6,7 +6,6 @@
 import { vi } from 'vitest';
 import type { runtimeKernel } from '@linnlabs/linnkit';
 import type { IEventStore } from 'src/app-hosts/linnya/adapters/persistence/event-store/event-store.interface';
-import type { KnowledgeBaseService } from 'src/features/knowledge-base/application/knowledgeBaseService';
 import type { IncrementalEvent } from '@app/schemas';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { RuntimeEvent as RuntimeEventSchema } from '@linnlabs/linnkit/contracts';
@@ -97,16 +96,6 @@ export function createMockEventStore() {
     ensureConversation: vi.fn().mockResolvedValue(undefined) as any,
     getLatestEvents: vi.fn().mockResolvedValue([]) as any,
   } as any as IEventStore;
-}
-
-/**
- * 创建 Mock KnowledgeBaseService
- */
-export function createMockKnowledgeBaseService() {
-  return {
-    search: vi.fn().mockResolvedValue([]) as any,
-    addDocument: vi.fn().mockResolvedValue({ success: true }) as any,
-  } as any as KnowledgeBaseService;
 }
 
 /**

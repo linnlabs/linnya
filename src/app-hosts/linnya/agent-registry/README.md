@@ -293,7 +293,6 @@ src/app-hosts/linnya/agent-registry/
 │   ├── index.ts
 │   ├── __tests__/
 │   ├── default/
-│   ├── deep_search/
 │   ├── deep_research/
 │   ├── slides_agent/
 │   ├── review/
@@ -313,13 +312,14 @@ src/app-hosts/linnya/agent-registry/
 ├── internals/
 │   ├── index.ts
 │   ├── ingestion/
-│   ├── transcription/
-│   └── knowledge_graph_extraction/
+│   └── transcription/
 ├── system/
 │   └── llm_fallback/
 └── utils/
     └── currentTime.ts
 ```
+
+知识库深搜 Agent 与图谱提取 prompt 由 `packages/plugins/knowledge/src/backend/agents` 拥有，随插件注册和撤销；本目录只提供通用 Agent registry 与运行合同。
 
 ### 目录职责
 

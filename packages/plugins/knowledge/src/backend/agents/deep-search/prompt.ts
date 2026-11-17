@@ -1,12 +1,13 @@
 /**
- * @file src/app-hosts/linnya/agent-registry/agents/deep_search/prompt.ts
+ * @file packages/plugins/knowledge/src/backend/agents/deep-search/prompt.ts
  * @description Deep Search 子 Agent 的 System Prompt
  *
  * Deep Search Agent 的职责：搜索 → 阅读 → LLM 判别 → 输出精选结果
  */
 
-import type { PromptTemplate } from '../../prompt.types';
-import { PromptKeys, PromptType } from '../../prompt.types';
+import type { PromptTemplate } from '@plugin/backend/agentRegistry';
+import { PromptType } from '@plugin/backend/agentRegistry';
+import { PromptKeys } from '@app/schemas';
 
 /**
  * Deep Search Agent Prompt Key

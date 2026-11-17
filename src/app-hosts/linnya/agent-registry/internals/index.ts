@@ -12,6 +12,5 @@
 
 // ⚠️ 显式指向 index：兼容 Node16/NodeNext 模块解析（避免目录导入无法解析）
 export * as ingestion from './ingestion/index';
-export * as knowledgeGraphExtraction from './knowledge_graph_extraction/index';
 export * as transcription from './transcription/index';
 

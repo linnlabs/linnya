@@ -15,7 +15,7 @@ Backend 的旧领域入口在迁移期只重导出这些合同，不能另写一
 ## 构建与运行边界
 
 身份和版本以 `plugin.json` 为唯一真源；代码的 builtin 标记不是应用表面授信依据，Host 只授信正式装配来源。
-本包需要同批实现公共 SDK 的 Host；manifest 的版本下限不能表示旧安装包已经具备新增接口。
+本包需要同批实现公共 SDK 的 Host；当前 manifest 的 `0.2.1` 下限仅供开发联验，不表示已发布的 0.2.1 安装包具备新增接口。正式发行前必须提高到实际包含这些 SDK 的 App 版本。
 `pnpm --dir packages/plugins/knowledge run typecheck` 使用 vue-tsc 同时检查 TS 与 Vue 模板。
 原 Renderer 的 JS 模块保留原语言与声明合同，不因迁移全面重写；TypeScript strict 规则保持不变。
 

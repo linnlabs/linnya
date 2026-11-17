@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/reader/index.ts
+ * @file packages/plugins/knowledge/src/backend/tools/reader/index.ts
  *
  * @brief 知识库阅读工具导出文件
  *

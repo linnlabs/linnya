@@ -1,9 +1,5 @@
-import {
-  KNOWLEDGE_GRAPH_EXTRACTION_MAX_ATTEMPTS,
-  KNOWLEDGE_GRAPH_DOCUMENT_MAX_RETRIES,
-} from 'src/features/knowledge-base/graph/definitions/extractionRetryPolicy';
 /**
- * @file src/app-hosts/linnya/agent-registry/internals/knowledge_graph_extraction/index.ts
+ * @file packages/plugins/knowledge/src/backend/agents/knowledge-graph-extraction/index.ts
  *
  * @description
  * 软知识图谱抽取（Soft Knowledge Graph Extraction）内部模块统一出口：
@@ -11,9 +7,14 @@ import {
  * - 模型策略（功能默认模型 + 重试次数）：在本文件集中管理
  */
 
-import type { AgentConfiguration } from '../../types';
-import { modelCatalog as defaultModelCatalog } from 'src/domains/model-catalog';
-import { PromptKeys } from '../../prompt.types';
+import {
+  KNOWLEDGE_GRAPH_EXTRACTION_MAX_ATTEMPTS,
+  KNOWLEDGE_GRAPH_DOCUMENT_MAX_RETRIES,
+} from '../../graph/definitions/extractionRetryPolicy';
+
+import type { AgentConfiguration } from '@plugin/backend/agentRegistry';
+import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfiguration';
+import { PromptKeys } from '@app/schemas';
 
 export {
   KNOWLEDGE_GRAPH_EXTRACTION_SYSTEM_PROMPT,
@@ -49,7 +50,7 @@ export type KnowledgeGraphExtractionModelPolicy = {
 export function getKnowledgeGraphExtractionModelPolicy(): KnowledgeGraphExtractionModelPolicy {
   return {
     primaryModelId:
-      defaultModelCatalog.getFunctionalDefaultModelId(PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION) ??
+      getPluginModelConfigurationPort().readAuxiliaryModelBinding(PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION) ??
       null,
     maxAttemptsPerModelWhenRetryEnabled: KNOWLEDGE_GRAPH_EXTRACTION_MAX_ATTEMPTS,
     maxDocAutoRetryAttempts: KNOWLEDGE_GRAPH_DOCUMENT_MAX_RETRIES,

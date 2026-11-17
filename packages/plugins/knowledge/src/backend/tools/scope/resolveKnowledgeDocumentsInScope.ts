@@ -1,4 +1,5 @@
-import type { ToolContext } from 'src/tools/types';
+import { getKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
 import type { Document } from '../../domain/document';
 import { assertDocumentKbAllowedInScope, resolveKnowledgeBaseScopeFromContext } from './projectKnowledgeBaseScope';
 
@@ -13,8 +14,7 @@ export async function resolveKnowledgeDocumentsInScope(
   const scope = resolveKnowledgeBaseScopeFromContext(context);
   const documents = new Map<string, Document>();
   for (const documentId of new Set(documentIds)) {
-    const service = context.knowledgeBaseService;
-    if (!service) throw new Error('Knowledge base service not available in context');
+    const service = getKnowledgeToolRuntime().service;
     const document = await service.getDocumentById(documentId);
     if (!document) throw new Error(`知识库文档不存在：doc_id="${documentId}"`);
     assertDocumentKbAllowedInScope(scope, document.kbId, documentId);

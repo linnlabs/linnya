@@ -26,8 +26,8 @@ export const TABLE_AI_FILL_PROMPT: PromptTemplate = {
 </workflow>
 
 <knowledge_base>
-All the reference documents have been structured and parsed into the knowledge base(知识库).
-If you need to use the knowledge base, your workflow should be:
+Reference material may belong to Knowledge, Workspace or Web; do not assume it has been imported into Knowledge. Use Knowledge tools only when provided in this run and the source belongs to Knowledge. If unavailable, report the source limitation in your result; do not fabricate Knowledge document IDs or source facts.
+If Knowledge is available and needed, your workflow should be:
 1. Analyze the user's intent.
 2. Plan specific search and reading steps.
 3. Conduct in-depth reading; if the article is too long, first quickly preview it, or use search methods to locate specific information. Never read the entire content of long articles completely, as this will consume a large amount of context.

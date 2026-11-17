@@ -9,7 +9,6 @@ import researchAuthorV1 from './research_author_v1';
 import researchInvestigationReviewV1 from './research_investigation_review_v1';
 import researchArgumentReviewV1 from './research_argument_review_v1';
 import researchSourceReviewV1 from './research_source_review_v1';
-import deepSearchAgent from './deep_search';
 import deepResearchLeaderAgent from './deep_research/leader';
 import deepResearchReasoner1Agent from './deep_research/reasoner_1';
 import deepResearchReasoner2Agent from './deep_research/reasoner_2';
@@ -33,7 +32,6 @@ import { singleTurnAgentDefinitions } from './single_turn';
 export const legacyBuiltinAgentDefinitions = [
   researchAgentV1,
   defaultAgent,
-  deepSearchAgent,
   deepWebSearchAgent,
   experimentalResearchAgent,
   investigationReviewAgent,

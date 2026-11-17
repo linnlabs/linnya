@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/deep/buildDeepSearchCitations.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/deep/buildDeepSearchCitations.ts
  * @description deep_search 专用 citations 构建器
  *
  * 设计目标：
@@ -8,12 +8,14 @@
  *   因为浅搜索只关心命中片段，而 deep_search 会展示更长、更连贯的阅读材料。
  */
 
+import { getKnowledgeToolRuntime } from '../../runtime/knowledgeToolRuntime';
+
 import type { KnowledgeSearchCitationMetadata, KnowledgeSearchCitation } from '@app/schemas';
-import type { ToolContext } from 'src/tools/types';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
 import type { DocumentSoT } from '../../../domain/block';
 import type { KnowledgeSearchDocument } from '../types';
-import type { CitationRefAllocatorPort } from 'src/domains/citation';
-import { createCitationSourceIdentity } from 'src/domains/citation';
+import type { CitationRefAllocatorPort } from '@plugin/backend/citationSourceRuntime';
+import { createCitationSourceIdentity } from '@plugin/backend/citationSourceRuntime';
 
 type KnowledgeSearchCitationDraft = Omit<KnowledgeSearchCitation, 'ref' | 'index'>;
 
@@ -80,16 +82,12 @@ export async function buildDeepSearchCitationMetadata(params: {
     searchMode,
     docName,
     citationOffset,
-    context,
     citationRefAllocator,
     contextExpansionRange,
     citationSnippetMaxChars = 240,
   } = params;
 
-  const service = context.knowledgeBaseService;
-  if (!service) {
-    throw new Error('[DeepSearchCitations] 缺少 context.knowledgeBaseService');
-  }
+  const service = getKnowledgeToolRuntime().service;
 
   // 1) 保持 doc 出现顺序（通常是相关度顺序）
   const docOrder: string[] = [];

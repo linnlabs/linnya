@@ -46,15 +46,6 @@ export interface PluginSqliteDatabasePort {
   transaction<T>(fn: () => T): PluginSqliteTransactionPort<T>;
 }
 
-export interface PluginKnowledgeBaseServicePort {
-  getRawSoTDocument(docId: string): Promise<PluginDocumentSoT | null | undefined>;
-  getDocumentById(docId: string): Promise<{ readonly filename?: string } | null | undefined>;
-}
-
-export interface PluginDocumentSoT {
-  readonly content_blocks?: Readonly<Record<string, { readonly text?: string }>>;
-}
-
 export interface PluginWorkspaceProjectMetadata {
   readonly id?: string;
   readonly name?: string;
@@ -66,7 +57,6 @@ export interface PluginToolContext extends ToolExecutionContext {
   readonly workspaceService?: PluginWorkspaceServicePort;
   readonly workspaceProjectId?: string;
   readonly workspaceProjectMetadata?: PluginWorkspaceProjectMetadata;
-  readonly knowledgeBaseService?: PluginKnowledgeBaseServicePort;
 }
 
 export type PluginBaseToolConstructor = new () => {

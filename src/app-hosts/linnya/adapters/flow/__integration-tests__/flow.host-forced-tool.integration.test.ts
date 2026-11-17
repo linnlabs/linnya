@@ -208,7 +208,6 @@ async function createHostToolFlow(tool: BaseTool, aiHarness: ScriptedInferenceHa
   const runtimePersistence = createFlowIntegrationRuntimePersistence(eventStore);
   const runner = new AgentRunnerService(
     engine,
-    { searchDocuments: vi.fn().mockResolvedValue([]) } as unknown as import('src/features/knowledge-base/application/knowledgeBaseService').KnowledgeBaseService,
     { getDb: vi.fn() } as unknown as import('src/electron-main/services/database').DatabaseService,
     createAgentRunnerRuntimeHarness({ costCollector: runtimePersistence.costCollector }),
   );

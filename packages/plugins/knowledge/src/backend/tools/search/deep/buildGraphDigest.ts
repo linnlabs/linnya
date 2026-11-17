@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/deep/buildGraphDigest.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/deep/buildGraphDigest.ts
  *
  * @description
  * 为 deep_search 的最终 selected blocks 构建“轻量级图谱摘要（graph_digest）”，回传给上层 AI。
@@ -10,7 +10,9 @@
  * - 只读反查：不改变检索召回/排序（根因一致）。
  */
 
-import type { ToolContext } from 'src/tools/types';
+import { getKnowledgeToolRuntime } from '../../runtime/knowledgeToolRuntime';
+
+import type { ToolContext } from '@plugin/backend/toolRuntime';
 import type { KnowledgeSearchDocument, KnowledgeGraphDigest } from '../types';
 import { sliceTextByUnitsZhEn } from '@app/schemas';
 
@@ -122,14 +124,11 @@ export async function buildGraphDigestForSelectedBlocks(params: {
   maxEntitiesPerBlock?: number;
   maxEdgesPerBlock?: number;
 }): Promise<KnowledgeGraphDigest> {
-  const { context, documents } = params;
+  const { documents } = params;
   const maxEntitiesPerBlock = toNonNegativeInt(params.maxEntitiesPerBlock ?? 5);
   const maxEdgesPerBlock = toNonNegativeInt(params.maxEdgesPerBlock ?? 5);
 
-  const service = context.knowledgeBaseService;
-  if (!service) {
-    throw new Error('[buildGraphDigestForSelectedBlocks] 缺少 context.knowledgeBaseService');
-  }
+  const service = getKnowledgeToolRuntime().service;
 
   // 1) doc_id -> kbId（避免重复查元数据）
   const docIdToKbId = new Map<string, string>();

@@ -1,7 +1,9 @@
 /**
- * @file src/tools/knowledgebase/reader/KnowledgeReadTool.ts
+ * @file packages/plugins/knowledge/src/backend/tools/reader/KnowledgeReadTool.ts
  * @description Knowledge 文档分块阅读的 canonical Tool facade。
  */
+
+import { runWithKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
 
 import { KnowledgeReadArgsSchema, KnowledgeReadResultSchema } from '@app/schemas';
 import {
@@ -9,7 +11,7 @@ import {
   CommonParameterTypes,
   type ToolContext,
   type ToolParameterSchema,
-} from 'src/tools/types';
+} from '@plugin/backend/toolRuntime';
 import { readKnowledgeDocumentForTool } from './readKnowledgeDocumentAdapter';
 import { captureKnowledgeReadEvidence } from './knowledgeReadEvidenceAdapter';
 
@@ -72,6 +74,10 @@ Each chunk is a stable logical content block from the document Source of Truth.
   }
 
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
+    return runWithKnowledgeToolRuntime(() => this.runAdmitted(args, context));
+  }
+
+  private async runAdmitted(args: Record<string, unknown>, context: ToolContext): Promise<string> {
     const validation = this.validateArguments(args);
     if (!validation.success) {
       throw new Error(validation.error);

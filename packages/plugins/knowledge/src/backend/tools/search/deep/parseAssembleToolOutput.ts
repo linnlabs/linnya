@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/deep/parseAssembleToolOutput.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/deep/parseAssembleToolOutput.ts
  * @description 解析 assemble_documents 的 tool_output 为搜索证据事实
  *
  * 注意：

@@ -24,8 +24,6 @@ export {
 export type {
   PluginBaseToolConstructor,
   PluginDatabaseServicePort,
-  PluginDocumentSoT,
-  PluginKnowledgeBaseServicePort,
   PluginSqliteDatabasePort,
   PluginSqliteStatementPort,
   PluginSqliteTransactionPort,
