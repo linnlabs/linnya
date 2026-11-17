@@ -1,10 +1,5 @@
-import type {
-  StatusUpdatePublisher,
-} from '../../../../features/knowledge-base/ingestion/definitions/statusUpdate';
-import type { KbGraphProgressPayload } from '../../../../features/knowledge-base/graph/application/graphProgressService';
 import type { TranscriptionProgressPublisher } from '../../../../features/transcription/definitions/transcriptionProgressPublisher';
 import type { WorkspaceMutationPublisher } from '../../../../features/workspace/definitions/workspaceMutationPublisher';
-import type { QueueJobPresentationPublisher } from '../../../../infra/task-queue/definitions/queueJobPresentationPublisher';
 import type { RendererPluginPushEnvelope } from '@linnya/plugin-host-contract/backend/pluginRendererPush';
 
 /**
@@ -13,9 +8,6 @@ import type { RendererPluginPushEnvelope } from '@linnya/plugin-host-contract/ba
  */
 export interface BackendRendererIntegrationPort {
   connectModelCatalogUpdates(): Promise<() => void>;
-  readonly publishIngestionStatus: StatusUpdatePublisher;
-  readonly queueJobPresentationPublisher: QueueJobPresentationPublisher;
-  publishKnowledgeGraphProgress(payload: KbGraphProgressPayload): void;
   readonly publishTranscriptionProgress: TranscriptionProgressPublisher;
   readonly publishWorkspaceMutation: WorkspaceMutationPublisher['publish'];
   publishPluginRendererPush(envelope: RendererPluginPushEnvelope): void;

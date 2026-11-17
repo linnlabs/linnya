@@ -70,6 +70,29 @@ describe('backend plugin runtime effects', () => {
     expect(calls[calls.length - 1]).toBe('new:stop');
   });
 
+  it('停用失败后重新启用同一 effect，先完成旧 owner 收尾再创建新实例', async () => {
+    const sequence: string[] = [];
+    let canStop = false;
+    const registration: BackendPluginRuntimeEffectRegistration = {
+      pluginId: 'demo', effect: {
+        id: 'effect',
+        activate() { sequence.push('start'); },
+        deactivate() {
+          sequence.push('stop');
+          if (!canStop) throw new Error('owned cleanup failed');
+          sequence.push('settled');
+        },
+      },
+    };
+    await syncBackendPluginRuntimeEffects([registration]);
+    await expect(syncBackendPluginRuntimeEffects([])).rejects.toThrow('owned cleanup failed');
+    canStop = true;
+    await syncBackendPluginRuntimeEffects([registration]);
+    expect(sequence).toEqual(['start', 'stop', 'stop', 'settled', 'start']);
+    await syncBackendPluginRuntimeEffects([registration]);
+    expect(sequence).toHaveLength(5);
+  });
+
   it('拒绝同一插件重复声明同一个 runtime effect id', async () => {
     const registrations: BackendPluginRuntimeEffectRegistration[] = [
       {

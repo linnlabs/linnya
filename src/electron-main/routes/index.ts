@@ -39,9 +39,9 @@ import { createProviderAccountRouter } from './providerAccountRouter';
 import { createTranscriptionRouter } from '@transcription/index';
 import { createStaticRouter } from './staticRouter';
 import { createHealthRouter, type ServiceStatus } from './healthRouter';
-import { createKnowledgeBaseRouter } from './knowledgeBaseRouter';
+import { createPluginMultipartUploadRouter } from './pluginMultipartUpload';
+import { getRegisteredBackendPluginUploadChannel } from '../../app-hosts/linnya/plugin-registry/builtin';
 import { createHistoricalCitationSnapshotRouter } from './historicalCitationSnapshotRouter';
-import type { KnowledgeBaseLookupPort } from 'src/features/knowledge-base/ingestion/functions/pdfOcrUploadPageLimit';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import { createProviderOutboundDebugRouter } from './providerOutboundDebugRouter';
 import ollamaRouter from './ollamaRouter';
@@ -145,7 +145,6 @@ import {
 } from '../../app-hosts/linnya/application/file-link';
 
 // 导入服务类型
-import { KnowledgeBaseService } from 'src/features/knowledge-base/index';
 import { TranscriptionService } from '@transcription/index';
 import { getLogger } from '../../shared/logger';
 import { getDatabaseService } from '../services/database';
@@ -246,7 +245,6 @@ export interface RouteDependencies {
   readonly projectDeletionRegistration: { register(deletion: ProjectDeletionUseCasePort): void };
   readonly agentToolEnvironment?: AgentToolEnvironment;
   readonly commandApprovalControl: CommandApprovalControlEndpointPort;
-  knowledgeBaseService?: KnowledgeBaseService;
   transcriptionService?: TranscriptionService;
   documentOcr: DocumentOcrPort;
   /** 本次启动停掉的能力；对应入口返回不可用和原因，其余路由照常挂载。 */
@@ -295,12 +293,6 @@ function formatRouteInitError(error: unknown): string {
   return 'unknown_error';
 }
 
-function isKnowledgeBaseLookupPort(
-  service: KnowledgeBaseService
-): service is KnowledgeBaseService & KnowledgeBaseLookupPort {
-  return 'getKnowledgeBaseById' in service && typeof service.getKnowledgeBaseById === 'function';
-}
-
 /**
  * 配置所有路由
  *
@@ -327,7 +319,7 @@ export async function configureRoutes(
 
   // 获取服务状态的函数
   const getServiceStatus = (): ServiceStatus => ({
-    knowledgeBase: !!dependencies.knowledgeBaseService,
+    knowledgeBase: getRegisteredBackendPluginUploadChannel('knowledge') !== undefined,
     chat: conversationRoutesMounted,
     transcription: !!dependencies.transcriptionService,
     agent: conversationRoutesMounted,
@@ -531,36 +523,7 @@ export async function configureRoutes(
   // 历史引用先于活知识库路由挂载，停用时仍然可以回放与下载。
   app.use('/api/v1/knowledge-base', createHistoricalCitationSnapshotRouter());
 
-  // 知识库服务路由
-  if (dependencies.knowledgeBaseService) {
-    if (!isKnowledgeBaseLookupPort(dependencies.knowledgeBaseService)) {
-      throw new Error('知识库路由初始化失败：knowledgeBaseService 缺少 getKnowledgeBaseById。');
-    }
-
-    app.use(
-      '/api/v1/knowledge-base',
-      createKnowledgeBaseRouter(
-        dependencies.knowledgeBaseService,
-        dependencies.knowledgeBaseService,
-        dependencies.documentOcr
-      )
-    );
-    logger.info('✅ 知识库服务路由已挂载: /api/v1/knowledge-base');
-  } else {
-    const knowledgeBaseFailure = findStartupCapabilityFailure(
-      dependencies.startupCapabilityFailures,
-      'knowledge-base'
-    );
-    if (knowledgeBaseFailure) {
-      app.use(
-        '/api/v1/knowledge-base',
-        respondCapabilityUnavailable(
-          `知识库暂不可用：${knowledgeBaseFailure.message}。重新启动 Linnya 后会再试一次。`
-        )
-      );
-    }
-    logger.warn('⚠️ 知识库服务未初始化，跳过路由挂载');
-  }
+  app.use('/api/v1/plugins', createPluginMultipartUploadRouter());
 
   // Provider outbound 快照只在开发环境暴露，且路由只持有只读 diagnostics port。
   if (dependencies.backendBootstrap.exposeProviderOutboundDebugRoutes) {
@@ -589,7 +552,6 @@ export async function configureRoutes(
   try {
     logger.info('🔧 初始化会话服务...');
     // 知识库本次没有启动时会话照常可用；知识库工具在调用时说明不可用。
-    const knowledgeBaseService = dependencies.knowledgeBaseService;
 
     // B1（linnkit Phase D 后续）: Checkpointer 改用 SQLite 实现，
     // EngineState 落 workspace.sqlite 的 engine_checkpoints 表，
@@ -812,7 +774,7 @@ export async function configureRoutes(
           })
         : undefined,
     });
-    const agentRunner = new AgentRunnerService(executor, knowledgeBaseService, dbService, {
+    const agentRunner = new AgentRunnerService(executor, dbService, {
       recovery: {
         bindings: executionCheckpoints,
         checkpointer,
@@ -1151,17 +1113,7 @@ export function getRouteSummary(
         ? ['POST /api/v1/transcription/transcribe']
         : [],
       chat: conversationRoutes,
-      knowledgeBase: dependencies.knowledgeBaseService
-        ? [
-            'GET /api/v1/knowledge-base',
-            'POST /api/v1/knowledge-base',
-            'DELETE /api/v1/knowledge-base/:kbId',
-            'POST /api/v1/knowledge-base/:kbId/documents',
-            'GET /api/v1/knowledge-base/:kbId/documents',
-            'DELETE /api/v1/knowledge-base/:kbId/documents/:docId',
-            'POST /api/v1/knowledge-base/:kbId/search',
-          ]
-        : [],
+      knowledgeBase: ['POST /api/v1/plugins/:pluginId/documents/upload'],
       ppt: [],
       agent: routeResult?.conversationRoutesMounted ? ['POST /api/v1/conversation/next'] : [],
     },

@@ -10,7 +10,9 @@ import { KnowledgeIndexSpaceMismatchError } from '../../index-rebuild/definition
  * - 这里的抛错是“业务前置条件显式化”，不是补丁式兜底。
  */
 
-import { EmbeddingFailure, type EmbeddingPort } from 'src/domains/model-inference';
+import { type EmbeddingPort } from '@plugin/backend/inferenceRuntime';
+import { EmbeddingFailure } from '@plugin/backend/inferenceFailures';
+
 import type { MetadataRepository } from '../../infrastructure/metadataRepository';
 
 export class KnowledgeBaseEmbeddingMismatchError extends Error {

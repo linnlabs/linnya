@@ -1,3 +1,8 @@
+import { registerPluginVectorRuntimeFactory } from '../../plugin-registry/pluginVectorRuntimeFactory';
+import {
+  hasActiveBackendPluginWork,
+  stopBackendPluginRuntimeEffects,
+} from '../../plugin-registry/runtimeEffectRuntime';
 /**
  * @file src/app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner.ts
  *
@@ -26,7 +31,6 @@ import { ApiServer } from '../../../../electron-main/services/apiServer';
 import {
   ServiceInitializer,
   type InitializedServices,
-  type ServiceInitializationConfig,
 } from '../../../../electron-main/services/serviceInitializer';
 import type { ProviderModelSynchronizationLifecycle } from '../../application/provider-onboarding';
 import type { RouteConfigurationResult } from '../../../../electron-main/routes/index';
@@ -108,6 +112,7 @@ export class BackendRuntimeOwner {
   // Qdrant服务管理
   private qdrantManager: QdrantManager | null = null;
   private vectorRuntime: OnDemandQdrantRuntime | null = null;
+  private disposeVectorFactory: (() => void) | null = null;
 
   constructor(
     private readonly qdrantProcessRuntime: QdrantProcessRuntime,
@@ -163,26 +168,26 @@ export class BackendRuntimeOwner {
     try {
       console.log('[Backend Service] 🚀 开始服务初始化...');
 
-      // 只登记进程 owner；列表、原文和会话 ready 不等待向量服务。
-      const vectorStore = createOnDemandQdrantRuntime({
-        start: () => this.startVectorStore(config),
-        stop: async () => {
-          await this.qdrantManager?.stop();
-          this.qdrantManager = null;
-        },
+      // 每次插件重新启用都有新的按需 owner，故障缓存不跨 activation 复用。
+      this.disposeVectorFactory = registerPluginVectorRuntimeFactory(() => {
+        if (this.vectorRuntime) throw new Error('上一份向量服务尚未停止');
+        const runtime = createOnDemandQdrantRuntime({
+          start: () => this.startVectorStore(config),
+          stop: async () => {
+            await this.qdrantManager?.stop();
+            this.qdrantManager = null;
+          },
+        });
+        this.vectorRuntime = runtime;
+        return {
+          ensureReady: signal => runtime.ensureReady(signal),
+          stop: async () => {
+            await runtime.stop();
+            if (this.vectorRuntime === runtime) this.vectorRuntime = null;
+          },
+        };
       });
-      this.vectorRuntime = vectorStore;
-
-      // 步骤2：初始化全部 Backend services
-      console.log('[Backend Service] ⚙️ Step 2: 初始化 Backend services...');
-      // Qdrant 的实际 URL 来自已启动且完成就绪校验的 QdrantManager；bootstrap 中的
-      // host/port 只用于拥有本地进程，不能误当成 Qdrant client 的认证/timeout 配置。
-      const serviceConfig: ServiceInitializationConfig = {};
-
-      this.services = await this.serviceInitializer.initializeServices(
-        serviceConfig,
-        vectorStore,
-      );
+      this.services = await this.serviceInitializer.initializeServices();
       console.log('[Backend Service] ✅ Step 2: Backend services 初始化完成');
 
       // 启动API服务器
@@ -291,7 +296,7 @@ export class BackendRuntimeOwner {
     // 先停止接收新请求，随后命令 owner 才能在没有新 admission 的前提下可信收口。
     // 先同步发出取消，防止 HTTP drain 期间目录刷新继续接单或发起下一轮写入。
     const startupMaintenanceStopped = this.serviceInitializer.stopStartupMaintenance();
-    const knowledgeTasksStopped = this.services?.knowledgeBaseService?.stopTasks();
+    const pluginTasksStopped = stopBackendPluginRuntimeEffects();
     const modelSynchronizationStopped = this.providerModelSynchronization?.stop();
     await stopStage('API服务器', () => this.apiServer.stop());
     await stopStage('启动维护', async () => { await startupMaintenanceStopped; });
@@ -335,12 +340,19 @@ export class BackendRuntimeOwner {
 
     // 两类 App owner 已经收口后再停 worker，避免退出期间后台 owner 交叉产生新工作。
     await stopStage('后台任务队列', () => QueueManager.getInstance().shutdown());
-    await stopStage('知识库索引任务', async () => { await knowledgeTasksStopped; });
+    const pluginsStopped = await stopStage('插件运行资源', async () => {
+      await pluginTasksStopped;
+    });
 
     // 冷态不会创建进程；启动中的进程结算并收口后才允许后端退出。
     if (this.vectorRuntime) {
       const vectorRuntime = this.vectorRuntime;
       if (await stopStage('Qdrant服务', () => vectorRuntime.stop())) this.vectorRuntime = null;
+    }
+
+    if (pluginsStopped && !this.vectorRuntime) {
+      this.disposeVectorFactory?.();
+      this.disposeVectorFactory = null;
     }
 
     // 清理状态
@@ -390,11 +402,8 @@ export class BackendRuntimeOwner {
   /** 知识库摄入队列是否还有待处理或执行中的任务；Backend 未就绪或正在收口时为 false。 */
   hasActiveKnowledgeIngestion(): boolean {
     if (!this.services || this.shutdownSettlement) return false;
-    // 队列没有启动时不会有导入任务；不能让退出确认因此每次都查询失败。
-    if (this.services.knowledgeBaseService?.hasActiveTasks()) return true;
-    if (this.getStartupCapabilityFailure('background-tasks')) return false;
-    const stats = QueueManager.getInstance().getQueueStats();
-    return stats.pending + stats.running > 0;
+    // wire 的历史字段仍叫 knowledge_ingestion_active；来源已变为正式插件活动聚合。
+    return hasActiveBackendPluginWork() || QueueManager.getInstance().hasActiveTasks();
   }
 
   /** Agent runtime 在会话路由装配后才注册；此前没有可报告的前台 run。 */
@@ -491,8 +500,6 @@ export class BackendRuntimeOwner {
   getServices() {
     if (!this.services) {
       return {
-        knowledgeBaseService: null,
-        projectKnowledgeBaseLinksService: null,
         transcriptionService: null,
         databaseService: null,
         documentOcr: null,
@@ -500,19 +507,10 @@ export class BackendRuntimeOwner {
     }
 
     return {
-      knowledgeBaseService: this.services.knowledgeBaseService,
-      projectKnowledgeBaseLinksService: this.services.projectKnowledgeBaseLinksService,
       transcriptionService: this.services.transcriptionService,
       databaseService: this.services.databaseService,
       documentOcr: this.services.documentOcr,
     };
-  }
-
-  /**
-   * 获取项目-知识库关联服务实例
-   */
-  getProjectKnowledgeBaseLinksService() {
-    return this.services?.projectKnowledgeBaseLinksService || null;
   }
 
   /**

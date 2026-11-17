@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { DocumentOcrModelProfile, DocumentOcrPort } from 'src/domains/document-ocr';
+import type { DocumentOcrModelProfile, DocumentOcrPort } from '@plugin/backend/inferenceRuntime';
 import type { KnowledgeBaseLookupPort } from '../pdfOcrUploadPageLimit';
 import { validatePdfOcrUploadPageLimit } from '../pdfOcrUploadPageLimit';
 

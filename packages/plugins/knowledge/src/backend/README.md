@@ -151,37 +151,19 @@ ref 和 `doc_id/block_id` 留在可信骨架，标题、摘要、正文及图谱
 
 ## 跨模块集成文件索引（Cross-Module Integration）
 
-> 说明：知识库 Feature 核心逻辑在 `src/features/knowledge-base/**`。完整运行由 App Server Backend 组合数据库、HTTP、Renderer request handler 和 Worker，Electron Main 只负责桌面生命周期、Preload/IPC 数据转发与 App Server supervisor，Renderer 只消费正式接口。
+Backend、3 类 Worker、Agent 与工具均归本插件；正式入口为 `index.ts`。
+Host 持有模型目录/凭据、工作区连接与 Qdrant 进程，插件通过公共 SDK 取得窄能力。完整边界见[插件 README](../../README.md)。
 
-### 1. App Server 数据库组合
-*   `src/electron-main/services/database.ts`: `DatabaseService` 的历史物理位置；实际由 App Server runtime 实例化并注册 `SchemaProvider`，不表示 Electron Main 拥有 Knowledge 数据库。
-*   `src/features/knowledge-base/infrastructure/sqlite/schema-providers.ts`: 聚合导出 KB 与 Graph 的 Schema。
+- `database/`：8 张表的插件迁移，保留旧路径和身份，Host 历史迁移不搬移。
+- `runtime/orchestration/createKnowledgeRuntime.ts`：一次 activation 的资源与任务收尾。
+- `runtime/orchestration/createKnowledgeIpc.ts`：管理、原文、检索、重建与项目关联正式 IPC。
+- `queue/`：仅本插件的任务准入与 Worker payload；`workers/`：摄入、图谱抽取和图谱索引。
+- `tools/`：5 个工具的参数、权限与引用；`agents/`：深度搜索与图谱纯提示。
+- `../renderer/`：页面/项目关联/文档动作贡献，通过 plugin IPC、push 与 scoped multipart 访问 Backend。
 
-### 2. App Server 请求入口
-*   **KB 管理**: `src/electron-main/ipc/handlers/knowledge-base/knowledge-base-ipc.ts`（历史物理位置，handler 在 App Server 注册和执行）
-    *   `get-all-kbs`, `create-kb`, `delete-kb`, `update-kb-settings`
-*   **项目关联**: `src/electron-main/ipc/handlers/knowledge-base/project-knowledge-base-links-ipc.ts`（历史物理位置，运行 owner 同上）
-*   **HTTP API**: `src/electron-main/routes/knowledgeBaseRouter.ts`（历史物理位置，由 App Server 挂载）
-*   **统一注册**: `src/app-hosts/linnya/adapters/backend-renderer-requests/orchestration/registerCoreBackendRendererRequestHandlers.ts`
-*   **图谱进度**: App Server 生成正式 push event，再经 Desktop gateway 投影到 Renderer。
-
-### 3. Electron Preload 与数据网关
-*   `src/electron-main/preload/modules/knowledge-base-preload.ts`: 暴露 `window.electronAPI.knowledgeBase` 的 Renderer request facade。
-*   Electron Main 只在已注册的 data-only channel 上转发请求和 push，不实例化 Knowledge service，也不读写 `workspace.sqlite`。
-*   `apps/renderer/domains/knowledgebase/services/knowledgeBaseService.js`: 前端 Service；Desktop 下优先使用 preload facade，Web 下直接调用 App Server HTTP。
-
-### 4. 任务队列 (Worker Threads)
-
-摄入、图谱抽取和图谱索引的模型请求均经 `backend/worker/inferenceRuntime` 消息客户端返回 Host。
-App Server 入队时冻结 PDF 默认模型与本任务 OCR 临时素材目录，桥只接纳该任务的操作、模型和文件。
-摄入使用 embedding/text/OCR，图谱抽取只用 text，图谱索引只用 embedding；rerank 留在 Backend 搜索。
-Worker 退出或取消时，通用队列中止并等待其全部 Host 请求，再发出 settled 释放知识库活动租约。
-该取消保证本机请求和后续写入收口；Paddle 已受理的远端 Job 不等于已远端撤单。
-
-*   `src/infra/task-queue/jobs.ts`: 定义 `GraphExtractionJob`, `GraphIndexingJob` Payload。
-*   `src/infra/task-queue/workers/graph-extraction.worker.ts`: 图谱抽取 Worker (LLM)。
-*   `src/infra/task-queue/workers/graph-indexing.worker.ts`: 图谱向量化 Worker (Embedding -> Qdrant)。
-*   `WorkerThreadQueue` 只发布通用 job 生命周期；App Server 组合根仅向 ingestion queue 注入摄取 observer。进度 store 和投影规则始终归本 feature，禁止移回 task-queue 或通过 payload 字段猜测业务类型。
+Worker 使用 `backend/worker/inferenceRuntime`；摄入请求 embedding/text/OCR，图谱抽取只用 text，图谱索引只用 embedding，rerank 留在 Backend。
+队列按任务冻结模型和输入/临时素材，取消等待线程及全部 Host 请求 settled 后才释放活动租约。
+Paddle 已受理的远端 Job 不等于已远端撤单。历史引用证据始终由 Host 读取，不依赖本插件启用状态。
 
 ---
 

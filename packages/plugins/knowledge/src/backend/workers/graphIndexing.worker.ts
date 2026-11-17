@@ -1,7 +1,6 @@
 import { vectorizeAndUpsertGraphPoints } from '../graph/application/indexing/vectorizeAndUpsertGraphPoints';
 import { projectGraphVectorPoints } from '../graph/application/indexing/projectGraphVectorPoints';
 import { KnowledgeIndexStateRepository } from '../index-rebuild/persistence/KnowledgeIndexStateRepository';
-import { resolveWorkerQdrantUrl } from 'src/infra/task-queue/functions/resolveWorkerQdrantUrl';
 /**
  * @file src/task-queue/workers/graph-indexing.worker.ts
  *
@@ -20,49 +19,36 @@ import { resolveWorkerQdrantUrl } from 'src/infra/task-queue/functions/resolveWo
  */
 
 import { parentPort, workerData } from 'worker_threads';
-import { createPluginWorkerInferencePort } from 'src/plugin-sdk/backend/worker/inferenceRuntime';
+import { createPluginWorkerInferencePort } from '@plugin/backend/worker/inferenceRuntime';
 
-import { enableDiagnosticLogForwarding, Logger } from 'src/shared/logger';
-import { installRuntimePathRoots, type RuntimePathRoots } from 'src/shared/runtime-paths';
+import { Logger } from '@plugin/backend/worker/loggingRuntime';
+import { openPluginWorkerDatabase } from '@plugin/backend/worker/databaseRuntime';
 
-import { getDatabaseService } from 'src/electron-main/services/database';
-import { BetterSqliteKnowledgeGraphRepository } from 'src/features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
+import { BetterSqliteKnowledgeGraphRepository } from '../graph/infrastructure/better-sqlite-knowledge-graph.repository';
 import {
   getGraphEdgesCollectionName,
   getGraphNodesCollectionName,
 } from '../graph/infrastructure/qdrantCollections';
 import { QdrantRepositoryImpl } from '../infrastructure/QdrantRepositoryImpl';
-import { QdrantAdapter } from 'src/infra/adapters/vector-store/index';
+import { QdrantAdapter } from '../infrastructure/vector-store';
 
 import {
   GraphIndexingJobPayloadSchema,
   validateJobPayload,
   type GraphIndexingJobPayload,
-} from 'src/infra/task-queue/jobs';
+} from '../queue/definitions/jobs';
+
+const jobData = GraphIndexingJobPayloadSchema.parse(workerData);
+const database = openPluginWorkerDatabase();
 
 const logger = new Logger('GraphIndexingWorker');
-
-if (parentPort) {
-  const diagnosticPort = parentPort;
-  enableDiagnosticLogForwarding(envelope => diagnosticPort.postMessage(envelope));
-}
 
 let isCancelled = false;
 const cancellation = new AbortController();
 const inference = createPluginWorkerInferencePort();
 
-function installWorkerRuntimePathRoots(): RuntimePathRoots {
-  const runtimePathRoots = (
-    workerData as { readonly runtimePathRoots?: RuntimePathRoots } | undefined
-  )?.runtimePathRoots;
-  if (!runtimePathRoots) {
-    throw new Error('[GraphIndexingWorker] 缺少 owner 传入的 Runtime path roots');
-  }
-  return installRuntimePathRoots(runtimePathRoots);
-}
-
 function initializeWorkerServices(): void {
-  installWorkerRuntimePathRoots();
+  // 迁移与准入由 Host 已完成；Worker 只打开同工作区的窄连接。
 }
 
 type WorkerMessageType = 'progress' | 'completed' | 'failed';
@@ -110,9 +96,8 @@ async function processGraphIndexingJob(): Promise<void> {
   }
 
   // Worker 线程内需要独立的 DB 连接，只建连接 + 设 pragma，不重跑迁移/插件 lifecycle（F1-02）
-  const databaseService = getDatabaseService();
-  databaseService.initializeConnectionOnly();
-  const graphRepo = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
+
+  const graphRepo = new BetterSqliteKnowledgeGraphRepository(database);
 
   /**
    * ✅ 根因修复：为图谱向量点补齐 doc_title
@@ -121,7 +106,7 @@ async function processGraphIndexingJob(): Promise<void> {
    * - 图谱向量点的 doc_id 就是当前索引的 docId（list*BySourceDocId / list*ByEvidenceDocId 的维度一致）；
    * - 标题来源：kb_documents.filename（更贴近用户可见的文档名）。
    */
-  const db = databaseService.getDb();
+  const db = database;
   const docRow = db.prepare('SELECT filename FROM kb_documents WHERE id = ? LIMIT 1').get(docId) as
     | { filename: string }
     | undefined;
@@ -130,11 +115,13 @@ async function processGraphIndexingJob(): Promise<void> {
       ? docRow.filename.trim()
       : docId;
 
-  const qdrantAdapter = QdrantAdapter.getInstance({ url: resolveWorkerQdrantUrl(workerData) });
+  const qdrantAdapter = QdrantAdapter.getInstance({
+    url: requireVectorEndpoint(jobData.runtime.qdrantUrl),
+  });
   const qdrantRepository = new QdrantRepositoryImpl(async () => qdrantAdapter);
 
   try {
-    const identity = new KnowledgeIndexStateRepository(databaseService.getDb()).requireReady(kbId);
+    const identity = new KnowledgeIndexStateRepository(database).requireReady(kbId);
     // 读取该 doc 的图谱产物
     const [nodes, edges] = await Promise.all([
       graphRepo.listNodesBySourceDocId(kbId, docId),
@@ -293,4 +280,13 @@ if (parentPort) {
 export default processGraphIndexingJob;
 
 // 立即执行
-void processGraphIndexingJob().finally(() => inference.dispose());
+void processGraphIndexingJob().finally(() => {
+  inference.dispose();
+  database.close();
+  parentPort?.close();
+});
+
+function requireVectorEndpoint(endpoint: string | undefined): string {
+  if (!endpoint) throw new Error('向量任务缺少已就绪的受管 endpoint');
+  return endpoint;
+}

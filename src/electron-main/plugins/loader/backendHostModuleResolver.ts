@@ -46,6 +46,7 @@ import * as projectReadRuntime from '../../../plugin-sdk/backend/projectReadRunt
 import * as workspaceDatabasePath from '../../../plugin-sdk/backend/workspaceDatabasePath';
 import * as inferenceFailures from '../../../plugin-sdk/backend/inferenceFailures';
 import * as loggingRuntime from '../../../plugin-sdk/backend/loggingRuntime';
+import * as textSegmentationRuntime from '../../../plugin-sdk/backend/textSegmentationRuntime';
 import * as workerQueue from '../../../plugin-sdk/backend/workerQueue';
 import * as storageRuntime from '../../../plugin-sdk/backend/storageRuntime';
 import * as vectorRuntime from '../../../plugin-sdk/backend/vectorRuntime';
@@ -106,6 +107,7 @@ const backendHostModules = new Map<string, unknown>([
   ['@plugin/backend/vectorRuntime', vectorRuntime],
   ['@plugin/backend/modelConfiguration', modelConfiguration],
   ['@plugin/backend/loggingRuntime', loggingRuntime],
+  ['@plugin/backend/textSegmentationRuntime', textSegmentationRuntime],
   ['@plugin/backend/inferenceFailures', inferenceFailures],
 ]);
 

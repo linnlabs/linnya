@@ -1,17 +1,13 @@
+import { countPluginPdfPages } from '@plugin/backend/documentParsingRuntime';
+import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfiguration';
 import path from 'path';
 import { readFile } from 'node:fs/promises';
 import type { KnowledgeBase } from '../../domain/knowledgeBase';
-import { getPdfPageCountCrossPlatform } from 'src/features/parsers/pdfParser/adapters/PdfParseAdapter';
-import { resolveModelIdFromPolicy } from 'src/app-hosts/linnya/agent-registry/modelPolicyResolver';
-import {
-  PDF_OCR_DEFAULT_FALLBACK_MODEL_ID,
-  PDF_OCR_MODEL_POLICY,
-} from 'src/app-hosts/linnya/agent-registry/internals/ingestion/pdf_ocr';
+import { type DocumentOcrPort } from '@plugin/backend/inferenceRuntime';
 import {
   assertDocumentOcrPageLimit,
   hasDocumentOcrPageLimit,
-  type DocumentOcrPort,
-} from 'src/domains/document-ocr';
+} from '@plugin/backend/documentParsingRuntime';
 
 export type PdfOcrUploadPageLimitDeps = {
   getPageCount?: (filePath: string) => Promise<number>;
@@ -28,9 +24,7 @@ function isPdfFilename(filename: string): boolean {
 
 async function readPdfPageCountFromFile(filePath: string): Promise<number> {
   const bytes = await readFile(filePath);
-  return getPdfPageCountCrossPlatform(
-    new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-  );
+  return countPluginPdfPages(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength));
 }
 
 /**
@@ -58,13 +52,12 @@ export async function validatePdfOcrUploadPageLimit(args: {
       : undefined;
   const modelId =
     explicitPdfOcrModelId ??
-    resolveModelIdFromPolicy(PDF_OCR_MODEL_POLICY, {
-      kbPdfOcrModelId: kb?.pdfOcrModelId,
-      kbVisionModelId: kb?.visionModelId,
-      defaultVisionModelId: PDF_OCR_DEFAULT_FALLBACK_MODEL_ID,
-      resolveByCapability: args.deps?.getDefaultModelId,
-    }) ??
-    PDF_OCR_DEFAULT_FALLBACK_MODEL_ID;
+    kb?.pdfOcrModelId ??
+    kb?.visionModelId ??
+    (args.deps?.getDefaultModelId
+      ? args.deps.getDefaultModelId('pdf_ocr_default')
+      : getPluginModelConfigurationPort().readDefaultModelIdByCapability('pdf_ocr_default'));
+  if (!modelId) throw new Error('请先配置 PDF OCR 模型后上传 PDF');
 
   const profile = await args.documentOcr.resolveModelProfile(modelId);
   if (!hasDocumentOcrPageLimit(profile)) return;

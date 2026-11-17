@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Logger } from '@shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 
 import { recreateChunkCollectionIfNeeded } from './chunkCollectionRecreate';
 

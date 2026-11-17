@@ -9,13 +9,19 @@ import { isObjectLike } from '@linnya/foundation';
  * 支持混合搜索、多向量存储等高级功能。
  */
 
-import { QdrantRepository, QdrantPoint, RetrievedPoint, SearchFilterOptions, SearchResult } from './qdrantRepository';
-import { QdrantRuntimeUnavailableError } from '@infra/adapters/vector-store/qdrant/errors';
-import { QdrantAdapter } from '@infra/adapters/vector-store/qdrant';
-import { Logger } from '@shared/logger';
+import {
+  QdrantRepository,
+  QdrantPoint,
+  RetrievedPoint,
+  SearchFilterOptions,
+  SearchResult,
+} from './qdrantRepository';
+import { isQdrantRuntimeUnavailableError } from './vector-store/errors';
+import { QdrantAdapter } from './vector-store';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { rrfFusion } from '../utils/ranking';
-import type { QdrantScrollOffset } from '@infra/adapters/vector-store/qdrant';
-import type { Distance, MultiVectorCollectionConfig } from '@infra/adapters/vector-store/qdrant';
+import type { QdrantScrollOffset } from './vector-store';
+import type { Distance, MultiVectorCollectionConfig } from './vector-store';
 
 import { toPointPayload } from './qdrant-repository/payload';
 import { buildQdrantFilter } from './qdrant-repository/filters';
@@ -76,7 +82,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
     };
 
     const normalizedOffset: QdrantScrollOffset | undefined =
-      offset === undefined ? undefined : (isScrollOffset(offset) ? offset : undefined);
+      offset === undefined ? undefined : isScrollOffset(offset) ? offset : undefined;
 
     return await (await this.resolveAdapter()).scrollPointsPage(collectionName, limit, normalizedOffset);
   }
@@ -105,12 +111,14 @@ export class QdrantRepositoryImpl implements QdrantRepository {
           const vectorConfig: MultiVectorCollectionConfig = {
             default: {
               size: vectorSize,
-              distance: normalizeDistanceMetric(distanceMetric)
+              distance: normalizeDistanceMetric(distanceMetric),
             },
             bm25: {}
           };
-        
-          this.logger.info(`创建多向量集合: ${collectionName} (稠密向量: ${vectorSize}维 + BM25稀疏向量)`);
+
+          this.logger.info(
+            `创建多向量集合: ${collectionName} (稠密向量: ${vectorSize}维 + BM25稀疏向量)`
+          );
           try {
             await (await this.resolveAdapter()).createCollection(collectionName, vectorConfig, 'Cosine', {
               optimizerConfig: {
@@ -200,31 +208,31 @@ export class QdrantRepositoryImpl implements QdrantRepository {
         // 转换过滤器
         const qdrantFilter = buildQdrantFilter(filter);
         this.logger.info(`搜索过滤器: ${JSON.stringify(qdrantFilter)}`);
-        
+
         // 调用适配器的 searchPoints 方法执行向量搜索
         const searchResults = await (await this.resolveAdapter()).searchPoints(collectionName, {
           vector: queryVector,
           vectorName: 'default',
           limit: topK,
           filter: qdrantFilter,
-          scoreThreshold
+          scoreThreshold,
         });
         
         this.logger.info(`Qdrant 原始搜索结果数量: ${searchResults.length}`);
-        
+
         // 转换结果格式
         const retrievedPoints: RetrievedPoint[] = searchResults.map((result) => ({
           id: result.id,
           score: result.score,
           payload: toPointPayload(result.payload),
-          match_type: 'semantic'
+          match_type: 'semantic',
         }));
         
         this.logger.info(`语义搜索完成，找到 ${retrievedPoints.length} 个结果`);
         return retrievedPoints;
       } catch (error) {
         this.logger.error(`语义搜索失败: ${error}`);
-        if (error instanceof QdrantRuntimeUnavailableError) throw error;
+        if (isQdrantRuntimeUnavailableError(error)) throw error;
         return [];
       }
     });
@@ -259,7 +267,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
         return retrievedPoints;
       } catch (error) {
         this.logger.error(`关键词搜索失败: ${String(error)}`);
-        if (error instanceof QdrantRuntimeUnavailableError) throw error;
+        if (isQdrantRuntimeUnavailableError(error)) throw error;
         return [];
       }
     });
@@ -276,12 +284,12 @@ export class QdrantRepositoryImpl implements QdrantRepository {
     // 🔥 使用核心ranking算法：RRF混合搜索
     const [semanticResults, keywordResults] = await Promise.all([
       this.semanticSearch(collectionName, queryVector, topK * 2, filter),
-      this.keywordSearch(collectionName, queryText, topK * 2, filter)
+      this.keywordSearch(collectionName, queryText, topK * 2, filter),
     ]);
     
     // 🔥 使用核心RRF融合算法
     const fusedResults = rrfFusion(semanticResults, keywordResults, rrfK);
-    
+
     // 转换回RetrievedPoint格式并限制数量
     const combinedResults: RetrievedPoint[] = fusedResults
       .slice(0, topK)
@@ -446,8 +454,10 @@ export class QdrantRepositoryImpl implements QdrantRepository {
             },
           });
         },
-        upsertPoints: async (points) => {
-          await (await this.resolveAdapter()).upsertPoints(
+        upsertPoints: async points => {
+          await (
+            await this.resolveAdapter()
+          ).upsertPoints(
             collectionName,
             points.map((point) => ({
               id: point.id,

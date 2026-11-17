@@ -15,7 +15,7 @@
  * 3. 标准化IPC格式：所有状态推送都包含完整的阶段信息(stage, stage_progress)
  */
 
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { IngestionStateMachine, createInitialContext, createStateMachine } from './stateMachine';
 import {
   InternalStage,
@@ -37,8 +37,8 @@ import type { SotRepository } from '../infrastructure/sotRepository';
 import type { OriginalDocumentRepository } from '../infrastructure/originalDocumentRepository';
 import type { KnowledgeGraphRepository } from '../graph/infrastructure/knowledgeGraphRepository';
 import type { StatusUpdatePublisher } from './definitions/statusUpdate';
-import type { EmbeddingPort, TextGenerationPort } from 'src/domains/model-inference';
-import type { DocumentOcrPort } from 'src/domains/document-ocr';
+import type { EmbeddingPort, TextGenerationPort } from '@plugin/backend/inferenceRuntime';
+import type { DocumentOcrPort } from '@plugin/backend/inferenceRuntime';
 
 const logger = new Logger('IngestionStateMachineManager');
 

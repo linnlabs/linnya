@@ -6,7 +6,7 @@ import { isObjectLike } from '@linnya/foundation';
  * @brief 启动后一次性 chunk collection 收缩维护
  */
 
-import { Logger } from '@shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 
 import type { MetadataRepository } from '../metadataRepository';
 import type { QdrantRepository } from '../qdrantRepository';
@@ -100,7 +100,7 @@ export async function runChunkCollectionStartupMaintenanceOnce(
   const collectionNames = Array.from(
     new Set(
       knowledgeBases
-        .map((kb) => kb.id)
+        .map(kb => kb.id)
         .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
         .map((id) => id.trim())
     )

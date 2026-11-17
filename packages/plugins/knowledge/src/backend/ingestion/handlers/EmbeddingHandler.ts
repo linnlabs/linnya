@@ -1,6 +1,6 @@
 /**
  * @file src/knowledge-base/ingestion/handlers/EmbeddingHandler.ts
- * 
+ *
  * @brief EMBEDDING状态处理器
  * 
  * @description
@@ -10,9 +10,14 @@
  * 副作用 (Side-effects): 调用AI引擎生成文本向量
  */
 
-import { Logger } from 'src/shared/logger';
-import { InternalStage, type StateHandler, type StateTransitionResult, type TaskContext } from '../definitions/state';
-import type { EmbeddingPort } from 'src/domains/model-inference';
+import { Logger } from '@plugin/backend/loggingRuntime';
+import {
+  InternalStage,
+  type StateHandler,
+  type StateTransitionResult,
+  type TaskContext,
+} from '../definitions/state';
+import type { EmbeddingPort } from '@plugin/backend/inferenceRuntime';
 import type { SparseVector } from '../../infrastructure/qdrantRepository';
 import type { ParsedContentBlock, VectorizedBlock, VectorizeResult } from '../ingestionTypes';
 import { textsToSparseVectors } from '../utils/textToSparseVector';
@@ -57,7 +62,7 @@ export class EmbeddingHandler implements StateHandler {
             ...context, 
             vectorizeResult: { vectorizedBlocks: [], metadata: { empty: true } },
             stageProgress: 100,
-            currentProgress: 80 
+            currentProgress: 80,
           },
           message: '无内容需要向量化，跳过向量化阶段'
         };
@@ -162,7 +167,7 @@ export class EmbeddingHandler implements StateHandler {
           stageProgress: 100,
           currentProgress: 80  // 向量化完成，整体进度80%
         },
-        message: `混合向量化完成: ${vectorizedBlocks.length} 个向量（稠密+稀疏）`
+        message: `混合向量化完成: ${vectorizedBlocks.length} 个向量（稠密+稀疏）`,
       };
 
     } catch (error) {
@@ -219,7 +224,6 @@ export class EmbeddingHandler implements StateHandler {
       throw new Error(`稀疏向量化API调用失败: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-
 
   /**
    * 功能 (What): 验证向量的有效性

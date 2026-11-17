@@ -78,13 +78,6 @@ describe('todo IPC handlers', () => {
     rendererIntegration.clearBackendRendererIntegrationPortForTesting();
     rendererIntegration.installBackendRendererIntegrationPort({
       connectModelCatalogUpdates: async () => () => undefined,
-      publishIngestionStatus: vi.fn(),
-      queueJobPresentationPublisher: {
-        publishProgress: vi.fn(),
-        publishCompletion: vi.fn(),
-        publishFailure: vi.fn(),
-      },
-      publishKnowledgeGraphProgress: vi.fn(),
       publishTranscriptionProgress: vi.fn(),
       publishWorkspaceMutation: vi.fn(),
       publishPluginRendererPush: vi.fn(),

@@ -14,7 +14,7 @@
  * - 必须能指回证据：返回结果以 (docId, blockId) 为主，后续由上层决定是否读取原文。
  */
 import type { QdrantRepository } from '../../infrastructure/qdrantRepository';
-import type { EmbeddingPort } from 'src/domains/model-inference';
+import type { EmbeddingPort } from '@plugin/backend/inferenceRuntime';
 import { getGraphEdgesCollectionName } from '../infrastructure/qdrantCollections';
 
 export type GraphDiscoveredEvidenceBlock = {

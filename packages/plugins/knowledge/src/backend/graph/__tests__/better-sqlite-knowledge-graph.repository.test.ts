@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 
 import { DatabaseService } from 'src/electron-main/services/database';
-import { BetterSqliteKnowledgeGraphRepository } from 'src/features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
+import { BetterSqliteKnowledgeGraphRepository } from '../infrastructure/better-sqlite-knowledge-graph.repository';
 
 describe('BetterSqliteKnowledgeGraphRepository (M1)', () => {
   let tempDir: string;

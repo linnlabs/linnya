@@ -82,8 +82,8 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
         updated_at = excluded.updated_at
     `);
 
-    const transaction = db.transaction((rows: KnowledgeGraphNodeUpsertInput[]) => {
-      for (const row of rows) {
+    const transaction = db.transaction(() => {
+      for (const row of nodes) {
         stmt.run({
           kbId: row.kbId,
           id: row.id,
@@ -99,7 +99,7 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
       }
     });
 
-    transaction(nodes);
+    transaction();
   }
 
   async upsertEdges(edges: KnowledgeGraphEdgeUpsertInput[]): Promise<void> {
@@ -151,8 +151,8 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
         updated_at = excluded.updated_at
     `);
 
-    const transaction = db.transaction((rows: KnowledgeGraphEdgeUpsertInput[]) => {
-      for (const row of rows) {
+    const transaction = db.transaction(() => {
+      for (const row of edges) {
         stmt.run({
           kbId: row.kbId,
           id: row.id,
@@ -171,7 +171,7 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
       }
     });
 
-    transaction(edges);
+    transaction();
   }
 
   async getNodesByIds(kbId: string, ids: string[]): Promise<KnowledgeGraphNodeRecord[]> {
@@ -275,7 +275,9 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
 
     // 说明：limit 是“读路径边界”，用于避免超级节点导致的性能问题（不是防御性补丁）。
     const limitClause =
-      typeof limit === 'number' && Number.isFinite(limit) && limit > 0 ? `LIMIT ${Math.floor(limit)}` : '';
+      typeof limit === 'number' && Number.isFinite(limit) && limit > 0
+        ? `LIMIT ${Math.floor(limit)}`
+        : '';
 
     const stmt = db.prepare(selectSql.replace('__WHERE__', whereClause).replace('__LIMIT__', limitClause));
     const rows = stmt.all(...params) as KnowledgeGraphEdgeRecord[];

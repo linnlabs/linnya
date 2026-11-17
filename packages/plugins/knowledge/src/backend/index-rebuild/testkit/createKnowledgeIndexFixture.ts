@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { afterEach } from 'vitest';
-import { KNOWLEDGE_BASE_SCHEMAS } from 'src/features/knowledge-base/infrastructure/sqlite/knowledge-base.schema';
+import { KNOWLEDGE_BASE_SCHEMAS } from '../../database/schemas/knowledgeBase';
 import { KnowledgeIndexStateRepository } from '../persistence/KnowledgeIndexStateRepository';
 import type { KnowledgeIndexIdentity } from '../definitions/knowledgeIndex';
 

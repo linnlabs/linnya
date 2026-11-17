@@ -1,10 +1,10 @@
 /**
  * @file src/shared/utils/idUtils.ts
- * 
+ *
  * **功能 (What):** 提供一个中心化的ID生成工具，确保系统中所有ID的生成逻辑统一、稳定且可维护。
  * 
  * **输入 (Input):** 根据不同函数接收文件字节数组、文档ID、块索引等参数
- * 
+ *
  * **输出 (Output):** 返回格式化的、确定性的或随机的唯一标识符字符串
  * 
  * **副作用 (Side-effects):** 无副作用，纯函数实现
@@ -20,12 +20,12 @@ const DETERMINISTIC_NAMESPACE = 'f3f4a9d4-1a39-4467-b52b-7c85b6b3b5d7';
 
 /**
  * **功能 (What):** 根据文件的二进制内容生成一个唯一的、稳定的文档ID
- * 
- * **输入 (Input / @param):** 
+ *
+ * **输入 (Input / @param):**
  * @param fileBytes - 文件的原始二进制内容 (Buffer)
  * 
  * **输出 (Output / @returns):** 一个格式为 "doc-..." 的字符串ID
- * 
+ *
  * **副作用 (Side-effects):** 无副作用，纯函数
  * 
  * @description
@@ -49,7 +49,7 @@ export function generateDocId(fileBytes: Buffer): string {
  * @param blockText - 该块的文本内容
  * 
  * **输出 (Output / @returns):** 一个32位的十六进制字符串，作为 Qdrant 的 Point ID
- * 
+ *
  * **副作用 (Side-effects):** 无副作用，纯函数
  * 
  * @description
@@ -67,69 +67,12 @@ export function generateBlockId(docId: string, blockIndex: number, blockText: st
 }
 
 /**
- * **功能 (What):** 为“切分后的子块”生成一个稳定且合法的点ID（UUID）
- *
- * **输入 (Input / @param):**
- * @param parentBlockId - 父块ID（必须是一个稳定字符串，建议为父块的 UUID）
- * @param partIndex - 子块序号（从0开始）
- *
- * **输出 (Output / @returns):** RFC4122 UUID 字符串
- *
- * **副作用 (Side-effects):** 无副作用，纯函数
- *
- * @description
- * - 切分子块 ID 不能使用 `${parentId}#${idx}` 这类拼接字符串：Qdrant 只接受 UUID/无符号整数
- * - 这里使用 UUIDv5 保证确定性：同一父块 + 同一序号 永远生成同一 UUID
- */
-export function generateSubBlockId(parentBlockId: string, partIndex: number): string {
-  const parent = parentBlockId.trim();
-  if (!parent) {
-    throw new Error('generateSubBlockId: parentBlockId 不能为空');
-  }
-  if (!Number.isInteger(partIndex) || partIndex < 0) {
-    throw new Error(`generateSubBlockId: partIndex 非法: ${partIndex}`);
-  }
-
-  return uuidv5(`${parent}:${partIndex}`, DETERMINISTIC_NAMESPACE);
-}
-
-/**
- * **功能 (What):** 为“图谱向量索引”生成一个稳定且合法的 Qdrant 点 ID（UUIDv5）
- *
- * **输入 (Input / @param):**
- * @param kbId - 知识库 ID
- * @param kind - 点的业务类型（节点/边），用于避免跨类型碰撞
- * @param graphId - 图谱内部 ID（例如 node.id / edge.id），可能不是 UUID，但必须稳定
- *
- * **输出 (Output / @returns):** RFC4122 UUID 字符串（Qdrant 可接受）
- *
- * **副作用 (Side-effects):** 无副作用，纯函数
- *
- * @description
- * 根因修复：
- * - 图谱内部的 node.id/edge.id 可能是 `apple` / `edge_xxx` 这类字符串；
- * - Qdrant point id 只接受 UUID 或无符号整数，直接 upsert 会触发 400 Bad Request；
- * - 因此这里用 UUIDv5 将稳定字符串映射为稳定 UUID，保证“幂等覆盖 + 合法格式”两者兼得。
- */
-export function generateGraphVectorPointId(
-  kbId: string,
-  kind: 'kg_node' | 'kg_edge',
-  graphId: string
-): string {
-  const k = kbId.trim();
-  const g = graphId.trim();
-  if (!k) throw new Error('generateGraphVectorPointId: kbId 不能为空');
-  if (!g) throw new Error('generateGraphVectorPointId: graphId 不能为空');
-  return uuidv5(`${k}:${kind}:${g}`, DETERMINISTIC_NAMESPACE);
-}
-
-/**
  * **功能 (What):** 生成一个用于异步任务的、完全随机的唯一ID
- * 
+ *
  * **输入 (Input / @param):** 无参数
  * 
  * **输出 (Output / @returns):** 一个格式为 "task-..." 的字符串ID
- * 
+ *
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
  * 
  * @description
@@ -145,7 +88,7 @@ export function generateTaskId(): string {
  * **功能 (What):** 生成一个用于聊天消息的、完全随机的唯一ID
  * 
  * **输入 (Input / @param):** 无参数
- * 
+ *
  * **输出 (Output / @returns):** 一个格式为 "msg-..." 的字符串ID
  * 
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
@@ -158,7 +101,7 @@ export function generateMessageId(): string {
  * **功能 (What):** 生成一个用于对话的、完全随机的唯一ID
  * 
  * **输入 (Input / @param):** 无参数
- * 
+ *
  * **输出 (Output / @returns):** 一个格式为 "conv-..." 的字符串ID
  * 
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
@@ -171,7 +114,7 @@ export function generateConversationId(): string {
  * **功能 (What):** 生成一个用于对话轮次的、完全随机的唯一ID
  * 
  * **输入 (Input / @param):** 无参数
- * 
+ *
  * **输出 (Output / @returns):** 一个格式为 "run-..." 的字符串ID
  * 
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
@@ -184,7 +127,7 @@ export function generateRunId(): string {
  * **功能 (What):** 生成一个用于执行流程的、完全随机的唯一ID
  * 
  * **输入 (Input / @param):** 无参数
- * 
+ *
  * **输出 (Output / @returns):** 一个格式为 "exec-..." 的字符串ID
  * 
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID
@@ -197,7 +140,7 @@ export function generateExecutionId(): string {
  * **功能 (What):** 生成一个用于链路追踪的、完全随机的唯一ID
  * 
  * **输入 (Input / @param):** 无参数
- * 
+ *
  * **输出 (Output / @returns):** 一个格式为 "trace-..." 的字符串ID
  * 
  * **副作用 (Side-effects):** 无副作用，每次调用生成不同的随机ID

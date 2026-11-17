@@ -1,3 +1,5 @@
+import { resolveKnowledgeBaseOperationFailure } from '../functions/resolveKnowledgeBaseOperationFailure';
+import { resolveCurrentKnowledgeBaseMessage } from '../functions/resolveCurrentKnowledgeBaseMessage';
 import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
 import { uploadRendererPluginMultipart, type RendererPluginUploadProgress } from '@plugin/renderer/pluginMultipartUpload';
 
@@ -28,9 +30,24 @@ export async function invokeKnowledgeRequest(channel: string, payload: unknown, 
     scope.addEventListener('abort', onAbort, { once: true });
   });
   try {
-    const result = await Promise.race([invokeRendererPluginIpc<unknown>('knowledge', channel, payload), aborted]);
+    const result = await Promise.race([
+      invokeRendererPluginIpc<unknown>('knowledge', channel, payload),
+      aborted,
+    ]);
     scope.throwIfAborted();
-    if (!result.success) throw new Error(result.error);
+    if (!result.success) {
+      const message = result.userMessage
+        ? resolveKnowledgeBaseOperationFailure(
+            result,
+            resolveCurrentKnowledgeBaseMessage,
+            'knowledgeBase.service.error.getAllIpcFailed'
+          )
+        : result.error;
+      throw Object.assign(new Error(message), {
+        failureKind: result.failureKind,
+        userMessage: result.userMessage,
+      });
+    }
     return result.data;
   } finally {
     scope.removeEventListener('abort', onAbort);

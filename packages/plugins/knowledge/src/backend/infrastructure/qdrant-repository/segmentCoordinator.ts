@@ -5,7 +5,7 @@ import { isObjectLike } from '@linnya/foundation';
  * @brief 依据 points_count 协调 collection 的目标 segment 数
  */
 
-import type { Logger } from '@shared/logger';
+import type { Logger } from '@plugin/backend/loggingRuntime';
 import type { QdrantRepository } from '../qdrantRepository';
 import {
   buildSegmentOptimizerPatch,
@@ -50,7 +50,9 @@ export async function reconcileCollectionSegmentTarget(
 ): Promise<CollectionSegmentReconcileResult> {
   const info = await deps.getCollectionInfo();
   const pointsCount =
-    Number.isFinite(info.points_count) && info.points_count >= 0 ? Math.trunc(info.points_count) : 0;
+    Number.isFinite(info.points_count) && info.points_count >= 0
+      ? Math.trunc(info.points_count)
+      : 0;
   const segmentsCount =
     Number.isFinite(info.segments_count) && info.segments_count >= 0 ? Math.trunc(info.segments_count) : 0;
 

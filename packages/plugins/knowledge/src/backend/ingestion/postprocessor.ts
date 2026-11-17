@@ -1,6 +1,6 @@
 /**
  * src/knowledge-base/ingestion/postprocessor.ts
- * 
+ *
  * 文件作用: 对解析器产生的原始块进行统一后处理，生成标准化的文档结构和向量块
  * 
  * 职责:
@@ -11,12 +11,13 @@
 
 import path from 'path';
 import iconv from 'iconv-lite';
-import { Logger } from 'src/shared/logger';
-import { generateBlockId as generateDeterministicBlockId, generateSubBlockId } from 'src/shared/utils/idUtils';
+import { Logger } from '@plugin/backend/loggingRuntime';
+import { generateParsedBlockId as generateDeterministicBlockId } from '@plugin/backend/documentParsingRuntime';
+import { generateSubBlockId } from './functions/knowledgeVectorPointIdentity';
 import { countTextUnitsZhEn, sliceTextByUnitsZhEn } from '@app/schemas';
 import { BlockType, type Block, type DocumentSoT } from '../domain/block';
 import type { ParsedContentBlock } from './ingestionTypes';
-// import { IngestionProgressUpdater } from 'src/features/knowledge-base/ingestion/progressUpdater';
+// import { IngestionProgressUpdater } from './progressUpdater';
 
 const logger = new Logger('knowledge-base:ingestion:postprocessor');
 
@@ -306,7 +307,7 @@ export async function postProcessBlocks({
   }
 
   logger.info(`开始后处理 ${rawBlocks.length} 个块...`);
-  
+
   // 输入块统计信息
   const inputStats = rawBlocks.reduce((acc, block) => {
     acc[block.type] = (acc[block.type] || 0) + 1;
@@ -324,9 +325,9 @@ export async function postProcessBlocks({
   let baseFilename = path.basename(originalFilename, path.extname(originalFilename));
   // 修复文件名编码问题
   let docTitle = fixFilenameEncoding(baseFilename);
-  
-  const h1Blocks = normalizedBlocks.filter(block => 
-    block.type === 'heading' && block.heading_level === 1
+
+  const h1Blocks = normalizedBlocks.filter(
+    block => block.type === 'heading' && block.heading_level === 1
   );
   
   if (h1Blocks.length > 0) {
@@ -407,7 +408,7 @@ export async function postProcessBlocks({
     // 步骤4: 🔥 重构：创建符合新版简洁规范的块对象
     // 🔥 为每个块文本末尾添加换行符，帮助AI更好地理解块边界
     const textWithNewline = block.text.endsWith('\n') ? block.text : block.text + '\n';
-    
+
     const parentBlockId =
       typeof block.metadata?.split_from_block_id === 'string' && block.metadata.split_from_block_id.trim().length > 0
         ? block.metadata.split_from_block_id.trim()
@@ -427,12 +428,14 @@ export async function postProcessBlocks({
         page_num:
           typeof block.metadata?.page === 'number'
             ? block.metadata.page
-            : (typeof block.source_info?.page_number === 'number' ? block.source_info.page_number : undefined),
+            : typeof block.source_info?.page_number === 'number'
+              ? block.source_info.page_number
+              : undefined,
         para_idx: typeof block.metadata?.paraIdx === 'number' ? block.metadata.paraIdx : undefined,
         source_location: null // 占位符
       },
       ...(parentBlockId ? { parent_block_id: parentBlockId } : {}),
-      ...(partIndex === undefined ? {} : { part_index: partIndex })
+      ...(partIndex === undefined ? {} : { part_index: partIndex }),
     };
     
     // 步骤5: 将完整的块对象存入SoT和待处理列表
@@ -451,14 +454,11 @@ export async function postProcessBlocks({
           return { ...blockForSotBase, block_type: BlockType.HEADING };
         case BlockType.TABLE_ROW:
           return { ...blockForSotBase, block_type: BlockType.TABLE_ROW };
-        case BlockType.LIST_ITEM:
-          // ListItemBlockSchema 的 level 不允许为 null（仅可选 number）
-          {
-            const { level, ...rest } = blockForSotBase;
-            if (level === null) {
-              return { ...rest, block_type: BlockType.LIST_ITEM };
-            }
-            return { ...rest, level, block_type: BlockType.LIST_ITEM };
+        case BlockType.LIST_ITEM: // ListItemBlockSchema 的 level 不允许为 null（仅可选 number）
+        {
+          const { level, ...rest } = blockForSotBase;
+          if (level === null) {
+            return { ...rest, block_type: BlockType.LIST_ITEM };
           }
         case BlockType.IMAGE:
           return { ...blockForSotBase, block_type: BlockType.IMAGE };

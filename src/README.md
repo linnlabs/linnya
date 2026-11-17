@@ -11,10 +11,12 @@
 | 通用 Agent framework | [`@linnlabs/linnkit`](https://github.com/linnlabs/linnkit) | 从 npm 精确版本消费的 Runtime facts、Graph、LLM、tool/child-run 协议、context core、ports |
 | Linnya App Host | `src/app-hosts/linnya/` | 请求接纳、runtime 装配、flow、realtime、persistence、产品 registry |
 | 产品 domain | `src/domains/`、`src/features/` | 独立业务规则与用例；跨 domain 通过 port、registry 或 app orchestration 协作 |
-| 产品工具 | `src/tools/` | Workspace、TaskState、知识库等具体工具能力 |
+| 产品工具 | `src/tools/` | Workspace、TaskState 等 Host 工具能力；知识库工具归官方插件 |
 | 产品共享合同 | `packages/schemas/` | HTTP、IPC、Host/Renderer、插件间共同校验的 Linnya DTO |
 | Headless App Server | `src/app-hosts/linnya/app-server-runtime/` | HTTP/SSE、Backend owner、数据库、Agent 与插件 Backend 的生产组合根 |
 | Desktop Host | [`src/electron-main/`](./electron-main/README.md) | Electron 生命周期、窗口、系统能力、Renderer IPC gateway 与 App Server supervisor |
+
+知识库的 Backend、工具、图谱及 3 类 Worker 由[官方 Knowledge 插件](../packages/plugins/knowledge/README.md)持有，Host 保留运行资源与历史引用证据。
 
 模型推理的跨端 route、Model Catalog、Host capability、Linnkit 与非 Agent 业务 port 之间的详细职责，以 [Model Inference README](./domains/model-inference/README.md) 为准。
 

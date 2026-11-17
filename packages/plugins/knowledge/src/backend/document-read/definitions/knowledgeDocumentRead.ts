@@ -1,7 +1,7 @@
 import type { KnowledgeSearchCitationMetadata } from '@app/schemas';
 import type { Block } from '../../domain/block';
 import type { KnowledgeBaseService } from '../../application/knowledgeBaseService';
-import type { CitationRefAllocatorPort } from 'src/domains/citation';
+import type { CitationRefAllocatorPort } from '@plugin/backend/citationSourceRuntime';
 
 export type KnowledgeDocumentReadMode = 'full' | 'glance';
 

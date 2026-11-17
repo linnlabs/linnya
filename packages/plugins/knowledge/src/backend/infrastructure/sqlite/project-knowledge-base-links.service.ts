@@ -1,3 +1,4 @@
+import { z } from 'zod';
 /**
  * @file project-knowledge-base-links.service.ts
  * @description 项目与知识库关联关系管理服务
@@ -16,9 +17,9 @@
 
 import type { KnowledgeDatabase } from '../../definitions/knowledgeDatabase';
 import type { PluginProjectReadPort } from '@linnya/plugin-host-contract/backend/projectReadRuntime';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
+import { BetterSqliteMetadataRepository } from './better-sqlite-metadata.repository';
 import { KnowledgeBase } from '../../domain/knowledgeBase';
-import type { ProjectKnowledgeBaseLink, ProjectInfo } from 'src/features/knowledge-base/infrastructure/sqlite/project-knowledge-base-links.types';
+import type { ProjectKnowledgeBaseLink, ProjectInfo } from './project-knowledge-base-links.types';
 
 /**
  * 项目-知识库关联管理服务
@@ -87,7 +88,8 @@ export class ProjectKnowledgeBaseLinksService {
         UPDATE project_knowledge_base_links
         SET role = ?, updated_at = ?
         WHERE project_id = ? AND kb_id = ?
-      `).run(role, now, projectId, kbId);
+      `
+      ).run(role, now, projectId, kbId);
 
       console.log(`[ProjectKnowledgeBaseLinksService] 更新关联: 项目 ${projectId} <-> 知识库 ${kbId}`);
     } else {
@@ -95,7 +97,8 @@ export class ProjectKnowledgeBaseLinksService {
       db.prepare(`
         INSERT INTO project_knowledge_base_links (project_id, kb_id, role, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?)
-      `).run(projectId, kbId, role, now, now);
+      `
+      ).run(projectId, kbId, role, now, now);
 
       console.log(`[ProjectKnowledgeBaseLinksService] 创建关联: 项目 ${projectId} <-> 知识库 ${kbId}`);
     }
@@ -121,7 +124,9 @@ export class ProjectKnowledgeBaseLinksService {
     const success = result.changes > 0;
 
     if (success) {
-      console.log(`[ProjectKnowledgeBaseLinksService] 删除关联: 项目 ${projectId} <-> 知识库 ${kbId}`);
+      console.log(
+        `[ProjectKnowledgeBaseLinksService] 删除关联: 项目 ${projectId} <-> 知识库 ${kbId}`
+      );
     } else {
       console.warn(`[ProjectKnowledgeBaseLinksService] 关联不存在: 项目 ${projectId} <-> 知识库 ${kbId}`);
     }
@@ -136,14 +141,22 @@ export class ProjectKnowledgeBaseLinksService {
    * @returns 知识库ID数组
    */
   async listKnowledgeBasesForProject(projectId: string): Promise<string[]> {
+    return this.getKnowledgeBaseIdsForProject(projectId);
+  }
+
+  getKnowledgeBaseIdsForProject(projectId: string): string[] {
     const db = this.getDb();
 
     const rows = db
-      .prepare('SELECT kb_id FROM project_knowledge_base_links WHERE project_id = ? ORDER BY created_at ASC')
-      .all(projectId) as Array<{ kb_id: string }>;
+      .prepare(
+        'SELECT kb_id FROM project_knowledge_base_links WHERE project_id = ? ORDER BY created_at ASC'
+      )
+      .all(projectId);
 
-    const kbIds = rows.map(row => row.kb_id);
-    console.log(`[ProjectKnowledgeBaseLinksService] 项目 ${projectId} 关联了 ${kbIds.length} 个知识库`);
+    const kbIds = rows.map(row => z.object({ kb_id: z.string() }).parse(row).kb_id);
+    console.log(
+      `[ProjectKnowledgeBaseLinksService] 项目 ${projectId} 关联了 ${kbIds.length} 个知识库`
+    );
 
     return kbIds;
   }
@@ -277,10 +290,15 @@ export class ProjectKnowledgeBaseLinksService {
     }
     const db = this.getDb();
     db.transaction(() => {
-      const previous = db.prepare<[string], { kb_id: string }>('SELECT kb_id FROM project_knowledge_base_links WHERE project_id = ?')
-        .all(projectId);
+      const previous = db
+        .prepare('SELECT kb_id FROM project_knowledge_base_links WHERE project_id = ?')
+        .all(projectId)
+        .map(row => z.object({ kb_id: z.string() }).parse(row));
       for (const { kb_id } of previous) {
-        if (!nextIds.has(kb_id)) db.prepare('DELETE FROM project_knowledge_base_links WHERE project_id = ? AND kb_id = ?').run(projectId, kb_id);
+        if (!nextIds.has(kb_id))
+          db.prepare(
+            'DELETE FROM project_knowledge_base_links WHERE project_id = ? AND kb_id = ?'
+          ).run(projectId, kb_id);
       }
       const now = Date.now();
       for (const kbId of nextIds) {
@@ -299,10 +317,15 @@ export class ProjectKnowledgeBaseLinksService {
     }
     const db = this.getDb();
     db.transaction(() => {
-      const previous = db.prepare<[string], { project_id: string }>('SELECT project_id FROM project_knowledge_base_links WHERE kb_id = ?')
-        .all(kbId);
+      const previous = db
+        .prepare('SELECT project_id FROM project_knowledge_base_links WHERE kb_id = ?')
+        .all(kbId)
+        .map(row => z.object({ project_id: z.string() }).parse(row));
       for (const { project_id } of previous) {
-        if (!nextIds.has(project_id)) db.prepare('DELETE FROM project_knowledge_base_links WHERE project_id = ? AND kb_id = ?').run(project_id, kbId);
+        if (!nextIds.has(project_id))
+          db.prepare(
+            'DELETE FROM project_knowledge_base_links WHERE project_id = ? AND kb_id = ?'
+          ).run(project_id, kbId);
       }
       const now = Date.now();
       for (const projectId of nextIds) {
@@ -353,9 +376,7 @@ export class ProjectKnowledgeBaseLinksService {
   async clearKnowledgeBaseLinks(kbId: string): Promise<number> {
     const db = this.getDb();
 
-    const result = db
-      .prepare('DELETE FROM project_knowledge_base_links WHERE kb_id = ?')
-      .run(kbId);
+    const result = db.prepare('DELETE FROM project_knowledge_base_links WHERE kb_id = ?').run(kbId);
 
     console.log(`[ProjectKnowledgeBaseLinksService] 清理知识库 ${kbId} 的所有关联: ${result.changes} 条`);
     return result.changes;

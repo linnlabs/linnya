@@ -10,7 +10,7 @@ import { isObjectLike } from '@linnya/foundation';
  * **副作用 (Side-effects):** 删除SQLite记录、Qdrant向量、SOT文件，允许用户重试
  */
 
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { Document } from '../domain/document';
 import { MetadataRepository } from '../infrastructure/metadataRepository';
 import { SotRepository } from '../infrastructure/sotRepository';
@@ -345,7 +345,7 @@ export async function cleanupAllFailedDocuments(
       sotIds,
       qdrantDocIds,
       qdrantDocIdsByKb,
-      originalDocumentRepository
+      originalDocumentRepository,
     });
     
     /**
@@ -438,7 +438,7 @@ async function getAllKnowledgeBaseIdsForCleanup(
   try {
     const kbs = await metadataRepository.getAllKnowledgeBases();
     const ids = kbs
-      .map((kb) => kb.id)
+      .map(kb => kb.id)
       .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
       .map((id) => id.trim());
     return Array.from(new Set(ids.length > 0 ? ids : ['default']));

@@ -56,7 +56,7 @@ export interface ParserOptions {
  * 生成块ID的函数
  * 使用shared模块的真正实现
  */
-import { generateBlockId as _generateBlockId } from '@shared/utils/idUtils';
+import { generateBlockId as _generateBlockId } from '../../shared/utils/idUtils';
 
 export function generateBlockId(docId: string, index: number, text: string): BlockId {
   return _generateBlockId(docId, index, text);

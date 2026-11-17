@@ -1,4 +1,3 @@
-import { resolveWorkerQdrantUrl } from 'src/infra/task-queue/functions/resolveWorkerQdrantUrl';
 /**
  * @file src/task-queue/workers/ingestion.worker.ts
  *
@@ -12,8 +11,8 @@ import { resolveWorkerQdrantUrl } from 'src/infra/task-queue/functions/resolveWo
  */
 
 import { parentPort, workerData } from 'worker_threads';
-import { createPluginWorkerInferencePort } from 'src/plugin-sdk/backend/worker/inferenceRuntime';
-import { IngestionJobPayload } from 'src/infra/task-queue/jobs';
+import { createPluginWorkerInferencePort } from '@plugin/backend/worker/inferenceRuntime';
+import { IngestionJobPayloadSchema, type IngestionJobPayload } from '../queue/definitions/jobs';
 import {
   IngestionStateMachineManager,
   validateIngestionParams,
@@ -21,39 +20,25 @@ import {
 import { InternalStage } from '../ingestion/definitions/state';
 
 // 🔥 新增：导入并配置日志记录器
-import { enableDiagnosticLogForwarding, Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/worker/loggingRuntime';
+import { openPluginWorkerDatabase } from '@plugin/backend/worker/databaseRuntime';
 
-import { pathManager } from 'src/shared/utils/pathManager';
-import { installRuntimePathRoots, type RuntimePathRoots } from 'src/shared/runtime-paths';
-import { getDatabaseService } from 'src/electron-main/services/database';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
+import { BetterSqliteMetadataRepository } from '../infrastructure/sqlite/better-sqlite-metadata.repository';
 import { cleanupFailedDocument } from '../ingestion/failureCleanup';
 import { FileSotRepository } from '../infrastructure/sotRepository';
 import { FileOriginalDocumentRepository } from '../infrastructure/fileOriginalDocumentRepository';
 import { QdrantRepositoryImpl } from '../infrastructure/QdrantRepositoryImpl';
-import { QdrantAdapter } from 'src/infra/adapters/vector-store/index';
-import { BetterSqliteKnowledgeGraphRepository } from 'src/features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
+import { QdrantAdapter } from '../infrastructure/vector-store';
+import { BetterSqliteKnowledgeGraphRepository } from '../graph/infrastructure/better-sqlite-knowledge-graph.repository';
 import type { IngestionStateMachineRepositories } from '../ingestion/IngestionStateMachineManager';
 
-if (parentPort) {
-  const diagnosticPort = parentPort;
-  enableDiagnosticLogForwarding(envelope => diagnosticPort.postMessage(envelope));
-}
+const jobData = IngestionJobPayloadSchema.parse(workerData);
+const database = openPluginWorkerDatabase();
 
 const logger = new Logger('IngestionWorker');
 
 // Worker线程启动
 logger.info(`🚀 Worker脚本启动`);
-
-function installWorkerRuntimePathRoots(): RuntimePathRoots {
-  const runtimePathRoots = (
-    workerData as { readonly runtimePathRoots?: RuntimePathRoots } | undefined
-  )?.runtimePathRoots;
-  if (!runtimePathRoots) {
-    throw new Error('[IngestionWorker] 缺少 owner 传入的 Runtime path roots');
-  }
-  return installRuntimePathRoots(runtimePathRoots);
-}
 
 // 全局状态标志
 let isCancelled = false;
@@ -61,19 +46,16 @@ const cancellation = new AbortController();
 const inference = createPluginWorkerInferencePort();
 let isPaused = false;
 
-function createIngestionRepositories(
-  databaseService = getDatabaseService()
-): IngestionStateMachineRepositories {
-  databaseService.initializeConnectionOnly();
-  const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
-  const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(
-    databaseService.getDb()
-  );
-  const sotRepository = new FileSotRepository(pathManager.getSourceOfTruthPath());
+function createIngestionRepositories(): IngestionStateMachineRepositories {
+  const metadataRepository = new BetterSqliteMetadataRepository(database);
+  const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(database);
+  const sotRepository = new FileSotRepository(jobData.runtime.sotDirectory);
   const originalDocumentRepository = new FileOriginalDocumentRepository(
-    pathManager.getKnowledgeBaseOriginalsPath()
+    jobData.runtime.originalsDirectory
   );
-  const qdrantAdapter = QdrantAdapter.getInstance({ url: resolveWorkerQdrantUrl(workerData) });
+  const qdrantAdapter = QdrantAdapter.getInstance({
+    url: requireVectorEndpoint(jobData.runtime.qdrantUrl),
+  });
   const qdrantRepository = new QdrantRepositoryImpl(async () => qdrantAdapter);
 
   return {
@@ -92,7 +74,7 @@ function createIngestionRepositories(
  * 副作用 (Side-effects): 在 Worker 线程中初始化必要的窄能力端口与仓储
  */
 function initializeWorkerServices(): void {
-  installWorkerRuntimePathRoots();
+  // 迁移与准入由 Host 已完成；Worker 只打开同工作区的窄连接。
 }
 
 /**
@@ -102,7 +84,7 @@ function initializeWorkerServices(): void {
  * 副作用 (Side-effects): 启动文档摄入状态机
  */
 async function processIngestionJob(): Promise<void> {
-  const jobData: IngestionJobPayload = workerData;
+  const jobData = IngestionJobPayloadSchema.parse(workerData);
 
   if (!jobData) {
     sendMessage('failed', 'Worker未接收到任务数据');
@@ -202,7 +184,7 @@ async function processIngestionJob(): Promise<void> {
     if (result.success) {
       logger.info(`状态机流程成功结束: ${result.newStage}`);
       // 成功消息已经通过状态机的监听器发送，这里不需要额外处理
-      process.exit(0);
+      return;
     } else {
       logger.info(`状态机流程失败: ${result.error}`);
       // 🔥 修复：失败已经由状态机的 handleFailure 处理完毕（包括清理），
@@ -216,7 +198,7 @@ async function processIngestionJob(): Promise<void> {
         logger.info(`任务已被用户取消: ${jobData.taskId}`);
         sendMessage('failed', '任务已取消');
         // 🔥 优化：正常退出，避免异常退出码
-        process.exit(0);
+        return;
       }
 
       if (err.message === 'TaskPausedError') {
@@ -314,6 +296,15 @@ if (parentPort) {
 
 // 启动处理
 // 🔥 移除顶层catch，所有逻辑移入processIngestionJob的try-catch中
-void processIngestionJob().finally(() => inference.dispose());
+void processIngestionJob().finally(() => {
+  inference.dispose();
+  database.close();
+  parentPort?.close();
+});
 
 export default processIngestionJob;
+
+function requireVectorEndpoint(endpoint: string | undefined): string {
+  if (!endpoint) throw new Error('向量任务缺少已就绪的受管 endpoint');
+  return endpoint;
+}

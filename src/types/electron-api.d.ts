@@ -100,7 +100,9 @@ declare global {
       'document-references:backlinks': (request: import('@app/schemas').DocumentBacklinksRequest) => Promise<unknown>;
       'document-references:resolve': (request: { projectId: string; documentId: string }) => Promise<unknown>;
       'document-preview:types': () => Promise<unknown>;
-      'document-preview:read': (request: import('@app/schemas').DocumentPreviewRequest) => Promise<unknown>;
+      'document-preview:read': (
+        request: import('@app/schemas').DocumentPreviewRequest
+      ) => Promise<unknown>;
       'document-history:list': (request: { documentId: string }) => Promise<unknown>;
       'document-history:restore': (request: import('@app/schemas').DocumentVersionRestoreRequest) => Promise<unknown>;
       readCommandPermissionSettings: () => Promise<unknown>;
@@ -168,7 +170,7 @@ declare global {
         requestId: WindowCloseRequestId,
         result: WindowClosePreparationResult,
       ) => void;
-      
+
       // Image operations
       selectImage: () => Promise<{ success: boolean; filePath?: string } & MediaOperationFailureFields>;
       myAppSelectImageDialog: (options?: SelectImageDialogOptions) => Promise<{
@@ -185,20 +187,26 @@ declare global {
         documentNodeId: string;
         title?: string;
         imageFilterName?: string;
-      }) => Promise<{
-        canceled: boolean;
-      } & EmbedImageResult>;
-      loadImageAsDataURL: (filePath: string) => Promise<{
-        success: boolean;
-        dataUrl?: string;
-        fileName?: string;
-        fileSize?: number;
-      } & MediaOperationFailureFields>;
-      statImageFile: (filePath: string) => Promise<{
-        success: boolean;
-        size?: number;
-        mtimeMs?: number;
-      } & MediaOperationFailureFields>;
+      }) => Promise<
+        {
+          canceled: boolean;
+        } & EmbedImageResult
+      >;
+      loadImageAsDataURL: (filePath: string) => Promise<
+        {
+          success: boolean;
+          dataUrl?: string;
+          fileName?: string;
+          fileSize?: number;
+        } & MediaOperationFailureFields
+      >;
+      statImageFile: (filePath: string) => Promise<
+        {
+          success: boolean;
+          size?: number;
+          mtimeMs?: number;
+        } & MediaOperationFailureFields
+      >;
       // Audio operations
       saveAudioFile: (audioDataBuffer: ArrayBuffer, mimeType: string) => Promise<{ 
         success: boolean; 
@@ -210,13 +218,17 @@ declare global {
       } & MediaOperationFailureFields>;
       
       // File info and operations
-      getFileSize: (filePath: string) => Promise<{ 
-        success: boolean; 
-        size?: number; 
-      } & MediaOperationFailureFields>;
-      showItemInFolder: (filePath: string) => Promise<{ 
-        success: boolean; 
-      } & SystemOperationFailureFields>;
+      getFileSize: (filePath: string) => Promise<
+        {
+          success: boolean;
+          size?: number;
+        } & MediaOperationFailureFields
+      >;
+      showItemInFolder: (filePath: string) => Promise<
+        {
+          success: boolean;
+        } & SystemOperationFailureFields
+      >;
       listConversationRunDocumentChanges: (
         request: import('@app/schemas').ConversationRunDocumentChangesRequest,
       ) => Promise<unknown>;
@@ -236,10 +248,12 @@ declare global {
         request: import('@app/schemas').SemanticSchemaManageRequest,
       ) => Promise<unknown>;
       resolveConversationFileLink: (
-        request: import('@app/schemas').ConversationFileLinkResolveRequest,
-      ) => Promise<import('@app/schemas').OperationResult<
-        import('@app/schemas').ConversationFileLinkResolution
-      >>;
+        request: import('@app/schemas').ConversationFileLinkResolveRequest
+      ) => Promise<
+        import('@app/schemas').OperationResult<
+          import('@app/schemas').ConversationFileLinkResolution
+        >
+      >;
       revealConversationFileLink: (
         request: import('@app/schemas').ConversationFileLinkRevealRequest,
       ) => Promise<import('@app/schemas').OperationResult<void>>;
@@ -292,20 +306,7 @@ declare global {
         data?: { writtenPaths: string[] };
       } & MediaOperationFailureFields>;
       onWorkspaceMutation: (callback: (event: WorkspaceMutationEvent) => void) => () => void;
-      
-      // Knowledge base operations
-      getAllKbs: () => Promise<any>;
-      createKb: (name: string, description?: string) => Promise<any>;
-      deleteKb: (kbId: string) => Promise<any>;
-      getDefaultKb: () => Promise<any>;
-      getDocumentsInKb: (kbId: string) => Promise<any>;
-      addDocumentToKb: (kbId: string, filePath: string) => Promise<any>;
-      deleteDocumentInKb: (kbId: string, docId: string) => Promise<any>;
-      searchKb: (kbId: string, query: string, topK?: number) => Promise<any>;
-      readSotDocument: (kbId: string, docId: string) => Promise<any>;
-      getTasksStatus: () => Promise<any>;
-      onTaskStatusUpdate: (callback: (status: any) => void) => () => void;
-      
+
       // Model registry
       getModels: () => Promise<any>;
       updateModels: (models: any) => Promise<any>;
@@ -328,8 +329,17 @@ declare global {
         getDetail: (pluginId: string) => Promise<{ success: true; data: PluginStoreDetail } | { success: false; error?: string }>;
         diagnostics: () => Promise<{ success: true; data: readonly PluginDiagnosticView[] } | { success: false; error?: string }>;
         rendererEntries: () => Promise<unknown>;
-        checkRemoteUpdate: (pluginId: string) => Promise<{ success: true; data: PluginRemoteUpdateCheckResult } | { success: false; error?: string }>;
-        installFromRemote: (pluginId: string) => Promise<{ success: true; data: PluginRemoteInstallResult } | { success: false; error?: string }>;
+        checkRemoteUpdate: (
+          pluginId: string
+        ) => Promise<
+          | { success: true; data: PluginRemoteUpdateCheckResult }
+          | { success: false; error?: string }
+        >;
+        installFromRemote: (
+          pluginId: string
+        ) => Promise<
+          { success: true; data: PluginRemoteInstallResult } | { success: false; error?: string }
+        >;
         uninstall: (pluginId: string) => Promise<{ success: boolean; error?: string }>;
         setEnabled: (pluginId: string, enabled: boolean) => Promise<{ success: boolean; error?: string }>;
         onChanged: (callback: () => void) => () => void;

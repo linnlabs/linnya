@@ -3,14 +3,14 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { EmbeddingRequest } from 'src/domains/model-inference';
+import type { EmbeddingRequest } from '@plugin/backend/inferenceRuntime';
 import { BlockType, type DocumentSoT } from '../../domain/block';
 import { createDocument, DocumentStatus } from '../../domain/document';
 import { createKnowledgeBase } from '../../domain/knowledgeBase';
-import { KNOWLEDGE_BASE_SCHEMAS } from 'src/features/knowledge-base/infrastructure/sqlite/knowledge-base.schema';
-import { KNOWLEDGE_GRAPH_SCHEMAS } from 'src/features/knowledge-base/graph/infrastructure/sqlite/knowledge-graph.schema';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
-import { BetterSqliteKnowledgeGraphRepository } from 'src/features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
+import { KNOWLEDGE_BASE_SCHEMAS } from '../../database/schemas/knowledgeBase';
+import { KNOWLEDGE_GRAPH_SCHEMAS } from '../../database/schemas/knowledgeGraph';
+import { BetterSqliteMetadataRepository } from '../../infrastructure/sqlite/better-sqlite-metadata.repository';
+import { BetterSqliteKnowledgeGraphRepository } from '../../graph/infrastructure/better-sqlite-knowledge-graph.repository';
 import { FileSotRepository } from '../../infrastructure/sotRepository';
 import type { QdrantPoint } from '../../infrastructure/qdrantRepository';
 import { getGraphNodesCollectionName, getGraphEdgesCollectionName } from '../../graph/infrastructure/qdrantCollections';
@@ -41,7 +41,13 @@ async function fixture(blockCount = 25) {
   const directory = path.join(root, 'sot');
   await mkdir(directory);
   const sot = new FileSotRepository(directory);
-  const source: DocumentSoT = { doc_id: 'doc', doc_title: 'Source', metadata: {}, content_blocks: {}, structure: { root: [] } };
+  const source: DocumentSoT = {
+    doc_id: 'doc',
+    doc_title: 'Source',
+    metadata: {},
+    content_blocks: {},
+    structure: { root: [] },
+  };
   if (blockCount) {
     await metadata.addDocument({ ...createDocument('doc', 'default', 'source.md', 42), status: DocumentStatus.FAILED });
     for (let i = 0; i < blockCount; i++) {
@@ -51,8 +57,22 @@ async function fixture(blockCount = 25) {
     }
     await sot.save('doc', source);
     await graph.upsertNodes([
-      { kbId: 'default', id: 'apple', name: 'Apple', canonicalName: 'apple', sourceDocId: 'doc', sourceBlockId: 'block-0' },
-      { kbId: 'default', id: 'train', name: 'Train', canonicalName: 'train', sourceDocId: 'doc', sourceBlockId: 'block-1' },
+      {
+        kbId: 'default',
+        id: 'apple',
+        name: 'Apple',
+        canonicalName: 'apple',
+        sourceDocId: 'doc',
+        sourceBlockId: 'block-0',
+      },
+      {
+        kbId: 'default',
+        id: 'train',
+        name: 'Train',
+        canonicalName: 'train',
+        sourceDocId: 'doc',
+        sourceBlockId: 'block-1',
+      },
     ]);
     await graph.upsertEdges([{ kbId: 'default', id: 'edge', sourceEntityId: 'apple', targetEntityId: 'train', relationType: 'on', evidenceDocId: 'doc', evidenceBlockId: 'block-0' }]);
   }
@@ -71,14 +91,32 @@ async function fixture(blockCount = 25) {
   };
   const requests: EmbeddingRequest[] = [];
   let failAt = 0;
-  const embedding: KnowledgeIndexRebuildDependencies['embedding'] = { embed: async request => {
-    requests.push(request);
-    request.signal?.throwIfAborted();
-    if (requests.length === failAt) throw new Error('fixture upstream rejected');
-    return { spaceId: 'new-space', vectors: request.values.map(() => [0.1, 0.2, 0.3]) };
-  } };
-  const deps = { get metadata() { return metadata; }, get graph() { return graph; }, sot, vectors, embedding };
-  const input = (signal = new AbortController().signal) => ({ deps, kbId: 'default', modelId: 'new-model', signal, progress: () => {} });
+  const embedding: KnowledgeIndexRebuildDependencies['embedding'] = {
+    embed: async request => {
+      requests.push(request);
+      request.signal?.throwIfAborted();
+      if (requests.length === failAt) throw new Error('fixture upstream rejected');
+      return { spaceId: 'new-space', vectors: request.values.map(() => [0.1, 0.2, 0.3]) };
+    },
+  };
+  const deps = {
+    get metadata() {
+      return metadata;
+    },
+    get graph() {
+      return graph;
+    },
+    sot,
+    vectors,
+    embedding,
+  };
+  const input = (signal = new AbortController().signal) => ({
+    deps,
+    kbId: 'default',
+    modelId: 'new-model',
+    signal,
+    progress: () => {},
+  });
   return {
     deps, input, requests, collections, root,
     failOn(call: number) { failAt = call; },

@@ -1,11 +1,11 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { KNOWLEDGE_BASE_SCHEMAS } from 'src/features/knowledge-base/infrastructure/sqlite/knowledge-base.schema';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
+import { KNOWLEDGE_BASE_SCHEMAS } from '../../database/schemas/knowledgeBase';
+import { BetterSqliteMetadataRepository } from '../../infrastructure/sqlite/better-sqlite-metadata.repository';
 import { createDocument, DocumentStatus } from '../../domain/document';
 import { createKnowledgeBase } from '../../domain/knowledgeBase';
 import { KnowledgeIndexStateRepository } from './KnowledgeIndexStateRepository';
-import { knowledgeIndexIdentityMigration } from './knowledgeIndexMigration';
+import { initialKnowledgeSchema as knowledgeIndexIdentityMigration } from '../../database/migrations/initialKnowledgeSchema';
 
 function openFixture() {
   const database = new Database(':memory:');
@@ -33,7 +33,9 @@ describe('knowledge index vector-space ownership', () => {
       index.publishRebuilt('default', { modelId: 'new-model', spaceId: 'space-new' });
       expect(index.requireReady('default')).toEqual({ modelId: 'new-model', spaceId: 'space-new' });
       index.invalidateForRebuild('default');
-      expect(() => new KnowledgeIndexStateRepository(database).requireReady('default')).toThrow('重建');
+      expect(() => new KnowledgeIndexStateRepository(database).requireReady('default')).toThrow(
+        '重建'
+      );
       expect((await metadata.getDocumentById('doc'))?.status).toBe(DocumentStatus.COMPLETED);
     } finally { database.close(); }
   });

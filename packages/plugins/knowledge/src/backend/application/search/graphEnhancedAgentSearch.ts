@@ -9,7 +9,7 @@
  * - full：在此基础上追加 Discovery/Multi-hop 的“新证据块”（只用于 formatter 展示）。
  */
 
-import type { EmbeddingPort } from 'src/domains/model-inference';
+import type { EmbeddingPort } from '@plugin/backend/inferenceRuntime';
 import type { QdrantRepository } from '../../infrastructure/qdrantRepository';
 import type { MetadataRepository } from '../../infrastructure/metadataRepository';
 import type { SotRepository } from '../../infrastructure/sotRepository';
@@ -41,7 +41,7 @@ import {
   type AgentKnowledgeSearchHit,
   type AgentKnowledgeSearchOutput,
 } from './agentSearchOutput';
-import type { CitationRefAllocatorPort } from 'src/domains/citation';
+import type { CitationRefAllocatorPort } from '@plugin/backend/citationSourceRuntime';
 
 function readSoTBlockText(sot: unknown, blockId: string): string | null {
   if (!sot || typeof sot !== 'object') return null;

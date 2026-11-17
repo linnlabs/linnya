@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { PluginStorage } from '@plugin/backend/storageRuntime';
 
-/** 官方随包插件只借用现有连接；不拥有连接、迁移或其他业务表。 */
-export type KnowledgeDatabase = Pick<Database.Database, 'prepare' | 'transaction'>;
+/** 插件只借用自有表读写连接，连接、迁移及关闭归 Host。 */
+export type KnowledgeDatabase = PluginStorage['database'];

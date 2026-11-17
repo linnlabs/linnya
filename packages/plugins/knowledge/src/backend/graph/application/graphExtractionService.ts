@@ -18,12 +18,13 @@ import { z } from 'zod';
 import crc32 from 'crc-32';
 
 import { toCanonicalId, toCanonicalName } from './entityNormalization';
-import type { KnowledgeGraphEdgeUpsertInput, KnowledgeGraphNodeUpsertInput } from '../infrastructure/knowledgeGraphRepository';
-import {
-  buildKnowledgeGraphExtractionBatchMessages,
-} from 'src/app-hosts/linnya/agent-registry/internals/knowledge_graph_extraction/prompt';
+import type {
+  KnowledgeGraphEdgeUpsertInput,
+  KnowledgeGraphNodeUpsertInput,
+} from '../infrastructure/knowledgeGraphRepository';
+import { buildKnowledgeGraphExtractionBatchMessages } from '../../agents/knowledge-graph-extraction/prompt';
 import { dumpGraphExtractionBatchIfEnabled } from './graphExtractionDebugDump';
-import type { TextGenerationMessage, TextGenerationPort } from 'src/domains/model-inference';
+import type { TextGenerationMessage, TextGenerationPort } from '@plugin/backend/inferenceRuntime';
 
 export type GraphChunkInput = {
   kbId: string;
@@ -227,7 +228,10 @@ export type GraphExtractionResult = {
 export class GraphExtractionService {
   private readonly textGeneration: TextGenerationPort;
 
-  constructor(textGeneration: TextGenerationPort) {
+  constructor(
+    textGeneration: TextGenerationPort,
+    private readonly debugDirectory?: string
+  ) {
     this.textGeneration = textGeneration;
   }
 
@@ -242,7 +246,8 @@ export class GraphExtractionService {
   async extractFromChunks(
     modelId: string,
     chunks: ReadonlyArray<GraphChunkInput>,
-    limits: { maxEntitiesPerChunk: number; maxEdgesPerChunk: number }
+    limits: { maxEntitiesPerChunk: number; maxEdgesPerChunk: number },
+    signal?: AbortSignal
   ): Promise<GraphExtractionResult> {
     if (chunks.length === 0) return { nodes: [], edges: [] };
 
@@ -279,6 +284,7 @@ export class GraphExtractionService {
         };
       }),
       temperature: 0,
+      signal,
     });
     const rawText = response.text;
     const jsonText = extractLikelyJsonArray(rawText);
@@ -287,16 +293,19 @@ export class GraphExtractionService {
     // 开发者调试：可选落盘（默认关闭）
     // - 文件里包含 rawText（模型原始输出）与 parsed（解析后的 JSON 数组，含 chunk_id）
     // - 用于人工验证提示词抽取质量；确认无误后可关闭环境变量
-    await dumpGraphExtractionBatchIfEnabled({
-      kbId: chunks[0].kbId,
-      docId,
-      modelId,
-      chunkIds: promptChunks.map((c) => c.chunkId),
-      rawText,
-      parsedJsonText: jsonText,
-      parsed,
-      createdAtIso: new Date().toISOString(),
-    });
+    await dumpGraphExtractionBatchIfEnabled(
+      {
+        kbId: chunks[0].kbId,
+        docId,
+        modelId,
+        chunkIds: promptChunks.map(c => c.chunkId),
+        rawText,
+        parsedJsonText: jsonText,
+        parsed,
+        createdAtIso: new Date().toISOString(),
+      },
+      this.debugDirectory
+    );
 
     // 去重与合并：最终落库仍按 node.id / edge.id 幂等 upsert
     const allNodes: KnowledgeGraphNodeUpsertInput[] = [];

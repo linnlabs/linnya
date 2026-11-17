@@ -12,8 +12,6 @@
 import fsp from 'fs/promises';
 import path from 'path';
 
-import { pathManager } from 'src/shared/utils/pathManager';
-
 export type GraphExtractionDumpBatchItem = {
   chunk_id: string;
   entities: unknown;
@@ -51,7 +49,7 @@ function formatBeijingTimestampForFilename(date: Date): string {
   }).formatToParts(date);
 
   const pick = (type: Intl.DateTimeFormatPartTypes): string => {
-    const p = parts.find((x) => x.type === type);
+    const p = parts.find(x => x.type === type);
     return p ? p.value : '00';
   };
 
@@ -83,7 +81,7 @@ function formatBeijingIsoLike(date: Date): string {
   }).formatToParts(date);
 
   const pick = (type: Intl.DateTimeFormatPartTypes): string => {
-    const p = parts.find((x) => x.type === type);
+    const p = parts.find(x => x.type === type);
     return p ? p.value : '00';
   };
 
@@ -126,14 +124,15 @@ function sanitizeForPathSegment(input: string): string {
  * 路径：
  * - `<workspaceRoot>/logs/kg-extraction/<kbId>/<docId>/<ts>.<modelId>.json`
  */
-export async function dumpGraphExtractionBatchIfEnabled(data: GraphExtractionDumpBatch): Promise<void> {
-  if (!isGraphExtractionDumpEnabled()) return;
+export async function dumpGraphExtractionBatchIfEnabled(
+  data: GraphExtractionDumpBatch,
+  directory?: string
+): Promise<void> {
+  if (!directory) return;
 
   try {
-    const logDir = pathManager.getLogDirectory();
     const dir = path.join(
-      logDir,
-      'kg-extraction',
+      directory,
       sanitizeForPathSegment(data.kbId),
       sanitizeForPathSegment(data.docId)
     );

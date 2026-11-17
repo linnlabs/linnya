@@ -7,9 +7,10 @@
  * 包含搜索结果格式化和其他搜索相关的工具函数。
  */
 
-import { logger } from '@shared/index';
+import { Logger } from '@plugin/backend/loggingRuntime';
+const logger = new Logger('knowledge');
 import { SotRepository } from '../infrastructure/sotRepository';
-import { isCanonicalCitationRef } from 'src/domains/citation';
+import { isCanonicalCitationRef } from '@plugin/backend/citationSourceRuntime';
 import type { DocumentSoT } from '../domain/block';
 import {
   DEFAULT_FULL_GRAPH_BUDGET,

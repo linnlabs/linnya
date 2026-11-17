@@ -5,11 +5,12 @@ import { isObjectLike } from '@linnya/foundation';
  * @brief 集合 schema 兼容性检查（避免“写入/检索 schema 不匹配”这类根因问题）
  */
 
-import type { Logger } from '@shared/logger';
+import type { Logger } from '@plugin/backend/loggingRuntime';
 
-
-
-function getRecordProp(obj: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+function getRecordProp(
+  obj: Record<string, unknown>,
+  key: string
+): Record<string, unknown> | undefined {
   const v = obj[key];
   return isObjectLike(v) ? v : undefined;
 }

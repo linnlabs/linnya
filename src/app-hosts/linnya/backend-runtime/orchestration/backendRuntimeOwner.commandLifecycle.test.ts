@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../../../electron-main/services/apiServer', () => ({
   ApiServer: class TestApiServer {
     setupMiddleware(): void {}
-    async start(port: number): Promise<number> { return port; }
+    async start(port: number): Promise<number> {
+      return port;
+    }
     async stop(): Promise<void> {}
     getToken(): string { return 'test-token'; }
   },
@@ -42,23 +44,27 @@ const BACKEND_CONFIGURATION = Object.freeze({
 
 class TestBackendRuntimeOwner extends BackendRuntimeOwner {
   constructor() {
-    super({
-      binaryPath: '/test/runtime/qdrant',
-      platform: 'darwin',
-      environment: Object.freeze({}),
-    }, async () => {
-      throw new Error('test Qdrant process owner must not launch');
-    }, Object.freeze({
-      ingestionScriptPath: '/test/runtime/ingestion.worker.cjs',
-      audioProcessingScriptPath: '/test/runtime/audio-processing.worker.cjs',
-      graphExtractionScriptPath: '/test/runtime/graph-extraction.worker.cjs',
-      graphIndexingScriptPath: '/test/runtime/graph-indexing.worker.cjs',
-    }), Object.freeze({
-      developmentRoot: '/workspace/linnya',
-      appDataRoot: '/workspace/linnya/_dev_data',
-      workspaceRoot: '/workspace/linnya/_dev_data',
-      workspaceRootIsCustom: false,
-    }), '0.0.38');
+    super(
+      {
+        binaryPath: '/test/runtime/qdrant',
+        platform: 'darwin',
+        environment: Object.freeze({}),
+      },
+      async () => {
+        throw new Error('test Qdrant process owner must not launch');
+      },
+      Object.freeze({
+        audioProcessingScriptPath: '/test/runtime/audio-processing.worker.cjs',
+        pluginBootstrapScriptPath: '/test/runtime/plugin-runtime.worker.cjs',
+      }),
+      Object.freeze({
+        developmentRoot: '/workspace/linnya',
+        appDataRoot: '/workspace/linnya/_dev_data',
+        workspaceRoot: '/workspace/linnya/_dev_data',
+        workspaceRootIsCustom: false,
+      }),
+      '0.0.38'
+    );
   }
 }
 
@@ -113,8 +119,12 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     vi.spyOn(ServiceInitializer.prototype, 'stopStartupMaintenance')
       .mockImplementation(async () => { order.push('maintenance'); });
     const manager = new TestBackendRuntimeOwner();
-    vi.spyOn(manager.getApiServer(), 'stop').mockImplementation(async () => { order.push('api'); });
-    vi.spyOn(QueueManager.getInstance(), 'shutdown').mockImplementation(async () => { order.push('queue'); });
+    vi.spyOn(manager.getApiServer(), 'stop').mockImplementation(async () => {
+      order.push('api');
+    });
+    vi.spyOn(QueueManager.getInstance(), 'shutdown').mockImplementation(async () => {
+      order.push('queue');
+    });
     manager.registerCommandOwnerLifecycle({
       hasExecutingCommands() { return true; },
       async endOwnerAndWait() { order.push('command'); },

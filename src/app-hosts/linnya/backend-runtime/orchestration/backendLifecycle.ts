@@ -1,3 +1,4 @@
+import { installPluginWorkerRuntime } from '../../adapters/plugin-worker-queue/ports/pluginWorkerRuntime';
 import { modelCatalog } from '../../../../domains/model-catalog';
 import { providerAccountRegistry } from '../../../../domains/provider-account';
 import {
@@ -24,6 +25,7 @@ import { installDistributionIdentity } from '../../../../shared/distribution-ide
 import { syncRegisteredBackendPluginRuntimeResources } from '../../plugin-registry/builtin';
 
 const logger = new Logger('App-Server-Backend');
+let uninstallPluginWorkerRuntime: (() => void) | null = null;
 let uninstallWebPageRenderer: (() => void) | null = null;
 
 class BackendShutdownError extends Error {
@@ -40,6 +42,10 @@ export async function initializeAppServerBackend(
 ): Promise<BackendRuntimeOwner> {
   installRuntimePathRoots(hostDependencies.bootstrap.runtimePathRoots);
   installDistributionIdentity(hostDependencies.bootstrap.distributionIdentity);
+  uninstallPluginWorkerRuntime?.();
+  uninstallPluginWorkerRuntime = installPluginWorkerRuntime(
+    hostDependencies.processRuntime.queueWorkers.pluginBootstrapScriptPath,
+  );
   logger.info('App Server Backend 初始化开始');
 
   try {
@@ -81,7 +87,6 @@ export async function initializeAppServerBackend(
         },
         agentToolEnvironment: hostDependencies.agentToolEnvironment,
         commandApprovalControl: hostDependencies.commandApprovalControl,
-        knowledgeBaseService: services.knowledgeBaseService || undefined,
         transcriptionService: services.transcriptionService || undefined,
         documentOcr: services.documentOcr,
         startupCapabilityFailures: runtimeOwner.getStartupCapabilityFailures(),
@@ -138,6 +143,8 @@ export async function initializeAppServerBackend(
     runtimeOwner.startProviderModelSynchronization();
     return runtimeOwner;
   } catch (error: unknown) {
+    uninstallPluginWorkerRuntime?.();
+    uninstallPluginWorkerRuntime = null;
     uninstallWebPageRenderer?.();
     uninstallWebPageRenderer = null;
     logger.error(
@@ -165,6 +172,9 @@ export async function shutdownAppServerBackend(): Promise<void> {
   } catch (error: unknown) {
     failures.push(error);
   }
+
+  uninstallPluginWorkerRuntime?.();
+  uninstallPluginWorkerRuntime = null;
 
   if (failures.length > 0) {
     const failure = failures.length === 1

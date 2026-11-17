@@ -8,13 +8,13 @@
  * - 该模块不关心 Qdrant/元数据/SoT/图谱，避免耦合扩大。
  */
 
-import { RerankingFailure, type RerankingPort } from 'src/domains/model-inference';
-import { logger } from '@shared/index';
+import { type RerankingPort } from '@plugin/backend/inferenceRuntime';
+import { RerankingFailure } from '@plugin/backend/inferenceFailures';
+
+import { Logger } from '@plugin/backend/loggingRuntime';
+const logger = new Logger('knowledge');
 import type { RankedRetrievedPoint, SearchRanker } from './types';
-import {
-  applyIntelligentLayeredSorting,
-  type LayeredRankingResult,
-} from '../../utils/ranking';
+import { applyIntelligentLayeredSorting, type LayeredRankingResult } from '../../utils/ranking';
 
 function toRankingRecord(p: RankedRetrievedPoint): LayeredRankingResult {
   return {

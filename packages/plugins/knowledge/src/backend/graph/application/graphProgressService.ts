@@ -59,6 +59,7 @@ export class GraphProgressService {
     // 根因修复：为支持“失败后只重跑未完成 chunk”，queued 写入不能把 doneChunks 覆盖为 0
     // 否则会破坏 worker 的断点续跑（doneChunks 变成 0 -> 又整篇重跑）。
     const existing = await this.repo.getDocStatus(kbId, docId);
+    if (this.disposed) return;
     const preservedDoneChunks =
       existing && existing.chunkCount === chunkCount && existing.doneChunks > 0
         ? existing.doneChunks
@@ -90,7 +91,15 @@ export class GraphProgressService {
     return GraphProgressService.toPayload(progress);
   }
 
+  private disposed = false;
+  dispose(): void {
+    this.disposed = true;
+    for (const timer of this.pendingTimers.values()) clearTimeout(timer);
+    this.pendingTimers.clear();
+  }
+
   private requestRefresh(kbId: string): void {
+    if (this.disposed) return;
     const existing = this.pendingTimers.get(kbId);
     if (existing) return;
 
@@ -111,6 +120,7 @@ export class GraphProgressService {
     }
 
     const progress = await this.repo.getKbProgress(kbId);
+    if (this.disposed) return;
     const payload = GraphProgressService.toPayload(progress);
     this.lastEmitAtMs.set(kbId, now);
     this.onProgressUpdated?.(payload);

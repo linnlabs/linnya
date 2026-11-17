@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import crc32 from 'crc-32';
-import type { TextGenerationResult } from 'src/domains/model-inference';
+import type { TextGenerationResult } from '@plugin/backend/inferenceRuntime';
 
 import { GraphExtractionService } from '../application/graphExtractionService';
 

@@ -4,28 +4,18 @@
  * @brief 文本 -> 稀疏向量（BM25 侧使用的稀疏表示）
  */
 
-import type { Logger } from '@shared/logger';
+import type { Logger } from '@plugin/backend/loggingRuntime';
 import adler32 from 'adler-32';
-import { getSharedJieba, STOPWORDS } from '@shared/utils/tokenization';
+import { tokenizeForSearch } from '@plugin/backend/textSegmentationRuntime';
 import type { SparseVector } from '../qdrantRepository';
 
 /**
  * 功能：使用 jieba 进行中文分词（search 模式）
  * - 分词失败时降级到简易分词，保证流程可继续，但会降低检索质量
  */
-function jiebaTokenize(text: string, logger: Logger): string[] {
+async function jiebaTokenize(text: string, logger: Logger): Promise<string[]> {
   try {
-    const jieba = getSharedJieba();
-    const tokens = jieba.cutForSearch(text, true);
-    return tokens.filter((token: string) =>
-      token &&
-      token.length > 1 &&
-      !STOPWORDS.has(token.toLowerCase().trim()) &&
-      token.trim().length > 0 &&
-      // 过滤纯数字和纯符号
-      !/^\d+$/.test(token) &&
-      !/^[^\w\u4e00-\u9fff]+$/.test(token)
-    );
+    return await tokenizeForSearch(text);
   } catch (error) {
     logger.error(`jieba 分词失败: ${String(error)}`);
     return fallbackTokenize(text, logger);
@@ -86,7 +76,7 @@ function fallbackHash(data: string, logger: Logger): number {
  */
 export async function textToSparseVector(text: string, logger: Logger): Promise<SparseVector> {
   try {
-    const tokens = jiebaTokenize(text, logger);
+    const tokens = await jiebaTokenize(text, logger);
     if (tokens.length === 0) {
       return { indices: [], values: [] };
     }
@@ -113,5 +103,3 @@ export async function textToSparseVector(text: string, logger: Logger): Promise<
     return { indices: [], values: [] };
   }
 }
-
-

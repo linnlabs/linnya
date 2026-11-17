@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
 import type { TextGenerationPort } from 'src/domains/model-inference';
 import { ImageParser } from './imageParser';
@@ -10,9 +11,10 @@ describe('ImageParser text generation boundary', () => {
       finishReason: 'stop',
     });
     const parser = new ImageParser();
+    const png = await sharp({ create: { width: 2, height: 2, channels: 4, background: '#f00' } }).png().toBuffer();
 
     const blocks = await parser.parseImageWithAi(
-      new Uint8Array([1, 2, 3]),
+      png,
       'doc-image',
       { generate },
       'vision-model'
@@ -26,8 +28,8 @@ describe('ImageParser text generation boundary', () => {
           role: 'user',
           content: [{
             type: 'image',
-            mediaType: 'image/jpeg',
-            bytes: new Uint8Array([1, 2, 3]),
+            mediaType: 'image/png',
+            bytes: png,
           }],
         },
       ],

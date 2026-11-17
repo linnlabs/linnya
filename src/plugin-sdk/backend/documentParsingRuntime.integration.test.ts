@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
@@ -61,7 +62,8 @@ it('文档直传只使用显式OCR模型与任务临时目录，结束清理；�
 it('图片退避期间取消后不再发送模型请求', async () => {
   const ports = inference(); const controller = new AbortController();
   ports.textGeneration.generate.mockResolvedValue({ text: '', reasoning: '', finishReason: 'stop' });
-  const parsing = parsePluginDocument({ bytes: new Uint8Array([1]), documentId: 'image', filename: 'image.png', imageVisionModelId: 'frozen-vision', temporaryDirectory: await directory(), signal: controller.signal }, ports);
+  const png = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#f00' } }).png().toBuffer();
+  const parsing = parsePluginDocument({ bytes: png, documentId: 'image', filename: 'image.png', imageVisionModelId: 'frozen-vision', temporaryDirectory: await directory(), signal: controller.signal }, ports);
   const rejected = expect(parsing).rejects.toMatchObject({ name: 'AbortError' });
   await vi.waitFor(() => expect(ports.textGeneration.generate).toHaveBeenCalledOnce());
   controller.abort(); await rejected;

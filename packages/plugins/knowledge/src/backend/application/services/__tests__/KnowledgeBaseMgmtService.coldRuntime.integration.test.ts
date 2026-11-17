@@ -3,14 +3,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { DatabaseService } from 'src/electron-main/services/database';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
+import { BetterSqliteMetadataRepository } from '../../../infrastructure/sqlite/better-sqlite-metadata.repository';
 import { QdrantRepositoryImpl } from '../../../infrastructure/QdrantRepositoryImpl';
 import { FileSotRepository } from '../../../infrastructure/sotRepository';
 import { FileOriginalDocumentRepository } from '../../../infrastructure/fileOriginalDocumentRepository';
 import { KnowledgeBaseMgmtService } from '../KnowledgeBaseMgmtService';
 import { DefaultSearchService } from '../../search/defaultSearchService';
 import { createDocument } from '../../../domain/document';
-import { QdrantRuntimeUnavailableError } from 'src/infra/adapters/vector-store/qdrant/errors';
+import { isQdrantRuntimeUnavailableError } from '../../../infrastructure/vector-store/errors';
 
 describe('knowledge metadata with a cold vector runtime', () => {
   it('默认库和新库可以原地创建读取；向量启动失败时删除不触碰原文或元数据', async () => {
@@ -18,7 +18,9 @@ describe('knowledge metadata with a cold vector runtime', () => {
     const database = new DatabaseService(path.join(root, 'workspace.sqlite'));
     database.initialize();
     const metadataRepository = new BetterSqliteMetadataRepository(database.getDb());
-    const resolveAdapter = vi.fn(async () => { throw new QdrantRuntimeUnavailableError('qdrant unavailable'); });
+    const resolveAdapter = vi.fn(async () => {
+      throw new QdrantRuntimeUnavailableError('qdrant unavailable');
+    });
     const sotRepository = new FileSotRepository(path.join(root, 'sot'));
     const originalDocumentRepository = new FileOriginalDocumentRepository(path.join(root, 'originals'));
     const deleteOriginal = vi.spyOn(originalDocumentRepository, 'deleteByKnowledgeBase');

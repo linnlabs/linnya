@@ -6,7 +6,7 @@ import path from 'path';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { createDocument, type DocumentParseDiagnostics } from '../../domain/document';
 import { createKnowledgeBase } from '../../domain/knowledgeBase';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
+import { BetterSqliteMetadataRepository } from './better-sqlite-metadata.repository';
 
 describe('BetterSqliteMetadataRepository parse diagnostics', () => {
   let tempDir: string;
