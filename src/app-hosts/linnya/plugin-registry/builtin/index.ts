@@ -1,6 +1,7 @@
 import * as registeredContributions from '../registeredContributions';
 import { resolveEnabledIds } from '../registeredContributions';
 import { backendPluginRegistry } from '../registry';
+import { registeredBackendPluginDirectories as diskPluginDirsById } from '../registeredPluginDirectories';
 import { platformBackendPlugin } from './platform.backend';
 import type { PluginId, PluginMeta } from '@app/schemas';
 import type { PluginBackendContribution } from '../types';
@@ -50,12 +51,7 @@ import {
 export type BuiltinBackendPluginRegistrationPhase = 'empty' | 'platform-only' | 'complete';
 
 let registrationPhase: BuiltinBackendPluginRegistrationPhase = 'empty';
-const diskPluginDirsById = new Map<PluginId, string>();
-
-/** Renderer 来源校验读取已准入路径；此事实本身不授予高信任能力。 */
-export function getRegisteredBackendPluginDirectory(pluginId: PluginId): string | undefined {
-  return diskPluginDirsById.get(pluginId);
-}
+export { getRegisteredBackendPluginDirectory } from '../registeredPluginDirectories';
 
 function registerBackendPluginIfMissing(
   contribution: PluginBackendContribution,

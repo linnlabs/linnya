@@ -270,9 +270,10 @@ interface TaskStatusUpdate {
 
 `workspace.sqlite` 的 schema、migration、插件 lifecycle 和普通业务提交由 App Server 中的 `DatabaseService` 拥有。Worker 不得执行完整 `initialize()`；connection-only 路径只允许连接已经完成 schema 初始化且版本完全一致的数据库，不能在 Worker 内建表、迁移或启动插件 lifecycle。
 
-Queue owner 还必须把 App Server 已冻结的 `RuntimePathRoots` 与 `DistributionIdentity`
-作为 data-only `workerData` 传入。Worker 在初始化 Model Catalog 前安装这两份事实，不能
-根据 `cwd`、`LINNYA_DEV_MODE`、`NODE_ENV` 或 `process.env` 重新猜路径和官方发行身份。
+既有 Host queue owner 把已冻结的 `RuntimePathRoots` 与 `DistributionIdentity` 作为 data-only
+`workerData` 传入。新插件队列由 [App Worker adapter](../../app-hosts/linnya/adapters/plugin-worker-queue/README.md)
+注入单独的 Host 数据库身份和最小 OS 环境，业务 job 不得覆盖。模型推理走受管 Host request，
+Worker 不再初始化 Model Catalog 或读取凭据；不能根据 cwd 或环境重新猜业务资源位置。
 
 当前仍有一个明确的架构缺口：`ingestion.worker.ts`、`graph-extraction.worker.ts` 和 `graph-indexing.worker.ts` 会各自建立 connection-only SQLite 连接，并在 Worker 内读取或写入业务表。这避免了在 App Server 事件循环执行最重计算，也避免了每次 spawn 重跑数据库 bootstrap，但还没有达到“App Server 是唯一 SQLite writer”的最终边界。
 

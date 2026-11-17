@@ -41,8 +41,8 @@ import {
 } from './database/migrations';
 import type { DatabaseStartupProgressPort } from './database/databaseStartupProgress';
 import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
-
-export const DATABASE_BUSY_TIMEOUT_MS = 5000;
+import { configureSqliteConnection, openInitializedSqliteConnection } from '../../infra/sqlite/connectionOnly';
+export { DATABASE_BUSY_TIMEOUT_MS } from '../../infra/sqlite/connectionOnly';
 
 /** `PRAGMA auto_vacuum` 的取值：2 = INCREMENTAL。 */
 const AUTO_VACUUM_INCREMENTAL = 2;
@@ -267,9 +267,7 @@ export class DatabaseService {
    * 直接抛 SQLITE_BUSY（见 F1-03）。
    */
   private configureConnection(db: Database.Database): void {
-    db.pragma('foreign_keys = ON');
-    db.pragma(`busy_timeout = ${DATABASE_BUSY_TIMEOUT_MS}`);
-    db.pragma('journal_mode = WAL');
+    configureSqliteConnection(db);
   }
 
   /**
@@ -303,17 +301,7 @@ export class DatabaseService {
     if (this.db) {
       return;
     }
-    const db = this.openConnection();
-    const currentVersion = db.pragma('user_version', { simple: true }) as number;
-    if (currentVersion !== SCHEMA_VERSION) {
-      this.close();
-      throw new Error(
-        `[DatabaseService] initializeConnectionOnly() 要求主进程先完成 initialize()：` +
-          `db user_version=${currentVersion}，app SCHEMA_VERSION=${SCHEMA_VERSION}。` +
-          `worker 连接不得自行 bootstrap schema 或插件 lifecycle。`
-      );
-    }
-    this.configureConnection(db);
+    this.db = openInitializedSqliteConnection({ databasePath: this.dbPath, schemaVersion: SCHEMA_VERSION });
   }
 
   private isDependentDdl(ddl: string): boolean {

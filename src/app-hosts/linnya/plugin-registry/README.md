@@ -5,3 +5,5 @@
 `registry.ts` 只保存已经接纳的贡献及其声明，`pluginRuntimeState.ts` 读取 installed/enabled 事实。SDK、fence 与工具上下文派生在 App 完成注册和启用装配后通过 `registeredContributions.ts` 读取运行贡献，不能为了查询声明反向调用磁盘加载入口。加载插件模块时不能发送业务推送；运行期推送仍必须同时满足“已启用”和“已声明 channel”。Host 的静态枚举与启动用例继续通过 builtin 入口显式保证注册阶段；独立工具测试的组合根也须先注册 platform，不能依赖第一次工具查询偷偷初始化。
 
 SDK 使用 Desktop capability 时直接引用对应 `registry/*Registry.ts` 的窄端口；`desktop-capabilities/index.ts` 供 App composition 选择具体 RPC/Host 实现，不进入 SDK 的运行闭包。这样磁盘加载器可以提供 SDK 合同，同时 SDK 不再依赖加载器或请求装配。
+
+`registeredPluginDirectories.ts` 是已准入 Backend artifact 目录的唯一内存记录，写入/清除仍由 builtin 装配负责。Worker factory 等运行消费者只读 getter，不反向 import builtin 加载器。目录记录表示来源归属，不单独授予启用状态或高信任能力。
