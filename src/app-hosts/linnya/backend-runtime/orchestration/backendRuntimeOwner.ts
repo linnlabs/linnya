@@ -154,7 +154,7 @@ export class BackendRuntimeOwner {
     if (this.commandAppOwnerEnded || this.sandboxAppOwnerEnded) {
       throw new Error('当前 Linnya 进程的 App 运行时已经结束，请重新启动 Linnya');
     }
-    if (!this.isRunning && (this.vectorRuntime || this.qdrantManager || this.services)) {
+    if (!this.isRunning && (this.disposeVectorFactory || this.vectorRuntime || this.qdrantManager || this.services)) {
       throw new Error('上一次后端生命周期尚未收口，请重新停止服务后再启动');
     }
     console.log(
@@ -264,6 +264,7 @@ export class BackendRuntimeOwner {
     if (
       !this.isRunning &&
       !this.services &&
+      !this.disposeVectorFactory &&
       !this.vectorRuntime &&
       !this.qdrantManager &&
       !this.commandOwnerLifecycle &&
