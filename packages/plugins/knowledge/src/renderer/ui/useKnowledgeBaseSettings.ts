@@ -30,9 +30,7 @@ export function useKnowledgeBaseSettings(
   // 使用知识库 store 以便从现有知识库列表中获取名称等信息
   const kbStore = useKnowledgeBase();
 
-  // 使用全局通知 store，在保存成功或失败时给用户反馈
-
-  // 使用工作区项目 store，提供“已存在项目”列表
+  // 项目摘要经公开插件口读取；通知交由 Host，不耦合 Workspace store。
   const allProjects = ref<KnowledgeProjectSummary[]>([]);
   const projectLinksReady = ref(false);
   const projectLinksError = ref<string | null>(null);
@@ -51,14 +49,14 @@ export function useKnowledgeBaseSettings(
       : null;
   });
 
-  // 本地可编辑状态：当前实现主要用于展示和局部编辑，后续会通过 API 回写到后端
+  // 表单草稿仅在明确保存后经插件命令写入后端。
   const localName = ref<string>('');
   const localDescription = ref<string>('');
   const localTags = ref<string[]>([]);
   const newTag = ref<string>('');
   const isSaving = ref<boolean>(false);
 
-  // 当前知识库本地关联的项目 ID 列表（仅前端状态，尚未写入后端）
+  // 当前编辑会话的关联草稿；保存时以冻结知识库 ID 一次替换关联。
   const linkedProjectIds = ref<string[]>([]);
 
   // 是否正在从后端加载项目关联
@@ -133,7 +131,7 @@ export function useKnowledgeBaseSettings(
     { immediate: true }
   );
 
-  // 单独监听 selectedKbId：仅在“切换知识库”时加载 / 清空关联项目
+  // 切库后读取新范围的关联，不在普通基础信息更新时覆盖本地关联草稿。
   watch(
     () => props.selectedKbId,
     (kbId) => {
@@ -230,7 +228,7 @@ export function useKnowledgeBaseSettings(
     const projectIds = [...linkedProjectIds.value];
     try {
       isSaving.value = true;
-      // 通过统一的 updateKbModelSettings 通道调用后端 PATCH /knowledge-base/:kbId/settings
+      // 沿正式插件更新命令保存基础信息，再提交冻结的关联关系。
       await kbStore.updateKbModelSettings(kbId, {
         // 名称：优先使用输入框的值，空字符串时回退到当前名称
         name: localName.value.trim() || currentKb.value.name,

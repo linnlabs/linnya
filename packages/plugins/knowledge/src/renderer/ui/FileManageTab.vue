@@ -1,4 +1,3 @@
-<!-- src/renderer/features/KnowledgeBase/ui/FileManageTab.vue -->
 <!-- 文件管理Tab组件，负责已上传文档的查看和管理 -->
 
 <template>

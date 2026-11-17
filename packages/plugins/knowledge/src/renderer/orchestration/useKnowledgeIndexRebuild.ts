@@ -1,6 +1,6 @@
 import { computed, onScopeDispose, ref, watch, type Ref } from 'vue';
 import { useTimer } from '@linnya/renderer-ui';
-import type { KnowledgeIndexTaskStatus } from '@app/schemas';
+import type { KnowledgeIndexTaskStatus } from '../../shared';
 import { knowledgeBaseService } from '../services/knowledgeBaseService';
 import { readPurposeModelId, readModelDisplayName, subscribeModelConfigurationChanges } from '@plugin/renderer/modelConfiguration';
 
