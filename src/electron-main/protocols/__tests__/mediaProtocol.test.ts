@@ -22,7 +22,8 @@ vi.mock('electron', () => ({
 }));
 
 const tempDirs: string[] = [];
-let previousWorkspaceDir: string | undefined;
+let workspaceRoot: string;
+let instanceRoot: string;
 let mediaProtocol: MediaProtocolModule;
 let fileReadGrants: FileReadGrantsModule;
 let pathManager: PathManagerModule;
@@ -68,8 +69,11 @@ beforeEach(async () => {
   protocolHandleMock.mockReset();
   protocolRegisterSchemesAsPrivilegedMock.mockReset();
 
-  previousWorkspaceDir = process.env.LINNYA_WORKSPACE_DIR;
-  process.env.LINNYA_WORKSPACE_DIR = await createTempDir();
+  instanceRoot = await createTempDir();
+  workspaceRoot = path.join(instanceRoot, 'workspace');
+  // 只覆盖 Workspace 不会移动 AppData；两种媒体根都必须归测试实例所有。
+  vi.stubEnv('LINNYA_DEV_INSTANCE_ROOT', instanceRoot);
+  vi.stubEnv('LINNYA_WORKSPACE_DIR', workspaceRoot);
 
   pathManager = await import('../../../shared/utils/pathManager');
   pathManager.resetWorkspaceRootToDefault();
@@ -96,17 +100,19 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  if (previousWorkspaceDir === undefined) {
-    delete process.env.LINNYA_WORKSPACE_DIR;
-  } else {
-    process.env.LINNYA_WORKSPACE_DIR = previousWorkspaceDir;
-  }
+  // 重置仍在隔离环境内执行，不能在清理测试时反向创建开发目录。
   pathManager?.resetWorkspaceRootToDefault();
+  vi.unstubAllEnvs();
   fileReadGrants?.clearSessionReadGrantsForTests();
   await Promise.all(tempDirs.splice(0).map((dir) => fs.rm(dir, { recursive: true, force: true })));
 });
 
 describe('media protocol', () => {
+  it('isolates both workspace and app-data media roots inside the test instance', () => {
+    expect(pathManager.getWorkspaceRoot()).toBe(workspaceRoot);
+    expect(pathManager.getAppDataPath()).toBe(path.join(instanceRoot, '_dev_data'));
+    expect(pathManager.getConversationWorkDirectoriesPath()).toBe(path.join(instanceRoot, '_dev_data', 'ConversationWorkDirectories'));
+  });
   function conversationGeneratedImagesPath(...segments: string[]): string {
     return path.join(
       pathManager.getConversationWorkDirectoriesPath(),
@@ -149,7 +155,7 @@ describe('media protocol', () => {
 
   it('passes Range headers through for audio resource seeking', async () => {
     const audioPath = await writeFile(
-      path.join(process.env.LINNYA_WORKSPACE_DIR as string, 'AudioRecordings', 'recording.webm'),
+      path.join(workspaceRoot, 'AudioRecordings', 'recording.webm'),
       Buffer.from([1, 2, 3, 4, 5, 6]),
     );
 
@@ -185,7 +191,7 @@ describe('media protocol', () => {
 
   it('does not authorize historical global generated-image paths', async () => {
     const legacyImagePath = await writeFile(
-      path.join(process.env.LINNYA_WORKSPACE_DIR as string, 'GeneratedImages', 'legacy.png'),
+      path.join(workspaceRoot, 'GeneratedImages', 'legacy.png'),
       Buffer.from([1, 2, 3]),
     );
 
@@ -198,7 +204,7 @@ describe('media protocol', () => {
 
   it('serves doc-image locators from DocumentMedia using relative paths', async () => {
     await writeFile(
-      path.join(process.env.LINNYA_WORKSPACE_DIR as string, 'DocumentMedia', 'doc-1', 'image.png'),
+      path.join(workspaceRoot, 'DocumentMedia', 'doc-1', 'image.png'),
       Buffer.from([0x89, 0x50, 0x4e, 0x47]),
     );
 
