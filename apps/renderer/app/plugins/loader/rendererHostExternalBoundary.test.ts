@@ -190,7 +190,15 @@ describe('renderer plugin host external boundary', () => {
         expect(hostRendererExternalUrls).not.toHaveProperty(entry.specifier);
         expect(hostModuleProviderSource).not.toContain(`from '${entry.specifier}'`);
       }
-      expect([...entry.namedExports].sort()).toEqual(
+      expect(
+        [...entry.namedExports].sort(),
+        [
+          `${entry.canonicalSource} 的运行时导出与 rendererUiRuntimeEntryCatalog.mjs 里 ${entry.specifier} 的 namedExports 不一致`,
+          '（差异里 Expected 一侧是源码导出，Received 一侧是目录）。',
+          '新增、改名或删除导出（例如新图标）时同步改 scripts/build/renderer-ui-runtime/rendererUiRuntimeEntryCatalog.mjs，',
+          '按字母序登记：插件运行时只能拿到目录里登记过的名字，漏登记在开发环境不报错，到插件里才缺导出。',
+        ].join(''),
+      ).toEqual(
         parseRuntimeExportNames(readRepoFile(entry.canonicalSource)),
       );
     }
@@ -212,7 +220,10 @@ describe('renderer plugin host external boundary', () => {
       const entry = rendererUiEntriesBySpecifier.get(runtimeImport.moduleId);
       expect(entry, `Renderer UI entry missing: ${runtimeImport.moduleId}`).toBeDefined();
       for (const importedName of runtimeImport.namedImports) {
-        expect(entry?.namedExports).toContain(importedName);
+        expect(
+          entry?.namedExports,
+          `官方插件从 ${runtimeImport.moduleId} 导入了 ${importedName}，但 rendererUiRuntimeEntryCatalog.mjs 没有登记它：把名字加进该入口的 namedExports（按字母序）。`,
+        ).toContain(importedName);
       }
       if (entry?.pluginRuntimeExternal) {
         expect(hostRendererExternalUrls).toHaveProperty(entry.specifier, entry.protocolUrl);
