@@ -181,6 +181,10 @@
 /* agent-choice pill：与 mode/model 的触发器样式一致（对齐 HEAD~2） */
 .ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger {
   position: relative;
+  /* 它不在 CustomSelect 里，拿不到 .custom-select .select-trigger 的 flex；高度来自控件变量，文字靠 flex 居中。 */
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
   /* 左侧放 icon（默认 research，hover 变 close） */
   padding: 0 var(--space-2) 0 26px; /* 为左侧图标预留空间（收紧 icon 与“研究”的间距） */
   background-color: var(--color-accent-bg);
@@ -223,7 +227,8 @@
 .ai-assistant-input-footer .agent-choice-trigger-close {
   position: absolute;
   left: 4px;
-  top: 4px;
+  /* 按控件高度垂直居中 18px 的图标框 */
+  top: calc((var(--input-footer-control-height) - 18px) / 2);
   transform: none;
   width: 18px;
   height: 18px;
