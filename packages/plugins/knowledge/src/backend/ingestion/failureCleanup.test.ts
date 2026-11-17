@@ -19,7 +19,7 @@ const mocked = vi.hoisted(() => ({
   logEntries: [] as LogEntry[]
 }));
 
-vi.mock('src/shared/logger', () => ({
+vi.mock('@plugin/backend/loggingRuntime', () => ({
   Logger: class {
     private readonly module: string;
 
@@ -331,8 +331,13 @@ describe('failureCleanup logging aggregation', () => {
       createDocument(ids[2], DocumentStatus.FAILED),
     ]);
     const sot = createSotRepositoryStub(ids.slice(0, 2));
-    const originals = { save: async () => ({ kbId: 'default', docId: ids[2], path: '/original.pdf', sizeBytes: 4 }), getPath: async () => '/original.pdf', getSizeBytes: async () => 4,
-      delete: vi.fn(async () => true), deleteByKnowledgeBase: async () => 0 };
+    const originals = {
+      save: async () => ({ kbId: 'default', docId: ids[2], path: '/original.pdf', sizeBytes: 4 }),
+      getPath: async () => '/original.pdf',
+      getSizeBytes: async () => 4,
+      delete: vi.fn(async () => true),
+      deleteByKnowledgeBase: async () => 0,
+    };
     const before = await sot.get(ids[0]);
     const stats = await runKnowledgeBaseStartupMaintenanceOnce(metadata, createQdrantRepositoryStub({ default: [] }), sot,
       createKnowledgeGraphRepositoryStub(), originals);

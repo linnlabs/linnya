@@ -4,7 +4,7 @@
  * @brief 距离度量字符串归一化
  */
 
-import type { Distance } from '@infra/adapters/vector-store/qdrant';
+import type { Distance } from '../vector-store';
 
 /**
  * 功能：把用户/配置传入的字符串距离度量归一化成适配器可接受的枚举。

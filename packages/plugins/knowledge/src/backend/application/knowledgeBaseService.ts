@@ -16,7 +16,7 @@ import type { DocumentSoT } from '../domain/block';
 import type { GraphBudget, GraphMode } from '../graph/application/graphBudget';
 import type { GraphAugmentation, GraphEvidenceRef } from '../graph/application/graphSearchService';
 import type { AgentKnowledgeSearchOutput } from './search/agentSearchOutput';
-import type { CitationRefAllocatorPort } from 'src/domains/citation';
+import type { CitationRefAllocatorPort } from '@plugin/backend/citationSourceRuntime';
 
 /**
  * 知识库搜索的图谱增强选项（对外协议）
@@ -186,18 +186,6 @@ export interface KnowledgeBaseService {
    * @param taskId 任务ID（通常是docId）
    */
   cancelTask(taskId: string): Promise<void>;
-
-  /**
-   * 暂停任务
-   * @param taskId 任务ID（通常是docId）
-   */
-  pauseTask(taskId: string): Promise<void>;
-
-  /**
-   * 恢复任务
-   * @param taskId 任务ID（通常是docId）
-   */
-  resumeTask(taskId: string): Promise<void>;
 
   /**
    * 删除文档

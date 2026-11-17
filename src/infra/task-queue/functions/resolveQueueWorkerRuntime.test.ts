@@ -22,22 +22,17 @@ describe('resolveQueueWorkerRuntime', () => {
     const mainBundleDirectory = path.join(root, 'dist', 'main');
     const workerBundleDirectory = path.dirname(mainBundleDirectory);
     await mkdir(workerBundleDirectory, { recursive: true });
-    await Promise.all([
-      'plugin-runtime.worker.cjs',
-      'ingestion.worker.cjs',
-      'audio-processing.worker.cjs',
-      'graph-extraction.worker.cjs',
-      'graph-indexing.worker.cjs',
-    ].map(filename => writeFile(path.join(workerBundleDirectory, filename), '')));
+    await Promise.all(
+      ['plugin-runtime.worker.cjs', 'audio-processing.worker.cjs'].map(filename =>
+        writeFile(path.join(workerBundleDirectory, filename), '')
+      )
+    );
 
     const runtime = resolveQueueWorkerRuntime(mainBundleDirectory);
 
     expect(runtime).toEqual({
-      ingestionScriptPath: path.join(workerBundleDirectory, 'ingestion.worker.cjs'),
       audioProcessingScriptPath: path.join(workerBundleDirectory, 'audio-processing.worker.cjs'),
       pluginBootstrapScriptPath: path.join(workerBundleDirectory, 'plugin-runtime.worker.cjs'),
-      graphExtractionScriptPath: path.join(workerBundleDirectory, 'graph-extraction.worker.cjs'),
-      graphIndexingScriptPath: path.join(workerBundleDirectory, 'graph-indexing.worker.cjs'),
     });
     expect(Object.isFrozen(runtime)).toBe(true);
   });

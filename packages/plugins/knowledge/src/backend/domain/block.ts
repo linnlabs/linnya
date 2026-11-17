@@ -12,7 +12,7 @@
 
 import { z } from 'zod';
 import { Document } from './document';
-import { generateBlockId as generateDeterministicBlockId } from 'src/shared/utils/idUtils';
+import { generateParsedBlockId as generateDeterministicBlockId } from '@plugin/backend/documentParsingRuntime';
 
 /**
  * 块类型枚举
@@ -197,7 +197,7 @@ export const DocumentSoTSchema = z.object({
     vector_model: z.string().optional(),
     
     /** 视觉模型 */
-    vision_model: z.string().optional()
+    vision_model: z.string().optional(),
   }),
   
   /** 内容块映射 - key为block_id，value为块对象 */

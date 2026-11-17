@@ -4,7 +4,7 @@
  * @brief 搜索/删除通用过滤器构建（领域过滤器 -> Qdrant filter）
  */
 
-import type { QdrantFieldCondition, QdrantFilter } from '@infra/adapters/vector-store/qdrant';
+import type { QdrantFieldCondition, QdrantFilter } from '../vector-store';
 import type { SearchFilterOptions } from '../qdrantRepository';
 
 /**

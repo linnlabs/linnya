@@ -2,7 +2,7 @@ import { projectChunkVectorPoints } from '../functions/projectChunkVectorPoints'
 import { KnowledgeIndexRebuildRequiredError } from '../../index-rebuild/definitions/knowledgeIndex';
 /**
  * @file src/knowledge-base/ingestion/handlers/StoringHandler.ts
- * 
+ *
  * @brief STORING状态处理器
  * 
  * @description
@@ -12,8 +12,13 @@ import { KnowledgeIndexRebuildRequiredError } from '../../index-rebuild/definiti
  * 副作用 (Side-effects): 保存SoT文件，存储向量到Qdrant，更新元数据
  */
 
-import { Logger } from 'src/shared/logger';
-import { InternalStage, type StateHandler, type StateTransitionResult, type TaskContext } from '../definitions/state';
+import { Logger } from '@plugin/backend/loggingRuntime';
+import {
+  InternalStage,
+  type StateHandler,
+  type StateTransitionResult,
+  type TaskContext,
+} from '../definitions/state';
 import { promises as fs } from 'fs';
 import { SotRepository } from '../../infrastructure/sotRepository';
 import type { QdrantRepository } from '../../infrastructure/qdrantRepository';
@@ -103,15 +108,15 @@ export class StoringHandler implements StateHandler {
       return {
         success: true,
         newStage: InternalStage.COMPLETED,
-        context: { 
-          ...context, 
+        context: {
+          ...context,
           storeResult: {
             ...storeResult
           },
           stageProgress: 100,
           currentProgress: 100
         },
-        message: `数据存储完成: ${vectorCount} 个向量`
+        message: `数据存储完成: ${vectorCount} 个向量`,
       };
 
     } catch (error) {
@@ -238,8 +243,10 @@ export class StoringHandler implements StateHandler {
         
         const progress = Math.min(100, ((i + batch.length) / totalPoints) * 100);
         this.updateProgress(context, 50 + progress * 0.4, '存储向量数据');
-        
-        logger.info(`[StoringHandler] 批次 ${Math.floor(i / batchSize) + 1} 存储完成: ${batch.length} 个点`);
+
+        logger.info(
+          `[StoringHandler] 批次 ${Math.floor(i / batchSize) + 1} 存储完成: ${batch.length} 个点`
+        );
       }
       
       logger.info(`[StoringHandler] ✅ 向量数据存储成功: ${totalPoints} 个点`);
@@ -342,7 +349,7 @@ export class StoringHandler implements StateHandler {
       } catch (debugError) {
         logger.error(`[StoringHandler] 🔍 状态验证失败: ${debugError}`);
       }
-      
+
       logger.info(`[StoringHandler] 元数据更新完成: ${context.docId}`);
       
     } catch (error) {
@@ -457,7 +464,7 @@ export class StoringHandler implements StateHandler {
       } catch (metaError) {
         logger.error(`[StoringHandler] 更新失败状态失败: ${metaError}`);
       }
-      
+
       logger.info(`[StoringHandler] 失败清理完成: ${context.docId}`);
       
     } catch (cleanupError) {

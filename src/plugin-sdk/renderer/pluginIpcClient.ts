@@ -1,3 +1,4 @@
+import { parseUserFacingMessage } from '@app/schemas';
 import { isObjectLike } from '@linnya/foundation';
 /**
  * @file pluginIpcClient.ts
@@ -53,7 +54,15 @@ export async function invokeRendererPluginIpc(
         failureKind: 'delivery_unknown',
       };
     }
-    if (!result.success) return { success: false, error: result.error, failureKind: 'application' };
+    if (!result.success) {
+      const userMessage = parseUserFacingMessage(result.userMessage);
+      return {
+        success: false,
+        error: result.error,
+        failureKind: 'application',
+        ...(userMessage ? { userMessage } : {}),
+      };
+    }
     return { success: true, data: result.data };
   } catch (error) {
     return {

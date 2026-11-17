@@ -13,8 +13,8 @@
  * - 文档相关逻辑在 `DocumentService`，摄入在 `IngestionService`，搜索在 `SearchService`
  */
 
-import { generateTaskId } from '@shared/utils/idUtils';
-import { Logger } from 'src/shared/logger';
+import { createKnowledgeJobId as generateTaskId } from '../../queue/functions/createKnowledgeJobId';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { KnowledgeBase, createKnowledgeBase } from '../../domain/knowledgeBase';
 import { MetadataRepository } from '../../infrastructure/metadataRepository';
 import { QdrantRepository } from '../../infrastructure/qdrantRepository';

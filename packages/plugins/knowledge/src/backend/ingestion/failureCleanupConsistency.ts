@@ -1,5 +1,5 @@
 import type { OriginalDocumentRepository } from '../infrastructure/originalDocumentRepository';
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 
 import type { DocumentSoT } from '../domain/block';
 import { Document, DocumentStatus } from '../domain/document';
@@ -137,7 +137,7 @@ export function emitConsistencyScanLogs(params: {
       failedWithoutData: report.failedWithoutData.count,
       orphanUnrepairable: report.orphanUnrepairable.count,
       statusCorrectionFailures: report.statusCorrectionFailures.length,
-      checkFailures: report.checkFailures.length
+      checkFailures: report.checkFailures.length,
     },
     cleanupCandidateCount
   });

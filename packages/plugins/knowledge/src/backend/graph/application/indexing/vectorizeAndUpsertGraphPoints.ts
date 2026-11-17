@@ -1,5 +1,9 @@
-import type { EmbeddingPort } from 'src/domains/model-inference';
-import type { QdrantRepository, QdrantPoint, SparseVector } from '../../../infrastructure/qdrantRepository';
+import type { EmbeddingPort } from '@plugin/backend/inferenceRuntime';
+import type {
+  QdrantRepository,
+  QdrantPoint,
+  SparseVector,
+} from '../../../infrastructure/qdrantRepository';
 import { textsToSparseVectors } from '../../../ingestion/utils/textToSparseVector';
 
 function calculateBatchSize(totalTexts: number): number {

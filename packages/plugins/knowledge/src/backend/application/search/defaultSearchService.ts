@@ -1,5 +1,8 @@
-import { KnowledgeIndexRebuildRequiredError, KnowledgeIndexSpaceMismatchError } from '../../index-rebuild/definitions/knowledgeIndex';
-import { QdrantRuntimeUnavailableError } from '@infra/adapters/vector-store/qdrant/errors';
+import {
+  KnowledgeIndexRebuildRequiredError,
+  KnowledgeIndexSpaceMismatchError,
+} from '../../index-rebuild/definitions/knowledgeIndex';
+import { isQdrantRuntimeUnavailableError } from '../../infrastructure/vector-store/errors';
 /**
  * @file src/features/knowledge-base/application/search/defaultSearchService.ts
  *
@@ -14,12 +17,11 @@ import { QdrantRuntimeUnavailableError } from '@infra/adapters/vector-store/qdra
  *   - graphEnhancedAgentSearch：仅负责 Agent 格式化输出的软图谱增强
  */
 
-import {
-  RerankingFailure,
-  type EmbeddingPort,
-  type RerankingPort,
-} from 'src/domains/model-inference';
-import { logger } from '@shared/index';
+import { type EmbeddingPort, type RerankingPort } from '@plugin/backend/inferenceRuntime';
+import { RerankingFailure } from '@plugin/backend/inferenceFailures';
+
+import { Logger } from '@plugin/backend/loggingRuntime';
+const logger = new Logger('knowledge');
 import type { ResolvedKnowledgeBaseSearchRequest, SearchResponse } from '../knowledgeBaseService';
 import type { QdrantRepository, SearchResult } from '../../infrastructure/qdrantRepository';
 import type { MetadataRepository } from '../../infrastructure/metadataRepository';
@@ -42,7 +44,7 @@ import {
   allocateAgentKnowledgeSearchEvidence,
   type AgentKnowledgeSearchOutput,
 } from './agentSearchOutput';
-import type { CitationRefAllocatorPort } from 'src/domains/citation';
+import type { CitationRefAllocatorPort } from '@plugin/backend/citationSourceRuntime';
 
 export class DefaultSearchService implements SearchService {
   private readonly qdrantRepository: QdrantRepository;
@@ -121,7 +123,12 @@ export class DefaultSearchService implements SearchService {
       logger.info(`在知识库 ${kbId} 执行混合搜索`);
       return await this.qdrantRepository.hybridSearch(kbId, query, queryVector, topK, filter);
     } catch (error) {
-      if (error instanceof KnowledgeIndexRebuildRequiredError || error instanceof KnowledgeIndexSpaceMismatchError || error instanceof KnowledgeBaseEmbeddingMismatchError || error instanceof QdrantRuntimeUnavailableError) {
+      if (
+        error instanceof KnowledgeIndexRebuildRequiredError ||
+        error instanceof KnowledgeIndexSpaceMismatchError ||
+        error instanceof KnowledgeBaseEmbeddingMismatchError ||
+        isQdrantRuntimeUnavailableError(error)
+      ) {
         throw error;
       }
       logger.error(`搜索处理失败: ${error}`);
@@ -203,9 +210,11 @@ export class DefaultSearchService implements SearchService {
       return response;
     } catch (error) {
       if (
-        error instanceof KnowledgeIndexRebuildRequiredError || error instanceof KnowledgeIndexSpaceMismatchError || error instanceof KnowledgeBaseEmbeddingMismatchError ||
+        error instanceof KnowledgeIndexRebuildRequiredError ||
+        error instanceof KnowledgeIndexSpaceMismatchError ||
+        error instanceof KnowledgeBaseEmbeddingMismatchError ||
         error instanceof RerankingFailure ||
-        error instanceof QdrantRuntimeUnavailableError
+        isQdrantRuntimeUnavailableError(error)
       ) {
         throw error;
       }
@@ -234,7 +243,7 @@ export class DefaultSearchService implements SearchService {
     citationOffset: number = 0,
     graph?: KnowledgeBaseGraphSearchOptions
   ): Promise<AgentKnowledgeSearchOutput> {
-    if (!await this.hasDocuments(kbId)) {
+    if (!(await this.hasDocuments(kbId))) {
       return {
         observation: await formatSearchResultsForLLM([], this.sotRepository, docId, query, citationOffset, []),
         hits: [],

@@ -5,8 +5,6 @@ import type { BackendRuntimeOwner } from '../../../backend-runtime/orchestration
 import { registerWorkspaceHandlers } from 'src/electron-main/ipc/handlers/workspace/workspace-ipc';
 import { registerAgentsHandlers } from 'src/electron-main/ipc/handlers/workspace/agents-ipc';
 import { registerTodoHandlers } from 'src/electron-main/ipc/handlers/todo/todo-ipc';
-import { registerProjectKnowledgeBaseLinksHandlers } from 'src/electron-main/ipc/handlers/knowledge-base/project-knowledge-base-links-ipc';
-import { registerKnowledgeBaseHandlers } from 'src/electron-main/ipc/handlers/knowledge-base/knowledge-base-ipc';
 import { registerMarkdownDocumentHandlers } from 'src/electron-main/ipc/handlers/workspace/documents/markdown_document/document-ipc';
 import { registerAudioBlockHandlers } from 'src/electron-main/ipc/handlers/workspace/documents/markdown_document/audio-block-ipc';
 import { registerBlockHistoryHandlers } from 'src/electron-main/ipc/handlers/workspace/documents/markdown_document/block-history-ipc';
@@ -62,8 +60,6 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   registerDocumentReferenceRequests(input.runtimeOwner, input.registry);
   registerAgentsHandlers(input.runtimeOwner, ipc);
   registerTodoHandlers(input.runtimeOwner, ipc);
-  registerProjectKnowledgeBaseLinksHandlers(input.runtimeOwner, ipc);
-  registerKnowledgeBaseHandlers(input.runtimeOwner, ipc);
   registerMarkdownDocumentHandlers(input.runtimeOwner, ipc);
   registerAudioBlockHandlers(input.runtimeOwner, ipc);
   registerBlockHistoryHandlers(input.runtimeOwner, ipc);

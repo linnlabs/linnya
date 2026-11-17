@@ -46,14 +46,26 @@ async function createFixture() {
     hasActiveTasks: () => false, stopTasks: unused, rebuildIndex: unused, getIndexRebuildStatus: () => null,
     getDocumentById: id => metadata.getDocumentById(id),
     getRawSoTDocument: id => sot.get(id),
-    getGraphAugmentationsForEvidenceBlocks: (refs, options) => graph.getAugmentationsForEvidenceBlocks(refs, options),
-    createKnowledgeBase: unused, getAllKnowledgeBases: unused, getOrCreateDefaultKnowledgeBase: unused,
-    addDocument: unused, getDocumentsInKnowledgeBase: unused, getTasksStatus: unused,
-    cancelTask: unused, pauseTask: unused, resumeTask: unused, deleteDocument: unused,
-    continueFailedPdfPages: unused, deleteKnowledgeBase: unused, updateKnowledgeBaseSettings: unused,
-    search: unused, searchKnowledgeBase: unused, searchInDocument: unused, searchRawResults: unused,
-    searchForAgent: unused, searchForAgentAcrossKnowledgeBases: unused,
-    getSoTDocumentForAgent: unused, getSoTTableForAgent: unused, getDocumentContent: unused,
+    getGraphAugmentationsForEvidenceBlocks: (refs, options) =>
+      graph.getAugmentationsForEvidenceBlocks(refs, options),
+    createKnowledgeBase: unused,
+    getAllKnowledgeBases: unused,
+    getOrCreateDefaultKnowledgeBase: unused,
+    addDocument: unused,
+    getDocumentsInKnowledgeBase: unused,
+    getTasksStatus: unused,
+    continueFailedPdfPages: unused,
+    deleteKnowledgeBase: unused,
+    updateKnowledgeBaseSettings: unused,
+    search: unused,
+    searchKnowledgeBase: unused,
+    searchInDocument: unused,
+    searchRawResults: unused,
+    searchForAgent: unused,
+    searchForAgentAcrossKnowledgeBases: unused,
+    getSoTDocumentForAgent: unused,
+    getSoTTableForAgent: unused,
+    getDocumentContent: unused,
   };
   for (const id of ['a', 'b']) {
     db.prepare('INSERT INTO projects(id, name, created_at, updated_at) VALUES (?, ?, 1, 1)').run(id, id);
@@ -122,7 +134,9 @@ function forgedSelection(id: string): string {
 describe('Knowledge materialization project scope', () => {
   let fixture: Awaited<ReturnType<typeof createFixture>>;
   const assemble = new AssembleDocumentsTool();
-  beforeEach(async () => { fixture = await createFixture(); });
+  beforeEach(async () => {
+    fixture = await createFixture();
+  });
   afterEach(async () => {
     try { expect(fixture?.activeTools()).toBe(0); } finally { await fixture?.cleanup(); }
   });

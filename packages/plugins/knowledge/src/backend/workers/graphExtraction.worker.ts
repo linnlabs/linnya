@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { errorToString as getErrorMessage } from '@linnya/foundation';
 /**
  * @file src/task-queue/workers/graph-extraction.worker.ts
@@ -18,16 +19,14 @@ import { errorToString as getErrorMessage } from '@linnya/foundation';
  */
 
 import { parentPort, workerData } from 'worker_threads';
-import { createPluginWorkerInferencePort } from 'src/plugin-sdk/backend/worker/inferenceRuntime';
+import { createPluginWorkerInferencePort } from '@plugin/backend/worker/inferenceRuntime';
 
-import { enableDiagnosticLogForwarding, Logger } from 'src/shared/logger';
-import { pathManager } from 'src/shared/utils/pathManager';
-import { installRuntimePathRoots, type RuntimePathRoots } from 'src/shared/runtime-paths';
-import { getDatabaseService } from 'src/electron-main/services/database';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
+import { Logger } from '@plugin/backend/worker/loggingRuntime';
+import { openPluginWorkerDatabase } from '@plugin/backend/worker/databaseRuntime';
+import { BetterSqliteMetadataRepository } from '../infrastructure/sqlite/better-sqlite-metadata.repository';
 import { FileSotRepository } from '../infrastructure/sotRepository';
 import type { DocumentSoT } from '../domain/block';
-import { BetterSqliteKnowledgeGraphRepository } from 'src/features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
+import { BetterSqliteKnowledgeGraphRepository } from '../graph/infrastructure/better-sqlite-knowledge-graph.repository';
 import { GraphExtractionService } from '../graph/application/graphExtractionService';
 import type {
   KnowledgeGraphEdgeUpsertInput,
@@ -39,18 +38,17 @@ import {
   GraphExtractionJobPayloadSchema,
   validateJobPayload,
   type GraphExtractionJobPayload,
-} from 'src/infra/task-queue/jobs';
+} from '../queue/definitions/jobs';
 
-if (parentPort) {
-  const diagnosticPort = parentPort;
-  enableDiagnosticLogForwarding(envelope => diagnosticPort.postMessage(envelope));
-}
+const jobData = GraphExtractionJobPayloadSchema.parse(workerData);
+const database = openPluginWorkerDatabase();
 
 const logger = new Logger('GraphExtractionWorker');
 logger.info('🚀 Worker脚本启动');
 
 // 全局状态标志
 let isCancelled = false;
+const cancellation = new AbortController();
 const inference = createPluginWorkerInferencePort();
 let isPaused = false;
 
@@ -72,18 +70,8 @@ function sendMessage(type: WorkerMessageType, data: unknown): void {
   parentPort.postMessage(msg);
 }
 
-function installWorkerRuntimePathRoots(): RuntimePathRoots {
-  const runtimePathRoots = (
-    workerData as { readonly runtimePathRoots?: RuntimePathRoots } | undefined
-  )?.runtimePathRoots;
-  if (!runtimePathRoots) {
-    throw new Error('[GraphExtractionWorker] 缺少 owner 传入的 Runtime path roots');
-  }
-  return installRuntimePathRoots(runtimePathRoots);
-}
-
 function initializeWorkerServices(): void {
-  installWorkerRuntimePathRoots();
+  // 迁移与准入由 Host 已完成；Worker 只打开同工作区的窄连接。
 }
 
 async function processGraphExtractionJob(): Promise<void> {
@@ -120,7 +108,7 @@ async function processGraphExtractionJob(): Promise<void> {
   }
 
   // 先读 SoT，确保存在后再写 doc_status（避免污染状态）
-  const sotRepository = new FileSotRepository(pathManager.getSourceOfTruthPath());
+  const sotRepository = new FileSotRepository(jobData.runtime.sotDirectory);
   const sot = await sotRepository.get(jobData.docId);
   if (!sot) {
     sendMessage('failed', `SoT 不存在，无法进行图谱抽取: docId=${jobData.docId}`);
@@ -129,10 +117,8 @@ async function processGraphExtractionJob(): Promise<void> {
 
   try {
     // Worker 线程内需要独立的 DB 连接，只建连接 + 设 pragma，不重跑迁移/插件 lifecycle（F1-02）
-    const databaseService = getDatabaseService();
-    databaseService.initializeConnectionOnly();
 
-    const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
+    const metadataRepository = new BetterSqliteMetadataRepository(database);
     const doc = await metadataRepository.getDocumentById(jobData.docId);
     if (!doc || doc.kbId !== jobData.kbId) {
       sendMessage(
@@ -142,12 +128,15 @@ async function processGraphExtractionJob(): Promise<void> {
       return;
     }
 
-    const graphRepo = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
+    const graphRepo = new BetterSqliteKnowledgeGraphRepository(database);
     graphRepoForFailure = graphRepo;
     failureKbId = jobData.kbId;
     failureDocId = jobData.docId;
     // Graph worker 拥有批次级重试；TextGenerationPort 只执行一次 Provider attempt。
-    const extractor = new GraphExtractionService(inference.textGeneration);
+    const extractor = new GraphExtractionService(
+      inference.textGeneration,
+      jobData.runtime.graphDebugDirectory
+    );
 
     /**
      * 对“可恢复的瞬时错误”做有限重试（网络抖动 + 结构抖动）。
@@ -163,7 +152,7 @@ async function processGraphExtractionJob(): Promise<void> {
      * - 如果是数据前置条件问题（SoT 缺失/文档被删）在进入 batch 前已拦截，不属于此处重试范围。
      */
     const sleepMs = async (ms: number): Promise<void> => {
-      await new Promise<void>(resolve => setTimeout(resolve, ms));
+      await delay(ms, undefined, { signal: cancellation.signal });
     };
 
     const getErrorName = (err: unknown): string | null => {
@@ -266,8 +255,14 @@ async function processGraphExtractionJob(): Promise<void> {
       let lastError: unknown = null;
       const modelId = args.llmModelId;
       for (let attempt = 1; attempt <= maxAttemptsPerModel; attempt++) {
+        cancellation.signal.throwIfAborted();
         try {
-          return await extractor.extractFromChunks(modelId, args.chunks, args.limits);
+          return await extractor.extractFromChunks(
+            modelId,
+            args.chunks,
+            args.limits,
+            cancellation.signal
+          );
         } catch (err) {
           lastError = err;
           /**
@@ -500,7 +495,7 @@ async function processGraphExtractionJob(): Promise<void> {
     await graphRepo.updateDocProgress(jobData.kbId, jobData.docId, chunkCount, 'completed');
     sendMessage('completed', { kbId: jobData.kbId, docId: jobData.docId, chunkCount });
     try {
-      process.exit(0);
+      return;
     } catch {
       // ignore
     }
@@ -533,6 +528,7 @@ if (parentPort) {
     if (cmd === 'cancel') {
       logger.info('收到取消信号');
       isCancelled = true;
+      cancellation.abort();
     } else if (cmd === 'pause') {
       logger.info('收到暂停信号');
       isPaused = true;
@@ -540,6 +536,10 @@ if (parentPort) {
   });
 }
 
-void processGraphExtractionJob().finally(() => inference.dispose());
+void processGraphExtractionJob().finally(() => {
+  inference.dispose();
+  database.close();
+  parentPort?.close();
+});
 
 export default processGraphExtractionJob;

@@ -1,52 +1,18 @@
-import path from 'node:path';
-import { createKnowledgeWorkerInference } from 'src/app-hosts/linnya/adapters/inference/worker-requests/createKnowledgeWorkerInference';
-import { createKnowledgeActivityOwner } from '../../features/knowledge-base/runtime/orchestration/createKnowledgeActivityOwner';
-/**
- * @file src/electron-main/services/serviceInitializer.ts
- *
- * @brief 服务初始化器 - 负责创建和配置所有应用服务
- *
- * @description
- * 功能：封装复杂的服务初始化逻辑，管理服务依赖关系
- * 输入：配置对象和Qdrant配置
- * 输出：初始化完成的服务实例集合
- * 副作用：注册服务到ServiceRegistry，执行启动清理
- */
-
-import { ServiceRegistry } from '@core/di/ServiceRegistry';
 import { SQLiteRunRegistryStore } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
 import { selectRunRecoveryRetention } from 'src/app-hosts/linnya/application/run-resumption';
-import { getPluginProjectReadPort } from 'src/plugin-sdk/backend/projectReadRuntime';
 import { randomUUID } from 'node:crypto';
-import {
-  KnowledgeBaseService,
-  KnowledgeBaseCoordinator,
-  DefaultSearchService,
-} from 'src/features/knowledge-base/index';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
-import { ProjectKnowledgeBaseLinksService } from 'src/features/knowledge-base/infrastructure/sqlite/project-knowledge-base-links.service';
-import { FileSotRepository } from 'src/features/knowledge-base/infrastructure/sotRepository';
-import { FileOriginalDocumentRepository } from 'src/features/knowledge-base/infrastructure/fileOriginalDocumentRepository';
-import { QdrantRepositoryImpl } from 'src/features/knowledge-base/infrastructure/QdrantRepositoryImpl';
-import { BetterSqliteKnowledgeGraphRepository } from 'src/features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
 import { TranscriptionService } from '@transcription/index';
-// AgentService 已移除，使用新架构
-import { pathManager } from '../../shared/utils/pathManager';
-import { QdrantAdapter, type QdrantConfig } from 'src/infra/adapters/vector-store/qdrant/index';
 import {
   runManagedImageStartupMaintenance,
   runCommandOutputArtifactStartupMaintenance,
   runToolOutputStoreStartupMaintenance,
   scheduleStartupMaintenanceOnce,
-  scheduleKnowledgeBaseMaintenanceOnce,
-  type KnowledgeBaseMaintenanceDeps,
   type StartupMaintenanceLifecycle,
 } from './startup/startupMaintenanceRunner';
 import {
   describeStartupCapabilityFailure,
   type StartupCapability,
   type StartupCapabilityFailure,
-  type StartupVectorStore,
 } from './startup/startupCapabilityFailure';
 import { QueueManager } from 'src/infra/task-queue/queues';
 import { modelCatalog } from 'src/domains/model-catalog';
@@ -55,41 +21,27 @@ import { providerConfigurationRegistry } from 'src/domains/provider-configuratio
 import { modelPickerPreferencesRegistry } from 'src/domains/model-picker-preferences';
 import { providerAccountRegistry } from 'src/domains/provider-account';
 import { getBackendRendererIntegrationPort } from 'src/app-hosts/linnya/desktop-capabilities';
-import { providerOnboardingRuntimeBindingRegistry } from 'src/app-hosts/linnya/adapters/inference';
+import {
+  providerOnboardingRuntimeBindingRegistry,
+  createLinnyaModelReasoningResolver,
+} from 'src/app-hosts/linnya/adapters/inference';
 import { runProviderConfigurationMigration } from 'src/app-hosts/linnya/application/provider-configuration-migration';
 import { runCustomApiGroupMigration } from 'src/app-hosts/linnya/application/custom-api-onboarding';
-import { getDatabaseService, DatabaseService, type DatabaseInitializeOptions } from './database'; // 导入 DatabaseService
+import { getDatabaseService, DatabaseService, type DatabaseInitializeOptions } from './database';
 import type { DatabaseStartupProgressPort } from './database/databaseStartupProgress';
-import { KnowledgeGraphQueueOrchestrator } from 'src/features/knowledge-base/graph/application/knowledgeGraphQueueOrchestrator';
 import { setPluginRuntimeDatabase } from '../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import {
   bootstrapBuiltinPluginLifecycle,
   syncRegisteredBackendPluginRuntimeResources,
 } from '../../app-hosts/linnya/plugin-registry/builtin';
-import {
-  syncCompletionToIngestionStore,
-  syncProgressToIngestionStore,
-} from '../../features/knowledge-base/ingestion/orchestration/workerIngestionProgressProjection';
-import {
-  createDefaultHostInferencePort,
-  createEmbeddingPort,
-  createLinnyaModelReasoningResolver,
-  createRerankingPort,
-  createTextGenerationPort,
-} from 'src/app-hosts/linnya/adapters/inference';
 import { createDocumentOcrPort } from 'src/app-hosts/linnya/adapters/document-ocr';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import type { QueueWorkerRuntime } from 'src/infra/task-queue/definitions/queueWorkerRuntime';
 import type { RuntimePathRoots } from 'src/shared/runtime-paths';
-import { requireInstalledDistributionIdentity } from 'src/shared/distribution-identity';
-
 /**
  * 服务初始化结果接口
  */
 export interface InitializedServices {
-  /** 元数据/原文服务装配失败时为 null；向量进程故障不影响该服务。 */
-  knowledgeBaseService: KnowledgeBaseService | null;
-  projectKnowledgeBaseLinksService: ProjectKnowledgeBaseLinksService;
   transcriptionService: TranscriptionService;
   databaseService: DatabaseService;
   documentOcr: DocumentOcrPort;
@@ -104,30 +56,10 @@ const CAPABILITY_FAILURE_SUMMARIES: Readonly<Record<StartupCapability, string>> 
   models: '模型配置没有加载成功',
 });
 
-interface InitializedKnowledgeBase {
-  readonly service: KnowledgeBaseService;
-  readonly maintenance: KnowledgeBaseMaintenanceDeps;
-}
-
-/**
- * 服务初始化配置接口
- */
-export interface ServiceInitializationConfig {
-  qdrant?: {
-    url?: string;
-    apiKey?: string;
-    timeout?: number;
-  };
-}
-
 /**
  * 服务初始化器类
  */
 export class ServiceInitializer {
-  private serviceRegistry: ServiceRegistry;
-  private readonly knowledgeActivity = createKnowledgeActivityOwner();
-  private knowledgeBaseMaintenance: StartupMaintenanceLifecycle | null = null;
-  private maintenanceStopped = false;
   private startupMaintenance: StartupMaintenanceLifecycle | null = null;
 
   constructor(
@@ -135,9 +67,7 @@ export class ServiceInitializer {
     private readonly runtimePathRoots: RuntimePathRoots,
     private readonly applicationVersion: string,
     private readonly databaseStartupProgress?: DatabaseStartupProgressPort
-  ) {
-    this.serviceRegistry = ServiceRegistry.getInstance();
-  }
+  ) {}
 
   /**
    * 初始化所有应用服务
@@ -146,10 +76,7 @@ export class ServiceInitializer {
    * @param qdrantManagerConfig Qdrant管理器配置
    * @returns 初始化完成的服务实例
    */
-  public async initializeServices(
-    config: ServiceInitializationConfig,
-    vectorStore: StartupVectorStore
-  ): Promise<InitializedServices> {
+  public async initializeServices(): Promise<InitializedServices> {
     console.log('[🔥 SERVICE-INIT] ===== initializeServices() METHOD CALLED =====');
     console.log('[ServiceInitializer] 🔧 开始详细的服务初始化...');
 
@@ -190,59 +117,25 @@ export class ServiceInitializer {
       });
       await runToolOutputStoreStartupMaintenance(recoveryRetention.conversationIds);
       setPluginRuntimeDatabase(databaseService.getDb());
-      await syncRegisteredBackendPluginRuntimeResources();
       console.log('[🔥 SERVICE-INIT] initializeDatabaseService() completed.');
 
       // 步骤2：准备环境变量
-      await this.prepareEnvironmentVariables();
 
       // 步骤3：初始化产品模型目录（能力：失败时模型相关入口说明原因，不覆写已有配置）
       disposeRendererIntegration = await runCapabilityStep('models', () =>
-        this.initializeModelCatalog(config)
+        this.initializeModelCatalog()
       );
 
-      // 步骤5：装配独立推理能力窄端口
-      const embedding = createEmbeddingPort();
-      const reranking = createRerankingPort();
       const documentOcr = createDocumentOcrPort({ catalog: modelCatalog });
-
-      // 元数据和原文服务不依赖向量进程；首次真正访问向量时才创建 adapter。
-      let adapter: Promise<QdrantAdapter> | null = null;
-      const resolveQdrantUrl = async () => {
-        const url = await vectorStore.ensureReady();
-        if (knowledgeBase && !this.maintenanceStopped && !this.knowledgeBaseMaintenance) {
-          this.knowledgeBaseMaintenance = scheduleKnowledgeBaseMaintenanceOnce({
-            databaseService,
-            knowledgeBase: knowledgeBase.maintenance,
-          });
-        }
-        return url;
-      };
-      const resolveAdapter = () => {
-        adapter ??= resolveQdrantUrl().then(url => this.initializeAdapters(config, url));
-        return adapter;
-      };
-      const knowledgeBase = await runCapabilityStep('knowledge-base', () =>
-        this.initializeKnowledgeBaseService(resolveAdapter, embedding, reranking, documentOcr)
-      );
-
-      // 启动后一次性维护任务（Phase 2）：Workspace、会话与数据库维护不依赖知识库。
-      this.startupMaintenance = scheduleStartupMaintenanceOnce({
-        databaseService,
-        knowledgeBase: null,
-      });
-
-      // 步骤6.5：初始化项目-知识库关联服务
-      const projectKnowledgeBaseLinksService =
-        await this.initializeProjectKnowledgeBaseLinksService(databaseService);
+      // 模型 Host 已就绪后才激活插件。知识库 activation 不请求模型或启动向量服务。
+      await syncRegisteredBackendPluginRuntimeResources();
+      this.startupMaintenance = scheduleStartupMaintenanceOnce({ databaseService });
 
       // 步骤7：初始化转录服务
       const transcriptionService = await this.initializeTranscriptionService();
 
       // 步骤8：初始化队列系统（能力：知识库导入与长音频预处理不可用）
-      await runCapabilityStep('background-tasks', () =>
-        this.initializeQueueSystem(resolveQdrantUrl)
-      );
+      await runCapabilityStep('background-tasks', () => this.initializeQueueSystem());
 
       if (capabilityFailures.length === 0) {
         console.log('[ServiceInitializer] ✨ 所有服务初始化成功!');
@@ -256,8 +149,6 @@ export class ServiceInitializer {
 
       const disposeModelCatalogUpdates = disposeRendererIntegration;
       return {
-        knowledgeBaseService: knowledgeBase?.service ?? null,
-        projectKnowledgeBaseLinksService,
         transcriptionService,
         databaseService,
         documentOcr,
@@ -274,10 +165,8 @@ export class ServiceInitializer {
   }
 
   async stopStartupMaintenance(): Promise<void> {
-    this.maintenanceStopped = true;
-    await Promise.all([this.startupMaintenance?.stop(), this.knowledgeBaseMaintenance?.stop()]);
+    await this.startupMaintenance?.stop();
     this.startupMaintenance = null;
-    this.knowledgeBaseMaintenance = null;
   }
 
   /**
@@ -310,26 +199,7 @@ export class ServiceInitializer {
   /**
    * 准备环境变量映射
    */
-  private async prepareEnvironmentVariables(): Promise<void> {
-    console.log('[ServiceInitializer] 📋 Step 2: 准备环境变量映射...');
-
-    const apiKeyEnvVars = ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY'];
-
-    for (const envVar of apiKeyEnvVars) {
-      if (process.env[envVar]) {
-        console.log(`[ServiceInitializer] ✓ 找到API密钥: ${envVar}`);
-      } else {
-        console.warn(`[ServiceInitializer] ✗ 缺少API密钥: ${envVar}`);
-      }
-    }
-
-    console.log('[ServiceInitializer] ✅ Step 2: 环境变量映射准备完成');
-  }
-
-  /**
-   * 初始化产品模型目录
-   */
-  private async initializeModelCatalog(_config: ServiceInitializationConfig): Promise<() => void> {
+  private async initializeModelCatalog(): Promise<() => void> {
     console.log('[ServiceInitializer] 🤖 Step 3: 初始化产品模型目录...');
 
     modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
@@ -376,127 +246,6 @@ export class ServiceInitializer {
   /**
    * 初始化适配器
    */
-  private async initializeAdapters(
-    config: ServiceInitializationConfig,
-    qdrantUrl: string
-  ): Promise<QdrantAdapter> {
-    console.log('[ServiceInitializer] 🔌 Step 4: 初始化Qdrant适配器...');
-
-    const qdrantConfig: QdrantConfig = {
-      url: qdrantUrl,
-      apiKey: config.qdrant?.apiKey,
-      timeout: config.qdrant?.timeout || 30000,
-    };
-
-    const qdrantAdapterInstance = new QdrantAdapter(qdrantConfig);
-    console.log('[ServiceInitializer] ✅ Step 4: Qdrant适配器初始化完成');
-
-    return qdrantAdapterInstance;
-  }
-
-  /**
-   * 初始化知识库服务
-   */
-  private async initializeKnowledgeBaseService(
-    resolveAdapter: () => Promise<QdrantAdapter>,
-    embedding: ReturnType<typeof createEmbeddingPort>,
-    reranking: ReturnType<typeof createRerankingPort>,
-    documentOcr: DocumentOcrPort
-  ): Promise<InitializedKnowledgeBase> {
-    console.log('[ServiceInitializer] 📚 Step 6: 初始化知识库服务依赖...');
-
-    // 获取路径（SoT 与原始 PDF 仓储仍然使用文件系统）
-    const sotPath = await pathManager.getSourceOfTruthPath();
-    const originalDocumentsPath = await pathManager.getKnowledgeBaseOriginalsPath();
-
-    console.log(
-      `[ServiceInitializer] 🔍 主进程环境变量 LINNYA_DEV_MODE: ${process.env.LINNYA_DEV_MODE}`
-    );
-    console.log(`[ServiceInitializer] 🔍 主进程使用的SOT路径: ${sotPath}`);
-    console.log(`[ServiceInitializer] 💡 元数据使用 workspace.sqlite (通过 DatabaseService)`);
-
-    // 创建仓储实例 - 使用新的 BetterSqliteMetadataRepository
-    const qdrantRepository = new QdrantRepositoryImpl(resolveAdapter);
-    const databaseService = getDatabaseService();
-    const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
-    const sotRepository = new FileSotRepository(sotPath);
-    const originalDocumentRepository = new FileOriginalDocumentRepository(originalDocumentsPath);
-    console.log('[ServiceInitializer] ✅ Step 6: 知识库存储库初始化完成');
-
-    // 创建搜索服务
-    console.log('[ServiceInitializer] 🔍 Step 7: 创建搜索服务...');
-
-    const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(
-      databaseService.getDb()
-    );
-    const textGeneration = createTextGenerationPort({
-      inferencePort: createDefaultHostInferencePort(),
-    });
-    const searchService = new DefaultSearchService({
-      qdrantRepository,
-      metadataRepository,
-      sotRepository,
-      embedding,
-      reranking,
-      knowledgeGraphRepository,
-    });
-    console.log('[ServiceInitializer] ✅ Step 7: 搜索服务创建完成');
-
-    // 创建知识库服务
-    console.log('[ServiceInitializer] 🛠️ Step 8: 初始化知识库服务 (无 IPC 回调)...');
-    const knowledgeBaseService = new KnowledgeBaseCoordinator({
-      metadataRepository,
-      sotRepository,
-      originalDocumentRepository,
-      qdrantRepository,
-      searchService,
-      knowledgeGraphRepository,
-      activity: this.knowledgeActivity,
-      statusUpdatePublisher: getBackendRendererIntegrationPort().publishIngestionStatus,
-      ingestionCapabilities: {
-        embedding,
-        textGeneration,
-        documentOcr,
-      },
-    });
-    console.log('[ServiceInitializer] ✅ Step 8: 知识库服务初始化完成');
-
-    return {
-      service: knowledgeBaseService,
-      maintenance: {
-        metadataRepository,
-        qdrantRepository,
-        sotRepository,
-        originalDocumentRepository,
-        activity: this.knowledgeActivity,
-      },
-    };
-  }
-
-  /**
-   * 初始化项目-知识库关联服务
-   */
-  private async initializeProjectKnowledgeBaseLinksService(
-    databaseService: DatabaseService
-  ): Promise<ProjectKnowledgeBaseLinksService> {
-    console.log('[ServiceInitializer] 🔗 Step 6.5: 初始化项目-知识库关联服务...');
-
-    // 获取 metadataRepository 实例（从 knowledgeBaseService 获取）
-    const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
-
-    const projectKnowledgeBaseLinksService = new ProjectKnowledgeBaseLinksService(
-      databaseService.getDb(),
-      metadataRepository,
-      getPluginProjectReadPort()
-    );
-
-    console.log('[ServiceInitializer] ✅ Step 6.5: 项目-知识库关联服务初始化完成');
-    return projectKnowledgeBaseLinksService;
-  }
-
-  /**
-   * 初始化转录服务
-   */
   private async initializeTranscriptionService(): Promise<TranscriptionService> {
     console.log('[ServiceInitializer] 🎤 Step 8: 初始化转录服务...');
 
@@ -509,56 +258,7 @@ export class ServiceInitializer {
   /**
    * 初始化队列系统
    */
-  private async initializeQueueSystem(resolveQdrantUrl: () => Promise<string>): Promise<void> {
-    console.log('[ServiceInitializer] 🧵 Step 12: 初始化智能多线程队列系统...');
-
-    const queueManager = QueueManager.getInstance();
-    // 队列内部初始化失败由 QueueManager 自行回收；后续图谱装配失败由当前编排层回收。
-    await queueManager.initialize({
-      ...createKnowledgeWorkerInference(
-        {
-          embedding: createEmbeddingPort(),
-          reranking: createRerankingPort(),
-          textGeneration: createTextGenerationPort({
-            inferencePort: createDefaultHostInferencePort(),
-          }),
-          documentOcr: createDocumentOcrPort(),
-        },
-        path.join(pathManager.getKbDataPath(), 'temporary')
-      ),
-      workerRuntime: this.queueWorkerRuntime,
-      knowledgeActivity: this.knowledgeActivity,
-      runtimePathRoots: this.runtimePathRoots,
-      distributionIdentity: requireInstalledDistributionIdentity(),
-      resolveQdrantUrl,
-      jobPresentationPublisher: getBackendRendererIntegrationPort().queueJobPresentationPublisher,
-      ingestionLifecycleObserver: {
-        onProgress: ({ job, data }) => {
-          syncProgressToIngestionStore(data, { filename: job.data.filename });
-        },
-        onCompleted: ({ job, result }) => {
-          syncCompletionToIngestionStore(result, { filename: job.data.filename });
-        },
-      },
-    });
-
-    try {
-      // Graph Queue Orchestration（feature 层）
-      // 说明：这里启动“图谱抽取编排器”，让 task-queue 保持通用。
-      const databaseService = getDatabaseService();
-      const kgOrchestrator = new KnowledgeGraphQueueOrchestrator({
-        queueManager,
-        databaseService,
-        publishGraphProgress: getBackendRendererIntegrationPort().publishKnowledgeGraphProgress,
-      });
-      kgOrchestrator.start();
-      this.serviceRegistry.register('knowledgeGraphQueueOrchestrator', () => kgOrchestrator, true);
-      console.log('[ServiceInitializer] ✅ Step 12: 智能多线程队列系统初始化成功');
-    } catch (queueError) {
-      console.error('[ServiceInitializer] ❌ Step 12: 队列系统初始化失败:', queueError);
-      // 外层会降级并继续启动，必须先停掉已建队列，避免不可用的能力仍在接收任务。
-      await queueManager.shutdown();
-      throw queueError;
-    }
+  private async initializeQueueSystem(): Promise<void> {
+    await QueueManager.getInstance().initialize({ workerRuntime: this.queueWorkerRuntime });
   }
 }

@@ -1,3 +1,4 @@
+import { parsePluginDocument } from '@plugin/backend/documentParsingRuntime';
 /**
  * @file src/knowledge-base/ingestion/handlers/ParsingHandler.ts
  *
@@ -10,7 +11,7 @@
  * 副作用 (Side-effects): 读取文件，调用解析器，生成结构化内容
  */
 
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import {
   InternalStage,
   type StateHandler,
@@ -19,20 +20,10 @@ import {
 } from '../definitions/state';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { getParser } from 'src/features/parsers/index'; // 导入统一的解析器工厂函数
-import type { Parser } from 'src/features/parsers/types';
-import {
-  createSmartPdfParser,
-  createVisionPdfParser,
-} from 'src/features/parsers/pdfParser/factory'; // PDF 解析器工厂
-import { parseImageWithAi } from 'src/features/parsers/imageParser';
 import { postProcessBlocks, type RawBlock } from '../postprocessor'; // 导入后处理函数
-import { inspect } from 'util'; // 导入inspect
 import type { ParseResult } from '../ingestionTypes';
-import type { TextGenerationPort } from 'src/domains/model-inference';
-import type { DocumentOcrPort } from 'src/domains/document-ocr';
-import type { DocumentParseDiagnostics } from '../../domain/document';
-import type { PdfParser } from 'src/features/parsers/pdfParser/PdfParser';
+import type { TextGenerationPort } from '@plugin/backend/inferenceRuntime';
+import type { DocumentOcrPort } from '@plugin/backend/inferenceRuntime';
 import { isRecord } from '@linnya/foundation';
 
 const logger = new Logger('knowledge-base:ingestion:parsing-handler');
@@ -114,7 +105,6 @@ export class ParsingHandler implements StateHandler {
       }
 
       const fileBuffer = await this.readFile(context.filePath);
-      const fileStats = await fs.stat(context.filePath);
       const fileExtension = path.extname(context.filename).toLowerCase();
 
       // 降噪：移除详细文件信息的debug日志
@@ -122,88 +112,26 @@ export class ParsingHandler implements StateHandler {
       // 🔥 更新进度：文件已读取，使用标准状态消息
       this.updateProgress(context, 10, '解析中');
 
-      // 🔥 智能解析器选择：PDF / 图片都必须显式使用当前知识库的模型配置，不能回落到全局默认值
-      let parser: Parser | null;
-      let pdfParser: PdfParser | null = null;
-      if (fileExtension === '.pdf') {
-        // PDF 文件：无论是否强制视觉模式，都要把当前知识库的 PDF OCR 模型显式传给解析器。
-        logger.info(
-          `[ParsingHandler] 为 PDF 创建知识库定制解析器: ${context.filename}, forceVisionMode=${context.forceVisionMode === true}`
-        );
-        // 默认模型已由 Host 入队时冻结，Worker 不加载目录或凭据。
-        const visionModelId = context.pdfOcrModelId;
-
-        pdfParser = context.forceVisionMode
-          ? createVisionPdfParser(this.textGeneration, visionModelId ?? '', {
-              documentOcr: this.documentOcr,
-              filename: context.filename,
-              forceVisionMode: true,
-              maxRetries: 5,
-              temporaryDirectory: context.ocrTemporaryDirectory,
-            })
-          : createSmartPdfParser(this.textGeneration, visionModelId ?? '', {
-              documentOcr: this.documentOcr,
-              filename: context.filename,
-              forceVisionMode: false,
-              maxRetries: 5,
-              temporaryDirectory: context.ocrTemporaryDirectory,
-            });
-        parser = pdfParser;
-      } else {
-        // 其他文件类型或未启用强制视觉模式：使用默认解析器
-        parser = getParser(fileExtension);
+      if (!context.ocrTemporaryDirectory) {
+        throw new Error('摄入任务缺少已准入的解析素材目录');
       }
-
-      if (!parser) {
-        throw new Error(`不支持的文件类型: ${fileExtension}`);
-      }
-
-      // 降噪：移除解析器名称的debug日志
-
-      // 🔥 创建解析进度回调，支持细粒度更新
-      const parseProgressCallback = (progress: number, message: string) => {
-        // 解析阶段占整个PARSING阶段的80% (10% -> 90%)
-        const stageProgress = 10 + progress * 0.8;
-        this.updateProgress(context, stageProgress, '解析中');
-      };
-
-      //  修复：确保传递正确的数据类型给解析器（零拷贝视图）
-      const uint8ArrayData = new Uint8Array(
-        fileBuffer.buffer,
-        fileBuffer.byteOffset,
-        fileBuffer.byteLength
+      // 模型和目录在入队时冻结；解析器仅调用 Host 推理能力，不读取目录或凭据。
+      const parsed = await parsePluginDocument(
+        {
+          bytes: fileBuffer,
+          documentId: context.docId,
+          filename: context.filename,
+          pdfOcrModelId: context.pdfOcrModelId,
+          imageVisionModelId: context.imageVisionModelId ?? context.visionModelId,
+          forceVisionMode: context.forceVisionMode,
+          temporaryDirectory: context.ocrTemporaryDirectory,
+          signal: context.signal,
+          onProgress: progress => this.updateProgress(context, 10 + progress * 0.8, '解析中'),
+        },
+        { textGeneration: this.textGeneration, documentOcr: this.documentOcr }
       );
-
-      let parseDiagnostics: DocumentParseDiagnostics | undefined;
-
-      const parsedBlocks = await (async () => {
-        // ✅ 根因修复：图片解析必须使用 KB 的图片视觉模型，不能与 PDF OCR 共用一个字段
-        if (['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'].includes(fileExtension)) {
-          const visionModelId = context.imageVisionModelId ?? context.visionModelId;
-          if (!visionModelId) {
-            throw new Error('缺少图片视觉模型，无法解析图片文档');
-          }
-          return await parseImageWithAi(
-            uint8ArrayData,
-            context.docId,
-            this.textGeneration,
-            visionModelId,
-            (p, msg) => parseProgressCallback(p, msg)
-          );
-        }
-
-        if (fileExtension === '.pdf' && pdfParser) {
-          const outcome = await pdfParser.parseWithDiagnostics(
-            uint8ArrayData,
-            context.docId,
-            parseProgressCallback
-          );
-          parseDiagnostics = outcome.diagnostics;
-          return outcome.blocks;
-        }
-
-        return await parser.parse(uint8ArrayData, context.docId, parseProgressCallback);
-      })();
+      const parsedBlocks = parsed.blocks;
+      const parseDiagnostics = parsed.diagnostics;
 
       // 步骤 3: 验证解析结果
       if (!parsedBlocks || parsedBlocks.length === 0) {
@@ -272,7 +200,7 @@ export class ParsingHandler implements StateHandler {
         metadata: {
           fileType: fileExtension,
           totalBlocks: postProcessResult.processedBlocks.length,
-          parser: parser.constructor.name,
+          parser: parsed.parser,
           postProcessed: true,
           ...(parseDiagnostics ? { parseDiagnostics } : {}),
         },

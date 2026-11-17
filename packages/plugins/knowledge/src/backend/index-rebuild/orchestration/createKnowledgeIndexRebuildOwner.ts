@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { resolveKnowledgeIndexFailureMessage } from '../functions/resolveKnowledgeIndexFailureMessage';
 
 import type { KnowledgeActivityOwner } from '../../runtime/orchestration/createKnowledgeActivityOwner';
@@ -19,8 +19,13 @@ export function createKnowledgeIndexRebuildOwner(deps: KnowledgeIndexRebuildDepe
       const controller = new AbortController();
       const signal = AbortSignal.any([lease.signal, controller.signal]);
       let status: KnowledgeIndexTaskStatus = {
-        taskId: randomUUID(), kbId, modelId, status: 'running', progress: 0,
-        message: '正在检查原文和嵌入模型', updatedAt: Date.now(),
+        taskId: randomUUID(),
+        kbId,
+        modelId,
+        status: 'running',
+        progress: 0,
+        message: '正在检查原文和嵌入模型',
+        updatedAt: Date.now(),
       };
       const task = { get status() { return status; }, cancel: () => controller.abort(), completion: Promise.resolve() };
       tasks.set(kbId, task);

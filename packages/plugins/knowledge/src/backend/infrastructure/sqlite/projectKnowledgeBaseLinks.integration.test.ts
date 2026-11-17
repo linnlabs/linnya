@@ -1,8 +1,8 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { KNOWLEDGE_BASE_SCHEMAS } from 'src/features/knowledge-base/infrastructure/sqlite/knowledge-base.schema';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
-import { ProjectKnowledgeBaseLinksService } from 'src/features/knowledge-base/infrastructure/sqlite/project-knowledge-base-links.service';
+import { KNOWLEDGE_BASE_SCHEMAS } from '../../database/schemas/knowledgeBase';
+import { BetterSqliteMetadataRepository } from './better-sqlite-metadata.repository';
+import { ProjectKnowledgeBaseLinksService } from './project-knowledge-base-links.service';
 
 /** 真实关系持久化；项目事实只经 owner 摘要口，知识库不读项目表。 */
 describe('project knowledge associations', () => {
@@ -37,9 +37,13 @@ describe('project knowledge associations', () => {
       // 模拟正式 SQLite 写入故障：删除旧关联后，新插入失败，必须整批回滚。
       database.exec(`CREATE TRIGGER refuse_project_a BEFORE INSERT ON project_knowledge_base_links
         WHEN NEW.project_id = 'project-a' BEGIN SELECT RAISE(ABORT, 'fixture write rejected'); END`);
-      await expect(links.replaceProjectsForKnowledgeBase('default', ['project-a']))
-        .rejects.toThrow('fixture write rejected');
-      expect(await links.listProjectsForKnowledgeBase('default')).toEqual(['project-a', 'project-b']);
+      await expect(links.replaceProjectsForKnowledgeBase('default', ['project-a'])).rejects.toThrow(
+        'fixture write rejected'
+      );
+      expect(await links.listProjectsForKnowledgeBase('default')).toEqual([
+        'project-a',
+        'project-b',
+      ]);
       database.exec('DROP TRIGGER refuse_project_a');
       await expect(links.replaceKnowledgeBasesForProject('project-a', ['missing-library'])).rejects.toThrow('知识库不存在');
       expect(await links.getLinkDetail('project-a', 'default')).toEqual(original);

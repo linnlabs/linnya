@@ -1,4 +1,4 @@
-import type { CitationRefAllocatorPort } from 'src/domains/citation';
+import type { CitationRefAllocatorPort } from '@plugin/backend/citationSourceRuntime';
 
 export interface AgentKnowledgeSearchHit {
   readonly ref: string;

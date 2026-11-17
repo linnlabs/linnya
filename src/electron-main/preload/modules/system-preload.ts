@@ -153,8 +153,12 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
     myAppSelectImageDialog: (options?: { title?: string; imageFilterName?: string }) =>
       ipcRenderer.invoke('select-image', options),
 
-    embedImageBytes: (request: { documentNodeId: string; bytes: ArrayBuffer; ext: string; fileName?: string }) =>
-      ipcRenderer.invoke('media:embed-image-bytes', request),
+    embedImageBytes: (request: {
+      documentNodeId: string;
+      bytes: ArrayBuffer;
+      ext: string;
+      fileName?: string;
+    }) => ipcRenderer.invoke('media:embed-image-bytes', request),
 
     pickAndEmbedImage: (request: { documentNodeId: string; title?: string; imageFilterName?: string }) =>
       ipcRenderer.invoke('media:pick-and-embed-image', request),
@@ -209,17 +213,10 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
      * - 渲染进程先调用 openDirectoryDialog 获取 directoryPath；
      * - 然后调用此方法一次性写入多个文件，避免每个文件都弹 save dialog。
      */
-    exportFilesToDirectory: (payload: { directoryPath: string; files: Array<{ fileName: string; content: string }> }) =>
-      ipcRenderer.invoke('export-files-to-directory', payload),
-
-    // --- 任务状态 ---
-    onTaskStatusUpdate: (callback: (statusUpdate: any) => void) => {
-      const listener = (_event: any, statusUpdate: any) => callback(statusUpdate);
-      ipcRenderer.on('task-status-update', listener);
-      return () => {
-        ipcRenderer.removeListener('task-status-update', listener);
-      };
-    },
+    exportFilesToDirectory: (payload: {
+      directoryPath: string;
+      files: Array<{ fileName: string; content: string }>;
+    }) => ipcRenderer.invoke('export-files-to-directory', payload),
 
     // --- 转录进度 ---
     onTranscriptionProgress: (

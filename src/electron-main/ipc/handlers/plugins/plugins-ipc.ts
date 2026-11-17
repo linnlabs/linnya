@@ -10,6 +10,7 @@ import type {
 import { PluginStateService } from '../../../../features/plugins/infrastructure/sqlite/plugin-state.service';
 import {
   listRegisteredBackendPluginMetas,
+  registerRegisteredBackendPluginIpcHandlers,
   syncRegisteredBackendPluginRuntimeResources,
 } from '../../../../app-hosts/linnya/plugin-registry/builtin';
 import {
@@ -42,16 +43,22 @@ import { runPluginLifecycleOperationSerially } from '../../../../features/plugin
 import { resolveDiskPluginUpgradePlan } from '../../../plugins/install/diskPluginUpgradePlan';
 import { getRunSupervisor } from '../../../services/agentRuntimeSingletons';
 import { cancelActiveRunsForPluginRuntimeChange } from '../../../../app-hosts/linnya/plugin-registry/pluginRuntimeRunInvalidation';
+import { assertBackendPluginCanDeactivate } from '../../../../app-hosts/linnya/plugin-registry/runtimeEffectRuntime';
+import { isTrustedKnowledgeResourceSource } from '../../../../app-hosts/linnya/plugin-registry/knowledgeResourceAdmission';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
 
 const logger = new Logger('PluginsIPC');
 
-async function syncPluginRuntimeState(options: { reinitializeTools: boolean }): Promise<void> {
+async function syncPluginRuntimeState(options: {
+  reinitializeTools: boolean;
+  runtimeOwner: BackendRuntimeOwner;
+}): Promise<void> {
   // 中文说明：后端模型可见能力现在直接查 DB；写库后仍需重建 ToolRegistry，
   // 让工具描述/参数枚举立刻按最新 enabled 状态收缩；平台运行态资源也必须同步卸载，
   // 避免禁用插件后继续保留 sandbox profile / hidden worker / 全局 adapter。
   await syncRegisteredBackendPluginRuntimeResources();
+  registerRegisteredBackendPluginIpcHandlers(options.runtimeOwner);
   if (options.reinitializeTools) {
     toolRegistry.reinitialize();
     clearRegisteredAgentTaskCache();
@@ -107,7 +114,7 @@ export async function registerPluginsHandlers(input: {
   const getService = () => new PluginStateService(databaseService.getDb());
   // 中文说明：内置插件登记由 DatabaseService 的 PluginLifecycleBootstrap 负责；
   // IPC 入口重建工具集合，避免启动早期读取过工具表时继续使用旧 schema。
-  await syncPluginRuntimeState({ reinitializeTools: true });
+  await syncPluginRuntimeState({ reinitializeTools: true, runtimeOwner: input.runtimeOwner });
 
   input.ipc.handle('plugins:list', async () => {
     try {
@@ -137,10 +144,9 @@ export async function registerPluginsHandlers(input: {
   input.ipc.handle('plugins:get-detail', async (_event, rawPluginId: unknown) => {
     try {
       const pluginId = parsePluginId(rawPluginId, 'plugins:get-detail');
-      const directPluginDirs = [...new Set([
-        ...readBackendDirectPluginDirsFromEnv(),
-        ...readDirectPluginDirsFromEnv(),
-      ])];
+      const directPluginDirs = [
+        ...new Set([...readBackendDirectPluginDirsFromEnv(), ...readDirectPluginDirsFromEnv()]),
+      ];
       const states = getService().listStates(listRegisteredBackendPluginMetas());
       const state = states.find((item) => item.meta.id === pluginId);
       if (!state) {
@@ -183,8 +189,12 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:renderer-entries', async () => {
     try {
-      const knownPluginIds = new Set(listRegisteredBackendPluginMetas().map((meta) => meta.id));
-      const enabledIds = new Set(getService().getEnabledIds().filter((pluginId) => knownPluginIds.has(pluginId)));
+      const knownPluginIds = new Set(listRegisteredBackendPluginMetas().map(meta => meta.id));
+      const enabledIds = new Set(
+        getService()
+          .getEnabledIds()
+          .filter(pluginId => knownPluginIds.has(pluginId))
+      );
       const directPluginDirs = readDirectPluginDirsFromEnv();
       const officialPluginPackageDirs = [...new Set([
         ...discoverOfficialPluginPackageDirsFromWorkspace(process.cwd(), [...knownPluginIds]),
@@ -222,28 +232,36 @@ export async function registerPluginsHandlers(input: {
     }
   });
 
-  input.ipc.handle('plugins:set-enabled', async (_event, rawPluginId: unknown, enabled: boolean) => {
-    try {
-      const pluginId = parsePluginId(rawPluginId, 'plugins:set-enabled');
-      return await runPluginLifecycleOperationSerially({
-        pluginId,
-        operation: 'set-enabled',
-        async run() {
-          const service = getService();
-          service.setEnabled(pluginId, enabled, listRegisteredBackendPluginMetas());
-          await cancelActiveRunsForPluginRuntimeChange({
-            pluginId,
-            operation: enabled ? '启用' : '禁用',
-            supervisor: getRunSupervisor(),
-          });
-          await syncPluginRuntimeState({ reinitializeTools: true });
-          input.rendererIntegration.publishPluginsChanged();
-          return { success: true };
-        },
-      });
-    } catch (error) {
-      logger.error('[plugins:set-enabled] failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+  input.ipc.handle(
+    'plugins:set-enabled',
+    async (_event, rawPluginId: unknown, enabled: boolean) => {
+      try {
+        const pluginId = parsePluginId(rawPluginId, 'plugins:set-enabled');
+        return await runPluginLifecycleOperationSerially({
+          pluginId,
+          operation: 'set-enabled',
+          async run() {
+            const service = getService();
+            if (!enabled) assertBackendPluginCanDeactivate(pluginId);
+            service.setEnabled(pluginId, enabled, listRegisteredBackendPluginMetas());
+            if (!isTrustedKnowledgeResourceSource(pluginId))
+              await cancelActiveRunsForPluginRuntimeChange({
+                pluginId,
+                operation: enabled ? '启用' : '禁用',
+                supervisor: getRunSupervisor(),
+              });
+            await syncPluginRuntimeState({
+              reinitializeTools: true,
+              runtimeOwner: input.runtimeOwner,
+            });
+            input.rendererIntegration.publishPluginsChanged();
+            return { success: true };
+          },
+        });
+      } catch (error) {
+        logger.error('[plugins:set-enabled] failed:', error);
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+      }
     }
   });
 
@@ -295,6 +313,8 @@ export async function registerPluginsHandlers(input: {
           }
           const db = databaseService.getDb();
           const knownPlugins = listRegisteredBackendPluginMetas();
+          assertBackendPluginCanDeactivate(pluginId);
+          const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
           const result = await installPluginFromRemoteAndActivate({
             db,
             userPluginRoot,
@@ -309,12 +329,16 @@ export async function registerPluginsHandlers(input: {
           if (result.status === 'failed') {
             throw new Error(result.error);
           }
-          await cancelActiveRunsForPluginRuntimeChange({
-            pluginId,
-            operation: '安装/升级',
-            supervisor: getRunSupervisor(),
+          if (!scopedLifecycle)
+            await cancelActiveRunsForPluginRuntimeChange({
+              pluginId,
+              operation: '安装/升级',
+              supervisor: getRunSupervisor(),
+            });
+          await syncPluginRuntimeState({
+            reinitializeTools: true,
+            runtimeOwner: input.runtimeOwner,
           });
-          await syncPluginRuntimeState({ reinitializeTools: true });
           input.rendererIntegration.publishPluginsChanged();
           return { success: true, data: result };
         },
@@ -340,6 +364,8 @@ export async function registerPluginsHandlers(input: {
           if (!userPluginRoot) {
             throw new Error('插件目录未初始化，不能卸载插件');
           }
+          assertBackendPluginCanDeactivate(pluginId);
+          const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
           const result = uninstallPluginLifecycle({
             db: databaseService.getDb(),
             userPluginRoot,
@@ -349,12 +375,16 @@ export async function registerPluginsHandlers(input: {
           if (result.status !== 'uninstalled') {
             throw new Error(result.error);
           }
-          await cancelActiveRunsForPluginRuntimeChange({
-            pluginId,
-            operation: '卸载',
-            supervisor: getRunSupervisor(),
+          if (!scopedLifecycle)
+            await cancelActiveRunsForPluginRuntimeChange({
+              pluginId,
+              operation: '卸载',
+              supervisor: getRunSupervisor(),
+            });
+          await syncPluginRuntimeState({
+            reinitializeTools: true,
+            runtimeOwner: input.runtimeOwner,
           });
-          await syncPluginRuntimeState({ reinitializeTools: true });
           input.rendererIntegration.publishPluginsChanged();
           return { success: true };
         },

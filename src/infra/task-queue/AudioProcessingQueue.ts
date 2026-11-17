@@ -81,6 +81,10 @@ export class AudioProcessingQueue extends EventEmitter {
     return emitter;
   }
 
+  hasActiveTasks(): boolean {
+    return this.activeWorkers.size > 0 || this.pendingLaunches.size > 0;
+  }
+
   shutdown(): Promise<void> {
     if (this.shutdownSettlement) return this.shutdownSettlement;
 

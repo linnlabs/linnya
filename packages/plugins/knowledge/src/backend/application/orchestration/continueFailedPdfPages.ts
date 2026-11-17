@@ -1,3 +1,4 @@
+import { countPluginPdfPages, parsePluginPdfPages } from '@plugin/backend/documentParsingRuntime';
 /**
  * @file src/features/knowledge-base/application/orchestration/continueFailedPdfPages.ts
  *
@@ -10,11 +11,9 @@
 
 import path from 'path';
 import fs from 'fs/promises';
-import { Logger } from 'src/shared/logger';
-import type { EmbeddingPort, TextGenerationPort } from 'src/domains/model-inference';
-import type { DocumentOcrPort } from 'src/domains/document-ocr';
-import { ServiceRegistry } from 'src/core/di/ServiceRegistry';
-import { DEFAULT_VECTOR_DIMENSION } from '@shared/constants';
+import { Logger } from '@plugin/backend/loggingRuntime';
+import type { EmbeddingPort, TextGenerationPort } from '@plugin/backend/inferenceRuntime';
+import type { DocumentOcrPort } from '@plugin/backend/inferenceRuntime';
 import { DocumentSoTSchema, type Block, type DocumentSoT } from '../../domain/block';
 import { DocumentStatus, type DocumentParseDiagnostics } from '../../domain/document';
 import type { MetadataRepository } from '../../infrastructure/metadataRepository';
@@ -29,19 +28,14 @@ import { resolveTargetSegmentCountByPointsCount } from '../../infrastructure/qdr
 import { postProcessBlocks, type RawBlock } from '../../ingestion/postprocessor';
 import type { ParsedContentBlock, VectorizedBlock } from '../../ingestion/ingestionTypes';
 import { textsToSparseVectors } from '../../ingestion/utils/textToSparseVector';
-import { getPdfPageCountCrossPlatform } from 'src/features/parsers/pdfParser/adapters/PdfParseAdapter';
-import { processPdfPagesWithVisionDiagnostics } from 'src/features/parsers/pdfParser/strategies/VisionRecognitionStrategy';
-import type { ParsedBlock } from 'src/features/parsers/types';
-import { resolveModelIdFromPolicy } from 'src/app-hosts/linnya/agent-registry/modelPolicyResolver';
-import {
-  PDF_OCR_DEFAULT_FALLBACK_MODEL_ID,
-  PDF_OCR_MODEL_POLICY,
-} from 'src/app-hosts/linnya/agent-registry/internals/ingestion/pdf_ocr';
-import { PDF_RASTER_DEFAULT_TARGET_PIXELS } from 'src/features/parsers/pdfParser/definitions/pdfRaster';
+import type { ParsedBlock } from '@plugin/backend/documentParsingRuntime';
 
 const logger = new Logger('knowledge-base:continue-failed-pdf-pages');
 
 export interface ContinueFailedPdfPagesDeps {
+  signal?: AbortSignal;
+  temporaryDirectory: string;
+  enqueueGraphExtraction(kbId: string, docId: string): Promise<void>;
   metadataRepository: MetadataRepository;
   sotRepository: SotRepository;
   qdrantRepository: QdrantRepository;
@@ -63,10 +57,6 @@ export interface ContinueFailedPdfPagesResult {
 export interface ContinueFailedPdfPagesOptions {
   pdfOcrModelId?: string | null;
   embeddingModelId?: string | null;
-}
-
-interface GraphExtractionEnqueuePort {
-  enqueueGraphExtractionForDocument(kbId: string, docId: string): Promise<void>;
 }
 
 export async function continueFailedPdfPages(
@@ -105,7 +95,7 @@ export async function continueFailedPdfPages(
   }
 
   const originalBytes = await fs.readFile(originalPath);
-  const totalPages = await getPdfPageCountCrossPlatform(
+  const totalPages = await countPluginPdfPages(
     new Uint8Array(originalBytes.buffer, originalBytes.byteOffset, originalBytes.byteLength)
   );
   const attemptedPages = diagnostics.failedPages.map(page => page.pageNumber);
@@ -116,28 +106,24 @@ export async function continueFailedPdfPages(
       : undefined;
   const visionModelId =
     requestedPdfOcrModelId ??
-    resolveModelIdFromPolicy(PDF_OCR_MODEL_POLICY, {
-      kbPdfOcrModelId: kb?.pdfOcrModelId,
-      kbVisionModelId: kb?.visionModelId,
-      defaultVisionModelId: PDF_OCR_DEFAULT_FALLBACK_MODEL_ID,
-      resolveByCapability: deps.resolveModelByCapability,
-    }) ??
-    PDF_OCR_DEFAULT_FALLBACK_MODEL_ID;
-
-  const outcome = await processPdfPagesWithVisionDiagnostics(
-    originalPath,
-    docId,
-    attemptedPages,
-    totalPages,
-    deps.textGeneration,
-    deps.documentOcr,
-    visionModelId,
+    kb?.pdfOcrModelId ??
+    kb?.visionModelId ??
+    deps.resolveModelByCapability?.('pdf_ocr_default');
+  if (!visionModelId) throw new Error('请先配置 PDF OCR 模型后重试失败页');
+  deps.signal?.throwIfAborted();
+  const outcome = await parsePluginPdfPages(
     {
-      targetPixels: PDF_RASTER_DEFAULT_TARGET_PIXELS,
-      maxRetries: 5,
-      tpmLimitPerWorker: 20,
-    }
+      path: originalPath,
+      documentId: docId,
+      pages: attemptedPages,
+      totalPages,
+      modelId: visionModelId,
+      temporaryDirectory: deps.temporaryDirectory,
+      signal: deps.signal,
+    },
+    { textGeneration: deps.textGeneration, documentOcr: deps.documentOcr }
   );
+  deps.signal?.throwIfAborted();
 
   const failedAgain = outcome.diagnostics?.failedPages ?? [];
   const parsedBlocks = outcome.success ? outcome.blocks : [];
@@ -165,7 +151,7 @@ export async function continueFailedPdfPages(
       parsedBlocks,
       nextDiagnostics,
     });
-    await enqueueGraphExtractionAfterIncrementalUpdate(kbId, docId);
+    await enqueueGraphExtractionAfterIncrementalUpdate(deps, kbId, docId);
   } else {
     const updated = await deps.metadataRepository.updateDocumentParseDiagnostics(
       docId,
@@ -195,15 +181,12 @@ async function resolveEmbeddingModelForIncrementalCommit(args: {
 }
 
 async function enqueueGraphExtractionAfterIncrementalUpdate(
+  deps: ContinueFailedPdfPagesDeps,
   kbId: string,
   docId: string
 ): Promise<void> {
   try {
-    const registry = ServiceRegistry.getInstance();
-    const orchestrator = await registry.get<GraphExtractionEnqueuePort>(
-      'knowledgeGraphQueueOrchestrator'
-    );
-    await orchestrator.enqueueGraphExtractionForDocument(kbId, docId);
+    await deps.enqueueGraphExtraction(kbId, docId);
   } catch (error) {
     logger.warn(
       `PDF 失败页续跑已完成，但图谱抽取入队失败；chunk 检索不受影响，图谱增强将等待后续回填: kbId=${kbId}, docId=${docId}`,
@@ -244,7 +227,8 @@ async function incrementallyCommitRecoveredPages(args: {
     args.deps.embedding,
     postProcessResult.processedBlocks,
     args.embeddingModelId,
-    args.deps.metadataRepository.indexState.requireReady(args.kbId).spaceId
+    args.deps.metadataRepository.indexState.requireReady(args.kbId).spaceId,
+    args.deps.signal
   );
   if (vectorizedBlocks.length === 0) {
     throw new Error(`失败页续跑未产生可提交块: docId=${args.docId}`);
@@ -262,7 +246,7 @@ async function incrementallyCommitRecoveredPages(args: {
   }
 
   const points = buildQdrantPoints(args.docId, args.filename, vectorizedBlocks);
-  const vectorDimension = vectorizedBlocks[0]?.vector.length ?? DEFAULT_VECTOR_DIMENSION;
+  const vectorDimension = vectorizedBlocks[0].vector.length;
   await args.deps.qdrantRepository.getOrCreateCollection(
     args.kbId,
     vectorDimension,
@@ -350,10 +334,17 @@ async function vectorizeBlocks(
   embedding: EmbeddingPort,
   blocks: ParsedContentBlock[],
   embeddingModelId: string,
-  expectedSpaceId: string
+  expectedSpaceId: string,
+  signal?: AbortSignal
 ): Promise<VectorizedBlock[]> {
   const texts = blocks.map(block => block.text.trim());
-  const result = await embedding.embed({ modelId: embeddingModelId, values: texts, expectedSpaceId });
+  const result = await embedding.embed({
+    modelId: embeddingModelId,
+    values: texts,
+    expectedSpaceId,
+    signal,
+  });
+  signal?.throwIfAborted();
   const vectors = result.vectors;
   const sparseVectors = await textsToSparseVectors(texts);
   return blocks.map((block, index) => ({

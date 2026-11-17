@@ -51,21 +51,23 @@ import {
   type GraphEvidenceRef,
 } from '../graph/application/graphSearchService';
 import type { StatusUpdatePublisher } from '../ingestion/definitions/statusUpdate';
-import type { EmbeddingPort, TextGenerationPort } from 'src/domains/model-inference';
+import type { EmbeddingPort, TextGenerationPort } from '@plugin/backend/inferenceRuntime';
 import { continueFailedPdfPages } from './orchestration/continueFailedPdfPages';
-import { getDefaultModelIdByCapability } from 'src/domains/model-catalog';
+import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfiguration';
+import type { KnowledgeQueues } from '../queue/orchestration/KnowledgeQueues';
+import type { KnowledgeGraphTaskControl } from './services/TaskService';
 
 // 🔥 新增：导入启动清理功能
 import { performStartupCleanup } from '../ingestion/failureCleanup';
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { formatSearchResultsForLLM } from '../utils/searchUtils';
 import type { KnowledgeBaseGraphSearchOptions } from './knowledgeBaseService';
-import type { DocumentOcrPort } from 'src/domains/document-ocr';
+import type { DocumentOcrPort } from '@plugin/backend/inferenceRuntime';
 import {
   allocateAgentKnowledgeSearchEvidence,
   type AgentKnowledgeSearchOutput,
 } from './search/agentSearchOutput';
-import type { CitationRefAllocatorPort } from 'src/domains/citation';
+import type { CitationRefAllocatorPort } from '@plugin/backend/citationSourceRuntime';
 
 const logger = new Logger('KnowledgeBaseCoordinator');
 
@@ -73,6 +75,10 @@ const logger = new Logger('KnowledgeBaseCoordinator');
  * 协调器依赖接口
  */
 export interface KnowledgeBaseCoordinatorDeps {
+  queues: KnowledgeQueues;
+  graphTasks: KnowledgeGraphTaskControl;
+  temporaryDirectory: string;
+  enqueueGraphExtraction(kbId: string, docId: string): Promise<void>;
   activity: KnowledgeActivityOwner;
   metadataRepository: MetadataRepository;
   qdrantRepository: QdrantRepository;
@@ -111,12 +117,20 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
   private readonly ingestionService: IngestionService;
   private readonly knowledgeBaseMgmtService: KnowledgeBaseMgmtService;
 
-  constructor(deps: KnowledgeBaseCoordinatorDeps) {
+  constructor(private readonly deps: KnowledgeBaseCoordinatorDeps) {
     this.activity = deps.activity;
-    this.rebuildOwner = deps.ingestionCapabilities ? createKnowledgeIndexRebuildOwner({
-      metadata: deps.metadataRepository, sot: deps.sotRepository, graph: deps.knowledgeGraphRepository,
-      vectors: deps.qdrantRepository, embedding: deps.ingestionCapabilities.embedding,
-    }, deps.activity) : null;
+    this.rebuildOwner = deps.ingestionCapabilities
+      ? createKnowledgeIndexRebuildOwner(
+          {
+            metadata: deps.metadataRepository,
+            sot: deps.sotRepository,
+            graph: deps.knowledgeGraphRepository,
+            vectors: deps.qdrantRepository,
+            embedding: deps.ingestionCapabilities.embedding,
+          },
+          deps.activity
+        )
+      : null;
     this.metadataRepository = deps.metadataRepository;
     this.qdrantRepository = deps.qdrantRepository;
     this.sotRepository = deps.sotRepository;
@@ -135,9 +149,14 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     };
     this.documentService = new DocumentService(documentServiceDeps);
 
-    this.taskService = new TaskService({ metadataRepository: this.metadataRepository });
+    this.taskService = new TaskService({
+      metadataRepository: this.metadataRepository,
+      queues: deps.queues,
+      graphTasks: deps.graphTasks,
+    });
 
     const ingestionServiceDeps: IngestionServiceDeps = {
+      queues: deps.queues,
       metadataRepository: this.metadataRepository,
       originalDocumentRepository: this.originalDocumentRepository,
       statusUpdatePublisher: deps.statusUpdatePublisher,
@@ -266,40 +285,38 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
   ) {
     const lease = this.activity.begin(kbId, 'ingestion');
     try {
-    if (!this.ingestionCapabilities) {
-      throw new Error('缺少知识库推理能力，无法继续解析 PDF 失败页');
-    }
+      if (!this.ingestionCapabilities) {
+        throw new Error('缺少知识库推理能力，无法继续解析 PDF 失败页');
+      }
 
-    return await continueFailedPdfPages(
-      {
-        metadataRepository: this.metadataRepository,
-        sotRepository: this.sotRepository,
-        qdrantRepository: this.qdrantRepository,
-        originalDocumentRepository: this.originalDocumentRepository,
-        embedding: this.ingestionCapabilities.embedding,
-        textGeneration: this.ingestionCapabilities.textGeneration,
-        documentOcr: this.ingestionCapabilities.documentOcr,
-        resolveModelByCapability: getDefaultModelIdByCapability,
-      },
-      kbId,
-      docId,
-      options
-    );
-    } finally { lease.release(); }
+      return await continueFailedPdfPages(
+        {
+          metadataRepository: this.metadataRepository,
+          sotRepository: this.sotRepository,
+          qdrantRepository: this.qdrantRepository,
+          originalDocumentRepository: this.originalDocumentRepository,
+          embedding: this.ingestionCapabilities.embedding,
+          textGeneration: this.ingestionCapabilities.textGeneration,
+          documentOcr: this.ingestionCapabilities.documentOcr,
+          resolveModelByCapability: () =>
+            getPluginModelConfigurationPort().readDefaultModelIdByCapability('pdf_ocr_default'),
+          temporaryDirectory: this.deps.temporaryDirectory,
+          enqueueGraphExtraction: this.deps.enqueueGraphExtraction,
+          signal: lease.signal,
+        },
+        kbId,
+        docId,
+        options
+      );
+    } finally {
+      lease.release();
+    }
   }
 
   // 任务控制操作 - 委托给TaskService
   async cancelTask(taskId: string): Promise<void> {
     if (await this.rebuildOwner?.cancel(taskId)) return;
     return this.taskService.cancelTask(taskId);
-  }
-
-  async pauseTask(taskId: string): Promise<void> {
-    return this.taskService.pauseTask(taskId);
-  }
-
-  async resumeTask(taskId: string): Promise<void> {
-    return this.taskService.resumeTask(taskId);
   }
 
   /**
@@ -356,15 +373,34 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
   async searchKnowledgeBase(request: KnowledgeBaseSearchRequest): Promise<SearchResponse> {
     const lease = this.activity.begin(request.kbId || 'default', 'search');
     try {
-    logger.info(`执行知识库搜索: ${request.query} (知识库: ${request.kbId || 'default'})`);
+      logger.info(`执行知识库搜索: ${request.query} (知识库: ${request.kbId || 'default'})`);
 
     try {
       // 如果没有指定知识库ID，使用默认知识库
       const kbId = request.kbId || 'default';
 
-      // 确保默认知识库存在
-      if (kbId === 'default') {
-        await this.getOrCreateDefaultKnowledgeBase();
+        // 确保默认知识库存在
+        if (kbId === 'default') {
+          await this.getOrCreateDefaultKnowledgeBase();
+        }
+
+        // 转换为内部（已解析 kbId）的搜索请求格式
+        const searchRequest: ResolvedKnowledgeBaseSearchRequest = {
+          query: request.query,
+          kbId,
+          topK: request.topK || 5,
+          filter: request.filter,
+          useReranking: request.useReranking !== false,
+          embeddingModelId: request.embeddingModelId ?? null,
+          rerankModelId: request.rerankModelId ?? null,
+        };
+
+        const response = await this.searchService.search(searchRequest);
+        logger.info(`知识库搜索完成，返回 ${response.results.length} 个结果`);
+        return response;
+      } catch (error) {
+        logger.error(`知识库搜索失败: ${error}`);
+        throw error;
       }
 
       // 转换为内部（已解析 kbId）的搜索请求格式
@@ -385,7 +421,6 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
       logger.error(`知识库搜索失败: ${error}`);
       throw error;
     }
-    } finally { lease.release(); }
   }
 
   /**
@@ -602,29 +637,16 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
   ): Promise<Array<Record<string, unknown>>> {
     const lease = this.activity.begin(kbId, 'search');
     try {
-    logger.info(`执行原始格式搜索: ${query} (知识库: ${kbId})`);
+      logger.info(`执行原始格式搜索: ${query} (知识库: ${kbId})`);
 
     try {
       // 如果知识库ID是'default'，确保默认知识库存在
       if (kbId === 'default') {
         await this.getOrCreateDefaultKnowledgeBase();
       }
-
-      const results = await this.searchService.searchRawResults(
-        kbId,
-        query,
-        topK,
-        docIds,
-        useReranking,
-        options
-      );
-      logger.info(`原始格式搜索完成，返回 ${results.length} 个结果`);
-      return results;
-    } catch (error) {
-      logger.error(`原始格式搜索失败: ${error}`);
-      throw error;
+    } finally {
+      lease.release();
     }
-    } finally { lease.release(); }
   }
 
   /**
@@ -646,31 +668,16 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
   ): Promise<AgentKnowledgeSearchOutput> {
     const lease = this.activity.begin(kbId, 'search');
     try {
-    logger.info(`执行Agent搜索: ${query} (知识库: ${kbId}${docId ? `, 文档: ${docId}` : ''})`);
+      logger.info(`执行Agent搜索: ${query} (知识库: ${kbId}${docId ? `, 文档: ${docId}` : ''})`);
 
     try {
       // 如果知识库ID是'default'，确保默认知识库存在
       if (kbId === 'default') {
         await this.getOrCreateDefaultKnowledgeBase();
       }
-
-      // 🔥 传递引用偏移量
-      const result = await this.searchService.searchForAgent(
-        kbId,
-        query,
-        citationRefAllocator,
-        topK,
-        docId,
-        citationOffset,
-        graph
-      );
-      logger.info(`Agent搜索完成`);
-      return result;
-    } catch (error) {
-      logger.error(`Agent搜索失败: ${error}`);
-      throw error;
+    } finally {
+      lease.release();
     }
-    } finally { lease.release(); }
   }
 
   /**

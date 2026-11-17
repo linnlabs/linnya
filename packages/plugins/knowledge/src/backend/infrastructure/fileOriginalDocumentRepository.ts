@@ -6,7 +6,8 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { logger } from '@shared/index';
+import { Logger } from '@plugin/backend/loggingRuntime';
+const logger = new Logger('knowledge');
 import {
   type OriginalDocumentRecord,
   type OriginalDocumentRepository,

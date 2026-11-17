@@ -6,8 +6,5 @@
  */
 export interface QueueWorkerRuntime {
   readonly pluginBootstrapScriptPath: string;
-  readonly ingestionScriptPath: string;
   readonly audioProcessingScriptPath: string;
-  readonly graphExtractionScriptPath: string;
-  readonly graphIndexingScriptPath: string;
 }

@@ -10,7 +10,7 @@
  * 副作用 (Side-effects): 持久化状态、更新进度、执行业务逻辑
  */
 
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { cleanupFailedDocument } from './failureCleanup';
 import type { MetadataRepository } from '../infrastructure/metadataRepository';
 import type { QdrantRepository } from '../infrastructure/qdrantRepository';

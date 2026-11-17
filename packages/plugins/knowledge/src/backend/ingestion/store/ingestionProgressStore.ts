@@ -1,6 +1,6 @@
 /**
  * @file src/features/knowledge-base/ingestion/store/ingestionProgressStore.ts
- * 
+ *
  * @brief 摄取进度读模型 - 连接状态机与前端轮询的桥梁
  * 
  * @description
@@ -11,7 +11,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 
 const logger = new Logger('IngestionProgressStore');
 const TERMINAL_SNAPSHOT_RETENTION_MS = 24 * 60 * 60 * 1000;
@@ -172,6 +172,11 @@ export class IngestionProgressStore extends EventEmitter {
       return true;
     }
     return false;
+  }
+
+  /** activation 已完成任务收尾后清除旧进度，重新启用不能复用旧 pending 状态。 */
+  public clear(): void {
+    this.states.clear();
   }
 
   /**

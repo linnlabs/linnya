@@ -5,10 +5,7 @@ import type { QueueWorkerRuntime } from '../definitions/queueWorkerRuntime';
 
 const WORKER_FILENAMES = Object.freeze({
   pluginBootstrapScriptPath: 'plugin-runtime.worker.cjs',
-  ingestionScriptPath: 'ingestion.worker.cjs',
   audioProcessingScriptPath: 'audio-processing.worker.cjs',
-  graphExtractionScriptPath: 'graph-extraction.worker.cjs',
-  graphIndexingScriptPath: 'graph-indexing.worker.cjs',
 });
 
 /**
@@ -22,19 +19,13 @@ export function resolveQueueWorkerRuntime(mainBundleDirectory: string): QueueWor
 
   const workerBundleDirectory = path.resolve(mainBundleDirectory, '..');
   const runtime: QueueWorkerRuntime = {
-    pluginBootstrapScriptPath: path.join(workerBundleDirectory, WORKER_FILENAMES.pluginBootstrapScriptPath),
-    ingestionScriptPath: path.join(workerBundleDirectory, WORKER_FILENAMES.ingestionScriptPath),
+    pluginBootstrapScriptPath: path.join(
+      workerBundleDirectory,
+      WORKER_FILENAMES.pluginBootstrapScriptPath
+    ),
     audioProcessingScriptPath: path.join(
       workerBundleDirectory,
-      WORKER_FILENAMES.audioProcessingScriptPath,
-    ),
-    graphExtractionScriptPath: path.join(
-      workerBundleDirectory,
-      WORKER_FILENAMES.graphExtractionScriptPath,
-    ),
-    graphIndexingScriptPath: path.join(
-      workerBundleDirectory,
-      WORKER_FILENAMES.graphIndexingScriptPath,
+      WORKER_FILENAMES.audioProcessingScriptPath
     ),
   };
 

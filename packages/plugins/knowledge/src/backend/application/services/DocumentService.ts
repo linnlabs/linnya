@@ -1,6 +1,6 @@
 /**
  * @file src/knowledge-base/application/services/DocumentService.ts
- * 
+ *
  * @brief 文档服务 - 负责文档的CRUD操作和状态管理
  * 
  * @description
@@ -11,7 +11,7 @@
  */
 
 import { Document, DocumentStatus } from '../../domain/document';
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { TaskStatusView } from '../knowledgeBaseService';
 import { MetadataRepository } from '../../infrastructure/metadataRepository';
 import { QdrantRepository } from '../../infrastructure/qdrantRepository';
@@ -95,7 +95,7 @@ export class DocumentService {
    */
   async getTasksStatus(docIds: string[]): Promise<Record<string, TaskStatusView>> {
     logger.info(`批量获取 ${docIds.length} 个任务的状态: [${docIds.join(', ')}]`);
-    
+
     const result: Record<string, TaskStatusView> = {};
     
     for (const docId of docIds) {

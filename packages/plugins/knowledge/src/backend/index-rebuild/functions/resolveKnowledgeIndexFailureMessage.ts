@@ -1,4 +1,4 @@
-import { EmbeddingFailure } from 'src/domains/model-inference';
+import { EmbeddingFailure } from '@plugin/backend/inferenceFailures';
 
 /** 恢复界面使用正式失败码解释下一步；上游文本不参与错误类别判断。 */
 export function resolveKnowledgeIndexFailureMessage(error: unknown): string {

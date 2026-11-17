@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { RerankingFailure, type RerankingPort } from 'src/domains/model-inference';
+import { type RerankingPort } from '@plugin/backend/inferenceRuntime';
+import { RerankingFailure } from '@plugin/backend/inferenceFailures';
+
 import { DefaultSearchRanker } from './defaultSearchRanker';
 import type { RankedRetrievedPoint } from './types';
 

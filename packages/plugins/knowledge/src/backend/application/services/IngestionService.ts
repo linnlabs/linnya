@@ -1,6 +1,6 @@
 /**
  * @file src/knowledge-base/application/services/IngestionService.ts
- * 
+ *
  * @brief 文档摄入服务 - 负责文档添加和摄入流程管理
  * 
  * @description
@@ -10,11 +10,11 @@
  * 副作用 (Side-effects): 创建文档元数据、启动后台摄入任务、发送IPC状态更新
  */
 
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import path from 'path';
 import { Document, DocumentStatus, createDocument } from '../../domain/document';
-import { generateTaskId } from '@shared/utils/idUtils';
-import { QueueManager } from '@task-queue/queues';
+import { createKnowledgeJobId as generateTaskId } from '../../queue/functions/createKnowledgeJobId';
+import type { KnowledgeQueues } from '../../queue/orchestration/KnowledgeQueues';
 import { MetadataRepository } from '../../infrastructure/metadataRepository';
 import type { OriginalDocumentRepository } from '../../infrastructure/originalDocumentRepository';
 import type { StatusUpdatePublisher } from '../../ingestion/definitions/statusUpdate';
@@ -26,6 +26,7 @@ const logger = new Logger('IngestionService');
  * 摄入服务依赖接口
  */
 export interface IngestionServiceDeps {
+  queues: KnowledgeQueues;
   metadataRepository: MetadataRepository;
   originalDocumentRepository: OriginalDocumentRepository;
   statusUpdatePublisher?: StatusUpdatePublisher;
@@ -42,7 +43,7 @@ export class IngestionService {
   private readonly originalDocumentRepository: OriginalDocumentRepository;
   private readonly statusUpdatePublisher?: StatusUpdatePublisher;
 
-  constructor(deps: IngestionServiceDeps) {
+  constructor(private readonly deps: IngestionServiceDeps) {
     this.metadataRepository = deps.metadataRepository;
     this.originalDocumentRepository = deps.originalDocumentRepository;
     this.statusUpdatePublisher = deps.statusUpdatePublisher;
@@ -62,7 +63,7 @@ export class IngestionService {
    * @param rerankModelId - (string, optional) 重排序模型的ID。
    * @param forceVisionMode - (boolean, optional) 是否强制使用视觉模式解析PDF。
    * @param graphExtractionModelId - (string, optional) 新上传文档的图谱抽取模型快照。
-   * 
+   *
    * **输出 (Output / @returns):** `Promise<{ taskId: string; document: Document; }>` - 返回任务ID和文档对象，所有状态更新通过状态机统一处理。
    * 
    * **副作用 (Side-effects):**
@@ -98,7 +99,7 @@ export class IngestionService {
       
       // 🔥 重构修复：移除重复文件检测，改为在状态机中统一处理
       // 重复文件检测现在由PendingHandler负责，确保所有状态变化都通过状态机
-      
+
       // 创建新文档记录（始终创建，重复检测由状态机处理）
       const document = createDocument(
         docId,
@@ -127,9 +128,9 @@ export class IngestionService {
         throw error;
       }
       logger.info(`文档记录已创建: ${docId}`);
-      
-      // 异步启动摄入流程，不等待完成
-      this.processDocumentInBackground(
+
+      // 等待队列真实接纳后再交还上传所有权；不等待 Worker 完成摄入。
+      await this.processDocumentInBackground(
         filePath,
         docId,
         kbId,
@@ -141,10 +142,8 @@ export class IngestionService {
         rerankModelId,
         forceVisionMode, // 🔥 新增：传递强制视觉模式参数
         graphExtractionModelId
-      ).catch(error => {
-        logger.error(`后台摄入流程启动失败: ${error}`);
-      });
-      
+      );
+
       logger.info(`文档添加完成，任务ID: ${taskId}`);
       return { taskId, document };
       
@@ -169,7 +168,7 @@ export class IngestionService {
    * @param rerankModelId - (string, optional) 重排序模型的ID。
    * @param forceVisionMode - (boolean, optional) 是否强制使用视觉模式解析PDF。
    * @param graphExtractionModelId - (string, optional) 新上传文档的图谱抽取模型快照。
-   * 
+   *
    * **输出 (Output / @returns):** `Promise<void>`
    * 
    * **副作用 (Side-effects):**
@@ -194,8 +193,8 @@ export class IngestionService {
     
     // 将任务推入队列管理器
     try {
-      const queueManager = QueueManager.getInstance();
-      
+      const queueManager = this.deps.queues;
+
       const jobPayload = {
         taskId,
         docId,
@@ -211,7 +210,7 @@ export class IngestionService {
         graphExtractionModelId,
         priority: 1,
         retry: true,
-        forceVisionMode: forceVisionMode ?? false // 🔥 新增：传递强制视觉模式参数，确保非undefined
+        forceVisionMode: forceVisionMode ?? false, // 🔥 新增：传递强制视觉模式参数，确保非undefined
       };
       
       await queueManager.addIngestionTask(jobPayload);
@@ -222,10 +221,24 @@ export class IngestionService {
       logger.error(message, queueError);
       await this.metadataRepository.updateDocumentStatus(docId, DocumentStatus.FAILED, message);
       this.statusUpdatePublisher?.({
-        taskId, docId, filename: originalFileName, stage: InternalStage.FAILED, errorMessage: message,
-        frontendState: { status: FrontendStatus.FAILED, stage: InternalStage.FAILED, progress: 0, stage_progress: 0,
-          message, error: message, doc_id: docId, filename: originalFileName, updated_at: Date.now() },
+        taskId,
+        docId,
+        filename: originalFileName,
+        stage: InternalStage.FAILED,
+        errorMessage: message,
+        frontendState: {
+          status: FrontendStatus.FAILED,
+          stage: InternalStage.FAILED,
+          progress: 0,
+          stage_progress: 0,
+          message,
+          error: message,
+          doc_id: docId,
+          filename: originalFileName,
+          updated_at: Date.now(),
+        },
       });
+      throw queueError;
     }
   }
 }

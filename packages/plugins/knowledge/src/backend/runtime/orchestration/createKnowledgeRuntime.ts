@@ -1,0 +1,188 @@
+import path from 'node:path';
+import { isGraphExtractionDumpEnabled } from '../../graph/application/graphExtractionDebugDump';
+import { mkdir } from 'node:fs/promises';
+import { getPluginStorage } from '@plugin/backend/storageRuntime';
+import { createPluginVectorRuntime } from '@plugin/backend/vectorRuntime';
+import { getPluginInferencePort } from '@plugin/backend/inferenceRuntime';
+import { getPluginProjectReadPort } from '@plugin/backend/projectReadRuntime';
+import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfiguration';
+import { broadcastRendererPluginMessage } from '@plugin/backend/pluginRendererPush';
+import { QdrantAdapter } from '../../infrastructure/vector-store/QdrantAdapter';
+import { QdrantRepositoryImpl } from '../../infrastructure/QdrantRepositoryImpl';
+import { BetterSqliteMetadataRepository } from '../../infrastructure/sqlite/better-sqlite-metadata.repository';
+import { BetterSqliteKnowledgeGraphRepository } from '../../graph/infrastructure/better-sqlite-knowledge-graph.repository';
+import { ProjectKnowledgeBaseLinksService } from '../../infrastructure/sqlite/project-knowledge-base-links.service';
+import { FileSotRepository } from '../../infrastructure/sotRepository';
+import { FileOriginalDocumentRepository } from '../../infrastructure/fileOriginalDocumentRepository';
+import { DefaultSearchService } from '../../application/searchService';
+import { KnowledgeBaseCoordinator } from '../../application/KnowledgeBaseCoordinator';
+import { KnowledgeGraphQueueOrchestrator } from '../../graph/application/knowledgeGraphQueueOrchestrator';
+import { GraphProgressService } from '../../graph/application/graphProgressService';
+import { KnowledgeQueues } from '../../queue/orchestration/KnowledgeQueues';
+import { createKnowledgeActivityOwner } from './createKnowledgeActivityOwner';
+import { connectKnowledgeProgress } from './connectKnowledgeProgress';
+import { scheduleKnowledgeMaintenance } from './scheduleKnowledgeMaintenance';
+import { ingestionProgressStore } from '../../ingestion/store/ingestionProgressStore';
+import { scopeKnowledgeInference } from './scopeKnowledgeInference';
+import { markInterruptedKnowledgeDocuments } from './markInterruptedKnowledgeDocuments';
+import { registerKnowledgeToolRuntime } from '../../tools/runtime/knowledgeToolRuntime';
+
+/** 一个 activation 持有全部知识库运行资源；这里只读 SQLite/创建目录，不启动向量或线程。 */
+export async function createKnowledgeRuntime() {
+  const storage = getPluginStorage('knowledge');
+  const controller = new AbortController();
+  const inference = scopeKnowledgeInference(getPluginInferencePort(), controller.signal);
+  const projects = getPluginProjectReadPort();
+  const models = getPluginModelConfigurationPort();
+  const activity = createKnowledgeActivityOwner();
+  const paths = {
+    sotDirectory: path.join(storage.dataDirectory, 'source_of_truth'),
+    originalsDirectory: path.join(storage.dataDirectory, 'originals'),
+    temporaryDirectory: path.join(storage.dataDirectory, 'temporary'),
+    ...(isGraphExtractionDumpEnabled()
+      ? { graphDebugDirectory: path.join(storage.dataDirectory, 'diagnostics', 'kg-extraction') }
+      : {}),
+  };
+  await Promise.all(Object.values(paths).map(directory => mkdir(directory, { recursive: true })));
+  const metadata = new BetterSqliteMetadataRepository(storage.database);
+  const sot = new FileSotRepository(paths.sotDirectory);
+  const originals = new FileOriginalDocumentRepository(paths.originalsDirectory);
+  const graphRepository = new BetterSqliteKnowledgeGraphRepository(storage.database);
+  const links = new ProjectKnowledgeBaseLinksService(storage.database, metadata, projects);
+  let adapter: Promise<QdrantAdapter> | undefined;
+  let maintenance: ReturnType<typeof scheduleKnowledgeMaintenance> | undefined;
+  let accepting = true;
+  let activeTools = 0;
+  let interruptedTasks: readonly { docId: string; kbId: string }[] | undefined;
+  const resolveVectorUrl = async (signal?: AbortSignal) => {
+    const url = await vector.ensureReady(signal);
+    if (accepting && !maintenance) {
+      maintenance = scheduleKnowledgeMaintenance({
+        metadataRepository: metadata,
+        qdrantRepository: vectors,
+        sotRepository: sot,
+        originalDocumentRepository: originals,
+        knowledgeGraphRepository: graphRepository,
+        activity,
+      });
+      graph.startBackfill();
+    }
+    return url;
+  };
+  const vectors = new QdrantRepositoryImpl(
+    () => (adapter ??= resolveVectorUrl(controller.signal).then(url => new QdrantAdapter({ url })))
+  );
+  const queues = new KnowledgeQueues({
+    activity,
+    paths,
+    resolveVectorUrl,
+    prepareIngestion: job => ({
+      ...job,
+      ...(path.extname(job.filename).toLowerCase() === '.pdf' && !job.pdfOcrModelId
+        ? { pdfOcrModelId: models.readDefaultModelIdByCapability('pdf_ocr_default') }
+        : {}),
+    }),
+  });
+  const graph = new KnowledgeGraphQueueOrchestrator({
+    queueManager: queues,
+    database: storage.database,
+    sotRepository: sot,
+    publishGraphProgress: payload => {
+      if (accepting)
+        broadcastRendererPluginMessage('knowledge', 'graph-progress-updated', { ...payload });
+    },
+  });
+  const searchService = new DefaultSearchService({
+    qdrantRepository: vectors,
+    metadataRepository: metadata,
+    sotRepository: sot,
+    embedding: inference.embedding,
+    reranking: inference.reranking,
+    knowledgeGraphRepository: graphRepository,
+  });
+  const service = new KnowledgeBaseCoordinator({
+    queues,
+    graphTasks: graph,
+    temporaryDirectory: paths.temporaryDirectory,
+    enqueueGraphExtraction: (kbId, docId) => graph.enqueueGraphExtractionForDocument(kbId, docId),
+    activity,
+    metadataRepository: metadata,
+    qdrantRepository: vectors,
+    sotRepository: sot,
+    originalDocumentRepository: originals,
+    searchService,
+    knowledgeGraphRepository: graphRepository,
+    ingestionCapabilities: inference,
+    statusUpdatePublisher: event => connectedProgress.statusUpdatePublisher(event),
+  });
+  // 可失败的 SQLite 初始化先完成，再发布工具绑定与事件订阅。
+  await service.getOrCreateDefaultKnowledgeBase();
+  // SQLite admission 失败时还没有向 Host 领取资源 owner，下一次启用可直接重试。
+  const vector = createPluginVectorRuntime('knowledge');
+  const connectedProgress = connectKnowledgeProgress(queues, originals);
+  const progress = new GraphProgressService(graphRepository);
+  const disposeTools = registerKnowledgeToolRuntime({
+    service,
+    listProjectKnowledgeBaseIds: projectId => links.getKnowledgeBaseIdsForProject(projectId),
+    enterTool() {
+      if (!accepting) throw new Error('知识库正在停用，请稍后再试');
+      activeTools += 1;
+      let released = false;
+      return () => {
+        if (!released) {
+          released = true;
+          activeTools -= 1;
+        }
+      };
+    },
+  });
+  graph.start();
+  return {
+    service,
+    metadata,
+    sot,
+    originals,
+    links,
+    graph,
+    progress,
+    projects,
+    inference,
+    queues,
+    signal: controller.signal,
+    assertAccepting() {
+      if (!accepting) throw new Error('知识库正在停用，请稍后再试');
+    },
+    hasActiveTasks() {
+      return activeTools > 0 || activity.hasActivity();
+    },
+    assertCanDeactivate() {
+      if (activeTools > 0)
+        throw new Error('知识库工具仍在运行，请等待检索或深度搜索结束后再停用。');
+    },
+    async stop() {
+      // 同步封闭接单之后才让出执行权；失败时仍由 effect 持有当前 owner，允许再次收尾。
+      accepting = false;
+      connectedProgress.stopPublishing();
+      interruptedTasks ??= queues
+        .listIngestionTasks()
+        .filter(job => job.state === 'pending' || job.state === 'running')
+        .map(job => ({ docId: job.data.docId, kbId: job.data.kbId }));
+      controller.abort();
+      const graphStopped = graph.stop();
+      const maintenanceStopped = maintenance?.stop();
+      const draining = activity.drain();
+      await queues.shutdown();
+      await draining;
+      await graphStopped;
+      await markInterruptedKnowledgeDocuments(metadata, interruptedTasks);
+      interruptedTasks = [];
+      await maintenanceStopped;
+      await vector.stop();
+      progress.dispose();
+      await connectedProgress.dispose();
+      disposeTools();
+      ingestionProgressStore.clear();
+    },
+  };
+}
+export type KnowledgeRuntime = Awaited<ReturnType<typeof createKnowledgeRuntime>>;

@@ -11,7 +11,8 @@
  * 这里以元数据为 SoT，仅保留仍存在于 kb_documents 的 doc_id。
  */
 
-import { logger } from '@shared/index';
+import { Logger } from '@plugin/backend/loggingRuntime';
+const logger = new Logger('knowledge');
 import type { MetadataRepository } from '../../infrastructure/metadataRepository';
 import type { RankedRetrievedPoint } from './types';
 

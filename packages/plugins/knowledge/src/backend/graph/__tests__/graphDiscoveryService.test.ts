@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import type { QdrantRepository, SearchResult } from '../../infrastructure/qdrantRepository';
-import type { EmbeddingPort } from 'src/domains/model-inference';
+import type { EmbeddingPort } from '@plugin/backend/inferenceRuntime';
 import { GraphDiscoveryService } from '../application/graphDiscoveryService';
 
 class FakeEmbedder implements EmbeddingPort {

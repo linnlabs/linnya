@@ -8,7 +8,8 @@
  * SoT以JSON文件的形式存储每个文档的结构化数据，包括块内容、元数据和结构信息。
  */
 
-import { logger } from '@shared/index';
+import { Logger } from '@plugin/backend/loggingRuntime';
+const logger = new Logger('knowledge');
 import fs from 'fs/promises';
 import path from 'path';
 import { DocumentSoT } from '../domain/block';
@@ -129,7 +130,7 @@ export class FileSotRepository implements SotRepository {
   async get(docId: string): Promise<DocumentSoT | undefined> {
     try {
       const docPath = this.getDocPath(docId);
-      
+
       try {
         await fs.access(docPath);
       } catch {
@@ -153,7 +154,7 @@ export class FileSotRepository implements SotRepository {
   async delete(docId: string): Promise<boolean> {
     try {
       const docPath = this.getDocPath(docId);
-      
+
       try {
         await fs.access(docPath);
       } catch {

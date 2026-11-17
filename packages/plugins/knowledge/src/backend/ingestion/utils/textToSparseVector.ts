@@ -16,7 +16,7 @@
  * - 冲突处理：相同 hash 的词频相加
  */
 
-import { tokenizeWithJieba } from '@shared/utils/tokenization';
+import { tokenizeForSearch } from '@plugin/backend/textSegmentationRuntime';
 import adler32 from 'adler-32';
 import type { SparseVector } from '../../infrastructure/qdrantRepository';
 
@@ -32,7 +32,7 @@ export async function textToSparseVector(text: string): Promise<SparseVector> {
   if (normalized.length === 0) return { indices: [], values: [] };
 
   // 与 ingestion 侧保持一致：统一使用 tokenizeWithJieba 的过滤策略
-  const tokens = tokenizeWithJieba(normalized);
+  const tokens = await tokenizeForSearch(normalized);
   if (tokens.length === 0) return { indices: [], values: [] };
 
   // 统计词频

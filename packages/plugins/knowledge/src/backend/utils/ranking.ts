@@ -7,7 +7,8 @@
  * 存放所有与搜索结果排序、融合、重排相关的核心算法；这里是当前排序规则的权威实现。
  */
 
-import { logger } from '@shared/index';
+import { Logger } from '@plugin/backend/loggingRuntime';
+const logger = new Logger('knowledge');
 import type { PointPayload, RetrievedPoint } from '../infrastructure/qdrantRepository';
 
 export interface LayeredRankingResult {
@@ -158,7 +159,7 @@ export function applyIntelligentLayeredSorting(
 
   // 当前分层排序使用轻量中英文 token；调整分词器必须重新校准下方梯队阈值与权重。
   let queryKeywords: string[] = [];
-  
+
   // 简化的分词逻辑（中英文兼容）
   const tokens = query.toLowerCase()
     .split(/[\s\u4e00-\u9fff]+/) // 按空格和中文字符分割
@@ -190,7 +191,7 @@ export function applyIntelligentLayeredSorting(
 
   for (const res of searchResults) {
     const textLower = res.payload.document.toLowerCase();
-    
+
     // 计算关键词覆盖率
     const matchedKeywords = new Set(
       queryKeywords.filter(kw => textLower.includes(kw))
@@ -291,7 +292,7 @@ export function applyIntelligentLayeredSorting(
     ...tier0ExactMatch,
     ...tier1FullKeywordMatch,
     ...tier2And3HybridQueue,
-    ...tier4NormalSemantic
+    ...tier4NormalSemantic,
   ];
   
   return finalSortedList;
@@ -314,11 +315,54 @@ function isStopword(token: string): boolean {
     '因', '所', '如', '比', '等', '多', '少', '大', '小', '长', '短', '高', '低', 
     '新', '旧', '好', '坏',
     // 英文停用词
-    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 
-    'with', 'by', 'from', 'up', 'about', 'into', 'through', 'during', 'before', 
-    'after', 'above', 'below', 'between', 'among', 'around', 'is', 'are', 'was', 
-    'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 
-    'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can'
+    'the',
+    'a',
+    'an',
+    'and',
+    'or',
+    'but',
+    'in',
+    'on',
+    'at',
+    'to',
+    'for',
+    'of',
+    'with',
+    'by',
+    'from',
+    'up',
+    'about',
+    'into',
+    'through',
+    'during',
+    'before',
+    'after',
+    'above',
+    'below',
+    'between',
+    'among',
+    'around',
+    'is',
+    'are',
+    'was',
+    'were',
+    'be',
+    'been',
+    'being',
+    'have',
+    'has',
+    'had',
+    'do',
+    'does',
+    'did',
+    'will',
+    'would',
+    'could',
+    'should',
+    'may',
+    'might',
+    'must',
+    'can',
   ]);
   
   return stopwords.has(token.toLowerCase());

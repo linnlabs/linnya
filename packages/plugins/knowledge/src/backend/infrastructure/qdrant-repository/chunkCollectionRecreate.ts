@@ -5,14 +5,10 @@ import { isObjectLike } from '@linnya/foundation';
  * @brief chunk collection 启动收缩 / 重建编排
  */
 
-import type { QdrantScrollOffset } from '@infra/adapters/vector-store/qdrant';
-import type { Logger } from '@shared/logger';
+import type { QdrantScrollOffset } from '../vector-store';
+import type { Logger } from '@plugin/backend/loggingRuntime';
 
-import type {
-  QdrantPoint,
-  SparseVector,
-  VectorData,
-} from '../qdrantRepository';
+import type { QdrantPoint, SparseVector, VectorData } from '../qdrantRepository';
 import { toPointPayload } from './payload';
 import {
   readConfiguredTargetSegmentCount,
@@ -73,8 +69,6 @@ export type ChunkCollectionRecreateResult = {
 const SCROLL_PAGE_SIZE = 1000;
 const UPSERT_BATCH_SIZE = 200;
 const SEGMENT_SHRINK_TOLERANCE = 1;
-
-
 
 function isFiniteNumberArray(value: unknown): value is number[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'number' && Number.isFinite(item));
@@ -209,7 +203,9 @@ export async function recreateChunkCollectionIfNeeded(
 
   const info = await deps.getCollectionInfo();
   const pointsCount =
-    Number.isFinite(info.points_count) && info.points_count >= 0 ? Math.trunc(info.points_count) : 0;
+    Number.isFinite(info.points_count) && info.points_count >= 0
+      ? Math.trunc(info.points_count)
+      : 0;
   const segmentsCount =
     Number.isFinite(info.segments_count) && info.segments_count >= 0 ? Math.trunc(info.segments_count) : 0;
   const configuredTargetSegmentCount = readConfiguredTargetSegmentCount(info.config);

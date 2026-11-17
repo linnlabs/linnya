@@ -8,22 +8,40 @@ import JSZip from 'jszip';
 const packageRoot = path.resolve(import.meta.dirname, '..');
 const repositoryRoot = path.resolve(packageRoot, '../../..');
 const manifest = JSON.parse(await readFile(path.join(packageRoot, 'plugin.json'), 'utf8'));
-const zip = await JSZip.loadAsync(await readFile(path.join(packageRoot, 'dist/artifacts', `knowledge-${manifest.version}.zip`)));
+const zip = await JSZip.loadAsync(
+  await readFile(path.join(packageRoot, 'dist/artifacts', `knowledge-${manifest.version}.zip`))
+);
 const workerNames = ['knowledgeIngestion', 'graphExtraction', 'graphIndexing'];
-const nativeDependencies = ['better-sqlite3', 'pdfjs-dist', '@napi-rs/canvas', '@node-rs/jieba', 'sharp'];
+// 与安装态 Host bootstrap 的精确解析面一致，不能放行任意包子路径。
+const nativeDependencies = new Set([
+  'better-sqlite3',
+  'sharp',
+  '@napi-rs/canvas',
+  'pdfjs-dist/package.json',
+  'pdfjs-dist/legacy/build/pdf.mjs',
+  '@node-rs/jieba',
+  '@node-rs/jieba/dict',
+]);
 const files = Object.keys(zip.files).filter(file => !zip.files[file].dir);
-const required = ['dist/backend/index.cjs', 'dist/renderer/index.js', 'dist/renderer/renderer-stylesheets.json',
-  ...workerNames.map(name => `dist/backend/workers/${name}.worker.cjs`)];
+const required = [
+  'dist/backend/index.cjs',
+  'dist/renderer/index.js',
+  'dist/renderer/renderer-stylesheets.json',
+  ...workerNames.map(name => `dist/backend/workers/${name}.worker.cjs`),
+];
 for (const file of required) assert(zip.file(file), `artifact missing ${file}`);
 assert(!files.some(file => /(?:^|\/)(?:src|dev|scripts|node_modules|\.metadata|__tests__)(?:\/|$)|\.map$/.test(file)), 'artifact contains development/source output');
 
 const isBuiltin = value => builtinModules.includes(value.replace(/^node:/, ''));
 const normalize = value => value.replaceAll('\\', '/');
-// 推理 client 重建结构化失败仅需要这两个原有纯定义，不能放行 Provider 或凭据实现。
-const pureInferenceDefinitions = new Set([
-  'src/domains/model-inference/features/embedding/definitions/embedding.ts',
-  'src/domains/model-inference/features/reranking/definitions/reranking.ts',
-].map(file => normalize(path.join(repositoryRoot, file))));
+// 推理 client 重建结构化失败仅需要这三个原有纯错误定义，不能放行 Provider 或凭据实现。
+const pureInferenceDefinitions = new Set(
+  [
+    'src/domains/model-inference/features/embedding/definitions/embedding.ts',
+    'src/domains/model-inference/features/reranking/definitions/reranking.ts',
+    'src/domains/model-inference/features/text-generation/definitions/textGeneration.ts',
+  ].map(file => normalize(path.join(repositoryRoot, file)))
+);
 const reports = [];
 for (const name of ['index', ...workerNames]) {
   const worker = name !== 'index';
@@ -43,9 +61,11 @@ for (const name of ['index', ...workerNames]) {
     assert(!/\/src\/electron-main\/services\/database\.ts$/.test(input), `${name}: full Host database lifecycle bundled`);
   }
   for (const dependency of output.imports.filter(value => value.external)) {
-    const permitted = isBuiltin(dependency.path) || (worker
-      ? nativeDependencies.some(name => dependency.path === name || dependency.path.startsWith(`${name}/`))
-      : /^(?:@app\/schemas(?:\/|$)|@plugin\/backend\/)/.test(dependency.path));
+    const permitted =
+      isBuiltin(dependency.path) ||
+      (worker
+        ? nativeDependencies.has(dependency.path)
+        : /^(?:@app\/schemas(?:\/|$)|@plugin\/backend\/)/.test(dependency.path));
     assert(permitted, `${name}: unclosed runtime dependency ${dependency.path}`);
   }
   reports.push({ name, actualBytes, liveInputs: inputs.length });

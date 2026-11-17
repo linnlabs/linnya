@@ -9,7 +9,7 @@
  * - 维持 `application/searchService.ts` 的对外导出稳定，避免跨模块耦合。
  */
 
-import type { EmbeddingPort, RerankingPort } from 'src/domains/model-inference';
+import type { EmbeddingPort, RerankingPort } from '@plugin/backend/inferenceRuntime';
 import type { ResolvedKnowledgeBaseSearchRequest, SearchResponse } from '../knowledgeBaseService';
 import type {
   QdrantRepository,
@@ -21,7 +21,7 @@ import type { SotRepository } from '../../infrastructure/sotRepository';
 import type { KnowledgeGraphRepository } from '../../graph/infrastructure/knowledgeGraphRepository';
 import type { KnowledgeBaseGraphSearchOptions } from '../knowledgeBaseService';
 import type { AgentKnowledgeSearchOutput } from './agentSearchOutput';
-import type { CitationRefAllocatorPort } from 'src/domains/citation';
+import type { CitationRefAllocatorPort } from '@plugin/backend/citationSourceRuntime';
 
 /**
  * 检索点在“排序/重排”阶段的扩展字段（只在内存中存在，不回写到 Qdrant）。

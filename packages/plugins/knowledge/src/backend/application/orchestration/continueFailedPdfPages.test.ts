@@ -4,8 +4,8 @@ import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { EmbeddingPort, TextGenerationPort } from 'src/domains/model-inference';
-import type { DocumentOcrPort } from 'src/domains/document-ocr';
+import type { EmbeddingPort, TextGenerationPort } from '@plugin/backend/inferenceRuntime';
+import type { DocumentOcrPort } from '@plugin/backend/inferenceRuntime';
 import { ServiceRegistry } from 'src/core/di/ServiceRegistry';
 import { BlockType, type DocumentSoT } from '../../domain/block';
 import {

@@ -1,6 +1,6 @@
 /**
  * @file src/knowledge-base/ingestion/handlers/PendingHandler.ts
- * 
+ *
  * @brief PENDING状态处理器
  * 
  * @description
@@ -10,7 +10,7 @@
  * 副作用 (Side-effects): 检查重复文件，验证输入参数
  */
 
-import { Logger } from 'src/shared/logger';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import {
   InternalStage,
   type StateHandler,
@@ -85,7 +85,7 @@ export class PendingHandler implements StateHandler {
           context: { 
             ...context, 
             stageProgress: 100,
-            currentProgress: 100 
+            currentProgress: 100,
           },
           message: context.duplicateReason === 'retained_source' ? RETAINED_SOURCE_DUPLICATE_MESSAGE : '检测到重复文件，跳过处理'
         };
@@ -96,12 +96,12 @@ export class PendingHandler implements StateHandler {
       return {
         success: true,
         newStage: InternalStage.PARSING,
-        context: { 
-          ...context, 
+        context: {
+          ...context,
           stageProgress: 0,
           currentProgress: 5  // PENDING完成，整体进度5%
         },
-        message: '开始解析文档'
+        message: '开始解析文档',
       };
 
     } catch (error) {
@@ -225,7 +225,7 @@ export class PendingHandler implements StateHandler {
       } else {
         logger.info(`[PendingHandler] ✅ 未发现重复文档，文件可以处理`);
       }
-      
+
       const isDuplicate = !!duplicateDoc;
       
       // 失败不代表没有资料：向量写入失败可能已保留 SoT/原始 PDF。

@@ -1,9 +1,13 @@
-import type { EmbeddingPort, EmbeddingResult } from 'src/domains/model-inference';
+import type { EmbeddingPort, EmbeddingResult } from '@plugin/backend/inferenceRuntime';
 import { DocumentSoTSchema } from '../../domain/block';
 import { DocumentStatus, type Document } from '../../domain/document';
 import type { MetadataRepository } from '../../infrastructure/metadataRepository';
 import type { SotRepository } from '../../infrastructure/sotRepository';
-import type { PointPayload, QdrantPoint, QdrantRepository } from '../../infrastructure/qdrantRepository';
+import type {
+  PointPayload,
+  QdrantPoint,
+  QdrantRepository,
+} from '../../infrastructure/qdrantRepository';
 import type { KnowledgeGraphRepository } from '../../graph/infrastructure/knowledgeGraphRepository';
 import { getGraphNodesCollectionName, getGraphEdgesCollectionName } from '../../graph/infrastructure/qdrantCollections';
 import { projectGraphVectorPoints } from '../../graph/application/indexing/projectGraphVectorPoints';
@@ -14,7 +18,10 @@ import type { KnowledgeIndexIdentity } from '../definitions/knowledgeIndex';
 interface IndexPoint { readonly id: string; readonly payload: PointPayload }
 interface IndexBatch { readonly collection: string; readonly points: IndexPoint[] }
 export interface KnowledgeIndexRebuildDependencies {
-  readonly metadata: Pick<MetadataRepository, 'getDocumentsInKnowledgeBase' | 'updateDocumentStatus' | 'indexState'>;
+  readonly metadata: Pick<
+    MetadataRepository,
+    'getDocumentsInKnowledgeBase' | 'updateDocumentStatus' | 'indexState'
+  >;
   readonly sot: Pick<SotRepository, 'get'>;
   readonly graph: Pick<KnowledgeGraphRepository, 'listNodesBySourceDocId' | 'listEdgesByEvidenceDocId' | 'upsertVectorDocStatus'>;
   readonly vectors: Pick<QdrantRepository, 'collectionExists' | 'deleteCollection' | 'getOrCreateCollection' | 'addPoints' | 'countPointsByIds'>;
@@ -140,9 +147,14 @@ export async function rebuildKnowledgeIndex(args: {
       deps.graph.listEdgesByEvidenceDocId(kbId, document.id),
     ]);
     await deps.graph.upsertVectorDocStatus({
-      kbId, docId: document.id, embeddingModelId: modelId,
-      nodeCount: nodes.length, edgeCount: edges.length, doneUnits: nodes.length + edges.length,
-      status: 'completed', errorMessage: null,
+      kbId,
+      docId: document.id,
+      embeddingModelId: modelId,
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      doneUnits: nodes.length + edges.length,
+      status: 'completed',
+      errorMessage: null,
     });
     if (document.status !== DocumentStatus.COMPLETED) await deps.metadata.updateDocumentStatus(document.id, DocumentStatus.COMPLETED);
   }
