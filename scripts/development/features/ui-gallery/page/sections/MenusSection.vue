@@ -175,7 +175,7 @@ const backgroundColor = ref<string | null>(null);
 }
 
 .menus__panel {
-  width: 280px; /* scale-exempt: 版面尺寸 */
+  width: fit-content;
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-elevated);
   box-shadow: var(--shadow-floating-panel);
