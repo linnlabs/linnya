@@ -30,6 +30,7 @@ async function createFixture() {
   const unused = async (): Promise<never> => { throw new Error('Scope reads must not call an unrelated capability'); };
   // 工具窄读取使用真实SQLite/SoT/图谱；不装配与此路径无关的摄入队列或模型。
   const service: KnowledgeBaseService = {
+    hasActiveTasks: () => false, stopTasks: unused, rebuildIndex: unused, getIndexRebuildStatus: () => null,
     getDocumentById: id => metadata.getDocumentById(id),
     getRawSoTDocument: id => sot.get(id),
     getGraphAugmentationsForEvidenceBlocks: (refs, options) => graph.getAugmentationsForEvidenceBlocks(refs, options),
