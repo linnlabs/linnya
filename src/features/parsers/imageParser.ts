@@ -24,6 +24,8 @@ import { setTimeout as wait } from 'node:timers/promises';
 
 import { Parser, ParsedBlock, ProgressUpdater, generateBlockId } from './types';
 import type { TextGenerationPort } from 'src/domains/model-inference';
+import type { TextGenerationImageMediaType } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
+import { prepareImageParsingInput } from './functions/prepareImageParsingInput';
 import { IMAGE_DESCRIPTION_PROMPT_CONTENT } from './definitions/imageDescriptionPrompt';
 
 /**
@@ -62,6 +64,8 @@ export class ImageParser implements Parser {
     console.log(`[ImageParser] 开始使用AI视觉模型解析图像: ${docId}`);
     
     try {
+      const imageInput = await prepareImageParsingInput(data);
+      signal?.throwIfAborted();
       // 更新进度 - 开始解析
       if (updater) {
         updater(5, '开始AI图像识别...');
@@ -78,7 +82,8 @@ export class ImageParser implements Parser {
       // 调用AI引擎进行图像识别 - 实现指数退避重试
       console.log(`[ImageParser] 开始AI识别，使用模型: ${visionModelId}`);
       const response = await this.recognizeImageContentWithRetry(
-        data,
+        imageInput.bytes,
+        imageInput.mediaType,
         textGeneration,
         visionModelId,
         5, // maxRetries
@@ -146,6 +151,7 @@ export class ImageParser implements Parser {
    */
   private async recognizeImageContentWithRetry(
     imageBytes: Uint8Array,
+    mediaType: TextGenerationImageMediaType,
     textGeneration: TextGenerationPort,
     visionModelId: string,
     maxRetries: number = 5,
@@ -165,7 +171,7 @@ export class ImageParser implements Parser {
             { role: 'system', content: IMAGE_DESCRIPTION_PROMPT_CONTENT },
             {
               role: 'user',
-              content: [{ type: 'image', mediaType: 'image/jpeg', bytes: imageBytes }],
+              content: [{ type: 'image', mediaType, bytes: imageBytes }],
             },
           ],
           maxOutputTokens: 4_000,
@@ -197,7 +203,7 @@ export class ImageParser implements Parser {
         }
 
       } catch (error) {
-      signal?.throwIfAborted();
+        signal?.throwIfAborted();
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`[ImageParser] ❌ AI识别第 ${attempt} 次尝试失败: ${errorMessage}`);
         console.error(`[ImageParser] 📊 错误详情:`, error);
