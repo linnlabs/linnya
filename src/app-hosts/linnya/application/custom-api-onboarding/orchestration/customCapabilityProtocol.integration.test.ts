@@ -6,6 +6,15 @@ import {
 } from '@app/schemas/custom-api-onboarding';
 import { testCustomCapabilityModel } from './testCustomCapabilityModel';
 import { startCustomCapabilityProtocolServer } from '../__tests__/fixtures/customCapabilityProtocolServer';
+import {
+  createAiSdkInferenceCapability,
+  createAiSdkLanguageModelRegistry,
+  type AiSdkInferenceRoute,
+} from '@linnlabs/linnkit-provider-ai-sdk';
+import { createTextGenerationPort } from '../../../adapters/inference/orchestration/createTextGenerationPort';
+import { createRerankingPort } from '../../../adapters/inference/orchestration/createRerankingPort';
+import { buildCustomCapabilityRegistration } from '../functions/buildCustomCapabilityRegistration';
+import { MODEL_CONNECTION_TEST_PNG } from '../definitions/modelConnectionTestDocument';
 
 const servers: Awaited<ReturnType<typeof startCustomCapabilityProtocolServer>>[] = [];
 afterEach(async () => {
@@ -36,6 +45,93 @@ async function setup(format: CustomCapabilityApiFormat) {
 
 const JsonObject = z.record(z.string(), z.unknown());
 describe('自定义模型从配置命令到真实 Host/SDK/HTTP 的协议验收', () => {
+  it('正式文本/视觉SDK解码Chat SSE，错误不退回其他协议', async () => {
+    const server = await startCustomCapabilityProtocolServer();
+    servers.push(server);
+    server.setChatResponse(request => `Synthetic response for ${request.model}`);
+    const route: AiSdkInferenceRoute = {
+      model_id: 'local-chat',
+      request_profile: 'openai_chat',
+      capability_id: 'ai-sdk:openai-chat',
+      endpoint_id: 'fixture',
+      endpoint_model_id: 'fixture-chat',
+      surface: 'openai_chat_completions',
+      base_url: `${server.baseUrl}/v1`,
+      headers: {},
+    };
+    const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
+      language_models: createAiSdkLanguageModelRegistry(),
+    });
+    const port = createTextGenerationPort({
+      inferencePort: {
+        stream: request =>
+          capability.stream({
+            request,
+            route,
+            credential: { profile: 'bearer', secret: 'fixture-key' },
+          }),
+      },
+    });
+    const request = {
+      modelId: 'local-chat',
+      messages: [
+        {
+          role: 'user' as const,
+          content: [
+            { type: 'text' as const, text: 'Synthetic apple image' },
+            {
+              type: 'image' as const,
+              mediaType: 'image/png' as const,
+              bytes: Buffer.from(MODEL_CONNECTION_TEST_PNG, 'base64'),
+            },
+          ],
+        },
+      ],
+    };
+    expect((await port.generate(request)).text).toBe('Synthetic response for fixture-chat');
+    expect(server.requests[0]).toMatchObject({ method: 'POST', path: '/v1/chat/completions' });
+    expect(server.requests[0].headers.authorization).toBe('Bearer fixture-key');
+    expect(JSON.parse(server.requests[0].body)).toMatchObject({
+      model: 'fixture-chat',
+      stream: true,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Synthetic apple image' },
+            {
+              type: 'image_url',
+              image_url: { url: `data:image/png;base64,${MODEL_CONNECTION_TEST_PNG}` },
+            },
+          ],
+        },
+      ],
+    });
+    server.setFailure('unauthorized');
+    await expect(port.generate(request)).rejects.toMatchObject({
+      code: 'provider_http_401',
+      retryable: false,
+    });
+    expect(server.requests).toHaveLength(2);
+  });
+
+  it.each([1, 3])('Cohere按真实%d条候选返回有效索引，不制造第二条结果', async count => {
+    const { server, command } = await setup('cohere_rerank');
+    const { model } = buildCustomCapabilityRegistration(command, 'fixture', 'fixture');
+    const port = createRerankingPort({
+      catalog: {
+        async initialize() {},
+        getModel: () => model,
+        resolveCredential: () => command.api_key,
+      },
+    });
+    const documents = Array.from({ length: count }, (_, index) => `Apple document ${index}`);
+    const result = await port.rerank({ modelId: model.id, query: 'apple', documents });
+    expect(result.ranking.map(item => item.originalIndex)).toEqual(
+      documents.map((_, index) => index)
+    );
+    expect(server.requests[0].path).toBe('/v2/rerank');
+  });
   it.each([
     'openai_embeddings',
     'cohere_rerank',

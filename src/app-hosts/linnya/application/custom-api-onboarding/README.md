@@ -145,6 +145,7 @@ Paddle Layout Parsing 的部署模型由 endpoint 决定，其手填 ID 仅是�
 - [OpenAI Embeddings](https://developers.openai.com/api/reference/resources/embeddings/methods/create)
 - [OpenAI Images](https://developers.openai.com/api/reference/resources/images)
 - [Cohere Rerank](https://docs.cohere.com/reference/rerank)
+- [OpenAI Chat Completions/SSE](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)：跨平台插件验收复用同一本机协议 fixture，场景自行提供合成正文；不模拟供应商模型质量。
 - [PaddleOCR-VL 服务](https://www.paddleocr.ai/latest/en/version3.x/pipeline_usage/PaddleOCR-VL.html)
 - [Paddle OCR Jobs](https://ai.baidu.com/ai-doc/AISTUDIO/Mml7n69e7)
 - [AI SDK OpenAI-compatible Provider](https://ai-sdk.dev/providers/openai-compatible-providers)
