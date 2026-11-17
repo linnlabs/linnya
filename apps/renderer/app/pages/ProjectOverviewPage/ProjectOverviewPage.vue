@@ -9,6 +9,7 @@
     :project-id="projectId"
     :project-name="projectName"
     :knowledge-base-count="knowledgeBaseCount"
+    :knowledge-base-available="knowledgeBaseAvailable"
     :presentation="presentation"
     :conversation-actions="conversationActions"
     :running-conversation-ids="runningConversationIds"
@@ -23,7 +24,7 @@
 import { computed, ref, toRef, watch } from 'vue';
 import { useLocalization } from '@app/localization';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
-import { useConversationAgentChoices, useDocumentTypes } from '@/app/plugins/composables';
+import { useApplicationSurface, useConversationAgentChoices, useDocumentTypes } from '@/app/plugins/composables';
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
 import {
   resolveConversationAgentChoiceTextPresentation,
@@ -49,6 +50,8 @@ const props = defineProps<{
 
 const projectsStore = useWorkspaceProjectsStore();
 const knowledgeBaseModalStore = useProjectKnowledgeBaseModalStore();
+const knowledgeSurface = useApplicationSurface('knowledge-base');
+const knowledgeBaseAvailable = computed(() => Boolean(knowledgeSurface.value?.contribution.projectAssociationComponent));
 const navigation = getWorkspaceNavigationPort();
 const openDocument = useProjectOverviewDocumentNavigation();
 const documentTypes = useDocumentTypes();
@@ -92,17 +95,19 @@ const projectName = computed(() => (
 const knowledgeBaseCount = ref<number | null>(null);
 
 async function loadKnowledgeBaseCount(projectId: string): Promise<void> {
+  const surface = knowledgeSurface.value;
+  if (!knowledgeBaseAvailable.value) return;
   try {
     const result = await projectKbLinksGateway.listKnowledgeBaseIdsForProject({ projectId });
-    if (projectId !== props.projectId) return;
+    if (projectId !== props.projectId || knowledgeSurface.value !== surface) return;
     knowledgeBaseCount.value = result.success && Array.isArray(result.data) ? result.data.length : null;
   } catch (error: unknown) {
     console.error('[ProjectOverviewPage] 读取项目关联知识库失败:', error);
-    if (projectId === props.projectId) knowledgeBaseCount.value = null;
+    if (projectId === props.projectId && knowledgeSurface.value === surface) knowledgeBaseCount.value = null;
   }
 }
 
-watch(() => props.projectId, projectId => {
+watch([() => props.projectId, knowledgeSurface], ([projectId]) => {
   knowledgeBaseCount.value = null;
   void loadKnowledgeBaseCount(projectId);
 }, { immediate: true });
@@ -124,6 +129,7 @@ function handleOpenConversation(conversationId: string): void {
 }
 
 function handleOpenKnowledgeBase(): void {
+  if (!knowledgeBaseAvailable.value) return;
   knowledgeBaseModalStore.open({ projectId: props.projectId, projectName: projectName.value });
 }
 </script>

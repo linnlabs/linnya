@@ -1,0 +1,33 @@
+.create-project-content .kb-tag-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.create-project-content .tag-input-wrapper {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.create-project-content .tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+}
+
+.create-project-content .select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-tertiary);
+  transition: transform var(--duration-medium) var(--ease-standard);
+  pointer-events: none;
+}
+
+.create-project-content .select-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}

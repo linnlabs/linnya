@@ -18,6 +18,7 @@ import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue'
 import { useEnabledPluginsStore } from './enabledPluginsStore';
 import {
   useRendererPluginRegistryRevision,
+  getApplicationSurface,
   resolveDocumentTypeByNodeType,
   resolveDocumentTypeByActiveType,
   getDocumentTypeByNodeType,
@@ -150,5 +151,15 @@ export function useConversationAgentChoiceById(
     revision.value;
     const id = toValue(agentChoiceId);
     return id ? getConversationAgentChoiceById(id, store.enabledPluginIds) : null;
+  });
+}
+
+/** 固定官方页面槽，启用/停用与 registry 提交共同驱动显示。 */
+export function useApplicationSurface(slot: 'knowledge-base') {
+  const store = useEnabledPluginsStore();
+  const revision = useRendererPluginRegistryRevision();
+  return computed(() => {
+    void revision.value;
+    return store.hasLoaded ? getApplicationSurface(slot, store.enabledPluginIds) : null;
   });
 }

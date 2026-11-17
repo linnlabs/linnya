@@ -40,7 +40,6 @@ export interface DocumentTypeContribution {
   readonly iconClass: string;
   readonly createPriority: number;
   readonly deferSurfaceUntilOpen?: boolean;
-  readonly canAddToKnowledgeBase?: boolean;
   readonly entityReferences: readonly DocumentEntityReferenceContribution[];
 }
 
@@ -54,13 +53,43 @@ export interface DocumentActionMenuOption {
   readonly iconComponent?: Component;
 }
 
+/** 菜单打开时冻结的实际目标，不是执行回调时的当前编辑器。 */
+export interface DocumentActionMenuContext {
+  readonly projectId: string;
+  readonly documentId: string;
+  readonly activeDocumentType: string;
+  readonly displayName: string;
+  /** 只能读取这个已冻结目标；Host 保存/序列化职责不泄露 Editor 或全局 store。 */
+  readonly readMarkdownSnapshot?: (signal: AbortSignal) => Promise<{ readonly markdown: string; readonly displayName: string }>;
+}
+
+/** 仅产品组合根授信的固定应用槽；不声明任意路由、URL 或 Host 布局。 */
+export interface ApplicationSurfaceContribution {
+  readonly title: LocalizedText;
+  readonly iconComponent: Component;
+  readonly pageComponent: Component;
+  /** 导航准备在挂载前完成；取消后不能回写选择，组件 mounted 不得覆盖显式来源跳转。 */
+  readonly prepare?: (signal: AbortSignal) => Promise<void>;
+  /** Host 按 projectId 加 key，换项目/停用时卸载；组件接收 projectId/projectName，发出 close。 */
+  readonly projectAssociationComponent?: Component;
+  /** 新建项目的关联草稿选择；props=modelValue/disabled，emit=update:modelValue。Host 只接收 ID 数组。 */
+  readonly projectCreationComponent?: Component;
+  /** 仅启用期间挂载；组件自行收口弹层、订阅与异步请求。 */
+  readonly globalModalComponent?: Component;
+  /** 资料引用跳转由贡献 owner 校验范围，Host 不遍历插件数据。 */
+  readonly openSource?: (
+    target: { readonly sourceId: string; readonly containerId?: string; readonly projectId: string | null },
+    signal: AbortSignal,
+  ) => Promise<void>;
+}
+
 export interface DocumentActionMenuContribution {
   readonly activeDocumentType: string;
   readonly tooltip: string;
   readonly ariaLabel: string;
-  readonly isAvailable: () => boolean;
-  readonly getOptions: () => readonly DocumentActionMenuOption[];
-  readonly select: (value: DocumentActionMenuOptionValue) => void | Promise<void>;
+  readonly isAvailable: (context: DocumentActionMenuContext) => boolean;
+  readonly getOptions: (context: DocumentActionMenuContext) => readonly DocumentActionMenuOption[];
+  readonly select: (value: DocumentActionMenuOptionValue, context: DocumentActionMenuContext) => void | Promise<void>;
 }
 
 export interface DocumentRuntimeLoadRequest {
@@ -97,6 +126,7 @@ export interface ConversationAgentChoiceContribution {
 export interface RendererPluginContribution {
   readonly meta: PluginMeta;
   readonly stylesheets?: readonly string[];
+  readonly applicationSurface?: ApplicationSurfaceContribution;
   readonly activate?: () => void | Promise<void>;
   readonly deactivate?: () => void | Promise<void>;
   readonly documentTypes?: readonly DocumentTypeContribution[];

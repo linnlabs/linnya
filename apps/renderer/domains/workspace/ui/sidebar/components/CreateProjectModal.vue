@@ -42,56 +42,14 @@
         </div>
       </div>
 
-      <!-- 关联知识库（仅创建模式展示：编辑关联在项目概览的“管理关联的知识库”里统一处理） -->
-      <div v-if="!isEditMode" class="form-row input-row">
-        <label class="form-label">{{ workspaceMessage('workspace.project.modal.knowledgeBaseLabel') }}</label>
-        <div class="control-area">
-          <div class="kb-tag-form-group">
-            <div class="tag-input-wrapper">
-              <!--
-                说明：
-                - 这里复用“知识库创建弹窗”的交互：下拉框仅代表“待添加的知识库”，真正加入关联列表需要点右侧“+”；
-                - 但用户可能会误以为“选中即已关联”，因此在提交时会做一次“收口”（见 handleConfirm/handleAiCreate）。
-              -->
-              <CustomSelect
-                v-model="selectedKnowledgeBaseId"
-                :options="knowledgeBaseOptions"
-                :placeholder="workspaceMessage('workspace.project.modal.knowledgeBasePlaceholder')"
-                :title="workspaceMessage('workspace.project.modal.knowledgeBaseSelectTitle')"
-                :usePortalToBody="true"
-              >
-                <template #arrow-icon="{ isOpen }">
-                  <ChevronIcon
-                    direction="down"
-                    class="select-chevron"
-                    :class="{ 'is-open': isOpen }"
-                  />
-                </template>
-              </CustomSelect>
-              <IconButton
-                :label="workspaceMessage('workspace.project.modal.addKnowledgeBase')"
-                size="lg"
-                class="add-tag-button"
-                :disabled="isProcessing || !selectedKnowledgeBaseId"
-                @click="handleAddKnowledgeBaseLink"
-              >
-                <AddIcon class="add-icon" />
-              </IconButton>
-            </div>
+      <component
+        v-if="show && !isEditMode && knowledgeSurface?.contribution.projectCreationComponent"
+        :is="knowledgeSurface.contribution.projectCreationComponent"
+        :key="knowledgeSurface.pluginId"
+        v-model="linkedKnowledgeBaseIds"
+        :disabled="isProcessing"
+      />
 
-            <div v-if="linkedKnowledgeBases.length > 0" class="tags-list">
-              <TagChip
-                v-for="kb in linkedKnowledgeBases"
-                :key="kb.id"
-                :label="kb.name"
-                closable
-                @close="handleRemoveKnowledgeBaseLink(kb.id)"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-      
       <!-- 错误信息 -->
       <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
     </div>
@@ -127,11 +85,9 @@
 
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch } from 'vue';
-import { ActionButtons, applyTextareaAutoResize, CustomSelect, IconButton, Modal, TagChip } from '@linnya/renderer-ui';
+import { ActionButtons, applyTextareaAutoResize, Modal } from '@linnya/renderer-ui';
 import { LinnyaIcon } from '@linnya/renderer-ui/icons';
-import { AddIcon } from '@linnya/renderer-ui/icons';
-import { ChevronIcon } from '@linnya/renderer-ui/icons';
-import { useKnowledgeBase } from '@/domains/knowledgebase/runtime.js';
+import { useApplicationSurface } from '@/app/plugins/composables';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 import type { ProjectFormValues } from '../definitions/projectOperations';
 
@@ -166,68 +122,9 @@ const errorMessage = ref('');
 const projectNameInput = ref<HTMLInputElement | null>(null);
 const descriptionTextarea = ref<HTMLTextAreaElement | null>(null);
 
-// 知识库列表与关联选择状态（仅创建模式使用）
-type KnowledgeBaseItem = {
-  id: string;
-  name: string;
-  description?: string;
-};
-
-type KnowledgeBaseOption = {
-  value: string;
-  text: string;
-};
-
-const kbStore = useKnowledgeBase();
-const selectedKnowledgeBaseId = ref<string | null>(null);
+const knowledgeSurface = useApplicationSurface('knowledge-base');
 const linkedKnowledgeBaseIds = ref<string[]>([]);
-
-const knowledgeBases = computed<KnowledgeBaseItem[]>(() => {
-  /**
-   * 严格说明：
-   * - 禁止用 any 类型断言“糊过去”，这里对 store 返回做最小字段的运行时校验；
-   * - 只抽取 UI 需要的字段（id/name/description），避免与 store 内部结构强耦合。
-   */
-  const raw = kbStore.knowledgeBases;
-  if (!Array.isArray(raw)) return [];
-
-  const result: KnowledgeBaseItem[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== 'object') continue;
-
-    const maybe = item as Record<string, unknown>;
-    const id = maybe.id;
-    const name = maybe.name;
-    const description = maybe.description;
-
-    if (typeof id !== 'string' || id.trim().length === 0) continue;
-    if (typeof name !== 'string' || name.trim().length === 0) continue;
-
-    const normalized: KnowledgeBaseItem = {
-      id,
-      name,
-      ...(typeof description === 'string' && description.trim().length > 0
-        ? { description }
-        : {})
-    };
-    result.push(normalized);
-  }
-
-  return result;
-});
-
-const knowledgeBaseOptions = computed<KnowledgeBaseOption[]>(() =>
-  knowledgeBases.value.map((kb) => ({
-    value: kb.id,
-    text: kb.name
-  }))
-);
-
-const linkedKnowledgeBases = computed<KnowledgeBaseItem[]>(() =>
-  linkedKnowledgeBaseIds.value
-    .map((id) => knowledgeBases.value.find((kb) => kb.id === id) ?? null)
-    .filter((kb): kb is KnowledgeBaseItem => kb !== null)
-);
+watch(knowledgeSurface, () => { linkedKnowledgeBaseIds.value = []; });
 
 const primaryActionText = computed(() => {
   if (isProcessing.value) {
@@ -255,23 +152,11 @@ watch(() => props.show, async (newShow) => {
     
     errorMessage.value = '';
     isProcessing.value = false;
-    selectedKnowledgeBaseId.value = null;
     linkedKnowledgeBaseIds.value = [];
 
-    // 打开弹窗时，确保知识库列表已加载（避免下拉为空导致误判）
-    try {
-      if (typeof kbStore.ensureDataLoaded === 'function') {
-        await kbStore.ensureDataLoaded();
-      } else if (typeof kbStore.fetchKnowledgeBases === 'function') {
-        await kbStore.fetchKnowledgeBases();
-      }
-    } catch (error) {
-      console.error('[CreateProjectModal] 加载知识库列表失败:', error);
-    }
-    
     // 等待 DOM 更新后聚焦
     await nextTick();
-    if (projectNameInput.value) {
+    if (props.show && projectNameInput.value) {
       projectNameInput.value.focus();
       if (!props.isEditMode) {
         projectNameInput.value.select(); // 创建模式下自动选中默认文本
@@ -292,33 +177,9 @@ const autoResizeTextarea = () => {
   applyTextareaAutoResize(descriptionTextarea.value, { maxHeight: 200 });
 };
 
-// 关联知识库：添加一条关联
-const handleAddKnowledgeBaseLink = () => {
-  if (!selectedKnowledgeBaseId.value) {
-    return;
-  }
-  if (!linkedKnowledgeBaseIds.value.includes(selectedKnowledgeBaseId.value)) {
-    linkedKnowledgeBaseIds.value.push(selectedKnowledgeBaseId.value);
-  }
-  selectedKnowledgeBaseId.value = null;
-};
-
-// 关联知识库：移除一条关联
-const handleRemoveKnowledgeBaseLink = (kbId: string) => {
-  linkedKnowledgeBaseIds.value = linkedKnowledgeBaseIds.value.filter((id) => id !== kbId);
-};
-
-/**
- * 将“下拉框里已选中但未点 + 的知识库”也并入待提交列表（避免 UX 误解造成“看起来关联了但实际没写入”）
- */
-const getNormalizedKbIdsForSubmit = (): string[] => {
-  return Array.from(
-    new Set([
-      ...linkedKnowledgeBaseIds.value,
-      ...(selectedKnowledgeBaseId.value ? [selectedKnowledgeBaseId.value] : [])
-    ])
-  );
-};
+// 已有项目的编辑不处理关联；停用期间新建项目不提交先前尚未保存的关联草稿。
+const getNormalizedKbIdsForSubmit = (): string[] => knowledgeSurface.value?.contribution.projectCreationComponent
+  && !props.isEditMode ? [...linkedKnowledgeBaseIds.value] : [];
 
 // 确认创建
 const handleConfirm = () => {

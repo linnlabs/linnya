@@ -128,14 +128,6 @@
       @close="handleCancelDeleteProject"
     />
 
-    <!-- 文件树“添加到知识库”统一弹窗：右键菜单与 More 菜单共用 -->
-    <AddToKnowledgeBaseModal
-      :show="showAddToKbModal"
-      :documentName="targetDocumentName"
-      @close="closeAddToKnowledgeBaseModal"
-      @confirm="handleAddToKbConfirm"
-    />
-
     <SidebarAssetPreview
       :image-preview="imagePreview"
       :text-preview="textPreview"
@@ -162,13 +154,15 @@ import { useFileStore } from '@/app/active-document';
 import { useNotificationStore } from '@/app/notification';
 import { saveDeactivateThen } from '@/domains/workspace/services/file-manager/index';
 import { useLocalizedCreatableDocumentTypes } from '@/app/plugins/ui/useDocumentTypePresentation';
+import { getDocumentTypeByNodeType, getDocumentActionMenuByActiveType } from '@/app/plugins/registry';
+import { freezeWorkspaceDocumentActionContext } from '@/app/plugins/orchestration/workspaceDocumentActionContext';
+import { selectDocumentAction } from '@/app/plugins/orchestration/selectDocumentAction';
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
 import { getNavigationScopeKey, useNavigationScope } from '@/app/navigation';
 import { useSidebarConversationHistoryRevealStore } from '@/app/layout/store/sidebarConversationHistoryRevealStore';
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { AlertDialog, SkeletonRows } from '@linnya/renderer-ui';
-import AddToKnowledgeBaseModal from '@/domains/knowledgebase/ui/AddToKnowledgeBaseModal.vue';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import {
   ContextMenu,
@@ -176,7 +170,6 @@ import {
   filterProjectTreeByName,
   isPluginStoreEntrySelected,
   shouldRetainExpandedProjects,
-  useAddToKnowledgeBase,
   useContextMenu,
   useDocumentOperations,
   useProjectOperations,
@@ -294,13 +287,6 @@ const {
 });
 
 const { isDragOverRoot, handleRootDragOver, handleRootDragLeave, handleRootDrop } = useSidebarDragDrop(showError);
-const {
-  showAddToKbModal,
-  targetDocumentName,
-  openAddToKnowledgeBaseModal,
-  closeAddToKnowledgeBaseModal,
-  handleAddToKbConfirm,
-} = useAddToKnowledgeBase();
 
 const {
   openDocumentByNodeType,
@@ -334,8 +320,15 @@ const { contextMenu, handleContextMenuRequest, handleMenuSelect } = useContextMe
   openAssetFilePreview,
   createNewFile,
   createNewFolder,
-  onAddToKnowledgeBase: (item) => {
-    openAddToKnowledgeBaseModal(item?.name || workspaceMessage('workspace.sidebar.node.untitledDocument'));
+  onAddToKnowledgeBase: async (item) => {
+    const documentType = getDocumentTypeByNodeType(item.type);
+    if (!documentType || !item.projectId) return;
+    const context = freezeWorkspaceDocumentActionContext({
+      projectId: item.projectId, documentId: item.id, activeDocumentType: documentType.activeDocumentType,
+      displayName: item.name || workspaceMessage('workspace.sidebar.node.untitledDocument'),
+    });
+    const menu = getDocumentActionMenuByActiveType(documentType.activeDocumentType, enabledPluginsStore.enabledPluginIds);
+    await selectDocumentAction(menu, 'add-to-kb', context);
   },
 });
 

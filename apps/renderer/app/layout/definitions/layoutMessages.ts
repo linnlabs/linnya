@@ -1,6 +1,8 @@
 import type { MessageParams } from '@app/localization';
 
 export type LayoutMessageKey =
+  | 'layout.knowledgeSource.unavailable'
+  | 'layout.knowledgeSource.openFailed'
   | 'layout.header.sidebar'
   | 'layout.header.knowledgeBase'
   | 'layout.header.settings'

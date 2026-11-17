@@ -10,8 +10,8 @@ import { resolveLocalSourceImport } from './module-barrel-boundary-guard';
 const BASELINE = '.baseline/renderer-state-boundary.txt';
 // 已拆分的公开命令入口同样不能被 store 回引，避免只隔一层门面就绕过流程方向。
 const STORE_FLOW_ENTRY_POINTS = new Set([
-  'apps/renderer/domains/knowledgebase/runtime',
-  'apps/renderer/domains/knowledgebase/features/graph-progress/runtime',
+  'packages/plugins/knowledge/src/renderer/runtime',
+  'packages/plugins/knowledge/src/renderer/features/graph-progress/runtime',
   'apps/renderer/domains/workspace/tree',
   'apps/renderer/domains/workspace/features/todo/runtime',
   'apps/renderer/app/update/runtime',
@@ -81,7 +81,7 @@ function main(): void {
       files
         .filter(
           file =>
-            file.startsWith('apps/renderer/') &&
+            (file.startsWith('apps/renderer/') || file.startsWith('packages/plugins/knowledge/src/renderer/')) &&
             /\.(?:ts|tsx|js|vue)$/u.test(file) &&
             !/(?:__tests__|fixtures)\/|\.(?:test|spec)\./u.test(file)
         )

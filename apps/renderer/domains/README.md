@@ -10,7 +10,7 @@
   - 顶层场景分发在 `apps/renderer/app/App.vue`（按 `layoutStore.state.scene` 渲染 workspace / knowledge-base / plugin-store）
   - 全局布局在 `apps/renderer/app/layout/*`
   - 页面/场景壳在 `apps/renderer/app/pages/*`
-- **`domains/` = 领域能力（Capabilities）**：Editor / Workspace / Conversation / KnowledgeBase / Settings / Sheets 等“能独立成立的业务模块”。
+- **`domains/` = 领域能力（Capabilities）**：Editor / Workspace / Conversation / Settings / Sheets 等“能独立成立的业务模块”。
   - 领域模块应该尽量做到：**可以被不同 Page 复用**，而不是绑定某个具体页面布局
 - **`shared/` = 跨域稳定基础设施（Infrastructure）**：通用 UI primitive、平台 IPC 封装和不含业务规则的基础能力。
   - 被多个 domain 使用不是上提 `shared/` 的充分条件。有明确 owner 的业务能力应保留在原 domain，其他 domain 通过 public contract、port 或 application use case 协作；禁止用 `shared/` 规避所有权设计。
@@ -31,7 +31,7 @@
   - `app/navigation`：当前项目 / Linnya 助手 scope 与草稿对话状态
   - [`app/active-document`](../app/active-document/README.md)：当前活动文档状态；内部存储位于 `app/store`，不执行保存流程
   - `domains/model-configuration/features/model-catalog`：模型目录 lifecycle 与预加载
-  - `domains/knowledgebase/runtime.js`：知识库列表预加载
+  - 知识库由插件 runtime 启用后按需读取；Host 入口不预加载其目录
   - `app/update/store/updateStore`：更新弹窗 IPC 监听（含 renderer-ready 握手）
 
 如果你在排查“启动阶段才会发生”的问题，优先从这里顺藤摸瓜。
@@ -91,7 +91,7 @@
 - `domains/editor/`：典型“强领域”结构（blocks/extensions/features/services/ui/core）
 - `domains/conversation/`：典型“事件驱动 + 投影”结构（services/messageProjection、orchestration、history、store、ui）
 - `domains/workspace/`：典型“文件/项目管理”结构（store + file-manager service + sidebar/home UI）
-- `domains/knowledgebase/`：典型“IPC/HTTP 混合通信边界”结构
+- `packages/plugins/knowledge/src/renderer/`：独立插件页面、项目关联与摄入任务，通过窄 Host SDK 和插件 IPC 协作
 - `domains/settings/`：设置壳、contribution registry、Settings Kit 与设置本地化
 - `domains/model-configuration/`：模型目录、Provider connection projection、自定义模型注册与用途绑定
 
@@ -212,7 +212,7 @@ apps/renderer/domains/<domain>/
 - **Workspace**：`apps/renderer/domains/workspace/README.md`
   - 文件管理与会话打开：`apps/renderer/domains/workspace/services/file-manager/README.md`
 - **Conversation（AI 助手）**：`apps/renderer/domains/conversation/docs/README.md`
-- **KnowledgeBase**：`apps/renderer/domains/knowledgebase/README.md`
+- **KnowledgeBase**：`packages/plugins/knowledge/src/renderer/README.md`
 - **Settings**：`apps/renderer/domains/settings/`（设置壳、contribution registry、Settings Kit 与本地化集成）
 - **Model Configuration**：`apps/renderer/domains/model-configuration/`（Provider 连接、自定义模型注册、目录 projection 与用途绑定；不拥有推理运行时）
 

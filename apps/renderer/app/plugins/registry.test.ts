@@ -208,7 +208,7 @@ describe('renderer plugin registry enabled filtering', () => {
       .toBe('enabled');
     expect(resolveDocumentTypeByNodeType('registry-test-canvas', enabledBoth).state)
       .toBe('enabled');
-    expect(getDocumentActionMenuByActiveType('registry-test-canvas', enabledBoth)?.getOptions()).toEqual([
+    expect(getDocumentActionMenuByActiveType('registry-test-canvas', enabledBoth)?.getOptions({ projectId: 'p', documentId: 'd', activeDocumentType: 'registry-test-canvas', displayName: 'Test' })).toEqual([
       { value: 'test-action', text: '测试动作' },
     ]);
     expect(getDocumentRuntimeLoaderByActiveType('registry-test-canvas', enabledBoth)).not.toBeNull();

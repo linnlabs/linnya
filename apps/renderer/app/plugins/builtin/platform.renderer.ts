@@ -52,7 +52,6 @@ export const platformRendererPlugin: RendererPluginContribution = {
       iconComponent: DocumentTextIcon,
       iconClass: 'file-icon',
       createPriority: 10,
-      canAddToKnowledgeBase: true,
       entityReferences: [
         {
           kind: 'document',

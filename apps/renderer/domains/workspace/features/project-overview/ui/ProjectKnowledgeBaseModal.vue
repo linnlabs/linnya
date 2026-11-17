@@ -1,6 +1,6 @@
 <template>
   <Modal
-    :isVisible="isVisible"
+    :isVisible="isVisible && Boolean(surface?.contribution.projectAssociationComponent)"
     :title="displayProjectName"
     width="620px"
     maxWidth="90%"
@@ -22,6 +22,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useApplicationSurface } from '@/app/plugins/composables';
+const surface = useApplicationSurface('knowledge-base');
 import { Modal } from '@linnya/renderer-ui';
 import ProjectKbSettingsPanel from '@/domains/workspace/ui/home/ProjectKbSettingsPanel.vue';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';

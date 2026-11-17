@@ -5,7 +5,7 @@ import { createRendererPluginMultipartUploadPort } from './createRendererPluginM
 
 describe('trusted plugin upload admission', () => {
   it('仅精确登记的 owner/route 能交付 body，不把相对或外部 URL 变成目标', async () => {
-    const post = vi.fn(async () => ({ taskId: 'accepted' }));
+    const post = vi.fn(async () => ({ id: 'accepted' }));
     const port = createRendererPluginMultipartUploadPort([
       { pluginId: 'knowledge', route: 'documents/upload', path: '/api/v1/plugins/knowledge/documents/upload' },
     ], { readAvailability: () => 'enabled', subscribeAvailability: () => () => {}, post });
@@ -18,7 +18,7 @@ describe('trusted plugin upload admission', () => {
       await expect(port.upload(pluginId, route, { formData })).rejects.toThrow('not registered');
     }
     expect(post).not.toHaveBeenCalled();
-    await expect(port.upload('knowledge', 'documents/upload', { formData })).resolves.toEqual({ taskId: 'accepted' });
+    await expect(port.upload('knowledge', 'documents/upload', { formData })).resolves.toEqual({ id: 'accepted' });
     expect(post).toHaveBeenCalledWith('/api/v1/plugins/knowledge/documents/upload', expect.objectContaining({ formData }));
   });
 

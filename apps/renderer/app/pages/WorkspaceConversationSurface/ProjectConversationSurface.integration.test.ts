@@ -3,6 +3,7 @@
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectConversationSurface from './ProjectConversationSurface.vue';
+const knowledgeSurface = ref<{ contribution: { projectAssociationComponent: object } } | null>(null);
 
 const dependencies = vi.hoisted(() => ({
   ensureDataLoaded: vi.fn<() => Promise<void>>(async () => undefined),
@@ -26,11 +27,7 @@ vi.mock('@/domains/workspace/tree', () => ({
   useWorkspaceTree: () => ({ ensureProjectTreeLoaded: dependencies.ensureProjectTreeLoaded }),
 }));
 
-vi.mock('@/domains/knowledgebase/runtime.js', () => ({
-  useKnowledgeBase: () => ({
-    ensureDataLoaded: dependencies.ensureDataLoaded,
-  }),
-}));
+vi.mock('@/app/plugins/composables', () => ({ useApplicationSurface: () => knowledgeSurface }));
 
 vi.mock('@/domains/conversation/store/assistantStore', () => ({
   useAssistantStore: () => ({
@@ -105,6 +102,7 @@ function mountProjectSurface(showHomeActions: boolean) {
 describe('ProjectConversationSurface app-level boundaries', () => {
   beforeEach(() => {
     dependencies.ensureDataLoaded.mockClear();
+    knowledgeSurface.value = { contribution: { projectAssociationComponent: {} } };
     dependencies.ensureProjectTreeLoaded.mockClear();
     dependencies.setInputText.mockClear();
     dependencies.openProjectKnowledgeBase.mockClear();
@@ -128,7 +126,7 @@ describe('ProjectConversationSurface app-level boundaries', () => {
     app.unmount();
   });
 
-  it('首页展示挂载建议操作，并通过幂等入口准备知识库数据', async () => {
+  it('首页只挂载入口，不预热知识库；停用立即撤销管理按钮', async () => {
     const { app, container } = mountProjectSurface(true);
     await nextTick();
 
@@ -136,7 +134,11 @@ describe('ProjectConversationSurface app-level boundaries', () => {
     expect(surface?.getAttribute('data-variant')).toBe('regular');
     expect(surface?.getAttribute('data-empty-composer-placement')).toBe('center');
     expect(container.querySelectorAll('.project-chat-suggestion-chip')).toHaveLength(4);
-    expect(dependencies.ensureDataLoaded).toHaveBeenCalledOnce();
+    expect(dependencies.ensureDataLoaded).not.toHaveBeenCalled();
+    knowledgeSurface.value = null;
+    await nextTick();
+    expect(container.querySelectorAll('.project-chat-suggestion-chip')).toHaveLength(3);
+    expect(container.querySelector('.project-chat-suggestion-divider')).toBeNull();
     expect(dependencies.ensureProjectTreeLoaded).toHaveBeenCalledWith('project-1');
 
     app.unmount();

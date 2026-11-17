@@ -1,5 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { registerDocumentType } from '@/app/plugins/documentTypeRegistry';
+import { activateRendererPlugin, deactivateRendererPlugin, registerRendererPlugin,
+  unregisterRendererPluginContribution } from '@/app/plugins/registry';
 import {
   buildNodeContextMenuOptions,
   filterBatchUnsupportedNodeContextMenuActions,
@@ -25,10 +27,10 @@ function actionsFor(
 describe('nodeContextMenuModel', () => {
   beforeAll(() => {
     for (const contribution of [
-      { nodeType: 'document', activeDocumentType: 'editor', createRequestType: 'document', label: '文档', createLabel: '新建文档', defaultName: '未命名文档', canAddToKnowledgeBase: true },
-      { nodeType: 'mindmap', activeDocumentType: 'mindmap', createRequestType: 'mindmap', label: '思维导图', createLabel: '新建思维导图', defaultName: '未命名思维导图', canAddToKnowledgeBase: true },
-      { nodeType: 'sheet', activeDocumentType: 'sheet', createRequestType: 'sheet', label: '表格', createLabel: '新建表格', defaultName: '未命名表格', canAddToKnowledgeBase: true },
-      { nodeType: 'presentation', activeDocumentType: 'slides', createRequestType: 'presentation', label: '演示文稿', createLabel: '新建演示文稿', defaultName: '未命名演示文稿', canAddToKnowledgeBase: false },
+      { nodeType: 'document', activeDocumentType: 'editor', createRequestType: 'document', label: '文档', createLabel: '新建文档', defaultName: '未命名文档' },
+      { nodeType: 'mindmap', activeDocumentType: 'mindmap', createRequestType: 'mindmap', label: '思维导图', createLabel: '新建思维导图', defaultName: '未命名思维导图' },
+      { nodeType: 'sheet', activeDocumentType: 'sheet', createRequestType: 'sheet', label: '表格', createLabel: '新建表格', defaultName: '未命名表格' },
+      { nodeType: 'presentation', activeDocumentType: 'slides', createRequestType: 'presentation', label: '演示文稿', createLabel: '新建演示文稿', defaultName: '未命名演示文稿' },
     ]) {
       registerDocumentType({
         pluginId: 'test-platform',
@@ -69,7 +71,7 @@ describe('nodeContextMenuModel', () => {
     ]);
   });
 
-  it('右键菜单不提供添加到知识库，More 菜单对不支持的文档显示禁用项', () => {
+  it('没有启用的动作贡献时，右键与More菜单都不暴露知识库操作', () => {
     const node = {
       id: 'slides-1',
       path: '/演示文稿.slides',
@@ -85,11 +87,31 @@ describe('nodeContextMenuModel', () => {
 
     const moreOptions = buildNodeContextMenuOptions(node, {
       message,
-      disableUnsupportedKnowledgeBaseAction: true,
     });
     const addToKnowledgeBase = moreOptions.find(option => option.value === 'add-to-kb');
-    expect(addToKnowledgeBase?.disabled).toBe(true);
+    expect(addToKnowledgeBase).toBeUndefined();
     expect(addToKnowledgeBase?.disabledReason).toBeUndefined();
+  });
+
+  it('仅对被点击目标的项目和类型提供动作；停用后右键和More同时撤销', async () => {
+    const contexts: Array<{ projectId: string; documentId: string; activeDocumentType: string }> = [];
+    registerRendererPlugin({
+      meta: { id: 'knowledge', name: 'Knowledge', version: '1.0.0', description: 'Test', developer: 'Test', builtin: true },
+      applicationSurface: { title: 'Knowledge', iconComponent: TestIcon, pageComponent: TestIcon },
+      documentActionMenus: [{ activeDocumentType: 'editor', tooltip: 'More', ariaLabel: 'More',
+        isAvailable: context => { contexts.push(context); return true; },
+        getOptions: () => [{ value: 'add-to-kb', text: 'Add' }], select: () => undefined }],
+    }, { applicationSurfaceSlot: 'knowledge-base' });
+    try {
+      await activateRendererPlugin('knowledge');
+      const target = { id: 'target-a', projectId: 'project-a', type: 'document', name: 'A' };
+      const options = { enabledPluginIds: new Set(['knowledge', 'test-platform']) };
+      expect(actionsFor(target, options)).toContain('add-to-kb');
+      expect(contexts[contexts.length - 1]).toMatchObject({ documentId: 'target-a', projectId: 'project-a', activeDocumentType: 'editor' });
+      expect(actionsFor({ ...target, type: 'presentation' }, options)).not.toContain('add-to-kb');
+      await deactivateRendererPlugin('knowledge');
+      expect(actionsFor(target, options)).not.toContain('add-to-kb');
+    } finally { unregisterRendererPluginContribution('knowledge'); }
   });
 
   it('为普通文档返回真实节点动作和 VFS 引用动作', () => {
@@ -101,7 +123,6 @@ describe('nodeContextMenuModel', () => {
       type: 'document',
       isVirtual: false,
     })).toEqual([
-      'add-to-kb',
       'duplicate',
       'rename',
       'copy-relative-path',

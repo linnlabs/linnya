@@ -61,3 +61,10 @@ const useState = defineStore('x', () => {
   expect(findRendererStateEdges(file, `\n\n${source}`)).toEqual(findRendererStateEdges(file, source));
   expect(findRendererStateEdges('apps/renderer/domains/x/orchestration/load.ts', source)).toEqual([]);
 });
+
+
+test('知识库迁入插件包后仍禁止 store 回引运行入口或定义异步用例', () => {
+  const file = 'packages/plugins/knowledge/src/renderer/stores/knowledgeBase/index.js';
+  expect(findRendererStateEdges(file, 'import { useKnowledgeBase } from "../../runtime.js";')).toHaveLength(1);
+  expect(findRendererStateEdges(file, 'async function fetchDocuments() { await load(); }')).toHaveLength(1);
+});

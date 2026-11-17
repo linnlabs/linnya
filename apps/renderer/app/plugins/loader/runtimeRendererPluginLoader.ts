@@ -61,6 +61,7 @@ interface RendererPluginEntry {
   readonly rendererUiRange: string;
   readonly entryUrl: string;
   readonly cssUrls: readonly string[];
+  readonly applicationSurfaceSlot?: 'knowledge-base';
   readonly sourceKind?: string;
   readonly pluginDir?: string;
   readonly entryPath?: string;
@@ -214,6 +215,7 @@ function isRendererPluginEntry(value: unknown): value is RendererPluginEntry {
     typeof value.version === 'string' &&
     typeof value.rendererUiRange === 'string' &&
     typeof value.entryUrl === 'string' &&
+    (value.applicationSurfaceSlot === undefined || value.applicationSurfaceSlot === 'knowledge-base') &&
     Array.isArray(value.cssUrls) &&
     value.cssUrls.every((item) => typeof item === 'string');
 }
@@ -560,7 +562,7 @@ async function loadRendererPluginEntry(
   logRendererPluginLoadStep('register-start', entry, {
     registryBeforeRegister: describeRendererPluginRegistryForDiagnostics(),
   });
-  registerRendererPlugin(contribution);
+  registerRendererPlugin(contribution, { applicationSurfaceSlot: entry.applicationSurfaceSlot });
   diagnostics.phase = 'register-success';
   logRendererPluginLoadStep('register-success', entry, {
     registryAfterRegister: describeRendererPluginRegistryForDiagnostics(),

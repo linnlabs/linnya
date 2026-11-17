@@ -10,6 +10,8 @@
  */
 
 export type {
+  ApplicationSurfaceContribution,
+  DocumentActionMenuContext,
   ConversationAgentChoiceContribution,
   ConversationSubrunWorkerContribution,
   DocumentActionMenuContribution,

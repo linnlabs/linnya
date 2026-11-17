@@ -7,6 +7,7 @@ import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import {
   clearRendererPluginRegistryForTest,
   getDocumentTypeByNodeType,
+  getApplicationSurface,
   hasRendererPlugin,
   listActiveRendererPluginIds,
   listConversationAgentChoices,
@@ -91,6 +92,26 @@ beforeEach(() => {
 });
 
 describe('runtime renderer plugin loader', () => {
+  it('imports a fixed application surface only with the Host entry grant, then withdraws it on disable', async () => {
+    const contribution = {
+      meta: { id: 'surface-test', name: 'Surface', version: '1.0.0', description: 'test', developer: 'Test', builtin: true },
+      applicationSurface: { title: { key: 'test', fallback: 'Test' }, iconComponent: TestComponent, pageComponent: TestComponent },
+    };
+    const entry = { pluginId: 'surface-test', version: '1.0.0', rendererUiRange: '^3.0.0', entryUrl: 'plugin://surface-test/renderer.js', cssUrls: [] };
+    const importEntry = vi.fn(async () => ({ rendererPlugin: contribution }));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await loadRuntimeRendererPlugins({ installHostModules() {}, importEntry, rendererEntriesApi: async () => ({ success: true, data: [entry] }) });
+      expect(getApplicationSurface('knowledge-base', new Set(['surface-test']))).toBeNull();
+      expect(hasRendererPlugin('surface-test')).toBe(false);
+      await loadRuntimeRendererPlugins({ installHostModules() {}, importEntry, rendererEntriesApi: async () => ({ success: true, data: [{ ...entry, applicationSurfaceSlot: 'knowledge-base' }] }) });
+      expect(getApplicationSurface('knowledge-base', new Set(['surface-test']))?.pluginId).toBe('surface-test');
+      expect(importEntry).toHaveBeenCalledTimes(2);
+      await loadRuntimeRendererPlugins({ installHostModules() {}, importEntry, rendererEntriesApi: async () => ({ success: true, data: [] }) });
+      expect(getApplicationSurface('knowledge-base', new Set(['surface-test']))).toBeNull();
+    } finally { error.mockRestore(); }
+  });
+
   it('loads renderer contributions, injects CSS once, and activates once', async () => {
     const activate = vi.fn();
     const importEntry = vi.fn(async (entryUrl: string) => {

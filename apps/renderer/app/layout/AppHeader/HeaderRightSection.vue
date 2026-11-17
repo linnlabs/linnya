@@ -318,14 +318,6 @@
       @close="showDocumentBacklinks = false"
     />
 
-    <!-- 添加到知识库弹窗 -->
-    <AddToKnowledgeBaseModal
-      :show="showAddToKbModal"
-      :documentName="currentDocumentName"
-      @close="showAddToKbModal = false"
-      @confirm="handleAddToKbConfirm"
-    />
-
     <!-- Windows 窗口控制按钮 -->
     <div v-if="!isMac" class="window-controls windows-controls">
       <button
@@ -367,8 +359,9 @@ import { useSidebarLayoutWidth } from '@/app/layout/composables/useSidebarLayout
 import { useWorkspacePaneGeometry } from '@/app/layout/composables/useWorkspacePaneGeometry';
 import { useWorkspaceProjectsStore} from '@/domains/workspace/store';
 import { useWorkspaceTree } from '@/domains/workspace/tree';
-import { useNotificationStore } from '@/app/notification';
-import { useKnowledgeBase } from '@/domains/knowledgebase/runtime.js';
+import { freezeWorkspaceDocumentActionContext } from '@/app/plugins/orchestration/workspaceDocumentActionContext';
+import { selectDocumentAction } from '@/app/plugins/orchestration/selectDocumentAction';
+import type { DocumentActionMenuContext } from '@/app/plugins/types';
 import { useDocumentActionMenu, useDocumentTypeAvailabilityByActiveType } from '@/app/plugins/composables';
 import { DocumentBacklinksPanel, useBacklinksMessages } from '@/domains/document-references';
 import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
@@ -385,9 +378,6 @@ import { HistoryIcon } from '@linnya/renderer-ui/icons';
 import { SwapPaneIcon } from '@linnya/renderer-ui/icons';
 import { SidebarIcon } from '@linnya/renderer-ui/icons';
 import { TimelineIcon } from '@linnya/renderer-ui/icons';
-import AddToKnowledgeBaseModal from '@/domains/knowledgebase/ui/AddToKnowledgeBaseModal.vue';
-import { addCurrentDocumentToKb } from '@/domains/knowledgebase/services/addCurrentDocumentToKb';
-import { useKnowledgeBaseLocalization } from '@/domains/knowledgebase/ui/useKnowledgeBaseLocalization';
 import ReviewSidebar from '@/domains/editor/features/Review/ui/ReviewSidebar.vue';
 import HistoryDropdown from '@/domains/conversation/history/components/HistoryDropdown.vue';
 import PaneDivider from '@/app/layout/components/PaneDivider.vue';
@@ -427,7 +417,6 @@ const {
 } = useWorkspacePaneGeometry();
 const { layoutMessage } = useLayoutLocalization();
 const { conversationMessage } = useConversationLocalization();
-const { knowledgeBaseMessage } = useKnowledgeBaseLocalization();
 const scene = computed(() => layoutStore.state.scene);
 const activeDocumentType = computed(() => layoutStore.state.activeDocument?.type ?? null);
 const activeDocumentId = computed(() => layoutStore.state.activeDocument?.id ?? null);
@@ -471,8 +460,6 @@ const swapPaneTooltip = computed(() => {
 });
 const fileStore = useFileStore();
 const treeStore = useWorkspaceTree();
-const notificationStore = useNotificationStore();
-const kbStore = useKnowledgeBase();
 
 const rightPaneContentWidth = computed(() => {
   if (!hasWorkspaceFileSurface.value) return 0;
@@ -806,59 +793,25 @@ const docMenuOptions = computed<CustomSelectOption<Exclude<DocMenuValue, null>>[
       ],
     },
     { value: 'review-document', text: layoutMessage('layout.header.documentMenu.review') },
-    { value: 'add-to-kb', text: layoutMessage('layout.header.documentMenu.addToKnowledgeBase') },
   ];
 });
 
+const currentDocumentActionContext = computed(() => {
+  const projectId = navigationScope.currentProjectId;
+  const documentId = activeDocumentId.value;
+  const type = activeDocumentType.value;
+  if (!projectId || !documentId || !type) return null;
+  return freezeWorkspaceDocumentActionContext({ projectId, documentId, activeDocumentType: type,
+    displayName: currentDocumentNode.value?.name ?? layoutMessage('layout.header.untitledDocument') });
+});
+const frozenDocumentActionContext = ref<DocumentActionMenuContext | null>(null);
 const combinedDocMenuOptions = computed<CustomSelectOption<DocumentActionMenuOptionValue>[]>(() => [
   ...(activeDocumentId.value && navigationScope.currentProjectId ? [{ value: 'document-backlinks', text: backlinksMessage('backlinks.title') }] : []),
   ...(historyPreviewComponent.value ? [{ value: 'document-history', text: historyMessage('history.title') }] : []),
   ...docMenuOptions.value,
-  ...(pluginDocumentActionMenu.value?.isAvailable() ? pluginDocumentActionMenu.value.getOptions() : []),
+  ...(currentDocumentActionContext.value && pluginDocumentActionMenu.value?.isAvailable(currentDocumentActionContext.value)
+    ? pluginDocumentActionMenu.value.getOptions(currentDocumentActionContext.value) : []),
 ]);
-
-// ==================== 添加到知识库相关状态 ====================
-
-// 是否显示"添加到知识库"弹窗
-const showAddToKbModal = ref(false);
-
-// 当前文档名称（用于弹窗展示）
-const currentDocumentName = computed(() => {
-  const node = currentDocumentNode.value;
-  if (node) return resolveWorkspaceNodeDisplayName(node, layoutMessage('layout.header.untitledDocument'));
-  return layoutMessage('layout.header.untitledDocument');
-});
-
-// 处理"添加到知识库"确认
-const handleAddToKbConfirm = async (kbId: string) => {
-  showAddToKbModal.value = false;
-
-  // 获取编辑器实例
-  const editor = uiStore.getEditor();
-  if (!editor) {
-    notificationStore.show(layoutMessage('layout.header.addToKnowledgeBase.editorUnavailable'), 'error', 3000);
-    return;
-  }
-
-  // 调用核心服务函数
-  const result = await addCurrentDocumentToKb({
-    targetKbId: kbId,
-    documentName: currentDocumentName.value,
-    editor,
-    kbStore,
-    message: knowledgeBaseMessage,
-  });
-
-  if (result.success) {
-    notificationStore.show(
-      layoutMessage('layout.header.addToKnowledgeBase.success', { fileName: result.fileName }),
-      'success',
-      3000
-    );
-  } else {
-    notificationStore.show(layoutMessage('layout.header.addToKnowledgeBase.failed'), 'error', 3000);
-  }
-};
 
 const handleWindowAction = (action: 'minimize' | 'maximize' | 'close') => {
   const electronApi = window.electronAPI;
@@ -873,12 +826,12 @@ const handleWindowAction = (action: 'minimize' | 'maximize' | 'close') => {
 
 // 切换文档菜单显示状态
 const toggleDocMenu = () => {
+  if (!showDocMenu.value) frozenDocumentActionContext.value = currentDocumentActionContext.value;
   showDocMenu.value = !showDocMenu.value;
 };
 
 type DocMenuValue =
   | 'export'
-  | 'add-to-kb'
   | 'review-document'
   | 'export-txt'
   | 'export-markdown'
@@ -888,6 +841,7 @@ type DocMenuValue =
 
 // 处理文档菜单选项选择
 const handleDocMenuSelect = async (value: unknown) => {
+  const context = frozenDocumentActionContext.value;
   showDocMenu.value = false;
   if (value === 'document-backlinks' && activeDocumentId.value && navigationScope.currentProjectId) { showDocumentBacklinks.value = true; return; }
   if (value === 'document-history' && historyPreviewComponent.value && activeDocumentId.value) {
@@ -900,10 +854,8 @@ const handleDocMenuSelect = async (value: unknown) => {
     return;
   }
   const menu = pluginDocumentActionMenu.value;
-  if (menu?.isAvailable() && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
-    await menu.select(value);
-    return;
-  }
+  if (context && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+    && await selectDocumentAction(menu, value, context)) return;
 
   // 安全兜底：如果当前不是 Markdown 文档，则不执行任何操作
   if (!hasActiveDocument.value) {
@@ -913,10 +865,6 @@ const handleDocMenuSelect = async (value: unknown) => {
 
   // 文档导出相关操作仅对 Markdown 文档开放
   switch (value) {
-    case 'add-to-kb':
-      // 打开"添加到知识库"弹窗
-      showAddToKbModal.value = true;
-      break;
     case 'review-document':
       activeHeaderTool.value = 'review';
       break;

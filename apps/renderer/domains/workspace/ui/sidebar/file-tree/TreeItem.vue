@@ -170,6 +170,7 @@ const isHovered = ref(false);
 
 // More 下拉菜单（与 ProjectListView 一致：按钮锚点定位 + Teleport + file-tree 专属过渡）
 const isMoreMenuOpen = ref(false);
+const menuTarget = ref(null);
 const moreButton = ref(null);
 const moreButtonRef = computed(() => moreButton.value?.element ?? null);
 const {
@@ -180,7 +181,7 @@ const {
 
 // 菜单选项：与右键菜单共用同一数据源，避免两套定义分叉
 const moreMenuOptions = computed(() => {
-  return getNodeMenuOptions(props.node, { surface: 'more' });
+  return getNodeMenuOptions(menuTarget.value ?? props.node, { surface: 'more' });
 });
 
 const nodeDisplayName = computed(() => (
@@ -324,6 +325,7 @@ const toggleMoreMenu = (event) => {
     // 避免按钮默认行为影响焦点/拖拽
     event.preventDefault();
 
+    if (!isMoreMenuOpen.value) menuTarget.value = Object.freeze({ ...props.node });
     isMoreMenuOpen.value = !isMoreMenuOpen.value;
     if (isMoreMenuOpen.value) {
         void positionDropdownAfterRender(moreButtonRef.value);
@@ -332,15 +334,17 @@ const toggleMoreMenu = (event) => {
 
 const closeMoreMenu = () => {
     isMoreMenuOpen.value = false;
+    menuTarget.value = null;
 };
 
 /**
  * 选择 More 菜单项：复用右键菜单的 action 处理逻辑
  */
 const handleMoreMenuSelect = async (value) => {
-    if (!value) return;
+    if (!value || !menuTarget.value) return;
+    const target = menuTarget.value;
     if (typeof workspaceHandleMenuSelect === 'function') {
-        await workspaceHandleMenuSelect({ action: value, item: props.node });
+        await workspaceHandleMenuSelect({ action: value, item: target });
     } else {
         console.error('[TreeItem] workspaceHandleMenuSelect 未注入，无法执行菜单动作', { action: value });
     }
