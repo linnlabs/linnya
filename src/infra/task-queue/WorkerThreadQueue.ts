@@ -172,9 +172,14 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
           ...(this.runtimePathRoots ? { runtimePathRoots: this.runtimePathRoots } : {}),
           ...(this.distributionIdentity ? { distributionIdentity: this.distributionIdentity } : {}),
         },
-        env: process.env
+        env: process.env,
+        // App Server 的 stdout 是控制协议。Worker/依赖的 console 只能走诊断流。
+        stdout: true,
+        stderr: true,
       });
 
+      worker.stdout?.pipe(process.stderr, { end: false });
+      worker.stderr?.pipe(process.stderr, { end: false });
       this.workers.push(worker);
       this.workerJobMap.set(job.id, worker);
 

@@ -163,7 +163,7 @@ export class IngestionStateMachineManager {
    * 副作用 (Side-effects): 向状态机注册所有处理器
    */
   private registerStateHandlers(stateMachine: IngestionStateMachine): void {
-    const pendingHandler = new PendingHandler(this.repositories.metadataRepository);
+    const pendingHandler = new PendingHandler(this.repositories.metadataRepository, this.repositories.sotRepository);
     stateMachine.registerHandler(InternalStage.PENDING, pendingHandler);
 
     // 🔥 新增：为ParsingHandler创建进度回调，实现实时进度更新

@@ -53,10 +53,14 @@ describe('Backend Renderer integration RPC', () => {
       mutationKind: 'pending',
     });
     client.publishWorkspaceMutation({
-      type: 'project.created', mutationId: 'project-mutation', projectId: 'another-project',
+      type: 'project.created',
+      mutationId: 'project-mutation',
+      projectId: 'another-project',
     });
     client.publishWorkspaceMutation({
-      type: 'project.deleted', mutationId: 'project-deleted', projectId: 'another-project',
+      type: 'project.deleted',
+      mutationId: 'project-deleted',
+      projectId: 'another-project',
     });
     client.publishPluginRendererPush({
       pluginId: 'slides',
@@ -87,10 +91,14 @@ describe('Backend Renderer integration RPC', () => {
     });
     expect(port.publishWorkspaceMutation).toHaveBeenCalledTimes(3);
     expect(port.publishWorkspaceMutation).toHaveBeenCalledWith({
-      type: 'project.created', mutationId: 'project-mutation', projectId: 'another-project',
+      type: 'project.created',
+      mutationId: 'project-mutation',
+      projectId: 'another-project',
     });
     expect(port.publishWorkspaceMutation).toHaveBeenCalledWith({
-      type: 'project.deleted', mutationId: 'project-deleted', projectId: 'another-project',
+      type: 'project.deleted',
+      mutationId: 'project-deleted',
+      projectId: 'another-project',
     });
     expect(port.publishPluginRendererPush).toHaveBeenCalledOnce();
     expect(port.publishTodosChanged).toHaveBeenCalledWith('project-1');
@@ -129,15 +137,15 @@ describe('Backend Renderer integration RPC', () => {
     client.queueJobPresentationPublisher.publishProgress({
       jobId: 'task-1',
       progress: 35,
-      data: { status: 'processing' },
+      data: { status: 'processing', error: undefined },
     });
     client.queueJobPresentationPublisher.publishCompletion({
       jobId: 'task-1',
-      result: { docId: 'doc-1' },
+      result: { docId: 'doc-1', frontendState: { error: undefined } },
     });
     client.queueJobPresentationPublisher.publishFailure({
       jobId: 'task-2',
-      jobData: { docId: 'doc-2' },
+      jobData: { docId: 'doc-2', graphExtractionModelId: undefined },
       errorMessage: 'boom',
       failedMessage: '处理失败',
     });
@@ -146,10 +154,32 @@ describe('Backend Renderer integration RPC', () => {
       expect(port.queueJobPresentationPublisher.publishFailure).toHaveBeenCalledOnce();
     });
     expect(port.publishIngestionStatus).toHaveBeenCalledOnce();
-    expect(port.queueJobPresentationPublisher.publishProgress).toHaveBeenCalledOnce();
+    expect(port.queueJobPresentationPublisher.publishProgress).toHaveBeenCalledWith({
+      jobId: 'task-1',
+      progress: 35,
+      data: { status: 'processing' },
+    });
     expect(port.queueJobPresentationPublisher.publishCompletion).toHaveBeenCalledOnce();
     expect(failures).toEqual([]);
     pair.dispose();
+  });
+
+  it('无效通知交给现有诊断口，不能让任务失败回报再次抛错', () => {
+    const request = vi.fn();
+    const failures: Error[] = [];
+    const client = createBackendRendererIntegrationRpcClient({
+      rpc: { request },
+      onAsyncFailure: error => failures.push(error),
+    });
+    expect(() =>
+      client.queueJobPresentationPublisher.publishFailure({
+        jobId: 'task-invalid',
+        jobData: { score: Number.NaN },
+        failedMessage: '失败',
+      })
+    ).not.toThrow();
+    expect(request).not.toHaveBeenCalled();
+    expect(failures).toHaveLength(1);
   });
 
   it('Desktop handler 严格拒绝错型 payload', async () => {
@@ -157,15 +187,20 @@ describe('Backend Renderer integration RPC', () => {
     const handler = handlers.get(DESKTOP_RENDERER_TODOS_CHANGED_RPC_METHOD);
     if (!handler) throw new Error('todos changed handler 未注册');
 
-    expect(() => handler({ projectId: 123 }, {
-      requestId: 'invalid-payload',
-      signal: new AbortController().signal,
-    })).toThrow();
+    expect(() =>
+      handler(
+        { projectId: 123 },
+        {
+          requestId: 'invalid-payload',
+          signal: new AbortController().signal,
+        }
+      )
+    ).toThrow();
   });
 });
 
 function createRendererPort(
-  connectModelCatalogUpdates = async (): Promise<() => void> => () => undefined,
+  connectModelCatalogUpdates = async (): Promise<() => void> => () => undefined
 ): BackendRendererIntegrationPort {
   return {
     connectModelCatalogUpdates: vi.fn(connectModelCatalogUpdates),

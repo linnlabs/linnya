@@ -5,6 +5,8 @@
 adapter 不读取 PATH、不使用 `process.execPath` fallback，也不认识 Electron Utility。
 
 启动它的 Desktop Main 或 CLI Runtime 是唯一 process owner。正常退出先发 `shutdown` 并等待确认；parent 消失时 child 通过 pipe 和 bootstrap parent identity 进入同一收口。stdout 只解析有界控制帧，普通日志从 stderr 上报；Command stdout/PTY 不经过此 adapter。
+受管 Worker 的普通 stdout/stderr 由队列显式捕获并导向诊断 stderr，不允许自动继承到控制 stdout。
+supervisor 在关闭非法协议连接前记录原始失败原因，避免只有后续 RPC 已关闭的次生错误。
 
 `waitForExit()` 只在 `start()` 后可用，并返回真实 code、signal 与是否由宿主 shutdown 发起。CLI Runtime
 用它把运行期 child 崩溃投影为失败；Desktop App owner 用它维护关闭/更新所需的已退出事实。正常 shutdown 仍以业务 owner 的收口屏障为准，不能只看进程消失。

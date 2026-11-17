@@ -132,7 +132,7 @@ ref 和 `doc_id/block_id` 留在可信骨架，标题、摘要、正文及图谱
 - partial 文档仍保持 `DocumentStatus.COMPLETED`，UI 和续跑逻辑通过 `parseDiagnostics.isPartial` 判断是否存在失败页。
 - `Source of Truth` 只保存结构化 `DocumentSoT` JSON，不保存上传原文件；上传临时文件在摄入完成后会被清理。
 - `OriginalDocumentRepository` 独立保存原始 PDF，是“继续解析失败页”的前置数据。
-- 删除文档 / 删除知识库 / 失败清理必须同步清理原始 PDF，避免磁盘残留。
+- 用户明确删除文档 / 知识库时同步清理原始 PDF。摄入或向量失败保留已有原文与元数据；再次上传同名文件不删除旧失败记录，避免新任务再次失败时丢掉恢复入口。
 - 失败页续跑位于 `application/orchestration/continueFailedPdfPages.ts`：
   - 读取原始 PDF 和 `parseDiagnostics.failedPages`。
   - 只解析失败页，只向量化新增 blocks。

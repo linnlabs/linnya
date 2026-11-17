@@ -47,6 +47,8 @@ export interface TaskContext {
   filePath: string;
   embeddingModelId: string;
   embeddingSpaceId?: string;
+  /** 已保存正文的失败资料应重建，不能因重传生成第二份检索来源。 */
+  duplicateReason?: 'retained_source';
   signal?: AbortSignal;
   pdfOcrModelId?: string;
   imageVisionModelId?: string;

@@ -27,6 +27,7 @@ import {
 } from './definitions/state';
 import {
   INTERNAL_TO_FRONTEND_STATUS_MAP,
+  RETAINED_SOURCE_DUPLICATE_MESSAGE,
   STAGE_MESSAGES,
   STAGE_TO_PROGRESS_MAP,
   STATE_TRANSITION_RULES,
@@ -43,6 +44,7 @@ export {
 } from './definitions/state';
 export {
   INTERNAL_TO_FRONTEND_STATUS_MAP,
+  RETAINED_SOURCE_DUPLICATE_MESSAGE,
   STAGE_MESSAGES,
   STAGE_TO_PROGRESS_MAP,
   STATE_TRANSITION_RULES,
@@ -314,7 +316,9 @@ export class IngestionStateMachine {
       stage: internalStage,
       progress: Math.floor(totalProgress),
       stage_progress: context.stageProgress,
-      message: STAGE_MESSAGES[internalStage],
+      message: internalStage === InternalStage.DUPLICATE && context.duplicateReason === 'retained_source'
+        ? RETAINED_SOURCE_DUPLICATE_MESSAGE
+        : STAGE_MESSAGES[internalStage],
       error: context.errorMessage,
       doc_id: context.docId,
       filename: context.filename,
