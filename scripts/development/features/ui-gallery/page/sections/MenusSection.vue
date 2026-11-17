@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import {
+  BaseDropdown,
   ColorPickerPanel,
   CustomSelect,
+  DropdownPanel,
+  ToolbarButton,
+  ToolbarColorButton,
   HoverTooltip,
   SimpleDatePicker,
   TextPopover,
@@ -18,6 +22,7 @@ import {
   ExternalLinkIcon,
   FolderIcon,
   InfoIcon,
+  MoreIcon,
   PinIcon,
 } from '@linnya/renderer-ui/icons';
 // 颜色面板用编辑器真实的块颜色色板与内容色 token，而不是另编一套示意色。
@@ -80,6 +85,12 @@ const date = ref<Date | null>(new Date(2026, 10, 17));
 const time = ref<Date | null>(new Date(2026, 10, 17, 9, 30));
 const textColor = ref<string | null>('blue_text');
 const backgroundColor = ref<string | null>(null);
+const dropdownTextColor = ref<string | null>('red_text');
+
+function blockTextColor(value: string | null): string {
+  const option = EDITOR_BLOCK_TEXT_COLOR_OPTIONS.find(candidate => candidate.value === value);
+  return option ? `var(${option.cssVar}, ${option.fallbackHex})` : 'var(--color-text-primary)';
+}
 </script>
 
 <template>
@@ -94,6 +105,55 @@ const backgroundColor = ref<string | null>(null);
       <GalleryRow label="无边框 · 禁用">
         <CustomSelect v-model="sortBy" class="menus__narrow" :options="SORT_OPTIONS" :bordered="false" trigger-aria-label="排序" />
         <CustomSelect v-model="sortBy" class="menus__narrow" :options="SORT_OPTIONS" disabled trigger-aria-label="排序（不可用）" />
+      </GalleryRow>
+      <GalleryRow label="展开的列表" align="start">
+        <div class="menus__static menus__static--select">
+          <CustomSelect
+            v-model="model"
+            :options="MODEL_OPTIONS"
+            manual-mode
+            :parent-is-open="true"
+            show-selected-checkmark
+            options-max-height="none"
+            trigger-aria-label="模型（展开）"
+          />
+        </div>
+      </GalleryRow>
+    </GalleryBlock>
+
+    <GalleryBlock title="下拉面板" note="BaseDropdown 管开合与点外部关闭，DropdownPanel 是面板外观；Editor 取色、Slides 属性、用量浮层都由它们组合。">
+      <GalleryRow label="点击打开">
+        <BaseDropdown class="menus__dropdown-anchor">
+          <template #trigger="{ toggle, isOpen }">
+            <ToolbarColorButton
+              label="文字颜色"
+              kind="text"
+              :color="blockTextColor(dropdownTextColor)"
+              :expanded="isOpen"
+              @click="toggle"
+            />
+          </template>
+          <template #content="{ isOpen, close }">
+            <DropdownPanel :show="isOpen" class="menus__dropdown">
+              <ColorPickerPanel
+                :show-background="false"
+                :text-colors="EDITOR_BLOCK_TEXT_COLOR_OPTIONS"
+                :current-text-value="dropdownTextColor"
+                @select-text="color => { dropdownTextColor = color.value; close(); }"
+                @clear="dropdownTextColor = null; close()"
+              />
+            </DropdownPanel>
+          </template>
+        </BaseDropdown>
+      </GalleryRow>
+      <GalleryRow label="静态展开" align="start">
+        <div class="menus__static menus__static--panel">
+          <ToolbarButton label="更多" :active="true"><MoreIcon /></ToolbarButton>
+          <DropdownPanel :show="true" class="menus__dropdown menus__dropdown--text">
+            <p class="menus__dropdown-title">上下文用量</p>
+            <p class="menus__dropdown-body">已用 38%，约 48k / 128k tokens。接近上限时会自动压缩较早的对话。</p>
+          </DropdownPanel>
+        </div>
       </GalleryRow>
     </GalleryBlock>
 
@@ -159,6 +219,48 @@ const backgroundColor = ref<string | null>(null);
   position: relative;
   width: 240px; /* scale-exempt: 版面尺寸 */
   min-height: 360px; /* scale-exempt: 版面尺寸 */
+}
+
+.menus__static--select {
+  width: 280px; /* scale-exempt: 版面尺寸 */
+  min-height: 280px; /* scale-exempt: 版面尺寸 */
+}
+
+.menus__static--panel {
+  z-index: 0;
+  min-height: 140px; /* scale-exempt: 版面尺寸 */
+}
+
+/* 点开的面板要盖住下面一行的静态面板：两者 z-index 相同，这里各自建层叠上下文并让上面一行在前。 */
+.menus__dropdown-anchor {
+  position: relative;
+  z-index: 1;
+}
+
+.menus__dropdown {
+  top: calc(100% + var(--space-1));
+  left: 0;
+}
+
+.menus__static--panel .menus__dropdown {
+  top: 32px; /* scale-exempt: 触发按钮 28px + 4px 间距 */
+}
+
+.menus__dropdown--text {
+  width: 260px; /* scale-exempt: 版面尺寸 */
+  padding: var(--space-3) var(--space-4);
+}
+
+.menus__dropdown-title {
+  margin: 0 0 var(--space-1);
+  font-weight: var(--font-weight-semibold);
+}
+
+.menus__dropdown-body {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
 }
 
 .menus__hover-target {

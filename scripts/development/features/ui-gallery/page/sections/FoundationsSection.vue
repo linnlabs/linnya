@@ -9,6 +9,7 @@ import {
 import { useStyleRevision } from '../orchestration/useStyleRevision.ts';
 import GalleryBlock from '../ui/GalleryBlock.vue';
 import GalleryRow from '../ui/GalleryRow.vue';
+import GalleryScrollArea from '../ui/GalleryScrollArea.vue';
 
 interface TokenUse {
   readonly token: string;
@@ -298,6 +299,14 @@ function ratio(value: number): string {
         </div>
       </GalleryRow>
     </GalleryBlock>
+
+    <GalleryBlock title="滚动条" note="产品里的长列表、表格用 OverlayScrollbars 浮层滚动条（useOverlayScrollViewport），悬停或滚动时出现。">
+      <GalleryRow label="浮层滚动条" align="start">
+        <GalleryScrollArea>
+          <p v-for="index in 24" :key="index" class="foundations__scroll-line">第 {{ index }} 行：滚动或悬停查看滚动条</p>
+        </GalleryScrollArea>
+      </GalleryRow>
+    </GalleryBlock>
   </div>
 </template>
 
@@ -503,5 +512,12 @@ function ratio(value: number): string {
   padding-bottom: var(--space-1);
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-elevated);
+}
+
+.foundations__scroll-line {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
 }
 </style>
