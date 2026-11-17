@@ -78,6 +78,7 @@ export { removeModelSource } from './orchestration/removeModelSource';
 export {
   getEmbeddingModelChangeImpactPort,
   registerEmbeddingModelChangeImpactPort,
+  peekEmbeddingModelChangeImpactPort,
 } from './ports/embeddingModelChangeImpactPort';
 export const ModelConfigurationSettingsPage = defineAsyncComponent(() => import('./ui/ModelConfigurationSettingsPage.vue'));
 export const ModelManagementSettingsPage = defineAsyncComponent(() => import('./ui/ModelManagementSettingsPage.vue'));

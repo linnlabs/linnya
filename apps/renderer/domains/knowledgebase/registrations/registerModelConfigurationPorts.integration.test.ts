@@ -50,7 +50,10 @@ describe('Knowledge Base model-configuration port', () => {
     });
 
     await expect(
-      getEmbeddingModelChangeImpactPort().findImpactedKnowledgeBases('embedding-next'),
+      getEmbeddingModelChangeImpactPort().findKnowledgeBasesUsingModel('embedding-next')
+    ).resolves.toEqual([{ id: 'kb-current', name: 'Current', documentCount: 2 }]);
+    await expect(
+      getEmbeddingModelChangeImpactPort().findImpactedKnowledgeBases('embedding-next')
     ).resolves.toEqual([
       {
         id: 'kb-affected',
