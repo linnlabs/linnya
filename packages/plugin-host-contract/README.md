@@ -227,3 +227,5 @@ runtime effect 关闭须等待 shutdown；`settled` 才表示线程及全部 Hos
 Worker 不继承主线程临时安装的 Module._load 解析器，不能将此入口 external 后期待主线程替它解析。
 `worker/requests` 只有类型，Host 的 handler 实现不通过此路径交给插件。
 真实线程与 bundle 依赖验收见 Host inference worker bridge 集成测试；目录/凭据实现不得进入该客户端产物。
+
+`backend/loggingRuntime` 只提供既有 Logger 的四个写入方法；Worker 必须使用内联 `backend/worker/loggingRuntime`，自动经既有诊断 envelope 转发。插件不能设置级别、文件或 sink。详见 [诊断日志 owner](../../src/shared/logging/README.md)。

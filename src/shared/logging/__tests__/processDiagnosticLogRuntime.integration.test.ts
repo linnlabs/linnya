@@ -26,6 +26,12 @@ describe('进程级诊断日志所有权', () => {
     const appOwnerLogger = await import('../../logger');
     appOwnerLogger.enableConsoleLogging(false);
     appOwnerLogger.enableFileLogging(true, logPath);
+    expect(appOwnerLogger.getDiagnosticLogWriterStatus()).toBeUndefined();
+    expect(await readdir(directory)).toEqual([]);
+    appOwnerLogger.setGlobalLogLevel(appOwnerLogger.LogLevel.WARN);
+    new appOwnerLogger.Logger('app-owner').info('filtered-before-writer');
+    expect(appOwnerLogger.getDiagnosticLogWriterStatus()).toBeUndefined();
+    appOwnerLogger.setGlobalLogLevel(appOwnerLogger.LogLevel.DEBUG);
     new appOwnerLogger.Logger('app-owner').info('owner-started');
     await vi.waitFor(() => {
       expect(appOwnerLogger.getDiagnosticLogWriterStatus()?.writtenEntries).toBe(1);
@@ -38,6 +44,8 @@ describe('进程级诊断日志所有权', () => {
     expect(backendBundleLogger.getDiagnosticLogWriterStatus()?.writtenEntries).toBe(1);
     new backendBundleLogger.Logger('app-server-backend').info('backend-started');
 
+    const pluginSdk = await import('../../../plugin-sdk/backend/loggingRuntime');
+    new pluginSdk.Logger('plugin').warn('plugin-shares-owner');
     const shutdown = await backendBundleLogger.shutdownDiagnosticLogging();
     expect(shutdown?.complete).toBe(true);
     const logFiles = (await readdir(directory)).filter(name => name.startsWith('backend-'));
@@ -47,6 +55,11 @@ describe('进程级诊断日志所有权', () => {
     const logContent = await readFile(path.join(directory, writtenLogFile), 'utf8');
     expect(logContent).toContain('owner-started');
     expect(logContent).toContain('backend-started');
+    expect(logContent).toContain('plugin-shares-owner');
+    expect(logContent).not.toContain('filtered-before-writer');
+    new pluginSdk.Logger('plugin').error('after-shutdown');
+    expect(backendBundleLogger.getDiagnosticLogWriterStatus()).toBeUndefined();
+    expect(await readFile(path.join(directory, writtenLogFile), 'utf8')).toBe(logContent);
 
     backendBundleLogger.enableFileLogging(false);
     backendBundleLogger.enableConsoleLogging(true);
