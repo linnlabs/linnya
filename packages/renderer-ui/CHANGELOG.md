@@ -2,6 +2,11 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.6.2 - 2026-11-17
+
+- `ToolbarButton` 为直接子级图标提供 16px 方形图标槽（`:where` 低优先级，调用方仍可覆盖）：此前按钮不定尺寸，图标按自带 class 变成 12px、16px 或被拉成 16×20 并上移 2px。
+- 深色主题下的阴影不再发光：`DraggablePanel`（含 mini）与 `CustomSlider` 拇指悬停的扩散阴影由主文字色改为黑色；主文字色在深色主题里接近白色，原写法让阴影变成一圈亮光。贴边 0 偏移的细环保持主文字色。浅色主题观感不变。现有 `^3.0.0` 插件保持兼容。
+
 ## 3.6.1 - 2026-11-17
 
 - 按视觉平衡调整三枚图标的路径，组件名、属性与 `data-icon` 不变：`SidebarIcon` 方框中心线由 13 放到 14（圆角 2.5），与同排的知识库、设置图标一样大；`BulletListIcon` 圆点半径由 1 放到 1.5，行位不变，与 `NumberedListIcon` 等重；`UnderlineIcon` 的 U 由 9×13 放到 10×14，与 `HeadingIcon` 同高。现有 `^3.0.0` 插件保持兼容。

@@ -11,8 +11,8 @@
   border-radius: var(--radius-lg);
   box-shadow:
     0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 7%, transparent),
-    0 1px 3px color-mix(in srgb, var(--color-text-primary) 5%, transparent),
-    0 8px 24px -4px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+    0 1px 3px color-mix(in srgb, var(--color-black) 5%, transparent),
+    0 8px 24px -4px color-mix(in srgb, var(--color-black) 14%, transparent);
 }
 
 .draggable-panel .panel-header {
@@ -134,8 +134,8 @@
   background-color: color-mix(in srgb, var(--color-bg-default) 94%, transparent);
   box-shadow:
     0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 7%, transparent),
-    0 1px 3px color-mix(in srgb, var(--color-text-primary) 5%, transparent),
-    0 8px 24px -4px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+    0 1px 3px color-mix(in srgb, var(--color-black) 5%, transparent),
+    0 8px 24px -4px color-mix(in srgb, var(--color-black) 14%, transparent);
   backdrop-filter: blur(8px);
 }
 
