@@ -5,39 +5,21 @@
 
 import {
   createDiagnosticLogFileSink,
-  createDiagnosticLogEnvelope,
   createDiagnosticLogWriter,
   DEFAULT_DIAGNOSTIC_LOG_PROJECTION_LIMITS,
   projectDiagnosticLogEntry,
-  type DiagnosticLogLevel,
-  type DiagnosticLogEnvelope,
-  type DiagnosticLogRecord,
   type DiagnosticLogShutdownResult,
   type DiagnosticLogWriter,
   type DiagnosticLogWriterStatus,
 } from './logging';
 import { getProcessDiagnosticLogRuntime } from './logging/orchestration/getProcessDiagnosticLogRuntime';
+import { Logger, LogLevel } from './logging/orchestration/diagnosticLogger';
+export { Logger, LogLevel, enableDiagnosticLogForwarding, writeForwardedDiagnosticLogRecord } from './logging/orchestration/diagnosticLogger';
 import path from 'node:path';
 import { pathManager } from './utils/pathManager';
 
-export enum LogLevel {
-  DEBUG = 0,
-  INFO = 1,
-  WARN = 2,
-  ERROR = 3,
-}
-
 const runtime = getProcessDiagnosticLogRuntime();
 let globalLoggerInstance: Logger | null = null;
-
-function levelName(level: LogLevel): DiagnosticLogLevel {
-  switch (level) {
-    case LogLevel.DEBUG: return 'DEBUG';
-    case LogLevel.INFO: return 'INFO';
-    case LogLevel.WARN: return 'WARN';
-    case LogLevel.ERROR: return 'ERROR';
-  }
-}
 
 function getOrCreateFileWriter(): DiagnosticLogWriter | undefined {
   if (!runtime.config.enableFile || runtime.fileLoggingClosed) return undefined;
@@ -78,17 +60,10 @@ export function enableFileLogging(enable: boolean, logFilePath?: string): void {
     throw new Error('活动日志 writer 已启动，不能在同一生命周期切换文件路径');
   }
   runtime.config.enableFile = enable;
+  // 不在 import/配置阶段打开文件，第一条启用的记录才创建唯一 writer。
+  if (enable) runtime.writeFileRecord = record => { getOrCreateFileWriter()?.writeRecord(record); };
   if (enable) runtime.fileLoggingClosed = false;
   if (logFilePath) runtime.config.logFilePath = logFilePath;
-}
-
-export function enableDiagnosticLogForwarding(
-  forwarder: (envelope: DiagnosticLogEnvelope) => void,
-): void {
-  if (runtime.fileWriter) throw new Error('活动日志 writer 已启动，不能切换为 worker 转发模式');
-  runtime.recordForwarder = forwarder;
-  runtime.config.enableFile = false;
-  runtime.config.enableConsole = false;
 }
 
 export function getDiagnosticLogWriterStatus(): DiagnosticLogWriterStatus | undefined {
@@ -102,61 +77,6 @@ export async function shutdownDiagnosticLogging(timeoutMs?: number): Promise<Dia
   runtime.fileLoggingClosed = true;
   if (result.complete) runtime.fileWriter = undefined;
   return result;
-}
-
-function writeRecordToOutputs(record: DiagnosticLogRecord, allowForwarding: boolean): void {
-  if (runtime.config.enableConsole) {
-    runtime.writeConsoleRecord(record);
-  }
-  if (allowForwarding && runtime.recordForwarder) {
-    try {
-      runtime.recordForwarder(createDiagnosticLogEnvelope(record));
-    } catch {
-      // owner 结束后 MessagePort 可能先关闭；诊断转发失败不能改变 worker 的业务终态。
-    }
-    return;
-  }
-  getOrCreateFileWriter()?.writeRecord(record);
-}
-
-export function writeForwardedDiagnosticLogRecord(record: DiagnosticLogRecord): void {
-  writeRecordToOutputs(record, false);
-}
-
-export class Logger {
-  constructor(private readonly module: string) {}
-
-  debug(message: string, data?: unknown): void {
-    this.log(LogLevel.DEBUG, message, data);
-  }
-
-  info(message: string, data?: unknown): void {
-    this.log(LogLevel.INFO, message, data);
-  }
-
-  warn(message: string, data?: unknown): void {
-    this.log(LogLevel.WARN, message, data);
-  }
-
-  error(message: string, data?: unknown): void {
-    this.log(LogLevel.ERROR, message, data);
-  }
-
-  private log(level: LogLevel, message: string, data?: unknown): void {
-    if (level < runtime.config.minLevel) return;
-    const input = {
-      receivedAt: new Date(),
-      level: levelName(level),
-      module: this.module,
-      message,
-      data,
-    } as const;
-
-    // 控制台与文件共用同一有界投影，避免开发模式反而被无界对象阻塞，也避免
-    // 为同一份超大 metadata 做两次递归遍历。
-    const record = projectDiagnosticLogEntry(input, DEFAULT_DIAGNOSTIC_LOG_PROJECTION_LIMITS);
-    writeRecordToOutputs(record, true);
-  }
 }
 
 export function getLogger(module: string = '默认'): Logger {

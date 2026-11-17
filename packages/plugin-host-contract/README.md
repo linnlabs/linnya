@@ -2,6 +2,8 @@
 
 本包是 Linnya Host 与插件包之间的**纯类型公开合同**。它让 backend 插件、renderer 插件和 Host SDK facade 依赖同一组窄接口，不承载实现、状态或业务流程。
 
+Backend 的 `storageRuntime` 只借用已迁移连接的 prepare/transaction 和产品映射的数据目录；不提供 exec、close 或任意路径。`vectorRuntime` 只创建产品已装配的本地向量进程，暴露按需就绪与停止，不开放 binary、端口或环境。原知识库资料的接管沿 App 已准入的官方来源判定，不依赖插件自报 builtin。`modelConfiguration` 仅返回当前实际消费的默认 OCR 角色、功能模型 ID 和显示名；用户显式用途选择由请求冻结，不把它混同于默认 capability，也不输出目录或凭据。
+
 ## 1. 边界
 
 本包拥有：
@@ -227,3 +229,5 @@ runtime effect 关闭须等待 shutdown；`settled` 才表示线程及全部 Hos
 Worker 不继承主线程临时安装的 Module._load 解析器，不能将此入口 external 后期待主线程替它解析。
 `worker/requests` 只有类型，Host 的 handler 实现不通过此路径交给插件。
 真实线程与 bundle 依赖验收见 Host inference worker bridge 集成测试；目录/凭据实现不得进入该客户端产物。
+
+`backend/loggingRuntime` 只提供既有 Logger 的四个写入方法；Worker 必须使用内联 `backend/worker/loggingRuntime`，自动经既有诊断 envelope 转发。插件不能设置级别、文件或 sink。详见 [诊断日志 owner](../../src/shared/logging/README.md)。
