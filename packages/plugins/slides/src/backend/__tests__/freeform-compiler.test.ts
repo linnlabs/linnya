@@ -57,6 +57,36 @@ describe('FreeformCompiler', () => {
     expect(xml.match(/<a:lnSpc>/gu)).toHaveLength(1);
     expect(xml).toContain('<a:spcPct val="118000"/>');
   });
+  it('keeps runs after a line break in the same paragraph and repeats line spacing per paragraph', async () => {
+    const buffer = await freeformCompiler.compileDeck({
+      title: 'Rich text paragraphs',
+      slides: [{
+        slideNumber: 1,
+        spec: makeFreeformSlide({
+          elements: [{
+            type: 'text',
+            position: { x: 1, y: 1, w: 5, h: 2 },
+            style: { lineSpacing: { kind: 'multiple', value: 1.5 } },
+            content: [
+              { text: 'First\nSecond ', style: { bold: true } },
+              { text: 'tail', style: { italic: true } },
+            ],
+          }],
+        }),
+      }],
+    });
+    const xml = await readSlideXml(buffer);
+    const paragraphs = xml.split('<a:p>').slice(1).map(part => part.split('</a:p>')[0] ?? '');
+
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[1]).toContain('Second ');
+    expect(paragraphs[1]).toContain('tail');
+    for (const paragraph of paragraphs) {
+      expect(paragraph.match(/<a:lnSpc>/gu)).toHaveLength(1);
+      expect(paragraph).toContain('<a:spcPct val="150000"/>');
+    }
+  });
+
   it('writes vertical text as a native East Asian vertical body', async () => {
     const buffer = await freeformCompiler.compileDeck({
       title: 'Vertical text',
