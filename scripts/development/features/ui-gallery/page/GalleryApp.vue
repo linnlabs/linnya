@@ -29,6 +29,7 @@ import {
 } from './orchestration/galleryDocument.ts';
 import ButtonsSection from './sections/ButtonsSection.vue';
 import CandidatesSection from './sections/CandidatesSection.vue';
+import ColorDirectionsSection from './sections/ColorDirectionsSection.vue';
 import DialogsSection from './sections/DialogsSection.vue';
 import FeedbackSection from './sections/FeedbackSection.vue';
 import FormExampleSection from './sections/FormExampleSection.vue';
@@ -62,6 +63,7 @@ const SECTION_COMPONENTS: Readonly<Record<Exclude<GallerySectionId, 'dialogs'>, 
   'form-example': FormExampleSection,
   'list-example': ListExampleSection,
   candidates: CandidatesSection,
+  colors: ColorDirectionsSection,
 };
 
 const schemeIds = gallerySchemes.map(scheme => scheme.id);
