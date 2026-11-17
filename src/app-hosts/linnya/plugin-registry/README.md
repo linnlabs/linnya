@@ -7,3 +7,4 @@
 SDK 使用 Desktop capability 时直接引用对应 `registry/*Registry.ts` 的窄端口；`desktop-capabilities/index.ts` 供 App composition 选择具体 RPC/Host 实现，不进入 SDK 的运行闭包。这样磁盘加载器可以提供 SDK 合同，同时 SDK 不再依赖加载器或请求装配。
 
 Runtime effect 的身份由已接纳 contribution 中的实际 effect 实例决定。相同 pluginId/effectId 的新 artifact 必须先等待旧实例 deactivate 完成，再 activate 新实例；关闭失败保留旧资源 owner 并中止新实例激活，不能静默把旧 Worker 留给新版使用。重复同步同一 contribution 不重启资源。
+`registeredPluginDirectories.ts` 是已准入 Backend artifact 目录的唯一内存记录，写入/清除仍由 builtin 装配负责。Worker factory 等运行消费者只读 getter，不反向 import builtin 加载器。目录记录表示来源归属，不单独授予启用状态或高信任能力。

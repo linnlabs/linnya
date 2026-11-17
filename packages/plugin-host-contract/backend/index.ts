@@ -37,3 +37,5 @@ export type * from './projectReadRuntime';
 export type * from './inferenceRuntime';
 export type * from './worker/inferenceRuntime';
 export type * from './worker/requests';
+export type * from './workerQueue';
+export type * from './worker/databaseRuntime';
