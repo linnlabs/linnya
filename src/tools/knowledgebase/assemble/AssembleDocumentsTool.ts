@@ -25,6 +25,7 @@ import {
 } from '@app/schemas';
 import type { DocumentSoT } from '../../../features/knowledge-base/domain/block';
 import { sliceTextByUnitsZhEn } from '@app/schemas';
+import { resolveKnowledgeDocumentsInScope } from '../scope/resolveKnowledgeDocumentsInScope';
 
 export class AssembleDocumentsTool extends BaseTool {
   readonly name = 'assemble_documents';
@@ -113,8 +114,9 @@ export class AssembleDocumentsTool extends BaseTool {
       `[AssembleDocumentsTool] Materializing ${selectedBlocks.length} selected blocks for query: "${query}"`
     );
 
+    // 不先读第一份SoT再逐项授权：混合批次中的任一越界都必须在原文读取前失败。
+    const documents = await resolveKnowledgeDocumentsInScope(context, selectedBlocks.map(item => item.doc_id));
     const sotCache = new Map<string, DocumentSoT>();
-    const docNameCache = new Map<string, string>();
     const kept: AssembleDocumentsKeptItem[] = [];
     for (let i = 0; i < selectedBlocks.length; i += 1) {
       const { doc_id: docId, block_id: blockId } = selectedBlocks[i];
@@ -123,20 +125,6 @@ export class AssembleDocumentsTool extends BaseTool {
       if (!sot) {
         sot = await this.getSoT(docId, context);
         sotCache.set(docId, sot);
-      }
-
-      if (!docNameCache.has(docId)) {
-        const service = context.knowledgeBaseService;
-        if (!service) {
-          throw new Error(
-            '[AssembleDocumentsTool] 缺少 context.knowledgeBaseService，无法解析文档名称'
-          );
-        }
-        const meta = await service.getDocumentById(docId);
-        if (!meta?.filename) {
-          throw new Error(`[AssembleDocumentsTool] 文档元数据不存在：doc_id="${docId}"`);
-        }
-        docNameCache.set(docId, meta.filename);
       }
 
       const block = sot.content_blocks?.[blockId];
@@ -149,7 +137,7 @@ export class AssembleDocumentsTool extends BaseTool {
       // snippet 仅用于 UI 卡片的简短预览；deep_search 的阅读视图会从 SoT 展示全文
       // ✅ 统一口径：中文按汉字/英文按单词计数，最多 500 字/词
       const snippet = typeof block.text === 'string' ? sliceTextByUnitsZhEn(block.text, 500) : '';
-      const docName = docNameCache.get(docId);
+      const docName = documents.get(docId)?.filename;
       if (!docName) {
         throw new Error(`[AssembleDocumentsTool] 文档名称未完成接纳：doc_id="${docId}"`);
       }

@@ -74,6 +74,11 @@ vi.mock('./buildGraphDigest', () => ({
   buildGraphDigestForSelectedBlocks: buildGraphDigestMock,
 }));
 
+// 本组只验child invoker合同，读取/格式化均已替换；真实项目授权和落库链归scope集成测试。
+vi.mock('../../scope/resolveKnowledgeDocumentsInScope', () => ({
+  resolveKnowledgeDocumentsInScope: async () => new Map(),
+}));
+
 function createContext(patch: Partial<ToolContext> = {}): ToolContext {
   const context = createToolContextFixture({
     conversationId: 'conv_deep_search',
