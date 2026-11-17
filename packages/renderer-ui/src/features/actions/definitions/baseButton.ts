@@ -5,8 +5,8 @@
  * - ghost：已有容器内的次要操作，透明底加描边；
  * - plain：工具栏或行内的轻操作，无底无描边；
  * - danger：不可撤销的破坏性主操作；
- * - soft：需要强调但不应抢过主操作的推荐操作，品牌色浅底与细描边；
- * - tint：占满宽度或位于大片留白里的主操作，品牌色平涂浅底加深色文字，视觉重量比 primary 轻；
+ * - tint：品牌色平涂浅底加深色文字，视觉重量比 primary 轻：占满宽度的主操作，或与 primary 并列的推荐操作；
+ * - soft：已弃用（3.6.0 起），按 tint 渲染，下一个 major 删除；
  * - outline：页面级入口，表面底色、描边与轻投影，由 tone 表达用途。
  */
 export type BaseButtonVariant = 'primary' | 'secondary' | 'ghost' | 'plain' | 'danger' | 'soft' | 'tint' | 'outline';

@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.6.0 - 2026-11-17
+
+- 弃用 `BaseButton` 的 `soft` variant：删除它的样式（渐变浅底、描边与悬停投影），传入 `soft` 时按 `tint` 渲染，下一个 major 删除该类型成员。`ActionButtons` 的 `primaryVariant="accent"` 改为对应 `tint`。`tint` 的用途扩展为与 `primary` 并列、推荐但不抢主操作的动作。props 与类型保持兼容，现有 `^3.0.0` 插件无需修改；新代码改用 `tint`。
+
 ## 3.5.1 - 2026-11-17
 
 - `ColorPickerPanel` 的宽度改为跟随色块（`width: fit-content`），色块网格为五列定宽 32px，行距与列距同为 8px：此前每列按 `1fr` 分配，放进比色块宽的容器（如 Slides 属性面板）时色块靠在各列左侧、列距被拉大，最后一列右侧空出一截，与右对齐的“清除颜色”按钮对不齐。现在面板不再被容器撑宽，按钮与最后一列对齐。公开 props、事件与 DOM 不变，现有 `^3.0.0` 插件保持兼容。

@@ -23,8 +23,7 @@ const VARIANTS: readonly { variant: BaseButtonVariant; text: string; use: string
   { variant: 'ghost', text: '重置', use: '容器内的次要操作' },
   { variant: 'plain', text: '更多选项', use: '工具栏、标题行的轻操作' },
   { variant: 'danger', text: '删除项目', use: '不可撤销的操作' },
-  { variant: 'soft', text: '开始', use: '推荐但不抢主操作' },
-  { variant: 'tint', text: '添加模型', use: '占满宽度的主操作' },
+  { variant: 'tint', text: '添加模型', use: '占满宽度的主操作，或与主操作并列的推荐操作' },
   { variant: 'outline', text: '新建知识库', use: '页面级入口' },
 ];
 
@@ -108,7 +107,7 @@ const ICON_SIZES = ['xs', 'sm', 'md', 'lg'] as const;
       <GalleryRow label="主操作不可用"><ActionButtons is-primary-action-disabled primary-action-text="发送" secondary-action-text="取消" /></GalleryRow>
     </GalleryBlock>
 
-    <GalleryBlock title="轻强调的实际用处" note="soft（ActionButtons 的 accent）目前用在这三处：新建项目弹窗、文件树空状态、审阅面板。">
+    <GalleryBlock title="tint 作推荐操作" note="新建项目弹窗、文件树空状态、审阅面板里的推荐操作。">
       <GalleryRow label="新建项目 · 由 Linnya 创建">
         <ActionButtons primary-variant="accent" :show-secondary-action="false" primary-action-text="AI 辅助创建">
           <template #primary-content><LinnyaIcon class="buttons__linnya" /><span>AI 辅助创建</span></template>
@@ -123,7 +122,7 @@ const ICON_SIZES = ['xs', 'sm', 'md', 'lg'] as const;
         </div>
       </GalleryRow>
       <GalleryRow label="审阅面板">
-        <BaseButton variant="soft" size="md"><template #icon><HistoryIcon /></template>查看 3 条审阅历史</BaseButton>
+        <BaseButton variant="tint" size="md"><template #icon><HistoryIcon /></template>查看 3 条审阅历史</BaseButton>
       </GalleryRow>
     </GalleryBlock>
   </div>

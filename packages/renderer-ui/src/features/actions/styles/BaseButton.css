@@ -218,36 +218,6 @@
   opacity: 0.6;
 }
 
-/* soft：品牌色浅底的推荐操作。 */
-.linnya-ui-button--soft {
-  color: var(--color-accent);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 8%, transparent) 0%,
-    color-mix(in srgb, var(--color-accent) 4%, transparent) 100%
-  );
-  box-shadow: inset 0 0 0 1px var(--color-accent-hover-light);
-}
-
-.linnya-ui-button--soft:hover:not(:disabled) {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 15%, transparent) 0%,
-    color-mix(in srgb, var(--color-accent) 8%, transparent) 100%
-  );
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 20%, transparent);
-}
-
-.linnya-ui-button--soft:disabled {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 4%, transparent) 0%,
-    color-mix(in srgb, var(--color-accent) 2%, transparent) 100%
-  );
-  box-shadow: none;
-  opacity: 0.5;
-}
-
 /* outline：页面级入口，表面底色、发丝描边与轻投影；tone 决定描边与文字颜色。 */
 .linnya-ui-button--outline {
   font-weight: var(--font-weight-medium);
