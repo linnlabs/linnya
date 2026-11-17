@@ -23,3 +23,5 @@
 `generateParsedBlockId` 仅重导既有确定性块 ID 函数；解析结果与知识库后处理使用同一 UUID namespace/算法，不开放其他 ID 工具。
 
 PDF 内部 Logger 使用无文件 IO 的同一诊断实现，仍共享 Host 安装的输出。文档直传 OCR 必须收到调用方任务临时目录；知识库入队和 SDK 已显式提供，不从用户数据根猜目录。真实组合 Worker 验证文字解析、直传 OCR 素材清理和日志 envelope，产物不得内联路径管理或文件 writer。
+
+图片输入先按实际签名选择媒体类型：PNG/JPEG/WebP保留原编码；静态GIF经既有sharp、BMP经既有Skia转PNG并保留透明度；GIF/WebP动图及带正式acTL的APNG在推理前拒绝并提示转静态图片，不默取首帧。格式准备位于模型重试之外，错误输入不反复调用服务。协议验收通过真实Parser→Host窄口→AI SDK→本机HTTP，校验请求路径、认证、DataURL媒体类型与实际图像字节，再解码合成SSE响应；这不是供应商连通测试。来源：[OpenAI图像输入](https://developers.openai.com/api/docs/guides/images-vision?api-mode=chat)、[sharp元数据](https://sharp.pixelplumbing.com/api-input/)、[W3C PNG动画控制](https://www.w3.org/TR/png-3/#11acTL)。
