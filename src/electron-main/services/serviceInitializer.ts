@@ -34,6 +34,7 @@ import {
   runCommandOutputArtifactStartupMaintenance,
   runToolOutputStoreStartupMaintenance,
   scheduleStartupMaintenanceOnce,
+  scheduleKnowledgeBaseMaintenanceOnce,
   type KnowledgeBaseMaintenanceDeps,
   type StartupMaintenanceLifecycle,
 } from './startup/startupMaintenanceRunner';
@@ -84,7 +85,7 @@ import { requireInstalledDistributionIdentity } from 'src/shared/distribution-id
  * 服务初始化结果接口
  */
 export interface InitializedServices {
-  /** 向量库或知识库服务没有启动时为 null；原因见 capabilityFailures。 */
+  /** 元数据/原文服务装配失败时为 null；向量进程故障不影响该服务。 */
   knowledgeBaseService: KnowledgeBaseService | null;
   projectKnowledgeBaseLinksService: ProjectKnowledgeBaseLinksService;
   transcriptionService: TranscriptionService;
@@ -122,7 +123,8 @@ export interface ServiceInitializationConfig {
  */
 export class ServiceInitializer {
   private serviceRegistry: ServiceRegistry;
-  private qdrantUrl: string | null = null;
+  private knowledgeBaseMaintenance: StartupMaintenanceLifecycle | null = null;
+  private maintenanceStopped = false;
   private startupMaintenance: StartupMaintenanceLifecycle | null = null;
 
   constructor(
@@ -149,7 +151,6 @@ export class ServiceInitializer {
     console.log('[ServiceInitializer] 🔧 开始详细的服务初始化...');
 
     let disposeRendererIntegration: (() => void) | null = null;
-    this.qdrantUrl = null;
     const capabilityFailures: StartupCapabilityFailure[] = [];
     // 能力步骤失败只停掉这项能力并记一条诊断日志；必需步骤仍然直接抛出，由启动失败对话框说明。
     const runCapabilityStep = async <T>(
@@ -199,30 +200,30 @@ export class ServiceInitializer {
       const reranking = createRerankingPort();
       const documentOcr = createDocumentOcrPort({ catalog: modelCatalog });
 
-      // 步骤4 + 6：Qdrant 适配器与知识库服务（能力：向量库没有启动时整组跳过）
-      let knowledgeBase: InitializedKnowledgeBase | null = null;
-      if (vectorStore.kind === 'unavailable') {
-        capabilityFailures.push(Object.freeze({
-          capability: 'knowledge-base',
-          message: vectorStore.message,
-        }));
-        console.error(`[ServiceInitializer] 能力未启动: knowledge-base（${vectorStore.message}）`);
-      } else {
-        knowledgeBase = await runCapabilityStep('knowledge-base', async () => {
-          const qdrantAdapterInstance = await this.initializeAdapters(config, vectorStore.url);
-          return this.initializeKnowledgeBaseService(
-            qdrantAdapterInstance,
-            embedding,
-            reranking,
-            documentOcr
-          );
-        });
-      }
+      // 元数据和原文服务不依赖向量进程；首次真正访问向量时才创建 adapter。
+      let adapter: Promise<QdrantAdapter> | null = null;
+      const resolveQdrantUrl = async () => {
+        const url = await vectorStore.ensureReady();
+        if (knowledgeBase && !this.maintenanceStopped && !this.knowledgeBaseMaintenance) {
+          this.knowledgeBaseMaintenance = scheduleKnowledgeBaseMaintenanceOnce({
+            databaseService,
+            knowledgeBase: knowledgeBase.maintenance,
+          });
+        }
+        return url;
+      };
+      const resolveAdapter = () => {
+        adapter ??= resolveQdrantUrl().then(url => this.initializeAdapters(config, url));
+        return adapter;
+      };
+      const knowledgeBase = await runCapabilityStep('knowledge-base', () =>
+        this.initializeKnowledgeBaseService(resolveAdapter, embedding, reranking, documentOcr)
+      );
 
       // 启动后一次性维护任务（Phase 2）：Workspace、会话与数据库维护不依赖知识库。
       this.startupMaintenance = scheduleStartupMaintenanceOnce({
         databaseService,
-        knowledgeBase: knowledgeBase?.maintenance ?? null,
+        knowledgeBase: null,
       });
 
       // 步骤6.5：初始化项目-知识库关联服务
@@ -233,7 +234,7 @@ export class ServiceInitializer {
       const transcriptionService = await this.initializeTranscriptionService();
 
       // 步骤8：初始化队列系统（能力：知识库导入与长音频预处理不可用）
-      await runCapabilityStep('background-tasks', () => this.initializeQueueSystem());
+      await runCapabilityStep('background-tasks', () => this.initializeQueueSystem(resolveQdrantUrl));
 
       if (capabilityFailures.length === 0) {
         console.log('[ServiceInitializer] ✨ 所有服务初始化成功!');
@@ -265,8 +266,10 @@ export class ServiceInitializer {
   }
 
   async stopStartupMaintenance(): Promise<void> {
-    await this.startupMaintenance?.stop();
+    this.maintenanceStopped = true;
+    await Promise.all([this.startupMaintenance?.stop(), this.knowledgeBaseMaintenance?.stop()]);
     this.startupMaintenance = null;
+    this.knowledgeBaseMaintenance = null;
   }
 
   /**
@@ -378,9 +381,8 @@ export class ServiceInitializer {
       apiKey: config.qdrant?.apiKey,
       timeout: config.qdrant?.timeout || 30000,
     };
-    this.qdrantUrl = qdrantConfig.url;
 
-    const qdrantAdapterInstance = QdrantAdapter.getInstance(qdrantConfig);
+    const qdrantAdapterInstance = new QdrantAdapter(qdrantConfig);
     console.log('[ServiceInitializer] ✅ Step 4: Qdrant适配器初始化完成');
 
     return qdrantAdapterInstance;
@@ -390,7 +392,7 @@ export class ServiceInitializer {
    * 初始化知识库服务
    */
   private async initializeKnowledgeBaseService(
-    qdrantAdapterInstance: QdrantAdapter,
+    resolveAdapter: () => Promise<QdrantAdapter>,
     embedding: ReturnType<typeof createEmbeddingPort>,
     reranking: ReturnType<typeof createRerankingPort>,
     documentOcr: DocumentOcrPort
@@ -408,7 +410,7 @@ export class ServiceInitializer {
     console.log(`[ServiceInitializer] 💡 元数据使用 workspace.sqlite (通过 DatabaseService)`);
 
     // 创建仓储实例 - 使用新的 BetterSqliteMetadataRepository
-    const qdrantRepository = new QdrantRepositoryImpl(qdrantAdapterInstance);
+    const qdrantRepository = new QdrantRepositoryImpl(resolveAdapter);
     const databaseService = getDatabaseService();
     const metadataRepository = new BetterSqliteMetadataRepository(databaseService);
     const sotRepository = new FileSotRepository(sotPath);
@@ -496,7 +498,7 @@ export class ServiceInitializer {
   /**
    * 初始化队列系统
    */
-  private async initializeQueueSystem(): Promise<void> {
+  private async initializeQueueSystem(resolveQdrantUrl: () => Promise<string>): Promise<void> {
     console.log('[ServiceInitializer] 🧵 Step 12: 初始化智能多线程队列系统...');
 
     const queueManager = QueueManager.getInstance();
@@ -505,7 +507,7 @@ export class ServiceInitializer {
       workerRuntime: this.queueWorkerRuntime,
       runtimePathRoots: this.runtimePathRoots,
       distributionIdentity: requireInstalledDistributionIdentity(),
-      qdrantUrl: this.qdrantUrl ?? undefined,
+      resolveQdrantUrl,
       jobPresentationPublisher: getBackendRendererIntegrationPort().queueJobPresentationPublisher,
       ingestionLifecycleObserver: {
         onProgress: ({ job, data }) => {

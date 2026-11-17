@@ -14,14 +14,12 @@
  */
 
 import { generateTaskId } from '@shared/utils/idUtils';
-import { DEFAULT_VECTOR_DIMENSION } from '@shared/constants';
 import { Logger } from 'src/shared/logger';
 import { KnowledgeBase, createKnowledgeBase } from '../../domain/knowledgeBase';
 import { MetadataRepository } from '../../infrastructure/metadataRepository';
 import { QdrantRepository } from '../../infrastructure/qdrantRepository';
 import { SotRepository } from '../../infrastructure/sotRepository';
 import type { OriginalDocumentRepository } from '../../infrastructure/originalDocumentRepository';
-import { resolveTargetSegmentCountByPointsCount } from '../../infrastructure/qdrant-repository/segmentPolicy';
 import { KnowledgeBaseWithDocumentCount } from '../knowledgeBaseService';
 import { getGraphEdgesCollectionName, getGraphNodesCollectionName } from '../../graph/infrastructure/qdrantCollections';
 import {
@@ -58,7 +56,7 @@ export class KnowledgeBaseMgmtService {
    * **功能 (What):** 创建新的知识库
    * **副作用 (Side-effects):**
    * - 写入元数据
-   * - 创建对应的 Qdrant 集合（必须从创建开始就支持稀疏向量 bm25）
+   * - 向量集合由首次摄入创建，不因空库元数据拉起进程
    */
   async createKnowledgeBase(name: string, description?: string): Promise<KnowledgeBase> {
     logger.info(`创建知识库: ${name}`);
@@ -73,13 +71,7 @@ export class KnowledgeBaseMgmtService {
 
       await this.metadataRepository.createKnowledgeBase(kb);
 
-      // 重要：集合必须从创建开始就支持稀疏向量（bm25），否则后续摄入会在 STORING 阶段失败。
-      // 同时我们统一使用命名向量 default（见 QdrantAdapter.createCollection 的实现）。
-      await this.qdrantRepository.getOrCreateCollection(kbId, DEFAULT_VECTOR_DIMENSION, 'Cosine', true, {
-        // chunk collection 从创建开始就收敛到小库目标段数，避免先按 Qdrant 默认多段起步。
-        defaultSegmentNumber: resolveTargetSegmentCountByPointsCount(0),
-      });
-
+      // 仅创建元数据。首次摄入根据实际模型维度建立支持 BM25 的集合。
       logger.info(`知识库创建成功: ${kbId}`);
       return kb;
     } catch (error) {
@@ -133,12 +125,6 @@ export class KnowledgeBaseMgmtService {
       const defaultKb = createKnowledgeBase('default', '默认知识库', '系统默认创建的知识库');
 
       await this.metadataRepository.createKnowledgeBase(defaultKb);
-      // 默认知识库同样需要支持 bm25 稀疏向量，保证混合检索/写入链路一致。
-      await this.qdrantRepository.getOrCreateCollection('default', DEFAULT_VECTOR_DIMENSION, 'Cosine', true, {
-        // default chunk collection 也应从创建时直接落到目标段数，避免历史膨胀根因重演。
-        defaultSegmentNumber: resolveTargetSegmentCountByPointsCount(0),
-      });
-
       logger.info('默认知识库创建成功');
       return defaultKb;
     } catch (error) {
@@ -174,6 +160,9 @@ export class KnowledgeBaseMgmtService {
       if (!existing) {
         throw new KnowledgeBaseNotFoundError(kbId);
       }
+
+      // 在删除不可恢复的原文前确认向量服务可用；冷态集合可以尚未建立。
+      const hasCollection = await this.qdrantRepository.collectionExists(kbId);
 
       // 1) 获取此知识库中的所有文档（用于清理 SoT）
       const documents = await this.metadataRepository.getDocumentsInKnowledgeBase(kbId);
@@ -218,7 +207,7 @@ export class KnowledgeBaseMgmtService {
 
       // 3) 删除知识库集合（这会级联删除所有向量点）
       logger.info(`开始删除 Qdrant 集合（将级联删除向量点）: ${kbId}`);
-      await this.qdrantRepository.deleteCollection(kbId);
+      if (hasCollection) await this.qdrantRepository.deleteCollection(kbId);
 
       /**
        * 3.5) 删除 Soft Knowledge Graph 的向量集合（若存在）

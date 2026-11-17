@@ -19,7 +19,6 @@ import iconv from 'iconv-lite';
 import { pathManager } from '../../shared/utils/pathManager';
 import { Logger } from '../../shared/logger';
 import busboy from 'busboy';
-import { readHistoricalCitationSnapshotBundle } from '../../domains/citation';
 import {
   type KnowledgeBaseLookupPort,
   validatePdfOcrUploadPageLimit,
@@ -758,51 +757,6 @@ export function createKnowledgeBaseRouter(
     }
   });
 
-  /**
-   * 读取 Citation Snapshot Bundle（按 bundle_id）
-   *
-   * @route GET /knowledge-base/citation-snapshots/bundles/:bundleId
-   */
-  router.get('/citation-snapshots/bundles/:bundleId', async (req: Request, res: Response) => {
-    try {
-      const bundleId = typeof req.params.bundleId === 'string' ? req.params.bundleId.trim() : '';
-      if (!bundleId) {
-        return res.status(400).json({ error: 'bundleId 不能为空' });
-      }
-
-      const conversationId =
-        typeof req.query.conversation_id === 'string' ? req.query.conversation_id.trim() : '';
-      if (!conversationId) {
-        return res
-          .status(400)
-          .json({
-            error: 'conversation_id 不能为空（CitationSnapshotStore 已收口到 conversation-root）',
-          });
-      }
-      const instanceId =
-        typeof req.query.instance_id === 'string' ? req.query.instance_id.trim() : undefined;
-
-      const record = await readHistoricalCitationSnapshotBundle({
-        conversationId,
-        instanceId,
-        bundleId,
-      });
-
-      const shouldDownload = req.query.download === '1' || req.query.download === 'true';
-      if (shouldDownload) {
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader(
-          'Content-Disposition',
-          `attachment; filename="citation_snapshot_${bundleId}.json"`
-        );
-        return res.status(200).send(JSON.stringify(record));
-      }
-
-      return res.json(record);
-    } catch (error) {
-      handleKbError(error, res, '读取 Citation Snapshot Bundle');
-    }
-  });
 
   return router;
 }

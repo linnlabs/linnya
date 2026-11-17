@@ -40,6 +40,7 @@ import { createTranscriptionRouter } from '@transcription/index';
 import { createStaticRouter } from './staticRouter';
 import { createHealthRouter, type ServiceStatus } from './healthRouter';
 import { createKnowledgeBaseRouter } from './knowledgeBaseRouter';
+import { createHistoricalCitationSnapshotRouter } from './historicalCitationSnapshotRouter';
 import type { KnowledgeBaseLookupPort } from 'src/features/knowledge-base/ingestion/functions/pdfOcrUploadPageLimit';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import { createProviderOutboundDebugRouter } from './providerOutboundDebugRouter';
@@ -526,6 +527,9 @@ export async function configureRoutes(
   } else {
     logger.warn('⚠️ 转录服务未初始化，跳过路由挂载');
   }
+
+  // 历史引用先于活知识库路由挂载，停用时仍然可以回放与下载。
+  app.use('/api/v1/knowledge-base', createHistoricalCitationSnapshotRouter());
 
   // 知识库服务路由
   if (dependencies.knowledgeBaseService) {

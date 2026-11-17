@@ -12,10 +12,10 @@ export interface StartupCapabilityFailure {
   readonly message: string;
 }
 
-/** 向量库进程的启动结果；没有启动时知识库整组跳过，不回退到默认地址。 */
-export type StartupVectorStore =
-  | { readonly kind: 'ready'; readonly url: string }
-  | { readonly kind: 'unavailable'; readonly message: string };
+/** 只有向量操作才请求实际端口；元数据、原文与会话启动不等待进程。 */
+export interface StartupVectorStore {
+  ensureReady(): Promise<string>;
+}
 
 const MAX_ERROR_DETAIL_LENGTH = 300;
 

@@ -27,7 +27,7 @@ describe('向量 Worker 的实例归属', () => {
         },
         runtimePathRoots: { developmentRoot: root, appDataRoot: root, workspaceRoot: root, workspaceRootIsCustom: false },
         distributionIdentity: { kind: 'source', packaged: false },
-        qdrantUrl: 'http://127.0.0.1:49200',
+        resolveQdrantUrl: async () => 'http://127.0.0.1:49200',
       });
       const completed = (name: string) => new Promise<unknown>((resolve, reject) => {
         queue.once(`${name}:taskCompleted`, (event: { result: unknown }) => resolve(event.result));

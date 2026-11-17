@@ -2,6 +2,17 @@
 
 知识库（Knowledge Base）模块负责管理非结构化文档的摄入、解析、切片、向量化存储以及基于 RAG（Retrieval-Augmented Generation）和 Soft Knowledge Graph（软知识图谱）的检索服务。
 
+## 启动与向量运行时
+
+App Server 启动只装配元数据、原文仓储和轻量队列，不启动 Qdrant 或知识库 Worker。Renderer 不在启动时预取知识库列表。浏览知识库、项目关联、原文和已有证据不依赖向量进程。
+
+- 创建 default 或普通知识库只落元数据；首次摄入由 `StoringHandler` 按实际 embedding 维度创建带 BM25 的集合，不创建猜测维度的空集合。既有集合、索引来源和路径保持不变。
+- 空库搜索直接返回空结果，不请求模型。真正检索、摄入、图谱索引或集合删除通过同一个受管 runtime 取得实际端口；并发首次请求共享启动结果。
+- 启动故障明确传播为 `QdrantRuntimeUnavailableError`，不能被召回降级解释为空结果。原有 rerank 可重试故障策略不变。
+- 首次向量就绪后才调度知识库维护。退出先停止维护及队列，再等待已开始的向量启动和进程收口。冷态退出不创建进程；启动故障不随每次查询自动重试。
+- 删除知识库在删除原文前确认向量服务可用；未摄入的冷库可以尚无集合，删除仍正常完成。
+- 历史 CitationSnapshot 路由归 Host，保持旧 URL，但独立于活知识库服务挂载。停用或向量故障不撤掉已有会话证据。
+
 ## 目录结构
 
 ```text
@@ -181,7 +192,7 @@ ref 和 `doc_id/block_id` 留在可信骨架，标题、摘要、正文及图谱
     3. `100_001 ~ 500_000 points`：目标 `4` 段
     4. `> 500_000 points`：回退到 Qdrant 自动策略（`0`）
 *   **创建时一次到位**: chunk collection 在首次创建时就直接带上目标 `default_segment_number`，避免先按 Qdrant 默认多段起步，再在线尝试收敛。
-*   **启动后后台重建**: 已存在的历史 chunk collection 会在启动维护阶段检查两类情况，并在后台执行 `scroll(with vector) -> delete -> create -> upsert -> count 校验`，无须用户手工干预：
+*   **首次向量就绪后后台重建**: 已存在的历史 chunk collection 会在启动维护阶段检查两类情况，并在后台执行 `scroll(with vector) -> delete -> create -> upsert -> count 校验`，无须用户手工干预：
     1. `segments_count` 明显高于目标值，需要收缩
     2. `points_count` 跨阈值后，当前配置的目标段数已落后于新目标值，需要在下次启动时自动升段重建
 *   **并发安全**: 同一个 chunk collection 在后台重建期间，会通过 collection 级访问协调器阻塞该库的搜索 / 上传 / 删除，避免“scroll 漏点”“collection 短暂不存在”或部分结果可见。

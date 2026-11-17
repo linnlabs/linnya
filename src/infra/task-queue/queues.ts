@@ -59,7 +59,7 @@ export interface QueueManagerInitializeOptions {
   runtimePathRoots: RuntimePathRoots;
   distributionIdentity: DistributionIdentity;
   maxConcurrency?: number;
-  qdrantUrl?: string;
+  resolveQdrantUrl?: () => Promise<string>;
   ingestionLifecycleObserver?: WorkerJobLifecycleObserver<IngestionJobPayload>;
   jobPresentationPublisher?: QueueJobPresentationPublisher;
 }
@@ -70,7 +70,7 @@ export class QueueManager extends EventEmitter {
   private graphExtractionQueue: WorkerThreadQueue<GraphExtractionJobPayloadInput> | null = null;
   private graphIndexingQueue: WorkerThreadQueue<GraphIndexingJobPayloadInput> | null = null;
   private readonly audioProcessingQueue = new AudioProcessingQueue();
-  private qdrantUrl: string | null = null;
+  private resolveQdrantUrl: (() => Promise<string>) | undefined;
   private initializationFailure: string | null = null;
   protected constructor() {
     super();
@@ -111,7 +111,7 @@ export class QueueManager extends EventEmitter {
 
   private async initializeQueues(options: QueueManagerInitializeOptions): Promise<void> {
     console.log('[QueueManager] 正在初始化任务队列系统...');
-    this.qdrantUrl = options.qdrantUrl || null;
+    this.resolveQdrantUrl = options.resolveQdrantUrl;
 
     // 初始化文档摄入队列
     this.ingestionQueue = new WorkerThreadQueue<IngestionJobPayload>({
@@ -219,11 +219,13 @@ export class QueueManager extends EventEmitter {
     if (!this.ingestionQueue) {
       throw this.unavailableError('摄入队列未初始化');
     }
+    if (!this.resolveQdrantUrl) throw new Error('向量运行时没有装配');
+    const qdrantUrl = await this.resolveQdrantUrl();
     const taskWithWorkerEnv: IngestionJobPayload = {
       ...taskData,
       envVars: {
         ...taskData.envVars,
-        ...(this.qdrantUrl ? { QDRANT_URL: this.qdrantUrl } : {}),
+        QDRANT_URL: qdrantUrl,
       },
     };
     return await this.ingestionQueue.addTask(taskWithWorkerEnv);
@@ -252,11 +254,13 @@ export class QueueManager extends EventEmitter {
     if (!this.graphIndexingQueue) {
       throw new Error('图谱索引队列未初始化');
     }
+    if (!this.resolveQdrantUrl) throw new Error('向量运行时没有装配');
+    const qdrantUrl = await this.resolveQdrantUrl();
     return await this.graphIndexingQueue.addTask({
       ...taskData,
       envVars: {
         ...taskData.envVars,
-        ...(this.qdrantUrl ? { QDRANT_URL: this.qdrantUrl } : {}),
+        QDRANT_URL: qdrantUrl,
       },
     });
   }

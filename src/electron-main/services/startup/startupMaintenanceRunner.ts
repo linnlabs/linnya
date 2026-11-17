@@ -268,12 +268,45 @@ export function scheduleStartupMaintenanceOnce(
 
     if (signal.aborted) return;
 
-    // 2) 知识库一致性清理（SQLite + SoT + Qdrant）
-    const knowledgeBase = deps.knowledgeBase;
-    if (!knowledgeBase) {
-      logger.info(`✅ 启动维护任务结束(知识库未启动，跳过知识库维护): costMs=${Date.now() - start}`);
-      return;
+    if (deps.knowledgeBase) {
+      await runKnowledgeBaseMaintenance(deps.databaseService, deps.knowledgeBase, signal);
     }
+
+    logger.info(`✅ 启动维护任务结束: costMs=${Date.now() - start}`);
+  })().catch((error: unknown) => {
+    if (signal.aborted) return;
+    logger.error(`启动维护执行失败: ${error instanceof Error ? error.message : String(error)}`);
+  });
+
+  return Object.freeze({
+    stop() {
+      // 不能仅 unref 定时器：退出期间维护仍可能访问已经关闭的数据库或 Qdrant。
+      controller.abort();
+      return completion;
+    },
+  });
+}
+
+/** 首次向量请求就绪后单独调度；普通 App 启动不能为了维护拉起 Qdrant。 */
+export function scheduleKnowledgeBaseMaintenanceOnce(deps: {
+  readonly databaseService: DatabaseService;
+  readonly knowledgeBase: KnowledgeBaseMaintenanceDeps;
+}): StartupMaintenanceLifecycle {
+  const controller = new AbortController();
+  const completion = delay(10_000, undefined, { signal: controller.signal })
+    .then(() => runKnowledgeBaseMaintenance(deps.databaseService, deps.knowledgeBase, controller.signal))
+    .catch((error: unknown) => {
+      if (!controller.signal.aborted) new Logger('KnowledgeBaseMaintenance').error('知识库维护失败', error);
+    });
+  return { stop: () => { controller.abort(); return completion; } };
+}
+
+async function runKnowledgeBaseMaintenance(
+  databaseService: DatabaseService,
+  knowledgeBase: KnowledgeBaseMaintenanceDeps,
+  signal: AbortSignal,
+): Promise<void> {
+  const logger = new Logger('KnowledgeBaseMaintenance');
     try {
       /**
        * 根因修复（稳健性）：
@@ -294,7 +327,6 @@ export function scheduleStartupMaintenanceOnce(
         logger.warn(
           'Qdrant 在启动维护窗口内仍不可达，跳过本轮知识库维护（避免误删），后续可由用户/后台触发再次维护'
         );
-        logger.info(`✅ 启动维护任务结束(跳过知识库维护): costMs=${Date.now() - start}`);
         return;
       }
 
@@ -302,7 +334,7 @@ export function scheduleStartupMaintenanceOnce(
         knowledgeBase.metadataRepository,
         knowledgeBase.qdrantRepository,
         knowledgeBase.sotRepository,
-        new BetterSqliteKnowledgeGraphRepository(deps.databaseService),
+        new BetterSqliteKnowledgeGraphRepository(databaseService),
         knowledgeBase.originalDocumentRepository
       );
       logger.info(
@@ -322,17 +354,5 @@ export function scheduleStartupMaintenanceOnce(
       logger.error(`知识库维护执行失败: ${e instanceof Error ? e.message : String(e)}`);
     }
 
-    logger.info(`✅ 启动维护任务结束: costMs=${Date.now() - start}`);
-  })().catch((error: unknown) => {
-    if (signal.aborted) return;
-    logger.error(`启动维护执行失败: ${error instanceof Error ? error.message : String(error)}`);
-  });
 
-  return Object.freeze({
-    stop() {
-      // 不能仅 unref 定时器：退出期间维护仍可能访问已经关闭的数据库或 Qdrant。
-      controller.abort();
-      return completion;
-    },
-  });
 }

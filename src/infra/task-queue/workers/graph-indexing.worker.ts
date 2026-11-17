@@ -275,7 +275,7 @@ async function processGraphIndexingJob(): Promise<void> {
     typeof docRow?.filename === 'string' && docRow.filename.trim().length > 0 ? docRow.filename.trim() : docId;
 
   const qdrantAdapter = QdrantAdapter.getInstance({ url: resolveWorkerQdrantUrl(workerData) });
-  const qdrantRepository = new QdrantRepositoryImpl(qdrantAdapter);
+  const qdrantRepository = new QdrantRepositoryImpl(async () => qdrantAdapter);
 
   try {
     // 读取该 doc 的图谱产物

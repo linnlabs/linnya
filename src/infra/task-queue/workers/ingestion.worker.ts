@@ -125,7 +125,7 @@ function createIngestionRepositories(
     pathManager.getKnowledgeBaseOriginalsPath()
   );
   const qdrantAdapter = QdrantAdapter.getInstance({ url: resolveWorkerQdrantUrl(workerData) });
-  const qdrantRepository = new QdrantRepositoryImpl(qdrantAdapter);
+  const qdrantRepository = new QdrantRepositoryImpl(async () => qdrantAdapter);
 
   return {
     metadataRepository,

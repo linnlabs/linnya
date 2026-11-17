@@ -58,7 +58,6 @@ import {
   startModelCatalogLifecycle,
   startModelPickerLifecycle,
 } from '../domains/model-configuration'
-import { useKnowledgeBase } from '../domains/knowledgebase/runtime.js'
 import { useUpdateActions } from './update/runtime'
 
 const conversationFixtureId = import.meta.env.DEV
@@ -159,10 +158,6 @@ if (!isConversationFixture) {
     console.error('[main] 模型选择器初始化失败:', error)
   })
 
-  const knowledgeBaseStore = useKnowledgeBase()
-  knowledgeBaseStore.fetchKnowledgeBases().catch(error => {
-    console.warn('[App] 预加载知识库列表失败，将在需要时重试:', error)
-  })
 }
 
 /**

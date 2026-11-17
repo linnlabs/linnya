@@ -10,6 +10,7 @@ import { isObjectLike } from '@linnya/foundation';
  */
 
 import { QdrantRepository, QdrantPoint, RetrievedPoint, SearchFilterOptions, SearchResult } from './qdrantRepository';
+import { QdrantRuntimeUnavailableError } from '@infra/adapters/vector-store/qdrant/errors';
 import { QdrantAdapter } from '@infra/adapters/vector-store/qdrant';
 import { Logger } from '@shared/logger';
 import { rrfFusion } from '../utils/ranking';
@@ -37,11 +38,9 @@ import { resolveTargetSegmentCountByPointsCount } from './qdrant-repository/segm
 import { textToSparseVector } from './qdrant-repository/sparseVector';
 
 export class QdrantRepositoryImpl implements QdrantRepository {
-  private readonly qdrantAdapter: QdrantAdapter;
   private readonly logger: Logger;
 
-  constructor(qdrantAdapter: QdrantAdapter) {
-    this.qdrantAdapter = qdrantAdapter;
+  constructor(private readonly resolveAdapter: () => Promise<QdrantAdapter>) {
     this.logger = new Logger('QdrantRepository');
   }
 
@@ -56,7 +55,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
     collectionName: string,
     limit: number = 10000
   ): Promise<Array<{ id: string; payload: Record<string, unknown> }>> {
-    return await this.qdrantAdapter.scrollPoints(collectionName, limit);
+    return await (await this.resolveAdapter()).scrollPoints(collectionName, limit);
   }
 
   async scrollPointsPage(
@@ -79,7 +78,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
     const normalizedOffset: QdrantScrollOffset | undefined =
       offset === undefined ? undefined : (isScrollOffset(offset) ? offset : undefined);
 
-    return await this.qdrantAdapter.scrollPointsPage(collectionName, limit, normalizedOffset);
+    return await (await this.resolveAdapter()).scrollPointsPage(collectionName, limit, normalizedOffset);
   }
 
   async getOrCreateCollection(
@@ -113,7 +112,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
         
           this.logger.info(`创建多向量集合: ${collectionName} (稠密向量: ${vectorSize}维 + BM25稀疏向量)`);
           try {
-            await this.qdrantAdapter.createCollection(collectionName, vectorConfig, 'Cosine', {
+            await (await this.resolveAdapter()).createCollection(collectionName, vectorConfig, 'Cosine', {
               optimizerConfig: {
                 defaultSegmentNumber,
               },
@@ -130,7 +129,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
           this.logger.info(`创建单向量集合: ${collectionName} (${vectorSize}维)`);
           try {
             const normalizedDistance: Distance = normalizeDistanceMetric(distanceMetric);
-            await this.qdrantAdapter.createCollection(collectionName, vectorSize, normalizedDistance, {
+            await (await this.resolveAdapter()).createCollection(collectionName, vectorSize, normalizedDistance, {
               optimizerConfig: {
                 defaultSegmentNumber,
               },
@@ -165,11 +164,11 @@ export class QdrantRepositoryImpl implements QdrantRepository {
 
 
   async deleteCollection(collectionName: string): Promise<void> {
-    await this.qdrantAdapter.deleteCollection(collectionName);
+    await (await this.resolveAdapter()).deleteCollection(collectionName);
   }
 
   async collectionExists(collectionName: string): Promise<boolean> {
-    return await this.qdrantAdapter.collectionExists(collectionName);
+    return await (await this.resolveAdapter()).collectionExists(collectionName);
   }
 
   async addPoints(collectionName: string, points: QdrantPoint[]): Promise<void> {
@@ -183,7 +182,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
       const hasMultiVector = points.some((p) => p.vector.bm25 !== undefined);
       this.logger.info(`准备存储 ${vectorPoints.length} 个点 (${hasMultiVector ? '多向量' : '单向量'}格式)`);
       
-      await this.qdrantAdapter.upsertPoints(collectionName, vectorPoints);
+      await (await this.resolveAdapter()).upsertPoints(collectionName, vectorPoints);
     });
   }
 
@@ -203,7 +202,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
         this.logger.info(`搜索过滤器: ${JSON.stringify(qdrantFilter)}`);
         
         // 调用适配器的 searchPoints 方法执行向量搜索
-        const searchResults = await this.qdrantAdapter.searchPoints(collectionName, {
+        const searchResults = await (await this.resolveAdapter()).searchPoints(collectionName, {
           vector: queryVector,
           vectorName: 'default',
           limit: topK,
@@ -225,6 +224,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
         return retrievedPoints;
       } catch (error) {
         this.logger.error(`语义搜索失败: ${error}`);
+        if (error instanceof QdrantRuntimeUnavailableError) throw error;
         return [];
       }
     });
@@ -243,7 +243,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
 
         const qdrantFilter = buildQdrantFilter(filter);
 
-        const searchResults = await this.qdrantAdapter.searchPoints(collectionName, {
+        const searchResults = await (await this.resolveAdapter()).searchPoints(collectionName, {
           vector: { name: 'bm25', vector: sparseVector },
           limit: topK,
           filter: qdrantFilter
@@ -259,6 +259,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
         return retrievedPoints;
       } catch (error) {
         this.logger.error(`关键词搜索失败: ${String(error)}`);
+        if (error instanceof QdrantRuntimeUnavailableError) throw error;
         return [];
       }
     });
@@ -307,7 +308,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
   async deletePointsByDocId(collectionName: string, docId: string): Promise<void> {
     await this.runWithCollectionAccess(collectionName, 'shared', async () => {
       // 🔥 修复：使用正确的方法名和类型转换
-      await this.qdrantAdapter.deleteByDocId(collectionName, docId);
+      await (await this.resolveAdapter()).deleteByDocId(collectionName, docId);
     });
   }
 
@@ -318,20 +319,20 @@ export class QdrantRepositoryImpl implements QdrantRepository {
         // 明确无条件删除风险极高：这里要求调用方给出过滤条件
         throw new Error('deletePointsByFilter 需要至少一个过滤条件，拒绝执行无条件删除');
       }
-      await this.qdrantAdapter.deletePoints(collectionName, { filter: qdrantFilter });
+      await (await this.resolveAdapter()).deletePoints(collectionName, { filter: qdrantFilter });
     });
   }
 
   async deletePointsByIds(collectionName: string, pointIds: string[]): Promise<void> {
     if (pointIds.length === 0) return;
     await this.runWithCollectionAccess(collectionName, 'shared', async () => {
-      await this.qdrantAdapter.deletePoints(collectionName, { points: pointIds });
+      await (await this.resolveAdapter()).deletePoints(collectionName, { points: pointIds });
     });
   }
 
   async countPointsByDocId(collectionName: string, docId: string): Promise<number> {
     return await this.runWithCollectionAccess(collectionName, 'shared', async () => {
-      return await this.qdrantAdapter.countPoints(collectionName, {
+      return await (await this.resolveAdapter()).countPoints(collectionName, {
         exact: true,
         filter: {
           must: [
@@ -349,7 +350,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
     if (pointIds.length === 0) return 0;
     return await this.runWithCollectionAccess(collectionName, 'shared', async () => {
       const expectedIds = new Set(pointIds);
-      const points = await this.qdrantAdapter.retrievePoints(collectionName, Array.from(expectedIds));
+      const points = await (await this.resolveAdapter()).retrievePoints(collectionName, Array.from(expectedIds));
       return points.filter((point) => expectedIds.has(point.id)).length;
     });
   }
@@ -368,7 +369,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
      *
      * 因此这里不再吞错：让上层决定是重试/跳过，而不是把未知状态降级成 0。
      */
-    const info = await this.qdrantAdapter.getCollection(collectionName);
+    const info = await (await this.resolveAdapter()).getCollection(collectionName);
     return {
       vectors_count: info.vectors_count ?? 0,
       indexed_vectors_count: info.indexed_vectors_count ?? 0,
@@ -393,7 +394,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
       logger: this.logger,
       getCollectionInfo: async () => await this.getCollectionInfo(collectionName),
       updateCollection: async (updateConfig) => {
-        await this.qdrantAdapter.updateCollection(collectionName, updateConfig);
+        await (await this.resolveAdapter()).updateCollection(collectionName, updateConfig);
       },
     });
   }
@@ -427,9 +428,9 @@ export class QdrantRepositoryImpl implements QdrantRepository {
           };
         },
         scrollPointsPageWithVector: async (limit, offset) =>
-          await this.qdrantAdapter.scrollPointsPageWithVector(collectionName, limit, offset),
+          await (await this.resolveAdapter()).scrollPointsPageWithVector(collectionName, limit, offset),
         deleteCollection: async () => {
-          await this.qdrantAdapter.deleteCollection(collectionName);
+          await (await this.resolveAdapter()).deleteCollection(collectionName);
         },
         createCollection: async ({ vectorSize, defaultSegmentNumber }) => {
           const vectorConfig: MultiVectorCollectionConfig = {
@@ -439,14 +440,14 @@ export class QdrantRepositoryImpl implements QdrantRepository {
             },
             bm25: {},
           };
-          await this.qdrantAdapter.createCollection(collectionName, vectorConfig, 'Cosine', {
+          await (await this.resolveAdapter()).createCollection(collectionName, vectorConfig, 'Cosine', {
             optimizerConfig: {
               defaultSegmentNumber,
             },
           });
         },
         upsertPoints: async (points) => {
-          await this.qdrantAdapter.upsertPoints(
+          await (await this.resolveAdapter()).upsertPoints(
             collectionName,
             points.map((point) => ({
               id: point.id,
@@ -456,7 +457,7 @@ export class QdrantRepositoryImpl implements QdrantRepository {
           );
         },
         countPoints: async () =>
-          await this.qdrantAdapter.countPoints(collectionName, {
+          await (await this.resolveAdapter()).countPoints(collectionName, {
             exact: true,
           }),
       });
