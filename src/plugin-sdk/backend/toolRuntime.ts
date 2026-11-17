@@ -11,13 +11,15 @@ import type {
   RunRegisteredSubagentParams,
   RunRegisteredSubagentResult,
   RunRegisteredSubagentsInParallelParams,
-} from 'src/tools/agent_control/subrun/shared';
+} from '@linnya/plugin-host-contract/backend/toolRuntime';
 import type {
   PluginToolContext,
 } from '@linnya/plugin-host-contract/backend/toolRuntime';
+export { createUntrustedContentBoundaryToken, wrapUntrustedContentBoundary } from '../../shared/ai-observation/functions/untrustedContentBoundary';
 
 export {
   BaseTool,
+  CommonParameterTypes,
 } from 'src/tools/types';
 export type {
   PluginBaseToolConstructor,
@@ -40,13 +42,19 @@ export type {
   RunRegisteredSubagentParams,
   RunRegisteredSubagentResult,
   RunRegisteredSubagentsInParallelParams,
-} from 'src/tools/agent_control/subrun/shared';
+} from '@linnya/plugin-host-contract/backend/toolRuntime';
 
 export async function runRegisteredSubagent(
   params: RunRegisteredSubagentParams,
 ): Promise<RunRegisteredSubagentResult> {
   const runner = await import('src/tools/agent_control/subrun/shared');
-  return runner.runRegisteredSubagent(params);
+  const { runWithLlmAuditContext } = await import('src/domains/audit');
+  // 调用标签留在 Host；child invoker 仍独立建立 run/parent 身份和审计队列。
+  return runWithLlmAuditContext({
+    subrunId: params.subrunId,
+    parentToolCallId: params.context.parentToolCallId,
+    source: params.subrunSource,
+  }, () => runner.runRegisteredSubagent(params));
 }
 
 export async function runRegisteredSubagentsInParallel(
