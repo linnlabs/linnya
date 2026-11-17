@@ -110,8 +110,7 @@
  * - 处理结果选择与插入
  */
 
-import { ref, computed, watch, nextTick } from 'vue'
-import { useDebounceFn } from '@vueuse/core'
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { useCitationPanelStore } from '../../store/useCitationPanelStore'
 import { searchInMultipleKbs, type CitationKbSearchItem } from '../../services/citationKbSearchService'
 import { BaseButton, CustomCheckbox } from '@linnya/renderer-ui'
@@ -121,6 +120,7 @@ import {
   formatCitationPageLabel,
 } from '../../functions/citationPresentation'
 
+const props = defineProps<{ projectId: string }>()
 const emit = defineEmits<{
   insert: [items: CitationKbSearchItem[]]
 }>()
@@ -168,6 +168,14 @@ watch(localQuery, (query) => {
 })
 
 // ============ 搜索处理 ============
+let searchController: AbortController | null = null
+function cancelSearch() {
+  searchController?.abort()
+  searchController = null
+}
+onUnmounted(cancelSearch)
+watch(() => store.visible, visible => { if (!visible) cancelSearch() })
+
 
 /**
  * 实际执行搜索（点击按钮/回车等“显式触发”应当立即执行，不做防抖）
@@ -175,6 +183,10 @@ watch(localQuery, (query) => {
 async function runSearch() {
   if (!canSearch.value) return
 
+  cancelSearch()
+  const controller = new AbortController()
+  searchController = controller
+  const projectId = props.projectId
   store.setKbLoading(true)
   store.clearKbErrors()
   store.clearKbResultSelection()
@@ -187,7 +199,9 @@ async function runSearch() {
     }
 
     const result = await searchInMultipleKbs({
-      kbIds: store.selectedKbIds,
+      projectId,
+      signal: controller.signal,
+      kbIds: [...store.selectedKbIds],
       kbIdToName,
       query: localQuery.value.trim(),
       editorMessage,
@@ -195,6 +209,7 @@ async function runSearch() {
       topKFinal: 15,
     })
 
+    controller.signal.throwIfAborted()
     store.setKbResults(result.results)
 
     // 设置错误信息
@@ -202,19 +217,16 @@ async function runSearch() {
       store.setKbError(kbId, error)
     }
   } catch (error) {
+    if (controller.signal.aborted) return
     console.error('[CitationKbTab] 搜索失败:', error)
     store.setKbResults([])
   } finally {
-    store.setKbLoading(false)
+    if (searchController === controller) {
+      searchController = null
+      store.setKbLoading(false)
+    }
   }
 }
-
-/**
- * 防抖版本（预留给“输入即搜”等场景；当前点击按钮不走防抖）
- */
-const debouncedSearch = useDebounceFn(async () => {
-  await runSearch()
-}, 300)
 
 function handleSearch() {
   if (canSearch.value) {
