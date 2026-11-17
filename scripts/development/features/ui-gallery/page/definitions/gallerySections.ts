@@ -56,6 +56,11 @@ export const GALLERY_SECTIONS = [
     description: '只用 Renderer UI 组件拼成的设置表单，用来看控件放在一起时的整体气质；不是真实设置页。',
   },
   {
+    id: 'candidates',
+    label: '候选组件（计划中）',
+    description: '计划进入 renderer-ui 的组件原型：侧栏 Agent 运行状态、徽标、空状态、折叠区与加载。原型在画廊 prototypes/，还不是包内组件。',
+  },
+  {
     id: 'list-example',
     label: '组合：列表与卡片',
     description: '按设计规范 9.4、9.6 拼出的列表行与卡片，用来看层级与留白；不是真实侧栏。',
