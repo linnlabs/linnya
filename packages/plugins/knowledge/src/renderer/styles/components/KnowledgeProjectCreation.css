@@ -28,6 +28,6 @@
   pointer-events: none;
 }
 
-.create-project-content .select-chevron.is-open {
+.create-project-content .select-chevron.kb-select-chevron--open {
   transform: translateY(-50%) rotate(180deg);
 }

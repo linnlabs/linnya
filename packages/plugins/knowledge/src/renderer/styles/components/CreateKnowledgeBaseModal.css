@@ -134,6 +134,6 @@
   pointer-events: none;
 }
 
-.create-kb-content .select-chevron.is-open {
+.create-kb-content .select-chevron.kb-select-chevron--open {
   transform: translateY(-50%) rotate(180deg);
 }

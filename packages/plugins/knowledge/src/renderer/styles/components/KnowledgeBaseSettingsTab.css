@@ -94,17 +94,6 @@
   border-color: var(--color-accent);
 }
 
-.kb-settings-tab .control-area > .setting-description,
-.kb-settings-tab .setting-description {
-  margin-left: auto;
-  margin-top: var(--space-2-5);
-  max-width: 350px;
-  text-align: right;
-  font-size: var(--font-size-footnote);
-  color: var(--color-text-placeholder);
-  opacity: 1;
-}
-
 .kb-settings-tab .section-divider-bottom {
   border-bottom: 1px solid var(--color-border-default);
   padding-bottom: var(--space-6);

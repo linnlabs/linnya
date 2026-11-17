@@ -44,7 +44,7 @@
   padding: var(--space-1) 0;
 }
 
-.config-tab .option-label {
+.config-tab .kb-parsing-option-label {
   flex: 1;
 }
 

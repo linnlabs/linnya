@@ -15,7 +15,7 @@
         
         <div class="parsing-options">
           <div class="parsing-option-item">
-            <div class="option-label">
+            <div class="kb-parsing-option-label">
               <span class="option-title">
                 {{ knowledgeBaseMessage('knowledgeBase.parsing.graph.title') }}
                 <span class="scope-hint">{{ knowledgeBaseMessage('knowledgeBase.parsing.scope.current') }}</span>
@@ -37,7 +37,7 @@
           </div>
 
           <div class="parsing-option-item">
-            <div class="option-label">
+            <div class="kb-parsing-option-label">
               <span class="option-title">
                 {{ knowledgeBaseMessage('knowledgeBase.parsing.pdfStrategy.title') }}
                 <span class="scope-hint">{{ knowledgeBaseMessage('knowledgeBase.parsing.scope.all') }}</span>
