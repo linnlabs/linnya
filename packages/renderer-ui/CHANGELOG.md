@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.6.1 - 2026-11-17
+
+- 按视觉平衡调整三枚图标的路径，组件名、属性与 `data-icon` 不变：`SidebarIcon` 方框中心线由 13 放到 14（圆角 2.5），与同排的知识库、设置图标一样大；`BulletListIcon` 圆点半径由 1 放到 1.5，行位不变，与 `NumberedListIcon` 等重；`UnderlineIcon` 的 U 由 9×13 放到 10×14，与 `HeadingIcon` 同高。现有 `^3.0.0` 插件保持兼容。
+
 ## 3.6.0 - 2026-11-17
 
 - 弃用 `BaseButton` 的 `soft` variant：删除它的样式（渐变浅底、描边与悬停投影），传入 `soft` 时按 `tint` 渲染，下一个 major 删除该类型成员。`ActionButtons` 的 `primaryVariant="accent"` 改为对应 `tint`。`tint` 的用途扩展为与 `primary` 并列、推荐但不抢主操作的动作。props 与类型保持兼容，现有 `^3.0.0` 插件无需修改；新代码改用 `tint`。
