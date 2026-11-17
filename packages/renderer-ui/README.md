@@ -11,6 +11,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 - [设计规范](./docs/design.md)：Linnya 的视觉语言——表面与文字层级、功能色、角色字阶、间距、圆角、投影、动效、交互状态与图标怎样取值，以及刻度棘轮门禁。新增界面或修改视觉前先读。
 - [使用指南](./docs/usage-guide.md)：各公开组件的消费示例、状态所有权与扩展面。
 - [版本与装配检查表](./docs/release-checklist.md)：判断版本级别、插件兼容 range 与发布验证。
+- [组件画廊](../../scripts/development/features/ui-gallery/README.md)：`pnpm -s ui-gallery` 本地查看全部公开组件、token 实测值与三套主题，改视觉前后对比用。
 
 本 README 记录包的边界、公开入口和组件合同；CSS 归属、选择器命名和样式装载等 Host 工程规则见
 [Renderer 样式指南](../../apps/renderer/app/styles/guide/style-guide.md)。
