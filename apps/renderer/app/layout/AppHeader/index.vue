@@ -26,8 +26,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watchEffect } from 'vue';
 import { useUIStore } from '@/shared/stores/ui';
+import { computeHeaderSidebarMinWidth } from '@/app/layout/functions/headerPaneGeometry';
 import HeaderLeftSection from './HeaderLeftSection.vue';
 import HeaderRightSection from './HeaderRightSection.vue';
 
@@ -40,6 +41,14 @@ const isWindowMaximized = ref(false);
 // 左侧更新入口的实际宽度：侧栏收起时主区域标题要让开它。
 const updateEntryWidth = ref(0);
 let cleanupListener: (() => void) | null = null;
+
+// 侧栏最窄时也要放下收成图标的更新入口；窗口按钮占位随全屏变化，下限跟着窗口状态走。
+watchEffect(() => {
+  uiStore.setSidebarMinWidth(computeHeaderSidebarMinWidth({
+    isMac: isMac.value,
+    isWindowMaximized: isWindowMaximized.value,
+  }));
+});
 
 onMounted(() => {
   // 检测是否为 macOS

@@ -25,10 +25,10 @@ export const SIDEBAR_WIDTH_LIMITS = {
   max: 500,
 } as const;
 
-function clampSidebarWidth(width: number): number {
+function clampSidebarWidth(width: number, minWidth: number): number {
   return Math.min(
     SIDEBAR_WIDTH_LIMITS.max,
-    Math.max(SIDEBAR_WIDTH_LIMITS.min, Math.round(width)),
+    Math.max(minWidth, Math.round(width)),
   );
 }
 
@@ -62,6 +62,8 @@ export const useUIStore = defineStore('ui', {
     debugPanelVisible: false,
     // ++ 在 State 中添加 sidebarWidth 状态 ++
     sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
+    // 当前生效的侧栏下限：基础下限与窗口外观（如 macOS 窗口按钮占位）要求中较大者；随窗口状态变化，不持久化。
+    sidebarMinWidth: SIDEBAR_WIDTH_LIMITS.min as number,
     // 手势生命周期只用于协调布局，不属于可持久化偏好。
     sidebarResizing: false,
     outlineSidebarWidth: 240, // 默认大纲侧边栏宽度
@@ -194,7 +196,13 @@ export const useUIStore = defineStore('ui', {
 
     // ++ 在 Actions 中添加 setSidebarWidth 方法 ++
     setSidebarWidth(newWidth: number) {
-      this.sidebarWidth = clampSidebarWidth(newWidth);
+      this.sidebarWidth = clampSidebarWidth(newWidth, this.sidebarMinWidth);
+    },
+
+    /** 布局层按标题栏几何写入所需下限；当前宽度（含恢复的偏好）低于新下限时抬到下限。 */
+    setSidebarMinWidth(requiredWidth: number) {
+      this.sidebarMinWidth = clampSidebarWidth(requiredWidth, SIDEBAR_WIDTH_LIMITS.min);
+      this.sidebarWidth = clampSidebarWidth(this.sidebarWidth, this.sidebarMinWidth);
     },
 
     setSidebarResizing(resizing: boolean) {
@@ -202,7 +210,7 @@ export const useUIStore = defineStore('ui', {
     },
 
     normalizeSidebarWidth() {
-      this.sidebarWidth = clampSidebarWidth(this.sidebarWidth);
+      this.sidebarWidth = clampSidebarWidth(this.sidebarWidth, this.sidebarMinWidth);
     },
 
     // Drag and Drop actions
