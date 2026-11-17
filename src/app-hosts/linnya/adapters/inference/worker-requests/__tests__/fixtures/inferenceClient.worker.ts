@@ -1,3 +1,4 @@
+import { EmbeddingFailure } from '@plugin/backend/inferenceFailures';
 import { parentPort, workerData } from 'node:worker_threads';
 import { createPluginWorkerInferencePort } from 'src/plugin-sdk/backend/worker/inferenceRuntime';
 
@@ -16,5 +17,9 @@ try {
   }, options: { onProgress: value => progress.push(value.state) } });
   parentPort?.postMessage({ type: 'completed', result: { embedding, text, profile, ocr, progress } });
 } catch (error) {
-  parentPort?.postMessage({ type: 'failed', error: error instanceof Error ? error.message : String(error) });
+  if (error instanceof EmbeddingFailure) {
+    parentPort?.postMessage({ type: 'completed', result: { failure: { kind: error.kind, code: error.code, retryable: error.retryable } } });
+  } else {
+    parentPort?.postMessage({ type: 'failed', error: error instanceof Error ? error.message : String(error) });
+  }
 } finally { inference.dispose(); }

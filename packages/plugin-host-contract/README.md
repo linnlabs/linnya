@@ -231,3 +231,5 @@ Worker 不继承主线程临时安装的 Module._load 解析器，不能将此�
 真实线程与 bundle 依赖验收见 Host inference worker bridge 集成测试；目录/凭据实现不得进入该客户端产物。
 
 `backend/loggingRuntime` 只提供既有 Logger 的四个写入方法；Worker 必须使用内联 `backend/worker/loggingRuntime`，自动经既有诊断 envelope 转发。插件不能设置级别、文件或 sink。详见 [诊断日志 owner](../../src/shared/logging/README.md)。
+
+`backend/inferenceFailures` 只重导 Host 原 EmbeddingFailure/RerankingFailure 类，不带 Provider 或目录实现。跨 Worker 依旧先走现有结构化错误消息再在本 isolate 重建，不能直接传递异常 prototype。PDF 页数限制函数由 documentParsingRuntime 薄重导原 OCR owner。

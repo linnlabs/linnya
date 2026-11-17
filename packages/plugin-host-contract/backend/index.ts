@@ -42,3 +42,4 @@ export type * from './worker/databaseRuntime';
 
 export type * from './documentParsingRuntime';
 export type * from './loggingRuntime';
+export type * from './inferenceFailures';
