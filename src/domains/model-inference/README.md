@@ -21,7 +21,8 @@
 - `features/text-generation/`：一次无工具文本/视觉生成的 request、result、failure 与 port；
 - `features/embedding/`：向量生成合同、typed failure 与批次顺序、数量、维度和有限值不变量；
 - `features/reranking/`：重排合同、typed failure 与 `originalIndex` 身份、分数不变量；
-- `index.ts`：Parser、Knowledge Base 和 Graph 等调用方唯一允许依赖的公开入口。
+- `index.ts`：推理 port、类型与结果校验的公开入口。
+- `failures.ts`：只需要错误分类的业务调用方和内联 Worker 使用的窄公开入口，仅重导原有三类错误，不加载校验流程；同一进程内保持原 `instanceof` 身份。
 
 本 domain 不读取 Model Catalog，不创建 Provider SDK 实例，也不访问 credential。App Host 在 `src/app-hosts/linnya/adapters/inference/` 实现这些 port；retry、fallback、索引重建和并发属于调用方业务流程，每次 Host 调用只执行一个 attempt。
 

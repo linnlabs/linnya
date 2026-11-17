@@ -5,7 +5,7 @@ import {
   PdfLocalConversionError,
   type OcrErrorKind,
 } from '../definitions/ocrErrors';
-import { TextGenerationFailure } from 'src/domains/model-inference';
+import { TextGenerationFailure } from 'src/domains/model-inference/failures';
 import { OcrProviderError } from 'src/domains/document-ocr';
 
 export interface OcrErrorClassification {
