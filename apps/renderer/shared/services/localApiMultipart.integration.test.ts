@@ -36,14 +36,14 @@ it('发送真实multipart、认证与进度，正式响应交给调用方解码'
     contentType = request.headers['content-type'] ?? '';
     request.setEncoding('utf8');
     request.on('data', chunk => { received += chunk; });
-    request.on('end', () => { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ taskId: 'one' })); });
+    request.on('end', () => { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify({ id: 'one' })); });
   });
   const client = await loadClient(port);
   const formData = new FormData();
   formData.append('kbId', 'kb-one');
   formData.append('file', new File(['synthetic source'], 'sample.md', { type: 'text/markdown' }));
   const progress = vi.fn();
-  await expect(client.apiMultipartPost('/api/v1/plugins/knowledge/documents/upload', formData, { onProgress: progress })).resolves.toEqual({ taskId: 'one' });
+  await expect(client.apiMultipartPost('/api/v1/plugins/knowledge/documents/upload', formData, { onProgress: progress })).resolves.toEqual({ id: 'one' });
   expect(contentType).toContain('multipart/form-data; boundary=');
   expect(received).toContain('synthetic source');
   expect(received).toContain('name="kbId"');

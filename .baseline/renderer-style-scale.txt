@@ -79,10 +79,10 @@
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/features/revision/RevisionOverlayLayer.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/features/table-ai-mode/TableAiComposerContext.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/styles/layout/block-layout.css
-1	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/CreateKnowledgeBaseModal.css
-1	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/FileUploadTab.css
-4	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseDetail.css
-1	SCALE-05-spacing	apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseList.css
+1	SCALE-05-spacing	packages/plugins/knowledge/src/renderer/styles/components/CreateKnowledgeBaseModal.css
+1	SCALE-05-spacing	packages/plugins/knowledge/src/renderer/styles/components/FileUploadTab.css
+4	SCALE-05-spacing	packages/plugins/knowledge/src/renderer/styles/components/KnowledgeBaseDetail.css
+1	SCALE-05-spacing	packages/plugins/knowledge/src/renderer/styles/components/KnowledgeBaseList.css
 1	SCALE-05-spacing	apps/renderer/domains/model-configuration/features/model-catalog/ui/ModelDetailsModal.css
 1	SCALE-03-line-height	apps/renderer/domains/plugin-store/styles/components/PluginStoreView.css
 9	SCALE-05-spacing	apps/renderer/domains/plugin-store/styles/components/PluginStoreView.css
@@ -90,7 +90,7 @@
 2	SCALE-05-spacing	apps/renderer/domains/settings/styles/components/StorageSpaceSettingsTab.css
 4	SCALE-05-spacing	apps/renderer/domains/settings/styles/kit/settings-kit.css
 4	SCALE-05-spacing	apps/renderer/domains/settings/styles/setting-content.css
-1	SCALE-05-spacing	apps/renderer/domains/workspace/styles/components/ProjectKbSettingsPanel.css
+1	SCALE-05-spacing	packages/plugins/knowledge/src/renderer/styles/components/KnowledgeProjectAssociation.css
 1	SCALE-05-spacing	apps/renderer/domains/workspace/styles/components/sidebar/CreateProjectModal.css
 1	SCALE-06-z-index	apps/renderer/domains/workspace/styles/components/sidebar/ProjectListView.css
 1	SCALE-05-spacing	apps/renderer/domains/workspace/styles/components/WorkspaceSidebar.css

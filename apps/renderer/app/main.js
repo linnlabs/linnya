@@ -12,7 +12,6 @@ import '../domains/settings/styles/index.css'
 import '../domains/skills/styles/index.css'
 import '../domains/conversation/styles/index.css'
 import '../domains/workspace/styles/index.css'
-import '../domains/knowledgebase/styles/index.css'
 import '../domains/plugin-store/styles/index.css'
 import '../domains/editor/features/floating-toolbar/styles/FloatingToolbar.css'
 import '../domains/editor/features/floating-toolbar/styles/TextSelectionToolbar.css'
@@ -44,8 +43,6 @@ import { ensureUpdateLocalizationRegistered } from './update/orchestration/ensur
 import { ensureSystemLocalizationRegistered } from './system/orchestration/ensureSystemLocalizationRegistered'
 import { ensurePluginStoreLocalizationRegistered } from '../domains/plugin-store/orchestration/ensurePluginStoreLocalizationRegistered'
 import { ensureWorkspaceLocalizationRegistered } from '../domains/workspace/orchestration/ensureWorkspaceLocalizationRegistered'
-import { ensureKnowledgeBaseLocalizationRegistered } from '../domains/knowledgebase/orchestration/ensureKnowledgeBaseLocalizationRegistered'
-import { registerKnowledgeBaseModelConfigurationPorts } from '../domains/knowledgebase/registrations/registerModelConfigurationPorts'
 import { ensureConversationLocalizationRegistered } from '../domains/conversation/registrations/ensureConversationLocalizationRegistered'
 import { ensureConversationObservabilityRegistered } from '../domains/conversation/registrations/ensureConversationObservabilityRegistered'
 import { ensureEditorLocalizationRegistered } from '../domains/editor/orchestration/ensureEditorLocalizationRegistered'
@@ -111,8 +108,6 @@ if (import.meta.env.DEV) {
 }
 ensurePluginStoreLocalizationRegistered()
 ensureWorkspaceLocalizationRegistered()
-ensureKnowledgeBaseLocalizationRegistered()
-registerKnowledgeBaseModelConfigurationPorts()
 ensureConversationLocalizationRegistered()
 ensureEditorLocalizationRegistered()
 ensurePluginContributionLocalizationRegistered()

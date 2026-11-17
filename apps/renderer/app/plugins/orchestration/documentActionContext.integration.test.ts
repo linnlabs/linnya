@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { createDocumentActionContext, type DocumentActionTarget } from './createDocumentActionContext';
 import { selectDocumentAction } from './selectDocumentAction';
-import { createKnowledgeDocumentActions } from '../builtin/knowledge/orchestration/knowledgeDocumentActions';
+import type { DocumentActionMenuContribution } from '../types';
 const identity = { projectId: 'project-a', documentId: 'document-a', activeDocumentType: 'editor', displayName: 'A' };
 describe('frozen document action scope', () => {
   beforeEach(() => setActivePinia(createPinia()));
@@ -13,16 +13,13 @@ describe('frozen document action scope', () => {
       readPresentation: async target => ({ documentId: target.documentId, status: 'available', nodeType: 'document', title: 'A', path: '/A.md' }),
       readActiveMarkdown: active, readPersistedMarkdown: persisted,
     });
-    const action = createKnowledgeDocumentActions(vi.fn());
-    expect(await selectDocumentAction(action.menu, 'export-markdown', context)).toBe(false);
-    expect(active).not.toHaveBeenCalled();
-    expect(await selectDocumentAction(action.menu, 'add-to-kb', context)).toBe(true);
-    expect(action.selection.value).toMatchObject({ projectId: identity.projectId,
-      documentId: identity.documentId, displayName: 'A', markdown: 'saved:document-a' });
+    const select = vi.fn();
+    const menu: DocumentActionMenuContribution = { activeDocumentType: 'editor', tooltip: 'Test', ariaLabel: 'Test', isAvailable: () => true, getOptions: () => [{ value: 'read', text: 'Read' }], select };
+    expect(await selectDocumentAction(menu, 'export-markdown', context)).toBe(false);
+    expect(select).not.toHaveBeenCalled();
+    expect(await context.readMarkdownSnapshot?.(new AbortController().signal)).toEqual({ displayName: 'A', markdown: 'saved:document-a' });
     expect(persisted).toHaveBeenCalledWith(identity);
     expect(Object.isFrozen(context)).toBe(true);
-    action.cancel();
-    expect(action.selection.value).toBeNull();
   });
   it('同一目标使用冻结的未保存快照；越界/取消拒绝，不挂出迟到弹窗', async () => {
     let complete: (() => void) | undefined;
@@ -33,11 +30,10 @@ describe('frozen document action scope', () => {
       readPresentation: async target => { await pending; return { documentId: target.documentId, status: 'available', title: 'A', nodeType: 'document', path: '/A' }; },
       readActiveMarkdown: () => markdown, readPersistedMarkdown: persisted,
     });
-    const action = createKnowledgeDocumentActions(vi.fn());
-    const loading = action.menu.select('add-to-kb', context);
+    const loading = context.readMarkdownSnapshot?.(new AbortController().signal);
     markdown = 'unsaved:B';
-    complete?.(); await loading;
-    expect(action.selection.value?.markdown).toBe('unsaved:A');
+    complete?.();
+    expect(await loading).toMatchObject({ markdown: 'unsaved:A' });
     expect(persisted).not.toHaveBeenCalled();
     const controller = new AbortController(); controller.abort();
     await expect(context.readMarkdownSnapshot?.(controller.signal)).rejects.toThrow();
@@ -50,22 +46,5 @@ describe('frozen document action scope', () => {
     expect(createDocumentActionContext({ ...identity, activeDocumentType: 'slides' }, {
       readPresentation: vi.fn(), readActiveMarkdown: vi.fn(), readPersistedMarkdown: vi.fn(),
     }).readMarkdownSnapshot).toBeUndefined();
-  });
-  it('项目切换或插件停用取消读取，不产生迟到选择或未处理拒绝', async () => {
-    let complete: (() => void) | undefined;
-    const pending = new Promise<void>(resolve => { complete = resolve; });
-    const onError = vi.fn();
-    const action = createKnowledgeDocumentActions(onError);
-    const context = createDocumentActionContext(identity, {
-      readPresentation: async target => { await pending; return { documentId: target.documentId,
-        status: 'available', title: 'A', nodeType: 'document', path: '/A' }; },
-      readActiveMarkdown: () => null, readPersistedMarkdown: vi.fn(),
-    });
-    const reading = action.menu.select('add-to-kb', context);
-    action.cancel();
-    complete?.();
-    await reading;
-    expect(action.selection.value).toBeNull();
-    expect(onError).not.toHaveBeenCalled();
   });
 });

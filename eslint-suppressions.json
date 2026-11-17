@@ -1144,21 +1144,6 @@
       "count": 11
     }
   },
-  "apps/renderer/domains/knowledgebase/features/upload-queue/orchestration/polling.js": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/knowledgebase/orchestration/createKnowledgeBaseRuntime.js": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/knowledgebase/services/progressAnimator.js": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
   "apps/renderer/domains/model-configuration/features/direct-provider-onboarding/ui/DirectProviderOnboardingForm.vue": {
     "no-restricted-properties": {
       "count": 1

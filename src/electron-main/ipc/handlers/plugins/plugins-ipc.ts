@@ -1,3 +1,5 @@
+import { mapTrustedRendererApplicationSurfaces } from '../../../../app-hosts/linnya/plugin-registry/rendererApplicationSurfaceTrust';
+import { getRegisteredBackendPluginDirectory } from '../../../../app-hosts/linnya/plugin-registry/builtin';
 import type { BackendRuntimeOwner } from '../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import type {
   BackendRendererIpcStyleRegistrarPort,
@@ -206,7 +208,13 @@ export async function registerPluginsHandlers(input: {
       });
       return {
         success: true,
-        data: entries,
+        data: mapTrustedRendererApplicationSurfaces(entries, {
+          packaged: input.packaged,
+          workspaceRoot: process.cwd(),
+          backendDirectDirs: input.packaged ? [] : readBackendDirectPluginDirsFromEnv(),
+          bundledPluginRoot: process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT,
+          getRegisteredPluginDirectory: getRegisteredBackendPluginDirectory,
+        }),
       };
     } catch (error) {
       logger.error('[plugins:renderer-entries] failed:', error);

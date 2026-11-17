@@ -20,6 +20,8 @@ export interface RendererPluginEntry {
   readonly rendererUiRange: string;
   readonly entryUrl: string;
   readonly cssUrls: readonly string[];
+  /** 仅 Host 产品组合根填写，不能来自插件 manifest。 */
+  readonly applicationSurfaceSlot?: 'knowledge-base';
   readonly sourceKind?: 'direct' | 'official-source' | 'active';
   readonly pluginDir?: string;
   readonly entryPath?: string;

@@ -110,7 +110,7 @@ export const TASK_NAMING_ALLOWANCES: readonly TaskNamingAllowance[] = [
       '知识库 HTTP/IPC task 协议本轮排除；Worker 内部只保留现有 task ID 与 IPC payload 字段。',
     removeAfter: '独立知识库 job 协议迁移',
     allows: occurrence =>
-      under('src/features/knowledge-base', 'apps/renderer/domains/knowledgebase')(occurrence) ||
+      under('src/features/knowledge-base', 'packages/plugins/knowledge/src')(occurrence) ||
       isKnowledgeWorkerExternalTaskProtocol(occurrence) ||
       inFiles(
         'src/electron-main/ipc/handlers/knowledge-base/knowledge-base-ipc.ts',

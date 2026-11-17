@@ -79,7 +79,7 @@
     <component
       v-if="applicationSurface?.contribution.globalModalComponent"
       :is="applicationSurface.contribution.globalModalComponent"
-      :key="applicationSurface.pluginId"
+      :key="`${applicationSurface.pluginId}:${navigationScope.currentProjectId ?? 'linnya-assistant'}`"
     />
 
     <ProjectKnowledgeBaseModal
