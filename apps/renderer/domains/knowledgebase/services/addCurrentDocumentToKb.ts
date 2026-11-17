@@ -10,6 +10,7 @@
  */
 
 import { createMarkdownSerializer } from '../../../shared/utils/markdownSerializer';
+import { knowledgeMarkdownFilename } from '../functions/knowledgeMarkdownFilename';
 import type { Editor } from '@tiptap/core';
 import type { KnowledgeBaseMessageResolver } from '../definitions/knowledgeBaseMessages';
 
@@ -43,28 +44,6 @@ export type AddDocumentToKbResult =
       success: false;
       error: string;
     };
-
-/**
- * 文件名清洗：移除 Windows/macOS 非法字符，规避结尾点/空格
- *
- * 中文说明：
- * - 与 batchExportService.ts 的 sanitizeFileBaseName 保持一致
- * - 即使这里不落盘，也让语义一致，避免后端处理时出现意外
- */
-function sanitizeFileBaseName(input: string): string {
-  const trimmed = input.trim();
-  const replaced = trimmed.replace(/[\\/:*?"<>|]/g, '_');
-  const noTrailing = replaced.replace(/[.\s]+$/g, '');
-  return noTrailing.length > 0 ? noTrailing : 'Untitled';
-}
-
-/**
- * 确保文件名以 .md 结尾
- */
-function withMdExtension(baseName: string): string {
-  const clean = baseName.replace(/\.[^/.]+$/u, '');
-  return `${clean}.md`;
-}
 
 /**
  * 将当前编辑器内容序列化为 Markdown
@@ -113,8 +92,7 @@ export async function addCurrentDocumentToKb(
     }
 
     // 2. 构造文件名
-    const safeName = sanitizeFileBaseName(documentName || message('knowledgeBase.addTo.untitledDocument'));
-    const fileName = withMdExtension(safeName);
+    const fileName = knowledgeMarkdownFilename(documentName || message('knowledgeBase.addTo.untitledDocument'));
 
     // 3. 构造 File 对象
     const file = new File([markdown], fileName, { type: 'text/markdown' });

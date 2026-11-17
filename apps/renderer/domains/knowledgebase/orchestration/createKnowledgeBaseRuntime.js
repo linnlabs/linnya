@@ -22,6 +22,7 @@ export function createKnowledgeBaseRuntime(store) {
   const { knowledgeBases, documents, currentKbId, isLoading, error } = storeToRefs(store)
   let taskCounter = 0
   let hasDataLoaded = false
+  let loadingCatalog = null
   let ipcCleanup = null
   const scope = effectScope(true)
   const state = {
@@ -113,10 +114,12 @@ export function createKnowledgeBaseRuntime(store) {
   })
 
   async function ensureDataLoaded() {
-    if (!hasDataLoaded && knowledgeBases.value.length === 0) {
+    if (hasDataLoaded || knowledgeBases.value.length > 0) return
+    if (!loadingCatalog) loadingCatalog = fetchKnowledgeBases().then(() => {
+      if (error.value) throw new Error(error.value)
       hasDataLoaded = true
-      await fetchKnowledgeBases()
-    }
+    }).finally(() => { loadingCatalog = null })
+    await loadingCatalog
   }
   function updateParsingSettings(settings) {
     store.setParsingSettings(settings)
