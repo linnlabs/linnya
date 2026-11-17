@@ -11,3 +11,10 @@
 项目摘要复用 `@app/schemas` 的只读合同。关联查询不授予跨项目资料读取权限；来源读取仍由冻结的项目身份和当前关联范围校验。历史引用证据属于 Host，停用知识库不能使已有对话中的引用证据不可读。
 
 Backend 的旧领域入口在迁移期只重导出这些合同，不能另写一份近似 schema。Renderer 只能通过本包公开入口及 `@plugin/renderer/*` 使用 Host 能力。
+
+## 构建与运行边界
+
+身份和版本以 `plugin.json` 为唯一真源；代码的 builtin 标记不是应用表面授信依据，Host 只授信正式装配来源。
+本包需要同批实现公共 SDK 的 Host；manifest 的版本下限不能表示旧安装包已经具备新增接口。
+`pnpm --dir packages/plugins/knowledge run typecheck` 使用 vue-tsc 同时检查 TS 与 Vue 模板。
+原 Renderer 的 JS 模块保留原语言与声明合同，不因迁移全面重写；TypeScript strict 规则保持不变。

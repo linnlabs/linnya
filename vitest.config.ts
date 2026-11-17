@@ -70,6 +70,7 @@ export default defineConfig({
       // 与 vite.config.mjs / tsconfig.json 保持一致，renderer 集成测试直接读取仓内 Markdown 解析器源码。
       { find: /^stream-markdown-parser$/, replacement: path.resolve(import.meta.dirname, 'packages/stream-markdown-parser/src/index.ts') },
 
+      { find: /^@plugin\/knowledge\/renderer$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/knowledge/src/renderer/index.ts') },
       { find: /^@plugin\/knowledge\/shared$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/knowledge/src/shared/index.ts') },
       { find: /^@plugin\/slides\/shared$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/shared/index.ts') },
       { find: /^@plugin\/slides\/shared\/(.+)$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/shared/$1') },

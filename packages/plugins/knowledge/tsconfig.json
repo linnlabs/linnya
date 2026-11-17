@@ -16,8 +16,19 @@
       ],
       "@app/localization": [
         "packages/plugin-host-contract/renderer/localization.ts"
+      ],
+      "@linnya/foundation": [
+        "packages/foundation/src/index.ts"
+      ],
+      "@plugin/knowledge/shared": [
+        "packages/plugins/knowledge/src/shared/index.ts"
       ]
-    }
+    },
+    "allowJs": true,
+    "types": [
+      "node",
+      "vite/client"
+    ]
   },
   "include": [
     "src"
