@@ -1,7 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TextGenerationPort } from 'src/domains/model-inference';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import { PdfParser } from './PdfParser';
+
+const temporaryDirectories: string[] = [];
+afterEach(async () => { await Promise.all(temporaryDirectories.splice(0).map(directory => rm(directory, { recursive: true, force: true }))); });
 
 const mocks = vi.hoisted(() => ({
   tryQuickTextExtraction: vi.fn(),
@@ -77,11 +83,14 @@ describe('PdfParser OCR 页数限制', () => {
       error: '几何分析不可用',
     });
     mocks.getPdfPageCountCrossPlatform.mockResolvedValue(101);
+    const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'linnya-pdf-limit-'));
+    temporaryDirectories.push(temporaryDirectory);
     const parser = new PdfParser({
       textGeneration: makeTextGeneration(),
       documentOcr: makeDocumentOcr(),
       visionModelId: 'ocr-model',
       filename: 'scan.pdf',
+      temporaryDirectory,
       forceVisionMode: false,
     });
 
