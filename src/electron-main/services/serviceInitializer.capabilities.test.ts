@@ -6,6 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const graphConstruction = vi.hoisted(() => vi.fn<() => void>());
 
+// 项目只读口是独立的 Host owner；本组数据库注入不初始化应用级单例。
+vi.mock('src/plugin-sdk/backend/projectReadRuntime', () => ({
+  getPluginProjectReadPort: () => ({ get: () => undefined }),
+}));
+
 // 启动清理、插件运行资源与知识库实现都会读写本机数据目录或拉起 Worker；本组全部替换，
 // 只用临时目录里的真实数据库。
 vi.mock('./startup/startupMaintenanceRunner', () => ({
