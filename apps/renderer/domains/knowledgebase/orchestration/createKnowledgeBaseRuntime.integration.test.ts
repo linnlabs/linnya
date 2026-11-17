@@ -61,6 +61,21 @@ describe('knowledge base runtime lifecycle and data flow', () => {
     vi.useRealTimers();
   });
 
+  it('failed initial catalog load remains an error and can retry; simultaneous callers share one request', async () => {
+    const failed = deferred<Awaited<ReturnType<typeof api.getAllKnowledgeBases>>>();
+    api.getAllKnowledgeBases.mockReturnValueOnce(failed.promise);
+    runtime = useKnowledgeBase();
+    const first = runtime.ensureDataLoaded();
+    const second = runtime.ensureDataLoaded();
+    failed.reject(new Error('catalog unavailable'));
+    await expect(first).rejects.toThrow();
+    await expect(second).rejects.toThrow();
+    expect(api.getAllKnowledgeBases).toHaveBeenCalledTimes(1);
+    await runtime.ensureDataLoaded();
+    expect(api.getAllKnowledgeBases).toHaveBeenCalledTimes(2);
+    expect(runtime.knowledgeBases).toHaveLength(2);
+  });
+
   it('limits upload concurrency, replays early progress and uses the global model snapshot', async () => {
     const receipts: ReturnType<typeof deferred<Receipt>>[] = [];
     api.uploadDocument.mockImplementation(() => {
