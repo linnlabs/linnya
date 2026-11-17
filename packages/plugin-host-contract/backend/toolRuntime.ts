@@ -86,6 +86,14 @@ export type PluginBaseToolConstructor = new () => {
 export type PluginStructuredToolResult<T = unknown> = StructuredToolResult<T>;
 export type ToolContext = PluginToolContext;
 
+/** 来源正文仅作资料；复用 Host 动态边界，不让插件复制 token/转义规则。 */
+export declare function createUntrustedContentBoundaryToken(seed: string): string;
+export declare function wrapUntrustedContentBoundary(params: {
+  readonly namespace: string;
+  readonly token: string;
+  readonly body: string;
+}): string[];
+
 export interface RunRegisteredSubagentParams {
   readonly context: PluginToolContext;
   readonly promptKey: string;
@@ -107,6 +115,8 @@ export interface RunRegisteredSubagentResult {
   readonly finalAnswer: string;
   readonly lastProgress?: string;
   readonly error?: string;
+  /** 子运行最终工具的真实结构化结果；Host runner 已接纳，插件不能从历史猜测。 */
+  readonly judgeToolOutput?: string;
 }
 
 export interface RunRegisteredSubagentsInParallelParams {
