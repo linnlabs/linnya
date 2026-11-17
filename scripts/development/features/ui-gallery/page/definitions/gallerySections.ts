@@ -61,11 +61,6 @@ export const GALLERY_SECTIONS = [
     description: '计划进入 renderer-ui 的组件原型：侧栏 Agent 运行状态、徽标、空状态、折叠区与加载。原型在画廊 prototypes/，还不是包内组件。',
   },
   {
-    id: 'colors',
-    label: '颜色方向（计划中）',
-    description: '中性色、强调色、状态色三个维度的候选方向，与现状并排对比。研究用候选值，不是产品 token。',
-  },
-  {
     id: 'list-example',
     label: '组合：列表与卡片',
     description: '按设计规范 9.4、9.6 拼出的列表行与卡片，用来看层级与留白；不是真实侧栏。',

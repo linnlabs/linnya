@@ -128,7 +128,7 @@ function resetRows() {
       </GalleryRow>
     </GalleryBlock>
 
-    <GalleryBlock title="加载" note="不新增组件：7 处自写的旋转 keyframes 改用图标库已有的 LoadingIcon（自带旋转与减少动态效果处理）。Agent 运行中用 LinnyaLoadingIcon。">
+    <GalleryBlock title="加载" note="不新增组件：7 处自写的旋转 keyframes 改用图标库已有的 LoadingIcon（自带旋转与减少动态效果处理）。Agent 运行中用 Linnya 摇曳动态（LinnyaLoadingIcon thinking）。">
       <GalleryRow label="尺寸">
         <LoadingIcon class="candidates__loading candidates__loading--14" />
         <LoadingIcon class="candidates__loading candidates__loading--16" />

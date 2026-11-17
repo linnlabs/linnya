@@ -5,7 +5,7 @@ import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 
 /**
  * 候选组件原型：侧栏对话行的 Agent 运行状态。
- * - running：进行中，品牌 Linnya 加载动态；
+ * - running：进行中，Linnya 摇曳动态（LinnyaLoadingIcon thinking）；
  * - awaiting-answer：Agent 在等用户回答问题；
  * - awaiting-approval：Agent 在等用户审批命令或写入；
  * - interrupted：运行被中断，用户打开该对话后清除（查看后消失）；
@@ -29,7 +29,7 @@ const label = computed(() => (props.status === 'idle' ? '' : LABELS[props.status
 <template>
   <HoverTooltip v-if="status !== 'idle'" :text="label" placement="top">
     <span class="proto-run-status" :class="`proto-run-status--${status}`" role="img" :aria-label="label" tabindex="0">
-      <LinnyaLoadingIcon v-if="status === 'running'" class="proto-run-status__loading" activity="processing" />
+      <LinnyaLoadingIcon v-if="status === 'running'" class="proto-run-status__loading" activity="thinking" />
       <span v-else class="proto-run-status__dot" />
     </span>
   </HoverTooltip>
