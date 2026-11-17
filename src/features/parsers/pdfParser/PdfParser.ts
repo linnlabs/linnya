@@ -14,7 +14,7 @@ import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import { tryQuickTextExtraction } from './strategies/TextExtractionStrategy';
 import { tryGeometricExtraction } from './strategies/GeometricAnalysisStrategy';
 import { processWithVisionDiagnostics } from './strategies/VisionRecognitionStrategy';
-import { Logger } from '../../../shared/logger';
+import { Logger } from '../../../shared/logging/orchestration/diagnosticLogger';
 import { getPdfPageCountCrossPlatform } from './adapters/PdfParseAdapter';
 import type { PdfParseOutcome } from './definitions/pdfParseOutcome';
 import { createPdfParseDiagnostics } from './definitions/pdfParseOutcome';
