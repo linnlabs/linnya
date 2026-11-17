@@ -114,3 +114,14 @@ import Editor 文件或复制这份样式。该能力带有 Citation 业务语�
 
 Conversation 合同见 [Citation domain](../../../../../../src/domains/citation/README.md#conversation-展示链路)，Agent 文档读取
 合同见 [`src/domains/citation/features/document-read/README.md`](../../../../../../src/domains/citation/features/document-read/README.md)。
+
+## 知识库插件与历史证据
+
+新增引用检索只消费 Editor 的 `KnowledgeCitationSearchPort`。App 装配将当前项目冻结后调用
+知识库正式 IPC；列表只展示项目显式关联的库，检索由 Backend 在读取前重新校验项目范围。
+Editor 保留原有多库并发、去重、排序与部分失败展示，不导入知识库 Renderer store/service。
+关闭面板、切换项目或停用插件后，旧请求不得回写结果或选择；停用撤销检索入口，手动/Web 引用仍可用。
+当前通用插件 IPC 不提供中途取消协议，界面的 AbortSignal 只取消结果接纳，不代表上游推理已经停止。
+
+已经插入的引用快照与 Conversation 的历史 bundle 属于 Host。历史读取经独立认证 HTTP 路由，
+不依赖插件启用状态、知识库当前目录或 Qdrant。历史快照不能作为打开当前原件的授权凭证。

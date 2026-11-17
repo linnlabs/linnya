@@ -13,6 +13,7 @@
       <!-- Tab 切换 -->
       <div class="citation-tabs">
         <button
+          v-if="knowledgeAvailable"
           class="citation-tab"
           :class="{ active: store.activeTab === 'kb' }"
           @click="store.switchTab('kb')"
@@ -30,7 +31,13 @@
 
       <!-- Tab 内容 -->
       <div class="citation-tab-content">
-        <CitationKbTab v-show="store.activeTab === 'kb'" @insert="handleInsertKb" />
+        <CitationKbTab
+          v-if="knowledgeAvailable && navigationScope.currentProjectId"
+          v-show="store.activeTab === 'kb'"
+          :key="navigationScope.currentProjectId"
+          :project-id="navigationScope.currentProjectId"
+          @insert="handleInsertKb"
+        />
         <CitationWebManualTab v-show="store.activeTab === 'web'" @insert="handleInsertWeb" />
       </div>
     </div>
@@ -53,8 +60,7 @@ import { DraggablePanel } from '@linnya/renderer-ui'
 import { useCitationPanelStore } from '../store/useCitationPanelStore'
 import { useUIStore } from '@/shared/stores/ui'
 import { useNavigationScope } from '@/app/navigation'
-import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway'
-import { knowledgeBaseService } from '@/domains/knowledgebase/services/knowledgeBaseService'
+import { getKnowledgeCitationSearchPort } from '../../../ports/knowledgeCitationSearchPort'
 import { convertKbResultToCitationAttrs } from '../adapters/knowledgeBaseCitationAdapter'
 import { convertWebManualFormToCitationAttrs } from '../adapters/webCitationAdapter'
 import type { CitationKbSearchItem } from '../services/citationKbSearchService'
@@ -63,7 +69,6 @@ import type { CitationNodeAttrs } from '../types'
 import CitationKbTab from './components/CitationKbTab.vue'
 import CitationWebManualTab from './components/CitationWebManualTab.vue'
 import { useEditorLocalization } from '../../../ui/useEditorLocalization'
-import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage'
 
 const store = useCitationPanelStore()
 const uiStore = useUIStore()
@@ -72,70 +77,29 @@ const { editorMessage } = useEditorLocalization()
 
 const editor = computed(() => uiStore.getEditor())
 
-// ============ 初始化：加载当前项目关联的 KB 列表 ============
-
-async function loadProjectKbs() {
-  const projectId = navigationScope.currentProjectId
-  if (!projectId) {
-    console.warn('[CitationPanel] 无法获取当前项目 ID，KB 列表为空')
-    store.setAvailableKbs([])
-    return
-  }
-
-  try {
-    // 1. 获取项目关联的 KB ID 列表
-    const kbIdsResult = await projectKbLinksGateway.listKnowledgeBaseIdsForProject({
-      projectId,
-    })
-
-    if (kbIdsResult.success !== true) {
-      // 中文说明：OperationResult 在 success=true 的分支下不一定存在 error 字段，需要先收窄
-      const errorMessage =
-        'error' in kbIdsResult && typeof kbIdsResult.error === 'string'
-          ? kbIdsResult.error
-          : resolveCurrentEditorMessage('editor.citation.fallback.projectKbLoadFailed')
-      console.error('[CitationPanel] 获取项目关联 KB 失败:', errorMessage)
-      store.setAvailableKbs([])
-      return
-    }
-
-    const kbIds = kbIdsResult.data ?? []
-
-    if (kbIds.length === 0) {
-      store.setAvailableKbs([])
-      return
-    }
-
-    // 2. 获取所有 KB 的详情（名称）
-    const allKbsResponse = await knowledgeBaseService.getAllKnowledgeBases()
-    const allKbs = allKbsResponse.knowledge_bases || []
-
-    // 3. 过滤出当前项目关联的 KB
-    const projectKbs = allKbs
-      .filter((kb: { id: string; name: string }) => kbIds.includes(kb.id))
-      .map((kb: { id: string; name: string }) => ({
-        id: kb.id,
-        name: kb.name,
-      }))
-
-    store.setAvailableKbs(projectKbs)
-  } catch (error) {
-    console.error('[CitationPanel] 加载项目 KB 列表失败:', error)
-    store.setAvailableKbs([])
-  }
-}
-
-// 面板打开时加载 KB 列表
+// 请求身份在面板打开/项目切换时冻结，旧返回不得覆盖新范围。
+const knowledgePort = getKnowledgeCitationSearchPort()
+const knowledgeAvailable = computed(() => knowledgePort.isAvailable())
 watch(
-  () => store.visible,
-  async visible => {
-    if (visible) {
-      await loadProjectKbs()
-    } else {
-      // 面板关闭时重置状态
-      store.reset()
+  [() => store.visible, () => navigationScope.currentProjectId, knowledgeAvailable],
+  async ([visible, projectId, available], _previous, onCleanup) => {
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())
+    store.setAvailableKbs([])
+    store.reset()
+    if (!available && store.activeTab === 'kb') store.switchTab('web')
+    if (!visible || !projectId || !available) return
+    try {
+      const libraries = await knowledgePort.listProjectLibraries(projectId, controller.signal)
+      controller.signal.throwIfAborted()
+      store.setAvailableKbs(libraries)
+    } catch (error) {
+      if (controller.signal.aborted) return
+      console.error('[CitationPanel] 加载项目知识库失败:', error)
+      store.setKbError('scope', error instanceof Error ? error.message : editorMessage('editor.citation.fallback.projectKbLoadFailed'))
     }
-  }
+  },
+  { immediate: true },
 )
 
 // ============ 插入引用处理 ============

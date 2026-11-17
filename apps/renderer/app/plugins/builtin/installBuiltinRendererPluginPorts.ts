@@ -59,6 +59,9 @@ import { createToolCompactStepProjectionPort } from '../orchestration/createTool
 import { createToolPresentationProjectionPort } from '../orchestration/createToolPresentationProjectionPort';
 import { ensureMaterializedConversation } from '@/domains/conversation/services/orchestration/ensureMaterializedConversation';
 import { createConversationUserInputAdmission } from '@/domains/conversation/features/user-input-admission';
+import { readHistoricalKnowledgeSnapshot } from '@/domains/conversation/features/citation-presentation/orchestration/readHistoricalKnowledgeSnapshot';
+import { registerKnowledgeCitationSearchPort } from '@/domains/editor/ports/knowledgeCitationSearchPort';
+import { createKnowledgeCitationSearchPort } from '../orchestration/createKnowledgeCitationSearchPort';
 import { registerKnowledgeSearchHistoryPort } from '@/domains/conversation/ports/knowledgeSearchHistoryPort';
 import { orchestrateCommittedConversationTitle } from '@/domains/conversation/services/orchestration/orchestrateCommittedConversationTitle';
 
@@ -286,18 +289,8 @@ export function installBuiltinRendererPluginPorts(): void {
   });
   registerToolPresentationProjectionPort(createToolPresentationProjectionPort());
   registerToolCompactStepProjectionPort(createToolCompactStepProjectionPort());
-  registerKnowledgeSearchHistoryPort({
-    async readCitationSnapshot(request) {
-      const { knowledgeBaseService } = await import(
-        '@/domains/knowledgebase/services/knowledgeBaseService'
-      );
-      const record: unknown = await knowledgeBaseService.getCitationSnapshotBundle(
-        request.bundleId,
-        request.conversationId,
-      );
-      return record;
-    },
-  });
+  registerKnowledgeSearchHistoryPort({ readCitationSnapshot: readHistoricalKnowledgeSnapshot });
+  registerKnowledgeCitationSearchPort(createKnowledgeCitationSearchPort());
   installWorkspaceRuntimePort();
   installInteractiveToolPort();
   installComposerCommandPort();

@@ -8,43 +8,22 @@
  * - 为 CitationPanel 提供统一的搜索入口
  *
  * 设计说明：
- * - 复用 knowledgeBaseService.searchInKnowledgeBase()
+ * - 通过 Editor 窄端口消费当前项目的插件搜索候选
  * - 不重复造轮子，只做薄封装与结果收敛
  */
 
-import { knowledgeBaseService } from '@/domains/knowledgebase/services/knowledgeBaseService'
+import { getKnowledgeCitationSearchPort } from '../../../ports/knowledgeCitationSearchPort'
+import type { CitationKbSearchItem } from '../definitions/knowledgeCitationSearch'
+export type { CitationKbSearchItem } from '../definitions/knowledgeCitationSearch'
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage'
-import type { KnowledgeBaseSearchResultItem } from '@/domains/knowledgebase/services/knowledgeBaseService'
 import type { EditorMessageResolver } from '../../../definitions/editorMessages'
-
-/**
- * KB 搜索结果项（Citation 使用的最小结构）
- */
-export interface CitationKbSearchItem {
-  /** 来源知识库 ID */
-  kbId: string
-  /** 来源知识库名称（UI 展示用） */
-  kbName: string
-  /** 文档 ID（作为 sourceId） */
-  docId: string
-  /** 文档标题 */
-  docTitle: string
-  /** 块 ID（可选，用于精确定位） */
-  blockId?: string
-  /** 页码（可选，PDF 等有页码的文档） */
-  page?: number
-  /** 搜索得分 */
-  score: number
-  /** 匹配的文本内容 */
-  text: string
-  /** 截断后的 snippet（展示用） */
-  snippet: string
-}
 
 /**
  * 多 KB 搜索请求参数
  */
 export interface CitationKbSearchRequest {
+  projectId: string
+  signal: AbortSignal
   /** 要搜索的 KB ID 列表 */
   kbIds: string[]
   /** KB ID 到名称的映射（UI 展示用） */
@@ -101,6 +80,8 @@ export async function searchInMultipleKbs(
   request: CitationKbSearchRequest
 ): Promise<CitationKbSearchResult> {
   const {
+    projectId,
+    signal,
     kbIds,
     kbIdToName,
     query,
@@ -108,6 +89,7 @@ export async function searchInMultipleKbs(
     topKFinal = 15,
   } = request
   const editorMessage = request.editorMessage ?? resolveCurrentEditorMessage
+  signal.throwIfAborted()
 
   if (!kbIds || kbIds.length === 0) {
     return {
@@ -130,19 +112,18 @@ export async function searchInMultipleKbs(
   // 并发请求所有 KB
   const searchPromises = kbIds.map(async (kbId) => {
     try {
-      const response = await knowledgeBaseService.searchInKnowledgeBase(kbId, {
+      const rawResults = await getKnowledgeCitationSearchPort().searchLibrary({
+        projectId,
+        kbId,
         query: trimmedQuery,
         topK: topKPerKb,
-        useReranking: true,
-      })
-
-      // 解析响应结构（与 knowledgeBaseRouter 返回的结构对齐）
-      const rawResults = response.results || []
+      }, signal)
+      signal.throwIfAborted()
 
       return {
         kbId,
         success: true,
-        items: rawResults.map((item: KnowledgeBaseSearchResultItem) => ({
+        items: rawResults.map(item => ({
           kbId,
           kbName: kbIdToName[kbId] || kbId,
           docId: item.docId || '',
@@ -156,6 +137,7 @@ export async function searchInMultipleKbs(
         error: null,
       }
     } catch (error) {
+      signal.throwIfAborted()
       console.error(`[citationKbSearchService] KB ${kbId} 搜索失败:`, error)
       const message = error instanceof Error && error.message.trim().length > 0
         ? error.message
@@ -163,13 +145,14 @@ export async function searchInMultipleKbs(
       return {
         kbId,
         success: false,
-        items: [] as CitationKbSearchItem[],
+        items: [],
         error: message,
       }
     }
   })
 
   const searchResults = await Promise.all(searchPromises)
+  signal.throwIfAborted()
 
   // 收集错误
   const errorsByKbId: Record<string, string> = {}
