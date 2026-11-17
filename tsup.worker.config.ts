@@ -8,7 +8,8 @@ const bundleTrace = createTsupBundleTrace({
 });
 
 export default defineConfig({
-  entry: ['src/infra/task-queue/workers/*.worker.ts'],
+  // 知识库三类 Worker 随插件 artifact 构建；Host 只拥有音频处理线程。
+  entry: ['src/infra/task-queue/workers/audio-processing.worker.ts'],
   format: ['cjs'],
   platform: 'node',
   target: 'node22',
