@@ -34,4 +34,14 @@ describe('knowledge source project scope', () => {
     };
     await expect(resolveKnowledgeSource({ sourceId: 'source', projectId: 'project' }, controller.signal, lookup)).rejects.toMatchObject({ name: 'AbortError' });
   });
+
+  it('missing project is not an empty binding list and cannot open even a known default source', async () => {
+    const lookup: KnowledgeSourceLookup = {
+      listProjectKnowledgeBaseIds: vi.fn(async () => []),
+      listDocumentIds: vi.fn(async () => ['source']),
+    };
+    await expect(resolveKnowledgeSource({ sourceId: 'source', containerId: 'default', projectId: null }, signal(), lookup)).rejects.toThrow('项目上下文');
+    expect(lookup.listProjectKnowledgeBaseIds).not.toHaveBeenCalled();
+    expect(lookup.listDocumentIds).not.toHaveBeenCalled();
+  });
 });

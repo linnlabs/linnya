@@ -12,7 +12,8 @@ export async function resolveKnowledgeSource(
   lookup: KnowledgeSourceLookup,
 ): Promise<string> {
   signal.throwIfAborted();
-  const linked = target.projectId === null ? [] : await lookup.listProjectKnowledgeBaseIds(target.projectId);
+  if (!target.projectId) throw new Error('当前引用没有项目上下文，不能跳转到知识库原件；历史证据仍可查看');
+  const linked = await lookup.listProjectKnowledgeBaseIds(target.projectId);
   signal.throwIfAborted();
   const candidates = linked.length > 0 ? linked : ['default'];
   if (target.containerId && !candidates.includes(target.containerId)) {
