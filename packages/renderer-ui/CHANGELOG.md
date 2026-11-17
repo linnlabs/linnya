@@ -12,6 +12,7 @@
 - `LinnyaIcon` 的默认颜色由 `--color-brand-500` 改为 `--color-accent`（浅色主题是加深的品牌色 `#3d825d`），与主按钮、选中态同一个绿；调用方不必再各自写颜色，需要别的颜色时仍在图标自身的 class 上覆盖。
 - `IconButton` 新增 `size="composer"`（26px 外框、18px 图标），只用于对话输入框底栏，与模型选择器同高；别处继续用 xs / sm / md / lg。
 - `SidebarIcon` 的方框由 14 放到 15（墨迹 16，圆角 2.75），与同排的 `LibraryIcon`、`SettingsIcon` 一样大；组件名与 `data-icon` 不变。
+- 新增 `measureFloatingLayoutSize(element)`：返回弹层的布局宽高（`offsetWidth` / `offsetHeight`）。弹层入场从 0.96 缩放，打开当帧用 `getBoundingClientRect()` 量到的是缩小后的尺寸，按它把弹层放到按钮上方会贴住按钮，动画结束再重算就会跳一下；量弹层自身尺寸改用这个函数，锚点仍用 `getBoundingClientRect()`。`TextPopover`、`SimpleDatePicker` 与下拉面板定位已改用布局尺寸。
 
 ## 3.8.0 - 2026-11-17
 

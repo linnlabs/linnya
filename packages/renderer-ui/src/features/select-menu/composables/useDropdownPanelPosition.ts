@@ -49,7 +49,7 @@ export function useDropdownPanelPosition({
 
     const triggerRect = trigger.getBoundingClientRect();
     const panel = unref(optionsRef);
-    const measuredHeight = panel instanceof HTMLElement ? panel.getBoundingClientRect().height : 0;
+    const measuredHeight = panel instanceof HTMLElement ? panel.offsetHeight : 0;
     const panelHeight = measuredHeight > 0 ? measuredHeight : 240;
     const panelWidth = triggerRect.width;
     const spaceBelow = window.innerHeight - triggerRect.bottom;

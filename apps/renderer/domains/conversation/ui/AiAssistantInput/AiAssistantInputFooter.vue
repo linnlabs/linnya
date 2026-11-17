@@ -156,7 +156,7 @@
 <script setup lang="ts">
 import { computed, markRaw, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import type { PropType, Component } from 'vue';
-import { CustomSelect, IconButton } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton, measureFloatingLayoutSize } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
@@ -376,10 +376,10 @@ const positionInputActionMenu = () => {
   if (!triggerEl || !wrapperEl) return;
 
   const triggerRect = triggerEl.getBoundingClientRect();
-  const wrapperRect = wrapperEl.getBoundingClientRect();
+  const wrapperRect = measureFloatingLayoutSize(wrapperEl);
 
   // 默认放在按钮上方（输入区在底部）
-  let top = triggerRect.top - wrapperRect.height - 6;
+  let top = triggerRect.top - wrapperRect.height - 8;
   let left = triggerRect.left;
 
   // 左右溢出修正
@@ -390,7 +390,7 @@ const positionInputActionMenu = () => {
 
   // 顶部溢出则放到按钮下方
   if (top < 8) {
-    top = triggerRect.bottom + 6;
+    top = triggerRect.bottom + 8;
   }
   if (top + wrapperRect.height > window.innerHeight - 8) {
     top = Math.max(8, window.innerHeight - wrapperRect.height - 8);

@@ -54,6 +54,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'createTimer',
     'constrainDraggablePanelGeometry',
     'isColorPickerOptionCurrent',
+    'measureFloatingLayoutSize',
     'nextFrame',
     'nextPaint',
     'normalizeDraggablePanelPositionOffset',

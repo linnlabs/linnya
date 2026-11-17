@@ -375,7 +375,7 @@ import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
 import { DocumentHistoryPanel, useHistoryMessages } from '@/domains/document-history';
 import { getDocumentTypeByActiveType, getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import type { DocumentActionMenuOptionValue } from '@/app/plugins/types';
-import { CustomSelect, HoverTooltip, IconButton, type CustomSelectOption, type IconButtonExposed } from '@linnya/renderer-ui';
+import { CustomSelect, HoverTooltip, IconButton, type CustomSelectOption, type IconButtonExposed, measureFloatingLayoutSize } from '@linnya/renderer-ui';
 import { resolveWorkspaceNodeDisplayName } from '@/domains/workspace/functions/resolveWorkspaceNodeDisplayName';
 import { WindowActionIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
@@ -650,7 +650,7 @@ const positionHeaderToolPanel = () => {
   if (!triggerEl || !panelEl) return;
 
   const triggerRect = triggerEl.getBoundingClientRect();
-  const panelRect = panelEl.getBoundingClientRect();
+  const panelRect = measureFloatingLayoutSize(panelEl);
   const gap = 8;
   const viewportPadding = 8;
   const desiredLeft = triggerRect.right - panelRect.width;
@@ -947,7 +947,7 @@ const positionDocMenu = () => {
   if (!triggerEl || !wrapperEl) return;
 
   const triggerRect = triggerEl.getBoundingClientRect();
-  const wrapperRect = wrapperEl.getBoundingClientRect();
+  const wrapperRect = measureFloatingLayoutSize(wrapperEl);
 
   let top = triggerRect.bottom + 4;
   let left = triggerRect.left;

@@ -39,7 +39,7 @@ import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceNavigationPort } from '@shared/ports/workspaceNavigationPort';
 import type { ConversationListItem } from '../services/historyApiService';
 import { HistoryIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, measureFloatingLayoutSize } from '@linnya/renderer-ui';
 import { useHistoryTime } from '@app/localization';
 import { useConversationLocalization } from '../../ui/useConversationLocalization';
 
@@ -133,7 +133,7 @@ const calculatePosition = (): void => {
   if (!buttonEl || !wrapperEl) return;
 
   const buttonRect = buttonEl.getBoundingClientRect();
-  const wrapperRect = wrapperEl.getBoundingClientRect();
+  const wrapperRect = measureFloatingLayoutSize(wrapperEl);
   const viewportGap = 8;
   const offset = 4;
   let top = buttonRect.bottom + offset;

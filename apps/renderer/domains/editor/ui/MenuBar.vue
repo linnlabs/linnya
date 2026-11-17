@@ -151,7 +151,7 @@ import { ItalicIcon } from '@linnya/renderer-ui/icons';
 import { HeadingIcon } from '@linnya/renderer-ui/icons';
 import { WrenchIcon } from '@linnya/renderer-ui/icons';
 import { ProviderOutboundDebugPanel } from '../features/ProviderOutboundDebug';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, measureFloatingLayoutSize } from '@linnya/renderer-ui';
 import TableSizeSelector from '../blocks/TableBlock/ui/TableSizeSelector.vue';
 import { useEditorLocalization } from './useEditorLocalization';
 import { pickEmbedAndInsertImage } from '../blocks/ImageBlock/orchestration/embedAndInsertImage';
@@ -301,7 +301,7 @@ const positionDropdown = (triggerElement, wrapperElement) => {
   if (!triggerElement || !wrapperElement) return;
   
   const triggerRect = triggerElement.getBoundingClientRect();
-  const wrapperRect = wrapperElement.getBoundingClientRect();
+  const wrapperRect = measureFloatingLayoutSize(wrapperElement);
   
   // 计算位置
   let top = triggerRect.bottom + 4; // 距离按钮底部 4px

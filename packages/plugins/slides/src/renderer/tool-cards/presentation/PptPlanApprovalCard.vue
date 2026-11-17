@@ -308,6 +308,7 @@ import {
   ActionButtons,
   CustomSelect,
   CustomTextarea,
+  measureFloatingLayoutSize,
 } from '@linnya/renderer-ui';
 import {
   AddIcon,
@@ -520,7 +521,7 @@ function calculatePageMenuPosition(): void {
   let menuHeight = 220;
 
   if (pageMenuWrapperRef.value) {
-    const menuRect = pageMenuWrapperRef.value.getBoundingClientRect();
+    const menuRect = measureFloatingLayoutSize(pageMenuWrapperRef.value);
     if (menuRect.width > 0) {
       menuWidth = menuRect.width;
     }

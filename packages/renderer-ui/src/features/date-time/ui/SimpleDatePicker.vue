@@ -252,7 +252,7 @@ function updatePanelPlacement(): void {
   if (!root || !panel) return;
 
   const rootRect = root.getBoundingClientRect();
-  const panelHeight = panel.getBoundingClientRect().height;
+  const panelHeight = panel.offsetHeight;
   panelPlacement.value = resolvePanelPlacement(panelHeight);
 }
 
