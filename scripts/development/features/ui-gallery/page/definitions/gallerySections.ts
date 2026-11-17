@@ -61,6 +61,11 @@ export const GALLERY_SECTIONS = [
     description: '计划进入 renderer-ui 的组件原型：侧栏 Agent 运行状态、徽标、空状态、折叠区与加载。原型在画廊 prototypes/，还不是包内组件。',
   },
   {
+    id: 'new-project',
+    label: '方向：新项目空态',
+    description: '新项目侧栏空态的几种方向（W-0360）：现状、列表行、一个入口、图块，可切换类型数量。只在画廊。',
+  },
+  {
     id: 'list-example',
     label: '组合：列表与卡片',
     description: '按设计规范 9.4、9.6 拼出的列表行与卡片，用来看层级与留白；不是真实侧栏。',

@@ -37,6 +37,7 @@ import IconsSection from './sections/IconsSection.vue';
 import InputsSection from './sections/InputsSection.vue';
 import ListExampleSection from './sections/ListExampleSection.vue';
 import MenusSection from './sections/MenusSection.vue';
+import NewProjectSection from './sections/NewProjectSection.vue';
 import SelectionSection from './sections/SelectionSection.vue';
 import ToolbarsSection from './sections/ToolbarsSection.vue';
 import GalleryCompare from './ui/GalleryCompare.vue';
@@ -62,6 +63,7 @@ const SECTION_COMPONENTS: Readonly<Record<Exclude<GallerySectionId, 'dialogs'>, 
   'form-example': FormExampleSection,
   'list-example': ListExampleSection,
   candidates: CandidatesSection,
+  'new-project': NewProjectSection,
 };
 
 const schemeIds = gallerySchemes.map(scheme => scheme.id);
