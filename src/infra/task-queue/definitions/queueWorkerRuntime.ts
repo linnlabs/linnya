@@ -5,6 +5,7 @@
  * 或环境变量来猜测运行位置。
  */
 export interface QueueWorkerRuntime {
+  readonly pluginBootstrapScriptPath: string;
   readonly ingestionScriptPath: string;
   readonly audioProcessingScriptPath: string;
   readonly graphExtractionScriptPath: string;

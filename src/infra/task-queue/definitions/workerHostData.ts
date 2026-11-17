@@ -1,5 +1,9 @@
 /** 与业务 job 分区，由 Host 覆盖注入；不是可由插件参数选择的数据库地址。 */
 export interface WorkerHostData {
+  readonly pluginRuntime?: {
+    readonly artifactDirectory: string;
+    readonly entryPath: string;
+  };
   readonly database: {
     readonly path: string;
     readonly schemaVersion: number;

@@ -79,6 +79,7 @@ function stubStep(name: StepName, implementation: () => Promise<unknown>) {
 function createInitializer(): ServiceInitializer {
   return new ServiceInitializer(
     Object.freeze({
+      pluginBootstrapScriptPath: '/test/plugin-runtime.cjs',
       ingestionScriptPath: '/test/ingestion.cjs',
       audioProcessingScriptPath: '/test/audio.cjs',
       graphExtractionScriptPath: '/test/graph-extraction.cjs',

@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+import { runNativeProcessingFixture } from './nativeProcessing';
 import { parentPort, workerData } from 'node:worker_threads';
 import { openPluginWorkerDatabase } from '@plugin/backend/worker/databaseRuntime';
 import { createPluginWorkerInferencePort } from '@plugin/backend/worker/inferenceRuntime';
@@ -16,6 +18,26 @@ async function run(): Promise<void> {
     throw new Error('Invalid fixture job');
   const inference = createPluginWorkerInferencePort();
   try {
+    if (job.mode === 'boundaries') {
+      if (!('outsideParent' in job) || typeof job.outsideParent !== 'string') throw new Error('Missing outside parent');
+      const ownRequire = createRequire(__filename);
+      const outsideRequire = createRequire(job.outsideParent);
+      const denied: string[] = [];
+      for (const [name, require] of [['@node-rs/jieba/package.json', ownRequire], ['sharp', outsideRequire]] as const) {
+        try { require(name); }
+        catch (error) {
+          if (error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND') denied.push(name);
+          else throw error;
+        }
+      }
+      parentPort?.postMessage({ type: 'completed', result: denied });
+      return;
+    }
+    if (job.mode === 'native') {
+      const result = await runNativeProcessingFixture(job, inference);
+      parentPort?.postMessage({ type: 'completed', result });
+      return;
+    }
     if (job.mode === 'crash') {
       // Host 确认收到请求后，fixture 才退出，验证意外退出也等待该请求清理。
       void inference.documentOcr.recognizeDocument({

@@ -30,7 +30,7 @@ describe('knowledge cross-worker activity admission', () => {
     const activity = createKnowledgeActivityOwner();
     try {
       await queue.initialize({
-        workerRuntime: { ingestionScriptPath: worker, graphExtractionScriptPath: worker, graphIndexingScriptPath: worker, audioProcessingScriptPath: worker },
+        workerRuntime: { pluginBootstrapScriptPath: worker, ingestionScriptPath: worker, graphExtractionScriptPath: worker, graphIndexingScriptPath: worker, audioProcessingScriptPath: worker },
         runtimePathRoots: { developmentRoot: root, appDataRoot: root, workspaceRoot: root, workspaceRootIsCustom: false },
         distributionIdentity: { kind: 'source', packaged: false },
         maxConcurrency: 1, knowledgeActivity: activity,
