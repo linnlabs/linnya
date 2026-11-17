@@ -60,6 +60,15 @@ Renderer 文档保存 handler 拥有本类型的 dirty 状态：只在确认当�
 在取消后不能回写选择；来源 callback 接收冻结的项目与引用身份，资料解析和项目范围验证由贡献 owner 完成。
 磁盘插件自报 `builtin` 不能获得应用槽位，详见 [Renderer plugin owner](../../apps/renderer/app/plugins/README.md)。
 
+应用表面的跨域能力保持窄接口：`renderer/modelConfiguration` 只读取有效用途模型 ID、单个模型的名称和
+变化通知，或打开模型配置；不交付目录 store、Provider route 或凭据。`graph_extraction` 由 Host 映射到
+正式辅助用途，插件不能传任意 PromptKey。`ModelBindingSlot` 为设置和插件共用的唯一纯类型声明。
+
+`renderer/pluginMultipartUpload` 仅发送 multipart POST。Host 组合根显式登记插件 ID、route 和固定本地
+API path，调用方不能传 URL、headers 或认证信息；未登记或停用的插件直接拒绝，停用和 AbortSignal
+会关闭进行中的 HTTP 等待。上传进度来自真实 transport；响应保持 unknown，由插件的正式 schema 解码。
+管理请求与状态推送继续复用 plugin IPC / push，不因此建立通用 HTTP 代理。
+
 `DocumentActionMenuContext` 的身份来自用户实际操作的文档，不来自另一个当前编辑器。Markdown 的可选
 `readMarkdownSnapshot(signal)` 只交付该目标的内容与名称；它不授予其他文档读取或 Editor 访问。
 Host 先确认选项归属再委派，插件动作不能吞掉平台导出/历史等未声明选项。

@@ -175,9 +175,15 @@ const rendererHostShims = new Map<string, string>([
     'resolveRegisteredMessage',
     'useLocalization',
     'useLocalizationStore',
+    'formatStorageBytes',
   ])],
   ['/plugin-renderer/pluginIpcClient.js', buildNamedHostShim('@plugin/renderer/pluginIpcClient', ['invokeRendererPluginIpc'])],
   ['/plugin-renderer/pluginPushClient.js', buildNamedHostShim('@plugin/renderer/pluginPushClient', ['onRendererPluginPush'])],
+  ['/plugin-renderer/pluginMultipartUpload.js', buildNamedHostShim('@plugin/renderer/pluginMultipartUpload', ['uploadRendererPluginMultipart'])],
+  ['/plugin-renderer/modelConfiguration.js', buildNamedHostShim('@plugin/renderer/modelConfiguration', [
+    'readPurposeModelId', 'readAuxiliaryModelId', 'readModelDisplayName',
+    'subscribeModelConfigurationChanges', 'openModelConfiguration', 'registerEmbeddingModelChangeImpactPort',
+  ])],
   ['/plugin-renderer/aiInvocationPort.js', buildNamedHostShim('@plugin/renderer/aiInvocationPort', [
     'requireRendererAiInvocationPort',
   ])],

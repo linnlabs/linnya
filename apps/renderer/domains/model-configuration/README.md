@@ -14,6 +14,10 @@ Tab，也不得在“模型配置”重复提供模型管理入口。
 Settings 只注册这里公开的设置页面；Conversation、Knowledge Base、Editor 和 app
 workflow 只能消费本 domain 的公开合同，不能自行读取模型目录内部状态。
 
+插件通过 `@plugin/renderer/modelConfiguration` 消费有效用途 ID、显示名称、变化订阅和打开配置动作；
+Host app 装配读取本域公开入口。用途身份 `ModelBindingSlot` 在 plugin-host-contract 只声明一次，本域旧
+definitions 路径仅 re-export。索引影响查询注册返回 disposer，停用不会删除用途选择或凭据。
+
 公开的三个设置页面是按需加载的 Vue async component，名称与组件使用方式不变。公开查询、port 和 lifecycle
 不依赖页面加载，避免 Conversation 只导入目录查询时就拉入全部设置表单。
 

@@ -122,6 +122,50 @@ export async function getApiToken(): Promise<string> {
   return (await fetchApiSessionFromMainProcess()).token;
 }
 
+export interface LocalApiUploadProgress {
+  readonly loaded: number;
+  readonly total?: number;
+}
+
+/** 上传进度依赖 XHR；会话仍由此唯一 owner 注入，不能交给插件。 */
+export async function apiMultipartPost(
+  path: string,
+  formData: FormData,
+  options: { readonly signal?: AbortSignal; readonly onProgress?: (progress: LocalApiUploadProgress) => void } = {},
+): Promise<unknown> {
+  const send = (session: LocalApiSession): Promise<{ status: number; data: unknown }> => new Promise((resolve, reject) => {
+    options.signal?.throwIfAborted();
+    const xhr = new XMLHttpRequest();
+    const abort = (): void => xhr.abort();
+    const cleanup = (): void => options.signal?.removeEventListener('abort', abort);
+    xhr.open('POST', new URL(path, session.baseUrl).toString());
+    xhr.setRequestHeader('X-API-Token', session.token);
+    xhr.responseType = 'json';
+    xhr.timeout = 180_000;
+    xhr.upload.onprogress = event => options.onProgress?.({
+      loaded: event.loaded,
+      ...(event.lengthComputable ? { total: event.total } : {}),
+    });
+    xhr.onload = () => { cleanup(); resolve({ status: xhr.status, data: xhr.response }); };
+    xhr.onerror = () => { cleanup(); reject(new Error('Local API upload failed')); };
+    xhr.ontimeout = () => { cleanup(); reject(new Error('Local API upload timed out')); };
+    xhr.onabort = () => { cleanup(); reject(new DOMException('Upload cancelled', 'AbortError')); };
+    options.signal?.addEventListener('abort', abort, { once: true });
+    xhr.send(formData);
+  });
+  const session = await fetchApiSessionFromMainProcess();
+  let response = await send(session);
+  if (response.status === 401) {
+    const refreshed = await fetchApiSessionFromMainProcess(true);
+    if (!isSameApiSession(session, refreshed)) response = await send(refreshed);
+  }
+  if (response.status < 200 || response.status >= 300) {
+    // 保留正式错误响应给业务 owner 本地化；不得只展示 HTTP 状态而丢弃拒绝原因。
+    throw Object.assign(new Error(`Local API upload failed (${response.status})`), { response });
+  }
+  return response.data;
+}
+
 export async function refreshApiSession(): Promise<{ baseUrl: string; token: string }> {
   const session = await fetchApiSessionFromMainProcess(true);
   return { baseUrl: session.baseUrl, token: session.token };

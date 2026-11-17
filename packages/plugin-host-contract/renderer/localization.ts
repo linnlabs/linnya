@@ -15,6 +15,8 @@ export type LocalizedText =
 export type MessageCatalog = Readonly<Record<string, string>>;
 export type MessageCatalogsByLocale = Readonly<Partial<Record<LinnyaLocale, MessageCatalog>>>;
 
+export declare function formatStorageBytes(byteSize: number, locale: string): string;
+
 export interface MessageCatalogContribution {
   readonly owner: string;
   readonly catalogs: MessageCatalogsByLocale;
