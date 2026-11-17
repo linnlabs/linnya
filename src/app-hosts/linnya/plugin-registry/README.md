@@ -5,3 +5,5 @@
 `registry.ts` 只保存已经接纳的贡献及其声明，`pluginRuntimeState.ts` 读取 installed/enabled 事实。SDK、fence 与工具上下文派生在 App 完成注册和启用装配后通过 `registeredContributions.ts` 读取运行贡献，不能为了查询声明反向调用磁盘加载入口。加载插件模块时不能发送业务推送；运行期推送仍必须同时满足“已启用”和“已声明 channel”。Host 的静态枚举与启动用例继续通过 builtin 入口显式保证注册阶段；独立工具测试的组合根也须先注册 platform，不能依赖第一次工具查询偷偷初始化。
 
 SDK 使用 Desktop capability 时直接引用对应 `registry/*Registry.ts` 的窄端口；`desktop-capabilities/index.ts` 供 App composition 选择具体 RPC/Host 实现，不进入 SDK 的运行闭包。这样磁盘加载器可以提供 SDK 合同，同时 SDK 不再依赖加载器或请求装配。
+
+Runtime effect 的身份由已接纳 contribution 中的实际 effect 实例决定。相同 pluginId/effectId 的新 artifact 必须先等待旧实例 deactivate 完成，再 activate 新实例；关闭失败保留旧资源 owner 并中止新实例激活，不能静默把旧 Worker 留给新版使用。重复同步同一 contribution 不重启资源。

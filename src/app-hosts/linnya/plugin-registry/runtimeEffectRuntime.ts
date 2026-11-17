@@ -6,6 +6,7 @@ import type { BackendPluginRuntimeEffectRegistration } from './registry';
 interface ActiveRuntimeEffect {
   readonly pluginId: PluginId;
   readonly effectId: string;
+  readonly effect: BackendPluginRuntimeEffectRegistration['effect'];
   readonly deactivate: () => void | Promise<void>;
 }
 
@@ -37,7 +38,9 @@ async function deactivateStaleRuntimeEffects(
   desired: ReadonlyMap<string, BackendPluginRuntimeEffectRegistration>,
 ): Promise<void> {
   for (const [effectKey, active] of activeEffects) {
-    if (!desired.has(effectKey)) {
+    // 同 ID 的新版 artifact 仍是新的 contribution 实例；先等待旧资源完全停止，
+    // 才能激活新实例。仅按 ID 判等会把旧 Worker/闭包永久留到下一次重启。
+    if (desired.get(effectKey)?.effect !== active.effect) {
       await runEffectStep(active.pluginId, active.effectId, 'deactivate', active.deactivate);
       activeEffects.delete(effectKey);
     }
@@ -60,6 +63,7 @@ async function activateDesiredRuntimeEffects(
     activeEffects.set(effectKey, {
       pluginId: registration.pluginId,
       effectId: registration.effect.id,
+      effect: registration.effect,
       deactivate: registration.effect.deactivate,
     });
   }
