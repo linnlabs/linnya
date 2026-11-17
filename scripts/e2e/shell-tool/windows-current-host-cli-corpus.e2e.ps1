@@ -43,6 +43,7 @@ try {
   $report = Invoke-UserSession
   $result = $report.result
   $result | Add-Member -NotePropertyName appProcessId -NotePropertyValue $report.appProcessId
+  $result | Add-Member -NotePropertyName taskName -NotePropertyValue $taskName
   $result | ConvertTo-Json -Depth 12 -Compress
  } finally {
   if ($taskOwned) {

@@ -135,6 +135,33 @@ describe('项目对话页', () => {
     expect((await prepared.plan.execute({ hostContext: {}, signal: new AbortController().signal })).exitCode).toBe(2);
   });
 
+  it('超过200条搜索命中时先按实际回复者筛选，旧对话不会被其他Agent的结果挤掉', async () => {
+    for (let index = 0; index < 205; index += 1) {
+      const id = `other-agent-${index}`;
+      addConversation(id, `共同标题${index}`, projectId, 1000 + index);
+      addRun(`run-${id}`, id, 'default');
+      addMessage(id, `run-${id}`, 'final_answer', '共同内容关键词');
+    }
+    addConversation('older-match', '共同标题：需要的研究', projectId, 1);
+    addRun('older-research', 'older-match', 'research_v1');
+    addMessage('older-match', 'older-research', 'final_answer', '共同内容关键词');
+    const activity = createConversationActivityPorts(db(), { readControlPending: () => [] });
+    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('unused'); } }, activity);
+    for (const query of ['共同标题', '共同内容关键词']) {
+      expect(searchProjectConversations(db(), { project_id: projectId, query })).toMatchObject({ truncated: true });
+      const result = await queryProjectConversations(db(), {
+        ...ProjectConversationQueryOptionsSchema.parse({ query, agent: 'research_v1' }), project_id: projectId,
+      }, activity);
+      expect(result.conversations.map(row => row.conversation_id)).toEqual(['older-match']);
+      expect(result.truncated).toBe(false);
+      const prepared = cli.prepare({ argv: ['conversations', 'list', '--query', query, '--agent', 'research_v1'], invocationId: 'cap', conversationRoot: '/unused' });
+      if (prepared.status !== 'ready') throw new Error('list not prepared');
+      const output = await prepared.plan.execute({ projectId, hostContext: {}, signal: new AbortController().signal });
+      expect(output.exitCode).toBe(0);
+      expect(JSON.parse(output.stdout).conversations.map((row: { id: string }) => row.id)).toEqual(['older-match']);
+    }
+  });
+
   it('列出本项目对话：置顶在前、Agent 只取选定（内部根运行不算）、改过的文档按账本去重', async () => {
     addConversation('conv-a', '三季度汇报初稿', projectId, 500, { turns: 9, agent: 'default' });
     addConversation('conv-b', '欧洲市场渠道梳理', projectId, 400, { pinned: true, agent: 'research_v1', turns: 3 });

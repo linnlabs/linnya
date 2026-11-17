@@ -24,7 +24,7 @@ export function createConversationActivityPorts(
   const terminalParameters = TERMINAL_RUN_STATUSES.map(() => '?').join(', ');
   // 活跃根全部保留，让 selectStatusRun 继续检查冲突；终态只需最近一个。
   // 状态集合来自同一 owner。不能直接 LIMIT 最新根，否则较老的活跃运行会被隐藏。
-  const statement = db.prepare<[string, ...string[]], ActivityRunRow>(`
+  const query = `
     WITH RECURSIVE requested AS (SELECT value AS id FROM json_each(?)),
     roots AS (
       SELECT id FROM runs WHERE conversation_id IN (SELECT id FROM requested)
@@ -47,10 +47,12 @@ export function createConversationActivityPorts(
       json_extract(runs.metadata_json, '$.lane') AS lane
     FROM runs JOIN scope ON runs.id = scope.id
     ORDER BY runs.start_ts DESC, COALESCE(runs.updated_ts, runs.start_ts) DESC, runs.id DESC
-  `);
+  `;
   return { runs: { async readCandidates(conversationIds) {
     const records = new Map<string, ConversationControlRunRecord[]>();
     if (conversationIds.length === 0) return records;
+    // 端口装配不访问表；只有实际查询才准备语句，普通 Shell 启动不触发对话读取。
+    const statement = db.prepare<[string, ...string[]], ActivityRunRow>(query);
     for (const row of statement.all(JSON.stringify(conversationIds), ...ACTIVE_RUN_STATUSES, ...TERMINAL_RUN_STATUSES)) {
       const conversation = records.get(row.conversation_id) ?? [];
       conversation.push({ runId: row.id, conversationId: row.conversation_id,

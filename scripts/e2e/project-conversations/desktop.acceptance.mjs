@@ -118,10 +118,45 @@ try {
     await run('wait', '--expr', `${rowIds}.length === 3`);
     await run('shot', '--selector', '.project-overview');
   });
-  await evidence.check('切换项目不会带入旧结果，无Renderer错误', async () => {
+  await evidence.check('旧项目query/detail响应受控延迟到切项目后送达，不能覆盖新项目或产生404', async () => {
+    await run('click', '--selector', '.project-conversations__row[data-conversation-id="query-b"]');
+    await run('wait', '--expr', `document.querySelector('.project-conversations__detail')?.textContent.includes('报价乙：可读回答')`);
+    // 仅在隔离探针页面延迟真实HTTP响应，不改变Host数据、生产接口或查询实现。
+    await run('eval', `(() => {
+      const original = window.fetch;
+      const pending = [];
+      const prefix = '/api/v1/project-conversations/' + ${JSON.stringify(projectId)};
+      window.__conversationQueryDelay = { original, pending };
+      window.fetch = async function(input, init) {
+        const response = await original.call(this, input, init);
+        const url = new URL(typeof input === 'string' ? input : input.url || String(input), location.href);
+        if (url.pathname === prefix + '/query' || url.pathname.startsWith(prefix + '/conversations/')) {
+          await new Promise(release => pending.push({ path: url.pathname, release }));
+        }
+        return response;
+      };
+    })()`);
+    await run('click', '--selector', '.project-conversations__row[data-conversation-id="query-a"]');
+    await run('type', '可读回答', '.project-conversations input[type="search"]');
+    await run('wait', '--expr', `window.__conversationQueryDelay.pending.some(item => item.path.endsWith('/query')) && window.__conversationQueryDelay.pending.some(item => item.path.endsWith('/conversations/query-a'))`);
     await run('open', otherProject, '--overview');
     await run('click', '--selector', '.project-overview__pages [role="tab"]:nth-child(2)');
-    await run('wait', '--expr', `JSON.stringify(${rowIds}) === '["query-private"]'`);
+    await run('wait', '--expr', `JSON.stringify(${rowIds}) === '["query-private"]' && document.querySelector('.project-conversations__detail')?.textContent.includes('范围外秘密：可读回答')`);
+    const delayed = await run('eval', `(async () => {
+      const { original, pending } = window.__conversationQueryDelay;
+      window.fetch = original;
+      const paths = pending.map(item => item.path);
+      pending.forEach(item => item.release());
+      delete window.__conversationQueryDelay;
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return paths;
+    })()`);
+    evidence.json('delayed-old-project-responses', delayed.value);
+    assert.deepEqual((await run('eval', rowIds)).value, ['query-private']);
+    const detail = (await run('eval', `document.querySelector('.project-conversations__detail')?.textContent`)).value;
+    assert.ok(detail.includes('范围外秘密：可读回答'));
+    assert.ok(!detail.includes('报价甲：可读回答'));
+    await run('shot', '--selector', '.project-overview');
     const logs = await run('logs', '--level', 'error');
     assert.equal(logs.total, 0, JSON.stringify(logs.entries));
   });
