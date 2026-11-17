@@ -54,11 +54,15 @@ const SETTINGS_FULL_ACCESS_DIALOG: FullAccessDialogCopy = {
 };
 
 /**
- * 定时任务额外的一段警告。用户初稿里列举的删除、上传、安装等操作与上面的清单重复，
- * 这里改为“上面这些操作”，让整个确认框在常见窗口高度里不必滚动；称呼随设置页用“您”。
+ * 定时任务额外的警告，按意思分行，不写成一整段。用户初稿里列举的删除、上传、安装等操作
+ * 与上面的清单重复，这里改为“上面这些操作”，让确认框在常见窗口高度里不必滚动；称呼随设置页用“您”。
  */
-const SCHEDULED_TASK_WARNING =
-  '定时任务会在您不在场时自动运行。Agent 可能在您不知情的情况下执行上面这些操作，或者访问可疑网站；网页或文件里的恶意内容也可能诱导它这么做，而且没有人能当场阻止。除非您明确知道如何应对这些风险，请不要在定时任务里安排可能涉及这类操作的工作。';
+const SCHEDULED_TASK_WARNING = [
+  '定时任务会在您不在场时自动运行：',
+  'Agent 可能在您不知情的情况下执行上面这些操作，或访问可疑网站；',
+  '网页或文件里的恶意内容也可能诱导它这么做，没有人能当场阻止。',
+  '除非您明确知道如何应对，请不要在定时任务里安排这类工作。',
+].join('\n');
 
 export function fullAccessDialogCopy(context: 'conversation' | 'scheduled-task'): FullAccessDialogCopy {
   if (context === 'conversation') {

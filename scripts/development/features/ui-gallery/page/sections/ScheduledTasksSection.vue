@@ -428,42 +428,12 @@ const approvalChoice = ref<'pending' | 'allowed' | 'denied'>('pending');
 
     <!-- 回答结束后的卡片 -->
     <GalleryBlock
-      title="Agent 建了任务以后：回答末尾的提示"
-      note="A 沿用“这一轮改了哪些文档”的尾注，安静、不加色块；B 是一张小卡片。两种都按完全访问时显著警告，回答正文里 Agent 也会说明风险。点任何一处进入定时任务视图。"
+      title="Agent 建了任务以后：回答末尾的卡片"
+      note="已定用卡片（2026-11-17 用户选定）。时钟图标固定对齐任务名那一行；完全访问时警告单独占一行，不和按钮挤在一起。回答正文里 Agent 也会说明风险。点“查看”进入定时任务视图。"
     >
       <div class="sched-cards">
         <figure class="sched__figure">
-          <figcaption>A　尾注 · 标准</figcaption>
-          <div class="mock-answer">
-            <p>好的，已建好定时任务：每个工作日早上 9 点搜集办公软件和 AI 写作工具的新闻，挑 5 条写进“行业动态”。</p>
-            <div class="mock-answer__tail">
-              <button type="button" class="sched-note">
-                <span>建了定时任务“每日行业新闻”</span>
-                <span class="sched-note__sep">·</span>
-                <span>每个工作日 9:00</span>
-                <ChevronIcon direction="right" class="sched-note__chevron" />
-              </button>
-            </div>
-          </div>
-        </figure>
-        <figure class="sched__figure">
-          <figcaption>A　尾注 · 完全访问</figcaption>
-          <div class="mock-answer">
-            <p>已建好定时任务：每天 22:00 整理下载文件夹。<strong>注意：这个任务用的是“完全访问”，运行时删除、移动文件都不会再问你。</strong>如果不放心，可以改成“标准”。</p>
-            <div class="mock-answer__tail">
-              <button type="button" class="sched-note">
-                <span>建了定时任务“整理下载文件夹”</span>
-                <span class="sched-note__sep">·</span>
-                <span>每天 22:00</span>
-                <span class="sched-note__sep">·</span>
-                <span class="sched-note__warning">完全访问</span>
-                <ChevronIcon direction="right" class="sched-note__chevron" />
-              </button>
-            </div>
-          </div>
-        </figure>
-        <figure class="sched__figure">
-          <figcaption>B　卡片 · 标准</figcaption>
+          <figcaption>标准</figcaption>
           <div class="mock-answer">
             <p>好的，已建好定时任务：每个工作日早上 9 点搜集办公软件和 AI 写作工具的新闻，挑 5 条写进“行业动态”。</p>
             <div class="sched-card">
@@ -472,25 +442,27 @@ const approvalChoice = ref<'pending' | 'allowed' | 'denied'>('pending');
                 <span class="sched-card__name">每日行业新闻</span>
                 <span class="sched-card__meta">每个工作日 9:00 · 下次明天 9:00 · 标准</span>
               </div>
-              <BaseButton variant="secondary" size="sm">查看</BaseButton>
+              <div class="sched-card__actions">
+                <BaseButton variant="secondary" size="sm">查看</BaseButton>
+              </div>
             </div>
           </div>
         </figure>
         <figure class="sched__figure">
-          <figcaption>B　卡片 · 完全访问</figcaption>
+          <figcaption>完全访问</figcaption>
           <div class="mock-answer">
             <p>已建好定时任务：每天 22:00 整理下载文件夹。<strong>注意：这个任务用的是“完全访问”，运行时删除、移动文件都不会再问你。</strong>如果不放心，可以改成“标准”。</p>
             <div class="sched-card is-full-access">
               <ClockIcon class="sched-card__icon" />
               <div class="sched-card__text">
                 <span class="sched-card__name">整理下载文件夹</span>
-                <span class="sched-card__meta">每天 22:00 · 下次今天 22:00</span>
-                <span class="sched-card__warning">完全访问：无人在场时自动允许所有命令，包括删除和上传文件。</span>
+                <span class="sched-card__meta">每天 22:00 · 下次今天 22:00 · 完全访问</span>
               </div>
               <div class="sched-card__actions">
                 <BaseButton variant="secondary" size="sm">改为标准</BaseButton>
                 <BaseButton variant="ghost" size="sm">查看</BaseButton>
               </div>
+              <div class="sched-card__warning">无人在场时自动允许所有命令，包括删除和上传文件。</div>
             </div>
           </div>
         </figure>
@@ -1177,7 +1149,7 @@ const approvalChoice = ref<'pending' | 'allowed' | 'denied'>('pending');
 
 .sched-cards {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 560px));
+  grid-template-columns: repeat(2, minmax(0, 520px));
   gap: var(--space-5) var(--space-8);
 }
 
@@ -1199,70 +1171,30 @@ const approvalChoice = ref<'pending' | 'allowed' | 'denied'>('pending');
   font-weight: var(--font-weight-medium);
 }
 
-.mock-answer__tail {
-  display: flex;
-  margin-left: calc(-1 * var(--space-1-5));
-}
-
-.sched-note {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  height: 24px;
-  padding: 0 var(--space-1) 0 var(--space-1-5);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-tertiary);
-  font: inherit;
-  font-size: var(--font-size-caption);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.sched-note:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-secondary);
-}
-
-.sched-note__sep {
-  color: var(--color-text-placeholder);
-}
-
-.sched-note__warning {
-  color: var(--color-warning-text);
-  font-weight: var(--font-weight-medium);
-}
-
-.sched-note__chevron {
-  width: 14px;
-  height: 14px;
-}
-
 .sched-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--space-3);
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--color-bg-subtle);
 }
 
 .sched-card.is-full-access {
-  align-items: flex-start;
   background: var(--color-warning-bg);
 }
 
+/* 图标与任务名同一行垂直居中：名称行高 20px，图标 18px。 */
 .sched-card__icon {
-  flex: none;
   width: 18px;
   height: 18px;
+  margin-top: 1px;
   color: var(--color-text-secondary);
 }
 
 .sched-card__text {
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
@@ -1272,6 +1204,7 @@ const approvalChoice = ref<'pending' | 'allowed' | 'denied'>('pending');
   color: var(--color-text-primary);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  line-height: 20px;
 }
 
 .sched-card__meta {
@@ -1279,16 +1212,21 @@ const approvalChoice = ref<'pending' | 'allowed' | 'denied'>('pending');
   font-size: var(--font-size-caption);
 }
 
-.sched-card__warning {
-  margin-top: var(--space-1);
+.sched-card.is-full-access .sched-card__meta {
   color: var(--color-warning-text);
-  font-size: var(--font-size-caption);
 }
 
 .sched-card__actions {
   display: flex;
-  flex: none;
   gap: var(--space-1);
+}
+
+/* 警告与名称左对齐，跨过按钮列单独一行。 */
+.sched-card__warning {
+  grid-column: 2 / -1;
+  margin: var(--space-2) 0 0;
+  color: var(--color-warning-text);
+  font-size: var(--font-size-caption);
 }
 
 /* ---------- 审批 ---------- */

@@ -141,7 +141,7 @@ function abortLowering() {
   <div class="gallery-section tier-preview">
     <GalleryBlock
       title="输入框里的档位"
-      note="两种位置对比：A 在输入框下方单独一行，B 放进底栏、紧挨模型选择。点档位文字打开切换菜单；切到完全访问每次都弹确认框。上面两个开关只改演示状态。"
+      note="已定：放进输入框底栏，紧挨模型选择（2026-11-17 用户选定）。点档位打开切换菜单；切到完全访问每次都弹确认框。上面两个开关只改演示状态。"
     >
       <GalleryRow label="演示状态">
         <SegmentedTabs :model-value="setting" :tabs="STATE_TABS" aria-label="演示状态" @update:model-value="setDemoState" />
@@ -152,36 +152,9 @@ function abortLowering() {
       </GalleryRow>
 
       <div class="tier-preview__grid">
-        <figure class="tier-preview__figure">
-          <figcaption>A　输入框下方一行（常规宽度）</figcaption>
-          <div class="tier-preview__stage">
-            <MockComposer :running="running">
-              <template #below>
-                <div class="tier-under">
-                  <span class="tier-anchor">
-                    <button
-                      type="button"
-                      class="tier-under__trigger"
-                      :class="{ 'is-full-access': effectiveTier === 'full_access', 'is-open': openMenu === 'a' }"
-                      :aria-expanded="openMenu === 'a'"
-                      @click="toggleMenu('a')"
-                    >
-                      <span class="tier-under__prefix">权限</span>
-                      <span>{{ tierSettingText(setting, globalTier) }}</span>
-                      <ChevronIcon direction="down" class="tier-under__chevron" />
-                    </button>
-                    <DropdownPanel :show="openMenu === 'a'" direction="up" class="tier-anchor__panel">
-                      <PermissionTierMenu :model-value="setting" :global-tier="globalTier" :hint="menuHint" @select="selectSetting" />
-                    </DropdownPanel>
-                  </span>
-                </div>
-              </template>
-            </MockComposer>
-          </div>
-        </figure>
 
         <figure class="tier-preview__figure">
-          <figcaption>B　底栏里、模型旁边（常规宽度）</figcaption>
+          <figcaption>常规宽度</figcaption>
           <div class="tier-preview__stage">
             <MockComposer :running="running">
               <template #footer-extra>
@@ -206,35 +179,9 @@ function abortLowering() {
           </div>
         </figure>
 
-        <figure class="tier-preview__figure is-compact">
-          <figcaption>A　侧边对话（紧凑宽度）</figcaption>
-          <div class="tier-preview__stage">
-            <MockComposer variant="compact" model="DeepSeek V4 Flash" :running="running">
-              <template #below>
-                <div class="tier-under is-compact">
-                  <span class="tier-anchor">
-                    <button
-                      type="button"
-                      class="tier-under__trigger"
-                      :class="{ 'is-full-access': effectiveTier === 'full_access', 'is-open': openMenu === 'a-compact' }"
-                      @click="toggleMenu('a-compact')"
-                    >
-                      <span class="tier-under__prefix">权限</span>
-                      <span>{{ tierSettingText(setting, globalTier) }}</span>
-                      <ChevronIcon direction="down" class="tier-under__chevron" />
-                    </button>
-                    <DropdownPanel :show="openMenu === 'a-compact'" direction="up" class="tier-anchor__panel">
-                      <PermissionTierMenu :model-value="setting" :global-tier="globalTier" :hint="menuHint" @select="selectSetting" />
-                    </DropdownPanel>
-                  </span>
-                </div>
-              </template>
-            </MockComposer>
-          </div>
-        </figure>
 
         <figure class="tier-preview__figure is-compact">
-          <figcaption>B　侧边对话（紧凑宽度）</figcaption>
+          <figcaption>侧边对话（紧凑宽度）</figcaption>
           <div class="tier-preview__stage">
             <MockComposer variant="compact" model="DeepSeek V4 Flash" :running="running">
               <template #footer-extra>
@@ -278,7 +225,7 @@ function abortLowering() {
 
     <GalleryBlock
       title="完全访问的确认框"
-      note="对话里沿用设置页的内容。定时任务在设置页的红字风险说明后面再加一段警告（确认框的风险说明改为支持分段）。"
+      note="对话里沿用设置页的内容。定时任务在设置页的红字风险说明后面再加几行警告，按意思分行（确认框的风险说明改为保留换行）。"
     >
       <GalleryRow label="打开">
         <BaseButton variant="secondary" size="md" @click="dialogContext = 'conversation'">对话切到完全访问</BaseButton>
@@ -391,57 +338,7 @@ function abortLowering() {
   left: 0;
 }
 
-/* A：输入框下方一行，与输入框内文字左对齐。 */
-.tier-under {
-  display: flex;
-  padding: var(--space-1-5) var(--space-2) 0;
-}
-
-.tier-under.is-compact {
-  padding: var(--space-1) var(--space-1) 0;
-}
-
-.tier-under__trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  height: 24px;
-  padding: 0 var(--space-1-5);
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text-tertiary);
-  font: inherit;
-  font-size: var(--font-size-caption);
-  cursor: pointer;
-}
-
-.tier-under__trigger:hover,
-.tier-under__trigger.is-open {
-  background: var(--color-bg-hover);
-  color: var(--color-text-secondary);
-}
-
-.tier-under__prefix {
-  color: var(--color-text-placeholder);
-}
-
-.tier-under__trigger.is-full-access {
-  color: var(--color-warning-text);
-  font-weight: var(--font-weight-medium);
-}
-
-.tier-under__trigger.is-full-access .tier-under__prefix {
-  color: inherit;
-  font-weight: normal;
-}
-
-.tier-under__chevron {
-  width: 12px;
-  height: 12px;
-}
-
-/* B：与模型选择器同高的底栏控件。 */
+/* 与模型选择器同高的底栏控件。 */
 .tier-pill {
   display: inline-flex;
   align-items: center;
