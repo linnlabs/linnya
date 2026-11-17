@@ -19,6 +19,7 @@ import { readDiagnosticLogEnvelope } from '../../shared/logging';
 import { writeForwardedDiagnosticLogRecord } from '../../shared/logger';
 import type { RuntimePathRoots } from '../../shared/runtime-paths';
 import type { DistributionIdentity } from '../../shared/distribution-identity';
+import { WORKER_HOST_DATA_KEY, type WorkerHostData } from './definitions/workerHostData';
 
 /**
  * 任务状态枚举
@@ -77,6 +78,8 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
   private readonly lifecycleObserver?: WorkerJobLifecycleObserver<TPayload>;
   private readonly runtimePathRoots?: RuntimePathRoots;
   private readonly distributionIdentity?: DistributionIdentity;
+  private readonly workerEnvironment?: Readonly<Record<string, string>>;
+  private readonly hostData?: WorkerHostData;
   private shuttingDown = false;
   private readonly hostRequestHandler?: (job: Readonly<WorkerJob<TPayload>>) => WorkerHostRequestHandler;
   private readonly hostRequestSessions = new Map<Worker, ReturnType<typeof createWorkerHostRequestSession>>();
@@ -87,6 +90,8 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
     lifecycleObserver?: WorkerJobLifecycleObserver<TPayload>;
     runtimePathRoots?: RuntimePathRoots;
     distributionIdentity?: DistributionIdentity;
+    workerEnvironment?: Readonly<Record<string, string>>;
+    hostData?: WorkerHostData;
     hostRequestHandler?: (job: Readonly<WorkerJob<TPayload>>) => WorkerHostRequestHandler;
   }) {
     super();
@@ -97,6 +102,8 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
     this.lifecycleObserver = options.lifecycleObserver;
     this.runtimePathRoots = options.runtimePathRoots;
     this.distributionIdentity = options.distributionIdentity;
+    this.workerEnvironment = options.workerEnvironment ? Object.freeze({ ...options.workerEnvironment }) : undefined;
+    this.hostData = options.hostData ? structuredClone(options.hostData) : undefined;
     this.hostRequestHandler = options.hostRequestHandler;
 
     // 🔍 初始化诊断日志
@@ -169,10 +176,12 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
       const worker = new Worker(this.workerScript, {
         workerData: {
           ...job.data,
+          ...(this.hostData ? { [WORKER_HOST_DATA_KEY]: this.hostData } : {}),
           ...(this.runtimePathRoots ? { runtimePathRoots: this.runtimePathRoots } : {}),
           ...(this.distributionIdentity ? { distributionIdentity: this.distributionIdentity } : {}),
         },
-        env: process.env,
+        // 现有 Audio 等调用者保留原环境；插件队列由 Host 显式冻结最小环境。
+        env: this.workerEnvironment ?? process.env,
         // App Server 的 stdout 是控制协议。Worker/依赖的 console 只能走诊断流。
         stdout: true,
         stderr: true,
@@ -202,22 +211,21 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
       });
 
       worker.on('exit', (code: number) => {
-        if (requestSession) {
-          void requestSession.stop().finally(() => this.hostRequestSessions.delete(worker));
+        const requestsStopped = requestSession?.stop();
+        // 失败处理期间仍保留线程归属，避免走“从未启动 Worker”的立即 settled 分支。
+        // 此时线程虽已退出，它发起的 Host 请求仍可能正在做取消清理。
+        const currentJob = this.jobs.get(job.id);
+        if (!this.shuttingDown && currentJob?.state === WorkerJobState.RUNNING) {
+          this.handleJobFailure(job.id, `Worker意外退出，退出码: ${code}`);
         }
         this.cleanupWorker(worker);
         this.workerJobMap.delete(job.id);
         this.clearForcedTerminationTimer(job.id);
         // 业务完成通知可以早于线程退出；资源租约必须等 Host 请求也收口后归还。
-        void Promise.resolve(requestSession?.stop()).finally(() => this.emit('taskSettled', job.id));
-
-        // terminate() 在 shutdown 中通常返回非零退出码，这是 owner 收口，不是业务失败。
-        if (this.shuttingDown) return;
-
-        const currentJob = this.jobs.get(job.id);
-        if (currentJob && currentJob.state === WorkerJobState.RUNNING) {
-          this.handleJobFailure(job.id, `Worker意外退出，退出码: ${code}`);
-        }
+        void Promise.resolve(requestsStopped).finally(() => {
+          this.hostRequestSessions.delete(worker);
+          this.emit('taskSettled', job.id);
+        });
       });
 
     } catch (error) {

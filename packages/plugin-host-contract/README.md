@@ -207,8 +207,18 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 
 ### Worker 执行环境
 
+`backend/workerQueue` 是插件 Backend 使用的受管 Node 队列：只允许已准入 artifact 内的相对 Worker
+入口，提供 add/get/list/cancel/shutdown 和 typed lifecycle 订阅；没有 raw Worker、任意环境参数、
+QueueManager 或暂停/恢复。任务和推理准入在入队时冻结，查询返回副本，运行态停用后拒绝新任务。
+runtime effect 关闭须等待 shutdown；`settled` 才表示线程及全部 Host 推理已停止。
+
+`backend/worker/databaseRuntime` 只打开 Host 冻结的工作区连接，交付 prepare/transaction/close。
+版本检查与 pragma 复用 Host connection-only opener，不自行迁移或运行插件 lifecycle；表的 ownedTables
+规则仍是可信 owner 边界，不声称 SQL 沙箱。Host 环境仅保留 OS 执行所需字段，不把凭据复制进线程。
+
 `backend/worker/*` 是 Worker isolate 的合同，不属于主线程 Backend artifact 的运行时模块表。
-`@plugin/backend/worker/inferenceRuntime` 必须内联进 Worker bundle；它只使用 parentPort 消息通道和正式 DTO。
+`@plugin/backend/worker/inferenceRuntime` 与 `worker/databaseRuntime` 必须内联进 Worker bundle；
+统一 alias 入口为 `scripts/build/plugin-worker-sdk.mjs`，前者只使用 parentPort 消息通道和正式 DTO，后者使用纯 SQLite opener。
 Worker 不继承主线程临时安装的 Module._load 解析器，不能将此入口 external 后期待主线程替它解析。
 `worker/requests` 只有类型，Host 的 handler 实现不通过此路径交给插件。
 真实线程与 bundle 依赖验收见 Host inference worker bridge 集成测试；目录/凭据实现不得进入该客户端产物。
