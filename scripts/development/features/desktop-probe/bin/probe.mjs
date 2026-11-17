@@ -6,6 +6,7 @@ import { runProbeCommand } from '../orchestration/probeClient.mjs';
 const started = performance.now();
 try {
   const result = await runProbeCommand(parseProbeArgs(process.argv.slice(2)));
+  if (result.ok === false) process.exitCode = 1;
   console.log(JSON.stringify({ ok: true, ...result, ms: Math.round(performance.now() - started) }));
 } catch (error) {
   process.exitCode = error instanceof ProbeError ? error.exitCode : 1;

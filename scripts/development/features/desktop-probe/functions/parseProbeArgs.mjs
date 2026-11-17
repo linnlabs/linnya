@@ -23,6 +23,7 @@ const definitions = {
   logs: { string: ['source', 'level', 'since', 'grep', 'limit'] },
   record: { string: ['target', 'props', 'duration', 'at'] },
   fixture: {},
+  accept: {},
 };
 
 export function usage(message, hint = '运行 pnpm -s probe help 查看命令。') {
@@ -80,7 +81,7 @@ function unknownOption(command, error) {
   const option = /Unknown option '--?([^']+)'/.exec(error.message)?.[1];
   if (!option) usage(error.message);
   const spec = definitions[command];
-  const known = ['name', ...(spec.string ?? []), ...(spec.boolean ?? [])];
+  const known = [...(command === 'accept' ? [] : ['name']), ...(spec.string ?? []), ...(spec.boolean ?? [])];
   const near = closest(option, known);
   const listed = known.map(key => `--${key}`).join(' ');
   usage(`${command} 没有 --${option} 选项`, [
@@ -108,7 +109,7 @@ export function parseProbeArgs([command = 'help', ...args]) {
   const actionStart = command === 'record' ? args.indexOf('--') : -1;
   const spec = definitions[command];
   const options = {
-    name: { type: 'string', default: defaultOptions.name },
+    ...(command === 'accept' ? {} : { name: { type: 'string', default: defaultOptions.name } }),
     ...Object.fromEntries((spec.string ?? []).map(key => [key, { type: 'string' }])),
     ...Object.fromEntries((spec.boolean ?? []).map(key => [key, { type: 'boolean' }])),
   };

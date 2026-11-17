@@ -81,6 +81,9 @@ export async function runProbeCommand(parsed) {
   if (command === 'help') {
     return { commands: parsed.commands, documentation: 'scripts/development/features/desktop-probe/README.md' };
   }
+  if (command === 'accept') {
+    return (await import('./runProbeAcceptance.mjs')).runProbeAcceptance(positionals);
+  }
   if (['up', 'stop', 'restart', 'status'].includes(command)) {
     if (positionals.length) usage(`${command} 不接受位置参数`);
     if (command === 'status') return values.all ? { instances: listProbes() } : probeStatus(values.name);
