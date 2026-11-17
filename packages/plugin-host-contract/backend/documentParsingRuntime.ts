@@ -1,4 +1,4 @@
-import type { PluginInferencePort } from './inferenceRuntime';
+import type { PluginInferencePort, DocumentOcrModelProfile } from './inferenceRuntime';
 
 /** 通用解析输出的唯一类型 owner；不含知识库状态、模型目录或凭据。 */
 export type BlockId = string;
@@ -123,3 +123,7 @@ export declare function parsePluginPdfPages(request: PluginPdfPagesParseRequest,
 
 /** 与解析输出共用确定性块身份，索引/SoT 后处理不能复制 UUID 规则。 */
 export declare function generateParsedBlockId(documentId: string, index: number, text: string): BlockId;
+
+/** 复用 Host 文档 OCR 页数能力合同，不在插件复制模型上限规则。 */
+export declare function hasDocumentOcrPageLimit(profile: DocumentOcrModelProfile | undefined): profile is DocumentOcrModelProfile & { readonly maxInputPages: number };
+export declare function assertDocumentOcrPageLimit(input: { filename: string; pageCount: number; profile: DocumentOcrModelProfile }): void;

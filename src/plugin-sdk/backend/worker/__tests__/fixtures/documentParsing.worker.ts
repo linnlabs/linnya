@@ -1,9 +1,9 @@
-import { Logger } from '@plugin/backend/worker/loggingRuntime';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { parentPort, workerData } from 'node:worker_threads';
-import { countPluginPdfPages, parsePluginDocument } from '@plugin/backend/worker/documentParsingRuntime';
-import type { DocumentParsingInference } from '@plugin/backend/worker/documentParsingRuntime';
+import { countPluginPdfPages, parsePluginDocument } from '@plugin/backend/documentParsingRuntime';
+import type { DocumentParsingInference } from '@plugin/backend/documentParsingRuntime';
 import { createTextPdf } from '../../../../../features/parsers/pdfParser/testkit/createTextPdf';
 
 const inference: DocumentParsingInference = {
