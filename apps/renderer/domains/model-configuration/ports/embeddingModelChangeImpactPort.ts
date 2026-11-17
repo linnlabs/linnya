@@ -1,5 +1,11 @@
-import type { EmbeddingModelChangeImpactPort } from '@linnya/plugin-host-contract/renderer/modelConfiguration';
-export type { EmbeddingModelChangeImpact, EmbeddingModelChangeImpactPort } from '@linnya/plugin-host-contract/renderer/modelConfiguration';
+import type { EmbeddingIndexChangeImpact } from '@linnya/plugin-host-contract/renderer/modelConfiguration';
+export type EmbeddingModelChangeImpact = EmbeddingIndexChangeImpact;
+
+/** 本产品设置的已有影响提示；公共插件合同由 app 装配映射，避免反向携带知识库语义。 */
+export interface EmbeddingModelChangeImpactPort {
+  findImpactedKnowledgeBases(nextModelId: string): Promise<readonly EmbeddingModelChangeImpact[]>;
+  findKnowledgeBasesUsingModel(modelId: string): Promise<readonly EmbeddingModelChangeImpact[]>;
+}
 
 let registeredPort: EmbeddingModelChangeImpactPort | null = null;
 

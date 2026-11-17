@@ -182,7 +182,7 @@ const rendererHostShims = new Map<string, string>([
   ['/plugin-renderer/pluginMultipartUpload.js', buildNamedHostShim('@plugin/renderer/pluginMultipartUpload', ['uploadRendererPluginMultipart'])],
   ['/plugin-renderer/modelConfiguration.js', buildNamedHostShim('@plugin/renderer/modelConfiguration', [
     'readPurposeModelId', 'readAuxiliaryModelId', 'readModelDisplayName',
-    'subscribeModelConfigurationChanges', 'openModelConfiguration', 'registerEmbeddingModelChangeImpactPort',
+    'subscribeModelConfigurationChanges', 'openModelConfiguration', 'registerEmbeddingIndexChangeImpactPort',
   ])],
   ['/plugin-renderer/aiInvocationPort.js', buildNamedHostShim('@plugin/renderer/aiInvocationPort', [
     'requireRendererAiInvocationPort',
