@@ -1,9 +1,9 @@
 /*
- * 底部控件统一 24px（IconButton sm 档），“+”、模型选择器与图片按钮同高；常规与紧凑只差字号和左右留白。
+ * 底部控件高度：常规 26（IconButton composer 专用档）、紧凑 24（sm），“+”、模型选择器、Agent 胶囊与图片按钮同高。
  * 高度来自这个变量加 flex 居中，不靠上下内边距与行高相加。
  */
 .ai-assistant-input-footer {
-  --input-footer-control-height: 24px;
+  --input-footer-control-height: 26px;
 
   display: flex;
   justify-content: space-between;
@@ -15,12 +15,14 @@
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact {
+  --input-footer-control-height: 24px;
+
   padding: var(--space-1-5) var(--space-2-5) var(--space-2);
   align-items: flex-end;
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact .selectors-top-row {
-  gap: var(--space-1);
+  --selectors-row-gap: var(--space-1);
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact .selectors-wrapper {
@@ -65,8 +67,10 @@
 }
 
 .ai-assistant-input-footer .selectors-top-row {
+  --selectors-row-gap: var(--space-2);
+
   display: flex;
-  gap: var(--space-2);
+  gap: var(--selectors-row-gap);
   align-items: center;
   /* 允许内部的 CustomSelect 在窄宽度下收缩并触发省略号 */
   min-width: 0;
@@ -178,6 +182,41 @@
   padding-left: var(--space-1-5);
 }
 
+/*
+ * Agent 胶囊的展开、收起：槽的列宽在 0fr ↔ 1fr 之间过渡，右侧的模型选择器跟着平滑移动。
+ * flex 间距在宽度为 0 时仍占位，收起状态用等量负外边距抵掉，移动才连续、不在最后跳一下。
+ */
+.ai-assistant-input-footer .agent-choice-slot {
+  display: grid;
+  grid-template-columns: 1fr;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.ai-assistant-input-footer .agent-choice-slot__inner {
+  min-width: 0;
+}
+
+.ai-assistant-input-footer .agent-choice-slot-enter-active,
+.ai-assistant-input-footer .agent-choice-slot-leave-active {
+  transition:
+    grid-template-columns var(--duration-medium) var(--ease-standard),
+    margin-right var(--duration-medium) var(--ease-standard),
+    opacity var(--duration-medium) var(--ease-standard);
+}
+
+.ai-assistant-input-footer .agent-choice-slot-enter-active .agent-choice-slot__inner,
+.ai-assistant-input-footer .agent-choice-slot-leave-active .agent-choice-slot__inner {
+  overflow: hidden;
+}
+
+.ai-assistant-input-footer .agent-choice-slot-enter-from,
+.ai-assistant-input-footer .agent-choice-slot-leave-to {
+  grid-template-columns: 0fr;
+  margin-right: calc(var(--selectors-row-gap) * -1);
+  opacity: 0;
+}
+
 /* agent-choice pill：与 mode/model 的触发器样式一致（对齐 HEAD~2） */
 .ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger {
   position: relative;
@@ -188,7 +227,13 @@
   /* 左侧放 icon（默认 research，hover 变 close） */
   padding: 0 var(--space-2) 0 26px; /* 为左侧图标预留空间（收紧 icon 与“研究”的间距） */
   background-color: var(--color-accent-bg);
-  color: var(--color-accent);
+  color: var(--color-accent-text);
+  transition: background-color var(--duration-micro) var(--ease-standard);
+}
+
+/* 与 tint 按钮同一套：静止 accent-bg，悬停 accent-bg-hover；关闭按钮悬停再深一层（见下）。 */
+.ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger:not(.is-disabled):not(.is-unavailable):hover {
+  background-color: var(--color-accent-bg-hover);
 }
 
 .ai-assistant-input-footer .agent-choice-trigger.is-disabled {
@@ -262,7 +307,7 @@
    * - 背景：更深的主题 hover 背景
    * - 图标：更深的主题主色 hover
    */
-  background-color: var(--color-accent-bg-hover);
+  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-accent-bg-hover));
   color: var(--color-accent-hover);
 }
 

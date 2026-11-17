@@ -438,8 +438,7 @@ const isInputDisabled = computed(
     props.disabled === true ||
     isLoading.value ||
     inputExecution.isBusy.value ||
-    isSubmissionStarting.value ||
-    isAgentChoiceUpdating.value
+    isSubmissionStarting.value
 );
 const isModelSetupRequired = computed(() =>
   shouldPromptForModelSetup(modelPicker.snapshot.value, isInputDisabled.value)
@@ -483,8 +482,9 @@ const imageSubmitMessage = computed(() => {
   return '';
 });
 
+// 切换 Agent 的保存很短：只拦发送，不把输入框置为禁用外观，否则正文和占位符会闪一下。
 const canSend = computed(() => {
-  return imageSubmitPreflight.value.ok && !isInputDisabled.value;
+  return imageSubmitPreflight.value.ok && !isInputDisabled.value && !isAgentChoiceUpdating.value;
 });
 const primaryControl = computed(() =>
   resolveComposerRunControl({
@@ -605,7 +605,7 @@ const modelSelectOptions = conversationModelSelection.modelSelectOptions;
  * 会话级 Agent 选择：Host 持久化成功后才更新 Renderer read model。
  */
 const handleAgentChoiceChange = async (agentChoiceId: ConversationAgentChoiceId | null) => {
-  if (isInputDisabled.value) return;
+  if (isInputDisabled.value || isAgentChoiceUpdating.value) return;
 
   isAgentChoiceUpdating.value = true;
   try {

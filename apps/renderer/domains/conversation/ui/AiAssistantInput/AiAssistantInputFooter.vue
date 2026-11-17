@@ -18,7 +18,7 @@
           <IconButton
             ref="inputActionMenuButtonComponentRef"
             class="input-action-menu-button"
-            size="sm"
+            :size="variant === 'compact' ? 'sm' : 'composer'"
             :label="conversationMessage('conversation.input.actionMenu.open')"
             :disabled="isInputControlsDisabled"
             aria-haspopup="menu"
@@ -61,19 +61,20 @@
           </Teleport>
         </div>
 
-        <div
-          v-if="activeAgentChoicePillText && activeAgentChoiceAriaLabel"
-          class="selector-group selector-group--agent-choice"
-        >
+        <!-- 增删 Agent 时胶囊展开、收起，右侧的模型选择器随之平滑移动；收起期间沿用最后一次的内容。 -->
+        <Transition name="agent-choice-slot">
+        <div v-if="hasAgentChoice && shownAgentChoice" class="agent-choice-slot">
+        <div class="agent-choice-slot__inner">
+        <div class="selector-group selector-group--agent-choice">
           <div
             class="select-trigger select-trigger--minimal agent-choice-trigger"
             :class="{
               'is-disabled': isInputControlsDisabled,
-              'is-unavailable': isActiveAgentChoiceUnavailable,
+              'is-unavailable': shownAgentChoice.unavailable,
             }"
             role="button"
-            :aria-label="activeAgentChoiceAriaLabel"
-            :title="activeAgentChoiceAriaLabel"
+            :aria-label="shownAgentChoice.ariaLabel"
+            :title="shownAgentChoice.ariaLabel"
           >
             <button
               type="button"
@@ -84,15 +85,18 @@
               :data-linnya-tooltip="conversationMessage('conversation.input.agentChoice.close')"
             >
               <component
-                :is="activeAgentChoiceIconComponent"
-                v-if="activeAgentChoiceIconComponent"
+                :is="shownAgentChoice.icon"
+                v-if="shownAgentChoice.icon"
                 class="agent-choice-trigger-icon agent-choice-trigger-icon--default"
               />
               <CloseIcon class="agent-choice-trigger-icon agent-choice-trigger-icon--hover" />
             </button>
-            <span class="agent-choice-trigger-text">{{ activeAgentChoicePillText }}</span>
+            <span class="agent-choice-trigger-text">{{ shownAgentChoice.text }}</span>
           </div>
         </div>
+        </div>
+        </div>
+        </Transition>
 
         <!-- 模型选择跟随输入能力放在左侧，较长名称在窄窗口中优先省略。 -->
         <div class="selector-group selector-group--model">
@@ -150,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, markRaw, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import type { PropType, Component } from 'vue';
 import { CustomSelect, IconButton } from '@linnya/renderer-ui';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
@@ -274,6 +278,25 @@ const activeAgentChoiceIconComponent = computed<Component | null>(() => {
       ?.iconComponent ?? null
   );
 });
+
+interface ShownAgentChoice {
+  readonly text: string;
+  readonly ariaLabel: string;
+  readonly icon: Component | null;
+  readonly unavailable: boolean;
+}
+
+const hasAgentChoice = computed(() => Boolean(props.activeAgentChoicePillText && props.activeAgentChoiceAriaLabel));
+/** 胶囊显示的内容：有 Agent 时跟随最新值；关闭后保留最后一次，让收起动画期间文字不消失。 */
+const shownAgentChoice = ref<ShownAgentChoice | null>(null);
+watch(
+  () => [props.activeAgentChoicePillText, props.activeAgentChoiceAriaLabel, activeAgentChoiceIconComponent.value, props.isActiveAgentChoiceUnavailable] as const,
+  ([text, ariaLabel, icon, unavailable]) => {
+    if (!text || !ariaLabel) return;
+    shownAgentChoice.value = { text, ariaLabel, icon: icon ? markRaw(icon) : null, unavailable };
+  },
+  { immediate: true },
+);
 
 const showInputActionMenu = ref(false);
 const inputActionMenuButtonComponentRef = ref<InstanceType<typeof IconButton> | null>(null);
