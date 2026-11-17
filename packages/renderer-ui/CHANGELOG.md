@@ -9,6 +9,7 @@
 - `moon-blue` 改为很淡的月白蓝：新增 `--color-moon-*`（底色与边框）、`--color-moon-accent-*`（强调蓝，实底 `#4079ac` 白字 4.62:1）与 `--color-moon-shadow`；底色彩度降到 C0.003–0.009，文字改为带一点蓝的墨色，链接用强调文字色。
 - 少边框：新增 `--color-bg-field` / `--color-bg-field-hover`（主文字色 5% / 8% 叠加）。`CustomTextField`、`CustomSelect`（bordered）、`SecretInput`、`CustomNumberInput`、`TimePicker` 与 `BaseButton` 的 `secondary` 静止时不画边框，用浅底表达边界，聚焦时才出现强调色描边；输入框的底色在悬停、聚焦时不变，选择器、时间选择与 `secondary` 悬停加深；`ghost` 改为透明底无描边。
 - 弹窗与可拖拽面板四边同距：新增 `--modal-inset`（24px）与 `--floating-panel-inset`（20px）。`Modal` 默认滚动模式下由 Modal 负责正文与 footer 的左右、底部边距，标题行与关闭钮按笔画对齐到同一边距；调用方原来给正文或 footer 写的左右内边距需要删掉，否则会叠加。`internal` 模式的调用方用 `var(--modal-inset)` 写左右边距。`AlertDialog` 与 `DraggablePanel` 已按新边距调整；`height="auto"` 的 `DraggablePanel` 不再受 180px 最小高度约束。
+- `LinnyaIcon` 的默认颜色由 `--color-brand-500` 改为 `--color-accent`（浅色主题是加深的品牌色 `#3d825d`），与主按钮、选中态同一个绿；调用方不必再各自写颜色，需要别的颜色时仍在图标自身的 class 上覆盖。
 - `SidebarIcon` 的方框由 14 放到 15（墨迹 16，圆角 2.75），与同排的 `LibraryIcon`、`SettingsIcon` 一样大；组件名与 `data-icon` 不变。
 
 ## 3.8.0 - 2026-11-17

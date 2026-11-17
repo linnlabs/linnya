@@ -150,7 +150,7 @@
             @click="$emit('ai-init-project')"
           >
             <span class="workspace-sidebar-row-icon">
-              <LinnyaIcon class="empty-create-ai-icon" />
+              <LinnyaIcon />
             </span>
             <span class="workspace-sidebar-row-label">{{ workspaceMessage('workspace.sidebar.fileTree.aiInit') }}</span>
           </button>

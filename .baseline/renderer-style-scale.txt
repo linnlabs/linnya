@@ -196,4 +196,3 @@
 2	SCALE-05-spacing	packages/renderer-ui/src/features/select-menu/styles/CustomSelect.css
 1	SCALE-03-line-height	packages/renderer-ui/src/features/text-entry/styles/CustomTextField.css
 3	SCALE-05-spacing	packages/renderer-ui/src/features/text-entry/styles/CustomTextField.css
-1	COLOR-01-base-palette	packages/renderer-ui/src/styles/icons.css

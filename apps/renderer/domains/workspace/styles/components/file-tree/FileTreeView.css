@@ -92,10 +92,6 @@
   margin-top: var(--space-2-5);
 }
 
-.workspace-sidebar .file-tree-view .empty-create-ai-icon {
-  color: var(--color-accent);
-}
-
 /* 更多菜单样式 */
 .workspace-sidebar .file-tree-view .more-menu-container {
   position: relative;

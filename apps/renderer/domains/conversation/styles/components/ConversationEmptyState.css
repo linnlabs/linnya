@@ -21,11 +21,9 @@
   justify-content: center;
 }
 
-/* 颜色写在图标本身：LinnyaIcon 默认取 brand-500，写在外层不会覆盖。 */
 .conversation-empty-state__icon-svg {
   width: 36px;
   height: 36px;
-  color: var(--color-accent);
 }
 
 .conversation-empty-state__copy h3 {
