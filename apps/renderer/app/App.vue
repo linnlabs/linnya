@@ -158,10 +158,7 @@ onMounted(async () => {
       loader: getRuntimeRendererPluginLoaderDiagnostics(),
     });
     await syncFileManagerHandlers(enabledPluginsStore.enabledPluginIds);
-    const currentProjectId = useNavigationScope().currentProjectId;
-    if (layoutStore.state.sidebarMode === 'files' && currentProjectId) {
-      await workspaceNodeDeletion.ensureProjectPageSelection(currentProjectId);
-    }
+    // 启动时即使恢复到文件视图，也不自动打开页面或文件空态：右栏默认收起，由用户点文件再打开。
     console.info('[App.vue] plugin-runtime-init-success', {
       enabledPluginIds: Array.from(enabledPluginsStore.enabledPluginIds),
       registryAfterInit: describeRendererPluginRegistryForDiagnostics(),
