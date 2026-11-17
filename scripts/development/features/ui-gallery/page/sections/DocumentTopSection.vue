@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { SegmentedTabs, ToolbarButton, ToolbarGroup, type SegmentedTabItem } from '@linnya/renderer-ui';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { BaseDropdown, DropdownPanel, SegmentedTabs, ToolbarButton, ToolbarGroup, type SegmentedTabItem } from '@linnya/renderer-ui';
 import {
   BoldIcon,
   BulletListIcon,
+  ChevronIcon,
   CloseIcon,
   DocumentIcon,
   DocumentTextIcon,
@@ -59,6 +60,11 @@ const DOCS: readonly DemoDoc[] = [
   { id: 'plan', title: '第四季度计划与预算拆分', kind: 'markdown' },
   { id: 'faq', title: '常见问题', kind: 'markdown' },
   { id: 'interview', title: '访谈记录整理', kind: 'markdown' },
+  { id: 'pricing', title: '定价方案草稿', kind: 'markdown' },
+  { id: 'persona', title: '用户画像', kind: 'canvas' },
+  { id: 'retro', title: '十月复盘', kind: 'slides' },
+  { id: 'glossary', title: '术语表', kind: 'markdown' },
+  { id: 'roadmap', title: '产品路线图', kind: 'canvas' },
 ];
 const docById = (id: string) => DOCS.find(doc => doc.id === id)!;
 
@@ -87,6 +93,80 @@ const tabs = ref<OpenTab[]>([
 const activeId = ref('report');
 const activeDoc = computed(() => docById(activeId.value));
 
+/** 最近使用顺序：Ctrl+Tab 切换、“全部标签”排序、关闭当前标签后回到哪个，都按它。 */
+const recent = ref<string[]>(['report', 'deck', 'minutes']);
+const closedStack = ref<string[]>([]);
+watch(activeId, id => {
+  recent.value = [id, ...recent.value.filter(item => item !== id)];
+  void nextTick(scrollActiveIntoView);
+});
+
+const tabsEl = ref<HTMLElement | null>(null);
+const overflowing = ref(false);
+const moreLeft = ref(false);
+const moreRight = ref(false);
+function measureOverflow() {
+  const el = tabsEl.value;
+  overflowing.value = !!el && el.scrollWidth > el.clientWidth + 1;
+  moreLeft.value = !!el && el.scrollLeft > 1;
+  moreRight.value = !!el && el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+}
+function scrollActiveIntoView() {
+  tabsEl.value?.querySelector<HTMLElement>('.doc-tab.is-active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  measureOverflow();
+}
+/** 竖向滚轮也横向滚动标签栏。 */
+function onTabsWheel(event: WheelEvent) {
+  const el = tabsEl.value;
+  if (!el || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+  el.scrollLeft += event.deltaY;
+  event.preventDefault();
+}
+let resizeObserver: ResizeObserver | null = null;
+onMounted(() => {
+  resizeObserver = new ResizeObserver(measureOverflow);
+  if (tabsEl.value) resizeObserver.observe(tabsEl.value);
+});
+onBeforeUnmount(() => resizeObserver?.disconnect());
+watch(() => tabs.value.length, () => void nextTick(measureOverflow));
+
+const listQuery = ref('');
+const listedTabs = computed(() => {
+  const query = listQuery.value.trim();
+  return recent.value
+    .filter(id => tabs.value.some(tab => tab.id === id))
+    .map(docById)
+    .filter(doc => !query || doc.title.includes(query));
+});
+
+interface TabMenuState {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+}
+const tabMenu = ref<TabMenuState | null>(null);
+function openTabMenu(event: MouseEvent, id: string) {
+  const frame = (event.currentTarget as HTMLElement).closest('.doc-frame')!.getBoundingClientRect();
+  tabMenu.value = { id, x: event.clientX - frame.left, y: event.clientY - frame.top };
+}
+function closeTabs(ids: readonly string[]) {
+  for (const id of ids) closeTab(id);
+  tabMenu.value = null;
+}
+function closeOthers(id: string) {
+  closeTabs(tabs.value.filter(tab => tab.id !== id).map(tab => tab.id));
+  activeId.value = id;
+}
+function closeRight(id: string) {
+  const index = tabs.value.findIndex(tab => tab.id === id);
+  closeTabs(tabs.value.slice(index + 1).map(tab => tab.id));
+}
+function reopenClosed() {
+  const id = closedStack.value.pop();
+  if (id) openDoc(id, true);
+  tabMenu.value = null;
+}
+
 function openDoc(id: string, pin: boolean) {
   const existing = tabs.value.find(tab => tab.id === id);
   if (existing) {
@@ -110,16 +190,24 @@ function closeTab(id: string) {
   const index = tabs.value.findIndex(tab => tab.id === id);
   if (index < 0) return;
   tabs.value.splice(index, 1);
-  if (activeId.value === id && tabs.value.length) activeId.value = tabs.value[Math.max(0, index - 1)].id;
+  closedStack.value.push(id);
+  recent.value = recent.value.filter(item => item !== id);
+  if (activeId.value === id && tabs.value.length) activeId.value = recent.value.find(item => tabs.value.some(tab => tab.id === item)) ?? tabs.value[0].id;
 }
 
 function resetTabs() {
   tabs.value = [{ id: 'report', preview: false }, { id: 'deck', preview: false }, { id: 'minutes', preview: true }];
   activeId.value = 'report';
+  recent.value = ['report', 'deck', 'minutes'];
+  closedStack.value = [];
 }
 
 function openMany() {
-  for (const doc of DOCS) if (!tabs.value.some(tab => tab.id === doc.id)) tabs.value.push({ id: doc.id, preview: false });
+  for (const doc of DOCS) {
+    if (tabs.value.some(tab => tab.id === doc.id)) continue;
+    tabs.value.push({ id: doc.id, preview: false });
+    recent.value = [...recent.value, doc.id];
+  }
 }
 </script>
 
@@ -193,13 +281,18 @@ function openMany() {
 
     <GalleryBlock
       title="文档栏：面包屑 → 标签页"
-      note="标签页取代现在的“项目 / 文档名”那一行，右侧的更多和刷新保留。点左边的文档打开：单击是临时标签（斜体，再单击别的文档会被替换），双击或在正文里打字就固定下来；也可以切成“单击总是新开”对比。悬停标签显示所属项目。"
+      note="标签页取代现在的“项目 / 文档名”那一行，右侧的更多和刷新保留。不设数量上限：标签缩到最小宽度后横向滚动（滚轮也能横滚），切到的标签自动滚进可见区；放不下时右端出现“全部标签”，按最近使用列出、可筛选；右键标签有关闭菜单。点左边的文档打开：单击是临时标签（斜体，再单击别的文档会被替换），双击或在正文里打字就固定下来；也可以切成“单击总是新开”对比。悬停标签显示所属项目。"
     >
       <GalleryRow label="设置">
         <SegmentedTabs v-model="tabStyle" :tabs="TAB_STYLES" aria-label="标签样式" />
         <SegmentedTabs v-model="openMode" :tabs="OPEN_MODES" aria-label="打开方式" />
         <button type="button" class="doc-top__link" @click="openMany">打开很多个看溢出</button>
         <button type="button" class="doc-top__link" @click="resetTabs">重置</button>
+      </GalleryRow>
+      <GalleryRow label="快捷键">
+        <span class="doc-top__keys">
+          <kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>Tab</kbd> 按最近使用切换　<kbd>⌘W</kbd> 关闭当前　<kbd>⇧⌘T</kbd> 重新打开刚关闭的（浏览器里会被拦截，这里只列出；右键标签可试关闭菜单）
+        </span>
       </GalleryRow>
       <GalleryRow label="试一试" align="start">
         <div class="tabs-demo">
@@ -222,7 +315,7 @@ function openMany() {
 
           <div class="doc-frame doc-frame--wide">
             <header class="doc-frame__header doc-frame__header--tabs" :class="`is-${tabStyle}`">
-              <div class="doc-tabs" role="tablist" aria-label="已打开的文档">
+              <div ref="tabsEl" class="doc-tabs" :class="{ 'is-more-left': moreLeft, 'is-more-right': moreRight }" role="tablist" aria-label="已打开的文档" @wheel="onTabsWheel" @scroll="measureOverflow">
                 <div
                   v-for="tab in tabs"
                   :key="tab.id"
@@ -233,6 +326,7 @@ function openMany() {
                   :title="`改动清单验证 / ${docById(tab.id).title}`"
                   @click="activeId = tab.id"
                   @dblclick="tab.preview = false"
+                  @contextmenu.prevent="openTabMenu($event, tab.id)"
                 >
                   <DocumentTextIcon v-if="docById(tab.id).kind === 'markdown'" class="doc-tab__icon" />
                   <DocumentIcon v-else class="doc-tab__icon" />
@@ -240,8 +334,50 @@ function openMany() {
                   <button type="button" class="doc-tab__close" aria-label="关闭" @click.stop="closeTab(tab.id)"><CloseIcon /></button>
                 </div>
               </div>
+              <BaseDropdown v-if="overflowing" class="doc-tabs__all-anchor">
+                <template #trigger="{ toggle, isOpen }">
+                  <button
+                    type="button"
+                    class="doc-tabs__all"
+                    :class="{ 'is-open': isOpen }"
+                    :aria-expanded="isOpen"
+                    :title="`全部标签（${tabs.length}）`"
+                    @click="listQuery = ''; toggle()"
+                  >
+                    {{ tabs.length }}<ChevronIcon direction="down" />
+                  </button>
+                </template>
+                <template #content="{ isOpen, close }">
+                  <DropdownPanel :show="isOpen" class="doc-tabs__list">
+                    <input v-model="listQuery" class="doc-tabs__filter" placeholder="筛选已打开的文档" aria-label="筛选已打开的文档" />
+                    <div class="doc-tabs__list-caption">按最近使用</div>
+                    <div
+                      v-for="doc in listedTabs"
+                      :key="doc.id"
+                      class="doc-tabs__list-item"
+                      :class="{ 'is-active': doc.id === activeId }"
+                      @click="activeId = doc.id; close()"
+                    >
+                      <DocumentTextIcon v-if="doc.kind === 'markdown'" class="doc-tab__icon" />
+                      <DocumentIcon v-else class="doc-tab__icon" />
+                      <span class="doc-tab__title">{{ doc.title }}</span>
+                      <button type="button" class="doc-tab__close" aria-label="关闭" @click.stop="closeTab(doc.id)"><CloseIcon /></button>
+                    </div>
+                    <div v-if="!listedTabs.length" class="doc-tabs__list-empty">没有匹配的文档</div>
+                  </DropdownPanel>
+                </template>
+              </BaseDropdown>
               <span class="doc-frame__actions"><MoreIcon /><RefreshIcon /></span>
             </header>
+            <div v-if="tabMenu" class="tab-menu__scrim" @click="tabMenu = null" @contextmenu.prevent="tabMenu = null" />
+            <div v-if="tabMenu" class="tab-menu" :style="{ left: `${tabMenu.x}px`, top: `${tabMenu.y}px` }" role="menu">
+              <button type="button" class="tab-menu__item" @click="closeTabs([tabMenu.id])">关闭<kbd>⌘W</kbd></button>
+              <button type="button" class="tab-menu__item" @click="closeOthers(tabMenu.id)">关闭其他</button>
+              <button type="button" class="tab-menu__item" @click="closeRight(tabMenu.id)">关闭右侧</button>
+              <button type="button" class="tab-menu__item" @click="closeTabs(tabs.map(tab => tab.id))">全部关闭</button>
+              <div class="tab-menu__divider" />
+              <button type="button" class="tab-menu__item" :disabled="!closedStack.length" @click="reopenClosed">重新打开刚关闭的<kbd>⇧⌘T</kbd></button>
+            </div>
             <div class="doc-frame__stage">
               <MarkdownFloatingToolbar />
               <article
@@ -485,8 +621,19 @@ function openMany() {
   height: 100%;
   overflow-x: auto;
   scrollbar-width: none;
-  /* 溢出时右端淡出，提示还能横向滚动。 */
+}
+
+/* 哪一端还有标签就在哪一端淡出，滚到头就不淡出。 */
+.doc-tabs.is-more-right {
   mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+
+.doc-tabs.is-more-left {
+  mask-image: linear-gradient(to right, transparent, #000 24px);
+}
+
+.doc-tabs.is-more-left.is-more-right {
+  mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
 }
 
 .doc-tab {
@@ -547,6 +694,170 @@ function openMany() {
 .doc-tab__close:hover {
   background: var(--color-bg-hover-strong);
   color: var(--color-text-primary);
+}
+
+/* 放不下时右端的“全部标签”：数字 + 下拉。 */
+.doc-tabs__all-anchor {
+  position: relative;
+  flex: none;
+}
+
+.doc-tabs__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.doc-tabs__all :deep(svg) {
+  width: 10px;
+  height: 10px;
+}
+
+.doc-tabs__all:hover,
+.doc-tabs__all.is-open {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.doc-tabs__list {
+  top: calc(100% + 6px);
+  right: 0;
+  width: 260px;
+  max-height: 320px;
+  padding: 6px;
+  overflow: auto;
+}
+
+.doc-tabs__filter {
+  box-sizing: border-box;
+  width: 100%;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-field);
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.doc-tabs__list-caption {
+  padding: var(--space-2) var(--space-2) 2px;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.doc-tabs__list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 4px 0 var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  cursor: default;
+}
+
+.doc-tabs__list-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.doc-tabs__list-item.is-active {
+  background: var(--color-bg-active);
+}
+
+.doc-tabs__list-item:hover .doc-tab__close,
+.doc-tabs__list-item.is-active .doc-tab__close {
+  opacity: 1;
+}
+
+.doc-tabs__list-empty {
+  padding: var(--space-3) var(--space-2);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.doc-frame--wide {
+  position: relative;
+}
+
+.tab-menu__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+
+.tab-menu {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 8%, transparent),
+    0 8px 24px -4px var(--shadow-color-md);
+}
+
+.tab-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.tab-menu__item:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.tab-menu__item:disabled {
+  color: var(--color-text-tertiary);
+}
+
+.tab-menu__item kbd,
+.doc-top__keys kbd {
+  font: inherit;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.doc-top__keys {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.doc-top__keys kbd {
+  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+}
+
+.tab-menu__divider {
+  height: 0.5px;
+  margin: 4px 6px;
+  background: var(--color-border-light);
 }
 
 /* A 浏览器式：标题栏是浅底，当前标签与正文同色、连成一体。 */
