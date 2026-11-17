@@ -28,5 +28,11 @@
     "knowledge_graph_doc_status",
     "knowledge_graph_index_status",
     "knowledge_graph_vector_doc_status"
+  ],
+  "migrations": [
+    {
+      "version": 1,
+      "description": "Adopt knowledge documents, project links and graph tables in place"
+    }
   ]
 }

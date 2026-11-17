@@ -10,6 +10,8 @@ import { PluginStateService } from 'src/features/plugins/infrastructure/sqlite/p
 import { PluginUpgradeRunner } from 'src/features/plugins/infrastructure/sqlite/plugin-upgrade.runner';
 import { SLIDES_PLUGIN_META, SLIDES_OWNED_TABLES } from '../slides/src/shared';
 import { slidesPluginMigrations } from '../slides/src/backend/persistence/slidesPluginMigrations';
+import { knowledgeManifest, knowledgePluginMeta } from '../knowledge/src/shared/definitions/pluginMeta';
+import { knowledgePluginMigrations } from '../knowledge/src/backend/database';
 
 interface SchemaObject {
   readonly type: string;
@@ -48,13 +50,19 @@ function readStructure(db: Database.Database): Map<string, unknown> {
   return result;
 }
 
-function bootstrapSlides(db: Database.Database): void {
-  new PluginStateService(db).ensureBuiltinInstalled([SLIDES_PLUGIN_META]);
+function bootstrapPlugins(db: Database.Database): void {
+  new PluginStateService(db).ensureBuiltinInstalled([SLIDES_PLUGIN_META, knowledgePluginMeta]);
   const result = new PluginUpgradeRunner(db, { appVersion: '0.1.0' }).run({
     pluginId: SLIDES_PLUGIN_META.id, targetVersion: SLIDES_PLUGIN_META.version,
     ownedTables: SLIDES_OWNED_TABLES, migrations: slidesPluginMigrations,
   });
   expect(['upgraded', 'skipped'], 'Slides lifecycle must complete').toContain(result.status);
+  const knowledge = new PluginUpgradeRunner(db, { appVersion: '0.2.1' }).run({
+    pluginId: knowledgePluginMeta.id, targetVersion: knowledgePluginMeta.version,
+    ownedTables: knowledgeManifest.ownedTables, migrations: knowledgePluginMigrations,
+    compatMin: knowledgePluginMeta.compatMin,
+  });
+  expect(['upgraded', 'skipped'], 'Knowledge lifecycle must complete').toContain(knowledge.status);
 }
 
 const fixture = join(import.meta.dirname, 'fixtures/database-0.1.0/workspace.sqlite');
@@ -71,8 +79,8 @@ it('upgrades the released v68 database to the same complete structure as a fresh
   const upgraded = new DatabaseService(join(directory, 'upgraded.sqlite'));
   try {
     copyFileSync(fixture, join(directory, 'upgraded.sqlite'));
-    fresh.initialize({ lifecycleBootstrap: bootstrapSlides });
-    upgraded.initialize({ lifecycleBootstrap: bootstrapSlides });
+    fresh.initialize({ lifecycleBootstrap: bootstrapPlugins });
+    upgraded.initialize({ lifecycleBootstrap: bootstrapPlugins });
     const db = upgraded.getDb();
     expect(db.pragma('user_version', { simple: true })).toBe(SCHEMA_VERSION);
     expect(db.pragma('foreign_key_check')).toEqual([]);
@@ -117,7 +125,7 @@ it('upgrades the released v68 database to the same complete structure as a fresh
       .toEqual([expect.objectContaining({ documentId: node.id, actions: ['update'] })]);
     // 再打开一次，确保迁移后的账本与建表路径可重入且不会删除提议。
     upgraded.close();
-    upgraded.initialize({ lifecycleBootstrap: bootstrapSlides });
+    upgraded.initialize({ lifecycleBootstrap: bootstrapPlugins });
     expect(readStructure(upgraded.getDb())).toEqual(actual);
     expect(upgraded.getDb().prepare('SELECT COUNT(*) AS count FROM markdown_block_pending_revisions').get())
       .toEqual({ count: 1 });
