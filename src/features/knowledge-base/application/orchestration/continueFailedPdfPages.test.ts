@@ -1,3 +1,4 @@
+import { createKnowledgeIndexFixture } from '../../index-rebuild/testkit/createKnowledgeIndexFixture';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
@@ -417,6 +418,7 @@ function createMetadataRepository(
   };
 
   return {
+    indexState: createKnowledgeIndexFixture([KB_ID], { modelId: 'embedding-model', spaceId: 'test-embedding-space' }),
     createKnowledgeBase: async input => input,
     getAllKnowledgeBases: async () => [kb],
     getDocumentCountsByKnowledgeBaseIds: async () => ({}),

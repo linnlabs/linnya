@@ -22,7 +22,7 @@ Worker 模式：
 2. Worker 把标准状态交给 `WorkerThreadQueue`；Knowledge 自有 projection 更新 `IngestionProgressStore`。
 3. App Server 通过 Renderer integration port 发布 `task-status-update`，Electron Main 只负责 data-only 转发。
 
-非 Worker 模式由注入的 `StatusUpdatePublisher` 发布同一类状态，不允许摄入代码直接依赖 Electron。Renderer 同时使用 push 和低频轮询；前端入口见 [Renderer Knowledge README](../../../../apps/renderer/domains/knowledgebase/README.md)。
+拒绝入队由注入的 `StatusUpdatePublisher` 发布失败，不回退到 Backend 同步解析；不允许摄入代码直接依赖 Electron。Renderer 同时使用 push 和低频轮询；前端入口见 [Renderer Knowledge README](../../../../apps/renderer/domains/knowledgebase/README.md)。
 
 ## 修改地图
 

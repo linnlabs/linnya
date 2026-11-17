@@ -60,9 +60,11 @@ export class TaskService {
   async cancelTasksForDocumentDeletion(kbId: string, docId: string): Promise<void> {
     const queueManager = QueueManager.getInstance();
 
-    // 1) 取消摄入任务（taskId 通常等于 docId）
+    // 1) 取消冻结文档的真实任务，docId 不是队列任务身份。
     try {
-      await queueManager.cancelIngestionTask(docId);
+      for (const job of queueManager.listIngestionTasks()) {
+        if (job.data.kbId === kbId && job.data.docId === docId) await queueManager.cancelIngestionTask(job.id);
+      }
     } catch (e) {
       logger.warn(`删除文档前取消摄入任务失败（将继续删除流程）: docId=${docId}`, e as Error);
     }
@@ -92,11 +94,11 @@ export class TaskService {
 
   /**
    * **功能 (What):** 删除知识库前取消该 KB 下所有后台任务（摄入 + 图谱抽取）
-   * **输入 (Input):** kbId, docIds（该 kb 下所有文档）
+   * **输入 (Input):** kbId
    * **输出 (Output):** Promise<void>
    * **副作用 (Side-effects):** 向队列发送取消信号
    */
-  async cancelTasksForKnowledgeBaseDeletion(kbId: string, docIds: string[]): Promise<void> {
+  async cancelTasksForKnowledgeBaseDeletion(kbId: string): Promise<void> {
     const queueManager = QueueManager.getInstance();
 
     // 1) 取消图谱抽取（按 kbId 批量取消）
@@ -121,12 +123,12 @@ export class TaskService {
       logger.warn(`删除知识库前取消图谱索引任务失败（将继续删除流程）: kbId=${kbId}`, e as Error);
     }
 
-    // 2) 取消该 KB 下可能仍在运行的摄入任务（逐 docId best-effort）
-    for (const docId of docIds) {
+    // 2) 文档元数据可能尚未落盘，按队列持有的库身份取消所有真实摄入任务。
+    for (const job of queueManager.listIngestionTasks().filter(task => task.data.kbId === kbId)) {
       try {
-        await queueManager.cancelIngestionTask(docId);
+        await queueManager.cancelIngestionTask(job.id);
       } catch (e) {
-        logger.debug(`删除知识库前取消摄入任务失败（忽略）: docId=${docId}`, e as Error);
+        logger.debug(`删除知识库前取消摄入任务失败（忽略）: taskId=${job.id}`, e as Error);
       }
     }
   }

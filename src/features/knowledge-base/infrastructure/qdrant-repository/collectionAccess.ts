@@ -7,7 +7,7 @@ import { isObjectLike } from '@linnya/foundation';
  * 说明：
  * - 普通搜索 / 上传 / 删除走 shared access；
  * - 启动维护 / recreate 走 exclusive access；
- * - 这样平时不会把所有搜索串行化，但能保证后台重建期间同 collection 不发生并发踩踏。
+ * - 这样平时不会把所有搜索串行化，仅协调本线程仓储调用；Map 不跨 Worker 共享，跨 Worker 准入由知识库活动 owner 负责。
  */
 
 import type { QdrantRepository } from '../qdrantRepository';

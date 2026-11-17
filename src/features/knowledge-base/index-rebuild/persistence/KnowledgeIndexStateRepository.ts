@@ -33,13 +33,14 @@ export class KnowledgeIndexStateRepository {
    * 首次追加在写向量前原子认领空间。多个 Worker 不能各自读到空值后混写。
    * 认领失败/摄入失败后保留约束；下一次同空间导入仍可继续，不伪称已有完整文档。
    */
-  claimForAppend(kbId: string, identity: KnowledgeIndexIdentity): void {
+  claimForAppend(kbId: string, identity: KnowledgeIndexIdentity, emptyIndexVerified: boolean): void {
     this.database.transaction(() => {
       const current = this.read(kbId);
       if (current.spaceId) {
         if (current.spaceId !== identity.spaceId) throw new KnowledgeIndexSpaceMismatchError(kbId);
         return;
       }
+      if (!emptyIndexVerified) throw new KnowledgeIndexRebuildRequiredError(kbId);
       const complete = this.database.prepare<[string], { count: number }>(
         "SELECT COUNT(*) AS count FROM kb_documents WHERE kb_id = ? AND status = 'completed'",
       ).get(kbId);

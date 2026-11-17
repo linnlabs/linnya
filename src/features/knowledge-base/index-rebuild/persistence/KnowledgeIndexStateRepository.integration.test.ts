@@ -26,7 +26,7 @@ describe('knowledge index vector-space ownership', () => {
       knowledgeIndexIdentityMigration.up({ exec: sql => { database.exec(sql); }, prepare: sql => database.prepare<unknown[]>(sql) });
       const index = new KnowledgeIndexStateRepository(database);
       expect(index.read('default')).toEqual({ modelId: 'old-model', spaceId: null });
-      expect(() => index.claimForAppend('default', { modelId: 'new-model', spaceId: 'space-new' }))
+      expect(() => index.claimForAppend('default', { modelId: 'new-model', spaceId: 'space-new' }, true))
         .toThrow('重建');
       expect(() => index.requireReady('default')).toThrow('重建');
       expect((await metadata.getDocumentById('doc'))?.filename).toBe('原文.md');
@@ -44,11 +44,11 @@ describe('knowledge index vector-space ownership', () => {
       knowledgeIndexIdentityMigration.up({ exec: sql => { database.exec(sql); }, prepare: sql => database.prepare<unknown[]>(sql) });
       const index = new KnowledgeIndexStateRepository(database);
       await metadata.createKnowledgeBase(createKnowledgeBase('other', '其他库'));
-      index.claimForAppend('default', { modelId: 'model-one', spaceId: 'same-space' });
-      index.claimForAppend('default', { modelId: 'model-alias', spaceId: 'same-space' });
-      expect(() => index.claimForAppend('default', { modelId: 'model-one', spaceId: 'changed-space' }))
+      index.claimForAppend('default', { modelId: 'model-one', spaceId: 'same-space' }, true);
+      index.claimForAppend('default', { modelId: 'model-alias', spaceId: 'same-space' }, true);
+      expect(() => index.claimForAppend('default', { modelId: 'model-one', spaceId: 'changed-space' }, true))
         .toThrow('向量空间');
-      index.claimForAppend('other', { modelId: 'model-one', spaceId: 'changed-space' });
+      index.claimForAppend('other', { modelId: 'model-one', spaceId: 'changed-space' }, true);
       expect(index.requireReady('default').spaceId).toBe('same-space');
       expect(index.requireReady('other').spaceId).toBe('changed-space');
     } finally { database.close(); }

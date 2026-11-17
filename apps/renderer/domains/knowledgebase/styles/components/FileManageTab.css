@@ -24,7 +24,7 @@
 
 .manage-tab .manage-list .file-list-header,
 .manage-tab .manage-list .file-item {
-  grid-template-columns: minmax(180px, 4fr) minmax(72px, 1fr) minmax(120px, 1.5fr) minmax(112px, 1.2fr) minmax(150px, 1.6fr) minmax(80px, 1fr);
+  grid-template-columns: minmax(0, 4fr) minmax(72px, 1fr) minmax(120px, 1.5fr) minmax(112px, 1.2fr) minmax(150px, 1.6fr) minmax(11em, 1fr);
 }
 
 .manage-tab .file-list-header {
@@ -166,6 +166,7 @@
   display: flex;
   gap: var(--space-3);
   justify-content: center;
+  white-space: nowrap;
 }
 
 .manage-tab .empty-list-placeholder {

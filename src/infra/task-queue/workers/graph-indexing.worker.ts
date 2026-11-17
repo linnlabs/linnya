@@ -1,3 +1,6 @@
+import { vectorizeAndUpsertGraphPoints } from '../../../features/knowledge-base/graph/application/indexing/vectorizeAndUpsertGraphPoints';
+import { projectGraphVectorPoints } from '../../../features/knowledge-base/graph/application/indexing/projectGraphVectorPoints';
+import { KnowledgeIndexStateRepository } from '../../../features/knowledge-base/index-rebuild/persistence/KnowledgeIndexStateRepository';
 import { resolveWorkerQdrantUrl } from '../functions/resolveWorkerQdrantUrl';
 /**
  * @file src/task-queue/workers/graph-indexing.worker.ts
@@ -35,9 +38,6 @@ import { BetterSqliteKnowledgeGraphRepository } from '../../../features/knowledg
 import { getGraphEdgesCollectionName, getGraphNodesCollectionName } from '../../../features/knowledge-base/graph/infrastructure/qdrantCollections';
 import { QdrantRepositoryImpl } from '../../../features/knowledge-base/infrastructure/QdrantRepositoryImpl';
 import { QdrantAdapter } from '../../../infra/adapters/vector-store/index';
-import type { QdrantPoint, SparseVector } from '../../../features/knowledge-base/infrastructure/qdrantRepository';
-import { textsToSparseVectors } from '../../../features/knowledge-base/ingestion/utils/textToSparseVector';
-import { generateGraphVectorPointId } from '../../../shared/utils/idUtils';
 import {
   createEmbeddingPort,
 } from '../../../app-hosts/linnya/adapters/inference';
@@ -57,6 +57,7 @@ if (parentPort) {
 }
 
 let isCancelled = false;
+const cancellation = new AbortController();
 
 function installWorkerRuntimePathRoots(): RuntimePathRoots {
   const runtimePathRoots = (
@@ -87,29 +88,6 @@ async function initializeWorkerServices(): Promise<EmbeddingPort> {
   return createEmbeddingPort({ catalog: modelCatalog });
 }
 
-function calculateBatchSize(totalTexts: number): number {
-  if (totalTexts <= 10) return totalTexts;
-  if (totalTexts <= 50) return 5;
-  if (totalTexts <= 200) return 10;
-  return 20;
-}
-
-function buildNodeText(name: string, description: string | null): string {
-  const desc = typeof description === 'string' ? description.trim() : '';
-  return desc.length > 0 ? `${name}\n${desc}` : name;
-}
-
-function buildEdgeText(statement: string | null, fallback: string): string {
-  const s = typeof statement === 'string' ? statement.trim() : '';
-  if (s.length > 0) return s;
-
-  /**
-   * statement 在 schema 中是可选字段（历史抽取/某些 LLM 输出可能缺失）。
-   * 这里用“结构化三元组”作为退化文本，保证边仍可被向量检索召回。
-   */
-  return fallback;
-}
-
 type WorkerMessageType = 'progress' | 'completed' | 'failed';
 type WorkerOutboundMessage =
   | { type: 'failed'; timestamp: number; error: string }
@@ -129,107 +107,6 @@ function sendMessage(type: WorkerMessageType, data: unknown): void {
   parentPort.postMessage(msg);
 }
 
-async function vectorizeAndUpsertPoints(args: {
-  embedding: EmbeddingPort;
-  embeddingModelId: string;
-  qdrantRepository: QdrantRepositoryImpl;
-  collectionName: string;
-  docId: string;
-  docTitle: string;
-  blockType: 'kg_node' | 'kg_edge';
-  points: Array<{
-    id: string;
-    blockId: string;
-    text: string;
-    metadata: Record<string, unknown>;
-  }>;
-  onProgress: (done: number, total: number) => void;
-}): Promise<void> {
-  const { embedding, embeddingModelId, qdrantRepository, collectionName, docId, docTitle, blockType, points, onProgress } =
-    args;
-  if (points.length === 0) return;
-
-  const texts = points.map((p) => p.text);
-  const total = texts.length;
-  const batchSize = calculateBatchSize(total);
-
-  // 先创建集合（需要向量维度）；因此第一批必须先拿到向量结果
-  let createdCollection = false;
-
-  for (let i = 0; i < total; i += batchSize) {
-    if (isCancelled) {
-      throw new Error('任务已取消');
-    }
-
-    const batchEnd = Math.min(i + batchSize, total);
-    const batchTexts = texts.slice(i, batchEnd);
-    const batchPoints = points.slice(i, batchEnd);
-
-    const embeddingResult = await embedding.embed({ modelId: embeddingModelId, values: batchTexts });
-    const denseVectorsRaw = embeddingResult.vectors;
-
-    // 严格收敛：必须是一一对应的 number[][]
-    const denseVectors: number[][] = [];
-    for (const v of denseVectorsRaw) {
-      if (!Array.isArray(v)) {
-        throw new Error('嵌入返回格式非法：向量不是数组');
-      }
-      const vec: number[] = [];
-      for (const n of v) {
-        if (typeof n !== 'number' || !Number.isFinite(n)) {
-          throw new Error('嵌入返回格式非法：向量元素不是有限数字');
-        }
-        vec.push(n);
-      }
-      denseVectors.push(vec);
-    }
-
-    if (denseVectors.length !== batchTexts.length) {
-      throw new Error(`嵌入返回数量不匹配: expected=${batchTexts.length}, got=${denseVectors.length}`);
-    }
-
-    const sparseVectors: SparseVector[] = await textsToSparseVectors(batchTexts);
-    if (sparseVectors.length !== batchTexts.length) {
-      throw new Error(`稀疏向量返回数量不匹配: expected=${batchTexts.length}, got=${sparseVectors.length}`);
-    }
-
-    if (!createdCollection) {
-      const vectorDimension = denseVectors[0]?.length ?? 768;
-      await qdrantRepository.getOrCreateCollection(collectionName, vectorDimension, 'Cosine', true);
-      createdCollection = true;
-    }
-
-    const qdrantPoints: QdrantPoint[] = batchPoints.map((p, idx) => {
-      const payload = {
-        doc_id: docId,
-        block_id: p.blockId,
-        document: p.text,
-        /**
-         * ✅ 根因修复：
-         * Qdrant 的 payload 解析（toPointPayload）要求 doc_title 为非空字符串。
-         * 图谱向量点必须写入可读标题，否则 full 的 kg_nodes/kg_edges 语义检索会因“缺少 doc_title”整体失败并退化为空。
-         */
-        doc_title: docTitle,
-        block_type: blockType,
-        metadata: p.metadata,
-      };
-
-      return {
-        id: p.id,
-        vector: {
-          default: denseVectors[idx],
-          bm25: sparseVectors[idx],
-        },
-        payload,
-      };
-    });
-
-    await qdrantRepository.addPoints(collectionName, qdrantPoints);
-
-    const done = batchEnd;
-    onProgress(done, total);
-  }
-}
 
 async function processGraphIndexingJob(): Promise<void> {
   let jobData: GraphIndexingJobPayload;
@@ -278,51 +155,14 @@ async function processGraphIndexingJob(): Promise<void> {
   const qdrantRepository = new QdrantRepositoryImpl(async () => qdrantAdapter);
 
   try {
+    const identity = new KnowledgeIndexStateRepository(databaseService.getDb()).requireReady(kbId);
     // 读取该 doc 的图谱产物
     const [nodes, edges] = await Promise.all([
       graphRepo.listNodesBySourceDocId(kbId, docId),
       graphRepo.listEdgesByEvidenceDocId(kbId, docId),
     ]);
 
-    const nodePoints = nodes.map((n) => ({
-      // 根因修复：Qdrant point id 必须是 UUID/无符号整数；图谱 node.id 可能是普通字符串
-      id: generateGraphVectorPointId(kbId, 'kg_node', n.id),
-      blockId: typeof n.sourceBlockId === 'string' && n.sourceBlockId.trim().length > 0 ? n.sourceBlockId : n.id,
-      text: buildNodeText(n.name, n.description),
-      metadata: {
-        kb_id: kbId,
-        kind: 'kg_node',
-        node_id: n.id,
-        name: n.name,
-        canonical_name: n.canonicalName,
-        type: n.type,
-        description: n.description,
-        source_doc_id: n.sourceDocId,
-        source_block_id: n.sourceBlockId,
-      },
-    }));
-
-    const edgePoints = edges.map((e) => ({
-      // 根因修复：Qdrant point id 必须是 UUID/无符号整数；图谱 edge.id 可能是 edge_xxx 这类字符串
-      id: generateGraphVectorPointId(kbId, 'kg_edge', e.id),
-      blockId: typeof e.evidenceBlockId === 'string' && e.evidenceBlockId.trim().length > 0 ? e.evidenceBlockId : e.id,
-      text: buildEdgeText(e.statement, `${e.sourceEntityId} ${e.relationType} ${e.targetEntityId}`),
-      metadata: {
-        kb_id: kbId,
-        kind: 'kg_edge',
-        edge_id: e.id,
-        source_entity_id: e.sourceEntityId,
-        target_entity_id: e.targetEntityId,
-        relation_type: e.relationType,
-        statement: e.statement,
-        confidence: e.confidence,
-        sentiment: e.sentiment,
-        time: e.time,
-        evidence_doc_id: e.evidenceDocId,
-        evidence_block_id: e.evidenceBlockId,
-      },
-    }));
-
+    const { nodePoints, edgePoints } = projectGraphVectorPoints(kbId, nodes, edges);
     // 先把 doc 索引状态置为 running（记录本次目标规模）
     await graphRepo.upsertVectorDocStatus({
       kbId,
@@ -364,9 +204,11 @@ async function processGraphIndexingJob(): Promise<void> {
     // 我们对 nodes/edges 分别包一层 prev，用“累积 done -> 增量 delta”的方式统一上报全局进度。
 
     let prevNodesDone = 0;
-    await vectorizeAndUpsertPoints({
+    await vectorizeAndUpsertGraphPoints({
       embedding,
       embeddingModelId,
+      expectedSpaceId: identity.spaceId,
+      signal: cancellation.signal,
       qdrantRepository,
       collectionName: getGraphNodesCollectionName(kbId),
       docId,
@@ -381,9 +223,11 @@ async function processGraphIndexingJob(): Promise<void> {
     });
 
     let prevEdgesDone = 0;
-    await vectorizeAndUpsertPoints({
+    await vectorizeAndUpsertGraphPoints({
       embedding,
       embeddingModelId,
+      expectedSpaceId: identity.spaceId,
+      signal: cancellation.signal,
       qdrantRepository,
       collectionName: getGraphEdgesCollectionName(kbId),
       docId,
@@ -453,6 +297,7 @@ if (parentPort) {
   parentPort.on('message', (message) => {
     if (message?.cmd === 'cancel') {
       isCancelled = true;
+    cancellation.abort();
     }
   });
 }

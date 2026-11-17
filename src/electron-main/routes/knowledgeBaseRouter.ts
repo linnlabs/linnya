@@ -147,6 +147,18 @@ export function createKnowledgeBaseRouter(
   mkdirSync(tempUploadPath, { recursive: true });
   logger.info(`初始化知识库路由, uploadPath=${tempUploadPath}`);
 
+  router.post('/:kbId/index/rebuild', async (req: Request, res: Response) => {
+    try {
+      const modelId: unknown = req.body?.modelId;
+      if (typeof modelId !== 'string' || !modelId.trim()) return res.status(400).json({ error: '请选择嵌入模型' });
+      const task = await kbService.rebuildIndex(req.params.kbId, modelId);
+      return res.json({ task });
+    } catch (error) { handleKbError(error, res, '重建检索索引'); }
+  });
+  router.get('/:kbId/index/rebuild', (req: Request, res: Response) => {
+    res.json({ task: kbService.getIndexRebuildStatus(req.params.kbId) });
+  });
+
   // ==================== 知识库管理 API ====================
 
   /**

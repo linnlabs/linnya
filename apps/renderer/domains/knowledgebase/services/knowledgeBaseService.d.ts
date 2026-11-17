@@ -85,6 +85,9 @@ declare module '@/domains/knowledgebase/services/knowledgeBaseService' {
   }
 
   export interface KnowledgeBaseService {
+    rebuildIndex(kbId: string, modelId: string): Promise<import('@app/schemas').KnowledgeIndexTaskStatus>;
+    getIndexRebuildStatus(kbId: string): Promise<import('@app/schemas').KnowledgeIndexTaskStatus | null>;
+    cancelTask(taskId: string): Promise<unknown>;
     getKbGraphProgress(kbId: string): Promise<unknown>;
     onKbGraphProgressUpdated(callback: (payload: unknown) => void): (() => void) | null;
     getAllKnowledgeBases(): Promise<GetAllKnowledgeBasesResponse>;

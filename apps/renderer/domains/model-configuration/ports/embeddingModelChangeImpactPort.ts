@@ -11,8 +11,12 @@ export interface EmbeddingModelChangeImpactPort {
 
 let registeredPort: EmbeddingModelChangeImpactPort | null = null;
 
-export function registerEmbeddingModelChangeImpactPort(port: EmbeddingModelChangeImpactPort): void {
+export function registerEmbeddingModelChangeImpactPort(port: EmbeddingModelChangeImpactPort): () => void {
   registeredPort = port;
+  return () => {
+    // 旧插件实例的清理不能撤销升级后新实例的注册。
+    if (registeredPort === port) registeredPort = null;
+  };
 }
 
 export function getEmbeddingModelChangeImpactPort(): EmbeddingModelChangeImpactPort {

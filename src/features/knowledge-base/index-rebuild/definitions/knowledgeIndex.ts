@@ -24,3 +24,14 @@ export class KnowledgeIndexSpaceMismatchError extends Error {
     this.name = 'KnowledgeIndexSpaceMismatchError';
   }
 }
+
+/** 元数据与 Worker 共用同一 SQLite 原子认领；不向调用者暴露连接。 */
+export interface KnowledgeIndexStatePort {
+  read(kbId: string): KnowledgeIndexState;
+  requireReady(kbId: string): KnowledgeIndexIdentity;
+  claimForAppend(kbId: string, identity: KnowledgeIndexIdentity, emptyIndexVerified: boolean): void;
+  invalidateForRebuild(kbId: string): void;
+  publishRebuilt(kbId: string, identity: KnowledgeIndexIdentity): void;
+}
+
+export type { KnowledgeIndexTaskStatus } from '@app/schemas';

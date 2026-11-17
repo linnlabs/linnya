@@ -23,6 +23,7 @@ export const KNOWLEDGE_BASE_SCHEMAS = [
     -- JSON 编码的标签数组，例如 '["产品","内部","重要"]'
     tags_json TEXT,
     embedding_model_id TEXT,
+    embedding_space_id TEXT,
     rerank_model_id TEXT,
     pdf_ocr_model_id TEXT,
     image_vision_model_id TEXT,

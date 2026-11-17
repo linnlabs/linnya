@@ -46,6 +46,8 @@ export interface TaskContext {
   filename: string;
   filePath: string;
   embeddingModelId: string;
+  embeddingSpaceId?: string;
+  signal?: AbortSignal;
   pdfOcrModelId?: string;
   imageVisionModelId?: string;
   visionModelId?: string;

@@ -1,3 +1,4 @@
+import { createKnowledgeActivityOwner } from '../../features/knowledge-base/runtime/orchestration/createKnowledgeActivityOwner';
 /**
  * @file src/electron-main/services/serviceInitializer.ts
  *
@@ -124,6 +125,7 @@ export interface ServiceInitializationConfig {
  */
 export class ServiceInitializer {
   private serviceRegistry: ServiceRegistry;
+  private readonly knowledgeActivity = createKnowledgeActivityOwner();
   private knowledgeBaseMaintenance: StartupMaintenanceLifecycle | null = null;
   private maintenanceStopped = false;
   private startupMaintenance: StartupMaintenanceLifecycle | null = null;
@@ -444,6 +446,7 @@ export class ServiceInitializer {
       qdrantRepository,
       searchService,
       knowledgeGraphRepository,
+      activity: this.knowledgeActivity,
       statusUpdatePublisher: getBackendRendererIntegrationPort().publishIngestionStatus,
       ingestionCapabilities: {
         embedding,
@@ -460,6 +463,7 @@ export class ServiceInitializer {
         qdrantRepository,
         sotRepository,
         originalDocumentRepository,
+        activity: this.knowledgeActivity,
       },
     };
   }
@@ -507,6 +511,7 @@ export class ServiceInitializer {
     // 队列内部初始化失败由 QueueManager 自行回收；后续图谱装配失败由当前编排层回收。
     await queueManager.initialize({
       workerRuntime: this.queueWorkerRuntime,
+      knowledgeActivity: this.knowledgeActivity,
       runtimePathRoots: this.runtimePathRoots,
       distributionIdentity: requireInstalledDistributionIdentity(),
       resolveQdrantUrl,

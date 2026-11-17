@@ -1,3 +1,4 @@
+import type { KnowledgeActivityOwner } from '../../../features/knowledge-base/runtime/orchestration/createKnowledgeActivityOwner';
 /**
  * @file src/electron-main/services/startup/startupMaintenanceRunner.ts
  *
@@ -40,6 +41,7 @@ import { reclaimFreePagesInBatches } from '../database/reclaimFreePagesInBatches
 import { createFileCommandOutputArtifactMaintenancePort } from '../../../infra/adapters/command-runtime/output/createFileCommandOutputArtifactMaintenancePort';
 
 export interface KnowledgeBaseMaintenanceDeps {
+  activity?: KnowledgeActivityOwner;
   metadataRepository: MetadataRepository;
   qdrantRepository: QdrantRepository;
   sotRepository: SotRepository;
@@ -335,7 +337,8 @@ async function runKnowledgeBaseMaintenance(
         knowledgeBase.qdrantRepository,
         knowledgeBase.sotRepository,
         new BetterSqliteKnowledgeGraphRepository(databaseService.getDb()),
-        knowledgeBase.originalDocumentRepository
+        knowledgeBase.originalDocumentRepository,
+        knowledgeBase.activity
       );
       logger.info(
         `知识库维护汇总: totalFailed=${stats.totalFailed}, sqliteCleared=${stats.sqliteCleared}, qdrantCleared=${stats.qdrantCleared}, sotCleared=${stats.sotCleared}`
@@ -344,7 +347,8 @@ async function runKnowledgeBaseMaintenance(
       if (signal.aborted) return;
       const chunkStats = await runChunkCollectionStartupMaintenanceOnce(
         knowledgeBase.metadataRepository,
-        knowledgeBase.qdrantRepository
+        knowledgeBase.qdrantRepository,
+        knowledgeBase.activity
       );
       logger.info(
         `chunk collection 启动维护汇总: scanned=${chunkStats.scannedCollections}, recreated=${chunkStats.recreatedCollections}, deletedEmpty=${chunkStats.deletedEmptyCollections}, skipped=${chunkStats.skippedCollections}, failed=${chunkStats.failedCollections}`

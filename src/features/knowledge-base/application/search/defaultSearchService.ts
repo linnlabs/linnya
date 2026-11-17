@@ -1,3 +1,4 @@
+import { KnowledgeIndexRebuildRequiredError, KnowledgeIndexSpaceMismatchError } from '../../index-rebuild/definitions/knowledgeIndex';
 import { QdrantRuntimeUnavailableError } from '@infra/adapters/vector-store/qdrant/errors';
 /**
  * @file src/features/knowledge-base/application/search/defaultSearchService.ts
@@ -120,7 +121,7 @@ export class DefaultSearchService implements SearchService {
       logger.info(`在知识库 ${kbId} 执行混合搜索`);
       return await this.qdrantRepository.hybridSearch(kbId, query, queryVector, topK, filter);
     } catch (error) {
-      if (error instanceof KnowledgeBaseEmbeddingMismatchError || error instanceof QdrantRuntimeUnavailableError) {
+      if (error instanceof KnowledgeIndexRebuildRequiredError || error instanceof KnowledgeIndexSpaceMismatchError || error instanceof KnowledgeBaseEmbeddingMismatchError || error instanceof QdrantRuntimeUnavailableError) {
         throw error;
       }
       logger.error(`搜索处理失败: ${error}`);
@@ -202,7 +203,7 @@ export class DefaultSearchService implements SearchService {
       return response;
     } catch (error) {
       if (
-        error instanceof KnowledgeBaseEmbeddingMismatchError ||
+        error instanceof KnowledgeIndexRebuildRequiredError || error instanceof KnowledgeIndexSpaceMismatchError || error instanceof KnowledgeBaseEmbeddingMismatchError ||
         error instanceof RerankingFailure ||
         error instanceof QdrantRuntimeUnavailableError
       ) {

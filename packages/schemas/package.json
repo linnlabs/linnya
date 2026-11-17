@@ -83,6 +83,12 @@
       "require": "./dist/plugins/catalog.js",
       "default": "./dist/esm/plugins/catalog.js"
     },
+    "./plugins/inference-worker": {
+      "types": "./dist/plugins/inference-worker.d.ts",
+      "import": "./dist/esm/plugins/inference-worker.js",
+      "require": "./dist/plugins/inference-worker.js",
+      "default": "./dist/esm/plugins/inference-worker.js"
+    },
     "./agent-config": {
       "types": "./dist/agent-config/index.d.ts",
       "import": "./dist/esm/agent-config/index.js",

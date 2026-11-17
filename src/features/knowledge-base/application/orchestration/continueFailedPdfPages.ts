@@ -190,22 +190,8 @@ async function resolveEmbeddingModelForIncrementalCommit(args: {
   kbId: string;
   requestedEmbeddingModelId?: string | null;
 }): Promise<string> {
-  const provenance = await args.deps.metadataRepository.getKnowledgeBaseEmbeddingProvenance(
-    args.kbId
-  );
-  if (!provenance) {
-    throw new Error(`知识库 ${args.kbId} 缺少 embedding 索引出身，无法安全续跑失败页`);
-  }
-  if (
-    typeof args.requestedEmbeddingModelId === 'string' &&
-    args.requestedEmbeddingModelId.trim().length > 0 &&
-    args.requestedEmbeddingModelId.trim() !== provenance
-  ) {
-    throw new Error(
-      `知识库 ${args.kbId} 的索引用 ${provenance} 构建，当前全局嵌入模型是 ${args.requestedEmbeddingModelId.trim()}。请清空并重新导入该知识库后再续跑失败页。`
-    );
-  }
-  return provenance;
+  const identity = args.deps.metadataRepository.indexState.requireReady(args.kbId);
+  return args.requestedEmbeddingModelId?.trim() || identity.modelId;
 }
 
 async function enqueueGraphExtractionAfterIncrementalUpdate(
@@ -257,7 +243,8 @@ async function incrementallyCommitRecoveredPages(args: {
   const vectorizedBlocks = await vectorizeBlocks(
     args.deps.embedding,
     postProcessResult.processedBlocks,
-    args.embeddingModelId
+    args.embeddingModelId,
+    args.deps.metadataRepository.indexState.requireReady(args.kbId).spaceId
   );
   if (vectorizedBlocks.length === 0) {
     throw new Error(`失败页续跑未产生可提交块: docId=${args.docId}`);
@@ -362,10 +349,11 @@ function toRawSourceInfo(sourceInfo: ParsedBlock['source_info']): RawBlock['sour
 async function vectorizeBlocks(
   embedding: EmbeddingPort,
   blocks: ParsedContentBlock[],
-  embeddingModelId: string
+  embeddingModelId: string,
+  expectedSpaceId: string
 ): Promise<VectorizedBlock[]> {
   const texts = blocks.map(block => block.text.trim());
-  const result = await embedding.embed({ modelId: embeddingModelId, values: texts });
+  const result = await embedding.embed({ modelId: embeddingModelId, values: texts, expectedSpaceId });
   const vectors = result.vectors;
   const sparseVectors = await textsToSparseVectors(texts);
   return blocks.map((block, index) => ({

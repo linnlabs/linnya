@@ -1,3 +1,4 @@
+import { createKnowledgeIndexFixture } from '../../../index-rebuild/testkit/createKnowledgeIndexFixture';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DocumentStatus, type Document } from '../../../domain/document';
@@ -33,6 +34,7 @@ function createMetadataRepository(): MetadataRepository {
   };
 
   return {
+    indexState: createKnowledgeIndexFixture(['kb-1']),
     createKnowledgeBase: async (input) => input,
     getAllKnowledgeBases: async () => [kb],
     getDocumentCountsByKnowledgeBaseIds: async () => ({}),
@@ -96,80 +98,28 @@ describe('IngestionService statusUpdatePublisher', () => {
     mocked.processDocument.mockReset();
   });
 
-  it('同步兜底路径只发布窄状态事件，不泄露状态机运行时上下文', async () => {
-    mocked.addIngestionTask.mockRejectedValueOnce(new Error('queue unavailable'));
-    const published: unknown[] = [];
+  it('队列拒绝时记录明确失败并保留资料，不在 Backend 偷偷启动同步摄入', async () => {
+    mocked.addIngestionTask.mockRejectedValueOnce(new Error('knowledge_activity_busy'));
     const metadataRepository = createMetadataRepository();
-    const service = new IngestionService({
-      metadataRepository,
-      originalDocumentRepository: createOriginalDocumentRepository(),
-      createNonWorkerIngestionProcessor: (options) => ({
-        processDocument: mocked.processDocument.mockImplementation(async (params: {
-          taskId: string;
-          docId: string;
-          filename: string;
-        }) => {
-          options.statusUpdatePublisher?.({
-            taskId: params.taskId,
-            docId: params.docId,
-            filename: params.filename,
-            stage: InternalStage.COMPLETED,
-            frontendState: {
-              status: FrontendStatus.COMPLETED,
-              stage: InternalStage.COMPLETED,
-              progress: 100,
-              stage_progress: 100,
-              message: '已完成',
-              doc_id: params.docId,
-              filename: params.filename,
-              updated_at: 1,
-            },
-          });
-          return {
-            success: true,
-            newStage: InternalStage.COMPLETED,
-            context: {
-              taskId: params.taskId,
-              docId: params.docId,
-              kbId: 'kb-1',
-              filename: params.filename,
-              filePath: '/tmp/source.pdf',
-              embeddingModelId: 'embedding-model',
-              currentProgress: 100,
-              stageProgress: 100,
-              lastUpdated: 1,
-            },
-          };
-        }),
-      }),
-      statusUpdatePublisher: (event) => {
-        published.push(event);
-      },
+    const saved: OriginalDocumentSaveInput[] = [];
+    const publish = vi.fn<StatusUpdatePublisher>();
+    const service = new IngestionService({ metadataRepository,
+      originalDocumentRepository: createOriginalDocumentRepository(saved),
+      statusUpdatePublisher: publish,
     });
-
-    await service.addDocument(
-      'kb-1',
-      '/tmp/source.pdf',
-      'source.pdf',
-      12,
-      'embedding-model'
-    );
-
-    await vi.waitFor(() => {
-      expect(mocked.processDocument).toHaveBeenCalledTimes(1);
-      expect(published).toHaveLength(1);
+    const result = await service.addDocument('kb-1', '/tmp/source.pdf', 'source.pdf', 12, 'embedding-model');
+    await vi.waitFor(async () => {
+      expect(await metadataRepository.getDocumentById(result.document.id)).toMatchObject({
+        status: 'failed', errorMessage: expect.stringContaining('knowledge_activity_busy'),
+      });
     });
-
-    expect(published[0]).toMatchObject({
-      filename: 'source.pdf',
-      stage: 'completed',
-      frontendState: {
-        status: 'completed',
-      },
-    });
-    expect(published[0]).not.toHaveProperty('filePath');
-    expect(published[0]).not.toHaveProperty('parseResult');
-    expect(published[0]).not.toHaveProperty('vectorizeResult');
+    expect(saved).toHaveLength(1);
+    expect(mocked.processDocument).not.toHaveBeenCalled();
+    expect(mocked.addIngestionTask).toHaveBeenCalledTimes(1);
+    expect(publish).toHaveBeenCalledWith(expect.objectContaining({
+      taskId: result.taskId, docId: result.document.id, stage: InternalStage.FAILED,
+      errorMessage: expect.stringContaining('knowledge_activity_busy'),
+    }));
   });
 
   it('PDF 摄入会在入队前持久化原始文件，作为 partial 续跑的前置数据', async () => {

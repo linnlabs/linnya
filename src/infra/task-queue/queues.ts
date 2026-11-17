@@ -1,3 +1,5 @@
+import type { KnowledgeActivityOwner } from '../../features/knowledge-base/runtime/orchestration/createKnowledgeActivityOwner';
+import type { KnowledgeActivityLease, KnowledgeActivityKind } from '../../features/knowledge-base/runtime/definitions/knowledgeActivity';
 /**
  * src/pipeline/queues.ts
  * 
@@ -59,6 +61,7 @@ export interface QueueManagerInitializeOptions {
   runtimePathRoots: RuntimePathRoots;
   distributionIdentity: DistributionIdentity;
   maxConcurrency?: number;
+  knowledgeActivity?: KnowledgeActivityOwner;
   resolveQdrantUrl?: () => Promise<string>;
   ingestionLifecycleObserver?: WorkerJobLifecycleObserver<IngestionJobPayload>;
   jobPresentationPublisher?: QueueJobPresentationPublisher;
@@ -71,6 +74,8 @@ export class QueueManager extends EventEmitter {
   private graphIndexingQueue: WorkerThreadQueue<GraphIndexingJobPayloadInput> | null = null;
   private readonly audioProcessingQueue = new AudioProcessingQueue();
   private resolveQdrantUrl: (() => Promise<string>) | undefined;
+  private knowledgeActivity?: KnowledgeActivityOwner;
+  private readonly knowledgeLeases = new Map<string, KnowledgeActivityLease>();
   private initializationFailure: string | null = null;
   protected constructor() {
     super();
@@ -112,6 +117,7 @@ export class QueueManager extends EventEmitter {
   private async initializeQueues(options: QueueManagerInitializeOptions): Promise<void> {
     console.log('[QueueManager] 正在初始化任务队列系统...');
     this.resolveQdrantUrl = options.resolveQdrantUrl;
+    this.knowledgeActivity = options.knowledgeActivity;
 
     // 初始化文档摄入队列
     this.ingestionQueue = new WorkerThreadQueue<IngestionJobPayload>({
@@ -206,6 +212,12 @@ export class QueueManager extends EventEmitter {
       console.warn('[QueueManager] 图谱索引队列初始化失败（将跳过图谱向量化）:', error);
     }
 
+    for (const queue of [this.ingestionQueue, this.graphExtractionQueue, this.graphIndexingQueue]) {
+      queue?.on('taskSettled', (taskId: string) => {
+        this.knowledgeLeases.get(taskId)?.release();
+        this.knowledgeLeases.delete(taskId);
+      });
+    }
     console.log('[QueueManager] 任务队列系统初始化完成');
   }
 
@@ -219,6 +231,8 @@ export class QueueManager extends EventEmitter {
     if (!this.ingestionQueue) {
       throw this.unavailableError('摄入队列未初始化');
     }
+    const queue = this.ingestionQueue;
+    return this.admitKnowledgeJob(taskData, 'ingestion', () => queue.cancelTask(taskData.taskId), async () => {
     if (!this.resolveQdrantUrl) throw new Error('向量运行时没有装配');
     const qdrantUrl = await this.resolveQdrantUrl();
     const taskWithWorkerEnv: IngestionJobPayload = {
@@ -228,7 +242,8 @@ export class QueueManager extends EventEmitter {
         QDRANT_URL: qdrantUrl,
       },
     };
-    return await this.ingestionQueue.addTask(taskWithWorkerEnv);
+    return await queue.addTask(taskWithWorkerEnv);
+    });
   }
 
   /**
@@ -241,7 +256,10 @@ export class QueueManager extends EventEmitter {
     if (!this.graphExtractionQueue) {
       throw new Error('图谱抽取队列未初始化');
     }
-    return await this.graphExtractionQueue.addTask(taskData);
+    const queue = this.graphExtractionQueue;
+    return this.admitKnowledgeJob(taskData, 'graph', () => queue.cancelTask(taskData.taskId), async () => {
+    return await queue.addTask(taskData);
+    });
   }
 
   /**
@@ -254,14 +272,17 @@ export class QueueManager extends EventEmitter {
     if (!this.graphIndexingQueue) {
       throw new Error('图谱索引队列未初始化');
     }
+    const queue = this.graphIndexingQueue;
+    return this.admitKnowledgeJob(taskData, 'graph', () => queue.cancelTask(taskData.taskId), async () => {
     if (!this.resolveQdrantUrl) throw new Error('向量运行时没有装配');
     const qdrantUrl = await this.resolveQdrantUrl();
-    return await this.graphIndexingQueue.addTask({
+    return await queue.addTask({
       ...taskData,
       envVars: {
         ...taskData.envVars,
         QDRANT_URL: qdrantUrl,
       },
+    });
     });
   }
 
@@ -274,6 +295,25 @@ export class QueueManager extends EventEmitter {
   processAudio(filePath: string, config: AudioPreprocessingConfig): EventEmitter {
     if (this.initializationFailure) throw this.unavailableError('音频处理队列未初始化');
     return this.audioProcessingQueue.processAudio(filePath, config);
+  }
+
+  private async admitKnowledgeJob(
+    task: { taskId: string; kbId: string }, kind: KnowledgeActivityKind,
+    cancel: () => Promise<boolean>, enqueue: () => Promise<string>,
+  ): Promise<string> {
+    const lease = this.knowledgeActivity?.begin(task.kbId, kind);
+    if (lease) this.knowledgeLeases.set(task.taskId, lease);
+    const abort = () => { void cancel(); };
+    lease?.signal.addEventListener('abort', abort, { once: true });
+    try {
+      lease?.signal.throwIfAborted();
+      const id = await enqueue();
+      if (lease?.signal.aborted) await cancel();
+      return id;
+    } catch (error) {
+      lease?.release(); this.knowledgeLeases.delete(task.taskId);
+      throw error;
+    }
   }
 
   private unavailableError(fallback: string): Error {
@@ -292,6 +332,11 @@ export class QueueManager extends EventEmitter {
       throw this.unavailableError('摄入队列未初始化');
     }
     return await this.ingestionQueue.cancelTask(taskId);
+  }
+
+  /** 删除编排按文档身份找到真实 job ID，不假设 docId 与 taskId 相同。 */
+  listIngestionTasks(): ReadonlyArray<WorkerJob<IngestionJobPayload>> {
+    return this.ingestionQueue?.listTasks() ?? [];
   }
 
   /**

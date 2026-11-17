@@ -1,3 +1,4 @@
+import { createKnowledgeIndexFixture } from '../../index-rebuild/testkit/createKnowledgeIndexFixture';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { MetadataRepository } from '../metadataRepository';
@@ -6,6 +7,7 @@ import { runChunkCollectionStartupMaintenanceOnce } from './startupChunkCollecti
 
 function createMetadataRepositoryStub(): MetadataRepository {
   return {
+    indexState: createKnowledgeIndexFixture(['default', 'kb-2'], { modelId: 'model', spaceId: 'space' }),
     createKnowledgeBase: async (kb) => kb,
     getAllKnowledgeBases: async () => [
       {

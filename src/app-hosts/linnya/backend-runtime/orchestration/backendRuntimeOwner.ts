@@ -291,6 +291,7 @@ export class BackendRuntimeOwner {
     // 先停止接收新请求，随后命令 owner 才能在没有新 admission 的前提下可信收口。
     // 先同步发出取消，防止 HTTP drain 期间目录刷新继续接单或发起下一轮写入。
     const startupMaintenanceStopped = this.serviceInitializer.stopStartupMaintenance();
+    const knowledgeTasksStopped = this.services?.knowledgeBaseService?.stopTasks();
     const modelSynchronizationStopped = this.providerModelSynchronization?.stop();
     await stopStage('API服务器', () => this.apiServer.stop());
     await stopStage('启动维护', async () => { await startupMaintenanceStopped; });
@@ -334,6 +335,7 @@ export class BackendRuntimeOwner {
 
     // 两类 App owner 已经收口后再停 worker，避免退出期间后台 owner 交叉产生新工作。
     await stopStage('后台任务队列', () => QueueManager.getInstance().shutdown());
+    await stopStage('知识库索引任务', async () => { await knowledgeTasksStopped; });
 
     // 冷态不会创建进程；启动中的进程结算并收口后才允许后端退出。
     if (this.vectorRuntime) {
@@ -389,6 +391,7 @@ export class BackendRuntimeOwner {
   hasActiveKnowledgeIngestion(): boolean {
     if (!this.services || this.shutdownSettlement) return false;
     // 队列没有启动时不会有导入任务；不能让退出确认因此每次都查询失败。
+    if (this.services.knowledgeBaseService?.hasActiveTasks()) return true;
     if (this.getStartupCapabilityFailure('background-tasks')) return false;
     const stats = QueueManager.getInstance().getQueueStats();
     return stats.pending + stats.running > 0;

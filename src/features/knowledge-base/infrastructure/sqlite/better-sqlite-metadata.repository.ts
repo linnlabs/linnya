@@ -1,3 +1,4 @@
+import { KnowledgeIndexStateRepository } from '../../index-rebuild/persistence/KnowledgeIndexStateRepository';
 /**
  * @file better-sqlite-metadata.repository.ts
  * @description 知识库元数据仓储 - better-sqlite3 实现
@@ -100,6 +101,7 @@ function mapKnowledgeBaseModelFields(row: {
  */
 export class BetterSqliteMetadataRepository implements MetadataRepository {
   private readonly database: KnowledgeDatabase;
+  readonly indexState: KnowledgeIndexStateRepository;
 
   /**
    * 构造函数
@@ -107,6 +109,7 @@ export class BetterSqliteMetadataRepository implements MetadataRepository {
    */
   constructor(database: KnowledgeDatabase) {
     this.database = database;
+    this.indexState = new KnowledgeIndexStateRepository(database);
     console.log('[BetterSqliteMetadataRepository] 初始化完成');
     
     // 确保默认知识库存在

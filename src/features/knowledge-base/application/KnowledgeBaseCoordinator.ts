@@ -1,3 +1,6 @@
+import type { KnowledgeActivityOwner } from '../runtime/orchestration/createKnowledgeActivityOwner';
+import { KnowledgeActivityBusyError } from '../runtime/definitions/knowledgeActivity';
+import { createKnowledgeIndexRebuildOwner } from '../index-rebuild/orchestration/createKnowledgeIndexRebuildOwner';
 /**
  * @file src/knowledge-base/application/KnowledgeBaseCoordinator.ts
  *
@@ -49,7 +52,6 @@ import {
 } from '../graph/application/graphSearchService';
 import type { StatusUpdatePublisher } from '../ingestion/definitions/statusUpdate';
 import type { EmbeddingPort, TextGenerationPort } from 'src/domains/model-inference';
-import { IngestionStateMachineManager } from '../ingestion/IngestionStateMachineManager';
 import { continueFailedPdfPages } from './orchestration/continueFailedPdfPages';
 import { getDefaultModelIdByCapability } from 'src/domains/model-catalog';
 
@@ -71,6 +73,7 @@ const logger = new Logger('KnowledgeBaseCoordinator');
  * 协调器依赖接口
  */
 export interface KnowledgeBaseCoordinatorDeps {
+  activity: KnowledgeActivityOwner;
   metadataRepository: MetadataRepository;
   qdrantRepository: QdrantRepository;
   sotRepository: SotRepository;
@@ -92,6 +95,8 @@ export interface KnowledgeBaseCoordinatorDeps {
  * 副作用 (Side-effects): 协调多个服务，确保业务逻辑的正确执行
  */
 export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
+  private readonly activity: KnowledgeActivityOwner;
+  private readonly rebuildOwner: ReturnType<typeof createKnowledgeIndexRebuildOwner> | null;
   private readonly metadataRepository: MetadataRepository;
   private readonly qdrantRepository: QdrantRepository;
   private readonly sotRepository: SotRepository;
@@ -107,6 +112,11 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
   private readonly knowledgeBaseMgmtService: KnowledgeBaseMgmtService;
 
   constructor(deps: KnowledgeBaseCoordinatorDeps) {
+    this.activity = deps.activity;
+    this.rebuildOwner = deps.ingestionCapabilities ? createKnowledgeIndexRebuildOwner({
+      metadata: deps.metadataRepository, sot: deps.sotRepository, graph: deps.knowledgeGraphRepository,
+      vectors: deps.qdrantRepository, embedding: deps.ingestionCapabilities.embedding,
+    }, deps.activity) : null;
     this.metadataRepository = deps.metadataRepository;
     this.qdrantRepository = deps.qdrantRepository;
     this.sotRepository = deps.sotRepository;
@@ -127,27 +137,11 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
 
     this.taskService = new TaskService({ metadataRepository: this.metadataRepository });
 
-    const ingestionCapabilities = deps.ingestionCapabilities;
     const ingestionServiceDeps: IngestionServiceDeps = {
       metadataRepository: this.metadataRepository,
       originalDocumentRepository: this.originalDocumentRepository,
       statusUpdatePublisher: deps.statusUpdatePublisher,
-      createNonWorkerIngestionProcessor: ingestionCapabilities
-        ? options =>
-            IngestionStateMachineManager.create({
-              ...options,
-              embedding: ingestionCapabilities.embedding,
-              textGeneration: ingestionCapabilities.textGeneration,
-              documentOcr: ingestionCapabilities.documentOcr,
-              repositories: {
-                metadataRepository: this.metadataRepository,
-                qdrantRepository: this.qdrantRepository,
-                sotRepository: this.sotRepository,
-                originalDocumentRepository: this.originalDocumentRepository,
-                knowledgeGraphRepository: deps.knowledgeGraphRepository,
-              },
-            })
-        : undefined,
+
     };
     this.ingestionService = new IngestionService(ingestionServiceDeps);
 
@@ -210,7 +204,9 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     forceVisionMode?: boolean, // 🔥 修复：添加缺失的forceVisionMode参数
     graphExtractionModelId?: string
   ): Promise<{ taskId: string; document: Document }> {
-    return this.ingestionService.addDocument(
+    const lease = this.activity.begin(kbId, 'ingestion');
+    try {
+    return await this.ingestionService.addDocument(
       kbId,
       filePath,
       fileName,
@@ -222,6 +218,7 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
       forceVisionMode,
       graphExtractionModelId
     );
+    } finally { lease.release(); }
   }
 
   async getDocumentsInKnowledgeBase(kbId: string): Promise<Document[]> {
@@ -232,18 +229,31 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     return this.documentService.getDocumentById(docId);
   }
 
+  hasActiveTasks(): boolean { return this.activity.hasActivity(); }
+  stopTasks(): Promise<void> { return this.activity.drain(); }
+  async rebuildIndex(kbId: string, modelId: string) {
+    if (!this.rebuildOwner) throw new Error('知识库推理能力未就绪');
+    return this.rebuildOwner.start(kbId, modelId);
+  }
+  getIndexRebuildStatus(kbId: string) { return this.rebuildOwner?.get(kbId) ?? null; }
+
   async getTasksStatus(docIds: string[]): Promise<Record<string, TaskStatusView>> {
     return this.documentService.getTasksStatus(docIds);
   }
 
   async deleteDocument(kbId: string, docId: string): Promise<void> {
+    if (this.rebuildOwner?.get(kbId)?.status === 'running') throw new KnowledgeActivityBusyError(kbId);
     // 删除生命周期编排：
     // 1) 先取消后台任务（摄入/图谱抽取），避免删除后 worker 继续写回
     // 2) 再执行真正的数据删除（向量库/SoT/图谱/元数据）
     // 3) 最后刷新 KB 级图谱进度（前端能立即看到变化）
     await this.taskService.cancelTasksForDocumentDeletion(kbId, docId);
+    await this.activity.whenIdle(kbId);
+    const lease = this.activity.begin(kbId, 'delete');
+    try {
     await this.documentService.deleteDocument(kbId, docId);
     await this.taskService.refreshKbGraphProgress(kbId);
+    } finally { lease.release(); }
   }
 
   async continueFailedPdfPages(
@@ -254,11 +264,13 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
       embeddingModelId?: string | null;
     }
   ) {
+    const lease = this.activity.begin(kbId, 'ingestion');
+    try {
     if (!this.ingestionCapabilities) {
       throw new Error('缺少知识库推理能力，无法继续解析 PDF 失败页');
     }
 
-    return continueFailedPdfPages(
+    return await continueFailedPdfPages(
       {
         metadataRepository: this.metadataRepository,
         sotRepository: this.sotRepository,
@@ -273,10 +285,12 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
       docId,
       options
     );
+    } finally { lease.release(); }
   }
 
   // 任务控制操作 - 委托给TaskService
   async cancelTask(taskId: string): Promise<void> {
+    if (await this.rebuildOwner?.cancel(taskId)) return;
     return this.taskService.cancelTask(taskId);
   }
 
@@ -295,13 +309,16 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
    * **副作用 (Side-effects):** 删除知识库的所有相关数据
    */
   async deleteKnowledgeBase(kbId: string): Promise<void> {
+    if (this.rebuildOwner?.get(kbId)?.status === 'running') throw new KnowledgeActivityBusyError(kbId);
     // 删除生命周期编排：
     // - 先取消该 KB 下所有后台任务（摄入/图谱抽取），避免删除期间出现写回竞态；
     // - 再删除 KB 及其全部数据（向量库/SoT/元数据/图谱）。
-    const documents = await this.metadataRepository.getDocumentsInKnowledgeBase(kbId);
-    const docIds = documents.map(d => d.id);
-    await this.taskService.cancelTasksForKnowledgeBaseDeletion(kbId, docIds);
+    await this.taskService.cancelTasksForKnowledgeBaseDeletion(kbId);
+    await this.activity.whenIdle(kbId);
+    const lease = this.activity.begin(kbId, 'delete');
+    try {
     await this.knowledgeBaseMgmtService.deleteKnowledgeBase(kbId);
+    } finally { lease.release(); }
   }
 
   /**
@@ -337,6 +354,8 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
    * @returns 搜索响应
    */
   async searchKnowledgeBase(request: KnowledgeBaseSearchRequest): Promise<SearchResponse> {
+    const lease = this.activity.begin(request.kbId || 'default', 'search');
+    try {
     logger.info(`执行知识库搜索: ${request.query} (知识库: ${request.kbId || 'default'})`);
 
     try {
@@ -366,6 +385,7 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
       logger.error(`知识库搜索失败: ${error}`);
       throw error;
     }
+    } finally { lease.release(); }
   }
 
   /**
@@ -399,9 +419,12 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
         rerankModelId: null,
       };
 
-      const response = await this.searchService.search(searchRequest);
-      logger.info(`文档内搜索完成，返回 ${response.results.length} 个结果`);
-      return response;
+      const lease = this.activity.begin(document.kbId, 'search');
+      try {
+        const response = await this.searchService.search(searchRequest);
+        logger.info(`文档内搜索完成，返回 ${response.results.length} 个结果`);
+        return response;
+      } finally { lease.release(); }
     } catch (error) {
       logger.error(`文档内搜索失败: ${error}`);
       throw error;
@@ -577,6 +600,8 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
       rerankModelId?: string | null;
     }
   ): Promise<Array<Record<string, unknown>>> {
+    const lease = this.activity.begin(kbId, 'search');
+    try {
     logger.info(`执行原始格式搜索: ${query} (知识库: ${kbId})`);
 
     try {
@@ -599,6 +624,7 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
       logger.error(`原始格式搜索失败: ${error}`);
       throw error;
     }
+    } finally { lease.release(); }
   }
 
   /**
@@ -618,6 +644,8 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     citationOffset: number = 0, // 🔥 新增引用偏移量参数
     graph?: KnowledgeBaseGraphSearchOptions
   ): Promise<AgentKnowledgeSearchOutput> {
+    const lease = this.activity.begin(kbId, 'search');
+    try {
     logger.info(`执行Agent搜索: ${query} (知识库: ${kbId}${docId ? `, 文档: ${docId}` : ''})`);
 
     try {
@@ -642,6 +670,7 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
       logger.error(`Agent搜索失败: ${error}`);
       throw error;
     }
+    } finally { lease.release(); }
   }
 
   /**

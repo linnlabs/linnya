@@ -17,12 +17,8 @@ import { generateTaskId } from '@shared/utils/idUtils';
 import { QueueManager } from '@task-queue/queues';
 import { MetadataRepository } from '../../infrastructure/metadataRepository';
 import type { OriginalDocumentRepository } from '../../infrastructure/originalDocumentRepository';
-import {
-  type IngestionTaskParams,
-  type ProgressCallback,
-} from '../../ingestion/IngestionStateMachineManager';
 import type { StatusUpdatePublisher } from '../../ingestion/definitions/statusUpdate';
-import type { StateTransitionResult } from '../../ingestion/definitions/state';
+import { FrontendStatus, InternalStage } from '../../ingestion/definitions/state';
 
 const logger = new Logger('IngestionService');
 
@@ -33,17 +29,7 @@ export interface IngestionServiceDeps {
   metadataRepository: MetadataRepository;
   originalDocumentRepository: OriginalDocumentRepository;
   statusUpdatePublisher?: StatusUpdatePublisher;
-  createNonWorkerIngestionProcessor?: NonWorkerIngestionProcessorFactory;
 }
-
-export interface NonWorkerIngestionProcessor {
-  processDocument(params: IngestionTaskParams): Promise<StateTransitionResult>;
-}
-
-export type NonWorkerIngestionProcessorFactory = (options: {
-  progressCallback?: ProgressCallback;
-  statusUpdatePublisher?: StatusUpdatePublisher;
-}) => NonWorkerIngestionProcessor;
 
 /**
  * 功能 (What): 文档摄入服务类，处理文档添加和摄入流程
@@ -55,13 +41,11 @@ export class IngestionService {
   private readonly metadataRepository: MetadataRepository;
   private readonly originalDocumentRepository: OriginalDocumentRepository;
   private readonly statusUpdatePublisher?: StatusUpdatePublisher;
-  private readonly createNonWorkerIngestionProcessor?: NonWorkerIngestionProcessorFactory;
 
   constructor(deps: IngestionServiceDeps) {
     this.metadataRepository = deps.metadataRepository;
     this.originalDocumentRepository = deps.originalDocumentRepository;
     this.statusUpdatePublisher = deps.statusUpdatePublisher;
-    this.createNonWorkerIngestionProcessor = deps.createNonWorkerIngestionProcessor;
   }
 
   /**
@@ -234,75 +218,14 @@ export class IngestionService {
       logger.info(`📋 文档摄入任务已添加到队列(Worker模式): ${taskId}`);
       
     } catch (queueError) {
-      logger.warn(`📋 队列系统不可用或未初始化，切入非Worker同步模式: ${taskId}. 错误: ${queueError instanceof Error ? queueError.message : String(queueError)}`);
-      
-      // 如果队列添加失败，尝试直接使用状态机处理（同步处理模式）
-      logger.info(`🔄 切换到同步处理模式(Non-Worker): ${taskId}`);
-      
-      try {
-        if (!this.createNonWorkerIngestionProcessor) {
-          throw new Error('缺少 Non-Worker 摄入状态机依赖，无法从队列模式切换为同步处理');
-        }
-
-        // 使用传入的原始文件名（包含正确的扩展名）
-        const filename = originalFileName;
-        
-        // 创建状态机管理器实例，传递共享的repository实例
-        const manager = this.createNonWorkerIngestionProcessor({
-          progressCallback: (stage, progress, message, error) => {
-            logger.info(`📊(Non-Worker) 文档处理进度: ${stage} (${progress}%) - ${message}`);
-            if (error) {
-              logger.error(`❌(Non-Worker) 处理错误: ${error}`);
-            }
-          },
-          statusUpdatePublisher: this.statusUpdatePublisher,
-        });
-        
-        logger.info(`🔄(Non-Worker) 启动状态机流程...`);
-        
-        // 使用状态机管理器处理文档
-        const result = await manager.processDocument({
-          taskId,
-          docId,
-          kbId,
-          filename,
-          filePath,
-          embeddingModelId,
-          pdfOcrModelId,
-          imageVisionModelId,
-          visionModelId: imageVisionModelId,
-          rerankModelId,
-          graphExtractionModelId,
-          forceVisionMode // 🔥 新增：传递强制视觉模式参数
-        });
-        
-        // 处理状态机执行结果
-        if (result.success) {
-          logger.info(`✅(Non-Worker) 状态机处理成功: ${docId}, 最终状态: ${result.newStage}`);
-        } else {
-          logger.error(`💥(Non-Worker) 状态机处理失败: ${docId}, 错误: ${result.error}`);
-          // 确保失败状态被正确记录
-          await this.metadataRepository.updateDocumentStatus(
-            docId, 
-            DocumentStatus.FAILED, 
-            result.error || '状态机处理失败'
-          );
-        }
-        
-      } catch (error) {
-        const errorMessage = `状态机系统异常(Non-Worker): ${error instanceof Error ? error.message : String(error)}`;
-        logger.error(`💥(Non-Worker) 状态机系统级错误 ${docId}: ${errorMessage}`, error);
-        
-        // 更新文档状态为失败
-        await this.metadataRepository.updateDocumentStatus(
-          docId, 
-          DocumentStatus.FAILED, 
-          errorMessage
-        );
-      }
+      const message = `无法启动知识库摄入任务：${queueError instanceof Error ? queueError.message : String(queueError)}`;
+      logger.error(message, queueError);
+      await this.metadataRepository.updateDocumentStatus(docId, DocumentStatus.FAILED, message);
+      this.statusUpdatePublisher?.({
+        taskId, docId, filename: originalFileName, stage: InternalStage.FAILED, errorMessage: message,
+        frontendState: { status: FrontendStatus.FAILED, stage: InternalStage.FAILED, progress: 0, stage_progress: 0,
+          message, error: message, doc_id: docId, filename: originalFileName, updated_at: Date.now() },
+      });
     }
   }
-
-  // 🔥 重构修复：移除直接IPC推送方法
-  // 所有状态更新现在通过状态机的监听器机制统一处理
 }

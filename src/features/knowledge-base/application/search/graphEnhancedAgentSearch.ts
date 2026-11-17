@@ -259,6 +259,7 @@ export async function buildAgentSearchOutputWithGraph(args: {
         kbId,
         query,
         embeddingModelId,
+        expectedSpaceId: metadataRepository.indexState.requireReady(kbId).spaceId,
         queryVector,
         topKEdges: Math.max(10, remainingForDiscovery * 6),
         maxBlocks: remainingForDiscovery,

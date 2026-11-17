@@ -203,6 +203,8 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
         this.cleanupWorker(worker);
         this.workerJobMap.delete(job.id);
         this.clearForcedTerminationTimer(job.id);
+        // 业务完成通知可以早于线程退出；资源租约必须等 Host 请求也收口后归还。
+        void Promise.resolve(requestSession?.stop()).finally(() => this.emit('taskSettled', job.id));
 
         // terminate() 在 shutdown 中通常返回非零退出码，这是 owner 收口，不是业务失败。
         if (this.shuttingDown) return;
@@ -278,7 +280,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
 
         job.result = undefined;
         this.pruneCompletedHistory(50);
-        if (!worker) void this.processQueue();
+        if (!worker) { this.emit('taskSettled', taskId); void this.processQueue(); }
 
       } else if (msgType === 'failed') {
         const err = (message as { error?: unknown }).error;
@@ -316,7 +318,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
     // 失败进度由摄取状态机负责写入；通用队列不能绕过状态机重复更新领域读模型。
 
     this.pruneCompletedHistory(50);
-    if (!worker) void this.processQueue();
+    if (!worker) { this.emit('taskSettled', taskId); void this.processQueue(); }
   }
 
   private terminateFinishedWorker(worker: Worker): void {
@@ -443,6 +445,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
       clearTimeout(timer);
     }
 
+    for (const job of this.jobs.values()) this.emit('taskSettled', job.id);
     this.jobs.clear();
     this.runningJobs.clear();
     this.workers = [];
@@ -472,6 +475,7 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
       job.error = '用户取消';
       job.completedAt = Date.now();
       this.emit('taskFailed', job);
+      this.emit('taskSettled', taskId);
       return true;
     }
 
