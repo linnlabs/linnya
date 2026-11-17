@@ -17,6 +17,10 @@ import { attachCitationRefAllocator, attachCitationSequence } from '../../../../
 import { createCitationRefAllocatorFixture } from '../../../../domains/citation/testkit/citationRefAllocatorFixture';
 
 class MockKnowledgeBaseService implements KnowledgeBaseService {
+  hasActiveTasks() { return false; }
+  async stopTasks() {}
+  async rebuildIndex(): Promise<never> { throw new Error('not used by search evidence test'); }
+  getIndexRebuildStatus() { return null; }
   // 中文备注：deep_search 测试只要求 knowledgeBaseService “存在”，不会真正调用其方法；
   // 这里实现完整接口，避免使用 any/unknown 断言，也避免未来接口变更导致测试静默失真。
   async createKnowledgeBase(): Promise<never> {

@@ -1,3 +1,5 @@
+import { projectChunkVectorPoints } from '../functions/projectChunkVectorPoints';
+import { KnowledgeIndexRebuildRequiredError } from '../../index-rebuild/definitions/knowledgeIndex';
 /**
  * @file src/knowledge-base/ingestion/handlers/StoringHandler.ts
  * 
@@ -14,17 +16,10 @@ import { Logger } from 'src/shared/logger';
 import { InternalStage, type StateHandler, type StateTransitionResult, type TaskContext } from '../definitions/state';
 import { promises as fs } from 'fs';
 import { SotRepository } from '../../infrastructure/sotRepository';
-import {
-  QdrantRepository,
-  QdrantPoint,
-  PointPayload,
-  VectorData,
-  SparseVector
-} from '../../infrastructure/qdrantRepository';
+import type { QdrantRepository } from '../../infrastructure/qdrantRepository';
 import { MetadataRepository } from '../../infrastructure/metadataRepository';
 import { DocumentStatus } from '../../domain/document';
 import { DocumentSoTSchema, type DocumentSoT } from '../../domain/block';
-import { inspect } from 'util'; // 导入inspect
 import type { VectorizedBlock, StoreResult } from '../ingestionTypes';
 import { hasCollectionAccessCoordinator } from '../../infrastructure/qdrant-repository/collectionAccess';
 import { resolveTargetSegmentCountByPointsCount } from '../../infrastructure/qdrant-repository/segmentPolicy';
@@ -59,6 +54,7 @@ export class StoringHandler implements StateHandler {
   async execute(context: TaskContext): Promise<StateTransitionResult> {
     logger.info(`[StoringHandler] 开始存储数据: ${context.docId}`);
 
+    let storageStarted = false;
     try {
       // 验证向量化结果
       if (!context.vectorizeResult) {
@@ -75,6 +71,7 @@ export class StoringHandler implements StateHandler {
       await this.validateEmbeddingProvenanceForAppend(context);
 
       // 阶段 1: 保存 Source of Truth (SoT) 文件
+      storageStarted = true;
       await this.saveSotFile(context);
       context.stageProgress = 25;
       
@@ -122,7 +119,7 @@ export class StoringHandler implements StateHandler {
       logger.error(`[StoringHandler] ${errorMessage}`, error);
       
       // 存储失败时尝试清理已存储的数据
-      await this.cleanupOnFailure(context);
+      if (storageStarted) await this.cleanupOnFailure(context);
       
       return {
         success: false,
@@ -211,45 +208,13 @@ export class StoringHandler implements StateHandler {
       }
 
       // 🔥 重构：直接使用简洁的块结构构建Qdrant点
-      const qdrantPoints: QdrantPoint[] = vectorizedBlocks.map((block) => {
-        const pointId = block.id; // ✅ block.id 在后处理阶段已保证“稳定且唯一”
-        
-        // 关键：直接使用已标准化的字段
-        const payload: PointPayload = {
-          doc_id: context.docId,
-          block_id: block.id,
-          document: block.text,
-          doc_title: context.filename, // 使用任务上下文中的文件名
-          block_type: block.block_type,
-          page_number: block.source_info?.page_num, // 使用新规范的 page_num
-          para_idx: block.source_info?.para_idx,
-          ...(typeof block.parent_block_id === 'string' ? { parent_block_id: block.parent_block_id } : {}),
-          ...(typeof block.part_index === 'number' ? { part_index: block.part_index } : {}),
-          // 保留原始的source_info作为元数据，以备将来使用
-          metadata: {
-            source_info: block.source_info
-          }
-        };
-
-        const vectorData: VectorData = {
-          default: block.vector
-        };
-        
-          vectorData.bm25 = block.sparse_vector;
-
-        return {
-          id: pointId,
-          vector: vectorData,
-          payload: payload
-        };
-      });
-
+      const qdrantPoints = projectChunkVectorPoints(context.docId, context.filename, vectorizedBlocks);
       // ✅ 根因修复：向量必须写入“目标知识库对应的集合”，否则搜索会查错集合
       // - 搜索：SearchService 使用 kbId 作为 collectionName
       // - 写入：这里也必须与之对齐
       const collectionName = context.kbId;
       
-      const vectorDimension = vectorizedBlocks[0]?.vector?.length || 768;
+      const vectorDimension = vectorizedBlocks[0].vector.length;
       await this.qdrantRepository.getOrCreateCollection(
         collectionName,
         vectorDimension,
@@ -288,8 +253,8 @@ export class StoringHandler implements StateHandler {
    * 功能：在同一个 chunk collection 的 shared access 下完成整次写入。
    *
    * 说明：
-   * - 这样启动维护若准备独占重建，会等待本次上传完整结束；
-   * - 避免在多批次 upsert 中途被后台 recreate 插入，导致“scroll 漏点 / 部分回灌”。
+   * - 同一线程内协调嵌套仓储调用；跨 Worker 的维护/重建由 Backend 活动 owner 在入队前准入；
+   * - 本地 Map 不跨 Worker 共享，不能单靠这个锁保护多线程摄入。
    */
   private async storeVectorDataWithCollectionAccess(context: TaskContext): Promise<void> {
     const collectionName = context.kbId;
@@ -320,7 +285,7 @@ export class StoringHandler implements StateHandler {
        */
       await this.validateCommitPoint(context);
 
-      await this.ensureEmbeddingProvenance(context);
+
 
       if (context.parseResult?.metadata.parseDiagnostics) {
         const diagnosticsUpdated = await this.metadataRepository.updateDocumentParseDiagnostics(
@@ -385,42 +350,30 @@ export class StoringHandler implements StateHandler {
     }
   }
 
-  /**
-   * 写入前校验已有索引出身，避免在模型不一致时先写入 SoT/Qdrant 再依赖失败清理。
-   * 首次写入的 provenance 仍在提交点之后记录，确保它代表“已成功落盘的向量事实”。
-   */
+  /** 原子认领先于 SoT/向量写，两个 Worker 不能各自把空库解释成自己的空间。 */
   private async validateEmbeddingProvenanceForAppend(context: TaskContext): Promise<void> {
-    const existing = await this.metadataRepository.getKnowledgeBaseEmbeddingProvenance(context.kbId);
-    if (existing && existing !== context.embeddingModelId) {
-      throw new Error(
-        `知识库 ${context.kbId} 的索引用 ${existing} 构建，当前上传使用 ${context.embeddingModelId}。请清空并重新导入该知识库后再上传。`
-      );
+    if (!context.vectorizeResult?.vectorizedBlocks.length) return;
+    if (!context.embeddingSpaceId) throw new Error('向量化未返回索引空间身份');
+    const index = this.metadataRepository.indexState;
+    let emptyIndexVerified = false;
+    if (!index.read(context.kbId).spaceId) {
+      // 旧进程可能在 upsert 后、completed 前退出；不能只数 completed 就认定旧索引为空。
+      const documents = await this.metadataRepository.getDocumentsInKnowledgeBase(context.kbId);
+      let hasStoredContent = false;
+      for (const document of documents) {
+        if (await this.sotRepository.get(document.id)) { hasStoredContent = true; break; }
+      }
+      const exists = await this.qdrantRepository.collectionExists(context.kbId);
+      const points = exists ? await this.qdrantRepository.scrollPointsPage(context.kbId, 1) : null;
+      emptyIndexVerified = !hasStoredContent && !points?.points.length;
+      // 另一首写 Worker 可以已认领同一空间；由下面 SQLite 事务比较，而非误判为旧库。
+      if (!emptyIndexVerified && !index.read(context.kbId).spaceId) {
+        throw new KnowledgeIndexRebuildRequiredError(context.kbId);
+      }
     }
-  }
-
-  /**
-   * 维护 KB 向量索引的 embedding 出身事实。
-   *
-   * 这里必须是 write-once：
-   * - 空 KB 首次成功写入向量时记录模型；
-   * - 已有出身时只允许同模型追加；
-   * - 不允许覆盖，否则会把“混合向量空间”伪装成一致状态，搜索侧 mismatch 闸门也会失效。
-   */
-  private async ensureEmbeddingProvenance(context: TaskContext): Promise<void> {
-    const existing = await this.metadataRepository.getKnowledgeBaseEmbeddingProvenance(context.kbId);
-    if (!existing) {
-      await this.metadataRepository.setKnowledgeBaseEmbeddingProvenance(
-        context.kbId,
-        context.embeddingModelId
-      );
-      return;
-    }
-
-    if (existing !== context.embeddingModelId) {
-      throw new Error(
-        `知识库 ${context.kbId} 的索引用 ${existing} 构建，当前上传使用 ${context.embeddingModelId}。请清空并重新导入该知识库后再上传。`
-      );
-    }
+    index.claimForAppend(context.kbId, {
+      modelId: context.embeddingModelId, spaceId: context.embeddingSpaceId,
+    }, emptyIndexVerified);
   }
 
   /**
@@ -474,10 +427,10 @@ export class StoringHandler implements StateHandler {
   }
 
   /**
-   * 功能 (What): 失败时清理已存储的数据
+   * 功能 (What): 失败时清理部分向量，保留可用于显式重建的原文
    * 输入 (Input): 任务上下文
    * 输出 (Output): 无
-   * 副作用 (Side-effects): 尝试删除部分存储的数据，避免数据不一致
+   * 副作用 (Side-effects): 删除该文档的未完成向量，更新失败状态；不删除已解析的 SoT
    */
   private async cleanupOnFailure(context: TaskContext): Promise<void> {
     logger.warn(`[StoringHandler] 存储失败，开始清理数据: ${context.docId}`);
@@ -490,18 +443,8 @@ export class StoringHandler implements StateHandler {
         logger.info(`[StoringHandler] 成功清理Qdrant中的向量数据: ${context.docId}`);
       } catch (qdrantError) {
         logger.error(`[StoringHandler] 清理Qdrant向量数据失败: ${qdrantError}`);
-      }
-      
-      // 清理SoT文件
-      try {
-        const deleted = await this.sotRepository.delete(context.docId);
-        if (deleted) {
-          logger.info(`[StoringHandler] 成功清理SoT文件: ${context.docId}`);
-        } else {
-          logger.warn(`[StoringHandler] SoT文件可能不存在或已被删除: ${context.docId}`);
-        }
-      } catch (sotError) {
-        logger.error(`[StoringHandler] 清理SoT文件失败: ${sotError}`);
+        // 清理失败意味着不能证明这些部分向量已消失；原文保留，显式重建才能恢复完整索引。
+        this.metadataRepository.indexState.invalidateForRebuild(context.kbId);
       }
       
       // 更新文档状态为失败
@@ -509,7 +452,7 @@ export class StoringHandler implements StateHandler {
         await this.metadataRepository.updateDocumentStatus(
           context.docId,
           DocumentStatus.FAILED,
-          '摄入过程中发生错误，已清理部分数据'
+          '摄入过程中发生错误，已保留原文，可重建检索索引'
         );
       } catch (metaError) {
         logger.error(`[StoringHandler] 更新失败状态失败: ${metaError}`);

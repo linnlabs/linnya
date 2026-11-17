@@ -1,3 +1,4 @@
+import { KnowledgeIndexSpaceMismatchError } from '../../index-rebuild/definitions/knowledgeIndex';
 /**
  * @file src/features/knowledge-base/application/search/queryVectorBuilder.ts
  *
@@ -9,7 +10,7 @@
  * - 这里的抛错是“业务前置条件显式化”，不是补丁式兜底。
  */
 
-import type { EmbeddingPort } from 'src/domains/model-inference';
+import { EmbeddingFailure, type EmbeddingPort } from 'src/domains/model-inference';
 import type { MetadataRepository } from '../../infrastructure/metadataRepository';
 
 export class KnowledgeBaseEmbeddingMismatchError extends Error {
@@ -60,20 +61,16 @@ export class QueryVectorBuilder {
     const { kbId, query } = args;
     const kb = await this.metadataRepository.getKnowledgeBaseById(kbId);
     if (!kb) throw new Error(`找不到知识库: ${kbId}`);
-    const embeddingModelId = await this.metadataRepository.getKnowledgeBaseEmbeddingProvenance(kbId);
-    if (
-      args.requestedEmbeddingModelId &&
-      embeddingModelId &&
-      args.requestedEmbeddingModelId !== embeddingModelId
-    ) {
-      throw new KnowledgeBaseEmbeddingMismatchError(
-        `知识库 ${kbId} 的索引用 ${embeddingModelId} 构建，当前全局嵌入模型是 ${args.requestedEmbeddingModelId}。请清空并重新导入该知识库后再搜索。`
-      );
-    }
-    if (!embeddingModelId || embeddingModelId.trim().length === 0) {
-      throw new Error(`知识库 ${kbId} 没有关联嵌入模型`);
-    }
-    const result = await this.embedding.embed({ modelId: embeddingModelId, values: [query] });
+    const identity = this.metadataRepository.indexState.requireReady(kbId);
+    const embeddingModelId = args.requestedEmbeddingModelId || identity.modelId;
+    const result = await this.embedding.embed({
+      modelId: embeddingModelId, values: [query], expectedSpaceId: identity.spaceId,
+    }).catch((error: unknown) => {
+      if (error instanceof EmbeddingFailure && error.code === 'embedding_space_mismatch') {
+        throw new KnowledgeIndexSpaceMismatchError(kbId);
+      }
+      throw error;
+    });
     const embedding = result.vectors[0];
     const queryVector = this.toNumberVectorOrThrow(embedding, '生成 queryVector 失败');
     return { embeddingModelId, queryVector };

@@ -1,3 +1,4 @@
+import { createKnowledgeIndexFixture } from '../../index-rebuild/testkit/createKnowledgeIndexFixture';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
@@ -28,20 +29,18 @@ describe('embedding provenance consistency in ingestion', () => {
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
-  it('Pending 阶段阻止向已有索引的 KB 追加不同 embedding 模型的文档', async () => {
+  it('Pending 将已有空间传给实际 embedding 调用；不能仅凭本地模型 ID 拒绝同空间别名', async () => {
     const metadata = createMetadataRepository('embedding-a');
     const handler = new PendingHandler(metadata);
 
     const result = await handler.execute(createTaskContext({
       filePath: sourcePath,
       embeddingModelId: 'embedding-b',
+      embeddingSpaceId: 'embedding-b-space',
     }));
 
-    expect(result.success).toBe(false);
-    expect(result.newStage).toBe(InternalStage.FAILED);
-    expect(result.error).toContain('embedding-a');
-    expect(result.error).toContain('embedding-b');
-    expect(result.error).toContain('清空并重新导入');
+    expect(result.success).toBe(true);
+    expect(result.context.embeddingSpaceId).toBe('embedding-a-space');
   });
 
   it('Storing 阶段首次提交时写入 embedding 出身事实', async () => {
@@ -51,13 +50,14 @@ describe('embedding provenance consistency in ingestion', () => {
     const result = await handler.execute(createTaskContext({
       filePath: sourcePath,
       embeddingModelId: 'embedding-a',
+      embeddingSpaceId: 'embedding-a-space',
       parseResult: createParseResult(),
       vectorizeResult: createVectorizeResult(),
     }));
 
     expect(result.success).toBe(true);
-    expect(metadata.writtenProvenance).toEqual(['embedding-a']);
-    expect(await metadata.getKnowledgeBaseEmbeddingProvenance('kb-1')).toBe('embedding-a');
+    expect(metadata.indexState.requireReady('kb-1').spaceId).toBe('embedding-a-space');
+    expect(metadata.indexState.requireReady('kb-1').modelId).toBe('embedding-a');
   });
 
   it('Storing 阶段已有相同出身时不重复覆盖 provenance', async () => {
@@ -67,13 +67,14 @@ describe('embedding provenance consistency in ingestion', () => {
     const result = await handler.execute(createTaskContext({
       filePath: sourcePath,
       embeddingModelId: 'embedding-a',
+      embeddingSpaceId: 'embedding-a-space',
       parseResult: createParseResult(),
       vectorizeResult: createVectorizeResult(),
     }));
 
     expect(result.success).toBe(true);
     expect(metadata.writtenProvenance).toEqual([]);
-    expect(await metadata.getKnowledgeBaseEmbeddingProvenance('kb-1')).toBe('embedding-a');
+    expect(metadata.indexState.requireReady('kb-1').modelId).toBe('embedding-a');
   });
 
   it('Storing 阶段已有不同出身时失败，且不会覆盖 provenance', async () => {
@@ -85,18 +86,48 @@ describe('embedding provenance consistency in ingestion', () => {
     const result = await handler.execute(createTaskContext({
       filePath: sourcePath,
       embeddingModelId: 'embedding-b',
+      embeddingSpaceId: 'embedding-b-space',
       parseResult: createParseResult(),
       vectorizeResult: createVectorizeResult(),
     }));
 
     expect(result.success).toBe(false);
     expect(result.newStage).toBe(InternalStage.FAILED);
-    expect(result.error).toContain('embedding-a');
-    expect(result.error).toContain('embedding-b');
+    expect(result.error).toContain('向量空间');
     expect(metadata.writtenProvenance).toEqual([]);
-    expect(await metadata.getKnowledgeBaseEmbeddingProvenance('kb-1')).toBe('embedding-a');
+    expect(metadata.indexState.requireReady('kb-1').modelId).toBe('embedding-a');
     expect(await sot.get('doc-1')).toBeUndefined();
     expect(qdrant.addedPointIds).toEqual([]);
+  });
+
+  it('没有 completed 文档也不能认领旧失败任务残留的向量；预检失败不删原始数据', async () => {
+    const metadata = createMetadataRepository(null);
+    const sot = createSotRepository();
+    const vectors = createQdrantRepository();
+    await vectors.addPoints('kb-1', [{ id: 'residual', vector: { default: [1, 0, 0] }, payload: {
+      doc_id: 'old-failed', block_id: 'old-block', document: 'old source', doc_title: 'old.md', block_type: 'paragraph',
+    } }]);
+    const handler = new StoringHandler(sot, vectors, metadata);
+    const result = await handler.execute(createTaskContext({ filePath: sourcePath, embeddingSpaceId: 'new-space',
+      parseResult: createParseResult(), vectorizeResult: createVectorizeResult() }));
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('重建');
+    expect(metadata.indexState.read('kb-1').spaceId).toBeNull();
+    expect(vectors.addedPointIds).toEqual(['residual']);
+    expect(await vectors.countPointsByIds('kb-1', ['residual'])).toBe(1);
+  });
+
+  it('SoT 已落盘后向量失败仍保留原文；不能删除用户已解析的内容', async () => {
+    const metadata = createMetadataRepository(null);
+    const sot = createSotRepository();
+    const vectors = createQdrantRepository();
+    vectors.addPoints = async () => { throw new Error('vector storage unavailable'); };
+    const handler = new StoringHandler(sot, vectors, metadata);
+    const result = await handler.execute(createTaskContext({ filePath: sourcePath, embeddingSpaceId: 'new-space',
+      parseResult: createParseResult(), vectorizeResult: createVectorizeResult() }));
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('vector storage unavailable');
+    expect((await sot.get('doc-1'))?.content_blocks['block-1'].text).toBe('hello');
   });
 });
 
@@ -196,6 +227,7 @@ function createMetadataRepository(initialProvenance: string | null): MetadataRep
 
   return {
     writtenProvenance,
+    indexState: createKnowledgeIndexFixture(['kb-1'], initialProvenance ? { modelId: initialProvenance, spaceId: initialProvenance + '-space' } : undefined),
     createKnowledgeBase: async (input) => input,
     getAllKnowledgeBases: async () => [kb],
     getDocumentCountsByKnowledgeBaseIds: async () => ({}),

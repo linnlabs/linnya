@@ -38,6 +38,10 @@ const unavailable = async (): Promise<never> => {
   throw new Error('Knowledge is outside this recovery fixture');
 };
 const knowledge: KnowledgeBaseService = {
+  hasActiveTasks: () => false,
+  stopTasks: async () => {},
+  rebuildIndex: unavailable,
+  getIndexRebuildStatus: () => null,
   createKnowledgeBase: unavailable,
   getAllKnowledgeBases: unavailable,
   getOrCreateDefaultKnowledgeBase: unavailable,

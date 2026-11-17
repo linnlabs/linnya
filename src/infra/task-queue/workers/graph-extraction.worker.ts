@@ -161,14 +161,14 @@ async function processGraphExtractionJob(): Promise<void> {
     const databaseService = getDatabaseService();
     databaseService.initializeConnectionOnly();
 
-    const metadataRepository = new BetterSqliteMetadataRepository(databaseService);
+    const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
     const doc = await metadataRepository.getDocumentById(jobData.docId);
     if (!doc || doc.kbId !== jobData.kbId) {
       sendMessage('failed', `文档不存在或不属于该知识库（可能已被删除）: docId=${jobData.docId}, kbId=${jobData.kbId}`);
       return;
     }
 
-    const graphRepo = new BetterSqliteKnowledgeGraphRepository(databaseService);
+    const graphRepo = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
     graphRepoForFailure = graphRepo;
     failureKbId = jobData.kbId;
     failureDocId = jobData.docId;

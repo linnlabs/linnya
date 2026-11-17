@@ -39,6 +39,7 @@ export class GraphDiscoveryService {
     kbId: string;
     query: string;
     embeddingModelId: string;
+    expectedSpaceId: string;
     /**
      * 可选：由上层提前计算的 query 向量（用于复用，避免重复 embed）。
      */
@@ -79,7 +80,7 @@ export class GraphDiscoveryService {
         queryVector.push(n);
       }
     } else {
-      const result = await this.embedding.embed({ modelId: embeddingModelId, values: [query] });
+      const result = await this.embedding.embed({ modelId: embeddingModelId, values: [query], expectedSpaceId: args.expectedSpaceId });
       const embedding = result.vectors[0];
 
       // 这里不做“防御性容错”，严格要求 embedding 是 number[]

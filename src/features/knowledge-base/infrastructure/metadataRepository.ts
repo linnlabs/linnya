@@ -11,6 +11,7 @@
  * - 不再保留旧的 sql.js(metadata.sqlite) 实现
  */
 
+import type { KnowledgeIndexStatePort } from '../index-rebuild/definitions/knowledgeIndex';
 import { KnowledgeBase } from '../domain/knowledgeBase';
 import { Document, DocumentParseDiagnostics, DocumentStatus } from '../domain/document';
 
@@ -18,6 +19,7 @@ import { Document, DocumentParseDiagnostics, DocumentStatus } from '../domain/do
  * 元数据仓储接口
  */
 export interface MetadataRepository {
+  readonly indexState: KnowledgeIndexStatePort;
   /**
    * 创建新的知识库
    * @param kb 知识库数据

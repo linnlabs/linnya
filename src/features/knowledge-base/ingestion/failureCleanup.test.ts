@@ -1,3 +1,4 @@
+import { createKnowledgeIndexFixture } from '../index-rebuild/testkit/createKnowledgeIndexFixture';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DocumentSoT } from '../domain/block';
@@ -64,6 +65,7 @@ function createMetadataRepositoryStub(docs: Document[]): MetadataRepository {
   const store = new Map(docs.map((doc) => [doc.id, { ...doc }]));
 
   return {
+    indexState: createKnowledgeIndexFixture(['default'], { modelId: 'model', spaceId: 'space' }),
     createKnowledgeBase: async (kb) => kb,
     getAllKnowledgeBases: async () => [
       {
@@ -321,56 +323,26 @@ describe('failureCleanup logging aggregation', () => {
     ).toBe(false);
   });
 
-  it('应按异常类别输出汇总而不是为每个异常文档单独打扫描日志', async () => {
-    const metadataRepository = createMetadataRepositoryStub([
-      createDocument('doc-pending-partial', DocumentStatus.PENDING),
-      createDocument('doc-completed-missing', DocumentStatus.COMPLETED),
-      createDocument('doc-failed-residual', DocumentStatus.FAILED),
+  it('源资料保留而非三删：completed 缺向量、failed 有 SoT/PDF 都明确要求重建', async () => {
+    const ids = ['completed-missing-vector', 'failed-with-source', 'failed-with-pdf'];
+    const metadata = createMetadataRepositoryStub([
+      createDocument(ids[0], DocumentStatus.COMPLETED),
+      createDocument(ids[1], DocumentStatus.FAILED),
+      createDocument(ids[2], DocumentStatus.FAILED),
     ]);
-
-    const stats = await runKnowledgeBaseStartupMaintenanceOnce(
-      metadataRepository,
-      createQdrantRepositoryStub({ default: ['doc-failed-residual'] }),
-      createSotRepositoryStub(['doc-pending-partial', 'doc-completed-missing']),
-      createKnowledgeGraphRepositoryStub()
-    );
-
-    expect(stats.totalFailed).toBe(3);
-
-    expect(
-      mocked.logEntries.find((entry) =>
-        entry.message.includes('待清理分类: pending/processing 仅部分数据存在')
-      )?.data
-    ).toMatchObject({
-      count: 1,
-      sampleDocIds: ['doc-pending-partial'],
-    });
-
-    expect(
-      mocked.logEntries.find((entry) =>
-        entry.message.includes('待清理分类: completed 文档缺少 SoT 或 Qdrant 数据')
-      )?.data
-    ).toMatchObject({
-      count: 1,
-      sampleDocIds: ['doc-completed-missing'],
-    });
-
-    expect(
-      mocked.logEntries.find((entry) =>
-        entry.message.includes('待清理分类: failed 文档仍残留数据')
-      )?.data
-    ).toMatchObject({
-      count: 1,
-      sampleDocIds: ['doc-failed-residual'],
-    });
-
-    expect(
-      mocked.logEntries.some(
-        (entry) =>
-          entry.message.includes('数据不一致: doc-pending-partial') ||
-          entry.message.includes('已完成文档数据缺失: doc-completed-missing') ||
-          entry.message.includes('失败文档有残留数据: doc-failed-residual')
-      )
-    ).toBe(false);
+    const sot = createSotRepositoryStub(ids.slice(0, 2));
+    const originals = { save: async () => ({ kbId: 'default', docId: ids[2], path: '/original.pdf', sizeBytes: 4 }), getPath: async () => '/original.pdf', getSizeBytes: async () => 4,
+      delete: vi.fn(async () => true), deleteByKnowledgeBase: async () => 0 };
+    const before = await sot.get(ids[0]);
+    const stats = await runKnowledgeBaseStartupMaintenanceOnce(metadata, createQdrantRepositoryStub({ default: [] }), sot,
+      createKnowledgeGraphRepositoryStub(), originals);
+    expect(stats.totalFailed).toBe(0);
+    expect(await metadata.getAllDocuments()).toHaveLength(3);
+    expect(await sot.get(ids[0])).toEqual(before);
+    expect(await sot.get(ids[1])).toBeDefined();
+    expect(originals.delete).not.toHaveBeenCalled();
+    expect(metadata.indexState.read('default').spaceId).toBeNull();
+    const summary = mocked.logEntries.find(entry => entry.message.includes('一致性检查汇总'));
+    expect(summary?.data).toMatchObject({ anomalies: { preservedSourceNeedsRebuild: 3 }, cleanupCandidateCount: 0 });
   });
 });

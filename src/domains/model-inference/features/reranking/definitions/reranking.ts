@@ -1,27 +1,5 @@
-export interface RerankingRequest {
-  readonly modelId: string;
-  readonly query: string;
-  readonly documents: readonly string[];
-  readonly topN?: number;
-  readonly signal?: AbortSignal;
-}
-
-export interface RerankingItem {
-  readonly originalIndex: number;
-  readonly score: number;
-}
-
-export interface RerankingUsage {
-  readonly inputTokens?: number;
-  readonly raw: unknown;
-}
-
-export interface RerankingResult {
-  readonly ranking: readonly RerankingItem[];
-  readonly usage?: RerankingUsage;
-}
-
-export type RerankingFailureKind = 'aborted' | 'transport' | 'provider' | 'protocol';
+import type { RerankingFailureKind } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
+export type { RerankingRequest, RerankingItem, RerankingUsage, RerankingResult, RerankingFailureKind, RerankingPort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
 
 export class RerankingFailure extends Error {
   constructor(
@@ -33,8 +11,4 @@ export class RerankingFailure extends Error {
     super(message);
     this.name = 'RerankingFailure';
   }
-}
-
-export interface RerankingPort {
-  rerank(request: RerankingRequest): Promise<RerankingResult>;
 }

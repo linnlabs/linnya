@@ -4,6 +4,7 @@
 // 包括知识库管理、文档上传、任务状态查询等功能
 
 import axios from 'axios';
+import { KnowledgeIndexTaskStatusSchema } from '@app/schemas';
 import { getApiBaseUrl, getApiToken, refreshApiSession } from '../../../shared/services/aiService/common';
 import { readEffectiveModelPurposeBinding } from '@/domains/model-configuration';
 import { resolveCurrentKnowledgeBaseMessage } from '../functions/resolveCurrentKnowledgeBaseMessage';
@@ -139,6 +140,17 @@ async function getApiClient() {
  * V22 重构: 所有方法现在都使用 getApiClient() 来确保请求的正确性。
  */
 export const knowledgeBaseService = {
+  async rebuildIndex(kbId, modelId) {
+    const client = await getApiClient();
+    const { data } = await client.post(`/knowledge-base/${encodeURIComponent(kbId)}/index/rebuild`, { modelId });
+    return KnowledgeIndexTaskStatusSchema.parse(data.task);
+  },
+  async getIndexRebuildStatus(kbId) {
+    const client = await getApiClient();
+    const { data } = await client.get(`/knowledge-base/${encodeURIComponent(kbId)}/index/rebuild`);
+    return data.task === null ? null : KnowledgeIndexTaskStatusSchema.parse(data.task);
+  },
+
   /**
    * 获取 Electron preload 暴露的“知识库 IPC API”（若不存在则返回 null）。
    *

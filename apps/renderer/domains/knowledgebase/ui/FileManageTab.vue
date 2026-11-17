@@ -11,6 +11,9 @@
           <div class="col-parse-status">{{ knowledgeBaseMessage('knowledgeBase.manage.parseStatus') }}</div>
           <div class="col-upload-time">{{ knowledgeBaseMessage('knowledgeBase.manage.uploadTime') }}</div>
           <div class="col-actions">
+            <KnowledgeIndexRebuildControl v-if="selectedKbId" :kb-id="selectedKbId" :name="selectedKbName"
+              :model-id="rebuild.modelId.value" :model-name="rebuild.modelName.value"
+              :disabled="kbDocsCount === 0 || isClearing" :busy="rebuild.busy.value" @rebuild="rebuild.start" />
             <button 
               @click="onClearAllClick" 
               class="action-link clear-all-btn warning-btn" 
@@ -68,6 +71,10 @@
         </div>
       </div>
 
+      <div v-if="rebuild.status.value || rebuild.error.value" class="knowledge-index-status" role="status">
+        {{ rebuild.error.value || rebuild.status.value?.message }}
+        <button v-if="rebuild.busy.value" class="action-link" @click="rebuild.cancel">{{ knowledgeBaseMessage('knowledgeBase.common.cancel') }}</button>
+      </div>
       <!-- 确认删除全部文件的对话框 -->
       <AlertDialog
         :visible="showClearDialog"
@@ -92,6 +99,9 @@
   <script setup>
 import { formatStorageBytes } from '@app/localization';
   import { computed, ref } from 'vue'
+  import { toRef } from 'vue'
+  import KnowledgeIndexRebuildControl from './KnowledgeIndexRebuildControl.vue'
+  import { useKnowledgeIndexRebuild } from '../orchestration/useKnowledgeIndexRebuild'
   import { useKnowledgeBase } from '../runtime.js'
   import { AlertDialog } from '@linnya/renderer-ui'
   import { confirm } from '@shared/composables/confirmDialog'
@@ -104,6 +114,7 @@ import { formatStorageBytes } from '@app/localization';
   
   // --- Store ---
   const kbStore = useKnowledgeBase()
+  const rebuild = useKnowledgeIndexRebuild(toRef(props, 'selectedKbId'), () => kbStore.fetchDocuments(props.selectedKbId))
   const { currentLocale, knowledgeBaseMessage } = useKnowledgeBaseLocalization()
   
   // --- Refs for Dialogs and Loading State ---

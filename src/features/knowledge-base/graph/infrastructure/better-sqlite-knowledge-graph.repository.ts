@@ -5,13 +5,12 @@
  * 软知识图谱仓储 - better-sqlite3 实现（workspace.sqlite）
  *
  * 关键设计：
- * - 不持有独立 DB 连接，通过 DatabaseService 获取统一实例（与 KB 元数据仓储对齐）；
+ * - 不持有独立 DB 连接，接收现有连接的 prepare/transaction 窄端口（与 KB 元数据仓储对齐）；
  * - 幂等写入使用 ON CONFLICT(kb_id, id) DO UPDATE；
  * - 所有查询必须携带 kbId（跨 KB 隔离）。
  */
 
-import type Database from 'better-sqlite3';
-import { DatabaseService } from '../../../../electron-main/services/database';
+import type { KnowledgeDatabase } from '../../definitions/knowledgeDatabase';
 import type {
   KnowledgeGraphDocStatusUpsertInput,
   KnowledgeGraphDocStatusRecord,
@@ -32,15 +31,15 @@ import type {
  * better-sqlite3 版本的图谱仓储实现
  */
 export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepository {
-  private readonly databaseService: DatabaseService;
+  private readonly database: KnowledgeDatabase;
 
-  constructor(databaseService: DatabaseService) {
-    this.databaseService = databaseService;
+  constructor(database: KnowledgeDatabase) {
+    this.database = database;
     console.log('[BetterSqliteKnowledgeGraphRepository] 初始化完成');
   }
 
-  private getDb(): Database.Database {
-    return this.databaseService.getDb();
+  private getDb(): KnowledgeDatabase {
+    return this.database;
   }
 
   async upsertNodes(nodes: KnowledgeGraphNodeUpsertInput[]): Promise<void> {

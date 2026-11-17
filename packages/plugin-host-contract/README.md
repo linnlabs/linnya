@@ -183,3 +183,15 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 `DocumentTypeContribution.readonlyPreviewComponent` 是详情档的可选增强，接收 documentId/projectId。消费者只在用户展开时挂载，离开、换目标或插件不可用时卸载；组件必须只读、核对范围并释放资源，不绑定可写 file session。静态封面和摘要仍走统一 DocumentPreview 数据合同，不能为远景卡片批量挂实时组件。
 
 `renderer/documentPreview.mountDocumentPreview({element,documentId,projectId,mode?,widthPx?,signal?,onReady?})` 是行内引用、Composer 与 Canvas 共用的 Renderer 本地只读挂载口（first-screen 或 detail），返回 Promise<dispose>。Host 在 import 前后核对当前项目，signal 可在 Promise/插件组件加载中取消；旧 disposer 不会移除同容器后来挂载的目标。DOM 和 AbortSignal 不过 IPC，插件不得借此打开可写 surface 或批量挂载远景组件。同一门面的 `readDocumentPreviewTypeIcon(nodeType)` 返回与文件树相同的类型图标，Host 未安装时返回 null，由调用方兜底。
+
+### 项目摘要读取
+
+`backend/projectReadRuntime` 仅开放 `get(projectId)` 的项目摘要。项目的存在性、软删除和字段投影仍由 Host 的 Projects owner 决定；插件不能借这个口创建、删除项目或取得 Projects repository。知识库关联表只持有项目 ID/FK，通过此口校验并投影关联列表。
+
+### 非 Agent 模型推理与受管 Worker
+
+`backend/inferenceRuntime` 是 embedding、reranking、文本生成和文档 OCR 端口的纯类型真源，Host 的原有 domain 入口重导出相同类型。SDK 只暴露执行能力，不开放模型目录、路由、凭据或 Provider 实现。嵌入请求可携带 `expectedSpaceId`，响应总是包含实际冻结路由的 `spaceId`；名称/密钥变化不影响空间，真正空间变化在请求上游前失败。
+
+`backend/inferenceWorkerRuntime` 只桥接当前 Worker 使用的 embedding、文本和 OCR（包含模式查询/进度）；rerank 继续在 Backend 搜索执行。DTO 由 `@app/schemas/plugins/inference-worker` 校验。Worker 只持有任务模型 ID 和素材，Host 组合根为每个任务冻结允许操作/模型/文件，再执行正式端口。PDF 路径必须属于任务输入或任务独占临时目录；不能拿 wire 路径当授权。请求失败只回传错误分类/码/重试事实，不回传配置、凭据或任意错误 cause。
+
+队列只拥有消息和取消生命周期，不识别这些模型操作。取消、Worker 意外退出和队列 shutdown 必须中止并等待该 Worker 的 Host 请求，不能留下已退出任务继续调用模型。此能力不隐含 Plugin CLI 的网络或 Host 推理授权；CLI 仍须经自己的 access plan / invocation gate。

@@ -5,8 +5,8 @@ import {
 
 import { knowledgeBaseService } from '../services/knowledgeBaseService';
 
-export function registerKnowledgeBaseModelConfigurationPorts(): void {
-  registerEmbeddingModelChangeImpactPort({
+export function registerKnowledgeBaseModelConfigurationPorts(): () => void {
+  return registerEmbeddingModelChangeImpactPort({
     async findKnowledgeBasesUsingModel(modelId): Promise<readonly EmbeddingModelChangeImpact[]> {
       const response = await knowledgeBaseService.getAllKnowledgeBases();
       return response.knowledge_bases.flatMap(knowledgeBase => {

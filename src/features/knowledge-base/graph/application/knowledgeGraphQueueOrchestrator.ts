@@ -79,8 +79,8 @@ export class KnowledgeGraphQueueOrchestrator {
     publishGraphProgress(payload: KbGraphProgressPayload): void;
   }) {
     this.queueManager = deps.queueManager;
-    this.metadataRepo = new BetterSqliteMetadataRepository(deps.databaseService);
-    this.graphRepo = new BetterSqliteKnowledgeGraphRepository(deps.databaseService);
+    this.metadataRepo = new BetterSqliteMetadataRepository(deps.databaseService.getDb());
+    this.graphRepo = new BetterSqliteKnowledgeGraphRepository(deps.databaseService.getDb());
     this.sotRepo = new FileSotRepository(pathManager.getSourceOfTruthPath());
     this.graphProgressService = new GraphProgressService(this.graphRepo, {
       throttleMs: 250,

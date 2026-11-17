@@ -1,3 +1,4 @@
+import type { KnowledgeIndexTaskStatus } from '../index-rebuild/definitions/knowledgeIndex';
 /**
  * @file src/knowledge-base/application/knowledgeBaseService.ts
  *
@@ -196,6 +197,10 @@ export interface SearchResponse {
  * 知识库应用服务接口
  */
 export interface KnowledgeBaseService {
+  hasActiveTasks(): boolean;
+  stopTasks(): Promise<void>;
+  rebuildIndex(kbId: string, modelId: string): Promise<KnowledgeIndexTaskStatus>;
+  getIndexRebuildStatus(kbId: string): KnowledgeIndexTaskStatus | null;
   /**
    * 创建知识库
    * @param name 知识库名称

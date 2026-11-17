@@ -17,7 +17,9 @@
  */
 
 // 导入Qdrant管理器
+import { QdrantRuntimeUnavailableError } from '../../../../infra/adapters/vector-store/qdrant/errors';
 import { QdrantManager } from '../../../../electron-main/services/qdrantManager';
+import { createOnDemandQdrantRuntime, type OnDemandQdrantRuntime } from '../../../../infra/adapters/vector-store/qdrant/process-runtime/orchestration/createOnDemandQdrantRuntime';
 
 // 导入新的模块化组件
 import { ApiServer } from '../../../../electron-main/services/apiServer';
@@ -41,7 +43,6 @@ import {
   findStartupCapabilityFailure,
   type StartupCapability,
   type StartupCapabilityFailure,
-  type StartupVectorStore,
 } from '../../../../electron-main/services/startup/startupCapabilityFailure';
 import type { DatabaseStartupProgressPort } from '../../../../electron-main/services/database/databaseStartupProgress';
 import type { ProjectDeletionUseCasePort } from '../../application/project-deletion';
@@ -106,6 +107,7 @@ export class BackendRuntimeOwner {
 
   // Qdrant服务管理
   private qdrantManager: QdrantManager | null = null;
+  private vectorRuntime: OnDemandQdrantRuntime | null = null;
 
   constructor(
     private readonly qdrantProcessRuntime: QdrantProcessRuntime,
@@ -144,7 +146,7 @@ export class BackendRuntimeOwner {
     if (this.commandAppOwnerEnded || this.sandboxAppOwnerEnded) {
       throw new Error('当前 Linnya 进程的 App 运行时已经结束，请重新启动 Linnya');
     }
-    if (!this.isRunning && (this.qdrantManager || this.services)) {
+    if (!this.isRunning && (this.vectorRuntime || this.qdrantManager || this.services)) {
       throw new Error('上一次后端生命周期尚未收口，请重新停止服务后再启动');
     }
     console.log(
@@ -161,9 +163,15 @@ export class BackendRuntimeOwner {
     try {
       console.log('[Backend Service] 🚀 开始服务初始化...');
 
-      // 步骤1：启动Qdrant服务（能力：失败时只停掉知识库）
-      console.log('[Backend Service] 📊 Step 1: 启动Qdrant服务...');
-      const vectorStore = await this.startVectorStore(config);
+      // 只登记进程 owner；列表、原文和会话 ready 不等待向量服务。
+      const vectorStore = createOnDemandQdrantRuntime({
+        start: () => this.startVectorStore(config),
+        stop: async () => {
+          await this.qdrantManager?.stop();
+          this.qdrantManager = null;
+        },
+      });
+      this.vectorRuntime = vectorStore;
 
       // 步骤2：初始化全部 Backend services
       console.log('[Backend Service] ⚙️ Step 2: 初始化 Backend services...');
@@ -200,10 +208,10 @@ export class BackendRuntimeOwner {
   }
 
   /**
-   * Qdrant 没有启动时收口已拉起的进程，把原因交给服务初始化跳过知识库；不回退到默认地址。
+   * 首次请求无法启动 Qdrant 时收口已拉起的进程，将原因交给该索引操作；不回退到默认地址。
    * 收口本身失败时保留 manager，交给正式停止流程再试一次。
    */
-  private async startVectorStore(config: AppServerBackendConfiguration): Promise<StartupVectorStore> {
+  private async startVectorStore(config: AppServerBackendConfiguration): Promise<string> {
     const qdrantManager = new QdrantManager({
       host: config.qdrant.host,
       port: config.qdrant.port,
@@ -212,7 +220,7 @@ export class BackendRuntimeOwner {
     try {
       await qdrantManager.start();
       console.log('[Backend Service] ✅ Step 1: Qdrant服务启动成功');
-      return Object.freeze({ kind: 'ready', url: qdrantManager.getConfig().url });
+      return qdrantManager.getConfig().url;
     } catch (error: unknown) {
       console.error('[Backend Service] ❌ Step 1: Qdrant服务启动失败，知识库本次不可用:', error);
       try {
@@ -221,10 +229,7 @@ export class BackendRuntimeOwner {
       } catch (stopError: unknown) {
         console.error('[Backend Service] ❌ 收口未启动成功的 Qdrant 时出错:', stopError);
       }
-      return Object.freeze({
-        kind: 'unavailable',
-        message: describeStartupCapabilityFailure('向量库没有启动成功', error),
-      });
+      throw new QdrantRuntimeUnavailableError(describeStartupCapabilityFailure('向量库没有启动成功', error));
     }
   }
 
@@ -245,6 +250,7 @@ export class BackendRuntimeOwner {
     if (
       !this.isRunning &&
       !this.services &&
+      !this.vectorRuntime &&
       !this.qdrantManager &&
       !this.commandOwnerLifecycle &&
       !this.sandboxOwnerLifecycle &&
@@ -285,6 +291,7 @@ export class BackendRuntimeOwner {
     // 先停止接收新请求，随后命令 owner 才能在没有新 admission 的前提下可信收口。
     // 先同步发出取消，防止 HTTP drain 期间目录刷新继续接单或发起下一轮写入。
     const startupMaintenanceStopped = this.serviceInitializer.stopStartupMaintenance();
+    const knowledgeTasksStopped = this.services?.knowledgeBaseService?.stopTasks();
     const modelSynchronizationStopped = this.providerModelSynchronization?.stop();
     await stopStage('API服务器', () => this.apiServer.stop());
     await stopStage('启动维护', async () => { await startupMaintenanceStopped; });
@@ -328,13 +335,12 @@ export class BackendRuntimeOwner {
 
     // 两类 App owner 已经收口后再停 worker，避免退出期间后台 owner 交叉产生新工作。
     await stopStage('后台任务队列', () => QueueManager.getInstance().shutdown());
+    await stopStage('知识库索引任务', async () => { await knowledgeTasksStopped; });
 
-    // 停止Qdrant服务
-    if (this.qdrantManager) {
-      const qdrantManager = this.qdrantManager;
-      if (await stopStage('Qdrant服务', () => qdrantManager.stop())) {
-        this.qdrantManager = null;
-      }
+    // 冷态不会创建进程；启动中的进程结算并收口后才允许后端退出。
+    if (this.vectorRuntime) {
+      const vectorRuntime = this.vectorRuntime;
+      if (await stopStage('Qdrant服务', () => vectorRuntime.stop())) this.vectorRuntime = null;
     }
 
     // 清理状态
@@ -385,6 +391,7 @@ export class BackendRuntimeOwner {
   hasActiveKnowledgeIngestion(): boolean {
     if (!this.services || this.shutdownSettlement) return false;
     // 队列没有启动时不会有导入任务；不能让退出确认因此每次都查询失败。
+    if (this.services.knowledgeBaseService?.hasActiveTasks()) return true;
     if (this.getStartupCapabilityFailure('background-tasks')) return false;
     const stats = QueueManager.getInstance().getQueueStats();
     return stats.pending + stats.running > 0;

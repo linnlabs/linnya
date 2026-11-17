@@ -28,7 +28,7 @@ qdrant/
 
 ### 2) 对外使用方式
 
-- **推荐**：通过 `QdrantAdapter.getInstance(config)` 获取实例，并调用对应方法。
+- App Server 按受管向量运行时返回的真实 URL 构造 `new QdrantAdapter(config)`，不跨生命周期复用旧端口。独立 Worker / 诊断进程仍可通过 `getInstance(config)` 复用进程内实例。
 - **类型**：从本目录 `index.ts` 导出（并被 `src/infra/adapters/vector-store/index.ts` 二次导出）。
 
 ### 3) Collection 设计约定

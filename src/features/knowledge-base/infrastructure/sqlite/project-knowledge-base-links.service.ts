@@ -14,8 +14,8 @@
  * - 强制校验：关联前确保项目和知识库都存在
  */
 
-import type Database from 'better-sqlite3';
-import { DatabaseService } from '../../../../electron-main/services/database';
+import type { KnowledgeDatabase } from '../../definitions/knowledgeDatabase';
+import type { PluginProjectReadPort } from '@linnya/plugin-host-contract/backend/projectReadRuntime';
 import { BetterSqliteMetadataRepository } from './better-sqlite-metadata.repository';
 import { KnowledgeBase } from '../../domain/knowledgeBase';
 import type { ProjectKnowledgeBaseLink, ProjectInfo } from './project-knowledge-base-links.types';
@@ -24,14 +24,17 @@ import type { ProjectKnowledgeBaseLink, ProjectInfo } from './project-knowledge-
  * 项目-知识库关联管理服务
  */
 export class ProjectKnowledgeBaseLinksService {
-  private readonly databaseService: DatabaseService;
+  private readonly database: KnowledgeDatabase;
+  private readonly projects: PluginProjectReadPort;
   private readonly metadataRepository: BetterSqliteMetadataRepository;
 
   constructor(
-    databaseService: DatabaseService,
-    metadataRepository: BetterSqliteMetadataRepository
+    database: KnowledgeDatabase,
+    metadataRepository: BetterSqliteMetadataRepository,
+    projects: PluginProjectReadPort
   ) {
-    this.databaseService = databaseService;
+    this.database = database;
+    this.projects = projects;
     this.metadataRepository = metadataRepository;
     console.log('[ProjectKnowledgeBaseLinksService] 初始化完成');
   }
@@ -39,8 +42,8 @@ export class ProjectKnowledgeBaseLinksService {
   /**
    * 获取数据库实例
    */
-  private getDb(): Database.Database {
-    return this.databaseService.getDb();
+  private getDb(): KnowledgeDatabase {
+    return this.database;
   }
 
   /**
@@ -59,9 +62,7 @@ export class ProjectKnowledgeBaseLinksService {
     const db = this.getDb();
 
     // 1. 校验项目是否存在
-    const projectExists = db
-      .prepare('SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL')
-      .get(projectId);
+    const projectExists = this.projects.get(projectId);
 
     if (!projectExists) {
       throw new Error(`项目不存在: ${projectId}`);
@@ -196,27 +197,11 @@ export class ProjectKnowledgeBaseLinksService {
    * @returns 项目信息数组
    */
   async listDetailedProjectsForKnowledgeBase(kbId: string): Promise<ProjectInfo[]> {
-    const db = this.getDb();
-
-    const rows = db.prepare(`
-      SELECT p.id, p.name, p.description, p.icon
-      FROM projects p
-      INNER JOIN project_knowledge_base_links l ON p.id = l.project_id
-      WHERE l.kb_id = ? AND p.deleted_at IS NULL
-      ORDER BY l.created_at ASC
-    `).all(kbId) as Array<{
-      id: string;
-      name: string;
-      description: string | null;
-      icon: string | null;
-    }>;
-
-    return rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      description: row.description || undefined,
-      icon: row.icon || undefined
-    }));
+    const projectIds = await this.listProjectsForKnowledgeBase(kbId);
+    return projectIds.flatMap(projectId => {
+      const project = this.projects.get(projectId);
+      return project ? [project] : [];
+    });
   }
 
   /**

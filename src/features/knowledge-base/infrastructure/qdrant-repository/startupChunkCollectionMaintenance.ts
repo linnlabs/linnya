@@ -1,3 +1,4 @@
+import type { KnowledgeActivityOwner } from '../../runtime/orchestration/createKnowledgeActivityOwner';
 import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/features/knowledge-base/infrastructure/qdrant-repository/startupChunkCollectionMaintenance.ts
@@ -78,7 +79,8 @@ function formatCollectionMaintenanceSummary(result: ChunkCollectionRecreateResul
 
 export async function runChunkCollectionStartupMaintenanceOnce(
   metadataRepository: MetadataRepository,
-  qdrantRepository: QdrantRepository
+  qdrantRepository: QdrantRepository,
+  activity?: KnowledgeActivityOwner
 ): Promise<ChunkCollectionStartupMaintenanceStats> {
   const logger = new Logger('ChunkCollectionStartupMaintenance');
   const stats: ChunkCollectionStartupMaintenanceStats = {
@@ -106,6 +108,10 @@ export async function runChunkCollectionStartupMaintenanceOnce(
 
   for (const collectionName of collectionNames) {
     stats.scannedCollections += 1;
+    if (activity?.hasActivity(collectionName) || !metadataRepository.indexState.read(collectionName).spaceId) {
+      stats.skippedCollections += 1; continue;
+    }
+    const lease = activity?.begin(collectionName, 'maintenance');
     try {
       const result = await qdrantRepository.recreateChunkCollectionIfNeeded(collectionName);
       if (result.action === 'recreated') {
@@ -122,7 +128,7 @@ export async function runChunkCollectionStartupMaintenanceOnce(
       logger.error(
         `[ChunkCollectionStartupMaintenance] collection=${collectionName} 收缩失败: ${error instanceof Error ? error.message : String(error)}`
       );
-    }
+    } finally { lease?.release(); }
   }
 
   return stats;

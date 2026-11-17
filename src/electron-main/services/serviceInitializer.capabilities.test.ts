@@ -13,6 +13,7 @@ vi.mock('./startup/startupMaintenanceRunner', () => ({
   runCommandOutputArtifactStartupMaintenance: vi.fn(async () => undefined),
   runToolOutputStoreStartupMaintenance: vi.fn(async () => undefined),
   scheduleStartupMaintenanceOnce: vi.fn(() => ({ stop: async () => undefined })),
+  scheduleKnowledgeBaseMaintenanceOnce: vi.fn(() => ({ stop: async () => undefined })),
 }));
 vi.mock('../../app-hosts/linnya/plugin-registry/builtin', () => ({
   bootstrapBuiltinPluginLifecycle: vi.fn(),
@@ -111,16 +112,16 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const READY = Object.freeze({ kind: 'ready', url: 'http://127.0.0.1:6333' } as const);
+const READY = Object.freeze({ ensureReady: async () => 'http://127.0.0.1:6333' });
 
 describe('服务初始化：能力步骤失败只停掉这项能力', () => {
-  it('全部成功时没有能力失败，维护任务带上知识库', async () => {
+  it('全部成功时没有能力失败，启动维护不启动向量服务', async () => {
     const services = await createInitializer().initializeServices({}, READY);
     expect(services.capabilityFailures).toEqual([]);
     expect(services.knowledgeBaseService).toBe(KNOWLEDGE_BASE);
     expect(scheduleStartupMaintenanceOnce).toHaveBeenCalledWith({
       databaseService: database,
-      knowledgeBase: KNOWLEDGE_BASE_MAINTENANCE,
+      knowledgeBase: null,
     });
     services.disposeRendererIntegration();
     expect(disposeModelCatalogUpdates).toHaveBeenCalledOnce();
@@ -139,18 +140,14 @@ describe('服务初始化：能力步骤失败只停掉这项能力', () => {
     expect(() => services.disposeRendererIntegration()).not.toThrow();
   });
 
-  it('向量库没有启动：跳过知识库整组，不连默认地址；Workspace 与会话维护照常调度', async () => {
+  it('向量库冷态或故障不会阻止元数据服务装配', async () => {
     const adapters = stubStep('initializeAdapters', async () => ({}));
-    const services = await createInitializer().initializeServices({}, {
-      kind: 'unavailable',
-      message: '向量库没有启动成功（spawn qdrant ENOENT）',
-    });
+    const ensureReady = vi.fn(async () => { throw new Error('spawn qdrant ENOENT'); });
+    const services = await createInitializer().initializeServices({}, { ensureReady });
     expect(adapters).not.toHaveBeenCalled();
-    expect(services.knowledgeBaseService).toBeNull();
-    expect(services.capabilityFailures).toEqual([{
-      capability: 'knowledge-base',
-      message: '向量库没有启动成功（spawn qdrant ENOENT）',
-    }]);
+    expect(ensureReady).not.toHaveBeenCalled();
+    expect(services.knowledgeBaseService).toBe(KNOWLEDGE_BASE);
+    expect(services.capabilityFailures).toEqual([]);
     expect(scheduleStartupMaintenanceOnce).toHaveBeenCalledWith({
       databaseService: database,
       knowledgeBase: null,
@@ -237,10 +234,8 @@ describe('服务初始化：能力步骤失败只停掉这项能力', () => {
   it('几项能力同时失败时逐项记录', async () => {
     stubStep('initializeModelCatalog', async () => { throw new Error('a'); });
     stubStep('initializeQueueSystem', async () => { throw new Error('b'); });
-    const services = await createInitializer().initializeServices({}, {
-      kind: 'unavailable',
-      message: '向量库没有启动成功（c）',
-    });
+    stubStep('initializeKnowledgeBaseService', async () => { throw new Error('c'); });
+    const services = await createInitializer().initializeServices({}, READY);
     expect(services.capabilityFailures.map(failure => failure.capability)).toEqual([
       'models',
       'knowledge-base',

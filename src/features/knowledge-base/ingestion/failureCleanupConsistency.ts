@@ -1,3 +1,4 @@
+import type { OriginalDocumentRepository } from '../infrastructure/originalDocumentRepository';
 import { Logger } from 'src/shared/logger';
 
 import type { DocumentSoT } from '../domain/block';
@@ -23,6 +24,7 @@ type FailureDetail = {
 export type ConsistencyScanReport = {
   scannedDocs: number;
   completedHealthy: number;
+  sourcePreserved: DocIdBucket;
   pendingCorrectedToCompleted: DocIdBucket;
   pendingCorrectedToFailed: DocIdBucket;
   pendingPartialData: DocIdBucket;
@@ -70,6 +72,7 @@ function createConsistencyScanReport(scannedDocs: number): ConsistencyScanReport
   return {
     scannedDocs,
     completedHealthy: 0,
+    sourcePreserved: createDocIdBucket(),
     pendingCorrectedToCompleted: createDocIdBucket(),
     pendingCorrectedToFailed: createDocIdBucket(),
     pendingPartialData: createDocIdBucket(),
@@ -127,6 +130,7 @@ export function emitConsistencyScanLogs(params: {
       orphanMetadataRepaired: report.orphanRepaired.count
     },
     anomalies: {
+      preservedSourceNeedsRebuild: report.sourcePreserved.count,
       pendingPartialData: report.pendingPartialData.count,
       completedMissingData: report.completedMissingData.count,
       failedWithResidualData: report.failedWithResidualData.count,
@@ -138,6 +142,7 @@ export function emitConsistencyScanLogs(params: {
     cleanupCandidateCount
   });
 
+  emitDocBucketLog('warn', '[FailureCleanup] 原文已保留，索引需要重建', report.sourcePreserved);
   emitDocBucketLog(
     'info',
     '[FailureCleanup] 🔁 状态纠偏汇总: pending/processing -> completed',
@@ -253,6 +258,7 @@ export async function analyzeDocumentConsistency(params: {
   sotIds: Set<string>;
   qdrantDocIds: Set<string>;
   qdrantDocIdsByKb: Map<string, Set<string>>;
+  originalDocumentRepository?: OriginalDocumentRepository;
 }): Promise<{
   failedDocIds: Set<string>;
   report: ConsistencyScanReport;
@@ -284,6 +290,15 @@ export async function analyzeDocumentConsistency(params: {
         const isPendingLike = meta.status === 'pending' || meta.status === 'processing';
         const isCompleted = meta.status === 'completed';
         const isFailed = meta.status === 'failed';
+
+        // 索引是派生物。缺向量或上次摄入失败不能成为删除有效原文/PDF 的依据。
+        // 对需要修复的库清除可用身份，交给明确重建；保持原文和用户可见文档记录。
+        const hasOriginal = inSot || Boolean(await params.originalDocumentRepository?.getPath(meta.kbId, docId));
+        if (hasOriginal && (!inQdrant || isFailed || !inSot)) {
+          metadataRepository.indexState.invalidateForRebuild(meta.kbId);
+          recordDocId(report.sourcePreserved, docId);
+          continue;
+        }
 
         if (isPendingLike) {
           if (inSot && inQdrant) {

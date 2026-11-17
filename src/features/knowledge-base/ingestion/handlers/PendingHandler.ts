@@ -179,8 +179,8 @@ export class PendingHandler implements StateHandler {
    *
    * 关键约束：
    * - `embedding_model_id` 在 KB 表里表示“已落盘向量的模型出身”，不是用户偏好；
-   * - 一旦 KB 已有向量索引，继续追加文档必须使用同一模型；
-   * - 换 embedding 模型前必须清空/重建该 KB，避免同一 collection 混入不同向量空间。
+   * - 一旦 KB 已有向量索引，继续追加文档必须使用同一向量空间；
+   * - 更换向量空间前必须显式重建该 KB，避免同一 collection 混入不同向量空间。
    */
   private async validateEmbeddingProvenance(context: TaskContext): Promise<{ isValid: boolean; error?: string }> {
     if (!this.metadataRepository) {
@@ -188,14 +188,15 @@ export class PendingHandler implements StateHandler {
       return { isValid: true };
     }
 
-    const existing = await this.metadataRepository.getKnowledgeBaseEmbeddingProvenance(context.kbId);
-    if (!existing || existing === context.embeddingModelId) {
-      return { isValid: true };
+    const state = this.metadataRepository.indexState.read(context.kbId);
+    if (state.spaceId) context.embeddingSpaceId = state.spaceId;
+    else {
+      const documents = await this.metadataRepository.getDocumentsInKnowledgeBase(context.kbId);
+      if (documents.some(document => document.status === 'completed')) {
+        return { isValid: false, error: '检索索引来源未知，请先重建检索索引；原文仍可阅读。' };
+      }
     }
-
-    const error = `知识库 ${context.kbId} 的索引用 ${existing} 构建，当前全局嵌入模型是 ${context.embeddingModelId}。请清空并重新导入该知识库后再上传。`;
-    logger.warn(`[PendingHandler] ${error}`);
-    return { isValid: false, error };
+    return { isValid: true };
   }
 
   /**

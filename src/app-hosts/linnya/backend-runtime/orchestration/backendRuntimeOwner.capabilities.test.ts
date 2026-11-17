@@ -67,45 +67,41 @@ function initializedServices(capabilityFailures: readonly StartupCapabilityFailu
 afterEach(() => vi.restoreAllMocks());
 
 describe('BackendRuntimeOwner 能力降级', () => {
-  it('Qdrant 没有启动：收口已拉起的进程，知识库整组跳过，Backend 照常启动并记下原因', async () => {
-    vi.spyOn(QdrantManager.prototype, 'start').mockRejectedValue(new Error('spawn qdrant ENOENT'));
-    const qdrantStop = vi.spyOn(QdrantManager.prototype, 'stop').mockResolvedValue();
-    const initialize = vi.spyOn(ServiceInitializer.prototype, 'initializeServices')
-      .mockImplementation(async (_config, vectorStore) => initializedServices(
-        vectorStore.kind === 'unavailable'
-          ? [{ capability: 'knowledge-base', message: vectorStore.message }]
-          : [],
-      ));
+  it('Backend ready 不启动 Qdrant；首次向量请求失败收口进程并保留原因', async () => {
+    const start = vi.spyOn(QdrantManager.prototype, 'start').mockRejectedValue(new Error('spawn qdrant ENOENT'));
+    const stop = vi.spyOn(QdrantManager.prototype, 'stop').mockResolvedValue();
+    const initialize = vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockResolvedValue(initializedServices([]));
     const manager = new TestBackendRuntimeOwner();
-
     await expect(manager.start(BACKEND_CONFIGURATION)).resolves.toBe(34000);
-
-    expect(initialize).toHaveBeenCalledWith({}, {
-      kind: 'unavailable',
-      message: '向量库没有启动成功（spawn qdrant ENOENT）',
-    });
-    expect(qdrantStop).toHaveBeenCalledOnce();
-    expect(manager.getStartupCapabilityFailure('knowledge-base')).toEqual({
-      capability: 'knowledge-base',
-      message: '向量库没有启动成功（spawn qdrant ENOENT）',
-    });
-    expect(manager.getStartupCapabilityFailure('models')).toBeNull();
-
-    // Qdrant 已经收口，正式停止不再重复停止它。
-    vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
-    await manager.stop();
-    expect(qdrantStop).toHaveBeenCalledOnce();
-  });
-
-  it('Qdrant 正常时把实际地址交给服务初始化', async () => {
-    const initialize = vi.spyOn(ServiceInitializer.prototype, 'initializeServices')
-      .mockResolvedValue(initializedServices([]));
-    const manager = new TestBackendRuntimeOwner();
-    await manager.start(BACKEND_CONFIGURATION);
-    expect(initialize).toHaveBeenCalledWith({}, { kind: 'ready', url: 'http://127.0.0.1:6333' });
+    expect(start).not.toHaveBeenCalled();
+    const vectorStore = initialize.mock.calls[0]?.[1];
+    if (!vectorStore) throw new Error('向量运行时未传入');
+    await expect(vectorStore.ensureReady()).rejects.toThrow('spawn qdrant ENOENT');
+    await expect(vectorStore.ensureReady()).rejects.toThrow('spawn qdrant ENOENT');
+    expect(start).toHaveBeenCalledOnce();
+    expect(stop).toHaveBeenCalledOnce();
     expect(manager.getStartupCapabilityFailures()).toEqual([]);
     vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
     await manager.stop();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('首次向量请求共享启动并返回实际地址，退出后拒绝新请求', async () => {
+    const start = vi.spyOn(QdrantManager.prototype, 'start').mockResolvedValue();
+    const stop = vi.spyOn(QdrantManager.prototype, 'stop').mockResolvedValue();
+    const initialize = vi.spyOn(ServiceInitializer.prototype, 'initializeServices').mockResolvedValue(initializedServices([]));
+    const manager = new TestBackendRuntimeOwner();
+    await manager.start(BACKEND_CONFIGURATION);
+    const vectorStore = initialize.mock.calls[0]?.[1];
+    if (!vectorStore) throw new Error('向量运行时未传入');
+    expect(start).not.toHaveBeenCalled();
+    expect(await Promise.all([vectorStore.ensureReady(), vectorStore.ensureReady()]))
+      .toEqual(['http://127.0.0.1:6333', 'http://127.0.0.1:6333']);
+    expect(start).toHaveBeenCalledOnce();
+    vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
+    await manager.stop();
+    expect(stop).toHaveBeenCalledOnce();
+    await expect(vectorStore.ensureReady()).rejects.toThrow('正在停止');
   });
 
   it('任务队列没有启动时，退出前查询导入任务直接返回没有，不去读未启动的队列', async () => {

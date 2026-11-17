@@ -70,6 +70,10 @@ function unavailableKnowledgeBaseOperation<T>(): Promise<T> {
 }
 
 const unavailableKnowledgeBase: KnowledgeBaseService = {
+  hasActiveTasks: () => false,
+  stopTasks: async () => undefined,
+  rebuildIndex: () => unavailableKnowledgeBaseOperation(),
+  getIndexRebuildStatus: () => null,
   createKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
   getAllKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
   getOrCreateDefaultKnowledgeBase: () => unavailableKnowledgeBaseOperation(),

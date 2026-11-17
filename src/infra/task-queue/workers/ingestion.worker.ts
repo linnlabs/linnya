@@ -118,14 +118,14 @@ function createIngestionRepositories(
   databaseService = getDatabaseService()
 ): IngestionStateMachineRepositories {
   databaseService.initializeConnectionOnly();
-  const metadataRepository = new BetterSqliteMetadataRepository(databaseService);
-  const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(databaseService);
+  const metadataRepository = new BetterSqliteMetadataRepository(databaseService.getDb());
+  const knowledgeGraphRepository = new BetterSqliteKnowledgeGraphRepository(databaseService.getDb());
   const sotRepository = new FileSotRepository(pathManager.getSourceOfTruthPath());
   const originalDocumentRepository = new FileOriginalDocumentRepository(
     pathManager.getKnowledgeBaseOriginalsPath()
   );
   const qdrantAdapter = QdrantAdapter.getInstance({ url: resolveWorkerQdrantUrl(workerData) });
-  const qdrantRepository = new QdrantRepositoryImpl(qdrantAdapter);
+  const qdrantRepository = new QdrantRepositoryImpl(async () => qdrantAdapter);
 
   return {
     metadataRepository,

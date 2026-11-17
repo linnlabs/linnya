@@ -50,7 +50,7 @@ export class QdrantAdapter {
   private readonly client: QdrantClient;
   private readonly config: QdrantConfig;
 
-  private constructor(config: QdrantConfig) {
+  constructor(config: QdrantConfig) {
     this.config = config;
     this.client = new QdrantClient({
       url: config.url,

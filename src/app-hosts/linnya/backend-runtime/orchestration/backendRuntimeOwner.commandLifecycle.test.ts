@@ -70,7 +70,10 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     const qdrantStop = vi.spyOn(QdrantManager.prototype, 'stop').mockResolvedValue();
     vi.spyOn(QdrantManager.prototype, 'start').mockResolvedValue();
     vi.spyOn(ServiceInitializer.prototype, 'initializeServices')
-      .mockRejectedValue(initializationFailure);
+      .mockImplementation(async (_config, vectorStore) => {
+        await vectorStore.ensureReady();
+        throw initializationFailure;
+      });
     const queueStop = vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
 
     await expect(new TestBackendRuntimeOwner().start(BACKEND_CONFIGURATION)).rejects.toBe(initializationFailure);
@@ -84,7 +87,10 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
     const qdrantStart = vi.spyOn(QdrantManager.prototype, 'start').mockResolvedValue();
     vi.spyOn(QdrantManager.prototype, 'stop').mockRejectedValue(cleanupFailure);
     vi.spyOn(ServiceInitializer.prototype, 'initializeServices')
-      .mockRejectedValue(initializationFailure);
+      .mockImplementation(async (_config, vectorStore) => {
+        await vectorStore.ensureReady();
+        throw initializationFailure;
+      });
     vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
 
     const manager = new TestBackendRuntimeOwner();

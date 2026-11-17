@@ -89,7 +89,13 @@ export class EmbeddingHandler implements StateHandler {
         logger.debug(`[EmbeddingHandler] 处理批次 ${Math.floor(i / batchSize) + 1}/${Math.ceil(totalBlocks / batchSize)}: ${i + 1}-${batchEnd}/${totalBlocks}`);
 
         // 🔥 步骤 2.1: 调用稠密向量化服务
-        const batchVectors = await this.generateEmbeddings(batchTexts, context.embeddingModelId);
+        context.signal?.throwIfAborted();
+        const result = await this.embedding.embed({
+          modelId: context.embeddingModelId, values: batchTexts,
+          expectedSpaceId: context.embeddingSpaceId, signal: context.signal,
+        });
+        context.embeddingSpaceId = result.spaceId;
+        const batchVectors = result.vectors.map(vector => [...vector]);
         
         // 🔥 步骤 2.2: 生成稀疏向量（BM25）
         const batchSparseVectors = await this.generateSparseVectors(batchTexts);
@@ -193,19 +199,6 @@ export class EmbeddingHandler implements StateHandler {
    * 输出 (Output): 向量数组
    * 副作用 (Side-effects): 调用AI引擎API
    */
-  private async generateEmbeddings(texts: string[], modelId: string): Promise<number[][]> {
-    try {
-      const result = await this.embedding.embed({ modelId, values: texts });
-      const vectors = result.vectors.map(vector => [...vector]);
-      
-      logger.debug(`[EmbeddingHandler] 稠密向量化完成: ${vectors.length} 个向量`);
-      return vectors;
-      
-    } catch (error) {
-      logger.error(`[EmbeddingHandler] 向量化API调用失败:`, error);
-      throw new Error(`向量化API调用失败: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
 
   /**
    * 功能 (What): 生成稀疏向量（BM25）

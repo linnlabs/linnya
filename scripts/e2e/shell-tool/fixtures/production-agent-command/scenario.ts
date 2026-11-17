@@ -161,6 +161,10 @@ function unavailableKnowledgeBaseOperation<T>(): Promise<T> {
 // AgentRunner 的历史合同仍接收完整知识库门面。本场景不会调用它，但显式提供全部接口，
 // 避免用类型断言掩盖宿主依赖变化。
 const unavailableKnowledgeBase: KnowledgeBaseService = {
+  hasActiveTasks: () => false,
+  stopTasks: async () => undefined,
+  rebuildIndex: () => unavailableKnowledgeBaseOperation(),
+  getIndexRebuildStatus: () => null,
   createKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
   getAllKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
   getOrCreateDefaultKnowledgeBase: () => unavailableKnowledgeBaseOperation(),

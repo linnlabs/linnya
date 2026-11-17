@@ -1,3 +1,5 @@
+import type { KnowledgeActivityOwner } from '../runtime/orchestration/createKnowledgeActivityOwner';
+import type { KnowledgeActivityLease } from '../runtime/definitions/knowledgeActivity';
 import { isObjectLike } from '@linnya/foundation';
 /**
  * @file src/knowledge-base/ingestion/failureCleanup.ts
@@ -201,7 +203,8 @@ export async function cleanupAllFailedDocuments(
   qdrantRepository?: QdrantRepository,
   sotRepository?: SotRepository,
   knowledgeGraphRepository?: KnowledgeGraphRepository,
-  originalDocumentRepository?: OriginalDocumentRepository
+  originalDocumentRepository?: OriginalDocumentRepository,
+  activity?: KnowledgeActivityOwner
 ): Promise<{
   totalFailed: number;
   sqliteCleared: number;
@@ -234,6 +237,17 @@ export async function cleanupAllFailedDocuments(
     return stats;
   }
 
+  const leases: KnowledgeActivityLease[] = [];
+  const protectedLibraries = new Set<string>();
+  const libraries = await metadataRepository.getAllKnowledgeBases();
+  for (const library of libraries) {
+    // 重建失败的部分索引不参加一致性清理；原文是下次显式重建的输入。
+    if (!metadataRepository.indexState.read(library.id).spaceId || activity?.hasActivity(library.id)) {
+      protectedLibraries.add(library.id); continue;
+    }
+    const lease = activity?.begin(library.id, 'maintenance');
+    if (lease) leases.push(lease);
+  }
   try {
     /**
      * 根因修复（启动慢导致误删）：
@@ -263,7 +277,9 @@ export async function cleanupAllFailedDocuments(
     logger.info(`[FailureCleanup] 📊 正在收集三大数据源数据...`);
     
     // 获取所有元数据记录
-    const allDocs = await metadataRepository.getAllDocuments();
+    const allDocuments = await metadataRepository.getAllDocuments();
+    const protectedDocumentIds = new Set(allDocuments.filter(document => protectedLibraries.has(document.kbId)).map(document => document.id));
+    const allDocs = allDocuments.filter(document => !protectedDocumentIds.has(document.id));
     const metadataIds = new Set(allDocs.map((doc: Document) => doc.id));
     const metadataById = new Map(allDocs.map((doc: Document) => [doc.id, doc] as const));
     logger.info(`[FailureCleanup] 📊 元数据库: ${metadataIds.size} 个文档`);
@@ -272,7 +288,7 @@ export async function cleanupAllFailedDocuments(
     let sotIds = new Set<string>();
     try {
       const sotFileIds = await sotRepository.listAllDocumentIds();
-      sotIds = new Set(sotFileIds);
+      sotIds = new Set(sotFileIds.filter(id => !protectedDocumentIds.has(id)));
       logger.info(`[FailureCleanup] 📊 SOT文件: ${sotIds.size} 个文件`);
     } catch (error) {
       /**
@@ -294,6 +310,7 @@ export async function cleanupAllFailedDocuments(
       logger.info(`[FailureCleanup] 📊 需要检查的Qdrant集合数: ${kbIdsToCheck.length}`);
 
       for (const kbId of kbIdsToCheck) {
+        if (protectedLibraries.has(kbId)) continue;
         const exists = await qdrantRepository.collectionExists(kbId);
         logger.info(`[FailureCleanup] 📊 Qdrant集合 ${kbId}: ${exists ? '存在' : '不存在'}`);
         if (!exists) continue;
@@ -327,7 +344,8 @@ export async function cleanupAllFailedDocuments(
       metadataIds,
       sotIds,
       qdrantDocIds,
-      qdrantDocIdsByKb
+      qdrantDocIdsByKb,
+      originalDocumentRepository
     });
     
     /**
@@ -402,7 +420,7 @@ export async function cleanupAllFailedDocuments(
   } catch (error) {
     logger.error(`[FailureCleanup] ❌ 一致性检查失败: ${error}`);
     return stats;
-  }
+  } finally { for (const lease of leases) lease.release(); }
 }
 
 /**
@@ -478,7 +496,8 @@ export async function runKnowledgeBaseStartupMaintenanceOnce(
   qdrantRepository?: QdrantRepository,
   sotRepository?: SotRepository,
   knowledgeGraphRepository?: KnowledgeGraphRepository,
-  originalDocumentRepository?: OriginalDocumentRepository
+  originalDocumentRepository?: OriginalDocumentRepository,
+  activity?: KnowledgeActivityOwner
 ): Promise<{
   totalFailed: number;
   sqliteCleared: number;
@@ -490,6 +509,7 @@ export async function runKnowledgeBaseStartupMaintenanceOnce(
     qdrantRepository,
     sotRepository,
     knowledgeGraphRepository,
-    originalDocumentRepository
+    originalDocumentRepository,
+    activity
   );
 }
