@@ -238,14 +238,20 @@ export const useCitationPanelStore = defineStore('citationPanel', () => {
     webManualErrors.value = {}
   }
 
-  /** 重置所有状态（面板关闭时调用） */
-  function reset() {
-    // 不重置 availableKbs（避免重复请求）
+  /** 只清除当前知识库搜索；不影响 Web 草稿和本次插入语法。 */
+  function resetKnowledgeSearch() {
+    availableKbs.value = []
+    selectedKbIds.value = []
     kbQuery.value = ''
     kbResults.value = []
     kbLoading.value = false
     kbErrorByKbId.value = {}
     selectedKbResults.value = []
+  }
+
+  /** 完整会话仅在面板关闭时清理。 */
+  function reset() {
+    resetKnowledgeSearch()
     resetWebManualForm()
     insertSyntax.value = 'bracketAt'
   }
@@ -361,6 +367,7 @@ export const useCitationPanelStore = defineStore('citationPanel', () => {
     updateWebManualForm,
     setWebManualError,
     resetWebManualForm,
+    resetKnowledgeSearch,
     reset,
 
     // Phase 3：Popover Actions

@@ -85,8 +85,11 @@ watch(
   async ([visible, projectId, available], _previous, onCleanup) => {
     const controller = new AbortController()
     onCleanup(() => controller.abort())
-    store.setAvailableKbs([])
-    store.reset()
+    if (!visible) {
+      store.reset()
+      return
+    }
+    store.resetKnowledgeSearch()
     if (!available && store.activeTab === 'kb') store.switchTab('web')
     if (!visible || !projectId || !available) return
     try {
