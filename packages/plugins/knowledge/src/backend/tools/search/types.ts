@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/types.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/types.ts
  * @description 知识库搜索工具的类型定义
  *
  * 本文件定义了知识库搜索工具返回的结构化数据类型，
@@ -7,7 +7,6 @@
  */
 
 import type {
-  KnowledgeGraphDigest,
   KnowledgeSearchCitation,
   KnowledgeSearchCitationMetadata,
 } from '@app/schemas';

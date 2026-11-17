@@ -12,7 +12,7 @@
  * - 后续如某些业务要彻底关闭图谱增强，可在 ToolContext 注入 `graphMode: 'off'`。
  */
 
-import type { ToolContext } from 'src/tools/types';
+import type { KnowledgeToolContext as ToolContext } from '../definitions/knowledgeToolContext';
 import type { GraphBudget, GraphMode } from '../../graph/application/graphBudget';
 import { DEFAULT_FULL_GRAPH_BUDGET, DEFAULT_LIGHT_GRAPH_BUDGET } from '../../graph/application/graphBudget';
 import { readDeepSearchRuntimeDepth } from './deepSearchDepth';
@@ -48,30 +48,28 @@ function clampFloat(v: number, min: number, max: number): number {
  */
 function readGraphBudgetOverride(v: unknown): Partial<GraphBudget> | null {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
-  const r = v as Record<string, unknown>;
-
   const out: Partial<GraphBudget> = {};
 
-  const maxResults = r['maxResultsWithGraph'];
+  const maxResults = 'maxResultsWithGraph' in v ? v.maxResultsWithGraph : undefined;
   if (typeof maxResults === 'number') out.maxResultsWithGraph = clampInt(maxResults, 0, 50);
-  const maxEntities = r['maxEntitiesPerResult'];
+  const maxEntities = 'maxEntitiesPerResult' in v ? v.maxEntitiesPerResult : undefined;
   if (typeof maxEntities === 'number') out.maxEntitiesPerResult = clampInt(maxEntities, 0, 50);
-  const maxEdges = r['maxEdgesPerResult'];
+  const maxEdges = 'maxEdgesPerResult' in v ? v.maxEdgesPerResult : undefined;
   if (typeof maxEdges === 'number') out.maxEdgesPerResult = clampInt(maxEdges, 0, 50);
-  const maxDiscovered = r['maxDiscoveredBlocks'];
+  const maxDiscovered = 'maxDiscoveredBlocks' in v ? v.maxDiscoveredBlocks : undefined;
   if (typeof maxDiscovered === 'number') out.maxDiscoveredBlocks = clampInt(maxDiscovered, 0, 50);
 
-  const minDisc = r['minDiscoverySemanticScore'];
+  const minDisc = 'minDiscoverySemanticScore' in v ? v.minDiscoverySemanticScore : undefined;
   if (typeof minDisc === 'number') out.minDiscoverySemanticScore = clampFloat(minDisc, 0, 1);
 
-  const maxAnchors = r['maxEntityAnchors'];
+  const maxAnchors = 'maxEntityAnchors' in v ? v.maxEntityAnchors : undefined;
   if (typeof maxAnchors === 'number') out.maxEntityAnchors = clampInt(maxAnchors, 0, 10);
-  const minAnchor = r['minEntityAnchorSemanticScore'];
+  const minAnchor = 'minEntityAnchorSemanticScore' in v ? v.minEntityAnchorSemanticScore : undefined;
   if (typeof minAnchor === 'number') out.minEntityAnchorSemanticScore = clampFloat(minAnchor, 0, 1);
 
-  const hop1Margin = r['hop1MinSemanticMargin'];
+  const hop1Margin = 'hop1MinSemanticMargin' in v ? v.hop1MinSemanticMargin : undefined;
   if (typeof hop1Margin === 'number') out.hop1MinSemanticMargin = clampFloat(hop1Margin, 0, 1);
-  const maxPerDoc = r['maxEvidenceBlocksPerDoc'];
+  const maxPerDoc = 'maxEvidenceBlocksPerDoc' in v ? v.maxEvidenceBlocksPerDoc : undefined;
   if (typeof maxPerDoc === 'number') out.maxEvidenceBlocksPerDoc = clampInt(maxPerDoc, 0, 20);
 
   return Object.keys(out).length > 0 ? out : null;

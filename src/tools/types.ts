@@ -10,11 +10,6 @@
  */
 
 import type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
-import type { KnowledgeBaseService } from '../features/knowledge-base/application/knowledgeBaseService';
-import type {
-  GraphBudget,
-  GraphMode,
-} from '../features/knowledge-base/graph/application/graphBudget';
 export type { ToolContextConversationView } from '@linnlabs/linnkit/runtime-kernel';
 export type { ToolExecutionContext } from '@linnlabs/linnkit/runtime-kernel';
 export { BaseTool, CommonParameterTypes } from '@linnlabs/linnkit/runtime-kernel';
@@ -115,8 +110,6 @@ export interface ToolContext extends ToolExecutionContext {
     instanceId: string;
   };
 
-  /** 知识库服务实例 */
-  knowledgeBaseService?: KnowledgeBaseService;
   /** 搜索服务实例 */
   searchService?: unknown;
   /** 嵌入模型ID */
@@ -139,15 +132,6 @@ export interface ToolContext extends ToolExecutionContext {
   workspaceService?: import('../electron-main/services/workspace/workspace').WorkspaceService;
   /** Workspace mutation 发布端口：工具写入真实 workspace 事实后用于通知 renderer 刷新。 */
   workspaceMutationPublisher?: import('../features/workspace/definitions/workspaceMutationPublisher').WorkspaceMutationPublisher;
-  /**
-   * 知识库图谱增强策略注入。
-   *
-   * 中文说明：
-   * - 这是业务/编排层给搜索工具的确定性策略，不是模型参数；
-   * - 显式列在 ToolContext 上，避免继续依赖 `[key:string]` 读取任意字段。
-   */
-  graphMode?: GraphMode;
-  graphBudget?: Partial<GraphBudget>;
 }
 
 /**

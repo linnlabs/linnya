@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/SearchInKnowledgeBaseTool.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/SearchInKnowledgeBaseTool.ts
  *
  * @brief 知识库浅搜索工具（给子 Agent 使用的“等价工具名”）
  *
@@ -17,12 +17,13 @@
  * - deep search 子 Agent 的工具白名单应使用该工具名。
  */
 
-import { BaseTool, ToolParameterSchema, ToolContext, CommonParameterTypes } from 'src/tools/types';
-import type { StructuredToolResult } from 'src/tools/types';
+import { runWithKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
+
+import { BaseTool, ToolParameterSchema, ToolContext, CommonParameterTypes } from '@plugin/backend/toolRuntime';
 import { runShallowSearch } from './shallow/runShallowSearch';
 import { resolveGraphPolicyFromContext } from './graphPolicy';
 import { KnowledgeSearchResultSchema, KnowledgeShallowSearchArgsSchema } from '@app/schemas';
-import { requireCitationSequenceOffset } from 'src/domains/citation';
+import { requireCitationSequenceOffset } from '@plugin/backend/citationSourceRuntime';
 
 /**
  * 知识库浅搜索工具（等价于 knowledge_search 的浅搜索分支）
@@ -118,6 +119,10 @@ but it intentionally does NOT expose the \`deep_search\` parameter.
   }
 
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
+    return runWithKnowledgeToolRuntime(() => this.runAdmitted(args, context));
+  }
+
+  private async runAdmitted(args: Record<string, unknown>, context: ToolContext): Promise<string> {
     const input = KnowledgeShallowSearchArgsSchema.parse(args);
 
     const citationOffset = requireCitationSequenceOffset(context);

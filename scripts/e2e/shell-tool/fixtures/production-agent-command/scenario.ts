@@ -8,7 +8,6 @@ import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/ada
 import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import { LlmCaller } from '@linnlabs/linnkit/runtime-kernel';
 import { ConversationToolMessagePayloadSchema } from '@app/schemas';
-import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { DatabaseService } from '../../../../../src/electron-main/services/database';
 import { bootstrapAgentRuntimeSingletons } from '../../../../../src/electron-main/services/agentRuntimeSingletons';
 import { createEventStoreCommandExecutionAuditPort } from '../../../../../src/app-hosts/linnya/adapters/persistence/command-execution-audit';
@@ -154,43 +153,6 @@ function collectObjectKeys(value: unknown, keys: Set<string>): void {
   }
 }
 
-function unavailableKnowledgeBaseOperation<T>(): Promise<T> {
-  return Promise.reject(new Error('knowledge-base capability is outside this Shell E2E scenario'));
-}
-
-// AgentRunner 的历史合同仍接收完整知识库门面。本场景不会调用它，但显式提供全部接口，
-// 避免用类型断言掩盖宿主依赖变化。
-const unavailableKnowledgeBase: KnowledgeBaseService = {
-  hasActiveTasks: () => false,
-  stopTasks: async () => undefined,
-  rebuildIndex: () => unavailableKnowledgeBaseOperation(),
-  getIndexRebuildStatus: () => null,
-  createKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  getAllKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
-  getOrCreateDefaultKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  addDocument: () => unavailableKnowledgeBaseOperation(),
-  getDocumentsInKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  getDocumentById: () => unavailableKnowledgeBaseOperation(),
-  getTasksStatus: () => unavailableKnowledgeBaseOperation(),
-  cancelTask: () => unavailableKnowledgeBaseOperation(),
-  pauseTask: () => unavailableKnowledgeBaseOperation(),
-  resumeTask: () => unavailableKnowledgeBaseOperation(),
-  deleteDocument: () => unavailableKnowledgeBaseOperation(),
-  continueFailedPdfPages: () => unavailableKnowledgeBaseOperation(),
-  deleteKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  updateKnowledgeBaseSettings: () => unavailableKnowledgeBaseOperation(),
-  search: () => unavailableKnowledgeBaseOperation(),
-  searchKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  searchInDocument: () => unavailableKnowledgeBaseOperation(),
-  searchRawResults: () => unavailableKnowledgeBaseOperation(),
-  searchForAgent: () => unavailableKnowledgeBaseOperation(),
-  searchForAgentAcrossKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
-  getGraphAugmentationsForEvidenceBlocks: () => unavailableKnowledgeBaseOperation(),
-  getRawSoTDocument: () => unavailableKnowledgeBaseOperation(),
-  getSoTDocumentForAgent: () => unavailableKnowledgeBaseOperation(),
-  getSoTTableForAgent: () => unavailableKnowledgeBaseOperation(),
-  getDocumentContent: () => unavailableKnowledgeBaseOperation(),
-};
 
 async function listFilesRecursively(root: string): Promise<string[]> {
   const files: string[] = [];
@@ -444,7 +406,6 @@ export async function runProductionAgentCommandScenario(input: {
   });
   const runner = new AgentRunnerService(
     executor,
-    unavailableKnowledgeBase,
     databaseService,
     {
       recovery,

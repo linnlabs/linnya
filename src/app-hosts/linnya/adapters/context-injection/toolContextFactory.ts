@@ -1,7 +1,6 @@
 import { childRunTrace, graph, runContext, tools } from '@linnlabs/linnkit/runtime-kernel';
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import type { DatabaseService } from 'src/electron-main/services/database';
-import type { KnowledgeBaseService } from 'src/features/knowledge-base/application/knowledgeBaseService';
 import type { WorkspaceMutationPublisher } from 'src/features/workspace/definitions/workspaceMutationPublisher';
 import type { ToolContext } from 'src/tools/types';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
@@ -21,8 +20,6 @@ type RunContext = runContext.RunContext;
 type ToolContextPatch = tools.ToolContextPatch;
 
 export interface ToolContextHostServices {
-  /** 知识库本次没有启动时缺省；知识库工具自行说明不可用。 */
-  knowledgeBaseService?: KnowledgeBaseService;
   databaseService: DatabaseService;
   workspaceMutationPublisher?: WorkspaceMutationPublisher;
   shellToolRuntime?: ShellToolRuntimePort;
@@ -106,7 +103,6 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
   const context: ToolContext = {
     ...patch,
     // Enricher 只能追加产品字段；宿主能力必须最后落位，避免 patch 伪造权限或替换受控端口。
-    knowledgeBaseService: options.hostServices.knowledgeBaseService,
     userQuery: options.request.query,
     modelId: options.request.model_id,
     callerAgentId: options.request.callerAgentId,

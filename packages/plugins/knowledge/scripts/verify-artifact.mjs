@@ -19,6 +19,11 @@ assert(!files.some(file => /(?:^|\/)(?:src|dev|scripts|node_modules|\.metadata|_
 
 const isBuiltin = value => builtinModules.includes(value.replace(/^node:/, ''));
 const normalize = value => value.replaceAll('\\', '/');
+// 推理 client 重建结构化失败仅需要这两个原有纯定义，不能放行 Provider 或凭据实现。
+const pureInferenceDefinitions = new Set([
+  'src/domains/model-inference/features/embedding/definitions/embedding.ts',
+  'src/domains/model-inference/features/reranking/definitions/reranking.ts',
+].map(file => normalize(path.join(repositoryRoot, file))));
 const reports = [];
 for (const name of ['index', ...workerNames]) {
   const worker = name !== 'index';
@@ -34,7 +39,7 @@ for (const name of ['index', ...workerNames]) {
     .map(([file]) => normalize(path.resolve(record.workingDirectory, file)));
   // Worker 只内联纯运行 SDK；不能把原 Host 知识库、模型目录、凭据或应用组合根一并搬入。
   for (const input of inputs) {
-    assert(!/\/src\/(?:features\/knowledge-base\/|app-hosts\/|domains\/(?:model-catalog|model-inference)\/)/.test(input), `${name}: Host business implementation bundled: ${input}`);
+    assert(pureInferenceDefinitions.has(input) || !/\/src\/(?:features\/knowledge-base\/|app-hosts\/|domains\/(?:model-catalog|model-inference)\/)/.test(input), `${name}: Host business implementation bundled: ${input}`);
     assert(!/\/src\/electron-main\/services\/database\.ts$/.test(input), `${name}: full Host database lifecycle bundled`);
   }
   for (const dependency of output.imports.filter(value => value.external)) {

@@ -5,8 +5,13 @@ import { ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
 import { DatabaseService } from 'src/electron-main/services/database';
 import type { KnowledgeBaseService } from '../../application/knowledgeBaseService';
 import { GraphSearchService } from '../../graph/application/graphSearchService';
-import { BetterSqliteMetadataRepository } from 'src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository';
-import { BetterSqliteKnowledgeGraphRepository } from 'src/features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
+import { BetterSqliteMetadataRepository } from '../../infrastructure/sqlite/better-sqlite-metadata.repository';
+import { BetterSqliteKnowledgeGraphRepository } from '../../graph/infrastructure/better-sqlite-knowledge-graph.repository';
+import { PluginStateService } from 'src/features/plugins/infrastructure/sqlite/plugin-state.service';
+import { PluginUpgradeRunner } from 'src/features/plugins/infrastructure/sqlite/plugin-upgrade.runner';
+import { knowledgeManifest, knowledgePluginMeta } from '../../../shared/definitions/pluginMeta';
+import { knowledgePluginMigrations } from '../../database';
+import { registerKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
 import { FileSotRepository } from '../../infrastructure/sotRepository';
 import { createKnowledgeBase } from '../../domain/knowledgeBase';
 import { createDocument } from '../../domain/document';
@@ -18,12 +23,20 @@ import { createTempWorkspaceFixture } from 'src/app-hosts/linnya/testkit/tool-fi
 import type { ToolContext } from 'src/tools/types';
 import { AssembleDocumentsTool } from '../assemble/AssembleDocumentsTool';
 import { KnowledgeSearchTool } from '../search/KnowledgeSearchTool';
+import { SearchInKnowledgeBaseTool } from '../search/SearchInKnowledgeBaseTool';
+import { KnowledgeReadTool } from '../reader/KnowledgeReadTool';
+import { ListKnowledgeBaseTool } from '../reader/ListKnowledgeBaseTool';
 
 async function createFixture() {
   const workspace = await createTempWorkspaceFixture('knowledge-materialization-scope-');
   const database = new DatabaseService(path.join(workspace.root, 'workspace.sqlite'));
   database.initialize();
   const db = database.getDb();
+  new PluginStateService(db).ensureBuiltinInstalled([knowledgePluginMeta]);
+  expect(new PluginUpgradeRunner(db, { appVersion: '0.2.1' }).run({
+    pluginId: 'knowledge', targetVersion: knowledgePluginMeta.version,
+    ownedTables: knowledgeManifest.ownedTables, migrations: knowledgePluginMigrations,
+  }).status).toBe('upgraded');
   const metadata = new BetterSqliteMetadataRepository(db);
   const sot = new FileSotRepository(path.join(workspace.root, 'sot'));
   const graph = new GraphSearchService(new BetterSqliteKnowledgeGraphRepository(db));
@@ -58,6 +71,14 @@ async function createFixture() {
     db.prepare('INSERT INTO project_knowledge_base_links(project_id,kb_id,created_at,updated_at) VALUES (?,?,1,1)').run(id, id);
   }
   const readSoT = vi.spyOn(sot, 'get');
+  let activeTools = 0;
+  const unregister = registerKnowledgeToolRuntime({
+    service,
+    listProjectKnowledgeBaseIds: projectId => db.prepare<[string], { kb_id: string }>(
+      'SELECT kb_id FROM project_knowledge_base_links WHERE project_id = ? ORDER BY created_at ASC',
+    ).all(projectId).map(row => row.kb_id),
+    enterTool: () => { activeTools++; return () => { activeTools--; }; },
+  });
   const allocator = createCitationRefAllocatorFixture();
   const allocate = vi.spyOn(allocator, 'allocate');
   function context(projectId: string | undefined = 'a'): ToolContext {
@@ -65,7 +86,6 @@ async function createFixture() {
       conversationId: 'scope-conversation', turnId: 'scope-turn', workspaceProjectId: projectId,
       research: { instanceId: 'scope-instance' },
       parentToolCallId: ToolCallIdSchema.parse('scope-tool-call'),
-      databaseService: database, knowledgeBaseService: service,
       createSubRunTracePublisher: () => ({ publish: () => {} }),
     };
     attachCitationSequence(result, { offset: 0 });
@@ -73,9 +93,9 @@ async function createFixture() {
     return result;
   }
   return {
-    context, readSoT, allocate,
+    context, readSoT, allocate, activeTools: () => activeTools, unregister,
     unlink: () => db.prepare('DELETE FROM project_knowledge_base_links WHERE project_id = ?').run('a'),
-    async cleanup() { vi.restoreAllMocks(); database.close(); await workspace.cleanup(); },
+    async cleanup() { unregister(); vi.restoreAllMocks(); database.close(); await workspace.cleanup(); },
   };
 }
 
@@ -103,7 +123,15 @@ describe('Knowledge materialization project scope', () => {
   let fixture: Awaited<ReturnType<typeof createFixture>>;
   const assemble = new AssembleDocumentsTool();
   beforeEach(async () => { fixture = await createFixture(); });
-  afterEach(async () => { await fixture?.cleanup(); });
+  afterEach(async () => {
+    try { expect(fixture?.activeTools()).toBe(0); } finally { await fixture?.cleanup(); }
+  });
+
+  it('assemble_documents 应保持原状：返回 control.terminateRun=true', async () => {
+    const result = AssembleDocumentsToolOutputSchema.parse(JSON.parse(await assemble.run({ query: 'q', selected_blocks: [] }, fixture.context())));
+    expect(result.control?.terminateRun).toBe(true);
+    expect(fixture.activeTools()).toBe(0);
+  });
 
   it('同项目组装保持正文和收尾合同，无绑定项目仍只可读default', async () => {
     const result = AssembleDocumentsToolOutputSchema.parse(JSON.parse(await assemble.run(selection('a'), fixture.context())));
@@ -136,8 +164,42 @@ describe('Knowledge materialization project scope', () => {
     expect(result.data.search_strategy).toBe('deep');
     expect(result.observation).toContain('a 的独有原文');
     const ref = result.data.citations.citations[0].ref;
+    fixture.unregister();
     const evidence = await resolveEvidenceFromBundles({ conversationId: 'scope-conversation', instanceId: 'scope-instance', refs: [ref], max_units: 1000, max_chars: 1000 });
     expect(evidence.resolved[ref]).toMatchObject({ doc_id: 'doc-a', text: 'a 的独有原文' });
+  });
+
+  it.each([KnowledgeSearchTool, SearchInKnowledgeBaseTool])('两种检索入口都在搜索前拒绝其他项目文档：%s', async Tool => {
+    await expect(new Tool().run({ query: '资料', doc_id: 'doc-b' }, fixture.context())).rejects.toThrow(/项目/);
+    expect(fixture.readSoT).not.toHaveBeenCalled();
+  });
+
+  it('子运行取消后释放活动归属，不降级搜索或继续物化', async () => {
+    const controller = new AbortController();
+    const context = fixture.context();
+    context.abortSignal = controller.signal;
+    let entered: () => void = () => {};
+    const childStarted = new Promise<void>(resolve => { entered = resolve; });
+    connectChild(context, async () => {
+      entered();
+      await new Promise<void>(resolve => controller.signal.addEventListener('abort', () => resolve(), { once: true }));
+      return forgedSelection('a');
+    });
+    const result = new KnowledgeSearchTool().run({ query: '资料', deep_search: true }, context);
+    await childStarted;
+    expect(fixture.activeTools()).toBe(1);
+    controller.abort();
+    await expect(result).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fixture.readSoT).not.toHaveBeenCalled();
+    expect(fixture.allocate).not.toHaveBeenCalled();
+  });
+
+  it('停用撤销后五个旧工具实例均拒绝新调用', async () => {
+    fixture.unregister();
+    for (const Tool of [KnowledgeSearchTool, SearchInKnowledgeBaseTool, KnowledgeReadTool, ListKnowledgeBaseTool, AssembleDocumentsTool]) {
+      await expect(new Tool().run({}, fixture.context())).rejects.toThrow('知识库插件未启用');
+    }
+    expect(fixture.readSoT).not.toHaveBeenCalled();
   });
 
   it('父深搜再次核对judge返回的范围，不能靠其他项目的旧结果物化原文', async () => {

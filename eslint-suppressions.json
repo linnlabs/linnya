@@ -1668,7 +1668,7 @@
   },
   "src/app-hosts/linnya/adapters/flow/__integration-tests__/agentRunner.interrupted.integration.test.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 2
+      "count": 1
     }
   },
   "src/app-hosts/linnya/adapters/flow/__integration-tests__/flow.followup-tool-history.integration.test.ts": {
@@ -1678,12 +1678,12 @@
   },
   "src/app-hosts/linnya/adapters/flow/__integration-tests__/summarization.test.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 3
+      "count": 2
     }
   },
   "src/app-hosts/linnya/adapters/flow/__test-helpers__/mocks.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 17
+      "count": 14
     }
   },
   "src/app-hosts/linnya/adapters/flow/flow.history-handler.service.test.ts": {

@@ -1,10 +1,11 @@
+import { runRegisteredSubagent as runPluginSubagent } from 'src/plugin-sdk/backend/toolRuntime';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
 } from '../../../plugin-registry/pluginRuntimeState';
-import { createLinnyaAuditRuntime, recordLlmResponseSummary } from 'src/domains/audit';
+import { createLinnyaAuditRuntime, getCurrentLlmAuditContext, recordLlmResponseSummary } from 'src/domains/audit';
 import { PromptKeys } from '@app/schemas';
 import {
   audit,
@@ -688,7 +689,7 @@ describe('RegisteredChildRunInvoker', () => {
     expect(invoke.mock.calls[0]?.[0].modelId).toBe('explicit-child-model');
   });
 
-  it('默认生命周期应先注册 child run，保证 EventStore-backed audit 可写入 SQLite', async () => {
+  it.each(['host', 'plugin'] as const)('%s 入口应先注册真实 child run，保留 SQLite audit 与父 trace 身份', async entry => {
     const { db, host, adapter } = createConversationStore();
     const conversationId = 'conv-child-run-audit';
     const parentRunId = 'turn-parent-run';
@@ -724,8 +725,10 @@ describe('RegisteredChildRunInvoker', () => {
         llmMessages: [{ role: 'user', content: 'child prompt' }],
       })),
     };
+    let observedAuditContext: ReturnType<typeof getCurrentLlmAuditContext>;
     const llmCaller = {
       callWithRetries: vi.fn(async () => {
+        observedAuditContext = getCurrentLlmAuditContext();
         recordLlmResponseSummary({ attemptId: 'attempt-child', traceId: 'trace-child', modelId: 'test-model', endpointId: 'test', endpointModelId: 'test', capabilityId: 'text', apiSurface: 'chat', outcome: 'succeeded', usage: { provenance: 'not_reported' } });
         return { content: 'child ok' };
       }),
@@ -806,38 +809,55 @@ describe('RegisteredChildRunInvoker', () => {
       }),
     });
 
-    const result = await invoker.invoke({
-      promptKey: PromptKeys.DEFAULT,
-      userMessage: '执行子任务',
-      parentToolContext: createAdmittedParentToolContext({
-        conversationId,
-        turnId: 'turn-parent',
-        runId: RunIdSchema.parse(parentRunId),
-        parentToolCallId: ToolCallIdSchema.parse('parent-tool-call-1'),
-        createSubRunTracePublisher: binding =>
-          new childRunTrace.RuntimeEventSubRunTracePublisher({
-            runtimeEventSink: createProjectingRuntimeEventSink(
-              parentPublisher,
-              subrunTraceHistoryProjector,
-            ),
-            conversationId,
-            turnId: 'turn-parent',
-            parentToolCallId: binding.parentToolCallId,
-            subrunId: binding.subrunId,
-            source: binding.source,
-            metadata: binding.metadata,
-          }),
-      }),
-      tracePolicy: {
-        subrunId: childRunId,
-      },
-      executionPolicy: {
-        maxSteps: 2,
-      },
+    const context = createAdmittedParentToolContext({
+      conversationId,
+      turnId: 'turn-parent',
+      runId: RunIdSchema.parse(parentRunId),
+      parentToolCallId: ToolCallIdSchema.parse('parent-tool-call-1'),
+      createSubRunTracePublisher: binding =>
+        new childRunTrace.RuntimeEventSubRunTracePublisher({
+          runtimeEventSink: createProjectingRuntimeEventSink(
+            parentPublisher,
+            subrunTraceHistoryProjector,
+          ),
+          conversationId,
+          turnId: 'turn-parent',
+          parentToolCallId: binding.parentToolCallId,
+          subrunId: binding.subrunId,
+          source: binding.source,
+          metadata: binding.metadata,
+        }),
     });
+    const result = entry === 'host'
+      ? await invoker.invoke({
+        promptKey: PromptKeys.DEFAULT,
+        userMessage: '执行子任务',
+        parentToolContext: context,
+        tracePolicy: { subrunId: childRunId },
+        executionPolicy: { maxSteps: 2 },
+      })
+      : await runPluginSubagent({
+        context: { ...context, registeredChildRunInvoker: invoker },
+        promptKey: PromptKeys.DEFAULT,
+        description: '真实插件子运行',
+        userMessage: '执行子任务',
+        inheritTurns: 0,
+        maxSteps: 2,
+        subrunId: childRunId,
+        subrunSource: 'tool:knowledge_search:deep_search',
+        subrunMetadata: {},
+      });
 
     expect(result.success).toBe(true);
     expect(result.runId).toBe(childRunId);
+    expect(result.parentRunId).toBe(parentRunId);
+    expect(result.subrunId).toBe(childRunId);
+    if (entry === 'plugin') {
+      expect(observedAuditContext).toMatchObject({
+        runId: childRunId, parentRunId, subrunId: childRunId,
+        parentToolCallId: 'parent-tool-call-1', source: 'tool:knowledge_search:deep_search',
+      });
+    }
     await expect(rootSupervisor.peek(RunIdSchema.parse(childRunId))).resolves.toMatchObject({
       runId: childRunId,
       parentRunId,

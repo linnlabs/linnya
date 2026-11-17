@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/assemble/index.ts
+ * @file packages/plugins/knowledge/src/backend/tools/assemble/index.ts
  * @description 知识库“结果组装”工具导出
  */
 

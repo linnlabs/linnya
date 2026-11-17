@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/shallow/runShallowSearch.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/shallow/runShallowSearch.ts
  * @description 浅搜索执行器（由 canonical 与内部受限搜索入口共同复用）
  *
  * 设计目标：
@@ -7,8 +7,10 @@
  * - 低耦合：只通过 ToolContext/KnowledgeBaseService 与 scope 工具函数通信
  */
 
-import type { ToolContext } from 'src/tools/types';
-import type { StructuredToolResult } from 'src/tools/types';
+import { getKnowledgeToolRuntime } from '../../runtime/knowledgeToolRuntime';
+
+import type { ToolContext } from '@plugin/backend/toolRuntime';
+import type { StructuredToolResult } from '@plugin/backend/toolRuntime';
 import { KnowledgeSearchResultSchema, type KnowledgeSearchResult } from '@app/schemas';
 import { buildCitationMetadataFromResults } from '../types';
 import {
@@ -20,7 +22,7 @@ import type {
   GraphMode,
 } from '../../../graph/application/graphBudget';
 import { captureShallowKnowledgeSearchEvidence } from '../knowledgeSearchEvidenceAdapter';
-import { requireCitationRefAllocator } from 'src/domains/citation';
+import { requireCitationRefAllocator } from '@plugin/backend/citationSourceRuntime';
 
 export async function runShallowSearch(params: {
   query: string;
@@ -31,10 +33,7 @@ export async function runShallowSearch(params: {
   graph?: { mode: GraphMode; budget: GraphBudget };
 }): Promise<StructuredToolResult<KnowledgeSearchResult['data']>> {
   const { query, docId, topK, context, citationOffset, graph } = params;
-  const { knowledgeBaseService } = context;
-  if (!knowledgeBaseService) {
-    throw new Error('Knowledge base service not available');
-  }
+  const { service: knowledgeBaseService } = getKnowledgeToolRuntime();
 
   // 统一解析"工具作用域"：项目对话时限定到项目关联知识库
   const scope = resolveKnowledgeBaseScopeFromContext(context);

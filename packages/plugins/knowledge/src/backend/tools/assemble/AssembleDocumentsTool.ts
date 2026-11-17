@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/assemble/AssembleDocumentsTool.ts
+ * @file packages/plugins/knowledge/src/backend/tools/assemble/AssembleDocumentsTool.ts
  * @description 组装文档结果工具（确定性：不再二次调用 LLM；deep_search 收口专用）
  *
  * 定位（高内聚/低耦合）：
@@ -14,8 +14,10 @@
  * - 因此会输出 control.terminateRun=true（执行层收到后直接 yield）。
  */
 
-import { BaseTool, ToolContext, ToolParameterSchema } from 'src/tools/types';
-import type { StructuredToolResult } from 'src/tools/types';
+import { getKnowledgeToolRuntime, runWithKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
+
+import { BaseTool, ToolContext, ToolParameterSchema } from '@plugin/backend/toolRuntime';
+import type { StructuredToolResult } from '@plugin/backend/toolRuntime';
 import {
   AssembleDocumentsArgsSchema,
   AssembleDocumentsToolOutputSchema,
@@ -77,13 +79,8 @@ export class AssembleDocumentsTool extends BaseTool {
     required: ['query', 'selected_blocks'],
   };
 
-  private async getSoT(docId: string, context: ToolContext): Promise<DocumentSoT> {
-    const service = context.knowledgeBaseService;
-    if (!service) {
-      throw new Error(
-        '[AssembleDocumentsTool] 缺少 context.knowledgeBaseService，无法按 block_id 回填片段'
-      );
-    }
+  private async getSoT(docId: string): Promise<DocumentSoT> {
+    const service = getKnowledgeToolRuntime().service;
     const sot = await service.getRawSoTDocument(docId);
     if (!sot) {
       throw new Error(`[AssembleDocumentsTool] SoT 不存在：doc_id="${docId}"`);
@@ -92,6 +89,10 @@ export class AssembleDocumentsTool extends BaseTool {
   }
 
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
+    return runWithKnowledgeToolRuntime(() => this.runAdmitted(args, context));
+  }
+
+  private async runAdmitted(args: Record<string, unknown>, context: ToolContext): Promise<string> {
     const input = AssembleDocumentsArgsSchema.parse(args);
     const { query, selected_blocks: selectedBlocks, summary } = input;
 
@@ -123,7 +124,7 @@ export class AssembleDocumentsTool extends BaseTool {
 
       let sot = sotCache.get(docId);
       if (!sot) {
-        sot = await this.getSoT(docId, context);
+        sot = await this.getSoT(docId);
         sotCache.set(docId, sot);
       }
 

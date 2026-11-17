@@ -28,10 +28,6 @@ const {
   buildGraphDigestMock: vi.fn(),
 }));
 
-vi.mock('../../../../shared/utils/idUtils', () => ({
-  generateMessageId: () => 'fixed_subrun',
-}));
-
 vi.mock('src/domains/audit', () => ({
   runWithLlmAuditContext: async (
     auditContext: Record<string, unknown>,
@@ -42,7 +38,7 @@ vi.mock('src/domains/audit', () => ({
   },
 }));
 
-vi.mock('../../../../app-hosts/linnya/agent-registry/agents/deep_search', () => ({
+vi.mock('../../../agents/deep-search', () => ({
   DEEP_SEARCH_CONFIG: {
     MAX_STEPS: 30,
     CANDIDATE_TOP_K: 10,
@@ -152,7 +148,7 @@ describe('runDeepSearch', () => {
 
   it('delegates deep_search child run to the registered child-run invoker', async () => {
     invokeMock.mockResolvedValue({
-      subrunId: 'subrun_fixed_subrun',
+      subrunId: 'child-result',
       success: true,
       finalAnswer: '子 agent 已完成',
       stepCount: 2,
@@ -177,7 +173,7 @@ describe('runDeepSearch', () => {
       candidateTopK: 8,
     });
     expect(auditContextMock).toHaveBeenCalledWith({
-      subrunId: 'subrun_fixed_subrun',
+      subrunId: expect.stringMatching(/^subrun_msg-[a-f0-9]{12}$/),
       parentToolCallId: 'parent_call_1',
       source: 'tool:knowledge_search:deep_search',
     });
@@ -191,7 +187,7 @@ describe('runDeepSearch', () => {
         }),
         tracePolicy: {
           parentToolCallId: 'parent_call_1',
-          subrunId: 'subrun_fixed_subrun',
+          subrunId: expect.stringMatching(/^subrun_msg-[a-f0-9]{12}$/),
           source: 'tool:knowledge_search:deep_search',
           metadata: {},
         },

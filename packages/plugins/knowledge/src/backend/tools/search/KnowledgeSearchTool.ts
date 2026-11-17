@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/KnowledgeSearchTool.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/KnowledgeSearchTool.ts
  *
  * @brief 统一知识库搜索工具
  *
@@ -10,15 +10,17 @@
  * - 如果 deep_search=true：启动深度搜索子 Agent
  */
 
-import { BaseTool, ToolParameterSchema, ToolContext, CommonParameterTypes } from 'src/tools/types';
+import { runWithKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
+
+import { BaseTool, ToolParameterSchema, ToolContext, CommonParameterTypes } from '@plugin/backend/toolRuntime';
 import { KnowledgeSearchArgsSchema, KnowledgeSearchResultSchema } from '@app/schemas';
 import { runShallowSearch } from './shallow/runShallowSearch';
 import { runDeepSearch, DeepSearchFailedError } from './deep/runDeepSearch';
 import { resolveGraphPolicyFromContext } from './graphPolicy';
 import { readDeepSearchRuntimeDepth } from './deepSearchDepth';
-import { DEEP_SEARCH_CONFIG as DEEP_SEARCH_AGENT_CONFIG } from 'src/app-hosts/linnya/agent-registry/agents/deep_search';
-import { Logger } from 'src/shared/logger';
-import { requireCitationSequenceOffset } from 'src/domains/citation';
+import { DEEP_SEARCH_CONFIG as DEEP_SEARCH_AGENT_CONFIG } from '../../agents/deep-search';
+import { Logger } from '@plugin/backend/loggingRuntime';
+import { requireCitationSequenceOffset } from '@plugin/backend/citationSourceRuntime';
 
 const logger = new Logger('KnowledgeSearchTool');
 
@@ -51,7 +53,7 @@ function markDeepSearchExecuted(context: ToolContext): void {
 /**
  * Deep Search 工具侧配置常量（仅包含“递归防护”等工具语义）
  *
- * - 子 Agent 的默认运行参数（maxSteps / candidateTopK）以 `agent-registry/agents/deep_search` 为单一真源；
+ * - 子 Agent 的默认运行参数（maxSteps / candidateTopK）以 `agents/deep-search` 为单一真源；
  * - KnowledgeSearchTool 若需要覆盖默认值，应显式传参给 runDeepSearch（而不是在此重复定义默认常量）。
  */
 const DEEP_SEARCH_TOOL_CONFIG = {
@@ -169,6 +171,10 @@ Important (ID semantics):
   }
 
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
+    return runWithKnowledgeToolRuntime(() => this.runAdmitted(args, context));
+  }
+
+  private async runAdmitted(args: Record<string, unknown>, context: ToolContext): Promise<string> {
     const input = KnowledgeSearchArgsSchema.parse(args);
 
     // ✅ 用户终止：工具层必须尽快停止，避免终止后仍继续占用资源
@@ -183,7 +189,6 @@ Important (ID semantics):
     const doc_id = input.doc_id;
     const top_k = input.top_k;
     const deep_search = input.deep_search;
-    const { knowledgeBaseService } = context;
 
     const citationOffset = requireCitationSequenceOffset(context);
 
@@ -223,9 +228,6 @@ Important (ID semantics):
       }
     }
 
-    if (!knowledgeBaseService) {
-      throw new Error('Knowledge base service not available in context');
-    }
 
     // 深度搜索模式：启动子 Agent
     if (shouldDeepSearch) {

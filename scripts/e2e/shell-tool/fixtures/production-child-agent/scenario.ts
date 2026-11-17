@@ -18,7 +18,6 @@ import express from 'express';
 import { telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import { LlmCaller } from '@linnlabs/linnkit/runtime-kernel';
 
-import type { KnowledgeBaseService } from '../../../../../src/features/knowledge-base/application/knowledgeBaseService';
 import { HistoryRepository } from '../../../../../src/features/conversation/history/history.repository';
 import { HistoryService } from '../../../../../src/features/conversation/history/history.service';
 import { createHistoryRouter } from '../../../../../src/features/conversation/history/history.router';
@@ -80,41 +79,6 @@ const ROOT_EXPECTED_TICK = 'production-agent-parent-tick-';
 const CHILD_EXPECTED_START = 'production-child-agent-child-start';
 const CHILD_EXPECTED_TICK = 'production-agent-parent-tick-';
 
-function unavailableKnowledgeBaseOperation<T>(): Promise<T> {
-  return Promise.reject(new Error('knowledge-base capability is outside child Agent E2E'));
-}
-
-const unavailableKnowledgeBase: KnowledgeBaseService = {
-  hasActiveTasks: () => false,
-  stopTasks: async () => undefined,
-  rebuildIndex: () => unavailableKnowledgeBaseOperation(),
-  getIndexRebuildStatus: () => null,
-  createKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  getAllKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
-  getOrCreateDefaultKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  addDocument: () => unavailableKnowledgeBaseOperation(),
-  getDocumentsInKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  getDocumentById: () => unavailableKnowledgeBaseOperation(),
-  getTasksStatus: () => unavailableKnowledgeBaseOperation(),
-  cancelTask: () => unavailableKnowledgeBaseOperation(),
-  pauseTask: () => unavailableKnowledgeBaseOperation(),
-  resumeTask: () => unavailableKnowledgeBaseOperation(),
-  deleteDocument: () => unavailableKnowledgeBaseOperation(),
-  continueFailedPdfPages: () => unavailableKnowledgeBaseOperation(),
-  deleteKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  updateKnowledgeBaseSettings: () => unavailableKnowledgeBaseOperation(),
-  search: () => unavailableKnowledgeBaseOperation(),
-  searchKnowledgeBase: () => unavailableKnowledgeBaseOperation(),
-  searchInDocument: () => unavailableKnowledgeBaseOperation(),
-  searchRawResults: () => unavailableKnowledgeBaseOperation(),
-  searchForAgent: () => unavailableKnowledgeBaseOperation(),
-  searchForAgentAcrossKnowledgeBases: () => unavailableKnowledgeBaseOperation(),
-  getGraphAugmentationsForEvidenceBlocks: () => unavailableKnowledgeBaseOperation(),
-  getRawSoTDocument: () => unavailableKnowledgeBaseOperation(),
-  getSoTDocumentForAgent: () => unavailableKnowledgeBaseOperation(),
-  getSoTTableForAgent: () => unavailableKnowledgeBaseOperation(),
-  getDocumentContent: () => unavailableKnowledgeBaseOperation(),
-};
 
 function listen(server: http.Server): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -309,7 +273,7 @@ export async function runProductionChildAgentScenario(input: {
       readSubrunTrace(db, conversationId, parentToolCallId, subrunId, options)
     ),
   });
-  const runner = new AgentRunnerService(executor, unavailableKnowledgeBase, databaseService, {
+  const runner = new AgentRunnerService(executor, databaseService, {
     recovery,
     // 场景没有 Renderer，Workspace 展示通知显式不连接 UI。
     workspaceMutationPublisher: { publish: () => undefined },

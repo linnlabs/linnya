@@ -9,7 +9,6 @@ import {
 import { DatabaseService } from 'src/electron-main/services/database';
 import { bootstrapAgentRuntimeSingletons } from 'src/electron-main/services/agentRuntimeSingletons';
 import { modelCatalog, type ModelConfig } from 'src/domains/model-catalog';
-import type { KnowledgeBaseService } from 'src/features/knowledge-base/application/knowledgeBaseService';
 import { SQLiteEventStore } from '../../persistence/event-store';
 import { SqliteCheckpointer } from '../../persistence/checkpointer';
 import { createDefaultLlmNode } from '../../runtime-assembly/graphRuntimeFactory';
@@ -32,42 +31,6 @@ import { FlowOrchestrator } from '../flow.orchestrator';
 import type { BaseTool } from 'src/tools/types';
 import { createRegisteredChildRunInvoker } from '../../child-runs/registeredSubagentInvoker';
 import { createLinnyaChildRunInvoker } from '../../child-runs/childRunInvokerFactory';
-
-// 本夹具没有 Knowledge 服务；任何意外调用都直接使业务回归失败，不能伪造成功结果。
-const unavailable = async (): Promise<never> => {
-  throw new Error('Knowledge is outside this recovery fixture');
-};
-const knowledge: KnowledgeBaseService = {
-  hasActiveTasks: () => false,
-  stopTasks: async () => {},
-  rebuildIndex: unavailable,
-  getIndexRebuildStatus: () => null,
-  createKnowledgeBase: unavailable,
-  getAllKnowledgeBases: unavailable,
-  getOrCreateDefaultKnowledgeBase: unavailable,
-  addDocument: unavailable,
-  getDocumentsInKnowledgeBase: unavailable,
-  getDocumentById: unavailable,
-  getTasksStatus: unavailable,
-  cancelTask: unavailable,
-  pauseTask: unavailable,
-  resumeTask: unavailable,
-  deleteDocument: unavailable,
-  continueFailedPdfPages: unavailable,
-  deleteKnowledgeBase: unavailable,
-  updateKnowledgeBaseSettings: unavailable,
-  search: unavailable,
-  searchKnowledgeBase: unavailable,
-  searchInDocument: unavailable,
-  searchRawResults: unavailable,
-  searchForAgent: unavailable,
-  searchForAgentAcrossKnowledgeBases: unavailable,
-  getGraphAugmentationsForEvidenceBlocks: unavailable,
-  getRawSoTDocument: unavailable,
-  getSoTDocumentForAgent: unavailable,
-  getSoTTableForAgent: unavailable,
-  getDocumentContent: unavailable,
-};
 
 export function installRecoveryModelFixture(reasoning?: ModelConfig['reasoning']): void {
   const model: ModelConfig = {
@@ -138,7 +101,7 @@ export async function createDurableFlowHarness(
     persistencePort: createConversationPersistencePort(history),
     conversationAdmission: createDirectFlowConversationAdmissionPort(history),
   });
-  const runner = new AgentRunnerService(engine, knowledge, database, {
+  const runner = new AgentRunnerService(engine, database, {
     ...createAgentRunnerRuntimeHarness({
       costCollector: runtime.costCollector,
       registeredChildRunInvoker: createRegisteredChildRunInvoker({

@@ -1,17 +1,16 @@
 /**
- * @file src/app-hosts/linnya/agent-registry/agents/deep_search/index.ts
+ * @file packages/plugins/knowledge/src/backend/agents/deep-search/index.ts
  * @description Deep Search Agent 定义
  *
  * 说明：
- * - AgentRegistry 不承载“对外暴露”语义；该 agent 会像其它 platform agent 一样由 platform contribution 贡献
+ * - AgentRegistry 不承载“对外暴露”语义；该 agent 随知识库插件 contribution 注册与撤销
  * - 工具白名单仅包含 3 个工具：浅搜索、阅读、结果物化（用于约束调用能力边界）
  */
 
-import type { AgentDefinition } from '../../types';
-import { buildPrompt } from '../../prompt.builder';
-import { PromptKeys } from '../../prompt.types';
+import type { AgentDefinition } from '@plugin/backend/agentRegistry';
+import { buildPrompt } from '@plugin/backend/agentRegistry';
+import { PromptKeys } from '@app/schemas';
 import { DEEP_SEARCH_AGENT_PROMPT, DEEP_SEARCH_PROMPT_KEY } from './prompt';
-import { CLOUD_DEEPSEEK_CHAT_MODEL_ID } from 'src/domains/model-catalog';
 
 /**
  * Deep Search Agent 工具白名单（严格限制）
@@ -72,7 +71,7 @@ export const DEEP_SEARCH_AGENT_DEFINITION: AgentDefinition = {
      * - 只有调用方通过 child-run executionPolicy 显式传入 modelId 时，才允许覆盖。
      */
     // ✅ deep_search 是工具内部子 Agent：必须固定模型（避免用户主模型影响成本与工具能力）
-    modelPolicy: { kind: 'fixed', modelId: CLOUD_DEEPSEEK_CHAT_MODEL_ID },
+    modelPolicy: { kind: 'fixed', modelId: 'cloud-deepseek-chat' },
     // 不需要知识库 ID，由父 Agent 传递上下文
     preferredModelCapability: 'tool_calling',
     // 收尾策略：主产物来自 assemble_documents；在仍能执行 ToolNode 时收缩到该最终工具。

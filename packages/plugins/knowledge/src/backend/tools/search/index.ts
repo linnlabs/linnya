@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/index.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/index.ts
  *
  * @brief 知识库搜索工具导出文件
  *

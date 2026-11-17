@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/format/formatObservation.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/format/formatObservation.ts
  * @description 将 UI documents 格式化为 Deep Search 专用的“阅读视图”（Reading View）
  *
  * 设计变更 (2025-01):

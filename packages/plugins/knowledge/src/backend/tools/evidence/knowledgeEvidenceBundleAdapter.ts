@@ -1,5 +1,5 @@
-import type { ToolContext } from 'src/tools/types';
-import { saveEvidenceBundleFromToolContext } from 'src/tools/evidence/evidenceBundleToolContextAdapter';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
+import { captureKnowledgeCitationEvidence } from '@plugin/backend/citationSourceRuntime';
 import type { KnowledgeEvidenceCaptureItem } from '../definitions/knowledgeEvidenceCapture';
 
 /**
@@ -11,21 +11,5 @@ export async function saveKnowledgeEvidenceCapture(params: {
   readonly query: string;
   readonly items: readonly KnowledgeEvidenceCaptureItem[];
 }): Promise<void> {
-  await saveEvidenceBundleFromToolContext({
-    context: params.context,
-    kind: 'knowledge_evidence',
-    query: params.query,
-    items: params.items.map((item) => ({
-      ref_id: item.ref,
-      source_type: 'knowledge_base',
-      title: item.title,
-      snippet: item.snippet,
-      content_text: item.contentText,
-      captured_at_ms: item.capturedAtMs,
-      capture_kind: item.captureKind,
-      doc_id: item.documentId,
-      block_id: item.blockId,
-      ...(item.documentName ? { doc_name: item.documentName } : {}),
-    })),
-  });
+  await captureKnowledgeCitationEvidence(params);
 }

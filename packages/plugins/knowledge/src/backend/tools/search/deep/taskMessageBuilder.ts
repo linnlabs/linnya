@@ -1,5 +1,5 @@
 /**
- * @file src/tools/knowledgebase/search/deep/taskMessageBuilder.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/deep/taskMessageBuilder.ts
  * @description deep_search 子 Agent 任务消息构建器（从 Tool 薄壳中拆出）
  */
 

@@ -19,16 +19,11 @@ async function collectProductionTypeScriptFiles(directory: string): Promise<stri
 }
 
 describe('Knowledge → Evidence domain 边界', () => {
-  it('只允许工具组合 adapter 依赖 Evidence 写入边界', async () => {
+  it('插件业务只经过公开捕获端口，不依赖 Host Evidence 存储', async () => {
     const repositoryRoot = process.cwd();
     const knowledgeRoots = [
-      path.join(repositoryRoot, 'src/features/knowledge-base'),
-      path.join(repositoryRoot, 'src/tools/knowledgebase'),
+      path.join(repositoryRoot, 'packages/plugins/knowledge/src/backend'),
     ];
-    const allowedAdapter = path.join(
-      repositoryRoot,
-      'src/tools/knowledgebase/evidence/knowledgeEvidenceBundleAdapter.ts',
-    );
     const forbiddenImports = [
       'domains/' + 'evidence',
       'evidence/' + 'evidenceBundleToolContextAdapter',
@@ -38,7 +33,6 @@ describe('Knowledge → Evidence domain 边界', () => {
     for (const root of knowledgeRoots) {
       const files = await collectProductionTypeScriptFiles(root);
       for (const file of files) {
-        if (file === allowedAdapter) continue;
         const source = await fsp.readFile(file, 'utf-8');
         if (forbiddenImports.some((forbiddenImport) => source.includes(forbiddenImport))) {
           violations.push(path.relative(repositoryRoot, file));

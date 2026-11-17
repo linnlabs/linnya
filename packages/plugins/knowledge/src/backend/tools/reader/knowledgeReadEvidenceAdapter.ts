@@ -6,7 +6,7 @@
  */
 
 import type { KnowledgeDocumentReadResult } from '../../document-read/definitions/knowledgeDocumentRead';
-import type { ToolContext } from 'src/tools/types';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
 import { saveKnowledgeEvidenceCapture } from '../evidence/knowledgeEvidenceBundleAdapter';
 import { buildKnowledgeReadEvidenceCapture } from './functions/buildKnowledgeReadEvidenceCapture';
 

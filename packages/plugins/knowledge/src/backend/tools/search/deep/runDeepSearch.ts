@@ -1,14 +1,15 @@
 /**
- * @file src/tools/knowledgebase/search/deep/runDeepSearch.ts
+ * @file packages/plugins/knowledge/src/backend/tools/search/deep/runDeepSearch.ts
  * @description 深度搜索执行器（子 Agent 编排 + judge 输出解析 + observation 统一格式化）
  */
 
+import { getKnowledgeToolRuntime } from '../../runtime/knowledgeToolRuntime';
+
 import { KnowledgeSearchResultSchema, PromptKeys, type KnowledgeSearchResult } from '@app/schemas';
-import type { ToolContext } from 'src/tools/types';
-import type { StructuredToolResult } from 'src/tools/types';
-import { runRegisteredSubagent } from 'src/tools/agent_control/subrun/shared';
-import { generateMessageId } from 'src/shared/utils/idUtils';
-import { runWithLlmAuditContext } from 'src/domains/audit';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
+import type { StructuredToolResult } from '@plugin/backend/toolRuntime';
+import { runRegisteredSubagent } from '@plugin/backend/toolRuntime';
+import { randomUUID } from 'node:crypto';
 import { buildDeepSearchTaskMessage } from './taskMessageBuilder';
 import {
   parseAssembleToolOutputSummary,
@@ -18,7 +19,7 @@ import { formatObservationFromDocuments } from '../format/formatObservation';
 import { buildDeepSearchCitationMetadata } from './buildDeepSearchCitations';
 import { buildGraphDigestForSelectedBlocks } from './buildGraphDigest';
 import { captureDeepKnowledgeSearchEvidence } from '../knowledgeSearchEvidenceAdapter';
-import { requireCitationRefAllocator } from 'src/domains/citation';
+import { requireCitationRefAllocator } from '@plugin/backend/citationSourceRuntime';
 import { resolveKnowledgeDocumentsInScope } from '../../scope/resolveKnowledgeDocumentsInScope';
 
 export class DeepSearchFailedError extends Error {
@@ -62,7 +63,7 @@ export async function runDeepSearch(params: {
   await resolveKnowledgeDocumentsInScope(context, docId ? [docId] : []);
 
   const { DEEP_SEARCH_CONFIG } = await import(
-    'src/app-hosts/linnya/agent-registry/agents/deep_search'
+    '../../../agents/deep-search'
   );
 
   const effectiveMaxSteps =
@@ -74,9 +75,7 @@ export async function runDeepSearch(params: {
       ? params.candidateTopK
       : DEEP_SEARCH_CONFIG.CANDIDATE_TOP_K;
 
-  const parentToolCallId = context.parentToolCallId?.trim() ?? '';
-
-  const subrunId = `subrun_${generateMessageId()}`;
+  const subrunId = `subrun_msg-${randomUUID().replace(/-/g, '').slice(0, 12)}`;
 
   const originalUserRequest = context.userQuery;
   const taskMessage = buildDeepSearchTaskMessage({
@@ -94,26 +93,17 @@ export async function runDeepSearch(params: {
    * - 此处只补充调用标签；registered child invoker 会建立独立 runId / parentRunId 审计作用域；
    * - 实际证据经统一 AuditPort 进入 EventStore，不写父 run 文件。
    */
-  const result = await runWithLlmAuditContext(
-    {
-      subrunId,
-      parentToolCallId,
-      source: 'tool:knowledge_search:deep_search',
-    },
-    async () => {
-      return await runRegisteredSubagent({
-        context,
-        promptKey: PromptKeys.DEEP_SEARCH,
-        description: `深度搜索：${query}`,
-        userMessage: taskMessage,
-        inheritTurns: 0,
-        maxSteps: effectiveMaxSteps,
-        subrunId,
-        subrunSource: 'tool:knowledge_search:deep_search',
-        subrunMetadata: {},
-      });
-    }
-  );
+  const result = await runRegisteredSubagent({
+    context,
+    promptKey: PromptKeys.DEEP_SEARCH,
+    description: `深度搜索：${query}`,
+    userMessage: taskMessage,
+    inheritTurns: 0,
+    maxSteps: effectiveMaxSteps,
+    subrunId,
+    subrunSource: 'tool:knowledge_search:deep_search',
+    subrunMetadata: {},
+  });
 
   // 用户终止：即使子 Agent 以“失败”返回，也要优先按 AbortError 语义结束
   if (context.abortSignal?.aborted) {
@@ -151,7 +141,7 @@ export async function runDeepSearch(params: {
 
   let docName: string | null = null;
   if (docId) {
-    const document = await context.knowledgeBaseService?.getDocumentById(docId);
+    const document = await getKnowledgeToolRuntime().service.getDocumentById(docId);
     if (!document?.filename) {
       throw new DeepSearchFailedError(
         `[KnowledgeSearchTool] 单文档深度搜索无法解析文档名称：doc_id="${docId}"`
@@ -184,12 +174,7 @@ export async function runDeepSearch(params: {
     citationOffset,
     reader: {
       getRawSoTDocument: documentId => {
-        const knowledgeBaseService = context.knowledgeBaseService;
-        if (!knowledgeBaseService) {
-          throw new DeepSearchFailedError(
-            '[KnowledgeSearchTool] Knowledge base service not available.'
-          );
-        }
+        const knowledgeBaseService = getKnowledgeToolRuntime().service;
         return knowledgeBaseService.getRawSoTDocument(documentId);
       },
     },

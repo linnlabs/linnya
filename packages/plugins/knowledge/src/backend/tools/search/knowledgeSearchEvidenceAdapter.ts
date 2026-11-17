@@ -6,7 +6,7 @@
  */
 
 import type { KnowledgeSearchResult } from '@app/schemas';
-import type { ToolContext } from 'src/tools/types';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
 import { saveKnowledgeEvidenceCapture } from '../evidence/knowledgeEvidenceBundleAdapter';
 import { buildShallowKnowledgeSearchEvidenceCapture } from './functions/buildShallowKnowledgeSearchEvidenceCapture';
 import type { DeepSearchEmittedEvidence } from './format/formatObservation';
