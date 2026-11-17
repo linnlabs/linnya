@@ -29,6 +29,13 @@ Text Generation 只支持当前真实消费者需要的 system/user 文本与图
 
 Embedding 只表达“按输入顺序生成向量”，不知道 Qdrant、知识库、分批进度或索引重建规则。Reranking 只表达“query + 原始 documents → 原始索引 + 分数”，不知道 RRF、文档存储或失败后是否继续搜索。两者的 `usage.raw` 只保留 Provider 实际返回的事实，不构造本地 token 出身或假分数。
 
+Embedding 请求可携带已存在索引的 `expectedSpaceId`，结果必须携带本次实际请求的 `spaceId`。
+Host 冻结 route 后产生 `embedding-space:v1:<SHA256>`：身份覆盖 surface、capability、实际请求 URL 和上游模型 ID，
+不含本地目录 ID、显示名、endpoint 资源 ID、认证方式或密钥。预期身份不符时在 Provider 网络调用前返回
+`embedding_space_mismatch`。调用方负责保存来源并决定显式重建；不得把当前身份回填为旧索引的历史来源。
+当前 API 没有 dimensions 等额外嵌入参数；将来真正增加影响向量的参数时必须同时更新该身份合同。
+配置身份无法检测供应商在同一个远端别名下替换模型权重，现有数量/维度/有限值校验继续执行。
+
 禁止新增总括性的 `InferenceEngine`、`AIEngine`、manager 或 service。
 
 ## 3. 模块职责矩阵

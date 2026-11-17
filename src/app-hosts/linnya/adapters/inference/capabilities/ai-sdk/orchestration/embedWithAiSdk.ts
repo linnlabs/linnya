@@ -19,8 +19,8 @@ const RawEmbeddingUsageSchema = z.object({ prompt_tokens: z.number() }).passthro
 export async function embedWithAiSdk(
   route: ResolvedAiSdkEmbeddingRoute,
   request: EmbeddingRequest,
-  dependencies: AiSdkEmbeddingDependencies = {},
-): Promise<EmbeddingResult> {
+  dependencies: AiSdkEmbeddingDependencies = {}
+): Promise<Omit<EmbeddingResult, 'spaceId'>> {
   const provider = createOpenAICompatible({
     name: route.providerId,
     baseURL: route.baseUrl,
@@ -40,9 +40,8 @@ export async function embedWithAiSdk(
     const parsed = RawEmbeddingUsageSchema.safeParse(body.usage);
     return parsed.success ? [parsed.data] : [];
   });
-  const inputTokens = raw.length > 0
-    ? raw.reduce((total, usage) => total + usage.prompt_tokens, 0)
-    : undefined;
+  const inputTokens =
+    raw.length > 0 ? raw.reduce((total, usage) => total + usage.prompt_tokens, 0) : undefined;
   return {
     vectors: result.embeddings,
     ...(raw.length > 0
