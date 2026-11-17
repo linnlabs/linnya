@@ -161,8 +161,32 @@ export class KnowledgeBaseMgmtService {
         throw new KnowledgeBaseNotFoundError(kbId);
       }
 
-      // 在删除不可恢复的原文前确认向量服务可用；冷态集合可以尚未建立。
+      // 冷态集合可以尚未建立；存在性读取失败也必须停止删除。
       const hasCollection = await this.qdrantRepository.collectionExists(kbId);
+
+      // 三个向量集合都确认删除后才清原文。中途失败可能已删除部分索引，
+      // 但必须保留全部资料和库记录，让用户可显式重建；这不是跨集合事务回滚。
+      // 先删除知识库集合（这会级联删除所有向量点）
+      logger.info(`开始删除 Qdrant 集合（将级联删除向量点）: ${kbId}`);
+      if (hasCollection) await this.qdrantRepository.deleteCollection(kbId);
+
+      /**
+       * 删除 Soft Knowledge Graph 的向量集合（若存在）
+       *
+       * 说明：
+       * - 图谱向量化使用独立 collection（kg_nodes_${kbId} / kg_edges_${kbId}）；
+       * - 对“未启用图谱向量化”的知识库，这两个集合可能不存在，因此这里必须先做存在性检查。
+       */
+      const kgNodesCollection = getGraphNodesCollectionName(kbId);
+      const kgEdgesCollection = getGraphEdgesCollectionName(kbId);
+      if (await this.qdrantRepository.collectionExists(kgNodesCollection)) {
+        logger.info(`开始删除图谱 nodes 集合: ${kgNodesCollection}`);
+        await this.qdrantRepository.deleteCollection(kgNodesCollection);
+      }
+      if (await this.qdrantRepository.collectionExists(kgEdgesCollection)) {
+        logger.info(`开始删除图谱 edges 集合: ${kgEdgesCollection}`);
+        await this.qdrantRepository.deleteCollection(kgEdgesCollection);
+      }
 
       // 1) 获取此知识库中的所有文档（用于清理 SoT）
       const documents = await this.metadataRepository.getDocumentsInKnowledgeBase(kbId);
@@ -204,28 +228,6 @@ export class KnowledgeBaseMgmtService {
 
       const originalDeletedCount = await this.originalDocumentRepository.deleteByKnowledgeBase(kbId);
       logger.info(`原始 PDF 清理完成: deleted=${originalDeletedCount}`);
-
-      // 3) 删除知识库集合（这会级联删除所有向量点）
-      logger.info(`开始删除 Qdrant 集合（将级联删除向量点）: ${kbId}`);
-      if (hasCollection) await this.qdrantRepository.deleteCollection(kbId);
-
-      /**
-       * 3.5) 删除 Soft Knowledge Graph 的向量集合（若存在）
-       *
-       * 说明：
-       * - 图谱向量化使用独立 collection（kg_nodes_${kbId} / kg_edges_${kbId}）；
-       * - 对“未启用图谱向量化”的知识库，这两个集合可能不存在，因此这里必须先做存在性检查。
-       */
-      const kgNodesCollection = getGraphNodesCollectionName(kbId);
-      const kgEdgesCollection = getGraphEdgesCollectionName(kbId);
-      if (await this.qdrantRepository.collectionExists(kgNodesCollection)) {
-        logger.info(`开始删除图谱 nodes 集合: ${kgNodesCollection}`);
-        await this.qdrantRepository.deleteCollection(kgNodesCollection);
-      }
-      if (await this.qdrantRepository.collectionExists(kgEdgesCollection)) {
-        logger.info(`开始删除图谱 edges 集合: ${kgEdgesCollection}`);
-        await this.qdrantRepository.deleteCollection(kgEdgesCollection);
-      }
 
       // 4) 删除元数据（这会级联删除所有文档元数据）
       logger.info(`开始删除知识库元数据（workspace.sqlite，将级联删除 kb_documents）: ${kbId}`);

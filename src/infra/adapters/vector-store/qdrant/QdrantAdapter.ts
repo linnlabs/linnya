@@ -11,9 +11,6 @@ import { isObjectLike } from '@linnya/foundation';
 
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { Logger } from 'src/shared/logger';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { pathManager } from 'src/shared/utils/pathManager';
 
 import type {
   CreateCollectionOptions,
@@ -308,55 +305,10 @@ export class QdrantAdapter {
    */
   async deleteCollection(collectionName: string): Promise<void> {
     logger.info(`[QdrantAdapter] Deleting collection: ${collectionName}`);
-    try {
-      // 说明：timeout 单位为秒。这里给一个更宽松的提交等待时间，避免在慢盘/大集合上误判为超时。
-      await this.client.deleteCollection(collectionName, { timeout: 120 });
-      logger.info(`[QdrantAdapter] Collection deleted via SDK: ${collectionName}`);
-    } catch (error: any) {
-      /**
-       * 根因修复（Windows os error 5: 拒绝访问）：
-       * - 即使配置了 memmap_threshold_kb 禁用 mmap，Windows 上仍可能因文件句柄/锁占用导致 Qdrant 无法删除目录
-       * - 此时 Qdrant 会抛出 500 Service internal error: 拒绝访问
-       * - 策略：既然 Qdrant 进程删不掉，我们在 Node 侧尝试强制物理删除（兜底）
-       */
-      const isAccessDenied =
-        JSON.stringify(error).includes('os error 5') ||
-        JSON.stringify(error).includes('拒绝访问') ||
-        (error?.status === 500);
-
-      if (isAccessDenied) {
-        logger.warn(
-          `[QdrantAdapter] SDK 删除集合失败 (os error 5 / 500)，尝试物理删除目录兜底: ${collectionName}`
-        );
-        try {
-          // 物理路径：WorkspaceRoot/KnowledgeBase/qdrant/storage/collections/{name}
-          // 注意：必须与 qdrantManager.ts 中的 dataDir + storage_path 保持一致
-          const collectionPath = path.join(
-            pathManager.getKbDataPath(),
-            'qdrant',
-            'storage',
-            'collections',
-            collectionName
-          );
-
-          // 检查目录是否存在
-          await fs.access(collectionPath);
-          // 强制递归删除
-          await fs.rm(collectionPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
-          logger.info(`[QdrantAdapter] 物理目录已强制删除: ${collectionPath}`);
-          return; // 兜底成功，视为删除成功
-        } catch (fsError: any) {
-          if (fsError.code === 'ENOENT') {
-            logger.info(`[QdrantAdapter] 物理目录不存在，视为已删除: ${collectionName}`);
-            return;
-          }
-          // 如果物理删除也失败（例如被杀毒软件锁死），则只能抛出原始错误
-          logger.error(`[QdrantAdapter] 物理删除也失败: ${fsError.message}`);
-        }
-      }
-      // 非 os error 5 或物理删除也失败 -> 抛出异常
-      throw error;
-    }
+    // 集合目录和活动句柄归 Qdrant 管理。服务失败时不能由 Node 强删目录并伪报成功。
+    // timeout 单位为秒；错误如实交给调用方，停止后续不可恢复的资料删除。
+    await this.client.deleteCollection(collectionName, { timeout: 120 });
+    logger.info(`[QdrantAdapter] Collection deleted via SDK: ${collectionName}`);
   }
 
   /**
