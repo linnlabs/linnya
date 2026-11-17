@@ -29,7 +29,13 @@
         <span class="provider-connection-edit-label">
           {{ settingsMessage('settings.addModel.compatibility.label') }}
         </span>
+        <CustomTextInput
+          v-if="provider.capabilityApiFormat"
+          :model-value="capabilityFormatLabel"
+          disabled
+        />
         <CustomSelect
+          v-else
           v-model="form.customApiFormat"
           :options="customApiFormatOptions"
           :title="settingsMessage('settings.addModel.compatibility.selectTitle')"
@@ -45,9 +51,14 @@
         <CustomTextInput
           v-model="form.baseUrl"
           class="settings-text-control"
-          :placeholder="settingsMessage('settings.addModel.apiUrl.placeholder')"
+          :placeholder="
+            capabilityAddress?.example ?? settingsMessage('settings.addModel.apiUrl.placeholder')
+          "
           :disabled="isSubmitting"
         />
+        <span v-if="capabilityAddress" class="provider-connection-edit-hint">{{
+          capabilityAddress.hint
+        }}</span>
       </div>
 
       <div class="provider-connection-edit-field">
@@ -87,6 +98,13 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
+import {
+  CUSTOM_CAPABILITY_API_FORMATS,
+  normalizeCustomCapabilityBaseUrl,
+} from '@app/schemas/custom-api-onboarding';
+import { confirmEmbeddingRouteEdit } from '../../../orchestration/confirmEmbeddingRouteEdit';
+import { getCustomCapabilityAddressPresentation } from '../functions/getCustomCapabilityAddressPresentation';
+import { updateCustomCapabilityProvider } from '../orchestration/updateCustomCapabilityProvider';
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import {
   ActionButtons,
@@ -124,6 +142,16 @@ const form = reactive<CustomApiProviderEditForm>({
   baseUrl: props.provider.baseUrl ?? '',
   credentialSecret: '',
 });
+const capabilityFormatLabel = computed(
+  () =>
+    CUSTOM_CAPABILITY_API_FORMATS.find(item => item.id === props.provider.capabilityApiFormat)
+      ?.label ?? ''
+);
+const capabilityAddress = computed(() =>
+  props.provider.capabilityApiFormat
+    ? getCustomCapabilityAddressPresentation(props.provider.capabilityApiFormat)
+    : undefined
+);
 const isSubmitting = ref(false);
 const error = ref<string | null>(null);
 
@@ -156,7 +184,18 @@ async function submit(): Promise<void> {
   isSubmitting.value = true;
   error.value = null;
   try {
-    const result = await updateCustomApiProvider(props.provider.providerName, form);
+    const nextBaseUrl = normalizeCustomCapabilityBaseUrl('openai_embeddings', form.baseUrl);
+    if (
+      props.provider.capabilityApiFormat === 'openai_embeddings' &&
+      nextBaseUrl &&
+      nextBaseUrl !== props.provider.baseUrl
+    ) {
+      if (!(await confirmEmbeddingRouteEdit(props.provider.modelIds ?? [], settingsMessage)))
+        return;
+    }
+    const result = props.provider.capabilityApiFormat
+      ? await updateCustomCapabilityProvider(props.provider.providerName, form)
+      : await updateCustomApiProvider(props.provider.providerName, form);
     if (!result.ok) {
       error.value = resolveIssue(result.issue);
       return;

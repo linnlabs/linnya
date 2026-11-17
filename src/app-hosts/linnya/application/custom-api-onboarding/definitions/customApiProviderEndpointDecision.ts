@@ -4,8 +4,6 @@ import type {
   ModelConfig,
 } from 'src/domains/model-catalog';
 
-import type { CustomApiRuntimeBinding } from './customApiRuntimeBinding';
-
 export type CustomApiProviderEndpointDecision =
   /** 连接未变化且不会影响分组外模型：保留原 endpoint，必要时在原边界内替换 Key。 */
   | { readonly kind: 'keep'; readonly endpoint: InferenceEndpointView }
@@ -21,7 +19,7 @@ export interface DecideCustomApiProviderEndpointInput {
   readonly catalogEndpoints: readonly InferenceEndpointView[];
   readonly catalogModels: readonly Pick<ModelConfig, 'id' | 'inference_endpoint_id'>[];
   readonly otherGroupEndpointIds: ReadonlySet<string>;
-  readonly binding: CustomApiRuntimeBinding;
+  readonly binding: Pick<InferenceEndpointView, 'route_profile_id' | 'auth_profile'>;
   readonly baseUrl: string;
   readonly hasNewSecret: boolean;
 }

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildModelInferenceRoute } from '@app/schemas/model-inference';
+import {
+  buildModelInferenceRoute,
+  type LanguageInferenceRouteProfileId,
+  type InferenceAuthProfile,
+} from '@app/schemas/model-inference';
 import {
   ModelDiscoveryService,
   ModelCatalogConflictError,
@@ -14,7 +18,11 @@ import {
 
 import { createCustomApiOnboardingUseCase } from './createCustomApiOnboardingUseCase';
 
-const connection: InferenceEndpointView = {
+type LanguageEndpoint = InferenceEndpointView & {
+  route_profile_id: LanguageInferenceRouteProfileId;
+  auth_profile: InferenceAuthProfile;
+};
+const connection: LanguageEndpoint = {
   id: 'relay-endpoint',
   route_profile_id: 'openai_compatible_chat',
   endpoint_id: 'custom-openai-compatible:relay-endpoint',
@@ -175,7 +183,7 @@ describe('自定义模型分组刷新', () => {
   });
 
   it('同名分组中的多个连接各自使用自己的地址、协议和 Key', async () => {
-    const other: InferenceEndpointView = {
+    const other: LanguageEndpoint = {
       ...connection,
       id: 'other',
       endpoint_id: 'custom-anthropic-compatible:other',
@@ -372,7 +380,7 @@ describe('自定义模型分组刷新', () => {
     expect(target.models).toHaveLength(1);
   });
   it('多连接发现开始前固定凭据，编辑期间的新 Key 不会发往旧地址', async () => {
-    const other: InferenceEndpointView = {
+    const other: LanguageEndpoint = {
       ...connection,
       id: 'other',
       endpoint_id: 'custom-openai-compatible:other',

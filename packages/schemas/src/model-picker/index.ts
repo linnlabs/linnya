@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CustomApiFormatSchema } from '../custom-api-onboarding';
+import { CustomApiFormatSchema, CustomCapabilityApiFormatSchema } from '../custom-api-onboarding';
 
 const NonEmptyStringSchema = z.string().trim().min(1);
 const ReasoningEffortSchema = z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh']);
@@ -76,6 +76,7 @@ export const ModelPickerCustomProviderGroupSchema = z
     provider_id: NonEmptyStringSchema,
     provider_name: NonEmptyStringSchema,
     api_format: CustomApiFormatSchema.optional(),
+    capability_api_format: CustomCapabilityApiFormatSchema.optional(),
     base_url: z.string().optional(),
     endpoint_id: z.string().optional(),
     models: z.array(ModelPickerMaterializedModelSchema),

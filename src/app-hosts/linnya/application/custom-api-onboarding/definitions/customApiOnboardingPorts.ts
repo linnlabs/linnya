@@ -1,4 +1,7 @@
 import type {
+  CustomCapabilityModelCommand,
+  CustomCapabilityProviderUpdateCommand,
+  CustomCapabilityTestResult,
   CustomApiProviderRemovalCommand,
   CustomApiProviderRemovalResponse,
   CustomApiModelRegistrationCommand,
@@ -61,6 +64,16 @@ export interface CustomApiOnboardingIdFactory {
 }
 
 export interface CustomApiOnboardingUseCase {
+  updateCapabilityProvider(
+    command: CustomCapabilityProviderUpdateCommand
+  ): Promise<CustomApiProviderUpdateResponse>;
+  registerCapabilityModel(
+    command: CustomCapabilityModelCommand
+  ): Promise<CustomApiModelRegistrationResponse>;
+  testCapabilityModel(
+    command: CustomCapabilityModelCommand,
+    signal: AbortSignal
+  ): Promise<CustomCapabilityTestResult>;
   removeProvider(
     command: CustomApiProviderRemovalCommand
   ): Promise<CustomApiProviderRemovalResponse>;

@@ -1,4 +1,7 @@
-import { readCustomApiFormatForRouteProfileId } from '@app/schemas/custom-api-onboarding';
+import {
+  readCustomApiFormatForRouteProfileId,
+  readCustomCapabilityFormatForProfile,
+} from '@app/schemas/custom-api-onboarding';
 import type { CustomApiGroup, InferenceEndpointView, ModelConfig } from 'src/domains/model-catalog';
 
 import { CustomApiOnboardingError } from '../definitions/customApiOnboardingError';
@@ -19,6 +22,13 @@ export function resolveCustomApiProviderRefreshTargets(
   return group.inference_endpoint_ids.map(endpointId => {
     const endpoint = endpoints.find(item => item.id === endpointId);
     const existingModels = groupModels.filter(model => model.inference_endpoint_id === endpointId);
+    if (endpoint && readCustomCapabilityFormatForProfile(endpoint.route_profile_id)) {
+      throw new CustomApiOnboardingError(
+        'custom_api_onboarding.provider_configuration_invalid',
+        '此类模型使用手填模型 ID，不支持发现列表刷新；已保存的模型保持不变',
+        400
+      );
+    }
     const apiFormat = endpoint && readCustomApiFormatForRouteProfileId(endpoint.route_profile_id);
     if (!endpoint || !apiFormat || existingModels.some(model => !model.inference_route)) {
       throw new CustomApiOnboardingError(

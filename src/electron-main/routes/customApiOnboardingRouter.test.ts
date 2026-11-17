@@ -44,6 +44,9 @@ describe('custom API onboarding router', () => {
       '/api/v1/custom-api-onboarding',
       createCustomApiOnboardingRouter({
         registerModel: vi.fn(),
+        registerCapabilityModel: vi.fn(),
+        testCapabilityModel: vi.fn(),
+        updateCapabilityProvider: vi.fn(),
         updateProvider: vi.fn(),
         removeProvider: vi.fn(),
         refreshProvider: vi.fn(),
@@ -247,6 +250,9 @@ describe('custom API onboarding router', () => {
       createCustomApiOnboardingRouter(
         {
           registerModel: vi.fn(),
+          registerCapabilityModel: vi.fn(),
+          testCapabilityModel: vi.fn(),
+          updateCapabilityProvider: vi.fn(),
           updateProvider: vi.fn(),
           removeProvider: vi.fn(),
           refreshProvider: vi.fn(),

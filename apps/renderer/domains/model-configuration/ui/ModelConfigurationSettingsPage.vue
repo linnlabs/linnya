@@ -55,14 +55,14 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ModelCatalogItem } from '../features/model-catalog';
 import { useModelCatalogStore } from '../features/model-catalog';
 import {
   GLOBAL_AUXILIARY_MODEL_PURPOSES,
+  isDocumentUploadOcrModel,
   setModelPurposeBinding,
   useModelPurposeBindings,
 } from '../features/purpose-model-bindings';
-import { getEmbeddingModelChangeImpactPort } from '../ports/embeddingModelChangeImpactPort';
+import { confirmEmbeddingModelSelection } from '../orchestration/confirmEmbeddingRouteEdit';
 import { CustomSelect } from '@linnya/renderer-ui'; // 导入自定义选择组件
 import AuxiliaryModelPurposeSelectGroup from '../features/purpose-model-bindings/ui/AuxiliaryModelPurposeSelectGroup.vue';
 import {
@@ -77,7 +77,6 @@ import {
   SettingsSection,
   useSettingsLocalization,
 } from '@/domains/settings/public';
-import { confirm } from '@shared/composables/confirmDialog';
 import { useNotificationStore } from '@/app/notification';
 import { buildModelSelectOptions } from '../features/model-catalog/functions/buildModelSelectOptions';
 import { resolveModelCatalogErrorPresentation } from '../features/model-catalog/functions/modelCatalogErrorPresentation';
@@ -112,15 +111,8 @@ const visionModels = computed(() =>
   modelCatalog.models.filter(m => m.capabilities?.includes('vision'))
 );
 
-const isPdfOcrModel = (model: ModelCatalogItem) => {
-  const capabilities = Array.isArray(model.capabilities) ? model.capabilities : [];
-  return (
-    capabilities.includes('pdf_ocr_default') ||
-    (capabilities.includes('document_ocr') && model.document_ocr_route?.mode === 'document_upload')
-  );
-};
-
-const pdfOcrModels = computed(() => visionModels.value.filter(isPdfOcrModel));
+// OCR 与视觉对话是独立能力，不能先按 vision 过滤掉只提供文档识别的模型。
+const pdfOcrModels = computed(() => modelCatalog.models.filter(isDocumentUploadOcrModel));
 
 const transcriptionModels = computed(() =>
   modelCatalog.models.filter(m => m.ui_visibility?.includes('audio_transcription'))
@@ -186,30 +178,6 @@ const primaryModelValue = computed<string | null>({
   set: value => setModelPurposeBinding('primary', value),
 });
 
-async function confirmEmbeddingModelChange(nextModelId: string): Promise<boolean> {
-  const affected =
-    await getEmbeddingModelChangeImpactPort().findImpactedKnowledgeBases(nextModelId);
-
-  if (affected.length === 0) return true;
-
-  const names = affected
-    .slice(0, 5)
-    .map(knowledgeBase => knowledgeBase.name)
-    .join('、');
-  const suffix = affected.length > 5 ? ` 等 ${affected.length} 个` : '';
-
-  return confirm({
-    title: settingsMessage('settings.modelConfig.embedding.changeConfirm.title'),
-    message: settingsMessage('settings.modelConfig.embedding.changeConfirm.message', {
-      count: affected.length,
-      names: `${names}${suffix}`,
-    }),
-    confirmText: settingsMessage('settings.modelConfig.embedding.changeConfirm.confirm'),
-    cancelText: settingsMessage('settings.modelConfig.embedding.changeConfirm.cancel'),
-    isDangerousAction: true,
-  });
-}
-
 const embeddingModelValue = computed<string | null>({
   get: () => modelBindings.effectiveEmbeddingModelId.value,
   set: value => {
@@ -222,7 +190,7 @@ const embeddingModelValue = computed<string | null>({
 
     void (async () => {
       try {
-        const confirmed = await confirmEmbeddingModelChange(nextModelId);
+        const confirmed = await confirmEmbeddingModelSelection(nextModelId, settingsMessage);
         if (confirmed) {
           setModelPurposeBinding('embedding', nextModelId);
         }

@@ -49,7 +49,7 @@
         }}</label>
         <div class="control-area">
           <div class="info-text">
-            {{ model.inference_route?.auth_profile === 'none' ? 'N/A' : '********' }}
+            {{ modelRoute?.auth_profile === 'none' ? 'N/A' : '********' }}
           </div>
         </div>
       </div>
@@ -61,7 +61,7 @@
         }}</label>
         <div class="control-area">
           <div class="info-text">
-            {{ model.inference_route?.base_url || 'N/A' }}
+            {{ modelRoute?.base_url || 'N/A' }}
           </div>
         </div>
       </div>
@@ -76,7 +76,7 @@
         </div>
       </div>
 
-      <div class="form-row input-row">
+      <div v-if="model.inference_route" class="form-row input-row">
         <label class="form-label" for="model-context-window-tokens">{{
           settingsMessage('settings.modelCapacity.contextWindow.label')
         }}</label>
@@ -101,7 +101,7 @@
         </div>
       </div>
 
-      <div class="form-row input-row">
+      <div v-if="model.inference_route" class="form-row input-row">
         <label class="form-label" for="model-max-output-tokens">{{
           settingsMessage('settings.modelCapacity.maxOutput.label')
         }}</label>
@@ -127,7 +127,7 @@
       </div>
 
       <!-- 模型能力 -->
-      <div class="form-row input-row">
+      <div v-if="model.inference_route" class="form-row input-row">
         <label class="form-label">{{
           settingsMessage('settings.modelCapability.imageInput')
         }}</label>
@@ -142,7 +142,6 @@
 
       <!-- 模态框内错误信息 -->
       <div v-if="modalState.error" class="error-message">{{ modalState.error }}</div>
-
     </div>
 
     <template #footer>
@@ -166,8 +165,11 @@ import type { EditableLanguageModelIssue } from '../definitions/editableLanguage
 import { ActionButtons, CustomNumberInput, Modal, Switch } from '@linnya/renderer-ui';
 import { confirm } from '@shared/composables/confirmDialog';
 import { useSettingsLocalization } from '@/domains/settings/public';
+import { buildEditableCapabilityModelUpdate } from '../functions/buildEditableCapabilityModelUpdate';
+import { CUSTOM_CAPABILITY_API_FORMATS } from '@app/schemas/custom-api-onboarding';
 import { buildEditableLanguageModelUpdate } from '../functions/buildEditableLanguageModelUpdate';
 import { updateModelInCatalog } from '../orchestration/modelCatalogOperations';
+import { confirmEmbeddingRouteEdit } from '../../../orchestration/confirmEmbeddingRouteEdit';
 import { deleteConfiguredModel } from '../../../orchestration/deleteConfiguredModel';
 import {
   resolveConfigurableLanguageProtocolLabelKey,
@@ -234,7 +236,20 @@ const primaryActionText = computed(() =>
     : settingsMessage('settings.modelDetails.save')
 );
 
+const modelRoute = computed(
+  () =>
+    props.model?.inference_route ??
+    props.model?.embedding_route ??
+    props.model?.reranking_route ??
+    props.model?.image_generation_route ??
+    props.model?.document_ocr_route
+);
 const currentProviderProfileLabel = computed(() => {
+  if (modelRoute.value && !props.model?.inference_route)
+    return (
+      CUSTOM_CAPABILITY_API_FORMATS.find(item => item.id === modelRoute.value?.api_surface)
+        ?.label ?? ''
+    );
   if (!props.model?.inference_route) return settingsMessage('settings.protocol.auto');
   const profileId = resolveConfigurableLanguageRouteProfileId(props.model.inference_route);
   return settingsMessage(resolveConfigurableLanguageProtocolLabelKey(profileId));
@@ -315,7 +330,10 @@ const handleSaveModel = async () => {
   if (!props.model || modalState.isProcessing || !hasChanges.value) return;
 
   modalState.error = null;
-  const result = buildEditableLanguageModelUpdate(props.model, {
+  const buildUpdate = props.model.inference_route
+    ? buildEditableLanguageModelUpdate
+    : buildEditableCapabilityModelUpdate;
+  const result = buildUpdate(props.model, {
     displayName: editForm.display_name,
     modelName: editForm.model_name,
     contextWindowTokens: editForm.context_window_tokens,
@@ -330,6 +348,13 @@ const handleSaveModel = async () => {
   modalState.isProcessing = true;
 
   try {
+    if (
+      result.command.embedding_route &&
+      result.command.embedding_route.endpoint_model_id !==
+        props.model.embedding_route?.endpoint_model_id
+    ) {
+      if (!(await confirmEmbeddingRouteEdit([props.model.id], settingsMessage))) return;
+    }
     await updateModelInCatalog(props.model.id, result.command);
     emit('update-success', 'update');
   } catch (error) {
@@ -346,6 +371,7 @@ function resolveEditIssue(issue: EditableLanguageModelIssue): string {
       return settingsMessage('settings.modelDetails.displayNameRequired');
     case 'model_name_required':
       return settingsMessage('settings.modelDetails.modelNameRequired');
+    case 'model_route_missing':
     case 'inference_route_missing':
       return settingsMessage('settings.modelDetails.inferenceRouteMissing');
     case 'token_limits_invalid':

@@ -516,3 +516,20 @@ domain 重构不要求 Windows/macOS 安装包验收。
 界面显示实际完成数量。单模型删除共用该流程，已提交的删除不会因 Picker 重读失败被详情界面误报成删除失败。
 
 同 domain 的模型删除与用途绑定使用 model-catalog 的 `store/modelCatalogStore.ts`、`orchestration/modelCatalogOperations.ts` 和 `definitions/modelCatalogGateway.ts` 窄能力；删除收尾通过 purpose-model-bindings 的 `orchestration/modelPurposeBindings.ts`。这些入口不加载 ModelDetailsModal，避免规则与 UI 相互回引。
+
+
+## 自定义能力模型
+
+添加模型的 Custom API 表单先选类型。对话继续使用发现/手填；嵌入、重排、OCR、生图使用手填模型 ID，
+按协议显示必要字段和准确 API 地址例子，沿用现有 Settings 控件。OCR 分完整文档上传与逐页图片；
+生图可声明服务支持的尺寸。连接测试与保存独立，测试失败/取消保留草稿；离开表单清除未保存 Key，
+成功保存后禁用重复提交，目录重读失败显示已保存事实。
+
+能力模型来源仍出现在模型管理，连接名称/地址/Key 可编辑；模型详情只编辑显示名与上游模型 ID，
+不显示语言模型容量或视觉输入开关。手填模型不执行发现刷新，以免被远端语言模型列表误删。
+用途槽位复用现有 capability 筛选和绑定，不随知识库插件停用隐藏或删除。
+
+嵌入地址/上游 ID 编辑和全局嵌入用途切换先通过 `EmbeddingModelChangeImpactPort` 确认现有索引影响。
+名称或Key更新不提示重建；插件未启用/元数据不可读明确影响未知，用户仍可保存配置。
+索引重建归知识库 owner，设置页仅提示正式“重建检索索引”，不删除原文、不自动重建。
+协议范围、来源和后端测试见 [Custom API owner](../../../../src/app-hosts/linnya/application/custom-api-onboarding/README.md)。

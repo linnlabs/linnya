@@ -33,6 +33,7 @@ export type ModelVisibilitySource =
       readonly displayName: string;
       readonly providerName: string;
       readonly apiFormat?: ModelPickerCustomProviderGroup['api_format'];
+      readonly capabilityApiFormat?: ModelPickerCustomProviderGroup['capability_api_format'];
       readonly baseUrl?: string;
       readonly endpointId?: string;
       readonly models: readonly ModelPickerMaterializedModel[];
@@ -62,6 +63,7 @@ export function projectModelVisibilitySources(
     displayName: group.provider_name,
     providerName: group.provider_name,
     apiFormat: group.api_format,
+    capabilityApiFormat: group.capability_api_format,
     baseUrl: group.base_url,
     endpointId: group.endpoint_id,
     models: group.models,

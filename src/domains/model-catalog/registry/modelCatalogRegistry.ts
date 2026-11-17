@@ -9,6 +9,7 @@ import { prepareCustomApiGroupMutation } from '../features/custom-api-groups/orc
 import type { CustomApiGroupMutation } from '../features/custom-api-groups/definitions/customApiGroupMutation';
 
 import {
+  LANGUAGE_INFERENCE_ROUTE_PROFILES,
   findLanguageInferenceRouteProfileForRoute,
   type LanguageInferenceRouteProfileId,
 } from '@app/schemas/model-inference';
@@ -160,7 +161,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
     const model = this.models.get(modelId);
     if (!model?.inference_route) return undefined;
     if (model.inference_endpoint_id) {
-      return this.inferenceEndpoints.get(model.inference_endpoint_id)?.route_profile_id;
+      const profileId = this.inferenceEndpoints.get(model.inference_endpoint_id)?.route_profile_id;
+      return LANGUAGE_INFERENCE_ROUTE_PROFILES.find(profile => profile.id === profileId)?.id;
     }
     return findLanguageInferenceRouteProfileForRoute(model.inference_route).id;
   }

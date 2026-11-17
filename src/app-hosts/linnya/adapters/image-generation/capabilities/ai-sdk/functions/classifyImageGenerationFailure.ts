@@ -8,19 +8,24 @@ export interface ImageGenerationFailureProjection {
 }
 
 function isRetryableStatus(status: number | undefined): boolean {
-  return status === 408 || status === 409 || status === 429
-    || (status !== undefined && status >= 500);
+  return (
+    status === 408 || status === 409 || status === 429 || (status !== undefined && status >= 500)
+  );
 }
 
 export function classifyImageGenerationFailure(
   error: unknown,
-  signal: AbortSignal | undefined,
+  signal: AbortSignal | undefined
 ): ImageGenerationFailureProjection {
   if (signal?.aborted) {
     return { kind: 'aborted', code: 'request_aborted', retryable: false };
   }
   if (APICallError.isInstance(error)) {
     const status = error.statusCode;
+    // SDK 对 2xx 但结构错误的响应也包装 APICallError；这不是鉴权/网络失败。
+    if (status !== undefined && status >= 200 && status < 300) {
+      return { kind: 'protocol', code: 'provider_protocol_error', retryable: false };
+    }
     return {
       kind: 'provider',
       code: status === undefined ? 'provider_api_error' : `provider_http_${status}`,

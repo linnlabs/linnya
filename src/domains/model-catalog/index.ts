@@ -24,6 +24,10 @@ export type {
   TranscriptionRoute,
 } from './definitions/modelCatalog';
 export type { CustomApiGroup, CustomApiGroupMigration } from './definitions/customApiGroup';
+export type {
+  InferenceEndpointProfileId,
+  InferenceEndpointAuthProfile,
+} from './definitions/inferenceEndpointProfiles';
 export type { ModelReasoningResolver } from './definitions/modelReasoningResolver';
 export { ModelCatalogConflictError } from './definitions/modelCatalog';
 export type {

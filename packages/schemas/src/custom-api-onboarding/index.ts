@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export * from './capability-model';
 import {
   projectLanguageInferenceImageInputSupport,
   type LanguageInferenceImageInputSupport,
@@ -273,7 +274,7 @@ export function readCustomApiFormatRouteProfileId(
 
 /** 只有 Custom API 注册支持的 route profile 才能回投为用户侧格式。 */
 export function readCustomApiFormatForRouteProfileId(
-  profileId: LanguageInferenceRouteProfileId
+  profileId: string
 ): CustomApiFormat | undefined {
   return CUSTOM_API_FORMAT_DEFINITIONS.find(definition => definition.route_profile_id === profileId)
     ?.id;
