@@ -3,33 +3,40 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
   BaseButton,
   CustomCheckbox,
+  CustomSlider,
   SegmentedTabs,
   Switch,
   type SegmentedTabItem,
 } from '@linnya/renderer-ui';
 import { AddIcon, ChatIcon, FolderIcon, LibraryIcon } from '@linnya/renderer-ui/icons';
-import { COLOR_DIRECTION_VALUES } from '../prototypes/colorDirectionValues.ts';
+import {
+  accentTokens,
+  GREEN_CANDIDATES,
+  greenRamp,
+  INK_TOKENS,
+  NEUTRAL_MAX_CHROMA,
+  neutralTokens,
+  type GreenCandidate,
+  type PreviewTheme,
+} from '../prototypes/colorDirections.ts';
+import { TUNED_STATUS_TOKENS } from '../prototypes/colorDirectionValues.ts';
+import { css } from '../prototypes/colorMath.ts';
 import RunStatusIndicator from '../prototypes/RunStatusIndicator.vue';
 import StatusBadge from '../prototypes/StatusBadge.vue';
 import GalleryBlock from '../ui/GalleryBlock.vue';
 import GalleryRow from '../ui/GalleryRow.vue';
 
 /**
- * 颜色方向对比（计划阶段）：中性色、强调色、状态色三个维度分开切换，
- * 左边现状、右边所选组合，用真组件并排看。只覆盖浅色与深色；月白蓝有自己的蓝色强调色，不在本轮。
+ * 颜色方向对比（计划阶段）：中性色、强调色、状态色分开调，左边现状、右边组合，用真组件并排看。
+ * 只覆盖浅色与深色；月白蓝有自己的蓝色强调色，不在本轮。
  */
-type Theme = 'light' | 'dark';
-type TokenMap = Readonly<Record<string, string>>;
-
-const NEUTRAL_TABS: SegmentedTabItem[] = [
-  { id: 'current', label: '纯灰（现状）' },
-  { id: 'sage', label: '鼠尾草灰' },
-  { id: 'warm', label: '暖灰' },
+const NEUTRAL_HUE_TABS: SegmentedTabItem[] = [
+  { id: 'brand', label: '跟随强调色' },
+  { id: 'cool', label: '冷（蓝灰）' },
+  { id: 'warm', label: '暖（米灰）' },
 ];
-const ACCENT_TABS: SegmentedTabItem[] = [
-  { id: 'current', label: '现状绿' },
-  { id: 'forest', label: '深林绿' },
-  { id: 'jade', label: '玉绿' },
+const ACCENT_MODE_TABS: SegmentedTabItem[] = [
+  { id: 'green', label: '绿色' },
   { id: 'ink', label: '墨色操作' },
 ];
 const STATUS_TABS: SegmentedTabItem[] = [
@@ -37,18 +44,16 @@ const STATUS_TABS: SegmentedTabItem[] = [
   { id: 'tuned', label: '协调' },
 ];
 
-const NOTES: Readonly<Record<string, string>> = {
-  'neutral:sage': '灰阶明度不变，加一点点偏向绿色的彩度（OKLCH C≈0.005–0.012），和品牌绿同一家族。Radix 给绿色强调色配的就是这类灰。',
-  'neutral:warm': '同样只加极低彩度，色相偏米黄。Notion、Linear 新版都往这个方向走过；过暖会发脏，所以只加到能感觉、看不出颜色。',
-  'accent:forest': '不降彩度，改为降明度：更沉、更稳，不发灰。白字对比度 7.0:1。',
-  'accent:jade': '色相往青色偏 17°，彩度略降：更清、更冷静，少一点草地感。白字对比度 5.0:1。',
-  'accent:ink': '主按钮、勾选、焦点改用墨色，绿色只留给品牌标识和“成功”。界面里几乎不出现大面积绿色。',
-  'status:tuned': '四个状态色放到同一组明度与彩度上（现状是 Tailwind 默认值，红蓝很艳、黄色在白底上看不清），成功色和品牌绿分开。',
-};
-
-const neutral = ref('current');
-const accent = ref('current');
+const neutralHueMode = ref('brand');
+/** 色偏强度 0–100；0 即现状纯灰。 */
+const neutralAmount = ref(0);
+const accentMode = ref('green');
+const greenId = ref('current');
+const customL = ref(70);
+const customC = ref(90);
+const customH = ref(160);
 const status = ref('current');
+
 const agree = ref(true);
 const notify = ref(true);
 const tab = ref('docs');
@@ -58,17 +63,14 @@ const PANE_TABS: SegmentedTabItem[] = [
   { id: 'kb', label: '知识库' },
 ];
 
-const theme = ref<Theme>('light');
-let observer: MutationObserver | null = null;
-function readTheme() {
-  const value = document.documentElement.getAttribute('data-linnya-ui-theme');
-  theme.value = value === 'dark' ? 'dark' : 'light';
-}
+const theme = ref<PreviewTheme>('light');
 const isMoonBlue = ref(false);
+let observer: MutationObserver | null = null;
 onMounted(() => {
   const sync = () => {
-    readTheme();
-    isMoonBlue.value = document.documentElement.getAttribute('data-linnya-ui-theme') === 'moon-blue';
+    const value = document.documentElement.getAttribute('data-linnya-ui-theme');
+    theme.value = value === 'dark' ? 'dark' : 'light';
+    isMoonBlue.value = value === 'moon-blue';
   };
   sync();
   observer = new MutationObserver(sync);
@@ -76,33 +78,71 @@ onMounted(() => {
 });
 onBeforeUnmount(() => observer?.disconnect());
 
-function pick(group: Readonly<Record<string, Readonly<Record<Theme, TokenMap>>>>, id: string): TokenMap {
-  return id in group ? group[id][theme.value] : {};
+const customGreen = computed<GreenCandidate>(() => ({
+  id: 'custom',
+  label: '自定义',
+  l: customL.value / 100,
+  c: customC.value / 1000,
+  h: customH.value,
+}));
+
+const selectedGreen = computed<GreenCandidate>(() =>
+  greenId.value === 'custom' ? customGreen.value : GREEN_CANDIDATES.find(item => item.id === greenId.value) ?? GREEN_CANDIDATES[0]
+);
+
+function chooseGreen(candidate: GreenCandidate) {
+  greenId.value = candidate.id;
+  customL.value = Math.round(candidate.l * 100);
+  customC.value = Math.round(candidate.c * 1000);
+  customH.value = Math.round(candidate.h);
 }
+
+function editCustom() {
+  greenId.value = 'custom';
+}
+
+const neutralHue = computed(() => {
+  if (neutralHueMode.value === 'cool') return 250;
+  if (neutralHueMode.value === 'warm') return 75;
+  return selectedGreen.value.h;
+});
+
+const neutralChromaLabel = computed(() => (NEUTRAL_MAX_CHROMA * (neutralAmount.value / 100)).toFixed(4));
+
+/** 色板卡片：品牌色、浅色主按钮、浅底文字、深色强调。 */
+const swatches = computed(() =>
+  GREEN_CANDIDATES.map(candidate => {
+    const ramp = greenRamp(candidate);
+    return {
+      candidate,
+      brand: css(ramp.brand),
+      solid: css(ramp.solid),
+      text: css(ramp.text),
+      tint: css(ramp.tint),
+      darkAccent: css(ramp.darkAccent),
+      darkTint: css(ramp.darkTint),
+      darkText: css(ramp.darkText),
+      meta: `L${candidate.l.toFixed(2)} C${candidate.c.toFixed(3)} H${Math.round(candidate.h)}`,
+    };
+  })
+);
+
+const customRamp = computed(() => greenRamp(customGreen.value));
 
 /** 组合后的覆盖变量；派生量（悬停、焦点环、成功色）在根上已解析，这里必须显式给出。 */
 const candidateStyle = computed(() => {
   const tokens: Record<string, string> = {
-    ...pick(COLOR_DIRECTION_VALUES.neutral, neutral.value),
-    ...pick(COLOR_DIRECTION_VALUES.brand, accent.value),
-    ...pick(COLOR_DIRECTION_VALUES.status, status.value),
+    ...neutralTokens(theme.value, neutralHue.value, neutralAmount.value / 100),
+    ...(accentMode.value === 'ink' ? INK_TOKENS[theme.value] : accentTokens(theme.value, selectedGreen.value)),
+    ...(status.value === 'tuned' ? TUNED_STATUS_TOKENS[theme.value] : {}),
   };
   if (tokens['text-primary']) {
     const alpha = theme.value === 'dark' ? [10, 16] : [7, 12];
     tokens['bg-hover'] = `color-mix(in srgb, ${tokens['text-primary']} ${alpha[0]}%, transparent)`;
     tokens['bg-hover-strong'] = `color-mix(in srgb, ${tokens['text-primary']} ${alpha[1]}%, transparent)`;
   }
-  if (theme.value === 'light' && !tokens['bg-default']) {
-    tokens['bg-default'] = '#ffffff';
-  }
   return Object.fromEntries(Object.entries(tokens).map(([name, value]) => [`--color-${name}`, value]));
 });
-
-const activeNotes = computed(() =>
-  [`neutral:${neutral.value}`, `accent:${accent.value}`, `status:${status.value}`]
-    .map(key => NOTES[key])
-    .filter((note): note is string => Boolean(note))
-);
 
 const PANES = [
   { id: 'current', label: '现状' },
@@ -114,16 +154,46 @@ const PANES = [
   <div class="gallery-section">
     <GalleryBlock
       title="颜色方向（计划中）"
-      note="三个维度可以分开选，右侧即时组合。这些是研究用的候选值，不是产品 token。只覆盖浅色与深色。"
+      note="强调色、中性色、状态色分开调，右侧即时组合。色板卡片依次是：品牌色、浅色主按钮（白字 ≥4.5:1）、浅底文字、深色模式。研究用候选值，不是产品 token；只覆盖浅色与深色。"
     >
-      <GalleryRow label="中性色"><SegmentedTabs v-model="neutral" :tabs="NEUTRAL_TABS" /></GalleryRow>
-      <GalleryRow label="强调色"><SegmentedTabs v-model="accent" :tabs="ACCENT_TABS" /></GalleryRow>
-      <GalleryRow label="状态色"><SegmentedTabs v-model="status" :tabs="STATUS_TABS" /></GalleryRow>
-      <GalleryRow v-if="activeNotes.length > 0" label="说明" align="start">
-        <ul class="color-dir__notes">
-          <li v-for="note in activeNotes" :key="note">{{ note }}</li>
-        </ul>
+      <GalleryRow label="强调色"><SegmentedTabs v-model="accentMode" :tabs="ACCENT_MODE_TABS" /></GalleryRow>
+      <GalleryRow v-if="accentMode === 'green'" label="绿色色板" align="start">
+        <div class="color-dir__swatches">
+          <button
+            v-for="item in swatches"
+            :key="item.candidate.id"
+            type="button"
+            class="color-dir__swatch"
+            :class="{ 'is-selected': item.candidate.id === greenId }"
+            @click="chooseGreen(item.candidate)"
+          >
+            <span class="color-dir__chip color-dir__chip--brand" :style="{ backgroundColor: item.brand }" />
+            <span class="color-dir__chip-row">
+              <span class="color-dir__chip color-dir__chip--solid" :style="{ backgroundColor: item.solid }">新建</span>
+              <span class="color-dir__chip color-dir__chip--tint" :style="{ backgroundColor: item.tint, color: item.text }">默认</span>
+              <span class="color-dir__chip color-dir__chip--dark" :style="{ backgroundColor: item.darkTint, color: item.darkText }"><i :style="{ backgroundColor: item.darkAccent }" /></span>
+            </span>
+            <span class="color-dir__swatch-label">{{ item.candidate.label }}</span>
+            <span class="color-dir__swatch-meta">{{ item.meta }}</span>
+          </button>
+        </div>
       </GalleryRow>
+      <GalleryRow v-if="accentMode === 'green'" label="自定义（拖动即选用）" align="start">
+        <div class="color-dir__sliders">
+          <label class="color-dir__slider">明度 L {{ (customL / 100).toFixed(2) }}<CustomSlider v-model="customL" :min="55" :max="80" aria-label="明度" @update:model-value="editCustom" /></label>
+          <label class="color-dir__slider">彩度 C {{ (customC / 1000).toFixed(3) }}<CustomSlider v-model="customC" :min="30" :max="150" aria-label="彩度" @update:model-value="editCustom" /></label>
+          <label class="color-dir__slider">色相 H {{ customH }}<CustomSlider v-model="customH" :min="130" :max="200" aria-label="色相" @update:model-value="editCustom" /></label>
+          <span class="color-dir__custom-chip" :style="{ backgroundColor: css(customRamp.brand) }" />
+          <span class="color-dir__swatch-meta">主按钮白字 {{ customRamp.solidContrast.toFixed(1) }}:1</span>
+        </div>
+      </GalleryRow>
+      <GalleryRow label="中性色色偏" align="start">
+        <div class="color-dir__sliders">
+          <SegmentedTabs v-model="neutralHueMode" :tabs="NEUTRAL_HUE_TABS" />
+          <label class="color-dir__slider">强度 {{ neutralAmount }}%（最深处 C {{ neutralChromaLabel }}，近白处更少）<CustomSlider v-model="neutralAmount" :min="0" :max="100" aria-label="中性色色偏强度" /></label>
+        </div>
+      </GalleryRow>
+      <GalleryRow label="状态色"><SegmentedTabs v-model="status" :tabs="STATUS_TABS" /></GalleryRow>
       <p v-if="isMoonBlue" class="color-dir__moon">当前是月白蓝主题：本轮只比较浅色与深色，请切到这两个主题再看。</p>
 
       <div class="color-dir__panes">
@@ -176,16 +246,100 @@ const PANES = [
 </template>
 
 <style>
-.color-dir__notes {
+.color-dir__swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); /* scale-exempt: 色板卡片宽度 */
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.color-dir__swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  padding: var(--space-2);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  box-shadow: inset 0 0 0 var(--border-width-hairline) var(--color-border-light);
+  text-align: left;
+  cursor: pointer;
+}
+
+.color-dir__swatch:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.color-dir__swatch.is-selected {
+  box-shadow: inset 0 0 0 1.5px var(--color-text-primary) /* scale-exempt: 选中描边 */;
+}
+
+.color-dir__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-caption);
+}
+
+.color-dir__chip--brand {
+  height: 36px; /* scale-exempt: 色块尺寸 */
+}
+
+.color-dir__chip-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 24px; /* scale-exempt: 色块尺寸 */
+  gap: var(--space-1);
+}
+
+.color-dir__chip--solid,
+.color-dir__chip--tint,
+.color-dir__chip--dark {
+  height: 22px; /* scale-exempt: 色块尺寸 */
+}
+
+.color-dir__chip--solid {
+  color: var(--color-white);
+}
+
+.color-dir__chip--dark i {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.color-dir__swatch-label {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-footnote);
+}
+
+.color-dir__swatch-meta {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.color-dir__sliders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.color-dir__slider {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  max-width: 640px; /* scale-exempt: 说明文字行宽 */
-  margin: 0;
-  padding-left: var(--space-4);
+  min-width: 180px; /* scale-exempt: 滑杆宽度 */
   color: var(--color-text-secondary);
-  font-size: var(--font-size-footnote);
-  line-height: var(--line-height-footnote);
+  font-size: var(--font-size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.color-dir__custom-chip {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
 }
 
 .color-dir__moon {
