@@ -26,7 +26,7 @@ pnpm -s ui-gallery
 | --- | --- |
 | `section` | 分区，如 `buttons`、`form-example`；默认 `foundations` |
 | `theme` | `light`（默认）、`dark`、`moon-blue` |
-| `scheme` | 候选方案 id；默认 `current`，即仓库当前 token |
+| `scheme` | 候选方案 id；默认 `current`（仓库当前 token），启动时可用 `--default-scheme` 改默认 |
 | `view=compare` | 并排对比：`schemes` 与 `themes` 用逗号列出参与对比的方案与主题，每格是一个嵌入的画廊 |
 | `open` | 对话框分区直接打开 `dialog`、`confirm`、`danger-confirm` 或 `image-preview`，便于截图 |
 
@@ -44,6 +44,7 @@ pnpm -s ui-gallery --schemes <方案目录>
 - 文件第一段注释的第一行是方案名称，显示在方案选择器和对比标题里。
 - 选择器写成 `:root[data-linnya-ui-theme='light']` 这类带 `:root` 的形式，优先级高于包里的 `[data-linnya-ui-theme='light']`；方案样式也总被移到 `<head>` 末尾，同优先级时同样生效。
 - 方案文件增删改时页面自动刷新。
+- 已经选定、要通看全部界面的方案，可以用 `--default-scheme <id>` 设为打开时的默认方案；要看现状时在方案选择器里选“现状”，地址里会写成 `scheme=current`。
 
 ```css
 /* 暖纸中性色

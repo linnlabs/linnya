@@ -4,7 +4,7 @@
  * 用真实的 `@linnya/renderer-ui` 组件和 Host 基础样式渲染组件目录与组合示例，
  * 供视觉审阅、改 token 前后对比和三套主题检查。只绑定 127.0.0.1。
  *
- * 用法：pnpm -s ui-gallery [--port 5180] [--strict-port] [--schemes <目录>]
+ * 用法：pnpm -s ui-gallery [--port 5180] [--strict-port] [--schemes <目录>] [--default-scheme <方案>]
  * 候选方案目录也可用环境变量 LINNYA_UI_GALLERY_SCHEMES_DIR 指定。
  */
 import { stat } from 'node:fs/promises';
@@ -27,6 +27,7 @@ const { values } = parseArgs({
     port: { type: 'string' },
     'strict-port': { type: 'boolean', default: false },
     schemes: { type: 'string' },
+    'default-scheme': { type: 'string' },
   },
 });
 
@@ -54,7 +55,7 @@ const schemesDirectory = await resolveSchemesDirectory();
 const server = await createServer({
   configFile: false,
   root: path.join(featureRoot, 'page'),
-  plugins: [vue(), createGallerySchemesPlugin(schemesDirectory)],
+  plugins: [vue(), createGallerySchemesPlugin(schemesDirectory, values['default-scheme'])],
   resolve: {
     alias: projectRendererViteAliases(RENDERER_MODULE_RESOLUTION_CATALOG, repositoryRoot, 'vite'),
     dedupe: ['vue'],

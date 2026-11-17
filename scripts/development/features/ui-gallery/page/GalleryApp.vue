@@ -14,7 +14,7 @@ import {
   isRendererUiTheme,
   type RendererUiTheme,
 } from '@linnya/renderer-ui/theme';
-import { gallerySchemes } from 'virtual:linnya-ui-gallery-schemes';
+import { defaultGallerySchemeId, gallerySchemes } from 'virtual:linnya-ui-gallery-schemes';
 import { CURRENT_GALLERY_SCHEME_ID } from '../definitions/galleryScheme.ts';
 import { GALLERY_SECTIONS, type GallerySectionId } from './definitions/gallerySections.ts';
 import {
@@ -76,7 +76,7 @@ const themeTabs: SegmentedTabItem[] = BUILT_IN_RENDERER_UI_THEMES.map(theme => (
   label: THEME_LABELS[theme],
 }));
 
-const location = ref<GalleryLocation>(parseGalleryLocation(window.location.search, schemeIds));
+const location = ref<GalleryLocation>(parseGalleryLocation(window.location.search, schemeIds, defaultGallerySchemeId));
 const embedRoot = ref<HTMLElement | null>(null);
 
 const activeSection = computed(
@@ -88,7 +88,7 @@ const activeComponent = computed(() =>
 
 function update(patch: Partial<GalleryLocation>, mode: 'push' | 'replace' = 'replace') {
   location.value = { ...location.value, ...patch };
-  const url = `${window.location.pathname}${serializeGalleryLocation(location.value)}`;
+  const url = `${window.location.pathname}${serializeGalleryLocation(location.value, defaultGallerySchemeId)}`;
   if (mode === 'push') window.history.pushState(null, '', url);
   else window.history.replaceState(null, '', url);
 }
@@ -112,7 +112,7 @@ watch(
 );
 
 function restoreFromHistory() {
-  location.value = parseGalleryLocation(window.location.search, schemeIds);
+  location.value = parseGalleryLocation(window.location.search, schemeIds, defaultGallerySchemeId);
 }
 
 let stopReportingHeight: (() => void) | null = null;

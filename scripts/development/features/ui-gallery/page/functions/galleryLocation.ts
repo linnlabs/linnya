@@ -43,10 +43,11 @@ function readList(params: URLSearchParams, key: string): string[] {
     .filter(item => item.length > 0);
 }
 
-/** URL 来自地址栏，认不出的值按默认画面处理。 */
+/** URL 来自地址栏，认不出的值按默认画面处理；地址里没写方案时用启动时指定的默认方案。 */
 export function parseGalleryLocation(
   search: string,
-  schemeIds: readonly string[]
+  schemeIds: readonly string[],
+  defaultScheme: string = CURRENT_GALLERY_SCHEME_ID
 ): GalleryLocation {
   const params = new URLSearchParams(search);
   const knownSchemes = [CURRENT_GALLERY_SCHEME_ID, ...schemeIds];
@@ -59,7 +60,9 @@ export function parseGalleryLocation(
   return {
     section: isGallerySectionId(section) ? section : DEFAULT_GALLERY_SECTION_ID,
     theme: isRendererUiTheme(theme) ? theme : DEFAULT_RENDERER_UI_THEME,
-    scheme: knownSchemes.includes(scheme) ? scheme : CURRENT_GALLERY_SCHEME_ID,
+    scheme: knownSchemes.includes(scheme)
+      ? scheme
+      : knownSchemes.includes(defaultScheme) ? defaultScheme : CURRENT_GALLERY_SCHEME_ID,
     embed: params.get('embed') === '1',
     compare: params.get('view') === 'compare',
     compareSchemes: compareSchemes.length > 0 ? compareSchemes : knownSchemes,
@@ -69,11 +72,14 @@ export function parseGalleryLocation(
 }
 
 /** 只写出与默认值不同的参数，地址保持短。 */
-export function serializeGalleryLocation(location: GalleryLocation): string {
+export function serializeGalleryLocation(
+  location: GalleryLocation,
+  defaultScheme: string = CURRENT_GALLERY_SCHEME_ID
+): string {
   const params = new URLSearchParams();
   if (location.section !== DEFAULT_GALLERY_SECTION_ID) params.set('section', location.section);
   if (location.theme !== DEFAULT_RENDERER_UI_THEME) params.set('theme', location.theme);
-  if (location.scheme !== CURRENT_GALLERY_SCHEME_ID) params.set('scheme', location.scheme);
+  if (location.scheme !== defaultScheme) params.set('scheme', location.scheme);
   if (location.embed) params.set('embed', '1');
   if (location.compare) {
     params.set('view', 'compare');
@@ -85,7 +91,7 @@ export function serializeGalleryLocation(location: GalleryLocation): string {
   return query.length > 0 ? `?${query}` : '';
 }
 
-/** 对比网格里一格的地址：固定主题与方案、只渲染分区。 */
+/** 对比网格里一格的地址：固定主题与方案、只渲染分区；方案总是写明，不依赖默认方案。 */
 export function createEmbeddedGallerySearch(
   section: GallerySectionId,
   theme: RendererUiTheme,
@@ -100,5 +106,5 @@ export function createEmbeddedGallerySearch(
     compareSchemes: [],
     compareThemes: [],
     open: null,
-  });
+  }, '');
 }

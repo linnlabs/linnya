@@ -2,6 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Plugin } from 'vite';
 import {
+  CURRENT_GALLERY_SCHEME_ID,
   GALLERY_SCHEMES_VIRTUAL_MODULE_ID,
   type GalleryScheme,
 } from '../definitions/galleryScheme.ts';
@@ -28,7 +29,10 @@ export async function readGallerySchemes(directory: string | null): Promise<Gall
  * 把方案目录投影成虚拟模块 `virtual:linnya-ui-gallery-schemes`。
  * 方案文件增删改时整页刷新，对比视图里的每个 iframe 也随之重新加载。
  */
-export function createGallerySchemesPlugin(directory: string | null): Plugin {
+export function createGallerySchemesPlugin(
+  directory: string | null,
+  defaultSchemeId: string = CURRENT_GALLERY_SCHEME_ID
+): Plugin {
   return {
     name: 'linnya-ui-gallery-schemes',
     resolveId(id) {
@@ -37,7 +41,13 @@ export function createGallerySchemesPlugin(directory: string | null): Plugin {
     async load(id) {
       if (id !== RESOLVED_VIRTUAL_MODULE_ID) return undefined;
       const schemes = await readGallerySchemes(directory);
-      return `export const gallerySchemes = ${JSON.stringify(schemes)};`;
+      if (defaultSchemeId !== CURRENT_GALLERY_SCHEME_ID && !schemes.some(scheme => scheme.id === defaultSchemeId)) {
+        throw new Error(`--default-scheme 指定的方案不在方案目录里：${defaultSchemeId}`);
+      }
+      return [
+        `export const gallerySchemes = ${JSON.stringify(schemes)};`,
+        `export const defaultGallerySchemeId = ${JSON.stringify(defaultSchemeId)};`,
+      ].join('\n');
     },
     configureServer(server) {
       if (directory === null) return;
