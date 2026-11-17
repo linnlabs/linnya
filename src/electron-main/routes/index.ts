@@ -6,7 +6,10 @@ import { readSourceCheckoutIdentity } from 'src/shared/runtime-paths/functions/r
 import { realpathSync } from 'node:fs';
 import { skillManagement } from 'src/features/skills';
 import { createSkillManagementRouter } from 'src/features/skills/skillManagement.router';
-import { bindMarkdownDocumentImageOwnership, readDocumentImageAsset } from 'src/app-hosts/linnya/application/markdown-image-assets';
+import {
+  bindMarkdownDocumentImageOwnership,
+  readDocumentImageAsset,
+} from 'src/app-hosts/linnya/application/markdown-image-assets';
 import type { CommandApprovalControlEndpointPort } from 'src/domains/commands';
 import { createProviderModelDiscovery } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
 import { createProviderModelDiscoveryUseCase } from 'src/app-hosts/linnya/application/provider-model-discovery';
@@ -208,7 +211,10 @@ import {
 import { CONVERSATION_CONTROL_BRIDGE_PATH } from '@app/schemas';
 import type { ConversationControlUseCase } from 'src/app-hosts/linnya/application/conversation-control';
 import { createProjectLifecycle } from 'src/domains/projects';
-import { createProjectDeletionUseCase, type ProjectDeletionUseCasePort } from 'src/app-hosts/linnya/application/project-deletion';
+import {
+  createProjectDeletionUseCase,
+  type ProjectDeletionUseCasePort,
+} from 'src/app-hosts/linnya/application/project-deletion';
 import { createSqliteProjectDeletionCatalog } from 'src/app-hosts/linnya/adapters/persistence/project-deletion';
 import {
   selectRunRecoveryRetention,
@@ -329,7 +335,9 @@ export async function configureRoutes(
 
   // 健康检查路由
   app.use('/api/v1', (_request, _response, next) => withActionActor({ kind: 'user' }, next));
-  app.use(CONVERSATION_CONTROL_BRIDGE_PATH, (_request, _response, next) => withActionActor({ kind: 'external' }, next));
+  app.use(CONVERSATION_CONTROL_BRIDGE_PATH, (_request, _response, next) =>
+    withActionActor({ kind: 'external' }, next)
+  );
   app.use('/health', createHealthRouter(getServiceStatus));
   logger.info('✅ 健康检查路由已挂载: /health');
 
@@ -575,7 +583,9 @@ export async function configureRoutes(
       maxImagePixels: LINNYA_FLOW_IMAGE_INGRESS_POLICY.maxImagePixels,
     });
     imagePreview = createWorkspaceImagePreview({ verifiedImageLoader });
-    documentImagePreview = { readImage: assetId => readDocumentImageAsset({ db, loader: verifiedImageLoader, assetId }) };
+    documentImagePreview = {
+      readImage: assetId => readDocumentImageAsset({ db, loader: verifiedImageLoader, assetId }),
+    };
     const llmInputMaterializer = createWorkspaceLlmInputMaterializer({
       profileRegistry: defaultImageInputProcessingProfileRegistry,
       workspaceResolver: createWorkspaceLlmImageResolver({
@@ -720,8 +730,8 @@ export async function configureRoutes(
         conversationWorkDirectoryAdmission: conversationLifecycle.workDirectoryAdmission,
       })
     );
-    const physicalFileReader = dependencies.agentToolEnvironment?.physicalFileReader
-      ?? createNodePhysicalFileReader();
+    const physicalFileReader =
+      dependencies.agentToolEnvironment?.physicalFileReader ?? createNodePhysicalFileReader();
     const executionRuntime = await dependencies.conversationExecutionRuntimeFactory.create({
       db,
       conversationAdmission: conversationLifecycle.workDirectoryAdmission,
@@ -760,7 +770,8 @@ export async function configureRoutes(
     });
     const registeredChildRunInvoker = createRegisteredChildRunInvoker({
       runtime: agentRuntime,
-      releaseReferenceReads: (conversationId, runId) => clearDocumentReferenceMarkdownReader(db, JSON.stringify([conversationId, runId])),
+      releaseReferenceReads: (conversationId, runId) =>
+        clearDocumentReferenceMarkdownReader(db, JSON.stringify([conversationId, runId])),
       telemetryPort,
       commandRuntime: commandAgentRuntimes.child,
       childRunInvoker: dependencies.agentToolEnvironment
@@ -823,10 +834,12 @@ export async function configureRoutes(
       stopFlowAndWait: conversationId =>
         initializedFlowOrchestrator.stopConversationActivityAndWait(conversationId),
     });
-    dependencies.projectDeletionRegistration.register(createProjectDeletionUseCase({
-      catalog: createSqliteProjectDeletionCatalog(db, createProjectLifecycle(db)),
-      conversations: conversationCleanup,
-    }));
+    dependencies.projectDeletionRegistration.register(
+      createProjectDeletionUseCase({
+        catalog: createSqliteProjectDeletionCatalog(db, createProjectLifecycle(db)),
+        conversations: conversationCleanup,
+      })
+    );
     storageSpaceUseCase = createStorageSpaceUseCase({
       inventory: createLocalManagedStorageInventoryPort({
         appDataRoot,
@@ -872,11 +885,13 @@ export async function configureRoutes(
       conversationCleanup,
       conversationCleanup,
       createConversationContextUsageReader({
-        readMetadata: conversationId => conversationEventStore.getConversationMetadata(conversationId),
-        readHistory: async conversationId => (await historyRepository.readForegroundFrom(conversationId)).events,
+        readMetadata: conversationId =>
+          conversationEventStore.getConversationMetadata(conversationId),
+        readHistory: async conversationId =>
+          (await historyRepository.readForegroundFrom(conversationId)).events,
         toolRuntime: dependencies.agentToolEnvironment?.toolRuntime ?? defaultToolRuntimePort,
         toolManager: dependencies.agentToolEnvironment?.toolManager,
-      }),
+      })
     );
     historyService = initializedHistoryService;
     conversationControlUseCase = createLinnyaConversationControlUseCase({
@@ -969,15 +984,22 @@ export async function configureRoutes(
         }),
         conversationImagePreview: createWorkspaceImagePreviewRouter({ imagePreview }),
         workspaceImagePreview: createWorkspaceImagePreviewRouter({ imagePreview }),
-        documentImagePreview: createWorkspaceImagePreviewRouter({ imagePreview: documentImagePreview }),
-        clientNotices: createConversationClientNoticeRouter(createSqliteClientNoticeAdmission({
-          db,
-          project: fact => new SqliteUiProjectionApplier(db).projectClientNotice(fact),
-        })),
+        documentImagePreview: createWorkspaceImagePreviewRouter({
+          imagePreview: documentImagePreview,
+        }),
+        clientNotices: createConversationClientNoticeRouter(
+          createSqliteClientNoticeAdmission({
+            db,
+            project: fact => new SqliteUiProjectionApplier(db).projectClientNotice(fact),
+          })
+        ),
         history: createHistoryRouter(historyService),
         flow: createConversationFlowRouter(flowOrchestrator),
         storageSpace: createStorageSpaceRouter(storageSpaceUseCase),
-        projectConversations: createProjectConversationsRouter({ db, measurer: projectConversationMeasurer }),
+        projectConversations: createProjectConversationsRouter({
+          db,
+          measurer: projectConversationMeasurer,
+        }),
       }),
       registerCommandOwner: lifecycle =>
         dependencies.commandOwnerLifecycleRegistration.register(lifecycle),
@@ -1005,9 +1027,11 @@ export async function configureRoutes(
         appVersion: dependencies.backendBootstrap.applicationVersion,
         auditControl,
         // 真正运行的源码由 Backend bundle 所在 checkout 决定；测试的数据根可独立隔离。
-        sourceCheckout: dependencies.backendBootstrap.packaged ? null : readSourceCheckoutIdentity(
-          path.resolve(realpathSync(dependencies.backendBootstrap.mainBundleDirectory), '../..'),
-        ),
+        sourceCheckout: dependencies.backendBootstrap.packaged
+          ? null
+          : readSourceCheckoutIdentity(
+              path.resolve(realpathSync(dependencies.backendBootstrap.mainBundleDirectory), '../..')
+            ),
         diagnostics: {
           error: (message, context) => logger.error(message, context),
         },

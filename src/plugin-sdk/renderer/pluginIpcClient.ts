@@ -8,16 +8,12 @@ import { isObjectLike } from '@linnya/foundation';
 import type { OperationResult } from './workspaceRuntime';
 import type { RendererPluginIpcResult } from '@linnya/plugin-host-contract/renderer/pluginIpcClient';
 
-export type {
-  OperationResult,
-} from '@linnya/plugin-host-contract/renderer/workspaceRuntime';
+export type { OperationResult } from '@linnya/plugin-host-contract/renderer/workspaceRuntime';
 export type { RendererPluginIpcResult } from '@linnya/plugin-host-contract/renderer/pluginIpcClient';
 
 interface PluginInvokeElectronApi {
   'plugin:invoke': (pluginId: string, channel: string, payload: unknown) => Promise<unknown>;
 }
-
-
 
 function isOperationResult(value: unknown): value is OperationResult<unknown> {
   if (!isObjectLike(value)) return false;
@@ -38,7 +34,7 @@ function getPluginInvokeApi(): PluginInvokeElectronApi {
 export function invokeRendererPluginIpc<T>(
   pluginId: string,
   channel: string,
-  payload: unknown,
+  payload: unknown
 ): Promise<RendererPluginIpcResult<T>>;
 export async function invokeRendererPluginIpc(
   pluginId: string,

@@ -153,10 +153,7 @@ export class AudioProcessingQueue extends EventEmitter {
     }
   }
 
-  private handleWorkerMessage(
-    owned: OwnedAudioWorker,
-    message: AudioProcessingWorkerOutput,
-  ): void {
+  private handleWorkerMessage(owned: OwnedAudioWorker, message: AudioProcessingWorkerOutput): void {
     switch (message.type) {
       case 'started':
         logger.debug(`音频处理任务已启动: ${owned.id}`);
@@ -193,7 +190,7 @@ export class AudioProcessingQueue extends EventEmitter {
 
   private requestTermination(
     owned: OwnedAudioWorker,
-    kind: OwnedAudioWorker['terminationKind'],
+    kind: OwnedAudioWorker['terminationKind']
   ): void {
     if (owned.terminationKind !== 'none') return;
     owned.terminationKind = kind;
@@ -215,13 +212,15 @@ export class AudioProcessingQueue extends EventEmitter {
     this.pendingLaunches.clear();
 
     const activeWorkers = [...this.activeWorkers];
-    await Promise.all(activeWorkers.map(async owned => {
-      owned.terminationKind = 'shutdown';
-      if (!owned.completed && !owned.failurePublished) {
-        owned.emitter.emit('error', cancellationError);
-      }
-      await owned.worker.terminate();
-    }));
+    await Promise.all(
+      activeWorkers.map(async owned => {
+        owned.terminationKind = 'shutdown';
+        if (!owned.completed && !owned.failurePublished) {
+          owned.emitter.emit('error', cancellationError);
+        }
+        await owned.worker.terminate();
+      })
+    );
 
     this.activeWorkers.clear();
     this.workerScript = null;

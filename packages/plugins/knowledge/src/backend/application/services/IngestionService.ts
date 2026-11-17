@@ -2,7 +2,7 @@
  * @file src/knowledge-base/application/services/IngestionService.ts
  *
  * @brief 文档摄入服务 - 负责文档添加和摄入流程管理
- * 
+ *
  * @description
  * 功能 (What): 处理文档的添加操作，启动摄入状态机，管理摄入流程
  * 输入 (Input): 文档文件信息、知识库ID、模型配置等
@@ -51,7 +51,7 @@ export class IngestionService {
 
   /**
    * **功能 (What):** 向知识库添加文档并启动处理流程。
-   * 
+   *
    * **输入 (Input / @param):**
    * @param kbId - (string) 知识库的ID。
    * @param filePath - (string) 文档的本地文件路径。
@@ -65,7 +65,7 @@ export class IngestionService {
    * @param graphExtractionModelId - (string, optional) 新上传文档的图谱抽取模型快照。
    *
    * **输出 (Output / @returns):** `Promise<{ taskId: string; document: Document; }>` - 返回任务ID和文档对象，所有状态更新通过状态机统一处理。
-   * 
+   *
    * **副作用 (Side-effects):**
    * 1. 检查知识库是否存在。
    * 2. 在元数据仓储中创建新的文档记录（状态为PENDING）。
@@ -73,40 +73,37 @@ export class IngestionService {
    * 4. 状态更新通过状态机的监听器机制自动推送到前端。
    */
   async addDocument(
-    kbId: string, 
-    filePath: string, 
-    fileName: string, 
-    fileSize: number, 
+    kbId: string,
+    filePath: string,
+    fileName: string,
+    fileSize: number,
     embeddingModelId: string,
     pdfOcrModelId?: string,
     imageVisionModelId?: string,
     rerankModelId?: string,
     forceVisionMode?: boolean,
     graphExtractionModelId?: string
-  ): Promise<{ taskId: string; document: Document; }> {
-    logger.info(`向知识库 ${kbId} 添加文档: ${fileName} (${fileSize} bytes)${forceVisionMode ? ' [强制视觉模式]' : ''}`);
-    
+  ): Promise<{ taskId: string; document: Document }> {
+    logger.info(
+      `向知识库 ${kbId} 添加文档: ${fileName} (${fileSize} bytes)${forceVisionMode ? ' [强制视觉模式]' : ''}`
+    );
+
     try {
       // 检查知识库是否存在
       const kb = await this.metadataRepository.getKnowledgeBaseById(kbId);
       if (!kb) {
         throw new Error(`知识库 ${kbId} 不存在`);
       }
-      
+
       // 生成文档ID和任务ID
       const docId = generateTaskId(); // 临时使用taskId作为docId，后续可以改为基于文件内容的确定性ID
       const taskId = generateTaskId();
-      
+
       // 🔥 重构修复：移除重复文件检测，改为在状态机中统一处理
       // 重复文件检测现在由PendingHandler负责，确保所有状态变化都通过状态机
 
       // 创建新文档记录（始终创建，重复检测由状态机处理）
-      const document = createDocument(
-        docId,
-        kbId,
-        fileName,
-        fileSize
-      );
+      const document = createDocument(docId, kbId, fileName, fileSize);
 
       const shouldPersistOriginalPdf = path.extname(fileName).toLowerCase() === '.pdf';
       if (shouldPersistOriginalPdf) {
@@ -146,7 +143,6 @@ export class IngestionService {
 
       logger.info(`文档添加完成，任务ID: ${taskId}`);
       return { taskId, document };
-      
     } catch (error) {
       logger.error(`添加文档失败: ${error}`);
       throw error;
@@ -155,7 +151,7 @@ export class IngestionService {
 
   /**
    * **功能 (What):** 在后台异步处理文档的摄入流程，包括解析、嵌入和存储。
-   * 
+   *
    * **输入 (Input / @param):**
    * @param filePath - (string) 文档的本地文件路径。
    * @param docId - (string) 文档的唯一ID。
@@ -170,7 +166,7 @@ export class IngestionService {
    * @param graphExtractionModelId - (string, optional) 新上传文档的图谱抽取模型快照。
    *
    * **输出 (Output / @returns):** `Promise<void>`
-   * 
+   *
    * **副作用 (Side-effects):**
    * 1. 使用状态机管理器处理文档摄入流程。
    * 2. 在处理开始、成功或失败时，更新元数据仓储中文档的状态。
@@ -190,7 +186,7 @@ export class IngestionService {
     graphExtractionModelId?: string
   ): Promise<void> {
     logger.info(`🚀 开始后台处理文档: ${originalFileName} (docId: ${docId}, taskId: ${taskId})`);
-    
+
     // 将任务推入队列管理器
     try {
       const queueManager = this.deps.queues;
@@ -212,10 +208,9 @@ export class IngestionService {
         retry: true,
         forceVisionMode: forceVisionMode ?? false, // 🔥 新增：传递强制视觉模式参数，确保非undefined
       };
-      
+
       await queueManager.addIngestionTask(jobPayload);
       logger.info(`📋 文档摄入任务已添加到队列(Worker模式): ${taskId}`);
-      
     } catch (queueError) {
       const message = `无法启动知识库摄入任务：${queueError instanceof Error ? queueError.message : String(queueError)}`;
       logger.error(message, queueError);

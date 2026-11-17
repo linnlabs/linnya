@@ -12,7 +12,9 @@ export interface BackendPluginRendererContext {
   readonly signal: AbortSignal;
 }
 
-export declare function readBackendPluginRendererContext(event: unknown): BackendPluginRendererContext | undefined;
+export declare function readBackendPluginRendererContext(
+  event: unknown
+): BackendPluginRendererContext | undefined;
 
 /** 仅固定上传路由能创建；普通 JSON IPC 不能授予本机文件访问。 */
 export interface BackendPluginUploadContext {

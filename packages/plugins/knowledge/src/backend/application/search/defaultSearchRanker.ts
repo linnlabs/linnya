@@ -47,7 +47,10 @@ export class DefaultSearchRanker implements SearchRanker {
   /**
    * 对融合的搜索结果应用智能排序（使用核心 ranking 算法）
    */
-  async applyIntelligentLayeredSorting(results: RankedRetrievedPoint[], query: string): Promise<RankedRetrievedPoint[]> {
+  async applyIntelligentLayeredSorting(
+    results: RankedRetrievedPoint[],
+    query: string
+  ): Promise<RankedRetrievedPoint[]> {
     const rankingResults = results.map(toRankingRecord);
     const sorted = applyIntelligentLayeredSorting(rankingResults, query);
     return sorted.map(toRankedRetrievedPoint);

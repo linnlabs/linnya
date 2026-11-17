@@ -198,7 +198,11 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
     return rows;
   }
 
-  async listEdgesByEvidence(kbId: string, docId: string, blockIds: string[]): Promise<KnowledgeGraphEdgeRecord[]> {
+  async listEdgesByEvidence(
+    kbId: string,
+    docId: string,
+    blockIds: string[]
+  ): Promise<KnowledgeGraphEdgeRecord[]> {
     if (!Array.isArray(blockIds) || blockIds.length === 0) return [];
 
     const db = this.getDb();
@@ -279,7 +283,9 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
         ? `LIMIT ${Math.floor(limit)}`
         : '';
 
-    const stmt = db.prepare(selectSql.replace('__WHERE__', whereClause).replace('__LIMIT__', limitClause));
+    const stmt = db.prepare(
+      selectSql.replace('__WHERE__', whereClause).replace('__LIMIT__', limitClause)
+    );
     const rows = stmt.all(...params) as KnowledgeGraphEdgeRecord[];
     return rows;
   }
@@ -352,7 +358,10 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
     stmt.run(input.kbId, input.docId, input.chunkCount, input.doneChunks, input.status, nowSeconds);
   }
 
-  async getDocStatus(kbId: string, docId: string): Promise<KnowledgeGraphDocStatusRecord | undefined> {
+  async getDocStatus(
+    kbId: string,
+    docId: string
+  ): Promise<KnowledgeGraphDocStatusRecord | undefined> {
     const db = this.getDb();
     const stmt = db.prepare(`
       SELECT
@@ -403,7 +412,8 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
       WHERE knowledge_graph_doc_status.status != 'running'
     `);
 
-    const safeDoneChunks = Number.isFinite(initialDoneChunks) && initialDoneChunks > 0 ? initialDoneChunks : 0;
+    const safeDoneChunks =
+      Number.isFinite(initialDoneChunks) && initialDoneChunks > 0 ? initialDoneChunks : 0;
     const result = stmt.run(kbId, docId, chunkCount, safeDoneChunks, 'running', nowSeconds);
     return result.changes > 0;
   }
@@ -510,11 +520,13 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
       updatedAtSeconds: number | null;
     };
 
-    const extractTotalUnits = typeof row?.extractTotalUnits === 'number' ? row.extractTotalUnits : 0;
+    const extractTotalUnits =
+      typeof row?.extractTotalUnits === 'number' ? row.extractTotalUnits : 0;
     const extractDoneUnits = typeof row?.extractDoneUnits === 'number' ? row.extractDoneUnits : 0;
     const indexTotalUnits = typeof row?.indexTotalUnits === 'number' ? row.indexTotalUnits : 0;
     const indexDoneUnits = typeof row?.indexDoneUnits === 'number' ? row.indexDoneUnits : 0;
-    const updatedAtSeconds = typeof row?.updatedAtSeconds === 'number' ? row.updatedAtSeconds : null;
+    const updatedAtSeconds =
+      typeof row?.updatedAtSeconds === 'number' ? row.updatedAtSeconds : null;
 
     const totalUnits = extractTotalUnits + indexTotalUnits;
     const doneUnits = extractDoneUnits + indexDoneUnits;
@@ -753,11 +765,15 @@ export class BetterSqliteKnowledgeGraphRepository implements KnowledgeGraphRepos
       const deletedDocStatus = deleteDocStatusStmt.run(kbId).changes;
       const deletedVectorDocStatus = deleteVectorDocStatusStmt.run(kbId).changes;
       const deletedIndexStatus = deleteIndexStatusStmt.run(kbId).changes;
-      return { deletedNodes, deletedEdges, deletedDocStatus, deletedVectorDocStatus, deletedIndexStatus };
+      return {
+        deletedNodes,
+        deletedEdges,
+        deletedDocStatus,
+        deletedVectorDocStatus,
+        deletedIndexStatus,
+      };
     });
 
     return tx();
   }
 }
-
-

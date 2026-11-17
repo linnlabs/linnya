@@ -24,7 +24,10 @@ import {
 // 导入Qdrant管理器
 import { QdrantRuntimeUnavailableError } from '../../../../infra/adapters/vector-store/qdrant/errors';
 import { QdrantManager } from '../../../../electron-main/services/qdrantManager';
-import { createOnDemandQdrantRuntime, type OnDemandQdrantRuntime } from '../../../../infra/adapters/vector-store/qdrant/process-runtime/orchestration/createOnDemandQdrantRuntime';
+import {
+  createOnDemandQdrantRuntime,
+  type OnDemandQdrantRuntime,
+} from '../../../../infra/adapters/vector-store/qdrant/process-runtime/orchestration/createOnDemandQdrantRuntime';
 
 // 导入新的模块化组件
 import { ApiServer } from '../../../../electron-main/services/apiServer';
@@ -120,14 +123,14 @@ export class BackendRuntimeOwner {
     queueWorkerRuntime: QueueWorkerRuntime,
     runtimePathRoots: RuntimePathRoots,
     applicationVersion: string,
-    databaseStartupProgress?: DatabaseStartupProgressPort,
+    databaseStartupProgress?: DatabaseStartupProgressPort
   ) {
     this.apiServer = new ApiServer();
     this.serviceInitializer = new ServiceInitializer(
       queueWorkerRuntime,
       runtimePathRoots,
       applicationVersion,
-      databaseStartupProgress,
+      databaseStartupProgress
     );
     this.setupApiServer();
   }
@@ -151,7 +154,7 @@ export class BackendRuntimeOwner {
     if (this.commandAppOwnerEnded || this.sandboxAppOwnerEnded) {
       throw new Error('当前 Linnya 进程的 App 运行时已经结束，请重新启动 Linnya');
     }
-    if (!this.isRunning && (this.vectorRuntime || this.qdrantManager || this.services)) {
+    if (!this.isRunning && (this.disposeVectorFactory || this.vectorRuntime || this.qdrantManager || this.services)) {
       throw new Error('上一次后端生命周期尚未收口，请重新停止服务后再启动');
     }
     console.log(
@@ -217,10 +220,14 @@ export class BackendRuntimeOwner {
    * 收口本身失败时保留 manager，交给正式停止流程再试一次。
    */
   private async startVectorStore(config: AppServerBackendConfiguration): Promise<string> {
-    const qdrantManager = new QdrantManager({
-      host: config.qdrant.host,
-      port: config.qdrant.port,
-    }, this.qdrantProcessRuntime, this.launchOwnedPipeProcess);
+    const qdrantManager = new QdrantManager(
+      {
+        host: config.qdrant.host,
+        port: config.qdrant.port,
+      },
+      this.qdrantProcessRuntime,
+      this.launchOwnedPipeProcess
+    );
     this.qdrantManager = qdrantManager;
     try {
       await qdrantManager.start();
@@ -234,7 +241,9 @@ export class BackendRuntimeOwner {
       } catch (stopError: unknown) {
         console.error('[Backend Service] ❌ 收口未启动成功的 Qdrant 时出错:', stopError);
       }
-      throw new QdrantRuntimeUnavailableError(describeStartupCapabilityFailure('向量库没有启动成功', error));
+      throw new QdrantRuntimeUnavailableError(
+        describeStartupCapabilityFailure('向量库没有启动成功', error)
+      );
     }
   }
 
@@ -255,6 +264,7 @@ export class BackendRuntimeOwner {
     if (
       !this.isRunning &&
       !this.services &&
+      !this.disposeVectorFactory &&
       !this.vectorRuntime &&
       !this.qdrantManager &&
       !this.commandOwnerLifecycle &&
@@ -299,8 +309,12 @@ export class BackendRuntimeOwner {
     const pluginTasksStopped = stopBackendPluginRuntimeEffects();
     const modelSynchronizationStopped = this.providerModelSynchronization?.stop();
     await stopStage('API服务器', () => this.apiServer.stop());
-    await stopStage('启动维护', async () => { await startupMaintenanceStopped; });
-    await stopStage('账号模型同步', async () => { await modelSynchronizationStopped; });
+    await stopStage('启动维护', async () => {
+      await startupMaintenanceStopped;
+    });
+    await stopStage('账号模型同步', async () => {
+      await modelSynchronizationStopped;
+    });
     if (this.commandOwnerLifecycle) {
       const commandOwnerLifecycle = this.commandOwnerLifecycle;
       try {
@@ -519,7 +533,6 @@ export class BackendRuntimeOwner {
   getApiServer(): ApiServer {
     return this.apiServer;
   }
-
 }
 
 /**
@@ -546,18 +559,18 @@ export function getBackendRuntimeOwner(
   queueWorkerRuntime?: QueueWorkerRuntime,
   runtimePathRoots?: RuntimePathRoots,
   applicationVersion?: string,
-  databaseStartupProgress?: DatabaseStartupProgressPort,
+  databaseStartupProgress?: DatabaseStartupProgressPort
 ): BackendRuntimeOwner {
   if (!instance) {
     if (
-      !qdrantProcessRuntime
-      || !launchOwnedPipeProcess
-      || !queueWorkerRuntime
-      || !runtimePathRoots
-      || !applicationVersion
+      !qdrantProcessRuntime ||
+      !launchOwnedPipeProcess ||
+      !queueWorkerRuntime ||
+      !runtimePathRoots ||
+      !applicationVersion
     ) {
       throw new Error(
-        'BackendRuntimeOwner 首次创建缺少 Qdrant runtime、process owner、Queue Worker runtime、Runtime path roots 或 application version',
+        'BackendRuntimeOwner 首次创建缺少 Qdrant runtime、process owner、Queue Worker runtime、Runtime path roots 或 application version'
       );
     }
     instance = new BackendRuntimeOwner(
@@ -566,7 +579,7 @@ export function getBackendRuntimeOwner(
       queueWorkerRuntime,
       runtimePathRoots,
       applicationVersion,
-      databaseStartupProgress,
+      databaseStartupProgress
     );
     instanceQdrantProcessRuntime = qdrantProcessRuntime;
     instanceLaunchOwnedPipeProcess = launchOwnedPipeProcess;
@@ -574,14 +587,14 @@ export function getBackendRuntimeOwner(
     instanceRuntimePathRoots = runtimePathRoots;
     instanceApplicationVersion = applicationVersion;
   } else if (
-    (qdrantProcessRuntime && qdrantProcessRuntime !== instanceQdrantProcessRuntime)
-    || (launchOwnedPipeProcess && launchOwnedPipeProcess !== instanceLaunchOwnedPipeProcess)
-    || (queueWorkerRuntime && queueWorkerRuntime !== instanceQueueWorkerRuntime)
-    || (runtimePathRoots && runtimePathRoots !== instanceRuntimePathRoots)
-    || (applicationVersion && applicationVersion !== instanceApplicationVersion)
+    (qdrantProcessRuntime && qdrantProcessRuntime !== instanceQdrantProcessRuntime) ||
+    (launchOwnedPipeProcess && launchOwnedPipeProcess !== instanceLaunchOwnedPipeProcess) ||
+    (queueWorkerRuntime && queueWorkerRuntime !== instanceQueueWorkerRuntime) ||
+    (runtimePathRoots && runtimePathRoots !== instanceRuntimePathRoots) ||
+    (applicationVersion && applicationVersion !== instanceApplicationVersion)
   ) {
     throw new Error(
-      'BackendRuntimeOwner 已绑定另一份 Qdrant runtime、process owner、Queue Worker runtime、Runtime path roots 或 application version',
+      'BackendRuntimeOwner 已绑定另一份 Qdrant runtime、process owner、Queue Worker runtime、Runtime path roots 或 application version'
     );
   }
   return instance;

@@ -95,19 +95,32 @@ declare global {
     };
 
     electronAPI: {
-      'document-references:deletion-preview': (request: { nodeIds: readonly string[] }) => Promise<unknown>;
-      'document-references:search': (request: { projectId: string; keyword: string; limit?: number }) => Promise<unknown>;
-      'document-references:backlinks': (request: import('@app/schemas').DocumentBacklinksRequest) => Promise<unknown>;
-      'document-references:resolve': (request: { projectId: string; documentId: string }) => Promise<unknown>;
+      'document-references:deletion-preview': (request: {
+        nodeIds: readonly string[];
+      }) => Promise<unknown>;
+      'document-references:search': (request: {
+        projectId: string;
+        keyword: string;
+        limit?: number;
+      }) => Promise<unknown>;
+      'document-references:backlinks': (
+        request: import('@app/schemas').DocumentBacklinksRequest
+      ) => Promise<unknown>;
+      'document-references:resolve': (request: {
+        projectId: string;
+        documentId: string;
+      }) => Promise<unknown>;
       'document-preview:types': () => Promise<unknown>;
       'document-preview:read': (
         request: import('@app/schemas').DocumentPreviewRequest
       ) => Promise<unknown>;
       'document-history:list': (request: { documentId: string }) => Promise<unknown>;
-      'document-history:restore': (request: import('@app/schemas').DocumentVersionRestoreRequest) => Promise<unknown>;
+      'document-history:restore': (
+        request: import('@app/schemas').DocumentVersionRestoreRequest
+      ) => Promise<unknown>;
       readCommandPermissionSettings: () => Promise<unknown>;
       updateCommandPermissionSettings: (
-        update: CommandPermissionSettingsUpdateV1,
+        update: CommandPermissionSettingsUpdateV1
       ) => Promise<unknown>;
       openCommandApprovalPage: () => Promise<unknown>;
       replyToCommandApproval: (submission: unknown) => Promise<unknown>;
@@ -130,7 +143,7 @@ declare global {
       'plugin:onPush': (
         pluginId: string,
         channel: string,
-        callback: (payload: unknown) => void,
+        callback: (payload: unknown) => void
       ) => (() => void) | undefined;
 
       // File system & state sync
@@ -159,7 +172,7 @@ declare global {
       onTriggerDelete: (callback: (itemPath: string) => void) => () => void;
       onItemDeleted: (callback: (payload: ItemDeletedPayload) => void) => () => void;
       onItemMoved: (callback: (payload: ItemMovedPayload) => void) => () => void;
-      
+
       // Window operations
       windowAction: (action: 'minimize' | 'maximize' | 'close') => void;
       onWindowMaximizedState: (callback: (isMaximized: boolean) => void) => () => void;
@@ -168,15 +181,19 @@ declare global {
       markWindowCloseRendererReady: () => void;
       completeWindowClosePreparation: (
         requestId: WindowCloseRequestId,
-        result: WindowClosePreparationResult,
+        result: WindowClosePreparationResult
       ) => void;
 
       // Image operations
-      selectImage: () => Promise<{ success: boolean; filePath?: string } & MediaOperationFailureFields>;
-      myAppSelectImageDialog: (options?: SelectImageDialogOptions) => Promise<{
-        canceled: boolean;
-        filePaths?: string[];
-      } & MediaOperationFailureFields>;
+      selectImage: () => Promise<
+        { success: boolean; filePath?: string } & MediaOperationFailureFields
+      >;
+      myAppSelectImageDialog: (options?: SelectImageDialogOptions) => Promise<
+        {
+          canceled: boolean;
+          filePaths?: string[];
+        } & MediaOperationFailureFields
+      >;
       embedImageBytes: (request: {
         documentNodeId: string;
         bytes: ArrayBuffer;
@@ -208,15 +225,22 @@ declare global {
         } & MediaOperationFailureFields
       >;
       // Audio operations
-      saveAudioFile: (audioDataBuffer: ArrayBuffer, mimeType: string) => Promise<{ 
-        success: boolean; 
-        filePath?: string; 
-      } & MediaOperationFailureFields>;
-      loadAudioFileAsDataURL: (filePath: string) => Promise<{ 
-        success: boolean; 
-        dataUrl?: string; 
-      } & MediaOperationFailureFields>;
-      
+      saveAudioFile: (
+        audioDataBuffer: ArrayBuffer,
+        mimeType: string
+      ) => Promise<
+        {
+          success: boolean;
+          filePath?: string;
+        } & MediaOperationFailureFields
+      >;
+      loadAudioFileAsDataURL: (filePath: string) => Promise<
+        {
+          success: boolean;
+          dataUrl?: string;
+        } & MediaOperationFailureFields
+      >;
+
       // File info and operations
       getFileSize: (filePath: string) => Promise<
         {
@@ -230,22 +254,22 @@ declare global {
         } & SystemOperationFailureFields
       >;
       listConversationRunDocumentChanges: (
-        request: import('@app/schemas').ConversationRunDocumentChangesRequest,
+        request: import('@app/schemas').ConversationRunDocumentChangesRequest
       ) => Promise<unknown>;
       readProjectOverview: (
-        request: import('@app/schemas').ProjectOverviewRequest,
+        request: import('@app/schemas').ProjectOverviewRequest
       ) => Promise<unknown>;
       projectSavedFilters: (
-        request: import('@app/schemas').ProjectSavedFiltersRequest,
+        request: import('@app/schemas').ProjectSavedFiltersRequest
       ) => Promise<unknown>;
       matchProjectFields: (
-        request: import('@app/schemas').ProjectOverviewMatchRequest,
+        request: import('@app/schemas').ProjectOverviewMatchRequest
       ) => Promise<unknown>;
       setProjectField: (
-        request: import('@app/schemas').ProjectOverviewSetFieldRequest,
+        request: import('@app/schemas').ProjectOverviewSetFieldRequest
       ) => Promise<unknown>;
       manageSemanticSchema: (
-        request: import('@app/schemas').SemanticSchemaManageRequest,
+        request: import('@app/schemas').SemanticSchemaManageRequest
       ) => Promise<unknown>;
       resolveConversationFileLink: (
         request: import('@app/schemas').ConversationFileLinkResolveRequest
@@ -255,7 +279,7 @@ declare global {
         >
       >;
       revealConversationFileLink: (
-        request: import('@app/schemas').ConversationFileLinkRevealRequest,
+        request: import('@app/schemas').ConversationFileLinkRevealRequest
       ) => Promise<import('@app/schemas').OperationResult<void>>;
       getElectronProcessMemory: () => Promise<import('@app/schemas').ElectronProcessMemoryResponse>;
 
@@ -265,20 +289,22 @@ declare global {
        * 中文说明：
        * - 主进程会限制协议（仅允许 http/https），避免打开危险协议。
        */
-      openExternalUrl: (url: string) => Promise<{ success: boolean } & SystemOperationFailureFields>;
-      
+      openExternalUrl: (
+        url: string
+      ) => Promise<{ success: boolean } & SystemOperationFailureFields>;
+
       // File export
       exportFile: (
         defaultFileName: string,
         content: unknown,
-        options: string | ExportFileDialogOptions,
+        options: string | ExportFileDialogOptions
       ) => Promise<ExportIpcResult>;
       exportPDF: (
         defaultFileName: string,
-        payload: string | ExportPdfDialogOptions,
+        payload: string | ExportPdfDialogOptions
       ) => Promise<ExportIpcResult>;
       requestExportArtifactTarget: (
-        request: import('@linnya/plugin-host-contract/renderer/exportArtifact').ExportArtifactTargetRequest,
+        request: import('@linnya/plugin-host-contract/renderer/exportArtifact').ExportArtifactTargetRequest
       ) => Promise<
         import('@linnya/plugin-host-contract/renderer/exportArtifact').ExportArtifactTargetResult
       >;
@@ -286,31 +312,40 @@ declare global {
        * 打开“选择文件”对话框
        * 中文说明：返回结构对齐 Electron 的 showOpenDialog 返回值
        */
-      openFileDialog: (options: unknown) => Promise<{
-        success: boolean;
-        data?: { canceled: boolean; filePaths: string[] };
-      } & MediaOperationFailureFields>;
+      openFileDialog: (options: unknown) => Promise<
+        {
+          success: boolean;
+          data?: { canceled: boolean; filePaths: string[] };
+        } & MediaOperationFailureFields
+      >;
       /**
        * 打开“选择目录”对话框
        * 中文说明：返回结构对齐 Electron 的 showOpenDialog 返回值
        */
-      openDirectoryDialog: (options: unknown) => Promise<{
-        success: boolean;
-        data?: { canceled: boolean; filePaths: string[] };
-      } & MediaOperationFailureFields>;
+      openDirectoryDialog: (options: unknown) => Promise<
+        {
+          success: boolean;
+          data?: { canceled: boolean; filePaths: string[] };
+        } & MediaOperationFailureFields
+      >;
       /**
        * 批量导出到目录：主进程负责文件写入与重名处理
        */
-      exportFilesToDirectory: (payload: { directoryPath: string; files: Array<{ fileName: string; content: string }> }) => Promise<{
-        success: boolean;
-        data?: { writtenPaths: string[] };
-      } & MediaOperationFailureFields>;
+      exportFilesToDirectory: (payload: {
+        directoryPath: string;
+        files: Array<{ fileName: string; content: string }>;
+      }) => Promise<
+        {
+          success: boolean;
+          data?: { writtenPaths: string[] };
+        } & MediaOperationFailureFields
+      >;
       onWorkspaceMutation: (callback: (event: WorkspaceMutationEvent) => void) => () => void;
 
       // Model registry
       getModels: () => Promise<any>;
       updateModels: (models: any) => Promise<any>;
-      
+
       // App update（状态由 Main 唯一持有）
       appUpdate: {
         getState: () => Promise<AppUpdateState>;
@@ -324,10 +359,21 @@ declare global {
 
       // Plugin state
       plugins: {
-        list: () => Promise<{ success: true; data: PluginStateView[] } | { success: false; error?: string }>;
-        storeList: () => Promise<{ success: true; data: PluginStoreListData } | { success: false; error?: string }>;
-        getDetail: (pluginId: string) => Promise<{ success: true; data: PluginStoreDetail } | { success: false; error?: string }>;
-        diagnostics: () => Promise<{ success: true; data: readonly PluginDiagnosticView[] } | { success: false; error?: string }>;
+        list: () => Promise<
+          { success: true; data: PluginStateView[] } | { success: false; error?: string }
+        >;
+        storeList: () => Promise<
+          { success: true; data: PluginStoreListData } | { success: false; error?: string }
+        >;
+        getDetail: (
+          pluginId: string
+        ) => Promise<
+          { success: true; data: PluginStoreDetail } | { success: false; error?: string }
+        >;
+        diagnostics: () => Promise<
+          | { success: true; data: readonly PluginDiagnosticView[] }
+          | { success: false; error?: string }
+        >;
         rendererEntries: () => Promise<unknown>;
         checkRemoteUpdate: (
           pluginId: string
@@ -341,7 +387,10 @@ declare global {
           { success: true; data: PluginRemoteInstallResult } | { success: false; error?: string }
         >;
         uninstall: (pluginId: string) => Promise<{ success: boolean; error?: string }>;
-        setEnabled: (pluginId: string, enabled: boolean) => Promise<{ success: boolean; error?: string }>;
+        setEnabled: (
+          pluginId: string,
+          enabled: boolean
+        ) => Promise<{ success: boolean; error?: string }>;
         onChanged: (callback: () => void) => () => void;
       };
     };

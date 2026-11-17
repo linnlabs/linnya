@@ -8,7 +8,7 @@ import { BetterSqliteKnowledgeGraphRepository } from '../infrastructure/better-s
 import { GraphProgressService } from '../application/graphProgressService';
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 describe('GraphProgressService (M4)', () => {
@@ -26,13 +26,15 @@ describe('GraphProgressService (M4)', () => {
 
     // 预置 KB 记录（图谱表有 kb_id 外键）
     const db = databaseService.getDb();
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO knowledge_bases (
         id, name, description, tags_json,
         embedding_model_id, rerank_model_id, vision_model_id,
         created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
+    `
+    ).run(
       'kb-test',
       '测试知识库',
       '用于图谱进度单测',
@@ -53,10 +55,17 @@ describe('GraphProgressService (M4)', () => {
   });
 
   it('应支持“queued 扩分母导致进度回落”，并对推送做节流', async () => {
-    const pushed: Array<{ kbId: string; percent: number; totalUnits: number; doneUnits: number }> = [];
+    const pushed: Array<{ kbId: string; percent: number; totalUnits: number; doneUnits: number }> =
+      [];
     const service = new GraphProgressService(repo, {
       throttleMs: 5,
-      onProgressUpdated: (p) => pushed.push({ kbId: p.kbId, percent: p.percent, totalUnits: p.totalUnits, doneUnits: p.doneUnits }),
+      onProgressUpdated: p =>
+        pushed.push({
+          kbId: p.kbId,
+          percent: p.percent,
+          totalUnits: p.totalUnits,
+          doneUnits: p.doneUnits,
+        }),
     });
 
     // doc-a 入队 100
@@ -82,5 +91,3 @@ describe('GraphProgressService (M4)', () => {
     expect(pushed.at(-1)?.percent).toBe(25);
   });
 });
-
-

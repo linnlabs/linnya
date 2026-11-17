@@ -4,7 +4,7 @@ import { KnowledgeIndexRebuildRequiredError } from '../../index-rebuild/definiti
  * @file src/knowledge-base/ingestion/handlers/StoringHandler.ts
  *
  * @brief STORING状态处理器
- * 
+ *
  * @description
  * 功能 (What): 处理数据存储阶段的业务逻辑
  * 输入 (Input): TaskContext包含向量化结果
@@ -51,7 +51,7 @@ export class StoringHandler implements StateHandler {
     this.qdrantRepository = qdrantRepository;
     this.metadataRepository = metadataRepository;
   }
-  
+
   getName(): string {
     return 'StoringHandler';
   }
@@ -69,7 +69,7 @@ export class StoringHandler implements StateHandler {
       const { vectorizedBlocks } = context.vectorizeResult;
       const vectorCount = vectorizedBlocks.length; // 🔥 缓存数量，便于后续释放内存
       logger.info(`[StoringHandler] 准备存储 ${vectorCount} 个向量化块`);
-      
+
       // 初始化进度
       context.stageProgress = 0;
 
@@ -79,15 +79,15 @@ export class StoringHandler implements StateHandler {
       storageStarted = true;
       await this.saveSotFile(context);
       context.stageProgress = 25;
-      
+
       // 阶段 2: 存储向量数据到 Qdrant
       await this.storeVectorDataWithCollectionAccess(context);
       context.stageProgress = 75;
-      
+
       // 阶段 3: 更新元数据
       await this.updateMetadata(context);
       context.stageProgress = 95;
-      
+
       // 阶段 4: 清理临时文件
       await this.cleanupTempFiles(context);
       context.stageProgress = 100;
@@ -102,7 +102,7 @@ export class StoringHandler implements StateHandler {
       const storeResult: StoreResult = {
         vectorCount: vectorCount,
         storageTimestamp: Date.now(),
-        success: true
+        success: true,
       };
 
       return {
@@ -111,26 +111,25 @@ export class StoringHandler implements StateHandler {
         context: {
           ...context,
           storeResult: {
-            ...storeResult
+            ...storeResult,
           },
           stageProgress: 100,
-          currentProgress: 100
+          currentProgress: 100,
         },
         message: `数据存储完成: ${vectorCount} 个向量`,
       };
-
     } catch (error) {
       const errorMessage = `数据存储失败: ${error instanceof Error ? error.message : String(error)}`;
       logger.error(`[StoringHandler] ${errorMessage}`, error);
-      
+
       // 存储失败时尝试清理已存储的数据
       if (storageStarted) await this.cleanupOnFailure(context);
-      
+
       return {
         success: false,
         newStage: InternalStage.FAILED,
         context: { ...context, errorMessage },
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -143,12 +142,12 @@ export class StoringHandler implements StateHandler {
    */
   private async saveSotFile(context: TaskContext): Promise<void> {
     logger.info(`[StoringHandler] 阶段1: 保存SoT文件 - ${context.docId}`);
-    
+
     try {
       if (!context.parseResult?.sourceDoc) {
         throw new Error('缺少 post-processed sourceDoc，无法创建SoT文件');
       }
-      
+
       // 🔥 重构：直接使用后处理器生成的sourceDoc，它已经是最终格式
       const sotDocument: DocumentSoT = context.parseResult.sourceDoc;
 
@@ -169,24 +168,26 @@ export class StoringHandler implements StateHandler {
           `[StoringHandler] 无法读取文件大小，将跳过写入 SoT.metadata.file_size: ${context.filePath} (${e instanceof Error ? e.message : String(e)})`
         );
       }
-          
+
       // 补充摄入任务的元数据（与 DocumentSoTSchema.metadata 字段对齐）
       sotDocument.metadata = {
         ...sotDocument.metadata,
         source_file: context.filename, // 确保使用最新的文件名
         ...(typeof fileSizeBytes === 'number' ? { file_size: fileSizeBytes } : {}),
-            ingestion_timestamp: Date.now(),
-            task_id: context.taskId,
-            vector_model: context.embeddingModelId,
-            vision_model: context.visionModelId
-        };
+        ingestion_timestamp: Date.now(),
+        task_id: context.taskId,
+        vector_model: context.embeddingModelId,
+        vision_model: context.visionModelId,
+      };
 
       // 保存到SoT仓储
       await this.sotRepository.save(context.docId, sotDocument);
-      
+
       logger.info(`[StoringHandler] ✅ SoT文件保存成功: ${context.docId}`);
     } catch (error) {
-      logger.error(`[StoringHandler] ❌ 保存SoT文件失败: ${context.docId} - ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `[StoringHandler] ❌ 保存SoT文件失败: ${context.docId} - ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error; // 抛出错误以终止流程
     }
   }
@@ -204,7 +205,7 @@ export class StoringHandler implements StateHandler {
    */
   private async storeVectorData(context: TaskContext): Promise<void> {
     logger.info(`[StoringHandler] 阶段2: 存储向量数据 - ${context.docId}`);
-    
+
     try {
       const vectorizedBlocks: VectorizedBlock[] = context.vectorizeResult?.vectorizedBlocks ?? [];
       if (vectorizedBlocks.length === 0) {
@@ -213,12 +214,16 @@ export class StoringHandler implements StateHandler {
       }
 
       // 🔥 重构：直接使用简洁的块结构构建Qdrant点
-      const qdrantPoints = projectChunkVectorPoints(context.docId, context.filename, vectorizedBlocks);
+      const qdrantPoints = projectChunkVectorPoints(
+        context.docId,
+        context.filename,
+        vectorizedBlocks
+      );
       // ✅ 根因修复：向量必须写入“目标知识库对应的集合”，否则搜索会查错集合
       // - 搜索：SearchService 使用 kbId 作为 collectionName
       // - 写入：这里也必须与之对齐
       const collectionName = context.kbId;
-      
+
       const vectorDimension = vectorizedBlocks[0].vector.length;
       await this.qdrantRepository.getOrCreateCollection(
         collectionName,
@@ -234,13 +239,13 @@ export class StoringHandler implements StateHandler {
       // 分批存储到Qdrant
       const batchSize = 50;
       const totalPoints = qdrantPoints.length;
-      
+
       logger.info(`[StoringHandler] 开始分批存储: ${totalPoints} 个点，批量大小: ${batchSize}`);
 
       for (let i = 0; i < totalPoints; i += batchSize) {
         const batch = qdrantPoints.slice(i, i + batchSize);
         await this.qdrantRepository.addPoints(collectionName, batch);
-        
+
         const progress = Math.min(100, ((i + batch.length) / totalPoints) * 100);
         this.updateProgress(context, 50 + progress * 0.4, '存储向量数据');
 
@@ -248,10 +253,12 @@ export class StoringHandler implements StateHandler {
           `[StoringHandler] 批次 ${Math.floor(i / batchSize) + 1} 存储完成: ${batch.length} 个点`
         );
       }
-      
+
       logger.info(`[StoringHandler] ✅ 向量数据存储成功: ${totalPoints} 个点`);
     } catch (error) {
-      logger.error(`[StoringHandler] ❌ 存储向量数据失败: ${context.docId} - ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(
+        `[StoringHandler] ❌ 存储向量数据失败: ${context.docId} - ${error instanceof Error ? error.message : String(error)}`
+      );
       throw error;
     }
   }
@@ -283,7 +290,7 @@ export class StoringHandler implements StateHandler {
    */
   private async updateMetadata(context: TaskContext): Promise<void> {
     logger.info(`[StoringHandler] 阶段3: 更新元数据 - ${context.docId}`);
-    
+
     try {
       /**
        * 提交点校验（Phase 1）：
@@ -291,8 +298,6 @@ export class StoringHandler implements StateHandler {
        * - 否则必须 fail-fast 交给状态机失败清理/重试，避免“completed 但无法 browse/search”的不一致
        */
       await this.validateCommitPoint(context);
-
-
 
       if (context.parseResult?.metadata.parseDiagnostics) {
         const diagnosticsUpdated = await this.metadataRepository.updateDocumentParseDiagnostics(
@@ -303,13 +308,13 @@ export class StoringHandler implements StateHandler {
           throw new Error(`解析诊断写入失败`);
         }
       }
-      
+
       // 调用真实的元数据更新
       const success = await this.metadataRepository.updateDocumentStatus(
         context.docId,
         DocumentStatus.COMPLETED
       );
-      
+
       if (!success) {
         logger.warn(`[StoringHandler] 元数据状态更新未生效(首次): ${context.docId}，准备重试...`);
         // 短暂退避后重试一次
@@ -330,19 +335,21 @@ export class StoringHandler implements StateHandler {
             }
           } catch (probeError) {
             logger.error(
-              `[StoringHandler] 校验元数据失败: ${probeError instanceof Error ? probeError.message : String(probeError)}`,
+              `[StoringHandler] 校验元数据失败: ${probeError instanceof Error ? probeError.message : String(probeError)}`
             );
           }
           // 中止流程，交由状态机失败处理，避免前端获得 completed 的错觉
           throw new Error(`元数据状态写入失败`);
         }
       }
-      
+
       // 🔥 调试：立即查询更新后的文档状态
       try {
         const updatedDoc = await this.metadataRepository.getDocumentById(context.docId);
         if (updatedDoc) {
-          logger.info(`[StoringHandler] 🔍 更新后文档状态验证: ${context.docId} -> status=${updatedDoc.status}`);
+          logger.info(
+            `[StoringHandler] 🔍 更新后文档状态验证: ${context.docId} -> status=${updatedDoc.status}`
+          );
         } else {
           logger.error(`[StoringHandler] 🔍 文档未找到: ${context.docId}`);
         }
@@ -351,7 +358,6 @@ export class StoringHandler implements StateHandler {
       }
 
       logger.info(`[StoringHandler] 元数据更新完成: ${context.docId}`);
-      
     } catch (error) {
       throw new Error(`元数据更新失败: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -368,7 +374,10 @@ export class StoringHandler implements StateHandler {
       const documents = await this.metadataRepository.getDocumentsInKnowledgeBase(context.kbId);
       let hasStoredContent = false;
       for (const document of documents) {
-        if (await this.sotRepository.get(document.id)) { hasStoredContent = true; break; }
+        if (await this.sotRepository.get(document.id)) {
+          hasStoredContent = true;
+          break;
+        }
       }
       const exists = await this.qdrantRepository.collectionExists(context.kbId);
       const points = exists ? await this.qdrantRepository.scrollPointsPage(context.kbId, 1) : null;
@@ -378,9 +387,14 @@ export class StoringHandler implements StateHandler {
         throw new KnowledgeIndexRebuildRequiredError(context.kbId);
       }
     }
-    index.claimForAppend(context.kbId, {
-      modelId: context.embeddingModelId, spaceId: context.embeddingSpaceId,
-    }, emptyIndexVerified);
+    index.claimForAppend(
+      context.kbId,
+      {
+        modelId: context.embeddingModelId,
+        spaceId: context.embeddingSpaceId,
+      },
+      emptyIndexVerified
+    );
   }
 
   /**
@@ -402,7 +416,9 @@ export class StoringHandler implements StateHandler {
     // 2) Qdrant 校验：必须至少 1 个点
     const count = await this.qdrantRepository.countPointsByDocId(context.kbId, context.docId);
     if (count <= 0) {
-      throw new Error(`提交点校验失败：Qdrant 未写入点 (kbId=${context.kbId}, docId=${context.docId})`);
+      throw new Error(
+        `提交点校验失败：Qdrant 未写入点 (kbId=${context.kbId}, docId=${context.docId})`
+      );
     }
   }
 
@@ -414,7 +430,7 @@ export class StoringHandler implements StateHandler {
    */
   private async cleanupTempFiles(context: TaskContext): Promise<void> {
     logger.info(`[StoringHandler] 阶段4: 清理临时文件 - ${context.filePath}`);
-    
+
     try {
       // 检查文件是否存在
       const fileExists = await this.fileExists(context.filePath);
@@ -426,7 +442,6 @@ export class StoringHandler implements StateHandler {
       // 删除临时文件
       await fs.unlink(context.filePath);
       logger.info(`[StoringHandler] 临时文件删除成功: ${context.filePath}`);
-      
     } catch (error) {
       // 临时文件清理失败不应该影响主流程
       logger.warn(`[StoringHandler] 临时文件清理失败: ${context.filePath} - ${error}`);
@@ -441,7 +456,7 @@ export class StoringHandler implements StateHandler {
    */
   private async cleanupOnFailure(context: TaskContext): Promise<void> {
     logger.warn(`[StoringHandler] 存储失败，开始清理数据: ${context.docId}`);
-    
+
     try {
       // 清理可能已存储的向量数据
       try {
@@ -453,7 +468,7 @@ export class StoringHandler implements StateHandler {
         // 清理失败意味着不能证明这些部分向量已消失；原文保留，显式重建才能恢复完整索引。
         this.metadataRepository.indexState.invalidateForRebuild(context.kbId);
       }
-      
+
       // 更新文档状态为失败
       try {
         await this.metadataRepository.updateDocumentStatus(
@@ -466,7 +481,6 @@ export class StoringHandler implements StateHandler {
       }
 
       logger.info(`[StoringHandler] 失败清理完成: ${context.docId}`);
-      
     } catch (cleanupError) {
       logger.error(`[StoringHandler] 失败清理也出错了: ${cleanupError}`);
       // 不抛出异常，因为主要错误更重要

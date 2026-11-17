@@ -33,10 +33,12 @@ export function assertCollectionSupportsSparseVectors(
   // 1) 检查是否为命名向量 default
   const hasNamedDefaultVector = !!(vectorsParam && 'default' in vectorsParam);
   if (!hasNamedDefaultVector) {
-    logger.warn(`⚠️  集合 ${collectionName} 为旧的“未命名向量”格式，无法与 default 命名向量写入/检索兼容，需要删除重建`);
+    logger.warn(
+      `⚠️  集合 ${collectionName} 为旧的“未命名向量”格式，无法与 default 命名向量写入/检索兼容，需要删除重建`
+    );
     logger.warn('请退出正在进行的知识库任务，执行下列维护命令后重试：');
     logger.warn(
-      `pnpm run kb:delete-vector-collection -- --collection ${JSON.stringify(collectionName)} --confirm ${JSON.stringify(collectionName)}`,
+      `pnpm run kb:delete-vector-collection -- --collection ${JSON.stringify(collectionName)} --confirm ${JSON.stringify(collectionName)}`
     );
     throw new Error(`集合 ${collectionName} 为旧格式（未命名向量），请手动删除后重试。`);
   }
@@ -48,7 +50,7 @@ export function assertCollectionSupportsSparseVectors(
     logger.warn(`⚠️  集合 ${collectionName} 不支持稀疏向量，需要重新创建`);
     logger.warn('请退出正在进行的知识库任务，执行下列维护命令后重试：');
     logger.warn(
-      `pnpm run kb:delete-vector-collection -- --collection ${JSON.stringify(collectionName)} --confirm ${JSON.stringify(collectionName)}`,
+      `pnpm run kb:delete-vector-collection -- --collection ${JSON.stringify(collectionName)} --confirm ${JSON.stringify(collectionName)}`
     );
     throw new Error(`集合 ${collectionName} 已存在但不支持稀疏向量(bm25)。请手动删除后重试。`);
   }

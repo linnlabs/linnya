@@ -39,7 +39,7 @@ function fallbackTokenize(text: string, logger: Logger): string[] {
   const chineseChars = cleanText.match(/[\u4e00-\u9fff]/g) ?? [];
   tokens.push(...chineseChars);
 
-  return tokens.filter((token) => token.length > 0);
+  return tokens.filter(token => token.length > 0);
 }
 
 /**
@@ -65,7 +65,7 @@ function fallbackHash(data: string, logger: Logger): number {
   let hash = 0;
   for (let i = 0; i < data.length; i++) {
     const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // 转换为 32 位整数
   }
   return Math.abs(hash);
@@ -94,8 +94,8 @@ export async function textToSparseVector(text: string, logger: Logger): Promise<
       hashCounts[tokenHash] = (hashCounts[tokenHash] ?? 0) + count;
     }
 
-    const indices = Object.keys(hashCounts).map((k) => Number(k));
-    const values = Object.values(hashCounts).map((v) => Number(v));
+    const indices = Object.keys(hashCounts).map(k => Number(k));
+    const values = Object.values(hashCounts).map(v => Number(v));
 
     return { indices, values };
   } catch (error) {

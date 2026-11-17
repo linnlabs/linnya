@@ -28,8 +28,9 @@ describe('project knowledge associations', () => {
       expect((await links.getLinkDetail('project-a', 'default'))?.role).toBe('read_only');
       expect(await links.listKnowledgeBasesForProject('project-a')).toEqual(['default']);
       expect(await links.listKnowledgeBasesForProject('unrelated-project')).toEqual([]);
-      expect((await links.listDetailedProjectsForKnowledgeBase('default')).map(p => p.name))
-        .toEqual(['研究 A', '研究 B']);
+      expect(
+        (await links.listDetailedProjectsForKnowledgeBase('default')).map(p => p.name)
+      ).toEqual(['研究 A', '研究 B']);
       // 原子替换不会把仍选中的只读关联提升为可写。
       const original = await links.getLinkDetail('project-a', 'default');
       await links.replaceKnowledgeBasesForProject('project-a', ['default']);
@@ -45,18 +46,23 @@ describe('project knowledge associations', () => {
         'project-b',
       ]);
       database.exec('DROP TRIGGER refuse_project_a');
-      await expect(links.replaceKnowledgeBasesForProject('project-a', ['missing-library'])).rejects.toThrow('知识库不存在');
+      await expect(
+        links.replaceKnowledgeBasesForProject('project-a', ['missing-library'])
+      ).rejects.toThrow('知识库不存在');
       expect(await links.getLinkDetail('project-a', 'default')).toEqual(original);
       await links.replaceProjectsForKnowledgeBase('default', ['project-a']);
       expect(await links.listProjectsForKnowledgeBase('default')).toEqual(['project-a']);
       await links.linkKnowledgeBaseToProject('project-b', 'default');
       projects.delete('project-b');
-      expect((await links.listDetailedProjectsForKnowledgeBase('default')).map(p => p.id))
-        .toEqual(['project-a']);
-      await expect(links.linkKnowledgeBaseToProject('project-b', 'default'))
-        .rejects.toThrow('项目不存在');
-      await expect(links.linkKnowledgeBaseToProject('project-a', 'missing-library'))
-        .rejects.toThrow('知识库不存在');
+      expect((await links.listDetailedProjectsForKnowledgeBase('default')).map(p => p.id)).toEqual([
+        'project-a',
+      ]);
+      await expect(links.linkKnowledgeBaseToProject('project-b', 'default')).rejects.toThrow(
+        '项目不存在'
+      );
+      await expect(
+        links.linkKnowledgeBaseToProject('project-a', 'missing-library')
+      ).rejects.toThrow('知识库不存在');
       expect(await links.unlinkKnowledgeBaseFromProject('project-a', 'default')).toBe(true);
       expect(await links.listKnowledgeBasesForProject('project-a')).toEqual([]);
     } finally {

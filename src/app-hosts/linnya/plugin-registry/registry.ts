@@ -82,7 +82,7 @@ export interface BackendPluginIpcRegistration {
 
 export function toHostAgentDefinition(
   pluginId: PluginId,
-  definition: PluginAgentDefinitionContribution,
+  definition: PluginAgentDefinitionContribution
 ): AgentDefinition {
   if (pluginId === 'platform') {
     return definition;
@@ -94,13 +94,14 @@ export function toHostAgentDefinition(
     defaultMode: definition.defaultMode,
     description: definition.description,
     config: definition.config,
-    task: definition.task === undefined
-      ? undefined
-      : {
-        systemPromptBuilder: definition.task.systemPromptBuilder,
-        responseProcessor: definition.task.responseProcessor,
-        streamChunkProcessor: definition.task.streamChunkProcessor,
-      },
+    task:
+      definition.task === undefined
+        ? undefined
+        : {
+            systemPromptBuilder: definition.task.systemPromptBuilder,
+            responseProcessor: definition.task.responseProcessor,
+            streamChunkProcessor: definition.task.streamChunkProcessor,
+          },
   };
 
   return hostDefinition;
@@ -122,7 +123,7 @@ class BackendPluginRegistry {
 
   register(
     contribution: PluginBackendContribution,
-    trust: BackendPluginRegistrationTrust = { allowPluginCli: false },
+    trust: BackendPluginRegistrationTrust = { allowPluginCli: false }
   ): void {
     const id = contribution.meta.id;
     if (this.contributions.has(id)) {
@@ -190,12 +191,12 @@ class BackendPluginRegistry {
   }
 
   listMeta() {
-    return Array.from(this.contributions.values()).map((contribution) => contribution.meta);
+    return Array.from(this.contributions.values()).map(contribution => contribution.meta);
   }
 
   private effective(enabledIds: ReadonlySet<PluginId> | null): PluginBackendContribution[] {
     const all = Array.from(this.contributions.values());
-    const enabled = enabledIds ?? new Set(all.map((contribution) => contribution.meta.id));
+    const enabled = enabledIds ?? new Set(all.map(contribution => contribution.meta.id));
     const missing = new Set<PluginId>();
     const disabledDeps = new Set<PluginId>();
 
@@ -216,42 +217,48 @@ class BackendPluginRegistry {
       throw new Error(`[plugin-registry] ${message}`);
     }
 
-    return all.filter((contribution) => enabled.has(contribution.meta.id));
+    return all.filter(contribution => enabled.has(contribution.meta.id));
   }
 
   getToolClasses(enabledIds: ReadonlySet<PluginId> | null): ToolClassCtor[] {
-    return this.effective(enabledIds).flatMap((contribution) => contribution.toolClasses ?? []);
+    return this.effective(enabledIds).flatMap(contribution => contribution.toolClasses ?? []);
   }
 
   getHostOnlyToolNames(enabledIds: ReadonlySet<PluginId> | null): string[] {
-    return this.effective(enabledIds).flatMap((contribution) => contribution.hostOnlyToolNames ?? []);
+    return this.effective(enabledIds).flatMap(contribution => contribution.hostOnlyToolNames ?? []);
   }
 
   getPluginCliRegistrations(
     enabledIds: ReadonlySet<PluginId> | null
   ): BackendPluginCliRegistration[] {
-    return this.effective(enabledIds).flatMap((contribution) => (
+    return this.effective(enabledIds).flatMap(contribution =>
       contribution.pluginCli
         ? [{ pluginId: contribution.meta.id, cli: contribution.pluginCli }]
         : []
-    ));
+    );
   }
 
-  getToolContextDecorators(enabledIds: ReadonlySet<PluginId> | null): BackendPluginToolContextDecorator[] {
-    return this.effective(enabledIds).flatMap((contribution) => contribution.toolContextDecorators ?? []);
+  getToolContextDecorators(
+    enabledIds: ReadonlySet<PluginId> | null
+  ): BackendPluginToolContextDecorator[] {
+    return this.effective(enabledIds).flatMap(
+      contribution => contribution.toolContextDecorators ?? []
+    );
   }
 
-  getToolContextBindingMigrators(enabledIds: ReadonlySet<PluginId> | null): BackendPluginToolContextBindingMigrator[] {
-    return this.effective(enabledIds).flatMap((contribution) => [
+  getToolContextBindingMigrators(
+    enabledIds: ReadonlySet<PluginId> | null
+  ): BackendPluginToolContextBindingMigrator[] {
+    return this.effective(enabledIds).flatMap(contribution => [
       ...(contribution.toolContextBindingMigrators ?? []),
       // 中文说明：旧磁盘插件可能仍把派生迁移动作挂在 decorator.copyBinding 上；
       // 官方插件禁止继续使用这条兼容路径，新插件应声明 toolContextBindingMigrators。
       ...(contribution.toolContextDecorators ?? [])
-        .filter((decorator) => typeof decorator.copyBinding === 'function')
-        .map((decorator) => ({
+        .filter(decorator => typeof decorator.copyBinding === 'function')
+        .map(decorator => ({
           migrate: (
             source: Parameters<BackendPluginToolContextBindingMigrator['migrate']>[0],
-            target: Parameters<BackendPluginToolContextBindingMigrator['migrate']>[1],
+            target: Parameters<BackendPluginToolContextBindingMigrator['migrate']>[1]
           ) => decorator.copyBinding?.(source, target),
         })),
     ]);
@@ -260,19 +267,24 @@ class BackendPluginRegistry {
   getIpcRegistrations(enabledIds: ReadonlySet<PluginId> | null): BackendPluginIpcRegistration[] {
     return this.effective(enabledIds).flatMap(contribution =>
       this.normalizeIpcRegistrations(contribution)
-    ));
+    );
   }
 
   getIpcChannelsForPlugin(pluginId: PluginId, enabledIds: ReadonlySet<PluginId> | null): string[] {
-    const contribution = this.effective(enabledIds).find((item) => item.meta.id === pluginId);
+    const contribution = this.effective(enabledIds).find(item => item.meta.id === pluginId);
     if (!contribution) {
       throw new Error(`[plugin-registry] 插件未安装或未启用: ${pluginId}`);
     }
-    return this.normalizeIpcRegistrations(contribution).flatMap((registration) => [...registration.channels]);
+    return this.normalizeIpcRegistrations(contribution).flatMap(registration => [
+      ...registration.channels,
+    ]);
   }
 
-  getRendererPushChannelsForPlugin(pluginId: PluginId, enabledIds: ReadonlySet<PluginId> | null): string[] {
-    const contribution = this.effective(enabledIds).find((item) => item.meta.id === pluginId);
+  getRendererPushChannelsForPlugin(
+    pluginId: PluginId,
+    enabledIds: ReadonlySet<PluginId> | null
+  ): string[] {
+    const contribution = this.effective(enabledIds).find(item => item.meta.id === pluginId);
     if (!contribution) {
       throw new Error(`[plugin-registry] 插件未安装或未启用: ${pluginId}`);
     }
@@ -280,32 +292,36 @@ class BackendPluginRegistry {
   }
 
   getSchemaProviders(enabledIds: ReadonlySet<PluginId> | null): ISchemaProvider[] {
-    return this.effective(enabledIds).flatMap((contribution) => contribution.schemaProviders ?? []);
+    return this.effective(enabledIds).flatMap(contribution => contribution.schemaProviders ?? []);
   }
 
   getSandboxProfileRegistrations(
     enabledIds: ReadonlySet<PluginId> | null
   ): BackendPluginSandboxProfileRegistration[] {
-    return this.effective(enabledIds).flatMap((contribution) =>
-      (contribution.sandboxProfiles ?? []).map((profile) => ({
+    return this.effective(enabledIds).flatMap(contribution =>
+      (contribution.sandboxProfiles ?? []).map(profile => ({
         pluginId: contribution.meta.id,
         profile,
       }))
     );
   }
 
-  getHiddenWorkerRegistrations(enabledIds: ReadonlySet<PluginId> | null): BackendPluginHiddenWorkerRegistration[] {
-    return this.effective(enabledIds).flatMap((contribution) =>
-      (contribution.hiddenWorkers ?? []).map((worker) => ({
+  getHiddenWorkerRegistrations(
+    enabledIds: ReadonlySet<PluginId> | null
+  ): BackendPluginHiddenWorkerRegistration[] {
+    return this.effective(enabledIds).flatMap(contribution =>
+      (contribution.hiddenWorkers ?? []).map(worker => ({
         pluginId: contribution.meta.id,
         worker,
       }))
     );
   }
 
-  getRuntimeEffectRegistrations(enabledIds: ReadonlySet<PluginId> | null): BackendPluginRuntimeEffectRegistration[] {
-    return this.effective(enabledIds).flatMap((contribution) =>
-      (contribution.runtimeEffects ?? []).map((effect) => ({
+  getRuntimeEffectRegistrations(
+    enabledIds: ReadonlySet<PluginId> | null
+  ): BackendPluginRuntimeEffectRegistration[] {
+    return this.effective(enabledIds).flatMap(contribution =>
+      (contribution.runtimeEffects ?? []).map(effect => ({
         pluginId: contribution.meta.id,
         effect,
       }))
@@ -315,8 +331,8 @@ class BackendPluginRegistry {
   getSkillResourceRootRegistrations(
     enabledIds: ReadonlySet<PluginId> | null
   ): BackendPluginSkillResourceRootRegistration[] {
-    return this.effective(enabledIds).flatMap((contribution) =>
-      (contribution.skillResourceRoots ?? []).map((root) => ({
+    return this.effective(enabledIds).flatMap(contribution =>
+      (contribution.skillResourceRoots ?? []).map(root => ({
         pluginId: contribution.meta.id,
         root,
       }))
@@ -324,14 +340,13 @@ class BackendPluginRegistry {
   }
 
   getLifecyclePlans(enabledIds: ReadonlySet<PluginId> | null): BackendPluginLifecyclePlan[] {
-    return this.effective(enabledIds)
-      .map((contribution) => ({
-        pluginId: contribution.meta.id,
-        targetVersion: contribution.meta.version,
-        compatMin: contribution.meta.compatMin,
-        ownedTables: contribution.ownedTables ?? [],
-        migrations: contribution.pluginMigrations ?? [],
-      }));
+    return this.effective(enabledIds).map(contribution => ({
+      pluginId: contribution.meta.id,
+      targetVersion: contribution.meta.version,
+      compatMin: contribution.meta.compatMin,
+      ownedTables: contribution.ownedTables ?? [],
+      migrations: contribution.pluginMigrations ?? [],
+    }));
   }
 
   getAgentDefinitions(enabledIds: ReadonlySet<PluginId> | null): AgentDefinition[] {
@@ -361,9 +376,11 @@ class BackendPluginRegistry {
     return definitions;
   }
 
-  getAgentFenceRegistrations(enabledIds: ReadonlySet<PluginId> | null): BackendPluginAgentFenceRegistration[] {
-    return this.effective(enabledIds).flatMap((contribution) =>
-      (contribution.agentFences ?? []).map((descriptor) => ({
+  getAgentFenceRegistrations(
+    enabledIds: ReadonlySet<PluginId> | null
+  ): BackendPluginAgentFenceRegistration[] {
+    return this.effective(enabledIds).flatMap(contribution =>
+      (contribution.agentFences ?? []).map(descriptor => ({
         pluginId: contribution.meta.id,
         descriptor,
       }))
@@ -371,14 +388,15 @@ class BackendPluginRegistry {
   }
 
   getAgentDefinitionRegistrations(
-    enabledIds: ReadonlySet<PluginId> | null,
+    enabledIds: ReadonlySet<PluginId> | null
   ): BackendPluginAgentDefinitionRegistration[] {
     return this.effective(enabledIds)
       .filter(contribution => (contribution.agentDefinitions ?? []).length > 0)
       .map(contribution => ({
         pluginId: contribution.meta.id,
-        definitions: (contribution.agentDefinitions ?? [])
-          .map((definition) => toHostAgentDefinition(contribution.meta.id, definition)),
+        definitions: (contribution.agentDefinitions ?? []).map(definition =>
+          toHostAgentDefinition(contribution.meta.id, definition)
+        ),
       }));
   }
 
@@ -401,36 +419,43 @@ class BackendPluginRegistry {
     return Array.from(byType.values());
   }
 
-  private normalizeIpcRegistrations(contribution: PluginBackendContribution): BackendPluginIpcRegistration[] {
-    const modern = contribution.ipc ? [this.fromIpcContribution(contribution.meta.id, contribution.ipc)] : [];
+  private normalizeIpcRegistrations(
+    contribution: PluginBackendContribution
+  ): BackendPluginIpcRegistration[] {
+    const modern = contribution.ipc
+      ? [this.fromIpcContribution(contribution.meta.id, contribution.ipc)]
+      : [];
     const legacyRegistrars = contribution.ipcRegistrars ?? [];
     const legacyChannels = contribution.ipcChannels ?? [];
-    const legacy = legacyRegistrars.length > 0
-      ? legacyRegistrars.map((registrar) => ({
-        pluginId: contribution.meta.id,
-        channels: legacyChannels,
-        source: 'legacy' as const,
-        register: (serviceManager: unknown, _handlerRegistrar: BackendPluginIpcHandlerRegistrar) => {
-          registrar(serviceManager);
-        },
-      }))
-      : legacyChannels.length > 0
-        ? [{
-          pluginId: contribution.meta.id,
-          channels: legacyChannels,
-          source: 'legacy' as const,
-          register: () => {},
-        }]
-        : [];
-    return [
-      ...modern,
-      ...legacy,
-    ];
+    const legacy =
+      legacyRegistrars.length > 0
+        ? legacyRegistrars.map(registrar => ({
+            pluginId: contribution.meta.id,
+            channels: legacyChannels,
+            source: 'legacy' as const,
+            register: (
+              serviceManager: unknown,
+              _handlerRegistrar: BackendPluginIpcHandlerRegistrar
+            ) => {
+              registrar(serviceManager);
+            },
+          }))
+        : legacyChannels.length > 0
+          ? [
+              {
+                pluginId: contribution.meta.id,
+                channels: legacyChannels,
+                source: 'legacy' as const,
+                register: () => {},
+              },
+            ]
+          : [];
+    return [...modern, ...legacy];
   }
 
   private fromIpcContribution(
     pluginId: PluginId,
-    contribution: BackendPluginIpcContribution,
+    contribution: BackendPluginIpcContribution
   ): BackendPluginIpcRegistration {
     return {
       pluginId,
@@ -439,7 +464,6 @@ class BackendPluginRegistry {
       register: contribution.register,
     };
   }
-
 }
 
 export const backendPluginRegistry = new BackendPluginRegistry();

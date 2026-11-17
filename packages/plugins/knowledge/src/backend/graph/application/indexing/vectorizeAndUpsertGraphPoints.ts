@@ -31,11 +31,20 @@ export async function vectorizeAndUpsertGraphPoints(args: {
   }>;
   onProgress: (done: number, total: number) => void;
 }): Promise<void> {
-  const { embedding, embeddingModelId, qdrantRepository, collectionName, docId, docTitle, blockType, points, onProgress } =
-    args;
+  const {
+    embedding,
+    embeddingModelId,
+    qdrantRepository,
+    collectionName,
+    docId,
+    docTitle,
+    blockType,
+    points,
+    onProgress,
+  } = args;
   if (points.length === 0) return;
 
-  const texts = points.map((p) => p.text);
+  const texts = points.map(p => p.text);
   const total = texts.length;
   const batchSize = calculateBatchSize(total);
 
@@ -49,7 +58,12 @@ export async function vectorizeAndUpsertGraphPoints(args: {
     const batchTexts = texts.slice(i, batchEnd);
     const batchPoints = points.slice(i, batchEnd);
 
-    const embeddingResult = await embedding.embed({ modelId: embeddingModelId, values: batchTexts, expectedSpaceId: args.expectedSpaceId, signal: args.signal });
+    const embeddingResult = await embedding.embed({
+      modelId: embeddingModelId,
+      values: batchTexts,
+      expectedSpaceId: args.expectedSpaceId,
+      signal: args.signal,
+    });
     const denseVectorsRaw = embeddingResult.vectors;
 
     // 严格收敛：必须是一一对应的 number[][]
@@ -69,12 +83,16 @@ export async function vectorizeAndUpsertGraphPoints(args: {
     }
 
     if (denseVectors.length !== batchTexts.length) {
-      throw new Error(`嵌入返回数量不匹配: expected=${batchTexts.length}, got=${denseVectors.length}`);
+      throw new Error(
+        `嵌入返回数量不匹配: expected=${batchTexts.length}, got=${denseVectors.length}`
+      );
     }
 
     const sparseVectors: SparseVector[] = await textsToSparseVectors(batchTexts);
     if (sparseVectors.length !== batchTexts.length) {
-      throw new Error(`稀疏向量返回数量不匹配: expected=${batchTexts.length}, got=${sparseVectors.length}`);
+      throw new Error(
+        `稀疏向量返回数量不匹配: expected=${batchTexts.length}, got=${sparseVectors.length}`
+      );
     }
 
     if (!createdCollection) {

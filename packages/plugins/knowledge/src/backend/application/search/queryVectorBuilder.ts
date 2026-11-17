@@ -65,14 +65,18 @@ export class QueryVectorBuilder {
     if (!kb) throw new Error(`找不到知识库: ${kbId}`);
     const identity = this.metadataRepository.indexState.requireReady(kbId);
     const embeddingModelId = args.requestedEmbeddingModelId || identity.modelId;
-    const result = await this.embedding.embed({
-      modelId: embeddingModelId, values: [query], expectedSpaceId: identity.spaceId,
-    }).catch((error: unknown) => {
-      if (error instanceof EmbeddingFailure && error.code === 'embedding_space_mismatch') {
-        throw new KnowledgeIndexSpaceMismatchError(kbId);
-      }
-      throw error;
-    });
+    const result = await this.embedding
+      .embed({
+        modelId: embeddingModelId,
+        values: [query],
+        expectedSpaceId: identity.spaceId,
+      })
+      .catch((error: unknown) => {
+        if (error instanceof EmbeddingFailure && error.code === 'embedding_space_mismatch') {
+          throw new KnowledgeIndexSpaceMismatchError(kbId);
+        }
+        throw error;
+      });
     const embedding = result.vectors[0];
     const queryVector = this.toNumberVectorOrThrow(embedding, '生成 queryVector 失败');
     return { embeddingModelId, queryVector };

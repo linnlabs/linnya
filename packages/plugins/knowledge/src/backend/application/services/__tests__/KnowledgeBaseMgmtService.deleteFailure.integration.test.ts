@@ -40,14 +40,12 @@ describe('knowledge deletion with vector service failures', () => {
         const collection = new URL(request.url ?? '/', 'http://localhost').pathname.split('/')[2];
         response.setHeader('content-type', 'application/json');
         if (request.method === 'DELETE' && collection === failedCollection) {
-          response
-            .writeHead(500)
-            .end(
-              JSON.stringify({
-                status: { error: 'Service internal error: operation timed out' },
-                time: 0,
-              })
-            );
+          response.writeHead(500).end(
+            JSON.stringify({
+              status: { error: 'Service internal error: operation timed out' },
+              time: 0,
+            })
+          );
         } else {
           if (request.method === 'DELETE') deleted.push(collection);
           response.end(

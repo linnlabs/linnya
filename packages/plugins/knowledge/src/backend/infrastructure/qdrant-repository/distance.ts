@@ -15,6 +15,3 @@ export function normalizeDistanceMetric(distanceMetric?: string): Distance {
   }
   return 'Cosine';
 }
-
-
-

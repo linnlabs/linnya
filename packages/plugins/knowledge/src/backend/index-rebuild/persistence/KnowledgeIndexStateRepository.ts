@@ -64,9 +64,9 @@ export class KnowledgeIndexStateRepository {
 
   /** 清除可用身份先于任何破坏性向量替换，异常退出后仍能识别不完整索引。 */
   invalidateForRebuild(kbId: string): void {
-    const result = this.database.prepare(
-      'UPDATE knowledge_bases SET embedding_space_id = NULL WHERE id = ?',
-    ).run(kbId);
+    const result = this.database
+      .prepare('UPDATE knowledge_bases SET embedding_space_id = NULL WHERE id = ?')
+      .run(kbId);
     if (result.changes === 0) throw new Error(`知识库不存在: ${kbId}`);
   }
 
@@ -77,8 +77,11 @@ export class KnowledgeIndexStateRepository {
 
   private write(kbId: string, identity: KnowledgeIndexIdentity): void {
     if (!identity.modelId.trim() || !identity.spaceId.trim()) throw new Error('索引身份不能为空');
-    const result = this.database.prepare(`UPDATE knowledge_bases
-      SET embedding_model_id = ?, embedding_space_id = ?, updated_at = ? WHERE id = ?`)
+    const result = this.database
+      .prepare(
+        `UPDATE knowledge_bases
+      SET embedding_model_id = ?, embedding_space_id = ?, updated_at = ? WHERE id = ?`
+      )
       .run(identity.modelId, identity.spaceId, Date.now() / 1000, kbId);
     if (result.changes === 0) throw new Error(`知识库不存在: ${kbId}`);
   }

@@ -22,14 +22,14 @@ export function buildQdrantFilter(filterOptions?: SearchFilterOptions): QdrantFi
   if (filterOptions.docIds && filterOptions.docIds.length > 0) {
     must.push({
       key: 'doc_id',
-      match: { any: filterOptions.docIds }
+      match: { any: filterOptions.docIds },
     });
   }
 
   if (filterOptions.blockTypes && filterOptions.blockTypes.length > 0) {
     must.push({
       key: 'block_type',
-      match: { any: filterOptions.blockTypes }
+      match: { any: filterOptions.blockTypes },
     });
   }
 
@@ -37,13 +37,13 @@ export function buildQdrantFilter(filterOptions?: SearchFilterOptions): QdrantFi
     if (filterOptions.pageRange.min !== undefined) {
       must.push({
         key: 'page_number',
-        range: { gte: filterOptions.pageRange.min }
+        range: { gte: filterOptions.pageRange.min },
       });
     }
     if (filterOptions.pageRange.max !== undefined) {
       must.push({
         key: 'page_number',
-        range: { lte: filterOptions.pageRange.max }
+        range: { lte: filterOptions.pageRange.max },
       });
     }
   }
@@ -67,12 +67,14 @@ export function buildQdrantFilter(filterOptions?: SearchFilterOptions): QdrantFi
       } else if ('any' in cond) {
         const anyList = cond.any;
         if (!Array.isArray(anyList) || anyList.length === 0) continue;
-        const normalized = anyList.filter((item) =>
+        const normalized = anyList.filter(item =>
           typeof item === 'string' ? item.trim().length > 0 : Number.isFinite(item)
         );
         if (normalized.length === 0) continue;
-        if (!normalized.every((item) => typeof item === 'string')
-          && !normalized.every((item) => typeof item === 'number')) {
+        if (
+          !normalized.every(item => typeof item === 'string') &&
+          !normalized.every(item => typeof item === 'number')
+        ) {
           // 不能静默忽略一类值，否则会改变查询或删除的匹配范围。
           throw new TypeError(`Qdrant filter ${qdrantKey} must not mix strings and numbers`);
         }
@@ -86,5 +88,3 @@ export function buildQdrantFilter(filterOptions?: SearchFilterOptions): QdrantFi
   const filter: QdrantFilter = { must };
   return filter;
 }
-
-

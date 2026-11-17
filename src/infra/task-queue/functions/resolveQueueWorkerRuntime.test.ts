@@ -9,10 +9,14 @@ import { resolveQueueWorkerRuntime } from './resolveQueueWorkerRuntime';
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(temporaryDirectories.splice(0).map(directory => rm(directory, {
-    recursive: true,
-    force: true,
-  })));
+  await Promise.all(
+    temporaryDirectories.splice(0).map(directory =>
+      rm(directory, {
+        recursive: true,
+        force: true,
+      })
+    )
+  );
 });
 
 describe('resolveQueueWorkerRuntime', () => {
@@ -41,7 +45,8 @@ describe('resolveQueueWorkerRuntime', () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'linnya-queue-worker-missing-'));
     temporaryDirectories.push(root);
 
-    expect(() => resolveQueueWorkerRuntime(path.join(root, 'dist', 'main')))
-      .toThrow('plugin-runtime.worker.cjs');
+    expect(() => resolveQueueWorkerRuntime(path.join(root, 'dist', 'main'))).toThrow(
+      'plugin-runtime.worker.cjs'
+    );
   });
 });

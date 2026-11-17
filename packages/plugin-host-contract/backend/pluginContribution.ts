@@ -6,10 +6,7 @@ import type { BaseTool } from './toolRuntime';
 import type { PluginMigrationDefinition } from './pluginMigration';
 import type { HiddenWorkerDefinition } from './hiddenWorkerRuntime';
 import type { BackendPluginCliContribution } from './pluginCli';
-import type {
-  SandboxJsonValue,
-  SandboxProfile,
-} from './sandboxRuntime';
+import type { SandboxJsonValue, SandboxProfile } from './sandboxRuntime';
 
 export type BackendPluginMeta = PluginMeta;
 
@@ -18,7 +15,7 @@ export type BackendPluginIpcRegistrar = (tsServiceManager: unknown) => void;
 export type BackendPluginIpcHandlerRegistrar = (
   pluginId: string,
   channel: string,
-  handler: BackendPluginIpcHandler,
+  handler: BackendPluginIpcHandler
 ) => void;
 
 export interface BackendPluginIpcContribution {
@@ -35,10 +32,7 @@ export interface BackendPluginToolContextDecorator {
   readonly toolNames: readonly string[];
   decorate(context: unknown, params: BackendPluginToolContextDecoratorParams): void | Promise<void>;
   /** @deprecated use `toolContextBindingMigrators` on PluginBackendContribution. */
-  copyBinding?(
-    source: unknown,
-    target: unknown,
-  ): void;
+  copyBinding?(source: unknown, target: unknown): void;
 }
 
 export interface BackendPluginToolContextBindingMigrator {
@@ -49,10 +43,7 @@ export interface BackendPluginToolContextBindingMigrator {
    * 普通 `{ ...context }` 无法复制这些绑定。通用 host 工具必须通过平台
    * 派生入口调用这里，不能 import 某个插件自己的 copy helper。
    */
-  migrate(
-    source: unknown,
-    target: unknown,
-  ): void;
+  migrate(source: unknown, target: unknown): void;
 }
 
 export interface BackendPluginRuntimeEffect {
@@ -75,7 +66,11 @@ export interface BackendPluginAgentFenceDescriptor {
   readonly kind: string;
   readonly category?: BackendPluginAgentFenceCategory;
   readonly llmRole: 'user' | 'system';
-  readonly placement: 'after-system' | 'before-current-user' | 'after-current-user' | 'after-last-tool-result';
+  readonly placement:
+    | 'after-system'
+    | 'before-current-user'
+    | 'after-current-user'
+    | 'after-last-tool-result';
   readonly lifetime: 'turn-only' | 'persisted';
   readonly mustKeep?: boolean;
   readonly maxBudgetFraction?: number;
@@ -128,7 +123,9 @@ export interface BackendPluginSkillContribution {
   readonly skillResourceRoots?: readonly string[];
 }
 
-export interface BackendPluginDocumentContribution<THook extends BackendPluginDocumentTypeHookSummary = BackendPluginDocumentTypeHookSummary> {
+export interface BackendPluginDocumentContribution<
+  THook extends BackendPluginDocumentTypeHookSummary = BackendPluginDocumentTypeHookSummary,
+> {
   readonly documentTypeHooks?: readonly THook[];
 }
 
@@ -188,18 +185,17 @@ export interface BackendPluginDatabaseContribution {
 
 export type PluginBackendContributionBase<
   THook extends BackendPluginDocumentTypeHookSummary = BackendPluginDocumentTypeHookSummary,
-> =
-  & BackendPluginIdentityContribution
-  & BackendPluginToolContribution
-  & BackendPluginCliContributionPoint
-  & BackendPluginAgentContribution
-  & BackendPluginSkillContribution
-  & BackendPluginDocumentContribution<THook>
-  & BackendPluginIpcGatewayContribution
-  & BackendPluginRendererPushGatewayContribution
-  & BackendPluginLegacyIpcCompatibilityContribution
-  & BackendPluginRuntimeContribution
-  & BackendPluginDatabaseContribution;
+> = BackendPluginIdentityContribution &
+  BackendPluginToolContribution &
+  BackendPluginCliContributionPoint &
+  BackendPluginAgentContribution &
+  BackendPluginSkillContribution &
+  BackendPluginDocumentContribution<THook> &
+  BackendPluginIpcGatewayContribution &
+  BackendPluginRendererPushGatewayContribution &
+  BackendPluginLegacyIpcCompatibilityContribution &
+  BackendPluginRuntimeContribution &
+  BackendPluginDatabaseContribution;
 
 export type PluginBackendContribution<
   THook extends BackendPluginDocumentTypeHookSummary = BackendPluginDocumentTypeHookSummary,

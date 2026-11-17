@@ -38,13 +38,13 @@ class BackendShutdownError extends Error {
 /** Backend 唯一启动编排；不注册 Electron IPC，也不选择物理宿主 adapter。 */
 export async function initializeAppServerBackend(
   config: AppServerBackendConfiguration,
-  hostDependencies: BackendHostDependencies,
+  hostDependencies: BackendHostDependencies
 ): Promise<BackendRuntimeOwner> {
   installRuntimePathRoots(hostDependencies.bootstrap.runtimePathRoots);
   installDistributionIdentity(hostDependencies.bootstrap.distributionIdentity);
   uninstallPluginWorkerRuntime?.();
   uninstallPluginWorkerRuntime = installPluginWorkerRuntime(
-    hostDependencies.processRuntime.queueWorkers.pluginBootstrapScriptPath,
+    hostDependencies.processRuntime.queueWorkers.pluginBootstrapScriptPath
   );
   logger.info('App Server Backend 初始化开始');
 
@@ -52,7 +52,7 @@ export async function initializeAppServerBackend(
     modelCatalog.installEndpointCredentialStorage(hostDependencies.credentialStorage);
     providerAccountRegistry.installCredentialStorage(hostDependencies.credentialStorage);
     installBackendHiddenWorkerRuntimePort(
-      createBackendHiddenWorkerRuntime(hostDependencies.hiddenWorkerHost),
+      createBackendHiddenWorkerRuntime(hostDependencies.hiddenWorkerHost)
     );
     installBackendTextMeasurementRuntimeDependencies(hostDependencies.textMeasurement);
     installBackendRendererIntegrationPort(hostDependencies.rendererIntegration);
@@ -60,7 +60,7 @@ export async function initializeAppServerBackend(
     uninstallWebPageRenderer?.();
     uninstallWebPageRenderer = installWebPageRenderer(hostDependencies.webPageRenderer);
     installWorkspaceMutationPublisher(
-      hostDependencies.rendererIntegration.publishWorkspaceMutation,
+      hostDependencies.rendererIntegration.publishWorkspaceMutation
     );
     logger.info('Initializing App Server Backend...');
 
@@ -70,7 +70,7 @@ export async function initializeAppServerBackend(
       hostDependencies.processRuntime.queueWorkers,
       hostDependencies.bootstrap.runtimePathRoots,
       hostDependencies.bootstrap.applicationVersion,
-      hostDependencies.databaseStartupProgress,
+      hostDependencies.databaseStartupProgress
     );
     const port = await runtimeOwner.start(config);
     logger.info(`BackendRuntimeOwner 已启动: port=${port}`);
@@ -93,8 +93,7 @@ export async function initializeAppServerBackend(
         backendBootstrap: hostDependencies.bootstrap,
         externalAuthorizationBrowser: hostDependencies.externalAuthorizationBrowser,
         rendererIntegration: hostDependencies.rendererIntegration,
-        conversationExecutionRuntimeFactory:
-          hostDependencies.conversationExecutionRuntimeFactory,
+        conversationExecutionRuntimeFactory: hostDependencies.conversationExecutionRuntimeFactory,
         providerModelSynchronizationLifecycleRegistration: {
           register: lifecycle => runtimeOwner.registerProviderModelSynchronization(lifecycle),
         },
@@ -115,18 +114,16 @@ export async function initializeAppServerBackend(
         // App Server 的 ready 是 Host 可以接收新会话的业务承诺。只启动 HTTP 端口
         // 不能算 ready，否则 CLI 会拿到一个 doctor 可达、send 却必然失败的假运行时。
         throw new Error(
-          `App Server conversation routes 初始化失败: ${routeResult.conversationInitError ?? 'unknown_error'}`,
+          `App Server conversation routes 初始化失败: ${routeResult.conversationInitError ?? 'unknown_error'}`
         );
       }
       logger.info('App Server Backend 路由配置完成');
     } catch (routeError: unknown) {
-      logger.error(
-        'App Server Backend 路由配置失败',
-        routeError,
-      );
-      const routeErrorMessage = routeError instanceof Error
-        ? `${routeError.name}: ${routeError.message}`
-        : 'unknown_route_configuration_error';
+      logger.error('App Server Backend 路由配置失败', routeError);
+      const routeErrorMessage =
+        routeError instanceof Error
+          ? `${routeError.name}: ${routeError.message}`
+          : 'unknown_route_configuration_error';
       runtimeOwner.setRouteConfigurationResult({
         conversationRoutesMounted: false,
         conversationControlBridgeMounted: false,
@@ -147,10 +144,7 @@ export async function initializeAppServerBackend(
     uninstallPluginWorkerRuntime = null;
     uninstallWebPageRenderer?.();
     uninstallWebPageRenderer = null;
-    logger.error(
-      'App Server Backend 初始化失败',
-      error,
-    );
+    logger.error('App Server Backend 初始化失败', error);
     throw error;
   }
 }
@@ -177,9 +171,7 @@ export async function shutdownAppServerBackend(): Promise<void> {
   uninstallPluginWorkerRuntime = null;
 
   if (failures.length > 0) {
-    const failure = failures.length === 1
-      ? failures[0]
-      : new BackendShutdownError(failures);
+    const failure = failures.length === 1 ? failures[0] : new BackendShutdownError(failures);
     logger.error('Failed to shut down App Server Backend:', failure);
     throw failure;
   }
