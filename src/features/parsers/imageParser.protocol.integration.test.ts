@@ -7,6 +7,7 @@ import { createAiSdkInferenceCapability, createAiSdkLanguageModelRegistry, type 
 import { createTextGenerationPort } from '../../app-hosts/linnya/adapters/inference/orchestration/createTextGenerationPort';
 import { detectSupportedImageMediaType } from '../../shared/media/image-inspection';
 import type { TextGenerationPort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
+import { createStaticBmp } from './testkit/createStaticBmp';
 import { createAnimatedPng } from './testkit/createAnimatedPng';
 import { parseImageWithAi } from './imageParser';
 
@@ -69,15 +70,6 @@ async function fixture() {
   } };
 }
 
-function bmp(): Buffer {
-  // 两像素 24bit BMP，验证实际 Skia BMP 解码，不拿 PNG 改扩展名。
-  const bytes = Buffer.alloc(62);
-  bytes.write('BM'); bytes.writeUInt32LE(62, 2); bytes.writeUInt32LE(54, 10);
-  bytes.writeUInt32LE(40, 14); bytes.writeInt32LE(2, 18); bytes.writeInt32LE(1, 22);
-  bytes.writeUInt16LE(1, 26); bytes.writeUInt16LE(24, 28); bytes.writeUInt32LE(8, 34);
-  bytes.set([0, 0, 255, 0, 255, 0, 0, 0], 54);
-  return bytes;
-}
 function animatedGif(): Buffer {
   const encoder = new GifEncoder(2, 1, { repeat: 0 });
   encoder.addFrame(new Uint8Array([255, 0, 0, 255, 0, 0, 0, 0]), 2, 1, { delay: 100 });
@@ -93,7 +85,7 @@ it('真实PNG/JPEG/WebP及静态GIF/BMP经Parser→Host→官方SDK→HTTP保持
     { format: 'jpeg', bytes: await source.clone().jpeg().toBuffer(), expected: 'image/jpeg', unchanged: true },
     { format: 'webp', bytes: await source.clone().webp().toBuffer(), expected: 'image/webp', unchanged: true },
     { format: 'gif', bytes: await source.clone().gif().toBuffer(), expected: 'image/png', unchanged: false },
-    { format: 'bmp', bytes: bmp(), expected: 'image/png', unchanged: false },
+    { format: 'bmp', bytes: createStaticBmp(), expected: 'image/png', unchanged: false },
   ];
   const server = await fixture();
   try {

@@ -23,7 +23,7 @@ describe('向量 Worker 的实例归属', () => {
       await queue.initialize({
         workerRuntime: {
           ingestionScriptPath: worker, graphIndexingScriptPath: worker,
-          graphExtractionScriptPath: worker, audioProcessingScriptPath: worker,
+          graphExtractionScriptPath: worker, audioProcessingScriptPath: worker, pluginBootstrapScriptPath: worker,
         },
         runtimePathRoots: { developmentRoot: root, appDataRoot: root, workspaceRoot: root, workspaceRootIsCustom: false },
         distributionIdentity: { kind: 'source', packaged: false },

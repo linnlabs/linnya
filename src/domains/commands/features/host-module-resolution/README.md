@@ -13,6 +13,8 @@
 - 插件停用、目录身份不匹配、模块不在白名单或发布版路径不完整时关闭解析。
 - Shell、Python、npm、brew、pnpm 等普通 CLI 不经过这里，也不由 Linnya 安装或升级。
 
+路径归属与固定依赖定位复用 `src/shared/host-module-resolution`；CLI 仍持有自己的名单、CJS 接线与生命周期，不继承 Worker 的运行配置。
+
 ## 为什么独立
 
 Plugin CLI 有固定插件语义和发布物；把它和任意 Shell 模块解析混合，会让插件命令绕过 Shell 审批或让 Shell 继承不适用的 artifact policy。

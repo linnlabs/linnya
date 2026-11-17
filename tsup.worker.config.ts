@@ -8,10 +8,16 @@ const bundleTrace = createTsupBundleTrace({
 });
 
 export default defineConfig({
-  entry: ['src/infra/task-queue/workers/*.worker.ts'],
+  entry: [
+    'src/infra/task-queue/workers/audio-processing.worker.ts',
+    'src/infra/task-queue/workers/ingestion.worker.ts',
+    'src/infra/task-queue/workers/graph-extraction.worker.ts',
+    'src/infra/task-queue/workers/graph-indexing.worker.ts',
+    'src/infra/task-queue/workers/plugin-runtime.worker.ts',
+  ],
   format: ['cjs'],
   platform: 'node',
-  target: 'node22',
+  target: 'node24',
   outDir: 'dist',
   splitting: false,
   // PDF.js 与 @napi-rs/canvas 都从生产依赖树运行时解析；后者包含平台原生二进制，

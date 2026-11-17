@@ -1,9 +1,11 @@
-import { mkdtemp, mkdir, rm, symlink, access, copyFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
+import { mkdtemp, mkdir, rm, symlink, access, copyFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
+import sharp from 'sharp';
+import { createStaticBmp } from '../../../../../features/parsers/testkit/createStaticBmp';
+import { detectSupportedImageMediaType } from '../../../../../shared/media/image-inspection';
 import { build } from 'esbuild';
 import { afterEach, beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
 import type { PluginInferencePort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
@@ -18,12 +20,17 @@ import { pluginWorkerSdkAliases } from '../../../../../../scripts/build/plugin-w
 
 interface Job {
   taskId: string;
-  mode: 'database' | 'inference' | 'crash';
+  mode: 'database' | 'inference' | 'crash' | 'native' | 'boundaries';
+  outsideParent?: string;
+  images?: readonly { filename: string; bytes: Uint8Array }[];
+  temporaryDirectory?: string;
   modelId: string;
   __linnyaWorkerHost?: unknown;
 }
 let root: string;
 let artifact: string;
+let hostBuildDirectory: string;
+let bootstrapScriptPath: string;
 let nextDatabase = 0;
 const queues: PluginWorkerQueue<Job>[] = [];
 const databases: Database.Database[] = [];
@@ -69,12 +76,14 @@ function setup(options: { version?: number; port?: PluginInferencePort; entry?: 
       workerEntry: options.entry ?? 'dist/managed.worker.cjs',
       maxConcurrency: 1,
       inferenceAdmission: job => ({
-        operations: ['embed', 'ocr'],
+        operations: ['embed', 'ocr', 'ocr-profile', 'text'],
         modelIds: [job.modelId],
         inputFiles: [],
+        temporaryDirectory: job.temporaryDirectory,
       }),
     },
     {
+      bootstrapScriptPath,
       database: { path: db.name, schemaVersion: 7 },
       inference: options.port ?? inference(),
       environment,
@@ -117,10 +126,17 @@ function observe(queue: PluginWorkerQueue<Job>) {
 
 beforeAll(async () => {
   root = await mkdtemp(path.join(os.tmpdir(), 'linnya-plugin-worker-'));
+  const cache = path.resolve('node_modules/.cache');
+  await mkdir(cache, { recursive: true });
+  hostBuildDirectory = await mkdtemp(path.join(cache, 'host-plugin-worker-'));
+  bootstrapScriptPath = process.env.LINNYA_TEST_HOST_WORKER_BOOTSTRAP ?? path.join(hostBuildDirectory, 'plugin-runtime.worker.cjs');
+  if (!process.env.LINNYA_TEST_HOST_WORKER_BOOTSTRAP) await build({
+    entryPoints: [path.resolve('src/infra/task-queue/workers/plugin-runtime.worker.ts')],
+    outfile: bootstrapScriptPath, bundle: true, platform: 'node', format: 'cjs', target: 'node24',
+    logLevel: 'silent',
+  });
   artifact = path.join(root, 'artifact');
   await mkdir(path.join(artifact, 'dist'), { recursive: true });
-  const require = createRequire(import.meta.url);
-  const nativeDatabaseModule = require.resolve('better-sqlite3');
   const output = await build({
     entryPoints: [fileURLToPath(new URL('./fixtures/managed.worker.ts', import.meta.url))],
     outfile: path.join(artifact, 'dist/managed.worker.cjs'),
@@ -131,13 +147,12 @@ beforeAll(async () => {
     metafile: true,
     logLevel: 'silent',
     tsconfig: path.resolve('tsconfig.json'),
-    // 测试 artifact 从临时目录执行，native ABI 明确使用本工作区已验收的 Host 模块。
-    alias: { ...pluginWorkerSdkAliases(process.cwd()), 'better-sqlite3': nativeDatabaseModule },
-    external: [nativeDatabaseModule],
+    alias: pluginWorkerSdkAliases(process.cwd()),
+    external: ['better-sqlite3', 'sharp', '@napi-rs/canvas', 'pdfjs-dist', '@node-rs/jieba', 'electron'],
   });
   expect(
     Object.keys(output.metafile.inputs).filter(file =>
-      /model-catalog|credential-storage|provider-account|services\/database(?:\/|\.ts)/.test(file)
+      /^src\/.*(?:model-catalog|credential-storage|provider-account|services\/database(?:\/|\.ts)|pathManager|runtime-paths|createDiagnosticLogFileSink|createDiagnosticLogWriter)/.test(file)
     )
   ).toEqual([]);
   expect(
@@ -155,6 +170,7 @@ afterEach(async () => {
 });
 afterAll(async () => {
   await rm(root, { recursive: true, force: true });
+  await rm(hostBuildDirectory, { recursive: true, force: true });
 });
 
 describe('plugin artifact Worker runtime', () => {
@@ -167,6 +183,7 @@ describe('plugin artifact Worker runtime', () => {
       modelId: 'embedding',
       __linnyaWorkerHost: {
         database: { path: path.join(root, 'unowned.sqlite'), schemaVersion: 1 },
+        pluginRuntime: { entryPath: path.join(root, 'unowned.cjs'), artifactDirectory: root },
       },
     };
     await queue.addTask(job);
@@ -187,6 +204,53 @@ describe('plugin artifact Worker runtime', () => {
     expect(observation.progress).toHaveLength(1);
     expect(queue.getTask('stored')?.data.taskId).toBe('stored');
     await expect(access(path.join(root, 'unowned.sqlite'))).rejects.toThrow();
+  });
+
+  it('源码外artifact经正式队列解析PDF、五种静态图片及真实Jieba词典', async () => {
+    const pixels = sharp(Buffer.from([255, 0, 0, 255, 0, 0, 0, 0]), { raw: { width: 2, height: 1, channels: 4 } });
+    const images = [
+      { filename: 'source.png', bytes: await pixels.clone().png().toBuffer() },
+      { filename: 'source.jpeg', bytes: await pixels.clone().jpeg().toBuffer() },
+      { filename: 'source.webp', bytes: await pixels.clone().webp().toBuffer() },
+      { filename: 'source.gif', bytes: await pixels.clone().gif().toBuffer() },
+      { filename: 'source.bmp', bytes: createStaticBmp() },
+    ];
+    const mediaTypes: string[] = [];
+    const port = inference();
+    const generate: PluginInferencePort['textGeneration']['generate'] = async request => {
+      const image = request.messages.flatMap(message => typeof message.content === 'string' ? [] : message.content).find(content => content.type === 'image');
+      if (!image || image.type !== 'image') throw new Error('Missing image');
+      expect(detectSupportedImageMediaType(Buffer.from(image.bytes))).toBe(image.mediaType);
+      expect((await sharp(image.bytes).metadata()).width).toBe(2);
+      mediaTypes.push(image.mediaType);
+      return { text: 'native image', reasoning: '', finishReason: 'stop' };
+    };
+    const taskDirectory = path.join(root, 'native-task');
+    await mkdir(taskDirectory);
+    const documentOcr: PluginInferencePort['documentOcr'] = {
+      async resolveModelProfile() { return { modelId: 'vision', displayName: 'Fixture OCR', mode: 'document_upload', supportsAbortSignal: true, attemptTimeoutMs: 5000 }; },
+      async recognizeDocument(request) {
+        if (request.input.kind !== 'pdf_path') throw new Error('Expected PDF upload');
+        expect((await readFile(request.input.path)).subarray(0, 5).toString()).toBe('%PDF-');
+        return { pages: [{ pageNumber: 1, markdown: 'saved OCR' }] };
+      },
+    };
+    const { queue } = setup({ port: { ...port, textGeneration: { generate }, documentOcr } });
+    const observation = observe(queue);
+    await queue.addTask({ taskId: 'native', mode: 'native', modelId: 'vision', images, temporaryDirectory: taskDirectory });
+    await observation.settled;
+    expect(observation.failure).toBeUndefined();
+    expect(observation.result).toMatchObject({ count: 1, pipeline: 'text_extraction', images: Array(5).fill('native image'), tokens: expect.arrayContaining(['人工智能', '数据库']), scanned: 'saved OCR', temporaryFiles: [] });
+    expect(mediaTypes).toEqual(['image/png', 'image/jpeg', 'image/webp', 'image/png', 'image/png']);
+  }, 20_000);
+
+  it('不解析未列入名单的子模块或artifact外调用，即使Host已安装依赖', async () => {
+    const { queue } = setup();
+    const observation = observe(queue);
+    await queue.addTask({ taskId: 'boundaries', mode: 'boundaries', modelId: 'unused', outsideParent: path.join(root, 'outside.cjs') });
+    await observation.settled;
+    expect(observation.failure).toBeUndefined();
+    expect(observation.result).toEqual(['@node-rs/jieba/package.json', 'sharp']);
   });
 
   it('schema不匹配拒绝线程写入，既有数据库不会被迁移或切换journal', async () => {
@@ -227,6 +291,7 @@ describe('plugin artifact Worker runtime', () => {
       createHostPluginWorkerQueue(
         { pluginId: 'unknown', workerEntry: 'x.cjs' },
         {
+          bootstrapScriptPath,
           database: { path: '', schemaVersion: 7 },
           inference: inference(),
           environment: {},

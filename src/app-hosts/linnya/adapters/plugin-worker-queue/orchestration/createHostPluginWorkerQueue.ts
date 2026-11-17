@@ -15,6 +15,7 @@ import { freezePluginWorkerEnvironment } from '../functions/freezePluginWorkerEn
 import { resolvePluginWorkerEntry } from '../functions/resolvePluginWorkerEntry';
 
 interface PluginWorkerQueueHost {
+  readonly bootstrapScriptPath: string;
   readonly database: WorkerHostData['database'];
   readonly inference: PluginInferencePort;
   readonly environment: Readonly<Record<string, string | undefined>>;
@@ -37,10 +38,10 @@ export function createHostPluginWorkerQueue<T extends PluginWorkerTask>(
   const workerEntry = resolvePluginWorkerEntry(pluginDirectory, options.workerEntry);
   const handlers = new Map<string, WorkerHostRequestHandler>();
   const queue = new WorkerThreadQueue<T>({
-    workerScript: workerEntry,
+    workerScript: host.bootstrapScriptPath,
     maxConcurrency: options.maxConcurrency,
     workerEnvironment: freezePluginWorkerEnvironment(host.environment),
-    hostData: { database: host.database },
+    hostData: { database: host.database, pluginRuntime: { artifactDirectory: pluginDirectory, entryPath: workerEntry } },
     ...(options.inferenceAdmission
       ? {
           hostRequestHandler(job: Readonly<WorkerJob<T>>) {

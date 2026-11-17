@@ -46,6 +46,7 @@ class TestBackendRuntimeOwner extends BackendRuntimeOwner {
     }, Object.freeze({
       ingestionScriptPath: '/test/runtime/ingestion.worker.cjs',
       audioProcessingScriptPath: '/test/runtime/audio-processing.worker.cjs',
+      pluginBootstrapScriptPath: '/test/runtime/plugin-runtime.worker.cjs',
       graphExtractionScriptPath: '/test/runtime/graph-extraction.worker.cjs',
       graphIndexingScriptPath: '/test/runtime/graph-indexing.worker.cjs',
     }), Object.freeze({

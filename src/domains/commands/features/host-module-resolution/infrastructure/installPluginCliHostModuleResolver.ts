@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import Module from 'node:module';
-import fs from 'node:fs';
 import path from 'node:path';
+import { createScopedHostModuleResolution } from '../../../../../shared/host-module-resolution/functions/createScopedHostModuleResolution';
 
 type CommonJsLoad = (
   request: string,
@@ -70,27 +70,6 @@ function callCommonJsResolveFilename(
   return Reflect.apply(resolveFilename, Module, [request, parent, isMain, options]);
 }
 
-function normalizeExistingPath(filePath: string): string {
-  try {
-    return fs.realpathSync.native(filePath);
-  } catch {
-    return path.resolve(filePath);
-  }
-}
-
-function isInsideDirectory(filePath: string, directoryPath: string): boolean {
-  const relative = path.relative(directoryPath, filePath);
-  return relative === '' || (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative));
-}
-
-function isPluginCliParent(
-  parent: NodeModule | null | undefined,
-  pluginCliDirectory: string,
-): boolean {
-  if (!parent?.filename) return false;
-  return isInsideDirectory(normalizeExistingPath(parent.filename), pluginCliDirectory);
-}
-
 /**
  * 为插件 CLI artifact 提供打包后仍可用的重型运行时依赖。
  *
@@ -102,26 +81,22 @@ export function installPluginCliHostModuleResolver(input: {
   readonly pluginCliDirectory: string;
   readonly hostAppRoot: string;
 }): () => void {
-  const pluginCliDirectory = normalizeExistingPath(input.pluginCliDirectory);
-  const requireFromHost = createRequire(path.join(input.hostAppRoot, 'package.json'));
+  const hostModuleAnchor = path.join(input.hostAppRoot, 'package.json');
+  const requireFromHost = createRequire(hostModuleAnchor);
+  const resolveHostModule = createScopedHostModuleResolution({
+    artifactDirectory: input.pluginCliDirectory, hostModuleAnchor,
+    specifiers: pluginCliHostModuleSpecifiers,
+  });
   const originalLoad = readRawCommonJsLoad();
   const originalResolveFilename = readRawCommonJsResolveFilename();
   const scopedLoad: CommonJsLoad = (request, parent, isMain) => {
-    if (
-      pluginCliHostModuleSpecifiers.has(request)
-      && isPluginCliParent(parent, pluginCliDirectory)
-    ) {
-      return requireFromHost(request);
-    }
+    const resolved = resolveHostModule(request, parent?.filename);
+    if (resolved) return requireFromHost(resolved);
     return callCommonJsLoad(originalLoad, request, parent, isMain);
   };
   const scopedResolveFilename: CommonJsResolveFilename = (request, parent, isMain, options) => {
-    if (
-      pluginCliHostModuleSpecifiers.has(request)
-      && isPluginCliParent(parent, pluginCliDirectory)
-    ) {
-      return requireFromHost.resolve(request);
-    }
+    const resolved = resolveHostModule(request, parent?.filename);
+    if (resolved) return resolved;
     return callCommonJsResolveFilename(originalResolveFilename, request, parent, isMain, options);
   };
 

@@ -12,6 +12,7 @@ export function pluginWorkerSdkAliases(repositoryRoot) {
   for (const name of ['loggingRuntime', 'documentParsingRuntime']) {
     aliases[`@plugin/backend/${name}`] = aliases[`@plugin/backend/worker/${name}`];
   }
+  aliases['@plugin/backend/textSegmentationRuntime'] = path.join(repositoryRoot, 'src/plugin-sdk/backend/textSegmentationRuntime.ts');
   aliases['@plugin/backend/inferenceFailures'] = path.join(repositoryRoot, 'src/plugin-sdk/backend/inferenceFailures.ts');
   return aliases;
 }
