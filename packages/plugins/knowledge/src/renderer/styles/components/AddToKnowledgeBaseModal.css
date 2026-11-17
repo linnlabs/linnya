@@ -60,7 +60,7 @@
   transition: transform var(--duration-medium) var(--ease-standard);
 }
 
-.add-to-kb-body .select-chevron.is-open {
+.add-to-kb-body .select-chevron.kb-select-chevron--open {
   transform: translateY(-50%) rotate(180deg);
 }
 

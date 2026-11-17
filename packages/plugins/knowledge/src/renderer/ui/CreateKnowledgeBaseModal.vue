@@ -109,7 +109,7 @@
                   <ChevronIcon
                     direction="down"
                     class="select-chevron"
-                    :class="{ 'is-open': isOpen }"
+                    :class="{ 'kb-select-chevron--open': isOpen }"
                   />
                 </template>
               </CustomSelect>
