@@ -9,7 +9,6 @@ import express from 'express';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { createSqliteConversationStorageCatalogPort } from '../../app-hosts/linnya/adapters/persistence/storage-space/createSqliteConversationStorageCatalogPort';
 import { SQLiteEventStore } from '../../app-hosts/linnya/adapters/persistence/event-store';
 import { CONVERSATION_DIRECTORY_CLEANUP_JOB_SCHEMA } from '../../app-hosts/linnya/adapters/persistence/conversation-files';
 import { createStorageSpaceUseCase } from '../../app-hosts/linnya/application/storage-space';
@@ -52,7 +51,7 @@ describe('storage-space backend E2E', () => {
     await Promise.all(roots.splice(0).map(root => fsp.rm(root, { recursive: true, force: true })));
   });
 
-  it('从真实对话和磁盘返回概览，精准清理后保留聊天并更新工作文件状态', async () => {
+  it('聚合真实磁盘占用，精准清理后保留聊天并更新分类总量', async () => {
     const appDataRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-storage-e2e-app-'));
     const workspaceRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-storage-e2e-workspace-'));
     roots.push(appDataRoot, workspaceRoot);
@@ -109,7 +108,6 @@ describe('storage-space backend E2E', () => {
         async stopFlowAndWait() {},
       });
       const useCase = createStorageSpaceUseCase({
-        catalog: createSqliteConversationStorageCatalogPort(db),
         inventory: createLocalManagedStorageInventoryPort({
           appDataRoot,
           workspaceRoot,
@@ -123,7 +121,6 @@ describe('storage-space backend E2E', () => {
           diagnosticLogRoot: path.join(workspaceRoot, 'logs'),
           artifactsRoot: path.join(workspaceRoot, 'Artifacts', 'v1'),
         }),
-        workDirectoryUsage: lifecycle.workDirectoryUsage,
         cleanup,
       });
       const app = express();
@@ -140,18 +137,7 @@ describe('storage-space backend E2E', () => {
       const beforeResponse = await fetch(`${baseUrl}/overview`);
       const before = StorageSpaceOverviewResponseSchema.parse(await beforeResponse.json());
       expect(beforeResponse.status).toBe(200);
-      expect(before.conversations).toContainEqual(expect.objectContaining({
-        conversation_id: conversationId,
-        work_files_state: 'available',
-        byte_size: 9,
-        file_count: 1,
-      }));
-      expect(before.conversations).toContainEqual(expect.objectContaining({
-        conversation_id: malformedConversationId,
-        work_files_state: 'unavailable',
-        byte_size: null,
-        file_count: null,
-      }));
+      expect(before).not.toHaveProperty('conversations');
       expect(before.categories.find(category => category.kind === 'conversation_work_files'))
         .toMatchObject({ byte_size: 34 });
 
@@ -166,18 +152,7 @@ describe('storage-space backend E2E', () => {
 
       const afterResponse = await fetch(`${baseUrl}/overview`);
       const after = StorageSpaceOverviewResponseSchema.parse(await afterResponse.json());
-      expect(after.conversations).toContainEqual(expect.objectContaining({
-        conversation_id: conversationId,
-        work_files_state: 'previous_files_unavailable',
-        byte_size: 0,
-        file_count: 0,
-      }));
-      expect(after.conversations).toContainEqual(expect.objectContaining({
-        conversation_id: malformedConversationId,
-        work_files_state: 'unavailable',
-        byte_size: null,
-        file_count: null,
-      }));
+      expect(after).not.toHaveProperty('conversations');
       expect(after.categories.find(category => category.kind === 'conversation_work_files'))
         .toMatchObject({ byte_size: 25 });
     } finally {

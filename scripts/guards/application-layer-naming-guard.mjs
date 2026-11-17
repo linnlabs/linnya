@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import { execFileSync } from 'node:child_process';
+import { listGitFiles } from '../source-analysis/listGitFiles.mjs';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -35,15 +35,9 @@ const legacyReferencePattern = new RegExp(
   `workflows/(?:${applicationFeatureNames.join('|')})(?:/|['\"\`])`,
   'u',
 );
-const trackedAndUntrackedFiles = execFileSync(
-  'git',
-  ['ls-files', '--cached', '--others', '--exclude-standard'],
-  { cwd: repoRoot, encoding: 'utf8' },
-).split('\n').filter(relativePath => (
-  relativePath.length > 0
-  // staged / working-tree deletions仍存在于 index；命名守卫只审计实际会保留的文件。
-  && fs.existsSync(path.join(repoRoot, relativePath))
-));
+// staged / working-tree deletions仍存在于 index；命名守卫只审计实际会保留的文件。
+const trackedAndUntrackedFiles = listGitFiles(['--cached', '--others', '--exclude-standard'], { cwd: repoRoot })
+  .filter(relativePath => fs.existsSync(path.join(repoRoot, relativePath)));
 
 const violations = [];
 

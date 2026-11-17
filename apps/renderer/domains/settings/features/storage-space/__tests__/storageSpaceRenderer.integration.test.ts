@@ -25,7 +25,6 @@ const CATEGORY_KINDS = [
 
 function overview(input: {
   readonly measuredAtMs?: number;
-  readonly conversations?: StorageSpaceOverviewResponse['conversations'];
   readonly categoryBytes?: readonly number[];
 } = {}): StorageSpaceOverviewResponse {
   const categoryBytes = input.categoryBytes ?? [9, 8, 7, 6, 5, 4];
@@ -36,14 +35,6 @@ function overview(input: {
       kind,
       byte_size: categoryBytes[index],
     })),
-    conversations: input.conversations ?? [{
-      conversation_id: 'conversation-a',
-      title: '报告整理',
-      project_id: null,
-      work_files_state: 'available',
-      byte_size: 9,
-      file_count: 1,
-    }],
   });
 }
 

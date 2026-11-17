@@ -24,14 +24,6 @@ function projectOverviewResponse(
       kind: category.kind,
       byte_size: category.byteSize,
     })),
-    conversations: overview.conversations.map(conversation => ({
-      conversation_id: conversation.conversationId,
-      title: conversation.title,
-      project_id: conversation.projectId,
-      work_files_state: conversation.workFilesState,
-      byte_size: conversation.byteSize,
-      file_count: conversation.fileCount,
-    })),
   });
 }
 

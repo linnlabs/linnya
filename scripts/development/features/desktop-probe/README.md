@@ -32,6 +32,7 @@
 | `record curve` | `record curve --target '.menu' --props opacity,width --duration 800 -- click @n25`。逐帧取计算样式及包围盒，曲线时间从开始采样算起，数字属性附时长、进度、超调与单调性。 |
 | `record frames` | `record frames --target '.menu' --at 0,40,80,160,300 -- click @n25`。动作完成后逐帧等候 CSS/WAAPI 动效，最多 300 ms。捕获后暂停、按时间拼图，再恢复。动作后才挂载的菜单用 CSS 选择器。JS 驱动的变化用曲线。 |
 | `fixture project-overview` | 通过该实例的开发 CLI 生成独立项目、嵌套文件夹、Markdown 和 Slides。返回项目 ID，验证时打开该项目的概览。 |
+| `accept overview` | 自动启动新的隐藏隔离实例，验收知识库导航、项目概览、菜单定格、逐步列宽与 Slides 打开。自动保存截图、采样、步骤、断言及进程清理结果，成功后清理实例。输出 `manifest` 为独立的验收清单。它覆盖这条业务链，不代表所有界面或发布验收通过。 |
 
 `--name` 适用于每条命令。负数参数使用等号，如 `--by=-60,0`。默认隐藏模式仍使用真实页面绘制和 CDP 可信输入。探针主窗口禁用 Electron 后台绘制节流，保证长时间隐藏后仍能快速抓图。隐藏和 `inactive` 模式会模拟应用收到的窗口焦点通知，悬停提示可用，系统前台应用保持不变。`--window inactive` 适合人眼旁观，`visible` 允许正常激活窗口。系统菜单、原生对话框、输入法候选窗和系统拖放需走对应的桌面验收。
 
@@ -49,3 +50,10 @@
 探针位于开发脚本层，产品代码与安装包不依赖它。Electron 升级时先跑玩具验收检查窗口拦截、调试协议与截图行为。
 
 业务回归按[业务验收入口](../../../../docs/development/acceptance-scenarios.md)选取，不用重复创建执行框架。
+
+`accept` 使用[验收证据协议](../../../test-runner/features/acceptance-evidence/README.md)。设置
+`ACCEPTANCE_EVIDENCE_DIR` 可将附件交给外部验收运行器；未设置时输出到独立临时目录。
+截图、定格与步骤在 `stop --clean` 前保存，失败时保留实例数据并尝试追加现场截图；两种结果都结束自有进程。
+`accept` 始终新建自己的实例，不接受 `--name`，不会复用当前调试会话。
+扩展业务场景时复用 `acceptance()` 和 `evidence.check()`，把真实断言放入具名步骤，将测试和外部夹具列入 testFiles。
+不要把动作执行成功等同于用户行为正确，也不从页面截图推断数据库写入成功。

@@ -31,6 +31,12 @@ const RAW_RENDERER_SCHEDULER_MESSAGE = [
   '如果只是想推迟一下等某个状态生效，先找到它真正就绪的信号。',
 ].join('');
 
+const GIT_LS_FILES_MESSAGE = [
+  '列 Git 文件用 scripts/source-analysis/listGitFiles.mjs 的 listGitFiles：',
+  '它统一加 -z（不加时中文路径会被转义，existsSync 等判断悄悄失败）并放宽输出上限（清单超过 1 MiB 时 execFileSync 直接抛错）。',
+  '只要工作区实际存在的自有文件时用 listWorkingTreePaths。',
+].join('');
+
 export default [
   {
     ignores: [
@@ -189,6 +195,13 @@ export default [
           ],
         },
       ],
+    },
+  },
+  {
+    files: ['scripts/**/*.{cjs,cts,js,mjs,mts,ts}'],
+    ignores: ['scripts/source-analysis/listGitFiles.mjs', 'scripts/**/__tests__/**', 'scripts/**/*.test.{mjs,ts}'],
+    rules: {
+      'no-restricted-syntax': ['error', { selector: 'ArrayExpression > Literal[value="ls-files"]', message: GIT_LS_FILES_MESSAGE }],
     },
   },
 ];

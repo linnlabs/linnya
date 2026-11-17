@@ -14,6 +14,9 @@ const cssFiles = collectCssFiles(packageSourceRoot);
 const tokenDefinitions = new Set();
 const tokenReferences = new Set();
 const themeTokens = new Map(builtInThemes.map(theme => [theme, new Set()]));
+const themeTokenValues = new Map(builtInThemes.map(theme => [theme, new Map()]));
+// 开关、卡片等小元素的阴影：暗色与浅色保持同一强度（已确认的视觉决定）；只有浮层用的 lg / xl 可以在深底上加重。
+const SMALL_ELEMENT_SHADOW_TOKENS = ['--shadow-color-xs', '--shadow-color-sm', '--shadow-color-md'];
 
 assert.ok(cssFiles.length > 0, 'Renderer UI 至少要有一个 CSS 公开入口');
 
@@ -44,6 +47,21 @@ if (nonEmptyThemeTokenSets.length > 0) {
       `内置主题 ${theme} 的 token 集合不完整`,
     );
   }
+}
+
+for (const token of SMALL_ELEMENT_SHADOW_TOKENS) {
+  const lightValue = themeTokenValues.get('light').get(token);
+  const darkValue = themeTokenValues.get('dark').get(token);
+  assert.ok(lightValue !== undefined, `浅色主题缺少 ${token}`);
+  assert.equal(
+    darkValue,
+    lightValue,
+    [
+      `暗色主题的 ${token} 是 ${darkValue}，浅色是 ${lightValue}：两者要相同。`,
+      'xs / sm / md 服务开关、卡片等小元素，暗色下加重会显得又脏又重，这是已确认的视觉决定。',
+      '要在深底上表达层级，用浮层的 --shadow-color-lg / xl；确需调整小元素阴影，浅色与暗色一起改，并先给前后对比。',
+    ].join(''),
+  );
 }
 
 console.log(`Renderer UI style contract 通过（${cssFiles.length} CSS，${tokenDefinitions.size} definitions，${tokenReferences.size} references）。`);
@@ -128,6 +146,9 @@ function collectThemeTokens(relativePath, source) {
       assert.ok(themeTokens.has(theme), `${relativePath} 声明了未登记内置主题：${theme}`);
       for (const tokenMatch of declarationBlock.matchAll(/(--[a-z][a-z0-9-]*)\s*:/giu)) {
         themeTokens.get(theme).add(tokenMatch[1]);
+      }
+      for (const valueMatch of declarationBlock.matchAll(/(--[a-z][a-z0-9-]*)\s*:\s*([^;]+);/giu)) {
+        themeTokenValues.get(theme).set(valueMatch[1], valueMatch[2].trim());
       }
     }
   }

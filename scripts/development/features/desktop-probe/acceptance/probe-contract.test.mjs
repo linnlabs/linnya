@@ -116,6 +116,7 @@ test('克隆数据只复制用户数据，跳过缓存、锁与 shm，源目录�
 test('主产物存在时，插件必需文件缺失仍判为需要重建', () => {
   const root = mkdtempSync(join(tmpdir(), 'probe-plugin-build-'));
   try {
+    execFileSync('git', ['init', '-q', root]);
     const plugin = join(root, 'packages/plugins/fixture');
     mkdirSync(plugin, { recursive: true });
     writeFileSync(join(plugin, 'plugin.json'), JSON.stringify({ id: 'fixture' }));
@@ -124,7 +125,6 @@ test('主产物存在时，插件必需文件缺失仍判为需要重建', () =>
     } } }));
     assert.deepEqual(buildFreshness(root), { stale: true, reason: '插件 fixture 缺少 dist/worker.html' });
     mkdirSync(join(plugin, 'dist')); writeFileSync(join(plugin, 'dist/worker.html'), 'ready');
-    execFileSync('git', ['init', '-q', root]);
     assert.match(buildFreshness(root).reason, /缺少 dist\/main/);
     writeFileSync(join(plugin, 'package.json'), JSON.stringify({ linnya: { development: {
       backendLoading: 'disk', backendWatchConfig: 'tsup.config.ts', requiredOutputs: ['../outside'],

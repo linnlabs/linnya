@@ -28,16 +28,6 @@ export const StorageSpaceConversationIdSchema = z.string()
   );
 export type StorageSpaceConversationId = z.infer<typeof StorageSpaceConversationIdSchema>;
 
-export const StorageSpaceConversationWorkFilesStateSchema = z.enum([
-  'not_created',
-  'previous_files_unavailable',
-  'available',
-  'unavailable',
-]);
-export type StorageSpaceConversationWorkFilesState = z.infer<
-  typeof StorageSpaceConversationWorkFilesStateSchema
->;
-
 const NonnegativeSafeIntegerSchema = z.number().int().nonnegative().safe();
 
 export const StorageSpaceCategoryUsageSchema = z.object({
@@ -46,54 +36,12 @@ export const StorageSpaceCategoryUsageSchema = z.object({
 }).strict();
 export type StorageSpaceCategoryUsage = z.infer<typeof StorageSpaceCategoryUsageSchema>;
 
-export const StorageSpaceConversationUsageSchema = z.object({
-  conversation_id: StorageSpaceConversationIdSchema,
-  title: z.string(),
-  project_id: z.string().nullable(),
-  work_files_state: StorageSpaceConversationWorkFilesStateSchema,
-  byte_size: NonnegativeSafeIntegerSchema.nullable(),
-  file_count: NonnegativeSafeIntegerSchema.nullable(),
-}).strict().superRefine((usage, context) => {
-  if (usage.work_files_state === 'unavailable') {
-    if (usage.byte_size !== null || usage.file_count !== null) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'unmeasured work files must not expose byte or file counts',
-        path: ['work_files_state'],
-      });
-    }
-    return;
-  }
-  if (usage.byte_size === null || usage.file_count === null) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'measured work files must expose byte and file counts',
-      path: ['work_files_state'],
-    });
-    return;
-  }
-  if (
-    usage.work_files_state !== 'available'
-    && (usage.byte_size !== 0 || usage.file_count !== 0)
-  ) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'absent work files must have zero byte and file counts',
-      path: ['work_files_state'],
-    });
-  }
-});
-export type StorageSpaceConversationUsage = z.infer<
-  typeof StorageSpaceConversationUsageSchema
->;
-
 export const StorageSpaceOverviewResponseSchema = z.object({
   measured_at_ms: NonnegativeSafeIntegerSchema,
   total_byte_size: NonnegativeSafeIntegerSchema,
   categories: z.array(StorageSpaceCategoryUsageSchema).length(
     STORAGE_SPACE_CATEGORY_ORDER.length,
   ),
-  conversations: z.array(StorageSpaceConversationUsageSchema),
 }).strict().superRefine((overview, context) => {
   const seen = new Set<StorageSpaceCategoryKind>();
   for (const [index, category] of overview.categories.entries()) {

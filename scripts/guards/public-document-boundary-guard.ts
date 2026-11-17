@@ -4,17 +4,13 @@
  * 内部 Proposal、调研和阶段记录存放在独立私有仓。这里仅按仓库相对路径判断，
  * 不记录私有仓位置、维护者用户名或本机目录。
  */
-import { execFileSync } from 'node:child_process';
+import { listGitFiles } from '../source-analysis/listGitFiles.mjs';
 import { pathToFileURL } from 'node:url';
 
 const PRIVATE_PROCESS_DOCUMENT_PREFIX = 'docs/proposals/';
 
 export function listTrackedPrivateProcessDocuments(repoRoot = process.cwd()): string[] {
-  return execFileSync('git', ['ls-files', '--cached', '-z'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  })
-    .split('\0')
+  return listGitFiles(['--cached'], { cwd: repoRoot })
     .filter(file => file.startsWith(PRIVATE_PROCESS_DOCUMENT_PREFIX))
     .sort((left, right) => left.localeCompare(right));
 }
