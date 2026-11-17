@@ -2,8 +2,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Plugin } from 'esbuild';
 
-/** 三个并行tsup entry各有独立元数据，不能写同一个metafile-cjs.json互相覆盖。 */
-export function canvasBundleMetadata(name: 'backend' | 'cli' | 'computation'): Plugin {
+/** 并行tsup entry各有独立元数据，不能写同一个metafile-cjs.json互相覆盖。 */
+export function canvasBundleMetadata(name: 'backend' | 'cli' | 'computation' | 'preload'): Plugin {
   return { name: `canvas-${name}-metadata`, setup(build) {
     build.initialOptions.metafile = true;
     build.onEnd(async result => {

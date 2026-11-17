@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'vitest';
 import { repoRoot } from '../definitions/probeContract.mjs';
+import { buildFreshness } from '../orchestration/probeBuild.mjs';
 import { feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
 import { launchOptions, parseProbeArgs } from '../functions/parseProbeArgs.mjs';
 import { renderSnapshot } from '../functions/renderSnapshot.mjs';
@@ -109,4 +110,25 @@ test('克隆数据只复制用户数据，跳过缓存、锁与 shm，源目录�
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
+});
+
+
+test('主产物存在时，插件必需文件缺失仍判为需要重建', () => {
+  const root = mkdtempSync(join(tmpdir(), 'probe-plugin-build-'));
+  try {
+    execFileSync('git', ['init', '-q', root]);
+    const plugin = join(root, 'packages/plugins/fixture');
+    mkdirSync(plugin, { recursive: true });
+    writeFileSync(join(plugin, 'plugin.json'), JSON.stringify({ id: 'fixture' }));
+    writeFileSync(join(plugin, 'package.json'), JSON.stringify({ linnya: { development: {
+      backendLoading: 'disk', backendWatchConfig: 'tsup.config.ts', requiredOutputs: ['dist/worker.html'],
+    } } }));
+    assert.deepEqual(buildFreshness(root), { stale: true, reason: '插件 fixture 缺少 dist/worker.html' });
+    mkdirSync(join(plugin, 'dist')); writeFileSync(join(plugin, 'dist/worker.html'), 'ready');
+    assert.match(buildFreshness(root).reason, /缺少 dist\/main/);
+    writeFileSync(join(plugin, 'package.json'), JSON.stringify({ linnya: { development: {
+      backendLoading: 'disk', backendWatchConfig: 'tsup.config.ts', requiredOutputs: ['../outside'],
+    } } }));
+    assert.throws(() => buildFreshness(root), /requiredOutputs/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

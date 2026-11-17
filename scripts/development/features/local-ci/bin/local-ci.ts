@@ -135,7 +135,11 @@ async function main(): Promise<number> {
     const failures = results.filter(result => result.outcome === 'failure' && !result.note);
     const summaryFile = writeLocalCiSummary(logDirectory, {
       commit: checkout.commit,
+      tree: checkout.tree,
       clean: checkout.clean,
+      // 只有不加 --workflow / --job 的干净检出才代表“全部 CI 在这份代码上通过”。
+      fullRun: options.workflows.length === 0 && options.jobs.length === 0,
+      passed: failures.length === 0 && !controller.signal.aborted,
       durationMs: Date.now() - started,
       interrupted: controller.signal.aborted,
       results,

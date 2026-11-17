@@ -63,7 +63,12 @@ export function discoverWorkspaceDiskBackendPlugins(repositoryRoot = process.cwd
       throw new Error(`${packageJsonPath}: backendWatchConfig 必须是包内相对配置路径`);
     }
     const additionalBuilds = readPluginAdditionalBuilds(packageJson, packageDir);
-    plugins.push(Object.freeze({ pluginId, packageDir, backendWatchConfig, ...(additionalBuilds.length ? { additionalBuilds } : {}) }));
+    const requiredOutputs = packageJson.linnya.development.requiredOutputs ?? [];
+    if (!Array.isArray(requiredOutputs) || requiredOutputs.some(output => typeof output !== 'string' || !output.trim()
+      || path.isAbsolute(output) || path.win32.isAbsolute(output) || output.split(/[\\/]/).includes('..'))) {
+      throw new Error(`${packageJsonPath}: requiredOutputs 必须是包内相对文件路径数组`);
+    }
+    plugins.push(Object.freeze({ pluginId, packageDir, backendWatchConfig, ...(requiredOutputs.length ? { requiredOutputs } : {}), ...(additionalBuilds.length ? { additionalBuilds } : {}) }));
   }
 
   return plugins.sort((left, right) => left.pluginId.localeCompare(right.pluginId));

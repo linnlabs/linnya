@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { existsSync, mkdirSync, utimesSync } from 'node:fs';
+import { existsSync, mkdirSync, utimesSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { waitFor } from '../infrastructure/cdpClient.mjs';
 import { instanceRoot, readOptional, readSession } from '../infrastructure/instanceStore.mjs';
@@ -86,7 +86,11 @@ try {
   await run('reload');
   assert.equal((await probe('click', button.ref)).error?.code, 'STALE_REF');
   await run('eval', "localStorage.setItem('restart-test','kept')");
+  const retainedFile = join(root, 'workspace', 'retained.txt');
+  mkdirSync(join(root, 'workspace'), { recursive: true });
+  writeFileSync(retainedFile, 'existing isolated data');
   const restarted = await run('restart');
+  assert.equal(readFileSync(retainedFile, 'utf8'), 'existing isolated data');
   assert.notEqual(restarted.supervisor.pid, up.supervisor.pid);
   assert.equal((await run('eval', "localStorage.getItem('restart-test')")).value, 'kept');
   signalOwner(restarted.supervisor, 'SIGKILL');

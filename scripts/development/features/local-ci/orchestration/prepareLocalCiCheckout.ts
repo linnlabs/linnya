@@ -7,6 +7,8 @@ export interface LocalCiCheckout {
   readonly root: string;
   readonly clean: boolean;
   readonly commit: string;
+  /** 提交的 tree：按代码内容标识这次运行，内容相同的提交（rebase、改说明）可以复用结果。 */
+  readonly tree: string;
   /** 工作区里未提交的路径；干净检出不包含它们。 */
   readonly uncommitted: readonly string[];
   readonly remove: () => void;
@@ -22,11 +24,12 @@ function git(cwd: string, args: readonly string[]): string {
  */
 export function prepareLocalCiCheckout(repositoryRoot: string, options: { readonly inPlace: boolean }): LocalCiCheckout {
   const commit = git(repositoryRoot, ['rev-parse', 'HEAD']);
+  const tree = git(repositoryRoot, ['rev-parse', `${commit}^{tree}`]);
   const uncommitted = git(repositoryRoot, ['status', '--porcelain'])
     .split('\n')
     .filter(Boolean)
     .map(line => line.slice(3));
-  if (options.inPlace) return { root: repositoryRoot, clean: false, commit, uncommitted, remove: () => {} };
+  if (options.inPlace) return { root: repositoryRoot, clean: false, commit, tree, uncommitted, remove: () => {} };
   const root = path.join(mkdtempSync(path.join(os.tmpdir(), 'linnya-ci-local-')), 'checkout');
   git(repositoryRoot, ['worktree', 'add', '--detach', root, commit]);
   let removed = false;
@@ -34,6 +37,7 @@ export function prepareLocalCiCheckout(repositoryRoot: string, options: { readon
     root,
     clean: true,
     commit,
+    tree,
     uncommitted,
     remove: () => {
       if (removed) return;

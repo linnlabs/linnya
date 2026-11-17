@@ -33,7 +33,7 @@ function declaredFunctions(source) {
   };
   visit(source); return names;
 }
-for (const [name, outputPath, budget] of [['backend', 'dist/backend/index.cjs', 3 * 1024 ** 2], ['cli', 'dist/cli/canvas-cli.cjs', 3.2 * 1024 ** 2], ['computation', 'dist/backend/canvas-computation-worker.cjs', 5 * 1024 ** 2]]) {
+for (const [name, outputPath, budget] of [['backend', 'dist/backend/index.cjs', 3 * 1024 ** 2], ['cli', 'dist/cli/canvas-cli.cjs', 3.2 * 1024 ** 2], ['computation', 'dist/backend/canvas-computation-worker.cjs', 5 * 1024 ** 2], ['preload', 'dist/backend/render-worker-preload.cjs', 2 * 1024 ** 2]]) {
   const record = JSON.parse(await readFile(path.join(packageRoot, 'dist/.metadata', `${name}.json`), 'utf8'));
   const output = Object.entries(record.metafile.outputs).find(([file]) => path.resolve(record.workingDirectory, file) === path.join(packageRoot, outputPath));
   assert(output, `${name}: actual entry metadata missing`);
@@ -48,7 +48,9 @@ for (const [name, outputPath, budget] of [['backend', 'dist/backend/index.cjs', 
   }
   for (const dependency of output[1].imports) {
     if (!dependency.external) continue;
-    const permitted = isBuiltin(dependency.path) || name === 'backend' && /^(?:@app\/schemas(?:\/|$)|@plugin\/backend\/)/.test(dependency.path)
+    // 沙箱 preload 连 Node 内置模块都不能 require，只允许 electron。
+    const permitted = name === 'preload' ? dependency.path === 'electron'
+      : isBuiltin(dependency.path) || name === 'backend' && /^(?:@app\/schemas(?:\/|$)|@plugin\/backend\/)/.test(dependency.path)
       || name === 'cli' && ['better-sqlite3', 'electron'].includes(dependency.path);
     assert(permitted, `${name}: unclosed runtime dependency ${dependency.path}`);
   }

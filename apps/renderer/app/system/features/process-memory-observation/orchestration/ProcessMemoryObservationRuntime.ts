@@ -1,3 +1,4 @@
+import type { RepeatingTimer } from '@linnya/renderer-ui';
 import type { ProcessMemoryObservationGateway } from '../infrastructure/processMemoryObservationGateway';
 import type { ProcessMemoryObservationSample } from '../definitions/processMemoryObservation';
 
@@ -6,20 +7,14 @@ export interface ProcessMemoryObservationRuntimeCallbacks {
   readonly onFailure: (message: string) => void;
 }
 
-export interface ProcessMemoryObservationRuntimeScheduler {
-  readonly setInterval: (callback: () => void, intervalMs: number) => number;
-  readonly clearInterval: (timerId: number) => void;
-}
-
 export class ProcessMemoryObservationRuntime {
-  private timerId: number | null = null;
   private active = false;
   private pendingSample: Promise<void> | null = null;
   private callbacks: ProcessMemoryObservationRuntimeCallbacks | null = null;
 
   constructor(
     private readonly gateway: ProcessMemoryObservationGateway,
-    private readonly scheduler: ProcessMemoryObservationRuntimeScheduler,
+    private readonly intervalTimer: Pick<RepeatingTimer, 'start' | 'stop'>,
   ) {}
 
   get isRecording(): boolean {
@@ -34,7 +29,7 @@ export class ProcessMemoryObservationRuntime {
     this.active = true;
     this.callbacks = callbacks;
     await this.capture('recording-start');
-    this.timerId = this.scheduler.setInterval(() => {
+    this.intervalTimer.start(() => {
       void this.capture('interval');
     }, intervalMs);
   }
@@ -45,10 +40,7 @@ export class ProcessMemoryObservationRuntime {
 
   async stop(): Promise<void> {
     if (!this.active) return;
-    if (this.timerId !== null) {
-      this.scheduler.clearInterval(this.timerId);
-      this.timerId = null;
-    }
+    this.intervalTimer.stop();
     await this.pendingSample;
     await this.capture('recording-stop');
     this.callbacks = null;

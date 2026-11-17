@@ -31,6 +31,7 @@
 | 跨进程数据合同，以及必须前后端一致的显示规则（例如历史时间） | [`@app/schemas`](../../packages/schemas/README.md) |
 | 只给 Backend 的基础能力：文件、路径、进程、日志 | `src/shared/*` |
 | 界面组件、浮层、定位、焦点、快捷键 | [`@linnya/renderer-ui`](../../packages/renderer-ui/README.md)；业务模块不自己监听全局点击、不自己算浮层位置 |
+| 界面时序：延迟、防抖、轮询、按帧合并、动画 | [`@linnya/renderer-ui` 的调度函数](../../packages/renderer-ui/README.md#界面时序)；渲染端不直接调 `setTimeout`、`requestAnimationFrame` 等，ESLint 检查 |
 | 跟当前语言有关的显示：时间、数字、大小、排序比较 | [Renderer 本地化](../../apps/renderer/app/localization/README.md)；业务模块不直接调 `Intl` 和 `toLocale…` |
 | 界面里与业务无关的非视觉逻辑 | `apps/renderer/shared` |
 | 只在一个 domain 里复用 | 该 domain 的 `functions/`、`orchestration/`，不上移 |

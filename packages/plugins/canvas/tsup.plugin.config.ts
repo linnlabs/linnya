@@ -10,6 +10,10 @@ const common = {
   outExtension: () => ({ js: '.cjs' }),
 };
 export default defineConfig([
+  // preload 与 backend 共用清理目录，必须由同一次构建/监听生成，不能留到另一个脚本补齐。
+  // 渲染 Worker 是 sandbox 窗口，preload 只能 require electron；@app/schemas 等依赖必须内联，verify-artifact 会检查。
+  { ...common, esbuildPlugins: [canvasBundleMetadata('preload')], entry: { 'render-worker-preload': 'src/backend/features/canvasRender/infrastructure/preload.ts' },
+    external: ['electron'], noExternal: [...common.noExternal, /^@app\/schemas(?:\/|$)/] },
   { ...common, esbuildPlugins: [canvasBundleMetadata('backend')], entry: { index: 'src/backend/index.ts' } },
   { ...common, esbuildPlugins: [canvasBundleMetadata('cli')], outDir: 'dist/cli', entry: { 'canvas-cli': 'src/cli/index.ts' }, external: ['electron', 'better-sqlite3'], esbuildOptions(options) {
     // 和现有独立CLI一样，只内联公开且无App装配依赖的SDK入口；不保留虚拟Host specifier。

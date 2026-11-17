@@ -26,13 +26,12 @@ describe('ProcessMemoryObservationRuntime', () => {
       readSample: vi.fn(async label => createSample(label, ++timestamp)),
     };
     let intervalCallback!: () => void;
-    const clearInterval = vi.fn();
+    const stopInterval = vi.fn();
     const runtime = new ProcessMemoryObservationRuntime(gateway, {
-      setInterval: (callback) => {
+      start: (callback) => {
         intervalCallback = callback;
-        return 7;
       },
-      clearInterval,
+      stop: stopInterval,
     });
     const samples: ProcessMemoryObservationSample[] = [];
 
@@ -48,6 +47,6 @@ describe('ProcessMemoryObservationRuntime', () => {
       'interval',
       'recording-stop',
     ]);
-    expect(clearInterval).toHaveBeenCalledWith(7);
+    expect(stopInterval).toHaveBeenCalledTimes(1);
   });
 });

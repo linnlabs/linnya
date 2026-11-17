@@ -23,7 +23,6 @@ const EMPTY_OVERVIEW = {
     { kind: 'diagnostic_logs', byteSize: 0, fileCount: 0 },
     { kind: 'application_data', byteSize: 0, fileCount: 0 },
   ],
-  conversations: [],
 } as const;
 
 async function start(useCase: StorageSpaceUseCasePort): Promise<{
@@ -86,7 +85,6 @@ describe('storage-space HTTP router', () => {
         kind: category.kind,
         byte_size: category.byteSize,
       })),
-      conversations: [],
     });
   });
 
@@ -141,7 +139,7 @@ describe('storage-space HTTP router', () => {
   it.each([
     ['overview', 'GET', 'storage_space.overview_failed'],
     ['conversations/conversation-a/work-directory', 'DELETE', 'storage_space.work_directory_clear_failed'],
-  ] as const)('内部失败只返回 code，不泄漏路径或异常详情', async (path, method, code) => {
+  ] as const)('%s 的 %s 内部失败只返回 code，不泄漏路径或异常详情', async (path, method, code) => {
     const useCase = createUseCase();
     if (method === 'GET') {
       vi.spyOn(useCase, 'readOverview')

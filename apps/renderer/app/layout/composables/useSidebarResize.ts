@@ -10,6 +10,8 @@
  * - 如果未来有其他页面/布局需要复用，也可以继续从这里导入
  */
 
+import { useFrameBatch } from '@linnya/renderer-ui';
+
 /**
  * useSidebarResize 配置选项
  */
@@ -61,27 +63,21 @@ export function useSidebarResize(options: UseSidebarResizeOptions): UseSidebarRe
   let startWidth = 0;
   let isResizing = false;
   let pendingWidth: number | null = null;
-  let resizeRafId: number | null = null;
 
   const clampWidth = (width: number) => Math.max(minWidth, Math.min(width, maxWidth));
 
   const applyWidth = (width: number) => setWidth(clampWidth(width));
 
+  // 拖动时每帧只写一次宽度。
+  const widthFrame = useFrameBatch(() => {
+    if (pendingWidth === null) return;
+    applyWidth(pendingWidth);
+    pendingWidth = null;
+  });
+
   const scheduleWidthApply = (width: number) => {
     pendingWidth = width;
-    if (resizeRafId !== null) {
-      return;
-    }
-
-    resizeRafId = window.requestAnimationFrame(() => {
-      resizeRafId = null;
-      if (pendingWidth === null) {
-        return;
-      }
-
-      applyWidth(pendingWidth);
-      pendingWidth = null;
-    });
+    widthFrame.request();
   };
 
   /**
@@ -132,10 +128,7 @@ export function useSidebarResize(options: UseSidebarResizeOptions): UseSidebarRe
       applyWidth(pendingWidth);
       pendingWidth = null;
     }
-    if (resizeRafId !== null) {
-      window.cancelAnimationFrame(resizeRafId);
-      resizeRafId = null;
-    }
+    widthFrame.cancel();
     window.removeEventListener('pointermove', resize);
     window.removeEventListener('pointerup', stopResize);
     window.removeEventListener('pointercancel', stopResize);
@@ -149,10 +142,7 @@ export function useSidebarResize(options: UseSidebarResizeOptions): UseSidebarRe
   const cleanup = () => {
     pendingWidth = null;
     isResizing = false;
-    if (resizeRafId !== null) {
-      window.cancelAnimationFrame(resizeRafId);
-      resizeRafId = null;
-    }
+    widthFrame.cancel();
     window.removeEventListener('pointermove', resize);
     window.removeEventListener('pointerup', stopResize);
     window.removeEventListener('pointercancel', stopResize);

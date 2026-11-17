@@ -101,6 +101,14 @@ function runTypecheck(project) {
     .filter((line) => /error TS\d+/u.test(line))
     .length;
 
+  // tsc 的正常诊断退出码为 1/2；被信号终止或没有诊断的失败不能当成错误减少。
+  // 先留日志，再拒绝更新基线，避免编译器崩溃把存量债务误写成零。
+  if (result.signal || result.status === null
+    || (result.status !== 0 && (![1, 2].includes(result.status) || current === 0))
+    || (result.status === 0 && current > 0)) {
+    fail(`❌ ${project.label} 未正常完成（exit=${result.status}, signal=${result.signal}）；完整 log: ${logPath}`, 2);
+  }
+
   const strictZeroErrors = project.strictZero
     ? portableOutput
       .split(/\r?\n/u)

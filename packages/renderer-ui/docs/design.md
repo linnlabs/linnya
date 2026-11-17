@@ -216,7 +216,7 @@ Host 默认开启 `-webkit-font-smoothing: antialiased`（只在 macOS 有可见
 ## 6. 投影与层级
 
 - 投影只表达“浮起”：菜单、弹出层、对话框和拖拽中的元素。不要用投影代替边框，也不要用投影制造 hover 效果。
-- 浮层使用 `--shadow-floating-panel`（自带一圈发丝描边），对话框使用 `--shadow-lg`，静止卡片最多使用 `--shadow-xs`。暗色主题只加重浮层用的 `lg` / `xl`；开关、卡片等小元素用的 `xs` / `sm` / `md` 与浅色保持同一强度，组件不需要、也不应该为暗色单独加深。
+- 浮层使用 `--shadow-floating-panel`（自带一圈发丝描边），对话框使用 `--shadow-lg`，静止卡片最多使用 `--shadow-xs`。暗色主题只加重浮层用的 `lg` / `xl`；开关、卡片等小元素用的 `xs` / `sm` / `md` 与浅色保持同一强度，组件不需要、也不应该为暗色单独加深（`pnpm run style-audit` 检查这三档）。
 - 跨 owner 的浮层只能使用 README 中的 `--linnya-ui-layer-*` 层级。组件内部的局部堆叠用 0–9 的小整数；10 及以上的 z-index 必须来自层级 token。
 - 菜单与下拉用 `--linnya-ui-layer-popover`，图片预览遮罩用 `--linnya-ui-layer-image-preview`，需要压过一切的提示与弹层（引用弹层、录音提示、修订弹层、拖放指示线）用 `--linnya-ui-layer-tooltip`；不要再写 9999、10000 这样的“足够大”的数字。
 

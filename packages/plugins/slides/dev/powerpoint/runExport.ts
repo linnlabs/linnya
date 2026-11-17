@@ -34,6 +34,20 @@ const evidence: ExportEvidence = {
 };
 type ExportEvidence = ReturnType<typeof exportEvidenceSchema.parse>;
 
+/**
+ * 坏 PPTX 会让 PowerPoint 崩溃，连带用户开着的文稿。PowerPoint 没在运行时不查询（避免把它拉起来）；
+ * 在运行且有打开的文稿就停下，请用户先保存。导出脚本只关自己的文稿，留下空的 PowerPoint 不影响下一次。
+ */
+async function assertNoOpenPresentations() {
+  const running = await run('/usr/bin/pgrep', ['-x', 'Microsoft PowerPoint']).then(() => true, () => false);
+  if (!running) return;
+  const { stdout } = await run('/usr/bin/osascript', ['-e', 'tell application "Microsoft PowerPoint" to count presentations']);
+  const open = Number(stdout.trim());
+  if (open !== 0) {
+    throw new Error(`PowerPoint 里开着 ${stdout.trim()} 份文稿。坏 PPTX 可能让 PowerPoint 崩溃并丢失未保存内容；请用户先保存并关闭这些文稿，再运行一致性导出。`);
+  }
+}
+
 /** 沙箱版 PowerPoint 访问容器外路径会弹授权框，因此样稿和 PDF 都经容器内目录中转。 */
 async function exportThroughMacPowerPoint(
   sample: string,
@@ -46,6 +60,7 @@ async function exportThroughMacPowerPoint(
     'Library/Containers/com.microsoft.Powerpoint/Data/tmp',
     `linnya-conformance-${randomUUID()}`
   );
+  await assertNoOpenPresentations();
   await mkdir(container, { recursive: true });
   try {
     const stagedSample = path.join(container, sampleName);

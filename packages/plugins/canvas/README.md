@@ -148,3 +148,5 @@ Agent几何动效只消费正式增量中每张卡最后一次来源；用户提
 正文编辑层通过embedded Markdown的通用onNavigate消费捏合与空格/中键平移，复用kernel同一相机纯函数；普通滚动仅滚正文。浏览器无法确定鼠标或触控板，连续离散滚轮仅触发一次本机提示，不自动改偏好，捏合永远缩放；明确接受后才启用普通滚轮缩放。[WheelEvent单位](https://developer.mozilla.org/en-US/docs/Web/API/WheelEvent/deltaMode)不能作为可靠设备身份。连线拖动在目标卡显示同一kernel描边及四个圆点，右键属性共用正式线patch入口。
 
 同文档多表面分别保留历史/引用定位注册。Host动作没有view参数时选择最近注册且仍存活的表面，关闭后恢复前一个。正文摘要预算维持UTF-16长度上限，按完整grapheme截断；完整正文不变。
+
+开发构建的 backend、计算 worker 和 render preload 由 `tsup.plugin.config.ts` 一起生成；单独执行 `build:backend` 也会恢复 preload。渲染 Worker 页面仍由独立 Vite 配置生成，`package.json` 的 `linnya.development.requiredOutputs` 声明探针启动前必须齐全的制品。

@@ -1,4 +1,5 @@
 import { onBeforeUnmount } from 'vue';
+import { useFrameBatch } from '@linnya/renderer-ui';
 
 interface UseRightPaneResizeOptions {
   getRightBoundary: () => number;
@@ -20,21 +21,19 @@ interface UseRightPaneResizeReturn {
 export function useRightPaneResize(options: UseRightPaneResizeOptions): UseRightPaneResizeReturn {
   let isResizing = false;
   let rightBoundary = 0;
-  let resizeRafId: number | null = null;
   let pendingWidth: number | null = null;
 
-  const flushWidth = () => {
-    resizeRafId = null;
+  // 拖动时每帧只写一次宽度。
+  const widthFrame = useFrameBatch(() => {
     if (pendingWidth === null) return;
     options.setWidth(pendingWidth);
     pendingWidth = null;
-  };
+  });
 
   const scheduleWidth = (width: number) => {
     const limits = options.getWidthLimits();
     pendingWidth = Math.min(limits.max, Math.max(limits.min, width));
-    if (resizeRafId !== null) return;
-    resizeRafId = window.requestAnimationFrame(flushWidth);
+    widthFrame.request();
   };
 
   const stopResize = () => {
@@ -42,10 +41,7 @@ export function useRightPaneResize(options: UseRightPaneResizeOptions): UseRight
     isResizing = false;
     rightBoundary = 0;
 
-    if (resizeRafId !== null) {
-      window.cancelAnimationFrame(resizeRafId);
-      resizeRafId = null;
-    }
+    widthFrame.cancel();
     if (pendingWidth !== null) {
       options.setWidth(pendingWidth);
       pendingWidth = null;
