@@ -1,4 +1,4 @@
-import type { WorkerHostRequestHandler } from '@linnya/plugin-host-contract/backend/workerRequests';
+import type { WorkerHostRequestHandler } from '@linnya/plugin-host-contract/backend/worker/requests';
 
 /** 每个 Worker 一个 owner；退出/取消会中止并等待它发出的 Host 请求。 */
 export function createWorkerHostRequestSession(

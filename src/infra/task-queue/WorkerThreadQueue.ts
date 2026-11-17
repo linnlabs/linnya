@@ -10,7 +10,7 @@
  * 副作用 (Side-effects): 创建/终止 worker 线程，并把通用生命周期通知给显式注入的 observer
  */
 
-import type { WorkerHostRequestHandler } from '@linnya/plugin-host-contract/backend/workerRequests';
+import type { WorkerHostRequestHandler } from '@linnya/plugin-host-contract/backend/worker/requests';
 import { createWorkerHostRequestSession } from './orchestration/createWorkerHostRequestSession';
 import { Worker } from 'worker_threads';
 import { EventEmitter } from 'events';
