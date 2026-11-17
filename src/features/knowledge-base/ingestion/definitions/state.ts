@@ -45,6 +45,7 @@ export interface TaskContext {
   kbId: string;
   filename: string;
   filePath: string;
+  ocrTemporaryDirectory?: string;
   embeddingModelId: string;
   embeddingSpaceId?: string;
   /** 已保存正文的失败资料应重建，不能因重传生成第二份检索来源。 */
@@ -88,4 +89,3 @@ export interface StateHandler {
   execute(context: TaskContext): Promise<StateTransitionResult>;
   getName(): string;
 }
-

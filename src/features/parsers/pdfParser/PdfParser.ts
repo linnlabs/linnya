@@ -40,6 +40,7 @@ const logger = new Logger('PdfParser');
  */
 export class PdfParser implements Parser {
   private options: {
+    temporaryDirectory?: string;
     textGeneration: TextGenerationPort | null;
     documentOcr: DocumentOcrPort | null;
     filename?: string;
@@ -60,6 +61,7 @@ export class PdfParser implements Parser {
    */
   constructor(options: PdfParserOptions = {}) {
     this.options = {
+      temporaryDirectory: options.temporaryDirectory,
       textGeneration: options.textGeneration ?? null,
       documentOcr: options.documentOcr ?? null,
       filename: options.filename,
@@ -265,6 +267,7 @@ export class PdfParser implements Parser {
         visionModelId,
         {
           filename: this.options.filename,
+          temporaryDirectory: this.options.temporaryDirectory,
           targetPixels: this.options.targetPixels,
           maxRetries: this.options.maxRetries || 3,
           tpmLimitPerWorker: this.options.tpmLimitPerWorker || 20,

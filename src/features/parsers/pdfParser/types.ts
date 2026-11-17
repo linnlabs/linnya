@@ -46,6 +46,8 @@ export interface TextItem {
  * **副作用 (Side-effects):** 无副作用，纯配置类型
  */
 export interface PdfParserOptions {
+  /** 受管任务的临时素材目录；上传前由 Host 验证归属。 */
+  temporaryDirectory?: string;
   textGeneration?: TextGenerationPort; // 非 Agent 文本生成端口（仅视觉路径需要）
   documentOcr?: DocumentOcrPort; // 专用文档 OCR 端口（仅视觉路径需要）
   filename?: string; // 原始文件名，用于解析阶段错误提示

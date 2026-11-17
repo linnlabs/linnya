@@ -20,28 +20,19 @@ import { resolveWorkerQdrantUrl } from '../functions/resolveWorkerQdrantUrl';
  */
 
 import { parentPort, workerData } from 'worker_threads';
-import { initializeWorkerModelServices } from '../../../app-hosts/linnya/backend-runtime/workerModelServices';
+import { createPluginWorkerInferencePort } from 'src/plugin-sdk/backend/worker/inferenceRuntime';
 
-import { modelCatalog } from 'src/domains/model-catalog';
 import { enableDiagnosticLogForwarding, Logger } from '../../../shared/logger';
-import {
-  installRuntimePathRoots,
-  type RuntimePathRoots,
-} from '../../../shared/runtime-paths';
-import {
-  installDistributionIdentity,
-  type DistributionIdentity,
-} from '../../../shared/distribution-identity';
+import { installRuntimePathRoots, type RuntimePathRoots } from '../../../shared/runtime-paths';
 
 import { getDatabaseService } from '../../../electron-main/services/database';
 import { BetterSqliteKnowledgeGraphRepository } from '../../../features/knowledge-base/graph/infrastructure/better-sqlite-knowledge-graph.repository';
-import { getGraphEdgesCollectionName, getGraphNodesCollectionName } from '../../../features/knowledge-base/graph/infrastructure/qdrantCollections';
+import {
+  getGraphEdgesCollectionName,
+  getGraphNodesCollectionName,
+} from '../../../features/knowledge-base/graph/infrastructure/qdrantCollections';
 import { QdrantRepositoryImpl } from '../../../features/knowledge-base/infrastructure/QdrantRepositoryImpl';
 import { QdrantAdapter } from '../../../infra/adapters/vector-store/index';
-import {
-  createEmbeddingPort,
-} from '../../../app-hosts/linnya/adapters/inference';
-import type { EmbeddingPort } from '../../../domains/model-inference';
 
 import {
   GraphIndexingJobPayloadSchema,
@@ -58,6 +49,7 @@ if (parentPort) {
 
 let isCancelled = false;
 const cancellation = new AbortController();
+const inference = createPluginWorkerInferencePort();
 
 function installWorkerRuntimePathRoots(): RuntimePathRoots {
   const runtimePathRoots = (
@@ -69,23 +61,8 @@ function installWorkerRuntimePathRoots(): RuntimePathRoots {
   return installRuntimePathRoots(runtimePathRoots);
 }
 
-function installWorkerDistributionIdentity(): DistributionIdentity {
-  const distributionIdentity = (
-    workerData as { readonly distributionIdentity?: DistributionIdentity } | undefined
-  )?.distributionIdentity;
-  if (!distributionIdentity) {
-    throw new Error('[GraphIndexingWorker] 缺少 owner 传入的 Desktop distribution identity');
-  }
-  return installDistributionIdentity(distributionIdentity);
-}
-
-async function initializeWorkerServices(): Promise<EmbeddingPort> {
-  const runtimePathRoots = installWorkerRuntimePathRoots();
-  await initializeWorkerModelServices({
-    runtimePathRoots,
-    distributionIdentity: installWorkerDistributionIdentity(),
-  });
-  return createEmbeddingPort({ catalog: modelCatalog });
+function initializeWorkerServices(): void {
+  installWorkerRuntimePathRoots();
 }
 
 type WorkerMessageType = 'progress' | 'completed' | 'failed';
@@ -107,7 +84,6 @@ function sendMessage(type: WorkerMessageType, data: unknown): void {
   parentPort.postMessage(msg);
 }
 
-
 async function processGraphIndexingJob(): Promise<void> {
   let jobData: GraphIndexingJobPayload;
   try {
@@ -120,11 +96,12 @@ async function processGraphIndexingJob(): Promise<void> {
   }
 
   const { kbId, docId, embeddingModelId } = jobData;
-  logger.info(`[GraphIndexingWorker] 开始图谱向量索引: kbId=${kbId}, docId=${docId}, embeddingModelId=${embeddingModelId}`);
+  logger.info(
+    `[GraphIndexingWorker] 开始图谱向量索引: kbId=${kbId}, docId=${docId}, embeddingModelId=${embeddingModelId}`
+  );
 
-  let embedding: EmbeddingPort;
   try {
-    embedding = await initializeWorkerServices();
+    initializeWorkerServices();
   } catch (error) {
     const msg = `Worker 环境初始化失败: ${error instanceof Error ? error.message : String(error)}`;
     logger.error(`[GraphIndexingWorker] ${msg}`);
@@ -145,11 +122,13 @@ async function processGraphIndexingJob(): Promise<void> {
    * - 标题来源：kb_documents.filename（更贴近用户可见的文档名）。
    */
   const db = databaseService.getDb();
-  const docRow = db
-    .prepare('SELECT filename FROM kb_documents WHERE id = ? LIMIT 1')
-    .get(docId) as { filename: string } | undefined;
+  const docRow = db.prepare('SELECT filename FROM kb_documents WHERE id = ? LIMIT 1').get(docId) as
+    | { filename: string }
+    | undefined;
   const resolvedDocTitle =
-    typeof docRow?.filename === 'string' && docRow.filename.trim().length > 0 ? docRow.filename.trim() : docId;
+    typeof docRow?.filename === 'string' && docRow.filename.trim().length > 0
+      ? docRow.filename.trim()
+      : docId;
 
   const qdrantAdapter = QdrantAdapter.getInstance({ url: resolveWorkerQdrantUrl(workerData) });
   const qdrantRepository = new QdrantRepositoryImpl(async () => qdrantAdapter);
@@ -191,7 +170,7 @@ async function processGraphIndexingJob(): Promise<void> {
        * - 这里按 batch 粒度写库（batchSize 默认为 5~20），写入次数可控；
        * - 使用 void 避免阻塞 embedding 主流程，但必须显式 catch，避免产生未处理的 Promise 拒绝。
        */
-      void graphRepo.updateVectorDocProgress(kbId, docId, doneUnits, 'running').catch((e) => {
+      void graphRepo.updateVectorDocProgress(kbId, docId, doneUnits, 'running').catch(e => {
         logger.warn(
           `[GraphIndexingWorker] 写入向量索引进度失败（将继续运行，仅影响进度显示）: kbId=${kbId}, docId=${docId}, error=${
             e instanceof Error ? e.message : String(e)
@@ -205,7 +184,7 @@ async function processGraphIndexingJob(): Promise<void> {
 
     let prevNodesDone = 0;
     await vectorizeAndUpsertGraphPoints({
-      embedding,
+      embedding: inference.embedding,
       embeddingModelId,
       expectedSpaceId: identity.spaceId,
       signal: cancellation.signal,
@@ -224,7 +203,7 @@ async function processGraphIndexingJob(): Promise<void> {
 
     let prevEdgesDone = 0;
     await vectorizeAndUpsertGraphPoints({
-      embedding,
+      embedding: inference.embedding,
       embeddingModelId,
       expectedSpaceId: identity.spaceId,
       signal: cancellation.signal,
@@ -267,11 +246,18 @@ async function processGraphIndexingJob(): Promise<void> {
       errorMessage: null,
     });
 
-    sendMessage('completed', { kbId, docId, nodeCount: nodePoints.length, edgeCount: edgePoints.length });
+    sendMessage('completed', {
+      kbId,
+      docId,
+      nodeCount: nodePoints.length,
+      edgeCount: edgePoints.length,
+    });
     logger.info(`[GraphIndexingWorker] ✅ 图谱向量索引完成: kbId=${kbId}, docId=${docId}`);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    logger.error(`[GraphIndexingWorker] ❌ 图谱向量索引失败: kbId=${kbId}, docId=${docId}, error=${msg}`);
+    logger.error(
+      `[GraphIndexingWorker] ❌ 图谱向量索引失败: kbId=${kbId}, docId=${docId}, error=${msg}`
+    );
 
     try {
       await graphRepo.upsertVectorDocStatus({
@@ -285,7 +271,9 @@ async function processGraphIndexingJob(): Promise<void> {
         errorMessage: msg,
       });
     } catch (e) {
-      logger.warn(`[GraphIndexingWorker] 写入索引失败状态时出错（将继续上报失败）: ${e instanceof Error ? e.message : String(e)}`);
+      logger.warn(
+        `[GraphIndexingWorker] 写入索引失败状态时出错（将继续上报失败）: ${e instanceof Error ? e.message : String(e)}`
+      );
     }
 
     sendMessage('failed', msg);
@@ -294,10 +282,10 @@ async function processGraphIndexingJob(): Promise<void> {
 
 // 监听主线程消息（取消）
 if (parentPort) {
-  parentPort.on('message', (message) => {
+  parentPort.on('message', message => {
     if (message?.cmd === 'cancel') {
       isCancelled = true;
-    cancellation.abort();
+      cancellation.abort();
     }
   });
 }
@@ -305,4 +293,4 @@ if (parentPort) {
 export default processGraphIndexingJob;
 
 // 立即执行
-void processGraphIndexingJob();
+void processGraphIndexingJob().finally(() => inference.dispose());
