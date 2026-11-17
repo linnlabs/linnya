@@ -54,13 +54,10 @@ const SETTINGS_FULL_ACCESS_DIALOG: FullAccessDialogCopy = {
 };
 
 /**
- * 定时任务额外的警告，按意思分行，不写成一整段。用户初稿里列举的删除、上传、安装等操作
- * 与上面的清单重复，这里改为“上面这些操作”，让确认框在常见窗口高度里不必滚动；称呼随设置页用“您”。
+ * 定时任务额外的警告：与设置页那句红字之间、最后一句之前各空一行；中间一段用用户 2026-11-17 给的文字。
  */
 const SCHEDULED_TASK_WARNING = [
-  '定时任务会在您不在场时自动运行：',
-  'Agent 可能在您不知情的情况下执行上面这些操作，或访问可疑网站；',
-  '网页或文件里的恶意内容也可能诱导它这么做，没有人能当场阻止。',
+  '定时任务会自动运行，并可能在您不知情的情况下执行上述操作，如果 Agent 访问可疑网站，网页或文件里的恶意内容也可能诱导 Agent 这么做，无法当场阻止。',
   '',
   '除非您明确知道如何应对，请不要在定时任务里安排这类工作。',
 ].join('\n');
@@ -78,12 +75,10 @@ export function fullAccessDialogCopy(context: 'conversation' | 'scheduled-task')
 
 /**
  * 定时任务确认框的英文草稿：设置页部分取自现有英文文案，警告与中文同样分行、同样两处空行，
- * 每行控制在 560px 宽的框里不折行，确认框在 800px 高的窗口不滚动；正式文案实现时进文案目录。
+ * 只用来量英文下确认框的高度；正式文案实现时进文案目录。
  */
 const SCHEDULED_TASK_WARNING_EN = [
-  'Scheduled tasks run on their own while you are away:',
-  'the agent may do any of the above, or visit suspicious websites, unseen;',
-  'malicious web pages or files can push it to, and no one is there to stop it.',
+  'Scheduled tasks run on their own and may do the above without your knowledge. If the agent visits a suspicious site, malicious web pages or files can also lead it to do so, and no one can stop it in the moment.',
   '',
   "Unless you know how to handle these risks, don't schedule this kind of work.",
 ].join('\n');
