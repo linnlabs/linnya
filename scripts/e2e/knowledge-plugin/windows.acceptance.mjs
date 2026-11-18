@@ -46,6 +46,8 @@ const remote = source =>
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
       '-EncodedCommand',
       Buffer.from(source, 'utf16le').toString('base64'),
     ],
