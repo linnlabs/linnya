@@ -17,6 +17,8 @@
 
 项目与文档的定向命令：
 
+知识库场景默认使用开发插件入口。验证完整 Renderer artifact 时，先按正式构建流程准备 `extraResources/plugins`，再设置 `KNOWLEDGE_PLUGIN_MODE=bundled` 运行同一摄入场景；回执记录实际模式和加载入口。开发模式不能代替随包插件验收。
+
 ```bash
 pnpm exec vitest run src/app-hosts/linnya/application/project-deletion/__tests__/projectDeletion.integration.test.ts apps/renderer/app/layout/orchestration/projectDeletion.integration.test.ts apps/renderer/app/layout/orchestration/openProjectWorkspaceFromSidebar.test.ts
 pnpm exec vitest run apps/renderer/domains/conversation/features/context-window-usage/functions/projectContextWindowUsage.test.ts apps/renderer/domains/conversation/features/context-window-usage/ui/ContextWindowUsageDropdown.integration.test.ts src/app-hosts/linnya/adapters/persistence/event-store/ui-projection/__tests__/sqliteUiMessagesReader.test.ts

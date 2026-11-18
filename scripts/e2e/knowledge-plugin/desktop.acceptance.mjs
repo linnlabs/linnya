@@ -53,9 +53,9 @@ let db;
 let up;
 let failed;
 try {
-  up = await run('up', '--size', '1440x1100', '--mode', 'dev');
+  up = await run('up', '--size', '1440x1100', '--mode', process.env.KNOWLEDGE_PLUGIN_MODE || 'dev');
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
-  evidence.json('candidate', { gitHead: up.gitHead, build: up.build, protocol: 'official synthetic local HTTP', entries: await evaluate('return await window.electronAPI.plugins.rendererEntries();') });
+  evidence.json('candidate', { gitHead: up.gitHead, mode: up.options.mode, build: up.build, protocol: 'official synthetic local HTTP', entries: await evaluate('return await window.electronAPI.plugins.rendererEntries();') });
   await evidence.check('正式知识库产物加载，冷态列表不拉Qdrant', async () => {
     const plugins = await evaluate('return await window.electronAPI.plugins.list();');
     assert.ok(plugins.data.some(item => item.meta.id === 'knowledge' && item.state === 'enabled'));
