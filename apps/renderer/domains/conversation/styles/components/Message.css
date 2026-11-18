@@ -19,6 +19,11 @@
   will-change: transform, opacity;
 }
 
+/* 对话消息是正文：整条可选；工具卡标题、思考标题、操作按钮等界面部分在各自样式里关掉。 */
+.ai-message {
+  user-select: text;
+}
+
 .ai-message.animate-in {
   animation: conversation-message-slide-up-fade-in var(--duration-long) var(--ease-enter) forwards;
 }

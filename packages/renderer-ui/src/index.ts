@@ -154,6 +154,7 @@ export type {
 export {
   DraggablePanel,
   constrainDraggablePanelGeometry,
+  measureFloatingLayoutSize,
   normalizeDraggablePanelPositionOffset,
   parseDraggablePanelSize,
   resizeDraggablePanelGeometry,
@@ -172,9 +173,10 @@ export type {
   DraggablePanelResizeState,
   DraggablePanelSize,
   DraggablePanelVariant,
+  FloatingLayoutSize,
 } from './features/floating-panels';
 
-export { FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from './features/toolbars';
+export { CommandBar, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from './features/toolbars';
 export type { FloatingToolbarPosition, FloatingToolbarProps, ToolbarButtonProps, ToolbarColorButtonProps } from './features/toolbars';
 export {
   createFrameBatch,

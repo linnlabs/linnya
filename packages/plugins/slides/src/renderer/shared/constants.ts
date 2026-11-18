@@ -78,9 +78,9 @@ export const SLIDES_RENDER_COLORS = {
   /** 没写字色时与 PPTX 一致：PptxGenJS 默认写 000000，编辑器默认也是黑色。 */
   textFallbackFill: '#000000',
   tableBorderStroke: '#D1D5DB',
-  /** 画布上唯一的选择色：选中、悬停、框选、手柄和占位框都用它，标准见 shared/selectionOutline.ts。 */
-  selectionStroke: '#347B45',
-  selectionMarqueeFill: 'rgba(52, 123, 69, 0.06)',
+  /** 画布上唯一的选择色：选中、悬停、框选、手柄和占位框都用它，标准见 shared/selectionOutline.ts；取值同 renderer-ui 的 --color-brand-600。 */
+  selectionStroke: '#3D825D',
+  selectionMarqueeFill: 'rgba(61, 130, 93, 0.06)',
   /** 吸附参考线；与选择色区分。 */
   manualSnapGuide: '#E8467C',
 } as const;

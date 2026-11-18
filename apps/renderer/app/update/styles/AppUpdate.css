@@ -197,15 +197,16 @@
   border-color: transparent;
 }
 
-/* 重启前的任务确认：与 Modal 标题同一左右边距 */
+/* 重启前的任务确认：internal 模式，左右边距取弹窗统一的 --modal-inset；底部按钮边距由 Modal 负责。 */
 .app-update-confirm {
-  padding: var(--space-1) var(--space-5) 0;
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-1) var(--modal-inset) 0;
 }
 
 .app-update-confirm__footer {
   display: flex;
   justify-content: flex-end;
-  padding: var(--space-4) var(--space-5) var(--space-5);
 }
 
 .app-update-confirm__description {

@@ -67,6 +67,14 @@ export function computeHeaderUpdateEntryAvailableWidth(
   return input.sidebarOccupiedWidth - HEADER_SIDEBAR_DIVIDER_CLEARANCE - computeHeaderUpdateEntryStart(input);
 }
 
+/**
+ * 侧栏展开时标题栏需要的最小侧栏宽度：放得下收成图标的更新入口（与固定按钮同宽），且不伸进分隔线热区。
+ * macOS 非全屏留出窗口按钮，入口起点更靠右，下限随之抬高；侧栏的基础下限由 ui store 合并。
+ */
+export function computeHeaderSidebarMinWidth(input: HeaderLeftInsetInput): number {
+  return computeHeaderUpdateEntryStart(input) + HEADER_LEFT_ACTIONS.buttonSize + HEADER_SIDEBAR_DIVIDER_CLEARANCE;
+}
+
 export function computeHeaderLeftChromeWidth(
   input: HeaderLeftInsetInput & Pick<HeaderPaneGeometryInput, 'updateEntryWidth'>,
 ): number {

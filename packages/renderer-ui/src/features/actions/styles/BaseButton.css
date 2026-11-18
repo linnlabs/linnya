@@ -1,5 +1,7 @@
 /* Renderer UI actions feature：通用按钮。视觉层级、尺寸与颜色规则见 docs/design.md。 */
 .linnya-ui-button {
+  /* 按钮文字是界面，不是正文：放进可选的正文区域里也不能被拖选。 */
+  user-select: none;
   --linnya-ui-button-icon-size: 14px;
   --linnya-ui-button-state-transition:
     background-color var(--duration-medium) var(--ease-standard),
@@ -146,17 +148,15 @@
     transform var(--duration-micro) var(--ease-standard);
 }
 
-/* secondary / ghost / plain：从表面到透明逐级减弱的次操作。 */
+/* secondary / ghost / plain：从填充浅底到透明逐级减弱的次操作；静止时不描边（少边框）。 */
 .linnya-ui-button--secondary {
   color: var(--color-text-primary);
-  background-color: var(--color-bg-surface);
-  box-shadow: inset 0 0 0 1px var(--color-border-default);
+  background-color: var(--color-bg-field);
 }
 
 .linnya-ui-button--ghost {
   color: var(--color-text-secondary);
   background-color: transparent;
-  box-shadow: inset 0 0 0 1px var(--color-border-default);
 }
 
 .linnya-ui-button--plain {
@@ -165,7 +165,11 @@
 }
 
 .linnya-ui-button--secondary:hover:not(:disabled),
-.linnya-ui-button--ghost:hover:not(:disabled),
+.linnya-ui-button--ghost:hover:not(:disabled) {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-field-hover);
+}
+
 .linnya-ui-button--plain:hover:not(:disabled) {
   color: var(--color-text-primary);
   background-color: var(--color-bg-hover);
@@ -216,36 +220,6 @@
   color: var(--color-error-text);
   background-color: var(--color-error-bg);
   opacity: 0.6;
-}
-
-/* soft：品牌色浅底的推荐操作。 */
-.linnya-ui-button--soft {
-  color: var(--color-accent);
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 8%, transparent) 0%,
-    color-mix(in srgb, var(--color-accent) 4%, transparent) 100%
-  );
-  box-shadow: inset 0 0 0 1px var(--color-accent-hover-light);
-}
-
-.linnya-ui-button--soft:hover:not(:disabled) {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 15%, transparent) 0%,
-    color-mix(in srgb, var(--color-accent) 8%, transparent) 100%
-  );
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 20%, transparent);
-}
-
-.linnya-ui-button--soft:disabled {
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 4%, transparent) 0%,
-    color-mix(in srgb, var(--color-accent) 2%, transparent) 100%
-  );
-  box-shadow: none;
-  opacity: 0.5;
 }
 
 /* outline：页面级入口，表面底色、发丝描边与轻投影；tone 决定描边与文字颜色。 */

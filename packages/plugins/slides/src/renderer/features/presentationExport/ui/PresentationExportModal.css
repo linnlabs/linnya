@@ -2,13 +2,13 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 12px 32px 0;
+  /* 左右与底部按钮的边距由 Modal 负责。 */
+  padding: 12px 0 0;
 }
 
 .slides-export-modal__footer {
   display: flex;
   justify-content: flex-end;
-  padding: 20px 32px 24px;
 }
 
 .slides-export-modal__description,

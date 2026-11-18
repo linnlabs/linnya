@@ -11,21 +11,19 @@
   color: var(--color-text-secondary);
 }
 
+/* 与主区欢迎页（ProjectConversationSurface 的 empty-mark）同一标识：display 版、无底、36px。 */
 .conversation-empty-state__icon {
-  width: 40px;
-  height: 40px;
-  margin-bottom: var(--space-3);
-  border-radius: var(--radius-lg);
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-4);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-accent-bg);
-  color: var(--color-accent);
 }
 
 .conversation-empty-state__icon-svg {
-  width: 22px;
-  height: 22px;
+  width: 36px;
+  height: 36px;
 }
 
 .conversation-empty-state__copy h3 {

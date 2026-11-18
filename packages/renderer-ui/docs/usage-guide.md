@@ -542,6 +542,10 @@ import type { ModalProps, ModalScrollMode, ModalSlots } from '@linnya/renderer-u
 [新增通用组件设计规范](../README.md#新增通用组件设计规范)。本指南只提供消费方式和示例，不另行维护一套较短、
 容易漂移的准入规则。
 
+## CommandBar
+
+从 package 根导入。停靠在画布或文档顶部的命令条表面，内部放 ToolbarGroup 与 ToolbarButton。组件只负责外观（4px 内边距、10px 圆角、默认底色与 `--shadow-command-bar`），默认 `role="toolbar"`，调用方补 `aria-label`。位置（例如顶部居中的 `position: absolute; left: 50%; transform: translateX(-50%)`）、显隐和命令都由调用方负责；class、style 与事件落在根元素。同族的小浮起控件需要相同阴影时用 `--shadow-command-bar`，不要再手写三层阴影。
+
 ## FloatingToolbar 与 ToolbarGroup
 
 从 package 根导入。传入必需的 show 与 position，通过默认 slot 放置按钮、输入和 ToolbarGroup。position 的 top／left 使用所在定位容器的 CSS 像素；组件本身不做选区定位或自动切换方向。需要测量时从组件实例 element 获取真实根元素。

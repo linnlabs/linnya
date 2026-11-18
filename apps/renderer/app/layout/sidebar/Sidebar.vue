@@ -28,7 +28,7 @@
       side="right"
       interactive
       :label="layoutMessage('layout.pane.resizeSidebar')"
-      :min="SIDEBAR_WIDTH_LIMITS.min"
+      :min="uiStore.sidebarMinWidth"
       :max="SIDEBAR_WIDTH_LIMITS.max"
       :value="uiStore.sidebarWidth"
       @resize-start="startResize"

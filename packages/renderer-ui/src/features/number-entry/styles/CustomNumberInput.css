@@ -28,17 +28,14 @@
   color: var(--color-text-primary);
   text-align: center;
   appearance: none;
-  background-color: var(--color-bg-search-light);
+  background-color: var(--color-bg-field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
+  transition: border-color var(--duration-medium) var(--ease-standard);
   -moz-appearance: textfield;
 }
 
-.custom-number-input .styled-input--default:hover {
-  background-color: var(--color-bg-hover);
-}
-
+/* 底色在各状态保持不变，聚焦只加强调色描边。 */
 .custom-number-input .styled-input--default:focus {
   border-color: var(--color-accent);
   outline: none;
@@ -52,12 +49,8 @@
   font-size: 0.85em;
   color: var(--color-text-primary);
   text-align: center;
-  background-color: var(--color-bg-surface);
-  border: 1px solid var(--color-border-light);
-}
-
-.custom-number-input .styled-input--panel:hover {
-  border-color: var(--color-accent);
+  background-color: var(--color-bg-field);
+  border: 1px solid transparent;
 }
 
 .custom-number-input .styled-input--panel:focus {

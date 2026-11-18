@@ -3,7 +3,8 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  padding: var(--space-3) var(--space-8) 0;
+  /* 内部滚动模式自己给边距；右侧扣掉文案区预留的 10px 滚动条槽，视觉上左右都是 --modal-inset。 */
+  padding: var(--space-1) calc(var(--modal-inset) - 10px) 0 var(--modal-inset); /* scale-exempt: 扣掉 10px 滚动条槽 */
 }
 
 .alert-dialog-content .alert-dialog-copy {
@@ -12,7 +13,6 @@
   min-height: 20px;
   display: grid;
   gap: var(--space-4);
-  padding-right: var(--space-1);
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
@@ -81,7 +81,6 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  padding: var(--space-6) var(--space-8);
 }
 
 @media (max-width: 768px) {

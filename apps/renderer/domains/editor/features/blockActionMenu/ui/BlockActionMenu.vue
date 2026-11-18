@@ -53,7 +53,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { blockActionMenuService } from '../service';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, measureFloatingLayoutSize } from '@linnya/renderer-ui';
 import BlockColorPicker from './BlockColorPicker.vue';
 import { PositionUtils } from '../../../extensions/position/PositionUtils';
 
@@ -145,7 +145,7 @@ const calculateMenuPosition = () => {
   let menuHeight = 280; // 默认高度（用于首次渲染）
   
   if (menuWrapperRef.value) {
-    const menuRect = menuWrapperRef.value.getBoundingClientRect();
+    const menuRect = measureFloatingLayoutSize(menuWrapperRef.value);
     if (menuRect.height > 0) {
       menuHeight = menuRect.height;
     }

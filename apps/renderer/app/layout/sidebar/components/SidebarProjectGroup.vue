@@ -7,12 +7,13 @@
       tabindex="0"
       @pointerenter="$emit('prefetch-conversations', project.id)"
       @focus="$emit('prefetch-conversations', project.id)"
-      @click="activateProject"
+      @click="handleProjectRowClick"
+      @dblclick="openProject"
       @keydown="handleProjectRowKeydown"
     >
       <FolderIcon class="workspace-sidebar-row-icon project-row-icon" />
       <span class="workspace-sidebar-row-label project-row-name">{{ project.name }}</span>
-      <span class="workspace-sidebar-row-actions project-row-actions" @click.stop>
+      <span class="workspace-sidebar-row-actions project-row-actions" @click.stop @dblclick.stop>
         <IconButton
           :label="workspaceMessage('workspace.sidebar.project.open')"
           class="row-action-button"
@@ -138,6 +139,16 @@ function closeProjectMenu(): void {
 
 function activateProject(): void {
   emit('activate', props.project.id);
+}
+
+/* 双击进入项目：第二次点击不再切换展开，否则双击会先展开又收起。 */
+function handleProjectRowClick(event: MouseEvent): void {
+  if (event.detail > 1) return;
+  activateProject();
+}
+
+function openProject(): void {
+  emit('open', props.project.id);
 }
 
 function handleProjectRowKeydown(event: KeyboardEvent): void {

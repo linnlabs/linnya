@@ -1,6 +1,6 @@
-.document-history-content,
-.document-history-footer {
-  padding: var(--space-6);
+/* 左右与底部边距由 Modal 负责，这里只留正文上下间距。 */
+.document-history-content {
+  padding: var(--space-6) 0 0;
 }
 .document-history-footer {
   display: flex;

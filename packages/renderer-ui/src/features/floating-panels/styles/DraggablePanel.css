@@ -11,8 +11,8 @@
   border-radius: var(--radius-lg);
   box-shadow:
     0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 7%, transparent),
-    0 1px 3px color-mix(in srgb, var(--color-text-primary) 5%, transparent),
-    0 8px 24px -4px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+    0 1px 3px color-mix(in srgb, var(--color-black) 5%, transparent),
+    0 8px 24px -4px color-mix(in srgb, var(--color-black) 14%, transparent);
 }
 
 .draggable-panel .panel-header {
@@ -20,7 +20,8 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-5);
+  /* 上右 14 给 24px 关闭钮：× 笔画与标题字形顶都落在约 20px，和左右边距一致（见 geometry.css --floating-panel-inset）。 */
+  padding: 14px 14px 6px var(--floating-panel-inset); /* scale-exempt: 按笔画对齐的光学边距 */
   color: var(--color-text-primary);
   cursor: move;
   user-select: none;
@@ -42,8 +43,13 @@
 
 .draggable-panel .panel-body {
   flex: 1;
-  padding: 0 26px var(--space-5);
+  padding: 0 var(--floating-panel-inset) var(--floating-panel-inset);
   overflow-y: auto;
+}
+
+/* 自动高度由内容决定，不受固定高度面板的最小高度约束，底边距才和四周一致。 */
+.draggable-panel[style*="height: auto"] {
+  min-height: 0;
 }
 
 .draggable-panel[style*="height: auto"] .panel-body {
@@ -52,78 +58,27 @@
   overflow: auto;
 }
 
+/* 宽度手柄只换光标，不画色条。 */
 .draggable-panel .resize-handle {
   position: absolute;
   z-index: 10;
   background: transparent;
 }
 
-.draggable-panel .resize-handle:hover {
-  background: color-mix(in srgb, var(--color-info) 20%, transparent);
-}
-
-.draggable-panel .resize-se {
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  height: 16px;
-  cursor: se-resize;
-}
-
-.draggable-panel .resize-nw {
-  top: 0;
-  left: 0;
-  width: 16px;
-  height: 16px;
-  cursor: nw-resize;
-}
-
-.draggable-panel .resize-ne {
-  top: 0;
-  right: 0;
-  width: 16px;
-  height: 16px;
-  cursor: ne-resize;
-}
-
-.draggable-panel .resize-sw {
-  bottom: 0;
-  left: 0;
-  width: 16px;
-  height: 16px;
-  cursor: sw-resize;
-}
-
 .draggable-panel .resize-e {
-  top: 16px;
+  top: 0;
   right: 0;
-  bottom: 16px;
+  bottom: 0;
   width: 8px;
-  cursor: e-resize;
+  cursor: ew-resize;
 }
 
 .draggable-panel .resize-w {
-  top: 16px;
-  bottom: 16px;
+  top: 0;
+  bottom: 0;
   left: 0;
   width: 8px;
-  cursor: w-resize;
-}
-
-.draggable-panel .resize-s {
-  right: 16px;
-  bottom: 0;
-  left: 16px;
-  height: 8px;
-  cursor: s-resize;
-}
-
-.draggable-panel .resize-n {
-  top: 0;
-  right: 16px;
-  left: 16px;
-  height: 8px;
-  cursor: n-resize;
+  cursor: ew-resize;
 }
 
 .draggable-panel--mini {
@@ -134,8 +89,8 @@
   background-color: color-mix(in srgb, var(--color-bg-default) 94%, transparent);
   box-shadow:
     0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 7%, transparent),
-    0 1px 3px color-mix(in srgb, var(--color-text-primary) 5%, transparent),
-    0 8px 24px -4px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+    0 1px 3px color-mix(in srgb, var(--color-black) 5%, transparent),
+    0 8px 24px -4px color-mix(in srgb, var(--color-black) 14%, transparent);
   backdrop-filter: blur(8px);
 }
 

@@ -61,6 +61,7 @@ import type {
   TextPopoverTriggerMode,
 } from '../definitions/selectMenu';
 import { CloseIcon } from '../../../icons';
+import { measureFloatingLayoutSize } from '../../floating-panels/functions/floatingLayoutSize';
 import { useSharedComponentLocalization } from '../../../localization';
 
 interface TextPopoverProps {
@@ -236,7 +237,7 @@ const calculatePosition = () => {
   if (!trigger || !popover) return;
   
   const triggerRect = trigger.getBoundingClientRect();
-  const popoverRect = popover.getBoundingClientRect();
+  const popoverRect = measureFloatingLayoutSize(popover);
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   

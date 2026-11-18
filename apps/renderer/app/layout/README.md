@@ -24,6 +24,7 @@ app/layout/
 ├── GlobalModals.vue
 ├── AppHeader/
 │   ├── index.vue
+│   ├── DocumentTabStrip.vue
 │   ├── HeaderLeftSection.vue
 │   └── HeaderRightSection.vue
 ├── chat/
@@ -92,7 +93,7 @@ app/layout/
 | `document/` | 文档 pane 与文档 surface 装配 | 决定打开哪个文档、直接保存文档 |
 | `chat/` | 右侧对话 pane 壳层 | 复制 conversation domain 逻辑 |
 | `sidebar/` | 左侧 sidebar 壳层 | 操作 workspace domain 内部 store 细节 |
-| `AppHeader/` | Header 的三栏视觉投影与全局按钮 | 手写 workspace pane 几何魔数 |
+| `AppHeader/` | Header 的三栏视觉投影与全局按钮；文档所在 pane 显示文档标签栏（`DocumentTabStrip`），状态见 `app/document-tabs` | 手写 workspace pane 几何魔数；绕过文档导航直接切换文档 |
 | `styles/` | app layout 全局变量、壳层动画、编辑器 shell 样式 | 写 domain 组件私有样式 |
 
 ## 状态边界

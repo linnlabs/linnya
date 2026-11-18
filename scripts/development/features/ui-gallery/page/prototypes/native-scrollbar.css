@@ -1,0 +1,25 @@
+/*
+ * 候选：renderer-ui 提供的原生滚动条默认样式。
+ * 计划落地时选择器为全局 `:where(*)::-webkit-scrollbar…`，各处删掉自写的 ::-webkit-scrollbar；
+ * 画廊预览只作用在 .gallery-native-scroll--proposed 内，避免影响画廊自身。
+ */
+.gallery-native-scroll--proposed::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.gallery-native-scroll--proposed::-webkit-scrollbar-track,
+.gallery-native-scroll--proposed::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.gallery-native-scroll--proposed::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+}
+
+.gallery-native-scroll--proposed::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}

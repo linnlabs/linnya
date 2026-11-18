@@ -369,3 +369,206 @@
   color: var(--color-text-on-accent);
   background-color: var(--app-header-window-close-bg-active);
 }
+
+/* ---------- 文档标签栏（轻量式）：替代文档面包屑 ---------- */
+.app-header-right .document-tab-strip {
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--space-1);
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+}
+
+.app-header-right .document-tab-strip__tabs {
+  display: flex;
+  flex: 0 1 auto;
+  gap: var(--space-0-5);
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* 标签区退出窗口拖拽；标签后面的空白仍可拖动窗口。 */
+  -webkit-app-region: no-drag;
+}
+
+.app-header-right .document-tab-strip__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* 哪一端还有标签就在哪一端淡出，滚到头就不淡出。 */
+.app-header-right .document-tab-strip__tabs.is-more-right {
+  mask-image: linear-gradient(to right, currentColor calc(100% - 24px), transparent);
+}
+
+.app-header-right .document-tab-strip__tabs.is-more-left {
+  mask-image: linear-gradient(to right, transparent, currentColor 24px);
+}
+
+.app-header-right .document-tab-strip__tabs.is-more-left.is-more-right {
+  mask-image: linear-gradient(to right, transparent, currentColor 24px, currentColor calc(100% - 24px), transparent);
+}
+
+.document-tab {
+  display: flex;
+  flex: 0 1 180px;
+  gap: var(--space-1-5);
+  align-items: center;
+  min-width: 96px;
+  height: 26px;
+  padding: 0 var(--space-1) 0 var(--space-2-5);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-secondary);
+  cursor: default;
+  user-select: none;
+}
+
+.document-tab:hover {
+  background: var(--color-bg-hover);
+}
+
+.document-tab.is-active {
+  background: var(--color-bg-active);
+  color: var(--color-text-primary);
+}
+
+.document-tab__icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.document-tab__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-tab.is-preview .document-tab__title {
+  font-style: italic;
+}
+
+.document-tab__close {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-tertiary);
+  opacity: 0;
+}
+
+.document-tab__close svg {
+  width: 12px;
+  height: 12px;
+}
+
+.document-tab:hover .document-tab__close,
+.document-tab.is-active .document-tab__close,
+.document-tab__close:focus-visible,
+.document-tab-strip__list-item:hover .document-tab__close,
+.document-tab-strip__list-item.is-active .document-tab__close {
+  opacity: 1;
+}
+
+.document-tab__close:hover {
+  background: var(--color-bg-hover-strong);
+  color: var(--color-text-primary);
+}
+
+/* 放不下时右端的“全部标签”：数字 + 下拉。 */
+.document-tab-strip__all {
+  -webkit-app-region: no-drag;
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-0-5);
+  align-items: center;
+  height: 24px;
+  padding: 0 var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-footnote);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.document-tab-strip__all svg {
+  width: 10px;
+  height: 10px;
+}
+
+.document-tab-strip__all:hover,
+.document-tab-strip__all.is-open {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.document-tab-strip__list.linnya-dropdown-panel {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+  width: 260px;
+  max-height: 320px;
+  padding: var(--space-1-5);
+  overflow: auto;
+}
+
+.document-tab-strip__filter {
+  box-sizing: border-box;
+  width: 100%;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-field);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.document-tab-strip__list-caption {
+  padding: var(--space-2) var(--space-2) var(--space-0-5);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-tertiary);
+}
+
+.document-tab-strip__list-item {
+  display: flex;
+  gap: var(--space-1-5);
+  align-items: center;
+  height: 30px;
+  padding: 0 var(--space-1) 0 var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: default;
+}
+
+.document-tab-strip__list-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.document-tab-strip__list-item.is-active {
+  background: var(--color-bg-active);
+}
+
+.document-tab-strip__list-empty {
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--font-size-footnote);
+  color: var(--color-text-tertiary);
+}
+
+.document-tab-strip__menu {
+  position: fixed;
+  z-index: var(--linnya-ui-layer-popover);
+}

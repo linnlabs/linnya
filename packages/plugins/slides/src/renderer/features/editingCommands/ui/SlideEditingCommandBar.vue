@@ -1,7 +1,6 @@
 <template>
-  <div
+  <CommandBar
     class="slides-editing-command-bar"
-    role="toolbar"
     :aria-label="message('slides.editingCommands.label')"
     @pointerdown.stop
     @mousedown="preserveCanvasFocus"
@@ -46,13 +45,13 @@
         class="slides-editing-command-bar__status-icon"
       />{{ message(shownStatus) }}
     </span>
-  </div>
+  </CommandBar>
 </template>
 <script setup lang="ts">
 import { ElementInsertionControls } from '../../elementInsertion';
 import { useElementClipboard } from '../../elementClipboard';
 import { preserveCanvasFocus } from '../../editingInteraction';
-import { ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
+import { CommandBar, ToolbarButton, ToolbarGroup } from '@linnya/renderer-ui';
 import { CheckmarkIcon, PasteIcon, RedoIcon, UndoIcon } from '@linnya/renderer-ui/icons';
 import { useLocalization } from '@app/localization';
 import { EDITING_COMMAND_MESSAGES, type EditingCommandMessageKey } from '../definitions/editingCommandMessages';

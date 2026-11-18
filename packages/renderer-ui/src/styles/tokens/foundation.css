@@ -1,56 +1,59 @@
 /* Renderer UI 基础原子色阶：品牌绿、中性灰和功能色。 */
 
 :root {
-  /* Brand Green */
-  --color-brand-50: #f6fbf7;
-  --color-brand-100: #ecf8ef;
-  --color-brand-125: #e1f3e6;
-  --color-brand-150: #d7eedf;
-  --color-brand-163: #d1ecda;
-  --color-brand-175: #cbe9d5;
-  --color-brand-200: #bfe3ca;
-  --color-brand-250: #aadab8;
-  --color-brand-300: #95d0a5;
-  --color-brand-350: #7fc692;
-  --color-brand-400: #6abc7f;
-  --color-brand-450: #58b16c;
-  --color-brand-500: #49a55c;
-  --color-brand-550: #3f8e4e;
-  --color-brand-600: #347b45;
-  --color-brand-700: #2c683a;
-  --color-brand-750: #275c33;
-  --color-brand-800: #24542f;
-  --color-brand-850: #204929;
-  --color-brand-900: #1c4025;
+  /*
+   * 品牌薄荷绿（2026-11-17，OKLCH H158）：500 = L0.72 C0.100 是品牌色本身；600 是白字 4.62:1 的主按钮实底；
+   * 700 在 125 浅底上 5.1:1，用作强调文字；50–450 是浅底与描边。
+   */
+  --color-brand-50: #f7fbf8;
+  --color-brand-100: #eff8f2;
+  --color-brand-125: #e7f5ec;
+  --color-brand-150: #e0f1e6;
+  --color-brand-163: #dcefe3;
+  --color-brand-175: #d7eddf;
+  --color-brand-200: #cee9d8;
+  --color-brand-250: #bee2cc;
+  --color-brand-300: #addbbf;
+  --color-brand-350: #9cd4b3;
+  --color-brand-400: #8ccda7;
+  --color-brand-450: #7cc59b;
+  --color-brand-500: #6bb88d;
+  --color-brand-550: #509870;
+  --color-brand-600: #3d825d;
+  --color-brand-700: #337251;
+  --color-brand-750: #37634a;
+  --color-brand-800: #305741;
+  --color-brand-850: #264835;
+  --color-brand-900: #203d2c;
 
-  /* Neutral Gray */
+  /* 中性灰：明度沿用原灰阶，跟随品牌色相加极低彩度（最深处 C≈0.0024，近白处几乎为 0）。 */
   --color-gray-50: #fafafa;
   --color-gray-100: #f5f5f5;
   --color-gray-125: #f1f1f1;
   --color-gray-150: #ededed;
   --color-gray-200: #e5e5e5;
-  --color-gray-250: #dcdcdc;
-  --color-gray-300: #d4d4d4;
-  --color-gray-350: #bcbcbc;
-  --color-gray-400: #a3a3a3;
-  --color-gray-421: #999999;
-  --color-gray-450: #8b8b8b;
-  --color-gray-475: #7f7f7f;
-  --color-gray-500: #737373;
-  --color-gray-550: #636363;
-  --color-gray-600: #525252;
-  --color-gray-625: #4d4d4d;
-  --color-gray-650: #494949;
-  --color-gray-675: #454545;
-  --color-gray-700: #404040;
-  --color-gray-725: #3a3a3a;
-  --color-gray-750: #333333;
-  --color-gray-775: #2d2d2d;
-  --color-gray-800: #262626;
-  --color-gray-825: #222222;
-  --color-gray-850: #1e1e1e;
-  --color-gray-875: #1b1b1b;
-  --color-gray-900: #171717;
+  --color-gray-250: #dbdcdc;
+  --color-gray-300: #d3d4d4;
+  --color-gray-350: #bbbdbb;
+  --color-gray-400: #a2a4a2;
+  --color-gray-421: #989a98;
+  --color-gray-450: #8a8b8a;
+  --color-gray-475: #7e7f7e;
+  --color-gray-500: #727372;
+  --color-gray-550: #626363;
+  --color-gray-600: #515252;
+  --color-gray-625: #4c4d4d;
+  --color-gray-650: #484949;
+  --color-gray-675: #444545;
+  --color-gray-700: #3f4040;
+  --color-gray-725: #393a3a;
+  --color-gray-750: #323333;
+  --color-gray-775: #2c2d2d;
+  --color-gray-800: #252626;
+  --color-gray-825: #212222;
+  --color-gray-850: #1d1e1e;
+  --color-gray-875: #1a1b1b;
+  --color-gray-900: #161717;
 
   /* Black & White */
   --color-white: #ffffff;
@@ -126,4 +129,68 @@
   /* Transparent Overlays */
   --color-transparent-light: rgba(255, 255, 255, 0.05);
   --color-transparent-dark: rgba(0, 0, 0, 0.05);
+
+  /*
+   * 功能信号色（2026-11-17）：成功、错误、警告、信息放在同一明度带，彩度接近原 Tailwind 值；成功色 H150 与薄荷品牌色分开。
+   * 50 = 浅色底，500 = 浅色图形，600 = 浅色文字，400 = 深色图形，200 = 深色文字，900 = 深色底。
+   */
+  --color-signal-success-50: #e8f9eb;
+  --color-signal-success-200: #9bdda8;
+  --color-signal-success-400: #4cb86a;
+  --color-signal-success-500: #25984d;
+  --color-signal-success-600: #057836;
+  --color-signal-success-900: #163c20;
+  --color-signal-error-50: #ffefed;
+  --color-signal-error-200: #ffb5ac;
+  --color-signal-error-400: #ef5f55;
+  --color-signal-error-500: #db2c2b;
+  --color-signal-error-600: #cb131c;
+  --color-signal-error-900: #4f2420;
+  --color-signal-warning-50: #fef2e1;
+  --color-signal-warning-200: #f1c17f;
+  --color-signal-warning-400: #f5ae39;
+  --color-signal-warning-500: #f2a618;
+  --color-signal-warning-600: #855904;
+  --color-signal-warning-900: #462d03;
+  --color-signal-info-50: #edf4fe;
+  --color-signal-info-200: #a8ceff;
+  --color-signal-info-400: #539af2;
+  --color-signal-info-500: #207fe8;
+  --color-signal-info-600: #0169cd;
+  --color-signal-info-900: #1a3453;
+
+  /* 月白蓝中性色（H248，底色 C≤0.009）：很轻很淡的蓝；文字是带一点蓝的墨色。 */
+  --color-moon-25: #fbfdfe;
+  --color-moon-50: #f9fbfd;
+  --color-moon-75: #f3f7fb;
+  --color-moon-90: #f1f5f9;
+  --color-moon-100: #eef3f8;
+  --color-moon-110: #edf2f7;
+  --color-moon-120: #edf1f4;
+  --color-moon-130: #e7eef5;
+  --color-moon-150: #e3e8ed;
+  --color-moon-175: #dce2e8;
+  --color-moon-200: #d3dae1;
+  --color-moon-250: #e0e9f2;
+  --color-moon-300: #b1b8c0;
+  --color-moon-325: #afc0d1;
+  --color-moon-400: #9299a1;
+  --color-moon-550: #707881;
+  --color-moon-600: #606972;
+  --color-moon-700: #454e58;
+  --color-moon-900: #19232c;
+
+  /* 月白蓝强调蓝（H248，C0.10）：600 是白字 4.62:1 的实底，700 是文字与悬停。 */
+  --color-moon-accent-50: #f3f9fe;
+  --color-moon-accent-100: #e6f2fd;
+  --color-moon-accent-150: #dbecfc;
+  --color-moon-accent-200: #cfe0f1;
+  --color-moon-accent-300: #b1cbe4;
+  --color-moon-accent-350: #aecbe7;
+  --color-moon-accent-400: #79aad8;
+  --color-moon-accent-500: #528bc0;
+  --color-moon-accent-600: #4079ac;
+  --color-moon-accent-700: #356a9a;
+  --color-moon-accent-800: #2a5b88;
+  --color-moon-shadow: #16232f;
 }

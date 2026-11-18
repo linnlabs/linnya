@@ -6,7 +6,7 @@
         <p class="subtitle">{{ editorMessage('editor.review.setup.subtitle') }}</p>
       </div>
       <BaseButton
-        variant="soft"
+        variant="tint"
         v-if="historyCount > 0"
         @click="reviewStore.setStatus('results')"
       >

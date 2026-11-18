@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { BaseDropdown, DROPDOWN_SURFACE_CLASSES } from '@linnya/renderer-ui';
+import { BaseDropdown, DROPDOWN_SURFACE_CLASSES, measureFloatingLayoutSize } from '@linnya/renderer-ui';
 import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 import type {
   ContextWindowUsagePanelDetailRow,
@@ -210,7 +210,7 @@ function updatePanelPosition(): void {
   const panel = panelRef.value;
   if (!trigger || !panel) return;
   const triggerRect = trigger.getBoundingClientRect();
-  const panelRect = panel.getBoundingClientRect();
+  const panelRect = measureFloatingLayoutSize(panel);
   panelPosition.value = resolveContextUsagePanelPosition({
     trigger: {
       top: triggerRect.top,

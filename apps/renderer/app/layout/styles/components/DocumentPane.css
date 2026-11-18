@@ -9,9 +9,17 @@
   overflow: hidden;
 }
 
-.document-pane__editor-tools {
-  flex-shrink: 0;
-  border-bottom: 0.5px solid var(--color-border-light);
+.document-pane__command-bar {
+  position: absolute;
+  top: var(--space-2);
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+}
+
+/* 命令条高 36px、距顶 8px：正文起点让出这段，标题不被盖住；滚动后正文从命令条下面经过。 */
+.document-pane__body--with-command-bar {
+  --document-command-bar-clearance: 44px;
 }
 
 .document-pane__body {

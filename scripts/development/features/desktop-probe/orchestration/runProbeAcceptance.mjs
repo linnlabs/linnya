@@ -1,15 +1,32 @@
 import { fileURLToPath } from 'node:url';
 import { createEvidence } from '../../../../test-runner/features/acceptance-evidence/createEvidence.mjs';
 import { acceptance } from '../acceptance/probeAcceptance.mjs';
+import { headerScenario } from '../acceptance/header.scenario.mjs';
 import { overviewScenario } from '../acceptance/overview.scenario.mjs';
 import { repoRoot } from '../definitions/probeContract.mjs';
 import { usage } from '../functions/parseProbeArgs.mjs';
 
+/** 已登记场景。files 列出会改变断言结果的场景、判定函数和夹具，回执据此核对证据没有被换过。 */
+const scenarios = {
+  overview: {
+    evidence: 'desktop-overview', run: overviewScenario,
+    files: ['../acceptance/overview.scenario.mjs', './probeFixtures.mjs'],
+  },
+  header: {
+    evidence: 'desktop-header', run: headerScenario,
+    files: ['../acceptance/header.scenario.mjs', '../functions/headerInvariants.mjs', '../functions/rendererStore.mjs',
+      '../functions/updateStateFixture.mjs', './probeFixtures.mjs', './probePage.mjs'],
+  },
+};
+
 export async function runProbeAcceptance(positionals) {
-  if (positionals.length !== 1 || positionals[0] !== 'overview') usage('accept 需要一个已登记场景', '用 pnpm -s probe accept overview 验收导航、概览、菜单、列宽和 Slides 打开。其他业务按验收索引选择入口。');
-  const evidence = createEvidence('desktop-overview', {
+  const scenario = positionals.length === 1 ? scenarios[positionals[0]] : undefined;
+  if (!scenario) {
+    usage('accept 需要一个已登记场景', '用 pnpm -s probe accept overview 验收导航、概览、菜单、列宽和 Slides 打开；accept header 扫描标题栏几何不变量。其他业务按验收索引选择入口。');
+  }
+  const evidence = createEvidence(scenario.evidence, {
     root: repoRoot,
-    files: [import.meta.url, '../acceptance/overview.scenario.mjs', '../acceptance/probeAcceptance.mjs', './probeFixtures.mjs']
+    files: [import.meta.url, '../acceptance/probeAcceptance.mjs', ...scenario.files]
       .map(file => fileURLToPath(new URL(file, import.meta.url))),
   });
   // 每次验收拥有新实例，不能复用用户正在调试的 default 或克隆数据。
@@ -17,7 +34,7 @@ export async function runProbeAcceptance(positionals) {
   let failed;
   try {
     await test.run('up', '--size', '1400x900', '--mode', 'dev');
-    await overviewScenario(test, evidence);
+    await scenario.run(test, evidence);
   } catch (error) {
     failed = error;
     // check 内的失败已经记录；启动错误仍需单独列出。

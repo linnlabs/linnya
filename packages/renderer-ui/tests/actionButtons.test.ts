@@ -91,9 +91,9 @@ describe('ActionButtons', () => {
   });
 
   it.each([
-    ['default', 'linnya-ui-button--primary', ['linnya-ui-button--danger', 'linnya-ui-button--soft']],
-    ['danger', 'linnya-ui-button--danger', ['linnya-ui-button--primary', 'linnya-ui-button--soft']],
-    ['accent', 'linnya-ui-button--soft', ['linnya-ui-button--primary', 'linnya-ui-button--danger']],
+    ['default', 'linnya-ui-button--primary', ['linnya-ui-button--danger', 'linnya-ui-button--tint']],
+    ['danger', 'linnya-ui-button--danger', ['linnya-ui-button--primary', 'linnya-ui-button--tint']],
+    ['accent', 'linnya-ui-button--tint', ['linnya-ui-button--primary', 'linnya-ui-button--danger']],
   ] as const)('把 %s 解析为唯一主操作视觉语义', (variant, included, excluded) => {
     const [, primary] = mountActionButtons({ primaryVariant: variant });
 

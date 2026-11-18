@@ -47,10 +47,13 @@
 - 暗色主题的边框是叠加在表面上的透明白色，在任何一级表面上都保持同样的可见度；新增暗色视觉不要用某个固定灰色当边框。
 - 需要细线时使用 `--border-width-hairline`：高分屏上是物理 1px（0.5 CSS px），普通屏为 1px。
 - 区域内部分组用单边分隔线（`border-top` / `border-bottom`），不再嵌套闭合方框。
+- 输入类控件（单行与多行输入、选择器、数字输入、密文输入、时间选择）和 `secondary` 按钮不画边框，用 `--color-bg-field`（主文字色 5% 叠加）的浅底表达边界。可输入的控件（单行与多行输入、数字输入、密文输入）的底色在静止、悬停、聚焦时保持不变，聚焦只加 `--color-border-focus` 描边；可点击的选择器、时间选择与 `secondary` 按钮悬停时加深到 `--color-bg-field-hover`（8%）。叠加写法让同一个 token 在页面、卡片、对话框各级表面上都可见。新增输入类控件沿用这组 token，不要再加静止描边。
 
 ### 2.4 强调色
 
-`--color-accent*` 是品牌绿的语义映射，用于主按钮、选中项、激活中的开关与 Tab、焦点环和可交互链接性强调。`moon-blue` 主题把强调色映射为蓝色，因此组件只能引用 `--color-accent*`，不能直接写品牌色阶。
+品牌色是薄荷绿（`--color-brand-500` `#6bb88d`，OKLCH L0.72 C0.100 H158）：比旧品牌绿更冷、更亮、彩度更低。浅色主题的强调色取能承载白字的深一档 `brand-600`（`#3d825d`，白字 4.62:1），选中浅底上的文字取 `brand-700`（`#337251`，在 `brand-125` 上 5.09:1）。灰阶带一点跟随品牌色相的色偏（最深处 C≈0.0024），明度与旧纯灰相同。
+
+`--color-accent*` 是品牌绿的语义映射，用于主按钮、选中项、激活中的开关与 Tab、焦点环和可交互链接性强调。`moon-blue` 主题把强调色映射为很淡的蓝（`--color-moon-accent-*`，实底 `#4079ac` 白字 4.62:1），底色与边框只带极少的蓝（`--color-moon-*`，C0.003–0.014），文字是带一点蓝的墨色；因此组件只能引用 `--color-accent*`，不能直接写品牌色阶。
 
 强调色有三种用法，不能混用：作文字、图标、描边时用 `--color-accent`（暗色下偏亮，保证在深底上可读）；作承载反色文字的实底（主按钮等）时用 `--color-accent-solid` 与 `--color-accent-solid-hover`（暗色下更深一档，保证白字 4.5:1）；文字落在强调色浅底（选中、激活的工具条按钮与标签）上时用 `--color-accent-text`，它与 `--color-accent-bg` 的对比度在三套主题里都不低于 4.5:1，`--color-accent` 在暗色浅底上只有约 3.3:1。落在 hover 底（`--color-bg-hover`）这类带色的中性底上时也用 `--color-accent-text`：`--color-accent` 在上面浅色只有 4.49:1、暗色只有 3.9:1。
 
@@ -68,7 +71,9 @@
 
 基础色不保证作为文字可读（例如警示黄），状态文字必须使用 `*-text`。状态语义固定为：错误和失败用 error；需要用户处理但未失败（不可用、已过期、配额将尽）用 warning；完成用 success；中性提示用 info。状态不能只靠颜色表达，必须同时有文字或图标。
 
-错误文字色 `--color-error-text`（浅色与月蓝 `red-415`，`#d42020`）在白底 5.2:1、`--color-error-bg` 上 4.8:1，是满足 AA 的最亮一档红；不要为了更鲜艳再调浅，也不要换回 `red-450`（`#b91c1c`，6.5:1，偏暗偏褐）。同一错误态里的文字、描边、危险按钮实底保持 `--color-error-text`、`--color-error`、`--color-error` 这一组，不要另写一个红。
+四种状态色是一组“协调”的状态色阶 `--color-signal-{success,error,warning,info}-*`：同一明度带，彩度保持接近旧 Tailwind 值（不压低，否则轮廓按钮和修订标记会发灰），成功绿（H150）与品牌薄荷分开。浅色与月蓝取 500 作基础色、600 作文字、50 作底；深色取 400 / 200 / 900。浅色下文字在各自浅底上：成功 5.12:1、错误 5.16:1、警示 5.54:1、信息 4.86:1。语义 token 只引用 `--color-signal-*`，不再引用 `red-*`、`blue-*` 等通用色阶。
+
+错误文字色 `--color-error-text`（浅色与月蓝 `signal-error-600`，`#cb131c`）在白底 5.75:1、`--color-error-bg` 上 5.16:1；不要为了更鲜艳再调浅。同一错误态里的文字、描边、危险按钮实底保持 `--color-error-text`、`--color-error`、`--color-error` 这一组，不要另写一个红。
 
 文字所在的底必须是 `--color-*-bg` 实色，不要用基础色的半透明做文字底：半透明底的对比度随下面的内容变化，`red-415` 文字在 18% 红底上只有 3.9:1，info 文字在 18% 蓝底上也只有 4.25:1。透明控件悬停、行内错误底这类轻量背景用 `--color-error-bg-subtle`：浅色与月蓝取 `--color-error-bg`，暗色保持 8% 半透明，避免大块深红。`NotificationBar` 的四种类型在浅色与月蓝用 `--color-*-bg`，暗色的 `*-bg` 是大块饱和色，仍用基础色 18% 半透明轻底。
 
@@ -273,6 +278,8 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 
 组件在 `enter-active` / `leave-active` 取两个 transition token，在 `enter-from` / `leave-to` 取上面的 transform，并写上 `transform-origin`：向下展开取 `top`（靠右对齐的取 `top right`），向上展开取 `bottom`。落点会变的浮层（`TextPopover`、引用卡片、日期面板翻转到上方）用 `data-placement` 或 `is-placement-*` 切换原点与起始状态。不要再写 `translateY(-8px)` 这种与来源无关的平移；树的展开、列表行进出这类“内容顺着流向进入”的过渡不属于浮层，不套用；下拉里的二级菜单与父菜单同时存在，保留 100ms 的侧向位移，不缩放；通知条、错误横幅和侧栏滑入各有自己的方向与时长，也不套用。
 
+**定位按布局尺寸算，与触发点留 8px。** 入场缩放期间 `getBoundingClientRect()` 量到的是缩小后的弹层，按它往上放会贴住触发点，动画结束重算又会跳。量弹层自身用 `measureFloatingLayoutSize()`（`offsetWidth` / `offsetHeight`），只有触发点、锚点用 `getBoundingClientRect()`；弹层与触发点之间留 8px。
+
 **对话框的遮罩与本体分开动。** `Modal`（含基于它的 `AlertDialog`）进入时遮罩只淡底色（`--duration-medium` + `--ease-standard`），弹窗本体从 `--modal-hidden`（`scale(0.97)` 加下移 8px）缓出到位（`--modal-transition-enter`：`--duration-medium` + `--ease-enter`）；离开时遮罩 `--duration-short`，本体回到同一状态（`--modal-transition-leave`：`--duration-micro` + `--ease-standard`），比进入更快更轻。缩放以弹窗中心为原点，幅度只有 3%：1× 下读作“干净地出现”而不是弹跳。遮罩根节点必须保留一条真实的 `transition`，Vue 的 `<Transition>` 只读根节点的过渡时长来决定何时移除节点；不要把遮罩改回整体 `opacity`，那会让弹窗本体跟着一起淡掉而无法单独运动。对话框正文滚动时标题与操作区之间**不加**分隔线：这是有意的设计，不要补。应用层的设置面板不经过 `Modal`，在 `SettingsModal.css` 里按同一套 `--modal-*` token 写了等价规则（遮罩多淡一层 `backdrop-filter` 模糊，避免模糊在第 0 帧突然出现）；新增自带遮罩的对话框壳层时照此办理，不要退回整体 `opacity`。
 
 **提示由一个共享服务绘制。** `IconButton` 的 `label` 与 `HoverTooltip` 走同一套规则，不再使用原生 `title`（出现慢、样式不可控、无法与相邻切换配合）：
@@ -300,7 +307,7 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 
 | 状态 | 表达方式 |
 | --- | --- |
-| hover | 透明底控件显示 `--color-bg-hover`；文字或图标可提升一级文字色 |
+| hover | 透明底控件显示 `--color-bg-hover`（主文字色半透明叠加，任何底色上同样明显；叠在已悬停行上的控件用 `--color-bg-hover-strong`）；文字或图标可提升一级文字色。悬停色是半透明的，不要拿它和别的颜色 `color-mix` 当不透明底用 |
 | active（按下） | `--color-bg-active`；需要触感时可加 `scale(0.98)`，时长用 micro |
 | selected | `--color-accent-bg` 底色配 `--color-accent` 文字，或 `--color-bg-active-subtle` 中性选中 |
 | disabled | 使用原生 `disabled` 语义，配合 `--color-text-placeholder` 或整体 0.5–0.6 透明度；不能只改颜色 |
@@ -309,6 +316,8 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 只在 `:focus-visible` 上显示焦点环，鼠标点击不显示。Host 的 document baseline 已为所有键盘可聚焦元素提供这一焦点环（文本输入、可编辑区与脚本聚焦的 `tabindex="-1"` 容器除外），组件不需要重复声明；组件改用其他焦点表达（例如输入框的强调色边框、行内按钮显露）时，必须保证键盘焦点同样可见。不要在基础选择器上写 `outline: none` 关掉焦点环。
 
 平时隐藏、悬停才出现的行内操作，在所在行 `:focus-within` 时也必须显示，否则键盘用户会聚焦到看不见的按钮。
+
+**文字选中。** 按桌面应用的习惯，界面文字不可选：按钮、导航、标题、标签、说明、卡片和面板标题都不能被拖选。Host 在 `body` 上默认 `user-select: none`，只有正文类内容由各自 owner 显式开启 `user-select: text`（编辑器、对话消息、文档预览、技能文件预览、画布文字等）；输入框、文本域与可编辑区域不受影响。`BaseButton`、`IconButton` 自身也不可选，放进正文区域里同样拖不选。新增正文区域时在它自己的样式里开启选中；正文里夹带的界面部分（工具卡标题、思考标题、操作栏）在各自样式里关掉。
 
 ## 9. 组件规范
 
@@ -328,17 +337,16 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 | variant | 视觉 | 用途 |
 | --- | --- | --- |
 | `primary` | 强调色实底（`--color-accent-solid`）、反色文字 | 当前区域唯一的主操作：保存、发送、插入、创建确认 |
-| `secondary` | 表面底色加描边 | 与主操作并列的次操作：取消、返回 |
-| `ghost` | 透明底加描边 | 已有容器内的次要操作：重置、更多选项 |
+| `secondary` | `--color-bg-field` 浅底、无描边 | 与主操作并列的次操作：取消、返回 |
+| `ghost` | 透明底、无描边，悬停出现 `--color-bg-field-hover` | 已有容器内的次要操作：重置、更多选项 |
 | `plain` | 无底无描边，次级文字色；`tone` 可选 accent / info / danger | 工具栏、标题行、列表行与浮层里的轻操作；accent 用于面板内的确认，danger 用于行内删除、清理（静止中性、悬停显红） |
 | `danger` | 错误色实底 | 删除、清空等不可撤销操作；需要二次确认的放在确认对话框里 |
-| `soft` | 品牌色浅底与细描边 | 推荐但不应抢过主操作的动作，例如引导卡片里的“开始” |
-| `tint` | 品牌色平涂浅底（`--color-accent-bg`）、深色文字（`--color-accent-text`） | 占满宽度（`block`）或位于大片留白里的主操作：设置表单底部整条的“添加”“开始分析”。同一个主操作用 `primary` 实底，面积一大视觉重量会失衡 |
+| `tint` | 品牌色平涂浅底（`--color-accent-bg`）、深色文字（`--color-accent-text`） | 占满宽度（`block`）或位于大片留白里的主操作：设置表单底部整条的“添加”“开始分析”；也用于与 `primary` 并列、推荐但不抢主操作的动作，例如新建项目里的“AI 辅助创建”。同一个主操作用 `primary` 实底，面积一大视觉重量会失衡。`soft` 自 3.6.0 起按 `tint` 渲染，新代码不要使用 |
 | `outline` | 表面底色、发丝描边、轻投影，`tone` 决定颜色 | 页面级入口：`accent` 用于新建，`info` 用于导入、上传，`neutral` 用于普通入口与空态，`danger` 用于页面级的破坏性入口 |
 
 组合规则：
 
-1. 一个区域（对话框、表单、卡片、页面头部）最多一个 `primary`、`tint` 或 `danger`。主操作按面积选风格：紧凑的按钮（对话框和表单底部的 `ActionButtons`、工具栏）用 `primary` 实底；整条占满容器宽度的 `block` 按钮用 `tint` 浅底。
+1. 一个区域（对话框、表单、卡片、页面头部）最多一个 `primary`、`danger` 或作主操作的 `tint`；`tint` 作推荐操作时可与一个 `primary` 并列。主操作按面积选风格：紧凑的按钮（对话框和表单底部的 `ActionButtons`、工具栏）用 `primary` 实底；整条占满容器宽度的 `block` 按钮用 `tint` 浅底。
    紧凑的行内面板（公式、尺寸、引用浮层）不放实底按钮，确认用 `plain` + `accent`、取消用 `plain`。
 2. 主次成对时次操作在左、主操作在右；对话框与表单底部使用 `ActionButtons`，它由两个 `BaseButton` 组成并保证最小宽度 80px。
 3. 同一行的按钮使用同一尺寸、同一形状；不要在同一组里混用胶囊与方角。
@@ -358,6 +366,7 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 | --- | --- | --- |
 | `xs` | 20px / 14px（命中区扩到 24px） | 文字行内与卡片标题行的密集操作：刷新、复制、行内删除 |
 | `sm` | 24px / 18px | Header、侧栏行、消息操作 |
+| `composer` | 26px / 18px | 只用于对话输入框底栏，与模型选择器、Agent 胶囊同高；别处不用 |
 | `md` | 28px / 18px | 面板与对话框标题行的关闭、导航 |
 | `lg` | 32px / 20px | 与 32px 输入框、选择器并排的添加类操作 |
 
@@ -374,12 +383,14 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 - 卡片：`--color-bg-surface` 底、`--color-border-light` 描边、`--radius-lg`、内边距 `--space-3`～`--space-4`；可点击卡片 hover 时提升描边到 `--color-border-hover`，不使用位移动画。
 - 面板与浮层：`--color-bg-elevated` 底、`--shadow-floating-panel`、`--radius-lg`；对话框使用 `Modal`。
 - 卡片内的分组用单边分隔线或间距，不再嵌套卡片。
+- `DraggablePanel` 四边同距 `--floating-panel-inset`（20px）：标题、正文、底部共用这一边距，关闭钮框距上、右各 14px，让 × 的笔画也落在约 20px。面板只能左右调宽，不能调高；`height="auto"` 的面板高度完全由内容决定（不受固定高度面板的 180px 下限约束）。正文由面板给边距，调用方不要再给 `.panel-body` 内容写左右内边距。
 
 ### 9.5 弹窗
 
 - 使用 `Modal`。标题是弹窗的第一层级：`subtitle`（15/22）、semibold、`--color-text-primary`；不要用比正文还浅的灰色做标题。
 - 来源或状态标签放在标题旁，通过 `title-extra` 插槽接入，使用状态徽标的字阶与颜色，不能抢占标题层级。
 - 关闭按钮固定在标题行右侧，28px 圆角方块，静止为 `--color-text-tertiary`，悬停提亮到主文字色并出现 hover 底色；形状不随状态变化。
+- 边距由 `Modal` 统一给：四边都是 `--modal-inset`（24px），按看得见的笔画对齐而不是按元素框——标题行上内边距 16px（标题字形顶在 22px 行框里还有约 4px 空白），关闭钮框距上、右各 16px（× 在 28px 框里有约 10px 空白），这样标题字形顶、× 笔画、正文与底部按钮的边线都落在约 24px。默认滚动模式下正文和 `#footer` 的左右与底部边距都由 `Modal` 负责，调用方只写上下间距；`scroll-mode="internal"` 时调用方的根节点自己用 `var(--modal-inset)` 写左右边距，并写 `flex: 1; min-width: 0` 占满宽度（内部模式的内容区是横向 flex）。
 - 底部操作区主操作在右、次操作在左，使用 `ActionButtons`；正文过长时由内容区滚动，标题与操作区保持可见。
 - 点击遮罩与 Esc 关闭当前最上层弹窗；含未保存输入的表单弹窗应关闭 `closeOnOverlayClick`，避免误触丢失内容。
 
@@ -416,7 +427,7 @@ JS 驱动的动画（Web Animations、`element.animate`）从计算样式读取 
 
 ## 10. 图标
 
-平台图标从 `/icons` 获取，单色线性风格，颜色继承 `currentColor`。常用尺寸为 12（徽标）、14（按钮图标槽、密集行内操作）、16（与正文同行的控件）、18（Header、侧栏行与图标按钮）和 20（与 32px 控件并排的操作、卡片与空态）；同一行内同类图标保持同一尺寸，辅助展开箭头按下节单独取值。图标用于帮助理解而非唯一表达，图标按钮必须有可访问名称。品牌标识 `LinnyaIcon` 只用于品牌位置和“由 Linnya 执行”的操作入口（AI 引用、AI 创建、AI 批注等），不作为普通操作图标；它与周围线性图标形态不同是有意的，一眼看出这一步交给 Linnya。
+平台图标从 `/icons` 获取，单色线性风格，颜色继承 `currentColor`。常用尺寸为 12（徽标）、14（按钮图标槽、密集行内操作）、16（与正文同行的控件）、18（Header、侧栏行与图标按钮）和 20（与 32px 控件并排的操作、卡片与空态）；同一行内同类图标保持同一尺寸，辅助展开箭头按下节单独取值。图标用于帮助理解而非唯一表达，图标按钮必须有可访问名称。品牌标识 `LinnyaIcon` 只用于品牌位置和“由 Linnya 执行”的操作入口（AI 引用、AI 创建、AI 批注等），不作为普通操作图标；它与周围线性图标形态不同是有意的，一眼看出这一步交给 Linnya。`LinnyaIcon` 默认就是强调色 `--color-accent`（浅色主题为加深的品牌色），各处保持同一个绿，调用方不要再写颜色；确需例外时把颜色写在图标自身的 class 上，写在外层容器上不会生效。
 
 - **名字描述图形。** 组件按图形的通用含义起名（`BookIcon`、`DocumentAddIcon`），复合图标先主体后修饰；方向、对齐和状态用属性表达（`ChevronIcon direction`、`AlignObjectsIcon alignment`），不为每个状态另出组件。
 - **修饰角标一律实心。** 加号、对勾、箭头等角标是实心圆盘加 1u 镂空符号，主体在角标外 1u 处截断；同一种角标全库位置和大小一致。

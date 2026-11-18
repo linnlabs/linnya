@@ -1,60 +1,61 @@
-/* 功能语义色：主题只能在这里覆盖，不在组件内各自分叉。 */
+/* 功能语义色：主题只能在这里覆盖，不在组件内各自分叉。取值来自 foundation 的 --color-signal-* 色阶。 */
 /* 基础色用于图标、描边和进度；*-text 用于文字，在对应 *-bg 与页面背景上都满足 WCAG AA。 */
 /* error-bg-subtle：透明控件悬停、行内错误底。浅色与月蓝用 *-bg 实色保证文字对比度，深色保持轻量半透明，避免出现大块深红。 */
 
 [data-linnya-ui-theme='light'] {
-  --color-success: var(--color-brand-500);
-  --color-success-bg: var(--color-brand-50);
-  --color-success-text: var(--color-brand-700);
+  --color-success: var(--color-signal-success-500);
+  --color-success-bg: var(--color-signal-success-50);
+  --color-success-text: var(--color-signal-success-600);
 
-  --color-error: var(--color-red-400);
-  --color-error-bg: var(--color-red-50);
+  --color-error: var(--color-signal-error-500);
+  --color-error-bg: var(--color-signal-error-50);
   --color-error-bg-subtle: var(--color-error-bg);
-  --color-error-text: var(--color-red-415);
+  --color-error-text: var(--color-signal-error-600);
 
-  --color-warning: var(--color-yellow-500);
-  --color-warning-bg: var(--color-yellow-50);
-  --color-warning-text: var(--color-yellow-800);
+  --color-warning: var(--color-signal-warning-500);
+  --color-warning-bg: var(--color-signal-warning-50);
+  --color-warning-text: var(--color-signal-warning-600);
 
-  --color-info: var(--color-blue-475);
-  --color-info-bg: var(--color-blue-50);
-  --color-info-text: var(--color-blue-600);
+  --color-info: var(--color-signal-info-500);
+  --color-info-bg: var(--color-signal-info-50);
+  --color-info-text: var(--color-signal-info-600);
 }
 
 [data-linnya-ui-theme='dark'] {
-  --color-success: var(--color-brand-500);
-  --color-success-bg: var(--color-brand-850);
-  --color-success-text: var(--color-brand-300);
+  --color-success: var(--color-signal-success-400);
+  --color-success-bg: var(--color-signal-success-900);
+  --color-success-text: var(--color-signal-success-200);
 
-  --color-error: var(--color-red-400);
-  --color-error-bg: var(--color-red-800);
+  --color-error: var(--color-signal-error-400);
+  --color-error-bg: var(--color-signal-error-900);
   --color-error-bg-subtle: color-mix(in srgb, var(--color-error) 8%, transparent);
-  --color-error-text: var(--color-red-300);
+  --color-error-text: var(--color-signal-error-200);
 
-  --color-warning: var(--color-yellow-500);
-  --color-warning-bg: var(--color-yellow-900);
-  --color-warning-text: var(--color-yellow-300);
+  --color-warning: var(--color-signal-warning-400);
+  --color-warning-bg: var(--color-signal-warning-900);
+  --color-warning-text: var(--color-signal-warning-200);
 
-  --color-info: var(--color-blue-500);
-  --color-info-bg: var(--color-blue-900);
-  --color-info-text: var(--color-blue-350);
+  --color-info: var(--color-signal-info-400);
+  --color-info-bg: var(--color-signal-info-900);
+  --color-info-text: var(--color-signal-info-200);
 }
 
+/* 月白蓝与浅色共用同一组信号色：底色本身已足够淡，不再混入蓝色。 */
 [data-linnya-ui-theme='moon-blue'] {
-  --color-success: var(--color-brand-500);
-  --color-success-bg: color-mix(in srgb, var(--color-brand-50) 74%, var(--color-blue-25));
-  --color-success-text: var(--color-brand-700);
+  --color-success: var(--color-signal-success-500);
+  --color-success-bg: var(--color-signal-success-50);
+  --color-success-text: var(--color-signal-success-600);
 
-  --color-error: var(--color-red-400);
-  --color-error-bg: color-mix(in srgb, var(--color-red-50) 72%, var(--color-blue-25));
+  --color-error: var(--color-signal-error-500);
+  --color-error-bg: var(--color-signal-error-50);
   --color-error-bg-subtle: var(--color-error-bg);
-  --color-error-text: var(--color-red-415);
+  --color-error-text: var(--color-signal-error-600);
 
-  --color-warning: var(--color-yellow-500);
-  --color-warning-bg: color-mix(in srgb, var(--color-yellow-50) 68%, var(--color-blue-25));
-  --color-warning-text: var(--color-yellow-800);
+  --color-warning: var(--color-signal-warning-500);
+  --color-warning-bg: var(--color-signal-warning-50);
+  --color-warning-text: var(--color-signal-warning-600);
 
-  --color-info: var(--color-blue-600);
-  --color-info-bg: color-mix(in srgb, var(--color-blue-50) 78%, var(--color-white));
-  --color-info-text: var(--color-blue-600);
+  --color-info: var(--color-signal-info-500);
+  --color-info-bg: var(--color-signal-info-50);
+  --color-info-text: var(--color-signal-info-600);
 }

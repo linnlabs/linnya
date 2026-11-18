@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   selectSingle: vi.fn(),
   clearSelection: vi.fn(),
   getRecentDocuments: vi.fn(),
+  removeDeletedDocumentTabs: vi.fn(),
 }));
 
 vi.mock('@plugin/renderer/documentReferences', () => ({ previewDocumentDeletionReferences: mocks.previewReferences }));
@@ -82,6 +83,10 @@ vi.mock('@/shared/ipc/workspaceGateway', () => ({
   },
 }));
 
+vi.mock('./documentTabs', () => ({
+  removeDeletedDocumentTabs: mocks.removeDeletedDocumentTabs,
+}));
+
 vi.mock('./workspaceNavigation', () => ({
   showEmptyProjectFilesAfterRemoval: mocks.showEmptyProjectFilesAfterRemoval,
 }));
@@ -101,6 +106,7 @@ function node(id: string, type = 'document'): WorkspaceNode {
 
 describe('workspaceNodeDeletion', () => {
   beforeEach(() => {
+    mocks.removeDeletedDocumentTabs.mockReset().mockReturnValue(null);
     mocks.previewReferences.mockReset();
     mocks.previewReferences.mockResolvedValue({ referenceCount: 0, referencingDocumentCount: 0, documents: [] });
     mocks.confirm.mockReset(); mocks.confirm.mockResolvedValue(true);
@@ -186,6 +192,21 @@ describe('workspaceNodeDeletion', () => {
     expect(mocks.openDocument).toHaveBeenCalledWith(expect.objectContaining({
       documentId: 'doc-before',
     }));
+  });
+  it('删除当前 page 时优先回到最近用过的标签', async () => {
+    mocks.projectTree = [node('doc-before'), node('doc-active'), node('doc-tab')];
+    mocks.activeDocument = { id: 'doc-active', projectId: 'project-1', type: 'editor' };
+    mocks.deleteNode.mockResolvedValue(['doc-active']);
+    mocks.removeDeletedDocumentTabs.mockReturnValue({
+      id: 'doc-tab', type: 'editor', projectId: 'project-1', displayName: 'doc-tab', parentId: null, preview: false,
+    });
+
+    await createWorkspaceNodeDeletion().deleteNodes([{ id: 'doc-active', parentId: null }]);
+
+    expect(mocks.removeDeletedDocumentTabs).toHaveBeenCalledWith('project-1', new Set(['doc-active']), true);
+    expect(mocks.openDocument).toHaveBeenCalledTimes(1);
+    expect(mocks.openDocument).toHaveBeenCalledWith(expect.objectContaining({ documentId: 'doc-tab', type: 'editor' }));
+    expect(mocks.selectSingle).toHaveBeenCalledWith('doc-tab');
   });
   it('adds backlink risk to a single confirmation and cancellation leaves deletion and navigation untouched', async () => {
     mocks.projectTree = [node('target')];

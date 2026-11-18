@@ -18,6 +18,13 @@
   cursor: pointer;
   transition: background-color var(--duration-short) var(--ease-standard);
 }
+/* 图标槽：按钮里的图标统一 16px 方形居中。用 :where 保持低优先级，调用方确有需要（如品牌标识 14px）仍可覆盖。 */
+:where(.linnya-toolbar-button) > svg {
+  display: block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
 .linnya-toolbar-button:hover:not(:disabled, .linnya-toolbar-button--active) { background-color: var(--color-bg-hover-light); }
 .linnya-toolbar-button--active {
   color: var(--color-accent-text);

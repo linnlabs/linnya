@@ -114,7 +114,6 @@ import { EDITOR_KEY } from "../core/tokens";
 import TableInteractionManager from "../blocks/TableBlock/ui/TableInteractionManager.vue";
 
 // 导入菜单栏组件
-// import MenuBar from './MenuBar.vue'
 import {
   logDocumentStructure,
   logCurrentNode,
