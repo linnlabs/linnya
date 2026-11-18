@@ -1,12 +1,12 @@
 import { createKnowledgeIndexFixture } from '../../../index-rebuild/testkit/createKnowledgeIndexFixture';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DocumentStatus, type Document } from '../../../domain/document';
+import { type Document } from '../../../domain/document';
 import type { KnowledgeBase } from '../../../domain/knowledgeBase';
 import type { MetadataRepository } from '../../../infrastructure/metadataRepository';
 import type { OriginalDocumentRepository, OriginalDocumentSaveInput } from '../../../infrastructure/originalDocumentRepository';
 import type { StatusUpdatePublisher } from '../../../ingestion/definitions/statusUpdate';
-import { FrontendStatus, InternalStage } from '../../../ingestion/definitions/state';
+import { InternalStage } from '../../../ingestion/definitions/state';
 import { IngestionService } from '../IngestionService';
 
 const mocked = vi.hoisted(() => ({
@@ -14,13 +14,6 @@ const mocked = vi.hoisted(() => ({
   processDocument: vi.fn(),
 }));
 
-vi.mock('@task-queue/queues', () => ({
-  QueueManager: {
-    getInstance: () => ({
-      addIngestionTask: mocked.addIngestionTask,
-    }),
-  },
-}));
 
 function createMetadataRepository(): MetadataRepository {
   const documents = new Map<string, Document>();
@@ -103,13 +96,15 @@ describe('IngestionService statusUpdatePublisher', () => {
     const metadataRepository = createMetadataRepository();
     const saved: OriginalDocumentSaveInput[] = [];
     const publish = vi.fn<StatusUpdatePublisher>();
-    const service = new IngestionService({ metadataRepository,
+    const service = new IngestionService({ queues: { addIngestionTask: mocked.addIngestionTask }, metadataRepository,
       originalDocumentRepository: createOriginalDocumentRepository(saved),
       statusUpdatePublisher: publish,
     });
-    const result = await service.addDocument('kb-1', '/tmp/source.pdf', 'source.pdf', 12, 'embedding-model');
+    await expect(service.addDocument('kb-1', '/tmp/source.pdf', 'source.pdf', 12, 'embedding-model')).rejects.toThrow('knowledge_activity_busy');
+    const document = (await metadataRepository.getAllDocuments())[0];
+    if (!document) throw new Error('failed document was not retained');
     await vi.waitFor(async () => {
-      expect(await metadataRepository.getDocumentById(result.document.id)).toMatchObject({
+      expect(await metadataRepository.getDocumentById(document.id)).toMatchObject({
         status: 'failed', errorMessage: expect.stringContaining('knowledge_activity_busy'),
       });
     });
@@ -117,7 +112,7 @@ describe('IngestionService statusUpdatePublisher', () => {
     expect(mocked.processDocument).not.toHaveBeenCalled();
     expect(mocked.addIngestionTask).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledWith(expect.objectContaining({
-      taskId: result.taskId, docId: result.document.id, stage: InternalStage.FAILED,
+      taskId: mocked.addIngestionTask.mock.calls[0][0].taskId, docId: document.id, stage: InternalStage.FAILED,
       errorMessage: expect.stringContaining('knowledge_activity_busy'),
     }));
   });
@@ -125,7 +120,7 @@ describe('IngestionService statusUpdatePublisher', () => {
   it('PDF 摄入会在入队前持久化原始文件，作为 partial 续跑的前置数据', async () => {
     mocked.addIngestionTask.mockResolvedValueOnce(undefined);
     const saved: OriginalDocumentSaveInput[] = [];
-    const service = new IngestionService({
+    const service = new IngestionService({ queues: { addIngestionTask: mocked.addIngestionTask },
       metadataRepository: createMetadataRepository(),
       originalDocumentRepository: createOriginalDocumentRepository(saved),
     });
@@ -152,7 +147,7 @@ describe('IngestionService statusUpdatePublisher', () => {
   it('非 PDF 摄入不写原始文件仓储', async () => {
     mocked.addIngestionTask.mockResolvedValueOnce(undefined);
     const saved: OriginalDocumentSaveInput[] = [];
-    const service = new IngestionService({
+    const service = new IngestionService({ queues: { addIngestionTask: mocked.addIngestionTask },
       metadataRepository: createMetadataRepository(),
       originalDocumentRepository: createOriginalDocumentRepository(saved),
     });

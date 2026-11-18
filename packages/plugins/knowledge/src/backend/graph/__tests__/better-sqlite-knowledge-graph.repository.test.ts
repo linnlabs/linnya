@@ -1,3 +1,4 @@
+import { initialKnowledgeSchema } from '../../database/migrations/initialKnowledgeSchema';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
@@ -18,6 +19,7 @@ describe('BetterSqliteKnowledgeGraphRepository (M1)', () => {
 
     databaseService = new DatabaseService(dbPath);
     databaseService.initialize();
+    initialKnowledgeSchema.up(databaseService.getDb());
 
     // 预置一个 KB 记录（图谱表有 kb_id 的外键约束）
     const db = databaseService.getDb();

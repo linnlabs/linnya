@@ -9,6 +9,5 @@
 1	LOCALIZATION-date-display	apps/renderer/domains/editor/blocks/ImageBlock/functions/imageBlockPresentation.ts
 1	LOCALIZATION-date-display	apps/renderer/domains/editor/extensions/keyboard/DebugKeyboardExtension.js
 4	LOCALIZATION-date-display	apps/renderer/domains/editor/features/AutoComplete/services/BehaviorTracker.ts
-1	LOCALIZATION-date-display	packages/plugins/knowledge/src/renderer/ui/page/KnowledgeBaseDetail.vue
 1	LOCALIZATION-date-display	apps/renderer/domains/settings/features/storage-space/ui/StorageSpaceSettingsTab.vue
 1	LOCALIZATION-date-display	apps/renderer/domains/workspace/features/todo/components/TodoItem.vue

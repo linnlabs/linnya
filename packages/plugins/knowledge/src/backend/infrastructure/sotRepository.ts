@@ -58,7 +58,6 @@ export class FileSotRepository implements SotRepository {
    */
   constructor(basePath: string) {
     this.basePath = basePath;
-    this.ensureDirectoryExists();
   }
 
   /**
@@ -105,6 +104,8 @@ export class FileSotRepository implements SotRepository {
       const docPath = this.getDocPath(docId);
       logger.debug(`保存SoT数据到文件: ${docPath}`);
 
+      // 首次写入必须等目录就绪，构造函数不能留下未被等待的异步 I/O。
+      await this.ensureDirectoryExists();
       const content = JSON.stringify(data, null, 2);
       await fs.writeFile(docPath, content, 'utf-8');
 

@@ -26,7 +26,7 @@ const logger = new Logger('IngestionService');
  * 摄入服务依赖接口
  */
 export interface IngestionServiceDeps {
-  queues: KnowledgeQueues;
+  queues: Pick<KnowledgeQueues, 'addIngestionTask'>;
   metadataRepository: MetadataRepository;
   originalDocumentRepository: OriginalDocumentRepository;
   statusUpdatePublisher?: StatusUpdatePublisher;

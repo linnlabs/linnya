@@ -1,3 +1,4 @@
+import { initialKnowledgeSchema } from '../../../database/migrations/initialKnowledgeSchema';
 import { createServer } from 'node:http';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -63,6 +64,7 @@ describe('knowledge deletion with vector service failures', () => {
         throw new Error('HTTP fixture did not bind a TCP port');
       const database = new DatabaseService(path.join(root, 'workspace.sqlite'));
       database.initialize();
+    initialKnowledgeSchema.up(database.getDb());
       const metadataRepository = new BetterSqliteMetadataRepository(database.getDb());
       const sotRepository = new FileSotRepository(path.join(root, 'sot'));
       const originalDocumentRepository = new FileOriginalDocumentRepository(

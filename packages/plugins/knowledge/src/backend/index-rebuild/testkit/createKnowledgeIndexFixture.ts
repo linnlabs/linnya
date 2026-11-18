@@ -16,7 +16,6 @@ export function createKnowledgeIndexFixture(
 ) {
   const database = new Database(':memory:');
   databases.push(database);
-  database.exec('CREATE TABLE projects(id TEXT PRIMARY KEY)');
   for (const ddl of KNOWLEDGE_BASE_SCHEMAS) database.exec(ddl);
   for (const id of ids)
     database

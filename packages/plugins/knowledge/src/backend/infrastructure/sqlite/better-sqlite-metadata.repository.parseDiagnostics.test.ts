@@ -1,3 +1,4 @@
+import { initialKnowledgeSchema } from '../../database/migrations/initialKnowledgeSchema';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import fs from 'fs';
 import os from 'os';
@@ -17,6 +18,7 @@ describe('BetterSqliteMetadataRepository parse diagnostics', () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-kb-metadata-'));
     databaseService = new DatabaseService(path.join(tempDir, 'workspace.sqlite'));
     databaseService.initialize();
+    initialKnowledgeSchema.up(databaseService.getDb());
     repository = new BetterSqliteMetadataRepository(databaseService.getDb());
   });
 
@@ -81,6 +83,7 @@ describe('BetterSqliteMetadataRepository knowledge base model overrides', () => 
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-kb-model-overrides-'));
     databaseService = new DatabaseService(path.join(tempDir, 'workspace.sqlite'));
     databaseService.initialize();
+    initialKnowledgeSchema.up(databaseService.getDb());
     repository = new BetterSqliteMetadataRepository(databaseService.getDb());
   });
 

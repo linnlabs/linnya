@@ -1,3 +1,4 @@
+import { initialKnowledgeSchema } from '../../../database/migrations/initialKnowledgeSchema';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,16 +11,16 @@ import { FileOriginalDocumentRepository } from '../../../infrastructure/fileOrig
 import { KnowledgeBaseMgmtService } from '../KnowledgeBaseMgmtService';
 import { DefaultSearchService } from '../../search/defaultSearchService';
 import { createDocument } from '../../../domain/document';
-import { isQdrantRuntimeUnavailableError } from '../../../infrastructure/vector-store/errors';
 
 describe('knowledge metadata with a cold vector runtime', () => {
   it('默认库和新库可以原地创建读取；向量启动失败时删除不触碰原文或元数据', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'linnya-kb-cold-'));
     const database = new DatabaseService(path.join(root, 'workspace.sqlite'));
     database.initialize();
+    initialKnowledgeSchema.up(database.getDb());
     const metadataRepository = new BetterSqliteMetadataRepository(database.getDb());
     const resolveAdapter = vi.fn(async () => {
-      throw new QdrantRuntimeUnavailableError('qdrant unavailable');
+      throw Object.assign(new Error('qdrant unavailable'), { name: 'QdrantRuntimeUnavailableError' });
     });
     const sotRepository = new FileSotRepository(path.join(root, 'sot'));
     const originalDocumentRepository = new FileOriginalDocumentRepository(

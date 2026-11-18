@@ -1,3 +1,4 @@
+import { initialKnowledgeSchema } from '../../database/migrations/initialKnowledgeSchema';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
@@ -23,6 +24,7 @@ describe('GraphProgressService (M4)', () => {
 
     databaseService = new DatabaseService(dbPath);
     databaseService.initialize();
+    initialKnowledgeSchema.up(databaseService.getDb());
 
     // 预置 KB 记录（图谱表有 kb_id 外键）
     const db = databaseService.getDb();

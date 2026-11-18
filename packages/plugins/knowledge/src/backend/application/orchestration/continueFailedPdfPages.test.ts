@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EmbeddingPort, TextGenerationPort } from '@plugin/backend/inferenceRuntime';
 import type { DocumentOcrPort } from '@plugin/backend/inferenceRuntime';
-import { ServiceRegistry } from 'src/core/di/ServiceRegistry';
 import { BlockType, type DocumentSoT } from '../../domain/block';
 import {
   DocumentStatus,
@@ -54,11 +53,9 @@ describe('continueFailedPdfPages', () => {
     mocks.getPdfPageCountCrossPlatform.mockReset();
     mocks.processPdfPagesWithVisionDiagnostics.mockReset();
     mocks.getPdfPageCountCrossPlatform.mockResolvedValue(3);
-    ServiceRegistry.getInstance().reset();
   });
 
   afterEach(async () => {
-    ServiceRegistry.getInstance().reset();
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
@@ -68,11 +65,7 @@ describe('continueFailedPdfPages', () => {
     const qdrant = createQdrantRepository();
     const original = createOriginalDocumentRepository(originalPdfPath);
     const graphEnqueue = vi.fn<GraphEnqueueFn>().mockResolvedValue(undefined);
-    ServiceRegistry.getInstance().register(
-      'knowledgeGraphQueueOrchestrator',
-      () => ({ enqueueGraphExtractionForDocument: graphEnqueue }),
-      true
-    );
+
 
     mocks.processPdfPagesWithVisionDiagnostics.mockResolvedValueOnce({
       success: true,
@@ -93,6 +86,8 @@ describe('continueFailedPdfPages', () => {
         sotRepository: sot,
         qdrantRepository: qdrant,
         originalDocumentRepository: original,
+        temporaryDirectory: tempDir,
+        enqueueGraphExtraction: graphEnqueue,
         ...createInferenceCapabilities(),
       },
       KB_ID,
@@ -156,7 +151,9 @@ describe('continueFailedPdfPages', () => {
           sotRepository: sot,
           qdrantRepository: qdrant,
           originalDocumentRepository: original,
-          ...createInferenceCapabilities(),
+          temporaryDirectory: tempDir,
+        enqueueGraphExtraction: async () => {},
+        ...createInferenceCapabilities(),
         },
         KB_ID,
         DOC_ID
@@ -200,7 +197,9 @@ describe('continueFailedPdfPages', () => {
           sotRepository: sot,
           qdrantRepository: qdrant,
           originalDocumentRepository: original,
-          ...createInferenceCapabilities(),
+          temporaryDirectory: tempDir,
+        enqueueGraphExtraction: async () => {},
+        ...createInferenceCapabilities(),
         },
         KB_ID,
         DOC_ID
@@ -242,7 +241,9 @@ describe('continueFailedPdfPages', () => {
           sotRepository: sot,
           qdrantRepository: qdrant,
           originalDocumentRepository: original,
-          ...createInferenceCapabilities(),
+          temporaryDirectory: tempDir,
+        enqueueGraphExtraction: async () => {},
+        ...createInferenceCapabilities(),
         },
         KB_ID,
         DOC_ID
@@ -279,6 +280,8 @@ describe('continueFailedPdfPages', () => {
         sotRepository: sot,
         qdrantRepository: qdrant,
         originalDocumentRepository: original,
+        temporaryDirectory: tempDir,
+        enqueueGraphExtraction: async () => {},
         ...createInferenceCapabilities(),
         resolveModelByCapability: capability =>
           capability === 'pdf_ocr_default' ? 'capability-ocr-model' : undefined,
@@ -312,7 +315,9 @@ describe('continueFailedPdfPages', () => {
           sotRepository: sot,
           qdrantRepository: qdrant,
           originalDocumentRepository: original,
-          ...createInferenceCapabilities(),
+          temporaryDirectory: tempDir,
+        enqueueGraphExtraction: async () => {},
+        ...createInferenceCapabilities(),
         },
         KB_ID,
         DOC_ID
