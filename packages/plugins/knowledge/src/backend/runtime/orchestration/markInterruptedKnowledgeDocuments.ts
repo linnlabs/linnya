@@ -11,10 +11,11 @@ export async function markInterruptedKnowledgeDocuments(
     if (!document || document.kbId !== task.kbId) continue;
     if (document.status !== DocumentStatus.PENDING && document.status !== DocumentStatus.PROCESSING)
       continue;
-    await metadata.updateDocumentStatus(
+    const updated = await metadata.updateDocumentStatus(
       task.docId,
       DocumentStatus.FAILED,
       '知识库停用，中断了文档处理。已保存的内容仍保留，可重建检索索引；尚未保存内容的文件可重新上传。'
     );
+    if (!updated) throw new Error(`知识库中断状态未保存: ${task.docId}`);
   }
 }

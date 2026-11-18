@@ -1,0 +1,241 @@
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import Database from 'better-sqlite3';
+import { build } from 'esbuild';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PluginInferencePort } from '@plugin/backend/inferenceRuntime';
+import type { PluginWorkerQueueOptions, PluginWorkerTask } from '@plugin/backend/workerQueue';
+import { createHostPluginWorkerQueue } from 'src/app-hosts/linnya/adapters/plugin-worker-queue/orchestration/createHostPluginWorkerQueue';
+import { registeredBackendPluginDirectories } from 'src/app-hosts/linnya/plugin-registry/registeredPluginDirectories';
+import { setPluginRuntimeStateForTests, clearPluginRuntimeStateForTests } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
+import { KNOWLEDGE_BASE_SCHEMAS, KNOWLEDGE_GRAPH_SCHEMAS } from '../../database/schemas';
+import { createKnowledgeRuntime, type KnowledgeRuntime } from './createKnowledgeRuntime';
+import { BetterSqliteMetadataRepository } from '../../infrastructure/sqlite/better-sqlite-metadata.repository';
+import { createDocument, DocumentStatus } from '../../domain/document';
+import { BlockType, type DocumentSoT } from '../../domain/block';
+import { KnowledgeQueues } from '../../queue/orchestration/KnowledgeQueues';
+import { createKnowledgeActivityOwner } from './createKnowledgeActivityOwner';
+import { getKnowledgeToolRuntime } from '../../tools/runtime/knowledgeToolRuntime';
+
+let root: string;
+let database: Database.Database;
+let bootstrap: string;
+let enabled: boolean;
+let vectorOwned: boolean;
+let vectorOwners: number;
+let vectorStarts: number;
+let runtime: KnowledgeRuntime | undefined;
+const pushes: unknown[] = [];
+const inference: PluginInferencePort = {
+  embedding: { embed: async request => ({ vectors: request.values.map(() => [1, 0]), spaceId: 'fixture' }) },
+  reranking: { rerank: async () => ({ ranking: [] }) },
+  textGeneration: { generate: async () => ({ text: '{}', reasoning: '', finishReason: 'stop' }) },
+  documentOcr: { resolveModelProfile: async () => undefined, recognizeDocument: async () => ({ pages: [] }) },
+};
+
+vi.mock('@plugin/backend/storageRuntime', () => ({ getPluginStorage: () => ({ database, dataDirectory: path.join(root, 'KnowledgeBase') }) }));
+vi.mock('@plugin/backend/projectReadRuntime', () => ({ getPluginProjectReadPort: () => ({ get: () => undefined, list: () => [] }) }));
+vi.mock('@plugin/backend/modelConfiguration', () => ({ getPluginModelConfigurationPort: () => ({
+  readDefaultModelIdByCapability: () => 'ocr', readAuxiliaryModelBinding: () => 'language', getModelDisplayName: (id: string) => id,
+}) }));
+vi.mock('@plugin/backend/inferenceRuntime', () => ({ getPluginInferencePort: () => inference }));
+vi.mock('@plugin/backend/vectorRuntime', () => ({ createPluginVectorRuntime: () => {
+  if (vectorOwned) throw new Error('previous vector owner remains');
+  vectorOwned = true; vectorOwners += 1;
+  return { ensureReady: async () => { vectorStarts += 1; return 'http://127.0.0.1:49199'; }, stop: async () => { vectorOwned = false; } };
+} }));
+vi.mock('@plugin/backend/pluginRendererPush', () => ({ broadcastRendererPluginMessage: (...payload: unknown[]) => {
+  if (!enabled) throw new Error('disabled plugin cannot publish');
+  pushes.push(payload);
+} }));
+vi.mock('@plugin/backend/workerQueue', () => ({ createPluginWorkerQueue: <T extends PluginWorkerTask>(options: PluginWorkerQueueOptions<T>) =>
+  createHostPluginWorkerQueue({ ...options, maxConcurrency: 1 }, {
+    bootstrapScriptPath: bootstrap, database: { path: database.name, schemaVersion: 79 }, inference, environment: process.env,
+  }),
+}));
+
+const workerSource = `
+const { parentPort, workerData } = require('node:worker_threads');
+const { mkdirSync, writeFileSync } = require('node:fs');
+const path = require('node:path');
+if (workerData.filename === 'complete.md' || workerData.filename === 'duplicate.md') {
+  parentPort.postMessage({ type: 'completed', result: { frontendState: { doc_id: workerData.docId }, complete: true, duplicate: workerData.filename === 'duplicate.md' } });
+  parentPort.close();
+} else {
+  const keepAlive = setInterval(() => {}, 1000);
+  parentPort.on('message', message => {
+    if (message.cmd === 'cancel') {
+      mkdirSync(workerData.runtime.temporaryDirectory, { recursive: true });
+      writeFileSync(path.join(workerData.runtime.temporaryDirectory, 'settled.txt'), 'stopped');
+      clearInterval(keepAlive); parentPort.close();
+    }
+  });
+  parentPort.postMessage({ type: 'progress', progress: 1, data: { doc_id: workerData.docId, status: 'processing' } });
+}
+`;
+
+beforeEach(async () => {
+  root = await mkdtemp(path.join(os.tmpdir(), 'knowledge-activation-'));
+  database = new Database(path.join(root, 'workspace.sqlite'));
+  database.pragma('user_version = 79');
+  database.exec('CREATE TABLE projects(id TEXT PRIMARY KEY)');
+  for (const ddl of [...KNOWLEDGE_BASE_SCHEMAS, ...KNOWLEDGE_GRAPH_SCHEMAS]) database.exec(ddl);
+  const artifact = path.join(root, 'artifact');
+  const workers = path.join(artifact, 'dist/backend/workers');
+  await mkdir(workers, { recursive: true });
+  for (const name of ['knowledgeIngestion', 'graphExtraction', 'graphIndexing']) await writeFile(path.join(workers, `${name}.worker.cjs`), workerSource);
+  bootstrap = path.join(root, 'plugin-runtime.worker.cjs');
+  await build({ entryPoints: ['src/infra/task-queue/workers/plugin-runtime.worker.ts'], outfile: bootstrap,
+    bundle: true, platform: 'node', format: 'cjs', target: 'node24', logLevel: 'silent' });
+  registeredBackendPluginDirectories.set('knowledge', artifact);
+  setPluginRuntimeStateForTests({ enabledPluginIds: ['knowledge'] });
+  enabled = true; vectorOwned = false; vectorOwners = 0; vectorStarts = 0; pushes.length = 0;
+});
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await runtime?.stop(); runtime = undefined;
+  registeredBackendPluginDirectories.delete('knowledge'); clearPluginRuntimeStateForTests();
+  database.close(); await rm(root, { recursive: true, force: true });
+});
+
+function source(id: string): DocumentSoT {
+  return { doc_id: id, doc_title: id, metadata: {}, content_blocks: {
+    paragraph: { block_type: BlockType.PARAGRAPH, text: 'retained source' },
+  }, structure: { root: ['paragraph'] } };
+}
+async function addJob(id: string, filename = 'running.pdf') {
+  if (!runtime) throw new Error('missing runtime');
+  await runtime.metadata.addDocument(createDocument(id, 'default', filename, 20));
+  const filePath = path.join(root, `${id}.pdf`);
+  await writeFile(filePath, 'original bytes');
+  await runtime.originals.save({ kbId: 'default', docId: id, sourcePath: filePath, originalFilename: 'retained.pdf' });
+  await runtime.sot.save(id, source(id));
+  await runtime.queues.addIngestionTask({ taskId: id, docId: id, kbId: 'default', filename, filePath,
+    embeddingModelId: 'embedding', forceVisionMode: false, priority: 1, retry: false });
+}
+
+describe('knowledge activation persistence and drain', () => {
+  it('真实摄入Worker未退出前维护与重建不可进入，取消释放后可以维护，其他库不受影响', async () => {
+    const activity = createKnowledgeActivityOwner();
+    const queue = new KnowledgeQueues({ activity,
+      paths: { sotDirectory: root, originalsDirectory: root, temporaryDirectory: root },
+      resolveVectorUrl: async () => 'http://127.0.0.1:49199',
+    });
+    const input = { taskId: 'owned-task', kbId: 'library', docId: 'document', filename: 'running.pdf',
+      filePath: path.join(root, 'source.pdf'), embeddingModelId: 'embedding', forceVisionMode: false, priority: 1, retry: false };
+    try {
+      const ready = new Promise<void>(resolve => queue.once('ingestion:taskProgress', () => resolve()));
+      await queue.addIngestionTask(input); await ready;
+      expect(() => activity.begin('library', 'maintenance')).toThrow('正在执行');
+      expect(() => activity.begin('library', 'rebuild')).toThrow('正在执行');
+      const other = activity.begin('other', 'maintenance'); other.release();
+      await queue.cancelIngestionTask('owned-task'); await activity.whenIdle('library');
+      expect(await readFile(path.join(root, 'owned-task/settled.txt'), 'utf8')).toBe('stopped');
+      const maintenance = activity.begin('library', 'maintenance');
+      await expect(queue.addIngestionTask({ ...input, taskId: 'must-not-start' })).rejects.toThrow('正在执行');
+      maintenance.release(); expect(activity.hasActivity()).toBe(false);
+    } finally { await queue.shutdown(); await activity.drain(); }
+  });
+
+  it('重复上传只清本次文件，停用等待该清理结算后才结束', async () => {
+    runtime = await createKnowledgeRuntime();
+    await addJob('original', 'complete.md');
+    await vi.waitFor(() => expect(runtime?.hasActiveTasks()).toBe(false));
+    const originalDelete = runtime.originals.delete.bind(runtime.originals);
+    let allowCleanup: () => void = () => {};
+    const cleanupAllowed = new Promise<void>(resolve => { allowCleanup = resolve; });
+    const cleanup = vi.spyOn(runtime.originals, 'delete').mockImplementation(async (kbId, docId) => {
+      await cleanupAllowed;
+      return originalDelete(kbId, docId);
+    });
+    await addJob('duplicate', 'duplicate.md');
+    await vi.waitFor(() => expect(cleanup).toHaveBeenCalledWith('default', 'duplicate'));
+    let stopped = false;
+    const stop = runtime.stop().then(() => { stopped = true; });
+    await Promise.resolve(); expect(stopped).toBe(false);
+    allowCleanup(); await stop;
+    expect(await runtime.originals.getPath('default', 'duplicate')).toBeUndefined();
+    expect(await runtime.originals.getPath('default', 'original')).toBeDefined();
+    expect(await runtime.sot.get('original')).toEqual(source('original'));
+  });
+
+  it('默认库初始化失败不领取向量 owner，解除故障后同 Host 可重新启用且冷态不启进程', async () => {
+    vi.spyOn(BetterSqliteMetadataRepository.prototype, 'getKnowledgeBaseById').mockRejectedValueOnce(new Error('sqlite read unavailable'));
+    await expect(createKnowledgeRuntime()).rejects.toThrow('sqlite read unavailable');
+    expect(vectorOwners).toBe(0);
+    runtime = await createKnowledgeRuntime();
+    expect(vectorOwners).toBe(1);
+    expect(vectorStarts).toBe(0);
+    expect((await runtime.service.getAllKnowledgeBases()).map(kb => kb.id)).toEqual(['default']);
+    expect(vectorStarts).toBe(0);
+    const release = getKnowledgeToolRuntime().enterTool();
+    expect(() => runtime?.assertCanDeactivate()).toThrow('工具仍在运行');
+    release(); runtime.assertCanDeactivate();
+  });
+
+  it('停用等待真实 pending/running Worker，重开SQLite可见失败，completed与原文/PDF保持原样', async () => {
+    runtime = await createKnowledgeRuntime();
+    await addJob('completed', 'complete.md');
+    await vi.waitFor(() => expect(runtime?.hasActiveTasks()).toBe(false));
+    await runtime.metadata.updateDocumentStatus('completed', DocumentStatus.COMPLETED);
+    await addJob('running');
+    await vi.waitFor(() => expect(runtime?.queues.getTaskById('running')?.state).toBe('running'));
+    await runtime.metadata.updateDocumentStatus('running', DocumentStatus.PROCESSING);
+    await addJob('pending');
+    expect(runtime.queues.getTaskById('pending')?.state).toBe('pending');
+    const pushCount = pushes.length;
+    enabled = false; setPluginRuntimeStateForTests({ enabledPluginIds: [] });
+    await runtime.stop();
+    expect(pushes).toHaveLength(pushCount);
+    expect(runtime.hasActiveTasks()).toBe(false);
+    const reopened = new Database(database.name, { readonly: true });
+    try {
+      expect(reopened.prepare('SELECT id,status FROM kb_documents ORDER BY id').all()).toEqual([
+        { id: 'completed', status: 'completed' }, { id: 'pending', status: 'failed' }, { id: 'running', status: 'failed' },
+      ]);
+    } finally { reopened.close(); }
+    for (const id of ['completed', 'pending', 'running']) {
+      expect(await runtime.sot.get(id)).toEqual(source(id));
+      const original = await runtime.originals.getPath('default', id);
+      expect(original).toBeDefined();
+      if (!original) throw new Error('retained PDF missing');
+      expect(await readFile(original, 'utf8')).toBe('original bytes');
+    }
+    enabled = true; setPluginRuntimeStateForTests({ enabledPluginIds: ['knowledge'] });
+    runtime = await createKnowledgeRuntime();
+    expect((await runtime.service.getDocumentsInKnowledgeBase('default')).map(doc => doc.id).sort()).toEqual(['completed','pending','running']);
+    expect(vectorOwners).toBe(2);
+  });
+
+  it('SQLite终态落盘一次失败后仍保留最初任务身份，再次停用完成该批收尾', async () => {
+    runtime = await createKnowledgeRuntime();
+    await addJob('running');
+    await vi.waitFor(() => expect(runtime?.queues.getTaskById('running')?.state).toBe('running'));
+    database.exec("CREATE TRIGGER interrupted_status BEFORE UPDATE ON kb_documents WHEN NEW.status = 'failed' BEGIN SELECT RAISE(ABORT, 'write interrupted'); END");
+    enabled = false; setPluginRuntimeStateForTests({ enabledPluginIds: [] });
+    await expect(runtime.stop()).rejects.toThrow('知识库中断状态未保存');
+    expect(vectorOwned).toBe(true);
+    database.exec('DROP TRIGGER interrupted_status');
+    await runtime.stop();
+    expect((await runtime.metadata.getDocumentById('running'))?.status).toBe(DocumentStatus.FAILED);
+    expect(vectorOwned).toBe(false);
+  });
+
+  it('图谱回填等待SoT时停用，收尾等待旧读取且不会写queued或启动新任务', async () => {
+    runtime = await createKnowledgeRuntime();
+    await runtime.metadata.addDocument({ ...createDocument('graph-doc','default','graph.md',20), status: DocumentStatus.COMPLETED });
+    database.prepare("UPDATE knowledge_bases SET enable_graph_indexing=1, embedding_model_id='embedding', embedding_space_id='fixture' WHERE id=?").run('default');
+    let release: (value: DocumentSoT) => void = () => {};
+    const delayed = new Promise<DocumentSoT>(resolve => { release = resolve; });
+    const read = vi.spyOn(runtime.sot, 'get').mockReturnValueOnce(delayed);
+    runtime.graph.startBackfill();
+    await vi.waitFor(() => expect(read).toHaveBeenCalled());
+    let stopped = false;
+    const stopping = runtime.stop().then(() => { stopped = true; });
+    await Promise.resolve(); expect(stopped).toBe(false);
+    release(source('graph-doc')); await stopping;
+    expect(database.prepare('SELECT * FROM knowledge_graph_doc_status').all()).toEqual([]);
+    expect(runtime.queues.listGraphExtractionTasks()).toEqual([]);
+  });
+});

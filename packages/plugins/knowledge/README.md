@@ -27,7 +27,7 @@ Backend 与 Renderer 都消费同一 shared 合同，不能另写一份近似 sc
 
 `pnpm --dir packages/plugins/knowledge run package:artifact` 构建 CJS Backend/Worker 与 ESM Renderer，生成 ZIP、SHA512SUMS 和现有内容许可清单。`guard:artifact` 复用正式插件校验，再验证 3 个 Worker 的实际构建图与 ZIP 内容；构建图留在 `dist/.metadata`，不进入发行包。
 
-Node Worker 没有 Backend 的模块加载钩子，数据库、推理和解析 Worker SDK 由正式构建别名内联。原生 SQLite、PDF.js、Canvas、Jieba 与 Sharp 使用 Desktop 已有运行依赖；PDF.js 保留完整包的 `cmaps`、`iccs`、`standard_fonts` 和 `wasm`，不另复制一份解析资源。Audio Worker 继续属于 Host。
+Node Worker 不继承 Backend 主线程的 SDK 模块加载钩子，数据库、推理和解析 Worker SDK 由正式构建别名内联；Host 的固定 Worker bootstrap 另行安装受限的原生依赖解析钩子。原生 SQLite、PDF.js、Canvas、Jieba 与 Sharp 使用 Desktop 已有运行依赖；PDF.js 保留完整包的 `cmaps`、`iccs`、`standard_fonts` 和 `wasm`，不另复制一份解析资源。Audio Worker 继续属于 Host。
 
 ## 激活、任务与恢复
 
