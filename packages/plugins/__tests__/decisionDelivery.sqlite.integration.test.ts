@@ -30,7 +30,7 @@ vi.mock('@plugin/backend/workspaceRuntime', async importOriginal => ({
 let dir: string; let fixture: Awaited<ReturnType<typeof createDurableFlowHarness>>; let project: string; let id: string;
 const conversation = 'decision-delivery-test';
 let toolResult = ''; 
-const permission = { status: 'available', snapshot: { protocol_version: 1, kind: 'command_run_permission_snapshot', root_agent_run_id: 'delivery-test', settings_revision: 0, captured_at_ms: 1, permission_level: 'full_access', internal_data_access: 'allowed', gui_control: 'denied', local_ipc_control: 'denied', process_lifecycle: 'terminate_with_run' } };
+const permission = { status: 'available', snapshot: { protocol_version: 1, kind: 'command_run_permission_snapshot', root_agent_run_id: 'delivery-test', settings_revision: 0, conversation_revision: 0, source: 'global_setting', captured_at_ms: 1, permission_level: 'full_access', internal_data_access: 'allowed', gui_control: 'denied', local_ipc_control: 'denied', process_lifecycle: 'terminate_with_run' } };
 class FixtureFinish extends DecisionFinishTool {
   override async run(args: Record<string, unknown>, context: ToolContext) {
     // 该 Flow fixture 无 Commands runtime；只注入等同生产 admission 的冻结权限。

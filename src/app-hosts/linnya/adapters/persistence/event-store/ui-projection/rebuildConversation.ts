@@ -1,7 +1,10 @@
 import type Database from 'better-sqlite3';
 import { readConversationClientNotices } from '../../conversation-client-notices/sqliteClientNoticeAdmission';
-import type { PersistedConversationClientNotice } from '../../conversation-client-notices/sqliteClientNoticeAdmission';
 import { projectClientNoticeToUiRow } from '../../conversation-client-notices/projectClientNotice';
+import {
+  projectCommandPermissionChangeToUiRow,
+  readConversationCommandPermissionChanges,
+} from '../../conversation-command-permissions/commandPermissionChangeFacts';
 import { parseRuntimeEventRoutingIdentity, type RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import { RUNTIME_EVENT_TYPES_NEVER_REPLAYED_TO_UI } from '@linnlabs/linnkit/runtime-kernel/events';
 import { InMemoryUiProjectionAccess } from './memoryApplier';
@@ -10,6 +13,7 @@ import { writeUiMessageRow } from './sqliteUiMessageRow';
 import { parseStoredRuntimeEvent } from '../functions/runtimeEventStorageCodec';
 import { SqliteConversationCitationFactIndex } from './sqliteCitationFactIndex';
 import { SqliteUiProjectionApplier } from './sqliteApplier';
+import type { NewUiMessageRow } from './types';
 
 interface RebuildEventRow {
   event_rowid: number;
@@ -145,7 +149,7 @@ export function rebuildConversationUiProjection(
 
   const events = readRenderableEventRowsForRebuild(db, conversationId);
   const sqlExcludedEventCount = readTotalEventCount(db, conversationId) - events.length;
-  const projection = projectRowsInMemory(events, conversationId, readConversationClientNotices(db, conversationId));
+  const projection = projectRowsInMemory(events, conversationId, readAnchoredProductFactRows(db, conversationId));
   const previousRevision = state?.revision ?? 0;
   const nextRevision = previousRevision + 1;
   const lastEventRowId = readLastEventRowId(db, conversationId);
@@ -270,7 +274,28 @@ function readTotalEventCount(db: Database.Database, conversationId: string): num
   return row?.count ?? 0;
 }
 
-function projectRowsInMemory(rows: readonly RebuildEventRow[], conversationId: string, notices: readonly PersistedConversationClientNotice[]) {
+/**
+ * 不属于任何运行的产品事实（客户端提示、档位变更）。各自记下接纳时对话最后一个事件的位置，
+ * 重建时插回该事件之后；同一位置按接纳时间排。
+ */
+interface AnchoredProductFactRow {
+  readonly anchorEventRowId: number;
+  readonly at: number;
+  readonly row: NewUiMessageRow;
+}
+
+function readAnchoredProductFactRows(db: Database.Database, conversationId: string): readonly AnchoredProductFactRow[] {
+  const notices = readConversationClientNotices(db, conversationId).map(notice => ({
+    anchorEventRowId: notice.anchorEventRowId, at: notice.acceptedAt, row: projectClientNoticeToUiRow(notice),
+  }));
+  const changes = readConversationCommandPermissionChanges(db, conversationId).map(fact => ({
+    anchorEventRowId: fact.anchorEventRowId, at: fact.change.changed_at_ms, row: projectCommandPermissionChangeToUiRow(fact),
+  }));
+  // 两组各自已按锚点有序；稳定排序保留各自的原有次序。
+  return [...notices, ...changes].sort((a, b) => a.anchorEventRowId - b.anchorEventRowId || a.at - b.at);
+}
+
+function projectRowsInMemory(rows: readonly RebuildEventRow[], conversationId: string, facts: readonly AnchoredProductFactRow[]) {
   const access = new InMemoryUiProjectionAccess();
   const resolved = rows.map(row =>
     parseStoredRuntimeEvent(row.payload, {
@@ -282,20 +307,20 @@ function projectRowsInMemory(rows: readonly RebuildEventRow[], conversationId: s
       timestamp: row.ts,
     })
   );
-  let noticeIndex = 0;
+  let factIndex = 0;
   for (const [index, event] of resolved.entries()) {
     const row = rows[index];
     if (!row) throw new Error('UI rebuild event ordering mismatch');
-    while (noticeIndex < notices.length) {
-      const notice = notices[noticeIndex];
-      if (!notice || notice.anchorEventRowId >= row.event_rowid) break;
-      access.applyOps([{ op: 'insert', row: projectClientNoticeToUiRow(notice) }]);
-      noticeIndex += 1;
+    while (factIndex < facts.length) {
+      const fact = facts[factIndex];
+      if (!fact || fact.anchorEventRowId >= row.event_rowid) break;
+      access.applyOps([{ op: 'insert', row: fact.row }]);
+      factIndex += 1;
     }
     access.applyOps(projectEventToUiRowOps(event, access));
   }
-  for (const notice of notices.slice(noticeIndex)) {
-    access.applyOps([{ op: 'insert', row: projectClientNoticeToUiRow(notice) }]);
+  for (const fact of facts.slice(factIndex)) {
+    access.applyOps([{ op: 'insert', row: fact.row }]);
   }
   return { ...access.snapshot(), events: resolved };
 }

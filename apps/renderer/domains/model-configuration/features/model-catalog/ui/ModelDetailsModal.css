@@ -1,6 +1,6 @@
 /* Modal slot 内容会进入 shared Modal 容器，必须用内容根类承接样式边界。 */
 .model-details-content {
-  padding: var(--space-3) var(--space-8) var(--space-6);
+  padding: var(--space-3) 0 0;
   color: var(--color-text-primary);
 }
 
@@ -41,19 +41,14 @@
   padding: var(--space-2) var(--space-3);
   font-size: var(--font-size-prose);
   color: var(--color-text-primary);
-  background-color: var(--color-bg-search-light);
+  background-color: var(--color-bg-field);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  transition: border-color var(--duration-medium) var(--ease-standard), background-color var(--duration-medium) var(--ease-standard);
+  transition: border-color var(--duration-medium) var(--ease-standard);
 }
 
-.model-details-content .settings-input:hover:not(:disabled) {
-  background-color: var(--color-bg-hover);
-  border-color: transparent;
-}
-
+/* 底色在静止、悬停、聚焦时保持不变（与 renderer-ui 输入框一致），聚焦只加强调色描边。 */
 .model-details-content .settings-input:focus:not(:disabled) {
-  background-color: var(--color-bg-hover);
   border-color: var(--color-accent);
   outline: none;
 }
@@ -92,7 +87,7 @@
   display: flex;
   gap: var(--space-2-5);
   justify-content: flex-end;
-  padding: 0 var(--space-8) var(--space-6);
+  padding: 0;
 }
 
 .model-details-content .select-chevron {

@@ -16,7 +16,7 @@
     aria-hidden="true"
     focusable="false"
   >
-    <rect x="5.5" y="5.5" width="13" height="13" rx="2"/>
-    <path d="M8.5 8.5v7"/>
+    <rect x="4.5" y="4.5" width="15" height="15" rx="2.75"/>
+    <path d="M7.75 7.75v8.5"/>
   </svg>
 </template>

@@ -77,14 +77,14 @@ describe('knowledge database ownership transfer', () => {
     expect(db.prepare('SELECT version FROM plugin_migrations WHERE plugin_id=?').all('knowledge')).toEqual([{ version: 1 }]);
   });
 
-  it('runs historical v79 before adoption and preserves all rows, relationships and fresh column order across reopen', () => {
+  it('runs historical v80 before adoption and preserves all rows, relationships and fresh column order across reopen', () => {
     const db = service.getDb();
     for (const ddl of [...KNOWLEDGE_BASE_SCHEMAS, ...KNOWLEDGE_GRAPH_SCHEMAS]) db.exec(ddl);
     seedFacts(db);
     const before = rows(db);
-    // 构造刚升级前的 v78 知识库形态；其余 Host 表仍由正式 DatabaseService 创建。
+    // 构造刚升级前的 v79 知识库形态；其余 Host 表仍由正式 DatabaseService 创建。
     db.exec('ALTER TABLE knowledge_bases DROP COLUMN embedding_space_id');
-    db.pragma('user_version = 78');
+    db.pragma('user_version = 79');
     service.close();
     service.initialize({ lifecycleBootstrap: adopt });
     const upgraded = service.getDb();

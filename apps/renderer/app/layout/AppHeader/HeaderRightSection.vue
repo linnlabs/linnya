@@ -5,8 +5,12 @@
       :class="mainHeaderPaneClasses"
       :style="mainHeaderPaneStyle"
     >
+      <DocumentTabStrip
+        v-if="isDocumentInMainPane && activeDocumentProjectId"
+        :project-id="activeDocumentProjectId"
+      />
       <div
-        v-if="mainHeaderBreadcrumbSegments.length > 0"
+        v-else-if="mainHeaderBreadcrumbSegments.length > 0"
         class="header-pane__title"
         :title="mainHeaderTitle"
       >
@@ -131,8 +135,12 @@
       >
         <PaneDivider side="left" interaction-group="workspace-split" />
 
+        <DocumentTabStrip
+          v-if="isDocumentAssignedToRightPane && activeDocumentProjectId"
+          :project-id="activeDocumentProjectId"
+        />
         <div
-          v-if="rightHeaderBreadcrumbSegments.length > 0"
+          v-else-if="rightHeaderBreadcrumbSegments.length > 0"
           class="header-pane__title"
           :title="rightHeaderTitle"
         >
@@ -357,7 +365,6 @@ import { useFileStore } from '@/app/active-document';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { useSidebarLayoutWidth } from '@/app/layout/composables/useSidebarLayoutWidth';
 import { useWorkspacePaneGeometry } from '@/app/layout/composables/useWorkspacePaneGeometry';
-import { useWorkspaceProjectsStore} from '@/domains/workspace/store';
 import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { freezeWorkspaceDocumentActionContext } from '@/app/plugins/orchestration/workspaceDocumentActionContext';
 import { selectDocumentAction } from '@/app/plugins/orchestration/selectDocumentAction';
@@ -368,7 +375,7 @@ import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
 import { DocumentHistoryPanel, useHistoryMessages } from '@/domains/document-history';
 import { getDocumentTypeByActiveType, getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import type { DocumentActionMenuOptionValue } from '@/app/plugins/types';
-import { CustomSelect, HoverTooltip, IconButton, type CustomSelectOption, type IconButtonExposed } from '@linnya/renderer-ui';
+import { CustomSelect, HoverTooltip, IconButton, type CustomSelectOption, type IconButtonExposed, measureFloatingLayoutSize } from '@linnya/renderer-ui';
 import { resolveWorkspaceNodeDisplayName } from '@/domains/workspace/functions/resolveWorkspaceNodeDisplayName';
 import { WindowActionIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
@@ -381,6 +388,7 @@ import { TimelineIcon } from '@linnya/renderer-ui/icons';
 import ReviewSidebar from '@/domains/editor/features/Review/ui/ReviewSidebar.vue';
 import HistoryDropdown from '@/domains/conversation/history/components/HistoryDropdown.vue';
 import PaneDivider from '@/app/layout/components/PaneDivider.vue';
+import DocumentTabStrip from './DocumentTabStrip.vue';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import {
   requestSubrunDetailReturnToParent,
@@ -409,7 +417,6 @@ const assistantStore = useAssistantStore();
 const subrunDetailScope = useSubrunDetailSurfaceScope();
 const navigation = getWorkspaceNavigationPort();
 const navigationScope = useNavigationScope();
-const projectsStore = useWorkspaceProjectsStore();
 const { sidebarOccupiedWidth } = useSidebarLayoutWidth();
 const {
   geometry: workspacePaneGeometry,
@@ -420,6 +427,7 @@ const { conversationMessage } = useConversationLocalization();
 const scene = computed(() => layoutStore.state.scene);
 const activeDocumentType = computed(() => layoutStore.state.activeDocument?.type ?? null);
 const activeDocumentId = computed(() => layoutStore.state.activeDocument?.id ?? null);
+const activeDocumentProjectId = computed(() => layoutStore.state.activeDocument?.projectId ?? null);
 const documentAvailability = useDocumentTypeAvailabilityByActiveType(activeDocumentType);
 const historyPreviewComponent = computed(() => documentAvailability.value?.state === 'enabled'
   ? documentAvailability.value.documentType.historyPreviewComponent : undefined);
@@ -536,34 +544,6 @@ const workspaceRightToggleStyle = computed<CSSProperties>(() => ({
   right: `calc(${headerPaneGeometry.value.trailingChromeWidth}px + var(--app-header-edge-inset))`,
 }));
 
-const documentBreadcrumbPath = computed(() => {
-  const documentId = fileStore.currentFilePath;
-  if (!documentId) return [];
-
-  const path: string[] = [];
-  let currentNode = treeStore.findNodeById(documentId);
-
-  if (!currentNode) {
-    return fileStore.fileDisplayName ? [fileStore.fileDisplayName] : [];
-  }
-
-  while (currentNode) {
-    path.unshift(resolveWorkspaceNodeDisplayName(currentNode, currentNode.name));
-    if (!currentNode.parentId) {
-      break;
-    }
-    currentNode = treeStore.findNodeById(currentNode.parentId);
-  }
-
-  return path;
-});
-
-const projectName = computed(() => projectsStore.activeProject?.name || layoutMessage('layout.header.untitledProject'));
-const documentBreadcrumbSegments = computed(() => {
-  const breadcrumb = documentBreadcrumbPath.value;
-  return breadcrumb.length > 0 ? [projectName.value, ...breadcrumb] : [projectName.value];
-});
-
 const conversationBreadcrumbSegments = computed(() => {
   return projectConversationHeaderBreadcrumbSegments({
     conversation: assistantStore.activeConversation,
@@ -571,10 +551,8 @@ const conversationBreadcrumbSegments = computed(() => {
   });
 });
 
+/** 文档所在的 pane 显示标签栏，面包屑只剩对话。 */
 const mainHeaderBreadcrumbSegments = computed(() => {
-  if (isDocumentInMainPane.value) {
-    return documentBreadcrumbSegments.value;
-  }
   if (isConversationInMainPane.value) {
     return conversationBreadcrumbSegments.value;
   }
@@ -582,9 +560,6 @@ const mainHeaderBreadcrumbSegments = computed(() => {
 });
 
 const rightHeaderBreadcrumbSegments = computed(() => {
-  if (isDocumentAssignedToRightPane.value) {
-    return documentBreadcrumbSegments.value;
-  }
   if (isConversationAssignedToRightPane.value) {
     return conversationBreadcrumbSegments.value;
   }
@@ -637,7 +612,7 @@ const positionHeaderToolPanel = () => {
   if (!triggerEl || !panelEl) return;
 
   const triggerRect = triggerEl.getBoundingClientRect();
-  const panelRect = panelEl.getBoundingClientRect();
+  const panelRect = measureFloatingLayoutSize(panelEl);
   const gap = 8;
   const viewportPadding = 8;
   const desiredLeft = triggerRect.right - panelRect.width;
@@ -895,7 +870,7 @@ const positionDocMenu = () => {
   if (!triggerEl || !wrapperEl) return;
 
   const triggerRect = triggerEl.getBoundingClientRect();
-  const wrapperRect = wrapperEl.getBoundingClientRect();
+  const wrapperRect = measureFloatingLayoutSize(wrapperEl);
 
   let top = triggerRect.bottom + 4;
   let left = triggerRect.left;

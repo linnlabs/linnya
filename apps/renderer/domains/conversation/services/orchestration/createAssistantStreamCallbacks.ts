@@ -29,6 +29,8 @@ export function createAssistantStreamCallbacks(
 
   return {
     onUserInputCommitted: event => callbacks.onUserInputCommitted?.(event),
+    // 插话只进会话投影；送达后由插话队列按消息 id 认领。
+    onUserInput: async (event) => { await routeEvent(event); },
     onThought: async (event) => {
       if (!await routeEvent(event)) return;
       if (projectsConversationEvents) return;
@@ -102,6 +104,9 @@ export function createAssistantStreamCallbacks(
       await routeEvent(event);
     },
     onSummarizationError: async (event) => {
+      await routeEvent(event);
+    },
+    onHistorySummary: async (event) => {
       await routeEvent(event);
     },
   };

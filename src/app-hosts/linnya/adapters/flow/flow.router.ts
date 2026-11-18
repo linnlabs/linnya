@@ -11,6 +11,9 @@ import {
   validateConversationRunCancelRequest,
   ConversationRunPauseRequest,
   ConversationRunContinueRequest,
+  ConversationRunSteerDrainRequest,
+  ConversationRunSteerRequest,
+  ConversationRunSteerWithdrawRequest,
 } from '@app/schemas';
 import type { SSESink } from './flow.schemas';
 import { admitConversationAgentChoice } from './functions/admitConversationAgentChoice';
@@ -76,9 +79,55 @@ export function createConversationFlowRouter(
     | 'getForegroundRunSettlement'
     | 'cancelRun'
     | 'respondInteraction'
+    | 'steerRun'
+    | 'withdrawSteer'
+    | 'drainSteers'
   >
 ): Router {
   const router = Router();
+
+  router.post('/runs/:runId/steer', express.json({ limit: '1mb' }), (req, res) => {
+    const parsed = ConversationRunSteerRequest.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: 'Invalid steer command' });
+      return;
+    }
+    void orchestrator
+      .steerRun(req.params.runId, parsed.data)
+      .then(result => res.json(result))
+      .catch((error: unknown) =>
+        res.status(409).json({
+          success: false,
+          error: error instanceof Error ? error.message : 'Steer failed',
+        })
+      );
+  });
+
+  router.post('/runs/:runId/steer/:inputId/withdraw', express.json(), (req, res) => {
+    const parsed = ConversationRunSteerWithdrawRequest.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: 'Invalid withdraw command' });
+      return;
+    }
+    try {
+      res.json(orchestrator.withdrawSteer(req.params.runId, parsed.data.conversation_id, req.params.inputId));
+    } catch (error) {
+      res.status(409).json({ success: false, error: error instanceof Error ? error.message : 'Withdraw failed' });
+    }
+  });
+
+  router.post('/runs/:runId/steer/drain', express.json(), (req, res) => {
+    const parsed = ConversationRunSteerDrainRequest.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: 'Invalid drain command' });
+      return;
+    }
+    try {
+      res.json(orchestrator.drainSteers(req.params.runId, parsed.data.conversation_id));
+    } catch (error) {
+      res.status(409).json({ success: false, error: error instanceof Error ? error.message : 'Drain failed' });
+    }
+  });
 
   router.post('/runs/:runId/pause', express.json(), (req, res) => {
     const parsed = ConversationRunPauseRequest.safeParse(req.body);

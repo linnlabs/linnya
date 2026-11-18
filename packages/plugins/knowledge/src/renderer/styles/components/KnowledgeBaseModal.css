@@ -5,7 +5,6 @@
 }
 
 .kb-layout .tab-navigation {
-  margin-left: var(--space-4);
   display: flex;
   gap: var(--space-1);
   border-radius: var(--radius-lg);

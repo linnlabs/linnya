@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'vue';
+import { measureFloatingLayoutSize } from '@linnya/renderer-ui';
 import type { ConversationListItem } from '../../history/services/historyApiService';
 import type { ConversationMessageResolver } from '../../definitions/conversationMessages';
 
@@ -51,7 +52,7 @@ export function positionChatMenuDropdown(
   const viewportGap = 8;
   const offset = 4;
   const buttonRect = buttonEl.getBoundingClientRect();
-  const dropdownRect = dropdownEl.getBoundingClientRect();
+  const dropdownRect = measureFloatingLayoutSize(dropdownEl);
   let top = buttonRect.bottom + offset;
   let left = buttonRect.left;
 

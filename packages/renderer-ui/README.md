@@ -11,13 +11,14 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 - [设计规范](./docs/design.md)：Linnya 的视觉语言——表面与文字层级、功能色、角色字阶、间距、圆角、投影、动效、交互状态与图标怎样取值，以及刻度棘轮门禁。新增界面或修改视觉前先读。
 - [使用指南](./docs/usage-guide.md)：各公开组件的消费示例、状态所有权与扩展面。
 - [版本与装配检查表](./docs/release-checklist.md)：判断版本级别、插件兼容 range 与发布验证。
+- [组件画廊](../../scripts/development/features/ui-gallery/README.md)：`pnpm -s ui-gallery` 本地查看全部公开组件、token 实测值与三套主题，改视觉前后对比用。
 
 本 README 记录包的边界、公开入口和组件合同；CSS 归属、选择器命名和样式装载等 Host 工程规则见
 [Renderer 样式指南](../../apps/renderer/app/styles/guide/style-guide.md)。
 
 ## 公开入口
 
-- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。`usePortalToBody` 时面板默认与触发器同宽，以像素给出的 `minWidth` 可以撑宽（不超过视口），翻转与收边都按这个宽度计算。选项可用 `description` 在标签下方加一行说明；`variant` 除 `danger` 外还有 `warning`，用警示色加粗标签，表达需要留意但不是破坏性的选项。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -27,7 +28,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 - `/tokens.css`：只包含公开/内部 token 与内置主题映射。
 - `/styles.css`：Host 唯一加载的完整 package 样式。
 
-`FloatingToolbar` 与 `ToolbarGroup` 由 Editor 选区／修订条和 Slides 对象属性共同消费。共享包拥有表面、分组、按钮、颜色标识与下拉动效；Editor 的选区保护与 Slides 的锚点、属性草稿和提交仍由各自 owner 负责。
+`CommandBar` 是停靠在画布或文档顶部的命令条表面，由 Slides、Canvas 的顶部命令条和 Markdown 的悬浮格式条共用；位置与命令归调用方。`FloatingToolbar` 与 `ToolbarGroup` 由 Editor 选区／修订条和 Slides 对象属性共同消费。共享包拥有表面、分组、按钮、颜色标识与下拉动效；Editor 的选区保护与 Slides 的锚点、属性草稿和提交仍由各自 owner 负责。
 
 `package.json` 显式列举全部入口。未列出的 `src/**`、组件文件和内部 CSS 都不是 API。
 
@@ -165,11 +166,11 @@ feature 拥有。
 
 ## 按钮
 
-`BaseButton`（自 2.6.0）是所有按钮的唯一视觉 owner：八种语义 variant（primary、secondary、ghost、plain、danger、soft、tint、outline）、作用于 outline 与 plain 的 accent / info / neutral / danger tone、与 `--control-height-sm/md/lg` 对应的三档尺寸、胶囊形与占满宽度。组件只拥有展示、原生禁用与焦点环，不理解保存、提交或加载等业务状态；调用方通过 `disabled` 和文案投影进行中的状态。图标通过 `icon` 插槽放入 14px 槽位并对辅助技术隐藏，按钮文字或 `aria-label` 是可访问名称。普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button`；业务只能定制外围位置与宽度，不覆盖 `.linnya-ui-button*` 内部选择器。
+`BaseButton`（自 2.6.0）是所有按钮的唯一视觉 owner：七种语义 variant（primary、secondary、ghost、plain、danger、tint、outline；`soft` 自 3.6.0 起弃用并按 tint 渲染，下一个 major 删除）、作用于 outline 与 plain 的 accent / info / neutral / danger tone、与 `--control-height-sm/md/lg` 对应的三档尺寸、胶囊形与占满宽度。组件只拥有展示、原生禁用与焦点环，不理解保存、提交或加载等业务状态；调用方通过 `disabled` 和文案投影进行中的状态。图标通过 `icon` 插槽放入 14px 槽位并对辅助技术隐藏，按钮文字或 `aria-label` 是可访问名称。普通属性、`aria-*`、`data-*`、`class`、`style` 与事件都落在唯一的原生 `button`；业务只能定制外围位置与宽度，不覆盖 `.linnya-ui-button*` 内部选择器。
 
 `IconButton`（自 2.6.0）是纯图标按钮的视觉 owner：xs / sm / md / lg 四档外框与图标尺寸、ghost / subtle / overlay 三种底色、neutral / danger tone 与强调色浅底的 `active` 态。`label` 必填并同时作为 `aria-label` 与悬停提示（共享提示服务绘制，自 2.8.0 起不再使用原生 `title`；需要附加快捷键时传 `tooltipText`）；模板 ref 通过暴露的 `element` 取得原生按钮供浮层定位，函数式 ref 使用 `resolveIconButtonElement`。会 hover / 选中的行可把 `--linnya-ui-icon-button-hover-bg` 设为 `var(--linnya-ui-icon-button-hover-bg-raised)` 让按钮再高一层，除此之外业务不覆盖 `.linnya-ui-icon-button*` 内部选择器。编辑器格式工具条继续使用 `ToolbarButton`。
 
-`ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / soft，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者包括知识库页面与设置、项目知识库关联、设置页（存储空间、内存诊断、添加模型）、文档历史、编辑器面板（公式、图片尺寸、引用、查找替换、块历史、Review）、对话卡片、命令输入对话框、项目列表空态、包内 `TimePicker`，以及全部 `ActionButtons` 使用方。
+`ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / tint，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者包括知识库页面与设置、项目知识库关联、设置页（存储空间、内存诊断、添加模型）、文档历史、编辑器面板（公式、图片尺寸、引用、查找替换、块历史、Review）、对话卡片、命令输入对话框、项目列表空态、包内 `TimePicker`，以及全部 `ActionButtons` 使用方。
 
 ## 范围滑块
 
@@ -218,7 +219,7 @@ workspace/runtime 的产品逻辑 namespace，不是 GitHub 或 npm 身份声明
 
 Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决定，不表示已经建立统一弹层栈。迁移期间禁止借 token 重排前后关系；完整 Esc/focus/stack manager 属于独立交互演进。
 
-`Modal` 只拥有通用遮罩、标题、关闭入口、视口尺寸约束、`content|internal` 滚动模式和可选 footer；业务表单与流程继续归调用方。自 2.8.0 起进出场由遮罩淡底色与弹窗本体缩放（`--modal-*` token）组成，正文滚动时不加分隔线。自 2.7.0 起，可通过 `title-extra` 插槽在标题旁放来源或状态标签，标题本身的字阶和长标题换行仍由 Modal 拥有。`AlertDialog` 保持现有确认/取消/关闭事件投影，并支持结构化 section 和风险文案；危险样式优先由 `isDangerousAction` 明确声明，当前仍保留既有中英文文案推断以确保迁移等价。`ImagePreviewModal` 的 `classNames` 只向 overlay 和 image 节点注入业务命名空间 class，不把内部 selector 变成公共 CSS API。自 2.8.0 起可传入 `sourceElement`（缩略图或包着缩略图的按钮，调用方用 `useImagePreviewSource()` 在点击处记录），大图从缩略图展开、关闭时缩回；不传或不满足条件（缩略图离屏、浏览器不支持、减少动态效果）时保持淡入淡出。
+`Modal` 只拥有通用遮罩、标题、关闭入口、视口尺寸约束、`content|internal` 滚动模式和可选 footer；业务表单与流程继续归调用方。自 2.8.0 起进出场由遮罩淡底色与弹窗本体缩放（`--modal-*` token）组成，正文滚动时不加分隔线。自 3.9.0 起四边边距由 Modal 统一为 `--modal-inset`：默认滚动模式下正文与 footer 的左右、底部边距归 Modal，调用方只写上下间距；`internal` 模式下调用方根节点用 `var(--modal-inset)` 写左右边距并占满宽度（规则见 [设计规范 9.5](./docs/design.md#95-弹窗)）。自 2.7.0 起，可通过 `title-extra` 插槽在标题旁放来源或状态标签，标题本身的字阶和长标题换行仍由 Modal 拥有。`AlertDialog` 保持现有确认/取消/关闭事件投影，并支持结构化 section 和风险文案；危险样式优先由 `isDangerousAction` 明确声明，当前仍保留既有中英文文案推断以确保迁移等价。`ImagePreviewModal` 的 `classNames` 只向 overlay 和 image 节点注入业务命名空间 class，不把内部 selector 变成公共 CSS API。自 2.8.0 起可传入 `sourceElement`（缩略图或包着缩略图的按钮，调用方用 `useImagePreviewSource()` 在点击处记录），大图从缩略图展开、关闭时缩回；不传或不满足条件（缩略图离屏、浏览器不支持、减少动态效果）时保持淡入淡出。
 
 当前 Modal 没有 focus trap、统一 Esc stack 或关闭后焦点恢复，AlertDialog 也保留迁移前的键盘监听时机。它们是已登记的交互/可访问性欠账，不得在纯 owner 迁移中用临时判断改写；后续必须单独设计、决策和验收。
 
@@ -236,7 +237,7 @@ Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决�
 
 ## 可拖拽面板
 
-`DraggablePanel` 支持五种初始位置、数字或四边 position offset、可选容器边界、固定/auto 尺寸、拖拽和八方向 resize。`variant="mini"` 保留轻量筛选/查找面板的既有密度；auto 宽度或高度会隐藏对应方向的 resize 手柄。组件继续阻止根节点和拖拽手柄的 `mousedown`/`touchstart` 冒泡，避免画布把面板交互误判为框选、节点拖拽或平移。
+`DraggablePanel` 支持五种初始位置、数字或四边 position offset、可选容器边界、固定/auto 尺寸、拖拽和左右边缘调整宽度（3.8.0 起不再提供高度与角落手柄，手柄悬停只换光标、不画色条）。`variant="mini"` 保留轻量筛选/查找面板的既有密度；auto 宽度会隐藏宽度手柄。3.9.0 起面板四边同距 `--floating-panel-inset`，`height="auto"` 时高度完全由内容决定。组件继续阻止根节点和拖拽手柄的 `mousedown`/`touchstart` 冒泡，避免画布把面板交互误判为框选、节点拖拽或平移。
 
 普通原生属性会落在面板根节点；业务需要交互标记时由自身显式传入。指定内部节点的业务样式只能通过 `classNames.header/title/closeButton/body` 注入业务命名空间 class，不得覆盖 `.draggable-panel .panel-*` 等内部 selector。位置与 resize 规则同时以纯函数公开，供不渲染 Vue 的边界测试和同语义编排复用。
 

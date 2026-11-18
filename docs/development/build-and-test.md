@@ -49,9 +49,12 @@ SRT 0.0.81 的配置 schema 已显式使用 `zod/v3`，可复用 Zod 4 包内的
 
 Windows 受限 Shell 的完整 CLI 回归使用 `test:shell-tool:windows-current-host-cli-corpus`。除 SSH host/user/key 外，须指定 `LINNYA_WINDOWS_INTERACTIVE_USER`：专用 VM 中已经登录桌面的普通测试用户。SSH 只编排交互式任务；实际打包 Electron、PowerShell、插件 CLI 与审批链路通过普通用户桌面运行，不申请管理员隔离初始化。不能把 SSH 的 Session 0 当作桌面登录环境；结束后回收本次任务与文件。
 
+对话命令权限使用 `pnpm run test:conversation-command-permissions:electron` 验证 Desktop 入口、SQLite 回读、
+完全访问确认以及全局收紧。每次启动隔离的 Electron profile 和 Workspace，并记录截图证据。
+
 macOS 的 `test:shell-tool:production-command-approval-dom` 使用真实 Renderer/Preload，覆盖可见凭据路径的三档权限、本次批准与保存规则。两类 E2E 都会重建 command runner，须顺序运行，不能共享 `dist/main/commands` 并发构建。
 
-产品及官方插件使用正式 npm Linnkit 0.43.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查
+产品及官方插件使用正式 npm Linnkit 0.44.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查
 模型列表的缺省字段、工具错误路径、图表诊断与递归 JSON 输入类型，并重建 schemas 的 CJS/ESM
 产物和生产锁。不能只通过依赖覆盖声明兼容；运行合同与独立打包消费门禁都必须通过。
 
@@ -231,6 +234,10 @@ Sharp 的公开入口可能是 JavaScript loader；PE 架构校验通过共享
 - 没有提交 secret、绝对本机路径、生成物、临时调试输出或私有源码依赖。
 - 文档和稳定合同与实现保持一致。
 - 推送公共 `main` 前，用 `pnpm run ci:local` 在本机干净检出里跑 CI 的 macOS 步骤，失败不停、一次汇总；Linux/Windows 组合仍由 GitHub 验证。说明见[本地 CI](../../scripts/development/features/local-ci/README.md)。
+
+## Agent 运行场景
+
+改 Flow、插话、暂停/继续、实时投影或模型请求组装时，用 [Agent 场景测试](../../scripts/development/features/agent-scenario/README.md)（`pnpm -s scenario run`）写和跑场景：只替换模型和工具，其余走生产装配，并检查实时、重载与模型请求一致。涉及时序组合的再跑 `pnpm -s scenario fuzz`。
 
 ## 前端调试与本机界面验收
 

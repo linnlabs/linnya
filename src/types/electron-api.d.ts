@@ -118,6 +118,10 @@ declare global {
       'document-history:restore': (
         request: import('@app/schemas').DocumentVersionRestoreRequest
       ) => Promise<unknown>;
+      requestConversationCommandPermission: (
+        request: import('@app/schemas/commands').ConversationCommandPermissionRequest,
+      ) => Promise<unknown>;
+      onConversationCommandPermissionChanged: (callback: () => void) => () => void;
       readCommandPermissionSettings: () => Promise<unknown>;
       updateCommandPermissionSettings: (
         update: CommandPermissionSettingsUpdateV1

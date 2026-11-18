@@ -1,13 +1,8 @@
-import type {
-  CommandInternalDataAccess,
-  CommandPermissionLevel,
+import {
+  compareCommandPermissionLevels,
+  type CommandInternalDataAccess,
+  type CommandPermissionLevel,
 } from '@app/schemas/commands';
-
-const PERMISSION_LEVEL_WIDTH: Readonly<Record<CommandPermissionLevel, number>> = {
-  read_only: 0,
-  standard: 1,
-  full_access: 2,
-};
 
 export function isCommandPermissionExpansion(input: {
   readonly current: {
@@ -19,8 +14,7 @@ export function isCommandPermissionExpansion(input: {
     readonly internalDataAccess: CommandInternalDataAccess;
   };
 }): boolean {
-  return PERMISSION_LEVEL_WIDTH[input.next.permissionLevel]
-      > PERMISSION_LEVEL_WIDTH[input.current.permissionLevel]
+  return compareCommandPermissionLevels(input.next.permissionLevel, input.current.permissionLevel) > 0
     || (input.current.internalDataAccess === 'denied'
       && input.next.internalDataAccess === 'allowed');
 }

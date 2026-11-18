@@ -22,7 +22,7 @@ Backend 与 Renderer 都消费同一 shared 合同，不能另写一份近似 sc
 
 ### 数据库与产物
 
-[`src/backend/database`](./src/backend/database/README.md) 拥有 8 张业务表及首次插件迁移；Host 历史 v79 仍负责已发布数据库的列升级，插件接管不改文档 ID、项目关系或原文/向量路径。
+[`src/backend/database`](./src/backend/database/README.md) 拥有 8 张业务表及首次插件迁移；Host 历史 v80 仍负责已发布数据库的列升级，插件接管不改文档 ID、项目关系或原文/向量路径。
 
 `package.json` 的 `linnya.development` 声明使开发编排发现 Backend、3 个 Node Worker 与 Renderer，无额外 Host 插件名单。`linnya.release` 使用既有官方插件打包/随包资源流程；该标记仅表示构建装配，不授权上传或开放远程安装。
 

@@ -1,6 +1,9 @@
+/*
+ * 底部控件高度：常规 26（IconButton composer 专用档）、紧凑 24（sm），“+”、模型选择器、Agent 胶囊与图片按钮同高。
+ * 高度来自这个变量加 flex 居中，不靠上下内边距与行高相加。
+ */
 .ai-assistant-input-footer {
   --input-footer-control-height: 26px;
-  --input-footer-control-line-height: 18px;
 
   display: flex;
   justify-content: space-between;
@@ -13,23 +16,22 @@
 
 .ai-assistant-input-footer.input-bottom-section--compact {
   --input-footer-control-height: 24px;
-  --input-footer-control-line-height: 16px;
 
   padding: var(--space-1-5) var(--space-2-5) var(--space-2);
   align-items: flex-end;
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact .selectors-top-row {
-  gap: var(--space-1);
+  --selectors-row-gap: var(--space-1);
 }
 
 .ai-assistant-input-footer.input-bottom-section--compact .selectors-wrapper {
   margin-right: var(--space-1-5);
 }
 
-.ai-assistant-input-footer.input-bottom-section--compact .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
+.ai-assistant-input-footer.input-bottom-section--compact .selector-group :is(.input-footer-model-trigger, .input-footer-command-permission-trigger, .agent-choice-trigger) {
   min-width: 0;
-  padding: 3px var(--space-5) 3px 7px;
+  padding: 0 var(--space-5) 0 7px;
   font-size: var(--font-size-caption);
 }
 
@@ -65,8 +67,10 @@
 }
 
 .ai-assistant-input-footer .selectors-top-row {
+  --selectors-row-gap: var(--space-2);
+
   display: flex;
-  gap: var(--space-2);
+  gap: var(--selectors-row-gap);
   align-items: center;
   /* 允许内部的 CustomSelect 在窄宽度下收缩并触发省略号 */
   min-width: 0;
@@ -88,20 +92,20 @@
   align-items: center;
 }
 
-.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
+.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .input-footer-command-permission-trigger, .agent-choice-trigger) {
   min-width: 60px;
   width: auto;
-  padding: var(--space-1) var(--space-6) var(--space-1) var(--space-2);
+  padding: 0 var(--space-6) 0 var(--space-2);
   font-size: var(--font-size-footnote);
   color: var(--color-text-secondary);
   background: transparent;
   border: none;
   border-radius: var(--radius-md);
   height: var(--input-footer-control-height);
-  line-height: var(--input-footer-control-line-height);
+  line-height: 1;
 }
 
-.ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled {
+.ai-assistant-input-footer.is-controls-disabled :is(.input-footer-model-trigger, .input-footer-command-permission-trigger):disabled {
   /*
    * 运行中禁用 mode/model 选择器时，只表达“当前配置不可改”。
    * 共享 CustomSelect 的 disabled 背景更像选中态；这里收敛到对话输入底栏，避免影响其它业务选择器。
@@ -112,7 +116,7 @@
 }
 
 .ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled .input-footer-model-selected-value,
-.ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled .selector-chevron {
+.ai-assistant-input-footer.is-controls-disabled :is(.input-footer-model-trigger, .input-footer-command-permission-trigger):disabled .selector-chevron {
   color: var(--color-text-muted);
 }
 
@@ -124,10 +128,6 @@
 }
 
 /* IconButton xs 为 20px，居中放进原来的 26px / 24px 控件高度里，让右侧选择器位置不变。 */
-.ai-assistant-input-footer .input-action-menu-button {
-  margin-inline: calc((var(--input-footer-control-height) - var(--space-5)) / 2);
-}
-
 .ai-assistant-input-footer__input-action-menu-wrapper {
   --conversation-input-action-menu-width: calc(var(--space-10) * 5);
 
@@ -182,13 +182,58 @@
   padding-left: var(--space-1-5);
 }
 
+/*
+ * Agent 胶囊的展开、收起：槽的列宽在 0fr ↔ 1fr 之间过渡，右侧的模型选择器跟着平滑移动。
+ * flex 间距在宽度为 0 时仍占位，收起状态用等量负外边距抵掉，移动才连续、不在最后跳一下。
+ */
+.ai-assistant-input-footer .agent-choice-slot {
+  display: grid;
+  grid-template-columns: 1fr;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.ai-assistant-input-footer .agent-choice-slot__inner {
+  min-width: 0;
+}
+
+.ai-assistant-input-footer .agent-choice-slot-enter-active,
+.ai-assistant-input-footer .agent-choice-slot-leave-active {
+  transition:
+    grid-template-columns var(--duration-medium) var(--ease-standard),
+    margin-right var(--duration-medium) var(--ease-standard),
+    opacity var(--duration-medium) var(--ease-standard);
+}
+
+.ai-assistant-input-footer .agent-choice-slot-enter-active .agent-choice-slot__inner,
+.ai-assistant-input-footer .agent-choice-slot-leave-active .agent-choice-slot__inner {
+  overflow: hidden;
+}
+
+.ai-assistant-input-footer .agent-choice-slot-enter-from,
+.ai-assistant-input-footer .agent-choice-slot-leave-to {
+  grid-template-columns: 0fr;
+  margin-right: calc(var(--selectors-row-gap) * -1);
+  opacity: 0;
+}
+
 /* agent-choice pill：与 mode/model 的触发器样式一致（对齐 HEAD~2） */
 .ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger {
   position: relative;
+  /* 它不在 CustomSelect 里，拿不到 .custom-select .select-trigger 的 flex；高度来自控件变量，文字靠 flex 居中。 */
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
   /* 左侧放 icon（默认 research，hover 变 close） */
-  padding: var(--space-1) var(--space-2) var(--space-1) 26px; /* 为左侧图标预留空间（收紧 icon 与“研究”的间距） */
+  padding: 0 var(--space-2) 0 26px; /* 为左侧图标预留空间（收紧 icon 与“研究”的间距） */
   background-color: var(--color-accent-bg);
-  color: var(--color-accent);
+  color: var(--color-accent-text);
+  transition: background-color var(--duration-micro) var(--ease-standard);
+}
+
+/* 与 tint 按钮同一套：静止 accent-bg，悬停 accent-bg-hover；关闭按钮悬停再深一层（见下）。 */
+.ai-assistant-input-footer .selector-group--agent-choice .agent-choice-trigger:not(.is-disabled):not(.is-unavailable):hover {
+  background-color: var(--color-accent-bg-hover);
 }
 
 .ai-assistant-input-footer .agent-choice-trigger.is-disabled {
@@ -227,7 +272,8 @@
 .ai-assistant-input-footer .agent-choice-trigger-close {
   position: absolute;
   left: 4px;
-  top: 4px;
+  /* 按控件高度垂直居中 18px 的图标框 */
+  top: calc((var(--input-footer-control-height) - 18px) / 2);
   transform: none;
   width: 18px;
   height: 18px;
@@ -261,7 +307,7 @@
    * - 背景：更深的主题 hover 背景
    * - 图标：更深的主题主色 hover
    */
-  background-color: var(--color-accent-bg-hover);
+  background-color: color-mix(in srgb, var(--color-accent) 16%, var(--color-accent-bg-hover));
   color: var(--color-accent-hover);
 }
 
@@ -347,7 +393,7 @@
   max-width: min(360px, calc(100vw - 16px));
 }
 
-.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger):hover:not(:disabled) {
+.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .input-footer-command-permission-trigger, .agent-choice-trigger):hover:not(:disabled) {
   background-color: var(--color-bg-hover);
 }
 
@@ -434,4 +480,42 @@
   width: 13px;
   height: 13px;
   display: block;
+}
+
+/**
+ * 命令档位：触发器与模型选择同一套底栏样式（见上方 :is 规则）。
+ * 菜单挂到页面顶层，按窗口翻转和收边，侧边对话里也不会伸出窗口；
+ * 每项带一行说明，宽度由组件的 min-width（300px）给出；运行中在顶部说明修改何时生效。
+ */
+.ai-assistant-input-footer .selector-group--command-permission {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.input-footer-command-permission-options .conversation-command-permission__hint {
+  margin: 0;
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+}
+
+/* “更改全局设置…”是去设置页的入口，不是档位，用次要文字色。 */
+.input-footer-command-permission-options .conversation-command-permission__settings-link .option-label {
+  color: var(--color-text-secondary);
+}
+
+/* 完全访问：触发器用警示色，悬停也保持，提醒这个对话的命令会自动执行。 */
+.ai-assistant-input-footer .conversation-command-permission--full .input-footer-command-permission-trigger,
+.ai-assistant-input-footer .conversation-command-permission--full .input-footer-command-permission-trigger:hover:not(:disabled) {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.ai-assistant-input-footer .conversation-command-permission--full .input-footer-command-permission-trigger .selector-chevron {
+  color: currentColor;
 }

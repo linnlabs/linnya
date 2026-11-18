@@ -1,6 +1,8 @@
 import { ProbeError } from '../definitions/probeContract.mjs';
 import { launchOptions, numberOption, oneOf, parseProbeArgs, usage } from '../functions/parseProbeArgs.mjs';
-import { connectCdp, evaluate, findPage, waitFor } from '../infrastructure/cdpClient.mjs';
+import { readDesktopMainInspector } from '../functions/desktopLaunchMarkers.mjs';
+import { connectCdp, evaluate, findPage, unwrapCdpResult, waitFor } from '../infrastructure/cdpClient.mjs';
+import { readOptional } from '../infrastructure/instanceStore.mjs';
 import { performAction } from './probeActions.mjs';
 import { changeProbeInstance, listProbes, probeStatus, requireReady } from './probeInstances.mjs';
 import { probeLogs, shotPage, snapshotPage, waitForPage } from './probeObservation.mjs';
@@ -76,6 +78,20 @@ export async function connectProbePage(name) {
   return { session, cdp: await connectCdp(target.webSocketDebuggerUrl) };
 }
 
+/** 在 Main 求值，用于造窗口状态等 Renderer 碰不到的条件；命令行 API 提供 require。 */
+export async function evaluateMain(session, expression) {
+  const url = readDesktopMainInspector(readOptional(session.logs.desktop));
+  if (!url) throw new ProbeError('NOT_RUNNING', '找不到 Main 调试口', '实例由旧版探针启动：运行 pnpm -s probe restart');
+  const cdp = await connectCdp(url);
+  try {
+    return unwrapCdpResult(await cdp.send('Runtime.evaluate', {
+      expression, awaitPromise: true, returnByValue: true, includeCommandLineAPI: true,
+    }));
+  } finally {
+    cdp.close();
+  }
+}
+
 export async function runProbeCommand(parsed) {
   const { command, values, positionals } = parsed;
   if (command === 'help') {
@@ -93,7 +109,11 @@ export async function runProbeCommand(parsed) {
   if (command === 'logs') return probeLogs(probeStatus(values.name), values);
   if (command === 'fixture') {
     const { installFixture } = await import('./probeFixtures.mjs');
-    return installFixture(requireReady(values.name), positionals);
+    return installFixture(requireReady(values.name), positionals, { connectPage: () => connectProbePage(values.name) });
+  }
+  if (command === 'eval' && values.main) {
+    if (positionals.length !== 1) usage('eval --main 需要一个 JavaScript 表达式');
+    return { value: await evaluateMain(requireReady(values.name), positionals[0]) };
   }
   const action = actionCommands.has(command) ? parseAction(parsed) : null;
   const { session, cdp } = await connectProbePage(values.name);

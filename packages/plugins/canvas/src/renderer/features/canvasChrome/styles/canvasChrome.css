@@ -12,8 +12,7 @@
   container-type: inline-size;
   pointer-events: none;
 }
-/* 顶部命令条、右下角缩放与 Agent 审阅条共用 Slides 编辑命令条的外观：细描边 + 近影 + 远影的小元素阴影，不加边框。 */
-.canvas-command-bar,
+/* 顶部命令条用 renderer-ui CommandBar；右下角缩放与 Agent 审阅条沿用同一表面与 --shadow-command-bar。 */
 .canvas-zoom-controls,
 .canvas-agent-review-bar {
   display: flex;
@@ -21,15 +20,11 @@
   padding: var(--space-1);
   border-radius: calc(var(--radius-lg) + var(--space-0-5));
   background: var(--color-bg-default);
-  box-shadow:
-    0 0 0 0.5px color-mix(in srgb, var(--color-text-primary) 6%, transparent),
-    0 1px 3px var(--shadow-color-xs),
-    0 8px 24px -4px var(--shadow-color-md);
+  box-shadow: var(--shadow-command-bar);
   color: var(--color-text-primary);
   white-space: nowrap;
 }
 .canvas-command-bar {
-  gap: var(--space-1);
   pointer-events: auto;
 }
 /* 窄画布：先把“已保存”收成对勾（读屏仍读到文字）。 */

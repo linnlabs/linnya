@@ -256,6 +256,7 @@ interface CustomSelectProps {
   modelValue?: Value | null;
   options: readonly CustomSelectOption<Value>[];
   placeholder?: string;
+  displayText?: string;
   title?: string;
   triggerAriaLabel?: string;
   semanticRole?: CustomSelectSemanticRole;
@@ -432,7 +433,7 @@ const resolvedTitle = computed(() => (
 const selectedOption = computed(() => findSelectedOption(props.options, props.modelValue));
 
 const displayValue = computed(() => (
-  selectedOption.value ? selectedOption.value.text : resolvedPlaceholder.value
+  props.displayText ?? (selectedOption.value ? selectedOption.value.text : resolvedPlaceholder.value)
 ));
 
 // 计算按钮的 title

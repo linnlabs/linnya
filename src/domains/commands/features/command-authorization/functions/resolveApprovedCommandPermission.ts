@@ -1,5 +1,6 @@
 import {
   parseCommandPermissionSnapshot,
+  isCommandBasePermissionSource,
   type CommandPermissionSnapshotV1,
 } from '@app/schemas/commands';
 
@@ -23,7 +24,7 @@ export function resolveApprovedCommandPermission(params: {
     return { status: 'rejected', code: 'full_access_requires_no_approval' };
   }
   if (
-    current.grant_source !== 'global_setting'
+    !isCommandBasePermissionSource(current.grant_source)
     || current.effective_level !== current.base_level
   ) {
     return { status: 'rejected', code: 'permission_already_modified' };

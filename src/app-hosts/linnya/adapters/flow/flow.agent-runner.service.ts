@@ -10,6 +10,7 @@
  */
 
 import { Logger } from 'src/shared/logger';
+import type { PendingUserInputRegistry } from './pending-user-inputs/pendingUserInputRegistry';
 import { clearDocumentReferenceMarkdownReader } from 'src/plugin-sdk/backend/documentReferences';
 import {
   generateRuntimeEventId,
@@ -56,6 +57,7 @@ import type { RegisteredChildRunInvokerPort } from 'src/app-hosts/linnya/adapter
 import type { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import type { CommandPermissionSettingsPort } from 'src/domains/commands/ports';
 import type { ToolContext } from 'src/tools/types';
+import type { ConversationCommandPermissionSelection } from '@app/schemas/commands';
 import { resolveCommandRunPermissionContext } from 'src/app-hosts/linnya/adapters/context-injection/commandRunPermissionContextBinding';
 import { CommandAgentRunIdSchema, CommandConversationIdSchema } from '@app/schemas/commands';
 import type { ShellToolRuntimePort } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';
@@ -89,8 +91,11 @@ export interface AgentRunnerRuntimePort {
     readonly releaseTerminalRun: (runId: string) => Promise<void>;
   };
   readonly costCollector: LinnyaRunCostCollector;
+  /** 前台运行的待送达插话；子运行不经过本服务，不接收插话。 */
+  readonly pendingUserInputs?: Pick<PendingUserInputRegistry, 'portFor'>;
   readonly registeredChildRunInvoker: RegisteredChildRunInvokerPort;
   readonly commandPermissionSettings: CommandPermissionSettingsPort;
+  readonly readConversationCommandPermission?: (conversationId: string) => ConversationCommandPermissionSelection;
   readonly workspaceMutationPublisher: WorkspaceMutationPublisher;
   readonly physicalFileReader?: PhysicalFileReaderPort;
   readonly conversationWorkDirectoryAdmission?: ConversationWorkDirectoryAdmissionPort;
@@ -188,6 +193,7 @@ export class AgentRunnerService {
         bootstrap.finalRunContext.rootRunId ?? input.runId
       ),
       settingsPort: this.runtime.commandPermissionSettings,
+      readConversation: this.runtime.readConversationCommandPermission?.bind(undefined, input.conversationId),
     });
     const toolContextPatch = SerializableJsonRecord.parse(bootstrap.toolContextPatch);
     return RunDescriptorSchema.parse({
@@ -341,6 +347,7 @@ export class AgentRunnerService {
             finalRunContext.rootRunId ?? finalRunContext.runId
           ),
           settingsPort: this.runtime.commandPermissionSettings,
+          readConversation: this.runtime.readConversationCommandPermission?.bind(undefined, conversationId),
         });
       /**
        * 统一 Audit Domain 的 run scope。
@@ -488,6 +495,8 @@ export class AgentRunnerService {
                       }
                     )
                   : undefined,
+                // 运行中插话：一批工具结算后、回到模型前由 Linnkit 取用；暂停后继续与批准后继续同样装配。
+                pendingUserInputPort: this.runtime.pendingUserInputs?.portFor(runHandle.runId),
               };
 
               logger.info('开始执行 GraphExecutor.runUntilYield');
@@ -512,6 +521,7 @@ export class AgentRunnerService {
                       runtimeFailureFactSink: sessionLocal.runtimeFailureFactSink,
                       summarizationCallbacks,
                       toolRecoveryPort: sessionLocal.toolRecoveryPort,
+                      pendingUserInputPort: sessionLocal.pendingUserInputPort,
                     },
                   })
                 : execution.kind === 'resume'

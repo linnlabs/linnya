@@ -4,7 +4,7 @@ import { graph, telemetry } from '@linnlabs/linnkit/runtime-kernel';
 import {
   createScriptedInferenceHarness,
   type ScriptedInferenceHarness,
-  type ScriptedLlmTurn,
+  type ScriptedInferenceScript,
 } from '@linnlabs/linnkit/testkit';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { bootstrapAgentRuntimeSingletons } from 'src/electron-main/services/agentRuntimeSingletons';
@@ -12,6 +12,7 @@ import { modelCatalog, type ModelConfig } from 'src/domains/model-catalog';
 import { SQLiteEventStore } from '../../persistence/event-store';
 import { SqliteCheckpointer } from '../../persistence/checkpointer';
 import { createDefaultLlmNode } from '../../runtime-assembly/graphRuntimeFactory';
+import { SqliteTelemetryAdapter } from '../../telemetry/sqlite.implementation';
 import { defaultObservationPreviewPort } from '../../tools/defaultPorts';
 import { createToolRuntimeHarness } from '../../../testkit/agent-harness/toolRegistryHarness';
 import { createAgentRunnerRuntimeHarness } from '../../../testkit/agent-harness/agentRunnerRuntimeHarness';
@@ -28,11 +29,13 @@ import { createDirectFlowConversationAdmissionPort } from './createDirectFlowCon
 import { FlowIncomingEventPreparer } from '../incoming-events/orchestration/prepareFlowIncomingEventBatch';
 import { AgentRunnerService } from '../flow.agent-runner.service';
 import { FlowOrchestrator } from '../flow.orchestrator';
+import { PendingUserInputRegistry } from '../pending-user-inputs/pendingUserInputRegistry';
 import type { BaseTool } from 'src/tools/types';
 import { createRegisteredChildRunInvoker } from '../../child-runs/registeredSubagentInvoker';
 import { createLinnyaChildRunInvoker } from '../../child-runs/childRunInvokerFactory';
 
-export function installRecoveryModelFixture(reasoning?: ModelConfig['reasoning']): void {
+/** 让 `scripted-test-model` 出现在模型目录里；返回值撤销这些替换。 */
+export function installRecoveryModelFixture(reasoning?: ModelConfig['reasoning']): () => void {
   const model: ModelConfig = {
     id: 'scripted-test-model',
     model_name: 'scripted-test-model',
@@ -56,20 +59,27 @@ export function installRecoveryModelFixture(reasoning?: ModelConfig['reasoning']
       continuation: { tool_replay: 'optional' },
     },
   };
-  vi.spyOn(modelCatalog, 'getModel').mockImplementation(id =>
-    id === model.id ? model : undefined
-  );
-  vi.spyOn(modelCatalog, 'getModelsByCapability').mockReturnValue([model]);
-  vi.spyOn(modelCatalog, 'getModelsByUIVisibility').mockReturnValue([model]);
-  vi.spyOn(modelCatalog, 'getInferenceEndpoints').mockReturnValue([]);
+  const spies = [
+    vi.spyOn(modelCatalog, 'getModel').mockImplementation(id =>
+      id === model.id ? model : undefined
+    ),
+    vi.spyOn(modelCatalog, 'getModelsByCapability').mockReturnValue([model]),
+    vi.spyOn(modelCatalog, 'getModelsByUIVisibility').mockReturnValue([model]),
+    vi.spyOn(modelCatalog, 'getInferenceEndpoints').mockReturnValue([]),
+  ];
+  return () => {
+    for (const spy of spies) spy.mockRestore();
+  };
 }
 
 /** 真 SQLite、生产启动恢复、Graph 和 Flow；只替换上游模型及本测试工具。 */
 export async function createDurableFlowHarness(
   path: string,
-  inference: ScriptedLlmTurn[] | ScriptedInferenceHarness,
+  inference: ScriptedInferenceScript | ScriptedInferenceHarness,
   tools: BaseTool[] = [],
   packaged = true,
+  permissions?: Pick<import('../flow.agent-runner.service').AgentRunnerRuntimePort,
+    'commandPermissionSettings' | 'readConversationCommandPermission'>,
 ) {
   const database = new DatabaseService(path);
   database.initialize();
@@ -79,29 +89,52 @@ export async function createDurableFlowHarness(
   if (!runtime.executionCheckpoints || !runtime.runDescriptors)
     throw new Error('Recovery composition missing');
   const descriptors = runtime.runDescriptors;
-  const ai = Array.isArray(inference) ? createScriptedInferenceHarness(inference) : inference;
+  const ai = 'getLlmCaller' in inference ? inference : createScriptedInferenceHarness(inference);
   const toolHarness = createToolRuntimeHarness(tools);
   const checkpointer = new SqliteCheckpointer(db);
+  // 与生产装配一致：遥测落库并喂给用量账本，用量断言才看得到真实结果。
+  // 另记一份内存副本，供场景校验遥测 runId 能追到已注册运行。
+  const sqliteTelemetry = new SqliteTelemetryAdapter(
+    db, undefined, runtime.costCollector, runtime.tokenCalibrationCollector,
+  );
+  const telemetryEvents: telemetry.TelemetryEvent[] = [];
+  const telemetryPort: telemetry.TelemetryPort = {
+    emit(event) {
+      telemetryEvents.push(event);
+      sqliteTelemetry.emit(event);
+    },
+  };
   const engine = new graph.GraphExecutor(checkpointer, {
+    telemetryPort,
     executionCheckpointPort: runtime.executionCheckpoints,
   });
   engine.registerNode(new graph.UserNode());
   engine.registerNode(
-    createDefaultLlmNode({ llmCaller: ai.getLlmCaller(), toolRuntime: toolHarness.toolRuntime })
+    createDefaultLlmNode({
+      llmCaller: ai.getLlmCaller(),
+      toolRuntime: toolHarness.toolRuntime,
+      telemetryPort,
+      auditPort: runtime.auditPort,
+    })
   );
   engine.registerNode(
     new graph.ToolNode({
       toolRuntime: toolHarness.toolRuntime,
       observationPreview: defaultObservationPreviewPort,
+      telemetryPort,
+      auditPort: runtime.auditPort,
     })
   );
-  engine.registerNode(new graph.WaitUserNode());
+  engine.registerNode(new graph.WaitUserNode({ auditPort: runtime.auditPort }));
   const history = new HistoryRepository(eventStore);
   const persistence = new EventPersistenceCoordinator({
     persistencePort: createConversationPersistencePort(history),
     conversationAdmission: createDirectFlowConversationAdmissionPort(history),
   });
+  // 与生产装配一致：路由写入、Graph 在工具批次结算后取用，两边共用同一份待送达列表。
+  const pendingUserInputs = new PendingUserInputRegistry();
   const runner = new AgentRunnerService(engine, database, {
+    pendingUserInputs,
     ...createAgentRunnerRuntimeHarness({
       costCollector: runtime.costCollector,
       registeredChildRunInvoker: createRegisteredChildRunInvoker({
@@ -116,6 +149,7 @@ export async function createDurableFlowHarness(
         }),
       }),
     }),
+    ...permissions,
     recovery: {
       bindings: runtime.executionCheckpoints,
       checkpointer,
@@ -134,10 +168,13 @@ export async function createDurableFlowHarness(
     runner,
     persistence,
     new FlowIncomingEventPreparer({ kind: 'disabled' }),
-    runtime
+    runtime,
+    pendingUserInputs
   );
   return {
     flow,
+    pendingUserInputs,
+    telemetryEvents,
     runner,
     engine,
     runtime,

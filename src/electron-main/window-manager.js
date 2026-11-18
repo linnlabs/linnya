@@ -25,7 +25,8 @@ import {
 // ====================== 模块内变量 ======================
 // macOS 交通灯按钮视觉高度通常约为 12-14px，但为了视觉居中，通常 Y 值需要微调
 // 对于 36px 的头部，Y=10px 通常比计算出的 12px 看起来更居中
-const MAC_TRAFFIC_LIGHT_Y = 10;
+// 红黄绿按钮高 14px，顶边放在 11 才与 36px 头部的图标同一中线（18）。
+const MAC_TRAFFIC_LIGHT_Y = 11;
 
 // 预加载脚本路径 (__dirname 将由 CJS 环境提供)
 // 使用编译后的新版本 TypeScript preload 脚本
@@ -242,7 +243,7 @@ function createWindow() {
     windowConfig.frame = true;
     // 改为 'hidden' 模式，这样 trafficLightPosition 的设置才会完全生效且不受系统默认 inset 干扰
     windowConfig.titleBarStyle = 'hidden'; 
-    // 与 36px 头部高度对齐，使红黄绿按钮垂直居中
+    // 与 36px 头部的图标按钮同一中线（见 MAC_TRAFFIC_LIGHT_Y）
     windowConfig.trafficLightPosition = { x: 12, y: MAC_TRAFFIC_LIGHT_Y };
   } else {
     // Windows/Linux: 使用无边框窗口
@@ -405,6 +406,7 @@ export {
   configureMainWindowCloseLifecycle,
   createWindow,
   getMainWindow,
+  isCurrentMainFrameEvent,
   permitMainWindowCloseForAppShutdown,
   prepareMainWindowForAppShutdown,
   revealMainWindow,

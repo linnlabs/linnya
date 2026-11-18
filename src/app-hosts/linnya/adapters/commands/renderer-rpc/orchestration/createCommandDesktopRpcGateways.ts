@@ -1,3 +1,8 @@
+import {
+  ConversationCommandPermissionResultSchema,
+  type ConversationCommandPermissionRequest,
+  type ConversationCommandPermissionResult,
+} from '@app/schemas/commands';
 import type {
   AppServerRpcHandler,
   AppServerRpcHandlerRegistry,
@@ -8,6 +13,7 @@ import type { CommandCardRendererGatewayPort } from '../../command-card-control-
 import type { CommandPermissionSettingsRendererGatewayPort } from '../../permission-settings-authority';
 import {
   BACKEND_COMMAND_APPROVAL_PAGE_INVALIDATE_RPC_METHOD,
+  BACKEND_CONVERSATION_COMMAND_PERMISSION_RPC_METHOD,
   BACKEND_COMMAND_APPROVAL_PAGE_OPEN_RPC_METHOD,
   BACKEND_COMMAND_APPROVAL_PAGE_READ_RPC_METHOD,
   BACKEND_COMMAND_APPROVAL_REPLY_RPC_METHOD,
@@ -37,6 +43,7 @@ export interface CommandDesktopRpcGateways {
   readonly permissionSettings: CommandPermissionSettingsRendererGatewayPort;
   readonly approval: CommandApprovalRendererGatewayPort;
   readonly card: CommandCardRendererGatewayPort;
+  readonly conversationPermission: (request: ConversationCommandPermissionRequest) => Promise<ConversationCommandPermissionResult>;
   readonly notificationHandlers: AppServerRpcHandlerRegistry;
 }
 
@@ -164,6 +171,11 @@ export function createCommandDesktopRpcGateways(input: {
     approval: Object.freeze(approval),
     card: Object.freeze(card),
     permissionSettings: Object.freeze(permissionSettings),
+    async conversationPermission(request: ConversationCommandPermissionRequest) {
+      return ConversationCommandPermissionResultSchema.parse(
+        await input.rpc.request(BACKEND_CONVERSATION_COMMAND_PERMISSION_RPC_METHOD, request),
+      );
+    },
     notificationHandlers,
   });
 }

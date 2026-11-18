@@ -1,5 +1,5 @@
 import { nextTick, ref } from 'vue';
-import { resolveHoverTooltipPosition } from '@linnya/renderer-ui';
+import { measureFloatingLayoutSize, resolveHoverTooltipPosition } from '@linnya/renderer-ui';
 
 const GAP = 8;
 /** 弹层默认朝上不挡输入区；上方放不下一屏预览且下方更宽时才朝下。 */
@@ -15,7 +15,7 @@ export function createComposerReferenceHover(options: { readonly anchor: () => H
   function positionPanel() {
     const anchor = options.anchor(), panel = options.panel();
     if (!anchor || !panel) return;
-    const trigger = anchor.getBoundingClientRect(), bounds = panel.getBoundingClientRect();
+    const trigger = anchor.getBoundingClientRect(), bounds = measureFloatingLayoutSize(panel);
     const above = trigger.top - GAP * 2, below = innerHeight - trigger.bottom - GAP * 2;
     // 打开期间固定一侧并贴着引用：预览异步长高、展开时只朝远离引用的方向长，不盖住鼠标触发展开，也不跳到另一侧。
     placement ??= above >= Math.min(below, PREFERRED_ROOM) ? 'top' : 'bottom';

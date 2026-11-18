@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
-import { migrateV78ToV79KnowledgeIndexIdentity } from 'src/electron-main/services/database/migrations/v78-to-v79-knowledge-index-identity';
+import { migrateV79ToV80KnowledgeIndexIdentity } from 'src/electron-main/services/database/migrations/v79-to-v80-knowledge-index-identity';
 import { KNOWLEDGE_BASE_SCHEMAS } from '../knowledge/src/backend/database/schemas';
 
 describe('knowledge index identity migration', () => {
@@ -11,8 +11,8 @@ describe('knowledge index identity migration', () => {
         CREATE TABLE kb_documents(id TEXT PRIMARY KEY, kb_id TEXT, status TEXT);
         INSERT INTO knowledge_bases VALUES ('library','Library','old-model');
         INSERT INTO kb_documents VALUES ('document','library','failed');`);
-      migrateV78ToV79KnowledgeIndexIdentity(database);
-      migrateV78ToV79KnowledgeIndexIdentity(database);
+      migrateV79ToV80KnowledgeIndexIdentity(database);
+      migrateV79ToV80KnowledgeIndexIdentity(database);
       expect(database.prepare('SELECT * FROM knowledge_bases').get()).toEqual({
         id: 'library',
         name: 'Library',
@@ -38,7 +38,7 @@ describe('knowledge index identity migration', () => {
           'INSERT INTO knowledge_bases(id,name,created_at,embedding_space_id) VALUES (?,?,?,?)'
         )
         .run('library', 'Library', 0, 'known-space');
-      migrateV78ToV79KnowledgeIndexIdentity(database);
+      migrateV79ToV80KnowledgeIndexIdentity(database);
       expect(database.prepare('SELECT embedding_space_id FROM knowledge_bases').get()).toEqual({
         embedding_space_id: 'known-space',
       });

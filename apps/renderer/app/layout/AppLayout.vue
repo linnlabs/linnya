@@ -38,9 +38,6 @@
         :style="contentAreaStyle" 
         @transitionend="emitSidebarTransitionEnd"
       >
-        <!-- 菜单栏 -->
-        <MenuBar v-if="editorDocumentSettings.menuBarVisible && isEditorChromeActive" />
-      
         <!-- 目录侧边栏 (仅编辑器视图) -->
         <OutlineSidebar 
           v-if="isEditorChromeActive"
@@ -112,7 +109,6 @@ import Sidebar from './sidebar/Sidebar.vue';
 import GlobalModals from './GlobalModals.vue';
 
 // 编辑器 chrome 只在 editor 文档激活时出现，按现有 v-if 条件延迟加载。
-const MenuBar = defineAsyncComponent(() => import('@/domains/editor/ui/MenuBar.vue'));
 const OutlineSidebar = defineAsyncComponent(() => import('@/domains/editor/features/outline/OutlineSidebar.vue'));
 const OutlineToggleButton = defineAsyncComponent(() => import('@/domains/editor/features/outline/OutlineToggleButton.vue'));
 const LatexInputPanel = defineAsyncComponent(() => import('@/domains/editor/blocks/LatexBlock/ui/LatexInputPanel.vue'));
@@ -133,6 +129,7 @@ import {
   useSidebarSelectionVisibility,
 } from './composables';
 import { getDocumentTypeByActiveType } from '@/app/plugins/registry';
+import { installDocumentTabsSync } from './orchestration/documentTabs';
 
 // Store
 const uiStore = useUIStore();
@@ -176,6 +173,7 @@ const notificationReservedTrailingWidth = computed(() => {
 
 // 初始化 composables
 useGlobalKeyboardShortcuts();
+installDocumentTabsSync();
 useThemeManager();
 useFontSmoothingManager();
 useStartupNavigationScope();

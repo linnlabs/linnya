@@ -4,6 +4,7 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { build } from 'esbuild';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SCHEMA_VERSION } from 'src/electron-main/services/database/migrations';
 import type { PluginInferencePort } from '@plugin/backend/inferenceRuntime';
 import type { PluginWorkerQueueOptions } from '@plugin/backend/workerQueue';
 import { createHostPluginWorkerQueue } from 'src/app-hosts/linnya/adapters/plugin-worker-queue/orchestration/createHostPluginWorkerQueue';
@@ -57,7 +58,7 @@ vi.mock('@plugin/backend/pluginRendererPush', () => ({ broadcastRendererPluginMe
 } }));
 vi.mock('@plugin/backend/workerQueue', () => ({ createPluginWorkerQueue: <T extends object>(options: PluginWorkerQueueOptions<T>) =>
   createHostPluginWorkerQueue({ ...options, maxConcurrency: 1 }, {
-    bootstrapScriptPath: bootstrap, database: { path: database.name, schemaVersion: 79 }, inference, environment: process.env,
+    bootstrapScriptPath: bootstrap, database: { path: database.name, schemaVersion: SCHEMA_VERSION }, inference, environment: process.env,
   }),
 }));
 
@@ -84,7 +85,7 @@ if (workerData.filename === 'complete.md' || workerData.filename === 'duplicate.
 beforeEach(async () => {
   root = await mkdtemp(path.join(os.tmpdir(), 'knowledge-activation-'));
   database = new Database(path.join(root, 'workspace.sqlite'));
-  database.pragma('user_version = 79');
+  database.pragma(`user_version = ${SCHEMA_VERSION}`);
   database.exec('CREATE TABLE projects(id TEXT PRIMARY KEY)');
   for (const ddl of [...KNOWLEDGE_BASE_SCHEMAS, ...KNOWLEDGE_GRAPH_SCHEMAS]) database.exec(ddl);
   const artifact = path.join(root, 'artifact');

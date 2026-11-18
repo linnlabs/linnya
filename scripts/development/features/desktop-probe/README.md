@@ -27,12 +27,14 @@
 | `click` / `dblclick` / `hover` | 目标为 `@n25`、`text=<文字>`、`--selector <css>` 或 `--at x,y`。`text=` 取直接含该文字的可见元素，文字被拆成多段时取包含它的最内层可见元素；多个命中时依次优先文字完全相同的、指针点得到的、弹出层（菜单、列表框、对话框、fixed 层）里的。仍分不出就报 `AMBIGUOUS_TARGET`，`hint` 列出候选的 `@n` 引用，不静默挑第一个。选择器和引用会检查可见性、位置稳定和命中。坐标用于明确指定像素位置。 |
 | `type` / `press` | `type '中文' [@n25]`，`press Meta+A`、`press Escape`。macOS 编辑快捷键支持 `Meta+A/C/X/V/Z` 和 `Shift+Meta+Z`。复制、剪切和粘贴使用系统剪贴板。 |
 | `drag` / `scroll` | `drag <目标> --by=80,0` 或 `--to <目标>`。支持 `--sample`、`--expect-follow x\|y`、`--tolerance 2`。`scroll <目标> --dy 400`。 |
-| `wait` / `eval` / `reload` | `wait --selector <css> --state attached\|visible\|hidden\|detached`，或 `--text`、`--expr`、`--settle`。`eval` 的表达式在 Renderer 执行，返回 JSON 值。 |
+| `wait` / `eval` / `reload` | `wait --selector <css> --state attached\|visible\|hidden\|detached`，或 `--text`、`--expr`、`--settle`。`eval` 的表达式在 Renderer 执行，返回 JSON 值；`eval --main` 在 Electron Main 执行（命令行 API 提供 `require`），用来造窗口尺寸、全屏事件等 Renderer 碰不到的条件。Main 调试口与 CDP 一样只在本机回环开随机端口。 |
 | `logs` | `--source renderer\|desktop\|vite\|supervisor`、`--level error\|warn`、`--since <cursor>`、`--grep <文字>`、`--limit 50`。资源加载失败的日志附带 URL。重启会开启新日志，旧 cursor 需重置。 |
 | `record curve` | `record curve --target '.menu' --props opacity,width --duration 800 -- click @n25`。逐帧取计算样式及包围盒，曲线时间从开始采样算起，数字属性附时长、进度、超调与单调性。 |
 | `record frames` | `record frames --target '.menu' --at 0,40,80,160,300 -- click @n25`。动作完成后逐帧等候 CSS/WAAPI 动效，最多 300 ms。捕获后暂停、按时间拼图，再恢复。动作后才挂载的菜单用 CSS 选择器。JS 驱动的变化用曲线。 |
 | `fixture project-overview` | 通过该实例的开发 CLI 生成独立项目、嵌套文件夹、Markdown 和 Slides。返回项目 ID，验证时打开该项目的概览。 |
+| `fixture update-state <状态>` | 把一份按 Main 合同造的更新快照写进 Renderer 的 update store，等标题栏更新入口出现或消失。状态与 `AppUpdateStatus` 同名：`idle`（没有更新）、`available`、`downloading`、`paused`、`failed`、`ready`、`installing`。探针关闭了更新检查，Main 不会推送覆盖；`reload` 后回到 Main 的真实状态。 |
 | `accept overview` | 自动启动新的隐藏隔离实例，验收知识库导航、项目概览、菜单定格、逐步列宽与 Slides 打开。自动保存截图、采样、步骤、断言及进程清理结果，成功后清理实例。输出 `manifest` 为独立的验收清单。它覆盖这条业务链，不代表所有界面或发布验收通过。 |
+| `accept header` | 标题栏几何不变量扫描：对话页与文档页 × 窗口 1400/980 × 非全屏/全屏 × 中/英文 × 更新入口无更新/下载中/重启更新/正在重启 × 侧栏收起与 200–500 七档，共 448 组，约 3–4 分钟。每组读元素矩形判定：左侧按钮、更新入口、标题和右侧按钮互不重叠；不伸进分隔线拖动热区；三点命中不被遮挡；处在非拖动区；更新按钮文字不截断、标题截断时至少露出 3 个字宽；不压到窗口按钮；连续测量稳定。失败列出每组条件与涉及的元素和像素，并附该组标题栏截图。全屏由 Main 发出系统全屏事件、经产品自己的处理器通知 Renderer，隐藏窗口不真的进入全屏；真实全屏动画和原生窗口按钮仍走 macOS 真机验收。 |
 
 `--name` 适用于每条命令。负数参数使用等号，如 `--by=-60,0`。默认隐藏模式仍使用真实页面绘制和 CDP 可信输入。探针主窗口禁用 Electron 后台绘制节流，保证长时间隐藏后仍能快速抓图。隐藏和 `inactive` 模式会模拟应用收到的窗口焦点通知，悬停提示可用，系统前台应用保持不变。`--window inactive` 适合人眼旁观，`visible` 允许正常激活窗口。系统菜单、原生对话框、输入法候选窗和系统拖放需走对应的桌面验收。
 

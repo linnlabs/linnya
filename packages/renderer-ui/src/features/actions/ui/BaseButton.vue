@@ -27,10 +27,12 @@ const props = withDefaults(defineProps<BaseButtonProps>(), {
 defineSlots<BaseButtonSlots>();
 const TONED_VARIANTS: ReadonlySet<BaseButtonVariant> = new Set<BaseButtonVariant>(['outline', 'plain']);
 const slots = useSlots();
+/** soft 已并入 tint（3.6.0），已发布插件仍可能传 soft，按 tint 渲染。 */
+const renderedVariant = computed<BaseButtonVariant>(() => (props.variant === 'soft' ? 'tint' : props.variant));
 
 const classes = computed<readonly string[]>(() => [
   'linnya-ui-button',
-  `linnya-ui-button--${props.variant}`,
+  `linnya-ui-button--${renderedVariant.value}`,
   `linnya-ui-button--${props.size}`,
   ...(TONED_VARIANTS.has(props.variant) ? [`linnya-ui-button--tone-${props.tone}`] : []),
   ...(props.shape === 'pill' ? ['linnya-ui-button--pill'] : []),

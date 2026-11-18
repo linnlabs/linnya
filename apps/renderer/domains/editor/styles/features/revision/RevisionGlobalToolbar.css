@@ -21,8 +21,8 @@
   background-color: color-mix(in srgb, var(--color-bg-default) 92%, transparent);
   box-shadow:
     0 0 0 0.8px color-mix(in srgb, var(--color-text-primary) 6%, transparent),
-    0 -4px 10px -2px color-mix(in srgb, var(--color-text-primary) 4%, transparent),
-    0 8px 24px -2px color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+    0 -4px 10px -2px color-mix(in srgb, var(--color-black) 4%, transparent),
+    0 8px 24px -2px color-mix(in srgb, var(--color-black) 10%, transparent);
   pointer-events: auto;
   backdrop-filter: blur(8px);
 }

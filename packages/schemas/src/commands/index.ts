@@ -16,3 +16,4 @@ export * from './commandApprovalIpc';
 export * from './commandToolDisplay';
 export * from './commandAgentModelControl';
 export * from './commandCardControl';
+export * from './conversationCommandPermission';

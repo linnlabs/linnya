@@ -19,7 +19,7 @@ const definitions = {
   drag: { string: ['selector', 'at', 'by', 'to', 'steps', 'sample', 'expect-follow', 'tolerance'] },
   scroll: { string: ['selector', 'at', 'dx', 'dy'] },
   wait: { string: ['selector', 'state', 'text', 'expr', 'timeout'], boolean: ['settle'] },
-  eval: {},
+  eval: { boolean: ['main'] },
   logs: { string: ['source', 'level', 'since', 'grep', 'limit'] },
   record: { string: ['target', 'props', 'duration', 'at'] },
   fixture: {},

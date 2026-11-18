@@ -31,12 +31,7 @@
       <div class="panel-body" :class="classNames?.body">
         <slot />
       </div>
-      <template v-if="resizable && !isAutoWidth && !isAutoHeight">
-        <div class="resize-handle resize-se" @mousedown.stop="onResizeStart($event, 'se')"></div>
-        <div class="resize-handle resize-ne" @mousedown.stop="onResizeStart($event, 'ne')"></div>
-        <div class="resize-handle resize-sw" @mousedown.stop="onResizeStart($event, 'sw')"></div>
-        <div class="resize-handle resize-nw" @mousedown.stop="onResizeStart($event, 'nw')"></div>
-      </template>
+      <!-- 只开放左右边缘调整宽度；高度由内容或调用方决定，不提供纵向与角落手柄。 -->
       <div
         v-if="resizable && !isAutoWidth"
         class="resize-handle resize-e"
@@ -46,16 +41,6 @@
         v-if="resizable && !isAutoWidth"
         class="resize-handle resize-w"
         @mousedown.stop="onResizeStart($event, 'w')"
-      ></div>
-      <div
-        v-if="resizable && !isAutoHeight"
-        class="resize-handle resize-s"
-        @mousedown.stop="onResizeStart($event, 's')"
-      ></div>
-      <div
-        v-if="resizable && !isAutoHeight"
-        class="resize-handle resize-n"
-        @mousedown.stop="onResizeStart($event, 'n')"
       ></div>
     </div>
   </Transition>

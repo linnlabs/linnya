@@ -60,6 +60,13 @@ describe('BaseButton', () => {
     expect(clicks).toBe(0);
   });
 
+  it('已弃用的 soft 按 tint 渲染', () => {
+    const button = mountButton({ variant: 'soft' });
+
+    expect(button.classList.contains('linnya-ui-button--tint')).toBe(true);
+    expect(button.classList.contains('linnya-ui-button--soft')).toBe(false);
+  });
+
   it('默认是小尺寸 secondary，并按 props 投影唯一的视觉修饰类', () => {
     expect([...mountButton().classList]).toEqual([
       'linnya-ui-button',

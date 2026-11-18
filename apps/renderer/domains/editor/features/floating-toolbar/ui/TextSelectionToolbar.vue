@@ -171,7 +171,7 @@ import InlineTextColorPicker from './InlineTextColorPicker.vue';
 import InlineTextHighlightPicker from './InlineTextHighlightPicker.vue';
 import { addComposerReference } from '@plugin/renderer/composerCommandPort';
 import { useNotificationStore } from '@/app/notification';
-import * as ConversionCommands from '../../../extensions/core/commands/ConversionCommands';
+import { applyHeadingLevel } from '../../../orchestration/applyHeadingLevel';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 import {
   readFloatingToolbarHeadingOptions,
@@ -569,36 +569,11 @@ const toggleHeadingDropdown = () => {
   showHeadingDropdown.value = !showHeadingDropdown.value;
 };
 
-// 选择标题级别
+// 选择标题级别（与 Markdown 命令条共用同一条规则）
 const selectHeadingLevel = (level) => {
   if (!editor.value) return;
-
-  // 检查命令是否存在
-  if (typeof ConversionCommands.convertToHeading !== 'function' ||
-      typeof ConversionCommands.setBaseBlock !== 'function') {
-    console.error('[TextSelectionToolbar] ConversionCommands 不可用');
-    return;
-  }
-
-  if (level === null) {
-    // 转换为普通文本
-    ConversionCommands.setBaseBlock()({
-      state: editor.value.state,
-      dispatch: editor.value.view.dispatch
-    });
-  } else {
-    // 转换为指定级别的标题
-    ConversionCommands.convertToHeading(level)({
-      state: editor.value.state,
-      dispatch: editor.value.view.dispatch
-    });
-  }
-
-  // 关闭下拉菜单
+  applyHeadingLevel(editor.value, level);
   showHeadingDropdown.value = false;
-
-  // 重新聚焦编辑器
-  editor.value.commands.focus();
 };
 
 const handleHeadingSelect = (value) => {

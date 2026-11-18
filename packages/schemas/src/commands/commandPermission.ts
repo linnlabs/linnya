@@ -12,14 +12,24 @@ export const CommandPermissionLevelSchema = z.enum([
 ]);
 export type CommandPermissionLevel = z.infer<typeof CommandPermissionLevelSchema>;
 
+const baseGrantSources = ['global_setting', 'conversation_setting'] as const;
+export const CommandBasePermissionSourceSchema = z.enum(baseGrantSources);
+export type CommandBasePermissionSource = z.infer<typeof CommandBasePermissionSourceSchema>;
+
 export const CommandPermissionGrantSourceSchema = z.enum([
-  'global_setting',
+  ...baseGrantSources,
   'allow_once',
   'conversation_approval',
 ]);
 export type CommandPermissionGrantSource = z.infer<
   typeof CommandPermissionGrantSourceSchema
 >;
+
+export function isCommandBasePermissionSource(
+  source: CommandPermissionGrantSource,
+): source is CommandBasePermissionSource {
+  return source === 'global_setting' || source === 'conversation_setting';
+}
 
 export const CommandInternalDataAccessSchema = z.enum(['allowed', 'denied']);
 export type CommandInternalDataAccess = z.infer<
@@ -36,18 +46,18 @@ export const CommandPermissionSnapshotV1Schema = z.object({
   internal_data_access: CommandInternalDataAccessSchema,
 }).strict().superRefine((snapshot, context) => {
   if (
-    snapshot.grant_source === 'global_setting'
+    isCommandBasePermissionSource(snapshot.grant_source)
     && snapshot.base_level !== snapshot.effective_level
   ) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['effective_level'],
-      message: 'a global permission snapshot cannot change the selected level',
+      message: 'a base permission snapshot cannot change the selected level',
     });
   }
 
   if (
-    snapshot.grant_source !== 'global_setting'
+    !isCommandBasePermissionSource(snapshot.grant_source)
     && !(
       (snapshot.effective_level === 'standard'
         || (snapshot.base_level === 'read_only'

@@ -56,9 +56,9 @@ export async function authorizeCommandProposal(input: {
       status: 'authorized',
       context: decision.context,
       permission: decision.permission,
-      presentationSource: decision.evidence.source === 'global_setting'
-        ? 'global_setting'
-        : 'conversation_approval_reused',
+      presentationSource: decision.evidence.source === 'conversation_approval'
+        ? 'conversation_approval_reused'
+        : decision.evidence.source,
       ...(decision.evidence.source === 'conversation_approval'
         ? { approvalRequestId: decision.evidence.approvalRequestId }
         : {}),

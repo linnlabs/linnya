@@ -6,9 +6,12 @@ import { join } from 'node:path';
 import { test } from 'vitest';
 import { repoRoot } from '../definitions/probeContract.mjs';
 import { buildFreshness } from '../orchestration/probeBuild.mjs';
-import { feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
+import { dependencyInstallMarkers, feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
+import { readDesktopMainInspector } from '../functions/desktopLaunchMarkers.mjs';
+import { checkHeaderInvariants, trafficLightsRect } from '../functions/headerInvariants.mjs';
 import { launchOptions, parseProbeArgs } from '../functions/parseProbeArgs.mjs';
 import { renderSnapshot } from '../functions/renderSnapshot.mjs';
+import { UPDATE_FIXTURE_STATUSES, updateFixtureSnapshot } from '../functions/updateStateFixture.mjs';
 import { instanceRoot } from '../infrastructure/instanceStore.mjs';
 import { cloneWorkspaceData } from '../infrastructure/workspaceClone.mjs';
 import { probeTarget } from '../orchestration/probeClient.mjs';
@@ -39,6 +42,9 @@ test('任一 Desktop 产物比源码旧就判过期；Renderer 与测试文件�
     { stale: true, reason: 'src/a.ts 比 app-server-backend.cjs 新' });
   assert.equal(judgeBuildFreshness(outputs, [{ path: 'src/a.ts', mtimeMs: 50 }]).stale, false);
   assert.equal(judgeBuildFreshness([{ path: 'main.cjs' }], []).stale, true);
+  // 重装依赖（例如升级 @linnlabs/linnkit）比产物新时同样判过期。
+  assert.deepEqual(judgeBuildFreshness(outputs, [{ path: dependencyInstallMarkers[1], mtimeMs: 200 }]),
+    { stale: true, reason: 'node_modules/.modules.yaml 比 app-server-backend.cjs 新' });
   assert.ok(feedsDesktopBundle('src/tools/workspace/write_file/index.ts'));
   assert.ok(feedsDesktopBundle('packages/plugins/slides/src/backend/deck.ts'));
   for (const path of ['packages/plugins/slides/src/renderer/Deck.vue', 'packages/renderer-ui/src/index.ts',
@@ -131,4 +137,55 @@ test('主产物存在时，插件必需文件缺失仍判为需要重建', () =>
     } } }));
     assert.throws(() => buildFreshness(root), /requiredOutputs/);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('eval --main 只认本次 Desktop 日志里的 Main 调试口', () => {
+  const log = 'DevTools listening on ws://127.0.0.1:5001/devtools/browser/x\nDebugger listening on ws://127.0.0.1:61234/5f0c-9a\n';
+  assert.equal(readDesktopMainInspector(log), 'ws://127.0.0.1:61234/5f0c-9a');
+  assert.equal(readDesktopMainInspector('Debugger listening on ws://0.0.0.0:61234/5f0c'), undefined);
+  assert.equal(parseProbeArgs(['eval', '--main', '1']).values.main, true);
+});
+
+test('update-state 夹具按 Main 合同造完整快照，idle 不显示入口', () => {
+  const now = Date.parse('2026-11-17T00:00:00Z');
+  for (const status of UPDATE_FIXTURE_STATUSES) {
+    const snapshot = updateFixtureSnapshot(status, { currentVersion: '0.2.1', now });
+    assert.deepEqual(Object.keys(snapshot).sort(), ['currentVersion', 'enabled', 'failure', 'installedVersion', 'progress', 'releaseNotes', 'status', 'version']);
+    assert.equal(snapshot.enabled, true);
+    assert.equal(snapshot.progress !== null, ['downloading', 'paused'].includes(status), status);
+  }
+  assert.equal(updateFixtureSnapshot('idle', { currentVersion: '0.2.1' }).version, null);
+  assert.equal(updateFixtureSnapshot('paused', { currentVersion: '0.2.1', now }).failure.retryAt, '2026-11-17T00:01:00.000Z');
+  assert.throws(() => updateFixtureSnapshot('downloaded', { currentVersion: '0.2.1' }), /未知更新状态/);
+});
+
+test('标题栏不变量报出重叠、热区、遮挡、拖动区、截断与窗口按钮', () => {
+  const header = { left: 0, right: 1400, top: 0, bottom: 36 };
+  const at = (left, right) => ({ left, right, top: 6, bottom: 30 });
+  const control = (key, group, left, right, extra = {}) => ({ key, group, rect: at(left, right), appRegion: 'no-drag', missedHits: [], ...extra });
+  const clean = {
+    viewport: { width: 1400, height: 900 }, header,
+    dividers: [{ key: '侧栏分隔线', rect: { left: 256, right: 264, top: 0, bottom: 900 } }],
+    trafficLights: trafficLightsRect({ x: 12, y: 11 }, header),
+    elements: [
+      control('settings', 'left', 142, 166),
+      control('update-entry', 'update', 174, 254, { texts: [{ content: '重启更新', truncated: false, visibleWidth: 48, fontSize: 12 }] }),
+      { key: 'title:main', group: 'title', rect: at(272, 848), texts: [{ content: '很长的项目名', truncated: true, visibleWidth: 40, fontSize: 12 }] },
+      control('right:新对话', 'right', 1284, 1308),
+    ],
+  };
+  assert.deepEqual(checkHeaderInvariants(clean), []);
+
+  const broken = structuredClone(clean);
+  broken.elements[0] = control('settings', 'left', 50, 74, { appRegion: 'drag' });
+  broken.elements[1] = control('update-entry', 'update', 174, 260, {
+    missedHits: [258], coveredBy: '调整左侧栏宽度', texts: [{ content: '重启更新', truncated: true, visibleWidth: 40, fontSize: 12 }],
+  });
+  broken.elements[2].texts[0].visibleWidth = 20;
+  broken.elements.push(control('right:历史对话', 'right', 1300, 1324));
+  const found = checkHeaderInvariants(broken).map(({ invariant, elements }) => `${invariant}:${elements.join('+')}`);
+  assert.deepEqual(found.sort(), [
+    'divider:update-entry+侧栏分隔线', 'drag-region:settings', 'hit:update-entry',
+    'overlap:right:新对话+right:历史对话', 'text:title:main', 'text:update-entry', 'traffic-lights:settings',
+  ]);
 });

@@ -64,80 +64,32 @@
   color: var(--workspace-sidebar-muted-color);
 }
 
+/* 空项目：说明文字与行首图标对齐（行外边距 10 + 内边距 10），类型行复用侧栏行的盒模型。 */
 .workspace-sidebar .file-tree-view .empty-directory-state {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  padding: var(--space-4) var(--space-3) var(--space-6);
-  color: var(--workspace-sidebar-label-color);
-  font-size: var(--font-size-body);
-  gap: var(--space-2);
-  height: 100%;
+  padding-top: var(--space-1);
 }
 
-.workspace-sidebar .file-tree-view .empty-directory-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
-  padding: var(--space-3) var(--space-3) var(--space-3);
-  border-radius: var(--radius-sm);
-  background-color: var(--color-bg-subtle);
-  border: 1px dashed var(--color-border-default);
-}
-
-.workspace-sidebar .file-tree-view .empty-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.workspace-sidebar .file-tree-view .empty-title-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1-5);
-}
-
-.workspace-sidebar .file-tree-view .empty-title {
-  font-size: var(--font-size-body);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
-}
-
-.workspace-sidebar .file-tree-view .empty-badge {
-  padding: 0 var(--space-1-5);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-caption);
-  line-height: var(--line-height-caption);
-  background-color: var(--color-accent-bg-subtle);
-  color: var(--color-accent-text);
-}
-
-.workspace-sidebar .file-tree-view .empty-subtitle {
-  margin: 0;
-  margin-top: var(--space-0-5);
+.workspace-sidebar .file-tree-view .empty-hint {
+  margin: 0 var(--space-5) var(--space-1-5);
   font-size: var(--font-size-footnote);
   color: var(--workspace-sidebar-muted-color);
 }
 
-.workspace-sidebar .file-tree-view .empty-actions {
-  display: flex;
-  flex-wrap: wrap;
+.workspace-sidebar .file-tree-view .empty-create-row--toggle .workspace-sidebar-row-label {
+  color: var(--workspace-sidebar-muted-color);
+}
+
+.workspace-sidebar .file-tree-view .empty-create-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--workspace-sidebar-muted-color);
+}
+
+/* AI 初始化与类型行隔开一点，是另一类动作。 */
+.workspace-sidebar .file-tree-view .empty-create-row--ai {
   margin-top: var(--space-2-5);
-}
-
-.workspace-sidebar .file-tree-view .empty-action {
-  margin-bottom: var(--space-2);
-}
-
-.workspace-sidebar .file-tree-view .empty-action--full {
-  width: 100%;
-}
-
-.workspace-sidebar .file-tree-view .button-icon {
-  width: 18px;
-  height: 18px;
-  color: currentColor;
 }
 
 /* 更多菜单样式 */

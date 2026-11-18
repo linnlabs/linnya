@@ -67,11 +67,11 @@ kind = command_permission_snapshot
 identity = { conversation_id, agent_run_id, tool_call_id, execution_id }
 base_level = read_only | standard | full_access
 effective_level = read_only | standard | full_access
-grant_source = global_setting | allow_once | conversation_approval
+grant_source = global_setting | conversation_setting | allow_once | conversation_approval
 internal_data_access = allowed | denied
 ```
 
-Schema 对提升有结构性限制：`global_setting` 不能改变用户选中的档位；普通审批最多授予 `standard`，内部读取批准可以保持 `read_only`。任何审批都不能变成 `full_access`。
+Schema 对提升有结构性限制：`global_setting` 与 `conversation_setting` 固定运行选中的档位；普通审批最多授予 `standard`，内部读取批准可以保持 `read_only`。任何审批都不能变成 `full_access`。
 
 ### 4.2 审批原因
 

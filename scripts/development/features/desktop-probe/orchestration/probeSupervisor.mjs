@@ -94,7 +94,8 @@ function startElectron() {
   const plugins = dev && !toy ? discoverWorkspaceDiskBackendPlugins(repoRoot) : [];
   try {
     electron = spawn(require('electron'), [
-      '-r', bootstrap, '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0',
+      // Main 的 Node 调试口只给 eval --main 用，同样只在本机回环开放随机端口。
+      '-r', bootstrap, '--inspect=127.0.0.1:0', '--remote-debugging-address=127.0.0.1', '--remote-debugging-port=0',
       `--user-data-dir=${profile}`,
       '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
       '--disable-backgrounding-occluded-windows', entry,

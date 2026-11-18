@@ -49,7 +49,7 @@ describe('command run permission context binding', () => {
     expect(first).toMatchObject({
       status: 'available',
       snapshot: {
-        settings_revision: 0,
+        settings_revision: 0, conversation_revision: 0, source: 'global_setting',
         permission_level: 'standard',
         captured_at_ms: 100,
       },
@@ -90,7 +90,7 @@ describe('command run permission context binding', () => {
     expect(second).toMatchObject({
       status: 'available',
       snapshot: {
-        settings_revision: 1,
+        settings_revision: 1, conversation_revision: 0, source: 'global_setting',
         permission_level: 'full_access',
         internal_data_access: 'denied',
         captured_at_ms: 300,

@@ -1,3 +1,4 @@
+import { recordRunCommandPermission } from '../conversation-command-permissions/recordRunCommandPermission';
 import { assertChildRunAdmissionLimit } from '../../../application/run-resumption';
 import type Database from 'better-sqlite3';
 import type {
@@ -41,6 +42,7 @@ export class SqliteRunAdmissionCommit implements RunAdmissionCommitPort {
       this.runs.saveInTransaction(input.record);
       this.descriptors.insertInTransaction(input.descriptor);
       this.commitFacts(input.record, input.incoming);
+      recordRunCommandPermission(this.db, input.descriptor);
     })();
   }
 

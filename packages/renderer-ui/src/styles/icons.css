@@ -14,7 +14,10 @@
   height: 100%;
 }
 
-/* Linnya 图标默认使用品牌色；调用方在图标自身的 class 上设置 color 即可覆盖。 */
+/*
+ * Linnya 图标默认取强调色（浅色主题是加深的品牌色 brand-600，深色与月白蓝随主题），
+ * 与主按钮、选中态同一个绿，各处不必再写颜色。确需别的颜色时在图标自身的 class 上覆盖。
+ */
 :where(.linnya-icon) {
-  color: var(--color-brand-500);
+  color: var(--color-accent);
 }

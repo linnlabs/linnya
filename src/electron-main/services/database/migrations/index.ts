@@ -1,4 +1,5 @@
-import { migrateV78ToV79KnowledgeIndexIdentity } from './v78-to-v79-knowledge-index-identity';
+import { migrateV78ToV79ConversationCommandPermissions } from './v78-to-v79-conversation-command-permissions';
+import { migrateV79ToV80KnowledgeIndexIdentity } from './v79-to-v80-knowledge-index-identity';
 import { migrateV73ToV74DocumentActions } from './v73-to-v74-document-actions';
 import { migrateV74ToV75RetireWorkspaceNodeTags } from './v74-to-v75-retire-workspace-node-tags';
 import { migrateV75ToV76ActionLedgerAgent } from './v75-to-v76-action-ledger-agent';
@@ -33,7 +34,7 @@ export type { HostSchemaMigration, MigrationFunction } from './types';
 export const HOST_SCHEMA_BASELINE_VERSION = 61;
 
 /** 当前 Host Schema 版本。修改既有表或数据语义时必须递增。 */
-export const SCHEMA_VERSION = 79;
+export const SCHEMA_VERSION = 80;
 
 /**
  * v61 基线之后的受支持迁移。
@@ -68,5 +69,6 @@ export const migrations: readonly HostSchemaMigration[] = [
   { fromVersion: 75, migrate: migrateV75ToV76ActionLedgerAgent },
   { fromVersion: 76, migrate: migrateV76ToV77ReadableConversationIndex },
   { fromVersion: 77, migrate: migrateV77ToV78SemanticTagCreator },
-  { fromVersion: 78, migrate: migrateV78ToV79KnowledgeIndexIdentity },
+  { fromVersion: 78, migrate: migrateV78ToV79ConversationCommandPermissions },
+  { fromVersion: 79, migrate: migrateV79ToV80KnowledgeIndexIdentity },
 ];

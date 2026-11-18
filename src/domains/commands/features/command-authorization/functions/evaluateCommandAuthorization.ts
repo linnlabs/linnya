@@ -1,5 +1,6 @@
 import {
   hasSameCommandExecutionIdentity,
+  isCommandBasePermissionSource,
   type CommandApprovalReason,
   type ShellCommandProposalV1,
 } from '@app/schemas/commands';
@@ -59,13 +60,21 @@ export function evaluateCommandAuthorization(params: {
       code: 'permission_requirement_identity_mismatch',
     };
   }
+  if (!isCommandBasePermissionSource(basePermission.grant_source)) {
+    return {
+      status: 'unavailable',
+      context,
+      proposal: params.proposal,
+      code: 'permission_resolution_failed',
+    };
+  }
   if (basePermission.base_level === 'full_access') {
     return {
       status: 'authorized',
       context,
       proposal: params.proposal,
       permission: basePermission,
-      evidence: { source: 'global_setting' },
+      evidence: { source: basePermission.grant_source },
     };
   }
 
@@ -210,6 +219,6 @@ export function evaluateCommandAuthorization(params: {
     context,
     proposal: params.proposal,
     permission: basePermission,
-    evidence: { source: 'global_setting' },
+    evidence: { source: basePermission.grant_source },
   };
 }

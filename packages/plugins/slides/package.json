@@ -87,12 +87,12 @@
     "zod": "^4.6.7"
   },
   "peerDependencies": {
-    "@linnya/renderer-ui": "^3.0.0",
+    "@linnya/renderer-ui": "^3.10.0",
     "pinia": ">=3.0.0 <4",
     "vue": ">=3.5.0 <4"
   },
   "devDependencies": {
-    "@linnlabs/linnkit": "0.43.0",
+    "@linnlabs/linnkit": "0.44.0",
     "@linnya/plugin-host-contract": "workspace:*",
     "@linnya/renderer-ui": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",

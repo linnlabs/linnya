@@ -18,10 +18,12 @@ vi.mock('../../../shared/services/aiService/common', () => ({
 
 import { streamConversation, type ConversationTransportError } from './conversationService';
 import {
+  createSSEHistorySummaryEvent,
   createSSETransportEndEvent,
   createSSEThoughtEvent,
   type SSESummarizationErrorEvent,
   type SSETransportEndEvent,
+  type SSEUserInputEvent,
   type SSEThoughtEvent,
   RunIdSchema,
 } from '@linnlabs/linnkit/contracts';
@@ -471,6 +473,61 @@ describe('conversationService - HTTP 非 2xx 错误收敛', () => {
 
     expect(onSummarizationError).toHaveBeenCalledOnce();
     expect(onSummarizationError).toHaveBeenCalledWith(event);
+  });
+
+  it('运行中送达的插话（user_input）必须分发，不能落入 default 静默丢弃', async () => {
+    const event: SSEUserInputEvent = {
+      type: 'user_input',
+      id: 'evt_steer_1',
+      timestamp: 102,
+      conversation_id: 'conv-stream',
+      turn_id: 'turn-steer',
+      run_id: RunIdSchema.parse('run-steer'),
+      execution_id: 'execution-steer',
+      content: '顺便看看机器学习',
+      delivery: 'mid_run',
+    };
+    const transportEnd = createSSETransportEndEvent(
+      'end-steer',
+      'conv-stream',
+      'turn-steer',
+      { execution_id: 'execution-steer', reason: 'complete' }
+    );
+    const { response } = createStreamingResponse(
+      [
+        `event: user_input\ndata: ${JSON.stringify(event)}\n\n`,
+        `event: transport_end\ndata: ${JSON.stringify(transportEnd)}\n\n`,
+      ].join('')
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response)
+    );
+
+    const onUserInput = vi.fn<(value: SSEUserInputEvent) => void>();
+    await streamConversation({ conversation_id: 'conv-stream' }, { onUserInput });
+
+    expect(onUserInput).toHaveBeenCalledOnce();
+    expect(onUserInput).toHaveBeenCalledWith(event);
+  });
+
+  it('摘要落盘后的 history_summary 必须分发给投影，不能静默丢弃', async () => {
+    const summary = createSSEHistorySummaryEvent(
+      'history-summary-1', 'conv-stream', 'turn-summary', '前情摘要', ['evt_old_1'], 1, 1,
+    );
+    const transportEnd = createSSETransportEndEvent(
+      'end-summary', 'conv-stream', 'turn-summary', { execution_id: 'execution-summary', reason: 'complete' },
+    );
+    const { response } = createStreamingResponse([
+      `event: history_summary\ndata: ${JSON.stringify(summary)}\n\n`,
+      `event: transport_end\ndata: ${JSON.stringify(transportEnd)}\n\n`,
+    ].join(''));
+    vi.stubGlobal('fetch', vi.fn(async () => response));
+
+    const onHistorySummary = vi.fn();
+    await streamConversation({ conversation_id: 'conv-stream' }, { onHistorySummary });
+
+    expect(onHistorySummary).toHaveBeenCalledWith(summary);
   });
 
   it('请求取消后不得分发 reader 中残留的业务事件', async () => {

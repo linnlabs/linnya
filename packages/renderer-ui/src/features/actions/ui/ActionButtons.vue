@@ -50,7 +50,7 @@ const props = withDefaults(defineProps<ActionButtonsProps>(), {
 const PRIMARY_BUTTON_VARIANT = {
   default: 'primary',
   danger: 'danger',
-  accent: 'soft',
+  accent: 'tint',
 } as const satisfies Record<NonNullable<ActionButtonsProps['primaryVariant']>, BaseButtonVariant>;
 
 const SECONDARY_BUTTON_VARIANT = {

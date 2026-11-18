@@ -18,6 +18,7 @@
 
     <ClientNoticeMessageComponent v-else-if="message.type === 'client_notice'" :message="message" />
     <ExecutionNoticeMessageComponent v-else-if="message.type === 'execution_notice'" :message="message" />
+    <CommandPermissionChangeMessageComponent v-else-if="message.type === 'command_permission_change'" :message="message" />
 
     <!-- 历史摘要消息 -->
     <SummaryMessageComponent
@@ -68,6 +69,7 @@ import AnswerMessage from './message/AnswerMessage.vue';
 import ToolCallsMessage from './message/ToolCallsMessage.vue';
 import ClientNoticeMessageComponent from '../features/client-notices/ui/ClientNoticeMessage.vue';
 import ExecutionNoticeMessageComponent from './message/ExecutionNoticeMessage.vue';
+import CommandPermissionChangeMessageComponent from '../features/command-permissions/ui/CommandPermissionChangeMessage.vue';
 import SummaryMessageComponent from './message/SummaryMessage.vue';
 
 /**

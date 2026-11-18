@@ -4,6 +4,7 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { build } from 'esbuild';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SCHEMA_VERSION } from 'src/electron-main/services/database/migrations';
 import type { PluginInferencePort } from '@plugin/backend/inferenceRuntime';
 import type { PluginWorkerQueueOptions } from '@plugin/backend/workerQueue';
 import { createHostPluginWorkerQueue } from 'src/app-hosts/linnya/adapters/plugin-worker-queue/orchestration/createHostPluginWorkerQueue';
@@ -137,7 +138,7 @@ vi.mock('@plugin/backend/workerQueue', () => ({
   createPluginWorkerQueue: <T extends object>(options: PluginWorkerQueueOptions<T>) =>
     createHostPluginWorkerQueue(options, {
       bootstrapScriptPath: path.join(bundleRoot, 'plugin-runtime.worker.cjs'),
-      database: { path: database.name, schemaVersion: 79 },
+      database: { path: database.name, schemaVersion: SCHEMA_VERSION },
       inference: uiInference,
       environment: process.env,
     }),
@@ -173,7 +174,7 @@ afterAll(async () => {
 beforeEach(async () => {
   root = await mkdtemp(path.join(os.tmpdir(), 'knowledge-cli-'));
   database = new Database(path.join(root, 'workspace.sqlite'));
-  database.pragma('user_version = 79');
+  database.pragma(`user_version = ${SCHEMA_VERSION}`);
   database.exec('CREATE TABLE projects(id TEXT PRIMARY KEY)');
   for (const ddl of [...KNOWLEDGE_BASE_SCHEMAS, ...KNOWLEDGE_GRAPH_SCHEMAS]) database.exec(ddl);
   const artifact = path.join(root, 'artifact');

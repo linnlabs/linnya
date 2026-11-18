@@ -3,6 +3,7 @@ import {
   parseCommandApprovalReply,
   parseCommandApprovalRequest,
   parseCommandApprovalSettlement,
+  type CommandBasePermissionSource,
   type CommandApprovalRequestV1,
   type CommandApprovalSettlementV1,
 } from '@app/schemas/commands';
@@ -27,6 +28,7 @@ function createRequest(params: {
   readonly executionId?: string;
   readonly rememberable?: boolean;
   readonly baseLevel?: 'read_only' | 'standard';
+  readonly source?: CommandBasePermissionSource;
   readonly internalDataAccess?: 'allowed' | 'denied';
 } = {}): CommandApprovalRequestV1 {
   const identity = {
@@ -54,7 +56,7 @@ function createRequest(params: {
         identity,
         base_level: baseLevel,
         effective_level: baseLevel,
-        grant_source: 'global_setting',
+        grant_source: params.source ?? 'global_setting',
         internal_data_access: params.internalDataAccess ?? 'allowed',
       },
     },
@@ -130,8 +132,8 @@ function createSettlement(params: {
 }
 
 describe('command approval reply contract', () => {
-  it('resolves an allow-once reply without changing global or internal-data settings', () => {
-    const request = createRequest({ internalDataAccess: 'denied' });
+  it.each(['global_setting', 'conversation_setting'] as const)('resolves allow-once from %s and preserves internal-data settings', source => {
+    const request = createRequest({ source, internalDataAccess: 'denied' });
     const result = acceptCommandApprovalReply({
       request,
       reply: parseCommandApprovalReply({

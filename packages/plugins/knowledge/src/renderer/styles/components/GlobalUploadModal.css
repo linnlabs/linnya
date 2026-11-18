@@ -1,5 +1,8 @@
+/* Modal 内部模式的内容区是横向 flex：正文要自己占满宽度。 */
 .global-upload-body {
-  padding: 0 var(--space-8) var(--space-6);
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--modal-inset) var(--modal-inset);
   height: 100%;
   box-sizing: border-box;
 }

@@ -1,5 +1,6 @@
 import type {
   CommandApprovalRequestId,
+  CommandBasePermissionSource,
   CommandApprovalReason,
   CommandExecutionIdentity,
   CommandConversationApprovalCandidate,
@@ -16,7 +17,7 @@ export interface CommandAuthorizationPermissionRequirement {
 
 export type CommandAuthorizationEvidence =
   | {
-      readonly source: 'global_setting';
+      readonly source: CommandBasePermissionSource;
     }
   | {
       readonly source: 'conversation_approval';

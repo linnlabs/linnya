@@ -287,7 +287,7 @@
 
 .plugin-store-card:hover .plugin-store-state-chip,
 .plugin-store-card:focus-visible .plugin-store-state-chip {
-  background-color: color-mix(in srgb, var(--color-bg-subtle) 72%, var(--color-bg-hover) 28%);
+  background-color: color-mix(in srgb, var(--color-text-primary) 2%, var(--color-bg-subtle));
 }
 
 .plugin-store-card:hover .plugin-store-state-chip.is-success,

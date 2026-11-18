@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ConversationUserInputCommittedEvent } from '@app/schemas';
 import {
+  createSSEHistorySummaryEvent,
   createSSETransportEndEvent,
   RunIdSchema,
   type SSEContextUsageSnapshotEvent,
+  type SSEUserInputEvent,
 } from '@linnlabs/linnkit/contracts';
 import { createAssistantStreamCallbacks } from './createAssistantStreamCallbacks';
 
@@ -114,6 +116,49 @@ describe('createAssistantStreamCallbacks', () => {
     await callbacks.onContextUsageSnapshot?.(event);
 
     expect(routeEvent).toHaveBeenCalledOnce();
+    expect(routeEvent).toHaveBeenCalledWith(event);
+  });
+
+  it('将运行中送达的插话交给请求级投影路由', async () => {
+    const routeEvent = vi.fn(async () => true);
+    const callbacks = createAssistantStreamCallbacks({
+      callbacks: {},
+      routeEvent,
+      projectsConversationEvents: true,
+      signal: new AbortController().signal,
+      resolveExecutionFailureMessage: () => 'failed',
+    });
+    const event: SSEUserInputEvent = {
+      type: 'user_input',
+      id: 'evt_steer_1',
+      timestamp: 12,
+      conversation_id: 'conversation-1',
+      turn_id: 'turn-1',
+      run_id: RunIdSchema.parse('run-1'),
+      execution_id: 'execution-1',
+      content: '顺便看看机器学习',
+      delivery: 'mid_run',
+    };
+
+    await callbacks.onUserInput?.(event);
+
+    expect(routeEvent).toHaveBeenCalledOnce();
+    expect(routeEvent).toHaveBeenCalledWith(event);
+  });
+
+  it('将摘要落盘后的 history_summary 交给请求级投影路由', async () => {
+    const routeEvent = vi.fn(async () => true);
+    const callbacks = createAssistantStreamCallbacks({
+      callbacks: {},
+      routeEvent,
+      projectsConversationEvents: true,
+      signal: new AbortController().signal,
+      resolveExecutionFailureMessage: () => 'failed',
+    });
+    const event = createSSEHistorySummaryEvent('summary-1', 'conversation-1', 'turn-1', '前情摘要', [], 0, 1);
+
+    await callbacks.onHistorySummary?.(event);
+
     expect(routeEvent).toHaveBeenCalledWith(event);
   });
 });
