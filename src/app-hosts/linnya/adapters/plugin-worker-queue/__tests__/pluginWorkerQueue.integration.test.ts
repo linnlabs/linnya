@@ -19,7 +19,7 @@ import { createHostPluginWorkerQueue } from '../orchestration/createHostPluginWo
 import { pluginWorkerSdkAliases } from '../../../../../../scripts/build/plugin-worker-sdk.mjs';
 
 interface Job {
-  taskId: string;
+  recordId: string;
   mode: 'database' | 'inference' | 'crash' | 'native' | 'boundaries';
   outsideParent?: string;
   images?: readonly { filename: string; bytes: Uint8Array }[];
@@ -178,7 +178,7 @@ describe('plugin artifact Worker runtime', () => {
     const { queue, db, environment } = setup();
     const observation = observe(queue);
     const job: Job = {
-      taskId: 'stored',
+      recordId: 'stored',
       mode: 'database',
       modelId: 'embedding',
       __linnyaWorkerHost: {
@@ -186,8 +186,8 @@ describe('plugin artifact Worker runtime', () => {
         pluginRuntime: { entryPath: path.join(root, 'unowned.cjs'), artifactDirectory: root },
       },
     };
-    await queue.addTask(job);
-    job.taskId = 'changed-after-enqueue';
+    await queue.addJob('queue-stored', job);
+    job.recordId = 'changed-after-enqueue';
     environment.PATH = 'changed-after-creation';
     await observation.settled;
     expect(observation.failure).toBeUndefined();
@@ -201,8 +201,9 @@ describe('plugin artifact Worker runtime', () => {
       exposed: ['close', 'prepare', 'transaction'],
     });
     expect(db.prepare('SELECT id FROM plugin_rows').all()).toEqual([{ id: 'stored' }]);
-    expect(observation.progress).toHaveLength(1);
-    expect(queue.getTask('stored')?.data.taskId).toBe('stored');
+    expect(observation.progress).toEqual([expect.objectContaining({ jobId: 'queue-stored' })]);
+    expect(queue.getJob('queue-stored')?.id).toBe('queue-stored');
+    expect(queue.getJob('queue-stored')?.data.recordId).toBe('stored');
     await expect(access(path.join(root, 'unowned.sqlite'))).rejects.toThrow();
   });
 
@@ -237,7 +238,7 @@ describe('plugin artifact Worker runtime', () => {
     };
     const { queue } = setup({ port: { ...port, textGeneration: { generate }, documentOcr } });
     const observation = observe(queue);
-    await queue.addTask({ taskId: 'native', mode: 'native', modelId: 'vision', images, temporaryDirectory: taskDirectory });
+    await queue.addJob('native', { recordId: 'native', mode: 'native', modelId: 'vision', images, temporaryDirectory: taskDirectory });
     await observation.settled;
     expect(observation.failure).toBeUndefined();
     expect(observation.result).toMatchObject({ count: 1, pipeline: 'text_extraction', images: Array(5).fill('native image'), tokens: expect.arrayContaining(['人工智能', '数据库']), scanned: 'saved OCR', temporaryFiles: [] });
@@ -247,7 +248,7 @@ describe('plugin artifact Worker runtime', () => {
   it('不解析未列入名单的子模块或artifact外调用，即使Host已安装依赖', async () => {
     const { queue } = setup();
     const observation = observe(queue);
-    await queue.addTask({ taskId: 'boundaries', mode: 'boundaries', modelId: 'unused', outsideParent: path.join(root, 'outside.cjs') });
+    await queue.addJob('boundaries', { recordId: 'boundaries', mode: 'boundaries', modelId: 'unused', outsideParent: path.join(root, 'outside.cjs') });
     await observation.settled;
     expect(observation.failure).toBeUndefined();
     expect(observation.result).toEqual(['@node-rs/jieba/package.json', 'sharp']);
@@ -256,7 +257,7 @@ describe('plugin artifact Worker runtime', () => {
   it('schema不匹配拒绝线程写入，既有数据库不会被迁移或切换journal', async () => {
     const { queue, db } = setup({ version: 6 });
     const observation = observe(queue);
-    await queue.addTask({ taskId: 'wrong-schema', mode: 'database', modelId: 'embedding' });
+    await queue.addJob('wrong-schema', { recordId: 'wrong-schema', mode: 'database', modelId: 'embedding' });
     await observation.settled;
     expect(observation.failure).toContain('user_version=6');
     expect(db.pragma('user_version', { simple: true })).toBe(6);
@@ -279,14 +280,14 @@ describe('plugin artifact Worker runtime', () => {
     expect(() => setup({ entry: 'dist/escape.cjs' })).toThrow();
     // 指向同一artifact的真实路径是合法的；最终目标归属由realpath决定。
     const { queue } = setup({ entry: 'dist\\link.cjs' });
-    const job: Job = { taskId: 'blocked', mode: 'database', modelId: 'embedding' };
+    const job: Job = { recordId: 'blocked', mode: 'database', modelId: 'embedding' };
     setPluginRuntimeStateForTests({ installedPluginIds: ['worker-fixture'] });
-    await expect(queue.addTask(job)).rejects.toThrow('未启用');
+    await expect(queue.addJob(job.recordId, job)).rejects.toThrow('未启用');
     setPluginRuntimeStateForTests({ enabledPluginIds: ['worker-fixture'] });
     registeredBackendPluginDirectories.set('worker-fixture', root);
-    await expect(queue.addTask(job)).rejects.toThrow('artifact 已变更');
+    await expect(queue.addJob(job.recordId, job)).rejects.toThrow('artifact 已变更');
     await queue.shutdown();
-    await expect(queue.addTask(job)).rejects.toThrow('正在关闭');
+    await expect(queue.addJob(job.recordId, job)).rejects.toThrow('正在关闭');
     expect(() =>
       createHostPluginWorkerQueue(
         { pluginId: 'unknown', workerEntry: 'x.cjs' },
@@ -337,12 +338,12 @@ describe('plugin artifact Worker runtime', () => {
     void observation.settled.then(() => {
       settled = true;
     });
-    const job: Job = { taskId: 'cancel', mode: 'inference', modelId: 'frozen-model' };
-    await queue.addTask(job);
+    const job: Job = { recordId: 'cancel', mode: 'inference', modelId: 'frozen-model' };
+    await queue.addJob(job.recordId, job);
     job.modelId = 'changed';
     await start;
     expect(embed.mock.calls[0]?.[0].modelId).toBe('frozen-model');
-    await queue.cancelTask('cancel');
+    await queue.cancelJob('cancel');
     await abort;
     await new Promise<void>(resolve => setImmediate(resolve));
     try {
@@ -351,7 +352,7 @@ describe('plugin artifact Worker runtime', () => {
       release();
     }
     await observation.settled;
-    expect(queue.getTask('cancel')?.state).toBe('failed');
+    expect(queue.getJob('cancel')?.state).toBe('failed');
     expect(embed).toHaveBeenCalledTimes(1);
   });
 
@@ -390,7 +391,7 @@ describe('plugin artifact Worker runtime', () => {
     void observation.settled.then(() => {
       settled = true;
     });
-    await queue.addTask({ taskId: 'crashed', mode: 'crash', modelId: 'ocr' });
+    await queue.addJob('crashed', { recordId: 'crashed', mode: 'crash', modelId: 'ocr' });
     await abort;
     await new Promise<void>(resolve => setImmediate(resolve));
     try {
@@ -401,6 +402,6 @@ describe('plugin artifact Worker runtime', () => {
     await observation.settled;
     expect(observation.failure).toContain('Worker意外退出');
     await queue.shutdown();
-    expect(queue.listTasks()).toEqual([]);
+    expect(queue.listJobs()).toEqual([]);
   });
 });

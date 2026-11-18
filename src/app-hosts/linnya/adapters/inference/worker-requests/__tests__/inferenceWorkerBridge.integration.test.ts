@@ -74,7 +74,7 @@ describe('worker inference Host boundary', () => {
       inputFiles: [inputPath],
       temporaryDirectory: path.join(root, 'ocr'),
     } satisfies Parameters<typeof createInferenceWorkerRequestHandler>[1];
-    const queue = new WorkerThreadQueue<{ taskId: string; inputPath: string }>({
+    const queue = new WorkerThreadQueue<{ inputPath: string }>({
       workerScript,
       hostRequestHandler: () => createInferenceWorkerRequestHandler(inference, admission),
     });
@@ -83,7 +83,7 @@ describe('worker inference Host boundary', () => {
         queue.once('taskCompleted', ({ result }: { result: unknown }) => resolve(result));
         queue.once('taskFailed', ({ error }: { error: string }) => reject(new Error(error)));
       });
-      await queue.addTask({ taskId: 'protocol', inputPath });
+      await queue.addJob('protocol', { inputPath });
       await expect(complete).resolves.toMatchObject({
         embedding: {
           vectors: [
@@ -112,7 +112,7 @@ describe('worker inference Host boundary', () => {
         queue.once('taskCompleted', ({ result }: { result: unknown }) => resolve(result));
         queue.once('taskFailed', ({ error }: { error: string }) => reject(new Error(error)));
       });
-      await queue.addTask({ taskId: 'rejected', inputPath });
+      await queue.addJob('rejected', { inputPath });
       await expect(rejectedRequest).resolves.toEqual({
         failure: { kind: 'protocol', code: 'embedding_space_mismatch', retryable: false },
       });

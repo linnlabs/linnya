@@ -3,7 +3,7 @@ import { Logger } from '@plugin/backend/loggingRuntime';
 import { resolveKnowledgeIndexFailureMessage } from '../functions/resolveKnowledgeIndexFailureMessage';
 
 import type { KnowledgeActivityOwner } from '../../runtime/orchestration/createKnowledgeActivityOwner';
-import type { KnowledgeIndexTaskStatus } from '../definitions/knowledgeIndex';
+import type { KnowledgeIndexJobStatus } from '../definitions/knowledgeIndex';
 import {
   rebuildKnowledgeIndex,
   type KnowledgeIndexRebuildDependencies,
@@ -16,19 +16,19 @@ export function createKnowledgeIndexRebuildOwner(
   deps: KnowledgeIndexRebuildDependencies,
   activity: KnowledgeActivityOwner
 ) {
-  const tasks = new Map<
+  const jobs = new Map<
     string,
-    { status: KnowledgeIndexTaskStatus; cancel(): void; completion: Promise<void> }
+    { status: KnowledgeIndexJobStatus; cancel(): void; completion: Promise<void> }
   >();
   return {
-    async start(kbId: string, modelId: string): Promise<KnowledgeIndexTaskStatus> {
+    async start(kbId: string, modelId: string): Promise<KnowledgeIndexJobStatus> {
       const documents = await deps.metadata.getDocumentsInKnowledgeBase(kbId);
       if (documents.length === 0) throw new Error('知识库没有可重建的原文内容');
       const lease = activity.begin(kbId, 'rebuild');
       const controller = new AbortController();
       const signal = AbortSignal.any([lease.signal, controller.signal]);
-      let status: KnowledgeIndexTaskStatus = {
-        taskId: randomUUID(),
+      let status: KnowledgeIndexJobStatus = {
+        jobId: randomUUID(),
         kbId,
         modelId,
         status: 'running',
@@ -36,15 +36,15 @@ export function createKnowledgeIndexRebuildOwner(
         message: '正在检查原文和嵌入模型',
         updatedAt: Date.now(),
       };
-      const task = {
+      const job = {
         get status() {
           return status;
         },
         cancel: () => controller.abort(),
         completion: Promise.resolve(),
       };
-      tasks.set(kbId, task);
-      task.completion = rebuildKnowledgeIndex({
+      jobs.set(kbId, job);
+      job.completion = rebuildKnowledgeIndex({
         deps,
         kbId,
         modelId,
@@ -83,14 +83,14 @@ export function createKnowledgeIndexRebuildOwner(
         .finally(() => lease.release());
       return status;
     },
-    get(kbId: string): KnowledgeIndexTaskStatus | null {
-      return tasks.get(kbId)?.status ?? null;
+    get(kbId: string): KnowledgeIndexJobStatus | null {
+      return jobs.get(kbId)?.status ?? null;
     },
-    async cancel(taskId: string): Promise<boolean> {
-      const task = [...tasks.values()].find(value => value.status.taskId === taskId);
-      if (!task) return false;
-      task.cancel();
-      await task.completion;
+    async cancel(jobId: string): Promise<boolean> {
+      const job = [...jobs.values()].find(value => value.status.jobId === jobId);
+      if (!job) return false;
+      job.cancel();
+      await job.completion;
       return true;
     },
   };

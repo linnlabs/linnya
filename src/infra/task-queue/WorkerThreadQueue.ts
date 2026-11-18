@@ -5,7 +5,7 @@
  * 
  * @description
  * 功能 (What): 管理后台任务的排队、并发与工作线程生命周期；处理来自 Worker 的消息并发射事件
- * 输入 (Input): 泛型任务负载（至少包含 taskId）
+ * 输入 (Input): job ID 与可克隆的业务负载；旧 addTask 接受含 taskId 的负载
  * 输出 (Output): 事件（taskStarted/taskProgress/taskCompleted/taskFailed）与查询接口
  * 副作用 (Side-effects): 创建/终止 worker 线程，并把通用生命周期通知给显式注入的 observer
  */
@@ -38,7 +38,7 @@ export type BaseWorkerJobPayload = {
   taskId: string;
 };
 
-export interface WorkerJob<TPayload extends BaseWorkerJobPayload> {
+export interface WorkerJob<TPayload> {
   id: string;
   data: TPayload;
   state: WorkerJobState;
@@ -50,7 +50,7 @@ export interface WorkerJob<TPayload extends BaseWorkerJobPayload> {
   completedAt?: number;
 }
 
-export interface WorkerJobLifecycleObserver<TPayload extends BaseWorkerJobPayload> {
+export interface WorkerJobLifecycleObserver<TPayload> {
   onProgress?(event: {
     readonly job: Readonly<WorkerJob<TPayload>>;
     readonly data: unknown;
@@ -67,7 +67,7 @@ export interface WorkerJobLifecycleObserver<TPayload extends BaseWorkerJobPayloa
  * 输出 (Output): 任务执行结果和状态更新（通过事件）
  * 副作用 (Side-effects): 创建工作线程，执行文档摄入任务
  */
-export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends EventEmitter {
+export class WorkerThreadQueue<TPayload extends object> extends EventEmitter {
   private jobs: Map<string, WorkerJob<TPayload>> = new Map();
   private runningJobs: Set<string> = new Set();
   private workers: Worker[] = [];
@@ -116,11 +116,16 @@ export class WorkerThreadQueue<TPayload extends BaseWorkerJobPayload> extends Ev
    * 输出 (Output): 任务ID
    * 副作用 (Side-effects): 创建任务记录，触发处理
    */
-  async addTask(taskData: TPayload): Promise<string> {
+  /** 旧 Audio/Worker 调用保留 taskId wire；新插件显式提供 job 身份，不污染业务 payload。 */
+  async addTask(taskData: TPayload & BaseWorkerJobPayload): Promise<string> {
+    return this.addJob(taskData.taskId, taskData);
+  }
+
+  async addJob(jobId: string, jobData: TPayload): Promise<string> {
     if (this.shuttingDown) throw new Error('任务队列正在关闭，不能接收新任务');
     const task: WorkerJob<TPayload> = {
-      id: taskData.taskId,
-      data: taskData,
+      id: jobId,
+      data: jobData,
       state: WorkerJobState.PENDING,
       progress: 0,
       createdAt: Date.now()
