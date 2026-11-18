@@ -34,4 +34,4 @@ export interface KnowledgeIndexStatePort {
   publishRebuilt(kbId: string, identity: KnowledgeIndexIdentity): void;
 }
 
-export type { KnowledgeIndexTaskStatus } from '@app/schemas';
+export type { KnowledgeIndexJobStatus } from '@app/schemas';

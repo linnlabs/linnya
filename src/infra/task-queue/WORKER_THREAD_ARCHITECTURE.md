@@ -2,6 +2,8 @@
 
 `WorkerThreadQueue` 只持有线程、任务快照、消息和取消生命周期。业务状态不进入通用队列；`settled` 表示线程已退出且所有 Host 推理请求已停止，不等同于 completed/cancel ack。
 
+新插件通过 `addJob(id, data)` 显式提交作业身份，业务 payload 原样进入 Worker；旧 `addTask(data)` 只从既有 `taskId` 提取 ID 后委托相同入队实现。既有 Audio/Worker 事件与字段保持兼容。
+
 Host `QueueManager` 只装配 AudioProcessingQueue。知识库的摄入、图谱抽取和图谱索引已经由[官方插件](../../../packages/plugins/knowledge/README.md)独立拥有，插件停用不能 shutdown 音频队列。
 
 插件通过 `@plugin/backend/workerQueue` 创建自己 artifact 下的队列，不能传任意路径、raw Worker、环境或 Host 服务。

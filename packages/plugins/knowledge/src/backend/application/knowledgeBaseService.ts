@@ -1,4 +1,4 @@
-import type { KnowledgeIndexTaskStatus } from '../index-rebuild/definitions/knowledgeIndex';
+import type { KnowledgeIndexJobStatus } from '../index-rebuild/definitions/knowledgeIndex';
 /**
  * @file src/knowledge-base/application/knowledgeBaseService.ts
  *
@@ -10,7 +10,7 @@ import type { KnowledgeIndexTaskStatus } from '../index-rebuild/definitions/know
  * 协调领域模型和基础设施层之间的交互。
  */
 
-import { Document, DocumentStatus } from '../domain/document';
+import { Document } from '../domain/document';
 import { KnowledgeBase } from '../domain/knowledgeBase';
 import type { DocumentSoT } from '../domain/block';
 import type { GraphBudget, GraphMode } from '../graph/application/graphBudget';
@@ -108,8 +108,8 @@ export interface SearchRequest {
 export interface KnowledgeBaseService {
   hasActiveTasks(): boolean;
   stopTasks(): Promise<void>;
-  rebuildIndex(kbId: string, modelId: string): Promise<KnowledgeIndexTaskStatus>;
-  getIndexRebuildStatus(kbId: string): KnowledgeIndexTaskStatus | null;
+  rebuildIndex(kbId: string, modelId: string): Promise<KnowledgeIndexJobStatus>;
+  getIndexRebuildStatus(kbId: string): KnowledgeIndexJobStatus | null;
   /**
    * 创建知识库
    * @param name 知识库名称

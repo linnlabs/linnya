@@ -220,4 +220,4 @@ export * from './document-assets';
 export { countTextUnitsZhEn, sliceTextByUnitsZhEn, type TextUnitKind } from './text-units';
 export { refIdFromDigest, normalizeRef, stripRefPrefix, isValidRef, BLOCK_REF_PREFIX, type RefIdOptions } from './block-reference';
 
-export { KnowledgeIndexTaskStatusSchema, type KnowledgeIndexTaskStatus } from './knowledge-base';
+export { KnowledgeIndexJobStatusSchema, type KnowledgeIndexJobStatus } from './knowledge-base';

@@ -5,7 +5,7 @@ import Database from 'better-sqlite3';
 import { build } from 'esbuild';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PluginInferencePort } from '@plugin/backend/inferenceRuntime';
-import type { PluginWorkerQueueOptions, PluginWorkerTask } from '@plugin/backend/workerQueue';
+import type { PluginWorkerQueueOptions } from '@plugin/backend/workerQueue';
 import { createHostPluginWorkerQueue } from 'src/app-hosts/linnya/adapters/plugin-worker-queue/orchestration/createHostPluginWorkerQueue';
 import { registeredBackendPluginDirectories } from 'src/app-hosts/linnya/plugin-registry/registeredPluginDirectories';
 import { setPluginRuntimeStateForTests, clearPluginRuntimeStateForTests } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
@@ -53,7 +53,7 @@ vi.mock('@plugin/backend/pluginRendererPush', () => ({ broadcastRendererPluginMe
   if (!enabled) throw new Error('disabled plugin cannot publish');
   pushes.push(payload);
 } }));
-vi.mock('@plugin/backend/workerQueue', () => ({ createPluginWorkerQueue: <T extends PluginWorkerTask>(options: PluginWorkerQueueOptions<T>) =>
+vi.mock('@plugin/backend/workerQueue', () => ({ createPluginWorkerQueue: <T extends object>(options: PluginWorkerQueueOptions<T>) =>
   createHostPluginWorkerQueue({ ...options, maxConcurrency: 1 }, {
     bootstrapScriptPath: bootstrap, database: { path: database.name, schemaVersion: 79 }, inference, environment: process.env,
   }),

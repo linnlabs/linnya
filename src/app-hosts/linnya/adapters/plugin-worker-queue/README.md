@@ -7,8 +7,9 @@
 
 - artifact 目录只读插件装配 owner 的正式记录，不能由调用者传入绝对路径；入口经过 realpath 后仍须属于同一 artifact。
 - 队列创建与入队都核对启用状态；旧 artifact 被替换后原队列拒绝新任务。插件 runtime effect 的 disposer 必须 await `shutdown()`。
-- `addTask` 冻结业务 job 和该 job 的推理准入。`getTask/listTasks` 返回副本，状态复用通用队列的 pending/running/completed/failed，不建立第二份持久状态。
-- `cancelTask` 表示取消已接纳；真正释放业务活动租约必须等待 `settled`。完成、失败、取消和线程意外退出都要等线程与它发出的 Host 请求停止。`shutdown` 停止接单并等待相同收尾。
+- `addJob(id, data)` 冻结业务 job 和该 job 的推理准入。`getJob/listJobs` 返回副本，状态复用通用队列的 pending/running/completed/failed，不建立第二份持久状态。
+- `cancelJob` 表示取消已接纳；真正释放业务活动租约必须等待 `settled`。完成、失败、取消和线程意外退出都要等线程与它发出的 Host 请求停止。`shutdown` 停止接单并等待相同收尾。
+- 新 SDK 的身份与事件使用 jobId，业务 payload 不必含身份字段。通用队列保留旧 addTask 适配及既有事件；知识库仍在自身边界投影旧 taskId IPC，不迁移历史数据。
 - progress/completed/failed/settled 订阅返回 disposer；失败保留通用队列记录的错误消息。队列不提供暂停/恢复，也不解释摄入或图谱状态。
 
 ## Host 与 Worker 各自持有的事实
