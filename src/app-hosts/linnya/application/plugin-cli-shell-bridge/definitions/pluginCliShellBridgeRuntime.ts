@@ -1,10 +1,11 @@
-import type {
-  CommandExecutionIdentity,
-  CommandLaunchSnapshotV1,
-} from '@app/schemas/commands';
-import type {
-  ShellCommandExecutionScope,
-} from '../../../adapters/commands/shell-runtime';
+import type { CommandExecutionIdentity, CommandLaunchSnapshotV1 } from '@app/schemas/commands';
+import type { ShellCommandExecutionScope } from '../../../adapters/commands/shell-runtime';
+import type { BackendPluginCliStagedFile } from '@linnya/plugin-host-contract/backend/pluginCli';
+
+export interface PluginCliConversationInputSession {
+  stage(locator: string): Promise<BackendPluginCliStagedFile>;
+  close(): Promise<void>;
+}
 
 export interface PluginCliShellBridgeRuntime {
   prepareExecution(launch: CommandLaunchSnapshotV1): ShellCommandExecutionScope;

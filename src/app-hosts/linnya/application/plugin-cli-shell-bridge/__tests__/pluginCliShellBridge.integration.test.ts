@@ -195,6 +195,7 @@ function registerCli(cli: BackendPluginCliContribution): BackendPluginCliRegistr
 }
 
 async function startBridge(input: {
+  readonly createConversationInput?: Parameters<typeof startPluginCliShellBridgeRuntime>[0]['createConversationInput'];
   readonly registration: BackendPluginCliRegistration;
   readonly internalDataContext?: unknown;
   readonly readConversationProjectId?: (conversationId: string) => Promise<string | null | undefined>;
@@ -206,6 +207,7 @@ async function startBridge(input: {
       pluginId === input.registration.pluginId ? input.registration : undefined
     ),
     internalDataContext: input.internalDataContext ?? Object.freeze({}),
+    ...(input.createConversationInput ? { createConversationInput: input.createConversationInput } : {}),
     ...(input.readConversationProjectId ? { readConversationProjectId: input.readConversationProjectId } : {}),
     diagnostics: input.diagnostics ?? { recordUnexpectedFailure: () => undefined },
     createToken: () => 'a'.repeat(64),
@@ -513,7 +515,7 @@ describe('Plugin CLI Shell bridge', () => {
     if (!endpoint || !token) throw new Error('bridge environment was not prepared');
     const response = await invoke({ endpoint, token, argv: ['update'] });
     if (permission.allowed) {
-      expect(response.frames.at(-1)).toMatchObject({ kind: 'plugin_cli_terminal', exit_code: 0 });
+      expect(response.frames[response.frames.length - 1]).toMatchObject({ kind: 'plugin_cli_terminal', exit_code: 0 });
       expect(readConversationProjectId).toHaveBeenCalledExactlyOnceWith(launch.proposal.identity.conversation_id);
       expect(execute).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'current-project', hostContext: internalDataContext }));
     } else {
@@ -524,6 +526,54 @@ describe('Plugin CLI Shell bridge', () => {
     prepared.terminal.resolve(createTerminal(launch));
     await runtime.terminal;
   });
+
+  it.each(['none', 'read'] as const)(
+    '仅声明会话文件读取的命令获得暂存能力：%s',
+    async conversationFiles => {
+      const close = vi.fn(async () => undefined);
+      const stage = vi.fn(async () => ({
+        file: { path: '/managed/copy', name: 'source.md', size: 1 },
+        acceptFile() {},
+      }));
+      const createConversationInput = vi.fn(() => ({ stage, close }));
+      const registration = registerCli({
+        prepare: () => ({
+          status: 'ready',
+          plan: {
+            access: {
+              internalDataAccess: 'none',
+              conversationFiles,
+              externalFiles: 'denied',
+              network: 'denied',
+              guiControl: 'denied',
+              localIpcControl: 'denied',
+            },
+            async execute(context) {
+              expect(context.stageConversationFile).toBe(
+                conversationFiles === 'read' ? stage : undefined
+              );
+              return { exitCode: 0, stdout: '', stderr: '' };
+            },
+          },
+        }),
+      });
+      const bridge = await startBridge({ registration, createConversationInput });
+      const launch = createLaunch({ permissionLevel: 'read_only' });
+      const prepared = createPreparedRuntime(launch);
+      const scope = bridge.prepareExecution(launch);
+      const runtime = scope.decorate(prepared.runtime);
+      await runtime.start();
+      const endpoint = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_ENDPOINT_ENV];
+      const token = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_TOKEN_ENV];
+      if (!endpoint || !token) throw new Error('bridge environment was not prepared');
+      const response = await invoke({ endpoint, token, argv: ['import'] });
+      expect(response.frames[response.frames.length - 1]).toMatchObject({ kind: 'plugin_cli_terminal', exit_code: 0 });
+      expect(createConversationInput).toHaveBeenCalledTimes(conversationFiles === 'read' ? 1 : 0);
+      expect(close).toHaveBeenCalledTimes(conversationFiles === 'read' ? 1 : 0);
+      prepared.terminal.resolve(createTerminal(launch));
+      await runtime.terminal;
+    }
+  );
 
   it('未知插件异常只向 CLI 返回关联号，并把真实阶段和原因交给内部诊断', async () => {
     const cause = new Error('database worker is offline');

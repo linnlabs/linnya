@@ -22,6 +22,7 @@ import type {
   PluginCliBridgeDiagnosticPort,
   PluginCliShellBridgeRuntime,
   PluginCliBridgeUnexpectedFailureStage,
+  PluginCliConversationInputSession,
 } from '../definitions/pluginCliShellBridgeRuntime';
 import type {
   ShellCommandExecutionScope,
@@ -216,6 +217,10 @@ export async function startPluginCliShellBridgeRuntime(input: {
     pluginId: string,
   ) => BackendPluginCliRegistration | undefined;
   readonly internalDataContext: unknown;
+  readonly createConversationInput?: (input: {
+    readonly conversationId: string;
+    readonly signal: AbortSignal;
+  }) => PluginCliConversationInputSession;
   readonly readConversationProjectId?: (conversationId: string) => Promise<string | null | undefined>;
   readonly diagnostics: PluginCliBridgeDiagnosticPort;
   readonly createToken?: () => string;
@@ -263,6 +268,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
     let stage: PluginCliBridgeUnexpectedFailureStage = 'resolve_plugin';
     let pluginLease: ReturnType<typeof acquireBackendPluginCliInvocation>;
     let signals: CombinedSignal | undefined;
+    let fileInput: PluginCliConversationInputSession | undefined;
     try {
       let cli: BackendPluginCliContribution;
       if (request.kind === 'core_cli_invoke') {
@@ -319,6 +325,9 @@ export async function startPluginCliShellBridgeRuntime(input: {
         ? await input.readConversationProjectId?.(conversationId)
         : undefined;
       signals.signal.throwIfAborted();
+      if (access.conversationFiles !== 'none') {
+        fileInput = input.createConversationInput?.({ conversationId, signal: signals.signal });
+      }
       const result = await preparation.plan.execute({
         conversationId,
         agentRunId: lease.launch.proposal.identity.agent_run_id,
@@ -327,6 +336,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
           ? input.internalDataContext
           : Object.freeze({}),
         signal: signals.signal,
+        ...(fileInput ? { stageConversationFile: fileInput.stage } : {}),
       });
       signals.signal.throwIfAborted();
       stage = 'project_result';
@@ -349,8 +359,11 @@ export async function startPluginCliShellBridgeRuntime(input: {
         invocationId,
       });
     } finally {
-      signals?.dispose();
-      pluginLease?.release();
+      try { await fileInput?.close(); }
+      finally {
+        signals?.dispose();
+        pluginLease?.release();
+      }
     }
   }
 

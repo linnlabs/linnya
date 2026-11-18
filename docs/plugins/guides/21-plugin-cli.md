@@ -51,13 +51,18 @@ v1 access plan：
 | 能力 | 合法值 |
 | --- | --- |
 | internal data | `none | required | write` |
-| conversation files | `none | write` |
+| conversation files | `none | read | write` |
 | external files | `denied` |
 | network | `denied` |
 | GUI control | `denied` |
 | local IPC control | `denied` |
 
 若未来确有新能力，先修改公共合同、威胁模型和端到端测试；不能在某个插件里加可选字段或 fallback。
+
+读取会话文件的命令显式声明 `read`，在 execute 使用 `stageConversationFile(conversation:/...)`。
+Host 沿 Conversation admission 与正式文件检查复制到受管暂存区（50 MiB 上限），不给插件原件路径。
+任务正式接纳副本后调用 `acceptFile()` 转移清理责任；业务拒绝或取消前未接纳的副本由 Host 删除。
+metadata 查询声明 `none`，不会获得该文件能力。`write` 保留原有父 Shell 写权限要求。
 
 ## 4. Launcher 与 native client
 

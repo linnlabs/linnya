@@ -39,7 +39,7 @@ invocation 并等待 lease 释放。Host 不把 token 写入 Agent 环境快照�
 
 - internal data 声明 `none|required|write`，读取和写入都必须继承父 Shell 的 internal-data permission；
 - `internalDataAccess: write` 另需父 Shell 的写入权限，拒绝发生在项目查询、DB/worker 访问之前；
-- conversation files 只能声明 `none|write`，只读父 Shell 不得执行写入；
+- conversation files 声明 `none|read|write`，只读父 Shell 不得执行写入；只有显式读取或写入的命令获得 `stageConversationFile`。它在当前会话 admission 内验证正式 locator 并流式复制到现有上传暂存区，上限 50 MiB；插件接纳前由 Host 清理，接纳后归任务清理，源文件不转交；
 - external files、network、GUI 和 local IPC 固定为 denied。
 
 ## 协议

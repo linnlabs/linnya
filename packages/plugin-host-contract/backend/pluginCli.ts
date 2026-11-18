@@ -1,3 +1,8 @@
+import type { BackendPluginUploadContext } from './pluginIpcRuntime';
+
+/** 只交付 Host 管理的副本，不能据此获得会话原件或任意磁盘路径。 */
+export type BackendPluginCliStagedFile = Pick<BackendPluginUploadContext, 'file' | 'acceptFile'>;
+
 export interface BackendPluginCliResult {
   readonly exitCode: number;
   readonly stdout: string;
@@ -8,7 +13,7 @@ export interface BackendPluginCliResult {
 export interface BackendPluginCliAccessPlan {
   /** required 为内部数据读取；write 同时需要父 Shell 的写入权限。 */
   readonly internalDataAccess: 'none' | 'required' | 'write';
-  readonly conversationFiles: 'none' | 'write';
+  readonly conversationFiles: 'none' | 'read' | 'write';
   readonly externalFiles: 'denied';
   readonly network: 'denied';
   readonly guiControl: 'denied';
@@ -24,6 +29,8 @@ export interface BackendPluginCliExecutionContext {
   readonly agentRunId?: string;
   /** Host 经 Conversation owner 解析的项目归属；不接受 CLI argv 覆盖。 */
   readonly projectId?: string;
+  /** 权限接纳后在当前会话内读取；副本复用上传上限和任务接纳后的文件所有权。 */
+  readonly stageConversationFile?: (locator: string) => Promise<BackendPluginCliStagedFile>;
   readonly signal: AbortSignal;
 }
 
