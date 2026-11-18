@@ -291,8 +291,9 @@ export async function startPluginCliShellBridgeRuntime(input: {
       }
       stage = 'validate_access';
       const access = parsePluginCliAccessPlan(preparation.plan.access);
+      const needsInternalData = access.internalDataAccess !== 'none';
       if (
-        access.internalDataAccess === 'required'
+        needsInternalData
         && lease.launch.permission.internal_data_access !== 'allowed'
       ) {
         throw new PluginCliBridgeFailure(
@@ -302,7 +303,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
         );
       }
       if (
-        access.conversationFiles === 'write'
+        (access.conversationFiles === 'write' || access.internalDataAccess === 'write')
         && lease.launch.permission.effective_level === 'read_only'
       ) {
         throw new PluginCliBridgeFailure(
@@ -314,7 +315,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
       signals.signal.throwIfAborted();
       stage = 'execute';
       const conversationId = lease.launch.proposal.identity.conversation_id;
-      const projectId = access.internalDataAccess === 'required'
+      const projectId = needsInternalData
         ? await input.readConversationProjectId?.(conversationId)
         : undefined;
       signals.signal.throwIfAborted();
@@ -322,7 +323,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
         conversationId,
         agentRunId: lease.launch.proposal.identity.agent_run_id,
         ...(projectId ? { projectId } : {}),
-        hostContext: access.internalDataAccess === 'required'
+        hostContext: needsInternalData
           ? input.internalDataContext
           : Object.freeze({}),
         signal: signals.signal,

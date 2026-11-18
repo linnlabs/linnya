@@ -481,6 +481,50 @@ describe('Plugin CLI Shell bridge', () => {
     await runtime.terminal;
   });
 
+  it.each([
+    { permissionLevel: 'read_only', internalDataAccess: 'allowed', allowed: false },
+    { permissionLevel: 'standard', internalDataAccess: 'denied', allowed: false },
+    { permissionLevel: 'standard', internalDataAccess: 'allowed', allowed: true },
+  ] as const)('内部资料写入继承两道父权限：$permissionLevel / $internalDataAccess', async permission => {
+    const execute = vi.fn(async () => ({ exitCode: 0, stdout: 'updated\n', stderr: '' }));
+    const readConversationProjectId = vi.fn(async () => 'current-project');
+    const internalDataContext = { databaseService: { kind: 'workspace-db' } };
+    const registration = registerCli({
+      prepare: () => ({
+        status: 'ready',
+        plan: {
+          access: {
+            internalDataAccess: 'write',
+            conversationFiles: 'none',
+            externalFiles: 'denied', network: 'denied', guiControl: 'denied', localIpcControl: 'denied',
+          },
+          execute,
+        },
+      }),
+    });
+    const bridge = await startBridge({ registration, internalDataContext, readConversationProjectId });
+    const launch = createLaunch(permission);
+    const prepared = createPreparedRuntime(launch);
+    const scope = bridge.prepareExecution(launch);
+    const runtime = scope.decorate(prepared.runtime);
+    await runtime.start();
+    const endpoint = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_ENDPOINT_ENV];
+    const token = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_TOKEN_ENV];
+    if (!endpoint || !token) throw new Error('bridge environment was not prepared');
+    const response = await invoke({ endpoint, token, argv: ['update'] });
+    if (permission.allowed) {
+      expect(response.frames.at(-1)).toMatchObject({ kind: 'plugin_cli_terminal', exit_code: 0 });
+      expect(readConversationProjectId).toHaveBeenCalledExactlyOnceWith(launch.proposal.identity.conversation_id);
+      expect(execute).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'current-project', hostContext: internalDataContext }));
+    } else {
+      expect(response.frames).toEqual([expect.objectContaining({ kind: 'plugin_cli_failure', code: 'permission_denied', exit_code: 77 })]);
+      expect(readConversationProjectId).not.toHaveBeenCalled();
+      expect(execute).not.toHaveBeenCalled();
+    }
+    prepared.terminal.resolve(createTerminal(launch));
+    await runtime.terminal;
+  });
+
   it('未知插件异常只向 CLI 返回关联号，并把真实阶段和原因交给内部诊断', async () => {
     const cause = new Error('database worker is offline');
     const recordUnexpectedFailure = vi.fn();

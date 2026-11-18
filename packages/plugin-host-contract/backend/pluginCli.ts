@@ -6,7 +6,8 @@ export interface BackendPluginCliResult {
 
 /** 当前 App bridge v1 不开放外部文件、任意网络、GUI 或通用本地 IPC。 */
 export interface BackendPluginCliAccessPlan {
-  readonly internalDataAccess: 'none' | 'required';
+  /** required 为内部数据读取；write 同时需要父 Shell 的写入权限。 */
+  readonly internalDataAccess: 'none' | 'required' | 'write';
   readonly conversationFiles: 'none' | 'write';
   readonly externalFiles: 'denied';
   readonly network: 'denied';

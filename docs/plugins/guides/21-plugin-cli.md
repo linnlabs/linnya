@@ -50,7 +50,7 @@ v1 access plan：
 
 | 能力 | 合法值 |
 | --- | --- |
-| internal data | `none | required` |
+| internal data | `none | required | write` |
 | conversation files | `none | write` |
 | external files | `denied` |
 | network | `denied` |
@@ -109,7 +109,9 @@ Shell authorization/reservation/start
 
 Agent facade 完整继承父 Shell 的权限事实。需要写 conversation 文件时，Skill 必须给 Shell 设置
 `requires_write_access: true`；`read_only` 未经批准时，bridge 在插件接触 DB/worker 前拒绝执行。内部数据
-访问也必须继承父 snapshot 的 `internal_data_access`。
+访问也必须继承父 snapshot 的 `internal_data_access`。修改内部资料或关系的命令声明
+`internalDataAccess: write`，同样需要 Shell 的写入权限；不能假称写 conversation 文件来保护数据库写入。
+`required` 保留为读取内部数据，旧命令合同不变。
 
 插件生成的普通文件放在 Host 提供的 conversation root 下，stdout 返回 `conversation:/...` locator；Agent
 再用 `read_file` 读取。bridge 不把物理 root、DB path、token 或二进制内容写进 stdout。Workspace VFS 与

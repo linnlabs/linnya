@@ -37,7 +37,8 @@ invocation 并等待 lease 释放。Host 不把 token 写入 Agent 环境快照�
 
 插件 `prepare` 只能解析 argv 和返回严格 access plan，不得接触 DB/worker。bridge 在 execute 前验证：
 
-- internal data 只能声明 `none|required`，且必须继承父 Shell 的 internal-data permission；
+- internal data 声明 `none|required|write`，读取和写入都必须继承父 Shell 的 internal-data permission；
+- `internalDataAccess: write` 另需父 Shell 的写入权限，拒绝发生在项目查询、DB/worker 访问之前；
 - conversation files 只能声明 `none|write`，只读父 Shell 不得执行写入；
 - external files、network、GUI 和 local IPC 固定为 denied。
 

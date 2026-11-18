@@ -2,7 +2,7 @@ import type { BackendPluginCliAccessPlan } from '@linnya/plugin-host-contract/ba
 import { z } from 'zod';
 
 const PluginCliAccessPlanSchema = z.object({
-  internalDataAccess: z.enum(['none', 'required']),
+  internalDataAccess: z.enum(['none', 'required', 'write']),
   conversationFiles: z.enum(['none', 'write']),
   externalFiles: z.literal('denied'),
   network: z.literal('denied'),
