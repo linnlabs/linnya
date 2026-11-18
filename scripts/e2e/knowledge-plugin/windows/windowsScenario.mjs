@@ -50,7 +50,13 @@ const upload = async (name, bytes, extra = {}) => {
   });
   const id = response.document.id;
   const completed = await until(
-    docs,
+    async () => {
+      // 无正文的失败资料可能被正式清理；读取保留的任务结果，不能等不存在的文档超时掩盖根因。
+      const statuses = await application.plugin('task-status', { docIds: [id] });
+      const status = statuses[id];
+      assert.notEqual(status?.status, 'failed', `${name}: ${status?.error ?? status?.message}`);
+      return docs();
+    },
     values => values.some(doc => doc.id === id && ['completed', 'failed'].includes(doc.status)),
     `Ingestion: ${name}`,
     180_000
