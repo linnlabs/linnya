@@ -66,11 +66,12 @@ const upload = async (name, bytes, extra = {}) => {
   assert.equal(doc.hasSource, true);
   return doc;
 };
-const search = () =>
+const search = (documentId) =>
   application.plugin('search', {
     kbId,
     request: {
       query: 'apple',
+      ...(documentId ? { filter: { docIds: [documentId] } } : {}),
       useReranking: true,
       embeddingModelId: embeddingId,
       rerankModelId: rerankId,
@@ -167,7 +168,20 @@ try {
       },
     })
   ).model_id;
-  kbId = (await application.plugin('create', { name: kbName })).id;
+  // 实际用户在当前已打开页面创建；直接 IPC 造库不会执行 Renderer 创建用例的目录刷新。
+  await application.clickText('新建知识库');
+  await application.clickElement('document.querySelector("#new-kb-name")');
+  await application.typeText(kbName);
+  await application.clickText('创建');
+  await until(
+    () => application.evaluate('Boolean(document.querySelector("#new-kb-name"))'),
+    value => !value,
+    'Creation dialog closes'
+  );
+  const created = (await application.plugin('list')).find(item => item.name === kbName);
+  assert.ok(created, 'Actual create dialog persists a library identity');
+  kbId = created.id;
+  await application.screenshot(path.join(evidence, 'created-library.png'));
   await application.plugin('update-settings', {
     kbId,
     settings: { embeddingModelId: embeddingId, rerankModelId: rerankId, enableGraphIndexing: true },
@@ -306,7 +320,10 @@ try {
       true
     );
     assert.ok((await docs()).some(doc => doc.id === graphDocument.id));
-    assert.ok((await search()).results.some(result => result.docId === graphDocument.id));
+    // 持久性要求指定原文仍能检索，不要求 7 份同词资料中的某一份始终排在默认前 5。
+    const restoredSearch = await search(graphDocument.id);
+    details.searchAfterRestart = restoredSearch;
+    assert.ok(restoredSearch.results.some(result => result.docId === graphDocument.id));
   });
   await check('正常删除知识库清理真实SQLite、原文和PDF', async () => {
     const before = await docs();

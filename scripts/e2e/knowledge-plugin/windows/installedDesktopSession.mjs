@@ -133,6 +133,9 @@ export async function launchInstalledDesktop(executable, root) {
         `[...document.querySelectorAll('button,a,[role="button"],.card-title')].find(e=>e.textContent.trim()===${JSON.stringify(text)}||e.getAttribute('aria-label')===${JSON.stringify(text)})`
       );
     },
+    async typeText(text) {
+      await cdp.send('Input.insertText', { text });
+    },
     async screenshot(file) {
       const image = await cdp.send('Page.captureScreenshot', { format: 'png' });
       await writeFile(file, Buffer.from(image.data, 'base64'));
