@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { hostRendererExternalUrls } from '../../../../../packages/plugins/rendererHostExternalMap.mjs';
 import {
   rendererUiPluginRuntimeEntries,
@@ -9,6 +9,18 @@ import {
 import {
   RENDERER_MODULE_RESOLUTION_CATALOG,
 } from '../../../../../scripts/build/renderer-module-resolution/definitions/rendererModuleResolutionCatalog.js';
+
+const protocolHandlers = vi.hoisted(
+  () => new Map<string, (request: Request) => Response | Promise<Response>>()
+);
+vi.mock('electron', () => ({
+  net: { fetch },
+  protocol: {
+    handle: (scheme: string, handler: (request: Request) => Response | Promise<Response>) =>
+      protocolHandlers.set(scheme, handler),
+  },
+}));
+import { registerPluginProtocolHandler } from '../../../../../src/electron-main/plugins/loader/pluginProtocol';
 
 const root = process.cwd();
 const workspacePluginRoot = 'packages/plugins';
@@ -331,22 +343,28 @@ describe('renderer plugin host external boundary', () => {
     for (const match of contract.matchAll(/export declare function (\w+)/g)) expect(exports).toContain(match[1]);
   });
 
-  it('maps Vue and Pinia singletons to plugin://host URLs instead of browser bare specifiers', () => {
+  it('maps Vue and Pinia singletons to plugin://host URLs instead of browser bare specifiers', async () => {
     const runtimeModuleIds = new Set(collectRuntimeImports().map((runtimeImport) => runtimeImport.moduleId));
-    const pluginProtocolSource = readRepoFile('src/electron-main/plugins/loader/pluginProtocol.ts');
     const externalMapSource = readRepoFile(externalMapPath);
     const vueRuntimeImports = collectRuntimeImportsByModule('vue');
     const piniaRuntimeImports = collectRuntimeImportsByModule('pinia');
 
     expect(runtimeModuleIds.has('vue')).toBe(true);
     expect(runtimeModuleIds.has('pinia')).toBe(true);
-    expect(pluginProtocolSource).toContain("['/vue.js'");
-    expect(pluginProtocolSource).toContain("['/pinia.js'");
-    for (const importedName of vueRuntimeImports) {
-      expect(pluginProtocolSource).toContain(`export const ${importedName} = host.${importedName};`);
-    }
-    for (const importedName of piniaRuntimeImports) {
-      expect(pluginProtocolSource).toContain(`export const ${importedName} = host.${importedName};`);
+    registerPluginProtocolHandler();
+    const handler = protocolHandlers.get('plugin');
+    if (!handler) throw new Error('Plugin protocol handler not registered');
+    // 检查浏览器实际收到的 ESM，而非锁定 Host 是手写还是生成导出名单。
+    for (const [moduleName, importedNames] of [
+      ['vue', vueRuntimeImports],
+      ['pinia', piniaRuntimeImports],
+    ] as const) {
+      const response = await handler(new Request(`plugin://host/${moduleName}.js`));
+      expect(response.status).toBe(200);
+      const exportedNames = parseRuntimeExportNames(await response.text());
+      for (const importedName of importedNames) {
+        expect(exportedNames, `${moduleName} must export ${importedName}`).toContain(importedName);
+      }
     }
 
     expect(externalMapSource).toContain("vue: 'plugin://host/vue.js'");
