@@ -13,7 +13,7 @@ interface KnowledgeBaseMaintenanceDeps {
   sotRepository: SotRepository; originalDocumentRepository: OriginalDocumentRepository;
   knowledgeGraphRepository: KnowledgeGraphRepository; activity: KnowledgeActivityOwner;
 }
-/** 首次实际向量访问后调度一次，普通启动和原文读取不会启动向量维护。 */
+/** 界面首次实际向量访问后调度一次，普通启动、原文读取与项目 CLI 不触发全库维护。 */
 export function scheduleKnowledgeMaintenance(deps: KnowledgeBaseMaintenanceDeps) {
   const controller = new AbortController();
   const completion = delay(10_000, undefined, { signal: controller.signal })

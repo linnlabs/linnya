@@ -15,6 +15,12 @@
   "dependsOn": [
     "platform"
   ],
+  "skills": [
+    {
+      "name": "knowledge-management",
+      "description": "查看当前项目的知识库、导入或删除资料、重建索引和解除项目关联。"
+    }
+  ],
   "compat": {
     "minApp": "0.2.1",
     "rendererUi": "^3.5.0"

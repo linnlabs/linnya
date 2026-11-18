@@ -243,26 +243,22 @@ export class ProjectKnowledgeBaseLinksService {
 
     const row = db
       .prepare('SELECT * FROM project_knowledge_base_links WHERE project_id = ? AND kb_id = ?')
-      .get(projectId, kbId) as
-      | {
-          project_id: string;
-          kb_id: string;
-          role: string;
-          created_at: number;
-          updated_at: number;
-        }
-      | undefined;
+      .get(projectId, kbId);
 
     if (!row) {
       return undefined;
     }
 
+    const record = z.object({
+      project_id: z.string(), kb_id: z.string(), role: z.enum(['read_only', 'read_write']),
+      created_at: z.number(), updated_at: z.number(),
+    }).parse(row);
     return {
-      projectId: row.project_id,
-      kbId: row.kb_id,
-      role: row.role as 'read_only' | 'read_write',
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+      projectId: record.project_id,
+      kbId: record.kb_id,
+      role: record.role,
+      createdAt: record.created_at,
+      updatedAt: record.updated_at,
     };
   }
 

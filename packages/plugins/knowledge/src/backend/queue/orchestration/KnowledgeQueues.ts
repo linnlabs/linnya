@@ -7,6 +7,7 @@ import {
   type PluginWorkerJob,
 } from '@plugin/backend/workerQueue';
 import type { KnowledgeActivityOwner } from '../../runtime/orchestration/createKnowledgeActivityOwner';
+import type { KnowledgeExecution } from '../../runtime/definitions/knowledgeExecution';
 import type {
   KnowledgeActivityKind,
   KnowledgeActivityLease,
@@ -44,7 +45,7 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
   private readonly indexing: PluginWorkerQueue<IndexingQueued>;
   private readonly leases = new Map<
     string,
-    { lease: KnowledgeActivityLease; removeAbort(): void }
+    { lease: KnowledgeActivityLease; removeAbort(): void; execution?: KnowledgeExecution; settled(): void }
   >();
   private readonly unsubscribe: Array<() => void> = [];
   private accepting = true;
@@ -134,6 +135,7 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
     if (!owned) return;
     owned.removeAbort();
     owned.lease.release();
+    owned.settled();
     this.leases.delete(id);
   }
 
@@ -141,10 +143,15 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
     input: T,
     kind: KnowledgeActivityKind,
     queue: PluginWorkerQueue<T>,
-    prepare: (signal: AbortSignal) => Promise<T>
+    prepare: (signal: AbortSignal) => Promise<T>,
+    execution?: KnowledgeExecution
   ): Promise<string> {
     if (!this.accepting) throw new Error('知识库正在停用，不能开始新任务');
+    execution?.signal.throwIfAborted();
     const lease = this.options.activity.begin(input.kbId, kind);
+    const signal = execution ? AbortSignal.any([lease.signal, execution.signal]) : lease.signal;
+    let settled = () => {};
+    if (execution) execution.track(new Promise<void>(resolve => { settled = resolve; }));
     const abort = () => {
       void queue
         .cancelJob(input.taskId)
@@ -155,16 +162,18 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
           })
         );
     };
-    lease.signal.addEventListener('abort', abort, { once: true });
+    signal.addEventListener('abort', abort, { once: true });
     this.leases.set(input.taskId, {
       lease,
-      removeAbort: () => lease.signal.removeEventListener('abort', abort),
+      execution,
+      settled,
+      removeAbort: () => signal.removeEventListener('abort', abort),
     });
     try {
-      const prepared = await prepare(lease.signal);
-      lease.signal.throwIfAborted();
-      const id = await queue.addJob(input.taskId, prepared);
-      if (lease.signal.aborted) await queue.cancelJob(id);
+      const prepared = await prepare(signal);
+      signal.throwIfAborted();
+      const id = await queue.addJob(input.taskId, prepared, execution);
+      if (signal.aborted) await queue.cancelJob(id);
       return id;
     } catch (error) {
       this.release(input.taskId);
@@ -179,27 +188,27 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
     };
   }
 
-  async addIngestionTask(input: JobInput<IngestionJobPayload>): Promise<string> {
+  async addIngestionTask(input: JobInput<IngestionJobPayload>, execution?: KnowledgeExecution): Promise<string> {
     const task = {
-      ...(this.options.prepareIngestion?.(input) ?? input),
+      ...(execution ? input : this.options.prepareIngestion?.(input) ?? input),
       runtime: this.paths(input.taskId),
     };
     return this.admit(task, 'ingestion', this.ingestion, async signal => ({
       ...task,
       ocrTemporaryDirectory: task.runtime.temporaryDirectory,
       runtime: { ...task.runtime, qdrantUrl: await this.options.resolveVectorUrl(signal) },
-    }));
+    }), execution);
   }
-  async addGraphExtractionTask(input: JobInput<GraphExtractionJobPayloadInput>): Promise<string> {
+  async addGraphExtractionTask(input: JobInput<GraphExtractionJobPayloadInput>, execution?: KnowledgeExecution): Promise<string> {
     const task = { ...input, runtime: this.paths(input.taskId) };
-    return this.admit(task, 'graph', this.extraction, async () => task);
+    return this.admit(task, 'graph', this.extraction, async () => task, execution);
   }
-  async addGraphIndexingTask(input: JobInput<GraphIndexingJobPayloadInput>): Promise<string> {
+  async addGraphIndexingTask(input: JobInput<GraphIndexingJobPayloadInput>, execution?: KnowledgeExecution): Promise<string> {
     const task = { ...input, runtime: this.paths(input.taskId) };
     return this.admit(task, 'graph', this.indexing, async signal => ({
       ...task,
       runtime: { ...task.runtime, qdrantUrl: await this.options.resolveVectorUrl(signal) },
-    }));
+    }), execution);
   }
   listIngestionTasks() {
     return this.ingestion.listJobs();
@@ -212,6 +221,9 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
   }
   getTaskById(id: string) {
     return this.ingestion.getJob(id);
+  }
+  getExecution(id: string): KnowledgeExecution | undefined {
+    return this.leases.get(id)?.execution;
   }
   cancelIngestionTask(id: string) {
     return this.ingestion.cancelJob(id);

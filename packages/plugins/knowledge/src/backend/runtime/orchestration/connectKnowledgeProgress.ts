@@ -72,11 +72,12 @@ export function connectKnowledgeProgress(
           stage_progress: 100,
         });
       if (duplicate) {
-        const cleanup = Promise.all([
+        const operation = Promise.all([
           originals.delete(job.data.kbId, job.data.docId),
           rm(job.data.filePath, { force: true }),
-        ])
-          .then(() => undefined)
+        ]).then(() => undefined);
+        queues.getExecution(event.taskId)?.track(operation);
+        const cleanup = operation
           .catch(error => logger.error('清理本次重复上传失败', { docId: job.data.docId, error }))
           .finally(() => cleanups.delete(cleanup));
         cleanups.add(cleanup);

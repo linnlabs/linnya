@@ -1,15 +1,25 @@
-import { watch } from 'node:fs';
 import { mkdtemp, mkdir, open, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deriveConversationWorkDirectoryIdentity } from 'src/domains/conversation-files';
 import type { ConversationWorkDirectoryAdmissionPort } from '../../application/conversation-lifecycle';
 import { createConversationFileInputSession } from './createConversationFileInputSession';
 import { PLUGIN_INPUT_MAX_BYTES } from './createPluginFileStage';
 
 const cleanups: Array<() => Promise<void>> = [];
+let onFirstChunk: (() => void) | undefined;
+vi.mock('node:fs', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return { ...actual, createReadStream: (...args: Parameters<typeof actual.createReadStream>) => {
+    const stream = actual.createReadStream(...args);
+    // 仍是实际文件流；取消点绑定真实复制进展，不能依赖可能迟到的 OS 目录通知。
+    stream.once('data', () => onFirstChunk?.());
+    return stream;
+  } };
+});
 afterEach(async () => {
+  onFirstChunk = undefined;
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
@@ -90,15 +100,11 @@ describe('conversation import source ownership', () => {
     await file.write('original');
     await file.close();
     let observedAdmission = false;
-    const observer = watch(f.temporaryDirectory, () => {
+    onFirstChunk = () => {
       observedAdmission = f.isReading();
       f.controller.abort(new Error('parent execution cancelled'));
-    });
-    try {
-      await expect(f.session.stage('conversation:/large.pdf')).rejects.toThrow();
-    } finally {
-      observer.close();
-    }
+    };
+    await expect(f.session.stage('conversation:/large.pdf')).rejects.toThrow();
     expect(observedAdmission).toBe(true);
     expect(f.isReading()).toBe(false);
     expect(await readdir(f.temporaryDirectory)).toEqual([]);

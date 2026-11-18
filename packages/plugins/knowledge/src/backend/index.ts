@@ -8,6 +8,7 @@ import { knowledgeToolClasses } from './tools';
 import { knowledgeAgentDefinitions } from './agents';
 import { createKnowledgeRuntime, type KnowledgeRuntime } from './runtime/orchestration/createKnowledgeRuntime';
 import { createKnowledgeIpc } from './runtime/orchestration/createKnowledgeIpc';
+import { createKnowledgeCli } from './cli/orchestration/createKnowledgeCli';
 
 const logger = new Logger('KnowledgePlugin');
 let runtime: KnowledgeRuntime | undefined;
@@ -26,6 +27,7 @@ const contribution: PluginBackendContribution = {
   toolClasses: knowledgeToolClasses,
   agentDefinitions: knowledgeAgentDefinitions,
   ipc: createKnowledgeIpc(requireRuntime),
+  pluginCli: createKnowledgeCli(requireRuntime),
   multipartUpload: { channel: 'upload-document' },
   rendererPush: { channels: ['task-status-updated', 'graph-progress-updated'] },
   runtimeEffects: [{

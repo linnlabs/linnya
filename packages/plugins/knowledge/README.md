@@ -47,3 +47,14 @@ Node Worker 不继承 Backend 主线程的 SDK 模块加载钩子，数据库、
 
 Worker 依赖由 Host 固定 bootstrap 在已准入 artifact 范围解析，不能依赖工作目录、源码 node_modules 或自设 NODE_PATH。
 `dist/.metadata` 的实际构建图与 ZIP 校验必须保持一致，原生 external 按 bootstrap 的精确 7 个 specifier 核对。
+
+## 项目 CLI
+
+[`src/backend/cli`](./src/backend/cli/README.md) 拥有 `linnya-knowledge` 的参数、项目授权和结果。
+Agent 使用 [`knowledge-management`](./resources/skills/knowledge-management/SKILL.md)；Skill 随 artifact 装配与停用撤销。
+CLI 只管理当前项目已关联的库。导入与索引重建使用父 Shell 冻结的用途 ID，以及 Host 按本次 invocation
+授予的推理端口；这些主线程事实不进入 Worker payload、模型路由或持久化表。
+
+全库一致性维护与历史图谱回填由界面实际使用向量功能后一次调度；项目 CLI 的首次向量操作只处理其目标，
+不会顺带回填其他库。元数据读取保持冷态。取消等待本次摄入、派生图谱抽取/索引、既有重试和 Host 请求收口，
+不 drain 同库用户同时发起的其他任务。返回成功还必须验证文档与图谱的持久化终态，线程结束本身不代表业务成功。

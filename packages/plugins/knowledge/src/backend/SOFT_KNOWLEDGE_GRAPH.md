@@ -77,7 +77,7 @@ type RelationEdge = {
 > 重要：队列本身保持通用（`task-queue`），知识库领域逻辑集中在 `KnowledgeGraphQueueOrchestrator`（高内聚、低耦合）。
 
 - **触发入口**：`ingestion:taskCompleted` 事件
-  - 编排器：`src/features/knowledge-base/graph/application/knowledgeGraphQueueOrchestrator.ts`
+  - 编排器：`packages/plugins/knowledge/src/backend/graph/application/knowledgeGraphQueueOrchestrator.ts`
   - 行为：摄入完成后自动尝试为该 doc 入队图谱抽取（Graph Extraction）
 - **抽取完成后串联索引**：`graphExtraction:taskCompleted` 事件
   - 行为：抽取完成后自动入队图谱向量化（Graph Indexing），将 nodes/edges 写入 Qdrant
@@ -158,7 +158,7 @@ type RelationEdge = {
 - **不改变 RAG 的召回与排序**：Soft Graph 只“追加结构化地图/补漏证据块”，不把图谱结果塞回主排序链路
 - **No Evidence, No Graph**：无证据不输出（写库时就要求 evidence_doc_id/evidence_block_id）
 
-实现落点（高内聚拆分）：`src/features/knowledge-base/application/search/graphEnhancedAgentSearch.ts`
+实现落点（高内聚拆分）：`packages/plugins/knowledge/src/backend/application/search/graphEnhancedAgentSearch.ts`
 
 #### 3.2.2 QueryVector：单一真实来源（性能与一致性）
 

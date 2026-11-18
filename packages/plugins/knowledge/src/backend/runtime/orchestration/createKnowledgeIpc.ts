@@ -191,6 +191,9 @@ export function createKnowledgeIpc(
             signal.throwIfAborted();
             const result = await operation(runtime, payload, signal, event);
             signal.throwIfAborted();
+            if (['search', 'upload-document', 'rebuild-index', 'continue-failed-pages'].includes(channel)) {
+          runtime.startInteractiveMaintenance();
+            }
             return { success: true, data: result };
           } catch (error) {
             const fallback = fallbackKeys[channel];

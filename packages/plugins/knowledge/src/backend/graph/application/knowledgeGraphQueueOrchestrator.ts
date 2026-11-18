@@ -26,6 +26,7 @@ import type {
   GraphIndexingJobPayloadInput,
 } from '../../queue/definitions/jobs';
 import type { KnowledgeQueues } from '../../queue/orchestration/KnowledgeQueues';
+import type { KnowledgeExecution } from '../../runtime/definitions/knowledgeExecution';
 import type { KnowledgeDatabase } from '../../definitions/knowledgeDatabase';
 import {
   getGraphEdgesCollectionName,
@@ -79,7 +80,7 @@ export class KnowledgeGraphQueueOrchestrator {
    */
   private readonly graphExtractionRetryState = new Map<
     string,
-    { attempts: number; timer: ReturnType<typeof setTimeout> | null }
+    { attempts: number; timer: ReturnType<typeof setTimeout> | null; release?: () => void }
   >();
 
   constructor(deps: {
@@ -113,7 +114,8 @@ export class KnowledgeGraphQueueOrchestrator {
         this.logger.info(
           `收到 ingestion:taskCompleted，尝试触发图谱抽取入队: ingestionTaskId=${taskId}`
         );
-        this.runBackground(this.tryEnqueueAfterIngestion(taskId), '摄入完成后图谱抽取入队失败');
+        const execution = this.queueManager.getExecution(taskId);
+        this.runBackground(this.tryEnqueueAfterIngestion(taskId, execution), '摄入完成后图谱抽取入队失败', execution);
       })
     );
 
@@ -125,7 +127,8 @@ export class KnowledgeGraphQueueOrchestrator {
       })
     );
     this.subscriptions.push(
-      this.queueManager.subscribeToEvent('graphExtraction:taskCompleted', ({ result }) => {
+      this.queueManager.subscribeToEvent('graphExtraction:taskCompleted', ({ taskId, result }) => {
+        const execution = this.queueManager.getExecution(taskId);
         const kbId = readStringField(result as MaybeKbIdCarrier, 'kbId');
         const docId = readStringField(result as MaybeKbIdCarrier, 'docId');
         if (kbId) this.graphProgressService.onDocProgress(kbId);
@@ -133,8 +136,9 @@ export class KnowledgeGraphQueueOrchestrator {
         // 抽取完成后：尝试触发“图谱向量索引”（不阻塞抽取完成）
         if (kbId && docId) {
           this.runBackground(
-            this.tryEnqueueIndexingAfterGraphExtraction(kbId, docId),
-            `抽取完成后图谱索引入队失败: kbId=${kbId}, docId=${docId}`
+            this.tryEnqueueIndexingAfterGraphExtraction(kbId, docId, execution),
+            `抽取完成后图谱索引入队失败: kbId=${kbId}, docId=${docId}`,
+            execution
           );
         }
       })
@@ -142,12 +146,14 @@ export class KnowledgeGraphQueueOrchestrator {
 
     this.subscriptions.push(
       this.queueManager.subscribeToEvent('graphExtraction:taskFailed', ({ taskId, error }) => {
+        const execution = this.queueManager.getExecution(taskId);
         this.logger.warn(
           `graphExtraction:taskFailed: taskId=${taskId}${error ? `, error=${error}` : ''}`
         );
         this.runBackground(
-          this.tryAutoRetryGraphExtraction(taskId, error),
-          `图谱抽取重试调度失败: taskId=${taskId}`
+          this.tryAutoRetryGraphExtraction(taskId, error, execution),
+          `图谱抽取重试调度失败: taskId=${taskId}`,
+          execution
         );
       })
     );
@@ -186,13 +192,13 @@ export class KnowledgeGraphQueueOrchestrator {
       })
     );
 
-    // 3) 启动回填：打开 App 时补齐历史文档（不阻塞启动）
-    // 历史图谱补齐由首次实际知识库使用触发，普通 App 启动只注册监听。
+    // 历史图谱补齐由界面实际向量操作触发；普通启动及项目 CLI 只注册监听。
 
     this.logger.info('✅ 已启动图谱队列编排器（自动入队 + 回填 + 进度推送）');
   }
 
-  private runBackground(operation: Promise<void>, diagnostic: string): void {
+  private runBackground(operation: Promise<void>, diagnostic: string, execution?: KnowledgeExecution): void {
+    execution?.track(operation);
     const pending = operation
       .catch(error => this.logger.warn(diagnostic, error))
       .finally(() => this.pendingOperations.delete(pending));
@@ -201,8 +207,10 @@ export class KnowledgeGraphQueueOrchestrator {
 
   async stop(): Promise<void> {
     this.stopped = true;
-    for (const state of this.graphExtractionRetryState.values())
+    for (const state of this.graphExtractionRetryState.values()) {
       if (state.timer) clearTimeout(state.timer);
+      state.release?.();
+    }
     this.graphExtractionRetryState.clear();
     for (const unsubscribe of this.subscriptions) unsubscribe();
     this.graphProgressService.dispose();
@@ -262,6 +270,7 @@ export class KnowledgeGraphQueueOrchestrator {
     const state = this.graphExtractionRetryState.get(key);
     if (!state) return;
     if (state.timer) clearTimeout(state.timer);
+    state.release?.();
     this.graphExtractionRetryState.delete(key);
   }
 
@@ -273,7 +282,8 @@ export class KnowledgeGraphQueueOrchestrator {
    * - KB 未关闭图谱构建；
    * - 当前 doc 未处于 extractionQueue 的 RUNNING/PENDING（避免重复入队）。
    */
-  private async tryAutoRetryGraphExtraction(taskId: string, error?: string): Promise<void> {
+  private async tryAutoRetryGraphExtraction(taskId: string, error?: string, execution?: KnowledgeExecution): Promise<void> {
+    if (execution?.signal.aborted || this.stopped) return;
     if (!this.isRetriableGraphExtractionError(error)) return;
 
     const payload = this.findGraphExtractionTaskPayload(taskId);
@@ -324,9 +334,17 @@ export class KnowledgeGraphQueueOrchestrator {
       `图谱抽取失败（可恢复），将自动重试: kbId=${kbId}, docId=${docId}, attempt=${nextAttempt}/${maxAttempts}, waitMs=${waitMs}`
     );
 
+    let releaseWait: () => void = () => {};
+    if (execution) execution.track(new Promise<void>(resolve => { releaseWait = resolve; }));
+    const release = () => {
+      execution?.signal.removeEventListener('abort', cancelRetry);
+      releaseWait();
+    };
+    const cancelRetry = () => this.clearRetryTimer(kbId, docId);
     const timer = setTimeout(() => {
       this.runBackground(
         (async () => {
+          execution?.signal.throwIfAborted();
           // 触发时再检查一次开关与队列状态
           const enabledNow = await this.isGraphIndexingEnabledForKb(kbId);
           if (!enabledNow) {
@@ -351,6 +369,7 @@ export class KnowledgeGraphQueueOrchestrator {
 
           // 入队前先写 queued，确保进度聚合能“看到分母”
           if (this.stopped) return;
+          execution?.signal.throwIfAborted();
           await this.graphProgressService.onDocQueued(kbId, docId, chunkCount);
 
           // 自动重试必须复用失败 job 的显式模型，避免同一文档在重试时悄悄换模型。
@@ -377,22 +396,26 @@ export class KnowledgeGraphQueueOrchestrator {
             `图谱抽取自动重试入队: kbId=${kbId}, docId=${docId}, modelId=${llmModelId}`
           );
           if (this.stopped) return;
-          await this.queueManager.addGraphExtractionTask(nextPayload);
+          await this.queueManager.addGraphExtractionTask(nextPayload, execution);
           this.graphProgressService.onDocProgress(kbId);
         })().finally(() => {
           // timer 触发后清理占位，更新 attempts
-          if (!this.stopped)
+          release();
+          if (!this.stopped && !execution?.signal.aborted)
             this.graphExtractionRetryState.set(key, { attempts: nextAttempt, timer: null });
         }),
-        `图谱抽取重试失败: kbId=${kbId}, docId=${docId}`
+        `图谱抽取重试失败: kbId=${kbId}, docId=${docId}`,
+        execution
       );
     }, waitMs);
 
-    if (this.stopped) {
+    if (this.stopped || execution?.signal.aborted) {
       clearTimeout(timer);
+      release();
       return;
     }
-    this.graphExtractionRetryState.set(key, { attempts: nextAttempt, timer });
+    this.graphExtractionRetryState.set(key, { attempts: nextAttempt, timer, release });
+    execution?.signal.addEventListener('abort', cancelRetry, { once: true });
   }
 
   /**
@@ -478,6 +501,13 @@ export class KnowledgeGraphQueueOrchestrator {
   refreshKbGraphProgress(kbId: string): void {
     this.graphProgressService.onDocProgress(kbId);
   }
+  async getDocumentWorkStatus(kbId: string, docId: string) {
+    const [extraction, indexing] = await Promise.all([
+      this.graphRepo.getDocStatus(kbId, docId),
+      this.graphRepo.getVectorDocStatus(kbId, docId),
+    ]);
+    return { extraction, indexing };
+  }
 
   /**
    * 当用户关闭“图谱构建”开关时：
@@ -542,6 +572,7 @@ export class KnowledgeGraphQueueOrchestrator {
   private hasGraphExtractionTaskForDoc(kbId: string, docId: string): boolean {
     const tasks = this.queueManager.listGraphExtractionTasks();
     for (const t of tasks) {
+      if (t.state !== 'pending' && t.state !== 'running') continue;
       const tKbId = readStringField(t.data, 'kbId');
       const tDocId = readStringField(t.data, 'docId');
       if (tKbId === kbId && tDocId === docId) return true;
@@ -552,6 +583,7 @@ export class KnowledgeGraphQueueOrchestrator {
   private hasGraphIndexingTaskForDoc(kbId: string, docId: string): boolean {
     const tasks = this.queueManager.listGraphIndexingTasks();
     for (const t of tasks) {
+      if (t.state !== 'pending' && t.state !== 'running') continue;
       const tKbId = readStringField(t.data, 'kbId');
       const tDocId = readStringField(t.data, 'docId');
       if (tKbId === kbId && tDocId === docId) return true;
@@ -565,7 +597,8 @@ export class KnowledgeGraphQueueOrchestrator {
     throw new Error(`知识库 ${kbId} 缺少 embedding 索引出身，无法构建图谱向量`);
   }
 
-  private async tryEnqueueIndexingAfterGraphExtraction(kbId: string, docId: string): Promise<void> {
+  private async tryEnqueueIndexingAfterGraphExtraction(kbId: string, docId: string, execution?: KnowledgeExecution): Promise<void> {
+    execution?.signal.throwIfAborted();
     if (!(await this.isGraphIndexingEnabledForKb(kbId))) {
       this.logger.info(`图谱构建已关闭，跳过图谱索引入队: kbId=${kbId}, docId=${docId}`);
       return;
@@ -602,10 +635,11 @@ export class KnowledgeGraphQueueOrchestrator {
     );
 
     if (this.stopped) return;
-    await this.queueManager.addGraphIndexingTask(payload);
+    await this.queueManager.addGraphIndexingTask(payload, execution);
   }
 
-  private async tryEnqueueAfterIngestion(taskId: string): Promise<void> {
+  private async tryEnqueueAfterIngestion(taskId: string, execution?: KnowledgeExecution): Promise<void> {
+    execution?.signal.throwIfAborted();
     const task = this.queueManager.getTaskById(taskId);
     if (!task) {
       this.logger.warn(
@@ -685,6 +719,7 @@ export class KnowledgeGraphQueueOrchestrator {
     }
 
     if (this.stopped) return;
+    execution?.signal.throwIfAborted();
     await this.graphProgressService.onDocQueued(kbId, docId, chunkCount);
 
     const payload: GraphExtractionJobPayloadInput = {
@@ -702,7 +737,7 @@ export class KnowledgeGraphQueueOrchestrator {
       `图谱抽取入队（from ingestion）: kbId=${kbId}, docId=${docId}, chunkCount=${chunkCount}, modelId=${llmModelId}`
     );
     if (this.stopped) return;
-    await this.queueManager.addGraphExtractionTask(payload);
+    await this.queueManager.addGraphExtractionTask(payload, execution);
   }
 
   /**

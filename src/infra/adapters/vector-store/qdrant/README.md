@@ -71,11 +71,11 @@ qdrant/
   - 何时触发启动维护
   - 何时重建 collection
 - 上述业务语义应由知识库特性层实现，例如：
-  - `src/features/knowledge-base/infrastructure/QdrantRepositoryImpl.ts`
-  - `src/features/knowledge-base/infrastructure/qdrant-repository/chunkCollectionRecreate.ts`
-  - `src/features/knowledge-base/infrastructure/qdrant-repository/startupChunkCollectionMaintenance.ts`
-  - `src/features/knowledge-base/infrastructure/qdrant-repository/segmentPolicy.ts`
-  - `src/features/knowledge-base/infrastructure/qdrant-repository/collectionAccess.ts`
+  - `packages/plugins/knowledge/src/backend/infrastructure/QdrantRepositoryImpl.ts`
+  - `packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/chunkCollectionRecreate.ts`
+  - `packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/startupChunkCollectionMaintenance.ts`
+  - `packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/segmentPolicy.ts`
+  - `packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/collectionAccess.ts`
 
 ### 7) 本地进程运行时
 

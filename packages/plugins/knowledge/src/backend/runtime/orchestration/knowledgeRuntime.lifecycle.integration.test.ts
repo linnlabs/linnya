@@ -19,6 +19,8 @@ import { createKnowledgeActivityOwner } from './createKnowledgeActivityOwner';
 import knowledgePlugin from '../../index';
 import { getKnowledgeToolRuntime } from '../../tools/runtime/knowledgeToolRuntime';
 import type { BackendPluginIpcHandler } from '@plugin/backend/pluginIpcRuntime';
+import { createKnowledgeCli } from '../../cli/orchestration/createKnowledgeCli';
+import type { BackendPluginCliExecutionContext } from '@plugin/backend/pluginCli';
 
 let root: string;
 let database: Database.Database;
@@ -121,6 +123,65 @@ async function addJob(id: string, filename = 'running.pdf') {
 }
 
 describe('knowledge activation persistence and drain', () => {
+  it('CLI 准备不访问 runtime；真实项目范围只读、无模型且不启动向量，不能用 A 的库删除 B 的资料', async () => {
+    const unavailable = vi.fn((): KnowledgeRuntime => { throw new Error('must not access runtime in prepare'); });
+    const help = createKnowledgeCli(unavailable).prepare({ argv: ['--help'], invocationId: 'help', conversationRoot: root });
+    expect(help.status).toBe('completed');
+    expect(createKnowledgeCli(unavailable).prepare({ argv: ['list'], invocationId: 'list', conversationRoot: root }).status).toBe('ready');
+    expect(unavailable).not.toHaveBeenCalled();
+    runtime = await createKnowledgeRuntime();
+    const a = await runtime.service.createKnowledgeBase('A');
+    const b = await runtime.service.createKnowledgeBase('B');
+    database.prepare('INSERT INTO projects(id) VALUES (?)').run('project-a');
+    database.prepare('INSERT INTO project_knowledge_base_links(project_id,kb_id,role,created_at,updated_at) VALUES (?,?,?,?,?)').run('project-a', a.id, 'read_write', Date.now(), Date.now());
+    await runtime.metadata.addDocument(createDocument('private-b', b.id, 'private.md', 12));
+    await runtime.sot.save('private-b', source('private-b'));
+    const cli = createKnowledgeCli(() => { if (!runtime) throw new Error('missing runtime'); return runtime; });
+    const context: BackendPluginCliExecutionContext = { hostContext: undefined, projectId: 'project-a', signal: new AbortController().signal };
+    async function run(argv: string[]) {
+      const prepared = cli.prepare({ argv, invocationId: 'metadata', conversationRoot: root });
+      if (prepared.status !== 'ready') return prepared.result;
+      expect(prepared.plan.access.hostInference).toBeUndefined();
+      expect(prepared.plan.access.conversationFiles).toBe('none');
+      return prepared.plan.execute(context);
+    }
+    const listed = await run(['list']);
+    expect(listed.exitCode).toBe(0);
+    expect(JSON.parse(listed.stdout)).toMatchObject({ data: { libraries: [{ id: a.id, role: 'read_write', implicit: false }] } });
+    expect(listed.stdout).not.toContain(b.id);
+    expect((await run(['documents', 'list', '--kb', b.id])).exitCode).toBe(77);
+    expect((await run(['documents', 'delete', '--kb', a.id, '--document', 'private-b'])).exitCode).toBe(1);
+    expect(await runtime.sot.get('private-b')).toEqual(source('private-b'));
+    expect(await runtime.metadata.getDocumentById('private-b')).toMatchObject({ kbId: b.id });
+    const status = await run(['index', 'status', '--kb', a.id]);
+    expect(JSON.parse(status.stdout)).toMatchObject({ data: { identity: { modelId: null, spaceId: null }, rebuild: null } });
+    expect(vectorStarts).toBe(0);
+  });
+  it('CLI read_only 可解除本项目关联但保留共享库；无绑定 default 只读，关联读取错误不降级', async () => {
+    runtime = await createKnowledgeRuntime();
+    const kb = await runtime.service.createKnowledgeBase('shared');
+    for (const project of ['project-a', 'project-b']) {
+      database.prepare('INSERT INTO projects(id) VALUES (?)').run(project);
+      database.prepare('INSERT INTO project_knowledge_base_links(project_id,kb_id,role,created_at,updated_at) VALUES (?,?,?,?,?)').run(project, kb.id, 'read_only', Date.now(), Date.now());
+    }
+    const cli = createKnowledgeCli(() => { if (!runtime) throw new Error('missing runtime'); return runtime; });
+    async function run(argv: string[], projectId = 'project-a') {
+      const prepared = cli.prepare({ argv, invocationId: 'shared', conversationRoot: root });
+      return prepared.status === 'completed' ? prepared.result : prepared.plan.execute({ hostContext: undefined, projectId, signal: new AbortController().signal });
+    }
+    expect((await run(['index', 'rebuild', '--kb', kb.id])).exitCode).toBe(77);
+    expect((await run(['unlink', '--kb', kb.id])).exitCode).toBe(0);
+    expect(await runtime.links.listKnowledgeBasesForProject('project-a')).toEqual([]);
+    expect(await runtime.links.listKnowledgeBasesForProject('project-b')).toEqual([kb.id]);
+    expect(await runtime.service.getKnowledgeBaseById(kb.id)).toBeDefined();
+    expect(JSON.parse((await run(['list'])).stdout)).toMatchObject({ data: { libraries: [{ id: 'default', implicit: true }] } });
+    expect((await run(['unlink', '--kb', 'default'])).exitCode).toBe(77);
+    expect((await run(['index', 'rebuild', '--kb', 'default'])).exitCode).toBe(77);
+    database.exec('DROP TABLE project_knowledge_base_links');
+    const failed = await run(['list']);
+    expect(failed.exitCode).toBe(1); expect(failed.stdout).toBe('');
+    expect(vectorStarts).toBe(0);
+  });
   it('本插件元数据故障不使激活失败，IPC与工具说明局部故障，停启后可以恢复', async () => {
     const effect = knowledgePlugin.runtimeEffects?.[0];
     if (!effect) throw new Error('Missing knowledge runtime effect');

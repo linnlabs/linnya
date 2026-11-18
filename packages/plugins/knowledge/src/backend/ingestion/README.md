@@ -46,9 +46,9 @@ Backend 已输出绝对 `progress`，但 Renderer 的 `statusSync.js` 对已知 
 
 ```bash
 pnpm vitest run \
-  src/features/knowledge-base/ingestion/__tests__/workerIngestionProgressProjection.test.ts \
-  src/features/knowledge-base/ingestion/__tests__/workerQueueProgressBoundary.integration.test.ts \
-  src/features/knowledge-base/ingestion/orchestration/statusUpdatePublisher.test.ts
+  packages/plugins/knowledge/src/backend/ingestion/__tests__/workerIngestionProgressProjection.test.ts \
+  packages/plugins/knowledge/src/backend/ingestion/__tests__/workerQueueProgressBoundary.integration.test.ts \
+  packages/plugins/knowledge/src/backend/ingestion/orchestration/statusUpdatePublisher.test.ts
 ```
 
 测试应覆盖五态、终态不可逆、绝对进度单调、Worker/非 Worker 投影以及 push/轮询一致性；不要用快照锁定 README 或展示文案。

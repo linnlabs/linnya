@@ -3,6 +3,7 @@ import { Logger } from '@plugin/backend/loggingRuntime';
 import { resolveKnowledgeIndexFailureMessage } from '../functions/resolveKnowledgeIndexFailureMessage';
 
 import type { KnowledgeActivityOwner } from '../../runtime/orchestration/createKnowledgeActivityOwner';
+import type { KnowledgeExecution } from '../../runtime/definitions/knowledgeExecution';
 import type { KnowledgeIndexJobStatus } from '../definitions/knowledgeIndex';
 import {
   rebuildKnowledgeIndex,
@@ -21,12 +22,13 @@ export function createKnowledgeIndexRebuildOwner(
     { status: KnowledgeIndexJobStatus; cancel(): void; completion: Promise<void> }
   >();
   return {
-    async start(kbId: string, modelId: string): Promise<KnowledgeIndexJobStatus> {
+    async start(kbId: string, modelId: string, execution?: KnowledgeExecution): Promise<KnowledgeIndexJobStatus> {
+      execution?.signal.throwIfAborted();
       const documents = await deps.metadata.getDocumentsInKnowledgeBase(kbId);
       if (documents.length === 0) throw new Error('知识库没有可重建的原文内容');
       const lease = activity.begin(kbId, 'rebuild');
       const controller = new AbortController();
-      const signal = AbortSignal.any([lease.signal, controller.signal]);
+      const signal = AbortSignal.any([lease.signal, controller.signal, ...(execution ? [execution.signal] : [])]);
       let status: KnowledgeIndexJobStatus = {
         jobId: randomUUID(),
         kbId,
@@ -45,7 +47,7 @@ export function createKnowledgeIndexRebuildOwner(
       };
       jobs.set(kbId, job);
       job.completion = rebuildKnowledgeIndex({
-        deps,
+        deps: execution ? { ...deps, embedding: execution.inference.embedding } : deps,
         kbId,
         modelId,
         signal,
@@ -82,6 +84,12 @@ export function createKnowledgeIndexRebuildOwner(
         )
         .finally(() => lease.release());
       return status;
+    },
+    async wait(jobId: string): Promise<KnowledgeIndexJobStatus> {
+      const job = [...jobs.values()].find(value => value.status.jobId === jobId);
+      if (!job) throw new Error('检索重建任务不存在');
+      await job.completion;
+      return job.status;
     },
     get(kbId: string): KnowledgeIndexJobStatus | null {
       return jobs.get(kbId)?.status ?? null;

@@ -32,6 +32,8 @@ export async function createKnowledgeRuntime() {
   const { paths, metadata, sot, originals, graphRepository, links } = await prepareKnowledgeData(storage, projects);
   let adapter: Promise<QdrantAdapter> | undefined;
   let maintenance: ReturnType<typeof scheduleKnowledgeMaintenance> | undefined;
+  let interactiveMaintenanceRequested = false;
+  let vectorReady = false;
   let accepting = true;
   let activeTools = 0;
   let interruptedTasks: readonly { docId: string; kbId: string }[] | undefined;
@@ -44,7 +46,13 @@ export async function createKnowledgeRuntime() {
       // 首次启动失败在本 activation 保持失败；提示实际可用的显式恢复操作。
       throw new Error('知识库向量服务未能启动，请检查运行日志，修复后停用并重新启用知识库。', { cause });
     }
-    if (accepting && !maintenance) {
+    vectorReady = true;
+    startInteractiveMaintenanceIfReady();
+    return url;
+  };
+  function startInteractiveMaintenanceIfReady() {
+    // CLI 的项目范围操作不能顺带以交互界面的全局权限维护其他库。
+    if (accepting && interactiveMaintenanceRequested && vectorReady && !maintenance) {
       maintenance = scheduleKnowledgeMaintenance({
         metadataRepository: metadata,
         qdrantRepository: vectors,
@@ -55,8 +63,7 @@ export async function createKnowledgeRuntime() {
       });
       graph.startBackfill();
     }
-    return url;
-  };
+  }
   const vectors = new QdrantRepositoryImpl(
     () => (adapter ??= resolveVectorUrl(controller.signal).then(url => new QdrantAdapter({ url })))
   );
@@ -135,6 +142,11 @@ export async function createKnowledgeRuntime() {
     projects,
     inference,
     queues,
+    // 历史图谱是用户界面的后台工作；CLI 获准的一次写入不能顺带启动其他库的模型调用。
+    startInteractiveMaintenance() {
+      interactiveMaintenanceRequested = true;
+      startInteractiveMaintenanceIfReady();
+    },
     signal: controller.signal,
     assertAccepting() {
       if (!accepting) throw new Error('知识库正在停用，请稍后再试');

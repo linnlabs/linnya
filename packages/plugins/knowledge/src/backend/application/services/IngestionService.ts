@@ -19,6 +19,7 @@ import { MetadataRepository } from '../../infrastructure/metadataRepository';
 import type { OriginalDocumentRepository } from '../../infrastructure/originalDocumentRepository';
 import type { StatusUpdatePublisher } from '../../ingestion/definitions/statusUpdate';
 import { FrontendStatus, InternalStage } from '../../ingestion/definitions/state';
+import type { KnowledgeExecution } from '../../runtime/definitions/knowledgeExecution';
 
 const logger = new Logger('IngestionService');
 
@@ -82,7 +83,8 @@ export class IngestionService {
     imageVisionModelId?: string,
     rerankModelId?: string,
     forceVisionMode?: boolean,
-    graphExtractionModelId?: string
+    graphExtractionModelId?: string,
+    execution?: KnowledgeExecution
   ): Promise<{ taskId: string; document: Document }> {
     logger.info(
       `向知识库 ${kbId} 添加文档: ${fileName} (${fileSize} bytes)${forceVisionMode ? ' [强制视觉模式]' : ''}`
@@ -138,7 +140,8 @@ export class IngestionService {
         imageVisionModelId,
         rerankModelId,
         forceVisionMode, // 🔥 新增：传递强制视觉模式参数
-        graphExtractionModelId
+        graphExtractionModelId,
+        execution
       );
 
       logger.info(`文档添加完成，任务ID: ${taskId}`);
@@ -183,7 +186,8 @@ export class IngestionService {
     imageVisionModelId?: string,
     rerankModelId?: string,
     forceVisionMode?: boolean,
-    graphExtractionModelId?: string
+    graphExtractionModelId?: string,
+    execution?: KnowledgeExecution
   ): Promise<void> {
     logger.info(`🚀 开始后台处理文档: ${originalFileName} (docId: ${docId}, taskId: ${taskId})`);
 
@@ -209,7 +213,7 @@ export class IngestionService {
         forceVisionMode: forceVisionMode ?? false, // 🔥 新增：传递强制视觉模式参数，确保非undefined
       };
 
-      await queueManager.addIngestionTask(jobPayload);
+      await queueManager.addIngestionTask(jobPayload, execution);
       logger.info(`📋 文档摄入任务已添加到队列(Worker模式): ${taskId}`);
     } catch (queueError) {
       const message = `无法启动知识库摄入任务：${queueError instanceof Error ? queueError.message : String(queueError)}`;

@@ -59,6 +59,7 @@ import type { KnowledgeQueues } from '../queue/orchestration/KnowledgeQueues';
 import type { KnowledgeGraphTaskControl } from './services/TaskService';
 
 import { Logger } from '@plugin/backend/loggingRuntime';
+import type { KnowledgeExecution } from '../runtime/definitions/knowledgeExecution';
 import type { KnowledgeBaseGraphSearchOptions } from './knowledgeBaseService';
 import type { DocumentOcrPort } from '@plugin/backend/inferenceRuntime';
 import type { AgentKnowledgeSearchOutput } from './search/agentSearchOutput';
@@ -215,7 +216,8 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     imageVisionModelId?: string,
     rerankModelId?: string,
     forceVisionMode?: boolean, // 🔥 修复：添加缺失的forceVisionMode参数
-    graphExtractionModelId?: string
+    graphExtractionModelId?: string,
+    execution?: KnowledgeExecution
   ): Promise<{ taskId: string; document: Document }> {
     const lease = this.activity.begin(kbId, 'ingestion');
     try {
@@ -229,7 +231,8 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
         imageVisionModelId,
         rerankModelId,
         forceVisionMode,
-        graphExtractionModelId
+        graphExtractionModelId,
+        execution
       );
     } finally {
       lease.release();
@@ -250,9 +253,13 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
   stopTasks(): Promise<void> {
     return this.activity.drain();
   }
-  async rebuildIndex(kbId: string, modelId: string) {
+  async rebuildIndex(kbId: string, modelId: string, execution?: KnowledgeExecution) {
     if (!this.rebuildOwner) throw new Error('知识库推理能力未就绪');
-    return this.rebuildOwner.start(kbId, modelId);
+    return this.rebuildOwner.start(kbId, modelId, execution);
+  }
+  async waitForIndexRebuild(jobId: string) {
+    if (!this.rebuildOwner) throw new Error('知识库推理能力未就绪');
+    return this.rebuildOwner.wait(jobId);
   }
   getIndexRebuildStatus(kbId: string) {
     return this.rebuildOwner?.get(kbId) ?? null;
