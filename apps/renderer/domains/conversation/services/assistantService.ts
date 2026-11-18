@@ -158,6 +158,7 @@ export async function invokeAssistant(
       ...(promptKey ? { promptKey } : {}),
       ...(options?.selectedAgentId ? { selected_agent_id: options.selectedAgentId } : {}),
       imageGenerationModelId: options?.context?.imageGenerationModelId,
+      modelPurposeSnapshot: options?.context?.modelPurposeSnapshot,
       enableTools: options?.enableTools ?? true,
       availableTools: options?.availableTools, // 🔥 透传动态工具白名单
       host_tool_call: options?.hostToolCall,

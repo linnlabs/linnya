@@ -174,6 +174,10 @@ export function createShellToolRuntime(
   async function executeShell(
     request: ExecuteShellToolRequest,
   ): Promise<ShellToolRuntimeResult> {
+    // 在审批/异步目录准入前捕获，只进入 Host 执行作用域，不进入子进程协议或环境。
+    const modelPurposeSnapshot = request.modelPurposeSnapshot
+      ? Object.freeze({ ...request.modelPurposeSnapshot })
+      : undefined;
     const validated = validateShellCommandInput(request.arguments);
     if (validated.status === 'rejected') {
       return rejectedShell('invalid_arguments', 'Invalid shell arguments.');
@@ -480,10 +484,10 @@ export function createShellToolRuntime(
           prepared = launch.launch.mode === 'pipe'
             ? dependencies.backend.preparePipe(launch.launch, {
                 instanceId: request.toolOutputInstanceId,
-              })
+              }, modelPurposeSnapshot)
             : dependencies.backend.preparePty(launch.launch, {
                 instanceId: request.toolOutputInstanceId,
-              });
+              }, modelPurposeSnapshot);
           return prepared;
         },
       });

@@ -1,3 +1,6 @@
+import { ConversationNextRequest } from '@app/schemas/api-dtos';
+import { AgentInvokeRequestSchema } from '../../../../context/agent/schemas';
+import { buildBaseAgentInvokeRequest } from '../../history-builder/build-base-agent-invoke-request';
 import { resolveToolRunActor } from 'src/domains/action-ledger';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type Database from 'better-sqlite3';
@@ -75,6 +78,28 @@ function createRuntimeHostPorts(conversationId: string, turnId: string) {
 }
 
 describe('createToolContext', () => {
+  it('请求准入和Flow投影保留冻结用途，patch不能改写或填补未提供的用途', () => {
+    const selected = { embeddingModelId: 'embed-original', pdfOcrModelId: null, imageVisionModelId: 'vision-original', graphExtractionModelId: null };
+    const wire = ConversationNextRequest.parse({ conversation_id: 'purpose-conversation', new_events: [], options: { modelPurposeSnapshot: selected } });
+    selected.embeddingModelId = 'later-ui-selection';
+    const request = AgentInvokeRequestSchema.parse(buildBaseAgentInvokeRequest({
+      lastUserContent: 'Import the synthetic file', enableTools: true, conversationHistory: [],
+      modelPurposeSnapshot: wire.options?.modelPurposeSnapshot,
+    }));
+    const { hostPorts } = createRuntimeHostPorts('purpose-conversation', 'purpose-turn');
+    const build = (withSnapshot: boolean) => createToolContext({
+      hostServices: createHostServices(), hostPorts,
+      request: { ...request, modelPurposeSnapshot: withSnapshot ? request.modelPurposeSnapshot : undefined },
+      runContext: { runId: RunIdSchema.parse('purpose-run'), traceId: 'purpose-trace', tags: {} },
+      toolContextPatch: { modelPurposeSnapshot: selected },
+      history: [], conversationId: 'purpose-conversation', turnId: 'purpose-turn',
+    });
+    expect(build(true).modelPurposeSnapshot?.embeddingModelId).toBe('embed-original');
+    expect(Object.isFrozen(build(true).modelPurposeSnapshot)).toBe(true);
+    expect(build(false).modelPurposeSnapshot).toBeUndefined();
+    expect(() => ConversationNextRequest.parse({ conversation_id: 'purpose-conversation', new_events: [], options: { modelPurposeSnapshot: { ...selected, apiKey: 'forbidden' } } })).toThrow();
+  });
+
   it('应把 composition root 提供的 child invoker 原样注入 ToolContext', () => {
     const { hostPorts, registeredChildRunInvoker } = createRuntimeHostPorts(
       'conv_child_port',

@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import type { CommandExecutionIdentity, CommandLaunchSnapshotV1 } from '@app/schemas/commands';
 import type { ShellCommandExecutionScope } from '../../../adapters/commands/shell-runtime';
 import type { BackendPluginCliStagedFile } from '@linnya/plugin-host-contract/backend/pluginCli';
@@ -8,7 +9,7 @@ export interface PluginCliConversationInputSession {
 }
 
 export interface PluginCliShellBridgeRuntime {
-  prepareExecution(launch: CommandLaunchSnapshotV1): ShellCommandExecutionScope;
+  prepareExecution(launch: CommandLaunchSnapshotV1, modelPurposeSnapshot?: ModelPurposeSnapshot): ShellCommandExecutionScope;
   closeAndWait(): Promise<void>;
 }
 

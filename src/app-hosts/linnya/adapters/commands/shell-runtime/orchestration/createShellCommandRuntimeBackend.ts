@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import type {
   PipeCommandLaunchSnapshotV1,
   PtyCommandLaunchSnapshotV1,
@@ -35,9 +36,10 @@ export function createShellCommandRuntimeBackend(
 
     preparePipe(
       launch: PipeCommandLaunchSnapshotV1,
-      toolOutputScope: ShellCommandToolOutputScope
+      toolOutputScope: ShellCommandToolOutputScope,
+      modelPurposeSnapshot?: ModelPurposeSnapshot,
     ) {
-      const scope = dependencies.executionScopes.prepareExecution(launch);
+      const scope = dependencies.executionScopes.prepareExecution(launch, modelPurposeSnapshot);
       const runtime = createDisposablePipeCommandPreparedRuntime({
         launch,
         artifactOwner: artifactOwner(launch),
@@ -58,9 +60,10 @@ export function createShellCommandRuntimeBackend(
 
     preparePty(
       launch: PtyCommandLaunchSnapshotV1,
-      toolOutputScope: ShellCommandToolOutputScope
+      toolOutputScope: ShellCommandToolOutputScope,
+      modelPurposeSnapshot?: ModelPurposeSnapshot,
     ) {
-      const scope = dependencies.executionScopes.prepareExecution(launch);
+      const scope = dependencies.executionScopes.prepareExecution(launch, modelPurposeSnapshot);
       const owner = CommandOutputArtifactOwnerSchema.parse({
         identity: launch.proposal.identity,
         instance_id: launch.proposal.identity.agent_run_id,

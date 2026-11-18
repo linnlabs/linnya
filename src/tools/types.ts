@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 /**
  * @file src/tools/types.ts
  *
@@ -118,6 +119,7 @@ export interface ToolContext extends ToolExecutionContext {
   rerankModelId?: string;
   /** 图片生成模型ID */
   imageGenerationModelId?: string;
+  modelPurposeSnapshot?: ModelPurposeSnapshot;
   /** 当前 Workspace 项目 ID（由前端 / 编排器注入，AI 无需手动传参） */
   workspaceProjectId?: string;
   /** 当前 Workspace 项目的人类可读元信息 */

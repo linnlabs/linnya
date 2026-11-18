@@ -12,6 +12,7 @@ export * from './api-dtos';
 export * from './json-value';
 export * from './text-metrics';
 export * from './model-inference';
+export * from './model-purpose-snapshot';
 export * from './document-ocr';
 export * from './transcription';
 export * from './provider-outbound-audit';

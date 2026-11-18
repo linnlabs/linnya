@@ -1,4 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
+import { PromptKeys, type ModelPurposeSnapshot } from '@app/schemas';
 import { storeToRefs } from 'pinia';
 import { isValidReasoningEffort, type ReasoningEffort } from '@linnlabs/linnkit/contracts';
 
@@ -109,6 +110,17 @@ export function readEffectiveModelPurposeBinding(slot: ModelBindingSlot): string
   if (slot === 'image_vision') return resolveImageVisionModelId(context);
   if (slot === 'image_generation') return resolveImageGenerationModelId(context);
   return resolveTranscriptionModelId(context);
+}
+
+/** 一次读取当前有效选择，后续运行/审批不再跟随设置页变化。 */
+export function captureModelPurposeSnapshot(): ModelPurposeSnapshot {
+  const context = createResolutionContext();
+  return Object.freeze({
+    embeddingModelId: resolveEmbeddingModelId(context),
+    pdfOcrModelId: resolvePdfOcrModelId(context),
+    imageVisionModelId: resolveImageVisionModelId(context),
+    graphExtractionModelId: resolveAuxiliaryModelId(context, PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION),
+  });
 }
 
 export function readEffectiveAuxiliaryModelPurposeBinding(

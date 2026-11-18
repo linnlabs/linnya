@@ -13,7 +13,7 @@
  */
 
 import { z } from 'zod';
-import { PromptKeys, ResearchRunArgsSchema, UserQuoteSchema } from '@app/schemas';
+import { ModelPurposeSnapshotSchema, PromptKeys, ResearchRunArgsSchema, UserQuoteSchema } from '@app/schemas';
 import { generateAiMessageId } from '@linnlabs/linnkit/contracts';
 import * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { graph } from '@linnlabs/linnkit/runtime-kernel';
@@ -83,6 +83,7 @@ export const AgentInvokeRequestSchema = z
     model_id: z.string().optional().describe('使用的模型ID'),
     modelId: z.string().optional(),
     imageGenerationModelId: z.string().optional().describe('图片生成模型ID'),
+    modelPurposeSnapshot: ModelPurposeSnapshotSchema.optional(),
     context_before: z.string().optional().describe('光标前的内容'),
     context_after: z.string().optional().describe('光标后的内容'),
     currentBlockContent: z.string().optional(),

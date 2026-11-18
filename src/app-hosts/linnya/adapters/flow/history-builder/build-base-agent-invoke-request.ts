@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import * as contextManager from '@linnlabs/linnkit/context-manager';
 import { PromptKeys } from 'src/app-hosts/linnya/agent-registry/prompt.types';
 import type {
@@ -15,6 +16,7 @@ export interface BuildBaseAgentInvokeRequestInput {
   promptKey?: string;
   resolvedModelId?: string;
   imageGenerationModelId?: string;
+  modelPurposeSnapshot?: ModelPurposeSnapshot;
   knowledgeBaseId?: string;
   maxSteps?: number;
   enableTools: boolean;
@@ -57,6 +59,7 @@ export function buildBaseAgentInvokeRequest(
     current_paragraph: input.currentParagraph || '',
     document_title: input.documentTitle || '',
     imageGenerationModelId: input.imageGenerationModelId,
+    modelPurposeSnapshot: input.modelPurposeSnapshot,
     knowledgeBaseId: input.knowledgeBaseId,
     maxSteps: input.maxSteps ?? AGENT_CONSTANTS.DEFAULT_MAX_STEPS,
     enableTools: input.enableTools,

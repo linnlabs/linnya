@@ -1,4 +1,4 @@
-import type { SubrunBatchArgs } from '@app/schemas';
+import type { ModelPurposeSnapshot, SubrunBatchArgs } from '@app/schemas';
 import type {
   TableFillInputReference,
   BuildTableFillRowPlansInput,
@@ -28,6 +28,7 @@ export interface TableFillWorkflowInput {
   };
   activeInputRefs: readonly TableFillInputReference[];
   imageGenerationModelId?: string;
+  modelPurposeSnapshot?: ModelPurposeSnapshot;
 }
 
 export interface TableFillBatchPlan {

@@ -37,7 +37,7 @@ import {
 import { useAssistantStore } from '../../store/assistantStore';
 import { useMessageWindowStore } from '../../message-window';
 import { useUIStore } from '../../../../shared/stores/ui';
-import { readEffectiveModelPurposeBinding } from '@/domains/model-configuration';
+import { captureModelPurposeSnapshot, readEffectiveModelPurposeBinding } from '@/domains/model-configuration';
 import {
   syncConversationMetadataToHistory,
   touchConversationHistoryTimestamp,
@@ -547,6 +547,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
               contextBefore: mergedContextBefore,
               // 请求必须冻结当前有效绑定；显式选择为空时，有效绑定仍可能来自模型目录默认值。
               imageGenerationModelId: readEffectiveModelPurposeBinding('image_generation') ?? undefined,
+              modelPurposeSnapshot: captureModelPurposeSnapshot(),
             },
             projectMetadata: projectMetadata ?? options?.projectMetadata,
             documentMetadata: documentMetadata ?? options?.documentMetadata,

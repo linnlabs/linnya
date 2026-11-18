@@ -3,7 +3,7 @@ import { useConversationProjectionActions } from '@/domains/conversation/assista
 import { generateMessageId } from '@shared/utils/idUtils';
 import { getCurrentScope, onScopeDispose } from 'vue';
 import { useUIStore } from '@/shared/stores/ui';
-import { readEffectiveModelPurposeBinding } from '@/domains/model-configuration';
+import { captureModelPurposeSnapshot, readEffectiveModelPurposeBinding } from '@/domains/model-configuration';
 import { useNavigationScope } from '@/app/navigation';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { registerContributedAssistantRunCancellation } from '@/domains/conversation/ports/contributedAssistantRunCancellationPort';
@@ -83,6 +83,7 @@ export function useTableFillWorkflow(): TableFillWorkflow {
           outputRect,
           activeInputRefs: mapActiveInputRefs(session.context.activeColumnRefs),
           imageGenerationModelId: readEffectiveModelPurposeBinding('image_generation') ?? undefined,
+          modelPurposeSnapshot: captureModelPurposeSnapshot(),
         },
         {
           executionState: {

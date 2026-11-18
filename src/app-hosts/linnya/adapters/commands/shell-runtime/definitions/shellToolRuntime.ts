@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import {
   ProcessToolRuntimeResultSchema,
   ShellToolRuntimeResultSchema,
@@ -46,6 +47,7 @@ interface ShellToolRuntimeContext {
 }
 
 export interface ExecuteShellToolRequest extends ShellToolRuntimeContext {
+  readonly modelPurposeSnapshot?: ModelPurposeSnapshot;
   readonly arguments: ShellToolArgumentsV1;
   readonly originToolCallId: CommandOriginToolCallId;
   /** 必须与当前 ToolContext 的 ToolOutput reader 实例一致，不能用短生命周期 run id 代替。 */

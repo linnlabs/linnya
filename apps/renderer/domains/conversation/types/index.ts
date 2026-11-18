@@ -27,6 +27,7 @@ import type {
   ConversationUiMessageRole,
   ConversationUiSpec,
   HostToolCallRequestData,
+  ModelPurposeSnapshot,
 } from '@app/schemas';
 import type { SSEThoughtEvent, SSEToolOutputEvent, SSEToolCallDecisionEvent, SSEToolProcessEvent, SSEFinalAnswerEvent, SSEFinalAnswerChunkEvent, SSESubRunTraceEvent, SSETransportEndEvent } from '@linnlabs/linnkit/contracts';
 import type { ToolCardPresentation } from '@linnya/plugin-host-contract/renderer/toolUi';
@@ -273,6 +274,7 @@ type SendMessageOptionsBase = SendMessageAgentRouting & {
     contextBefore?: string;
     contextAfter?: string;
     imageGenerationModelId?: string;
+    modelPurposeSnapshot?: ModelPurposeSnapshot;
   };
   /** 文档片段（侧边栏对话用） */
   documentFragment?: string;

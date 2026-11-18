@@ -154,6 +154,7 @@ cleanup; prefer the current directory unless the user requests another permitted
       agentRunId: CommandAgentRunIdSchema.parse(context.runId),
       originToolCallId: CommandOriginToolCallIdSchema.parse(context.parentToolCallId),
       toolOutputInstanceId: resolveToolConversationInstanceId(context),
+      modelPurposeSnapshot: context.modelPurposeSnapshot,
       commandRunPermission: context.commandRunPermission,
       ...(context.abortSignal ? { abortSignal: context.abortSignal } : {}),
     }));

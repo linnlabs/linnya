@@ -80,6 +80,7 @@ export async function executeTableFillRun(
           projectMetadata: prepared.run.projectMetadata,
           activity: { runId: prepared.run.runId, feature: 'table_fill' },
           context: {
+            modelPurposeSnapshot: input.modelPurposeSnapshot,
             ...(input.imageGenerationModelId
               ? { imageGenerationModelId: input.imageGenerationModelId }
               : {}),

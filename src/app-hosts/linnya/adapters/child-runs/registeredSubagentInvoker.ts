@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import { ChildRunLimitExceededError } from '../../application/run-resumption';
 import type { PromptKey } from 'src/app-hosts/linnya/agent-registry/prompt.types';
 import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types';
@@ -31,7 +32,9 @@ import {
 import { createRunToolRecoveryPort } from '../../application/run-resumption/functions/createRunToolRecoveryPort';
 import { derivePluginAwareToolContext } from '../../plugin-registry/toolContextDerivation';
 
-type RegisteredChildRunParentContext = childRuns.ChildRunInvokeConfig['parentToolContext'];
+type RegisteredChildRunParentContext = childRuns.ChildRunInvokeConfig['parentToolContext'] & {
+  readonly modelPurposeSnapshot?: ModelPurposeSnapshot;
+};
 
 export interface RegisteredChildRunRequest
   extends childRuns.ChildRunRequest<RegisteredChildRunParentContext> {
@@ -273,6 +276,10 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
     const childParentToolContext = derivePluginAwareToolContext(params.parentToolContext, {
       // 每个 child 使用自己的冻结身份；父级任务准备能力不能被子级或嵌套 worker 借用。
       callerAgentId: durable ? durable.descriptor.request.callerAgentId : agentDefinition.id,
+      // 持久 child 恢复使用自身原选择，不能继承调用者后来修改的设置。
+      modelPurposeSnapshot: durable
+        ? durable.descriptor.request.modelPurposeSnapshot
+        : params.parentToolContext.modelPurposeSnapshot,
       allowedSubagentTypes: durable?.descriptor.request.allowedSubagentTypes,
       // 后续委派继续使用本 child 原来接纳的环境；恢复不能借用调用方的新视图。
       childRunContextInjections: durable

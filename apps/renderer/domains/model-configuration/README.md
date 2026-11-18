@@ -537,3 +537,7 @@ domain 重构不要求 Windows/macOS 安装包验收。
 名称或Key更新不提示重建；插件未启用/元数据不可读明确影响未知，用户仍可保存配置。
 索引重建归知识库 owner，设置页仅提示正式“重建检索索引”，不删除原文、不自动重建。
 协议范围、来源和后端测试见 [Custom API owner](../../../../src/app-hosts/linnya/application/custom-api-onboarding/README.md)。
+
+### 运行时用途选择
+
+`captureModelPurposeSnapshot()` 一次读取当前有效的 embedding / pdf_ocr / image_vision / graph extraction 绑定，返回不可变的模型 ID 快照。普通对话与表格填充发起运行时捕获；运行期间改设置只影响下次请求。默认值仍由本域既有用途解析负责，Backend 不再独立挑选目录模型。快照不包含重排、凭据或供应商参数。

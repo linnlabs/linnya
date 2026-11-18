@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import type {
   CommandLaunchSnapshotV1,
   CommandRunnerInternalEnvironmentV1,
@@ -34,7 +35,7 @@ export interface ShellCommandExecutionScope {
 }
 
 export interface ShellCommandExecutionScopeFactory {
-  prepareExecution(launch: CommandLaunchSnapshotV1): ShellCommandExecutionScope;
+  prepareExecution(launch: CommandLaunchSnapshotV1, modelPurposeSnapshot?: ModelPurposeSnapshot): ShellCommandExecutionScope;
 }
 
 export interface ShellCommandRuntimeBackendFactoryDependencies {
