@@ -71,13 +71,14 @@ export async function prepareWindowsCandidate(root) {
   };
   delete environment.LINNYA_DESKTOP_DISTRIBUTION_MANIFEST;
   delete environment.LINNYA_BUNDLED_PLUGIN_ROOT;
-  for (const script of [
-    'package:plugins:official',
-    'prepare:qdrant-runtime',
-    'prepare:extra-resources',
-  ]) {
+  for (const script of ['package:plugins:official', 'prepare:extra-resources']) {
     await runCommand('pnpm', ['run', script], { env: environment });
   }
+  await runCommand(
+    process.execPath,
+    ['scripts/build/prepare-qdrant-runtime.cjs', '--allow-cross-target'],
+    { env: environment }
+  );
   await runCommand(
     process.execPath,
     ['scripts/build/prepare-headless-node-runtime.cjs', '--allow-cross-target'],
