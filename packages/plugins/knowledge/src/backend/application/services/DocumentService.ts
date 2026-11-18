@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/application/services/DocumentService.ts
+ * @file packages/plugins/knowledge/src/backend/application/services/DocumentService.ts
  *
  * @brief 文档服务 - 负责文档的CRUD操作和状态管理
  *

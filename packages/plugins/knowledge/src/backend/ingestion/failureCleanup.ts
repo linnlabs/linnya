@@ -2,7 +2,7 @@ import type { KnowledgeActivityOwner } from '../runtime/orchestration/createKnow
 import type { KnowledgeActivityLease } from '../runtime/definitions/knowledgeActivity';
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/knowledge-base/ingestion/failureCleanup.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/failureCleanup.ts
  *
  * **功能 (What):** 失败清理工具 - 清理三大数据源
  * **输入 (Input):** 文档ID、知识库ID和相关仓储实例

@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/application/searchService.ts
+ * @file packages/plugins/knowledge/src/backend/application/searchService.ts
  *
  * @brief SearchService 的对外稳定导出入口（Barrel）。
  *

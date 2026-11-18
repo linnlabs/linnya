@@ -4,6 +4,7 @@ import type { KnowledgeRuntime } from '../../runtime/orchestration/createKnowled
 import { createKnowledgeExecution } from '../../runtime/orchestration/createKnowledgeExecution';
 import { markInterruptedKnowledgeDocuments } from '../../runtime/orchestration/markInterruptedKnowledgeDocuments';
 import type { KnowledgeCliCommand } from '../definitions/knowledgeCliCommand';
+import { KnowledgeCliPermissionError } from '../definitions/knowledgeCliErrors';
 import {
   resolveKnowledgeCliScope,
   assertKnowledgeCliAccess,
@@ -67,7 +68,8 @@ export async function executeKnowledgeCli(
       };
     case 'documents.delete': {
       const document = await runtime.service.getDocumentById(command.documentId);
-      if (!document || document.kbId !== kb.id) throw new Error('文档不属于当前获准知识库');
+      // 文档在别的库里等同跨库访问，按权限拒绝报告（退出码 77），不是一般操作失败。
+      if (!document || document.kbId !== kb.id) throw new KnowledgeCliPermissionError('文档不属于当前获准知识库');
       await runtime.service.deleteDocument(kb.id, document.id);
       return { kbId: kb.id, documentId: document.id, deleted: true };
     }

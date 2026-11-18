@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/application/services/IngestionService.ts
+ * @file packages/plugins/knowledge/src/backend/application/services/IngestionService.ts
  *
  * @brief 文档摄入服务 - 负责文档添加和摄入流程管理
  *

@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/infrastructure/qdrantRepository.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrantRepository.ts
  *
  * @brief Qdrant向量数据库仓储接口和类型定义
  *

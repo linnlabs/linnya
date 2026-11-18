@@ -96,8 +96,8 @@ const cliInference: PluginInferencePort = {
   },
 };
 
-vi.mock('@plugin/backend/storageRuntime', () => ({
-  getPluginStorage: () => ({ database, dataDirectory: path.join(root, 'KnowledgeBase') }),
+vi.mock('@plugin/backend/adoptedHostDataRuntime', () => ({
+  getAdoptedHostData: () => ({ database, dataDirectory: path.join(root, 'KnowledgeBase') }),
 }));
 vi.mock('@plugin/backend/projectReadRuntime', () => ({
   getPluginProjectReadPort: () => ({ get: () => undefined, list: () => [] }),

@@ -1,6 +1,6 @@
 import { parsePluginDocument } from '@plugin/backend/documentParsingRuntime';
 /**
- * @file src/knowledge-base/ingestion/handlers/ParsingHandler.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/handlers/ParsingHandler.ts
  *
  * @brief PARSING状态处理器
  *

@@ -1,6 +1,6 @@
 import { KnowledgeIndexSpaceMismatchError } from '../../index-rebuild/definitions/knowledgeIndex';
 /**
- * @file src/features/knowledge-base/application/search/queryVectorBuilder.ts
+ * @file packages/plugins/knowledge/src/backend/application/search/queryVectorBuilder.ts
  *
  * @brief QueryVectorBuilder：负责“把 query 变成可用的 number[] 向量”（高内聚）。
  *

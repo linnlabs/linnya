@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/ingestion/handlers/EmbeddingHandler.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/handlers/EmbeddingHandler.ts
  *
  * @brief EMBEDDING状态处理器
  *

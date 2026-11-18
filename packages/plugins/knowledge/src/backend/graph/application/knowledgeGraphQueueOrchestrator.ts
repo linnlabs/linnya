@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/graph/application/knowledgeGraphQueueOrchestrator.ts
+ * @file packages/plugins/knowledge/src/backend/graph/application/knowledgeGraphQueueOrchestrator.ts
  *
  * @description
  * 软知识图谱的“队列编排器”（feature 层）：

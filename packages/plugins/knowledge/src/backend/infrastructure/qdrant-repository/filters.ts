@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/filters.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/filters.ts
  *
  * @brief 搜索/删除通用过滤器构建（领域过滤器 -> Qdrant filter）
  */

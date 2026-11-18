@@ -3,7 +3,7 @@ import type { KnowledgeActivityOwner } from '../runtime/orchestration/createKnow
 import { KnowledgeActivityBusyError } from '../runtime/definitions/knowledgeActivity';
 import { createKnowledgeIndexRebuildOwner } from '../index-rebuild/orchestration/createKnowledgeIndexRebuildOwner';
 /**
- * @file src/knowledge-base/application/KnowledgeBaseCoordinator.ts
+ * @file packages/plugins/knowledge/src/backend/application/KnowledgeBaseCoordinator.ts
  *
  * @brief 知识库协调器 - 组织协调各个业务服务
  *

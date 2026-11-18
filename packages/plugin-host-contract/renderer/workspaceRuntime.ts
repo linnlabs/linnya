@@ -83,7 +83,6 @@ export type WorkspaceRuntimePort = {
   readDocument(args: { documentId: string }): Promise<OperationResultWithData<{ content: unknown }>>;
   saveDocument(args: { documentId: string; content: unknown }): Promise<OperationResult<void>>;
   createDocument(args: CreateWorkspaceDocumentInput): Promise<OperationResultWithData<CreateWorkspaceDocumentOutput>>;
-  listKnowledgeBaseIdsForProject(args: { projectId: string }): Promise<OperationResultWithData<string[]>>;
 };
 
 export interface WorkspaceConfirmOptions {
@@ -123,6 +122,5 @@ export declare function saveWorkspaceDocument(args: { documentId: string; conten
 export declare function createWorkspaceDocument(
   args: CreateWorkspaceDocumentInput,
 ): Promise<OperationResultWithData<CreateWorkspaceDocumentOutput>>;
-export declare function listProjectKnowledgeBaseIds(args: { projectId: string }): Promise<OperationResultWithData<string[]>>;
 
 export declare function subscribeWorkspaceMutations(callback: (event: WorkspaceMutationEvent) => void): () => void;

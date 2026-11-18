@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/ingestion/stateMachine.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/stateMachine.ts
  *
  * @brief 文档摄入状态机 - 核心架构
  *

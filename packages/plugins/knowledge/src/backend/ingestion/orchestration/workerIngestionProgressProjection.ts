@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/features/knowledge-base/ingestion/orchestration/workerIngestionProgressProjection.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/orchestration/workerIngestionProgressProjection.ts
  *
  * @brief 主进程摄取进度投影工具
  *

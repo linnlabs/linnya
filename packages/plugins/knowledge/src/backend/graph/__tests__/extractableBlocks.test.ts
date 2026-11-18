@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/graph/__tests__/extractableBlocks.test.ts
+ * @file packages/plugins/knowledge/src/backend/graph/__tests__/extractableBlocks.test.ts
  *
  * @description
  * 验证图谱抽取可处理块的过滤规则：

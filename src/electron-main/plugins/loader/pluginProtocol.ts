@@ -150,7 +150,6 @@ const rendererHostShims = new Map<string, string>([
   ['/plugin-renderer/workspaceRuntime.js', buildNamedHostShim('@plugin/renderer/workspaceRuntime', [
     'getCurrentWorkspaceProjectId',
     'subscribeWorkspaceMutations',
-    'listProjectKnowledgeBaseIds',
     'isActiveFileDirty',
     'showWorkspaceNotification',
     'setActiveFileSaving',

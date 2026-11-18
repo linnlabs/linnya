@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/infra/adapters/vector-store/qdrant/collections/getCollection.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/collections/getCollection.ts
  *
  * @brief 获取集合信息（并把返回值收敛成项目需要的最小形态）
  */

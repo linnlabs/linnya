@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/ingestion/store/ingestionProgressStore.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/store/ingestionProgressStore.ts
  *
  * @brief 摄取进度读模型 - 连接状态机与前端轮询的桥梁
  *

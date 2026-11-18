@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/ingestion/IngestionStateMachineManager.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/IngestionStateMachineManager.ts
  *
  * @brief 文档摄入状态机管理器
  *

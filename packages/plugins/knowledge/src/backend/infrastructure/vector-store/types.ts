@@ -1,5 +1,5 @@
 /**
- * @file src/infra/adapters/vector-store/qdrant/types.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/types.ts
  *
  * @brief Qdrant 适配器对外暴露的类型定义
  *

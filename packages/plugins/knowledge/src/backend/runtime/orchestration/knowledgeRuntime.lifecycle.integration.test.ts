@@ -40,7 +40,7 @@ const inference: PluginInferencePort = {
   documentOcr: { resolveModelProfile: async () => undefined, recognizeDocument: async () => ({ pages: [] }) },
 };
 
-vi.mock('@plugin/backend/storageRuntime', () => ({ getPluginStorage: () => ({ database, dataDirectory: path.join(root, 'KnowledgeBase') }) }));
+vi.mock('@plugin/backend/adoptedHostDataRuntime', () => ({ getAdoptedHostData: () => ({ database, dataDirectory: path.join(root, 'KnowledgeBase') }) }));
 vi.mock('@plugin/backend/projectReadRuntime', () => ({ getPluginProjectReadPort: () => ({ get: () => undefined, list: () => [] }) }));
 vi.mock('@plugin/backend/modelConfiguration', () => ({ getPluginModelConfigurationPort: () => ({
   readDefaultModelIdByCapability: () => 'ocr', readAuxiliaryModelBinding: () => 'language', getModelDisplayName: (id: string) => id,
@@ -151,7 +151,7 @@ describe('knowledge activation persistence and drain', () => {
     expect(JSON.parse(listed.stdout)).toMatchObject({ data: { libraries: [{ id: a.id, role: 'read_write', implicit: false }] } });
     expect(listed.stdout).not.toContain(b.id);
     expect((await run(['documents', 'list', '--kb', b.id])).exitCode).toBe(77);
-    expect((await run(['documents', 'delete', '--kb', a.id, '--document', 'private-b'])).exitCode).toBe(1);
+    expect((await run(['documents', 'delete', '--kb', a.id, '--document', 'private-b'])).exitCode).toBe(77);
     expect(await runtime.sot.get('private-b')).toEqual(source('private-b'));
     expect(await runtime.metadata.getDocumentById('private-b')).toMatchObject({ kbId: b.id });
     const status = await run(['index', 'status', '--kb', a.id]);

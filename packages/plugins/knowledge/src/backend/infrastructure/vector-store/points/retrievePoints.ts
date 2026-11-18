@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/infra/adapters/vector-store/qdrant/points/retrievePoints.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/points/retrievePoints.ts
  *
  * 按 point id 精确读取点的轻量封装。
  */

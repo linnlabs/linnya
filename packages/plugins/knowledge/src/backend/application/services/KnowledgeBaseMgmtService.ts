@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/application/services/KnowledgeBaseMgmtService.ts
+ * @file packages/plugins/knowledge/src/backend/application/services/KnowledgeBaseMgmtService.ts
  *
  * @brief 知识库管理服务 - 负责 KnowledgeBase 实体本身的 CRUD（不包含文档摄入/搜索）
  *

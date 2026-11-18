@@ -1,7 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { errorToString as getErrorMessage } from '@linnya/foundation';
 /**
- * @file src/task-queue/workers/graph-extraction.worker.ts
+ * @file packages/plugins/knowledge/src/backend/workers/graphExtraction.worker.ts
  *
  * @brief 软知识图谱抽取 Worker（Milestone 3）
  *

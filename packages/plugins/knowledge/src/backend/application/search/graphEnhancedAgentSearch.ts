@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/application/search/graphEnhancedAgentSearch.ts
+ * @file packages/plugins/knowledge/src/backend/application/search/graphEnhancedAgentSearch.ts
  *
  * @brief Graph Enhanced Agent Search：只负责“在 Agent 格式化输出里追加软图谱信息”（高内聚）。
  *

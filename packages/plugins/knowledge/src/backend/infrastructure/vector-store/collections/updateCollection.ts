@@ -1,5 +1,5 @@
 /**
- * @file src/infra/adapters/vector-store/qdrant/collections/updateCollection.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/collections/updateCollection.ts
  *
  * @brief 更新集合配置（HTTP PATCH）
  */

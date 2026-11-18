@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/infrastructure/metadataRepository.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/metadataRepository.ts
  *
  * @brief 知识库元数据仓储接口定义
  *

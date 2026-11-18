@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/graph/application/extractableBlocks.ts
+ * @file packages/plugins/knowledge/src/backend/graph/application/extractableBlocks.ts
  *
  * @description
  * 图谱抽取可处理块的筛选逻辑（供主线程队列回填、worker 抽取复用）。

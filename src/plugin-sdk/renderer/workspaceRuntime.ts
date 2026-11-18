@@ -128,10 +128,6 @@ export function createWorkspaceDocument(
   return getWorkspaceRuntimePort().createDocument(args);
 }
 
-export function listProjectKnowledgeBaseIds(args: { projectId: string }): Promise<OperationResultWithData<string[]>> {
-  return getWorkspaceRuntimePort().listKnowledgeBaseIdsForProject(args);
-}
-
 export function subscribeWorkspaceMutations(callback: (event: WorkspaceMutationEvent) => void): () => void {
   return getWorkspaceRuntimePort().subscribeMutations(callback);
 }

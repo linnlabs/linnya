@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/domain/block.ts
+ * @file packages/plugins/knowledge/src/backend/domain/block.ts
  *
  * @brief 定义知识库的块结构和Source of Truth数据结构
  *

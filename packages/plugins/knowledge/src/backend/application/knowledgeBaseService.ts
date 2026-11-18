@@ -1,6 +1,6 @@
 import type { KnowledgeIndexJobStatus } from '../index-rebuild/definitions/knowledgeIndex';
 /**
- * @file src/knowledge-base/application/knowledgeBaseService.ts
+ * @file packages/plugins/knowledge/src/backend/application/knowledgeBaseService.ts
  *
  * @brief 知识库应用服务接口和主要类型定义
  *

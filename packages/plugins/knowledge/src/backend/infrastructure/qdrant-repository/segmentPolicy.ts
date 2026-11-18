@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/segmentPolicy.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/segmentPolicy.ts
  *
  * @brief 根据 points_count 决定 collection 的目标 segment 数
  */

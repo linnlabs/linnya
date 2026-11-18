@@ -1,7 +1,7 @@
 import { projectChunkVectorPoints } from '../functions/projectChunkVectorPoints';
 import { KnowledgeIndexRebuildRequiredError } from '../../index-rebuild/definitions/knowledgeIndex';
 /**
- * @file src/knowledge-base/ingestion/handlers/StoringHandler.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/handlers/StoringHandler.ts
  *
  * @brief STORING状态处理器
  *

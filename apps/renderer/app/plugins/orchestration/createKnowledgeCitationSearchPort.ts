@@ -1,48 +1,40 @@
-import { z } from 'zod';
-import { KnowledgeBaseSummarySchema, KnowledgeSearchResponseSchema } from '@plugin/knowledge/shared';
-import { invokeRendererPluginIpc } from '@plugin/renderer/pluginIpcClient';
+import type { ApplicationSurfaceCitationSearch } from '@plugin/renderer/pluginContribution';
 import type { KnowledgeCitationSearchPort } from '@/domains/editor/features/citation/definitions/knowledgeCitationSearch';
-import { listActiveRendererPluginIds, useRendererPluginRegistryRevision } from '../registry';
+import { getApplicationSurface, listActiveRendererPluginIds, useRendererPluginRegistryRevision } from '../registry';
 
 interface Dependencies {
-  isAvailable(): boolean;
-  invoke(channel: string, payload: unknown): ReturnType<typeof invokeRendererPluginIpc<unknown>>;
+  /** 当前可用的应用槽资料搜索；槽停用或贡献没有提供时为 null。 */
+  readSearch(): ApplicationSurfaceCitationSearch | null;
 }
 
-/** 官方插件与 Editor 的装配只放 App；Editor 不知道插件 IPC 或全局库目录。 */
+/** 官方插件与 Editor 的装配只放 App；Editor 不知道插件，App 只调应用槽贡献，不知道插件 IPC。 */
 export function createKnowledgeCitationSearchPort(dependencies: Dependencies = {
-  isAvailable: () => {
+  readSearch: () => {
     void useRendererPluginRegistryRevision().value;
-    return listActiveRendererPluginIds().includes('knowledge');
+    return getApplicationSurface('knowledge-base', new Set(listActiveRendererPluginIds()))?.contribution.citationSearch ?? null;
   },
-  invoke: (channel, payload) => invokeRendererPluginIpc<unknown>('knowledge', channel, payload),
 }): KnowledgeCitationSearchPort {
-  const request = async (channel: string, payload: unknown, signal: AbortSignal): Promise<unknown> => {
+  const requireSearch = (signal: AbortSignal): ApplicationSurfaceCitationSearch => {
     signal.throwIfAborted();
-    if (!dependencies.isAvailable()) throw new Error('知识库插件未启用');
-    const result = await dependencies.invoke(channel, payload);
-    // IPC 没有中途取消协议；撤销的是当前界面请求的结果接纳，不能宣称后端已取消。
+    const search = dependencies.readSearch();
+    if (!search) throw new Error('知识库插件未启用');
+    return search;
+  };
+  /** 请求期间插件可能被停用；撤销的是当前界面对结果的接纳，不能宣称后端已取消。 */
+  const accept = <T>(value: T, signal: AbortSignal): T => {
     signal.throwIfAborted();
-    if (!dependencies.isAvailable()) throw new Error('知识库插件未启用');
-    if (!result.success) throw new Error(result.error);
-    return result.data;
+    if (!dependencies.readSearch()) throw new Error('知识库插件未启用');
+    return value;
   };
   return {
-    isAvailable: dependencies.isAvailable,
+    isAvailable: () => dependencies.readSearch() !== null,
     async listProjectLibraries(projectId, signal) {
-      const ids = z.array(z.string()).parse(await request('list-project-kb-links', { projectId }, signal));
-      if (ids.length === 0) return [];
-      const libraries = z.array(KnowledgeBaseSummarySchema).parse(await request('list', {}, signal));
-      return libraries.filter(library => ids.includes(library.id)).map(({ id, name }) => ({ id, name }));
+      const libraries = await requireSearch(signal).listProjectLibraries(projectId, signal);
+      return accept(libraries.map(({ id, name }) => ({ id, name })), signal);
     },
-    async searchLibrary({ projectId, kbId, query, topK }, signal) {
-      // Backend 在读取向量/原文前按冻结的项目再次校验范围；列表不是授权凭证。
-      const response = KnowledgeSearchResponseSchema.parse(await request('search', {
-        kbId, projectId, request: { query, topK, useReranking: true },
-      }, signal));
-      return response.results.map(({ docId, docTitle, blockId, page, score, text }) => ({
-        docId, docTitle, blockId, page, score, text,
-      }));
+    async searchLibrary(request, signal) {
+      const candidates = await requireSearch(signal).searchLibrary(request, signal);
+      return accept(candidates.map(candidate => ({ ...candidate })), signal);
     },
   };
 }

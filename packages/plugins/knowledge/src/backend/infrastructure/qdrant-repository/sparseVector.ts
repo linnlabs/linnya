@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/sparseVector.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/sparseVector.ts
  *
  * @brief 文本 -> 稀疏向量（BM25 侧使用的稀疏表示）
  */

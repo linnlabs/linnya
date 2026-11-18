@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/application/services/index.ts
+ * @file packages/plugins/knowledge/src/backend/application/services/index.ts
  * 
  * @brief 服务层统一导出文件
  * 

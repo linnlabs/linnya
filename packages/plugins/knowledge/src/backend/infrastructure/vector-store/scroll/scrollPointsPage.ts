@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/infra/adapters/vector-store/qdrant/scroll/scrollPointsPage.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/scroll/scrollPointsPage.ts
  *
  * @brief Qdrant scroll 分页读取封装
  */

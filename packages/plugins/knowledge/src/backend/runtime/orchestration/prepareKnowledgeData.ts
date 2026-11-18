@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { mkdir } from 'node:fs/promises';
-import type { PluginStorage } from '@plugin/backend/storageRuntime';
+import type { AdoptedHostData } from '@plugin/backend/adoptedHostDataRuntime';
 import type { PluginProjectReadPort } from '@plugin/backend/projectReadRuntime';
 import { isGraphExtractionDumpEnabled } from '../../graph/application/graphExtractionDebugDump';
 import { BetterSqliteMetadataRepository } from '../../infrastructure/sqlite/better-sqlite-metadata.repository';
@@ -11,7 +11,7 @@ import { FileOriginalDocumentRepository } from '../../infrastructure/fileOrigina
 import { KnowledgePreparationFailure } from '../definitions/knowledgePreparationFailure';
 
 /** 本插件资料准备的可失败边界；没有线程、向量进程或全局注册副作用。 */
-export async function prepareKnowledgeData(storage: PluginStorage, projects: PluginProjectReadPort) {
+export async function prepareKnowledgeData(storage: AdoptedHostData, projects: PluginProjectReadPort) {
   try {
     const paths = {
       sotDirectory: path.join(storage.dataDirectory, 'source_of_truth'),

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { getPluginStorage } from '@plugin/backend/storageRuntime';
+import { getAdoptedHostData } from '@plugin/backend/adoptedHostDataRuntime';
 import { createPluginVectorRuntime } from '@plugin/backend/vectorRuntime';
 import { getPluginInferencePort } from '@plugin/backend/inferenceRuntime';
 import { getPluginProjectReadPort } from '@plugin/backend/projectReadRuntime';
@@ -23,7 +23,7 @@ import { prepareKnowledgeData } from './prepareKnowledgeData';
 
 /** 一个 activation 持有全部知识库运行资源；这里只读 SQLite/创建目录，不启动向量或线程。 */
 export async function createKnowledgeRuntime() {
-  const storage = getPluginStorage('knowledge');
+  const storage = getAdoptedHostData('knowledge');
   const controller = new AbortController();
   const inference = scopeKnowledgeInference(getPluginInferencePort(), controller.signal);
   const projects = getPluginProjectReadPort();

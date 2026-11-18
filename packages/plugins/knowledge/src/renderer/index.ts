@@ -4,6 +4,7 @@ import { LibraryIcon } from '@linnya/renderer-ui/icons';
 import type { RendererPluginContribution } from '@plugin/renderer/pluginContribution';
 import knowledgeStylesheet from './styles/index.css?url';
 import { knowledgeDocumentActions } from './application/orchestration/knowledgeDocumentActions';
+import { knowledgeCitationSearch } from './application/knowledgeCitationSearch';
 import { ensureKnowledgeBaseLocalizationRegistered } from './orchestration/ensureKnowledgeBaseLocalizationRegistered';
 import { registerKnowledgeBaseModelConfigurationPorts } from './registrations/registerModelConfigurationPorts';
 import { disposeKnowledgeBaseRuntime, useKnowledgeBase } from './runtime.js';
@@ -44,6 +45,15 @@ export const knowledgeRendererPlugin: RendererPluginContribution = {
     projectAssociationComponent: defineAsyncComponent(() => import('./application/KnowledgeProjectAssociation.vue')),
     projectCreationComponent: defineAsyncComponent(() => import('./application/KnowledgeProjectCreation.vue')),
     globalModalComponent: defineAsyncComponent(() => import('./application/KnowledgeGlobalModals.vue')),
+    async saveProjectCreationSelection(projectId, ids, signal) {
+      const { replaceProjectKnowledgeBases } = await import('./services/knowledgeProjectLinks');
+      await replaceProjectKnowledgeBases(projectId, ids, signal);
+    },
+    async countProjectAssociations(projectId, signal) {
+      const { readProjectKnowledgeBaseIds } = await import('./services/knowledgeProjectLinks');
+      return (await readProjectKnowledgeBaseIds(projectId, signal)).length;
+    },
+    citationSearch: knowledgeCitationSearch,
     async prepare(signal) {
       const { prepareKnowledgePage } = await import('./applicationSurface');
       signal.throwIfAborted();

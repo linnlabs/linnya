@@ -1,7 +1,7 @@
 import type { KnowledgeActivityOwner } from '../../runtime/orchestration/createKnowledgeActivityOwner';
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/startupChunkCollectionMaintenance.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/startupChunkCollectionMaintenance.ts
  *
  * @brief 启动后一次性 chunk collection 收缩维护
  */

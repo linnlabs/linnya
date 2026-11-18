@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/knowledge-base/infrastructure/QdrantRepositoryImpl.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/QdrantRepositoryImpl.ts
  *
  * @brief Qdrant向量数据库仓储实现
  *

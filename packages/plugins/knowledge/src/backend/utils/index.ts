@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/utils/index.ts
+ * @file packages/plugins/knowledge/src/backend/utils/index.ts
  *
  * @brief 知识库工具函数模块导出
  *

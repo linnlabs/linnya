@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/collectionSchema.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/collectionSchema.ts
  *
  * @brief 集合 schema 兼容性检查（避免“写入/检索 schema 不匹配”这类根因问题）
  */

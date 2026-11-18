@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/domain/knowledgeBase.ts
+ * @file packages/plugins/knowledge/src/backend/domain/knowledgeBase.ts
  *
  * @brief 知识库实体和相关类型定义
  *

@@ -154,7 +154,6 @@ export type WorkspaceMessageKey =
   | 'workspace.project.modal.nameRequired'
   | 'workspace.project.modal.nameTooLong'
   | 'workspace.project.operation.linkKnowledgeBaseFailed'
-  | 'workspace.project.operation.linkKnowledgeBaseIpcFailed'
   | 'workspace.project.operation.unknownError'
   | 'workspace.project.operation.duplicateName'
   | 'workspace.project.operation.projectNotFound'

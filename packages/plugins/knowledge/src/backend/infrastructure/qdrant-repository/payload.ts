@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/payload.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/payload.ts
  *
  * @brief 将 Qdrant payload 收敛成领域层 PointPayload（严格校验）
  */

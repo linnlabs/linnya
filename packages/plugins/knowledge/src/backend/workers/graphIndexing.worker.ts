@@ -2,7 +2,7 @@ import { vectorizeAndUpsertGraphPoints } from '../graph/application/indexing/vec
 import { projectGraphVectorPoints } from '../graph/application/indexing/projectGraphVectorPoints';
 import { KnowledgeIndexStateRepository } from '../index-rebuild/persistence/KnowledgeIndexStateRepository';
 /**
- * @file src/task-queue/workers/graph-indexing.worker.ts
+ * @file packages/plugins/knowledge/src/backend/workers/graphIndexing.worker.ts
  *
  * @brief 软知识图谱向量索引 Worker（M5: Graph Vectorization）
  *

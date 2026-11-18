@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/utils/ranking.ts
+ * @file packages/plugins/knowledge/src/backend/utils/ranking.ts
  *
  * @brief 知识库搜索结果排序、融合、重排相关的核心算法
  *

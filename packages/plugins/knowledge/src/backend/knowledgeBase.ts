@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/index.ts
+ * @file packages/plugins/knowledge/src/backend/knowledgeBase.ts
  *
  * @brief 知识库模块的主导出文件
  *

@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/segmentCoordinator.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/segmentCoordinator.ts
  *
  * @brief 依据 points_count 协调 collection 的目标 segment 数
  */

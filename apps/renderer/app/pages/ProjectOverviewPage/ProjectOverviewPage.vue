@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue';
 import { useLocalization } from '@app/localization';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import { useApplicationSurface, useConversationAgentChoices, useDocumentTypes } from '@/app/plugins/composables';
@@ -34,7 +34,6 @@ import ProjectOverviewView from '@/domains/workspace/features/project-overview/u
 import { useProjectKnowledgeBaseModalStore } from '@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
-import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { useProjectOverviewConversations } from './orchestration/useProjectOverviewConversations';
 import { useProjectOverviewDocumentNavigation } from './orchestration/useProjectOverviewDocumentNavigation';
@@ -93,17 +92,22 @@ const projectName = computed(() => (
   projectsStore.projects.find(project => project.id === props.projectId)?.name ?? null
 ));
 const knowledgeBaseCount = ref<number | null>(null);
+let knowledgeCountRequest: AbortController | null = null;
 
+/** 数量由知识库贡献读取；读失败显示为未知，不当成 0。换项目或插件变化时作废旧请求。 */
 async function loadKnowledgeBaseCount(projectId: string): Promise<void> {
-  const surface = knowledgeSurface.value;
-  if (!knowledgeBaseAvailable.value) return;
+  knowledgeCountRequest?.abort();
+  const count = knowledgeSurface.value?.contribution.countProjectAssociations;
+  if (!knowledgeBaseAvailable.value || !count) return;
+  const request = new AbortController();
+  knowledgeCountRequest = request;
   try {
-    const result = await projectKbLinksGateway.listKnowledgeBaseIdsForProject({ projectId });
-    if (projectId !== props.projectId || knowledgeSurface.value !== surface) return;
-    knowledgeBaseCount.value = result.success && Array.isArray(result.data) ? result.data.length : null;
+    const value = await count(projectId, request.signal);
+    if (!request.signal.aborted) knowledgeBaseCount.value = value;
   } catch (error: unknown) {
+    if (request.signal.aborted) return;
     console.error('[ProjectOverviewPage] 读取项目关联知识库失败:', error);
-    if (projectId === props.projectId && knowledgeSurface.value === surface) knowledgeBaseCount.value = null;
+    knowledgeBaseCount.value = null;
   }
 }
 
@@ -111,6 +115,7 @@ watch([() => props.projectId, knowledgeSurface], ([projectId]) => {
   knowledgeBaseCount.value = null;
   void loadKnowledgeBaseCount(projectId);
 }, { immediate: true });
+onBeforeUnmount(() => knowledgeCountRequest?.abort());
 
 // 设置弹窗关闭后关联可能变了，重新读数量。
 watch(() => knowledgeBaseModalStore.visible, (visible, wasVisible) => {

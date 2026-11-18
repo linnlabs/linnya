@@ -1,6 +1,6 @@
 import { countPluginPdfPages, parsePluginPdfPages } from '@plugin/backend/documentParsingRuntime';
 /**
- * @file src/features/knowledge-base/application/orchestration/continueFailedPdfPages.ts
+ * @file packages/plugins/knowledge/src/backend/application/orchestration/continueFailedPdfPages.ts
  *
  * PDF partial 失败页续跑编排。
  *

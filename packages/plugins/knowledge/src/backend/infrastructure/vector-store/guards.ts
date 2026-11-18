@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/infra/adapters/vector-store/qdrant/guards.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/guards.ts
  *
  * @brief Qdrant 适配器内部使用的类型守卫与安全取值函数
  *

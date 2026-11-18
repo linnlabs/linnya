@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/distance.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/distance.ts
  *
  * @brief 距离度量字符串归一化
  */

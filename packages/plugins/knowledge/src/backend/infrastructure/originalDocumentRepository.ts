@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/infrastructure/originalDocumentRepository.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/originalDocumentRepository.ts
  *
  * 知识库原始文件仓储。
  *

@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/infra/adapters/vector-store/qdrant/points/normalizeUpsertPoints.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/points/normalizeUpsertPoints.ts
  *
  * @brief upsertPoints 输入归一化（把 VectorPoint 转成 Qdrant SDK 需要的结构）
  *

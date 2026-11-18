@@ -16,4 +16,9 @@ export interface ProjectOperationsOptions {
   openProjectWorkspace: (projectId: string) => Promise<void>;
   startProjectPlanning: (project: ProjectEditData) => Promise<boolean>;
   deleteProject: (projectId: string) => Promise<void>;
+  /**
+   * 保存新建项目时选的关联资料；由 App 从知识库应用槽接入，没有该槽时不提供。
+   * 失败要抛错，这里负责提示；Workspace 不知道插件或它的 IPC。
+   */
+  saveProjectCreationSelection?: (projectId: string, ids: readonly string[]) => Promise<void>;
 }

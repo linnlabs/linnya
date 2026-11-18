@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/infra/adapters/vector-store/qdrant/QdrantAdapter.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/QdrantAdapter.ts
  *
  * @brief Qdrant 向量数据库适配器（对外主入口）
  *

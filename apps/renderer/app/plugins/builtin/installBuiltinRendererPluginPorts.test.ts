@@ -217,12 +217,6 @@ vi.mock('@/app/notification', () => ({
   }),
 }));
 
-vi.mock('@/shared/ipc/projectKbLinksGateway', () => ({
-  projectKbLinksGateway: {
-    listKnowledgeBaseIdsForProject: vi.fn(async () => ({ success: true, data: [] })),
-  },
-}));
-
 vi.mock('@/shared/ipc/workspaceGateway', () => ({
   workspaceGateway: {
     'notify-document-opened': vi.fn(async () => ({ success: true })),

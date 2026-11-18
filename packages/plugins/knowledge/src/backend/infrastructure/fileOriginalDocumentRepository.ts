@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/infrastructure/fileOriginalDocumentRepository.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/fileOriginalDocumentRepository.ts
  *
  * 文件系统版原始 PDF 仓储。
  */

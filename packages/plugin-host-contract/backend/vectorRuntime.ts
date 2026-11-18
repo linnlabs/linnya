@@ -5,5 +5,8 @@ export interface PluginVectorRuntime {
   stop(): Promise<void>;
 }
 
-/** 只创建产品已装配的本地向量服务，不接受可执行文件、端口、环境或外部地址。 */
+/**
+ * 只创建产品已装配的本地向量服务，不接受可执行文件、端口、环境或外部地址。
+ * 只向产品准入的同源官方 artifact 开放（目前只有知识库），插件自报 ID 不构成授权。
+ */
 export declare function createPluginVectorRuntime(pluginId: string): PluginVectorRuntime;

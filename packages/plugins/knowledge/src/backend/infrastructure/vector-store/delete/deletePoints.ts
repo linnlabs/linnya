@@ -1,5 +1,5 @@
 /**
- * @file src/infra/adapters/vector-store/qdrant/delete/deletePoints.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/delete/deletePoints.ts
  *
  * @brief 删除点（按 ids 或按 filter）
  */

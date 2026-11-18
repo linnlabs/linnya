@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/infra/adapters/vector-store/qdrant/search/searchPoints.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/search/searchPoints.ts
  *
  * @brief Qdrant 向量检索封装（search）
  *

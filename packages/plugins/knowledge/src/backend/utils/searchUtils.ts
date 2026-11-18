@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/utils/searchUtils.ts
+ * @file packages/plugins/knowledge/src/backend/utils/searchUtils.ts
  *
  * @brief 知识库搜索工具函数模块
  *

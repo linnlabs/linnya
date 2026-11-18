@@ -34,7 +34,6 @@ import { useNavigationScope } from '@/app/navigation';
 import { useFileStore } from '@/app/active-document';
 import { useNotificationStore } from '@/app/notification';
 import { confirm } from '@/shared/composables/confirmDialog';
-import { projectKbLinksGateway } from '@/shared/ipc/projectKbLinksGateway';
 import { subscribeToWorkspaceMutation } from '@/shared/ipc/workspaceMutationSubscription';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
 import {
@@ -251,7 +250,6 @@ function installWorkspaceRuntimePort(): void {
     readDocument: (args) => workspaceGateway['read-document'](args),
     saveDocument: (args) => workspaceGateway['save-document'](args),
     createDocument: (args) => workspaceGateway['create-document'](args),
-    listKnowledgeBaseIdsForProject: (args) => projectKbLinksGateway.listKnowledgeBaseIdsForProject(args),
   });
 }
 

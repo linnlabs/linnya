@@ -146,7 +146,7 @@ import { useWorkspaceTree } from '@/domains/workspace/tree';
 import { useAssistantStore } from '@/domains/conversation/store/assistantStore';
 import { useChatFlowOrchestrator } from '@/domains/conversation/services/orchestration/chatFlowOrchestrator';
 import { applyConversationAgentChoice } from '@/domains/conversation/features/agent-choice/orchestration/applyConversationAgentChoice';
-import { useConversationAgentChoices } from '@/app/plugins/composables';
+import { useApplicationSurface, useConversationAgentChoices } from '@/app/plugins/composables';
 import { startProjectPlanningConversation } from '@/app/layout/orchestration/startProjectPlanningConversation';
 import { useHistoryList } from '@/domains/conversation/history/list';
 import { useUIStore } from '@/shared/stores/ui';
@@ -268,6 +268,8 @@ const startProjectPlanning = (project) => startProjectPlanningConversation({
   resolveInitialMessage: resolveCurrentLayoutMessage,
 });
 
+const knowledgeSurface = useApplicationSurface('knowledge-base');
+
 const {
   showCreateProjectDialog,
   isEditMode,
@@ -284,6 +286,11 @@ const {
   openProjectWorkspace: openProjectWorkspaceFromSidebar,
   startProjectPlanning,
   deleteProject: deleteProjectFromSidebar,
+  // 关联由知识库应用槽保存；槽不可用（插件停用）时新建弹窗也不显示选择，这里直接跳过。
+  async saveProjectCreationSelection(projectId, ids) {
+    const save = knowledgeSurface.value?.contribution.saveProjectCreationSelection;
+    if (save) await save(projectId, ids, new AbortController().signal);
+  },
 });
 
 const { isDragOverRoot, handleRootDragOver, handleRootDragLeave, handleRootDrop } = useSidebarDragDrop(showError);

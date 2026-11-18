@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/domain/document.ts
+ * @file packages/plugins/knowledge/src/backend/domain/document.ts
  *
  * @brief [领域模型] 定义文档实体及其相关类型。
  *

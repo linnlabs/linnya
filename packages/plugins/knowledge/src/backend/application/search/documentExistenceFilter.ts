@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/application/search/documentExistenceFilter.ts
+ * @file packages/plugins/knowledge/src/backend/application/search/documentExistenceFilter.ts
  *
  * @brief DocumentExistenceFilter：以元数据为权威，过滤“向量库有但元数据不存在”的孤儿结果（高内聚）。
  *

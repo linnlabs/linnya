@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/infrastructure/sotRepository.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/sotRepository.ts
  *
  * @brief Source of Truth (SoT) 仓储接口和实现
  *

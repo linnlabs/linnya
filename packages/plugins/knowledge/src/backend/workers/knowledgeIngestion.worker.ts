@@ -1,5 +1,5 @@
 /**
- * @file src/task-queue/workers/ingestion.worker.ts
+ * @file packages/plugins/knowledge/src/backend/workers/knowledgeIngestion.worker.ts
  *
  * @brief 文档摄入Worker - 基于状态机驱动
  *

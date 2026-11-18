@@ -10,6 +10,8 @@
  */
 
 export type {
+  ApplicationSurfaceCitationCandidate,
+  ApplicationSurfaceCitationSearch,
   ApplicationSurfaceContribution,
   DocumentActionMenuContext,
   ConversationAgentChoiceContribution,

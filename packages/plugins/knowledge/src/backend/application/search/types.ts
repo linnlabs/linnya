@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/application/search/types.ts
+ * @file packages/plugins/knowledge/src/backend/application/search/types.ts
  *
  * @brief SearchService 拆分后的公共类型定义（高内聚：只放“对外协议”和共享类型”）。
  *

@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/errors.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/errors.ts
  *
  * @brief Qdrant 相关错误识别工具
  */

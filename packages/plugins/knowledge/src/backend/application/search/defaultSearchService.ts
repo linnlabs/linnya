@@ -4,7 +4,7 @@ import {
 } from '../../index-rebuild/definitions/knowledgeIndex';
 import { isQdrantRuntimeUnavailableError } from '../../infrastructure/vector-store/errors';
 /**
- * @file src/features/knowledge-base/application/search/defaultSearchService.ts
+ * @file packages/plugins/knowledge/src/backend/application/search/defaultSearchService.ts
  *
  * @brief DefaultSearchService：SearchService 的默认实现（编排层，保持高内聚低耦合）。
  *

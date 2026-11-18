@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/collectionAccess.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/collectionAccess.ts
  *
  * @brief collection 级访问协调器
  *

@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 /**
- * @file src/features/knowledge-base/infrastructure/qdrant-repository/chunkCollectionRecreate.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/chunkCollectionRecreate.ts
  *
  * @brief chunk collection 启动收缩 / 重建编排
  */

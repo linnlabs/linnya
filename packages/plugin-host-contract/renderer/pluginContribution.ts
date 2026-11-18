@@ -63,7 +63,26 @@ export interface DocumentActionMenuContext {
   readonly readMarkdownSnapshot?: (signal: AbortSignal) => Promise<{ readonly markdown: string; readonly displayName: string }>;
 }
 
-/** 仅产品组合根授信的固定应用槽；不声明任意路由、URL 或 Host 布局。 */
+/** 编辑器引用面板的一条资料候选。 */
+export interface ApplicationSurfaceCitationCandidate {
+  readonly docId: string;
+  readonly docTitle: string;
+  readonly blockId?: string;
+  readonly page?: number;
+  readonly score: number;
+  readonly text: string;
+}
+
+/** 编辑器引用面板按项目搜索应用槽的资料；范围由贡献 owner 按冻结的项目再次校验。 */
+export interface ApplicationSurfaceCitationSearch {
+  listProjectLibraries(projectId: string, signal: AbortSignal): Promise<ReadonlyArray<{ readonly id: string; readonly name: string }>>;
+  searchLibrary(
+    request: { readonly projectId: string; readonly kbId: string; readonly query: string; readonly topK: number },
+    signal: AbortSignal,
+  ): Promise<readonly ApplicationSurfaceCitationCandidate[]>;
+}
+
+/** 仅产品组合根授信的固定应用槽；不声明任意路由、URL 或 Host 布局。Host 只调这里的成员，不知道插件 IPC 频道。 */
 export interface ApplicationSurfaceContribution {
   readonly title: LocalizedText;
   readonly iconComponent: Component;
@@ -74,6 +93,12 @@ export interface ApplicationSurfaceContribution {
   readonly projectAssociationComponent?: Component;
   /** 新建项目的关联草稿选择；props=modelValue/disabled，emit=update:modelValue。Host 只接收 ID 数组。 */
   readonly projectCreationComponent?: Component;
+  /** 项目创建成功后保存 projectCreationComponent 交付的草稿；失败要抛错，由 Host 提示。 */
+  readonly saveProjectCreationSelection?: (projectId: string, ids: readonly string[], signal: AbortSignal) => Promise<void>;
+  /** 项目概览显示的关联数量；读取失败要抛错，Host 显示为未知，不能当成 0。 */
+  readonly countProjectAssociations?: (projectId: string, signal: AbortSignal) => Promise<number>;
+  /** 编辑器引用面板的资料搜索。 */
+  readonly citationSearch?: ApplicationSurfaceCitationSearch;
   /** 仅启用期间挂载；组件自行收口弹层、订阅与异步请求。 */
   readonly globalModalComponent?: Component;
   /** 资料引用跳转由贡献 owner 校验范围，Host 不遍历插件数据。 */

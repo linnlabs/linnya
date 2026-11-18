@@ -1,5 +1,5 @@
 /**
- * @file src/knowledge-base/ingestion/handlers/PendingHandler.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/handlers/PendingHandler.ts
  *
  * @brief PENDING状态处理器
  *

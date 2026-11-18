@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/ingestion/ingestionTypes.ts
+ * @file packages/plugins/knowledge/src/backend/ingestion/ingestionTypes.ts
  *
  * 目的：
  * - 让摄入链路（Parsing → Embedding → Storing）的产物在编译期可被约束

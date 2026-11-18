@@ -1,5 +1,5 @@
 /**
- * @file src/features/knowledge-base/application/search/defaultSearchRanker.ts
+ * @file packages/plugins/knowledge/src/backend/application/search/defaultSearchRanker.ts
  *
  * @brief DefaultSearchRanker：只负责“排序/重排”两件事（高内聚）。
  *

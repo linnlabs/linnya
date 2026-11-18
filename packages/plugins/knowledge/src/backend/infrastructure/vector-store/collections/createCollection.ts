@@ -1,5 +1,5 @@
 /**
- * @file src/infra/adapters/vector-store/qdrant/collections/createCollection.ts
+ * @file packages/plugins/knowledge/src/backend/infrastructure/vector-store/collections/createCollection.ts
  *
  * @brief 创建集合（使用 HTTP PUT，避免依赖第三方 SDK 的类型暴露不完整问题）
  */

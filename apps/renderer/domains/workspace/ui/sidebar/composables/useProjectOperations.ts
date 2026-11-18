@@ -5,7 +5,6 @@
 import { projectGateway } from '@/shared/ipc/projectGateway';
 
 import { ref } from 'vue';
-import { projectKbLinksGateway } from '../../../../../shared/ipc/projectKbLinksGateway';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 import { resolveWorkspaceOperationFailure } from '@/domains/workspace/functions/resolveWorkspaceOperationFailure';
 import { getWorkspaceOperationFailure } from '@/domains/workspace/definitions/workspaceOperationError';
@@ -27,28 +26,17 @@ export function useProjectOperations(
   const editProjectData = ref<ProjectEditData | null>(null);
 
   /**
-   * 将“项目 ↔ 知识库关联”写入后端（统一走 IPC gateway）。
-   * 说明：
-   * - 创建项目后立即写入，确保进入项目对话/AI 规划时就能读到关联关系；
-   * - 使用 replace 接口保证幂等与最终一致（即使用户在弹窗里多次增删）。
+   * 创建项目后立即保存关联草稿，进入项目对话/AI 规划时就能读到关联关系。
+   * 空草稿本来就没有关联；没有知识库应用槽（插件停用）时不发写请求。
    */
   const applyProjectKnowledgeBaseLinks = async (projectId: string, kbIds: string[]) => {
-    // 这里只处理刚创建的项目，空草稿本来就没有关联；停用插件不应触发无意义的写请求。
-    if (kbIds.length === 0) return;
+    const save = options.saveProjectCreationSelection;
+    if (kbIds.length === 0 || !save) return;
     try {
-      const result =
-        await projectKbLinksGateway.replaceProjectKnowledgeBaseLinks({
-          projectId,
-          kbIds
-        });
-
-      if (!result.success) {
-        console.error('[useProjectOperations] 关联知识库失败:', result.error);
-        notificationStore.show(workspaceMessage('workspace.project.operation.linkKnowledgeBaseFailed'), 'error');
-      }
+      await save(projectId, kbIds);
     } catch (error) {
-      console.error('[useProjectOperations] 关联知识库异常:', error);
-      notificationStore.show(workspaceMessage('workspace.project.operation.linkKnowledgeBaseIpcFailed'), 'error');
+      console.error('[useProjectOperations] 关联知识库失败:', error);
+      notificationStore.show(workspaceMessage('workspace.project.operation.linkKnowledgeBaseFailed'), 'error');
     }
   };
 
