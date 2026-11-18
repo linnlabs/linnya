@@ -11,9 +11,6 @@
       "@core/*": [
         "src/core/*"
       ],
-      "@kb/*": [
-        "src/features/knowledge-base/*"
-      ],
       "@infra/*": [
         "src/infra/*"
       ],
