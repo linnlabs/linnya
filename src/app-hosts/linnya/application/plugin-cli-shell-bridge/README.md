@@ -42,6 +42,12 @@ invocation 并等待 lease 释放。Host 不把 token 写入 Agent 环境快照�
 - conversation files 声明 `none|read|write`，只读父 Shell 不得执行写入；只有显式读取或写入的命令获得 `stageConversationFile`。它在当前会话 admission 内验证正式 locator 并流式复制到现有上传暂存区，上限 50 MiB；插件接纳前由 Host 清理，接纳后归任务清理，源文件不转交；
 - external files、network、GUI 和 local IPC 固定为 denied。
 
+模型操作使用可选 `hostInference` 固定名单，并同时要求 internal-data/write 权限。只有 Host 已授信
+的官方 CLI 可以走现有 contribution 准入；插件自报身份不能获得授权。bridge 在权限检查后创建
+逐 invocation 推理 session，未声明操作拒绝，父取消传到真实请求，最终等待其清理再释放 lease。
+四用途 snapshot 由父 Shell prepare 的独立主线程参数冻结，不写进 Commands launch、环境或审计；
+metadata 命令不获得模型 snapshot 或推理能力。
+
 ## 协议
 
 v1 使用 `127.0.0.1` 随机端口、固定 route、独立 token header 和有界 NDJSON frame。插件结果的

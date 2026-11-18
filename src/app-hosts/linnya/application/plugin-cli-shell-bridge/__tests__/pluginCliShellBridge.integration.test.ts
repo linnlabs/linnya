@@ -19,6 +19,8 @@ import {
   type CommandExecutionTerminalV1,
 } from '@app/schemas/commands';
 import type { BackendPluginCliContribution } from '@linnya/plugin-host-contract/backend';
+import type { PluginInferencePort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
+import { createPluginCliInferenceSession } from '../../../adapters/inference';
 import {
   CLOSED_COMMAND_EXECUTION_INTERACTION,
   createUnavailableCommandSettledTextOutput,
@@ -195,6 +197,7 @@ function registerCli(cli: BackendPluginCliContribution): BackendPluginCliRegistr
 }
 
 async function startBridge(input: {
+  readonly createInferenceSession?: Parameters<typeof startPluginCliShellBridgeRuntime>[0]['createInferenceSession'];
   readonly createConversationInput?: Parameters<typeof startPluginCliShellBridgeRuntime>[0]['createConversationInput'];
   readonly registration: BackendPluginCliRegistration;
   readonly internalDataContext?: unknown;
@@ -207,6 +210,7 @@ async function startBridge(input: {
       pluginId === input.registration.pluginId ? input.registration : undefined
     ),
     internalDataContext: input.internalDataContext ?? Object.freeze({}),
+    ...(input.createInferenceSession ? { createInferenceSession: input.createInferenceSession } : {}),
     ...(input.createConversationInput ? { createConversationInput: input.createConversationInput } : {}),
     ...(input.readConversationProjectId ? { readConversationProjectId: input.readConversationProjectId } : {}),
     diagnostics: input.diagnostics ?? { recordUnexpectedFailure: () => undefined },
@@ -574,6 +578,55 @@ describe('Plugin CLI Shell bridge', () => {
       await runtime.terminal;
     }
   );
+
+  it.each([
+    { level: 'read_only', declare: true, allowed: false },
+    { level: 'standard', declare: true, allowed: true },
+    { level: 'read_only', declare: false, allowed: true },
+  ] as const)('Host推理显式声明且受父写权限约束：$level / $declare', async mode => {
+    const embed = vi.fn(async () => ({ vectors: [[1]], spaceId: 'space' }));
+    const host: PluginInferencePort = {
+      embedding: { embed }, reranking: { async rerank() { throw new Error('unused'); } },
+      textGeneration: { async generate() { throw new Error('unused'); } },
+      documentOcr: { async resolveModelProfile() { return undefined; }, async recognizeDocument() { throw new Error('unused'); } },
+    };
+    const createInferenceSession = vi.fn((input: { operations: readonly ('embed' | 'text' | 'ocr-profile' | 'ocr')[]; signal: AbortSignal }) =>
+      createPluginCliInferenceSession({ ...input, inference: host }));
+    const execute = vi.fn<NonNullable<Extract<ReturnType<BackendPluginCliContribution['prepare']>, { status: 'ready' }>['plan']['execute']>>(async context => {
+      if (mode.declare) {
+        expect(context.modelPurposeSnapshot?.embeddingModelId).toBe('captured');
+        if (!context.inference) throw new Error('missing inference grant');
+        await context.inference.embedding.embed({ modelId: 'captured', values: ['source'] });
+        await expect(context.inference.textGeneration.generate({ modelId: 'unused', messages: [] })).rejects.toThrow('未声明');
+      } else {
+        expect(context.inference).toBeUndefined();
+        expect(context.modelPurposeSnapshot).toBeUndefined();
+      }
+      return { exitCode: 0, stdout: '', stderr: '' };
+    });
+    const registration = registerCli({ prepare: () => ({ status: 'ready', plan: {
+      access: { internalDataAccess: mode.declare ? 'write' : 'required', conversationFiles: 'none', externalFiles: 'denied', network: 'denied', guiControl: 'denied', localIpcControl: 'denied', ...(mode.declare ? { hostInference: ['embed'] } : {}) }, execute,
+    } }) });
+    const bridge = await startBridge({ registration, createInferenceSession });
+    const launch = createLaunch({ permissionLevel: mode.level });
+    const prepared = createPreparedRuntime(launch);
+    const selection = { embeddingModelId: 'captured', pdfOcrModelId: null, imageVisionModelId: null, graphExtractionModelId: null };
+    const scope = bridge.prepareExecution(launch, selection);
+    selection.embeddingModelId = 'changed-after-admission';
+    const runtime = scope.decorate(prepared.runtime);
+    await runtime.start();
+    const endpoint = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_ENDPOINT_ENV];
+    const token = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_TOKEN_ENV];
+    if (!endpoint || !token) throw new Error('missing bridge');
+    const response = await invoke({ endpoint, token, argv: ['import'] });
+    expect(response.frames[response.frames.length - 1]).toMatchObject(mode.allowed
+      ? { kind: 'plugin_cli_terminal', exit_code: 0 }
+      : { kind: 'plugin_cli_failure', code: 'permission_denied', exit_code: 77 });
+    expect(createInferenceSession).toHaveBeenCalledTimes(mode.allowed && mode.declare ? 1 : 0);
+    expect(embed).toHaveBeenCalledTimes(mode.allowed && mode.declare ? 1 : 0);
+    prepared.terminal.resolve(createTerminal(launch));
+    await runtime.terminal;
+  });
 
   it('未知插件异常只向 CLI 返回关联号，并把真实阶段和原因交给内部诊断', async () => {
     const cause = new Error('database worker is offline');

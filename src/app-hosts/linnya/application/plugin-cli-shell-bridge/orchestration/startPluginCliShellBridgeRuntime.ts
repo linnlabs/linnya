@@ -1,4 +1,6 @@
 import type { BackendPluginCliContribution } from '@linnya/plugin-host-contract/backend';
+import type { PluginInferenceOperation, PluginInferencePort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
+import { ModelPurposeSnapshotSchema, type ModelPurposeSnapshot } from '@app/schemas';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 
@@ -41,6 +43,7 @@ export const LINNYA_INTERNAL_PLUGIN_CLI_TOKEN_ENV =
 
 interface InvocationLease {
   readonly launch: CommandLaunchSnapshotV1;
+  readonly modelPurposeSnapshot?: ModelPurposeSnapshot;
   readonly signal: AbortSignal;
   release(): void;
 }
@@ -217,6 +220,10 @@ export async function startPluginCliShellBridgeRuntime(input: {
     pluginId: string,
   ) => BackendPluginCliRegistration | undefined;
   readonly internalDataContext: unknown;
+  readonly createInferenceSession?: (input: {
+    readonly operations: readonly PluginInferenceOperation[];
+    readonly signal: AbortSignal;
+  }) => { readonly inference: PluginInferencePort; close(): Promise<void> };
   readonly createConversationInput?: (input: {
     readonly conversationId: string;
     readonly signal: AbortSignal;
@@ -269,6 +276,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
     let pluginLease: ReturnType<typeof acquireBackendPluginCliInvocation>;
     let signals: CombinedSignal | undefined;
     let fileInput: PluginCliConversationInputSession | undefined;
+    let inferenceSession: ReturnType<NonNullable<typeof input.createInferenceSession>> | undefined;
     try {
       let cli: BackendPluginCliContribution;
       if (request.kind === 'core_cli_invoke') {
@@ -298,6 +306,9 @@ export async function startPluginCliShellBridgeRuntime(input: {
       stage = 'validate_access';
       const access = parsePluginCliAccessPlan(preparation.plan.access);
       const needsInternalData = access.internalDataAccess !== 'none';
+      if (access.hostInference?.length && access.internalDataAccess !== 'write') {
+        throw new PluginCliBridgeFailure('permission_denied', 77, 'Host inference requires explicit internal write access.');
+      }
       if (
         needsInternalData
         && lease.launch.permission.internal_data_access !== 'allowed'
@@ -320,6 +331,10 @@ export async function startPluginCliShellBridgeRuntime(input: {
       }
       signals.signal.throwIfAborted();
       stage = 'execute';
+      if (access.hostInference?.length) {
+        if (!input.createInferenceSession) throw new PluginCliBridgeFailure('runtime_failure', 69, 'Host inference is unavailable.');
+        inferenceSession = input.createInferenceSession({ operations: access.hostInference, signal: signals.signal });
+      }
       const conversationId = lease.launch.proposal.identity.conversation_id;
       const projectId = needsInternalData
         ? await input.readConversationProjectId?.(conversationId)
@@ -332,6 +347,10 @@ export async function startPluginCliShellBridgeRuntime(input: {
         conversationId,
         agentRunId: lease.launch.proposal.identity.agent_run_id,
         ...(projectId ? { projectId } : {}),
+        ...(inferenceSession ? {
+          inference: inferenceSession.inference,
+          ...(lease.modelPurposeSnapshot ? { modelPurposeSnapshot: lease.modelPurposeSnapshot } : {}),
+        } : {}),
         hostContext: needsInternalData
           ? input.internalDataContext
           : Object.freeze({}),
@@ -359,7 +378,10 @@ export async function startPluginCliShellBridgeRuntime(input: {
         invocationId,
       });
     } finally {
-      try { await fileInput?.close(); }
+      try {
+        await inferenceSession?.close();
+        await fileInput?.close();
+      }
       finally {
         signals?.dispose();
         pluginLease?.release();
@@ -425,7 +447,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
   const port = await listen(server);
   const endpoint = `http://${BRIDGE_BIND_HOST}:${port}${BRIDGE_ROUTE}`;
 
-  function createExecutionScope(launch: CommandLaunchSnapshotV1): ExecutionScopeState {
+  function createExecutionScope(launch: CommandLaunchSnapshotV1, modelPurposeSnapshot?: ModelPurposeSnapshot): ExecutionScopeState {
     const token = createToken();
     if (!token || scopes.has(token)) {
       throw new Error('Plugin CLI bridge token must be unique and non-empty.');
@@ -449,6 +471,7 @@ export async function startPluginCliShellBridgeRuntime(input: {
         let released = false;
         return {
           launch,
+          ...(modelPurposeSnapshot ? { modelPurposeSnapshot } : {}),
           signal: controller.signal,
           release() {
             if (released) return;
@@ -517,11 +540,13 @@ export async function startPluginCliShellBridgeRuntime(input: {
 
   let closePromise: Promise<void> | undefined;
   return Object.freeze({
-    prepareExecution(launch: CommandLaunchSnapshotV1): ShellCommandExecutionScope {
+    prepareExecution(launch: CommandLaunchSnapshotV1, modelPurposeSnapshot?: ModelPurposeSnapshot): ShellCommandExecutionScope {
       if (lifecycle !== 'active') {
         throw new Error('Plugin CLI bridge is not accepting Shell executions.');
       }
-      const scope = createExecutionScope(launch);
+      const frozenModels = modelPurposeSnapshot
+        ? Object.freeze(ModelPurposeSnapshotSchema.parse(modelPurposeSnapshot)) : undefined;
+      const scope = createExecutionScope(launch, frozenModels);
       const internalEnvironment = CommandRunnerInternalEnvironmentV1Schema.parse({
         [LINNYA_INTERNAL_PLUGIN_CLI_ENDPOINT_ENV]: endpoint,
         [LINNYA_INTERNAL_PLUGIN_CLI_TOKEN_ENV]: scope.token,

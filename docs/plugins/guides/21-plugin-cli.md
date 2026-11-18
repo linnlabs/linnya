@@ -56,6 +56,7 @@ v1 access plan：
 | network | `denied` |
 | GUI control | `denied` |
 | local IPC control | `denied` |
+| Host inference | 可选固定操作 `embed / text / ocr-profile / ocr` |
 
 若未来确有新能力，先修改公共合同、威胁模型和端到端测试；不能在某个插件里加可选字段或 fallback。
 
@@ -63,6 +64,11 @@ v1 access plan：
 Host 沿 Conversation admission 与正式文件检查复制到受管暂存区（50 MiB 上限），不给插件原件路径。
 任务正式接纳副本后调用 `acceptFile()` 转移清理责任；业务拒绝或取消前未接纳的副本由 Host 删除。
 metadata 查询声明 `none`，不会获得该文件能力。`write` 保留原有父 Shell 写权限要求。
+
+官方插件若需模型，显式声明 `hostInference` 并请求内部资料写入权限；任意网络仍为 denied。
+Host 只在父 Shell 权限通过后交付本次执行的推理 port 和已冻结的四用途模型 ID，不交付端点或密钥。
+未声明的调用在出网前拒绝，父执行取消后等待真实模型请求收口。派生 Worker job 必须通过
+`addJob(id, data, execution)` 携带同一主线程能力与 signal；不能改用常驻全能力 port 或把能力写入 payload。
 
 ## 4. Launcher 与 native client
 

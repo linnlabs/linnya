@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { realpath } from 'node:fs/promises';
-import type { PluginInferencePort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
+import type { PluginInferenceOperation, PluginInferencePort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
 import type { WorkerHostRequestHandler, WorkerHostFailure } from '@linnya/plugin-host-contract/backend/worker/requests';
 import {
   PluginWorkerEmbeddingInputSchema, PluginWorkerTextInputSchema,
@@ -9,7 +9,7 @@ import {
 import { EmbeddingFailure, TextGenerationFailure } from 'src/domains/model-inference';
 import { OcrProviderError } from 'src/domains/document-ocr';
 
-export type InferenceWorkerOperation = 'embed' | 'text' | 'ocr-profile' | 'ocr';
+export type InferenceWorkerOperation = PluginInferenceOperation;
 export interface InferenceWorkerRequestOwner {
   readonly allowedOperations: ReadonlySet<InferenceWorkerOperation>;
   readonly modelIds: ReadonlySet<string>;

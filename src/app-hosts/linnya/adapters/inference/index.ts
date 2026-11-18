@@ -36,6 +36,8 @@ export {
   type TextGenerationPortDependencies,
 } from './orchestration/createTextGenerationPort';
 export { createEmbeddingPort } from './orchestration/createEmbeddingPort';
+export { createPluginCliInferenceSession } from './orchestration/createPluginCliInferenceSession';
+export { createPluginInferencePort } from './orchestration/createPluginInferencePort';
 export {
   createRerankingPort,
   type CreateRerankingPortDependencies,

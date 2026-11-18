@@ -1,4 +1,6 @@
 import type { BackendPluginUploadContext } from './pluginIpcRuntime';
+import type { ModelPurposeSnapshot } from '@app/schemas';
+import type { PluginInferenceOperation, PluginInferencePort } from './inferenceRuntime';
 
 /** 只交付 Host 管理的副本，不能据此获得会话原件或任意磁盘路径。 */
 export type BackendPluginCliStagedFile = Pick<BackendPluginUploadContext, 'file' | 'acceptFile'>;
@@ -18,6 +20,8 @@ export interface BackendPluginCliAccessPlan {
   readonly network: 'denied';
   readonly guiControl: 'denied';
   readonly localIpcControl: 'denied';
+  /** 官方 CLI 显式声明 Host 代执行的固定模型操作；不授予任意网络能力。 */
+  readonly hostInference?: readonly PluginInferenceOperation[];
 }
 
 export interface BackendPluginCliExecutionContext {
@@ -29,6 +33,10 @@ export interface BackendPluginCliExecutionContext {
   readonly agentRunId?: string;
   /** Host 经 Conversation owner 解析的项目归属；不接受 CLI argv 覆盖。 */
   readonly projectId?: string;
+  /** 父 Agent 接纳时冻结的用途 ID；目录、密钥和端点仍在 Host。 */
+  readonly modelPurposeSnapshot?: ModelPurposeSnapshot;
+  /** 仅声明并获准的操作可执行，随本次 invocation 取消和收口。 */
+  readonly inference?: PluginInferencePort;
   /** 权限接纳后在当前会话内读取；副本复用上传上限和任务接纳后的文件所有权。 */
   readonly stageConversationFile?: (locator: string) => Promise<BackendPluginCliStagedFile>;
   readonly signal: AbortSignal;

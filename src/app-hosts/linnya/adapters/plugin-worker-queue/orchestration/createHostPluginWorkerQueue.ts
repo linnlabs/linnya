@@ -13,6 +13,7 @@ import { assertPluginRuntimeEnabled } from '../../../plugin-registry/pluginRunti
 import { createInferenceWorkerRequestHandler } from '../../inference/worker-requests/createInferenceWorkerRequestHandler';
 import { freezePluginWorkerEnvironment } from '../functions/freezePluginWorkerEnvironment';
 import { resolvePluginWorkerEntry } from '../functions/resolvePluginWorkerEntry';
+import { Logger } from 'src/shared/logger';
 
 interface PluginWorkerQueueHost {
   readonly bootstrapScriptPath: string;
@@ -37,6 +38,8 @@ export function createHostPluginWorkerQueue<T extends object>(
   assertEnabled();
   const workerEntry = resolvePluginWorkerEntry(pluginDirectory, options.workerEntry);
   const handlers = new Map<string, WorkerHostRequestHandler>();
+  const removeExecutionAbort = new Map<string, () => void>();
+  const logger = new Logger('PluginWorkerQueue');
   const observers = new Set<PluginWorkerQueueObserver>();
   const queue = new WorkerThreadQueue<T>({
     workerScript: host.bootstrapScriptPath,
@@ -68,6 +71,8 @@ export function createHostPluginWorkerQueue<T extends object>(
   });
   queue.on('taskSettled', (jobId: string) => {
     handlers.delete(jobId);
+    removeExecutionAbort.get(jobId)?.();
+    removeExecutionAbort.delete(jobId);
     for (const observer of observers) observer.settled?.(jobId);
   });
   let closing: Promise<void> | undefined;
@@ -78,19 +83,20 @@ export function createHostPluginWorkerQueue<T extends object>(
   }
 
   return {
-    async addJob(jobId, data) {
+    async addJob(jobId, data, execution) {
       if (closing) throw new Error('插件 Worker 队列正在关闭');
       assertEnabled();
       if (getRegisteredBackendPluginDirectory(options.pluginId) !== pluginDirectory) {
         throw new Error('插件 artifact 已变更，旧队列不能接收新任务');
       }
       if (queue.getTask(jobId)) throw new Error(`Worker jobId 已存在: ${jobId}`);
+      execution?.signal.throwIfAborted();
       const frozenData = structuredClone(data);
       if (options.inferenceAdmission) {
         const admission = structuredClone(options.inferenceAdmission(frozenData));
         handlers.set(
           jobId,
-          createInferenceWorkerRequestHandler(host.inference, {
+          createInferenceWorkerRequestHandler(execution?.inference ?? host.inference, {
             allowedOperations: new Set(admission.operations),
             modelIds: new Set(admission.modelIds),
             inputFiles: admission.inputFiles,
@@ -98,10 +104,22 @@ export function createHostPluginWorkerQueue<T extends object>(
           })
         );
       }
+      if (execution) {
+        const cancel = () => {
+          void queue.cancelTask(jobId).catch(error => logger.error('父执行取消 Worker 失败', { jobId, error }));
+        };
+        execution.signal.addEventListener('abort', cancel, { once: true });
+        removeExecutionAbort.set(jobId, () => execution.signal.removeEventListener('abort', cancel));
+      }
       try {
-        return await queue.addJob(jobId, frozenData);
+        execution?.signal.throwIfAborted();
+        const id = await queue.addJob(jobId, frozenData);
+        if (execution?.signal.aborted) await queue.cancelTask(id);
+        return id;
       } catch (error) {
         handlers.delete(jobId);
+        removeExecutionAbort.get(jobId)?.();
+        removeExecutionAbort.delete(jobId);
         throw error;
       }
     },
@@ -116,7 +134,11 @@ export function createHostPluginWorkerQueue<T extends object>(
       return queue.cancelTask(jobId);
     },
     shutdown() {
-      closing ??= queue.shutdown().finally(() => handlers.clear());
+      closing ??= queue.shutdown().finally(() => {
+        handlers.clear();
+        for (const remove of removeExecutionAbort.values()) remove();
+        removeExecutionAbort.clear();
+      });
       return closing;
     },
     subscribe(observer) {

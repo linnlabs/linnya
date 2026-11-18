@@ -9,6 +9,7 @@ const PluginCliAccessPlanSchema = z
     network: z.literal('denied'),
     guiControl: z.literal('denied'),
     localIpcControl: z.literal('denied'),
+  hostInference: z.array(z.enum(['embed', 'text', 'ocr-profile', 'ocr'])).optional(),
   })
   .strict();
 

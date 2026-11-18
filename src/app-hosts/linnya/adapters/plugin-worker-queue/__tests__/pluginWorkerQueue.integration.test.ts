@@ -174,6 +174,42 @@ afterAll(async () => {
 });
 
 describe('plugin artifact Worker runtime', () => {
+  it('逐执行授权只绑定本次job，父执行取消等待真实线程与Host请求收口', async () => {
+    const defaultPort = inference();
+    const { queue } = setup({ port: defaultPort });
+    const observation = observe(queue);
+    const parent = new AbortController();
+    let entered: () => void = () => {};
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    let cleaned = false;
+    const scopedPort = inference();
+    const executionPort: PluginInferencePort = { ...scopedPort, embedding: {
+      async embed(request) {
+        if (!request.signal) throw new Error('missing cancellation');
+        const signal = request.signal;
+        entered();
+        await new Promise<void>(resolve => signal.addEventListener('abort', () => resolve(), { once: true }));
+        await new Promise(resolve => setTimeout(resolve, 25));
+        cleaned = true;
+        signal.throwIfAborted();
+        throw new Error('unreachable');
+      },
+    } };
+    await queue.addJob('invocation', { recordId: 'invocation', mode: 'inference', modelId: 'frozen-model' }, { inference: executionPort, signal: parent.signal });
+    await started;
+    parent.abort();
+    await observation.settled;
+    expect(cleaned).toBe(true);
+    expect(queue.getJob('invocation')?.state).toBe('failed');
+    expect(defaultPort.embedding.embed).not.toHaveBeenCalled();
+    observation.dispose();
+    const next = observe(queue);
+    await queue.addJob('ordinary-ui', { recordId: 'ordinary-ui', mode: 'inference', modelId: 'ui-model' });
+    await next.settled;
+    expect(next.failure).toBeUndefined();
+    expect(defaultPort.embedding.embed).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ modelId: 'ui-model' }));
+  });
+
   it('真实线程使用Host冻结连接并提交/回滚，保留pragma且不继承凭据环境', async () => {
     const { queue, db, environment } = setup();
     const observation = observe(queue);

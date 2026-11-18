@@ -3,6 +3,7 @@ import { createNodePhysicalFileReader } from '../../../file-read';
 import { createConversationFileInputSession } from '../../../plugin-file-input';
 import { pathManager } from 'src/shared/utils/pathManager';
 import path from 'node:path';
+import { createPluginCliInferenceSession, createPluginInferencePort } from '../../../inference';
 import type Database from 'better-sqlite3';
 import { SQLiteEventStore } from 'src/app-hosts/linnya/adapters/persistence/event-store';
 
@@ -103,6 +104,9 @@ export async function createCommandProductionScope(input: {
     createConversationInput: ({ conversationId, signal }) => createConversationFileInputSession({
       conversationId, signal, admission: input.conversationAdmission,
       temporaryDirectory: path.join(pathManager.getUploadsPath(), 'temp'),
+    }),
+    createInferenceSession: ({ operations, signal }) => createPluginCliInferenceSession({
+      operations, signal, inference: createPluginInferencePort(),
     }),
     diagnostics: {
       recordUnexpectedFailure({

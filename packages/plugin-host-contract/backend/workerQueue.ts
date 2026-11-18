@@ -1,3 +1,5 @@
+import type { PluginInferenceOperation, PluginInferencePort } from './inferenceRuntime';
+
 export type PluginWorkerJobState = 'pending' | 'running' | 'completed' | 'failed';
 
 export interface PluginWorkerJob<T extends object> {
@@ -13,7 +15,7 @@ export interface PluginWorkerJob<T extends object> {
 }
 
 export interface PluginWorkerInferenceAdmission {
-  readonly operations: readonly ('embed' | 'text' | 'ocr-profile' | 'ocr')[];
+  readonly operations: readonly PluginInferenceOperation[];
   readonly modelIds: readonly string[];
   readonly inputFiles: readonly string[];
   readonly temporaryDirectory?: string;
@@ -42,12 +44,18 @@ export interface PluginWorkerQueueObserver {
 
 export interface PluginWorkerQueue<T extends object> {
   /** job 身份独立于可 structured-clone 的业务 payload；旧 Worker/IPC 字段由插件 owner 保留。 */
-  addJob(jobId: string, data: T): Promise<string>;
+  addJob(jobId: string, data: T, execution?: PluginWorkerJobExecution): Promise<string>;
   getJob(jobId: string): PluginWorkerJob<T> | undefined;
   listJobs(): readonly PluginWorkerJob<T>[];
   cancelJob(jobId: string): Promise<boolean>;
   shutdown(): Promise<void>;
   subscribe(observer: PluginWorkerQueueObserver): () => void;
+}
+
+/** 只在 Backend 主线程传递，不能写入业务 payload 或 structured-clone 到 Worker。 */
+export interface PluginWorkerJobExecution {
+  readonly inference: PluginInferencePort;
+  readonly signal: AbortSignal;
 }
 
 export declare function createPluginWorkerQueue<T extends object>(

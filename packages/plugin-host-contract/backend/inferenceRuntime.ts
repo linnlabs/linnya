@@ -1,3 +1,6 @@
+/** 当前受管任务真正使用的固定操作名，不开放供应商、地址或凭据选择。 */
+export type PluginInferenceOperation = 'embed' | 'text' | 'ocr-profile' | 'ocr';
+
 /** 当前官方插件所需的模型操作。模型目录、路由、凭据与实际推理由 Host 持有。 */
 export interface EmbeddingRequest {
   readonly modelId: string;
