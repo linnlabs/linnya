@@ -36,7 +36,14 @@ export async function createKnowledgeRuntime() {
   let activeTools = 0;
   let interruptedTasks: readonly { docId: string; kbId: string }[] | undefined;
   const resolveVectorUrl = async (signal?: AbortSignal) => {
-    const url = await vector.ensureReady(signal);
+    let url: string;
+    try {
+      url = await vector.ensureReady(signal);
+    } catch (cause) {
+      if (signal?.aborted || controller.signal.aborted) throw cause;
+      // 首次启动失败在本 activation 保持失败；提示实际可用的显式恢复操作。
+      throw new Error('知识库向量服务未能启动，请检查运行日志，修复后停用并重新启用知识库。', { cause });
+    }
     if (accepting && !maintenance) {
       maintenance = scheduleKnowledgeMaintenance({
         metadataRepository: metadata,
