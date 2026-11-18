@@ -99,6 +99,19 @@ async function deleteLocalCollectionDirectory(
   });
 }
 
+/** SDK 保留 fetch 的 cause；只有连接拒绝能证明目标端口没有运行中的服务。 */
+function isConnectionRefused(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (error instanceof AggregateError) {
+    // localhost 的双栈连接会聚合多个地址，必须全部明确拒绝，不能把其中的超时当离线。
+    return (
+      error.errors.length > 0 && error.errors.every((cause: unknown) => isConnectionRefused(cause))
+    );
+  }
+  if ('code' in error && error.code === 'ECONNREFUSED') return true;
+  return error.cause !== undefined && isConnectionRefused(error.cause);
+}
+
 export async function deleteKnowledgeGraphVectorCollections(
   args: KnowledgeGraphResetArgs
 ): Promise<void> {
@@ -124,10 +137,10 @@ export async function deleteKnowledgeGraphVectorCollections(
       }
     }
   } catch (error) {
-    // 远端请求失败不能改删本地同名数据；仅本机服务离线时延续既有受管目录清理。
-    if (!isLocalEndpoint) throw error;
+    // HTTP 错误、超时或未知原因不证明服务离线，不能绕过仍运行的 Qdrant 直接删文件。
+    if (!isLocalEndpoint || !isConnectionRefused(error)) throw error;
     console.warn(
-      `[KG-RESET] Qdrant API 不可用，改用离线目录清理：${error instanceof Error ? error.message : String(error)}`
+      `[KG-RESET] 本机 Qdrant 连接被拒绝，改用离线目录清理：${error instanceof Error ? error.message : String(error)}`
     );
     for (const collectionName of collectionNames) {
       await deleteLocalCollectionDirectory(args.workspaceRoot, collectionName);
@@ -173,6 +186,6 @@ export function printKnowledgeGraphMaintenanceHelp(command: string): boolean {
   if (!process.argv.slice(2).some(arg => ['--help', '-h', 'help'].includes(arg))) return false;
   console.log(`用法: pnpm run ${command} -- --kbId <id> [--workspaceDb <path>] [--workspaceRoot <path>] [--withQdrant] [--qdrantUrl <url>]
 仅处理指定知识库的图谱派生数据；运行前退出同数据目录的 App。不会删除原文、PDF 或其他知识库。
---withQdrant 同时删除图谱向量；仅本机 API 不可用时清理所选 Workspace 内同名离线目录；远端失败直接报错。`);
+--withQdrant 同时删除图谱向量；仅本机连接被拒绝时清理所选 Workspace 内同名离线目录；HTTP 错误、超时和远端失败直接报错。`);
   return true;
 }
