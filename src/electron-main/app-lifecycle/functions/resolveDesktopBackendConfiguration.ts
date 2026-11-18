@@ -15,11 +15,13 @@ export function resolveDesktopBackendConfiguration(input: {
     throw new Error('LINNYA_API_PORT 必须是 0-65535 的整数（0 表示自动分配）');
   }
   // start:electron 仍支持开发者单独运行默认 Vite；dev:electron 总会提供实际 URL。
-  const rendererOrigin = !input.packaged && (development || input.rendererUrl !== undefined)
+  const isolatedSourceRuntime = !input.packaged && (development || input.rendererUrl !== undefined);
+  const rendererOrigin = isolatedSourceRuntime
     ? new URL(input.rendererUrl ?? 'http://localhost:5173').origin
     : undefined;
   return {
-    qdrant: { host: '127.0.0.1', port: development ? 0 : 6333 },
+    // 随包插件的源码验收仍是独立 Vite 实例，不能因关闭插件开发模式而争用发行端口。
+    qdrant: { host: '127.0.0.1', port: isolatedSourceRuntime ? 0 : 6333 },
     server: { port, ...(rendererOrigin === undefined ? {} : { rendererOrigin }) },
   };
 }

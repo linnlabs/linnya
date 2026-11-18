@@ -12,7 +12,11 @@ describe('Desktop Backend 启动配置', () => {
     expect(resolveDesktopBackendConfiguration({
       packaged: false, developmentMode: false, rendererUrl: 'http://127.0.0.1:49201',
       configuredApiPort: '35000',
-    }).server).toEqual({ port: 35000, rendererOrigin: 'http://127.0.0.1:49201' });
+    })).toEqual({ qdrant: { host: '127.0.0.1', port: 0 },
+      server: { port: 35000, rendererOrigin: 'http://127.0.0.1:49201' } });
+    expect(resolveDesktopBackendConfiguration({
+      packaged: false, developmentMode: false,
+    })).toEqual({ qdrant: { host: '127.0.0.1', port: 6333 }, server: { port: 3000 } });
   });
 
   it('发布包不被开发开关或 Vite URL 改变端口及页面来源', () => {
