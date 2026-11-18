@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { IconButton } from '@linnya/renderer-ui';
 import { AddIcon, ChevronIcon, RunControlIcon } from '@linnya/renderer-ui/icons';
 
@@ -51,6 +51,19 @@ const mainAction = computed(() => {
 });
 const mainDisabled = computed(() => mainAction.value === 'resume');
 
+const editorRef = ref<HTMLTextAreaElement | null>(null);
+
+/** 把光标放到草稿末尾（编辑待送达的消息时用）。 */
+async function focusEnd() {
+  await nextTick();
+  const editor = editorRef.value;
+  if (!editor) return;
+  editor.focus();
+  editor.setSelectionRange(editor.value.length, editor.value.length);
+}
+
+defineExpose({ focusEnd });
+
 function onInput(event: Event) {
   if (event.target instanceof HTMLTextAreaElement) emit('update:draft', event.target.value);
 }
@@ -74,6 +87,7 @@ function onMainAction() {
     <div class="mock-composer__surface">
       <textarea
         v-if="editable"
+        ref="editorRef"
         class="mock-composer__editor is-editable"
         rows="1"
         :value="draft"

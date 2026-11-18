@@ -78,7 +78,7 @@ export const GALLERY_SECTIONS = [
   {
     id: 'conversation-steering',
     label: '方向对比：运行中插话',
-    description: 'Agent 运行时发消息：输入框里的暂停与发送、待送达条（撤回、立即打断）、插话在时间线里的位置，以及等子任务、等批准、回复先写完等情形。用真实组件拼的示意，不是真实页面。',
+    description: 'Agent 运行时发消息：输入框里的暂停与发送、待送达条（编辑、撤回、立即打断）、插话在时间线里的位置，以及等子任务、等批准、回复先写完等情形。用真实组件拼的示意，不是真实页面。',
   },
   {
     id: 'list-example',

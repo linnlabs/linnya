@@ -59,7 +59,7 @@ const running = computed(() => phase.value !== 'paused');
 
 const PHASE_NOTES: Readonly<Record<string, string>> = {
   typing: '运行中也能输入。有草稿时，底栏同时有暂停和发送；回车就是插话。',
-  pending: '消息先放在输入框上方，写明 Agent 什么时候会读到。可以撤回（回到输入框），也可以立即打断。',
+  pending: '消息先放在输入框上方，写明 Agent 什么时候会读到。送达前每条都能编辑（放回输入框改完再发）或撤回（不发了），也可以立即打断。',
   delivered: '这批步骤做完后送达：消息出现在它被读到的位置，Agent 在同一次回复里接着做。',
   interrupted: '立即打断：暂停正在执行的步骤，消息作为新的一条发出，另起一次回复（与现在先暂停再发一样）。',
   paused: '暂停时，待送达的消息回到输入框，不会自动发出；点发送就另起一次回复。',
@@ -105,11 +105,20 @@ function send() {
   pending.value = [...pending.value, text];
 }
 
-function withdraw(index: number) {
+const composerRef = ref<InstanceType<typeof MockComposer> | null>(null);
+
+/** 编辑：从待送达里拿回输入框，改完再发。 */
+function edit(index: number) {
   const text = pending.value[index];
   if (text === undefined) return;
   pending.value = pending.value.filter((_, i) => i !== index);
   draft.value = [text, draft.value].filter((part) => part.trim()).join('\n');
+  void composerRef.value?.focusEnd();
+}
+
+/** 撤回：这条不发了。 */
+function withdraw(index: number) {
+  pending.value = pending.value.filter((_, i) => i !== index);
 }
 
 function interruptNow() {
@@ -168,7 +177,7 @@ const SCENES: readonly Scene[] = [
   {
     id: 'multiple',
     title: '多条待送达',
-    note: '按发出的顺序一起送达，每条一个气泡；每条都能单独撤回。',
+    note: '按发出的顺序一起送达，每条一个气泡；送达前每条都能单独编辑或撤回。',
     timeline: TIMELINE_RUNNING.slice(-2),
     pending: ['只看国内的产品', '价格统一按年付折算'],
     hint: 'Agent 做完当前这批步骤后会一起读到',
@@ -190,7 +199,7 @@ const SCENES: readonly Scene[] = [
   <div class="gallery-section steer-preview">
     <GalleryBlock
       title="插话的整个过程"
-      note="已定（2026-11-18）：回车就是插话；等当前这批步骤做完再送达，正在执行的不打断；插话留在同一次回复里。可以直接在输入框里打字、回车发送、撤回或立即打断；右边的按钮模拟这批步骤做完。"
+      note="已定（2026-11-18）：回车就是插话；等当前这批步骤做完再送达，正在执行的不打断；插话留在同一次回复里。可以直接在输入框里打字、回车发送，再编辑、撤回或立即打断；右边的按钮模拟这批步骤做完。"
     >
       <GalleryRow label="演示状态">
         <SegmentedTabs :model-value="demoTab" :tabs="DEMO_TABS" aria-label="演示状态" @update:model-value="setDemo" />
@@ -201,6 +210,7 @@ const SCENES: readonly Scene[] = [
       <div class="steer-preview__stage is-main">
         <MockTimeline :entries="timeline" class="steer-preview__timeline" />
         <MockComposer
+          ref="composerRef"
           v-model:draft="draft"
           editable
           :running="running"
@@ -209,7 +219,7 @@ const SCENES: readonly Scene[] = [
           @pause="pause"
         >
           <template v-if="pending.length" #above>
-            <PendingSteerTray :messages="pending" :hint="HINT_AFTER_BATCH" @withdraw="withdraw" @interrupt="interruptNow" />
+            <PendingSteerTray :messages="pending" :hint="HINT_AFTER_BATCH" @edit="edit" @withdraw="withdraw" @interrupt="interruptNow" />
           </template>
         </MockComposer>
       </div>
