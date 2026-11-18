@@ -17,3 +17,11 @@
 ## 索引重建回归
 
 现有 `scripts/e2e/knowledge-index/desktop.acceptance.mjs` 保留五个原文保留、身份不匹配、失败、取消及重启恢复场景；其业务入口同样走正式插件 IPC/上传，模型用途从用户可见设置选择，不再导入已移除的 Renderer owner。
+
+## macOS 隔离探针
+
+`KNOWLEDGE_PLUGIN_MODE=bundled pnpm exec tsx scripts/e2e/knowledge-plugin/desktop.acceptance.mjs` 使用同一隔离探针，并显式选择现有磁盘 Renderer 模式；脚本断言 `plugin://knowledge/dist/renderer/index.js`、active 安装来源和真实界面入口，不能仅用 Backend IPC 成功推断 Renderer 已加载。默认 dev 模式仍用于源码界面调试。两种模式都记录实际入口 URL。
+
+这是未打包 Host 上的真实插件产物验收，不等于 macOS 已签名安装包验收。运行前按正式插件构建/预置流程生成知识库 artifact；启动不会绕过 artifact 校验。
+
+两检索工具、深搜、分块读取及组装的项目范围与历史证据由插件的真实 SQLite/SoT/Host runtime 集成回归覆盖。现有产品 CLI 的基础工具白名单不包含知识库工具；本脚本不扩大该白名单，也不将集成回归写成 Desktop 上的工具执行。
