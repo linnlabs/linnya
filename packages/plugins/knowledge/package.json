@@ -10,6 +10,7 @@
     "./renderer": "./src/renderer/index.ts"
   },
   "scripts": {
+    "test": "vitest run --config vitest.config.ts",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "build:backend": "node scripts/build/cleanBackend.mjs && tsup --config scripts/tsup.plugin.config.ts",
     "build:renderer": "vite build --config scripts/vite.plugin.config.mts",

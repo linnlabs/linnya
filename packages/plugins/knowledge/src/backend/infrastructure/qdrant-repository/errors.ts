@@ -26,7 +26,7 @@ export function isCollectionAlreadyExistsError(error: unknown): boolean {
 
     const text = JSON.stringify(error);
     return typeof text === 'string' && /already exists/i.test(text);
-  } catch (_) {
+  } catch {
     return false;
   }
 }

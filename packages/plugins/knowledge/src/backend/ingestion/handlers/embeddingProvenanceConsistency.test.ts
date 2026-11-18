@@ -2,7 +2,7 @@ import { createKnowledgeIndexFixture } from '../../index-rebuild/testkit/createK
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { BlockType, type DocumentSoT } from '../../domain/block';
 import { DocumentStatus, type Document } from '../../domain/document';

@@ -14,6 +14,11 @@ const rendererAliases = projectRendererViteAliases(
   import.meta.dirname,
   'vitest',
 );
+const publicPluginAliases = projectRendererViteAliases(
+  RENDERER_MODULE_RESOLUTION_CATALOG.filter(entry => entry.category === 'plugin-renderer-entry'),
+  import.meta.dirname,
+  'vitest',
+);
 
 export default defineConfig({
   plugins: [vue()],
@@ -70,8 +75,8 @@ export default defineConfig({
       // 与 vite.config.mjs / tsconfig.json 保持一致，renderer 集成测试直接读取仓内 Markdown 解析器源码。
       { find: /^stream-markdown-parser$/, replacement: path.resolve(import.meta.dirname, 'packages/stream-markdown-parser/src/index.ts') },
 
-      { find: /^@plugin\/knowledge\/renderer$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/knowledge/src/renderer/index.ts') },
-      { find: /^@plugin\/knowledge\/shared$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/knowledge/src/shared/index.ts') },
+      // 跨 owner 测试只读取正式公开入口；其投影必须早于通用 SDK alias。
+      ...publicPluginAliases,
       { find: /^@plugin\/slides\/shared$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/shared/index.ts') },
       { find: /^@plugin\/slides\/shared\/(.+)$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/shared/$1') },
       { find: /^@plugin\/slides\/backend$/, replacement: path.resolve(import.meta.dirname, 'packages/plugins/slides/src/backend/index.ts') },

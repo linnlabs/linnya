@@ -38,7 +38,7 @@ import {
   type GraphIndexingJobPayload,
 } from '../queue/definitions/jobs';
 
-const jobData = GraphIndexingJobPayloadSchema.parse(workerData);
+GraphIndexingJobPayloadSchema.parse(workerData);
 const database = openPluginWorkerDatabase();
 
 const logger = new Logger('GraphIndexingWorker');

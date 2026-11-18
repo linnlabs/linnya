@@ -1754,11 +1754,6 @@
       "count": 1
     }
   },
-  "src/electron-main/preload/modules/knowledge-base-preload.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "src/electron-main/preload/modules/models-preload.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
@@ -1766,11 +1761,6 @@
   },
   "src/electron-main/preload/modules/system-preload.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 5
-    }
-  },
-  "src/electron-main/routes/knowledgeBaseRouter.ts": {
-    "@typescript-eslint/no-unused-vars": {
       "count": 2
     }
   },
@@ -1785,102 +1775,6 @@
   "src/electron-main/routes/staticRouter.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 2
-    }
-  },
-  "src/features/knowledge-base/application/KnowledgeBaseCoordinator.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/application/knowledgeBaseService.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/application/search/defaultSearchService.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/application/search/graphEnhancedAgentSearch.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/application/services/__tests__/IngestionService.status-publisher.test.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
-  "src/features/knowledge-base/graph/__tests__/connectivity/graphConnectivityService.test.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 4
-    }
-  },
-  "src/features/knowledge-base/graph/application/graphExtractionService.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
-  "src/features/knowledge-base/graph/application/knowledgeGraphQueueOrchestrator.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/graph/application/merger/graphResultMerger.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
-  "src/features/knowledge-base/infrastructure/qdrant-repository/errors.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/infrastructure/sqlite/better-sqlite-metadata.repository.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/infrastructure/sqlite/project-knowledge-base-links.types.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/ingestion/IngestionStateMachineManager.ts": {
-    "@typescript-eslint/no-require-imports": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
-  "src/features/knowledge-base/ingestion/failureCleanup.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/ingestion/handlers/ParsingHandler.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 4
-    }
-  },
-  "src/features/knowledge-base/ingestion/handlers/embeddingProvenanceConsistency.test.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/features/knowledge-base/ingestion/postprocessor.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    }
-  },
-  "src/features/knowledge-base/utils/ranking.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
     }
   },
   "src/features/parsers/docxParser.ts": {
@@ -1953,11 +1847,6 @@
       "count": 1
     }
   },
-  "src/infra/adapters/vector-store/qdrant/QdrantAdapter.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
   "src/infra/adapters/web-read/metasoReaderAdapter.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -1988,24 +1877,9 @@
       "count": 1
     }
   },
-  "src/tools/knowledgebase/reader/ListKnowledgeBaseTool.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/tools/knowledgebase/search/SearchInKnowledgeBaseTool.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/tools/knowledgebase/search/types.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/types/electron-api.d.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 15
+      "count": 4
     }
   },
   "src/types/lodash-es.d.ts": {

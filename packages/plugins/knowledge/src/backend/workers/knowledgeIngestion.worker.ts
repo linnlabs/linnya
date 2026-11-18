@@ -12,7 +12,7 @@
 
 import { parentPort, workerData } from 'worker_threads';
 import { createPluginWorkerInferencePort } from '@plugin/backend/worker/inferenceRuntime';
-import { IngestionJobPayloadSchema, type IngestionJobPayload } from '../queue/definitions/jobs';
+import { IngestionJobPayloadSchema } from '../queue/definitions/jobs';
 import {
   IngestionStateMachineManager,
   validateIngestionParams,

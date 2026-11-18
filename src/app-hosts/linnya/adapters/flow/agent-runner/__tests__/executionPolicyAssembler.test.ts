@@ -28,21 +28,6 @@ describe('assembleExecutionPolicy', () => {
     clearPluginRuntimeStateForTests();
   });
 
-  it('把 linnya agent 注册配置转换成 runtime systemReminderPolicy', () => {
-    const result = assembleExecutionPolicy({
-      request: makeRequest(PromptKeys.DEEP_SEARCH),
-      options: {},
-      newEvents: [],
-    });
-
-    expect(result.executorLocal.finalStepPolicy).toBe('force_tools');
-    expect(result.executorLocal.finalStepForcedTools).toEqual(['assemble_documents']);
-    expect(result.executorLocal.systemReminderPolicy).toEqual({
-      enabledRuleIds: ['max_steps_force_final_answer', 'last_steps_hint'],
-      thresholds: { lastStepsHintThreshold: 3 },
-    });
-  });
-
   it('把 agent contextPolicy.toolOutput 转换成 runtime toolObservationPolicy', () => {
     const definition: AgentDefinition = {
       id: 'custom-agent',

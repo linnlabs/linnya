@@ -16,7 +16,7 @@ import { KnowledgeIndexStateRepository } from '../../index-rebuild/persistence/K
 
 import type { KnowledgeDatabase } from '../../definitions/knowledgeDatabase';
 import { MetadataRepository } from '../metadataRepository';
-import { KnowledgeBase, createKnowledgeBase, DEFAULT_KB_CONFIG as DEFAULT_KB_DOMAIN_CONFIG } from '../../domain/knowledgeBase';
+import { KnowledgeBase, DEFAULT_KB_CONFIG as DEFAULT_KB_DOMAIN_CONFIG } from '../../domain/knowledgeBase';
 import {
   Document,
   DocumentParseDiagnostics,

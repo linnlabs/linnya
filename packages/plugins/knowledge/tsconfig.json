@@ -25,6 +25,7 @@
       ]
     },
     "allowJs": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable", "ES2022.Error"],
     "types": [
       "node",
       "vite/client"

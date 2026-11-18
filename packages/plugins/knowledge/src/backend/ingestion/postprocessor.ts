@@ -206,7 +206,6 @@ function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy
   let i = 0;
 
   // 开始合并短块
-  let mergeAttempts = 0;
   let successfulMerges = 0;
 
   while (i < afterSplit.length) {
@@ -224,7 +223,6 @@ function normalizeBlocksByChunkPolicy(rawBlocks: RawBlock[], policy: ChunkPolicy
       !isHeading &&
       curType === 'paragraph'
     ) {
-      mergeAttempts++;
       let combined = cur.text.trim();
       let j = i + 1;
       let mergedCount = 0;
@@ -295,7 +293,6 @@ export async function postProcessBlocks({
   sourceFilePath,
   docId,
   originalFilename,
-  updater,
 }: {
   rawBlocks: RawBlock[];
   sourceFilePath: string;
@@ -488,9 +485,9 @@ export async function postProcessBlocks({
       }
     })();
 
-    sourceDoc.content_blocks[blockId] = sotBlock;
+    sourceDoc.content_blocks[id] = sotBlock;
 
-    sourceDoc.structure.root.push(blockId);
+    sourceDoc.structure.root.push(id);
     processedBlocks.push(finalBlock); // 包含id的完整对象，用于后续步骤
   }
 

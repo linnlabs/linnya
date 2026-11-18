@@ -153,9 +153,6 @@ export class DefaultSearchService implements SearchService {
       // 2) combinedResults 作为“候选集合”（后续会做排序/重排）
       let combinedResults: RankedRetrievedPoint[] = searchResult.combinedResults;
 
-      // 3) 获取知识库信息用于后续处理
-      const kb = await this.metadataRepository.getKnowledgeBaseById(request.kbId);
-
       // 4) 应用智能排序
       combinedResults = await this.searchRanker.applyIntelligentLayeredSorting(
         combinedResults,

@@ -40,7 +40,7 @@ import {
   type GraphExtractionJobPayload,
 } from '../queue/definitions/jobs';
 
-const jobData = GraphExtractionJobPayloadSchema.parse(workerData);
+GraphExtractionJobPayloadSchema.parse(workerData);
 const database = openPluginWorkerDatabase();
 
 const logger = new Logger('GraphExtractionWorker');

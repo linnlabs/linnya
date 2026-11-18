@@ -15,6 +15,7 @@
  * 3. 标准化IPC格式：所有状态推送都包含完整的阶段信息(stage, stage_progress)
  */
 
+import { parentPort, isMainThread } from 'node:worker_threads';
 import { Logger } from '@plugin/backend/loggingRuntime';
 import { IngestionStateMachine, createInitialContext, createStateMachine } from './stateMachine';
 import {
@@ -298,57 +299,48 @@ export class IngestionStateMachineManager {
     stage: InternalStage,
     frontendState: IngestionFrontendState
   ): void {
-    try {
-      // 动态导入worker_threads，这样在主进程中不会出错
-      const { parentPort, isMainThread } = require('worker_threads');
-
-      if (parentPort) {
-        // ✅ 在Worker中：只负责向主进程发送消息
-        let message;
-        if (stage === InternalStage.COMPLETED) {
-          message = {
-            type: 'completed',
-            taskId: context.taskId,
-            result: {
-              success: true,
-              docId: context.docId,
-              frontendState,
-              storeResult: context.storeResult,
-            },
-          };
-        } else if (stage === InternalStage.FAILED) {
-          message = {
-            type: 'failed',
-            taskId: context.taskId,
-            error: context.errorMessage || frontendState.error || '未知错误',
-          };
-        } else if (stage === InternalStage.DUPLICATE) {
-          message = {
-            type: 'completed',
-            taskId: context.taskId,
-            result: {
-              success: true,
-              duplicate: true,
-              docId: context.docId,
-              frontendState,
-            },
-          };
-        } else {
-          // 进度更新消息
-          message = {
-            type: 'progress',
-            taskId: context.taskId,
+    if (parentPort) {
+      // ✅ 在Worker中：只负责向主进程发送消息
+      let message;
+      if (stage === InternalStage.COMPLETED) {
+        message = {
+          type: 'completed',
+          taskId: context.taskId,
+          result: {
+            success: true,
+            docId: context.docId,
             frontendState,
-          };
-        }
-        parentPort.postMessage(message);
-      } else if (isMainThread) {
-        // ✅ 在主进程中（当不使用Worker时）：直接向渲染进程推送状态更新
-        this.sendIpcStatusUpdate(context, stage, frontendState);
+            storeResult: context.storeResult,
+          },
+        };
+      } else if (stage === InternalStage.FAILED) {
+        message = {
+          type: 'failed',
+          taskId: context.taskId,
+          error: context.errorMessage || frontendState.error || '未知错误',
+        };
+      } else if (stage === InternalStage.DUPLICATE) {
+        message = {
+          type: 'completed',
+          taskId: context.taskId,
+          result: {
+            success: true,
+            duplicate: true,
+            docId: context.docId,
+            frontendState,
+          },
+        };
+      } else {
+        // 进度更新消息
+        message = {
+          type: 'progress',
+          taskId: context.taskId,
+          frontendState,
+        };
       }
-    } catch (error) {
-      // 如果导入'worker_threads'失败，说明不在Worker环境中，
-      // 这时也应该尝试调用IPC更新，因为可能在主进程中运行（非Worker模式）。
+      parentPort.postMessage(message);
+    } else if (isMainThread) {
+      // ✅ 在主进程中（当不使用Worker时）：直接向渲染进程推送状态更新
       this.sendIpcStatusUpdate(context, stage, frontendState);
     }
   }
@@ -508,20 +500,6 @@ export class IngestionStateMachineManager {
     }
 
     return { isValid: true };
-  }
-
-  /**
-   * 功能 (What): 初始化状态机管理器系统
-   * 输入 (Input): 线程池实例
-   * 输出 (Output): 无
-   * 副作用 (Side-effects): 设置全局线程池，准备摄入任务执行环境
-   */
-  static initialize(threadPool: unknown): void {
-    logger.info('[StateMachineManager] 初始化状态机管理器系统...');
-
-    // 存储线程池引用，供后续任务使用
-    // 注意：这里我们可以将threadPool存储在静态属性中，或者进行其他必要的全局初始化
-    logger.info('[StateMachineManager] 状态机管理器系统初始化完成');
   }
 
   /**

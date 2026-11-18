@@ -85,7 +85,6 @@ export async function buildAgentSearchOutputWithGraph(args: {
   const {
     kbId,
     query,
-    topK,
     docId,
     citationOffset,
     graph,

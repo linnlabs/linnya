@@ -75,7 +75,7 @@ export class ParsingHandler implements StateHandler {
   /**
    * 🔥 新增：内部进度更新方法，统一处理进度更新和通知
    */
-  private updateProgress(context: TaskContext, stageProgress: number, message?: string): void {
+  private updateProgress(context: TaskContext, stageProgress: number, _message?: string): void {
     context.stageProgress = Math.max(0, Math.min(100, stageProgress));
     context.lastUpdated = Date.now();
 

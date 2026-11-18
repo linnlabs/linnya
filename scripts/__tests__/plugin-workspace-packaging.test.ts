@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import vitestConfig from '../../vitest.config';
+import { RENDERER_MODULE_RESOLUTION_CATALOG } from '../build/renderer-module-resolution/definitions/rendererModuleResolutionCatalog';
 import {
   discoverWorkspaceOfficialPluginReleaseTargets,
   officialPluginReleaseTargets,
@@ -220,6 +221,18 @@ describe('plugin workspace packaging guard', () => {
     );
     expect(genericPluginAliasIndex).toBeGreaterThan(-1);
 
+    for (const entry of RENDERER_MODULE_RESOLUTION_CATALOG.filter(
+      entry => entry.category === 'plugin-renderer-entry' && entry.match === 'exact'
+    )) {
+      // 验证实际首个匹配，不依赖 RegExp 字面量或 flags 的书写方式。
+      const aliasIndex = aliasEntries.findIndex(alias =>
+        alias.find instanceof RegExp && alias.find.test(entry.specifier)
+      );
+      expect(aliasIndex).toBeGreaterThan(-1);
+      expect(aliasIndex).toBeLessThan(genericPluginAliasIndex);
+      expect(aliasEntries[aliasIndex]?.replacement).toBe(path.join(repoRoot, entry.canonicalTarget));
+    }
+
     const workspaceDeclaredDirectories = new Set(
       discoverWorkspaceOfficialPluginReleaseTargets(repoRoot).map(target => target.packageDir)
     );
@@ -237,7 +250,7 @@ describe('plugin workspace packaging guard', () => {
     }
   });
 
-  it('keeps owner-declared private plugin aliases in the plugin test config, not the Core config', () => {
+  it('keeps owner test configs and excludes non-public plugin aliases from the Core config', () => {
     const rootAliases = listAliasEntries();
     const workspaceTargets = discoverWorkspaceOfficialPluginReleaseTargets(repoRoot);
 
@@ -247,8 +260,20 @@ describe('plugin workspace packaging guard', () => {
       const packageName = packageJson.name;
       if (packageName === undefined) throw new Error(`${target.packageDir}/package.json 缺少 name`);
 
-      const sharedPattern = String(new RegExp(`^${escapeRegExp(packageName)}/shared$`));
-      expect(rootAliases.findIndex(entry => String(entry.find) === sharedPattern)).toBe(-1);
+      const specifier = `${packageName}/shared`;
+      const publicEntry = RENDERER_MODULE_RESOLUTION_CATALOG.find(
+        entry => entry.category === 'plugin-renderer-entry' && entry.specifier === specifier
+          && entry.match === 'exact'
+      );
+      const sharedAlias = rootAliases.find(entry =>
+        entry.find instanceof RegExp && entry.find.test(specifier)
+      );
+      if (publicEntry) {
+        expect(sharedAlias?.replacement).toBe(path.join(repoRoot, publicEntry.canonicalTarget));
+      } else {
+        // 没有公开登记的下游插件只能落通用 SDK；其源码 alias 留在 owner 配置。
+        expect(sharedAlias?.replacement).toBe(path.join(repoRoot, 'src/plugin-sdk/$1'));
+      }
 
       const pluginVitestConfig = path.join(packageDirectory, 'vitest.config.ts');
       expect(fs.existsSync(pluginVitestConfig)).toBe(true);

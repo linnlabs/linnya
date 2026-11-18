@@ -32,29 +32,6 @@ export type DiscoveryResult = {
 };
 
 /**
- * 合并输入参数
- */
-export type MergeInput = {
-  /**
-   * 路径 A：Chunk-Driven 的增强结果（Map<key, augmentation>）
-   * key 格式通常是 `${kbId}|${docId}|${blockId}` 或类似的唯一标识
-   */
-  chunkDrivenResults: Map<string, GraphAugmentation>;
-
-  /**
-   * 路径 B：Discovery 的增强结果列表
-   */
-  discoveryResults: DiscoveryResult[];
-
-  /**
-   * 相似度阈值（可选）
-   * 如果 Discovery 结果的分数低于此值，则被视为噪声过滤掉
-   * 默认：0 (不过滤)
-   */
-  minScoreThreshold?: number;
-};
-
-/**
  * 合并输出结果
  */
 export type MergeOutput = {
@@ -78,97 +55,12 @@ export type MergeOutput = {
 
 export class GraphResultMerger {
   /**
-   * 执行合并
-   */
-  merge(input: MergeInput): MergeOutput {
-    const { chunkDrivenResults, discoveryResults, minScoreThreshold = 0 } = input;
-    
-    // 1. 初始化输出 Map，直接复用 Chunk-Driven 的内容作为基底
-    const mergedResults = new Map<string, GraphAugmentation>(chunkDrivenResults);
-
-    const stats = {
-      chunkDrivenCount: chunkDrivenResults.size,
-      discoveryTotalCount: discoveryResults.length,
-      discoveryAddedCount: 0,
-      discoveryFilteredByDuplication: 0,
-      discoveryFilteredByScore: 0,
-    };
-
-    // 2. 遍历 Discovery 结果并去重
-    for (const item of discoveryResults) {
-      // 2.1 分数过滤
-      if (item.score < minScoreThreshold) {
-        stats.discoveryFilteredByScore++;
-        continue;
-      }
-
-      // 2.2 构造唯一键（与 Chunk-Driven 保持一致的 key 生成逻辑）
-      // 注意：这里的 key 生成逻辑必须与 SearchService 中用于存储 chunkDrivenResults 的 key 逻辑一致
-      // 假设 key 格式为 `${kbId}|${docId}|${blockId}`，但 DiscoveryResult 里目前只透传了 docId, blockId
-      // 因此我们需要一种方式来匹配。
-      
-      // 实际上，SearchService 调用方通常使用 `kbId|docId|blockId` 作为 key。
-      // 但 DiscoveryResult 目前可能缺少 kbId（或者假设是在同一个 kb 下）。
-      // 为了通用性，我们假设 input.discoveryResults 里的 docId/blockId 足够用于去重判断，
-      // 或者我们采用更宽松的策略：只要 map 中存在包含此 docId+blockId 的 key，就视为重复。
-      
-      // 更好的做法：让 DiscoveryResult 也携带 kbId，或者在 key 匹配时遍历。
-      // 考虑到性能，我们假设 SearchService 会保证 key 的生成规则。
-      // 如果 DiscoveryResult 来自 graphDiscoveryService，它应该能知道 kbId。
-      // 暂时我们在 DiscoveryResult 类型定义里没有 kbId，这可能是一个小的缺失。
-      // 但通常 Discovery 是针对特定 kbId 做的，或者结果里包含了。
-      
-      // 修正：让我们检查 graphDiscoveryService 的输出。
-      // 它返回 GraphDiscoveredEvidenceBlock { docId, blockId, score }。
-      // SearchService 在调用时知道当前的 kbId。
-      // 所以我们可以在这里构造 key。
-      
-      // 但是，graphSearchService 的输出 Map 的 key 是由 `getGraphAugmentationKey` 生成的。
-      // 我们需要保证 key 生成逻辑一致。
-      
-      // 既然我们无法在这里 import `getGraphAugmentationKey` (它可能在 searchUtils 里)，
-      // 我们最好让 MergeInput 里的 discoveryResults 已经带有生成的 key，或者提供 key 生成函数。
-      
-      // 简化策略：遍历 mergedResults 的 keys，检查是否包含当前的 docId/blockId。
-      // 这种方式比较慢 (O(N*M))。
-      
-      // 优化策略：我们假设 mergedResults 的 key 包含了 docId 和 blockId。
-      // 我们可以构建一个 Set<string> `existingDocBlockIds` 来快速查找。
-      const existingDocBlockIds = new Set<string>();
-      for (const key of mergedResults.keys()) {
-         // key 格式通常包含 docId 和 blockId，但具体格式不确定。
-         // 这是一个潜在的耦合风险。
-         // 让我们看看 searchService 是怎么做的。
-         // 在 searchService 中，augmentations map 的 key 是 `getGraphAugmentationKey(kbId, docId, blockId)`。
-         // 我们可以要求调用者传入 key 生成器，或者我们自己实现一个简单的查重 Set，
-         // 其中的元素是 `${docId}|${blockId}`。
-         
-         // 为了安全起见，我们在 GraphResultMerger 内部维护一个 `seenDocBlockIds` 集合。
-         // 我们需要解析 key 吗？不，我们只需要知道 chunkDrivenResults 里的 value 对应的 docId/blockId。
-         // 可惜 GraphAugmentation 结构体里没有 docId/blockId 字段 (它是 entities/relations)。
-         
-         // 回退一步：SearchService 是如何使用这个 Map 的？
-         // 它是通过 `augmentations.get(key)` 来获取增强信息的。
-         // 所以 key 是唯一的索引。
-         
-         // 解决方案：我们要求调用方 (SearchService) 在构造 DiscoveryResult 时，
-         // 直接把生成的 key 传进来。这样 Merger 就不需要关心 key 的格式，只负责 Map.has(key) 检查。
-      }
-      
-      // 重新定义 DiscoveryResult，增加 key 字段
-      // 见下文修改。
-    }
-    
-    return { mergedResults, stats };
-  }
-  
-  /**
    * 带 Key 的合并逻辑 (为了解决 key 生成耦合问题)
    */
   mergeWithKeys(input: MergeInputWithKeys): MergeOutput {
     const { chunkDrivenResults, discoveryResults, minScoreThreshold = 0 } = input;
     const mergedResults = new Map<string, GraphAugmentation>(chunkDrivenResults);
-    
+
     const stats = {
       chunkDrivenCount: chunkDrivenResults.size,
       discoveryTotalCount: discoveryResults.length,

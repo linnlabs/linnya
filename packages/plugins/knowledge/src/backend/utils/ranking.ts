@@ -7,8 +7,6 @@
  * 存放所有与搜索结果排序、融合、重排相关的核心算法；这里是当前排序规则的权威实现。
  */
 
-import { Logger } from '@plugin/backend/loggingRuntime';
-const logger = new Logger('knowledge');
 import type { PointPayload, RetrievedPoint } from '../infrastructure/qdrantRepository';
 
 export interface LayeredRankingResult {

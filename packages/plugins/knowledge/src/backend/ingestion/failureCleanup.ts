@@ -32,18 +32,6 @@ const noopOriginalDocumentRepository: OriginalDocumentRepository = {
   deleteByKnowledgeBase: async () => 0,
 };
 
-// Qdrant点的载荷接口
-interface QdrantPointPayload {
-  doc_id?: string;
-  [key: string]: unknown;
-}
-
-// Qdrant点接口
-interface QdrantPoint {
-  payload?: QdrantPointPayload;
-  [key: string]: unknown;
-}
-
 /**
  * **功能 (What):** 从Qdrant集合中获取所有唯一的文档ID
  * **输入 (Input):**

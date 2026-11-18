@@ -138,8 +138,6 @@ describe('DatabaseService.initialize() — createTables-always invariants', () =
         'conversation_command_approvals', // 简单命令的对话级批准记忆
         'engine_checkpoints', // checkpointer（曾经的漏配 case）
         'engine_telemetry', // telemetry（曾经的漏配 case）
-        'knowledge_bases', // knowledge-base
-        'knowledge_graph_nodes',
         'installed_plugins', // plugin lifecycle core state
         'plugin_migrations',
         'workspace_node_text_snapshots',
@@ -147,6 +145,9 @@ describe('DatabaseService.initialize() — createTables-always invariants', () =
         TEST_PLUGIN_EVIDENCE_TABLE,
       ])
     );
+    // 插件迁移另有真实接管验收；Host 初始化不能代插件创建这些表。
+    expect(tables).not.toContain('knowledge_bases');
+    expect(tables).not.toContain('knowledge_graph_nodes');
 
     const testPlugin = db
       .prepare(

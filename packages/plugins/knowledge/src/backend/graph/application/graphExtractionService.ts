@@ -39,13 +39,6 @@ type ExtractedEntity = {
   description?: string | null;
 };
 
-type ExtractedEdge = {
-  source: string;
-  target: string;
-  relation_type: string;
-  statement?: string | null;
-  confidence?: number | null;
-};
 
 /**
  * 关系类型白名单（与 SOFT_GRAPH_PLAN.md 对齐）
@@ -191,10 +184,6 @@ function buildCanonicalEdgeSignature(seed: string): string {
   return `sig_${toUnsignedHex32(crc32.str(seed))}`;
 }
 
-type EdgeDedupCandidate = {
-  signature: string;
-  edge: KnowledgeGraphEdgeUpsertInput;
-};
 
 function getRelationTypePriorityForDedup(relationType: string): number {
   // 目标：相同签名下优先保留“信息密度更高”的关系类型，RELATED_TO 最低

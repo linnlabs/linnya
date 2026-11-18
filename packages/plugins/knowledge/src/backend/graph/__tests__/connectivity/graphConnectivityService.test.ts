@@ -57,7 +57,7 @@ class FakeGraphRepo implements KnowledgeGraphRepository {
   async upsertDocStatus(): Promise<void> {
     throw new Error('not needed');
   }
-  async getDocStatus(): Promise<any> {
+  async getDocStatus(): Promise<never> {
     throw new Error('not needed');
   }
   async tryAcquireDocExtractionLock(): Promise<boolean> {
@@ -66,19 +66,19 @@ class FakeGraphRepo implements KnowledgeGraphRepository {
   async updateDocProgress(): Promise<void> {
     throw new Error('not needed');
   }
-  async getKbProgress(): Promise<any> {
+  async getKbProgress(): Promise<never> {
     throw new Error('not needed');
   }
   async upsertVectorDocStatus(): Promise<void> {
     throw new Error('not needed');
   }
-  async getVectorDocStatus(): Promise<any> {
+  async getVectorDocStatus(): Promise<never> {
     throw new Error('not needed');
   }
   async updateVectorDocProgress(): Promise<void> {
     throw new Error('not needed');
   }
-  async getKbVectorProgress(): Promise<any> {
+  async getKbVectorProgress(): Promise<never> {
     throw new Error('not needed');
   }
   async deleteDocGraphData(): Promise<void> {

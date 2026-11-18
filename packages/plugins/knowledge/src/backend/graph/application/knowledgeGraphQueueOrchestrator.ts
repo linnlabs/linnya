@@ -381,7 +381,6 @@ export class KnowledgeGraphQueueOrchestrator {
           this.graphProgressService.onDocProgress(kbId);
         })().finally(() => {
           // timer 触发后清理占位，更新 attempts
-          const state = this.graphExtractionRetryState.get(key) ?? { attempts: 0, timer: null };
           if (!this.stopped)
             this.graphExtractionRetryState.set(key, { attempts: nextAttempt, timer: null });
         }),

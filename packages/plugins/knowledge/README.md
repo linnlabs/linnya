@@ -17,6 +17,7 @@ Backend 与 Renderer 都消费同一 shared 合同，不能另写一份近似 sc
 身份和版本以 `plugin.json` 为唯一真源；代码的 builtin 标记不是应用表面授信依据，Host 只授信正式装配来源。
 本包需要同批实现公共 SDK 的 Host；当前 manifest 的 `0.2.1` 下限仅供开发联验，不表示已发布的 0.2.1 安装包具备新增接口。正式发行前必须提高到实际包含这些 SDK 的 App 版本。
 `pnpm --dir packages/plugins/knowledge run typecheck` 使用 vue-tsc 同时检查 TS 与 Vue 模板。
+`pnpm --dir packages/plugins/knowledge run test` 从本包的 Vitest 组合根运行领域测试；Host 与知识库的联合测试位于 `packages/plugins/__tests__`，只由全仓测试入口发现。
 原 Renderer 的 JS 模块保留原语言与声明合同，不因迁移全面重写；TypeScript strict 规则保持不变。
 
 ### 数据库与产物
