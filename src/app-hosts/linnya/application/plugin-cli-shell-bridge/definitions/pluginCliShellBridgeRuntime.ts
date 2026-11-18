@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import type {
   CommandExecutionIdentity,
   CommandLaunchSnapshotV1,
@@ -7,7 +8,7 @@ import type {
 } from '../../../adapters/commands/shell-runtime';
 
 export interface PluginCliShellBridgeRuntime {
-  prepareExecution(launch: CommandLaunchSnapshotV1): ShellCommandExecutionScope;
+  prepareExecution(launch: CommandLaunchSnapshotV1, modelPurposeSnapshot?: ModelPurposeSnapshot): ShellCommandExecutionScope;
   closeAndWait(): Promise<void>;
 }
 

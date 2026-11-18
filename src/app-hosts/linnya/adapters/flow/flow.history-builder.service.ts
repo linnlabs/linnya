@@ -327,6 +327,7 @@ export class HistoryBuilder {
       promptKey: options?.promptKey,
       resolvedModelId,
       imageGenerationModelId: options?.imageGenerationModelId,
+      modelPurposeSnapshot: options?.modelPurposeSnapshot,
       knowledgeBaseId,
       maxSteps: agentDef?.config?.maxSteps,
       enableTools,

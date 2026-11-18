@@ -143,6 +143,15 @@ describe('continueWithToolOutput', () => {
     expect(request.options?.conversationHistory).toBeUndefined();
   });
 
+  it('已捕获的用途选择原样进入正式请求，不在发送适配层重选模型', async () => {
+    const snapshot = Object.freeze({ embeddingModelId: 'selected-embedding', pdfOcrModelId: null, imageVisionModelId: null, graphExtractionModelId: null });
+    await invokeAssistant({ userMessage: { text: '导入合成资料' }, options: {
+      conversationId: 'conv-purpose', context: { modelPurposeSnapshot: snapshot },
+    } }, {}, new AbortController().signal);
+    const request = readConversationNextRequest(streamConversationMock.mock.calls[0]?.[0]);
+    expect(request.options?.modelPurposeSnapshot).toEqual(snapshot);
+  });
+
   it('会话级 Agent 只上行产品身份，不在 Renderer 转换为 promptKey', async () => {
     await invokeAssistant(
       {

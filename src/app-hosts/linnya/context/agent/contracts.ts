@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import type * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { AiMessage, ReasoningEffort } from '@linnlabs/linnkit/contracts';
 import type { ResearchRunArgs, UserQuoteData } from '@app/schemas';
@@ -50,6 +51,7 @@ export interface AgentInvokeRequest extends AgentProfileRequest {
   researchScope?: ResearchRunArgs;
   model_id?: string;
   imageGenerationModelId?: string;
+  modelPurposeSnapshot?: ModelPurposeSnapshot;
   context_before?: string;
   context_after?: string;
   currentBlockContent?: string;

@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod';
+import { ModelPurposeSnapshotSchema } from './model-purpose-snapshot';
 import { ConversationUiSpecSchema } from './conversation/presentation';
 import {
   CONVERSATION_IMAGE_MAX_ATTACHMENTS,
@@ -301,6 +302,8 @@ export const ConversationOptions = z.object({
   selected_agent_id: ConversationSelectedAgentIdSchema.optional(),
   /** 图片生成模型ID */
   imageGenerationModelId: z.string().optional(),
+  /** 用户发起本轮时的有效用途选择；缺省表示调用方没有提供此配置。 */
+  modelPurposeSnapshot: ModelPurposeSnapshotSchema.optional(),
   /** 是否启用工具 */
   enableTools: z.boolean().optional(),
   /** 可用工具白名单 */
@@ -699,6 +702,8 @@ export const AgentInvokeRequest = z.object({
   current_paragraph: z.string().default(''),
   /** 图片生成模型ID */
   imageGenerationModelId: z.string().optional(),
+  /** 用户发起本轮时的有效用途选择；缺省表示调用方没有提供此配置。 */
+  modelPurposeSnapshot: ModelPurposeSnapshotSchema.optional(),
   /** 知识库ID */
   knowledgeBaseId: z.string().optional(),
   /** 最大推理步数 */

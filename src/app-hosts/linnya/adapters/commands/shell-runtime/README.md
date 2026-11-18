@@ -74,3 +74,7 @@ Shell runtime 不负责“发一个 kill 就返回”。它必须等待 owner �
 ## 8. 测试门禁
 
 主测试必须使用真实 permission authority、conversation admission、owner、output sink 和 production scope。至少覆盖：审批前零 spawn、启动后 cancel、超时、cwd 缺失、磁盘写失败、慢输出、PTY resize、App end、对话删除和跨对话 handle。UI 测试只验证 projection 与 IPC，不复制 runtime 规则。
+
+## 用途模型快照
+
+Shell 的 Host 请求可携带父运行已接纳的 `modelPurposeSnapshot`，只含嵌入、PDF OCR、图片识别和图谱抽取模型 ID。runtime 在异步准入和审批之前复制并冻结，pipe 与 PTY 都通过独立参数交给 execution scope factory；不写进 CommandLaunchSnapshot、Rust runner 协议、环境、argv、审计或工具结果。没有快照的命令仍能执行不需模型的操作。消费方先检查原权限，再按用途取得正式 Host 推理；已有索引的嵌入绑定由索引 owner 决定，不能用全局选择覆盖。

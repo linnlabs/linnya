@@ -131,6 +131,7 @@ vi.mock('../../../../shared/stores/ui', () => ({
 
 vi.mock('@/domains/model-configuration', () => ({
   readEffectiveModelPurposeBinding: () => 'image-generation-default',
+  captureModelPurposeSnapshot: () => ({ embeddingModelId: 'embed-original', pdfOcrModelId: 'ocr-original', imageVisionModelId: 'vision-original', graphExtractionModelId: 'graph-original' }),
 }));
 
 vi.mock('../../history/orchestration/scheduleSyncConversationToHistory', () => ({
@@ -267,6 +268,7 @@ describe('chatFlowOrchestrator edit and resend', () => {
       options: {
         context: {
           imageGenerationModelId: 'image-generation-default',
+          modelPurposeSnapshot: { embeddingModelId: 'embed-original', pdfOcrModelId: 'ocr-original', imageVisionModelId: 'vision-original', graphExtractionModelId: 'graph-original' },
         },
       },
     });

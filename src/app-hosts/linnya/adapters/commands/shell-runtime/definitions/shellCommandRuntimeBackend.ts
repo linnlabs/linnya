@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import type {
   CommandLaunchSnapshotV1,
   ProcessPtySizeV1,
@@ -23,9 +24,11 @@ export interface ShellCommandRuntimeBackend {
   preparePipe(
     launch: Extract<CommandLaunchSnapshotV1, { readonly mode: 'pipe' }>,
     toolOutputScope: ShellCommandToolOutputScope,
+    modelPurposeSnapshot?: ModelPurposeSnapshot,
   ): PreparedCommandExecutionRuntime;
   preparePty(
     launch: Extract<CommandLaunchSnapshotV1, { readonly mode: 'pty' }>,
     toolOutputScope: ShellCommandToolOutputScope,
+    modelPurposeSnapshot?: ModelPurposeSnapshot,
   ): PreparedCommandExecutionRuntime;
 }

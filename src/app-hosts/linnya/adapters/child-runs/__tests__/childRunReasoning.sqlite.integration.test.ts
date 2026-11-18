@@ -86,6 +86,7 @@ async function seedParent(fixture: Fixture, projectId?: string) {
       model_id: parentModelId,
       reasoning_effort: 'low',
       frozenSystemPrompt: 'Frozen parent',
+      modelPurposeSnapshot: { embeddingModelId: 'embed-original', pdfOcrModelId: 'ocr-original', imageVisionModelId: 'vision-original', graphExtractionModelId: 'graph-original' },
       ...(projectId ? { project_metadata: { id: projectId, name: 'Synthetic child inputs' } } : {}),
     },
     historyEventIds: [],
@@ -130,6 +131,7 @@ function invoker(fixture: Fixture, options: {
   fixed?: boolean;
   promptKey?: string;
   requestAdmission?: AgentDefinition['requestAdmission'];
+  observeContext?: (context: unknown) => void;
 } = {}) {
   const definition = findRegisteredAgentDefinitionByPromptKey(options.promptKey ?? 'research_author_v1');
   if (!definition) throw new Error('Missing registered child definition');
@@ -152,11 +154,16 @@ function invoker(fixture: Fixture, options: {
         agentConfig: toChildRunAgentConfig(childDefinition),
       }),
     },
-    childRunInvoker: createLinnyaChildRunInvoker({
-      telemetryPort: telemetry.noopTelemetry,
-      auditPort: fixture.runtime.auditPort,
-      llmCaller: fixture.ai.getLlmCaller(),
-    }),
+    childRunInvoker: {
+      invoke(config) {
+        options.observeContext?.(config.parentToolContext);
+        return createLinnyaChildRunInvoker({
+          telemetryPort: telemetry.noopTelemetry,
+          auditPort: fixture.runtime.auditPort,
+          llmCaller: fixture.ai.getLlmCaller(),
+        }).invoke(config);
+      },
+    },
   });
 }
 function request(promptKey = 'research_author_v1') {
@@ -183,6 +190,7 @@ describe('durable child reasoning inheritance', () => {
     });
     const descriptor = await fixture.runtime.runDescriptors?.load(childRunId);
     expect(descriptor?.request.reasoning_effort).toBe(fixed ? undefined : 'low');
+    expect(descriptor?.request.modelPurposeSnapshot?.embeddingModelId).toBe('embed-original');
     expect(fixture.ai.getCalls()).toHaveLength(1);
     expect(fixture.ai.getCalls()[0]).toMatchObject({
       modelId: fixed ? fixedModelId : parentModelId,
@@ -213,12 +221,18 @@ describe('durable child reasoning inheritance', () => {
     vi.spyOn(descriptors, 'load').mockImplementation(async runId => {
       const descriptor = await load(runId);
       return descriptor && runId === parentRunId
-        ? { ...descriptor, request: { ...descriptor.request, reasoning_effort: 'high' } }
+        ? { ...descriptor, request: { ...descriptor.request, reasoning_effort: 'high', modelPurposeSnapshot: { ...{ embeddingModelId: 'embed-original', pdfOcrModelId: 'ocr-original', imageVisionModelId: 'vision-original', graphExtractionModelId: 'graph-original' }, embeddingModelId: 'new-parent-choice' } } }
         : descriptor;
     });
-    await expect(invoker(resumed).invoke(request())).resolves.toMatchObject({ success: true });
+    const observed: unknown[] = [];
+    await expect(invoker(resumed, { observeContext: context => observed.push(context) }).invoke(request()))
+      .resolves.toMatchObject({ success: true });
+    expect(observed).toEqual([expect.objectContaining({
+      modelPurposeSnapshot: expect.objectContaining({ embeddingModelId: 'embed-original' }),
+    })]);
     expect(fixtureEffort(resumed)).toBe('low');
     expect((await descriptors.load(childRunId))?.request.reasoning_effort).toBe('low');
+    expect((await descriptors.load(childRunId))?.request.modelPurposeSnapshot?.embeddingModelId).toBe('embed-original');
     expect((await resumed.runtime.supervisor.list({ parentRunId })).runs).toHaveLength(1);
     resumed.ai.assertAllTurnsConsumed();
   });

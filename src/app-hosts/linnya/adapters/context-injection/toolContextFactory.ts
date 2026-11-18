@@ -116,6 +116,7 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
           : Object.freeze([...options.request.availableTools]),
     authorizedHostToolCall: options.authorizedHostToolCall,
     imageGenerationModelId: options.request.imageGenerationModelId,
+    modelPurposeSnapshot: options.request.modelPurposeSnapshot,
     databaseService: options.hostServices.databaseService,
     workspaceMutationPublisher: options.hostServices.workspaceMutationPublisher,
     shellToolRuntime: options.hostServices.shellToolRuntime,

@@ -1,3 +1,4 @@
+import type { ModelPurposeSnapshot } from '@app/schemas';
 import { randomUUID } from 'node:crypto';
 
 import { describe, expect, it } from 'vitest';
@@ -338,6 +339,7 @@ function fixture(input: {
     },
   };
   const launches: CommandLaunchSnapshotV1[] = [];
+  const modelPurposeSnapshots: Array<ModelPurposeSnapshot | undefined> = [];
   const toolOutputInstanceIds: string[] = [];
   const auditEvents: CommandExecutionAuditEvent[] = [];
   const auditFailureBindings: CommandExecutionOwnerBindingV1[] = [];
@@ -371,7 +373,8 @@ function fixture(input: {
         maximumHardTimeoutMs: 600_000,
       };
     },
-    preparePipe(launch, toolOutputScope) {
+    preparePipe(launch, toolOutputScope, modelPurposeSnapshot) {
+      modelPurposeSnapshots.push(modelPurposeSnapshot);
       lifecycle.push('prepare:pipe');
       if (input.failPrepare) throw new Error('injected runtime preparation failure');
       launches.push(launch);
@@ -384,7 +387,8 @@ function fixture(input: {
         lifecycle,
       });
     },
-    preparePty(launch, toolOutputScope) {
+    preparePty(launch, toolOutputScope, modelPurposeSnapshot) {
+      modelPurposeSnapshots.push(modelPurposeSnapshot);
       lifecycle.push('prepare:pty');
       if (input.failPrepare) throw new Error('injected runtime preparation failure');
       launches.push(launch);
@@ -471,6 +475,7 @@ function fixture(input: {
     approvals,
     launches,
     toolOutputInstanceIds,
+    modelPurposeSnapshots,
     lifecycle,
     auditEvents,
     auditFailureBindings,
@@ -479,6 +484,25 @@ function fixture(input: {
 }
 
 describe('ShellToolRuntime production orchestration', () => {
+  it.each([false, true])('用途快照在审批前冻结且不进入进程协议：PTY=%s', async interactive => {
+    const snapshot = { embeddingModelId: 'embed-original', pdfOcrModelId: null, imageVisionModelId: null, graphExtractionModelId: null };
+    const f = fixture({
+      immediate: true,
+      approvalChoice: 'allow_once',
+      onApprovalRequest: () => { snapshot.embeddingModelId = 'embed-changed'; },
+    });
+    const outcome = await f.runtime.executeShell({
+      ...shellRequest({ command: 'rm file.txt', interactive }),
+      modelPurposeSnapshot: snapshot,
+    });
+    expect(outcome.status).toBe('completed');
+    expect(f.lifecycle).toContain('approval:requested');
+    expect(f.modelPurposeSnapshots).toEqual([{ ...snapshot, embeddingModelId: 'embed-original' }]);
+    expect(Object.isFrozen(f.modelPurposeSnapshots[0])).toBe(true);
+    expect(JSON.stringify(f.launches)).not.toContain('embed-original');
+    expect(JSON.stringify(f.auditEvents)).not.toContain('embed-original');
+  });
+
   it.each(['read_only', 'standard'] as const)('%s：直接引用凭据路径先审批，允许本次后下一次仍需审批', async permissionLevel => {
     const f = fixture({ immediate: true, approvalChoice: 'allow_once' });
     for (let call = 0; call < 2; call++) {

@@ -30,6 +30,7 @@ export {
   readAuxiliaryPurposeLowestReasoningEffort,
   readEffectiveAuxiliaryModelPurposeBinding,
   readEffectiveModelPurposeBinding,
+  captureModelPurposeSnapshot,
   readPrimaryReasoningEffort,
   readSelectedModelPurposeBinding,
   setAuxiliaryModelPurposeBinding,

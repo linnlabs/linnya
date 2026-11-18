@@ -97,6 +97,7 @@ describe('ShellTool', () => {
       parentToolCallId: ToolCallIdSchema.parse('call_shell_tool'),
       commandRunPermission: permission,
       shellToolRuntime: runtime,
+      modelPurposeSnapshot: { embeddingModelId: 'embed-original', pdfOcrModelId: 'ocr-original', imageVisionModelId: 'vision-original', graphExtractionModelId: 'graph-original' },
       abortSignal: abortController.signal,
     };
 
@@ -123,6 +124,7 @@ describe('ShellTool', () => {
       agentRunId: 'run_shell_tool',
       originToolCallId: 'call_shell_tool',
       toolOutputInstanceId: 'default',
+      modelPurposeSnapshot: { embeddingModelId: 'embed-original', pdfOcrModelId: 'ocr-original', imageVisionModelId: 'vision-original', graphExtractionModelId: 'graph-original' },
       commandRunPermission: permission,
       abortSignal: abortController.signal,
     });

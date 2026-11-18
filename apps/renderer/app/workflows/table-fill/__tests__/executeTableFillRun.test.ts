@@ -252,6 +252,7 @@ describe('executeTableFillRun', () => {
     const invoke = vi.fn<ExecuteTableFillRunDependencies['invokeAssistant']>(
       async (params, callbacks) => {
         expect(params.options?.messageId).toBe('message-1');
+        expect(params.options?.context?.modelPurposeSnapshot?.embeddingModelId).toBe('selected-embedding');
         expect(params.options?.promptKey).toBe(PromptKeys.SYSTEM_BATCH_SUMMARIZER);
         expect(params.options?.hostToolCall).toMatchObject({
           tool_name: 'subrun_batch',
@@ -288,7 +289,7 @@ describe('executeTableFillRun', () => {
     );
     const harness = createHarness(invoke);
 
-    await executeTableFillRun(createInput(), harness.dependencies);
+    await executeTableFillRun({ ...createInput(), modelPurposeSnapshot: { embeddingModelId: 'selected-embedding', pdfOcrModelId: null, imageVisionModelId: null, graphExtractionModelId: null } }, harness.dependencies);
 
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(harness.writes.map(write => [write.unitId, write.content, write.mode])).toEqual([
