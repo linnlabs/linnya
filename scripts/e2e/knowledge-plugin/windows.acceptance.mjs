@@ -80,7 +80,10 @@ try {
     '\ufeff' + (await readFile(path.join(import.meta.dirname, 'windows/user-session.ps1'), 'utf8'))
   );
   const localArchive = path.join(root, 'candidate.tar.gz');
-  await runCommand('tar', ['-czf', localArchive, '-C', transfer, '.']);
+  // Windows 安装树只传真实文件；macOS 的 AppleDouble 会被正确当成未签名 DLL 拒绝。
+  await runCommand('tar', ['-czf', localArchive, '-C', transfer, '.'], {
+    env: { ...process.env, COPYFILE_DISABLE: '1' },
+  });
   remoteTouched = true;
   await runCommand('scp', [...sshArgs, localArchive, `${target}:/${archive}`]);
   await runCommand('scp', [
