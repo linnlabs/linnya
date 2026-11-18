@@ -10,7 +10,7 @@ describe('Knowledge Agent contribution → Host execution policy', () => {
   beforeEach(() => {
     backendPluginRegistry.clear();
     ensureBuiltinBackendPluginsRegistered();
-    backendPluginRegistry.register(knowledgePlugin, { allowPluginCli: false, allowMultipartUpload: true });
+    backendPluginRegistry.register(knowledgePlugin, { allowPluginCli: true, allowMultipartUpload: true });
   });
   afterEach(() => {
     clearPluginRuntimeStateForTests();
