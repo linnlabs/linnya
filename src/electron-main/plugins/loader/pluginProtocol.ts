@@ -17,11 +17,8 @@ import {
 const pluginScheme = PLUGIN_PROTOCOL_SCHEME;
 let isPluginProtocolHandlerRegistered = false;
 
-const hostShimModules = new Map<string, string>([
-  ['/vue.js', `
-const host = globalThis.__LINNYA_RENDERER_PLUGIN_HOST_MODULES__?.vue;
-if (!host) throw new Error('Linnya renderer plugin host Vue module is not installed.');
-const missingExports = [
+// 源码 Vite 会提供完整 Vue；磁盘产物只拿此白名单，检查与 ESM 导出必须来自同一份名单。
+const vueHostExportNames = [
   'version',
   'createApp',
   'createVNode',
@@ -50,9 +47,11 @@ const missingExports = [
   'guardReactiveProps',
   'unref',
   'getCurrentScope',
+  'effectScope',
   'onScopeDispose',
   'toValue',
   'reactive',
+  'readonly',
   'createBlock',
   'Teleport',
   'withModifiers',
@@ -81,69 +80,18 @@ const missingExports = [
   'inject',
   'Transition',
   'resolveComponent',
-].filter((name) => host[name] === undefined);
+  'resolveDirective',
+] as const;
+
+const hostShimModules = new Map<string, string>([
+  ['/vue.js', `
+const host = globalThis.__LINNYA_RENDERER_PLUGIN_HOST_MODULES__?.vue;
+if (!host) throw new Error('Linnya renderer plugin host Vue module is not installed.');
+const missingExports = ${JSON.stringify(vueHostExportNames)}.filter((name) => host[name] === undefined);
 if (missingExports.length > 0) {
   throw new Error('Linnya renderer plugin host Vue module is missing exports: ' + missingExports.join(', '));
 }
-export const version = host.version;
-export const createApp = host.createApp;
-export const createVNode = host.createVNode;
-export const createStaticVNode = host.createStaticVNode;
-export const render = host.render;
-export const shallowRef = host.shallowRef;
-export const shallowReadonly = host.shallowReadonly;
-export const ref = host.ref;
-export const isRef = host.isRef;
-export const triggerRef = host.triggerRef;
-export const computed = host.computed;
-export const watch = host.watch;
-export const watchPostEffect = host.watchPostEffect;
-export const toRef = host.toRef;
-export const useId = host.useId;
-export const defineComponent = host.defineComponent;
-export const onMounted = host.onMounted;
-export const onBeforeUnmount = host.onBeforeUnmount;
-export const onUnmounted = host.onUnmounted;
-export const openBlock = host.openBlock;
-export const createElementBlock = host.createElementBlock;
-export const createElementVNode = host.createElementVNode;
-export const normalizeClass = host.normalizeClass;
-export const normalizeStyle = host.normalizeStyle;
-export const normalizeProps = host.normalizeProps;
-export const guardReactiveProps = host.guardReactiveProps;
-export const unref = host.unref;
-export const getCurrentScope = host.getCurrentScope;
-export const onScopeDispose = host.onScopeDispose;
-export const toValue = host.toValue;
-export const reactive = host.reactive;
-export const createBlock = host.createBlock;
-export const Teleport = host.Teleport;
-export const withModifiers = host.withModifiers;
-export const createCommentVNode = host.createCommentVNode;
-export const nextTick = host.nextTick;
-export const h = host.h;
-export const getCurrentInstance = host.getCurrentInstance;
-export const watchEffect = host.watchEffect;
-export const markRaw = host.markRaw;
-export const customRef = host.customRef;
-export const withDirectives = host.withDirectives;
-export const vShow = host.vShow;
-export const Fragment = host.Fragment;
-export const renderList = host.renderList;
-export const renderSlot = host.renderSlot;
-export const mergeProps = host.mergeProps;
-export const toDisplayString = host.toDisplayString;
-export const withKeys = host.withKeys;
-export const withCtx = host.withCtx;
-export const vModelText = host.vModelText;
-export const createTextVNode = host.createTextVNode;
-export const resolveDynamicComponent = host.resolveDynamicComponent;
-export const defineAsyncComponent = host.defineAsyncComponent;
-export const createSlots = host.createSlots;
-export const provide = host.provide;
-export const inject = host.inject;
-export const Transition = host.Transition;
-export const resolveComponent = host.resolveComponent;
+${vueHostExportNames.map((name) => `export const ${name} = host.${name};`).join('\n')}
 export default host;
 `],
   ['/pinia.js', `

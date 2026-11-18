@@ -35,6 +35,8 @@ renderer 门面还要额外确认三处：
   只允许保留 renderer 环境声明、插件自有引擎声明等非 host 镜像内容，不要再新增
   `hostImports.d.ts` 这类手写桩。
 
+Vue 的 `plugin://host/vue.js` 同样使用明确的 named exports 白名单；`pluginProtocol.ts` 从同一份名单生成导出和运行时检查。插件新增 Vue API 或编译器生成调用时，必须核对实际 Renderer 产物的 imports，并验证协议返回的 ESM。源码 Vite 能加载完整 Vue，不能代替安装目录验收；例如插件作用域的 `effectScope`、只读状态与编译后指令解析都必须由该门面提供。
+
 ## Renderer UI package 与 Host 门面的边界
 
 跨 Host/插件稳定复用、且不需要 Host 状态、权限或业务 port 的 Vue 控件、平台图标、token、主题、本地化合同与 scroll capability 属于 `@linnya/renderer-ui`，不属于 `@plugin/renderer/*`。插件直接声明并导入 package 的公开入口，运行时由 Host 通过 `plugin://host/renderer-ui/*` 提供同一模块身份；CSS 只由 Host 装载一次。
