@@ -106,6 +106,37 @@ export async function prepareWindowsCandidate(root) {
   await mkdir(application, { recursive: true });
   await mkdir(resources, { recursive: true });
   const sourceManifest = await json(path.join(repositoryRoot, 'package.json'));
+  const electronZip = process.env.LINNYA_WINDOWS_ELECTRON_ZIP;
+  let electronZipIdentity;
+  if (electronZip) {
+    const name = `electron-v${sourceManifest.devDependencies.electron}-win32-x64.zip`;
+    assert.ok(path.isAbsolute(electronZip));
+    assert.equal(path.basename(electronZip), name);
+    const checksumUrl = `https://github.com/electron/electron/releases/download/v${sourceManifest.devDependencies.electron}/SHASUMS256.txt`;
+    const checksums = await runCommand(
+      'curl',
+      [
+        '--fail',
+        '--location',
+        '--connect-timeout',
+        '8',
+        '--max-time',
+        '30',
+        '--silent',
+        '--show-error',
+        checksumUrl,
+      ],
+      { inherit: false, timeout: 35_000 }
+    );
+    const entry = checksums
+      .split(/\r?\n/)
+      .map(line => line.trim().split(/\s+\*?/))
+      .find(fields => fields[1] === name);
+    assert.ok(entry && /^[a-f0-9]{64}$/.test(entry[0]), 'Official Electron checksum missing');
+    const sha256 = await hashFile(electronZip);
+    assert.equal(sha256, entry[0], 'Explicit Electron ZIP differs from the official release');
+    electronZipIdentity = { name, sha256, checksumUrl };
+  }
   const manifest = projectProductionPackageManifest(sourceManifest);
   const lock = await json(path.join(repositoryRoot, 'production-package-lock.json'));
   assertProductionPackageLock(lock, manifest);
@@ -116,6 +147,7 @@ export async function prepareWindowsCandidate(root) {
     appId: 'dev.linnya.acceptance.knowledge',
     productName: 'Linnya Knowledge Acceptance',
     electronVersion: sourceManifest.devDependencies.electron,
+    ...(electronZip ? { electronDist: electronZip } : {}),
     electronFuses: sourceBuild.electronFuses,
     asar: true,
     asarUnpack: sourceBuild.asarUnpack,
@@ -244,6 +276,7 @@ export async function prepareWindowsCandidate(root) {
     sourceTree: await runCommand('git', ['rev-parse', 'HEAD^{tree}'], { inherit: false }),
     version: manifest.version,
     electron: sourceManifest.devDependencies.electron,
+    ...(electronZipIdentity ? { electronZipIdentity } : {}),
     kind: 'community-installation-layout',
     main: manifest.main,
     coverage:

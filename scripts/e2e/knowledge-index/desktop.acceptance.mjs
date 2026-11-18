@@ -115,7 +115,7 @@ try {
   await run('scroll', '--selector', '.settings-modal-panel-body', '--dy', '800');
   await run('click', '--selector', '#embeddingModelSelect');
   await run('click', 'text=Knowledge embedding fixture');
-  await run('click', '--selector', '.modal-close');
+  await run('click', '--selector', '.settings-modal-close');
   kbId = (await kbCall('create', { name: 'Knowledge rebuild fixture' })).id;
   assert.equal(
     readFileSync(up.logs.desktop, 'utf8').includes('[QdrantManager] Starting'),
