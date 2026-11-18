@@ -102,14 +102,14 @@ async function deleteLocalCollectionDirectory(
 /** SDK 保留 fetch 的 cause；只有连接拒绝能证明目标端口没有运行中的服务。 */
 function isConnectionRefused(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  if (error instanceof AggregateError) {
+  if (error.name === 'AggregateError' && 'errors' in error && Array.isArray(error.errors)) {
     // localhost 的双栈连接会聚合多个地址，必须全部明确拒绝，不能把其中的超时当离线。
     return (
       error.errors.length > 0 && error.errors.every((cause: unknown) => isConnectionRefused(cause))
     );
   }
   if ('code' in error && error.code === 'ECONNREFUSED') return true;
-  return error.cause !== undefined && isConnectionRefused(error.cause);
+  return 'cause' in error && isConnectionRefused(error.cause);
 }
 
 export async function deleteKnowledgeGraphVectorCollections(
