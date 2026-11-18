@@ -19,15 +19,30 @@ const test = acceptance(process.env.KNOWLEDGE_PROBE_NAME || `knowledge-index-${p
   evidence,
 });
 const { run } = test;
-const kbModule = '/apps/renderer/domains/knowledgebase/services/knowledgeBaseService.js';
-const catalogModule =
-  '/apps/renderer/domains/model-configuration/features/model-catalog/orchestration/modelCatalogOperations.ts';
 const json = JSON.stringify;
 const evaluate = async code => (await run('eval', `(async()=>{${code}})()`)).value;
-const kbCall = (method, ...args) =>
-  evaluate(
-    `return (await import(${json(kbModule)})).knowledgeBaseService.${method}(${args.map(json).join(',')});`
+const kbCall = async (channel, payload = {}) => {
+  const result = await evaluate(
+    `return window.electronAPI['plugin:invoke']('knowledge',${json(channel)},${json(payload)});`
   );
+  assert.equal(result.success, true, JSON.stringify(result.error));
+  return result.data;
+};
+async function api(route, options = {}) {
+  const session = await evaluate("return window.electronAPI.invoke('api:get-port');");
+  const response = await fetch(`http://127.0.0.1:${session.port}${route}`, {
+    ...options,
+    headers: {
+      'X-API-Token': session.token,
+      ...(options.json ? { 'content-type': 'application/json' } : {}),
+    },
+    body: options.json ? json(options.json) : options.body,
+    signal: AbortSignal.timeout(60_000),
+  });
+  const result = await response.json();
+  assert.equal(response.ok, true, `${route}: ${json(result)}`);
+  return result;
+}
 async function until(action, predicate, message, timeout = 30_000) {
   const end = Date.now() + timeout;
   while (Date.now() < end) {
@@ -48,12 +63,15 @@ const state = () =>
     .embedding_space_id;
 const documents = () =>
   database.prepare('SELECT id,status FROM kb_documents WHERE kb_id=? ORDER BY id').all(kbId);
-const status = () => kbCall('getIndexRebuildStatus', kbId);
+const status = () => kbCall('index-rebuild-status', { kbId });
 const search = id =>
-  kbCall('searchInKnowledgeBase', id, {
-    query: 'apple',
-    useReranking: false,
-    embeddingModelId: modelId,
+  kbCall('search', {
+    kbId: id,
+    request: {
+      query: 'apple',
+      useReranking: false,
+      embeddingModelId: modelId,
+    },
   });
 async function terminal() {
   return until(status, value => value && value.status !== 'running', '重建任务没有结束');
@@ -83,16 +101,22 @@ try {
     endpoint_model_id: 'embedding-v1',
     display_name: 'Knowledge embedding fixture',
   };
-  const registered = await evaluate(
-    `return (await import('/apps/renderer/domains/model-configuration/features/custom-model-registration/infrastructure/httpCustomCapabilityGateway.ts')).httpCustomCapabilityGateway.register(${json(request)},new AbortController().signal);`
-  );
+  const registered = await api('/api/v1/custom-api-onboarding/capabilities/models', {
+    method: 'POST',
+    json: request,
+  });
   modelId = registered.model_id;
   assert.ok(modelId);
-  await evaluate(
-    `await (await import(${json(catalogModule)})).loadModelCatalog(); (await import('/apps/renderer/domains/model-configuration/features/purpose-model-bindings/orchestration/modelPurposeBindings.ts')).setModelPurposeBinding('embedding',${json(modelId)});`
-  );
-  kbId = (await kbCall('createKnowledgeBase', { name: 'Knowledge rebuild fixture' })).knowledge_base
-    .id;
+  // 刷新正式目录并从用户可见的用途选择器绑定，不依赖开发源码模块。
+  await run('reload');
+  await run('wait', '--selector', '[data-linnya-tooltip="设置"]');
+  await run('click', '--selector', '[data-linnya-tooltip="设置"]');
+  await run('click', 'text=模型配置');
+  await run('scroll', '--selector', '.settings-modal-panel-body', '--dy', '800');
+  await run('click', '--selector', '#embeddingModelSelect');
+  await run('click', 'text=Knowledge embedding fixture');
+  await run('click', '--selector', '.modal-close');
+  kbId = (await kbCall('create', { name: 'Knowledge rebuild fixture' })).id;
   assert.equal(
     readFileSync(up.logs.desktop, 'utf8').includes('[QdrantManager] Starting'),
     false,
@@ -105,9 +129,11 @@ try {
       (_, index) =>
         `## Apple section ${index}\n\nApple orchard ${index}. ${'Fresh apples grow on trees. '.repeat(25)}`
     ).join('\n\n');
-    await evaluate(
-      `return (await import(${json(kbModule)})).knowledgeBaseService.uploadDocument(${json(kbId)},new File([${json(markdown)}],'apple-orchard.md',{type:'text/markdown'}),{embedding_model_id:${json(modelId)}});`
-    );
+    const form = new FormData();
+    form.append('kbId', kbId);
+    form.append('embedding_model_id', modelId);
+    form.append('file', new Blob([markdown], { type: 'text/markdown' }), 'apple-orchard.md');
+    await api('/api/v1/plugins/knowledge/documents/upload', { method: 'POST', body: form });
     await until(
       async () => documents(),
       values => values.length === 1 && values[0].status === 'completed',
@@ -128,9 +154,6 @@ try {
     assert.ok(result.results.some(item => item.docId === doc.id));
     evidence.json('initial-ingestion', { documents: documents(), spaceId: state(), result });
   });
-  await evaluate(
-    `await (await import('/apps/renderer/domains/knowledgebase/runtime.js')).useKnowledgeBase().fetchKnowledgeBases();`
-  );
   await run('click', 'text=知识库');
   await run('wait', '--text', 'Knowledge rebuild fixture');
   await run('click', 'text=Knowledge rebuild fixture');
@@ -138,9 +161,14 @@ try {
   await run('wait', '--text', 'apple-orchard.md');
   await evidence.check('变更模型真实路由后拒绝旧向量，UI重建完成且原文不变', async () => {
     const oldSpace = state();
-    await evaluate(
-      `const gateway=(await import('/apps/renderer/domains/model-configuration/features/model-catalog/infrastructure/httpModelCatalogGateway.ts')).httpModelCatalogGateway; const model=(await gateway.load()).models.find(item=>item.id===${json(modelId)}); return (await import(${json(catalogModule)})).updateModelInCatalog(model.id,{model_name:'embedding-v2',embedding_route:{...model.embedding_route,endpoint_model_id:'embedding-v2'}});`
-    );
+    const model = (await api('/api/v1/models')).models.find(item => item.id === modelId);
+    await api(`/api/v1/models/${encodeURIComponent(modelId)}`, {
+      method: 'PUT',
+      json: {
+        model_name: 'embedding-v2',
+        embedding_route: { ...model.embedding_route, endpoint_model_id: 'embedding-v2' },
+      },
+    });
     const requestsBefore = fixture.requests.length;
     await assert.rejects(search(kbId), /重建|mismatch|来源/);
     assert.equal(fixture.requests.length, requestsBefore, '旧索引拒绝应发生在模型网络调用前');
@@ -182,7 +210,7 @@ try {
     assert.deepEqual(readFileSync(sourcePath), sourceBytes);
     fixture.setFailure('none');
     fixture.setDelay(0);
-    await kbCall('rebuildIndex', kbId, modelId);
+    await kbCall('rebuild-index', { kbId, modelId });
     assert.equal((await terminal()).status, 'completed');
     assert.ok((await search(kbId)).results.length > 0);
   });
@@ -197,7 +225,7 @@ try {
     );
     assert.equal(state(), null);
     const current = await status();
-    await kbCall('cancelTask', current.taskId);
+    await kbCall('cancel-task', { taskId: current.taskId });
     assert.equal((await terminal()).status, 'cancelled');
     const after = fixture.requests.length;
     await delay(700);
@@ -210,7 +238,7 @@ try {
     database = new DatabaseSync(up.workspaceDb, { readOnly: true });
     assert.equal(state(), null);
     assert.deepEqual(readFileSync(sourcePath), sourceBytes);
-    await kbCall('rebuildIndex', kbId, modelId);
+    await kbCall('rebuild-index', { kbId, modelId });
     assert.equal((await terminal()).status, 'completed');
     assert.ok((await search(kbId)).results.length > 0);
     assert.deepEqual(readFileSync(sourcePath), sourceBytes);
