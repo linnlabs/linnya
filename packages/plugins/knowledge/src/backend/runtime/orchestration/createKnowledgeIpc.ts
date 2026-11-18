@@ -181,14 +181,14 @@ export function createKnowledgeIpc(
     register(_services, register) {
       for (const [channel, operation] of Object.entries(handlers)) {
         const handler: BackendPluginIpcHandler = async (event, payload) => {
-          const runtime = getRuntime();
-          runtime.assertAccepting();
-          const renderer = readBackendPluginRendererContext(event);
-          const signal = renderer
-            ? AbortSignal.any([renderer.signal, runtime.signal])
-            : runtime.signal;
-          signal.throwIfAborted();
           try {
+            const runtime = getRuntime();
+            runtime.assertAccepting();
+            const renderer = readBackendPluginRendererContext(event);
+            const signal = renderer
+              ? AbortSignal.any([renderer.signal, runtime.signal])
+              : runtime.signal;
+            signal.throwIfAborted();
             const result = await operation(runtime, payload, signal, event);
             signal.throwIfAborted();
             return { success: true, data: result };

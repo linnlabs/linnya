@@ -2,6 +2,7 @@ import type { MessageCatalogContribution } from '@app/localization';
 import type { KnowledgeBaseMessageKey } from './knowledgeBaseMessages';
 
 export const KNOWLEDGE_BASE_MESSAGE_FALLBACKS = {
+  'knowledgeBase.runtime.error.preparationFailed': '知识库资料不可用，请修复后停用再启用。',
   'knowledgeBase.manage.savedContent.title': '查看已保存内容',
   'knowledgeBase.manage.savedContent.action': '查看已保存内容',
   'knowledgeBase.manage.savedContent.loading': '正在读取已保存内容…',
@@ -377,6 +378,7 @@ export const KNOWLEDGE_BASE_MESSAGE_CATALOG: MessageCatalogContribution = {
       'knowledgeBase.upload.error.failed': 'Upload failed',
       'knowledgeBase.upload.error.canceledByUser': 'Canceled by user',
       'knowledgeBase.service.error.apiBaseUrlUnavailable': 'Could not get the API base URL',
+      'knowledgeBase.runtime.error.preparationFailed': 'Knowledge data unavailable. Fix it, then disable and re-enable the plugin.',
       'knowledgeBase.service.error.getAllIpcFailed': 'Failed to get knowledge base list (IPC)',
       'knowledgeBase.service.create.success': 'Knowledge base created',
       'knowledgeBase.service.error.createIpcFailed': 'Failed to create knowledge base (IPC)',

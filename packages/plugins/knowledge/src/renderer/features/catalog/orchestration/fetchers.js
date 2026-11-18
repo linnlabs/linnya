@@ -13,6 +13,7 @@
 import { knowledgeBaseService } from '../../../services/knowledgeBaseService'
 import { resolveCurrentKnowledgeBaseMessage } from '../../../functions/resolveCurrentKnowledgeBaseMessage'
 import { readPurposeModelId } from '@plugin/renderer/modelConfiguration'
+import { extractKnowledgeBaseErrorMessage } from '../../../functions/extractKnowledgeBaseErrorMessage'
 
 /**
  * 功能 (What): 获取所有知识库列表
@@ -37,7 +38,7 @@ export function createFetchKnowledgeBases(state) {
       // - 当前设计下，谁需要默认选中哪个知识库，应由调用方主动调用 setCurrentKnowledgeBase
     } catch (err) {
       console.error('[KnowledgeBase Store] 💥 获取知识库列表失败:', err);
-      state.setError(resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.fetchListFailed'))
+      state.setError(extractKnowledgeBaseErrorMessage(err) || resolveCurrentKnowledgeBaseMessage('knowledgeBase.store.error.fetchListFailed'))
       state.setKnowledgeBases([])
     } finally {
       state.setLoading(false)

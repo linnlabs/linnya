@@ -2,6 +2,7 @@ import type { ComputedRef } from 'vue';
 import type { LinnyaLocale, MessageParams } from '@app/localization';
 
 export type KnowledgeBaseMessageKey =
+  | 'knowledgeBase.runtime.error.preparationFailed'
   | 'knowledgeBase.manage.savedContent.title'
   | 'knowledgeBase.manage.savedContent.action'
   | 'knowledgeBase.manage.savedContent.loading'

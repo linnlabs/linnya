@@ -1,6 +1,4 @@
 import path from 'node:path';
-import { isGraphExtractionDumpEnabled } from '../../graph/application/graphExtractionDebugDump';
-import { mkdir } from 'node:fs/promises';
 import { getPluginStorage } from '@plugin/backend/storageRuntime';
 import { createPluginVectorRuntime } from '@plugin/backend/vectorRuntime';
 import { getPluginInferencePort } from '@plugin/backend/inferenceRuntime';
@@ -9,11 +7,6 @@ import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfigurat
 import { broadcastRendererPluginMessage } from '@plugin/backend/pluginRendererPush';
 import { QdrantAdapter } from '../../infrastructure/vector-store/QdrantAdapter';
 import { QdrantRepositoryImpl } from '../../infrastructure/QdrantRepositoryImpl';
-import { BetterSqliteMetadataRepository } from '../../infrastructure/sqlite/better-sqlite-metadata.repository';
-import { BetterSqliteKnowledgeGraphRepository } from '../../graph/infrastructure/better-sqlite-knowledge-graph.repository';
-import { ProjectKnowledgeBaseLinksService } from '../../infrastructure/sqlite/project-knowledge-base-links.service';
-import { FileSotRepository } from '../../infrastructure/sotRepository';
-import { FileOriginalDocumentRepository } from '../../infrastructure/fileOriginalDocumentRepository';
 import { DefaultSearchService } from '../../application/searchService';
 import { KnowledgeBaseCoordinator } from '../../application/KnowledgeBaseCoordinator';
 import { KnowledgeGraphQueueOrchestrator } from '../../graph/application/knowledgeGraphQueueOrchestrator';
@@ -25,7 +18,8 @@ import { scheduleKnowledgeMaintenance } from './scheduleKnowledgeMaintenance';
 import { ingestionProgressStore } from '../../ingestion/store/ingestionProgressStore';
 import { scopeKnowledgeInference } from './scopeKnowledgeInference';
 import { markInterruptedKnowledgeDocuments } from './markInterruptedKnowledgeDocuments';
-import { registerKnowledgeToolRuntime } from '../../tools/runtime/knowledgeToolRuntime';
+import type { KnowledgeToolRuntime } from '../../tools/runtime/knowledgeToolRuntime';
+import { prepareKnowledgeData } from './prepareKnowledgeData';
 
 /** 一个 activation 持有全部知识库运行资源；这里只读 SQLite/创建目录，不启动向量或线程。 */
 export async function createKnowledgeRuntime() {
@@ -35,20 +29,7 @@ export async function createKnowledgeRuntime() {
   const projects = getPluginProjectReadPort();
   const models = getPluginModelConfigurationPort();
   const activity = createKnowledgeActivityOwner();
-  const paths = {
-    sotDirectory: path.join(storage.dataDirectory, 'source_of_truth'),
-    originalsDirectory: path.join(storage.dataDirectory, 'originals'),
-    temporaryDirectory: path.join(storage.dataDirectory, 'temporary'),
-    ...(isGraphExtractionDumpEnabled()
-      ? { graphDebugDirectory: path.join(storage.dataDirectory, 'diagnostics', 'kg-extraction') }
-      : {}),
-  };
-  await Promise.all(Object.values(paths).map(directory => mkdir(directory, { recursive: true })));
-  const metadata = new BetterSqliteMetadataRepository(storage.database);
-  const sot = new FileSotRepository(paths.sotDirectory);
-  const originals = new FileOriginalDocumentRepository(paths.originalsDirectory);
-  const graphRepository = new BetterSqliteKnowledgeGraphRepository(storage.database);
-  const links = new ProjectKnowledgeBaseLinksService(storage.database, metadata, projects);
+  const { paths, metadata, sot, originals, graphRepository, links } = await prepareKnowledgeData(storage, projects);
   let adapter: Promise<QdrantAdapter> | undefined;
   let maintenance: ReturnType<typeof scheduleKnowledgeMaintenance> | undefined;
   let accepting = true;
@@ -115,13 +96,11 @@ export async function createKnowledgeRuntime() {
     ingestionCapabilities: inference,
     statusUpdatePublisher: event => connectedProgress.statusUpdatePublisher(event),
   });
-  // 可失败的 SQLite 初始化先完成，再发布工具绑定与事件订阅。
-  await service.getOrCreateDefaultKnowledgeBase();
   // SQLite admission 失败时还没有向 Host 领取资源 owner，下一次启用可直接重试。
   const vector = createPluginVectorRuntime('knowledge');
   const connectedProgress = connectKnowledgeProgress(queues, originals);
   const progress = new GraphProgressService(graphRepository);
-  const disposeTools = registerKnowledgeToolRuntime({
+  const toolRuntime: KnowledgeToolRuntime = {
     service,
     listProjectKnowledgeBaseIds: projectId => links.getKnowledgeBaseIdsForProject(projectId),
     enterTool() {
@@ -135,10 +114,11 @@ export async function createKnowledgeRuntime() {
         }
       };
     },
-  });
+  };
   graph.start();
   return {
     service,
+    toolRuntime,
     metadata,
     sot,
     originals,
@@ -180,7 +160,6 @@ export async function createKnowledgeRuntime() {
       await vector.stop();
       progress.dispose();
       await connectedProgress.dispose();
-      disposeTools();
       ingestionProgressStore.clear();
     },
   };

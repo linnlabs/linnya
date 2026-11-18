@@ -16,7 +16,9 @@ import { createDocument, DocumentStatus } from '../../domain/document';
 import { BlockType, type DocumentSoT } from '../../domain/block';
 import { KnowledgeQueues } from '../../queue/orchestration/KnowledgeQueues';
 import { createKnowledgeActivityOwner } from './createKnowledgeActivityOwner';
+import knowledgePlugin from '../../index';
 import { getKnowledgeToolRuntime } from '../../tools/runtime/knowledgeToolRuntime';
+import type { BackendPluginIpcHandler } from '@plugin/backend/pluginIpcRuntime';
 
 let root: string;
 let database: Database.Database;
@@ -94,6 +96,7 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   vi.restoreAllMocks();
+  await knowledgePlugin.runtimeEffects?.[0]?.deactivate();
   await runtime?.stop(); runtime = undefined;
   registeredBackendPluginDirectories.delete('knowledge'); clearPluginRuntimeStateForTests();
   database.close(); await rm(root, { recursive: true, force: true });
@@ -116,6 +119,28 @@ async function addJob(id: string, filename = 'running.pdf') {
 }
 
 describe('knowledge activation persistence and drain', () => {
+  it('本插件元数据故障不使激活失败，IPC与工具说明局部故障，停启后可以恢复', async () => {
+    const effect = knowledgePlugin.runtimeEffects?.[0];
+    if (!effect) throw new Error('Missing knowledge runtime effect');
+    database.exec("CREATE TRIGGER fixture_readonly BEFORE INSERT ON knowledge_bases BEGIN SELECT RAISE(ABORT, 'fixture metadata unavailable'); END");
+    await expect(effect.activate()).resolves.toBeUndefined();
+    expect(vectorOwners).toBe(0);
+    expect(effect.hasActiveWork?.()).toBe(false);
+    expect(() => getKnowledgeToolRuntime().enterTool()).toThrow('fixture metadata unavailable');
+    const handlers = new Map<string, BackendPluginIpcHandler>();
+    knowledgePlugin.ipc?.register(undefined, (_pluginId, channel, handler) => handlers.set(channel, handler));
+    const list = handlers.get('list');
+    if (!list) throw new Error('Missing catalog handler');
+    await expect(list(undefined, {})).resolves.toMatchObject({ success: false,
+      userMessage: { key: 'knowledgeBase.runtime.error.preparationFailed' } });
+    await effect.deactivate();
+    expect(() => getKnowledgeToolRuntime()).toThrow('未启用');
+    database.exec('DROP TRIGGER fixture_readonly');
+    await effect.activate();
+    await expect(getKnowledgeToolRuntime().service.getAllKnowledgeBases()).resolves.toHaveLength(1);
+    expect(vectorOwners).toBe(1);
+    expect(vectorStarts).toBe(0);
+  });
   it('真实摄入Worker未退出前维护与重建不可进入，取消释放后可以维护，其他库不受影响', async () => {
     const activity = createKnowledgeActivityOwner();
     const queue = new KnowledgeQueues({ activity,
@@ -169,7 +194,7 @@ describe('knowledge activation persistence and drain', () => {
     expect(vectorStarts).toBe(0);
     expect((await runtime.service.getAllKnowledgeBases()).map(kb => kb.id)).toEqual(['default']);
     expect(vectorStarts).toBe(0);
-    const release = getKnowledgeToolRuntime().enterTool();
+    const release = runtime.toolRuntime.enterTool();
     expect(() => runtime?.assertCanDeactivate()).toThrow('工具仍在运行');
     release(); runtime.assertCanDeactivate();
   });

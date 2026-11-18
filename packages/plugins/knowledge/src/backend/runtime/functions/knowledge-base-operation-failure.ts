@@ -12,6 +12,7 @@ import {
   KnowledgeBaseNotFoundError,
   KnowledgeBaseReadAfterUpdateFailedError,
 } from '../../definitions/knowledgeBaseErrors';
+import { KnowledgePreparationFailure } from '../definitions/knowledgePreparationFailure';
 
 export type KnowledgeBaseOperationFallbackKey =
   | 'knowledgeBase.create.error.createFailed'
@@ -34,6 +35,9 @@ export function createKnowledgeBaseOperationFailure(
   error: unknown,
   fallbackKey: KnowledgeBaseOperationFallbackKey,
 ): OperationFailure {
+  if (error instanceof KnowledgePreparationFailure) {
+    return failure(error, 'knowledgeBase.runtime.error.preparationFailed');
+  }
   if (error instanceof KnowledgeBaseNameRequiredError) {
     return failure(error, 'knowledgeBase.create.error.nameRequired');
   }

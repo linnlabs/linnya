@@ -11,6 +11,8 @@
 | 接受文档修订，再关闭重开 | 一篇带嵌套格式、引用、未保存编辑和 pending 修订的文档。接受只改变提议部分，格式与块身份保留，重读仍有效；冲突失败不丢正文或 pending。 | `pendingRevisionApplyService.test.ts`、`pendingInsertEditorIdentity.integration.test.ts`。修改解析器或编辑器时再补相应 owner 测试与探针视觉验证。 | [Markdown](../../src/domains/markdown/README.md) |
 | 快速拖动侧栏或表格列 | 独立项目和可见分隔线。逐步拖动采样必须跟手；结束宽度正确、期间不跟手仍算失败；重启后偏好保留。 | 项目导航 Electron 场景 `sidebar-resize`；`test:desktop-probe:real` 覆盖真实概览列宽。不要只比较起点和终点截图。 | [Desktop 探针](../../scripts/development/features/desktop-probe/README.md) |
 | 自定义嵌入、重排、OCR、生图模型 | 隔离设置页和官方协议本机 HTTP fixture。测试与保存分离，错误/主动取消保留草稿并中止实际请求；保存、详情重开、用途选择和刷新后目录/绑定保持。不得把模拟当成真实供应商质量认证。 | `pnpm exec tsx scripts/e2e/custom-models/desktop.acceptance.mjs`；协议/重启持久化见 `customCapability*.integration.test.ts`。 | [Custom API onboarding](../../src/app-hosts/linnya/application/custom-api-onboarding/README.md) |
+| 知识库摄入、检索与启停 | 隔离 Desktop 的正式 Backend 插件、3 条生产 Worker、Qdrant 与官方协议合成服务；Markdown、PDF OCR、静态图片落盘可读，图谱与检索完成，停用撤销入口且保留原文，再启用与正常删除可用。 | `pnpm exec tsx scripts/e2e/knowledge-plugin/desktop.acceptance.mjs`；不等同于模型供应商质量或安装包验收。 | [知识库](../../packages/plugins/knowledge/README.md) |
+| 知识库自己的元数据损坏 | 新建两份合成项目/对话，仅在探针自己的数据库注入 SQLite 写入故障；App 仍就绪且两个对话可见，知识库入口显示明确通知；修复后停启恢复，退出无残留。 | `pnpm exec tsx scripts/e2e/knowledge-plugin/startup-failure.acceptance.mjs`。Host 主库迁移失败属于另外的必需启动门禁。 | [知识库运行时](../../packages/plugins/knowledge/README.md#激活任务与恢复) |
 | 后台异常后关闭 App | 仅对测试自己启动的后台/受管进程制造异常。关闭不能静默卡住；存储准备失败允许重试；退出后自有进程无残留。 | `createMainWindowCloseLifecycle.integration.test.ts`、`createWindowClosePreparationHost.integration.test.ts`；进程所有权变更还跑 `test:shell-tool:production-app-owner-close`。探针看管器异常不等同于产品后台异常。 | [Electron Main](../../src/electron-main/README.md)、[Shell 运行合同](../../src/tools/commands/shell/README.md) |
 
 项目与文档的定向命令：

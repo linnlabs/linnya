@@ -5,12 +5,19 @@ import { resolveCurrentKnowledgeBaseMessage as message } from './functions/resol
 import { knowledgeMarkdownFilename } from './functions/knowledgeMarkdownFilename';
 import { resolveKnowledgeSource } from './orchestration/resolveKnowledgeSource';
 import type { KnowledgeMarkdownImport, KnowledgeSourceTarget } from './definitions/knowledgeApplicationSurface';
+import { showWorkspaceNotification } from '@plugin/renderer/workspaceRuntime';
 
 export async function prepareKnowledgePage(signal: AbortSignal): Promise<void> {
   signal.throwIfAborted();
   const runtime = useKnowledgeBase();
   runtime.setCurrentKnowledgeBase(null);
-  await runtime.ensureDataLoaded();
+  try {
+    await runtime.ensureDataLoaded();
+  } catch (error) {
+    // 页面尚未打开时也必须让用户知道失败；保留原项目，不能把读失败伪装成空库。
+    if (!signal.aborted) showWorkspaceNotification(error instanceof Error ? error.message : String(error), 'error');
+    throw error;
+  }
   signal.throwIfAborted();
 }
 

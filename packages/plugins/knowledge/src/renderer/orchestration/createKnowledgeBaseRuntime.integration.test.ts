@@ -72,6 +72,7 @@ describe('knowledge base runtime lifecycle and data flow', () => {
     failed.reject(new Error('catalog unavailable'));
     await expect(first).rejects.toThrow();
     await expect(second).rejects.toThrow();
+    expect(runtime.error).toBe('catalog unavailable');
     expect(api.getAllKnowledgeBases).toHaveBeenCalledTimes(1);
     await runtime.ensureDataLoaded();
     expect(api.getAllKnowledgeBases).toHaveBeenCalledTimes(2);
