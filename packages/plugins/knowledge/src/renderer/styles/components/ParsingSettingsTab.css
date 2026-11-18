@@ -63,7 +63,7 @@
   color: var(--color-text-tertiary);
 }
 
-.config-tab .option-description {
+.config-tab .parsing-option-description {
   font-size: var(--font-size-footnote);
   color: var(--color-text-placeholder);
   margin: 0;

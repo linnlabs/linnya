@@ -20,7 +20,7 @@
                 {{ knowledgeBaseMessage('knowledgeBase.parsing.graph.title') }}
                 <span class="scope-hint">{{ knowledgeBaseMessage('knowledgeBase.parsing.scope.current') }}</span>
               </span>
-              <p class="option-description">
+              <p class="parsing-option-description">
                 {{ knowledgeBaseMessage('knowledgeBase.parsing.graph.description') }}
               </p>
             </div>
@@ -42,7 +42,7 @@
                 {{ knowledgeBaseMessage('knowledgeBase.parsing.pdfStrategy.title') }}
                 <span class="scope-hint">{{ knowledgeBaseMessage('knowledgeBase.parsing.scope.all') }}</span>
               </span>
-              <p class="option-description">
+              <p class="parsing-option-description">
                 {{ knowledgeBaseMessage('knowledgeBase.parsing.pdfStrategy.description') }}
               </p>
             </div>
