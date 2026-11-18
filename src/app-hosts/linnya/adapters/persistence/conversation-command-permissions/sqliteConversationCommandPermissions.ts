@@ -1,12 +1,9 @@
 import type Database from 'better-sqlite3';
 import {
   CommandPermissionSettingsUpdateV1Schema,
-  ConversationCommandPermissionChangeSchema,
   ConversationCommandPermissionSelectionSchema,
-  ConversationRunCommandPermissionSchema,
   type CommandPermissionSettingsUpdateV1,
   type ConversationCommandPermissionChange,
-  type ConversationRunCommandPermission,
 } from '@app/schemas/commands';
 
 import type {
@@ -14,11 +11,17 @@ import type {
   ConversationPermissionTarget,
   StoredConversationPermissionSelection,
 } from '../../../application/conversation-command-permissions';
+import { materializeConversation } from '../event-store/functions/materializeConversation';
+import { readConversationLastEventRowId, type PersistedCommandPermissionChange } from './commandPermissionChangeFacts';
 
 type StoredTarget = ConversationPermissionTarget & { readonly created_at: number };
 
 export class SqliteConversationCommandPermissions implements ConversationCommandPermissionPersistencePort {
-  constructor(private readonly db: Database.Database) {}
+  /** projectChange 在写入事务内把变更投影成时间线记录行（由事件库的界面投影负责）。 */
+  constructor(
+    private readonly db: Database.Database,
+    private readonly projectChange: (fact: PersistedCommandPermissionChange) => void,
+  ) {}
 
   loadSelections(): readonly StoredConversationPermissionSelection[] {
     return this.db.prepare<[], StoredConversationPermissionSelection>(`
@@ -37,11 +40,8 @@ export class SqliteConversationCommandPermissions implements ConversationCommand
     `).get(conversationId) ?? null;
   }
 
-  createConversation(target: ConversationPermissionTarget, createdAt: number): void {
-    this.db.prepare(`
-      INSERT INTO conversations (conversation_id, project_id, created_at, last_event_at)
-      VALUES (?, ?, ?, ?)
-    `).run(target.conversation_id, target.project_id, createdAt, createdAt);
+  materializeConversation(target: ConversationPermissionTarget, createdAt: number): void {
+    materializeConversation(this.db, { conversationId: target.conversation_id, projectId: target.project_id, at: createdAt });
   }
 
   writeChange(conversationId: string, change: ConversationCommandPermissionChange): void {
@@ -51,27 +51,16 @@ export class SqliteConversationCommandPermissions implements ConversationCommand
       ON CONFLICT(conversation_id) DO UPDATE SET
         permission_level = excluded.permission_level, revision = excluded.revision
     `).run(conversationId, change.next_selection, change.revision);
+    const fact: PersistedCommandPermissionChange = {
+      conversationId,
+      anchorEventRowId: readConversationLastEventRowId(this.db, conversationId),
+      change,
+    };
     this.db.prepare(`
-      INSERT INTO conversation_command_permission_changes (conversation_id, revision, fact)
-      VALUES (?, ?, ?)
-    `).run(conversationId, change.revision, JSON.stringify(change));
-  }
-
-  readChanges(conversationId: string): ConversationCommandPermissionChange[] {
-    return this.db.prepare<[string], { fact: string }>(`
-      SELECT fact FROM conversation_command_permission_changes WHERE conversation_id = ?
-      ORDER BY revision DESC
-    `).all(conversationId).map(({ fact }) => ConversationCommandPermissionChangeSchema.parse(JSON.parse(fact)));
-  }
-
-  readLatestRun(conversationId: string): ConversationRunCommandPermission | null {
-    const row = this.db.prepare<[string], unknown>(`
-      SELECT p.run_id, p.captured_at_ms, p.permission_level, p.source
-      FROM conversation_run_command_permissions p JOIN runs r ON r.id = p.run_id
-      WHERE p.conversation_id = ?
-      ORDER BY p.captured_at_ms DESC, r.rowid DESC LIMIT 1
-    `).get(conversationId);
-    return row === undefined ? null : ConversationRunCommandPermissionSchema.parse(row);
+      INSERT INTO conversation_command_permission_changes (conversation_id, revision, anchor_event_rowid, fact)
+      VALUES (?, ?, ?, ?)
+    `).run(conversationId, change.revision, fact.anchorEventRowId, JSON.stringify(change));
+    this.projectChange(fact);
   }
 
   savePendingReduction(update: CommandPermissionSettingsUpdateV1, changedCount: number): void {

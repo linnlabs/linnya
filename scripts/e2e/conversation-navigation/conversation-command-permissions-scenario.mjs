@@ -43,7 +43,7 @@ export async function runConversationCommandPermissionsScenario({
     await clickTierButton();
     await waitFor(() => page(`(() => {
       const option = [...document.querySelectorAll('[role="option"]')]
-        .find(el => el.textContent?.trim() === ${JSON.stringify(text)} && el.getBoundingClientRect().width > 0);
+        .find(el => el.querySelector('.option-label')?.textContent?.trim() === ${JSON.stringify(text)} && el.getBoundingClientRect().width > 0);
       if (!(option instanceof HTMLElement)) return false;
       option.click();
       return true;
@@ -79,7 +79,7 @@ export async function runConversationCommandPermissionsScenario({
       await expectTier('标准');
       await clickConversation(cdp, 'E2E 对话 A');
       await expectTier('只读');
-      await waitFor(() => page('Boolean(document.querySelector("[data-conversation-permission-history]"))'), '回读权限变更行');
+      await waitFor(() => page('document.querySelector("[data-command-permission-change]")?.textContent?.includes("改为“只读”")'), '时间线回读权限变更记录');
       await screenshot('conversation-read-only.png');
     });
 

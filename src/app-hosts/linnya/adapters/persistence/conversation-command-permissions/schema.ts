@@ -4,9 +4,11 @@ export const CONVERSATION_COMMAND_PERMISSION_SCHEMAS = [
     permission_level TEXT CHECK (permission_level IN ('read_only', 'standard', 'full_access')),
     revision INTEGER NOT NULL CHECK (revision > 0)
   )`,
+  // anchor_event_rowid：改档位时对话最后一个事件的位置，重建时间线时把记录放回原处。
   `CREATE TABLE IF NOT EXISTS conversation_command_permission_changes (
     conversation_id TEXT NOT NULL REFERENCES conversations(conversation_id) ON DELETE CASCADE,
     revision INTEGER NOT NULL,
+    anchor_event_rowid INTEGER NOT NULL,
     fact TEXT NOT NULL,
     PRIMARY KEY (conversation_id, revision)
   )`,

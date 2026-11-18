@@ -53,7 +53,7 @@ export type NewUiMessageRow = ConversationUiMessage extends infer Message
     : never
   : never;
 
-type StripRuntimeRowFields<Row> = Row extends Exclude<NewUiMessageRow, { messageType: 'client_notice' }>
+type StripRuntimeRowFields<Row> = Row extends Exclude<NewUiMessageRow, { messageType: 'client_notice' | 'command_permission_change' }>
   ? Omit<Row, 'conversationId' | 'turnId' | 'timestamp' | 'runId' | 'attachments'> & {
     readonly attachments?: UiMessageAttachments | null;
   }

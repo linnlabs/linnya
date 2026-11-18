@@ -12,6 +12,7 @@ import { deriveConversationWorkDirectoryIdentity } from 'src/domains/conversatio
 import type { CommandPermissionSettingsPort } from 'src/domains/commands/ports';
 import { resolveCommandRunPermissionContext } from '../../../adapters/context-injection/commandRunPermissionContextBinding';
 import { SqliteConversationCommandPermissions } from '../../../adapters/persistence/conversation-command-permissions/sqliteConversationCommandPermissions';
+import type { PersistedCommandPermissionChange } from '../../../adapters/persistence/conversation-command-permissions/commandPermissionChangeFacts';
 import { CONVERSATION_COMMAND_PERMISSION_SCHEMAS } from '../../../adapters/persistence/conversation-command-permissions/schema';
 import { createConversationCommandPermissions } from '..';
 
@@ -21,7 +22,8 @@ function createFixture() {
     CREATE TABLE conversations (
       conversation_id TEXT PRIMARY KEY, project_id TEXT, created_at INTEGER, last_event_at INTEGER
     );
-    CREATE TABLE runs (id TEXT PRIMARY KEY);
+    CREATE TABLE runs (id TEXT PRIMARY KEY, conversation_id TEXT);
+    CREATE TABLE events (id TEXT PRIMARY KEY, run_id TEXT);
   `);
   for (const ddl of CONVERSATION_COMMAND_PERMISSION_SCHEMAS) db.exec(ddl);
   let serialized = serializeCommandPermissionSettings(DEFAULT_COMMAND_PERMISSION_SETTINGS);
@@ -34,7 +36,8 @@ function createFixture() {
       return { status: 'written' };
     },
   };
-  const store = new SqliteConversationCommandPermissions(db);
+  const projected: PersistedCommandPermissionChange[] = [];
+  const store = new SqliteConversationCommandPermissions(db, fact => projected.push(fact));
   const start = () => createConversationCommandPermissions({
     store,
     globalSettings,
@@ -50,7 +53,7 @@ function createFixture() {
   const permissions = start();
   const target = (id: string) => ({ conversation_id: id, project_id: null });
   return {
-    db, start, permissions, globalSettings, target,
+    db, start, permissions, globalSettings, target, projected,
     failGlobalWrite(value: boolean) { failGlobalWrite = value; },
     async change(id: string, permission_level: CommandPermissionLevel, expected_revision = 0) {
       const result = await permissions.request({
@@ -103,9 +106,9 @@ describe('conversation command permission lifecycle', () => {
         snapshot: { permission_level: 'read_only', source: 'conversation_setting' },
       });
       await expect(fixture.permissions.initializeForNewConversation(target, 'full_access')).rejects.toThrow('对话已存在');
-      expect(await fixture.permissions.request({ kind: 'read', target })).toMatchObject({
-        kind: 'view', view: { changes: [{ origin: 'host_initialization', next_selection: 'read_only' }] },
-      });
+      expect(fixture.projected).toMatchObject([
+        { conversationId: target.conversation_id, change: { origin: 'host_initialization', next_selection: 'read_only' } },
+      ]);
     } finally {
       fixture.db.close();
     }

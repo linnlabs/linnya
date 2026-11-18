@@ -111,8 +111,8 @@ export const CONVERSATION_SCHEMAS = [
     run_id TEXT,
     content_event_id TEXT REFERENCES events(id),
     data_event_id TEXT REFERENCES events(id),
-    CHECK ((message_type = 'client_notice' AND run_id IS NULL AND turn_id IS NULL)
-      OR (message_type != 'client_notice' AND run_id IS NOT NULL AND turn_id IS NOT NULL)),
+    CHECK ((message_type IN ('client_notice', 'command_permission_change') AND run_id IS NULL AND turn_id IS NULL)
+      OR (message_type NOT IN ('client_notice', 'command_permission_change') AND run_id IS NOT NULL AND turn_id IS NOT NULL)),
     FOREIGN KEY(conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE
   )`,
 

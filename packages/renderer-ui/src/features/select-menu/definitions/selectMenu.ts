@@ -8,7 +8,7 @@ export type CustomSelectSemanticRole = 'listbox' | 'menu';
 
 export type CustomSelectVariant = 'default' | 'minimal';
 
-export type CustomSelectOptionVariant = 'default' | 'danger';
+export type CustomSelectOptionVariant = 'default' | 'warning' | 'danger';
 
 export type CustomSelectOptionLabelOverflow = 'visible' | 'ellipsis' | 'marquee-on-hover';
 
@@ -52,6 +52,8 @@ export interface CustomSelectOption<
   shortcutClassName?: string;
   disabled?: boolean;
   disabledReason?: string;
+  /** 选项下方的一行说明，比如档位的含义；与 disabledReason 同排版，不参与选中。 */
+  description?: string;
   selected?: boolean;
   allowDirectSelect?: boolean;
   shortcut?: string;

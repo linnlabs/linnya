@@ -363,18 +363,40 @@
 }
 
 .custom-select__options .select-option.has-disabled-reason,
-.custom-select__submenu .select-option.has-disabled-reason {
+.custom-select__submenu .select-option.has-disabled-reason,
+.custom-select__options .select-option.has-description,
+.custom-select__submenu .select-option.has-description {
   flex-direction: column;
   align-items: flex-start;
   height: auto;
   white-space: normal;
 }
 
+.custom-select__options .select-option.has-description,
+.custom-select__submenu .select-option.has-description {
+  gap: var(--space-0-5);
+  padding-block: var(--space-1-5);
+}
+
 .custom-select__options .option-disabled-reason,
-.custom-select__submenu .option-disabled-reason {
+.custom-select__submenu .option-disabled-reason,
+.custom-select__options .option-description,
+.custom-select__submenu .option-description {
   font-size: var(--font-size-xs);
   line-height: var(--line-height-tight);
   color: var(--color-text-tertiary);
+}
+
+/* 说明属于说明文字，选中项的强调色和加粗只落在标签上。 */
+.custom-select__options .select-option.is-selected .option-description,
+.custom-select__submenu .select-option.is-selected .option-description {
+  font-weight: var(--font-weight-regular);
+}
+
+.custom-select__options .select-option.is-caution .option-label,
+.custom-select__submenu .select-option.is-caution .option-label {
+  color: var(--color-warning-text);
+  font-weight: var(--font-weight-medium);
 }
 
 .custom-select__options .select-option.is-danger .option-label,

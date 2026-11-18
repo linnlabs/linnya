@@ -4,13 +4,15 @@ import type { SettingsMessageResolver } from '../../../definitions/settingsMessa
 export function confirmPermissionLevelExpansion(
   settingsMessage: SettingsMessageResolver,
   level: 'standard' | 'full_access',
+  /** 对话里沿用设置页的内容，只把标题换成对这个对话说的。 */
+  options: { readonly title?: string } = {},
 ): Promise<boolean> {
   const prefix = level === 'standard'
     ? 'settings.commandPermission.confirmExpansion.standard'
     : 'settings.commandPermission.confirmExpansion.fullAccess';
 
   return confirm({
-    title: settingsMessage(`${prefix}.title`),
+    title: options.title ?? settingsMessage(`${prefix}.title`),
     message: settingsMessage(`${prefix}.message`),
     sections: level === 'standard'
       ? [

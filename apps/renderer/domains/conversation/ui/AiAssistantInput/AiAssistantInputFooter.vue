@@ -129,7 +129,10 @@
             </template>
           </CustomSelect>
         </div>
-        <slot name="command-permission" />
+        <!-- 命令档位属于对话，紧挨模型选择，与它同高同样式。 -->
+        <div v-if="$slots['command-permission']" class="selector-group selector-group--command-permission">
+          <slot name="command-permission" />
+        </div>
       </div>
     </div>
 

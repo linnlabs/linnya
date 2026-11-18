@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ConversationClientNoticePayloadSchema } from './client-notice';
 import { ConversationExecutionNoticePayloadSchema } from './execution-notice';
+import { ConversationCommandPermissionChangeSchema } from '../commands/conversationCommandPermission';
 
 import { ConversationAttachmentRefSchema } from './attachment-ref';
 import { ConversationMessageIdSchema } from './message-identity';
@@ -34,6 +35,7 @@ export const ConversationTimelineMessageTypeSchema = z.enum([
   'history_summary',
   'client_notice',
   'execution_notice',
+  'command_permission_change',
 ]);
 export type ConversationTimelineMessageType = z.infer<typeof ConversationTimelineMessageTypeSchema>;
 
@@ -53,6 +55,7 @@ export const ConversationUiMessageIdentitySchema = z.discriminatedUnion('message
   z.object({ role: z.literal('system'), message_type: z.literal('history_summary') }),
   z.object({ role: z.literal('system'), message_type: z.literal('client_notice') }),
   z.object({ role: z.literal('system'), message_type: z.literal('execution_notice') }),
+  z.object({ role: z.literal('system'), message_type: z.literal('command_permission_change') }),
 ]);
 export type ConversationUiMessageIdentity = z.infer<typeof ConversationUiMessageIdentitySchema>;
 
@@ -103,6 +106,7 @@ export function parseConversationUiMessageVariant(input: {
       return { role: identity.role, type: identity.message_type };
     case 'client_notice':
     case 'execution_notice':
+    case 'command_permission_change':
     case 'history_summary':
       return { role: identity.role, type: identity.message_type };
   }
@@ -132,6 +136,7 @@ export function parseConversationUiMessageKind(input: {
       return { role: identity.role, messageType: identity.message_type };
     case 'client_notice':
     case 'execution_notice':
+    case 'command_permission_change':
     case 'history_summary':
       return { role: identity.role, messageType: identity.message_type };
   }
@@ -167,6 +172,19 @@ export const ConversationUiMessageSchema = z.discriminatedUnion('message_type', 
     merge_key: z.null(),
     presentation: z.null(),
     payload: ConversationClientNoticePayloadSchema,
+  }).strict(),
+  z.object({
+    ...ConversationUiMessageCommonFields,
+    role: z.literal('system'),
+    message_type: z.literal('command_permission_change'),
+    // 用户在界面上改档位，不属于任何一次运行；记录的是设置事实，不是 Agent 的输出。
+    turn_id: z.null(),
+    run_id: z.null(),
+    content: z.null(),
+    attachments: z.never().optional(),
+    merge_key: z.null(),
+    presentation: z.null(),
+    payload: ConversationCommandPermissionChangeSchema,
   }).strict(),
   z.object({
     ...ConversationUiMessageCommonFields,

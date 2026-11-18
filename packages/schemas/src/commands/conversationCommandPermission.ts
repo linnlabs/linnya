@@ -45,13 +45,13 @@ export const ConversationCommandPermissionChangeSchema = z.object({
 }).strict();
 export type ConversationCommandPermissionChange = z.infer<typeof ConversationCommandPermissionChangeSchema>;
 
-export const ConversationRunCommandPermissionSchema = z.object({
-  run_id: id,
-  captured_at_ms: revision,
-  permission_level: selection,
-  source: CommandBasePermissionSourceSchema.nullable(),
-}).strict();
-export type ConversationRunCommandPermission = z.infer<typeof ConversationRunCommandPermissionSchema>;
+/**
+ * 档位变更在对话时间线里留一行记录（不是 RuntimeEvent，不进模型上下文）。
+ * 同一对话的 revision 唯一；消息身份是全局主键，所以带上对话。
+ */
+export function conversationMessageIdFromCommandPermissionChange(conversationId: string, changeRevision: number): string {
+  return `command-permission:${encodeURIComponent(id.parse(conversationId))}:${revision.parse(changeRevision)}`;
+}
 
 const target = z.object({ conversation_id: id, project_id: id.nullable() }).strict();
 
@@ -61,8 +61,6 @@ export const ConversationCommandPermissionViewSchema = z.object({
   source: CommandBasePermissionSourceSchema,
   global_level: CommandPermissionLevelSchema,
   global_revision: revision,
-  changes: z.array(ConversationCommandPermissionChangeSchema),
-  latest_run: ConversationRunCommandPermissionSchema.nullable(),
 }).strict();
 
 export const CommandPermissionReductionPreviewSchema = z.object({

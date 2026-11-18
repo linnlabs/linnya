@@ -64,7 +64,10 @@ import { computed, onMounted, ref } from 'vue';
 
 import { CommandPermissionLevelSchema, compareCommandPermissionLevels, type CommandPermissionLevel } from '@app/schemas/commands';
 import { AlertDialog } from '@linnya/renderer-ui';
-import { commandPermissionLabelKeys } from '@/app/workflows/command-permissions/permissionLabels';
+import {
+  commandPermissionDescriptionKeys,
+  commandPermissionLabelKeys,
+} from '@/app/workflows/command-permissions/permissionLabels';
 import { useCommandPermissionReduction } from '../orchestration/useCommandPermissionReduction';
 import type { SettingsChoiceOption } from '../../../definitions/settingsKit';
 import type { SettingsMessageKey } from '../../../definitions/settingsMessages';
@@ -82,30 +85,6 @@ import { confirmPermissionLevelExpansion } from '../orchestration/confirmPermiss
 import { applyCommandPermissionSettingsChange } from '../orchestration/applyCommandPermissionSettingsChange';
 import { ensureCommandPermissionSettingsLoaded } from '../orchestration/ensureCommandPermissionSettingsLoaded';
 import { useCommandPermissionSettingsStore } from '../store/commandPermissionSettingsStore';
-
-interface PermissionLevelOption {
-  readonly value: CommandPermissionLevel;
-  readonly label: SettingsMessageKey;
-  readonly description: SettingsMessageKey;
-}
-
-const permissionLevels: readonly PermissionLevelOption[] = [
-  {
-    value: 'read_only',
-    label: 'settings.commandPermission.level.readOnly',
-    description: 'settings.commandPermission.level.readOnlyDescription',
-  },
-  {
-    value: 'standard',
-    label: 'settings.commandPermission.level.standard',
-    description: 'settings.commandPermission.level.standardDescription',
-  },
-  {
-    value: 'full_access',
-    label: 'settings.commandPermission.level.fullAccess',
-    description: 'settings.commandPermission.level.fullAccessDescription',
-  },
-] as const;
 
 const store = useCommandPermissionSettingsStore();
 const { settingsMessage } = useSettingsLocalization();
@@ -129,11 +108,11 @@ const isBusy = computed(() => (
   store.saveState === 'saving' || store.saveState === 'confirming'
 ));
 const permissionLevelOptions = computed<readonly SettingsChoiceOption[]>(() => (
-  permissionLevels.map((level) => ({
-    value: level.value,
-    label: settingsMessage(level.label),
-    description: settingsMessage(level.description),
-    tone: level.value === 'full_access' ? 'danger' : 'default',
+  CommandPermissionLevelSchema.options.map((level) => ({
+    value: level,
+    label: settingsMessage(commandPermissionLabelKeys[level]),
+    description: settingsMessage(commandPermissionDescriptionKeys[level]),
+    tone: level === 'full_access' ? 'danger' : 'default',
   }))
 ));
 const saveStatusMessage = computed<SettingsMessageKey | undefined>(() => {

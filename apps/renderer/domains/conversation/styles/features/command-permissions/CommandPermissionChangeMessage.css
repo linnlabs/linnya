@@ -1,0 +1,9 @@
+/* 档位变更记录：时间线中间一行浅色小字，不抢正文。 */
+.command-permission-change {
+  margin: 0;
+  padding: var(--space-2) 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  text-align: center;
+}

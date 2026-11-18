@@ -2,7 +2,6 @@ import type {
   CommandPermissionLevel,
   CommandPermissionSettingsUpdateV1,
   ConversationCommandPermissionChange,
-  ConversationRunCommandPermission,
   ConversationCommandPermissionRequest,
   ConversationCommandPermissionResult,
   ConversationCommandPermissionSelection,
@@ -27,10 +26,10 @@ export interface StoredConversationPermissionSelection extends ConversationComma
 export interface ConversationCommandPermissionPersistencePort {
   loadSelections(): readonly StoredConversationPermissionSelection[];
   resolveTarget(conversationId: string): (ConversationPermissionTarget & { readonly created_at: number }) | null;
-  createConversation(target: ConversationPermissionTarget, createdAt: number): void;
+  /** 草稿对话第一次被设置档位时落库；对话表的写入归事件库，这里只是转交。 */
+  materializeConversation(target: ConversationPermissionTarget, createdAt: number): void;
+  /** 写入变更事实并在同一事务里投影成时间线记录行。 */
   writeChange(conversationId: string, change: ConversationCommandPermissionChange): void;
-  readChanges(conversationId: string): ConversationCommandPermissionChange[];
-  readLatestRun(conversationId: string): ConversationRunCommandPermission | null;
   savePendingReduction(update: CommandPermissionSettingsUpdateV1, changedCount: number): void;
   readPendingReduction(): { update: CommandPermissionSettingsUpdateV1; changedCount: number } | undefined;
   clearPendingReduction(): void;

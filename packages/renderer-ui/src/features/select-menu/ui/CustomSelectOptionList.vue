@@ -28,7 +28,9 @@
           'is-keyboard-selected': enableKeyboardNav && selectedIndex === index,
           'is-disabled': option.disabled,
           'has-disabled-reason': option.disabledReason,
+          'has-description': option.description,
           'has-children': showSubmenuState && option.children?.length,
+          'is-caution': option.variant === 'warning',
           'is-danger': option.variant === 'danger',
         },
         option.className,
@@ -125,6 +127,10 @@
           :class="['option-arrow', classNames.optionArrow]"
         />
       </component>
+      <span
+        v-if="option.description"
+        class="option-description"
+      >{{ option.description }}</span>
       <span
         v-if="option.disabledReason"
         class="option-disabled-reason"

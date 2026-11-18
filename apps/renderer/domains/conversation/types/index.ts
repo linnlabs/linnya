@@ -16,6 +16,7 @@ import type {
   ConversationMessageId,
   ConversationHistorySummaryPayload,
   ConversationClientNoticePayload,
+  ConversationCommandPermissionChange,
   ConversationReferenceId,
   ConversationSummarizationPresentationId,
   ConversationSummarizationProgressMetadata,
@@ -172,9 +173,17 @@ type ExecutionNoticeMessage = ConversationMessageFields & {
   metadata: ConversationExecutionNoticeMetadata;
 };
 
+/** 用户改了这个对话的命令档位；设置事实，不属于任何运行。 */
+export type CommandPermissionChangeMessage = ConversationMessageFields & {
+  role: 'system';
+  type: 'command_permission_change';
+  metadata: ConversationCommandPermissionChange & { turn_id: null; run_id: null };
+};
+
 export type BaseMessage =
   | ClientNoticeMessage
   | ExecutionNoticeMessage
+  | CommandPermissionChangeMessage
   | UserMessage
   | ThoughtMessage
   | ToolCallMessage

@@ -5,6 +5,7 @@ import {
   type CommandPermissionLevel,
 } from '@app/schemas/commands';
 import { requestConversationCommandPermission } from '@/app/workflows/command-permissions';
+import { readConversationLiveMessages, refreshCurrentWindow } from '../../../message-window';
 import { createConversationCommandPermissionState } from '../store/conversationCommandPermissionState';
 
 type Target = { conversation_id: string; project_id: string | null };
@@ -15,6 +16,8 @@ export function useConversationCommandPermission(input: {
   readonly draftKey: Readonly<Ref<string>>;
   readonly materialize: () => Target | null;
   readonly confirmFullAccess: () => Promise<boolean>;
+  /** 写入没成功（冲突、找不到对话或 Host 不可用）；当前档位已重新读取。 */
+  readonly reportWriteFailure: () => void;
 }) {
   const state = createConversationCommandPermissionState();
   const scope = computed(() => input.target.value?.conversation_id ?? input.draftKey.value);
@@ -33,7 +36,16 @@ export function useConversationCommandPermission(input: {
     void refresh();
   }, { immediate: true });
   watch(input.runStatus, () => { void refresh(); });
-  const unsubscribe = window.electronAPI?.onConversationCommandPermissionChanged?.(() => { void refresh(); });
+  /** 变更记录已在 Host 投影进时间线；窗口按修订号增量取回，不重载整段历史。 */
+  function refreshTimeline(conversationId: string) {
+    void refreshCurrentWindow(conversationId, { readLiveMessages: readConversationLiveMessages });
+  }
+  const unsubscribe = window.electronAPI?.onConversationCommandPermissionChanged?.(() => {
+    void refresh();
+    // 设置页批量调低也会给当前对话写记录。
+    const conversationId = input.target.value?.conversation_id;
+    if (conversationId) refreshTimeline(conversationId);
+  });
   onScopeDispose(() => {
     readSequence++;
     unsubscribe?.();
@@ -44,7 +56,6 @@ export function useConversationCommandPermission(input: {
     if (!initial || state.busy.value || initial.selection.permission_level === next) return;
     const originalScope = scope.value;
     state.setBusy(true);
-    state.setWriteFailure(false);
     try {
       const resolved = resolveConversationCommandPermission(initial.global_level, next).permission_level;
       if (resolved === 'full_access' && (next === 'full_access' || initial.permission_level !== 'full_access')) {
@@ -68,16 +79,17 @@ export function useConversationCommandPermission(input: {
       if (result.kind === 'view') {
         readSequence++;
         state.receive(result.view);
+        refreshTimeline(target.conversation_id);
       } else {
-        state.setWriteFailure(true);
+        input.reportWriteFailure();
         await refresh();
       }
     } catch {
-      if (scope.value === originalScope) state.setWriteFailure(true);
+      if (scope.value === originalScope) input.reportWriteFailure();
     } finally {
       state.setBusy(false);
     }
   }
 
-  return { current: state.current, loadState: state.loadState, busy: state.busy, writeFailure: state.writeFailure, select };
+  return { current: state.current, loadState: state.loadState, busy: state.busy, select };
 }

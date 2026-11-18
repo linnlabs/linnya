@@ -5,6 +5,7 @@ import {
   ConversationCommandPermissionResultSchema,
 } from '@app/schemas/commands';
 import { SqliteConversationCommandPermissions } from '../../adapters/persistence/conversation-command-permissions/sqliteConversationCommandPermissions';
+import { SqliteUiProjectionApplier } from '../../adapters/persistence/event-store/ui-projection/sqliteApplier';
 import {
   createConversationCommandPermissions,
   type ConversationCommandPermissions,
@@ -162,7 +163,10 @@ export function createHeadlessAppServerBackendComposition(input: {
       conversationExecutionRuntimeFactory: {
         async create(runtimeInput: ConversationExecutionRuntimeCreateInput) {
           const permissions = createConversationCommandPermissions({
-            store: new SqliteConversationCommandPermissions(runtimeInput.db),
+            store: new SqliteConversationCommandPermissions(
+              runtimeInput.db,
+              fact => new SqliteUiProjectionApplier(runtimeInput.db).projectCommandPermissionChange(fact),
+            ),
             globalSettings: commandPermissionSettings,
             admission: runtimeInput.conversationAdmission,
             onFailure: error => input.reportAsyncFailure(toError(error)),

@@ -78,8 +78,6 @@ export function createConversationCommandPermissions(input: {
         ...resolveConversationCommandPermission(global.permission_level, selection.permission_level),
         global_level: global.permission_level,
         global_revision: global.revision,
-        changes: id && storedTarget ? store.readChanges(id) : [],
-        latest_run: id && storedTarget ? store.readLatestRun(id) : null,
       },
     };
   }
@@ -91,7 +89,7 @@ export function createConversationCommandPermissions(input: {
   ): void {
     const id = target.conversation_id;
     store.transact(() => {
-      if (!existing) store.createConversation(target, change.changed_at_ms);
+      if (!existing) store.materializeConversation(target, change.changed_at_ms);
       store.writeChange(id, change);
     });
     publishSelection(id, existing?.created_at ?? change.changed_at_ms, change);

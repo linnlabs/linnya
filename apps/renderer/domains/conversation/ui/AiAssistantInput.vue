@@ -8,8 +8,6 @@
     @dragleave.capture="handleImageDragLeave"
     @drop.capture="handleImageDrop"
   >
-    <ConversationCommandPermissionHistory :view="commandPermissionView" :failed="commandPermissionFailed" />
-
     <!-- 输入区域 -->
     <div class="input-container">
       <div
@@ -91,10 +89,10 @@
             <ConversationCommandPermissionSelect
               :view="commandPermissionView"
               :loading="commandPermissionLoadState === 'loading'"
-              :busy="commandPermissionBusy"
               :running="isInteractiveRunBusy(composerRun)"
               :disabled="disabled || isSubmissionStarting"
               @select="selectCommandPermission"
+              @open-settings="uiStore.openSettingsModal('command-permission')"
             />
           </template>
         </AiAssistantInputFooter>
@@ -153,7 +151,6 @@
 
 <script setup lang="ts">
 import ConversationCommandPermissionSelect from '../features/command-permissions/ui/ConversationCommandPermissionSelect.vue';
-import ConversationCommandPermissionHistory from '../features/command-permissions/ui/ConversationCommandPermissionHistory.vue';
 import { useConversationCommandPermission } from '../features/command-permissions/orchestration/useConversationCommandPermission';
 import { ensureMaterializedConversation } from '../services/orchestration/ensureMaterializedConversation';
 import { confirmPermissionLevelExpansion, useSettingsLocalization } from '@/domains/settings/features/command-permission-settings';
@@ -229,6 +226,7 @@ import {
 import { prepareComposerReferencesForSubmit } from '../features/composer-references';
 import { useHistoryList } from '../history/list';
 import { useUIStore } from '../../../shared/stores/ui';
+import { useNotificationStore } from '@/app/notification';
 import {
   useInteractiveRunStore,
   pauseInteractiveRun,
@@ -260,6 +258,7 @@ const modelCatalog = useModelCatalogReadModel();
 const modelPicker = useModelPickerReadModel();
 const modelBindings = useModelPurposeBindings();
 const uiStore = useUIStore();
+const notificationStore = useNotificationStore();
 const navigationScope = useNavigationScope();
 const { conversationMessage } = useConversationLocalization();
 const { t } = useLocalization();
@@ -272,7 +271,6 @@ const {
   current: commandPermissionView,
   loadState: commandPermissionLoadState,
   busy: commandPermissionBusy,
-  writeFailure: commandPermissionFailed,
   select: selectCommandPermission,
 } = useConversationCommandPermission({
   target: permissionTarget,
@@ -282,7 +280,14 @@ const {
     ensureMaterializedConversation(assistantStore, navigationScope);
     return permissionTarget.value;
   },
-  confirmFullAccess: () => confirmPermissionLevelExpansion(settingsMessage, 'full_access'),
+  confirmFullAccess: () => confirmPermissionLevelExpansion(settingsMessage, 'full_access', {
+    title: conversationMessage('conversation.commandPermission.confirmFullAccessTitle'),
+  }),
+  reportWriteFailure: () => notificationStore.show(
+    conversationMessage('conversation.commandPermission.changeFailed'),
+    'error',
+    4000,
+  ),
 });
 
 const contextWindowUsage = useContextWindowUsagePresentation({
