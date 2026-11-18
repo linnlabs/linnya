@@ -75,5 +75,3 @@ export function extractHttpStatusCode(err: unknown, depth: number = 0): number |
 
   return undefined;
 }
-
-
