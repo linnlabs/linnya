@@ -10,9 +10,9 @@ import {
 } from 'src/domains/projects';
 import { CORE_SCHEMAS } from 'src/features/workspace/infrastructure/sqlite/schemas/core.schema';
 import { TODO_SCHEMAS } from 'src/features/project-todo/infrastructure/sqlite/todo.schema';
-import { KNOWLEDGE_BASE_SCHEMAS } from 'src/features/knowledge-base/infrastructure/sqlite/knowledge-base.schema';
+import { KNOWLEDGE_BASE_SCHEMAS } from '../knowledge/src/backend/database/schemas';
 import { ASSET_LEDGER_SCHEMAS } from 'src/domains/assets/features/asset-ledger/infrastructure/sqlite/schemas/assetLedger.schema';
-import { CONVERSATION_SCHEMAS } from '../../persistence/event-store/conversation.schema';
+import { CONVERSATION_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
 
 describe('Empty project deletion preserves every linked owner', () => {
   let db: Database.Database;

@@ -63,3 +63,9 @@ Qdrant 受管 owner 在 Backend 启动时只登记，不启动进程。首次向
 队列内部初始化失败由 `QueueManager` 回收；队列已就绪后，图谱编排装配失败由 `ServiceInitializer` 等待队列关闭，再交给外层记录能力不可用并继续启动。
 
 项目知识库关联与转写服务只是构造对象、不会失败，不单独归类。
+
+## 生命周期回归归属
+
+Host 的相邻 `backendRuntimeOwner.*.test.ts` 通过正式插件向量工厂与 runtime effect 活动口验证冷启动、首次请求、失败收口和退出重试；不注入 KnowledgeBaseService，也不读取插件内部队列。ServiceInitializer 的能力回归只覆盖模型配置、独立 Audio 和必需数据库/插件装配步骤。
+
+知识库三队列的 owner 地址、历史 schema 和项目关联保护属于跨 owner 集成，位于 `packages/plugins/__tests__`。其中真实 Worker 通过插件 SDK 和 Host bootstrap 启动，不以旧 Host QueueManager 的知识库方法代替插件链。停止后的活动必须归零；Audio 的真实线程关闭回归仍由 `src/infra/task-queue/__tests__` 持有。
