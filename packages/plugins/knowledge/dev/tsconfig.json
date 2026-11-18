@@ -1,0 +1,28 @@
+{
+  "extends": "../../../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@plugin/backend/*": ["src/plugin-sdk/backend/*"],
+      "@plugin/knowledge/shared": ["packages/plugins/knowledge/src/shared/index.ts"],
+      "@app/schemas": ["packages/schemas/src/index.ts"],
+      "@app/schemas/*": ["packages/schemas/src/*"],
+      "@shared/*": ["src/shared/*"],
+      "@infra/*": ["src/infra/*"],
+      "@linnlabs/linnkit-provider-ai-sdk": ["packages/linnkit-provider-ai-sdk/src/index.ts"],
+      "@linnlabs/linnkit-provider-ai-sdk/conformance": ["packages/linnkit-provider-ai-sdk/conformance/index.ts"],
+      "@linnya/provider-catalog": ["packages/provider-catalog/src/index.ts"],
+      "@linnya/provider-catalog/runtime-bindings": ["packages/provider-catalog/src/runtime-bindings.ts"],
+      "@linnya/foundation": ["packages/foundation/src/index.ts"],
+      "@linnya/text-measurement-core": ["packages/text-measurement-core/src/index.ts"],
+      "@linnya/color-core": ["packages/color-core/src/index.ts"],
+      "@linnya/color-core/palette": ["packages/color-core/src/palette/index.ts"],
+      "@linnya/plugin-host-contract": ["packages/plugin-host-contract/index.ts"],
+      "@linnya/plugin-host-contract/backend": ["packages/plugin-host-contract/backend/index.ts"],
+      "@linnya/plugin-host-contract/backend/*": ["packages/plugin-host-contract/backend/*"],
+      "@linnya/plugin-host-contract/renderer": ["packages/plugin-host-contract/renderer/index.ts"],
+      "@linnya/plugin-host-contract/renderer/*": ["packages/plugin-host-contract/renderer/*"]
+    },
+    "types": ["node", "electron"]
+  },
+  "include": ["**/*.ts", "../../../../src/features/font-resolution/definitions/fontkit.d.ts"]
+}

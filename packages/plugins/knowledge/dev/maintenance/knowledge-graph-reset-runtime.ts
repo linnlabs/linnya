@@ -4,17 +4,18 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import dotenv from 'dotenv';
 
-import { QdrantAdapter } from 'src/infra/adapters/vector-store/qdrant';
+import { QdrantAdapter } from '../../src/backend/infrastructure/vector-store';
 import {
   getGraphEdgesCollectionName,
   getGraphNodesCollectionName,
-} from 'src/features/knowledge-base/graph/infrastructure/qdrantCollections';
-import { pathManager } from 'src/shared/utils/pathManager';
+} from '../../src/backend/graph/infrastructure/qdrantCollections';
 
 export interface KnowledgeGraphResetArgs {
   readonly kbId: string;
   readonly withQdrant: boolean;
   readonly qdrantUrl: string;
+  readonly workspaceDb: string;
+  readonly workspaceRoot: string;
 }
 
 const RESETTABLE_TABLES = new Set([
@@ -42,27 +43,53 @@ export function loadKnowledgeGraphMaintenanceEnvironment(): void {
   }
 }
 
-export function parseKnowledgeGraphResetArgs(
-  argv: readonly string[],
-): KnowledgeGraphResetArgs {
+/** 集合名必须在 macOS/Windows 都是一个直接子项，不能将维护目标解释为路径。 */
+export function assertMaintenanceCollectionSegment(value: string): void {
+  if (
+    !value ||
+    value === '.' ||
+    value === '..' ||
+    /[\/\\\u0000-\u001f<>:"|?*]/u.test(value) ||
+    /[. ]$/u.test(value)
+  ) {
+    throw new Error('维护目标必须是合法的单段名称，不能包含路径或系统保留字符');
+  }
+}
+
+export function parseKnowledgeGraphResetArgs(argv: readonly string[]): KnowledgeGraphResetArgs {
   const kbId = readArgValue(argv, '--kbId');
   if (!kbId) {
     throw new Error('缺少参数：--kbId <knowledge_base_id>');
   }
+  assertMaintenanceCollectionSegment(kbId);
+  const workspaceDb = path.resolve(
+    readArgValue(argv, '--workspaceDb') ??
+      path.join(process.cwd(), '_dev_data/workspace/workspace.sqlite')
+  );
+  const workspaceRoot = path.resolve(
+    readArgValue(argv, '--workspaceRoot') ?? path.dirname(path.dirname(workspaceDb))
+  );
   return {
     kbId,
+    workspaceDb,
+    workspaceRoot,
     withQdrant: argv.includes('--withQdrant'),
     qdrantUrl: readArgValue(argv, '--qdrantUrl') ?? 'http://127.0.0.1:6333',
   };
 }
 
-async function deleteLocalCollectionDirectory(collectionName: string): Promise<void> {
+async function deleteLocalCollectionDirectory(
+  workspaceRoot: string,
+  collectionName: string
+): Promise<void> {
+  assertMaintenanceCollectionSegment(collectionName);
   const directory = path.join(
-    pathManager.getKbDataPath(),
+    workspaceRoot,
+    'KnowledgeBase',
     'qdrant',
     'storage',
     'collections',
-    collectionName,
+    collectionName
   );
   await fsp.rm(directory, {
     recursive: true,
@@ -73,15 +100,18 @@ async function deleteLocalCollectionDirectory(collectionName: string): Promise<v
 }
 
 export async function deleteKnowledgeGraphVectorCollections(
-  args: KnowledgeGraphResetArgs,
+  args: KnowledgeGraphResetArgs
 ): Promise<void> {
+  assertMaintenanceCollectionSegment(args.kbId);
   if (!args.withQdrant) return;
+  const endpoint = new URL(args.qdrantUrl);
+  const isLocalEndpoint = ['127.0.0.1', 'localhost', '[::1]'].includes(endpoint.hostname);
 
   const collectionNames = [
     getGraphNodesCollectionName(args.kbId),
     getGraphEdgesCollectionName(args.kbId),
   ];
-  const adapter = QdrantAdapter.getInstance({
+  const adapter = new QdrantAdapter({
     url: args.qdrantUrl,
     timeout: 30_000,
     checkCompatibility: false,
@@ -94,12 +124,13 @@ export async function deleteKnowledgeGraphVectorCollections(
       }
     }
   } catch (error) {
-    // Qdrant 服务通常随 App 一起退出；显式 --withQdrant 时允许离线清理同一受管目录。
+    // 远端请求失败不能改删本地同名数据；仅本机服务离线时延续既有受管目录清理。
+    if (!isLocalEndpoint) throw error;
     console.warn(
-      `[KG-RESET] Qdrant API 不可用，改用离线目录清理：${error instanceof Error ? error.message : String(error)}`,
+      `[KG-RESET] Qdrant API 不可用，改用离线目录清理：${error instanceof Error ? error.message : String(error)}`
     );
     for (const collectionName of collectionNames) {
-      await deleteLocalCollectionDirectory(collectionName);
+      await deleteLocalCollectionDirectory(args.workspaceRoot, collectionName);
     }
   }
 }
@@ -109,6 +140,7 @@ export function clearKnowledgeGraphTablesInDatabase(params: {
   readonly kbId: string;
   readonly tableNames: readonly string[];
 }): void {
+  assertMaintenanceCollectionSegment(params.kbId);
   for (const tableName of params.tableNames) {
     if (!RESETTABLE_TABLES.has(tableName)) {
       throw new Error(`不允许清理未知知识图谱表：${tableName}`);
@@ -124,14 +156,23 @@ export function clearKnowledgeGraphTablesInDatabase(params: {
 }
 
 export function clearKnowledgeGraphDatabaseTables(params: {
+  readonly workspaceDb: string;
   readonly kbId: string;
   readonly tableNames: readonly string[];
 }): void {
-  const databasePath = path.join(pathManager.getWorkspaceDataPath(), 'workspace.sqlite');
-  const database = new Database(databasePath, { fileMustExist: true });
+  assertMaintenanceCollectionSegment(params.kbId);
+  const database = new Database(params.workspaceDb, { fileMustExist: true });
   try {
     clearKnowledgeGraphTablesInDatabase({ database, ...params });
   } finally {
     database.close();
   }
+}
+
+export function printKnowledgeGraphMaintenanceHelp(command: string): boolean {
+  if (!process.argv.slice(2).some(arg => ['--help', '-h', 'help'].includes(arg))) return false;
+  console.log(`用法: pnpm run ${command} -- --kbId <id> [--workspaceDb <path>] [--workspaceRoot <path>] [--withQdrant] [--qdrantUrl <url>]
+仅处理指定知识库的图谱派生数据；运行前退出同数据目录的 App。不会删除原文、PDF 或其他知识库。
+--withQdrant 同时删除图谱向量；仅本机 API 不可用时清理所选 Workspace 内同名离线目录；远端失败直接报错。`);
+  return true;
 }
