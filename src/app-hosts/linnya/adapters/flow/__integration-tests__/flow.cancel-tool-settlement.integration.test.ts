@@ -9,11 +9,20 @@ import { EditFileTool } from 'src/tools/workspace/edit_file/EditFileTool';
 import { readTail } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { SqliteExecutionCommit } from '../../persistence/execution-commit';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
+import { toolRegistry } from '../../tools/toolRegistry';
+import type { BaseTool } from 'src/tools/types';
+import type { SSESink } from '../flow.schemas';
 
 function barrier() {
   let release!: () => void;
   const promise = new Promise<void>(resolve => { release = resolve; });
   return { promise, release };
+}
+
+/** 仅替换具体 I/O；参数准入、返回值 receipt 与错误分类必须经过生产 Registry。 */
+function installTool(tool: BaseTool): void {
+  const getTool = toolRegistry.getTool.bind(toolRegistry);
+  vi.spyOn(toolRegistry, 'getTool').mockImplementation(name => name === tool.name ? tool : getTool(name));
 }
 
 let directory: string;
@@ -36,6 +45,7 @@ describe('cancel through real Graph, SQLite, durable tool projection and Host co
   it('原 run 暂停后继续并取消，累计预算与最后提交的 checkpoint 相同，不再叠加暂停前预算', async () => {
     const entered = barrier();
     const tool = new EditFileTool();
+    installTool(tool);
     vi.spyOn(tool, 'run').mockImplementation(async (_args, context) => {
       const signal = context.abortSignal;
       if (!signal) throw new Error('Expected abort signal');
@@ -48,7 +58,7 @@ describe('cancel through real Graph, SQLite, durable tool projection and Host co
       { toolCalls: [{ id: 'resumed-edit', name: 'edit_file', argumentsJson: JSON.stringify({
         locator: 'workspace:/fixture.md', old_string: 'before', new_string: 'after',
       }) }] },
-    ], [tool]);
+    ]);
     const conversationId = 'resumed-cancel';
     await fixture.flow.next({ conversation_id: conversationId,
       new_events: [{ type: 'user_input', content: 'Edit', source: 'user', timestamp: 1 }],
@@ -95,12 +105,13 @@ describe('cancel through real Graph, SQLite, durable tool projection and Host co
       };
     });
     const tool = new EditFileTool();
+    installTool(tool);
     const execute = vi.spyOn(tool, 'run').mockResolvedValue(JSON.stringify({ observation: 'Committed', data: {} }));
     fixture = await createDurableFlowHarness(join(directory, 'race.sqlite'), [{
       toolCalls: ['race-active', 'race-pending'].map(id => ({ id, name: 'edit_file', argumentsJson: JSON.stringify({
         locator: 'workspace:/fixture.md', old_string: 'before', new_string: 'after',
       }) })),
-    }], [tool]);
+    }]);
     const conversationId = 'cancel-commit-race';
     const executing = fixture.flow.next({ conversation_id: conversationId,
       new_events: [{ type: 'user_input', content: 'Edit', source: 'user', timestamp: 1 }],
@@ -131,6 +142,7 @@ describe('cancel through real Graph, SQLite, durable tool projection and Host co
       const abortSeen = barrier();
       const finishTool = barrier();
       const tool = new EditFileTool();
+      installTool(tool);
       // 只控制文档 I/O 的完成点；Agent、ToolNode、事实写入和 UI reader 全走正式链路。
       const execute = vi.spyOn(tool, 'run').mockImplementation(async (_args, context) => {
         const signal = context.abortSignal;
@@ -148,13 +160,14 @@ describe('cancel through real Graph, SQLite, durable tool projection and Host co
             locator: 'workspace:/fixture.md', old_string: 'before', new_string: 'after',
           }),
         })),
-      }], [tool]);
+      }]);
       const conversationId = 'cancel-edit-conversation';
+      const live: Parameters<SSESink>[0][] = [];
       const executing = fixture.flow.next({
         conversation_id: conversationId,
         new_events: [{ type: 'user_input', content: 'Edit the document', source: 'user', timestamp: 1 }],
         options: { promptKey: 'default', model_id: 'scripted-test-model' },
-      }, () => {});
+      }, event => live.push(event));
       const executionOutcome = Promise.allSettled([executing]);
       await entered.promise;
       const active = (await fixture.flow.getActiveForegroundRun(conversationId)).run;
@@ -170,6 +183,8 @@ describe('cancel through real Graph, SQLite, durable tool projection and Host co
       expect(execute).toHaveBeenCalledOnce();
 
       const events = (await fixture.eventStore.readEvents(conversationId, { limit: 100 })).events;
+      expect(events.some(event => event.type === 'error')).toBe(false);
+      expect(live.some(event => event.type === 'error')).toBe(false);
       const outputs = events.filter(event => event.type === 'tool_output');
       expect(outputs.filter(event => event.tool_call_id === 'edit-active')).toHaveLength(1);
       expect(outputs.filter(event => event.tool_call_id === 'edit-pending')).toHaveLength(1);

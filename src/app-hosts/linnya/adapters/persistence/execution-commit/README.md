@@ -18,6 +18,11 @@
 否则实际完成的工具结果会丢失。yielded 必须无 pending call/执行意图；yielded 后或清理后
 拒绝迟到提交，不允许复活断点。事实、UI 投影与位置仍在同一事务，不扫描 loading 补造输出。
 
+工具已返回时，`returned` receipt 仅用于运行继续/崩溃恢复。原 execution 明确取消后，
+若原 executing call 与待处理意图仍匹配，则不再写这份恢复 receipt，把实际结果交回 Graph
+完成正式 `tool_output` 收尾。已经原子提交的结果仍不可改写；`prepare/commit` 的动作权限不恢复，
+其他 execution、已清理意图与真实数据库错误仍必须失败，不能仅凭 abort signal 吞错。
+
 通用 ToolNode 必须在 AbortError 离开前提交取消边界；Graph 在节点切换期间收到取消也必须
 先调用节点的取消收尾入口。这需要 Linnkit 0.37.0 起的取消合同支持，Host 单侧不能替代该修复。
 

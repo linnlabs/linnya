@@ -27,8 +27,7 @@ export class SqliteToolResultReceipts {
 
   forExecution(runId: string, executionId: string): ToolResultReceiptPort {
     const runs = new SQLiteRunRegistryStore(this.db);
-    const owned = (callId: string, toolName: string) => {
-      runs.requireExecutionOwner(runId, executionId);
+    const requireCommittedCall = (callId: string, toolName: string) => {
       const checkpoint = this.db
         .prepare<
           [string],
@@ -46,13 +45,19 @@ export class SqliteToolResultReceipts {
       }
     };
     const save = (callId: string, toolName: string, result: string, atomic: boolean) => {
-      owned(callId, toolName);
+      const run = atomic
+        ? runs.requireExecutionOwner(runId, executionId)
+        : runs.requireCheckpointExecutionOwner(runId, executionId);
+      requireCommittedCall(callId, toolName);
       const previous = this.read(runId, callId, toolName);
       if (previous?.result !== null && previous?.result !== undefined) {
         if (previous.result !== result)
           throw new graph.RunRecoveryBlockedError('Original tool result cannot be overwritten');
         return;
       }
+      // 显式取消不可继续，不再保存供重启恢复的 receipt；真实返回值仍交给 Graph
+      // 按原调用结算 tool_output。只允许同 execution 的原在途调用，动作写入不放行。
+      if (run.status === 'cancelled') return;
       if (atomic && (!this.db.inTransaction || previous?.atomic_owner !== 1)) {
         throw new Error('Owner result must commit with its prepared mutation transaction');
       }
@@ -65,7 +70,8 @@ export class SqliteToolResultReceipts {
     };
     return {
       prepare: (callId, toolName) => {
-        owned(callId, toolName);
+        runs.requireExecutionOwner(runId, executionId);
+        requireCommittedCall(callId, toolName);
         this.db
           .prepare(
             `INSERT INTO agent_tool_results (run_id, tool_call_id, tool_name, atomic_owner)

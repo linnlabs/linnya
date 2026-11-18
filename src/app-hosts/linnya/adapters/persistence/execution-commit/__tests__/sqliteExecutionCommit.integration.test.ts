@@ -4,14 +4,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { execution, graph } from '@linnlabs/linnkit/runtime-kernel';
-import { RunIdSchema, createToolOutputEvent } from '@linnlabs/linnkit/contracts';
+import { RunIdSchema, ToolCallIdSchema, createToolOutputEvent } from '@linnlabs/linnkit/contracts';
 import { CONVERSATION_SCHEMAS } from '../../event-store/conversation.schema';
 import { ENGINE_CHECKPOINTS_SCHEMA } from '../../checkpointer/checkpointer.schema';
 import { RUN_DESCRIPTORS_SCHEMA } from '../../run-descriptors/schema-providers';
 import { SQLiteEventStore, LinnyaEventStoreAdapter } from '../../event-store';
 import { SqliteCheckpointer } from '../../checkpointer';
 import { SQLiteRunRegistryStore } from '../../run-registry';
-import { SqliteExecutionCommit } from '../index';
+import { SqliteExecutionCommit, SqliteToolResultReceipts } from '../index';
 
 const runId = RunIdSchema.parse('run-recovery');
 const conversationId = 'conversation-recovery';
@@ -86,7 +86,58 @@ async function createRuntime() {
   return { db, path, runs, eventStore, persistence, checkpoints, checkpoint, publishResult };
 }
 
+async function createReceiptRuntime() {
+  const runtime = await createRuntime();
+  runtime.db.prepare('INSERT INTO agent_run_descriptors (run_id, descriptor_json) VALUES (?, ?)')
+    .run(runId, '{}');
+  await runtime.checkpoints.save(runId, {
+    ...runtime.checkpoint,
+    executionStatus: 'executing',
+    local: {
+      executingToolCallId: ToolCallIdSchema.parse('original-call'),
+      pendingToolCalls: [{ id: ToolCallIdSchema.parse('original-call'), type: 'function',
+        function: { name: 'lookup', arguments: '{}' } }],
+    },
+  });
+  const receipts = new SqliteToolResultReceipts(runtime.db);
+  return { ...runtime, receipts, port: receipts.forExecution(runId, 'attempt-1') };
+}
+
 describe('EventBus → SQLite execution checkpoint commit', () => {
+  it('取消返回不改原子结果，仍拒绝动作写入、旧 execution 和已清理的调用', async () => {
+    const runtime = await createReceiptRuntime();
+    runtime.db.transaction(() => {
+      runtime.port.prepare('original-call', 'lookup');
+      runtime.port.commit('original-call', 'lookup', 'original result');
+    })();
+    const current = await runtime.runs.load(runId);
+    if (!current) throw new Error('Missing run');
+    await runtime.runs.save({ ...current, status: 'cancelled', updatedAt: 2 });
+    expect(() => runtime.port.returned('original-call', 'lookup', 'original result')).not.toThrow();
+    expect(() => runtime.port.returned('original-call', 'lookup', 'changed result'))
+      .toThrow('Original tool result cannot be overwritten');
+    expect(() => runtime.port.prepare('original-call', 'lookup')).toThrow('no longer owns run');
+    expect(() => runtime.port.commit('original-call', 'lookup', 'original result'))
+      .toThrow('no longer owns run');
+    expect(() => runtime.receipts.forExecution(runId, 'other-attempt')
+      .returned('original-call', 'lookup', 'original result')).toThrow('no longer owns run');
+    await runtime.checkpoints.clear(runId);
+    expect(() => runtime.port.returned('original-call', 'lookup', 'original result'))
+      .toThrow('no committed execution intent');
+    expect(runtime.receipts.read(runId, 'original-call', 'lookup'))
+      .toMatchObject({ result: 'original result', atomic_owner: 1 });
+  });
+
+  it('返回结果的真实存储错误继续报告，不伪装成取消或完成', async () => {
+    const runtime = await createReceiptRuntime();
+    runtime.db.exec(`CREATE TRIGGER reject_returned BEFORE INSERT ON agent_tool_results
+      BEGIN SELECT RAISE(ABORT, 'receipt storage unavailable'); END;`);
+    expect(() => runtime.port.returned('original-call', 'lookup', 'real result'))
+      .toThrow('receipt storage unavailable');
+    expect(runtime.receipts.read(runId, 'original-call', 'lookup')).toBeUndefined();
+    expect((await runtime.runs.load(runId))?.status).toBe('running');
+  });
+
   it('提交原工具结果与断点，重新打开数据库后两者及 UI 投影同时可见', async () => {
     const runtime = await createRuntime();
     const fact = runtime.publishResult();
