@@ -37,7 +37,7 @@ import { runPluginLifecycleOperationSerially } from '../../../../features/plugin
 import { resolveDiskPluginUpgradePlan } from '../../../plugins/install/diskPluginUpgradePlan';
 import { getRunSupervisor } from '../../../services/agentRuntimeSingletons';
 import { cancelActiveRunsForPluginRuntimeChange } from '../../../../app-hosts/linnya/plugin-registry/pluginRuntimeRunInvalidation';
-import { assertBackendPluginCanDeactivate } from '../../../../app-hosts/linnya/plugin-registry/runtimeEffectRuntime';
+import { assertBackendPluginCanDeactivate, beginBackendPluginDeactivation } from '../../../../app-hosts/linnya/plugin-registry/runtimeEffectRuntime';
 import { isTrustedKnowledgeResourceSource } from '../../../../app-hosts/linnya/plugin-registry/knowledgeResourceAdmission';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
@@ -246,6 +246,7 @@ export async function registerPluginsHandlers(input: {
             const service = getService();
             if (!enabled) assertBackendPluginCanDeactivate(pluginId);
             service.setEnabled(pluginId, enabled, listRegisteredBackendPluginMetas());
+            if (!enabled) beginBackendPluginDeactivation(pluginId);
             if (!isTrustedKnowledgeResourceSource(pluginId))
               await cancelActiveRunsForPluginRuntimeChange({
                 pluginId,

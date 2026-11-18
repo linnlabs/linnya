@@ -61,6 +61,8 @@ incoming facts 与 generated facts 的写入入口不同是有意设计：incomi
 
 应用装配层必须通过 `FlowRuntimePersistencePort` 把同一个 Linnkit EventStore 与同一游标生成器显式交给 Flow。FlowOrchestrator 不读取进程全局 EventStore，也不自行创建 MemoryEventStore。RunSupervisor registration 与 EventBus persistence 必须消费这一个注入实例；incoming facts 虽经 ConversationPersistencePort 写入，但它与 Linnkit adapter 必须连接同一个底层事实库。
 
+父运行的 abort 必须当场触发 Command owner 的 `endAgentRun`，不能等 Graph 或阻塞的 Shell 返回后才开始停止。取消与正常终态共享同一个收口 promise；命令进程、CLI 派生工作与输出都结算后，最外层执行栈才释放停止屏障。正常 `wait_user` 继续保持原暂停语义。
+
 ## 3. 唯一生成事实链
 
 生成事实只允许走：

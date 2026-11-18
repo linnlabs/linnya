@@ -290,6 +290,10 @@ describe('knowledge activation persistence and drain', () => {
     expect(runtime.queues.getTaskById('pending')?.state).toBe('pending');
     const pushCount = pushes.length;
     enabled = false; setPluginRuntimeStateForTests({ enabledPluginIds: [] });
+    runtime.beginDeactivation();
+    expect(() => runtime?.assertAccepting()).toThrow('停用');
+    // CLI 先收口时会先于最终 runtime.stop 取消 Worker；不得再向 disabled Renderer 发布。
+    await runtime.queues.cancelIngestionTask('pending');
     await runtime.stop();
     expect(pushes).toHaveLength(pushCount);
     expect(runtime.hasActiveTasks()).toBe(false);

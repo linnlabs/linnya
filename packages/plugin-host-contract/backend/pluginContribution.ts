@@ -52,6 +52,8 @@ export interface BackendPluginRuntimeEffect {
   assertCanDeactivate?(): void;
   /** 退出与更新只读取是否存在真实工作，不取得插件队列或业务对象。 */
   hasActiveWork?(): boolean;
+  /** 同步、幂等关闭接单与对外发布；不释放资源。Host 在取消 CLI 之前调用。 */
+  beginDeactivation?(): void;
   activate(): void | Promise<void>;
   deactivate(): void | Promise<void>;
 }

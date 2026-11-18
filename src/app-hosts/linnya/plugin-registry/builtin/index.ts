@@ -26,6 +26,7 @@ import {
 } from '../pluginCliInvocationRuntime';
 import {
   activateDesiredBackendPluginRuntimeEffects,
+  beginStaleBackendPluginRuntimeEffects,
   deactivateStaleBackendPluginRuntimeEffects,
 } from '../runtimeEffectRuntime';
 import { syncBackendPluginSandboxProfiles } from '../sandboxProfileRuntime';
@@ -569,6 +570,8 @@ export async function syncRegisteredBackendPluginRuntimeResources(
     backendPluginRegistry.getRuntimeEffectRegistrations(resolvedEnabledIds);
   const pluginCliRegistrations =
     backendPluginRegistry.getPluginCliRegistrations(resolvedEnabledIds);
+  // 先关闭旧实例接单/发布，再取消 CLI；资源必须保留到 CLI 真正收口之后。
+  beginStaleBackendPluginRuntimeEffects(runtimeEffectRegistrations);
   await deactivateStaleBackendPluginClis(pluginCliRegistrations);
   await deactivateStaleBackendPluginRuntimeEffects(runtimeEffectRegistrations);
   syncBackendPluginSandboxProfiles(

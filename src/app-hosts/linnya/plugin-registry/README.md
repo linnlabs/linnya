@@ -7,5 +7,7 @@
 SDK 使用 Desktop capability 时直接引用对应 `registry/*Registry.ts` 的窄端口；`desktop-capabilities/index.ts` 供 App composition 选择具体 RPC/Host 实现，不进入 SDK 的运行闭包。这样磁盘加载器可以提供 SDK 合同，同时 SDK 不再依赖加载器或请求装配。
 
 Runtime effect 的身份由已接纳 contribution 中的实际 effect 实例决定。相同 pluginId/effectId 的新 artifact 必须先等待旧实例 deactivate 完成，再 activate 新实例；关闭失败保留旧资源 owner 并中止新实例激活，不能静默把旧 Worker 留给新版使用。重复同步同一 contribution 不重启资源。
+
+停用分两步：可选、同步、幂等的 `beginDeactivation` 先关闭实例接单与对外发布，仍保留内部状态与持久化监听；然后 Host 取消并等待 CLI invocation，最后调用 `deactivate` 释放资源。修改 enabled 的同一同步栈即开始前一步，同 ID artifact 替换和直接退出也执行它。不能先释放 CLI 仍使用的资源，也不能让停用后的合法终态事件继续发送 Renderer push；SDK 对未启用插件的非法发布仍报错。停用失败保留原 owner，下一次同步先完成收尾再重新启用。
 `registeredPluginDirectories.ts` 是已准入 Backend artifact 目录的唯一内存记录，写入/清除仍由 builtin 装配负责。Worker factory 等运行消费者只读 getter，不反向 import builtin 加载器。目录记录表示来源归属，不单独授予启用状态或高信任能力。
 Renderer 的固定应用槽只由 `rendererApplicationSurfaceTrust.ts` 产品装配映射授予，随 `plugins:renderer-entries` 的 Host 结果传递。已准入 Backend 目录只用于同源核对，不代表授信；开发源码/显式 Backend direct 与生产 resolved bundled artifact 身份分开判断，packaged 不用开发环境变量授权。artifact 身份比较复用构建后的 SHA512SUMS，不宣称发布方验签。通用 loader/registry 不持有知识库 ID 规则，普通磁盘插件自报 builtin 无效。

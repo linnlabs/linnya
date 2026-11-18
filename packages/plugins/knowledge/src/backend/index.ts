@@ -34,6 +34,7 @@ const contribution: PluginBackendContribution = {
     id: 'knowledge-runtime',
     assertCanDeactivate: () => runtime?.assertCanDeactivate(),
     hasActiveWork: () => runtime?.hasActiveTasks() ?? false,
+    beginDeactivation: () => runtime?.beginDeactivation(),
     async activate() {
       // 非必需插件自己的资料故障不阻断整个 App；Host 合同/注册错误仍照常失败。
       try { runtime = await createKnowledgeRuntime(); }

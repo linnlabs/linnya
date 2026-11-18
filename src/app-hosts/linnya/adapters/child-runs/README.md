@@ -143,6 +143,8 @@ src/app-hosts/linnya/adapters/child-runs/
 
 ### 5.2.1 child-run 生命周期
 
+child 的 abort 同步触发该 child 的 Command owner 收口，不等待子图中正在阻塞的 Shell 自然返回；正常/异常结束继续等待同一个收口 promise，子生命周期关闭后才释放屏障。父子及兄弟仍按各自 run 身份隔离。
+
 `childRunLifecycle.ts` 负责把 registered child-run 接入 Linnya 宿主的 run lifecycle：
 
 1. 执行 child-run 前先调用 `RunSupervisor.registerRun({ runId: subrunId, parentRunId })`

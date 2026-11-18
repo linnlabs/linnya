@@ -43,6 +43,7 @@ export function createKnowledgeActivityOwner() {
 
   return {
     begin,
+    stopAccepting() { accepting = false; },
     async whenIdle(kbId: string): Promise<void> {
       await Promise.all([...active].filter(item => item.kbId === kbId).map(item => item.completed));
     },

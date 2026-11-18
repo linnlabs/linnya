@@ -276,7 +276,7 @@ export class AgentRunnerService {
       realtimePort: createSseSummarizationRealtimePort(realtimeSink),
     });
     let commandAgentRunId: ReturnType<typeof CommandAgentRunIdSchema.parse> | undefined;
-    let commandCleanupAttempted = false;
+    let commandCleanup: Promise<void> | undefined;
     let commandRunEndBarrier: CommandAgentRunEndBarrier | undefined;
     let settlementContextUsage: ContextUsageSnapshot | undefined;
     let executionStepCount: number | undefined;
@@ -291,13 +291,22 @@ export class AgentRunnerService {
       }
     );
 
-    const endCommandAgentRun = async (): Promise<void> => {
-      if (!commandAgentRunId || this.runtime.commandRuntime.kind !== 'enabled') return;
-      commandCleanupAttempted = true;
-      commandRunEndBarrier = await this.runtime.commandRuntime.agentRunLifecycle.endAgentRun({
+    const endCommandAgentRun = (): Promise<void> => {
+      if (!commandAgentRunId || this.runtime.commandRuntime.kind !== 'enabled') return Promise.resolve();
+      const lifecycle = this.runtime.commandRuntime.agentRunLifecycle;
+      const agentRunId = commandAgentRunId;
+      commandCleanup ??= lifecycle.endAgentRun({
         conversationId: CommandConversationIdSchema.parse(conversationId),
-        agentRunId: commandAgentRunId,
-      });
+        agentRunId,
+      }).then(barrier => { commandRunEndBarrier = barrier; });
+      return commandCleanup;
+    };
+    // Shell 可能正等待插件/模型，不能等 Graph 返回后才通知进程 owner 停止。
+    // abort 与正常终态共用同一收口 promise，屏障仍留到最外层执行栈退出。
+    const stopCommandsOnAbort = (): void => {
+      void endCommandAgentRun().catch(error => logger.error('取消运行时命令进程收口失败', {
+        conversationId, agentRunId: commandAgentRunId, error,
+      }));
     };
 
     try {
@@ -321,6 +330,8 @@ export class AgentRunnerService {
       const toolContextPatch = bootstrap.toolContextPatch;
       const finalRunContext = bootstrap.finalRunContext;
       commandAgentRunId = CommandAgentRunIdSchema.parse(finalRunContext.runId);
+      signal.addEventListener('abort', stopCommandsOnAbort, { once: true });
+      if (signal.aborted) stopCommandsOnAbort();
       const commandRunPermission =
         recoveryInputs?.commandPermission ??
         resolveCommandRunPermissionContext({
@@ -634,17 +645,15 @@ export class AgentRunnerService {
           });
         }
       }
-      if (!commandCleanupAttempted) {
-        try {
-          await endCommandAgentRun();
-        } catch (cleanupError: unknown) {
-          // 已有执行失败/取消时保留原主终因，清理失败作为第二条可观察事实。
-          logger.error('Agent run 失败后的命令进程收口也失败', {
-            conversationId,
-            agentRunId: commandAgentRunId,
-            cleanupError,
-          });
-        }
+      try {
+        await endCommandAgentRun();
+      } catch (cleanupError: unknown) {
+        // 已有执行失败/取消时保留原主终因，清理失败作为第二条可观察事实。
+        logger.error('Agent run 失败后的命令进程收口也失败', {
+          conversationId,
+          agentRunId: commandAgentRunId,
+          cleanupError,
+        });
       }
       const isAbortError = error instanceof Error && error.name === 'AbortError';
       const failureFact = isAbortError
@@ -697,6 +706,7 @@ export class AgentRunnerService {
         isAbortError,
       });
     } finally {
+      signal.removeEventListener('abort', stopCommandsOnAbort);
       releaseCheckpointBinding?.();
       // 此处已经离开 Graph、工具执行和执行结算流程，之后不会再产生该 run 的 tool call。
       commandRunEndBarrier?.release();

@@ -130,6 +130,17 @@ export async function createKnowledgeRuntime() {
     },
   };
   graph.start();
+  function beginDeactivation() {
+    accepting = false;
+    activity.stopAccepting();
+    connectedProgress.stopPublishing();
+    // CLI drain 会先把队列 job 改为 failed；必须在那之前保存本实例需补持久终态的身份。
+    interruptedTasks ??= queues
+      .listIngestionTasks()
+      .filter(job => job.state === 'pending' || job.state === 'running')
+      .map(job => ({ docId: job.data.docId, kbId: job.data.kbId }));
+    return interruptedTasks;
+  }
   return {
     service,
     toolRuntime,
@@ -158,14 +169,10 @@ export async function createKnowledgeRuntime() {
       if (activeTools > 0)
         throw new Error('知识库工具仍在运行，请等待检索或深度搜索结束后再停用。');
     },
+    beginDeactivation,
     async stop() {
       // 同步封闭接单之后才让出执行权；失败时仍由 effect 持有当前 owner，允许再次收尾。
-      accepting = false;
-      connectedProgress.stopPublishing();
-      interruptedTasks ??= queues
-        .listIngestionTasks()
-        .filter(job => job.state === 'pending' || job.state === 'running')
-        .map(job => ({ docId: job.data.docId, kbId: job.data.kbId }));
+      const interrupted = beginDeactivation();
       controller.abort();
       const graphStopped = graph.stop();
       const maintenanceStopped = maintenance?.stop();
@@ -173,7 +180,7 @@ export async function createKnowledgeRuntime() {
       await queues.shutdown();
       await draining;
       await graphStopped;
-      await markInterruptedKnowledgeDocuments(metadata, interruptedTasks);
+      await markInterruptedKnowledgeDocuments(metadata, interrupted);
       interruptedTasks = [];
       await maintenanceStopped;
       await vector.stop();

@@ -150,6 +150,8 @@ Renderer 插件通过 `@plugin/renderer/exportArtifact` 请求系统保存框，
 
 `@plugin/backend/pdfDocumentRuntime` 只接受有序 PNG 页面与物理页面尺寸。插件不能传入 HTML、URL、BrowserWindow 或 Chromium 打印参数；具体业务 renderer 负责生成页面视觉事实，Host 只负责 PDF 封装。
 
+Backend runtime effect 可选实现同步、幂等的 `beginDeactivation`：只停止新工作准入和对外通知，不释放仍被 CLI 使用的资源。Host 在取消 CLI 前执行此阶段，等待 CLI 及其内部持久化收尾后才调用 `deactivate`。直接停止 effect 也先执行此前置阶段；未实现该可选能力的贡献保持原合同。
+
 ## 7. 测试运行态
 
 插件 backend 集成测试如需启用状态与 Workspace mutation composition，只能通过

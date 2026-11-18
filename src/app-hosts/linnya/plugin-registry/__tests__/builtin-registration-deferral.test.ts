@@ -16,6 +16,10 @@ vi.mock('@plugin/backend/pluginIpcRuntime', () => ({
 // 组合行为测试不测 Vite 冷编译耗时；依赖在收集阶段加载，每例通过正式 reset 隔离注册状态。
 import * as builtin from '../builtin';
 import * as runtime from '../pluginRuntimeState';
+import { backendPluginRegistry } from '../registry';
+import { acquireBackendPluginCliInvocation, clearBackendPluginClisForTests } from '../pluginCliInvocationRuntime';
+import { clearSyncedBackendPluginRuntimeEffectsForTests } from '../runtimeEffectRuntime';
+import { installBackendHiddenWorkerRuntimePort, clearBackendHiddenWorkerRuntimePortForTesting } from '../../desktop-capabilities/registry/backendHiddenWorkerRuntimeRegistry';
 
 const PLUGIN_ID = 'document-plugin-fixture';
 const SECOND_PLUGIN_ID = 'other-plugin-fixture';
@@ -116,7 +120,10 @@ beforeEach(() => {
   for (const key of pluginEnvironmentKeys) vi.stubEnv(key, undefined);
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await clearBackendPluginClisForTests();
+  await clearSyncedBackendPluginRuntimeEffectsForTests();
+  clearBackendHiddenWorkerRuntimePortForTesting();
   pluginIpcRuntimeMock.clearBackendPluginIpcHandlersForPlugin.mockClear();
   pluginIpcRuntimeMock.registerBackendPluginIpcHandler.mockClear();
   runtime.clearPluginRuntimeStateForTests();
@@ -128,6 +135,51 @@ afterEach(() => {
 });
 
 describe('generic backend plugin composition', () => {
+  it('停用先封闭发布再取消 CLI，持久化收尾完成前不释放原资源', async () => {
+    const unexpected = () => { throw new Error('fixture declares no hidden workers'); };
+    installBackendHiddenWorkerRuntimePort({ registerHiddenWorker: unexpected,
+      unregisterHiddenWorker: unexpected, hasHiddenWorker: () => false, listHiddenWorkerIds: () => [],
+      ensureHiddenWorkerReady: unexpected, touchHiddenWorker: unexpected, invokeHiddenWorker: unexpected });
+    builtin.ensureBuiltinBackendPluginsRegistered({ applicationVersion: '0.0.38' });
+    let publishing = false;
+    let resources = false;
+    const calls: string[] = [];
+    backendPluginRegistry.register({
+      meta: { id: PLUGIN_ID, name: 'Fixture', version: '1.0.0', description: 'Drain fixture',
+        developer: 'Linnya', builtin: true, dependsOn: [] },
+      pluginCli: { prepare: () => ({ status: 'completed', result: { exitCode: 0, stdout: '', stderr: '' } }) },
+      runtimeEffects: [{ id: 'owned-runtime',
+        activate() { publishing = true; resources = true; },
+        beginDeactivation() { publishing = false; },
+        deactivate() { calls.push('resources-disposed'); resources = false; },
+      }],
+    }, { allowPluginCli: true });
+    await builtin.syncRegisteredBackendPluginRuntimeResources(new Set([PLUGIN_ID]));
+    const registration = backendPluginRegistry.getPluginCliRegistrations(new Set([PLUGIN_ID]))[0];
+    if (!registration) throw new Error('missing fixture CLI');
+    const lease = acquireBackendPluginCliInvocation(registration);
+    if (!lease) throw new Error('missing CLI lease');
+    lease.signal.addEventListener('abort', () => {
+      calls.push(publishing ? 'stale-renderer-push' : 'internal-terminal');
+      calls.push(resources ? 'resources-retained' : 'resources-lost');
+    });
+    const draining = builtin.syncRegisteredBackendPluginRuntimeResources(new Set());
+    try {
+      await Promise.resolve();
+      expect(acquireBackendPluginCliInvocation(registration)).toBeUndefined();
+      expect(calls).toEqual(['internal-terminal', 'resources-retained']);
+      expect(resources).toBe(true);
+    } finally {
+      calls.push('persistence-settled');
+      lease.release();
+      await draining;
+    }
+    expect(calls).toEqual(['internal-terminal', 'resources-retained', 'persistence-settled', 'resources-disposed']);
+    await builtin.syncRegisteredBackendPluginRuntimeResources(new Set([PLUGIN_ID]));
+    expect(resources).toBe(true);
+    expect(publishing).toBe(true);
+  });
+
   it('treats a platform-only Core as a complete runtime when no plugin source is configured', () => {
 
     expect(builtin.listRegisteredBackendPluginMetas().map((meta) => meta.id)).toEqual(['platform']);

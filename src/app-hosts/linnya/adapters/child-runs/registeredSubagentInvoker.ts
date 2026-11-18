@@ -349,14 +349,16 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
     let commandRunEndBarrier: CommandAgentRunEndBarrier | undefined;
     const lifecycle = this.lifecycle;
     const childAbortSignal = lifecycleRun.handle.signal;
-    const endCommandAgentRun = async (): Promise<void> => {
-      if (!this.commandAgentRunLifecycle) return;
-      commandRunEndBarrier = await this.commandAgentRunLifecycle.endAgentRun({
+    let commandCleanup: Promise<void> | undefined;
+    const endCommandAgentRun = (): Promise<void> => {
+      if (!this.commandAgentRunLifecycle) return Promise.resolve();
+      commandCleanup ??= this.commandAgentRunLifecycle.endAgentRun({
         conversationId: CommandConversationIdSchema.parse(
           requireConversationIdForLifecycle(conversationId, childRunId)
         ),
         agentRunId: CommandAgentRunIdSchema.parse(childRunId),
-      });
+      }).then(barrier => { commandRunEndBarrier = barrier; });
+      return commandCleanup;
     };
 
     const recordSecondaryCleanupFailure = (cleanupError: unknown): void => {
@@ -366,6 +368,12 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
         cleanupError,
       });
     };
+    // 子运行也必须在 abort 当下停止自己的 Shell，不能等待在途工具自然结束。
+    const stopCommandsOnAbort = (): void => {
+      void endCommandAgentRun().catch(recordSecondaryCleanupFailure);
+    };
+    childAbortSignal.addEventListener('abort', stopCommandsOnAbort, { once: true });
+    if (childAbortSignal.aborted) stopCommandsOnAbort();
 
     try {
       try {
@@ -515,6 +523,7 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
         );
       }
     } finally {
+      childAbortSignal.removeEventListener('abort', stopCommandsOnAbort);
       lifecycle.close(lifecycleRun);
       // child lifecycle 已关闭，之后只剩结果投影，不再允许产生该 run 的 tool call。
       commandRunEndBarrier?.release();

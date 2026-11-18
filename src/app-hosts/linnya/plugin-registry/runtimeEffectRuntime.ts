@@ -8,7 +8,7 @@ interface ActiveRuntimeEffect {
   readonly effectId: string;
   readonly effect: BackendPluginRuntimeEffectRegistration['effect'];
   readonly deactivate: () => void | Promise<void>;
-  deactivationFailed?: boolean;
+  deactivationPending?: boolean;
 }
 
 const activeEffects = new Map<string, ActiveRuntimeEffect>();
@@ -16,6 +16,18 @@ const activeEffects = new Map<string, ActiveRuntimeEffect>();
 export function assertBackendPluginCanDeactivate(pluginId: string): void {
   for (const active of activeEffects.values())
     if (active.pluginId === pluginId) active.effect.assertCanDeactivate?.();
+}
+
+/** enabled 改变的同一同步栈封闭发布，后续 CLI 仍可用原资源完成取消与持久化。 */
+export function beginBackendPluginDeactivation(pluginId: string): void {
+  for (const active of activeEffects.values())
+    if (active.pluginId === pluginId) beginEffectDeactivation(active);
+}
+
+export function beginStaleBackendPluginRuntimeEffects(
+  registrations: readonly BackendPluginRuntimeEffectRegistration[]
+): void {
+  beginStaleEffects(buildDesiredEffectMap(registrations));
 }
 
 export function hasActiveBackendPluginWork(): boolean {
@@ -52,16 +64,27 @@ export async function activateDesiredBackendPluginRuntimeEffects(
 async function deactivateStaleRuntimeEffects(
   desired: ReadonlyMap<string, BackendPluginRuntimeEffectRegistration>
 ): Promise<void> {
+  beginStaleEffects(desired);
   for (const [effectKey, active] of activeEffects) {
     // 同 ID 的新版 artifact 仍是新的 contribution 实例；先等待旧资源完全停止，
     // 才能激活新实例。仅按 ID 判等会把旧 Worker/闭包永久留到下一次重启。
-    if (active.deactivationFailed || desired.get(effectKey)?.effect !== active.effect) {
+    if (active.deactivationPending || desired.get(effectKey)?.effect !== active.effect) {
       // 半停实例不能在重新启用时复用；失败仍保留 owner，下一次同步先完成旧清理。
-      active.deactivationFailed = true;
       await runEffectStep(active.pluginId, active.effectId, 'deactivate', active.deactivate);
       activeEffects.delete(effectKey);
     }
   }
+}
+
+function beginEffectDeactivation(active: ActiveRuntimeEffect): void {
+  active.effect.beginDeactivation?.();
+  active.deactivationPending = true;
+}
+
+function beginStaleEffects(desired: ReadonlyMap<string, BackendPluginRuntimeEffectRegistration>): void {
+  for (const [key, active] of activeEffects)
+    if (active.deactivationPending || desired.get(key)?.effect !== active.effect)
+      beginEffectDeactivation(active);
 }
 
 async function activateDesiredRuntimeEffects(
@@ -87,10 +110,7 @@ async function activateDesiredRuntimeEffects(
 }
 
 export async function clearSyncedBackendPluginRuntimeEffectsForTests(): Promise<void> {
-  for (const [effectKey, active] of activeEffects) {
-    await runEffectStep(active.pluginId, active.effectId, 'deactivate', active.deactivate);
-    activeEffects.delete(effectKey);
-  }
+  await deactivateStaleRuntimeEffects(new Map());
 }
 
 function buildDesiredEffectMap(

@@ -238,6 +238,12 @@ function readPersistedRuntimeEvents(db: Database.Database, runId: string): Route
   }));
 }
 
+function createCommandBarrier() {
+  let resolve = () => {};
+  const promise = new Promise<void>(complete => { resolve = complete; });
+  return { promise, resolve };
+}
+
 describe('RegisteredChildRunInvoker', () => {
   beforeEach(() =>
     setPluginRuntimeStateForTests({
@@ -404,6 +410,42 @@ describe('RegisteredChildRunInvoker', () => {
         message: 'cancelled before child invocation',
       },
     });
+  });
+
+  it('子运行取消立即停止命令，不等待阻塞工具自然返回', async () => {
+    const entered = createCommandBarrier();
+    const stopped = createCommandBarrier();
+    const controller = new AbortController();
+    const release = vi.fn();
+    const endAgentRun = vi.fn(async () => { stopped.resolve(); return { release }; });
+    const { lifecycle, supervisor } = createMemoryChildRunLifecycle();
+    const invoker = new RegisteredChildRunInvoker({
+      agentResolver: { resolveByPromptKey: () => createDefaultResolvedAgent() },
+      commandAgentRunLifecycle: { endAgentRun },
+      lifecycle,
+      childRunInvoker: { async invoke() {
+        entered.resolve();
+        await stopped.promise;
+        return { subrunId: 'blocked-child', success: false, cancelled: true,
+          error: 'Command stopped', events: [], stepCount: 1 };
+      } },
+    });
+    const running = invoker.invoke({ promptKey: PromptKeys.DEFAULT, userMessage: 'Run command',
+      parentToolContext: createAdmittedParentToolContext({ conversationId: 'child-command-cancel',
+        runId: RunIdSchema.parse('parent-command-cancel') }),
+      tracePolicy: { subrunId: 'blocked-child' }, executionPolicy: { abortSignal: controller.signal },
+    });
+    try {
+      await entered.promise;
+      controller.abort(new Error('User cancelled'));
+      await vi.waitFor(() => expect(endAgentRun).toHaveBeenCalledOnce());
+    } finally {
+      stopped.resolve();
+      await running;
+    }
+    expect(endAgentRun).toHaveBeenCalledOnce();
+    expect(release).toHaveBeenCalledOnce();
+    expect(await supervisor.peek(RunIdSchema.parse('blocked-child'))).toMatchObject({ status: 'cancelled' });
   });
 
   it('父 trace 投影失败时保留 child 事实并阻止 lifecycle 报告 completed', async () => {

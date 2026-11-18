@@ -41,6 +41,12 @@ function createRunner(
   );
 }
 
+function createCommandBarrier() {
+  let resolve = () => {};
+  const promise = new Promise<void>(complete => { resolve = complete; });
+  return { promise, resolve };
+}
+
 describe('AgentRunnerService interrupted integration', () => {
   let aiHarness: ScriptedInferenceHarness | undefined;
   const modelCatalog = createScriptedChatModelCatalog();
@@ -333,6 +339,68 @@ describe('AgentRunnerService interrupted integration', () => {
       errorIfAny: expect.objectContaining({ message: persistenceError.message }),
     });
     toolHarness.restore();
+  });
+
+  it('根运行取消立即停止命令，不等待阻塞工具自然返回', async () => {
+    const entered = createCommandBarrier();
+    const toolStopped = createCommandBarrier();
+    const tool = new AskTool();
+    vi.spyOn(tool, 'run').mockImplementation(async () => {
+      entered.resolve();
+      await toolStopped.promise;
+      throw new DOMException('Command stopped', 'AbortError');
+    });
+    aiHarness = createScriptedInferenceHarness([{ toolCalls: [{
+      id: 'blocked-command', name: 'ask', argumentsJson: JSON.stringify({ questions: [{
+        id: 'q', type: 'text', question: 'Continue?', required: true,
+      }] }),
+    }] }]);
+    const toolHarness = createToolRuntimeHarness([tool]);
+    const engine = createDefaultGraphExecutor({
+      llmNode: createDefaultLlmNode({ llmCaller: aiHarness.getLlmCaller(),
+        toolRuntime: toolHarness.toolRuntime, modelCatalog }),
+      toolRuntime: toolHarness.toolRuntime, observationPreview: defaultObservationPreviewPort,
+      checkpointer: new runtimeKernel.graph.MemoryCheckpointer(),
+    });
+    const release = vi.fn();
+    const endAgentRun = vi.fn<CommandAgentRunLifecyclePort['endAgentRun']>(async () => {
+      toolStopped.resolve();
+      return { release };
+    });
+    const runner = createRunner(engine, { endAgentRun });
+    const conversationId = 'root-command-cancel';
+    const turnId = 'root-command-cancel-run';
+    const sequencer = new runtimeKernel.execution.EventSequencer(conversationId);
+    const eventBus = new runtimeKernel.execution.EventBus(sequencer.getExecutionId());
+    const publisher = new runtimeKernel.execution.RuntimeEventPublisher(eventBus, sequencer, {
+      run_id: RunIdSchema.parse(turnId), lane: 'foreground', visibility: 'conversation',
+    });
+    const hostPorts = { eventBus, sequencer, realtimeSink: vi.fn(),
+      runtimeEventSink: (event: Parameters<typeof publisher.publish>[0], source: string) =>
+        publisher.publish(event, source),
+      getGeneratedEvents: () => publisher.getGeneratedEvents(),
+      drainPersistence: vi.fn().mockResolvedValue(undefined),
+    };
+    const request: AgentInvokeRequest = { query: 'Run command', promptKey: PromptKeys.DEFAULT,
+      model_id: 'scripted-test-model', availableTools: ['ask'], enableTools: true };
+    const runHandle = await createRunHandleForFlowTest({ conversationId, turnId, request, hostPorts });
+    const running = runner.run({ conversationId, turnId, request, history: [], newEvents: [{
+      type: 'user_input', id: 'root-command-input', content: request.query, timestamp: Date.now(),
+      source: 'user', turn_id: turnId, conversation_id: conversationId, version: 1,
+    }], options: { model_id: 'scripted-test-model' }, hostPorts, runHandle,
+    execution: { kind: 'start' } });
+    try {
+      await entered.promise;
+      await runHandle.cancel({ reason: 'User cancelled', forceCleanup: true });
+      await vi.waitFor(() => expect(endAgentRun).toHaveBeenCalledOnce());
+    } finally {
+      // 旧实现反向验证也需释放测试工具，不把超时线程留给后续用例。
+      toolStopped.resolve();
+      await running;
+      toolHarness.restore();
+    }
+    expect(endAgentRun).toHaveBeenCalledOnce();
+    expect(release).toHaveBeenCalledOnce();
   });
 
   it('wait_user 暂停后恢复同一 Agent run，并只在真实终态收口命令 owner', async () => {
