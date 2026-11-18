@@ -21,7 +21,7 @@ export type TimelineEntry =
   | { readonly kind: 'approval'; readonly command: string }
   | { readonly kind: 'notice'; readonly text: string };
 
-export const RUNNING_PLACEHOLDER = '补充或纠正，Agent 做完当前步骤后会读到';
+export const RUNNING_PLACEHOLDER = '补充或纠正';
 
 export const STEER_MESSAGE = '只看国内的产品，海外的先不管';
 
