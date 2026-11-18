@@ -1,5 +1,6 @@
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { createServer } from 'node:http';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -130,9 +131,66 @@ it('远端失败不转删本地；本机离线清理只删除目标库的两个�
   for (const collection of ['kg_nodes_a', 'kg_edges_a', 'kg_nodes_b', 'kg_edges_b']) {
     expect(readFileSync(path.join(collections, collection, 'segment'), 'utf8')).toBe(collection);
   }
-  await deleteKnowledgeGraphVectorCollections({ ...args, qdrantUrl: 'http://127.0.0.1:6333' });
+  vi.restoreAllMocks();
+  const offline = createServer();
+  await new Promise<void>(resolve => offline.listen(0, '127.0.0.1', resolve));
+  const address = offline.address();
+  if (!address || typeof address === 'string') throw new Error('fixture address missing');
+  await new Promise<void>((resolve, reject) =>
+    offline.close(error => (error ? reject(error) : resolve()))
+  );
+  await deleteKnowledgeGraphVectorCollections({
+    ...args,
+    qdrantUrl: `http://127.0.0.1:${address.port}`,
+  });
   expect(existsSync(path.join(collections, 'kg_nodes_a'))).toBe(false);
   expect(existsSync(path.join(collections, 'kg_edges_a'))).toBe(false);
   for (const collection of ['kg_nodes_b', 'kg_edges_b'])
     expect(readFileSync(path.join(collections, collection, 'segment'), 'utf8')).toBe(collection);
+});
+
+it('本机 HTTP 拒绝、服务错误与超时不触发离线目录清理', async () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'linnya-kg-http-failure-'));
+  temporaryDirectories.push(root);
+  const collections = path.join(root, 'KnowledgeBase/qdrant/storage/collections');
+  const names = ['kg_nodes_a', 'kg_edges_a', 'kg_nodes_b', 'kg_edges_b'];
+  for (const collection of names) {
+    mkdirSync(path.join(collections, collection), { recursive: true });
+    writeFileSync(path.join(collections, collection, 'segment'), collection);
+  }
+  let status = 401;
+  const server = createServer((_request, response) => {
+    response.writeHead(status, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ status: { error: 'fixture error' }, time: 0 }));
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('fixture address missing');
+  const args = {
+    kbId: 'a',
+    withQdrant: true,
+    workspaceDb: path.join(root, 'workspace.sqlite'),
+    workspaceRoot: root,
+    qdrantUrl: `http://127.0.0.1:${address.port}`,
+  };
+  try {
+    for (status of [401, 403, 500]) {
+      await expect(deleteKnowledgeGraphVectorCollections(args)).rejects.toMatchObject({
+        httpStatus: status,
+      });
+      for (const collection of names)
+        expect(readFileSync(path.join(collections, collection, 'segment'), 'utf8')).toBe(
+          collection
+        );
+    }
+    const timeout = Object.assign(new Error('fixture timed out'), { code: 'ETIMEDOUT' });
+    vi.spyOn(QdrantAdapter.prototype, 'collectionExists').mockRejectedValue(timeout);
+    await expect(deleteKnowledgeGraphVectorCollections(args)).rejects.toBe(timeout);
+    for (const collection of names)
+      expect(readFileSync(path.join(collections, collection, 'segment'), 'utf8')).toBe(collection);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close(error => (error ? reject(error) : resolve()))
+    );
+  }
 });

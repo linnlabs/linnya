@@ -27,7 +27,7 @@ Node 下使用本目录的源码 SDK 路径装配，不能通过产品 loader �
 `--workspaceRoot`，必须先退出使用该数据的 App。均不删除文档身份、项目关系、原文或 PDF。
 
 只有显式 `--withQdrant` 才删除 `kg_nodes_<kbId>` 与
-`kg_edges_<kbId>`；目标必须是合法单段名称。只有本机 API 不可用时才清理所选 Workspace 的同名 Qdrant 目录；远端 API 失败直接报错，不转删本地数据。本机 Qdrant 与所选 Workspace 仍须由操作者确认属于同一实例。`kb:delete-vector-collection`
+`kg_edges_<kbId>`；目标必须是合法单段名称。只有本机端口明确拒绝连接时才清理所选 Workspace 的同名 Qdrant 目录；HTTP 错误、超时、未知原因和远端 API 失败直接报错，不转删本地数据。本机 Qdrant 与所选 Workspace 仍须由操作者确认属于同一实例。`kb:delete-vector-collection`
 仍要求 `--confirm` 与集合全名一致。
 
 ## 验证
