@@ -109,7 +109,7 @@ export default [
     },
   },
   {
-    files: ['apps/renderer/**/*.vue', 'packages/**/*.vue'],
+    files: ['apps/renderer/**/*.vue', 'packages/**/*.vue', 'scripts/development/features/ui-gallery/**/*.vue'],
     languageOptions: {
       parser: vueParser,
       parserOptions: {

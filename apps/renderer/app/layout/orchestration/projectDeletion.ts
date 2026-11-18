@@ -1,4 +1,5 @@
 import { useNavigationScope } from '@/app/navigation';
+import { useDocumentTabsStore } from '@/app/document-tabs';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store/WorkspaceProjectsStore';
 import { useWorkspaceTree } from '@/domains/workspace/tree';
@@ -38,4 +39,5 @@ export async function handleProjectDeleted(projectId: string): Promise<void> {
   const tree = useWorkspaceTree();
   if (tree.loadedProjectId === projectId) tree.clearTree();
   navigation.forgetLastActiveConversation({ kind: 'project', projectId });
+  useDocumentTabsStore().forgetProject(projectId);
 }

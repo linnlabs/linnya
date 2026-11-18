@@ -6,6 +6,7 @@
  */
 
 .linnya-ui-icon-button {
+  user-select: none;
   --linnya-ui-icon-button-box: 24px;
   --linnya-ui-icon-button-icon: 18px;
 
@@ -51,6 +52,11 @@
   position: absolute;
   inset: -2px;
   content: '';
+}
+
+/* 26px 专用档：只用于对话输入框底栏，与模型选择器、Agent 胶囊同高。 */
+.linnya-ui-icon-button--composer {
+  --linnya-ui-icon-button-box: 26px; /* scale-exempt: 输入框底栏专用 */
 }
 
 .linnya-ui-icon-button--md {

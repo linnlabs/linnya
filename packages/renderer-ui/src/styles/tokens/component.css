@@ -39,11 +39,11 @@
   --linnya-ui-icon-button-hover-bg-raised: var(--color-bg-active-control-hover);
   --linnya-ui-skeleton-bg: var(--color-bg-hover-strong);
   --linnya-ui-skeleton-highlight: color-mix(in srgb, var(--color-white) 60%, transparent);
-  --code-block-bg: color-mix(in srgb, var(--color-blue-50) 58%, var(--color-white));
+  --code-block-bg: var(--color-moon-90);
   --drag-handle-color: var(--color-text-tertiary);
   --drag-handle-hover-color: var(--color-text-secondary);
   --drag-handle-active-color: var(--color-text-primary);
   --scrollbar-track-color: var(--color-bg-subtle);
-  --scrollbar-thumb-color: color-mix(in srgb, var(--color-blue-150) 64%, var(--color-gray-300));
-  --scrollbar-thumb-hover-color: color-mix(in srgb, var(--color-blue-250) 70%, var(--color-gray-350));
+  --scrollbar-thumb-color: var(--color-moon-200);
+  --scrollbar-thumb-hover-color: var(--color-moon-300);
 }

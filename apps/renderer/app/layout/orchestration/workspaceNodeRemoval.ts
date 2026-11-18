@@ -11,6 +11,7 @@ import {
 import type { PageSelectionNode } from '@/domains/workspace/features/page-selection-after-removal/definitions/pageSelectionAfterRemoval';
 import { resolvePageSelectionAfterRemoval } from '@/domains/workspace/features/page-selection-after-removal/functions/resolvePageSelectionAfterRemoval';
 import { showEmptyProjectFilesAfterRemoval } from './workspaceNavigation';
+import { removeDeletedDocumentTabs } from './documentTabs';
 
 export function flattenLoadedWorkspaceTree(nodes: readonly WorkspaceNode[]): PageSelectionNode[] {
   const flattened: PageSelectionNode[] = [];
@@ -96,6 +97,19 @@ export async function reconcilePageSelectionAfterRemoval(input: {
   const activeDocumentWasRemoved = Boolean(
     input.activeDocumentId && input.removedNodeIds.has(input.activeDocumentId),
   );
+  // 删掉的文档同时退出标签栏；删的是当前文档且还有别的标签时，回到最近用过的那个。
+  const nextTab = removeDeletedDocumentTabs(input.projectId, input.removedNodeIds, activeDocumentWasRemoved);
+  if (nextTab && layoutStore.state.sidebarMode === 'files') {
+    await getWorkspaceNavigationPort().openDocument({
+      documentId: nextTab.id,
+      type: nextTab.type,
+      projectId: nextTab.projectId,
+      displayName: nextTab.displayName,
+      parentId: nextTab.parentId,
+    });
+    useWorkspaceSelectionStore().selectSingle(nextTab.id);
+    return;
+  }
   if (layoutStore.state.sidebarMode !== 'files') {
     if (activeDocumentWasRemoved) {
       layoutStore.closeDocument();

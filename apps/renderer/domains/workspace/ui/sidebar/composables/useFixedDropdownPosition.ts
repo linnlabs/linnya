@@ -9,6 +9,7 @@
  */
 
 import { nextTick, ref, type CSSProperties } from 'vue';
+import { measureFloatingLayoutSize, type FloatingLayoutSize } from '@linnya/renderer-ui';
 
 type DropdownAlign = 'start' | 'end';
 
@@ -21,7 +22,7 @@ interface FixedDropdownPositionOptions {
 
 interface FixedDropdownPositionParams extends Required<FixedDropdownPositionOptions> {
   triggerRect: DOMRectReadOnly;
-  dropdownRect: DOMRectReadOnly;
+  dropdownRect: FloatingLayoutSize;
   viewportWidth: number;
   viewportHeight: number;
 }
@@ -87,7 +88,7 @@ export function useFixedDropdownPosition(options: FixedDropdownPositionOptions =
 
     dropdownStyle.value = computeFixedDropdownPosition({
       align,
-      dropdownRect: dropdownEl.getBoundingClientRect(),
+      dropdownRect: measureFloatingLayoutSize(dropdownEl),
       matchTriggerWidth,
       offset,
       triggerRect: triggerEl.getBoundingClientRect(),

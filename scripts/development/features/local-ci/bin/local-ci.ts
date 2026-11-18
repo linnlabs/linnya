@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { buildLocalCiPlan, type ParsedWorkflow } from '../functions/buildLocalCiPlan';
-import { prepareLocalCiCheckout } from '../orchestration/prepareLocalCiCheckout';
+import { prepareLocalCiCheckout, pruneOrphanedLocalCiCheckouts } from '../orchestration/prepareLocalCiCheckout';
 import {
   collectLocalCiEvidence,
   readLogTail,
@@ -95,7 +95,9 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const checkout = prepareLocalCiCheckout(repositoryRoot, { inPlace: options.inPlace });
+  const pruned = pruneOrphanedLocalCiCheckouts(repositoryRoot);
+  if (pruned.length) console.log(`已回收 ${pruned.length} 份被强制结束的运行留下的检出`);
+  const checkout = prepareLocalCiCheckout(repositoryRoot, { inPlace: options.inPlace, keep: options.keep });
   const logDirectory = path.join(repositoryRoot, '_dev_data/ci-local', timestamp());
   mkdirSync(logDirectory, { recursive: true });
   console.log(`本地 CI：提交 ${checkout.commit.slice(0, 9)}，${checkout.clean ? `干净检出 ${checkout.root}` : '当前目录'}`);
@@ -111,6 +113,7 @@ async function main(): Promise<number> {
   };
   process.once('SIGINT', interrupt);
   process.once('SIGTERM', interrupt);
+  process.once('SIGHUP', interrupt);
   const started = Date.now();
   let results: readonly LocalCiStepResult[] = [];
   try {

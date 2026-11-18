@@ -21,6 +21,9 @@ dev server，再把实际 renderer URL 传给 Electron。服务只绑定 `127.0.
 前端调试和本机界面验收优先用 [Desktop 开发探针](./development/features/desktop-probe/README.md)。
 探针从 5175 开始绑定独立 Vite，运行数据、profile、日志和制品放在系统临时目录。
 
+Renderer UI 的视觉审阅用 [组件画廊](./development/features/ui-gallery/README.md)：`pnpm -s ui-gallery` 用真实组件渲染全部公开组件、
+token 实测值与组合示例，可在三套主题和仓外候选 token 方案之间切换、并排对比。
+
 `dev:electron` 的构建会话由 [build-session](./development/features/build-session/README.md)
 持有：按依赖启动 watcher，以本轮首次成功事件放行消费者，随后保留同一个 watcher；不再先全量构建再重启一套监听。
 Schema 的 CJS/ESM 完成后构建 `@linnya/provider-catalog`，再启动 Backend 与磁盘插件 Backend；

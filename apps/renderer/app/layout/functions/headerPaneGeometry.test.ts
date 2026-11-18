@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HEADER_LEFT_ACTIONS,
   computeHeaderLeftChromeWidth,
   computeHeaderPaneGeometry,
+  computeHeaderSidebarMinWidth,
   computeHeaderUpdateEntryAvailableWidth,
   computeHeaderUpdateEntryStart,
   computeWindowsControlWidth,
@@ -72,12 +74,12 @@ describe('headerPaneGeometry', () => {
     expect(computeHeaderUpdateEntryStart({ isMac: true, isWindowMaximized: false })).toBe(174);
     expect(computeHeaderUpdateEntryStart({ isMac: false, isWindowMaximized: false })).toBe(102);
 
-    // 侧栏最窄 200：完整的“重启更新”放不下，只够收成图标。
+    // macOS 非全屏时侧栏最窄 202：完整的“重启更新”放不下，正好放下 24px 的图标。
     expect(computeHeaderUpdateEntryAvailableWidth({
       isMac: true,
       isWindowMaximized: false,
-      sidebarOccupiedWidth: 200,
-    })).toBe(22);
+      sidebarOccupiedWidth: computeHeaderSidebarMinWidth({ isMac: true, isWindowMaximized: false }),
+    })).toBe(HEADER_LEFT_ACTIONS.buttonSize);
     // 默认宽度 260 下仍能放下约 80px 的完整按钮。
     expect(computeHeaderUpdateEntryAvailableWidth({
       isMac: true,
@@ -90,6 +92,14 @@ describe('headerPaneGeometry', () => {
       isWindowMaximized: false,
       sidebarOccupiedWidth: 0,
     })).toBeNull();
+  });
+
+  it('侧栏下限放得下收成图标的更新入口和分隔线热区', () => {
+    // 174 起点 + 24 图标 + 4 热区：macOS 非全屏要 202，比侧栏基础下限 200 多 2px。
+    expect(computeHeaderSidebarMinWidth({ isMac: true, isWindowMaximized: false })).toBe(202);
+    // 全屏或其他平台起点在 102，标题栏不额外要求。
+    expect(computeHeaderSidebarMinWidth({ isMac: true, isWindowMaximized: true })).toBe(130);
+    expect(computeHeaderSidebarMinWidth({ isMac: false, isWindowMaximized: false })).toBe(130);
   });
 
   it('侧栏收起时主 pane 让开更新入口，展开时不受它影响', () => {

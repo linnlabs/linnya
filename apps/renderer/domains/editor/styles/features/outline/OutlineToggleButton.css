@@ -46,7 +46,7 @@
 .outline-toggle-button.is-pinned .outline-rail-trigger__thumb {
   width: 4px;
   height: 72px;
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-black) 12%, transparent);
 }
 
 .outline-toggle-button:hover:not(.is-active, .is-pinned) .outline-rail-trigger__thumb,

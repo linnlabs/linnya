@@ -32,7 +32,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-5);
+  /* 上右 16 给 28px 关闭钮：× 笔画与标题字形顶都落在约 24px，和左右边距一致（见 geometry.css --modal-inset）。 */
+  padding: var(--space-4) var(--space-4) var(--space-2) var(--modal-inset);
   color: var(--color-text-primary);
   border-bottom: none;
 }
@@ -72,14 +73,15 @@
   min-height: 0;
 }
 
-/* 默认模式：Modal 内容区是唯一的纵向滚动容器。 */
+/* 默认模式：Modal 内容区是唯一的纵向滚动容器，并负责左右边距；调用方只写上下间距。 */
 .modal-content--content {
   overflow-y: auto;
-  /* 双侧预留同宽槽位，避免滚动条策略把业务内容视觉上推向左侧。 */
+  /* 双侧预留同宽槽位（10px），避免滚动条策略把业务内容视觉上推向左侧；内边距扣掉槽位，视觉边距仍是 --modal-inset。 */
   scrollbar-gutter: stable both-edges;
+  padding-inline: calc(var(--modal-inset) - 10px); /* scale-exempt: 扣掉 10px 滚动条槽 */
 }
 
-/* 内部模式：这里只传递受约束空间，滚动由业务明确拥有。 */
+/* 内部模式：这里只传递受约束空间，滚动由业务明确拥有；业务自己的左右边距用 var(--modal-inset)。 */
 .modal-content--internal {
   display: flex;
   overflow: clip;
@@ -87,6 +89,7 @@
 
 .modal-footer {
   flex-shrink: 0;
+  padding: var(--space-5) var(--modal-inset) var(--modal-inset);
 }
 
 .modal-content--content::-webkit-scrollbar {

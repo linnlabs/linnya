@@ -1,6 +1,7 @@
 /* components/index.css - 组件样式统一导入 */
 
 /* 导入编辑器菜单栏样式 */
+@import './EditorCommandBar.css';
 @import './EditorMenuBar.css';
 
 /* 导入编辑器状态栏样式 */

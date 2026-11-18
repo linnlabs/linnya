@@ -17,9 +17,9 @@
     focusable="false"
   >
     <g fill="currentColor" stroke="none">
-      <circle cx="5" cy="7" r="1"/>
-      <circle cx="5" cy="12" r="1"/>
-      <circle cx="5" cy="17" r="1"/>
+      <circle cx="5.5" cy="7" r="1.5"/>
+      <circle cx="5.5" cy="12" r="1.5"/>
+      <circle cx="5.5" cy="17" r="1.5"/>
     </g>
     <path d="M8.5 7h11M8.5 12h11M8.5 17h11"/>
   </svg>

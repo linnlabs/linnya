@@ -1,7 +1,7 @@
 <template>
   <div class="conversation-empty-state">
     <div class="conversation-empty-state__icon">
-      <LinnyaIcon class="conversation-empty-state__icon-svg" />
+      <LinnyaIcon variant="display" class="conversation-empty-state__icon-svg" />
     </div>
     <div class="conversation-empty-state__copy">
       <h3>{{ conversationMessage('conversation.view.empty.title') }}</h3>

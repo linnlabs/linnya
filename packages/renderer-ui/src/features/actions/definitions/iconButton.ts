@@ -5,7 +5,8 @@
  * - md：28px / 18px，面板与对话框标题行的关闭等操作；
  * - lg：32px / 20px，与 32px 输入框、选择器并排的操作。
  */
-export type IconButtonSize = 'xs' | 'sm' | 'md' | 'lg';
+/** `composer` 是 26px 专用档，只用于对话输入框底栏（与模型选择器同高），别处不用。 */
+export type IconButtonSize = 'xs' | 'sm' | 'composer' | 'md' | 'lg';
 
 /**
  * - ghost：透明底，悬停出现 hover 底色；绝大多数图标按钮使用它；
