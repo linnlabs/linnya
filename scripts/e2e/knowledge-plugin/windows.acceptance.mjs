@@ -140,7 +140,9 @@ $ErrorActionPreference='Stop'
 $root=${ps(remoteRoot)}
 $prefix=[IO.Path]::GetFullPath($root).TrimEnd('\\')+'\\'
 $owned=@(Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) })
-foreach($process in $owned){ & taskkill.exe /PID $process.ProcessId /T /F 2>$null | Out-Null }
+$exitDeadline=[DateTime]::UtcNow.AddSeconds(10)
+while($owned.Count -gt 0 -and [DateTime]::UtcNow -lt $exitDeadline){Start-Sleep -Milliseconds 100;$owned=@(Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase) })}
+foreach($process in $owned){Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue}
 $task=Get-ScheduledTask -TaskName ${ps(taskName)} -ErrorAction SilentlyContinue
 if($task){Stop-ScheduledTask -TaskName ${ps(taskName)}; Unregister-ScheduledTask -TaskName ${ps(taskName)} -Confirm:$false}
 $deadline=[DateTime]::UtcNow.AddSeconds(15)

@@ -200,7 +200,7 @@ try {
           image_vision_model_id: visionId,
         });
       await upload('apple.bmp', createStaticBmp(), { image_vision_model_id: visionId });
-      const pdf = await upload('apple.pdf', Buffer.from(MODEL_CONNECTION_TEST_PDF), {
+      const pdf = await upload('apple.pdf', Buffer.from(MODEL_CONNECTION_TEST_PDF, 'base64'), {
         pdf_ocr_model_id: ocrId,
         force_vision_mode: 'true',
       });
@@ -295,6 +295,11 @@ try {
 } catch (error) {
   failed = error;
   try {
+    if (application) {
+      details.rendererLoader = await application.evaluate(
+        'globalThis.__LINNYA_RENDERER_PLUGIN_LOADER_DIAGNOSTICS__'
+      );
+    }
     await application?.screenshot(path.join(evidence, 'failure.png'));
   } catch {
     /* 原始失败仍写入结果，截图失败不覆盖它。 */

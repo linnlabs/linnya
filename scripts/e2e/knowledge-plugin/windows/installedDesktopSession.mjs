@@ -105,8 +105,14 @@ export async function launchInstalledDesktop(executable, root) {
       return result;
     },
     async clickElement(expression) {
-      const point = await this.evaluate(
-        `(()=>{const target=(${expression});if(!target)return null;target.scrollIntoView({block:'nearest'});const r=target.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`
+      const point = await until(
+        () =>
+          this.evaluate(
+            `(()=>{const target=(${expression});if(!target)return null;target.scrollIntoView({block:'nearest'});const r=target.getBoundingClientRect();return r.width&&r.height?{x:r.x+r.width/2,y:r.y+r.height/2}:null;})()`
+          ),
+        Boolean,
+        'Visible click target',
+        30_000
       );
       assert.ok(point, 'Visible click target missing');
       await cdp.send('Input.dispatchMouseEvent', {
