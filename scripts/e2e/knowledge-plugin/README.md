@@ -26,4 +26,6 @@
 
 这是未打包 Host 上的真实插件产物验收，不等于 macOS 已签名安装包验收。运行前按正式插件构建/预置流程生成知识库 artifact；启动不会绕过 artifact 校验。
 
+`pnpm exec tsx scripts/e2e/knowledge-plugin/surfaces.acceptance.mjs` 固定使用磁盘 Renderer：实际创建项目与关联，A 打开时右键 B 并核对摄入原文，检查 Markdown/Slides 原菜单，以及停用后的弹窗/入口撤销与关联保留。它只打开导出选项，不执行系统文件保存对话框。
+
 两检索工具、深搜、分块读取及组装的项目范围与历史证据由插件的真实 SQLite/SoT/Host runtime 集成回归覆盖。现有产品 CLI 的基础工具白名单不包含知识库工具；本脚本不扩大该白名单，也不将集成回归写成 Desktop 上的工具执行。
