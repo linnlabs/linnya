@@ -2,6 +2,11 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.11.0 - 2026-11-18
+
+- 新增 `ShieldKeyholeIcon`、`ShieldCheckmarkIcon`、`ShieldErrorIcon`：同一个盾牌外形，里面分别是锁孔、对勾、感叹号（Fluent shield_keyhole / shield_task / shield_error 几何，1u 描边）。对话输入框用它们表示命令权限的只读、标准与完全访问。
+- `CustomSelect` 新增 `selected-value` 插槽（作用域参数 `displayValue`），可把触发器里的选中文字换成图标等内容；新增 `triggerTooltip`：设置后触发器用共享提示服务的悬停提示，不再输出原生 `title`，没有 `triggerAriaLabel` 时它也是可访问名称。不设置时行为不变。
+
 ## 3.10.0 - 2026-11-17
 
 - 新增 `CommandBar`：停靠在画布或文档顶部的命令条表面（`role="toolbar"`，4px 内边距、10px 圆角、默认底色），内部用 `ToolbarGroup` / `ToolbarButton`。只拥有外观，位置、显隐与命令由调用方负责；class、style、aria 与事件落在根元素。Slides、Canvas 的顶部命令条与 Markdown 的悬浮格式条都改用它，不再各写一份表面样式。

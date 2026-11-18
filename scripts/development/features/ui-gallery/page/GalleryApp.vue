@@ -30,6 +30,7 @@ import {
 import ButtonsSection from './sections/ButtonsSection.vue';
 import CandidatesSection from './sections/CandidatesSection.vue';
 import ConversationTierSection from './sections/ConversationTierSection.vue';
+import ConversationTierIconsSection from './sections/ConversationTierIconsSection.vue';
 import DialogsSection from './sections/DialogsSection.vue';
 import DocumentTopSection from './sections/DocumentTopSection.vue';
 import FeedbackSection from './sections/FeedbackSection.vue';
@@ -68,6 +69,7 @@ const SECTION_COMPONENTS: Readonly<Record<Exclude<GallerySectionId, 'dialogs'>, 
   candidates: CandidatesSection,
   'document-top': DocumentTopSection,
   'conversation-tier': ConversationTierSection,
+  'conversation-tier-icons': ConversationTierIconsSection,
   'scheduled-tasks': ScheduledTasksSection,
   'conversation-steering': ConversationSteeringSection,
 };

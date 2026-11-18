@@ -19,6 +19,8 @@ const props = withDefaults(
     readonly editable?: boolean;
     /** 正在等用户批准或填写表单：没有草稿时主按钮是禁用的“恢复”，与现在一致。 */
     readonly awaitingUser?: boolean;
+    /** 显示用量环占位；新对话（还没发过消息）不显示。 */
+    readonly showUsage?: boolean;
   }>(),
   {
     variant: 'default',
@@ -28,6 +30,7 @@ const props = withDefaults(
     draft: '',
     editable: false,
     awaitingUser: false,
+    showUsage: true,
   },
 );
 
@@ -39,6 +42,8 @@ const emit = defineEmits<{
 
 defineSlots<{
   above(): unknown;
+  /** 放在模型选择左边的控件。 */
+  'before-model'(): unknown;
   'footer-extra'(): unknown;
   below(): unknown;
 }>();
@@ -102,6 +107,7 @@ function onMainAction() {
           <IconButton :size="variant === 'compact' ? 'sm' : 'composer'" label="添加">
             <AddIcon />
           </IconButton>
+          <slot name="before-model" />
           <span class="mock-composer__model">
             <span class="mock-composer__model-text">{{ model }}</span>
             <ChevronIcon direction="up" class="mock-composer__chevron" />
@@ -109,7 +115,7 @@ function onMainAction() {
           <slot name="footer-extra" />
         </div>
         <div class="mock-composer__actions">
-          <span class="mock-composer__usage" aria-hidden="true" />
+          <span v-if="showUsage" class="mock-composer__usage" aria-hidden="true" />
           <IconButton
             v-if="showPause"
             class="mock-composer__pause"
