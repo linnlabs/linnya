@@ -695,7 +695,6 @@ export type ConversationMessageKey =
   | 'conversation.image.error'
   | 'conversation.image.alt'
   | 'conversation.project.fallbackName'
-  | 'conversation.project.inputPlaceholder'
   | 'conversation.project.suggestion.status'
   | 'conversation.project.suggestion.issues'
   | 'conversation.project.suggestion.plan'
