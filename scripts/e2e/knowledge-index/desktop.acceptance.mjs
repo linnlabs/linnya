@@ -114,7 +114,11 @@ try {
   await run('click', 'text=模型配置');
   await run('scroll', '--selector', '.settings-modal-panel-body', '--dy', '800');
   await run('click', '--selector', '#embeddingModelSelect');
-  await run('click', 'text=Knowledge embedding fixture');
+  const options = await evaluate(`return [...document.querySelectorAll('.select-option')]
+    .filter(node => node.textContent.trim() === 'Knowledge embedding fixture' && node.getClientRects().length)
+    .map(node => {const rect=node.getBoundingClientRect();return {x:rect.x+rect.width/2,y:rect.y+rect.height/2};});`);
+  assert.equal(options.length, 1, 'Expected one visible embedding choice');
+  await run('click', '--at', `${Math.round(options[0].x)},${Math.round(options[0].y)}`);
   await run('click', '--selector', '.settings-modal-close');
   kbId = (await kbCall('create', { name: 'Knowledge rebuild fixture' })).id;
   assert.equal(
