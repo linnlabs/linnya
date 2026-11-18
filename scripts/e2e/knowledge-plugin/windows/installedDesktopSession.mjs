@@ -164,9 +164,11 @@ export async function launchInstalledDesktop(executable, root) {
     const origin = new URL(debuggerUrl);
     const target = await until(
       async () => {
-        const targets = await (
-          await fetch(`http://${origin.host}/json/list`, { signal: AbortSignal.timeout(5000) })
-        ).json();
+        const targets =
+          await // 首次安装会在 Main 同步登记随包插件；同一个启动预算内等待 CDP，而非误判为网络故障。
+          (
+            await fetch(`http://${origin.host}/json/list`, { signal: AbortSignal.timeout(120_000) })
+          ).json();
         return targets.find(item => item.type === 'page' && /^(file:|app:)/.test(item.url));
       },
       Boolean,
@@ -193,6 +195,8 @@ export async function launchInstalledDesktop(executable, root) {
     return application;
   } catch (error) {
     await application.stop();
+    await mkdir(path.join(root, '..', 'evidence'), { recursive: true });
+    await writeFile(path.join(root, '..', 'evidence/desktop.log'), output);
     throw new Error(`${error.message}\n${output.slice(-6000)}`, { cause: error });
   }
 }
