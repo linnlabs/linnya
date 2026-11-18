@@ -1,3 +1,4 @@
+import { KnowledgeIndexJobStatusSchema } from '@app/schemas';
 import Database from 'better-sqlite3';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -309,7 +310,7 @@ describe('rebuild retained knowledge sources', () => {
     const otherLease = activity.begin('other', 'ingestion');
     otherLease.release();
     await activity.drain();
-    expect(owner.get('default')).toMatchObject({ taskId: task.taskId, status: 'cancelled' });
+    expect(KnowledgeIndexJobStatusSchema.parse(owner.get('default'))).toMatchObject({ jobId: task.jobId, status: 'cancelled' });
     expect(activity.hasActivity()).toBe(false);
     expect(await f.deps.sot.get('doc')).toBeDefined();
   });

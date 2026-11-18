@@ -2,7 +2,7 @@ import type {
   PluginWorkerJob,
   PluginWorkerQueue,
   PluginWorkerQueueOptions,
-  PluginWorkerTask,
+  PluginWorkerQueueObserver,
 } from '@linnya/plugin-host-contract/backend/workerQueue';
 import type { PluginInferencePort } from '@linnya/plugin-host-contract/backend/inferenceRuntime';
 import type { WorkerHostRequestHandler } from '@linnya/plugin-host-contract/backend/worker/requests';
@@ -22,7 +22,7 @@ interface PluginWorkerQueueHost {
 }
 
 /** 插件只拥有 job 和订阅；线程、冻结连接身份及推理实现仍由 Host 持有。 */
-export function createHostPluginWorkerQueue<T extends PluginWorkerTask>(
+export function createHostPluginWorkerQueue<T extends object>(
   options: PluginWorkerQueueOptions<T>,
   host: PluginWorkerQueueHost
 ): PluginWorkerQueue<T> {
@@ -37,10 +37,21 @@ export function createHostPluginWorkerQueue<T extends PluginWorkerTask>(
   assertEnabled();
   const workerEntry = resolvePluginWorkerEntry(pluginDirectory, options.workerEntry);
   const handlers = new Map<string, WorkerHostRequestHandler>();
+  const observers = new Set<PluginWorkerQueueObserver>();
   const queue = new WorkerThreadQueue<T>({
     workerScript: host.bootstrapScriptPath,
     maxConcurrency: options.maxConcurrency,
     workerEnvironment: freezePluginWorkerEnvironment(host.environment),
+    lifecycleObserver: {
+      onProgress({ job, data }) {
+        for (const observer of observers) {
+          observer.progress?.({ jobId: job.id, progress: job.progress, data });
+        }
+      },
+      onCompleted({ job, result }) {
+        for (const observer of observers) observer.completed?.({ jobId: job.id, result });
+      },
+    },
     hostData: { database: host.database, pluginRuntime: { artifactDirectory: pluginDirectory, entryPath: workerEntry } },
     ...(options.inferenceAdmission
       ? {
@@ -52,7 +63,13 @@ export function createHostPluginWorkerQueue<T extends PluginWorkerTask>(
         }
       : {}),
   });
-  queue.on('taskSettled', (taskId: string) => handlers.delete(taskId));
+  queue.on('taskFailed', (job: WorkerJob<T> & { readonly error: string }) => {
+    for (const observer of observers) observer.failed?.({ jobId: job.id, error: job.error });
+  });
+  queue.on('taskSettled', (jobId: string) => {
+    handlers.delete(jobId);
+    for (const observer of observers) observer.settled?.(jobId);
+  });
   let closing: Promise<void> | undefined;
 
   function snapshot(job: WorkerJob<T>): PluginWorkerJob<T> {
@@ -61,18 +78,18 @@ export function createHostPluginWorkerQueue<T extends PluginWorkerTask>(
   }
 
   return {
-    async addTask(task) {
+    async addJob(jobId, data) {
       if (closing) throw new Error('插件 Worker 队列正在关闭');
       assertEnabled();
       if (getRegisteredBackendPluginDirectory(options.pluginId) !== pluginDirectory) {
         throw new Error('插件 artifact 已变更，旧队列不能接收新任务');
       }
-      if (queue.getTask(task.taskId)) throw new Error(`Worker taskId 已存在: ${task.taskId}`);
-      const frozenTask = structuredClone(task);
+      if (queue.getTask(jobId)) throw new Error(`Worker jobId 已存在: ${jobId}`);
+      const frozenData = structuredClone(data);
       if (options.inferenceAdmission) {
-        const admission = structuredClone(options.inferenceAdmission(frozenTask));
+        const admission = structuredClone(options.inferenceAdmission(frozenData));
         handlers.set(
-          frozenTask.taskId,
+          jobId,
           createInferenceWorkerRequestHandler(host.inference, {
             allowedOperations: new Set(admission.operations),
             modelIds: new Set(admission.modelIds),
@@ -82,42 +99,30 @@ export function createHostPluginWorkerQueue<T extends PluginWorkerTask>(
         );
       }
       try {
-        return await queue.addTask(frozenTask);
+        return await queue.addJob(jobId, frozenData);
       } catch (error) {
-        handlers.delete(frozenTask.taskId);
+        handlers.delete(jobId);
         throw error;
       }
     },
-    getTask(taskId) {
-      const job = queue.getTask(taskId);
+    getJob(jobId) {
+      const job = queue.getTask(jobId);
       return job ? snapshot(job) : undefined;
     },
-    listTasks() {
+    listJobs() {
       return queue.listTasks().map(snapshot);
     },
-    cancelTask(taskId) {
-      return queue.cancelTask(taskId);
+    cancelJob(jobId) {
+      return queue.cancelTask(jobId);
     },
     shutdown() {
       closing ??= queue.shutdown().finally(() => handlers.clear());
       return closing;
     },
     subscribe(observer) {
-      const progress = (event: { taskId: string; progress: number; data: unknown }) =>
-        observer.progress?.(event);
-      const completed = (event: { taskId: string; result: unknown }) => observer.completed?.(event);
-      const failed = (job: WorkerJob<T> & { readonly error: string }) =>
-        observer.failed?.({ taskId: job.id, error: job.error });
-      const settled = (taskId: string) => observer.settled?.(taskId);
-      queue.on('taskProgress', progress);
-      queue.on('taskCompleted', completed);
-      queue.on('taskFailed', failed);
-      queue.on('taskSettled', settled);
+      observers.add(observer);
       return () => {
-        queue.off('taskProgress', progress);
-        queue.off('taskCompleted', completed);
-        queue.off('taskFailed', failed);
-        queue.off('taskSettled', settled);
+        observers.delete(observer);
       };
     },
   };

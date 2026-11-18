@@ -9,7 +9,10 @@ import { createEvidence } from '../../test-runner/features/acceptance-evidence/c
 import { startCustomCapabilityProtocolServer } from '../../../src/app-hosts/linnya/application/custom-api-onboarding/__tests__/fixtures/customCapabilityProtocolServer.ts';
 import { MODEL_CONNECTION_TEST_PDF, MODEL_CONNECTION_TEST_PNG } from '../../../src/app-hosts/linnya/application/custom-api-onboarding/definitions/modelConnectionTestDocument.ts';
 
-// 真实磁盘插件、三条生产 Worker、Qdrant；只将模型供应商替换为官方协议合成服务。
+// bundled 明确走已有磁盘 Renderer 模式；未打包的 Host 默认仍偏好 Vite 源码。
+const mode = process.env.KNOWLEDGE_PLUGIN_MODE || 'dev';
+if (mode === 'bundled') process.env.LINNYA_PLUGIN_RENDERER_BUNDLE = 'disk';
+// 真实磁盘 Backend、三条生产 Worker、Qdrant；只将模型供应商替换为官方协议合成服务。
 const fixture = await startCustomCapabilityProtocolServer();
 fixture.setChatResponse(request => {
   const text = request.messages.filter(item => item.role === 'user').map(item =>
@@ -53,10 +56,18 @@ let db;
 let up;
 let failed;
 try {
-  up = await run('up', '--size', '1440x1100', '--mode', process.env.KNOWLEDGE_PLUGIN_MODE || 'dev');
+  up = await run('up', '--size', '1440x1100', '--mode', mode);
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
-  evidence.json('candidate', { gitHead: up.gitHead, mode: up.options.mode, build: up.build, protocol: 'official synthetic local HTTP', entries: await evaluate('return await window.electronAPI.plugins.rendererEntries();') });
-  await evidence.check('正式知识库产物加载，冷态列表不拉Qdrant', async () => {
+  const entries = await evaluate('return await window.electronAPI.plugins.rendererEntries();');
+  evidence.json('candidate', { gitHead: up.gitHead, mode: up.options.mode, build: up.build, protocol: 'official synthetic local HTTP', entries });
+  await evidence.check('知识库入口实际加载，冷态列表不拉Qdrant', async () => {
+    const entry = entries.data.find(item => item.pluginId === 'knowledge');
+    assert.ok(entry);
+    if (mode === 'bundled') {
+      assert.equal(entry.sourceKind, 'active');
+      assert.equal(entry.entryUrl, 'plugin://knowledge/dist/renderer/index.js');
+    }
+    await run('wait', '--selector', '.sidebar-entry:has(svg[data-icon="library"])');
     const plugins = await evaluate('return await window.electronAPI.plugins.list();');
     assert.ok(plugins.data.some(item => item.meta.id === 'knowledge' && item.state === 'enabled'));
     assert.ok((await invoke('list')).some(item => item.id === 'default'));

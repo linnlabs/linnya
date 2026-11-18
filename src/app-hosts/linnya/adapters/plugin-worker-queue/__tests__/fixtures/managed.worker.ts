@@ -9,8 +9,8 @@ async function run(): Promise<void> {
   if (
     typeof job !== 'object' ||
     job === null ||
-    !('taskId' in job) ||
-    typeof job.taskId !== 'string' ||
+    !('recordId' in job) ||
+    typeof job.recordId !== 'string' ||
     !('mode' in job) ||
     !('modelId' in job) ||
     typeof job.modelId !== 'string'
@@ -53,7 +53,7 @@ async function run(): Promise<void> {
     } else {
       const db = openPluginWorkerDatabase();
       try {
-        db.prepare('INSERT INTO plugin_rows(id) VALUES (?)').run(job.taskId);
+        db.prepare('INSERT INTO plugin_rows(id) VALUES (?)').run(job.recordId);
         try {
           db.transaction(() => {
             db.prepare('INSERT INTO plugin_rows(id) VALUES (?)').run('rolled-back');

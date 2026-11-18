@@ -4,7 +4,7 @@ import { readPurposeModelId } from '@plugin/renderer/modelConfiguration';
 import type { RendererPluginUploadProgress } from '@plugin/renderer/pluginMultipartUpload';
 import {
   KnowledgeBaseSchema, KnowledgeBaseSummarySchema, KnowledgeDocumentSummarySchema,
-  KnowledgeIndexTaskStatusSchema, KnowledgeGraphProgressSchema, KnowledgeTaskStatusViewSchema,
+  KnowledgeIndexJobStatusSchema, KnowledgeGraphProgressSchema, KnowledgeTaskStatusViewSchema,
   KnowledgeSearchResponseSchema, KnowledgeUploadResponseSchema, KnowledgeContinueFailedPagesResultSchema,
   KnowledgeSavedContentSchema, KnowledgeProjectSummarySchema,
 } from '../../shared';
@@ -15,10 +15,10 @@ import { invokeKnowledgeRequest, uploadKnowledgeMultipart } from './knowledgeReq
 /** 只有插件声明的 IPC 与 Host 登记的 multipart；响应以同一业务 owner 的 schema 解码。 */
 export const knowledgeBaseService = {
   async rebuildIndex(kbId: string, modelId: string) {
-    return KnowledgeIndexTaskStatusSchema.parse(await invokeKnowledgeRequest('rebuild-index', { kbId, modelId }));
+    return KnowledgeIndexJobStatusSchema.parse(await invokeKnowledgeRequest('rebuild-index', { kbId, modelId }));
   },
   async getIndexRebuildStatus(kbId: string) {
-    return KnowledgeIndexTaskStatusSchema.nullable().parse(await invokeKnowledgeRequest('index-rebuild-status', { kbId }));
+    return KnowledgeIndexJobStatusSchema.nullable().parse(await invokeKnowledgeRequest('index-rebuild-status', { kbId }));
   },
   async getKbGraphProgress(kbId: string) {
     return KnowledgeGraphProgressSchema.nullable().parse(await invokeKnowledgeRequest('graph-progress', { kbId }));

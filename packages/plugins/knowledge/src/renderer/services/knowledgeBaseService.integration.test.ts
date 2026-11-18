@@ -42,3 +42,15 @@ it('页面关闭和插件停用都结束等待；旧响应不能跨越重新启�
   invoke.mockResolvedValue({ success: true, data: [] });
   await expect(knowledgeBaseService.getAllKnowledgeBases()).resolves.toMatchObject({ knowledge_bases: [] });
 });
+
+it('新索引 job 状态解码后仍通过既有取消 wire 提交同一身份', async () => {
+  const job = { jobId: 'rebuild-1', kbId: 'kb', modelId: 'model', status: 'running', progress: 20, message: 'building', updatedAt: 1 };
+  invoke.mockResolvedValueOnce({ success: true, data: job });
+  const started = await knowledgeBaseService.rebuildIndex('kb', 'model');
+  invoke.mockResolvedValueOnce({ success: true, data: job });
+  const current = await knowledgeBaseService.getIndexRebuildStatus('kb');
+  expect(current?.jobId).toBe(started.jobId);
+  invoke.mockResolvedValueOnce({ success: true, data: { cancelled: true } });
+  await knowledgeBaseService.cancelTask(started.jobId);
+  expect(invoke).toHaveBeenLastCalledWith('knowledge', 'cancel-task', { taskId: 'rebuild-1' });
+});

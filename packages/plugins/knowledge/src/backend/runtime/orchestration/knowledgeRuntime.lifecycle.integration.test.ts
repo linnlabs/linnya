@@ -5,7 +5,7 @@ import Database from 'better-sqlite3';
 import { build } from 'esbuild';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PluginInferencePort } from '@plugin/backend/inferenceRuntime';
-import type { PluginWorkerQueueOptions, PluginWorkerTask } from '@plugin/backend/workerQueue';
+import type { PluginWorkerQueueOptions } from '@plugin/backend/workerQueue';
 import { createHostPluginWorkerQueue } from 'src/app-hosts/linnya/adapters/plugin-worker-queue/orchestration/createHostPluginWorkerQueue';
 import { registeredBackendPluginDirectories } from 'src/app-hosts/linnya/plugin-registry/registeredPluginDirectories';
 import { setPluginRuntimeStateForTests, clearPluginRuntimeStateForTests } from 'src/app-hosts/linnya/plugin-registry/pluginRuntimeState';
@@ -27,6 +27,7 @@ let enabled: boolean;
 let vectorOwned: boolean;
 let vectorOwners: number;
 let vectorStarts: number;
+let vectorFailure: Error | undefined;
 let runtime: KnowledgeRuntime | undefined;
 const pushes: unknown[] = [];
 const inference: PluginInferencePort = {
@@ -45,13 +46,14 @@ vi.mock('@plugin/backend/inferenceRuntime', () => ({ getPluginInferencePort: () 
 vi.mock('@plugin/backend/vectorRuntime', () => ({ createPluginVectorRuntime: () => {
   if (vectorOwned) throw new Error('previous vector owner remains');
   vectorOwned = true; vectorOwners += 1;
-  return { ensureReady: async () => { vectorStarts += 1; return 'http://127.0.0.1:49199'; }, stop: async () => { vectorOwned = false; } };
+  const failure = vectorFailure;
+  return { ensureReady: async () => { vectorStarts += 1; if (failure) throw failure; return 'http://127.0.0.1:49199'; }, stop: async () => { vectorOwned = false; } };
 } }));
 vi.mock('@plugin/backend/pluginRendererPush', () => ({ broadcastRendererPluginMessage: (...payload: unknown[]) => {
   if (!enabled) throw new Error('disabled plugin cannot publish');
   pushes.push(payload);
 } }));
-vi.mock('@plugin/backend/workerQueue', () => ({ createPluginWorkerQueue: <T extends PluginWorkerTask>(options: PluginWorkerQueueOptions<T>) =>
+vi.mock('@plugin/backend/workerQueue', () => ({ createPluginWorkerQueue: <T extends object>(options: PluginWorkerQueueOptions<T>) =>
   createHostPluginWorkerQueue({ ...options, maxConcurrency: 1 }, {
     bootstrapScriptPath: bootstrap, database: { path: database.name, schemaVersion: 79 }, inference, environment: process.env,
   }),
@@ -92,7 +94,7 @@ beforeEach(async () => {
     bundle: true, platform: 'node', format: 'cjs', target: 'node24', logLevel: 'silent' });
   registeredBackendPluginDirectories.set('knowledge', artifact);
   setPluginRuntimeStateForTests({ enabledPluginIds: ['knowledge'] });
-  enabled = true; vectorOwned = false; vectorOwners = 0; vectorStarts = 0; pushes.length = 0;
+  enabled = true; vectorOwned = false; vectorOwners = 0; vectorStarts = 0; vectorFailure = undefined; pushes.length = 0;
 });
 afterEach(async () => {
   vi.restoreAllMocks();
@@ -140,6 +142,22 @@ describe('knowledge activation persistence and drain', () => {
     await expect(getKnowledgeToolRuntime().service.getAllKnowledgeBases()).resolves.toHaveLength(1);
     expect(vectorOwners).toBe(1);
     expect(vectorStarts).toBe(0);
+  });
+  it('向量启动失败给出停启指引并保留原因，新 activation 可以恢复', async () => {
+    vectorFailure = new Error('fixture vector port unavailable');
+    runtime = await createKnowledgeRuntime();
+    const input = { taskId: 'retry-after-enable', kbId: 'default', docId: 'retry-source', filename: 'running.pdf',
+      filePath: path.join(root, 'source.pdf'), embeddingModelId: 'embedding', forceVisionMode: false, priority: 1, retry: false };
+    await expect(runtime.queues.addIngestionTask(input)).rejects.toMatchObject({
+      message: '知识库向量服务未能启动，请检查运行日志，修复后停用并重新启用知识库。', cause: vectorFailure,
+    });
+    expect(runtime.queues.listIngestionTasks()).toHaveLength(0);
+    vectorFailure = undefined;
+    await expect(runtime.queues.addIngestionTask(input)).rejects.toHaveProperty('cause.message', 'fixture vector port unavailable');
+    await runtime.stop();
+    runtime = await createKnowledgeRuntime();
+    await expect(runtime.queues.addIngestionTask(input)).resolves.toBe('retry-after-enable');
+    expect(vectorOwners).toBe(2);
   });
   it('真实摄入Worker未退出前维护与重建不可进入，取消释放后可以维护，其他库不受影响', async () => {
     const activity = createKnowledgeActivityOwner();

@@ -77,12 +77,12 @@ async function terminal() {
   return until(status, value => value && value.status !== 'running', '重建任务没有结束');
 }
 async function beginThroughUi() {
-  const previous = (await status())?.taskId;
+  const previous = (await status())?.jobId;
   await run('click', 'text=重建检索索引');
   await run('wait', '--text', 'Knowledge embedding fixture');
   await run('shot');
   await run('click', 'text=开始重建');
-  await until(status, value => value && value.taskId !== previous, 'UI未提交新重建任务');
+  await until(status, value => value && value.jobId !== previous, 'UI未提交新重建任务');
 }
 let failed;
 try {
@@ -229,7 +229,7 @@ try {
     );
     assert.equal(state(), null);
     const current = await status();
-    await kbCall('cancel-task', { taskId: current.taskId });
+    await kbCall('cancel-task', { taskId: current.jobId });
     assert.equal((await terminal()).status, 'cancelled');
     const after = fixture.requests.length;
     await delay(700);

@@ -1,6 +1,6 @@
 import { computed, onScopeDispose, ref, watch, type Ref } from 'vue';
 import { useTimer } from '@linnya/renderer-ui';
-import type { KnowledgeIndexTaskStatus } from '../../shared';
+import type { KnowledgeIndexJobStatus } from '../../shared';
 import { knowledgeBaseService } from '../services/knowledgeBaseService';
 import { readPurposeModelId, readModelDisplayName, subscribeModelConfigurationChanges } from '@plugin/renderer/modelConfiguration';
 
@@ -11,7 +11,7 @@ export function useKnowledgeIndexRebuild(kbId: Ref<string | undefined>, refresh:
   onScopeDispose(unsubscribeModelChanges);
   const modelId = computed(() => { void modelRevision.value; return readPurposeModelId('embedding'); });
   const modelName = computed(() => { void modelRevision.value; return modelId.value ? readModelDisplayName(modelId.value) ?? modelId.value : ''; });
-  const status = ref<KnowledgeIndexTaskStatus | null>(null);
+  const status = ref<KnowledgeIndexJobStatus | null>(null);
   const error = ref('');
   let generation = 0;
   const timer = useTimer();
@@ -46,7 +46,7 @@ export function useKnowledgeIndexRebuild(kbId: Ref<string | undefined>, refresh:
     const task = status.value;
     const version = generation;
     try {
-      if (task?.status === 'running') await knowledgeBaseService.cancelTask(task.taskId);
+      if (task?.status === 'running') await knowledgeBaseService.cancelTask(task.jobId);
     } catch (cause) {
       if (!disposed && generation === version) error.value = cause instanceof Error ? cause.message : String(cause);
     }

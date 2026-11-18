@@ -95,21 +95,21 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
     });
     this.unsubscribe.push(
       this.ingestion.subscribe({
-        progress: event => this.emit('ingestion:taskProgress', event),
-        completed: event => this.emit('ingestion:taskCompleted', event),
-        failed: event => this.emit('ingestion:taskFailed', event),
+        progress: event => this.emit('ingestion:taskProgress', { taskId: event.jobId, progress: event.progress, data: event.data }),
+        completed: event => this.emit('ingestion:taskCompleted', { taskId: event.jobId, result: event.result }),
+        failed: event => this.emit('ingestion:taskFailed', { taskId: event.jobId, error: event.error }),
         settled: id => this.release(id),
       }),
       this.extraction.subscribe({
-        progress: event => this.emit('graphExtraction:taskProgress', event),
-        completed: event => this.emit('graphExtraction:taskCompleted', event),
-        failed: event => this.emit('graphExtraction:taskFailed', event),
+        progress: event => this.emit('graphExtraction:taskProgress', { taskId: event.jobId, progress: event.progress, data: event.data }),
+        completed: event => this.emit('graphExtraction:taskCompleted', { taskId: event.jobId, result: event.result }),
+        failed: event => this.emit('graphExtraction:taskFailed', { taskId: event.jobId, error: event.error }),
         settled: id => this.release(id),
       }),
       this.indexing.subscribe({
-        progress: event => this.emit('graphIndexing:taskProgress', event),
-        completed: event => this.emit('graphIndexing:taskCompleted', event),
-        failed: event => this.emit('graphIndexing:taskFailed', event),
+        progress: event => this.emit('graphIndexing:taskProgress', { taskId: event.jobId, progress: event.progress, data: event.data }),
+        completed: event => this.emit('graphIndexing:taskCompleted', { taskId: event.jobId, result: event.result }),
+        failed: event => this.emit('graphIndexing:taskFailed', { taskId: event.jobId, error: event.error }),
         settled: id => this.release(id),
       })
     );
@@ -147,7 +147,7 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
     const lease = this.options.activity.begin(input.kbId, kind);
     const abort = () => {
       void queue
-        .cancelTask(input.taskId)
+        .cancelJob(input.taskId)
         .catch(error =>
           this.logger.error('取消知识库任务失败，owner 保留并由 shutdown 继续收尾', {
             taskId: input.taskId,
@@ -163,8 +163,8 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
     try {
       const prepared = await prepare(lease.signal);
       lease.signal.throwIfAborted();
-      const id = await queue.addTask(prepared);
-      if (lease.signal.aborted) await queue.cancelTask(id);
+      const id = await queue.addJob(input.taskId, prepared);
+      if (lease.signal.aborted) await queue.cancelJob(id);
       return id;
     } catch (error) {
       this.release(input.taskId);
@@ -202,25 +202,25 @@ export class KnowledgeQueues extends EventEmitter<QueueEvents> {
     }));
   }
   listIngestionTasks() {
-    return this.ingestion.listTasks();
+    return this.ingestion.listJobs();
   }
   listGraphExtractionTasks() {
-    return this.extraction.listTasks();
+    return this.extraction.listJobs();
   }
   listGraphIndexingTasks() {
-    return this.indexing.listTasks();
+    return this.indexing.listJobs();
   }
   getTaskById(id: string) {
-    return this.ingestion.getTask(id);
+    return this.ingestion.getJob(id);
   }
   cancelIngestionTask(id: string) {
-    return this.ingestion.cancelTask(id);
+    return this.ingestion.cancelJob(id);
   }
   cancelGraphExtractionTask(id: string) {
-    return this.extraction.cancelTask(id);
+    return this.extraction.cancelJob(id);
   }
   cancelGraphIndexingTask(id: string) {
-    return this.indexing.cancelTask(id);
+    return this.indexing.cancelJob(id);
   }
   async shutdown(): Promise<void> {
     this.accepting = false;

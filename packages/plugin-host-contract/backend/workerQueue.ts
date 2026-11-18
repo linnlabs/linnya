@@ -1,11 +1,6 @@
-/** 受管线程只接收可 structured-clone 的业务数据。 */
-export interface PluginWorkerTask {
-  readonly taskId: string;
-}
-
 export type PluginWorkerJobState = 'pending' | 'running' | 'completed' | 'failed';
 
-export interface PluginWorkerJob<T extends PluginWorkerTask> {
+export interface PluginWorkerJob<T extends object> {
   readonly id: string;
   readonly data: T;
   readonly state: PluginWorkerJobState;
@@ -24,7 +19,7 @@ export interface PluginWorkerInferenceAdmission {
   readonly temporaryDirectory?: string;
 }
 
-export interface PluginWorkerQueueOptions<T extends PluginWorkerTask> {
+export interface PluginWorkerQueueOptions<T extends object> {
   readonly pluginId: string;
   /** 只能是已准入插件 artifact 内的相对入口。 */
   readonly workerEntry: string;
@@ -35,25 +30,26 @@ export interface PluginWorkerQueueOptions<T extends PluginWorkerTask> {
 
 export interface PluginWorkerQueueObserver {
   progress?(event: {
-    readonly taskId: string;
+    readonly jobId: string;
     readonly progress: number;
     readonly data: unknown;
   }): void;
-  completed?(event: { readonly taskId: string; readonly result: unknown }): void;
-  failed?(event: { readonly taskId: string; readonly error: string }): void;
+  completed?(event: { readonly jobId: string; readonly result: unknown }): void;
+  failed?(event: { readonly jobId: string; readonly error: string }): void;
   /** 线程及其 Host 请求均已停止；completed/cancel 返回不能替代此事实。 */
-  settled?(taskId: string): void;
+  settled?(jobId: string): void;
 }
 
-export interface PluginWorkerQueue<T extends PluginWorkerTask> {
-  addTask(task: T): Promise<string>;
-  getTask(taskId: string): PluginWorkerJob<T> | undefined;
-  listTasks(): readonly PluginWorkerJob<T>[];
-  cancelTask(taskId: string): Promise<boolean>;
+export interface PluginWorkerQueue<T extends object> {
+  /** job 身份独立于可 structured-clone 的业务 payload；旧 Worker/IPC 字段由插件 owner 保留。 */
+  addJob(jobId: string, data: T): Promise<string>;
+  getJob(jobId: string): PluginWorkerJob<T> | undefined;
+  listJobs(): readonly PluginWorkerJob<T>[];
+  cancelJob(jobId: string): Promise<boolean>;
   shutdown(): Promise<void>;
   subscribe(observer: PluginWorkerQueueObserver): () => void;
 }
 
-export declare function createPluginWorkerQueue<T extends PluginWorkerTask>(
+export declare function createPluginWorkerQueue<T extends object>(
   options: PluginWorkerQueueOptions<T>
 ): PluginWorkerQueue<T>;

@@ -6,6 +6,9 @@ import { acceptance } from '../../development/features/desktop-probe/acceptance/
 import { observeTree } from '../../development/features/desktop-probe/infrastructure/processTree.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
 
+const mode = process.env.KNOWLEDGE_PLUGIN_MODE || 'dev';
+if (mode === 'bundled') process.env.LINNYA_PLUGIN_RENDERER_BUNDLE = 'disk';
+
 // 只改本脚本新建的隔离库：实际 SQLite 失败经正式 artifact activation，不替换产品服务。
 const evidence = createEvidence('knowledge-startup-fault-isolation', { files: [
   'scripts/e2e/knowledge-plugin/startup-failure.acceptance.mjs',
@@ -18,7 +21,14 @@ const fixtures = [];
 let up;
 let failed;
 try {
-  up = await run('up', '--mode', 'dev', '--size', '1440x1100');
+  up = await run('up', '--mode', mode, '--size', '1440x1100');
+  const entries = await evaluate('return await window.electronAPI.plugins.rendererEntries();');
+  if (mode === 'bundled') {
+    const entry = entries.data.find(item => item.pluginId === 'knowledge');
+    assert.equal(entry?.sourceKind, 'active');
+    assert.equal(entry?.entryUrl, 'plugin://knowledge/dist/renderer/index.js');
+  }
+  evidence.json('candidate', { gitHead: up.gitHead, mode, entries });
   for (const [name, filename] of [['隔离验收 A', 'alpha.md'], ['隔离验收 B', 'beta.md']]) {
     const project = await evaluate(`return await window.electronAPI['workspace:create-project']({name:${JSON.stringify(name)}});`);
     assert.equal(project.success, true);
@@ -35,7 +45,7 @@ try {
     damaged.exec("DELETE FROM knowledge_bases WHERE id='default'; CREATE TRIGGER fixture_kb_failure BEFORE INSERT ON knowledge_bases BEGIN SELECT RAISE(ABORT,'fixture knowledge metadata write failure'); END");
   } finally { damaged.close(); }
   await evidence.check('知识库元数据无法准备时 App 仍就绪，两个项目的既有对话可见', async () => {
-    const restarted = await probe('up', '--mode', 'dev', '--size', '1440x1100');
+    const restarted = await probe('up', '--mode', mode, '--size', '1440x1100');
     assert.equal(restarted.ok, true, `Knowledge fault must not block Desktop: ${JSON.stringify(restarted)}`);
     up = restarted;
     for (const item of fixtures) {
