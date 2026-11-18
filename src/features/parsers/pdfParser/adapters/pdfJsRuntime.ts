@@ -87,5 +87,7 @@ function resolvePdfJsAssetDirectories(): PdfJsAssetDirectories {
 }
 
 function withTrailingSeparator(directory: string): string {
-  return directory.endsWith(path.sep) ? directory : `${directory}${path.sep}`;
+  // PDF.js 的 factory 前缀强制以 URL 斜杠结尾，不能使用 Windows 的 path.sep。
+  // Node factory 直接 fs.readFile，因此保留原生目录，仅补“/”，不改成 file:// 字符串。
+  return directory.endsWith('/') ? directory : `${directory}/`;
 }

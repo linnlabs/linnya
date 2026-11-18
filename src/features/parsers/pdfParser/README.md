@@ -39,6 +39,11 @@ route、全局服务注册表或厂商响应形状，也不在失败后偷偷换
 Canvas 探测上限，避免 Node 首次打开文档时通过创建巨型 Canvas 探测环境能力。调用方必须关闭 loading
 task。
 
+随包资源目录保留 Node 原生文件路径，但前缀必须以 `/` 结尾；Windows 的 `\\` 不能替代这个
+[PDF.js factory 合同](https://github.com/mozilla/pdf.js/blob/master/src/display/api_utils.js)。
+[Node factory](https://github.com/mozilla/pdf.js/blob/master/src/display/node_utils.js) 直接调用 `fs.readFile`，
+所以也不能把目录改成 `file://` 字符串。Windows 形态开页回归与实际安装态 PDF/OCR 验收分别覆盖参数和真实资源读取。
+
 [`PdfRasterAdapter.ts`](./adapters/PdfRasterAdapter.ts) 遵守以下内存与调度合同：
 
 - 同一 PDF 只打开一次，所有页面复用解析缓存；
@@ -53,7 +58,7 @@ task。
 
 ## 线程与前端响应
 
-知识库的正式全量摄取由 `src/infra/task-queue/workers/ingestion.worker.ts`
+知识库的正式全量摄取由 `packages/plugins/knowledge/src/backend/workers/knowledgeIngestion.worker.ts`
 在 Worker
 Thread 执行。Renderer 只接收进度和结果，不加载 PDF.js、Canvas 或 PDF 字节；本实现也没有隐藏渲染窗口。
 
