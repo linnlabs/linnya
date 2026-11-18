@@ -15,6 +15,13 @@ function uncalledControls() {
     getForegroundRunSettlement: unexpected,
     cancelRun: unexpected,
     respondInteraction: unexpected,
+    steerRun: unexpected,
+    withdrawSteer: (): never => {
+      throw new Error('Unexpected control command');
+    },
+    drainSteers: (): never => {
+      throw new Error('Unexpected control command');
+    },
   };
 }
 

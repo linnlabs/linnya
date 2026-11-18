@@ -130,6 +130,8 @@ export const ConversationUserMessagePayloadSchema = z.object({
   extension: ConversationMessageExtensionSchema.optional(),
   agent_work: ConversationAgentWorkSchema.optional(),
   context_usage: ConversationContextUsageSchema.optional(),
+  /** 运行中途送达的插话；它属于一次运行的中间，编辑或重新生成会连同整次运行一起删掉，所以不提供。 */
+  delivery: z.literal('mid_run').optional(),
 }).strict();
 export type ConversationUserMessagePayload = z.infer<typeof ConversationUserMessagePayloadSchema>;
 

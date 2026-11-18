@@ -8,3 +8,4 @@
 @import './command-permissions/CommandPermissionChangeMessage.css';
 @import './message-window/MessageWindowError.css';
 @import './ConversationStreamText.css';
+@import './run-steering/PendingSteerTray.css';

@@ -4,7 +4,7 @@ import { closeSync, openSync, statSync } from 'node:fs';
 import { discoverWorkspaceDiskBackendPlugins } from '../../plugin-backend-composition/functions/discoverWorkspaceDiskBackendPlugins.mjs';
 import { join } from 'node:path';
 import { ProbeError, repoRoot } from '../definitions/probeContract.mjs';
-import { feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
+import { dependencyInstallMarkers, feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
 import { instancesRoot, withLifecycleLock } from '../infrastructure/instanceStore.mjs';
 
 const outputs = ['dist/main/main.cjs', 'dist/main/preload.js', 'dist/main/app-server-backend.cjs'];
@@ -24,9 +24,11 @@ export function buildFreshness(root = repoRoot) {
       }
     }
   }
-  const sources = listGitFiles(['--cached', '--others', '--exclude-standard', '--', 'src', 'packages'], { cwd: root })
-    .filter(path => feedsDesktopBundle(path))
-    .map(path => ({ path, mtimeMs: mtime(root, path) ?? 0 }));
+  const sources = [
+    ...listGitFiles(['--cached', '--others', '--exclude-standard', '--', 'src', 'packages'], { cwd: root })
+      .filter(path => feedsDesktopBundle(path)),
+    ...dependencyInstallMarkers,
+  ].map(path => ({ path, mtimeMs: mtime(root, path) ?? 0 }));
   return judgeBuildFreshness(outputs.map(path => ({ path, mtimeMs: mtime(root, path) })), sources);
 }
 

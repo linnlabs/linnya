@@ -50,6 +50,7 @@ const timeline = computed<readonly TimelineEntry[]>(() => {
     case 'interrupted':
       return interruptedTimeline(delivered.value);
     case 'paused':
+    default:
       return TIMELINE_PAUSED;
   }
 });

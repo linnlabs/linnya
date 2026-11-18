@@ -28,7 +28,7 @@ Layer: `app-host verification`
 - Linnya host-bound harness：
   - `src/app-hosts/linnya/testkit/*`
 
-N-3/G-1/B.3 之后，host 级 agent 场景测试优先使用 `agent-harness/scenario/runAgentScenario.ts`：它复用真实 graph loop 装配，同时用 linnkit 的 run-harness 校验 run/audit/telemetry/cost 不变量。
+Host 级 Agent 场景测试优先使用 Flow 场景 [`createFlowScenario`](../adapters/flow/__test-helpers__/flowScenario.ts)：真 SQLite、生产 Runtime 装配与 Flow 编排，只替换模型和工具，能在模型调用或工具执行的任意时刻插话、撤回、暂停，并检查实时 / 重载 / 模型请求三方一致。运行与生成骨架见 [`pnpm -s scenario`](../../../../scripts/development/features/agent-scenario/README.md)。只验证 Linnkit Graph 本身的行为时，到 Linnkit 仓用 `createGraphScenario`。
 
 推荐阅读：
 

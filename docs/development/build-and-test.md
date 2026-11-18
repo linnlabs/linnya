@@ -235,6 +235,10 @@ Sharp 的公开入口可能是 JavaScript loader；PE 架构校验通过共享
 - 文档和稳定合同与实现保持一致。
 - 推送公共 `main` 前，用 `pnpm run ci:local` 在本机干净检出里跑 CI 的 macOS 步骤，失败不停、一次汇总；Linux/Windows 组合仍由 GitHub 验证。说明见[本地 CI](../../scripts/development/features/local-ci/README.md)。
 
+## Agent 运行场景
+
+改 Flow、插话、暂停/继续、实时投影或模型请求组装时，用 [Agent 场景测试](../../scripts/development/features/agent-scenario/README.md)（`pnpm -s scenario run`）写和跑场景：只替换模型和工具，其余走生产装配，并检查实时、重载与模型请求一致。涉及时序组合的再跑 `pnpm -s scenario fuzz`。
+
 ## 前端调试与本机界面验收
 
 按用户行为选测试入口，见[业务验收入口](./acceptance-scenarios.md)。
