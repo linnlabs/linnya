@@ -43,12 +43,14 @@ import {
   commandPermissionDescriptionKeys,
   commandPermissionLabelKeys,
 } from '@/app/workflows/command-permissions/permissionLabels';
-import { useSettingsLocalization } from '@/domains/settings/features/command-permission-settings';
+import { useSettingsLocalization } from '@/domains/settings/public';
 import { useConversationLocalization } from '../../../ui/useConversationLocalization';
 
 /** 菜单里的两个非档位项；档位值来自合同，不会与它们重名。 */
 const FOLLOW = 'follow';
 const OPEN_SETTINGS = 'open-settings';
+/** 菜单选项由这份档位列表生成，选中值只需在其中查回，不是外部输入。 */
+const LEVELS: readonly CommandPermissionLevel[] = CommandPermissionLevelSchema.options;
 
 const props = defineProps<{
   view?: ConversationCommandPermissionView;
@@ -85,7 +87,7 @@ const options = computed<readonly CustomSelectOption[]>(() => props.view ? [
     }),
   },
   { isSeparator: true },
-  ...CommandPermissionLevelSchema.options.map(level => ({
+  ...LEVELS.map(level => ({
     value: level,
     text: label(level),
     description: settingsMessage(commandPermissionDescriptionKeys[level]),
@@ -108,7 +110,7 @@ function choose(value: string | number | boolean) {
     emit('select', null);
     return;
   }
-  const parsed = CommandPermissionLevelSchema.safeParse(value);
-  if (parsed.success) emit('select', parsed.data);
+  const level = LEVELS.find(item => item === value);
+  if (level) emit('select', level);
 }
 </script>

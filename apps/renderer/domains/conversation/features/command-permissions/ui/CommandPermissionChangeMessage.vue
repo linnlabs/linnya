@@ -7,8 +7,8 @@ import { computed } from 'vue';
 import type { CommandPermissionLevel } from '@app/schemas/commands';
 import { useHistoryTime } from '@/app/localization';
 import { commandPermissionLabelKeys } from '@/app/workflows/command-permissions/permissionLabels';
-import { useSettingsLocalization } from '@/domains/settings/features/command-permission-settings';
-import type { CommandPermissionChangeMessage } from '../../../types';
+import { useSettingsLocalization } from '@/domains/settings/public';
+import type { CommandPermissionChangeMessage } from '../definitions/commandPermissionChangeMessage';
 import { useConversationLocalization } from '../../../ui/useConversationLocalization';
 
 /** 时间线里的一行档位变更记录；样式见 styles/features/command-permissions。 */

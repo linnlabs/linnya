@@ -161,7 +161,7 @@
 import ConversationCommandPermissionSelect from '../features/command-permissions/ui/ConversationCommandPermissionSelect.vue';
 import { useConversationCommandPermission } from '../features/command-permissions/orchestration/useConversationCommandPermission';
 import { ensureMaterializedConversation } from '../services/orchestration/ensureMaterializedConversation';
-import { confirmPermissionLevelExpansion, useSettingsLocalization } from '@/domains/settings/features/command-permission-settings';
+import { confirmPermissionLevelExpansion, useSettingsLocalization } from '@/domains/settings/public';
 import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 
 import { cancelAssistantActivity } from '../assistantActions';

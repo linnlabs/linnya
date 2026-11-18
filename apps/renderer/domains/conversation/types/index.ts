@@ -174,7 +174,7 @@ type ExecutionNoticeMessage = ConversationMessageFields & {
 };
 
 /** 用户改了这个对话的命令档位；设置事实，不属于任何运行。 */
-export type CommandPermissionChangeMessage = ConversationMessageFields & {
+type CommandPermissionChangeMessage = ConversationMessageFields & {
   role: 'system';
   type: 'command_permission_change';
   metadata: ConversationCommandPermissionChange & { turn_id: null; run_id: null };
