@@ -18,8 +18,8 @@ export function parseScenarioArgs(argv) {
       continue;
     }
     const key = token.slice(2);
-    if (key === 'verbose') {
-      options.verbose = true;
+    if (key === 'verbose' || key === 'real-model') {
+      options[key === 'verbose' ? 'verbose' : 'realModel'] = true;
       continue;
     }
     const value = rest[index + 1];
@@ -52,6 +52,8 @@ export function parseScenarioArgs(argv) {
 export function scenarioEnv(parsed) {
   const env = {};
   if (!parsed.options?.verbose) env.SCENARIO_QUIET = '1';
+  // 真实模型核对会调用上游、产生费用，只在显式要求时打开。
+  if (parsed.options?.realModel) env.LINNYA_REAL_MODEL_TEST = '1';
   if (parsed.options?.runs !== undefined) env.SCENARIO_RUNS = String(parsed.options.runs);
   if (parsed.options?.seed !== undefined) env.SCENARIO_SEED = String(parsed.options.seed);
   if (parsed.command === 'replay') {

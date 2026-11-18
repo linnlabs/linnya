@@ -11,7 +11,8 @@
 模型自动重试、持久继续、交互响应和真正终止的跨链路规则见 [Conversation 执行恢复规范](../../../../../../docs/conversation-platform/13-retry-and-resumption.md)。本 feature 只持有前端控制投影，不决定 Provider 重试资格。
 
 - 状态按 `conversationId` 分区，切换对话只改变读取对象，不销毁后台 run。
-- `awaiting_user` 是非终态，输入区显示禁用的“恢复”，用户须在原表单提交；SSE transport 结束不会把它改成 completed。
+- `awaiting_user` 是非终态，交互须在原表单提交；SSE transport 结束不会把它改成 completed。输入框此时仍可输入，发出的是插话，不代替回答。
+- 运行中插话由相邻的 [run-steering](../run-steering/README.md) 持有：它读取这里的 run 快照决定何时插话、何时取回，不写本 feature 的控制状态。
 - 只有同 conversation/run/execution 的 `run_status` 可以更新业务状态；`context_usage_snapshot` 与
   `run_execution_metrics` 只修订消息 read model，`transport_end` 只释放同 execution controller。
 - HITL 交互响应必须提交同一组 `runId + interactionId + toolCallId + checkpointRevision + resumeToken`；普通 paused 继续使用原 run / execution / updated-at 身份，不要求交互凭证。

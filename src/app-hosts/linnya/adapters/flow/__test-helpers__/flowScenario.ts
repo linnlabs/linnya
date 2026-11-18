@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { ConversationNextRequest } from '@app/schemas';
+import type { ConversationInteractionResponseRequest, ConversationNextRequest } from '@app/schemas';
 import { createPinia, setActivePinia } from 'pinia';
 import { RunIdSchema, type RuntimeEvent, type SSEEvent } from '@linnlabs/linnkit/contracts';
 import {
@@ -24,6 +24,7 @@ import {
 import { readTail } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import type { ConversationRealtimeEvent } from '../flow.schemas';
 import { createDurableFlowHarness, installRecoveryModelFixture } from './createDurableFlowHarness';
+import type { RecordedRealModelInference } from './realModelInference';
 import {
   createInitialProjectionState,
   reduceEvent,
@@ -54,10 +55,15 @@ export interface FlowScenarioToolSpec {
 }
 
 export interface FlowScenarioOptions {
-  /** 脚本模型：回合表或按请求决定回合的函数（Linnkit testkit 同一套脚本）。 */
-  model: ScriptedInferenceScript;
+  /**
+   * 脚本模型：回合表或按请求决定回合的函数（Linnkit testkit 同一套脚本）。
+   * 也可以传 `createRecordedRealModelInference()`，用开发实例配置好的真实模型（见 realModelInference.ts）。
+   */
+  model: ScriptedInferenceScript | RecordedRealModelInference;
   /** 按名字写工具脚本，经 Linnya 真实的 ToolManager 执行。 */
   tools?: Readonly<Record<string, FlowScenarioToolHandler | FlowScenarioToolSpec>>;
+  /** 原样接入的产品工具（如 `ask`），用来走真实的等待用户、表单等流程。 */
+  productTools?: readonly BaseTool[];
   conversationId?: string;
 }
 
@@ -81,6 +87,11 @@ export interface FlowScenario {
   send(text: string): Promise<FlowScenarioRun>;
   /** 从最近一次暂停继续，并等运行停下。 */
   continue(): Promise<FlowScenarioRun>;
+  /** 回答当前运行正在等的交互（默认 `ask`），并等运行停下。 */
+  respond(
+    observation: string,
+    options?: { toolName?: string; data?: ConversationInteractionResponseRequest['data'] },
+  ): Promise<FlowScenarioRun>;
   /** 给正在运行的前台运行插话；没有运行时返回 accepted=false（客户端会改发新消息）。 */
   steer(text: string, options?: { id?: string }): Promise<{ accepted: boolean; inputId: string }>;
   /** 撤回一条还没送达的插话。 */
@@ -153,8 +164,7 @@ function comparable(messages: readonly BaseMessage[]): string[] {
   });
 }
 
-/** 生产装配下能取到证据的运行不变量；审计 / 遥测走各自 owner 的测试。 */
-// 审计只在开发模式开启，生产打包装配下关闭，审计类不变量由 Linnkit 端到端测试覆盖。
+/** 生产装配下能取到证据的运行不变量。审计只在开发模式开启、生产打包装配下关闭，审计类不变量由 Linnkit 端到端测试覆盖。 */
 const RUN_INVARIANTS: readonly RunInvariantId[] = [
   'I1_FINAL_STATUS',
   'I3_TOOL_CALL_OUTPUT_PAIR',
@@ -177,14 +187,24 @@ export async function createFlowScenario(options: FlowScenarioOptions): Promise<
   const conversationId = options.conversationId ?? 'conv_flow_scenario';
   const directory = mkdtempSync(join(tmpdir(), 'linnya-flow-scenario-'));
   setPluginRuntimeStateForTests({ installedPluginIds: ['platform'], enabledPluginIds: ['platform'] });
-  const restoreModelCatalog = installRecoveryModelFixture();
+  const realModel = typeof options.model === 'object' && 'usesProductionCatalog' in options.model
+    ? options.model
+    : undefined;
+  const modelId = realModel?.modelId ?? 'scripted-test-model';
+  const restoreModelCatalog = realModel ? () => undefined : installRecoveryModelFixture();
   // 实时投影与 Renderer 同一套 reducer；错误通知等分支会读 Pinia store，每个场景独立一份。
   setActivePinia(createPinia());
   // `pnpm -s scenario` 默认只看用例结果；直接跑 vitest 或 --verbose 时保留 Runtime 日志。
   if (process.env.SCENARIO_QUIET === '1') enableConsoleLogging(false);
-  const tools = Object.entries(options.tools ?? {}).map(([name, entry]) =>
-    new ScriptedFlowTool(name, typeof entry === 'function' ? { run: entry } : entry));
-  const fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), options.model, tools);
+  const tools = [
+    ...Object.entries(options.tools ?? {}).map(([name, entry]) =>
+      new ScriptedFlowTool(name, typeof entry === 'function' ? { run: entry } : entry)),
+    ...(options.productTools ?? []),
+  ];
+  // 模型只看到、也只能执行场景声明的工具，与脚本还是真实模型无关。
+  const fixture = await createDurableFlowHarness(
+    join(directory, 'workspace.sqlite'), options.model, tools, true, undefined, 'only-injected',
+  );
   const realtime: ConversationRealtimeEvent[] = [];
   const live = createInitialProjectionState({
     id: conversationId,
@@ -231,8 +251,8 @@ export async function createFlowScenario(options: FlowScenarioOptions): Promise<
       || record?.status === 'cancelled' || record?.status === 'paused' || record?.status === 'awaiting_user'
       ? record.status
       : 'unknown';
-    // 与 Renderer 一致：运行停下后取回没送达的插话。
-    const drained = fixture.flow.drainSteers(id, conversationId).inputs;
+    // 与 Renderer 一致：运行停下后取回没送达的插话；等待用户时运行还在，插话继续等送达。
+    const drained = status === 'awaiting_user' ? [] : fixture.flow.drainSteers(id, conversationId).inputs;
     for (const input of drained) returnedSteers.push(input.input_id);
     return {
       runId: id,
@@ -286,7 +306,7 @@ export async function createFlowScenario(options: FlowScenarioOptions): Promise<
       const request: ConversationNextRequest = {
         conversation_id: conversationId,
         new_events: [{ type: 'user_input', content: text, timestamp: Date.now() + sendCount, source: 'user' }],
-        options: { promptKey: 'default', model_id: 'scripted-test-model' },
+        options: { promptKey: 'default', model_id: modelId },
       };
       const before = new Set(await rootRunIds());
       await fixture.flow.next(request, onRealtime);
@@ -301,6 +321,22 @@ export async function createFlowScenario(options: FlowScenarioOptions): Promise<
         conversation_id: conversationId,
         expected_execution_id: run.execution_id,
         expected_updated_at: run.pause.updated_at,
+      }, onRealtime);
+      return settle(run.run_id);
+    },
+
+    async respond(observation, respondOptions = {}) {
+      const run = await activeRun();
+      const interaction = run?.pending_interaction;
+      if (!run || !interaction) throw new Error('[flowScenario] 当前运行没有等待中的交互');
+      await fixture.flow.respondInteraction({
+        conversation_id: conversationId,
+        ...interaction,
+        tool_name: respondOptions.toolName ?? 'ask',
+        observation,
+        data: respondOptions.data ?? {},
+        interaction_status: 'submitted',
+        interaction_submitted_at: Date.now(),
       }, onRealtime);
       return settle(run.run_id);
     },

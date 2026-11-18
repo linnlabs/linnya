@@ -13,6 +13,7 @@ import type { KnowledgeBaseService } from 'src/features/knowledge-base/applicati
 import { SQLiteEventStore } from '../../persistence/event-store';
 import { SqliteCheckpointer } from '../../persistence/checkpointer';
 import { createDefaultLlmNode } from '../../runtime-assembly/graphRuntimeFactory';
+import type { RecordedRealModelInference } from './realModelInference';
 import { SqliteTelemetryAdapter } from '../../telemetry/sqlite.implementation';
 import { defaultObservationPreviewPort } from '../../tools/defaultPorts';
 import { createToolRuntimeHarness } from '../../../testkit/agent-harness/toolRegistryHarness';
@@ -31,7 +32,7 @@ import { FlowIncomingEventPreparer } from '../incoming-events/orchestration/prep
 import { AgentRunnerService } from '../flow.agent-runner.service';
 import { FlowOrchestrator } from '../flow.orchestrator';
 import { PendingUserInputRegistry } from '../pending-user-inputs/pendingUserInputRegistry';
-import type { BaseTool } from 'src/tools/types';
+import type { BaseTool, ToolRuntimePort } from 'src/tools/types';
 import { createRegisteredChildRunInvoker } from '../../child-runs/registeredSubagentInvoker';
 import { createLinnyaChildRunInvoker } from '../../child-runs/childRunInvokerFactory';
 
@@ -105,14 +106,31 @@ export function installRecoveryModelFixture(reasoning?: ModelConfig['reasoning']
   };
 }
 
+function onlyInjectedTools(runtime: ToolRuntimePort, tools: readonly BaseTool[]): ToolRuntimePort {
+  const names = tools.map(tool => tool.name);
+  const known = new Set(names);
+  return {
+    getToolSchemas: input => runtime.getToolSchemas({ ...input, toolNames: names }),
+    getToolDefinition: toolName => known.has(toolName) ? runtime.getToolDefinition(toolName) : undefined,
+    executeTool: async (toolName, args, context) => known.has(toolName)
+      ? runtime.executeTool(toolName, args, context)
+      : { success: false, error: `场景没有提供工具 ${toolName}`, durationMs: 0 },
+  };
+}
+
 /** 真 SQLite、生产启动恢复、Graph 和 Flow；只替换上游模型及本测试工具。 */
 export async function createDurableFlowHarness(
   path: string,
-  inference: ScriptedInferenceScript | ScriptedInferenceHarness,
+  inference: ScriptedInferenceScript | ScriptedInferenceHarness | RecordedRealModelInference,
   tools: BaseTool[] = [],
   packaged = true,
   permissions?: Pick<import('../flow.agent-runner.service').AgentRunnerRuntimePort,
     'commandPermissionSettings' | 'readConversationCommandPermission'>,
+  /**
+   * `agent`（默认）按 Agent 声明暴露工具，未注入的名字回退到生产工具。
+   * `only-injected` 只向模型暴露并执行注入的工具：真实模型核对时不会调到生产工具或访问网络。
+   */
+  toolExposure: 'agent' | 'only-injected' = 'agent',
 ) {
   const database = new DatabaseService(path);
   database.initialize();
@@ -124,6 +142,7 @@ export async function createDurableFlowHarness(
   const descriptors = runtime.runDescriptors;
   const ai = 'getLlmCaller' in inference ? inference : createScriptedInferenceHarness(inference);
   const toolHarness = createToolRuntimeHarness(tools);
+  const toolRuntime = toolExposure === 'agent' ? toolHarness.toolRuntime : onlyInjectedTools(toolHarness.toolRuntime, tools);
   const checkpointer = new SqliteCheckpointer(db);
   // 与生产装配一致：遥测落库并喂给用量账本，用量断言才看得到真实结果。
   // 另记一份内存副本，供场景校验遥测 runId 能追到已注册运行。
@@ -145,14 +164,14 @@ export async function createDurableFlowHarness(
   engine.registerNode(
     createDefaultLlmNode({
       llmCaller: ai.getLlmCaller(),
-      toolRuntime: toolHarness.toolRuntime,
+      toolRuntime,
       telemetryPort,
       auditPort: runtime.auditPort,
     })
   );
   engine.registerNode(
     new graph.ToolNode({
-      toolRuntime: toolHarness.toolRuntime,
+      toolRuntime,
       observationPreview: defaultObservationPreviewPort,
       telemetryPort,
       auditPort: runtime.auditPort,
@@ -178,7 +197,7 @@ export async function createDurableFlowHarness(
           telemetryPort: telemetry.noopTelemetry,
           auditPort: runtime.auditPort,
           llmCaller: ai.getLlmCaller(),
-          toolRuntime: toolHarness.toolRuntime,
+          toolRuntime,
         }),
       }),
     }),
