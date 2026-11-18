@@ -825,6 +825,7 @@ export async function configureRoutes(
       costCollector: agentRuntime.costCollector,
       registeredChildRunInvoker,
       commandPermissionSettings,
+      readConversationCommandPermission: executionRuntime.readConversationCommandPermission,
       workspaceMutationPublisher: {
         publish: event => dependencies.rendererIntegration.publishWorkspaceMutation(event),
       },

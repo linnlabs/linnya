@@ -134,6 +134,7 @@
     "test:electron-bytecode": "pnpm run build:main && pnpm run build:backend && pnpm run compile:bytecode && node scripts/e2e/electron-runtime/bytecode-main-process.e2e.cjs",
     "test:conversation-navigation:electron": "pnpm run prepare:headless-node-runtime && pnpm run build:main && pnpm run build:backend && node scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs",
     "test:conversation-side-pane-draft:electron": "pnpm run prepare:headless-node-runtime && pnpm run build:main && pnpm run build:backend && cross-env LINNYA_CONVERSATION_E2E_SCENARIO=side-pane-draft node scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs",
+    "test:conversation-command-permissions:electron": "pnpm run prepare:headless-node-runtime && pnpm run build:main && pnpm run build:backend && cross-env LINNYA_CONVERSATION_E2E_SCENARIO=command-permissions node scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs",
     "test:inference:packaged:mac": "node scripts/e2e/inference/packaged-ai-sdk.e2e.mjs",
     "test:inference:byok:live": "node --import tsx scripts/e2e/inference/byok-live-smoke.ts",
     "test:provider-catalog-package-gate": "pnpm --dir packages/provider-catalog run typecheck && pnpm --dir packages/provider-catalog run test && pnpm --dir packages/provider-catalog run pack-smoke",

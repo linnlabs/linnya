@@ -1,3 +1,4 @@
+import { deleteConversationCommandPermissions } from '../conversation-command-permissions/deleteConversationCommandPermissions';
 /**
  * @file src/app-hosts/linnya/adapters/persistence/event-store/sqlite.implementation.ts
  * @description Linnya host adapter 的 EventStore SQLite 实现。
@@ -1054,6 +1055,7 @@ export class SQLiteEventStore implements IEventStore {
    * 会话删除必须显式覆盖全部本地事实，不能让连接级 FK pragma 改变业务语义。
    */
   private deleteConversationFacts(conversationId: string): number {
+    deleteConversationCommandPermissions(this.db, conversationId);
     this.db.prepare('DELETE FROM conversation_client_notices WHERE conversation_id = ?').run(conversationId);
     this.eventAssetLinks.deleteForConversation(conversationId);
     this.uiProjection.deleteProjectionRowsForConversation(conversationId);

@@ -83,6 +83,11 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.commandPermission.confirmExpansion.confirm': '接受风险，确认开启',
   'settings.commandPermission.confirmExpansion.cancel': '取消',
   'settings.commandPermission.level.title': '权限级别',
+  'settings.commandPermission.reduction.title': '单独设置的档位要一起调低吗？',
+  'settings.commandPermission.reduction.message': '当前工作区有 {count} 个对话单独设了更高的档位。要一起调到「{level}」吗？',
+  'settings.commandPermission.reduction.apply': '一起调到{level}',
+  'settings.commandPermission.reduction.globalOnly': '只改全局设置',
+  'settings.commandPermission.reduction.partial': '已调低 {count} 个对话，全局档位保存失败。再次选择目标档位可重试。',
   'settings.commandPermission.level.readOnly': '只读',
   'settings.commandPermission.level.readOnlyDescription':
     '默认只允许读取；超出权限的操作需要批准。',
@@ -528,6 +533,11 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.commandPermission.confirmExpansion.confirm': 'Accept risk and enable',
       'settings.commandPermission.confirmExpansion.cancel': 'Cancel',
       'settings.commandPermission.level.title': 'Permission level',
+      'settings.commandPermission.reduction.title': 'Lower permissions for individual conversations too?',
+      'settings.commandPermission.reduction.message': '{count} conversations in this workspace have a higher individual setting. Lower them to “{level}” as well?',
+      'settings.commandPermission.reduction.apply': 'Lower all to {level}',
+      'settings.commandPermission.reduction.globalOnly': 'Change global setting only',
+      'settings.commandPermission.reduction.partial': 'Lowered {count} conversations. The global setting could not be saved. Select the target level again to retry.',
       'settings.commandPermission.level.readOnly': 'Read only',
       'settings.commandPermission.level.readOnlyDescription':
         'Read access is allowed by default; other operations require approval.',

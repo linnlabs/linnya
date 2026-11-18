@@ -1,3 +1,5 @@
+import { DEFAULT_COMMAND_PERMISSION_SETTINGS, serializeCommandPermissionSettings } from 'src/domains/commands/features/permission-settings';
+import type { ConversationCommandPermissionSelection } from '@app/schemas/commands';
 import { createProjectLifecycle } from 'src/domains/projects';
 import { readTail } from '../../persistence/event-store/ui-projection/sqliteUiMessagesReader';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -57,9 +59,18 @@ afterEach(async () => {
 });
 async function open(
   turns: Parameters<typeof createDurableFlowHarness>[1],
-  tools: Parameters<typeof createDurableFlowHarness>[2] = []
+  tools: Parameters<typeof createDurableFlowHarness>[2] = [],
+  readConversationCommandPermission?: (id: string) => ConversationCommandPermissionSelection,
 ) {
-  const fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), turns, tools);
+  const fixture = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), turns, tools, true,
+    readConversationCommandPermission && {
+      readConversationCommandPermission,
+      commandPermissionSettings: {
+        read: () => ({ status: 'found', serialized: serializeCommandPermissionSettings(DEFAULT_COMMAND_PERMISSION_SETTINGS) }),
+        write: () => ({ status: 'failed', message: 'Read-only test settings' }),
+      },
+    },
+  );
   closeFixtures.push(fixture.close);
   return fixture;
 }
@@ -72,6 +83,32 @@ async function paused(fixture: Awaited<ReturnType<typeof open>>) {
 }
 
 describe('durable root Flow continuation, production Audit off', () => {
+  it('对话设置在根接纳时冻结，终态释放恢复描述后仍可读取档位', async () => {
+    let selection: ConversationCommandPermissionSelection = { permission_level: 'read_only', revision: 1 };
+    const fixture = await open(
+      [{ contentChunks: ['First turn.'] }, { contentChunks: ['Second turn.'] }, { contentChunks: ['Other conversation.'] }],
+      [],
+      id => id === conversationId ? selection : { permission_level: null, revision: 0 },
+    );
+    await fixture.flow.next(request, () => {});
+    selection = { permission_level: 'full_access', revision: 2 };
+    await fixture.flow.next({
+      ...request,
+      new_events: [{ type: 'user_input', content: 'Another message', source: 'user', timestamp: 2 }],
+    }, () => {});
+    await fixture.flow.next({ ...request, conversation_id: 'another-conversation' }, () => {});
+
+    expect(fixture.db.prepare(`
+      SELECT conversation_id, permission_level, source
+      FROM conversation_run_command_permissions ORDER BY rowid
+    `).all()).toEqual([
+      { conversation_id: conversationId, permission_level: 'read_only', source: 'conversation_setting' },
+      { conversation_id: conversationId, permission_level: 'full_access', source: 'conversation_setting' },
+      { conversation_id: 'another-conversation', permission_level: 'standard', source: 'global_setting' },
+    ]);
+    expect(fixture.db.prepare('SELECT count(*) AS count FROM agent_run_descriptors').get()).toEqual({ count: 0 });
+  });
+
   it('用户暂停等待执行收口，继续保留预算并拒绝旧凭证和重复激活', async () => {
     let entered!: () => void;
     const started = new Promise<void>(resolve => {

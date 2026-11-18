@@ -103,6 +103,8 @@ export async function createDurableFlowHarness(
   inference: ScriptedLlmTurn[] | ScriptedInferenceHarness,
   tools: BaseTool[] = [],
   packaged = true,
+  permissions?: Pick<import('../flow.agent-runner.service').AgentRunnerRuntimePort,
+    'commandPermissionSettings' | 'readConversationCommandPermission'>,
 ) {
   const database = new DatabaseService(path);
   database.initialize();
@@ -149,6 +151,7 @@ export async function createDurableFlowHarness(
         }),
       }),
     }),
+    ...permissions,
     recovery: {
       bindings: runtime.executionCheckpoints,
       checkpointer,

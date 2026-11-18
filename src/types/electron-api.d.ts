@@ -103,6 +103,10 @@ declare global {
       'document-preview:read': (request: import('@app/schemas').DocumentPreviewRequest) => Promise<unknown>;
       'document-history:list': (request: { documentId: string }) => Promise<unknown>;
       'document-history:restore': (request: import('@app/schemas').DocumentVersionRestoreRequest) => Promise<unknown>;
+      requestConversationCommandPermission: (
+        request: import('@app/schemas/commands').ConversationCommandPermissionRequest,
+      ) => Promise<unknown>;
+      onConversationCommandPermissionChanged: (callback: () => void) => () => void;
       readCommandPermissionSettings: () => Promise<unknown>;
       updateCommandPermissionSettings: (
         update: CommandPermissionSettingsUpdateV1,

@@ -129,6 +129,7 @@
             </template>
           </CustomSelect>
         </div>
+        <slot name="command-permission" />
       </div>
     </div>
 

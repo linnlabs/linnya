@@ -49,6 +49,9 @@ SRT 0.0.81 的配置 schema 已显式使用 `zod/v3`，可复用 Zod 4 包内的
 
 Windows 受限 Shell 的完整 CLI 回归使用 `test:shell-tool:windows-current-host-cli-corpus`。除 SSH host/user/key 外，须指定 `LINNYA_WINDOWS_INTERACTIVE_USER`：专用 VM 中已经登录桌面的普通测试用户。SSH 只编排交互式任务；实际打包 Electron、PowerShell、插件 CLI 与审批链路通过普通用户桌面运行，不申请管理员隔离初始化。不能把 SSH 的 Session 0 当作桌面登录环境；结束后回收本次任务与文件。
 
+对话命令权限使用 `pnpm run test:conversation-command-permissions:electron` 验证 Desktop 入口、SQLite 回读、
+完全访问确认以及全局收紧。每次启动隔离的 Electron profile 和 Workspace，并记录截图证据。
+
 macOS 的 `test:shell-tool:production-command-approval-dom` 使用真实 Renderer/Preload，覆盖可见凭据路径的三档权限、本次批准与保存规则。两类 E2E 都会重建 command runner，须顺序运行，不能共享 `dist/main/commands` 并发构建。
 
 产品及官方插件使用正式 npm Linnkit 0.43.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查

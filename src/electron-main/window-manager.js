@@ -406,6 +406,7 @@ export {
   configureMainWindowCloseLifecycle,
   createWindow,
   getMainWindow,
+  isCurrentMainFrameEvent,
   permitMainWindowCloseForAppShutdown,
   prepareMainWindowForAppShutdown,
   revealMainWindow,

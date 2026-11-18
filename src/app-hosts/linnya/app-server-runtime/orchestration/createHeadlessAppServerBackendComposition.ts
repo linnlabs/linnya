@@ -1,4 +1,15 @@
 import path from 'node:path';
+import type { ConversationExecutionRuntimeCreateInput } from '../../application/conversation-runtime';
+import {
+  ConversationCommandPermissionRequestSchema,
+  ConversationCommandPermissionResultSchema,
+} from '@app/schemas/commands';
+import { SqliteConversationCommandPermissions } from '../../adapters/persistence/conversation-command-permissions/sqliteConversationCommandPermissions';
+import {
+  createConversationCommandPermissions,
+  type ConversationCommandPermissions,
+} from '../../application/conversation-command-permissions';
+import { BACKEND_CONVERSATION_COMMAND_PERMISSION_RPC_METHOD } from '../../adapters/commands/renderer-rpc';
 
 import type { AppServerRpcHandler, AppServerRpcPeer } from '../../app-server-rpc';
 import type { AppServerBootstrap } from '../../app-server-bootstrap';
@@ -95,7 +106,25 @@ export function createHeadlessAppServerBackendComposition(input: {
     onAsyncFailure: input.reportAsyncFailure,
   });
 
+  const executionRuntimeFactory = createHeadlessNodeConversationExecutionRuntimeFactory({
+    bootstrap: input.bootstrap.backend_facts,
+    commandHostProcessEnvironment: input.bootstrap.command_host_environment,
+    localProcessPlatformRuntime: input.bootstrap.local_process_platform_runtime,
+    headlessNodeExecutablePath: input.bootstrap.headless_node_executable_path,
+    commandPermissionSettings,
+    commandApprovalHost,
+    commandPresentationHost: commandCardControlHost,
+  });
+  let conversationPermissions: ConversationCommandPermissions | undefined;
   const backendRpcHandlers = new Map<string, AppServerRpcHandler>();
+  if (input.bootstrap.host_kind === 'desktop') {
+    backendRpcHandlers.set(BACKEND_CONVERSATION_COMMAND_PERMISSION_RPC_METHOD, async payload => {
+      const request = ConversationCommandPermissionRequestSchema.parse(payload);
+      return ConversationCommandPermissionResultSchema.parse(
+        await conversationPermissions?.request(request) ?? { kind: 'error', code: 'unavailable' },
+      );
+    });
+  }
   registerHandlers(backendRpcHandlers, createCommandBackendRpcHandlers({
     permissionSettings: createLocalCommandPermissionSettingsRendererGateway(
       commandPermissionSettings,
@@ -130,16 +159,19 @@ export function createHeadlessAppServerBackendComposition(input: {
           input.bootstrap.backend_facts.mainBundleDirectory,
         ),
       }),
-      conversationExecutionRuntimeFactory:
-        createHeadlessNodeConversationExecutionRuntimeFactory({
-          bootstrap: input.bootstrap.backend_facts,
-          commandHostProcessEnvironment: input.bootstrap.command_host_environment,
-          localProcessPlatformRuntime: input.bootstrap.local_process_platform_runtime,
-          headlessNodeExecutablePath: input.bootstrap.headless_node_executable_path,
-          commandPermissionSettings,
-          commandApprovalHost,
-          commandPresentationHost: commandCardControlHost,
-        }),
+      conversationExecutionRuntimeFactory: {
+        async create(runtimeInput: ConversationExecutionRuntimeCreateInput) {
+          const permissions = createConversationCommandPermissions({
+            store: new SqliteConversationCommandPermissions(runtimeInput.db),
+            globalSettings: commandPermissionSettings,
+            admission: runtimeInput.conversationAdmission,
+            onFailure: error => input.reportAsyncFailure(toError(error)),
+          });
+          const scope = await executionRuntimeFactory.create(runtimeInput);
+          conversationPermissions = permissions;
+          return Object.freeze({ ...scope, readConversationCommandPermission: permissions.readSelection });
+        },
+      },
       credentialStorage,
       hiddenWorkerHost: createDesktopHiddenWorkerHostRpcClient({
         rpc: input.rpc,

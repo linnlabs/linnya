@@ -1,3 +1,4 @@
+import { CONVERSATION_COMMAND_PERMISSION_SCHEMAS } from '../conversation-command-permissions/schema';
 import { READABLE_CONVERSATION_SCHEMAS } from '../readable-conversation/readableConversation.schema';
 /**
  * @file src/app-hosts/linnya/adapters/persistence/event-store/conversation.schema.ts
@@ -91,6 +92,7 @@ export const CONVERSATION_SCHEMAS = [
   )`,
 
   ...SUBRUN_TRACE_BODY_SCHEMA,
+  ...CONVERSATION_COMMAND_PERMISSION_SCHEMAS,
 
   // 会话 UI read model：按前端渲染窗口查询优化的消息投影。
   `CREATE TABLE IF NOT EXISTS conversation_ui_messages (

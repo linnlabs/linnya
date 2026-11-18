@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CommandAgentRunIdSchema } from './commandIdentity';
 import { COMMAND_RUNTIME_PROTOCOL_VERSION } from './commandExecution';
 import {
+  CommandBasePermissionSourceSchema,
   CommandInternalDataAccessSchema,
   CommandPermissionLevelSchema,
 } from './commandPermission';
@@ -118,6 +119,8 @@ export const CommandRunPermissionSnapshotV1Schema = z.object({
   kind: z.literal('command_run_permission_snapshot'),
   root_agent_run_id: CommandAgentRunIdSchema,
   settings_revision: z.number().int().nonnegative().safe(),
+  conversation_revision: z.number().int().nonnegative().safe(),
+  source: CommandBasePermissionSourceSchema,
   captured_at_ms: z.number().int().nonnegative().safe(),
   permission_level: CommandPermissionLevelSchema,
   internal_data_access: CommandInternalDataAccessSchema,

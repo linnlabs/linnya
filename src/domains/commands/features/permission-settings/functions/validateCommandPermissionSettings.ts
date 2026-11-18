@@ -3,6 +3,8 @@ import {
   CommandPermissionSettingsUpdateV1Schema,
   CommandPermissionSettingsV1Schema,
   CommandRunPermissionSnapshotV1Schema,
+  resolveConversationCommandPermission,
+  type ConversationCommandPermissionSelection,
   type CommandAgentRunId,
   type CommandExecutionIdentity,
   type CommandPermissionSnapshotV1,
@@ -51,6 +53,7 @@ export function createCommandRunPermissionSnapshot(input: {
   readonly settings: CommandPermissionSettingsV1;
   readonly rootAgentRunId: CommandAgentRunId;
   readonly capturedAtMs: number;
+  readonly conversation?: ConversationCommandPermissionSelection;
 }): CommandRunPermissionSnapshotV1 {
   return CommandRunPermissionSnapshotV1Schema.parse({
     protocol_version: 1,
@@ -58,7 +61,8 @@ export function createCommandRunPermissionSnapshot(input: {
     root_agent_run_id: input.rootAgentRunId,
     settings_revision: input.settings.revision,
     captured_at_ms: input.capturedAtMs,
-    permission_level: input.settings.permission_level,
+    conversation_revision: input.conversation?.revision ?? 0,
+    ...resolveConversationCommandPermission(input.settings.permission_level, input.conversation?.permission_level ?? null),
     internal_data_access: input.settings.internal_data_access,
     gui_control: input.settings.gui_control,
     local_ipc_control: input.settings.local_ipc_control,
@@ -80,7 +84,7 @@ export function createInitialCommandPermissionSnapshot(input: {
     identity: input.identity,
     base_level: input.runSnapshot.permission_level,
     effective_level: input.runSnapshot.permission_level,
-    grant_source: 'global_setting',
+    grant_source: input.runSnapshot.source,
     internal_data_access: input.runSnapshot.internal_data_access,
   });
 }

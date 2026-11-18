@@ -57,6 +57,7 @@ import type { RegisteredChildRunInvokerPort } from 'src/app-hosts/linnya/adapter
 import type { LinnyaRunCostCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import type { CommandPermissionSettingsPort } from 'src/domains/commands/ports';
 import type { ToolContext } from 'src/tools/types';
+import type { ConversationCommandPermissionSelection } from '@app/schemas/commands';
 import { resolveCommandRunPermissionContext } from 'src/app-hosts/linnya/adapters/context-injection/commandRunPermissionContextBinding';
 import { CommandAgentRunIdSchema, CommandConversationIdSchema } from '@app/schemas/commands';
 import type { ShellToolRuntimePort } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';
@@ -92,6 +93,7 @@ export interface AgentRunnerRuntimePort {
   readonly costCollector: LinnyaRunCostCollector;
   readonly registeredChildRunInvoker: RegisteredChildRunInvokerPort;
   readonly commandPermissionSettings: CommandPermissionSettingsPort;
+  readonly readConversationCommandPermission?: (conversationId: string) => ConversationCommandPermissionSelection;
   readonly workspaceMutationPublisher: WorkspaceMutationPublisher;
   readonly physicalFileReader?: PhysicalFileReaderPort;
   readonly conversationWorkDirectoryAdmission?: ConversationWorkDirectoryAdmissionPort;
@@ -191,6 +193,7 @@ export class AgentRunnerService {
         bootstrap.finalRunContext.rootRunId ?? input.runId
       ),
       settingsPort: this.runtime.commandPermissionSettings,
+      readConversation: this.runtime.readConversationCommandPermission?.bind(undefined, input.conversationId),
     });
     const toolContextPatch = SerializableJsonRecord.parse(bootstrap.toolContextPatch);
     return RunDescriptorSchema.parse({
@@ -333,6 +336,7 @@ export class AgentRunnerService {
             finalRunContext.rootRunId ?? finalRunContext.runId
           ),
           settingsPort: this.runtime.commandPermissionSettings,
+          readConversation: this.runtime.readConversationCommandPermission?.bind(undefined, conversationId),
         });
       /**
        * 统一 Audit Domain 的 run scope。

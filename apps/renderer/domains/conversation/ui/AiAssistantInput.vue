@@ -8,6 +8,8 @@
     @dragleave.capture="handleImageDragLeave"
     @drop.capture="handleImageDrop"
   >
+    <ConversationCommandPermissionHistory :view="commandPermissionView" :failed="commandPermissionFailed" />
+
     <!-- 输入区域 -->
     <div class="input-container">
       <div
@@ -16,6 +18,7 @@
           'is-selector-interacting': isSelectorInteracting,
           'is-disabled': isInputDisabled,
           'has-input-accessories': visibleInputAccessories.length > 0,
+          'is-model-setup-required': isModelSetupRequired,
         }"
       >
         <component
@@ -83,7 +86,18 @@
           @selector-interaction-change="handleSelectorInteractionChange"
           @request-image-attachment="openImageAttachmentPicker"
           @submit="handleSubmit"
-        />
+        >
+          <template #command-permission>
+            <ConversationCommandPermissionSelect
+              :view="commandPermissionView"
+              :loading="commandPermissionLoadState === 'loading'"
+              :busy="commandPermissionBusy"
+              :running="isInteractiveRunBusy(composerRun)"
+              :disabled="disabled || isSubmissionStarting"
+              @select="selectCommandPermission"
+            />
+          </template>
+        </AiAssistantInputFooter>
 
         <button
           v-if="isModelSetupRequired"
@@ -138,6 +152,11 @@
 </template>
 
 <script setup lang="ts">
+import ConversationCommandPermissionSelect from '../features/command-permissions/ui/ConversationCommandPermissionSelect.vue';
+import ConversationCommandPermissionHistory from '../features/command-permissions/ui/ConversationCommandPermissionHistory.vue';
+import { useConversationCommandPermission } from '../features/command-permissions/orchestration/useConversationCommandPermission';
+import { ensureMaterializedConversation } from '../services/orchestration/ensureMaterializedConversation';
+import { confirmPermissionLevelExpansion, useSettingsLocalization } from '@/domains/settings/features/command-permission-settings';
 import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 
 import { cancelAssistantActivity } from '../assistantActions';
@@ -245,6 +264,27 @@ const navigationScope = useNavigationScope();
 const { conversationMessage } = useConversationLocalization();
 const { t } = useLocalization();
 const composerRun = computed(() => interactiveRunStore.snapshotFor(assistantStore.activeConversationId));
+const { settingsMessage } = useSettingsLocalization();
+const permissionTarget = computed(() => assistantStore.activeConversationId
+  ? { conversation_id: assistantStore.activeConversationId, project_id: navigationScope.currentProjectId }
+  : null);
+const {
+  current: commandPermissionView,
+  loadState: commandPermissionLoadState,
+  busy: commandPermissionBusy,
+  writeFailure: commandPermissionFailed,
+  select: selectCommandPermission,
+} = useConversationCommandPermission({
+  target: permissionTarget,
+  runStatus: computed(() => `${composerRun.value?.runId ?? ''}:${composerRun.value?.status ?? ''}`),
+  draftKey: computed(currentClientNoticeDraftKey),
+  materialize: () => {
+    ensureMaterializedConversation(assistantStore, navigationScope);
+    return permissionTarget.value;
+  },
+  confirmFullAccess: () => confirmPermissionLevelExpansion(settingsMessage, 'full_access'),
+});
+
 const contextWindowUsage = useContextWindowUsagePresentation({
   conversationId: computed(() => conversationSelectors.activeConversation.value?.id ?? null),
   modelId: modelBindings.effectivePrimaryModelId,
@@ -484,7 +524,7 @@ const imageSubmitMessage = computed(() => {
 
 // 切换 Agent 的保存很短：只拦发送，不把输入框置为禁用外观，否则正文和占位符会闪一下。
 const canSend = computed(() => {
-  return imageSubmitPreflight.value.ok && !isInputDisabled.value && !isAgentChoiceUpdating.value;
+  return imageSubmitPreflight.value.ok && !isInputDisabled.value && !isAgentChoiceUpdating.value && !commandPermissionBusy.value;
 });
 const primaryControl = computed(() =>
   resolveComposerRunControl({
