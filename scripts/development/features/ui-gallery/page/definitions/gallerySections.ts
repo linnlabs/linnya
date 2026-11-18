@@ -76,6 +76,11 @@ export const GALLERY_SECTIONS = [
     description: '定时任务的入口、任务视图与运行记录、新建表单、Agent 建任务后的提示和相关确认框。用真实组件拼的示意，不是真实页面。',
   },
   {
+    id: 'conversation-steering',
+    label: '方向对比：运行中插话',
+    description: 'Agent 运行时发消息：输入框里的暂停与发送、待送达条（撤回、立即打断）、插话在时间线里的位置，以及等子任务、等批准、回复先写完等情形。用真实组件拼的示意，不是真实页面。',
+  },
+  {
     id: 'list-example',
     label: '组合：列表与卡片',
     description: '按设计规范 9.4、9.6 拼出的列表行与卡片，用来看层级与留白；不是真实侧栏。',
