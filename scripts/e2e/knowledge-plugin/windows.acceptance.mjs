@@ -63,7 +63,9 @@ let failed;
 try {
   const common = await remote("[Console]::Write([Environment]::GetFolderPath('CommonDocuments'))");
   assert.ok(path.win32.isAbsolute(common));
-  remoteRoot = path.win32.join(common, `linnya-knowledge-${token}`);
+  // 常规安装布局保持短根；长 Workspace 的 Qdrant 故障另有独立回执，不能由本验收冒称修复。
+  // 排他 New-Item、当前 token 的任务/日志/清理仍限定本次隔离实例。
+  remoteRoot = path.win32.join(common, `k-${token.slice(0, 16)}`);
   const prepared = await evidence.check('同一源码构建真实Windows安装目录与插件artifact', () =>
     prepareWindowsCandidate(root)
   );
