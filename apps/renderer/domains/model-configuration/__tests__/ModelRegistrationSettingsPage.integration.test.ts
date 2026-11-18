@@ -414,6 +414,36 @@ describe('ModelRegistrationSettingsPage', () => {
     expect(container.querySelector('.settings-external-link-icon')).not.toBeNull();
   });
 
+  it.each([
+    { entry: 'quick', optionText: 'Claude', kind: 'direct-provider' },
+    { entry: 'quick', optionText: 'Ollama Cloud', kind: 'direct-provider' },
+    { entry: 'other', optionText: 'DeepSeek', kind: 'direct-provider' },
+  ] as const)(
+    '返回供应商选择后再次进入同一 $optionText，仍显示接入表单',
+    async ({ entry, optionText, kind }) => {
+      app = createApp(ModelRegistrationSettingsPage);
+      app.use(createPinia());
+      app.mount(container);
+      await flushUi();
+
+      const enter = async (): Promise<void> => {
+        if (entry === 'quick') await selectQuickOption(container, optionText);
+        else await selectOtherProvider(container, optionText);
+      };
+
+      await enter();
+      expect(container.querySelector(`[data-registration-kind="${kind}"]`)).not.toBeNull();
+
+      container.querySelector<HTMLButtonElement>('.model-registration-back-button')?.click();
+      await flushUi();
+      expect(container.querySelector('.model-registration-quick-options')).not.toBeNull();
+
+      await enter();
+      expect(container.querySelector(`[data-registration-kind="${kind}"]`)).not.toBeNull();
+      expect(container.querySelector('input[type="password"]')).not.toBeNull();
+    }
+  );
+
   it.each(['opencode-go', 'deepseek'])(
     '已连接 %s 入口仍可找到，并导航到相应管理页',
     async connectionId => {

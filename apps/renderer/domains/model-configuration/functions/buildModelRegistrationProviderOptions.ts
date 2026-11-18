@@ -200,6 +200,24 @@ export function buildModelRegistrationConnectionOptions(
     }));
 }
 
+/**
+ * 第二步接入方式的选中值：指定的入口优先，其次保留仍然可用的当前选择，
+ * 只有一条接入方式时直接选中，否则等用户选择。
+ */
+export function resolveModelRegistrationConnectionSelection(
+  options: readonly Pick<ModelRegistrationConnectionChoice, 'value'>[],
+  currentSelection: string,
+  preferredConnectionDefinitionId: string | null
+): string {
+  const values = options.map(option => option.value);
+  const preferredValue = preferredConnectionDefinitionId
+    ? `connection:${preferredConnectionDefinitionId}`
+    : undefined;
+  if (preferredValue && values.some(value => value === preferredValue)) return preferredValue;
+  if (values.some(value => value === currentSelection)) return currentSelection;
+  return values.length === 1 ? (values[0] ?? '') : '';
+}
+
 export function resolveApiKeyProviderConnectionDefinitionId(
   selection: string | null,
   providers: readonly ProviderDefinition[]

@@ -8,6 +8,7 @@ import {
   resolveAccountProviderConnectionDefinitionId,
   resolveApiKeyProviderConnectionDefinitionId,
   resolveLocalRuntimeProviderConnectionDefinitionId,
+  resolveModelRegistrationConnectionSelection,
 } from './buildModelRegistrationProviderOptions';
 
 const providerModel = {
@@ -240,5 +241,27 @@ describe('model registration Provider options', () => {
     expect(
       resolveApiKeyProviderConnectionDefinitionId('connection:ollama-cloud', [ollamaProvider])
     ).toBe('ollama-cloud');
+  });
+
+  it('接入方式选中值：指定入口优先，保留有效选择，唯一选项直接选中', () => {
+    const single = [{ value: 'connection:opencode-go' as const }];
+    const multiple = [
+      { value: 'connection:ollama' as const },
+      { value: 'connection:ollama-cloud' as const },
+    ];
+
+    // 再次进入同一 Provider 时当前值已清空，唯一接入方式仍要被选中。
+    expect(resolveModelRegistrationConnectionSelection(single, '', null)).toBe(
+      'connection:opencode-go'
+    );
+    expect(resolveModelRegistrationConnectionSelection(multiple, '', 'ollama-cloud')).toBe(
+      'connection:ollama-cloud'
+    );
+    expect(resolveModelRegistrationConnectionSelection(multiple, 'connection:ollama', null)).toBe(
+      'connection:ollama'
+    );
+    expect(resolveModelRegistrationConnectionSelection(multiple, '', 'missing')).toBe('');
+    expect(resolveModelRegistrationConnectionSelection(multiple, 'connection:gone', null)).toBe('');
+    expect(resolveModelRegistrationConnectionSelection([], '', null)).toBe('');
   });
 });

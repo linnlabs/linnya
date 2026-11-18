@@ -181,6 +181,7 @@ import {
   resolveAccountProviderConnectionDefinitionId,
   resolveApiKeyProviderConnectionDefinitionId,
   resolveLocalRuntimeProviderConnectionDefinitionId,
+  resolveModelRegistrationConnectionSelection,
 } from '../functions/buildModelRegistrationProviderOptions';
 import { refreshModelCatalogAfterRegistration } from '../orchestration/refreshModelCatalogAfterRegistration';
 import { openConfiguredProviderManagement } from '../orchestration/openConfiguredProviderManagement';
@@ -288,8 +289,10 @@ function enterProvider(
 ): void {
   preferredConnectionDefinitionId.value = preferredConnectionId ?? null;
   selectedProvider.value = provider;
-  selectedConnection.value = preferredConnectionId ? `connection:${preferredConnectionId}` : '';
+  selectedConnection.value = '';
   showQuickStart.value = false;
+  // 再次进入同一 Provider 时下拉值不变，watch 不会触发，这里必须同步解析接入方式。
+  syncConnectionSelection();
 }
 
 function enterCustomProvider(): void {
@@ -311,29 +314,22 @@ function returnToQuickStart(): void {
   preferredConnectionDefinitionId.value = null;
 }
 
-watch([selectedProvider, providerOptions, connectionOptions], () => {
+function syncConnectionSelection(): void {
+  const preferred = preferredConnectionDefinitionId.value;
+  preferredConnectionDefinitionId.value = null;
   if (!providerOptions.value.some(option => option.value === selectedProvider.value)) {
     selectedProvider.value = CUSTOM_PROVIDER_SELECTION;
     selectedConnection.value = '';
-    preferredConnectionDefinitionId.value = null;
     return;
   }
+  selectedConnection.value = resolveModelRegistrationConnectionSelection(
+    connectionOptions.value,
+    selectedConnection.value,
+    preferred
+  );
+}
 
-  const options = connectionOptions.value;
-  const preferred = preferredConnectionDefinitionId.value;
-  if (preferred) {
-    const preferredValue = `connection:${preferred}`;
-    if (options.some(option => option.value === preferredValue)) {
-      selectedConnection.value = preferredValue;
-      preferredConnectionDefinitionId.value = null;
-      return;
-    }
-    preferredConnectionDefinitionId.value = null;
-  }
-
-  const onlyValue = options.length === 1 ? options[0]?.value : '';
-  selectedConnection.value = onlyValue ?? '';
-});
+watch([selectedProvider, providerOptions, connectionOptions], syncConnectionSelection);
 
 watch(selectedOtherProvider, value => {
   if (value) handleOtherProviderSelection(value);
