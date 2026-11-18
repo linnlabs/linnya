@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { CheckmarkIcon } from '@linnya/renderer-ui/icons';
+import PermissionTierIcon from './PermissionTierIcon.vue';
 import {
   PERMISSION_TIERS,
   TIER_DESCRIPTIONS,
@@ -16,8 +17,10 @@ const props = withDefaults(
     readonly allowFollowGlobal?: boolean;
     readonly hint?: string;
     readonly showSettingsLink?: boolean;
+    /** 每个档位前带图标（输入框只显示图标时用，让菜单教会图标含义）。 */
+    readonly iconSet?: 'shield' | 'mixed';
   }>(),
-  { allowFollowGlobal: true, hint: '', showSettingsLink: true },
+  { allowFollowGlobal: true, hint: '', showSettingsLink: true, iconSet: undefined },
 );
 
 const emit = defineEmits<{
@@ -41,6 +44,7 @@ function choose(value: ConversationTierSetting) {
       :aria-checked="modelValue === 'global'"
       @click="choose('global')"
     >
+      <PermissionTierIcon v-if="iconSet" :tier="globalTier" :set="iconSet" class="tier-menu__icon is-follow" />
       <span class="tier-menu__text">
         <span class="tier-menu__label">跟随全局设置</span>
         <span class="tier-menu__description">现在是“{{ TIER_LABELS[globalTier] }}”。全局设置改了，这里跟着变。</span>
@@ -58,6 +62,7 @@ function choose(value: ConversationTierSetting) {
       :aria-checked="modelValue === tier"
       @click="choose(tier)"
     >
+      <PermissionTierIcon v-if="iconSet" :tier="tier" :set="iconSet" class="tier-menu__icon" />
       <span class="tier-menu__text">
         <span class="tier-menu__label">{{ TIER_LABELS[tier] }}</span>
         <span class="tier-menu__description">{{ TIER_DESCRIPTIONS[tier] }}</span>
@@ -137,6 +142,21 @@ function choose(value: ConversationTierSetting) {
   color: var(--color-text-tertiary);
   font-size: var(--font-size-caption);
   line-height: var(--line-height-caption);
+}
+
+.tier-menu__icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+}
+
+.tier-menu__icon.is-follow {
+  color: var(--color-text-tertiary);
+}
+
+.tier-menu__option.is-full-access .tier-menu__icon {
+  color: var(--color-warning-text);
 }
 
 .tier-menu__check {

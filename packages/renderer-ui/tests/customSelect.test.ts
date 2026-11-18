@@ -414,6 +414,33 @@ describe('CustomSelect 子菜单交互与定位', () => {
     expect(label.title).toBe('');
   });
 
+  it('triggerTooltip 改用共享悬停提示，selected-value 插槽可替换触发器内容', async () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const app = createApp({
+      render() {
+        return h(CustomSelect, {
+          modelValue: 'standard',
+          triggerTooltip: '命令权限：标准',
+          options: [{ value: 'standard', text: '标准' }],
+        }, {
+          'selected-value': ({ displayValue }: { displayValue: string }) => h('svg', { class: 'level-icon', 'data-value': displayValue }),
+        });
+      },
+    });
+    app.mount(host);
+    mountedSelects.push({ host, unmount: () => { app.unmount(); host.remove(); } });
+    await flushRendering();
+
+    const trigger = host.querySelector('.select-trigger');
+    if (!(trigger instanceof HTMLButtonElement)) throw new Error('CustomSelect trigger not found');
+    expect(trigger.hasAttribute('title')).toBe(false);
+    expect(trigger.getAttribute('data-linnya-tooltip')).toBe('命令权限：标准');
+    expect(trigger.getAttribute('aria-label')).toBe('命令权限：标准');
+    expect(trigger.querySelector('.selected-value')).toBeNull();
+    expect(trigger.querySelector('.level-icon')?.getAttribute('data-value')).toBe('标准');
+  });
+
   it('主菜单与子菜单共用标准菜单项合同并提交子项动作', async () => {
     const onSelect = vi.fn();
     const mounted = mountUnifiedActionMenu(onSelect);
