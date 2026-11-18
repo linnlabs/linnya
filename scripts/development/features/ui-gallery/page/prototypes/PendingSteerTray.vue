@@ -3,12 +3,11 @@ import { IconButton } from '@linnya/renderer-ui';
 import { ClockIcon, CloseIcon, EditIcon } from '@linnya/renderer-ui/icons';
 
 /**
- * 输入框上方的“待送达”条：说明 Agent 什么时候会读到；送达前每条可编辑（放回输入框改完再发）
- * 或撤回（不发了），也可以立即打断。贴在输入框顶边后面，底部被输入框压住一截。
+ * 输入框上方的待送达消息：送达前每条可编辑（放回输入框改完再发）或撤回（不发了），
+ * 第一行还有“立即打断”。不另写提示。贴在输入框顶边后面，底部被输入框压住一截。
  */
 defineProps<{
   readonly messages: readonly string[];
-  readonly hint: string;
   readonly compact?: boolean;
 }>();
 
@@ -21,13 +20,10 @@ const emit = defineEmits<{
 
 <template>
   <div class="steer-tray" :class="{ 'is-compact': compact }">
-    <div class="steer-tray__head">
-      <ClockIcon class="steer-tray__icon" />
-      <span class="steer-tray__hint" :title="hint">{{ hint }}</span>
-      <button type="button" class="steer-tray__link" @click="emit('interrupt')">立即打断</button>
-    </div>
     <div v-for="(message, index) in messages" :key="index" class="steer-tray__item">
+      <ClockIcon class="steer-tray__icon" />
       <span class="steer-tray__text" :title="message">{{ message }}</span>
+      <button v-if="index === 0" type="button" class="steer-tray__link" @click="emit('interrupt')">立即打断</button>
       <span class="steer-tray__actions">
         <IconButton size="xs" label="编辑" @click="emit('edit', index)">
           <EditIcon />
@@ -60,7 +56,6 @@ const emit = defineEmits<{
   padding-left: var(--space-2-5);
 }
 
-.steer-tray__head,
 .steer-tray__item {
   display: flex;
   align-items: center;
@@ -76,11 +71,11 @@ const emit = defineEmits<{
   color: var(--color-text-tertiary);
 }
 
-.steer-tray__hint {
+.steer-tray__text {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-primary);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -100,19 +95,6 @@ const emit = defineEmits<{
 .steer-tray__link:hover {
   background: var(--color-bg-hover);
   color: var(--color-text-primary);
-}
-
-.steer-tray__item {
-  padding-left: calc(13px + var(--space-1-5));
-}
-
-.steer-tray__text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .steer-tray__actions {

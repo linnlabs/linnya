@@ -23,8 +23,6 @@ export type TimelineEntry =
 
 export const RUNNING_PLACEHOLDER = '补充或纠正，Agent 做完当前步骤后会读到';
 
-export const HINT_AFTER_BATCH = 'Agent 做完当前这批步骤后会读到';
-
 export const STEER_MESSAGE = '只看国内的产品，海外的先不管';
 
 const REQUEST: TimelineEntry = {

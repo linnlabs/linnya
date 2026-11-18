@@ -5,7 +5,6 @@ import MockComposer from '../prototypes/MockComposer.vue';
 import MockTimeline from '../prototypes/MockTimeline.vue';
 import PendingSteerTray from '../prototypes/PendingSteerTray.vue';
 import {
-  HINT_AFTER_BATCH,
   RUNNING_PLACEHOLDER,
   STEER_MESSAGE,
   TIMELINE_APPROVAL,
@@ -59,7 +58,7 @@ const running = computed(() => phase.value !== 'paused');
 
 const PHASE_NOTES: Readonly<Record<string, string>> = {
   typing: '运行中也能输入。有草稿时，底栏同时有暂停和发送；回车就是插话。',
-  pending: '消息先放在输入框上方，写明 Agent 什么时候会读到。送达前每条都能编辑（放回输入框改完再发）或撤回（不发了），也可以立即打断。',
+  pending: '消息先放在输入框上方，等这批步骤做完再送达。送达前每条都能编辑（放回输入框改完再发）或撤回（不发了），也可以立即打断。',
   delivered: '这批步骤做完后送达：消息出现在它被读到的位置，Agent 在同一次回复里接着做。',
   interrupted: '立即打断：暂停正在执行的步骤，消息作为新的一条发出，另起一次回复（与现在先暂停再发一样）。',
   paused: '暂停时，待送达的消息回到输入框，不会自动发出；点发送就另起一次回复。',
@@ -149,7 +148,6 @@ interface Scene {
   readonly note: string;
   readonly timeline: readonly TimelineEntry[];
   readonly pending: readonly string[];
-  readonly hint: string;
   readonly running: boolean;
   readonly awaitingUser?: boolean;
 }
@@ -158,10 +156,9 @@ const SCENES: readonly Scene[] = [
   {
     id: 'subrun',
     title: '正在等耗时长的子任务',
-    note: '子任务也是这批步骤里的一步，要等它跑完才送达。提示里写出在等哪个子任务；急的话用“立即打断”。',
+    note: '子任务也是这批步骤里的一步，要等它跑完才送达；急的话用“立即打断”。',
     timeline: TIMELINE_SUBRUN,
     pending: ['顺便看下有没有教育优惠'],
-    hint: 'Agent 在等子任务「国内产品资料调研」，它做完后会读到',
     running: true,
   },
   {
@@ -170,7 +167,6 @@ const SCENES: readonly Scene[] = [
     note: '可以输入，但消息不代替批准或拒绝；输入框的恢复按钮仍是禁用的，与现在一样。处理完批准、这批步骤做完后照常送达。',
     timeline: TIMELINE_APPROVAL,
     pending: ['上传前先把文件名改成“定价对比”'],
-    hint: '先处理上面的批准；这批步骤做完后，Agent 会读到',
     running: true,
     awaitingUser: true,
   },
@@ -180,7 +176,6 @@ const SCENES: readonly Scene[] = [
     note: '按发出的顺序一起送达，每条一个气泡；送达前每条都能单独编辑或撤回。',
     timeline: TIMELINE_RUNNING.slice(-2),
     pending: ['只看国内的产品', '价格统一按年付折算'],
-    hint: 'Agent 做完当前这批步骤后会一起读到',
     running: true,
   },
   {
@@ -189,7 +184,6 @@ const SCENES: readonly Scene[] = [
     note: '消息发出时 Agent 已经在写最后的回答，后面没有步骤了。回答写完后，消息自动作为下一条发出，不用再点。',
     timeline: TIMELINE_REPLY_FINISHED,
     pending: [],
-    hint: '',
     running: true,
   },
 ];
@@ -219,7 +213,7 @@ const SCENES: readonly Scene[] = [
           @pause="pause"
         >
           <template v-if="pending.length" #above>
-            <PendingSteerTray :messages="pending" :hint="HINT_AFTER_BATCH" @edit="edit" @withdraw="withdraw" @interrupt="interruptNow" />
+            <PendingSteerTray :messages="pending" @edit="edit" @withdraw="withdraw" @interrupt="interruptNow" />
           </template>
         </MockComposer>
       </div>
@@ -239,7 +233,7 @@ const SCENES: readonly Scene[] = [
             <MockTimeline :entries="scene.timeline" class="steer-preview__timeline" />
             <MockComposer :running="scene.running" :awaiting-user="scene.awaitingUser" :placeholder="RUNNING_PLACEHOLDER">
               <template v-if="scene.pending.length" #above>
-                <PendingSteerTray :messages="scene.pending" :hint="scene.hint" />
+                <PendingSteerTray :messages="scene.pending" />
               </template>
             </MockComposer>
           </div>
@@ -248,13 +242,13 @@ const SCENES: readonly Scene[] = [
         <figure class="steer-preview__figure">
           <figcaption>
             <span class="steer-preview__caption-title">侧边对话（紧凑宽度）</span>
-            <span class="steer-preview__caption-note">提示过长时截断，悬停看全文。</span>
+            <span class="steer-preview__caption-note">消息过长时截断，悬停看全文。</span>
           </figcaption>
           <div class="steer-preview__stage is-compact">
             <MockTimeline :entries="TIMELINE_RUNNING.slice(-2)" class="steer-preview__timeline" />
             <MockComposer variant="compact" model="DeepSeek V4 Flash" running :placeholder="RUNNING_PLACEHOLDER">
               <template #above>
-                <PendingSteerTray compact :messages="[STEER_MESSAGE]" :hint="HINT_AFTER_BATCH" />
+                <PendingSteerTray compact :messages="[STEER_MESSAGE]" />
               </template>
             </MockComposer>
           </div>
