@@ -40,3 +40,5 @@ app-level `development-data-lifecycle` workflow 持有。命令不接受路径�
 脚本应复用生产模块的公开入口，不复制业务规则。脚本需要 Electron 原生模块 ABI 时，通过 `scripts/test-runner/run-test-with-electron.cjs` 启动；不要为绕过 ABI 再实现一套数据库访问逻辑。
 
 `source-analysis/` 是诊断与门禁共用的只读技术能力：按工作区而非仅 Git index 枚举文件，提取 JS/TS/Vue 的值/类型导入；不做业务判定，也不改源码或 index。
+
+知识库的 `test:knowledge-search`、`kg:reset`、`kg:reset-vectors` 与 `kb:delete-vector-collection` 保留原入口；插件专有开发实现归 [Knowledge dev](../packages/plugins/knowledge/dev/README.md)，不进入发行包。搜索只读已有数据库，维护必须明确目标知识库，可用 `--workspaceDb` / `--workspaceRoot` 指向隔离数据。

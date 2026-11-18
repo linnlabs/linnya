@@ -230,7 +230,7 @@ pnpm run kg:reset -- --kbId <kbId>
 ```
 
 ### 3. 搜索集成验收 CLI
-用于在终端运行真实 Knowledge 搜索链并观察图谱输出；它不是 Agent 工具。搜索命令会初始化当前开发数据库和模型依赖，纯 Qdrant 子命令不会初始化 Workspace。
+用于在终端运行真实 Knowledge 搜索链并观察图谱输出；它不是 Agent 工具。搜索命令只读已有开发数据库；普通搜索使用正式模型依赖，`--noAi` 仅做关键词检索。纯 Qdrant 子命令不会初始化 Workspace。开发诊断没有真实 Conversation，不写历史 Evidence；详见[开发诊断与维护](../../dev/README.md)。
 ```bash
 # 观察 Full 模式
 pnpm run test:knowledge-search -- search --query "..." --graph full

@@ -11,12 +11,11 @@
 import type { ToolContext } from '@plugin/backend/toolRuntime';
 import { getKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
 
-export type KnowledgeBaseScope =
-  | {
-      kind: 'project';
-      projectId: string;
-      kbIds: string[];
-    };
+export type KnowledgeBaseScope = {
+  kind: 'project';
+  projectId: string;
+  kbIds: string[];
+};
 
 function normalizeId(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -46,24 +45,36 @@ export function resolveKnowledgeBaseScopeFromContext(
   context: Pick<ToolContext, 'workspaceProjectId'>
 ): KnowledgeBaseScope {
   const projectId = normalizeId(context.workspaceProjectId);
+  return resolveProjectKnowledgeBaseScope(
+    projectId,
+    projectId ? getKnowledgeToolRuntime().listProjectKnowledgeBaseIds(projectId) : []
+  );
+}
+
+/** 同一纯范围规则也供离线诊断复用；不授予运行时或数据库访问。 */
+export function resolveProjectKnowledgeBaseScope(
+  projectIdInput: string | undefined,
+  linkedKnowledgeBaseIds: readonly string[]
+): KnowledgeBaseScope {
+  const projectId = normalizeId(projectIdInput);
 
   // 1) 项目作用域：从 project_knowledge_base_links 查询
   if (projectId) {
-    const kbIds = uniqNonEmpty(getKnowledgeToolRuntime().listProjectKnowledgeBaseIds(projectId));
+    const kbIds = uniqNonEmpty(linkedKnowledgeBaseIds);
 
     // 项目未关联知识库：回退到 default（与系统默认知识库保持一致）
     if (kbIds.length === 0) {
       return {
         kind: 'project',
         projectId,
-        kbIds: ['default']
+        kbIds: ['default'],
       };
     }
 
     return {
       kind: 'project',
       projectId,
-      kbIds
+      kbIds,
     };
   }
 
