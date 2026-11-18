@@ -6,6 +6,8 @@
 
 从 macOS 设置 `LINNYA_WINDOWS_SSH_HOST`、`LINNYA_WINDOWS_SSH_USER`、`LINNYA_WINDOWS_SSH_KEY` 和 `LINNYA_WINDOWS_INTERACTIVE_USER`，执行 `node scripts/e2e/knowledge-plugin/windows.acceptance.mjs`。目标普通用户必须已经登录 Windows 桌面。源码必须已提交；候选绑定 Git commit/tree、生产依赖锁、插件 ZIP 和运行时哈希。
 
+还需显式提供 `LINNYA_WINDOWS_VC_RUNTIME_DIR`，指向有逐文件来源证据的 Visual Studio x64 CRT 目录。脚本复用正式 `prepareWindowsAppLocalRuntime` 拷贝三处 app-local CRT，并在 Windows 普通用户下执行原版 `after-sign-runtime-assets.cjs` 的 `release_unsigned` 收尾；App 未签名、微软 CRT 和 Node 真验签、原生模块哈希均通过后才启动业务。不会从系统目录或其他应用借 DLL，也不注入验签替身。候选记录原版收尾脚本和 CRT 哈希，回执保存正式生成的运行时清单。
+
 脚本按公共生产构建入口生成 Host JS、Renderer、官方插件、Node、Qdrant 和 Windows 原生依赖，再用 electron-builder 的正式目录布局装配。验收入口是实际 `dist/main/main.cjs`，身份为 community。该流程不制作 NSIS、不生成发行清单或字节码、不签名、不上传，不能作为正式发布或安装卸载的通过证据。
 
 若已有同版本 Windows Electron ZIP，可显式设置 `LINNYA_WINDOWS_ELECTRON_ZIP`。脚本会从 GitHub 官方发布回读 SHASUMS256、验证完整 ZIP 哈希后才交给 electron-builder 的 `electronDist`，并将来源和哈希写入候选。不会关闭校验或修改全局下载配置。

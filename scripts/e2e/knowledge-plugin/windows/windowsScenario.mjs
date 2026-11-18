@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile, writeFile, stat, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { startCustomCapabilityProtocolServer } from '../../../../src/app-hosts/linnya/application/custom-api-onboarding/__tests__/fixtures/customCapabilityProtocolServer.ts';
 import { MODEL_CONNECTION_TEST_PDF } from '../../../../src/app-hosts/linnya/application/custom-api-onboarding/definitions/modelConnectionTestDocument.ts';
@@ -73,6 +75,39 @@ const sourcePath = id =>
 try {
   const candidate = JSON.parse(await readFile(path.join(root, 'candidate.json'), 'utf8'));
   details.candidate = candidate;
+  await check('正式Windows未签名收尾验证App、微软CRT、Node及原生运行时', async () => {
+    const require = createRequire(import.meta.url);
+    for (const item of candidate.unsignedFinalization.files) {
+      const bytes = await readFile(path.join(root, 'finalization', item.file));
+      assert.equal(createHash('sha256').update(bytes).digest('hex'), item.sha256);
+    }
+    const { createAfterSignRuntimeAssetsHook } = require(
+      path.join(root, 'finalization/build/after-sign-runtime-assets.cjs')
+    );
+    // 真实 Windows 检查器与正式未签名策略；不注入验签替身，不手写 signature_evidence。
+    const hook = createAfterSignRuntimeAssetsHook({
+      environment: { LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST: 'release_unsigned' },
+    });
+    await hook({
+      electronPlatformName: 'win32',
+      appOutDir: unpacked,
+      packager: {
+        appInfo: { version: candidate.version, productFilename: 'Linnya Knowledge Acceptance' },
+      },
+    });
+    const manifest = JSON.parse(
+      await readFile(
+        path.join(
+          unpacked,
+          'resources/command-runtime/windows/x64/linnyaCommandProcessOwner.manifest.json'
+        ),
+        'utf8'
+      )
+    );
+    assert.deepEqual(manifest.signature_evidence, { kind: 'release_unsigned' });
+    details.unsignedRuntimeManifest = manifest;
+    await writeFile(path.join(evidence, 'unsigned-runtime.json'), json(manifest));
+  });
   application = await launchInstalledDesktop(
     path.join(unpacked, 'Linnya Knowledge Acceptance.exe'),
     path.join(root, 'session')

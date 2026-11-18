@@ -9,7 +9,7 @@ import { createDocumentActionContext, type DocumentActionTarget } from './create
 
 export function freezeWorkspaceDocumentActionContext(target: DocumentActionTarget) {
   return createDocumentActionContext(target, {
-    readPresentation: readDocumentReference,
+    readPresentation: ({ projectId, documentId }) => readDocumentReference({ projectId, documentId }),
     readActiveMarkdown(identity) {
       if (getActiveFileSession()?.documentId !== identity.documentId
         || useNavigationScope().currentProjectId !== identity.projectId) return null;

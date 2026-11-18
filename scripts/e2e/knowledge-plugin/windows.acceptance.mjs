@@ -71,6 +71,7 @@ try {
   const transfer = path.join(root, 'transfer');
   await mkdir(transfer);
   await cp(prepared.unpacked, path.join(transfer, 'win-unpacked'), { recursive: true });
+  await cp(prepared.finalization, path.join(transfer, 'finalization'), { recursive: true });
   for (const name of ['scenario.mjs', 'candidate.json', 'images.json'])
     await cp(path.join(root, name), path.join(transfer, name));
   // Windows PowerShell 5 按 BOM 识别 UTF-8；中文注释不能以系统 ANSI 解码而吞掉下一行。
@@ -79,7 +80,10 @@ try {
     '\ufeff' + (await readFile(path.join(import.meta.dirname, 'windows/user-session.ps1'), 'utf8'))
   );
   const localArchive = path.join(root, 'candidate.tar.gz');
-  await runCommand('tar', ['-czf', localArchive, '-C', transfer, '.']);
+  // Windows 安装树只传真实文件；macOS 的 AppleDouble 会被正确当成未签名 DLL 拒绝。
+  await runCommand('tar', ['-czf', localArchive, '-C', transfer, '.'], {
+    env: { ...process.env, COPYFILE_DISABLE: '1' },
+  });
   remoteTouched = true;
   await runCommand('scp', [...sshArgs, localArchive, `${target}:/${archive}`]);
   await runCommand('scp', [

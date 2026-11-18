@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cp, mkdir, readFile, writeFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { build } from 'esbuild';
 import sharp from 'sharp';
 import {
@@ -10,6 +11,11 @@ import {
   projectPackagedSchemasManifest,
 } from '../../../build/functions/productionPackageManifest.mjs';
 import { assertProductionPackageLock } from '../../../build/functions/productionPackageLock.mjs';
+
+const require = createRequire(import.meta.url);
+const {
+  prepareWindowsAppLocalRuntime,
+} = require('../../../build/functions/production-package-contract.cjs');
 
 export const repositoryRoot = path.resolve(import.meta.dirname, '../../../..');
 export const executableName = 'Linnya Knowledge Acceptance.exe';
@@ -58,6 +64,17 @@ export const hashFile = async file =>
 
 /** 真正 Host 的 JS/Renderer/插件与安装目录布局；不生成 NSIS、发行清单或假字节码。 */
 export async function prepareWindowsCandidate(root) {
+  const vcRuntimeSource = process.env.LINNYA_WINDOWS_VC_RUNTIME_DIR;
+  assert.ok(
+    vcRuntimeSource && path.isAbsolute(vcRuntimeSource),
+    'Set LINNYA_WINDOWS_VC_RUNTIME_DIR to the verified Visual Studio x64 CRT directory'
+  );
+  const vcRuntimeDirectory = path.join(root, 'vc-runtime');
+  const runtimeFiles = prepareWindowsAppLocalRuntime({
+    sourceDirectory: vcRuntimeSource,
+    targetDirectory: vcRuntimeDirectory,
+    architecture: 'x64',
+  });
   const sourceCommit = await runCommand('git', ['rev-parse', 'HEAD'], { inherit: false });
   assert.equal(
     await runCommand('git', ['status', '--porcelain'], { inherit: false }),
@@ -251,6 +268,28 @@ export async function prepareWindowsCandidate(root) {
   );
   const unpacked = path.join(output, 'win-unpacked');
   await stat(path.join(unpacked, executableName));
+  // 与正式安装包相同的 app-local CRT；真实微软签名由 Windows 上的 afterSign 验证。
+  for (const relativeDirectory of [
+    '.',
+    'resources/command-runtime/windows/x64',
+    'resources/bin/qdrant',
+  ]) {
+    const targetDirectory = path.join(unpacked, relativeDirectory);
+    await mkdir(targetDirectory, { recursive: true });
+    for (const name of runtimeFiles)
+      await cp(path.join(vcRuntimeDirectory, name), path.join(targetDirectory, name));
+  }
+  const finalizationFiles = [
+    'build/after-sign-runtime-assets.cjs',
+    'build/windows-vc-runtime-trust.cjs',
+    'config/headless-node-runtime.json',
+  ];
+  const finalization = path.join(root, 'finalization');
+  for (const file of finalizationFiles) {
+    const target = path.join(finalization, file);
+    await mkdir(path.dirname(target), { recursive: true });
+    await cp(path.join(repositoryRoot, file), target);
+  }
   const scenario = path.join(root, 'scenario.mjs');
   await build({
     entryPoints: [path.join(import.meta.dirname, 'windowsScenario.mjs')],
@@ -283,6 +322,21 @@ export async function prepareWindowsCandidate(root) {
       'Real App and plugin artifact; not NSIS installation, release bytecode or production publication',
     productionLockSha256: await hashFile(path.join(repositoryRoot, 'production-package-lock.json')),
     scenarioSha256: await hashFile(scenario),
+    unsignedFinalization: {
+      mode: 'release_unsigned',
+      files: await Promise.all(
+        finalizationFiles.map(async file => ({
+          file,
+          sha256: await hashFile(path.join(finalization, file)),
+        }))
+      ),
+      vcRuntime: await Promise.all(
+        runtimeFiles.map(async file => ({
+          file,
+          sha256: await hashFile(path.join(vcRuntimeDirectory, file)),
+        }))
+      ),
+    },
     pluginZipSha256: await hashFile(
       path.join(
         repositoryRoot,
@@ -301,5 +355,5 @@ export async function prepareWindowsCandidate(root) {
   await writeJson(path.join(root, 'candidate.json'), candidate);
   assert.equal(await runCommand('git', ['rev-parse', 'HEAD'], { inherit: false }), sourceCommit);
   assert.equal(await runCommand('git', ['status', '--porcelain'], { inherit: false }), '');
-  return { candidate, unpacked, scenario };
+  return { candidate, unpacked, scenario, finalization };
 }
