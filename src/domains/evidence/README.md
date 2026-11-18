@@ -57,9 +57,9 @@
 - **工具接入点**：
   - `web_search/web_read`：Web 只生成 owner-owned capture DTO；`src/app-hosts/linnya/adapters/tools/webEvidenceWriterToolContextDecorator.ts` 在 Host 组合边界映射 Evidence command 并注入 conversation scope
   - Workspace `write_file/edit_file` 与插件 citation source resolver 的 Evidence fallback
-  - `knowledge_read`：由 `src/tools/knowledgebase/reader/knowledgeReadEvidenceAdapter.ts` 交付 Knowledge owner capture，不向 Agent 返回 bundle 身份
+  - `knowledge_read`：由 `packages/plugins/knowledge/src/backend/tools/reader/knowledgeReadEvidenceAdapter.ts` 交付 Knowledge owner capture，不向 Agent 返回 bundle 身份
   - `knowledge_search/search_in_knowledgebase`：交付 Agent 实际看到的 snippet 或 deep reading view 完整块
-  - `src/tools/knowledgebase/evidence/knowledgeEvidenceBundleAdapter.ts` 是上述 Knowledge capture 到 Evidence command 的唯一映射点
+  - `packages/plugins/knowledge/src/backend/tools/evidence/knowledgeEvidenceBundleAdapter.ts` 是上述 Knowledge capture 到 Evidence command 的唯一映射点
   - `evidence_resolve`：`src/tools/evidence/EvidenceResolveTool.ts`（模型可直接读取 EvidenceStore）
     - `mode="resolve_refs"`：按 `refs=[...]` 解析证据预览
     - `mode="list_refs"`：浏览当前 instance 下已有的 `[@ref]` 列表（推荐给模型使用，不需要 bundle_id）

@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -34,6 +36,7 @@ const evidence = createEvidence('knowledge-plugin-production-workers', { files: 
 ] });
 const test = acceptance(process.env.KNOWLEDGE_PROBE_NAME || `knowledge-plugin-${process.pid}`, { evidence });
 const { run } = test;
+const exec = promisify(execFile);
 const json = JSON.stringify;
 const evaluate = async code => (await run('eval', `(async()=>{${code}})()`)).value;
 const invoke = (channel, payload = {}) => evaluate(`const result=await window.electronAPI['plugin:invoke']('knowledge',${json(channel)},${json(payload)});if(!result.success)throw new Error(JSON.stringify(result));return result.data;`);
@@ -52,6 +55,19 @@ const upload = (kbId, name, base64, modelFields) => evaluate(`const session=awai
 let db;
 let up;
 let failed;
+let evidenceConversation;
+let citationRefs;
+const callTool = async (tool, scope, args) => {
+  const command = ['-s', 'linnya:cli', 'tools', 'call', tool, ...scope, '--args-json', JSON.stringify(args)];
+  let stdout;
+  try {
+    ({ stdout } = await exec('pnpm', command, { env: { ...process.env, LINNYA_CLI_CONNECTION_FILE: up.connectionFile }, timeout: 60_000 }));
+  } catch (error) {
+    if (!error.stdout) throw error;
+    stdout = error.stdout;
+  }
+  return JSON.parse(stdout);
+};
 try {
   up = await run('up', '--size', '1440x1100', '--mode', process.env.KNOWLEDGE_PLUGIN_MODE || 'dev');
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
@@ -113,6 +129,48 @@ try {
     assert.ok(edges.length > 0);
     evidence.json('graph-production', { nodes, edges, status: await invoke('graph-progress', { kbId: kb.id }) });
   });
+  await evidence.check('两个检索工具和原文分块走真实项目权限，其他项目不能按文档身份越权', async () => {
+    const project = await evaluate("return await window.electronAPI['workspace:create-project']({name:'Knowledge scope A'});");
+    const other = await evaluate("return await window.electronAPI['workspace:create-project']({name:'Knowledge scope B'});");
+    assert.equal(project.success, true); assert.equal(other.success, true);
+    await invoke('replace-project-kb-links', { projectId: project.data.projectId, kbIds: [kb.id] });
+    const receipts = [];
+    for (const tool of ['knowledge_search', 'search_in_knowledgebase']) {
+      const result = await callTool(tool, ['--project', project.data.projectId], { query: 'apple', top_k: 1 });
+      evidence.json(`tool-${tool}`, result);
+      assert.equal(result.ok, true);
+      assert.equal(result.tool.payload.status, 'success');
+      const citations = result.tool.payload.data.citations.citations;
+      assert.equal(citations.length, 1);
+      assert.match(citations[0].ref, /^[A-Za-z0-9]{6}$/);
+      assert.ok(result.tool.content.includes(`[@${citations[0].ref}]`));
+      receipts.push(result);
+    }
+    evidenceConversation = receipts[0].conversation_id;
+    citationRefs = receipts[0].tool.payload.data.citations.citations.map(item => item.ref);
+    const doc = (await invoke('list-documents', { kbId: kb.id })).find(item => item.filename === 'orchard.md');
+    assert.ok(doc);
+    const read = await callTool('knowledge_read', ['--conversation', evidenceConversation], { doc_id: doc.id, start_chunk: 1, end_chunk: 1 });
+    evidence.json('tool-knowledge-read', read);
+    assert.equal(read.ok, true);
+    assert.equal(read.tool.payload.status, 'success');
+    assert.ok(read.tool.content.includes('Apple orchard'));
+    const stored = JSON.parse(sources.get(doc.id).toString('utf8'));
+    const selected = { query: 'apple', selected_blocks: [{ doc_id: doc.id, block_id: stored.structure.root[0] }] };
+    const assembled = await callTool('assemble_documents', ['--conversation', evidenceConversation], selected);
+    evidence.json('tool-assemble', assembled);
+    assert.equal(assembled.ok, true);
+    assert.equal(assembled.tool.payload.status, 'success');
+    for (const [tool, args] of [['knowledge_read', { doc_id: doc.id }], ['assemble_documents', selected]]) {
+      const denied = await callTool(tool, ['--project', other.data.projectId], args);
+      evidence.json(`denied-${tool}`, denied);
+      assert.equal(denied.ok, false);
+    }
+    await invoke('replace-project-kb-links', { projectId: project.data.projectId, kbIds: [] });
+    const unlinked = await callTool('knowledge_read', ['--conversation', evidenceConversation], { doc_id: doc.id });
+    assert.equal(unlinked.ok, false);
+    evidence.json('unlinked-read-denied', unlinked);
+  });
   await run('click', '--selector', '.sidebar-entry:has(svg[data-icon="library"])');
   await run('wait', '--text', 'Plugin production corpus');
   await run('click', 'text=Plugin production corpus');
@@ -135,6 +193,12 @@ try {
     await run('wait', '--expr', `!document.querySelector('.sidebar-entry:has(svg[data-icon="library"])')`);
     assert.deepEqual(db.prepare('SELECT * FROM knowledge_bases WHERE id=?').get(kb.id), before);
     for (const [id, bytes] of sources) assert.deepEqual(readFileSync(join(up.root, 'workspace', 'KnowledgeBase', 'source_of_truth', `${id}.source.json`)), bytes);
+    const historical = await callTool('evidence_resolve', ['--conversation', evidenceConversation], { mode: 'resolve_refs', refs: citationRefs });
+    evidence.json('disabled-historical-evidence', historical);
+    assert.equal(historical.ok, true);
+    assert.equal(historical.tool.payload.status, 'success');
+    assert.equal(historical.tool.payload.data.missing_count, 0);
+    assert.equal(historical.tool.payload.data.resolved_count, citationRefs.length);
     await run('shot');
     const enabled = await evaluate("return await window.electronAPI.plugins.setEnabled('knowledge',true);");
     assert.equal(enabled.success, true, json(enabled));
