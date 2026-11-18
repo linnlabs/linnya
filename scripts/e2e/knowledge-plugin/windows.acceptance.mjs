@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
@@ -73,9 +73,10 @@ try {
   await cp(prepared.unpacked, path.join(transfer, 'win-unpacked'), { recursive: true });
   for (const name of ['scenario.mjs', 'candidate.json', 'images.json'])
     await cp(path.join(root, name), path.join(transfer, name));
-  await cp(
-    path.join(import.meta.dirname, 'windows/user-session.ps1'),
-    path.join(transfer, 'user-session.ps1')
+  // Windows PowerShell 5 按 BOM 识别 UTF-8；中文注释不能以系统 ANSI 解码而吞掉下一行。
+  await writeFile(
+    path.join(transfer, 'user-session.ps1'),
+    '\ufeff' + (await readFile(path.join(import.meta.dirname, 'windows/user-session.ps1'), 'utf8'))
   );
   const localArchive = path.join(root, 'candidate.tar.gz');
   await runCommand('tar', ['-czf', localArchive, '-C', transfer, '.']);
@@ -105,7 +106,7 @@ try {
     try {
       // 只读回执先带回，再收尾唯一token范围；失败也保留真实Desktop日志与截图。
       await remote(
-        `$ErrorActionPreference='Stop'; if(Test-Path -LiteralPath ${ps(remoteRoot)}) { Set-Location -LiteralPath ${ps(remoteRoot)}; $files=@('result.json','session.json','scenario.stdout.log','scenario.stderr.log','evidence') | Where-Object {Test-Path -LiteralPath $_}; & tar.exe -czf ${ps(reports)} @files; if($LASTEXITCODE -ne 0){throw 'Evidence archive failed'} }`
+        `$ErrorActionPreference='Stop'; if(Test-Path -LiteralPath ${ps(remoteRoot)}) { Set-Location -LiteralPath ${ps(remoteRoot)}; $files=@(@('result.json','session.json','scenario.stdout.log','scenario.stderr.log','evidence') | Where-Object {Test-Path -LiteralPath $_}); if($files.Count -eq 0){throw 'No Windows evidence was produced'}; & tar.exe -czf ${ps(reports)} @files; if($LASTEXITCODE -ne 0){throw 'Evidence archive failed'} }`
       );
       const localReports = path.join(root, 'reports.tar.gz');
       await runCommand('scp', [...sshArgs, `${target}:/${reports}`, localReports]);
