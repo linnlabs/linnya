@@ -401,7 +401,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRef,
 import { useHistoryTime } from '@app/localization';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
-import { BaseButton, SegmentedTabs, SkeletonRows, TagChip } from '@linnya/renderer-ui';
+import { BaseButton, SegmentedTabs, SkeletonRows, TagChip, useTimer } from '@linnya/renderer-ui';
 import type { CustomSelectOption, SegmentedTabItem } from '@linnya/renderer-ui';
 import type { SemanticSchemaOverview } from '@app/schemas';
 import { ChatIcon, ChevronIcon, LibraryIcon, SaveIcon, SearchIcon } from '@linnya/renderer-ui/icons';
@@ -545,13 +545,11 @@ watch(projectIdRef, () => {
 
 // 写入失败（保存筛选、看板改值）的一句提示，几秒后自动消失。
 const actionError = ref<string | null>(null);
-let actionErrorTimer: ReturnType<typeof setTimeout> | null = null;
+const actionErrorTimer = useTimer();
 function reportError(message: string): void {
   actionError.value = message;
-  if (actionErrorTimer) clearTimeout(actionErrorTimer);
-  actionErrorTimer = setTimeout(() => { actionError.value = null; }, 6_000);
+  actionErrorTimer.start(() => { actionError.value = null; }, 6_000);
 }
-onBeforeUnmount(() => { if (actionErrorTimer) clearTimeout(actionErrorTimer); });
 
 const { matches: fieldMatches, failure: fieldMatchFailure } = useProjectFieldMatches(
   projectIdRef,

@@ -1144,54 +1144,9 @@
       "count": 11
     }
   },
-  "apps/renderer/domains/knowledgebase/features/upload-queue/orchestration/polling.js": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/knowledgebase/orchestration/createKnowledgeBaseRuntime.js": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/knowledgebase/services/progressAnimator.js": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
-  "apps/renderer/domains/model-configuration/features/direct-provider-onboarding/ui/DirectProviderOnboardingForm.vue": {
-    "no-restricted-properties": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/model-configuration/features/ollama-model-registration/ui/OllamaModelRegistrationForm.vue": {
-    "no-restricted-properties": {
-      "count": 2
-    }
-  },
   "apps/renderer/domains/workspace/features/import-export/services/exportService.js": {
     "no-unused-vars": {
       "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectConversationSearch.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectConversationsData.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectOverviewContentSearch.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectOverviewData.ts": {
-    "no-restricted-globals": {
-      "count": 3
     }
   },
   "apps/renderer/domains/workspace/features/project-overview/ui/ProjectConversationsPanel.vue": {
@@ -1199,23 +1154,8 @@
       "count": 1
     }
   },
-  "apps/renderer/domains/workspace/features/project-overview/ui/ProjectOverviewBoard.vue": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/features/project-overview/ui/ProjectOverviewView.vue": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "apps/renderer/domains/workspace/features/project-overview/ui/ProjectSaveFilterPopover.vue": {
     "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/services/file-manager/index.ts": {
-    "no-restricted-properties": {
       "count": 1
     }
   },
