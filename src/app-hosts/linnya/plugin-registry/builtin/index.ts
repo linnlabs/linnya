@@ -40,7 +40,7 @@ import {
   readDirectPluginDirsFromEnv,
   readJsonFile,
 } from '../../../../electron-main/plugins/loader/pluginLayout';
-import { resumePendingPluginDataCleanups } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { resumePendingPluginDataCleanupsSync } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import { pathManager } from '../../../../shared/utils/pathManager';
 import {
   getDocumentTypeBackendHook,
@@ -472,7 +472,8 @@ export function bootstrapBuiltinPluginLifecycle(
   stateService.ensureBuiltinInstalled(metas.filter(meta => meta.builtin));
   // 清理任务在目录删除和 SQLite 收尾之间可能被进程打断；启动时按原 manifest
   // 声明续清。没有 pending job 时不扫描数据目录，避免把插件冷启动变成全盘检查。
-  void resumePendingPluginDataCleanups({
+  try {
+    resumePendingPluginDataCleanupsSync({
     db,
     dataRoot: pathManager.getKbDataPath(),
     resolveStorage: pluginId => {
@@ -490,14 +491,15 @@ export function bootstrapBuiltinPluginLifecycle(
         return null;
       }
     },
-  }).catch(error => {
+    });
+  } catch (error) {
     pluginDiagnostics.record({
       level: 'error',
       pluginId: null,
       capability: 'migration',
       message: `恢复插件数据清理失败: ${error instanceof Error ? error.message : String(error)}`,
     });
-  });
+  }
   const installedIds = readInstalledPluginIds(db, metas);
   applyRegisteredPluginSchemas(db, installedIds);
   runRegisteredPluginLifecycle(db, installedIds, applicationVersion);

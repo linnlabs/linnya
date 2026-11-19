@@ -172,7 +172,7 @@ function dropOwnedTables(db: Database.Database, tableNames: readonly string[]): 
  * 删除插件声明的数据。目录清理可中断，SQLite 收尾保持一个事务，避免只删
  * 迁移账本而留下半套表。清理失败保留 job，下一次启动或用户重试可续清。
  */
-export async function cleanupPluginData(options: PluginDataCleanupOptions): Promise<PluginDataCleanupResult> {
+export function cleanupPluginDataSync(options: PluginDataCleanupOptions): PluginDataCleanupResult {
   ensureCleanupTable(options.db);
   const now = options.now ?? Date.now;
   const usageBefore = calculatePluginStorageUsage(options);
@@ -186,7 +186,10 @@ export async function cleanupPluginData(options: PluginDataCleanupOptions): Prom
 
   try {
     assertNotAborted(options.signal);
-    await options.stopRuntime?.();
+    const stopResult = options.stopRuntime?.();
+    if (stopResult instanceof Promise) {
+      throw new Error('插件数据清理需要由异步生命周期入口先停止运行时');
+    }
     for (const declaration of declaredPaths(options.dataStorage)) {
       assertNotAborted(options.signal);
       if (completedPaths.has(declaration.key)) continue;
@@ -214,11 +217,38 @@ export async function cleanupPluginData(options: PluginDataCleanupOptions): Prom
   }
 }
 
+export async function cleanupPluginData(options: PluginDataCleanupOptions): Promise<PluginDataCleanupResult> {
+  await options.stopRuntime?.();
+  return cleanupPluginDataSync({ ...options, stopRuntime: undefined });
+}
+
 export async function resumePluginDataCleanup(options: PluginDataCleanupOptions): Promise<PluginDataCleanupResult> {
   ensureCleanupTable(options.db);
   const job = options.db.prepare('SELECT plugin_id, status, completed_paths, error FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId) as CleanupJobRow | undefined;
   if (!job) return cleanupPluginData(options);
   return cleanupPluginData(options);
+}
+
+export function resumePendingPluginDataCleanupsSync(options: {
+  readonly db: Database.Database;
+  readonly dataRoot: string;
+  readonly resolveStorage: (pluginId: PluginId) => PluginManifestDataStorage | null;
+}): readonly PluginDataCleanupResult[] {
+  ensureCleanupTable(options.db);
+  const jobs = options.db.prepare('SELECT plugin_id, data_storage FROM plugin_cleanup_jobs ORDER BY started_at').all() as Array<{ plugin_id: string; data_storage: string }>;
+  const results: PluginDataCleanupResult[] = [];
+  for (const job of jobs) {
+    const declaredStorage = PluginManifestDataStorageSchema.parse(JSON.parse(job.data_storage));
+    const dataStorage = options.resolveStorage(job.plugin_id) ?? declaredStorage;
+    if (!dataStorage) continue;
+    results.push(cleanupPluginDataSync({
+      db: options.db,
+      pluginId: job.plugin_id,
+      dataRoot: options.dataRoot,
+      dataStorage,
+    }));
+  }
+  return results;
 }
 
 /** 启动时只恢复已持久化的清理任务；没有任务时不扫描用户目录。 */
@@ -227,19 +257,5 @@ export async function resumePendingPluginDataCleanups(options: {
   readonly dataRoot: string;
   readonly resolveStorage: (pluginId: PluginId) => PluginManifestDataStorage | null;
 }): Promise<readonly PluginDataCleanupResult[]> {
-  ensureCleanupTable(options.db);
-  const jobs = options.db.prepare('SELECT plugin_id, data_storage FROM plugin_cleanup_jobs ORDER BY started_at').all() as Array<{ plugin_id: string; data_storage: string }>;
-  const results: PluginDataCleanupResult[] = [];
-  for (const job of jobs) {
-    const declaredStorage = PluginManifestDataStorageSchema.parse(JSON.parse(job.data_storage));
-    const dataStorage = options.resolveStorage(job.plugin_id) ?? declaredStorage;
-    if (!dataStorage) continue;
-    results.push(await resumePluginDataCleanup({
-      db: options.db,
-      pluginId: job.plugin_id,
-      dataRoot: options.dataRoot,
-      dataStorage,
-    }));
-  }
-  return results;
+  return resumePendingPluginDataCleanupsSync(options);
 }
