@@ -209,9 +209,9 @@
               <dt>{{ message('workspace.projectOverview.conversations.detail.selected') }}</dt>
               <dd>{{ agentText(selectedRow.selected_agent_id) }}</dd>
             </div>
-            <div v-if="detail && detail.subagents.length > 0">
-              <dt>{{ message('workspace.projectOverview.conversations.detail.subagents') }}</dt>
-              <dd>{{ subagentsText(detail.subagents) }}</dd>
+            <div v-if="selectedSubrunCount > 0">
+              <dt>{{ message('workspace.projectOverview.actor.subrun') }}</dt>
+              <dd>{{ message('workspace.projectOverview.conversations.detail.subrunCount', { count: selectedSubrunCount }) }}</dd>
             </div>
           </dl>
         </section>
@@ -332,7 +332,6 @@ import {
   type ProjectConversationChangedDocument,
   type ProjectConversationRow,
   type ProjectConversationStorage,
-  type ProjectConversationSubagent,
 } from '@app/schemas';
 import type { WorkspaceMessageKey } from '@/domains/workspace/definitions/workspaceMessages';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
@@ -354,6 +353,7 @@ import {
   formatProjectConversationAgents,
   projectConversationRepliedAgents,
   projectConversationStorageBytes,
+  projectConversationSubrunCount,
   sortProjectConversationRows,
 } from '../functions/projectConversationRows';
 import { isExcerptShown } from '../functions/projectConversationExcerpt';
@@ -406,14 +406,6 @@ function agentText(agentId: string | null): string {
 const listSeparator = computed(() => message('workspace.projectOverview.condition.join'));
 function repliedAgentsText(row: ProjectConversationRow): string | null {
   return formatProjectConversationAgents(row.replied_agent_ids, agentText, listSeparator.value);
-}
-function subagentsText(subagents: readonly ProjectConversationSubagent[]): string {
-  return subagents
-    .map(item => message('workspace.projectOverview.conversations.detail.subagentRuns', {
-      name: agentText(item.agent_id),
-      count: item.run_count,
-    }))
-    .join(listSeparator.value);
 }
 function titleText(row: ProjectConversationRow): string {
   return row.title.trim() || message('workspace.projectOverview.untitledConversation');
@@ -540,6 +532,7 @@ watch(sortedRows, list => {
 const selectedRow = computed(() => sortedRows.value.find(row => row.conversation_id === selectedId.value) ?? null);
 const { detail, status: detailStatus } = useProjectConversationDetail(projectIdRef, selectedId, revisionRef);
 const selectedStorage = computed(() => selectedRow.value?.storage ?? null);
+const selectedSubrunCount = computed(() => projectConversationSubrunCount(detail.value?.subagents ?? []));
 const selectedExcerpt = computed(() => {
   const excerpt = selectedId.value && filters.value.query.trim() ? matches.value?.get(selectedId.value) ?? null : null;
   return excerpt && !isExcerptShown(excerpt, [detail.value?.first_question, detail.value?.last_answer]) ? excerpt : null;

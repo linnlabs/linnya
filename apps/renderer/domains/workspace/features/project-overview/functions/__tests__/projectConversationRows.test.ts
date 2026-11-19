@@ -6,6 +6,7 @@ import {
   filterProjectConversationRows,
   formatProjectConversationAgents,
   projectConversationRepliedAgents,
+  projectConversationSubrunCount,
   projectConversationsTotalBytes,
   sortProjectConversationRows,
 } from '../projectConversationRows';
@@ -75,6 +76,14 @@ describe('项目对话行', () => {
       row('b', { replied_agent_ids: [null] }),
       row('c', { replied_agent_ids: [] }),
     ])).toEqual(['research_v1', '']);
+  });
+
+  it('子任务按全部子运行合计，不按 Agent 分列', () => {
+    expect(projectConversationSubrunCount([
+      { agent_id: 'research_source_review_v1', run_count: 2 },
+      { agent_id: 'subagent_general', run_count: 1 },
+    ])).toBe(3);
+    expect(projectConversationSubrunCount([])).toBe(0);
   });
 
   it('排序：置顶始终在前；没测过占用的排在最后，与升降序无关', () => {

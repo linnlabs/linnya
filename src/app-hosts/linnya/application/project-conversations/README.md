@@ -8,7 +8,7 @@
   按 Agent 去重、最近回复的在前；当前选用的 Agent 取自对话。Agent 注册为 `internal` 的运行（标题生成、单轮写作、
   批量收尾等）不算；默认 Agent 与未记录 Agent 的运行都写作 `null`（`toReadModelAgentId`）。概念区分见
   [产品模型总览 §5.2](../../../../../docs/product-model-overview.md#52-agent-自由注册)。轮次是用户消息数。置顶在前，再按最近活动。
-- 派出的子 Agent：详情里按 Agent 计子运行次数（含多层子运行），次数多的在前，同样不算内部 Agent。
+- 派出的子 Agent：详情里按 Agent 计子运行次数（含多层子运行），次数多的在前，同样不算内部 Agent。子 Agent 还没有面向用户的名字，界面目前只显示合计的“子任务 N 次”。
 - 改过的文档：[行动账本](../../../../domains/action-ledger/README.md)按对话去重计数；详情另给每份文档的类型、最近改动时间、
   是否已删除（已删除不可打开），内建 Markdown 再给待审阅修订数。
 - 详情的第一个问题与最后的答复取自[可读对话](../../../../../docs/conversation-platform/06-read-model.md#8-可读对话)，
