@@ -13,10 +13,15 @@ export const ProjectOverviewRequestSchema = z.object({
 }).strict();
 
 /**
- * 改动是谁做的。`linnya_ai` 是 Linnya 自己的 Agent 运行（含子运行）；`external` 是经外部控制入口（Linnya CLI）写入的改动，分不出调用方是人、脚本还是外部 Agent；
+ * 改动是谁做的，与行动账本的执行者种类一致。`run` 是 Agent 主运行，具体是哪个 Agent 见同级的 `agent_id`；
+ * `subrun` 是 Agent 派出的子任务（子 Agent 没有面向用户的名字，界面显示为“子任务”）；
+ * `external` 是经外部控制入口（Linnya CLI）写入的改动，分不出调用方是人、脚本还是外部 Agent；
  * `plugin` 是插件的后台自动化。只有账本能说明的才给，说不清时为 null。
  */
-export const ProjectOverviewActorSchema = z.enum(['linnya_ai', 'user', 'external', 'plugin']);
+export const ProjectOverviewActorSchema = z.enum(['run', 'subrun', 'user', 'external', 'plugin']);
+
+/** 执行的 Agent（注册表 ID），按 `toReadModelAgentId` 的约定：默认 Agent 为 null；`actor` 不是运行时也为 null。 */
+const ProjectOverviewAgentIdSchema = z.string().min(1).nullable();
 
 export const ProjectOverviewDocumentSchema = z.object({
   document_id: z.string().min(1),
@@ -31,6 +36,7 @@ export const ProjectOverviewDocumentSchema = z.object({
   creator: z.object({
     actor: ProjectOverviewActorSchema,
     plugin_id: z.string().min(1).nullable(),
+    agent_id: ProjectOverviewAgentIdSchema,
     /** 新建它的对话；不是在对话里新建的、或对话已不属于本项目时为 null。 */
     conversation_id: z.string().min(1).nullable(),
     conversation_title: z.string().nullable(),
@@ -41,6 +47,7 @@ export const ProjectOverviewDocumentSchema = z.object({
   last_modified_by: z.object({
     actor: ProjectOverviewActorSchema,
     plugin_id: z.string().min(1).nullable(),
+    agent_id: ProjectOverviewAgentIdSchema,
   }).strict().nullable(),
   /** 只对有待审阅修订的文档类型（内建 Markdown）给出；其他类型为 null。 */
   pending_revision_count: z.number().int().nonnegative().nullable(),

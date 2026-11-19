@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { PromptKeys, type ProjectConversations, type ProjectConversationsRequest } from '@app/schemas';
+import { toReadModelAgentId, type ProjectConversations, type ProjectConversationsRequest } from '@app/schemas';
 import { createSqliteActionLedger } from 'src/domains/action-ledger';
 import { toConversationStorage, type ConversationStorageUsageRow } from '../functions/conversationStorageRow';
 
@@ -39,7 +39,7 @@ export function readProjectConversations(
       conversation_id: row.conversation_id,
       title: row.title,
       // 默认 Agent 选定后也会记成它的 ID；合同里统一为 null。
-      agent_id: row.agent_id === PromptKeys.DEFAULT ? null : row.agent_id,
+      agent_id: toReadModelAgentId(row.agent_id),
       turn_count: row.user_message_count,
       changed_document_count: documentCounts.get(row.conversation_id) ?? 0,
       created_at: row.created_at,

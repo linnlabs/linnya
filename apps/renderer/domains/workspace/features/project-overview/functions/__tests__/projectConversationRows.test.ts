@@ -36,7 +36,7 @@ const storage = (bytes: number) => ({
   measured_at: 1,
 });
 
-const labels = { title: (item: ProjectConversationRow) => item.title, agent: (item: ProjectConversationRow) => item.agent_id ?? 'Linnya AI' };
+const labels = { title: (item: ProjectConversationRow) => item.title, agent: (item: ProjectConversationRow) => item.agent_id ?? 'Linnya Agent' };
 
 describe('项目对话行', () => {
   it('筛选：Agent 空字符串是默认 Agent，最近活动按本地日历日，改过文档分有无', () => {

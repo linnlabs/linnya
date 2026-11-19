@@ -4,13 +4,14 @@ import { WORKSPACE_MESSAGE_FALLBACKS } from '@/domains/workspace/definitions/wor
 import type { WorkspaceMessageResolver } from '@/domains/workspace/definitions/workspaceMessages';
 import { changeMetaText, changeSummaryText, matchesQuery, tagOriginText, type SemanticSchemaTextContext } from '../semanticSchemaText';
 import { usageMetaText } from '../semanticSchemaUsage';
+import { resolveProjectOverviewAgentName } from '../../../project-overview/functions/projectOverviewPresentation';
 
 const message: WorkspaceMessageResolver = (key, params) => Object.entries(params ?? {})
   .reduce<string>((text, [name, value]) => text.split(`{${name}}`).join(String(value)), WORKSPACE_MESSAGE_FALLBACKS[key]);
 
 const context: SemanticSchemaTextContext = {
   message,
-  agentName: id => (id === 'research' ? '研究助手' : null),
+  agentName: id => resolveProjectOverviewAgentName(id, new Map([['research', '研究助手']]), message),
   timeText: () => '10:42',
 };
 
@@ -18,8 +19,9 @@ const agent = { kind: 'run', conversation_id: 'c1', conversation_title: '整理�
 
 describe('标签管理文案', () => {
   it('新建来源：Agent 带对话名，用户说“你”，迁移前的只给时间', () => {
-    expect(tagOriginText(agent, 1, context)).toBe('Linnya AI 在对话“整理资料”里新建 · 10:42');
+    expect(tagOriginText(agent, 1, context)).toBe('Linnya Agent 在对话“整理资料”里新建 · 10:42');
     expect(tagOriginText({ ...agent, agent_id: 'research', conversation_id: null }, 1, context)).toBe('研究助手 新建 · 10:42');
+    expect(tagOriginText({ ...agent, kind: 'subrun', agent_id: 'subagent_general' }, 1, context)).toBe('子任务 在对话“整理资料”里新建 · 10:42');
     expect(tagOriginText({ kind: 'user', conversation_id: null, conversation_title: null, agent_id: null }, 1, context)).toBe('你新建 · 10:42');
     expect(tagOriginText(null, 1, context)).toBe('新建于 10:42');
   });
@@ -37,7 +39,7 @@ describe('标签管理文案', () => {
       summary: { kind: 'change_property_type', property: '年份', fromType: 'text', toType: 'number', objects: 11, failed: 2 },
     };
     expect(changeSummaryText(retype.summary, message)).toBe('字段“年份”改成数字');
-    expect(changeMetaText(retype, context)).toBe('11 份文档，2 份转不了 · Linnya AI · 对话“整理资料” · 10:42');
+    expect(changeMetaText(retype, context)).toBe('11 份文档，2 份转不了 · Linnya Agent · 对话“整理资料” · 10:42');
     expect(changeSummaryText({
       kind: 'update_options', property: '状态', added: ['氢能'], renamed: [{ from: '在读', to: '正在读' }], removed: [], objects: 0,
     }, message)).toBe('字段“状态”的选项：新增“氢能”，改名 在读 → 正在读');

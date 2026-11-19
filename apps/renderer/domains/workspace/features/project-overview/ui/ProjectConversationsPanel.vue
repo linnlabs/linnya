@@ -380,7 +380,7 @@ const { historyTime, now: historyClock } = useHistoryTime();
 const now = computed(() => new Date(historyClock.value));
 
 function agentText(agentId: string | null): string {
-  return props.presentation.agentName(agentId) ?? agentId ?? message('workspace.projectOverview.actor.linnyaAi');
+  return props.presentation.agentName(agentId);
 }
 function titleText(row: ProjectConversationRow): string {
   return row.title.trim() || message('workspace.projectOverview.untitledConversation');
