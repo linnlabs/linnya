@@ -613,7 +613,9 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
     if (!pluginsApi) {
       throw createPluginRuntimeError('pluginUninstallUnsupported');
     }
-    await runMutation(() => pluginsApi.uninstall(pluginId, options));
+    await runMutation(() => Object.keys(options).length === 0
+      ? pluginsApi.uninstall(pluginId)
+      : pluginsApi.uninstall(pluginId, options));
   }
 
   async function setPluginEnabled(pluginId: PluginId, enabled: boolean): Promise<void> {
