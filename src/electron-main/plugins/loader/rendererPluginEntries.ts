@@ -22,6 +22,8 @@ export interface RendererPluginEntry {
   readonly cssUrls: readonly string[];
   /** 仅 Host 产品组合根填写，不能来自插件 manifest。 */
   readonly applicationSurfaceSlot?: 'knowledge-base';
+  /** 插件 manifest 申请的固定表面；Host 只在可信来源上兑现申请。 */
+  readonly requestedApplicationSurfaceSlot?: 'knowledge-base';
   readonly sourceKind?: 'direct' | 'official-source' | 'active';
   readonly pluginDir?: string;
   readonly entryPath?: string;
@@ -174,6 +176,7 @@ function listOfficialSourceRendererPluginEntries(options: RendererPluginEntryLis
         rendererUiRange: readRendererUiRange(manifest.id, manifest.compat?.rendererUi),
         entryUrl: toViteFsUrl(entryPath),
         cssUrls: [],
+        ...(manifest.applicationSurfaceSlot ? { requestedApplicationSurfaceSlot: manifest.applicationSurfaceSlot } : {}),
         sourceKind: 'official-source',
         pluginDir,
         entryPath,
@@ -227,6 +230,7 @@ function listDiskRendererPluginEntries(
         rendererUiRange: readRendererUiRange(manifest.id, manifest.compat?.rendererUi),
         entryUrl: `plugin://${manifest.id}/${toPluginUrlPath(pluginDir, manifest.entry.renderer, 'entry.renderer')}`,
         cssUrls: listRendererCssUrls(pluginDir, manifest.id),
+        ...(manifest.applicationSurfaceSlot ? { requestedApplicationSurfaceSlot: manifest.applicationSurfaceSlot } : {}),
         sourceKind,
         pluginDir,
         entryPath,

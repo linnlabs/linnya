@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { getRegisteredBackendPluginDirectory } from './registeredPluginDirectories';
 import { assertPluginRuntimeEnabled } from './pluginRuntimeAccess';
-import { isTrustedKnowledgePluginSource } from './rendererApplicationSurfaceTrust';
+import { isTrustedPluginSource } from './rendererApplicationSurfaceTrust';
 import {
   readBackendDirectPluginDirsFromEnv,
   readPluginManifestSummary,
@@ -31,7 +31,8 @@ export function isTrustedKnowledgeResourceSource(pluginId: string): boolean {
       : backendDirectDirs.some(value => path.resolve(value) === path.resolve(directory))
         ? 'direct'
         : 'active';
-  return isTrustedKnowledgePluginSource(
+  if (manifest.applicationSurfaceSlot !== 'knowledge-base') return false;
+  return isTrustedPluginSource(
     {
       pluginId,
       pluginDir: directory,

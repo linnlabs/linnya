@@ -23,6 +23,7 @@ export interface PluginManifestSummary {
   readonly compat?: {
     readonly rendererUi?: string;
   };
+  readonly applicationSurfaceSlot?: 'knowledge-base';
 }
 
 export interface PluginLayoutOptions {
@@ -79,12 +80,20 @@ function parseManifestSummary(input: unknown): PluginManifestSummary {
     throw new Error('plugin.json compat.rendererUi 必须是非空字符串');
   }
 
+  if (input.applicationSurfaceSlot !== undefined && input.applicationSurfaceSlot !== 'knowledge-base') {
+    throw new Error('plugin.json applicationSurfaceSlot 不是受支持的产品表面');
+  }
+  const applicationSurfaceSlot = input.applicationSurfaceSlot === 'knowledge-base'
+    ? 'knowledge-base'
+    : undefined;
+
   return {
     id,
     version,
     ...(input.required === true ? { required: true } : {}),
     entry: readEntrySummary(input.entry),
     ...(rendererUi ? { compat: { rendererUi } } : {}),
+    ...(applicationSurfaceSlot ? { applicationSurfaceSlot } : {}),
   };
 }
 

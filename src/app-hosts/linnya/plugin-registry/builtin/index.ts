@@ -619,6 +619,11 @@ export function getRegisteredBackendPluginUploadChannel(pluginId: PluginId): str
   return backendPluginRegistry.getMultipartUploadChannel(pluginId, resolveEnabledIds());
 }
 
+export function listRegisteredBackendPluginUploadPlugins(): readonly PluginId[] {
+  ensureBuiltinBackendPluginsRegistered({ requireComplete: true });
+  return backendPluginRegistry.listMultipartUploadChannels(resolveEnabledIds());
+}
+
 export function getRegisteredBackendPluginRendererPushChannels(
   pluginId: PluginId,
   enabledIds?: ReadonlySet<PluginId> | null

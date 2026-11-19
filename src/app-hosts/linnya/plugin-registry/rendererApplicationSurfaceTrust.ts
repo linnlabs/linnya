@@ -12,14 +12,14 @@ export interface ApplicationSurfaceTrustInput {
   readonly getRegisteredPluginDirectory: (pluginId: string) => string | undefined;
 }
 
-interface KnowledgePluginSource {
+interface PluginSource {
   readonly pluginId: string;
   readonly version: string;
   readonly pluginDir?: string;
   readonly sourceKind?: RendererPluginEntry['sourceKind'];
 }
 
-function matchesBundledArtifact(entry: KnowledgePluginSource, bundledRoot: string | undefined): boolean {
+function matchesBundledArtifact(entry: PluginSource, bundledRoot: string | undefined): boolean {
   if (!bundledRoot || !entry.pluginDir || entry.sourceKind !== 'active') return false;
   const bundledDirectory = path.join(bundledRoot, entry.pluginId);
   if (!fs.existsSync(bundledDirectory)) return false;
@@ -29,9 +29,9 @@ function matchesBundledArtifact(entry: KnowledgePluginSource, bundledRoot: strin
   return readPluginArtifactIdentity(bundledDirectory) === readPluginArtifactIdentity(entry.pluginDir);
 }
 
-/** 同一官方来源准入同时约束页面入口与原地资料接管；不依赖 Renderer 元素或插件自报 builtin。 */
-export function isTrustedKnowledgePluginSource(entry: KnowledgePluginSource, input: ApplicationSurfaceTrustInput): boolean {
-  if (entry.pluginId !== 'knowledge' || !entry.pluginDir) return false;
+/** 同一官方来源准入同时约束插件表面与受管资料；不依赖插件自报 builtin。 */
+export function isTrustedPluginSource(entry: PluginSource, input: ApplicationSurfaceTrustInput): boolean {
+  if (!entry.pluginDir) return false;
   const pluginDirectory = path.resolve(entry.pluginDir);
   const registeredDirectory = input.getRegisteredPluginDirectory(entry.pluginId);
   if (!registeredDirectory || path.resolve(registeredDirectory) !== pluginDirectory) return false;
@@ -42,12 +42,18 @@ export function isTrustedKnowledgePluginSource(entry: KnowledgePluginSource, inp
   return developmentSource || matchesBundledArtifact(entry, input.bundledPluginRoot);
 }
 
+export const isTrustedKnowledgePluginSource = isTrustedPluginSource;
+
 /** 产品组合根只授一个已约定场景；插件 manifest/meta 不能自授页面或固定入口。 */
 export function mapTrustedRendererApplicationSurfaces(
   entries: readonly RendererPluginEntry[], input: ApplicationSurfaceTrustInput,
 ): RendererPluginEntry[] {
+  const trustedSurfaceRequestCount = entries.filter(entry =>
+    entry.requestedApplicationSurfaceSlot === 'knowledge-base' && isTrustedPluginSource(entry, input)
+  ).length;
   return entries.map(entry => {
-    if (!isTrustedKnowledgePluginSource(entry, input)) return entry;
+    if (trustedSurfaceRequestCount !== 1 || entry.requestedApplicationSurfaceSlot !== 'knowledge-base' ||
+      !isTrustedPluginSource(entry, input)) return entry;
     return { ...entry, applicationSurfaceSlot: 'knowledge-base' };
   });
 }

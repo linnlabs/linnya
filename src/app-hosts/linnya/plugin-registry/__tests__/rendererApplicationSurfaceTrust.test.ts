@@ -9,7 +9,7 @@ const root = mkdtempSync(path.join(tmpdir(), 'renderer-surface-trust-'));
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 function entry(directory: string, sourceKind: RendererPluginEntry['sourceKind']): RendererPluginEntry {
-  return { pluginId: 'knowledge', version: '1.0.0', rendererUiRange: '^3.3.0', entryUrl: 'plugin://knowledge/dist/renderer/index.js', cssUrls: [], pluginDir: directory, sourceKind };
+  return { pluginId: 'knowledge', version: '1.0.0', rendererUiRange: '^3.3.0', entryUrl: 'plugin://knowledge/dist/renderer/index.js', cssUrls: [], requestedApplicationSurfaceSlot: 'knowledge-base', pluginDir: directory, sourceKind };
 }
 
 it('only grants the fixed product slot to a matching admitted bundled artifact; development env cannot grant packaged access', () => {
@@ -18,7 +18,7 @@ it('only grants the fixed product slot to a matching admitted bundled artifact; 
   const bundled = path.join(bundledRoot, 'knowledge');
   for (const dir of [active, bundled]) {
     mkdirSync(dir, { recursive: true });
-    writeFileSync(path.join(dir, 'plugin.json'), JSON.stringify({ id: 'knowledge', version: '1.0.0', entry: { backend: 'backend.cjs', renderer: 'renderer.js' } }));
+    writeFileSync(path.join(dir, 'plugin.json'), JSON.stringify({ id: 'knowledge', version: '1.0.0', applicationSurfaceSlot: 'knowledge-base', entry: { backend: 'backend.cjs', renderer: 'renderer.js' } }));
     writeFileSync(path.join(dir, 'SHA512SUMS'), 'verified-artifact-entry');
   }
   const options = { packaged: true, workspaceRoot: root, backendDirectDirs: [active], bundledPluginRoot: bundledRoot, getRegisteredPluginDirectory: () => active };
@@ -31,6 +31,10 @@ it('only grants the fixed product slot to a matching admitted bundled artifact; 
 it('does not grant an ordinary direct plugin with the same id, or a Renderer from a different Backend source', () => {
   const official = path.join(root, 'packages/plugins/knowledge');
   const outsider = path.join(root, 'external');
+  for (const dir of [official, outsider]) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, 'plugin.json'), JSON.stringify({ id: 'knowledge', version: '1.0.0', applicationSurfaceSlot: 'knowledge-base', entry: { backend: 'backend.cjs', renderer: 'renderer.js' } }));
+  }
   const options = { packaged: false, workspaceRoot: root, backendDirectDirs: [], bundledPluginRoot: undefined, getRegisteredPluginDirectory: () => official };
   expect(mapTrustedRendererApplicationSurfaces([entry(official, 'official-source')], options)[0]?.applicationSurfaceSlot).toBe('knowledge-base');
   expect(mapTrustedRendererApplicationSurfaces([entry(outsider, 'direct')], { ...options, getRegisteredPluginDirectory: () => outsider })[0]?.applicationSurfaceSlot).toBeUndefined();

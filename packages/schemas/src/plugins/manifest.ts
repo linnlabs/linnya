@@ -37,6 +37,10 @@ export type PluginCapabilityKind =
 
 export type PluginSource = 'builtin' | 'local' | 'remote';
 
+/** Host 可以授予的固定产品表面；插件只能申请已存在的槽位。 */
+export const PluginApplicationSurfaceSlotSchema = z.literal('knowledge-base');
+export type PluginApplicationSurfaceSlot = z.infer<typeof PluginApplicationSurfaceSlotSchema>;
+
 /** 插件安装态。missing 表示系统知道这个插件，但当前未安装。 */
 export type PluginInstallState = 'enabled' | 'disabled' | 'missing';
 
@@ -256,6 +260,7 @@ export const PluginManifestSchema = z
     dependsOn: z.array(z.string().min(1)).optional(),
     permissions: z.array(PluginPermissionSchema).optional(),
     compat: PluginManifestCompatSchema.optional(),
+    applicationSurfaceSlot: PluginApplicationSurfaceSlotSchema.optional(),
     ownedFileTypes: z.array(PluginOwnedFileTypeSchema).default([]),
     ownedTables: z.array(z.string().min(1)).default([]),
     migrations: z.array(PluginManifestMigrationSchema).default([]),

@@ -4,15 +4,13 @@ import type { RendererPluginMultipartRequest } from '@linnya/plugin-host-contrac
 import { createRendererPluginMultipartUploadPort } from './createRendererPluginMultipartUploadPort';
 
 describe('trusted plugin upload admission', () => {
-  it('仅精确登记的 owner/route 能交付 body，不把相对或外部 URL 变成目标', async () => {
+  it('只接受固定 route 形态，并把目标路径限制在当前 App API 下', async () => {
     const post = vi.fn(async () => ({ id: 'accepted' }));
-    const port = createRendererPluginMultipartUploadPort([
-      { pluginId: 'knowledge', route: 'documents/upload', path: '/api/v1/plugins/knowledge/documents/upload' },
-    ], { readAvailability: () => 'enabled', subscribeAvailability: () => () => {}, post });
+    const port = createRendererPluginMultipartUploadPort({ readAvailability: () => 'enabled', subscribeAvailability: () => () => {}, post });
     const formData = new FormData();
     formData.append('kbId', 'kb-one');
     for (const [pluginId, route] of [
-      ['other', 'documents/upload'], ['knowledge', '../models'],
+      ['other', '../models'], ['knowledge', '../models'],
       ['knowledge', 'https://outside.example/upload'], ['knowledge', '/documents/upload'],
     ]) {
       await expect(port.upload(pluginId, route, { formData })).rejects.toThrow('not registered');
@@ -29,9 +27,7 @@ describe('trusted plugin upload admission', () => {
     const post = vi.fn((_path: string, request: RendererPluginMultipartRequest) => new Promise((_resolve, reject) => {
       request.signal?.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')));
     }));
-    const port = createRendererPluginMultipartUploadPort([
-      { pluginId: 'knowledge', route: 'documents/upload', path: '/api/v1/plugins/knowledge/documents/upload' },
-    ], { readAvailability: () => enabled ? 'enabled' : 'disabled',
+    const port = createRendererPluginMultipartUploadPort({ readAvailability: () => enabled ? 'enabled' : 'disabled',
       subscribeAvailability: listener => { notify = listener; return unsubscribe; }, post });
     await expect(port.upload('knowledge', 'documents/upload', { formData: new FormData() })).rejects.toThrow('not enabled');
     expect(post).not.toHaveBeenCalled();
@@ -49,9 +45,7 @@ describe('trusted plugin upload admission', () => {
       request.signal?.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')));
     }));
     const dependencies = { readAvailability: () => 'enabled' as const, subscribeAvailability: () => unsubscribe, post };
-    const port = createRendererPluginMultipartUploadPort([
-      { pluginId: 'knowledge', route: 'documents/upload', path: '/api/v1/plugins/knowledge/documents/upload' },
-    ], dependencies);
+    const port = createRendererPluginMultipartUploadPort(dependencies);
     const pending = port.upload('knowledge', 'documents/upload', { formData: new FormData(), signal: controller.signal });
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });

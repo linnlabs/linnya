@@ -43,7 +43,7 @@ import { createTranscriptionRouter } from '@transcription/index';
 import { createStaticRouter } from './staticRouter';
 import { createHealthRouter, type ServiceStatus } from './healthRouter';
 import { createPluginMultipartUploadRouter } from './pluginMultipartUpload';
-import { getRegisteredBackendPluginUploadChannel } from '../../app-hosts/linnya/plugin-registry/builtin';
+import { listRegisteredBackendPluginUploadPlugins } from '../../app-hosts/linnya/plugin-registry/builtin';
 import { createHistoricalCitationSnapshotRouter } from './historicalCitationSnapshotRouter';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import { createProviderOutboundDebugRouter } from './providerOutboundDebugRouter';
@@ -326,7 +326,7 @@ export async function configureRoutes(
 
   // 获取服务状态的函数
   const getServiceStatus = (): ServiceStatus => ({
-    knowledgeBase: getRegisteredBackendPluginUploadChannel('knowledge') !== undefined,
+    knowledgeBase: listRegisteredBackendPluginUploadPlugins().length > 0,
     chat: conversationRoutesMounted,
     transcription: !!dependencies.transcriptionService,
     agent: conversationRoutesMounted,

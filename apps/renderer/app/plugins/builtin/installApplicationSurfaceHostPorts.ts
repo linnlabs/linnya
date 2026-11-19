@@ -5,12 +5,10 @@ import { apiMultipartPost } from '@/shared/services/localApiClient';
 import { createRendererModelConfigurationPort } from '../orchestration/createRendererModelConfigurationPort';
 import { createRendererPluginMultipartUploadPort } from '../orchestration/createRendererPluginMultipartUploadPort';
 
-/** 编译期产品装配拥有上传授信；磁盘插件贡献不能自行增加 route。 */
+/** 产品组合根只安装固定上传槽位；具体插件是否获准由 backend 装配来源决定。 */
 export function installApplicationSurfaceHostPorts(): void {
   installRendererModelConfigurationPort(createRendererModelConfigurationPort());
-  installRendererPluginMultipartUploadPort(createRendererPluginMultipartUploadPort([
-    { pluginId: 'knowledge', route: 'documents/upload', path: '/api/v1/plugins/knowledge/documents/upload' },
-  ], {
+  installRendererPluginMultipartUploadPort(createRendererPluginMultipartUploadPort({
     readAvailability: readRendererPluginAvailability,
     subscribeAvailability: subscribeRendererPluginAvailability,
     post: (path, request) => apiMultipartPost(path, request.formData, request),

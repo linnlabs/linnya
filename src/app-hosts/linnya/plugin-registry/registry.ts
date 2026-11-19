@@ -186,6 +186,12 @@ class BackendPluginRegistry {
     return this.contributions.get(pluginId)?.multipartUpload?.channel;
   }
 
+  listMultipartUploadChannels(enabledIds: ReadonlySet<PluginId> | null): readonly PluginId[] {
+    return this.effective(enabledIds)
+      .filter(contribution => contribution.multipartUpload !== undefined)
+      .map(contribution => contribution.meta.id);
+  }
+
   has(pluginId: PluginId): boolean {
     return this.contributions.has(pluginId);
   }

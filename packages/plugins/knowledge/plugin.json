@@ -25,6 +25,7 @@
     "minApp": "0.2.1",
     "rendererUi": "^3.5.0"
   },
+  "applicationSurfaceSlot": "knowledge-base",
   "ownedTables": [
     "knowledge_bases",
     "kb_documents",

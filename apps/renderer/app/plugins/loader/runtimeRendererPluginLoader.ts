@@ -62,6 +62,7 @@ interface RendererPluginEntry {
   readonly entryUrl: string;
   readonly cssUrls: readonly string[];
   readonly applicationSurfaceSlot?: 'knowledge-base';
+  readonly requestedApplicationSurfaceSlot?: 'knowledge-base';
   readonly sourceKind?: string;
   readonly pluginDir?: string;
   readonly entryPath?: string;
@@ -216,6 +217,7 @@ function isRendererPluginEntry(value: unknown): value is RendererPluginEntry {
     typeof value.rendererUiRange === 'string' &&
     typeof value.entryUrl === 'string' &&
     (value.applicationSurfaceSlot === undefined || value.applicationSurfaceSlot === 'knowledge-base') &&
+    (value.requestedApplicationSurfaceSlot === undefined || value.requestedApplicationSurfaceSlot === 'knowledge-base') &&
     Array.isArray(value.cssUrls) &&
     value.cssUrls.every((item) => typeof item === 'string');
 }
