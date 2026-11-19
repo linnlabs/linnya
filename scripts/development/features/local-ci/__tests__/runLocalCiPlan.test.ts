@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import type { LocalCiPlan, LocalCiStep } from '../definitions/localCiPlan';
-import { runLocalCiPlan } from '../orchestration/runLocalCiPlan';
+import { runLocalCiPlan, signalGroup } from '../orchestration/runLocalCiPlan';
 
 const directories: string[] = [];
 afterEach(() => {
@@ -211,4 +211,19 @@ it('命令退出后回收组里残留的后台进程；中断时停掉正在运�
   expect(Date.now() - started).toBeLessThan(10_000);
   expect(results.map(result => result.outcome)).toEqual(['failure']);
   expect(isAlive(Number(readFileSync(path.join(root, 'long.pid'), 'utf8')))).toBe(false);
+});
+
+it('进程组里没有活着的成员时（ESRCH，或 macOS 的僵尸进程 EPERM）忽略，其他错误照常抛出', () => {
+  const failing = (code: string) => () => {
+    throw Object.assign(new Error(code), { code });
+  };
+  expect(() => signalGroup(4242, 'SIGTERM', failing('ESRCH') as typeof process.kill)).not.toThrow();
+  expect(() => signalGroup(4242, 'SIGTERM', failing('EPERM') as typeof process.kill)).not.toThrow();
+  expect(() => signalGroup(4242, 'SIGTERM', failing('EINVAL') as typeof process.kill)).toThrow('EINVAL');
+  const sent: [number, NodeJS.Signals | number | undefined][] = [];
+  signalGroup(4242, 'SIGKILL', ((pid: number, signal?: NodeJS.Signals | number) => {
+    sent.push([pid, signal]);
+    return true;
+  }) as typeof process.kill);
+  expect(sent).toEqual([[-4242, 'SIGKILL']]);
 });

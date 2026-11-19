@@ -87,12 +87,17 @@ function slug(text: string): string {
   return text.replace(/[^\w一-鿿-]+/gu, '-').replace(/^-+|-+$/gu, '').slice(0, 60) || 'step';
 }
 
-/** 向整个进程组发信号；组里已经没有进程时忽略。 */
-function signalGroup(pid: number, signal: NodeJS.Signals): void {
+/**
+ * 向整个进程组发信号；组里已经没有可发信号的进程时忽略。
+ * macOS 对只剩已退出、尚未被回收的僵尸进程的组返回 EPERM 而不是 ESRCH，二者都表示没有活着的成员，
+ * 否则命令刚退出时的回收会让整轮运行崩溃。
+ */
+export function signalGroup(pid: number, signal: NodeJS.Signals, kill: typeof process.kill = process.kill): void {
   try {
-    process.kill(-pid, signal);
+    kill(-pid, signal);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== 'ESRCH' && code !== 'EPERM') throw error;
   }
 }
 
