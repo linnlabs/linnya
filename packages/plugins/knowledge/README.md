@@ -30,6 +30,43 @@ Backend 与 Renderer 都消费同一 shared 合同，不能另写一份近似 sc
 
 Node Worker 不继承 Backend 主线程的 SDK 模块加载钩子，数据库、推理和解析 Worker SDK 由正式构建别名内联；Host 的固定 Worker bootstrap 另行安装受限的原生依赖解析钩子。原生 SQLite、PDF.js、Canvas、Jieba 与 Sharp 使用 Desktop 已有运行依赖；PDF.js 保留完整包的 `cmaps`、`iccs`、`standard_fonts` 和 `wasm`，不另复制一份解析资源。Audio Worker 继续属于 Host。
 
+### 磁盘存储与占用
+
+资料分三处存放，可恢复性不同：
+
+| 位置 | 内容 | 删除后能否恢复 |
+|---|---|---|
+| Workspace `KnowledgeBase/source_of_truth/<docId>.source.json` | 解析结果（SoT），所有格式的资料真源 | 不能；只能重新上传原文件 |
+| Workspace `KnowledgeBase/originals/<kbId>/<docId>.pdf` | 仅 PDF 原件，供查看与 OCR 续跑 | 不能；且有原件不等于能恢复 SoT |
+| Workspace `KnowledgeBase/qdrant/` | Qdrant 进程配置、日志与 `storage/collections` | 能；重建索引从 SoT 重新切块并重新调用嵌入模型 |
+| 主 SQLite 的 8 张 owned 表 | 知识库、文档、项目关联、图谱等元数据，不含块正文和向量 | 不能；体量小 |
+
+每个知识库最多 3 个 Qdrant 集合：块索引 `<kbId>`，开启图谱时另有 `kg_nodes_<kbId>`、`kg_edges_<kbId>`。块正文作为 payload（`document`）随向量存入集合，因此集合体积包含正文副本。
+
+Qdrant（随包 1.14.1）按固定大小预先占位，再按需新增：
+
+- 每个集合预建 2 个 WAL 段，每段 `wal_capacity_mb`（默认 32 MB）；写满后关闭旧段、新建下一段。
+- 每个可追加 segment 的 payload 页和稀疏向量页各预建 32 MB；稠密向量按 32 MB 的 mmap chunk 增长。
+- macOS（APFS）上这些预建文件是稀疏文件：文件长度很大，实际分配的块很少。Windows（NTFS）是否同样稀疏尚未在本地验证；若不稀疏，空集合就会按文件长度占盘。
+
+2026-11-19 在 macOS 用随包二进制实测（1024 维稠密向量 + bm25 稀疏向量，每块约 490 个汉字的 payload，`default_segment_number=1`）：
+
+| 状态 | 实际占用 | 文件长度合计 |
+|---|---|---|
+| 1 个空集合 | 0.1 MB | 132 MB |
+| 3 个空集合（一个开启图谱的知识库） | 0.4 MB | 396 MB |
+| 块索引 1,000 块 | 15 MB | 428 MB |
+| 块索引 10,000 块 | 125 MB | 566 MB |
+| 块索引 30,000 块 | 218 MB | 671 MB |
+| 从 30,000 块删到 10,000 块，优化器完成后 | 112 MB | 600 MB |
+| 删除集合 | 全部释放 | 全部释放 |
+
+由此得出三条规则：
+
+- 显示占用必须按实际分配的块统计（`stat.blocks`、`du`），不能把文件长度相加，否则 macOS 上会把空库报成几百 MB。
+- 删除点只标记删除，等优化器按 `deleted_threshold`（0.2）和 `vacuum_min_vector_number`（1000）重写 segment 后才回收空间；删除整个集合则立即释放。
+- 主 SQLite 删除行只把页面留给后续复用。v70 起新建的库可以增量回收，更早的库要缩小文件只能整库 VACUUM，所以清理知识库不以缩小主数据库文件为目标。
+
 ## 激活、任务与恢复
 
 `src/backend/runtime` 持有一次 activation 的资料访问、3 类队列、图谱调度、维护与推送。
