@@ -653,12 +653,19 @@ async function waitForHostPayload(
   await waitUntil(() => controller.hostPayloads.some(payload => payload.kind === kind));
 }
 
+/** 按真实时间等条件成立；短于测试默认超时，失败时仍报出这条可读的原因。 */
+const WAIT_UNTIL_DEADLINE_MS = 4_000;
+
 async function waitUntil(predicate: () => boolean): Promise<void> {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  // 按截止时间而不是轮询次数：mailbox 走真实文件系统，负载重的 CI 机器上
+  // 100 轮事件循环可能等不到 libuv 完成回调。performance.now 不受本文件的假计时器影响。
+  const deadline = performance.now() + WAIT_UNTIL_DEADLINE_MS;
+  while (performance.now() < deadline) {
     if (predicate()) return;
-    // mailbox 使用真实文件系统；这里只轮询微任务会饿死 libuv 的完成回调。
+    // 只轮询微任务会饿死 libuv 的完成回调，所以每轮让出到 check 阶段。
     await new Promise<void>(resolve => setImmediate(resolve));
   }
+  if (predicate()) return;
   throw new Error('sandbox production scope test condition did not settle');
 }
 
