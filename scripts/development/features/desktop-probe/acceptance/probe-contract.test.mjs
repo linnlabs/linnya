@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'vitest';
 import { repoRoot } from '../definitions/probeContract.mjs';
-import { buildFreshness } from '../orchestration/probeBuild.mjs';
+import { buildFreshness, ensureFreshBuild } from '../orchestration/probeBuild.mjs';
 import { dependencyInstallMarkers, feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
 import { readDesktopMainInspector } from '../functions/desktopLaunchMarkers.mjs';
 import { checkHeaderInvariants, trafficLightsRect } from '../functions/headerInvariants.mjs';
@@ -216,6 +216,42 @@ test('随包副本过期时返回直接修复提示，不要求重建开发产�
     assert.equal(freshness.kind, 'bundled');
     assert.match(freshness.reason, /extraResources\/plugins\/fixture\/dist\/backend\.cjs/);
     assert.equal(freshness.hint, 'pnpm run package:plugins:official && pnpm run prepare:extra-resources');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('默认启动发现随包副本过期时自动完整刷新并清掉旧副本', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'probe-plugin-bundled-refresh-'));
+  try {
+    execFileSync('git', ['init', '-q', root]);
+    const plugin = join(root, 'packages/plugins/fixture');
+    const bundled = join(root, 'extraResources/plugins/fixture/dist/backend.cjs');
+    mkdirSync(join(plugin, 'dist'), { recursive: true });
+    mkdirSync(join(root, 'dist/main'), { recursive: true });
+    mkdirSync(join(root, 'extraResources/plugins/fixture/dist'), { recursive: true });
+    writeFileSync(join(plugin, 'plugin.json'), JSON.stringify({ id: 'fixture' }));
+    writeFileSync(join(plugin, 'package.json'), JSON.stringify({ linnya: { development: {
+      backendLoading: 'disk', backendWatchConfig: 'tsup.config.ts', requiredOutputs: ['dist/backend.cjs'],
+    } } }));
+    writeFileSync(join(plugin, 'src.ts'), 'source');
+    writeFileSync(join(plugin, 'dist/backend.cjs'), 'fresh workspace output');
+    writeFileSync(bundled, 'old bundled output');
+    for (const output of ['main.cjs', 'preload.js', 'app-server-backend.cjs']) {
+      writeFileSync(join(root, 'dist/main', output), 'fresh desktop output');
+    }
+    execFileSync('touch', ['-t', '202601010101', bundled]);
+
+    let refreshCount = 0;
+    const result = await ensureFreshBuild({
+      root,
+      refreshBundledPlugins: async () => {
+        refreshCount += 1;
+        writeFileSync(bundled, 'refreshed bundled output');
+      },
+    });
+
+    assert.equal(refreshCount, 1);
+    assert.equal(result.bundledPluginsRefreshed, true);
+    assert.equal(buildFreshness(root).stale, false);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

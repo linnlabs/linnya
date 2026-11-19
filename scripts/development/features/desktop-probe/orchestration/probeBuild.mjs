@@ -112,31 +112,67 @@ function runBuild() {
   }
 }
 
+function runCommand(command, args, fd) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd: repoRoot, stdio: ['ignore', fd, fd] });
+    child.once('error', reject);
+    child.once('exit', (code, signal) => {
+      if (code === 0) resolve();
+      else reject(new ProbeError('BUILD_FAILED', `${command} ${args.join(' ')} 失败：${code ?? signal}`, buildLog));
+    });
+  });
+}
+
+async function runBundledPluginRefresh() {
+  const fd = openSync(buildLog, 'w', 0o600);
+  try {
+    await runCommand('pnpm', ['run', 'package:plugins:official'], fd);
+    await runCommand('pnpm', ['run', 'prepare:extra-resources'], fd);
+  } finally {
+    closeSync(fd);
+  }
+}
+
 /**
- * 产物过期时直接重建，省去“启动超时 → 查日志 → 手工构建 → 重启”这一轮。
+ * 产物过期时直接重建；随包插件会重新生成完整官方集合，省去“启动超时 → 查日志 → 手工构建 → 重启”这一轮。
  * 多个实例同时启动只构建一次：拿到构建锁后重新判断。
  */
-export async function ensureFreshBuild({ build = true } = {}) {
-  const first = buildFreshness();
+export async function ensureFreshBuild({
+  root = repoRoot,
+  build = true,
+  runBuildCommand = runBuild,
+  refreshBundledPlugins = runBundledPluginRefresh,
+} = {}) {
+  const first = buildFreshness(root);
   if (!first.stale) return { rebuilt: false };
-  if (first.kind === 'bundled') {
+  if (!build && first.kind === 'bundled') {
     throw new ProbeError('BUILD_STALE', `随包插件产物已过期：${first.reason}`, first.hint);
   }
   if (!build) {
     throw new ProbeError('BUILD_STALE', `开发产物已过期：${first.reason}`, '去掉 --no-build 让探针自动构建，或先运行 pnpm run dev:electron --build-only');
   }
   return withLifecycleLock(join(instancesRoot, 'build'), async () => {
-    const current = buildFreshness();
+    const current = buildFreshness(root);
     if (!current.stale) return { rebuilt: false, waitedForOtherBuild: true };
     const started = Date.now();
-    await runBuild();
-    const after = buildFreshness();
+    if (current.kind === 'bundled') {
+      await refreshBundledPlugins();
+    } else {
+      await runBuildCommand();
+    }
+    const after = buildFreshness(root);
     if (after.stale) {
       if (after.kind === 'bundled') {
         throw new ProbeError('BUILD_STALE', `随包插件产物已过期：${after.reason}`, after.hint);
       }
       throw new ProbeError('BUILD_STALE', `构建后产物仍过期：${after.reason}`, buildLog);
     }
-    return { rebuilt: true, reason: current.reason, buildMs: Date.now() - started, log: buildLog };
+    return {
+      rebuilt: true,
+      reason: current.reason,
+      buildMs: Date.now() - started,
+      log: buildLog,
+      ...(current.kind === 'bundled' ? { bundledPluginsRefreshed: true } : {}),
+    };
   }, { timeoutMs: buildTimeoutMs });
 }
