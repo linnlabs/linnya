@@ -45,6 +45,7 @@ vi.mock('@/domains/conversation/features/interactive-run/orchestration/interacti
   fetchActiveForegroundRun: vi.fn(), fetchForegroundRunSettlement: vi.fn(),
 }));
 
+const VISIBLE_SURFACE = { observeIdle: true } as const;
 const conversationId = 'externally-started';
 const runId = RunIdSchema.parse('external-run');
 const callId = 'external-tool';
@@ -201,7 +202,7 @@ describe('external run → open history → bounded durable refresh', () => {
     expect(parentPayload().subrun_summary?.subrun_ids).toEqual(['child-1']);
     const initialRows = fixture.window.rows;
     const revision = fixture.window.revision;
-    await observeDetachedInteractiveRun(conversationId);
+    await observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     expect(fixture.window.rows).toBe(initialRows);
     expect(load).toHaveBeenCalledTimes(1);
     expect(invalidation.revisionFor(conversationId)).toBe(1);
@@ -217,7 +218,7 @@ describe('external run → open history → bounded durable refresh', () => {
     fixture.traces.project(createSubRunTraceEvent('new-child', conversationId, turnId, callId, 'child-2', 'thought_delta', {
       source_event_id: 'new-child-first-frame', run_id: runId, timestamp: 5, content: 'Reviewing',
     }));
-    await observeDetachedInteractiveRun(conversationId);
+    await observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     expect(fixture.window.status).toBe('ready');
     expect(fixture.window.revision).toBeGreaterThan(revision ?? 0);
     expect(parentPayload().subrun_summary?.subrun_ids).toEqual(['child-1', 'child-2']);
@@ -240,15 +241,15 @@ describe('external run → open history → bounded durable refresh', () => {
     vi.mocked(fetchForegroundRunSettlement).mockResolvedValue({ conversation_id: conversationId, requested_run_id: runId, run: { run_id: runId, status: outcome, lane: 'foreground' } });
     // 终态窗口读取失败不能关闭观察；下一次仍可收口。
     vi.mocked(apiFetch).mockRejectedValueOnce(new Error('temporary read failure'));
-    await observeDetachedInteractiveRun(conversationId);
+    await observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     expect(fixture.runs.snapshotFor(conversationId)?.status).toBe('reconnecting');
-    await observeDetachedInteractiveRun(conversationId);
+    await observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     expect(fixture.runs.snapshotFor(conversationId)?.status).toBe(outcome);
     expect(parentPayload().status).toBe(outcome === 'completed' ? 'success' : 'error');
     expect(parentPayload().subrun_summary?.subrun_ids).toContain('child-2');
     await vi.waitFor(() => expect(trace.status.value).toBe('ready'));
     const settledRows = fixture.window.rows;
-    await observeDetachedInteractiveRun(conversationId);
+    await observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     expect(fixture.window.rows).toBe(settledRows);
     expect(fixture.runs.hasTransport(conversationId)).toBe(false);
     expect(vi.mocked(apiFetch).mock.calls.every(([, init]) => init?.method === 'GET')).toBe(true);
@@ -272,7 +273,7 @@ describe('external run → open history → bounded durable refresh', () => {
     fixture.traces.project(createSubRunTraceEvent('second', conversationId, turnId, callId, 'child-2', 'thought_delta', {
       source_event_id: 'second-first-frame', run_id: runId, timestamp: 3, content: 'Second child',
     }));
-    await observeDetachedInteractiveRun(conversationId);
+    await observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     // 原 loading/loading 合成能确定复现遮蔽；已同步窗口的 selector 必须走明确交接。
     const legacyMerge = mergeWindowAndLiveMessages(fixture.window.rows, [initialTool]);
     expect(legacyMerge.messages.find(message => message.id === initialTool.id)?.metadata)
@@ -294,7 +295,7 @@ describe('external run → open history → bounded durable refresh', () => {
     fixture.traces.project(createSubRunTraceEvent('third', conversationId, turnId, callId, 'child-3', 'thought_delta', {
       source_event_id: 'third-first-frame', run_id: runId, timestamp: 4, content: 'Third child',
     }));
-    await observeDetachedInteractiveRun(conversationId);
+    await observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     expect(visibleTool()?.metadata).toMatchObject({ subrun_summary: { subrun_ids: ['child-1', 'child-2', 'child-3'] } });
     expect(selectors.activeMessages.value.some(message => message.id === liveProse.id && message.content === liveProse.content)).toBe(true);
   });
@@ -329,11 +330,11 @@ describe('external run → open history → bounded durable refresh', () => {
     expect(fixture.window.hasMoreAfter).toBe(true);
     const bounds = [fixture.window.prevCursor, fixture.window.nextCursor];
     await fixture.startTool('new-tail');
-    await observeDetachedInteractiveRun(conversationId);
+    await observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     expect(fixture.window.rows.map(row => row.messageId)).toEqual([old.messageId]);
     expect([fixture.window.prevCursor, fixture.window.nextCursor]).toEqual(bounds);
     vi.mocked(fetchForegroundRunSettlement).mockResolvedValue({ conversation_id: conversationId, requested_run_id: runId, run: { run_id: runId, status: 'completed', lane: 'foreground' } });
-    await observeDetachedInteractiveRun(conversationId);
+    await observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     expect(fixture.window.rows.map(row => row.messageId)).toEqual([old.messageId]);
     expect(fixture.runs.snapshotFor(conversationId)?.status).toBe('completed');
   });
@@ -345,7 +346,7 @@ describe('external run → open history → bounded durable refresh', () => {
     let resolveRefresh!: (dto: UiMessagesRefreshDto) => void;
     const delayed = new Promise<UiMessagesRefreshDto>(resolve => { resolveRefresh = resolve; });
     const refresh = vi.spyOn(messageWindowApi, 'readRefresh').mockReturnValue(delayed);
-    const observing = observeDetachedInteractiveRun(conversationId);
+    const observing = observeDetachedInteractiveRun(conversationId, VISIBLE_SURFACE);
     await vi.waitFor(() => expect(refresh).toHaveBeenCalledOnce());
     const query = refresh.mock.calls[0][1];
     if (action === 'navigation') {

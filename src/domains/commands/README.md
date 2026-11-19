@@ -134,15 +134,15 @@ handle 是跨 tool call 的连接凭据，不是 PID。任何 `process` 动作�
 
 | 字段 | 说明 |
 | --- | --- |
-| `base_level` | 当前全局设置选择的档位 |
+| `base_level` | 本次根运行从对话指定值或全局设置冻结的档位 |
 | `effective_level` | 当前 execution 最终有效档位 |
-| `grant_source` | `global_setting`、`allow_once` 或 `conversation_approval` |
+| `grant_source` | `global_setting`、`conversation_setting`、`allow_once` 或 `conversation_approval` |
 | `internal_data_access` | 是否允许访问 Linnya 内部数据 |
 | `identity` | 必须和 execution 完全一致 |
 
 Zod schema 结构性限制：
 
-- global setting 不能改变 `base_level`；
+- 全局和对话设置都属于基础来源，`effective_level` 等于 `base_level`；
 - approval 只能把 read_only/standard 提升到 standard；
 - full_access 不产生 approval request；
 - approval settlement 的 grant source 必须和用户选择一致。

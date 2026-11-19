@@ -6,7 +6,6 @@
     :is-active="isActive"
     :empty-heading="emptyHeading"
     :empty-description="startupEmptySubtitle"
-    :input-placeholder="projectAssistantPlaceholder"
   >
     <template #empty-mark>
       <div class="project-chat-empty-logo">
@@ -88,10 +87,6 @@ const currentProject = computed(() => {
 const emptyHeading = computed(() => (
   currentProject.value?.name || conversationMessage('conversation.project.fallbackName')
 ));
-const projectAssistantPlaceholder = computed(() => {
-  const projectName = currentProject.value?.name || conversationMessage('conversation.project.fallbackName');
-  return conversationMessage('conversation.project.inputPlaceholder', { projectName });
-});
 
 const handleOpenKnowledgeBaseManager = () => {
   if (!projectId.value) return;

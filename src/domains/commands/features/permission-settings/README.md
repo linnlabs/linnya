@@ -2,7 +2,7 @@
 
 ## 1. 这是什么
 
-这个 feature 定义全局命令权限设置，并在一次 Agent 根 run 启动时把设置冻结成不可变快照。Renderer 只能通过 Electron Main 的窄 RPC gateway 读写设置；真正决定当前会话事实的是 App Server 内存 authority，而不是 renderer store 或磁盘文件。
+这个 feature 定义全局命令权限设置与根运行快照。只有档位可由 [Host 对话权限](../../../../app-hosts/linnya/application/conversation-command-permissions/README.md) 覆盖。根 run 启动时冻结所选档位、来源与全局设置的其余能力。Renderer 只能通过 Electron Main 的窄 RPC gateway 读写设置；真正决定当前会话事实的是 App Server 内存 authority，而不是 renderer store 或磁盘文件。
 
 这样做的原因很实际：命令运行几十秒甚至几分钟时，外部程序可能改写设置文件，用户也可能在另一个窗口切换档位。如果 run 中途重新读取，审计、审批和实际进程会出现两套权限事实。
 
@@ -64,6 +64,8 @@ protocol_version
 kind = command_run_permission_snapshot
 root_agent_run_id
 settings_revision
+conversation_revision
+source = global_setting | conversation_setting
 captured_at_ms
 permission_level
 internal_data_access
@@ -72,7 +74,7 @@ local_ipc_control = denied
 process_lifecycle = terminate_with_run
 ```
 
-根 run 建立后，所有 child tool call 继承同一 snapshot。命令 proposal 再把它投影成绑定 `execution identity` 的 `CommandPermissionSnapshotV1`，不能混用两个生命周期的 DTO。
+根 run 建立后，所有 child 与恢复继续使用同一 snapshot。对话当前选择变化只作用于下一次新根运行。命令 proposal 再把它投影成绑定 `execution identity` 的 `CommandPermissionSnapshotV1`，不能混用两个生命周期的 DTO。
 
 ## 6. 与界面的关系
 

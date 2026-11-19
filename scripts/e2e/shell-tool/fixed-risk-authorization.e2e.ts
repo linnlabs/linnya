@@ -236,6 +236,7 @@ assert.deepEqual(evaluateCommandAuthorization({
   riskCatalog: { revision: 'corrupt' },
 }), {
   status: 'unavailable',
+  context: { platform, shellSemanticsId },
   proposal: proposal('printf safe', 'standard'),
   code: 'risk_catalog_invalid',
 });
@@ -255,6 +256,7 @@ assert.deepEqual(evaluateCommandAuthorization({
   conversationApprovals: [],
 }), {
   status: 'unavailable',
+  context: { platform, shellSemanticsId },
   proposal: identityMismatchProposal,
   code: 'permission_requirement_identity_mismatch',
 });

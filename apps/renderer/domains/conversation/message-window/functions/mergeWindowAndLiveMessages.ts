@@ -139,6 +139,7 @@ function mergeWindowMessageWithLivePatch(
       if (!isAnswerMessage(livePatch)) return windowMessage;
       return mergeAnswerMessage(windowMessage, livePatch);
     case 'client_notice':
+    case 'command_permission_change':
       return windowMessage;
     case 'execution_notice':
       if (livePatch.type !== 'execution_notice') return windowMessage;

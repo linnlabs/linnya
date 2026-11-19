@@ -32,6 +32,7 @@
 | 只给 Backend 的基础能力：文件、路径、进程、日志 | `src/shared/*` |
 | 界面组件、浮层、定位、焦点、快捷键 | [`@linnya/renderer-ui`](../../packages/renderer-ui/README.md)；业务模块不自己监听全局点击、不自己算浮层位置 |
 | 界面时序：延迟、防抖、轮询、按帧合并、动画 | [`@linnya/renderer-ui` 的调度函数](../../packages/renderer-ui/README.md#界面时序)；渲染端不直接调 `setTimeout`、`requestAnimationFrame` 等，ESLint 检查 |
+| 颜色运算：解析、sRGB 线性化、相对亮度与对比度、OKLab / OKLCH 与色相、色域、ΔE、色觉模拟 | [`@linnya/color-core`](../../packages/color-core/README.md)；业务只保留自己的规则和阈值，不再抄公式常量 |
 | 跟当前语言有关的显示：时间、数字、大小、排序比较 | [Renderer 本地化](../../apps/renderer/app/localization/README.md)；业务模块不直接调 `Intl` 和 `toLocale…` |
 | 界面里与业务无关的非视觉逻辑 | `apps/renderer/shared` |
 | 只在一个 domain 里复用 | 该 domain 的 `functions/`、`orchestration/`，不上移 |
@@ -55,6 +56,7 @@
 共享实现建好不等于会被用，靠只减不增的基线拦住回退：
 
 - **`pnpm run guard:shared-implementations`**：名单里的写法只能出现在它的共享位置。每统一一样东西，就把对应写法加进[名单](../../scripts/guards/shared-implementations/definitions/sharedImplementationRules.ts)；存量记在基线里，只许减少。新代码命中名单会失败，并提示该用哪个共享实现。清掉存量后运行 `pnpm run guard:shared-implementations:update` 收紧基线。
+- 颜色公式也在这份名单里（`COLOR-*` 规则）：sRGB 传递函数常量、明度系数、OKLab / XYZ / CIELab / 色觉异常矩阵、HSL / HSV / OKLCH 互转、色相圆形平均和 ΔE 只能出现在 `packages/color-core/`。注释里写公式出处不算；需要的运算 color-core 没有时，加进 color-core 再用。
 - 模块边界继续由现有各 `guard:*-boundary` 负责。
 
 提交说明里写清新增了哪个共享能力，或者用了哪个已有的。评审看到新写的工具函数，先问第 2 节查过没有。

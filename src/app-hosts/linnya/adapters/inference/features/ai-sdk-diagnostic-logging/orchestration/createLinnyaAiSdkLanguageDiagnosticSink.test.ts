@@ -46,4 +46,25 @@ describe('AI SDK failure diagnostic logging', () => {
       retryable: false,
     });
   });
+
+  it('Provider 拒绝说明（已在 package 脱敏限长）原样写入失败诊断', () => {
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+    createLinnyaAiSdkLanguageDiagnosticSink().publish({
+      type: 'failure_projected',
+      attempt_id: 'attempt-400',
+      request_fingerprint: 'fingerprint-400',
+      phase: 'provider_call',
+      error_shape: 'api_call_error',
+      sdk_error_details: { http_status: 400, sdk_retryable: false },
+      provider_error_excerpt: 'Image at index 3 exceeds the size limit',
+      failure_kind: 'provider',
+      failure_code: 'provider_http_400',
+      retryable: false,
+    });
+    expect(warn).toHaveBeenCalledExactlyOnceWith('AI SDK failure 已投影为安全分类', expect.objectContaining({
+      request_fingerprint: 'fingerprint-400',
+      provider_error_excerpt: 'Image at index 3 exceeds the size limit',
+      failure_code: 'provider_http_400',
+    }));
+  });
 });

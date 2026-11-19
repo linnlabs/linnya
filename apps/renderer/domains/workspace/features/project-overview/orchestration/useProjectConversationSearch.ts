@@ -1,4 +1,5 @@
 import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
+import { useTimer } from '@linnya/renderer-ui';
 import { searchProjectConversations } from '../infrastructure/projectConversationsGateway';
 
 const SEARCH_DEBOUNCE_MS = 250;
@@ -15,7 +16,7 @@ export function useProjectConversationSearch(
   const matches = shallowRef<ReadonlyMap<string, string | null> | null>(null);
   const truncated = ref(false);
   const failed = ref(false);
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  const debounceTimer = useTimer();
   let generation = 0;
 
   async function search(target: string, pattern: string, current: number): Promise<void> {
@@ -36,8 +37,7 @@ export function useProjectConversationSearch(
 
   watch([projectId, query, revision], ([target, value], previous) => {
     generation += 1;
-    if (timer) clearTimeout(timer);
-    timer = null;
+    debounceTimer.cancel();
     const pattern = value.trim();
     if (!pattern || previous?.[0] !== target) {
       matches.value = null;
@@ -46,12 +46,12 @@ export function useProjectConversationSearch(
     }
     if (!pattern) return;
     const current = generation;
-    timer = setTimeout(() => void search(target, pattern, current), SEARCH_DEBOUNCE_MS);
+    debounceTimer.start(() => void search(target, pattern, current), SEARCH_DEBOUNCE_MS);
   }, { immediate: true });
 
+  // 防抖定时器由 useTimer 随作用域一起取消；这里只让在途请求作废。
   onScopeDispose(() => {
     generation += 1;
-    if (timer) clearTimeout(timer);
   });
 
   return { matches, truncated, failed };

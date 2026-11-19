@@ -33,12 +33,12 @@ export function quotedNames(names: readonly string[]): string {
 
 export interface SemanticSchemaTextContext {
   readonly message: WorkspaceMessageResolver;
-  /** Agent 显示名；null 是默认 Agent，查不到时为 null。 */
-  readonly agentName: (agentId: string | null) => string | null;
+  /** Agent 显示名：null 是默认 Agent（Linnya Agent），查不到时为注册表 ID。 */
+  readonly agentName: (agentId: string | null) => string;
   readonly timeText: (timestamp: number) => string;
 }
 
-/** 谁做的：你、Linnya AI（或具体 Agent）带对话名、命令行、插件。 */
+/** 谁做的：你、具体哪个 Agent 或子任务（带对话名）、命令行、插件。 */
 export function actorText(actor: SemanticSchemaActor, context: SemanticSchemaTextContext): string {
   const { message } = context;
   const conversation = actor.conversation_id === null
@@ -49,9 +49,8 @@ export function actorText(actor: SemanticSchemaActor, context: SemanticSchemaTex
       case 'user': return message('workspace.semanticSchema.actor.user');
       case 'plugin': return message('workspace.semanticSchema.actor.plugin');
       case 'external': return message('workspace.semanticSchema.actor.external');
-      case 'run':
-      case 'subrun':
-        return context.agentName(actor.agent_id) ?? actor.agent_id ?? message('workspace.projectOverview.actor.linnyaAi');
+      case 'run': return context.agentName(actor.agent_id);
+      case 'subrun': return message('workspace.projectOverview.actor.subrun');
     }
   })();
   return conversation ? `${who} · ${conversation}` : who;
@@ -64,7 +63,7 @@ export function tagOriginText(actor: SemanticSchemaActor | null, createdAt: numb
   if (actor === null) return message('workspace.semanticSchema.origin.unknown', { time });
   if (actor.kind === 'user') return message('workspace.semanticSchema.origin.user', { time });
   if (actor.kind === 'run' || actor.kind === 'subrun') {
-    const agent = context.agentName(actor.agent_id) ?? actor.agent_id ?? message('workspace.projectOverview.actor.linnyaAi');
+    const agent = actor.kind === 'run' ? context.agentName(actor.agent_id) : message('workspace.projectOverview.actor.subrun');
     return actor.conversation_id === null
       ? message('workspace.semanticSchema.origin.agent', { agent, time })
       : message('workspace.semanticSchema.origin.agentInConversation', {

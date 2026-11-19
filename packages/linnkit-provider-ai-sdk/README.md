@@ -73,7 +73,7 @@ SDK、厂商 package 和成熟开源实现都不能满足需求，以及由谁�
 | package-owned route、credential、factory 合同 | `src/definitions/`                                  | 只表达一次 attempt 所需事实，不出现产品 Provider 或 Catalog 类型                           |
 | canonical request/message/tool/sampling 投影  | `src/functions/`                                    | 不按厂商名、模型名、URL 或错误文本分支                                                     |
 | usage 与 continuation 投影                    | `src/functions/`                                    | 只消费 AI SDK 标准结果和白名单 metadata                                                    |
-| failure taxonomy 与安全 observation           | `src/features/failure-projection/`                  | 不保存 Provider message/body；产品特例由 Host 注入窄 classifier                            |
+| failure taxonomy 与安全 observation           | `src/features/failure-projection/`                  | 不保存 Provider message/body（HTTP 拒绝说明脱敏限长后只进诊断）；产品特例由 Host 注入窄 classifier |
 | stream 空闲策略                               | `src/features/stream-reliability/`                  | 只配置 Core first/chunk timeout，不拥有 Linnkit retry 预算                                 |
 | 单次 language stream 编排                     | `src/orchestration/`                                | 固定单 step、零 SDK retry，不执行工具                                                      |
 | 具体第三方 package factory                    | `src/providers/<provider>/`                         | 一个正式 Provider/capability 一个局部模块；声明 factory、package identity、必要 options 与可选的 SDK 能力投影 |
@@ -133,7 +133,7 @@ Core 和具体 Provider packages。
 - production → `@linnlabs/linnkit-provider-ai-sdk/conformance`。
 
 `@linnlabs/linnkit` 是显式 peer dependency，本 package 只使用公开 `/ports` 和
-`/contracts`。当前 peer 为 `^0.43.0`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
+`/contracts`。当前 peer 为 `^0.44.0`，开发与 Host 装配使用同一精确版本，以消费已修复的正式声明产物。
 `ai`、`@ai-sdk/provider`、全部 language Provider
 package、OpenRouter 官方 package 和经过审核的 `ai-sdk-ollama` community package 是本
 package 的精确直接依赖；根应用不再替它拥有这些版本。Embedding、Image
@@ -167,7 +167,9 @@ Host 可以注入两类扩展，但不得借此污染通用 adapter：
 - `diagnostic_sink`：消费 adapter 已白名单化的 attempt 请求形状、负载规模（含图片所在消息角色）、流终态、阶段、shape、Provider 的安全 `type/code/reason` 和 retryable 信息，并决定日志级别与文案。请求 fingerprint 只由安全的请求形状摘要计算，不包含 prompt、工具正文或图片字节。
 
 diagnostic_sink只接收白名单投影，不能读取或返回prompt、response body、API key、headers、
-base URL、路径或图片bytes。classifier的既有`candidate.response_body`仅供当前调用内存中的
+base URL、路径或图片bytes。唯一例外是 HTTP 拒绝时的 `provider_error_excerpt`：只取错误 envelope
+的说明文字（或非 JSON 正文），删除凭据与编码内容并限 300 字符，见
+[failure-projection](./src/features/failure-projection/README.md#provider-拒绝说明)。classifier的既有`candidate.response_body`仅供当前调用内存中的
 产品分类，不得返回、记录或持久化；这不是通用日志/诊断扩展点。
 
 工具调用的输入错误与流状态机违规分开分类。AI SDK 的 `dynamic/invalid`
@@ -283,7 +285,7 @@ admission 和关键正式 package 身份。
 
 Provider
 body、SSE 和错误正文只允许存在于单次调用内存或离线 fixture。日志、canonical
-event、audit 和 UI 只能看到稳定分类与安全聚合。SDK 默认错误打印必须被接管，package 不读取环境变量，也不持久化凭据或 Provider
+event、audit 和 UI 只能看到稳定分类与安全聚合；诊断日志另可带脱敏、限长的 HTTP 拒绝说明（见上）。SDK 默认错误打印必须被接管，package 不读取环境变量，也不持久化凭据或 Provider
 session。
 
 当前版本为 `0.1.x`，只作为宿主应用 monorepo 内部 workspace

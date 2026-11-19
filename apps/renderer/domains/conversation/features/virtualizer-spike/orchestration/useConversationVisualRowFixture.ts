@@ -1,5 +1,6 @@
 import { computed, nextTick, ref, shallowRef, type ComponentPublicInstance, type Ref } from 'vue';
 import { useVirtualizer } from '@tanstack/vue-virtual';
+import type { EditUserMessageCommand, RegenerateUserMessageCommand } from '../../../definitions/userMessageContent';
 import type { BaseMessage } from '../../../types';
 import { projectConversationVisualRows } from '../../../ui/conversationView/logic/projectConversationVisualRows';
 import type { ConversationVisualRow } from '../../../ui/messageCanvas';
@@ -110,8 +111,11 @@ export function useConversationVisualRowFixture(
   const saveTurn = async (row: ConversationVisualRow): Promise<void> => {
     await buildRenderedTransfer(row, 'save');
   };
-  const recordInteraction = (kind: string, row: ConversationVisualRow): void => {
-    lastInteraction.value = `${kind}: ${row.payload.id} @ ${row.visualTurnId}`;
+  const recordInteraction = (
+    kind: 'edit' | 'regenerate',
+    command: EditUserMessageCommand | RegenerateUserMessageCommand,
+  ): void => {
+    lastInteraction.value = `${kind}: ${command.messageId}`;
   };
 
   const runGates = async (): Promise<void> => {

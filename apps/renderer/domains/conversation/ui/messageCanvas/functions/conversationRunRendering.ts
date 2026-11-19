@@ -11,6 +11,7 @@ function readMessageRunId(message: BaseMessage): string | null {
     case 'partial_answer':
       return message.metadata.run_id;
     case 'client_notice':
+    case 'command_permission_change':
     case 'execution_notice':
     case 'history_summary':
     case 'summarization_progress':

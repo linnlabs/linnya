@@ -2,14 +2,14 @@
 // 文件作用：提供一个独立的、可重用的进度条动画引擎。
 // V35 专家方案: 重构为遵循设计原则的艺术化动画引擎
 
+import { createFrameLoop } from '@linnya/renderer-ui';
 import { UPLOAD_STATUS } from '../constants';
 import { makeNoise2D } from 'open-simplex-noise';
 
 // --- 噪声函数，用于平滑随机 ---
 const noise2D = makeNoise2D(Date.now());
 
-// 全局动画管线状态
-let globalAnimationFrame = null;
+// 全局动画管线：所有活跃任务共用一个逐帧循环；活跃任务清空后循环自行结束，stopAllAnimations 负责强制收尾。
 const activeTasks = new Map(); // 存储所有活跃的动画任务
 
 /**
@@ -47,14 +47,11 @@ function globalAnimationLoop(now) {
   updateTaskAnimation(now, task, animationState);
   }
 
-  // 如果还有活跃任务，继续下一帧
-  if (activeTasks.size > 0) {
-    globalAnimationFrame = requestAnimationFrame(globalAnimationLoop);
-  } else {
-    // 没有活跃任务时停止全局循环
-    globalAnimationFrame = null;
-  }
+  // 还有活跃任务就继续下一帧；没有活跃任务时返回 false 停止全局循环
+  return activeTasks.size > 0;
 }
+
+const globalAnimation = createFrameLoop(globalAnimationLoop);
 
 /**
  * V35 专家方案: 核心动画更新逻辑
@@ -160,10 +157,8 @@ export function startAnimation(task, onComplete, commitTask) {
   // 添加到活跃任务列表
   activeTasks.set(taskId, animationState);
   
-  // 如果全局循环没有运行，启动它
-  if (!globalAnimationFrame) {
-    globalAnimationFrame = requestAnimationFrame(globalAnimationLoop);
-  }
+  // 全局循环没有运行时启动它（已在运行则保持）
+  globalAnimation.start();
 }
 
 /**
@@ -194,9 +189,5 @@ export function getActiveTaskCount() {
  */
 export function stopAllAnimations() {
   activeTasks.clear();
-  
-  if (globalAnimationFrame) {
-    cancelAnimationFrame(globalAnimationFrame);
-    globalAnimationFrame = null;
-  }
+  globalAnimation.stop();
 } 

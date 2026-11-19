@@ -42,9 +42,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { LinkIcon } from '@linnya/renderer-ui/icons';
-import { BaseButton, SecretInput } from '@linnya/renderer-ui';
+import { BaseButton, SecretInput, useTimer } from '@linnya/renderer-ui';
 import { openExternalUrl } from '@/shared/utils/openExternalUrl';
 import { SettingsFeedback, SettingsRow, useSettingsLocalization } from '@/domains/settings/public';
 import { useProviderCatalogReadModel } from '../../provider-catalog';
@@ -67,7 +67,7 @@ const status = reactive<DirectProviderOnboardingStatus>({
 const form = ref<DirectProviderOnboardingForm>(
   createInitialForm(props.providerConnectionDefinitionId)
 );
-let successTimer: number | null = null;
+const successTimer = useTimer();
 
 const selectedConnection = computed(() =>
   providerCatalog.providers.value
@@ -100,8 +100,7 @@ function resolveRegistrationIssue(issue: 'provider_required' | 'api_key_required
 function showSuccess(): void {
   status.success = true;
   status.error = null;
-  if (successTimer !== null) window.clearTimeout(successTimer);
-  successTimer = window.setTimeout(() => {
+  successTimer.start(() => {
     status.success = false;
   }, 3000);
 }
@@ -131,8 +130,4 @@ async function submit(): Promise<void> {
     status.isSubmitting = false;
   }
 }
-
-onBeforeUnmount(() => {
-  if (successTimer !== null) window.clearTimeout(successTimer);
-});
 </script>

@@ -1,5 +1,5 @@
 import type { CommandPermissionSettingsPort } from 'src/domains/commands/ports';
-import type { CommandAgentRunId } from '@app/schemas/commands';
+import type { CommandAgentRunId, ConversationCommandPermissionSelection } from '@app/schemas/commands';
 import {
   snapshotCommandPermissionSettingsForRun,
   type CommandRunPermissionContext,
@@ -23,6 +23,7 @@ export function resolveCommandRunPermissionContext(input: {
   readonly executionKind: 'start' | 'resume' | 'continue';
   readonly rootAgentRunId: CommandAgentRunId;
   readonly settingsPort: CommandPermissionSettingsPort;
+  readonly readConversation?: () => ConversationCommandPermissionSelection;
   readonly now?: () => number;
 }): CommandRunPermissionContext {
   const existing = runPermissionBindings.get(input.runOwner);
@@ -43,6 +44,7 @@ export function resolveCommandRunPermissionContext(input: {
   const context = freezeContext(
     snapshotCommandPermissionSettingsForRun({
       port: input.settingsPort,
+      readConversation: input.readConversation,
       rootAgentRunId: input.rootAgentRunId,
       now: input.now,
     })

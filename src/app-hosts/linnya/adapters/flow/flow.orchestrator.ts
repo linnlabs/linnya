@@ -16,7 +16,12 @@ import type {
   ConversationRunCancelResponse,
   ConversationRunSettlementResponse,
   ConversationRunContinueRequest,
+  ConversationRunSteerDrainResponse,
+  ConversationRunSteerRequest,
+  ConversationRunSteerResponse,
+  ConversationRunSteerWithdrawResponse,
 } from '@app/schemas';
+import { PendingUserInputRegistry } from './pending-user-inputs/pendingUserInputRegistry';
 import {
   generateRuntimeEventId,
   ExecutionIdSchema,
@@ -110,7 +115,8 @@ export class FlowOrchestrator {
     private readonly agentRunner: FlowAgentRunnerPort,
     private readonly persistenceCoordinator: EventPersistenceCoordinator,
     private readonly incomingEventPreparer: FlowIncomingEventPreparer,
-    private readonly runtime: FlowRuntimePort
+    private readonly runtime: FlowRuntimePort,
+    private readonly pendingUserInputs: PendingUserInputRegistry = new PendingUserInputRegistry()
   ) {
     this.runPreparationService = new FlowRunPreparationService(
       historyHandler,
@@ -313,6 +319,69 @@ export class FlowOrchestrator {
     }
     if (pending) await pending;
     return this.getActiveForegroundRun(conversationId);
+  }
+
+  /**
+   * 运行中插话。只接受本对话正在执行（含等待批准）的前台根运行；
+   * 运行已结束或暂停时返回 accepted=false，由客户端改走下一次运行。
+   */
+  async steerRun(
+    runId: string,
+    request: ConversationRunSteerRequest
+  ): Promise<ConversationRunSteerResponse> {
+    const id = RunIdSchema.parse(runId);
+    const snapshot = (await this.runtime.supervisor.findByConversation(request.conversation_id)).find(
+      run => run.runId === id
+    );
+    if (
+      !snapshot ||
+      snapshot.parentRunId ||
+      snapshot.metadata?.lane !== 'foreground' ||
+      !['pending', 'running', 'awaiting_user'].includes(snapshot.status)
+    ) {
+      return { success: true, accepted: false };
+    }
+    this.pendingUserInputs.submit({
+      runId: id,
+      conversationId: request.conversation_id,
+      inputId: request.input_id,
+      content: request.content,
+      submittedAt: Date.now(),
+    });
+    return { success: true, accepted: true, input_id: request.input_id };
+  }
+
+  withdrawSteer(
+    runId: string,
+    conversationId: string,
+    inputId: string
+  ): ConversationRunSteerWithdrawResponse {
+    this.requirePendingInputOwner(runId, conversationId);
+    return { success: true, outcome: this.pendingUserInputs.withdraw(runId, inputId) };
+  }
+
+  /** 取回没送达的插话；运行结束、暂停或要立即打断时由客户端调用。 */
+  drainSteers(runId: string, conversationId: string): ConversationRunSteerDrainResponse {
+    this.requirePendingInputOwner(runId, conversationId);
+    return {
+      success: true,
+      inputs: this.pendingUserInputs.drain(runId).map(input => ({
+        input_id: input.inputId,
+        content: input.content,
+        submitted_at: input.submittedAt,
+      })),
+    };
+  }
+
+  /** 供 AgentRunner 装配；同一份列表由路由写入、由 Linnkit 取用。 */
+  get pendingUserInputRegistry(): PendingUserInputRegistry {
+    return this.pendingUserInputs;
+  }
+
+  private requirePendingInputOwner(runId: string, conversationId: string): void {
+    if (!this.pendingUserInputs.belongsTo(runId, conversationId)) {
+      throw new Error('Pending user input run does not belong to this conversation');
+    }
   }
 
   continueRun(

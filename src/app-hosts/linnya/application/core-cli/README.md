@@ -13,7 +13,7 @@
 
 `linnya conversations` 让 Agent 读同一项目里别的对话，只给可读内容（用户的话、AI 的答复、工具前言和被中断的答复），不给思考和工具过程。口径见[可读对话](../../../../../docs/conversation-platform/06-read-model.md#8-可读对话)。
 
-- `linnya conversations list [--query 文字] [--limit 1..200]`：按最近活动列出当前项目的对话，含 Agent、轮次、改过的文档数和时间；`--query` 搜标题和可读内容，并给出命中片段。默认 30 个。
+- `linnya conversations list [--query 文字] [--limit 1..200]`：按最近活动列出当前项目的对话，含回复过的 Agent（`agents`，最近的在前）、当前选用的 Agent（`selectedAgent`）、轮次、改过的文档数和时间；`--query` 搜标题和可读内容，并给出命中片段。默认 30 个。
 - `linnya conversations read 对话ID [--after 序号] [--limit 1..200]`：按顺序读一个对话的可读消息，默认 50 条。没读完时输出 `nextAfterSeq`，作为下一次的 `--after`。一条消息超过输出预算时截短并标 `textTruncated`。
 
 范围由 Host 按已授权对话的项目给出，读不到其他项目的对话；不在当前项目的对话与不存在的对话同样报错。超过条数或输出预算时 `truncated` 与 `notice` 明确说明。

@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 
+import type { ConversationCommandPermissionSelection } from '@app/schemas/commands';
 import type { CommandExecutionAuditPort } from 'src/domains/audit';
 import type { CommandPermissionSettingsPort } from '../../../../../domains/commands';
 import type { CommandProductionScope } from '../../../adapters/commands/production-runtime';
@@ -11,6 +12,7 @@ export interface ConversationExecutionRuntimeScope {
   readonly sandbox: SandboxProductionScope;
   /** Agent run 与设置 UI 必须读取同一份三档命令权限 authority。 */
   readonly commandPermissionSettings: CommandPermissionSettingsPort;
+  readonly readConversationCommandPermission?: (conversationId: string) => ConversationCommandPermissionSelection;
 }
 
 export interface ConversationExecutionRuntimeCreateInput {

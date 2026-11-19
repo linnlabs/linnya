@@ -40,7 +40,7 @@
       >
         <div
           v-for="entry in virtualRows"
-          :key="entry.virtualItem.key"
+          :key="String(entry.virtualItem.key)"
           :ref="measureElement"
           class="visual-row-fixture-positioner"
           :data-index="entry.virtualItem.index"

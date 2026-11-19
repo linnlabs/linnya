@@ -132,15 +132,13 @@ const onCancel = (): void => {
   emit('cancel');
 };
 
+// Escape 由内层 Modal 的 Escape 归属处理，每次按键只关闭一次；这里只保留既有的 Enter 确认。
 const handleKeyDown = (event: KeyboardEvent): void => {
   if (!props.visible) return;
 
   if (event.key === 'Enter') {
     event.preventDefault();
     onConfirm();
-  } else if (event.key === 'Escape') {
-    event.preventDefault();
-    onClose();
   }
 };
 

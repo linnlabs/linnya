@@ -6,7 +6,7 @@ export type ProjectConversationDocumentsFilter = 'any' | 'changed' | 'unchanged'
 
 export interface ProjectConversationFilters {
   readonly query: string;
-  /** Agent 注册表 ID；null 为全部 Agent，空字符串为默认 Agent。 */
+  /** 回复过的 Agent（注册表 ID）；null 为全部 Agent，空字符串为默认 Agent。 */
   readonly agent: string | null;
   readonly activity: ProjectConversationActivityRange;
   readonly documents: ProjectConversationDocumentsFilter;

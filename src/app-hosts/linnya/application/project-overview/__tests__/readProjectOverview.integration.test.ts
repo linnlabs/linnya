@@ -56,8 +56,16 @@ function context(run: { readonly runId: string; readonly callId: string; readonl
 
 const write = (locator: string, content: string, ctx: ToolContext) => new WriteFileTool().run({ locator, content }, ctx);
 
+/** 账本按运行编号从运行记录查 Agent。 */
+function insertRun(runId: string, conversationId: string, agentSpecId: string): void {
+  database.getDb().prepare(
+    "INSERT INTO runs (id, conversation_id, kind, status, start_ts, agent_spec_id) VALUES (?, ?, 'root', 'completed', 1, ?)",
+  ).run(runId, conversationId, agentSpecId);
+}
+
 describe('项目概览', () => {
   it('跨文件夹列出文档：来源、生成于哪个对话、最近谁改、待审阅数', async () => {
+    insertRun('run-a', 'conv', 'research_v1');
     const reports = workspace.createFolder(projectId, '报告');
     workspace.createFolder(projectId, '访谈', reports);
 
@@ -75,8 +83,8 @@ describe('项目概览', () => {
 
     expect(byTitle.get('行业报告.md')).toMatchObject({
       location: ['报告'],
-      creator: { actor: 'linnya_ai', conversation_id: 'conv', conversation_title: '整理储能政策' },
-      last_modified_by: { actor: 'user' },
+      creator: { actor: 'run', agent_id: 'research_v1', conversation_id: 'conv', conversation_title: '整理储能政策' },
+      last_modified_by: { actor: 'user', agent_id: null },
     });
     expect(byTitle.get('行业报告.md')?.pending_revision_count).toBeGreaterThan(0);
     expect(byTitle.get('纪要.md')).toMatchObject({
@@ -93,6 +101,7 @@ describe('项目概览', () => {
     database.getDb().prepare(
       'INSERT INTO conversations (conversation_id, title, project_id, created_at, last_event_at) VALUES (?, ?, NULL, 1, 1)',
     ).run('elsewhere', '别处的对话');
+    insertRun('run-a', 'elsewhere', 'default');
     await write('workspace:/a.md', '# A', context({ runId: 'run-a', callId: 'c1', conversationId: 'elsewhere' }));
     const node = workspace.getChildNodes(null, projectId).find(item => item.name === 'a.md');
     if (!node) throw new Error('expected a.md');
@@ -100,7 +109,8 @@ describe('项目概览', () => {
 
     const [document] = readProjectOverview(database.getDb(), { project_id: projectId }).documents;
     expect(document).toMatchObject({
-      creator: { actor: 'linnya_ai', conversation_id: null, conversation_title: null },
+      // 默认 Agent 在合同里为 null，界面显示 Linnya Agent。
+      creator: { actor: 'run', agent_id: null, conversation_id: null, conversation_title: null },
       last_modified_at: now + 60_000,
       last_modified_by: null,
     });

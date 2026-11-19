@@ -12,6 +12,7 @@ function readUiPresentation(message: BaseMessage): 'message' | 'hidden' | undefi
     case 'history_summary':
       return message.metadata.ui?.presentation;
     case 'client_notice':
+    case 'command_permission_change':
     case 'tool_calls':
     case 'execution_notice':
     case 'summarization_progress':
@@ -40,6 +41,8 @@ export function isRenderableConversationMessage(message: BaseMessage): boolean {
   if (isBlankFinalAnswerMessage(message)) return false;
 
   if (message.type === 'client_notice') return true;
+  // 只改过档位、还没发消息的对话仍是空对话：记录行跟着第一条消息一起出现。
+  if (message.type === 'command_permission_change') return false;
   if (message.type === 'execution_notice') return true;
   if (message.role === 'user' || message.role === 'assistant') return true;
   return false;

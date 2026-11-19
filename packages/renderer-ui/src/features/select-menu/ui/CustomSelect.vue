@@ -15,15 +15,22 @@
       :aria-expanded="computedIsOpen"
       :aria-haspopup="semanticRole"
       :aria-controls="computedIsOpen ? optionsPanelId : undefined"
-      :aria-label="triggerAriaLabel || triggerTitle"
-      :title="triggerTitle"
+      :aria-label="triggerAriaLabel || triggerTooltip || triggerTitle"
+      :title="triggerTooltip ? undefined : triggerTitle"
+      v-bind="triggerTooltipAttributes"
       :disabled="disabled"
       :style="{ fontSize: fontSize }"
       @click="toggleDropdown"
       @keydown.down.prevent="openFromKeyboard"
       @keydown.up.prevent="openFromKeyboard"
     >
-      <span :class="['selected-value', classNames.selectedValue]">{{ displayValue }}</span>
+      <!-- 触发器内容可换成图标等；默认显示选中项文字。 -->
+      <slot
+        name="selected-value"
+        :display-value="displayValue"
+      >
+        <span :class="['selected-value', classNames.selectedValue]">{{ displayValue }}</span>
+      </slot>
       <slot
         name="arrow-icon"
         :is-open="computedIsOpen"
@@ -251,12 +258,16 @@ import { useSelectFocusNavigation } from '../composables/useSelectFocusNavigatio
 import CustomSelectOptionList from './CustomSelectOptionList.vue';
 import { ChevronIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
+import { hoverTooltipAttributes, useHoverTooltipService } from '../../feedback';
 
 interface CustomSelectProps {
   modelValue?: Value | null;
   options: readonly CustomSelectOption<Value>[];
   placeholder?: string;
+  displayText?: string;
   title?: string;
+  /** 触发器的悬停提示，由共享提示服务绘制并取代原生 title；也作为无 triggerAriaLabel 时的可访问名称。 */
+  triggerTooltip?: string;
   triggerAriaLabel?: string;
   semanticRole?: CustomSelectSemanticRole;
   manualMode?: boolean;
@@ -283,6 +294,7 @@ const props = withDefaults(defineProps<CustomSelectProps>(), {
   modelValue: null,
   placeholder: '',
   title: '',
+  triggerTooltip: '',
   triggerAriaLabel: '',
   semanticRole: 'listbox',
   manualMode: false,
@@ -432,8 +444,12 @@ const resolvedTitle = computed(() => (
 const selectedOption = computed(() => findSelectedOption(props.options, props.modelValue));
 
 const displayValue = computed(() => (
-  selectedOption.value ? selectedOption.value.text : resolvedPlaceholder.value
+  props.displayText ?? (selectedOption.value ? selectedOption.value.text : resolvedPlaceholder.value)
 ));
+
+// 只在提供 triggerTooltip 时用共享提示；服务按持有者计数，没有提示的选择框不受影响。
+useHoverTooltipService();
+const triggerTooltipAttributes = computed(() => hoverTooltipAttributes(props.triggerTooltip));
 
 // 计算按钮的 title
 const triggerTitle = computed(() => {

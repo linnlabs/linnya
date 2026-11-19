@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'vitest';
 import { repoRoot } from '../definitions/probeContract.mjs';
 import { buildFreshness } from '../orchestration/probeBuild.mjs';
-import { feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
+import { dependencyInstallMarkers, feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
 import { readDesktopMainInspector } from '../functions/desktopLaunchMarkers.mjs';
 import { checkHeaderInvariants, trafficLightsRect } from '../functions/headerInvariants.mjs';
 import { launchOptions, parseProbeArgs } from '../functions/parseProbeArgs.mjs';
@@ -42,6 +42,9 @@ test('任一 Desktop 产物比源码旧就判过期；Renderer 与测试文件�
     { stale: true, reason: 'src/a.ts 比 app-server-backend.cjs 新' });
   assert.equal(judgeBuildFreshness(outputs, [{ path: 'src/a.ts', mtimeMs: 50 }]).stale, false);
   assert.equal(judgeBuildFreshness([{ path: 'main.cjs' }], []).stale, true);
+  // 重装依赖（例如升级 @linnlabs/linnkit）比产物新时同样判过期。
+  assert.deepEqual(judgeBuildFreshness(outputs, [{ path: dependencyInstallMarkers[1], mtimeMs: 200 }]),
+    { stale: true, reason: 'node_modules/.modules.yaml 比 app-server-backend.cjs 新' });
   assert.ok(feedsDesktopBundle('src/tools/workspace/write_file/index.ts'));
   assert.ok(feedsDesktopBundle('packages/plugins/slides/src/backend/deck.ts'));
   for (const path of ['packages/plugins/slides/src/renderer/Deck.vue', 'packages/renderer-ui/src/index.ts',

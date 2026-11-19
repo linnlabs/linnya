@@ -41,6 +41,14 @@ function message(overrides: {
       return createTestAnswerMessage({ ...common, type, metadata: overrides.metadata });
     case 'execution_notice':
       return { ...common, role: 'system', type, metadata: { run_id: 'run', turn_id: 'turn', error_code: 'llm.network_error' } };
+    case 'command_permission_change':
+      return {
+        ...common, role: 'system', type, content: '',
+        metadata: {
+          revision: 1, changed_at_ms: 1, origin: 'desktop', previous_selection: null, next_selection: 'read_only',
+          previous_level: 'standard', next_level: 'read_only', turn_id: null, run_id: null,
+        },
+      };
     case 'client_notice':
     case 'thought':
     case 'summarization_progress':
@@ -59,6 +67,12 @@ describe('renderableConversationMessage', () => {
     expect(isHiddenConversationMessage(hidden)).toBe(true);
     expect(isRenderableConversationMessage(hidden)).toBe(false);
     expect(hasRenderableConversationMessages([hidden])).toBe(false);
+  });
+
+  it('只有档位变更记录的对话仍算空对话，但记录本身照常渲染', () => {
+    const change = message({ type: 'command_permission_change' });
+    expect(hasRenderableConversationMessages([change])).toBe(false);
+    expect(shouldRenderConversationMessage(change)).toBe(true);
   });
 
   it('普通用户和助手消息算作可渲染内容', () => {

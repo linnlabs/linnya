@@ -6,6 +6,12 @@ const rendererOnly = [
   /^packages\/renderer-ui\//,
 ];
 
+/**
+ * 依赖也会打进 main / backend 产物：升级或重装（例如 `@linnlabs/linnkit` 换版本）后必须重建。
+ * pnpm 每次安装都会改写这两个文件。
+ */
+export const dependencyInstallMarkers = ['pnpm-lock.yaml', 'node_modules/.modules.yaml'];
+
 export function feedsDesktopBundle(path) {
   return !rendererOnly.some(pattern => pattern.test(path));
 }

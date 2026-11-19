@@ -1262,6 +1262,22 @@ body.project-overview-board-is-dragging {
   font-variant-numeric: tabular-nums;
 }
 
+/* Agent 名可能较长：名称在右侧换行，不挤掉左侧标签。 */
+.project-conversations__agents > div {
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.project-conversations__agents dt {
+  flex-shrink: 0;
+}
+
+.project-conversations__agents dd {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 .project-conversations__link {
   padding: 0;
   border: 0;

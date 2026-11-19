@@ -117,6 +117,38 @@ describe('usePanelPositioning', () => {
     expect(recalculateAllPositions).toHaveBeenCalledWith(false);
   });
 
+  it('debounces window resize recalculation and drops the pending one on unmount', async () => {
+    vi.useFakeTimers();
+    try {
+      const recalculateAllPositions = vi.fn();
+      const app = mountPositioningHost({
+        editor: ref({ view: { dom: document.createElement('div') } }),
+        panelPositionManager: ref({ recalculateAllPositions }),
+      });
+      mountedApps.push(app);
+      await nextTick();
+
+      window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new Event('resize'));
+      vi.advanceTimersByTime(199);
+      await Promise.resolve();
+      expect(recalculateAllPositions).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+      expect(recalculateAllPositions).toHaveBeenCalledTimes(1);
+
+      window.dispatchEvent(new Event('resize'));
+      app.unmount();
+      mountedApps.length = 0;
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+      expect(recalculateAllPositions).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('does not attach an owner observer after unmount during initial setup', async () => {
     const app = mountPositioningHost({
       editor: ref({ view: { dom: document.createElement('div') } }),

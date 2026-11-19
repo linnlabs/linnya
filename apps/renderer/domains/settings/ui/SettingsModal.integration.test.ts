@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { createApp, defineComponent, h, nextTick, type App } from 'vue';
+import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue';
+import { Modal } from '@linnya/renderer-ui';
 import { createPinia } from 'pinia';
 import { afterEach, describe, expect, it } from 'vitest';
 import { useUIStore } from '@/shared/stores/ui';
@@ -32,5 +33,40 @@ describe('设置页头所有权', () => {
     await nextTick();
     expect(container.querySelectorAll('h2')).toHaveLength(1);
     expect(container.querySelector('.settings-modal-panel-title')?.textContent).toBe('外观');
+  });
+});
+
+describe('设置里的嵌套弹窗', () => {
+  it('Escape 先关闭最上层的详情弹窗，再次 Escape 才关闭设置', async () => {
+    clearSettingsContributionsForTest();
+    const detailVisible = ref(false);
+    registerSettingsContribution({ id: 'models', title: '模型管理', group: 'general', order: 0,
+      component: defineComponent({ render: () => h(Modal, {
+        isVisible: detailVisible.value,
+        title: '模型详情',
+        onClose: () => { detailVisible.value = false; },
+      }) }) });
+    const pinia = createPinia();
+    const uiStore = useUIStore(pinia);
+    uiStore.openSettingsModal('models');
+    // 与 GlobalModals 一致：设置关闭即卸载。
+    const Host = defineComponent({
+      setup: () => () => (uiStore.settingsModalVisible ? h(SettingsModal) : null),
+    });
+    container = document.createElement('div'); document.body.append(container);
+    app = createApp(Host); app.use(pinia); app.mount(container);
+    await nextTick();
+
+    detailVisible.value = true;
+    await nextTick();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await nextTick();
+    expect(detailVisible.value).toBe(false);
+    expect(uiStore.settingsModalVisible).toBe(true);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await nextTick();
+    expect(uiStore.settingsModalVisible).toBe(false);
   });
 });

@@ -103,6 +103,7 @@
  */
 import {
   ref,
+  shallowRef,
   inject,
   computed,
   watch,
@@ -143,7 +144,7 @@ import { useEditorLocalization } from "./useEditorLocalization";
 // 从 EditorContext 中注入编辑器实例。
 // 中文说明：这里使用 typed InjectionKey，让缺失 provider 的问题在类型层暴露，
 // 避免通过字符串 key + 类型断言把注入契约藏起来。
-const emptyEditorRef = ref<Editor | null>(null);
+const emptyEditorRef = shallowRef<Editor | null>(null);
 const editor = inject(EDITOR_KEY, emptyEditorRef);
 // 注入面板位置管理器（可能不存在）
 type PanelPositionManagerRef = PanelPositioningOptions["panelPositionManager"];

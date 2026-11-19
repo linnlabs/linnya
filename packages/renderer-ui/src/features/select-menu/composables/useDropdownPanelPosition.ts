@@ -17,6 +17,12 @@ interface UseDropdownPanelPositionResult {
   optionsPanelStyle: ComputedRef<DropdownPanelPositionStyle>;
 }
 
+/** 只认像素值；百分比等相对写法在 Portal 里没有参照，按 0 处理（即与触发器同宽）。 */
+function readPixelWidth(value: string): number {
+  const match = /^(\d+(?:\.\d+)?)px$/.exec(value.trim());
+  return match ? Number(match[1]) : 0;
+}
+
 /** 主菜单面板定位：普通模式留在组件内，Portal 模式按视口计算 fixed 坐标。 */
 export function useDropdownPanelPosition({
   isPortalMode,
@@ -51,7 +57,11 @@ export function useDropdownPanelPosition({
     const panel = unref(optionsRef);
     const measuredHeight = panel instanceof HTMLElement ? panel.offsetHeight : 0;
     const panelHeight = measuredHeight > 0 ? measuredHeight : 240;
-    const panelWidth = triggerRect.width;
+    // Portal 面板默认与触发器同宽；以像素给出的 minWidth 可以撑宽（不超过视口），收边按这个宽度算。
+    const panelWidth = Math.min(
+      Math.max(triggerRect.width, readPixelWidth(unref(minWidth))),
+      window.innerWidth - 16,
+    );
     const spaceBelow = window.innerHeight - triggerRect.bottom;
     const spaceAbove = triggerRect.top;
 

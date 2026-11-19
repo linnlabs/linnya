@@ -15,7 +15,7 @@ it('解析 list 与 read：默认条数、翻页起点，拒绝空查询、越�
 });
 
 const row = (id: string, lastEventAt: number): ProjectConversationRow => ({
-  conversation_id: id, title: `标题${id}`, agent_id: null, turn_count: 1, changed_document_count: 0,
+  conversation_id: id, title: `标题${id}`, replied_agent_ids: [null, 'research_v1'], selected_agent_id: 'research_v1', turn_count: 1, changed_document_count: 0,
   created_at: 1, last_event_at: lastEventAt, is_pinned: false, storage: null,
 });
 
@@ -25,7 +25,7 @@ it('列表按最近活动排列，超过条数时标出截断；搜索时只列�
   }));
   expect(list.conversations.map((item: { id: string }) => item.id)).toEqual(['b', 'c']);
   expect(list).toMatchObject({ truncated: true, notice: expect.any(String) });
-  expect(list.conversations[0]).toMatchObject({ agent: 'default' });
+  expect(list.conversations[0]).toMatchObject({ agents: ['default', 'research_v1'], selectedAgent: 'research_v1' });
 
   const searched = JSON.parse(formatConversationList({
     rows: [row('a', 1), row('b', 3)], matches: new Map([['a', '…命中…']]), searchTruncated: false, limit: 30, maxCharacters: 8000,

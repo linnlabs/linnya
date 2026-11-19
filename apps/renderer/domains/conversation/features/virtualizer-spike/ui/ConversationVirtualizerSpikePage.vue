@@ -130,7 +130,7 @@
         >
           <div
             v-for="row in virtualRows"
-            :key="row.virtualItem.key"
+            :key="String(row.virtualItem.key)"
             :ref="measureElement"
             class="spike-virtual-row"
             :data-index="row.virtualItem.index"
@@ -164,7 +164,7 @@
       >
         <div
           v-for="entry in dynamicVirtualRows"
-          :key="entry.virtualItem.key"
+          :key="String(entry.virtualItem.key)"
           :ref="measureDynamicElement"
           class="dynamic-matrix-fixture__row"
           :data-index="entry.virtualItem.index"

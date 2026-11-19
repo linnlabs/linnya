@@ -10,12 +10,21 @@
   >
     <!-- 输入区域 -->
     <div class="input-container">
+      <PendingSteerTray
+        v-if="runSteering.items.value.length > 0"
+        :items="runSteering.items.value"
+        :compact="variant === 'compact'"
+        @edit="handleSteerEdit"
+        @withdraw="handleSteerWithdraw"
+        @interrupt="handleSteerInterrupt"
+      />
       <div
         class="input-wrapper conversation-footer-surface"
         :class="{
           'is-selector-interacting': isSelectorInteracting,
           'is-disabled': isInputDisabled,
           'has-input-accessories': visibleInputAccessories.length > 0,
+          'is-model-setup-required': isModelSetupRequired,
         }"
       >
         <component
@@ -73,9 +82,7 @@
           :is-image-attachment-disabled="isImageEntryDisabled"
           :context-window-usage="contextWindowUsage"
           :context-window-conversation-information="contextWindowConversationInformation"
-          :context-window-usage-scope-key="
-            conversationSelectors.activeConversation.value?.id ?? 'draft'
-          "
+          :context-window-usage-scope-key="conversationSelectors.activeConversation.value?.id ?? null"
           :disabled="isInputDisabled"
           @update:agent-choice="handleAgentChoiceChange"
           @update:primary-model-value="handlePrimaryModelChange"
@@ -83,7 +90,18 @@
           @selector-interaction-change="handleSelectorInteractionChange"
           @request-image-attachment="openImageAttachmentPicker"
           @submit="handleSubmit"
-        />
+        >
+          <template #command-permission>
+            <ConversationCommandPermissionSelect
+              :view="commandPermissionView"
+              :loading="commandPermissionLoadState === 'loading'"
+              :running="isInteractiveRunBusy(composerRun)"
+              :disabled="disabled || isSubmissionStarting"
+              @select="selectCommandPermission"
+              @open-settings="uiStore.openSettingsModal('command-permission')"
+            />
+          </template>
+        </AiAssistantInputFooter>
 
         <button
           v-if="isModelSetupRequired"
@@ -138,6 +156,10 @@
 </template>
 
 <script setup lang="ts">
+import ConversationCommandPermissionSelect from '../features/command-permissions/ui/ConversationCommandPermissionSelect.vue';
+import { useConversationCommandPermission } from '../features/command-permissions/orchestration/useConversationCommandPermission';
+import { ensureMaterializedConversation } from '../services/orchestration/ensureMaterializedConversation';
+import { confirmPermissionLevelExpansion, useSettingsLocalization } from '@/domains/settings/public';
 import { useConversationProjectionActions } from '@/domains/conversation/projectionActions';
 
 import { cancelAssistantActivity } from '../assistantActions';
@@ -210,6 +232,7 @@ import {
 import { prepareComposerReferencesForSubmit } from '../features/composer-references';
 import { useHistoryList } from '../history/list';
 import { useUIStore } from '../../../shared/stores/ui';
+import { useNotificationStore } from '@/app/notification';
 import {
   useInteractiveRunStore,
   pauseInteractiveRun,
@@ -218,6 +241,8 @@ import {
   isInteractiveRunBusy,
   resolveComposerRunControl,
 } from '../features/interactive-run';
+import { useRunSteering } from '../features/run-steering/orchestration/useRunSteering';
+import PendingSteerTray from '../features/run-steering/ui/PendingSteerTray.vue';
 
 const props = defineProps<{
   placeholder?: string;
@@ -241,10 +266,38 @@ const modelCatalog = useModelCatalogReadModel();
 const modelPicker = useModelPickerReadModel();
 const modelBindings = useModelPurposeBindings();
 const uiStore = useUIStore();
+const notificationStore = useNotificationStore();
 const navigationScope = useNavigationScope();
 const { conversationMessage } = useConversationLocalization();
 const { t } = useLocalization();
 const composerRun = computed(() => interactiveRunStore.snapshotFor(assistantStore.activeConversationId));
+const { settingsMessage } = useSettingsLocalization();
+const permissionTarget = computed(() => assistantStore.activeConversationId
+  ? { conversation_id: assistantStore.activeConversationId, project_id: navigationScope.currentProjectId }
+  : null);
+const {
+  current: commandPermissionView,
+  loadState: commandPermissionLoadState,
+  busy: commandPermissionBusy,
+  select: selectCommandPermission,
+} = useConversationCommandPermission({
+  target: permissionTarget,
+  runStatus: computed(() => `${composerRun.value?.runId ?? ''}:${composerRun.value?.status ?? ''}`),
+  draftKey: computed(currentClientNoticeDraftKey),
+  materialize: () => {
+    ensureMaterializedConversation(assistantStore, navigationScope);
+    return permissionTarget.value;
+  },
+  confirmFullAccess: () => confirmPermissionLevelExpansion(settingsMessage, 'full_access', {
+    title: conversationMessage('conversation.commandPermission.confirmFullAccessTitle'),
+  }),
+  reportWriteFailure: () => notificationStore.show(
+    conversationMessage('conversation.commandPermission.changeFailed'),
+    'error',
+    4000,
+  ),
+});
+
 const contextWindowUsage = useContextWindowUsagePresentation({
   conversationId: computed(() => conversationSelectors.activeConversation.value?.id ?? null),
   modelId: modelBindings.effectivePrimaryModelId,
@@ -273,8 +326,14 @@ const chatFlowOrchestrator = useChatFlowOrchestrator({
   onUserMessageCommitted: () => {
     clearComposerDraft();
     imageDraftController.acceptCommitted();
+    // 消息已提交、草稿已清空，发送这一步就结束了；运行期间输入框转为插话。
+    isSubmissionStarting.value = false;
     props.onUserMessageCommitted?.();
   },
+});
+// 没送达的插话转成新消息时，不能清空输入框或认领图片草稿：用户可能正在写下一条。
+const steerFlowOrchestrator = useChatFlowOrchestrator({
+  onUserMessageCommitted: () => props.onUserMessageCommitted?.(),
 });
 const inputExecution = useConversationInputExecution({
   isBusy: () => assistantStore.isBusy,
@@ -433,12 +492,28 @@ const activeAgentChoiceAriaLabel = computed(() => {
 
 const isLoading = inputExecution.isLoading;
 const isStreaming = inputExecution.isStreaming;
+/** 正文运行进行中：输入框保持可用，发送就是插话（扩展运行仍按原规则禁用）。 */
+const isSteerMode = computed(() =>
+  !activeInputExtension.value && isInteractiveRunBusy(composerRun.value)
+);
 const isInputDisabled = computed(
   () =>
     props.disabled === true ||
     isLoading.value ||
-    inputExecution.isBusy.value ||
+    (inputExecution.isBusy.value && !isSteerMode.value) ||
     isSubmissionStarting.value
+);
+const runSteering = useRunSteering({
+  conversationId: computed(() => assistantStore.activeConversationId),
+  readDraft: () => assistantStore.inputText,
+  writeDraft: text => assistantStore.setInputText(text),
+  sendAsNewMessage: text => steerFlowOrchestrator.sendChatMessage({ text }, {}),
+  pauseRun: conversationId => pauseInteractiveRun(conversationId),
+});
+/** 插话首版只发文字：有图片或引用时不能在运行中发出。 */
+const steerBlockedByAttachments = computed(() =>
+  isSteerMode.value
+  && (imageDraftStore.items.length > 0 || composerReferences.references.value.length > 0)
 );
 const isModelSetupRequired = computed(() =>
   shouldPromptForModelSetup(modelPicker.snapshot.value, isInputDisabled.value)
@@ -472,6 +547,7 @@ const imageSubmitPreflight = computed(() =>
 );
 const imageSubmitMessage = computed(() => {
   if (imageEntryMessage.value) return imageEntryMessage.value;
+  if (steerBlockedByAttachments.value) return conversationMessage('conversation.steer.attachmentsUnsupported');
   if (imageDraftStore.items.length === 0 || imageSubmitPreflight.value.ok) return '';
   if (imageSubmitPreflight.value.reason === 'model_unsupported') {
     return conversationMessage('conversation.error.imageModelUnsupported');
@@ -484,7 +560,8 @@ const imageSubmitMessage = computed(() => {
 
 // 切换 Agent 的保存很短：只拦发送，不把输入框置为禁用外观，否则正文和占位符会闪一下。
 const canSend = computed(() => {
-  return imageSubmitPreflight.value.ok && !isInputDisabled.value && !isAgentChoiceUpdating.value;
+  return imageSubmitPreflight.value.ok && !isInputDisabled.value && !isAgentChoiceUpdating.value && !commandPermissionBusy.value
+    && !steerBlockedByAttachments.value;
 });
 const primaryControl = computed(() =>
   resolveComposerRunControl({
@@ -586,6 +663,7 @@ const inputPlaceholder = computed(() => {
   if (props.placeholder && props.placeholder.trim().length > 0) {
     return props.placeholder;
   }
+  if (isSteerMode.value) return conversationMessage('conversation.input.steerPlaceholder');
   return conversationMessage('conversation.input.placeholder');
 });
 useConversationInputPlaceholder(inputPlaceholder, () => editor.value);
@@ -656,6 +734,19 @@ const handleSubmit = async () => {
   }
 
   if (!canSend.value) return;
+  if (isSteerMode.value) {
+    // 运行中：发出的是插话，等这一批工具做完后交给正在运行的这次回复。
+    const steerText = getEditorPlainText(editor.value).replace(/\r\n/g, '\n').trimEnd();
+    if (steerText.trim().length === 0) return;
+    clearComposerDraft();
+    try {
+      await runSteering.submit(steerText);
+    } catch (error) {
+      console.error('[AiAssistantInput] 插话失败:', error);
+      assistantStore.setInputText(steerText);
+    }
+    return;
+  }
   // 发送点击后立即冻结草稿；后续历史尾窗和文档上下文读取都可能异步等待。
   isSubmissionStarting.value = true;
 
@@ -713,6 +804,30 @@ const handleSubmit = async () => {
     isSubmissionStarting.value = false;
   }
 };
+
+async function handleSteerEdit(inputId: string): Promise<void> {
+  try {
+    await runSteering.edit(inputId);
+  } catch (error) {
+    console.error('[AiAssistantInput] 编辑插话失败:', error);
+  }
+}
+
+async function handleSteerWithdraw(inputId: string): Promise<void> {
+  try {
+    await runSteering.withdraw(inputId);
+  } catch (error) {
+    console.error('[AiAssistantInput] 撤回插话失败:', error);
+  }
+}
+
+async function handleSteerInterrupt(): Promise<void> {
+  try {
+    await runSteering.interrupt();
+  } catch (error) {
+    console.error('[AiAssistantInput] 立即打断失败:', error);
+  }
+}
 
 /**
  * 中文说明（根因级修复）：

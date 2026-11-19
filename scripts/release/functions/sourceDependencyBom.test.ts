@@ -125,6 +125,7 @@ describe('source dependency BOM', () => {
         unknownLicenseEvidence,
         reviewedEvidenceFiles: [],
         reviewedEvidenceRootDir: rootDir,
+        pinnedTarballIntegrities: [],
       });
 
       expect(result.problems).toEqual([]);
@@ -188,6 +189,7 @@ describe('source dependency BOM', () => {
         unknownLicenseEvidence: [],
         reviewedEvidenceFiles: [],
         reviewedEvidenceRootDir: rootDir,
+        pinnedTarballIntegrities: [],
       });
 
       expect(result.problems).toEqual([
@@ -247,6 +249,7 @@ packages:
         unknownLicenseEvidence: [],
         reviewedEvidenceFiles: [],
         reviewedEvidenceRootDir: rootDir,
+        pinnedTarballIntegrities: [],
       });
 
       expect(result.problems).toEqual([]);
@@ -260,5 +263,90 @@ packages:
     } finally {
       fs.rmSync(rootDir, { recursive: true, force: true });
     }
+  });
+
+  describe('锁文件没有 integrity 的 URL tarball', () => {
+    const tarballUrl = 'https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz';
+    const pinned = {
+      tarball: tarballUrl,
+      packageName: 'xlsx',
+      version: '0.20.3',
+      integrity: 'sha512-pinned',
+      reviewed: 'fixture',
+    };
+    const lockfile = (resolution: string) => `importers:
+  .:
+    dependencies:
+      xlsx:
+        specifier: ${tarballUrl}
+        version: ${tarballUrl}
+
+packages:
+  xlsx@${tarballUrl}:
+    resolution: ${resolution}
+    version: 0.20.3
+`;
+    function generate(lockfileText: string, pinnedTarballIntegrities: readonly (typeof pinned)[]) {
+      const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-source-bom-pinned-'));
+      try {
+        const xlsxRoot = createInstalledPackage({
+          rootDir,
+          name: 'xlsx',
+          version: '0.20.3',
+          license: 'Apache-2.0',
+          source: 'https://sheetjs.com',
+          licenseText: 'SheetJS Apache license\n',
+        });
+        return createSourceDependencyBom({
+          rootDir,
+          projectManifest: { name: 'linnya', version: '1.0.0' },
+          lockfile: lockfileText,
+          licenseReport: { 'Apache-2.0': [{ name: 'xlsx', versions: ['0.20.3'], paths: [xlsxRoot] }] },
+          platform: 'darwin',
+          architecture: 'arm64',
+          licenseSelections: [],
+          sourceOverrides: [],
+          supplementalEvidenceFiles: [],
+          supplementalNotices: [],
+          unknownLicenseEvidence: [],
+          reviewedEvidenceFiles: [],
+          reviewedEvidenceRootDir: rootDir,
+          pinnedTarballIntegrities,
+        });
+      } finally {
+        fs.rmSync(rootDir, { recursive: true, force: true });
+      }
+    }
+
+    it('使用登记的 integrity，锁文件有值时必须一致', () => {
+      const withoutIntegrity = generate(lockfile(`{tarball: ${tarballUrl}}`), [pinned]);
+      expect(withoutIntegrity.problems).toEqual([]);
+      expect(withoutIntegrity.bom?.packages).toMatchObject([{ name: 'xlsx', integrity: 'sha512-pinned' }]);
+      expect(withoutIntegrity.notice).toContain(`- xlsx@0.20.3 — Apache-2.0 — https://sheetjs.com — sha512-pinned`);
+
+      const matching = generate(lockfile(`{integrity: sha512-pinned, tarball: ${tarballUrl}}`), [pinned]);
+      expect(matching.problems).toEqual([]);
+
+      const changed = generate(lockfile(`{integrity: sha512-other, tarball: ${tarballUrl}}`), [pinned]);
+      expect(changed.problems).toEqual([
+        { packageIdentity: '(input)', message: `${tarballUrl} 的锁文件 integrity 与登记的不一致，tarball 内容可能已变化` },
+      ]);
+    });
+
+    it('没有登记时报告缺少 integrity；登记的 URL 不在锁文件或版本不符时失败', () => {
+      const missing = generate(lockfile(`{tarball: ${tarballUrl}}`), []);
+      expect(missing.bom).toBeUndefined();
+      expect(missing.problems).toEqual([
+        expect.objectContaining({ packageIdentity: 'xlsx@0.20.3', message: expect.stringContaining('integrity') }),
+      ]);
+
+      const stale = generate(lockfile(`{tarball: ${tarballUrl}}`), [pinned, { ...pinned, tarball: 'https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz' }]);
+      expect(stale.problems).toEqual([
+        { packageIdentity: '(input)', message: '登记的 tarball 不在锁文件中：https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz' },
+      ]);
+
+      const wrongVersion = generate(lockfile(`{tarball: ${tarballUrl}}`), [{ ...pinned, version: '0.20.2' }]);
+      expect(wrongVersion.problems[0]?.message).toContain('不一致');
+    });
   });
 });

@@ -12,7 +12,7 @@ import {
   resizeProjectOverviewColumn,
   toggleProjectOverviewColumn,
 } from '../projectOverviewLayout';
-import { formatProjectOverviewActor } from '../projectOverviewPresentation';
+import { formatProjectOverviewActor, resolveProjectOverviewAgentName } from '../projectOverviewPresentation';
 import {
   filterProjectOverviewRows,
   listProjectOverviewTags,
@@ -35,11 +35,13 @@ const row = (overrides: Partial<ProjectOverviewRow> & { readonly documentId: str
   createdAt: 0,
   creatorActor: null,
   creatorPluginId: null,
+  creatorAgentId: null,
   conversationId: null,
   conversationTitle: null,
   lastModifiedAt: 0,
   lastModifiedActor: null,
   lastModifiedPluginId: null,
+  lastModifiedAgentId: null,
   pendingRevisionCount: null,
   tags: [],
   fieldRevision: 0,
@@ -134,7 +136,7 @@ describe('筛选与排序', () => {
   });
 
   it('按最近修改倒序；空值不论升降序都排在最后', () => {
-    const labels = { typeLabel: (type: string) => type };
+    const labels = { typeLabel: (type: string) => type, sourceLabel: () => '' };
     expect(sortProjectOverviewRows(rows, { key: 'modified', direction: 'desc' }, labels).map(item => item.documentId))
       .toEqual(['a', 'b', 'c']);
     const withPending = [
@@ -149,12 +151,46 @@ describe('筛选与排序', () => {
   });
 });
 
+describe('来源排序', () => {
+  it('先按来源类别（Agent、子任务、Linnya CLI、插件、用户），同为 Agent 再按显示名，空值最后', () => {
+    const agents = new Map([['decision_agent', 'Decision'], ['research_v1', 'Research']]);
+    const labels = {
+      typeLabel: (type: string) => type,
+      sourceLabel: (item: ProjectOverviewRow) => (item.creatorActor === 'run'
+        ? resolveProjectOverviewAgentName(item.creatorAgentId, agents, message)
+        : item.creatorActor ?? ''),
+    };
+    const rows = [
+      row({ documentId: 'user', creatorActor: 'user' }),
+      row({ documentId: 'none' }),
+      row({ documentId: 'research', creatorActor: 'run', creatorAgentId: 'research_v1' }),
+      row({ documentId: 'cli', creatorActor: 'external' }),
+      row({ documentId: 'subtask', creatorActor: 'subrun', creatorAgentId: 'subagent_document_editor' }),
+      row({ documentId: 'default', creatorActor: 'run', creatorAgentId: null }),
+      row({ documentId: 'decision', creatorActor: 'run', creatorAgentId: 'decision_agent' }),
+    ];
+    expect(sortProjectOverviewRows(rows, { key: 'source', direction: 'asc' }, labels).map(item => item.documentId))
+      .toEqual(['decision', 'default', 'research', 'subtask', 'cli', 'user', 'none']);
+    expect(sortProjectOverviewRows(rows, { key: 'source', direction: 'desc' }, labels).map(item => item.documentId))
+      .toEqual(['user', 'cli', 'subtask', 'research', 'default', 'decision', 'none']);
+  });
+});
+
 describe('展示文案', () => {
-  it('来源：Linnya AI、用户、Linnya CLI；插件用插件名', () => {
-    expect(formatProjectOverviewActor('linnya_ai', null, message)).toBe('Linnya AI');
-    expect(formatProjectOverviewActor('user', null, message)).toBe('用户');
-    expect(formatProjectOverviewActor('external', null, message)).toBe('Linnya CLI');
-    expect(formatProjectOverviewActor('plugin', 'Slides', message)).toBe('Slides');
-    expect(formatProjectOverviewActor('plugin', null, message)).toBe('插件');
+  it('Agent 显示名：默认 Agent 叫 Linnya Agent，其他用注册表名，查不到显示 ID，不再出现 Linnya AI', () => {
+    const agents = new Map([['research_v1', 'Research']]);
+    expect(resolveProjectOverviewAgentName(null, agents, message)).toBe('Linnya Agent');
+    expect(resolveProjectOverviewAgentName('research_v1', agents, message)).toBe('Research');
+    expect(resolveProjectOverviewAgentName('removed_agent', agents, message)).toBe('removed_agent');
+  });
+
+  it('来源：主运行显示具体 Agent，子运行显示子任务；用户、Linnya CLI；插件用插件名', () => {
+    expect(formatProjectOverviewActor('run', { pluginName: null, agentName: 'Linnya Agent' }, message)).toBe('Linnya Agent');
+    expect(formatProjectOverviewActor('run', { pluginName: null, agentName: 'Research' }, message)).toBe('Research');
+    expect(formatProjectOverviewActor('subrun', { pluginName: null, agentName: 'subagent_document_editor' }, message)).toBe('子任务');
+    expect(formatProjectOverviewActor('user', { pluginName: null, agentName: '' }, message)).toBe('用户');
+    expect(formatProjectOverviewActor('external', { pluginName: null, agentName: '' }, message)).toBe('Linnya CLI');
+    expect(formatProjectOverviewActor('plugin', { pluginName: 'Slides', agentName: '' }, message)).toBe('Slides');
+    expect(formatProjectOverviewActor('plugin', { pluginName: null, agentName: '' }, message)).toBe('插件');
   });
 });

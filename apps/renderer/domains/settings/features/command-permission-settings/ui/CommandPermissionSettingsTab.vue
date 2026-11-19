@@ -14,6 +14,7 @@
     <template v-else-if="store.projection">
       <SettingsSection :title="settingsMessage('settings.commandPermission.level.title')">
         <SettingsChoiceGroup
+          :key="choiceGroupRevision"
           :model-value="store.draft?.permissionLevel ?? ''"
           :options="permissionLevelOptions"
           name="command-permission-level"
@@ -32,18 +33,42 @@
         />
       </SettingsSection>
 
+      <AlertDialog
+        v-if="reductionPreview"
+        visible
+        is-confirmation
+        :close-is-cancel="false"
+        width="460px"
+        :title="settingsMessage('settings.commandPermission.reduction.title')"
+        :message="settingsMessage('settings.commandPermission.reduction.message', {
+          count: reductionPreview.affected_count,
+          level: reductionLevelLabel,
+        })"
+        :confirm-text="settingsMessage('settings.commandPermission.reduction.apply', { level: reductionLevelLabel })"
+        :cancel-text="settingsMessage('settings.commandPermission.reduction.globalOnly')"
+        @confirm="applyReduction(true)"
+        @cancel="applyReduction(false)"
+        @close="cancelReduction"
+      />
+
       <SettingsFeedback
         :kind="store.saveState === 'failed' ? 'error' : 'success'"
-        :message="saveStatusMessage ? settingsMessage(saveStatusMessage) : ''"
+        :message="feedbackMessage"
       />
     </template>
   </SettingsPage>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
-import type { CommandPermissionLevel } from '@app/schemas/commands';
+import { CommandPermissionLevelSchema, compareCommandPermissionLevels, type CommandPermissionLevel } from '@app/schemas/commands';
+import { AlertDialog } from '@linnya/renderer-ui';
+import {
+  commandPermissionDescriptionKeys,
+  commandPermissionLabelKeys,
+} from '@/app/workflows/command-permissions/permissionLabels';
+import { useCommandPermissionReduction } from '../orchestration/useCommandPermissionReduction';
 import type { SettingsChoiceOption } from '../../../definitions/settingsKit';
 import type { SettingsMessageKey } from '../../../definitions/settingsMessages';
 import {
@@ -56,45 +81,38 @@ import {
 } from '../../../ui/kit';
 import { useSettingsLocalization } from '../../../ui/useSettingsLocalization';
 import { confirm } from '@shared/composables/confirmDialog';
+import { confirmPermissionLevelExpansion } from '../orchestration/confirmPermissionLevelExpansion';
 import { applyCommandPermissionSettingsChange } from '../orchestration/applyCommandPermissionSettingsChange';
 import { ensureCommandPermissionSettingsLoaded } from '../orchestration/ensureCommandPermissionSettingsLoaded';
 import { useCommandPermissionSettingsStore } from '../store/commandPermissionSettingsStore';
 
-interface PermissionLevelOption {
-  readonly value: CommandPermissionLevel;
-  readonly label: SettingsMessageKey;
-  readonly description: SettingsMessageKey;
-}
-
-const permissionLevels: readonly PermissionLevelOption[] = [
-  {
-    value: 'read_only',
-    label: 'settings.commandPermission.level.readOnly',
-    description: 'settings.commandPermission.level.readOnlyDescription',
-  },
-  {
-    value: 'standard',
-    label: 'settings.commandPermission.level.standard',
-    description: 'settings.commandPermission.level.standardDescription',
-  },
-  {
-    value: 'full_access',
-    label: 'settings.commandPermission.level.fullAccess',
-    description: 'settings.commandPermission.level.fullAccessDescription',
-  },
-] as const;
-
 const store = useCommandPermissionSettingsStore();
 const { settingsMessage } = useSettingsLocalization();
+const {
+  preview: reductionPreview,
+  partialCount,
+  prepare: prepareReduction,
+  cancel: discardReduction,
+  apply: applyReduction,
+} = useCommandPermissionReduction();
+const choiceGroupRevision = ref(0);
+function cancelReduction() {
+  discardReduction();
+  // 点击原生 radio 时浏览器已先切换选中值，关闭确认后重新应用 Host 投影。
+  choiceGroupRevision.value++;
+}
+const reductionLevelLabel = computed(() => reductionPreview.value
+  ? settingsMessage(commandPermissionLabelKeys[reductionPreview.value.target_level])
+  : '');
 const isBusy = computed(() => (
   store.saveState === 'saving' || store.saveState === 'confirming'
 ));
 const permissionLevelOptions = computed<readonly SettingsChoiceOption[]>(() => (
-  permissionLevels.map((level) => ({
-    value: level.value,
-    label: settingsMessage(level.label),
-    description: settingsMessage(level.description),
-    tone: level.value === 'full_access' ? 'danger' : 'default',
+  CommandPermissionLevelSchema.options.map((level) => ({
+    value: level,
+    label: settingsMessage(commandPermissionLabelKeys[level]),
+    description: settingsMessage(commandPermissionDescriptionKeys[level]),
+    tone: level === 'full_access' ? 'danger' : 'default',
   }))
 ));
 const saveStatusMessage = computed<SettingsMessageKey | undefined>(() => {
@@ -109,55 +127,13 @@ const saveStatusMessage = computed<SettingsMessageKey | undefined>(() => {
   return 'settings.commandPermission.status.saveFailed';
 });
 
-function confirmPermissionLevelExpansion(
-  level: 'standard' | 'full_access',
-): Promise<boolean> {
-  const prefix = level === 'standard'
-    ? 'settings.commandPermission.confirmExpansion.standard'
-    : 'settings.commandPermission.confirmExpansion.fullAccess';
 
-  return confirm({
-    title: settingsMessage(`${prefix}.title`),
-    message: settingsMessage(`${prefix}.message`),
-    sections: level === 'standard'
-      ? [
-        {
-          title: settingsMessage('settings.commandPermission.confirmExpansion.standard.files.title'),
-          items: [
-            settingsMessage('settings.commandPermission.confirmExpansion.standard.files.scope'),
-            settingsMessage('settings.commandPermission.confirmExpansion.standard.files.riskyOperations'),
-          ],
-        },
-        {
-          title: settingsMessage('settings.commandPermission.confirmExpansion.standard.commands.title'),
-          items: [
-            settingsMessage('settings.commandPermission.confirmExpansion.standard.commands.run'),
-            settingsMessage('settings.commandPermission.confirmExpansion.standard.commands.network'),
-          ],
-        },
-      ]
-      : [
-        {
-          title: settingsMessage('settings.commandPermission.confirmExpansion.fullAccess.files.title'),
-          items: [
-            settingsMessage('settings.commandPermission.confirmExpansion.fullAccess.files.operations'),
-          ],
-        },
-        {
-          title: settingsMessage('settings.commandPermission.confirmExpansion.fullAccess.commands.title'),
-          items: [
-            settingsMessage('settings.commandPermission.confirmExpansion.fullAccess.commands.run'),
-            settingsMessage('settings.commandPermission.confirmExpansion.fullAccess.commands.network'),
-          ],
-        },
-      ],
-    riskMessage: settingsMessage(`${prefix}.risk`),
-    confirmText: settingsMessage('settings.commandPermission.confirmExpansion.confirm'),
-    cancelText: settingsMessage('settings.commandPermission.confirmExpansion.cancel'),
-    isDangerousAction: true,
-    width: '520px',
-  });
-}
+const feedbackMessage = computed(() => {
+  if (partialCount.value !== undefined && store.saveState === 'failed') {
+    return settingsMessage('settings.commandPermission.reduction.partial', { count: partialCount.value });
+  }
+  return saveStatusMessage.value ? settingsMessage(saveStatusMessage.value) : '';
+});
 
 function confirmInternalDataExpansion(): Promise<boolean> {
   return confirm({
@@ -170,19 +146,18 @@ function confirmInternalDataExpansion(): Promise<boolean> {
 }
 
 async function selectPermissionLevel(value: string): Promise<void> {
-  if (value === 'read_only' || value === 'standard' || value === 'full_access') {
-    const change = {
-      kind: 'permission_level',
-      value,
-    } as const;
-    if (value === 'read_only') {
-      await applyCommandPermissionSettingsChange(change);
-      return;
-    }
-    await applyCommandPermissionSettingsChange(change, {
-      confirmExpansion: () => confirmPermissionLevelExpansion(value),
-    });
+  const parsed = CommandPermissionLevelSchema.safeParse(value);
+  const current = store.projection;
+  if (!parsed.success || !current || isBusy.value) return;
+  const level = parsed.data;
+  if (compareCommandPermissionLevels(level, current.permissionLevel) < 0) {
+    await prepareReduction(level);
+    choiceGroupRevision.value++;
+    return;
   }
+  await applyCommandPermissionSettingsChange({ kind: 'permission_level', value: level }, {
+    confirmExpansion: level === 'read_only' ? undefined : () => confirmPermissionLevelExpansion(settingsMessage, level),
+  });
 }
 
 async function setInternalDataAccess(allowed: boolean): Promise<void> {
@@ -193,7 +168,7 @@ async function setInternalDataAccess(allowed: boolean): Promise<void> {
 }
 
 onMounted(() => {
-  // 设置页是权限的唯一管理入口，首次打开时在这里读取后端权威事实。
+  // 全局设置始终向 App Server 读取，避免把对话档位当成全局设置。
   void ensureCommandPermissionSettingsLoaded();
 });
 </script>

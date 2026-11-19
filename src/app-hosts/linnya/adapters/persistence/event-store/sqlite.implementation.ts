@@ -1,3 +1,5 @@
+import { deleteConversationCommandPermissions } from '../conversation-command-permissions/deleteConversationCommandPermissions';
+import { materializeConversation } from './functions/materializeConversation';
 /**
  * @file src/app-hosts/linnya/adapters/persistence/event-store/sqlite.implementation.ts
  * @description Linnya host adapter 的 EventStore SQLite 实现。
@@ -901,21 +903,12 @@ export class SQLiteEventStore implements IEventStore {
       projectId,
     });
 
-    const result = this.db
-      .prepare(
-        `
-      INSERT INTO conversations (
-        conversation_id,
-        created_at,
-        last_event_at,
-        project_id,
-        selected_agent_id
-      ) VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(conversation_id) DO UPDATE SET
-        selected_agent_id = excluded.selected_agent_id
-    `
-      )
-      .run(conversationId, Date.now(), Date.now(), projectId, selectedAgentId);
+    const result = this.db.transaction(() => {
+      materializeConversation(this.db, { conversationId, projectId, at: Date.now() });
+      return this.db
+        .prepare('UPDATE conversations SET selected_agent_id = ? WHERE conversation_id = ?')
+        .run(selectedAgentId, conversationId);
+    })();
 
     return result.changes > 0;
   }
@@ -1054,6 +1047,7 @@ export class SQLiteEventStore implements IEventStore {
    * 会话删除必须显式覆盖全部本地事实，不能让连接级 FK pragma 改变业务语义。
    */
   private deleteConversationFacts(conversationId: string): number {
+    deleteConversationCommandPermissions(this.db, conversationId);
     this.db.prepare('DELETE FROM conversation_client_notices WHERE conversation_id = ?').run(conversationId);
     this.eventAssetLinks.deleteForConversation(conversationId);
     this.uiProjection.deleteProjectionRowsForConversation(conversationId);

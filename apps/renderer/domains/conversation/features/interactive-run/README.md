@@ -11,7 +11,8 @@
 模型自动重试、持久继续、交互响应和真正终止的跨链路规则见 [Conversation 执行恢复规范](../../../../../../docs/conversation-platform/13-retry-and-resumption.md)。本 feature 只持有前端控制投影，不决定 Provider 重试资格。
 
 - 状态按 `conversationId` 分区，切换对话只改变读取对象，不销毁后台 run。
-- `awaiting_user` 是非终态，输入区显示禁用的“恢复”，用户须在原表单提交；SSE transport 结束不会把它改成 completed。
+- `awaiting_user` 是非终态，交互须在原表单提交；SSE transport 结束不会把它改成 completed。输入框此时仍可输入，发出的是插话，不代替回答。
+- 运行中插话由相邻的 [run-steering](../run-steering/README.md) 持有：它读取这里的 run 快照决定何时插话、何时取回，不写本 feature 的控制状态。
 - 只有同 conversation/run/execution 的 `run_status` 可以更新业务状态；`context_usage_snapshot` 与
   `run_execution_metrics` 只修订消息 read model，`transport_end` 只释放同 execution controller。
 - HITL 交互响应必须提交同一组 `runId + interactionId + toolCallId + checkpointRevision + resumeToken`；普通 paused 继续使用原 run / execution / updated-at 身份，不要求交互凭证。
@@ -44,6 +45,10 @@ cancel 的成功响应不是固定 `cancelled`：Host 会返回 `cancelled` 或
 正常竞争，不得再发 active-run 查询，也不得伪造成 HTTP 409 或本地 cancelled。
 
 历史进入由 CLI 等其它入口启动的在途 run 时，本 surface 没有 SSE reader。现有 detached observer 每 2 秒先查询控制态，再条件刷新当前 durable window；不建立第二条执行流，不伪造 SSE。窗口接纳新正式 revision 后才失效 lazy trace cache，已展开的 trace 自动重读。
+
+对话已经打开且本窗口没有在途运行（没运行过、已终态或已收口暂停）时，CLI `send`、`tools call` 等入口仍可能写入新运行。observer 此时每 2 秒只按 durable revision 刷新当前窗口；窗口确有新内容才查询 active run，查到在途运行就接入控制快照，之后走上面的运行观察。`tools call` 这类瞬间结束的运行只表现为窗口刷新。空闲观察失败不改控制状态，下次重试。
+
+空闲观察的代价：每个可见的对话表面每 2 秒一次 `GET /api/v1/conversation/:id/ui-messages/refresh`（`features/conversation/history/history.router.ts`）。Host 经 `HistoryService.readUiMessagesRefresh` 进入 `sqliteUiMessagesReader.readWindowRefresh`：在一个读事务里按主键读 `conversation_ui_projection_state` 的一行，revision 与 `known_revision` 相同就返回 `unchanged`，不读消息行；revision 变了才读窗口并多发一次 active run 查询。窗口不可见（`document.visibilityState === 'hidden'`）时不做空闲检查，在途运行的观察照常；重新可见时立即观察一次，隐藏期间外部写入的内容在用户回来时出现。
 
 运行终态经过 exact-run settlement 的持久化屏障；先完成可见窗口同步，再收敛控制状态，revision 未变也必须清除 busy。窗口读取失败保持 reconnecting，下次继续观察；projection preparing 保留原窗口并继续观察。导航、分页、编辑和新 transport 会使迟到刷新失效。
 

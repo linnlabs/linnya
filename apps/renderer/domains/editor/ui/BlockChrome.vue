@@ -119,7 +119,7 @@
       v-if="historyState.isInSideBySideMode.value"
       class="root-block-history-panel"
       :block-id="historyState.currentBlockId.value"
-      :current-content="historyState.getCurrentBlockContent.value"
+      :current-content="historyState.getCurrentBlockContent.value ?? '{}'"
       :document-node-id="historyState.documentNodeId.value"
       @exit="historyState.handleExitHistoryMode"
       @restore="historyState.handleHistoryRestore"

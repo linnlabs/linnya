@@ -51,6 +51,9 @@ export function mapUiMessageDtoToConversationMessage(
   if (dto.message_type === 'client_notice') {
     return { ...common, role: dto.role, type: dto.message_type, metadata: { ...dto.payload, turn_id: null, run_id: null } };
   }
+  if (dto.message_type === 'command_permission_change') {
+    return { ...common, role: dto.role, type: dto.message_type, metadata: { ...dto.payload, turn_id: null, run_id: null } };
+  }
   const identityScope = {
     turn_id: dto.turn_id,
     run_id: dto.run_id,

@@ -7,6 +7,7 @@ export const ANNOTATION_SINGLE_TURN_AGENT_DEFINITION: AgentDefinition = {
   promptKey: PromptKeys.ANNOTATION,
   defaultMode: 'agent',
   description: '文档批注（single_turn）',
+  internal: true,
   config: {
     contextPolicy: {
       profileId: 'agent',
