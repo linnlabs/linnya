@@ -15,6 +15,8 @@ describe('scenario 命令参数', () => {
     expect(scenarioEnv(parseScenarioArgs(['replay', '-99723186', '3'])))
       .toEqual({ SCENARIO_QUIET: '1', SCENARIO_SEED: '-99723186', SCENARIO_RUNS: '1', SCENARIO_PATH: '3' });
     expect(scenarioEnv(parseScenarioArgs(['run', '--verbose']))).toEqual({});
+    expect(scenarioEnv(parseScenarioArgs(['run', 'real-model', '--real-model'])))
+      .toEqual({ SCENARIO_QUIET: '1', LINNYA_REAL_MODEL_TEST: '1' });
   });
 
   it('拒绝未知命令、缺值参数和非法名字', () => {

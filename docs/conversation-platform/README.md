@@ -6,6 +6,17 @@
 
 这套文档按**链路**组织，不按代码分层组织。原因：读者的问题总是"一条 `tool_output` 从产生到渲染经过什么"，而不是"renderer 目录里有什么"。
 
+产品概念与执行身份的对应（定义见[产品模型总览 §5.2](../product-model-overview.md#52-agent-自由注册)）：
+
+| 概念 | 是什么 | 持久化事实 |
+|---|---|---|
+| Agent | 能力配置，不是执行实例 | Agent 注册表的 definition；`conversations.selected_agent_id` 只是对话当前选用的那个 |
+| 对话 | 共享上下文的容器，中途可换 Agent | `conversations` |
+| 运行 | 某个 Agent 在对话上的一次执行，“谁做了什么”的最小单位；中途可收到用户插话 | `runs` 中 `kind = agent`、`parent_run_id` 为空的根运行，`agent_spec_id` 是执行它的 Agent |
+| 子运行 | 运行派出的子 Agent 执行，属于同一对话 | `runs` 中 `parent_run_id` 非空的运行 |
+
+“对话里谁回复过”从根运行读，不从 `selected_agent_id` 推断；注册为 `internal` 的辅助 Agent（标题生成等）的运行不计入。读取实现见 EventStore 的 `readConversationRunAgents` 与[项目对话](../../src/app-hosts/linnya/application/project-conversations/README.md)。
+
 ---
 
 ## 1. 全链路总图

@@ -1,5 +1,9 @@
 # Shared implementation debt (docs/development/code-quality.md)
 # 格式：count<TAB>rule<TAB>file。只允许数量减少；新代码必须使用共享实现。
+1	COLOR-hue-math	packages/plugins/slides/src/backend/engine/quality/aesthetic/colorSampling.ts
+1	COLOR-hue-math	packages/plugins/slides/src/backend/engine/quality/colorUtils.ts
+2	COLOR-hue-math	packages/plugins/slides/src/renderer/features/elementProperties/functions/customColor.ts
+1	COLOR-luminance-weights	packages/plugins/slides/src/shared/deckSpec/imageAdjust.ts
 1	FOUNDATION-is-record	packages/stream-markdown-parser/src/parser/index.ts
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/features/context-window-usage/functions/projectConversationInformation.ts
 1	LOCALIZATION-date-display	apps/renderer/domains/conversation/ui/message/SummaryMessage.vue

@@ -89,7 +89,7 @@ export class PositionUtils {
   /**
    * 根据ID查找根块（通过 blockPosIndex 缓存实现 O(1) 查找）
    * @param {string} id - 根块ID
-   * @returns {Object|null} 根块信息或null
+   * @returns {{ node: import('@tiptap/pm/model').Node, pos: number } | null} 根块信息或null
    */
   findRootBlockById(id) {
     const index = getBlockPosIndex(this.editor.state.doc);

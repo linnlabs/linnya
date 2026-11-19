@@ -496,10 +496,15 @@ footer。表单规则、列表状态、保存流程、错误处理仍属于各�
 列表是否能到达首尾、小视口是否仍能关闭或提交。不要用测试锁死 scrollbar 宽度、padding、
 颜色或整页 UI snapshot。
 
-相邻限制：当前 `Modal` 的 Esc 监听仍按组件实例工作，不是统一弹层栈；组件也尚未提供完整
-的 focus trap / 关闭后焦点恢复。业务弹窗内需要确认时必须走 `AlertDialog` 的既有上层语义，
-不要同时挂载多个普通 Modal 并假设 Esc 只会关闭最上层。统一浮层栈、focus trap 与焦点恢复需要
-单独通过公开 issue / PR 设计并建立行为验收矩阵，不能通过滚动模式或业务 CSS 顺带修补。
+Escape 归属：多层浮层同时打开时，Escape 只交给最后打开的那一层（`Modal`、`AlertDialog`、
+`ImagePreviewModal` 已接入同一份登记）。最上层的 `closeOnEsc` 为 `false`（例如处理中）时，本层不关闭，
+Escape 也不会落到下面的层。业务自有的全屏浮层（如设置窗）需要参与同一顺序时，调用公开的
+`useEscapeLayer({ active, onEscape })`，不要自己监听 document 的 Escape。
+
+相邻限制：组件仍未提供完整的 focus trap / 关闭后焦点恢复，背景也不会 inert；菜单、Popover、Picker 等
+非 Modal 浮层各自管理 Escape，尚未并入这份顺序。业务弹窗内需要确认时必须走 `AlertDialog` 的既有上层
+语义。统一浮层栈的其余部分（焦点、inert、外部点击、非 Modal 浮层）需要单独设计并建立行为验收矩阵，
+不能通过滚动模式或业务 CSS 顺带修补。
 
 ## 插件 renderer 使用
 

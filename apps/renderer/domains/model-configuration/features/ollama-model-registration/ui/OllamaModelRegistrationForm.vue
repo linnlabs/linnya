@@ -95,10 +95,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import type { CustomSelectOption } from '@linnya/renderer-ui';
 import { RefreshIcon } from '@linnya/renderer-ui/icons';
-import { BaseButton, CustomSelect, IconButton } from '@linnya/renderer-ui';
+import { BaseButton, CustomSelect, IconButton, useTimer } from '@linnya/renderer-ui';
 import { CustomTextInput } from '@linnya/renderer-ui';
 import { SettingsFeedback, SettingsRow, useSettingsLocalization } from '@/domains/settings/public';
 import type {
@@ -127,8 +127,8 @@ const availableModels = ref<string[]>([]);
 const modelsLoading = ref(false);
 const refreshError = ref<string | null>(null);
 const previousUrl = ref('');
-let refreshTimer: number | null = null;
-let successTimer: number | null = null;
+const refreshTimer = useTimer();
+const successTimer = useTimer();
 
 const submitText = computed(() => {
   if (status.isSubmitting) return settingsMessage('settings.addModel.submit.adding');
@@ -171,8 +171,7 @@ function resolveRegistrationIssue(issue: OllamaModelRegistrationIssue): string {
 function showSuccess(): void {
   status.success = true;
   status.error = null;
-  if (successTimer !== null) window.clearTimeout(successTimer);
-  successTimer = window.setTimeout(() => {
+  successTimer.start(() => {
     status.success = false;
   }, 3000);
 }
@@ -230,9 +229,7 @@ async function refreshModels(): Promise<void> {
 
 function handleUrlBlur(): void {
   if (form.value.serviceUrl === previousUrl.value) return;
-  if (refreshTimer !== null) window.clearTimeout(refreshTimer);
-  refreshTimer = window.setTimeout(() => {
-    refreshTimer = null;
+  refreshTimer.start(() => {
     void refreshModels();
   }, 500);
 }
@@ -249,10 +246,5 @@ watch(
 onMounted(() => {
   previousUrl.value = form.value.serviceUrl;
   void refreshModels();
-});
-
-onBeforeUnmount(() => {
-  if (refreshTimer !== null) window.clearTimeout(refreshTimer);
-  if (successTimer !== null) window.clearTimeout(successTimer);
 });
 </script>

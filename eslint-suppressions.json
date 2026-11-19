@@ -49,11 +49,6 @@
       "count": 1
     }
   },
-  "apps/renderer/domains/conversation/features/interactive-run/composables/useDetachedInteractiveRunObservation.ts": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
   "apps/renderer/domains/conversation/features/run-document-changes/orchestration/useRunDocumentChanges.ts": {
     "no-restricted-globals": {
       "count": 1
@@ -943,7 +938,7 @@
       "count": 2
     },
     "@typescript-eslint/no-explicit-any": {
-      "count": 4
+      "count": 2
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -1159,48 +1154,13 @@
       "count": 1
     }
   },
-  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectConversationSearch.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectConversationsData.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectOverviewContentSearch.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/features/project-overview/orchestration/useProjectOverviewData.ts": {
-    "no-restricted-globals": {
-      "count": 3
-    }
-  },
   "apps/renderer/domains/workspace/features/project-overview/ui/ProjectConversationsPanel.vue": {
     "no-restricted-properties": {
       "count": 1
     }
   },
-  "apps/renderer/domains/workspace/features/project-overview/ui/ProjectOverviewBoard.vue": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/features/project-overview/ui/ProjectOverviewView.vue": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "apps/renderer/domains/workspace/features/project-overview/ui/ProjectSaveFilterPopover.vue": {
     "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/workspace/services/file-manager/index.ts": {
-    "no-restricted-properties": {
       "count": 1
     }
   },

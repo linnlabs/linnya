@@ -28,7 +28,7 @@ import { UPLOAD_STATUS } from '../../../constants/index.js'
  */
 export function createPollingManager(state, updateTaskState) {
   const timer = createRepeatingTimer()
-  let isPollingActive = false
+  // 与 Store 同寿命，不随组件卸载：由 stopPolling 收尾。
   let currentMode = null // 'fallback' | 'calibration'
   
   // 轮询模式配置
@@ -130,7 +130,7 @@ export function createPollingManager(state, updateTaskState) {
    */
   function startPolling(isFallbackMode = false) {
     // 防止重复启动
-    if (isPollingActive) {
+    if (pollingTimer.running) {
       console.log('[轮询管理器] 轮询已在运行中，跳过重复启动')
       return
     }
@@ -140,7 +140,6 @@ export function createPollingManager(state, updateTaskState) {
     
     console.log(`[轮询管理器] 🚀 启动${mode.description}（间隔: ${mode.interval}ms）`)
     
-    isPollingActive = true
     timer.start(() => {
       performPolling(mode)
     }, mode.interval)
@@ -155,7 +154,6 @@ export function createPollingManager(state, updateTaskState) {
   function stopPolling() {
     if (timer.running) {
       timer.stop()
-      isPollingActive = false
       console.log(`[轮询管理器] 🛑 ${currentMode === 'fallback' ? '兜底轮询' : '校准轮询'}已停止`)
       currentMode = null
     }
@@ -186,7 +184,7 @@ export function createPollingManager(state, updateTaskState) {
    */
   function getStatus() {
     return {
-      isActive: isPollingActive,
+      isActive: timer.running,
       mode: currentMode,
       interval: currentMode ? POLLING_MODES[currentMode].interval : null
     }

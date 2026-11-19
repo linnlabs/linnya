@@ -153,8 +153,8 @@ interface Confirm {
 const props = defineProps<{
   isVisible: boolean;
   currentProjectId: string | null;
-  /** Agent 显示名；null 是默认 Agent，查不到时为 null。 */
-  agentName: (agentId: string | null) => string | null;
+  /** Agent 显示名：null 是默认 Agent（Linnya Agent），查不到时为注册表 ID。 */
+  agentName: (agentId: string | null) => string;
 }>();
 
 const emit = defineEmits<{

@@ -1,5 +1,7 @@
+import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  collectSharedImplementationEntries,
   compareSharedImplementations,
   countSharedImplementationHits,
   formatSharedImplementationBaseline,
@@ -89,4 +91,70 @@ describe('共享实现棘轮', () => {
       { ruleId: 'FOUNDATION-sleep', file: 'b.ts', count: 0 },
     ]);
   });
+});
+
+describe('颜色公式只放在 @linnya/color-core', () => {
+  const outside = 'packages/plugins/slides/src/backend/engine/quality/someNewColorCheck.ts';
+  const owner = 'packages/color-core/src/functions/colorSpace.ts';
+
+  it.each([
+    ['sRGB 线性化常量', 'return scaled <= 0.04045 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;', 'COLOR-srgb-transfer'],
+    ['近似 gamma 线性化', 'const linear = Math.pow(channel / 255, 2.2);', 'COLOR-srgb-transfer'],
+    ['Rec.709 明度系数', 'const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;', 'COLOR-luminance-weights'],
+    ['Rec.601 明度系数', 'const luma = 0.299 * r + 0.587 * g + 0.114 * b;', 'COLOR-luminance-weights'],
+    ['OKLab 矩阵', 'const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);', 'COLOR-space-constants'],
+    ['截短小数位的 OKLab 矩阵', 'const a = 1.977998 * l - 2.428592 * m + 0.450593 * s;', 'COLOR-space-constants'],
+    ['CIELab 白点', 'const xn = 95.047;', 'COLOR-space-constants'],
+    ['色觉异常矩阵', 'const row = [0.152286, 1.052583, -0.204868];', 'COLOR-space-constants'],
+    ['HSL 转换函数', 'function rgbToHsl(r: number, g: number, b: number) { return [0, 0, 0]; }', 'COLOR-hue-math'],
+    ['反向 HSV 转换', 'export const hsvToRgb = (h: number, s: number, v: number) => [h, s, v];', 'COLOR-hue-math'],
+    ['OKLab 到 OKLCH 的色相', 'const hue = Math.atan2(lab.b, lab.a) * 180 / Math.PI;', 'COLOR-hue-math'],
+    ['色相圆形平均', 'const mean = Math.atan2(sumSin, sumCos);', 'COLOR-hue-math'],
+    ['ΔE 函数', 'function deltaE76(left: Lab, right: Lab): number { return 0; }', 'COLOR-delta-e'],
+    ['Lab 欧氏距离', 'return Math.sqrt(dL * dL + da * da + db * db);', 'COLOR-delta-e'],
+  ])('新代码里出现%s算新增存量', (_name, source, ruleId) => {
+    expect(countSharedImplementationHits(outside, source)).toEqual([{ ruleId, file: outside, count: 1 }]);
+  });
+
+  it('color-core 自己不受限', () => {
+    const sources = [
+      'return scaled <= 0.04045 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;',
+      'return 0.2126 * red + 0.7152 * green + 0.0722 * blue;',
+      'const l = Math.cbrt(0.4122214708 * red + 0.5363325363 * green);',
+      'function rgbToHsl(r: number, g: number, b: number) {}',
+      'const hue = Math.atan2(color.b, color.a);',
+      'function deltaEOK(left: Oklab, right: Oklab): number { return 0; }',
+    ];
+    for (const source of sources) {
+      expect(countSharedImplementationHits(owner, source)).toEqual([]);
+    }
+  });
+
+  it('注释里写公式出处、调用 color-core、无关的几何与尺寸都不算', () => {
+    const source = [
+      ' * 去色取 Rec.709 权重 0.2126R + 0.7152G + 0.0722B',
+      '// sRGB 阈值 0.04045 与 1.055',
+      "import { rgbToOklch, relativeLuminance, deltaEOK } from '@linnya/color-core';",
+      'export function toOklch(rgb: RgbColor): Oklch { return rgbToOklch([rgb.r, rgb.g, rgb.b]); }',
+      'export const ConstraintDeltaEvidenceSchema = z.object({});',
+      'const rotation = Math.atan2(end.y - origin.y, end.x - origin.x) * 180 / Math.PI;',
+      'createImage({ width: 1.8, height: 2.4, maskShape: arch(1.8, 2.4) });',
+      'const eased = Math.pow(progress, 3);',
+    ].join('\n');
+    expect(countSharedImplementationHits(outside, source)).toEqual([]);
+  });
+
+  it('新增一处颜色公式时棘轮判定为新增，门禁会失败', () => {
+    const baseline = parseSharedImplementationBaseline(fs.readFileSync('.baseline/shared-implementations.txt', 'utf8'));
+    const added = countSharedImplementationHits(outside, 'const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;');
+    expect(compareSharedImplementations(added, baseline).expanded).toEqual([
+      { ruleId: 'COLOR-luminance-weights', file: outside, count: 1 },
+    ]);
+  });
+
+  it('当前仓库的颜色公式与 baseline 精确一致，没有 color-core 以外的新增', () => {
+    const baseline = parseSharedImplementationBaseline(fs.readFileSync('.baseline/shared-implementations.txt', 'utf8'));
+    const diff = compareSharedImplementations(collectSharedImplementationEntries(), baseline);
+    expect(diff.expanded.filter(entry => entry.ruleId.startsWith('COLOR-'))).toEqual([]);
+  }, 30_000);
 });

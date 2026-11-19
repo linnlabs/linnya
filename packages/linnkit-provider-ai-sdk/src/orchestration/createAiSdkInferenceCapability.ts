@@ -89,6 +89,9 @@ function failureEvent(
       ...(observation.diagnostic.sdk_error_details === undefined
         ? {}
         : { sdk_error_details: observation.diagnostic.sdk_error_details }),
+      ...(observation.diagnostic.provider_error_excerpt === undefined
+        ? {}
+        : { provider_error_excerpt: observation.diagnostic.provider_error_excerpt }),
       ...(observation.diagnostic.provider_signal === undefined
         ? {}
         : { provider_signal: observation.diagnostic.provider_signal }),

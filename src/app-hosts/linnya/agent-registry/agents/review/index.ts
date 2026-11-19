@@ -37,6 +37,7 @@ export const AGENT_DEFINITION: AgentDefinition = {
   promptKey: PromptKeys.REVIEW,
   defaultMode: 'agent',
   description: '审阅（Review）- 通过工具创建批注',
+  internal: true,
   config: {
     contextPolicy: { profileId: 'agent', toolHistory: { strategy: 'per-run', keepLatestRuns: 1 } },
     enableTools: true,

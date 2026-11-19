@@ -1,8 +1,8 @@
-import { createFrameLoop } from '@linnya/renderer-ui';
 // src/renderer/features/KnowledgeBase/services/progressAnimator.js
 // 文件作用：提供一个独立的、可重用的进度条动画引擎。
 // V35 专家方案: 重构为遵循设计原则的艺术化动画引擎
 
+import { createFrameLoop } from '@linnya/renderer-ui';
 import { UPLOAD_STATUS } from '../constants';
 import { makeNoise2D } from 'open-simplex-noise';
 

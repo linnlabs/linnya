@@ -508,14 +508,30 @@
   color: var(--color-text-secondary);
 }
 
-/* 完全访问：触发器用警示色，悬停也保持，提醒这个对话的命令会自动执行。 */
-.ai-assistant-input-footer .conversation-command-permission--full .input-footer-command-permission-trigger,
-.ai-assistant-input-footer .conversation-command-permission--full .input-footer-command-permission-trigger:hover:not(:disabled) {
-  background-color: var(--color-warning-bg);
-  color: var(--color-warning-text);
-  font-weight: var(--font-weight-medium);
+/* 档位触发器只放盾牌图标，方形、与添加按钮同尺寸；档位名在悬停提示和菜单里。 */
+.ai-assistant-input-footer .selector-group--command-permission .conversation-command-permission .input-footer-command-permission-trigger {
+  justify-content: center;
+  width: var(--input-footer-control-height);
+  min-width: 0;
+  padding: 0;
 }
 
-.ai-assistant-input-footer .conversation-command-permission--full .input-footer-command-permission-trigger .selector-chevron {
-  color: currentColor;
+.ai-assistant-input-footer .conversation-command-permission__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* 完全访问：图标用警示色，不加底色；悬停底色与其他底栏控件相同。 */
+.ai-assistant-input-footer .conversation-command-permission--full .input-footer-command-permission-trigger {
+  color: var(--color-warning-text);
+}
+
+/* 菜单里每档前带同一组图标，让底栏图标的含义可以对照着学会。 */
+.input-footer-command-permission-options .conversation-command-permission__option-icon {
+  color: var(--color-text-secondary);
+}
+
+.input-footer-command-permission-options .select-option.is-caution .conversation-command-permission__option-icon {
+  color: var(--color-warning-text);
 }

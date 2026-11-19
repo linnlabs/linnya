@@ -116,6 +116,14 @@ RunEventPersistence 的首个写入错误会阻止后续写入；drain 将错误
 - `approved` 不得只把裸 `{ "action": "approve" }` 当作模型 observation。Host 在上述 committed fact 边界明确投影“用户已经批准、等待条件已经满足、不得重复请求同一确认”；结构化 `data` 和 `metadata.interaction` 仍保存原始事实。`submitted / modified / skipped` 继续保留工具 owner 组织的领域 observation，避免 Host 覆盖问卷答案或修改内容；
 - auxiliary 标题 run 使用独立 runId、`lane=auxiliary`、`visibility=none`，不能进入正文。
 
+### 5.1 运行中插话
+
+- `pending-user-inputs/pendingUserInputRegistry.ts` 是待送达插话的唯一 owner：App Server 内存、按 conversation + runId 归属，状态为待送达、送达中、已送达。不落库，与输入框草稿一致不跨重启保存。
+- `flow.router.ts` 的 `POST /runs/:runId/steer`、`.../steer/:inputId/withdraw`、`.../steer/drain` 只给 Desktop Renderer；`FlowOrchestrator.steerRun` 只接纳本对话 `pending / running / awaiting_user` 的前台 root run，其余返回 `accepted=false`，由客户端改发新消息。
+- AgentRunner 在 start、continue、resume 三处把同一个 registry 的 `portFor(runId)` 交给 Linnkit。Linnkit 在一批工具结算后取走插话，写成 `user_input`（`delivery=mid_run`），与工具边界同一次提交；提交成功才确认送达，失败时退回待送达。
+- run 停下时没送达的由 Renderer 调 drain 一次取回，Host 不自行转成下一次 run。
+- 用户可见语义（送达时机、等待用户、暂停与结束后的去向）见 [08 §3.8](../../../../../docs/conversation-platform/08-lifecycle.md#38-运行中插话)。
+
 ## 6. 身份与并发
 
 | 身份 | owner | 用途 |
@@ -160,6 +168,7 @@ run admission 前失败使用 `transport_error`；run admission 后失败使用 
 | `flow.agent-runner.service.ts` | Graph bootstrap 与 execution 用例编排 |
 | `execution-settlement/` | metrics 发布、persistence drain、RunSupervisor 状态落定 |
 | `flow.runner-handoff.ts` | Host 到 runner 的窄契约 |
+| `pending-user-inputs/` | 运行中插话的待送达列表、撤回与取回；Linnkit 送达端口的 Host 实现 |
 | `flow.runtime.ts` | 应用装配层到 Flow 的 Supervisor、CostCollector、Runtime EventStore 与 cursor 窄端口 |
 | `agent-runner/runEventPersistence.ts` | EventBus durable consumer 与 drain |
 | `agent-runner/summarizationEventEmitter.ts` | 自动压缩的 SSE-only 进度 callback；不发布 `history_summary` |
@@ -233,6 +242,7 @@ Flow 主体与 Host settlement 是显式的两个阶段：无论主体成功或�
 - root 与 child 的 compaction 都必须先 durable commit `history_summary` 再调用主 Provider；commit 失败、硬超限无候选和 wait-user resume 后再次压缩均不能产生双事实；commit 后 publisher 失败仍保留已提交摘要；
 - SSE 答案 seq 与 execution_seq 独立；
 - Host Flow 与 Renderer projection 的端到端流程。
+- 运行中插话：工具批次中、等待用户时、最后一次模型调用中到达，撤回、暂停与取消，送达后实时与重载一致、模型恰好看到一次。用 `pnpm -s scenario run steer` 与 `pnpm -s scenario fuzz` 跑 Flow 场景（[构建与测试](../../../../../docs/development/build-and-test.md#agent-运行场景)）。
 
 不要用组件样式、README snapshot 或旧内部类调用次数代替业务测试。
 

@@ -28,8 +28,8 @@ const read: ProjectOverviewField = { id: 'read', name: '已读', value_type: 'ch
 
 const row = (id: string, values: Record<string, unknown>, fieldIds = ['status', 'author', 'read']): ProjectOverviewRow => ({
   documentId: id, nodeType: 'document', title: id, parentId: null, location: [], createdAt: 0,
-  creatorActor: null, creatorPluginId: null, conversationId: null, conversationTitle: null,
-  lastModifiedAt: 0, lastModifiedActor: null, lastModifiedPluginId: null, pendingRevisionCount: null,
+  creatorActor: null, creatorPluginId: null, creatorAgentId: null, conversationId: null, conversationTitle: null,
+  lastModifiedAt: 0, lastModifiedActor: null, lastModifiedPluginId: null, lastModifiedAgentId: null, pendingRevisionCount: null,
   tags: [], fieldRevision: 1, fieldIds, fieldValues: values,
 });
 

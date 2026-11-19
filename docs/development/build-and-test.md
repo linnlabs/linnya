@@ -239,6 +239,8 @@ Sharp 的公开入口可能是 JavaScript loader；PE 架构校验通过共享
 
 改 Flow、插话、暂停/继续、实时投影或模型请求组装时，用 [Agent 场景测试](../../scripts/development/features/agent-scenario/README.md)（`pnpm -s scenario run`）写和跑场景：只替换模型和工具，其余走生产装配，并检查实时、重载与模型请求一致。涉及时序组合的再跑 `pnpm -s scenario fuzz`。
 
+改 Provider 适配、消息格式或插话送达位置时，再用 `pnpm -s scenario run real-model --real-model` 在当前 checkout 开发实例已配置的模型上核对一次（会调用上游、产生费用；默认 DeepSeek 与 GLM Flash）。
+
 ## 前端调试与本机界面验收
 
 按用户行为选测试入口，见[业务验收入口](./acceptance-scenarios.md)。

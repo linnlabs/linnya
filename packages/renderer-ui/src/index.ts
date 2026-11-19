@@ -95,11 +95,13 @@ export {
   RENDERER_UI_OVERLAY_LAYER_VALUES,
   rendererUiOverlayLayer,
   resolveAlertDialogDangerousAction,
+  useEscapeLayer,
   useImagePreviewSource,
 } from './features/overlays';
 export type {
   AlertDialogProps,
   AlertDialogSection,
+  EscapeLayerOptions,
   ImagePreviewModalClassNames,
   ImagePreviewModalProps,
   ModalLayer,

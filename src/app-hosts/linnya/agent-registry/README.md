@@ -33,6 +33,11 @@ admission 前把它转换为正式 `host_tool_call`，固定 `yield_after_batch`
 
 持久恢复严格比较当前 definition 与原 descriptor 的工具、模型、Skill、插件和版本。不为已撤回的研究交接协议返回旧配置绕过比较；不兼容的暂停任务保持原身份和历史，明确拒绝续跑，不能静默换用新能力。
 
+定义可用 `internal: true` 声明宿主内部的辅助 Agent（单轮写作/标题/翻译/批注等、批量收尾、表格填充、审阅批注）。
+它们的运行可能挂在某个对话上，但不是对话里“谁回复了、派出了谁”的答案；读取合同经
+`listInternalAgentIds()`（按全部已注册定义计算，不看插件是否启用）排除它们。该标记不影响执行、恢复或权限，
+新增此类辅助 Agent 时必须一并声明。
+
 定义可用 `newRunUnavailableReason`
 停止接收新的根运行。Flow 在 start 准备时调用 registry 的接纳规则并返回
 `AGENT_NEW_RUN_UNAVAILABLE`，在运行注册和用户消息提交之前拒绝请求。此字段是入口可用性声明，不属于冻结执行配置；暂停继续、审批响应和历史解析仍保留原 Agent

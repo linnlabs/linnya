@@ -1,4 +1,5 @@
 import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
+import { useTimer } from '@linnya/renderer-ui';
 import type { ProjectConversationRow, ProjectConversationStorage } from '@app/schemas';
 import { chunkConversationIds } from '../functions/projectConversationRows';
 import {
@@ -29,7 +30,7 @@ export function useProjectConversationsData(
   let pending = false;
   /** 正在测量的列表代次；换项目后旧测量自行退出，不挡住新项目的测量。 */
   let measuringGeneration: number | null = null;
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  const refreshTimer = useTimer();
 
   async function load(): Promise<void> {
     if (loading) { pending = true; return; }
@@ -93,13 +94,12 @@ export function useProjectConversationsData(
   }
 
   function scheduleRefresh(): void {
-    timer ??= setTimeout(() => { timer = null; void load(); }, REFRESH_THROTTLE_MS);
+    refreshTimer.startIfIdle(() => { void load(); }, REFRESH_THROTTLE_MS);
   }
 
   watch(projectId, () => {
     generation += 1;
-    if (timer) clearTimeout(timer);
-    timer = null;
+    refreshTimer.cancel();
     loading = false;
     pending = false;
     rows.value = [];
@@ -110,9 +110,9 @@ export function useProjectConversationsData(
   watch(historyKey, scheduleRefresh);
   watch(measuring, value => { if (value) void measureStale(); });
 
+  // 重读的定时器由 useTimer 随作用域一起取消；这里只让在途请求作废。
   onScopeDispose(() => {
     generation += 1;
-    if (timer) clearTimeout(timer);
   });
 
   return { rows, status, revision, refresh: scheduleRefresh, remeasure };

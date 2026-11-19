@@ -82,9 +82,7 @@
           :is-image-attachment-disabled="isImageEntryDisabled"
           :context-window-usage="contextWindowUsage"
           :context-window-conversation-information="contextWindowConversationInformation"
-          :context-window-usage-scope-key="
-            conversationSelectors.activeConversation.value?.id ?? 'draft'
-          "
+          :context-window-usage-scope-key="conversationSelectors.activeConversation.value?.id ?? null"
           :disabled="isInputDisabled"
           @update:agent-choice="handleAgentChoiceChange"
           @update:primary-model-value="handlePrimaryModelChange"

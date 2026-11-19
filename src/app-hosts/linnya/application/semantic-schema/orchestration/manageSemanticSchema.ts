@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
 import {
-  PromptKeys,
   SemanticSchemaChangeSummarySchema,
+  toReadModelAgentId,
   type ProjectSavedFilterDefinition,
   type SemanticSchemaActor,
   type SemanticSchemaChangeItem,
@@ -95,8 +95,7 @@ function actorItem(actor: SemanticChangeActor | SemanticCreator, titles: Readonl
     kind: actor.kind,
     conversation_id: actor.conversationId,
     conversation_title: actor.conversationId === null ? null : titles.get(actor.conversationId) ?? null,
-    // 默认 Agent 也会记成它的 ID；合同里统一为 null，界面显示 Linnya AI。
-    agent_id: actor.agentId === PromptKeys.DEFAULT ? null : actor.agentId,
+    agent_id: toReadModelAgentId(actor.agentId),
   };
 }
 

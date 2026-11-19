@@ -7,6 +7,7 @@ export const WRITING_SINGLE_TURN_AGENT_DEFINITION: AgentDefinition = {
   promptKey: PromptKeys.WRITING,
   defaultMode: 'agent',
   description: '编辑器写作/续写（single_turn）',
+  internal: true,
   config: {
     contextPolicy: {
       profileId: 'agent',

@@ -401,7 +401,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, toRef,
 import { useHistoryTime } from '@app/localization';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
-import { BaseButton, SegmentedTabs, SkeletonRows, TagChip } from '@linnya/renderer-ui';
+import { BaseButton, SegmentedTabs, SkeletonRows, TagChip, useTimer } from '@linnya/renderer-ui';
 import type { CustomSelectOption, SegmentedTabItem } from '@linnya/renderer-ui';
 import type { SemanticSchemaOverview } from '@app/schemas';
 import { ChatIcon, ChevronIcon, LibraryIcon, SaveIcon, SearchIcon } from '@linnya/renderer-ui/icons';
@@ -546,13 +546,11 @@ watch(projectIdRef, () => {
 
 // 写入失败（保存筛选、看板改值）的一句提示，几秒后自动消失。
 const actionError = ref<string | null>(null);
-let actionErrorTimer: ReturnType<typeof setTimeout> | null = null;
+const actionErrorTimer = useTimer();
 function reportError(message: string): void {
   actionError.value = message;
-  if (actionErrorTimer) clearTimeout(actionErrorTimer);
-  actionErrorTimer = setTimeout(() => { actionError.value = null; }, 6_000);
+  actionErrorTimer.start(() => { actionError.value = null; }, 6_000);
 }
-onBeforeUnmount(() => { if (actionErrorTimer) clearTimeout(actionErrorTimer); });
 
 const { matches: fieldMatches, failure: fieldMatchFailure } = useProjectFieldMatches(
   projectIdRef,
@@ -620,7 +618,7 @@ const sortedRows = computed(() => {
     contentMatches: contentMatches.value,
     fieldMatches: fieldMatches.value,
   });
-  return sortProjectOverviewRows(filtered, sort.value, { typeLabel });
+  return sortProjectOverviewRows(filtered, sort.value, { typeLabel, sourceLabel: row => actorText(row.creatorActor, row.creatorPluginId, row.creatorAgentId) });
 });
 
 function clearFilters(): void {
@@ -1012,13 +1010,16 @@ function timeText(timestamp: number): string {
   return historyTime(timestamp);
 }
 
-function actorText(actor: ProjectOverviewRow['creatorActor'], pluginId: string | null): string {
+function actorText(actor: ProjectOverviewRow['creatorActor'], pluginId: string | null, agentId: string | null): string {
   if (actor === null) return '';
-  return formatProjectOverviewActor(actor, pluginId ? props.presentation.pluginName(pluginId) : null, workspaceMessage);
+  return formatProjectOverviewActor(actor, {
+    pluginName: pluginId ? props.presentation.pluginName(pluginId) : null,
+    agentName: props.presentation.agentName(agentId),
+  }, workspaceMessage);
 }
 
 function modifiedActorText(row: ProjectOverviewRow): string {
-  return actorText(row.lastModifiedActor, row.lastModifiedPluginId);
+  return actorText(row.lastModifiedActor, row.lastModifiedPluginId, row.lastModifiedAgentId);
 }
 
 function conversationText(row: ProjectOverviewRow): string {
@@ -1037,7 +1038,7 @@ function cellText(id: ProjectOverviewColumnId, row: ProjectOverviewRow): string 
     case 'location':
       return row.location.length > 0 ? row.location.join(' / ') : workspaceMessage('workspace.projectOverview.location.root');
     case 'source':
-      return actorText(row.creatorActor, row.creatorPluginId);
+      return actorText(row.creatorActor, row.creatorPluginId, row.creatorAgentId);
     case 'type':
       return typeLabel(row.nodeType);
     case 'created':

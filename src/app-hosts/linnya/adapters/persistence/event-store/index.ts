@@ -21,6 +21,7 @@ export { readRuntimeEventsByIds } from './functions/readRuntimeEventsByIds';
 export { readConversationToolHistory, type ConversationToolHistoryRow } from './functions/readConversationToolHistory';
 export { readConversationWebSourceUrls, type ConversationWebSourceUrlRow } from './functions/readConversationWebSourceUrls';
 export { readProjectConversationTitles } from './functions/readProjectConversationTitles';
+export { readConversationRunAgents, type ConversationRunAgentRow } from './functions/readConversationRunAgents';
 export { readRunCheckpointInteractions } from './functions/readRunCheckpointInteractions';
 export { LinnyaEventStoreAdapter } from './linnkit-event-store.adapter';
 export { purgeStaleAuditEvents, type PurgeStaleAuditEventsOptions } from './auditMaintenance';

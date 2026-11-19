@@ -18,7 +18,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。`usePortalToBody` 时面板默认与触发器同宽，以像素给出的 `minWidth` 可以撑宽（不超过视口），翻转与收边都按这个宽度计算。选项可用 `description` 在标签下方加一行说明；`variant` 除 `danger` 外还有 `warning`，用警示色加粗标签，表达需要留意但不是破坏性的选项。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。`usePortalToBody` 时面板默认与触发器同宽，以像素给出的 `minWidth` 可以撑宽（不超过视口），翻转与收边都按这个宽度计算。选项可用 `description` 在标签下方加一行说明；`variant` 除 `danger` 外还有 `warning`，用警示色加粗标签，表达需要留意但不是破坏性的选项。`selected-value` 插槽可把触发器内容换成图标等；`triggerTooltip` 让触发器改用共享提示服务的悬停提示（不再有原生 `title`），没有 `triggerAriaLabel` 时它也是可访问名称。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -130,6 +130,8 @@ token、surface class、root extension class 和 data attribute 才是 CSS API�
   [Renderer 本地化](../../apps/renderer/app/localization/README.md)。
 - 无业务语义的平台图标从 `/icons` 复用。品牌图标、业务实体图标和只随某个插件演进的图标留在真实 owner；禁止在
   新组件模板里复制已有 SVG。
+  图标根节点（`.linnya-ui-icon`）没有显式尺寸时默认 `1em`，不会按 SVG 的默认 300×150 撑开；尺寸由 `shared-icon--em / --full / --fit`、
+  业务选择器或图标自带的 `width` / `height` 属性决定，默认规则是零优先级，这些都优先。
 - 包根和 UI feature 只允许 Vue public API、DOM/browser API、包内稳定切片和已审核的 browser-safe runtime 依赖。
   新增第三方依赖必须证明不能由现有能力表达、浏览器安全、许可证可接受，并进入 package runtime dependency 与
   tarball 验证；不能把 Host 已安装依赖当作隐式可用。
@@ -221,7 +223,9 @@ Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决�
 
 `Modal` 只拥有通用遮罩、标题、关闭入口、视口尺寸约束、`content|internal` 滚动模式和可选 footer；业务表单与流程继续归调用方。自 2.8.0 起进出场由遮罩淡底色与弹窗本体缩放（`--modal-*` token）组成，正文滚动时不加分隔线。自 3.9.0 起四边边距由 Modal 统一为 `--modal-inset`：默认滚动模式下正文与 footer 的左右、底部边距归 Modal，调用方只写上下间距；`internal` 模式下调用方根节点用 `var(--modal-inset)` 写左右边距并占满宽度（规则见 [设计规范 9.5](./docs/design.md#95-弹窗)）。自 2.7.0 起，可通过 `title-extra` 插槽在标题旁放来源或状态标签，标题本身的字阶和长标题换行仍由 Modal 拥有。`AlertDialog` 保持现有确认/取消/关闭事件投影，并支持结构化 section 和风险文案；危险样式优先由 `isDangerousAction` 明确声明，当前仍保留既有中英文文案推断以确保迁移等价。`ImagePreviewModal` 的 `classNames` 只向 overlay 和 image 节点注入业务命名空间 class，不把内部 selector 变成公共 CSS API。自 2.8.0 起可传入 `sourceElement`（缩略图或包着缩略图的按钮，调用方用 `useImagePreviewSource()` 在点击处记录），大图从缩略图展开、关闭时缩回；不传或不满足条件（缩略图离屏、浏览器不支持、减少动态效果）时保持淡入淡出。
 
-当前 Modal 没有 focus trap、统一 Esc stack 或关闭后焦点恢复，AlertDialog 也保留迁移前的键盘监听时机。它们是已登记的交互/可访问性欠账，不得在纯 owner 迁移中用临时判断改写；后续必须单独设计、决策和验收。
+Escape 由 `/features/overlays` 的 document 级登记统一归属（自 3.12.0 起）：`Modal`、`AlertDialog`（经内层 Modal）、`ImagePreviewModal` 打开时登记，整个 document 只装一个 keydown 监听，Escape 只交给最后打开的那一层；该层 `closeOnEsc` 为 `false` 时本层接住但不关闭，也不穿透到下一层。必须保留自有 DOM 的业务浮层（当前是 Host 的 SettingsModal）通过公开的 `useEscapeLayer({ active, onEscape })` 参与同一顺序，业务不得再各自监听 document Escape 来关闭模态浮层。这份登记只管 Escape，不引入 parent 关系、inert 或外部点击；`AlertDialog` 因此不再有自己的 Escape 分支，一次按键只发出一次 close/cancel。
+
+当前 Modal 仍没有 focus trap、背景 inert 或关闭后焦点恢复，AlertDialog 的 Enter 确认也保留迁移前的 document 监听时机；菜单、Popover、Picker 等非 Modal 浮层的 Escape 仍各自管理，尚未并入这份顺序。它们是已登记的交互/可访问性欠账，不得在纯 owner 迁移中用临时判断改写；后续必须单独设计、决策和验收。
 
 ## 日期与时间
 

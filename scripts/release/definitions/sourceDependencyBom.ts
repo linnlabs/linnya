@@ -6,6 +6,20 @@ export interface SourceDependencySupplementalNotice {
   readonly title: string;
 }
 
+/**
+ * 直接引用 URL tarball 的依赖登记的 tarball integrity（Subresource Integrity 写法）。
+ * pnpm 对这类依赖时而写入、时而删掉锁文件里的 integrity，生成器不能联网下载，所以由这里提供可核对的值。
+ */
+export interface DependencyPinnedTarballIntegrity {
+  /** 与 package.json、锁文件里完全相同的 tarball URL。 */
+  readonly tarball: string;
+  readonly packageName: string;
+  readonly version: string;
+  readonly integrity: string;
+  /** 怎样核对得到这个值；升级 URL 时必须重新核对并更新。 */
+  readonly reviewed: string;
+}
+
 /** 原生平台包只有聚合许可证声明时，锁定其内部静态组件审计证据。 */
 export const NAPI_RS_CANVAS_NATIVE_NOTICE_EVIDENCE = {
   packageName: '@napi-rs/canvas',

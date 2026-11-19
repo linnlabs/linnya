@@ -87,11 +87,14 @@ export interface ProjectOverviewRow {
   readonly createdAt: number;
   readonly creatorActor: ProjectOverviewActor | null;
   readonly creatorPluginId: string | null;
+  /** 新建它的 Agent；null 是默认 Agent，`creatorActor` 不是运行时无意义。 */
+  readonly creatorAgentId: string | null;
   readonly conversationId: string | null;
   readonly conversationTitle: string | null;
   readonly lastModifiedAt: number;
   readonly lastModifiedActor: ProjectOverviewActor | null;
   readonly lastModifiedPluginId: string | null;
+  readonly lastModifiedAgentId: string | null;
   readonly pendingRevisionCount: number | null;
   /** 当前标签，按打标签的先后。 */
   readonly tags: readonly { readonly id: string; readonly name: string }[];
@@ -115,8 +118,8 @@ export interface ProjectOverviewPresentation {
   readonly documentType: (nodeType: string) => ProjectOverviewDocumentTypePresentation;
   /** 插件显示名；插件已卸载等查不到时为 null。 */
   readonly pluginName: (pluginId: string) => string | null;
-  /** Agent 显示名；null 是默认 Agent。查不到时由调用方显示 ID。 */
-  readonly agentName: (agentId: string | null) => string | null;
+  /** Agent 显示名：null 是默认 Agent（Linnya Agent）；注册表里查不到（例如插件已停用）时显示 ID。 */
+  readonly agentName: (agentId: string | null) => string;
 }
 
 /** 工作区变更触发的读取范围。 */

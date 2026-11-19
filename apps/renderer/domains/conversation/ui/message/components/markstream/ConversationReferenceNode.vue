@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import type { Editor } from '@tiptap/vue-3'
+import type { Editor } from '@tiptap/core'
 import type { ReferenceNode } from 'stream-markdown-parser'
 import { useUIStore } from '../../../../../../shared/stores/ui'
 import { useNotificationStore } from '@/app/notification'
@@ -31,13 +31,12 @@ import { buildRootBlockIndexMap, flashHighlightRootBlockOuter, navigateToRootBlo
 import { getDocumentReferenceRuntimeHandler } from '@plugin/renderer/documentReferenceRuntimePort'
 import { useAssistantStore } from '../../../../store/assistantStore'
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort'
-import { readToolNameFromConversationMessage } from '../../../../functions/toolMessageLookup'
-import { isRecord } from '../../../../utils/typeGuards'
 import {
   findCurrentPluginReferenceDocument,
   getPluginReferenceLabel,
+  isResolvedMarkdownReference,
   parseWorkspaceRefId,
-  readWorkspaceDocumentCandidate,
+  readWorkspaceDocumentCandidatesFromTurn,
   resolveReferenceMatches,
   uniqCandidates,
   type DocType,
@@ -147,23 +146,7 @@ function getCandidatesFromCurrentView(): DocumentCandidate[] {
 
 function getCandidatesFromTurn(turnId: string | undefined): DocumentCandidate[] {
   if (!turnId) return []
-
-  const candidates: DocumentCandidate[] = []
-  for (const msg of assistantStore.activeMessages) {
-    if (msg.type !== 'tool_calls') continue
-    if (!isRecord(msg.metadata)) continue
-    const meta = msg.metadata
-    if (meta.turn_id !== turnId) continue
-
-    const toolName = readToolNameFromConversationMessage(msg) ?? ''
-    const status = meta.status
-    if (status !== 'success') continue
-
-    const candidate = readWorkspaceDocumentCandidate(toolName, meta.result)
-    if (candidate) candidates.push(candidate)
-  }
-
-  return candidates
+  return readWorkspaceDocumentCandidatesFromTurn(assistantStore.activeMessages, turnId)
 }
 
 watch(
@@ -200,7 +183,7 @@ watch(
     if (matches.length !== 1) return
 
     const match = matches[0]
-    if (match.docType === 'markdown') {
+    if (isResolvedMarkdownReference(match)) {
       asyncResolvedLabel.value = conversationMessage('conversation.tool.workspace.reference.paragraphLabel', {
         index: match.index,
       })

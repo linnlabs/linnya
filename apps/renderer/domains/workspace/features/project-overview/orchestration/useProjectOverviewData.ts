@@ -1,4 +1,5 @@
 import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
+import { useTimer } from '@linnya/renderer-ui';
 import { PROJECT_OVERVIEW_MAX_DOCUMENT_IDS, type ProjectOverviewField } from '@app/schemas';
 import { subscribeToWorkspaceMutation } from '@/shared/ipc/workspaceMutationSubscription';
 import { workspaceGateway } from '@/shared/ipc/workspaceGateway';
@@ -20,7 +21,7 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
   const revision = ref(0);
   let generation = 0;
   let loadingGeneration: number | null = null;
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  const refreshTimer = useTimer();
   let refreshAll = false;
   const refreshIds = new Set<string>();
 
@@ -68,7 +69,6 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
   }
 
   async function flush(): Promise<void> {
-    timer = null;
     const target = projectId.value;
     // 同项目的快照与局部补读串行，避免旧快照覆盖更新；执行中的新事件留给下一轮。
     if (!target || loadingGeneration === generation) return;
@@ -84,7 +84,7 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
     } finally {
       if (current === generation) {
         loadingGeneration = null;
-        if (timer === null && (refreshAll || refreshIds.size > 0)) void flush();
+        if (!refreshTimer.pending && (refreshAll || refreshIds.size > 0)) void flush();
       }
     }
   }
@@ -93,7 +93,7 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
     if (plan.kind === 'none') return;
     if (plan.kind === 'all') refreshAll = true;
     else refreshIds.add(plan.id);
-    timer ??= setTimeout(() => void flush(), REFRESH_THROTTLE_MS);
+    refreshTimer.startIfIdle(() => void flush(), REFRESH_THROTTLE_MS);
   }
 
   const unsubscribe = subscribeToWorkspaceMutation(event => {
@@ -103,8 +103,7 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
 
   watch(projectId, target => {
     generation += 1;
-    if (timer) clearTimeout(timer);
-    timer = null;
+    refreshTimer.cancel();
     refreshAll = false;
     refreshIds.clear();
     rows.value = new Map();
@@ -117,7 +116,6 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
 
   onScopeDispose(() => {
     generation += 1;
-    if (timer) clearTimeout(timer);
     unsubscribe();
   });
 
@@ -127,15 +125,13 @@ export function useProjectOverviewData(projectId: Readonly<Ref<string | null>>) 
    */
   function refreshDocuments(ids: readonly string[]): void {
     for (const id of ids) refreshIds.add(id);
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => void flush(), 0);
+    refreshTimer.start(() => void flush(), 0);
   }
 
   /** 标签或字段本身改了（改名、合并、删除）：所有文档的标签和字段都可能变，整份重读。 */
   function reloadAll(): void {
     refreshAll = true;
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => void flush(), 0);
+    refreshTimer.start(() => void flush(), 0);
   }
 
   return { rows, fields, folderCount, characterCount, status, revision, refreshDocuments, reloadAll };

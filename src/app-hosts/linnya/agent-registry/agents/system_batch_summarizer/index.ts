@@ -14,6 +14,7 @@ export const AGENT_DEFINITION: AgentDefinition = {
   promptKey: PromptKeys.SYSTEM_BATCH_SUMMARIZER,
   defaultMode: 'agent',
   description: '系统发起 batch 的收尾 Agent（无工具，仅总结）',
+  internal: true,
   config: {
     contextPolicy: { profileId: 'agent' },
     // 系统 batch 已完成全部动作；收尾阶段物理禁用工具，避免父 Agent 重复执行副作用。

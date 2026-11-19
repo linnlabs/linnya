@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ROOT_DEPENDENCY_LICENSE_EVIDENCE } from '../definitions/dependencyLicenseEvidence';
 import {
   DEPENDENCY_LICENSE_SELECTIONS,
+  DEPENDENCY_PINNED_TARBALL_INTEGRITIES,
   DEPENDENCY_SOURCE_OVERRIDES,
   DEPENDENCY_SUPPLEMENTAL_EVIDENCE_FILES,
 } from '../definitions/dependencyLegalPolicy';
@@ -92,6 +93,7 @@ export function generateSourceDependencyBom(
     rootDir,
     projectManifest,
     lockfile: fs.readFileSync(path.join(rootDir, 'pnpm-lock.yaml'), 'utf8'),
+    pinnedTarballIntegrities: DEPENDENCY_PINNED_TARBALL_INTEGRITIES,
     licenseReport: JSON.parse(licenseReportText),
     platform: process.platform,
     architecture: process.arch,

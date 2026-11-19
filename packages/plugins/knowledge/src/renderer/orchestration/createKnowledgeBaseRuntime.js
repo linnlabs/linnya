@@ -1,5 +1,6 @@
 import { storeToRefs } from 'pinia'
 import { effectScope, watch } from 'vue'
+import { createTimer } from '@linnya/renderer-ui'
 import { getKnowledgeBaseById, getDocumentById, getKbNameById } from '../functions/knowledgeBaseQueries.js'
 import { createCurrentKbComputed, createUploadTasksComputed } from '../composables/knowledgeBaseReadModel.js'
 import {
@@ -87,10 +88,15 @@ export function createKnowledgeBaseRuntime(store) {
     () => polling.startPolling(true), () => polling.startPolling(false),
   )
 
+  // preload 的 electronAPI 是同步暴露的，没有“稍后就绪”的事件可等：首次没挂上订阅时只补一次有界重试，
+  // 应用退出时取消。运行时与应用同寿命，不随组件卸载，所以用 createTimer 而不是 useTimer。
+  const ipcSetupRetryTimer = createTimer()
+
   // 清理真实的 IPC 订阅，而不是把 cleanupIpcListener 本身存回全局后递归调用。
   function cleanupIpcListener() {
     if (disposed) return
     disposed = true
+    ipcSetupRetryTimer.cancel()
     store.setParsing(false)
     store.setLoading(false)
     stopAllAnimations()
@@ -102,6 +108,12 @@ export function createKnowledgeBaseRuntime(store) {
     scope.stop()
   }
   setupIpcStatusListener()
+  if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.onAppQuit) {
+    window.electronAPI.onAppQuit(cleanupIpcListener)
+  }
+  ipcSetupRetryTimer.start(() => {
+    if (!ipcCleanup && !disposed) setupIpcStatusListener()
+  }, 500)
   // 监听属于应用运行 owner，不随第一次打开它的组件卸载而停止。
   scope.run(() => {
     watch(currentKbId, async (newKbId, oldKbId) => {

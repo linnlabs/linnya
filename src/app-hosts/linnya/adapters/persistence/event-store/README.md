@@ -85,6 +85,12 @@ Host Web adapter 用此投影生成访问反馈；业务分类及用户文案仍
 JSON 字段里的 URL。它仅回答地址是否曾被正式结果交付，不证明当前页面可读或内容可信。
 URL 身份归一和具体提示由 Host/Web owner 负责；没有新缓存、索引或可独立漂移的状态。
 
+## 对话的 Agent 汇总
+
+`readConversationRunAgents` 按对话汇总 `kind = agent` 的运行由哪些 Agent（`agent_spec_id`）完成，根运行与子运行
+分开计数并给出最近开始时间；范围是一个项目的全部对话或单个对话。它只读运行事实，不判断哪些 Agent 是内部能力，
+也不决定显示名；“谁回复过”的口径由[项目对话](../../../application/project-conversations/README.md)定义。
+
 ## UI 投影不变量
 
 - 增量写入与全量 rebuild 必须复用同一 routing admission 和事件投影规则。

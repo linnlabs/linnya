@@ -1,3 +1,12 @@
+/*
+ * 图标默认尺寸：没有写尺寸的图标取当前字号（1em），不会按 SVG 的默认 300×150 撑开。
+ * 零优先级：下面的 --em / --full / --fit 与业务选择器照常覆盖；图标自己带 width / height 属性时本规则不生效。
+ */
+:where(.linnya-ui-icon:not([width], [height])) {
+  width: 1em;
+  height: 1em;
+}
+
 :where(.shared-icon--em) {
   width: 1em;
   height: 1em;

@@ -2,6 +2,7 @@ export { default as AlertDialog } from './ui/AlertDialog.vue';
 export { default as ImagePreviewModal } from './ui/ImagePreviewModal.vue';
 export { default as Modal } from './ui/Modal.vue';
 export { resolveAlertDialogDangerousAction } from './functions/resolveAlertDialogDangerousAction';
+export { useEscapeLayer } from './vue/useEscapeLayer';
 export { useImagePreviewSource } from './vue/useImagePreviewSource';
 export {
   RENDERER_UI_OVERLAY_LAYER_TOKENS,
@@ -9,6 +10,7 @@ export {
   rendererUiOverlayLayer,
 } from './definitions/overlayLayer';
 export type { AlertDialogProps, AlertDialogSection } from './definitions/alertDialog';
+export type { EscapeLayerOptions } from './definitions/escapeLayer';
 export type {
   ImagePreviewModalClassNames,
   ImagePreviewModalProps,

@@ -308,7 +308,7 @@ export function measureSetContentOperation<State = unknown>(
   }
 
   const originalUpdateState = view.updateState.bind(view)
-  view.updateState = (state: unknown) => {
+  view.updateState = (state: State) => {
     const updateStart = performance.now()
     try {
       return originalUpdateState(state)
