@@ -270,6 +270,14 @@ export interface AgentDefinition {
   newRunUnavailableReason?: string;
 
   /**
+   * 宿主内部的辅助 Agent（标题生成、编辑器单轮写作、批量收尾等）。
+   *
+   * 它们的运行可能挂在某个对话上，但不是对话里“谁回复了、派出了谁”的答案；
+   * 读取合同（例如项目对话页）统计 Agent 时排除它们。不影响执行、恢复或权限。
+   */
+  internal?: true;
+
+  /**
    * 核心配置：工具、模型、知识库
    * 🔥 新增：收编历史 agent-config 的配置能力
    */

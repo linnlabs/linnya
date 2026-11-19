@@ -30,9 +30,9 @@ function addConversation(id: string, title: string, project: string | null, last
     VALUES (?, ?, ?, 1, ?, ?, ?, ?)`).run(id, title, project, lastEventAt, extra.pinned ? 1 : 0, extra.agent ?? null, extra.turns ?? 0);
 }
 
-function addRun(id: string, conversationId: string, agent: string | null, startTs = 1) {
-  db().prepare(`INSERT INTO runs (id, conversation_id, kind, status, agent_spec_id, start_ts) VALUES (?, ?, 'agent', 'completed', ?, ?)`)
-    .run(id, conversationId, agent, startTs);
+function addRun(id: string, conversationId: string, agent: string | null, startTs = 1, parentRunId: string | null = null, kind = 'agent') {
+  db().prepare(`INSERT INTO runs (id, conversation_id, kind, status, agent_spec_id, start_ts, parent_run_id) VALUES (?, ?, ?, 'completed', ?, ?, ?)`)
+    .run(id, conversationId, kind, agent, startTs, parentRunId);
 }
 
 let sortSeq = 0;
@@ -75,14 +75,20 @@ afterEach(async () => {
 });
 
 describe('项目对话页', () => {
-  it('列出本项目对话：置顶在前、Agent 只取选定（内部根运行不算）、改过的文档按账本去重', async () => {
-    addConversation('conv-a', '三季度汇报初稿', projectId, 500, { turns: 9, agent: 'default' });
+  it('列出本项目对话：置顶在前、Agent 为实际回复过的（最近在前，内部 Agent 与子运行不算）、改过的文档按账本去重', async () => {
+    addConversation('conv-a', '三季度汇报初稿', projectId, 500, { turns: 9, agent: 'research_v1' });
     addConversation('conv-b', '欧洲市场渠道梳理', projectId, 400, { pinned: true, agent: 'research_v1', turns: 3 });
+    addConversation('conv-c', '刚建的对话', projectId, 300, { agent: 'default' });
     addConversation('conv-other', '别处的对话', otherProjectId, 900);
     addConversation('conv-assistant', '助手对话', null, 900);
-    addRun('run-a', 'conv-a', 'default');
+    addRun('run-a', 'conv-a', 'default', 10);
+    addRun('run-a-title', 'conv-a', 'conversation_title', 11);
+    addRun('run-a-research', 'conv-a', 'research_v1', 20);
+    addRun('run-a-again', 'conv-a', 'default', 30);
+    addRun('run-a-sub', 'conv-a', 'subagent_general', 31, 'run-a-again');
+    addRun('run-a-input', 'conv-a', null, 32, null, 'user_input');
     addRun('run-b', 'conv-b', 'research_v1');
-    addRun('run-a-title', 'conv-a', 'conversation_title', 2);
+    addRun('run-other', 'conv-other', 'research_v1');
 
     const write = new WriteFileTool();
     await write.run({ locator: 'workspace:/汇报.md', content: '# 汇报' }, context('conv-a', 'run-a', 'c1'));
@@ -90,11 +96,30 @@ describe('项目对话页', () => {
     await write.run({ locator: 'workspace:/定价.md', content: '# 定价' }, context('conv-a', 'run-a', 'c3'));
 
     const list = readProjectConversations(db(), { project_id: projectId });
-    expect(list.conversations.map(row => [row.conversation_id, row.is_pinned, row.agent_id, row.turn_count, row.changed_document_count, row.storage]))
-      .toEqual([
-        ['conv-b', true, 'research_v1', 3, 0, null],
-        ['conv-a', false, null, 9, 2, null],
-      ]);
+    expect(list.conversations.map(row => [
+      row.conversation_id, row.is_pinned, row.replied_agent_ids, row.selected_agent_id, row.turn_count, row.changed_document_count, row.storage,
+    ])).toEqual([
+      ['conv-b', true, ['research_v1'], 'research_v1', 3, 0, null],
+      ['conv-a', false, [null, 'research_v1'], 'research_v1', 9, 2, null],
+      ['conv-c', false, [], null, 0, 0, null],
+    ]);
+  });
+
+  it('详情：派出的子 Agent 按 Agent 计子运行次数（含多层），内部 Agent 不算', () => {
+    addConversation('conv-a', '三季度汇报初稿', projectId, 500);
+    addRun('run-a', 'conv-a', 'default', 1);
+    addRun('sub-1', 'conv-a', 'research_source_review_v1', 2, 'run-a');
+    addRun('sub-2', 'conv-a', 'research_source_review_v1', 3, 'run-a');
+    addRun('sub-3', 'conv-a', 'subagent_general', 4, 'run-a');
+    addRun('sub-3-web', 'conv-a', 'deep_web_search', 5, 'sub-3');
+    addRun('sub-internal', 'conv-a', 'system_batch_summarizer', 6, 'run-a');
+
+    const detail = readProjectConversationDetail(db(), { project_id: projectId, conversation_id: 'conv-a' });
+    expect(detail?.subagents).toEqual([
+      { agent_id: 'research_source_review_v1', run_count: 2 },
+      { agent_id: 'deep_web_search', run_count: 1 },
+      { agent_id: 'subagent_general', run_count: 1 },
+    ]);
   });
 
   it('详情：第一个问题、最后的答复截取原文，改过的文档带待审阅数，删掉的文档标出', async () => {
@@ -112,7 +137,7 @@ describe('项目对话页', () => {
     workspace.deleteNode(old.id);
 
     const detail = readProjectConversationDetail(db(), { project_id: projectId, conversation_id: 'conv-a' });
-    expect(detail).toMatchObject({ first_question: '根据调研写一份三季度汇报', last_answer: '已更新定价部分', storage: null });
+    expect(detail).toMatchObject({ subagents: [], first_question: '根据调研写一份三季度汇报', last_answer: '已更新定价部分', storage: null });
     expect(detail?.changed_documents.map(document => [document.title, document.deleted])).toEqual([
       ['旧稿.md', true],
       ['汇报.md', false],

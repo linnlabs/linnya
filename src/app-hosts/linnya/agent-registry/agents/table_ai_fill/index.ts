@@ -29,6 +29,7 @@ export const AGENT_DEFINITION: AgentDefinition = {
   promptKey: PromptKeys.TABLE_AI_FILL,
   defaultMode: 'agent',
   description: '表格 AI 填充（按行）',
+  internal: true,
   config: {
     contextPolicy: { profileId: 'agent', toolHistory: { strategy: 'per-run', keepLatestRuns: 1 } },
     enableTools: true,

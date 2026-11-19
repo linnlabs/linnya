@@ -78,6 +78,8 @@ export type AiSdkLanguageDiagnostic =
       readonly invariant_code?: AiSdkHostStreamInvariantCode;
       readonly stream_part_type?: AiSdkLanguageStreamPartType;
       readonly sdk_error_details?: AiSdkFailureSdkDetails;
+      /** HTTP 拒绝时 Provider 的说明，已脱敏、限长；只供诊断日志判断原因。 */
+      readonly provider_error_excerpt?: string;
       readonly provider_signal?: Readonly<{
         readonly status_code?: number;
         readonly type?: string;

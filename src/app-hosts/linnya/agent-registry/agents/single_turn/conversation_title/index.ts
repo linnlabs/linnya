@@ -7,6 +7,7 @@ export const CONVERSATION_TITLE_SINGLE_TURN_AGENT_DEFINITION: AgentDefinition = 
   promptKey: PromptKeys.CONVERSATION_TITLE,
   defaultMode: 'agent',
   description: '新对话自动标题（single_turn）',
+  internal: true,
   config: {
     contextPolicy: {
       profileId: 'agent',

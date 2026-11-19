@@ -7,6 +7,7 @@ export const AUDIO_SUMMARY_SINGLE_TURN_AGENT_DEFINITION: AgentDefinition = {
   promptKey: PromptKeys.AUDIO_SUMMARY,
   defaultMode: 'agent',
   description: '音频转录纪要/摘要（single_turn）',
+  internal: true,
   config: {
     contextPolicy: {
       profileId: 'agent',
