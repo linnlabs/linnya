@@ -38,13 +38,21 @@ async function observeIdleConversation(
   }
 }
 
+export interface DetachedRunObservationOptions {
+  /** 空闲时是否检查其它入口写入的新运行；窗口不可见时由调用方关掉，在途运行的观察不受影响。 */
+  readonly observeIdle: boolean;
+}
+
 /** 没有 reader 时只观察 Backend；不暂停、不重新发送、不生成任何执行事实。 */
-export async function observeDetachedInteractiveRun(conversationId: string): Promise<void> {
+export async function observeDetachedInteractiveRun(
+  conversationId: string,
+  options: DetachedRunObservationOptions
+): Promise<void> {
   const store = useInteractiveRunStore();
   const current = store.snapshotFor(conversationId);
   if (store.hasTransport(conversationId)) return;
   if (isIdleForExternalRuns(current)) {
-    await observeIdleConversation(conversationId, current);
+    if (options.observeIdle) await observeIdleConversation(conversationId, current);
     return;
   }
   if (

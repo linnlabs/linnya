@@ -49,11 +49,6 @@
       "count": 1
     }
   },
-  "apps/renderer/domains/conversation/features/interactive-run/composables/useDetachedInteractiveRunObservation.ts": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
   "apps/renderer/domains/conversation/features/run-document-changes/orchestration/useRunDocumentChanges.ts": {
     "no-restricted-globals": {
       "count": 1
