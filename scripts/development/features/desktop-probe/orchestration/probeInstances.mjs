@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { closeSync, existsSync, openSync, readdirSync, rmSync } from 'node:fs';
+import { closeSync, openSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultOptions, ProbeError, repoRoot } from '../definitions/probeContract.mjs';
@@ -7,7 +7,7 @@ import { waitFor } from '../infrastructure/cdpClient.mjs';
 import { cloneWorkspaceData } from '../infrastructure/workspaceClone.mjs';
 import { buildFreshness, ensureFreshBuild } from './probeBuild.mjs';
 import {
-  instanceRoot, instanceWorkspaceDb, instancesRoot, prepareInstance, readSession, touchInstance, withLifecycleLock, writeSession,
+  instanceRoot, instanceWorkspaceDb, listInstanceNames, prepareInstance, readSession, touchInstance, withLifecycleLock, writeSession,
 } from '../infrastructure/instanceStore.mjs';
 import { observeTree, readProcessTable, sameProcess, signalOwner, stopOwnedTree } from '../infrastructure/processTree.mjs';
 
@@ -35,10 +35,7 @@ export function probeStatus(name) {
 }
 
 export function listProbes() {
-  if (!existsSync(instancesRoot)) return [];
-  return readdirSync(instancesRoot, { withFileTypes: true })
-    .filter(entry => entry.isDirectory() && !entry.name.endsWith('.lock'))
-    .map(entry => probeStatus(entry.name));
+  return listInstanceNames().map(probeStatus);
 }
 
 function checkSupervisorHandoff(session) {

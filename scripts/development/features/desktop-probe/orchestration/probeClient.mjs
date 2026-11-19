@@ -1,4 +1,5 @@
 import { ProbeError } from '../definitions/probeContract.mjs';
+import { DEFAULT_PRUNE_DAYS } from '../functions/instancePrunePolicy.mjs';
 import { launchOptions, numberOption, oneOf, parseProbeArgs, usage } from '../functions/parseProbeArgs.mjs';
 import { readDesktopMainInspector } from '../functions/desktopLaunchMarkers.mjs';
 import { connectCdp, evaluate, findPage, unwrapCdpResult, waitFor } from '../infrastructure/cdpClient.mjs';
@@ -7,6 +8,7 @@ import { performAction } from './probeActions.mjs';
 import { changeProbeInstance, listProbes, probeStatus, requireReady } from './probeInstances.mjs';
 import { probeLogs, shotPage, snapshotPage, waitForPage } from './probeObservation.mjs';
 import { pageFacts } from './probePage.mjs';
+import { pruneBeforeUp, pruneProbeInstances } from './probePrune.mjs';
 
 const actionCommands = new Set(['click', 'dblclick', 'hover', 'type', 'press', 'drag', 'scroll']);
 
@@ -100,11 +102,21 @@ export async function runProbeCommand(parsed) {
   if (command === 'accept') {
     return (await import('./runProbeAcceptance.mjs')).runProbeAcceptance(positionals);
   }
+  if (command === 'prune') {
+    if (positionals.length) usage('prune 不接受位置参数');
+    return pruneProbeInstances({
+      olderThanDays: numberOption(values['older-than'] ?? String(DEFAULT_PRUNE_DAYS), '--older-than', { min: 0, max: 3650 }),
+      dryRun: values['dry-run'] ?? false,
+    });
+  }
   if (['up', 'stop', 'restart', 'status'].includes(command)) {
     if (positionals.length) usage(`${command} 不接受位置参数`);
     if (command === 'status') return values.all ? { instances: listProbes() } : probeStatus(values.name);
     if (process.platform !== 'darwin') throw new ProbeError('UNSUPPORTED_PLATFORM', 'Desktop 探针当前支持 macOS');
-    return changeProbeInstance(command, launchOptions(values), values);
+    // 启动前顺带回收本 worktree 里已停止且闲置多日的旧实例，磁盘不会越攒越多；回收失败不影响启动。
+    const pruned = command === 'up' ? await pruneBeforeUp(values.name) : undefined;
+    const result = await changeProbeInstance(command, launchOptions(values), values);
+    return pruned ? { ...result, pruned } : result;
   }
   if (command === 'logs') return probeLogs(probeStatus(values.name), values);
   if (command === 'fixture') {
