@@ -13,7 +13,10 @@ import type {
   PackageLegalEvidenceFile,
   ReviewedPackageLegalEvidence,
 } from '../definitions/packageLegalEvidence';
-import type { SourceDependencySupplementalNotice } from '../definitions/sourceDependencyBom';
+import type {
+  DependencyPinnedTarballIntegrity,
+  SourceDependencySupplementalNotice,
+} from '../definitions/sourceDependencyBom';
 import { collectPackageLegalEvidence, packageIdentity } from './packageLegalEvidence';
 
 interface JsonRecord {
@@ -81,6 +84,8 @@ export interface CreateSourceDependencyBomInput {
   readonly licenseReport: unknown;
   readonly licenseSelections: readonly DependencyLicenseSelection[];
   readonly lockfile: string;
+  /** URL tarball 依赖登记的 integrity，见 `DEPENDENCY_PINNED_TARBALL_INTEGRITIES`。 */
+  readonly pinnedTarballIntegrities: readonly DependencyPinnedTarballIntegrity[];
   readonly projectManifest: unknown;
   readonly rootDir: string;
   readonly reviewedEvidenceFiles: readonly ReviewedPackageLegalEvidence[];
@@ -152,7 +157,31 @@ function readInstalledDependencyReferences(
   return references;
 }
 
-function readLockfileIntegrities(lockfile: string): ReadonlyMap<string, string> {
+/**
+ * URL tarball 的 integrity：锁文件有值时必须与登记一致，没有时用登记值。都没有时返回 undefined，
+ * 由法律证据收集报告缺少 integrity。
+ */
+function resolveTarballIntegrity(
+  lockfileKey: string,
+  version: string,
+  tarball: string,
+  lockfileIntegrity: string | undefined,
+  pinned: DependencyPinnedTarballIntegrity | undefined
+): string | undefined {
+  if (!pinned) return lockfileIntegrity;
+  if (pinned.version !== version) {
+    throw new Error(`${lockfileKey} 的版本 ${version} 与登记的 ${pinned.packageName}@${pinned.version} 不一致`);
+  }
+  if (lockfileIntegrity !== undefined && lockfileIntegrity !== pinned.integrity) {
+    throw new Error(`${tarball} 的锁文件 integrity 与登记的不一致，tarball 内容可能已变化`);
+  }
+  return pinned.integrity;
+}
+
+function readLockfileIntegrities(
+  lockfile: string,
+  pinnedTarballIntegrities: readonly DependencyPinnedTarballIntegrity[]
+): ReadonlyMap<string, string> {
   const parsed: unknown = parseYaml(lockfile);
   if (!isRecord(parsed) || !isRecord(parsed.packages)) {
     throw new Error('pnpm-lock.yaml 缺少 packages');
@@ -179,26 +208,38 @@ function readLockfileIntegrities(lockfile: string): ReadonlyMap<string, string> 
     integrities.add(integrity);
     byIdentity.set(identity, integrities);
   };
+  const pinnedByTarball = new Map(pinnedTarballIntegrities.map(entry => [entry.tarball, entry]));
+  const usedPinnedTarballs = new Set<string>();
   for (const [lockfileKey, packageRecord] of Object.entries(parsed.packages)) {
     if (!isRecord(packageRecord) || !isRecord(packageRecord.resolution)) continue;
-    const integrity = packageRecord.resolution.integrity;
-    if (typeof integrity !== 'string' || !integrity) continue;
+    const recordedIntegrity = packageRecord.resolution.integrity;
+    const lockfileIntegrity = typeof recordedIntegrity === 'string' && recordedIntegrity ? recordedIntegrity : undefined;
     const peerSuffixIndex = lockfileKey.indexOf('(');
     const identity = peerSuffixIndex === -1 ? lockfileKey : lockfileKey.slice(0, peerSuffixIndex);
-    addIntegrity(identity, integrity);
 
     // pnpm 会把 URL tarball 按 URL 本身作为 key（例如 xlsx@https://...），而许可证报告
     // 按包名和 manifest 版本标识已安装包；importer 条目是锁文件中连接这两种 identity 的事实来源。
-    if (lockfileKey.includes('://') && typeof packageRecord.version === 'string') {
-      const tarball = packageRecord.resolution.tarball;
-      const importerNames =
-        (typeof tarball === 'string' && importerDependencyNames.get(tarball)) ??
-        importerDependencyNames.get(lockfileKey) ??
-        [];
-      for (const packageName of importerNames) {
+    const tarball = packageRecord.resolution.tarball;
+    if (lockfileKey.includes('://') && typeof packageRecord.version === 'string' && typeof tarball === 'string') {
+      const pinned = pinnedByTarball.get(tarball);
+      if (pinned) usedPinnedTarballs.add(tarball);
+      const integrity = resolveTarballIntegrity(lockfileKey, packageRecord.version, tarball, lockfileIntegrity, pinned);
+      if (integrity === undefined) continue;
+      addIntegrity(identity, integrity);
+      const packageNames = new Set([
+        ...(importerDependencyNames.get(tarball) ?? importerDependencyNames.get(lockfileKey) ?? []),
+        ...(pinned ? [pinned.packageName] : []),
+      ]);
+      for (const packageName of packageNames) {
         addIntegrity(`${packageName}@${packageRecord.version}`, integrity);
       }
+      continue;
     }
+    if (lockfileIntegrity !== undefined) addIntegrity(identity, lockfileIntegrity);
+  }
+  const unusedPinned = pinnedTarballIntegrities.filter(entry => !usedPinnedTarballs.has(entry.tarball));
+  if (unusedPinned.length > 0) {
+    throw new Error(`登记的 tarball 不在锁文件中：${unusedPinned.map(entry => entry.tarball).join(', ')}`);
   }
   const result = new Map<string, string>();
   for (const [identity, integrities] of byIdentity) {
@@ -315,7 +356,7 @@ export function createSourceDependencyBom(
     Readonly<{ content: string }>)[];
   try {
     references = readInstalledDependencyReferences(input.licenseReport);
-    lockfileIntegrities = readLockfileIntegrities(input.lockfile);
+    lockfileIntegrities = readLockfileIntegrities(input.lockfile, input.pinnedTarballIntegrities);
     project = readProjectIdentity(input.projectManifest);
     supplementalNotices = readSupplementalNotices(input.supplementalNotices);
   } catch (error) {
