@@ -1,6 +1,4 @@
 # Host 插件 ID 引用基线：<插件 ID> <文件>
 # 只允许删除。Host 接入插件请走 manifest、contribution 与装配来源授信；确需新增时手工加行，并在提交说明里写明理由。
-knowledge apps/renderer/app/plugins/builtin/installApplicationSurfaceHostPorts.ts
 knowledge src/app-hosts/linnya/plugin-registry/knowledgeResourceAdmission.ts
 knowledge src/app-hosts/linnya/plugin-registry/rendererApplicationSurfaceTrust.ts
-knowledge src/electron-main/routes/index.ts
