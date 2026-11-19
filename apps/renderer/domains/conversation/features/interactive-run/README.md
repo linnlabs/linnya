@@ -46,6 +46,8 @@ cancel 的成功响应不是固定 `cancelled`：Host 会返回 `cancelled` 或
 
 历史进入由 CLI 等其它入口启动的在途 run 时，本 surface 没有 SSE reader。现有 detached observer 每 2 秒先查询控制态，再条件刷新当前 durable window；不建立第二条执行流，不伪造 SSE。窗口接纳新正式 revision 后才失效 lazy trace cache，已展开的 trace 自动重读。
 
+对话已经打开且本窗口没有在途运行（没运行过、已终态或已收口暂停）时，CLI `send`、`tools call` 等入口仍可能写入新运行。observer 此时每 2 秒只按 durable revision 刷新当前窗口（revision 未变时 Host 只回 `unchanged`）；窗口确有新内容才查询 active run，查到在途运行就接入控制快照，之后走上面的运行观察。`tools call` 这类瞬间结束的运行只表现为窗口刷新。空闲观察失败不改控制状态，下次重试。
+
 运行终态经过 exact-run settlement 的持久化屏障；先完成可见窗口同步，再收敛控制状态，revision 未变也必须清除 busy。窗口读取失败保持 reconnecting，下次继续观察；projection preparing 保留原窗口并继续观察。导航、分页、编辑和新 transport 会使迟到刷新失效。
 
 无 reader 时接纳窗口会绑定本 feature 的技术 `transportGeneration`。每次发送、提交或继续取得新 transport 时递增代次，结束时不回退；selector 仅在同代次且无 reader 时让同身份 durable 工具行接管 lifecycle/presentation，并保留 live trace。新 reader 再次断线、尚未刷新前，旧交接标记不能压过新 live。该标记不改变 run status，也不清除 live thought/answer 或未落盘消息。
