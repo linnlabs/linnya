@@ -191,6 +191,11 @@ describe('rebuild retained knowledge sources', () => {
     expect(f.collections.get('default')?.size).toBe(25);
     expect(f.collections.get(getGraphNodesCollectionName('default'))?.size).toBe(2);
     expect(f.collections.get(getGraphEdgesCollectionName('default'))?.size).toBe(1);
+    for (const collection of ['default', getGraphNodesCollectionName('default'), getGraphEdgesCollectionName('default')]) {
+      expect(f.deps.vectors.getOrCreateCollection).toHaveBeenCalledWith(collection, 3, 'Cosine', true, {
+        defaultSegmentNumber: 1,
+      });
+    }
     expect(f.requests.slice(1).every(request => request.expectedSpaceId === 'new-space')).toBe(
       true
     );

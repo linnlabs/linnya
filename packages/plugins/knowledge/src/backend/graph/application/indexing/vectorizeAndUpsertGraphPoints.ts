@@ -4,6 +4,7 @@ import type {
   QdrantPoint,
   SparseVector,
 } from '../../../infrastructure/qdrantRepository';
+import { resolveTargetSegmentCountByPointsCount } from '../../../infrastructure/qdrant-repository/segmentPolicy';
 import { textsToSparseVectors } from '../../../ingestion/utils/textToSparseVector';
 
 function calculateBatchSize(totalTexts: number): number {
@@ -97,7 +98,10 @@ export async function vectorizeAndUpsertGraphPoints(args: {
 
     if (!createdCollection) {
       const vectorDimension = denseVectors[0].length;
-      await qdrantRepository.getOrCreateCollection(collectionName, vectorDimension, 'Cosine', true);
+      await qdrantRepository.getOrCreateCollection(collectionName, vectorDimension, 'Cosine', true, {
+        // 当前任务可能拆成多批，首次建集合用本次写入总量而不是第一批的大小。
+        defaultSegmentNumber: resolveTargetSegmentCountByPointsCount(total),
+      });
       createdCollection = true;
     }
 

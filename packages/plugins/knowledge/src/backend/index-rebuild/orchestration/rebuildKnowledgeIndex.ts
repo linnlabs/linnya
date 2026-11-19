@@ -8,6 +8,7 @@ import type {
   QdrantPoint,
   QdrantRepository,
 } from '../../infrastructure/qdrantRepository';
+import { resolveTargetSegmentCountByPointsCount } from '../../infrastructure/qdrant-repository/segmentPolicy';
 import type { KnowledgeGraphRepository } from '../../graph/infrastructure/knowledgeGraphRepository';
 import {
   getGraphNodesCollectionName,
@@ -121,9 +122,12 @@ export async function rebuildKnowledgeIndex(args: {
 }): Promise<{ identity: KnowledgeIndexIdentity; points: number }> {
   const { deps, kbId, modelId, signal } = args;
   const documents = await deps.metadata.getDocumentsInKnowledgeBase(kbId);
+  const pointCounts = new Map<string, number>();
   let totalPoints = 0;
-  for await (const batch of readBatches(deps, kbId, documents, signal))
+  for await (const batch of readBatches(deps, kbId, documents, signal)) {
+    pointCounts.set(batch.collection, (pointCounts.get(batch.collection) ?? 0) + batch.points.length);
     totalPoints += batch.points.length;
+  }
   if (!totalPoints) throw new Error('知识库没有可重建的原文内容');
 
   const batches = readBatches(deps, kbId, documents, signal);
@@ -167,7 +171,11 @@ export async function rebuildKnowledgeIndex(args: {
     validateEmbedding(batch, result);
     const sparse = await textsToSparseVectors(batch.points.map(point => point.payload.document));
     if (!created.has(batch.collection)) {
-      await deps.vectors.getOrCreateCollection(batch.collection, dimension, 'Cosine', true);
+      const pointCount = pointCounts.get(batch.collection);
+      if (pointCount === undefined) throw new Error(`重建计划不包含集合 ${batch.collection}`);
+      await deps.vectors.getOrCreateCollection(batch.collection, dimension, 'Cosine', true, {
+        defaultSegmentNumber: resolveTargetSegmentCountByPointsCount(pointCount),
+      });
       created.add(batch.collection);
     }
     const points: QdrantPoint[] = batch.points.map((point, index) => ({

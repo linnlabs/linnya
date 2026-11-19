@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { cpus } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -123,6 +124,48 @@ try {
     const edges = db.prepare('SELECT * FROM knowledge_graph_edges WHERE kb_id=?').all(kb.id);
     assert.ok(edges.length > 0);
     evidence.json('graph-production', { nodes, edges, status: await invoke('graph-progress', { kbId: kb.id }) });
+  });
+  await evidence.check('真实图谱节点和边使用单段，小集合不按 CPU 数预建', async () => {
+    const directory = join(up.root, 'workspace', 'KnowledgeBase', 'qdrant');
+    const log = readFileSync(join(directory, 'logs', 'qdrant.log'), 'utf8');
+    const listener = /actix_server::server: starting service: .*listening on: (127\.0\.0\.1:\d+)/u.exec(log);
+    assert.ok(listener, '预期在隔离实例日志中找到实际绑定的 Qdrant 端口');
+    const collections = `http://${listener[1]}/collections`;
+    async function request(name, method = 'GET', options) {
+      const response = await fetch(`${collections}/${name}`, {
+        method,
+        ...(options && { headers: { 'content-type': 'application/json' }, body: JSON.stringify(options) }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const payload = await response.json();
+      assert.ok(response.ok, `${method} ${name}: ${json(payload)}`);
+      return payload.result;
+    }
+    function nominalBytes(name) {
+      const files = readdirSync(join(directory, 'storage', 'collections', name), { recursive: true, withFileTypes: true });
+      return files.filter(file => file.isFile()).reduce((sum, file) => sum + statSync(join(file.parentPath, file.name)).size, 0);
+    }
+    const names = [`kg_nodes_${kb.id}`, `kg_edges_${kb.id}`];
+    for (const name of names) {
+      const info = await request(name);
+      assert.equal(info.config.optimizer_config.default_segment_number, 1);
+      assert.equal(info.segments_count, 1);
+    }
+    const auto = 'empty_graph_auto_control';
+    const compact = 'empty_graph_one_segment_control';
+    const graphLayout = { vectors: { default: { size: 4, distance: 'Cosine' } }, sparse_vectors: { bm25: {} } };
+    await request(auto, 'PUT', graphLayout);
+    await request(compact, 'PUT', { ...graphLayout, optimizers_config: { default_segment_number: 1 } });
+    try {
+      const automatic = { segments: (await request(auto)).segments_count, nominalBytes: nominalBytes(auto) };
+      const singleSegment = { segments: (await request(compact)).segments_count, nominalBytes: nominalBytes(compact) };
+      assert.equal(singleSegment.segments, 1);
+      if (automatic.segments > 1) assert.ok(singleSegment.nominalBytes < automatic.nominalBytes);
+      evidence.json('qdrant-graph-segments', { cpuCount: cpus().length, automatic, singleSegment, productionGraph: names.map(name => ({ name, nominalBytes: nominalBytes(name) })) });
+    } finally {
+      await request(compact, 'DELETE');
+      await request(auto, 'DELETE');
+    }
   });
   await run('click', '--selector', '.sidebar-entry:has(svg[data-icon="library"])');
   await run('wait', '--text', 'Plugin production corpus');
