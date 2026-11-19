@@ -1,0 +1,62 @@
+.plugin-data-panel__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.plugin-data-panel__header h2 {
+  margin: 0;
+}
+
+.plugin-data-panel__total,
+.plugin-data-panel__hint,
+.plugin-data-panel__records,
+.plugin-data-panel__reason {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-caption);
+}
+
+.plugin-data-panel__status {
+  margin: var(--space-2) 0;
+  color: var(--color-text-secondary);
+}
+
+.plugin-data-panel__status.is-cleaning,
+.plugin-data-panel__status.is-failed,
+.plugin-data-panel__attention {
+  color: var(--color-warning-text);
+}
+
+.plugin-data-panel__rows {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.plugin-data-panel__row {
+  display: grid;
+  grid-template-columns: 10em 7em;
+  gap: var(--space-3);
+  font-size: var(--font-size-body);
+}
+
+.plugin-data-panel__row dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.plugin-data-panel__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.plugin-data-panel__danger {
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-error-text);
+  font: inherit;
+  cursor: pointer;
+}

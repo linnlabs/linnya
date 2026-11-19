@@ -30,6 +30,12 @@ function matchesBundledArtifact(entry: PluginSource, bundledRoot: string | undef
   return readPluginArtifactIdentity(bundledDirectory) === readPluginArtifactIdentity(entry.pluginDir);
 }
 
+function isDevelopmentPluginDirectory(pluginDirectory: string, workspaceRoot: string): boolean {
+  const pluginsRoot = path.resolve(workspaceRoot, 'packages', 'plugins');
+  const relative = path.relative(pluginsRoot, pluginDirectory);
+  return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 /** 同一官方来源准入同时约束插件表面与受管资料；不依赖插件自报 builtin。 */
 export function isTrustedPluginSource(entry: PluginSource, input: ApplicationSurfaceTrustInput): boolean {
   if (!entry.pluginDir) return false;
@@ -37,7 +43,7 @@ export function isTrustedPluginSource(entry: PluginSource, input: ApplicationSur
   const registeredDirectory = input.getRegisteredPluginDirectory(entry.pluginId);
   if (!registeredDirectory || path.resolve(registeredDirectory) !== pluginDirectory) return false;
   const developmentSource = !input.packaged && (
-    (entry.sourceKind === 'official-source' && pluginDirectory === path.resolve(input.workspaceRoot, 'packages/plugins/knowledge')) ||
+    (entry.sourceKind === 'official-source' && isDevelopmentPluginDirectory(pluginDirectory, input.workspaceRoot)) ||
     input.backendDirectDirs.some(directory => path.resolve(directory) === pluginDirectory)
   );
   return developmentSource || matchesBundledArtifact(entry, input.bundledPluginRoot);

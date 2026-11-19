@@ -1,4 +1,5 @@
 import { registerPluginVectorRuntimeFactory } from '../../plugin-registry/pluginVectorRuntimeFactory';
+import { resolveRegisteredPluginDataRoot } from '../../plugin-registry/pluginDataRoot';
 import {
   hasActiveBackendPluginWork,
   stopBackendPluginRuntimeEffects,
@@ -172,10 +173,10 @@ export class BackendRuntimeOwner {
       console.log('[Backend Service] 🚀 开始服务初始化...');
 
       // 每次插件重新启用都有新的按需 owner，故障缓存不跨 activation 复用。
-      this.disposeVectorFactory = registerPluginVectorRuntimeFactory(() => {
+      this.disposeVectorFactory = registerPluginVectorRuntimeFactory((pluginId) => {
         if (this.vectorRuntime) throw new Error('上一份向量服务尚未停止');
         const runtime = createOnDemandQdrantRuntime({
-          start: () => this.startVectorStore(config),
+          start: () => this.startVectorStore(config, pluginId),
           stop: async () => {
             await this.qdrantManager?.stop();
             this.qdrantManager = null;
@@ -219,14 +220,15 @@ export class BackendRuntimeOwner {
    * 首次请求无法启动 Qdrant 时收口已拉起的进程，将原因交给该索引操作；不回退到默认地址。
    * 收口本身失败时保留 manager，交给正式停止流程再试一次。
    */
-  private async startVectorStore(config: AppServerBackendConfiguration): Promise<string> {
+  private async startVectorStore(config: AppServerBackendConfiguration, pluginId?: string): Promise<string> {
     const qdrantManager = new QdrantManager(
       {
         host: config.qdrant.host,
         port: config.qdrant.port,
       },
       this.qdrantProcessRuntime,
-      this.launchOwnedPipeProcess
+      this.launchOwnedPipeProcess,
+      pluginId ? resolveRegisteredPluginDataRoot(pluginId) : undefined,
     );
     this.qdrantManager = qdrantManager;
     try {

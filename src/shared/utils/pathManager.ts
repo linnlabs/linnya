@@ -42,11 +42,8 @@
  * - `Documents/`：工作区附属数据目录（例如用户文档和开发辅助产物）
  * - `Audit/v1/`：统一审计模块管理的文件型数据；当前仅包含开发诊断证据
  * - `Models/`：本地 AI 模型目录
- * - `KnowledgeBase/`：知识库根
- *   - `source_of_truth/`：事实源泉 JSON 存放目录
- *   - `originals/`：PDF 原始文件仓储，用于 partial 续跑失败页
- *   - `BM25Indices/`：BM25 索引目录
- *   - `pipeline/`：任务流水线数据目录
+ * - `Plugins/<pluginId>/`：插件数据根；旧顶层目录只能由 manifest 显式接管
+ * - `KnowledgeBase/`：旧版知识库 legacy root，仅为兼容旧资料保留
  * - （AppData Root 下另有 `ConversationAttachments/` 会话附件副本；默认与 Workspace Root 是同一目录）
  *
  * @function getAppDataPath(): string
@@ -328,6 +325,18 @@ export function getModelsPath(): string {
  */
 export function getKbDataPath(): string {
   return getAndCreateWorkspaceSubDirectory('KnowledgeBase');
+}
+
+/**
+ * 通用插件数据根。插件业务不得自行拼接 Workspace 路径；旧版目录接管由
+ * manifest 的 dataStorage.legacyRoots 在 Host 侧解析，默认一律落在这里。
+ */
+export function getPluginDataPath(pluginId: string): string {
+  const normalized = pluginId.trim();
+  if (!normalized || normalized === '.' || normalized === '..' || normalized.includes('/') || normalized.includes('\\')) {
+    throw new ConfigurationError(`Invalid plugin data id: ${pluginId}`);
+  }
+  return getAndCreateWorkspaceSubDirectory(path.join('Plugins', normalized));
 }
 
 /**
@@ -748,6 +757,7 @@ export const pathManager = {
   getUploadsPath,
   getModelsPath,
   getKbDataPath,
+  getPluginDataPath,
   getSourceOfTruthPath,
   getKnowledgeBaseOriginalsPath,
   getBm25IndicesPath,

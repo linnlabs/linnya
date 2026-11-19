@@ -43,6 +43,7 @@ export class QdrantManager {
   private host: string = '127.0.0.1';
   private port: number = 6333;
   private readonly requestedPort: number;
+  private readonly dataRoot: string | null;
   private startTimeoutMs: number = 30_000;
   private dataDir: string = '';
   private isInitialized = false;
@@ -51,6 +52,7 @@ export class QdrantManager {
     config: QdrantConfig,
     private readonly processRuntime: QdrantProcessRuntime,
     private readonly launchOwnedPipeProcess: LaunchOwnedPipeProcess,
+    dataRoot?: string,
   ) {
     if (!path.isAbsolute(processRuntime.binaryPath)) {
       throw new Error('Qdrant binary path 必须是绝对路径');
@@ -60,6 +62,7 @@ export class QdrantManager {
     this.requestedPort = config.port ?? 6333;
     this.port = this.requestedPort;
     this.startTimeoutMs = config.timeout ?? 30_000;
+    this.dataRoot = dataRoot ? path.resolve(dataRoot) : null;
     if (!Number.isSafeInteger(this.startTimeoutMs) || this.startTimeoutMs <= 0) {
       throw new Error('Qdrant start timeout 必须是正整数');
     }
@@ -70,7 +73,9 @@ export class QdrantManager {
    */
   private async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    this.dataDir = path.join(await pathManager.getKbDataPath(), 'qdrant');
+    // 生产运行由插件向量 capability 注入所属数据根；无注入时仅用于低层测试夹具。
+    const root = this.dataRoot ?? pathManager.getWorkspaceRoot();
+    this.dataDir = path.join(root, 'qdrant');
     this.isInitialized = true;
   }
 
@@ -109,7 +114,9 @@ export class QdrantManager {
       console.debug(`[QdrantManager] Failed to create static directory: ${error}`);
     }
 
-    const configPath = path.join(this.dataDir, 'config.yaml');
+    const configDirectory = path.join(this.dataDir, 'config');
+    await fs.mkdir(configDirectory, { recursive: true });
+    const configPath = path.join(configDirectory, 'config.yaml');
     await fs.writeFile(configPath, renderQdrantConfig({
       host: this.host,
       httpPort: this.requestedPort,

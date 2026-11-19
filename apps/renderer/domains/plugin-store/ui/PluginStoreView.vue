@@ -61,7 +61,7 @@
                 <TagChip
                   class="plugin-store-state-chip"
                   :class="`is-${getPluginStateTone(selectedDetail.state)}`"
-                  :label="resolvePluginStateLabel(selectedDetail.state)"
+                  :label="resolvePluginStateLabel(selectedDetail)"
                   :class-names="{ label: 'plugin-store-state-chip-label' }"
                 />
               </div>
@@ -106,6 +106,16 @@
             <h2>{{ buildCapabilitySectionTitle('agent', selectedDetail.agents.length) }}</h2>
             <PluginCapabilityList :items="selectedDetail.agents" />
           </section>
+
+          <PluginDataPanel
+            v-if="selectedDetail.data"
+            :data="selectedDetail.data"
+            :locale="currentLocale"
+            :can-delete="selectedDetail.data.canDelete"
+            @delete="openDataDelete(selectedDetail)"
+            @retry="retryDataCleanup(selectedDetail)"
+            @reveal="showDataLocation(selectedDetail)"
+          />
 
           <section
             class="plugin-store-detail-footer"
@@ -245,7 +255,7 @@
               <TagChip
                 class="plugin-store-state-chip"
                 :class="`is-${getPluginStateTone(item.state)}`"
-                :label="resolvePluginStateLabel(item.state)"
+                :label="resolvePluginStateLabel(item)"
                 :class-names="{ label: 'plugin-store-state-chip-label' }"
               />
             </div>
@@ -281,6 +291,44 @@
         </article>
       </section>
     </div>
+
+    <Modal
+      :is-visible="uninstallDialogItem !== null"
+      title="卸载插件"
+      width="480px"
+      min-height="auto"
+      layer="alert"
+      @close="closeUninstallDialog"
+    >
+      <div v-if="uninstallDialogItem" class="plugin-store-uninstall-dialog">
+        <p>{{ pluginStoreMessage('pluginStore.data.uninstallMessage', { pluginName: uninstallDialogItem.meta.name }) }}</p>
+        <p v-if="uninstallDialogItem.data?.status === 'cleaning'" class="plugin-store-alert">
+          当前正在清理数据，清理完成前不能再次安装。
+        </p>
+        <CustomCheckbox v-if="uninstallDialogItem.data?.canDelete" v-model="deleteDataChecked">
+          {{ pluginStoreMessage('pluginStore.data.deleteOption', { bytes: formatStorageBytes(uninstallDialogItem.data.bytes, currentLocale) }) }}
+        </CustomCheckbox>
+        <div v-if="deleteDataChecked && uninstallDialogItem.data" class="plugin-store-uninstall-dialog__details">
+          <p>{{ pluginStoreMessage('pluginStore.data.deleteRisk') }}</p>
+          <dl>
+            <div><dt>原文与解析结果</dt><dd>{{ formatStorageBytes(uninstallDialogItem.data.directories.source, currentLocale) }}</dd></div>
+            <div><dt>检索索引</dt><dd>{{ formatStorageBytes(uninstallDialogItem.data.directories.derived, currentLocale) }}</dd></div>
+            <div><dt>日志与临时文件</dt><dd>{{ formatStorageBytes(uninstallDialogItem.data.directories.runtime, currentLocale) }}</dd></div>
+          </dl>
+        </div>
+      </div>
+      <template #footer>
+        <div class="alert-dialog-footer">
+          <ActionButtons
+            secondary-action-text="取消"
+            :primary-action-text="deleteDataChecked ? '卸载并删除' : '卸载'"
+            :primary-variant="deleteDataChecked ? 'danger' : 'default'"
+            @secondary-click="closeUninstallDialog"
+            @primary-click="confirmUninstall"
+          />
+        </div>
+      </template>
+    </Modal>
   </main>
 </template>
 
@@ -294,6 +342,8 @@ import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { DeleteIcon } from '@linnya/renderer-ui/icons';
 import {
   ActionButtons,
+  CustomCheckbox,
+  Modal,
   PageSectionHeader,
   SegmentedTabs,
   Skeleton,
@@ -323,6 +373,7 @@ import {
 } from '../functions/pluginStorePresentation';
 import { resolvePluginRuntimeUserErrorMessage } from '../functions/pluginRuntimeErrorPresentation';
 import { usePluginStoreLocalization } from './usePluginStoreLocalization';
+import PluginDataPanel from './PluginDataPanel.vue';
 import type { PluginStoreMessageKey } from '../definitions/pluginStoreMessages';
 
 /* 加载骨架的固定形状：与真实卡片、详情的版式一致，每次渲染保持不变。 */
@@ -373,6 +424,8 @@ const isDetailLoading = ref(false);
 const detailError = ref<PluginRuntimeUserError | null>(null);
 const activeStoreTab = ref<PluginStoreTabId>('installed');
 const releaseNotesExpanded = ref(false);
+const uninstallDialogItem = ref<PluginStoreListItem | null>(null);
+const deleteDataChecked = ref(false);
 const manageableStoreItems = computed<PluginStoreListItem[]>(() =>
   storeItems.value.filter(item => !isRequiredPlugin(item))
 );
@@ -495,7 +548,8 @@ function canInstallSelectedPlugin(detail: PluginStoreDetail | null): boolean {
 }
 
 function canInstallPlugin(item: PluginStoreListItem): boolean {
-  return canInstallPluginFromBundled(item) || canInstallPluginFromRemote(item, remoteServiceEnabled.value);
+  const blockedByCleanup = item.data?.status === 'cleaning' || item.data?.status === 'failed';
+  return !blockedByCleanup && (canInstallPluginFromBundled(item) || canInstallPluginFromRemote(item, remoteServiceEnabled.value));
 }
 
 function canToggleSelectedPlugin(detail: PluginStoreDetail | null): boolean {
@@ -541,8 +595,12 @@ function resolveErrorMessage(error: PluginRuntimeUserError): string {
   return resolvePluginRuntimeUserErrorMessage(error, pluginStoreMessage);
 }
 
-function resolvePluginStateLabel(state: PluginStoreListItem['state']): string {
-  return getPluginStateLabel(state, pluginStoreMessage);
+function resolvePluginStateLabel(item: PluginStoreListItem): string {
+  if (item.data?.status === 'cleaning') return '清理中';
+  if (item.data?.status === 'failed') return '数据残留';
+  if (item.data?.status === 'legacy') return '未安装，有可清理数据';
+  if (item.data?.status === 'retained') return '未安装（保留数据）';
+  return getPluginStateLabel(item.state, pluginStoreMessage);
 }
 
 function pluginDetailAriaLabel(pluginName: string): string {
@@ -808,6 +866,11 @@ async function handlePluginUninstall(item: PluginStoreListItem): Promise<void> {
   if (!canUninstallPlugin(item, remoteServiceEnabled.value) || isPluginBusy(item.meta.id)) {
     return;
   }
+  if (item.data?.canDelete) {
+    uninstallDialogItem.value = item;
+    deleteDataChecked.value = false;
+    return;
+  }
   const confirmed = await confirm({
     message: pluginStoreMessage('pluginStore.confirm.uninstall', {
       pluginName: item.meta.name,
@@ -818,9 +881,44 @@ async function handlePluginUninstall(item: PluginStoreListItem): Promise<void> {
     return;
   }
 
+  await executeUninstall(item, false);
+}
+
+function closeUninstallDialog(): void {
+  uninstallDialogItem.value = null;
+  deleteDataChecked.value = false;
+}
+
+async function confirmUninstall(): Promise<void> {
+  const item = uninstallDialogItem.value;
+  if (!item) return;
+  const deleteData = deleteDataChecked.value;
+  closeUninstallDialog();
+  await executeUninstall(item, deleteData);
+}
+
+function openDataDelete(item: PluginStoreListItem): void {
+  uninstallDialogItem.value = item;
+  deleteDataChecked.value = true;
+}
+
+function showDataLocation(item: PluginStoreListItem): void {
+  notificationStore.show(
+    `请在诊断信息中查看 ${item.meta.name} 的数据位置。`,
+    'info',
+    3000,
+  );
+}
+
+async function retryDataCleanup(item: PluginStoreListItem): Promise<void> {
+  if (isPluginBusy(item.meta.id)) return;
+  await executeUninstall(item, true);
+}
+
+async function executeUninstall(item: PluginStoreListItem, deleteData: boolean): Promise<void> {
   setPluginBusy(item.meta.id, true);
   try {
-    await pluginsStore.uninstallPlugin(item.meta.id);
+    await pluginsStore.uninstallPlugin(item.meta.id, deleteData ? { deleteData: true } : {});
     await refreshSelectedPluginDetail(item.meta.id);
     notificationStore.show(
       pluginStoreMessage('pluginStore.toast.uninstalled', { pluginName: item.meta.name }),

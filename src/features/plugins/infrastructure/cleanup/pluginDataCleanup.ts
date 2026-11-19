@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
-import { PluginManifestDataStorageSchema, type PluginId, type PluginManifestDataStorage } from '@app/schemas';
+import { PluginManifestDataStorageSchema, type PluginDataSummary, type PluginId, type PluginManifestDataStorage } from '@app/schemas';
 
 import { PLUGIN_CLEANUP_SCHEMA } from '../sqlite/plugin-state.schema';
 
@@ -21,6 +21,8 @@ export interface PluginDataCleanupOptions {
   readonly pluginId: PluginId;
   readonly dataRoot: string;
   readonly dataStorage: PluginManifestDataStorage;
+  /** Manifest 顶层 ownedTables：用于清理；dataStorage.userDataTables 只用于判断真实资料。 */
+  readonly ownedTables?: readonly string[];
   readonly stopRuntime?: () => void | Promise<void>;
   readonly signal?: AbortSignal;
   readonly now?: () => number;
@@ -46,6 +48,11 @@ interface CleanupJobRow {
   readonly completed_paths: string;
   readonly data_storage: string;
   readonly error: string | null;
+}
+
+export interface PersistedCleanupStorage {
+  readonly dataStorage: PluginManifestDataStorage;
+  readonly ownedTables: readonly string[];
 }
 
 function ensureCleanupTable(db: Database.Database): void {
@@ -133,6 +140,46 @@ export function calculatePluginStorageUsage(options: Pick<PluginDataCleanupOptio
   };
 }
 
+export function readPluginDataSummary(options: {
+  readonly db: Database.Database;
+  readonly pluginId: PluginId;
+  readonly dataRoot: string;
+  readonly dataStorage: PluginManifestDataStorage;
+  readonly pluginInstalled: boolean;
+  readonly workspaceRoot: string;
+}): PluginDataSummary {
+  const usage = calculatePluginStorageUsage(options);
+  const cleanupTableExists = options.db.prepare(
+    "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'plugin_cleanup_jobs'",
+  ).get();
+  const job: { status: PluginCleanupStatus; error: string | null } | undefined = cleanupTableExists
+    ? options.db.prepare('SELECT status, error FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId) as { status: PluginCleanupStatus; error: string | null } | undefined
+    : undefined;
+  const hasTableRows = Object.values(usage.tables).some(count => count > 0);
+  const hasData = usage.bytes > 0 || hasTableRows;
+  const pluginRoot = path.resolve(options.workspaceRoot, 'Plugins');
+  const resolvedRoot = path.resolve(options.dataRoot);
+  const isLegacy = !resolvedRoot.startsWith(`${pluginRoot}${path.sep}`);
+  if (job?.status === 'cleaning' || job?.status === 'failed') {
+    return {
+      status: job.status,
+      bytes: usage.bytes,
+      directories: usage.directories,
+      tables: usage.tables,
+      ...(job.error ? { error: job.error } : {}),
+      canDelete: true,
+    };
+  }
+  const status = options.pluginInstalled ? (hasData ? 'installed' : 'empty') : (hasData ? (isLegacy ? 'legacy' : 'retained') : 'empty');
+  return {
+    status,
+    bytes: usage.bytes,
+    directories: usage.directories,
+    tables: usage.tables,
+    canDelete: hasData,
+  };
+}
+
 function readCompletedPaths(db: Database.Database, pluginId: PluginId): Set<string> {
   const row = db.prepare('SELECT completed_paths FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(pluginId) as CleanupJobRow | undefined;
   if (!row) return new Set();
@@ -168,6 +215,27 @@ function dropOwnedTables(db: Database.Database, tableNames: readonly string[]): 
   }
 }
 
+function parsePersistedCleanupStorage(value: string): PersistedCleanupStorage {
+  const parsed: unknown = JSON.parse(value);
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('插件清理声明损坏');
+  }
+  const dataStorage = PluginManifestDataStorageSchema.parse(parsed);
+  const ownedTablesValue = Reflect.get(parsed, 'ownedTables');
+  // 兼容首版清理任务：旧 job 没有 ownedTables，不能凭 userDataTables 猜测要删哪些表。
+  // 这类任务会保留为 failed，等待使用当前 manifest 重试，而不是误删表。
+  if (ownedTablesValue === undefined) return { dataStorage, ownedTables: [] };
+  if (!Array.isArray(ownedTablesValue) || !ownedTablesValue.every(item => typeof item === 'string')) {
+    throw new Error('插件清理表声明损坏');
+  }
+  return { dataStorage, ownedTables: ownedTablesValue };
+}
+
+function hasPersistedOwnedTables(value: string): boolean {
+  const parsed: unknown = JSON.parse(value);
+  return typeof parsed === 'object' && parsed !== null && Array.isArray(Reflect.get(parsed, 'ownedTables'));
+}
+
 /**
  * 删除插件声明的数据。目录清理可中断，SQLite 收尾保持一个事务，避免只删
  * 迁移账本而留下半套表。清理失败保留 job，下一次启动或用户重试可续清。
@@ -182,7 +250,13 @@ export function cleanupPluginDataSync(options: PluginDataCleanupOptions): Plugin
     INSERT INTO plugin_cleanup_jobs (plugin_id, status, completed_paths, data_storage, error, started_at, updated_at)
     VALUES (?, 'cleaning', ?, ?, NULL, ?, ?)
     ON CONFLICT(plugin_id) DO UPDATE SET status = 'cleaning', data_storage = excluded.data_storage, error = NULL, updated_at = excluded.updated_at
-  `).run(options.pluginId, JSON.stringify([...completedPaths]), JSON.stringify(options.dataStorage), now(), now());
+  `).run(
+    options.pluginId,
+    JSON.stringify([...completedPaths]),
+    JSON.stringify({ ...options.dataStorage, ownedTables: options.ownedTables ?? [] }),
+    now(),
+    now(),
+  );
 
   try {
     assertNotAborted(options.signal);
@@ -199,7 +273,7 @@ export function cleanupPluginDataSync(options: PluginDataCleanupOptions): Plugin
     }
     assertNotAborted(options.signal);
     const finish = options.db.transaction(() => {
-      dropOwnedTables(options.db, options.dataStorage.userDataTables);
+      dropOwnedTables(options.db, options.ownedTables ?? []);
       options.db.prepare('DELETE FROM plugin_migrations WHERE plugin_id = ?').run(options.pluginId);
       options.db.prepare('UPDATE installed_plugins SET schema_version = 0 WHERE plugin_id = ?').run(options.pluginId);
       options.db.prepare('DELETE FROM plugin_cleanup_jobs WHERE plugin_id = ?').run(options.pluginId);
@@ -224,28 +298,36 @@ export async function cleanupPluginData(options: PluginDataCleanupOptions): Prom
 
 export async function resumePluginDataCleanup(options: PluginDataCleanupOptions): Promise<PluginDataCleanupResult> {
   ensureCleanupTable(options.db);
-  const job = options.db.prepare('SELECT plugin_id, status, completed_paths, error FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId) as CleanupJobRow | undefined;
+  const job = options.db.prepare('SELECT plugin_id, status, completed_paths, data_storage, error FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId) as CleanupJobRow | undefined;
   if (!job) return cleanupPluginData(options);
-  return cleanupPluginData(options);
+  const persisted = parsePersistedCleanupStorage(job.data_storage);
+  return cleanupPluginData({
+    ...options,
+    dataStorage: persisted.dataStorage,
+    // 首版 job 没保存 ownedTables；当前 manifest 传入的声明优先，避免误删。
+    ownedTables: options.ownedTables ?? persisted.ownedTables,
+  });
 }
 
 export function resumePendingPluginDataCleanupsSync(options: {
   readonly db: Database.Database;
-  readonly dataRoot: string;
-  readonly resolveStorage: (pluginId: PluginId) => PluginManifestDataStorage | null;
+  readonly resolveStorage: (pluginId: PluginId) => (PersistedCleanupStorage | null);
+  readonly resolveDataRoot: (pluginId: PluginId, storage: PersistedCleanupStorage) => string;
 }): readonly PluginDataCleanupResult[] {
   ensureCleanupTable(options.db);
   const jobs = options.db.prepare('SELECT plugin_id, data_storage FROM plugin_cleanup_jobs ORDER BY started_at').all() as Array<{ plugin_id: string; data_storage: string }>;
   const results: PluginDataCleanupResult[] = [];
   for (const job of jobs) {
-    const declaredStorage = PluginManifestDataStorageSchema.parse(JSON.parse(job.data_storage));
-    const dataStorage = options.resolveStorage(job.plugin_id) ?? declaredStorage;
-    if (!dataStorage) continue;
+    const declaredStorage = parsePersistedCleanupStorage(job.data_storage);
+    const resolvedStorage = options.resolveStorage(job.plugin_id);
+    const storage = resolvedStorage ?? declaredStorage;
+    if (!resolvedStorage && !hasPersistedOwnedTables(job.data_storage)) continue;
     results.push(cleanupPluginDataSync({
       db: options.db,
       pluginId: job.plugin_id,
-      dataRoot: options.dataRoot,
-      dataStorage,
+      dataRoot: options.resolveDataRoot(job.plugin_id, storage),
+      dataStorage: storage.dataStorage,
+      ownedTables: storage.ownedTables,
     }));
   }
   return results;
@@ -254,8 +336,8 @@ export function resumePendingPluginDataCleanupsSync(options: {
 /** 启动时只恢复已持久化的清理任务；没有任务时不扫描用户目录。 */
 export async function resumePendingPluginDataCleanups(options: {
   readonly db: Database.Database;
-  readonly dataRoot: string;
-  readonly resolveStorage: (pluginId: PluginId) => PluginManifestDataStorage | null;
+  readonly resolveStorage: (pluginId: PluginId) => (PersistedCleanupStorage | null);
+  readonly resolveDataRoot: (pluginId: PluginId, storage: PersistedCleanupStorage) => string;
 }): Promise<readonly PluginDataCleanupResult[]> {
   return resumePendingPluginDataCleanupsSync(options);
 }

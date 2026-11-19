@@ -93,7 +93,29 @@ export type PluginStoreMessageKey =
   | 'pluginStore.toast.current'
   | 'pluginStore.toast.incompatible'
   | 'pluginStore.toast.uninstalled'
-  | 'pluginStore.confirm.uninstall';
+  | 'pluginStore.confirm.uninstall'
+  | 'pluginStore.data.title'
+  | 'pluginStore.data.total'
+  | 'pluginStore.data.source'
+  | 'pluginStore.data.derived'
+  | 'pluginStore.data.runtime'
+  | 'pluginStore.data.records'
+  | 'pluginStore.data.status.installed'
+  | 'pluginStore.data.status.empty'
+  | 'pluginStore.data.status.retained'
+  | 'pluginStore.data.status.legacy'
+  | 'pluginStore.data.status.cleaning'
+  | 'pluginStore.data.status.failed'
+  | 'pluginStore.data.retainedHint'
+  | 'pluginStore.data.cleaningHint'
+  | 'pluginStore.data.retry'
+  | 'pluginStore.data.reveal'
+  | 'pluginStore.data.delete'
+  | 'pluginStore.data.cleanup'
+  | 'pluginStore.data.cleanupIncomplete'
+  | 'pluginStore.data.uninstallMessage'
+  | 'pluginStore.data.deleteRisk'
+  | 'pluginStore.data.deleteOption';
 
 export type PluginStoreMessageResolver = (
   key: PluginStoreMessageKey,

@@ -6,5 +6,5 @@ export type * from '@linnya/plugin-host-contract/backend/vectorRuntime';
 
 export function createPluginVectorRuntime(pluginId: string): PluginVectorRuntime {
   assertKnowledgeResourceAdmission(pluginId);
-  return createRegisteredPluginVectorRuntime();
+  return createRegisteredPluginVectorRuntime(pluginId);
 }

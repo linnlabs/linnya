@@ -32,13 +32,14 @@ Node Worker 不继承 Backend 主线程的 SDK 模块加载钩子，数据库、
 
 ### 磁盘存储与占用
 
-资料分三处存放，可恢复性不同：
+资料在插件数据根下分三类存放，可恢复性不同。新版数据根为 `Workspace/Plugins/<pluginId>/`；manifest 的 `legacyRoots` 仅用于接管已有 `KnowledgeBase/`，不会由 Host 猜测：
 
 | 位置 | 内容 | 删除后能否恢复 |
 |---|---|---|
-| Workspace `KnowledgeBase/source_of_truth/<docId>.source.json` | 解析结果（SoT），所有格式的资料真源 | 不能；只能重新上传原文件 |
-| Workspace `KnowledgeBase/originals/<kbId>/<docId>.pdf` | 仅 PDF 原件，供查看与 OCR 续跑 | 不能；且有原件不等于能恢复 SoT |
-| Workspace `KnowledgeBase/qdrant/` | Qdrant 进程配置、日志与 `storage/collections` | 能；重建索引从 SoT 重新切块并重新调用嵌入模型 |
+| `Plugins/<pluginId>/source_of_truth/<docId>.source.json` | 解析结果（SoT），所有格式的资料真源 | 不能；只能重新上传原文件 |
+| `Plugins/<pluginId>/originals/<kbId>/<docId>.pdf` | 仅 PDF 原件，供查看与 OCR 续跑 | 不能；且有原件不等于能恢复 SoT |
+| `Plugins/<pluginId>/qdrant/storage/` | Qdrant 向量与 WAL | 能；重建索引从 SoT 重新切块并重新调用嵌入模型 |
+| `Plugins/<pluginId>/qdrant/{logs,config,static,snapshots}/` | Qdrant 运行时文件 | 可直接清理 |
 | 主 SQLite 的 8 张 owned 表 | 知识库、文档、项目关联、图谱等元数据，不含块正文和向量 | 不能；体量小 |
 
 每个知识库最多 3 个 Qdrant 集合：块索引 `<kbId>`，开启图谱时另有 `kg_nodes_<kbId>`、`kg_edges_<kbId>`。块正文作为 payload（`document`）随向量存入集合，因此集合体积包含正文副本。

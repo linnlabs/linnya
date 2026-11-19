@@ -1,4 +1,6 @@
 import path from 'node:path';
+import fs from 'node:fs';
+import type Database from 'better-sqlite3';
 import { mapTrustedRendererApplicationSurfaces } from '../../../../app-hosts/linnya/plugin-registry/rendererApplicationSurfaceTrust';
 import { getRegisteredBackendPluginDirectory } from '../../../../app-hosts/linnya/plugin-registry/builtin';
 import type { BackendRuntimeOwner } from '../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
@@ -52,6 +54,8 @@ import { isTrustedKnowledgeResourceSource } from '../../../../app-hosts/linnya/p
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
 import { parsePluginManifest, type PluginMeta, type PluginOperationFailure } from '@app/schemas';
+import { resolvePluginDataRootForManifest, resolveRegisteredPluginDataRoot } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
+import { readPluginDataSummary } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import { pathManager } from '../../../../shared/utils/pathManager';
 import { readJsonFile } from '../../../plugins/loader/pluginLayout';
 import {
@@ -62,6 +66,52 @@ import {
 import { PluginOperationError, toPluginOperationError } from '../../../../features/plugins/install/definitions/pluginOperationError';
 
 const logger = new Logger('PluginsIPC');
+
+function manifestForPlugin(pluginId: string, bundledRoot: string | null): ReturnType<typeof parsePluginManifest> | null {
+  const registered = getRegisteredBackendPluginDirectory(pluginId);
+  const candidates = [
+    ...(registered ? [registered] : []),
+    ...(bundledRoot ? [path.join(bundledRoot, pluginId)] : []),
+  ];
+  for (const directory of candidates) {
+    try {
+      const manifestPath = path.join(directory, 'plugin.json');
+      if (fs.existsSync(manifestPath)) return parsePluginManifest(readJsonFile(manifestPath));
+    } catch (error) {
+      logger.warn(`[plugins:data] 读取 ${pluginId} manifest 失败`, error);
+    }
+  }
+  return null;
+}
+
+function enrichPluginStates(
+  states: ReturnType<PluginStateService['listStates']>,
+  db: Database.Database,
+  bundledRoot: string | null,
+): ReturnType<PluginStateService['listStates']> {
+  const workspaceRoot = pathManager.getWorkspaceRoot();
+  return states.map(state => {
+    const manifest = manifestForPlugin(state.meta.id, bundledRoot);
+    if (!manifest) return state;
+    const hasDeclaredData = manifest.ownedTables.length > 0
+      || Object.values(manifest.dataStorage.directories).some(paths => paths.length > 0);
+    if (!hasDeclaredData) return state;
+    const dataRoot = getRegisteredBackendPluginDirectory(state.meta.id)
+      ? resolveRegisteredPluginDataRoot(state.meta.id)
+      : resolvePluginDataRootForManifest({ pluginId: state.meta.id, dataStorage: manifest.dataStorage });
+    return {
+      ...state,
+      data: readPluginDataSummary({
+        db,
+        pluginId: state.meta.id,
+        dataRoot,
+        dataStorage: manifest.dataStorage,
+        pluginInstalled: state.state !== 'missing',
+        workspaceRoot,
+      }),
+    };
+  });
+}
 
 function throwPluginOperationResultFailure(result: {
   readonly pluginId: string;
@@ -176,7 +226,7 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:list', async () => {
     try {
-      return { success: true, data: getService().listStates(listKnownPluginMetas()) };
+      return { success: true, data: enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot()) };
     } catch (error) {
       logger.error('[plugins:list] failed:', error);
       return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -185,7 +235,7 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:store-list', async () => {
     try {
-      const states = getService().listStates(listKnownPluginMetas());
+      const states = enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot());
       const bundledPluginRoot = resolveBundledPluginRoot();
       const bundledPluginIds = bundledPluginRoot
         ? new Set(listBundledPluginManifestIds(bundledPluginRoot))
@@ -209,7 +259,7 @@ export async function registerPluginsHandlers(input: {
       const directPluginDirs = [
         ...new Set([...readBackendDirectPluginDirsFromEnv(), ...readDirectPluginDirsFromEnv()]),
       ];
-      const states = getService().listStates(listKnownPluginMetas());
+      const states = enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot());
       const state = states.find(item => item.meta.id === pluginId);
       if (!state) {
         throw new Error(`未知插件: ${pluginId}`);
@@ -521,8 +571,9 @@ export async function registerPluginsHandlers(input: {
             pluginId,
             knownPlugins: listKnownPluginMetas(),
             ...(deleteData && manifest ? {
-              dataRoot: pathManager.getKbDataPath(),
+              dataRoot: resolveRegisteredPluginDataRoot(pluginId),
               dataStorage: manifest.dataStorage,
+              ownedTables: manifest.ownedTables,
             } : {}),
           };
           const result = deleteData

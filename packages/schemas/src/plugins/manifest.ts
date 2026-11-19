@@ -45,6 +45,24 @@ export type PluginApplicationSurfaceSlot = z.infer<typeof PluginApplicationSurfa
 /** 插件安装态。missing 表示系统知道这个插件，但当前未安装。 */
 export type PluginInstallState = 'enabled' | 'disabled' | 'missing';
 
+export type PluginDataLifecycleStatus =
+  | 'installed'
+  | 'empty'
+  | 'retained'
+  | 'legacy'
+  | 'cleaning'
+  | 'failed';
+
+export interface PluginDataSummary {
+  readonly status: PluginDataLifecycleStatus;
+  readonly bytes: number;
+  readonly directories: Readonly<Record<'source' | 'derived' | 'runtime', number>>;
+  /** 表是结构化记录数量，不折算成磁盘字节。 */
+  readonly tables: Readonly<Record<string, number>>;
+  readonly error?: string;
+  readonly canDelete: boolean;
+}
+
 export interface PluginMeta {
   id: PluginId;
   name: string;
@@ -71,6 +89,7 @@ export interface PluginStateView {
   state: PluginInstallState;
   /** disabled/missing 或操作失败时给设置页展示的人类可读原因；missing 时用于区分从未安装与用户主动卸载。 */
   reason?: string;
+  data?: PluginDataSummary;
 }
 
 export interface PluginStoreListItem extends PluginStateView {
@@ -240,6 +259,8 @@ export const PluginOwnedFileTypeSchema = z.object({
  * pluginId 猜路径，也不能把整个 workspace 数据目录交给插件自行删除。
  */
 export const PluginManifestDataStorageSchema = z.object({
+  /** 新版默认数据根为 Workspace/Plugins/<pluginId>；旧根只能由 manifest 显式接管。 */
+  legacyRoots: z.array(PluginManifestAssetPathSchema).default([]),
   directories: z.object({
     source: z.array(PluginManifestAssetPathSchema).default([]),
     derived: z.array(PluginManifestAssetPathSchema).default([]),
@@ -282,6 +303,7 @@ export const PluginManifestSchema = z
     ownedFileTypes: z.array(PluginOwnedFileTypeSchema).default([]),
     ownedTables: z.array(z.string().min(1)).default([]),
     dataStorage: PluginManifestDataStorageSchema.default({
+      legacyRoots: [],
       directories: { source: [], derived: [], runtime: [] },
       userDataTables: [],
     }),

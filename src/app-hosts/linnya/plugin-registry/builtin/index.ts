@@ -41,7 +41,7 @@ import {
   readJsonFile,
 } from '../../../../electron-main/plugins/loader/pluginLayout';
 import { resumePendingPluginDataCleanupsSync } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
-import { pathManager } from '../../../../shared/utils/pathManager';
+import { resolvePluginDataRootForManifest } from '../pluginDataRoot';
 import {
   getDocumentTypeBackendHook,
   listDocumentTypeBackendHooks,
@@ -475,12 +475,15 @@ export function bootstrapBuiltinPluginLifecycle(
   try {
     resumePendingPluginDataCleanupsSync({
     db,
-    dataRoot: pathManager.getKbDataPath(),
     resolveStorage: pluginId => {
       const directory = diskPluginDirsById.get(pluginId);
       if (!directory) return null;
       try {
-        return parsePluginManifest(readJsonFile(path.join(directory, 'plugin.json'))).dataStorage;
+        const manifest = parsePluginManifest(readJsonFile(path.join(directory, 'plugin.json')));
+        return {
+          dataStorage: manifest.dataStorage,
+          ownedTables: manifest.ownedTables,
+        };
       } catch (error) {
         pluginDiagnostics.record({
           level: 'error',
@@ -491,6 +494,7 @@ export function bootstrapBuiltinPluginLifecycle(
         return null;
       }
     },
+    resolveDataRoot: (pluginId, storage) => resolvePluginDataRootForManifest({ pluginId, dataStorage: storage.dataStorage }),
     });
   } catch (error) {
     pluginDiagnostics.record({

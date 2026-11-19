@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PluginManifestDataStorage } from '@app/schemas';
 
 import {
@@ -14,9 +14,11 @@ import { uninstallPluginAndDeleteData } from '../../install/orchestration/uninst
 import { PLUGIN_PLATFORM_STATE_SCHEMAS } from '../sqlite/plugin-state.schema';
 
 const storage: PluginManifestDataStorage = {
+  legacyRoots: [],
   directories: { source: ['source'], derived: ['derived'], runtime: ['runtime'] },
   userDataTables: ['plugin_owned'],
 };
+const ownedTables = ['plugin_owned'];
 
 const roots: string[] = [];
 
@@ -48,7 +50,7 @@ describe('plugin data cleanup', () => {
     expect(usage.bytes).toBeGreaterThanOrEqual(0);
     expect(usage.tables).toEqual({ plugin_owned: 1 });
 
-    const result = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage });
+    const result = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
     expect(result.status).toBe('completed');
     expect(fs.existsSync(path.join(root, 'source'))).toBe(false);
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'plugin_owned'").all()).toEqual([]);
@@ -68,12 +70,13 @@ describe('plugin data cleanup', () => {
       pluginId: 'demo',
       dataRoot: root,
       dataStorage: storage,
+      ownedTables,
       signal: interrupted.signal,
     });
     expect(failed.status).toBe('failed');
     expect(fs.existsSync(path.join(root, 'not-owned'))).toBe(true);
     // 重启后的续清会处理所有声明目录，未声明目录仍然保留。
-    const resumed = await resumePluginDataCleanup({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage });
+    const resumed = await resumePluginDataCleanup({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
     expect(resumed.status).toBe('completed');
     expect(fs.existsSync(path.join(root, 'not-owned'))).toBe(true);
     db.close();
@@ -88,9 +91,74 @@ describe('plugin data cleanup', () => {
       knownPlugins: [],
       dataRoot: root,
       dataStorage: storage,
+      ownedTables,
     });
     expect(result).toMatchObject({ status: 'uninstalled', dataDeleted: true, userDataPreserved: false });
     expect(db.prepare("SELECT installed, user_removed FROM installed_plugins WHERE plugin_id = 'demo'").get()).toEqual({ installed: 0, user_removed: 1 });
+    db.close();
+  });
+
+  it('只用 userDataTables 判断真实资料，但按 ownedTables 完整清理插件表', async () => {
+    const { root, db } = fixture();
+    db.exec('CREATE TABLE plugin_metadata (id TEXT PRIMARY KEY); INSERT INTO plugin_metadata VALUES (\'default\');');
+    const result = await cleanupPluginData({
+      db,
+      pluginId: 'demo',
+      dataRoot: root,
+      dataStorage: { ...storage, userDataTables: ['plugin_owned'] },
+      ownedTables: ['plugin_owned', 'plugin_metadata'],
+    });
+    expect(result.status).toBe('completed');
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('plugin_owned', 'plugin_metadata')").all()).toEqual([]);
+    db.close();
+  });
+
+  it('删除目录中途退出后保留已完成路径，重启可以续清', () => {
+    const { root, db } = fixture();
+    const controller = new AbortController();
+    const originalRemove = fs.rmSync;
+    let removeCount = 0;
+    const removeSpy = vi.spyOn(fs, 'rmSync').mockImplementation((target, options) => {
+      originalRemove(target, options);
+      removeCount += 1;
+      if (removeCount === 1) controller.abort();
+    });
+    const failed = cleanupPluginData({
+      db,
+      pluginId: 'demo',
+      dataRoot: root,
+      dataStorage: storage,
+      ownedTables,
+      signal: controller.signal,
+    });
+    return failed.then(result => {
+      expect(result.status).toBe('failed');
+      expect(fs.existsSync(path.join(root, 'source'))).toBe(false);
+      expect(fs.existsSync(path.join(root, 'derived'))).toBe(true);
+      removeSpy.mockRestore();
+      return resumePluginDataCleanup({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
+    }).then(result => {
+      expect(result.status).toBe('completed');
+      expect(fs.existsSync(path.join(root, 'derived'))).toBe(false);
+      db.close();
+    });
+  });
+
+  it('文件权限错误留下可读失败任务，恢复后仍可重试', async () => {
+    const { root, db } = fixture();
+    const originalRemove = fs.rmSync;
+    const removeSpy = vi.spyOn(fs, 'rmSync').mockImplementation(() => {
+      const error = new Error('permission denied') as NodeJS.ErrnoException;
+      error.code = 'EACCES';
+      throw error;
+    });
+    const failed = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
+    expect(failed).toMatchObject({ status: 'failed', error: 'permission denied' });
+    removeSpy.mockRestore();
+    vi.spyOn(fs, 'rmSync').mockImplementation(originalRemove);
+    const resumed = await resumePluginDataCleanup({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
+    expect(resumed.status).toBe('completed');
+    vi.restoreAllMocks();
     db.close();
   });
 });

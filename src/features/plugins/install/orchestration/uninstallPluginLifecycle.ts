@@ -21,6 +21,7 @@ export interface UninstallPluginLifecycleOptions {
   readonly deleteData?: boolean;
   readonly dataRoot?: string;
   readonly dataStorage?: PluginManifestDataStorage;
+  readonly ownedTables?: readonly string[];
   readonly stopRuntime?: () => void | Promise<void>;
 }
 
@@ -157,6 +158,7 @@ export async function uninstallPluginAndDeleteData(
     pluginId: options.pluginId,
     dataRoot: options.dataRoot,
     dataStorage: options.dataStorage,
+    ownedTables: options.ownedTables ?? [],
     stopRuntime: options.stopRuntime,
   });
   if (cleanup.status !== 'completed') {

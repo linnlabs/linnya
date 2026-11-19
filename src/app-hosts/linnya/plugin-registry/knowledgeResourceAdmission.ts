@@ -11,6 +11,12 @@ import {
 import { requireInstalledDistributionIdentity } from 'src/shared/distribution-identity';
 import { readInstalledRuntimePathRoots } from 'src/shared/runtime-paths';
 
+function isDevelopmentPluginDirectory(directory: string, developmentRoot: string): boolean {
+  const pluginsRoot = path.resolve(developmentRoot, 'packages', 'plugins');
+  const relative = path.relative(pluginsRoot, path.resolve(directory));
+  return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 /** 既有产品资料只交给同源官方 artifact；meta.builtin 和插件自报 ID 不构成授权。 */
 export function assertKnowledgeResourceAdmission(pluginId: string): void {
   assertPluginRuntimeEnabled({ pluginId, pluginName: '知识库', action: '访问知识库资源' });
@@ -27,8 +33,7 @@ export function isTrustedKnowledgeResourceSource(pluginId: string): boolean {
   const packaged = requireInstalledDistributionIdentity().packaged;
   const backendDirectDirs = packaged ? [] : readBackendDirectPluginDirsFromEnv();
   const sourceKind =
-    !packaged &&
-    path.resolve(directory) === path.resolve(roots.developmentRoot, 'packages/plugins/knowledge')
+    !packaged && isDevelopmentPluginDirectory(directory, roots.developmentRoot)
       ? 'official-source'
       : backendDirectDirs.some(value => path.resolve(value) === path.resolve(directory))
         ? 'direct'
@@ -37,7 +42,7 @@ export function isTrustedKnowledgeResourceSource(pluginId: string): boolean {
   const trustedPluginIds = [...registeredBackendPluginDirectories.entries()].flatMap(([candidateId, candidateDirectory]) => {
     const candidateManifest = readPluginManifestSummary(candidateDirectory);
     if (candidateManifest?.applicationSurfaceSlot !== 'knowledge-base') return [];
-    const candidateSourceKind: 'official-source' | 'direct' | 'active' = !packaged && path.resolve(candidateDirectory) === path.resolve(roots.developmentRoot, 'packages/plugins/knowledge')
+    const candidateSourceKind: 'official-source' | 'direct' | 'active' = !packaged && isDevelopmentPluginDirectory(candidateDirectory, roots.developmentRoot)
       ? 'official-source'
       : backendDirectDirs.some(value => path.resolve(value) === path.resolve(candidateDirectory))
         ? 'direct'
