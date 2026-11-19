@@ -3,7 +3,7 @@ import type { PluginStoreMessageKey } from './pluginStoreMessages';
 
 export const PLUGIN_STORE_MESSAGE_FALLBACKS = {
   'pluginStore.title': '插件',
-  'pluginStore.remoteUnavailable': '当前版本使用随包插件，可随时启停。远程安装和更新暂未开放。',
+  'pluginStore.remoteUnavailable': '当前版本使用随包插件，可安装、启停和卸载。远程安装和更新暂未开放。',
   'pluginStore.subtitle': '安装、启停和管理本机可用的 Linnya 插件。',
   'pluginStore.tabs.ariaLabel': '插件范围',
   'pluginStore.tabs.installed': '已有插件',
@@ -92,7 +92,7 @@ export const PLUGIN_STORE_MESSAGE_CATALOG: MessageCatalogContribution = {
     'zh-CN': PLUGIN_STORE_MESSAGE_FALLBACKS,
     'en-US': {
       'pluginStore.title': 'Plugins',
-      'pluginStore.remoteUnavailable': 'This version uses bundled plugins, which you can enable or disable. Remote installation and updates are not available yet.',
+      'pluginStore.remoteUnavailable': 'This version uses bundled plugins, which you can install, enable, disable, or uninstall. Remote installation and updates are not available yet.',
       'pluginStore.subtitle': 'Install, enable, disable, and manage the Linnya plugins available on this device.',
       'pluginStore.tabs.ariaLabel': 'Plugin scope',
       'pluginStore.tabs.installed': 'Installed',

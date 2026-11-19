@@ -26,9 +26,21 @@ export function canTogglePlugin(item: PluginStoreListItem): boolean {
   return !isRequiredPlugin(item) && item.state !== 'missing';
 }
 
-export function canUninstallPlugin(item: PluginStoreListItem, remoteServiceEnabled: boolean): boolean {
-  // 当前恢复依赖远程安装；不可恢复时保留停用入口，不能让用户卸载后陷入缺失态。
-  return remoteServiceEnabled && !isRequiredPlugin(item) && item.state !== 'missing';
+export function hasBundledPluginSource(item: PluginStoreListItem): boolean {
+  return item.bundledSourceAvailable === true;
+}
+
+export function canUninstallPlugin(
+  item: PluginStoreListItem,
+  remoteServiceEnabled = false,
+): boolean {
+  return (hasBundledPluginSource(item) || remoteServiceEnabled)
+    && !isRequiredPlugin(item)
+    && item.state !== 'missing';
+}
+
+export function canInstallPluginFromBundled(item: PluginStoreListItem): boolean {
+  return hasBundledPluginSource(item) && !isRequiredPlugin(item) && item.state === 'missing';
 }
 
 export function canInstallPluginFromRemote(item: PluginStoreListItem, remoteServiceEnabled: boolean): boolean {

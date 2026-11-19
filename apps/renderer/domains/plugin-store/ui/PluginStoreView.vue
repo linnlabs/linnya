@@ -83,7 +83,7 @@
                 :primary-button-attributes="{ class: 'plugin-store-install-button' }"
                 :is-primary-action-disabled="isSelectedPluginBusy(selectedDetail)"
                 :show-secondary-action="false"
-                @primary-click="handleSelectedRemoteInstall(selectedDetail)"
+                @primary-click="handleSelectedInstall(selectedDetail)"
               />
             </div>
           </section>
@@ -261,7 +261,7 @@
 
           <div class="plugin-store-card-actions" @click.stop @keydown.stop>
               <Switch
-                v-if="!canInstallPluginFromRemote(item, remoteServiceEnabled)"
+                v-if="!canInstallPlugin(item)"
                 :model-value="item.state === 'enabled'"
                 :disabled="!canTogglePlugin(item) || isPluginBusy(item.meta.id)"
                 :ariaLabel="pluginToggleAriaLabel(item.meta.name)"
@@ -269,13 +269,13 @@
               />
 
             <ActionButtons
-              v-if="canInstallPluginFromRemote(item, remoteServiceEnabled)"
+              v-if="canInstallPlugin(item)"
               class="plugin-store-install-actions"
               :primary-action-text="pluginStoreMessage('pluginStore.action.install')"
               :primary-button-attributes="{ class: 'plugin-store-install-button' }"
               :is-primary-action-disabled="isPluginBusy(item.meta.id)"
               :show-secondary-action="false"
-              @primary-click="handleRemoteInstall(item)"
+              @primary-click="handleInstall(item)"
             />
           </div>
         </article>
@@ -310,6 +310,7 @@ import { useDocumentTypes } from '@/app/plugins/composables';
 import type { PluginRuntimeUserError } from '@/app/plugins/definitions/pluginRuntimeErrors';
 import {
   canCheckPluginUpdateFromRemote,
+  canInstallPluginFromBundled,
   canInstallPluginFromRemote,
   canTogglePlugin,
   canUninstallPlugin,
@@ -487,7 +488,11 @@ function isPluginBusy(pluginId: PluginId): boolean {
 }
 
 function canInstallSelectedPlugin(detail: PluginStoreDetail | null): boolean {
-  return detail !== null && canInstallPluginFromRemote(detail, remoteServiceEnabled.value);
+  return detail !== null && canInstallPlugin(detail);
+}
+
+function canInstallPlugin(item: PluginStoreListItem): boolean {
+  return canInstallPluginFromBundled(item) || canInstallPluginFromRemote(item, remoteServiceEnabled.value);
 }
 
 function canToggleSelectedPlugin(detail: PluginStoreDetail | null): boolean {
@@ -508,11 +513,11 @@ function handleSelectedPluginEnabledChange(
   void handlePluginEnabledChange(detail, enabled);
 }
 
-function handleSelectedRemoteInstall(detail: PluginStoreDetail | null): void {
+function handleSelectedInstall(detail: PluginStoreDetail | null): void {
   if (detail === null) {
     return;
   }
-  void handleRemoteInstall(detail);
+  void handleInstall(detail);
 }
 
 function setPluginBusy(pluginId: PluginId, busy: boolean): void {
@@ -686,6 +691,47 @@ async function handleRemoteInstall(item: PluginStoreListItem): Promise<void> {
     notifyCurrent: true,
     failureMessageKey: 'pluginStore.error.installFailed',
   });
+}
+
+async function handleBundledInstall(item: PluginStoreListItem): Promise<void> {
+  if (!canInstallPluginFromBundled(item) || isPluginBusy(item.meta.id)) {
+    return;
+  }
+
+  setPluginBusy(item.meta.id, true);
+  try {
+    const result = await pluginsStore.installPluginFromBundled(item.meta.id);
+    if (result.status === 'installed') {
+      await loadRuntimeRendererPlugins();
+      await refreshSelectedPluginDetail(item.meta.id);
+      notificationStore.show(
+        pluginStoreMessage('pluginStore.toast.installed', { pluginName: item.meta.name }),
+        'success',
+        5000,
+      );
+    } else if (result.status === 'failed') {
+      throw new Error(result.error);
+    }
+  } catch (caught) {
+    notificationStore.show(
+      pluginStoreMessage('pluginStore.error.installFailed', {
+        errorMessage: resolveErrorMessage(readErrorMessage(caught)),
+      }),
+      'error',
+      5000,
+    );
+    await refreshPluginStoreItems();
+  } finally {
+    setPluginBusy(item.meta.id, false);
+  }
+}
+
+async function handleInstall(item: PluginStoreListItem): Promise<void> {
+  if (canInstallPluginFromBundled(item)) {
+    await handleBundledInstall(item);
+    return;
+  }
+  await handleRemoteInstall(item);
 }
 
 async function checkPluginUpdateFromCard(

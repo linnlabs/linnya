@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   parsePluginManifest,
+  type PluginStateView,
   type PluginManifest,
   type PluginStoreDetail,
 } from '@app/schemas';
@@ -111,10 +112,14 @@ function readDetailFromPluginDir(
 }
 
 export function buildPluginStoreDetail(
-  state: PluginStoreDetail,
+  state: PluginStateView,
   options: PluginStoreDetailOptions
 ): PluginStoreDetail {
-  const baseDetail: PluginStoreDetail = { ...state };
+  const baseDetail: PluginStoreDetail = {
+    ...state,
+    bundledSourceAvailable:
+      resolveBundledPluginDirById(options.bundledPluginRoot, state.meta.id) !== null,
+  };
 
   if (state.state === 'missing') {
     return readBundledDetailOrBase(baseDetail, options.bundledPluginRoot, options);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { PluginStoreListItem } from '@app/schemas';
 import {
   canCheckPluginUpdateFromRemote,
+  canInstallPluginFromBundled,
   canInstallPluginFromRemote,
   canTogglePlugin,
   canUninstallPlugin,
@@ -90,5 +91,13 @@ describe('pluginStorePresentation', () => {
     expect(canInstallPluginFromRemote(item, true)).toBe(false);
     expect(canCheckPluginUpdateFromRemote(item, true)).toBe(true);
     expect(getPluginToggleDisabledReason(item, pluginStoreMessage)).toBeNull();
+  });
+
+  it('allows a bundled missing plugin to be explicitly reinstalled while remote service is off', () => {
+    const item = createPluginItem({ id: 'mindmap', state: 'missing', reason: '用户已卸载该插件' });
+    const bundledItem = { ...item, bundledSourceAvailable: true };
+
+    expect(canInstallPluginFromBundled(bundledItem)).toBe(true);
+    expect(canUninstallPlugin(bundledItem)).toBe(false);
   });
 });

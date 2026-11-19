@@ -166,6 +166,7 @@ const PLUGIN_CHANNELS = [
   'plugins:renderer-entries',
   'plugins:checkRemoteUpdate',
   'plugins:installFromRemote',
+  'plugins:installBundled',
   'plugins:uninstall',
   'plugins:set-enabled',
   'plugins-changed',

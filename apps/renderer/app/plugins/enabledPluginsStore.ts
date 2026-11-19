@@ -108,7 +108,8 @@ function isPluginDiagnosticView(value: unknown): value is PluginDiagnosticView {
 
 function isPluginStoreListItem(value: unknown): value is PluginStoreListItem {
   if (!isObjectLike(value)) return false;
-  return isPluginStateView(value);
+  return isPluginStateView(value)
+    && (value.bundledSourceAvailable === undefined || typeof value.bundledSourceAvailable === 'boolean');
 }
 
 function isPluginStoreCapability(
@@ -588,6 +589,23 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
     return result.data;
   }
 
+  async function installPluginFromBundled(pluginId: PluginId): Promise<PluginRemoteInstallResult> {
+    const pluginsApi = window.electronAPI?.plugins;
+    if (!pluginsApi?.installBundled) {
+      throw createPluginRuntimeError('pluginRemoteInstallUnsupported');
+    }
+
+    const result = parsePluginRemoteInstallResult(await pluginsApi.installBundled(pluginId));
+    if (!result.success) {
+      throwPluginRuntimeError(result.error);
+    }
+    await refresh();
+    if (hasLoadedStoreItems.value) {
+      await refreshStoreItems();
+    }
+    return result.data;
+  }
+
   async function uninstallPlugin(pluginId: PluginId): Promise<void> {
     const pluginsApi = window.electronAPI?.plugins;
     if (!pluginsApi) {
@@ -657,6 +675,7 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
     initialize,
     checkPluginRemoteUpdate,
     installPluginFromRemote,
+    installPluginFromBundled,
     uninstallPlugin,
     setPluginEnabled,
     subscribeToBackendChanges,

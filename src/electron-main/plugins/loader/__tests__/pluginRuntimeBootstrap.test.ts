@@ -9,6 +9,7 @@ import {
   buildBundledPluginRootCandidates,
   findBundledPluginRootFromCandidates,
   listStagedBundledPluginActivationCandidates,
+  stageBundledPluginForExplicitInstall,
   RequiredBundledPluginSeedError,
   seedBundledPlugins,
 } from '../pluginRuntimeBootstrap';
@@ -205,6 +206,29 @@ describe('plugin runtime bootstrap', () => {
         pluginDir: path.join(userPluginRoot, 'mindmap/1.0.0'),
       },
     ]);
+  });
+
+  it('stages a user-requested reinstall even when startup seed respects the removal marker', () => {
+    const tempRoot = makeTempRoot();
+    const bundledRoot = path.join(tempRoot, 'bundled');
+    const userPluginRoot = path.join(tempRoot, 'user-plugins');
+    writeBundledPlugin(bundledRoot, 'mindmap', '1.0.0');
+    markPluginUserRemoved(userPluginRoot, 'mindmap');
+
+    expect(seedBundledPlugins({ bundledPluginRoot: bundledRoot, userPluginRoot })).toMatchObject([
+      { pluginId: 'mindmap', status: 'skipped' },
+    ]);
+
+    expect(stageBundledPluginForExplicitInstall({
+      bundledPluginRoot: bundledRoot,
+      userPluginRoot,
+      pluginId: 'mindmap',
+    })).toMatchObject({
+      pluginId: 'mindmap',
+      version: '1.0.0',
+      previousVersion: null,
+    });
+    expect(fs.existsSync(path.join(userPluginRoot, 'mindmap/1.0.0/plugin.json'))).toBe(true);
   });
 
   it('does not downgrade a newer active plugin installation', () => {

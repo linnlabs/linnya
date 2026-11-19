@@ -65,6 +65,8 @@
 
 卸载（`uninstallPluginLifecycle`）：`installed=0`、删 enabled、标记 `user_removed=1`、删 active 指针与版本目录、保留 `plugin-user-removed.json` 防自动装回；**不删数据表、不清迁移账本**。重装清除移除标记、重装 runtime 文件、复用原数据与 migration ledger。
 
+随包插件的本地卸载不依赖远程服务开关。商店列表由 Host 投影 `bundledSourceAvailable`，只有非 required 且存在随包 artifact 的插件显示卸载/从随包安装入口；远程服务开关仍只控制远程安装和更新。启动 seed 始终尊重用户移除标记，只有用户明确点击“安装”时才从 bundled artifact 重新 stage；迁移和 `active.json` 激活成功后才清除标记，失败则恢复未安装与用户移除状态。
+
 ## 远程安装和更新
 
 入口 `plugins:installFromRemote`，运行时只使用固定官方 latest 地址

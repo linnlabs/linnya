@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { parsePluginManifest, pluginMetaFromManifest, type PluginMeta } from '@app/schemas';
 import { isPluginUserRemoved } from '../../../features/plugins/install/functions/pluginRemovalMarker';
 import { readPluginArtifactIdentity } from '../../../features/plugins/install/functions/readPluginArtifactIdentity';
 import { compareDottedVersions } from '../../../features/plugins/functions/comparePluginVersions';
@@ -21,6 +22,12 @@ export interface BundledPluginSeedResult {
 export interface SeedBundledPluginsOptions {
   readonly bundledPluginRoot: string | null;
   readonly userPluginRoot: string;
+}
+
+export interface ExplicitBundledPluginStageOptions {
+  readonly bundledPluginRoot: string;
+  readonly userPluginRoot: string;
+  readonly pluginId: string;
 }
 
 export interface StagedBundledPluginActivationCandidate {
@@ -49,6 +56,26 @@ export function listBundledPluginManifestIds(bundledPluginRoot: string): string[
       const manifest = readPluginManifestSummary(path.join(bundledPluginRoot, entry.name));
       return manifest ? [manifest.id] : [];
     });
+}
+
+/** Read bundled metadata without loading backend code so a user-removed plugin remains visible. */
+export function listBundledPluginMetas(bundledPluginRoot: string | null): PluginMeta[] {
+  if (!bundledPluginRoot || !fs.existsSync(bundledPluginRoot)) return [];
+
+  return fs.readdirSync(bundledPluginRoot, { withFileTypes: true }).flatMap(entry => {
+    if (!entry.isDirectory()) return [];
+    try {
+      const pluginDir = path.join(bundledPluginRoot, entry.name);
+      const manifest = parsePluginManifest(readJsonFile(path.join(pluginDir, 'plugin.json')));
+      const summary = readPluginManifestSummary(pluginDir);
+      return [pluginMetaFromManifest(manifest, {
+        builtin: true,
+        ...(summary?.required === undefined ? {} : { required: summary.required }),
+      })];
+    } catch {
+      return [];
+    }
+  });
 }
 
 export interface BundledPluginRootCandidateInput {
@@ -151,6 +178,45 @@ function ensureSeedTargetVersionDir(
   if (!fs.existsSync(targetVersionDir)) {
     copyDirectoryAtomically(sourceDir, targetVersionDir);
   }
+}
+
+/**
+ * Stage one user-requested bundled plugin. Startup seed intentionally respects the
+ * user-removed marker; an explicit install is the only path that may bypass it.
+ * The marker is cleared by the caller only after migrations and active activation succeed.
+ */
+export function stageBundledPluginForExplicitInstall(
+  options: ExplicitBundledPluginStageOptions,
+): StagedBundledPluginActivationCandidate {
+  const bundledRoot = path.resolve(options.bundledPluginRoot);
+  const sourceDir = fs.readdirSync(bundledRoot, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => path.join(bundledRoot, entry.name))
+    .find(candidate => readPluginManifestSummary(candidate)?.id === options.pluginId);
+  if (!sourceDir) {
+    throw new Error(`随包插件 artifact 不存在或 manifest 不匹配: ${options.pluginId}`);
+  }
+  const manifest = readPluginManifestSummary(sourceDir);
+  if (!manifest) {
+    throw new Error(`随包插件 artifact manifest 不可读: ${options.pluginId}`);
+  }
+
+  const pluginInstallDir = path.join(options.userPluginRoot, manifest.id);
+  const targetVersionDir = path.join(pluginInstallDir, manifest.version);
+  ensureSeedTargetVersionDir(sourceDir, targetVersionDir, manifest.id, manifest.version);
+
+  let previousVersion: string | null = null;
+  const activePath = path.join(pluginInstallDir, 'active.json');
+  if (fs.existsSync(activePath)) {
+    previousVersion = parseActivePointer(readJsonFile(activePath)).version;
+  }
+
+  return {
+    pluginId: manifest.id,
+    version: manifest.version,
+    previousVersion,
+    pluginDir: targetVersionDir,
+  };
 }
 
 function isBundledPluginRoot(directory: string): boolean {

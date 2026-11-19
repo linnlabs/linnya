@@ -1,9 +1,15 @@
 import Database from 'better-sqlite3';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { PluginMeta } from '@app/schemas';
 
 import { PluginStateService } from '../plugin-state.service';
 import { PluginUpgradeRunner } from '../plugin-upgrade.runner';
+import { installPluginFromBundledAndActivate } from '../../../install/orchestration/installPluginFromBundledAndActivate';
+import { markPluginUserRemoved, isPluginUserRemoved } from '../../../install/functions/pluginRemovalMarker';
+import { stageBundledPluginForExplicitInstall } from '../../../../../electron-main/plugins/loader/pluginRuntimeBootstrap';
 
 const platformMeta: PluginMeta = {
   id: 'platform',
@@ -117,5 +123,122 @@ describe('plugin uninstall/reinstall data safety', () => {
     expect(
       db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'should_not_run'").all(),
     ).toEqual([]);
+  });
+
+  it('显式从随包重装会绕过卸载标记、默认启用并复用旧数据', () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-bundled-reinstall-'));
+    const bundledRoot = path.join(tempRoot, 'bundled');
+    const userPluginRoot = path.join(tempRoot, 'user-plugins');
+    const sourceDir = path.join(bundledRoot, 'demo');
+    fs.mkdirSync(path.join(sourceDir, 'dist/renderer'), { recursive: true });
+    fs.writeFileSync(path.join(sourceDir, 'dist/renderer/index.js'), 'export {};');
+    fs.writeFileSync(path.join(sourceDir, 'SHA512SUMS'), 'demo@1.0.0  plugin.json\n');
+    fs.writeFileSync(path.join(sourceDir, 'plugin.json'), `${JSON.stringify({
+      id: 'demo',
+      version: '1.0.0',
+      name: 'Demo',
+      description: 'Demo plugin',
+      developer: 'Linnya',
+      details: ['Demo'],
+      entry: { renderer: './dist/renderer/index.js' },
+      compat: { rendererUi: '^1.0.0' },
+    })}\n`);
+    fs.mkdirSync(userPluginRoot, { recursive: true });
+
+    stateService.setInstalled('demo', false, [platformMeta, demoMeta]);
+    stateService.setUserRemoved('demo', true);
+    markPluginUserRemoved(userPluginRoot, 'demo');
+
+    const result = installPluginFromBundledAndActivate({
+      db,
+      userPluginRoot,
+      pluginId: 'demo',
+      appVersion: '0.0.36',
+      knownPlugins: [platformMeta, demoMeta],
+      stageBundledPlugin: () => stageBundledPluginForExplicitInstall({
+        bundledPluginRoot: bundledRoot,
+        userPluginRoot,
+        pluginId: 'demo',
+      }),
+      resolveUpgradePlan: ({ pluginId, version }) => ({
+        pluginId,
+        targetVersion: version,
+        ownedTables: ['plugin_owned'],
+        migrations: [{
+          version: 1,
+          description: 'already applied',
+          up: () => {},
+        }],
+      }),
+    });
+
+    expect(result).toMatchObject({
+      status: 'installed',
+      pluginId: 'demo',
+      version: '1.0.0',
+      previousVersion: null,
+      restartRequired: true,
+    });
+    expect(stateService.getInstalledRecord('demo')).toMatchObject({
+      installed: true,
+      userRemoved: false,
+    });
+    expect(db.prepare("SELECT plugin_id FROM enabled_plugins WHERE plugin_id = 'demo'").all()).toEqual([
+      { plugin_id: 'demo' },
+    ]);
+    expect(db.prepare('SELECT id, value FROM plugin_owned').all()).toEqual([{ id: 'row-1', value: 'kept' }]);
+    expect(isPluginUserRemoved(userPluginRoot, 'demo')).toBe(false);
+
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  });
+
+  it('重装迁移失败时保留用户卸载状态和数据', () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-bundled-reinstall-failure-'));
+    const bundledRoot = path.join(tempRoot, 'bundled');
+    const userPluginRoot = path.join(tempRoot, 'user-plugins');
+    const sourceDir = path.join(bundledRoot, 'demo');
+    fs.mkdirSync(sourceDir, { recursive: true });
+    fs.writeFileSync(path.join(sourceDir, 'SHA512SUMS'), 'demo@1.0.0  plugin.json\n');
+    fs.writeFileSync(path.join(sourceDir, 'plugin.json'), `${JSON.stringify({
+      id: 'demo',
+      version: '1.0.0',
+      name: 'Demo',
+      description: 'Demo plugin',
+      developer: 'Linnya',
+      details: ['Demo'],
+      entry: { renderer: './dist/renderer/index.js' },
+      compat: { rendererUi: '^1.0.0' },
+    })}\n`);
+    fs.mkdirSync(userPluginRoot, { recursive: true });
+    stateService.setInstalled('demo', false, [platformMeta, demoMeta]);
+    stateService.setUserRemoved('demo', true);
+    markPluginUserRemoved(userPluginRoot, 'demo');
+
+    const result = installPluginFromBundledAndActivate({
+      db,
+      userPluginRoot,
+      pluginId: 'demo',
+      appVersion: '0.0.36',
+      knownPlugins: [platformMeta, demoMeta],
+      stageBundledPlugin: () => stageBundledPluginForExplicitInstall({
+        bundledPluginRoot: bundledRoot,
+        userPluginRoot,
+        pluginId: 'demo',
+      }),
+      resolveUpgradePlan: () => {
+        throw new Error('test migration planning failure');
+      },
+    });
+
+    expect(result).toMatchObject({ status: 'failed', pluginId: 'demo', version: '1.0.0' });
+    expect(stateService.getInstalledRecord('demo')).toMatchObject({
+      installed: false,
+      userRemoved: true,
+    });
+    expect(isPluginUserRemoved(userPluginRoot, 'demo')).toBe(true);
+    expect(fs.existsSync(path.join(userPluginRoot, 'demo/active.json'))).toBe(false);
+    expect(db.prepare('SELECT id, value FROM plugin_owned').all()).toEqual([{ id: 'row-1', value: 'kept' }]);
+
+    fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 });

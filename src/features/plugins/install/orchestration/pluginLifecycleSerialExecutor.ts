@@ -2,6 +2,7 @@ import type { PluginId } from '@app/schemas';
 
 export type PluginLifecycleOperation =
   | 'install-from-remote'
+  | 'install-from-bundled'
   | 'set-enabled'
   | 'uninstall';
 

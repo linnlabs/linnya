@@ -68,7 +68,10 @@ export interface PluginStateView {
   reason?: string;
 }
 
-export type PluginStoreListItem = PluginStateView;
+export interface PluginStoreListItem extends PluginStateView {
+  /** Host 根据当前发行组合解析出的随包 artifact 来源；Renderer 不扫描本地路径。 */
+  bundledSourceAvailable?: boolean;
+}
 
 /** 商店展示由 Host 投影当前服务开放状态，Renderer 不自行推断发行权限。 */
 export interface PluginStoreListData {

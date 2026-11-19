@@ -29,4 +29,26 @@ describe('buildPluginStoreList', () => {
 
     expect(buildPluginStoreList(states)).toEqual([states[1]]);
   });
+
+  it('把随包来源作为 Host 事实投影给商店', () => {
+    const states: PluginStateView[] = [{
+      meta: {
+        id: 'mindmap',
+        name: 'Mindmap',
+        version: '1.0.0',
+        description: 'Mindmap plugin',
+        developer: 'Linnya',
+        builtin: true,
+      },
+      state: 'missing',
+      reason: '用户已卸载该插件',
+    }];
+
+    expect(buildPluginStoreList(states, {
+      bundledPluginIds: new Set(['mindmap']),
+    })).toEqual([{
+      ...states[0],
+      bundledSourceAvailable: true,
+    }]);
+  });
 });

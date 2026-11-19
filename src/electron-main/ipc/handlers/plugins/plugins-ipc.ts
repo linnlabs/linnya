@@ -5,7 +5,9 @@ import type { BackendRendererIpcStyleRegistrarPort } from '../../../../app-hosts
 import type { BackendRendererIntegrationPort } from '../../../../app-hosts/linnya/desktop-capabilities';
 import { PluginStateService } from '../../../../features/plugins/infrastructure/sqlite/plugin-state.service';
 import {
+  ensureBuiltinBackendPluginsRegistered,
   listRegisteredBackendPluginMetas,
+  resetBackendPluginRegistrationForRuntimeChange,
   registerRegisteredBackendPluginIpcHandlers,
   syncRegisteredBackendPluginRuntimeResources,
 } from '../../../../app-hosts/linnya/plugin-registry/builtin';
@@ -30,6 +32,7 @@ import {
 import { buildPluginStoreDetail } from '../../../plugins/store/pluginStoreDetail';
 import { uninstallPluginLifecycle } from '../../../../features/plugins/install/orchestration/uninstallPluginLifecycle';
 import { installPluginFromRemoteAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromRemoteAndActivate';
+import { installPluginFromBundledAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromBundledAndActivate';
 import { checkPluginUpdateFromRemote } from '../../../../features/plugins/install/orchestration/installPluginUpdate';
 import { resolvePluginLatestManifestUrl } from '../../../../features/plugins/install/functions/resolvePluginLatestManifestUrl';
 import { isOfficialPluginRemoteServiceEnabled } from '../../../../features/plugins/install/functions/isOfficialPluginRemoteServiceEnabled';
@@ -41,6 +44,12 @@ import { assertBackendPluginCanDeactivate, beginBackendPluginDeactivation } from
 import { isTrustedKnowledgeResourceSource } from '../../../../app-hosts/linnya/plugin-registry/knowledgeResourceAdmission';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
+import type { PluginMeta } from '@app/schemas';
+import {
+  listBundledPluginManifestIds,
+  listBundledPluginMetas,
+  stageBundledPluginForExplicitInstall,
+} from '../../../plugins/loader/pluginRuntimeBootstrap';
 
 const logger = new Logger('PluginsIPC');
 
@@ -94,6 +103,20 @@ function resolveBundledPluginRoot(): string | null {
   );
 }
 
+function listKnownPluginMetas(): PluginMeta[] {
+  const metas = listRegisteredBackendPluginMetas();
+  const seen = new Set(metas.map(meta => meta.id));
+  const bundledRoot = resolveBundledPluginRoot();
+  if (!bundledRoot) return metas;
+  for (const meta of listBundledPluginMetas(bundledRoot)) {
+    if (!seen.has(meta.id)) {
+      seen.add(meta.id);
+      metas.push(meta);
+    }
+  }
+  return metas;
+}
+
 export async function registerPluginsHandlers(input: {
   readonly runtimeOwner: BackendRuntimeOwner;
   readonly ipc: BackendRendererIpcStyleRegistrarPort;
@@ -118,7 +141,7 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:list', async () => {
     try {
-      return { success: true, data: getService().listStates(listRegisteredBackendPluginMetas()) };
+      return { success: true, data: getService().listStates(listKnownPluginMetas()) };
     } catch (error) {
       logger.error('[plugins:list] failed:', error);
       return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -127,11 +150,15 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:store-list', async () => {
     try {
-      const states = getService().listStates(listRegisteredBackendPluginMetas());
+      const states = getService().listStates(listKnownPluginMetas());
+      const bundledPluginRoot = resolveBundledPluginRoot();
+      const bundledPluginIds = bundledPluginRoot
+        ? new Set(listBundledPluginManifestIds(bundledPluginRoot))
+        : new Set<string>();
       return {
         success: true,
         data: {
-          items: buildPluginStoreList(states),
+          items: buildPluginStoreList(states, { bundledPluginIds }),
           remoteServiceEnabled: isOfficialPluginRemoteServiceEnabled(input.distributionIdentity),
         },
       };
@@ -147,7 +174,7 @@ export async function registerPluginsHandlers(input: {
       const directPluginDirs = [
         ...new Set([...readBackendDirectPluginDirsFromEnv(), ...readDirectPluginDirsFromEnv()]),
       ];
-      const states = getService().listStates(listRegisteredBackendPluginMetas());
+      const states = getService().listStates(listKnownPluginMetas());
       const state = states.find(item => item.meta.id === pluginId);
       if (!state) {
         throw new Error(`未知插件: ${pluginId}`);
@@ -315,7 +342,7 @@ export async function registerPluginsHandlers(input: {
             throw new Error('插件目录未初始化，不能远程安装插件');
           }
           const db = databaseService.getDb();
-          const knownPlugins = listRegisteredBackendPluginMetas();
+          const knownPlugins = listKnownPluginMetas();
           assertBackendPluginCanDeactivate(pluginId);
           const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
           const result = await installPluginFromRemoteAndActivate({
@@ -352,13 +379,66 @@ export async function registerPluginsHandlers(input: {
     }
   });
 
+  input.ipc.handle('plugins:installBundled', async (_event, rawPluginId: unknown) => {
+    try {
+      const pluginId = parsePluginId(rawPluginId, 'plugins:installBundled');
+      const bundledPluginRoot = resolveBundledPluginRoot();
+      if (!bundledPluginRoot || !listBundledPluginManifestIds(bundledPluginRoot).includes(pluginId)) {
+        throw new Error(`当前版本没有可用的随包插件 artifact: ${pluginId}`);
+      }
+      return await runPluginLifecycleOperationSerially({
+        pluginId,
+        operation: 'install-from-bundled',
+        async run() {
+          const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
+          if (!userPluginRoot) {
+            throw new Error('插件目录未初始化，不能从随包安装插件');
+          }
+          const result = installPluginFromBundledAndActivate({
+            db: databaseService.getDb(),
+            userPluginRoot,
+            pluginId,
+            appVersion: input.applicationVersion,
+            knownPlugins: listKnownPluginMetas(),
+            stageBundledPlugin: () => stageBundledPluginForExplicitInstall({
+              bundledPluginRoot,
+              userPluginRoot,
+              pluginId,
+            }),
+            resolveUpgradePlan: resolveDiskPluginUpgradePlan,
+            recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
+          });
+          if (result.status === 'failed') {
+            throw new Error(result.error);
+          }
+          resetBackendPluginRegistrationForRuntimeChange();
+          ensureBuiltinBackendPluginsRegistered({
+            applicationVersion: input.applicationVersion,
+            requireComplete: true,
+          });
+          await syncPluginRuntimeState({
+            reinitializeTools: true,
+            runtimeOwner: input.runtimeOwner,
+          });
+          input.rendererIntegration.publishPluginsChanged();
+          return { success: true, data: result };
+        },
+      });
+    } catch (error) {
+      logger.error('[plugins:installBundled] failed:', error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
   input.ipc.handle('plugins:uninstall', async (_event, rawPluginId: unknown) => {
     try {
-      // 远程恢复不可用时不提供卸载，避免留下无法从界面重新安装的插件；仍可停用。
-      if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
-        throw new Error('当前版本仅提供随包插件，请使用停用而非卸载');
-      }
       const pluginId = parsePluginId(rawPluginId, 'plugins:uninstall');
+      const bundledPluginRoot = resolveBundledPluginRoot();
+      const hasBundledSource = bundledPluginRoot !== null
+        && listBundledPluginManifestIds(bundledPluginRoot).includes(pluginId);
+      if (!hasBundledSource && !isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
+        throw new Error(`当前插件没有可用的随包来源，不能卸载: ${pluginId}`);
+      }
       return await runPluginLifecycleOperationSerially({
         pluginId,
         operation: 'uninstall',
@@ -373,7 +453,7 @@ export async function registerPluginsHandlers(input: {
             db: databaseService.getDb(),
             userPluginRoot,
             pluginId,
-            knownPlugins: listRegisteredBackendPluginMetas(),
+            knownPlugins: listKnownPluginMetas(),
           });
           if (result.status !== 'uninstalled') {
             throw new Error(result.error);

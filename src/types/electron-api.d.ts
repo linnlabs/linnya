@@ -390,6 +390,11 @@ declare global {
         ) => Promise<
           { success: true; data: PluginRemoteInstallResult } | { success: false; error?: string }
         >;
+        installBundled: (
+          pluginId: string
+        ) => Promise<
+          { success: true; data: PluginRemoteInstallResult } | { success: false; error?: string }
+        >;
         uninstall: (pluginId: string) => Promise<{ success: boolean; error?: string }>;
         setEnabled: (
           pluginId: string,
