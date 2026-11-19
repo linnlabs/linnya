@@ -9,13 +9,13 @@ import type {
   PendingContentBlockResolution,
   PendingMarkdownResolutionResult,
 } from './pendingRevisionHelpers'
-import type { PendingExecutionPlan } from './pendingExecutionPlan'
+import type { PendingContentDiffExecutionPlan, PendingExecutionPlan } from './pendingExecutionPlan'
 
 function buildContentDiffPlan(params: {
   currentSpans: TextSpan[]
   newSpans: TextSpan[]
   insertNewlineMode: InsertedTextNewlineMode
-}): PendingExecutionPlan {
+}): PendingContentDiffExecutionPlan {
   return {
     kind: 'content-diff',
     richDiff: computeRichDiff(params.currentSpans, params.newSpans),
@@ -23,7 +23,7 @@ function buildContentDiffPlan(params: {
   }
 }
 
-export function buildDeleteExecutionPlan(currentSpans: TextSpan[]): PendingExecutionPlan {
+export function buildDeleteExecutionPlan(currentSpans: TextSpan[]): PendingContentDiffExecutionPlan {
   return buildContentDiffPlan({
     currentSpans,
     newSpans: [],

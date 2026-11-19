@@ -4,7 +4,7 @@
  */
 import { nextTick, onBeforeUnmount, watchEffect, type Ref } from 'vue'
 import type { Editor } from '@tiptap/vue-3'
-import { debounce } from 'lodash-es'
+import { useTimer } from '@linnya/renderer-ui'
 import type { AnnotationPanelPositionManagerLike } from '../features/Annotation/definitions/injectionKeys'
 import {
   ANNOTATION_LAYOUT_RECALC_REASON,
@@ -23,13 +23,16 @@ export function usePanelPositioning(options: PanelPositioningOptions) {
   const { editor, panelPositionManager } = options
   let ownerResizeFrameId: number | null = null
 
-  // 定义防抖函数
-  const debouncedRecalculatePositions = debounce(() => {
-    void requestAnnotationLayoutRecalculation(
-      panelPositionManager,
-      ANNOTATION_LAYOUT_RECALC_REASON.RESIZE
-    )
-  }, 200) // 延迟 200ms 执行
+  // window.resize 防抖：缩放停止 200ms 后重算一次；组件卸载时由 useTimer 自动取消。
+  const resizeRecalculationTimer = useTimer()
+  const debouncedRecalculatePositions = (): void => {
+    resizeRecalculationTimer.start(() => {
+      void requestAnnotationLayoutRecalculation(
+        panelPositionManager,
+        ANNOTATION_LAYOUT_RECALC_REASON.RESIZE
+      )
+    }, 200)
+  }
 
   const scheduleOwnerResizeRecalculation = () => {
     if (ownerResizeFrameId !== null) return
@@ -70,7 +73,7 @@ export function usePanelPositioning(options: PanelPositioningOptions) {
         isCleanedUp = true
         ownerResizeObserver?.disconnect()
         window.removeEventListener('resize', debouncedRecalculatePositions)
-        debouncedRecalculatePositions.cancel() // 取消任何待处理的调用
+        resizeRecalculationTimer.cancel() // 取消任何待处理的调用
       })
     }
   })
@@ -78,7 +81,7 @@ export function usePanelPositioning(options: PanelPositioningOptions) {
   // 在组件卸载前清理
   onBeforeUnmount(() => {
     window.removeEventListener('resize', debouncedRecalculatePositions)
-    debouncedRecalculatePositions.cancel()
+    resizeRecalculationTimer.cancel()
     if (ownerResizeFrameId !== null) {
       window.cancelAnimationFrame(ownerResizeFrameId)
       ownerResizeFrameId = null

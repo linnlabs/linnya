@@ -1,5 +1,5 @@
 /** CitationNode 查询与更新能力。业务规则留在纯函数/服务层，UI 只负责触发。 */
-import type { Editor } from '@tiptap/vue-3'
+import type { Editor } from '@tiptap/core'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import type { CitationNodeAttrs } from '../types'
 import { readCitationNodeAttrs } from '../functions/citationNodeProjection'

@@ -5,6 +5,9 @@ import {
 } from '@plugin/renderer/documentReferenceRuntimePort';
 import { isValidRef, normalizeRef, resolveIdFromRef } from '../../../../shared/utils/refIdGenerator';
 import type { ConversationMessageResolver } from '../../definitions/conversationMessages';
+import { readToolNameFromConversationMessage } from '../../functions/toolMessageLookup';
+import { buildToolResultFromMessage } from '../../services/message/tool/buildToolResultFromMessage';
+import type { BaseMessage } from '../../types';
 import {
   HistoricalWorkspaceReadFileEventResultSchema,
   WorkspaceReadFileEventResultSchema,
@@ -55,6 +58,28 @@ export function readWorkspaceDocumentCandidate(
   };
 }
 
+/**
+ * 同一轮次里成功的 read_file 结果给出的文档候选。
+ * durable 工具消息把 data 与 observation 分开存放，必须先重建工具结果再交给候选校验。
+ */
+export function readWorkspaceDocumentCandidatesFromTurn(
+  messages: readonly BaseMessage[],
+  turnId: string,
+): DocumentCandidate[] {
+  const candidates: DocumentCandidate[] = [];
+  for (const message of messages) {
+    if (message.type !== 'tool_calls') continue;
+    if (message.metadata.turn_id !== turnId || message.metadata.status !== 'success') continue;
+
+    const candidate = readWorkspaceDocumentCandidate(
+      readToolNameFromConversationMessage(message) ?? '',
+      buildToolResultFromMessage(message.content, message.metadata),
+    );
+    if (candidate) candidates.push(candidate);
+  }
+  return candidates;
+}
+
 export interface ResolvedReferenceMatch {
   documentId: string;
   docType: DocType;
@@ -65,6 +90,11 @@ export interface ResolvedReferenceMatch {
 
 export type ResolvedMarkdownReference = ResolvedReferenceMatch & { docType: 'markdown'; index: number };
 export type ResolvedPluginReference = ResolvedReferenceMatch;
+
+/** Markdown 引用必带人类序号；插件文档引用没有序号，不能按“第N段”展示。 */
+export function isResolvedMarkdownReference(match: ResolvedReferenceMatch): match is ResolvedMarkdownReference {
+  return match.docType === 'markdown' && match.index !== undefined;
+}
 
 const REF_CHARSET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 const REF_LEN = 6;

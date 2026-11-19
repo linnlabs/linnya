@@ -10,12 +10,15 @@ import {
   parseWorkspaceRefId,
   findCurrentPluginReferenceDocument,
   getPluginReferenceLabel,
+  isResolvedMarkdownReference,
   readWorkspaceDocumentCandidate,
+  readWorkspaceDocumentCandidatesFromTurn,
   resolveMarkdownReferenceInDocument,
   resolvePluginReferenceInDocument,
   resolveReferenceMatches,
 } from './workspaceReferenceResolver';
 import type { ConversationMessageResolver } from '../../definitions/conversationMessages';
+import { createTestToolMessage } from '../../testing/functions/createConversationTestMessage';
 
 const conversationMessage: ConversationMessageResolver = (key) => {
   if (key === 'conversation.tool.workspace.reference.documentLabel') return 'Document reference';
@@ -71,6 +74,69 @@ describe('workspaceReferenceResolver', () => {
       ...result,
       data: { ...result.data, source: 'workspace_node' },
     })).toBeNull();
+  });
+
+  it('从同一轮次成功的 read_file 工具消息重建结果并接纳文档候选', () => {
+    const readFileData = {
+      source: 'workspace_document',
+      path: '/Architecture.md',
+      inode: 'workspace:doc-1',
+      content_type: 'application/vnd.linnya.document-view',
+      document: {
+        documentId: 'doc-1',
+        docType: 'markdown',
+        documentName: 'Architecture.md',
+        truncatedByChars: false,
+        totalTextLength: 2,
+        nextOffset: null,
+        presentation: {
+          kind: 'blocks',
+          viewMode: 'preview',
+          viewLabel: '预览',
+          items: [{ id: 'block-1', ordinal: 1, text: '正文' }],
+        },
+      },
+    };
+    const presentation = { observationPreviewMeta: { document_name: 'Architecture.md', doc_type: 'markdown' } };
+    const messages = [
+      createTestToolMessage({
+        id: 'read-ok',
+        content: '[#ref] 正文',
+        metadata: { tool_name: 'read_file', turn_id: 'turn-1', data: readFileData, presentation },
+      }),
+      createTestToolMessage({
+        id: 'read-other-turn',
+        content: '[#ref] 正文',
+        metadata: { tool_name: 'read_file', turn_id: 'turn-2', data: readFileData, presentation },
+      }),
+      createTestToolMessage({
+        id: 'read-failed',
+        content: '读取失败',
+        metadata: { tool_name: 'read_file', turn_id: 'turn-1', status: 'error', error: 'boom' },
+      }),
+      createTestToolMessage({
+        id: 'other-tool',
+        content: '[#ref] 正文',
+        metadata: { tool_name: 'grep', turn_id: 'turn-1', data: readFileData, presentation },
+      }),
+    ];
+
+    expect(readWorkspaceDocumentCandidatesFromTurn(messages, 'turn-1')).toEqual([
+      { documentId: 'doc-1', docType: 'markdown' },
+    ]);
+    expect(readWorkspaceDocumentCandidatesFromTurn(messages, 'turn-3')).toEqual([]);
+  });
+
+  it('只有带序号的 Markdown 引用才能显示为“第N段”', () => {
+    expect(isResolvedMarkdownReference({
+      documentId: 'doc-1', docType: 'markdown', resolvedId: 'block_a', index: 2,
+    })).toBe(true);
+    expect(isResolvedMarkdownReference({
+      documentId: 'doc-1', docType: 'markdown', resolvedId: 'block_a',
+    })).toBe(false);
+    expect(isResolvedMarkdownReference({
+      documentId: 'doc-2', docType: 'sheet', resolvedId: 'node_a',
+    })).toBe(false);
   });
 
   it('通过 workspaceReferenceContentPort 获取 Markdown 根块候选并解析 ref', async () => {

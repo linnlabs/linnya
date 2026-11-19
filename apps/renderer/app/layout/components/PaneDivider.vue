@@ -2,7 +2,7 @@
   <div
     class="pane-divider"
     :class="`pane-divider--${side}`"
-    :data-pane-divider-group="interactionGroup || undefined"
+    :data-pane-divider-group="interactionGroup"
     :aria-hidden="interactive ? undefined : 'true'"
   >
     <div class="pane-divider__line" aria-hidden="true" />
@@ -34,7 +34,6 @@ const props = withDefaults(defineProps<{
   value?: number;
 }>(), {
   interactive: false,
-  interactionGroup: '',
   label: '',
   min: 0,
   max: 0,

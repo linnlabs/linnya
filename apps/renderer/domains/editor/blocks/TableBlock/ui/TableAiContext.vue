@@ -51,52 +51,53 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts" generic="Column extends { readonly name: string; readonly reference: string }">
+import type { CSSProperties } from 'vue';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 import {
   formatTableBlockReferenceTitle,
   formatTableBlockSelectionRangeTitle,
 } from '../functions/tableBlockPresentation';
 
-const props = defineProps({
-  columnRefs: {
-    type: Array,
-    default: () => []
-  },
-  selectionRange: {
-    type: String,
-    default: ''
-  },
-  outputColumnRange: {
-    type: String,
-    default: ''
-  },
-  activeColumnRefs: {
-    type: Object,
-    default: () => ({})
-  }
+// Column 只要求标签需要的 name / reference；调用方传入的对象会原样随点击事件返回，所以组件按泛型保留其完整类型。
+interface TableAiContextActiveColumn {
+  readonly active: boolean;
+  readonly color?: string;
+}
+
+const props = withDefaults(defineProps<{
+  columnRefs?: readonly Column[];
+  selectionRange?: string;
+  outputColumnRange?: string;
+  activeColumnRefs?: Readonly<Record<string, TableAiContextActiveColumn>>;
+}>(), {
+  columnRefs: () => [],
+  selectionRange: '',
+  outputColumnRange: '',
+  activeColumnRefs: () => ({}),
 });
 
-const emit = defineEmits(['column-ref-click']);
+const emit = defineEmits<{
+  'column-ref-click': [column: Column];
+}>();
 const { editorMessage } = useEditorLocalization();
 
 // 列引用相关方法
-const isColumnRefActive = (refKey) => {
-  return props.activeColumnRefs && 
-         props.activeColumnRefs[refKey] && 
-         props.activeColumnRefs[refKey].active;
+const isColumnRefActive = (refKey: string): boolean => {
+  return props.activeColumnRefs[refKey]?.active === true;
 };
 
-const getColumnRefStyle = (refKey) => {
-  if (isColumnRefActive(refKey) && props.activeColumnRefs[refKey].color) {
+const getColumnRefStyle = (refKey: string): CSSProperties => {
+  const color = props.activeColumnRefs[refKey]?.color;
+  if (isColumnRefActive(refKey) && color) {
     return {
-      '--table-ai-ref-color': props.activeColumnRefs[refKey].color,
+      '--table-ai-ref-color': color,
     };
   }
   return {};
 };
 
-const handleColumnRefClick = (col) => {
+const handleColumnRefClick = (col: Column): void => {
   emit('column-ref-click', col);
 };
 </script>

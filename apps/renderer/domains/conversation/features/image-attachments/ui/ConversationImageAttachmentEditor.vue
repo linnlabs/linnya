@@ -22,7 +22,7 @@
     <span v-if="store.errorCode" class="conversation-image-edit__error">{{ conversationMessage(resolveImageAttachmentErrorMessage(store.errorCode)) }}</span>
   </div>
   <ImagePreviewModal
-    :is-visible="selectedUrl !== null"
+    :is-visible="selectedUrl !== undefined"
     :src="selectedUrl ?? ''"
     :alt="selectedName"
     :source-element="previewSource"
@@ -59,12 +59,12 @@ const { sourceElement: previewSource, rememberSource } = useImagePreviewSource()
 function itemKey(item: ConversationImageEditOrderItem): string {
   return item.source === 'existing' ? `existing:${item.attachmentId}` : `draft:${item.clientId}`;
 }
-function previewUrl(item: ConversationImageEditOrderItem): string | null {
+function previewUrl(item: ConversationImageEditOrderItem): string | undefined {
   if (item.source === 'existing') {
     const preview = existingPreviews.value.find(candidate => candidate.attachment.id === item.attachmentId);
-    return preview?.status === 'ready' ? preview.objectUrl : null;
+    return preview?.status === 'ready' ? preview.objectUrl : undefined;
   }
-  return store.draftItems.find(candidate => candidate.clientId === item.clientId)?.previewUrl ?? null;
+  return store.draftItems.find(candidate => candidate.clientId === item.clientId)?.previewUrl;
 }
 function itemName(item: ConversationImageEditOrderItem): string {
   if (item.source === 'existing') {
@@ -85,6 +85,6 @@ function retryDraft(item: ConversationImageEditOrderItem): void {
   if (item.source === 'draft') controller.retry(item.clientId);
 }
 const selectedItem = computed(() => store.order.find(item => itemKey(item) === selectedKey.value));
-const selectedUrl = computed(() => selectedItem.value ? previewUrl(selectedItem.value) : null);
+const selectedUrl = computed(() => selectedItem.value ? previewUrl(selectedItem.value) : undefined);
 const selectedName = computed(() => selectedItem.value ? itemName(selectedItem.value) : '');
 </script>
