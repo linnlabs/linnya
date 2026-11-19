@@ -94,7 +94,7 @@ export const PLUGIN_STORE_MESSAGE_FALLBACKS = {
   'pluginStore.toast.current': '{pluginName} 已是最新版本',
   'pluginStore.toast.incompatible': '{pluginName} 与当前应用版本不兼容',
   'pluginStore.toast.uninstalled': '{pluginName} 已卸载',
-  'pluginStore.confirm.uninstall': '卸载 {pluginName}？插件运行文件会从本机移除，已有资料默认保留，可在数据管理中清理。',
+  'pluginStore.confirm.uninstall': '卸载 {pluginName}？插件会从本机移除，但不会删除已有文档数据。',
 } as const satisfies Readonly<Record<PluginStoreMessageKey, string>>;
 
 export const PLUGIN_STORE_MESSAGE_CATALOG: MessageCatalogContribution = {
@@ -194,7 +194,7 @@ export const PLUGIN_STORE_MESSAGE_CATALOG: MessageCatalogContribution = {
       'pluginStore.toast.current': '{pluginName} is already up to date',
       'pluginStore.toast.incompatible': '{pluginName} is incompatible with the current app version',
       'pluginStore.toast.uninstalled': '{pluginName} uninstalled.',
-      'pluginStore.confirm.uninstall': 'Uninstall {pluginName}? Its runtime files will be removed. Existing data is kept by default and can be cleaned up from data management.',
+      'pluginStore.confirm.uninstall': 'Uninstall {pluginName}? The plugin will be removed from this device, but existing document data will not be deleted.',
     },
   },
 };
