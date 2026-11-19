@@ -64,7 +64,7 @@ Qdrant（随包 1.14.1）按固定大小预先占位，再按需新增：
 
 同日在 Windows 11 虚拟机（NTFS，2 核）用同版本 `qdrant.exe` 实测（同样 `default_segment_number=1`）：
 
-| 状态 | 现行配置（WAL 实际 32 MB） | 配置写到 `storage:` 下（WAL 16 MB） |
+| 状态 | 修复前（WAL 实际 32 MB） | 现行配置（WAL 16 MB） |
 |---|---|---|
 | 1 个空集合 | 136 MB | 104 MB |
 | 3 个空集合 | 408 MB | 312 MB |
@@ -73,13 +73,13 @@ Qdrant（随包 1.14.1）按固定大小预先占位，再按需新增：
 
 Node 的 `fs.stat().blocks` 在 Windows 上由 libuv 取 NTFS AllocationSize 换算，与上表口径一致，两端都可以用 `blocks × 512` 统计实际占用。
 
-由此得出三条规则：
+由此得出存储规则：
 
 - 显示占用必须按实际分配的块统计（`stat.blocks`、`du`），不能把文件长度相加，否则 macOS 上会把空库报成几百 MB。
 - 删除点只标记删除，等优化器按 `deleted_threshold`（0.2）和 `vacuum_min_vector_number`（1000）重写 segment 后才回收空间；删除整个集合则立即释放。
 - 主 SQLite 删除行只把页面留给后续复用。v70 起新建的库可以增量回收，更早的库要缩小文件只能整库 VACUUM，所以清理知识库不以缩小主数据库文件为目标。
 - 插件迁移进度取 `plugin_migrations` 最大版本与 `installed_plugins.schema_version` 中的较大值。整体清理数据时，删 8 张表、删迁移记录、把 `schema_version` 归零必须在同一事务完成；只删迁移记录会让重装迁移失败且不重建表。主库中没有其他表外键引用这 8 张表。
-- Qdrant 配置不随集合迁移：已有集合保留创建时的 WAL 设置，只有新集合使用新配置；删除整个 `qdrant/storage` 后重启会得到空库。
+- Qdrant 配置使用 `storage.wal` 和 `storage.optimizers`。已有集合保留创建时的 WAL 设置，新集合使用 16 MB WAL；不会为修改配置而重建旧集合。删除整个 `qdrant/storage` 后重启会得到空库。
 
 ## 激活、任务与恢复
 

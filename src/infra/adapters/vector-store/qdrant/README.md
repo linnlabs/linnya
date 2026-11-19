@@ -89,3 +89,7 @@ process adapter 从锁定 Qdrant 制品的 Actix `starting service ... listening
 不把其他实例的健康响应当成本实例就绪。端口报告缺失、child 退出或超时都走原有 owner 收口。
 升级 Qdrant 时必须运行真实并行端口测试验证该输出合同。队列将实际 URL 传给摄入与图谱索引 Worker，
 Worker 不读进程环境或固定 6333。固定端口 Host 保持原有 HTTP/gRPC 配置。
+
+配置由 `renderQdrantConfig` 按锁定版本的 `storage.storage_path`、`storage.wal`、`storage.optimizers` 渲染。
+`scripts/e2e/knowledge-index/qdrant-config.acceptance.ts` 可通过 `node --import tsx` 运行，唯一参数是对应平台的随包 Qdrant 绝对路径。
+验收会启动真实 Qdrant、通过 HTTP 核对新集合配置和旧集合兼容性，并检查运行时删除是否清空集合目录。

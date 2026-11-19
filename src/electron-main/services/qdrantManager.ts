@@ -13,6 +13,7 @@ import * as path from 'path';
 import { pathManager } from '../../shared/utils/pathManager';
 import {
   createOwnedQdrantProcess,
+  renderQdrantConfig,
   type OwnedQdrantProcess,
   type QdrantProcessRuntime,
 } from '../../infra/adapters/vector-store/qdrant';
@@ -108,42 +109,12 @@ export class QdrantManager {
       console.debug(`[QdrantManager] Failed to create static directory: ${error}`);
     }
 
-    // 创建简化的配置文件
-    /**
-     * Windows 特别说明：
-     * - Windows 对“正在被 mmap/句柄占用”的文件删除非常严格，常见表现就是 os error 5（拒绝访问）
-     * - Qdrant 在某些情况下会将 segment/vector_storage 等文件进行 mmap，以提升检索性能
-     * - 在 macOS/Linux 上，即使文件仍被打开，unlink 也通常允许；但 Windows 会直接拒绝删除
-     *
-     * 这里的策略是：在 Windows 上把 memmap 的阈值调得非常高，尽量避免使用 mmap，降低删集合失败概率。
-     * 代价：可能增加内存占用、降低部分 IO 性能（但换来操作可靠性）。
-     */
-    const memmapThresholdKb = this.processRuntime.platform === 'win32'
-      ? 1_000_000_000
-      : 20_000;
-
-    const configContent = `
-service:
-  host: ${this.host}
-  http_port: ${this.requestedPort}
-  grpc_port: ${this.requestedPort === 0 ? 'null' : this.requestedPort + 1}
-
-storage_path: ./storage
-
-wal:
-  wal_capacity_mb: 16
-  wal_segments_ahead: 0
-
-optimizer_config:
-  memmap_threshold_kb: ${memmapThresholdKb}        # Windows：尽量禁用 mmap（避免 os error 5）；其它平台沿用默认/合理值
-  flush_interval_sec: 5           # 恢复默认值
-  max_optimization_threads: 1       # 恢复为1个优化线程
-
-log_level: INFO # 将日志级别恢复为INFO，避免过多的TRACE日志
-`;
-
     const configPath = path.join(this.dataDir, 'config.yaml');
-    await fs.writeFile(configPath, configContent, 'utf-8');
+    await fs.writeFile(configPath, renderQdrantConfig({
+      host: this.host,
+      httpPort: this.requestedPort,
+      platform: this.processRuntime.platform,
+    }), 'utf-8');
 
     // 创建日志文件
     const logDir = path.join(this.dataDir, 'logs');
