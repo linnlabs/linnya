@@ -130,6 +130,8 @@ token、surface class、root extension class 和 data attribute 才是 CSS API�
   [Renderer 本地化](../../apps/renderer/app/localization/README.md)。
 - 无业务语义的平台图标从 `/icons` 复用。品牌图标、业务实体图标和只随某个插件演进的图标留在真实 owner；禁止在
   新组件模板里复制已有 SVG。
+  图标根节点（`.linnya-ui-icon`）没有显式尺寸时默认 `1em`，不会按 SVG 的默认 300×150 撑开；尺寸由 `shared-icon--em / --full / --fit`、
+  业务选择器或图标自带的 `width` / `height` 属性决定，默认规则是零优先级，这些都优先。
 - 包根和 UI feature 只允许 Vue public API、DOM/browser API、包内稳定切片和已审核的 browser-safe runtime 依赖。
   新增第三方依赖必须证明不能由现有能力表达、浏览器安全、许可证可接受，并进入 package runtime dependency 与
   tarball 验证；不能把 Host 已安装依赖当作隐式可用。

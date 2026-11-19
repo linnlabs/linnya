@@ -2,6 +2,10 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.12.1 - 2026-11-19
+
+- 图标根节点 `.linnya-ui-icon` 没有显式尺寸时默认 `1em`（零优先级规则，`shared-icon--em / --full / --fit`、业务选择器和图标自带的 `width` / `height` 属性照常覆盖），此前漏写尺寸的图标会按 SVG 默认的 300×150 撑开。已逐页比对现有界面：设置全部页签、项目概览、编辑器与 Slides、插件商店、知识库、对话页的图标尺寸和截图都没有变化，只防止以后新增的未写尺寸图标撑大布局。现有 `^3.0.0` 插件保持兼容。
+
 ## 3.12.0 - 2026-11-19
 
 - 多层浮层同时打开时，Escape 只交给最后打开的那一层：`Modal`、`AlertDialog`、`ImagePreviewModal` 改为登记到 document 级的 Escape 归属（整个 document 只有一个监听）。此前设置里打开的模型详情按 Escape 会连同外层设置一起关闭；现在先关详情，再按一次才关设置。最上层的 `Modal` 设了 `closeOnEsc: false`（例如处理中）时，Escape 不再穿透关闭下面一层。
