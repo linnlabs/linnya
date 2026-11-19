@@ -1,3 +1,5 @@
+import type { LocalCiStepKind } from './localCiSchedule';
+
 /** 本地 CI 只模拟 macOS runner；runner.os 与矩阵选择都按这个平台判断。 */
 export const LOCAL_CI_RUNNER_OS = 'macOS';
 
@@ -50,4 +52,34 @@ export interface LocalCiSkippedJob {
 export interface LocalCiPlan {
   readonly steps: readonly LocalCiStep[];
   readonly skippedJobs: readonly LocalCiSkippedJob[];
+}
+
+/** 测试分片合并为一次运行时的覆盖记录：必须正好覆盖 1..total 的每个分片才会合并。 */
+export interface LocalCiShardMerge {
+  readonly shards: readonly number[];
+  readonly total: number;
+  /** 各分片原本的命令，按分片顺序。 */
+  readonly originalCommands: readonly string[];
+  readonly testWorkers: number;
+}
+
+/**
+ * 一次执行单元：`steps[0]` 是真正执行的计划步骤，其余步骤共享它的结果（矩阵组合里完全相同的步骤，
+ * 或被合并的测试分片）。
+ */
+export interface LocalCiUnit {
+  /** 计划步骤下标；第一个为主步骤。 */
+  readonly steps: readonly number[];
+  readonly kind: LocalCiStepKind;
+  /** false 表示调度表里没有声明，按保守类别执行。 */
+  readonly declared: boolean;
+  /** 实际执行的命令；合并分片时与主步骤命令不同。 */
+  readonly command?: string;
+  readonly shardMerge?: LocalCiShardMerge;
+}
+
+/** 一个任务（或合并后的一组矩阵组合）内按顺序执行的单元。 */
+export interface LocalCiLane {
+  readonly label: string;
+  readonly units: readonly LocalCiUnit[];
 }
