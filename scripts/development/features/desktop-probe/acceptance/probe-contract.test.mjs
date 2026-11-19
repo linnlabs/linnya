@@ -163,8 +163,24 @@ test('插件源码比已生成的 backend 产物新时判为过期', () => {
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('随包副本是新鲜时，不会被插件 workspace dist 的旧文件误判', () => {
-  const root = mkdtempSync(join(tmpdir(), 'probe-plugin-bundled-fresh-'));
+test('工作区 dist 缺产物时，即使随包副本完整也判为过期', () => {
+  const root = mkdtempSync(join(tmpdir(), 'probe-plugin-workspace-missing-'));
+  try {
+    execFileSync('git', ['init', '-q', root]);
+    const plugin = join(root, 'packages/plugins/fixture');
+    mkdirSync(plugin, { recursive: true });
+    mkdirSync(join(root, 'extraResources/plugins/fixture/dist'), { recursive: true });
+    writeFileSync(join(plugin, 'plugin.json'), JSON.stringify({ id: 'fixture' }));
+    writeFileSync(join(plugin, 'package.json'), JSON.stringify({ linnya: { development: {
+      backendLoading: 'disk', backendWatchConfig: 'tsup.config.ts', requiredOutputs: ['dist/backend.cjs'],
+    } } }));
+    writeFileSync(join(root, 'extraResources/plugins/fixture/dist/backend.cjs'), 'complete bundled output');
+    assert.deepEqual(buildFreshness(root), { stale: true, reason: '插件 fixture 缺少 dist/backend.cjs' });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('随包副本过期时返回直接修复提示，不要求重建开发产物', () => {
+  const root = mkdtempSync(join(tmpdir(), 'probe-plugin-bundled-stale-'));
   try {
     execFileSync('git', ['init', '-q', root]);
     writeFileSync(join(root, '.gitignore'), 'packages/plugins/fixture/dist\n');
@@ -177,23 +193,29 @@ test('随包副本是新鲜时，不会被插件 workspace dist 的旧文件误�
       backendLoading: 'disk', backendWatchConfig: 'tsup.config.ts', requiredOutputs: ['dist/backend.cjs'],
     } } }));
     writeFileSync(join(plugin, 'src.ts'), 'source');
-    writeFileSync(join(plugin, 'dist/backend.cjs'), 'old workspace output');
-    writeFileSync(join(root, 'extraResources/plugins/fixture/dist/backend.cjs'), 'fresh bundled output');
+    writeFileSync(join(plugin, 'dist/backend.cjs'), 'fresh workspace output');
+    writeFileSync(join(root, 'extraResources/plugins/fixture/dist/backend.cjs'), 'old bundled output');
     for (const output of ['main.cjs', 'preload.js', 'app-server-backend.cjs']) {
       writeFileSync(join(root, 'dist/main', output), 'fresh desktop output');
     }
     for (const source of [join(plugin, 'plugin.json'), join(plugin, 'package.json'), join(plugin, 'src.ts')]) {
-      execFileSync('touch', ['-t', '202601010101', source]);
+      execFileSync('touch', ['-t', '202601020101', source]);
     }
     for (const output of [
-      join(root, 'extraResources/plugins/fixture/dist/backend.cjs'),
+      join(plugin, 'dist/backend.cjs'),
       join(root, 'dist/main/main.cjs'),
       join(root, 'dist/main/preload.js'),
       join(root, 'dist/main/app-server-backend.cjs'),
     ]) {
-      execFileSync('touch', ['-t', '202601020101', output]);
+      execFileSync('touch', ['-t', '202601030101', output]);
     }
-    assert.deepEqual(buildFreshness(root), { stale: false });
+    execFileSync('touch', ['-t', '202601010101', join(root, 'extraResources/plugins/fixture/dist/backend.cjs')]);
+
+    const freshness = buildFreshness(root);
+    assert.equal(freshness.stale, true);
+    assert.equal(freshness.kind, 'bundled');
+    assert.match(freshness.reason, /extraResources\/plugins\/fixture\/dist\/backend\.cjs/);
+    assert.equal(freshness.hint, 'pnpm run package:plugins:official && pnpm run prepare:extra-resources');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

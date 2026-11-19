@@ -2,7 +2,7 @@
 
 前端调试与本机界面验收优先用 `pnpm -s probe`。探针运行当前 checkout 的真实 Electron、Preload、App Server 和 Vite。默认窗口隐藏，使用独立的临时 profile、Workspace、插件目录、CLI 连接文件、端口和 Vite 缓存。可以和同一目录的 `dev:electron` 同时运行。
 
-需要 macOS、Node 24 和已安装的工作区依赖。`up` / `restart` 启动前比对 Main、Preload、Backend 产物与会进入这些产物的源码，并检查磁盘插件声明的 `linnya.development.requiredOutputs` 是否齐全；对有随包副本的插件，检查实际会被探针加载的 `extraResources/plugins/<id>`，而不是只看插件工作区里的 `dist`。没有声明 `requiredOutputs` 的开发插件不参与这项插件产物检查。源码构建产物缺失或过期时会先运行 `pnpm run dev:electron --build-only`；随包副本过期时需重新生成官方插件包和 `extraResources` 后再重试。结果的 `build` 报告是否重建、原因与耗时，构建输出写入当前 worktree 探针临时目录的 `build.log`。同一 worktree 的多个实例同时启动只构建一次。Renderer、样式和测试文件不触发重建，由 Vite 热更新。用 `--no-build` 改为报 `BUILD_STALE`。复用已运行的实例时只提示 `buildStale`，用 `restart` 载入新构建。Renderer 与 Backend 产物不同步导致 RPC 被拒时，启动立即失败为 `BUILD_MISMATCH`，不等超时。重启保留 Workspace 和 profile，并优先复用 Renderer 端口。端口被其他进程占用时 Vite 会选新端口，依赖 origin 的界面偏好会按新页面初始化。
+需要 macOS、Node 24 和已安装的工作区依赖。`up` / `restart` 启动前比对 Main、Preload、Backend 产物与会进入这些产物的源码，并检查磁盘插件声明的 `linnya.development.requiredOutputs` 是否齐全；开发模式的 backend 实际从插件工作区 `packages/plugins/<id>/dist` 加载，`extraResources/plugins/<id>` 只作为 seed 和“从随包重装”的来源，因此两份产物分开检查。没有声明 `requiredOutputs` 的开发插件不参与这项插件产物检查。工作区构建产物缺失或过期时会先运行 `pnpm run dev:electron --build-only`；随包副本过期时直接报 `BUILD_STALE`，提示运行 `pnpm run package:plugins:official && pnpm run prepare:extra-resources`，不会白跑工作区构建。结果的 `build` 报告是否重建、原因与耗时，构建输出写入当前 worktree 探针临时目录的 `build.log`。同一 worktree 的多个实例同时启动只构建一次。Renderer、样式和测试文件不触发重建，由 Vite 热更新。用 `--no-build` 改为报 `BUILD_STALE`。复用已运行的实例时只提示 `buildStale`，用 `restart` 载入新构建。Renderer 与 Backend 产物不同步导致 RPC 被拒时，启动立即失败为 `BUILD_MISMATCH`，不等超时。重启保留 Workspace 和 profile，并优先复用 Renderer 端口。端口被其他进程占用时 Vite 会选新端口，依赖 origin 的界面偏好会按新页面初始化。
 
 ## 从快照到回归
 

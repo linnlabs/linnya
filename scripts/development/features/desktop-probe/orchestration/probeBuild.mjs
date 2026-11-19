@@ -10,23 +10,15 @@ import { instancesRoot, withLifecycleLock } from '../infrastructure/instanceStor
 const outputs = ['dist/main/main.cjs', 'dist/main/preload.js', 'dist/main/app-server-backend.cjs'];
 const buildLog = join(instancesRoot, 'build.log');
 const buildTimeoutMs = 10 * 60_000;
+const bundledPluginRefreshHint = 'pnpm run package:plugins:official && pnpm run prepare:extra-resources';
 
 function mtime(root, path) {
   return statSync(join(root, path), { throwIfNoEntry: false })?.mtimeMs;
 }
 
-function pluginBuildFreshness(root, plugin) {
-  const requiredOutputs = plugin.requiredOutputs ?? [];
-  // 没有声明产物的开发插件（例如 decision、slides）不参与这项检查。
-  // 不能把空数组交给 judgeBuildFreshness：它需要一个最旧产物作为比较基准。
-  if (requiredOutputs.length === 0) return { stale: false };
-
-  // 探针加载随包插件时使用 extraResources 的副本；只有没有随包副本的开发插件
-  // 才回退到 package 自己的 dist（例如尚未进入官方随包集合的 canvas）。
-  const bundledRoot = join(root, 'extraResources', 'plugins', plugin.pluginId);
-  const outputRoot = existsSync(bundledRoot) ? bundledRoot : plugin.packageDir;
-  const outputs = requiredOutputs.map(outputPath => ({
-    path: `${plugin.pluginId}/${outputPath}`,
+function pluginOutputFreshness(root, plugin, outputRoot, outputPrefix) {
+  const outputs = plugin.requiredOutputs.map(outputPath => ({
+    path: `${outputPrefix}/${outputPath}`,
     mtimeMs: mtime(root, relative(root, join(outputRoot, outputPath))),
   }));
   const packagePath = relative(root, plugin.packageDir).replaceAll('\\', '/');
@@ -38,9 +30,52 @@ function pluginBuildFreshness(root, plugin) {
     .map(path => ({ path, mtimeMs: mtime(root, path) ?? 0 }));
   const missing = outputs.find(output => output.mtimeMs === undefined);
   if (missing) {
-    return { stale: true, reason: `缺少 ${missing.path.slice(`${plugin.pluginId}/`.length)}` };
+    return { stale: true, reason: `缺少 ${missing.path}` };
   }
   return judgeBuildFreshness(outputs, sources);
+}
+
+function pluginBuildFreshness(root, plugin) {
+  const requiredOutputs = plugin.requiredOutputs ?? [];
+  // 没有声明产物的开发插件（例如 decision、slides）不参与这项检查。
+  // 不能把空数组交给 judgeBuildFreshness：它需要一个最旧产物作为比较基准。
+  if (requiredOutputs.length === 0) return { stale: false };
+
+  // 开发模式的 backend 从 package 自己的 dist 加载；它缺失或过期时必须先重建。
+  const workspaceFreshness = pluginOutputFreshness(
+    root,
+    { ...plugin, requiredOutputs },
+    plugin.packageDir,
+    `${plugin.pluginId}`,
+  );
+  if (workspaceFreshness.stale) {
+    return {
+      ...workspaceFreshness,
+      reason: `插件 ${plugin.pluginId} ${workspaceFreshness.reason.replace(
+        `缺少 ${plugin.pluginId}/`,
+        '缺少 ',
+      )}`,
+    };
+  }
+
+  // extraResources 是 seed 和“从随包重装”的来源，不是开发模式 backend 的加载源。
+  // 仍单独检查它，避免探针在随包副本过期时误把旧 artifact 带入验收流程。
+  const bundledRoot = join(root, 'extraResources', 'plugins', plugin.pluginId);
+  if (!existsSync(bundledRoot)) return { stale: false };
+  const bundledFreshness = pluginOutputFreshness(
+    root,
+    { ...plugin, requiredOutputs },
+    bundledRoot,
+    `extraResources/plugins/${plugin.pluginId}`,
+  );
+  if (bundledFreshness.stale) {
+    return {
+      ...bundledFreshness,
+      kind: 'bundled',
+      hint: bundledPluginRefreshHint,
+    };
+  }
+  return bundledFreshness;
 }
 
 export function buildFreshness(root = repoRoot) {
@@ -48,10 +83,7 @@ export function buildFreshness(root = repoRoot) {
   for (const plugin of discoverWorkspaceDiskBackendPlugins(root)) {
     const pluginFreshness = pluginBuildFreshness(root, plugin);
     if (pluginFreshness.stale) {
-      return {
-        stale: true,
-        reason: `插件 ${plugin.pluginId} ${pluginFreshness.reason}`,
-      };
+      return pluginFreshness;
     }
   }
   const sources = [
@@ -87,6 +119,9 @@ function runBuild() {
 export async function ensureFreshBuild({ build = true } = {}) {
   const first = buildFreshness();
   if (!first.stale) return { rebuilt: false };
+  if (first.kind === 'bundled') {
+    throw new ProbeError('BUILD_STALE', `随包插件产物已过期：${first.reason}`, first.hint);
+  }
   if (!build) {
     throw new ProbeError('BUILD_STALE', `开发产物已过期：${first.reason}`, '去掉 --no-build 让探针自动构建，或先运行 pnpm run dev:electron --build-only');
   }
@@ -96,7 +131,12 @@ export async function ensureFreshBuild({ build = true } = {}) {
     const started = Date.now();
     await runBuild();
     const after = buildFreshness();
-    if (after.stale) throw new ProbeError('BUILD_STALE', `构建后产物仍过期：${after.reason}`, buildLog);
+    if (after.stale) {
+      if (after.kind === 'bundled') {
+        throw new ProbeError('BUILD_STALE', `随包插件产物已过期：${after.reason}`, after.hint);
+      }
+      throw new ProbeError('BUILD_STALE', `构建后产物仍过期：${after.reason}`, buildLog);
+    }
     return { rebuilt: true, reason: current.reason, buildMs: Date.now() - started, log: buildLog };
   }, { timeoutMs: buildTimeoutMs });
 }
