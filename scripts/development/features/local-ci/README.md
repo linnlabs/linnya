@@ -54,6 +54,16 @@ pnpm run ci:local --test-workers 8       # 合并测试的 vitest worker 数
 
 日志在 `_dev_data/ci-local/<时间>/`：每个执行步骤一个日志文件，`summary.json` 记录全部结果；失败时终端打印日志末尾。有失败或中断时退出码为 1。`summary.json` 的 `tree` 按代码内容标识被测提交，`fullRun` 表示没有用 `--workflow` / `--job` 缩小范围且计划里每一步都有结果，`passed` 表示没有失败也没有中断；`clean`、`fullRun`、`passed` 同时为真，才说明全部本地 CI 在这份代码上通过。`Ctrl+C` 会停掉所有正在运行的步骤并回收临时检出。运行被强制结束（`SIGKILL`、agent 停掉后台任务）时来不及回收；下一次启动会先回收进程已退出、又没用 `--keep` 保留的检出（每份约 1.6 GB）。
 
+## 结果保留
+
+每次运行（`--list` 除外）开始时，对本工作区 `_dev_data/ci-local/` 做一次清理，目录不会无限增长。满足任一条的运行目录保留，其余删除：
+
+1. 最近 20 个运行目录（含本次，不论结果），便于对比失败；
+2. 每个“受保护代码”最新的一份通过的完整回执（`clean`、`fullRun`、`passed` 同时为真）：受保护代码是本次运行的 `tree`，加上本仓库所有 worktree 当前 HEAD 的 `tree`；
+3. 最近 7 天内开始的所有通过的完整回执。
+
+合入与推送 `linnya` 主分支的本机门禁（工作台 `main-gate`）按代码内容 `tree` 在各 worktree 的 `_dev_data/ci-local/*/summary.json` 里查找通过的完整回执。规则 2、3 保证门禁还可能查到的回执不会被清理：待合入分支顶端、本地 main 顶端的回执属于某个 worktree 的 HEAD；分支继续前进后，旧回执仍在 7 天窗口里。失败、中断、只跑了部分任务或读不出回执的旧运行只受规则 1 保护，超出就删除。名字不是运行时间戳（如 `2026-11-19T10-30-55`）的条目不动。清理失败只提示，不影响本次运行。判定是 `functions/selectLocalCiRunsToPrune.ts` 的纯函数，通过回执的条件与工作台门禁保持一致，修改一边要同步另一边。
+
 ## 结构
 
 - `functions/evaluateWorkflowCondition.ts`：仓库工作流用到的 GitHub 表达式子集（`runner.os`、`matrix.*`、`steps.<id>.outcome`、`always()` 等）；其他写法抛出“本地无法判断”。
@@ -62,5 +72,6 @@ pnpm run ci:local --test-workers 8       # 合并测试的 vitest worker 数
 - `functions/buildLocalCiLanes.ts`：计划 → 执行线；分类、去重指纹、测试分片合并与覆盖检查。
 - `functions/pickLocalCiStarts.ts`：按类别决定下一批启动哪些步骤；worker 数与并行上限的取值。
 - `orchestration/prepareLocalCiCheckout.ts`：临时干净检出。
+- `definitions/localCiRetention.ts`、`functions/selectLocalCiRunsToPrune.ts`、`orchestration/pruneLocalCiRuns.ts`：运行结果保留规则、纯函数判定与实际清理。
 - `orchestration/runLocalCiPlan.ts`：并行执行、日志、去重、进程回收、证据复制。
 - `bin/local-ci.ts`：命令入口与汇总输出。

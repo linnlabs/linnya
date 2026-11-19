@@ -12,6 +12,8 @@ import { buildLocalCiLanes } from '../functions/buildLocalCiLanes';
 import { buildLocalCiPlan, type ParsedWorkflow } from '../functions/buildLocalCiPlan';
 import { resolveLocalCiParallelism, type LocalCiParallelism } from '../functions/pickLocalCiStarts';
 import { prepareLocalCiCheckout, pruneOrphanedLocalCiCheckouts } from '../orchestration/prepareLocalCiCheckout';
+import { pruneLocalCiRuns } from '../orchestration/pruneLocalCiRuns';
+import { LOCAL_CI_KEEP_RUNS, LOCAL_CI_RECEIPT_KEEP_DAYS } from '../definitions/localCiRetention';
 import {
   collectLocalCiEvidence,
   readLogTail,
@@ -144,6 +146,15 @@ async function main(): Promise<number> {
   const checkout = prepareLocalCiCheckout(repositoryRoot, { inPlace: options.inPlace, keep: options.keep });
   const logDirectory = path.join(repositoryRoot, '_dev_data/ci-local', timestamp());
   mkdirSync(logDirectory, { recursive: true });
+  // 本次目录已建好，算在最近 N 个之内；清理失败只提示，不影响这次运行。
+  try {
+    const removed = pruneLocalCiRuns(repositoryRoot, { currentTree: checkout.tree });
+    if (removed.length) {
+      console.log(`已清理 ${removed.length} 份旧的本地 CI 结果（保留最近 ${LOCAL_CI_KEEP_RUNS} 份、${LOCAL_CI_RECEIPT_KEEP_DAYS} 天内通过的完整回执，以及各 worktree 当前 HEAD 的最新回执）`);
+    }
+  } catch (error) {
+    console.log(`清理旧的本地 CI 结果失败（已忽略）：${error instanceof Error ? error.message : String(error)}`);
+  }
   console.log(`本地 CI：提交 ${checkout.commit.slice(0, 9)}，${checkout.clean ? `干净检出 ${checkout.root}` : '当前目录'}`);
   if (checkout.clean && checkout.uncommitted.length) {
     console.log(`注意：有 ${checkout.uncommitted.length} 个未提交改动，干净检出不包含它们（CI 也只看提交）；要带上请先提交或用 --in-place。`);
