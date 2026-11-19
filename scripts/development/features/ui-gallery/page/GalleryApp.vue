@@ -39,6 +39,7 @@ import IconsSection from './sections/IconsSection.vue';
 import InputsSection from './sections/InputsSection.vue';
 import ListExampleSection from './sections/ListExampleSection.vue';
 import MenusSection from './sections/MenusSection.vue';
+import PluginDataSection from './sections/PluginDataSection.vue';
 import ScheduledTasksSection from './sections/ScheduledTasksSection.vue';
 import ConversationSteeringSection from './sections/ConversationSteeringSection.vue';
 import SelectionSection from './sections/SelectionSection.vue';
@@ -70,6 +71,7 @@ const SECTION_COMPONENTS: Readonly<Record<Exclude<GallerySectionId, 'dialogs'>, 
   'conversation-tier': ConversationTierSection,
   'scheduled-tasks': ScheduledTasksSection,
   'conversation-steering': ConversationSteeringSection,
+  'plugin-data': PluginDataSection,
 };
 
 const schemeIds = gallerySchemes.map(scheme => scheme.id);

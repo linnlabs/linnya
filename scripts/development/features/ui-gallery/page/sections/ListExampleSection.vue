@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import '../../../../../../apps/renderer/domains/knowledgebase/styles/components/KnowledgeBaseList.css';
+import '../../../../../../packages/plugins/knowledge/src/renderer/styles/components/KnowledgeBaseList.css';
 import { IconButton, TagChip } from '@linnya/renderer-ui';
 import {
   ChatIcon,
