@@ -143,7 +143,7 @@
                   />
                 </div>
                 <div class="project-overview__cell project-conversations__muted" role="cell">
-                  <span>{{ agentText(row.agent_id) }}</span>
+                  <span>{{ repliedAgentsText(row) ?? '—' }}</span>
                 </div>
                 <div class="project-overview__cell project-conversations__numeric" role="cell">
                   <span>{{ row.turn_count }}</span>
@@ -197,6 +197,24 @@
         <p v-if="detailStatus === 'error'" class="project-conversations__detail-note">
           {{ message('workspace.projectOverview.conversations.detail.loadFailed') }}
         </p>
+
+        <section class="project-conversations__section">
+          <h3 class="project-conversations__label">{{ message('workspace.projectOverview.conversations.detail.agents') }}</h3>
+          <dl class="project-conversations__storage project-conversations__agents">
+            <div>
+              <dt>{{ message('workspace.projectOverview.conversations.detail.replied') }}</dt>
+              <dd>{{ repliedAgentsText(selectedRow) ?? message('workspace.projectOverview.conversations.detail.noReply') }}</dd>
+            </div>
+            <div>
+              <dt>{{ message('workspace.projectOverview.conversations.detail.selected') }}</dt>
+              <dd>{{ agentText(selectedRow.selected_agent_id) }}</dd>
+            </div>
+            <div v-if="detail && detail.subagents.length > 0">
+              <dt>{{ message('workspace.projectOverview.conversations.detail.subagents') }}</dt>
+              <dd>{{ subagentsText(detail.subagents) }}</dd>
+            </div>
+          </dl>
+        </section>
 
         <section v-if="selectedExcerpt" class="project-conversations__section">
           <h3 class="project-conversations__label">{{ message('workspace.projectOverview.conversations.detail.match') }}</h3>
@@ -314,6 +332,7 @@ import {
   type ProjectConversationChangedDocument,
   type ProjectConversationRow,
   type ProjectConversationStorage,
+  type ProjectConversationSubagent,
 } from '@app/schemas';
 import type { WorkspaceMessageKey } from '@/domains/workspace/definitions/workspaceMessages';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
@@ -332,6 +351,8 @@ import type { ProjectOverviewDocumentTarget, ProjectOverviewPresentation } from 
 import {
   defaultProjectConversationSortDirection,
   filterProjectConversationRows,
+  formatProjectConversationAgents,
+  projectConversationRepliedAgents,
   projectConversationStorageBytes,
   sortProjectConversationRows,
 } from '../functions/projectConversationRows';
@@ -382,6 +403,18 @@ const now = computed(() => new Date(historyClock.value));
 function agentText(agentId: string | null): string {
   return props.presentation.agentName(agentId);
 }
+const listSeparator = computed(() => message('workspace.projectOverview.condition.join'));
+function repliedAgentsText(row: ProjectConversationRow): string | null {
+  return formatProjectConversationAgents(row.replied_agent_ids, agentText, listSeparator.value);
+}
+function subagentsText(subagents: readonly ProjectConversationSubagent[]): string {
+  return subagents
+    .map(item => message('workspace.projectOverview.conversations.detail.subagentRuns', {
+      name: agentText(item.agent_id),
+      count: item.run_count,
+    }))
+    .join(listSeparator.value);
+}
 function titleText(row: ProjectConversationRow): string {
   return row.title.trim() || message('workspace.projectOverview.untitledConversation');
 }
@@ -405,7 +438,7 @@ const sortedRows = computed(() => {
   });
   return sortProjectConversationRows(filtered, sort.value, {
     title: titleText,
-    agent: row => agentText(row.agent_id),
+    agent: row => repliedAgentsText(row) ?? '',
   });
 });
 
@@ -417,7 +450,7 @@ function filterText(labelKey: WorkspaceMessageKey, value: string | null): string
 }
 
 const agentOptions = computed<CustomSelectOption<string>[]>(() => {
-  const agents = [...new Set(props.rows.map(row => row.agent_id ?? ''))]
+  const agents = projectConversationRepliedAgents(props.rows)
     .map(agent => ({ value: agent, text: agentText(agent || null) }))
     .sort((left, right) => left.text.localeCompare(right.text, currentLocale.value));
   return [
@@ -524,7 +557,6 @@ function moveSelection(index: number, offset: -1 | 1): void {
 
 function detailMetaText(row: ProjectConversationRow): string {
   return [
-    agentText(row.agent_id),
     message('workspace.projectOverview.conversations.detail.turns', { count: row.turn_count }),
     message('workspace.projectOverview.conversations.detail.created', { time: timeText(row.created_at) }),
     props.runningConversationIds.has(row.conversation_id)

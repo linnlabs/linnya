@@ -9,7 +9,9 @@ function projectRow(row: ProjectConversationRow, excerpt: string | null | undefi
   return {
     id: row.conversation_id,
     title: row.title,
-    agent: row.agent_id ?? 'default',
+    // 回复过的 Agent（最近的在前）与当前选用的 Agent；默认 Agent 写作 default。
+    agents: row.replied_agent_ids.map(agentId => agentId ?? 'default'),
+    selectedAgent: row.selected_agent_id ?? 'default',
     turns: row.turn_count,
     changedDocuments: row.changed_document_count,
     createdAt: formatAgentTimestamp(row.created_at),

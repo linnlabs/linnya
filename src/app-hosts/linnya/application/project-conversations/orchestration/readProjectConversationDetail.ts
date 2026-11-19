@@ -7,14 +7,17 @@ import type {
 import { ACTION_LEDGER_MAX_QUERY_LIMIT, createSqliteActionLedger } from 'src/domains/action-ledger';
 import { createMarkdownReadDatabase, MarkdownPendingRevisionReader } from 'src/domains/markdown';
 import { readWorkspaceNodeIdentityIncludingDeleted } from 'src/features/workspace/vfs';
+import { readConversationRunAgents } from '../../../adapters/persistence/event-store';
+import { listInternalAgentIds } from '../../../agent-registry/agentDefinitionResolver';
+import { groupConversationAgents } from '../functions/conversationAgents';
 import { clipConversationText } from '../functions/conversationExcerpt';
 import { toConversationStorage, type ConversationStorageUsageRow } from '../functions/conversationStorageRow';
 
 const MARKDOWN_NODE_TYPE = 'document';
 
 /**
- * 对话详情只放已有事实，不调用模型：第一条用户输入、最后一条最终答复（截取原文）、
- * 这个对话在本项目改过的文档、占用。对话不属于该项目时返回 null。
+ * 对话详情只放已有事实，不调用模型：派出的子 Agent（按 Agent 计子运行次数）、第一条用户输入、
+ * 最后一条最终答复（截取原文）、这个对话在本项目改过的文档、占用。对话不属于该项目时返回 null。
  */
 export function readProjectConversationDetail(
   db: Database.Database,
@@ -59,11 +62,16 @@ export function readProjectConversationDetail(
     });
   }
 
+  const agents = groupConversationAgents(
+    readConversationRunAgents(db, { conversationId: request.conversation_id }),
+    listInternalAgentIds(),
+  ).get(request.conversation_id);
   const storage = db.prepare<[string], ConversationStorageUsageRow>(
     'SELECT * FROM conversation_storage_usage WHERE conversation_id = ?',
   ).get(request.conversation_id);
   return {
     conversation_id: request.conversation_id,
+    subagents: agents?.subagents ?? [],
     first_question: firstQuestion === null ? null : clipConversationText(firstQuestion),
     last_answer: lastAnswer === null ? null : clipConversationText(lastAnswer),
     changed_documents: changedDocuments,

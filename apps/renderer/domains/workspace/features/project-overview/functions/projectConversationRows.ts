@@ -35,12 +35,26 @@ export function filterProjectConversationRows(
   const activityStart = modifiedRangeStart(filters.activity, context.now);
   return rows.filter(row => {
     if (context.matches !== null && !context.matches.has(row.conversation_id)) return false;
-    if (filters.agent !== null && (row.agent_id ?? '') !== filters.agent) return false;
+    if (filters.agent !== null && !row.replied_agent_ids.some(agentId => (agentId ?? '') === filters.agent)) return false;
     if (activityStart !== null && row.last_event_at < activityStart) return false;
     if (filters.documents === 'changed' && row.changed_document_count === 0) return false;
     if (filters.documents === 'unchanged' && row.changed_document_count > 0) return false;
     return true;
   });
+}
+
+/** 筛选菜单里的 Agent：这些对话里回复过的全部 Agent，默认 Agent 记为空字符串（与筛选值一致）。 */
+export function projectConversationRepliedAgents(rows: readonly ProjectConversationRow[]): string[] {
+  return [...new Set(rows.flatMap(row => row.replied_agent_ids.map(agentId => agentId ?? '')))];
+}
+
+/** 回复过的 Agent 的显示文字，最近回复的在前；还没有回复时为 null。 */
+export function formatProjectConversationAgents(
+  agentIds: readonly (string | null)[],
+  agentName: (agentId: string | null) => string,
+  separator: string,
+): string | null {
+  return agentIds.length === 0 ? null : agentIds.map(agentName).join(separator);
 }
 
 export interface ProjectConversationSortLabels {

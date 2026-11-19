@@ -4,8 +4,11 @@
 共享合同在 `packages/schemas/src/project-conversations.ts`，走本地 HTTP `/api/v1/project-conversations`
 （路由见 `src/features/project-conversations`）：占用测量要读对话工作目录，这个端口只在 HTTP 装配层可用。
 
-- 列表：对话持久化里属于本项目的对话。Agent 只取对话选定的 Agent，选的就是默认 Agent 或没选时为 `null`；
-  不从运行记录推断，标题生成等内部运行也是对话里的根运行。轮次是用户消息数。置顶在前，再按最近活动。
+- 列表：对话持久化里属于本项目的对话。Agent 分两项：回复过的 Agent 取自根运行（`kind = agent` 且没有父运行），
+  按 Agent 去重、最近回复的在前；当前选用的 Agent 取自对话。Agent 注册为 `internal` 的运行（标题生成、单轮写作、
+  批量收尾等）不算；默认 Agent 与未记录 Agent 的运行都写作 `null`（`toReadModelAgentId`）。概念区分见
+  [产品模型总览 §5.2](../../../../../docs/product-model-overview.md#52-agent-自由注册)。轮次是用户消息数。置顶在前，再按最近活动。
+- 派出的子 Agent：详情里按 Agent 计子运行次数（含多层子运行），次数多的在前，同样不算内部 Agent。
 - 改过的文档：[行动账本](../../../../domains/action-ledger/README.md)按对话去重计数；详情另给每份文档的类型、最近改动时间、
   是否已删除（已删除不可打开），内建 Markdown 再给待审阅修订数。
 - 详情的第一个问题与最后的答复取自[可读对话](../../../../../docs/conversation-platform/06-read-model.md#8-可读对话)，
