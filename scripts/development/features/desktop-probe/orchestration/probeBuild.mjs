@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { listGitFiles } from '../../../../source-analysis/listGitFiles.mjs';
-import { closeSync, openSync, statSync } from 'node:fs';
+import { closeSync, existsSync, openSync, statSync } from 'node:fs';
 import { discoverWorkspaceDiskBackendPlugins } from '../../plugin-backend-composition/functions/discoverWorkspaceDiskBackendPlugins.mjs';
 import { join, relative } from 'node:path';
 import { ProbeError, repoRoot } from '../definitions/probeContract.mjs';
@@ -16,9 +16,18 @@ function mtime(root, path) {
 }
 
 function pluginBuildFreshness(root, plugin) {
-  const outputs = (plugin.requiredOutputs ?? []).map(path => ({
-    path: `${plugin.pluginId}/${path}`,
-    mtimeMs: mtime(root, join(relative(root, plugin.packageDir), path)),
+  const requiredOutputs = plugin.requiredOutputs ?? [];
+  // 没有声明产物的开发插件（例如 decision、slides）不参与这项检查。
+  // 不能把空数组交给 judgeBuildFreshness：它需要一个最旧产物作为比较基准。
+  if (requiredOutputs.length === 0) return { stale: false };
+
+  // 探针加载随包插件时使用 extraResources 的副本；只有没有随包副本的开发插件
+  // 才回退到 package 自己的 dist（例如尚未进入官方随包集合的 canvas）。
+  const bundledRoot = join(root, 'extraResources', 'plugins', plugin.pluginId);
+  const outputRoot = existsSync(bundledRoot) ? bundledRoot : plugin.packageDir;
+  const outputs = requiredOutputs.map(outputPath => ({
+    path: `${plugin.pluginId}/${outputPath}`,
+    mtimeMs: mtime(root, relative(root, join(outputRoot, outputPath))),
   }));
   const packagePath = relative(root, plugin.packageDir).replaceAll('\\', '/');
   const sources = listGitFiles(
