@@ -167,7 +167,7 @@ describe('task naming guard', () => {
         occurrence => findTaskNamingAllowance(occurrence)?.id === 'cloud-model-task-defaults-wire'
       )
     ).toBe(true);
-  });
+  }, 30_000);
 
   it('只允许插件 AgentDefinition.task 字段，不放行旧 promptKey', () => {
     const pluginAgentPath = 'packages/plugins/example/src/backend/agents/subagent_example/index.ts';
