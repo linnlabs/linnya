@@ -221,7 +221,9 @@ Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决�
 
 `Modal` 只拥有通用遮罩、标题、关闭入口、视口尺寸约束、`content|internal` 滚动模式和可选 footer；业务表单与流程继续归调用方。自 2.8.0 起进出场由遮罩淡底色与弹窗本体缩放（`--modal-*` token）组成，正文滚动时不加分隔线。自 3.9.0 起四边边距由 Modal 统一为 `--modal-inset`：默认滚动模式下正文与 footer 的左右、底部边距归 Modal，调用方只写上下间距；`internal` 模式下调用方根节点用 `var(--modal-inset)` 写左右边距并占满宽度（规则见 [设计规范 9.5](./docs/design.md#95-弹窗)）。自 2.7.0 起，可通过 `title-extra` 插槽在标题旁放来源或状态标签，标题本身的字阶和长标题换行仍由 Modal 拥有。`AlertDialog` 保持现有确认/取消/关闭事件投影，并支持结构化 section 和风险文案；危险样式优先由 `isDangerousAction` 明确声明，当前仍保留既有中英文文案推断以确保迁移等价。`ImagePreviewModal` 的 `classNames` 只向 overlay 和 image 节点注入业务命名空间 class，不把内部 selector 变成公共 CSS API。自 2.8.0 起可传入 `sourceElement`（缩略图或包着缩略图的按钮，调用方用 `useImagePreviewSource()` 在点击处记录），大图从缩略图展开、关闭时缩回；不传或不满足条件（缩略图离屏、浏览器不支持、减少动态效果）时保持淡入淡出。
 
-当前 Modal 没有 focus trap、统一 Esc stack 或关闭后焦点恢复，AlertDialog 也保留迁移前的键盘监听时机。它们是已登记的交互/可访问性欠账，不得在纯 owner 迁移中用临时判断改写；后续必须单独设计、决策和验收。
+Escape 由 `/features/overlays` 的 document 级登记统一归属（自 3.12.0 起）：`Modal`、`AlertDialog`（经内层 Modal）、`ImagePreviewModal` 打开时登记，整个 document 只装一个 keydown 监听，Escape 只交给最后打开的那一层；该层 `closeOnEsc` 为 `false` 时本层接住但不关闭，也不穿透到下一层。必须保留自有 DOM 的业务浮层（当前是 Host 的 SettingsModal）通过公开的 `useEscapeLayer({ active, onEscape })` 参与同一顺序，业务不得再各自监听 document Escape 来关闭模态浮层。这份登记只管 Escape，不引入 parent 关系、inert 或外部点击；`AlertDialog` 因此不再有自己的 Escape 分支，一次按键只发出一次 close/cancel。
+
+当前 Modal 仍没有 focus trap、背景 inert 或关闭后焦点恢复，AlertDialog 的 Enter 确认也保留迁移前的 document 监听时机；菜单、Popover、Picker 等非 Modal 浮层的 Escape 仍各自管理，尚未并入这份顺序。它们是已登记的交互/可访问性欠账，不得在纯 owner 迁移中用临时判断改写；后续必须单独设计、决策和验收。
 
 ## 日期与时间
 

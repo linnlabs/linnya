@@ -2,6 +2,12 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.12.0 - 2026-11-19
+
+- 多层浮层同时打开时，Escape 只交给最后打开的那一层：`Modal`、`AlertDialog`、`ImagePreviewModal` 改为登记到 document 级的 Escape 归属（整个 document 只有一个监听）。此前设置里打开的模型详情按 Escape 会连同外层设置一起关闭；现在先关详情，再按一次才关设置。最上层的 `Modal` 设了 `closeOnEsc: false`（例如处理中）时，Escape 不再穿透关闭下面一层。
+- 新增 `useEscapeLayer({ active, onEscape })` 与类型 `EscapeLayerOptions`：保留自有 DOM 的业务浮层用它参与同一顺序，不再自己监听 document 的 Escape。Host 的设置窗已改用。
+- `AlertDialog` 去掉自己的 Escape 监听，只由内层 Modal 处理：此前一次 Escape 会发出两次 `close` / `cancel`，现在只发一次；Enter 确认保持不变。仅依赖“Escape 触发一次关闭”的调用方不受影响；曾依赖两次事件的调用方（不应存在）需要改为幂等处理。现有 `^3.0.0` 插件保持兼容。
+
 ## 3.11.0 - 2026-11-18
 
 - 新增 `ShieldKeyholeIcon`、`ShieldCheckmarkIcon`、`ShieldErrorIcon`：同一个盾牌外形，里面分别是锁孔、对勾、感叹号（Fluent shield_keyhole / shield_task / shield_error 几何，1u 描边）。对话输入框用它们表示命令权限的只读、标准与完全访问。

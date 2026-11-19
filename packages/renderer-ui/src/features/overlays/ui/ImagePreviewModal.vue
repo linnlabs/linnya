@@ -34,13 +34,14 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import type { ImagePreviewModalProps } from '../definitions/imagePreviewModal';
 import {
   canRunImagePreviewTransition,
   IMAGE_PREVIEW_TRANSITION_NAME,
   resolveImagePreviewSourceImage,
 } from '../functions/imagePreviewTransition';
+import { useEscapeLayer } from '../vue/useEscapeLayer';
 
 const props = withDefaults(defineProps<ImagePreviewModalProps>(), {
   src: '',
@@ -125,17 +126,8 @@ watch(() => [props.src, props.alt], () => {
   if (props.isVisible) syncDisplayedContent();
 });
 
-function handleKeyDown(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && props.isVisible) {
-    emit('close');
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('keydown', handleKeyDown);
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', handleKeyDown);
+useEscapeLayer({
+  active: () => props.isVisible,
+  onEscape: () => emit('close'),
 });
 </script>
