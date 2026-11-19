@@ -168,7 +168,7 @@ function isPluginRemoteInstallResult(value: unknown): value is PluginRemoteInsta
       typeof value.pluginId === 'string' &&
       typeof value.version === 'string' &&
       (typeof value.previousVersion === 'string' || value.previousVersion === null) &&
-      value.restartRequired === true
+      typeof value.restartRequired === 'boolean'
     );
   }
   if (value.status === 'skipped') {

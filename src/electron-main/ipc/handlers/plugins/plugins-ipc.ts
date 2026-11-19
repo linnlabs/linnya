@@ -411,17 +411,28 @@ export async function registerPluginsHandlers(input: {
           if (result.status === 'failed') {
             throw new Error(result.error);
           }
-          resetBackendPluginRegistrationForRuntimeChange();
-          ensureBuiltinBackendPluginsRegistered({
-            applicationVersion: input.applicationVersion,
-            requireComplete: true,
-          });
-          await syncPluginRuntimeState({
-            reinitializeTools: true,
-            runtimeOwner: input.runtimeOwner,
-          });
-          input.rendererIntegration.publishPluginsChanged();
-          return { success: true, data: result };
+          try {
+            resetBackendPluginRegistrationForRuntimeChange();
+            ensureBuiltinBackendPluginsRegistered({
+              applicationVersion: input.applicationVersion,
+              requireComplete: true,
+            });
+            await syncPluginRuntimeState({
+              reinitializeTools: true,
+              runtimeOwner: input.runtimeOwner,
+            });
+            input.rendererIntegration.publishPluginsChanged();
+            return { success: true, data: result };
+          } catch (runtimeRefreshError) {
+            // 安装编排已经提交了 SQLite、migration ledger 和 active 指针。
+            // registry 刷新失败不能再伪装成“安装失败”，否则用户会重复点击并破坏已安装状态；
+            // 让 Renderer 明确提示重启，下一次启动会从 active artifact 重新注册。
+            logger.error('[plugins:installBundled] installed but runtime refresh failed:', runtimeRefreshError);
+            return {
+              success: true,
+              data: { ...result, restartRequired: true },
+            };
+          }
         },
       });
     } catch (error) {

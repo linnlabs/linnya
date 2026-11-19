@@ -127,7 +127,7 @@ export type PluginRemoteInstallResult =
       pluginId: PluginId;
       version: string;
       previousVersion: string | null;
-      restartRequired: true;
+      restartRequired: boolean;
     }
   | {
       status: 'skipped';

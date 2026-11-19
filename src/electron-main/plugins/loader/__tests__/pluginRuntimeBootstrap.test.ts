@@ -231,6 +231,25 @@ describe('plugin runtime bootstrap', () => {
     expect(fs.existsSync(path.join(userPluginRoot, 'mindmap/1.0.0/plugin.json'))).toBe(true);
   });
 
+  it('replaces a leftover same-version directory when the plugin is not active', () => {
+    const tempRoot = makeTempRoot();
+    const bundledRoot = path.join(tempRoot, 'bundled');
+    const userPluginRoot = path.join(tempRoot, 'user-plugins');
+    writeBundledPlugin(bundledRoot, 'mindmap', '1.0.0');
+    writePluginVersionDir(path.join(userPluginRoot, 'mindmap/1.0.0'), 'mindmap', '1.0.0', {
+      artifactIdentity: 'failed-attempt',
+    });
+
+    const candidate = stageBundledPluginForExplicitInstall({
+      bundledPluginRoot: bundledRoot,
+      userPluginRoot,
+      pluginId: 'mindmap',
+    });
+
+    expect(candidate.createdVersionDir).toBe(true);
+    expect(fs.readFileSync(path.join(candidate.pluginDir, 'SHA512SUMS'), 'utf8')).toContain('mindmap@1.0.0');
+  });
+
   it('does not downgrade a newer active plugin installation', () => {
     const tempRoot = makeTempRoot();
     const bundledRoot = path.join(tempRoot, 'bundled');

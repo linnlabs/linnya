@@ -643,10 +643,14 @@ async function runRemotePluginInstall(
       await refreshSelectedPluginDetail(item.meta.id);
       notificationStore.show(
         pluginStoreMessage(
-          item.state === 'missing' ? 'pluginStore.toast.installed' : 'pluginStore.toast.updated',
+          result.restartRequired
+            ? (item.state === 'missing'
+              ? 'pluginStore.toast.installedRestart'
+              : 'pluginStore.toast.updatedRestart')
+            : (item.state === 'missing' ? 'pluginStore.toast.installed' : 'pluginStore.toast.updated'),
           { pluginName: item.meta.name },
         ),
-        'success',
+        result.restartRequired ? 'warning' : 'success',
         5000
       );
     } else if (result.status === 'failed') {
@@ -670,7 +674,9 @@ async function runRemotePluginInstall(
     }
   } catch (caught) {
     notificationStore.show(
-      pluginStoreMessage(options.failureMessageKey, {
+      pluginStoreMessage(options.failureMessageKey === 'pluginStore.error.installFailed'
+        ? 'pluginStore.error.installFailedWithReason'
+        : options.failureMessageKey, {
         errorMessage: resolveErrorMessage(readErrorMessage(caught)),
       }),
       'error',
@@ -702,11 +708,18 @@ async function handleBundledInstall(item: PluginStoreListItem): Promise<void> {
   try {
     const result = await pluginsStore.installPluginFromBundled(item.meta.id);
     if (result.status === 'installed') {
-      await loadRuntimeRendererPlugins();
+      if (!result.restartRequired) {
+        await loadRuntimeRendererPlugins();
+      }
       await refreshSelectedPluginDetail(item.meta.id);
       notificationStore.show(
-        pluginStoreMessage('pluginStore.toast.installed', { pluginName: item.meta.name }),
-        'success',
+        pluginStoreMessage(
+          result.restartRequired
+            ? 'pluginStore.toast.installedRuntimeRefresh'
+            : 'pluginStore.toast.installed',
+          { pluginName: item.meta.name },
+        ),
+        result.restartRequired ? 'warning' : 'success',
         5000,
       );
     } else if (result.status === 'failed') {
@@ -714,7 +727,7 @@ async function handleBundledInstall(item: PluginStoreListItem): Promise<void> {
     }
   } catch (caught) {
     notificationStore.show(
-      pluginStoreMessage('pluginStore.error.installFailed', {
+      pluginStoreMessage('pluginStore.error.installFailedWithReason', {
         errorMessage: resolveErrorMessage(readErrorMessage(caught)),
       }),
       'error',

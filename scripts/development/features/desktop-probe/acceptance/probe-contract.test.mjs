@@ -139,6 +139,29 @@ test('主产物存在时，插件必需文件缺失仍判为需要重建', () =>
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('插件源码比已生成的 backend 产物新时判为过期', () => {
+  const root = mkdtempSync(join(tmpdir(), 'probe-plugin-stale-'));
+  try {
+    execFileSync('git', ['init', '-q', root]);
+    const plugin = join(root, 'packages/plugins/fixture');
+    mkdirSync(join(plugin, 'dist'), { recursive: true });
+    writeFileSync(join(plugin, 'plugin.json'), JSON.stringify({ id: 'fixture' }));
+    writeFileSync(join(plugin, 'package.json'), JSON.stringify({ linnya: { development: {
+      backendLoading: 'disk', backendWatchConfig: 'tsup.config.ts', requiredOutputs: ['dist/backend.cjs'],
+    } } }));
+    writeFileSync(join(plugin, 'src.ts'), 'new source');
+    writeFileSync(join(plugin, 'dist/backend.cjs'), 'old output');
+    const now = Date.now() / 1000;
+    execFileSync('touch', ['-t', '202601010101', join(plugin, 'dist/backend.cjs')]);
+    execFileSync('touch', ['-t', '202601020101', join(plugin, 'src.ts')]);
+    assert.deepEqual(buildFreshness(root), {
+      stale: true,
+      reason: '插件 fixture packages/plugins/fixture/package.json 比 fixture/dist/backend.cjs 新',
+    });
+    void now;
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('eval --main 只认本次 Desktop 日志里的 Main 调试口', () => {
   const log = 'DevTools listening on ws://127.0.0.1:5001/devtools/browser/x\nDebugger listening on ws://127.0.0.1:61234/5f0c-9a\n';
   assert.equal(readDesktopMainInspector(log), 'ws://127.0.0.1:61234/5f0c-9a');

@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { listGitFiles } from '../../../../source-analysis/listGitFiles.mjs';
 import { closeSync, openSync, statSync } from 'node:fs';
 import { discoverWorkspaceDiskBackendPlugins } from '../../plugin-backend-composition/functions/discoverWorkspaceDiskBackendPlugins.mjs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { ProbeError, repoRoot } from '../definitions/probeContract.mjs';
 import { dependencyInstallMarkers, feedsDesktopBundle, judgeBuildFreshness } from '../functions/desktopBundleSources.mjs';
 import { instancesRoot, withLifecycleLock } from '../infrastructure/instanceStore.mjs';
@@ -15,13 +15,34 @@ function mtime(root, path) {
   return statSync(join(root, path), { throwIfNoEntry: false })?.mtimeMs;
 }
 
+function pluginBuildFreshness(root, plugin) {
+  const outputs = (plugin.requiredOutputs ?? []).map(path => ({
+    path: `${plugin.pluginId}/${path}`,
+    mtimeMs: mtime(root, join(relative(root, plugin.packageDir), path)),
+  }));
+  const packagePath = relative(root, plugin.packageDir).replaceAll('\\', '/');
+  const sources = listGitFiles(
+    ['--cached', '--others', '--exclude-standard', '--', packagePath],
+    { cwd: root },
+  )
+    .filter(path => feedsDesktopBundle(path))
+    .map(path => ({ path, mtimeMs: mtime(root, path) ?? 0 }));
+  const missing = outputs.find(output => output.mtimeMs === undefined);
+  if (missing) {
+    return { stale: true, reason: `缺少 ${missing.path.slice(`${plugin.pluginId}/`.length)}` };
+  }
+  return judgeBuildFreshness(outputs, sources);
+}
+
 export function buildFreshness(root = repoRoot) {
   // 插件自己声明运行必需的产物；主 bundle 较新不代表上一次插件构建已完成。
   for (const plugin of discoverWorkspaceDiskBackendPlugins(root)) {
-    for (const output of plugin.requiredOutputs ?? []) {
-      if (!statSync(join(plugin.packageDir, output), { throwIfNoEntry: false })?.isFile()) {
-        return { stale: true, reason: `插件 ${plugin.pluginId} 缺少 ${output}` };
-      }
+    const pluginFreshness = pluginBuildFreshness(root, plugin);
+    if (pluginFreshness.stale) {
+      return {
+        stale: true,
+        reason: `插件 ${plugin.pluginId} ${pluginFreshness.reason}`,
+      };
     }
   }
   const sources = [

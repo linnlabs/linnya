@@ -13,13 +13,18 @@ import {
   clearPluginUserRemovedMarker,
   markPluginUserRemoved,
 } from '../functions/pluginRemovalMarker';
-import { activatePluginVersionWithMigrations } from './activatePluginVersionWithMigrations';
+import {
+  activatePluginVersionWithMigrations,
+} from './activatePluginVersionWithMigrations';
+import { writeActivePluginPointerAtomically } from './activatePluginVersion';
 
 export interface BundledPluginStageCandidate {
   readonly pluginId: PluginId;
   readonly version: string;
   readonly previousVersion: string | null;
   readonly pluginDir: string;
+  /** 本次操作创建的版本目录；失败时只能清理这一目录。 */
+  readonly createdVersionDir: boolean;
 }
 
 export interface InstallPluginFromBundledAndActivateOptions {
@@ -44,7 +49,7 @@ export type BundledPluginInstallResult =
       readonly pluginId: PluginId;
       readonly version: string;
       readonly previousVersion: string | null;
-      readonly restartRequired: true;
+      readonly restartRequired: boolean;
     }
   | {
       readonly status: 'failed';
@@ -74,6 +79,24 @@ function failed(
     version,
     error: readErrorMessage(error),
   };
+}
+
+function removeVersionDirectory(candidate: BundledPluginStageCandidate): void {
+  if (!candidate.createdVersionDir) return;
+  fs.rmSync(candidate.pluginDir, { recursive: true, force: true });
+}
+
+function restorePreviousActivePointer(
+  userPluginRoot: string,
+  candidate: BundledPluginStageCandidate,
+): void {
+  if (candidate.previousVersion === null) {
+    removeActivePointer(userPluginRoot, candidate.pluginId);
+    return;
+  }
+  writeActivePluginPointerAtomically(userPluginRoot, candidate.pluginId, {
+    version: candidate.previousVersion,
+  });
 }
 
 /**
@@ -134,7 +157,7 @@ export function installPluginFromBundledAndActivate(
       pluginId: options.pluginId,
       version: candidate.version,
       previousVersion: activationResult.previousVersion,
-      restartRequired: true,
+      restartRequired: false,
     };
   } catch (error) {
     // setInstalled(true) clears the database marker. Restore the exact pre-install
@@ -144,9 +167,17 @@ export function installPluginFromBundledAndActivate(
     if (previousRecord.userRemoved) {
       markPluginUserRemoved(options.userPluginRoot, options.pluginId);
     }
-    if (candidate.previousVersion === null) {
-      removeActivePointer(options.userPluginRoot, options.pluginId);
+    const installationError = readErrorMessage(error);
+    try {
+      restorePreviousActivePointer(options.userPluginRoot, candidate);
+      removeVersionDirectory(candidate);
+    } catch (cleanupError) {
+      return failed(
+        options.pluginId,
+        candidate.version,
+        `${installationError}；安装失败后的临时目录清理也失败: ${readErrorMessage(cleanupError)}`,
+      );
     }
-    return failed(options.pluginId, candidate.version, error);
+    return failed(options.pluginId, candidate.version, installationError);
   }
 }

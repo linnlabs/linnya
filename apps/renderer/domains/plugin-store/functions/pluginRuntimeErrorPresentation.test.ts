@@ -5,7 +5,7 @@ import type { PluginStoreMessageResolver } from '../definitions/pluginStoreMessa
 import { resolvePluginRuntimeUserErrorMessage } from './pluginRuntimeErrorPresentation';
 
 const pluginStoreMessage: PluginStoreMessageResolver = (key, params) => {
-  let message = PLUGIN_STORE_MESSAGE_FALLBACKS[key];
+  let message: string = PLUGIN_STORE_MESSAGE_FALLBACKS[key];
   for (const [paramKey, paramValue] of Object.entries(params ?? {})) {
     message = message.replace(`{${paramKey}}`, String(paramValue));
   }
@@ -13,9 +13,9 @@ const pluginStoreMessage: PluginStoreMessageResolver = (key, params) => {
 };
 
 describe('resolvePluginRuntimeUserErrorMessage', () => {
-  it('maps raw dynamic errors to a stable user message', () => {
+  it('keeps raw dynamic errors so installation failures expose the actionable reason', () => {
     expect(resolvePluginRuntimeUserErrorMessage('远程插件源不可达', pluginStoreMessage)).toBe(
-      '未知错误',
+      '远程插件源不可达',
     );
   });
 

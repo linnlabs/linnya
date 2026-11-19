@@ -177,7 +177,7 @@ describe('plugin uninstall/reinstall data safety', () => {
       pluginId: 'demo',
       version: '1.0.0',
       previousVersion: null,
-      restartRequired: true,
+      restartRequired: false,
     });
     expect(stateService.getInstalledRecord('demo')).toMatchObject({
       installed: true,
@@ -214,7 +214,8 @@ describe('plugin uninstall/reinstall data safety', () => {
     stateService.setUserRemoved('demo', true);
     markPluginUserRemoved(userPluginRoot, 'demo');
 
-    const result = installPluginFromBundledAndActivate({
+    let shouldFail = true;
+    const install = () => installPluginFromBundledAndActivate({
       db,
       userPluginRoot,
       pluginId: 'demo',
@@ -225,11 +226,24 @@ describe('plugin uninstall/reinstall data safety', () => {
         userPluginRoot,
         pluginId: 'demo',
       }),
-      resolveUpgradePlan: () => {
-        throw new Error('test migration planning failure');
+      resolveUpgradePlan: ({ pluginId, version }) => {
+        if (shouldFail) {
+          throw new Error('test migration planning failure');
+        }
+        return {
+          pluginId,
+          targetVersion: version,
+          ownedTables: ['plugin_owned'],
+          migrations: [{
+            version: 1,
+            description: 'already applied',
+            up: () => {},
+          }],
+        };
       },
     });
 
+    const result = install();
     expect(result).toMatchObject({ status: 'failed', pluginId: 'demo', version: '1.0.0' });
     expect(stateService.getInstalledRecord('demo')).toMatchObject({
       installed: false,
@@ -237,7 +251,19 @@ describe('plugin uninstall/reinstall data safety', () => {
     });
     expect(isPluginUserRemoved(userPluginRoot, 'demo')).toBe(true);
     expect(fs.existsSync(path.join(userPluginRoot, 'demo/active.json'))).toBe(false);
+    expect(fs.existsSync(path.join(userPluginRoot, 'demo/1.0.0'))).toBe(false);
     expect(db.prepare('SELECT id, value FROM plugin_owned').all()).toEqual([{ id: 'row-1', value: 'kept' }]);
+
+    shouldFail = false;
+    const retryResult = install();
+    expect(retryResult).toMatchObject({
+      status: 'installed',
+      pluginId: 'demo',
+      version: '1.0.0',
+      restartRequired: false,
+    });
+    expect(fs.existsSync(path.join(userPluginRoot, 'demo/1.0.0/plugin.json'))).toBe(true);
+    expect(isPluginUserRemoved(userPluginRoot, 'demo')).toBe(false);
 
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });

@@ -67,6 +67,8 @@
 
 随包插件的本地卸载不依赖远程服务开关。商店列表由 Host 投影 `bundledSourceAvailable`，只有非 required 且存在随包 artifact 的插件显示卸载/从随包安装入口；远程服务开关仍只控制远程安装和更新。启动 seed 始终尊重用户移除标记，只有用户明确点击“安装”时才从 bundled artifact 重新 stage；迁移和 `active.json` 激活成功后才清除标记，失败则恢复未安装与用户移除状态。
 
+显式重装的 stage 目录属于本次操作的临时产物：若迁移或激活失败，只删除本次新建的版本目录，保留原有同版本目录和用户数据；下次重试可以覆盖失败残留，不会因为同版本 checksum 冲突永久锁死。数据库安装状态已经提交后，若仅 registry/runtime 刷新失败，IPC 返回“已安装、需重启”，不能把已完成的安装伪装成失败。
+
 ## 远程安装和更新
 
 入口 `plugins:installFromRemote`，运行时只使用固定官方 latest 地址

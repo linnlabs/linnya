@@ -46,7 +46,9 @@ export function resolvePluginRuntimeUserErrorMessage(
   resolveMessage: PluginStoreMessageResolver,
 ): string {
   if (typeof error === 'string') {
-    return resolveMessage('pluginStore.error.unknown');
+    // Host 返回的安装/加载错误包含具体失败原因（例如同版本 artifact 冲突、
+    // manifest 不匹配）；这里保留它，避免把可修复的问题误导成“稍后重试”。
+    return error;
   }
 
   return resolveMessage(

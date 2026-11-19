@@ -37,6 +37,11 @@ export interface StagedBundledPluginActivationCandidate {
   readonly pluginDir: string;
 }
 
+export interface ExplicitBundledPluginStageCandidate extends StagedBundledPluginActivationCandidate {
+  /** 本次显式安装实际创建的版本目录；失败时由生命周期编排负责回收。 */
+  readonly createdVersionDir: boolean;
+}
+
 export interface PluginRuntimeEnvironmentResult {
   readonly userPluginRoot: string;
   readonly bundledPluginRoot: string | null;
@@ -129,11 +134,16 @@ function copyDirectoryAtomically(sourceDir: string, targetDir: string): void {
     `.${path.basename(targetDir)}.${process.pid}.${Date.now()}.tmp`
   );
   fs.rmSync(tempDir, { recursive: true, force: true });
-  fs.cpSync(sourceDir, tempDir, {
-    recursive: true,
-    dereference: true,
-  });
-  fs.renameSync(tempDir, targetDir);
+  try {
+    fs.cpSync(sourceDir, tempDir, {
+      recursive: true,
+      dereference: true,
+    });
+    fs.renameSync(tempDir, targetDir);
+  } catch (error) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 function assertExistingSeedTargetVersionIdentity(
@@ -187,7 +197,7 @@ function ensureSeedTargetVersionDir(
  */
 export function stageBundledPluginForExplicitInstall(
   options: ExplicitBundledPluginStageOptions,
-): StagedBundledPluginActivationCandidate {
+): ExplicitBundledPluginStageCandidate {
   const bundledRoot = path.resolve(options.bundledPluginRoot);
   const sourceDir = fs.readdirSync(bundledRoot, { withFileTypes: true })
     .filter(entry => entry.isDirectory())
@@ -200,14 +210,25 @@ export function stageBundledPluginForExplicitInstall(
   if (!manifest) {
     throw new Error(`随包插件 artifact manifest 不可读: ${options.pluginId}`);
   }
+  // 在覆盖失败残留前先确认 bundled artifact 自身有可比较的完整性身份，
+  // 避免把一个损坏来源复制进用户目录后才发现无法加载。
+  readPluginArtifactIdentity(sourceDir);
 
   const pluginInstallDir = path.join(options.userPluginRoot, manifest.id);
   const targetVersionDir = path.join(pluginInstallDir, manifest.version);
+  const activePath = path.join(pluginInstallDir, 'active.json');
+  const activeExists = fs.existsSync(activePath);
+  const targetExists = fs.existsSync(targetVersionDir);
+
+  // 卸载后没有 active 指针，说明该版本目录只能是上一次失败安装留下的
+  // 临时结果；允许这次显式安装用经过校验的 bundled artifact 覆盖它。
+  if (!activeExists && targetExists) {
+    fs.rmSync(targetVersionDir, { recursive: true, force: true });
+  }
   ensureSeedTargetVersionDir(sourceDir, targetVersionDir, manifest.id, manifest.version);
 
   let previousVersion: string | null = null;
-  const activePath = path.join(pluginInstallDir, 'active.json');
-  if (fs.existsSync(activePath)) {
+  if (activeExists) {
     previousVersion = parseActivePointer(readJsonFile(activePath)).version;
   }
 
@@ -216,6 +237,7 @@ export function stageBundledPluginForExplicitInstall(
     version: manifest.version,
     previousVersion,
     pluginDir: targetVersionDir,
+    createdVersionDir: !activeExists || !targetExists,
   };
 }
 
