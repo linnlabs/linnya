@@ -1139,16 +1139,6 @@
       "count": 11
     }
   },
-  "apps/renderer/domains/model-configuration/features/direct-provider-onboarding/ui/DirectProviderOnboardingForm.vue": {
-    "no-restricted-properties": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/model-configuration/features/ollama-model-registration/ui/OllamaModelRegistrationForm.vue": {
-    "no-restricted-properties": {
-      "count": 2
-    }
-  },
   "apps/renderer/domains/workspace/features/import-export/services/exportService.js": {
     "no-unused-vars": {
       "count": 1
