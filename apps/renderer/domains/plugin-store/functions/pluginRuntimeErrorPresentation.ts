@@ -52,8 +52,6 @@ export function resolvePluginRuntimeUserErrorMessage(
   error: PluginRuntimeUserError,
   resolveMessage: PluginStoreMessageResolver,
 ): string {
-  if (typeof error === 'string') return error;
-
   return resolveMessage(
     PLUGIN_RUNTIME_ERROR_MESSAGE_KEYS[error.code],
     buildPluginRuntimeErrorParams(error),

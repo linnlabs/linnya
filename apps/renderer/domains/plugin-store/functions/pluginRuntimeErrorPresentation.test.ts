@@ -13,10 +13,11 @@ const pluginStoreMessage: PluginStoreMessageResolver = (key, params) => {
 };
 
 describe('resolvePluginRuntimeUserErrorMessage', () => {
-  it('keeps raw dynamic errors so installation failures expose the actionable reason', () => {
-    expect(resolvePluginRuntimeUserErrorMessage('远程插件源不可达', pluginStoreMessage)).toBe(
-      '远程插件源不可达',
-    );
+  it('does not expose unstructured error text', () => {
+    expect(resolvePluginRuntimeUserErrorMessage(
+      normalizePluginRuntimeUserError('远程插件源不可达'),
+      pluginStoreMessage,
+    )).toBe('插件操作失败，请查看诊断信息后重试。');
   });
 
   it('resolves plugin runtime errors with context through the plugin-store catalog', () => {

@@ -1,8 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { errorToString as readErrorMessage } from '@linnya/foundation';
 import type Database from 'better-sqlite3';
-import type { PluginId, PluginMeta } from '@app/schemas';
+import type { PluginId, PluginMeta, PluginOperationErrorCode } from '@app/schemas';
 
 import type {
   PluginUpgradeDiagnostic,
@@ -17,6 +16,7 @@ import {
   activatePluginVersionWithMigrations,
 } from './activatePluginVersionWithMigrations';
 import { writeActivePluginPointerAtomically } from './activatePluginVersion';
+import { toPluginOperationError } from '../definitions/pluginOperationError';
 
 export interface BundledPluginStageCandidate {
   readonly pluginId: PluginId;
@@ -56,6 +56,7 @@ export type BundledPluginInstallResult =
       readonly pluginId: PluginId;
       readonly version: string | null;
       readonly error: string;
+      readonly errorCode?: PluginOperationErrorCode;
     };
 
 function removeActivePointer(userPluginRoot: string, pluginId: PluginId): void {
@@ -73,11 +74,13 @@ function failed(
   version: string | null,
   error: unknown,
 ): BundledPluginInstallResult {
+  const operationError = toPluginOperationError(error, { pluginId });
   return {
     status: 'failed',
     pluginId,
     version,
-    error: readErrorMessage(error),
+    error: operationError.message,
+    errorCode: operationError.code,
   };
 }
 
@@ -148,7 +151,10 @@ export function installPluginFromBundledAndActivate(
       recordDiagnostic: options.recordDiagnostic,
     });
     if (activationResult.status !== 'activated') {
-      throw new Error(activationResult.error);
+      throw toPluginOperationError(new Error(activationResult.error), {
+        pluginId: options.pluginId,
+        fallbackCode: activationResult.errorCode,
+      });
     }
 
     clearPluginUserRemovedMarker(options.userPluginRoot, options.pluginId);
@@ -167,7 +173,7 @@ export function installPluginFromBundledAndActivate(
     if (previousRecord.userRemoved) {
       markPluginUserRemoved(options.userPluginRoot, options.pluginId);
     }
-    const installationError = readErrorMessage(error);
+    const installationError = toPluginOperationError(error, { pluginId: options.pluginId });
     try {
       restorePreviousActivePointer(options.userPluginRoot, candidate);
       removeVersionDirectory(candidate);
@@ -175,7 +181,7 @@ export function installPluginFromBundledAndActivate(
       return failed(
         options.pluginId,
         candidate.version,
-        `${installationError}；安装失败后的临时目录清理也失败: ${readErrorMessage(cleanupError)}`,
+        `${installationError.message}；安装失败后的临时目录清理也失败: ${toPluginOperationError(cleanupError, { pluginId: options.pluginId }).message}`,
       );
     }
     return failed(options.pluginId, candidate.version, installationError);

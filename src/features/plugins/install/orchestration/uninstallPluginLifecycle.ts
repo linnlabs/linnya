@@ -1,14 +1,14 @@
-import { errorToString as readErrorMessage } from '@linnya/foundation';
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
-import type { PluginId, PluginMeta } from '@app/schemas';
+import type { PluginId, PluginMeta, PluginOperationErrorCode } from '@app/schemas';
 
 import { PluginStateService } from '../../infrastructure/sqlite/plugin-state.service';
 import {
   markPluginUserRemoved,
   pluginRemovalMarkerFileName,
 } from '../functions/pluginRemovalMarker';
+import { toPluginOperationError } from '../definitions/pluginOperationError';
 
 export interface UninstallPluginLifecycleOptions {
   readonly db: Database.Database;
@@ -29,6 +29,7 @@ export type UninstallPluginLifecycleResult =
       readonly status: 'failed';
       readonly pluginId: PluginId;
       readonly error: string;
+      readonly errorCode?: PluginOperationErrorCode;
     };
 
 function resolvePluginInstallDir(userPluginRoot: string, pluginId: PluginId): string {
@@ -88,10 +89,12 @@ export function uninstallPluginLifecycle(
       userDataPreserved: true,
     };
   } catch (error) {
+    const operationError = toPluginOperationError(error, { pluginId: options.pluginId });
     return {
       status: 'failed',
       pluginId: options.pluginId,
-      error: readErrorMessage(error),
+      error: operationError.message,
+      errorCode: operationError.code,
     };
   }
 }

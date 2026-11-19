@@ -1,4 +1,4 @@
-import type { PluginId, PluginRemoteUpdateCheckResult } from '@app/schemas';
+import type { PluginId, PluginOperationErrorCode, PluginRemoteUpdateCheckResult } from '@app/schemas';
 
 export interface RemotePluginVersionManifest {
   readonly version: string;
@@ -50,4 +50,5 @@ export type InstallPluginUpdateResult =
       readonly pluginId: PluginId;
       readonly version: string | null;
       readonly error: string;
+      readonly errorCode?: PluginOperationErrorCode;
     };

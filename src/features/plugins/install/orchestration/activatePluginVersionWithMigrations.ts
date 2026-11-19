@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import type { PluginId } from '@app/schemas';
+import type { PluginId, PluginOperationErrorCode } from '@app/schemas';
 
 import {
   PluginUpgradeRunner,
@@ -38,6 +38,7 @@ export type ActivatePluginVersionWithMigrationsResult =
       readonly pluginId: PluginId;
       readonly version: string;
       readonly error: string;
+      readonly errorCode?: PluginOperationErrorCode;
       readonly activationResult?: ActivatePluginVersionResult;
       readonly activationPreflightResult?: PreparePluginVersionActivationResult;
       readonly migrationResult?: PluginUpgradeRunResult;
@@ -70,6 +71,10 @@ function describeFailedMigrationResult(result: PluginUpgradeRunResult): string {
   }
 }
 
+function failureCodeForMigrationResult(result: PluginUpgradeRunResult): PluginOperationErrorCode {
+  return result.status === 'incompatible' ? 'incompatible' : 'migration-failed';
+}
+
 export function activatePluginVersionWithMigrations(
   options: ActivatePluginVersionWithMigrationsOptions,
 ): ActivatePluginVersionWithMigrationsResult {
@@ -94,6 +99,7 @@ export function activatePluginVersionWithMigrations(
       pluginId: options.pluginId,
       version: options.version,
       error: activationPreflightResult.error,
+      errorCode: 'unknown',
       activationPreflightResult,
     };
   }
@@ -132,6 +138,7 @@ export function activatePluginVersionWithMigrations(
         activeVersion: options.version,
         previousVersion: activationPreflightResult.previousVersion,
         error: activationResult.error,
+        errorCode: 'unknown',
       });
       return {
         status: 'failed',
@@ -163,6 +170,7 @@ export function activatePluginVersionWithMigrations(
     pluginId: options.pluginId,
     version: options.version,
     error: describeFailedMigrationResult(migrationResult),
+    errorCode: failureCodeForMigrationResult(migrationResult),
     activationPreflightResult,
     migrationResult,
   };

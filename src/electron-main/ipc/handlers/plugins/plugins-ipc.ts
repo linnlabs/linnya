@@ -44,26 +44,39 @@ import { assertBackendPluginCanDeactivate, beginBackendPluginDeactivation } from
 import { isTrustedKnowledgeResourceSource } from '../../../../app-hosts/linnya/plugin-registry/knowledgeResourceAdmission';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
-import type { PluginMeta, PluginOperationErrorCode, PluginOperationFailure } from '@app/schemas';
+import type { PluginMeta, PluginOperationFailure } from '@app/schemas';
 import {
   listBundledPluginManifestIds,
   listBundledPluginMetas,
   stageBundledPluginForExplicitInstall,
 } from '../../../plugins/loader/pluginRuntimeBootstrap';
+import { PluginOperationError, toPluginOperationError } from '../../../../features/plugins/install/definitions/pluginOperationError';
 
 const logger = new Logger('PluginsIPC');
 
+function throwPluginOperationResultFailure(result: {
+  readonly pluginId: string;
+  readonly error: string;
+  readonly errorCode?: PluginOperationFailure['code'];
+}): never {
+  throw new PluginOperationError(result.errorCode ?? 'unknown', result.error, {
+    pluginId: result.pluginId,
+  });
+}
+
 function classifyPluginOperationError(error: unknown, pluginId?: string): PluginOperationFailure {
-  const message = error instanceof Error ? error.message : String(error);
-  let code: PluginOperationErrorCode = 'unknown';
-  if (/同版本|版本目录不可覆盖|artifact conflict|version conflict/i.test(message)) code = 'version-conflict';
-  else if (/SHA512SUMS|checksum|完整性|artifact.*校验|校验.*artifact/i.test(message)) code = 'artifact-integrity';
-  else if (/迁移|migration|schema_version|schema/i.test(message)) code = 'migration-failed';
-  else if (/兼容|incompatible|minApp/i.test(message)) code = 'incompatible';
-  else if (/ENOSPC|磁盘空间|no space/i.test(message)) code = 'disk-space';
-  else if (/随包|插件目录未初始化|下载|网络|source/i.test(message)) code = 'source-unavailable';
-  logger.error('[plugins] operation failed', { pluginId, code, message, error });
-  return { code, ...(pluginId ? { pluginId } : {}) };
+  const operationError = toPluginOperationError(error, { pluginId });
+  const effectivePluginId = operationError.pluginId ?? pluginId;
+  logger.error('[plugins] operation failed', {
+    pluginId: effectivePluginId,
+    code: operationError.code,
+    message: operationError.message,
+    error,
+  });
+  return {
+    code: operationError.code,
+    ...(effectivePluginId ? { pluginId: effectivePluginId } : {}),
+  };
 }
 
 async function syncPluginRuntimeState(options: {
@@ -84,7 +97,7 @@ async function syncPluginRuntimeState(options: {
 function parsePluginId(value: unknown, label: string): string {
   const pluginId = typeof value === 'string' ? value.trim() : '';
   if (!pluginId) {
-    throw new Error(`[${label}] pluginId 不能为空`);
+    throw new PluginOperationError('unknown', `[${label}] pluginId 不能为空`);
   }
   return pluginId;
 }
@@ -311,7 +324,7 @@ export async function registerPluginsHandlers(input: {
   input.ipc.handle('plugins:checkRemoteUpdate', async (_event, rawPluginId: unknown) => {
     try {
       if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
-        throw new Error('当前版本暂不提供插件远程安装和更新，请使用随包插件');
+        throw new PluginOperationError('source-unavailable', '当前版本暂不提供插件远程安装和更新，请使用随包插件');
       }
       const pluginId = parsePluginId(rawPluginId, 'plugins:checkRemoteUpdate');
       const service = getService();
@@ -324,15 +337,17 @@ export async function registerPluginsHandlers(input: {
         throw new Error(`插件不在商店中: ${pluginId}`);
       }
       const installedRecord = service.getInstalledRecord(pluginId);
+      const result = await checkPluginUpdateFromRemote({
+        pluginId,
+        latestManifestUrl: resolveKnownPluginLatestManifestUrl(pluginId),
+        appVersion: input.applicationVersion,
+        rendererUiVersion: RENDERER_UI_VERSION,
+        currentVersion: installedRecord?.installed ? installedRecord.version : null,
+      });
+      if (result.status === 'failed') throwPluginOperationResultFailure(result);
       return {
         success: true,
-        data: await checkPluginUpdateFromRemote({
-          pluginId,
-          latestManifestUrl: resolveKnownPluginLatestManifestUrl(pluginId),
-          appVersion: input.applicationVersion,
-          rendererUiVersion: RENDERER_UI_VERSION,
-          currentVersion: installedRecord?.installed ? installedRecord.version : null,
-        }),
+        data: result,
       };
     } catch (error) {
       logger.error('[plugins:checkRemoteUpdate] failed:', error);
@@ -352,7 +367,7 @@ export async function registerPluginsHandlers(input: {
         async run() {
           const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
           if (!userPluginRoot) {
-            throw new Error('插件目录未初始化，不能远程安装插件');
+            throw new PluginOperationError('source-unavailable', '插件目录未初始化，不能远程安装插件', { pluginId });
           }
           const db = databaseService.getDb();
           const knownPlugins = listKnownPluginMetas();
@@ -370,7 +385,7 @@ export async function registerPluginsHandlers(input: {
             recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
           });
           if (result.status === 'failed') {
-            throw new Error(result.error);
+            throwPluginOperationResultFailure(result);
           }
           if (!scopedLifecycle)
             await cancelActiveRunsForPluginRuntimeChange({
@@ -397,7 +412,7 @@ export async function registerPluginsHandlers(input: {
       const pluginId = parsePluginId(rawPluginId, 'plugins:installBundled');
       const bundledPluginRoot = resolveBundledPluginRoot();
       if (!bundledPluginRoot || !listBundledPluginManifestIds(bundledPluginRoot).includes(pluginId)) {
-        throw new Error(`当前版本没有可用的随包插件 artifact: ${pluginId}`);
+        throw new PluginOperationError('source-unavailable', `当前版本没有可用的随包插件 artifact: ${pluginId}`, { pluginId });
       }
       return await runPluginLifecycleOperationSerially({
         pluginId,
@@ -405,7 +420,7 @@ export async function registerPluginsHandlers(input: {
         async run() {
           const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
           if (!userPluginRoot) {
-            throw new Error('插件目录未初始化，不能从随包安装插件');
+            throw new PluginOperationError('source-unavailable', '插件目录未初始化，不能从随包安装插件', { pluginId });
           }
           const result = installPluginFromBundledAndActivate({
             db: databaseService.getDb(),
@@ -422,7 +437,7 @@ export async function registerPluginsHandlers(input: {
             recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
           });
           if (result.status === 'failed') {
-            throw new Error(result.error);
+            throwPluginOperationResultFailure(result);
           }
           try {
             resetBackendPluginRegistrationForRuntimeChange();
@@ -461,7 +476,7 @@ export async function registerPluginsHandlers(input: {
       const hasBundledSource = bundledPluginRoot !== null
         && listBundledPluginManifestIds(bundledPluginRoot).includes(pluginId);
       if (!hasBundledSource && !isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
-        throw new Error(`当前插件没有可用的随包来源，不能卸载: ${pluginId}`);
+        throw new PluginOperationError('source-unavailable', `当前插件没有可用的随包来源，不能卸载: ${pluginId}`, { pluginId });
       }
       return await runPluginLifecycleOperationSerially({
         pluginId,
@@ -469,7 +484,7 @@ export async function registerPluginsHandlers(input: {
         async run() {
           const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
           if (!userPluginRoot) {
-            throw new Error('插件目录未初始化，不能卸载插件');
+            throw new PluginOperationError('source-unavailable', '插件目录未初始化，不能卸载插件', { pluginId });
           }
           assertBackendPluginCanDeactivate(pluginId);
           const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
@@ -480,7 +495,7 @@ export async function registerPluginsHandlers(input: {
             knownPlugins: listKnownPluginMetas(),
           });
           if (result.status !== 'uninstalled') {
-            throw new Error(result.error);
+            throwPluginOperationResultFailure(result);
           }
           if (!scopedLifecycle)
             await cancelActiveRunsForPluginRuntimeChange({

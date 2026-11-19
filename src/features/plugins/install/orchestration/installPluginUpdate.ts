@@ -7,6 +7,7 @@ import { ZodError } from 'zod';
 import {
   isValidRendererUiCompatibilityRange,
   parsePluginManifest,
+  type PluginOperationErrorCode,
   type PluginManifest,
 } from '@app/schemas';
 import { compareDottedVersions } from '../../functions/comparePluginVersions';
@@ -19,7 +20,8 @@ import type {
   InstallPluginUpdateResult,
   RemotePluginVersionManifest,
 } from '../definitions/pluginInstall';
-import { isRecord, errorToString as readErrorMessage } from '@linnya/foundation';
+import { isRecord } from '@linnya/foundation';
+import { PluginOperationError, toPluginOperationError } from '../definitions/pluginOperationError';
 
 function formatPluginManifestError(error: ZodError): string {
   const fields = error.issues
@@ -36,7 +38,7 @@ function parseRemoteArtifactManifest(input: unknown): PluginManifest {
     return parsePluginManifest(input);
   } catch (error) {
     if (error instanceof ZodError) {
-      throw new Error(formatPluginManifestError(error));
+      throw new PluginOperationError('incompatible', formatPluginManifestError(error));
     }
     throw error;
   }
@@ -45,7 +47,7 @@ function parseRemoteArtifactManifest(input: unknown): PluginManifest {
 function readRequiredString(record: Record<string, unknown>, key: string): string {
   const value = record[key];
   if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(`latest.json 缺少字段: ${key}`);
+    throw new PluginOperationError('incompatible', `latest.json 缺少字段: ${key}`);
   }
   return value.trim();
 }
@@ -53,26 +55,26 @@ function readRequiredString(record: Record<string, unknown>, key: string): strin
 function normalizeRemoteVersion(input: string): string {
   const version = input.trim();
   if (!/^\d+(?:\.\d+)*$/.test(version)) {
-    throw new Error('latest.json version 必须是数字点分版本号');
+    throw new PluginOperationError('incompatible', 'latest.json version 必须是数字点分版本号');
   }
   return version;
 }
 
 function parseRemotePluginVersionManifest(input: unknown): RemotePluginVersionManifest {
   if (!isRecord(input)) {
-    throw new Error('latest.json 必须是对象');
+    throw new PluginOperationError('incompatible', 'latest.json 必须是对象');
   }
 
   const minApp = input.minApp;
   if (minApp !== undefined && typeof minApp !== 'string') {
-    throw new Error('latest.json minApp 必须是字符串');
+    throw new PluginOperationError('incompatible', 'latest.json minApp 必须是字符串');
   }
   const rendererUi = input.rendererUi;
   if (rendererUi !== undefined && typeof rendererUi !== 'string') {
-    throw new Error('latest.json rendererUi 必须是字符串');
+    throw new PluginOperationError('incompatible', 'latest.json rendererUi 必须是字符串');
   }
   if (typeof rendererUi === 'string' && !isValidRendererUiCompatibilityRange(rendererUi)) {
-    throw new Error('latest.json rendererUi 必须是有效的 node-semver range');
+    throw new PluginOperationError('incompatible', 'latest.json rendererUi 必须是有效的 node-semver range');
   }
 
   return {
@@ -87,7 +89,7 @@ function parseRemotePluginVersionManifest(input: unknown): RemotePluginVersionMa
 function normalizeSha512(input: string): string {
   const candidate = input.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
   if (!/^[a-f0-9]{128}$/.test(candidate)) {
-    throw new Error('latest.json sha512 必须是 128 位十六进制字符串');
+    throw new PluginOperationError('incompatible', 'latest.json sha512 必须是 128 位十六进制字符串');
   }
   return candidate;
 }
@@ -99,7 +101,7 @@ function sha512Hex(buffer: Buffer): string {
 function assertHttpUrl(rawUrl: string, label: string): void {
   const parsed = new URL(rawUrl);
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    throw new Error(`${label} 只允许 http/https URL`);
+    throw new PluginOperationError('source-unavailable', `${label} 只允许 http/https URL`);
   }
 }
 
@@ -112,7 +114,7 @@ function readActiveVersion(pluginInstallDir: string): string | null {
     typeof parsed.version !== 'string' ||
     parsed.version.trim().length === 0
   ) {
-    throw new Error('active.json 必须声明非空 version');
+    throw new PluginOperationError('unknown', 'active.json 必须声明非空 version');
   }
   return parsed.version;
 }
@@ -120,13 +122,13 @@ function readActiveVersion(pluginInstallDir: string): string | null {
 function resolveInsideDirectory(rootDir: string, relativePath: string): string {
   const normalized = relativePath.replace(/\\/g, '/');
   if (!normalized || normalized.startsWith('/') || normalized.split('/').includes('..')) {
-    throw new Error(`插件 zip 路径不能越界: ${relativePath}`);
+    throw new PluginOperationError('artifact-integrity', `插件 zip 路径不能越界: ${relativePath}`);
   }
 
   const resolved = path.resolve(rootDir, ...normalized.split('/'));
   const relative = path.relative(rootDir, resolved);
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error(`插件 zip 路径不能越界: ${relativePath}`);
+    throw new PluginOperationError('artifact-integrity', `插件 zip 路径不能越界: ${relativePath}`);
   }
   return resolved;
 }
@@ -134,7 +136,10 @@ function resolveInsideDirectory(rootDir: string, relativePath: string): string {
 async function fetchJson(fetcher: typeof fetch, url: string): Promise<unknown> {
   const response = await fetcher(url);
   if (!response.ok) {
-    throw new Error(`请求 latest.json 失败: ${response.status} ${response.statusText}`);
+    throw new PluginOperationError(
+      'source-unavailable',
+      `请求 latest.json 失败: ${response.status} ${response.statusText}`,
+    );
   }
   return response.json() as Promise<unknown>;
 }
@@ -142,7 +147,10 @@ async function fetchJson(fetcher: typeof fetch, url: string): Promise<unknown> {
 async function fetchZipBuffer(fetcher: typeof fetch, url: string): Promise<Buffer> {
   const response = await fetcher(url);
   if (!response.ok) {
-    throw new Error(`下载插件 artifact 失败: ${response.status} ${response.statusText}`);
+    throw new PluginOperationError(
+      'source-unavailable',
+      `下载插件 artifact 失败: ${response.status} ${response.statusText}`,
+    );
   }
   return Buffer.from(await response.arrayBuffer());
 }
@@ -169,21 +177,26 @@ function assertExistingStagedVersionIdentity(
   const extractedIdentity = readPluginArtifactIdentity(extractedVersionDir);
   const existingIdentity = readPluginArtifactIdentity(targetVersionDir);
   if (extractedIdentity !== existingIdentity) {
-    throw new Error(`${pluginId}@${version} 同版本 artifact 的 SHA512SUMS 不一致，请提升插件版本`);
+    throw new PluginOperationError(
+      'version-conflict',
+      `${pluginId}@${version} 同版本 artifact 的 SHA512SUMS 不一致，请提升插件版本`,
+      { pluginId },
+    );
   }
 }
 
 function validateExtractedPlugin(extractDir: string, pluginId: string, version: string): PluginManifest {
   const manifestPath = path.join(extractDir, 'plugin.json');
   if (!fs.existsSync(manifestPath)) {
-    throw new Error('插件 artifact 缺少 plugin.json');
+    throw new PluginOperationError('artifact-integrity', '插件 artifact 缺少 plugin.json', { pluginId });
   }
 
   const manifest = parseRemoteArtifactManifest(
     JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as unknown
   );
   if (manifest.id !== pluginId || manifest.version !== version) {
-    throw new Error(
+    throw new PluginOperationError(
+      'artifact-integrity',
       `插件 artifact manifest 不匹配: expected=${pluginId}@${version}, actual=${manifest.id}@${manifest.version}`
     );
   }
@@ -192,13 +205,13 @@ function validateExtractedPlugin(extractDir: string, pluginId: string, version: 
     manifest.entry.backend &&
     !fs.existsSync(resolveInsideDirectory(extractDir, manifest.entry.backend))
   ) {
-    throw new Error(`插件 artifact 缺少 backend 入口: ${manifest.entry.backend}`);
+    throw new PluginOperationError('artifact-integrity', `插件 artifact 缺少 backend 入口: ${manifest.entry.backend}`, { pluginId });
   }
   if (
     manifest.entry.renderer &&
     !fs.existsSync(resolveInsideDirectory(extractDir, manifest.entry.renderer))
   ) {
-    throw new Error(`插件 artifact 缺少 renderer 入口: ${manifest.entry.renderer}`);
+    throw new PluginOperationError('artifact-integrity', `插件 artifact 缺少 renderer 入口: ${manifest.entry.renderer}`, { pluginId });
   }
   return manifest;
 }
@@ -235,6 +248,7 @@ function classifyCurrentVersion(
       pluginId: 'unknown',
       version: remote.version,
       error: `无法比较插件版本: current=${currentVersion}, remote=${remote.version}`,
+      errorCode: 'unknown',
     };
   }
   if (comparison >= 0) {
@@ -251,7 +265,8 @@ function classifyCurrentVersion(
 function toRemoteUpdateCheckFailure(
   options: CheckPluginRemoteUpdateOptions,
   latestVersion: string | null,
-  error: string
+  error: string,
+  errorCode: PluginOperationErrorCode,
 ): CheckPluginRemoteUpdateResult {
   return {
     status: 'failed',
@@ -259,6 +274,7 @@ function toRemoteUpdateCheckFailure(
     currentVersion: options.currentVersion,
     latestVersion,
     error,
+    errorCode,
   };
 }
 
@@ -267,7 +283,7 @@ export async function checkPluginUpdateFromRemote(
 ): Promise<CheckPluginRemoteUpdateResult> {
   const fetcher = options.fetch ?? globalThis.fetch;
   if (!fetcher) {
-    return toRemoteUpdateCheckFailure(options, null, '当前运行环境不支持 fetch');
+    return toRemoteUpdateCheckFailure(options, null, '当前运行环境不支持 fetch', 'source-unavailable');
   }
 
   let remote: RemotePluginVersionManifest | null = null;
@@ -305,7 +321,8 @@ export async function checkPluginUpdateFromRemote(
 
     const comparison = compareDottedVersions(options.currentVersion, remote.version);
     if (comparison === null) {
-      throw new Error(
+      throw new PluginOperationError(
+        'unknown',
         `无法比较插件版本: current=${options.currentVersion}, remote=${remote.version}`
       );
     }
@@ -328,7 +345,15 @@ export async function checkPluginUpdateFromRemote(
       ...(remote.rendererUi ? { rendererUi: remote.rendererUi } : {}),
     };
   } catch (error) {
-    return toRemoteUpdateCheckFailure(options, remote?.version ?? null, readErrorMessage(error));
+    const operationError = toPluginOperationError(error, {
+      pluginId: options.pluginId,
+    });
+    return toRemoteUpdateCheckFailure(
+      options,
+      remote?.version ?? null,
+      operationError.message,
+      operationError.code,
+    );
   }
 }
 
@@ -342,6 +367,7 @@ export async function installPluginUpdateFromRemote(
       pluginId: options.pluginId,
       version: null,
       error: '当前运行环境不支持 fetch',
+      errorCode: 'source-unavailable',
     };
   }
 
@@ -381,7 +407,11 @@ export async function installPluginUpdateFromRemote(
     const targetVersionDir = path.join(pluginInstallDir, remote.version);
     if (fs.existsSync(targetVersionDir)) {
       if (!readExistingStagedVersion(targetVersionDir, options.pluginId, remote.version)) {
-        throw new Error(`目标版本目录已存在但 manifest 不匹配: ${targetVersionDir}`);
+        throw new PluginOperationError(
+          'version-conflict',
+          `目标版本目录已存在但 manifest 不匹配: ${targetVersionDir}`,
+          { pluginId: options.pluginId },
+        );
       }
     }
 
@@ -395,7 +425,8 @@ export async function installPluginUpdateFromRemote(
     const expectedSha512 = normalizeSha512(remote.sha512);
     const actualSha512 = sha512Hex(zipBuffer);
     if (actualSha512 !== expectedSha512) {
-      throw new Error(
+      throw new PluginOperationError(
+        'artifact-integrity',
         `插件 artifact sha512 不匹配: expected=${expectedSha512}, actual=${actualSha512}`
       );
     }
@@ -407,7 +438,8 @@ export async function installPluginUpdateFromRemote(
       extractedManifest.entry.renderer
       && remote.rendererUi !== extractedManifest.compat?.rendererUi
     ) {
-      throw new Error(
+      throw new PluginOperationError(
+        'incompatible',
         `latest.json rendererUi 与插件 artifact 不一致: latest=${remote.rendererUi}, artifact=${extractedManifest.compat?.rendererUi}`
       );
     }
@@ -445,11 +477,13 @@ export async function installPluginUpdateFromRemote(
     if (tempInstallDir) {
       fs.rmSync(tempInstallDir, { recursive: true, force: true });
     }
+    const operationError = toPluginOperationError(error, { pluginId: options.pluginId });
     return {
       status: 'failed',
       pluginId: options.pluginId,
       version: null,
-      error: readErrorMessage(error),
+      error: operationError.message,
+      errorCode: operationError.code,
     };
   }
 }

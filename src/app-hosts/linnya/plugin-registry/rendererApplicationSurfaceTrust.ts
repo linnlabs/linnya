@@ -42,8 +42,6 @@ export function isTrustedPluginSource(entry: PluginSource, input: ApplicationSur
   return developmentSource || matchesBundledArtifact(entry, input.bundledPluginRoot);
 }
 
-export const isTrustedKnowledgePluginSource = isTrustedPluginSource;
-
 /** 产品组合根只授一个已约定场景；插件 manifest/meta 不能自授页面或固定入口。 */
 export function mapTrustedRendererApplicationSurfaces(
   entries: readonly RendererPluginEntry[], input: ApplicationSurfaceTrustInput,

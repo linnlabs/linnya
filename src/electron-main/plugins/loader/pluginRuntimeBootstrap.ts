@@ -7,6 +7,7 @@ import { readPluginArtifactIdentity } from '../../../features/plugins/install/fu
 import { compareDottedVersions } from '../../../features/plugins/functions/comparePluginVersions';
 import { readJsonFile, readPluginManifestSummary } from './pluginLayout';
 import { isRecord, errorToString as readErrorMessage } from '@linnya/foundation';
+import { PluginOperationError } from '../../../features/plugins/install/definitions/pluginOperationError';
 
 export type BundledPluginSeedStatus = 'staged' | 'update-staged' | 'already-active' | 'skipped';
 
@@ -91,11 +92,12 @@ export interface BundledPluginRootCandidateInput {
   readonly workingDirectory: string;
 }
 
-export class RequiredBundledPluginSeedError extends Error {
+export class RequiredBundledPluginSeedError extends PluginOperationError {
   readonly failures: readonly BundledPluginSeedResult[];
 
   constructor(failures: readonly BundledPluginSeedResult[]) {
     super(
+      'source-unavailable',
       `[PluginRuntime] required bundled plugin seed failed: ${failures
         .map(
           failure => `${failure.pluginId}@${failure.version}: ${failure.reason ?? failure.status}`
@@ -107,10 +109,12 @@ export class RequiredBundledPluginSeedError extends Error {
   }
 }
 
-export class BundledPluginArtifactConflictError extends Error {
+export class BundledPluginArtifactConflictError extends PluginOperationError {
   constructor(pluginId: string, version: string, detail: string) {
     super(
+      'version-conflict',
       `[PluginRuntime] ${pluginId}@${version} 同版本 artifact 冲突：${detail}；版本目录不可覆盖，请提升插件版本`
+      , { pluginId },
     );
     this.name = 'BundledPluginArtifactConflictError';
   }
@@ -204,11 +208,19 @@ export function stageBundledPluginForExplicitInstall(
     .map(entry => path.join(bundledRoot, entry.name))
     .find(candidate => readPluginManifestSummary(candidate)?.id === options.pluginId);
   if (!sourceDir) {
-    throw new Error(`随包插件 artifact 不存在或 manifest 不匹配: ${options.pluginId}`);
+    throw new PluginOperationError(
+      'source-unavailable',
+      `随包插件 artifact 不存在或 manifest 不匹配: ${options.pluginId}`,
+      { pluginId: options.pluginId },
+    );
   }
   const manifest = readPluginManifestSummary(sourceDir);
   if (!manifest) {
-    throw new Error(`随包插件 artifact manifest 不可读: ${options.pluginId}`);
+    throw new PluginOperationError(
+      'artifact-integrity',
+      `随包插件 artifact manifest 不可读: ${options.pluginId}`,
+      { pluginId: options.pluginId },
+    );
   }
   // 在覆盖失败残留前先确认 bundled artifact 自身有可比较的完整性身份，
   // 避免把一个损坏来源复制进用户目录后才发现无法加载。

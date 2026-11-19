@@ -25,6 +25,7 @@ import type {
 } from '../../apps/renderer/shared/types/fs';
 import type {
   PluginDiagnosticView,
+  PluginOperationFailure,
   PluginStateView,
   PluginRemoteInstallResult,
   PluginRemoteUpdateCheckResult,
@@ -364,42 +365,42 @@ declare global {
       // Plugin state
       plugins: {
         list: () => Promise<
-          { success: true; data: PluginStateView[] } | { success: false; error?: string }
+          { success: true; data: PluginStateView[] } | { success: false; error?: PluginOperationFailure }
         >;
         storeList: () => Promise<
-          { success: true; data: PluginStoreListData } | { success: false; error?: string }
+          { success: true; data: PluginStoreListData } | { success: false; error?: PluginOperationFailure }
         >;
         getDetail: (
           pluginId: string
         ) => Promise<
-          { success: true; data: PluginStoreDetail } | { success: false; error?: string }
+          { success: true; data: PluginStoreDetail } | { success: false; error?: PluginOperationFailure }
         >;
         diagnostics: () => Promise<
           | { success: true; data: readonly PluginDiagnosticView[] }
-          | { success: false; error?: string }
+          | { success: false; error?: PluginOperationFailure }
         >;
         rendererEntries: () => Promise<unknown>;
         checkRemoteUpdate: (
           pluginId: string
         ) => Promise<
           | { success: true; data: PluginRemoteUpdateCheckResult }
-          | { success: false; error?: string }
+          | { success: false; error?: PluginOperationFailure }
         >;
         installFromRemote: (
           pluginId: string
         ) => Promise<
-          { success: true; data: PluginRemoteInstallResult } | { success: false; error?: string }
+          { success: true; data: PluginRemoteInstallResult } | { success: false; error?: PluginOperationFailure }
         >;
         installBundled: (
           pluginId: string
         ) => Promise<
-          { success: true; data: PluginRemoteInstallResult } | { success: false; error?: string }
+          { success: true; data: PluginRemoteInstallResult } | { success: false; error?: PluginOperationFailure }
         >;
-        uninstall: (pluginId: string) => Promise<{ success: boolean; error?: string }>;
+        uninstall: (pluginId: string) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
         setEnabled: (
           pluginId: string,
           enabled: boolean
-        ) => Promise<{ success: boolean; error?: string }>;
+        ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
         onChanged: (callback: () => void) => () => void;
       };
     };

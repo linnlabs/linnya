@@ -307,7 +307,10 @@ import { confirm } from '@/shared/composables/confirmDialog';
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
 import { loadRuntimeRendererPlugins } from '@/app/plugins/loader/runtimeRendererPluginLoader';
 import { useDocumentTypes } from '@/app/plugins/composables';
-import type { PluginRuntimeUserError } from '@/app/plugins/definitions/pluginRuntimeErrors';
+import {
+  normalizePluginRuntimeUserError,
+  type PluginRuntimeUserError,
+} from '@/app/plugins/definitions/pluginRuntimeErrors';
 import {
   canCheckPluginUpdateFromRemote,
   canInstallPluginFromBundled,
@@ -654,7 +657,10 @@ async function runRemotePluginInstall(
         5000
       );
     } else if (result.status === 'failed') {
-      throw new Error(result.error);
+      throw normalizePluginRuntimeUserError({
+        code: result.errorCode ?? 'unknown',
+        pluginId: result.pluginId,
+      });
     } else if (result.reason === 'current') {
       if (options.notifyCurrent) {
         notificationStore.show(
@@ -723,7 +729,10 @@ async function handleBundledInstall(item: PluginStoreListItem): Promise<void> {
         5000,
       );
     } else if (result.status === 'failed') {
-      throw new Error(result.error);
+      throw normalizePluginRuntimeUserError({
+        code: result.errorCode ?? 'unknown',
+        pluginId: result.pluginId,
+      });
     }
   } catch (caught) {
     notificationStore.show(
@@ -773,7 +782,10 @@ async function checkPluginUpdateFromCard(
         5000,
       );
     } else if (checkResult.status === 'failed') {
-      throw new Error(checkResult.error);
+      throw normalizePluginRuntimeUserError({
+        code: checkResult.errorCode ?? 'unknown',
+        pluginId: checkResult.pluginId,
+      });
     }
   } catch (caught) {
     // 中文说明：打开详情时的自动更新检查是后台辅助动作；官方 latest.json

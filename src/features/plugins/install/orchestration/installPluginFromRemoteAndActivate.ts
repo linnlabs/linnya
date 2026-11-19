@@ -1,10 +1,10 @@
-import { errorToString as readErrorMessage } from '@linnya/foundation';
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
 import type {
   PluginId,
   PluginMeta,
+  PluginOperationErrorCode,
   PluginRemoteInstallResult,
 } from '@app/schemas';
 
@@ -13,6 +13,7 @@ import { PluginStateService } from '../../infrastructure/sqlite/plugin-state.ser
 import { clearPluginUserRemovedMarker, markPluginUserRemoved } from '../functions/pluginRemovalMarker';
 import { activatePluginVersionWithMigrations } from './activatePluginVersionWithMigrations';
 import { installPluginUpdateFromRemote } from './installPluginUpdate';
+import { toPluginOperationError } from '../definitions/pluginOperationError';
 
 export interface PluginUpgradePlanResolveInput {
   readonly pluginId: PluginId;
@@ -74,12 +75,14 @@ function toFailedResult(
   pluginId: PluginId,
   version: string | null,
   error: string,
+  errorCode: PluginOperationErrorCode = 'unknown',
 ): PluginRemoteInstallResult {
   return {
     status: 'failed',
     pluginId,
     version,
     error,
+    errorCode,
   };
 }
 
@@ -140,7 +143,13 @@ export async function installPluginFromRemoteAndActivate(
         restartRequired: true,
       };
     } catch (error) {
-      return toFailedResult(options.pluginId, installResult.version, readErrorMessage(error));
+      const operationError = toPluginOperationError(error, { pluginId: options.pluginId });
+      return toFailedResult(
+        options.pluginId,
+        installResult.version,
+        operationError.message,
+        operationError.code,
+      );
     }
   }
 
@@ -166,7 +175,10 @@ export async function installPluginFromRemoteAndActivate(
     });
 
     if (activationResult.status !== 'activated') {
-      throw new Error(activationResult.error);
+      throw toPluginOperationError(new Error(activationResult.error), {
+        pluginId: options.pluginId,
+        fallbackCode: activationResult.errorCode,
+      });
     }
     if (previousRecord.installed && !wasEnabled) {
       stateService.setEnabled(options.pluginId, false, options.knownPlugins);
@@ -193,6 +205,12 @@ export async function installPluginFromRemoteAndActivate(
       stateService.setEnabled(options.pluginId, false, options.knownPlugins);
     }
 
-    return toFailedResult(options.pluginId, versionToActivate, readErrorMessage(error));
+    const operationError = toPluginOperationError(error, { pluginId: options.pluginId });
+    return toFailedResult(
+      options.pluginId,
+      versionToActivate,
+      operationError.message,
+      operationError.code,
+    );
   }
 }

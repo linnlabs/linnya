@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { PluginOperationError } from '../definitions/pluginOperationError';
 
 const artifactChecksumFileName = 'SHA512SUMS';
 
@@ -11,12 +12,18 @@ export function readPluginArtifactIdentity(pluginDirectory: string): string {
   const checksumPath = path.join(pluginDirectory, artifactChecksumFileName);
   const stat = fs.statSync(checksumPath, { throwIfNoEntry: false });
   if (!stat?.isFile()) {
-    throw new Error(`插件 artifact 缺少 ${artifactChecksumFileName}: ${pluginDirectory}`);
+    throw new PluginOperationError(
+      'artifact-integrity',
+      `插件 artifact 缺少 ${artifactChecksumFileName}: ${pluginDirectory}`,
+    );
   }
 
   const identity = fs.readFileSync(checksumPath, 'utf8').trim();
   if (!identity) {
-    throw new Error(`插件 artifact ${artifactChecksumFileName} 不能为空: ${pluginDirectory}`);
+    throw new PluginOperationError(
+      'artifact-integrity',
+      `插件 artifact ${artifactChecksumFileName} 不能为空: ${pluginDirectory}`,
+    );
   }
   return identity;
 }

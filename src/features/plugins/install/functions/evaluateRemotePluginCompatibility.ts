@@ -1,6 +1,7 @@
 import { evaluateRendererUiCompatibility } from '@app/schemas';
 
 import { compareDottedVersions } from '../../functions/comparePluginVersions';
+import { PluginOperationError } from '../definitions/pluginOperationError';
 
 export interface RemotePluginCompatibilityRequirement {
   readonly minApp?: string;
@@ -26,7 +27,8 @@ export function evaluateRemotePluginCompatibility(input: {
   if (input.requirement.minApp) {
     const appComparison = compareDottedVersions(input.appVersion, input.requirement.minApp);
     if (appComparison === null) {
-      throw new Error(
+      throw new PluginOperationError(
+        'incompatible',
         `无法比较应用与插件兼容版本: app=${input.appVersion}, minApp=${input.requirement.minApp}`,
       );
     }
@@ -46,10 +48,16 @@ export function evaluateRemotePluginCompatibility(input: {
     );
     if (!rendererUiResult.compatible) {
       if (rendererUiResult.reason === 'invalid-host-version') {
-        throw new Error(`当前 Renderer UI 版本无效: ${rendererUiResult.hostVersion}`);
+        throw new PluginOperationError(
+          'incompatible',
+          `当前 Renderer UI 版本无效: ${rendererUiResult.hostVersion}`,
+        );
       }
       if (rendererUiResult.reason === 'invalid-range') {
-        throw new Error(`插件 Renderer UI 兼容范围无效: ${rendererUiResult.range}`);
+        throw new PluginOperationError(
+          'incompatible',
+          `插件 Renderer UI 兼容范围无效: ${rendererUiResult.range}`,
+        );
       }
       return {
         compatible: false,

@@ -65,9 +65,7 @@ export class PluginRuntimeError extends Error {
   }
 }
 
-export type PluginRuntimeUserError = string | PluginRuntimeError;
-
-
+export type PluginRuntimeUserError = PluginRuntimeError;
 
 export function isPluginRuntimeError(value: unknown): value is PluginRuntimeError {
   return (
@@ -101,5 +99,7 @@ export function normalizePluginRuntimeUserError(caught: unknown): PluginRuntimeU
     } as const;
     return new PluginRuntimeError(codeByOperation[caught.code], { pluginId: caught.pluginId });
   }
-  return caught instanceof Error ? caught.message : String(caught);
+  // 原始异常可能包含路径、内部实现和服务端文案，不能穿透到用户界面。
+  // 未结构化的异常统一落到 unknown，详细内容由 Host/Renderer 日志记录。
+  return new PluginRuntimeError('pluginOperationUnknown');
 }

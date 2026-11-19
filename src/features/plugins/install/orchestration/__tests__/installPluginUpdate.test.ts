@@ -411,6 +411,7 @@ describe('installPluginUpdateFromRemote', () => {
       throw new Error(`expected failed result, got ${result.status}`);
     }
     expect(result.error).toContain('同版本 artifact 的 SHA512SUMS 不一致');
+    expect(result.errorCode).toBe('version-conflict');
     expect(readActiveVersion(userPluginRoot)).toBe('1.0.0');
     expect(fs.existsSync(path.join(userPluginRoot, 'mindmap/1.1.0'))).toBe(true);
     expect(
@@ -458,6 +459,7 @@ describe('installPluginUpdateFromRemote', () => {
       throw new Error(`expected failed result, got ${result.status}`);
     }
     expect(result.error).toContain('sha512 不匹配');
+    expect(result.errorCode).toBe('artifact-integrity');
     expect(readActiveVersion(userPluginRoot)).toBe('1.0.0');
     expect(fs.existsSync(path.join(userPluginRoot, 'mindmap/1.1.0'))).toBe(false);
     expect(
@@ -599,6 +601,7 @@ describe('installPluginUpdateFromRemote', () => {
     expect(result.error).toContain('details');
     expect(result.error).not.toContain('invalid_type');
     expect(result.error).not.toContain('"code"');
+    expect(result.errorCode).toBe('incompatible');
     expect(fs.existsSync(path.join(userPluginRoot, 'mindmap/1.1.0'))).toBe(false);
   });
 

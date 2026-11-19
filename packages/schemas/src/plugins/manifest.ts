@@ -1,6 +1,7 @@
 import * as z from 'zod';
 
 import { isValidRendererUiCompatibilityRange } from './renderer-ui-compatibility';
+import type { PluginOperationErrorCode } from './errors';
 
 /**
  * 插件 manifest 契约。
@@ -123,6 +124,7 @@ export type PluginRemoteUpdateCheckResult =
       currentVersion: string | null;
       latestVersion: string | null;
       error: string;
+      errorCode?: PluginOperationErrorCode;
     };
 
 export type PluginRemoteInstallResult =
@@ -145,6 +147,7 @@ export type PluginRemoteInstallResult =
       pluginId: PluginId;
       version: string | null;
       error: string;
+      errorCode?: PluginOperationErrorCode;
     };
 
 export type PluginDiagnosticLevel = 'error' | 'warn' | 'info';
