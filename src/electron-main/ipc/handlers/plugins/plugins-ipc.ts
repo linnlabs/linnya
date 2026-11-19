@@ -44,7 +44,7 @@ import { assertBackendPluginCanDeactivate, beginBackendPluginDeactivation } from
 import { isTrustedKnowledgeResourceSource } from '../../../../app-hosts/linnya/plugin-registry/knowledgeResourceAdmission';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
-import type { PluginMeta } from '@app/schemas';
+import type { PluginMeta, PluginOperationErrorCode, PluginOperationFailure } from '@app/schemas';
 import {
   listBundledPluginManifestIds,
   listBundledPluginMetas,
@@ -52,6 +52,19 @@ import {
 } from '../../../plugins/loader/pluginRuntimeBootstrap';
 
 const logger = new Logger('PluginsIPC');
+
+function classifyPluginOperationError(error: unknown, pluginId?: string): PluginOperationFailure {
+  const message = error instanceof Error ? error.message : String(error);
+  let code: PluginOperationErrorCode = 'unknown';
+  if (/同版本|版本目录不可覆盖|artifact conflict|version conflict/i.test(message)) code = 'version-conflict';
+  else if (/SHA512SUMS|checksum|完整性|artifact.*校验|校验.*artifact/i.test(message)) code = 'artifact-integrity';
+  else if (/迁移|migration|schema_version|schema/i.test(message)) code = 'migration-failed';
+  else if (/兼容|incompatible|minApp/i.test(message)) code = 'incompatible';
+  else if (/ENOSPC|磁盘空间|no space/i.test(message)) code = 'disk-space';
+  else if (/随包|插件目录未初始化|下载|网络|source/i.test(message)) code = 'source-unavailable';
+  logger.error('[plugins] operation failed', { pluginId, code, message, error });
+  return { code, ...(pluginId ? { pluginId } : {}) };
+}
 
 async function syncPluginRuntimeState(options: {
   reinitializeTools: boolean;
@@ -201,7 +214,7 @@ export async function registerPluginsHandlers(input: {
       };
     } catch (error) {
       logger.error('[plugins:get-detail] failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return { success: false, error: classifyPluginOperationError(error) };
     }
   });
 
@@ -210,7 +223,7 @@ export async function registerPluginsHandlers(input: {
       return { success: true, data: pluginDiagnostics.list() };
     } catch (error) {
       logger.error('[plugins:diagnostics] failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return { success: false, error: classifyPluginOperationError(error) };
     }
   });
 
@@ -257,7 +270,7 @@ export async function registerPluginsHandlers(input: {
       };
     } catch (error) {
       logger.error('[plugins:renderer-entries] failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return { success: false, error: classifyPluginOperationError(error) };
     }
   });
 
@@ -290,7 +303,7 @@ export async function registerPluginsHandlers(input: {
         });
       } catch (error) {
         logger.error('[plugins:set-enabled] failed:', error);
-        return { success: false, error: error instanceof Error ? error.message : String(error) };
+        return { success: false, error: classifyPluginOperationError(error, typeof rawPluginId === 'string' ? rawPluginId : undefined) };
       }
     }
   );
@@ -323,7 +336,7 @@ export async function registerPluginsHandlers(input: {
       };
     } catch (error) {
       logger.error('[plugins:checkRemoteUpdate] failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return { success: false, error: classifyPluginOperationError(error, typeof rawPluginId === 'string' ? rawPluginId : undefined) };
     }
   });
 
@@ -375,7 +388,7 @@ export async function registerPluginsHandlers(input: {
       });
     } catch (error) {
       logger.error('[plugins:installFromRemote] failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return { success: false, error: classifyPluginOperationError(error) };
     }
   });
 
@@ -437,7 +450,7 @@ export async function registerPluginsHandlers(input: {
       });
     } catch (error) {
       logger.error('[plugins:installBundled] failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return { success: false, error: classifyPluginOperationError(error, typeof rawPluginId === 'string' ? rawPluginId : undefined) };
     }
   });
 
@@ -485,7 +498,7 @@ export async function registerPluginsHandlers(input: {
       });
     } catch (error) {
       logger.error('[plugins:uninstall] failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return { success: false, error: classifyPluginOperationError(error, typeof rawPluginId === 'string' ? rawPluginId : undefined) };
     }
   });
 }

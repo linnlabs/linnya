@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createPluginRuntimeError } from '@/app/plugins/definitions/pluginRuntimeErrors';
+import { createPluginRuntimeError, normalizePluginRuntimeUserError } from '@/app/plugins/definitions/pluginRuntimeErrors';
 import { PLUGIN_STORE_MESSAGE_FALLBACKS } from '../definitions/pluginStoreMessageCatalog';
 import type { PluginStoreMessageResolver } from '../definitions/pluginStoreMessages';
 import { resolvePluginRuntimeUserErrorMessage } from './pluginRuntimeErrorPresentation';
@@ -24,5 +24,12 @@ describe('resolvePluginRuntimeUserErrorMessage', () => {
       createPluginRuntimeError('pluginStoreDetailUnavailable', { pluginId: 'sheet' }),
       pluginStoreMessage,
     )).toBe('插件详情不可用：sheet');
+  });
+
+  it('maps structured Host operation failures to localized product copy', () => {
+    const error = normalizePluginRuntimeUserError({ code: 'version-conflict', pluginId: 'knowledge' });
+    expect(resolvePluginRuntimeUserErrorMessage(error, pluginStoreMessage)).toBe(
+      '已有相同版本的插件文件内容不同，请提升插件版本后再安装。',
+    );
   });
 });

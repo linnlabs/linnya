@@ -1,4 +1,5 @@
 import { isObjectLike } from '@linnya/foundation';
+import { isPluginOperationFailure } from '@app/schemas';
 import type {
   PluginDiagnosticView,
   PluginId,
@@ -257,8 +258,8 @@ function parsePluginStoreListResult(result: unknown): PluginStoreListIpcResult {
   if (record.success !== true) {
     return {
       success: false,
-      error: typeof record.error === 'string'
-        ? record.error
+      error: typeof record.error === 'string' || isPluginOperationFailure(record.error)
+        ? normalizePluginRuntimeUserError(record.error)
         : createPluginRuntimeError('pluginStoreListReadFailed'),
     };
   }
@@ -283,8 +284,8 @@ function parsePluginStoreDetailResult(result: unknown): PluginStoreDetailIpcResu
   if (record.success !== true) {
     return {
       success: false,
-      error: typeof record.error === 'string'
-        ? record.error
+      error: typeof record.error === 'string' || isPluginOperationFailure(record.error)
+        ? normalizePluginRuntimeUserError(record.error)
         : createPluginRuntimeError('pluginStoreDetailReadFailed'),
     };
   }
@@ -305,8 +306,8 @@ function parsePluginRemoteInstallResult(result: unknown): PluginRemoteInstallIpc
   if (record.success !== true) {
     return {
       success: false,
-      error: typeof record.error === 'string'
-        ? record.error
+      error: typeof record.error === 'string' || isPluginOperationFailure(record.error)
+        ? normalizePluginRuntimeUserError(record.error)
         : createPluginRuntimeError('pluginRemoteInstallFailed'),
     };
   }
@@ -327,8 +328,8 @@ function parsePluginRemoteUpdateCheckResult(result: unknown): PluginRemoteUpdate
   if (record.success !== true) {
     return {
       success: false,
-      error: typeof record.error === 'string'
-        ? record.error
+      error: typeof record.error === 'string' || isPluginOperationFailure(record.error)
+        ? normalizePluginRuntimeUserError(record.error)
         : createPluginRuntimeError('pluginRemoteUpdateCheckFailed'),
     };
   }
@@ -348,8 +349,8 @@ function parsePluginDiagnosticsResult(result: unknown): PluginDiagnosticsIpcResu
   if (result.success !== true) {
     return {
       success: false,
-      error: typeof result.error === 'string'
-        ? result.error
+      error: typeof result.error === 'string' || isPluginOperationFailure(result.error)
+        ? normalizePluginRuntimeUserError(result.error)
         : createPluginRuntimeError('pluginDiagnosticsReadFailed'),
     };
   }
@@ -370,8 +371,8 @@ function parsePluginMutationResult(result: unknown): PluginMutationResult {
   }
   return {
     success: false,
-    error: typeof result.error === 'string'
-      ? result.error
+    error: typeof result.error === 'string' || isPluginOperationFailure(result.error)
+      ? normalizePluginRuntimeUserError(result.error)
       : createPluginRuntimeError('pluginMutationFailed'),
   };
 }

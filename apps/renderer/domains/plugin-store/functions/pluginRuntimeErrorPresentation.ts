@@ -32,6 +32,13 @@ const PLUGIN_RUNTIME_ERROR_MESSAGE_KEYS = {
   pluginRemoteInstallUnsupported: 'pluginStore.runtimeError.pluginRemoteInstallUnsupported',
   pluginUninstallUnsupported: 'pluginStore.runtimeError.pluginUninstallUnsupported',
   pluginToggleUnsupported: 'pluginStore.runtimeError.pluginToggleUnsupported',
+  pluginOperationArtifactIntegrity: 'pluginStore.runtimeError.pluginOperationArtifactIntegrity',
+  pluginOperationVersionConflict: 'pluginStore.runtimeError.pluginOperationVersionConflict',
+  pluginOperationMigrationFailed: 'pluginStore.runtimeError.pluginOperationMigrationFailed',
+  pluginOperationIncompatible: 'pluginStore.runtimeError.pluginOperationIncompatible',
+  pluginOperationDiskSpace: 'pluginStore.runtimeError.pluginOperationDiskSpace',
+  pluginOperationSourceUnavailable: 'pluginStore.runtimeError.pluginOperationSourceUnavailable',
+  pluginOperationUnknown: 'pluginStore.runtimeError.pluginOperationUnknown',
 } as const satisfies Readonly<Record<PluginRuntimeErrorCode, PluginStoreMessageKey>>;
 
 function buildPluginRuntimeErrorParams(error: PluginRuntimeUserError): MessageParams | undefined {
@@ -45,11 +52,7 @@ export function resolvePluginRuntimeUserErrorMessage(
   error: PluginRuntimeUserError,
   resolveMessage: PluginStoreMessageResolver,
 ): string {
-  if (typeof error === 'string') {
-    // Host 返回的安装/加载错误包含具体失败原因（例如同版本 artifact 冲突、
-    // manifest 不匹配）；这里保留它，避免把可修复的问题误导成“稍后重试”。
-    return error;
-  }
+  if (typeof error === 'string') return error;
 
   return resolveMessage(
     PLUGIN_RUNTIME_ERROR_MESSAGE_KEYS[error.code],

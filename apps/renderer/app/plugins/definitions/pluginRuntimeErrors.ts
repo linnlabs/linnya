@@ -1,4 +1,5 @@
 import { isObjectLike } from '@linnya/foundation';
+import { isPluginOperationFailure } from '@app/schemas';
 import type { PluginId } from '@app/schemas';
 
 export type PluginRuntimeErrorCode =
@@ -26,7 +27,14 @@ export type PluginRuntimeErrorCode =
   | 'pluginRemoteUpdateCheckUnsupported'
   | 'pluginRemoteInstallUnsupported'
   | 'pluginUninstallUnsupported'
-  | 'pluginToggleUnsupported';
+  | 'pluginToggleUnsupported'
+  | 'pluginOperationArtifactIntegrity'
+  | 'pluginOperationVersionConflict'
+  | 'pluginOperationMigrationFailed'
+  | 'pluginOperationIncompatible'
+  | 'pluginOperationDiskSpace'
+  | 'pluginOperationSourceUnavailable'
+  | 'pluginOperationUnknown';
 
 export interface PluginRuntimeErrorContext {
   readonly pluginId?: PluginId;
@@ -80,6 +88,18 @@ export function createPluginRuntimeError(
 export function normalizePluginRuntimeUserError(caught: unknown): PluginRuntimeUserError {
   if (isPluginRuntimeError(caught)) {
     return caught;
+  }
+  if (isPluginOperationFailure(caught)) {
+    const codeByOperation = {
+      'artifact-integrity': 'pluginOperationArtifactIntegrity',
+      'version-conflict': 'pluginOperationVersionConflict',
+      'migration-failed': 'pluginOperationMigrationFailed',
+      incompatible: 'pluginOperationIncompatible',
+      'disk-space': 'pluginOperationDiskSpace',
+      'source-unavailable': 'pluginOperationSourceUnavailable',
+      unknown: 'pluginOperationUnknown',
+    } as const;
+    return new PluginRuntimeError(codeByOperation[caught.code], { pluginId: caught.pluginId });
   }
   return caught instanceof Error ? caught.message : String(caught);
 }
