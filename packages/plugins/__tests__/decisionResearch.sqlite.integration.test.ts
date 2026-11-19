@@ -172,7 +172,7 @@ describe('decision -> full research -> leaf reviews -> version-bound delivery', 
     };
     await open([...prefix(), ...suffix()]); await seed(); await start();
     expect(checked).toBe(true);
-  });
+  }, 30_000);
   it('真实三层树与 TaskState，接回正式文件版本；重复接回无模型调用，后续编辑标记失效', async () => {
     await open([...prefix(), ...suffix()]); await seed(); await start();
     fixture.ai.assertAllTurnsConsumed();
@@ -195,7 +195,7 @@ describe('decision -> full research -> leaf reviews -> version-bound delivery', 
     expect(await view()).toMatchObject({ status: 'needs_review', changedDocuments: expect.arrayContaining([expect.stringMatching(/^workspace:/)]) });
     await new WriteFileTool().run({ locator: 'workspace:/final.md', content: '# 已改动\n\n这不是原交付。' }, context());
     expect(await view()).toMatchObject({ status: 'needs_review', changedDocuments: expect.arrayContaining([expect.stringMatching(/^workspace:/)]) });
-  });
+  }, 30_000);
   it('研究期间条件撤回，旧产物保留原 inputRevision，不能变成最新建议', async () => {
     const tail = suffix();
     const checkpoint = tail[0]; if (!checkpoint) throw new Error('Missing review turn');

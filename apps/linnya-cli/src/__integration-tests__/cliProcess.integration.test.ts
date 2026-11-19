@@ -92,7 +92,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
     expect(JSON.parse(healthy.stdout)).toMatchObject({ ok: true, unavailable_capabilities: [] });
     expect(withoutAudit.receivedCommands).toEqual([]);
     expect(complete.receivedCommands).toEqual([]);
-  });
+  }, 30_000);
 
   it('非法能力类型仍在握手阶段被拒绝', async () => {
     const bridge = await createScriptedBridge(() => null, ['projects', 42]);

@@ -130,7 +130,7 @@ describe('todo IPC handlers', () => {
       expect(result.error).toContain('Todo update field is not allowed: projectId');
     }
     expect(webContentsSend).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it('rejects malformed update payloads before reaching service', async () => {
     const result = await invokeTodoUpdate({

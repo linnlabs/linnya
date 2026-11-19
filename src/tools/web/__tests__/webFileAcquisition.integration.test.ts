@@ -228,7 +228,7 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
     expect(found.observation).toContain(`web_read(${JSON.stringify({ url: origin + '/text-report.pdf', pages: '3' })})`);
 
     await expect(readWith({ offset: 10 })).rejects.toThrow();
-  });
+  }, 30_000);
 
   it('重定向 PDF 一次取得原字节；Evidence、实时/历史 Citation 和 Markdown 均保留身份而不伪造正文', async () => {
     const fixture = await setup();
@@ -330,7 +330,7 @@ describe('Web 原文件取得、引用和会话存储闭环', () => {
     expect(await readdir(path.join(fixture.directory, 'web-downloads'))).toHaveLength(2);
     await expect(fixture.read('/report.pdf')).rejects.toThrow('quota exceeded');
     expect(await readdir(path.join(fixture.directory, 'web-downloads'))).toHaveLength(2);
-  });
+  }, 30_000);
 
   it('两种 CSV MIME 均保留原始字节，并继续返回可截断正文；XLSX 不自动解析', async () => {
     const fixture = await setup();

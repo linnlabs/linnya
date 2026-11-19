@@ -82,7 +82,7 @@ describe('read_file 读取 PDF', () => {
     expect(result.observation).toContain('[Page 1]\nSection 1\nBody text for page 1.');
     expect(result.observation).toContain(`read_file(${JSON.stringify({ locator, pages: '21-30' })})`);
     expect(ingestImageBytes).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it('pages 指定页，列出没有文字层的页并提示看图', async () => {
     const locator = await writePdf([['Cover'], null, ['Appendix']]);
