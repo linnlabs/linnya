@@ -47,7 +47,8 @@ Qdrant（随包 1.14.1）按固定大小预先占位，再按需新增：
 
 - 每个集合预建 2 个 WAL 段，每段 `wal_capacity_mb`（默认 32 MB）；写满后关闭旧段、新建下一段。
 - 每个可追加 segment 的 payload 页和稀疏向量页各预建 32 MB；稠密向量按 32 MB 的 mmap chunk 增长。
-- macOS（APFS）上这些预建文件是稀疏文件：文件长度很大，实际分配的块很少。Windows（NTFS）是否同样稀疏尚未在本地验证；若不稀疏，空集合就会按文件长度占盘。
+- macOS（APFS）上这些预建文件是稀疏文件：文件长度很大，实际分配的块很少。Windows（NTFS）上不是稀疏文件（`fsutil sparse queryflag` 显示未设置），文件长度就是实际占盘。
+- 创建集合时不指定 `default_segment_number`，Qdrant 会按 CPU 核数自动分段，每段都各自预建页面。18 核 Mac 上自动分成 8 段，一个空集合文件长度 577 MB。
 
 2026-11-19 在 macOS 用随包二进制实测（1024 维稠密向量 + bm25 稀疏向量，每块约 490 个汉字的 payload，`default_segment_number=1`）：
 
@@ -61,11 +62,24 @@ Qdrant（随包 1.14.1）按固定大小预先占位，再按需新增：
 | 从 30,000 块删到 10,000 块，优化器完成后 | 112 MB | 600 MB |
 | 删除集合 | 全部释放 | 全部释放 |
 
+同日在 Windows 11 虚拟机（NTFS，2 核）用同版本 `qdrant.exe` 实测（同样 `default_segment_number=1`）：
+
+| 状态 | 现行配置（WAL 实际 32 MB） | 配置写到 `storage:` 下（WAL 16 MB） |
+|---|---|---|
+| 1 个空集合 | 136 MB | 104 MB |
+| 3 个空集合 | 408 MB | 312 MB |
+| 块索引写入 2,000 块后 | 440 MB | 344 MB |
+| Qdrant 运行中删除全部集合 | 成功，全部释放 | 成功，全部释放 |
+
+Node 的 `fs.stat().blocks` 在 Windows 上由 libuv 取 NTFS AllocationSize 换算，与上表口径一致，两端都可以用 `blocks × 512` 统计实际占用。
+
 由此得出三条规则：
 
 - 显示占用必须按实际分配的块统计（`stat.blocks`、`du`），不能把文件长度相加，否则 macOS 上会把空库报成几百 MB。
 - 删除点只标记删除，等优化器按 `deleted_threshold`（0.2）和 `vacuum_min_vector_number`（1000）重写 segment 后才回收空间；删除整个集合则立即释放。
 - 主 SQLite 删除行只把页面留给后续复用。v70 起新建的库可以增量回收，更早的库要缩小文件只能整库 VACUUM，所以清理知识库不以缩小主数据库文件为目标。
+- 插件迁移进度取 `plugin_migrations` 最大版本与 `installed_plugins.schema_version` 中的较大值。整体清理数据时，删 8 张表、删迁移记录、把 `schema_version` 归零必须在同一事务完成；只删迁移记录会让重装迁移失败且不重建表。主库中没有其他表外键引用这 8 张表。
+- Qdrant 配置不随集合迁移：已有集合保留创建时的 WAL 设置，只有新集合使用新配置；删除整个 `qdrant/storage` 后重启会得到空库。
 
 ## 激活、任务与恢复
 
