@@ -1,0 +1,96 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import Database from 'better-sqlite3';
+import { afterEach, describe, expect, it } from 'vitest';
+import type { PluginManifestDataStorage } from '@app/schemas';
+
+import {
+  calculatePluginStorageUsage,
+  cleanupPluginData,
+  resumePluginDataCleanup,
+} from './pluginDataCleanup';
+import { uninstallPluginAndDeleteData } from '../../install/orchestration/uninstallPluginLifecycle';
+import { PLUGIN_PLATFORM_STATE_SCHEMAS } from '../sqlite/plugin-state.schema';
+
+const storage: PluginManifestDataStorage = {
+  directories: { source: ['source'], derived: ['derived'], runtime: ['runtime'] },
+  userDataTables: ['plugin_owned'],
+};
+
+const roots: string[] = [];
+
+function fixture(): { root: string; db: Database.Database } {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-cleanup-'));
+  roots.push(root);
+  const db = new Database(':memory:');
+  db.exec(`${PLUGIN_PLATFORM_STATE_SCHEMAS.join('\n')}
+    CREATE TABLE plugin_owned (id TEXT PRIMARY KEY, value TEXT NOT NULL);
+    INSERT INTO installed_plugins (plugin_id, version, name, installed_at) VALUES ('demo', '1.0.0', 'Demo', 1);
+    INSERT INTO plugin_migrations (plugin_id, version, applied_at) VALUES ('demo', 1, 1);
+    INSERT INTO plugin_owned (id, value) VALUES ('one', 'kept');
+  `);
+  for (const directory of ['source', 'derived', 'runtime']) {
+    fs.mkdirSync(path.join(root, directory), { recursive: true });
+    fs.writeFileSync(path.join(root, directory, 'payload.bin'), 'payload');
+  }
+  return { root, db };
+}
+
+afterEach(() => {
+  for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+});
+
+describe('plugin data cleanup', () => {
+  it('按实际分配块统计目录并在一个事务中删除目录、表和迁移账本', async () => {
+    const { root, db } = fixture();
+    const usage = calculatePluginStorageUsage({ db, dataRoot: root, dataStorage: storage });
+    expect(usage.bytes).toBeGreaterThanOrEqual(0);
+    expect(usage.tables).toEqual({ plugin_owned: 1 });
+
+    const result = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage });
+    expect(result.status).toBe('completed');
+    expect(fs.existsSync(path.join(root, 'source'))).toBe(false);
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'plugin_owned'").all()).toEqual([]);
+    expect(db.prepare("SELECT COUNT(*) AS count FROM plugin_migrations WHERE plugin_id = 'demo'").get()).toEqual({ count: 0 });
+    expect(db.prepare("SELECT schema_version FROM installed_plugins WHERE plugin_id = 'demo'").get()).toEqual({ schema_version: 0 });
+    db.close();
+  });
+
+  it('中断后保留进度，重试会续清且不删除未声明目录', async () => {
+    const { root, db } = fixture();
+    fs.mkdirSync(path.join(root, 'not-owned'));
+    // A cancellation before starting records a resumable failed job.
+    const interrupted = new AbortController();
+    interrupted.abort();
+    const failed = await cleanupPluginData({
+      db,
+      pluginId: 'demo',
+      dataRoot: root,
+      dataStorage: storage,
+      signal: interrupted.signal,
+    });
+    expect(failed.status).toBe('failed');
+    expect(fs.existsSync(path.join(root, 'not-owned'))).toBe(true);
+    // 重启后的续清会处理所有声明目录，未声明目录仍然保留。
+    const resumed = await resumePluginDataCleanup({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage });
+    expect(resumed.status).toBe('completed');
+    expect(fs.existsSync(path.join(root, 'not-owned'))).toBe(true);
+    db.close();
+  });
+
+  it('删除数据选项先完成清理，再写入用户卸载状态', async () => {
+    const { root, db } = fixture();
+    const result = await uninstallPluginAndDeleteData({
+      db,
+      userPluginRoot: path.join(root, 'plugins'),
+      pluginId: 'demo',
+      knownPlugins: [],
+      dataRoot: root,
+      dataStorage: storage,
+    });
+    expect(result).toMatchObject({ status: 'uninstalled', dataDeleted: true, userDataPreserved: false });
+    expect(db.prepare("SELECT installed, user_removed FROM installed_plugins WHERE plugin_id = 'demo'").get()).toEqual({ installed: 0, user_removed: 1 });
+    db.close();
+  });
+});

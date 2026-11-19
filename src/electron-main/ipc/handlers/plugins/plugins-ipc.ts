@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { mapTrustedRendererApplicationSurfaces } from '../../../../app-hosts/linnya/plugin-registry/rendererApplicationSurfaceTrust';
 import { getRegisteredBackendPluginDirectory } from '../../../../app-hosts/linnya/plugin-registry/builtin';
 import type { BackendRuntimeOwner } from '../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
@@ -30,7 +31,7 @@ import {
   isPluginVisibleInStore,
 } from '../../../../features/plugins/store/functions/buildPluginStoreList';
 import { buildPluginStoreDetail } from '../../../plugins/store/pluginStoreDetail';
-import { uninstallPluginLifecycle } from '../../../../features/plugins/install/orchestration/uninstallPluginLifecycle';
+import { uninstallPluginAndDeleteData, uninstallPluginLifecycle } from '../../../../features/plugins/install/orchestration/uninstallPluginLifecycle';
 import { installPluginFromRemoteAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromRemoteAndActivate';
 import { installPluginFromBundledAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromBundledAndActivate';
 import { checkPluginUpdateFromRemote } from '../../../../features/plugins/install/orchestration/installPluginUpdate';
@@ -40,11 +41,19 @@ import { runPluginLifecycleOperationSerially } from '../../../../features/plugin
 import { resolveDiskPluginUpgradePlan } from '../../../plugins/install/diskPluginUpgradePlan';
 import { getRunSupervisor } from '../../../services/agentRuntimeSingletons';
 import { cancelActiveRunsForPluginRuntimeChange } from '../../../../app-hosts/linnya/plugin-registry/pluginRuntimeRunInvalidation';
-import { assertBackendPluginCanDeactivate, beginBackendPluginDeactivation } from '../../../../app-hosts/linnya/plugin-registry/runtimeEffectRuntime';
+import {
+  assertBackendPluginCanDeactivate,
+  beginBackendPluginDeactivation,
+  deactivateStaleBackendPluginRuntimeEffects,
+} from '../../../../app-hosts/linnya/plugin-registry/runtimeEffectRuntime';
+import { backendPluginRegistry } from '../../../../app-hosts/linnya/plugin-registry/registry';
+import { getRuntimeEnabledPluginIds } from '../../../../app-hosts/linnya/plugin-registry/pluginRuntimeState';
 import { isTrustedKnowledgeResourceSource } from '../../../../app-hosts/linnya/plugin-registry/knowledgeResourceAdmission';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
-import type { PluginMeta, PluginOperationFailure } from '@app/schemas';
+import { parsePluginManifest, type PluginMeta, type PluginOperationFailure } from '@app/schemas';
+import { pathManager } from '../../../../shared/utils/pathManager';
+import { readJsonFile } from '../../../plugins/loader/pluginLayout';
 import {
   listBundledPluginManifestIds,
   listBundledPluginMetas,
@@ -279,6 +288,12 @@ export async function registerPluginsHandlers(input: {
           backendDirectDirs: input.packaged ? [] : readBackendDirectPluginDirsFromEnv(),
           bundledPluginRoot: process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT,
           getRegisteredPluginDirectory: getRegisteredBackendPluginDirectory,
+            recordDiagnostic: diagnostic => pluginDiagnostics.record({
+              level: 'error',
+              pluginId: diagnostic.pluginId,
+              capability: null,
+              message: diagnostic.message,
+            }),
         }),
       };
     } catch (error) {
@@ -471,7 +486,10 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:uninstall', async (_event, rawPluginId: unknown) => {
     try {
-      const pluginId = parsePluginId(rawPluginId, 'plugins:uninstall');
+      const isRequest = typeof rawPluginId === 'object' && rawPluginId !== null;
+      const requestedPluginId = isRequest ? Reflect.get(rawPluginId, 'pluginId') : rawPluginId;
+      const pluginId = parsePluginId(requestedPluginId, 'plugins:uninstall');
+      const deleteData = isRequest && Reflect.get(rawPluginId, 'deleteData') === true;
       const bundledPluginRoot = resolveBundledPluginRoot();
       const hasBundledSource = bundledPluginRoot !== null
         && listBundledPluginManifestIds(bundledPluginRoot).includes(pluginId);
@@ -487,13 +505,29 @@ export async function registerPluginsHandlers(input: {
             throw new PluginOperationError('source-unavailable', '插件目录未初始化，不能卸载插件', { pluginId });
           }
           assertBackendPluginCanDeactivate(pluginId);
+          beginBackendPluginDeactivation(pluginId);
+          await deactivateStaleBackendPluginRuntimeEffects(
+            backendPluginRegistry.getRuntimeEffectRegistrations(getRuntimeEnabledPluginIds())
+              .filter(registration => registration.pluginId !== pluginId),
+          );
           const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
-          const result = uninstallPluginLifecycle({
+          const registeredDir = getRegisteredBackendPluginDirectory(pluginId);
+          const manifest = registeredDir
+            ? parsePluginManifest(readJsonFile(path.join(registeredDir, 'plugin.json')))
+            : null;
+          const lifecycleOptions = {
             db: databaseService.getDb(),
             userPluginRoot,
             pluginId,
             knownPlugins: listKnownPluginMetas(),
-          });
+            ...(deleteData && manifest ? {
+              dataRoot: pathManager.getKbDataPath(),
+              dataStorage: manifest.dataStorage,
+            } : {}),
+          };
+          const result = deleteData
+            ? await uninstallPluginAndDeleteData(lifecycleOptions)
+            : uninstallPluginLifecycle(lifecycleOptions);
           if (result.status !== 'uninstalled') {
             throwPluginOperationResultFailure(result);
           }

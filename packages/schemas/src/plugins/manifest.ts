@@ -233,6 +233,21 @@ export const PluginOwnedFileTypeSchema = z.object({
   label: z.string().min(1),
 });
 
+/**
+ * 插件自有资料的物理存储声明。
+ *
+ * 中文说明：清理只允许触及 manifest 明确声明的相对目录和表；Host 不按
+ * pluginId 猜路径，也不能把整个 workspace 数据目录交给插件自行删除。
+ */
+export const PluginManifestDataStorageSchema = z.object({
+  directories: z.object({
+    source: z.array(PluginManifestAssetPathSchema).default([]),
+    derived: z.array(PluginManifestAssetPathSchema).default([]),
+    runtime: z.array(PluginManifestAssetPathSchema).default([]),
+  }).default({ source: [], derived: [], runtime: [] }),
+  userDataTables: z.array(z.string().min(1)).default([]),
+});
+
 function hasStrictlyIncreasingMigrationVersions(
   migrations: readonly z.infer<typeof PluginManifestMigrationSchema>[]
 ): boolean {
@@ -266,6 +281,10 @@ export const PluginManifestSchema = z
     applicationSurfaceSlot: PluginApplicationSurfaceSlotSchema.optional(),
     ownedFileTypes: z.array(PluginOwnedFileTypeSchema).default([]),
     ownedTables: z.array(z.string().min(1)).default([]),
+    dataStorage: PluginManifestDataStorageSchema.default({
+      directories: { source: [], derived: [], runtime: [] },
+      userDataTables: [],
+    }),
     migrations: z.array(PluginManifestMigrationSchema).default([]),
     artifact: PluginManifestArtifactSchema.optional(),
   })
@@ -286,6 +305,7 @@ export type PluginManifestSkill = z.infer<typeof PluginManifestSkillSchema>;
 export type PluginManifestAgent = z.infer<typeof PluginManifestAgentSchema>;
 export type PluginManifestReleaseNote = z.infer<typeof PluginManifestReleaseNoteSchema>;
 export type PluginOwnedFileType = z.infer<typeof PluginOwnedFileTypeSchema>;
+export type PluginManifestDataStorage = z.infer<typeof PluginManifestDataStorageSchema>;
 
 export interface PluginMetaClassification {
   readonly builtin: boolean;

@@ -36,6 +36,23 @@
     "knowledge_graph_index_status",
     "knowledge_graph_vector_doc_status"
   ],
+  "dataStorage": {
+    "directories": {
+      "source": ["source_of_truth", "originals"],
+      "derived": ["qdrant"],
+      "runtime": ["temporary", "diagnostics"]
+    },
+    "userDataTables": [
+      "knowledge_bases",
+      "kb_documents",
+      "project_knowledge_base_links",
+      "knowledge_graph_nodes",
+      "knowledge_graph_edges",
+      "knowledge_graph_doc_status",
+      "knowledge_graph_index_status",
+      "knowledge_graph_vector_doc_status"
+    ]
+  },
   "migrations": [
     {
       "version": 1,

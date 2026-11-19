@@ -396,7 +396,10 @@ declare global {
         ) => Promise<
           { success: true; data: PluginRemoteInstallResult } | { success: false; error?: PluginOperationFailure }
         >;
-        uninstall: (pluginId: string) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
+        uninstall: (
+          pluginId: string,
+          options?: { deleteData?: boolean }
+        ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
         setEnabled: (
           pluginId: string,
           enabled: boolean

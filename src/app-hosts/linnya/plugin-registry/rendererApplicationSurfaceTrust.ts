@@ -10,6 +10,7 @@ export interface ApplicationSurfaceTrustInput {
   readonly backendDirectDirs: readonly string[];
   readonly bundledPluginRoot: string | undefined;
   readonly getRegisteredPluginDirectory: (pluginId: string) => string | undefined;
+  readonly recordDiagnostic?: (diagnostic: { readonly pluginId: string; readonly message: string }) => void;
 }
 
 interface PluginSource {
@@ -49,6 +50,12 @@ export function mapTrustedRendererApplicationSurfaces(
   const trustedSurfaceRequestCount = entries.filter(entry =>
     entry.requestedApplicationSurfaceSlot === 'knowledge-base' && isTrustedPluginSource(entry, input)
   ).length;
+  if (trustedSurfaceRequestCount > 1) {
+    input.recordDiagnostic?.({
+      pluginId: entries.find(entry => entry.requestedApplicationSurfaceSlot === 'knowledge-base')?.pluginId ?? 'unknown',
+      message: `多个可信插件申请同一 application surface，未授予 knowledge-base 槽位（count=${trustedSurfaceRequestCount}）`,
+    });
+  }
   return entries.map(entry => {
     if (trustedSurfaceRequestCount !== 1 || entry.requestedApplicationSurfaceSlot !== 'knowledge-base' ||
       !isTrustedPluginSource(entry, input)) return entry;

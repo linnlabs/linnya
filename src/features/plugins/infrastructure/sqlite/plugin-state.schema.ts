@@ -40,7 +40,22 @@ export const PLUGIN_ACTIVE_VERSION_SCHEMA = `
   );
 `;
 
+/** Host 只记录清理意图与进度，实际目录由 manifest 声明，便于中断后续清。 */
+export const PLUGIN_CLEANUP_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS plugin_cleanup_jobs (
+    plugin_id       TEXT PRIMARY KEY,
+    status          TEXT NOT NULL CHECK(status IN ('cleaning', 'failed')),
+    completed_paths TEXT NOT NULL DEFAULT '[]',
+    data_storage    TEXT NOT NULL DEFAULT '{}',
+    error           TEXT,
+    started_at      INTEGER NOT NULL,
+    updated_at      INTEGER NOT NULL,
+    FOREIGN KEY(plugin_id) REFERENCES installed_plugins(plugin_id) ON DELETE CASCADE
+  );
+`;
+
 export const PLUGIN_PLATFORM_STATE_SCHEMAS = [
   PLUGIN_INSTALLATION_STATE_SCHEMA,
   PLUGIN_ACTIVE_VERSION_SCHEMA,
+  PLUGIN_CLEANUP_SCHEMA,
 ];

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   activatePluginVersion,
+  pruneInactivePluginVersions,
   readActivePluginPointer,
   rollbackActivePluginVersion,
 } from '../activatePluginVersion';
@@ -40,6 +41,19 @@ afterEach(() => {
   for (const tempRoot of tempRoots.splice(0)) {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
+});
+
+it('切换版本后只保留当前与 previousVersion 目录', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-version-retention-'));
+  const pluginRoot = path.join(root, 'plugins');
+  for (const version of ['1.0.0', '1.1.0', '1.2.0']) {
+    fs.mkdirSync(path.join(pluginRoot, 'demo', version), { recursive: true });
+    fs.writeFileSync(path.join(pluginRoot, 'demo', version, 'plugin.json'), JSON.stringify({ id: 'demo', version }));
+  }
+  expect(pruneInactivePluginVersions(pluginRoot, 'demo', ['1.2.0', '1.1.0'])).toEqual(['1.0.0']);
+  expect(fs.existsSync(path.join(pluginRoot, 'demo/1.0.0'))).toBe(false);
+  expect(fs.existsSync(path.join(pluginRoot, 'demo/1.1.0'))).toBe(true);
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 describe('activatePluginVersion', () => {

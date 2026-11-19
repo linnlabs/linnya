@@ -605,12 +605,15 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
     return result.data;
   }
 
-  async function uninstallPlugin(pluginId: PluginId): Promise<void> {
+  async function uninstallPlugin(
+    pluginId: PluginId,
+    options: { readonly deleteData?: boolean } = {},
+  ): Promise<void> {
     const pluginsApi = window.electronAPI?.plugins;
     if (!pluginsApi) {
       throw createPluginRuntimeError('pluginUninstallUnsupported');
     }
-    await runMutation(() => pluginsApi.uninstall(pluginId));
+    await runMutation(() => pluginsApi.uninstall(pluginId, options));
   }
 
   async function setPluginEnabled(pluginId: PluginId, enabled: boolean): Promise<void> {

@@ -111,6 +111,26 @@ export function writeActivePluginPointerAtomically(
   fs.renameSync(tempPath, activePath);
 }
 
+/** 成功切换后只保留当前版本和一次回滚版本，避免每次更新永久累积安装包。 */
+export function pruneInactivePluginVersions(
+  userPluginRoot: string,
+  pluginId: PluginId,
+  keepVersions: readonly string[],
+): readonly string[] {
+  const pluginDir = getPluginInstallDir(userPluginRoot, pluginId);
+  if (!fs.existsSync(pluginDir)) return [];
+  const keep = new Set(keepVersions);
+  const removed: string[] = [];
+  for (const entry of fs.readdirSync(pluginDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || keep.has(entry.name) || entry.name.startsWith('.')) continue;
+    const versionManifest = path.join(pluginDir, entry.name, 'plugin.json');
+    if (!fs.existsSync(versionManifest)) continue;
+    fs.rmSync(path.join(pluginDir, entry.name), { recursive: true, force: true });
+    removed.push(entry.name);
+  }
+  return removed;
+}
+
 export function syncActivePluginPointer(
   options: {
     readonly userPluginRoot: string;
@@ -166,6 +186,7 @@ export function activatePluginVersion(options: ActivatePluginVersionOptions): Ac
       version: options.version,
       previousVersion,
     });
+    pruneInactivePluginVersions(options.userPluginRoot, options.pluginId, [options.version, ...(previousVersion ? [previousVersion] : [])]);
     return {
       status: 'activated',
       pluginId: options.pluginId,

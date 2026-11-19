@@ -3,7 +3,7 @@ import { resolveEnabledIds } from '../registeredContributions';
 import { backendPluginRegistry } from '../registry';
 import { registeredBackendPluginDirectories as diskPluginDirsById } from '../registeredPluginDirectories';
 import { platformBackendPlugin } from './platform.backend';
-import type { PluginId, PluginMeta } from '@app/schemas';
+import { parsePluginManifest, type PluginId, type PluginMeta } from '@app/schemas';
 import type { PluginBackendContribution } from '../types';
 import type { BackendPluginSkillResourceRootRegistration } from '../registry';
 import type Database from 'better-sqlite3';
@@ -38,7 +38,10 @@ import {
 import {
   readBackendDirectPluginDirsFromEnv,
   readDirectPluginDirsFromEnv,
+  readJsonFile,
 } from '../../../../electron-main/plugins/loader/pluginLayout';
+import { resumePendingPluginDataCleanups } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { pathManager } from '../../../../shared/utils/pathManager';
 import {
   getDocumentTypeBackendHook,
   listDocumentTypeBackendHooks,
@@ -467,6 +470,34 @@ export function bootstrapBuiltinPluginLifecycle(
 
   // 中文说明：核心迁移完成后才登记内置插件；此时 installed_plugins/plugin_migrations 已存在。
   stateService.ensureBuiltinInstalled(metas.filter(meta => meta.builtin));
+  // 清理任务在目录删除和 SQLite 收尾之间可能被进程打断；启动时按原 manifest
+  // 声明续清。没有 pending job 时不扫描数据目录，避免把插件冷启动变成全盘检查。
+  void resumePendingPluginDataCleanups({
+    db,
+    dataRoot: pathManager.getKbDataPath(),
+    resolveStorage: pluginId => {
+      const directory = diskPluginDirsById.get(pluginId);
+      if (!directory) return null;
+      try {
+        return parsePluginManifest(readJsonFile(path.join(directory, 'plugin.json'))).dataStorage;
+      } catch (error) {
+        pluginDiagnostics.record({
+          level: 'error',
+          pluginId,
+          capability: 'migration',
+          message: `读取插件清理声明失败: ${error instanceof Error ? error.message : String(error)}`,
+        });
+        return null;
+      }
+    },
+  }).catch(error => {
+    pluginDiagnostics.record({
+      level: 'error',
+      pluginId: null,
+      capability: 'migration',
+      message: `恢复插件数据清理失败: ${error instanceof Error ? error.message : String(error)}`,
+    });
+  });
   const installedIds = readInstalledPluginIds(db, metas);
   applyRegisteredPluginSchemas(db, installedIds);
   runRegisteredPluginLifecycle(db, installedIds, applicationVersion);

@@ -41,3 +41,26 @@ it('does not grant an ordinary direct plugin with the same id, or a Renderer fro
   expect(mapTrustedRendererApplicationSurfaces([entry(outsider, 'direct')], { ...options, backendDirectDirs: [outsider] })[0]?.applicationSurfaceSlot).toBeUndefined();
   expect(mapTrustedRendererApplicationSurfaces([entry(outsider, 'direct')], { ...options, backendDirectDirs: [outsider], getRegisteredPluginDirectory: () => outsider })[0]?.applicationSurfaceSlot).toBe('knowledge-base');
 });
+
+it('records a diagnostic and grants no slot when two trusted sources compete', () => {
+  const diagnostics: string[] = [];
+  const first = path.join(root, 'packages/plugins/knowledge');
+  const second = path.join(root, 'packages/plugins/knowledge-copy');
+  for (const dir of [first, second]) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, 'plugin.json'), JSON.stringify({ id: path.basename(dir), version: '1.0.0', applicationSurfaceSlot: 'knowledge-base', entry: { backend: 'backend.cjs', renderer: 'renderer.js' } }));
+    writeFileSync(path.join(dir, 'SHA512SUMS'), 'verified-artifact-entry');
+  }
+  const firstEntry = entry(first, 'active');
+  const secondEntry = { ...entry(second, 'active'), pluginId: 'knowledge-copy', entryUrl: 'plugin://knowledge-copy/dist/renderer/index.js' };
+  const mapped = mapTrustedRendererApplicationSurfaces([firstEntry, secondEntry], {
+    packaged: false,
+    workspaceRoot: root,
+    backendDirectDirs: [first, second],
+    bundledPluginRoot: undefined,
+    getRegisteredPluginDirectory: pluginId => pluginId === 'knowledge' ? first : second,
+    recordDiagnostic: diagnostic => diagnostics.push(diagnostic.message),
+  });
+  expect(mapped.every(item => item.applicationSurfaceSlot === undefined)).toBe(true);
+  expect(diagnostics).toHaveLength(1);
+});

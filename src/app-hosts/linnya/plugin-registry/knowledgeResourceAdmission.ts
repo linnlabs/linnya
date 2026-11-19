@@ -1,5 +1,7 @@
 import path from 'node:path';
 import { getRegisteredBackendPluginDirectory } from './registeredPluginDirectories';
+import { registeredBackendPluginDirectories } from './registeredPluginDirectories';
+import { pluginDiagnostics } from './diagnostics';
 import { assertPluginRuntimeEnabled } from './pluginRuntimeAccess';
 import { isTrustedPluginSource } from './rendererApplicationSurfaceTrust';
 import {
@@ -32,7 +34,39 @@ export function isTrustedKnowledgeResourceSource(pluginId: string): boolean {
         ? 'direct'
         : 'active';
   if (manifest.applicationSurfaceSlot !== 'knowledge-base') return false;
-  return isTrustedPluginSource(
+  const trustedPluginIds = [...registeredBackendPluginDirectories.entries()].flatMap(([candidateId, candidateDirectory]) => {
+    const candidateManifest = readPluginManifestSummary(candidateDirectory);
+    if (candidateManifest?.applicationSurfaceSlot !== 'knowledge-base') return [];
+    const candidateSourceKind: 'official-source' | 'direct' | 'active' = !packaged && path.resolve(candidateDirectory) === path.resolve(roots.developmentRoot, 'packages/plugins/knowledge')
+      ? 'official-source'
+      : backendDirectDirs.some(value => path.resolve(value) === path.resolve(candidateDirectory))
+        ? 'direct'
+        : 'active';
+    return isTrustedPluginSource({
+      pluginId: candidateId,
+      pluginDir: candidateDirectory,
+      version: candidateManifest.version,
+      sourceKind: candidateSourceKind,
+    }, {
+      packaged,
+      workspaceRoot: roots.developmentRoot,
+      backendDirectDirs,
+      bundledPluginRoot: process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT,
+      getRegisteredPluginDirectory: getRegisteredBackendPluginDirectory,
+    }) ? [candidateId] : [];
+  });
+  if (trustedPluginIds.length !== 1) {
+    if (trustedPluginIds.length > 1) {
+      pluginDiagnostics.record({
+        level: 'error',
+        pluginId,
+        capability: null,
+        message: `多个可信插件申请知识库资料接管，已拒绝全部来源（count=${trustedPluginIds.length}）`,
+      });
+    }
+    return false;
+  }
+  return trustedPluginIds[0] === pluginId && isTrustedPluginSource(
     {
       pluginId,
       pluginDir: directory,

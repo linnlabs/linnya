@@ -37,7 +37,8 @@ export function buildPluginsPreloadApi(ipcRenderer: IpcRenderer) {
       checkRemoteUpdate: (pluginId: string) => ipcRenderer.invoke('plugins:checkRemoteUpdate', pluginId),
       installFromRemote: (pluginId: string) => ipcRenderer.invoke('plugins:installFromRemote', pluginId),
       installBundled: (pluginId: string) => ipcRenderer.invoke('plugins:installBundled', pluginId),
-      uninstall: (pluginId: string) => ipcRenderer.invoke('plugins:uninstall', pluginId),
+      uninstall: (pluginId: string, options?: { deleteData?: boolean }) =>
+        ipcRenderer.invoke('plugins:uninstall', { pluginId, ...options }),
       setEnabled: (pluginId: string, enabled: boolean) =>
         ipcRenderer.invoke('plugins:set-enabled', pluginId, enabled),
       onChanged: (cb: () => void) => {
