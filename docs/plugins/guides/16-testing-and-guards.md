@@ -54,6 +54,9 @@ smoke 仍保留单插件入口，便于定位发布形态问题。
 
 - `guard:agent-boundary` — 全仓 Agent 与插件包边界守卫（包内不 import
   host 内部、包外不 deep import 插件内部）。
+- `guard:host-plugin-id` — Host 生产源码（`src/`、`apps/renderer/`）不得以插件身份引用具体插件 ID：
+  与 `pluginId` 比较、plugin 调用参数或属性值、`plugins/<id>` 路径与 `plugin://<id>` 地址都算。现存引用记在
+  `.baseline/host-plugin-id-references.txt`，只允许减少；接入插件改走 manifest、contribution 与装配来源授信。
 - `smoke:plugin:<id>:artifact`
   — 本地 artifact 冒烟，必须包含 package、一次性 bundled root 准备、
   `verify-plugin-artifact.mjs <id> --extra-resources --require-renderer-assets`
