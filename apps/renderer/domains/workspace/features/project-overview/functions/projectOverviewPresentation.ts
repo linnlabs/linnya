@@ -3,17 +3,34 @@ import type { LinnyaLocale } from '@app/localization';
 import type { WorkspaceMessageKey, WorkspaceMessageResolver } from '@/domains/workspace/definitions/workspaceMessages';
 import type { ProjectOverviewSortKey } from '../definitions/projectOverview';
 
-/** 插件的显示名由调用方从插件注册表查；查不到时统称“插件”。 */
+/**
+ * Agent 显示名。null 是默认 Agent，显示为 Linnya Agent；其他 Agent 用注册表里的名字，
+ * 查不到（例如所属插件已停用）时显示注册表 ID。“Linnya AI”只是 Linnya 全部 AI 功能的泛称，不作为任何 Agent 的名字。
+ */
+export function resolveProjectOverviewAgentName(
+  agentId: string | null,
+  agentNames: ReadonlyMap<string, string>,
+  message: WorkspaceMessageResolver,
+): string {
+  if (agentId === null) return message('workspace.projectOverview.actor.defaultAgent');
+  return agentNames.get(agentId) ?? agentId;
+}
+
+/**
+ * 名字由调用方查好：插件从插件注册表查，查不到时统称“插件”；主运行的 Agent 见 `resolveProjectOverviewAgentName`。
+ * 子运行显示为“子任务”：子 Agent 是 Agent 内部的协作，没有面向用户的名字，与对话“本次改动”里的“子任务新建/修改”一致。
+ */
 export function formatProjectOverviewActor(
   actor: ProjectOverviewActor,
-  pluginName: string | null,
+  names: { readonly pluginName: string | null; readonly agentName: string },
   message: WorkspaceMessageResolver,
 ): string {
   switch (actor) {
-    case 'linnya_ai': return message('workspace.projectOverview.actor.linnyaAi');
+    case 'run': return names.agentName;
+    case 'subrun': return message('workspace.projectOverview.actor.subrun');
     case 'user': return message('workspace.projectOverview.actor.user');
     case 'external': return message('workspace.projectOverview.actor.external');
-    case 'plugin': return pluginName ?? message('workspace.projectOverview.actor.plugin');
+    case 'plugin': return names.pluginName ?? message('workspace.projectOverview.actor.plugin');
   }
 }
 

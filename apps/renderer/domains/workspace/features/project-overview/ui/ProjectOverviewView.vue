@@ -619,7 +619,7 @@ const sortedRows = computed(() => {
     contentMatches: contentMatches.value,
     fieldMatches: fieldMatches.value,
   });
-  return sortProjectOverviewRows(filtered, sort.value, { typeLabel });
+  return sortProjectOverviewRows(filtered, sort.value, { typeLabel, sourceLabel: row => actorText(row.creatorActor, row.creatorPluginId, row.creatorAgentId) });
 });
 
 function clearFilters(): void {
@@ -1011,13 +1011,16 @@ function timeText(timestamp: number): string {
   return historyTime(timestamp);
 }
 
-function actorText(actor: ProjectOverviewRow['creatorActor'], pluginId: string | null): string {
+function actorText(actor: ProjectOverviewRow['creatorActor'], pluginId: string | null, agentId: string | null): string {
   if (actor === null) return '';
-  return formatProjectOverviewActor(actor, pluginId ? props.presentation.pluginName(pluginId) : null, workspaceMessage);
+  return formatProjectOverviewActor(actor, {
+    pluginName: pluginId ? props.presentation.pluginName(pluginId) : null,
+    agentName: props.presentation.agentName(agentId),
+  }, workspaceMessage);
 }
 
 function modifiedActorText(row: ProjectOverviewRow): string {
-  return actorText(row.lastModifiedActor, row.lastModifiedPluginId);
+  return actorText(row.lastModifiedActor, row.lastModifiedPluginId, row.lastModifiedAgentId);
 }
 
 function conversationText(row: ProjectOverviewRow): string {
@@ -1036,7 +1039,7 @@ function cellText(id: ProjectOverviewColumnId, row: ProjectOverviewRow): string 
     case 'location':
       return row.location.length > 0 ? row.location.join(' / ') : workspaceMessage('workspace.projectOverview.location.root');
     case 'source':
-      return actorText(row.creatorActor, row.creatorPluginId);
+      return actorText(row.creatorActor, row.creatorPluginId, row.creatorAgentId);
     case 'type':
       return typeLabel(row.nodeType);
     case 'created':

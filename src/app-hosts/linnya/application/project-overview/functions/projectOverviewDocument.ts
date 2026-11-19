@@ -1,4 +1,4 @@
-import type { ProjectOverviewActor, ProjectOverviewDocument } from '@app/schemas';
+import { toReadModelAgentId, type ProjectOverviewActor, type ProjectOverviewDocument } from '@app/schemas';
 import type { ActionActorKind, ActionLedgerDocumentSummary } from 'src/domains/action-ledger';
 import type { WorkspaceProjectDocument } from 'src/features/workspace/vfs';
 
@@ -8,12 +8,13 @@ import type { WorkspaceProjectDocument } from 'src/features/workspace/vfs';
  */
 export const LEDGER_EXPLAINS_CHANGE_TOLERANCE_MS = 2_000;
 
-/** 主运行和子运行都是 Linnya 自己的 Agent。 */
+/** 与账本执行者种类一一对应；运行是哪个 Agent 另由 `agent_id` 给出。 */
 export function toProjectOverviewActor(kind: ActionActorKind): ProjectOverviewActor {
   switch (kind) {
     case 'run':
+      return 'run';
     case 'subrun':
-      return 'linnya_ai';
+      return 'subrun';
     case 'user':
       return 'user';
     case 'external':
@@ -55,13 +56,18 @@ export function projectOverviewDocument(input: {
       : {
           actor: toProjectOverviewActor(creator.actorKind),
           plugin_id: creator.pluginId,
+          agent_id: toReadModelAgentId(creator.agentId),
           // 对话已删除或不再属于本项目时，不给出无法打开的对话。
           conversation_id: conversationTitle === undefined ? null : conversationId,
           conversation_title: conversationTitle ?? null,
         },
     last_modified_at: lastModifiedAt,
     last_modified_by: summary && ledgerExplainsLast
-      ? { actor: toProjectOverviewActor(summary.last.actorKind), plugin_id: summary.last.pluginId }
+      ? {
+          actor: toProjectOverviewActor(summary.last.actorKind),
+          plugin_id: summary.last.pluginId,
+          agent_id: toReadModelAgentId(summary.last.agentId),
+        }
       : null,
     pending_revision_count: input.pendingRevisionCount,
     tags: input.tags.map(tag => ({ id: tag.id, name: tag.name })),

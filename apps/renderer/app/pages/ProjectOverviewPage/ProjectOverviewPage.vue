@@ -30,6 +30,7 @@ import {
   resolveDocumentTypeTextPresentation,
 } from '@/app/plugins/functions/pluginContributionPresentation';
 import ProjectOverviewView from '@/domains/workspace/features/project-overview/ui/ProjectOverviewView.vue';
+import { resolveProjectOverviewAgentName } from '@/domains/workspace/features/project-overview/functions/projectOverviewPresentation';
 import { useProjectKnowledgeBaseModalStore } from '@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
@@ -79,10 +80,8 @@ const presentation = computed<ProjectOverviewPresentation>(() => {
   return {
     documentType: nodeType => byNodeType.get(nodeType) ?? { label: nodeType, iconComponent: DocumentIcon, iconClass: '' },
     pluginName: pluginId => pluginNames.get(pluginId) ?? null,
-    // 默认 Agent 不进选择器，统一叫 Linnya AI（与文件页“来源”一致）。
-    agentName: agentId => (agentId === null
-      ? workspaceMessage('workspace.projectOverview.actor.linnyaAi')
-      : agentNames.get(agentId) ?? null),
+    // 默认 Agent 不进选择器，名字由项目概览统一给出（Linnya Agent）。
+    agentName: agentId => resolveProjectOverviewAgentName(agentId, agentNames, workspaceMessage),
   };
 });
 
