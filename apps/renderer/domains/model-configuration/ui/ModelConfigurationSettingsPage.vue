@@ -322,5 +322,5 @@ const otherModelSlots = computed(() => [
     titleKey: 'settings.modelConfig.transcription.selectTitle',
     descriptionKey: 'settings.modelConfig.transcription.description',
   },
-]);
+] as const);
 </script>

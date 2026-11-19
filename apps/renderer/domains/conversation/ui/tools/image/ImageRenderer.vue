@@ -116,7 +116,7 @@
 
 <script setup lang="ts">
 import { ToolActivityIndicator } from '../../../shared/execution-presentation';
-import { computed, ref, onBeforeUnmount } from 'vue';
+import { computed, ref, onBeforeUnmount, type CSSProperties } from 'vue';
 import { IconButton, ImagePreviewModal, useImagePreviewSource } from '@linnya/renderer-ui';
 import type { ImageGenerationPresentationImage } from './definitions/imageGenerationPresentation';
 import { ZoomInIcon } from '@linnya/renderer-ui/icons';
@@ -228,7 +228,7 @@ const singleImageEntry = computed<ImageEntry | null>(() => {
   return image ? buildImageEntry(image, 'ai-generated-image.png') : null;
 });
 
-const singleImageStyle = computed<Record<string, string> | undefined>(() => {
+const singleImageStyle = computed<CSSProperties | undefined>(() => {
   if (!singleImageEntry.value) return undefined;
   const dimensions = singleImageEntry.value?.dimensions;
   const metadataBoxSize = calculateConversationImageBoxSize(

@@ -12,6 +12,7 @@
  */
 
 import { useFileStore } from '@/app/active-document';
+import { createRepeatingTimer } from '@linnya/renderer-ui';
 import { storeToRefs } from 'pinia';
 import { watch } from 'vue';
 import { FileManagerOrchestrator } from './orchestrator';
@@ -27,7 +28,8 @@ const handlerRegistry = new Map<string, FileTypeLifecycleHandler>();
 let activeSession: FileSessionDescriptor | null = null;
 let hooksInitialized = false;
 let autoSaveInitialized = false;
-let autoSaveTimer: number | null = null;
+// 自动保存与应用同寿命（模块级单例），不随任何组件卸载；改间隔时由 restartTimer 重启。
+const autoSaveTimer = createRepeatingTimer();
 
 // 串行编排器：所有“会改变 activeSession / filePath / 保存状态”的操作必须走这里
 const orchestrator = new FileManagerOrchestrator();
@@ -172,17 +174,14 @@ function initAutoSaveScheduler(fileStore: ReturnType<typeof useFileStore>) {
   const { autoSaveInterval, currentFilePath, isDirty, isSaving, isLoading } = storeToRefs(fileStore);
 
   const restartTimer = () => {
-    if (autoSaveTimer) {
-      window.clearInterval(autoSaveTimer);
-      autoSaveTimer = null;
-    }
+    autoSaveTimer.stop();
 
     const interval = autoSaveInterval.value;
     if (!interval || interval <= 0) {
       return;
     }
 
-    autoSaveTimer = window.setInterval(() => {
+    autoSaveTimer.start(() => {
       if (
         !currentFilePath.value ||
         !isDirty.value ||

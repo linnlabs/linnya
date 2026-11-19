@@ -69,6 +69,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'resolveHoverTooltipPosition',
     'resolveIconButtonElement',
     'resolveAlertDialogDangerousAction',
+    'useEscapeLayer',
     'useFrameBatch',
     'useFrameLoop',
     'useHoverTooltipService',

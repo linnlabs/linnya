@@ -49,7 +49,7 @@ const getImageFileSize = async (src: string): Promise<number> => {
     // 如果是文件路径，调用 electron API
     if (window.electronAPI && window.electronAPI.getFileSize) {
       const result = await window.electronAPI.getFileSize(src);
-      return result.success ? result.size : -1;
+      return result.success && typeof result.size === 'number' ? result.size : -1;
     }
     
     return -1;

@@ -100,6 +100,10 @@
 
 不合格时 `suggested` 给出改动最少的版本：色相只挪出排除区，对比度只调明度，图表只重排，没问题的角色不动。指定色在任何角色上都不改，要调就调底色，底色跟着平移面色。改不出来时（如两个指定色彼此对比度不够）`suggested` 为 `null`。
 
+## 门禁
+
+颜色公式只能出现在本包：`pnpm run guard:shared-implementations` 的 `COLOR-*` 规则拦截本包以外新写的 sRGB 传递函数常量（0.04045、12.92、1.055 等）、明度系数（Rec.709 / Rec.601）、OKLab / XYZ / CIELab / 色觉异常矩阵、HSL / HSV / OKLCH 互转函数与色相圆形平均、ΔE 函数。已有的少量存量记在 `.baseline/shared-implementations.txt`，只许减少。本包缺少所需运算时，加进本包并补测试，不要在调用方另写。
+
 ## 消费方
 
 - Editor 图表（`apps/renderer/domains/editor/features/chart-reading`）：细线色派生与填充内文字色。

@@ -104,7 +104,7 @@ const duplicateBlock = (ctx: BlockMenuContext) => {
     
     // 使用 PositionUtils 重新获取最新位置，避免 pos 过期
     const posUtils = new PositionUtils(editor);
-    const rootBlockInfo = posUtils.findRootBlockById(blockId) as { node: any, pos: number } | null;
+    const rootBlockInfo = posUtils.findRootBlockById(blockId);
     
     if (!rootBlockInfo) {
       console.warn('[CommonProvider] 无法找到要复制的块:', blockId);
@@ -305,7 +305,7 @@ const createBlockVersion = async (ctx: BlockMenuContext) => {
     // 获取最新的节点内容
     let latestNode = ctx.rootBlockNode;
     const posUtils = new PositionUtils(ctx.editor);
-    const rootBlockInfo = posUtils.findRootBlockById(blockId) as { node: any, pos: number } | null;
+    const rootBlockInfo = posUtils.findRootBlockById(blockId);
     if (rootBlockInfo) {
       latestNode = rootBlockInfo.node;
     }

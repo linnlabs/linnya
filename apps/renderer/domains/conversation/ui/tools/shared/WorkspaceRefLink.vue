@@ -22,7 +22,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import type { Editor } from '@tiptap/vue-3'
+import type { Editor } from '@tiptap/core'
 import { useUIStore } from '../../../../../shared/stores/ui'
 import { useNotificationStore } from '@/app/notification'
 import { useFileStore } from '@/app/active-document'

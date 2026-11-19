@@ -1,3 +1,5 @@
+import type { ConversationOptions } from '@app/schemas';
+
 export interface GenerateTextRequestParams {
   prompt: string;
   prompt_key?: string;
@@ -30,8 +32,8 @@ export interface GenerateTextRequestParams {
   enableTools?: boolean;
   availableTools?: string[];
   completion_length_hint?: string;
-  recent_rejections?: string[];
-  behavior_summary?: string;
+  recent_rejections?: ConversationOptions['recent_rejections'];
+  behavior_summary?: ConversationOptions['behavior_summary'];
   intent_key?: string;
   intent_confidence?: number;
   intent_constraints?: string[];
