@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -96,10 +97,19 @@ function overlaps(trace: string): Set<string> {
   return pairs;
 }
 
+/**
+ * 进程是否仍在运行。刚被杀、尚未被回收的僵尸对 kill(pid, 0) 仍返回成功，
+ * 但它已经退出了，所以按 ps 的状态把僵尸（stat 以 Z 开头）算作已退出。
+ */
 function isAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
-    return true;
+  } catch {
+    return false;
+  }
+  try {
+    const stat = execFileSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' }).trim();
+    return stat !== '' && !stat.startsWith('Z');
   } catch {
     return false;
   }
@@ -210,7 +220,9 @@ it('命令退出后回收组里残留的后台进程；中断时停掉正在运�
   const { results } = await run;
   expect(Date.now() - started).toBeLessThan(10_000);
   expect(results.map(result => result.outcome)).toEqual(['failure']);
-  expect(isAlive(Number(readFileSync(path.join(root, 'long.pid'), 'utf8')))).toBe(false);
+  const longPid = Number(readFileSync(path.join(root, 'long.pid'), 'utf8'));
+  // 回收由内核与 launchd 异步完成，和前半段一样轮询，避免在慢机器上撞到退出的瞬间。
+  await expect.poll(() => isAlive(longPid), { timeout: 3000 }).toBe(false);
 });
 
 it('进程组里没有活着的成员时（ESRCH，或 macOS 的僵尸进程 EPERM）忽略，其他错误照常抛出', () => {
