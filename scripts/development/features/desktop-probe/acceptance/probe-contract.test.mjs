@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { test } from 'vitest';
 import { repoRoot } from '../definitions/probeContract.mjs';
 import { buildFreshness, ensureFreshBuild } from '../orchestration/probeBuild.mjs';
@@ -123,6 +123,7 @@ test('主产物存在时，插件必需文件缺失仍判为需要重建', () =>
   const root = mkdtempSync(join(tmpdir(), 'probe-plugin-build-'));
   try {
     execFileSync('git', ['init', '-q', root]);
+    writeFileSync(join(root, '.gitignore'), 'packages/plugins/fixture/dist\n');
     const plugin = join(root, 'packages/plugins/fixture');
     mkdirSync(plugin, { recursive: true });
     writeFileSync(join(plugin, 'plugin.json'), JSON.stringify({ id: 'fixture' }));
@@ -143,6 +144,7 @@ test('插件源码比已生成的 backend 产物新时判为过期', () => {
   const root = mkdtempSync(join(tmpdir(), 'probe-plugin-stale-'));
   try {
     execFileSync('git', ['init', '-q', root]);
+    writeFileSync(join(root, '.gitignore'), 'packages/plugins/fixture/dist\n');
     const plugin = join(root, 'packages/plugins/fixture');
     mkdirSync(join(plugin, 'dist'), { recursive: true });
     mkdirSync(join(root, 'extraResources/plugins/fixture/dist'), { recursive: true });
@@ -249,6 +251,55 @@ test('默认启动发现随包副本过期时自动完整刷新并清掉旧副�
       },
     });
 
+    assert.equal(refreshCount, 1);
+    assert.equal(result.bundledPluginsRefreshed, true);
+    assert.equal(buildFreshness(root).stale, false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('工作区与随包副本同时过期时一次启动完成两阶段刷新', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'probe-plugin-dual-stale-'));
+  try {
+    execFileSync('git', ['init', '-q', root]);
+    writeFileSync(join(root, '.gitignore'), 'packages/plugins/fixture/dist\n');
+    const plugin = join(root, 'packages/plugins/fixture');
+    const workspaceOutput = join(plugin, 'dist/backend.cjs');
+    const bundledOutput = join(root, 'extraResources/plugins/fixture/dist/backend.cjs');
+    mkdirSync(join(plugin, 'dist'), { recursive: true });
+    mkdirSync(join(root, 'dist/main'), { recursive: true });
+    mkdirSync(dirname(bundledOutput), { recursive: true });
+    writeFileSync(join(plugin, 'plugin.json'), JSON.stringify({ id: 'fixture' }));
+    writeFileSync(join(plugin, 'package.json'), JSON.stringify({ linnya: { development: {
+      backendLoading: 'disk', backendWatchConfig: 'tsup.config.ts', requiredOutputs: ['dist/backend.cjs'],
+    } } }));
+    writeFileSync(join(plugin, 'src.ts'), 'source');
+    writeFileSync(workspaceOutput, 'old workspace output');
+    writeFileSync(bundledOutput, 'old bundled output');
+    for (const output of ['main.cjs', 'preload.js', 'app-server-backend.cjs']) {
+      writeFileSync(join(root, 'dist/main', output), 'fresh desktop output');
+    }
+    for (const source of [join(plugin, 'plugin.json'), join(plugin, 'package.json'), join(plugin, 'src.ts')]) {
+      execFileSync('touch', ['-t', '202601030101', source]);
+    }
+    for (const output of [workspaceOutput, bundledOutput]) {
+      execFileSync('touch', ['-t', '202601010101', output]);
+    }
+
+    let buildCount = 0;
+    let refreshCount = 0;
+    const result = await ensureFreshBuild({
+      root,
+      runBuildCommand: async () => {
+        buildCount += 1;
+        writeFileSync(workspaceOutput, 'fresh workspace output');
+      },
+      refreshBundledPlugins: async () => {
+        refreshCount += 1;
+        writeFileSync(bundledOutput, 'fresh bundled output');
+      },
+    });
+
+    assert.equal(buildCount, 1);
     assert.equal(refreshCount, 1);
     assert.equal(result.bundledPluginsRefreshed, true);
     assert.equal(buildFreshness(root).stale, false);

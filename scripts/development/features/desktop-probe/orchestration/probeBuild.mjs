@@ -155,24 +155,28 @@ export async function ensureFreshBuild({
     const current = buildFreshness(root);
     if (!current.stale) return { rebuilt: false, waitedForOtherBuild: true };
     const started = Date.now();
-    if (current.kind === 'bundled') {
-      await refreshBundledPlugins();
-    } else {
-      await runBuildCommand();
-    }
-    const after = buildFreshness(root);
-    if (after.stale) {
-      if (after.kind === 'bundled') {
-        throw new ProbeError('BUILD_STALE', `随包插件产物已过期：${after.reason}`, after.hint);
+    let next = current;
+    let bundledPluginsRefreshed = false;
+    // workspace 构建与随包副本是两个独立产物面。源码变化时两边可能同时过期，
+    // 所以每完成一个阶段都重新判断，不能把第二个过期面留给下一次 probe up。
+    for (let attempt = 0; next.stale; attempt += 1) {
+      if (attempt >= 3) {
+        throw new ProbeError('BUILD_STALE', `多次刷新后产物仍过期：${next.reason}`, next.kind === 'bundled' ? next.hint : buildLog);
       }
-      throw new ProbeError('BUILD_STALE', `构建后产物仍过期：${after.reason}`, buildLog);
+      if (next.kind === 'bundled') {
+        await refreshBundledPlugins();
+        bundledPluginsRefreshed = true;
+      } else {
+        await runBuildCommand();
+      }
+      next = buildFreshness(root);
     }
     return {
       rebuilt: true,
       reason: current.reason,
       buildMs: Date.now() - started,
       log: buildLog,
-      ...(current.kind === 'bundled' ? { bundledPluginsRefreshed: true } : {}),
+      ...(bundledPluginsRefreshed ? { bundledPluginsRefreshed: true } : {}),
     };
   }, { timeoutMs: buildTimeoutMs });
 }
