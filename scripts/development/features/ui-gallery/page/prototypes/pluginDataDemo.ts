@@ -14,16 +14,16 @@ export interface PluginDataRow {
 
 /** 知识库有用户资料时的本机数据。 */
 export const KNOWLEDGE_DATA_ROWS: readonly PluginDataRow[] = [
-  { id: 'source', label: '原文与解析结果', bytes: 860 * MB, note: '删除后无法恢复，只能重新上传' },
-  { id: 'derived', label: '检索索引', bytes: 338 * MB, note: '可以重建，需要重新调用嵌入模型' },
+  { id: 'source', label: '原文与解析结果', bytes: 860 * MB, note: '删除后不可恢复，需重新上传' },
+  { id: 'derived', label: '检索索引', bytes: 338 * MB, note: '可重建，需重新调用嵌入模型' },
   { id: 'runtime', label: '日志与临时文件', bytes: 12 * MB, note: '' },
 ];
 
-export const KNOWLEDGE_RECORDS_TEXT = '3 个知识库 · 128 份资料';
+export const KNOWLEDGE_RECORDS_TEXT = '3 个知识库、128 份资料';
 
-/** 老用户只有旧版本留下的空索引和日志，没有资料。 */
+/** 早期版本遗留的空索引和日志，不含用户资料。 */
 export const LEFTOVER_DATA_ROWS: readonly PluginDataRow[] = [
-  { id: 'derived', label: '空的检索索引', bytes: 128 * MB, note: '以前的版本自动建的，里面没有资料' },
+  { id: 'derived', label: '空检索索引', bytes: 128 * MB, note: '早期版本自动创建，不含资料' },
   { id: 'runtime', label: '日志与临时文件', bytes: 12 * MB, note: '' },
 ];
 
@@ -41,19 +41,19 @@ export type CleanupFailureReason = 'busy' | 'permission' | 'interrupted' | 'stop
 
 export const CLEANUP_FAILURE_LABELS: Readonly<Record<CleanupFailureReason, string>> = {
   busy: '文件被占用',
-  permission: '没有权限',
-  interrupted: '删除中途退出',
+  permission: '权限不足',
+  interrupted: '意外退出',
   stopped: '手动停止',
-  'disk-full': '磁盘已满',
+  'disk-full': '磁盘空间不足',
 };
 
-/** 失败原因的用户可读说明：说清卡在哪、用户能做什么。 */
+/** 清理失败原因说明：指出失败位置与用户可采取的操作。 */
 export const CLEANUP_FAILURE_COPY: Readonly<Record<CleanupFailureReason, string>> = {
-  busy: '有 1 个文件正被其他程序打开：2025 年报.pdf。关闭打开它的程序后重试。',
-  permission: '没有权限删除 3 个文件。检查这些文件的访问权限后重试。',
-  interrupted: '上次删除时 Linnya 退出了，剩下的数据还在。点重试会接着删。',
-  stopped: '你停止了删除，剩下的数据还在。点重试会接着删。',
-  'disk-full': '磁盘空间不足，最后一步清理数据库记录没有完成。腾出一些空间后重试。',
+  busy: '文件“2025 年报.pdf”正被其他程序占用。请关闭相关程序后重试。',
+  permission: '3 个文件因权限不足无法删除。请检查文件访问权限后重试。',
+  interrupted: '清理过程中 Linnya 意外退出，部分数据尚未删除。重试将继续清理。',
+  stopped: '清理已手动停止，部分数据尚未删除。重试将继续清理。',
+  'disk-full': '磁盘空间不足，数据库记录未能清理完成。请释放磁盘空间后重试。',
 };
 
 /** 只有文件被占用或没有权限时，给出打开文件位置的入口。 */

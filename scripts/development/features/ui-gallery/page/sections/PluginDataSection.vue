@@ -49,8 +49,8 @@ interface StoreCard {
     | { readonly kind: 'button'; readonly text: string; readonly disabled?: boolean };
 }
 
-const UNINSTALL_MESSAGE = '卸载后，知识库的页面、工具和技能会移除。资料默认保留在本机，重新安装后可以继续用。';
-const DELETE_RISK = '删除后无法恢复，原文只能重新上传。对话里已有的引用会显示“来源已删除”。';
+const UNINSTALL_MESSAGE = '卸载后，知识库的页面、工具和技能将被移除。数据默认保留在本机，重新安装后可继续使用。';
+const DELETE_RISK = '数据删除后不可恢复，原文需重新上传；对话中已有的引用将显示为“来源已删除”。';
 const KNOWLEDGE_DESCRIPTION = '上传资料，建立可检索的个人知识库，对话时引用原文。';
 
 const STORE_CARDS: readonly StoreCard[] = [
@@ -66,7 +66,7 @@ const STORE_CARDS: readonly StoreCard[] = [
   },
   {
     key: 'fresh',
-    caption: '新用户，从没装过',
+    caption: '未安装（新用户）',
     name: '知识库',
     icon: LibraryIcon,
     description: KNOWLEDGE_DESCRIPTION,
@@ -76,42 +76,42 @@ const STORE_CARDS: readonly StoreCard[] = [
   },
   {
     key: 'kept',
-    caption: '卸载时保留了数据',
+    caption: '已卸载，保留数据',
     name: '知识库',
     icon: LibraryIcon,
     description: KNOWLEDGE_DESCRIPTION,
     chip: { label: '未安装', tone: 'warning' },
-    meta: ['版本 0.1.0', `本机保留 ${formatBytes(KNOWLEDGE_TOTAL)} 数据`],
+    meta: ['版本 0.1.0', `本机保留数据 ${formatBytes(KNOWLEDGE_TOTAL)}`],
     action: { kind: 'button', text: '重新安装' },
   },
   {
     key: 'leftover',
-    caption: '老版本留下空索引',
+    caption: '早期版本遗留数据',
     name: '知识库',
     icon: LibraryIcon,
     description: KNOWLEDGE_DESCRIPTION,
     chip: { label: '未安装', tone: 'warning' },
-    meta: ['版本 0.1.0', `有 ${formatBytes(LEFTOVER_TOTAL)} 可以清理`],
+    meta: ['版本 0.1.0', `可清理数据 ${formatBytes(LEFTOVER_TOTAL)}`],
     action: { kind: 'button', text: '安装' },
   },
   {
     key: 'cleaning',
-    caption: '正在删除数据',
+    caption: '清理中',
     name: '知识库',
     icon: LibraryIcon,
     description: KNOWLEDGE_DESCRIPTION,
-    chip: { label: '正在删除', tone: 'warning' },
-    meta: [`已删除 ${formatBytes(620 * MB)}，还剩 ${formatBytes(590 * MB)}`],
+    chip: { label: '清理中', tone: 'warning' },
+    meta: [`正在清理：已完成 ${formatBytes(620 * MB)}，剩余 ${formatBytes(590 * MB)}`],
     action: { kind: 'button', text: '安装', disabled: true },
   },
   {
     key: 'incomplete',
-    caption: '数据没删完',
+    caption: '数据残留',
     name: '知识库',
     icon: LibraryIcon,
     description: KNOWLEDGE_DESCRIPTION,
-    chip: { label: '数据未删完', tone: 'attention' },
-    meta: [`还剩 ${formatBytes(340 * MB)} 没有删除，点开查看`],
+    chip: { label: '数据残留', tone: 'attention' },
+    meta: [`残留数据 ${formatBytes(340 * MB)}，请在详情页处理`],
     action: { kind: 'button', text: '安装', disabled: true },
   },
 ];
@@ -135,8 +135,8 @@ function closeDialog() {
 
 function confirmKnowledgeUninstall() {
   dialogResult.value = deleteDataChecked.value
-    ? `点击后：卸载完成，开始删除数据。完成后提示“已卸载知识库，释放 ${formatBytes(KNOWLEDGE_TOTAL)}”。`
-    : `点击后：提示“已卸载知识库，本机保留 ${formatBytes(KNOWLEDGE_TOTAL)} 数据”。`;
+    ? `确认后：卸载完成并开始清理数据，完成后提示“知识库已卸载，已释放 ${formatBytes(KNOWLEDGE_TOTAL)}”。`
+    : `确认后：提示“知识库已卸载，本机保留数据 ${formatBytes(KNOWLEDGE_TOTAL)}”。`;
   closeDialog();
 }
 
@@ -146,10 +146,10 @@ type DetailTab = 'installed' | 'uninstalled' | 'leftover' | 'cleaning' | 'incomp
 
 const DETAIL_TABS: SegmentedTabItem[] = [
   { id: 'installed', label: '已安装' },
-  { id: 'uninstalled', label: '卸载后保留数据' },
-  { id: 'leftover', label: '老版本留下空索引' },
-  { id: 'cleaning', label: '正在删除' },
-  { id: 'incomplete', label: '没删完' },
+  { id: 'uninstalled', label: '已卸载（保留数据）' },
+  { id: 'leftover', label: '早期版本遗留数据' },
+  { id: 'cleaning', label: '清理中' },
+  { id: 'incomplete', label: '数据残留' },
 ];
 
 const FAILURE_TABS: SegmentedTabItem[] = (Object.keys(CLEANUP_FAILURE_LABELS) as CleanupFailureReason[]).map(id => ({
@@ -158,8 +158,8 @@ const FAILURE_TABS: SegmentedTabItem[] = (Object.keys(CLEANUP_FAILURE_LABELS) as
 }));
 
 const OUTCOME_TABS: SegmentedTabItem[] = [
-  { id: 'success', label: '这次删完了' },
-  { id: 'fail', label: '这次还是没删完' },
+  { id: 'success', label: '清理成功' },
+  { id: 'fail', label: '清理失败' },
 ];
 
 const detailTab = ref<DetailTab>('installed');
@@ -167,7 +167,7 @@ const panelState = ref<PluginDataPanelState>('installed');
 const failureReason = ref<CleanupFailureReason>('busy');
 const outcome = ref<'success' | 'fail'>('fail');
 const attempts = ref(1);
-const lastAttemptText = ref('上次删除：今天 14:32');
+const lastAttemptText = ref('上次清理：今天 14:32');
 const cleanedBytes = ref(620 * MB);
 const remainingBytes = ref(590 * MB);
 const notice = ref('');
@@ -186,7 +186,7 @@ function selectDetailTab(id: string) {
   notice.value = '';
   detailTab.value = id as DetailTab;
   attempts.value = 1;
-  lastAttemptText.value = '上次删除：今天 14:32';
+  lastAttemptText.value = '上次清理：今天 14:32';
   cleanedBytes.value = 620 * MB;
   remainingBytes.value = id === 'incomplete' ? 340 * MB : 590 * MB;
   panelState.value = id as PluginDataPanelState;
@@ -199,10 +199,10 @@ const detailChip = computed((): { label: string; tone: ChipTone } => {
     case 'installed':
       return { label: '已启用', tone: 'success' };
     case 'cleaning':
-      return { label: '正在删除', tone: 'warning' };
+      return { label: '清理中', tone: 'warning' };
     case 'incomplete':
     case 'retrying':
-      return { label: '数据未删完', tone: 'attention' };
+      return { label: '数据残留', tone: 'attention' };
     default:
       return { label: '未安装', tone: 'warning' };
   }
@@ -215,7 +215,7 @@ const installBlocked = computed(() =>
 
 const deleteConfirmSections = computed((): AlertDialogSection[] => [
   {
-    title: `将删除 ${formatBytes(sumBytes(deleteConfirmRows.value))}`,
+    title: `将删除 ${formatBytes(sumBytes(deleteConfirmRows.value))} 数据`,
     items: deleteConfirmRows.value.map(row => `${row.label}　${formatBytes(row.bytes)}`),
   },
 ]);
@@ -225,7 +225,7 @@ function requestDelete() {
   deleteConfirmVisible.value = true;
 }
 
-/** 演示删除过程：按下方“结果”开关，要么删完，要么卡在某个原因上。 */
+/** 演示清理过程：按“清理结果”选项，成功或停在所选失败原因上。 */
 function startCleaning(total: number) {
   clearTimer();
   notice.value = '';
@@ -249,12 +249,12 @@ function finishAttempt(total: number) {
   timer = null;
   if (outcome.value === 'success') {
     panelState.value = 'uninstalled-empty';
-    notice.value = `提示：已删除知识库数据，释放 ${formatBytes(total)}`;
+    notice.value = `提示：知识库数据已删除，已释放 ${formatBytes(total)}`;
     return;
   }
   panelState.value = 'incomplete';
-  lastAttemptText.value = '上次删除：刚刚';
-  notice.value = `提示：数据没有删完，还剩 ${formatBytes(remainingBytes.value)}。可以在插件详情里重试。`;
+  lastAttemptText.value = '上次清理：刚刚';
+  notice.value = `提示：数据清理未完成，残留 ${formatBytes(remainingBytes.value)}。可在插件详情页重试。`;
 }
 
 function confirmDelete() {
@@ -266,7 +266,7 @@ function stopCleaning() {
   clearTimer();
   failureReason.value = 'stopped';
   panelState.value = 'incomplete';
-  lastAttemptText.value = '上次删除：刚刚';
+  lastAttemptText.value = '上次清理：刚刚';
   notice.value = '';
 }
 
@@ -278,17 +278,17 @@ function retry() {
     timer = null;
     if (outcome.value === 'success') {
       panelState.value = 'uninstalled-empty';
-      notice.value = `提示：已删除剩下的 ${formatBytes(remainingBytes.value)}`;
+      notice.value = `提示：残留数据已清理，已释放 ${formatBytes(remainingBytes.value)}`;
       return;
     }
     attempts.value += 1;
-    lastAttemptText.value = '上次重试：刚刚';
+    lastAttemptText.value = '上次清理：刚刚';
     panelState.value = 'incomplete';
   }, 1500);
 }
 
 function reveal() {
-  notice.value = '点击后：在访达中打开并选中被占用的文件。';
+  notice.value = '点击后：在访达中定位相关文件。';
 }
 </script>
 
@@ -296,11 +296,11 @@ function reveal() {
   <div class="plugin-data">
     <GalleryBlock
       title="插件列表"
-      note="插件市场页签。按钮只看文字和可否点击；“点开查看”说明问题在详情页里处理，列表不放重试。"
+      note="插件市场页签。列表只显示状态与占用，清理失败等问题在详情页处理，列表不提供重试。"
     >
       <div class="plugin-store-view plugin-data__surface">
         <p class="plugin-store-availability">
-          当前版本的插件随应用提供，可以随时安装、启停和卸载。远程安装和更新暂未开放。
+          当前版本的插件随应用提供，支持安装、启停和卸载。远程安装与更新暂未开放。
         </p>
         <div class="plugin-data__cards">
           <div v-for="card in STORE_CARDS" :key="card.key" class="plugin-data__card-row">
@@ -343,14 +343,14 @@ function reveal() {
 
     <GalleryBlock
       title="卸载确认"
-      note="默认只卸载、保留数据。勾选“同时删除”后才展开要删的内容，按钮变红；只有一次确认。"
+      note="默认仅卸载并保留数据。勾选“同时删除”后展开待删除内容，确认按钮变为危险样式；仅需确认一次。"
     >
       <GalleryRow label="打开">
         <div class="plugin-data__buttons">
           <ActionButtons primary-action-text="知识库" :show-secondary-action="false" @primary-click="openUninstall('knowledge')" />
-          <ActionButtons primary-action-text="知识库，后台在导入" :show-secondary-action="false" @primary-click="openUninstall('knowledge-busy')" />
-          <ActionButtons primary-action-text="Slides（没有删除选项）" :show-secondary-action="false" @primary-click="openUninstall('slides')" />
-          <ActionButtons primary-action-text="正在检索时" :show-secondary-action="false" @primary-click="openUninstall('blocked')" />
+          <ActionButtons primary-action-text="知识库（导入进行中）" :show-secondary-action="false" @primary-click="openUninstall('knowledge-busy')" />
+          <ActionButtons primary-action-text="Slides（无删除数据选项）" :show-secondary-action="false" @primary-click="openUninstall('slides')" />
+          <ActionButtons primary-action-text="知识库（检索进行中）" :show-secondary-action="false" @primary-click="openUninstall('blocked')" />
         </div>
       </GalleryRow>
       <p v-if="dialogResult" class="plugin-data__notice" role="status">{{ dialogResult }}</p>
@@ -358,28 +358,28 @@ function reveal() {
 
     <GalleryBlock
       title="插件详情：本机数据"
-      note="详情页在“技能”下面新增“本机数据”。“删除数据”“清理这些数据”“重试”“停止”都可以点；先在下面选这次删除的结果。"
+      note="详情页在“技能”下方新增“本机数据”。“删除数据”“清理数据”“停止”“重试”均可操作，结果按“清理结果”选项模拟。"
     >
       <div class="plugin-data__controls">
         <GalleryRow label="状态">
           <div class="plugin-data__state-row">
             <SegmentedTabs :model-value="detailTab" :tabs="DETAIL_TABS" aria-label="详情页状态" @update:model-value="selectDetailTab" />
-            <BaseButton variant="ghost" size="sm" @click="selectDetailTab(detailTab)">重来</BaseButton>
+            <BaseButton variant="ghost" size="sm" @click="selectDetailTab(detailTab)">重置</BaseButton>
           </div>
         </GalleryRow>
-        <GalleryRow label="没删完的原因">
+        <GalleryRow label="失败原因">
           <SegmentedTabs
             :model-value="failureReason"
             :tabs="FAILURE_TABS"
-            aria-label="没删完的原因"
+            aria-label="失败原因"
             @update:model-value="value => (failureReason = value as CleanupFailureReason)"
           />
         </GalleryRow>
-        <GalleryRow label="删除或重试的结果">
+        <GalleryRow label="清理结果">
           <SegmentedTabs
             :model-value="outcome"
             :tabs="OUTCOME_TABS"
-            aria-label="删除或重试的结果"
+            aria-label="清理结果"
             @update:model-value="value => (outcome = value as 'success' | 'fail')"
           />
         </GalleryRow>
@@ -413,14 +413,14 @@ function reveal() {
                   :is-primary-action-disabled="installBlocked"
                   :show-secondary-action="false"
                 />
-                <span v-if="installBlocked" class="plugin-data__install-hint">数据删完后才能安装</span>
+                <span v-if="installBlocked" class="plugin-data__install-hint">残留数据清理完成后才能安装</span>
               </div>
             </div>
           </section>
 
           <section class="plugin-store-detail-section">
             <h2>技能</h2>
-            <p class="plugin-data__placeholder">（技能列表，与现在相同）</p>
+            <p class="plugin-data__placeholder">（技能列表，与现有页面相同）</p>
           </section>
 
           <PluginDataPanel
@@ -463,12 +463,13 @@ function reveal() {
       <p v-if="notice" class="plugin-data__notice" role="status">{{ notice }}</p>
     </GalleryBlock>
 
-    <GalleryBlock title="提示文案" note="操作完成后在右下角弹出，几秒后消失。">
+    <GalleryBlock title="提示文案" note="操作完成后在右下角显示，数秒后自动消失。">
       <ul class="plugin-data__copy-list">
-        <li>已卸载知识库，本机保留 {{ formatBytes(KNOWLEDGE_TOTAL) }} 数据</li>
-        <li>已卸载知识库，释放 {{ formatBytes(KNOWLEDGE_TOTAL) }}</li>
-        <li>已删除知识库数据，释放 {{ formatBytes(KNOWLEDGE_TOTAL) }}</li>
-        <li>数据没有删完，还剩 340 MB。可以在插件详情里重试。</li>
+        <li>知识库已卸载，本机保留数据 {{ formatBytes(KNOWLEDGE_TOTAL) }}</li>
+        <li>知识库已卸载，已释放 {{ formatBytes(KNOWLEDGE_TOTAL) }}</li>
+        <li>知识库数据已删除，已释放 {{ formatBytes(KNOWLEDGE_TOTAL) }}</li>
+        <li>数据清理未完成，残留 340 MB。可在插件详情页重试。</li>
+        <li>残留数据已清理，已释放 340 MB</li>
       </ul>
     </GalleryBlock>
 
@@ -485,7 +486,7 @@ function reveal() {
         <div class="alert-dialog-copy plugin-data__dialog-copy">
           <div class="alert-dialog-message">{{ UNINSTALL_MESSAGE }}</div>
           <p v-if="openDialog === 'knowledge-busy'" class="plugin-data__dialog-note">
-            后台还有 2 份资料在导入。卸载会取消这些导入，已经导入的部分保留。
+            当前有 2 份资料正在导入。卸载将取消导入，已导入的内容会保留。
           </p>
           <CustomCheckbox v-model="deleteDataChecked">
             同时删除知识库数据（{{ formatBytes(KNOWLEDGE_TOTAL) }}）
@@ -497,7 +498,7 @@ function reveal() {
                 <dd>{{ formatBytes(row.bytes) }}</dd>
               </div>
             </dl>
-            <p class="plugin-data__dialog-records">包括 {{ KNOWLEDGE_RECORDS_TEXT }}，以及它们和项目的关联。</p>
+            <p class="plugin-data__dialog-records">包括 {{ KNOWLEDGE_RECORDS_TEXT }}及其与项目的关联。</p>
             <p class="alert-dialog-risk-message">{{ DELETE_RISK }}</p>
           </div>
         </div>
@@ -518,7 +519,7 @@ function reveal() {
     <AlertDialog
       :visible="openDialog === 'slides'"
       title="卸载“Slides”"
-      message="卸载后，Slides 的页面、工具和技能会移除。已有的演示文稿保留，重新安装后可以继续编辑。"
+      message="卸载后，Slides 的页面、工具和技能将被移除。已有演示文稿会保留，重新安装后可继续编辑。"
       is-confirmation
       confirm-text="卸载"
       cancel-text="取消"
@@ -529,17 +530,17 @@ function reveal() {
 
     <AlertDialog
       :visible="openDialog === 'blocked'"
-      title="暂时不能卸载"
-      message="知识库正在回答一个对话里的检索，结束后再卸载。"
-      confirm-text="知道了"
+      title="暂时无法卸载"
+      message="知识库正在执行检索，请在检索完成后再卸载。"
+      confirm-text="确定"
       @confirm="closeDialog"
       @close="closeDialog"
     />
 
     <AlertDialog
       :visible="deleteConfirmVisible"
-      :title="detailTab === 'leftover' ? '清理知识库留下的数据' : '删除知识库数据'"
-      :message="detailTab === 'leftover' ? '这些是以前版本留下的，里面没有你的资料。' : '知识库已经卸载，这些是卸载时保留的数据。'"
+      :title="detailTab === 'leftover' ? '清理遗留数据' : '删除知识库数据'"
+      :message="detailTab === 'leftover' ? '以下数据由早期版本创建，不含用户资料。' : '知识库已卸载，以下为卸载时保留的数据。'"
       :sections="deleteConfirmSections"
       :risk-message="detailTab === 'leftover' ? '' : DELETE_RISK"
       is-confirmation
@@ -628,7 +629,7 @@ function reveal() {
   line-height: var(--line-height-prose);
 }
 
-/* 未删完：只把状态文字换成警示色，底色沿用未安装的灰。 */
+/* 数据残留：只把状态文字换成警示色，底色沿用未安装的灰。 */
 :deep(.plugin-store-state-chip.is-attention) {
   color: var(--color-warning-text);
   background-color: var(--color-bg-disabled);

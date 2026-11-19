@@ -57,7 +57,7 @@ function total(): number {
     <!-- 有数据：按类别列出实际占用 -->
     <template v-if="state === 'installed' || state === 'uninstalled' || state === 'leftover'">
       <p v-if="state === 'leftover'" class="plugin-data-panel__lead">
-        没有你的资料。以前的版本留下了空的检索索引和日志。
+        以下数据由早期版本自动创建，不含用户资料。
       </p>
       <dl class="plugin-data-panel__rows">
         <div v-for="row in rows" :key="row.id" class="plugin-data-panel__row">
@@ -67,33 +67,33 @@ function total(): number {
         </div>
       </dl>
       <p v-if="recordsText" class="plugin-data-panel__records">{{ recordsText }}</p>
-      <p v-if="state === 'installed'" class="plugin-data-panel__hint">卸载时可以选择是否一起删除这些数据。</p>
+      <p v-if="state === 'installed'" class="plugin-data-panel__hint">卸载时可选择是否同时删除以上数据。</p>
       <div v-else class="plugin-data-panel__actions">
         <button type="button" class="plugin-data-panel__danger" @click="emit('delete')">
-          {{ state === 'leftover' ? '清理这些数据' : '删除数据' }}
+          {{ state === 'leftover' ? '清理数据' : '删除数据' }}
         </button>
       </div>
     </template>
 
-    <p v-else-if="state === 'uninstalled-empty'" class="plugin-data-panel__lead">本机没有它的数据了。</p>
+    <p v-else-if="state === 'uninstalled-empty'" class="plugin-data-panel__lead">本机无该插件数据。</p>
 
     <!-- 删除中：进度、可停止 -->
     <template v-else-if="state === 'cleaning'">
       <div class="plugin-data-panel__progress-line">
-        <span>正在删除，已删除 {{ formatBytes(cleanedBytes ?? 0) }}，还剩 {{ formatBytes(remainingBytes ?? 0) }}</span>
+        <span>正在清理数据：已完成 {{ formatBytes(cleanedBytes ?? 0) }}，剩余 {{ formatBytes(remainingBytes ?? 0) }}</span>
         <BaseButton variant="secondary" size="sm" @click="emit('stop')">停止</BaseButton>
       </div>
       <div class="plugin-data-panel__progress" role="progressbar" :aria-valuenow="Math.round(((cleanedBytes ?? 0) / ((cleanedBytes ?? 0) + (remainingBytes ?? 1))) * 100)" aria-valuemin="0" aria-valuemax="100">
         <span :style="{ width: `${((cleanedBytes ?? 0) / ((cleanedBytes ?? 0) + (remainingBytes ?? 1))) * 100}%` }" />
       </div>
-      <p class="plugin-data-panel__hint">停止后，已经删除的部分无法恢复；剩下的数据可以之后再删。</p>
+      <p class="plugin-data-panel__hint">停止后，已删除的数据不可恢复，剩余数据可稍后继续清理。</p>
     </template>
 
-    <!-- 没删完：剩余占用、可读原因、重试 -->
+    <!-- 数据残留：残留占用、失败原因、重试 -->
     <template v-else>
-      <p class="plugin-data-panel__attention">还剩 {{ formatBytes(remainingBytes ?? 0) }} 没有删除</p>
+      <p class="plugin-data-panel__attention">数据清理未完成，残留 {{ formatBytes(remainingBytes ?? 0) }}</p>
       <p class="plugin-data-panel__reason">
-        {{ state === 'retrying' ? '正在重新删除剩下的数据…' : CLEANUP_FAILURE_COPY[failureReason ?? 'busy'] }}
+        {{ state === 'retrying' ? '正在重新清理残留数据…' : CLEANUP_FAILURE_COPY[failureReason ?? 'busy'] }}
       </p>
       <p v-if="state !== 'retrying' && lastAttemptText" class="plugin-data-panel__meta">
         {{ lastAttemptText }}<template v-if="(attempts ?? 1) > 1"> · 已尝试 {{ attempts }} 次</template>
