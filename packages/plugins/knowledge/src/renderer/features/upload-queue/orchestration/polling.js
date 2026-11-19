@@ -130,7 +130,7 @@ export function createPollingManager(state, updateTaskState) {
    */
   function startPolling(isFallbackMode = false) {
     // 防止重复启动
-    if (pollingTimer.running) {
+    if (timer.running) {
       console.log('[轮询管理器] 轮询已在运行中，跳过重复启动')
       return
     }
