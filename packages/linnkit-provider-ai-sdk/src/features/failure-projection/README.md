@@ -6,7 +6,7 @@
 
 - 读取 AI SDK `APICallError`、SDK error class、decoded stream error 与 finish reason；
 - 输出稳定的 `{ kind, code, retryable, retry_category? }` 或 canonical terminal event；
-- 只保留无敏感信息的判别字段，不把 Provider message、response body、prompt、URL 或凭据带入 canonical 合同与日志；
+- 只保留无敏感信息的判别字段，不把 Provider message、response body、prompt、URL 或凭据带入 canonical 合同与日志（HTTP 拒绝说明见下文的唯一例外）；
 - 用 fixture matrix 固化 HTTP、stream、finish、schema/JSON、empty/transport 与 Abort 语义。
 - 通过安全 observation 只记录 phase、error shape 与 canonical failure，不记录原始 error message/stack/body。
 
@@ -57,3 +57,14 @@ Linnkit 0.38 起，已知 HTTP/decoded 429 与限流 finish reason 额外投影 
 已解码、无冲突 HTTP 状态的 `ECONNRESET` 显式归为 transport，保留原安全 `provider_stream_error` 与不可重试声明；不能因它带有结构化 code 就落入未知 Provider 类。原始错误文本不参与这条规则。
 
 SDK `interrupted` 表示没有供应商完成信号，投影为可重试 `provider_stream_interrupted`，并发布 `nonstandard_finish`。Adapter 不将部分输出当作成功；重试预算与片段撤回仍由 Linnkit 管理。
+
+## Provider 拒绝说明
+
+同一请求被 Provider 稳定拒绝（例如反复 HTTP 400）时，只有分类无法判断原因。`projectProviderErrorExcerpt`
+从 `APICallError`（状态 ≥ 400 且有正文）取一段说明放进安全诊断的 `provider_error_excerpt`：
+
+- JSON 正文只取 `error.message`、字符串 `error`、`message` 或 `detail`；没有这些字段时不摘录，不把整个 envelope（可能回显请求）写进日志；非 JSON 正文按原文处理。
+- 删除 data URL、`Bearer/Basic` 认证值、`api_key=`/`token:` 等键值、`sk-` 类前缀令牌和 32 位以上的连续令牌（API Key、JWT、base64、签名），折叠空白，最多 300 字符。
+- 不读取 URL、请求体、响应头或 Error message；只进 `failure_projected` 诊断，canonical failure、UI 与 Audit 不变。
+
+这是尽力脱敏：Provider 若在说明里引用请求原文，短片段仍可能进入诊断日志，因此长度上限保持很小。

@@ -35,12 +35,17 @@ export interface AiSdkProviderSignal {
 
 export interface AiSdkFailureObservation {
   readonly failure: AiSdkFailureProjection;
-  /** 仅包含白名单字段，禁止携带 Error message、Provider body 或 URL。 */
+  /**
+   * 仅包含白名单字段，禁止携带 Error message 或 URL。Provider 正文只有一个例外：
+   * HTTP 拒绝时脱敏、限长的说明（`provider_error_excerpt`），只供诊断日志。
+   */
   readonly diagnostic: {
     readonly phase: AiSdkFailurePhase;
     readonly error_shape: AiSdkFailureErrorShape;
     readonly invariant_code?: AiSdkHostStreamInvariantCode;
     readonly provider_signal?: AiSdkProviderSignal;
     readonly sdk_error_details?: AiSdkFailureSdkDetails;
+    /** 见 `projectProviderErrorExcerpt`：删除凭据与编码内容，最多 300 字符。 */
+    readonly provider_error_excerpt?: string;
   };
 }

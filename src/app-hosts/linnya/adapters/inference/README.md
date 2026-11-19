@@ -3,7 +3,7 @@
 这里是 Linnya Host 对 canonical inference
 port 的实现边界。它只负责一次 attempt 的显式 route
 admission、capability 选择、凭据解析与事件身份校验，不执行工具、不执行重试调度或模型切换、不发布 Graph/Run 终态，也不保存 Provider
-body。
+body（诊断日志只记录 package 脱敏、限长后的 HTTP 拒绝说明 `provider_error_excerpt`）。
 
 ## 目录与 owner
 
