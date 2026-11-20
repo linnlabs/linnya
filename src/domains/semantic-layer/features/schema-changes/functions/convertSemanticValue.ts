@@ -1,3 +1,4 @@
+import { normalizeSemanticValue } from '../../../functions/normalizeSemanticValue';
 import {
   SemanticLayerError,
   type SemanticPropertyDefinition,
@@ -146,4 +147,40 @@ export function convertSemanticValue(
       return unique.length ? { kind: 'converted', value: unique } : { kind: 'emptied' };
     }
   }
+}
+
+/** 单选、多选的值只保留仍在选项里的 ID；单选的选项不在了即清除，多选去掉不在的那几项。 */
+export function keepExistingOptions(
+  property: SemanticPropertyDefinition,
+  value: SemanticValue,
+): SemanticValue | undefined {
+  const ids = new Set(property.options.map(option => option.id));
+  if (property.valueType === 'select') return typeof value === 'string' && ids.has(value) ? value : undefined;
+  if (property.valueType === 'multi_select') {
+    const rest = Array.isArray(value) ? value.filter(id => typeof id === 'string' && ids.has(id)) : [];
+    return rest.length ? rest : undefined;
+  }
+  return value;
+}
+
+/**
+ * 把来历不明（不知道写入时的字段定义）的旧值整理成当前定义下的值，如按版本恢复时。
+ * 当前定义能直接接受的照常规整；否则按值本身的形状当作文字、数字或勾选，用改类型的规则转换；
+ * 单选、多选只认仍在选项里的 ID 或选项名。返回 undefined 表示当前定义下放不下，应清除。
+ */
+export function conformSemanticValue(
+  property: SemanticPropertyDefinition,
+  value: SemanticValue,
+): SemanticValue | undefined {
+  try {
+    return normalizeSemanticValue(property, value);
+  } catch (error) {
+    if (!(error instanceof SemanticLayerError) || error.code !== 'invalid_value') throw error;
+  }
+  if (Array.isArray(value)) return property.valueType === 'multi_select' ? keepExistingOptions(property, value) : undefined;
+  const fromType: SemanticValueType = typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'checkbox' : 'text';
+  const outcome = convertSemanticValue(
+    { ...property, valueType: fromType, options: [] }, value, property.valueType, property.options,
+  );
+  return outcome.kind === 'converted' ? outcome.value : undefined;
 }

@@ -74,6 +74,25 @@ function ids(result: { rows: readonly { documentId: string }[] }) {
 describe('查询描述的语义', () => {
   const base = (query: Partial<SemanticQuery>): SemanticQuery => ({ projectId: 'p1', limit: 50, ...query });
 
+  it('早先建的与内建字段同名的字段：查询报错提示改名，不悄悄按内建字段过滤', () => {
+    const { db, layer } = setup();
+    db.prepare(`INSERT INTO semantic_properties (id, name, name_key, value_type, options_json, owner_plugin_id, created_at)
+      VALUES ('legacy-type', 'Type', 'type', 'text', '[]', NULL, 1)`).run();
+    const definitions = { tags: layer.listTags(), properties: layer.listProperties() };
+    for (const query of [
+      base({ where: [{ field: 'type', op: 'eq', value: '论文' }] }),
+      base({ sort: [{ field: 'type', direction: 'asc' }] }),
+      base({ groupBy: 'type' }),
+    ]) {
+      let error: unknown;
+      try { runSemanticQuery(db, query, definitions); } catch (caught) { error = caught; }
+      expect(error).toBeInstanceOf(SemanticLayerError);
+      expect((error as SemanticLayerError).code).toBe('reserved_name');
+      expect((error as SemanticLayerError).message).toContain('改名');
+    }
+    expect(ids(runSemanticQuery(db, base({ where: [{ field: 'name', op: 'contains', value: 'beta' }] }), definitions))).toEqual(['b']);
+  });
+
   it('范围是一个项目；标签条件要求同时带有', () => {
     const { db, definitions } = setup();
     expect(ids(runSemanticQuery(db, base({}), definitions)).sort()).toEqual(['a', 'b', 'c', 'd']);
