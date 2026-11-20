@@ -39,7 +39,7 @@ export function createCanvasHistoryRetention(options: CanvasHistoryRetentionOpti
     ];
   }
   function releaseView(viewId: string) {
-    releaseCanvasEditingClaims(options.database, viewId);
+    releaseCanvasEditingClaims(options.database, viewId, Date.now());
     for (const documentId of userState.releaseView(viewId)) {
       pruneGuards(documentId);
       notifyGroups(documentId, 'release');

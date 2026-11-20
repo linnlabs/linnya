@@ -90,11 +90,3 @@ export function snapCanvasMovementWithGuides(
     });
   return { delta: { x: x.delta, y: y.delta }, guides };
 }
-
-export function snapCanvasMovement(
-  targets: CanvasSnapTargets | null,
-  movement: CanvasPoint,
-  zoom: number
-): CanvasPoint {
-  return snapCanvasMovementWithGuides(targets, movement, zoom).delta;
-}

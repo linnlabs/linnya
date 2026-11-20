@@ -37,6 +37,7 @@ import { cardEditorStyle } from '../../cardEditing';
 import { canvasText as t } from '../../localization';
 import { readCanvasCardCssPalette } from '@plugin/canvas/shared';
 import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
+import { readCanvasIsDark } from '../../../functions/readCanvasAppearance';
 
 const props = defineProps<{
   card: CanvasDocumentDetailCard;
@@ -117,9 +118,10 @@ const keydown = (event: KeyboardEvent) => {
 };
 onMounted(() => {
   if (!body.value || !overlay.value) return;
-  const root = overlay.value.ownerDocument.documentElement;
+  const ownerDocument = overlay.value.ownerDocument;
+  const root = ownerDocument.documentElement;
   const readTheme = () => {
-    dark.value = root.getAttribute(RENDERER_UI_THEME_ATTRIBUTE) === 'dark';
+    dark.value = readCanvasIsDark(ownerDocument);
   };
   readTheme();
   theme = new MutationObserver(readTheme);
