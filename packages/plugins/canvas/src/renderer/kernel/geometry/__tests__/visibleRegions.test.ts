@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { CanvasCardSchema, canvasRectanglesOverlap } from '../../../../shared';
-import { createCanvasVisibleRegionProjection, subtractCanvasRegion, subtractCanvasRegions } from '../canvasVisibleRegions';
+import { subtractCanvasRegion, subtractCanvasRegions } from '../canvasVisibleRegions';
+import { createCanvasVisibleRegionProjection } from './canvasVisibleRegionOracle';
 const source = { kind: 'user', conversationId: null, runId: null };
 const card = (id: string, x: number, y: number, width: number, height: number) => CanvasCardSchema.parse({ id, type: 'text', schemaVersion: 1, revision: 1, order: 'a0',
   locked: false, color: 'white', createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, x, y, width, height, parentId: null,

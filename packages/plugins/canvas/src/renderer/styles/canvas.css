@@ -105,12 +105,23 @@
 .canvas-document-detail-loading {
   visibility: hidden;
 }
+/* 提示落在纸面内：外框被 clip-path 内缩了纸边，内边距要先让出这一圈，否则首字被裁、贴着描边。
+   长文本换行；卡片太矮放不下时在提示内部滚动，不溢出也不被裁掉。 */
 .canvas-document-detail-notice {
+  flex: none;
+  box-sizing: border-box;
+  max-height: 100%;
   margin: 0;
+  padding: var(--space-2) calc(var(--canvas-card-inset) + var(--space-3))
+    calc(var(--canvas-card-inset) + var(--space-2));
+  overflow-y: auto;
+  scrollbar-width: none;
   background: var(--canvas-card-paper-color);
   color: var(--color-text-secondary);
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-footnote);
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .canvas-line-label-preview {

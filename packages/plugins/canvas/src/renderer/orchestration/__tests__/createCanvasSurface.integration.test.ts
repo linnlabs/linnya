@@ -8,7 +8,17 @@ import { createPixiCanvasKernel } from '../../kernel';
 import type { CanvasSurfacePorts } from '../../definitions/canvasSurface';
 import { createCanvasSurface } from '../createCanvasSurface';
 
+const assembly = vi.hoisted(() => ({ facadeFailure: null as Error | null }));
 vi.mock('../../kernel', () => ({ createPixiCanvasKernel: vi.fn() }));
+vi.mock('../createCanvasSurfaceFacade', async importOriginal => {
+  const actual = await importOriginal<typeof import('../createCanvasSurfaceFacade')>();
+  return {
+    createCanvasSurfaceFacade: (...args: Parameters<typeof actual.createCanvasSurfaceFacade>) => {
+      if (assembly.facadeFailure) throw assembly.facadeFailure;
+      return actual.createCanvasSurfaceFacade(...args);
+    },
+  };
+});
 vi.mock('../../functions/readCanvasChrome', () => ({
   readCanvasChrome: () => ({
     accent: 0x347b45,
@@ -19,11 +29,12 @@ vi.mock('../../functions/readCanvasChrome', () => ({
 }));
 
 afterEach(() => {
+  assembly.facadeFailure = null;
   vi.unstubAllGlobals();
   document.body.replaceChildren();
 });
 
-it('opens and reopens the actual surface when initial readonly cleanup synchronously emits a kernel intent', async () => {
+function prepareBrowser() {
   setActivePinia(createPinia());
   vi.stubGlobal(
     'ResizeObserver',
@@ -44,12 +55,11 @@ it('opens and reopens the actual surface when initial readonly cleanup synchrono
         removeListener() {},
       })
   );
-  const unexpected = () => {
-    throw new Error('Empty surface must not invoke this capability');
-  };
-  const close = vi.fn(async () => undefined),
-    destroyed = vi.fn(),
-    previewCleared = vi.fn();
+}
+const unexpected = () => {
+  throw new Error('Empty surface must not invoke this capability');
+};
+function mockKernel(previewCleared = vi.fn()) {
   vi.mocked(createPixiCanvasKernel).mockImplementation(async options => {
     const canvas = document.createElement('canvas');
     options.host.append(canvas);
@@ -109,6 +119,8 @@ it('opens and reopens the actual surface when initial readonly cleanup synchrono
     );
     return kernel;
   });
+}
+function createPorts(overrides: { close?: () => Promise<void>; destroyed?: () => void } = {}) {
   const ports: CanvasSurfacePorts = {
     document: {
       read: async documentId => ({ schemaVersion: 1, documentId, sequence: 0, elements: [] }),
@@ -116,7 +128,7 @@ it('opens and reopens the actual surface when initial readonly cleanup synchrono
       commit: unexpected,
       undo: unexpected,
       editing: async () => undefined,
-      close,
+      close: overrides.close ?? (async () => undefined),
       subscribe: () => () => undefined,
     },
     createEditor(options) {
@@ -131,21 +143,32 @@ it('opens and reopens the actual surface when initial readonly cleanup synchrono
         captureInsertion: unexpected,
         setEditable() {},
         focus() {},
-        destroy: destroyed,
+        destroy: overrides.destroyed ?? (() => undefined),
       };
     },
     markDirty() {},
     subscribeRestored: () => () => undefined,
   };
+  return ports;
+}
+function createHosts() {
   const host = document.createElement('div'),
     editorHost = document.createElement('div'),
     stagingHost = document.createElement('div');
   document.body.append(host, editorHost, stagingHost);
+  return { host, editorHost, stagingHost };
+}
+
+it('opens and reopens the actual surface when initial readonly cleanup synchronously emits a kernel intent', async () => {
+  prepareBrowser();
+  const close = vi.fn(async () => undefined),
+    destroyed = vi.fn(),
+    previewCleared = vi.fn();
+  mockKernel(previewCleared);
+  const ports = createPorts({ close, destroyed });
+  const hosts = createHosts();
   for (let attempt = 0; attempt < 2; attempt++) {
-    const surface = await createCanvasSurface(
-      { host, editorHost, stagingHost, documentId: 'empty-canvas' },
-      ports
-    );
+    const surface = await createCanvasSurface({ ...hosts, documentId: 'empty-canvas' }, ports);
     await nextTick();
     expect(surface.session.state.phase.value).toBe('ready');
     expect(surface.error.value).toBeNull();
@@ -157,4 +180,43 @@ it('opens and reopens the actual surface when initial readonly cleanup synchrono
   expect(previewCleared).toHaveBeenCalled();
   expect(close).toHaveBeenCalledTimes(2);
   expect(destroyed).toHaveBeenCalledTimes(2);
+});
+
+it('releases the already created kernel when surface assembly throws, and opens normally afterwards', async () => {
+  prepareBrowser();
+  mockKernel();
+  const failure = new Error('editor_unavailable');
+  const ports = createPorts();
+  const createEditor = vi.spyOn(ports, 'createEditor').mockImplementationOnce(() => {
+    throw failure;
+  });
+  const hosts = createHosts();
+  await expect(createCanvasSurface({ ...hosts, documentId: 'canvas' }, ports)).rejects.toBe(
+    failure
+  );
+  expect(hosts.host.querySelector('canvas')).toBeNull();
+  const surface = await createCanvasSurface({ ...hosts, documentId: 'canvas' }, ports);
+  await nextTick();
+  expect(createEditor).toHaveBeenCalledTimes(2);
+  expect(hosts.host.querySelector('canvas')).not.toBeNull();
+  surface.destroy();
+  expect(hosts.host.querySelector('canvas')).toBeNull();
+});
+
+it('closes the opened document session and releases every owner when the final assembly step throws', async () => {
+  prepareBrowser();
+  mockKernel();
+  const close = vi.fn(async () => undefined),
+    destroyed = vi.fn();
+  const failure = new Error('facade_failed');
+  assembly.facadeFailure = failure;
+  const ports = createPorts({ close, destroyed });
+  const hosts = createHosts();
+  await expect(createCanvasSurface({ ...hosts, documentId: 'canvas' }, ports)).rejects.toBe(
+    failure
+  );
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(close).toHaveBeenCalledOnce();
+  expect(destroyed).toHaveBeenCalledOnce();
+  expect(hosts.host.querySelector('canvas')).toBeNull();
 });

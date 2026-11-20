@@ -15,6 +15,7 @@
     options-motion-direction="up"
     variant="minimal"
     :bordered="false"
+    hide-arrow
     font-size="12px"
     :class-names="{
       trigger: 'input-footer-command-permission-trigger',
@@ -32,7 +33,6 @@
         {{ conversationMessage('conversation.commandPermission.nextRun') }}
       </p>
     </template>
-    <template #arrow-icon />
   </CustomSelect>
 </template>
 

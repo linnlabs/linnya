@@ -7,10 +7,7 @@ export interface DocumentTabIdentity {
   readonly parentId: string | null;
 }
 
-export interface DocumentTab extends DocumentTabIdentity {
-  /** 临时标签：单击打开、未编辑，下一次打开新文档时被替换；双击或编辑后固定。 */
-  readonly preview: boolean;
-}
+export type DocumentTab = DocumentTabIdentity;
 
 export interface DocumentTabsState {
   /** 标签栏从左到右的顺序。 */
