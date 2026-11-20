@@ -25,7 +25,7 @@ Provider route 装配完成本地 durable intent 恢复与账号能力投影后�
 主要入口：
 
 - `index.ts`：`RouteDependencies`、route family 组合、Conversation runtime 初始化结果和可观测摘要；
-- `orchestration/createConversationRouteLifecycle.ts`：Conversation route 准备失败时的资源回滚；
+- `orchestration/createConversationRouteLifecycle.ts`：Conversation route 准备失败时的资源回滚；对话删除时回收对话专属文件，并清掉本进程按对话记下的图片来源；
 - `*Router.ts`：具体 HTTP adapter；
 - `../services/apiServer.ts`、`../services/apiServerSecurityRules.ts`：HTTP Server 与统一安全边界。
 
