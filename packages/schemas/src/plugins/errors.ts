@@ -8,6 +8,7 @@ export const PluginOperationErrorCodeSchema = z.enum([
   'incompatible',
   'disk-space',
   'source-unavailable',
+  'active-tool',
   'unknown',
 ]);
 

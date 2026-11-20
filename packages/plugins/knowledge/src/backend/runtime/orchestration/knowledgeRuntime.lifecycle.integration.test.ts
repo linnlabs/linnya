@@ -275,8 +275,9 @@ describe('knowledge activation persistence and drain', () => {
     expect((await runtime.service.getAllKnowledgeBases()).map(kb => kb.id)).toEqual(['default']);
     expect(vectorStarts).toBe(0);
     const release = runtime.toolRuntime.enterTool();
-    expect(() => runtime?.assertCanDeactivate()).toThrow('工具仍在运行');
-    release(); runtime.assertCanDeactivate();
+    expect(runtime.getDeactivationBlocker()).toBe('active-tool');
+    release();
+    expect(runtime.getDeactivationBlocker()).toBeUndefined();
   });
 
   it('停用等待真实 pending/running Worker，重开SQLite可见失败，completed与原文/PDF保持原样', async () => {

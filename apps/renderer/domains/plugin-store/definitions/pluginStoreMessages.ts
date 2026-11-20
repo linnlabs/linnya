@@ -83,6 +83,7 @@ export type PluginStoreMessageKey =
   | 'pluginStore.runtimeError.pluginOperationDiskSpace'
   | 'pluginStore.runtimeError.pluginOperationSourceUnavailable'
   | 'pluginStore.runtimeError.pluginOperationUnknown'
+  | 'pluginStore.runtimeError.pluginOperationActiveTool'
   | 'pluginStore.toast.enabled'
   | 'pluginStore.toast.disabled'
   | 'pluginStore.toast.installed'

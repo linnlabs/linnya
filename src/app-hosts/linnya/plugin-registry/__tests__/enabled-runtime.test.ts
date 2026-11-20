@@ -6,7 +6,7 @@ import {
   clearPluginRuntimeStateForTests,
   setPluginRuntimeStateForTests,
 } from '../pluginRuntimeState';
-import { toolRegistry } from 'src/app-hosts/linnya/adapters/tools/toolRegistry';
+import { ToolRegistry, toolRegistry } from 'src/app-hosts/linnya/adapters/tools/toolRegistry';
 import {
   getRegisteredAgentDefinitions,
   getRegisteredBackendPluginIpcChannels,
@@ -164,6 +164,42 @@ describe('runtime enabled plugin gating', () => {
     toolRegistry.reinitialize();
     clearPluginRuntimeStateForTests();
     clearRegisteredAgentTaskCache();
+  });
+
+  it('settles a withdrawn plugin call without weakening missing-tool or execution-scope checks', async () => {
+    const pluginId = 'runtime-gate-test';
+    const toolName = 'runtime_gate_test_tool';
+    const registry = new ToolRegistry();
+    runtimeGateDecoratorCalls.length = 0;
+    setPluginRuntimeStateForTests({ enabledPluginIds: ['platform', pluginId] });
+    const context: ToolContext = { registeredRootAllowedTools: [toolName, 'unknown_fixture_tool'] };
+    const schema = () => registry.getToolSchemas({
+      toolNames: [toolName], invocation: { query: 'test', promptKey: 'default' },
+    });
+    expect(schema().map(entry => entry.function.name)).toEqual([toolName]);
+    registry.withdrawPluginTools(pluginId);
+    expect(schema()).toEqual([]);
+    expect(registry.getToolDefinition(toolName)).toBeUndefined();
+
+    setPluginRuntimeStateForTests({ installedPluginIds: [pluginId], enabledPluginIds: ['platform'] });
+    registry.reinitialize();
+    expect(await registry.executeTool(toolName, {}, context)).toMatchObject({
+      success: false, errorKind: 'execution', errorCode: 'PLUGIN_TOOL_UNAVAILABLE',
+    });
+    expect(await registry.executeTool('unknown_fixture_tool', {}, context)).toMatchObject({
+      success: false, errorKind: 'protocol',
+    });
+    expect(await registry.executeTool(toolName, {}, { registeredRootAllowedTools: [] })).toMatchObject({
+      success: false, errorCode: 'REGISTERED_ROOT_TOOL_NOT_ALLOWED',
+    });
+    expect(runtimeGateDecoratorCalls).toEqual([]);
+
+    setPluginRuntimeStateForTests({ enabledPluginIds: ['platform', pluginId] });
+    registry.reinitialize();
+    registry.restorePluginTools(pluginId);
+    expect(schema().map(entry => entry.function.name)).toEqual([toolName]);
+    expect(await registry.executeTool(toolName, {}, context)).toMatchObject({ success: true });
+    expect(runtimeGateDecoratorCalls).toEqual([toolName]);
   });
 
   it('only applies plugin tool context decorators when the owning plugin tool executes', async () => {

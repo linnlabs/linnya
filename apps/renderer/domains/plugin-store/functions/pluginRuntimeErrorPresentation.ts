@@ -39,6 +39,7 @@ const PLUGIN_RUNTIME_ERROR_MESSAGE_KEYS = {
   pluginOperationDiskSpace: 'pluginStore.runtimeError.pluginOperationDiskSpace',
   pluginOperationSourceUnavailable: 'pluginStore.runtimeError.pluginOperationSourceUnavailable',
   pluginOperationUnknown: 'pluginStore.runtimeError.pluginOperationUnknown',
+  pluginOperationActiveTool: 'pluginStore.runtimeError.pluginOperationActiveTool',
 } as const satisfies Readonly<Record<PluginRuntimeErrorCode, PluginStoreMessageKey>>;
 
 function buildPluginRuntimeErrorParams(error: PluginRuntimeUserError): MessageParams | undefined {

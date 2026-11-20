@@ -20,12 +20,15 @@ const cases = [
   { id: 'uninstall-delete', operation: 'uninstall-delete' },
 ];
 const toolName = 'knowledge_search';
+const unavailable = '知识库当前不可用，本次调用未执行';
+const busy = '请等待正在进行的工具调用结束';
 const searchCall = (id, hold) => ({ kind: 'tool_call', id, name: toolName, arguments: { kind: 'fixed', value: { query: 'apple orchard' } }, ...(hold ? { hold } : {}) });
 const plans = Object.fromEntries(cases.flatMap(({ id, priorSearch }) => [
   [id, [
     ...(priorSearch ? [searchCall(`${id}-first`)] : []),
     searchCall(`${id}-old`, 'before-call'),
-    { kind: 'assistant_text', id: `${id}-continue`, content: `continued-${id}` },
+    { kind: 'assistant_text', id: `${id}-continue`, content: `continued-${id}`,
+      expectToolObservation: { id: `${id}-old`, includes: unavailable } },
   ]],
   [`${id}-new`, [{ kind: 'assistant_text', id: `${id}-new`, content: `new-turn-${id}` }]],
 ]));
@@ -119,6 +122,7 @@ async function clickUninstall(deleteData = false) {
 
 let db;
 let failed;
+let busyMessages;
 try {
   const up = await run('up', '--size', '1440x1000', '--mode', 'bundled');
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
@@ -160,6 +164,7 @@ try {
     await clickUninstall();
     await run('wait', '--selector', '.notification-content');
     const uninstallMessage = (await run('eval', `[...document.querySelectorAll('.notification-content')].map(item=>item.textContent.trim())`)).value;
+    busyMessages = { toggleMessage, uninstallMessage };
     await run('shot');
     const during = { enabled: readEnabled(), installation: readInstalled(), run: readRun(runId) };
     const after = await until(() => readRun(runId), value => Boolean(value?.end_ts), 'in-flight search completion');
@@ -178,7 +183,7 @@ try {
   });
 
   for (const { id, operation, priorSearch } of cases) {
-    await evidence.check(`观察已有工具清单的运行：${id}`, async () => {
+    await evidence.check(`撤回旧工具后原对话仍继续：${id}`, async () => {
       const previous = readAgentRuns()[0]?.id;
       await selectModel(modelNames.get(id));
       await send(`E7 ${id}: inspect the synthetic knowledge library.`);
@@ -208,11 +213,19 @@ try {
       const oldEvents = readEvents(heldRun.id);
       evidence.json(`${id}-old-run`, { offered, heldRun, beforeRelease, settled, events: oldEvents });
       assert.ok(oldEvents.some(event => event.type === 'tool_call_decision'), 'the real tool loop must accept the model decision');
+      assert.equal(settled.status, 'completed', 'late call must not pause the original run');
+      const outputs = oldEvents.filter(event => event.type === 'tool_output' && event.body.tool_name === toolName);
+      assert.equal(outputs.filter(event => event.body.status === 'success').length, priorSearch ? 1 : 0);
+      const refusals = outputs.filter(event => event.body.status === 'error');
+      assert.equal(refusals.length, 1);
+      assert.equal(refusals[0].body.error_code, 'PLUGIN_TOOL_UNAVAILABLE');
+      assert.ok(refusals[0].body.observation.includes(unavailable));
       const title = db.prepare('SELECT title FROM conversations WHERE conversation_id=?').get(heldRun.conversation_id).title;
       await run('click', await uiRef('新对话', 'button', 'aside'));
       await run('click', await uiRef('历史对话', 'button', 'header'));
       await run('wait', '--text', title);
       await run('click', `text=${title}`);
+      await run('wait', '--text', `continued-${id}`);
       await run('shot');
       await run('snapshot', '--max-lines', '140');
 
@@ -226,6 +239,9 @@ try {
       evidence.json(`${id}-model-requests`, modelRequests);
       assert.equal(beforeRelease.end_ts, null, 'the held run was cancelled before the model sent the old tool call');
       const fresh = modelRequests.find(row => row.sessionId === `${id}-new`);
+      const continued = modelRequests.filter(row => row.sessionId === id).at(-1);
+      assert.equal(continued.latestRole, 'tool');
+      assert.ok(!continued.toolNames.some(name => [toolName, 'knowledge_read'].includes(name)), 'the old run must receive the refreshed tool list');
       assert.ok(fresh.toolNames.includes('read_file'), 'the fresh run must retain ordinary project tools');
       assert.ok(!fresh.toolNames.some(name => [toolName, 'knowledge_read'].includes(name)), 'a fresh run must not expose unavailable knowledge tools');
 
@@ -244,6 +260,10 @@ try {
       }
     });
   }
+  await evidence.check('商店解释正在检索时为什么不能停用或卸载', async () => {
+    assert.ok(busyMessages.toggleMessage.includes(busy), 'disable must explain why it is blocked');
+    assert.ok(busyMessages.uninstallMessage.some(message => message.includes(busy)), 'uninstall must explain why it is blocked');
+  });
 } catch (error) {
   failed = error;
   evidence.error(error);

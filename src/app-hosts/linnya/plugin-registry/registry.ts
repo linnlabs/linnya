@@ -230,6 +230,13 @@ class BackendPluginRegistry {
     return this.effective(enabledIds).flatMap(contribution => contribution.toolClasses ?? []);
   }
 
+  getToolContribution(pluginId: PluginId) {
+    const contribution = this.contributions.get(pluginId);
+    return contribution?.toolClasses?.length
+      ? { meta: contribution.meta, toolClasses: contribution.toolClasses }
+      : undefined;
+  }
+
   getHostOnlyToolNames(enabledIds: ReadonlySet<PluginId> | null): string[] {
     return this.effective(enabledIds).flatMap(contribution => contribution.hostOnlyToolNames ?? []);
   }

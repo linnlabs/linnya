@@ -165,9 +165,8 @@ export async function createKnowledgeRuntime() {
     hasActiveTasks() {
       return activeTools > 0 || activity.hasActivity();
     },
-    assertCanDeactivate() {
-      if (activeTools > 0)
-        throw new Error('知识库工具仍在运行，请等待检索或深度搜索结束后再停用。');
+    getDeactivationBlocker() {
+      return activeTools > 0 ? 'active-tool' as const : undefined;
     },
     beginDeactivation,
     async stop() {

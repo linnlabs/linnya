@@ -537,9 +537,13 @@ export async function registerPluginsHandlers(input: {
           async run() {
             const service = getService();
             if (!enabled) assertBackendPluginCanDeactivate(pluginId);
+            const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
             service.setEnabled(pluginId, enabled, listRegisteredBackendPluginMetas());
-            if (!enabled) beginBackendPluginDeactivation(pluginId);
-            if (!isTrustedKnowledgeResourceSource(pluginId))
+            if (!enabled) {
+              beginBackendPluginDeactivation(pluginId);
+              if (scopedLifecycle) toolRegistry.withdrawPluginTools(pluginId);
+            }
+            if (!scopedLifecycle)
               await cancelActiveRunsForPluginRuntimeChange({
                 pluginId,
                 operation: enabled ? '启用' : '禁用',
@@ -549,6 +553,7 @@ export async function registerPluginsHandlers(input: {
               reinitializeTools: true,
               runtimeOwner: input.runtimeOwner,
             });
+            if (enabled) toolRegistry.restorePluginTools(pluginId);
             input.rendererIntegration.publishPluginsChanged();
             return { success: true };
           },
@@ -637,6 +642,7 @@ export async function registerPluginsHandlers(input: {
             reinitializeTools: true,
             runtimeOwner: input.runtimeOwner,
           });
+          toolRegistry.restorePluginTools(pluginId);
           input.rendererIntegration.publishPluginsChanged();
           return { success: true, data: result };
         },
@@ -691,6 +697,7 @@ export async function registerPluginsHandlers(input: {
               reinitializeTools: true,
               runtimeOwner: input.runtimeOwner,
             });
+            toolRegistry.restorePluginTools(pluginId);
             input.rendererIntegration.publishPluginsChanged();
             return { success: true, data: result };
           } catch (runtimeRefreshError) {
@@ -738,6 +745,7 @@ export async function registerPluginsHandlers(input: {
           }
           assertBackendPluginCanDeactivate(pluginId);
           beginBackendPluginDeactivation(pluginId);
+          if (scopedLifecycle) toolRegistry.withdrawPluginTools(pluginId);
           await deactivateStaleBackendPluginRuntimeEffects(
             backendPluginRegistry.getRuntimeEffectRegistrations(getRuntimeEnabledPluginIds())
               .filter(registration => registration.pluginId !== pluginId),

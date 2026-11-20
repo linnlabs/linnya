@@ -32,7 +32,7 @@ const contribution: PluginBackendContribution = {
   rendererPush: { channels: ['task-status-updated', 'graph-progress-updated'] },
   runtimeEffects: [{
     id: 'knowledge-runtime',
-    assertCanDeactivate: () => runtime?.assertCanDeactivate(),
+    getDeactivationBlocker: () => runtime?.getDeactivationBlocker(),
     hasActiveWork: () => runtime?.hasActiveTasks() ?? false,
     beginDeactivation: () => runtime?.beginDeactivation(),
     async activate() {

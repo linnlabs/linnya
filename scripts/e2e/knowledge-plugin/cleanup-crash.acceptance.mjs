@@ -55,6 +55,12 @@ function facts(root) {
   };
 }
 
+function checkDatabaseIntegrity() {
+  const rows = db.prepare('PRAGMA quick_check').all();
+  assert.deepEqual(rows.map(row => row.quick_check), ['ok']);
+  return rows;
+}
+
 async function until(action, accepted, label, timeout = 10_000) {
   const end = Date.now() + timeout;
   let value;
@@ -118,6 +124,7 @@ try {
     await run('shot');
     const recovered = facts(restarted.root);
     evidence.json('recovered', recovered);
+    evidence.json('sqlite-after-process-kill', checkDatabaseIntegrity());
     assert.equal(recovered.installed.installed, 0);
     assert.equal(recovered.installed.user_removed, 1);
     assert.equal(recovered.enabled, false);
@@ -133,6 +140,7 @@ try {
     await run('shot');
     const final = facts(restarted.root);
     evidence.json('after-retry', final);
+    evidence.json('sqlite-after-retry', checkDatabaseIntegrity());
     assert.equal(final.installed.schema_version, 0);
     assert.deepEqual(final.migrations, []);
     assert.deepEqual(final.ownedTables, []);

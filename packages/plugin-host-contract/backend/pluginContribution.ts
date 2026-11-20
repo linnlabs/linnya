@@ -49,7 +49,7 @@ export interface BackendPluginToolContextBindingMigrator {
 export interface BackendPluginRuntimeEffect {
   readonly id: string;
   /** 同步准入检查，必须在 enabled/active artifact 状态改变前执行。 */
-  assertCanDeactivate?(): void;
+  getDeactivationBlocker?(): 'active-tool' | undefined;
   /** 退出与更新只读取是否存在真实工作，不取得插件队列或业务对象。 */
   hasActiveWork?(): boolean;
   /** 同步、幂等关闭接单与对外发布；不释放资源。Host 在取消 CLI 之前调用。 */

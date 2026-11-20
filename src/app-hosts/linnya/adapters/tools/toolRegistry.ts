@@ -5,6 +5,8 @@ import {
   getRegisteredToolContextDecorators,
 } from 'src/app-hosts/linnya/plugin-registry/builtin';
 import { pluginDiagnostics } from 'src/app-hosts/linnya/plugin-registry/diagnostics';
+import { backendPluginRegistry } from 'src/app-hosts/linnya/plugin-registry/registry';
+import type { PluginMeta } from '@app/schemas';
 import type {
   BackendPluginToolContextDecorator,
   ToolClassCtor,
@@ -89,7 +91,9 @@ function readToolArgumentValidationErrorCode(tool: BaseTool): string | undefined
  * - `src/tools/registry.ts` 当前只保留 compatibility bridge。
  */
 export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
-  private tools: Map<string, BaseTool> = new Map();
+  private tools = new Map<string, BaseTool>();
+  private readonly toolRegistrations = new Map<string, ToolClassCtor>();
+  private readonly withdrawnTools = new Map<string, PluginMeta>();
   private hostOnlyToolNames = new Set<string>();
   private toolContextDecorators: Map<string, BackendPluginToolContextDecorator[]> = new Map();
   private initialized = false;
@@ -142,6 +146,7 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
         }
 
         this.tools.set(tool.name, tool);
+        this.toolRegistrations.set(tool.name, ToolClass);
         loadedCount++;
       } catch (error) {
         const errorMsg = `加载工具 ${ToolClass.name} 失败: ${error instanceof Error ? error.message : '未知错误'}`;
@@ -153,6 +158,7 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
     if (errors.length > 0) {
       if (this.strictInitialization) {
         this.tools.clear();
+        this.toolRegistrations.clear();
         this.toolContextDecorators.clear();
         throw new ToolRegistryInitializationError(errors);
       }
@@ -163,6 +169,7 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
     // 声明拼错会让本应隐藏的工具进入模型目录，不能按单工具 best-effort 忽略。
     if (unregisteredNames.length > 0) {
       this.tools.clear();
+      this.toolRegistrations.clear();
       throw new ToolRegistryInitializationError(
         unregisteredNames.map(name => `Host-only 工具未注册: ${name}`)
       );
@@ -180,7 +187,37 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
 
   getTool(name: string): BaseTool | undefined {
     this.ensureInitialized();
-    return this.tools.get(name);
+    return this.withdrawnTools.has(name) ? undefined : this.tools.get(name);
+  }
+
+  /** 只记下宿主明确撤下且曾成功注册的工具，跨 registry 刷新保留到该插件再次启用。 */
+  withdrawPluginTools(pluginId: string): void {
+    const contribution = backendPluginRegistry.getToolContribution(pluginId);
+    if (!contribution) return;
+    this.ensureInitialized();
+    for (const [name, registration] of this.toolRegistrations) {
+      if (contribution.toolClasses.includes(registration))
+        this.withdrawnTools.set(name, contribution.meta);
+    }
+  }
+
+  restorePluginTools(pluginId: string): void {
+    for (const [name, meta] of this.withdrawnTools) {
+      if (meta.id === pluginId) this.withdrawnTools.delete(name);
+    }
+  }
+
+  private readWithdrawnToolResult(toolName: string, startTime: number): ToolExecutionResult | undefined {
+    const plugin = this.withdrawnTools.get(toolName);
+    if (!plugin) return undefined;
+    // 没有进入 owner，不是结果未知。Linnkit 仍先对已写过执行意图的恢复调用执行对账。
+    return {
+      success: false,
+      error: `${plugin.name}当前不可用，本次调用未执行。请改用其他可用工具或依据已有信息继续。`,
+      errorCode: 'PLUGIN_TOOL_UNAVAILABLE',
+      errorKind: 'execution',
+      durationMs: Date.now() - startTime,
+    };
   }
 
   getToolDefinition(toolName: string): ToolRuntimeDefinition | undefined {
@@ -198,14 +235,14 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
 
   getAllTools(): BaseTool[] {
     this.ensureInitialized();
-    return Array.from(this.tools.values());
+    return Array.from(this.tools.values()).filter(tool => !this.withdrawnTools.has(tool.name));
   }
 
   getAvailableToolNames(toolNames?: string[]): string[] {
     this.ensureInitialized();
     const requestedNames =
       !toolNames || toolNames.length === 0 ? Array.from(this.tools.keys()) : toolNames;
-    return requestedNames.filter(name => this.tools.has(name) && !this.hostOnlyToolNames.has(name));
+    return requestedNames.filter(name => this.getTool(name) && !this.hostOnlyToolNames.has(name));
   }
 
   getToolSchemas(input: ToolSchemaBuildRequest): FunctionToolSchema[] {
@@ -213,7 +250,7 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
 
     const schemas: FunctionToolSchema[] = [];
     const toolsToProcess = input.toolNames
-      ? input.toolNames.map(name => this.tools.get(name)).filter((tool): tool is BaseTool => !!tool)
+      ? input.toolNames.map(name => this.getTool(name)).filter((tool): tool is BaseTool => !!tool)
       : this.getAllTools();
     const schemaContext = deriveLinnyaToolSchemaContext(input.invocation);
 
@@ -293,6 +330,8 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
           durationMs: Date.now() - startTime,
         };
       }
+      const unavailable = this.readWithdrawnToolResult(toolName, startTime);
+      if (unavailable) return unavailable;
       const tool = this.getTool(toolName);
       if (!tool) {
         return {
@@ -325,6 +364,9 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
         toolCallId: context.parentToolCallId,
       });
       await this.decorateToolContext(toolName, normalizedArgs, context);
+      // decorator 期间可能发生停用；不能命中旧缓存，也不能进入已关闭接单的 owner。
+      const withdrawnDuringDecoration = this.readWithdrawnToolResult(toolName, startTime);
+      if (withdrawnDuringDecoration) return withdrawnDuringDecoration;
 
       const policy = tool.idempotency;
       const key = policy
@@ -409,7 +451,7 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
     byCategory: Record<string, string[]>;
   } {
     this.ensureInitialized();
-    const toolNames = Array.from(this.tools.keys());
+    const toolNames = this.getAllTools().map(tool => tool.name);
     const byCategory: Record<string, string[]> = {};
 
     for (const name of toolNames) {
@@ -421,7 +463,7 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
     }
 
     return {
-      totalTools: this.tools.size,
+      totalTools: toolNames.length,
       toolNames,
       byCategory,
     };
@@ -493,6 +535,7 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
 
   reinitialize(): void {
     this.tools.clear();
+    this.toolRegistrations.clear();
     this.hostOnlyToolNames.clear();
     this.toolContextDecorators.clear();
     this.initialized = false;

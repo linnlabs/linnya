@@ -41,6 +41,7 @@ const CONTROL_LINE_PREFIX = 'command_control: ';
  *   id: string,
  *   content: string,
  *   hold?: string,
+ *   expectToolObservation?: { id: string, includes: string },
  * }} AssistantTextStep
  */
 
@@ -139,7 +140,7 @@ function validateChatRequest(body) {
   return body;
 }
 
-function readToolResult(messages, sourceToolCallId) {
+function readToolMessageContent(messages, sourceToolCallId) {
   const message = messages.findLast((candidate) => (
     isRecord(candidate)
     && candidate.role === 'tool'
@@ -148,10 +149,14 @@ function readToolResult(messages, sourceToolCallId) {
   if (!message || typeof message.content !== 'string') {
     failContract(`缺少工具结果 ${sourceToolCallId}`);
   }
+  return message.content;
+}
 
+function readToolResult(messages, sourceToolCallId) {
+  const content = readToolMessageContent(messages, sourceToolCallId);
   let structured;
   try {
-    structured = JSON.parse(message.content);
+    structured = JSON.parse(content);
   } catch {
     failContract(`工具结果 ${sourceToolCallId} 不是结构化 JSON`);
   }
@@ -361,6 +366,11 @@ export async function startDeterministicOpenAiChatServer(
       const body = validateChatRequest(rawBody);
       const step = session.steps[sequence];
       if (!step) failContract(`会话 ${sessionId} 收到超出脚本的第 ${sequence + 1} 次请求`);
+      if (step.kind === 'assistant_text' && step.expectToolObservation) {
+        const { id, includes } = step.expectToolObservation;
+        if (!readToolMessageContent(body.messages, id).includes(includes))
+          failContract(`工具结果 ${id} 未包含预期提示`);
+      }
 
       observations.push(Object.freeze({
         sessionId,

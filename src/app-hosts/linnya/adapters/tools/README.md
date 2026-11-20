@@ -124,6 +124,11 @@ Shell 的网络、数据库或文件系统沙箱。
 一条已完成的 tool error。未决调用恢复由应用层 run-resumption 协调：明确只读工具可重新读取；
 child 工具只在原 child identity / checkpoint 合同下重新进入；外部写入没有 owner 凭据时阻塞。
 
+允许保留当前 Agent 的插件停用或卸载时，Host 依据实际注册的 contribution 撤下工具，连同其定义
+一起从目录隐藏。撤下后迟到的调用先检查原执行范围，再回 `PLUGIN_TOOL_UNAVAILABLE`，不运行
+decorator、命中旧缓存或执行工具。未知工具仍走原协议错误；这条进程内拒绝也不替代已有执行意图
+的恢复对账。插件重新启用或安装完成、运行态刷新成功后，Host 才恢复目录。
+
 ---
 
 ## 4. 开发注意事项

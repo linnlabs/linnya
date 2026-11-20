@@ -1,4 +1,5 @@
 import { withActionActor } from 'src/domains/action-ledger';
+import { PluginOperationError } from 'src/features/plugins/install/definitions/pluginOperationError';
 import type { PluginId } from '@app/schemas';
 import { pluginDiagnostics } from './diagnostics';
 import type { BackendPluginRuntimeEffectRegistration } from './registry';
@@ -14,8 +15,12 @@ interface ActiveRuntimeEffect {
 const activeEffects = new Map<string, ActiveRuntimeEffect>();
 
 export function assertBackendPluginCanDeactivate(pluginId: string): void {
-  for (const active of activeEffects.values())
-    if (active.pluginId === pluginId) active.effect.assertCanDeactivate?.();
+  for (const active of activeEffects.values()) {
+    if (active.pluginId !== pluginId) continue;
+    if (active.effect.getDeactivationBlocker?.() === 'active-tool') {
+      throw new PluginOperationError('active-tool', 'Plugin has an active tool call', { pluginId });
+    }
+  }
 }
 
 /** enabled 改变的同一同步栈封闭发布，后续 CLI 仍可用原资源完成取消与持久化。 */

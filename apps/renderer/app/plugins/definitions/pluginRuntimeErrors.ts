@@ -34,6 +34,7 @@ export type PluginRuntimeErrorCode =
   | 'pluginOperationIncompatible'
   | 'pluginOperationDiskSpace'
   | 'pluginOperationSourceUnavailable'
+  | 'pluginOperationActiveTool'
   | 'pluginOperationUnknown';
 
 export interface PluginRuntimeErrorContext {
@@ -95,6 +96,7 @@ export function normalizePluginRuntimeUserError(caught: unknown): PluginRuntimeU
       incompatible: 'pluginOperationIncompatible',
       'disk-space': 'pluginOperationDiskSpace',
       'source-unavailable': 'pluginOperationSourceUnavailable',
+      'active-tool': 'pluginOperationActiveTool',
       unknown: 'pluginOperationUnknown',
     } as const;
     return new PluginRuntimeError(codeByOperation[caught.code], { pluginId: caught.pluginId });

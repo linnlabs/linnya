@@ -598,6 +598,11 @@ function resolveErrorMessage(error: PluginRuntimeUserError): string {
   return resolvePluginRuntimeUserErrorMessage(error, pluginStoreMessage);
 }
 
+function resolveDeactivationFailure(caught: unknown, fallback: 'pluginStore.error.toggleFailed' | 'pluginStore.error.uninstallFailed'): string {
+  const error = readErrorMessage(caught);
+  return error.code === 'pluginOperationActiveTool' ? resolveErrorMessage(error) : pluginStoreMessage(fallback);
+}
+
 function resolvePluginStateLabel(item: PluginStoreListItem): string {
   if (item.data?.status === 'cleaning') return pluginStoreMessage('pluginStore.data.status.cleaning');
   if (item.data?.status === 'failed') return pluginStoreMessage('pluginStore.data.status.failed');
@@ -663,9 +668,7 @@ async function handlePluginEnabledChange(
     );
   } catch (caught) {
     notificationStore.show(
-      pluginStoreMessage('pluginStore.error.toggleFailed', {
-        errorMessage: resolveErrorMessage(readErrorMessage(caught)),
-      }),
+      resolveDeactivationFailure(caught, 'pluginStore.error.toggleFailed'),
       'error',
       4000,
     );
@@ -961,9 +964,7 @@ async function executeUninstall(item: PluginStoreListItem, deleteData: boolean):
     );
   } catch (caught) {
     notificationStore.show(
-      pluginStoreMessage('pluginStore.error.uninstallFailed', {
-        errorMessage: resolveErrorMessage(readErrorMessage(caught)),
-      }),
+      resolveDeactivationFailure(caught, 'pluginStore.error.uninstallFailed'),
       'error',
       5000,
     );
