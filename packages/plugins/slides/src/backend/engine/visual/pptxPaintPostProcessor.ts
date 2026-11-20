@@ -5,8 +5,8 @@ import {
   type Document as XmlDocument,
   type Element as XmlElement,
 } from '@xmldom/xmldom';
-import { DEFAULT_SHADOW_OPACITY, type GradientStop, type ImageAdjust, type Paint, type ResolvedShapeGeometry, type StrokePaint, type TextEffects } from '@plugin/slides/shared';
-import { normalizePptxShadowAngle } from './presentationVisualDefaults';
+import type { GradientStop, ImageAdjust, Paint, ResolvedShapeGeometry, StrokePaint, TextEffects } from '@plugin/slides/shared';
+import { createOuterShadowEffectList } from './outerShadow';
 import { presetShapeNameToPptxName } from '../shape/shapeNameRegistry';
 import type {
   PptxPaintPatchPlan,
@@ -136,7 +136,6 @@ function applyMarkedTextEffects(doc: XmlDocument, patch: PptxTextEffectsPatch): 
 function applyTextEffectsToRunProperties(doc: XmlDocument, properties: XmlElement, effects: TextEffects): void {
   const replacesFill = effects.fill != null || effects.opacity != null;
   const existingSolid = findDirectChild(properties, ['a:solidFill', 'solidFill']);
-  const solidColor = existingSolid ? firstElement(existingSolid, ['a:srgbClr', 'srgbClr'])?.getAttribute('val') : null;
   removeDirectChildren(properties, [
     'a:ln', 'ln', 'a:effectLst', 'effectLst',
     ...(replacesFill ? ['a:noFill', 'noFill', 'a:solidFill', 'solidFill', 'a:gradFill', 'gradFill'] : []),
@@ -150,20 +149,11 @@ function applyTextEffectsToRunProperties(doc: XmlDocument, properties: XmlElemen
     leading.push(line);
   }
   if (effects.fill) leading.push(createPaintElement(doc, effects.fill, effects.opacity));
-  else if (replacesFill && solidColor) leading.push(createPaintElement(doc, { type: 'solid', color: `#${solidColor}` }, effects.opacity));
-  if (effects.shadow) {
-    const effectList = doc.createElement('a:effectLst');
-    const shadow = doc.createElement('a:outerShdw');
-    const { offsetX, offsetY } = effects.shadow;
-    shadow.setAttribute('blurRad', String(Math.round(effects.shadow.blur * POINT_TO_EMU)));
-    shadow.setAttribute('dist', String(Math.round(Math.hypot(offsetX, offsetY) * POINT_TO_EMU)));
-    shadow.setAttribute('dir', String(normalizePptxShadowAngle(Math.atan2(offsetY, offsetX) * (180 / Math.PI)) * OOXML_ANGLE_UNIT));
-    shadow.setAttribute('algn', 'tl');
-    shadow.setAttribute('rotWithShape', '0');
-    shadow.appendChild(createColorElement(doc, effects.shadow.color, effects.shadow.opacity ?? DEFAULT_SHADOW_OPACITY));
-    effectList.appendChild(shadow);
-    leading.push(effectList);
+  else if (effects.opacity != null) {
+    const opacityFill = createOpacityOnlyFill(doc, existingSolid, effects.opacity, isRunProperties(properties));
+    if (opacityFill) leading.push(opacityFill);
   }
+  if (effects.shadow) leading.push(createOuterShadowEffectList(doc, effects.shadow, { align: 'tl' }));
   // 只改字效时保留的原纯色要排在 ln 之后、effectLst 之前。
   const keptFill = replacesFill ? null : findDirectChild(properties, ['a:solidFill', 'solidFill', 'a:noFill', 'noFill', 'a:gradFill', 'gradFill']);
   if (keptFill) {
@@ -173,6 +163,58 @@ function applyTextEffectsToRunProperties(doc: XmlDocument, properties: XmlElemen
   }
   const first = properties.firstChild;
   for (const element of leading) properties.insertBefore(element, first);
+}
+
+const SOLID_COLOR_TAGS = ['srgbClr', 'schemeClr', 'sysClr', 'prstClr', 'scrgbClr', 'hslClr']
+  .flatMap((name) => [`a:${name}`, name]);
+
+function isRunProperties(properties: XmlElement): boolean {
+  return properties.tagName === 'a:rPr' || properties.tagName === 'rPr';
+}
+
+/**
+ * 只写 opacity、没有渐变时，把 run 原有的纯色连同不透明度重写一遍：
+ * - sRGB 色：保留色值，alpha 取 effects.opacity；
+ * - 主题色等其他颜色：保留颜色元素，替换其 alpha（不能因为读不到 sRGB 就把颜色和透明度一起丢掉）；
+ * - run 没有显式填充：文字继承默认文字色 tx1，要显式写出才能带 alpha；
+ * - `a:endParaRPr` 不渲染字形，没有填充时不补。
+ */
+function createOpacityOnlyFill(
+  doc: XmlDocument,
+  existingSolid: XmlElement | null,
+  opacity: number,
+  isRun: boolean,
+): XmlElement | null {
+  if (!existingSolid) {
+    if (!isRun) return null;
+    const solid = doc.createElement('a:solidFill');
+    solid.appendChild(withAlpha(doc, doc.createElement('a:schemeClr'), opacity, { val: 'tx1' }));
+    return solid;
+  }
+  const color = findDirectChild(existingSolid, SOLID_COLOR_TAGS);
+  if (!color) return null;
+  const srgbValue = color.tagName === 'a:srgbClr' || color.tagName === 'srgbClr' ? color.getAttribute('val') : null;
+  if (srgbValue) return createPaintElement(doc, { type: 'solid', color: `#${srgbValue}` }, opacity);
+  const solid = doc.createElement('a:solidFill');
+  solid.appendChild(withAlpha(doc, color.cloneNode(true) as XmlElement, opacity));
+  return solid;
+}
+
+/** 替换颜色元素上已有的 alpha；不透明（>= 1）不写 alpha，与 createColorElement 一致。 */
+function withAlpha(
+  doc: XmlDocument,
+  color: XmlElement,
+  opacity: number,
+  attributes: Record<string, string> = {},
+): XmlElement {
+  for (const [name, value] of Object.entries(attributes)) color.setAttribute(name, value);
+  removeDirectChildren(color, ['a:alpha', 'alpha']);
+  if (opacity < 1) {
+    const alpha = doc.createElement('a:alpha');
+    alpha.setAttribute('val', toOoxmlPercent(opacity));
+    color.appendChild(alpha);
+  }
+  return color;
 }
 
 function applyMarkedPicturePatch(doc: XmlDocument, patch: PptxPicturePatch): void {
