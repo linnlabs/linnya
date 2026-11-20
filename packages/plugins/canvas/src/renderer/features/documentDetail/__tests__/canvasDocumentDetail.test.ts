@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, nextTick, render } from 'vue';
@@ -395,5 +397,67 @@ describe('单张近景文档详情', () => {
     expect(body?.style.height).toBe('');
     render(null, root);
     root.remove();
+  });
+  it('挂载失败时正文槽不保持旧尺寸，提示留在改尺寸后的纸面内', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const root = document.createElement('div');
+    document.body.append(root);
+    const broken = port();
+    broken.mount = async () => {
+      throw new Error('internal');
+    };
+    const props = {
+      card: card(),
+      camera: { x: 0, y: 0, zoom: 1 },
+      projectId: 'project',
+      port: broken,
+      frame: { x: 0, y: 0, width: 150, height: 240 } as CanvasRectangle | null,
+    };
+    render(h(CanvasDocumentDetail, props), root);
+    await vi.waitFor(() =>
+      expect(root.querySelector('.canvas-document-detail-notice')).not.toBeNull()
+    );
+    const notice = root.querySelector('.canvas-document-detail-notice');
+    // 卡片小到放不下整句时，悬停仍可读到完整提示。
+    expect(notice?.getAttribute('title')).toBe(notice?.textContent?.trim());
+    const body = root.querySelector<HTMLElement>('.canvas-document-detail-body');
+    // 拖动预览与落地后都没有正文可等，不能让旧尺寸的正文槽把提示挤出纸面。
+    expect([body?.style.flex, body?.style.width, body?.style.height]).toEqual(['', '', '']);
+    render(
+      h(CanvasDocumentDetail, {
+        ...props,
+        card: { ...card(), revision: 2, width: 150 },
+        frame: null,
+      }),
+      root
+    );
+    await nextTick();
+    expect([body?.style.flex, body?.style.width, body?.style.height]).toEqual(['', '', '']);
+    expect(root.querySelector('.canvas-document-detail-notice')).not.toBeNull();
+    render(null, root);
+    root.remove();
+  });
+  it('失败提示在纸面内换行显示：让出纸边、带内边距、居中，长文本不溢出也不被裁掉', () => {
+    // jsdom 不做排版；这里钉住保证布局的声明，真实换行与裁切由桌面探针截图验收。
+    const css = readFileSync(resolve(import.meta.dirname, '../../../styles/canvas.css'), 'utf8');
+    const rule = /\.canvas-document-detail-notice\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    const declarations = new Map(
+      [...rule.matchAll(/([a-z-]+)\s*:\s*([^;]+);/g)].map(([, name, value]) => [
+        name,
+        value.replace(/\s+/g, ' ').trim(),
+      ])
+    );
+    // 外框被 clip-path 内缩一圈纸边，横向与底部内边距必须包含这一圈。
+    expect(declarations.get('padding')?.match(/--canvas-card-inset/g)).toHaveLength(2);
+    expect(declarations.get('text-align')).toBe('center');
+    expect(declarations.get('overflow-wrap')).toBe('anywhere');
+    expect(declarations.get('box-sizing')).toBe('border-box');
+    // 不被 flex 压缩，也不超过卡片高度；放不下时内部滚动。
+    expect(declarations.get('flex')).toBe('none');
+    expect(declarations.get('max-height')).toBe('100%');
+    expect(declarations.get('overflow-y')).toBe('auto');
+    expect(css).toMatch(
+      /\.canvas-document-detail\s*\{[^}]*clip-path:\s*inset\(var\(--canvas-card-inset\)/
+    );
   });
 });
