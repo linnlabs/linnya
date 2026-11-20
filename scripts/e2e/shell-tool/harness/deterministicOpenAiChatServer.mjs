@@ -368,6 +368,10 @@ export async function startDeterministicOpenAiChatServer(
         requestBytes,
         messageCount: body.messages.length,
         toolCount: body.tools.length,
+        toolNames: Object.freeze(body.tools.flatMap(tool =>
+          isRecord(tool) && isRecord(tool.function) && typeof tool.function.name === 'string'
+            ? [tool.function.name]
+            : [])),
         latestRole: body.messages.at(-1)?.role,
         responseKind: step.kind,
         state: step.hold ? 'held' : 'responded',

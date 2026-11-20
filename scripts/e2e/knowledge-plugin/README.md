@@ -29,3 +29,7 @@
 `pnpm exec tsx scripts/e2e/knowledge-plugin/surfaces.acceptance.mjs` 固定使用磁盘 Renderer：实际创建项目与关联，A 打开时右键 B 并核对摄入原文，检查 Markdown/Slides 原菜单，以及停用后的弹窗/入口撤销与关联保留。它只打开导出选项，不执行系统文件保存对话框。
 
 两检索工具、深搜、分块读取及组装的项目范围与历史证据由插件的真实 SQLite/SoT/Host runtime 集成回归覆盖。现有产品 CLI 的基础工具白名单不包含知识库工具；本脚本不扩大该白名单，也不将集成回归写成 Desktop 上的工具执行。
+
+`pnpm exec tsx scripts/e2e/knowledge-plugin/agent-lifecycle.acceptance.mjs` 在隔离 Desktop 的真实对话里发送消息，从插件商店操作启停、卸载和卸载并删除。合成模型在指定步骤等待，真实检索用随包 Qdrant；回执记录停用前后模型看见的工具名、窗口截图、SQLite 运行状态和工具事件。该场景用于观察已有运行的生命周期，不把成功捕获中断状态等同于产品验收通过。
+
+`pnpm exec tsx scripts/e2e/knowledge-plugin/cleanup-crash.acceptance.mjs` 点击“卸载并删除”，确认合成目录已部分删除后强制结束自己的 Backend 和 Desktop。重启后把界面状态与安装记录、激活账本和指针、卸载标记、迁移、表和残留目录逐项对账，再从界面重试。这只覆盖删除目录阶段，不代表其他写入断点或平台已验收。
