@@ -42,6 +42,10 @@ export async function launchInstalledDesktop(executable, root) {
       '--remote-debugging-address=127.0.0.1',
       '--remote-debugging-port=0',
       '--enable-logging=stderr',
+      // 虚拟机自动化时窗口可能被判断为遮挡；让截图和过渡仍能产出帧，不影响生产启动参数。
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      '--disable-background-timer-throttling',
     ],
     {
       cwd: root,

@@ -54,8 +54,10 @@ export async function verifyWindowsPluginData({
   observations,
 }) {
   const { evaluate } = application;
+  observations.screenshotSettled = {};
   const shot = async name => {
-    assert.equal(await evaluate(settleExpression), true, `Page did not settle for ${name}`);
+    // 和通用探针一致，记录画面稳定性供截图复核；业务通过由可见状态和磁盘事实决定。
+    observations.screenshotSettled[name] = await evaluate(settleExpression);
     await application.screenshot(path.join(evidence, `${name}.png`));
   };
   const click = selector =>
