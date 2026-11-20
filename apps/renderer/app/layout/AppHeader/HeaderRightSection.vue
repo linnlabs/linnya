@@ -453,7 +453,7 @@ const {
   readClientSessionId: (documentId) => {
     const availability = documentAvailability.value;
     return availability?.state === 'enabled'
-      ? availability.documentType.historyClientSessionId?.(documentId) ?? undefined
+      ? availability.documentType.historyClientSessionId?.(documentId)
       : undefined;
   },
   onOpen: () => { showDocMenu.value = false; },
