@@ -40,6 +40,7 @@
 - `linnya schema`：列出已有标签（及其字段、默认值）和字段（类型、选项）。新建前先看能否复用。
 - `linnya schema add-field 名称 --type 类型 [--option a,b]`、`add-tag 名称 [--field 字段[=默认值]]...`、`set-fields 标签 [--field ...]`（整体替换）。名称与已有定义相近时报 `similar_name` 并列出候选，确认不是同一个再加 `--allow-similar`。
 - `linnya schema rename-tag | merge-tags | delete-tag | rename-field | delete-field | retype-field | set-options`：管理标签和字段本身。不加 `--yes` 只预览影响（文档数、合并补上的字段、改类型时每个值能否转换及样例、要改写的保存的筛选），加上才执行，需要 Shell 写权限。`set-options` 按给出的顺序，`旧名=新名` 改名，没列出的删除。执行与界面同一条路径（[标签管理](../semantic-schema/README.md)），保存的筛选一起改写；输出改动编号。新建标签与这些改动都记下发起的运行与对话。
+- 可见范围只到当前项目：标签、字段名与个数是整个工作区共用的定义照常输出；改类型预览的样例（文档名与原值）、要改写的保存的筛选名只列当前项目的，其他项目的只计入个数；改动记录里的对话标题只在对话属于当前项目时显示，否则写“其他项目的对话”。没有所属项目的对话只看到定义与个数。跨项目处理归将来的顶层 Agent，不在这里放开。
 - `linnya schema changes [--limit n]` 列出最近的改动；`linnya schema undo 编号 [--yes]` 整批撤回，之后又被改过的保存的筛选不恢复并说明个数。
 - `linnya props get 路径`：当前版本、标签和全部字段（未设置的显示“（空）”）。
 - `linnya props tag|untag 路径... --tag 标签,...`、`set 路径... 字段=值...`、`restore 路径 --to 版本`。`set` 里值留空即清除，多选用逗号分隔，勾选写 `true`/`false`。

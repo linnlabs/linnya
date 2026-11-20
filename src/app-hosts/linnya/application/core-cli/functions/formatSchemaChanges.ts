@@ -30,8 +30,15 @@ export function schemaChangeText(summary: SemanticSchemaChangeSummaryValue): str
   }
 }
 
-function actorText(actor: SemanticSchemaActor): string {
-  const conversation = actor.conversation_id === null ? '' : `，对话“${actor.conversation_title ?? actor.conversation_id}”`;
+/**
+ * 命令行只看当前项目：对话标题与编号只在对话属于当前项目时显示，其他项目的只说明来自其他项目。
+ * 标签、字段名是整个工作区共用的定义，照常显示。
+ */
+function actorText(actor: SemanticSchemaActor, visibleConversationIds: ReadonlySet<string>): string {
+  const conversation = actor.conversation_id === null ? ''
+    : visibleConversationIds.has(actor.conversation_id)
+      ? `，对话“${actor.conversation_title ?? actor.conversation_id}”`
+      : '，其他项目的对话';
   switch (actor.kind) {
     case 'user': return '用户';
     case 'plugin': return '插件';
@@ -41,17 +48,24 @@ function actorText(actor: SemanticSchemaActor): string {
   }
 }
 
-export function formatSchemaChanges(changes: readonly SemanticSchemaChangeItem[]): string {
+export function formatSchemaChanges(
+  changes: readonly SemanticSchemaChangeItem[],
+  visibleConversationIds: ReadonlySet<string>,
+): string {
   if (!changes.length) return '还没有标签和字段的改动。\n';
   return `${changes.map(change => {
     const filters = change.saved_filter_count ? `，改写 ${change.saved_filter_count} 个保存的筛选` : '';
     const state = change.undone_at === null ? '' : '（已撤回）';
-    return `${change.id}  ${schemaChangeText(change.summary)}${filters}${state}  ${actorText(change.actor)} ${formatAgentTimestamp(change.created_at)}`;
+    return `${change.id}  ${schemaChangeText(change.summary)}${filters}${state}  ${actorText(change.actor, visibleConversationIds)} ${formatAgentTimestamp(change.created_at)}`;
   }).join('\n')}\n`;
 }
 
-/** 执行前的影响。 */
-export function formatSchemaPreview(operation: SchemaManageOperation, preview: SemanticSchemaPreview): string {
+/** 执行前的影响。个数按整个工作区（改动影响所有项目），文档名、原值与保存的筛选名只列当前项目的。 */
+export function formatSchemaPreview(
+  operation: SchemaManageOperation,
+  preview: SemanticSchemaPreview,
+  projectId: string | null,
+): string {
   const lines: string[] = [];
   switch (operation.op) {
     case 'rename_tag': lines.push(`将把标签“${operation.tag}”改名为“${operation.name}”。`); break;
@@ -72,12 +86,15 @@ export function formatSchemaPreview(operation: SchemaManageOperation, preview: S
       }
       break;
     case 'type': {
-      const sample = (items: typeof preview.samples.converted) => items
+      const own = (items: typeof preview.samples.converted) => items.filter(item => item.document.project_id === projectId);
+      const sample = (items: typeof preview.samples.converted) => own(items)
         .map(item => `“${item.from}”${item.to === null ? '' : ` → ${item.to}`}（${item.document.title}）`).join('，');
       lines.push(`- ${preview.total} 个已填的值：${preview.converted} 个能转，${preview.failed} 个转不了，${preview.emptied} 个会变空`);
-      if (preview.samples.converted.length) lines.push(`  能转：${sample(preview.samples.converted)}`);
-      if (preview.samples.failed.length) lines.push(`  转不了：${sample(preview.samples.failed)}`);
-      if (preview.samples.emptied.length) lines.push(`  会变空：${sample(preview.samples.emptied)}`);
+      if (own(preview.samples.converted).length) lines.push(`  能转：${sample(preview.samples.converted)}`);
+      if (own(preview.samples.failed).length) lines.push(`  转不了：${sample(preview.samples.failed)}`);
+      if (own(preview.samples.emptied).length) lines.push(`  会变空：${sample(preview.samples.emptied)}`);
+      const shown = [preview.samples.converted, preview.samples.failed, preview.samples.emptied].reduce((sum, items) => sum + own(items).length, 0);
+      if (preview.total > shown) lines.push('  其他项目里的值只计入个数，不列出');
       if (preview.to_options.length) lines.push(`- 选项：${list(preview.to_options.map(option => option.name))}`);
       if (preview.failed + preview.emptied) lines.push('- 转不了和变空的值清除，原值记在这次改动里，撤回时恢复');
       break;
@@ -88,8 +105,12 @@ export function formatSchemaPreview(operation: SchemaManageOperation, preview: S
     case 'simple':
       break;
   }
+  const ownFilters = preview.saved_filters.filter(filter => filter.project_id === projectId);
+  const otherFilters = preview.saved_filters.length - ownFilters.length;
   if (preview.saved_filters.length) {
-    lines.push(`- 改写保存的筛选：${preview.saved_filters.map(filter => `“${filter.name}”（${filter.project_name}）`).join('、')}`);
+    const named = ownFilters.map(filter => `“${filter.name}”（${filter.project_name}）`).join('、');
+    const others = otherFilters ? `另有 ${otherFilters} 个其他项目的保存的筛选` : '';
+    lines.push(`- 改写保存的筛选：${[named, others].filter(Boolean).join('；')}`);
   }
   lines.push('标签和字段整个工作区共用，会影响所有项目。确认无误后加 --yes 执行。');
   return `${lines.join('\n')}\n`;
