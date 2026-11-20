@@ -3,7 +3,7 @@ import { resolveEnabledIds } from '../registeredContributions';
 import { backendPluginRegistry } from '../registry';
 import { registeredBackendPluginDirectories as diskPluginDirsById } from '../registeredPluginDirectories';
 import { platformBackendPlugin } from './platform.backend';
-import { parsePluginManifest, type PluginId, type PluginMeta } from '@app/schemas';
+import { type PluginId, type PluginMeta } from '@app/schemas';
 import type { PluginBackendContribution } from '../types';
 import type { BackendPluginSkillResourceRootRegistration } from '../registry';
 import type Database from 'better-sqlite3';
@@ -38,7 +38,6 @@ import {
 import {
   readBackendDirectPluginDirsFromEnv,
   readDirectPluginDirsFromEnv,
-  readJsonFile,
 } from '../../../../electron-main/plugins/loader/pluginLayout';
 import { resumePendingPluginDataCleanupsSync } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import { readPluginManifestForCleanup } from '../../../../features/plugins/infrastructure/cleanup/pluginDataManifest';

@@ -56,7 +56,7 @@ import type { DistributionIdentity } from '../../../../shared/distribution-ident
 import { parsePluginManifest, type PluginDataSummary, type PluginMeta, type PluginOperationFailure } from '@app/schemas';
 import { resolvePluginDataRootForManifest, resolveRegisteredPluginDataRoot } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
 import { readPluginDataSummaryAsync } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
-import { cleanupPluginData, type PluginDataCleanupResult } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { cleanupPluginData } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import { readPluginManifestForCleanup } from '../../../../features/plugins/infrastructure/cleanup/pluginDataManifest';
 import { pathManager } from '../../../../shared/utils/pathManager';
 import { readJsonFile } from '../../../plugins/loader/pluginLayout';
