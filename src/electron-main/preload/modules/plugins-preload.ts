@@ -49,6 +49,13 @@ export function buildPluginsPreloadApi(ipcRenderer: IpcRenderer) {
         ipcRenderer.on('plugins-changed', handler);
         return () => ipcRenderer.removeListener('plugins-changed', handler);
       },
+      onDataChanged: (callback: (pluginId: string) => void) => {
+        const handler = (_event: IpcRendererEvent, value: unknown) => {
+          if (typeof value === 'string') callback(value);
+        };
+        ipcRenderer.on('plugins-data-changed', handler);
+        return () => ipcRenderer.removeListener('plugins-data-changed', handler);
+      },
     },
   };
 }

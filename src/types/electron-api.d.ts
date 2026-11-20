@@ -399,7 +399,7 @@ declare global {
         uninstall: (
           pluginId: string,
           options?: { deleteData?: boolean }
-        ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
+        ) => Promise<{ success: boolean; error?: PluginOperationFailure; data?: { releasedBytes?: number; cleanupIncomplete?: boolean } }>;
         cleanupData: (
           pluginId: string
         ) => Promise<{ success: boolean; data?: { releasedBytes: number }; error?: PluginOperationFailure }>;
@@ -414,6 +414,7 @@ declare global {
           enabled: boolean
         ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
         onChanged: (callback: () => void) => () => void;
+        onDataChanged: (callback: (pluginId: string) => void) => () => void;
       };
     };
   }

@@ -399,6 +399,7 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
   const hasLoadedStoreItems = ref(false);
   const remoteServiceEnabled = ref(false);
   const storeItemsError = ref<PluginRuntimeUserError | null>(null);
+  const storePresentationByPluginId = ref(new Map<PluginId, PluginStoreListItem>());
   const storeDetailsByPluginId = ref<Record<PluginId, PluginStoreDetail>>({});
   const storeDetailError = ref<PluginRuntimeUserError | null>(null);
   const diagnostics = ref<PluginDiagnosticView[]>([]);
@@ -411,9 +412,10 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
     () =>
       new Set(states.value.filter(state => state.state === 'enabled').map(state => state.meta.id))
   );
-  const storeItems = computed<PluginStoreListItem[]>(() =>
-    states.value.map(state => ({ ...state }))
-  );
+  const storeItems = computed<PluginStoreListItem[]>(() => states.value.map(state => {
+    const presentation = storePresentationByPluginId.value.get(state.meta.id);
+    return presentation ? { ...presentation, ...state, data: presentation.data } : state;
+  }));
 
   function seedFromRegisteredRendererPlugins(): void {
     if (hasLoaded.value || states.value.length > 0) return;
@@ -496,8 +498,9 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
       if (!result.success) {
         throwPluginRuntimeError(result.error);
       }
+      storePresentationByPluginId.value = new Map(result.data.items.map(item => [item.meta.id, item]));
       if (!hasLoaded.value) {
-        states.value = result.data.items;
+        states.value = result.data.items.map(({ meta, state, reason }) => ({ meta, state, reason }));
         hasLoaded.value = true;
         error.value = null;
       }
@@ -608,14 +611,14 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
   async function uninstallPlugin(
     pluginId: PluginId,
     options: { readonly deleteData?: boolean } = {},
-  ): Promise<void> {
+  ): Promise<{ releasedBytes?: number; cleanupIncomplete?: boolean } | undefined> {
     const pluginsApi = window.electronAPI?.plugins;
     if (!pluginsApi) {
       throw createPluginRuntimeError('pluginUninstallUnsupported');
     }
-    await runMutation(() => Object.keys(options).length === 0
-      ? pluginsApi.uninstall(pluginId)
-      : pluginsApi.uninstall(pluginId, options));
+    const response = options.deleteData ? await pluginsApi.uninstall(pluginId, options) : await pluginsApi.uninstall(pluginId);
+    await runMutation(() => Promise.resolve(response));
+    return response.data;
   }
 
   async function setPluginEnabled(pluginId: PluginId, enabled: boolean): Promise<void> {
@@ -654,6 +657,21 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
     });
   }
 
+  function subscribeToDataChanges(selectedPluginId: () => PluginId | null): () => void {
+    const pluginsApi = window.electronAPI?.plugins;
+    if (!pluginsApi?.onDataChanged) return () => {};
+    return pluginsApi.onDataChanged(pluginId => {
+      void (async () => {
+        try {
+          await refreshStoreItems();
+          if (selectedPluginId() === pluginId) await loadStoreDetail(pluginId);
+        } catch (caught) {
+          console.warn('[enabledPluginsStore] 插件数据摘要刷新失败:', caught);
+        }
+      })();
+    });
+  }
+
   return {
     remoteServiceEnabled,
     states,
@@ -683,6 +701,7 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
     uninstallPlugin,
     setPluginEnabled,
     subscribeToBackendChanges,
+    subscribeToDataChanges,
     normalizeUserError: normalizePluginRuntimeUserError,
   };
 });

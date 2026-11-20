@@ -2,61 +2,37 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { PluginId, PluginManifestDataStorage } from '@app/schemas';
 
-/**
- * Resolve a plugin's data root without teaching Host about a plugin's business
- * directory. New plugins live below `Plugins/<id>`; an old top-level directory
- * is used only when the plugin manifest explicitly declares it and it exists.
- */
+import { assertPluginDataDirectory, isMissingPathError } from './pluginDataPaths';
+
 export function resolvePluginDataRoot(options: {
   readonly workspaceRoot: string;
   readonly pluginId: PluginId;
   readonly dataStorage: PluginManifestDataStorage;
-  /** 只有当前发行组合认可的来源才能接管旧版顶层目录。 */
-  readonly allowLegacyRoots?: boolean;
-  /** 用于拒绝两个插件声明同一个旧根；来源解析失败不能静默忽略。 */
-  readonly knownLegacyRoots?: readonly string[];
+  /** 只由可信产品装配入口传入，不能来自 manifest 或旧清理任务。 */
+  readonly legacyRootOwners?: ReadonlyMap<string, PluginId>;
 }): string {
   const workspaceRoot = path.resolve(options.workspaceRoot);
-  const pluginId = options.pluginId.trim();
-  if (!pluginId || pluginId === '.' || pluginId === '..' || pluginId.includes('/') || pluginId.includes('\\')) {
-    throw new Error(`插件 ID 不能作为数据目录名: ${options.pluginId}`);
-  }
+  const { pluginId } = options;
+  assertPluginDataId(pluginId);
 
   const defaultRoot = path.join(workspaceRoot, 'Plugins', pluginId);
-  const declaredLegacyRoots = options.dataStorage.legacyRoots;
-  if (declaredLegacyRoots.length > 0 && options.allowLegacyRoots !== true) {
+  if (options.dataStorage.legacyRoots.length > 0 && !options.legacyRootOwners) {
     throw new Error(`插件来源不可信，不能接管旧数据根: ${pluginId}`);
   }
-  const existingLegacyRoots: string[] = [];
-  const resolvedDeclaredLegacyRoots = declaredLegacyRoots.map(legacyRoot => {
-    const candidate = resolveWorkspaceRelative(workspaceRoot, legacyRoot);
-    assertLegacyRootIsSafe(workspaceRoot, pluginId, candidate, legacyRoot);
-    return candidate;
+  const defaultExists = assertPluginDataDirectory(workspaceRoot, defaultRoot);
+  const resolvedDeclaredLegacyRoots = [...new Set(options.dataStorage.legacyRoots)].map(legacyRoot => {
+    if (options.legacyRootOwners?.get(legacyRoot) !== pluginId) {
+      throw new Error(`插件旧数据根未获宿主白名单授权: ${legacyRoot}`);
+    }
+    return path.resolve(workspaceRoot, legacyRoot);
   });
-  const knownRoots = new Set<string>();
-  for (const legacyRoot of options.knownLegacyRoots ?? []) {
-    const candidate = resolveWorkspaceRelative(workspaceRoot, legacyRoot);
-    assertLegacyRootIsSafe(workspaceRoot, pluginId, candidate, legacyRoot);
-    if (knownRoots.has(candidate)) {
-      throw new Error(`插件旧数据根被多个插件声明: ${legacyRoot}`);
-    }
-    knownRoots.add(candidate);
-  }
-  for (const candidate of resolvedDeclaredLegacyRoots) {
-    if (knownRoots.has(candidate)) {
-      throw new Error(`插件旧数据根被多个插件声明: ${candidate}`);
-    }
-    knownRoots.add(candidate);
-  }
-  for (const candidate of resolvedDeclaredLegacyRoots) {
-    if (fs.existsSync(candidate)) existingLegacyRoots.push(candidate);
-  }
+  const existingLegacyRoots = resolvedDeclaredLegacyRoots.filter(candidate => assertPluginDataDirectory(workspaceRoot, candidate));
   if (existingLegacyRoots.length > 1) {
     throw new Error(`插件数据根存在多个旧位置: ${pluginId}`);
   }
   if (existingLegacyRoots.length === 1) {
     const legacyRoot = existingLegacyRoots[0];
-    if (!fs.existsSync(defaultRoot)) return legacyRoot;
+    if (!defaultExists) return legacyRoot;
     const legacyHasFiles = directoryHasFiles(legacyRoot);
     const defaultHasFiles = directoryHasFiles(defaultRoot);
     if (legacyHasFiles && !defaultHasFiles) return legacyRoot;
@@ -64,53 +40,19 @@ export function resolvePluginDataRoot(options: {
     if (!legacyHasFiles && !defaultHasFiles) return legacyRoot;
     throw new Error(`插件数据根存在多个候选位置: ${pluginId}`);
   }
-
   return defaultRoot;
 }
-
-function assertLegacyRootIsSafe(
-  workspaceRoot: string,
-  pluginId: PluginId,
-  candidate: string,
-  declaration: string,
-): void {
-  const relative = path.relative(workspaceRoot, candidate).replace(/\\/g, '/');
-  const reservedRoots = new Set([
-    'Documents',
-    'Audit',
-    'Models',
-    'Plugins',
-    'ConversationAttachments',
-    'workspace.sqlite',
-    'workspace.db',
-  ]);
-  const firstSegment = relative.split('/')[0] ?? '';
-  if (reservedRoots.has(relative) || reservedRoots.has(firstSegment) && firstSegment !== 'Plugins') {
-    throw new Error(`插件旧数据根属于宿主保留目录: ${declaration}`);
-  }
-  if (firstSegment === 'Plugins') {
-    const owner = relative.split('/')[1];
-    if (!owner || owner !== pluginId) {
-      throw new Error(`插件旧数据根不能指向其他插件: ${declaration}`);
-    }
+export function assertPluginDataId(pluginId: string): void {
+  if (!/^[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*$/.test(pluginId)) {
+    throw new Error(`插件 ID 不能作为数据目录名: ${pluginId}`);
   }
 }
 function directoryHasFiles(directory: string): boolean {
-  return fs.readdirSync(directory, { withFileTypes: true }).some(entry => {
-    if (!entry.isDirectory()) return true;
-    return directoryHasFiles(path.join(directory, entry.name));
-  });
-}
-
-function resolveWorkspaceRelative(workspaceRoot: string, relativePath: string): string {
-  const normalized = relativePath.replace(/\\/g, '/');
-  if (!normalized || normalized === '.' || normalized.startsWith('/') || normalized.split('/').includes('..')) {
-    throw new Error(`插件旧数据根声明非法: ${relativePath}`);
+  try {
+    return fs.readdirSync(directory, { withFileTypes: true }).some(entry =>
+      !entry.isDirectory() || directoryHasFiles(path.join(directory, entry.name)));
+  } catch (error) {
+    if (isMissingPathError(error)) return false;
+    throw error;
   }
-  const resolved = path.resolve(workspaceRoot, normalized);
-  const relative = path.relative(workspaceRoot, resolved);
-  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error(`插件旧数据根不能越出 Workspace: ${relativePath}`);
-  }
-  return resolved;
 }

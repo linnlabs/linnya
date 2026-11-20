@@ -80,4 +80,11 @@ describe('createElectronBackendRendererIntegrationPort', () => {
     expect(harness.send).toHaveBeenNthCalledWith(5, 'plugins-changed', undefined);
     expect(harness.secondarySend.mock.calls).toEqual([['workspace:mutation', workspace], ['plugin:push', pluginPush]]);
   });
+
+  it('updates data in all windows without triggering any plugin runtime state changes', () => {
+    const port = createElectronBackendRendererIntegrationPort();
+    port.publishPluginDataChanged('test-plugin');
+    expect(harness.send).toHaveBeenCalledExactlyOnceWith('plugins-data-changed', 'test-plugin');
+    expect(harness.secondarySend).toHaveBeenCalledExactlyOnceWith('plugins-data-changed', 'test-plugin');
+  });
 });

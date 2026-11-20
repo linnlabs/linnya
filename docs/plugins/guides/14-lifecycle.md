@@ -63,11 +63,18 @@
 
 ## 卸载和重装
 
-卸载（`uninstallPluginLifecycle`）：`installed=0`、删 enabled、标记 `user_removed=1`、删 active 指针与版本目录、保留 `plugin-user-removed.json` 防自动装回；**不删数据表、不清迁移账本**。重装清除移除标记、重装 runtime 文件、复用原数据与 migration ledger。
+默认卸载（`uninstallPluginLifecycle`）：`installed=0`、删 enabled、标记 `user_removed=1`、删 active 指针与版本目录、保留磁盘移除标记防自动装回；**不删数据表、不清迁移账本**。重装清除移除标记、重装 runtime 文件、复用原数据与 migration ledger。
 
 随包插件的本地卸载不依赖远程服务开关。商店列表由 Host 投影 `bundledSourceAvailable`，只有非 required 且存在随包 artifact 的插件显示卸载/从随包安装入口；远程服务开关仍只控制远程安装和更新。启动 seed 始终尊重用户移除标记，只有用户明确点击“安装”时才从 bundled artifact 重新 stage；迁移和 `active.json` 激活成功后才清除标记，失败则恢复未安装与用户移除状态。
 
 显式重装的 stage 目录属于本次操作的临时产物：若迁移或激活失败，只删除本次新建的版本目录，保留原有同版本目录和用户数据；下次重试可以覆盖失败残留，不会因为同版本 checksum 冲突永久锁死。数据库安装状态已经提交后，若仅 registry/runtime 刷新失败，IPC 返回“已安装、需重启”，不能把已完成的安装伪装成失败。
+
+### 可选数据清理
+
+- 清理范围取当前可信装配的 `dataStorage.directories` 和 `ownedTables`；`userDataTables` 仅用于识别资料。没有声明可清理目录的文档插件不提供删除数据。卸载后也可从详情单独清理，声明取 Host 随包副本，不依赖卸载掉的运行目录。
+- 新版的根在 `Workspace/Plugins/<id>`。旧顶层目录只在 [产品遗留根登记](../../../src/app-hosts/linnya/plugin-registry/definitions/legacyPluginDataRoots.json) 中声明的唯一 owner 与可信来源同时匹配时使用。生产当前只兑现随包声明和与它一致的已安装副本；开发只允许正式 checkout 插件目录，不采用任意直载目录。旧根登记不是新插件扩展点。验签 catalog 的远程来源与历史版本证明另行实现。
+- 清理前停止插件运行，异步逐项删除目录内容，“停止”不回滚已删除的文件。删表、删迁移账本、归零 schema 版本和移除清理记录在同一 SQLite 事务，不会留下“表已删但清理标记仍存在”的已提交状态。中断重启只恢复任务为“清理未完成”；用户重试时重新验证当前声明，旧记录不授予删除权限。清理完成前不可安装。
+- 占用按 `stat.blocks × 512`，嵌套分类不重复计算。后台摘要完成只发商店数据事件；不用 `plugins-changed`，不重加载插件运行时。
 
 ## 远程安装和更新
 

@@ -42,8 +42,8 @@ jobs:
       - name: Prepare Rust build tools
         uses: ./.github/actions/setup-rust-build
       # 每个原生命令独立成 step，避免 PowerShell 用后续成功的退出码掩盖前一步失败。
-      - name: Package official plugins from a clean checkout
-        run: pnpm run package:plugins:official
+      - name: Package and verify official plugin lifecycles from a clean checkout
+        run: pnpm run smoke:plugins:official:artifact
       - name: Build WASM
         run: pnpm run build:wasm
       - name: Build Renderer

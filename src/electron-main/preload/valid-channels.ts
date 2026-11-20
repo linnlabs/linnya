@@ -173,6 +173,7 @@ const PLUGIN_CHANNELS = [
   'plugins:get-data-path',
   'plugins:set-enabled',
   'plugins-changed',
+  'plugins-data-changed',
 ] as const;
 
 // --- BlockHistory 块级历史通道 ---

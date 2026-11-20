@@ -32,7 +32,7 @@ Node Worker 不继承 Backend 主线程的 SDK 模块加载钩子，数据库、
 
 ### 磁盘存储与占用
 
-资料在插件数据根下分三类存放，可恢复性不同。新版数据根为 `Workspace/Plugins/<pluginId>/`；manifest 的 `legacyRoots` 仅用于接管已有 `KnowledgeBase/`，不会由 Host 猜测：
+资料在插件数据根下分三类存放，可恢复性不同。新版数据根为 `Workspace/Plugins/<pluginId>/`；manifest 的 `legacyRoots` 仅用于接管已有 `KnowledgeBase/`，而且必须和宿主的遗留根归属登记及可信装配来源同时匹配：
 
 | 位置 | 内容 | 删除后能否恢复 |
 |---|---|---|

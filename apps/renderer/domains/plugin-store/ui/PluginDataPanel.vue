@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PluginDataSummary } from '@app/schemas';
+import type { PluginCleanupFailureReason, PluginDataSummary } from '@app/schemas';
 import { formatStorageBytes } from '@app/localization';
 import { BaseButton } from '@linnya/renderer-ui';
 import { usePluginStoreLocalization } from './usePluginStoreLocalization';
@@ -20,6 +20,14 @@ const labels: Readonly<Record<'source' | 'derived' | 'runtime', PluginStoreMessa
   derived: 'pluginStore.data.derived',
   runtime: 'pluginStore.data.runtime',
 } as const;
+
+const failureLabels: Readonly<Record<PluginCleanupFailureReason, PluginStoreMessageKey>> = {
+  'file-locked': 'pluginStore.data.failure.fileLocked',
+  'permission-denied': 'pluginStore.data.failure.permissionDenied',
+  interrupted: 'pluginStore.data.failure.interrupted',
+  'disk-full': 'pluginStore.data.failure.diskFull',
+  unknown: 'pluginStore.data.failure.unknown',
+};
 
 function statusLabel(status: PluginDataSummary['status']): string {
   switch (status) {
@@ -60,7 +68,7 @@ function statusLabel(status: PluginDataSummary['status']): string {
     </template>
     <template v-else-if="data.status === 'failed'">
       <p class="plugin-data-panel__attention">{{ pluginStoreMessage('pluginStore.data.cleanupIncomplete', { bytes: formatStorageBytes(data.bytes, locale) }) }}</p>
-      <p v-if="data.errorCode" class="plugin-data-panel__reason">{{ pluginStoreMessage(`pluginStore.data.failure.${data.errorCode}` as PluginStoreMessageKey) }}</p>
+      <p v-if="data.errorCode" class="plugin-data-panel__reason">{{ pluginStoreMessage(failureLabels[data.errorCode]) }}</p>
       <div class="plugin-data-panel__actions">
         <BaseButton variant="secondary" size="sm" @click="emit('retry')">{{ pluginStoreMessage('pluginStore.data.retry') }}</BaseButton>
         <BaseButton variant="ghost" size="sm" @click="emit('reveal')">{{ pluginStoreMessage('pluginStore.data.reveal') }}</BaseButton>

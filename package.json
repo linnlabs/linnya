@@ -108,6 +108,7 @@
     "package:plugin:slides": "pnpm --dir packages/plugins/slides run package:artifact",
     "package:plugins:official": "node scripts/release/run-official-plugin-scripts.mjs package",
     "smoke:plugin:slides:artifact": "pnpm run build:schemas && pnpm run package:plugin:slides && node scripts/release/smoke-plugin-artifact.mjs slides --require-renderer-assets",
+    "smoke:plugin:knowledge:artifact": "pnpm run build:schemas && pnpm --dir packages/plugins/knowledge run package:artifact && node scripts/release/smoke-plugin-artifact.mjs knowledge --require-renderer-assets",
     "smoke:plugins:official:artifact": "node scripts/release/run-official-plugin-scripts.mjs smoke-artifact",
     "smoke:plugins:official:r2": "pnpm run build:schemas && vitest run scripts/release/smoke-official-plugins-r2.test.ts",
     "release:plugin:catalog:generate": "node --import tsx scripts/release/generate-plugin-catalog.mjs",

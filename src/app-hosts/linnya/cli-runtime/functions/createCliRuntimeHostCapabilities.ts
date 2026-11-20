@@ -30,6 +30,7 @@ export function createCliRuntimeRendererIntegrationPort(): BackendRendererIntegr
     publishPluginRendererPush() {},
     publishTodosChanged() {},
     publishPluginsChanged() {},
+    publishPluginDataChanged() {},
     publishModelsChanged() {},
   });
 }

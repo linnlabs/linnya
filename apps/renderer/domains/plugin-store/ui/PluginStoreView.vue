@@ -295,18 +295,20 @@
 
     <Modal
       :is-visible="uninstallDialogItem !== null"
-      :title="pluginStoreMessage('pluginStore.dialog.uninstallTitle')"
+      :title="pluginStoreMessage(uninstallDialogItem?.state === 'missing' ? 'pluginStore.data.delete' : 'pluginStore.dialog.uninstallTitle')"
       width="480px"
       min-height="auto"
       layer="alert"
       @close="closeUninstallDialog"
     >
       <div v-if="uninstallDialogItem" class="plugin-store-uninstall-dialog">
-        <p>{{ pluginStoreMessage('pluginStore.data.uninstallMessage', { pluginName: uninstallDialogItem.meta.name }) }}</p>
+        <p v-if="uninstallDialogItem.state !== 'missing'">
+          {{ pluginStoreMessage('pluginStore.data.uninstallMessage', { pluginName: uninstallDialogItem.meta.name }) }}
+        </p>
         <p v-if="uninstallDialogItem.data?.status === 'cleaning'" class="plugin-store-alert">
           {{ pluginStoreMessage('pluginStore.data.cleaningHint') }}
         </p>
-        <CustomCheckbox v-if="uninstallDialogItem.data?.canDelete" v-model="deleteDataChecked">
+        <CustomCheckbox v-if="uninstallDialogItem.state !== 'missing' && uninstallDialogItem.data?.canDelete" v-model="deleteDataChecked">
           {{ pluginStoreMessage('pluginStore.data.deleteOption', { bytes: formatStorageBytes(uninstallDialogItem.data.bytes, currentLocale) }) }}
         </CustomCheckbox>
         <div v-if="deleteDataChecked && uninstallDialogItem.data" class="plugin-store-uninstall-dialog__details">
@@ -322,7 +324,7 @@
         <div class="alert-dialog-footer">
           <ActionButtons
             :secondary-action-text="pluginStoreMessage('pluginStore.dialog.cancel')"
-            :primary-action-text="deleteDataChecked ? pluginStoreMessage('pluginStore.dialog.uninstallDelete') : pluginStoreMessage('pluginStore.action.uninstall')"
+            :primary-action-text="uninstallDialogItem?.state === 'missing' ? pluginStoreMessage('pluginStore.data.delete') : deleteDataChecked ? pluginStoreMessage('pluginStore.dialog.uninstallDelete') : pluginStoreMessage('pluginStore.action.uninstall')"
             :primary-variant="deleteDataChecked ? 'danger' : 'default'"
             @secondary-click="closeUninstallDialog"
             @primary-click="confirmUninstall"
@@ -336,7 +338,7 @@
 <script setup lang="ts">
 import { formatStorageBytes, useLocalization } from '@app/localization';
 import type { PluginId, PluginStoreDetail, PluginStoreListItem } from '@app/schemas';
-import { computed, defineComponent, h, onMounted, ref, type Component, type PropType } from 'vue';
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, type Component, type PropType } from 'vue';
 import { storeToRefs } from 'pinia';
 import { AppsIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
@@ -896,7 +898,8 @@ async function confirmUninstall(): Promise<void> {
   if (!item) return;
   const deleteData = deleteDataChecked.value;
   closeUninstallDialog();
-  await executeUninstall(item, deleteData);
+  if (item.state === 'missing') await retryDataCleanup(item);
+  else await executeUninstall(item, deleteData);
 }
 
 function openDataDelete(item: PluginStoreListItem): void {
@@ -947,12 +950,13 @@ async function stopDataCleanup(item: PluginStoreListItem): Promise<void> {
 async function executeUninstall(item: PluginStoreListItem, deleteData: boolean): Promise<void> {
   setPluginBusy(item.meta.id, true);
   try {
-    await pluginsStore.uninstallPlugin(item.meta.id, deleteData ? { deleteData: true } : {});
+    const result = await pluginsStore.uninstallPlugin(item.meta.id, deleteData ? { deleteData: true } : {});
     await refreshSelectedPluginDetail(item.meta.id);
+    if (result?.cleanupIncomplete) return;
     notificationStore.show(
       pluginStoreMessage(deleteData ? 'pluginStore.toast.cleanupCompleted' : 'pluginStore.toast.uninstalledRetained', {
         pluginName: item.meta.name,
-        bytes: formatStorageBytes(item.data?.bytes ?? 0, currentLocale.value),
+        bytes: formatStorageBytes(result?.releasedBytes ?? 0, currentLocale.value),
       }),
       'success',
       5000,
@@ -1031,7 +1035,10 @@ async function openExternalHomepage(url: string | undefined): Promise<void> {
   }
 }
 
+let unsubscribeDataChanges: (() => void) | undefined;
 onMounted(() => {
+  unsubscribeDataChanges = pluginsStore.subscribeToDataChanges(() => selectedPluginId.value);
   void refreshPluginStoreItems();
 });
+onBeforeUnmount(() => unsubscribeDataChanges?.());
 </script>

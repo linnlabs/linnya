@@ -99,5 +99,14 @@ describe('pluginStorePresentation', () => {
 
     expect(canInstallPluginFromBundled(bundledItem)).toBe(true);
     expect(canUninstallPlugin(bundledItem)).toBe(false);
+    expect(canInstallPluginFromRemote(bundledItem, false)).toBe(false);
+    expect(canInstallPluginFromRemote(bundledItem, true)).toBe(true);
+  });
+
+  it('keeps local uninstall independent of the remote update switch', () => {
+    const installed = { ...createPluginItem({ id: 'demo', state: 'enabled' }), bundledSourceAvailable: true };
+    expect(canUninstallPlugin(installed, false)).toBe(true);
+    expect(canCheckPluginUpdateFromRemote(installed, false)).toBe(false);
+    expect(canCheckPluginUpdateFromRemote(installed, true)).toBe(true);
   });
 });

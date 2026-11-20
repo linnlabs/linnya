@@ -53,6 +53,10 @@ export class PluginActiveVersionService {
     return rows.map(toRecord);
   }
 
+  removeRecord(pluginId: PluginId): void {
+    this.db.prepare('DELETE FROM plugin_active_versions WHERE plugin_id = ?').run(pluginId);
+  }
+
   markActivating(params: {
     readonly pluginId: PluginId;
     readonly activeVersion: string;

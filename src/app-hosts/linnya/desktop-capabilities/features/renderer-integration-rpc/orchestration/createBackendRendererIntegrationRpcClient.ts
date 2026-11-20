@@ -8,6 +8,7 @@ import {
   DESKTOP_RENDERER_MODEL_CATALOG_DISCONNECT_RPC_METHOD,
   DESKTOP_RENDERER_PLUGIN_PUSH_RPC_METHOD,
   DESKTOP_RENDERER_PLUGINS_CHANGED_RPC_METHOD,
+  DESKTOP_RENDERER_PLUGIN_DATA_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_MODELS_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_TODOS_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_TRANSCRIPTION_PROGRESS_RPC_METHOD,
@@ -15,6 +16,7 @@ import {
 } from '../definitions/rendererIntegrationRpc';
 import {
   RendererIntegrationPluginPushRpcSchema,
+  RendererIntegrationPluginDataChangedRpcSchema,
   RendererIntegrationTodosChangedRpcSchema,
   RendererIntegrationTranscriptionProgressRpcSchema,
   RendererIntegrationVoidRpcSchema,
@@ -82,6 +84,9 @@ export function createBackendRendererIntegrationRpcClient(input: {
     },
     publishPluginsChanged() {
       publish(DESKTOP_RENDERER_PLUGINS_CHANGED_RPC_METHOD, null);
+    },
+    publishPluginDataChanged(pluginId) {
+      publish(DESKTOP_RENDERER_PLUGIN_DATA_CHANGED_RPC_METHOD, pluginId, RendererIntegrationPluginDataChangedRpcSchema);
     },
   };
   return Object.freeze(port);

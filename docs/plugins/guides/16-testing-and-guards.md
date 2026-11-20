@@ -60,7 +60,7 @@ smoke 仍保留单插件入口，便于定位发布形态问题。
 - `smoke:plugin:<id>:artifact`
   — 本地 artifact 冒烟，必须包含 package、一次性 bundled root 准备、
   `verify-plugin-artifact.mjs <id> --extra-resources --require-renderer-assets`
-  和真实磁盘 backend entry 加载。
+  和真实磁盘 backend entry 加载。正式 artifact 在隔离 profile 中走首次安装、启停、保留式卸载、阻止自动装回及随包重装，核对 active 指针和迁移账本。源构建平台作业统一通过 `smoke:plugins:official:artifact` 执行。
 - `smoke:plugins:official:r2` — 公网安装冒烟，默认跳过外网，显式设置
   `LINNYA_R2_SMOKE=1` 后按 release target 清单覆盖所有官方插件。
 

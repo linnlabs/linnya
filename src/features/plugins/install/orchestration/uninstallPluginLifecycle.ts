@@ -5,6 +5,7 @@ import type { PluginId, PluginMeta, PluginOperationErrorCode } from '@app/schema
 import type { PluginManifestDataStorage } from '@app/schemas';
 
 import { PluginStateService } from '../../infrastructure/sqlite/plugin-state.service';
+import { PluginActiveVersionService } from '../../infrastructure/sqlite/plugin-active-version.service';
 import {
   markPluginUserRemoved,
   pluginRemovalMarkerFileName,
@@ -23,6 +24,8 @@ export interface UninstallPluginLifecycleOptions {
   readonly dataStorage?: PluginManifestDataStorage;
   readonly ownedTables?: readonly string[];
   readonly stopRuntime?: () => void | Promise<void>;
+  readonly signal?: AbortSignal;
+  readonly onCleanupStarted?: () => void;
 }
 
 export type UninstallPluginLifecycleResult =
@@ -33,6 +36,8 @@ export type UninstallPluginLifecycleResult =
       readonly removedEntries: readonly string[];
       readonly userDataPreserved: boolean;
       readonly dataDeleted: boolean;
+      readonly cleanupIncomplete?: boolean;
+      readonly releasedBytes?: number;
     }
   | {
       readonly status: 'failed';
@@ -90,12 +95,13 @@ export function uninstallPluginLifecycle(
       throw new Error('删除插件数据需要调用异步清理生命周期入口');
     }
     const stateService = new PluginStateService(options.db);
+    const pluginInstallDir = resolvePluginInstallDir(options.userPluginRoot, options.pluginId);
     stateService.setInstalled(options.pluginId, false, options.knownPlugins);
     stateService.setUserRemoved(options.pluginId, true);
-
-    const pluginInstallDir = resolvePluginInstallDir(options.userPluginRoot, options.pluginId);
-    const removalResult = removePluginRuntimeEntries(pluginInstallDir);
+    new PluginActiveVersionService(options.db).removeRecord(options.pluginId);
+    // 先落下主动移除标记，再删产物，避免中断后被随包 seed 装回。
     markPluginUserRemoved(options.userPluginRoot, options.pluginId);
+    const removalResult = removePluginRuntimeEntries(pluginInstallDir);
 
     return {
       status: 'uninstalled',
@@ -137,22 +143,8 @@ export async function uninstallPluginAndDeleteData(
       errorCode: 'unknown',
     };
   }
-  const stateService = new PluginStateService(options.db);
-  try {
-    // 先把插件变成 missing，启动恢复时不会再次把刚清掉的表通过 schema
-    // provider / migration 自动建回来；清理失败也会明确留下“数据残留”状态。
-    stateService.setInstalled(options.pluginId, false, options.knownPlugins);
-    stateService.setUserRemoved(options.pluginId, true);
-    markPluginUserRemoved(options.userPluginRoot, options.pluginId);
-  } catch (error) {
-    const operationError = toPluginOperationError(error, { pluginId: options.pluginId });
-    return {
-      status: 'failed',
-      pluginId: options.pluginId,
-      error: operationError.message,
-      errorCode: operationError.code,
-    };
-  }
+  const result = uninstallPluginLifecycle({ ...options, deleteData: false });
+  if (result.status !== 'uninstalled') return result;
   const cleanup = await cleanupPluginData({
     db: options.db,
     pluginId: options.pluginId,
@@ -160,17 +152,10 @@ export async function uninstallPluginAndDeleteData(
     dataStorage: options.dataStorage,
     ownedTables: options.ownedTables ?? [],
     stopRuntime: options.stopRuntime,
+    signal: options.signal,
+    onStarted: options.onCleanupStarted,
   });
-  if (cleanup.status !== 'completed') {
-    return {
-      status: 'failed',
-      pluginId: options.pluginId,
-      error: cleanup.error,
-      errorCode: 'unknown',
-    };
-  }
-  const result = uninstallPluginLifecycle({ ...options, deleteData: false });
-  return result.status === 'uninstalled'
-    ? { ...result, userDataPreserved: false, dataDeleted: true }
-    : result;
+  return cleanup.status === 'completed'
+    ? { ...result, userDataPreserved: false, dataDeleted: true, releasedBytes: cleanup.releasedBytes }
+    : { ...result, userDataPreserved: false, cleanupIncomplete: true };
 }

@@ -84,6 +84,7 @@ describe('todo IPC handlers', () => {
       publishTodosChanged: projectId => webContentsSend('todos-changed', { projectId }),
       publishModelsChanged: vi.fn(),
       publishPluginsChanged: vi.fn(),
+      publishPluginDataChanged: vi.fn(),
     });
     const { registerTodoHandlers } = await import('./todo-ipc');
     registerTodoHandlers({

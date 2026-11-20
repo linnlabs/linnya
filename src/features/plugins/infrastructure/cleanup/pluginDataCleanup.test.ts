@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import Database from 'better-sqlite3';
@@ -6,12 +7,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PluginManifestDataStorage } from '@app/schemas';
 
 import {
-  calculatePluginStorageUsage,
+  calculatePluginStorageUsageAsync,
   cleanupPluginData,
-  resumePluginDataCleanup,
+  markInterruptedPluginDataCleanups,
+  readPluginDataSummaryAsync,
 } from './pluginDataCleanup';
 import { readPluginManifestForCleanup } from './pluginDataManifest';
-import { resolvePluginDataRoot } from './pluginDataRoot';
+import { describePluginData } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
 import { uninstallPluginAndDeleteData } from '../../install/orchestration/uninstallPluginLifecycle';
 import { PLUGIN_PLATFORM_STATE_SCHEMAS } from '../sqlite/plugin-state.schema';
 
@@ -24,10 +26,11 @@ const ownedTables = ['plugin_owned'];
 
 const roots: string[] = [];
 
-function fixture(): { root: string; db: Database.Database } {
+function fixture(): { root: string; db: Database.Database; dbPath: string } {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-cleanup-'));
   roots.push(root);
-  const db = new Database(':memory:');
+  const dbPath = path.join(root, 'workspace.sqlite');
+  const db = new Database(dbPath);
   db.exec(`${PLUGIN_PLATFORM_STATE_SCHEMAS.join('\n')}
     CREATE TABLE plugin_owned (id TEXT PRIMARY KEY, value TEXT NOT NULL);
     INSERT INTO installed_plugins (plugin_id, version, name, installed_at) VALUES ('demo', '1.0.0', 'Demo', 1);
@@ -38,17 +41,18 @@ function fixture(): { root: string; db: Database.Database } {
     fs.mkdirSync(path.join(root, directory), { recursive: true });
     fs.writeFileSync(path.join(root, directory, 'payload.bin'), 'payload');
   }
-  return { root, db };
+  return { root, db, dbPath };
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
 describe('plugin data cleanup', () => {
   it('按实际分配块统计目录并在一个事务中删除目录、表和迁移账本', async () => {
     const { root, db } = fixture();
-    const usage = calculatePluginStorageUsage({ db, dataRoot: root, dataStorage: storage });
+    const usage = await calculatePluginStorageUsageAsync({ db, dataRoot: root, dataStorage: storage });
     expect(usage.bytes).toBeGreaterThanOrEqual(0);
     expect(usage.tables).toEqual({ plugin_owned: 1 });
 
@@ -78,7 +82,7 @@ describe('plugin data cleanup', () => {
     expect(failed.status).toBe('failed');
     expect(fs.existsSync(path.join(root, 'not-owned'))).toBe(true);
     // 重启后的续清会处理所有声明目录，未声明目录仍然保留。
-    const resumed = await resumePluginDataCleanup({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
+    const resumed = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
     expect(resumed.status).toBe('completed');
     expect(fs.existsSync(path.join(root, 'not-owned'))).toBe(true);
     db.close();
@@ -115,13 +119,14 @@ describe('plugin data cleanup', () => {
     db.close();
   });
 
-  it('cleans unclassified Qdrant root files without double-counting storage', async () => {
+  it.skipIf(process.platform === 'win32')('matches du for overlapping directories with sparse files and removes unclassified root files', async () => {
     const { root, db } = fixture();
     const qdrantRoot = path.join(root, 'qdrant');
     fs.mkdirSync(path.join(qdrantRoot, 'storage'), { recursive: true });
     fs.mkdirSync(path.join(qdrantRoot, 'logs'), { recursive: true });
     fs.writeFileSync(path.join(qdrantRoot, 'qdrant.lock'), 'runtime');
     fs.writeFileSync(path.join(qdrantRoot, 'storage', 'segment.bin'), 'index');
+    fs.truncateSync(path.join(qdrantRoot, 'storage', 'segment.bin'), 64 * 1024 * 1024);
     const qdrantStorage: PluginManifestDataStorage = {
       ...storage,
       directories: {
@@ -130,25 +135,26 @@ describe('plugin data cleanup', () => {
         runtime: ['qdrant', 'qdrant/logs'],
       },
     };
-    const usage = calculatePluginStorageUsage({ db, dataRoot: root, dataStorage: qdrantStorage });
-    expect(usage.directories.runtime).toBeGreaterThan(0);
+    const usage = await calculatePluginStorageUsageAsync({ db, dataRoot: root, dataStorage: qdrantStorage });
+    const duBytes = Number(execFileSync('du', ['-sk', qdrantRoot], { encoding: 'utf8' }).split(/\s+/)[0]) * 1024;
+    expect(Math.ceil(usage.bytes / 1024) * 1024).toBe(duBytes);
+    expect(usage.bytes).toBeLessThan(64 * 1024 * 1024);
     const result = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: qdrantStorage, ownedTables });
     expect(result.status).toBe('completed');
     expect(fs.existsSync(qdrantRoot)).toBe(false);
     db.close();
   });
 
-  it('删除目录中途退出后保留已完成路径，重启可以续清', () => {
-    const { root, db } = fixture();
+  it('单个声明目录只删了一项时可以停止，重开数据库后续清', async () => {
+    const { root, db, dbPath } = fixture();
+    fs.writeFileSync(path.join(root, 'source', 'another.bin'), 'another');
     const controller = new AbortController();
-    const originalRemove = fs.rmSync;
-    let removeCount = 0;
-    const removeSpy = vi.spyOn(fs, 'rmSync').mockImplementation((target, options) => {
-      originalRemove(target, options);
-      removeCount += 1;
-      if (removeCount === 1) controller.abort();
+    const originalRemove = fs.promises.unlink;
+    const removeSpy = vi.spyOn(fs.promises, 'unlink').mockImplementation(async target => {
+      await originalRemove(target);
+      controller.abort();
     });
-    const failed = cleanupPluginData({
+    const result = await cleanupPluginData({
       db,
       pluginId: 'demo',
       dataRoot: root,
@@ -156,34 +162,50 @@ describe('plugin data cleanup', () => {
       ownedTables,
       signal: controller.signal,
     });
-    return failed.then(result => {
-      expect(result.status).toBe('failed');
+    expect(result).toMatchObject({ status: 'failed', errorCode: 'interrupted', completedPaths: [] });
+    expect(removeSpy).toHaveBeenCalledTimes(1);
+    expect(fs.readdirSync(path.join(root, 'source'))).toHaveLength(1);
+    expect(fs.existsSync(path.join(root, 'derived'))).toBe(true);
+    removeSpy.mockRestore();
+    db.close();
+    const reopened = new Database(dbPath);
+    try {
+      const resumed = await cleanupPluginData({ db: reopened, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
+      expect(resumed.status).toBe('completed');
       expect(fs.existsSync(path.join(root, 'source'))).toBe(false);
-      expect(fs.existsSync(path.join(root, 'derived'))).toBe(true);
-      removeSpy.mockRestore();
-      return resumePluginDataCleanup({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
-    }).then(result => {
-      expect(result.status).toBe('completed');
       expect(fs.existsSync(path.join(root, 'derived'))).toBe(false);
-      db.close();
-    });
+      expect(reopened.prepare('SELECT * FROM plugin_cleanup_jobs').all()).toEqual([]);
+    } finally { reopened.close(); }
   });
 
-  it('文件权限错误留下可读失败任务，恢复后仍可重试', async () => {
+  it.each([
+    ['EPERM', 'permission-denied'], ['EACCES', 'permission-denied'], ['EROFS', 'permission-denied'],
+    ['EBUSY', 'file-locked'], ['ENOSPC', 'disk-full'],
+  ])('删除收到 %s 时记录 %s，恢复后可重试', async (code, errorCode) => {
     const { root, db } = fixture();
-    const originalRemove = fs.rmSync;
-    const removeSpy = vi.spyOn(fs, 'rmSync').mockImplementation(() => {
-      const error = new Error('permission denied') as NodeJS.ErrnoException;
-      error.code = 'EACCES';
-      throw error;
-    });
+    const removeSpy = vi.spyOn(fs.promises, 'unlink').mockRejectedValueOnce(Object.assign(new Error('filesystem error'), { code }));
     const failed = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
-    expect(failed).toMatchObject({ status: 'failed', error: 'permission denied', errorCode: 'permission-denied' });
+    expect(failed).toMatchObject({ status: 'failed', errorCode });
+    expect(await readPluginDataSummaryAsync({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, pluginInstalled: false, workspaceRoot: root }))
+      .toMatchObject({ status: 'failed', errorCode });
     removeSpy.mockRestore();
-    vi.spyOn(fs, 'rmSync').mockImplementation(originalRemove);
-    const resumed = await resumePluginDataCleanup({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
+    const resumed = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
     expect(resumed.status).toBe('completed');
     vi.restoreAllMocks();
+    db.close();
+  });
+
+  it('重启只登记中断，不信任旧清理范围；重试只处理本次已授权的目录和表', async () => {
+    const { root, db } = fixture();
+    db.prepare(`INSERT INTO plugin_cleanup_jobs (plugin_id, status, completed_paths, data_storage, started_at, updated_at)
+      VALUES ('demo', 'cleaning', ?, ?, 1, 1)`).run(JSON.stringify(['source:source']), 'old scope');
+    markInterruptedPluginDataCleanups(db);
+    expect(fs.existsSync(path.join(root, 'source', 'payload.bin'))).toBe(true);
+    expect(await readPluginDataSummaryAsync({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, pluginInstalled: false, workspaceRoot: root }))
+      .toMatchObject({ status: 'failed', errorCode: 'interrupted' });
+    expect(await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables }))
+      .toMatchObject({ status: 'completed' });
+    expect(fs.existsSync(path.join(root, 'source'))).toBe(false);
     db.close();
   });
 
@@ -230,24 +252,23 @@ describe('plugin data cleanup', () => {
       ownedTables,
       dataStorage: storage,
     }));
-    const source = readPluginManifestForCleanup({ pluginId: 'demo', bundledPluginRoot: bundledRoot });
+    const source = describePluginData({ pluginId: 'demo', workspaceRoot: root, bundledRoot, forCleanup: true, bundledSourceTrusted: true });
     if (!source) throw new Error('expected bundled manifest');
-    const dataRoot = resolvePluginDataRoot({
-      workspaceRoot: path.dirname(root),
-      pluginId: 'demo',
-      dataStorage: source.manifest.dataStorage,
-      allowLegacyRoots: true,
-    });
-    expect(dataRoot).toBe(path.join(path.dirname(root), 'Plugins', 'demo'));
+    const dataRoot = path.join(root, 'Plugins', 'demo');
+    expect(source.dataRoot).toBe(dataRoot);
+    fs.mkdirSync(dataRoot, { recursive: true });
+    for (const directory of ['source', 'derived', 'runtime']) {
+      fs.renameSync(path.join(root, directory), path.join(dataRoot, directory));
+    }
     const result = await cleanupPluginData({
       db,
       pluginId: 'demo',
-      dataRoot: root,
+      dataRoot: source.dataRoot,
       dataStorage: source.manifest.dataStorage,
       ownedTables: source.manifest.ownedTables,
     });
     expect(result.status).toBe('completed');
-    expect(fs.existsSync(path.join(root, 'source'))).toBe(false);
+    expect(fs.existsSync(path.join(dataRoot, 'source'))).toBe(false);
     db.close();
   });
 });

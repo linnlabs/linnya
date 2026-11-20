@@ -55,6 +55,9 @@ export function createElectronBackendRendererIntegrationPort(): BackendRendererI
     publishPluginsChanged() {
       publishToPrimaryRenderer('plugins-changed', undefined);
     },
+    publishPluginDataChanged(pluginId) {
+      publishToRenderer('plugins-data-changed', pluginId);
+    },
   };
   return Object.freeze(port);
 }

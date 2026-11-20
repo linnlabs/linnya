@@ -23,15 +23,17 @@ export function prepareElectronPluginRuntimeEnvironment(): PluginRuntimeEnvironm
     process.env.LINNYA_PLUGIN_BACKEND_LOADING = 'disk';
   }
 
-  const bundledPluginRoot = findBundledPluginRootFromCandidates(
-    buildBundledPluginRootCandidates({
+  // 打包版的随包身份只能来自安装资源。外部环境目录和 cwd
+  // 仍可用于源码调试，但不能成为正式版的数据清理授权来源。
+  const bundledPluginRoot = findBundledPluginRootFromCandidates(app.isPackaged
+    ? [path.join(process.resourcesPath, 'plugins')]
+    : buildBundledPluginRootCandidates({
       explicitRoot: process.env.LINNYA_BUNDLED_PLUGIN_ROOT,
       includeImplicitPackagedRoots: shouldUseDiskBackendByDefault(),
       resourcesPath: process.resourcesPath,
       appPath: app.getAppPath(),
       workingDirectory: process.cwd(),
-    }),
-  );
+    }));
   if (bundledPluginRoot) {
     process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT = bundledPluginRoot;
   } else {

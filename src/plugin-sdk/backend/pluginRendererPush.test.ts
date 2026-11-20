@@ -27,6 +27,7 @@ describe('pluginRendererPush', () => {
       publishTodosChanged: vi.fn(),
       publishModelsChanged: vi.fn(),
       publishPluginsChanged: vi.fn(),
+      publishPluginDataChanged: vi.fn(),
     });
   });
 

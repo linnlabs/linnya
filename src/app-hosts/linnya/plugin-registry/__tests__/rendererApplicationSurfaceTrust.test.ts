@@ -64,3 +64,17 @@ it('records a diagnostic and grants no slot when two trusted sources compete', (
   expect(mapped.every(item => item.applicationSurfaceSlot === undefined)).toBe(true);
   expect(diagnostics).toHaveLength(1);
 });
+
+it('grants the same application slot to an admitted artifact with a different plugin ID', () => {
+  const pluginId = 'replacement-plugin';
+  const bundledRoot = path.join(root, 'bundled');
+  const active = path.join(root, 'active', pluginId, '1.0.0');
+  for (const dir of [active, path.join(bundledRoot, pluginId)]) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, 'plugin.json'), JSON.stringify({ id: pluginId, version: '1.0.0', entry: { backend: 'backend.cjs' } }));
+    writeFileSync(path.join(dir, 'SHA512SUMS'), 'verified-artifact-entry');
+  }
+  const options = { packaged: true, workspaceRoot: root, backendDirectDirs: [], bundledPluginRoot: bundledRoot, getRegisteredPluginDirectory: () => active };
+  const alternate = { ...entry(active, 'active'), pluginId, entryUrl: `plugin://${pluginId}/dist/renderer/index.js` };
+  expect(mapTrustedRendererApplicationSurfaces([alternate], options)[0]?.applicationSurfaceSlot).toBe('knowledge-base');
+});

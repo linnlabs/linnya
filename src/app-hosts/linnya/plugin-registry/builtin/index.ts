@@ -39,9 +39,7 @@ import {
   readBackendDirectPluginDirsFromEnv,
   readDirectPluginDirsFromEnv,
 } from '../../../../electron-main/plugins/loader/pluginLayout';
-import { resumePendingPluginDataCleanupsSync } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
-import { readPluginManifestForCleanup } from '../../../../features/plugins/infrastructure/cleanup/pluginDataManifest';
-import { resolvePluginDataRootForManifest } from '../pluginDataRoot';
+import { markInterruptedPluginDataCleanups } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import {
   getDocumentTypeBackendHook,
   listDocumentTypeBackendHooks,
@@ -470,49 +468,8 @@ export function bootstrapBuiltinPluginLifecycle(
 
   // 中文说明：核心迁移完成后才登记内置插件；此时 installed_plugins/plugin_migrations 已存在。
   stateService.ensureBuiltinInstalled(metas.filter(meta => meta.builtin));
-  // 清理任务在目录删除和 SQLite 收尾之间可能被进程打断；启动时按原 manifest
-  // 声明续清。没有 pending job 时不扫描数据目录，避免把插件冷启动变成全盘检查。
-  try {
-    resumePendingPluginDataCleanupsSync({
-    db,
-    resolveStorage: pluginId => {
-      try {
-        const source = readPluginManifestForCleanup({
-          pluginId,
-          registeredPluginDirectory: diskPluginDirsById.get(pluginId),
-          bundledPluginRoot: process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT ?? process.env.LINNYA_BUNDLED_PLUGIN_ROOT,
-        });
-        if (!source) return null;
-        const manifest = source.manifest;
-        return {
-          dataStorage: manifest.dataStorage,
-          ownedTables: manifest.ownedTables,
-        };
-      } catch (error) {
-        pluginDiagnostics.record({
-          level: 'error',
-          pluginId,
-          capability: 'migration',
-          message: `读取插件清理声明失败: ${error instanceof Error ? error.message : String(error)}`,
-        });
-        return null;
-      }
-    },
-    resolveDataRoot: (pluginId, storage) => resolvePluginDataRootForManifest({
-      pluginId,
-      dataStorage: storage.dataStorage,
-      // 清理任务已经由可信 manifest 持久化；启动恢复不能因为插件已卸载而丢失旧根。
-      allowLegacyRoots: true,
-    }),
-    });
-  } catch (error) {
-    pluginDiagnostics.record({
-      level: 'error',
-      pluginId: null,
-      capability: 'migration',
-      message: `恢复插件数据清理失败: ${error instanceof Error ? error.message : String(error)}`,
-    });
-  }
+  // 启动只恢复可见状态；用户重试时再用当前可信声明续清，不让删文件阻塞启动。
+  markInterruptedPluginDataCleanups(db);
   const installedIds = readInstalledPluginIds(db, metas);
   applyRegisteredPluginSchemas(db, installedIds);
   runRegisteredPluginLifecycle(db, installedIds, applicationVersion);

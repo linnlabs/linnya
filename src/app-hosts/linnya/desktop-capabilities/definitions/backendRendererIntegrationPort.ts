@@ -13,5 +13,6 @@ export interface BackendRendererIntegrationPort {
   publishPluginRendererPush(envelope: RendererPluginPushEnvelope): void;
   publishTodosChanged(projectId: string): void;
   publishPluginsChanged(): void;
+  publishPluginDataChanged(pluginId: string): void;
   publishModelsChanged(): void;
 }
