@@ -21,6 +21,15 @@ const details = {};
 let application;
 let database;
 let failed;
+async function collectQdrantLog(filename) {
+  if (!application) return;
+  try {
+    const bytes = await readFile(path.join(application.workspace, 'Plugins', 'knowledge', 'qdrant', 'logs', 'qdrant.log'));
+    await writeFile(path.join(evidence, filename), bytes);
+  } catch (error) {
+    details.qdrantLogError = error.message;
+  }
+}
 const check = async (name, action) => {
   try {
     await action();
@@ -350,8 +359,8 @@ try {
     details.searchAfterRestart = restoredSearch;
     assert.ok(restoredSearch.results.some(result => result.docId === graphDocument.id));
   });
+  const retainedLibrary = kbId;
   await check('正常删除知识库清理真实SQLite、原文和PDF', async () => {
-    const retainedLibrary = kbId;
     // 单库删除走独立样本；后面的插件卸载仍要面对拥有七份原资料和图谱索引的真实库。
     const disposable = await application.plugin('create', {
       name: 'Windows individual library deletion',
@@ -383,6 +392,7 @@ try {
         sources: await Promise.allSettled(before.map(document => stat(sourcePath(document.id)).then(info => info.size))),
         qdrant: await Promise.all([probe('/readyz'), probe(`/collections/${encodeURIComponent(kbId)}`)]),
       };
+      await collectQdrantLog('qdrant-after-library-delete-failure.log');
       throw error;
     }
     assert.equal(await application.plugin('get', { kbId }), null);
@@ -396,6 +406,10 @@ try {
       code: 'ENOENT',
     });
     details.deletedDocuments = before.map(document => document.id);
+  }).catch(error => {
+    // 失败原样保留为红；后续插件生命周期使用另外一个隔离知识库独立验收。
+    failed = error;
+  }).finally(() => {
     kbId = retainedLibrary;
   });
   details.pluginLifecycle = {};
@@ -425,7 +439,7 @@ try {
     platform: process.platform,
   };
 } catch (error) {
-  failed = error;
+  failed ??= error;
   try {
     if (application) {
       details.rendererLoader = await application.evaluate(
@@ -445,14 +459,7 @@ try {
       failed ??= error;
     }
     await writeFile(path.join(evidence, 'desktop.log'), application.log);
-    if (failed) {
-      try {
-        const qdrantLog = await readFile(path.join(application.workspace, 'Plugins', 'knowledge', 'qdrant', 'logs', 'qdrant.log'));
-        await writeFile(path.join(evidence, 'qdrant.log'), qdrantLog);
-      } catch (error) {
-        details.qdrantLogError = error.message;
-      }
-    }
+    if (failed) await collectQdrantLog('qdrant.log');
   }
   await fixture.close();
   await writeFile(
