@@ -55,6 +55,9 @@ interface ChangeRow {
 
 interface TaggedObject { readonly kind: SemanticObjectKind; readonly id: string; readonly createdAt: number }
 interface ValueBefore { readonly kind: SemanticObjectKind; readonly id: string; readonly before: SemanticValue }
+/** 标签字段默认值的改前、改后；`null` 表示没有默认值。撤回时只在当前仍是 after 时改回 before。 */
+interface DefaultChange { readonly tagId: string; readonly before: SemanticValue; readonly after: SemanticValue | null }
+interface DefaultRow { readonly tag_id: string; readonly default_json: string }
 
 /** 撤回所需的差量，按种类各一种形状；只在本文件内读写。 */
 type UndoData =
@@ -72,11 +75,14 @@ type UndoData =
     readonly from: { readonly valueType: SemanticValueType; readonly options: readonly SemanticSelectOption[] };
     readonly to: { readonly valueType: SemanticValueType; readonly options: readonly SemanticSelectOption[] };
     readonly values: readonly ValueBefore[];
+    /** 迁移前的改动没有这一项。 */
+    readonly defaults?: readonly DefaultChange[];
   }
   | {
     readonly kind: 'update_options'; readonly propertyId: string;
     readonly before: readonly SemanticSelectOption[]; readonly after: readonly SemanticSelectOption[];
     readonly values: readonly ValueBefore[];
+    readonly defaults?: readonly DefaultChange[];
   };
 
 export interface SemanticSchemaChangeContext {
@@ -137,6 +143,15 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
     WHERE json_type(property_values, '$."' || ? || '"') IS NOT NULL
     ORDER BY updated_at, object_id
   `);
+  // 含已软删除标签的字段：撤回删除标签后默认值也要和字段定义一致。
+  const defaultsOf = db.prepare<[string], DefaultRow>(`
+    SELECT tag_id, default_json FROM semantic_tag_fields
+    WHERE property_id = ? AND default_json IS NOT NULL ORDER BY tag_id
+  `);
+  const readDefault = db.prepare<[string, string], { default_json: string | null }>(
+    'SELECT default_json FROM semantic_tag_fields WHERE tag_id = ? AND property_id = ?'
+  );
+  const writeDefault = db.prepare('UPDATE semantic_tag_fields SET default_json = ? WHERE tag_id = ? AND property_id = ?');
   const insertObjectTag = db.prepare(`
     INSERT OR IGNORE INTO semantic_object_tags (object_kind, object_id, document_id, conversation_id, tag_id, created_at)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -240,6 +255,36 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
       .run(valueType, JSON.stringify(options), propertyId);
   }
 
+  function propertyDefaults(propertyId: string): { readonly tagId: string; readonly value: SemanticValue }[] {
+    return defaultsOf.all(propertyId).map(row => ({ tagId: row.tag_id, value: JSON.parse(row.default_json) as SemanticValue }));
+  }
+
+  /** 按 next 改写这个字段在各标签上的默认值；返回值 undefined 表示清除。只记真正变了的。 */
+  function rewriteDefaults(
+    propertyId: string,
+    next: (value: SemanticValue) => SemanticValue | undefined,
+  ): DefaultChange[] {
+    const changes: DefaultChange[] = [];
+    for (const { tagId, value } of propertyDefaults(propertyId)) {
+      const after = next(value) ?? null;
+      if (JSON.stringify(after) === JSON.stringify(value)) continue;
+      writeDefault.run(after === null ? null : JSON.stringify(after), tagId, propertyId);
+      changes.push({ tagId, before: value, after });
+    }
+    return changes;
+  }
+
+  /** 撤回默认值：之后又被改过的（当前不再是 after）保留，不覆盖。 */
+  function restoreDefaults(propertyId: string, changes: readonly DefaultChange[]): void {
+    for (const change of changes) {
+      const row = readDefault.get(change.tagId, propertyId);
+      if (!row) continue;
+      const current = row.default_json === null ? null : JSON.parse(row.default_json) as SemanticValue;
+      if (JSON.stringify(current) !== JSON.stringify(change.after)) continue;
+      writeDefault.run(JSON.stringify(change.before), change.tagId, propertyId);
+    }
+  }
+
   function editableProperty(idOrName: string): SemanticPropertyDefinition {
     const property = context.resolveProperty(context.properties(), idOrName);
     if (property.ownerPluginId) {
@@ -301,7 +346,11 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
     const rows = valuedWith.all(property.id).map(row => ({
       ...row, value: (JSON.parse(row.property_values) as Values)[property.id],
     })).filter((row): row is typeof row & { value: SemanticValue } => row.value !== undefined);
-    const toOptions = optionsForConversion(property, toType, rows.map(row => semanticValueText(property, row.value)), newId);
+    // 标签默认值与已填的值按同一规则转换，生成选项时也算上默认值的文字。
+    const defaultTexts = propertyDefaults(property.id).map(item => semanticValueText(property, item.value));
+    const toOptions = optionsForConversion(
+      property, toType, [...rows.map(row => semanticValueText(property, row.value)), ...defaultTexts], newId,
+    );
     const target: SemanticPropertyDefinition = { ...property, valueType: toType, options: toOptions };
     const outcomes = rows.map(row => ({ row, outcome: convertSemanticValue(property, row.value, toType, toOptions) }));
     const sample = (kind: 'converted' | 'failed' | 'emptied'): SemanticConversionSample[] => outcomes
@@ -385,6 +434,7 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
         }
         if (undo.kind === 'change_property_type') writeOptions(property.id, undo.from.valueType, undo.from.options);
         else writeOptions(property.id, property.valueType, undo.before);
+        restoreDefaults(property.id, undo.defaults ?? []);
         for (const item of undo.values) {
           if (!objectExists(item.kind, item.id)) continue;
           bumpObject(item.kind, item.id, at, values => ({ ...values, [property.id]: item.before }));
@@ -485,6 +535,10 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
         const { property, preview, outcomes } = typePreview(idOrName, toType);
         const at = now();
         writeOptions(property.id, toType, preview.toOptions);
+        const defaults = rewriteDefaults(property.id, value => {
+          const outcome = convertSemanticValue(property, value, toType, preview.toOptions);
+          return outcome.kind === 'converted' ? outcome.value : undefined;
+        });
         for (const { row, outcome } of outcomes) {
           bumpObject(row.object_kind, row.object_id, at, values => {
             return outcome.kind === 'converted' ? { ...values, [property.id]: outcome.value } : withoutKey(values, property.id);
@@ -500,6 +554,7 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
             from: { valueType: property.valueType, options: property.options },
             to: { valueType: toType, options: preview.toOptions },
             values: outcomes.map(({ row }) => ({ kind: row.object_kind, id: row.object_id, before: row.value })),
+            defaults,
           },
           at,
         );
@@ -546,6 +601,12 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
             });
           }
         }
+        const defaults = removedIds.size ? rewriteDefaults(property.id, value => {
+          const list = Array.isArray(value) ? value : [value];
+          const rest = list.filter(id => typeof id === 'string' && !removedIds.has(id));
+          if (rest.length === list.length) return value;
+          return property.valueType === 'multi_select' && rest.length ? rest : undefined;
+        }) : [];
         const beforeById = new Map(property.options.map(option => [option.id, option.name]));
         return record(
           {
@@ -558,7 +619,7 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
             removed: removed.map(option => option.name),
             objects: values.length,
           },
-          { kind: 'update_options', propertyId: property.id, before: property.options, after, values },
+          { kind: 'update_options', propertyId: property.id, before: property.options, after, values, defaults },
           at,
         );
       }).immediate();
