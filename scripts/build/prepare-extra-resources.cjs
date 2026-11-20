@@ -190,7 +190,8 @@ function copyPluginBundle(
   pluginId,
   packageDir,
   pluginResourceRoot,
-  resolveProductionDistDirectories
+  resolveProductionDistDirectories,
+  installByDefault
 ) {
   const distDir = path.join(packageDir, 'dist');
   const targetDir = path.join(pluginResourceRoot, pluginId);
@@ -212,6 +213,11 @@ function copyPluginBundle(
   fs.mkdirSync(targetDir, { recursive: true });
   fs.copyFileSync(manifestPath, path.join(targetDir, 'plugin.json'));
   fs.copyFileSync(path.join(distDir, 'SHA512SUMS'), path.join(targetDir, 'SHA512SUMS'));
+  if (installByDefault === false) {
+    if (manifest.required === true) throw new Error(`${pluginId} 必需插件不能声明按需安装`);
+    // 只属于应用发行组合；不修改插件 manifest 字节或远程 artifact 的 checksum。
+    fs.writeFileSync(path.join(targetDir, '.install-on-demand'), '');
+  }
   for (const assetPath of manifestAssetPaths) {
     copyPluginManifestAsset(pluginId, packageDir, targetDir, assetPath);
   }
@@ -261,7 +267,7 @@ async function preparePluginBundles({
   resetRoot,
   requireExactPluginIds,
 }) {
-  const { resolvePluginPackageDir, resolvePluginProductionDistDirectories } = await import(
+  const { findOfficialPluginReleaseTarget, resolvePluginPackageDir, resolvePluginProductionDistDirectories } = await import(
     '../release/plugin-release-targets.mjs'
   );
   const { assertBundledPluginRootMatchesPluginIds } = await import(
@@ -277,7 +283,8 @@ async function preparePluginBundles({
       pluginId,
       resolvePluginPackageDir(pluginId),
       pluginResourceRoot,
-      resolvePluginProductionDistDirectories
+      resolvePluginProductionDistDirectories,
+      findOfficialPluginReleaseTarget(pluginId)?.installByDefault
     )
   );
 

@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 
 process.env.LINNYA_PLUGIN_RENDERER_BUNDLE = 'disk';
 const evidence = createEvidence('knowledge-reinstall-crash', { files: [
@@ -45,6 +46,7 @@ function facts(up) {
 try {
   await evidence.check('随包重装写安装记录后进程崩溃，重启后必须一致且能继续操作', async () => {
     const up = await start();
+    await installKnowledgeForScenario(run);
     await run('wait', '--selector', sidebar);
     await click('button', '插件', 'aside');
     await click('heading', '知识库', 'main');

@@ -150,12 +150,38 @@ function validateTableName(tableName: string): string {
   return tableName;
 }
 
+function pluginDataTableExists(db: Database.Database, tableName: string): boolean {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(tableName));
+}
+
+function pluginDataTableHasRows(db: Database.Database, tableName: string): boolean {
+  const safeName = validateTableName(tableName);
+  return pluginDataTableExists(db, safeName) && Boolean(db.prepare(`SELECT 1 FROM "${safeName}" LIMIT 1`).get());
+}
+
 function tableRowCount(db: Database.Database, tableName: string): number {
   const safeName = validateTableName(tableName);
-  const exists = db.prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = ?").get(safeName);
-  if (!exists) return 0;
+  if (!pluginDataTableExists(db, safeName)) return 0;
   const row = db.prepare(`SELECT COUNT(*) AS count FROM "${safeName}"`).get() as { count: number };
   return row.count;
+}
+
+function hasAllocatedSourceFiles(directory: string): boolean {
+  return fs.readdirSync(directory, { withFileTypes: true }).some(entry => {
+    const candidate = path.join(directory, entry.name);
+    const stat = fs.lstatSync(candidate, { throwIfNoEntry: false });
+    if (stat?.isDirectory()) return hasAllocatedSourceFiles(candidate);
+    return Boolean(stat?.isFile() && allocationBytes(stat) > 0);
+  });
+}
+
+/** 启动只判断是否有用户原文，不统计占用、不扫描索引，也不为缺失表建结构。 */
+export function hasPluginUserData(options: Pick<PluginDataCleanupOptions, 'db' | 'dataRoot' | 'dataStorage'>): boolean {
+  return options.dataStorage.userDataTables.some(table => pluginDataTableHasRows(options.db, table)) ||
+    options.dataStorage.directories.source.some(relativePath => {
+      const directory = resolveDeclaredDirectory(options.dataRoot, relativePath);
+      return assertPluginDataDirectory(options.dataRoot, directory) && hasAllocatedSourceFiles(directory);
+    });
 }
 
 export async function calculatePluginStorageUsageAsync(
@@ -190,8 +216,9 @@ export async function readPluginDataSummaryAsync(options: {
   readonly pluginId: PluginId;
   readonly dataRoot: string;
   readonly dataStorage: PluginManifestDataStorage;
+  readonly ownedTables?: readonly string[];
   readonly pluginInstalled: boolean;
-  readonly workspaceRoot: string;
+  readonly userRemoved: boolean;
   readonly signal?: AbortSignal;
 }): Promise<PluginDataSummary> {
   const usage = await calculatePluginStorageUsageAsync(options);
@@ -199,10 +226,9 @@ export async function readPluginDataSummaryAsync(options: {
     'SELECT status, error_code FROM plugin_cleanup_jobs WHERE plugin_id = ?',
   ).get(options.pluginId);
   const hasTableRows = Object.values(usage.tables).some(count => count > 0);
-  const hasData = usage.bytes > 0 || hasTableRows;
-  const pluginRoot = path.resolve(options.workspaceRoot, 'Plugins');
-  const resolvedRoot = path.resolve(options.dataRoot);
-  const isLegacy = !resolvedRoot.startsWith(`${pluginRoot}${path.sep}`);
+  // 不把空默认库计为用户资料，但未安装时可以显式清理这类历史元数据。
+  const hasData = usage.bytes > 0 || hasTableRows || (!options.pluginInstalled &&
+    options.ownedTables?.some(table => pluginDataTableHasRows(options.db, table)) === true);
   if (job?.status === 'cleaning' || job?.status === 'failed') {
     return {
       status: job.status,
@@ -214,7 +240,7 @@ export async function readPluginDataSummaryAsync(options: {
     };
   }
   return {
-    status: options.pluginInstalled ? (hasData ? 'installed' : 'empty') : (hasData ? (isLegacy ? 'legacy' : 'retained') : 'empty'),
+    status: options.pluginInstalled ? (hasData ? 'installed' : 'empty') : (hasData ? (options.userRemoved ? 'retained' : 'legacy') : 'empty'),
     bytes: usage.bytes,
     directories: usage.directories,
     tables: usage.tables,

@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { startDeterministicOpenAiChatServer } from '../shell-tool/harness/deterministicOpenAiChatServer.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 import { startCustomCapabilityProtocolServer } from '../../../src/app-hosts/linnya/application/custom-api-onboarding/__tests__/fixtures/customCapabilityProtocolServer.ts';
 
 // 在模型已经收到旧工具清单、还没返回工具调用时卡住 HTTP；不替换 Agent、工具或插件运行时。
@@ -125,6 +126,7 @@ let failed;
 let busyMessages;
 try {
   const up = await run('up', '--size', '1440x1000', '--mode', 'bundled');
+  await installKnowledgeForScenario(run);
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
   const entries = await evaluate('return (await window.electronAPI.plugins.rendererEntries()).data;');
   assert.equal(entries.find(entry => entry.pluginId === 'knowledge')?.entryUrl, 'plugin://knowledge/dist/renderer/index.js');

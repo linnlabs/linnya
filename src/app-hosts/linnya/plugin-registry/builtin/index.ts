@@ -45,7 +45,12 @@ import {
   readDirectPluginDirsFromEnv,
   readPluginManifestSummary,
 } from '../../../../electron-main/plugins/loader/pluginLayout';
-import { markInterruptedPluginDataCleanups } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import {
+  hasPendingPluginDataCleanup,
+  hasPluginUserData,
+  markInterruptedPluginDataCleanups,
+} from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { resolvePluginCleanupDescriptor } from '../pluginDataRoot';
 import {
   getDocumentTypeBackendHook,
   listDocumentTypeBackendHooks,
@@ -351,15 +356,28 @@ function activateStagedBundledPluginVersions(
     return;
   }
 
+  const stateService = new PluginStateService(db);
   const candidates = listStagedBundledPluginActivationCandidates({
     bundledPluginRoot,
     userPluginRoot,
+    shouldRestoreOnDemandPlugin(pluginId) {
+      if (process.env.LINNYA_PLUGIN_SEED_BUNDLED === '0' ||
+        stateService.getInstalledRecord(pluginId)?.userRemoved ||
+        hasPendingPluginDataCleanup(db, pluginId)) return false;
+      const descriptor = resolvePluginCleanupDescriptor(pluginId);
+      return Boolean(descriptor && hasPluginUserData({
+        db, dataRoot: descriptor.dataRoot, dataStorage: descriptor.manifest.dataStorage,
+      }));
+    },
+    onStageFailure: (pluginId, error) => pluginDiagnostics.record({
+      level: 'error', pluginId, capability: 'migration',
+      message: `按需插件自动安装准备失败: ${error instanceof Error ? error.message : String(error)}`,
+    }),
   });
   if (candidates.length === 0) {
     return;
   }
 
-  const stateService = new PluginStateService(db);
   stateService.ensureBuiltinInstalled([platformBackendPlugin.meta]);
   let activatedAny = false;
   for (const candidate of candidates) {

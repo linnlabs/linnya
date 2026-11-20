@@ -16,6 +16,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 
 const mode = process.argv[2];
 const modes = [
@@ -300,6 +301,7 @@ const checkName = artifactFault
 try {
   await evidence.check(checkName, async () => {
     const up = await start();
+    await installKnowledgeForScenario(run);
     await run('wait', '--selector', sidebar);
     await run('click', '--selector', sidebar);
     await run('wait', '--text', '新建知识库');

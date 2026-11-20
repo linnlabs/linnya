@@ -609,7 +609,9 @@ function resolvePluginStateLabel(item: PluginStoreListItem): string {
   if (item.data?.status === 'cleaning') return pluginStoreMessage('pluginStore.data.status.cleaning');
   if (item.data?.status === 'failed') return pluginStoreMessage('pluginStore.data.status.failed');
   if (item.data?.status === 'unavailable') return pluginStoreMessage('pluginStore.data.status.unavailable');
-  if (item.data?.status === 'legacy') return pluginStoreMessage('pluginStore.data.status.legacy');
+  if (item.data?.status === 'legacy') return pluginStoreMessage('pluginStore.state.legacyStorage', {
+    bytes: formatStorageBytes(item.data.bytes, currentLocale.value),
+  });
   if (item.data?.status === 'retained') return pluginStoreMessage('pluginStore.data.status.retained');
   return getPluginStateLabel(item.state, pluginStoreMessage);
 }

@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { observeTree } from '../../development/features/desktop-probe/infrastructure/processTree.mjs';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 import { startCustomCapabilityProtocolServer } from '../../../src/app-hosts/linnya/application/custom-api-onboarding/__tests__/fixtures/customCapabilityProtocolServer.ts';
 import { MODEL_CONNECTION_TEST_PDF, MODEL_CONNECTION_TEST_PNG } from '../../../src/app-hosts/linnya/application/custom-api-onboarding/definitions/modelConnectionTestDocument.ts';
 
@@ -58,6 +59,7 @@ let up;
 let failed;
 try {
   up = await run('up', '--size', '1440x1100', '--mode', mode);
+  await installKnowledgeForScenario(run);
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
   const entries = await evaluate('return await window.electronAPI.plugins.rendererEntries();');
   evidence.json('candidate', { gitHead: up.gitHead, mode: up.options.mode, build: up.build, protocol: 'official synthetic local HTTP', entries });

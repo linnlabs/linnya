@@ -25,6 +25,15 @@ export interface SeedBundledPluginsOptions {
   readonly userPluginRoot: string;
 }
 
+interface StagedBundledActivationOptions extends SeedBundledPluginsOptions {
+  readonly shouldRestoreOnDemandPlugin?: (pluginId: string) => boolean;
+  readonly onStageFailure?: (pluginId: string, error: unknown) => void;
+}
+
+function isBundledInstallOnDemand(sourceDir: string): boolean {
+  return fs.existsSync(path.join(sourceDir, '.install-on-demand'));
+}
+
 export interface ExplicitBundledPluginStageOptions {
   readonly bundledPluginRoot: string;
   readonly userPluginRoot: string;
@@ -371,15 +380,14 @@ function seedSingleBundledPlugin(
     };
   }
 
+  if (isBundledInstallOnDemand(sourceDir)) {
+    return {
+      pluginId: manifest.id, version: manifest.version, sourceDir, targetDir: targetVersionDir,
+      status: 'skipped', reason: '随包插件按需安装',
+    };
+  }
   ensureSeedTargetVersionDir(sourceDir, targetVersionDir, manifest.id, manifest.version);
-
-  return {
-    pluginId: manifest.id,
-    version: manifest.version,
-    sourceDir,
-    targetDir: targetVersionDir,
-    status: 'staged',
-  };
+  return { pluginId: manifest.id, version: manifest.version, sourceDir, targetDir: targetVersionDir, status: 'staged' };
 }
 
 function listRequiredBundledPluginIds(bundledPluginRoot: string | null): Set<string> {
@@ -460,8 +468,9 @@ export function seedBundledPlugins(options: SeedBundledPluginsOptions): BundledP
 
 function findStagedBundledActivationCandidate(
   sourceDir: string,
-  userPluginRoot: string
+  options: StagedBundledActivationOptions,
 ): StagedBundledPluginActivationCandidate | null {
+  const { userPluginRoot } = options;
   const manifest = readPluginManifestSummary(sourceDir);
   if (!manifest) {
     return null;
@@ -474,6 +483,17 @@ function findStagedBundledActivationCandidate(
   const pluginInstallDir = path.join(userPluginRoot, manifest.id);
   const activePath = path.join(pluginInstallDir, 'active.json');
   const targetVersionDir = path.join(pluginInstallDir, manifest.version);
+  if (!fs.existsSync(activePath) && isBundledInstallOnDemand(sourceDir)) {
+    // 早期 seed 不接触数据库；只有 Backend 确认真有资料后才复制并激活。
+    try {
+      if (!options.shouldRestoreOnDemandPlugin?.(manifest.id)) return null;
+      assertBundledPluginArtifactIntegrity(sourceDir, Object.values(manifest.entry).filter(value => value !== undefined));
+      ensureSeedTargetVersionDir(sourceDir, targetVersionDir, manifest.id, manifest.version);
+    } catch (error) {
+      options.onStageFailure?.(manifest.id, error);
+      return null;
+    }
+  }
   const targetManifest = readPluginManifestSummary(targetVersionDir);
   if (targetManifest?.id !== manifest.id || targetManifest.version !== manifest.version) {
     return null;
@@ -498,7 +518,7 @@ function findStagedBundledActivationCandidate(
 }
 
 export function listStagedBundledPluginActivationCandidates(
-  options: SeedBundledPluginsOptions
+  options: StagedBundledActivationOptions,
 ): StagedBundledPluginActivationCandidate[] {
   const bundledPluginRoot = options.bundledPluginRoot;
   if (!bundledPluginRoot || !fs.existsSync(bundledPluginRoot)) {
@@ -512,7 +532,7 @@ export function listStagedBundledPluginActivationCandidates(
     }
     const candidate = findStagedBundledActivationCandidate(
       path.join(bundledPluginRoot, entry.name),
-      options.userPluginRoot
+      options,
     );
     if (candidate) {
       candidates.push(candidate);

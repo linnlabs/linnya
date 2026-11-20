@@ -3,6 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 import { startCustomCapabilityProtocolServer } from '../../../src/app-hosts/linnya/application/custom-api-onboarding/__tests__/fixtures/customCapabilityProtocolServer.ts';
 import { MODEL_CONNECTION_TEST_PDF } from '../../../src/app-hosts/linnya/application/custom-api-onboarding/definitions/modelConnectionTestDocument.ts';
 
@@ -92,6 +93,7 @@ async function kb(channel, payload) {
 
 try {
   up = await run('up', '--mode', 'bundled', '--size', '1440x1000', '--no-build');
+  await installKnowledgeForScenario(run);
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
   const embedding = await model('openai_embeddings', '/v1', 'E7 embedding');
   const form = new FormData();

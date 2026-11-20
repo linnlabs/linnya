@@ -3,6 +3,7 @@ export interface OfficialPluginReleaseTarget {
   readonly packageDir: string;
   readonly defaultR2Prefix: string;
   readonly defaultDownloadBaseUrl: string;
+  readonly installByDefault?: false;
   readonly productionDistDirectories: readonly string[];
   readonly artifactVerification?: {
     readonly requiredFiles?: readonly {

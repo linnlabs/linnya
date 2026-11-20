@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 
 process.env.LINNYA_PLUGIN_RENDERER_BUNDLE = 'disk';
 const evidence = createEvidence('plugin-store-concurrency', {
@@ -71,6 +72,7 @@ async function clickPair(selector) {
 
 try {
   const up = await run('up', '--mode', 'bundled', '--size', '1440x1000', '--no-build');
+  await installKnowledgeForScenario(run);
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
   await activate('button', '插件', 'aside');
   await waitCards('input[type=checkbox]:checked');

@@ -39,6 +39,7 @@ export type PluginStoreMessageKey =
   | 'pluginStore.state.disabled'
   | 'pluginStore.state.missing'
   | 'pluginStore.state.runtimeUnavailable'
+  | 'pluginStore.state.legacyStorage'
   | 'pluginStore.reason.runtimeUnavailable'
   | 'pluginStore.reason.required'
   | 'pluginStore.reason.notInstalled'

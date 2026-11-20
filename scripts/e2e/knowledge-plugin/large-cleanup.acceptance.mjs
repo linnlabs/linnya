@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { setTimeout as delay } from 'node:timers/promises';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 
 process.env.LINNYA_PLUGIN_RENDERER_BUNDLE = 'disk';
 const evidence = createEvidence('knowledge-large-cleanup-interaction', {
@@ -35,6 +36,7 @@ async function ref(name, role, within) {
 
 try {
   const up = await run('up', '--mode', 'bundled', '--size', '1440x1000', '--no-build');
+  await installKnowledgeForScenario(run);
   assert.equal(up.pluginLoad, undefined, 'The bundled knowledge artifact must load');
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
   const source = join(up.root, 'workspace', 'Plugins', 'knowledge', 'source_of_truth');

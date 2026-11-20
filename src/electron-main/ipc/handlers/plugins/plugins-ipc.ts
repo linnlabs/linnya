@@ -56,7 +56,6 @@ import type { DistributionIdentity } from '../../../../shared/distribution-ident
 import { parsePluginManifest, type PluginDataSummary, type PluginMeta, type PluginOperationFailure } from '@app/schemas';
 import { resolvePluginCleanupDescriptor } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
 import { readPluginDataSummaryAsync, cleanupPluginData, hasPendingPluginDataCleanup } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
-import { pathManager } from '../../../../shared/utils/pathManager';
 import { readJsonFile } from '../../../plugins/loader/pluginLayout';
 import {
   listBundledPluginManifestIds,
@@ -147,8 +146,9 @@ function schedulePluginDataSummary(
         pluginId: state.meta.id,
         dataRoot: descriptor.dataRoot,
         dataStorage: descriptor.manifest.dataStorage,
+        ownedTables: descriptor.manifest.ownedTables,
         pluginInstalled: state.state !== 'missing',
-        workspaceRoot: pathManager.getWorkspaceRoot(),
+        userRemoved: new PluginStateService(db).getInstalledRecord(state.meta.id)?.userRemoved === true,
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;

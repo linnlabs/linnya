@@ -123,6 +123,23 @@ try {
     path.join(root, 'session')
   );
   details.appProcessId = application.child.pid;
+  await check('全新 Windows 安装默认不装知识库，能在插件市场从随包安装', async () => {
+    const listing = await application.evaluate('window.electronAPI.plugins.list()');
+    assert.equal(listing.success, true);
+    assert.equal(listing.data.find(plugin => plugin.meta.id === 'knowledge')?.state, 'missing');
+    const entries = await application.evaluate('window.electronAPI.plugins.rendererEntries()');
+    assert.ok(entries.data.every(entry => entry.pluginId !== 'knowledge'));
+    await application.clickText('插件');
+    await application.clickText('插件市场');
+    await application.screenshot(path.join(evidence, 'knowledge-not-installed.png'));
+    await application.clickElement(`Array.from(document.querySelectorAll('.plugin-store-card')).find(card=>card.querySelector('h2')?.textContent==='知识库')?.querySelector('button.plugin-store-install-button')`);
+    await until(
+      () => application.evaluate('window.electronAPI.plugins.rendererEntries()'),
+      result => result.data?.some(entry => entry.pluginId === 'knowledge'),
+      'Knowledge market installation',
+      30_000,
+    );
+  });
   await check('真正Windows App加载随包knowledge artifact和固定页面入口', async () => {
     const listing = await application.evaluate('window.electronAPI.plugins.list()');
     assert.equal(listing.success, true);

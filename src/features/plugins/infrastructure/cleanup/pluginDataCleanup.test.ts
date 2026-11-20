@@ -9,6 +9,7 @@ import type { PluginManifestDataStorage } from '@app/schemas';
 import {
   calculatePluginStorageUsageAsync,
   cleanupPluginData,
+  hasPluginUserData,
   markInterruptedPluginDataCleanups,
   readPluginDataSummaryAsync,
 } from './pluginDataCleanup';
@@ -50,6 +51,22 @@ afterEach(() => {
 });
 
 describe('plugin data cleanup', () => {
+  it('有原件或文档记录才接管；仅旧元数据和索引仍可从未安装态清理', async () => {
+    const { root, db } = fixture();
+    try {
+      const manifestStorage = { ...storage, userDataTables: ['plugin_documents'] };
+      const options = { db, dataRoot: root, dataStorage: manifestStorage };
+      expect(hasPluginUserData(options)).toBe(true); // 原文存在，文档表尚不存在。
+      fs.unlinkSync(path.join(root, 'source', 'payload.bin'));
+      expect(hasPluginUserData(options)).toBe(false);
+      expect(await readPluginDataSummaryAsync({
+        ...options, pluginId: 'demo', ownedTables, pluginInstalled: false, userRemoved: false,
+      })).toMatchObject({ status: 'legacy', canDelete: true, tables: { plugin_documents: 0 } });
+      db.exec("CREATE TABLE plugin_documents (id TEXT PRIMARY KEY); INSERT INTO plugin_documents VALUES ('doc');");
+      expect(hasPluginUserData(options)).toBe(true); // 文档记录存在，原文不在本机。
+    } finally { db.close(); }
+  });
+
   it('按实际分配块统计目录并在一个事务中删除目录、表和迁移账本', async () => {
     const { root, db } = fixture();
     const usage = await calculatePluginStorageUsageAsync({ db, dataRoot: root, dataStorage: storage });
@@ -186,7 +203,7 @@ describe('plugin data cleanup', () => {
     const removeSpy = vi.spyOn(fs.promises, 'unlink').mockRejectedValueOnce(Object.assign(new Error('filesystem error'), { code }));
     const failed = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
     expect(failed).toMatchObject({ status: 'failed', errorCode });
-    expect(await readPluginDataSummaryAsync({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, pluginInstalled: false, workspaceRoot: root }))
+    expect(await readPluginDataSummaryAsync({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, pluginInstalled: false, userRemoved: true }))
       .toMatchObject({ status: 'failed', errorCode });
     removeSpy.mockRestore();
     const resumed = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
@@ -201,7 +218,7 @@ describe('plugin data cleanup', () => {
       VALUES ('demo', 'cleaning', ?, ?, 1, 1)`).run(JSON.stringify(['source:source']), 'old scope');
     markInterruptedPluginDataCleanups(db);
     expect(fs.existsSync(path.join(root, 'source', 'payload.bin'))).toBe(true);
-    expect(await readPluginDataSummaryAsync({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, pluginInstalled: false, workspaceRoot: root }))
+    expect(await readPluginDataSummaryAsync({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, pluginInstalled: false, userRemoved: true }))
       .toMatchObject({ status: 'failed', errorCode: 'interrupted' });
     expect(await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables }))
       .toMatchObject({ status: 'completed' });

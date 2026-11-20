@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 import { startCustomCapabilityProtocolServer } from '../../../src/app-hosts/linnya/application/custom-api-onboarding/__tests__/fixtures/customCapabilityProtocolServer.ts';
 
 // 只通过真实界面、Preload 与正式 HTTP 准备合成资料，不导入 Renderer store 或插件源码。
@@ -41,6 +42,7 @@ const target = 'BRAVO target document only';
 let failed;
 try {
   const up = await run('up', '--size', '1440x1000', '--mode', 'bundled');
+  await installKnowledgeForScenario(run);
   const entries = await evaluate('return await window.electronAPI.plugins.rendererEntries();');
   const entry = entries.data.find(item => item.pluginId === 'knowledge');
   assert.equal(entry?.entryUrl, 'plugin://knowledge/dist/renderer/index.js');

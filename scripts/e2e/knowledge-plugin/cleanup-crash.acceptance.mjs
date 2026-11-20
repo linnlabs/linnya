@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { observeTree, readProcessTable, sameProcess } from '../../development/features/desktop-probe/infrastructure/processTree.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 
 process.env.LINNYA_PLUGIN_RENDERER_BUNDLE = 'disk';
 const evidence = createEvidence('knowledge-cleanup-directory-crash', { files: [
@@ -74,6 +75,7 @@ async function until(action, accepted, label, timeout = 10_000) {
 
 try {
   const up = await start();
+  await installKnowledgeForScenario(run);
   assert.equal(up.pluginLoad, undefined, 'disk plugin must load');
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
   const source = join(up.root, 'workspace', 'Plugins', 'knowledge', 'source_of_truth');

@@ -136,6 +136,9 @@ export function discoverWorkspaceOfficialPluginReleaseTargets(root = repoRoot) {
         ? packageJson.linnya.release
         : null;
       if (release?.includeInOfficialRelease !== true) return [];
+      if (release.installByDefault !== undefined && typeof release.installByDefault !== 'boolean') {
+        throw new Error(`${normalizeWorkspaceRelativePath(root, packageJsonPath)} linnya.release.installByDefault 必须是 boolean`);
+      }
 
       const manifest = readJsonFile(manifestPath);
       if (!isRecord(manifest) || typeof manifest.id !== 'string' || manifest.id.trim().length === 0) {
@@ -147,6 +150,7 @@ export function discoverWorkspaceOfficialPluginReleaseTargets(root = repoRoot) {
         packageDir: normalizeWorkspaceRelativePath(root, packageDir),
         defaultR2Prefix: `plugins/${pluginId}`,
         defaultDownloadBaseUrl: `${defaultPluginDownloadRootUrl}/${pluginId}`,
+        ...(release.installByDefault === false ? { installByDefault: false } : {}),
         productionDistDirectories: readDeclaredProductionDistDirectories({
           pluginId,
           manifest,

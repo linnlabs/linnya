@@ -411,7 +411,7 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
   );
   const enabledPluginIds = computed<ReadonlySet<PluginId>>(
     () =>
-      new Set(states.value.filter(state => state.state === 'enabled').map(state => state.meta.id))
+      new Set(states.value.filter(state => state.state === 'enabled' && !state.runtimeUnavailable).map(state => state.meta.id))
   );
   const storeItems = computed<PluginStoreListItem[]>(() => states.value.map(state => {
     const presentation = storePresentationByPluginId.value.get(state.meta.id);
@@ -424,9 +424,7 @@ export const useEnabledPluginsStore = defineStore('enabledPlugins', () => {
   }
 
   function isPluginEnabled(pluginId: PluginId): boolean {
-    const state = stateByPluginId.value.get(pluginId);
-    if (!state) return false;
-    return state.state === 'enabled';
+    return enabledPluginIds.value.has(pluginId);
   }
 
   function getPluginState(pluginId: PluginId): PluginStateView | null {

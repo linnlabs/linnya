@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 
 const checkpoint = process.argv[2];
 const checkpoints = [
@@ -148,6 +149,7 @@ try {
     `真实方案 ${checkpoint} 强杀后，Desktop 恢复后的界面和持久状态一致`,
     async () => {
       const up = await start();
+      await installKnowledgeForScenario(run);
       await run('wait', '--selector', sidebar);
       await run('click', '--selector', sidebar);
       await run('wait', '--text', '新建知识库');

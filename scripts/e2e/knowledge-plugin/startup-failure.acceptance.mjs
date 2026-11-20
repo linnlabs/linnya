@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { observeTree } from '../../development/features/desktop-probe/infrastructure/processTree.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
+import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 
 const mode = process.env.KNOWLEDGE_PLUGIN_MODE || 'dev';
 if (mode === 'bundled') process.env.LINNYA_PLUGIN_RENDERER_BUNDLE = 'disk';
@@ -22,6 +23,7 @@ let up;
 let failed;
 try {
   up = await run('up', '--mode', mode, '--size', '1440x1100');
+  await installKnowledgeForScenario(run);
   const entries = await evaluate('return await window.electronAPI.plugins.rendererEntries();');
   if (mode === 'bundled') {
     const entry = entries.data.find(item => item.pluginId === 'knowledge');
