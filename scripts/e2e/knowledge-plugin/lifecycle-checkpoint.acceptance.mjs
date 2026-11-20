@@ -151,7 +151,7 @@ try {
       await run('wait', '--selector', sidebar);
       await run('click', '--selector', sidebar);
       await run('wait', '--text', '新建知识库');
-      await run('click', 'text=新建知识库');
+      await click('button', '新建知识库', '.kb-list-header');
       await run('click', '--selector', '#new-kb-name');
       await run('type', libraryName);
       await click('button', '创建', '.modal-overlay');
