@@ -51,6 +51,7 @@ export class FreeformCompiler extends FreeformPptxCompiler {
       shapeTextPlan,
       declaredThemeFonts: deckSpec.theme?.fonts,
       markEastAsianRunLanguage: true,
+      renumberObjectIds: true,
     });
   }
 }
