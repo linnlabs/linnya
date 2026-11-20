@@ -84,6 +84,7 @@ deck.js source
   bindings 中声明，再由 finalize 明确读取结果。
 - 新 source span 或写后结构诊断行为：集中修改
   `layoutTrace/`，并补插桩、trace 读取和误报边界测试。
+- 从作者接口删除的字段如果旧稿里仍可能残留，类型检查只在 `typecheckCodegenSource.ts` 里放过那一个字段（目前是富文本 run 的 `style.lineSpacing`），由 compose 解析忽略并给 parse 提示；不要为此把字段加回 ambient 类型。
 - 新 TypeScript 诊断文案放
   `codegenTypecheck/diagnosticFormatter.ts`；布局结构诊断放 codegen 的
   `writeDiagnostics/`。

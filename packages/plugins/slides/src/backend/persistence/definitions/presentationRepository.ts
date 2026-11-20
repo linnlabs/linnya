@@ -257,7 +257,24 @@ export interface PresentationDocumentQueryPort {
   ): Promise<PresentationPptxArtifactSourceRecord | null>;
 }
 
-export interface PresentationRepositoryPort extends PresentationDocumentQueryPort {
+export interface PresentationLayoutState {
+  readonly currentRevisionId: string;
+  /** 当前物化的 `DeckSpec.layoutVersion`；旧物化没有该字段时为 null。 */
+  readonly layoutVersion: number | null;
+}
+
+/**
+ * 当前物化随排版合同升级的窄端口。`deck_spec_json` 是 current revision 从源码派生的物化，
+ * 刷新它不产生语义 revision、不改源码，与 PPTX artifact 一样按 current revision CAS 附着。
+ */
+export interface PresentationLayoutRefreshPort {
+  /** 只读取 revision 与版本号，不解析整份 DeckSpec。 */
+  getPresentationLayoutState(nodeId: string): Promise<PresentationLayoutState | null>;
+  /** 仅当目标仍是 current revision 时替换物化，并作废该 revision 已缓存的 PPTX。 */
+  refreshPresentationDeckSpec(nodeId: string, revisionId: string, deckSpec: DeckSpec): Promise<boolean>;
+}
+
+export interface PresentationRepositoryPort extends PresentationDocumentQueryPort, PresentationLayoutRefreshPort {
   createPresentation(
     nodeId: string,
     deckSpec: DeckSpec,

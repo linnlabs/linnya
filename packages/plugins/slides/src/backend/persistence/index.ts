@@ -22,6 +22,8 @@ export type {
   PresentationDocumentIdentity,
   PresentationDocumentQueryPort,
   PresentationDocumentRecord,
+  PresentationLayoutRefreshPort,
+  PresentationLayoutState,
   PresentationPreviewSourceRecord,
   PresentationPptxArtifactSourceRecord,
   PresentationCurrentPptxArtifact,

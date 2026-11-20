@@ -83,5 +83,6 @@ export type {
   TextStyle,
 } from './slideSpec';
 
+export { DECK_LAYOUT_VERSION, isDeckLayoutCurrent } from './deckLayoutVersion';
 export type { ImageAdjust } from './imageAdjust';
 export { applyImageAdjustToPixels, readImageAdjustInput } from './imageAdjust';

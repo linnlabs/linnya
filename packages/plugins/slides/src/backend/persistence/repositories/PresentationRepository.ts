@@ -27,6 +27,7 @@ import {
   type PresentationCommitResult,
   type PresentationCreateOptions,
   type PresentationDocumentIdentity,
+  type PresentationLayoutState,
   type PresentationViewSourceRecord,
   type PresentationDirectionUse,
   type PresentationDocumentRecord,
@@ -392,6 +393,39 @@ export class PresentationRepository implements PresentationRepositoryPort {
   ): Promise<PresentationPptxArtifactSourceRecord | null> {
     const row = this.readDocumentRow(nodeId);
     return row ? mapPresentationPptxArtifactSourceRow(row) : null;
+  }
+
+  async getPresentationLayoutState(nodeId: string): Promise<PresentationLayoutState | null> {
+    const row = this.db.prepare(`
+      SELECT current_revision_id, json_extract(deck_spec_json, '$.layoutVersion') AS layout_version
+      FROM presentation_documents
+      WHERE node_id = ?
+    `).get(nodeId) as { current_revision_id: unknown; layout_version: unknown } | undefined;
+    if (row === undefined) return null;
+    if (typeof row.current_revision_id !== 'string') {
+      throw new PresentationSourceConsistencyError(`Slides ${nodeId} 的 current revision 无效。`);
+    }
+    return {
+      currentRevisionId: row.current_revision_id,
+      layoutVersion: typeof row.layout_version === 'number' ? row.layout_version : null,
+    };
+  }
+
+  async refreshPresentationDeckSpec(nodeId: string, revisionId: string, deckSpec: DeckSpec): Promise<boolean> {
+    const normalizedDeckSpec = this.normalizeDeckSpecOrThrow(deckSpec);
+    const result = this.db.prepare(`
+      UPDATE presentation_documents
+      SET deck_spec_json = ?, title = ?, slide_count = ?, layout = ?, pptx_revision_id = NULL
+      WHERE node_id = ? AND current_revision_id = ?
+    `).run(
+      JSON.stringify(normalizedDeckSpec),
+      normalizedDeckSpec.title,
+      normalizedDeckSpec.slides.length,
+      createSlideLayoutKey(normalizedDeckSpec.layout),
+      nodeId,
+      revisionId,
+    );
+    return result.changes === 1;
   }
 
   async savePresentationPptxArtifact(

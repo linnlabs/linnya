@@ -48,6 +48,7 @@ write_file / edit_file
 ```text
 PptCoordinator.inspect / export / getPreview / getRenderModel
   -> presentationQueryRuntime
+  -> presentationLayoutRefresh（旧排版物化先从源码重编译并 CAS 写回）
   -> repository / draft repository / presentationPptxArtifact
   -> engine parser / query service
 ```

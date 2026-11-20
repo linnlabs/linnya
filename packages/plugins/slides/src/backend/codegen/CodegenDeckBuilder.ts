@@ -2,6 +2,7 @@ import { resolveImageSources } from '../engine/assets/imageSourceResolver';
 import { materializeIntrinsicTextBoxes } from '../engine/text/materializeIntrinsicTextBoxes';
 import { randomUUID } from 'node:crypto';
 import { isFlexComposeInput, MathFormulaError, SlideMarkerIndex, type DeckSpec } from '@plugin/slides/shared';
+import { DECK_LAYOUT_VERSION } from '@plugin/slides/shared/deckSpec';
 import { resolveManualEditTargets } from './compose/flex-layout/resolveManualEditTargets.js';
 import { compareManualEditRecords } from './compareManualEditRecords.js';
 import {
@@ -285,6 +286,7 @@ export class CodegenDeckBuilder {
     try {
       deckSpec = buildDeckSpecFromDirectInput(ownedInput);
       deckSpec.authoringIdentityVersion = 1;
+      deckSpec.layoutVersion = DECK_LAYOUT_VERSION;
       const manualWarnings = compiled.diagnostics.filter(diagnostic => diagnostic.code === 'manual_edit_suspended' || diagnostic.code === 'manual_edit_removed').map(diagnostic => diagnostic.message);
       if (manualWarnings.length) deckSpec.manualEditWarnings = manualWarnings;
       await materializeIntrinsicTextBoxes(deckSpec);

@@ -205,9 +205,20 @@ export function compileSemanticQuery(query: SemanticQuery, definitions: Semantic
   const available = [...definitions.properties.map(property => property.name), ...SEMANTIC_QUERY_BUILTIN_FIELDS];
   const resolveField = (raw: string): Field => {
     const builtin = SEMANTIC_QUERY_BUILTIN_FIELDS.find(name => name === raw);
-    if (builtin) return { kind: 'builtin', name: builtin };
     let key: string | null = null;
     try { key = semanticNameKey(raw); } catch { key = null; }
+    if (builtin) {
+      // 新建与改名已不允许占用内建字段名；早先建的同名字段会被内建字段遮住，报错让人改名，不悄悄查错。
+      const shadowed = definitions.properties.find(candidate => semanticNameKey(candidate.name) === key);
+      if (shadowed) {
+        throw new SemanticLayerError(
+          'reserved_name',
+          `字段“${shadowed.name}”与内建字段 ${builtin} 同名，查询分不清是哪一个；先给这个字段改名再查`,
+          { property: shadowed.name, builtin },
+        );
+      }
+      return { kind: 'builtin', name: builtin };
+    }
     const property = definitions.properties.find(candidate => candidate.id === raw) ??
       definitions.properties.find(candidate => semanticNameKey(candidate.name) === key);
     if (!property) throw new SemanticLayerError('unknown_property', `没有字段“${raw}”`, { available });

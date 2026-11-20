@@ -83,6 +83,8 @@ function measureRunLineMetrics(
         'The exact line height cannot contain the inline formula.',
       );
     }
+    // 公式行按公式自身高度乘倍数，不乘单倍行距的 1.2：2026-11-17 PowerPoint 导 PDF 实测，
+    // 0.9／1.0／1.5 倍下分式行高与“公式高度 × 倍数”的比例一致。
     const lineSpacingHeight = spacing.kind === 'exactPt'
       ? spacing.value / POINTS_PER_INCH
       : naturalHeight * spacing.value;

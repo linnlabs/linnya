@@ -3,6 +3,8 @@ import { normalizeMathFormulaSource } from '@plugin/slides/shared';
 import { MathFormulaCompileError } from '../definitions/MathFormulaCompileError';
 import { compileMathFormula } from './compileMathFormula';
 import { emitFormulaMathMl } from './emitFormulaMathMl';
+import { parseLatexFormula } from './parseLatexFormula';
+import { POWERPOINT_MATH_LAYOUT } from '../definitions/powerPointMathLayout';
 
 function source(latex: string) {
   const normalized = normalizeMathFormulaSource({ latex, fontSize: 32, color: '#173B57' });
@@ -15,6 +17,21 @@ function compile(latex: string) {
 }
 
 describe('compileMathFormula', () => {
+  it('lays out fractions with the PowerPoint math font shifts so inline lines match the export', () => {
+    const inline = { ...source(String.raw`\frac{1}{2}`), display: 'inline' as const };
+    const block = source(String.raw`\frac{1}{2}`);
+    const inlineEnvelope = compileMathFormula(inline).renderProjection.metrics.nativeEnvelope;
+    const blockEnvelope = compileMathFormula(block).renderProjection.metrics.nativeEnvelope;
+
+    expect(emitFormulaMathMl(parseLatexFormula(String.raw`x^2`), inline))
+      .toContain(`scriptsizemultiplier="${POWERPOINT_MATH_LAYOUT.scriptSizeMultiplier}"`);
+    // 分母数字没有下伸，下沿就是分母基线：下移量必须达到 PowerPoint 的值。
+    expect(inlineEnvelope.descentEm).toBeCloseTo(POWERPOINT_MATH_LAYOUT.fractionDenominatorShiftDown, 2);
+    expect(blockEnvelope.descentEm).toBeCloseTo(POWERPOINT_MATH_LAYOUT.fractionDenominatorDisplayShiftDown, 2);
+    expect(inlineEnvelope.ascentEm).toBeGreaterThan(POWERPOINT_MATH_LAYOUT.fractionNumeratorShiftUp);
+    expect(blockEnvelope.ascentEm).toBeGreaterThan(POWERPOINT_MATH_LAYOUT.fractionNumeratorDisplayShiftUp);
+  });
+
   it.each([
     ['fraction and radical', String.raw`\frac{-b \pm \sqrt{b^2-4ac}}{2a}`, ['<m:f>', '<m:rad>']],
     ['scripts', String.raw`x_i^2 + y^2`, ['<m:sSubSup>']],

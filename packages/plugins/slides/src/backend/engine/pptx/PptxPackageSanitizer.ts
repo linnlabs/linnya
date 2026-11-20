@@ -7,7 +7,7 @@ import {
   type Element as XmlElement,
 } from '@xmldom/xmldom';
 import { applyPptxGradientFills } from '../visual/pptxGradientPostProcessor';
-import { applyPptxPaintPatches } from '../visual/pptxPaintPostProcessor';
+import { applyPptxPaintPatches, type PptxPaintWarning } from '../visual/pptxPaintPostProcessor';
 import type { PptxPaintPatchPlan } from '../visual/pptxPaintPatchPlan';
 import type { ThemeSpec } from '@plugin/slides/shared';
 import { applyDeclaredThemeFonts } from './applyDeclaredThemeFonts';
@@ -26,6 +26,13 @@ export interface PptxPackageSanitizeOptions {
   readonly svgGraphicFallbacks?: readonly SvgGraphicPptxFallbackPlanEntry[];
   readonly formulaPlan?: FormulaPptxPatchPlan;
   readonly chartPlan?: readonly ChartPptxPatch[];
+  /**
+   * 把 PptxGenJS 默认写的 `lang="en-US"` 按 run 文字改成 zh-CN / ja-JP / ko-KR。
+   * 只给本插件生成的稿子打开；导入稿导出必须保持作者原有的语言标记，不能打开。
+   */
+  readonly markEastAsianRunLanguage?: boolean;
+  /** 补丁无法完整落地但不影响导出时的报告出口；缺省不报告。 */
+  readonly onWarning?: (warning: PptxPaintWarning) => void;
 }
 
 /**
@@ -100,7 +107,7 @@ export class PptxPackageSanitizer {
     mutated = mutated || idMutated;
     const textMutated = await applyShapeTextAutofit(zip, options.shapeTextPlan);
     mutated = mutated || textMutated;
-    const paintMutated = await applyPptxPaintPatches(zip, options.paintPlan);
+    const paintMutated = await applyPptxPaintPatches(zip, options.paintPlan, options.onWarning);
     mutated = mutated || paintMutated;
     // 兼容尚未迁移的历史 marker 文件；新编译链只走内存 Paint plan。
     const gradientMutated = await applyPptxGradientFills(zip);
@@ -116,8 +123,10 @@ export class PptxPackageSanitizer {
     mutated = mutated || formulaMutated;
     const chartMutated = await applyChartPptxStyles(zip, options.chartPlan);
     mutated = mutated || chartMutated;
-    const languageMutated = await applyEastAsianRunLanguage(zip);
-    mutated = mutated || languageMutated;
+    if (options.markEastAsianRunLanguage) {
+      const languageMutated = await applyEastAsianRunLanguage(zip);
+      mutated = mutated || languageMutated;
+    }
 
     if (!mutated) {
       return buffer;

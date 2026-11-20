@@ -73,14 +73,13 @@ function serializeOperation(operation: SlidesManualEditCommand['operation']): ob
   }
 }
 
-/** run 对象属性顺序不属于作者语义；重试时 JSON 重排不能变成另一个命令。 */
+/** run 对象属性顺序不属于作者语义；重试时 JSON 重排不能变成另一个命令。run 没有行距（已忽略），不参与摘要。 */
 function serializeTextContent(content: Extract<SlidesManualEditCommand['operation'], { op: 'set_text_content' }>['content']) {
   if (typeof content === 'string') return content;
   return content.map(run => ({ text: run.text, ...(run.style ? { style: {
     fontSize: run.style.fontSize, fontFamily: run.style.fontFamily, bold: run.style.bold,
     italic: run.style.italic, underline: run.style.underline, color: run.style.color,
     align: run.style.align, valign: run.style.valign, letterSpacing: run.style.letterSpacing,
-    lineSpacing: run.style.lineSpacing ? { kind: run.style.lineSpacing.kind, value: run.style.lineSpacing.value } : undefined,
   } } : {}) }));
 }
 

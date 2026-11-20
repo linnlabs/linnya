@@ -10,6 +10,7 @@ import type {
   MathJaxSvgRuntimeProjection,
   MathJaxSvgRuntimeRequest,
 } from '../definitions/mathJaxSvgRuntime';
+import { POWERPOINT_MATH_LAYOUT } from '../definitions/powerPointMathLayout';
 
 const NO_LINE_BREAK_WIDTH = '100000em';
 const ALT_TEXT_PLACEHOLDER = 'SLIDES_MATH_FORMULA_ALT_TEXT';
@@ -21,17 +22,26 @@ RegisterHTMLHandler(formulaAdaptor);
  * 这是 MathJax/STIX2 的唯一技术 adapter。它不理解 Slides source、canonical IR
  * 或领域错误，只把内部 MathML 同步排版为自包含路径 SVG。
  */
+const formulaOutputJax = new SVG({
+  fontCache: 'local',
+  fontData: MathJaxStix2Font,
+  displayOverflow: 'overflow',
+  linebreaks: {
+    inline: false,
+    width: NO_LINE_BREAK_WIDTH,
+  },
+});
+// 分式偏移跟随 PowerPoint 的数学字体，原因见 POWERPOINT_MATH_LAYOUT。
+Object.assign(formulaOutputJax.font.params, {
+  num1: POWERPOINT_MATH_LAYOUT.fractionNumeratorDisplayShiftUp,
+  num2: POWERPOINT_MATH_LAYOUT.fractionNumeratorShiftUp,
+  denom1: POWERPOINT_MATH_LAYOUT.fractionDenominatorDisplayShiftDown,
+  denom2: POWERPOINT_MATH_LAYOUT.fractionDenominatorShiftDown,
+});
+
 const formulaMathDocument = mathjax.document('', {
   InputJax: new MathML(),
-  OutputJax: new SVG({
-    fontCache: 'local',
-    fontData: MathJaxStix2Font,
-    displayOverflow: 'overflow',
-    linebreaks: {
-      inline: false,
-      width: NO_LINE_BREAK_WIDTH,
-    },
-  }),
+  OutputJax: formulaOutputJax,
 });
 
 export function renderMathMlToSvg(request: MathJaxSvgRuntimeRequest): MathJaxSvgRuntimeProjection {
