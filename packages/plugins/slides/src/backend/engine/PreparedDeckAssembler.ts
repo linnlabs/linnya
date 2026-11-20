@@ -172,6 +172,7 @@ export class PreparedDeckAssembler {
       formulaPlan,
       chartPlan,
       shapeTextPlan,
+      markEastAsianRunLanguage: true,
     });
     this.logger?.debug('slides.assembly.completed', {
       title: materializedDeckSpec.title,

@@ -26,6 +26,11 @@ export interface PptxPackageSanitizeOptions {
   readonly svgGraphicFallbacks?: readonly SvgGraphicPptxFallbackPlanEntry[];
   readonly formulaPlan?: FormulaPptxPatchPlan;
   readonly chartPlan?: readonly ChartPptxPatch[];
+  /**
+   * 把 PptxGenJS 默认写的 `lang="en-US"` 按 run 文字改成 zh-CN / ja-JP / ko-KR。
+   * 只给本插件生成的稿子打开；导入稿导出必须保持作者原有的语言标记，不能打开。
+   */
+  readonly markEastAsianRunLanguage?: boolean;
 }
 
 /**
@@ -116,8 +121,10 @@ export class PptxPackageSanitizer {
     mutated = mutated || formulaMutated;
     const chartMutated = await applyChartPptxStyles(zip, options.chartPlan);
     mutated = mutated || chartMutated;
-    const languageMutated = await applyEastAsianRunLanguage(zip);
-    mutated = mutated || languageMutated;
+    if (options.markEastAsianRunLanguage) {
+      const languageMutated = await applyEastAsianRunLanguage(zip);
+      mutated = mutated || languageMutated;
+    }
 
     if (!mutated) {
       return buffer;

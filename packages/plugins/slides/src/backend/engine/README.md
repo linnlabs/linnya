@@ -89,6 +89,7 @@ PresentationInfo 或 RenderModel
 ## 开发规范
 
 - structured、freeform、mixed 三条导出路径共同调用 `pptx/initializePptxDocument.ts`，统一写入 layout、title 和声明主题字体。
+- `PptxPackageSanitizer` 对导入稿保持作者原样：run 语言标记（`markEastAsianRunLanguage`）只由生成稿路径（`StructuredCompiler`、`FreeformCompiler`、`PreparedDeckAssembler`）打开，`PatchCompiler` 不打开；新增生成稿入口时同步打开，导入稿路径不得为了统一而打开。
 - PPTX 页面尺寸只消费 shared 已规范化的 `SlideLayout`。preset 保持原生 layout 名称；自定义尺寸按 EMU
   生成稳定名称并在创建任何 slide/master 前调用 PptxGenJS `defineLayout()`。禁止在 compiler 内另算比例或比较浮点宽高。
 - PPTX 主题字体来自 `DeckSpec.theme.fonts`；本机 `resolvedFamily` 只服务测量和预览。
