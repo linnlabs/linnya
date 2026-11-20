@@ -18,6 +18,26 @@ function hasForeignEarlierFields(
   );
 }
 
+/**
+ * 依赖由同一条记录建立（例如“放进新分区”把成员归入新分区），且之后没被别人改写时，
+ * 撤销会先恢复成员归属，不能当作外部使用；实际是否还有依赖由撤回新建时按当时状态复核。
+ */
+function dependencyFromSameEntry(
+  row: CanvasStoredElement,
+  id: CanvasElementId,
+  records: readonly CanvasHistoryChange[]
+): boolean {
+  return records.some(
+    record =>
+      record.id === row.element.id &&
+      record.after !== null &&
+      record.fields.includes('parentId') &&
+      canvasHistoryElementDependsOn(record.after, id) &&
+      !(record.before && canvasHistoryElementDependsOn(record.before, id)) &&
+      row.fieldOrigins.parentId === record.afterOrigins.parentId
+  );
+}
+
 export function findProtectedCanvasHistoryCreations(
   records: readonly CanvasHistoryChange[],
   rows: ReadonlyMap<CanvasElementId, CanvasStoredElement>
@@ -34,7 +54,10 @@ export function findProtectedCanvasHistoryCreations(
     const foreignFields =
       current && Object.values(current.fieldOrigins).some(origin => !allowedOrigins.has(origin));
     const externalDependency = [...rows.values()].some(
-      row => canvasHistoryElementDependsOn(row.element, id) && !creationIds.has(row.element.id)
+      row =>
+        canvasHistoryElementDependsOn(row.element, id) &&
+        !creationIds.has(row.element.id) &&
+        !dependencyFromSameEntry(row, id, records)
     );
     if (
       !current ||
