@@ -713,6 +713,14 @@ export const EDITOR_MESSAGE_FALLBACKS = {
   'editor.chart.revision.showBaseline': '查看原内容',
   'editor.chart.revision.showProposed': '查看提议',
   'editor.chart.revision.baselineNotChart': '原内容不是图表。',
+  'editor.documentReference.label.default': '文档',
+  'editor.documentReference.label.deleted': '已失效',
+  'editor.documentReference.label.outsideProject': '其他项目的文档',
+  'editor.documentReference.preview.label': '文档预览',
+  'editor.documentReference.notice.deleted': '引用的文档已删除',
+  'editor.documentReference.notice.outsideProject': '文档在其他项目，当前不可访问',
+  'editor.documentReference.notice.pluginUnavailable': '需要启用或安装对应插件后打开',
+  'editor.documentReference.preview.failed': '无法预览此文档，请稍后重试。',
 } as const satisfies Readonly<Record<EditorMessageKey, string>>;
 
 export const EDITOR_MESSAGE_CATALOG: MessageCatalogContribution = {
@@ -1427,6 +1435,14 @@ export const EDITOR_MESSAGE_CATALOG: MessageCatalogContribution = {
       'editor.chart.revision.showBaseline': 'Show original',
       'editor.chart.revision.showProposed': 'Show proposal',
       'editor.chart.revision.baselineNotChart': 'The original content is not a chart.',
+      'editor.documentReference.label.default': 'Document',
+      'editor.documentReference.label.deleted': 'Unavailable',
+      'editor.documentReference.label.outsideProject': 'Document in another project',
+      'editor.documentReference.preview.label': 'Document preview',
+      'editor.documentReference.notice.deleted': 'The referenced document has been deleted',
+      'editor.documentReference.notice.outsideProject': 'This document is in another project and cannot be opened from here',
+      'editor.documentReference.notice.pluginUnavailable': 'Enable or install the required plugin to open this document',
+      'editor.documentReference.preview.failed': 'Unable to preview this document. Please try again later.',
     },
   },
 };

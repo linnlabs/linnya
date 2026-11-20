@@ -51,6 +51,7 @@ import { ensureConversationObservabilityRegistered } from '../domains/conversati
 import { ensureEditorLocalizationRegistered } from '../domains/editor/orchestration/ensureEditorLocalizationRegistered'
 import { ensurePluginContributionLocalizationRegistered } from './plugins/orchestration/ensurePluginContributionLocalizationRegistered'
 import { ensureTableFillLocalizationRegistered } from './workflows/table-fill/orchestration/ensureTableFillLocalizationRegistered'
+import { ensureDocumentPreviewLocalizationRegistered } from './workflows/document-preview/orchestration/ensureDocumentPreviewLocalizationRegistered'
 import { provideHoverTooltipWindowFocus } from './orchestration/provideHoverTooltipWindowFocus'
 import { startNotificationAutoDismissal } from './notification'
 import { useUIStore } from '../../../apps/renderer/shared/stores/ui'
@@ -118,6 +119,7 @@ ensureConversationLocalizationRegistered()
 ensureEditorLocalizationRegistered()
 ensurePluginContributionLocalizationRegistered()
 ensureTableFillLocalizationRegistered()
+ensureDocumentPreviewLocalizationRegistered()
 
 app.use(pinia)
 app.onUnmount(startNotificationAutoDismissal())

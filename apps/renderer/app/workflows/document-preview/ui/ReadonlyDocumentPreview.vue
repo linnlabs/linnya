@@ -2,7 +2,7 @@
   <section
     class="readonly-document-preview"
     :class="{ 'document-preview-more-below': moreBelow }"
-    :aria-label="label || '文档只读预览'"
+    :aria-label="label || text('documentPreview.surface.label')"
     @mouseenter="
       pointerInside = true;
       expanded = true;
@@ -19,13 +19,13 @@
       v-else-if="!current"
       role="status"
     >
-      正在读取文档预览…
+      {{ text('documentPreview.loading') }}
     </p>
     <p
       v-if="surface.phase.value === 'failed'"
       role="alert"
     >
-      详情暂不可用，请重新打开预览。
+      {{ text('documentPreview.detail.failed') }}
     </p>
     <div
       ref="viewport"
@@ -55,7 +55,7 @@
       type="button"
       @click="expanded = true"
     >
-      展开
+      {{ text('documentPreview.expand') }}
     </button>
   </section>
 </template>
@@ -63,6 +63,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { DOCUMENT_PREVIEW_LAYOUT } from '@linnya/document-preview';
 import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
+import { useLocalization } from '@app/localization';
 import { useNavigationScope } from '@/app/navigation';
 import {
   readDocumentTypeIcon,
@@ -70,6 +71,8 @@ import {
   readDocumentTypeRecoveryAction,
 } from '@/app/plugins/documentTypePresentation';
 import type { DocumentPreviewTarget } from '../definitions/documentPreview';
+import { DOCUMENT_PREVIEW_MESSAGE_FALLBACKS } from '../definitions/documentPreviewMessageCatalog';
+import type { DocumentPreviewMessageKey } from '../definitions/documentPreviewMessages';
 import { createDocumentPreviewController } from '../orchestration/createDocumentPreviewController';
 import { createReadonlyDocumentSurface } from '../orchestration/createReadonlyDocumentSurface';
 const props = defineProps<{
@@ -79,6 +82,9 @@ const props = defineProps<{
   widthPx?: number;
 }>();
 const emit = defineEmits<{ ready: [] }>();
+const { message } = useLocalization();
+const text = (key: DocumentPreviewMessageKey) =>
+  message(key, DOCUMENT_PREVIEW_MESSAGE_FALLBACKS[key]);
 const scope = useNavigationScope(),
   expanded = ref(Boolean(props.detailOnly)),
   pointerInside = ref(false);

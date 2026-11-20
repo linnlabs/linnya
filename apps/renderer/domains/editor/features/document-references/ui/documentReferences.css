@@ -36,6 +36,12 @@
   max-width: var(--document-reference-available-width);
   max-height: min(32rem, 80vh, var(--document-reference-available-height));
 }
+.document-reference-preview-notice {
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
 .document-reference-suggestions {
   display: flex;
   flex-direction: column;

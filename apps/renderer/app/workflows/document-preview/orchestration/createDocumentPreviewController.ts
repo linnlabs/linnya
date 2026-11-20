@@ -1,3 +1,4 @@
+import type { WorkspaceMutationEvent } from '@app/schemas';
 import { getWorkspaceNavigationPort } from '@plugin/renderer/workspaceNavigation';
 import { readDocumentReference } from '@plugin/renderer/documentReferences';
 import { readDocumentPreview } from '@plugin/renderer/documentPreview';
@@ -8,12 +9,33 @@ import type {
   DocumentPreviewTarget,
   DocumentPreviewPresentation,
 } from '../definitions/documentPreview';
+import type { DocumentPreviewMessageKey } from '../definitions/documentPreviewMessages';
+import { DocumentPreviewUserError } from '../definitions/documentPreviewUserError';
 import { assertDocumentPreviewScope } from '../functions/assertDocumentPreviewScope';
 import {
   isSameDocumentPreview,
   isSameDocumentPreviewTarget,
 } from '../functions/isSameDocumentPreview';
+import { resolveCurrentDocumentPreviewMessage } from '../functions/resolveCurrentDocumentPreviewMessage';
 import { createDocumentPreviewState } from '../store/documentPreviewState';
+
+/** 文件夹事件只改所在项目里的路径。事件没带项目（null）时无法排除，按相关处理。 */
+function touchesProject(
+  event: Extract<WorkspaceMutationEvent, { nodeType: string }>,
+  projectId: string
+): boolean {
+  if (event.type === 'workspace.node.transferred')
+    return event.sourceProjectId === projectId || event.targetProjectId === projectId;
+  return event.projectId === null || event.projectId === projectId;
+}
+
+/** 内部原因只进日志；界面只显示可展示的失败，其余给通用提示。 */
+function failureNotice(failure: unknown, fallback: DocumentPreviewMessageKey): string {
+  console.warn('[document-preview] failed', failure);
+  return failure instanceof DocumentPreviewUserError
+    ? failure.message
+    : resolveCurrentDocumentPreviewMessage(fallback);
+}
 
 /** App唯一只读预览读取与订阅生命周期；不改正文、引用快照或文件会话。 */
 export function createDocumentPreviewController(
@@ -50,13 +72,13 @@ export function createDocumentPreviewController(
       if (!shown || !isSameDocumentPreview(shown, next)) state.loaded(next);
     } catch (failure) {
       if (!disposed && token === generation)
-        state.failed(failure instanceof Error ? failure.message : '无法预览文档');
+        state.failed(failureNotice(failure, 'documentPreview.error.read'));
     }
   }
   const stopMutation = subscribeToWorkspaceMutation(event => {
-    let documentId: string;
+    let documentId: string, projectId: string;
     try {
-      documentId = readTarget().documentId;
+      ({ documentId, projectId } = readTarget());
     } catch {
       void refresh();
       return;
@@ -76,7 +98,8 @@ export function createDocumentPreviewController(
       ids.includes(documentId) ||
       (detail?.format === 'workspace-markdown' && ids.some(id => id in detail.references)) ||
       event.type === 'project.deleted' ||
-      ('nodeType' in event && event.nodeType === 'folder')
+      // 文件夹改名、移动、删除只改所在项目里的路径；事件没带项目（null）时无法排除。
+      ('nodeType' in event && event.nodeType === 'folder' && touchesProject(event, projectId))
     )
       void refresh();
   });
@@ -112,7 +135,7 @@ export function createDocumentPreviewController(
           displayName: presentation.title,
         });
       } catch (failure) {
-        if (!disposed) state.failed(failure instanceof Error ? failure.message : '无法打开文档');
+        if (!disposed) state.failed(failureNotice(failure, 'documentPreview.error.open'));
       }
     },
     async recover(action: DocumentTypeRecoveryAction) {
@@ -120,8 +143,7 @@ export function createDocumentPreviewController(
         await action.activate();
         await refresh();
       } catch (failure) {
-        if (!disposed)
-          state.failed(failure instanceof Error ? failure.message : '无法启用对应插件');
+        if (!disposed) state.failed(failureNotice(failure, 'documentPreview.error.recover'));
       }
     },
     dispose() {
