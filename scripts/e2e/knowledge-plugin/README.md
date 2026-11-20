@@ -43,3 +43,5 @@
 `pnpm exec tsx scripts/e2e/knowledge-plugin/upgrade-checkpoint.acceptance.mjs <case>` 只能在系统临时目录下的独立 `linnya-knowledge-upgrade.*` linked checkout 运行。独立安装依赖、构建 `package:plugins:official`、`prepare:extra-resources` 和 `dev:electron --build-only` 后，脚本从真实旧产物创建库，再在该独立检出中生成带下一版迁移的测试 artifact。`during-migration`、`before-pointer`、`after-pointer` 验证正式升级编排的精确进程中断；`automatic-upgrade`、`rejected-migration`、`removed-before-upgrade` 用真实 Desktop 的随包启动路径验证。该测试不使用实际新版安装器，也不模拟 OS 断电。
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/large-cleanup.acceptance.mjs` 在已构建的磁盘 Renderer 探针里，以 20,000 个隔离文件检查占用显示、实际删除中点停与重试完成；不是 20,000 篇资料摄入或索引性能的证据。
+
+`pnpm exec tsx scripts/e2e/knowledge-plugin/store-concurrency.acceptance.mjs` 在真实插件商店同时启停或重装知识库与 Slides，重复触发单个卸载确认，并用商店、知识库入口和持久化状态对账。同一窗口内事件并发不包含双窗口竞争，也不代表两个插件同时卸载。
