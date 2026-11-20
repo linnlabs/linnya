@@ -38,6 +38,7 @@ import {
   resolvePptxShapeGeometry,
 } from './shape/pptxShapeGeometryAdapter';
 import { resolveGeneratedPptxTextLayoutOptions } from './text/textLayoutPptxOptions';
+import { splitPptxRunsIntoParagraphs } from './text/pptxRichTextParagraphs';
 import {
   mapPaintToPptxFill,
   mapStrokePaintToPptxLine,
@@ -138,6 +139,7 @@ export class StructuredCompiler {
       formulaPlan,
       chartPlan,
       declaredThemeFonts: deckSpec.theme?.fonts,
+      markEastAsianRunLanguage: true,
     });
   }
 
@@ -255,10 +257,10 @@ export class StructuredCompiler {
       return;
     }
     if (!el.content.some((run) => 'formula' in run)) {
-      slide.addText(el.content.map((run) => ({
+      slide.addText(splitPptxRunsIntoParagraphs(el.content.map((run) => ({
         text: 'text' in run ? run.text : '',
         options: 'text' in run ? mapTextParagraphStyleToProps(run.style) : {},
-      })), baseOptions);
+      }))), baseOptions);
       return;
     }
     if (!formulaContext) {
@@ -279,7 +281,7 @@ export class StructuredCompiler {
         },
       };
     });
-    slide.addText(runs, { ...baseOptions, objectName: textBox.objectName });
+    slide.addText(splitPptxRunsIntoParagraphs(runs), { ...baseOptions, objectName: textBox.objectName });
   }
 
   private addBulletList(

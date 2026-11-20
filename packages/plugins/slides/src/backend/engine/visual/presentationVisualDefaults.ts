@@ -15,6 +15,7 @@ import {
   type ThemeChartPalette,
   type ThemeChartPaletteLike,
 } from '@plugin/slides/shared';
+import { normalizePptxShadowAngle, resolveOuterShadow } from './outerShadow';
 
 interface ThemeLike extends ThemeChartPaletteLike {
   fonts?: {
@@ -116,15 +117,6 @@ export function mapImageShadowToProps(shadow: ImageVisualShadow): PptxGenJS.Shad
   };
 }
 
-/**
- * PptxGenJS 只收 0–359 的整数角度，越界一律换成 270°（向上）。偏移朝右上时 atan2 给负角，
- * 所以先折回 0–360 再取整；0 值靠仓库对 PptxGenJS 的补丁按原值写出（上游用 `||` 取默认）。
- */
-export function normalizePptxShadowAngle(angle: number): number {
-  const degrees = Math.round(((angle % 360) + 360) % 360);
-  return degrees === 360 ? 0 : degrees;
-}
-
 /** 去掉颜色字符串的 # 前缀，并强制要求规范化十六进制颜色。 */
 export function stripHash(color: string, path = 'color'): string {
   return toPptxHexColor(color, path);
@@ -215,17 +207,16 @@ export function mapTextParagraphLineSpacingToProps(style?: TextStyle): Record<st
   return opts;
 }
 
-/** ShapeStyle['shadow'] → PptxGenJS.ShadowProps（直角坐标 offsetX/Y → 极坐标 angle/offset） */
+/** ShapeStyle['shadow'] → PptxGenJS.ShadowProps（换算见 outerShadow.ts） */
 export function mapShapeShadowToProps(shadow: NonNullable<ShapeStyle['shadow']>): PptxGenJS.ShadowProps {
-  const angle = Math.atan2(shadow.offsetY, shadow.offsetX) * (180 / Math.PI);
-  const offset = Math.hypot(shadow.offsetX, shadow.offsetY);
+  const resolved = resolveOuterShadow(shadow);
   return {
     type: 'outer',
-    color: stripHash(shadow.color, 'shadow.color'),
-    blur: shadow.blur,
-    angle: normalizePptxShadowAngle(angle),
-    offset,
-    opacity: shadow.opacity ?? DEFAULT_SHADOW_OPACITY,
+    color: resolved.color,
+    blur: resolved.blur,
+    angle: resolved.angle,
+    offset: resolved.distance,
+    opacity: resolved.opacity,
   };
 }
 

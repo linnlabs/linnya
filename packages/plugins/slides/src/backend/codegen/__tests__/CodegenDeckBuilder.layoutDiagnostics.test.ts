@@ -79,6 +79,55 @@ describe('CodegenDeckBuilder layout diagnostics', () => {
     );
   });
 
+  it('旧稿富文本 run 带 style.lineSpacing 时照常构建：忽略它并给 parse 诊断', async () => {
+    const source = [
+      'const slide = createSlide();',
+      'const text = createText([{ text: "旧稿", style: { lineSpacing: { kind: "exactPt", value: 40 } } }]); slide.add(text);',
+      'compose({ title: "Deck", slides: [slide] });',
+    ].join('\n');
+    const commitPresentation = vi.fn(async () => ({ revisionId: 'revision-2', revision: 2 }));
+    const execute = vi.fn(async (): Promise<SandboxExecutionResult> => sandboxResult(
+      [{ text: '旧稿', style: { lineSpacing: { kind: 'exactPt', value: 40 } } }],
+      [node(1, 'Slide', 1, [2]), node(2, 'Text', 2, [], false, true)],
+    ));
+    const builder = new CodegenDeckBuilder({
+      presentationRepo: {
+        createPresentation: vi.fn(async () => ({ revisionId: 'revision-1', revision: 1 })),
+        commitPresentation,
+        getPresentation: vi.fn(async () => ({
+          nodeId: 'deck-1',
+          currentRevisionId: 'revision-1',
+          currentRevision: 1,
+          deckSource: source,
+          sourceHash: 'source-hash-1',
+          deckSpec: { title: 'Deck', layout: '16x9', slides: [] },
+          pptxBuffer: Buffer.from('pptx-1'),
+          title: 'Deck',
+          slideCount: 0,
+          layout: '16x9',
+          createdAt: 1,
+          updatedAt: 1,
+        })),
+      },
+      engine: { assembleDeck: vi.fn(async () => Buffer.from('pptx')) },
+      sandbox: { execute },
+      buildExecution: createInProcessPresentationBuildExecution(),
+    });
+
+    const result = await builder.buildFromSource({ nodeId: 'deck-1', source });
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        phase: 'parse',
+        severity: 'warning',
+        code: 'run_line_spacing_ignored',
+        path: 'slides[0].elements[0].content[0].style.lineSpacing',
+      }),
+    ]);
+    expect(result.parseWarnings).toEqual([expect.stringContaining('run_line_spacing_ignored')]);
+    expect(commitPresentation).toHaveBeenCalledOnce();
+  });
+
   it('调用方基于旧 revision 编辑时，在 sandbox 编译前直接拒绝', async () => {
     const execute = vi.fn(async (): Promise<SandboxExecutionResult> => sandboxResult());
     const builder = new CodegenDeckBuilder({
@@ -194,7 +243,14 @@ describe('CodegenDeckBuilder layout diagnostics', () => {
   });
 });
 
-function sandboxResult(): SandboxExecutionResult {
+function sandboxResult(
+  textContent: unknown = 'Mounted',
+  traceNodes: ReturnType<typeof node>[] = [
+    node(1, 'Slide', 1, [2]),
+    node(2, 'Text', 2, [], false, true),
+    node(3, 'Text', 3, [], false, true),
+  ],
+): SandboxExecutionResult {
   return {
     success: true,
     value: {
@@ -205,7 +261,7 @@ function sandboxResult(): SandboxExecutionResult {
         slides: [
           {
             _type: 'Slide',
-            children: [{ _type: 'Text', content: 'Mounted' }],
+            children: [{ _type: 'Text', content: textContent }],
           },
         ],
       },
@@ -213,11 +269,7 @@ function sandboxResult(): SandboxExecutionResult {
         version: 1,
         truncated: false,
         roots: [1],
-        nodes: [
-          node(1, 'Slide', 1, [2]),
-          node(2, 'Text', 2, [], false, true),
-          node(3, 'Text', 3, [], false, true),
-        ],
+        nodes: traceNodes,
       },
     },
     logs: [],

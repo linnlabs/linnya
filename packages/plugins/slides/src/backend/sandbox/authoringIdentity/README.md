@@ -20,7 +20,7 @@
 
 继续使用现有严格 v1/v2 codec，写入 v2；没有新增路径字符串或 v3 数据格式。人工值失联解析归 `codegen/compose/flex-layout/resolveManualEditTargets`，非法值仍拒绝。失联记录保留在源码，只有同一身份再次被明确恢复时才生效；循环记录不会按内容自动重挂。
 
-`DeckSpec.authoringIdentityVersion=1` 标记当前编译能力。旧产物由 query owner 基于捕获源码与主题只读补充编译，并最多缓存最近一次旧修订物化；编辑 owner 在同一 CAS 基线重新获得同源作者事实后才保存。读取不会创建用户修订或改写源码。首次实际编辑才持久化标记、人工值和新 DeckSpec，沿用 draft guard、回执与延迟 PPTX。
+`DeckSpec.authoringIdentityVersion=1` 标记当前编译能力。排版合同另由 `DeckSpec.layoutVersion` 标记，旧物化的读取侧刷新见 [presentationLayoutRefresh](../../features/presentationLayoutRefresh/README.md)。旧产物由 query owner 基于捕获源码与主题只读补充编译，并最多缓存最近一次旧修订物化；编辑 owner 在同一 CAS 基线重新获得同源作者事实后才保存。读取不会创建用户修订或改写源码。首次实际编辑才持久化标记、人工值和新 DeckSpec，沿用 draft guard、回执与延迟 PPTX。
 
 失联与源码移除人工记录的诊断同时进入写入反馈及 DeckSpec 派生警告；预览将其传给 Renderer，原始人工值仍由源码或源码历史拥有。新命令的目标必须在当前快照存在，不能借失联记录的容错提交不存在的目标。
 

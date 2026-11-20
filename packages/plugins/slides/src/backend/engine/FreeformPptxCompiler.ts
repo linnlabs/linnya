@@ -34,6 +34,7 @@ import {
   resolvePptxShapeGeometry,
 } from './shape/pptxShapeGeometryAdapter';
 import { resolveGeneratedPptxTextLayoutOptions } from './text/textLayoutPptxOptions';
+import { splitPptxRunsIntoParagraphs } from './text/pptxRichTextParagraphs';
 import {
   mapPaintToPptxFill,
   mapStrokePaintToPptxLine,
@@ -182,7 +183,7 @@ export class FreeformPptxCompiler {
         ...(effectsObjectName ? { objectName: effectsObjectName } : {}),
       } as PptxGenJS.TextPropsOptions);
     } else if (Array.isArray(el.content)) {
-      // 富文本行距由首个 run 承载，避免 textbox 再叠加一次。
+      // 富文本行距由每段首个 run 承载，避免 textbox 再叠加一次。
       const richTextBoxStyle = { ...textStyle };
       delete richTextBoxStyle.lineSpacing;
       delete richTextBoxStyle.lineSpacingMultiple;
@@ -192,14 +193,11 @@ export class FreeformPptxCompiler {
         throw new Error('Inline Formula compilation requires a formula context.');
       }
       const textBox = hasFormula ? formulaContext?.createInlineTextBox(el.position) : undefined;
-      const runs: PptxGenJS.TextProps[] = el.content.map((run, index) => {
+      const runs: PptxGenJS.TextProps[] = el.content.map((run) => {
         if ('text' in run) {
           return {
             text: run.text,
-            options: {
-              ...mapTextRunStyleToProps(run.style),
-              ...(index === 0 ? paragraphLineSpacing : {}),
-            } as PptxGenJS.TextPropsOptions,
+            options: mapTextRunStyleToProps(run.style) as PptxGenJS.TextPropsOptions,
           };
         }
         if (!textBox) throw new Error('Inline Formula text box context is missing.');
@@ -210,11 +208,10 @@ export class FreeformPptxCompiler {
             fontFace: 'Cambria Math',
             fontSize: run.formula.fontSize,
             color: run.formula.color.slice(1),
-            ...(index === 0 ? paragraphLineSpacing : {}),
           },
         };
       });
-      slide.addText(runs, {
+      slide.addText(splitPptxRunsIntoParagraphs(runs, paragraphLineSpacing), {
         ...pos,
         ...richTextBoxStyle,
         ...resolveGeneratedPptxTextLayoutOptions(
@@ -307,10 +304,10 @@ export class FreeformPptxCompiler {
       };
       const content = typeof el.content === 'string'
         ? el.content
-        : (el.content ?? []).map((run): PptxGenJS.TextProps => ({
+        : splitPptxRunsIntoParagraphs((el.content ?? []).map((run): PptxGenJS.TextProps => ({
           text: run.text,
           options: mapTextRunStyleToProps(run.style) as PptxGenJS.TextPropsOptions,
-        }));
+        })));
       if (shapeTextContext) {
         textOptions.objectName = registerShapeTextAutofit(
           shapeTextContext, opts.objectName,

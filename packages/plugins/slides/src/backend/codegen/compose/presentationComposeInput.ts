@@ -65,6 +65,7 @@ import {
   createParseContext,
   dedupeParseWarnings,
   formatParseWarnings,
+  type ParseContext,
   type ParseWarning,
 } from './inputParsers/parseContext.js';
 import {
@@ -218,8 +219,7 @@ function readComposeInput(
   args: Record<string, unknown>,
   acceptCompiledFields: boolean,
 ): DirectComposeParseResult {
-  // Doc 26 P0：根级 ctx，目前仅作为通道占位，未传入下游 parser。
-  // 下游 parser 在 P1 起会接入 ctx 参数；当前只确保 plumbing 端到端可观测。
+  // Doc 26：根级 ctx；已接入的 parser（目前是富文本 run 的旧 lineSpacing）经它产生 warning。
   const ctx = createParseContext('');
 
   const title = isNonEmptyString(args.title) ? args.title.trim() : null;
@@ -243,7 +243,7 @@ function readComposeInput(
 
   const slides: DirectSlideInput[] = [];
   for (let i = 0; i < args.slides.length; i++) {
-    const slideResult = parseSlideInput(args.slides[i], i, acceptCompiledFields);
+    const slideResult = parseSlideInput(args.slides[i], i, acceptCompiledFields, ctx);
     if (slideResult.error) return { error: slideResult.error };
     slides.push(slideResult.slide!);
   }
@@ -301,6 +301,7 @@ function parseSlideInput(
   value: unknown,
   slideIndex: number,
   acceptCompiledFields = false,
+  ctx?: ParseContext,
 ): { slide?: DirectSlideInput; error?: string } {
   if (!isRecord(value)) {
     return { error: `slides[${slideIndex}] 必须是对象。` };
@@ -325,6 +326,7 @@ function parseSlideInput(
       slideIndex,
       i,
       acceptCompiledFields,
+      ctx,
     );
     if (elResult.error) return { error: elResult.error };
     elements.push(elResult.element!);
@@ -392,6 +394,7 @@ function parseElementInput(
   slideIndex: number,
   elementIndex: number,
   acceptCompiledFields = false,
+  ctx?: ParseContext,
 ): { element?: DirectElementInput; error?: string } {
   const prefix = `slides[${slideIndex}].elements[${elementIndex}]`;
 
@@ -613,7 +616,11 @@ function parseElementInput(
     ? value.svgDecorative
     : value.decorative;
 
-  const content = parseTextContent(value.content, `${prefix}.content`);
+  const content = parseTextContent(
+    value.content,
+    `${prefix}.content`,
+    ctx?.field('slides').index(slideIndex).field('elements').index(elementIndex).field('content'),
+  );
   if ('error' in content) return content;
 
   const element: DirectElementInput = {

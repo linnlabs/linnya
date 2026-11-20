@@ -1,3 +1,4 @@
+import { isDeckLayoutCurrent } from '@plugin/slides/shared/deckSpec';
 import { changeManualLayer } from '../functions/changeManualLayer.js';
 import { moveSlideInDeckSource } from '../functions/moveSlideInDeckSource.js';
 import { insertObjectsAtSlide } from '../functions/insertObjectsAtSlide.js';
@@ -155,7 +156,7 @@ export class PresentationManualEditingRuntime {
     if (this.deps.draftRepo.has(command.documentId)) {
       return this.conflict(command, 'draft_present');
     }
-    if (current.deckSpec.authoringIdentityVersion !== 1) {
+    if (current.deckSpec.authoringIdentityVersion !== 1 || !isDeckLayoutCurrent(current.deckSpec)) {
       current = { ...current, deckSpec: await this.deps.builder.buildDeckSpecFromSource({
         nodeId: command.documentId, source: current.deckSource, expectedBase: command.expectedBase,
         sourceContext: { theme: current.deckSpec.theme },

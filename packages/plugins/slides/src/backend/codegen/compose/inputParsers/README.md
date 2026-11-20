@@ -57,6 +57,8 @@ inputParsers/
 | 可选字段缺失 | 不写入返回对象 |
 | 未知字段 | 按当前入口的 warning 策略报告，不扩展 shared 合同 |
 
+已从作者接口删除、但旧稿里可能残留的字段，按“忽略并提示”处理，不拒绝：富文本 run 的 `style.lineSpacing`（行距是段落属性，run 上没有对应）由 `textContentParser` 摘掉并产生 `run_line_spacing_ignored` warning，路径经 `ParseContext` 派生，渲染与导出不变；整框 `lineHeight` 不受影响。对应的类型检查放行在 `sandbox/codegenTypecheck`，只放过这一个字段。
+
 不要通过 fallback、默认矩形或静默吞字段让错误输入“看起来能跑”。
 
 ## 测试
@@ -65,4 +67,5 @@ inputParsers/
 - `__tests__/dataParsers*.test.ts`
 - `__tests__/parseContext.test.ts`
 - `../../__tests__/parseWarningsChannel.test.ts`
+- `../../../__tests__/run-line-spacing.integration.test.ts`（旧稿 run 行距：忽略、提示、渲染不变）
 - `packages/plugins/slides/src/backend/tools/presentationTools.test.ts`

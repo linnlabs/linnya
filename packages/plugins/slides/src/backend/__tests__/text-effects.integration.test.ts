@@ -101,6 +101,18 @@ describe('文字效果：渐变、空心、字符阴影', () => {
     expect(properties).toContain('<a:alpha val="60000"/>');
   });
 
+  it('只写 opacity：每段 run 保留原色并写 alpha（缺省色也一样）', async () => {
+    const colored = await compileSlide([text({ color: '#C0392B', opacity: 0.4, content: [{ text: '上' }, { text: '下', style: { bold: true } }] })]);
+    const runs = textRunProperties(colored.xml);
+    expect(runs).toHaveLength(2);
+    for (const properties of runs) {
+      expect(properties).toMatch(/<a:solidFill><a:srgbClr val="C0392B"><a:alpha val="40000"\/><\/a:srgbClr><\/a:solidFill>/);
+    }
+
+    const defaulted = await compileSlide([text({ opacity: 0.4 })]);
+    expect(textRunProperties(defaulted.xml)[0]).toMatch(/<a:solidFill><a:srgbClr val="000000"><a:alpha val="40000"\/>/);
+  });
+
   it('富文本各段都带效果；段落不能另写 color', async () => {
     const { xml } = await compileSlide([text({
       content: [{ text: '上' }, { text: '下', style: { bold: true } }],

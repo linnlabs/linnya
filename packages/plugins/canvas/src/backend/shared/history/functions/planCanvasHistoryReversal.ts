@@ -4,7 +4,7 @@ import {
   type CanvasCommitPlan,
   type CanvasElementChange,
 } from '../../../features/canvasCommit';
-import type { CanvasHistoryChange } from '../definitions/canvasHistory';
+import type { CanvasHistoryChange, CanvasHistoryEntry } from '../definitions/canvasHistory';
 import type {
   CanvasHistoryCreation,
   CanvasHistoryDeletion,
@@ -43,6 +43,13 @@ function reverseRecord(
   return reverseCanvasHistoryEdit(record, context);
 }
 
+/** 逆转顺序与计划结果一一对应：`results[i]` 是第 i 条记录的决定。 */
+export function orderCanvasHistoryReversal(
+  entry: Pick<CanvasHistoryEntry, 'changes'>
+): readonly CanvasHistoryReversibleChange[] {
+  return dependencyOrder([...entry.changes].reverse());
+}
+
 function dependencyOrder(
   records: readonly CanvasHistoryChange[]
 ): readonly CanvasHistoryReversibleChange[] {
@@ -74,7 +81,7 @@ export function planCanvasHistoryReversal(input: CanvasHistoryReversalInput): Ca
     origin: input.origin,
     now: input.now,
   };
-  for (const record of dependencyOrder(records)) {
+  for (const record of orderCanvasHistoryReversal(input.entry)) {
     const decision = reverseRecord(record, context, protectedCreations);
     results.push({
       index: results.length,
