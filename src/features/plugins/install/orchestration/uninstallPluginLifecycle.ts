@@ -7,6 +7,7 @@ import type { PluginManifestDataStorage } from '@app/schemas';
 import { PluginStateService } from '../../infrastructure/sqlite/plugin-state.service';
 import { PluginActiveVersionService } from '../../infrastructure/sqlite/plugin-active-version.service';
 import {
+  isPluginUserRemoved,
   markPluginUserRemoved,
   pluginRemovalMarkerFileName,
 } from '../functions/pluginRemovalMarker';
@@ -49,10 +50,11 @@ export type UninstallPluginLifecycleResult =
 function resolvePluginInstallDir(userPluginRoot: string, pluginId: PluginId): string {
   const rootDir = path.resolve(userPluginRoot);
   const pluginDir = path.resolve(rootDir, pluginId);
-  const relative = path.relative(rootDir, pluginDir);
-  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+  if (path.dirname(pluginDir) !== rootDir || path.basename(pluginDir) !== pluginId) {
     throw new Error(`插件安装目录不能指向插件根目录外: ${pluginId}`);
   }
+  const entry = fs.lstatSync(pluginDir, { throwIfNoEntry: false });
+  if (entry && !entry.isDirectory()) throw new Error(`插件安装路径不是实际目录: ${pluginId}`);
   return pluginDir;
 }
 
@@ -83,6 +85,31 @@ function removePluginRuntimeEntries(pluginInstallDir: string): {
   return { removedActivePointer, removedEntries };
 }
 
+function finishPluginUninstallOnDisk(userPluginRoot: string, pluginId: PluginId, pluginInstallDir: string) {
+  // 标记先落盘，保证下次启动的 seed 不会把已卸载插件装回去。
+  if (!isPluginUserRemoved(userPluginRoot, pluginId)) markPluginUserRemoved(userPluginRoot, pluginId);
+  return removePluginRuntimeEntries(pluginInstallDir);
+}
+
+export function reconcileCommittedPluginUninstalls(options: {
+  readonly db: Database.Database;
+  readonly userPluginRoot: string;
+  readonly recordFailure: (pluginId: PluginId, message: string) => void;
+}): boolean {
+  let runtimeEntriesChanged = false;
+  for (const pluginId of new PluginStateService(options.db).listCommittedUninstallIds()) {
+    try {
+      const directory = resolvePluginInstallDir(options.userPluginRoot, pluginId);
+      const result = finishPluginUninstallOnDisk(options.userPluginRoot, pluginId, directory);
+      runtimeEntriesChanged ||= result.removedActivePointer || result.removedEntries.length > 0;
+    } catch (error) {
+      // 用户卸载已提交。锁定等磁盘错误只影响运行文件收尾，不应挡住工作区启动。
+      options.recordFailure(pluginId, toPluginOperationError(error, { pluginId }).message);
+    }
+  }
+  return runtimeEntriesChanged;
+}
+
 export function uninstallPluginLifecycle(
   options: UninstallPluginLifecycleOptions,
 ): UninstallPluginLifecycleResult {
@@ -95,13 +122,15 @@ export function uninstallPluginLifecycle(
       throw new Error('删除插件数据需要调用异步清理生命周期入口');
     }
     const stateService = new PluginStateService(options.db);
+    const activeService = new PluginActiveVersionService(options.db);
     const pluginInstallDir = resolvePluginInstallDir(options.userPluginRoot, options.pluginId);
-    stateService.setInstalled(options.pluginId, false, options.knownPlugins);
-    stateService.setUserRemoved(options.pluginId, true);
-    new PluginActiveVersionService(options.db).removeRecord(options.pluginId);
-    // 先落下主动移除标记，再删产物，避免中断后被随包 seed 装回。
-    markPluginUserRemoved(options.userPluginRoot, options.pluginId);
-    const removalResult = removePluginRuntimeEntries(pluginInstallDir);
+    // SQLite 卸载事实一次提交。提交后磁盘收尾可重入，绝不因进程中断丢失主动卸载意图。
+    options.db.transaction(() => {
+      stateService.setInstalled(options.pluginId, false, options.knownPlugins);
+      stateService.setUserRemoved(options.pluginId, true);
+      activeService.removeRecord(options.pluginId);
+    })();
+    const removalResult = finishPluginUninstallOnDisk(options.userPluginRoot, options.pluginId, pluginInstallDir);
 
     return {
       status: 'uninstalled',

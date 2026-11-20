@@ -17,6 +17,7 @@ import { PluginStateService } from '../../../../features/plugins/infrastructure/
 import { PluginUpgradeRunner } from '../../../../features/plugins/infrastructure/sqlite/plugin-upgrade.runner';
 import { activatePluginVersionWithMigrations } from '../../../../features/plugins/install/orchestration/activatePluginVersionWithMigrations';
 import { reconcilePluginActiveVersions } from '../../../../features/plugins/install/orchestration/reconcilePluginActiveVersions';
+import { reconcileCommittedPluginUninstalls } from '../../../../features/plugins/install/orchestration/uninstallPluginLifecycle';
 import { PluginActiveVersionService } from '../../../../features/plugins/infrastructure/sqlite/plugin-active-version.service';
 import { ensurePluginSkillAvailabilityRegistered } from '../skillAvailability';
 import { syncBackendPluginHiddenWorkers } from '../hiddenWorkerPluginRuntime';
@@ -437,6 +438,14 @@ export function bootstrapBuiltinPluginLifecycle(
   // 先续做已提交的激活，再选择本次启动的更新；不能让较新的随包版本跳过未收尾的上一笔安装。
   const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
   if (userPluginRoot) {
+    // 卸载的 SQLite 意图已提交但文件尚未收尾时，必须先清除残留版本，不能让 loader 装回。
+    if (reconcileCommittedPluginUninstalls({
+      db,
+      userPluginRoot,
+      recordFailure: (pluginId, message) => pluginDiagnostics.record({
+        level: 'error', pluginId, capability: null, message: `插件卸载启动收尾失败: ${message}`,
+      }),
+    })) resetBackendPluginRegistrationForRuntimeChange();
     reconcilePluginActiveVersions({
       db,
       userPluginRoot,

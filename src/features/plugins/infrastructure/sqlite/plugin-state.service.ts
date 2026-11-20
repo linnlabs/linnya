@@ -38,6 +38,12 @@ export class PluginStateService {
     return rows.map((row) => row.plugin_id);
   }
 
+  listCommittedUninstallIds(): PluginId[] {
+    return this.db.prepare<[], { plugin_id: PluginId }>(`
+      SELECT plugin_id FROM installed_plugins WHERE installed = 0 AND user_removed = 1
+    `).all().map(row => row.plugin_id);
+  }
+
   getInstalledRecord(pluginId: PluginId): InstalledPluginRecord | null {
     const row = this.db
       .prepare(`

@@ -37,3 +37,5 @@
 `pnpm exec tsx scripts/e2e/knowledge-plugin/cleanup-crash.acceptance.mjs` 点击“卸载并删除”，确认合成目录已部分删除后强制结束自己的 Backend 和 Desktop。重启后把界面状态与安装记录、激活账本和指针、卸载标记、迁移、表和残留目录逐项对账，检查 SQLite 结构，再从界面重试。这只覆盖进程崩溃时的删除目录阶段：操作系统和磁盘缓存仍在；不等同于正常关机、虚拟机强断电或物理掉电，也不代表其他写入断点或平台已验收。
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/reinstall-crash.acceptance.mjs` 用探针卸载并保留资料；另起隔离进程调用正式重装编排，在子进程已写入安装记录、尚未迁移和激活时强杀。复用同一 profile 真启动 Desktop，要求未提交重装仍可从商店安装，并保留原迁移及数据目录。这是进程崩溃回归，不把单独进程的精确断点写成从安装 IPC 点击触发的强杀。
+
+`pnpm exec tsx scripts/e2e/knowledge-plugin/lifecycle-checkpoint.acceptance.mjs <checkpoint>` 从真实知识库界面创建测试库，停止 Desktop 后在同一隔离 profile 调用正式生命周期，并在精确写入点强杀验收子进程。支持 `uninstall-before-intent`、`uninstall-before-marker`、`cleanup-before-commit`、`cleanup-after-commit`。重新启动后从商店核对界面与 SQLite、激活记录、卸载标记和文件；清理最终事务未提交时，必须能从商店续清，事务已提交时不能出现假的“数据残留”。这些断点不模拟操作系统断电。

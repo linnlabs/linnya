@@ -64,7 +64,7 @@
 
 ## 卸载和重装
 
-默认卸载（`uninstallPluginLifecycle`）：`installed=0`、删 enabled、标记 `user_removed=1`、删 active 指针与版本目录、保留磁盘移除标记防自动装回；**不删数据表、不清迁移账本**。重装清除移除标记、重装 runtime 文件、复用原数据与 migration ledger。
+默认卸载（`uninstallPluginLifecycle`）：`installed=0`、删 enabled、标记 `user_removed=1` 和移除 SQLite 激活记录在同一事务提交。提交后写磁盘移除标记，再移除 active 指针与版本目录；若此时中断，启动在加载插件前按已提交的卸载记录收尾，只触碰插件运行目录。**不删数据表、不清迁移账本**。重装清除移除标记、重装 runtime 文件、复用原数据与 migration ledger。
 
 随包插件的本地卸载不依赖远程服务开关。商店列表由 Host 投影 `bundledSourceAvailable`，只有非 required 且存在随包 artifact 的插件显示卸载/从随包安装入口；远程服务开关仍只控制远程安装和更新。启动 seed 尊重用户移除标记；用户明确点击“安装”可以重新 stage 并显式越过该标记。
 
