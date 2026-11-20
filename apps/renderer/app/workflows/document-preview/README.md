@@ -14,3 +14,5 @@ Host 在懒加载前后核对当前项目，每个容器有独立所有权。当
 Canvas 相机、卡片选区与近景判定属于消费者；静态光栅与隐藏导出 worker 直接使用同一个 document-preview 表面，按卡高只构建可见前缀。首屏与全文共享字号、宽度、间距和内容规则。实际冷载与帧耗时必须在正式产物测量，业务测试不能冒充性能验收。
 
 用户可见文案由本 workflow 的目录提供（`documentPreview.*`，owner `document-preview-workflow`，`app/main.js` 注册，中英文齐备）。失败分两类：范围或可用性不满足时抛 `DocumentPreviewUserError`，消息已按当前语言生成、可直接展示（Canvas 等消费者可以显示它）；其他异常（IPC、读取、转换）的原文只进日志，界面只给通用的“无法预览/打开/启用”提示。工作区的文件夹事件只在目标所在项目内触发重新读取，事件没带项目时按相关处理。
+
+预览表面的外壳文字（无标题时的标题行、状态说明、打开按钮的无障碍名称）和正文里行内引用、参考文献等的语言，由 `@linnya/document-preview` 按传入的 `locale` 生成：Host 的 `ReadonlyDocumentPreview` 传当前界面语言，切换语言时表面原地重画；隐藏 worker 等不知道界面语言的消费方省略它，位图里的兜底字保持中文。插件不可用时的恢复按钮（“启用插件”“前往插件商店”）文字属于 App 插件目录（`plugins.contribution.documentType.recovery.*`）。输入框引用标签激活失败的提示同在该目录（`plugins.contribution.workspaceReference.error.*`）。

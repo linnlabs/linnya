@@ -82,7 +82,7 @@ const props = defineProps<{
   widthPx?: number;
 }>();
 const emit = defineEmits<{ ready: [] }>();
-const { message } = useLocalization();
+const { message, currentLocale } = useLocalization();
 const text = (key: DocumentPreviewMessageKey) =>
   message(key, DOCUMENT_PREVIEW_MESSAGE_FALLBACKS[key]);
 const scope = useNavigationScope(),
@@ -110,11 +110,12 @@ const surface = createReadonlyDocumentSurface({
   },
   report: failure => console.warn('[document-preview] presentation failed', failure),
 });
-const recovery = computed(() =>
-  current.value?.presentation.status === 'plugin_unavailable' && current.value.presentation.nodeType
+const recovery = computed(() => {
+  void currentLocale.value; // 按钮文字随界面语言重算
+  return current.value?.presentation.status === 'plugin_unavailable' && current.value.presentation.nodeType
     ? readDocumentTypeRecoveryAction(current.value.presentation.nodeType)
-    : null
-);
+    : null;
+});
 const detailComponent = computed(() =>
   current.value?.presentation.status === 'available' &&
   current.value.preview.status === 'ready' &&
@@ -152,7 +153,7 @@ watch(current, () => {
   expanded.value = Boolean(props.detailOnly || pointerInside.value);
 });
 watch(
-  [current, expanded, theme, measuredWidth, () => props.widthPx],
+  [current, expanded, theme, measuredWidth, () => props.widthPx, currentLocale],
   () => {
     const identity = current.value,
       width = props.widthPx ?? measuredWidth.value;
@@ -166,6 +167,7 @@ watch(
         widthPx: width,
         maxHeight: expanded.value ? undefined : DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight,
         theme: theme.value,
+        locale: currentLocale.value,
         icon: identity.presentation.nodeType
           ? readDocumentTypeIcon(identity.presentation.nodeType)
           : null,

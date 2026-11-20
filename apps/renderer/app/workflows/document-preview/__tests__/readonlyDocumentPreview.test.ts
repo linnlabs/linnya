@@ -419,3 +419,43 @@ it('界面文案跟随语言：读取中显示英文提示，读取失败显示�
     useLocalizationStore().setCurrentLocale('zh-CN');
   }
 });
+it('已删除目标的预览按界面语言显示，切换语言后原地重画', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  );
+  ports.availability.mockReturnValue(ports.stopAvailability);
+  ports.read.mockResolvedValue({ documentId: 'doc', status: 'deleted', title: null, nodeType: null, path: null });
+  ports.preview.mockResolvedValue({ documentId: 'doc', title: null, nodeType: null, status: 'deleted' });
+  const host = document.createElement('div'),
+    pinia = createPinia();
+  document.body.append(host);
+  setActivePinia(pinia);
+  registerMessageCatalogs(DOCUMENT_PREVIEW_MESSAGE_CATALOG);
+  const store = useLocalizationStore();
+  store.setCurrentLocale('en-US');
+  useNavigationScope().enterProject('project');
+  const app = createApp({
+    render: () =>
+      h(ReadonlyDocumentPreview, {
+        readTarget: () => ({ documentId: 'doc', projectId: 'project' }),
+        widthPx: 320,
+      }),
+  }).use(pinia);
+  try {
+    app.mount(host);
+    await vi.waitFor(() => expect(host.textContent).toContain('This document has been deleted'));
+    expect(host.textContent).toContain('Document unavailable');
+    expect(host.textContent).not.toMatch(/[一-龥]/);
+    store.setCurrentLocale('zh-CN');
+    await vi.waitFor(() => expect(host.textContent).toContain('文档已删除'));
+    expect(host.textContent).toContain('文档当前不可访问');
+  } finally {
+    app.unmount();
+    clearLocalizationRegistryForTest();
+    store.setCurrentLocale('zh-CN');
+  }
+});
