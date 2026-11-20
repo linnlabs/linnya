@@ -43,7 +43,7 @@ import {
   parseStoredRuntimeEvent,
   serializeStoredRuntimeEvent,
 } from './functions/runtimeEventStorageCodec';
-import { ConversationSelectedAgentIdSchema, type ConversationSelectedAgentId } from '@app/schemas';
+import { readConversationSelectedAgentId, type ConversationSelectedAgentId } from '@app/schemas';
 import { SqliteSubrunTraceHistoryCleanup } from '../subrun-trace-history/sqliteSubrunTraceHistoryCleanup';
 import { isRecord } from '@linnya/foundation';
 
@@ -111,10 +111,7 @@ function toConversationListItem(row: ConversationRow): ConversationListItem {
     is_pinned: row.is_pinned === 1,
     pinned_at: typeof row.pinned_at === 'number' ? row.pinned_at : undefined,
     mode: readConversationMode(row),
-    selected_agent_id:
-      row.selected_agent_id === null
-        ? null
-        : ConversationSelectedAgentIdSchema.parse(row.selected_agent_id),
+    selected_agent_id: readConversationSelectedAgentId(row.selected_agent_id),
   };
 }
 

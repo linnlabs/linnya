@@ -1979,6 +1979,43 @@ describe('SQLiteEventStore B3a.5 write session API', () => {
   });
 });
 
+describe('SQLiteEventStore legacy selected agent identity', () => {
+  it('reads the literal default agent id stored by older data as the default agent', async () => {
+    const { db, store } = createStore();
+    const conversationId = 'conv-legacy-default-agent';
+    await store.ensureConversation(
+      conversationId,
+      [makeUserInput('event-legacy-default-agent', conversationId, '继续整理资料', 1000)],
+      undefined,
+      'agent'
+    );
+    // 旧数据（例如 CLI 的 `send --agent default`）把默认 Agent 的 ID 原样写进了库。
+    db.prepare('UPDATE conversations SET selected_agent_id = ? WHERE conversation_id = ?').run(
+      'default',
+      conversationId
+    );
+
+    // 读取合同里默认 Agent 一律是 null，不让各界面各自识别字面量。
+    await expect(store.getConversationMetadata(conversationId)).resolves.toMatchObject({
+      selected_agent_id: null,
+    });
+    await expect(store.listConversations({})).resolves.toMatchObject({
+      conversations: [{ conversation_id: conversationId, selected_agent_id: null }],
+    });
+
+    // 其他身份（包括已不可用的注册表 ID）保持原样，由展示层按注册表判断。
+    db.prepare('UPDATE conversations SET selected_agent_id = ? WHERE conversation_id = ?').run(
+      'research_v1',
+      conversationId
+    );
+    await expect(store.getConversationMetadata(conversationId)).resolves.toMatchObject({
+      selected_agent_id: 'research_v1',
+    });
+
+    store.close();
+  });
+});
+
 describe('SQLiteEventStore conversation pinning', () => {
   it('lists conversations with the same sort cursor across page boundaries without skipping ties', async () => {
     const { db, store } = createStore();

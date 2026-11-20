@@ -356,6 +356,7 @@ plugin contribution agentId
 ```
 
 - **产品身份单一**：插件、Renderer、跨端 DTO 与 SQLite 共同使用 `AgentDefinition.id`；`promptKey` 只在 Host admission 之后成为单次执行的内部路由键，不进 read model、metadata 或 agent-choice contribution。
+- **读取合同里默认 Agent 只有 null 一种写法**：旧数据（例如 CLI 的 `send --agent default`）曾把默认 Agent 的 ID `default` 字面量写进 `selected_agent_id`，它与未选择等价。SQLite 读取边界经 `readConversationSelectedAgentId` 归一一次，历史列表、元数据与其他读取方都拿到 null；Renderer 不识别字面量，也不据此显示“Agent 已不可用”。已不可用的注册表 ID 仍原样返回。
 - **原子正式化**：空白草稿选择 agent 时，Host 在同一事务内正式化 conversation 并写入 `selected_agent_id`；清空空白草稿不凭空创建会话。
 - **先持久化后提交 read model**：Renderer 只有在 Host mutation 成功后才更新目标 conversation；失败保留原选择，不做乐观写入或 fallback。
 - **会话 ID 一次性捕获**：编排在用户动作发起时捕获 `conversationId` 与 `projectId`，任何 `await` 之后只能按该身份提交结果，禁止重读 `activeConversation`（[INV-31](./00-invariants.md#inv-31--请求--流实例作用域并发模型)）。
