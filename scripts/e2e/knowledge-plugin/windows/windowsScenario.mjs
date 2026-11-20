@@ -137,7 +137,7 @@ try {
       'First project homepage',
     );
     await application.clickText('插件');
-    await application.clickText('插件市场');
+    await application.clickElement(`Array.from(document.querySelectorAll('main [role="tab"]')).find(tab=>tab.firstElementChild?.textContent.trim()==='插件市场')`);
     await application.screenshot(path.join(evidence, 'knowledge-not-installed.png'));
     await application.clickElement(`Array.from(document.querySelectorAll('.plugin-store-card')).find(card=>card.querySelector('h2')?.textContent==='知识库')?.querySelector('button.plugin-store-install-button')`);
     await until(
