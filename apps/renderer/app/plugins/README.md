@@ -7,6 +7,8 @@ Renderer 插件运行时属于 app-level orchestration：它连接主进程提�
 - `loader/runtimeRendererPluginLoader.ts` 是运行时插件集合同步的唯一编排入口。App 启动、插件商店安装/卸载和插件 API 就绪通知都调用同一个入口。
 - 每次调用代表一个完整的“当前期望插件集合”快照。loader 必须按调用顺序串行提交这些快照，不能合并并发调用；否则安装后立即卸载等后续状态可能丢失。
 - 前一次同步失败只影响对应调用方，不能阻断后续快照。诊断状态按真正开始执行的同步编号，不允许并发任务互相覆盖。
+- 单个入口的 `import` 有超时（`RENDERER_PLUGIN_ENTRY_IMPORT_TIMEOUT_MS`，30 秒，覆盖开发态 Vite 冷启动转换）。超时按 `reason: 'import-timeout'` 记入该轮 failures，继续处理后续入口并结束本轮同步，App 启动链与串行队列不会被一个不返回的入口堵住；迟到的模块结果直接丢弃。
+- 终态为 failed 时，App 底部的 `RendererPluginLoadFailureNotice` 列出未加载的插件并提供重试；重试由 App 注入，重新走一次 loader 快照与文件处理器同步，提示本身不操作 registry。
 - `registry.ts` 只负责 contribution 注册、激活状态和各窄 registry 的一致提交/回滚，不负责协调多个外部同步请求。
 - 插件 `activate` / `deactivate` 只能在 loader 的串行同步范围内执行。UI 和具体 domain 不得直接操作 registry 生命周期。
 - 内置Host port装配以页面为生命周期；开发服务器在热更新将重执行`App.vue`时，先整页重载以重建全部port与registry。不能只跳过重复注册而保留旧adapter，也不能调用测试清理门面模拟产品dispose。修改这些装配依赖前先保存草稿；普通组件与CSS仍保留自己的HMR边界，规则见[开发启动热更新](../../../../scripts/development/features/renderer-bootstrap-hmr/README.md)。
