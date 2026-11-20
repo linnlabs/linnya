@@ -22,6 +22,7 @@ import {
 import { findSimilarSemanticNames } from '../../functions/findSimilarSemanticNames';
 import { cleanSemanticName, semanticNameKey } from '../../functions/normalizeSemanticName';
 import { normalizeSemanticValue } from '../../functions/normalizeSemanticValue';
+import { assertNotBuiltinFieldName } from '../../functions/reservedSemanticNames';
 import { conformSemanticValue } from '../../features/schema-changes/functions/convertSemanticValue';
 import { createSqliteSemanticSchemaChanges } from './sqliteSemanticSchemaChanges';
 
@@ -418,6 +419,7 @@ export function createSqliteSemanticLayer(
         if (name.includes('.')) {
           throw new SemanticLayerError('reserved_name', '字段名不能含“.”：带点的名称留给插件声明的字段');
         }
+        assertNotBuiltinFieldName(name);
         if (!SEMANTIC_VALUE_TYPES.includes(input.valueType)) {
           throw new SemanticLayerError('invalid_definition', `不支持的字段类型：${String(input.valueType)}`, {
             valueTypes: [...SEMANTIC_VALUE_TYPES],

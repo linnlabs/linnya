@@ -13,6 +13,7 @@ import {
   type SemanticValueType,
 } from '../../definitions/semanticLayer';
 import { cleanSemanticName, semanticNameKey } from '../../functions/normalizeSemanticName';
+import { assertNotBuiltinFieldName, builtinFieldNamed } from '../../functions/reservedSemanticNames';
 import {
   SEMANTIC_SCHEMA_CHANGE_KINDS,
   type SemanticChangeActor,
@@ -311,6 +312,7 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
       if (kind === 'property' && name.includes('.')) {
         throw new SemanticLayerError('reserved_name', '字段名不能含“.”：带点的名称留给插件声明的字段');
       }
+      if (kind === 'property') assertNotBuiltinFieldName(name);
       if (name === target.name) {
         throw new SemanticLayerError('invalid_definition', `新名称与原名称相同：“${name}”`);
       }
@@ -396,6 +398,9 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
         const row = definitionRow(table, id);
         if (!row || row.deleted_at !== null) throw new SemanticLayerError('undo_conflict', `“${undo.to}”已被删除，无法改回原名`);
         if (row.name !== undo.to) throw new SemanticLayerError('undo_conflict', `“${undo.to}”之后又改名为“${row.name}”，先撤回后来的改动`);
+        if (undo.kind === 'rename_property' && builtinFieldNamed(undo.from)) {
+          throw new SemanticLayerError('undo_conflict', `原名“${undo.from}”与内建字段同名，不能改回`);
+        }
         const taken = db.prepare<[string, string], { name: string }>(
           `SELECT name FROM ${table} WHERE name_key = ? AND deleted_at IS NULL AND id <> ?`
         ).get(semanticNameKey(undo.from), id);
