@@ -8,6 +8,7 @@ import { startCustomCapabilityProtocolServer } from '../../../../src/app-hosts/l
 import { MODEL_CONNECTION_TEST_PDF } from '../../../../src/app-hosts/linnya/application/custom-api-onboarding/definitions/modelConnectionTestDocument.ts';
 import { createStaticBmp } from '../../../../src/features/parsers/testkit/createStaticBmp.ts';
 import { launchInstalledDesktop, until } from './installedDesktopSession.mjs';
+import { verifyWindowsPluginData } from './windowsPluginDataScenario.mjs';
 
 assert.equal(process.platform, 'win32');
 const root = path.resolve(process.argv[2]);
@@ -66,7 +67,7 @@ const upload = async (name, bytes, extra = {}) => {
   assert.equal(doc.hasSource, true);
   return doc;
 };
-const search = (documentId) =>
+const search = documentId =>
   application.plugin('search', {
     kbId,
     request: {
@@ -79,7 +80,8 @@ const search = (documentId) =>
   });
 const sourcePath = id =>
   path.join(application.workspace, 'Plugins', 'knowledge', 'source_of_truth', `${id}.source.json`);
-const originalsPath = (...entries) => path.join(application.workspace, 'Plugins', 'knowledge', 'originals', ...entries);
+const originalsPath = (...entries) =>
+  path.join(application.workspace, 'Plugins', 'knowledge', 'originals', ...entries);
 try {
   const candidate = JSON.parse(await readFile(path.join(root, 'candidate.json'), 'utf8'));
   details.candidate = candidate;
@@ -325,6 +327,16 @@ try {
     assert.ok(restoredSearch.results.some(result => result.docId === graphDocument.id));
   });
   await check('正常删除知识库清理真实SQLite、原文和PDF', async () => {
+    const retainedLibrary = kbId;
+    // 单库删除走独立样本；后面的插件卸载仍要面对拥有七份原资料和图谱索引的真实库。
+    const disposable = await application.plugin('create', {
+      name: 'Windows individual library deletion',
+    });
+    kbId = disposable.id;
+    await upload('delete-this.pdf', Buffer.from(MODEL_CONNECTION_TEST_PDF, 'base64'), {
+      pdf_ocr_model_id: ocrId,
+      force_vision_mode: 'true',
+    });
     const before = await docs();
     await application.plugin('delete', { kbId });
     assert.equal(await application.plugin('get', { kbId }), null);
@@ -338,6 +350,23 @@ try {
       code: 'ENOENT',
     });
     details.deletedDocuments = before.map(document => document.id);
+    kbId = retainedLibrary;
+  });
+  details.pluginLifecycle = {};
+  await verifyWindowsPluginData({
+    application,
+    database,
+    evidence,
+    check,
+    library: {
+      id: kbId,
+      documentIds: (await docs()).map(document => document.id),
+      searchDocumentId: graphDocument.id,
+    },
+    search,
+    embeddingCalls: () =>
+      fixture.requests.filter(request => request.path === '/v1/embeddings').length,
+    observations: details.pluginLifecycle,
   });
   assert.deepEqual(application.errors, []);
   details.protocol = fixture.requests.map(request => ({

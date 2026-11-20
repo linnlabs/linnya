@@ -25,6 +25,8 @@ const evidence = createEvidence('windows-knowledge-plugin', {
     ...[
       'prepareWindowsCandidate.mjs',
       'installedDesktopSession.mjs',
+      'ntfsAllocation.mjs',
+      'windowsPluginDataScenario.mjs',
       'windowsScenario.mjs',
       'controller.ps1',
       'user-session.ps1',
@@ -63,10 +65,15 @@ let failed;
 try {
   // SSH 和交互验收由同一账号执行时，无需访问公共目录或变更它的 ACL。
   const sharedAccount = user.toLowerCase() === interactiveUser.toLowerCase();
-  const parentDirectory = await remote(sharedAccount
-    ? '[Console]::Write($env:USERPROFILE)'
-    : "[Console]::Write([Environment]::GetFolderPath('CommonDocuments'))");
-  assert.ok(path.win32.isAbsolute(parentDirectory), 'Windows acceptance root must be an accessible absolute directory');
+  const parentDirectory = await remote(
+    sharedAccount
+      ? '[Console]::Write($env:USERPROFILE)'
+      : "[Console]::Write([Environment]::GetFolderPath('CommonDocuments'))"
+  );
+  assert.ok(
+    path.win32.isAbsolute(parentDirectory),
+    'Windows acceptance root must be an accessible absolute directory'
+  );
   // 常规安装布局保持短根；长 Workspace 的 Qdrant 故障另有独立回执，不能由本验收冒称修复。
   // 排他 New-Item、当前 token 的任务/日志/清理仍限定本次隔离实例。
   remoteRoot = path.win32.join(parentDirectory, `k-${token.slice(0, 16)}`);
