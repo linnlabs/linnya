@@ -53,6 +53,7 @@
         <div 
           v-if="computedIsOpen" 
           ref="optionsRef"
+          data-linnya-scrollbar="large"
           :class="[
             'custom-select__options',
             'select-options', 

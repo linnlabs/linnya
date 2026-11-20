@@ -33,6 +33,7 @@
           <div
             class="modal-content"
             :class="`modal-content--${scrollMode}`"
+            data-linnya-scrollbar="large"
           >
             <slot />
           </div>

@@ -12,6 +12,7 @@
     <textarea
       ref="textareaRef"
       class="tt-text-field__control"
+      data-linnya-scrollbar="large"
       :class="controlClass"
       :value="draftValue"
       :placeholder="placeholder"
