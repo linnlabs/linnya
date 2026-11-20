@@ -198,7 +198,7 @@ export class KnowledgeBaseMgmtService {
        * 说明（重要）：
        * - “知识库文档的原始上传文件”在摄入完成时会作为临时文件被清理（见 StoringHandler.cleanupTempFiles -> fs.unlink）。
        * - 因此删除知识库时，磁盘侧需要清理的是 SoT（Source of Truth）对应的 `*.source.json` 文件。
-       * - 这类文件以 docId 为 key 存在于 `pathManager.getSourceOfTruthPath()` 目录下。
+       * - 这类文件由注入的 SoT repository 按插件数据根管理，服务本身不拼接宿主路径。
        */
       logger.info(`知识库 ${kbId} 共包含 ${documents.length} 个文档，开始清理 SoT 文件`);
       if (documents.length > 0) {

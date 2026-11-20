@@ -66,7 +66,7 @@ export async function runDiagnosticSearch(input: {
     assertDocumentKbAllowedInScope(scope, document.kbId, input.docId);
   }
   const sot = new FileSotRepository(
-    path.join(input.workspaceRoot, 'KnowledgeBase/source_of_truth')
+    path.join(input.workspaceRoot, 'Plugins/knowledge/source_of_truth')
   );
   const graphRepository = new BetterSqliteKnowledgeGraphRepository(input.database);
   const qdrant = new QdrantRepositoryImpl(async () => new QdrantAdapter({ url: input.qdrantUrl }));

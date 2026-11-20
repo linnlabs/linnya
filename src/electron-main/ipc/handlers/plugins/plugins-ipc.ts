@@ -53,9 +53,9 @@ import { getRuntimeEnabledPluginIds } from '../../../../app-hosts/linnya/plugin-
 import { isTrustedKnowledgeResourceSource } from '../../../../app-hosts/linnya/plugin-registry/knowledgeResourceAdmission';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
-import { parsePluginManifest, type PluginMeta, type PluginOperationFailure } from '@app/schemas';
+import { parsePluginManifest, type PluginDataSummary, type PluginMeta, type PluginOperationFailure } from '@app/schemas';
 import { resolvePluginDataRootForManifest, resolveRegisteredPluginDataRoot } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
-import { readPluginDataSummary } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { readPluginDataSummaryAsync } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import { cleanupPluginData, type PluginDataCleanupResult } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import { readPluginManifestForCleanup } from '../../../../features/plugins/infrastructure/cleanup/pluginDataManifest';
 import { pathManager } from '../../../../shared/utils/pathManager';
@@ -71,7 +71,7 @@ const logger = new Logger('PluginsIPC');
 const PLUGIN_DATA_SUMMARY_CACHE_TTL_MS = 2000;
 const pluginDataSummaryCache = new Map<string, {
   readonly expiresAt: number;
-  readonly data: NonNullable<ReturnType<typeof readPluginDataSummary>>;
+  readonly data: PluginDataSummary;
 }>();
 
 function manifestForPlugin(pluginId: string, bundledRoot: string | null): ReturnType<typeof parsePluginManifest> | null {
@@ -146,7 +146,7 @@ async function enrichPluginStates(
           dataStorage: manifest.dataStorage,
           allowLegacyRoots: true,
         });
-      const data = readPluginDataSummary({
+      const data = await readPluginDataSummaryAsync({
         db,
         pluginId: state.meta.id,
         dataRoot,

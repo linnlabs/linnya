@@ -120,6 +120,29 @@ function directoryAllocationBytes(directory: string): number {
   }, allocationBytes(stat));
 }
 
+async function directoryAllocationBytesAsync(directory: string): Promise<number> {
+  let stat: fs.Stats;
+  try {
+    stat = await fs.promises.lstat(directory);
+  } catch (error) {
+    if (isMissingPathError(error)) return 0;
+    throw error;
+  }
+  if (!stat.isDirectory()) return allocationBytes(stat);
+  let entries: fs.Dirent[];
+  try {
+    entries = await fs.promises.readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (isMissingPathError(error)) return 0;
+    throw error;
+  }
+  let total = allocationBytes(stat);
+  for (const entry of entries) {
+    total += await directoryAllocationBytesAsync(path.join(directory, entry.name));
+  }
+  return total;
+}
+
 function isMissingPathError(error: unknown): boolean {
   return Boolean(error && typeof error === 'object' && Reflect.get(error, 'code') === 'ENOENT');
 }
@@ -168,6 +191,25 @@ export function calculatePluginStorageUsage(options: Pick<PluginDataCleanupOptio
   };
 }
 
+export async function calculatePluginStorageUsageAsync(
+  options: Pick<PluginDataCleanupOptions, 'db' | 'dataRoot' | 'dataStorage'>,
+): Promise<PluginStorageUsage> {
+  const directories = { source: 0, derived: 0, runtime: 0 };
+  for (const declaration of declaredPaths(options.dataStorage)) {
+    directories[declaration.category] += await directoryAllocationBytesAsync(
+      resolveDeclaredDirectory(options.dataRoot, declaration.relativePath),
+    );
+  }
+  const tables = Object.fromEntries(
+    options.dataStorage.userDataTables.map(tableName => [tableName, tableRowCount(options.db, tableName)]),
+  );
+  return {
+    bytes: Object.values(directories).reduce((total, value) => total + value, 0),
+    directories,
+    tables,
+  };
+}
+
 export function readPluginDataSummary(options: {
   readonly db: Database.Database;
   readonly pluginId: PluginId;
@@ -202,6 +244,45 @@ export function readPluginDataSummary(options: {
   const status = options.pluginInstalled ? (hasData ? 'installed' : 'empty') : (hasData ? (isLegacy ? 'legacy' : 'retained') : 'empty');
   return {
     status,
+    bytes: usage.bytes,
+    directories: usage.directories,
+    tables: usage.tables,
+    canDelete: hasData,
+  };
+}
+
+export async function readPluginDataSummaryAsync(options: {
+  readonly db: Database.Database;
+  readonly pluginId: PluginId;
+  readonly dataRoot: string;
+  readonly dataStorage: PluginManifestDataStorage;
+  readonly pluginInstalled: boolean;
+  readonly workspaceRoot: string;
+}): Promise<PluginDataSummary> {
+  const usage = await calculatePluginStorageUsageAsync(options);
+  const cleanupTableExists = options.db.prepare(
+    "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'plugin_cleanup_jobs'",
+  ).get();
+  const job: { status: PluginCleanupStatus; error: string | null } | undefined = cleanupTableExists
+    ? options.db.prepare('SELECT status, error FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId) as { status: PluginCleanupStatus; error: string | null } | undefined
+    : undefined;
+  const hasTableRows = Object.values(usage.tables).some(count => count > 0);
+  const hasData = usage.bytes > 0 || hasTableRows;
+  const pluginRoot = path.resolve(options.workspaceRoot, 'Plugins');
+  const resolvedRoot = path.resolve(options.dataRoot);
+  const isLegacy = !resolvedRoot.startsWith(`${pluginRoot}${path.sep}`);
+  if (job?.status === 'cleaning' || job?.status === 'failed') {
+    return {
+      status: job.status,
+      bytes: usage.bytes,
+      directories: usage.directories,
+      tables: usage.tables,
+      ...(job.error ? { error: job.error, errorCode: classifyPluginCleanupError(job.error) } : {}),
+      canDelete: true,
+    };
+  }
+  return {
+    status: options.pluginInstalled ? (hasData ? 'installed' : 'empty') : (hasData ? (isLegacy ? 'legacy' : 'retained') : 'empty'),
     bytes: usage.bytes,
     directories: usage.directories,
     tables: usage.tables,
@@ -328,7 +409,52 @@ export function cleanupPluginDataSync(options: PluginDataCleanupOptions): Plugin
 
 export async function cleanupPluginData(options: PluginDataCleanupOptions): Promise<PluginDataCleanupResult> {
   await options.stopRuntime?.();
-  return cleanupPluginDataSync({ ...options, stopRuntime: undefined });
+  ensureCleanupTable(options.db);
+  const now = options.now ?? Date.now;
+  const usageBefore = await calculatePluginStorageUsageAsync(options);
+  const existing = options.db.prepare('SELECT plugin_id FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId);
+  const completedPaths = existing ? readCompletedPaths(options.db, options.pluginId) : new Set<string>();
+  options.db.prepare(`
+    INSERT INTO plugin_cleanup_jobs (plugin_id, status, completed_paths, data_storage, error, started_at, updated_at)
+    VALUES (?, 'cleaning', ?, ?, NULL, ?, ?)
+    ON CONFLICT(plugin_id) DO UPDATE SET status = 'cleaning', data_storage = excluded.data_storage, error = NULL, updated_at = excluded.updated_at
+  `).run(
+    options.pluginId,
+    JSON.stringify([...completedPaths]),
+    JSON.stringify({ ...options.dataStorage, ownedTables: options.ownedTables ?? [] }),
+    now(),
+    now(),
+  );
+
+  try {
+    assertNotAborted(options.signal);
+    for (const declaration of declaredPaths(options.dataStorage)) {
+      assertNotAborted(options.signal);
+      if (completedPaths.has(declaration.key)) continue;
+      await new Promise<void>(resolve => setImmediate(resolve));
+      fs.rmSync(resolveDeclaredDirectory(options.dataRoot, declaration.relativePath), { recursive: true, force: true });
+      completedPaths.add(declaration.key);
+      writeProgress(options.db, options.pluginId, completedPaths, now());
+    }
+    assertNotAborted(options.signal);
+    const finish = options.db.transaction(() => {
+      dropOwnedTables(options.db, options.ownedTables ?? []);
+      options.db.prepare('DELETE FROM plugin_migrations WHERE plugin_id = ?').run(options.pluginId);
+      options.db.prepare('UPDATE installed_plugins SET schema_version = 0 WHERE plugin_id = ?').run(options.pluginId);
+      options.db.prepare('DELETE FROM plugin_cleanup_jobs WHERE plugin_id = ?').run(options.pluginId);
+    });
+    finish();
+    return { status: 'completed', pluginId: options.pluginId, releasedBytes: usageBefore.bytes, usageBefore };
+  } catch (error) {
+    const message = markFailed(options.db, options.pluginId, completedPaths, error, now());
+    return {
+      status: 'failed',
+      pluginId: options.pluginId,
+      error: message,
+      errorCode: classifyPluginCleanupError(error),
+      completedPaths: [...completedPaths],
+    };
+  }
 }
 
 export async function resumePluginDataCleanup(options: PluginDataCleanupOptions): Promise<PluginDataCleanupResult> {

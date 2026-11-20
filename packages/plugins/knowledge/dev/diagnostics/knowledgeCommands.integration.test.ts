@@ -37,7 +37,7 @@ const graphTables = [
 beforeEach(async () => {
   root = await mkdtemp(path.join(os.tmpdir(), 'knowledge-developer-'));
   await mkdir(path.join(root, 'workspace'));
-  const sot = path.join(root, 'KnowledgeBase/source_of_truth');
+  const sot = path.join(root, 'Plugins/knowledge/source_of_truth');
   await mkdir(sot, { recursive: true });
   database = new Database(path.join(root, 'workspace/workspace.sqlite'));
   database.exec(
@@ -279,7 +279,7 @@ it('原搜索命令实跑 BM25/图谱/多库聚合，项目越界拒绝且诊断
 }, 60000);
 
 it('两个维护入口实跑仅目标库：向量重置保留抽取，全重置保留第二库、原文和文档身份', async () => {
-  const sourcePath = path.join(root, 'KnowledgeBase/source_of_truth/doc-a.source.json');
+  const sourcePath = path.join(root, 'Plugins/knowledge/source_of_truth/doc-a.source.json');
   const source = await readFile(sourcePath);
   const vectors = await run('scripts/maintenance/knowledge-base/reset-knowledge-graph-vectors.ts', [
     '--kbId',

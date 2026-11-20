@@ -4,7 +4,8 @@ export type PluginLifecycleOperation =
   | 'install-from-remote'
   | 'install-from-bundled'
   | 'set-enabled'
-  | 'uninstall';
+  | 'uninstall'
+  | 'cleanup-data';
 
 export interface RunPluginLifecycleOperationSeriallyOptions<T> {
   readonly pluginId: PluginId;

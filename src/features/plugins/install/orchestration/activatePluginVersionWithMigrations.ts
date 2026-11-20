@@ -138,7 +138,6 @@ export function activatePluginVersionWithMigrations(
         activeVersion: options.version,
         previousVersion: activationPreflightResult.previousVersion,
         error: activationResult.error,
-        errorCode: 'unknown',
       });
       return {
         status: 'failed',

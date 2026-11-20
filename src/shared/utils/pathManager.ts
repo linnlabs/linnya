@@ -43,7 +43,6 @@
  * - `Audit/v1/`：统一审计模块管理的文件型数据；当前仅包含开发诊断证据
  * - `Models/`：本地 AI 模型目录
  * - `Plugins/<pluginId>/`：插件数据根；旧顶层目录只能由 manifest 显式接管
- * - `KnowledgeBase/`：旧版知识库 legacy root，仅为兼容旧资料保留
  * - （AppData Root 下另有 `ConversationAttachments/` 会话附件副本；默认与 Workspace Root 是同一目录）
  *
  * @function getAppDataPath(): string
@@ -321,13 +320,6 @@ export function getModelsPath(): string {
 }
 
 /**
- * 获取知识库功能的根数据目录
- */
-export function getKbDataPath(): string {
-  return getAndCreateWorkspaceSubDirectory('KnowledgeBase');
-}
-
-/**
  * 通用插件数据根。插件业务不得自行拼接 Workspace 路径；旧版目录接管由
  * manifest 的 dataStorage.legacyRoots 在 Host 侧解析，默认一律落在这里。
  */
@@ -337,38 +329,6 @@ export function getPluginDataPath(pluginId: string): string {
     throw new ConfigurationError(`Invalid plugin data id: ${pluginId}`);
   }
   return getAndCreateWorkspaceSubDirectory(path.join('Plugins', normalized));
-}
-
-/**
- * 获取 '事实源泉' JSON 文件的存储目录
- */
-export function getSourceOfTruthPath(): string {
-  return getAndCreateWorkspaceSubDirectory(path.join('KnowledgeBase', 'source_of_truth'));
-}
-
-/**
- * 获取知识库原始文件仓储目录。
- *
- * 说明：
- * - 上传临时文件会在摄入完成后删除；
- * - PDF partial 续跑失败页必须能重新读取原始 PDF，因此原始 PDF 需要独立持久化。
- */
-export function getKnowledgeBaseOriginalsPath(): string {
-  return getAndCreateWorkspaceSubDirectory(path.join('KnowledgeBase', 'originals'));
-}
-
-/**
- * 获取 BM25 索引文件的存储目录
- */
-export function getBm25IndicesPath(): string {
-  return getAndCreateWorkspaceSubDirectory(path.join('KnowledgeBase', 'BM25Indices'));
-}
-
-/**
- * 获取 BullMQ 的数据文件的存储目录
- */
-export function getPipelinePath(): string {
-  return getAndCreateWorkspaceSubDirectory(path.join('KnowledgeBase', 'pipeline'));
 }
 
 /**
@@ -756,12 +716,7 @@ export const pathManager = {
   getAudioRecordingsPath,
   getUploadsPath,
   getModelsPath,
-  getKbDataPath,
   getPluginDataPath,
-  getSourceOfTruthPath,
-  getKnowledgeBaseOriginalsPath,
-  getBm25IndicesPath,
-  getPipelinePath,
   getWorkspaceDataPath,
   getUserModelsConfigPath,
   getProviderConfigurationsConfigPath,

@@ -743,6 +743,6 @@ describe('PluginStoreView', () => {
 
     expect(api.plugins.uninstall).toHaveBeenCalledWith('mindmap');
     expect(api.plugins.getDetail).toHaveBeenCalledWith('mindmap');
-    expect(readNotificationMessage(mounted.pinia)).toBe('Mindmap 已卸载，重启后完全移除');
+    expect(readNotificationMessage(mounted.pinia)).toBe('Mindmap 已卸载，数据已保留');
   });
 });

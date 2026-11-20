@@ -113,7 +113,7 @@ it('非法维护目标在任何数据库写入或向量请求前拒绝', async (
 it('远端失败不转删本地；本机离线清理只删除目标库的两个集合', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'linnya-kg-offline-'));
   temporaryDirectories.push(root);
-  const collections = path.join(root, 'KnowledgeBase/qdrant/storage/collections');
+  const collections = path.join(root, 'Plugins/knowledge/qdrant/storage/collections');
   for (const collection of ['kg_nodes_a', 'kg_edges_a', 'kg_nodes_b', 'kg_edges_b']) {
     mkdirSync(path.join(collections, collection), { recursive: true });
     writeFileSync(path.join(collections, collection, 'segment'), collection);
@@ -152,7 +152,7 @@ it('远端失败不转删本地；本机离线清理只删除目标库的两个�
 it('本机 HTTP 拒绝、服务错误与超时不触发离线目录清理', async () => {
   const root = mkdtempSync(path.join(tmpdir(), 'linnya-kg-http-failure-'));
   temporaryDirectories.push(root);
-  const collections = path.join(root, 'KnowledgeBase/qdrant/storage/collections');
+  const collections = path.join(root, 'Plugins/knowledge/qdrant/storage/collections');
   const names = ['kg_nodes_a', 'kg_edges_a', 'kg_nodes_b', 'kg_edges_b'];
   for (const collection of names) {
     mkdirSync(path.join(collections, collection), { recursive: true });

@@ -3,10 +3,9 @@ import { createServer } from 'node:http';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { QdrantAdapter } from '../../../infrastructure/vector-store/QdrantAdapter';
-import { pathManager } from 'src/shared/utils/pathManager';
 import { BetterSqliteMetadataRepository } from '../../../infrastructure/sqlite/better-sqlite-metadata.repository';
 import { QdrantRepositoryImpl } from '../../../infrastructure/QdrantRepositoryImpl';
 import { FileSotRepository } from '../../../infrastructure/sotRepository';
@@ -34,8 +33,6 @@ describe('knowledge deletion with vector service failures', () => {
       const sentinelPath = path.join(collectionDirectory, 'active-segment');
       await mkdir(collectionDirectory, { recursive: true });
       await writeFile(sentinelPath, 'owned by running qdrant');
-      // 旧实现的物理删除必须也指向隔离夹具，绝不触碰开发实例的集合。
-      const storagePath = vi.spyOn(pathManager, 'getKbDataPath').mockReturnValue(root);
       const deleted: string[] = [];
       const server = createServer((request, response) => {
         const collection = new URL(request.url ?? '/', 'http://localhost').pathname.split('/')[2];
@@ -107,7 +104,6 @@ describe('knowledge deletion with vector service failures', () => {
         await new Promise<void>((resolve, reject) =>
           server.close(error => (error ? reject(error) : resolve()))
         );
-        storagePath.mockRestore();
         await rm(root, { recursive: true, force: true });
       }
     }

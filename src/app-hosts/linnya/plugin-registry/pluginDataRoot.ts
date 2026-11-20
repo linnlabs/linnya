@@ -30,7 +30,7 @@ export function resolveRegisteredPluginDataRoot(pluginId: PluginId): string {
     pluginId,
     dataStorage: manifest.dataStorage,
     allowLegacyRoots: true,
-    knownLegacyRoots: [...ownLegacyRoots, ...knownLegacyRoots],
+    knownLegacyRoots,
   });
 }
 

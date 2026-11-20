@@ -40,7 +40,7 @@ const inference: PluginInferencePort = {
   documentOcr: { resolveModelProfile: async () => undefined, recognizeDocument: async () => ({ pages: [] }) },
 };
 
-vi.mock('@plugin/backend/adoptedHostDataRuntime', () => ({ getAdoptedHostData: () => ({ database, dataDirectory: path.join(root, 'KnowledgeBase') }) }));
+vi.mock('@plugin/backend/adoptedHostDataRuntime', () => ({ getAdoptedHostData: () => ({ database, dataDirectory: path.join(root, 'Plugins/knowledge') }) }));
 vi.mock('@plugin/backend/projectReadRuntime', () => ({ getPluginProjectReadPort: () => ({ get: () => undefined, list: () => [] }) }));
 vi.mock('@plugin/backend/modelConfiguration', () => ({ getPluginModelConfigurationPort: () => ({
   readDefaultModelIdByCapability: () => 'ocr', readAuxiliaryModelBinding: () => 'language', getModelDisplayName: (id: string) => id,

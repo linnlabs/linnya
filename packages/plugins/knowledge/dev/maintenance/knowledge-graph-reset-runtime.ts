@@ -85,7 +85,8 @@ async function deleteLocalCollectionDirectory(
   assertMaintenanceCollectionSegment(collectionName);
   const directory = path.join(
     workspaceRoot,
-    'KnowledgeBase',
+    'Plugins',
+    'knowledge',
     'qdrant',
     'storage',
     'collections',
