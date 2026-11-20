@@ -46,6 +46,7 @@ public static class NtfsAcceptance {
 $drive = New-Object System.IO.DriveInfo([IO.Path]::GetPathRoot($root))
 if ($drive.DriveFormat -ne 'NTFS') { throw 'The allocation acceptance requires an NTFS volume' }
 $bytes = @{ source = [long]0; derived = [long]0; runtime = [long]0 }
+$wholeBlocks = @{ source = [long]0; derived = [long]0; runtime = [long]0 }
 $length = @{ source = [long]0; derived = [long]0; runtime = [long]0 }
 $directoryBytes = @{ source = [long]0; derived = [long]0; runtime = [long]0 }
 $storage = Join-Path $root 'qdrant\storage'
@@ -65,11 +66,13 @@ foreach ($name in @('source_of_truth', 'originals', 'qdrant', 'temporary', 'diag
         }
         $allocated = [NtfsAcceptance]::AllocatedBytes($entry.FullName)
         $bytes[$category] += $allocated
+        # libuv 的 Windows stat.blocks 只保留每个条目的完整 512 字节块。
+        $wholeBlocks[$category] += ($allocated -shr 9) * 512
         if ($entry.PSIsContainer) { $directoryBytes[$category] += $allocated }
         else { $length[$category] += $entry.Length }
     }
 }
-@{ filesystem = $drive.DriveFormat; bytes = $bytes; logicalBytes = $length; directoryBytes = $directoryBytes } | ConvertTo-Json -Compress
+@{ filesystem = $drive.DriveFormat; bytes = $bytes; wholeBlockBytes = $wholeBlocks; logicalBytes = $length; directoryBytes = $directoryBytes } | ConvertTo-Json -Compress
 `;
 
 export async function readNtfsAllocation(root) {
@@ -91,5 +94,6 @@ export async function readNtfsAllocation(root) {
   return {
     ...allocation,
     total: Object.values(allocation.bytes).reduce((sum, size) => sum + size, 0),
+    wholeBlockTotal: Object.values(allocation.wholeBlockBytes).reduce((sum, size) => sum + size, 0),
   };
 }

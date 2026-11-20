@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { settleExpression } from '../../../development/features/desktop-probe/orchestration/probePage.mjs';
 import { until } from './installedDesktopSession.mjs';
 import { readNtfsAllocation } from './ntfsAllocation.mjs';
 
@@ -53,7 +54,10 @@ export async function verifyWindowsPluginData({
   observations,
 }) {
   const { evaluate } = application;
-  const shot = name => application.screenshot(path.join(evidence, `${name}.png`));
+  const shot = async name => {
+    assert.equal(await evaluate(settleExpression), true, `Page did not settle for ${name}`);
+    await application.screenshot(path.join(evidence, `${name}.png`));
+  };
   const click = selector =>
     application.clickElement(`document.querySelector(${JSON.stringify(selector)})`);
   const present = selector =>
@@ -74,6 +78,7 @@ export async function verifyWindowsPluginData({
   };
   const screenshotState = async (status, name) => {
     await waitFor(`${panel} .is-${status}`);
+    await waitFor(dialog, false);
     await shot(name);
   };
   const confirm = name =>
@@ -177,12 +182,22 @@ export async function verifyWindowsPluginData({
   };
   const verifyAllocation = async (status, name) => {
     const measured = await readNtfsAllocation(dataRoot);
-    const detail = await getDetail();
+    // 占用走后台计算；旧缓存过期时首次读详情只会安排统计，不会同步返回数值。
+    const detail = await until(
+      getDetail,
+      value => value.data !== undefined,
+      'Fresh store allocation',
+      20_000
+    );
     const data = detail.data;
     observations[name] = { measured, reported: data };
     assert.equal(data?.status, status);
-    assert.equal(data.bytes, measured.total, 'Store raw usage vs. Win32 allocation');
-    for (const [category, bytes] of Object.entries(measured.bytes))
+    assert.equal(
+      data.bytes,
+      measured.wholeBlockTotal,
+      'Store raw usage vs. Win32 whole-block allocation'
+    );
+    for (const [category, bytes] of Object.entries(measured.wholeBlockBytes))
       assert.equal(
         data.directories[category],
         bytes,
@@ -190,14 +205,14 @@ export async function verifyWindowsPluginData({
       );
     if (status !== 'empty') {
       const displayed = await text(`${panel} .plugin-data-panel__total`);
-      assertDisplayedBytes(displayed, measured.total, name);
+      assertDisplayedBytes(displayed, measured.wholeBlockTotal, name);
       observations[name].displayed = displayed;
       const rows = await evaluate(
         `Array.from(document.querySelectorAll('${panel} .plugin-data-panel__row'), el => el.querySelector('dd').textContent.trim())`
       );
       assert.equal(rows.length, 3);
       for (const [index, category] of ['source', 'derived', 'runtime'].entries())
-        assertDisplayedBytes(rows[index], measured.bytes[category], category);
+        assertDisplayedBytes(rows[index], measured.wholeBlockBytes[category], category);
       observations[name].displayedCategories = rows;
     }
     return measured.total;
