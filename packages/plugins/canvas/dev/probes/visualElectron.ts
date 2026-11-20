@@ -133,7 +133,10 @@ async function verifyFade(win: BrowserWindow) {
       assertSoftwareVisualSampling(initial.sampling);
       if (initial.reduced || initial.stats.fadingCards || initial.stats.retiringBytes || !initial.rendered || initial.oldWidth || initial.stats.bitmapBytes !== 28000
         || initial.uploaded.firstPresented || initial.uploaded.rendered) throw new Error('software_texture_replacement_not_immediate_or_draw_not_observed');
-    } else if (initial.stats.fadingCards !== 1 || initial.rendered || initial.oldWidth !== 50 || initial.stats.bitmapBytes !== 35000) throw new Error('real_texture_fade_did_not_start');
+    } else if (initial.stats.fadingCards !== 1 || initial.rendered || initial.oldWidth !== 50 || initial.stats.bitmapBytes !== 35000) {
+      const { elapsed, rendered, oldWidth, stats: { fadingCards, bitmapBytes } } = initial;
+      throw new Error(`real_texture_fade_did_not_start:${JSON.stringify({ elapsed, fadingCards, rendered, oldWidth, bitmapBytes })}`);
+    }
     await recordCanvasVisualFrame({ ...initial, data: initial.image }, output, 'fade-initial', softwareProfile);
     await new Promise(resolve => setTimeout(resolve, 40));
     const middle = fadeState.parse(await evaluate(win.webContents, 'window.readCanvasFadeVisualProbe()'));
