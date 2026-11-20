@@ -362,7 +362,29 @@ try {
       force_vision_mode: 'true',
     });
     const before = await docs();
-    await application.plugin('delete', { kbId });
+    try {
+      await application.plugin('delete', { kbId });
+    } catch (error) {
+      // 不重跑删除。先从独立连接检查 Qdrant 是否还活着、集合是否还在，区分
+      // 服务未响应与删除已生效但响应丢失；同时保全本次隔离库的原文与元数据证据。
+      const probe = async route => {
+        try {
+          const response = await fetch(`http://127.0.0.1:6333${route}`, {
+            signal: AbortSignal.timeout(8000),
+          });
+          await response.text();
+          return { route, status: response.status };
+        } catch (failure) {
+          return { route, error: failure.message, cause: String(failure.cause ?? '') };
+        }
+      };
+      details.individualDeletionFailure = {
+        metadataRows: database.prepare('SELECT count(*) AS count FROM kb_documents WHERE kb_id=?').get(kbId).count,
+        sources: await Promise.allSettled(before.map(document => stat(sourcePath(document.id)).then(info => info.size))),
+        qdrant: await Promise.all([probe('/readyz'), probe(`/collections/${encodeURIComponent(kbId)}`)]),
+      };
+      throw error;
+    }
     assert.equal(await application.plugin('get', { kbId }), null);
     assert.equal(
       database.prepare('SELECT count(*) AS count FROM kb_documents WHERE kb_id=?').get(kbId).count,
@@ -423,6 +445,14 @@ try {
       failed ??= error;
     }
     await writeFile(path.join(evidence, 'desktop.log'), application.log);
+    if (failed) {
+      try {
+        const qdrantLog = await readFile(path.join(application.workspace, 'Plugins', 'knowledge', 'qdrant', 'logs', 'qdrant.log'));
+        await writeFile(path.join(evidence, 'qdrant.log'), qdrantLog);
+      } catch (error) {
+        details.qdrantLogError = error.message;
+      }
+    }
   }
   await fixture.close();
   await writeFile(
