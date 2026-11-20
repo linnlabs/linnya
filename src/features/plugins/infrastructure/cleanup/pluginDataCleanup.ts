@@ -49,6 +49,7 @@ interface CleanupJobRow {
   readonly completed_paths: string;
   readonly data_storage: string;
   readonly error: string | null;
+  readonly error_code: PluginCleanupFailureReason | null;
 }
 
 export interface PersistedCleanupStorage {
@@ -61,6 +62,9 @@ function ensureCleanupTable(db: Database.Database): void {
   const columns = db.prepare('PRAGMA table_info(plugin_cleanup_jobs)').all() as Array<{ name: string }>;
   if (!columns.some(column => column.name === 'data_storage')) {
     db.exec("ALTER TABLE plugin_cleanup_jobs ADD COLUMN data_storage TEXT NOT NULL DEFAULT '{}' ");
+  }
+  if (!columns.some(column => column.name === 'error_code')) {
+    db.exec('ALTER TABLE plugin_cleanup_jobs ADD COLUMN error_code TEXT');
   }
 }
 
@@ -92,13 +96,26 @@ function declaredPaths(dataStorage: PluginManifestDataStorage): readonly { key: 
   );
 }
 
+function cleanupPathOrder(left: { readonly relativePath: string }, right: { readonly relativePath: string }): number {
+  const leftPath = left.relativePath.replace(/\\/g, '/');
+  const rightPath = right.relativePath.replace(/\\/g, '/');
+  if (leftPath !== rightPath && leftPath.startsWith(`${rightPath}/`)) return -1;
+  if (leftPath !== rightPath && rightPath.startsWith(`${leftPath}/`)) return 1;
+  return 0;
+}
+
 function allocationBytes(stat: fs.Stats): number {
   return typeof stat.blocks === 'number' && Number.isFinite(stat.blocks)
     ? stat.blocks * ALLOCATION_UNIT_BYTES
     : 0;
 }
 
-function directoryAllocationBytes(directory: string): number {
+function isPathWithin(candidate: string, parent: string): boolean {
+  const relative = path.relative(parent, candidate);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function directoryAllocationBytes(directory: string, excludedDirectories: readonly string[] = []): number {
   if (!fs.existsSync(directory)) return 0;
   let stat: fs.Stats;
   try {
@@ -116,11 +133,13 @@ function directoryAllocationBytes(directory: string): number {
     throw error;
   }
   return entries.reduce((total, entry) => {
-    return total + directoryAllocationBytes(path.join(directory, entry.name));
+    const entryPath = path.join(directory, entry.name);
+    if (excludedDirectories.some(excluded => path.resolve(excluded) === path.resolve(entryPath))) return total;
+    return total + directoryAllocationBytes(entryPath, excludedDirectories);
   }, allocationBytes(stat));
 }
 
-async function directoryAllocationBytesAsync(directory: string): Promise<number> {
+async function directoryAllocationBytesAsync(directory: string, excludedDirectories: readonly string[] = []): Promise<number> {
   let stat: fs.Stats;
   try {
     stat = await fs.promises.lstat(directory);
@@ -138,7 +157,9 @@ async function directoryAllocationBytesAsync(directory: string): Promise<number>
   }
   let total = allocationBytes(stat);
   for (const entry of entries) {
-    total += await directoryAllocationBytesAsync(path.join(directory, entry.name));
+    const entryPath = path.join(directory, entry.name);
+    if (excludedDirectories.some(excluded => path.resolve(excluded) === path.resolve(entryPath))) continue;
+    total += await directoryAllocationBytesAsync(entryPath, excludedDirectories);
   }
   return total;
 }
@@ -176,9 +197,15 @@ export function calculatePluginStorageUsage(options: Pick<PluginDataCleanupOptio
     derived: 0,
     runtime: 0,
   };
-  for (const declaration of declaredPaths(options.dataStorage)) {
+  const declarations = declaredPaths(options.dataStorage);
+  for (const declaration of declarations) {
+    const resolved = resolveDeclaredDirectory(options.dataRoot, declaration.relativePath);
+    const excluded = declarations
+      .map(candidate => resolveDeclaredDirectory(options.dataRoot, candidate.relativePath))
+      .filter(candidate => candidate !== resolved && isPathWithin(candidate, resolved));
     directories[declaration.category] += directoryAllocationBytes(
-      resolveDeclaredDirectory(options.dataRoot, declaration.relativePath),
+      resolved,
+      excluded,
     );
   }
   const tables = Object.fromEntries(
@@ -195,9 +222,15 @@ export async function calculatePluginStorageUsageAsync(
   options: Pick<PluginDataCleanupOptions, 'db' | 'dataRoot' | 'dataStorage'>,
 ): Promise<PluginStorageUsage> {
   const directories = { source: 0, derived: 0, runtime: 0 };
-  for (const declaration of declaredPaths(options.dataStorage)) {
+  const declarations = declaredPaths(options.dataStorage);
+  for (const declaration of declarations) {
+    const resolved = resolveDeclaredDirectory(options.dataRoot, declaration.relativePath);
+    const excluded = declarations
+      .map(candidate => resolveDeclaredDirectory(options.dataRoot, candidate.relativePath))
+      .filter(candidate => candidate !== resolved && isPathWithin(candidate, resolved));
     directories[declaration.category] += await directoryAllocationBytesAsync(
-      resolveDeclaredDirectory(options.dataRoot, declaration.relativePath),
+      resolved,
+      excluded,
     );
   }
   const tables = Object.fromEntries(
@@ -222,8 +255,8 @@ export function readPluginDataSummary(options: {
   const cleanupTableExists = options.db.prepare(
     "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'plugin_cleanup_jobs'",
   ).get();
-  const job: { status: PluginCleanupStatus; error: string | null } | undefined = cleanupTableExists
-    ? options.db.prepare('SELECT status, error FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId) as { status: PluginCleanupStatus; error: string | null } | undefined
+  const job: { status: PluginCleanupStatus; error: string | null; error_code: PluginCleanupFailureReason | null } | undefined = cleanupTableExists
+    ? options.db.prepare('SELECT status, error, error_code FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId) as { status: PluginCleanupStatus; error: string | null; error_code: PluginCleanupFailureReason | null } | undefined
     : undefined;
   const hasTableRows = Object.values(usage.tables).some(count => count > 0);
   const hasData = usage.bytes > 0 || hasTableRows;
@@ -236,8 +269,7 @@ export function readPluginDataSummary(options: {
       bytes: usage.bytes,
       directories: usage.directories,
       tables: usage.tables,
-      ...(job.error ? { error: job.error } : {}),
-      ...(job.error ? { errorCode: classifyPluginCleanupError(job.error) } : {}),
+      ...(job.error ? { error: job.error, errorCode: job.error_code ?? classifyPluginCleanupError(job.error) } : {}),
       canDelete: true,
     };
   }
@@ -263,8 +295,8 @@ export async function readPluginDataSummaryAsync(options: {
   const cleanupTableExists = options.db.prepare(
     "SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'plugin_cleanup_jobs'",
   ).get();
-  const job: { status: PluginCleanupStatus; error: string | null } | undefined = cleanupTableExists
-    ? options.db.prepare('SELECT status, error FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId) as { status: PluginCleanupStatus; error: string | null } | undefined
+  const job: { status: PluginCleanupStatus; error: string | null; error_code: PluginCleanupFailureReason | null } | undefined = cleanupTableExists
+    ? options.db.prepare('SELECT status, error, error_code FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId) as { status: PluginCleanupStatus; error: string | null; error_code: PluginCleanupFailureReason | null } | undefined
     : undefined;
   const hasTableRows = Object.values(usage.tables).some(count => count > 0);
   const hasData = usage.bytes > 0 || hasTableRows;
@@ -277,7 +309,7 @@ export async function readPluginDataSummaryAsync(options: {
       bytes: usage.bytes,
       directories: usage.directories,
       tables: usage.tables,
-      ...(job.error ? { error: job.error, errorCode: classifyPluginCleanupError(job.error) } : {}),
+      ...(job.error ? { error: job.error, errorCode: job.error_code ?? classifyPluginCleanupError(job.error) } : {}),
       canDelete: true,
     };
   }
@@ -303,18 +335,19 @@ function readCompletedPaths(db: Database.Database, pluginId: PluginId): Set<stri
 function writeProgress(db: Database.Database, pluginId: PluginId, completedPaths: ReadonlySet<string>, now: number): void {
   db.prepare(`
     UPDATE plugin_cleanup_jobs
-    SET status = 'cleaning', completed_paths = ?, error = NULL, updated_at = ?
+    SET status = 'cleaning', completed_paths = ?, error = NULL, error_code = NULL, updated_at = ?
     WHERE plugin_id = ?
   `).run(JSON.stringify([...completedPaths]), now, pluginId);
 }
 
 function markFailed(db: Database.Database, pluginId: PluginId, completedPaths: ReadonlySet<string>, error: unknown, now: number): string {
   const message = error instanceof Error ? error.message : String(error);
+  const errorCode = classifyPluginCleanupError(error);
   db.prepare(`
     UPDATE plugin_cleanup_jobs
-    SET status = 'failed', completed_paths = ?, error = ?, updated_at = ?
+    SET status = 'failed', completed_paths = ?, error = ?, error_code = ?, updated_at = ?
     WHERE plugin_id = ?
-  `).run(JSON.stringify([...completedPaths]), message, now, pluginId);
+  `).run(JSON.stringify([...completedPaths]), message, errorCode, now, pluginId);
   return message;
 }
 
@@ -357,9 +390,9 @@ export function cleanupPluginDataSync(options: PluginDataCleanupOptions): Plugin
   const existing = options.db.prepare('SELECT plugin_id FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId);
   const completedPaths = existing ? readCompletedPaths(options.db, options.pluginId) : new Set<string>();
   options.db.prepare(`
-    INSERT INTO plugin_cleanup_jobs (plugin_id, status, completed_paths, data_storage, error, started_at, updated_at)
-    VALUES (?, 'cleaning', ?, ?, NULL, ?, ?)
-    ON CONFLICT(plugin_id) DO UPDATE SET status = 'cleaning', data_storage = excluded.data_storage, error = NULL, updated_at = excluded.updated_at
+    INSERT INTO plugin_cleanup_jobs (plugin_id, status, completed_paths, data_storage, error, error_code, started_at, updated_at)
+    VALUES (?, 'cleaning', ?, ?, NULL, NULL, ?, ?)
+    ON CONFLICT(plugin_id) DO UPDATE SET status = 'cleaning', data_storage = excluded.data_storage, error = NULL, error_code = NULL, updated_at = excluded.updated_at
   `).run(
     options.pluginId,
     JSON.stringify([...completedPaths]),
@@ -374,7 +407,7 @@ export function cleanupPluginDataSync(options: PluginDataCleanupOptions): Plugin
     if (stopResult instanceof Promise) {
       throw new Error('插件数据清理需要由异步生命周期入口先停止运行时');
     }
-    for (const declaration of declaredPaths(options.dataStorage)) {
+    for (const declaration of [...declaredPaths(options.dataStorage)].sort(cleanupPathOrder)) {
       assertNotAborted(options.signal);
       if (completedPaths.has(declaration.key)) continue;
       fs.rmSync(resolveDeclaredDirectory(options.dataRoot, declaration.relativePath), { recursive: true, force: true });
@@ -415,9 +448,9 @@ export async function cleanupPluginData(options: PluginDataCleanupOptions): Prom
   const existing = options.db.prepare('SELECT plugin_id FROM plugin_cleanup_jobs WHERE plugin_id = ?').get(options.pluginId);
   const completedPaths = existing ? readCompletedPaths(options.db, options.pluginId) : new Set<string>();
   options.db.prepare(`
-    INSERT INTO plugin_cleanup_jobs (plugin_id, status, completed_paths, data_storage, error, started_at, updated_at)
-    VALUES (?, 'cleaning', ?, ?, NULL, ?, ?)
-    ON CONFLICT(plugin_id) DO UPDATE SET status = 'cleaning', data_storage = excluded.data_storage, error = NULL, updated_at = excluded.updated_at
+    INSERT INTO plugin_cleanup_jobs (plugin_id, status, completed_paths, data_storage, error, error_code, started_at, updated_at)
+    VALUES (?, 'cleaning', ?, ?, NULL, NULL, ?, ?)
+    ON CONFLICT(plugin_id) DO UPDATE SET status = 'cleaning', data_storage = excluded.data_storage, error = NULL, error_code = NULL, updated_at = excluded.updated_at
   `).run(
     options.pluginId,
     JSON.stringify([...completedPaths]),
@@ -428,7 +461,7 @@ export async function cleanupPluginData(options: PluginDataCleanupOptions): Prom
 
   try {
     assertNotAborted(options.signal);
-    for (const declaration of declaredPaths(options.dataStorage)) {
+    for (const declaration of [...declaredPaths(options.dataStorage)].sort(cleanupPathOrder)) {
       assertNotAborted(options.signal);
       if (completedPaths.has(declaration.key)) continue;
       await new Promise<void>(resolve => setImmediate(resolve));

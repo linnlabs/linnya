@@ -115,6 +115,29 @@ describe('plugin data cleanup', () => {
     db.close();
   });
 
+  it('cleans unclassified Qdrant root files without double-counting storage', async () => {
+    const { root, db } = fixture();
+    const qdrantRoot = path.join(root, 'qdrant');
+    fs.mkdirSync(path.join(qdrantRoot, 'storage'), { recursive: true });
+    fs.mkdirSync(path.join(qdrantRoot, 'logs'), { recursive: true });
+    fs.writeFileSync(path.join(qdrantRoot, 'qdrant.lock'), 'runtime');
+    fs.writeFileSync(path.join(qdrantRoot, 'storage', 'segment.bin'), 'index');
+    const qdrantStorage: PluginManifestDataStorage = {
+      ...storage,
+      directories: {
+        source: [],
+        derived: ['qdrant/storage'],
+        runtime: ['qdrant', 'qdrant/logs'],
+      },
+    };
+    const usage = calculatePluginStorageUsage({ db, dataRoot: root, dataStorage: qdrantStorage });
+    expect(usage.directories.runtime).toBeGreaterThan(0);
+    const result = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: qdrantStorage, ownedTables });
+    expect(result.status).toBe('completed');
+    expect(fs.existsSync(qdrantRoot)).toBe(false);
+    db.close();
+  });
+
   it('删除目录中途退出后保留已完成路径，重启可以续清', () => {
     const { root, db } = fixture();
     const controller = new AbortController();
@@ -155,7 +178,7 @@ describe('plugin data cleanup', () => {
       throw error;
     });
     const failed = await cleanupPluginData({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });
-    expect(failed).toMatchObject({ status: 'failed', error: 'permission denied' });
+    expect(failed).toMatchObject({ status: 'failed', error: 'permission denied', errorCode: 'permission-denied' });
     removeSpy.mockRestore();
     vi.spyOn(fs, 'rmSync').mockImplementation(originalRemove);
     const resumed = await resumePluginDataCleanup({ db, pluginId: 'demo', dataRoot: root, dataStorage: storage, ownedTables });

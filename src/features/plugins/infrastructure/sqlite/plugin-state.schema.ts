@@ -48,6 +48,7 @@ export const PLUGIN_CLEANUP_SCHEMA = `
     completed_paths TEXT NOT NULL DEFAULT '[]',
     data_storage    TEXT NOT NULL DEFAULT '{}',
     error           TEXT,
+    error_code      TEXT,
     started_at      INTEGER NOT NULL,
     updated_at      INTEGER NOT NULL,
     FOREIGN KEY(plugin_id) REFERENCES installed_plugins(plugin_id) ON DELETE CASCADE

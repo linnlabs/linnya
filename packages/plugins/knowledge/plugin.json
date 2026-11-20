@@ -42,6 +42,7 @@
       "source": ["source_of_truth", "originals"],
       "derived": ["qdrant/storage"],
       "runtime": [
+        "qdrant",
         "qdrant/logs",
         "qdrant/config",
         "qdrant/static",
