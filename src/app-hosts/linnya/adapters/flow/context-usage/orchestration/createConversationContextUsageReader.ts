@@ -1,5 +1,5 @@
 import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
-import type { ConversationContextUsage } from '@app/schemas';
+import { isRetiredDeepResearchAgentId, type ConversationContextUsage } from '@app/schemas';
 import { mergeContextPolicy } from '@linnlabs/linnkit/context-manager';
 import type { agentTools } from '@linnlabs/linnkit/context-manager';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
@@ -59,6 +59,10 @@ export function createConversationContextUsageReader(dependencies: ContextUsageR
     if (!model?.inference_route) return null;
     const metadata = await dependencies.readMetadata(conversationId);
     if (!metadata) return null;
+    // 退役 Agent 不再接收新运行，没有可估算的下一次请求；历史照常打开。
+    if (metadata.selected_agent_id && isRetiredDeepResearchAgentId(metadata.selected_agent_id)) {
+      return null;
+    }
     // 只保留最近一次估算。外部运行和截断改变持久化统计，历史翻页不会改变它们。
     const key = JSON.stringify([
       conversationId, metadata.created_at, metadata.last_event_at, metadata.total_events,

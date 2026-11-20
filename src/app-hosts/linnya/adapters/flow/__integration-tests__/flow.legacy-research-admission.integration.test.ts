@@ -3,11 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  ConversationAgentIds,
-  PromptKeys,
+  ConversationSelectedAgentIdSchema,
+  RETIRED_DEEP_RESEARCH_AGENT_IDS,
   ResearchRunArgsSchema,
   type ConversationNextRequest,
 } from '@app/schemas';
+import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { graph } from '@linnlabs/linnkit/runtime-kernel';
 import { BaseTool } from 'src/tools/types';
 import { admitResearchRequest } from '../../../agent-registry/agents/research_v1/admission';
@@ -15,6 +16,8 @@ import { clearRegisteredAgentTaskCache } from '../../../agent-registry/agentTask
 import { requireRuntimeCompatibility } from '../../../application/run-resumption/functions/runtimeCompatibility';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import * as agentDefinitions from '../../../agent-registry/agentDefinitionResolver';
+import * as newRunAdmission from '../../../agent-registry/assertAgentNewRunAvailable';
+import { AskTool } from 'src/tools/agent_control/ask/AskTool';
 import {
   setPluginRuntimeStateForTests,
   clearPluginRuntimeStateForTests,
@@ -37,7 +40,7 @@ const request: ConversationNextRequest = {
       timestamp: 1,
     },
   ],
-  options: { promptKey: PromptKeys.DEEP_RESEARCH_LEADER, model_id: 'scripted-test-model' },
+  options: { promptKey: 'deep_research_leader', model_id: 'scripted-test-model' },
 };
 let directory: string;
 const closers: Array<() => void> = [];
@@ -74,107 +77,171 @@ async function paused(fixture: Awaited<ReturnType<typeof open>>) {
   return { ...active, pause: active.pause, execution_id: active.execution_id };
 }
 
-describe('legacy research new-run admission', () => {
-  it.each([
-    PromptKeys.DEEP_RESEARCH_LEADER,
-    PromptKeys.DEEP_RESEARCH_SCOUT,
-    PromptKeys.DEEP_RESEARCH_REASONER_1,
-    PromptKeys.DEEP_RESEARCH_REASONER_2,
-    PromptKeys.DEEP_RESEARCH_CHALLENGER,
-    PromptKeys.DEEP_RESEARCH_EXPERIMENTAL,
-    PromptKeys.DEEP_RESEARCH_INVESTIGATION_REVIEW,
-    PromptKeys.DEEP_RESEARCH_ARGUMENT_REVIEW,
-    PromptKeys.DEEP_RESEARCH_SOURCE_REVIEW,
-    'selected-agent',
-  ] as const)('拒绝 %s 新请求，且不创建运行、消息或调用模型', async entry => {
-    const fixture = await open([]);
-    const incoming =
-      entry === 'selected-agent'
-        ? admitConversationAgentChoice({
-            ...request,
-            options: {
-              selected_agent_id: ConversationAgentIds.DEEP_RESEARCH,
-              model_id: 'scripted-test-model',
-            },
-          })
-        : { ...request, options: { ...request.options, promptKey: entry } };
-    await expect(fixture.flow.next(incoming, () => {})).rejects.toMatchObject({
-      code: 'AGENT_NEW_RUN_UNAVAILABLE',
+/**
+ * 旧版深度研究的定义已删除。为制造“升级前留下的暂停运行”，首次运行临时用 Default 定义冒充
+ * 原退役身份并跳过新运行接纳；重开数据库后恢复真实注册表，验证退役终止合同。
+ */
+function impersonateRetiredDefinition(promptKey: string) {
+  const findDefinition = agentDefinitions.findRegisteredAgentDefinitionByPromptKey;
+  const definitions = vi
+    .spyOn(agentDefinitions, 'findRegisteredAgentDefinitionByPromptKey')
+    .mockImplementation(key => {
+      if (key !== promptKey) return findDefinition(key);
+      const standIn = findDefinition('default');
+      return standIn && { ...standIn, id: promptKey, promptKey };
     });
-    expect(await fixture.runtime.supervisor.findByConversation(conversationId)).toEqual([]);
-    expect((await fixture.eventStore.readEvents(conversationId, { limit: 100 })).events).toEqual(
-      []
-    );
-    expect(fixture.ai.getConsumedTurnCount()).toBe(0);
-  });
+  const admission = vi
+    .spyOn(newRunAdmission, 'assertAgentNewRunAvailable')
+    .mockImplementation(() => undefined);
+  clearRegisteredAgentTaskCache();
+  return () => {
+    definitions.mockRestore();
+    admission.mockRestore();
+    clearRegisteredAgentTaskCache();
+  };
+}
 
-  it.each([PromptKeys.DEEP_RESEARCH_LEADER, PromptKeys.DEEP_RESEARCH_EXPERIMENTAL])(
-    '%s 新接纳限制保留旧历史与暂停运行，重开数据库后仍按原身份继续',
+async function reopenWithoutRetiredDefinition(
+  first: Awaited<ReturnType<typeof open>>,
+  restore: () => void,
+  tools: Parameters<typeof createDurableFlowHarness>[2] = []
+) {
+  first.close();
+  closers.pop();
+  resetAgentRuntimeSingletonsForTest();
+  restore();
+  return open([], tools);
+}
+
+describe('retired legacy research termination', () => {
+  it.each([...RETIRED_DEEP_RESEARCH_AGENT_IDS, 'selected-agent'] as const)(
+    '拒绝 %s 新请求，且不创建运行、消息或调用模型',
+    async entry => {
+      const fixture = await open([]);
+      const incoming =
+        entry === 'selected-agent'
+          ? admitConversationAgentChoice({
+              ...request,
+              options: {
+                selected_agent_id: ConversationSelectedAgentIdSchema.parse('deep_research_leader'),
+                model_id: 'scripted-test-model',
+              },
+            })
+          : { ...request, options: { ...request.options, promptKey: entry } };
+      await expect(fixture.flow.next(incoming, () => {})).rejects.toMatchObject({
+        code: 'AGENT_NEW_RUN_UNAVAILABLE',
+      });
+      expect(await fixture.runtime.supervisor.findByConversation(conversationId)).toEqual([]);
+      expect((await fixture.eventStore.readEvents(conversationId, { limit: 100 })).events).toEqual(
+        []
+      );
+      expect(fixture.ai.getConsumedTurnCount()).toBe(0);
+    }
+  );
+
+  it.each(['deep_research_leader', 'deep_research_experimental'])(
+    '%s 暂停运行重开后仍可查看，继续时明确终止并报告，不切换到其它 Agent',
     async promptKey => {
       const originalRequest = { ...request, options: { ...request.options, promptKey } };
-      // 只还原旧版接纳元数据来创建历史夹具；执行配置和恢复兼容性均使用原定义。
-      const findDefinition = agentDefinitions.findRegisteredAgentDefinitionByPromptKey;
-      const beforeDisable = vi
-        .spyOn(agentDefinitions, 'findRegisteredAgentDefinitionByPromptKey')
-        .mockImplementation(key => {
-          const definition = findDefinition(key);
-          return key === promptKey && definition
-            ? { ...definition, newRunUnavailableReason: undefined }
-            : definition;
-        });
+      const restore = impersonateRetiredDefinition(promptKey);
       const first = await open([
         { contentChunks: ['partial'], throwAfterEvents: new Error('network interrupted') },
       ]);
       await first.flow.next(originalRequest, () => {});
-      beforeDisable.mockRestore();
       const original = await paused(first);
-      const descriptor = await first.runtime.runDescriptors?.load(original.run_id);
-      expect(descriptor?.request.promptKey).toBe(promptKey);
-      const history = readTail(first.db, conversationId, 100);
-      expect(history.status).toBe('ready');
       const factsBefore = (await first.eventStore.readEvents(conversationId, { limit: 100 }))
         .events;
       expect(factsBefore.filter(event => event.type === 'user_input')).toHaveLength(1);
-      first.close();
-      closers.pop();
-      resetAgentRuntimeSingletonsForTest();
 
-      const restarted = await open([{ contentChunks: ['Original legacy run completed'] }]);
-      expect(readTail(restarted.db, conversationId, 100)).toEqual(history);
+      const restarted = await reopenWithoutRetiredDefinition(first, restore);
+      expect(readTail(restarted.db, conversationId, 100).status).toBe('ready');
       const restored = await paused(restarted);
       expect(restored.run_id).toBe(original.run_id);
       await expect(restarted.flow.next(originalRequest, () => {})).rejects.toMatchObject({
         code: 'AGENT_NEW_RUN_UNAVAILABLE',
       });
       expect((await paused(restarted)).run_id).toBe(original.run_id);
-      expect(
-        (await restarted.eventStore.readEvents(conversationId, { limit: 100 })).events
-      ).toEqual(factsBefore);
-      expect(await restarted.runtime.runDescriptors?.load(original.run_id)).toEqual(descriptor);
+
       const run = vi.spyOn(restarted.runner, 'run');
-      await restarted.flow.continueRun(
-        restored.run_id,
-        {
-          conversation_id: conversationId,
-          expected_updated_at: restored.pause.updated_at,
-          expected_execution_id: restored.execution_id,
-        },
-        () => {}
-      );
-      expect(run).toHaveBeenCalledOnce();
-      expect(run.mock.calls[0]?.[0].request.promptKey).toBe(promptKey);
-      const facts = (await restarted.eventStore.readEvents(conversationId, { limit: 100 })).events;
-      expect(facts.filter(event => event.type === 'user_input')).toHaveLength(1);
-      expect(
-        facts.filter(event => event.type === 'final_answer').map(event => event.content)
-      ).toEqual(['Original legacy run completed']);
-      expect(facts.every(event => event.run_id === original.run_id)).toBe(true);
+      await expect(
+        restarted.flow.continueRun(
+          restored.run_id,
+          {
+            conversation_id: conversationId,
+            expected_updated_at: restored.pause.updated_at,
+            expected_execution_id: restored.execution_id,
+          },
+          () => {}
+        )
+      ).rejects.toMatchObject({ code: 'AGENT_RETIRED' });
+      expect(run).not.toHaveBeenCalled();
+      expect(restarted.ai.getConsumedTurnCount()).toBe(0);
       expect(await restarted.flow.getActiveForegroundRun(conversationId)).toMatchObject({
         run: null,
       });
-      restarted.ai.assertAllTurnsConsumed();
+      expect(
+        (await restarted.runtime.supervisor.peek(RunIdSchema.parse(original.run_id)))?.status
+      ).toBe('cancelled');
+      const facts = (await restarted.eventStore.readEvents(conversationId, { limit: 100 })).events;
+      expect(facts).toEqual(expect.arrayContaining(factsBefore));
+      expect(facts.filter(event => event.type === 'user_input')).toHaveLength(1);
+      expect(facts.some(event => event.type === 'final_answer')).toBe(false);
+      expect(readTail(restarted.db, conversationId, 100).status).toBe('ready');
     }
   );
+
+  it('待审批的旧版深度研究运行在响应时明确终止，不执行原工具或模型', async () => {
+    const promptKey = 'deep_research_leader';
+    const restore = impersonateRetiredDefinition(promptKey);
+    const first = await open(
+      [
+        {
+          toolCalls: [
+            {
+              id: 'retired-ask',
+              name: 'ask',
+              argumentsJson: JSON.stringify({
+                questions: [{ id: 'answer', type: 'text', question: 'Which scope?' }],
+              }),
+            },
+          ],
+        },
+      ],
+      [new AskTool()]
+    );
+    await first.flow.next({ ...request, options: { ...request.options, promptKey } }, () => {});
+    const waiting = (await first.flow.getActiveForegroundRun(conversationId)).run;
+    if (waiting?.status !== 'awaiting_user' || !waiting.pending_interaction) {
+      throw new Error(`Expected original approval: ${JSON.stringify(waiting)}`);
+    }
+    const pending = waiting.pending_interaction;
+    const restarted = await reopenWithoutRetiredDefinition(first, restore, [new AskTool()]);
+    await expect(
+      restarted.flow.respondInteraction(
+        {
+          conversation_id: conversationId,
+          run_id: waiting.run_id,
+          interaction_id: pending.interaction_id,
+          resume_token: pending.resume_token,
+          checkpoint_revision: pending.checkpoint_revision,
+          tool_call_id: pending.tool_call_id,
+          tool_name: 'ask',
+          observation: 'Use the original scope',
+          data: {},
+          interaction_status: 'submitted',
+          interaction_submitted_at: Date.now(),
+        },
+        () => {}
+      )
+    ).rejects.toMatchObject({ code: 'AGENT_RETIRED' });
+    expect(restarted.ai.getConsumedTurnCount()).toBe(0);
+    expect(await restarted.flow.getActiveForegroundRun(conversationId)).toMatchObject({
+      run: null,
+    });
+    const facts = (await restarted.eventStore.readEvents(conversationId, { limit: 100 })).events;
+    expect(facts.filter(event => event.type === 'user_input')).toHaveLength(1);
+    expect(facts.some(event => event.type === 'tool_output')).toBe(false);
+  });
 
   it.each(['host', 'delegated'] as const)(
     '%s 旧交接协议在重启后明确拒绝续跑，保留原身份、历史和暂停资源',

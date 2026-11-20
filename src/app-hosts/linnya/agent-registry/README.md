@@ -216,8 +216,7 @@ stepPolicy: {
 
 当前内部检索的收口工具是知识库 `deep_search` 的 `assemble_documents` 和网页
 `deep_web_search` 的 `assemble_web_sources`，两者通过 `terminateRun`
-结束子 run。旧 deep research 的 `write_report`
-属于历史实现，不是新能力的接入范例。普通检索、读取、编辑工具不要结束循环。
+结束子 run。普通检索、读取、编辑工具不要结束循环。
 
 长任务预算也应由 definition 声明。当前 Default Agent 与 Slides Agent 使用
 `maxSteps: 800`；未声明的 Agent 继续继承 Linnkit 的 80 步框架默认值。Host 的 root 与 registered
@@ -299,7 +298,6 @@ src/app-hosts/linnya/agent-registry/
 │   ├── __tests__/
 │   ├── default/
 │   ├── deep_search/
-│   ├── deep_research/
 │   ├── slides_agent/
 │   ├── review/
 │   ├── subagent_document_editor/
@@ -363,7 +361,7 @@ src/app-hosts/linnya/agent-registry/
 - `flow` 的 request build
 - `registeredAgentResolver`
 - `GenericAgentTask`
-- `skills / review / deep_research` 等产品模块
+- `skills / review / research` 等产品模块
 
 ### `registry.ts`
 
@@ -525,7 +523,6 @@ core。
 
 - [singleTurnAgents.test.ts](./agents/__tests__/singleTurnAgents.test.ts)
 - [Slides Agent](../../../../packages/plugins/slides/src/backend/agents/slides_agent/index.test.ts)
-- [deepResearchAgents.test.ts](./agents/__tests__/deepResearchAgents.test.ts)
 - [researchRoles.integration.test.ts](./agents/research_v1/researchRoles.integration.test.ts)
 - [agentSkillExposure.test.ts](../../../features/skills/__tests__/agentSkillExposure.test.ts)
 
@@ -557,11 +554,18 @@ Graph 步，工具白名单限定浅检索、网页读取、续读及资料组�
 交给 Host 持久 admission 事务执行。网页四次，知识库旧行为保持不变。业务来源合同见 Web
 owner，不在注册中心复制。
 
-### 退役的研究实验身份
+### 已删除的旧研究身份
 
-旧 beta 五角色与四个 CLI 研究实验定义仅保留历史与恢复兼容，均停止接纳新根任务。
-生产研究使用 `research_v1` 和 `research_*_v1` 专项角色；不要从目录中的旧 prompt 推断当前产品流程。
-保留理由、退出边界和回归入口见[退役研究角色](./agents/deep_research/README.md)。
+旧版深度研究 beta（Leader、Scout、Reasoner 1/2、Challenger）与四个 CLI 研究实验身份
+（`deep_research_experimental`、`deep_research_{investigation,argument,source}_review`）的定义、提示与
+`write_report` 工具已删除。生产研究使用 `research_v1` 和 `research_*_v1` 专项角色。
+
+`@app/schemas` 的 `RETIRED_DEEP_RESEARCH_AGENT_IDS` 只保存这些身份（AgentDefinition.id 与 promptKey 相同），
+用于退役终止合同：新请求在 Flow 首次准备时以 `AGENT_NEW_RUN_UNAVAILABLE` 拒绝；暂停或待审批的旧根运行在
+继续/响应时由 FlowOrchestrator 取消并返回 `AGENT_RETIRED`，不进入恢复兼容检查，也不切换到研究或 Default；
+历史对话照常打开，Renderer 把角色名回退为“旧版深度研究（已退役）”，旧 `write_report` 工具卡回退通用卡。
+该列表只服务这批旧研究身份。回归入口是
+[退役终止集成测试](../adapters/flow/__integration-tests__/flow.legacy-research-admission.integration.test.ts)。
 
 ### 主研究 Agent 与专项子职责 v1
 

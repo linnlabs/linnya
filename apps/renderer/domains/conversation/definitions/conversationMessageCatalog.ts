@@ -90,6 +90,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.input.agentChoice.closeCurrent': '关闭当前 Agent',
   'conversation.input.agentChoice.close': '关闭',
   'conversation.input.agentChoice.unavailable': 'Agent 已不可用',
+  'conversation.input.agentChoice.retiredDeepResearch': '旧版深度研究（已退役）',
   'conversation.input.agentChoice.unavailableDescription':
     '此会话原先选择的 Agent 已不可用，请关闭或重新选择。历史和暂停运行仍保留。',
   'conversation.input.agentChoice.persistFailed': '无法更新会话 Agent，请重试。',
@@ -310,7 +311,9 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.flow.subrun.noConversation': '无法发起子运行：当前没有可用对话。',
   'conversation.flow.subrun.executionFailed': '子运行执行失败，请稍后重试。',
   'conversation.flow.deepResearch.unavailable':
-    '旧版深度研究已停止接收新任务。已有历史和暂停运行仍保留；请从菜单重新选择“研究”使用新版。',
+    '旧版深度研究已退役，不再接收新任务；历史对话仍可查看。请从菜单重新选择“研究”使用新版。',
+  'conversation.flow.deepResearch.retiredRunTerminated':
+    '旧版深度研究已退役，这次暂停的运行已终止。历史对话和已保存的文档仍保留；如需继续研究，请从菜单选择“研究”发起新任务。',
   'conversation.flow.deepResearch.resetFallback': '下周一 00:00',
   'conversation.flow.deepResearch.weeklyLimitReached':
     '本周 Deep Research 已达上限（{usedCount}/{limit}）。\n恢复时间：{resetText}',
@@ -390,7 +393,6 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.raw.empty': '无内容',
   'conversation.tool.raw.loadFailed': '加载失败，请稍后重试。',
   'conversation.tool.registry.knowledgeSearching': '正在搜索知识库...',
-  'conversation.tool.deepResearch.writeReport': '撰写研究报告',
   'conversation.tool.markdown.createAnnotations': '创建文档批注',
   'conversation.tool.workspace.files.list': '查看项目文件',
   'conversation.tool.workspace.file.read': '阅读',
@@ -500,12 +502,6 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.tool.researchRun.sourceReview': '来源与数值复核',
   'conversation.tool.researchRun.revision': '修订文章',
   'conversation.tool.output.continue': '继续读取工具结果',
-  'conversation.tool.deepResearch.scout': '检索',
-  'conversation.tool.deepResearch.reasoner': '推理',
-  'conversation.tool.deepResearch.challenger': '挑战',
-  'conversation.tool.deepResearch.writer': '写作',
-  'conversation.tool.deepResearch.running': '正在研究',
-  'conversation.tool.deepResearch.completed': '研究过程',
   'conversation.tool.webSearch.deepTitle': '网页深度搜索：{query}',
   'conversation.tool.webSearch.assemble': '组装网页资料',
   'conversation.tool.webSearch.limit': '已达四次深搜上限，本次为普通搜索。',
@@ -873,6 +869,7 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.input.agentChoice.closeCurrent': 'Close current agent',
       'conversation.input.agentChoice.close': 'Close',
       'conversation.input.agentChoice.unavailable': 'Agent unavailable',
+      'conversation.input.agentChoice.retiredDeepResearch': 'Legacy Deep Research (retired)',
       'conversation.input.agentChoice.unavailableDescription':
         'The agent previously selected for this conversation is unavailable. Clear or select it again. History and paused runs are preserved.',
       'conversation.input.agentChoice.persistFailed':
@@ -1117,7 +1114,9 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.flow.subrun.executionFailed':
         'Subrun execution failed. Please try again later.',
       'conversation.flow.deepResearch.unavailable':
-        'Legacy deep research no longer accepts new tasks. History and paused runs remain available; select Research again from the menu to use the new workflow.',
+        'Legacy Deep Research has been retired and no longer accepts new tasks. Its conversations remain viewable; select Research from the menu to use the new workflow.',
+      'conversation.flow.deepResearch.retiredRunTerminated':
+        'Legacy Deep Research has been retired, so this paused run was ended. The conversation and saved documents are preserved; select Research from the menu to start a new task.',
       'conversation.flow.deepResearch.resetFallback': 'Next Monday 00:00',
       'conversation.flow.deepResearch.weeklyLimitReached':
         "Deep Research has reached this week's limit ({usedCount}/{limit}).\nReset time: {resetText}",
@@ -1206,7 +1205,6 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.raw.empty': 'No content',
       'conversation.tool.raw.loadFailed': 'Load failed. Please try again later.',
       'conversation.tool.registry.knowledgeSearching': 'Searching knowledge base...',
-      'conversation.tool.deepResearch.writeReport': 'Write research report',
       'conversation.tool.markdown.createAnnotations': 'Create document annotations',
       'conversation.tool.workspace.files.list': 'View project files',
       'conversation.tool.workspace.file.read': 'Read',
@@ -1323,12 +1321,6 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.tool.researchRun.sourceReview': 'Source and numerical review',
       'conversation.tool.researchRun.revision': 'Revised article',
       'conversation.tool.output.continue': 'Continue reading tool result',
-      'conversation.tool.deepResearch.scout': 'Search',
-      'conversation.tool.deepResearch.reasoner': 'Reason',
-      'conversation.tool.deepResearch.challenger': 'Challenge',
-      'conversation.tool.deepResearch.writer': 'Write',
-      'conversation.tool.deepResearch.running': 'Researching',
-      'conversation.tool.deepResearch.completed': 'Research process',
       'conversation.tool.webSearch.deepTitle': 'Deep web search: {query}',
       'conversation.tool.webSearch.assemble': 'Assemble web sources',
       'conversation.tool.webSearch.limit': 'Deep search limit reached; ordinary search executed.',

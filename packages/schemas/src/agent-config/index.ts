@@ -41,17 +41,7 @@ export const PromptKeys = {
   AGENT_DEFAULT: 'agent_default',
   /** 项目初始化 / 项目规划 */
   PROJECT_PLANNING: 'project_planning',
-  // ---- 退役 Deep Research beta 身份（历史与恢复保留，不接纳新根运行） ----
-  /** Deep Research Leader（研究负责人）：澄清问题、拆解子问题、制定检索计划 */
-  DEEP_RESEARCH_LEADER: 'deep_research_leader',
-  /** Deep Research Scout（检索员）：多轮检索，产出候选文档/块列表 */
-  DEEP_RESEARCH_SCOUT: 'deep_research_scout',
-  /** Deep Research Reasoner_1（推理员：第一轮）：初步结论与关键假设 */
-  DEEP_RESEARCH_REASONER_1: 'deep_research_reasoner_1',
-  /** Deep Research Reasoner_2（推理员：第二轮）：基于 Challenger 做收敛，产出写作大纲 */
-  DEEP_RESEARCH_REASONER_2: 'deep_research_reasoner_2',
-  /** Deep Research Challenger（反对派）：挑刺与反例检索 */
-  DEEP_RESEARCH_CHALLENGER: 'deep_research_challenger',
+
   // ---- Review ----
   /** 审阅（Review）：通过工具创建批注 */
   REVIEW: 'review',
@@ -65,14 +55,6 @@ export const PromptKeys = {
   /** Deep Search Agent：知识库深度搜索 */
   DEEP_SEARCH: 'deep_search',
   DEEP_WEB_SEARCH: 'deep_web_search',
-  /** 退役 CLI 实验作者身份；保留历史与恢复，不接纳新根运行。 */
-  DEEP_RESEARCH_EXPERIMENTAL: 'deep_research_experimental',
-  /** 退役 CLI 调查复核身份：在成文前检查解释与缺失观察。 */
-  DEEP_RESEARCH_INVESTIGATION_REVIEW: 'deep_research_investigation_review',
-  /** 退役 CLI 论证审核身份：检查成稿推论与解释边界。 */
-  DEEP_RESEARCH_ARGUMENT_REVIEW: 'deep_research_argument_review',
-  /** 退役 CLI 数字/来源校对身份：检查成稿数量关系与原件。 */
-  DEEP_RESEARCH_SOURCE_REVIEW: 'deep_research_source_review',
 
   // ---- 正式研究专项角色（v1 是持久身份，不是方法或 Skill 版本） ----
   RESEARCH_AUTHOR_V1: 'research_author_v1',
@@ -94,6 +76,37 @@ export type PromptKey = typeof PromptKeys[keyof typeof PromptKeys];
 
 /** 内置 PromptKey 值元组（供内置功能强类型与局部校验使用；跨端 API wire 只要求 string）。 */
 export const PROMPT_KEY_VALUES = Object.values(PromptKeys) as [PromptKey, ...PromptKey[]];
+
+// =============================================================================
+// 🪦 已退役 Agent 身份
+// =============================================================================
+
+/**
+ * 已删除定义的旧版深度研究 beta 与 CLI 实验身份。
+ *
+ * 这些 Agent 的 AgentDefinition.id 与 promptKey 相同，因此同一份列表同时识别会话选中 Agent、
+ * 运行记录里的 Agent 身份和请求 promptKey。它只用于历史展示回退和拒绝/终止旧运行，
+ * 不得映射到正式“研究”或 Default。
+ */
+export const RETIRED_DEEP_RESEARCH_AGENT_IDS = [
+  'deep_research_leader',
+  'deep_research_scout',
+  'deep_research_reasoner_1',
+  'deep_research_reasoner_2',
+  'deep_research_challenger',
+  'deep_research_experimental',
+  'deep_research_investigation_review',
+  'deep_research_argument_review',
+  'deep_research_source_review',
+] as const;
+
+const RETIRED_DEEP_RESEARCH_AGENT_ID_SET: ReadonlySet<string> = new Set(
+  RETIRED_DEEP_RESEARCH_AGENT_IDS
+);
+
+export function isRetiredDeepResearchAgentId(agentIdOrPromptKey: string): boolean {
+  return RETIRED_DEEP_RESEARCH_AGENT_ID_SET.has(agentIdOrPromptKey);
+}
 
 // =============================================================================
 // 🔗 兼容别名（映射到 PromptKeys，禁止重复写值）

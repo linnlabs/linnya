@@ -1,20 +1,11 @@
 import researchAgentV1 from './research_v1';
 import defaultAgent from './default';
 import deepWebSearchAgent from './deep_web_search';
-import experimentalResearchAgent from './deep_research_experimental';
-import investigationReviewAgent from './deep_research_investigation_review';
-import argumentReviewAgent from './deep_research_argument_review';
-import sourceReviewAgent from './deep_research_source_review';
 import researchAuthorV1 from './research_author_v1';
 import researchInvestigationReviewV1 from './research_investigation_review_v1';
 import researchArgumentReviewV1 from './research_argument_review_v1';
 import researchSourceReviewV1 from './research_source_review_v1';
 import deepSearchAgent from './deep_search';
-import deepResearchLeaderAgent from './deep_research/leader';
-import deepResearchReasoner1Agent from './deep_research/reasoner_1';
-import deepResearchReasoner2Agent from './deep_research/reasoner_2';
-import deepResearchScoutAgent from './deep_research/scout';
-import deepResearchChallengerAgent from './deep_research/challenger';
 import projectPlanningAgent from './project_planning';
 import reviewAgent from './review';
 import systemBatchSummarizerAgent from './system_batch_summarizer';
@@ -35,19 +26,10 @@ export const legacyBuiltinAgentDefinitions = [
   defaultAgent,
   deepSearchAgent,
   deepWebSearchAgent,
-  experimentalResearchAgent,
-  investigationReviewAgent,
-  argumentReviewAgent,
-  sourceReviewAgent,
   researchAuthorV1,
   researchInvestigationReviewV1,
   researchArgumentReviewV1,
   researchSourceReviewV1,
-  deepResearchLeaderAgent,
-  deepResearchReasoner1Agent,
-  deepResearchReasoner2Agent,
-  deepResearchScoutAgent,
-  deepResearchChallengerAgent,
   projectPlanningAgent,
   reviewAgent,
   systemBatchSummarizerAgent,

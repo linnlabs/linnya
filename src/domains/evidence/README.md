@@ -112,11 +112,12 @@
 Host window 和 live/Subrun projection 复用 Citation domain 的 strict admission 与 scoped workspace，最终只把
 正文实际使用的 dependency snapshot 交给 UI。EvidenceStore 不承担 Conversation hover registry 职责。
 
-#### 4) Deep Research Workspace 协作（conversation + instance）
+#### 4) Conversation instance 分区（conversation + instance）
 
-- `src/tools/types.ts`：`ToolContext.research.instanceId`
+- `src/tools/types.ts`：`ToolContext.research.instanceId`；唯一写入者是已删除的旧版深度研究请求增强器，
+  当前运行不再注入，工具分区统一回落 `default`，历史 instance 目录仍由 repository 枚举读取
 - `src/shared/utils/pathManager.ts`：Artifacts/v1/conversations/<conversationId>/instances/<instanceId>/... 目录规则
-- `src/app-hosts/linnya/agent-registry/agents/deep_research/README.md`：Deep Research 引用规范与角色分工
+- `src/app-hosts/linnya/application/research/README.md`：正式研究的引用要求与角色分工
 
 ---
 
@@ -179,7 +180,7 @@ token、来源锚点、预算摘录和明确状态。EvidenceStore 仍服务生�
 
 1. Web 完整抓取正文可通过既有 `tool_output_read` 续读（已完成）。
 2. Knowledge 当前事实可通过 `knowledge_read` 重读，持久快照由项目 CitationMark 或正式交接承载。
-3. Deep Research 角色不再需要独立 ref snapshot 读取；Default、General subagent、已退役的 Researcher subagent、Slides 和 SupplyStrata 已完成退出。
+3. Deep Research 角色不再需要独立 ref snapshot 读取；Default、General subagent、已退役的 Researcher subagent、Slides 和 SupplyStrata 已完成退出；旧版深度研究 beta 角色已随定义删除，内置 Agent 目前都不再把它列入白名单。
 4. 减少工具后，真实任务中的引用正确率、全文可达性和跨 subrun 成功率不下降。
 
 旧事件不随 live facade 删除，继续由 strict historical schema/projector 回放。未满足全部条件前，不用 alias、fallback 或新的通用读取工具掩盖迁移缺口。
@@ -213,7 +214,7 @@ pnpm vitest run src/app-hosts/linnya/adapters/tools/citation-source-resolution/_
 
 ### 相关文档
 
-- Deep Research 角色与引用规范：`src/app-hosts/linnya/agent-registry/agents/deep_research/README.md`
+- 正式研究角色与引用要求：`src/app-hosts/linnya/application/research/README.md`
 - Agent facade 的剩余退出条件：见本文“`evidence_resolve` 退出条件”
 - 历史设计与推进记录：请通过 git history 追溯
 

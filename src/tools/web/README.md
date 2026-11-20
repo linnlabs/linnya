@@ -498,7 +498,7 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 ### 5.8 与 deep_research 的关系（边界）
 
 - Default 与 `research_v1` 父子角色都使用同一 Web 合同；网页深搜只承担资料搜集，不替父 Agent 作综合判断。研究编排由 Agent Registry 与普通 subagent 拥有，不进入 Web owner。
-- 旧 `deep_research` 不属于本次调用链，不恢复 Scout/Challenger/Writer 或其私有证据链。知识库深搜仍独立维护。
+- 旧版 `deep_research_*` beta 角色已删除，不恢复 Scout/Challenger/Writer 或其私有证据链。知识库深搜仍独立维护。
 
 ### 5.9 逐步探索与 bash 边界
 

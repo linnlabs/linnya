@@ -21,6 +21,7 @@ import type {
   ConversationRunSteerResponse,
   ConversationRunSteerWithdrawResponse,
 } from '@app/schemas';
+import { isRetiredDeepResearchAgentId } from '@app/schemas';
 import { PendingUserInputRegistry } from './pending-user-inputs/pendingUserInputRegistry';
 import {
   generateRuntimeEventId,
@@ -66,6 +67,7 @@ import {
   admitConversationAgentChoice,
   resolveConversationAgentPromptKey,
 } from './functions/admitConversationAgentChoice';
+import { RetiredAgentRunTerminatedError } from '../../agent-registry/assertAgentNewRunAvailable';
 
 const logger = new Logger('FlowOrchestrator');
 
@@ -201,6 +203,7 @@ export class FlowOrchestrator {
     if (!snapshot.agentSpecId) {
       throw new Error(`Run ${response.run_id} does not have a stable Agent identity`);
     }
+    await this.terminateRetiredAgentRun(snapshot, response.conversation_id);
     const promptKey = resolveConversationAgentPromptKey(snapshot.agentSpecId);
     const request: ConversationNextRequest = {
       conversation_id: response.conversation_id,
@@ -384,11 +387,12 @@ export class FlowOrchestrator {
     }
   }
 
-  continueRun(
+  async continueRun(
     runId: string,
     command: ConversationRunContinueRequest,
     sink: SSESink
   ): Promise<FlowExecutionResult> {
+    await this.terminateRetiredAgentRunById(runId, command.conversation_id);
     return continueFlowRun({
       runId,
       command,
@@ -400,10 +404,11 @@ export class FlowOrchestrator {
     });
   }
 
-  continueRunDetached(
+  async continueRunDetached(
     runId: string,
     command: ConversationRunContinueRequest
   ): Promise<FlowRunAcceptance> {
+    await this.terminateRetiredAgentRunById(runId, command.conversation_id);
     return continueFlowRunDetached({
       runId,
       command,
@@ -419,6 +424,28 @@ export class FlowOrchestrator {
         });
       },
     });
+  }
+
+  /**
+   * 已退役 Agent 没有可执行定义：其暂停或待审批的根运行在继续/响应时被取消并明确报告。
+   * 不进入恢复兼容检查，也不换用其它 Agent 续跑；历史事实保留。
+   */
+  private async terminateRetiredAgentRun(
+    run: Pick<runSupervisor.RunSnapshot, 'runId' | 'agentSpecId' | 'parentRunId'>,
+    conversationId: string
+  ): Promise<void> {
+    if (run.parentRunId || !run.agentSpecId || !isRetiredDeepResearchAgentId(run.agentSpecId)) {
+      return;
+    }
+    await this.cancelRun(run.runId, conversationId, 'agent_retired');
+    throw new RetiredAgentRunTerminatedError();
+  }
+
+  private async terminateRetiredAgentRunById(runId: string, conversationId: string): Promise<void> {
+    const run = (await this.runtime.supervisor.findByConversation(conversationId)).find(
+      candidate => candidate.runId === runId
+    );
+    if (run) await this.terminateRetiredAgentRun(run, conversationId);
   }
 
   async getForegroundRunSettlement(

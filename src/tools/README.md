@@ -324,7 +324,7 @@ import type { StructuredToolResult } from 'src/tools/types';
   - `control.finalAnswer='...'`：请求 runtime 把工具产物投影为 `final_answer`
     事件。
   - 典型组合：`finalAnswer + terminateRun`，用于“工具结果就是最终答案/闭环产物”的工具，例如 deep
-    research 的 `write_report`，以及 deep search 的 `assemble_documents`。
+    search 的 `assemble_documents`。
   - 不要滥用：普通读取、检索、编辑、写文件工具不应
     `terminateRun`；它们只是给 agent 下一步决策提供 observation。
 - **超长 observation 预览元信息（`observationPreviewMeta`）**：
