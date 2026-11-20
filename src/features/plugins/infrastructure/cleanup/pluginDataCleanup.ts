@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
-import { PluginManifestDataStorageSchema, type PluginDataSummary, type PluginId, type PluginManifestDataStorage } from '@app/schemas';
+import { PluginManifestDataStorageSchema, type PluginCleanupFailureReason, type PluginDataSummary, type PluginId, type PluginManifestDataStorage } from '@app/schemas';
 
 import { PLUGIN_CLEANUP_SCHEMA } from '../sqlite/plugin-state.schema';
 
@@ -39,6 +39,7 @@ export type PluginDataCleanupResult =
       readonly status: 'failed';
       readonly pluginId: PluginId;
       readonly error: string;
+      readonly errorCode: PluginCleanupFailureReason;
       readonly completedPaths: readonly string[];
     };
 
@@ -99,11 +100,38 @@ function allocationBytes(stat: fs.Stats): number {
 
 function directoryAllocationBytes(directory: string): number {
   if (!fs.existsSync(directory)) return 0;
-  const stat = fs.lstatSync(directory);
+  let stat: fs.Stats;
+  try {
+    stat = fs.lstatSync(directory);
+  } catch (error) {
+    if (isMissingPathError(error)) return 0;
+    throw error;
+  }
   if (!stat.isDirectory()) return allocationBytes(stat);
-  return fs.readdirSync(directory, { withFileTypes: true }).reduce((total, entry) => {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(directory, { withFileTypes: true });
+  } catch (error) {
+    if (isMissingPathError(error)) return 0;
+    throw error;
+  }
+  return entries.reduce((total, entry) => {
     return total + directoryAllocationBytes(path.join(directory, entry.name));
   }, allocationBytes(stat));
+}
+
+function isMissingPathError(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && Reflect.get(error, 'code') === 'ENOENT');
+}
+
+export function classifyPluginCleanupError(error: unknown): PluginCleanupFailureReason {
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  if (message.includes('已取消') || message.includes('停止')) return 'interrupted';
+  const code = error && typeof error === 'object' ? Reflect.get(error, 'code') : undefined;
+  if (code === 'EBUSY' || code === 'EPERM') return 'file-locked';
+  if (code === 'EACCES' || code === 'EROFS') return 'permission-denied';
+  if (code === 'ENOSPC') return 'disk-full';
+  return 'unknown';
 }
 
 function validateTableName(tableName: string): string {
@@ -167,6 +195,7 @@ export function readPluginDataSummary(options: {
       directories: usage.directories,
       tables: usage.tables,
       ...(job.error ? { error: job.error } : {}),
+      ...(job.error ? { errorCode: classifyPluginCleanupError(job.error) } : {}),
       canDelete: true,
     };
   }
@@ -287,7 +316,13 @@ export function cleanupPluginDataSync(options: PluginDataCleanupOptions): Plugin
     };
   } catch (error) {
     const message = markFailed(options.db, options.pluginId, completedPaths, error, now());
-    return { status: 'failed', pluginId: options.pluginId, error: message, completedPaths: [...completedPaths] };
+    return {
+      status: 'failed',
+      pluginId: options.pluginId,
+      error: message,
+      errorCode: classifyPluginCleanupError(error),
+      completedPaths: [...completedPaths],
+    };
   }
 }
 

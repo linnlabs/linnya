@@ -39,6 +39,9 @@ export function buildPluginsPreloadApi(ipcRenderer: IpcRenderer) {
       installBundled: (pluginId: string) => ipcRenderer.invoke('plugins:installBundled', pluginId),
       uninstall: (pluginId: string, options?: { deleteData?: boolean }) =>
         ipcRenderer.invoke('plugins:uninstall', { pluginId, ...options }),
+      cleanupData: (pluginId: string) => ipcRenderer.invoke('plugins:cleanup-data', pluginId),
+      stopCleanup: (pluginId: string) => ipcRenderer.invoke('plugins:stop-cleanup', pluginId),
+      getDataPath: (pluginId: string) => ipcRenderer.invoke('plugins:get-data-path', pluginId),
       setEnabled: (pluginId: string, enabled: boolean) =>
         ipcRenderer.invoke('plugins:set-enabled', pluginId, enabled),
       onChanged: (cb: () => void) => {

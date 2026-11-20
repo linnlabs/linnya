@@ -28,7 +28,7 @@ describe('plugin data root', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-root-'));
     roots.push(root);
     fs.mkdirSync(path.join(root, 'KnowledgeBase'));
-    expect(resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['KnowledgeBase']) }))
+    expect(resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['KnowledgeBase']), allowLegacyRoots: true }))
       .toBe(path.join(root, 'KnowledgeBase'));
     expect(resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage() }))
       .toBe(path.join(root, 'Plugins', 'demo'));
@@ -37,9 +37,9 @@ describe('plugin data root', () => {
   it('rejects traversal and absolute legacy roots', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-root-'));
     roots.push(root);
-    expect(() => resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['../outside']) }))
+    expect(() => resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['../outside']), allowLegacyRoots: true }))
       .toThrow('旧数据根声明非法');
-    expect(() => resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['/outside']) }))
+    expect(() => resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['/outside']), allowLegacyRoots: true }))
       .toThrow('旧数据根声明非法');
   });
 
@@ -50,7 +50,30 @@ describe('plugin data root', () => {
     fs.mkdirSync(path.join(root, 'Plugins', 'demo'), { recursive: true });
     fs.writeFileSync(path.join(root, 'KnowledgeBase', 'old.json'), 'old');
     fs.writeFileSync(path.join(root, 'Plugins', 'demo', 'new.json'), 'new');
-    expect(() => resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['KnowledgeBase']) }))
+    expect(() => resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['KnowledgeBase']), allowLegacyRoots: true }))
       .toThrow('存在多个候选位置');
+  });
+
+  it('rejects legacy roots for untrusted sources and host-owned locations', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-root-'));
+    roots.push(root);
+    expect(() => resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['Documents']) }))
+      .toThrow('来源不可信');
+    expect(() => resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['Documents']), allowLegacyRoots: true }))
+      .toThrow('宿主保留目录');
+    expect(() => resolvePluginDataRoot({ workspaceRoot: root, pluginId: 'demo', dataStorage: storage(['Plugins/other']), allowLegacyRoots: true }))
+      .toThrow('其他插件');
+  });
+
+  it('rejects duplicate legacy declarations supplied by the host', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-root-'));
+    roots.push(root);
+    expect(() => resolvePluginDataRoot({
+      workspaceRoot: root,
+      pluginId: 'demo',
+      dataStorage: storage(['KnowledgeBase']),
+      allowLegacyRoots: true,
+      knownLegacyRoots: ['KnowledgeBase'],
+    })).toThrow('多个插件声明');
   });
 });

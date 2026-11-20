@@ -10,6 +10,7 @@ import {
   cleanupPluginData,
   resumePluginDataCleanup,
 } from './pluginDataCleanup';
+import { readPluginManifestForCleanup } from './pluginDataManifest';
 import { uninstallPluginAndDeleteData } from '../../install/orchestration/uninstallPluginLifecycle';
 import { PLUGIN_PLATFORM_STATE_SCHEMAS } from '../sqlite/plugin-state.schema';
 
@@ -160,5 +161,32 @@ describe('plugin data cleanup', () => {
     expect(resumed.status).toBe('completed');
     vi.restoreAllMocks();
     db.close();
+  });
+
+  it('D1: 插件已卸载且没有 direct dir 时，仍从随包 manifest 解析清理声明', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-cleanup-bundled-'));
+    roots.push(root);
+    const bundledRoot = path.join(root, 'bundled');
+    const bundledPluginDir = path.join(bundledRoot, 'demo');
+    fs.mkdirSync(bundledPluginDir, { recursive: true });
+    fs.writeFileSync(path.join(bundledPluginDir, 'plugin.json'), JSON.stringify({
+      id: 'demo',
+      version: '1.0.0',
+      name: 'Demo',
+      description: 'Demo',
+      developer: 'Linnya',
+      details: ['Demo'],
+      entry: { backend: './dist/backend/index.cjs' },
+      ownedTables: ['plugin_owned'],
+      dataStorage: storage,
+    }));
+
+    const source = readPluginManifestForCleanup({
+      pluginId: 'demo',
+      bundledPluginRoot: bundledRoot,
+    });
+    expect(source?.kind).toBe('bundled');
+    expect(source?.manifest.id).toBe('demo');
+    expect(readPluginManifestForCleanup({ pluginId: 'demo' })).toBeNull();
   });
 });

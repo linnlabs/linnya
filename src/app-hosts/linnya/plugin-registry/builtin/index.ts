@@ -41,6 +41,7 @@ import {
   readJsonFile,
 } from '../../../../electron-main/plugins/loader/pluginLayout';
 import { resumePendingPluginDataCleanupsSync } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { readPluginManifestForCleanup } from '../../../../features/plugins/infrastructure/cleanup/pluginDataManifest';
 import { resolvePluginDataRootForManifest } from '../pluginDataRoot';
 import {
   getDocumentTypeBackendHook,
@@ -476,10 +477,14 @@ export function bootstrapBuiltinPluginLifecycle(
     resumePendingPluginDataCleanupsSync({
     db,
     resolveStorage: pluginId => {
-      const directory = diskPluginDirsById.get(pluginId);
-      if (!directory) return null;
       try {
-        const manifest = parsePluginManifest(readJsonFile(path.join(directory, 'plugin.json')));
+        const source = readPluginManifestForCleanup({
+          pluginId,
+          registeredPluginDirectory: diskPluginDirsById.get(pluginId),
+          bundledPluginRoot: process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT ?? process.env.LINNYA_BUNDLED_PLUGIN_ROOT,
+        });
+        if (!source) return null;
+        const manifest = source.manifest;
         return {
           dataStorage: manifest.dataStorage,
           ownedTables: manifest.ownedTables,
@@ -494,7 +499,12 @@ export function bootstrapBuiltinPluginLifecycle(
         return null;
       }
     },
-    resolveDataRoot: (pluginId, storage) => resolvePluginDataRootForManifest({ pluginId, dataStorage: storage.dataStorage }),
+    resolveDataRoot: (pluginId, storage) => resolvePluginDataRootForManifest({
+      pluginId,
+      dataStorage: storage.dataStorage,
+      // 清理任务已经由可信 manifest 持久化；启动恢复不能因为插件已卸载而丢失旧根。
+      allowLegacyRoots: true,
+    }),
     });
   } catch (error) {
     pluginDiagnostics.record({

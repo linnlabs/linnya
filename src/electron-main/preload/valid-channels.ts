@@ -168,6 +168,9 @@ const PLUGIN_CHANNELS = [
   'plugins:installFromRemote',
   'plugins:installBundled',
   'plugins:uninstall',
+  'plugins:cleanup-data',
+  'plugins:stop-cleanup',
+  'plugins:get-data-path',
   'plugins:set-enabled',
   'plugins-changed',
 ] as const;

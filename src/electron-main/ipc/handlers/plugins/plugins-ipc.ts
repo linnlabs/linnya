@@ -56,6 +56,8 @@ import type { DistributionIdentity } from '../../../../shared/distribution-ident
 import { parsePluginManifest, type PluginMeta, type PluginOperationFailure } from '@app/schemas';
 import { resolvePluginDataRootForManifest, resolveRegisteredPluginDataRoot } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
 import { readPluginDataSummary } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { cleanupPluginData, type PluginDataCleanupResult } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { readPluginManifestForCleanup } from '../../../../features/plugins/infrastructure/cleanup/pluginDataManifest';
 import { pathManager } from '../../../../shared/utils/pathManager';
 import { readJsonFile } from '../../../plugins/loader/pluginLayout';
 import {
@@ -66,6 +68,11 @@ import {
 import { PluginOperationError, toPluginOperationError } from '../../../../features/plugins/install/definitions/pluginOperationError';
 
 const logger = new Logger('PluginsIPC');
+const PLUGIN_DATA_SUMMARY_CACHE_TTL_MS = 2000;
+const pluginDataSummaryCache = new Map<string, {
+  readonly expiresAt: number;
+  readonly data: NonNullable<ReturnType<typeof readPluginDataSummary>>;
+}>();
 
 function manifestForPlugin(pluginId: string, bundledRoot: string | null): ReturnType<typeof parsePluginManifest> | null {
   const registered = getRegisteredBackendPluginDirectory(pluginId);
@@ -84,33 +91,82 @@ function manifestForPlugin(pluginId: string, bundledRoot: string | null): Return
   return null;
 }
 
-function enrichPluginStates(
+function cleanupDescriptorForPlugin(pluginId: string, bundledRoot: string | null): {
+  readonly manifest: ReturnType<typeof parsePluginManifest>;
+  readonly dataRoot: string;
+} | null {
+  const source = readPluginManifestForCleanup({
+    pluginId,
+    registeredPluginDirectory: getRegisteredBackendPluginDirectory(pluginId),
+    bundledPluginRoot: bundledRoot,
+  });
+  if (!source) return null;
+  const dataRoot = source.kind === 'registered'
+    ? resolveRegisteredPluginDataRoot(pluginId)
+    : resolvePluginDataRootForManifest({
+      pluginId,
+      dataStorage: source.manifest.dataStorage,
+      allowLegacyRoots: true,
+    });
+  return { manifest: source.manifest, dataRoot };
+}
+
+async function enrichPluginStates(
   states: ReturnType<PluginStateService['listStates']>,
   db: Database.Database,
   bundledRoot: string | null,
-): ReturnType<PluginStateService['listStates']> {
+): Promise<ReturnType<PluginStateService['listStates']>> {
   const workspaceRoot = pathManager.getWorkspaceRoot();
-  return states.map(state => {
+  const enriched: ReturnType<PluginStateService['listStates']> = [];
+  for (const state of states) {
     const manifest = manifestForPlugin(state.meta.id, bundledRoot);
-    if (!manifest) return state;
+    if (!manifest) {
+      enriched.push(state);
+      continue;
+    }
     const hasDeclaredData = manifest.ownedTables.length > 0
       || Object.values(manifest.dataStorage.directories).some(paths => paths.length > 0);
-    if (!hasDeclaredData) return state;
-    const dataRoot = getRegisteredBackendPluginDirectory(state.meta.id)
-      ? resolveRegisteredPluginDataRoot(state.meta.id)
-      : resolvePluginDataRootForManifest({ pluginId: state.meta.id, dataStorage: manifest.dataStorage });
-    return {
-      ...state,
-      data: readPluginDataSummary({
+    if (!hasDeclaredData) {
+      enriched.push(state);
+      continue;
+    }
+    const cached = pluginDataSummaryCache.get(state.meta.id);
+    if (cached && cached.expiresAt > Date.now()) {
+      enriched.push({ ...state, data: cached.data });
+      continue;
+    }
+    // 让出主进程事件循环：占用统计可能递归访问成千上万个文件，不能阻塞
+    // 插件列表的其它状态；单个插件失败只记录诊断，不让整页消失。
+    await new Promise<void>(resolve => setImmediate(resolve));
+    try {
+      const dataRoot = getRegisteredBackendPluginDirectory(state.meta.id)
+        ? resolveRegisteredPluginDataRoot(state.meta.id)
+        : resolvePluginDataRootForManifest({
+          pluginId: state.meta.id,
+          dataStorage: manifest.dataStorage,
+          allowLegacyRoots: true,
+        });
+      const data = readPluginDataSummary({
         db,
         pluginId: state.meta.id,
         dataRoot,
         dataStorage: manifest.dataStorage,
         pluginInstalled: state.state !== 'missing',
         workspaceRoot,
-      }),
-    };
-  });
+      });
+      pluginDataSummaryCache.set(state.meta.id, { expiresAt: Date.now() + PLUGIN_DATA_SUMMARY_CACHE_TTL_MS, data });
+      enriched.push({ ...state, data });
+    } catch (error) {
+      pluginDiagnostics.record({
+        level: 'warn',
+        pluginId: state.meta.id,
+        capability: null,
+        message: `读取插件数据占用失败，已降级显示插件状态: ${error instanceof Error ? error.message : String(error)}`,
+      });
+      enriched.push(state);
+    }
+  }
+  return enriched;
 }
 
 function throwPluginOperationResultFailure(result: {
@@ -220,13 +276,74 @@ export async function registerPluginsHandlers(input: {
     throw new Error('[plugins:init] 插件运行态数据库尚未由 ServiceInitializer 注入');
   }
   const getService = () => new PluginStateService(databaseService.getDb());
+  const cleanupAbortControllers = new Map<string, AbortController>();
+
+  input.ipc.handle('plugins:cleanup-data', async (_event, rawPluginId: unknown) => {
+    const pluginId = parsePluginId(rawPluginId, 'plugins:cleanup-data');
+    try {
+      return await runPluginLifecycleOperationSerially({
+        pluginId,
+        operation: 'cleanup-data',
+        async run() {
+          const descriptor = cleanupDescriptorForPlugin(pluginId, resolveBundledPluginRoot());
+          if (!descriptor) {
+            throw new PluginOperationError('source-unavailable', `找不到插件 ${pluginId} 的可信清理声明`, { pluginId });
+          }
+          const controller = new AbortController();
+          cleanupAbortControllers.set(pluginId, controller);
+          try {
+            const result = await cleanupPluginData({
+              db: databaseService.getDb(),
+              pluginId,
+              dataRoot: descriptor.dataRoot,
+              dataStorage: descriptor.manifest.dataStorage,
+              ownedTables: descriptor.manifest.ownedTables,
+              signal: controller.signal,
+            });
+            if (result.status !== 'completed') {
+              throw new PluginOperationError('unknown', result.error, { pluginId });
+            }
+            pluginDataSummaryCache.delete(pluginId);
+            input.rendererIntegration.publishPluginsChanged();
+            return { success: true, data: { releasedBytes: result.releasedBytes } };
+          } finally {
+            cleanupAbortControllers.delete(pluginId);
+          }
+        },
+      });
+    } catch (error) {
+      logger.error('[plugins:cleanup-data] failed:', error);
+      return { success: false, error: classifyPluginOperationError(error, pluginId) };
+    }
+  });
+
+  input.ipc.handle('plugins:stop-cleanup', async (_event, rawPluginId: unknown) => {
+    const pluginId = parsePluginId(rawPluginId, 'plugins:stop-cleanup');
+    const controller = cleanupAbortControllers.get(pluginId);
+    if (!controller) return { success: false, error: classifyPluginOperationError(new Error('当前没有正在进行的数据清理'), pluginId) };
+    controller.abort();
+    return { success: true };
+  });
+
+  input.ipc.handle('plugins:get-data-path', async (_event, rawPluginId: unknown) => {
+    const pluginId = parsePluginId(rawPluginId, 'plugins:get-data-path');
+    try {
+      const descriptor = cleanupDescriptorForPlugin(pluginId, resolveBundledPluginRoot());
+      if (!descriptor) throw new PluginOperationError('source-unavailable', `找不到插件 ${pluginId} 的可信清理声明`, { pluginId });
+      return { success: true, data: { path: descriptor.dataRoot } };
+    } catch (error) {
+      logger.error('[plugins:get-data-path] failed:', error);
+      return { success: false, error: classifyPluginOperationError(error, pluginId) };
+    }
+  });
+
   // 中文说明：内置插件登记由 DatabaseService 的 PluginLifecycleBootstrap 负责；
   // IPC 入口重建工具集合，避免启动早期读取过工具表时继续使用旧 schema。
   await syncPluginRuntimeState({ reinitializeTools: true, runtimeOwner: input.runtimeOwner });
 
   input.ipc.handle('plugins:list', async () => {
     try {
-      return { success: true, data: enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot()) };
+      return { success: true, data: await enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot()) };
     } catch (error) {
       logger.error('[plugins:list] failed:', error);
       return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -235,7 +352,7 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:store-list', async () => {
     try {
-      const states = enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot());
+      const states = await enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot());
       const bundledPluginRoot = resolveBundledPluginRoot();
       const bundledPluginIds = bundledPluginRoot
         ? new Set(listBundledPluginManifestIds(bundledPluginRoot))
@@ -259,7 +376,7 @@ export async function registerPluginsHandlers(input: {
       const directPluginDirs = [
         ...new Set([...readBackendDirectPluginDirsFromEnv(), ...readDirectPluginDirsFromEnv()]),
       ];
-      const states = enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot());
+      const states = await enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot());
       const state = states.find(item => item.meta.id === pluginId);
       if (!state) {
         throw new Error(`未知插件: ${pluginId}`);
@@ -561,27 +678,28 @@ export async function registerPluginsHandlers(input: {
               .filter(registration => registration.pluginId !== pluginId),
           );
           const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
-          const registeredDir = getRegisteredBackendPluginDirectory(pluginId);
-          const manifest = registeredDir
-            ? parsePluginManifest(readJsonFile(path.join(registeredDir, 'plugin.json')))
-            : null;
+          const cleanupDescriptor = cleanupDescriptorForPlugin(pluginId, bundledPluginRoot);
           const lifecycleOptions = {
             db: databaseService.getDb(),
             userPluginRoot,
             pluginId,
             knownPlugins: listKnownPluginMetas(),
-            ...(deleteData && manifest ? {
-              dataRoot: resolveRegisteredPluginDataRoot(pluginId),
-              dataStorage: manifest.dataStorage,
-              ownedTables: manifest.ownedTables,
+            ...(deleteData && cleanupDescriptor ? {
+              dataRoot: cleanupDescriptor.dataRoot,
+              dataStorage: cleanupDescriptor.manifest.dataStorage,
+              ownedTables: cleanupDescriptor.manifest.ownedTables,
             } : {}),
           };
+          if (deleteData && !cleanupDescriptor) {
+            throw new PluginOperationError('source-unavailable', `找不到插件 ${pluginId} 的可信清理声明`, { pluginId });
+          }
           const result = deleteData
             ? await uninstallPluginAndDeleteData(lifecycleOptions)
             : uninstallPluginLifecycle(lifecycleOptions);
           if (result.status !== 'uninstalled') {
             throwPluginOperationResultFailure(result);
           }
+          pluginDataSummaryCache.delete(pluginId);
           if (!scopedLifecycle)
             await cancelActiveRunsForPluginRuntimeChange({
               pluginId,

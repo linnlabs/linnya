@@ -114,6 +114,7 @@
             :can-delete="selectedDetail.data.canDelete"
             @delete="openDataDelete(selectedDetail)"
             @retry="retryDataCleanup(selectedDetail)"
+            @stop="stopDataCleanup(selectedDetail)"
             @reveal="showDataLocation(selectedDetail)"
           />
 
@@ -294,7 +295,7 @@
 
     <Modal
       :is-visible="uninstallDialogItem !== null"
-      title="卸载插件"
+      :title="pluginStoreMessage('pluginStore.dialog.uninstallTitle')"
       width="480px"
       min-height="auto"
       layer="alert"
@@ -303,7 +304,7 @@
       <div v-if="uninstallDialogItem" class="plugin-store-uninstall-dialog">
         <p>{{ pluginStoreMessage('pluginStore.data.uninstallMessage', { pluginName: uninstallDialogItem.meta.name }) }}</p>
         <p v-if="uninstallDialogItem.data?.status === 'cleaning'" class="plugin-store-alert">
-          当前正在清理数据，清理完成前不能再次安装。
+          {{ pluginStoreMessage('pluginStore.data.cleaningHint') }}
         </p>
         <CustomCheckbox v-if="uninstallDialogItem.data?.canDelete" v-model="deleteDataChecked">
           {{ pluginStoreMessage('pluginStore.data.deleteOption', { bytes: formatStorageBytes(uninstallDialogItem.data.bytes, currentLocale) }) }}
@@ -311,17 +312,17 @@
         <div v-if="deleteDataChecked && uninstallDialogItem.data" class="plugin-store-uninstall-dialog__details">
           <p>{{ pluginStoreMessage('pluginStore.data.deleteRisk') }}</p>
           <dl>
-            <div><dt>原文与解析结果</dt><dd>{{ formatStorageBytes(uninstallDialogItem.data.directories.source, currentLocale) }}</dd></div>
-            <div><dt>检索索引</dt><dd>{{ formatStorageBytes(uninstallDialogItem.data.directories.derived, currentLocale) }}</dd></div>
-            <div><dt>日志与临时文件</dt><dd>{{ formatStorageBytes(uninstallDialogItem.data.directories.runtime, currentLocale) }}</dd></div>
+            <div><dt>{{ pluginStoreMessage('pluginStore.data.source') }}</dt><dd>{{ formatStorageBytes(uninstallDialogItem.data.directories.source, currentLocale) }}</dd></div>
+            <div><dt>{{ pluginStoreMessage('pluginStore.data.derived') }}</dt><dd>{{ formatStorageBytes(uninstallDialogItem.data.directories.derived, currentLocale) }}</dd></div>
+            <div><dt>{{ pluginStoreMessage('pluginStore.data.runtime') }}</dt><dd>{{ formatStorageBytes(uninstallDialogItem.data.directories.runtime, currentLocale) }}</dd></div>
           </dl>
         </div>
       </div>
       <template #footer>
         <div class="alert-dialog-footer">
           <ActionButtons
-            secondary-action-text="取消"
-            :primary-action-text="deleteDataChecked ? '卸载并删除' : '卸载'"
+            :secondary-action-text="pluginStoreMessage('pluginStore.dialog.cancel')"
+            :primary-action-text="deleteDataChecked ? pluginStoreMessage('pluginStore.dialog.uninstallDelete') : pluginStoreMessage('pluginStore.action.uninstall')"
             :primary-variant="deleteDataChecked ? 'danger' : 'default'"
             @secondary-click="closeUninstallDialog"
             @primary-click="confirmUninstall"
@@ -596,10 +597,11 @@ function resolveErrorMessage(error: PluginRuntimeUserError): string {
 }
 
 function resolvePluginStateLabel(item: PluginStoreListItem): string {
-  if (item.data?.status === 'cleaning') return '清理中';
-  if (item.data?.status === 'failed') return '数据残留';
-  if (item.data?.status === 'legacy') return '未安装，有可清理数据';
-  if (item.data?.status === 'retained') return '未安装（保留数据）';
+  if (item.data?.status === 'cleaning') return pluginStoreMessage('pluginStore.data.status.cleaning');
+  if (item.data?.status === 'failed') return pluginStoreMessage('pluginStore.data.status.failed');
+  if (item.data?.status === 'unavailable') return pluginStoreMessage('pluginStore.data.status.unavailable');
+  if (item.data?.status === 'legacy') return pluginStoreMessage('pluginStore.data.status.legacy');
+  if (item.data?.status === 'retained') return pluginStoreMessage('pluginStore.data.status.retained');
   return getPluginStateLabel(item.state, pluginStoreMessage);
 }
 
@@ -903,16 +905,41 @@ function openDataDelete(item: PluginStoreListItem): void {
 }
 
 function showDataLocation(item: PluginStoreListItem): void {
-  notificationStore.show(
-    `请在诊断信息中查看 ${item.meta.name} 的数据位置。`,
-    'info',
-    3000,
-  );
+  void (async () => {
+    try {
+      const result = await window.electronAPI?.plugins.getDataPath(item.meta.id);
+      if (!result?.success || !result.data) throw new Error('data path unavailable');
+      const revealed = await window.electronAPI?.showItemInFolder(result.data.path);
+      if (!revealed?.success) throw new Error('file manager reveal failed');
+    } catch {
+      notificationStore.show(pluginStoreMessage('pluginStore.data.revealFailed'), 'error', 3500);
+    }
+  })();
 }
 
 async function retryDataCleanup(item: PluginStoreListItem): Promise<void> {
   if (isPluginBusy(item.meta.id)) return;
-  await executeUninstall(item, true);
+  setPluginBusy(item.meta.id, true);
+  try {
+    const result = await window.electronAPI?.plugins.cleanupData(item.meta.id);
+    if (!result?.success) throw normalizePluginRuntimeUserError(result?.error);
+    await refreshPluginStoreItems();
+    await refreshSelectedPluginDetail(item.meta.id);
+    notificationStore.show(pluginStoreMessage('pluginStore.toast.cleanupCompleted', {
+      pluginName: item.meta.name,
+      bytes: formatStorageBytes(result.data?.releasedBytes ?? 0, currentLocale.value),
+    }), 'success', 5000);
+  } catch (caught) {
+    notificationStore.show(pluginStoreMessage('pluginStore.error.uninstallFailed', {
+      errorMessage: resolveErrorMessage(readErrorMessage(caught)),
+    }), 'error', 5000);
+  } finally {
+    setPluginBusy(item.meta.id, false);
+  }
+}
+
+async function stopDataCleanup(item: PluginStoreListItem): Promise<void> {
+  await window.electronAPI?.plugins.stopCleanup(item.meta.id);
 }
 
 async function executeUninstall(item: PluginStoreListItem, deleteData: boolean): Promise<void> {
@@ -921,7 +948,10 @@ async function executeUninstall(item: PluginStoreListItem, deleteData: boolean):
     await pluginsStore.uninstallPlugin(item.meta.id, deleteData ? { deleteData: true } : {});
     await refreshSelectedPluginDetail(item.meta.id);
     notificationStore.show(
-      pluginStoreMessage('pluginStore.toast.uninstalled', { pluginName: item.meta.name }),
+      pluginStoreMessage(deleteData ? 'pluginStore.toast.cleanupCompleted' : 'pluginStore.toast.uninstalledRetained', {
+        pluginName: item.meta.name,
+        bytes: formatStorageBytes(item.data?.bytes ?? 0, currentLocale.value),
+      }),
       'success',
       5000,
     );

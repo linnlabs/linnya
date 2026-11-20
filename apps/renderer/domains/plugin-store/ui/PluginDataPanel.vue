@@ -12,7 +12,7 @@ const props = defineProps<{
   readonly canDelete: boolean;
 }>();
 
-const emit = defineEmits<{ delete: []; retry: []; reveal: [] }>();
+const emit = defineEmits<{ delete: []; retry: []; stop: []; reveal: [] }>();
 const { pluginStoreMessage } = usePluginStoreLocalization();
 
 const labels: Readonly<Record<'source' | 'derived' | 'runtime', PluginStoreMessageKey>> = {
@@ -29,6 +29,7 @@ function statusLabel(status: PluginDataSummary['status']): string {
     case 'legacy': return pluginStoreMessage('pluginStore.data.status.legacy');
     case 'cleaning': return pluginStoreMessage('pluginStore.data.status.cleaning');
     case 'failed': return pluginStoreMessage('pluginStore.data.status.failed');
+    case 'unavailable': return pluginStoreMessage('pluginStore.data.status.unavailable');
   }
 }
 </script>
@@ -54,11 +55,12 @@ function statusLabel(status: PluginDataSummary['status']): string {
     </p>
     <template v-if="data.status === 'cleaning'">
       <p class="plugin-data-panel__hint">{{ pluginStoreMessage('pluginStore.data.cleaningHint') }}</p>
+      <BaseButton variant="secondary" size="sm" @click="emit('stop')">{{ pluginStoreMessage('pluginStore.data.stop') }}</BaseButton>
       <BaseButton variant="ghost" size="sm" @click="emit('reveal')">{{ pluginStoreMessage('pluginStore.data.reveal') }}</BaseButton>
     </template>
     <template v-else-if="data.status === 'failed'">
       <p class="plugin-data-panel__attention">{{ pluginStoreMessage('pluginStore.data.cleanupIncomplete', { bytes: formatStorageBytes(data.bytes, locale) }) }}</p>
-      <p v-if="data.error" class="plugin-data-panel__reason">{{ data.error }}</p>
+      <p v-if="data.errorCode" class="plugin-data-panel__reason">{{ pluginStoreMessage(`pluginStore.data.failure.${data.errorCode}` as PluginStoreMessageKey) }}</p>
       <div class="plugin-data-panel__actions">
         <BaseButton variant="secondary" size="sm" @click="emit('retry')">{{ pluginStoreMessage('pluginStore.data.retry') }}</BaseButton>
         <BaseButton variant="ghost" size="sm" @click="emit('reveal')">{{ pluginStoreMessage('pluginStore.data.reveal') }}</BaseButton>

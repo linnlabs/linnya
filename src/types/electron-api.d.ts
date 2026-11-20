@@ -400,6 +400,15 @@ declare global {
           pluginId: string,
           options?: { deleteData?: boolean }
         ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
+        cleanupData: (
+          pluginId: string
+        ) => Promise<{ success: boolean; data?: { releasedBytes: number }; error?: PluginOperationFailure }>;
+        stopCleanup: (
+          pluginId: string
+        ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
+        getDataPath: (
+          pluginId: string
+        ) => Promise<{ success: boolean; data?: { path: string }; error?: PluginOperationFailure }>;
         setEnabled: (
           pluginId: string,
           enabled: boolean

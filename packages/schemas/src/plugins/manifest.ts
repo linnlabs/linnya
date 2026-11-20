@@ -51,7 +51,15 @@ export type PluginDataLifecycleStatus =
   | 'retained'
   | 'legacy'
   | 'cleaning'
-  | 'failed';
+  | 'failed'
+  | 'unavailable';
+
+export type PluginCleanupFailureReason =
+  | 'file-locked'
+  | 'permission-denied'
+  | 'interrupted'
+  | 'disk-full'
+  | 'unknown';
 
 export interface PluginDataSummary {
   readonly status: PluginDataLifecycleStatus;
@@ -60,6 +68,8 @@ export interface PluginDataSummary {
   /** 表是结构化记录数量，不折算成磁盘字节。 */
   readonly tables: Readonly<Record<string, number>>;
   readonly error?: string;
+  /** 清理失败的稳定分类；原始异常只进诊断日志，不直接展示给用户。 */
+  readonly errorCode?: PluginCleanupFailureReason;
   readonly canDelete: boolean;
 }
 
