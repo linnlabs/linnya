@@ -22,7 +22,7 @@
               {{ workspaceMessage('workspace.projectKb.count', { count: linkedKnowledgeBases.length }) }}
             </span>
           </div>
-          <div class="column">
+          <div class="column" data-linnya-scrollbar="medium">
             <SkeletonRows
               v-if="isLoading"
               class="kb-list-skeleton"
@@ -68,7 +68,7 @@
               {{ workspaceMessage('workspace.projectKb.count', { count: availableKnowledgeBases.length }) }}
             </span>
           </div>
-          <div class="column">
+          <div class="column" data-linnya-scrollbar="medium">
             <SkeletonRows
               v-if="isLoading"
               class="kb-list-skeleton"

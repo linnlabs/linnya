@@ -230,3 +230,19 @@ export function applyScrollPreset(el: HTMLElement, preset: keyof typeof SCROLL_P
 如果项目对包体积或定制深度有更高要求，可以考虑将 `overlayscrollbars` 核心源码内化到仓库中，
 裁剪不需要的功能（如水平滚动条、RTL 支持等），进一步减小打包体积。
 当前 `overlayscrollbars` gzip 后约 30KB，内化后预计可裁至 15–20KB。
+
+## 原生滚动条三档
+
+所有原生滚动条统一为三档尺寸、每套主题一种滑块色（`--scrollbar-thumb-color` / `--scrollbar-thumb-hover-color`），规则在 `styles/scroll/ScrollbarTiers.css`：
+
+| 档位 | 写法 | 外观 | 用在 |
+| --- | --- | --- | --- |
+| 大（默认） | 不写，或 `data-linnya-scrollbar="large"` | 轨道 10px，滑块可见 6px，胶囊，悬停 200ms 变色 | 正文、面板、弹窗、列表等主要滚动区 |
+| 中 | `data-linnya-scrollbar="medium"` | 轨道与滑块 6px，胶囊 | 输入框、侧边小面板、紧凑浮层 |
+| 小 | `data-linnya-scrollbar="small"` | 系统细条（`scrollbar-width: thin`） | 代码块、命令输出等嵌在内容里的小滚动区 |
+| 隐藏 | `data-linnya-scrollbar="hidden"` | 不显示，仍可滚动 | 横向标签条等 |
+
+- 全局默认就是“大”：`:where(*)` 默认规则优先级最低，没声明档位的滚动区都用它，不要再在各处复制 `::-webkit-scrollbar` 规则。
+- `data-linnya-scrollbar-reveal="hover"` 让滑块只在悬停滚动区时出现；悬停的是外层容器时，在外层加 `data-linnya-scrollbar-reveal-root`。
+- 覆盖式滚动条（`useOverlayScrollViewport`）不占布局宽度，与原生不互换；它使用同一组滑块颜色，尺寸与“大”一致。
+- 由编辑器内核生成、无法挂属性的节点（如编辑器代码块 `pre`）可在本地写与对应档位等价的两行标准属性，颜色仍用上面的变量。

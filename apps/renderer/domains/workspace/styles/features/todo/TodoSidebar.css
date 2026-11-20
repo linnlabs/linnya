@@ -48,25 +48,6 @@
 }
 
 /* Custom Scrollbar */
-.todo-sidebar .content::-webkit-scrollbar {
-  width: 10px;
-}
-
-.todo-sidebar .content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.todo-sidebar .content::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.todo-sidebar .content::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}
 
 .todo-sidebar .content-inner {
   padding: var(--space-1) var(--space-3);

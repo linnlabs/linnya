@@ -169,23 +169,6 @@
   box-sizing: border-box;
 }
 
-.user-message-container .edit-textarea::-webkit-scrollbar {
-  width: 6px;
-}
-
-.user-message-container .edit-textarea::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.user-message-container .edit-textarea::-webkit-scrollbar-thumb {
-  background: var(--user-message-scrollbar-thumb);
-  border-radius: var(--radius-full);
-}
-
-.user-message-container .edit-textarea::-webkit-scrollbar-thumb:hover {
-  background: var(--user-message-scrollbar-thumb-hover);
-}
-
 .user-message-container .edit-bottom-section {
   display: flex;
   justify-content: flex-end;

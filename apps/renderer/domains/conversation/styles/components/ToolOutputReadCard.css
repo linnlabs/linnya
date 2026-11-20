@@ -76,27 +76,6 @@
   color: var(--color-text-secondary);
 }
 
-.tooloutput-read-card .content-wrapper::-webkit-scrollbar {
-  width: 9px;
-  height: 10px;
-}
-
-.tooloutput-read-card .content-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tooloutput-read-card .content-wrapper::-webkit-scrollbar-thumb {
-  background-color: var(--color-border-default);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.tooloutput-read-card .content-wrapper::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-border-hover);
-}
-
 .tooloutput-read-card .error-state {
   display: flex;
   align-items: center;

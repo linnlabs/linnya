@@ -1,6 +1,6 @@
 <!-- apps/renderer/features/AiAssistant/ui/message/components/SmartCodeBlock.vue -->
 <template>
-  <div class="smart-code-block" :data-language="language">
+  <div class="smart-code-block" :data-language="language" data-linnya-scrollbar-reveal-root>
     <!-- 语言显示标签 -->
     <div class="language-display">{{ displayLanguage }}</div>
     
@@ -18,7 +18,7 @@
     </div>
 
     <!-- 代码内容区域 -->
-    <div class="code-content">
+    <div class="code-content" data-linnya-scrollbar-reveal="hover">
       <pre :data-language="language" spellcheck="false"><code :class="`language-${language} hljs`" v-html="highlightedCodeWithCursor"></code></pre>
     </div>
   </div>

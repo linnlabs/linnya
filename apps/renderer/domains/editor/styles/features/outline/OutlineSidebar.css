@@ -127,22 +127,3 @@
   text-align: center;
 }
 
-.outline-sidebar::-webkit-scrollbar {
-  width: 10px;
-}
-
-.outline-sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.outline-sidebar::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: var(--radius-full);
-  background-color: var(--scrollbar-thumb-color);
-  background-clip: content-box;
-  transition: background-color var(--duration-medium) var(--ease-standard);
-}
-
-.outline-sidebar::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}

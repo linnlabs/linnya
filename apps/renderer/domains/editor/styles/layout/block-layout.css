@@ -219,26 +219,6 @@
 }
 
 /* Webkit 滚动条样式 - 仅作用于内容区域（参考 AppLayout.vue） */
-.root-block > .content::-webkit-scrollbar,
-.version-content > .content::-webkit-scrollbar {
-  height: 10px; /* 与 editor-shell 一致 */
-}
-.root-block > .content::-webkit-scrollbar-track,
-.version-content > .content::-webkit-scrollbar-track {
-  background: transparent; /* 轨道背景透明 */
-}
-.root-block > .content::-webkit-scrollbar-thumb,
-.version-content > .content::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color, var(--color-border-default)); /* 使用主题变量 */
-  border-radius: var(--radius-full); /* 与 editor-shell 一致 */
-  transition: background-color var(--duration-medium) var(--ease-standard); /* 平滑过渡 */
-  border: 2px solid transparent; /* 四周透明边框 */
-  background-clip: content-box; /* 背景色只填充内容区域 */
-}
-.root-block > .content::-webkit-scrollbar-thumb:hover,
-.version-content > .content::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color, var(--color-border-hover)); /* 使用主题变量 */
-}
 
 /* 原子块不需要水平滚动 - 它们应该适应容器或有固定显示方式 */
 .root-block-outer.contains-imageBlock > .root-block > .content,

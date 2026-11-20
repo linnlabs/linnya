@@ -909,6 +909,7 @@ onMounted(() => {
     editorProps: {
       attributes: {
         class: 'ai-assistant-tiptap-editor',
+        'data-linnya-scrollbar': 'medium',
         spellcheck: 'false',
         autocorrect: 'off',
         autocapitalize: 'off',

@@ -84,27 +84,6 @@
   border-color: var(--color-border-hover);
 }
 
-.editor-citation-popover .popover-body::-webkit-scrollbar {
-  width: 8px;
-  height: 10px;
-}
-
-.editor-citation-popover .popover-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.editor-citation-popover .popover-body::-webkit-scrollbar-thumb {
-  background-color: var(--color-border-default);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.editor-citation-popover .popover-body::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-border-hover);
-}
-
 .editor-citation-popover .popover-snippet {
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
