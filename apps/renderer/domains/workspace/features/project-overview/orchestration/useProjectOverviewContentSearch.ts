@@ -35,6 +35,7 @@ export function useProjectOverviewContentSearch(
         truncated.value = false;
         return;
       }
+      failed.value = false;
       matches.value = new Set(result.data.matches.map(match => match.node.id));
       truncated.value = result.data.truncated;
     } catch (error: unknown) {
@@ -46,18 +47,20 @@ export function useProjectOverviewContentSearch(
     }
   }
 
+  let searched: { readonly projectId: string | null; readonly pattern: string } = { projectId: null, pattern: '' };
   watch([projectId, query, revision], ([target, value]) => {
     generation += 1;
     debounceTimer.cancel();
-    matches.value = null;
-    truncated.value = false;
-    failed.value = false;
     const pattern = value.trim();
-    if (!target || !pattern) {
+    // 只有项目或查询词变了才清掉旧命中；只是文档快照变化时保留，等新结果到达再换，
+    // 否则每次保存都会让靠正文命中的行闪退一下。
+    if (target !== searched.projectId || pattern !== searched.pattern) {
       matches.value = null;
       truncated.value = false;
-      return;
+      failed.value = false;
     }
+    searched = { projectId: target, pattern };
+    if (!target || !pattern) return;
     const current = generation;
     debounceTimer.start(() => void search(target, pattern, current), SEARCH_DEBOUNCE_MS);
   }, { immediate: true });

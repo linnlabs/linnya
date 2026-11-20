@@ -2,15 +2,25 @@ import { computed, shallowRef, watch, type Ref } from 'vue';
 import type { ProjectSavedFilter, ProjectSavedFilterDefinition, ProjectSavedFiltersRequest } from '@app/schemas';
 import { requestProjectSavedFilters } from '../infrastructure/projectOverviewGateway';
 
-/** 每次请求都换回整份列表；切换项目时丢弃旧项目的迟到结果。 */
+/**
+ * 每次请求都换回整份列表；切换项目时丢弃旧项目的迟到结果，同项目里较早发出、较晚返回的
+ * 旧结果也不能覆盖已经应用的较新列表（按发出顺序编号，只应用比已应用的更新的那一份）。
+ */
 export function useProjectSavedFilters(projectId: Readonly<Ref<string | null>>) {
   const filters = shallowRef<readonly ProjectSavedFilter[]>([]);
   let generation = 0;
+  let issued = 0;
+  let applied = 0;
 
   async function send(request: ProjectSavedFiltersRequest): Promise<string | null> {
     const current = generation;
+    issued += 1;
+    const ticket = issued;
     const result = await requestProjectSavedFilters(request);
-    if (current === generation) filters.value = result.filters;
+    if (current === generation && ticket > applied) {
+      applied = ticket;
+      filters.value = result.filters;
+    }
     return result.saved_id;
   }
 
