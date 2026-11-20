@@ -22,7 +22,7 @@ import {
   saveCanvasAgentGroup,
   selectCanvasGroupWithdrawal,
 } from '../../features/agentChanges';
-import { planCanvasHistoryReversal } from '../../shared/history';
+import { planCanvasHistoryReversal, splitCanvasHistoryWithdrawal } from '../../shared/history';
 
 export function createCanvasGroupReview(options: {
   readonly database: CanvasDatabase;
@@ -79,6 +79,9 @@ export function createCanvasGroupReview(options: {
           const group = readCanvasAgentGroup(options.database, request.documentId, request.groupId);
           if (!group) throw new Error('canvas_group_missing');
           const selection = selectCanvasGroupWithdrawal(group.entry, request.elementIds);
+          // 暂时跳过（用户正在编辑、卡片锁定）的改动留在组里，角标保留，之后可再撤回。
+          const split = splitCanvasHistoryWithdrawal(selection.selected, history.plan.results);
+          const remaining = new Set(selection.remaining.changes);
           clearCanvasPendingApproval(
             options.database,
             request.documentId,
@@ -87,8 +90,15 @@ export function createCanvasGroupReview(options: {
           );
           saveCanvasAgentGroup(options.database, {
             ...group,
-            entry: selection.remaining,
-            deletedUserCardIds: [],
+            entry: {
+              ...selection.remaining,
+              changes: group.entry.changes.flatMap(change => {
+                if (remaining.has(change)) return [change];
+                const deferred = split.deferred.get(change);
+                return deferred ? [deferred] : [];
+              }),
+            },
+            deletedUserCardIds: group.deletedUserCardIds.filter(id => !split.restoredIds.has(id)),
           });
           const updateOwn = options.recordUserHistory(history);
           const updateOuter = options.ports?.history?.(history);

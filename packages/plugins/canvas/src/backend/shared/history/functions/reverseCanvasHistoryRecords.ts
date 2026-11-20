@@ -35,9 +35,9 @@ export function reverseCanvasHistoryCreation(
   const dependent = [...context.rows.values()].some(row =>
     canvasHistoryElementDependsOn(row.element, record.id)
   );
-  if (claimedFields(record.id, context).length || foreignFields || dependent) {
-    return { kind: 'skipped', reason: 'later_use_preserved' };
-  }
+  if (foreignFields || dependent) return { kind: 'skipped', reason: 'later_use_preserved' };
+  // 用户正在编辑这张新卡：暂时跳过，结束编辑后仍可撤回。
+  if (claimedFields(record.id, context).length) return { kind: 'skipped', reason: 'user_editing' };
   return {
     kind: 'applied',
     row: null,
