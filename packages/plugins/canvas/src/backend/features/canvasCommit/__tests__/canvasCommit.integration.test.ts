@@ -225,3 +225,24 @@ it('rejects unmanaged inline images atomically and quarantines legacy external s
   expect(database.prepare('SELECT element_json FROM canvas_elements WHERE node_id = ?').get('canvas')).toEqual({ element_json: raw });
   database.close();
 });
+
+it.each([
+  { name: 'a card whose parent is not a section', child: 'c2', parent: 'c1', hidden: ['c2'] },
+  { name: 'a section nested under another section', child: 'c3', parent: 'c4', hidden: ['c3', 'c2'] },
+])('quarantines $name before display and keeps the canvas read-only', ({ child, parent, hidden }) => {
+  const database = fixture();
+  commitCanvasOperations({ database, actor: user, now: 1, request: { documentId: 'canvas', requestId: 'source', operations: [
+    { ...add('普通卡'), x: 0, y: 0 }, { ...add('成员'), x: 2000, y: 2000, ref: '$member' },
+    { op: 'addSection', ref: '$section', title: '分区', width: 360, height: 240, members: ['$member'] },
+    { op: 'addSection', title: '另一个分区', x: 5000, y: 0, width: 360, height: 240 },
+  ] } });
+  const row = database.prepare('SELECT element_json FROM canvas_elements WHERE node_id = ? AND element_id = ?').get('canvas', child) as { element_json: string };
+  const raw = JSON.stringify({ ...JSON.parse(row.element_json), parentId: parent });
+  database.prepare('UPDATE canvas_elements SET element_json = ? WHERE node_id = ? AND element_id = ?').run(raw, 'canvas', child);
+  const snapshot = readCanvasSnapshot(database, 'canvas');
+  expect(snapshot.elements.map(element => element.id).filter(id => hidden.includes(id))).toEqual([]);
+  expect(snapshot.integrity).toMatchObject({ readOnly: true, issues: expect.arrayContaining([expect.objectContaining({ elementId: child, code: 'invalid_element' })]) });
+  expect(() => commitCanvasOperations({ database, actor: user, now: 2, request: { documentId: 'canvas', requestId: 'write', operations: [add('不能写')] } })).toThrow('只读');
+  expect(database.prepare('SELECT element_json FROM canvas_elements WHERE node_id = ? AND element_id = ?').get('canvas', child)).toEqual({ element_json: raw });
+  database.close();
+});

@@ -1,4 +1,8 @@
-import type { CanvasIntegrityIssue, CanvasCard } from '../../../../shared';
+import {
+  canvasSectionParentValid,
+  type CanvasIntegrityIssue,
+  type CanvasCard,
+} from '../../../../shared';
 import type { CanvasStoredElement } from '../definitions/canvasCommit';
 
 /** 未知卡片的线和损坏分组不能进入可绘制图，但原始行仍留在SQLite。 */
@@ -23,7 +27,11 @@ export function quarantineCanvasRelations(rows: readonly CanvasStoredElement[]) 
       }
       chain.add(current);
       const next = cards.get(current);
-      if (!next) {
+      // 与写入校验同一规则：父必须是分区，分区自身不能有父。
+      if (
+        !next ||
+        (next.parentId !== null && !canvasSectionParentValid(next, cards.get(next.parentId)))
+      ) {
         bad = true;
         break;
       }
@@ -40,7 +48,7 @@ export function quarantineCanvasRelations(rows: readonly CanvasStoredElement[]) 
       issues.push({
         elementId: id,
         code: 'invalid_element',
-        message: '分组父卡缺失或成环，关联元素仅从显示中隔离。',
+        message: '分组父卡缺失、成环、不是分区或分区嵌套，关联元素仅从显示中隔离。',
       });
   const pairs = new Set<string>();
   const visible = rows.filter(row => {
