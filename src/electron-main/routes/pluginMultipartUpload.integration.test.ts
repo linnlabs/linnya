@@ -76,6 +76,23 @@ describe('plugin multipart upload ownership', () => {
     expect(await missing.json()).toEqual({ error: '未找到上传的文件' });
   });
 
+  it('向 Renderer 返回可恢复提示，但不将后端诊断路径带出上传接口', async () => {
+    const url = await server();
+    registerBackendPluginIpcHandler('fixture', 'upload', () => ({
+      success: false,
+      error: 'Could not open /workspace/private/index',
+      userMessage: { key: 'fixture.vectorUnavailable', diagnostic: '/workspace/private/index' },
+    }));
+    const form = new FormData();
+    form.append('file', new Blob(['source']), 'source.md');
+    const rejected = await fetch(url, { method: 'POST', body: form });
+    expect(rejected.status).toBe(400);
+    expect(await rejected.json()).toEqual({
+      error: 'Plugin upload was rejected', userMessage: { key: 'fixture.vectorUnavailable' },
+    });
+    await vi.waitFor(async () => expect(await readdir(path.join(state.directory, 'temp'))).toEqual([]));
+  });
+
   it('超限和多文件都拒绝且清理未接纳文件，不执行插件处理', async () => {
     const url = await server();
     const handler = vi.fn();

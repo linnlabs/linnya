@@ -1,4 +1,4 @@
-import { createOperationFailure } from '@app/schemas';
+import { createOperationFailure, createUserFacingMessage } from '@app/schemas';
 import {
   createKnowledgeBaseOperationFailure,
   type KnowledgeBaseOperationFallbackKey,
@@ -23,6 +23,7 @@ import {
   readSavedKnowledgeContent,
 } from '../../document-read/orchestration/readSavedKnowledgeContent';
 import { validatePdfOcrUploadPageLimit } from '../../ingestion/functions/pdfOcrUploadPageLimit';
+import { KnowledgeVectorStartupError } from '../../infrastructure/vector-store/errors';
 import {
   resolveKnowledgeBaseScopeFromContext,
   assertKbAllowedInScope,
@@ -192,10 +193,14 @@ export function createKnowledgeIpc(
             const result = await operation(runtime, payload, signal, event);
             signal.throwIfAborted();
             if (['search', 'upload-document', 'rebuild-index', 'continue-failed-pages'].includes(channel)) {
-          runtime.startInteractiveMaintenance();
+              runtime.startInteractiveMaintenance();
             }
             return { success: true, data: result };
           } catch (error) {
+            if (channel === 'upload-document' && error instanceof KnowledgeVectorStartupError) {
+              return createOperationFailure(error.message,
+                createUserFacingMessage('knowledgeBase.runtime.error.vectorUnavailable'));
+            }
             const fallback = fallbackKeys[channel];
             return fallback
               ? createKnowledgeBaseOperationFailure(error, fallback)

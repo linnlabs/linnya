@@ -6,6 +6,7 @@ import { getPluginProjectReadPort } from '@plugin/backend/projectReadRuntime';
 import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfiguration';
 import { broadcastRendererPluginMessage } from '@plugin/backend/pluginRendererPush';
 import { QdrantAdapter } from '../../infrastructure/vector-store/QdrantAdapter';
+import { KnowledgeVectorStartupError } from '../../infrastructure/vector-store/errors';
 import { QdrantRepositoryImpl } from '../../infrastructure/QdrantRepositoryImpl';
 import { DefaultSearchService } from '../../application/searchService';
 import { KnowledgeBaseCoordinator } from '../../application/KnowledgeBaseCoordinator';
@@ -44,7 +45,7 @@ export async function createKnowledgeRuntime() {
     } catch (cause) {
       if (signal?.aborted || controller.signal.aborted) throw cause;
       // 首次启动失败在本 activation 保持失败；提示实际可用的显式恢复操作。
-      throw new Error('知识库向量服务未能启动，请检查运行日志，修复后停用并重新启用知识库。', { cause });
+      throw new KnowledgeVectorStartupError(cause);
     }
     vectorReady = true;
     startInteractiveMaintenanceIfReady();

@@ -11,6 +11,7 @@ import {
 import { pathManager } from '../../shared/utils/pathManager';
 import { Logger } from '../../shared/logger';
 import { z } from 'zod';
+import { UserFacingMessageSchema } from '@app/schemas';
 import {
   createPluginFileStage,
   PLUGIN_INPUT_MAX_BYTES,
@@ -19,7 +20,7 @@ import {
 const logger = new Logger('PluginMultipartUpload');
 const UploadResult = z.discriminatedUnion('success', [
   z.object({ success: z.literal(true), data: z.unknown() }),
-  z.object({ success: z.literal(false), error: z.string() }),
+  z.object({ success: z.literal(false), error: z.string(), userMessage: UserFacingMessageSchema.optional() }),
 ]);
 
 /** 完整 multipart 结束后才返回，保证 file 后面的模型字段也已接收。 */
@@ -108,7 +109,13 @@ export function createPluginMultipartUploadRouter(): Router {
       const result = UploadResult.parse(
         await invokeBackendPluginIpcHandler(pluginId, channel, event, received.fields)
       );
-      if (!result.success) throw new Error(result.error);
+      if (!result.success) {
+        if (!result.userMessage) throw new Error(result.error);
+        logger.warn('插件拒绝上传', { pluginId, error: result.error });
+        const { key, params, fallback } = result.userMessage;
+        if (!res.destroyed) res.status(400).json({ error: 'Plugin upload was rejected', userMessage: { key, params, fallback } });
+        return;
+      }
       res.status(201).json(result.data);
     } catch (error) {
       logger.warn('插件上传未完成', { pluginId, accepted: staged?.accepted ?? false, error });

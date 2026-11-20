@@ -11,6 +11,7 @@
  */
 
 import { knowledgeBaseService } from '../../../services/knowledgeBaseService'
+import { parseUserFacingMessage } from '@app/schemas'
 import { stopAnimation } from '../../../services/progressAnimator.js'
 import { UPLOAD_STATUS, MAX_CONCURRENT_UPLOADS } from '../../../constants/index.js'
 import { createKnowledgeBaseUploadMessage } from '../../../functions/knowledgeBaseUploadPresentation'
@@ -28,9 +29,12 @@ class KnowledgeBaseUploadTaskError extends Error {
 }
 
 function resolveUploadErrorMessage(error) {
-  return error instanceof KnowledgeBaseUploadTaskError
-    ? error.uploadMessage
-    : createKnowledgeBaseUploadMessage('knowledgeBase.upload.error.failed')
+  if (error instanceof KnowledgeBaseUploadTaskError) return error.uploadMessage
+  const message = parseUserFacingMessage(error?.response?.data?.userMessage)
+  if (message?.key === 'knowledgeBase.runtime.error.vectorUnavailable') {
+    return createKnowledgeBaseUploadMessage(message.key)
+  }
+  return createKnowledgeBaseUploadMessage('knowledgeBase.upload.error.failed')
 }
 
 /**

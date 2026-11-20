@@ -16,9 +16,16 @@ import { getNumberProp } from './guards';
 
 /** Host 的受管启动失败跨 artifact 通过稳定错误名称识别，不能依赖不同 bundle 的类身份。 */
 export function isQdrantRuntimeUnavailableError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'QdrantRuntimeUnavailableError';
+  return error instanceof KnowledgeVectorStartupError ||
+    (error instanceof Error && error.name === 'QdrantRuntimeUnavailableError');
 }
 
+export class KnowledgeVectorStartupError extends Error {
+  constructor(cause: unknown) {
+    super('知识库向量服务未能启动，请检查运行日志，修复后停用并重新启用知识库。', { cause });
+    this.name = 'KnowledgeVectorStartupError';
+  }
+}
 /**
  * Qdrant 请求错误（用于把“不存在”与“不可用”区分开）
  */
