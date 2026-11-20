@@ -191,6 +191,7 @@ import { useChatFlowOrchestrator } from '../services/orchestration/chatFlowOrche
 import {
   applyConversationAgentChoice,
   resolveConversationAgentChoice,
+  resolveRetiredConversationAgentName,
   type ConversationAgentChoiceId,
 } from '../features/agent-choice';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
@@ -475,11 +476,11 @@ const isActiveAgentChoiceUnavailable = computed(() =>
 );
 const activeAgentChoicePillText = computed(() => {
   const agentChoice = activeConversationAgentChoice.value;
-  return agentChoice
-    ? resolveConversationAgentChoiceTextPresentation(agentChoice, t).pillText
-    : assistantStore.activeConversation?.selectedAgentId
-      ? conversationMessage('conversation.input.agentChoice.unavailable')
-      : null;
+  if (agentChoice) return resolveConversationAgentChoiceTextPresentation(agentChoice, t).pillText;
+  const selectedAgentId = assistantStore.activeConversation?.selectedAgentId;
+  if (!selectedAgentId) return null;
+  return resolveRetiredConversationAgentName(selectedAgentId, conversationMessage)
+    ?? conversationMessage('conversation.input.agentChoice.unavailable');
 });
 const activeAgentChoiceAriaLabel = computed(() => {
   const agentChoice = activeConversationAgentChoice.value;

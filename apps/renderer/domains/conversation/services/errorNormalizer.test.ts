@@ -49,6 +49,20 @@ describe('errorNormalizer', () => {
     expect(result.errorCode).toBe('HTTP_429');
   });
 
+  it('maps a retired agent run termination to its localized notice, not a generic conflict', () => {
+    const result = normalizeHttpErrorPayload({
+      status: 409,
+      bodyText: JSON.stringify({ success: false, error: 'backend text', error_code: 'AGENT_RETIRED' }),
+    });
+
+    expect(result.userMessage).toBe(
+      '旧版深度研究已退役，这次暂停的运行已终止。历史对话和已保存的文档仍保留；如需继续研究，请从菜单选择“研究”发起新任务。'
+    );
+    expect(result.errorCode).toBe('AGENT_RETIRED');
+    expect(result.retryable).toBe(false);
+    expect(result.rawMessage).toBe('backend text');
+  });
+
   it('uses localized quota message instead of backend raw Chinese text', () => {
     const result = normalizeHttpErrorPayload({
       status: 403,

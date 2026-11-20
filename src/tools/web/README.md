@@ -242,7 +242,7 @@ src/tools/web/imagesearch/            # image_search（§5.12）
 └── functions/                       # 许可归一、候选转换、observation
 
 src/tools/web/shared/
-├── images/imageSourceRegistry.ts    # 图片来源记录（进程内）
+├── images/imageSourceRegistry.ts    # 图片来源记录（进程内，按对话划分）
 ├── cache/
 │   ├── adapters/
 │   ├── definitions/
@@ -498,7 +498,7 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 ### 5.8 与 deep_research 的关系（边界）
 
 - Default 与 `research_v1` 父子角色都使用同一 Web 合同；网页深搜只承担资料搜集，不替父 Agent 作综合判断。研究编排由 Agent Registry 与普通 subagent 拥有，不进入 Web owner。
-- 旧 `deep_research` 不属于本次调用链，不恢复 Scout/Challenger/Writer 或其私有证据链。知识库深搜仍独立维护。
+- 旧版 `deep_research_*` beta 角色已删除，不恢复 Scout/Challenger/Writer 或其私有证据链。知识库深搜仍独立维护。
 
 ### 5.9 逐步探索与 bash 边界
 
@@ -563,7 +563,14 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
   `application/octet-stream` 也按签名识别。
 - 回执 `data.image` 给解码后的尺寸（按 EXIF 方向），以及当时记下的来源：同一地址最近出现在 `image_search` 候选里，
   就带上来源页、作者、许可与署名；出现在读过的网页上，就带上图注、署名和页面版权声明（没有结构化许可）。
-  记录在本进程内存里（`shared/images/imageSourceRegistry.ts`，最多 2000 条），应用重启后查不到时如实写“来源未记录”。
+  记录在本进程内存里（`shared/images/imageSourceRegistry.ts`，全部对话合计最多 2000 条），应用重启后查不到时如实写“来源未记录”。
+- 记录按对话划分（`context.conversationId`，child run 与所属对话共用）：一个对话只能读到自己记下的来源，另一个对话下载同一地址
+  照样写“来源未记录”。没有对话身份的独立调用不记也不查。对话删除时由 Electron 路由的对话生命周期组合整批回收；清空工作目录不回收，
+  聊天里看过的来源仍然成立。
+- 可信程度：`image_search` 的结构化元数据 > 网页的图片标记（figure、正文大图、og:image）> 正文里的图片链接文字。任何网页都能给别人的
+  图片地址配图注、写“全站图片可自由使用”，所以较低一级的记录不顶替同一对话里已有的较高一级记录；同级按最近一次看到的页面更新。
+- 来源是网页时，回执的可信骨架写明图注、署名和版权声明是“web page claim, not verified”，界面在署名或版权声明后标“网页声称，未核实”
+  （英文界面 “Web page claim, unverified”）。
 - 看图用 `read_file` 读 `conversation:` 路径（模型能看图时）。图片 ref 只说明文件从哪里取得，图片本身按来源记录署名。
 - 结果顶层的 `media`（本机绝对路径、媒体类型与尺寸）只给界面直接显示图片，和 `generate_image` 的 `media` 同一形状；
   模型只读 observation 与会话相对路径。媒体类型按解码确认的格式给，不用响应头。

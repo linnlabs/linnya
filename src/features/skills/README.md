@@ -33,7 +33,6 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 | Skill | 用途 |
 | --- | --- |
 | [deep-research](./builtin/skills/deep-research/SKILL.md) | 深入研究、证据检验与面向读者的长文；也支持固定材料编辑和研究更新 |
-| [mckinsey-research](./builtin/skills/mckinsey-research/SKILL.md) | 既有咨询式商业战略流程；不作为一般深度文章的必经入口 |
 | [linnya-markdown](./builtin/skills/linnya-markdown/SKILL.md) | Linnya Annotation、图片与 `linnya-chart` 图表围栏的操作指引；语法事实仍归 Markdown domain |
 | [linnya-tags](./builtin/skills/linnya-tags/SKILL.md) | 何时打标签（收集、整理、跟踪三种场景）、标签表示“是什么”而字段表示“到哪一步”、`linnya schema/props/query` 的预览与写入、何时保存筛选、管理标签和字段（合并、改名、删除、改类型、改选项与撤回）、改完怎样告诉用户；CLI 合同仍归 [Shell 内建 CLI](../../app-hosts/linnya/application/core-cli/README.md) |
 
@@ -41,7 +40,7 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 
 该 Skill 复用 Default Agent 的 Web、Knowledge、Workspace 与 Shell 工具，不恢复旧 Deep Research beta，不要求固定多 Agent 编排。入口保留共同研究纪律；文体差异与建模选择按需读取 resources。它不强制统一章节、假设数量、概率分数或资料数量，也不宣称系统已经机械验证推论。
 
-当前正式版本为 1.10.2，版本覆盖 `SKILL.md` 与同目录资源的完整包，不覆盖独立的 Agent 系统提示词。入口保持界定任务、探索资料、检验解释、成文和交付五段循环；涉及原因或机制时实际核查关键竞争解释，描述、概念辨析和作品阐释不强凑因果。研究记录在调查中保存，缺口必须约束成稿。未来观察只在有依据时给数值阈值，不以形式完整诱导假精确。委派需显式交接材料、访问与产物边界，不能假设子任务继承父会话全部约束；这仍是行为指引，不是权限强制。入口不承诺因果识别已被工具保证，也不强制延长运行时间。
+当前正式版本为 1.10.3，版本覆盖 `SKILL.md` 与同目录资源的完整包，不覆盖独立的 Agent 系统提示词。入口保持界定任务、探索资料、检验解释、成文和交付五段循环；涉及原因或机制时实际核查关键竞争解释，描述、概念辨析和作品阐释不强凑因果。研究记录在调查中保存，缺口必须约束成稿。未来观察只在有依据时给数值阈值，不以形式完整诱导假精确。委派需显式交接材料、访问与产物边界，不能假设子任务继承父会话全部约束；这仍是行为指引，不是权限强制。入口不承诺因果识别已被工具保证，也不强制延长运行时间。
 
 写作资料是 Skill 的组成部分，不是额外 Agent 或独立注入模块。成文前先读 [交付目的与写作入口](./builtin/skills/deep-research/references/article-craft.md)，再读 [通用手艺与六种文体目录](./builtin/skills/deep-research/references/writing/index.md) 及适用卡片；不把全部卡片默认塞进上下文。选择取决于调查后的材料、证据、读者与用途；报告式、结论先行与叙事式均为选项。必要背景须在首次依赖它判断前出现，段落以内容推进，避免无增量重讲；示范不是其他题目的来源或统一开结尾模板。激活与读取仍由 Agent 实际调用，不是确定性加载或文笔保证。
 
@@ -51,13 +50,15 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 
 1.10.2 只澄清资源读取调用：使用 `skill(action="read_resource", skill_name="...", resource_path="...")`，图表/图片资源给出可直接调用的完整字段。`read_resource` 继续是 Skill action，不新增、恢复或更名工具；研究方法、写作资源1.9及 Agent 系统提示词不变。这是入口歧义修正，不宣称新的研究质量收益。
 
+1.10.3 随旧 `mckinsey-research` 退役补齐 `references/business-analysis.md` 的两处方法要点：可由同一组驱动量推出盈亏平衡量或回本期并说明敏感输入；模型中把取得的指标与推算值分开标注。入口、写作资源与其他方法不变，不搬入旧咨询流程的固定分析清单或批次。
+
 反馈修订方法实验与写作资源升级分别维护。[Benchmark fixture](../../../apps/linnya-benchmark/fixtures/research-feedback-revision-v1.json) 保留其原有基线与候选差异，不随当前正式版本重写历史对照；本次写作升级不采纳其中的反馈修订候选。新实验须冻结完整副本并核对实际加载，不将用户请求中的同义要求重复塞给各组而抹去被测差异。
 
 `references/modeling.md` 将材料立场、参与者利益、竞争解释与间接线索连接到具体查找任务：先说明候选机制会留下什么可观察记录，再查相关主体、时间线、资金/实物流和制度条件，并保留反证、基准解释与未解环节。立场不等于真假，相关不等于因果；这是一套行为指引，不是已验证的自动发现能力。
 
 深度研究默认交付当前项目的 Markdown 文档，聊天只给摘要与 canonical Workspace 链接；用户明确只要聊天回答时例外。正文与必要的研究记录分开，独立评价在同项目新会话读取指定版本、允许材料和评价标准，另写评审文档，不修改原稿。新会话只隔离对话历史，不自动隐藏同项目文件或实现盲评；正式比较仍需冻结输入、匿名化与 Judge 校准。
 
-`references/business-analysis.md` 吸收旧咨询流程中仍适用的双路径估算、驱动量建模、可比性与综合方法；只在商业任务需要时加载。正文、研究记录和评审之间使用实际 locator 关联，不引入第二套持久化或报告发布通道。
+`references/business-analysis.md` 吸收已退役 `mckinsey-research` 中仍适用的双路径估算、驱动量建模、可比性与综合方法；只在商业任务需要时加载。正文、研究记录和评审之间使用实际 locator 关联，不引入第二套持久化或报告发布通道。
 
 资料取得状态、正文支持程度与计算执行分开记录。引用接纳由 [Citation](../../domains/citation/README.md) 拥有，网页取得状态由 [Web](../../tools/web/README.md) 拥有，写入结果由 [Workspace 工具](../../tools/workspace/README.md) 拥有；Skill 不复制校验器或将自述变成通过状态。
 
@@ -70,7 +71,7 @@ Agent 定义通过 `config.skill.enabled` 开启目录披露，且必须具备 `
 - `allowed-tools` 当前只解析保存，不执行权限变更；`disable-model-invocation` 只影响目录披露，不是访问控制。不要声明未实现的 fork 或脚本执行协议。
 - 资源相对路径限制在 Skill 目录，读取上限 512 KB；资源枚举最多 50 个、深度最多 3 层。保持资源精简，超限行为以 `catalog.ts` 为准。
 - 自动发现不保证模型激活；加载成功不证明研究质量。更新需分别验证发现/加载、实际工具行为及成稿质量。 版本对照逐条核对作者实际收到的正文与所需资源；历史基线也要复核。未激活、读取失败或只加载部分资源时，保留该运行并标明实际处理范围，不能仅凭发送时的磁盘版本将结果归因于该版本。
-- `mckinsey-research` 仍有过期的 `task`、固定十二项分析及批次安排，且其输入清洗可能删除有效网址和材料。它拟退役；保留可用方法，不整体迁移旧执行协议。合法 inode-only 读取本身仍受 Workspace 支持，不应与过期工具混为一谈。
+- 内置 `mckinsey-research` 已删除：它依赖过期的 `task`、固定十二项分析及批次安排，输入清洗还可能删除有效网址和材料。可用方法已并入 `deep-research` 的商业分析资源，旧执行协议不迁移。历史对话里它的 skill 工具卡照常按原参数显示；再次点名时 `catalog.ts` 的找不到提示会说明已退役并指向替代资源，不把旧名别名到其他 Skill。用户自装的同名 Skill 仍按用户来源正常发现。
 
 ## 验证
 

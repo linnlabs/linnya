@@ -87,6 +87,13 @@ describe('WebReadImageCard', () => {
       uiKey: 'web_read_image', status: 'success', phase: 'complete', data: { ...base, pageRights: '© CATL' },
     });
     expect(withRights.textContent).toContain('conversation.tool.webReadImage.pageRights{"text":"© CATL"}');
+    expect(withRights.textContent).not.toContain('conversation.tool.webReadImage.pageClaimUnverified');
+    mountedApp?.unmount();
+    mountPoint?.remove();
+    const claimed = mount({
+      uiKey: 'web_read_image', status: 'success', phase: 'complete', data: { ...base, pageRights: '© CATL', pageClaim: true },
+    });
+    expect(claimed.textContent).toContain('conversation.tool.webReadImage.pageClaimUnverified');
     mountedApp?.unmount();
     mountPoint?.remove();
     const bare = mount({ uiKey: 'web_read_image', status: 'success', phase: 'complete', data: base });

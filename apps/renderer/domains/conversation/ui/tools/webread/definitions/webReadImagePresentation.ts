@@ -25,4 +25,6 @@ export type WebReadImagePresentationData =
       };
       readonly credit?: string;
       readonly pageRights?: string;
+      /** 来源记录来自网页：署名与版权声明只是网页声称，未核实。 */
+      readonly pageClaim?: true;
     };

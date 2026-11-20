@@ -104,7 +104,8 @@ describe('projectWebReadImagePresentation', () => {
         source: { found_via: 'web_page', page_url: 'https://www.catl.com/news/1.html', credit: 'Photo: CATL', page_rights: '© CATL' },
       }),
     });
-    expect(fromPage.data).toMatchObject({ kind: 'image', sourceHost: 'catl.com', credit: 'Photo: CATL', pageRights: '© CATL' });
+    // 网页上的署名与版权声明只是网页声称，界面要标“网页声称，未核实”。
+    expect(fromPage.data).toMatchObject({ kind: 'image', sourceHost: 'catl.com', credit: 'Photo: CATL', pageRights: '© CATL', pageClaim: true });
     expect(fromPage.data).not.toHaveProperty('media');
     expect(project({ status: 'success', phase: 'complete', result: imageResult() }).data)
       .toMatchObject({ sourceUrl: IMAGE_URL, sourceHost: 'upload.wikimedia.org' });

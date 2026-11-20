@@ -18,19 +18,32 @@
 
 ## 运行
 
-先启动开发实例（`pnpm run dev:electron`），驱动通过它的 CLI 连接文件建项目、发消息。
+驱动默认启动或复用当前 checkout 的隔离[探针实例](../../development/features/desktop-probe/README.md)
+（`--probe-name`，默认 `tags-bench`；独立 profile、Workspace 与 CLI 连接文件），不碰日常开发实例和 `_dev_data`。
+探针实例里没有日常配置的模型凭据，先在该实例里配好要测的模型（界面“模型”设置，或自定义 API），再用 `models` 查到 `model_config_id`。
 
 ```bash
-node scripts/benchmark/tags-semantic/run.mjs \
-  --model <model_config_id> --label deepseek \
-  --db "$PWD/_dev_data/workspace/workspace.sqlite" --output <新目录>
+node scripts/benchmark/tags-semantic/run.mjs --model <model_config_id> --label deepseek --output <新目录>
 node scripts/benchmark/tags-semantic/score.mjs <结果目录> [<结果目录> …] --out <目录>
 ```
 
+确实要在其他实例（包括日常开发实例）上跑时，必须同时显式给出该实例的连接文件与数据库：
+`--connection-file <conversation-control-v1.json> --db <workspace.sqlite>`。驱动不读取环境变量 `LINNYA_CLI_CONNECTION_FILE`，
+所有 CLI 调用都显式指向选定实例。
+
+安全边界（`benchmarkSafety.mjs`，有单元测试）：
+
+- Shell 命令审批只对白名单命令按“允许一次”放行：`linnya` CLI 与 `cat`、`ls`、`grep`、`head`、`tail`、`wc`、`pwd`、`echo`、`cd`，
+  可用管道、`&&`、`;` 和丢弃 stderr 的 `2>/dev/null`、`2>&1`。白名单外的程序、重定向写文件、命令替换、后台执行和多行命令
+  都不放行：驱动停止这一轮、整个基准随之停止，结果里记 `stopped`（任务、命令原文、原因），退出码 2。
+  不再用“本对话允许”，免得一次授权让同一对话后续命令绕过白名单。其他交互不代答。
+- 审计默认级别临时改成 `response` 以记录各步 token；结束、出错或 Ctrl+C / SIGTERM 中断时都改回原级别
+  （中断时先停掉正在跑的一轮），`run.json` 的 `auditLevel.original` 记下原级别。
+
 标签和字段是工作区级的：驱动默认要求工作区还没有标签；已有标签时加 `--allow-existing-tags yes`，
-这时测的是“先看已有、能复用就复用”，评分只把本轮新建的算作新建。Shell 命令审批按“本对话允许”自动通过，其他交互不代答。
+这时测的是“先看已有、能复用就复用”，评分只把本轮新建的算作新建。
 `--only control,oneoff` 只跑部分步骤，可用 Mock 模型检查管道（不花钱）。每步还从会话消息里记下执行过的 Shell 命令原文；
-旧结果缺这一项时用 `run.mjs --backfill <结果目录>` 补（实例需在运行）。
+旧结果缺这一项时用 `run.mjs --backfill <结果目录> [实例参数]` 补（实例需在运行，实例参数同上）。
 
 ## 评分
 

@@ -860,7 +860,7 @@ describe('runtime renderer plugin loader', () => {
         },
         conversationAgentChoices: [{
           id: 'runtime-loader-activate-fail-agent-choice',
-          agentId: ConversationAgentIds.DEEP_RESEARCH,
+          agentId: ConversationAgentIds.RESEARCH,
           menuText: '激活失败流程',
           pillText: '失败流程',
           ariaLabel: '激活失败流程',

@@ -33,6 +33,6 @@ Agent 筛选按回复过的 Agent 匹配。右侧详情先分开写“回复过�
 
 验收入口：相关 Vitest 测试，以及 `scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs` 的 `project-overview` 场景（通过 `LINNYA_CONVERSATION_E2E_SCENARIO` 选择）。真实 Desktop 场景使用隔离临时数据库，验证导航、筛选、列设置、知识库关联、变更刷新及大量文档的虚拟渲染。
 
-来源与最近修改按具体 Agent 显示：默认 Agent 显示为 Linnya Agent，其他 Agent 用注册表里的显示名，查不到（例如所属插件已停用）时显示注册表 ID；规则只在 `resolveProjectOverviewAgentName` 一处，文件列表、对话列表和标签管理共用。子运行显示为“子任务”，因为子 Agent 没有面向用户的名字，与对话“本次改动”的用语一致。按来源排序时先分类别（Agent、子任务、Linnya CLI、插件、用户），同为 Agent 再按显示名。
+来源与最近修改按具体 Agent 显示：默认 Agent 显示为 Linnya Agent，其他 Agent 用注册表里的显示名，已删除的旧版深度研究身份显示为“旧版深度研究（已退役）”，其余查不到（例如所属插件已停用）时显示注册表 ID；规则只在 `resolveProjectOverviewAgentName` 一处，文件列表、对话列表和标签管理共用。子运行显示为“子任务”，因为子 Agent 没有面向用户的名字，与对话“本次改动”的用语一致。按来源排序时先分类别（Agent、子任务、Linnya CLI、插件、用户），同为 Agent 再按显示名。
 
 当前边界：插件用户编辑未完整进入账本时只展示修改时间，这项来源精度由各写入入口后续补齐，不由本视图推测。
