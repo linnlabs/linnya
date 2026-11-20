@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ResearchRunArgsSchema } from '@app/schemas';
 import { createUserInputEvent } from '@linnlabs/linnkit/contracts';
 import type { AgentInvokeRequest } from '../../../context/agent/contracts';
+import { AgentRequestAdmissionError } from '../../agentRequestAdmissionError';
 import { admitResearchRequest, resolveResearchAdmission } from './admission';
 
 const request: AgentInvokeRequest = {
@@ -30,6 +31,29 @@ describe('research admission', () => {
       materials: [],
     });
     expect(input).not.toHaveProperty('researchScope');
+  });
+
+  it('估算尚未写出的下一条消息时，开放范围用中性问题占位且不改写请求', () => {
+    // 估算请求没有用户消息；没有占位时开放范围的问题为空，正式接纳会拒绝。
+    const unsent = { ...request, query: '' };
+    expect(() => admitResearchRequest(unsent, { history: [] })).toThrow();
+
+    const admitted = admitResearchRequest(unsent, { history: [], contextEstimate: true });
+    expect(admitted.query).toBe('');
+    expect(admitted.researchScope).toMatchObject({ task_type: 'open', materials: [] });
+    expect(admitted.researchScope?.question.trim().length).toBeGreaterThan(0);
+  });
+
+  it('估算同样执行项目校验，拒绝以同一个接纳错误类型表达', () => {
+    expect(() =>
+      admitResearchRequest(
+        { ...request, query: '', project_metadata: undefined },
+        { history: [], contextEstimate: true }
+      )
+    ).toThrow(expect.objectContaining({ code: 'RESEARCH_PROJECT_REQUIRED' }));
+    expect(() =>
+      resolveResearchAdmission({ ...request, project_metadata: undefined })
+    ).toThrow(AgentRequestAdmissionError);
   });
 
   it('无项目在接纳前给出可操作错误', () => {

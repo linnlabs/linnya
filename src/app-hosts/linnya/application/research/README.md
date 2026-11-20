@@ -67,6 +67,8 @@ CLI `--research-scope-json`
 声明 question、reader、open/fixed/update、Workspace 材料和时间范围；接纳后随请求冻结为 researchScope。显式范围拒绝未绑定的历史、附件和编辑器上下文；fixed/update 要有正式材料。fixed 禁止外部查找的要求进入父系统提示，父再明确交给每个子任务；不再通过 Web/Knowledge
 decorator 或文件工具实施研究特判。Shell 权限沿通用设置执行，真实任务越界仍需审计。
 
+输入框上下文用量估算只读地复用同一接纳函数（`contextEstimate`）。下一条消息尚未写出，开放范围的问题用中性占位，其余项目、附件校验不变；占位只进入估算，不进入任何运行，返回请求的原文也不被改写。无项目等会被拒绝的会话没有可估算的下一次请求，估算返回空值而不是服务端错误。
+
 新研究和普通子任务复用持久 child
 admission、RunSupervisor、EventStore、Audit 与通用工具恢复。TaskState 只记录计划，不是运行真源。旧
 `research_run`、 `submit_research_document` 和 `complete_research`

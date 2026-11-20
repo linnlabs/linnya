@@ -6,20 +6,22 @@ import {
 } from '@app/schemas';
 import type { AgentInvokeRequest } from '../../../context/agent/contracts';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
+import { AgentRequestAdmissionError } from '../../agentRequestAdmissionError';
 import type { AgentRequestAdmissionContext } from '../../types';
 
-export class ResearchAdmissionError extends Error {
-  constructor(
-    readonly code:
-      | 'RESEARCH_CONTEXT_NOT_SUPPORTED'
-      | 'RESEARCH_PROJECT_REQUIRED'
-      | 'RESEARCH_HOST_ENTRY_NOT_SUPPORTED',
-    message: string
-  ) {
-    super(message);
+export class ResearchAdmissionError extends AgentRequestAdmissionError<
+  | 'RESEARCH_CONTEXT_NOT_SUPPORTED'
+  | 'RESEARCH_PROJECT_REQUIRED'
+  | 'RESEARCH_HOST_ENTRY_NOT_SUPPORTED'
+> {
+  constructor(code: ResearchAdmissionError['code'], message: string) {
+    super(code, message);
     this.name = 'ResearchAdmissionError';
   }
 }
+
+/** 估算时下一条消息尚未写出，开放范围没有问题文本可取；占位只用于只读估算，不进入任何运行。 */
+const UNSENT_QUESTION_PLACEHOLDER = 'The user’s next question.';
 
 /** 普通研究以开放调查启动；CLI 显式范围仍保持原有严格、独立材料合同。 */
 export function resolveResearchAdmission(
@@ -88,8 +90,12 @@ export function admitResearchRequest(
     ? z.object({ request_id: z.string().uuid(), scope: ResearchRunArgsSchema }).strict()
       .parse(JSON.parse(request.delegation.prompt)).scope
     : request.researchScope;
+  // 只读估算没有用户消息；其余项目、附件与历史校验不变，返回请求的 query 也不被改写。
+  const scopeRequest = context.contextEstimate
+    ? { ...request, query: UNSENT_QUESTION_PLACEHOLDER }
+    : request;
   return {
     ...request,
-    researchScope: resolveResearchAdmission(request, scope, context.history),
+    researchScope: resolveResearchAdmission(scopeRequest, scope, context.history),
   };
 }

@@ -19,7 +19,9 @@ enricher 或重新渲染系统提示；这不承诺冻结外部模型输出或�
 
 定义可以通过 `requestAdmission(request, { history, hostToolCall })`
 接纳业务请求。它是纯函数，在新根运行或持久 registered child 首次启动时校验并物化 Host
-`AgentInvokeRequest`；history 已按隔离与编辑替换规则裁剪。结果随运行 descriptor 冻结，持久化后的历史刷新保留该结果；恢复不重新接纳、不重写原请求。系统提示构建器接收 Host 请求，可以消费已经接纳的产品字段，不能重新推断范围或执行工具。
+`AgentInvokeRequest`；history 已按隔离与编辑替换规则裁剪。结果随运行 descriptor 冻结，持久化后的历史刷新保留该结果；恢复不重新接纳、不重写原请求。系统提示构建器接收 Host 请求，可以消费已经接纳的产品字段，不能重新推断范围或执行工具。拒绝请求时抛出 `AgentRequestAdmissionError`（各定义的接纳错误继承它），调用方按这个类型而不是某个 Agent 的错误类判断。
+
+输入框上下文用量估算也只读地走同一接纳函数，传入 `contextEstimate: true`：用户消息尚未写出，定义只可为依赖该消息的字段使用中性占位，其余校验不变，结果不持久化、不冻结、不启动运行。被拒绝时没有可估算的下一次请求，估算返回空值。
 
 首次接纳从 definition 冻结
 `callerAgentId`，覆盖请求中的同名值。child 使用自己的身份。工具执行范围由已接纳的 availableTools 与正式 Host 单次入口授权约束；通用 subagent 按注册方的调用角色与直接子类型策略过滤目录及执行；它不解释领域材料，原始 prompt 由目标角色接纳。

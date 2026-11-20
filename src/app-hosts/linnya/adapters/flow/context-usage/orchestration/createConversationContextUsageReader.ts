@@ -8,6 +8,9 @@ import { createDefaultGraphExecutorContextBuilder } from 'src/app-hosts/linnya/a
 import { defaultImageInputProcessingProfileRegistry } from 'src/app-hosts/linnya/adapters/llm-input-materialization';
 import { LINNYA_CONTEXT_POLICY_FALLBACK } from 'src/app-hosts/linnya/context-policies/defaultContextPolicy';
 import { modelCatalog } from 'src/domains/model-catalog';
+import { AgentRequestAdmissionError } from 'src/app-hosts/linnya/agent-registry/agentRequestAdmissionError';
+import { resolveAgentRequestAdmission } from 'src/app-hosts/linnya/agent-registry/resolveAgentRequestAdmission';
+import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import type { ConversationListItem } from '../../../persistence/event-store/event-store.interface';
 import { HistoryBuilder } from '../../flow.history-builder.service';
 import { resolveConversationAgentPromptKey } from '../../functions/admitConversationAgentChoice';
@@ -18,6 +21,22 @@ interface ContextUsageReaderDependencies {
   readHistory(conversationId: string): Promise<RuntimeEvent[]>;
   readonly toolRuntime: Pick<ToolRuntimePort, 'getToolSchemas'>;
   readonly toolManager?: agentTools.ToolManager;
+}
+
+/**
+ * 下一次运行要先经过 Agent 自己的接纳规则（例如研究的开放范围）。估算与正式运行共用它，
+ * 只是用户消息尚未写出；被接纳规则拒绝时没有可估算的请求，历史照常打开。
+ */
+function admitNextRequest(
+  request: AgentInvokeRequest,
+  history: readonly RuntimeEvent[],
+): AgentInvokeRequest | null {
+  try {
+    return resolveAgentRequestAdmission(request, { history, contextEstimate: true });
+  } catch (error) {
+    if (error instanceof AgentRequestAdmissionError) return null;
+    throw error;
+  }
 }
 
 export function createConversationContextUsageReader(dependencies: ContextUsageReaderDependencies) {
@@ -36,20 +55,24 @@ export function createConversationContextUsageReader(dependencies: ContextUsageR
     // 历史窗口读请求可以先处理，避免本地分词占住打开对话时的第一批 I/O。
     await yieldToEventLoop();
     const conversationId = metadata.conversation_id;
-    const request = HistoryBuilder.buildForContextEstimate(conversationId, {
-      model_id: modelId,
-      promptKey: metadata.selected_agent_id
-        ? resolveConversationAgentPromptKey(metadata.selected_agent_id)
-        : undefined,
-      project_metadata: metadata.project_id ? { id: metadata.project_id } : undefined,
-    });
+    const history = await dependencies.readHistory(conversationId);
+    const request = admitNextRequest(
+      HistoryBuilder.buildForContextEstimate(conversationId, {
+        model_id: modelId,
+        promptKey: metadata.selected_agent_id
+          ? resolveConversationAgentPromptKey(metadata.selected_agent_id)
+          : undefined,
+        project_metadata: metadata.project_id ? { id: metadata.project_id } : undefined,
+      }),
+      history,
+    );
+    if (!request) return null;
     const tools = request.enableTools === false ? [] : dependencies.toolRuntime.getToolSchemas({
       toolNames: request.availableTools,
       invocation: request,
     }).map(({ function: { name, description, parameters } }) => ({ name, description, parameters }));
     const toolDefinitionTokens = tools.length === 0 ? 0
       : tokenizer.estimateText(JSON.stringify({ tools, tool_choice: 'auto' }), modelId);
-    const history = await dependencies.readHistory(conversationId);
     const context = await builder.build({ request, history, modelId, toolDefinitionTokens });
     return projectContextEstimate(modelId, context);
   }
