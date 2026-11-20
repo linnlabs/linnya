@@ -389,3 +389,34 @@ describe('typecheckCodegenSource — diagnostics surfacing', () => {
     expect(r.records).toEqual([]);
   });
 });
+
+describe('typecheckCodegenSource — run style 不再有 lineSpacing', () => {
+  const runStyleDeck = (style: string) => `
+const slide = createSlide();
+slide.add(createText({ content: [{ text: "a", style: ${style} }], fontSize: 24 }));
+compose({ title: "t", slides: [slide] });
+`;
+
+  it('旧稿里残留的 run lineSpacing 仍可写入：由 compose 解析忽略并提示，不在类型检查报错', () => {
+    const r = typecheckCodegenSource(runStyleDeck('{ bold: true, lineSpacing: { kind: "exactPt", value: 40 } }'));
+    expect(r.records).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it('只放过这一个旧字段：run style 里其他未知字段仍然报错', () => {
+    const r = typecheckCodegenSource(runStyleDeck('{ bogus: 1 }'));
+    expect(r.ok).toBe(false);
+    expect(r.message).toContain("'bogus'");
+    expect(r.message).toContain('LayoutTextRunStyleInput');
+  });
+
+  it('表格单元格 style 与整框 lineHeight 的写法不受影响', () => {
+    const r = typecheckCodegenSource(`
+const slide = createSlide();
+slide.add(createText({ content: "a", lineHeight: 1.4 }));
+slide.add(createTable({ rows: [[{ text: "a", style: { lineSpacing: { kind: "multiple", value: 1.2 } } }]] }));
+compose({ title: "t", slides: [slide] });
+`);
+    expect(r.records.map((x) => `${x.code}:${x.message}`)).toEqual([]);
+  });
+});
