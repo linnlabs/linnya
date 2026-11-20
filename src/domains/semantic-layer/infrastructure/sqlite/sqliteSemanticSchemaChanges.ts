@@ -27,6 +27,7 @@ import {
 } from '../../features/schema-changes/definitions/semanticSchemaChanges';
 import {
   convertSemanticValue,
+  keepExistingOptions,
   optionsForConversion,
   semanticValueText,
 } from '../../features/schema-changes/functions/convertSemanticValue';
@@ -58,6 +59,8 @@ interface ValueBefore { readonly kind: SemanticObjectKind; readonly id: string; 
 /** 标签字段默认值的改前、改后；`null` 表示没有默认值。撤回时只在当前仍是 after 时改回 before。 */
 interface DefaultChange { readonly tagId: string; readonly before: SemanticValue; readonly after: SemanticValue | null }
 interface DefaultRow { readonly tag_id: string; readonly default_json: string }
+/** 撤回改类型、改选项时，不在差量里的值与默认值按回退后的定义整理掉的部分；旧值另在对象版本里。 */
+interface RevertAdjustments { readonly values: readonly ValueBefore[]; readonly defaults: readonly DefaultChange[] }
 
 /** 撤回所需的差量，按种类各一种形状；只在本文件内读写。 */
 type UndoData =
@@ -77,12 +80,14 @@ type UndoData =
     readonly values: readonly ValueBefore[];
     /** 迁移前的改动没有这一项。 */
     readonly defaults?: readonly DefaultChange[];
+    readonly reverted?: RevertAdjustments;
   }
   | {
     readonly kind: 'update_options'; readonly propertyId: string;
     readonly before: readonly SemanticSelectOption[]; readonly after: readonly SemanticSelectOption[];
     readonly values: readonly ValueBefore[];
     readonly defaults?: readonly DefaultChange[];
+    readonly reverted?: RevertAdjustments;
   };
 
 export interface SemanticSchemaChangeContext {
@@ -263,9 +268,11 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
   function rewriteDefaults(
     propertyId: string,
     next: (value: SemanticValue) => SemanticValue | undefined,
+    skipTagIds: ReadonlySet<string> = new Set(),
   ): DefaultChange[] {
     const changes: DefaultChange[] = [];
     for (const { tagId, value } of propertyDefaults(propertyId)) {
+      if (skipTagIds.has(tagId)) continue;
       const after = next(value) ?? null;
       if (JSON.stringify(after) === JSON.stringify(value)) continue;
       writeDefault.run(after === null ? null : JSON.stringify(after), tagId, propertyId);
@@ -274,15 +281,18 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
     return changes;
   }
 
-  /** 撤回默认值：之后又被改过的（当前不再是 after）保留，不覆盖。 */
-  function restoreDefaults(propertyId: string, changes: readonly DefaultChange[]): void {
+  /** 撤回默认值：之后又被改过的（当前不再是 after）保留，不覆盖。返回改回了的标签。 */
+  function restoreDefaults(propertyId: string, changes: readonly DefaultChange[]): Set<string> {
+    const restored = new Set<string>();
     for (const change of changes) {
       const row = readDefault.get(change.tagId, propertyId);
       if (!row) continue;
       const current = row.default_json === null ? null : JSON.parse(row.default_json) as SemanticValue;
       if (JSON.stringify(current) !== JSON.stringify(change.after)) continue;
       writeDefault.run(JSON.stringify(change.before), change.tagId, propertyId);
+      restored.add(change.tagId);
     }
+    return restored;
   }
 
   function editableProperty(idOrName: string): SemanticPropertyDefinition {
@@ -377,7 +387,7 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
     return JSON.parse(row.undo_json) as UndoData;
   }
 
-  function applyUndo(undo: UndoData, at: number): void {
+  function applyUndo(undo: UndoData, at: number): RevertAdjustments | null {
     switch (undo.kind) {
       case 'rename_tag':
       case 'rename_property': {
@@ -391,7 +401,7 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
         ).get(semanticNameKey(undo.from), id);
         if (taken) throw new SemanticLayerError('undo_conflict', `已经有“${taken.name}”，无法改回原名`);
         db.prepare(`UPDATE ${table} SET name = ?, name_key = ? WHERE id = ?`).run(undo.from, semanticNameKey(undo.from), id);
-        return;
+        return null;
       }
       case 'merge_tags': {
         assertNameFree('semantic_tags', undo.sourceId, '原标签');
@@ -404,7 +414,7 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
           if (!object.hadTarget) deleteObjectTag.run(object.kind, object.id, undo.targetId);
           bumpObject(object.kind, object.id, at);
         }
-        return;
+        return null;
       }
       case 'delete_tag': {
         assertNameFree('semantic_tags', undo.tagId, '标签');
@@ -414,12 +424,12 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
           insertObjectTag.run(...columns(object.kind, object.id), undo.tagId, object.createdAt);
           bumpObject(object.kind, object.id, at);
         }
-        return;
+        return null;
       }
       case 'delete_property': {
         assertNameFree('semantic_properties', undo.propertyId, '字段');
         db.prepare('UPDATE semantic_properties SET deleted_at = NULL WHERE id = ?').run(undo.propertyId);
-        return;
+        return null;
       }
       case 'change_property_type':
       case 'update_options': {
@@ -432,14 +442,37 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
         if (JSON.stringify(property.options) !== JSON.stringify(expected.options)) {
           throw new SemanticLayerError('undo_conflict', `“${property.name}”之后又改过选项，先撤回后来的改动`);
         }
-        if (undo.kind === 'change_property_type') writeOptions(property.id, undo.from.valueType, undo.from.options);
-        else writeOptions(property.id, property.valueType, undo.before);
-        restoreDefaults(property.id, undo.defaults ?? []);
+        const reverted: SemanticPropertyDefinition = undo.kind === 'change_property_type'
+          ? { ...property, valueType: undo.from.valueType, options: undo.from.options }
+          : { ...property, options: undo.before };
+        // 改动之后才写入的值与默认值是按改后的定义写的：按回退后的定义转换，放不下的清除。
+        const revert = (value: SemanticValue): SemanticValue | undefined => {
+          if (undo.kind === 'update_options') return keepExistingOptions(reverted, value);
+          const outcome = convertSemanticValue(property, value, reverted.valueType, reverted.options);
+          return outcome.kind === 'converted' ? outcome.value : undefined;
+        };
+        writeOptions(property.id, reverted.valueType, reverted.options);
+        const restoredDefaults = restoreDefaults(property.id, undo.defaults ?? []);
+        const adjustedDefaults = rewriteDefaults(property.id, revert, restoredDefaults);
+        const restoredObjects = new Set<string>();
         for (const item of undo.values) {
+          restoredObjects.add(`${item.kind}:${item.id}`);
           if (!objectExists(item.kind, item.id)) continue;
           bumpObject(item.kind, item.id, at, values => ({ ...values, [property.id]: item.before }));
         }
-        return;
+        const adjustedValues: ValueBefore[] = [];
+        for (const row of valuedWith.all(property.id)) {
+          if (restoredObjects.has(`${row.object_kind}:${row.object_id}`)) continue;
+          const before = (JSON.parse(row.property_values) as Values)[property.id];
+          if (before === undefined) continue;
+          const after = revert(before);
+          if (JSON.stringify(after) === JSON.stringify(before)) continue;
+          adjustedValues.push({ kind: row.object_kind, id: row.object_id, before });
+          bumpObject(row.object_kind, row.object_id, at, values => (
+            after === undefined ? withoutKey(values, property.id) : { ...values, [property.id]: after }
+          ));
+        }
+        return { values: adjustedValues, defaults: adjustedDefaults };
       }
     }
   }
@@ -648,7 +681,11 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
         const row = readChangeRow(id);
         if (row.undone_at !== null) throw new SemanticLayerError('already_undone', '这批改动已经撤回过了');
         const at = now();
-        applyUndo(undoData(row), at);
+        const undo = undoData(row);
+        const reverted = applyUndo(undo, at);
+        if (reverted && (reverted.values.length || reverted.defaults.length)) {
+          db.prepare('UPDATE semantic_schema_changes SET undo_json = ? WHERE id = ?').run(JSON.stringify({ ...undo, reverted }), id);
+        }
         db.prepare('UPDATE semantic_schema_changes SET undone_at = ? WHERE id = ?').run(at, id);
         const change = toChange({ ...row, undone_at: at });
         return { change, attachments: change.attachments };

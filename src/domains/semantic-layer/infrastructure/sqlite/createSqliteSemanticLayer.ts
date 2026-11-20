@@ -22,6 +22,7 @@ import {
 import { findSimilarSemanticNames } from '../../functions/findSimilarSemanticNames';
 import { cleanSemanticName, semanticNameKey } from '../../functions/normalizeSemanticName';
 import { normalizeSemanticValue } from '../../functions/normalizeSemanticValue';
+import { conformSemanticValue } from '../../features/schema-changes/functions/convertSemanticValue';
 import { createSqliteSemanticSchemaChanges } from './sqliteSemanticSchemaChanges';
 
 const KEPT_VERSIONS = 50;
@@ -521,9 +522,18 @@ export function createSqliteSemanticLayer(
           throw new SemanticLayerError('invalid_value', `版本 ${toRevision} 不在保留范围内（每个对象保留最近 ${KEPT_VERSIONS} 个版本）`);
         }
         const active = new Set(tags().map(tag => tag.id));
+        // 旧版本的值按写入时的定义存放；字段之后改过类型或选项时，按当前定义转换，放不下的清除。
+        // 已删除字段的值原样保留，撤回删除后照旧显示。
+        const definitions = new Map(properties().map(property => [property.id, property]));
+        const values: Values = {};
+        for (const [propertyId, value] of Object.entries(JSON.parse(row.property_values) as Values)) {
+          const property = definitions.get(propertyId);
+          const conformed = property ? conformSemanticValue(property, value) : value;
+          if (conformed !== undefined) values[propertyId] = conformed;
+        }
         return {
           tagIds: (JSON.parse(row.tag_ids_json) as string[]).filter(id => active.has(id)),
-          values: JSON.parse(row.property_values) as Values,
+          values,
         };
       });
     },

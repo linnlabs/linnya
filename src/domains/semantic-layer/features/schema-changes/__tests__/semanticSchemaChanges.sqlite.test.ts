@@ -339,7 +339,72 @@ describe('标签字段默认值随改类型、改选项转换', () => {
     const change = layer.changePropertyType('级别', 'number');
     layer.setTagFields('紧急', [{ propertyId: level.id, defaultValue: 9 }]);
     layer.undoChange(change.id);
-    expect(defaultOf(layer, '紧急', level.id)).not.toBe('5');
+    expect(defaultOf(layer, '紧急', level.id)).toBe('9');
+  });
+});
+
+describe('撤回与恢复按当前定义整理值', () => {
+  it('撤回改类型时，改动之后写入的值按回退后的类型转换，转不了的清除', () => {
+    const { layer, tag, set, read } = setup();
+    const year = layer.defineProperty({ name: '年份', valueType: 'text' });
+    layer.defineTag({ name: '论文', fields: [{ propertyId: year.id }] });
+    tag('a', '论文'); set('a', { 年份: '2024' });
+    tag('b', '论文');
+    const change = layer.changePropertyType('年份', 'number');
+    set('b', { 年份: 42 });
+    const revisionBeforeUndo = read('b').revision;
+    layer.undoChange(change.id);
+    expect(read('a').values).toEqual({ [year.id]: '2024' });
+    expect(read('b').values).toEqual({ [year.id]: '42' });
+    expect(read('b').revision).toBe(revisionBeforeUndo + 1);
+  });
+
+  it('撤回改类型时，改动之后写入、回退后转不了的值清除，旧值留在对象版本里', () => {
+    const { layer, tag, set, read } = setup();
+    const done = layer.defineProperty({ name: '完成', valueType: 'checkbox' });
+    layer.defineTag({ name: '任务', fields: [{ propertyId: done.id }] });
+    tag('a', '任务');
+    const change = layer.changePropertyType('完成', 'text');
+    set('a', { 完成: '进行中' });
+    const revisionWithText = read('a').revision;
+    layer.undoChange(change.id);
+    expect(read('a').values).toEqual({});
+    expect(read('a').revision).toBe(revisionWithText + 1);
+  });
+
+  it('撤回改选项时，改动之后用了新选项的值去掉该选项，不留悬空 ID', () => {
+    const { layer, tag, set, read } = setup();
+    const status = layer.defineProperty({ name: '状态', valueType: 'select', options: ['草稿', '定稿'] });
+    const topics = layer.defineProperty({ name: '主题', valueType: 'multi_select', options: ['电池'] });
+    const [battery] = topics.options;
+    layer.defineTag({ name: '研究', fields: [{ propertyId: status.id }, { propertyId: topics.id }] });
+    tag('a', '研究');
+    const statusChange = layer.updatePropertyOptions('状态', [...status.options, { name: '归档' }]);
+    const topicsChange = layer.updatePropertyOptions('主题', [{ id: battery.id, name: '电池' }, { name: '氢能' }]);
+    set('a', { 状态: '归档', 主题: ['电池', '氢能'] });
+    layer.undoChange(topicsChange.id);
+    layer.undoChange(statusChange.id);
+    expect(read('a').values).toEqual({ [topics.id]: [battery.id] });
+  });
+
+  it('按版本恢复时，旧版本里的值按当前定义转换，转不了或选项已删的清除', () => {
+    const { layer, tag, set, read } = setup();
+    const year = layer.defineProperty({ name: '年份', valueType: 'text' });
+    const status = layer.defineProperty({ name: '状态', valueType: 'select', options: ['草稿', '定稿'] });
+    layer.defineTag({ name: '论文', fields: [{ propertyId: year.id }, { propertyId: status.id }] });
+    tag('a', '论文');
+    set('a', { 年份: '2,024', 状态: '草稿' });
+    const oldRevision = read('a').revision;
+    set('a', { 年份: '2025', 状态: '定稿' });
+    layer.changePropertyType('年份', 'number');
+    layer.updatePropertyOptions('状态', [{ id: status.options[1].id, name: '定稿' }]);
+
+    const restored = layer.restoreObject(
+      { projectId: 'p1', ref: { kind: 'document', id: 'a' }, expectedRevision: read('a').revision },
+      oldRevision,
+    );
+    expect(restored.values).toEqual({ [year.id]: 2024 });
+    expect(codeOf(() => set('a', { 状态: '定稿' }))).toBeUndefined();
   });
 });
 
