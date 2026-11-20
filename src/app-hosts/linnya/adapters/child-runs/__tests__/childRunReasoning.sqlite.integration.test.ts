@@ -244,6 +244,21 @@ function fixtureEffort(fixture: Fixture) {
 }
 
 describe('durable child request admission', () => {
+  it('新 child 的模型未配置时正常拒绝，不注册暂停的 child 或发动推理', async () => {
+    const fixture = await open([]);
+    await seedParent(fixture);
+    const outcome = invoker(fixture).invoke({
+      ...request(), executionPolicy: { modelId: 'unconfigured-child-model' },
+    });
+    await expect(outcome).rejects.toMatchObject({
+      code: 'CHILD_REQUEST_ADMISSION_REJECTED',
+      cause: expect.objectContaining({ modelId: 'unconfigured-child-model' }),
+    });
+    expect(await fixture.runtime.supervisor.peek(childRunId)).toBeFalsy();
+    expect(await fixture.runtime.runDescriptors?.load(childRunId)).toBeNull();
+    expect(fixture.ai.getCalls()).toHaveLength(0);
+  });
+
   // 这里只用正式研究定义检验接纳与冻结，不注册新的公开研究子类型，也不冒充完整文章链。
   it('有项目的研究 child 首次接纳 scope，再把同一范围交给实际 LLM', async () => {
     const fixture = await open([{ contentChunks: ['Controlled research result.'] }]);

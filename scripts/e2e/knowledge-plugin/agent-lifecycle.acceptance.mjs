@@ -37,6 +37,12 @@ plans['in-flight'] = [
   searchCall('active-search'),
   { kind: 'assistant_text', id: 'active-search-finished', content: 'active-search-finished' },
 ];
+plans['missing-deep-model'] = [
+  { kind: 'tool_call', id: 'missing-deep-model', name: toolName,
+    arguments: { kind: 'fixed', value: { query: 'apple orchard', deep_search: true } } },
+  { kind: 'assistant_text', id: 'deep-model-unavailable-finished', content: 'deep-model-unavailable-finished',
+    expectToolObservation: { id: 'missing-deep-model', includes: 'Run model unavailable' } },
+];
 const server = await startDeterministicOpenAiChatServer({ sessions: plans });
 const embeddingFixture = await startCustomCapabilityProtocolServer();
 const test = acceptance(`knowledge-agent-lifecycle-${process.pid}`, { evidence });
@@ -149,6 +155,20 @@ try {
   const readEvents = id => db.prepare('SELECT type,payload FROM events WHERE run_id=? ORDER BY rowid').all(id).map(row => ({ type: row.type, body: JSON.parse(row.payload) }));
   const readInstalled = () => db.prepare("SELECT installed FROM installed_plugins WHERE plugin_id='knowledge'").get();
   const readEnabled = () => db.prepare("SELECT 1 FROM enabled_plugins WHERE plugin_id='knowledge'").get() !== undefined;
+
+  await evidence.check('未配置深搜固定模型：工具明确失败，父 Agent 仍完成', async () => {
+    await selectModel(modelNames.get('missing-deep-model'));
+    await send('Search the synthetic library with the unconfigured deep model.');
+    await run('wait', '--text', 'deep-model-unavailable-finished');
+    const finished = await until(() => readAgentRuns()[0], value => Boolean(value?.end_ts), 'parent completed');
+    assert.equal(finished.status, 'completed');
+    const events = readEvents(finished.id);
+    assert.ok(events.some(event => event.type === 'tool_output' && event.body.tool_name === toolName &&
+      event.body.status === 'error' && event.body.observation.includes('Run model unavailable')));
+    evidence.json('missing-deep-model', { finished, events });
+    await run('shot');
+    await run('click', await uiRef('新对话', 'button', 'aside'));
+  });
 
   await evidence.check('真实检索进行中：停用与卸载是否会阻拦、原运行是否完成', async () => {
     await selectModel(modelNames.get('in-flight'));

@@ -20,6 +20,13 @@ import type { RunDescriptor } from '../definitions/runDescriptor';
 
 type RuntimeCompatibility = RunDescriptor['compatibility'];
 
+export class RunModelBindingUnavailableError extends Error {
+  constructor(readonly modelId: string, kind: 'model' | 'endpoint') {
+    super(`Run ${kind} unavailable: ${modelId}`);
+    this.name = 'RunModelBindingUnavailableError';
+  }
+}
+
 function serializeConfiguration(value: unknown): SerializableJsonRecord {
   const encoded = JSON.stringify(value, (_key, child: unknown) => {
     if (
@@ -36,12 +43,12 @@ function serializeConfiguration(value: unknown): SerializableJsonRecord {
 
 function readModelBinding(modelId: string): SerializableJsonRecord {
   const model = modelCatalog.getModel(modelId);
-  if (!model) throw new Error(`Run model unavailable: ${modelId}`);
+  if (!model) throw new RunModelBindingUnavailableError(modelId, 'model');
   const endpoint = model.inference_endpoint_id
     ? modelCatalog.getInferenceEndpoints().find(item => item.id === model.inference_endpoint_id)
     : undefined;
   if (model.inference_endpoint_id && !endpoint)
-    throw new Error(`Run endpoint unavailable: ${modelId}`);
+    throw new RunModelBindingUnavailableError(modelId, 'endpoint');
   return serializeConfiguration({
     id: model.id,
     inferenceRoute: model.inference_route,

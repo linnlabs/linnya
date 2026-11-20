@@ -13,6 +13,8 @@ Layer: `host-adapter/child-runs`
 调用不能跳过此接纳启动。恢复和已完成结果复用只读原 child 请求，不重新接纳。
 首次业务输入被拒以 `CHILD_REQUEST_ADMISSION_REJECTED` 交回调用方，保留原 cause，且不注册
 child、不调用模型；它不是旧 checkpoint 的恢复中断，不能让同一坏请求反复进入恢复。
+新 child 实际选中的模型或端点不可用时，也是首次接纳拒绝，父工具可以报告错误并继续；
+已经保存过 descriptor 的 child 不借用其它模型继续执行。
 这项通用接纳能力不等于完整研究已开放为子类型：范围交接、协调角色的有界委派以及产物版本
 接纳仍须由相应产品 owner 单独实现和验证。
 

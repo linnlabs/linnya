@@ -11,6 +11,7 @@ import { RunDescriptorSchema, type RunDescriptor } from '../../application/run-r
 import {
   captureRuntimeCompatibility,
   requireRuntimeCompatibility,
+  RunModelBindingUnavailableError,
 } from '../../application/run-resumption/functions/runtimeCompatibility';
 import type { LinnyaAgentRuntimeScope } from '../runtime-assembly/agentRuntimeScope';
 
@@ -113,6 +114,17 @@ export async function prepareDurableChildInvocation(input: {
       throw new ChildRequestAdmissionRejectedError(cause);
     }
     const request = freezeAgentRunInput(admitted);
+    let compatibility: RunDescriptor['compatibility'];
+    try {
+      compatibility = captureRuntimeCompatibility(params.promptKey, modelId);
+    } catch (error) {
+      // 首次接纳尚未执行模型或工具，不可恢复的配置缺失应作为本次工具拒绝交回父 Agent。
+      // 已有 descriptor 的恢复独立走 requireRuntimeCompatibility，仍须保护旧执行现场。
+      if (error instanceof RunModelBindingUnavailableError && error.modelId === modelId) {
+        throw new ChildRequestAdmissionRejectedError(error);
+      }
+      throw error;
+    }
     descriptor = RunDescriptorSchema.parse({
       schemaVersion: 1,
       runId: input.runId,
@@ -138,7 +150,7 @@ export async function prepareDurableChildInvocation(input: {
       toolContextPatch: {},
       executorLocal: {},
       commandPermission: parent.commandPermission,
-      compatibility: captureRuntimeCompatibility(params.promptKey, modelId),
+      compatibility,
     });
   }
   const checkpoint = await checkpointer.load(input.runId);
