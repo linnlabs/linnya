@@ -395,14 +395,24 @@ try {
       evidence.json('explicit-reinstall-state', state);
     }
     if (mode === 'rejected-migration') {
-      assert.equal(state.pointer?.version, old.version);
-      assert.deepEqual(state.migrations, initial.migrations);
-      assert.equal(state.column, false);
-      assert.equal(
-        state.installed.version,
-        old.version,
-        'The store must not record an installed version whose migration failed'
-      );
+      assert.deepEqual(state, initial, 'A rejected migration must leave the full old installation and data intact');
+      await run('wait', '--text', '无法加载');
+      await run('wait', '--text', '当前安装的版本未能加载。请更新 Linnya 后重试。');
+      await run('wait', '--selector', sidebar, '--state', 'detached');
+      const { value: entries } = await run('eval', 'window.electronAPI.plugins.rendererEntries()');
+      assert.equal(entries.success, true);
+      assert.ok(entries.data.every(entry => entry.pluginId !== 'knowledge'));
+      await run('shot');
+      await run('click', '--selector', '.plugin-store-back-button');
+      await run('click', 'text=新项目');
+      await run('type', 'E7 project after rejected migration');
+      const projectCreate = (await run('snapshot', '--json', '--role', 'button')).entries
+        .find(entry => entry.name === '创建项目');
+      assert.ok(projectCreate);
+      await run('click', projectCreate.ref);
+      await run('wait', '--text', 'E7 project after rejected migration');
+      await run('shot');
+      return;
     } else assertNewVersion(state, initial, checkpoint);
     assert.equal(state.integrity, 'ok');
     assert.deepEqual(state.libraries, initial.libraries);

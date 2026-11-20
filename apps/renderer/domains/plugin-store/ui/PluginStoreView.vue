@@ -60,17 +60,18 @@
                 <h1 id="plugin-store-detail-title">{{ selectedDetail.meta.name }}</h1>
                 <TagChip
                   class="plugin-store-state-chip"
-                  :class="`is-${getPluginStateTone(selectedDetail.state)}`"
+                  :class="`is-${selectedDetail.runtimeUnavailable ? 'warning' : getPluginStateTone(selectedDetail.state)}`"
                   :label="resolvePluginStateLabel(selectedDetail)"
                   :class-names="{ label: 'plugin-store-state-chip-label' }"
                 />
               </div>
               <p>{{ selectedDetail.meta.description }}</p>
+              <p v-if="selectedDetail.runtimeUnavailable">{{ pluginStoreMessage('pluginStore.reason.runtimeUnavailable') }}</p>
             </div>
 
             <div class="plugin-store-detail-actions">
               <Switch
-                v-if="!canInstallSelectedPlugin(selectedDetail)"
+                v-if="!selectedDetail.runtimeUnavailable && !canInstallSelectedPlugin(selectedDetail)"
                 :model-value="selectedDetail.state === 'enabled'"
                 :disabled="!canToggleSelectedPlugin(selectedDetail) || isSelectedPluginBusy(selectedDetail)"
                 :ariaLabel="pluginToggleAriaLabel(selectedDetail.meta.name)"
@@ -255,7 +256,7 @@
               <h2>{{ item.meta.name }}</h2>
               <TagChip
                 class="plugin-store-state-chip"
-                :class="`is-${getPluginStateTone(item.state)}`"
+                :class="`is-${item.runtimeUnavailable ? 'warning' : getPluginStateTone(item.state)}`"
                 :label="resolvePluginStateLabel(item)"
                 :class-names="{ label: 'plugin-store-state-chip-label' }"
               />
@@ -272,7 +273,7 @@
 
           <div class="plugin-store-card-actions" @click.stop @keydown.stop>
               <Switch
-                v-if="!canInstallPlugin(item)"
+                v-if="!item.runtimeUnavailable && !canInstallPlugin(item)"
                 :model-value="item.state === 'enabled'"
                 :disabled="!canTogglePlugin(item) || isPluginBusy(item.meta.id)"
                 :ariaLabel="pluginToggleAriaLabel(item.meta.name)"
@@ -604,6 +605,7 @@ function resolveDeactivationFailure(caught: unknown, fallback: 'pluginStore.erro
 }
 
 function resolvePluginStateLabel(item: PluginStoreListItem): string {
+  if (item.runtimeUnavailable) return pluginStoreMessage('pluginStore.state.runtimeUnavailable');
   if (item.data?.status === 'cleaning') return pluginStoreMessage('pluginStore.data.status.cleaning');
   if (item.data?.status === 'failed') return pluginStoreMessage('pluginStore.data.status.failed');
   if (item.data?.status === 'unavailable') return pluginStoreMessage('pluginStore.data.status.unavailable');

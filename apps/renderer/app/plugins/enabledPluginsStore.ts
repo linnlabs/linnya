@@ -91,7 +91,8 @@ function isPluginStateView(value: unknown): value is PluginStateView {
     typeof metaRecord.description === 'string' &&
     typeof metaRecord.developer === 'string' &&
     typeof metaRecord.builtin === 'boolean' &&
-    (record.state === 'enabled' || record.state === 'disabled' || record.state === 'missing')
+    (record.state === 'enabled' || record.state === 'disabled' || record.state === 'missing') &&
+    (record.runtimeUnavailable === undefined || record.runtimeUnavailable === true)
   );
 }
 

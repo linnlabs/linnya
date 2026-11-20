@@ -23,7 +23,7 @@ export function isRequiredPlugin(item: PluginStoreListItem): boolean {
 }
 
 export function canTogglePlugin(item: PluginStoreListItem): boolean {
-  return !isRequiredPlugin(item) && item.state !== 'missing';
+  return !item.runtimeUnavailable && !isRequiredPlugin(item) && item.state !== 'missing';
 }
 
 export function hasBundledPluginSource(item: PluginStoreListItem): boolean {

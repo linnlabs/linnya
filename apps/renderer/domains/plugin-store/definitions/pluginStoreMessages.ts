@@ -38,6 +38,8 @@ export type PluginStoreMessageKey =
   | 'pluginStore.state.enabled'
   | 'pluginStore.state.disabled'
   | 'pluginStore.state.missing'
+  | 'pluginStore.state.runtimeUnavailable'
+  | 'pluginStore.reason.runtimeUnavailable'
   | 'pluginStore.reason.required'
   | 'pluginStore.reason.notInstalled'
   | 'pluginStore.error.listRefreshFailed'

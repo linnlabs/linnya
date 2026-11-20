@@ -97,6 +97,8 @@ export interface PluginMeta {
 export interface PluginStateView {
   meta: PluginMeta;
   state: PluginInstallState;
+  /** 安装事实仍保留，但当前后端未接纳该 artifact；不能发布运行能力。 */
+  runtimeUnavailable?: true;
   /** disabled/missing 或操作失败时给设置页展示的人类可读原因；missing 时用于区分从未安装与用户主动卸载。 */
   reason?: string;
   data?: PluginDataSummary;

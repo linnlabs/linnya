@@ -10,12 +10,16 @@ import type Database from 'better-sqlite3';
 import path from 'node:path';
 import { getRuntimeEnabledPluginIds } from '../pluginRuntimeState';
 import { pluginDiagnostics } from '../diagnostics';
+import { isTrustedBackendApplicationSurface } from '../knowledgeResourceAdmission';
 import { invalidateSkillCache } from '../../../../features/skills/discovery';
 import { validatePluginAgentRequiredSkills } from '../../../../features/skills/agentSkillExposure';
 import { replacePluginSkillSourceRoots } from '../../../../features/skills/pluginSkillSources';
 import { PluginStateService } from '../../../../features/plugins/infrastructure/sqlite/plugin-state.service';
 import { PluginUpgradeRunner } from '../../../../features/plugins/infrastructure/sqlite/plugin-upgrade.runner';
-import { activatePluginVersionWithMigrations } from '../../../../features/plugins/install/orchestration/activatePluginVersionWithMigrations';
+import {
+  activateMigratedPluginVersion,
+  migratePluginVersionForActivation,
+} from '../../../../features/plugins/install/orchestration/activatePluginVersionWithMigrations';
 import { reconcilePluginActiveVersions } from '../../../../features/plugins/install/orchestration/reconcilePluginActiveVersions';
 import { reconcileCommittedPluginUninstalls } from '../../../../features/plugins/install/orchestration/uninstallPluginLifecycle';
 import { PluginActiveVersionService } from '../../../../features/plugins/infrastructure/sqlite/plugin-active-version.service';
@@ -39,6 +43,7 @@ import {
 import {
   readBackendDirectPluginDirsFromEnv,
   readDirectPluginDirsFromEnv,
+  readPluginManifestSummary,
 } from '../../../../electron-main/plugins/loader/pluginLayout';
 import { markInterruptedPluginDataCleanups } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import {
@@ -100,6 +105,23 @@ function registerDiskBackendPlugins(options: {
     (options.trustedDirectPluginDirs ?? []).map(pluginDir => path.resolve(pluginDir))
   );
   for (const item of loaded) {
+    const manifest = readPluginManifestSummary(item.pluginDir);
+    if (manifest?.applicationSurfaceSlot) {
+      // 旧版迁移回滚只保留安装事实。旧 artifact 如果不能取得当前装配授权，
+      // 不登记其工具、页面及资源，避免执行旧版 activate 后才拒绝并阻断整个 App。
+      try {
+        if (!isTrustedBackendApplicationSurface(item.pluginDir, manifest)) {
+          throw new Error('当前装配未授予该插件受管资源访问');
+        }
+      } catch (error) {
+        if (manifest.required) throw error;
+        pluginDiagnostics.record({
+          level: 'error', pluginId: manifest.id, capability: 'runtimeEffect',
+          message: `${manifest.version} 未加载：${error instanceof Error ? error.message : String(error)}`,
+        });
+        continue;
+      }
+    }
     // 中文说明：高信任能力跟装配来源走，不跟某个插件 ID 走。开发者明确传入的
     // Backend direct dir，以及当前发行版随包清单中的插件，才允许贡献 Plugin CLI。
     const allowPluginCli =
@@ -360,68 +382,49 @@ function activateStagedBundledPluginVersions(
       continue;
     }
 
-    stateService.ensureBuiltinInstalled([platformBackendPlugin.meta, contribution.meta]);
+    const activation = {
+      db, userPluginRoot, pluginId: contribution.meta.id, version: contribution.meta.version,
+    };
     try {
-      stateService.setInstalled(contribution.meta.id, true, [
-        platformBackendPlugin.meta,
-        contribution.meta,
-      ]);
+      const migrated = db.transaction(() => {
+        // 安装、启用、迁移及激活账本同一提交。不能先用新版 meta 改写 installed.version，
+        // 否则迁移失败后只能靠加载旧代码碰巧把版本写回来。
+        stateService.ensureKnownPluginRegistered(contribution.meta);
+        const knownMetas = [platformBackendPlugin.meta, contribution.meta];
+        stateService.setInstalled(contribution.meta.id, true, knownMetas);
+        if (previousRecord?.installed && !wasEnabled) {
+          stateService.setEnabled(contribution.meta.id, false, knownMetas);
+        }
+        const result = migratePluginVersionForActivation({
+          ...activation,
+          appVersion: applicationVersion,
+          upgradePlan: {
+            pluginId: contribution.meta.id,
+            targetVersion: contribution.meta.version,
+            compatMin: contribution.meta.compatMin,
+            ownedTables: contribution.ownedTables ?? [],
+            migrations: contribution.pluginMigrations ?? [],
+          },
+          recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
+        });
+        if (result.status === 'failed') throw new Error(result.error);
+        return result;
+      })();
+      const result = activateMigratedPluginVersion(activation, migrated);
+      if (result.status === 'failed') throw new Error(result.error);
+      activatedAny = true;
+      console.log(
+        `[PluginLifecycleBootstrap] Activated staged bundled plugin ${result.pluginId}@${result.version}.`
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       pluginDiagnostics.record({
         level: 'error',
-        pluginId: contribution.meta.id,
+        pluginId: candidate.pluginId,
         capability: 'migration',
-        message: `随包插件 ${contribution.meta.id}@${contribution.meta.version} 安装状态登记失败: ${message}`,
+        message: `随包插件 ${candidate.pluginId}@${candidate.version} 激活失败: ${message}`,
       });
-      continue;
     }
-
-    const result = activatePluginVersionWithMigrations({
-      db,
-      userPluginRoot,
-      pluginId: contribution.meta.id,
-      version: contribution.meta.version,
-      appVersion: applicationVersion,
-      upgradePlan: {
-        pluginId: contribution.meta.id,
-        targetVersion: contribution.meta.version,
-        compatMin: contribution.meta.compatMin,
-        ownedTables: contribution.ownedTables ?? [],
-        migrations: contribution.pluginMigrations ?? [],
-      },
-      recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
-    });
-    if (result.status === 'activated') {
-      activatedAny = true;
-      if (previousRecord?.installed && !wasEnabled) {
-        stateService.setEnabled(contribution.meta.id, false, [
-          platformBackendPlugin.meta,
-          contribution.meta,
-        ]);
-      }
-      console.log(
-        `[PluginLifecycleBootstrap] Activated staged bundled plugin ${result.pluginId}@${result.version}.`
-      );
-      continue;
-    }
-    if (!previousRecord?.installed) {
-      stateService.setInstalled(contribution.meta.id, false, [
-        platformBackendPlugin.meta,
-        contribution.meta,
-      ]);
-    } else if (!wasEnabled) {
-      stateService.setEnabled(contribution.meta.id, false, [
-        platformBackendPlugin.meta,
-        contribution.meta,
-      ]);
-    }
-    pluginDiagnostics.record({
-      level: 'error',
-      pluginId: candidate.pluginId,
-      capability: 'migration',
-      message: `随包插件 ${candidate.pluginId}@${candidate.version} 激活失败: ${result.error}`,
-    });
   }
   if (activatedAny) {
     // 中文说明：随包升级会在启动期切换 active.json。若 registry 之前已经因

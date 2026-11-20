@@ -268,6 +268,18 @@ function listKnownPluginMetas(): PluginMeta[] {
   return metas;
 }
 
+function listDisplayPluginStates(service: PluginStateService): ReturnType<PluginStateService['listStates']> {
+  return service.listStates(listKnownPluginMetas()).map(state => {
+    if (state.state === 'missing' || backendPluginRegistry.has(state.meta.id)) return state;
+    const installed = service.getInstalledRecord(state.meta.id);
+    return {
+      ...state,
+      meta: { ...state.meta, version: installed?.version ?? state.meta.version },
+      runtimeUnavailable: true,
+    };
+  });
+}
+
 export async function registerPluginsHandlers(input: {
   readonly runtimeOwner: BackendRuntimeOwner;
   readonly ipc: BackendRendererIpcStyleRegistrarPort;
@@ -391,7 +403,7 @@ export async function registerPluginsHandlers(input: {
     try {
       return {
         success: true,
-        data: getService().listStates(listKnownPluginMetas()),
+        data: listDisplayPluginStates(getService()),
       };
     } catch (error) {
       logger.error('[plugins:list] failed:', error);
@@ -402,7 +414,7 @@ export async function registerPluginsHandlers(input: {
   input.ipc.handle('plugins:store-list', async () => {
     try {
       const states = enrichPluginStates(
-        getService().listStates(listKnownPluginMetas()),
+        listDisplayPluginStates(getService()),
         resolveBundledPluginRoot(),
           state => schedulePluginDataSummary(state, databaseService.getDb(), publishPluginDataChanged),
       );
@@ -430,7 +442,7 @@ export async function registerPluginsHandlers(input: {
         ...new Set([...readBackendDirectPluginDirsFromEnv(), ...readDirectPluginDirsFromEnv()]),
       ];
       const states = enrichPluginStates(
-        getService().listStates(listKnownPluginMetas()).filter(item => item.meta.id === pluginId),
+        listDisplayPluginStates(getService()).filter(item => item.meta.id === pluginId),
         resolveBundledPluginRoot(),
         state => schedulePluginDataSummary(state, databaseService.getDb(), publishPluginDataChanged),
       );
@@ -536,6 +548,9 @@ export async function registerPluginsHandlers(input: {
           operation: 'set-enabled',
           async run() {
             const service = getService();
+            if (enabled && !backendPluginRegistry.has(pluginId)) {
+              throw new PluginOperationError('source-unavailable', '插件后端未加载，不能启用', { pluginId });
+            }
             if (!enabled) assertBackendPluginCanDeactivate(pluginId);
             const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
             service.setEnabled(pluginId, enabled, listRegisteredBackendPluginMetas());

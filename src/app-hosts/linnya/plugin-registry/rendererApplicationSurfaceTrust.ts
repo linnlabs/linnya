@@ -4,23 +4,26 @@ import type { RendererPluginEntry } from 'src/electron-main/plugins/loader/rende
 import { readPluginManifestSummary } from 'src/electron-main/plugins/loader/pluginLayout';
 import { readPluginArtifactIdentity } from 'src/features/plugins/install/functions/readPluginArtifactIdentity';
 
-export interface ApplicationSurfaceTrustInput {
+export interface PluginAssemblyTrustInput {
   readonly packaged: boolean;
   readonly workspaceRoot: string;
   readonly backendDirectDirs: readonly string[];
   readonly bundledPluginRoot: string | undefined;
+}
+
+export interface ApplicationSurfaceTrustInput extends PluginAssemblyTrustInput {
   readonly getRegisteredPluginDirectory: (pluginId: string) => string | undefined;
   readonly recordDiagnostic?: (diagnostic: { readonly pluginId: string; readonly message: string }) => void;
 }
 
-interface PluginSource {
+export interface PluginAssemblySource {
   readonly pluginId: string;
   readonly version: string;
   readonly pluginDir?: string;
   readonly sourceKind?: RendererPluginEntry['sourceKind'];
 }
 
-function matchesBundledArtifact(entry: PluginSource, bundledRoot: string | undefined): boolean {
+function matchesBundledArtifact(entry: PluginAssemblySource, bundledRoot: string | undefined): boolean {
   if (!bundledRoot || !entry.pluginDir || entry.sourceKind !== 'active') return false;
   const bundledDirectory = path.join(bundledRoot, entry.pluginId);
   if (!fs.existsSync(bundledDirectory)) return false;
@@ -36,17 +39,22 @@ function isDevelopmentPluginDirectory(pluginDirectory: string, workspaceRoot: st
   return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
-/** 同一官方来源准入同时约束插件表面与受管资料；不依赖插件自报 builtin。 */
-export function isTrustedPluginSource(entry: PluginSource, input: ApplicationSurfaceTrustInput): boolean {
+export function isTrustedPluginAssembly(entry: PluginAssemblySource, input: PluginAssemblyTrustInput): boolean {
   if (!entry.pluginDir) return false;
   const pluginDirectory = path.resolve(entry.pluginDir);
-  const registeredDirectory = input.getRegisteredPluginDirectory(entry.pluginId);
-  if (!registeredDirectory || path.resolve(registeredDirectory) !== pluginDirectory) return false;
   const developmentSource = !input.packaged && (
     (entry.sourceKind === 'official-source' && isDevelopmentPluginDirectory(pluginDirectory, input.workspaceRoot)) ||
     input.backendDirectDirs.some(directory => path.resolve(directory) === pluginDirectory)
   );
   return developmentSource || matchesBundledArtifact(entry, input.bundledPluginRoot);
+}
+
+/** Renderer 必须与通过装配准入的 Backend 来自同一目录。 */
+export function isTrustedPluginSource(entry: PluginAssemblySource, input: ApplicationSurfaceTrustInput): boolean {
+  const registeredDirectory = input.getRegisteredPluginDirectory(entry.pluginId);
+  return Boolean(entry.pluginDir && registeredDirectory &&
+    path.resolve(entry.pluginDir) === path.resolve(registeredDirectory) &&
+    isTrustedPluginAssembly(entry, input));
 }
 
 /** 产品组合根只授一个已约定场景；插件 manifest/meta 不能自授页面或固定入口。 */
