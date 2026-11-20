@@ -89,6 +89,8 @@ try {
   await invoke('update-settings', { kbId: kb.id, settings: { embeddingModelId: embedding, rerankModelId: rerank, pdfOcrModelId: ocr, imageVisionModelId: text, enableGraphIndexing: true } });
   const fields = { embedding_model_id: embedding, graph_extraction_model_id: text, image_vision_model_id: text, pdf_ocr_model_id: ocr };
   const sources = new Map();
+  const dataRoot = join(up.root, 'workspace', 'Plugins', 'knowledge');
+  const sourcePath = id => join(dataRoot, 'source_of_truth', `${id}.source.json`);
   await evidence.check('Markdown/PDF OCR/静态图片经生产摄入Worker落盘并检索', async () => {
     const markdown = '# Apple orchard\n\nApple orchard grows fresh apples in Taiwan in spring. Local growers use clean water and carefully manage the orchard.\n';
     for (const [name, bytes, extra] of [
@@ -106,7 +108,7 @@ try {
     for (const doc of docs) {
       const content = await invoke('read-saved-content', { kbId: kb.id, documentId: doc.id });
       assert.ok(content.markdown.length > 0);
-      sources.set(doc.id, readFileSync(join(up.root, 'workspace', 'KnowledgeBase', 'source_of_truth', `${doc.id}.source.json`)));
+      sources.set(doc.id, readFileSync(sourcePath(doc.id)));
     }
     const result = await invoke('search', { kbId: kb.id, request: { query: 'apple', embeddingModelId: embedding, rerankModelId: rerank, useReranking: true } });
     assert.ok(result.results.length > 0);
@@ -126,7 +128,7 @@ try {
     evidence.json('graph-production', { nodes, edges, status: await invoke('graph-progress', { kbId: kb.id }) });
   });
   await evidence.check('真实图谱节点和边使用单段，小集合不按 CPU 数预建', async () => {
-    const directory = join(up.root, 'workspace', 'KnowledgeBase', 'qdrant');
+    const directory = join(dataRoot, 'qdrant');
     const log = readFileSync(join(directory, 'logs', 'qdrant.log'), 'utf8');
     const listener = /actix_server::server: starting service: .*listening on: (127\.0\.0\.1:\d+)/u.exec(log);
     assert.ok(listener, '预期在隔离实例日志中找到实际绑定的 Qdrant 端口');
@@ -180,7 +182,7 @@ try {
     await run('shot');
     await run('press', 'Escape');
     await run('wait', '--selector', '.knowledge-saved-content', '--state', 'detached');
-    for (const [id, bytes] of sources) assert.deepEqual(readFileSync(join(up.root, 'workspace', 'KnowledgeBase', 'source_of_truth', `${id}.source.json`)), bytes);
+    for (const [id, bytes] of sources) assert.deepEqual(readFileSync(sourcePath(id)), bytes);
   });
   await evidence.check('停用撤销入口但保留原文/表/关联，重新启用可读且不拉向量', async () => {
     const before = db.prepare('SELECT * FROM knowledge_bases WHERE id=?').get(kb.id);
@@ -188,7 +190,7 @@ try {
     assert.equal(disabled.success, true, json(disabled));
     await run('wait', '--expr', `!document.querySelector('.sidebar-entry:has(svg[data-icon="library"])')`);
     assert.deepEqual(db.prepare('SELECT * FROM knowledge_bases WHERE id=?').get(kb.id), before);
-    for (const [id, bytes] of sources) assert.deepEqual(readFileSync(join(up.root, 'workspace', 'KnowledgeBase', 'source_of_truth', `${id}.source.json`)), bytes);
+    for (const [id, bytes] of sources) assert.deepEqual(readFileSync(sourcePath(id)), bytes);
     await run('shot');
     const enabled = await evaluate("return await window.electronAPI.plugins.setEnabled('knowledge',true);");
     assert.equal(enabled.success, true, json(enabled));

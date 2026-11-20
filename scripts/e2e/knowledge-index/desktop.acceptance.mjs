@@ -148,7 +148,7 @@ try {
     sourcePath = join(
       up.root,
       'workspace',
-      'KnowledgeBase',
+      'Plugins', 'knowledge',
       'source_of_truth',
       `${doc.id}.source.json`
     );
