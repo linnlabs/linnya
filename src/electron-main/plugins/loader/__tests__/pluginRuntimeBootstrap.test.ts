@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { hash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -65,7 +66,9 @@ function writePluginVersionDir(
   writeFile(path.join(pluginDir, 'dist/renderer/index.js'), 'export const rendererPlugin = {};');
   writeFile(
     path.join(pluginDir, 'SHA512SUMS'),
-    `${options.artifactIdentity ?? `${pluginId}@${version}`}  plugin.json\n`
+    options.artifactIdentity ?? ['plugin.json', 'dist/backend/index.cjs', 'dist/renderer/index.js']
+      .map(file => `${hash('sha512', fs.readFileSync(path.join(pluginDir, file)))}  ${file}\n`)
+      .join('')
   );
 }
 
@@ -235,7 +238,7 @@ describe('plugin runtime bootstrap', () => {
     const tempRoot = makeTempRoot();
     const bundledRoot = path.join(tempRoot, 'bundled');
     const userPluginRoot = path.join(tempRoot, 'user-plugins');
-    writeBundledPlugin(bundledRoot, 'mindmap', '1.0.0');
+    const bundledDirectory = writeBundledPlugin(bundledRoot, 'mindmap', '1.0.0');
     writePluginVersionDir(path.join(userPluginRoot, 'mindmap/1.0.0'), 'mindmap', '1.0.0', {
       artifactIdentity: 'failed-attempt',
     });
@@ -247,7 +250,30 @@ describe('plugin runtime bootstrap', () => {
     });
 
     expect(candidate.createdVersionDir).toBe(true);
-    expect(fs.readFileSync(path.join(candidate.pluginDir, 'SHA512SUMS'), 'utf8')).toContain('mindmap@1.0.0');
+    expect(fs.readFileSync(path.join(candidate.pluginDir, 'SHA512SUMS'), 'utf8'))
+      .toBe(fs.readFileSync(path.join(bundledDirectory, 'SHA512SUMS'), 'utf8'));
+  });
+
+  it('rejects damaged bundled payload before replacing an existing retry directory', () => {
+    const root = makeTempRoot();
+    const bundledRoot = path.join(root, 'bundled');
+    const userPluginRoot = path.join(root, 'user-plugins');
+    const bundledDirectory = writeBundledPlugin(bundledRoot, 'mindmap', '1.0.0');
+    const renderer = path.join(bundledDirectory, 'dist/renderer/index.js');
+    const original = fs.readFileSync(renderer);
+    fs.writeFileSync(renderer, '// corrupt bundled renderer');
+    markPluginUserRemoved(userPluginRoot, 'mindmap');
+    const retryDirectory = path.join(userPluginRoot, 'mindmap/1.0.0');
+    writePluginVersionDir(retryDirectory, 'mindmap', '1.0.0', { artifactIdentity: 'failed-attempt' });
+    const options = { bundledPluginRoot: bundledRoot, userPluginRoot, pluginId: 'mindmap' };
+
+    expect(() => stageBundledPluginForExplicitInstall(options)).toThrow(
+      expect.objectContaining({ code: 'artifact-integrity' })
+    );
+    expect(fs.readFileSync(path.join(retryDirectory, 'SHA512SUMS'), 'utf8')).toBe('failed-attempt');
+    fs.writeFileSync(renderer, original);
+    expect(stageBundledPluginForExplicitInstall(options)).toMatchObject({ createdVersionDir: true });
+    expect(fs.readFileSync(path.join(retryDirectory, 'dist/renderer/index.js'))).toEqual(original);
   });
 
   it('does not downgrade a newer active plugin installation', () => {

@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { hash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import Database from 'better-sqlite3';
@@ -44,7 +45,8 @@ function writeArtifact(pluginDir: string, plugin: PluginMeta): void {
     ...plugin, entry: { backend: './backend.cjs' }, details: ['Lifecycle fixture'],
   }));
   fs.writeFileSync(path.join(pluginDir, 'backend.cjs'), 'module.exports = {};');
-  fs.writeFileSync(path.join(pluginDir, 'SHA512SUMS'), `fixture ${plugin.version}\n`);
+  fs.writeFileSync(path.join(pluginDir, 'SHA512SUMS'), ['plugin.json', 'backend.cjs']
+    .map(file => `${hash('sha512', fs.readFileSync(path.join(pluginDir, file)))}  ${file}\n`).join(''));
 }
 
 describe('plugin lifecycle contracts', () => {

@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
+import { hash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -32,6 +33,14 @@ const demoMeta: PluginMeta = {
   builtin: true,
   dependsOn: ['platform'],
 };
+
+function writeFixtureChecksums(directory: string): void {
+  const entry = 'dist/renderer/index.js';
+  fs.mkdirSync(path.join(directory, 'dist/renderer'), { recursive: true });
+  fs.writeFileSync(path.join(directory, entry), 'export {};');
+  fs.writeFileSync(path.join(directory, 'SHA512SUMS'), ['plugin.json', entry]
+    .map(file => `${hash('sha512', fs.readFileSync(path.join(directory, file)))}  ${file}\n`).join(''));
+}
 
 function createPluginTables(db: Database.Database): void {
   db.exec(`
@@ -132,9 +141,7 @@ describe('plugin uninstall/reinstall data safety', () => {
     const bundledRoot = path.join(tempRoot, 'bundled');
     const userPluginRoot = path.join(tempRoot, 'user-plugins');
     const sourceDir = path.join(bundledRoot, 'demo');
-    fs.mkdirSync(path.join(sourceDir, 'dist/renderer'), { recursive: true });
-    fs.writeFileSync(path.join(sourceDir, 'dist/renderer/index.js'), 'export {};');
-    fs.writeFileSync(path.join(sourceDir, 'SHA512SUMS'), 'demo@1.0.0  plugin.json\n');
+    fs.mkdirSync(sourceDir, { recursive: true });
     fs.writeFileSync(path.join(sourceDir, 'plugin.json'), `${JSON.stringify({
       id: 'demo',
       version: '1.0.0',
@@ -145,6 +152,7 @@ describe('plugin uninstall/reinstall data safety', () => {
       entry: { renderer: './dist/renderer/index.js' },
       compat: { rendererUi: '^1.0.0' },
     })}\n`);
+    writeFixtureChecksums(sourceDir);
     fs.mkdirSync(userPluginRoot, { recursive: true });
 
     stateService.setInstalled('demo', false, [platformMeta, demoMeta]);
@@ -200,7 +208,6 @@ describe('plugin uninstall/reinstall data safety', () => {
     const userPluginRoot = path.join(tempRoot, 'user-plugins');
     const sourceDir = path.join(bundledRoot, 'demo');
     fs.mkdirSync(sourceDir, { recursive: true });
-    fs.writeFileSync(path.join(sourceDir, 'SHA512SUMS'), 'demo@1.0.0  plugin.json\n');
     fs.writeFileSync(path.join(sourceDir, 'plugin.json'), `${JSON.stringify({
       id: 'demo',
       version: '1.0.0',
@@ -211,6 +218,7 @@ describe('plugin uninstall/reinstall data safety', () => {
       entry: { renderer: './dist/renderer/index.js' },
       compat: { rendererUi: '^1.0.0' },
     })}\n`);
+    writeFixtureChecksums(sourceDir);
     fs.mkdirSync(userPluginRoot, { recursive: true });
     stateService.setInstalled('demo', false, [platformMeta, demoMeta]);
     stateService.setUserRemoved('demo', true);

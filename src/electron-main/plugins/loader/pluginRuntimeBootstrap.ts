@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { parsePluginManifest, pluginMetaFromManifest, type PluginMeta } from '@app/schemas';
 import { isPluginUserRemoved } from '../../../features/plugins/install/functions/pluginRemovalMarker';
-import { readPluginArtifactIdentity } from '../../../features/plugins/install/functions/readPluginArtifactIdentity';
+import { assertBundledPluginArtifactIntegrity, readPluginArtifactIdentity } from '../../../features/plugins/install/functions/readPluginArtifactIdentity';
 import { compareDottedVersions } from '../../../features/plugins/functions/comparePluginVersions';
 import { readJsonFile, readPluginManifestSummary } from './pluginLayout';
 import { isRecord, errorToString as readErrorMessage } from '@linnya/foundation';
@@ -222,9 +222,8 @@ export function stageBundledPluginForExplicitInstall(
       { pluginId: options.pluginId },
     );
   }
-  // 在覆盖失败残留前先确认 bundled artifact 自身有可比较的完整性身份，
-  // 避免把一个损坏来源复制进用户目录后才发现无法加载。
-  readPluginArtifactIdentity(sourceDir);
+  // 校验在覆盖旧残留、复制或写 SQLite 之前完成；失败时用户仍可修复来源再重试。
+  assertBundledPluginArtifactIntegrity(sourceDir, Object.values(manifest.entry).filter(value => value !== undefined));
 
   const pluginInstallDir = path.join(options.userPluginRoot, manifest.id);
   const targetVersionDir = path.join(pluginInstallDir, manifest.version);

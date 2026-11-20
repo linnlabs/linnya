@@ -25,6 +25,9 @@ const modes = [
   'automatic-upgrade',
   'rejected-migration',
   'removed-before-upgrade',
+  'missing-bundled-artifact',
+  'invalid-checksum-manifest',
+  'corrupt-bundled-payload',
 ];
 assert.ok(modes.includes(mode), `Specify one upgrade case: ${modes.join(', ')}`);
 const repo = realpathSync(fileURLToPath(new URL('../../..', import.meta.url)));
@@ -47,6 +50,11 @@ assert.equal(versions.length, 3);
 assert.ok(versions.every(Number.isSafeInteger));
 const newer = [versions[0], versions[1], versions[2] + 1].join('.');
 const precise = ['during-migration', 'before-pointer', 'after-pointer'].includes(mode);
+const artifactFault = [
+  'missing-bundled-artifact',
+  'invalid-checksum-manifest',
+  'corrupt-bundled-payload',
+].includes(mode);
 const library = 'E7 library from the older bundled version';
 const sidebar = '.sidebar-entry:has(svg[data-icon="library"])';
 
@@ -221,8 +229,76 @@ function assertNewVersion(state, initial, checkpoint) {
   assert.equal(state.column, true);
 }
 
+async function assertArtifactFailure(up, file) {
+  const initial = facts(up, file);
+  assert.equal(initial.installed.installed, 0);
+  assert.equal(initial.installed.user_removed, 1);
+  evidence.json('before-failed-install', initial);
+  await openDetail({ market: true });
+  await run('wait', '--selector', '.plugin-store-install-button:not([disabled])');
+  savedArtifact = join(up.root, 'older-bundled-knowledge');
+  replacementArchive = join(up.root, 'faulty-bundled-knowledge');
+  renameSync(bundled, savedArtifact);
+  if (mode !== 'missing-bundled-artifact') {
+    cpSync(savedArtifact, bundled, { recursive: true });
+    if (mode === 'invalid-checksum-manifest') writeFileSync(join(bundled, 'SHA512SUMS'), '\n');
+    else
+      writeFileSync(
+        join(bundled, 'dist', 'renderer', 'index.js'),
+        '// damaged during application install\n'
+      );
+  }
+  await click('button', '安装', 'main');
+  await run('wait', '--selector', '.notification-content');
+  const notification = (
+    await run(
+      'eval',
+      "[...document.querySelectorAll('.notification-content')].map(node => node.textContent.trim())"
+    )
+  ).value;
+  const after = facts(up, file);
+  evidence.json('failed-install-state', { notification, after });
+  await run('shot');
+  assert.deepEqual(
+    after,
+    initial,
+    'Failed installation must leave the installed, active, user-removal and data state unchanged'
+  );
+  const userMessage =
+    mode === 'missing-bundled-artifact' ? /没有可用的插件来源/ : /插件文件校验失败/;
+  assert.ok(
+    notification.some(message => userMessage.test(message)),
+    JSON.stringify(notification)
+  );
+  if (optional(() => readdirSync(bundled))) renameSync(bundled, replacementArchive);
+  renameSync(savedArtifact, bundled);
+  savedArtifact = undefined;
+  if (mode === 'missing-bundled-artifact') {
+    // 重新安装应用会重启并重新发现随包来源；缺失后的旧商店快照已无安装按钮。
+    await run('stop');
+    assert.equal((await start()).workspaceDb, up.workspaceDb);
+    await openDetail({ market: true });
+  }
+  await run('wait', '--selector', '.plugin-store-install-button:not([disabled])');
+  await click('button', '安装', 'main');
+  await run('wait', '--selector', sidebar);
+  await run('click', '--selector', sidebar);
+  await run('wait', '--text', library);
+  await run('shot');
+  const recovered = facts(up, file);
+  assert.equal(recovered.installed.installed, 1);
+  assert.equal(recovered.removed, null);
+  assert.deepEqual(recovered.migrations, initial.migrations);
+  assert.deepEqual(recovered.libraries, initial.libraries);
+  assert.equal(recovered.source, initial.source);
+  evidence.json('recovered', recovered);
+}
+
+const checkName = artifactFault
+  ? `随包产物故障 ${mode}：拒绝安装、保留旧资料、恢复后可重试`
+  : `新随包版本 ${mode}：激活、迁移、原资料及界面一致`;
 try {
-  await evidence.check(`新随包版本 ${mode}：激活、迁移、原资料及界面一致`, async () => {
+  await evidence.check(checkName, async () => {
     const up = await start();
     await run('wait', '--selector', sidebar);
     await run('click', '--selector', sidebar);
@@ -243,13 +319,18 @@ try {
     );
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, 'existing pre-upgrade content', { flag: 'wx' });
-    if (mode === 'removed-before-upgrade') {
+    if (mode === 'removed-before-upgrade' || artifactFault) {
       await openDetail();
       await run('wait', '--selector', '.plugin-data-panel .is-installed');
       await click('button', '卸载', 'main');
       await click('button', '卸载', '.modal-overlay--alert');
       await run('wait', '--selector', sidebar, '--state', 'detached');
       await run('shot');
+    }
+    if (artifactFault) {
+      await run('click', '--selector', '.plugin-store-back-button');
+      await assertArtifactFailure(up, file);
+      return;
     }
     await run('stop');
     const initial = facts(up, file);
