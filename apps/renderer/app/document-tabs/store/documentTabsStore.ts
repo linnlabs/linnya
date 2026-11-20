@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { shallowRef } from 'vue';
 import type { DocumentTabsState } from '../definitions/documentTabs';
-import { createDocumentTabsState, pinDocumentTab } from '../functions/documentTabsState';
+import { createDocumentTabsState } from '../functions/documentTabsState';
 
 const EMPTY_STATE: DocumentTabsState = createDocumentTabsState();
 
@@ -24,23 +24,6 @@ export const useDocumentTabsStore = defineStore('document-tabs', () => {
     byProject.value = { ...byProject.value, [projectId]: next };
   }
 
-  /** 双击侧栏条目时文档可能还在打开途中：标签已在就固定，不在就等它出现时固定。 */
-  const pendingPinIds = new Set<string>();
-
-  function requestPin(projectId: string | null, documentId: string): void {
-    if (!projectId) return;
-    if (!stateFor(projectId).tabs.some(tab => tab.id === documentId)) {
-      pendingPinIds.add(documentId);
-      return;
-    }
-    update(projectId, state => pinDocumentTab(state, documentId));
-  }
-
-  /** 记录打开时取走待固定标记。 */
-  function takePendingPin(documentId: string): boolean {
-    return pendingPinIds.delete(documentId);
-  }
-
   function forgetProject(projectId: string): void {
     if (!(projectId in byProject.value)) return;
     const rest = { ...byProject.value };
@@ -48,5 +31,5 @@ export const useDocumentTabsStore = defineStore('document-tabs', () => {
     byProject.value = rest;
   }
 
-  return { byProject, stateFor, update, forgetProject, requestPin, takePendingPin };
+  return { byProject, stateFor, update, forgetProject };
 });

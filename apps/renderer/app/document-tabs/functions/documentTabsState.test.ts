@@ -8,7 +8,6 @@ import {
   createDocumentTabsState,
   cycleRecentDocumentTab,
   openDocumentTab,
-  pinDocumentTab,
   popClosedDocumentTab,
   removeDocumentTabs,
 } from './documentTabsState';
@@ -17,29 +16,24 @@ function doc(id: string): DocumentTabIdentity {
   return { id, type: 'editor', projectId: 'p1', displayName: id.toUpperCase(), parentId: null };
 }
 
-function openAll(ids: readonly string[], pin = true): DocumentTabsState {
-  return ids.reduce((state, id) => openDocumentTab(state, doc(id), { pin }), createDocumentTabsState());
+function openAll(ids: readonly string[]): DocumentTabsState {
+  return ids.reduce((state, id) => openDocumentTab(state, doc(id)), createDocumentTabsState());
 }
 
 const order = (state: DocumentTabsState) => state.tabs.map(tab => tab.id);
 
 describe('documentTabsState', () => {
-  it('replaces the preview tab in place and keeps pinned tabs', () => {
-    let state = openDocumentTab(createDocumentTabsState(), doc('a'), { pin: true });
-    state = openDocumentTab(state, doc('b'));
-    expect(state.tabs.map(tab => [tab.id, tab.preview])).toEqual([['a', false], ['b', true]]);
-
+  it('opens every new document in its own tab', () => {
+    let state = openAll(['a', 'b']);
     state = openDocumentTab(state, doc('c'));
-    expect(order(state)).toEqual(['a', 'c']);
-    expect(state.recent).toEqual(['c', 'a']);
+    expect(order(state)).toEqual(['a', 'b', 'c']);
+    expect(state.recent).toEqual(['c', 'b', 'a']);
   });
 
-  it('pins an existing preview tab and re-activates already open documents', () => {
-    let state = openDocumentTab(openAll(['a']), doc('b'));
-    state = pinDocumentTab(state, 'b');
-    expect(state.tabs.find(tab => tab.id === 'b')?.preview).toBe(false);
-
+  it('re-activates already open documents and keeps their names', () => {
+    let state = openAll(['a', 'b']);
     state = openDocumentTab(state, { ...doc('a'), displayName: null });
+    expect(order(state)).toEqual(['a', 'b']);
     expect(state.recent[0]).toBe('a');
     expect(state.tabs.find(tab => tab.id === 'a')?.displayName).toBe('A');
   });
@@ -47,7 +41,7 @@ describe('documentTabsState', () => {
   it('inserts new tabs to the right of the active tab', () => {
     let state = openAll(['a', 'b', 'c']);
     state = openDocumentTab(state, doc('a'));
-    state = openDocumentTab(state, doc('d'), { pin: true });
+    state = openDocumentTab(state, doc('d'));
     expect(order(state)).toEqual(['a', 'd', 'b', 'c']);
   });
 
@@ -83,7 +77,7 @@ describe('documentTabsState', () => {
   it('reopens closed tabs newest first and skips ones already open again', () => {
     let state = closeDocumentTabs(openAll(['a', 'b', 'c']), ['a']).state;
     state = closeDocumentTabs(state, ['b']).state;
-    state = openDocumentTab(state, doc('b'), { pin: true });
+    state = openDocumentTab(state, doc('b'));
 
     const popped = popClosedDocumentTab(state);
     expect(popped.tab?.id).toBe('a');

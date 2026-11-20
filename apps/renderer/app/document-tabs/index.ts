@@ -12,7 +12,6 @@ export {
   createDocumentTabsState,
   cycleRecentDocumentTab,
   openDocumentTab,
-  pinDocumentTab,
   popClosedDocumentTab,
   removeDocumentTabs,
 } from './functions/documentTabsState';

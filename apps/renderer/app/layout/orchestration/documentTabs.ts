@@ -71,7 +71,6 @@ export async function reopenClosedDocumentTab(projectId: string): Promise<void> 
   const store = useDocumentTabsStore();
   store.update(projectId, () => state);
   if (!tab) return;
-  store.requestPin(projectId, tab.id);
   await openTab(tab);
 }
 
@@ -95,8 +94,7 @@ export function removeDeletedDocumentTabs(
 }
 
 /**
- * 应用壳挂载时调用一次：活动文档变化记成标签，名字跟随文件会话，
- * 第一次编辑把临时标签固定下来。
+ * 应用壳挂载时调用一次：活动文档变化记成标签，名字跟随文件会话。
  */
 export function installDocumentTabsSync(): void {
   const layoutStore = useLayoutStore();
@@ -107,7 +105,6 @@ export function installDocumentTabsSync(): void {
     () => layoutStore.state.activeDocument,
     (document) => {
       if (!document) return;
-      const pin = store.takePendingPin(document.id);
       const displayName = fileStore.currentFilePath === document.id ? fileStore.fileDisplayName || null : null;
       store.update(document.projectId, state => openDocumentTab(state, {
         id: document.id,
@@ -115,7 +112,7 @@ export function installDocumentTabsSync(): void {
         projectId: document.projectId,
         displayName,
         parentId: state.tabs.find(tab => tab.id === document.id)?.parentId ?? null,
-      }, { pin }));
+      }));
     },
     { immediate: true },
   );
@@ -130,14 +127,6 @@ export function installDocumentTabsSync(): void {
         if (!tab || tab.displayName === displayName) return state;
         return { ...state, tabs: state.tabs.map(item => (item.id === documentId ? { ...item, displayName } : item)) };
       });
-    },
-  );
-
-  watch(
-    () => fileStore.isDirty,
-    (dirty) => {
-      const document = layoutStore.state.activeDocument;
-      if (dirty && document) store.requestPin(document.projectId, document.id);
     },
   );
 }
