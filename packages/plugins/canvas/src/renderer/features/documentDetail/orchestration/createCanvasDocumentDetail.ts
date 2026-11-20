@@ -2,6 +2,7 @@ import type {
   CanvasDocumentDetailCard,
   CanvasDocumentDetailPort,
 } from '../definitions/documentDetail';
+import { canvasDocumentDetailNotice } from '../functions/canvasDocumentDetailNotice';
 import { createCanvasDocumentDetailState } from '../store/createCanvasDocumentDetailState';
 
 /** Host 拥有身份/插件失效与只读正文；本层只拥有一张卡的 DOM 挂载。 */
@@ -41,7 +42,10 @@ export function createCanvasDocumentDetail(options: {
       }
       release = unmount;
     } catch (error) {
-      if (!disposed) state.setNotice(error instanceof Error ? error.message : String(error));
+      if (disposed) return;
+      // 内部原因只进日志；界面只显示可展示的失败或通用提示。
+      console.warn('[Canvas] document detail mount failed', error);
+      state.setNotice(canvasDocumentDetailNotice(error));
     }
   }
   return {

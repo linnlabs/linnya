@@ -1,12 +1,21 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, nextTick, render } from 'vue';
+import { registerMessageCatalogs, useLocalizationStore } from '@app/localization';
 import { CanvasDocumentCardSchema, type CanvasRectangle } from '@plugin/canvas/shared';
 import type { CanvasDocumentDetailPort } from '../definitions/documentDetail';
 import { createCanvasDocumentDetail } from '../orchestration/createCanvasDocumentDetail';
 import { canvasDocumentDetailTarget } from '../functions/canvasDocumentDetailTarget';
 import { installCanvasDocumentNavigation } from '../orchestration/installCanvasDocumentNavigation';
 import CanvasDocumentDetail from '../ui/CanvasDocumentDetail.vue';
+import { CANVAS_MESSAGE_CATALOG } from '../../localization/definitions/canvasMessageCatalog';
+
+beforeEach(() => {
+  setActivePinia(createPinia());
+  registerMessageCatalogs(CANVAS_MESSAGE_CATALOG);
+});
+afterEach(() => vi.restoreAllMocks());
 
 function card() {
   return CanvasDocumentCardSchema.parse({
@@ -154,7 +163,10 @@ describe('单张近景文档详情', () => {
     detail.dispose();
     const denied = port();
     denied.mount = async () => {
-      throw new Error('目标已移出当前项目');
+      // Host 对用户可展示的失败使用这个名称，消息已按当前语言生成。
+      throw Object.assign(new Error('文档已删除或不在当前项目，无法预览'), {
+        name: 'DocumentPreviewUserError',
+      });
     };
     const failure = createCanvasDocumentDetail({
       card: card(),
@@ -164,9 +176,64 @@ describe('单张近景文档详情', () => {
     });
     await failure.mount();
     expect(failure.state.ready.value).toBe(false);
-    expect(failure.state.notice.value).toBe('目标已移出当前项目');
+    expect(failure.state.notice.value).toBe('文档已删除或不在当前项目，无法预览');
     expect(denied.visible).not.toHaveBeenCalled();
     failure.dispose();
+  });
+  it('其他挂载失败只进日志，界面按当前语言显示通用提示，不出现内部报错', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const internal = new Error(
+      'ECONNRESET: plugin://host/preview/ReadonlyPreview.js failed to load'
+    );
+    const broken = port();
+    broken.mount = async () => {
+      throw internal;
+    };
+    const show = async () => {
+      const detail = createCanvasDocumentDetail({
+        card: card(),
+        projectId: 'project',
+        element: document.createElement('div'),
+        port: broken,
+      });
+      await detail.mount();
+      expect(detail.state.ready.value).toBe(false);
+      const notice = detail.state.notice.value;
+      detail.dispose();
+      return notice;
+    };
+    expect(await show()).toBe('无法预览此文档，请稍后重试。');
+    useLocalizationStore().setCurrentLocale('en-US');
+    expect(await show()).toBe('Unable to preview this document. Please try again later.');
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls.every(call => call.includes(internal))).toBe(true);
+  });
+  it('只有名称为 DocumentPreviewUserError 的失败才直接展示其消息', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const lookalike = port();
+    lookalike.mount = async () => {
+      throw Object.assign(new Error('内部：IPC channel closed'), { name: 'TypeError' });
+    };
+    const detail = createCanvasDocumentDetail({
+      card: card(),
+      projectId: 'project',
+      element: document.createElement('div'),
+      port: lookalike,
+    });
+    await detail.mount();
+    expect(detail.state.notice.value).toBe('无法预览此文档，请稍后重试。');
+    const text = port();
+    text.mount = async () => {
+      throw 'plain string failure';
+    };
+    const plain = createCanvasDocumentDetail({
+      card: card(),
+      projectId: 'project',
+      element: document.createElement('div'),
+      port: text,
+    });
+    await plain.mount();
+    expect(plain.state.notice.value).toBe('无法预览此文档，请稍后重试。');
   });
   it('普通滚动保留详情，捏合缩放交给相机；按钮Space不被劫持', () => {
     const element = document.createElement('section'),
