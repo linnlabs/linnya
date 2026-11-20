@@ -36,7 +36,7 @@ describe('项目分组展开动画上报', () => {
     expect(group.events).not.toContain('end');
     group.unmount();
     expect(group.events.filter(event => event === 'end')).toHaveLength(1);
-    expect(group.events.at(-1)).toBe('end');
+    expect(group.events[group.events.length - 1]).toBe('end');
   });
 
   it('没有进行中的动画时卸载不额外上报', () => {
