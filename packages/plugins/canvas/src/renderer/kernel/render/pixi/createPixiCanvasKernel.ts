@@ -25,9 +25,10 @@ export async function createPixiCanvasKernel(options: CanvasKernelOptions): Prom
   });
   try {
     warmCanvasGraphicsPipeline(app.renderer);
+    return new PixiCanvasKernel(app, options, width, height);
   } catch (error) {
+    // app 已持有 WebGL 上下文；kernel 尚未接管所有权前抛错，只能在这里释放。
     app.destroy(true, { children: true, texture: true, textureSource: true });
     throw error;
   }
-  return new PixiCanvasKernel(app, options, width, height);
 }

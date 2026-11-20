@@ -19,7 +19,12 @@
       :class="{ 'canvas-document-detail-loading': !detail?.state.ready.value }"
       :style="bodyStyle"
     />
-    <p v-if="detail?.state.notice.value" class="canvas-document-detail-notice" role="status">
+    <p
+      v-if="detail?.state.notice.value"
+      class="canvas-document-detail-notice"
+      role="status"
+      :title="detail.state.notice.value"
+    >
       {{ detail.state.notice.value }}
     </p>
   </section>
@@ -37,6 +42,7 @@ import { cardEditorStyle } from '../../cardEditing';
 import { canvasText as t } from '../../localization';
 import { readCanvasCardCssPalette } from '@plugin/canvas/shared';
 import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
+import { readCanvasIsDark } from '../../../functions/readCanvasAppearance';
 
 const props = defineProps<{
   card: CanvasDocumentDetailCard;
@@ -75,6 +81,8 @@ watch(
   { immediate: true }
 );
 const bodyStyle = computed(() => {
+  // 挂载失败时没有正文可保持旧排版；沿用旧尺寸的正文槽会把提示挤出纸面。
+  if (detail.value?.state.notice.value) return undefined;
   if (props.frame)
     return { flex: 'none', width: `${props.card.width}px`, height: `${props.card.height}px` };
   // 落地后宽度放开给重排量取，高度等新排版就绪再放开，旧排版不先露出原来裁掉的部分。
@@ -117,9 +125,10 @@ const keydown = (event: KeyboardEvent) => {
 };
 onMounted(() => {
   if (!body.value || !overlay.value) return;
-  const root = overlay.value.ownerDocument.documentElement;
+  const ownerDocument = overlay.value.ownerDocument;
+  const root = ownerDocument.documentElement;
   const readTheme = () => {
-    dark.value = root.getAttribute(RENDERER_UI_THEME_ATTRIBUTE) === 'dark';
+    dark.value = readCanvasIsDark(ownerDocument);
   };
   readTheme();
   theme = new MutationObserver(readTheme);
