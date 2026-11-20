@@ -5,6 +5,8 @@ import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PluginActiveVersionService } from '../../../infrastructure/sqlite/plugin-active-version.service';
+import { PLUGIN_PLATFORM_STATE_SCHEMAS } from '../../../infrastructure/sqlite/plugin-state.schema';
+import { markPluginUserRemoved, isPluginUserRemoved } from '../../functions/pluginRemovalMarker';
 import { readActivePluginPointer } from '../activatePluginVersion';
 import { reconcilePluginActiveVersions } from '../reconcilePluginActiveVersions';
 
@@ -37,17 +39,8 @@ function writePluginVersion(userPluginRoot: string, version: string): void {
 
 function createDb(): Database.Database {
   const db = new Database(':memory:');
+  db.exec(PLUGIN_PLATFORM_STATE_SCHEMAS.join('\n'));
   db.exec(`
-    CREATE TABLE installed_plugins (
-      plugin_id TEXT PRIMARY KEY,
-      version TEXT NOT NULL,
-      name TEXT NOT NULL DEFAULT '',
-      installed INTEGER NOT NULL DEFAULT 1,
-      builtin INTEGER NOT NULL DEFAULT 0,
-      required INTEGER NOT NULL DEFAULT 0,
-      installed_at INTEGER NOT NULL DEFAULT 0
-    );
-
     INSERT INTO installed_plugins (plugin_id, version, name, installed, installed_at)
     VALUES ('demo', '1.1.0', 'Demo', 1, 123);
   `);
@@ -63,6 +56,17 @@ describe('reconcilePluginActiveVersions', () => {
     userPluginRoot = path.join(makeTempRoot(), 'plugins');
     writePluginVersion(userPluginRoot, '1.0.0');
     writePluginVersion(userPluginRoot, '1.1.0');
+  });
+
+  it('指针已写、磁盘卸载标记未清时，启动完成已提交重装', () => {
+    markPluginUserRemoved(userPluginRoot, 'demo');
+    writeJson(path.join(userPluginRoot, 'demo/active.json'), { version: '1.1.0' });
+    const versions = new PluginActiveVersionService(db);
+    versions.markActive({ pluginId: 'demo', activeVersion: '1.1.0', previousVersion: null });
+
+    expect(reconcilePluginActiveVersions({ db, userPluginRoot })).toMatchObject([{ status: 'already-synced' }]);
+    expect(isPluginUserRemoved(userPluginRoot, 'demo')).toBe(false);
+    expect(versions.getRecord('demo')).toMatchObject({ status: 'active', activeVersion: '1.1.0' });
   });
 
   afterEach(() => {

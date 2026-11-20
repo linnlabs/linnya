@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import type Database from 'better-sqlite3';
 import type { PluginId, PluginMeta, PluginOperationErrorCode } from '@app/schemas';
 
@@ -8,20 +7,16 @@ import type {
   PluginUpgradePlan,
 } from '../../infrastructure/sqlite/plugin-upgrade.runner';
 import { PluginStateService } from '../../infrastructure/sqlite/plugin-state.service';
+import { clearPluginUserRemovedMarker } from '../functions/pluginRemovalMarker';
 import {
-  clearPluginUserRemovedMarker,
-  markPluginUserRemoved,
-} from '../functions/pluginRemovalMarker';
-import {
-  activatePluginVersionWithMigrations,
+  activateMigratedPluginVersion,
+  migratePluginVersionForActivation,
 } from './activatePluginVersionWithMigrations';
-import { writeActivePluginPointerAtomically } from './activatePluginVersion';
 import { toPluginOperationError } from '../definitions/pluginOperationError';
 
 export interface BundledPluginStageCandidate {
   readonly pluginId: PluginId;
   readonly version: string;
-  readonly previousVersion: string | null;
   readonly pluginDir: string;
   /** 本次操作创建的版本目录；失败时只能清理这一目录。 */
   readonly createdVersionDir: boolean;
@@ -59,16 +54,6 @@ export type BundledPluginInstallResult =
       readonly errorCode?: PluginOperationErrorCode;
     };
 
-function removeActivePointer(userPluginRoot: string, pluginId: PluginId): void {
-  const rootDir = path.resolve(userPluginRoot);
-  const activePath = path.resolve(rootDir, pluginId, 'active.json');
-  const relative = path.relative(rootDir, activePath);
-  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error(`active 指针不能指向插件根目录外: ${pluginId}`);
-  }
-  fs.rmSync(activePath, { force: true });
-}
-
 function failed(
   pluginId: PluginId,
   version: string | null,
@@ -87,19 +72,6 @@ function failed(
 function removeVersionDirectory(candidate: BundledPluginStageCandidate): void {
   if (!candidate.createdVersionDir) return;
   fs.rmSync(candidate.pluginDir, { recursive: true, force: true });
-}
-
-function restorePreviousActivePointer(
-  userPluginRoot: string,
-  candidate: BundledPluginStageCandidate,
-): void {
-  if (candidate.previousVersion === null) {
-    removeActivePointer(userPluginRoot, candidate.pluginId);
-    return;
-  }
-  writeActivePluginPointerAtomically(userPluginRoot, candidate.pluginId, {
-    version: candidate.previousVersion,
-  });
 }
 
 /**
@@ -133,49 +105,32 @@ export function installPluginFromBundledAndActivate(
     return failed(options.pluginId, null, error);
   }
 
-  try {
+  const activation = {
+    db: options.db, userPluginRoot: options.userPluginRoot, pluginId: candidate.pluginId, version: candidate.version,
+  };
+  const commitInstallation = options.db.transaction(() => {
+    // 先前的三张表彼此独立提交；现在 SIGKILL 也只能看见完整旧态或可恢复的新态。
     stateService.setInstalled(options.pluginId, true, options.knownPlugins);
     const upgradePlan = options.resolveUpgradePlan({
-      pluginId: candidate.pluginId,
-      version: candidate.version,
-      pluginDir: candidate.pluginDir,
-      appVersion: options.appVersion,
+      pluginId: candidate.pluginId, version: candidate.version, pluginDir: candidate.pluginDir, appVersion: options.appVersion,
     });
-    const activationResult = activatePluginVersionWithMigrations({
-      db: options.db,
-      userPluginRoot: options.userPluginRoot,
-      pluginId: candidate.pluginId,
-      version: candidate.version,
-      appVersion: options.appVersion,
-      upgradePlan,
-      recordDiagnostic: options.recordDiagnostic,
+    const result = migratePluginVersionForActivation({
+      ...activation, appVersion: options.appVersion, upgradePlan, recordDiagnostic: options.recordDiagnostic,
     });
-    if (activationResult.status !== 'activated') {
-      throw toPluginOperationError(new Error(activationResult.error), {
-        pluginId: options.pluginId,
-        fallbackCode: activationResult.errorCode,
+    if (result.status === 'failed') {
+      throw toPluginOperationError(new Error(result.error), {
+        pluginId: options.pluginId, fallbackCode: result.errorCode,
       });
     }
-
-    clearPluginUserRemovedMarker(options.userPluginRoot, options.pluginId);
-    return {
-      status: 'installed',
-      pluginId: options.pluginId,
-      version: candidate.version,
-      previousVersion: activationResult.previousVersion,
-      restartRequired: false,
-    };
+    return result;
+  });
+  let migrated: ReturnType<typeof commitInstallation>;
+  try {
+    migrated = commitInstallation();
   } catch (error) {
-    // setInstalled(true) clears the database marker. Restore the exact pre-install
-    // state if activation/migration fails, so a failed reinstall cannot auto-return.
-    stateService.setInstalled(options.pluginId, false, options.knownPlugins);
-    stateService.setUserRemoved(options.pluginId, previousRecord.userRemoved);
-    if (previousRecord.userRemoved) {
-      markPluginUserRemoved(options.userPluginRoot, options.pluginId);
-    }
+    // SQLite 已回滚；此时从未触碰卸载文件标记或 active 指针。
     const installationError = toPluginOperationError(error, { pluginId: options.pluginId });
     try {
-      restorePreviousActivePointer(options.userPluginRoot, candidate);
       removeVersionDirectory(candidate);
     } catch (cleanupError) {
       return failed(
@@ -186,4 +141,22 @@ export function installPluginFromBundledAndActivate(
     }
     return failed(options.pluginId, candidate.version, installationError);
   }
+
+  let restartRequired = false;
+  try {
+    const result = activateMigratedPluginVersion(activation, migrated);
+    if (result.status === 'failed') throw new Error(result.error);
+    clearPluginUserRemovedMarker(options.userPluginRoot, options.pluginId);
+  } catch (error) {
+    // 提交后不能删除唯一能完成激活的产物，也不能把已迁移的数据改回「未安装」。
+    restartRequired = true;
+    options.recordDiagnostic?.({
+      level: 'error', pluginId: options.pluginId, capability: 'migration',
+      message: `随包安装已提交，启动时续做激活: ${toPluginOperationError(error).message}`,
+    });
+  }
+  return {
+    status: 'installed', pluginId: options.pluginId, version: candidate.version,
+    previousVersion: migrated.previousVersion, restartRequired,
+  };
 }

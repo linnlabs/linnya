@@ -1732,11 +1732,6 @@
       "count": 1
     }
   },
-  "src/features/plugins/install/orchestration/reconcilePluginActiveVersions.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/features/system/export/orchestration/exportArtifactTargetRuntime.integration.test.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1

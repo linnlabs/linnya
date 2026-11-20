@@ -687,6 +687,7 @@ export async function registerPluginsHandlers(input: {
             throwPluginOperationResultFailure(result);
           }
           invalidatePluginDataSummary(pluginId);
+          if (result.restartRequired) return { success: true, data: result };
           try {
             resetBackendPluginRegistrationForRuntimeChange();
             ensureBuiltinBackendPluginsRegistered({

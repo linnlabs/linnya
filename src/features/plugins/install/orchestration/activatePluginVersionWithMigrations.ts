@@ -44,6 +44,16 @@ export type ActivatePluginVersionWithMigrationsResult =
       readonly migrationResult?: PluginUpgradeRunResult;
     };
 
+interface MigratedPluginVersion {
+  readonly status: 'migrated';
+  readonly previousVersion: string | null;
+  readonly migrationResult: PluginUpgradeRunResult;
+}
+
+type MigratePluginVersionForActivationResult =
+  | MigratedPluginVersion
+  | Extract<ActivatePluginVersionWithMigrationsResult, { status: 'failed' }>;
+
 function assertPlanMatchesActivation(options: ActivatePluginVersionWithMigrationsOptions): string | null {
   if (options.upgradePlan.pluginId !== options.pluginId) {
     return `升级计划 pluginId 不匹配: active=${options.pluginId}, plan=${options.upgradePlan.pluginId}`;
@@ -75,9 +85,10 @@ function failureCodeForMigrationResult(result: PluginUpgradeRunResult): PluginOp
   return result.status === 'incompatible' ? 'incompatible' : 'migration-failed';
 }
 
-export function activatePluginVersionWithMigrations(
+/** 只写 SQLite。显式安装的调用方可以把安装、启用和清除卸载标记一并提交。 */
+export function migratePluginVersionForActivation(
   options: ActivatePluginVersionWithMigrationsOptions,
-): ActivatePluginVersionWithMigrationsResult {
+): MigratePluginVersionForActivationResult {
   const planError = assertPlanMatchesActivation(options);
   if (planError) {
     return {
@@ -119,47 +130,9 @@ export function activatePluginVersionWithMigrations(
     },
   });
   if (isSuccessfulMigrationResult(migrationResult)) {
-    if (migrationResult.status === 'skipped') {
-      activeVersionService.markActivating({
-        pluginId: options.pluginId,
-        activeVersion: options.version,
-        previousVersion: activationPreflightResult.previousVersion,
-      });
-    }
-    const activationResult = activatePluginVersion({
-      userPluginRoot: options.userPluginRoot,
-      pluginId: options.pluginId,
-      version: options.version,
-      expectedPreviousVersion: activationPreflightResult.previousVersion,
-    });
-    if (activationResult.status === 'failed') {
-      activeVersionService.markFailed({
-        pluginId: options.pluginId,
-        activeVersion: options.version,
-        previousVersion: activationPreflightResult.previousVersion,
-        error: activationResult.error,
-      });
-      return {
-        status: 'failed',
-        pluginId: options.pluginId,
-        version: options.version,
-        error: activationResult.error,
-        activationPreflightResult,
-        activationResult,
-        migrationResult,
-      };
-    }
-
-    activeVersionService.markActive({
-      pluginId: options.pluginId,
-      activeVersion: options.version,
-      previousVersion: activationResult.previousVersion,
-    });
     return {
-      status: 'activated',
-      pluginId: options.pluginId,
-      version: options.version,
-      previousVersion: activationResult.previousVersion,
+      status: 'migrated',
+      previousVersion: activationPreflightResult.previousVersion,
       migrationResult,
     };
   }
@@ -173,4 +146,30 @@ export function activatePluginVersionWithMigrations(
     activationPreflightResult,
     migrationResult,
   };
+}
+
+/** 必须等迁移和 activating 账本提交之后才能改文件指针。 */
+export function activateMigratedPluginVersion(
+  options: Pick<ActivatePluginVersionWithMigrationsOptions, 'db' | 'userPluginRoot' | 'pluginId' | 'version'>,
+  migrated: MigratedPluginVersion,
+): ActivatePluginVersionWithMigrationsResult {
+  const { db, userPluginRoot, pluginId, version } = options;
+  const { previousVersion, migrationResult } = migrated;
+  const activeVersionService = new PluginActiveVersionService(db);
+  const activationResult = activatePluginVersion({
+    userPluginRoot, pluginId, version, expectedPreviousVersion: previousVersion,
+  });
+  if (activationResult.status === 'failed') {
+    activeVersionService.markFailed({ pluginId, activeVersion: version, previousVersion, error: activationResult.error });
+    return { status: 'failed', pluginId, version, error: activationResult.error, activationResult, migrationResult };
+  }
+  activeVersionService.markActive({ pluginId, activeVersion: version, previousVersion: activationResult.previousVersion });
+  return { status: 'activated', pluginId, version, previousVersion: activationResult.previousVersion, migrationResult };
+}
+
+export function activatePluginVersionWithMigrations(
+  options: ActivatePluginVersionWithMigrationsOptions,
+): ActivatePluginVersionWithMigrationsResult {
+  const migrated = migratePluginVersionForActivation(options);
+  return migrated.status === 'failed' ? migrated : activateMigratedPluginVersion(options, migrated);
 }

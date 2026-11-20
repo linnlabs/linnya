@@ -4,8 +4,9 @@ import type { PluginId } from '@app/schemas';
 
 import {
   PluginActiveVersionService,
-  type PluginActiveVersionRecord,
 } from '../../infrastructure/sqlite/plugin-active-version.service';
+import { PluginStateService } from '../../infrastructure/sqlite/plugin-state.service';
+import { clearPluginUserRemovedMarker, isPluginUserRemoved } from '../functions/pluginRemovalMarker';
 import {
   readActivePluginPointer,
   syncActivePluginPointer,
@@ -32,6 +33,7 @@ export function reconcilePluginActiveVersions(
   options: ReconcilePluginActiveVersionsOptions,
 ): ReconcilePluginActiveVersionResult[] {
   const service = new PluginActiveVersionService(options.db);
+  const state = new PluginStateService(options.db);
   const results: ReconcilePluginActiveVersionResult[] = [];
 
   for (const record of service.listRecords()) {
@@ -41,6 +43,7 @@ export function reconcilePluginActiveVersions(
         activePointer?.version === record.activeVersion
         && (activePointer.previousVersion ?? null) === record.previousVersion
       ) {
+        clearCommittedInstallMarker(state, options.userPluginRoot, record.pluginId);
         if (record.status !== 'active') {
           service.markActive({
             pluginId: record.pluginId,
@@ -99,6 +102,7 @@ export function reconcilePluginActiveVersions(
         version: record.activeVersion,
         previousVersion: record.previousVersion,
       });
+      clearCommittedInstallMarker(state, options.userPluginRoot, record.pluginId);
       service.markActive({
         pluginId: record.pluginId,
         activeVersion: record.activeVersion,
@@ -132,4 +136,11 @@ export function reconcilePluginActiveVersions(
   }
 
   return results;
+}
+
+function clearCommittedInstallMarker(state: PluginStateService, root: string, pluginId: PluginId): void {
+  if (!isPluginUserRemoved(root, pluginId)) return;
+  // 只有安装已提交且 active 已经对齐，才允许清掉上一次卸载留下的磁盘标记。
+  const installed = state.getInstalledRecord(pluginId);
+  if (installed?.installed && !installed.userRemoved) clearPluginUserRemovedMarker(root, pluginId);
 }

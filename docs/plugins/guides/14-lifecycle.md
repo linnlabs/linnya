@@ -29,7 +29,7 @@
 1. Electron main 注册 `plugin://` scheme 和 handler。
 2. `prepareBuiltinPluginRuntimeEnvironment()` 把预置官方插件 **stage** 到用户插件目录，只复制版本目录，不写 `active.json`。
 3. 核心数据库迁移完成（插件状态表、快照表就绪）。
-4. `bootstrapBuiltinPluginLifecycle(db)` 先激活 staged 预置版本：临时加载该版本 backend 生成迁移计划，迁移成功后才写 `active.json`；随后登记 active backend 插件、应用 schema、执行 plugin migrations。
+4. `bootstrapBuiltinPluginLifecycle(db)` 先恢复已提交的激活，再激活 staged 预置版本：临时加载该版本 backend 生成迁移计划，迁移成功后才写 `active.json`；随后登记 active backend 插件、应用 schema、执行 plugin migrations。
 5. renderer 通过 `plugins:renderer-entries` 获取 enabled 插件前端入口，动态 import 并注册 UI contribution。
 
 > 不变式：`active.json` 只能在对应版本的插件迁移成功后写入。启动早期 seed 不允许切 active。激活编排会在迁移前 preflight 读取旧 active；迁移事务提交时同步写 `plugin_active_versions(status='activating')`，再写 `active.json`；成功后标记 `active`，失败后标记 `failed`。成功升级时写入 `previousVersion`，供下一次 backend 加载失败时回滚。
@@ -66,9 +66,9 @@
 
 默认卸载（`uninstallPluginLifecycle`）：`installed=0`、删 enabled、标记 `user_removed=1`、删 active 指针与版本目录、保留磁盘移除标记防自动装回；**不删数据表、不清迁移账本**。重装清除移除标记、重装 runtime 文件、复用原数据与 migration ledger。
 
-随包插件的本地卸载不依赖远程服务开关。商店列表由 Host 投影 `bundledSourceAvailable`，只有非 required 且存在随包 artifact 的插件显示卸载/从随包安装入口；远程服务开关仍只控制远程安装和更新。启动 seed 始终尊重用户移除标记，只有用户明确点击“安装”时才从 bundled artifact 重新 stage；迁移和 `active.json` 激活成功后才清除标记，失败则恢复未安装与用户移除状态。
+随包插件的本地卸载不依赖远程服务开关。商店列表由 Host 投影 `bundledSourceAvailable`，只有非 required 且存在随包 artifact 的插件显示卸载/从随包安装入口；远程服务开关仍只控制远程安装和更新。启动 seed 尊重用户移除标记；用户明确点击“安装”可以重新 stage 并显式越过该标记。
 
-显式重装的 stage 目录属于本次操作的临时产物：若迁移或激活失败，只删除本次新建的版本目录，保留原有同版本目录和用户数据；下次重试可以覆盖失败残留，不会因为同版本 checksum 冲突永久锁死。数据库安装状态已经提交后，若仅 registry/runtime 刷新失败，IPC 返回“已安装、需重启”，不能把已完成的安装伪装成失败。
+显式随包安装把 installed、enabled、SQLite 卸载标记、迁移和 `activating` 账本放在同一事务。提交前失败或中断，原状态不变；返回失败时只清本次新建版本目录，中断留下的 stage 可以重试覆盖。提交后才更改 `active.json`、移除磁盘卸载标记并刷新运行态。后续步骤失败时保留已提交状态与 artifact，提示需重启；启动用账本对齐 active 指针，再清理已完成安装留下的旧标记，不回滚已提交的迁移。
 
 ### 可选数据清理
 

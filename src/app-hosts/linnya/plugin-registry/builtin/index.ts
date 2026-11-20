@@ -434,10 +434,7 @@ export function bootstrapBuiltinPluginLifecycle(
   db: Database.Database,
   applicationVersion: string
 ): void {
-  // 中文说明：随包 seed 只复制版本目录，不提前切 active；这里在核心 DB 表
-  // 就绪后先用 staged artifact 跑迁移，成功后再写 active.json，避免启动窗口内
-  // 出现「active 指到新代码但 schema 仍是旧版」。
-  activateStagedBundledPluginVersions(db, applicationVersion);
+  // 先续做已提交的激活，再选择本次启动的更新；不能让较新的随包版本跳过未收尾的上一笔安装。
   const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
   if (userPluginRoot) {
     reconcilePluginActiveVersions({
@@ -452,6 +449,8 @@ export function bootstrapBuiltinPluginLifecycle(
         }),
     });
   }
+  // 随包 seed 只复制版本目录；写 active.json 前必须先通过迁移。
+  activateStagedBundledPluginVersions(db, applicationVersion);
   ensureBuiltinBackendPluginsRegistered({
     applicationVersion,
     requireComplete: true,

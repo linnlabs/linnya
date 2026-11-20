@@ -192,7 +192,16 @@ export class PluginUpgradeRunner {
       }
       let migrationResult: PluginMigrationRunResult;
       try {
-        migrationResult = this.migrations.run(plan.pluginId, plan.migrations);
+        migrationResult = this.db.transaction(() => {
+          const result = this.migrations.run(plan.pluginId, plan.migrations);
+          runOptions.beforeCommit?.({
+            pluginId: plan.pluginId,
+            fromVersion: installed.version,
+            targetVersion: plan.targetVersion,
+            migrationResult: result,
+          });
+          return result;
+        })();
       } catch (error) {
         const message = `插件迁移账本同步失败: ${toErrorMessage(error)}`;
         this.recordDiagnostic('error', plan.pluginId, message);

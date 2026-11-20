@@ -34,4 +34,4 @@
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/cleanup-crash.acceptance.mjs` 点击“卸载并删除”，确认合成目录已部分删除后强制结束自己的 Backend 和 Desktop。重启后把界面状态与安装记录、激活账本和指针、卸载标记、迁移、表和残留目录逐项对账，检查 SQLite 结构，再从界面重试。这只覆盖进程崩溃时的删除目录阶段：操作系统和磁盘缓存仍在；不等同于正常关机、虚拟机强断电或物理掉电，也不代表其他写入断点或平台已验收。
 
-`pnpm exec tsx scripts/e2e/knowledge-plugin/reinstall-crash.acceptance.mjs` 用探针卸载并保留资料；另起隔离进程调用正式重装编排，精确强杀在写入安装记录后、迁移和激活前。复用同一 profile 真启动 Desktop、截图并对账。这是 B 类的诊断复现，不伪称由 UI 的安装 IPC 发起了强杀，当前应在「安装状态必须与激活指针一致」处失败；修完恢复逻辑后保留这条断言并复测。
+`pnpm exec tsx scripts/e2e/knowledge-plugin/reinstall-crash.acceptance.mjs` 用探针卸载并保留资料；另起隔离进程调用正式重装编排，在子进程已写入安装记录、尚未迁移和激活时强杀。复用同一 profile 真启动 Desktop，要求未提交重装仍可从商店安装，并保留原迁移及数据目录。这是进程崩溃回归，不把单独进程的精确断点写成从安装 IPC 点击触发的强杀。

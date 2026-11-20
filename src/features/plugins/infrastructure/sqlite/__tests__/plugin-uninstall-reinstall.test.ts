@@ -2,12 +2,14 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PluginMeta } from '@app/schemas';
 
 import { PluginStateService } from '../plugin-state.service';
+import { PluginActiveVersionService } from '../plugin-active-version.service';
 import { PluginUpgradeRunner } from '../plugin-upgrade.runner';
 import { installPluginFromBundledAndActivate } from '../../../install/orchestration/installPluginFromBundledAndActivate';
+import { reconcilePluginActiveVersions } from '../../../install/orchestration/reconcilePluginActiveVersions';
 import { markPluginUserRemoved, isPluginUserRemoved } from '../../../install/functions/pluginRemovalMarker';
 import { stageBundledPluginForExplicitInstall } from '../../../../../electron-main/plugins/loader/pluginRuntimeBootstrap';
 
@@ -192,7 +194,7 @@ describe('plugin uninstall/reinstall data safety', () => {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
 
-  it('重装迁移失败时保留用户卸载状态和数据', () => {
+  it('重装提交前回滚；提交后指针写失败则保留产物，启动续做激活', () => {
     const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-bundled-reinstall-failure-'));
     const bundledRoot = path.join(tempRoot, 'bundled');
     const userPluginRoot = path.join(tempRoot, 'user-plugins');
@@ -255,15 +257,29 @@ describe('plugin uninstall/reinstall data safety', () => {
     expect(db.prepare('SELECT id, value FROM plugin_owned').all()).toEqual([{ id: 'row-1', value: 'kept' }]);
 
     shouldFail = false;
-    const retryResult = install();
+    const rename = fs.renameSync;
+    const writePointerError = vi.spyOn(fs, 'renameSync').mockImplementation((from, to) => {
+      if (to === path.join(userPluginRoot, 'demo/active.json')) throw new Error('fixture: active pointer write interrupted');
+      return rename(from, to);
+    });
+    const retryResult = (() => {
+      try { return install(); }
+      finally { writePointerError.mockRestore(); }
+    })();
     expect(retryResult).toMatchObject({
       status: 'installed',
       pluginId: 'demo',
       version: '1.0.0',
-      restartRequired: false,
+      restartRequired: true,
     });
+    expect(stateService.getInstalledRecord('demo')).toMatchObject({ installed: true, userRemoved: false, schemaVersion: 1 });
+    expect(isPluginUserRemoved(userPluginRoot, 'demo')).toBe(true);
+    expect(new PluginActiveVersionService(db).getRecord('demo')).toMatchObject({ status: 'failed', activeVersion: '1.0.0' });
     expect(fs.existsSync(path.join(userPluginRoot, 'demo/1.0.0/plugin.json'))).toBe(true);
+    expect(reconcilePluginActiveVersions({ db, userPluginRoot })).toMatchObject([{ status: 'synced' }]);
+    expect(new PluginActiveVersionService(db).getRecord('demo')).toMatchObject({ status: 'active', activeVersion: '1.0.0' });
     expect(isPluginUserRemoved(userPluginRoot, 'demo')).toBe(false);
+    expect(db.prepare('SELECT id, value FROM plugin_owned').all()).toEqual([{ id: 'row-1', value: 'kept' }]);
 
     fs.rmSync(tempRoot, { recursive: true, force: true });
   });
