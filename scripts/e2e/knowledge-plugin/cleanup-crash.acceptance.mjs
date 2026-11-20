@@ -75,7 +75,6 @@ async function until(action, accepted, label, timeout = 10_000) {
 
 try {
   const up = await start();
-  await installKnowledgeForScenario(run);
   assert.equal(up.pluginLoad, undefined, 'disk plugin must load');
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
   const source = join(up.root, 'workspace', 'Plugins', 'knowledge', 'source_of_truth');
@@ -86,6 +85,8 @@ try {
     await Promise.all(Array.from({ length: Math.min(64, count - startIndex) }, (_, index) =>
       writeFile(join(source, `synthetic-${startIndex + index}.dat`), bytes, { flag: 'wx' })));
   }
+  // 首次打开商店会缓存摘要，先创建隔离夹具才能经过真实占用和确认流程。
+  await installKnowledgeForScenario(run);
   await openDetail();
   await run('wait', '--text', '原文与解析结果');
   const initial = facts(up.root);

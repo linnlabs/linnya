@@ -67,6 +67,7 @@
               </div>
               <p>{{ selectedDetail.meta.description }}</p>
               <p v-if="selectedDetail.runtimeUnavailable">{{ pluginStoreMessage('pluginStore.reason.runtimeUnavailable') }}</p>
+              <p v-if="selectedDetail.data?.status === 'legacy'">{{ formatLegacyStorageNotice(selectedDetail.data.bytes) }}</p>
             </div>
 
             <div class="plugin-store-detail-actions">
@@ -268,6 +269,7 @@
             <div class="plugin-store-card-meta">
               <span>{{ pluginStoreMessage('pluginStore.fact.version') }} {{ item.meta.version }}</span>
               <span>{{ pluginStoreMessage('pluginStore.fact.developer') }} {{ item.meta.developer }}</span>
+              <span v-if="item.data?.status === 'legacy'">{{ formatLegacyStorageNotice(item.data.bytes) }}</span>
             </div>
           </div>
 
@@ -609,11 +611,12 @@ function resolvePluginStateLabel(item: PluginStoreListItem): string {
   if (item.data?.status === 'cleaning') return pluginStoreMessage('pluginStore.data.status.cleaning');
   if (item.data?.status === 'failed') return pluginStoreMessage('pluginStore.data.status.failed');
   if (item.data?.status === 'unavailable') return pluginStoreMessage('pluginStore.data.status.unavailable');
-  if (item.data?.status === 'legacy') return pluginStoreMessage('pluginStore.state.legacyStorage', {
-    bytes: formatStorageBytes(item.data.bytes, currentLocale.value),
-  });
   if (item.data?.status === 'retained') return pluginStoreMessage('pluginStore.data.status.retained');
   return getPluginStateLabel(item.state, pluginStoreMessage);
+}
+
+function formatLegacyStorageNotice(bytes: number): string {
+  return pluginStoreMessage('pluginStore.state.legacyStorage', { bytes: formatStorageBytes(bytes, currentLocale.value) });
 }
 
 function pluginDetailAriaLabel(pluginName: string): string {

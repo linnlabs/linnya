@@ -191,7 +191,8 @@ export async function launchInstalledDesktop(executable, root) {
     cdp.onEvent(event => {
       if (event.method === 'Runtime.exceptionThrown') errors.push(event.params.exceptionDetails);
     });
-    await cdp.send('Runtime.enable');
+    // 首次启动在 ARM 来宾上模拟 x64；调试握手与其它启动探测使用同一有限预算。
+    await cdp.send('Runtime.enable', {}, 120_000);
     await until(
       () =>
         application.evaluate(

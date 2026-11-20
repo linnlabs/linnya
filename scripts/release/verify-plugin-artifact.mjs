@@ -32,7 +32,8 @@ const artifactDir = path.join(distDir, 'artifacts');
 const shouldVerifyExtraResources = process.argv.includes('--extra-resources');
 const shouldRequireRendererAssets = process.argv.includes('--require-renderer-assets');
 const bundledPluginRoot = process.env.LINNYA_BUNDLED_PLUGIN_ROOT;
-const artifactVerification = findOfficialPluginReleaseTarget(pluginId)?.artifactVerification ?? {};
+const releaseTarget = findOfficialPluginReleaseTarget(pluginId);
+const artifactVerification = releaseTarget?.artifactVerification ?? {};
 const rendererUiSourceRoot = path.join(repoRoot, 'packages/renderer-ui/src');
 const allowedBackendBareSpecifiers = new Set([
   ...builtinModules,
@@ -868,8 +869,12 @@ const verifyExtraResources = async (manifest, productionDistDirectories) => {
   const extraResourceFiles = (await listFiles(pluginDir)).map(filePath =>
     path.relative(pluginDir, filePath).replace(/\\/g, '/')
   );
+  const onDemandMarker = '.install-on-demand';
+  const installOnDemand = releaseTarget?.installByDefault === false;
+  if (installOnDemand) await assertFile(path.join(pluginDir, onDemandMarker), onDemandMarker);
   assertOnlyProductionArtifactPaths(
-    extraResourceFiles,
+    // 这是 Desktop 装配元数据；普通 ZIP 和 checksum 的 artifact 白名单不受影响。
+    installOnDemand ? extraResourceFiles.filter(file => file !== onDemandMarker) : extraResourceFiles,
     manifest,
     productionDistDirectories,
     'bundled artifact root'

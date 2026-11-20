@@ -36,7 +36,6 @@ async function ref(name, role, within) {
 
 try {
   const up = await run('up', '--mode', 'bundled', '--size', '1440x1000', '--no-build');
-  await installKnowledgeForScenario(run);
   assert.equal(up.pluginLoad, undefined, 'The bundled knowledge artifact must load');
   db = new DatabaseSync(up.workspaceDb, { readOnly: true });
   const source = join(up.root, 'workspace', 'Plugins', 'knowledge', 'source_of_truth');
@@ -48,6 +47,7 @@ try {
         writeFile(join(source, `owned-fixture-${row + offset}.dat`), bytes, { flag: 'wx' })
       )
     );
+  await installKnowledgeForScenario(run);
   const filesRemaining = () => {
     try {
       return readdirSync(source).length;
