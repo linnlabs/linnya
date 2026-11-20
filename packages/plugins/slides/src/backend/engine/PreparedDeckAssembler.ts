@@ -173,6 +173,11 @@ export class PreparedDeckAssembler {
       chartPlan,
       shapeTextPlan,
       markEastAsianRunLanguage: true,
+      onWarning: (warning) => this.logger?.warn(`slides.pptx.${warning.code}`, {
+        slideNumber: warning.slideNumber,
+        shapeId: warning.shapeId,
+        message: warning.message,
+      }),
     });
     this.logger?.debug('slides.assembly.completed', {
       title: materializedDeckSpec.title,

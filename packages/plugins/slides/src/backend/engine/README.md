@@ -91,7 +91,7 @@ PresentationInfo 或 RenderModel
 - structured、freeform、mixed 三条导出路径共同调用 `pptx/initializePptxDocument.ts`，统一写入 layout、title 和声明主题字体。
 - `PptxPackageSanitizer` 对导入稿保持作者原样：run 语言标记（`markEastAsianRunLanguage`）只由生成稿路径（`StructuredCompiler`、`FreeformCompiler`、`PreparedDeckAssembler`）打开，`PatchCompiler` 不打开；新增生成稿入口时同步打开，导入稿路径不得为了统一而打开。
 - 外阴影的 pt 直角偏移 → 极坐标、dist/dir/alpha 缺省与 `a:outerShdw` 构造只有 `visual/outerShadow.ts` 一份：PptxGenJS 属性（`mapShapeShadowToProps`）、导入稿 patch（`PatchXmlEditor`）和文字效果补丁（`pptxPaintPostProcessor`）都从这里取值，不在调用点各算一遍。
-- 文字效果只写 `opacity` 时，`pptxPaintPostProcessor` 保留 run 原有的纯色（sRGB 或主题色）并写 alpha；run 没有显式填充时写出继承的默认文字色 `tx1` 再带 alpha。
+- 文字效果只写 `opacity` 时，`pptxPaintPostProcessor` 保留 run 原有的纯色（sRGB 或主题色）并写 alpha。run 没有显式纯色填充时，颜色可能继承自段落、lstStyle、占位符或形状样式（如深色形状上的 `lt1`），不猜颜色：填充原样保留、不写 alpha，并经 `onWarning` 报告 `text_opacity_not_written`（`PreparedDeckAssembler` 转给 `logger.warn`；Worker 写内部 stderr，进程内走 `Logger`）。生成链路的 run 总带 sRGB，这条分支只在异常输入时出现。
 - PPTX 页面尺寸只消费 shared 已规范化的 `SlideLayout`。preset 保持原生 layout 名称；自定义尺寸按 EMU
   生成稳定名称并在创建任何 slide/master 前调用 PptxGenJS `defineLayout()`。禁止在 compiler 内另算比例或比较浮点宽高。
 - PPTX 主题字体来自 `DeckSpec.theme.fonts`；本机 `resolvedFamily` 只服务测量和预览。

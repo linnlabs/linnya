@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
-import { applyPptxPaintPatches } from '../pptxPaintPostProcessor';
+import { applyPptxPaintPatches, type PptxPaintWarning } from '../pptxPaintPostProcessor';
 import { requiresNativePptxPaintPatch } from '../pptxPaintCompileAdapter';
 import {
   createPptxPaintCompileContext,
@@ -12,7 +12,11 @@ import {
 import type { TextEffects } from '@plugin/slides/shared';
 
 /** 一个带 marker 的文本框，段落里放一个 run 和一个 endParaRPr，返回补丁后的 `a:p` 内部 XML。 */
-async function applyTextEffects(effects: TextEffects, runProperties: string): Promise<string> {
+async function applyTextEffects(
+  effects: TextEffects,
+  runProperties: string,
+  warnings: PptxPaintWarning[] = [],
+): Promise<string> {
   const plan = createPptxPaintPatchPlan();
   const marker = registerPptxTextEffects(createPptxPaintCompileContext(plan, 0), effects);
   const zip = new JSZip();
@@ -24,7 +28,7 @@ async function applyTextEffects(effects: TextEffects, runProperties: string): Pr
     '</p:txBody></p:sp>',
     '</p:spTree></p:cSld></p:sld>',
   ].join(''));
-  await applyPptxPaintPatches(zip, plan);
+  await applyPptxPaintPatches(zip, plan, (warning) => warnings.push(warning));
   const xml = await zip.file('ppt/slides/slide1.xml')!.async('text');
   return /<a:p>([\s\S]*)<\/a:p>/.exec(xml)![1];
 }
@@ -128,31 +132,71 @@ describe('PPTX native Paint adapter', () => {
 
   describe('只写 opacity 的文字效果', () => {
     it('纯色 srgb 的 run：保留颜色并写 alpha', async () => {
+      const warnings: PptxPaintWarning[] = [];
       const paragraph = await applyTextEffects(
         { opacity: 0.4 },
         '<a:rPr lang="en-US"><a:solidFill><a:srgbClr val="C0392B"/></a:solidFill></a:rPr>',
+        warnings,
       );
+      expect(warnings).toEqual([]);
       expect(paragraph).toContain(
         '<a:rPr lang="en-US"><a:solidFill><a:srgbClr val="C0392B"><a:alpha val="40000"/></a:srgbClr></a:solidFill></a:rPr>',
       );
     });
 
     it('主题色的 run：保留主题色并补 alpha，不丢颜色也不丢透明度', async () => {
+      const warnings: PptxPaintWarning[] = [];
       const paragraph = await applyTextEffects(
         { opacity: 0.4 },
         '<a:rPr lang="en-US"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:rPr>',
+        warnings,
       );
+      expect(warnings).toEqual([]);
       expect(paragraph).toContain(
         '<a:rPr lang="en-US"><a:solidFill><a:schemeClr val="accent1"><a:alpha val="40000"/></a:schemeClr></a:solidFill></a:rPr>',
       );
     });
 
-    it('没有显式填充的 run：把继承的默认文字色 tx1 写出来再带 alpha；段落结束符不加', async () => {
-      const paragraph = await applyTextEffects({ opacity: 0.4 }, '<a:rPr lang="en-US"></a:rPr>');
-      expect(paragraph).toContain(
-        '<a:rPr lang="en-US"><a:solidFill><a:schemeClr val="tx1"><a:alpha val="40000"/></a:schemeClr></a:solidFill></a:rPr>',
-      );
+    it('没有显式填充的 run：颜色可能继承自段落、占位符或形状样式，填充保持原样、不写 alpha，并给出诊断；段落结束符不报', async () => {
+      const warnings: PptxPaintWarning[] = [];
+      const paragraph = await applyTextEffects({ opacity: 0.4 }, '<a:rPr lang="en-US"></a:rPr>', warnings);
+
+      expect(paragraph).toContain('<a:rPr lang="en-US"/>');
+      expect(paragraph).not.toContain('Fill');
+      expect(paragraph).not.toContain('alpha');
       expect(paragraph).toContain('<a:endParaRPr lang="en-US" dirty="0"/>');
+      expect(warnings).toEqual([expect.objectContaining({
+        code: 'text_opacity_not_written',
+        slideNumber: 1,
+        shapeId: '2',
+        message: expect.stringContaining('继承'),
+      })]);
+    });
+
+    it('run 的填充不是纯色（空心或渐变）：同样原样保留并给出诊断，不删填充', async () => {
+      const warnings: PptxPaintWarning[] = [];
+      const paragraph = await applyTextEffects(
+        { opacity: 0.4 },
+        '<a:rPr lang="en-US"><a:noFill/></a:rPr>',
+        warnings,
+      );
+
+      expect(paragraph).toContain('<a:rPr lang="en-US"><a:noFill/></a:rPr>');
+      expect(paragraph).not.toContain('alpha');
+      expect(warnings).toHaveLength(1);
+    });
+
+    it('没有显式填充但还写了阴影：阴影照常写入，填充仍不动，诊断照给', async () => {
+      const warnings: PptxPaintWarning[] = [];
+      const paragraph = await applyTextEffects(
+        { opacity: 0.4, shadow: { color: '#000000', blur: 0, offsetX: 0, offsetY: 2 } },
+        '<a:rPr lang="en-US"></a:rPr>',
+        warnings,
+      );
+
+      expect(paragraph).toContain('<a:rPr lang="en-US"><a:effectLst><a:outerShdw');
+      expect(paragraph).not.toContain('solidFill');
+      expect(warnings).toHaveLength(1);
     });
   });
 });

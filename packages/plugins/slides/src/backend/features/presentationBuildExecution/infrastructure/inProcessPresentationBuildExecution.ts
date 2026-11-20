@@ -21,6 +21,14 @@ export function createInProcessPresentationBuildExecution(
     async compileComposePayload(payload: Parameters<PresentationBuildExecutionPort['compileComposePayload']>[0]) {
       return await compilePresentationComposePayload(payload, diagnostics);
     },
-    materializePresentation: materializePresentationPptx,
+    async materializePresentation(input: Parameters<PresentationBuildExecutionPort['materializePresentation']>[0]) {
+      const logger = new Logger('SlidesBuild');
+      return await materializePresentationPptx(input, {
+        debug() {},
+        warn(message, details) {
+          logger.warn(message, { execution: 'in-process', ...details });
+        },
+      });
+    },
   });
 }
