@@ -93,7 +93,7 @@
                 </div>
                 <span class="progress-percent">{{ file.progress }}%</span>
               </div>
-              <div v-if="file.status === 'error'" class="error-details">
+              <div v-if="file.error && (file.status === 'failed' || file.status === 'error')" class="error-details">
                 {{ file.error }}
               </div>
             </div>

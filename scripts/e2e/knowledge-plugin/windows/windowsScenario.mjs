@@ -129,6 +129,13 @@ try {
     assert.equal(listing.data.find(plugin => plugin.meta.id === 'knowledge')?.state, 'missing');
     const entries = await application.evaluate('window.electronAPI.plugins.rendererEntries()');
     assert.ok(entries.data.every(entry => entry.pluginId !== 'knowledge'));
+    // 空 profile 的默认项目会在 Backend 就绪后异步创建。等项目首页落定再操作，
+    // 避免启动导航接管页面时把市场入口的第一次点击覆盖掉。
+    await until(
+      () => application.evaluate(`Boolean(document.querySelector('.sidebar-project-list')?.innerText.includes('默认项目') && document.querySelector('.ai-assistant-input'))`),
+      Boolean,
+      'First project homepage',
+    );
     await application.clickText('插件');
     await application.clickText('插件市场');
     await application.screenshot(path.join(evidence, 'knowledge-not-installed.png'));
