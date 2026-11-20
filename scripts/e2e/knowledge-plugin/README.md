@@ -33,3 +33,5 @@
 `pnpm exec tsx scripts/e2e/knowledge-plugin/agent-lifecycle.acceptance.mjs` 在隔离 Desktop 的真实对话里发送消息，从插件商店操作启停、卸载和卸载并删除。合成模型在指定步骤等待，真实检索用随包 Qdrant。已经进入检索时要求阻止变更并显示等待提示；变更后旧响应才发来工具调用时，要求明确返回未执行、原对话完成，且新旧对话后续请求均不再看到被撤下的工具。回执记录工具名、截图、SQLite 运行与工具结果，不把启动、深搜或其它并发场景计为已验收。
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/cleanup-crash.acceptance.mjs` 点击“卸载并删除”，确认合成目录已部分删除后强制结束自己的 Backend 和 Desktop。重启后把界面状态与安装记录、激活账本和指针、卸载标记、迁移、表和残留目录逐项对账，检查 SQLite 结构，再从界面重试。这只覆盖进程崩溃时的删除目录阶段：操作系统和磁盘缓存仍在；不等同于正常关机、虚拟机强断电或物理掉电，也不代表其他写入断点或平台已验收。
+
+`pnpm exec tsx scripts/e2e/knowledge-plugin/reinstall-crash.acceptance.mjs` 用探针卸载并保留资料；另起隔离进程调用正式重装编排，精确强杀在写入安装记录后、迁移和激活前。复用同一 profile 真启动 Desktop、截图并对账。这是 B 类的诊断复现，不伪称由 UI 的安装 IPC 发起了强杀，当前应在「安装状态必须与激活指针一致」处失败；修完恢复逻辑后保留这条断言并复测。
