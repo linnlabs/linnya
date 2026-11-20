@@ -173,6 +173,7 @@ export class PreparedDeckAssembler {
       chartPlan,
       shapeTextPlan,
       markEastAsianRunLanguage: true,
+      renumberObjectIds: true,
       onWarning: (warning) => this.logger?.warn(`slides.pptx.${warning.code}`, {
         slideNumber: warning.slideNumber,
         shapeId: warning.shapeId,

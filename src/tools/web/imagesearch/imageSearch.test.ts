@@ -60,7 +60,7 @@ describe('runImageSearch', () => {
   it('两个来源交替排入候选，去掉跟踪参数，跳过不能下载的格式，并记下来源', async () => {
     const registry = new ImageSourceRegistry();
     let excluded: readonly string[] | undefined;
-    const output = await runImageSearch({ query: 'ding', max_results: 4 }, {}, {
+    const output = await runImageSearch({ query: 'ding', max_results: 4 }, { conversationId: 'conversation-1' }, {
       imageSources: registry,
       searchCommons: async () => ({
         tookMs: 1,
@@ -92,15 +92,17 @@ describe('runImageSearch', () => {
       { source: 'wikimedia_commons', status: 'ok', result_count: 2 },
       { source: 'openverse', status: 'ok', result_count: 2 },
     ]);
-    expect(registry.lookup('https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/A.jpg/1920px-A.jpg?utm_source=x'))
+    expect(registry.lookup('conversation-1', 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/A.jpg/1920px-A.jpg?utm_source=x'))
       .toMatchObject({ foundVia: 'image_search', license: { code: 'by' } });
     expect(result.observation).toContain('[c1] 1920×1440 download (original 4000×3000); CC BY 4.0 — commercial use allowed; attribution required');
     expect(result.observation).toContain('BEGIN_UNTRUSTED_WEB_CONTENT');
   });
 
   it('commercial_only 去掉非商用许可；一个来源失败时照常返回另一个并标出失败', async () => {
+    // 没有对话身份（独立基准）时不记来源：记录只属于某个对话。
+    const registry = new ImageSourceRegistry();
     const output = await runImageSearch({ query: 'ding', commercial_only: true }, {}, {
-      imageSources: new ImageSourceRegistry(),
+      imageSources: registry,
       searchCommons: async () => {
         throw new WebHttpError('rate_limited', 'Wikimedia Commons 请求失败: HTTP 429。', { status: 429 });
       },
@@ -113,6 +115,7 @@ describe('runImageSearch', () => {
     expect(result.data.candidates.map(candidate => candidate.license.code)).toEqual(['by-sa']);
     expect(result.data.sources[0]).toEqual({ source: 'wikimedia_commons', status: 'failed', result_count: 0, error_kind: 'rate_limited' });
     expect(result.observation).toContain('Wikimedia Commons failed (rate_limited)');
+    expect(registry.size).toBe(0);
   });
 
   it('全部来源失败时报错；只查一个来源时不排除 Openverse 里的 Wikimedia', async () => {

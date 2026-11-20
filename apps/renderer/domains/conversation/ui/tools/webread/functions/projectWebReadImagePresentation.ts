@@ -9,7 +9,7 @@ function displayHost(url: string): string {
 }
 
 /**
- * 下载的图片直接显示在对话里，下面一行写来源、尺寸与许可（或署名、网页版权声明）。
+ * 下载的图片直接显示在对话里，下面一行写来源、尺寸与许可（或署名、网页版权声明，并标明是网页声称、未核实）。
  * 标题只在失败时给出，供宿主画成一行错误；成功态只接纳 web_read 的正式结果合同。
  */
 export function projectWebReadImagePresentation(
@@ -56,6 +56,7 @@ export function projectWebReadImagePresentation(
         : {}),
       ...(source?.credit ? { credit: source.credit } : {}),
       ...(source?.page_rights ? { pageRights: source.page_rights } : {}),
+      ...(source?.found_via === 'web_page' ? { pageClaim: true as const } : {}),
     },
   };
 }

@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { createLocalConversationArtifactsDeletionPort } from '../../../app-hosts/linnya/adapters/conversation-artifacts/createLocalConversationArtifactsDeletionPort';
+import { getImageSourceRegistry } from '../../../tools/web/shared/images/imageSourceRegistry';
 
 import type {
   CommandExecutionOwnerPort,
@@ -66,6 +67,7 @@ export function createConversationRouteLifecycle(input: {
   const directories = createLocalConversationDirectoryPort({ storageRoot: input.storageRoot });
   const facts = createEventStoreConversationFactsPort(input.eventStore);
   const factsDeletion = createEventStoreConversationFactsDeletionPort(input.eventStore);
+  const localArtifacts = createLocalConversationArtifactsDeletionPort({ artifactsRoot: input.artifactsRoot });
   const scope = createConversationLifecycleApplicationScope({
     cleanupJobs: jobs,
     directories,
@@ -81,7 +83,13 @@ export function createConversationRouteLifecycle(input: {
         gate: scope.gate,
         jobs,
         directories,
-        artifacts: createLocalConversationArtifactsDeletionPort({ artifactsRoot: input.artifactsRoot }),
+        artifacts: {
+          async deleteForConversation(conversationId) {
+            // 本进程内按对话记下的图片来源随对话删除回收；清空工作目录不走这里。
+            getImageSourceRegistry().forgetConversation(conversationId);
+            await localArtifacts.deleteForConversation(conversationId);
+          },
+        },
         approvals: binding.approvals,
         commandCardSettlements: {
           async deleteForConversationAndWait(conversationId) {

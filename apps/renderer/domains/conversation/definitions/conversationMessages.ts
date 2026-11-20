@@ -502,6 +502,7 @@ export type ConversationMessageKey =
   | 'conversation.tool.webReadImage.otherTerms'
   | 'conversation.tool.webReadImage.credit'
   | 'conversation.tool.webReadImage.pageRights'
+  | 'conversation.tool.webReadImage.pageClaimUnverified'
   | 'conversation.tool.webReadImage.noLicense'
   | 'conversation.tool.webReadImage.openSource'
   | 'conversation.tool.webSearch.failed'

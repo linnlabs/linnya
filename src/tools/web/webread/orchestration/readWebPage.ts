@@ -7,7 +7,10 @@ import {
   type WebReadCitation,
 } from '@app/schemas';
 import { resolveToolResultImageDelivery, type ToolContext } from '../../../types';
-import { requireToolConversationScope } from 'src/app-hosts/linnya/adapters/tools/conversation-scope';
+import {
+  requireToolConversationScope,
+  resolveToolConversationId,
+} from 'src/app-hosts/linnya/adapters/tools/conversation-scope';
 import { assertAllowedWebUrl } from '../../shared/urlPolicy';
 import { normalizeUrl } from '../../websearch/citations/normalizeUrl';
 import type { WebReadLadderResult } from '../definitions/readLadder';
@@ -277,32 +280,44 @@ export async function runReadWebPage(
   const file = saved?.receipt;
   context.abortSignal?.throwIfAborted();
   const imageSources = dependencies.imageSources ?? getImageSourceRegistry();
-  // 网页上的图片候选：记下出现在哪一页、图注与署名，之后下载同一地址时写进回执。
+  // 来源记录按对话划分；缺少对话身份时不记也不查（下方取引用编号时会按缺少 conversationId 报错）。
+  const imageScope = resolveToolConversationId(context);
+  // 网页上的图片候选：记下出现在哪一页、图注与署名，之后同一对话下载同一地址时写进回执。
   // 正文里的图片链接（Markdown 图片）也记下出现在哪一页：页面主图列表只收有尺寸依据的大图，
   // 模型可能从正文里拿到别的图片地址去下载。列表里的图后写入，带上图注与署名。
-  if (!readResult.filePayload) {
-    for (const match of readResult.content.matchAll(/!\[([^\]\n]{0,300})\]\((https?:\/\/[^\s)]+)/gu)) {
-      imageSources.remember(match[2]!, {
+  // 正文链接的文字谁都能写，可信度最低，不顶替已有的图片检索或图片标记记录。
+  if (imageScope) {
+    const pageUrl = normalizeUrl(readResult.finalUrl);
+    const title = readResult.title.trim() ? { title: readResult.title.trim().slice(0, 300) } : {};
+    const pageRights = readResult.pageRights ? { pageRights: readResult.pageRights } : {};
+    if (!readResult.filePayload) {
+      for (const match of readResult.content.matchAll(/!\[([^\]\n]{0,300})\]\((https?:\/\/[^\s)]+)/gu)) {
+        const caption = match[1]?.trim();
+        imageSources.remember(imageScope, match[2]!, {
+          foundVia: 'web_page',
+          pageEvidence: 'text_link',
+          pageUrl,
+          ...title,
+          ...(caption ? { caption: caption.slice(0, 500) } : {}),
+          ...pageRights,
+        });
+      }
+    }
+    for (const pageImage of readResult.images ?? []) {
+      const caption = pageImage.caption ?? pageImage.alt;
+      imageSources.remember(imageScope, pageImage.url, {
         foundVia: 'web_page',
-        pageUrl: normalizeUrl(readResult.finalUrl),
-        ...(readResult.title.trim() ? { title: readResult.title.trim().slice(0, 300) } : {}),
-        ...(match[1]?.trim() ? { caption: match[1].trim().slice(0, 500) } : {}),
-        ...(readResult.pageRights ? { pageRights: readResult.pageRights } : {}),
+        pageEvidence: 'page_image',
+        pageUrl,
+        ...title,
+        ...(caption ? { caption: caption.slice(0, 500) } : {}),
+        ...(pageImage.credit ? { credit: pageImage.credit } : {}),
+        ...pageRights,
       });
     }
   }
-  for (const pageImage of readResult.images ?? []) {
-    imageSources.remember(pageImage.url, {
-      foundVia: 'web_page',
-      pageUrl: normalizeUrl(readResult.finalUrl),
-      ...(readResult.title.trim() ? { title: readResult.title.trim().slice(0, 300) } : {}),
-      ...(pageImage.caption ?? pageImage.alt ? { caption: (pageImage.caption ?? pageImage.alt)!.slice(0, 500) } : {}),
-      ...(pageImage.credit ? { credit: pageImage.credit } : {}),
-      ...(readResult.pageRights ? { pageRights: readResult.pageRights } : {}),
-    });
-  }
-  const imageRecord = readResult.filePayload?.image
-    ? imageSources.lookup(params.url, readResult.finalUrl)
+  const imageRecord = imageScope && readResult.filePayload?.image
+    ? imageSources.lookup(imageScope, params.url, readResult.finalUrl)
     : undefined;
   const image = readResult.filePayload?.image
     ? {

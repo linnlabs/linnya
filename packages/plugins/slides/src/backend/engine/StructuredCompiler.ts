@@ -140,6 +140,7 @@ export class StructuredCompiler {
       chartPlan,
       declaredThemeFonts: deckSpec.theme?.fonts,
       markEastAsianRunLanguage: true,
+      renumberObjectIds: true,
     });
   }
 

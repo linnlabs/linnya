@@ -26,6 +26,7 @@ import {
 import {
   CONVERSATION_SCHEMAS,
 } from '../../../app-hosts/linnya/adapters/persistence/event-store/conversation.schema';
+import { getImageSourceRegistry } from '../../../tools/web/shared/images/imageSourceRegistry';
 import { createConversationRouteLifecycle } from './createConversationRouteLifecycle';
 
 function createUserInput(conversationId: string): RuntimeEvent {
@@ -129,8 +130,14 @@ describe('createConversationRouteLifecycle', () => {
         byteSize: 5,
         fileCount: 1,
       });
+      const imageSources = getImageSourceRegistry();
+      const imageUrl = 'https://cdn.example.com/route-lifecycle.jpg';
+      const imageRecord = { foundVia: 'web_page', pageUrl: 'https://example.com/page' } as const;
+      imageSources.remember(clearedConversationId, imageUrl, imageRecord);
       await expect(cleanup.requestWorkDirectoryClear(clearedConversationId))
         .resolves.toBe('cleared');
+      // 清空工作目录保留聊天，聊天里看到过的图片来源仍然成立。
+      expect(imageSources.lookup(clearedConversationId, imageUrl)).toEqual(imageRecord);
       await expectMissing(clearedDirectory);
       await expect(lifecycle.workDirectoryUsage.measureWorkDirectory(
         deriveConversationWorkDirectoryIdentity(clearedConversationId),
@@ -158,7 +165,10 @@ describe('createConversationRouteLifecycle', () => {
         return directory.absolutePath;
       });
 
+      imageSources.remember(requestedConversationId, imageUrl, imageRecord);
       await expect(cleanup.requestDeletion(requestedConversationId)).resolves.toBe(true);
+      expect(imageSources.lookup(requestedConversationId, imageUrl)).toBeUndefined();
+      expect(imageSources.lookup(clearedConversationId, imageUrl)).toEqual(imageRecord);
       await expectMissing(requestedDirectory);
       for (const markerPath of metadataPaths(storageRoot, requestedConversationId)) {
         await expectMissing(markerPath);
