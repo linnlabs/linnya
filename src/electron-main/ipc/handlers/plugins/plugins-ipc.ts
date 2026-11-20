@@ -73,6 +73,7 @@ const pluginDataSummaryCache = new Map<string, {
   readonly expiresAt: number;
   readonly data: PluginDataSummary;
 }>();
+const pluginDataSummaryPending = new Set<string>();
 
 function manifestForPlugin(pluginId: string, bundledRoot: string | null): ReturnType<typeof parsePluginManifest> | null {
   const registered = getRegisteredBackendPluginDirectory(pluginId);
@@ -111,12 +112,11 @@ function cleanupDescriptorForPlugin(pluginId: string, bundledRoot: string | null
   return { manifest: source.manifest, dataRoot };
 }
 
-async function enrichPluginStates(
+function enrichPluginStates(
   states: ReturnType<PluginStateService['listStates']>,
-  db: Database.Database,
   bundledRoot: string | null,
-): Promise<ReturnType<PluginStateService['listStates']>> {
-  const workspaceRoot = pathManager.getWorkspaceRoot();
+  scheduleSummary: (state: ReturnType<PluginStateService['listStates']>[number], manifest: ReturnType<typeof parsePluginManifest>) => void,
+): ReturnType<PluginStateService['listStates']> {
   const enriched: ReturnType<PluginStateService['listStates']> = [];
   for (const state of states) {
     const manifest = manifestForPlugin(state.meta.id, bundledRoot);
@@ -135,10 +135,23 @@ async function enrichPluginStates(
       enriched.push({ ...state, data: cached.data });
       continue;
     }
-    // 让出主进程事件循环：占用统计可能递归访问成千上万个文件，不能阻塞
-    // 插件列表的其它状态；单个插件失败只记录诊断，不让整页消失。
-    await new Promise<void>(resolve => setImmediate(resolve));
+    scheduleSummary(state, manifest);
+    enriched.push(state);
+  }
+  return enriched;
+}
+
+function schedulePluginDataSummary(
+  state: ReturnType<PluginStateService['listStates']>[number],
+  manifest: ReturnType<typeof parsePluginManifest>,
+  db: Database.Database,
+  onUpdated: () => void,
+): void {
+  if (pluginDataSummaryPending.has(state.meta.id)) return;
+  pluginDataSummaryPending.add(state.meta.id);
+  void (async () => {
     try {
+      await new Promise<void>(resolve => setImmediate(resolve));
       const dataRoot = getRegisteredBackendPluginDirectory(state.meta.id)
         ? resolveRegisteredPluginDataRoot(state.meta.id)
         : resolvePluginDataRootForManifest({
@@ -152,21 +165,32 @@ async function enrichPluginStates(
         dataRoot,
         dataStorage: manifest.dataStorage,
         pluginInstalled: state.state !== 'missing',
-        workspaceRoot,
+        workspaceRoot: pathManager.getWorkspaceRoot(),
       });
       pluginDataSummaryCache.set(state.meta.id, { expiresAt: Date.now() + PLUGIN_DATA_SUMMARY_CACHE_TTL_MS, data });
-      enriched.push({ ...state, data });
     } catch (error) {
+      pluginDataSummaryCache.set(state.meta.id, {
+        expiresAt: Date.now() + PLUGIN_DATA_SUMMARY_CACHE_TTL_MS,
+        data: {
+          status: 'unavailable',
+          bytes: 0,
+          directories: { source: 0, derived: 0, runtime: 0 },
+          tables: {},
+          errorCode: 'unknown',
+          canDelete: false,
+        },
+      });
       pluginDiagnostics.record({
         level: 'warn',
         pluginId: state.meta.id,
         capability: null,
         message: `读取插件数据占用失败，已降级显示插件状态: ${error instanceof Error ? error.message : String(error)}`,
       });
-      enriched.push(state);
+    } finally {
+      pluginDataSummaryPending.delete(state.meta.id);
+      onUpdated();
     }
-  }
-  return enriched;
+  })();
 }
 
 function throwPluginOperationResultFailure(result: {
@@ -343,7 +367,14 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:list', async () => {
     try {
-      return { success: true, data: await enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot()) };
+      return {
+        success: true,
+        data: enrichPluginStates(
+          getService().listStates(listKnownPluginMetas()),
+          resolveBundledPluginRoot(),
+          (state, manifest) => schedulePluginDataSummary(state, manifest, databaseService.getDb(), input.rendererIntegration.publishPluginsChanged),
+        ),
+      };
     } catch (error) {
       logger.error('[plugins:list] failed:', error);
       return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -352,7 +383,11 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:store-list', async () => {
     try {
-      const states = await enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot());
+      const states = enrichPluginStates(
+        getService().listStates(listKnownPluginMetas()),
+        resolveBundledPluginRoot(),
+        (state, manifest) => schedulePluginDataSummary(state, manifest, databaseService.getDb(), input.rendererIntegration.publishPluginsChanged),
+      );
       const bundledPluginRoot = resolveBundledPluginRoot();
       const bundledPluginIds = bundledPluginRoot
         ? new Set(listBundledPluginManifestIds(bundledPluginRoot))
@@ -376,7 +411,11 @@ export async function registerPluginsHandlers(input: {
       const directPluginDirs = [
         ...new Set([...readBackendDirectPluginDirsFromEnv(), ...readDirectPluginDirsFromEnv()]),
       ];
-      const states = await enrichPluginStates(getService().listStates(listKnownPluginMetas()), databaseService.getDb(), resolveBundledPluginRoot());
+      const states = enrichPluginStates(
+        getService().listStates(listKnownPluginMetas()),
+        resolveBundledPluginRoot(),
+        (state, manifest) => schedulePluginDataSummary(state, manifest, databaseService.getDb(), input.rendererIntegration.publishPluginsChanged),
+      );
       const state = states.find(item => item.meta.id === pluginId);
       if (!state) {
         throw new Error(`未知插件: ${pluginId}`);

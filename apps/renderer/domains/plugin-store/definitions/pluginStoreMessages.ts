@@ -100,6 +100,7 @@ export type PluginStoreMessageKey =
   | 'pluginStore.dialog.cancel'
   | 'pluginStore.dialog.uninstallDelete'
   | 'pluginStore.data.title'
+  | 'pluginStore.data.ariaLabel'
   | 'pluginStore.data.total'
   | 'pluginStore.data.source'
   | 'pluginStore.data.derived'

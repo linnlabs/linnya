@@ -35,7 +35,7 @@ function statusLabel(status: PluginDataSummary['status']): string {
 </script>
 
 <template>
-  <section class="plugin-data-panel plugin-store-detail-section" aria-label="本机数据">
+  <section class="plugin-data-panel plugin-store-detail-section" :aria-label="pluginStoreMessage('pluginStore.data.ariaLabel')">
     <div class="plugin-data-panel__header">
       <h2>{{ pluginStoreMessage('pluginStore.data.title') }}</h2>
       <span v-if="data.status !== 'empty'" class="plugin-data-panel__total">{{ pluginStoreMessage('pluginStore.data.total', { bytes: formatStorageBytes(data.bytes, locale) }) }}</span>

@@ -940,6 +940,8 @@ async function retryDataCleanup(item: PluginStoreListItem): Promise<void> {
 
 async function stopDataCleanup(item: PluginStoreListItem): Promise<void> {
   await window.electronAPI?.plugins.stopCleanup(item.meta.id);
+  await refreshPluginStoreItems();
+  await refreshSelectedPluginDetail(item.meta.id);
 }
 
 async function executeUninstall(item: PluginStoreListItem, deleteData: boolean): Promise<void> {

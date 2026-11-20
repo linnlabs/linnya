@@ -11,6 +11,7 @@ import {
   resumePluginDataCleanup,
 } from './pluginDataCleanup';
 import { readPluginManifestForCleanup } from './pluginDataManifest';
+import { resolvePluginDataRoot } from './pluginDataRoot';
 import { uninstallPluginAndDeleteData } from '../../install/orchestration/uninstallPluginLifecycle';
 import { PLUGIN_PLATFORM_STATE_SCHEMAS } from '../sqlite/plugin-state.schema';
 
@@ -188,5 +189,42 @@ describe('plugin data cleanup', () => {
     expect(source?.kind).toBe('bundled');
     expect(source?.manifest.id).toBe('demo');
     expect(readPluginManifestForCleanup({ pluginId: 'demo' })).toBeNull();
+  });
+
+  it('D1: 已卸载插件只能从随包声明解析数据根并完成删除', async () => {
+    const { root, db } = fixture();
+    const bundledRoot = path.join(root, 'bundled');
+    const bundledPluginDir = path.join(bundledRoot, 'demo');
+    fs.mkdirSync(bundledPluginDir, { recursive: true });
+    fs.writeFileSync(path.join(bundledPluginDir, 'plugin.json'), JSON.stringify({
+      id: 'demo',
+      version: '1.0.0',
+      name: 'Demo',
+      description: 'Demo',
+      developer: 'Linnya',
+      details: ['Demo'],
+      entry: { backend: './dist/backend/index.cjs' },
+      ownedTables,
+      dataStorage: storage,
+    }));
+    const source = readPluginManifestForCleanup({ pluginId: 'demo', bundledPluginRoot: bundledRoot });
+    if (!source) throw new Error('expected bundled manifest');
+    const dataRoot = resolvePluginDataRoot({
+      workspaceRoot: path.dirname(root),
+      pluginId: 'demo',
+      dataStorage: source.manifest.dataStorage,
+      allowLegacyRoots: true,
+    });
+    expect(dataRoot).toBe(path.join(path.dirname(root), 'Plugins', 'demo'));
+    const result = await cleanupPluginData({
+      db,
+      pluginId: 'demo',
+      dataRoot: root,
+      dataStorage: source.manifest.dataStorage,
+      ownedTables: source.manifest.ownedTables,
+    });
+    expect(result.status).toBe('completed');
+    expect(fs.existsSync(path.join(root, 'source'))).toBe(false);
+    db.close();
   });
 });
