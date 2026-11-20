@@ -39,3 +39,7 @@
 `pnpm exec tsx scripts/e2e/knowledge-plugin/reinstall-crash.acceptance.mjs` 用探针卸载并保留资料；另起隔离进程调用正式重装编排，在子进程已写入安装记录、尚未迁移和激活时强杀。复用同一 profile 真启动 Desktop，要求未提交重装仍可从商店安装，并保留原迁移及数据目录。这是进程崩溃回归，不把单独进程的精确断点写成从安装 IPC 点击触发的强杀。
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/lifecycle-checkpoint.acceptance.mjs <checkpoint>` 从真实知识库界面创建测试库，停止 Desktop 后在同一隔离 profile 调用正式生命周期，并在精确写入点强杀验收子进程。支持 `uninstall-before-intent`、`uninstall-before-marker`、`cleanup-before-commit`、`cleanup-after-commit`。重新启动后从商店核对界面与 SQLite、激活记录、卸载标记和文件；清理最终事务未提交时，必须能从商店续清，事务已提交时不能出现假的“数据残留”。这些断点不模拟操作系统断电。
+
+`pnpm exec tsx scripts/e2e/knowledge-plugin/upgrade-checkpoint.acceptance.mjs <case>` 只能在系统临时目录下的独立 `linnya-knowledge-upgrade.*` linked checkout 运行。独立安装依赖、构建 `package:plugins:official`、`prepare:extra-resources` 和 `dev:electron --build-only` 后，脚本从真实旧产物创建库，再在该独立检出中生成带下一版迁移的测试 artifact。`during-migration`、`before-pointer`、`after-pointer` 验证正式升级编排的精确进程中断；`automatic-upgrade`、`rejected-migration`、`removed-before-upgrade` 用真实 Desktop 的随包启动路径验证。该测试不使用实际新版安装器，也不模拟 OS 断电。
+
+`pnpm exec tsx scripts/e2e/knowledge-plugin/large-cleanup.acceptance.mjs` 在已构建的磁盘 Renderer 探针里，以 20,000 个隔离文件检查占用显示、实际删除中点停与重试完成；不是 20,000 篇资料摄入或索引性能的证据。
