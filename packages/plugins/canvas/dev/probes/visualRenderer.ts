@@ -393,8 +393,10 @@ async function beginFadeVisual(software = false) {
 async function readFadeVisual() {
   const state = fadeFixture; if (!state) throw new Error('fade_fixture_missing');
   // 淡入只有120ms，慢机上PNG编码就可能比它长。截图在调用时同步绘制，读数必须在await之前取，图与读数才是同一时刻。
+  // elapsed取在截图之前：画面用的透明度来自此前最后一次淡入脉冲，进度不会超过它。
+  const elapsed = performance.now() - state.started;
   const image = state.kernel.captureImage('png');
-  const facts = { elapsed: performance.now() - state.started, dpr: state.kernel.readResolution(), sampling: readCanvasVisualSampling(state.kernel, 'interactive'),
+  const facts = { elapsed, dpr: state.kernel.readResolution(), sampling: readCanvasVisualSampling(state.kernel, 'interactive'),
     stats: state.kernel.readStats(), oldWidth: state.old.width, blueWidth: state.blue.width, greenWidth: state.green?.width ?? 0,
     rendered: state.kernel.readRasterReceipt(state.card.id, state.green ? 'green' : 'new')?.rendered ?? false,
     reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
