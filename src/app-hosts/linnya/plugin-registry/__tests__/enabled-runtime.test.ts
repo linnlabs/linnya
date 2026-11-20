@@ -189,7 +189,8 @@ describe('runtime enabled plugin gating', () => {
     expect(await registry.executeTool('unknown_fixture_tool', {}, context)).toMatchObject({
       success: false, errorKind: 'protocol',
     });
-    expect(await registry.executeTool(toolName, {}, { registeredRootAllowedTools: [] })).toMatchObject({
+    const denied: ToolContext = { registeredRootAllowedTools: [] };
+    expect(await registry.executeTool(toolName, {}, denied)).toMatchObject({
       success: false, errorCode: 'REGISTERED_ROOT_TOOL_NOT_ALLOWED',
     });
     expect(runtimeGateDecoratorCalls).toEqual([]);
