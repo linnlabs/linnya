@@ -5,7 +5,7 @@ import { mapTrustedRendererApplicationSurfaces } from '../../../../app-hosts/lin
 import { getRegisteredBackendPluginDirectory } from '../../../../app-hosts/linnya/plugin-registry/builtin';
 import type { BackendRuntimeOwner } from '../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import type { BackendRendererIpcStyleRegistrarPort } from '../../../../app-hosts/linnya/adapters/backend-renderer-requests';
-import type { BackendRendererIntegrationPort } from '../../../../app-hosts/linnya/desktop-capabilities';
+import type { BackendRendererIntegrationPort, DesktopFileRevealPort } from '../../../../app-hosts/linnya/desktop-capabilities';
 import { PluginStateService } from '../../../../features/plugins/infrastructure/sqlite/plugin-state.service';
 import {
   ensureBuiltinBackendPluginsRegistered,
@@ -274,6 +274,7 @@ export async function registerPluginsHandlers(input: {
   readonly applicationVersion: string;
   readonly packaged: boolean;
   readonly distributionIdentity: DistributionIdentity;
+  readonly fileReveal: DesktopFileRevealPort;
   readonly rendererIntegration: Pick<BackendRendererIntegrationPort, 'publishPluginsChanged' | 'publishPluginDataChanged'>;
 }): Promise<void> {
   const databaseService = input.runtimeOwner.getServices().databaseService;
@@ -366,14 +367,18 @@ export async function registerPluginsHandlers(input: {
     return { success: true };
   });
 
-  input.ipc.handle('plugins:get-data-path', async (_event, rawPluginId: unknown) => {
-    const pluginId = parsePluginId(rawPluginId, 'plugins:get-data-path');
+  input.ipc.handle('plugins:reveal-data', async (_event, rawPluginId: unknown) => {
+    const pluginId = parsePluginId(rawPluginId, 'plugins:reveal-data');
     try {
       const descriptor = resolvePluginCleanupDescriptor(pluginId);
-      if (!descriptor) throw new PluginOperationError('source-unavailable', `找不到插件 ${pluginId} 的可信清理声明`, { pluginId });
-      return { success: true, data: { path: descriptor.dataRoot } };
+      if (!descriptor || !declaresCleanableData(descriptor.manifest)) {
+        throw new PluginOperationError('source-unavailable', `找不到插件 ${pluginId} 的可信清理声明`, { pluginId });
+      }
+      // 清理与定位必须指向同一数据根。只把已存在的路径交给 Desktop。
+      await input.fileReveal.revealInFileManager(await fs.promises.realpath(descriptor.dataRoot));
+      return { success: true };
     } catch (error) {
-      logger.error('[plugins:get-data-path] failed:', error);
+      logger.error('[plugins:reveal-data] failed:', error);
       return { success: false, error: classifyPluginOperationError(error, pluginId) };
     }
   });

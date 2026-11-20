@@ -406,9 +406,9 @@ declare global {
         stopCleanup: (
           pluginId: string
         ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
-        getDataPath: (
+        revealData: (
           pluginId: string
-        ) => Promise<{ success: boolean; data?: { path: string }; error?: PluginOperationFailure }>;
+        ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
         setEnabled: (
           pluginId: string,
           enabled: boolean

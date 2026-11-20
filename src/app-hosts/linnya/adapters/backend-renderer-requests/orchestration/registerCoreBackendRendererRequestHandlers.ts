@@ -90,6 +90,7 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
     applicationVersion: input.applicationVersion,
     packaged: input.packaged,
     distributionIdentity: input.distributionIdentity,
+    fileReveal: input.fileReveal,
     rendererIntegration: input.rendererIntegration,
   });
 }

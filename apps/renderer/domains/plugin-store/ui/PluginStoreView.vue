@@ -910,10 +910,8 @@ function openDataDelete(item: PluginStoreListItem): void {
 function showDataLocation(item: PluginStoreListItem): void {
   void (async () => {
     try {
-      const result = await window.electronAPI?.plugins.getDataPath(item.meta.id);
-      if (!result?.success || !result.data) throw new Error('data path unavailable');
-      const revealed = await window.electronAPI?.showItemInFolder(result.data.path);
-      if (!revealed?.success) throw new Error('file manager reveal failed');
+      const result = await window.electronAPI?.plugins.revealData(item.meta.id);
+      if (!result?.success) throw new Error('file manager reveal failed');
     } catch {
       notificationStore.show(pluginStoreMessage('pluginStore.data.revealFailed'), 'error', 3500);
     }

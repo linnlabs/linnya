@@ -170,7 +170,7 @@ const PLUGIN_CHANNELS = [
   'plugins:uninstall',
   'plugins:cleanup-data',
   'plugins:stop-cleanup',
-  'plugins:get-data-path',
+  'plugins:reveal-data',
   'plugins:set-enabled',
   'plugins-changed',
   'plugins-data-changed',
