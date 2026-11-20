@@ -150,7 +150,8 @@ try {
       const up = await start();
       await run('wait', '--selector', sidebar);
       await run('click', '--selector', sidebar);
-      await click('button', '新建知识库', 'main');
+      await run('wait', '--text', '新建知识库');
+      await run('click', 'text=新建知识库');
       await run('click', '--selector', '#new-kb-name');
       await run('type', libraryName);
       await click('button', '创建', '.modal-overlay');
