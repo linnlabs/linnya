@@ -16,6 +16,8 @@
 
 同一场景从商店走默认保留与卸载删除两条分支，核对入口、运行产物、原文、Qdrant 集合、SQLite 状态和迁移账本。保留后重装要使用原索引、默认启用，且不能为旧资料重发嵌入请求；删除后重装必须是空库。保留和删除之后从普通用户端用 Win32 `FileStandardInfo.AllocationSize` 直接读取 NTFS 的实际分配量。原值留在证据里；按每个条目的完整 512 字节块转换后，与商店字节数和分类展示对照。不能用文件逻辑长度，或把另一次 `stat.blocks` 当成独立证据。
 
+故障场景由普通用户抢先在回环地址持有端口，从上传界面触发 Qdrant 绑定失败；释放端口、在商店停启后，同一个 App 必须继续完成实际摄入与检索。清理场景另用普通用户的真实 NTFS 文件句柄拒绝删除，核对残留提示和安装门禁；释放句柄后从详情重试。两种故障不修改虚拟机系统或主应用的数据。
+
 需要永久回执时通过工作台 `wb verify --require-evidence` 执行；默认 `createEvidence` 也会保留本机证据目录。失败场景不会自动置绿，清理时发现需要强制终止的残留进程也会失败。
 
 ## 索引重建回归
@@ -42,7 +44,7 @@
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/cleanup-crash.acceptance.mjs` 点击“卸载并删除”，确认合成目录已部分删除后强制结束自己的 Backend 和 Desktop。重启后把界面状态与安装记录、激活账本和指针、卸载标记、迁移、表和残留目录逐项对账，检查 SQLite 结构，再从界面重试。这只覆盖进程崩溃时的删除目录阶段：操作系统和磁盘缓存仍在；不等同于正常关机、虚拟机强断电或物理掉电，也不代表其他写入断点或平台已验收。
 
-`pnpm exec tsx scripts/e2e/knowledge-plugin/reinstall-crash.acceptance.mjs` 用探针卸载并保留资料；另起隔离进程调用正式重装编排，在子进程已写入安装记录、尚未迁移和激活时强杀。复用同一 profile 真启动 Desktop，要求未提交重装仍可从商店安装，并保留原迁移及数据目录。这是进程崩溃回归，不把单独进程的精确断点写成从安装 IPC 点击触发的强杀。
+`pnpm exec tsx scripts/e2e/knowledge-plugin/reinstall-crash.acceptance.mjs <install|reinstall> <checkpoint>` 由探针准备新用户或卸载保留后的 profile；另起隔离进程调用正式随包安装与迁移编排，在实际写入点强杀，再打开同一 profile 的商店与知识库验证。共享断点：`after-stage`、`after-install-record`、`before-commit`、`before-pointer`（SQLite 已提交）、`after-pointer`。首次安装另外验证 `during-migration`；重装另外验证 `before-removal-marker`、`after-removal-marker`，保留重装不重跑迁移。未提交应仍能从商店安装；已提交应恢复激活，启用状态、SQLite、指针、卸载标记和文件须一致。这是进程崩溃回归，不把单独进程的精确断点写成从安装 IPC 点击触发的强杀。
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/lifecycle-checkpoint.acceptance.mjs <checkpoint>` 从真实知识库界面创建测试库，停止 Desktop 后在同一隔离 profile 调用正式生命周期，并在精确写入点强杀验收子进程。支持 `uninstall-before-intent`、`uninstall-before-marker`、`cleanup-before-commit`、`cleanup-after-commit`。重新启动后从商店核对界面与 SQLite、激活记录、卸载标记和文件；清理最终事务未提交时，必须能从商店续清，事务已提交时不能出现假的“数据残留”。这些断点不模拟操作系统断电。
 

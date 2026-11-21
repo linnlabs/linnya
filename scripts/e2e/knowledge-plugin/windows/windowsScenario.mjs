@@ -3,6 +3,7 @@ import { readFile, writeFile, stat, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
+import { createServer } from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
 import { startCustomCapabilityProtocolServer } from '../../../../src/app-hosts/linnya/application/custom-api-onboarding/__tests__/fixtures/customCapabilityProtocolServer.ts';
 import { MODEL_CONNECTION_TEST_PDF } from '../../../../src/app-hosts/linnya/application/custom-api-onboarding/definitions/modelConnectionTestDocument.ts';
@@ -224,6 +225,52 @@ try {
   });
   database = new DatabaseSync(path.join(application.workspace, 'workspace/workspace.sqlite'), {
     readOnly: true,
+  });
+  await check('Windows Qdrant 监听端口被占用：上传提示原因，释放端口并停启后可恢复', async () => {
+    const occupied = createServer(socket => socket.destroy());
+    // 只绑定隔离虚拟机的产品监听地址；如果不是我们持有该端口，立即退出，不动现有进程。
+    await new Promise((resolve, reject) => {
+      occupied.once('error', reject);
+      occupied.listen({ host: '127.0.0.1', port: 6333, exclusive: true }, resolve);
+    });
+    const filename = 'occupied-qdrant-port.md';
+    try {
+      await application.clickText(kbName);
+      await application.clickText('文件上传');
+      assert.equal(await application.evaluate(`(() => {
+        const input = document.querySelector('.upload-tab input[type="file"]');
+        if (!input) return false;
+        const transfer = new DataTransfer();
+        transfer.items.add(new File(['# Synthetic port check\nApple orchard.'], ${json(filename)}, { type: 'text/markdown' }));
+        input.files = transfer.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()`), true);
+      await application.clickText('开始解析');
+      const message = await until(
+        () => application.evaluate(`document.querySelector('.upload-tab:has(.status-failed)')?.innerText ?? ''`),
+        Boolean,
+        'Upload visibly failed after the Qdrant bind conflict',
+        60_000,
+      );
+      await application.screenshot(path.join(evidence, 'qdrant-occupied-port.png'));
+      await collectQdrantLog('qdrant-occupied-port.log');
+      details.portConflict = { message, listener: occupied.address() };
+      assert.match(message, /向量服务.*未能启动.*重新启用/u);
+      assert.ok(!message.includes(root));
+      assert.match(await readFile(path.join(evidence, 'qdrant-occupied-port.log'), 'utf8'), /10048|address.+in use|only one usage/iu);
+    } finally {
+      await new Promise((resolve, reject) => occupied.close(error => error ? reject(error) : resolve()));
+    }
+    await application.clickText('插件');
+    const toggle = 'document.querySelector(\'.switch-control:has(input[aria-label="知识库 启用状态"])\')';
+    await application.clickElement(toggle);
+    await until(() => application.evaluate(`${toggle}?.querySelector('input').checked`), value => value === false, 'Disabled after port conflict');
+    await application.clickElement(toggle);
+    await until(() => application.evaluate(`${toggle}?.querySelector('input').checked`), value => value === true, 'Reenabled after port conflict');
+    assert.equal((await docs()).some(document => document.filename === filename && document.status === 'completed'), false);
+    await application.screenshot(path.join(evidence, 'qdrant-occupied-port-reenabled.png'));
+    // 下一项的真实摄入和图谱检索必须在同一个 App、同一个库中成功，证明不仅是按钮状态恢复。
   });
   fixture.setChatResponse(request => {
     const text = request.messages

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { settleExpression } from '../../../development/features/desktop-probe/orchestration/probePage.mjs';
 import { until } from './installedDesktopSession.mjs';
@@ -318,5 +319,62 @@ export async function verifyWindowsPluginData({
       ['ok']
     );
     await screenshotState('empty', 'reinstalled-empty');
+  });
+
+  await check('Windows NTFS 文件被占用：清理显示残留，阻止重装，释放后可在详情页重试', async () => {
+    const source = path.join(dataRoot, 'source_of_truth');
+    await mkdir(source, { recursive: true });
+    const target = path.join(source, 'windows-e7-owned-lock.txt');
+    const bytes = 'Synthetic retained source held by an ordinary user.\n'.repeat(1024);
+    await writeFile(target, bytes, { flag: 'wx' });
+    // 只锁本轮新建文件。允许读和分配量测量，但显式拒绝共享删除，区别于 ACL 权限不足。
+    const script = `$ErrorActionPreference='Stop'; $handle=[IO.File]::Open('${target.replaceAll("'", "''")}', 'Open', 'Read', 'Read'); try { [Console]::WriteLine('LOCKED'); [void][Console]::ReadLine() } finally { $handle.Dispose() }`;
+    const holder = spawn('powershell.exe', [
+      '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64'),
+    ], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    holder.stdout.on('data', chunk => { stdout += chunk; });
+    holder.stderr.on('data', chunk => { stderr += chunk; });
+    const exit = new Promise((resolve, reject) => {
+      holder.once('error', reject);
+      holder.once('close', resolve);
+    });
+    void exit.catch(() => {});
+    try {
+      await until(() => {
+        assert.equal(holder.exitCode, null, stderr);
+        return stdout.includes('LOCKED');
+      }, Boolean, 'NTFS lock held by a real Windows file handle', 15_000);
+      // 先退出详情再进入，让原文的独立夹具被新的占用采样发现。
+      await application.clickText('插件');
+      await application.clickElement(
+        '[...document.querySelectorAll(".plugin-store-card")].find(el => el.querySelector("h2")?.textContent.trim() === "知识库")'
+      );
+      await waitFor(`${panel} .is-installed`);
+      await click('.plugin-store-uninstall-button');
+      await click(`${dialog} .plugin-store-uninstall-dialog label`);
+      await confirm('卸载并删除');
+      await screenshotState('failed', 'ntfs-file-locked');
+      const locked = await facts();
+      observations.lockedSource = { ...locked, message: await text(`${panel} .plugin-data-panel__reason`) };
+      assert.equal(locked.installation.installed, 0);
+      assert.equal(locked.installation.user_removed, 1);
+      assert.equal(locked.cleanup?.status, 'failed');
+      assert.equal(locked.cleanup?.error_code, 'file-locked');
+      assert.match(observations.lockedSource.message, /占用/u);
+      assert.equal(await readFile(target, 'utf8'), bytes);
+      assert.equal(await present(install), false);
+    } finally {
+      holder.stdin.end('\n');
+      assert.equal(await exit, 0, stderr);
+    }
+    await application.clickElement(`Array.from(document.querySelectorAll('${panel} button')).find(button => button.textContent.trim() === '重试')`);
+    await screenshotState('empty', 'ntfs-file-lock-released');
+    requireUninstalled(await facts());
+    assert.equal(await exists(target), false);
+    assert.equal(await verifyAllocation('empty', 'lockRetryAllocation'), 0);
+    await reinstall();
+    await screenshotState('empty', 'ntfs-file-lock-reinstalled');
   });
 }
