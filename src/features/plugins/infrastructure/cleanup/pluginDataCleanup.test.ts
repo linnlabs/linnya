@@ -114,8 +114,13 @@ describe('plugin data cleanup', () => {
         applicationSurfaceSlot: 'knowledge-base' as const,
         dataStorage: { ...storage, citationSourceTable: 'plugin_owned' },
       };
-      expect((await cleanupPluginData({ ...options, signal: AbortSignal.abort() })).status).toBe('failed');
+      // 在最后一条账本写入失败，让删表和来源删除记录一起回滚。
+      db.exec(`CREATE TEMP TRIGGER fail_cleanup_commit BEFORE DELETE ON main.plugin_cleanup_jobs
+        WHEN OLD.plugin_id = 'demo' BEGIN SELECT RAISE(ABORT, 'Final cleanup commit failed'); END;`);
+      expect((await cleanupPluginData(options)).status).toBe('failed');
       expect(hasPurgedPluginCitationSource(db, 'knowledge-base', 'one')).toBe(false);
+      expect(db.prepare('SELECT id, value FROM plugin_owned').get()).toEqual({ id: 'one', value: 'kept' });
+      db.exec('DROP TRIGGER fail_cleanup_commit');
       expect((await cleanupPluginData(options)).status).toBe('completed');
       expect(hasPurgedPluginCitationSource(db, 'knowledge-base', 'one')).toBe(true);
       expect(hasPurgedPluginCitationSource(db, 'knowledge-base', 'other')).toBe(false);
