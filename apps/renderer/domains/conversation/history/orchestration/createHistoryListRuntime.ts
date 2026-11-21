@@ -328,6 +328,40 @@ export function createHistoryListRuntime(state: ReturnType<typeof useHistoryList
     upsertConversation(conversation);
     console.log('[ConversationListStore] 添加或更新会话:', conversation.conversation_id);
   }
+
+  const revealRequestedConversationIds = new Set<string>();
+
+  /**
+   * 别处得知存在、但已加载列表里没有的对话（例如 CLI 在窗口外新建并开始运行）：把它所在的
+   * 已加载范围重读一次，保留已加载条数与搜索词。未加载过的范围不读；每个对话只触发一次。
+   */
+  function revealConversations(items: readonly { readonly conversationId: string; readonly projectId: string | null }[]) {
+    const scopes = new Map<string, NavigationScope>();
+    for (const item of items) {
+      if (revealRequestedConversationIds.has(item.conversationId)) continue;
+      if (state.forgottenConversationIds.includes(item.conversationId)) continue;
+      const scope: NavigationScope = item.projectId
+        ? { kind: 'project', projectId: item.projectId }
+        : { kind: 'linnya-assistant' };
+      const key = getScopeKey(scope);
+      const snapshot = state.scopeCache[key];
+      if (!snapshot || snapshot.conversations.some(conversation => conversation.conversation_id === item.conversationId)) {
+        continue;
+      }
+      revealRequestedConversationIds.add(item.conversationId);
+      scopes.set(key, scope);
+    }
+    for (const [key, scope] of scopes) {
+      const snapshot = state.scopeCache[key];
+      if (!snapshot) continue;
+      void loadScopeList(scope, {
+        refresh: true,
+        limit: Math.max(30, snapshot.conversations.length),
+        search: snapshot.searchQuery || undefined,
+      });
+    }
+  }
+
   return {
     syncCurrentScopeFromSnapshot,
     persistScopeSnapshot,
@@ -345,5 +379,6 @@ export function createHistoryListRuntime(state: ReturnType<typeof useHistoryList
     forgetConversation,
     touchConversationTimestamp,
     prependConversation,
+    revealConversations,
   };
 }

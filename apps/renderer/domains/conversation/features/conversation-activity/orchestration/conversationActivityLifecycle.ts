@@ -1,6 +1,7 @@
 import { watch } from 'vue';
 import type { ConversationActivity } from '@app/schemas';
 import { useAssistantStore } from '../../../store/assistantStore';
+import { useHistoryList } from '../../../history/list';
 import { useCommandApprovalProjectionStore } from '../../command-approval';
 import { useInteractiveRunStore } from '../../interactive-run';
 import { retainSeenRunIds } from '../functions/resolveConversationRunStatus';
@@ -33,6 +34,11 @@ export function refreshConversationActivity(): Promise<void> {
       const activities = new Map<string, ConversationActivity>();
       for (const [conversationId, entry] of activityStore.entries) activities.set(conversationId, entry.activity);
       seenStore.replaceSeenRunIds(retainSeenRunIds(seenStore.seenRunIds, activities));
+      // 窗口外新建的对话（CLI send）不在已加载的侧栏列表里，让列表补读，记号才有行可挂。
+      useHistoryList().revealConversations([...activityStore.entries].map(([conversationId, entry]) => ({
+        conversationId,
+        projectId: entry.projectId,
+      })));
     } while (rereadRequested);
   })().catch((error: unknown) => {
     console.warn('[ConversationActivity] 读取运行状态失败', error instanceof Error ? error.message : error);

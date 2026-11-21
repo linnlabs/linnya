@@ -188,4 +188,21 @@ describe('historyListStore scope loading', () => {
     expect(listStore.errorByScope(scope)).toBe('load_failed');
     expect(listStore.errorByScope(scope)).not.toBe('Backend natural-language failure');
   });
+  it('窗口外新建的对话只让已加载的所在范围补读一次，保留搜索词', async () => {
+    const scopeStore = useNavigationScope();
+    const listStore = useHistoryList();
+    scopeStore.startDraft({ kind: 'project', projectId: 'project-1' });
+    await listStore.loadList(true);
+    fetchListMock.mockClear();
+
+    listStore.revealConversations([
+      { conversationId: 'cli-new', projectId: 'project-1' },
+      { conversationId: 'never-loaded-scope', projectId: 'project-2' },
+    ]);
+    listStore.revealConversations([{ conversationId: 'cli-new', projectId: 'project-1' }]);
+    await nextTick();
+
+    expect(fetchListMock).toHaveBeenCalledTimes(1);
+    expect(fetchListMock).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1', limit: 30 }));
+  });
 });
