@@ -41,6 +41,7 @@ import InputsSection from './sections/InputsSection.vue';
 import ListExampleSection from './sections/ListExampleSection.vue';
 import MenusSection from './sections/MenusSection.vue';
 import ScheduledTasksSection from './sections/ScheduledTasksSection.vue';
+import SidebarRunStatusSection from './sections/SidebarRunStatusSection.vue';
 import ConversationSteeringSection from './sections/ConversationSteeringSection.vue';
 import SelectionSection from './sections/SelectionSection.vue';
 import ToolbarsSection from './sections/ToolbarsSection.vue';
@@ -71,6 +72,7 @@ const SECTION_COMPONENTS: Readonly<Record<Exclude<GallerySectionId, 'dialogs'>, 
   'conversation-tier': ConversationTierSection,
   'conversation-tier-icons': ConversationTierIconsSection,
   'scheduled-tasks': ScheduledTasksSection,
+  'sidebar-run-status': SidebarRunStatusSection,
   'conversation-steering': ConversationSteeringSection,
 };
 
