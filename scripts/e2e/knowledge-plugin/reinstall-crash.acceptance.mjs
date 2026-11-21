@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +24,8 @@ const test = acceptance(`knowledge-reinstall-crash-${process.pid}`, { evidence }
 const { run } = test;
 const start = () => run('up', '--mode', 'bundled', '--size', '1440x1000');
 const sidebar = '.sidebar-entry:has(svg[data-icon="library"])';
+const retainedLibrary = 'E7 interrupted reinstall orchard';
+const retainedSource = 'Synthetic source to verify the retained bytes across the interrupted reinstall.';
 let failure;
 
 const click = (...args) => clickNamed(run, ...args);
@@ -42,7 +44,11 @@ function facts(up) {
       removal: existsSync(join(pluginDir, '.user-removed.json')) ? JSON.parse(readFileSync(join(pluginDir, '.user-removed.json'), 'utf8')) : null,
       migrations: db.prepare("SELECT version, applied_at FROM plugin_migrations WHERE plugin_id='knowledge' ORDER BY version").all(),
       tables: db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map(row => row.name),
+      library: db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='knowledge_bases'").get()
+        ? db.prepare('SELECT id, name FROM knowledge_bases WHERE name=?').get(retainedLibrary) ?? null : null,
       directories: existsSync(dataDir) ? readdirSync(dataDir).sort() : [],
+      source: existsSync(join(dataDir, 'source_of_truth', 'interruption-marker.txt'))
+        ? readFileSync(join(dataDir, 'source_of_truth', 'interruption-marker.txt'), 'utf8') : null,
       integrity: db.prepare('PRAGMA quick_check').get()?.quick_check,
     };
   } finally { db.close(); }
@@ -53,7 +59,17 @@ try {
     const up = await start();
     if (mode === 'reinstall') {
       await installKnowledgeForScenario(run);
+      await run('click', '--selector', sidebar);
+      await click('button', '新建知识库', '.kb-list-header');
+      await run('click', '--selector', '#new-kb-name');
+      await run('type', retainedLibrary);
+      await click('button', '创建', '.modal-overlay');
+      await run('wait', '--text', retainedLibrary);
+      const directory = join(up.root, 'workspace', 'Plugins', 'knowledge', 'source_of_truth');
+      mkdirSync(directory, { recursive: true });
+      writeFileSync(join(directory, 'interruption-marker.txt'), retainedSource, { flag: 'wx' });
       await openKnowledgeStoreDetail(run);
+      await run('wait', '--selector', '.plugin-data-panel .is-installed');
       await click('button', '卸载', 'main');
       await click('button', '卸载', '.modal-overlay--alert');
     } else {
@@ -66,6 +82,10 @@ try {
     const before = facts(up);
     assert.equal(before.installed?.installed ?? 0, 0);
     assert.equal(before.installed?.user_removed ?? 0, mode === 'reinstall' ? 1 : 0);
+    if (mode === 'reinstall') {
+      assert.ok(before.library);
+      assert.equal(before.source, retainedSource);
+    }
     evidence.json('before-install', before);
     // 写入窗口在一次同步 IPC 内太短，单独进程调用同一个产品安装入口，在真实写入点精确打断。
     const checkpointPath = join(up.root, 'reinstall-checkpoint.json');
@@ -97,6 +117,7 @@ try {
 
     const restarted = await start();
     assert.equal(restarted.workspaceDb, up.workspaceDb);
+    if (committed) await run('wait', '--selector', sidebar);
     const sidebarPresent = (await run('eval', `Boolean(document.querySelector(${JSON.stringify(sidebar)}))`)).value;
     await openKnowledgeStoreDetail(run, !committed);
     const surface = (await run('snapshot', '--json', '--max-lines', '120', '--within', 'main')).entries;
@@ -114,18 +135,22 @@ try {
     if (mode === 'reinstall') {
       assert.deepEqual(recovered.directories, before.directories, '重装恢复不能删除保留数据');
       assert.deepEqual(recovered.migrations, before.migrations, '保留式卸载后的重装恢复不能重跑迁移');
+      assert.deepEqual(recovered.library, before.library);
+      assert.equal(recovered.source, before.source);
     }
     if (!committed) {
       await click('button', '安装', 'main');
       await run('wait', '--selector', sidebar);
     }
     await run('click', '--selector', sidebar);
-    await run('wait', '--text', '默认知识库');
+    await run('wait', '--text', mode === 'reinstall' ? retainedLibrary : '默认知识库');
     await run('shot');
     const ready = facts(restarted);
     assert.equal(ready.active?.status, 'active');
     assert.deepEqual(ready.migrations.map(row => row.version), [1]);
     assert.equal(ready.removal, null);
+    assert.deepEqual(ready.library, before.library);
+    assert.equal(ready.source, before.source);
     evidence.json('after-usable', ready);
   });
 } catch (error) {

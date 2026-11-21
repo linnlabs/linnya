@@ -347,7 +347,7 @@ export async function verifyWindowsPluginData({
         return stdout.includes('LOCKED');
       }, Boolean, 'NTFS lock held by a real Windows file handle', 15_000);
       // 先退出详情再进入，让原文的独立夹具被新的占用采样发现。
-      await application.clickText('插件');
+      await click('.plugin-store-back-button');
       await application.clickElement(
         '[...document.querySelectorAll(".plugin-store-card")].find(el => el.querySelector("h2")?.textContent.trim() === "知识库")'
       );

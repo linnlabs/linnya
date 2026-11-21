@@ -179,6 +179,7 @@ try {
         json: {
           api_format: format,
           provider_name: `Windows ${format}`,
+          display_name: `Windows ${format}`,
           base_url: `${fixture.baseUrl}${suffix}`,
           api_key: 'fixture-key',
           endpoint_model_id: endpoint,
@@ -226,7 +227,7 @@ try {
   database = new DatabaseSync(path.join(application.workspace, 'workspace/workspace.sqlite'), {
     readOnly: true,
   });
-  await check('Windows Qdrant 监听端口被占用：上传提示原因，释放端口并停启后可恢复', async () => {
+  await check('Windows Qdrant 监听端口被占用：上传提示原因并引导停启', async () => {
     const occupied = createServer(socket => socket.destroy());
     // 只绑定隔离虚拟机的产品监听地址；如果不是我们持有该端口，立即退出，不动现有进程。
     await new Promise((resolve, reject) => {
@@ -235,8 +236,13 @@ try {
     });
     const filename = 'occupied-qdrant-port.md';
     try {
+      await application.clickElement('document.querySelector(\'[data-linnya-tooltip="设置"]\')');
+      await application.clickText('模型配置');
+      await application.clickElement('document.querySelector("#embeddingModelSelect")');
+      await application.clickElement(`Array.from(document.querySelectorAll('.select-option')).find(el=>el.textContent.trim()==='Windows openai_embeddings' && el.getClientRects().length)`);
+      await application.clickElement('document.querySelector(".settings-modal-close")');
       await application.clickText(kbName);
-      await application.clickText('文件上传');
+      await until(() => application.evaluate(`Boolean(document.querySelector('.upload-tab input[type="file"]'))`), Boolean, 'File upload is the new library default tab');
       assert.equal(await application.evaluate(`(() => {
         const input = document.querySelector('.upload-tab input[type="file"]');
         if (!input) return false;
@@ -263,7 +269,7 @@ try {
       await new Promise((resolve, reject) => occupied.close(error => error ? reject(error) : resolve()));
     }
     await application.clickText('插件');
-    const toggle = 'document.querySelector(\'.switch-control:has(input[aria-label="知识库 启用状态"])\')';
+    const toggle = `document.querySelector('.switch-control:has(input[aria-label="知识库 启用状态"])')`;
     await application.clickElement(toggle);
     await until(() => application.evaluate(`${toggle}?.querySelector('input').checked`), value => value === false, 'Disabled after port conflict');
     await application.clickElement(toggle);

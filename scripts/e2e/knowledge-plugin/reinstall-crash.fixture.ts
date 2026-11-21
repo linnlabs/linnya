@@ -24,8 +24,6 @@ function crash(): never {
   fs.writeFileSync(evidencePath, JSON.stringify({
     checkpoint,
     inTransaction: db.inTransaction,
-    installed: db.prepare('SELECT installed, user_removed, schema_version FROM installed_plugins WHERE plugin_id=?').get(pluginId),
-    active: db.prepare('SELECT active_version, status FROM plugin_active_versions WHERE plugin_id=?').get(pluginId) ?? null,
   }), { flag: 'wx' });
   process.kill(process.pid, 'SIGKILL');
   throw new Error(`Did not stop at ${checkpoint}`);
