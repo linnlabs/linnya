@@ -2,6 +2,8 @@
 
 侧栏对话行行首显示 Agent 运行状态：进行中（Linnya 摇曳动态）、等你回答、等你审批（强调色圆点，行尾写“待回答 / 待审批”并提亮标题）、已中断（小红点，打开后消失）；空闲不显示。收起的项目只在行尾显示里面最需要处理的一种，悬停看数量。右侧面板的历史下拉不显示。
 
+后台服务正在重启或已停止时（`@app/backend-health`）`statusOf` 一律返回空：这时的运行状态不可信，重开后由启动恢复标成中断，再显示红点。
+
 ## 数据与刷新
 
 事实只来自 Host 的 `GET /api/v1/conversation/activity`（`ConversationActivityListSchema`），本 feature 不从消息、选中的 Agent 或本窗口的运行快照推断状态。审批端读不到（`unavailable`）时按进行中显示。

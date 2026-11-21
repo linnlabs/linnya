@@ -28,6 +28,7 @@
 import { registerMediaHandlers } from './system/media-ipc.js';
 import { registerShellHandlers } from './system/shell-ipc.js';
 import { registerUpdateHandlers } from './system/update-ipc.js';
+import { registerAppServerHealthHandlers } from './system/app-server-health-ipc.js';
 import { registerApiPortHandlers } from './system/api-port-ipc.js';
 import { registerQuotaHandlers } from './system/quota-ipc.js';
 import { registerProcessMemoryHandlers } from './system/process-memory-ipc.js';
@@ -55,6 +56,9 @@ export function registerAllHandlers(apiPortProvider: ApiPortProvider): void {
 
   // 3. 更新相关处理器
   registerUpdateHandlers();
+
+  // 3.1 后台服务状态：停止、卡住与重新启动
+  registerAppServerHealthHandlers();
 
   // 4. 通用配额
   registerQuotaHandlers();

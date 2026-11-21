@@ -39,6 +39,7 @@ import type {
   AppUpdateInstallResult,
   AppUpdateState,
 } from '../shared/update/definitions/updateMessage';
+import type { AppServerHealthState } from '../shared/app-server-health/definitions/appServerHealthMessage';
 import type { CommandPermissionSettingsUpdateV1 } from '@app/schemas/commands';
 import type {
   WindowClosePreparationResult,
@@ -323,6 +324,14 @@ declare global {
         install: (request: AppUpdateInstallRequest) => Promise<AppUpdateInstallResult>;
         acknowledgeInstalled: () => Promise<void>;
         onState: (callback: (state: AppUpdateState) => void) => () => void;
+      };
+
+      // 后台服务状态（Main 唯一持有）
+      appServerHealth: {
+        getState: () => Promise<AppServerHealthState>;
+        restart: () => Promise<void>;
+        openLogFolder: () => Promise<void>;
+        onState: (callback: (state: AppServerHealthState) => void) => () => void;
       };
 
       // Plugin state

@@ -100,3 +100,10 @@ Electron `--user-data-dir` 和 `LINNYA_CLI_CONNECTION_FILE` 的显式覆盖也�
 Desktop 和 Runtime 共用 dotenv 加载：显式进程环境优先，其次 `.env.local`、`.env`，都只补齐未设置的变量。
 CLI 切档不写文件；重启恢复启动配置，没设就是 `off`。若希望每次启动自动打开，继续在 `.env.local` 设置
 `LINNYA_AUDIT_LEVEL`。生产 Host 一律拒绝审计，提示“生产环境不提供审计”。
+
+## 启动器负责重开
+
+后台服务意外停止后，Desktop 会重新打开整个应用。`pnpm run dev:electron` 与 `pnpm -s probe` 启动 Electron
+时设置 `LINNYA_LAUNCHER_HANDLES_RELAUNCH=1`，Main 以退出码 75 结束，由启动器重新启动 Electron 并保留 Vite。
+自己写的启动脚本若不处理退出码 75，就不要设置这个变量，Main 会改用 `app.relaunch()`。规则见
+[App Server Health](../../src/electron-main/app-server-health/README.md)。

@@ -7,6 +7,7 @@ import './styles/index.css'
 import './layout/styles/index.css'
 import './pages/styles/index.css'
 import './update/styles/index.css'
+import './backend-health/styles/index.css'
 import './plugins/styles/RendererPluginLoadFailureNotice.css'
 import '../domains/editor/styles/index.css'
 import '../domains/settings/styles/index.css'
@@ -42,6 +43,7 @@ import {
   provideSharedComponentLocalization,
 } from './localization/orchestration/provideSharedComponentLocalization'
 import { ensureUpdateLocalizationRegistered } from './update/orchestration/ensureUpdateLocalizationRegistered'
+import { ensureBackendHealthLocalizationRegistered, startBackendHealthLifecycle } from './backend-health'
 import { ensureSystemLocalizationRegistered } from './system/orchestration/ensureSystemLocalizationRegistered'
 import { ensurePluginStoreLocalizationRegistered } from '../domains/plugin-store/orchestration/ensurePluginStoreLocalizationRegistered'
 import { ensureWorkspaceLocalizationRegistered } from '../domains/workspace/orchestration/ensureWorkspaceLocalizationRegistered'
@@ -108,6 +110,7 @@ migrateLegacyEditorDocumentSettings()
 ensureLayoutLocalizationRegistered()
 ensureSharedComponentLocalizationRegistered()
 ensureUpdateLocalizationRegistered()
+ensureBackendHealthLocalizationRegistered()
 ensureSystemLocalizationRegistered()
 if (import.meta.env.DEV) {
   void import('./system/features/process-memory-observation').then(({ ensureProcessMemoryObservationRegistered }) => {
@@ -164,6 +167,8 @@ if (!isConversationFixture) {
   startModelPickerLifecycle().catch(error => {
     console.error('[main] 模型选择器初始化失败:', error)
   })
+  // 后台服务停止、重启或卡住：Main 唯一持有状态，这里只订阅快照。
+  startBackendHealthLifecycle()
   // 侧栏运行状态：先订阅 App Server 的失效信号，再读一次全工作区状态。
   startConversationActivityLifecycle()
 

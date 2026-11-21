@@ -52,6 +52,14 @@ const UPDATE_CHANNELS = [
   'renderer-ready',
 ] as const;
 
+// --- 后台服务状态 ---
+const APP_SERVER_HEALTH_CHANNELS = [
+  'app-server-health:state',
+  'app-server-health:get-state',
+  'app-server-health:restart',
+  'app-server-health:open-log-folder',
+] as const;
+
 // --- 窗口关闭 ---
 const WINDOW_CLOSE_CHANNELS = [
   'window-close-renderer-ready',
@@ -220,6 +228,7 @@ export const VALID_CHANNELS = [
   ...KNOWLEDGE_BASE_CHANNELS,
   ...MODEL_CHANNELS,
   ...UPDATE_CHANNELS,
+  ...APP_SERVER_HEALTH_CHANNELS,
   ...WINDOW_CLOSE_CHANNELS,
   ...WINDOW_CHANNELS,
   ...MEDIA_CHANNELS,

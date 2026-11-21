@@ -1,4 +1,5 @@
 import { storeToRefs } from 'pinia';
+import { useBackendHealthStore } from '@app/backend-health';
 import { useAssistantStore } from '../../../store/assistantStore';
 import { useConversationLocalization } from '../../../ui/useConversationLocalization';
 import type { ConversationMessageKey } from '../../../definitions/conversationMessages';
@@ -40,8 +41,11 @@ export function useConversationRunStatus() {
   const seenStore = useConversationActivitySeenStore();
   const assistantStore = useAssistantStore();
   const { conversationMessage } = useConversationLocalization();
+  const backendHealth = useBackendHealthStore();
 
   function statusOf(conversationId: string): ConversationRunStatus | null {
+    // 后台停了，记录里的“运行中”已经不是事实；重启后由启动恢复给出真实状态。
+    if (backendHealth.isUnavailable) return null;
     const status = resolveConversationRunStatus(conversationId, entries.value.get(conversationId)?.activity, seenStore.$state);
     return status === 'interrupted' && conversationId === assistantStore.activeConversationId ? null : status;
   }

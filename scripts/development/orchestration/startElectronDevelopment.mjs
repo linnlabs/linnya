@@ -3,6 +3,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { startRendererDevelopmentServer } from './startRendererDevelopmentServer.mjs';
+import {
+  APP_LAUNCHER_HANDLES_RELAUNCH_ENV,
+  APP_LAUNCHER_RELAUNCH_EXIT_CODE,
+} from '../features/build-session/definitions/appLauncherRelaunch.mjs';
 
 import { resolveDevelopmentBackendDirectories } from '../features/plugin-backend-composition/functions/resolveDevelopmentBackendDirectories.mjs';
 import { discoverWorkspaceDiskBackendPlugins } from '../features/plugin-backend-composition/functions/discoverWorkspaceDiskBackendPlugins.mjs';
@@ -49,24 +53,29 @@ export async function runElectronDevelopment({ buildOnly = false } = {}) {
     const require = createRequire(import.meta.url);
     // 已收到本轮全部成功事件；此处不再运行 wait-on 或第二轮编译。
     // 只在回环开 CDP，供探针 --attach 只读查看本会话；端口与 Renderer 地址写进本实例 profile。
-    const cdpPort = await reserveLoopbackPort();
-    const electron = scope.start({
-      id: 'electron', cwd: repositoryRoot, file: process.execPath,
-      args: [
-        require.resolve('electron/cli.js'),
-        '--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${cdpPort}`,
-        'dist/main/main.cjs',
-      ], watch: false, runtime: true,
-      env: {
-        NODE_ENV: 'development', LINNYA_DEV_MODE: 'true', APP_VERSION: packageJson.version,
-        VITE_DEV_SERVER_URL: url,
-        LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: backendDirectDirs,
-      },
-    });
-    writeDevelopmentAttachment(attachmentFile, {
-      cdpPort, viteUrl: url, launcherPid: process.pid, startedAt: new Date().toISOString(),
-    });
-    await Promise.race([electron.done, failed, requestedStop.promise]);
+    // Desktop 以约定退出码请求重开时（后台服务停止后恢复），只重启 Electron，保留 Vite 与构建 watcher。
+    while (true) {
+      const cdpPort = await reserveLoopbackPort();
+      const electron = scope.start({
+        id: 'electron', cwd: repositoryRoot, file: process.execPath,
+        args: [
+          require.resolve('electron/cli.js'),
+          '--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${cdpPort}`,
+          'dist/main/main.cjs',
+        ], watch: false, runtime: true, relaunchExitCode: APP_LAUNCHER_RELAUNCH_EXIT_CODE,
+        env: {
+          NODE_ENV: 'development', LINNYA_DEV_MODE: 'true', APP_VERSION: packageJson.version,
+          VITE_DEV_SERVER_URL: url,
+          LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: backendDirectDirs,
+          [APP_LAUNCHER_HANDLES_RELAUNCH_ENV]: '1',
+        },
+      });
+      writeDevelopmentAttachment(attachmentFile, {
+        cdpPort, viteUrl: url, launcherPid: process.pid, startedAt: new Date().toISOString(),
+      });
+      const ended = await Promise.race([electron.done, failed, requestedStop.promise]);
+      if (ended !== 'relaunch') break;
+    }
   } finally {
     removeDevelopmentAttachment(attachmentFile, process.pid);
     await scope.stop();

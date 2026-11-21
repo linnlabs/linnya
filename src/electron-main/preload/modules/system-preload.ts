@@ -24,6 +24,13 @@ import {
   type AppUpdateInstallResult,
   type AppUpdateState,
 } from '../../../shared/update/definitions/updateMessage';
+import {
+  APP_SERVER_HEALTH_GET_STATE_CHANNEL,
+  APP_SERVER_HEALTH_OPEN_LOG_FOLDER_CHANNEL,
+  APP_SERVER_HEALTH_RESTART_CHANNEL,
+  APP_SERVER_HEALTH_STATE_CHANNEL,
+  type AppServerHealthState,
+} from '../../../shared/app-server-health/definitions/appServerHealthMessage';
 import type { ExportArtifactTargetRequest } from '@linnya/plugin-host-contract/renderer/exportArtifact';
 import {
   WINDOW_CLOSE_PREPARATION_RESULT_CHANNEL,
@@ -121,6 +128,20 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
         ipcRenderer.on(APP_UPDATE_STATE_CHANNEL, listener);
         return () => {
           ipcRenderer.removeListener(APP_UPDATE_STATE_CHANNEL, listener);
+        };
+      },
+    },
+
+    // --- 后台服务状态 ---
+    appServerHealth: {
+      getState: (): Promise<AppServerHealthState> => ipcRenderer.invoke(APP_SERVER_HEALTH_GET_STATE_CHANNEL),
+      restart: (): Promise<void> => ipcRenderer.invoke(APP_SERVER_HEALTH_RESTART_CHANNEL),
+      openLogFolder: (): Promise<void> => ipcRenderer.invoke(APP_SERVER_HEALTH_OPEN_LOG_FOLDER_CHANNEL),
+      onState: (callback: (state: AppServerHealthState) => void) => {
+        const listener = (_event: IpcRendererEvent, state: AppServerHealthState) => callback(state);
+        ipcRenderer.on(APP_SERVER_HEALTH_STATE_CHANNEL, listener);
+        return () => {
+          ipcRenderer.removeListener(APP_SERVER_HEALTH_STATE_CHANNEL, listener);
         };
       },
     },

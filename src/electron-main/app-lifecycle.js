@@ -34,6 +34,11 @@ import { runAppShutdownStages } from './app-lifecycle/runAppShutdownStages.ts';
 import { createAppShutdownLifecycle } from './app-lifecycle/orchestration/createAppShutdownLifecycle.ts';
 import { createElectronUpdaterHandoff } from './update/orchestration/electronUpdaterHandoff.ts';
 import { initializeAppUpdates } from './update/orchestration/initializeAppUpdates.ts';
+import { initializeAppServerHealth } from './app-server-health/orchestration/initializeAppServerHealth.ts';
+import {
+  APP_LAUNCHER_HANDLES_RELAUNCH_ENV,
+  APP_LAUNCHER_RELAUNCH_EXIT_CODE,
+} from '../shared/app-server-health/definitions/appServerHealthMessage.ts';
 import {
   createBackendBootstrapFacts,
   resolveAppDefaultModelsPath,
@@ -152,6 +157,10 @@ export function initialize() {
   let dataUpgradeWindow;
   // 此事实只由 supervisor 的真实退出通知写入，RPC 超时不能把仍存活的任务视为已结束。
   let appServerExited = false;
+  // 后台服务停止、卡住与重新启动的唯一 owner；App Server 启动前创建，退出事实由下方 waitForExit 交给它。
+  let appServerHealth;
+  // 托管 Electron 的启动器（开发会话、探针）负责重开时，正常收口后改用约定退出码通知它。
+  let launcherRelaunchRequested = false;
   const appShutdownLifecycle = createAppShutdownLifecycle({
     prepareAppShutdown: prepareMainWindowForAppShutdown,
     commitWindowClosePermission: permitMainWindowCloseForAppShutdown,
@@ -163,6 +172,7 @@ export function initialize() {
       try {
         await runAppShutdownStages([
           async () => {
+            appServerHealth?.dispose();
             if (appServerRuntime) {
               logger.info('[Main Process] 正在关停 App Server 及其全部后端子进程...');
               await appServerRuntime.shutdown();
@@ -185,7 +195,7 @@ export function initialize() {
       }
     },
     exitElectron(exitCode) {
-      app.exit(exitCode);
+      app.exit(exitCode === 0 && launcherRelaunchRequested ? APP_LAUNCHER_RELAUNCH_EXIT_CODE : exitCode);
     },
     updateHandoff: createElectronUpdaterHandoff(),
   });
@@ -379,12 +389,25 @@ export function initialize() {
           dataUpgradeWindow.handleProgress(progress);
         },
       });
+      appServerHealth = initializeAppServerHealth({
+        ping: () => appServerRuntime.process.ping(),
+        readAppServerPid: () => (appServerExited ? undefined : appServerIdentity?.pid),
+        relaunchApp: () => {
+          if (process.env[APP_LAUNCHER_HANDLES_RELAUNCH_ENV] === '1') launcherRelaunchRequested = true;
+          else app.relaunch();
+          void appShutdownLifecycle.requestOrdinaryExit().catch((error) => {
+            logger.error('[App Server] 重新启动应用时退出准备失败:', error);
+          });
+        },
+      });
       const startup = appServerRuntime.start();
       void appServerRuntime.process.waitForExit().then(exit => {
         appServerExited = true;
         if (!exit.expected) logger.error('[App Server] 后台进程意外退出', exit);
+        appServerHealth.handleExit(exit);
       });
       appServerIdentity = await startup;
+      appServerHealth.start();
       await dataUpgradeWindow.settle();
       logger.info('✅ [APP-LIFECYCLE] STEP 1 (END) | App Server ready.', {
         pid: appServerIdentity.pid,

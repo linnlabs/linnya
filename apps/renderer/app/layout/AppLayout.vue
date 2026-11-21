@@ -38,6 +38,9 @@
         :style="contentAreaStyle" 
         @transitionend="emitSidebarTransitionEnd"
       >
+        <!-- 后台服务停止、重启或卡住时的全局说明 -->
+        <BackendHealthStrip />
+
         <!-- 目录侧边栏 (仅编辑器视图) -->
         <OutlineSidebar 
           v-if="isEditorChromeActive"
@@ -116,6 +119,7 @@ const BlockActionMenu = defineAsyncComponent(() => import('@/domains/editor/feat
 
 // 共享组件
 import { GlobalNotificationBar } from '@/app/notification';
+import { BackendHealthStrip } from '@/app/backend-health';
 import { CharacterCount } from '@linnya/renderer-ui';
 
 // Composables
