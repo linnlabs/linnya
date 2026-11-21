@@ -70,3 +70,18 @@
 `accept` 始终新建自己的实例，不接受 `--name`，不会复用当前调试会话。
 扩展业务场景时复用 `acceptance()` 和 `evidence.check()`，把真实断言放入具名步骤，将测试和外部夹具列入 testFiles。
 不要把动作执行成功等同于用户行为正确，也不从页面截图推断数据库写入成功。
+
+## 只读附着日常 dev:electron 会话
+
+`pnpm run dev:electron` 启动时只在 `127.0.0.1` 开一个随机 CDP 端口，并把端口与 Renderer 地址写进本实例 profile 的 `_dev_electron/runtime/dev-attach.json`（会话结束即删除；`LINNYA_DEV_INSTANCE_ROOT` 覆盖时一起移动）。主窗口 Renderer 控制台同时按天写入 `_dev_data/logs/renderer-YYYY-MM-DD.jsonl`，格式与探针实例的 `renderer.jsonl` 相同。
+
+在同一 worktree 加 `--attach` 即可只读查看用户正在用的会话，不接管、不重启、不关闭：
+
+| 命令 | 用途 |
+| --- | --- |
+| `status --attach` | 端口、Renderer 地址、日志路径 |
+| `snapshot --attach` / `shot --attach` | 当前界面快照与截图（产物在 `_dev_electron/runtime/probe-attach/artifacts`） |
+| `eval --attach '<表达式>'` / `wait --attach …` / `fonts --attach …` | Renderer 只读求值与等待 |
+| `logs --attach [--level error] [--grep …]` | 主窗口 Renderer 控制台 |
+
+点击、输入、拖动、重载、打开对象、启停等会改动用户会话的命令不接受 `--attach`，`eval --main` 也不开放；需要操作时在隔离实例里复现（`pnpm -s probe up --clone-data _dev_data`）。CDP 端口任何本机进程都能连接，所以只在源码开发会话开放，打包产物不开。已在运行的旧会话要重启一次才会写出附着信息。

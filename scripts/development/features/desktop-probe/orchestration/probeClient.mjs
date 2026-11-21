@@ -94,6 +94,59 @@ export async function evaluateMain(session, expression) {
   }
 }
 
+/** 只读页面命令：隔离探针实例与 --attach 附着会话共用。未处理时返回 undefined。 */
+async function runReadOnlyPageCommand(cdp, session, { command, values, positionals }) {
+  if (command === 'eval') {
+    if (positionals.length !== 1) usage('eval 需要一个 JavaScript 表达式');
+    return { value: await evaluate(cdp, positionals[0]) };
+  }
+  if (command === 'wait') return await waitForPage(cdp, values);
+  if (command === 'fonts') {
+    if (!positionals.length) usage('fonts 需要至少一个目标：@引用、选择器或 text=<文字>');
+    const { inspectFonts } = await import('./probeFonts.mjs');
+    return await inspectFonts(cdp, positionals.map(probeTarget));
+  }
+  if (command === 'snapshot') {
+    if (positionals.length) usage('snapshot 用 --within 指定范围、--grep 过滤文字');
+    return await snapshotPage(cdp, session, {
+      target: values.within && probeTarget(values.within), all: values.all, json: values.json,
+      grep: values.grep, roles: values.role && new Set(values.role.split(',')),
+      limit: numberOption(values['max-lines'] ?? '50', '--max-lines', { min: 1, max: 1000, integer: true }),
+    });
+  }
+  if (command === 'shot') {
+    if (positionals.length > 1 || [positionals[0], values.selector, values.clip].filter(Boolean).length > 1) {
+      usage('shot 只能指定一种裁剪目标');
+    }
+    const raw = positionals[0] ?? values.selector;
+    return await shotPage(cdp, session, {
+      target: raw && probeTarget(raw), clip: values.clip && numericList(values.clip, 4, '--clip'),
+      pad: numberOption(values.pad ?? '0', '--pad'), device: values.device, jpeg: values.jpeg,
+    });
+  }
+  return undefined;
+}
+
+async function runAttachedCommand(parsed) {
+  const { command, values } = parsed;
+  const { assertAttachCommand, connectAttachedPage, readAttachedSession } = await import('./probeAttach.mjs');
+  assertAttachCommand(command, values);
+  const session = readAttachedSession();
+  if (command === 'status') {
+    const { state, attached, cdpPort, viteUrl, startedAt, logs, rendererLogPresent } = session;
+    return { state, attached, cdpPort, viteUrl, startedAt, logs, rendererLogPresent };
+  }
+  if (command === 'logs') return probeLogs(session, values);
+  const cdp = await connectAttachedPage(session);
+  try {
+    const result = await runReadOnlyPageCommand(cdp, session, parsed);
+    if (result === undefined) usage(`--attach 不支持 ${command}`);
+    return result;
+  } finally {
+    cdp.close();
+  }
+}
+
 export async function runProbeCommand(parsed) {
   const { command, values, positionals } = parsed;
   if (command === 'help') {
@@ -109,6 +162,7 @@ export async function runProbeCommand(parsed) {
       dryRun: values['dry-run'] ?? false,
     });
   }
+  if (values.attach) return runAttachedCommand(parsed);
   if (['up', 'stop', 'restart', 'status'].includes(command)) {
     if (positionals.length) usage(`${command} 不接受位置参数`);
     if (command === 'status') return values.all ? { instances: listProbes() } : probeStatus(values.name);
@@ -140,11 +194,8 @@ export async function runProbeCommand(parsed) {
         newLayers: after.layers.filter(layer => !before.layers.some(old => old.role === layer.role && old.label === layer.label)),
         errorCount: errors.total, errors: errors.entries } };
     }
-    if (command === 'eval') {
-      if (positionals.length !== 1) usage('eval 需要一个 JavaScript 表达式');
-      return { value: await evaluate(cdp, positionals[0]) };
-    }
-    if (command === 'wait') return await waitForPage(cdp, values);
+    const readOnly = await runReadOnlyPageCommand(cdp, session, parsed);
+    if (readOnly !== undefined) return readOnly;
     if (command === 'reload') {
       const before = await evaluate(cdp, 'performance.timeOrigin');
       await cdp.send('Page.reload', { ignoreCache: true });
@@ -156,29 +207,6 @@ export async function runProbeCommand(parsed) {
       if (positionals.length !== 1) usage('open 需要一个对话、文档或项目 ID（或 assistant）');
       const { openWorkspaceObject } = await import('./probeOpen.mjs');
       return await openWorkspaceObject(cdp, session, positionals[0], { overview: values.overview });
-    }
-    if (command === 'fonts') {
-      if (!positionals.length) usage('fonts 需要至少一个目标：@引用、选择器或 text=<文字>');
-      const { inspectFonts } = await import('./probeFonts.mjs');
-      return await inspectFonts(cdp, positionals.map(probeTarget));
-    }
-    if (command === 'snapshot') {
-      if (positionals.length) usage('snapshot 用 --within 指定范围、--grep 过滤文字');
-      return await snapshotPage(cdp, session, {
-        target: values.within && probeTarget(values.within), all: values.all, json: values.json,
-        grep: values.grep, roles: values.role && new Set(values.role.split(',')),
-        limit: numberOption(values['max-lines'] ?? '50', '--max-lines', { min: 1, max: 1000, integer: true }),
-      });
-    }
-    if (command === 'shot') {
-      if (positionals.length > 1 || [positionals[0], values.selector, values.clip].filter(Boolean).length > 1) {
-        usage('shot 只能指定一种裁剪目标');
-      }
-      const raw = positionals[0] ?? values.selector;
-      return await shotPage(cdp, session, {
-        target: raw && probeTarget(raw), clip: values.clip && numericList(values.clip, 4, '--clip'),
-        pad: numberOption(values.pad ?? '0', '--pad'), device: values.device, jpeg: values.jpeg,
-      });
     }
     if (command === 'record') {
       const { recordAnimation } = await import('./probeRecording.mjs');
