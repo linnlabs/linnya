@@ -70,6 +70,8 @@ export interface PluginDataSummary {
   readonly error?: string;
   /** 清理失败的稳定分类；原始异常只进诊断日志，不直接展示给用户。 */
   readonly errorCode?: PluginCleanupFailureReason;
+  /** 当前清理操作中已实际删除的文件和目录；不把预计占用当成进度。 */
+  readonly removedEntries?: number;
   readonly canDelete: boolean;
 }
 

@@ -27,6 +27,7 @@ export interface UninstallPluginLifecycleOptions {
   readonly stopRuntime?: () => void | Promise<void>;
   readonly signal?: AbortSignal;
   readonly onCleanupStarted?: () => void;
+  readonly onCleanupProgress?: (removedEntries: number) => void;
 }
 
 export type UninstallPluginLifecycleResult =
@@ -183,6 +184,7 @@ export async function uninstallPluginAndDeleteData(
     stopRuntime: options.stopRuntime,
     signal: options.signal,
     onStarted: options.onCleanupStarted,
+    onProgress: options.onCleanupProgress,
   });
   return cleanup.status === 'completed'
     ? { ...result, userDataPreserved: false, dataDeleted: true, releasedBytes: cleanup.releasedBytes }

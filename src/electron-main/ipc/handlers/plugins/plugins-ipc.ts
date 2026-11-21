@@ -310,9 +310,23 @@ export async function registerPluginsHandlers(input: {
     pluginDataSummaryCache.set(pluginId, {
       expiresAt: Infinity,
       data: { ...emptyPluginData, bytes: prior?.bytes ?? 0, directories: prior?.directories ?? emptyPluginData.directories,
-        tables: prior?.tables ?? {}, status: 'cleaning', canDelete: false },
+        tables: prior?.tables ?? {}, status: 'cleaning', removedEntries: 0, canDelete: false },
     });
     publishPluginDataChanged(pluginId);
+  }
+
+  function createCleanupProgressReporter(pluginId: string): (removedEntries: number) => void {
+    let nextUpdate = 0;
+    return removedEntries => {
+      const now = Date.now();
+      if (now < nextUpdate) return;
+      const current = pluginDataSummaryCache.get(pluginId);
+      if (current?.data.status !== 'cleaning') return;
+      // 只刷新本机数据面板，不因目录中每个条目都跨进程同步。
+      nextUpdate = now + 250;
+      pluginDataSummaryCache.set(pluginId, { ...current, data: { ...current.data, removedEntries } });
+      publishPluginDataChanged(pluginId);
+    };
   }
 
   function endCleanup(pluginId: string): void {
@@ -355,6 +369,7 @@ export async function registerPluginsHandlers(input: {
               ownedTables: descriptor.manifest.ownedTables,
               signal: controller.signal,
               onStarted: () => beginCleanup(pluginId),
+              onProgress: createCleanupProgressReporter(pluginId),
             });
             if (result.status !== 'completed') {
               throw new PluginOperationError('unknown', result.error, { pluginId });
@@ -778,6 +793,7 @@ export async function registerPluginsHandlers(input: {
               ownedTables: cleanupDescriptor.manifest.ownedTables,
               signal: controller?.signal,
               onCleanupStarted: () => beginCleanup(pluginId),
+              onCleanupProgress: createCleanupProgressReporter(pluginId),
             } : {}),
           };
           if (controller) cleanupAbortControllers.set(pluginId, controller);

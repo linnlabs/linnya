@@ -62,6 +62,9 @@ function statusLabel(status: PluginDataSummary['status']): string {
       {{ pluginStoreMessage('pluginStore.data.retainedHint') }}
     </p>
     <template v-if="data.status === 'cleaning'">
+      <p v-if="data.removedEntries !== undefined" class="plugin-data-panel__hint plugin-data-panel__progress">
+        {{ pluginStoreMessage('pluginStore.data.cleanupProgress', { count: data.removedEntries }) }}
+      </p>
       <p class="plugin-data-panel__hint">{{ pluginStoreMessage('pluginStore.data.cleaningHint') }}</p>
       <BaseButton variant="secondary" size="sm" @click="emit('stop')">{{ pluginStoreMessage('pluginStore.data.stop') }}</BaseButton>
       <BaseButton variant="ghost" size="sm" @click="emit('reveal')">{{ pluginStoreMessage('pluginStore.data.reveal') }}</BaseButton>

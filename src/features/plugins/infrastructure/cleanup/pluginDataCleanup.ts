@@ -27,6 +27,7 @@ export interface PluginDataCleanupOptions {
   readonly stopRuntime?: () => void | Promise<void>;
   readonly signal?: AbortSignal;
   readonly onStarted?: () => void;
+  readonly onProgress?: (removedEntries: number) => void;
   readonly now?: () => number;
 }
 
@@ -287,13 +288,17 @@ function dropOwnedTables(db: Database.Database, tableNames: readonly string[]): 
 }
 
 /** 逐项让出事件循环；中止后不再删下一项，已经删除的项在重试时自然跳过。 */
-async function removePluginDataEntry(target: string, signal: AbortSignal | undefined): Promise<void> {
+async function removePluginDataEntry(
+  target: string,
+  signal: AbortSignal | undefined,
+  onRemoved: () => void,
+): Promise<void> {
   assertNotAborted(signal);
   try {
     const stat = await fs.promises.lstat(target);
     if (stat.isDirectory()) {
       for (const name of await fs.promises.readdir(target)) {
-        await removePluginDataEntry(path.join(target, name), signal);
+        await removePluginDataEntry(path.join(target, name), signal, onRemoved);
       }
       assertNotAborted(signal);
       await fs.promises.rmdir(target);
@@ -302,6 +307,7 @@ async function removePluginDataEntry(target: string, signal: AbortSignal | undef
       // 子项可能是软链接。只删除链接本身，不跟随链接目标。
       await fs.promises.unlink(target);
     }
+    onRemoved();
   } catch (error) {
     if (!isMissingPathError(error)) throw error;
   }
@@ -331,12 +337,14 @@ export async function cleanupPluginData(options: PluginDataCleanupOptions): Prom
     assertNotAborted(options.signal);
     await options.stopRuntime?.();
     const usageBefore = await calculatePluginStorageUsageAsync(options);
+    let removedEntries = 0;
+    const countRemoved = () => options.onProgress?.(++removedEntries);
     for (const declaration of [...declaredPaths(options.dataStorage)].sort(cleanupPathOrder)) {
       assertNotAborted(options.signal);
       if (completedPaths.has(declaration.key)) continue;
       const target = resolveDeclaredDirectory(options.dataRoot, declaration.relativePath);
       if (assertPluginDataDirectory(options.dataRoot, target)) {
-        await removePluginDataEntry(target, options.signal);
+        await removePluginDataEntry(target, options.signal, countRemoved);
       }
       completedPaths.add(declaration.key);
       writeProgress(options.db, options.pluginId, completedPaths, now());

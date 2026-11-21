@@ -119,6 +119,7 @@ export type PluginStoreMessageKey =
   | 'pluginStore.data.status.unavailable'
   | 'pluginStore.data.retainedHint'
   | 'pluginStore.data.cleaningHint'
+  | 'pluginStore.data.cleanupProgress'
   | 'pluginStore.data.retry'
   | 'pluginStore.data.stop'
   | 'pluginStore.data.reveal'

@@ -104,8 +104,12 @@ try {
       await delay(20);
       remaining = filesRemaining();
     }
-    const during = { files: remaining, cleanup: cleanup() };
+    const indicator = await run('eval', "document.querySelector('.plugin-data-panel__progress')?.textContent.trim() ?? ''");
+    const during = { files: filesRemaining(), cleanup: cleanup(), progress: indicator.value };
     assert.ok(during.files > 0 && during.cleanup?.status === 'cleaning');
+    const removed = Number(/^已清理 (\d+) 项$/u.exec(during.progress)?.[1]);
+    assert.ok(removed > 0 && removed <= count - during.files, `Invalid real cleanup progress: ${during.progress}`);
+    await run('shot');
     await run('click', stop);
     await interaction;
     await run('wait', '--selector', '.plugin-data-panel .is-failed');
