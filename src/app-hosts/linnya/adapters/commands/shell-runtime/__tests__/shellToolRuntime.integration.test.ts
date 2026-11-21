@@ -492,7 +492,7 @@ describe('ShellToolRuntime production orchestration', () => {
       onApprovalRequest: () => { snapshot.embeddingModelId = 'embed-changed'; },
     });
     const outcome = await f.runtime.executeShell({
-      ...shellRequest({ command: 'rm file.txt', interactive }),
+      ...shellRequest({ command: 'rm -r old-output', interactive }),
       modelPurposeSnapshot: snapshot,
     });
     expect(outcome.status).toBe('completed');

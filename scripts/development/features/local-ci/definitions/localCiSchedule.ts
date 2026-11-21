@@ -92,7 +92,7 @@ export const LOCAL_CI_STEP_SCHEDULE: LocalCiSchedule = {
       'Install dependencies': 'build',
       'Verify native packaging command entry': 'static',
       'Verify artifact evidence on the target platform': 'static',
-      'Package official plugins from a clean checkout': 'build',
+      'Package and verify official plugin lifecycles from a clean checkout': 'build',
       'Build WASM': 'build',
       'Build Renderer': 'build',
       'Build Electron Main': 'build',

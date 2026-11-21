@@ -19,7 +19,8 @@ import {
 // App Server 入口只负责编排、查询与持久化；PPTX 生成依赖属于 build Worker。
 // Worker 必需的两份纯身份 schema 随插件内联，增加约 50 KiB；ppt_direction 的视觉方向池与
 // inspect 的方向贯彻检查在 App Server 运行，约 95 KiB（池内中文按 \u 转义计）；仍禁止整套物化栈回流。
-const MAX_BACKEND_ENTRY_BYTES = 2.3 * 1024 * 1024;
+// 插件清单合同新增数据存储声明与应用面槽位（插件全生命周期），随 plugin-host-contract 内联约 1.4 KiB。
+const MAX_BACKEND_ENTRY_BYTES = 2.31 * 1024 * 1024;
 // TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；预算只保留小幅
 // 依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入（这类回流都是数百 KiB 起）。
 // 2026-11 图片取景（crop/focus 的作者校验、几何与 srcRect 导出）增加约 5 KiB，当时余量仅
