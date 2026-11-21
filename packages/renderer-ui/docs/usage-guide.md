@@ -52,7 +52,7 @@ canvasContext.font = `24px ${font.resolvedFamily}`;
 | 数字输入 | `@linnya/renderer-ui` 的 `CustomNumberInput` | 带步进按钮的数字输入；业务需要调整原生 input 时传入自己的 `inputClass`。 |
 | 有界数值滑块 | `@linnya/renderer-ui` 的 `CustomSlider` | 受控 number；默认/紧凑密度，原生键盘和拖动；业务只提供范围、标签和值。 |
 | 复选/单选 | `@linnya/renderer-ui` 的 `CustomCheckbox`、`CustomRadio` | 表单布尔、多选、单选控件；内部节点定制使用公开 `classNames`。 |
-| 开关 | `@linnya/renderer-ui` 的 `Switch` | 二元状态开关，业务层负责是否允许切换。 |
+| 开关 | `@linnya/renderer-ui` 的 `Switch` | 二元受控开关，发出请求后继续显示 `modelValue`，由业务层确认是否切换。 |
 | 分段标签页 | `@linnya/renderer-ui` 的 `SegmentedTabs` | 轻量模式切换、筛选 tab。 |
 | 标签/实体 chip | `@linnya/renderer-ui` 的 `TagChip` | 支持图标、关闭按钮、可选颜色和明确节点的 `classNames`。 |
 | 模态框 | `@linnya/renderer-ui` 的 `Modal` | 标准居中弹窗，支持明确的滚动职责、固定 footer、尺寸和关闭行为配置。 |

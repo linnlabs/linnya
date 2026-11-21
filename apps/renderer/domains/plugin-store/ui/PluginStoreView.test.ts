@@ -500,6 +500,7 @@ describe('PluginStoreView', () => {
     expect(loadRuntimeRendererPluginsMock).not.toHaveBeenCalled();
     expect(api.plugins.storeList).toHaveBeenCalledTimes(2);
     expect(readNotificationMessage(mounted.pinia)).toBe('插件启停失败，请稍后重试。');
+    expect(mindmapSwitch.checked).toBe(true);
   });
 
   it('点击卡片进入详情并静默检查当前版本', async () => {

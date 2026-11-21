@@ -40,6 +40,9 @@ function handleChange(event: Event): void {
   if (!(target instanceof HTMLInputElement)) {
     return;
   }
-  emit('update:modelValue', target.checked);
+  const requested = target.checked;
+  // 原生 checkbox 先改变 DOM；调用方拒绝请求时，未变化的 prop 不会再被 Vue 写入。
+  target.checked = props.modelValue;
+  emit('update:modelValue', requested);
 }
 </script>

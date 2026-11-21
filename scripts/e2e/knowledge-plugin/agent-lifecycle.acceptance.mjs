@@ -206,6 +206,12 @@ try {
     await openStoreDetail();
     await run('click', '--selector', toggle);
     await run('wait', '--selector', '.notification-content');
+    await run('wait', '--selector', `${toggle} input:not(:disabled)`);
+    assert.equal(
+      (await run('eval', `document.querySelector(${json(`${toggle} input`)}).checked`)).value,
+      true,
+      'Rejected disable must leave the visible switch enabled'
+    );
     const toggleMessage = (await run('eval', `document.querySelector('.notification-content')?.textContent?.trim()`)).value;
     await run('shot');
     await clickUninstall();
