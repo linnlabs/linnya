@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { hash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   assertRequiredBundledPluginSeedSucceeded,
@@ -232,6 +232,35 @@ describe('plugin runtime bootstrap', () => {
       previousVersion: null,
     });
     expect(fs.existsSync(path.join(userPluginRoot, 'mindmap/1.0.0/plugin.json'))).toBe(true);
+  });
+
+  it('reports a full volume when Windows maps bundled copy exhaustion to EINPROGRESS', () => {
+    const root = makeTempRoot();
+    const bundledPluginRoot = path.join(root, 'bundled');
+    const userPluginRoot = path.join(root, 'plugins');
+    writeBundledPlugin(bundledPluginRoot, 'mindmap', '1.0.0');
+    const request = { bundledPluginRoot, userPluginRoot, pluginId: 'mindmap' };
+    const copyError = Object.assign(new Error('Copy failed'), { code: 'EINPROGRESS' });
+    const copy = vi.spyOn(fs, 'cpSync').mockImplementation((_source, temporary) => {
+      writeFile(path.join(String(temporary), 'partial-copy'), 'Fixture');
+      throw copyError;
+    });
+    const capacity = vi.spyOn(fs, 'statfsSync').mockReturnValue({
+      type: 0, bsize: 4096, blocks: 100, bfree: 0, bavail: 0, files: 0, ffree: 0,
+    });
+    try {
+      expect(() => stageBundledPluginForExplicitInstall(request)).toThrow(
+        expect.objectContaining({ code: 'disk-space', cause: copyError })
+      );
+      expect(fs.readdirSync(path.join(userPluginRoot, 'mindmap'))).toEqual([]);
+      // 同一个底层码在有空间时不能被误报成磁盘满。
+      capacity.mockReturnValue({ type: 0, bsize: 4096, blocks: 100, bfree: 40, bavail: 40, files: 0, ffree: 0 });
+      expect(() => stageBundledPluginForExplicitInstall(request)).toThrow(copyError);
+    } finally {
+      capacity.mockRestore();
+      copy.mockRestore();
+    }
+    expect(stageBundledPluginForExplicitInstall(request).createdVersionDir).toBe(true);
   });
 
   it('replaces a leftover same-version directory when the plugin is not active', () => {

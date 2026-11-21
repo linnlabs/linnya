@@ -140,10 +140,25 @@ function parseActivePointer(input: unknown): ActivePluginPointer {
   return { version: input.version };
 }
 
-function copyDirectoryAtomically(sourceDir: string, targetDir: string): void {
-  fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+function translateBundledCopyFailure(error: unknown, destination: string, pluginId: string): unknown {
+  // Windows 上 cpSync 在创建子目录时可能把 ERROR_DISK_FULL 映射为 EINPROGRESS。
+  // 只在目标卷确实没有可用块时翻译，不能按本地化系统文案或单独凭底层码推断。
+  if (!(error instanceof Error) || !('code' in error) || error.code !== 'EINPROGRESS') return error;
+  try {
+    if (fs.statfsSync(destination).bavail === 0) {
+      return new PluginOperationError('disk-space', error.message, { pluginId, cause: error });
+    }
+  } catch {
+    // 卷状态不可读时保留原始复制错误。
+  }
+  return error;
+}
+
+function copyDirectoryAtomically(sourceDir: string, targetDir: string, pluginId: string): void {
+  const destination = path.dirname(targetDir);
+  fs.mkdirSync(destination, { recursive: true });
   const tempDir = path.join(
-    path.dirname(targetDir),
+    destination,
     `.${path.basename(targetDir)}.${process.pid}.${Date.now()}.tmp`
   );
   fs.rmSync(tempDir, { recursive: true, force: true });
@@ -154,8 +169,10 @@ function copyDirectoryAtomically(sourceDir: string, targetDir: string): void {
     });
     fs.renameSync(tempDir, targetDir);
   } catch (error) {
+    // 清理部分产物可能会释放空间；先从失败时的卷状态确认原因。
+    const failure = translateBundledCopyFailure(error, destination, pluginId);
     fs.rmSync(tempDir, { recursive: true, force: true });
-    throw error;
+    throw failure;
   }
 }
 
@@ -199,7 +216,7 @@ function ensureSeedTargetVersionDir(
 ): void {
   assertExistingSeedTargetVersionIdentity(sourceDir, targetVersionDir, pluginId, version);
   if (!fs.existsSync(targetVersionDir)) {
-    copyDirectoryAtomically(sourceDir, targetVersionDir);
+    copyDirectoryAtomically(sourceDir, targetVersionDir, pluginId);
   }
 }
 
