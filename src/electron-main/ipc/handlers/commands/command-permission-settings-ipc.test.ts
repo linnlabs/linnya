@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  CONVERSATION_COMMAND_PERMISSION_CHANNEL,
   COMMAND_PERMISSION_SETTINGS_READ_CHANNEL,
   COMMAND_PERMISSION_SETTINGS_UPDATE_CHANNEL,
   CommandPermissionSettingsV1Schema,
@@ -16,6 +17,7 @@ import { createLocalCommandPermissionSettingsRendererGateway } from 'src/app-hos
 
 type IpcHandler = (event: unknown, raw?: unknown) => unknown;
 const registeredHandlers = new Map<string, IpcHandler>();
+const trustedEvent = { sender: { isDestroyed: () => false, send: vi.fn() } };
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -31,6 +33,8 @@ async function registerWithPort(port: CommandPermissionSettingsPort): Promise<vo
   );
   registerCommandPermissionSettingsHandlers({
     gateway: createLocalCommandPermissionSettingsRendererGateway(port),
+    isTrustedSender: Object.is.bind(Object, trustedEvent),
+    conversationPermission: async () => ({ kind: 'error', code: 'unavailable' }),
   });
 }
 
@@ -43,13 +47,24 @@ async function invokeRead(): Promise<unknown> {
 async function invokeUpdate(raw: unknown): Promise<unknown> {
   const handler = registeredHandlers.get(COMMAND_PERMISSION_SETTINGS_UPDATE_CHANNEL);
   if (!handler) throw new Error('命令权限更新 handler 未注册');
-  return handler(undefined, raw);
+  return handler(trustedEvent, raw);
 }
 
 describe('command permission settings IPC', () => {
   beforeEach(() => {
     registeredHandlers.clear();
     vi.resetModules();
+  });
+
+  it('拒绝当前产品主窗之外的设置写入', async () => {
+    const write = vi.fn(() => ({ status: 'written' as const }));
+    await registerWithPort({ read: () => ({ status: 'missing' }), write });
+    for (const channel of [COMMAND_PERMISSION_SETTINGS_UPDATE_CHANNEL, CONVERSATION_COMMAND_PERMISSION_CHANNEL]) {
+      const handler = registeredHandlers.get(channel);
+      if (!handler) throw new Error(`未注册 IPC handler: ${channel}`);
+      await expect(handler(undefined, {})).rejects.toThrow('拒绝非主窗口');
+    }
+    expect(write).not.toHaveBeenCalled();
   });
 
   it('缺少配置时关闭读取，不在 IPC 路径静默恢复默认权限', async () => {
@@ -193,7 +208,7 @@ describe('command permission settings IPC', () => {
       async invoke(channel, ...args) {
         const handler = registeredHandlers.get(channel);
         if (!handler) throw new Error(`未注册 IPC handler: ${channel}`);
-        return handler(undefined, args[0]);
+        return handler(trustedEvent, args[0]);
       },
     });
 

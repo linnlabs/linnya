@@ -188,6 +188,14 @@ export interface CommandRiskLexicalSegment {
   readonly shellSemantics: 'zsh' | 'powershell' | 'cmd';
 }
 
+/**
+ * 命令实际执行位置的已核对事实（由上层用 canonical 路径算出，纯函数只读）。
+ * cwdInsideConversationRoot：cwd 的真实路径位于本会话工作目录根之内。
+ */
+export interface CommandRiskExecutionScope {
+  readonly cwdInsideConversationRoot: boolean;
+}
+
 export interface CommandRiskLexicalScan {
   readonly command: string;
   readonly platform: 'macos' | 'windows';

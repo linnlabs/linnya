@@ -99,7 +99,7 @@ function describeImage(params: BuildWebReadObservationParams, locator: string): 
     `Image: ${image.width}×${image.height} ${params.file?.format.toUpperCase() ?? ''}, decoded and checked. If your model can see images, read_file(${JSON.stringify({ locator })}) shows it. Keep the original unchanged.`,
   ];
   if (!source) {
-    lines.push('Source not recorded: this image was not listed by image_search or by a page read earlier in this app session. Before using it, note the page where it appeared and its license yourself.');
+    lines.push('Source not recorded: this image was not listed by image_search or by a page read earlier in this conversation. Before using it, note the page where it appeared and its license yourself.');
     return lines;
   }
   lines.push(source.found_via === 'image_search'
@@ -108,6 +108,10 @@ function describeImage(params: BuildWebReadObservationParams, locator: string): 
   lines.push(source.license
     ? `License from the source's metadata, not verified here: ${source.license.code.toUpperCase()} — ${LICENSE_TERMS(source.license)}.`
     : 'No structured license: only the page\'s caption, credit and rights text (below) are known. Treat it as all rights reserved unless the page says otherwise; attribution-quote use is for non-commercial settings.');
+  if (source.found_via === 'web_page') {
+    // 任何网页都能给别人的图片地址配图注、写版权声明；这些文字只说明那一页怎么说。
+    lines.push('Caption, credit and rights text below are a web page claim, not verified: any page can attach such text to an image it does not own. Confirm the creator and terms on the image owner\'s own page before relying on them.');
+  }
   return lines;
 }
 

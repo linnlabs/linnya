@@ -5,8 +5,8 @@ import {
   type Document as XmlDocument,
   type Element as XmlElement,
 } from '@xmldom/xmldom';
-import { DEFAULT_SHADOW_OPACITY, type GradientStop, type ImageAdjust, type Paint, type ResolvedShapeGeometry, type StrokePaint, type TextEffects } from '@plugin/slides/shared';
-import { normalizePptxShadowAngle } from './presentationVisualDefaults';
+import type { GradientStop, ImageAdjust, Paint, ResolvedShapeGeometry, StrokePaint, TextEffects } from '@plugin/slides/shared';
+import { createOuterShadowEffectList } from './outerShadow';
 import { presetShapeNameToPptxName } from '../shape/shapeNameRegistry';
 import type {
   PptxPaintPatchPlan,
@@ -18,15 +18,29 @@ import type {
 const OOXML_ANGLE_UNIT = 60_000;
 const OOXML_PERCENT_UNIT = 100_000;
 const POINT_TO_EMU = 12_700;
+/** `a:solidFill` 下的颜色元素：sRGB、主题色及其他颜色模型。 */
+const SOLID_COLOR_TAGS = ['srgbClr', 'schemeClr', 'sysClr', 'prstClr', 'scrgbClr', 'hslClr']
+  .flatMap((name) => [`a:${name}`, name]);
 /** custGeom 路径坐标系：viewBox 映射到 0..PATH_UNIT，再由 PowerPoint 拉伸到图片框。 */
 const PATH_UNIT = 100_000;
 
 const parser = new DOMParser();
 const serializer = new XMLSerializer();
 
+/** 补丁无法完整落地、但不影响导出的情况；由调用方决定记到哪里。 */
+export interface PptxPaintWarning {
+  readonly code: 'text_opacity_not_written';
+  /** 1 起的页码。 */
+  readonly slideNumber: number;
+  /** 文本框的 `cNvPr@id`。 */
+  readonly shapeId: string;
+  readonly message: string;
+}
+
 export async function applyPptxPaintPatches(
   zip: JSZip,
   plan: PptxPaintPatchPlan | undefined,
+  onWarning?: (warning: PptxPaintWarning) => void,
 ): Promise<boolean> {
   if (!plan || plan.slides.length === 0) return false;
 
@@ -53,7 +67,7 @@ export async function applyPptxPaintPatches(
       slideMutated = true;
     }
     for (const textPatch of slidePatch.texts) {
-      applyMarkedTextEffects(doc, textPatch);
+      applyMarkedTextEffects(doc, textPatch, slidePatch.slideIndex + 1, onWarning);
       slideMutated = true;
     }
     if (slideMutated) {
@@ -110,7 +124,12 @@ function replaceMarkedShapePaint(doc: XmlDocument, patch: PptxShapePaintPatch): 
   throw new Error(`PPTX Paint adapter 找不到 shape marker ${patch.marker}。`);
 }
 
-function applyMarkedTextEffects(doc: XmlDocument, patch: PptxTextEffectsPatch): void {
+function applyMarkedTextEffects(
+  doc: XmlDocument,
+  patch: PptxTextEffectsPatch,
+  slideNumber: number,
+  onWarning: ((warning: PptxPaintWarning) => void) | undefined,
+): void {
   const candidates: XmlElement[] = [
     ...Array.from(doc.getElementsByTagName('p:sp')),
     ...Array.from(doc.getElementsByTagName('sp')),
@@ -122,8 +141,20 @@ function applyMarkedTextEffects(doc: XmlDocument, patch: PptxTextEffectsPatch): 
       ...Array.from(shape.getElementsByTagName('a:rPr')),
       ...Array.from(shape.getElementsByTagName('a:endParaRPr')),
     ];
-    for (const properties of runProperties) applyTextEffectsToRunProperties(doc, properties, patch.effects);
-    nonVisual.setAttribute('name', `Text ${nonVisual.getAttribute('id') ?? ''}`.trim());
+    let opacityNotWritten = false;
+    for (const properties of runProperties) {
+      opacityNotWritten = applyTextEffectsToRunProperties(doc, properties, patch.effects) || opacityNotWritten;
+    }
+    const shapeId = nonVisual.getAttribute('id') ?? '';
+    if (opacityNotWritten) {
+      onWarning?.({
+        code: 'text_opacity_not_written',
+        slideNumber,
+        shapeId,
+        message: '文字透明度未写入：部分 run 没有显式纯色填充，颜色继承自段落、占位符或形状样式，无法在不改变颜色的前提下加 alpha。',
+      });
+    }
+    nonVisual.setAttribute('name', `Text ${shapeId}`.trim());
     return;
   }
   throw new Error(`PPTX Paint adapter 找不到 text marker ${patch.marker}。`);
@@ -131,12 +162,19 @@ function applyMarkedTextEffects(doc: XmlDocument, patch: PptxTextEffectsPatch): 
 
 /**
  * `a:rPr` 的子元素顺序是 ln → 填充 → effectLst → highlight → … → latin；这三项都排在最前，
- * 所以先删旧的再按顺序插到开头。没写渐变时保留 PptxGenJS 写的纯色，只把不透明度乘上去。
+ * 所以先删旧的再按顺序插到开头。没写渐变时保留 run 原有的纯色，只把不透明度写成它的 alpha。
+ *
+ * 只写 opacity、而 run 没有显式纯色填充时（颜色继承自段落、lstStyle、占位符或形状样式），
+ * 填充一律原样保留、不写 alpha，返回 true 让调用方报告“透明度未写入”：不能猜一个颜色替它写。
+ * `a:endParaRPr` 不渲染字形，不算。
  */
-function applyTextEffectsToRunProperties(doc: XmlDocument, properties: XmlElement, effects: TextEffects): void {
-  const replacesFill = effects.fill != null || effects.opacity != null;
+function applyTextEffectsToRunProperties(doc: XmlDocument, properties: XmlElement, effects: TextEffects): boolean {
   const existingSolid = findDirectChild(properties, ['a:solidFill', 'solidFill']);
-  const solidColor = existingSolid ? firstElement(existingSolid, ['a:srgbClr', 'srgbClr'])?.getAttribute('val') : null;
+  const solidColor = existingSolid ? findDirectChild(existingSolid, SOLID_COLOR_TAGS) : null;
+  const opacity = effects.fill == null ? effects.opacity : undefined;
+  const opacityOnly = opacity != null;
+  const opacityFillable = opacity != null && solidColor != null;
+  const replacesFill = effects.fill != null || opacityFillable;
   removeDirectChildren(properties, [
     'a:ln', 'ln', 'a:effectLst', 'effectLst',
     ...(replacesFill ? ['a:noFill', 'noFill', 'a:solidFill', 'solidFill', 'a:gradFill', 'gradFill'] : []),
@@ -150,20 +188,8 @@ function applyTextEffectsToRunProperties(doc: XmlDocument, properties: XmlElemen
     leading.push(line);
   }
   if (effects.fill) leading.push(createPaintElement(doc, effects.fill, effects.opacity));
-  else if (replacesFill && solidColor) leading.push(createPaintElement(doc, { type: 'solid', color: `#${solidColor}` }, effects.opacity));
-  if (effects.shadow) {
-    const effectList = doc.createElement('a:effectLst');
-    const shadow = doc.createElement('a:outerShdw');
-    const { offsetX, offsetY } = effects.shadow;
-    shadow.setAttribute('blurRad', String(Math.round(effects.shadow.blur * POINT_TO_EMU)));
-    shadow.setAttribute('dist', String(Math.round(Math.hypot(offsetX, offsetY) * POINT_TO_EMU)));
-    shadow.setAttribute('dir', String(normalizePptxShadowAngle(Math.atan2(offsetY, offsetX) * (180 / Math.PI)) * OOXML_ANGLE_UNIT));
-    shadow.setAttribute('algn', 'tl');
-    shadow.setAttribute('rotWithShape', '0');
-    shadow.appendChild(createColorElement(doc, effects.shadow.color, effects.shadow.opacity ?? DEFAULT_SHADOW_OPACITY));
-    effectList.appendChild(shadow);
-    leading.push(effectList);
-  }
+  else if (opacity != null && solidColor) leading.push(createOpacityOnlyFill(doc, solidColor, opacity));
+  if (effects.shadow) leading.push(createOuterShadowEffectList(doc, effects.shadow, { align: 'tl' }));
   // 只改字效时保留的原纯色要排在 ln 之后、effectLst 之前。
   const keptFill = replacesFill ? null : findDirectChild(properties, ['a:solidFill', 'solidFill', 'a:noFill', 'noFill', 'a:gradFill', 'gradFill']);
   if (keptFill) {
@@ -173,6 +199,35 @@ function applyTextEffectsToRunProperties(doc: XmlDocument, properties: XmlElemen
   }
   const first = properties.firstChild;
   for (const element of leading) properties.insertBefore(element, first);
+  return opacityOnly && !opacityFillable && isRunProperties(properties);
+}
+
+function isRunProperties(properties: XmlElement): boolean {
+  return properties.tagName === 'a:rPr' || properties.tagName === 'rPr';
+}
+
+/**
+ * 把 run 原有的纯色连同不透明度重写一遍：
+ * - sRGB 色：保留色值，alpha 取 effects.opacity；
+ * - 主题色等其他颜色：保留颜色元素，替换其 alpha（不能因为读不到 sRGB 就把颜色和透明度一起丢掉）。
+ */
+function createOpacityOnlyFill(doc: XmlDocument, color: XmlElement, opacity: number): XmlElement {
+  const srgbValue = color.tagName === 'a:srgbClr' || color.tagName === 'srgbClr' ? color.getAttribute('val') : null;
+  if (srgbValue) return createPaintElement(doc, { type: 'solid', color: `#${srgbValue}` }, opacity);
+  const solid = doc.createElement('a:solidFill');
+  solid.appendChild(withAlpha(doc, color.cloneNode(true) as XmlElement, opacity));
+  return solid;
+}
+
+/** 替换颜色元素上已有的 alpha；不透明（>= 1）不写 alpha，与 createColorElement 一致。 */
+function withAlpha(doc: XmlDocument, color: XmlElement, opacity: number): XmlElement {
+  removeDirectChildren(color, ['a:alpha', 'alpha']);
+  if (opacity < 1) {
+    const alpha = doc.createElement('a:alpha');
+    alpha.setAttribute('val', toOoxmlPercent(opacity));
+    color.appendChild(alpha);
+  }
+  return color;
 }
 
 function applyMarkedPicturePatch(doc: XmlDocument, patch: PptxPicturePatch): void {

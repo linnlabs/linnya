@@ -13,3 +13,7 @@ export type {
   ConversationAgentChoiceResult,
 } from './orchestration/applyConversationAgentChoice';
 export { applyConversationAgentChoice } from './orchestration/applyConversationAgentChoice';
+export {
+  listRetiredConversationAgentNames,
+  resolveRetiredConversationAgentName,
+} from './functions/retiredConversationAgentName';

@@ -35,6 +35,7 @@ MathFormulaSource
 - parser 是闭集，不加载 TeX package、不执行宏、不调用外部 LaTeX 进程。
 - MathML 是 backend 内部瞬时投影，不进入 DeckSpec、RenderModel 或持久化合同。
 - SVG 与 OMML 必须来自同一 IR；新增语法时同时补两种投影和代表性 corpus。禁止重新引入手写字宽、字距或上下标定位，公式排版只有 MathJax 一个 preview owner。
+- 分式上下偏移（`num1/num2/denom1/denom2`）与上下标缩放（`scriptsizemultiplier`）取 PowerPoint 所用 Cambria Math 的 MATH 常量，定义只在 `definitions/powerPointMathLayout.ts`；字形、轴高与线宽仍是 STIX2。改这些值会改变公式外框，须同时给 `DECK_LAYOUT_VERSION` 加一。根号、可伸缩括号、积分号和矩阵行距的高度仍与 PowerPoint 有差异（24pt 下 0.05–0.12in），来自两套字形本身。
 - MathJax 固定使用随插件打包的 STIX2 字形与 local font cache，输出必须是 self-contained path SVG；运行时不得访问 CDN、本机字体，也不得以 `<text>`、普通文字或图片兜底。不在数学字形集内的说明文字应放在公式外的普通文本中。
 - MathJax `LiteAdaptor.outerHTML()` 不会正确转义 attribute value 中的 `<`；`altText` 必须由本技术 adapter 在 SVG 序列化后按 XML attribute 规则注入 `aria-label`，避免底层 serializer 的不完整转义或预转义造成的二次编码。作者说明中的 `<`、`>`、`&`、引号均是合法输入，不能要求文稿自行转义，也不能以删除无障碍语义规避解码错误。
 - backend、build Worker 与 standalone CLI 共用 artifact 内唯一的私有 `slides-mathjax-runtime`；各入口不得再次内联或复制 MathJax 字形数据。该 runtime 只提供同步 MathML → SVG 技术 adapter，不拥有公式 source、IR 或领域错误。

@@ -230,31 +230,6 @@
   transition: border-color var(--duration-medium) var(--ease-standard);
 }
 
-.review-setup-view .field-control::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.review-setup-view .field-control::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.review-setup-view .field-control::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  background-clip: content-box;
-  border: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-}
-
-.review-setup-view .field-control:hover::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-}
-
-.review-setup-view .field-control::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
 .review-setup-view .field-control:hover,
 .review-setup-view .field-control:focus {
   border-color: var(--color-accent);

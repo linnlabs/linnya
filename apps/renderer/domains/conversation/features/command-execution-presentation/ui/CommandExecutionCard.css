@@ -47,38 +47,12 @@
   overflow-x: auto;
   overflow-y: scroll;
   overscroll-behavior: contain;
-  scrollbar-color: var(--color-border-default) transparent;
   scrollbar-gutter: stable both-edges;
-  scrollbar-width: thin;
   color: var(--color-text-secondary);
   font-size: var(--font-size-footnote);
   line-height: var(--line-height-footnote);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-}
-
-.command-execution-card__output::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.command-execution-card__output::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.command-execution-card__output::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: var(--radius-full);
-  background-color: var(--color-border-default);
-  background-clip: content-box;
-}
-
-.command-execution-card__output::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-border-hover);
-}
-
-.command-execution-card__output::-webkit-scrollbar-corner {
-  background: transparent;
 }
 
 .command-execution-card__output--pty {

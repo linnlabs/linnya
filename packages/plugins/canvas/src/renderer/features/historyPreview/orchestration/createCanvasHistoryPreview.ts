@@ -2,6 +2,7 @@ import type { CanvasCard, CanvasVersionBudgetStatus } from '@plugin/canvas/share
 import { createPixiCanvasKernel, type CanvasKernel } from '../../../kernel';
 import { canvasKernelText, canvasText } from '../../localization';
 import type { CanvasHistoryPreviewOptions } from '../definitions/canvasHistoryPreview';
+import { createReleaseStack } from '../functions/createReleaseStack';
 import { createCanvasHistoryPreviewState } from '../store/createCanvasHistoryPreviewState';
 
 /** 历史是独立只读投影，永远不创建文档提交会话或编辑保护。 */
@@ -14,16 +15,21 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
   let currentDocumentId: string | null = null;
   let budgetEpoch = 0;
   let refresh: (() => void) | null = null;
+  const resetView = () => {
+    disposeView?.();
+    disposeView = null;
+    kernel = null;
+    refresh = null;
+  };
   return {
     state,
     async open(documentId: string, versionId: string) {
       const token = ++generation;
       currentDocumentId = documentId;
-      disposeView?.();
-      disposeView = null;
-      kernel = null;
-      refresh = null;
+      resetView();
       state.loading();
+      // kernel 创建后的每个资源都登记释放；装配中途抛错时，已建的 GPU 与订阅仍能被回收。
+      const owned = createReleaseStack();
       try {
         const budgetToken = budgetEpoch;
         const [snapshot, budget] = await Promise.all([
@@ -46,8 +52,11 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
           return;
         }
         kernel = current;
+        owned.add(() => current.destroy());
+        disposeView = owned.release;
         current.canvas.setAttribute('aria-label', canvasText('canvas.history.canvasLabel'));
         const content = options.createContent(documentId);
+        owned.add(() => content.dispose());
         const raster = options.createRaster({
           kernel: current,
           createContent: content.create,
@@ -55,6 +64,7 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
           readAppearance: options.readAppearance,
           reportFailure: message => state.fail(message),
         });
+        owned.add(() => raster.dispose());
         refresh = () => {
           content.refreshVisible(current.renderableCards());
           raster.refresh();
@@ -70,6 +80,7 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
             refresh?.();
           }
         });
+        owned.add(stopContent);
         void content.refreshReferences(cards).catch(error => {
           if (token === generation)
             state.fail(error instanceof Error ? error.message : String(error));
@@ -84,17 +95,12 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
         };
         const resize = new ResizeObserver(resized);
         resize.observe(options.host);
-        const stopResolution = options.observeResolution(resized);
-        disposeView = () => {
-          stopContent();
-          resize.disconnect();
-          stopResolution();
-          raster.dispose();
-          content.dispose();
-          current.destroy();
-        };
+        owned.add(() => resize.disconnect());
+        owned.add(options.observeResolution(resized));
         state.ready();
       } catch (error) {
+        owned.release();
+        if (disposeView === owned.release) resetView();
         if (token === generation)
           state.fail(error instanceof Error ? error.message : String(error));
       }
@@ -116,10 +122,7 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
     dispose() {
       generation += 1;
       currentDocumentId = null;
-      disposeView?.();
-      disposeView = null;
-      kernel = null;
-      refresh = null;
+      resetView();
     },
   };
 }

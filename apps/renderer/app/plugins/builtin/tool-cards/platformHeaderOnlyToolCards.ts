@@ -37,7 +37,6 @@ function createHeaderOnlyToolConfig(key: ConversationMessageKey): ToolUiConfig {
 }
 
 export const platformHeaderOnlyToolCards: Readonly<Record<string, ToolUiConfig>> = {
-  write_report: createHeaderOnlyToolConfig('conversation.tool.deepResearch.writeReport'),
   markdown_create_annotations: createHeaderOnlyToolConfig(
     'conversation.tool.markdown.createAnnotations',
   ),

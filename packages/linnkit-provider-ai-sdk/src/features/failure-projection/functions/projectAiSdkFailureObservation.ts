@@ -24,6 +24,7 @@ import {
   classifyAiSdkFailure,
   projectAiSdkProviderSignal,
 } from './classifyAiSdkFailure';
+import { projectProviderErrorExcerpt } from './projectProviderErrorExcerpt';
 
 function readSafeErrorShape(error: unknown): AiSdkFailureErrorShape {
   if (error instanceof AiSdkHostStreamInvariantError) return 'host_stream_invariant';
@@ -77,6 +78,7 @@ export function projectAiSdkFailureObservation(
 ): AiSdkFailureObservation {
   const providerSignal = projectAiSdkProviderSignal(error);
   const sdkDetails = readSdkDetails(error);
+  const providerErrorExcerpt = projectProviderErrorExcerpt(error);
   return {
     failure: classifyAiSdkFailure(error, signal, phase, providerClassifier),
     diagnostic: {
@@ -87,6 +89,7 @@ export function projectAiSdkFailureObservation(
         : {}),
       ...(providerSignal === undefined ? {} : { provider_signal: providerSignal }),
       ...(sdkDetails === undefined ? {} : { sdk_error_details: sdkDetails }),
+      ...(providerErrorExcerpt === undefined ? {} : { provider_error_excerpt: providerErrorExcerpt }),
     },
   };
 }

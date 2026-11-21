@@ -29,7 +29,10 @@ import {
   resolveConversationAgentChoiceTextPresentation,
   resolveDocumentTypeTextPresentation,
 } from '@/app/plugins/functions/pluginContributionPresentation';
+import { listRetiredConversationAgentNames } from '@/domains/conversation/features/agent-choice';
+import { useConversationLocalization } from '@/domains/conversation/ui/useConversationLocalization';
 import ProjectOverviewView from '@/domains/workspace/features/project-overview/ui/ProjectOverviewView.vue';
+import { resolveProjectOverviewAgentName } from '@/domains/workspace/features/project-overview/functions/projectOverviewPresentation';
 import { useProjectKnowledgeBaseModalStore } from '@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
@@ -61,6 +64,7 @@ const {
 const pluginsStore = useEnabledPluginsStore();
 const { t } = useLocalization();
 const { workspaceMessage } = useWorkspaceLocalization();
+const { conversationMessage } = useConversationLocalization();
 
 // 文档类型和插件名从插件注册表查；注册表变化（插件启停）时整体重算。
 const presentation = computed<ProjectOverviewPresentation>(() => {
@@ -72,17 +76,19 @@ const presentation = computed<ProjectOverviewPresentation>(() => {
     }]),
   );
   const pluginNames = new Map(pluginsStore.states.map(state => [state.meta.id, state.meta.name]));
-  const agentNames = new Map<string, string>(agentChoices.value.map(choice => [
-    choice.agentId,
-    resolveConversationAgentChoiceTextPresentation(choice, t).pillText,
-  ]));
+  // 已删除定义的旧 Agent 仍出现在历史对话与改动来源里，用可读的“已退役”名称代替注册表 ID。
+  const agentNames = new Map<string, string>([
+    ...listRetiredConversationAgentNames(conversationMessage),
+    ...agentChoices.value.map(choice => [
+      choice.agentId,
+      resolveConversationAgentChoiceTextPresentation(choice, t).pillText,
+    ] as const),
+  ]);
   return {
     documentType: nodeType => byNodeType.get(nodeType) ?? { label: nodeType, iconComponent: DocumentIcon, iconClass: '' },
     pluginName: pluginId => pluginNames.get(pluginId) ?? null,
-    // 默认 Agent 不进选择器，统一叫 Linnya AI（与文件页“来源”一致）。
-    agentName: agentId => (agentId === null
-      ? workspaceMessage('workspace.projectOverview.actor.linnyaAi')
-      : agentNames.get(agentId) ?? null),
+    // 默认 Agent 不进选择器，名字由项目概览统一给出（Linnya Agent）。
+    agentName: agentId => resolveProjectOverviewAgentName(agentId, agentNames, workspaceMessage),
   };
 });
 

@@ -143,7 +143,7 @@
                   />
                 </div>
                 <div class="project-overview__cell project-conversations__muted" role="cell">
-                  <span>{{ agentText(row.agent_id) }}</span>
+                  <span>{{ repliedAgentsText(row) ?? '—' }}</span>
                 </div>
                 <div class="project-overview__cell project-conversations__numeric" role="cell">
                   <span>{{ row.turn_count }}</span>
@@ -197,6 +197,24 @@
         <p v-if="detailStatus === 'error'" class="project-conversations__detail-note">
           {{ message('workspace.projectOverview.conversations.detail.loadFailed') }}
         </p>
+
+        <section class="project-conversations__section">
+          <h3 class="project-conversations__label">{{ message('workspace.projectOverview.conversations.detail.agents') }}</h3>
+          <dl class="project-conversations__storage project-conversations__agents">
+            <div>
+              <dt>{{ message('workspace.projectOverview.conversations.detail.replied') }}</dt>
+              <dd>{{ repliedAgentsText(selectedRow) ?? message('workspace.projectOverview.conversations.detail.noReply') }}</dd>
+            </div>
+            <div>
+              <dt>{{ message('workspace.projectOverview.conversations.detail.selected') }}</dt>
+              <dd>{{ agentText(selectedRow.selected_agent_id) }}</dd>
+            </div>
+            <div v-if="selectedSubrunCount > 0">
+              <dt>{{ message('workspace.projectOverview.actor.subrun') }}</dt>
+              <dd>{{ message('workspace.projectOverview.conversations.detail.subrunCount', { count: selectedSubrunCount }) }}</dd>
+            </div>
+          </dl>
+        </section>
 
         <section v-if="selectedExcerpt" class="project-conversations__section">
           <h3 class="project-conversations__label">{{ message('workspace.projectOverview.conversations.detail.match') }}</h3>
@@ -332,7 +350,10 @@ import {
 import type { ProjectOverviewDocumentTarget, ProjectOverviewPresentation } from '../definitions/projectOverview';
 import {
   defaultProjectConversationSortDirection,
+  formatProjectConversationAgents,
+  projectConversationRepliedAgents,
   projectConversationStorageBytes,
+  projectConversationSubrunCount,
   sortProjectConversationsByAgentLabel,
 } from '../functions/projectConversationRows';
 import { isExcerptShown } from '../functions/projectConversationExcerpt';
@@ -390,7 +411,11 @@ watch(projectIdRef, () => { filters.value = { ...EMPTY_PROJECT_CONVERSATION_FILT
 
 
 function agentText(agentId: string | null): string {
-  return props.presentation.agentName(agentId) ?? agentId ?? message('workspace.projectOverview.actor.linnyaAi');
+  return props.presentation.agentName(agentId);
+}
+const listSeparator = computed(() => message('workspace.projectOverview.condition.join'));
+function repliedAgentsText(row: ProjectConversationRow): string | null {
+  return formatProjectConversationAgents(row.replied_agent_ids, agentText, listSeparator.value);
 }
 function titleText(row: ProjectConversationRow): string {
   return row.title.trim() || message('workspace.projectOverview.untitledConversation');
@@ -412,7 +437,7 @@ const sortedRows = computed(() => {
   const rows = queryResult.value?.project_id === props.projectId ? queryResult.value.conversations : [];
   // 插件显示名仅由 Renderer 贡献；保留这一个展示排序，CLI 不冒用 ID 代替它。
   return sort.value.key === 'agent'
-    ? sortProjectConversationsByAgentLabel(rows, sort.value.direction, row => agentText(row.agent_id))
+    ? sortProjectConversationsByAgentLabel(rows, sort.value.direction, row => repliedAgentsText(row) ?? '')
     : rows;
 });
 
@@ -424,7 +449,7 @@ function filterText(labelKey: WorkspaceMessageKey, value: string | null): string
 }
 
 const agentOptions = computed<CustomSelectOption<string>[]>(() => {
-  const agents = [...new Set(props.rows.flatMap(row => row.respondent_agent_ids.map(id => id === 'default' ? '' : id)))]
+  const agents = projectConversationRepliedAgents(props.rows)
     .map(agent => ({ value: agent, text: agentText(agent || null) }))
     .sort((left, right) => left.text.localeCompare(right.text, currentLocale.value));
   return [
@@ -519,6 +544,7 @@ const selectedRequest = computed(() => selectedRow.value && queryResult.value ? 
 } : null);
 const { detail, status: detailStatus } = useProjectConversationDetail(selectedRequest, revisionRef);
 const selectedStorage = computed(() => selectedRow.value?.storage ?? null);
+const selectedSubrunCount = computed(() => projectConversationSubrunCount(detail.value?.subagents ?? []));
 const selectedExcerpt = computed(() => {
   const excerpt = selectedId.value && filters.value.query.trim() ? matches.value?.get(selectedId.value) ?? null : null;
   return excerpt && !isExcerptShown(excerpt, [detail.value?.first_question, detail.value?.last_answer]) ? excerpt : null;
@@ -536,7 +562,6 @@ function moveSelection(index: number, offset: -1 | 1): void {
 
 function detailMetaText(row: ProjectConversationRow): string {
   return [
-    agentText(row.agent_id),
     message('workspace.projectOverview.conversations.detail.turns', { count: row.turn_count }),
     message('workspace.projectOverview.conversations.detail.created', { time: timeText(row.created_at) }),
     props.runningConversationIds.has(row.conversation_id)

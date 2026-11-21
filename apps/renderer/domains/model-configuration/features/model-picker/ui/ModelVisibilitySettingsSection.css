@@ -45,30 +45,6 @@
   min-height: 100%;
 }
 
-.model-visibility-scroll-host::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.model-visibility-scroll-host::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.model-visibility-scroll-host::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-  background-clip: content-box;
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
-}
-
-.model-visibility-scroll-host::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}
-
-.model-visibility-scroll-host::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
 .model-visibility-source-list .settings-list,
 .model-visibility-model-list .settings-list {
   gap: var(--space-0-5);

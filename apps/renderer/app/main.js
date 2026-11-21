@@ -7,6 +7,7 @@ import './styles/index.css'
 import './layout/styles/index.css'
 import './pages/styles/index.css'
 import './update/styles/index.css'
+import './plugins/styles/RendererPluginLoadFailureNotice.css'
 import '../domains/editor/styles/index.css'
 import '../domains/settings/styles/index.css'
 import '../domains/skills/styles/index.css'
@@ -50,7 +51,9 @@ import { ensureConversationLocalizationRegistered } from '../domains/conversatio
 import { ensureConversationObservabilityRegistered } from '../domains/conversation/registrations/ensureConversationObservabilityRegistered'
 import { ensureEditorLocalizationRegistered } from '../domains/editor/orchestration/ensureEditorLocalizationRegistered'
 import { ensurePluginContributionLocalizationRegistered } from './plugins/orchestration/ensurePluginContributionLocalizationRegistered'
+import { ensureRendererPluginLoadLocalizationRegistered } from './plugins/orchestration/ensureRendererPluginLoadLocalizationRegistered'
 import { ensureTableFillLocalizationRegistered } from './workflows/table-fill/orchestration/ensureTableFillLocalizationRegistered'
+import { ensureDocumentPreviewLocalizationRegistered } from './workflows/document-preview/orchestration/ensureDocumentPreviewLocalizationRegistered'
 import { provideHoverTooltipWindowFocus } from './orchestration/provideHoverTooltipWindowFocus'
 import { startNotificationAutoDismissal } from './notification'
 import { useUIStore } from '../../../apps/renderer/shared/stores/ui'
@@ -117,7 +120,9 @@ registerKnowledgeBaseModelConfigurationPorts()
 ensureConversationLocalizationRegistered()
 ensureEditorLocalizationRegistered()
 ensurePluginContributionLocalizationRegistered()
+ensureRendererPluginLoadLocalizationRegistered()
 ensureTableFillLocalizationRegistered()
+ensureDocumentPreviewLocalizationRegistered()
 
 app.use(pinia)
 app.onUnmount(startNotificationAutoDismissal())

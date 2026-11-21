@@ -33,6 +33,7 @@
           <div
             class="modal-content"
             :class="`modal-content--${scrollMode}`"
+            data-linnya-scrollbar="large"
           >
             <slot />
           </div>
@@ -50,11 +51,12 @@
 
 <script setup lang="ts">
 import IconButton from '../../actions/ui/IconButton.vue';
-import { computed, onMounted, onUnmounted } from 'vue';
+import { computed } from 'vue';
 import type { CSSProperties } from 'vue';
 import { CloseIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
 import type { ModalProps, ModalSlots } from '../definitions/modal';
+import { useEscapeLayer } from '../vue/useEscapeLayer';
 
 defineOptions({ name: 'LinnyaModal' });
 
@@ -104,17 +106,11 @@ const close = (): void => {
   emit('close');
 };
 
-const handleKeyDown = (event: KeyboardEvent): void => {
-  if (event.key === 'Escape' && props.isVisible && props.closeOnEsc) {
-    close();
-  }
-};
-
-onMounted(() => {
-  document.addEventListener('keydown', handleKeyDown);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeyDown);
+// Escape 只交给最后打开的浮层；closeOnEsc 为 false 时本层接住但不关闭，也不让下一层响应。
+useEscapeLayer({
+  active: () => props.isVisible,
+  onEscape: () => {
+    if (props.closeOnEsc) close();
+  },
 });
 </script>

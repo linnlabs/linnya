@@ -8,6 +8,7 @@ export const AUTOCOMPLETE_SINGLE_TURN_AGENT_DEFINITION: AgentDefinition = {
   promptKey: PromptKeys.AUTOCOMPLETE,
   defaultMode: 'agent',
   description: '自动补全（single_turn）',
+  internal: true,
   config: {
     contextPolicy: {
       profileId: 'agent',

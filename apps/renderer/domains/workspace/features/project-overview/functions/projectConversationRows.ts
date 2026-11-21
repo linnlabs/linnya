@@ -1,4 +1,4 @@
-import type { ProjectConversationRow, ProjectConversationStorage } from '@app/schemas';
+import type { ProjectConversationRow, ProjectConversationStorage, ProjectConversationSubagent } from '@app/schemas';
 import type {
   ProjectConversationColumnId,
 } from '../definitions/projectConversations';
@@ -16,6 +16,28 @@ export function projectConversationsTotalBytes(rows: readonly ProjectConversatio
     total += projectConversationStorageBytes(row.storage);
   }
   return total;
+}
+
+/** 筛选菜单里的 Agent：这些对话里回复过的全部 Agent，默认 Agent 记为空字符串（与筛选值一致）。 */
+export function projectConversationRepliedAgents(rows: readonly ProjectConversationRow[]): string[] {
+  return [...new Set(rows.flatMap(row => row.replied_agent_ids.map(agentId => agentId ?? '')))];
+}
+
+/** 回复过的 Agent 的显示文字，最近回复的在前；还没有回复时为 null。 */
+export function formatProjectConversationAgents(
+  agentIds: readonly (string | null)[],
+  agentName: (agentId: string | null) => string,
+  separator: string,
+): string | null {
+  return agentIds.length === 0 ? null : agentIds.map(agentName).join(separator);
+}
+
+/**
+ * 对话派出的子任务总次数。子 Agent 还没有面向用户的名字，界面与文件来源一样统称“子任务”，
+ * 不按 Agent 分列；合同里的逐 Agent 计数留给以后有了名字再用。
+ */
+export function projectConversationSubrunCount(subagents: readonly ProjectConversationSubagent[]): number {
+  return subagents.reduce((total, item) => total + item.run_count, 0);
 }
 
 const collator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });

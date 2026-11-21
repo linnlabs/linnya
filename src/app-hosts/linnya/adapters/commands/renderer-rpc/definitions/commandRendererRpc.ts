@@ -25,3 +25,6 @@ export const DESKTOP_COMMAND_APPROVAL_CHANGED_RPC_METHOD =
   'desktop.commands.approval.changed' as const;
 export const DESKTOP_COMMAND_CARD_CHANGED_RPC_METHOD =
   'desktop.commands.card.changed' as const;
+
+export const BACKEND_CONVERSATION_COMMAND_PERMISSION_RPC_METHOD =
+  'backend.commands.conversation_permission' as const;

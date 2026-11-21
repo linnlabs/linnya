@@ -2,6 +2,21 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.12.1 - 2026-11-19
+
+- 图标根节点 `.linnya-ui-icon` 没有显式尺寸时默认 `1em`（零优先级规则，`shared-icon--em / --full / --fit`、业务选择器和图标自带的 `width` / `height` 属性照常覆盖），此前漏写尺寸的图标会按 SVG 默认的 300×150 撑开。已逐页比对现有界面：设置全部页签、项目概览、编辑器与 Slides、插件商店、知识库、对话页的图标尺寸和截图都没有变化，只防止以后新增的未写尺寸图标撑大布局。现有 `^3.0.0` 插件保持兼容。
+
+## 3.12.0 - 2026-11-19
+
+- 多层浮层同时打开时，Escape 只交给最后打开的那一层：`Modal`、`AlertDialog`、`ImagePreviewModal` 改为登记到 document 级的 Escape 归属（整个 document 只有一个监听）。此前设置里打开的模型详情按 Escape 会连同外层设置一起关闭；现在先关详情，再按一次才关设置。最上层的 `Modal` 设了 `closeOnEsc: false`（例如处理中）时，Escape 不再穿透关闭下面一层。
+- 新增 `useEscapeLayer({ active, onEscape })` 与类型 `EscapeLayerOptions`：保留自有 DOM 的业务浮层用它参与同一顺序，不再自己监听 document 的 Escape。Host 的设置窗已改用。
+- `AlertDialog` 去掉自己的 Escape 监听，只由内层 Modal 处理：此前一次 Escape 会发出两次 `close` / `cancel`，现在只发一次；Enter 确认保持不变。仅依赖“Escape 触发一次关闭”的调用方不受影响；曾依赖两次事件的调用方（不应存在）需要改为幂等处理。现有 `^3.0.0` 插件保持兼容。
+
+## 3.11.0 - 2026-11-18
+
+- 新增 `ShieldKeyholeIcon`、`ShieldCheckmarkIcon`、`ShieldErrorIcon`：同一个盾牌外形，里面分别是锁孔、对勾、感叹号（Fluent shield_keyhole / shield_task / shield_error 几何，1u 描边）。对话输入框用它们表示命令权限的只读、标准与完全访问。
+- `CustomSelect` 新增 `selected-value` 插槽（作用域参数 `displayValue`），可把触发器里的选中文字换成图标等内容；新增 `triggerTooltip`：设置后触发器用共享提示服务的悬停提示，不再输出原生 `title`，没有 `triggerAriaLabel` 时它也是可访问名称。不设置时行为不变。
+
 ## 3.10.0 - 2026-11-17
 
 - 新增 `CommandBar`：停靠在画布或文档顶部的命令条表面（`role="toolbar"`，4px 内边距、10px 圆角、默认底色），内部用 `ToolbarGroup` / `ToolbarButton`。只拥有外观，位置、显隐与命令由调用方负责；class、style、aria 与事件落在根元素。Slides、Canvas 的顶部命令条与 Markdown 的悬浮格式条都改用它，不再各写一份表面样式。

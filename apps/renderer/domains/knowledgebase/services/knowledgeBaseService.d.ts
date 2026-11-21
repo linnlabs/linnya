@@ -84,7 +84,14 @@ declare module '@/domains/knowledgebase/services/knowledgeBaseService' {
     timestamp: string;
   }
 
+  export interface CreateKnowledgeBaseRequest {
+    name: string;
+    description?: string;
+  }
+
   export interface KnowledgeBaseService {
+    /** IPC 与 HTTP 两条通道的返回外形不同，调用方需要自己校验后再取字段。 */
+    createKnowledgeBase(kbData: CreateKnowledgeBaseRequest): Promise<unknown>;
     getKbGraphProgress(kbId: string): Promise<unknown>;
     onKbGraphProgressUpdated(callback: (payload: unknown) => void): (() => void) | null;
     getAllKnowledgeBases(): Promise<GetAllKnowledgeBasesResponse>;

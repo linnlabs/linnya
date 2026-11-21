@@ -468,7 +468,7 @@ export async function runProductionActiveConversationDeletionScenario(input: {
           protocol_version: 1,
           kind: 'command_run_permission_snapshot',
           root_agent_run_id: activeRunId,
-          settings_revision: 1,
+          settings_revision: 1, conversation_revision: 0, source: 'global_setting',
           captured_at_ms: Date.now(),
           permission_level: 'standard',
           internal_data_access: 'allowed',

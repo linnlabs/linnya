@@ -14,7 +14,8 @@ afterEach(cleanupCliBridges);
 const CAPABILITIES_WITHOUT_AUDIT = ConversationControlCapabilitySchema.options
   .filter(capability => !['audit', 'audit_level'].includes(capability));
 
-describe('linnya CLI real process -> scripted bridge', () => {
+// 每条都启动真实 CLI 子进程并加载 tsx，ci:local 并发负载下会超过默认 5 秒。
+describe('linnya CLI real process -> scripted bridge', { timeout: 30_000 }, () => {
   it.each([
     ['send', 'research'],
     ['send', 'research', '--project', '   '],
@@ -92,7 +93,7 @@ describe('linnya CLI real process -> scripted bridge', () => {
     expect(JSON.parse(healthy.stdout)).toMatchObject({ ok: true, unavailable_capabilities: [] });
     expect(withoutAudit.receivedCommands).toEqual([]);
     expect(complete.receivedCommands).toEqual([]);
-  });
+  }, 30_000);
 
   it('非法能力类型仍在握手阶段被拒绝', async () => {
     const bridge = await createScriptedBridge(() => null, ['projects', 42]);

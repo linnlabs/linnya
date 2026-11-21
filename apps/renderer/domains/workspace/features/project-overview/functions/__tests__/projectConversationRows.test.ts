@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { ProjectConversationRow } from '@app/schemas';
 import {
   chunkConversationIds,
+  formatProjectConversationAgents,
+  projectConversationRepliedAgents,
+  projectConversationSubrunCount,
   projectConversationsTotalBytes,
   sortProjectConversationsByAgentLabel,
 } from '../projectConversationRows';
@@ -14,8 +17,8 @@ function row(id: string, extra: Partial<ProjectConversationRow> = {}): ProjectCo
   return {
     conversation_id: id,
     title: id,
-    agent_id: null,
-    respondent_agent_ids: [],
+    replied_agent_ids: [null],
+    selected_agent_id: null,
     turn_count: 1,
     changed_document_count: 0,
     created_at: NOW.getTime() - 10 * HOUR,
@@ -37,6 +40,25 @@ const storage = (bytes: number) => ({
 
 
 describe('项目对话行', () => {
+  it('Agent 显示：回复过的按最近在前连接，没有回复时为 null；筛选项是全部回复过的 Agent', () => {
+    const name = (agentId: string | null) => agentId ?? 'Linnya Agent';
+    expect(formatProjectConversationAgents(['slides_agent', null], name, '、')).toBe('slides_agent、Linnya Agent');
+    expect(formatProjectConversationAgents([], name, '、')).toBeNull();
+    expect(projectConversationRepliedAgents([
+      row('a', { replied_agent_ids: ['research_v1', null] }),
+      row('b', { replied_agent_ids: [null] }),
+      row('c', { replied_agent_ids: [] }),
+    ])).toEqual(['research_v1', '']);
+  });
+
+  it('子任务按全部子运行合计，不按 Agent 分列', () => {
+    expect(projectConversationSubrunCount([
+      { agent_id: 'research_source_review_v1', run_count: 2 },
+      { agent_id: 'subagent_general', run_count: 1 },
+    ])).toBe(3);
+    expect(projectConversationSubrunCount([])).toBe(0);
+  });
+
   it('Agent 展示名排序保留置顶、中文名称与稳定活动顺序', () => {
     const rows = [row('b'), row('pinned', { is_pinned: true }), row('a')];
     expect(sortProjectConversationsByAgentLabel(rows, 'asc', item => item.title).map(item => item.conversation_id))

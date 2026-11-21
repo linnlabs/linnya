@@ -1,4 +1,4 @@
-import type { ConversationNextRequest } from '@app/schemas';
+import { isRetiredDeepResearchAgentId, type ConversationNextRequest } from '@app/schemas';
 import { findRegisteredAgentDefinitionById } from 'src/app-hosts/linnya/agent-registry/agentDefinitionResolver';
 
 /**
@@ -6,6 +6,8 @@ import { findRegisteredAgentDefinitionById } from 'src/app-hosts/linnya/agent-re
  * start 与 wait-user resume 必须复用它，避免同一逻辑 run 在恢复时掉回 default。
  */
 export function resolveConversationAgentPromptKey(agentId: string): string {
+  // 退役身份的 id 与 promptKey 相同且已无 definition；保留原身份交给接纳/恢复入口拒绝或终止。
+  if (isRetiredDeepResearchAgentId(agentId)) return agentId;
   const definition = findRegisteredAgentDefinitionById(agentId);
   if (!definition) {
     throw new Error(`[FlowRouter] selected agent is unavailable: ${agentId}`);

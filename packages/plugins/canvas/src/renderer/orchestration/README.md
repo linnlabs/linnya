@@ -2,7 +2,7 @@
 
 这里连接正式 feature、kernel 和 Host 端口，不持有第二份文档或交互状态。文档、草稿、连线、布局及选择仍由各 feature 的公开能力拥有；样式和业务计算继续由相应 functions 完成。
 
-`createCanvasSurface` 是唯一组合根。先创建 session、异步 kernel、正文采样、草稿、选择/打开与视口能力，再完成意图分发，随后安装只读、DOM/显示/Host 订阅和键盘命令，最后打开文档。只读订阅使用 `immediate`，会同步清除 kernel 预览并回发意图，因此不得在分发能力装配前启动。不能把后续 DOM 安装提前到 kernel 创建的等待之前，也不能给装配步骤增加异步等待。
+`createCanvasSurface` 是唯一组合根。先创建 session、异步 kernel、正文采样、草稿、选择/打开与视口能力，再完成意图分发，随后安装只读、DOM/显示/Host 订阅和键盘命令，最后打开文档。只读订阅使用 `immediate`，会同步清除 kernel 预览并回发意图，因此不得在分发能力装配前启动。不能把后续 DOM 安装提前到 kernel 创建的等待之前，也不能给装配步骤增加异步等待。装配中途抛错时，已完成阶段的 owner 按显式关闭序列的同一顺序回滚（kernel 之后的各阶段依次扩大范围），否则 kernel 持有的 WebGL 上下文随抛错泄漏。
 
 - `createCanvasSurfaceSession` 只创建文档 session、各 feature 能力和局部表面状态。
 - `createCanvasSurfaceRendering` 连接同一 kernel 的 raster、可见内容刷新和正文导航。

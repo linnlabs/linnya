@@ -1,6 +1,10 @@
 import type Database from 'better-sqlite3';
 import { projectClientNoticeToUiRow } from '../../conversation-client-notices/projectClientNotice';
 import type { PersistedConversationClientNotice } from '../../conversation-client-notices/sqliteClientNoticeAdmission';
+import {
+  projectCommandPermissionChangeToUiRow,
+  type PersistedCommandPermissionChange,
+} from '../../conversation-command-permissions/commandPermissionChangeFacts';
 import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { ConversationUiMessage } from '@app/schemas';
 import { toUiMessageView, UI_ROWS_WITH_EVENT_SOURCES, writeUiMessageRow, type UiMessageSqlRow } from './sqliteUiMessageRow';
@@ -68,6 +72,12 @@ export class SqliteUiProjectionApplier {
   /** 接纳事务内投影产品事实，不产生 RuntimeEvent 或模型上下文。 */
   projectClientNotice(fact: PersistedConversationClientNotice): void {
     this.insertRow(projectClientNoticeToUiRow(fact));
+    this.touchProjectionStateAfterAppend(fact.conversationId, readConversationTotalEvents(this.db, fact.conversationId));
+  }
+
+  /** 档位变更与它的事实同一事务投影；不是 RuntimeEvent，不进模型上下文。 */
+  projectCommandPermissionChange(fact: PersistedCommandPermissionChange): void {
+    this.insertRow(projectCommandPermissionChangeToUiRow(fact));
     this.touchProjectionStateAfterAppend(fact.conversationId, readConversationTotalEvents(this.db, fact.conversationId));
   }
 
@@ -359,6 +369,8 @@ function mapUiMessageToInternalRow(message: ConversationUiMessage, row: UiMessag
     case 'client_notice':
       return { ...common, turnId: message.turn_id, runId: message.run_id, role: message.role, messageType: message.message_type, payload: message.payload };
     case 'execution_notice':
+      return { ...common, turnId: message.turn_id, runId: message.run_id, role: message.role, messageType: message.message_type, payload: message.payload };
+    case 'command_permission_change':
       return { ...common, turnId: message.turn_id, runId: message.run_id, role: message.role, messageType: message.message_type, payload: message.payload };
     case 'history_summary':
       return {

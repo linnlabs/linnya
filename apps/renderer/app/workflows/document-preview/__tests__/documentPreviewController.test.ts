@@ -1,12 +1,24 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from 'vitest';
-import type { DocumentReferencePresentation } from '@app/schemas';
+import { createPinia, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import type { DocumentReferencePresentation, WorkspaceMutationEvent } from '@app/schemas';
+import {
+  clearLocalizationRegistryForTest,
+  registerMessageCatalogs,
+  useLocalizationStore,
+} from '@app/localization';
+import { DOCUMENT_PREVIEW_MESSAGE_CATALOG } from '../definitions/documentPreviewMessageCatalog';
 import { createDocumentPreviewController } from '../orchestration/createDocumentPreviewController';
 const ports = vi.hoisted(() => ({
   read: vi.fn(),
   preview: vi.fn(),
+  open: vi.fn(),
   stopMutation: vi.fn(),
   stopAvailability: vi.fn(),
+  emit: (_event: unknown) => {},
+}));
+vi.mock('@plugin/renderer/workspaceNavigation', () => ({
+  getWorkspaceNavigationPort: () => ({ openDocumentByNodeType: ports.open }),
 }));
 vi.mock('@plugin/renderer/documentReferences', () => ({ readDocumentReference: ports.read }));
 vi.mock('@plugin/renderer/documentPreview', () => ({ readDocumentPreview: ports.preview }));
@@ -14,7 +26,10 @@ vi.mock('@plugin/renderer/pluginRuntime', () => ({
   subscribeRendererPluginAvailability: () => ports.stopAvailability,
 }));
 vi.mock('@/shared/ipc/workspaceMutationSubscription', () => ({
-  subscribeToWorkspaceMutation: () => ports.stopMutation,
+  subscribeToWorkspaceMutation: (callback: (event: unknown) => void) => {
+    ports.emit = callback;
+    return ports.stopMutation;
+  },
 }));
 const target = { documentId: 'document', projectId: 'project' };
 const available: DocumentReferencePresentation = {
@@ -24,7 +39,12 @@ const available: DocumentReferencePresentation = {
   nodeType: 'markdown',
   path: 'workspace:/文档.md',
 };
-afterEach(() => vi.clearAllMocks());
+beforeEach(() => setActivePinia(createPinia()));
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.restoreAllMocks();
+  clearLocalizationRegistryForTest();
+});
 it('hover读取正式预览；卸载后释放订阅并丢弃迟到结果', async () => {
   ports.read.mockResolvedValue(available);
   ports.preview.mockResolvedValue({
@@ -144,10 +164,107 @@ it('换了目标立即撤下旧内容；读取失败也不留旧内容', async (
     await pending;
     expect(controller.result.value?.target.documentId).toBe('other');
 
-    ports.preview.mockRejectedValueOnce(new Error('读取失败'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const failure = new Error('IPC channel workspace:preview rejected: SQLITE_BUSY');
+    ports.preview.mockRejectedValueOnce(failure);
     await controller.refresh();
     expect(controller.result.value).toBeNull();
-    expect(controller.error.value).toBe('读取失败');
+    // 内部报错只进日志，界面只给用户可读的提示。
+    expect(controller.error.value).toBe('无法预览此文档，请稍后重试。');
+    expect(warn).toHaveBeenCalledWith('[document-preview] failed', failure);
+  } finally {
+    controller.dispose();
+  }
+});
+it('失败提示跟随界面语言，不显示内部报错原文', async () => {
+  registerMessageCatalogs(DOCUMENT_PREVIEW_MESSAGE_CATALOG);
+  useLocalizationStore().setCurrentLocale('en-US');
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  ports.read.mockRejectedValue(new Error('SQLITE_BUSY'));
+  const controller = createDocumentPreviewController(
+    () => target,
+    () => 'project'
+  );
+  try {
+    await controller.refresh();
+    expect(controller.error.value).toBe('Unable to preview this document. Please try again later.');
+    let project: string | null = 'project';
+    ports.read.mockImplementationOnce(async () => {
+      project = 'foreign';
+      return available;
+    });
+    const scoped = createDocumentPreviewController(
+      () => target,
+      () => project
+    );
+    await scoped.refresh();
+    expect(scoped.error.value).toBe(
+      'This document is not in the current project, so it cannot be previewed.'
+    );
+    scoped.dispose();
+  } finally {
+    controller.dispose();
+  }
+});
+it('打开文档失败时给通用提示并保留原因在日志里', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  ports.read.mockResolvedValue(available);
+  ports.preview.mockResolvedValue(ready('v1'));
+  const failure = new Error('navigation port exploded');
+  ports.open.mockRejectedValueOnce(failure);
+  const controller = createDocumentPreviewController(
+    () => target,
+    () => 'project'
+  );
+  try {
+    await controller.refresh();
+    const shown = controller.result.value;
+    if (!shown) throw new Error('preview missing');
+    await controller.open(shown);
+    expect(controller.error.value).toBe('无法打开此文档，请稍后重试。');
+    expect(warn).toHaveBeenCalledWith('[document-preview] failed', failure);
+  } finally {
+    controller.dispose();
+  }
+});
+
+function folderEvent(
+  type: 'workspace.node.renamed' | 'workspace.node.deleted',
+  projectId: string | null
+): WorkspaceMutationEvent {
+  return type === 'workspace.node.renamed'
+    ? { type, mutationId: 'm', projectId, nodeId: 'folder', nodeType: 'folder', parentId: null, name: 'new', oldName: 'old' }
+    : { type, mutationId: 'm', projectId, nodeId: 'folder', nodeType: 'folder', parentId: null, name: 'old', deletedNodeIds: ['folder'] };
+}
+it('只有目标所在项目的文件夹事件才重新读取预览', async () => {
+  ports.read.mockResolvedValue(available);
+  ports.preview.mockResolvedValue(ready('v1'));
+  const controller = createDocumentPreviewController(
+    () => target,
+    () => 'project'
+  );
+  try {
+    await controller.refresh();
+    const reads = () => ports.read.mock.calls.length;
+    const base = reads();
+    ports.emit(folderEvent('workspace.node.renamed', 'other-project'));
+    ports.emit(folderEvent('workspace.node.deleted', 'other-project'));
+    ports.emit({
+      type: 'workspace.node.transferred', mutationId: 'm', nodeId: 'folder', nodeType: 'folder', name: 'f',
+      sourceProjectId: 'a', sourceParentId: null, targetProjectId: 'b', targetParentId: null, movedNodeIds: ['folder'],
+    });
+    await Promise.resolve();
+    expect(reads()).toBe(base);
+
+    ports.emit(folderEvent('workspace.node.renamed', 'project'));
+    await vi.waitFor(() => expect(reads()).toBe(base + 1));
+    ports.emit(folderEvent('workspace.node.deleted', null));
+    await vi.waitFor(() => expect(reads()).toBe(base + 2));
+    ports.emit({
+      type: 'workspace.node.transferred', mutationId: 'm', nodeId: 'folder', nodeType: 'folder', name: 'f',
+      sourceProjectId: 'a', sourceParentId: null, targetProjectId: 'project', targetParentId: null, movedNodeIds: ['folder'],
+    });
+    await vi.waitFor(() => expect(reads()).toBe(base + 3));
   } finally {
     controller.dispose();
   }

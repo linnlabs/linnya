@@ -3,6 +3,23 @@ import type {
   DependencySourceOverride,
   DependencySupplementalEvidenceFile,
 } from './packageLegalEvidence';
+import type { DependencyPinnedTarballIntegrity } from './sourceDependencyBom';
+
+/**
+ * URL tarball 依赖的 integrity。锁文件里有 integrity 时必须与这里一致；锁文件没有时用这里的值。
+ * 登记的 URL 不在锁文件里（已升级或移除）时生成失败，避免留下过期的登记。
+ */
+export const DEPENDENCY_PINNED_TARBALL_INTEGRITIES = [
+  {
+    tarball: 'https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz',
+    packageName: 'xlsx',
+    version: '0.20.3',
+    integrity:
+      'sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==',
+    reviewed:
+      '2026-11-19 下载该 URL 计算 SHA-512，与此前锁文件曾记录的 integrity 及已发布 THIRD_PARTY_NOTICES 一致',
+  },
+] as const satisfies readonly DependencyPinnedTarballIntegrity[];
 
 /**
  * 多许可证选择和模糊旧标识只能按精确版本登记。升级后必须重新核对随包文本，

@@ -71,7 +71,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
 import type { ProjectOverviewField } from '@app/schemas';
-import { TagChip } from '@linnya/renderer-ui';
+import { TagChip, useTimer } from '@linnya/renderer-ui';
 import type { ProjectOverviewRow } from '../definitions/projectOverview';
 import { boardCardFieldsText, type ProjectOverviewBoardLane } from '../functions/projectOverviewBoard';
 
@@ -115,6 +115,7 @@ interface DragState {
 const boardRef = ref<HTMLElement | null>(null);
 const drag = ref<DragState | null>(null);
 let suppressClick = false;
+const suppressClickReset = useTimer();
 
 function isDropTarget(key: string | null): boolean {
   const state = drag.value;
@@ -194,8 +195,8 @@ function cleanup(): void {
   window.removeEventListener('pointercancel', cancel);
   window.removeEventListener('keydown', onKey, true);
   document.body.classList.remove('project-overview-board-is-dragging');
-  // 没有补发 click（指针落在卡片外）时，下一轮清掉标记。
-  setTimeout(() => { suppressClick = false; }, 0);
+  // 没有补发 click（指针落在卡片外）时，下一轮清掉标记；浏览器在 pointerup 之后立刻补发的 click 排在它之前。
+  suppressClickReset.start(() => { suppressClick = false; }, 0);
 }
 
 onBeforeUnmount(cleanup);

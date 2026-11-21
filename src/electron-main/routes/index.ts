@@ -122,6 +122,7 @@ import {
 } from '../../app-hosts/linnya/adapters/flow/flow.history-handler.service';
 import { AgentRunnerService } from '../../app-hosts/linnya/adapters/flow/flow.agent-runner.service';
 import { FlowOrchestrator } from '../../app-hosts/linnya/adapters/flow/flow.orchestrator';
+import { PendingUserInputRegistry } from 'src/app-hosts/linnya/adapters/flow/pending-user-inputs/pendingUserInputRegistry';
 import {
   createForegroundAgentRunActivity,
   type ForegroundAgentRunActivityPort,
@@ -809,7 +810,10 @@ export async function configureRoutes(
           })
         : undefined,
     });
+    // 运行中插话：路由写入、Linnkit 在工具批次结算后取用，二者共用同一份待送达列表。
+    const pendingUserInputs = new PendingUserInputRegistry();
     const agentRunner = new AgentRunnerService(executor, knowledgeBaseService, dbService, {
+      pendingUserInputs,
       recovery: {
         bindings: executionCheckpoints,
         checkpointer,
@@ -826,6 +830,7 @@ export async function configureRoutes(
       costCollector: agentRuntime.costCollector,
       registeredChildRunInvoker,
       commandPermissionSettings,
+      readConversationCommandPermission: executionRuntime.readConversationCommandPermission,
       workspaceMutationPublisher: {
         publish: event => dependencies.rendererIntegration.publishWorkspaceMutation(event),
       },
@@ -842,7 +847,8 @@ export async function configureRoutes(
       agentRunner,
       persistenceCoordinator,
       incomingEventPreparer,
-      agentRuntime
+      agentRuntime,
+      pendingUserInputs
     );
     flowOrchestrator = initializedFlowOrchestrator;
     agentRunActivity = createForegroundAgentRunActivity({

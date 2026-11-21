@@ -4,6 +4,7 @@
       v-if="show"
       ref="element"
       class="linnya-dropdown-panel"
+      data-linnya-scrollbar="large"
       v-bind="$attrs"
     >
       <slot />

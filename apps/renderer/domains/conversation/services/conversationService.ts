@@ -40,10 +40,12 @@ import {
 import type {
   SSEErrorEvent,
   SSEEvent,
+  SSEUserInputEvent,
   SSEContextUsageSnapshotEvent,
   SSEFinalAnswerChunkEvent,
   SSEFinalAnswerEvent,
   SSEFinalAnswerResetEvent,
+  SSEHistorySummaryEvent,
   SSERequiresUserInteractionEvent,
   SSERunExecutionMetricsEvent,
   SSERunStatusEvent,
@@ -74,6 +76,8 @@ export type { ConversationTransportError, ConversationTransportOutcome };
 export interface ConversationStreamCallbacks {
   /** host 已将 user input 与附件原子提交后的 app-level确认。 */
   onUserInputCommitted?: (e: ConversationUserInputCommittedEvent) => StreamCallbackResult;
+  /** 运行中途送达的插话（`user_input`，`delivery: 'mid_run'`）；运行起点的输入不经 SSE 回传。 */
+  onUserInput?: (e: SSEUserInputEvent) => StreamCallbackResult;
   /** 接收到思考过程事件 (`thought`) */
   onThought?: (e: SSEThoughtEvent) => StreamCallbackResult;
   /** 接收到模型工具决策事件 (`tool_call_decision`) */
@@ -115,6 +119,8 @@ export interface ConversationStreamCallbacks {
   onSummarizationEnd?: (e: SSESummarizationEndEvent) => StreamCallbackResult;
   /** 接收到摘要失败事件 (`summarization_error`) */
   onSummarizationError?: (e: SSESummarizationErrorEvent) => StreamCallbackResult;
+  /** 摘要落盘后的可回放事实 (`history_summary`)；与 reload 窗口按同一 message ID 合并。 */
+  onHistorySummary?: (e: SSEHistorySummaryEvent) => StreamCallbackResult;
   /** 当前请求 reader 的 transport completion；本地失败时没有服务端 event。 */
   onTransportEnd?: (e?: SSETransportEndEvent) => StreamCallbackResult;
 }
@@ -316,6 +322,9 @@ export async function streamConversation(
     try {
       // 回调必须严格串行，父工具事件要先于它的 subrun trace 完成投影。
       switch (event.type) {
+        case 'user_input':
+          await callbacks.onUserInput?.(event);
+          break;
         case 'thought':
           await callbacks.onThought?.(event);
           break;
@@ -370,11 +379,20 @@ export async function streamConversation(
         case 'summarization_error':
           await callbacks.onSummarizationError?.(event);
           break;
+        case 'history_summary':
+          await callbacks.onHistorySummary?.(event);
+          break;
+        case 'markdown_chunk':
+          // 只给专用流式消费者，不生成 Conversation timeline message。
+          break;
         case 'transport_end':
           transportEndEvent = event;
           break;
-        default:
-          break;
+        default: {
+          // 新增 SSE 事件类型必须在这里显式分发；漏掉会在编译期失败，而不是运行时静默丢弃。
+          const unhandled: never = event;
+          throw new SseProtocolError(`Unhandled SSE event type: ${eventType}`, unhandled);
+        }
       }
     } catch (error) {
       throw createSseCallbackDispatchError(eventType, data, error);

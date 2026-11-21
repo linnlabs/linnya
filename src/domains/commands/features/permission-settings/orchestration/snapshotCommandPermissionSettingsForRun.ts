@@ -1,4 +1,4 @@
-import type { CommandAgentRunId } from '@app/schemas/commands';
+import type { CommandAgentRunId, ConversationCommandPermissionSelection } from '@app/schemas/commands';
 
 import type { CommandPermissionSettingsPort } from '../../../ports/commandPermissionSettingsPort';
 import {
@@ -11,6 +11,7 @@ import { readCommandPermissionSettings } from './readCommandPermissionSettings';
 export function snapshotCommandPermissionSettingsForRun(input: {
   readonly port: CommandPermissionSettingsPort;
   readonly rootAgentRunId: CommandAgentRunId;
+  readonly readConversation?: () => ConversationCommandPermissionSelection;
   readonly now?: () => number;
 }): CommandRunPermissionContext {
   try {
@@ -19,6 +20,7 @@ export function snapshotCommandPermissionSettingsForRun(input: {
       status: 'available',
       snapshot: createCommandRunPermissionSnapshot({
         settings,
+        conversation: input.readConversation?.(),
         rootAgentRunId: input.rootAgentRunId,
         capturedAtMs: (input.now ?? Date.now)(),
       }),

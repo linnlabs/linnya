@@ -7,6 +7,7 @@ export const TRANSLATION_SINGLE_TURN_AGENT_DEFINITION: AgentDefinition = {
   promptKey: PromptKeys.TRANSLATION,
   defaultMode: 'agent',
   description: '通用翻译（single_turn）',
+  internal: true,
   config: {
     contextPolicy: {
       profileId: 'agent',

@@ -1,0 +1,44 @@
+/* 插件加载失败提示：与全局通知同层、同底部基线，但需要交互，所以单独居中并接收指针。 */
+.renderer-plugin-load-notice {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  z-index: var(--linnya-ui-layer-status);
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: var(--space-1-5) var(--space-1-5) var(--space-1-5) var(--space-3);
+  color: var(--color-error-text);
+  background-color: var(--color-error-bg);
+  border: 1px solid color-mix(in srgb, var(--color-error) 35%, transparent);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  transform: translateX(-50%);
+}
+
+[data-linnya-ui-theme='dark'] .renderer-plugin-load-notice {
+  background-color: color-mix(in srgb, var(--color-error) 18%, var(--color-bg-surface));
+}
+
+.renderer-plugin-load-notice__message {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+}
+
+.renderer-plugin-load-notice__dismiss {
+  flex: none;
+}
+
+.renderer-plugin-load-notice-fade-enter-active,
+.renderer-plugin-load-notice-fade-leave-active {
+  transition: opacity var(--duration-long), transform var(--duration-long);
+}
+
+.renderer-plugin-load-notice-fade-enter-from,
+.renderer-plugin-load-notice-fade-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 10px);
+}

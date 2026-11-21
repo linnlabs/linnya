@@ -713,6 +713,14 @@ export type EditorMessageKey =
   | 'editor.chart.revision.showBaseline'
   | 'editor.chart.revision.showProposed'
   | 'editor.chart.revision.baselineNotChart'
+  | 'editor.documentReference.label.default'
+  | 'editor.documentReference.label.deleted'
+  | 'editor.documentReference.label.outsideProject'
+  | 'editor.documentReference.preview.label'
+  | 'editor.documentReference.notice.deleted'
+  | 'editor.documentReference.notice.outsideProject'
+  | 'editor.documentReference.notice.pluginUnavailable'
+  | 'editor.documentReference.preview.failed'
 
 export type EditorMessageResolver = (
   key: EditorMessageKey,

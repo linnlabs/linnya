@@ -14,6 +14,7 @@ import { mountDocumentPreview } from '@plugin/renderer/documentPreview';
 import { getWorkspaceNavigationPort } from '@plugin/renderer/workspaceNavigation';
 import { subscribeToWorkspaceMutation } from '@shared/ipc/workspaceMutationSubscription';
 import type { DocumentReferenceUiPort } from '../definitions/documentReferenceUi';
+import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage';
 
 function projectId(): string {
   const id = getCurrentWorkspaceProjectId();
@@ -48,9 +49,13 @@ export function createDocumentReferenceUiPort(): DocumentReferenceUiPort {
                   ? [event.nodeId]
                   : [];
         // 整个宿主跨项目移动也会改变所有既有标签的范围，不能只检查目标是否在moved列表里。
+        // 文件夹改名、移动、删除会改路径，只影响它所在的项目；别的项目的文件夹事件不必让缓存全部失效。
+        // 事件没带项目（null）时无法排除，按相关处理。
         const all =
           event.type === 'workspace.node.transferred' ||
-          ('nodeType' in event && event.nodeType === 'folder') ||
+          ('nodeType' in event &&
+            event.nodeType === 'folder' &&
+            (event.projectId === null || event.projectId === getCurrentWorkspaceProjectId())) ||
           event.type === 'project.deleted';
         invalidate([...listeners.keys()].filter(id => all || affected.includes(id)));
       });
@@ -121,11 +126,13 @@ export function createDocumentReferenceUiPort(): DocumentReferenceUiPort {
     async open(presentation) {
       if (presentation.status !== 'available' || !presentation.nodeType) {
         showWorkspaceNotification(
-          presentation.status === 'deleted'
-            ? '引用的文档已删除'
-            : presentation.status === 'outside_project'
-              ? '文档在其他项目，当前不可访问'
-              : '需要启用或安装对应插件后打开',
+          resolveCurrentEditorMessage(
+            presentation.status === 'deleted'
+              ? 'editor.documentReference.notice.deleted'
+              : presentation.status === 'outside_project'
+                ? 'editor.documentReference.notice.outsideProject'
+                : 'editor.documentReference.notice.pluginUnavailable'
+          ),
           'info'
         );
         return;

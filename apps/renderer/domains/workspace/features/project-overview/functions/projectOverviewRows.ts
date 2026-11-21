@@ -16,11 +16,13 @@ export function toProjectOverviewRow(document: ProjectOverviewDocument): Project
     createdAt: document.created_at,
     creatorActor: document.creator?.actor ?? null,
     creatorPluginId: document.creator?.plugin_id ?? null,
+    creatorAgentId: document.creator?.agent_id ?? null,
     conversationId: document.creator?.conversation_id ?? null,
     conversationTitle: document.creator?.conversation_title ?? null,
     lastModifiedAt: document.last_modified_at,
     lastModifiedActor: document.last_modified_by?.actor ?? null,
     lastModifiedPluginId: document.last_modified_by?.plugin_id ?? null,
+    lastModifiedAgentId: document.last_modified_by?.agent_id ?? null,
     pendingRevisionCount: document.pending_revision_count,
     tags: document.tags,
     fieldRevision: document.properties.revision,
@@ -93,10 +95,12 @@ export function listProjectOverviewLocations(rows: readonly ProjectOverviewRow[]
   return [...seen.values()].sort((left, right) => left.join('/').localeCompare(right.join('/'), 'zh-CN'));
 }
 
-const ACTOR_ORDER: Record<ProjectOverviewActor, number> = { linnya_ai: 0, external: 1, plugin: 2, user: 3 };
+const ACTOR_ORDER: Record<ProjectOverviewActor, number> = { run: 0, subrun: 1, external: 2, plugin: 3, user: 4 };
 
 export interface ProjectOverviewSortLabels {
   readonly typeLabel: (nodeType: string) => string;
+  /** “来源”列显示的文字；同一类来源（例如不同 Agent）之间按它排。 */
+  readonly sourceLabel: (row: ProjectOverviewRow) => string;
 }
 
 function compareNullable<T>(left: T | null, right: T | null, compare: (a: T, b: T) => number): number {
@@ -116,12 +120,14 @@ export function sortProjectOverviewRows(
   labels: ProjectOverviewSortLabels,
 ): ProjectOverviewRow[] {
   const direction = sort.direction === 'asc' ? 1 : -1;
-  const keyed = (row: ProjectOverviewRow): { value: string | number | null; text: boolean } => {
+  const keyed = (row: ProjectOverviewRow): { value: string | number | null; text: boolean; within?: string } => {
     switch (sort.key) {
       case 'name': return { value: row.title, text: true };
       case 'tags': return { value: row.tags.length ? row.tags.map(tag => tag.name).join('、') : null, text: true };
       case 'location': return { value: row.location.join('/'), text: true };
-      case 'source': return { value: row.creatorActor === null ? null : ACTOR_ORDER[row.creatorActor], text: false };
+      case 'source': return row.creatorActor === null
+        ? { value: null, text: false }
+        : { value: ACTOR_ORDER[row.creatorActor], text: false, within: labels.sourceLabel(row) };
       case 'conversation': return { value: row.conversationTitle, text: true };
       case 'modified': return { value: row.lastModifiedAt, text: false };
       case 'pending': return { value: row.pendingRevisionCount, text: false };
@@ -136,9 +142,10 @@ export function sortProjectOverviewRows(
     if (a.value === null || b.value === null) {
       if (nullOrder !== 0) return nullOrder;
     } else {
-      const compared = a.text
+      const compared = (a.text
         ? collator.compare(String(a.value), String(b.value))
-        : Number(a.value) - Number(b.value);
+        : Number(a.value) - Number(b.value))
+        || (a.within !== undefined && b.within !== undefined ? collator.compare(a.within, b.within) : 0);
       if (compared !== 0) return compared * direction;
     }
     return collator.compare(left.title, right.title) || left.documentId.localeCompare(right.documentId);

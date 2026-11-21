@@ -1,4 +1,4 @@
-import type { ProjectConversationQueryOptions, ProjectConversationRow } from '@app/schemas';
+import { toReadModelAgentId, type ProjectConversationQueryOptions, type ProjectConversationRow } from '@app/schemas';
 
 /** 与文件页相同的本地日历日窗口：今天、含今天的七天/三十天。 */
 function activityRangeStart(range: ProjectConversationQueryOptions['activity'], now: Date): number | null {
@@ -12,7 +12,9 @@ export function filterProjectConversations(
   rows: readonly ProjectConversationRow[], options: ProjectConversationQueryOptions, now: Date,
 ): ProjectConversationRow[] {
   const start = activityRangeStart(options.activity, now);
-  return rows.filter(row => (options.agent === null || row.respondent_agent_ids.includes(options.agent))
+  // 筛选值与 CLI 输出一致，默认 Agent 写作 default；行里按读取合同为 null。
+  const agent = options.agent === null ? undefined : toReadModelAgentId(options.agent);
+  return rows.filter(row => (agent === undefined || row.replied_agent_ids.includes(agent))
     && (start === null || row.last_event_at >= start)
     && (options.documents !== 'changed' || row.changed_document_count > 0)
     && (options.documents !== 'unchanged' || row.changed_document_count === 0));

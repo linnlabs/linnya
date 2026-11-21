@@ -61,6 +61,11 @@
           </Teleport>
         </div>
 
+        <!-- 命令档位属于对话：紧跟“+”，在 Agent 与模型选择左边，只显示档位图标。 -->
+        <div v-if="$slots['command-permission']" class="selector-group selector-group--command-permission">
+          <slot name="command-permission" />
+        </div>
+
         <!-- 增删 Agent 时胶囊展开、收起，右侧的模型选择器随之平滑移动；收起期间沿用最后一次的内容。 -->
         <Transition name="agent-choice-slot">
         <div v-if="hasAgentChoice && shownAgentChoice" class="agent-choice-slot">
@@ -133,7 +138,9 @@
     </div>
 
     <div class="ai-assistant-input-footer__primary-actions">
+      <!-- 新对话还没有上下文可算，不显示用量环。 -->
       <ContextWindowUsageDropdown
+        v-if="contextWindowUsageScopeKey"
         :key="contextWindowUsageScopeKey"
         :presentation="contextWindowUsage"
         :conversation-information="contextWindowConversationInformation"
@@ -226,9 +233,10 @@ const props = defineProps({
     type: Object as PropType<ConversationInformationPresentation | null>,
     default: null,
   },
+  /** 当前对话 ID；新对话为 null，此时不显示用量环。 */
   contextWindowUsageScopeKey: {
-    type: String,
-    required: true,
+    type: String as PropType<string | null>,
+    default: null,
   },
   variant: {
     type: String as PropType<'regular' | 'compact'>,

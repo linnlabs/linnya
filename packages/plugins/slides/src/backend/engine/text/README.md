@@ -11,6 +11,7 @@ text/
 ├── generatedTextRenderInput.ts       # DeckSpec text/shape -> RenderParagraph
 ├── renderModelTextLayout.ts          # cluster 预热与全 RenderModel finalization
 ├── textLayoutPptxOptions.ts          # 布局合同 -> PPTX textbox options
+├── pptxRichTextParagraphs.ts         # 作者 run 按换行拆成 PPTX 段落，段落属性写在每段首个 run
 ├── prepareShapeTextAutofit.ts       # Host 同源形状缩字结果准备
 ├── shapeTextAutofitPptx.ts          # 形状缩字同源布局与 OOXML 物化计划
 └── __tests__/                        # 字体、finalization、PPTX 映射测试

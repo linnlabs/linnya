@@ -8,6 +8,7 @@ import os from 'node:os';
 import {
   configureMainWindowCloseLifecycle,
   createWindow,
+  isCurrentMainFrameEvent,
   permitMainWindowCloseForAppShutdown,
   prepareMainWindowForAppShutdown,
 } from './window-manager.js';
@@ -402,6 +403,8 @@ export function initialize() {
       });
       registerCommandPermissionSettingsHandlers({
         gateway: appServerRuntime.commands.permissionSettings,
+        conversationPermission: appServerRuntime.commands.conversationPermission,
+        isTrustedSender: isCurrentMainFrameEvent,
       });
       registerCommandApprovalHandlers({ host: appServerRuntime.commands.approval });
       registerCommandCardControlHandlers({ host: appServerRuntime.commands.card });

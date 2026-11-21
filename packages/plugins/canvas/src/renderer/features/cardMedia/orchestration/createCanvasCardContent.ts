@@ -1,7 +1,7 @@
 import { JsonValueSchema } from '@app/schemas';
 import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
 import type { CanvasCardContent, CanvasCardMediaPort } from '../definitions/cardMedia';
-import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
+import { readCanvasIsDark } from '../../../functions/readCanvasAppearance';
 import { createCanvasContentNotifications } from './createCanvasContentNotifications';
 import { createCanvasReferenceMetadata } from './createCanvasReferenceMetadata';
 import { createCanvasImageSources } from './createCanvasImageSources';
@@ -110,10 +110,7 @@ export function createCanvasCardContent(
               color: card.color,
             },
             signal,
-            theme:
-              document.documentElement.getAttribute(RENDERER_UI_THEME_ATTRIBUTE) === 'dark'
-                ? 'dark'
-                : 'light',
+            theme: readCanvasIsDark() ? 'dark' : 'light',
           }
         );
       }

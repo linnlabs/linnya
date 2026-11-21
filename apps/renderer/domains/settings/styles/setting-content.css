@@ -218,23 +218,3 @@
   border-bottom: 1px solid var(--settings-hairline, var(--color-border-default));
 }
 
-.settings-content::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.settings-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.settings-content::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-  background-clip: content-box;
-  border: 2px solid transparent;
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-}
-
-.settings-content::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}

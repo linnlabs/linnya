@@ -158,16 +158,31 @@ function contractOperation(layer: SqliteSemanticLayer, operation: SchemaManageOp
   }
 }
 
-function executeSchema(runtime: Runtime, command: Exclude<SchemaCommand, { kind: 'help' }>): BackendPluginCliResult {
+/** 属于这个项目的对话；改动记录里只显示这些对话的标题。 */
+function projectConversationIds(db: Database.Database, projectId: string | null, ids: readonly (string | null)[]): Set<string> {
+  const wanted = [...new Set(ids.filter((id): id is string => id !== null))];
+  if (!wanted.length || projectId === null) return new Set();
+  return new Set(db.prepare<[string, string], { conversation_id: string }>(
+    'SELECT conversation_id FROM conversations WHERE project_id = ? AND conversation_id IN (SELECT value FROM json_each(?))',
+  ).all(projectId, JSON.stringify(wanted)).map(row => row.conversation_id));
+}
+
+/** 标签与字段是工作区级定义；命令行输出里的文档、值、筛选与对话只取当前项目的。 */
+function executeSchema(runtime: Runtime, projectId: string | null, command: Exclude<SchemaCommand, { kind: 'help' }>): BackendPluginCliResult {
   const { layer } = runtime;
   switch (command.kind) {
     case 'manage': {
       const operation = contractOperation(layer, command.operation);
-      if (!command.confirmed) return ok(formatSchemaPreview(command.operation, previewSemanticSchemaOperation(runtime.db, operation)));
+      if (!command.confirmed) {
+        return ok(formatSchemaPreview(command.operation, previewSemanticSchemaOperation(runtime.db, operation), projectId));
+      }
       return ok(formatSchemaApplied(applySemanticSchemaOperation(runtime.db, operation)));
     }
-    case 'changes':
-      return ok(formatSchemaChanges(readSemanticSchemaOverview(runtime.db).changes.slice(0, command.limit)));
+    case 'changes': {
+      const changes = readSemanticSchemaOverview(runtime.db).changes.slice(0, command.limit);
+      const visible = projectConversationIds(runtime.db, projectId, changes.map(change => change.actor.conversation_id));
+      return ok(formatSchemaChanges(changes, visible));
+    }
     case 'undo': {
       if (!command.confirmed) {
         const change = layer.readChange(command.changeId);
@@ -450,7 +465,8 @@ export function prepareSemanticCli(input: {
           || command.kind === 'manage' || command.kind === 'changes' || command.kind === 'undo'
         ) {
           // 标签与字段改动记下是谁做的（新建标签的来源、改动批次的执行者）。
-          return guarded(() => withActionActor(actorFor(input.db, context), () => executeSchema(runtime, command)));
+          // 没有所属项目的对话只看到工作区级的定义与个数，不列任何项目里的文档、筛选或对话。
+          return guarded(() => withActionActor(actorFor(input.db, context), () => executeSchema(runtime, context.projectId ?? null, command)));
         }
         const { projectId } = context;
         if (!projectId) return fail(2, '当前对话没有所属项目。');

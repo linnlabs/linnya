@@ -18,7 +18,7 @@ function context(
   return { callerAgentId: PromptKeys.DEFAULT,
     registeredRootAllowedTools: options.tools ?? ['skill', 'skill_manage'], commandRunPermission: { status: 'available', snapshot: CommandRunPermissionSnapshotV1Schema.parse({
     protocol_version: 1, kind: 'command_run_permission_snapshot', root_agent_run_id: 'skill-test-run',
-    settings_revision: 0, captured_at_ms: 1, permission_level: level, internal_data_access: options.internal ?? 'allowed',
+    settings_revision: 0, conversation_revision: 0, source: 'global_setting', captured_at_ms: 1, permission_level: level, internal_data_access: options.internal ?? 'allowed',
     gui_control: 'denied', local_ipc_control: 'denied', process_lifecycle: 'terminate_with_run',
   }) } };
 }

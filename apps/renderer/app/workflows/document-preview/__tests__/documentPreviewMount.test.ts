@@ -1,7 +1,15 @@
 // @vitest-environment jsdom
 import { defineAsyncComponent, defineComponent, h, onUnmounted, type Component } from 'vue';
-import { expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { DocumentReferencePresentation } from '@app/schemas';
+import {
+  clearLocalizationRegistryForTest,
+  registerMessageCatalogs,
+  useLocalizationStore,
+} from '@app/localization';
+import { DOCUMENT_PREVIEW_MESSAGE_CATALOG } from '../definitions/documentPreviewMessageCatalog';
+import { DocumentPreviewUserError } from '../definitions/documentPreviewUserError';
 import {
   registerRendererDocumentPreviewPort,
   mountDocumentPreview,
@@ -14,6 +22,8 @@ const available: DocumentReferencePresentation = {
   path: 'workspace:/Doc.md',
   status: 'available',
 };
+beforeEach(() => setActivePinia(createPinia()));
+afterEach(() => clearLocalizationRegistryForTest());
 const input = () => ({
   element: document.createElement('div'),
   documentId: 'doc',
@@ -168,4 +178,30 @@ it('aborts before a deferred import can mount and releases a mounted detail imme
   expect(target.element.childNodes).toHaveLength(0);
   dispose();
   expect(unmount).toHaveBeenCalledOnce();
+});
+it('范围或可用性不满足时拒绝挂载，消息按界面语言生成且可直接展示', async () => {
+  registerMessageCatalogs(DOCUMENT_PREVIEW_MESSAGE_CATALOG);
+  useLocalizationStore().setCurrentLocale('en-US');
+  const load = vi.fn();
+  const foreign = createDocumentPreviewRendererPort({
+    read: async () => available,
+    currentProjectId: () => 'other',
+    load,
+  });
+  const scopeFailure = await foreign.mount(input()).catch((error: unknown) => error);
+  expect(scopeFailure).toBeInstanceOf(DocumentPreviewUserError);
+  expect((scopeFailure as Error).message).toBe(
+    'This document is not in the current project, so it cannot be previewed.'
+  );
+  const deleted = createDocumentPreviewRendererPort({
+    read: async () => ({ ...available, status: 'deleted' as const }),
+    currentProjectId: () => 'project',
+    load,
+  });
+  const unavailable = await deleted.mount(input()).catch((error: unknown) => error);
+  expect(unavailable).toBeInstanceOf(DocumentPreviewUserError);
+  expect((unavailable as Error).message).toBe(
+    'This document was deleted or is not in the current project, so it cannot be previewed.'
+  );
+  expect(load).not.toHaveBeenCalled();
 });

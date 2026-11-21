@@ -29,7 +29,7 @@
   margin-right: var(--space-1-5);
 }
 
-.ai-assistant-input-footer.input-bottom-section--compact .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
+.ai-assistant-input-footer.input-bottom-section--compact .selector-group :is(.input-footer-model-trigger, .input-footer-command-permission-trigger, .agent-choice-trigger) {
   min-width: 0;
   padding: 0 var(--space-5) 0 7px;
   font-size: var(--font-size-caption);
@@ -92,7 +92,7 @@
   align-items: center;
 }
 
-.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger) {
+.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .input-footer-command-permission-trigger, .agent-choice-trigger) {
   min-width: 60px;
   width: auto;
   padding: 0 var(--space-6) 0 var(--space-2);
@@ -105,7 +105,7 @@
   line-height: 1;
 }
 
-.ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled {
+.ai-assistant-input-footer.is-controls-disabled :is(.input-footer-model-trigger, .input-footer-command-permission-trigger):disabled {
   /*
    * 运行中禁用 mode/model 选择器时，只表达“当前配置不可改”。
    * 共享 CustomSelect 的 disabled 背景更像选中态；这里收敛到对话输入底栏，避免影响其它业务选择器。
@@ -116,7 +116,7 @@
 }
 
 .ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled .input-footer-model-selected-value,
-.ai-assistant-input-footer.is-controls-disabled .input-footer-model-trigger:disabled .selector-chevron {
+.ai-assistant-input-footer.is-controls-disabled :is(.input-footer-model-trigger, .input-footer-command-permission-trigger):disabled .selector-chevron {
   color: var(--color-text-muted);
 }
 
@@ -393,7 +393,7 @@
   max-width: min(360px, calc(100vw - 16px));
 }
 
-.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .agent-choice-trigger):hover:not(:disabled) {
+.ai-assistant-input-footer .selector-group :is(.input-footer-model-trigger, .input-footer-command-permission-trigger, .agent-choice-trigger):hover:not(:disabled) {
   background-color: var(--color-bg-hover);
 }
 
@@ -480,4 +480,58 @@
   width: 13px;
   height: 13px;
   display: block;
+}
+
+/**
+ * 命令档位：触发器与模型选择同一套底栏样式（见上方 :is 规则）。
+ * 菜单挂到页面顶层，按窗口翻转和收边，侧边对话里也不会伸出窗口；
+ * 每项带一行说明，宽度由组件的 min-width（300px）给出；运行中在顶部说明修改何时生效。
+ */
+.ai-assistant-input-footer .selector-group--command-permission {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.input-footer-command-permission-options .conversation-command-permission__hint {
+  margin: 0;
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+}
+
+/* “更改全局设置…”是去设置页的入口，不是档位，用次要文字色。 */
+.input-footer-command-permission-options .conversation-command-permission__settings-link .option-label {
+  color: var(--color-text-secondary);
+}
+
+/* 档位触发器只放盾牌图标，方形、与添加按钮同尺寸；档位名在悬停提示和菜单里。 */
+.ai-assistant-input-footer .selector-group--command-permission .conversation-command-permission .input-footer-command-permission-trigger {
+  justify-content: center;
+  width: var(--input-footer-control-height);
+  min-width: 0;
+  padding: 0;
+}
+
+.ai-assistant-input-footer .conversation-command-permission__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* 完全访问：图标用警示色，不加底色；悬停底色与其他底栏控件相同。 */
+.ai-assistant-input-footer .conversation-command-permission--full .input-footer-command-permission-trigger {
+  color: var(--color-warning-text);
+}
+
+/* 菜单里每档前带同一组图标，让底栏图标的含义可以对照着学会。 */
+.input-footer-command-permission-options .conversation-command-permission__option-icon {
+  color: var(--color-text-secondary);
+}
+
+.input-footer-command-permission-options .select-option.is-caution .conversation-command-permission__option-icon {
+  color: var(--color-warning-text);
 }

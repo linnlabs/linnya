@@ -82,26 +82,3 @@
   overflow-y: clip;
 }
 
-.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar {
-  width: 10px;
-}
-
-.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-}
-
-.conversation-view-wrapper:not([data-overlay-scroll-theme]) .conversation-view:is(:hover, :focus-within)::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}

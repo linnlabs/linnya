@@ -38,6 +38,11 @@
     -webkit-backdrop-filter var(--duration-long) var(--ease-standard);
 }
 
+/* 命令档位属于对话，即使尚未选模型，也能通过底栏切换。 */
+.ai-assistant-input .is-model-setup-required .ai-assistant-input-footer {
+  z-index: 2;
+}
+
 /* 玻璃自身不上色，底色交给这一层，避免 backdrop-filter 与背景色互相叠加变脏。 */
 .ai-assistant-input__model-setup-overlay::before {
   position: absolute;
@@ -257,23 +262,6 @@
   max-height: 240px;
   overflow-y: auto;
   padding: 0;
-}
-
-.ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar {
-  width: 6px;
-}
-
-.ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar-track {
-  background: transparent; /* 移除背景和竖线 */
-}
-
-.ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb-color);
-  border-radius: var(--radius-full);
-}
-
-.ai-assistant-input .input-editor .ai-assistant-tiptap-editor::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover-color);
 }
 
 .ai-assistant-input .input-editor .ai-assistant-tiptap-editor.ProseMirror-focused {

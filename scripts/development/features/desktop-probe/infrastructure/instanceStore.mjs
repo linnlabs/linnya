@@ -1,21 +1,36 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
-  closeSync, mkdirSync, openSync, readFileSync, readdirSync,
+  closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync,
   renameSync, rmSync, statSync, utimesSync, writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { ProbeError, repoRoot } from '../definitions/probeContract.mjs';
 import { readProcessTable } from './processTree.mjs';
 
 const key = createHash('sha256').update(repoRoot).digest('hex').slice(0, 12);
 export const instancesRoot = join(tmpdir(), 'linnya-dev-probe', `${basename(repoRoot)}-${key}`);
 
+/** 回收时保留已删除实例的 artifacts 的目录。以下划线开头，不是合法实例名，不会被当成实例。 */
+export const archiveDirName = '_artifacts';
+
+export function isInstanceName(name) {
+  return /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,47}$/.test(name);
+}
+
 export function instanceRoot(name) {
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,47}$/.test(name)) {
+  if (!isInstanceName(name)) {
     throw new ProbeError('USAGE', '实例名只能包含字母、数字、下划线和连字符，最多 48 字符');
   }
   return join(instancesRoot, name);
+}
+
+/** 实例根目录下的实例名；`*.lock` 归属记录、`_artifacts` 归档和构建日志等不是实例。 */
+export function listInstanceNames(root = instancesRoot) {
+  if (!existsSync(root)) return [];
+  return readdirSync(root, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && isInstanceName(entry.name))
+    .map(entry => entry.name);
 }
 
 /** 实例的 Workspace 数据库：Desktop 以 `<实例>/workspace` 为 LINNYA_WORKSPACE_DIR，库在其下的 workspace/。 */
@@ -58,7 +73,7 @@ export function touchInstance(root) {
 
 export async function withLifecycleLock(root, action, { timeoutMs = 0 } = {}) {
   const { DatabaseSync } = await import('node:sqlite');
-  mkdirSync(instancesRoot, { recursive: true, mode: 0o700 });
+  mkdirSync(dirname(root), { recursive: true, mode: 0o700 });
   const ownerDir = `${root}.lock`;
   // 实例生命周期遇忙立即报 BUSY；共享构建锁则排队等待前一个构建结束。
   const lock = new DatabaseSync(`${root}.lock.sqlite`, { timeout: timeoutMs });

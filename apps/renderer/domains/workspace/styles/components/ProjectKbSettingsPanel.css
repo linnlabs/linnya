@@ -155,23 +155,6 @@
   text-align: center;
 }
 
-.project-kb-section .column::-webkit-scrollbar {
-  width: 8px;
-}
-
-.project-kb-section .column::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.project-kb-section .column::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-  border-radius: var(--radius-sm);
-}
-
-.project-kb-section .column::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}
-
 .project-kb-section .project-kb-footer {
   display: flex;
   justify-content: flex-end;

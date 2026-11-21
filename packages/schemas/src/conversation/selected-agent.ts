@@ -1,4 +1,5 @@
 import * as z from 'zod';
+import { PromptKeys } from '../agent-config/index';
 import { RESEARCH_AGENT_ID } from '../tools/research-run';
 
 /**
@@ -23,9 +24,33 @@ export type ConversationSelectedAgentId = z.infer<typeof ConversationSelectedAge
 export const ConversationAgentIds = {
   RESEARCH: ConversationSelectedAgentIdSchema.parse(RESEARCH_AGENT_ID),
   PROJECT_PLANNING: ConversationSelectedAgentIdSchema.parse('project_planning'),
-  /** 仅保留旧会话与暂停运行的身份，不能映射到新版执行。 */
-  DEEP_RESEARCH: ConversationSelectedAgentIdSchema.parse('deep_research_leader'),
 } as const;
+
+/**
+ * 读取合同里“哪个 Agent”的统一写法：默认 Agent 为 null，其余为 AgentDefinition.id。
+ *
+ * 对话列表、项目概览和语义层改动记录共用这条约定。显示名由 Renderer 决定：
+ * null 显示为 Linnya Agent，其他 ID 从 Agent 注册表取名。会话自己持久化的选择
+ * （历史列表与元数据）由 `readConversationSelectedAgentId` 在读取边界套用同一约定。
+ */
+export function toReadModelAgentId(agentId: string | null): string | null {
+  return agentId === PromptKeys.DEFAULT ? null : agentId;
+}
+
+/**
+ * 持久化的会话 Agent 选择 → 读取合同：默认 Agent 一律是 null，其余为 AgentDefinition.id。
+ *
+ * 旧数据曾把默认 Agent 的 ID 字面量 `default` 原样写进库（例如 CLI 的 `send --agent default`）。
+ * 它与未选择是同一个意思，读取边界在这里归一一次；Renderer 与其他读取方不需要各自识别，
+ * 已不可用的注册表 ID 仍原样返回，由展示层按注册表判断。
+ */
+export function readConversationSelectedAgentId(
+  stored: string | null
+): ConversationSelectedAgentId | null {
+  if (stored === null) return null;
+  const agentId = ConversationSelectedAgentIdSchema.parse(stored);
+  return toReadModelAgentId(agentId) === null ? null : agentId;
+}
 
 export const UpdateConversationSelectedAgentRequestSchema = z
   .object({

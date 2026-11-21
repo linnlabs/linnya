@@ -318,6 +318,7 @@ export function createShellToolRuntime(
         approval: dependencies.approval,
         createApprovalRequestUuid: createUuid,
         now,
+        conversationRoot: admitted.conversationRoot,
         ...(request.abortSignal ? { abortSignal: request.abortSignal } : {}),
       });
     } catch {

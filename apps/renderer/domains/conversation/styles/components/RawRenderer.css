@@ -95,30 +95,6 @@
   font-size: var(--font-size-prose);
 }
 
-.raw-renderer .json-display::-webkit-scrollbar,
-.raw-renderer .text-display::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.raw-renderer .json-display::-webkit-scrollbar-thumb {
-  border-radius: var(--radius-sm);
-  background-color: var(--color-gray-600);
-}
-
-.raw-renderer .json-display::-webkit-scrollbar-track {
-  background-color: var(--color-gray-800);
-}
-
-.raw-renderer .text-display::-webkit-scrollbar-thumb {
-  border-radius: var(--radius-sm);
-  background-color: var(--scrollbar-thumb-color);
-}
-
-.raw-renderer .text-display::-webkit-scrollbar-track {
-  background-color: var(--scrollbar-track-color);
-}
-
 @keyframes raw-renderer-spin {
   to {
     transform: rotate(360deg);

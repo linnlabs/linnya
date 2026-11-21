@@ -58,6 +58,9 @@ function logDiagnostic(logger: Logger, diagnostic: AiSdkLanguageDiagnostic): voi
               http_status: diagnostic.sdk_error_details.http_status,
               sdk_retryable: diagnostic.sdk_error_details.sdk_retryable,
             } }),
+        ...(diagnostic.provider_error_excerpt === undefined
+          ? {}
+          : { provider_error_excerpt: diagnostic.provider_error_excerpt }),
         failure_kind: diagnostic.failure_kind,
         failure_code: diagnostic.failure_code,
         retryable: diagnostic.retryable,

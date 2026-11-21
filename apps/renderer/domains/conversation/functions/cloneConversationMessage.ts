@@ -59,6 +59,8 @@ export function cloneConversationMessage(message: BaseMessage): BaseMessage {
       };
     case 'client_notice':
       return { ...message, metadata: { ...message.metadata } };
+    case 'command_permission_change':
+      return { ...message, metadata: { ...message.metadata } };
     case 'execution_notice':
       return { ...message, metadata: { ...message.metadata } };
     case 'history_summary':

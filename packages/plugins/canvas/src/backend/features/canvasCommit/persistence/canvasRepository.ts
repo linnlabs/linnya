@@ -279,8 +279,18 @@ export function updateCanvasEditingClaim(
       );
 }
 
-export function releaseCanvasEditingClaims(database: CanvasDatabase, viewId: string): void {
-  database.prepare('DELETE FROM canvas_editing_claims WHERE view_id = ?').run(viewId);
+/**
+ * 释放视图的编辑保护；同时清掉任何视图崩溃后遗留的过期记录（它们已不再生效，只是无人删除）。
+ * 有效期的边界与 `readCanvasEditingClaims` 相同：`expires_at <= now` 即失效。
+ */
+export function releaseCanvasEditingClaims(
+  database: CanvasDatabase,
+  viewId: string,
+  now: number
+): void {
+  database
+    .prepare('DELETE FROM canvas_editing_claims WHERE view_id = ? OR expires_at <= ?')
+    .run(viewId, now);
 }
 
 /** 删除身份只保留到用户栈/Agent组释放；长期版本通过文档修订下界保证旧写不被接纳。 */

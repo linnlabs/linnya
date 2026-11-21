@@ -96,23 +96,6 @@
   scrollbar-gutter: stable;
 }
 
-.citation-kb-tab .results-section::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.citation-kb-tab .results-section::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.citation-kb-tab .results-section::-webkit-scrollbar-thumb {
-  background-color: var(--color-border-default);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
 .citation-kb-tab .no-results {
   display: flex;
   align-items: center;

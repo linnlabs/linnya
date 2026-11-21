@@ -10,6 +10,8 @@ export interface DocumentPreviewSurfaceInput {
   /** 容器比可见范围大时（Canvas 纸面内缩）四周内缩的距离，首屏正文和淡出在可见边缘结束。 */
   readonly visibleInsetPx?: number;
   readonly theme: 'light' | 'dark';
+  /** 界面语言（如 zh-CN、en-US），决定外壳文字和正文里引用、参考文献等的语言；缺省 zh-CN，后台出图等不知道界面语言时省略。 */
+  readonly locale?: string;
   readonly signal: AbortSignal;
   readonly icon?: Component | null;
   /** 正文里行内引用的类型图标，与文件树同源；后台出图等拿不到时省略，引用用通用文件图标。 */

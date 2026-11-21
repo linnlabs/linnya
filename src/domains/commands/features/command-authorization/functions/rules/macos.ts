@@ -1,4 +1,5 @@
 import type {
+  CommandRiskExecutionScope,
   CommandRiskLexicalScan,
   CommandRiskRule,
   CommandRiskRuleCatalog,
@@ -104,20 +105,66 @@ function matchesRemoteDownloadAndExecute(scan: CommandRiskLexicalScan): boolean 
   return false;
 }
 
+const DIRECTORY_CHANGERS = new Set(['cd', 'pushd', 'popd', 'chdir']);
+const CONVERSATION_LOCAL_PATH = /^[\p{L}\p{N}._@+=,*?/-]+$/u;
+
+function isConversationLocalPathLiteral(token: string): boolean {
+  if (!CONVERSATION_LOCAL_PATH.test(token)) return false;
+  if (token.startsWith('/') || token.startsWith('-') || token.endsWith('/')) return false;
+  return token.split('/').every(part => part !== '' && part !== '..');
+}
+
+/**
+ * 本会话工作目录里的普通文件删除不需要审批（W-0303）：Agent 先删后写自己建的过程文件，
+ * 无人值守时不能卡在审批上。只有从命令文本与已核对 cwd 能证明“只删本会话目录内的
+ * 普通文件”才放行：裸 rm、只带 -f/-v、目标全是不含 .. 的字面相对路径且不以 / 结尾、
+ * 整条命令没有切目录和命令替换/嵌套脚本、cwd 真实路径在本会话根之内。不加 -r 时 rm
+ * 删不了目录，遇到符号链接只删链接本身。任何一条不满足仍按删除审批。
+ */
+function isConversationLocalFileRemoval(
+  fact: ReturnType<typeof allCommandFacts>[number],
+  scan: CommandRiskLexicalScan,
+  scope: CommandRiskExecutionScope | undefined,
+): boolean {
+  if (!scope?.cwdInsideConversationRoot) return false;
+  if (fact.executable !== 'rm' || fact.wrappers.length > 0) return false;
+  if (fact.originalTokens[0]?.toLocaleLowerCase('en-US') !== 'rm') return false;
+  if (scan.segments.some(segment => segment.separatorBefore === 'substitution')) return false;
+  if (allCommandFacts(scan).some(({ executable }) => DIRECTORY_CHANGERS.has(executable))) return false;
+  const targets: string[] = [];
+  let endOfOptions = false;
+  for (const token of fact.executableTokens.slice(1)) {
+    if (!endOfOptions && token === '--') {
+      endOfOptions = true;
+      continue;
+    }
+    if (!endOfOptions && token.startsWith('-')) {
+      if (!/^-[fv]+$/u.test(token)) return false;
+      continue;
+    }
+    targets.push(token);
+  }
+  return targets.length > 0 && targets.every(isConversationLocalPathLiteral);
+}
+
 export function matchesMacosRiskRule(
   matcher: CommandRiskRuleMatcher,
   scan: CommandRiskLexicalScan,
+  scope?: CommandRiskExecutionScope,
 ): boolean {
   const facts = allCommandFacts(scan);
   switch (matcher) {
     case 'delete_rm':
-      return facts.some(({ executable, executableTokens, originalTokens }) => (
-        (executable === 'rm' || executable === 'rmdir' || executable === 'unlink')
+      return facts.some((fact, index) => (
+        (fact.executable === 'rm' || fact.executable === 'rmdir' || fact.executable === 'unlink')
         && (
-          nonOptionArguments(executableTokens).length > 0
-          || originalTokens[0]?.toLocaleLowerCase('en-US') === 'xargs'
+          nonOptionArguments(fact.executableTokens).length > 0
+          || fact.originalTokens[0]?.toLocaleLowerCase('en-US') === 'xargs'
+          // 未加引号的 $(...) / `...` 被扫描成紧随其后的 substitution 段，删除目标在那里。
+          || scan.segments[index + 1]?.separatorBefore === 'substitution'
         )
-        && !hasFlag(executableTokens, '--help', '--version')
+        && !hasFlag(fact.executableTokens, '--help', '--version')
+        && !isConversationLocalFileRemoval(fact, scan, scope)
       ));
     case 'delete_find':
       return facts.some(({ executable, executableTokens }) => (

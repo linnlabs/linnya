@@ -1,5 +1,5 @@
 import { generateKeyBetween } from 'fractional-indexing';
-import type { CanvasElement } from '../../../../shared';
+import { canvasSectionParentValid, type CanvasElement } from '../../../../shared';
 import { CanvasCommitFailure } from '../definitions/canvasCommitFailure';
 
 type Card = Exclude<CanvasElement, { type: 'edge' }>;
@@ -23,7 +23,7 @@ function validateGrouping(card: Card, cards: ReadonlyMap<string, Card>) {
   if (card.parentId === card.id) throw new CanvasCommitFailure('canvas_group_cycle');
   const parent = cards.get(card.parentId);
   if (!parent) throw new CanvasCommitFailure('canvas_group_parent_missing');
-  if (parent.type !== 'section' || card.type === 'section')
+  if (!canvasSectionParentValid(card, parent))
     throw new CanvasCommitFailure('canvas_section_parent_invalid');
 }
 

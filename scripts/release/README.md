@@ -169,6 +169,12 @@ hash，文本文件汇总 package 与随包 LICENSE/NOTICE。缺少独立许可�
 `manifest-only`，而不是伪造文件；Unknown、未登记的复合许可证或缺少来源/integrity 会直接失败。该结果是 Source/当前平台依赖 BOM 输入，不能冒充最终 Desktop
 installer 或开放插件 artifact 的实际内容清单。
 
+直接引用 URL tarball 的依赖（当前只有 `xlsx`，来自 SheetJS CDN）在锁文件里时有时无 integrity：不同
+pnpm 安装会写入或删掉它。生成器不联网，因此这类依赖的 tarball integrity 登记在
+`definitions/dependencyLegalPolicy.ts` 的 `DEPENDENCY_PINNED_TARBALL_INTEGRITIES`，按精确 URL 匹配并写明核对方式。
+锁文件有 integrity 时必须与登记一致（不一致说明 tarball 内容变了）；登记的 URL 不在锁文件或版本不符时生成失败。
+升级这类依赖时，下载新 URL 计算 SHA-512（`curl -sSL <url> | openssl dgst -sha512 -binary | base64`）后更新登记。
+
 发布 tarball 未携带正文时，可以登记人工复核 evidence，但不能只复制一段通用许可证模板。Git 证据必须锁完整 commit、上游路径、源文件 hash 和本地副本 hash；registry
 README 证据必须锁 package
 identity、integrity、源文件 hash 与精确行范围。生成器离线复核这些字段，并把 manifest 声明与人工结论的差异、理由和证据来源写入输出。当前 Desktop 的 55 个初始 manifest-only

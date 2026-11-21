@@ -374,27 +374,3 @@
   color: var(--color-text-placeholder);
 }
 
-.upload-tab .file-list-items::-webkit-scrollbar,
-.upload-tab .file-list-header::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.upload-tab .file-list-items::-webkit-scrollbar-track,
-.upload-tab .file-list-header::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.upload-tab .file-list-items::-webkit-scrollbar-thumb,
-.upload-tab .file-list-header::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.upload-tab .file-list-items::-webkit-scrollbar-thumb:hover,
-.upload-tab .file-list-header::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}

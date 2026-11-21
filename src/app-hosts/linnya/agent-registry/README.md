@@ -19,7 +19,9 @@ enricher 或重新渲染系统提示；这不承诺冻结外部模型输出或�
 
 定义可以通过 `requestAdmission(request, { history, hostToolCall })`
 接纳业务请求。它是纯函数，在新根运行或持久 registered child 首次启动时校验并物化 Host
-`AgentInvokeRequest`；history 已按隔离与编辑替换规则裁剪。结果随运行 descriptor 冻结，持久化后的历史刷新保留该结果；恢复不重新接纳、不重写原请求。系统提示构建器接收 Host 请求，可以消费已经接纳的产品字段，不能重新推断范围或执行工具。
+`AgentInvokeRequest`；history 已按隔离与编辑替换规则裁剪。结果随运行 descriptor 冻结，持久化后的历史刷新保留该结果；恢复不重新接纳、不重写原请求。系统提示构建器接收 Host 请求，可以消费已经接纳的产品字段，不能重新推断范围或执行工具。拒绝请求时抛出 `AgentRequestAdmissionError`（各定义的接纳错误继承它），调用方按这个类型而不是某个 Agent 的错误类判断。
+
+输入框上下文用量估算也只读地走同一接纳函数，传入 `contextEstimate: true`：用户消息尚未写出，定义只可为依赖该消息的字段使用中性占位，其余校验不变，结果不持久化、不冻结、不启动运行。被拒绝时没有可估算的下一次请求，估算返回空值。
 
 首次接纳从 definition 冻结
 `callerAgentId`，覆盖请求中的同名值。child 使用自己的身份。工具执行范围由已接纳的 availableTools 与正式 Host 单次入口授权约束；通用 subagent 按注册方的调用角色与直接子类型策略过滤目录及执行；它不解释领域材料，原始 prompt 由目标角色接纳。
@@ -32,6 +34,11 @@ admission 前把它转换为正式 `host_tool_call`，固定 `yield_after_batch`
 `availableTools: []`；child 的职责和工具仍各自通过 registry 定义。声明不拥有 Graph、持久阶段或工具执行，不提供通用工作流引擎。
 
 持久恢复严格比较当前 definition 与原 descriptor 的工具、模型、Skill、插件和版本。不为已撤回的研究交接协议返回旧配置绕过比较；不兼容的暂停任务保持原身份和历史，明确拒绝续跑，不能静默换用新能力。
+
+定义可用 `internal: true` 声明宿主内部的辅助 Agent（单轮写作/标题/翻译/批注等、批量收尾、表格填充、审阅批注）。
+它们的运行可能挂在某个对话上，但不是对话里“谁回复了、派出了谁”的答案；读取合同经
+`listInternalAgentIds()`（按全部已注册定义计算，不看插件是否启用）排除它们。该标记不影响执行、恢复或权限，
+新增此类辅助 Agent 时必须一并声明。
 
 定义可用 `newRunUnavailableReason`
 停止接收新的根运行。Flow 在 start 准备时调用 registry 的接纳规则并返回
@@ -211,8 +218,7 @@ stepPolicy: {
 
 当前内部检索的收口工具是知识库 `deep_search` 的 `assemble_documents` 和网页
 `deep_web_search` 的 `assemble_web_sources`，两者通过 `terminateRun`
-结束子 run。旧 deep research 的 `write_report`
-属于历史实现，不是新能力的接入范例。普通检索、读取、编辑工具不要结束循环。
+结束子 run。普通检索、读取、编辑工具不要结束循环。
 
 长任务预算也应由 definition 声明。当前 Default Agent 与 Slides Agent 使用
 `maxSteps: 800`；未声明的 Agent 继续继承 Linnkit 的 80 步框架默认值。Host 的 root 与 registered
@@ -294,7 +300,6 @@ src/app-hosts/linnya/agent-registry/
 │   ├── __tests__/
 │   ├── default/
 │   ├── deep_search/
-│   ├── deep_research/
 │   ├── slides_agent/
 │   ├── review/
 │   ├── subagent_document_editor/
@@ -358,7 +363,7 @@ src/app-hosts/linnya/agent-registry/
 - `flow` 的 request build
 - `registeredAgentResolver`
 - `GenericAgentTask`
-- `skills / review / deep_research` 等产品模块
+- `skills / review / research` 等产品模块
 
 ### `registry.ts`
 
@@ -520,7 +525,6 @@ core。
 
 - [singleTurnAgents.test.ts](./agents/__tests__/singleTurnAgents.test.ts)
 - [Slides Agent](../../../../packages/plugins/slides/src/backend/agents/slides_agent/index.test.ts)
-- [deepResearchAgents.test.ts](./agents/__tests__/deepResearchAgents.test.ts)
 - [researchRoles.integration.test.ts](./agents/research_v1/researchRoles.integration.test.ts)
 - [agentSkillExposure.test.ts](../../../features/skills/__tests__/agentSkillExposure.test.ts)
 
@@ -552,11 +556,18 @@ Graph 步，工具白名单限定浅检索、网页读取、续读及资料组�
 交给 Host 持久 admission 事务执行。网页四次，知识库旧行为保持不变。业务来源合同见 Web
 owner，不在注册中心复制。
 
-### 退役的研究实验身份
+### 已删除的旧研究身份
 
-旧 beta 五角色与四个 CLI 研究实验定义仅保留历史与恢复兼容，均停止接纳新根任务。
-生产研究使用 `research_v1` 和 `research_*_v1` 专项角色；不要从目录中的旧 prompt 推断当前产品流程。
-保留理由、退出边界和回归入口见[退役研究角色](./agents/deep_research/README.md)。
+旧版深度研究 beta（Leader、Scout、Reasoner 1/2、Challenger）与四个 CLI 研究实验身份
+（`deep_research_experimental`、`deep_research_{investigation,argument,source}_review`）的定义、提示与
+`write_report` 工具已删除。生产研究使用 `research_v1` 和 `research_*_v1` 专项角色。
+
+`@app/schemas` 的 `RETIRED_DEEP_RESEARCH_AGENT_IDS` 只保存这些身份（AgentDefinition.id 与 promptKey 相同），
+用于退役终止合同：新请求在 Flow 首次准备时以 `AGENT_NEW_RUN_UNAVAILABLE` 拒绝；暂停或待审批的旧根运行在
+继续/响应时由 FlowOrchestrator 取消并返回 `AGENT_RETIRED`，不进入恢复兼容检查，也不切换到研究或 Default；
+历史对话照常打开，Renderer 把角色名回退为“旧版深度研究（已退役）”，旧 `write_report` 工具卡回退通用卡。
+该列表只服务这批旧研究身份。回归入口是
+[退役终止集成测试](../adapters/flow/__integration-tests__/flow.legacy-research-admission.integration.test.ts)。
 
 ### 主研究 Agent 与专项子职责 v1
 

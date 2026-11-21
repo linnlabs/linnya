@@ -140,6 +140,7 @@
             ref="textareaRef"
             v-model="editedContent"
             class="edit-textarea"
+            data-linnya-scrollbar="medium"
             :disabled="isEditSubmitting"
             @input="adjustTextareaHeight"
             @keydown.enter.exact.prevent="saveEdit"
@@ -241,8 +242,9 @@ const quoteList = computed(() => {
 const quoteTags = computed(() => quoteList.value.filter(quote => quote.icon !== null));
 const quoteBlocks = computed(() => quoteList.value.filter(quote => quote.icon === null));
 
+// 活动消息与运行中插话都不提供编辑和重新生成：二者都会连同整次运行一起删掉重来。
 const isActivityMessage = computed(() => {
-  return !!props.message.metadata?.activity;
+  return !!props.message.metadata?.activity || props.message.metadata?.delivery === 'mid_run';
 });
 
 const formattedTimestamp = computed(() => formatUserMessageTimestamp(

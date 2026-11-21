@@ -62,7 +62,7 @@ describe('read_file host locator 与命令权限边界', () => {
               protocol_version: 1,
               kind: 'command_run_permission_snapshot',
               root_agent_run_id: `agent-run-${permissionLevel}`,
-              settings_revision: 1,
+              settings_revision: 1, conversation_revision: 0, source: 'global_setting',
               captured_at_ms: 1,
               permission_level: permissionLevel,
               internal_data_access: 'allowed',
@@ -115,7 +115,7 @@ describe('read_file host locator 与命令权限边界', () => {
           status: 'available',
           snapshot: CommandRunPermissionSnapshotV1Schema.parse({
             protocol_version: 1, kind: 'command_run_permission_snapshot',
-            root_agent_run_id: 'agent-run-format', settings_revision: 1, captured_at_ms: 1,
+            root_agent_run_id: 'agent-run-format', settings_revision: 1, conversation_revision: 0, source: 'global_setting', captured_at_ms: 1,
             permission_level: 'standard', internal_data_access: 'allowed',
             gui_control: 'denied', local_ipc_control: 'denied', process_lifecycle: 'terminate_with_run',
           }),

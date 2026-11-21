@@ -49,6 +49,7 @@ import {
   loadRuntimeRendererPlugins,
 } from './plugins/loader/runtimeRendererPluginLoader';
 import { describeRendererPluginRegistryForDiagnostics } from './plugins/registry';
+import RendererPluginLoadFailureNotice from './plugins/components/RendererPluginLoadFailureNotice.vue';
 import { registerConversationResourceLinkPort } from '@/domains/conversation/features/resource-link';
 import { registerDocumentTypePresentationPort } from '@/domains/editor/features/document-references';
 import { readDocumentTypeIcon, readDocumentTypeRecoveryAction, readDocumentTypePreviewComponent } from './plugins/documentTypePresentation';
@@ -99,6 +100,15 @@ const unsubscribePluginChanges = enabledPluginsStore.subscribeToBackendChanges({
     });
   },
 });
+// 用户从加载失败提示重试：重新提交一次完整插件快照，再按启用态同步文件处理器。
+async function retryRendererPluginLoad() {
+  await loadRuntimeRendererPlugins();
+  await syncFileManagerHandlers(enabledPluginsStore.enabledPluginIds);
+  console.info('[App.vue] plugin-runtime-retry-complete', {
+    registryAfterLoad: describeRendererPluginRegistryForDiagnostics(),
+    loader: getRuntimeRendererPluginLoaderDiagnostics(),
+  });
+}
 const scene = computed(() => layoutStore.state.scene);
 const isWorkspaceStageView = computed(() => scene.value.kind === 'workspace');
 const isKnowledgeBaseView = computed(() => scene.value.kind === 'knowledge-base');
@@ -192,4 +202,5 @@ onBeforeUnmount(() => {
     <ProjectOverviewPage v-else-if="projectOverviewProjectId" :project-id="projectOverviewProjectId" />
   </AppLayout>
   <FloatingToolbarContainer />
+  <RendererPluginLoadFailureNotice :retry="retryRendererPluginLoad" />
 </template>

@@ -1,5 +1,8 @@
+import path from 'node:path';
+
 import {
   hasSameCommandExecutionIdentity,
+  isCommandBasePermissionSource,
   type CommandApprovalReason,
   type ShellCommandProposalV1,
 } from '@app/schemas/commands';
@@ -35,6 +38,18 @@ function riskReasons(
  * 复用旧批准；普通未命中风险的命令仍按 D21-c 复用前缀。风险结果不复制到
  * SQLite，避免规则升级后持久事实与当前 catalog 漂移。
  */
+function isInsideConversationRoot(
+  cwd: string,
+  conversationRoot: string | undefined,
+  platform: 'macos' | 'windows',
+): boolean {
+  if (!conversationRoot) return false;
+  const pathApi = platform === 'windows' ? path.win32 : path.posix;
+  if (!pathApi.isAbsolute(cwd) || !pathApi.isAbsolute(conversationRoot)) return false;
+  const relative = pathApi.relative(conversationRoot, cwd);
+  return relative === '' || (!relative.startsWith('..') && !pathApi.isAbsolute(relative));
+}
+
 export function evaluateCommandAuthorization(params: {
   readonly proposal: ShellCommandProposalV1;
   readonly permissionRequirement: CommandAuthorizationPermissionRequirement;
@@ -42,6 +57,8 @@ export function evaluateCommandAuthorization(params: {
   readonly shellSemanticsId: string;
   readonly conversationApprovals: readonly ConversationCommandApproval[];
   readonly riskCatalog?: unknown;
+  /** 本会话工作目录根的真实路径；与 proposal.cwd（同为真实路径）比较，判断命令是否在本会话目录内执行。 */
+  readonly conversationRoot?: string;
 }): CommandAuthorizationDecision {
   const context = Object.freeze({
     platform: params.platform,
@@ -59,13 +76,21 @@ export function evaluateCommandAuthorization(params: {
       code: 'permission_requirement_identity_mismatch',
     };
   }
+  if (!isCommandBasePermissionSource(basePermission.grant_source)) {
+    return {
+      status: 'unavailable',
+      context,
+      proposal: params.proposal,
+      code: 'permission_resolution_failed',
+    };
+  }
   if (basePermission.base_level === 'full_access') {
     return {
       status: 'authorized',
       context,
       proposal: params.proposal,
       permission: basePermission,
-      evidence: { source: 'global_setting' },
+      evidence: { source: basePermission.grant_source },
     };
   }
 
@@ -74,6 +99,9 @@ export function evaluateCommandAuthorization(params: {
     platform: params.platform,
     shellSemanticsId: params.shellSemanticsId,
     catalog: params.riskCatalog,
+    executionScope: {
+      cwdInsideConversationRoot: isInsideConversationRoot(params.proposal.cwd, params.conversationRoot, params.platform),
+    },
   });
   if (risk.status === 'unavailable') {
     return {
@@ -210,6 +238,6 @@ export function evaluateCommandAuthorization(params: {
     context,
     proposal: params.proposal,
     permission: basePermission,
-    evidence: { source: 'global_setting' },
+    evidence: { source: basePermission.grant_source },
   };
 }

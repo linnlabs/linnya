@@ -43,13 +43,19 @@ export const ProjectConversationStorageSchema = z.object({
   measured_at: NonNegativeInt,
 }).strict();
 
+/** 读取合同里的 Agent：注册表 ID，默认 Agent 为 null（见 `toReadModelAgentId`）。显示名由 Renderer 从注册表取。 */
+const ReadModelAgentId = z.string().min(1).nullable();
+
 export const ProjectConversationRowSchema = z.object({
   conversation_id: Id,
   title: z.string(),
-  /** 对话选定的 Agent 注册表 ID；null 是默认 Agent。显示名由 Renderer 从注册表取。 */
-  agent_id: z.string().min(1).nullable(),
-  /** 真正向用户回复过的前台根运行 Agent；未回复或缺失事实时为空，不用当前选择冒认。 */
-  respondent_agent_ids: z.array(z.string().min(1)),
+  /**
+   * 这个对话里实际回复过的 Agent：根运行按 Agent 去重，最近回复的在前。
+   * 标题生成等内部 Agent 不算；还没有回复时为空数组。
+   */
+  replied_agent_ids: z.array(ReadModelAgentId),
+  /** 对话当前选用的 Agent，下一次回复由它执行。 */
+  selected_agent_id: ReadModelAgentId,
   /** 用户发了几条消息。 */
   turn_count: NonNegativeInt,
   /** 账本里这个对话在本项目改过的文档数（去重）。 */
@@ -104,8 +110,16 @@ export const ProjectConversationChangedDocumentSchema = z.object({
   pending_revision_count: NonNegativeInt.nullable(),
 }).strict();
 
+/** 对话里派出的一种子 Agent 与它的子运行次数。 */
+export const ProjectConversationSubagentSchema = z.object({
+  agent_id: ReadModelAgentId,
+  run_count: z.number().int().positive(),
+}).strict();
+
 export const ProjectConversationDetailSchema = z.object({
   conversation_id: Id,
+  /** 子运行按 Agent 计数，次数多的在前；内部 Agent 不算。 */
+  subagents: z.array(ProjectConversationSubagentSchema),
   first_question: z.string().nullable(),
   last_answer: z.string().nullable(),
   changed_documents: z.array(ProjectConversationChangedDocumentSchema),
@@ -138,6 +152,7 @@ export type ProjectConversationStorage = z.infer<typeof ProjectConversationStora
 export type ProjectConversationRow = z.infer<typeof ProjectConversationRowSchema>;
 export type ProjectConversations = z.infer<typeof ProjectConversationsSchema>;
 export type ProjectConversationChangedDocument = z.infer<typeof ProjectConversationChangedDocumentSchema>;
+export type ProjectConversationSubagent = z.infer<typeof ProjectConversationSubagentSchema>;
 export type ProjectConversationDetail = z.infer<typeof ProjectConversationDetailSchema>;
 export type ProjectConversationSearchMatch = z.infer<typeof ProjectConversationSearchMatchSchema>;
 export type ProjectConversationsSearch = z.infer<typeof ProjectConversationsSearchSchema>;

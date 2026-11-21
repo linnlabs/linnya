@@ -6,7 +6,9 @@ import type {
   DocumentPreviewMountPorts,
   DocumentPreviewMountOwnership,
 } from '../definitions/documentPreviewMount';
+import { DocumentPreviewUserError } from '../definitions/documentPreviewUserError';
 import { assertDocumentPreviewScope } from '../functions/assertDocumentPreviewScope';
+import { resolveCurrentDocumentPreviewMessage } from '../functions/resolveCurrentDocumentPreviewMessage';
 
 /** 每个DOM容器只属于一次mount，旧请求的dispose不能移除后来目标的VNode。 */
 export function createDocumentPreviewRendererPort(
@@ -46,7 +48,9 @@ export function createDocumentPreviewRendererPort(
           input.mode === 'detail' &&
           (presentation.status === 'deleted' || presentation.status === 'outside_project')
         )
-          throw new Error('文档已删除或不在当前项目，无法预览');
+          throw new DocumentPreviewUserError(
+            resolveCurrentDocumentPreviewMessage('documentPreview.error.unavailable')
+          );
       };
       try {
         await verify();

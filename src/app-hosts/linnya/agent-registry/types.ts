@@ -216,6 +216,12 @@ export interface AgentRequestAdmissionContext {
   /** 已按历史隔离和编辑重发裁剪的正式历史。 */
   history: readonly RuntimeEvent[];
   hostToolCall?: HostToolCallRequestData;
+  /**
+   * 只读估算下一次请求的上下文：用户消息尚未写出，结果不得持久化、冻结或启动运行。
+   * 定义只可为“依赖尚未存在的消息”的字段使用中性占位，其余校验与正式接纳相同；
+   * 请求会被拒绝时仍抛出 `AgentRequestAdmissionError`。
+   */
+  contextEstimate?: true;
 }
 
 /**
@@ -268,6 +274,14 @@ export interface AgentDefinition {
 
   /** 仅拒绝新 run；definition 仍供历史身份和原运行恢复解析，不改变冻结执行配置。 */
   newRunUnavailableReason?: string;
+
+  /**
+   * 宿主内部的辅助 Agent（标题生成、编辑器单轮写作、批量收尾等）。
+   *
+   * 它们的运行可能挂在某个对话上，但不是对话里“谁回复了、派出了谁”的答案；
+   * 读取合同（例如项目对话页）统计 Agent 时排除它们。不影响执行、恢复或权限。
+   */
+  internal?: true;
 
   /**
    * 核心配置：工具、模型、知识库

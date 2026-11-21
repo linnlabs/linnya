@@ -59,6 +59,8 @@ import {
 import {
   getRuntimeRendererPluginLoaderDiagnostics,
   loadRuntimeRendererPlugins,
+  type RuntimeRendererPluginLoaderDiagnostics,
+  subscribeRuntimeRendererPluginLoaderDiagnostics,
 } from './runtimeRendererPluginLoader';
 
 const TestComponent = { name: 'RuntimeRendererPluginLoaderTest', template: '<div />' };
@@ -858,7 +860,7 @@ describe('runtime renderer plugin loader', () => {
         },
         conversationAgentChoices: [{
           id: 'runtime-loader-activate-fail-agent-choice',
-          agentId: ConversationAgentIds.DEEP_RESEARCH,
+          agentId: ConversationAgentIds.RESEARCH,
           menuText: '激活失败流程',
           pillText: '失败流程',
           ariaLabel: '激活失败流程',
@@ -952,5 +954,97 @@ describe('runtime renderer plugin loader', () => {
       text: 'Document 1',
     })).toThrow(/引用类型未注册/);
     expect(document.querySelectorAll('link[data-linnya-plugin-css]')).toHaveLength(0);
+  });
+
+  it('入口 import 永不 settle 时按超时记入失败，不阻塞后续入口和后续同步', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const stalledModule = createDeferred<unknown>();
+    const createContribution = (id: string) => ({
+      rendererPlugin: {
+        meta: {
+          id,
+          name: id,
+          version: '1.0.0',
+          description: 'Runtime renderer plugin import timeout test',
+          developer: 'Linnya',
+          builtin: false,
+        },
+      },
+    });
+    const importEntry = vi.fn(async (entryUrl: string) => {
+      if (entryUrl.includes('runtime-loader-stalled')) {
+        return stalledModule.promise;
+      }
+      return createContribution(entryUrl.includes('runtime-loader-later') ? 'runtime-loader-later' : 'runtime-loader-after-stall');
+    });
+    const toEntry = (pluginId: string) => ({
+      pluginId,
+      version: '1.0.0',
+      rendererUiRange: '^3.0.0',
+      entryUrl: `/@fs/plugins/${pluginId}/src/renderer/index.ts`,
+      cssUrls: [],
+    });
+    const snapshots: RuntimeRendererPluginLoaderDiagnostics[] = [];
+    const unsubscribe = subscribeRuntimeRendererPluginLoaderDiagnostics((snapshot) => {
+      snapshots.push(snapshot);
+    });
+
+    try {
+      const firstSync = loadRuntimeRendererPlugins({
+        installHostModules: () => undefined,
+        importEntry,
+        importTimeoutMs: 20,
+        rendererEntriesApi: async () => ({
+          success: true,
+          data: [toEntry('runtime-loader-stalled'), toEntry('runtime-loader-after-stall')],
+        }),
+      });
+      const laterEntriesApi = vi.fn(async () => ({
+        success: true,
+        data: [
+          toEntry('runtime-loader-stalled'),
+          toEntry('runtime-loader-after-stall'),
+          toEntry('runtime-loader-later'),
+        ],
+      }));
+      const laterSync = loadRuntimeRendererPlugins({
+        installHostModules: () => undefined,
+        importEntry,
+        importTimeoutMs: 20,
+        rendererEntriesApi: laterEntriesApi,
+      });
+
+      await firstSync;
+      const firstDiagnostics = getRuntimeRendererPluginLoaderDiagnostics();
+      expect(firstDiagnostics.status).toBe('failed');
+      expect(firstDiagnostics.completedAt).not.toBeNull();
+      expect(firstDiagnostics.sync?.failures).toEqual([
+        expect.objectContaining({
+          entry: expect.objectContaining({ pluginId: 'runtime-loader-stalled' }),
+          phase: 'import-start',
+          reason: 'import-timeout',
+          error: expect.objectContaining({ name: 'RendererPluginEntryImportTimeoutError' }),
+        }),
+      ]);
+      expect(listActiveRendererPluginIds()).toEqual(['runtime-loader-after-stall']);
+
+      await laterSync;
+      expect(laterEntriesApi).toHaveBeenCalledTimes(1);
+      expect(listActiveRendererPluginIds()).toEqual(['runtime-loader-after-stall', 'runtime-loader-later']);
+      expect(getRuntimeRendererPluginLoaderDiagnostics().sync?.failures.map((failure) => failure.reason))
+        .toEqual(['import-timeout']);
+
+      // 超时后迟到的模块结果被丢弃，不会绕过 loader 偷偷注册。
+      stalledModule.resolve(createContribution('runtime-loader-stalled'));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(hasRendererPlugin('runtime-loader-stalled')).toBe(false);
+
+      const terminalSnapshots = snapshots.filter((snapshot) => snapshot.status !== 'running');
+      expect(terminalSnapshots.map((snapshot) => snapshot.status)).toEqual(['failed', 'failed']);
+    } finally {
+      unsubscribe();
+      error.mockRestore();
+    }
   });
 });

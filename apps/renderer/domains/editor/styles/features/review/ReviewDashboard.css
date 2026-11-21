@@ -111,27 +111,6 @@
   flex: 0 0 auto;
 }
 
-.review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar-thumb {
-  background-color: var(--color-border-default);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.review-dashboard-view .filter-tabs.is-scrollable::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-border-hover);
-}
-
 .review-dashboard-view .filter-tab:hover {
   background-color: var(--color-bg-hover);
   color: var(--color-text-primary);
@@ -147,27 +126,6 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-}
-
-.review-dashboard-view .results-list::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.review-dashboard-view .results-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.review-dashboard-view .results-list::-webkit-scrollbar-thumb {
-  background-color: var(--color-border-default);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.review-dashboard-view .results-list::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-border-hover);
 }
 
 .review-dashboard-view .empty-state {

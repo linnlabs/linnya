@@ -31,6 +31,8 @@ export async function authorizeCommandProposal(input: {
   readonly createApprovalRequestUuid: () => string;
   readonly now: () => number;
   readonly abortSignal?: AbortSignal;
+  /** 本会话工作目录根的真实路径，用于判断删除是否只发生在本会话目录内。 */
+  readonly conversationRoot?: string;
 }): Promise<CommandProposalAuthorization> {
   let remembered;
   try {
@@ -48,6 +50,7 @@ export async function authorizeCommandProposal(input: {
     platform: input.platform,
     shellSemanticsId: input.shellSemanticsId,
     conversationApprovals: remembered,
+    ...(input.conversationRoot ? { conversationRoot: input.conversationRoot } : {}),
   });
   if (decision.status === 'unavailable') return permissionUnavailable();
   if (decision.status === 'authorized') {
@@ -56,9 +59,9 @@ export async function authorizeCommandProposal(input: {
       status: 'authorized',
       context: decision.context,
       permission: decision.permission,
-      presentationSource: decision.evidence.source === 'global_setting'
-        ? 'global_setting'
-        : 'conversation_approval_reused',
+      presentationSource: decision.evidence.source === 'conversation_approval'
+        ? 'conversation_approval_reused'
+        : decision.evidence.source,
       ...(decision.evidence.source === 'conversation_approval'
         ? { approvalRequestId: decision.evidence.approvalRequestId }
         : {}),

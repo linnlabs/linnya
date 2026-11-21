@@ -34,6 +34,7 @@ app/layout/
 ├── composables/
 │   ├── index.ts
 │   ├── useContentAreaStyle.ts
+│   ├── useDocumentHistoryPanel.ts
 │   ├── useGlobalKeyboardShortcuts.ts
 │   ├── useRightPaneResize.ts
 │   ├── useSidebarAnimationEvents.ts
@@ -239,6 +240,9 @@ Header 也必须投影同样的三栏结构：
 文档操作统一使用一个 More 菜单，合并平台 Markdown 操作、可用的历史入口和插件 documentActionMenu。
 Header 只根据响应式文档类型贡献挂载 [历史面板](../../domains/document-history/README.md)，
 不实现版本选择、恢复或插件预览逻辑；切换文档与插件停用会卸载面板。
+`useDocumentHistoryPanel` 是菜单入口与对话改动清单请求的唯一打开入口：两者都在打开时冻结文档类型提供的
+`historyClientSessionId`，切换文档关闭面板并清空该标识，版本恢复不会缺少或误用编辑会话。外部请求会先打开文档，
+该类型的会话读取返回 `null` 表示表面尚未登记，此时按短间隔等它登记后再消费请求，请求过期或切换文档即停止等待。
 
 - 左侧 Header：全局按钮；
 - 中间 Header pane：跟随主 pane，显示主 pane 的标题和操作；

@@ -24,10 +24,10 @@ function setup() {
       access_count INTEGER NOT NULL DEFAULT 0
     );
     CREATE INDEX idx_workspace_nodes_project ON workspace_nodes(project_id, deleted_at);
-    CREATE TABLE conversations (conversation_id TEXT PRIMARY KEY, title TEXT);
+    CREATE TABLE conversations (conversation_id TEXT PRIMARY KEY, title TEXT, project_id TEXT);
     CREATE TABLE runs (id TEXT PRIMARY KEY, parent_run_id TEXT, agent_spec_id TEXT);
-    INSERT INTO projects VALUES ('p1', '读书');
-    INSERT INTO conversations VALUES ('conv', '整理资料');
+    INSERT INTO projects VALUES ('p1', '读书'), ('p2', '机密项目');
+    INSERT INTO conversations VALUES ('conv', '整理资料', 'p1'), ('conv2', '机密对话', 'p2');
     INSERT INTO runs VALUES ('root', NULL, 'default'), ('child', 'root', 'research_v1');
   `);
   for (const statement of [...ACTION_LEDGER_SCHEMAS, ...SEMANTIC_LAYER_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS, ...PROJECT_SAVED_FILTER_SCHEMAS]) db.exec(statement);
@@ -36,14 +36,19 @@ function setup() {
   insert.run('a', 'p1', 'folder', 'document', 'Attention', 2, 30);
   insert.run('b', 'p1', 'folder', 'document', 'BERT', 3, 20);
   insert.run('c', 'p1', null, 'document', '读书笔记', 4, 10);
+  insert.run('x', 'p2', null, 'document', '机密报告', 5, 5);
   db.prepare('INSERT INTO document_references VALUES (?, ?, ?, ?)').run('c', 'r1', 'a', 'inline');
   db.prepare('INSERT INTO document_references VALUES (?, ?, ?, ?)').run('c', 'r2', 'a', 'inline');
   const cli = createCoreCli(db, 4000, { readFile: async () => { throw new Error('unused'); } }, { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } });
-  const run = async (argv: string[], context: { agentRunId?: string; readOnly?: boolean } = {}) => {
+  const run = async (
+    argv: string[],
+    context: { agentRunId?: string; readOnly?: boolean; projectId?: string; conversationId?: string } = {},
+  ) => {
     const preparation = cli.prepare({ argv, invocationId: 'i', conversationRoot: '/tmp/none' });
     if (preparation.status === 'completed') return { ...preparation.result, access: null };
     const result = await preparation.plan.execute({
-      projectId: 'p1', conversationId: 'conv', hostContext: {}, signal: new AbortController().signal,
+      projectId: context.projectId ?? 'p1', conversationId: context.conversationId ?? 'conv', hostContext: {},
+      signal: new AbortController().signal,
       ...(context.agentRunId ? { agentRunId: context.agentRunId } : {}),
     });
     return { ...result, access: preparation.plan.access };
@@ -234,6 +239,45 @@ describe('linnya schema / props / query / links', () => {
     const missing = await run(['schema', 'set-options', '状态', '--option', '不存在=新']);
     expect(missing).toMatchObject({ exitCode: 1 });
     expect(missing.stderr).toContain('没有选项“不存在”');
+  });
+
+  it('只看当前项目：其他项目的文档名、字段值、保存的筛选与对话标题不出现在输出里', async () => {
+    const { db, run } = setup();
+    await defineReading(run);
+    const other = { projectId: 'p2', conversationId: 'conv2', agentRunId: 'root' };
+    await run(['props', 'tag', 'workspace:/机密报告', '--tag', '论文', '--rev', '0'], other);
+    await run(['props', 'set', 'workspace:/机密报告', '年份=1999', '--rev', '1'], other);
+    await run(['query', '--tag', '论文', '--save', '机密筛选'], other);
+    await run(['schema', 'add-field', '密级', '--type', 'text'], other);
+    await run(['schema', 'rename-field', '密级', '保密等级', '--yes'], other);
+    // 引用本就只在同一项目内解析；这里确认其他项目的文档不会经 links 露出。
+    db.prepare('INSERT INTO document_references VALUES (?, ?, ?, ?)').run('x', 'r3', 'a', 'inline');
+    await run(['props', 'tag', 'workspace:/论文/Attention', '--tag', '论文', '--rev', '0']);
+    await run(['props', 'set', 'workspace:/论文/Attention', '年份=2017', '--rev', '1']);
+    await run(['query', '--tag', '论文', '--save', '读书清单']);
+    await run(['schema', 'rename-field', '作者', '作者们', '--yes'], { agentRunId: 'root' });
+
+    const outputs = [
+      await run(['schema', 'retype-field', '年份', '--type', 'text']),
+      await run(['schema', 'delete-tag', '论文']),
+      await run(['schema', 'changes']),
+      await run(['links', 'workspace:/论文/Attention']),
+    ];
+    for (const output of outputs) {
+      expect(output.exitCode).toBe(0);
+      for (const secret of ['机密报告', '1999', '机密筛选', '机密项目', '机密对话', 'conv2']) {
+        expect(output.stdout).not.toContain(secret);
+      }
+    }
+    const [retype, deleteTag, changes, links] = outputs;
+    expect(retype.stdout).toContain('- 2 个已填的值：2 个能转');
+    expect(retype.stdout).toContain('“2017” → 2017（Attention）');
+    expect(retype.stdout).toContain('其他项目');
+    expect(deleteTag.stdout).toContain('“读书清单”（读书）');
+    expect(deleteTag.stdout).toContain('另有 1 个其他项目的保存的筛选');
+    expect(changes.stdout).toContain('字段改名：作者 → 作者们  Agent，对话“整理资料”');
+    expect(changes.stdout).toContain('字段改名：密级 → 保密等级  Agent，其他项目的对话');
+    expect(links.stdout).toContain('引用它的文档（1）');
   });
 
   it('条件解析：两字符运算符优先，空值表示为空/不为空', () => {

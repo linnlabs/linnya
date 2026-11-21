@@ -1,5 +1,6 @@
 import type { IpcRendererEvent } from 'electron';
 import {
+  CONVERSATION_COMMAND_PERMISSION_CHANGED_CHANNEL,
   COMMAND_APPROVAL_CHANGED_CHANNEL,
   COMMAND_APPROVAL_PAGE_OPEN_CHANNEL,
   COMMAND_APPROVAL_REPLY_CHANNEL,
@@ -24,6 +25,11 @@ export interface CommandRuntimeIpcRenderer {
 
 export function buildCommandRuntimePreloadApi(ipcRenderer: CommandRuntimeIpcRenderer) {
   return {
+    onConversationCommandPermissionChanged(callback: () => void): () => void {
+      const listener = (): void => callback();
+      ipcRenderer.on(CONVERSATION_COMMAND_PERMISSION_CHANGED_CHANNEL, listener);
+      return () => ipcRenderer.removeListener(CONVERSATION_COMMAND_PERMISSION_CHANGED_CHANNEL, listener);
+    },
     openCommandApprovalPage: (): Promise<unknown> => (
       ipcRenderer.invoke(COMMAND_APPROVAL_PAGE_OPEN_CHANNEL)
     ),

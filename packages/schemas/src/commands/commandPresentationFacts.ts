@@ -8,6 +8,7 @@ import {
 
 export const CommandPresentationPermissionSourceSchema = z.enum([
   'global_setting',
+  'conversation_setting',
   'allow_once',
   'conversation_approval_created',
   'conversation_approval_reused',

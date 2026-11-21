@@ -132,7 +132,7 @@ run_status      → 更新权威业务状态
 transport_end   → 只释放同 executionId 的 controller
 ```
 
-`awaiting_user` **仍为 busy**：输入区显示禁用的“恢复”，通过原表单提交；切换会话也不取消它。
+`awaiting_user` **仍为 busy**：交互只能通过原表单提交；输入框仍可输入，发出的是插话（§3.8），不代替回答。切换会话也不取消它。
 
 busy 只表达占用，不再作为执行动画依据。统一 [execution-presentation](../../apps/renderer/domains/conversation/shared/execution-presentation/README.md)
 从精确 conversation/run 的控制快照和消息事实派生展示，只有 running 允许执行动画。内部细分控制态只映射为“已暂停、进行中、AI 输出结束”三类用户状态，不显示暂停或重连的过渡文案；工具 loading 可以在可继续暂停后合法保留。普通工具、Subrun、思考、摘要与主画布活动归属遵守同一规则，禁止每个卡片单独解释 loading。工具 header 只在实际执行时显示 loading，其余状态留空。输入框只提供暂停、恢复、发送，收口期间禁用相应按钮。真实资源读取仍展示自己的局部请求状态。
@@ -193,6 +193,28 @@ App Server ready 必须同时满足数据库和 Conversation routes 可接流量
 ### 3.7 自动重试与持久继续
 
 模型请求的 `retryable` 与整个 run 的可继续状态是不同判断。当前持久运行遇到不可自动重试错误，也可能保留断点进入 `paused`；`completed / failed / cancelled` 才是原 run 的终态。统一行为矩阵、预算归属、恢复限制与修改地图见 [13 · 模型重试、任务暂停与继续](./13-retry-and-resumption.md)。本节继续负责控件、transport 和生命周期接纳，不另建重试策略。
+
+### 3.8 运行中插话
+
+前台 root run 处于 `pending`、`running` 或 `awaiting_user` 时，用户发出的消息是**插话**：留在同一次 run 里，不新开 run，也不返回 `conversation_busy`。
+
+```text
+Renderer 发送 → POST /runs/:runId/steer（校验 conversation、root、foreground 与状态）
+  → Host 待送达列表（App Server 内存，按 conversation + runId 归属）
+  → 一批工具全部做完、回到模型之前，Linnkit 经 pendingUserInputs 端口取走
+  → 写成 user_input（delivery=mid_run），与这次工具边界同一次提交
+  → 实时推送同一条事实；下一次模型请求在工具结果之后看到它
+```
+
+- **送达点只有一个**：当前这批工具全部做完、回到模型之前。批次里还没开始的工具照常执行，正在执行的工具不打断。模型正在生成时到达的插话，等生成之后的那批工具做完；生成结束没有工具调用，run 就此结束。
+- **等待用户时**：插话不代替批准或表单回答。用户提交交互、这批剩下的工具做完后照常送达。
+- **撤回**：只对还没被取走的插话有效；正在送达或已送达时返回 `delivered`。
+- **run 停下时没送达的**：Renderer 调 `POST /runs/:runId/steer/drain` 一次取回。`completed` 时第一条作为新消息发起下一次 run，其余在同一次接纳后接着作为插话交给它；`paused / failed / cancelled` 时回到输入框，不自动发出。
+- **身份与权限**：插话按捕获时的 conversationId + runId 提交（INV-31），不改变 run 接纳时冻结的权限快照，也不改 Agent 或模型。
+- **不落库**：待送达列表与输入框草稿一样不跨重启保存；送达本身由“提交成功才确认”保证不丢不重。
+- **范围**：只开放 Desktop 输入框；对外控制通道与子运行仍按原规则，前台 run 进行中返回 `conversation_busy`。
+
+时间线上，插话作为普通用户消息出现在它被读到的位置，同一 run 的回答因此分成前后两段；插话消息不提供“编辑重发”和“重新生成”，要改方向就从这次 run 的第一条消息重来。Linnkit 侧的端口合同见 `linnkit` 的 `docs/integration/mid-run-user-input.md`。
 
 ---
 
@@ -334,6 +356,7 @@ plugin contribution agentId
 ```
 
 - **产品身份单一**：插件、Renderer、跨端 DTO 与 SQLite 共同使用 `AgentDefinition.id`；`promptKey` 只在 Host admission 之后成为单次执行的内部路由键，不进 read model、metadata 或 agent-choice contribution。
+- **读取合同里默认 Agent 只有 null 一种写法**：旧数据（例如 CLI 的 `send --agent default`）曾把默认 Agent 的 ID `default` 字面量写进 `selected_agent_id`，它与未选择等价。SQLite 读取边界经 `readConversationSelectedAgentId` 归一一次，历史列表、元数据与其他读取方都拿到 null；Renderer 不识别字面量，也不据此显示“Agent 已不可用”。已不可用的注册表 ID 仍原样返回。
 - **原子正式化**：空白草稿选择 agent 时，Host 在同一事务内正式化 conversation 并写入 `selected_agent_id`；清空空白草稿不凭空创建会话。
 - **先持久化后提交 read model**：Renderer 只有在 Host mutation 成功后才更新目标 conversation；失败保留原选择，不做乐观写入或 fallback。
 - **会话 ID 一次性捕获**：编排在用户动作发起时捕获 `conversationId` 与 `projectId`，任何 `await` 之后只能按该身份提交结果，禁止重读 `activeConversation`（[INV-31](./00-invariants.md#inv-31--请求--流实例作用域并发模型)）。

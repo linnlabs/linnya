@@ -87,27 +87,6 @@
   background-color: transparent;
 }
 
-.workspace-document-card .doc-content-wrapper::-webkit-scrollbar {
-  width: 9px;
-  height: 10px;
-}
-
-.workspace-document-card .doc-content-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.workspace-document-card .doc-content-wrapper::-webkit-scrollbar-thumb {
-  background-color: var(--color-border-default);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.workspace-document-card .doc-content-wrapper::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-border-hover);
-}
-
 .workspace-document-card .blocks-list {
   display: flex;
   flex-direction: column;

@@ -94,8 +94,8 @@
 </template>
 
 <script setup lang="ts">
-import { IconButton } from '@linnya/renderer-ui';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { IconButton, useEscapeLayer } from '@linnya/renderer-ui';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useLocalization } from '@/app/localization';
 import { useUIStore } from '../../../shared/stores/ui';
 import type { SettingsContribution } from '../definitions/settingsContribution';
@@ -210,17 +210,6 @@ function focusTabButton(tabId: string): void {
   }
 }
 
-const handleKeyDown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') {
-    closeSettings();
-  }
-};
-
-onMounted(() => {
-  document.addEventListener('keydown', handleKeyDown);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeyDown);
-});
+// 设置里再打开的 Modal 先接住 Escape；这里只在设置位于最上层时才关闭。
+useEscapeLayer({ active: true, onEscape: closeSettings });
 </script>

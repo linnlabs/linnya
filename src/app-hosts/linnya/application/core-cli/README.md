@@ -13,13 +13,13 @@
 
 `linnya conversations` 让 Agent 读同一项目里别的对话，只给可读内容（用户的话、AI 的答复、工具前言和被中断的答复），不给思考和工具过程。口径见[可读对话](../../../../../docs/conversation-platform/06-read-model.md#8-可读对话)。
 
-- `linnya conversations list [--query 文字] [--agent ID] [--activity any|today|week|month] [--documents any|changed|unchanged] [--sort activity|title|turns|documents|storage] [--direction asc|desc] [--limit 1..200]`：与项目对话面板共用 Host 查询，默认 30 个。Agent 筛选看实际回复者，`default` 为默认 Agent；当前选中但从未回复的不计，空对话不冒认默认 Agent。活动窗口按宿主本地日历，week/month 含今天共七/三十天；文档按行动账本去重计数。
+- `linnya conversations list [--query 文字] [--agent ID] [--activity any|today|week|month] [--documents any|changed|unchanged] [--sort activity|title|turns|documents|storage] [--direction asc|desc] [--limit 1..200]`：与项目对话面板共用 Host 查询，默认 30 个。每个对话含回复过的 Agent（`agents`，最近的在前）、当前选用的 Agent（`selectedAgent`）、当前执行状态（`activity`）、轮次、改过的文档数和时间。Agent 筛选看回复过的 Agent，`default` 为默认 Agent；当前选用但从未回复的不计。活动窗口按宿主本地日历，week/month 含今天共七/三十天；文档按行动账本去重计数。
   置顶始终在前，默认最近活动降序，标题默认升序，其余默认降序；未测量占用排组内末尾。`--query` 搜标题与可读内容，结构化筛选先于搜索截断，并给命中片段。Agent 本地化显示名仅由 Renderer 贡献，因此 CLI 本轮不开放 `--sort agent`，不拿 ID 冒用显示名排序；未知排序返回参数错误。未开放按具体文档筛选，查哪些文档被改用 `linnya changes`。
 - `linnya conversations read 对话ID [--after 序号] [--limit 1..200]`：按顺序读一个对话的可读消息，默认 50 条。没读完时输出 `nextAfterSeq`，作为下一次的 `--after`。一条消息超过输出预算时截短并标 `textTruncated`。
 
 范围由 Host 按已授权对话的项目给出，读不到其他项目的对话；不在当前项目的对话与不存在的对话同样报错。超过条数或输出预算时 `truncated` 与 `notice` 明确说明。
 
-list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、interrupted、idle；审批事实不可读时为 unavailable。事实源和优先级见[当前执行状态](../conversation-activity/README.md)。保留 run_id、run_status、reason 和 pause；取消/失败/暂停可区分，读取不消费未读状态、不审批或恢复。列表的 `agent` 仍是选定 Agent，`respondents` 是实际回复者。argv 不接受项目或来源对话覆盖，作用域只来自已授权父 Shell。
+list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、interrupted、idle；审批事实不可读时为 unavailable。事实源和优先级见[当前执行状态](../conversation-activity/README.md)。保留 run_id、run_status、reason 和 pause；取消/失败/暂停可区分，读取不消费未读状态、不审批或恢复。列表的 `agents` 是回复过的 Agent，`selectedAgent` 是当前选用的 Agent。argv 不接受项目或来源对话覆盖，作用域只来自已授权父 Shell。
 
 ## 配色
 
@@ -43,6 +43,7 @@ list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、in
 - `linnya schema`：列出已有标签（及其字段、默认值）和字段（类型、选项）。新建前先看能否复用。
 - `linnya schema add-field 名称 --type 类型 [--option a,b]`、`add-tag 名称 [--field 字段[=默认值]]...`、`set-fields 标签 [--field ...]`（整体替换）。名称与已有定义相近时报 `similar_name` 并列出候选，确认不是同一个再加 `--allow-similar`。
 - `linnya schema rename-tag | merge-tags | delete-tag | rename-field | delete-field | retype-field | set-options`：管理标签和字段本身。不加 `--yes` 只预览影响（文档数、合并补上的字段、改类型时每个值能否转换及样例、要改写的保存的筛选），加上才执行，需要 Shell 写权限。`set-options` 按给出的顺序，`旧名=新名` 改名，没列出的删除。执行与界面同一条路径（[标签管理](../semantic-schema/README.md)），保存的筛选一起改写；输出改动编号。新建标签与这些改动都记下发起的运行与对话。
+- 可见范围只到当前项目：标签、字段名与个数是整个工作区共用的定义照常输出；改类型预览的样例（文档名与原值）、要改写的保存的筛选名只列当前项目的，其他项目的只计入个数；改动记录里的对话标题只在对话属于当前项目时显示，否则写“其他项目的对话”。没有所属项目的对话只看到定义与个数。跨项目处理归将来的顶层 Agent，不在这里放开。
 - `linnya schema changes [--limit n]` 列出最近的改动；`linnya schema undo 编号 [--yes]` 整批撤回，之后又被改过的保存的筛选不恢复并说明个数。
 - `linnya props get 路径`：当前版本、标签和全部字段（未设置的显示“（空）”）。
 - `linnya props tag|untag 路径... --tag 标签,...`、`set 路径... 字段=值...`、`restore 路径 --to 版本`。`set` 里值留空即清除，多选用逗号分隔，勾选写 `true`/`false`。

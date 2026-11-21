@@ -1,7 +1,10 @@
-import { createVNode, render } from 'vue';
+import { createVNode, render, watch } from 'vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
+import type { DocumentReferencePresentation } from '@app/schemas';
+import { useLocalizationStore } from '@app/localization';
 import type { DocumentReferenceUiPort } from '../definitions/documentReferenceUi';
 import type { RegisterEditorFocusPortal } from '@/domains/editor/shared/focus';
+import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage';
 import { positionDocumentReferencePreview } from './positionDocumentReferencePreview';
 
 /** DOM 仅展示与转发交互；身份和正文始终通过只读 port 解析。 */
@@ -26,9 +29,10 @@ export function createDocumentReferenceNodeView(
   const label = document.createElement('span');
   label.className = 'markdown-document-reference-label';
   label.dataset.documentReferenceLabel = '';
-  label.textContent = '文档';
+  label.textContent = resolveCurrentEditorMessage('editor.documentReference.label.default');
   dom.append(icon, label);
   let iconType: string | null = null;
+  let presentation: DocumentReferencePresentation | null = null;
   let destroyed = false;
   let hoverGeneration = 0;
   let refreshGeneration = 0;
@@ -56,18 +60,24 @@ export function createDocumentReferenceNodeView(
     panel?.remove();
     detail?.();
   }
+  // 标题以外的通用文字（文档、已失效、其他项目的文档）按当前界面语言显示，切换语言时重画。
+  function paintLabel() {
+    const status = presentation?.status;
+    label.textContent =
+      status === 'deleted'
+        ? resolveCurrentEditorMessage('editor.documentReference.label.deleted')
+        : status === 'outside_project'
+          ? resolveCurrentEditorMessage('editor.documentReference.label.outsideProject')
+          : (presentation?.title ?? resolveCurrentEditorMessage('editor.documentReference.label.default'));
+    dom.setAttribute('aria-label', label.textContent);
+  }
   async function refresh() {
     const generation = ++refreshGeneration;
     const result = await port.resolve(documentId);
     if (destroyed || generation !== refreshGeneration) return null;
-    label.textContent =
-      result.status === 'deleted'
-        ? '已失效'
-        : result.status === 'outside_project'
-          ? '其他项目的文档'
-          : (result.title ?? '文档');
+    presentation = result;
+    paintLabel();
     dom.dataset.status = result.status;
-    dom.setAttribute('aria-label', label.textContent);
     // 与文件树同一类型图标；目标失效后不再声称类型，回到通用文档图标。
     const nodeType = result.status === 'deleted' || result.status === 'outside_project' ? null : result.nodeType;
     if (nodeType !== iconType) {
@@ -83,7 +93,7 @@ export function createDocumentReferenceNodeView(
     close();
     const panel = document.createElement('section');
     panel.className = 'document-reference-preview';
-    panel.setAttribute('aria-label', '文档预览');
+    panel.setAttribute('aria-label', resolveCurrentEditorMessage('editor.documentReference.preview.label'));
     // 预览正文不是可编辑区；点击段落/空白也要把焦点落在所属浮层，不能退到body。
     panel.tabIndex = -1;
     panel.addEventListener('mouseenter', () => {
@@ -107,7 +117,16 @@ export function createDocumentReferenceNodeView(
       }
       disposeDetail = dispose;
     } catch (failure) {
-      if (!active.signal.aborted) port.report(failure);
+      if (active.signal.aborted) return;
+      // 内部原因只进日志；浮层里给用户一句可读的提示，不显示原始报错。
+      port.report(failure);
+      if (popup === panel) {
+        const notice = document.createElement('p');
+        notice.className = 'document-reference-preview-notice';
+        notice.setAttribute('role', 'status');
+        notice.textContent = resolveCurrentEditorMessage('editor.documentReference.preview.failed');
+        panel.append(notice);
+      }
     }
   }
   dom.addEventListener('mouseenter', () => {
@@ -146,6 +165,7 @@ export function createDocumentReferenceNodeView(
     close();
     void refresh().catch(port.report);
   });
+  const stopLocaleWatch = watch(() => useLocalizationStore().currentLocale, paintLabel);
   void refresh().catch(port.report);
   return {
     dom,
@@ -154,6 +174,7 @@ export function createDocumentReferenceNodeView(
       destroyed = true;
       hoverGeneration += 1;
       unsubscribe();
+      stopLocaleWatch();
       close();
       render(null, icon);
     },

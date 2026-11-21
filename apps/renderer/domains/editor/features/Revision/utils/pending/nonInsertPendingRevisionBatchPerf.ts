@@ -153,7 +153,7 @@ export function createPreparedRevisionPerf(
 ): PreparedRevisionPerf {
   return {
     id: parsed.id,
-    blockId: parsed.blockId,
+    blockId: parsed.blockId ?? undefined,
     operation,
     markdownLength: typeof parsed.newMarkdown === 'string' ? parsed.newMarkdown.length : 0,
     totalMs: 0,

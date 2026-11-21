@@ -89,7 +89,7 @@ describe('Node App Server process supervisor', () => {
       launch: {
         executablePath: process.execPath,
         entryPath: fixturePath,
-        entryArguments: ['--database-startup-ms=1600'],
+        entryArguments: ['--database-startup-ms=4000'],
         workingDirectory: repositoryRoot,
         environment: collectTestEnvironment(),
         bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
@@ -97,8 +97,9 @@ describe('Node App Server process supervisor', () => {
       rpcHandlers: new Map([
         ['desktop.fixture.echo', () => ({ acknowledged: true })],
       ]),
-      // 足够 child 加载 tsx 并发出 started，但远短于模拟升级的 1.6 秒。
-      startTimeoutMs: 1_200,
+      // 留足 ci:local 并发负载下 child 加载 tsx 并发出 started 的时间，但仍短于模拟升级的 4 秒；
+      // 数据库阶段若计入超时，这里必然失败。
+      startTimeoutMs: 3_000,
       onStartupProgress: event => progress.push(event),
     });
     await expect(supervisor.start()).resolves.toMatchObject({ databaseReady: true });
@@ -109,7 +110,7 @@ describe('Node App Server process supervisor', () => {
       { state: 'finished', upgrading: true, completedSteps: 2, totalSteps: 2 },
     ]);
     await expect(supervisor.shutdown()).resolves.toBeUndefined();
-  });
+  }, 20_000);
 
   it('数据库阶段结束后重新计时，之后迟迟不 ready 仍会超时', async () => {
     const supervisor = createNodeAppServerProcessSupervisor({

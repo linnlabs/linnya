@@ -1,0 +1,66 @@
+.steer-tray {
+  --steer-tray-overlap: 14px;
+
+  display: flex;
+  flex-direction: column;
+  margin: 0 var(--space-5) calc(var(--steer-tray-overlap) * -1);
+  padding: var(--space-1) var(--space-1-5) calc(var(--space-1) + var(--steer-tray-overlap)) var(--space-3);
+  /* 与输入框外壳同为 squircle：同半径下切得更少，按设计规范取圆弧半径的 1.75 倍（8px → 14px）。 */
+  border-radius: calc(var(--radius-lg) * 1.75) calc(var(--radius-lg) * 1.75) 0 0;
+  corner-shape: squircle;
+  background: color-mix(in srgb, var(--color-text-primary) 0.6%, var(--color-bg-subtle));
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.steer-tray.is-compact {
+  margin-inline: var(--space-3);
+  padding-left: var(--space-2-5);
+}
+
+.steer-tray__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+  min-height: 22px;
+}
+
+.steer-tray__icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--color-text-tertiary);
+}
+
+.steer-tray__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.steer-tray__link {
+  flex: none;
+  height: 20px;
+  padding: 0 var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.steer-tray__link:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.steer-tray__actions {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-0-5);
+}

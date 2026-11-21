@@ -1,12 +1,23 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { createPinia, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, nextTick, render } from 'vue';
+import { registerMessageCatalogs, useLocalizationStore } from '@app/localization';
 import { CanvasDocumentCardSchema, type CanvasRectangle } from '@plugin/canvas/shared';
 import type { CanvasDocumentDetailPort } from '../definitions/documentDetail';
 import { createCanvasDocumentDetail } from '../orchestration/createCanvasDocumentDetail';
 import { canvasDocumentDetailTarget } from '../functions/canvasDocumentDetailTarget';
 import { installCanvasDocumentNavigation } from '../orchestration/installCanvasDocumentNavigation';
 import CanvasDocumentDetail from '../ui/CanvasDocumentDetail.vue';
+import { CANVAS_MESSAGE_CATALOG } from '../../localization/definitions/canvasMessageCatalog';
+
+beforeEach(() => {
+  setActivePinia(createPinia());
+  registerMessageCatalogs(CANVAS_MESSAGE_CATALOG);
+});
+afterEach(() => vi.restoreAllMocks());
 
 function card() {
   return CanvasDocumentCardSchema.parse({
@@ -154,7 +165,10 @@ describe('单张近景文档详情', () => {
     detail.dispose();
     const denied = port();
     denied.mount = async () => {
-      throw new Error('目标已移出当前项目');
+      // Host 对用户可展示的失败使用这个名称，消息已按当前语言生成。
+      throw Object.assign(new Error('文档已删除或不在当前项目，无法预览'), {
+        name: 'DocumentPreviewUserError',
+      });
     };
     const failure = createCanvasDocumentDetail({
       card: card(),
@@ -164,9 +178,64 @@ describe('单张近景文档详情', () => {
     });
     await failure.mount();
     expect(failure.state.ready.value).toBe(false);
-    expect(failure.state.notice.value).toBe('目标已移出当前项目');
+    expect(failure.state.notice.value).toBe('文档已删除或不在当前项目，无法预览');
     expect(denied.visible).not.toHaveBeenCalled();
     failure.dispose();
+  });
+  it('其他挂载失败只进日志，界面按当前语言显示通用提示，不出现内部报错', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const internal = new Error(
+      'ECONNRESET: plugin://host/preview/ReadonlyPreview.js failed to load'
+    );
+    const broken = port();
+    broken.mount = async () => {
+      throw internal;
+    };
+    const show = async () => {
+      const detail = createCanvasDocumentDetail({
+        card: card(),
+        projectId: 'project',
+        element: document.createElement('div'),
+        port: broken,
+      });
+      await detail.mount();
+      expect(detail.state.ready.value).toBe(false);
+      const notice = detail.state.notice.value;
+      detail.dispose();
+      return notice;
+    };
+    expect(await show()).toBe('无法预览此文档，请稍后重试。');
+    useLocalizationStore().setCurrentLocale('en-US');
+    expect(await show()).toBe('Unable to preview this document. Please try again later.');
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls.every(call => call.includes(internal))).toBe(true);
+  });
+  it('只有名称为 DocumentPreviewUserError 的失败才直接展示其消息', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const lookalike = port();
+    lookalike.mount = async () => {
+      throw Object.assign(new Error('内部：IPC channel closed'), { name: 'TypeError' });
+    };
+    const detail = createCanvasDocumentDetail({
+      card: card(),
+      projectId: 'project',
+      element: document.createElement('div'),
+      port: lookalike,
+    });
+    await detail.mount();
+    expect(detail.state.notice.value).toBe('无法预览此文档，请稍后重试。');
+    const text = port();
+    text.mount = async () => {
+      throw 'plain string failure';
+    };
+    const plain = createCanvasDocumentDetail({
+      card: card(),
+      projectId: 'project',
+      element: document.createElement('div'),
+      port: text,
+    });
+    await plain.mount();
+    expect(plain.state.notice.value).toBe('无法预览此文档，请稍后重试。');
   });
   it('普通滚动保留详情，捏合缩放交给相机；按钮Space不被劫持', () => {
     const element = document.createElement('section'),
@@ -328,5 +397,67 @@ describe('单张近景文档详情', () => {
     expect(body?.style.height).toBe('');
     render(null, root);
     root.remove();
+  });
+  it('挂载失败时正文槽不保持旧尺寸，提示留在改尺寸后的纸面内', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const root = document.createElement('div');
+    document.body.append(root);
+    const broken = port();
+    broken.mount = async () => {
+      throw new Error('internal');
+    };
+    const props = {
+      card: card(),
+      camera: { x: 0, y: 0, zoom: 1 },
+      projectId: 'project',
+      port: broken,
+      frame: { x: 0, y: 0, width: 150, height: 240 } as CanvasRectangle | null,
+    };
+    render(h(CanvasDocumentDetail, props), root);
+    await vi.waitFor(() =>
+      expect(root.querySelector('.canvas-document-detail-notice')).not.toBeNull()
+    );
+    const notice = root.querySelector('.canvas-document-detail-notice');
+    // 卡片小到放不下整句时，悬停仍可读到完整提示。
+    expect(notice?.getAttribute('title')).toBe(notice?.textContent?.trim());
+    const body = root.querySelector<HTMLElement>('.canvas-document-detail-body');
+    // 拖动预览与落地后都没有正文可等，不能让旧尺寸的正文槽把提示挤出纸面。
+    expect([body?.style.flex, body?.style.width, body?.style.height]).toEqual(['', '', '']);
+    render(
+      h(CanvasDocumentDetail, {
+        ...props,
+        card: { ...card(), revision: 2, width: 150 },
+        frame: null,
+      }),
+      root
+    );
+    await nextTick();
+    expect([body?.style.flex, body?.style.width, body?.style.height]).toEqual(['', '', '']);
+    expect(root.querySelector('.canvas-document-detail-notice')).not.toBeNull();
+    render(null, root);
+    root.remove();
+  });
+  it('失败提示在纸面内换行显示：让出纸边、带内边距、居中，长文本不溢出也不被裁掉', () => {
+    // jsdom 不做排版；这里钉住保证布局的声明，真实换行与裁切由桌面探针截图验收。
+    const css = readFileSync(resolve(import.meta.dirname, '../../../styles/canvas.css'), 'utf8');
+    const rule = /\.canvas-document-detail-notice\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    const declarations = new Map(
+      [...rule.matchAll(/([a-z-]+)\s*:\s*([^;]+);/g)].map(([, name, value]) => [
+        name,
+        value.replace(/\s+/g, ' ').trim(),
+      ])
+    );
+    // 外框被 clip-path 内缩一圈纸边，横向与底部内边距必须包含这一圈。
+    expect(declarations.get('padding')?.match(/--canvas-card-inset/g)).toHaveLength(2);
+    expect(declarations.get('text-align')).toBe('center');
+    expect(declarations.get('overflow-wrap')).toBe('anywhere');
+    expect(declarations.get('box-sizing')).toBe('border-box');
+    // 不被 flex 压缩，也不超过卡片高度；放不下时内部滚动。
+    expect(declarations.get('flex')).toBe('none');
+    expect(declarations.get('max-height')).toBe('100%');
+    expect(declarations.get('overflow-y')).toBe('auto');
+    expect(css).toMatch(
+      /\.canvas-document-detail\s*\{[^}]*clip-path:\s*inset\(var\(--canvas-card-inset\)/
+    );
   });
 });

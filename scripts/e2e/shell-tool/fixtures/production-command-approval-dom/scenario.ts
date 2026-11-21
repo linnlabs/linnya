@@ -238,7 +238,7 @@ function commandPermission(
       protocol_version: 1,
       kind: 'command_run_permission_snapshot',
       root_agent_run_id: rootAgentRunId,
-      settings_revision: 1,
+      settings_revision: 1, conversation_revision: 0, source: 'global_setting',
       captured_at_ms: Date.now(),
       permission_level: level,
       internal_data_access: 'allowed',

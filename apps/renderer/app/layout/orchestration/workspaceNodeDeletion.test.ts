@@ -198,7 +198,7 @@ describe('workspaceNodeDeletion', () => {
     mocks.activeDocument = { id: 'doc-active', projectId: 'project-1', type: 'editor' };
     mocks.deleteNode.mockResolvedValue(['doc-active']);
     mocks.removeDeletedDocumentTabs.mockReturnValue({
-      id: 'doc-tab', type: 'editor', projectId: 'project-1', displayName: 'doc-tab', parentId: null, preview: false,
+      id: 'doc-tab', type: 'editor', projectId: 'project-1', displayName: 'doc-tab', parentId: null,
     });
 
     await createWorkspaceNodeDeletion().deleteNodes([{ id: 'doc-active', parentId: null }]);

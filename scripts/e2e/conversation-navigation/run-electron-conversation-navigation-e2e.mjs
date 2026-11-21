@@ -7,6 +7,7 @@ import { seedBottomReturnHistory, runBottomReturnScenario } from './bottom-retur
 import { runHistoryLoadFailureScenario } from './history-load-failure-scenario.mjs';
 import { runSidebarResizeScenario } from './sidebar-resize-scenario.mjs';
 import { runCreateProjectAfterDocumentOpen, runEmptyProjectExpansion } from './create-project-scenario.mjs';
+import { runConversationCommandPermissionsScenario } from './conversation-command-permissions-scenario.mjs';
 import { runProjectDeletionScenario } from './project-deletion-scenario.mjs';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -36,6 +37,7 @@ const sourceDatabasePath = process.env.LINNYA_CONVERSATION_E2E_SOURCE_DB?.trim()
 const scenario = process.env.LINNYA_CONVERSATION_E2E_SCENARIO?.trim() || 'navigation';
 const seededTurnCount = [
   'side-pane-draft',
+  'command-permissions',
   'subrun-reload',
   'projection-settlement',
   'resource-link',
@@ -573,7 +575,7 @@ async function readNavigationState(cdp) {
     const [
       { useAssistantStore },
       { useMessageWindowStore },
-      { useHistoryLoaderStore },
+      { useHistoryLoadingState },
       { useNavigationScope },
     ] = await Promise.all([
       import('/apps/renderer/domains/conversation/store/assistantStore.ts'),
@@ -583,7 +585,7 @@ async function readNavigationState(cdp) {
     ]);
     const assistantStore = useAssistantStore();
     const messageWindowStore = useMessageWindowStore();
-    const historyLoaderStore = useHistoryLoaderStore();
+    const historyLoaderStore = useHistoryLoadingState();
     const navigationScope = useNavigationScope();
     const renderedMessageIds = Array.from(
       document.querySelectorAll('[data-conversation-message-id]'),
@@ -1358,11 +1360,11 @@ async function run() {
     // fixture 在应用首次读取空列表后才写入数据库；显式走正式 history list action
     // 建立 seed 后的响应式快照，避免把测试数据注入时序误判为侧栏产品行为。
     await evaluate(cdp, `(async () => {
-      const { useHistoryListStore } = await import(
-        '/apps/renderer/domains/conversation/history/store/historyListStore.ts'
+      const { useHistoryList } = await import(
+        '/apps/renderer/domains/conversation/history/list.ts'
       );
       const scope = { kind: 'project', projectId: ${JSON.stringify(projectId)} };
-      const historyListStore = useHistoryListStore();
+      const historyListStore = useHistoryList();
       await historyListStore.loadScopeList(scope, {
         refresh: true,
         loadAll: true,
@@ -1371,11 +1373,11 @@ async function run() {
     })()`);
     // loadScopeList 在已有请求时会直接返回；必须等待正式 scope 结算，不能把 await 当作加载完成。
     const seededConversationSnapshot = await waitFor(() => evaluate(cdp, `(async () => {
-      const { useHistoryListStore } = await import(
-        '/apps/renderer/domains/conversation/history/store/historyListStore.ts'
+      const { useHistoryList } = await import(
+        '/apps/renderer/domains/conversation/history/list.ts'
       );
       const scope = { kind: 'project', projectId: ${JSON.stringify(projectId)} };
-      const historyListStore = useHistoryListStore();
+      const historyListStore = useHistoryList();
       if (historyListStore.isLoadingByScope(scope)) return null;
       return {
         count: historyListStore.getConversationsByScope(scope).length,
@@ -1393,6 +1395,18 @@ async function run() {
       () => evaluate(cdp, `document.querySelectorAll('.chat-list-item').length >= 2`),
       '两条历史会话进入侧栏',
     );
+
+    if (scenario === 'command-permissions') {
+      assert.equal(sourceDatabasePath, null, '命令权限验收使用合成数据');
+      await runConversationCommandPermissionsScenario({
+        cdp, evaluate, waitFor, clickConversation, startNewConversationDraft, openNodeDatabase, workspaceRoot,
+      });
+      await assertRendererHealthy(cdp, rendererErrors, '对话命令权限');
+      await evaluate(cdp, "window.electronAPI.windowAction('close')");
+      cdp.close();
+      assert.equal(await waitForProcessExit(electronProcess, 10_000), true, '命令权限场景未正常退出');
+      return;
+    }
 
     if (scenario === 'project-overview') {
       if (sourceDatabasePath) throw new Error('项目概览门禁只使用隔离测试数据');

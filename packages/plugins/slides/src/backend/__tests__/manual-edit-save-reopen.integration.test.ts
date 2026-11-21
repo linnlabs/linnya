@@ -16,6 +16,7 @@ import { SandboxProfileRegistry } from 'src/features/sandbox/SandboxProfileRegis
 import { SandboxService } from 'src/features/sandbox/SandboxService';
 import { createSandboxEvaluatorTestRunner } from 'src/features/sandbox/testing/createSandboxEvaluatorTestRunner';
 import type { DeckSpec, SlidesManualEditCommand } from '@plugin/slides/shared';
+import { DECK_LAYOUT_VERSION } from '@plugin/slides/shared/deckSpec';
 import { useManualEditQueue } from '../../renderer/features/manualEditing/submission';
 import { PresentationRepository } from '../persistence/repositories/PresentationRepository';
 import { PRESENTATION_DOCUMENT_SCHEMAS } from '../persistence/schemas/presentation.schema';
@@ -103,6 +104,8 @@ it.each(['explicit', 'system'])('连续编辑经真实编译与 SQLite 保存后
     const saved = await repository.getPresentation('deck');
     expect(saved?.currentRevision).toBe(5);
     expect(saved?.pptxArtifact.state).toBe('deferred');
+    // 编译与投影编辑都保留当前排版版本，重开时不会被当成旧物化再编译一次。
+    expect(saved?.deckSpec.layoutVersion).toBe(DECK_LAYOUT_VERSION);
     const resizeCommand = commands[3];
     if (!resizeCommand || resizeCommand.operation.op !== 'set_visual_size') throw new Error('Missing resize command');
     // 同一缩放回执重放不能重复累计位移；换锚点位移必须判为不同载荷。

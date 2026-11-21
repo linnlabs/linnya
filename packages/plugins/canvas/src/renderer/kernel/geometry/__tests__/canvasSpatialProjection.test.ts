@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
 import { CanvasCardSchema, type CanvasCard, type CanvasRectangle } from '../../../../shared';
 import { CanvasSpatialProjection } from '../CanvasSpatialProjection';
-import { createCanvasVisibleRegionProjection, intersectCanvasRegion, subtractCanvasRegions } from '../canvasVisibleRegions';
+import { intersectCanvasRegion, subtractCanvasRegions } from '../canvasVisibleRegions';
+import { createCanvasVisibleRegionProjection } from './canvasVisibleRegionOracle';
 
 const source = { kind: 'user', conversationId: null, runId: null };
 const card = (id: string, bounds: CanvasRectangle) => CanvasCardSchema.parse({ id, type: 'text', schemaVersion: 1, revision: 1, order: 'a0',

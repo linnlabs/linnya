@@ -16,7 +16,13 @@ import type {
   ConversationRunCancelResponse,
   ConversationRunSettlementResponse,
   ConversationRunContinueRequest,
+  ConversationRunSteerDrainResponse,
+  ConversationRunSteerRequest,
+  ConversationRunSteerResponse,
+  ConversationRunSteerWithdrawResponse,
 } from '@app/schemas';
+import { isRetiredDeepResearchAgentId } from '@app/schemas';
+import { PendingUserInputRegistry } from './pending-user-inputs/pendingUserInputRegistry';
 import {
   generateRuntimeEventId,
   ExecutionIdSchema,
@@ -61,6 +67,7 @@ import {
   admitConversationAgentChoice,
   resolveConversationAgentPromptKey,
 } from './functions/admitConversationAgentChoice';
+import { RetiredAgentRunTerminatedError } from '../../agent-registry/assertAgentNewRunAvailable';
 
 const logger = new Logger('FlowOrchestrator');
 
@@ -110,7 +117,8 @@ export class FlowOrchestrator {
     private readonly agentRunner: FlowAgentRunnerPort,
     private readonly persistenceCoordinator: EventPersistenceCoordinator,
     private readonly incomingEventPreparer: FlowIncomingEventPreparer,
-    private readonly runtime: FlowRuntimePort
+    private readonly runtime: FlowRuntimePort,
+    private readonly pendingUserInputs: PendingUserInputRegistry = new PendingUserInputRegistry()
   ) {
     this.runPreparationService = new FlowRunPreparationService(
       historyHandler,
@@ -195,6 +203,7 @@ export class FlowOrchestrator {
     if (!snapshot.agentSpecId) {
       throw new Error(`Run ${response.run_id} does not have a stable Agent identity`);
     }
+    await this.terminateRetiredAgentRun(snapshot, response.conversation_id);
     const promptKey = resolveConversationAgentPromptKey(snapshot.agentSpecId);
     const request: ConversationNextRequest = {
       conversation_id: response.conversation_id,
@@ -315,11 +324,75 @@ export class FlowOrchestrator {
     return this.getActiveForegroundRun(conversationId);
   }
 
-  continueRun(
+  /**
+   * 运行中插话。只接受本对话正在执行（含等待批准）的前台根运行；
+   * 运行已结束或暂停时返回 accepted=false，由客户端改走下一次运行。
+   */
+  async steerRun(
+    runId: string,
+    request: ConversationRunSteerRequest
+  ): Promise<ConversationRunSteerResponse> {
+    const id = RunIdSchema.parse(runId);
+    const snapshot = (await this.runtime.supervisor.findByConversation(request.conversation_id)).find(
+      run => run.runId === id
+    );
+    if (
+      !snapshot ||
+      snapshot.parentRunId ||
+      snapshot.metadata?.lane !== 'foreground' ||
+      !['pending', 'running', 'awaiting_user'].includes(snapshot.status)
+    ) {
+      return { success: true, accepted: false };
+    }
+    this.pendingUserInputs.submit({
+      runId: id,
+      conversationId: request.conversation_id,
+      inputId: request.input_id,
+      content: request.content,
+      submittedAt: Date.now(),
+    });
+    return { success: true, accepted: true, input_id: request.input_id };
+  }
+
+  withdrawSteer(
+    runId: string,
+    conversationId: string,
+    inputId: string
+  ): ConversationRunSteerWithdrawResponse {
+    this.requirePendingInputOwner(runId, conversationId);
+    return { success: true, outcome: this.pendingUserInputs.withdraw(runId, inputId) };
+  }
+
+  /** 取回没送达的插话；运行结束、暂停或要立即打断时由客户端调用。 */
+  drainSteers(runId: string, conversationId: string): ConversationRunSteerDrainResponse {
+    this.requirePendingInputOwner(runId, conversationId);
+    return {
+      success: true,
+      inputs: this.pendingUserInputs.drain(runId).map(input => ({
+        input_id: input.inputId,
+        content: input.content,
+        submitted_at: input.submittedAt,
+      })),
+    };
+  }
+
+  /** 供 AgentRunner 装配；同一份列表由路由写入、由 Linnkit 取用。 */
+  get pendingUserInputRegistry(): PendingUserInputRegistry {
+    return this.pendingUserInputs;
+  }
+
+  private requirePendingInputOwner(runId: string, conversationId: string): void {
+    if (!this.pendingUserInputs.belongsTo(runId, conversationId)) {
+      throw new Error('Pending user input run does not belong to this conversation');
+    }
+  }
+
+  async continueRun(
     runId: string,
     command: ConversationRunContinueRequest,
     sink: SSESink
   ): Promise<FlowExecutionResult> {
+    await this.terminateRetiredAgentRunById(runId, command.conversation_id);
     return continueFlowRun({
       runId,
       command,
@@ -331,10 +404,11 @@ export class FlowOrchestrator {
     });
   }
 
-  continueRunDetached(
+  async continueRunDetached(
     runId: string,
     command: ConversationRunContinueRequest
   ): Promise<FlowRunAcceptance> {
+    await this.terminateRetiredAgentRunById(runId, command.conversation_id);
     return continueFlowRunDetached({
       runId,
       command,
@@ -350,6 +424,28 @@ export class FlowOrchestrator {
         });
       },
     });
+  }
+
+  /**
+   * 已退役 Agent 没有可执行定义：其暂停或待审批的根运行在继续/响应时被取消并明确报告。
+   * 不进入恢复兼容检查，也不换用其它 Agent 续跑；历史事实保留。
+   */
+  private async terminateRetiredAgentRun(
+    run: Pick<runSupervisor.RunSnapshot, 'runId' | 'agentSpecId' | 'parentRunId'>,
+    conversationId: string
+  ): Promise<void> {
+    if (run.parentRunId || !run.agentSpecId || !isRetiredDeepResearchAgentId(run.agentSpecId)) {
+      return;
+    }
+    await this.cancelRun(run.runId, conversationId, 'agent_retired');
+    throw new RetiredAgentRunTerminatedError();
+  }
+
+  private async terminateRetiredAgentRunById(runId: string, conversationId: string): Promise<void> {
+    const run = (await this.runtime.supervisor.findByConversation(conversationId)).find(
+      candidate => candidate.runId === runId
+    );
+    if (run) await this.terminateRetiredAgentRun(run, conversationId);
   }
 
   async getForegroundRunSettlement(

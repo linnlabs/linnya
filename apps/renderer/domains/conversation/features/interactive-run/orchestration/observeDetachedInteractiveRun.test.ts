@@ -19,6 +19,8 @@ vi.mock('../../../services/orchestration/refreshDetachedConversationView', () =>
   refreshDetachedConversationView: vi.fn(),
 }));
 
+const VISIBLE = { observeIdle: true } as const;
+
 describe('脱离 SSE 的运行观察', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -42,7 +44,7 @@ describe('脱离 SSE 的运行观察', () => {
         await expect(pauseInteractiveRun('conversation-1')).rejects.toThrow('offline');
       } else {
         vi.mocked(fetchForegroundRunSettlement).mockRejectedValueOnce(new Error('offline'));
-        await observeDetachedInteractiveRun('conversation-1');
+        await observeDetachedInteractiveRun('conversation-1', VISIBLE);
       }
       expect(store.snapshotFor('conversation-1')).toMatchObject({
         status: 'reconnecting',
@@ -60,7 +62,7 @@ describe('脱离 SSE 的运行观察', () => {
           pause: { settled: true, updated_at: 20 },
         },
       });
-      await observeDetachedInteractiveRun('conversation-1');
+      await observeDetachedInteractiveRun('conversation-1', VISIBLE);
       expect(store.snapshotFor('conversation-1')).toMatchObject({
         status: 'paused',
         pause: { settled: true, updatedAt: 20 },
@@ -78,7 +80,7 @@ describe('脱离 SSE 的运行观察', () => {
         rejectQuery = reject;
       })
     );
-    const observation = observeDetachedInteractiveRun('conversation-1');
+    const observation = observeDetachedInteractiveRun('conversation-1', VISIBLE);
     store.beginContinuation(
       { ...original, status: 'paused', pause: { settled: true, updatedAt: 20 } },
       new AbortController()
@@ -87,5 +89,62 @@ describe('脱离 SSE 的运行观察', () => {
     await observation;
     expect(store.snapshotFor('conversation-1')).toMatchObject({ status: 'continuing' });
     expect(refreshDetachedConversationView).not.toHaveBeenCalled();
+  });
+
+  it('空闲时窗口 revision 未变不再查询运行；窗口出现新内容时接入其它入口启动的在途运行', async () => {
+    const store = useInteractiveRunStore();
+    vi.mocked(refreshDetachedConversationView).mockResolvedValueOnce('unchanged');
+    await observeDetachedInteractiveRun('conversation-1', VISIBLE);
+    expect(fetchActiveForegroundRun).not.toHaveBeenCalled();
+    expect(store.snapshotFor('conversation-1')).toBeUndefined();
+
+    vi.mocked(refreshDetachedConversationView).mockResolvedValueOnce('updated');
+    vi.mocked(fetchActiveForegroundRun).mockResolvedValueOnce({
+      conversation_id: 'conversation-1',
+      run: {
+        run_id: 'run-cli',
+        turn_id: 'turn-cli',
+        execution_id: 'exec-cli',
+        status: 'running',
+        lane: 'foreground',
+      },
+    });
+    await observeDetachedInteractiveRun('conversation-1', VISIBLE);
+    expect(store.snapshotFor('conversation-1')).toMatchObject({ status: 'running', runId: 'run-cli' });
+  });
+
+  it('本窗口的运行结束后，CLI 工具调用这类已结束的外部运行只刷新窗口，不改控制状态', async () => {
+    const store = useInteractiveRunStore();
+    const finished = { ...original, status: 'completed' as const };
+    store.synchronizeSnapshot('conversation-1', finished);
+    vi.mocked(refreshDetachedConversationView).mockResolvedValueOnce('updated');
+    vi.mocked(fetchActiveForegroundRun).mockResolvedValueOnce({ conversation_id: 'conversation-1', run: null });
+    await observeDetachedInteractiveRun('conversation-1', VISIBLE);
+    expect(refreshDetachedConversationView).toHaveBeenCalledOnce();
+    expect(store.snapshotFor('conversation-1')).toEqual(finished);
+
+    vi.mocked(refreshDetachedConversationView).mockRejectedValueOnce(new Error('offline'));
+    await observeDetachedInteractiveRun('conversation-1', VISIBLE);
+    expect(store.snapshotFor('conversation-1')).toEqual(finished);
+  });
+
+  it('本窗口持有 reader 时不观察', async () => {
+    const store = useInteractiveRunStore();
+    store.beginStart('conversation-1', new AbortController());
+    await observeDetachedInteractiveRun('conversation-1', VISIBLE);
+    expect(refreshDetachedConversationView).not.toHaveBeenCalled();
+    expect(fetchActiveForegroundRun).not.toHaveBeenCalled();
+  });
+
+  it('窗口不可见时不做空闲检查，在途运行照常观察', async () => {
+    const store = useInteractiveRunStore();
+    await observeDetachedInteractiveRun('conversation-1', { observeIdle: false });
+    expect(refreshDetachedConversationView).not.toHaveBeenCalled();
+    expect(fetchActiveForegroundRun).not.toHaveBeenCalled();
+
+    store.synchronizeSnapshot('conversation-1', original);
+    vi.mocked(fetchForegroundRunSettlement).mockRejectedValueOnce(new Error('offline'));
+    await observeDetachedInteractiveRun('conversation-1', { observeIdle: false });
+    expect(fetchForegroundRunSettlement).toHaveBeenCalledOnce();
   });
 });

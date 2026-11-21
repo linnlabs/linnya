@@ -18,7 +18,7 @@ const IS_STREAMING_CONTENT_TRANSACTION = 'isStreamingContentTransaction';
  * 流式处理函数 - 基于 WASM BlockEvent
  * @param {object} editor - Tiptap 编辑器实例
  * @param {object} pluginState - 当前 StreamingMarkdown 插件的状态
- * @param {Array<object>} inputData - BlockEvent 数组 (来自WASM StreamingParser)
+ * @param {ReadonlyArray<unknown>} inputData - BlockEvent 数组 (来自WASM StreamingParser；逐项校验后才使用，所以不预设元素形状)
  * @param {object} options - 选项 { finalize: boolean, errorOccurred?: boolean, closedAbnormally?: boolean }
  */
 export function processQueue(editor, pluginState, inputData, options = {}) {

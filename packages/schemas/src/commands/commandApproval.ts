@@ -6,7 +6,7 @@ import {
   hasSameCommandExecutionIdentity,
 } from './commandExecution';
 import { CommandApprovalRequestIdSchema } from './commandIdentity';
-import { CommandPermissionSnapshotV1Schema } from './commandPermission';
+import { CommandPermissionSnapshotV1Schema, isCommandBasePermissionSource } from './commandPermission';
 import {
   SHELL_COMMAND_MAX_LENGTH,
   countShellCommandCharacters,
@@ -181,7 +181,7 @@ export const CommandApprovalRequestV1Schema = z.union([
     && !(
       request.proposal.permission.base_level === 'read_only'
       && request.proposal.permission.effective_level === 'read_only'
-      && request.proposal.permission.grant_source === 'global_setting'
+      && isCommandBasePermissionSource(request.proposal.permission.grant_source)
     )
   ) {
     context.addIssue({
@@ -192,14 +192,14 @@ export const CommandApprovalRequestV1Schema = z.union([
   }
 
   if (
-    request.proposal.permission.grant_source !== 'global_setting'
+    !isCommandBasePermissionSource(request.proposal.permission.grant_source)
     || request.proposal.permission.effective_level
       !== request.proposal.permission.base_level
   ) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['proposal', 'permission'],
-      message: 'an approval request requires an unmodified global permission snapshot',
+      message: 'an approval request requires an unmodified base permission snapshot',
     });
   }
 

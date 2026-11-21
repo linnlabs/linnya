@@ -4,6 +4,7 @@ import type { ConversationReferenceKindContribution } from '@linnya/plugin-host-
 import type { DocumentReferencePresentation } from '@app/schemas';
 import { WORKSPACE_DOCUMENT_REFERENCE_KIND } from './createWorkspaceDocumentReferenceProvider';
 import { readWorkspaceReferenceIdentity } from './definitions/workspaceReferenceIdentity';
+import { resolveCurrentPluginContributionMessage } from '../../functions/resolveCurrentPluginContributionMessage';
 
 const documentTypeOf = z.object({ documentType: z.string().min(1) });
 
@@ -22,7 +23,8 @@ export function createWorkspaceDocumentReferenceKind(ports: {
       const target = readWorkspaceReferenceIdentity(reference, ports.currentProjectId());
       const presentation = await ports.read(target);
       readWorkspaceReferenceIdentity(reference, ports.currentProjectId());
-      if (presentation.status !== 'available') throw new Error(presentation.status === 'plugin_unavailable' ? '需要启用或安装对应插件，请在预览中操作' : '引用文档当前不可访问');
+      // 这句话会显示在输入框引用标签的提示里，按界面语言生成。
+      if (presentation.status !== 'available') throw new Error(resolveCurrentPluginContributionMessage(presentation.status === 'plugin_unavailable' ? 'plugins.contribution.workspaceReference.error.pluginUnavailable' : 'plugins.contribution.workspaceReference.error.unavailable'));
       await ports.open(presentation, target.projectId);
     },
   };

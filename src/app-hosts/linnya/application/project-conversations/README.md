@@ -4,10 +4,12 @@
 共享合同在 `packages/schemas/src/project-conversations.ts`，走本地 HTTP `/api/v1/project-conversations`
 （路由见 `src/features/project-conversations`）：占用测量要读对话工作目录，这个端口只在 HTTP 装配层可用。
 
-- 列表：对话持久化里属于本项目的对话。Agent 只取对话选定的 Agent，选的就是默认 Agent 或没选时为 `null`；
-  不从运行记录推断，标题生成等内部运行也是对话里的根运行。轮次是用户消息数。置顶在前，再按最近活动。
-- `respondent_agent_ids` 单独给实际回复者：可读 AI 消息关联 canonical 前台根运行的 Agent，支持同一对话中途换 Agent；无回复/缺失事实为空，后台标题与子运行不算。筛选使用它，不拿选中 Agent 替代。
-- `queryProjectConversations` / `POST /:projectId/query` 是面板和 Shell 的同一查询，统一 query、Agent、活动日历窗口、文档有无及五种排序。结构化筛选先于全文搜索的 200 条上限；置顶在前，未测占用组内末尾。活动是宿主当地今天、含今天的七天/三十天，跨夏令时按日历计算。Agent 本地化名称排序仍归 Renderer 展示层，CLI 不开放该排序。
+- 列表：对话持久化里属于本项目的对话。Agent 分两项：回复过的 Agent 取自根运行（`kind = agent` 且没有父运行），
+  按 Agent 去重、最近回复的在前；当前选用的 Agent 取自对话。Agent 注册为 `internal` 的运行（标题生成、单轮写作、
+  批量收尾等）不算；默认 Agent 与未记录 Agent 的运行都写作 `null`（`toReadModelAgentId`）。概念区分见
+  [产品模型总览 §5.2](../../../../../docs/product-model-overview.md#52-agent-自由注册)。轮次是用户消息数。置顶在前，再按最近活动。
+- 派出的子 Agent：详情里按 Agent 计子运行次数（含多层子运行），次数多的在前，同样不算内部 Agent。子 Agent 还没有面向用户的名字，界面目前只显示合计的“子任务 N 次”。
+- `queryProjectConversations` / `POST /:projectId/query` 是面板和 Shell 的同一查询，统一 query、Agent、活动日历窗口、文档有无及五种排序。Agent 筛选看回复过的 Agent（`replied_agent_ids`），筛选值 `default` 即默认 Agent，不拿当前选用的 Agent 替代。结构化筛选先于全文搜索的 200 条上限；置顶在前，未测占用组内末尾。活动是宿主当地今天、含今天的七天/三十天，跨夏令时按日历计算。Agent 本地化名称排序仍归 Renderer 展示层，CLI 不开放该排序。
 - 查询返回[当前执行事实](../conversation-activity/README.md)，基于 RunRegistry 与 Commands 审批 owner，不新增状态表、不消费“已查看”。list/read 的项目范围都由已授权调用方给出。
 - 改过的文档：[行动账本](../../../../domains/action-ledger/README.md)按对话去重计数；详情另给每份文档的类型、最近改动时间、
   是否已删除（已删除不可打开），内建 Markdown 再给待审阅修订数。

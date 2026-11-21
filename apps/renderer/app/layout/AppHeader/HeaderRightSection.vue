@@ -314,7 +314,7 @@
       :document-id="activeDocumentId"
       :preview-component="historyPreviewComponent"
       :client-session-id="historyClientSessionId"
-      @close="showDocumentHistory = false"
+      @close="closeDocumentHistory"
     />
 
     <DocumentBacklinksPanel
@@ -407,10 +407,7 @@ import {
 import { useConversationLocalization } from '@/domains/conversation/ui/useConversationLocalization';
 import { computeHeaderPaneGeometry } from '@/app/layout/functions/headerPaneGeometry';
 import { revealSidebarConversationHistory } from '@/app/layout/orchestration/revealSidebarConversationHistory';
-import {
-  consumeDocumentHistoryPanelRequest,
-  useDocumentHistoryPanelRequest,
-} from '@/app/layout/orchestration/documentHistoryPanelRequest';
+import { useDocumentHistoryPanel } from '@/app/layout/composables/useDocumentHistoryPanel';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 import { projectConversationHeaderBreadcrumbSegments } from '@/domains/conversation/functions/conversationTitlePresentation';
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
@@ -442,22 +439,28 @@ const activeDocumentProjectId = computed(() => layoutStore.state.activeDocument?
 const documentAvailability = useDocumentTypeAvailabilityByActiveType(activeDocumentType);
 const historyPreviewComponent = computed(() => documentAvailability.value?.state === 'enabled'
   ? documentAvailability.value.documentType.historyPreviewComponent : undefined);
-const showDocumentHistory = ref(false);
 const showDocumentBacklinks = ref(false);
 const { message: backlinksMessage } = useBacklinksMessages();
-const historyClientSessionId = ref<string>();
+// 会话属于实际打开的文档表面；确认期间固定它，不能把恢复计入后来切换的视图。
+const {
+  showDocumentHistory,
+  historyClientSessionId,
+  openDocumentHistory,
+  closeDocumentHistory,
+} = useDocumentHistoryPanel({
+  activeDocumentId,
+  historyPreviewComponent,
+  readClientSessionId: (documentId) => {
+    const availability = documentAvailability.value;
+    return availability?.state === 'enabled'
+      ? availability.documentType.historyClientSessionId?.(documentId)
+      : undefined;
+  },
+  onOpen: () => { showDocMenu.value = false; },
+});
 const { message: historyMessage } = useHistoryMessages();
 const pluginDocumentActionMenu = useDocumentActionMenu(activeDocumentType);
-watch([activeDocumentId, historyPreviewComponent], () => { showDocumentHistory.value = false; showDocumentBacklinks.value = false; showDocMenu.value = false; });
-// 对话里点“历史”会先打开文档再请求历史面板；post flush 保证在上面的切换复位之后执行。
-const documentHistoryRequest = useDocumentHistoryPanelRequest();
-watch([documentHistoryRequest, activeDocumentId, historyPreviewComponent], () => {
-  if (!historyPreviewComponent.value) return;
-  if (consumeDocumentHistoryPanelRequest(activeDocumentId.value)) {
-    showDocMenu.value = false;
-    showDocumentHistory.value = true;
-  }
-}, { flush: 'post' });
+watch([activeDocumentId, historyPreviewComponent], () => { showDocumentBacklinks.value = false; showDocMenu.value = false; });
 const canShowProjectConversationHistory = computed(() => {
   return scene.value.kind === 'workspace' && navigationScope.currentProjectId !== null;
 });
@@ -866,12 +869,7 @@ const handleDocMenuSelect = async (value: unknown) => {
   showDocMenu.value = false;
   if (value === 'document-backlinks' && activeDocumentId.value && navigationScope.currentProjectId) { showDocumentBacklinks.value = true; return; }
   if (value === 'document-history' && historyPreviewComponent.value && activeDocumentId.value) {
-    // 会话属于实际打开的文档表面；确认期间固定它，不能把恢复计入后来切换的视图。
-    const availability = documentAvailability.value;
-    historyClientSessionId.value = availability?.state === 'enabled'
-      ? availability.documentType.historyClientSessionId?.(activeDocumentId.value) ?? undefined
-      : undefined;
-    showDocumentHistory.value = true;
+    openDocumentHistory();
     return;
   }
   const menu = pluginDocumentActionMenu.value;

@@ -22,6 +22,8 @@ import {
 import { findSimilarSemanticNames } from '../../functions/findSimilarSemanticNames';
 import { cleanSemanticName, semanticNameKey } from '../../functions/normalizeSemanticName';
 import { normalizeSemanticValue } from '../../functions/normalizeSemanticValue';
+import { assertNotBuiltinFieldName } from '../../functions/reservedSemanticNames';
+import { conformSemanticValue } from '../../features/schema-changes/functions/convertSemanticValue';
 import { createSqliteSemanticSchemaChanges } from './sqliteSemanticSchemaChanges';
 
 const KEPT_VERSIONS = 50;
@@ -417,6 +419,7 @@ export function createSqliteSemanticLayer(
         if (name.includes('.')) {
           throw new SemanticLayerError('reserved_name', '字段名不能含“.”：带点的名称留给插件声明的字段');
         }
+        assertNotBuiltinFieldName(name);
         if (!SEMANTIC_VALUE_TYPES.includes(input.valueType)) {
           throw new SemanticLayerError('invalid_definition', `不支持的字段类型：${String(input.valueType)}`, {
             valueTypes: [...SEMANTIC_VALUE_TYPES],
@@ -521,9 +524,18 @@ export function createSqliteSemanticLayer(
           throw new SemanticLayerError('invalid_value', `版本 ${toRevision} 不在保留范围内（每个对象保留最近 ${KEPT_VERSIONS} 个版本）`);
         }
         const active = new Set(tags().map(tag => tag.id));
+        // 旧版本的值按写入时的定义存放；字段之后改过类型或选项时，按当前定义转换，放不下的清除。
+        // 已删除字段的值原样保留，撤回删除后照旧显示。
+        const definitions = new Map(properties().map(property => [property.id, property]));
+        const values: Values = {};
+        for (const [propertyId, value] of Object.entries(JSON.parse(row.property_values) as Values)) {
+          const property = definitions.get(propertyId);
+          const conformed = property ? conformSemanticValue(property, value) : value;
+          if (conformed !== undefined) values[propertyId] = conformed;
+        }
         return {
           tagIds: (JSON.parse(row.tag_ids_json) as string[]).filter(id => active.has(id)),
-          values: JSON.parse(row.property_values) as Values,
+          values,
         };
       });
     },

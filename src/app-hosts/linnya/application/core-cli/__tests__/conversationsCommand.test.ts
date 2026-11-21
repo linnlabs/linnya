@@ -18,7 +18,7 @@ it('解析项目查询条件，未知过滤和项目伪造参数均拒绝', () =
 
 const idle = ConversationActivitySchema.parse({ state: 'idle', source: 'none', run_id: null, run_status: null, reason: null, updated_at: null, pause: null, pending_approval_count: 0 });
 const row = (id: string, lastEventAt: number): ProjectConversationRow => ({
-  conversation_id: id, title: `标题${id}`, agent_id: null, respondent_agent_ids: [], turn_count: 1, changed_document_count: 0,
+  conversation_id: id, title: `标题${id}`, replied_agent_ids: [null, 'research_v1'], selected_agent_id: 'research_v1', turn_count: 1, changed_document_count: 0,
   created_at: 1, last_event_at: lastEventAt, is_pinned: false, storage: null,
 });
 const result = (rows: ProjectConversationRow[]): ProjectConversationsQuery => ({
@@ -29,7 +29,7 @@ it('输出保留 Host 查询顺序和真实状态；截断按所选顺序，不�
   const list = JSON.parse(formatConversationList({ result: result([row('a', 1), row('b', 3), row('c', 2)]), limit: 2, maxCharacters: 8000 }));
   expect(list.conversations.map((item: { id: string }) => item.id)).toEqual(['a', 'b']);
   expect(list).toMatchObject({ truncated: true, notice: expect.any(String) });
-  expect(list.conversations[0]).toMatchObject({ agent: 'default', respondents: [], activity: { state: 'idle', source: 'none' } });
+  expect(list.conversations[0]).toMatchObject({ agents: ['default', 'research_v1'], selectedAgent: 'research_v1', activity: { state: 'idle', source: 'none' } });
   const searched = JSON.parse(formatConversationList({ result: { ...result([row('a', 1)]), excerpts: { a: '…命中…' } }, limit: 30, maxCharacters: 8000 }));
   expect(searched).toMatchObject({ truncated: false, conversations: [{ id: 'a', excerpt: '…命中…' }] });
 });

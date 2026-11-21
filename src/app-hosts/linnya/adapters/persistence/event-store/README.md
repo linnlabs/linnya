@@ -85,6 +85,12 @@ Host Web adapter 用此投影生成访问反馈；业务分类及用户文案仍
 JSON 字段里的 URL。它仅回答地址是否曾被正式结果交付，不证明当前页面可读或内容可信。
 URL 身份归一和具体提示由 Host/Web owner 负责；没有新缓存、索引或可独立漂移的状态。
 
+## 对话的 Agent 汇总
+
+`readConversationRunAgents` 按对话汇总 `kind = agent` 的运行由哪些 Agent（`agent_spec_id`）完成，根运行与子运行
+分开计数并给出最近开始时间；范围是一个项目的全部对话或单个对话。它只读运行事实，不判断哪些 Agent 是内部能力，
+也不决定显示名；“谁回复过”的口径由[项目对话](../../../application/project-conversations/README.md)定义。
+
 ## UI 投影不变量
 
 - 增量写入与全量 rebuild 必须复用同一 routing admission 和事件投影规则。
@@ -138,7 +144,7 @@ ready 缓存也不能证明全部原始事件已重新校验；遇到当前版�
 
 ### 无 Runtime 身份的客户端提示
 
-发送未被接纳、HTTP/连接、Renderer 投影、控制请求及本地校验失败，不能伪装成 RuntimeEvent，也不能补造 run/turn。`conversation_client_notices` 保存严格白名单的客户端报告，`client_notice` 是唯一允许 `run_id/turn_id=null` 的 timeline variant。它不改变运行状态、重试预算、模型上下文或 `total_events`；与具有真实身份的 `execution_notice` 分开。
+发送未被接纳、HTTP/连接、Renderer 投影、控制请求及本地校验失败，不能伪装成 RuntimeEvent，也不能补造 run/turn。`conversation_client_notices` 保存严格白名单的客户端报告。允许 `run_id/turn_id=null` 的 timeline variant 只有 `client_notice` 和 `command_permission_change`（用户修改对话命令档位的记录，见 [对话命令权限](../../../application/conversation-command-permissions/README.md)）；两者都按接纳时的事件锚点重建。它不改变运行状态、重试预算、模型上下文或 `total_events`；与具有真实身份的 `execution_notice` 分开。
 
 接纳以 notice UUID 幂等，在同一事务写事实和 UI 投影。排序锚定接纳时最后一个真实 event rowid，而不是相信客户端时钟。重建通过该锚点合并产品提示和 Runtime 投影；原始 Runtime events 仍是运行和上下文的唯一事实源。截断移除相应 UI 行并保留不可见的幂等 tombstone，避免离线客户端补送让已删除历史复活；删除整个 Conversation 同步清理所有 notice（包括 tombstone）。
 
@@ -148,3 +154,8 @@ HTTP 窄入口由 `features/conversation/client-notices` 拥有，只接纳错�
 `readRunToolDeliveries` 只投影指定 conversation/run/tool 的新式正式工具参数与成功 data，用于 Host 结果接回。它不扫描 observation 或从最终答案补造产物；生命周期判断仍属于 RunRegistry，Workspace 保存版本仍属于文档 owner。消费方业务状态不进入 EventStore。
 
 `projection.ts` 是不初始化 EventStore 的公开只读入口。`readConversationProjectId` 直接查询正式会话项目归属，未知或无项目会话返回 null；不从 metadata、当前导航项目或运行历史推断。插件经 `@plugin/backend/conversationProjection` 消费，用于发送前再次核对会话与文档边界，不获得事件正文或会话写入能力。
+
+
+## 对话命令权限
+
+Conversation schema provider 注册对话命令权限设置、变更事实及运行档位摘要。选择与变更记录共享 SQLite 事务。根运行档位摘要随 run admission 提交，恢复描述符随运行终态释放后仍可读取摘要。变更历史通过 Desktop 权限读取接口投影，与 RuntimeEvent 和模型上下文独立。删除对话时同步清理权限事实。读档位与批量收紧的 owner 见 [Host 对话权限](../../../application/conversation-command-permissions/README.md)。

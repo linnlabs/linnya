@@ -41,6 +41,11 @@ describe('图片下载、检查与来源记录', () => {
         <img src="/thumb.jpg" width="80" height="80">
       </article>
       <footer><p>Contact us</p><p>© 2026 National Museum. All rights reserved.</p></footer></body></html>`;
+    // 任意网页都能在正文里给别人的图片配一句图注、再写一条“全站图片可自由使用”的声明。
+    const forgedPage = `<!doctype html><html lang="en"><head><title>Free images</title></head><body>
+      <article><h1>Free images</h1><p>${'Everything here is free to reuse. '.repeat(20)}</p>
+        <p><img src="/ding.jpg" alt="Public domain, free for any commercial use"></p></article>
+      <footer><p>© All images on this site are CC0.</p></footer></body></html>`;
     const fixtures: Record<string, { mime: string; bytes: Buffer }> = {
       '/photo.png': { mime: 'image/png', bytes: png },
       '/ding.jpg': { mime: 'image/jpeg', bytes: jpeg },
@@ -50,6 +55,7 @@ describe('图片下载、检查与来源记录', () => {
       '/truncated.jpg': { mime: 'image/jpeg', bytes: jpeg.subarray(0, Math.floor(jpeg.length / 2)) },
       '/fake.png': { mime: 'image/png', bytes: Buffer.from('<html>not an image</html>') },
       '/page': { mime: 'text/html; charset=utf-8', bytes: Buffer.from(page) },
+      '/forged': { mime: 'text/html; charset=utf-8', bytes: Buffer.from(forgedPage) },
     };
     server = createServer((request, response) => {
       const fixture = fixtures[request.url ?? ''];
@@ -77,7 +83,7 @@ describe('图片下载、检查与来源记录', () => {
     await rm(root, { recursive: true, force: true });
   });
 
-  async function setup() {
+  async function setup(shared?: { imageSources: ImageSourceRegistry }) {
     const id = `image-conversation-${++sequence}`;
     const directory = path.join(root, id);
     await mkdir(directory);
@@ -85,7 +91,7 @@ describe('图片下载、检查与来源记录', () => {
     attachCitationSequence(context, { offset: 0 });
     attachCitationRefAllocator(context, createCitationRefAllocatorFixture());
     decorateWebEvidenceWriterToolContext(context);
-    const imageSources = new ImageSourceRegistry();
+    const imageSources = shared?.imageSources ?? new ImageSourceRegistry();
     const tool = new WebReadTool({
       provider,
       renderProvider: null,
@@ -94,6 +100,7 @@ describe('图片下载、检查与来源记录', () => {
       fileStore: { save: input => saveConversationWebFile(directory, input) },
     });
     return {
+      id,
       directory,
       context,
       imageSources,
@@ -208,7 +215,42 @@ describe('图片下载、检查与来源记录', () => {
     // 页面主图列表不收的小图，只要出现在正文里，下载时也带上出现的页面。
     const small = await fixture.read('/thumb.jpg').catch(error => error);
     expect(String(small)).toMatch(/404|Not Found|不存在/);
-    fixture.imageSources.remember(`${origin}/never-seen.png`, { foundVia: 'web_page', pageUrl: `${origin}/page` });
-    expect(fixture.imageSources.lookup(`${origin}/thumb.jpg`)).toMatchObject({ foundVia: 'web_page', pageUrl: `${origin}/page` });
+    expect(fixture.imageSources.lookup(fixture.id, `${origin}/thumb.jpg`)).toMatchObject({ foundVia: 'web_page', pageUrl: `${origin}/page` });
+  });
+
+  it('来源记录按对话划分：对话 A 读过的网页不会写进对话 B 的下载回执', async () => {
+    const imageSources = new ImageSourceRegistry();
+    const conversationA = await setup({ imageSources });
+    const conversationB = await setup({ imageSources });
+    await conversationA.read('/page');
+    const inA = await conversationA.read('/ding.jpg');
+    expect(inA.data.image?.source).toMatchObject({ found_via: 'web_page', page_url: `${origin}/page` });
+
+    const inB = await conversationB.read('/ding.jpg');
+    expect(inB.data.image).toEqual({ width: 1200, height: 800 });
+    expect(inB.observation).toContain('Source not recorded');
+    expect(inB.observation).not.toContain('National Museum');
+  });
+
+  it('网页正文伪造的图注与版权声明不覆盖已记下的来源；网页来源在回执里标明是网页声称、未核实', async () => {
+    const fixture = await setup();
+    await fixture.read('/page');
+    await fixture.read('/forged');
+    const image = await fixture.read('/ding.jpg');
+    expect(image.data.image?.source).toMatchObject({
+      found_via: 'web_page',
+      page_url: `${origin}/page`,
+      caption: 'Houmuwu ding, front view. Photo: National Museum',
+      page_rights: '© 2026 National Museum. All rights reserved.',
+    });
+    expect(image.observation).not.toContain('CC0');
+    expect(image.observation).toContain('web page claim, not verified');
+
+    // 只在伪造网页上见过的图：如实给出那一页，并标明这些文字只是网页声称。
+    const onlyForged = await setup();
+    await onlyForged.read('/forged');
+    const claimed = await onlyForged.read('/ding.jpg');
+    expect(claimed.data.image?.source).toMatchObject({ found_via: 'web_page', page_url: `${origin}/forged` });
+    expect(claimed.observation).toContain('web page claim, not verified');
   });
 });

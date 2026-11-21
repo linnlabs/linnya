@@ -52,6 +52,8 @@ export interface PresentationQueryRuntimeDeps {
   readonly engine: SlidesEngineExecutionAdapter;
   readonly getCodegenDeckBuilder: () => CodegenDeckBuilderPort;
   readonly pptxArtifacts: PresentationPptxArtifactPort;
+  /** 查询前把落后于当前排版合同的物化升级到最新，见 presentationLayoutRefresh。 */
+  readonly layoutRefresh: { ensureCurrent(nodeId: string): Promise<void> };
 }
 
 /**
@@ -71,6 +73,7 @@ export class PresentationQueryRuntime {
   }
 
   private async captureView(nodeId: string) {
+    await this.deps.layoutRefresh.ensureCurrent(nodeId);
     const source = await this.deps.presentationRepo.getPresentationViewSource(nodeId);
     if (!source) throw new Error(`Presentation not found: ${nodeId}`);
     const { buildState, draftSourceHash } = source;
@@ -95,6 +98,7 @@ export class PresentationQueryRuntime {
 
   async inspect(nodeId: string): Promise<PresentationInfo> {
     this.assertNoPendingCodegenDraft(nodeId, 'inspect');
+    await this.deps.layoutRefresh.ensureCurrent(nodeId);
     const document = await this.deps.pptxArtifacts.loadCurrent(nodeId);
     const version = toSlidesEngineVersionSnapshot(document);
     return this.deps.engine.inspectPresentation({
@@ -113,6 +117,7 @@ export class PresentationQueryRuntime {
 
   async export(nodeId: string): Promise<ExportedPresentationFile> {
     this.assertNoPendingCodegenDraft(nodeId, 'export');
+    await this.deps.layoutRefresh.ensureCurrent(nodeId);
     const document = await this.deps.pptxArtifacts.loadCurrent(nodeId);
     const version = toSlidesEngineVersionSnapshot(document);
     return this.deps.engine.exportPresentation({
@@ -130,9 +135,10 @@ export class PresentationQueryRuntime {
   }
 
   async getPreview(nodeId: string): Promise<DeckPreview> {
+    this.assertNoPendingCodegenDraft(nodeId, 'preview');
+    await this.deps.layoutRefresh.ensureCurrent(nodeId);
     const source = await this.requirePresentationPreviewSource(nodeId);
     const version = toSlidesEnginePreviewSnapshot(source);
-    this.assertNoPendingCodegenDraft(nodeId, 'preview');
     return this.deps.engine.buildPreview({
       nodeId,
       version,
@@ -144,9 +150,10 @@ export class PresentationQueryRuntime {
   }
 
   async getRenderModel(nodeId: string): Promise<PresentationRenderModel> {
+    this.assertNoPendingCodegenDraft(nodeId, 'render model');
+    await this.deps.layoutRefresh.ensureCurrent(nodeId);
     const source = await this.requirePresentationRenderSource(nodeId);
     const version = toSlidesEngineRenderModelSnapshot(source);
-    this.assertNoPendingCodegenDraft(nodeId, 'render model');
     const resolution = await this.resolveRenderModelDeckSpec(nodeId, version);
     return await this.buildRenderModel(
       nodeId,
@@ -156,9 +163,10 @@ export class PresentationQueryRuntime {
   }
 
   async getRenderModelSnapshot(nodeId: string): Promise<PresentationRenderModelSnapshot> {
+    this.assertNoPendingCodegenDraft(nodeId, 'render model');
+    await this.deps.layoutRefresh.ensureCurrent(nodeId);
     const source = await this.requirePresentationRenderSource(nodeId);
     const version = toSlidesEngineRenderModelSnapshot(source);
-    this.assertNoPendingCodegenDraft(nodeId, 'render model');
     const resolution = await this.resolveRenderModelDeckSpec(nodeId, version);
     const renderModelVersion = { ...version, deckSpec: resolution.deckSpec };
     const renderModel = await this.buildRenderModel(

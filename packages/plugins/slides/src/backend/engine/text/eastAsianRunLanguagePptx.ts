@@ -12,6 +12,7 @@ const HAN_OR_CJK_PUNCTUATION = /[　-〿㐀-䶿一-鿿豈-﫿︰-﹏＀-･\u{20
  * 于是中文的句号、逗号会落到行首，与预览不一致（2026-11-13 用 PowerPoint 导 PDF 实测：只改
  * `lang` 即恢复避头尾，单加 `eaLnBrk` 无效）。这里按 run 的实际文字改成 zh-CN / ja-JP / ko-KR，
  * 保留 `altLang="en-US"` 给其中的西文；只改 PptxGenJS 写的默认值，不覆盖其他语言。
+ * 只能用于本插件生成的稿子（sanitizer 的 `markEastAsianRunLanguage`）；导入稿里的 `en-US` 是作者写的，导出不得改写。
  */
 export async function applyEastAsianRunLanguage(zip: JSZip): Promise<boolean> {
   let mutated = false;
