@@ -16,7 +16,7 @@ import {
 } from './pluginDataCleanup';
 import { readPluginManifestForCleanup } from './pluginDataManifest';
 import { describePluginData } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
-import { uninstallPluginAndDeleteData } from '../../install/orchestration/uninstallPluginLifecycle';
+import { uninstallPluginAndDeleteData, uninstallPluginLifecycle } from '../../install/orchestration/uninstallPluginLifecycle';
 import { PLUGIN_PLATFORM_STATE_SCHEMAS } from '../sqlite/plugin-state.schema';
 
 const storage: PluginManifestDataStorage = {
@@ -131,9 +131,9 @@ describe('plugin data cleanup', () => {
     } finally { db.close(); }
   });
 
-  it('删除数据选项先完成清理，再写入用户卸载状态', async () => {
+  it('删除数据选项卸载运行态后清理资料，并保留用户卸载状态', async () => {
     const { root, db } = fixture();
-    const result = await uninstallPluginAndDeleteData({
+    const options = {
       db,
       userPluginRoot: path.join(root, 'plugins'),
       pluginId: 'demo',
@@ -141,7 +141,8 @@ describe('plugin data cleanup', () => {
       dataRoot: root,
       dataStorage: storage,
       ownedTables,
-    });
+    };
+    const result = await uninstallPluginAndDeleteData(options, () => uninstallPluginLifecycle(options));
     expect(result).toMatchObject({ status: 'uninstalled', dataDeleted: true, userDataPreserved: false });
     expect(db.prepare("SELECT installed, user_removed FROM installed_plugins WHERE plugin_id = 'demo'").get()).toEqual({ installed: 0, user_removed: 1 });
     db.close();

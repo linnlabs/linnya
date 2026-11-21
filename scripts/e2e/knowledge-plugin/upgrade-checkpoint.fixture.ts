@@ -34,7 +34,12 @@ function crash(): never {
   throw new Error(`Did not stop at ${mode}`);
 }
 
-if (mode === 'before-pointer' || mode === 'after-pointer') {
+if (mode === 'before-commit') {
+  db.function('acceptance_upgrade_checkpoint', crash);
+  // 正式升级把迁移和 activating 账本在同一事务提交；此时已经跑完迁移但尚未提交。
+  db.exec(`CREATE TEMP TRIGGER acceptance_upgrade_before_commit AFTER UPDATE OF status ON main.plugin_active_versions
+    WHEN NEW.plugin_id = 'knowledge' AND NEW.status = 'activating' BEGIN SELECT acceptance_upgrade_checkpoint(); END;`);
+} else if (mode === 'before-pointer' || mode === 'after-pointer') {
   const rename = fs.renameSync;
   fs.renameSync = (from, to) => {
     const pointer = to === join(userPluginRoot, pluginId, 'active.json');

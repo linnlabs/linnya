@@ -12,6 +12,7 @@ const checkpoint = process.argv[2];
 const checkpoints = [
   'uninstall-before-intent',
   'uninstall-before-marker',
+  'uninstall-after-marker',
   'cleanup-before-commit',
   'cleanup-after-commit',
 ];
@@ -221,7 +222,11 @@ try {
           'Uncommitted uninstall must leave the previously enabled plugin running'
         );
         assert.deepEqual(recovered, initial, 'Uncommitted uninstall must preserve all facts');
-      } else if (checkpoint === 'uninstall-before-marker') {
+      } else if (checkpoint === 'uninstall-before-marker' || checkpoint === 'uninstall-after-marker') {
+        assert.equal(stopped.installed.installed, 0);
+        assert.equal(stopped.installed.user_removed, 1);
+        assert.equal(Boolean(stopped.removal), checkpoint === 'uninstall-after-marker');
+        assert.deepEqual(stopped.pointer, initial.pointer, 'Active files have not been removed yet');
         assert.equal(sidebarPresent, false);
         checkUninstalled(recovered);
         assert.equal(recovered.source, initial.source);

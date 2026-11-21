@@ -21,6 +21,7 @@ import { installKnowledgeForScenario } from './knowledgeStore.fixture.mjs';
 const mode = process.argv[2];
 const modes = [
   'during-migration',
+  'before-commit',
   'before-pointer',
   'after-pointer',
   'automatic-upgrade',
@@ -50,7 +51,8 @@ const versions = old.version.split('.').map(Number);
 assert.equal(versions.length, 3);
 assert.ok(versions.every(Number.isSafeInteger));
 const newer = [versions[0], versions[1], versions[2] + 1].join('.');
-const precise = ['during-migration', 'before-pointer', 'after-pointer'].includes(mode);
+const uncommitted = ['during-migration', 'before-commit'].includes(mode);
+const precise = uncommitted || ['before-pointer', 'after-pointer'].includes(mode);
 const artifactFault = [
   'missing-bundled-artifact',
   'invalid-checksum-manifest',
@@ -369,8 +371,8 @@ try {
       checkpoint = facts(up, file);
       evidence.json('immediate-recovery-facts', { trap, checkpoint });
       assert.equal(trap.mode, mode);
-      assert.equal(trap.inTransaction, mode === 'during-migration');
-      if (mode === 'during-migration') assert.deepEqual(checkpoint, initial);
+      assert.equal(trap.inTransaction, uncommitted);
+      if (uncommitted) assert.deepEqual(checkpoint, initial);
       else {
         assert.equal(checkpoint.installed.version, newer);
         assert.equal(checkpoint.installed.schema_version, 2);

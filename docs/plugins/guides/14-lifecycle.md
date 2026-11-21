@@ -61,6 +61,7 @@
 - 停用不删除 runtime 文件，也不删除数据。
 - **禁用仍迁移**：已安装但禁用的插件，启动时仍执行 pending 迁移（语义口径见 [06 数据库](./06-database.md)）。
 - 安装、远程安装、启停、卸载按 `pluginId` 串行执行；不同插件可以并行，同一插件不能交错写 DB、`active.json` 和 runtime 资源。
+- 不同插件共享一条状态提交与运行态刷新队列，刷新按当时的启用事实读取注册表，避免另一个操作拿旧启用列表重新激活已卸载插件；下载和数据清理不占用该队列。
 - 允许保留当前 Agent 的插件停用或卸载时，Host 同步撤下已注册工具；正在执行并由 owner 标记为繁忙的调用先阻止操作，模型迟到但未开始的调用则收到「本次调用未执行」，原运行继续。已进入执行意图但结果未知的恢复对账不适用此规则。
 - Hosted Plugin Command 属于 backend runtime resource。停用、卸载或 active 版本切换前，host 先把旧 command 标记为 draining，拒绝新 invocation，abort 并等待已进入的 invocation；完成后才注销 hidden worker 和 runtime effect，再激活新 contribution。禁止先卸载 worker/coordinator、再等待旧命令自然结束。
 

@@ -317,6 +317,14 @@ export async function registerPluginsHandlers(input: {
   }
   const getService = () => new PluginStateService(databaseService.getDb());
   const getDb = () => databaseService.getDb();
+  let runtimeTransitionTail = Promise.resolve();
+  function transitionRuntime<T>(operation: () => Promise<T>): Promise<T> {
+    // 按插件排队不保护共享注册表。状态提交和运行态同步必须使用同一条队列，
+    // 否则同步拿到的启用列表会在 await 之后把另一个刚卸载的插件重新启动。
+    const result = runtimeTransitionTail.then(operation);
+    runtimeTransitionTail = result.then(() => {}, () => {});
+    return result;
+  }
   const cleanupAbortControllers = new Map<string, AbortController>();
   const publishPluginDataChanged = (pluginId: string): void => {
     input.rendererIntegration.publishPluginDataChanged(pluginId);
@@ -599,7 +607,7 @@ export async function registerPluginsHandlers(input: {
         return await runPluginLifecycleOperationSerially({
           pluginId,
           operation: 'set-enabled',
-          async run() {
+          run: () => transitionRuntime(async () => {
             const service = getService();
             if (enabled && !backendPluginRegistry.has(pluginId)) {
               throw new PluginOperationError('source-unavailable', '插件后端未加载，不能启用', { pluginId });
@@ -624,7 +632,7 @@ export async function registerPluginsHandlers(input: {
             if (enabled) toolRegistry.restorePluginTools(pluginId);
             input.rendererIntegration.publishPluginsChanged();
             return { success: true };
-          },
+          }),
         });
       } catch (error) {
         logger.error('[plugins:set-enabled] failed:', error);
@@ -700,19 +708,21 @@ export async function registerPluginsHandlers(input: {
           if (result.status === 'failed') {
             throwPluginOperationResultFailure(result);
           }
-          if (!scopedLifecycle)
-            await cancelActiveRunsForPluginRuntimeChange({
-              pluginId,
-              operation: '安装/升级',
-              supervisor: getRunSupervisor(),
+          return transitionRuntime(async () => {
+            if (!scopedLifecycle)
+              await cancelActiveRunsForPluginRuntimeChange({
+                pluginId,
+                operation: '安装/升级',
+                supervisor: getRunSupervisor(),
+              });
+            await syncPluginRuntimeState({
+              reinitializeTools: true,
+              runtimeOwner: input.runtimeOwner,
             });
-          await syncPluginRuntimeState({
-            reinitializeTools: true,
-            runtimeOwner: input.runtimeOwner,
+            toolRegistry.restorePluginTools(pluginId);
+            input.rendererIntegration.publishPluginsChanged();
+            return { success: true, data: result };
           });
-          toolRegistry.restorePluginTools(pluginId);
-          input.rendererIntegration.publishPluginsChanged();
-          return { success: true, data: result };
         },
       });
     } catch (error) {
@@ -731,7 +741,7 @@ export async function registerPluginsHandlers(input: {
       return await runPluginLifecycleOperationSerially({
         pluginId,
         operation: 'install-from-bundled',
-        async run() {
+        run: () => transitionRuntime(async () => {
           assertPluginCanInstall(pluginId);
           const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
           if (!userPluginRoot) {
@@ -779,7 +789,7 @@ export async function registerPluginsHandlers(input: {
               data: { ...result, restartRequired: true },
             };
           }
-        },
+        }),
       });
     } catch (error) {
       logger.error('[plugins:installBundled] failed:', error);
@@ -807,59 +817,61 @@ export async function registerPluginsHandlers(input: {
           if (!userPluginRoot) {
             throw new PluginOperationError('source-unavailable', '插件目录未初始化，不能卸载插件', { pluginId });
           }
-          const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
           const cleanupDescriptor = deleteData ? resolvePluginCleanupDescriptor(pluginId) : null;
           if (deleteData && (!cleanupDescriptor || !declaresCleanableData(cleanupDescriptor.manifest))) {
             throw new PluginOperationError('source-unavailable', `找不到插件 ${pluginId} 的可信清理声明`, { pluginId });
           }
-          assertBackendPluginCanDeactivate(pluginId);
-          beginBackendPluginDeactivation(pluginId);
-          if (scopedLifecycle) toolRegistry.withdrawPluginTools(pluginId);
-          await deactivateStaleBackendPluginRuntimeEffects(
-            backendPluginRegistry.getRuntimeEffectRegistrations(getRuntimeEnabledPluginIds())
-              .filter(registration => registration.pluginId !== pluginId),
-          );
-          const controller = cleanupDescriptor ? new AbortController() : undefined;
-          const lifecycleOptions = {
-            db: databaseService.getDb(),
-            userPluginRoot,
-            pluginId,
-            knownPlugins: listKnownPluginMetas(),
-            ...(cleanupDescriptor ? {
-              dataRoot: cleanupDescriptor.dataRoot,
-              dataStorage: cleanupDescriptor.manifest.dataStorage,
-              ownedTables: cleanupDescriptor.manifest.ownedTables,
-              applicationSurfaceSlot: cleanupDescriptor.manifest.applicationSurfaceSlot,
-              signal: controller?.signal,
-              onCleanupStarted: () => beginCleanup(pluginId),
-              onCleanupProgress: createCleanupProgressReporter(pluginId),
-            } : {}),
-          };
-          if (controller) cleanupAbortControllers.set(pluginId, controller);
-          const result = await (async () => {
+          const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
+          const uninstallRuntime = () => transitionRuntime(async () => {
+            assertBackendPluginCanDeactivate(pluginId);
+            beginBackendPluginDeactivation(pluginId);
+            if (scopedLifecycle) toolRegistry.withdrawPluginTools(pluginId);
+            await deactivateStaleBackendPluginRuntimeEffects(
+              backendPluginRegistry.getRuntimeEffectRegistrations(getRuntimeEnabledPluginIds())
+                .filter(registration => registration.pluginId !== pluginId),
+            );
+            return uninstallPluginLifecycle({
+              db: getDb(), userPluginRoot, pluginId, knownPlugins: listKnownPluginMetas(),
+            });
+          });
+          const result = cleanupDescriptor ? await (async () => {
+            const controller = new AbortController();
             try {
-              return cleanupDescriptor
-                ? await uninstallPluginAndDeleteData(lifecycleOptions)
-                : uninstallPluginLifecycle(lifecycleOptions);
+              return await uninstallPluginAndDeleteData({
+                db: getDb(),
+                pluginId,
+                dataRoot: cleanupDescriptor.dataRoot,
+                dataStorage: cleanupDescriptor.manifest.dataStorage,
+                ownedTables: cleanupDescriptor.manifest.ownedTables,
+                applicationSurfaceSlot: cleanupDescriptor.manifest.applicationSurfaceSlot,
+                signal: controller.signal,
+                onStarted: () => {
+                  cleanupAbortControllers.set(pluginId, controller);
+                  beginCleanup(pluginId);
+                },
+                onProgress: createCleanupProgressReporter(pluginId),
+              }, uninstallRuntime);
             } finally {
-              if (controller) endCleanup(pluginId);
-              else invalidatePluginDataSummary(pluginId);
+              endCleanup(pluginId);
             }
-          })();
+          })() : await uninstallRuntime();
+          if (!cleanupDescriptor) invalidatePluginDataSummary(pluginId);
           if (result.status !== 'uninstalled') {
             throwPluginOperationResultFailure(result);
           }
-          if (!scopedLifecycle)
-            await cancelActiveRunsForPluginRuntimeChange({
-              pluginId,
-              operation: '卸载',
-              supervisor: getRunSupervisor(),
+          await transitionRuntime(async () => {
+            if (!scopedLifecycle)
+              await cancelActiveRunsForPluginRuntimeChange({
+                pluginId,
+                operation: '卸载',
+                supervisor: getRunSupervisor(),
+              });
+            await syncPluginRuntimeState({
+              reinitializeTools: true,
+              runtimeOwner: input.runtimeOwner,
             });
-          await syncPluginRuntimeState({
-            reinitializeTools: true,
-            runtimeOwner: input.runtimeOwner,
+            input.rendererIntegration.publishPluginsChanged();
           });
-          input.rendererIntegration.publishPluginsChanged();
           return { success: true, data: { releasedBytes: result.releasedBytes, cleanupIncomplete: result.cleanupIncomplete } };
         },
       });

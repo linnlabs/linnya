@@ -32,12 +32,13 @@ if (checkpoint === 'uninstall-before-intent') {
   db.function('acceptance_checkpoint', () => crashAt(checkpoint));
   db.exec(`CREATE TEMP TRIGGER acceptance_before_uninstall BEFORE UPDATE OF user_removed ON main.installed_plugins
     WHEN NEW.plugin_id = 'knowledge' AND NEW.user_removed = 1 BEGIN SELECT acceptance_checkpoint(); END;`);
-} else if (checkpoint === 'uninstall-before-marker') {
+} else if (checkpoint === 'uninstall-before-marker' || checkpoint === 'uninstall-after-marker') {
   const originalWrite = fs.writeFileSync;
   const marker = resolvePluginRemovalMarkerPath(userPluginRoot, pluginId);
   fs.writeFileSync = (target, value, options) => {
-    if (target === marker) crashAt(checkpoint);
+    if (target === marker && checkpoint === 'uninstall-before-marker') crashAt(checkpoint);
     originalWrite(target, value, options);
+    if (target === marker && checkpoint === 'uninstall-after-marker') crashAt(checkpoint);
   };
 } else if (checkpoint === 'cleanup-before-commit') {
   db.function('acceptance_checkpoint', () => crashAt(checkpoint));
