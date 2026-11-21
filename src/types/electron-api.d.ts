@@ -406,6 +406,10 @@ declare global {
         stopCleanup: (
           pluginId: string
         ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
+        setDataMeasurementPaused: (
+          pluginId: string,
+          paused: boolean
+        ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
         revealData: (
           pluginId: string
         ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;

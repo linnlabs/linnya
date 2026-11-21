@@ -104,6 +104,8 @@ export interface PluginStateView {
   /** disabled/missing 或操作失败时给设置页展示的人类可读原因；missing 时用于区分从未安装与用户主动卸载。 */
   reason?: string;
   data?: PluginDataSummary;
+  /** 统计可以暂停，不能用该状态覆盖已经知道的清理残留或占用。 */
+  dataMeasurement?: 'running' | 'paused';
 }
 
 export interface PluginStoreListItem extends PluginStateView {

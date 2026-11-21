@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PluginCleanupFailureReason, PluginDataSummary } from '@app/schemas';
+import type { PluginCleanupFailureReason, PluginDataSummary, PluginStateView } from '@app/schemas';
 import { formatStorageBytes } from '@app/localization';
 import { BaseButton } from '@linnya/renderer-ui';
 import { usePluginStoreLocalization } from './usePluginStoreLocalization';
@@ -7,12 +7,13 @@ import type { PluginStoreMessageKey } from '../definitions/pluginStoreMessages';
 import '../styles/components/PluginDataPanel.css';
 
 const props = defineProps<{
-  readonly data: PluginDataSummary;
+  readonly data?: PluginDataSummary;
+  readonly measurement?: PluginStateView['dataMeasurement'];
   readonly locale: string;
   readonly canDelete: boolean;
 }>();
 
-const emit = defineEmits<{ delete: []; retry: []; stop: []; reveal: [] }>();
+const emit = defineEmits<{ delete: []; retry: []; stop: []; reveal: []; measure: [paused: boolean] }>();
 const { pluginStoreMessage } = usePluginStoreLocalization();
 
 const labels: Readonly<Record<'source' | 'derived' | 'runtime', PluginStoreMessageKey>> = {
@@ -46,8 +47,15 @@ function statusLabel(status: PluginDataSummary['status']): string {
   <section class="plugin-data-panel plugin-store-detail-section" :aria-label="pluginStoreMessage('pluginStore.data.ariaLabel')">
     <div class="plugin-data-panel__header">
       <h2>{{ pluginStoreMessage('pluginStore.data.title') }}</h2>
-      <span v-if="data.status !== 'empty'" class="plugin-data-panel__total">{{ pluginStoreMessage('pluginStore.data.total', { bytes: formatStorageBytes(data.bytes, locale) }) }}</span>
+      <span v-if="data && data.status !== 'empty'" class="plugin-data-panel__total">{{ pluginStoreMessage('pluginStore.data.total', { bytes: formatStorageBytes(data.bytes, locale) }) }}</span>
     </div>
+    <div v-if="measurement" class="plugin-data-panel__measurement">
+      <p class="plugin-data-panel__hint">{{ pluginStoreMessage(measurement === 'running' ? 'pluginStore.data.measuring' : 'pluginStore.data.measurementPaused') }}</p>
+      <BaseButton variant="ghost" size="sm" @click="emit('measure', measurement === 'running')">
+        {{ pluginStoreMessage(measurement === 'running' ? 'pluginStore.data.pauseMeasurement' : 'pluginStore.data.resumeMeasurement') }}
+      </BaseButton>
+    </div>
+    <template v-if="data">
     <p class="plugin-data-panel__status" :class="`is-${data.status}`">{{ statusLabel(data.status) }}</p>
     <dl v-if="data.status !== 'empty'" class="plugin-data-panel__rows">
       <div v-for="category in (['source', 'derived', 'runtime'] as const)" :key="category" class="plugin-data-panel__row">
@@ -80,6 +88,7 @@ function statusLabel(status: PluginDataSummary['status']): string {
     <button v-else-if="canDelete && (data.status === 'retained' || data.status === 'legacy')" type="button" class="plugin-data-panel__danger" @click="emit('delete')">
       {{ data.status === 'legacy' ? pluginStoreMessage('pluginStore.data.cleanup') : pluginStoreMessage('pluginStore.data.delete') }}
     </button>
+    </template>
   </section>
 </template>
 

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import { isRecord } from '@linnya/foundation';
 import type Database from 'better-sqlite3';
 import { mapTrustedRendererApplicationSurfaces } from '../../../../app-hosts/linnya/plugin-registry/rendererApplicationSurfaceTrust';
 import { getRegisteredBackendPluginDirectory } from '../../../../app-hosts/linnya/plugin-registry/builtin';
@@ -71,11 +72,17 @@ const pluginDataSummaryCache = new Map<string, {
   readonly data: PluginDataSummary;
 }>();
 const pluginDataSummaryPending = new Map<string, AbortController>();
+const pausedPluginDataMeasurements = new Set<string>();
 const emptyPluginData = { bytes: 0, directories: { source: 0, derived: 0, runtime: 0 }, tables: {} };
 
-function invalidatePluginDataSummary(pluginId: string): void {
+function abortPluginDataMeasurement(pluginId: string): void {
   pluginDataSummaryPending.get(pluginId)?.abort();
   pluginDataSummaryPending.delete(pluginId);
+}
+
+function invalidatePluginDataSummary(pluginId: string): void {
+  abortPluginDataMeasurement(pluginId);
+  pausedPluginDataMeasurements.delete(pluginId);
   pluginDataSummaryCache.delete(pluginId);
 }
 
@@ -117,12 +124,16 @@ function enrichPluginStates(
       continue;
     }
     const cached = pluginDataSummaryCache.get(state.meta.id);
+    if (pausedPluginDataMeasurements.has(state.meta.id)) {
+      enriched.push({ ...state, data: cached?.data, dataMeasurement: 'paused' });
+      continue;
+    }
     if (cached && cached.expiresAt > Date.now()) {
       enriched.push({ ...state, data: cached.data });
       continue;
     }
     scheduleSummary(state);
-    enriched.push(state);
+    enriched.push({ ...state, data: cached?.data, dataMeasurement: 'running' });
   }
   return enriched;
 }
@@ -140,7 +151,13 @@ function schedulePluginDataSummary(
       await new Promise<void>(resolve => setImmediate(resolve));
       if (controller.signal.aborted) return;
       const descriptor = resolvePluginCleanupDescriptor(state.meta.id);
-      if (!descriptor) return;
+      if (!descriptor) {
+        pluginDataSummaryCache.set(state.meta.id, {
+          expiresAt: Date.now() + PLUGIN_DATA_SUMMARY_CACHE_TTL_MS,
+          data: { ...emptyPluginData, status: 'unavailable', canDelete: false },
+        });
+        return;
+      }
       const data = await readPluginDataSummaryAsync({
         db,
         pluginId: state.meta.id,
@@ -304,6 +321,26 @@ export async function registerPluginsHandlers(input: {
   const publishPluginDataChanged = (pluginId: string): void => {
     input.rendererIntegration.publishPluginDataChanged(pluginId);
   };
+
+  input.ipc.handle('plugins:set-data-measurement-paused', async (_event, raw: unknown) => {
+    try {
+      if (!isRecord(raw) || typeof raw.paused !== 'boolean') throw new Error('插件数据统计未指定暂停状态');
+      const pluginId = parsePluginId(raw.pluginId, 'plugins:set-data-measurement-paused');
+      const { paused } = raw;
+      // 用户点击与扫描完成可能交错；完成的扫描不需要被取消或丢弃。
+      if (paused && pluginDataSummaryPending.has(pluginId)) {
+        pausedPluginDataMeasurements.add(pluginId);
+        abortPluginDataMeasurement(pluginId);
+      } else if (!paused) {
+        pausedPluginDataMeasurements.delete(pluginId);
+      }
+      publishPluginDataChanged(pluginId);
+      return { success: true };
+    } catch (error) {
+      logger.error('[plugins:set-data-measurement-paused] failed:', error);
+      return { success: false, error: classifyPluginOperationError(error) };
+    }
+  });
   function beginCleanup(pluginId: string): void {
     const prior = pluginDataSummaryCache.get(pluginId)?.data;
     invalidatePluginDataSummary(pluginId);

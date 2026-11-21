@@ -54,4 +54,6 @@
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/large-cleanup.acceptance.mjs` 在已构建的磁盘 Renderer 探针里，以 20,000 个隔离文件检查占用显示、实际删除中点停与重试完成；不是 20,000 篇资料摄入或索引性能的证据。
 
+`pnpm exec tsx scripts/e2e/knowledge-plugin/usage-cancellation.acceptance.mjs` 在 40,000 个隔离文件的实际扫描期间点「停止统计」，验证离开详情再返回不会自行重启扫描，重新统计后与 `du` 对账，且整个过程不改动资料。
+
 `pnpm exec tsx scripts/e2e/knowledge-plugin/store-concurrency.acceptance.mjs` 在真实插件商店同时启停或重装知识库与 Slides，重复触发单个卸载确认，并用商店、知识库入口和持久化状态对账。同一窗口内事件并发不包含双窗口竞争，也不代表两个插件同时卸载。

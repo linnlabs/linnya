@@ -110,14 +110,16 @@
           </section>
 
           <PluginDataPanel
-            v-if="selectedDetail.data"
+            v-if="selectedDetail.data || selectedDetail.dataMeasurement"
             :data="selectedDetail.data"
+            :measurement="selectedDetail.dataMeasurement"
             :locale="currentLocale"
-            :can-delete="selectedDetail.data.canDelete"
+            :can-delete="selectedDetail.data?.canDelete ?? false"
             @delete="openDataDelete(selectedDetail)"
             @retry="retryDataCleanup(selectedDetail)"
             @stop="stopDataCleanup(selectedDetail)"
             @reveal="showDataLocation(selectedDetail)"
+            @measure="setSelectedDataMeasurementPaused"
           />
 
           <section
@@ -953,6 +955,18 @@ async function stopDataCleanup(item: PluginStoreListItem): Promise<void> {
   await window.electronAPI?.plugins.stopCleanup(item.meta.id);
   await refreshPluginStoreItems();
   await refreshSelectedPluginDetail(item.meta.id);
+}
+
+async function setSelectedDataMeasurementPaused(paused: boolean): Promise<void> {
+  const item = selectedDetail.value;
+  if (!item) return;
+  try {
+    const result = await window.electronAPI?.plugins.setDataMeasurementPaused(item.meta.id, paused);
+    if (!result?.success) throw normalizePluginRuntimeUserError(result?.error);
+    // Host 通知后只刷新列表和当前数据；不会触发插件重新装配。
+  } catch {
+    notificationStore.show(pluginStoreMessage('pluginStore.data.measurementControlFailed'), 'error', 3500);
+  }
 }
 
 async function executeUninstall(item: PluginStoreListItem, deleteData: boolean): Promise<void> {

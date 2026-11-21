@@ -41,6 +41,8 @@ export function buildPluginsPreloadApi(ipcRenderer: IpcRenderer) {
         ipcRenderer.invoke('plugins:uninstall', { pluginId, ...options }),
       cleanupData: (pluginId: string) => ipcRenderer.invoke('plugins:cleanup-data', pluginId),
       stopCleanup: (pluginId: string) => ipcRenderer.invoke('plugins:stop-cleanup', pluginId),
+      setDataMeasurementPaused: (pluginId: string, paused: boolean) =>
+        ipcRenderer.invoke('plugins:set-data-measurement-paused', { pluginId, paused }),
       revealData: (pluginId: string) => ipcRenderer.invoke('plugins:reveal-data', pluginId),
       setEnabled: (pluginId: string, enabled: boolean) =>
         ipcRenderer.invoke('plugins:set-enabled', pluginId, enabled),
