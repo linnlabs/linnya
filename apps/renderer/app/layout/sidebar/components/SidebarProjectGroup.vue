@@ -13,6 +13,12 @@
     >
       <FolderIcon class="workspace-sidebar-row-icon project-row-icon" />
       <span class="workspace-sidebar-row-label project-row-name">{{ project.name }}</span>
+      <span v-if="collapsedRunSummary" class="project-row-run-summary">
+        <ConversationRunStatusIndicator
+          :status="collapsedRunSummary.status"
+          :label="collapsedRunSummary.label"
+        />
+      </span>
       <span class="workspace-sidebar-row-actions project-row-actions" @click.stop @dblclick.stop>
         <IconButton
           :label="workspaceMessage('workspace.sidebar.project.open')"
@@ -58,10 +64,12 @@
       name="project-collapse"
       @before-enter="handleCollapseBeforeEnter"
       @enter="handleCollapseEnter"
-      @after-enter="handleCollapseAfterEnter"
+      @after-enter="finishCollapseTransition"
+      @enter-cancelled="finishCollapseTransition"
       @before-leave="handleCollapseBeforeLeave"
       @leave="handleCollapseLeave"
-      @after-leave="handleCollapseAfterLeave"
+      @after-leave="finishCollapseTransition"
+      @leave-cancelled="finishCollapseTransition"
     >
       <div v-if="hasMountedConversations" v-show="isExpanded" class="project-collapse">
         <div class="project-collapse-inner">
@@ -80,12 +88,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { FolderOpenIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect, IconButton, onNextFrame, type IconButtonExposed } from '@linnya/renderer-ui';
 import SidebarChatList from '@/domains/conversation/ui/SidebarChatList.vue';
+import {
+  ConversationRunStatusIndicator,
+  useConversationRunStatus,
+} from '@/domains/conversation/features/conversation-activity';
 import type { Project } from '@/domains/workspace/store';
 import {
   buildProjectMenuOptions,
@@ -119,6 +131,9 @@ const moreButton = ref<IconButtonExposed | null>(null);
 const moreButtonRef = computed<HTMLButtonElement | null>(() => moreButton.value?.element ?? null);
 const hasMountedConversations = ref(props.isExpanded === true);
 const { workspaceMessage } = useWorkspaceLocalization();
+const runStatus = useConversationRunStatus();
+/* 收起时行尾只给项目里最需要处理的一种状态，悬停记号看数量；展开后由各对话行自己显示。 */
+const collapsedRunSummary = computed(() => (props.isExpanded ? null : runStatus.projectSummaryOf(props.project.id)));
 const projectMenuOptions = computed<ProjectMenuOption[]>(() => buildProjectMenuOptions(props.project, workspaceMessage));
 const {
   dropdownRef,
@@ -177,8 +192,30 @@ function getCollapseElement(element: Element): HTMLElement | null {
   return element instanceof HTMLElement ? element : null;
 }
 
-function handleCollapseBeforeEnter(element: Element): void {
+/*
+ * 中文说明：侧栏滚动层收到 start 后会冻结滚动范围，只有收到 end 才解除。
+ * 动画被打断、或动画中途整组卸载（例如展开后立刻进入项目）时 after-* 不会触发，
+ * 所以 start / end 必须成对：取消钩子和卸载都要补发 end，否则滚动层的预留内边距会永久留下。
+ */
+let isCollapseTransitionPending = false;
+
+function startCollapseTransition(): void {
+  isCollapseTransitionPending = true;
   emit('collapse-transition-start');
+}
+
+function finishCollapseTransition(element: Element): void {
+  const collapseElement = getCollapseElement(element);
+  if (collapseElement) {
+    collapseElement.style.height = '';
+  }
+  if (!isCollapseTransitionPending) return;
+  isCollapseTransitionPending = false;
+  emit('collapse-transition-end');
+}
+
+function handleCollapseBeforeEnter(element: Element): void {
+  startCollapseTransition();
   const collapseElement = getCollapseElement(element);
   if (!collapseElement) return;
 
@@ -195,16 +232,8 @@ function handleCollapseEnter(element: Element): void {
   });
 }
 
-function handleCollapseAfterEnter(element: Element): void {
-  const collapseElement = getCollapseElement(element);
-  if (collapseElement) {
-    collapseElement.style.height = '';
-  }
-  emit('collapse-transition-end');
-}
-
 function handleCollapseBeforeLeave(element: Element): void {
-  emit('collapse-transition-start');
+  startCollapseTransition();
   const collapseElement = getCollapseElement(element);
   if (!collapseElement) return;
 
@@ -223,13 +252,11 @@ function handleCollapseLeave(element: Element): void {
   collapseElement.style.height = '0px';
 }
 
-function handleCollapseAfterLeave(element: Element): void {
-  const collapseElement = getCollapseElement(element);
-  if (collapseElement) {
-    collapseElement.style.height = '';
-  }
+onBeforeUnmount(() => {
+  if (!isCollapseTransitionPending) return;
+  isCollapseTransitionPending = false;
   emit('collapse-transition-end');
-}
+});
 
 watch(
   () => props.isExpanded,

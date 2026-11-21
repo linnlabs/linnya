@@ -24,7 +24,6 @@ export * from './commands';
 
 export * from './todo';
 export * from './tool_output';
-export * from './deep_research';
 
 // 导出 Skill 工具
 export * from './skill';

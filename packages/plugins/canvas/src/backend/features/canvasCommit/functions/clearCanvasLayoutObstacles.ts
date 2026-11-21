@@ -4,36 +4,59 @@ import {
   type CanvasElementId,
   type CanvasRectangle,
 } from '../../../../shared';
-import type { CanvasCommitPlan } from '../definitions/canvasCommit';
+import type { CanvasWorkingPlan } from '../definitions/canvasWorkingPlan';
 import { findCanvasPlacement } from './findCanvasPlacement';
+import { amendCanvasPlanElement } from './fitCanvasPlanSections';
+
+const cardsOf = (plan: CanvasWorkingPlan): CanvasCard[] =>
+  [...plan.elements.values()].flatMap(row => (row.element.type === 'edge' ? [] : [row.element]));
+
+/**
+ * 排布移动了分区时，计算位置恰好等于当前位置的成员不会有更新，但它仍按分区内的相对位置摆好，
+ * 与分区是一体：不能当作障碍把整组推开，整组平移时也要随分区一起走。锁定或正在编辑的成员不跟随。
+ */
+function readAttachedMembers(
+  plan: CanvasWorkingPlan,
+  cards: readonly CanvasCard[],
+  ids: ReadonlySet<CanvasElementId>
+) {
+  const parents = new Set(cards.flatMap(card => (card.parentId ? [card.parentId] : [])));
+  const editing = new Set(
+    plan.claims.flatMap(claim => (claim.fields.length ? [claim.elementId] : []))
+  );
+  const attached = cardsOf(plan).filter(
+    card =>
+      !ids.has(card.id) &&
+      card.parentId !== null &&
+      (ids.has(card.parentId) || parents.has(card.parentId)) &&
+      !card.locked &&
+      !editing.has(card.id)
+  );
+  return {
+    parents,
+    attached: new Set(attached.map(card => card.id)),
+    following: attached.filter(card => card.parentId !== null && ids.has(card.parentId)),
+  };
+}
 
 /** Worker只决定相对布局；事务内避开期间新出现、锁定或编辑跳过的实际障碍。 */
 export function clearCanvasLayoutObstacles(
-  plan: CanvasCommitPlan,
+  plan: CanvasWorkingPlan,
   groups: readonly (readonly CanvasElementId[])[],
-  reserved: readonly CanvasRectangle[],
   movedIds: ReadonlySet<CanvasElementId>
-): CanvasCommitPlan {
-  const rows = new Map(plan.state.elements.map(row => [row.element.id, row]));
-  const changes = [...plan.changes];
-  const eligible = movedIds;
-  const lastChanges = new Map(plan.changes.map((change, index) => [change.id, index]));
+): void {
   const relocated = new Set<CanvasElementId>();
   for (const group of groups) {
-    const ids = new Set(group.filter(id => eligible.has(id)));
-    const cards = [...rows.values()].flatMap(row =>
-      row.element.type !== 'edge' && ids.has(row.element.id) ? [row.element] : []
-    );
+    const ids = new Set(group.filter(id => movedIds.has(id)));
+    const cards = cardsOf(plan).filter(card => ids.has(card.id));
     const bounds = canvasBounds(cards);
     if (!bounds) continue;
     // 成员所在的分区包着成员本身，不能当作要避开的障碍。
-    const parents = new Set(cards.flatMap(card => (card.parentId ? [card.parentId] : [])));
-    const occupied: CanvasRectangle[] = [...rows.values()].flatMap(row =>
-      row.element.type !== 'edge' && !ids.has(row.element.id) && !parents.has(row.element.id)
-        ? [row.element]
-        : []
+    const { parents, attached, following } = readAttachedMembers(plan, cards, ids);
+    const occupied: CanvasRectangle[] = cardsOf(plan).filter(
+      card => !ids.has(card.id) && !parents.has(card.id) && !attached.has(card.id)
     );
-    occupied.push(...reserved);
+    occupied.push(...plan.reservedRectangles);
     const candidates = (['right', 'left', 'bottom', 'top'] as const).map(side =>
       findCanvasPlacement({ ...bounds, origin: bounds, near: undefined, side, occupied })
     );
@@ -45,24 +68,17 @@ export function clearCanvasLayoutObstacles(
       dy = candidates[0].y - bounds.y;
     if (dx === 0 && dy === 0) continue;
     for (const card of cards) {
-      const row = rows.get(card.id);
-      if (!row) throw new Error('canvas_layout_card_missing');
-      const element: CanvasCard = { ...card, x: card.x + dx, y: card.y + dy };
-      rows.set(card.id, { ...row, element });
+      if (!plan.changes.some(change => change.id === card.id && change.after))
+        throw new Error('canvas_layout_change_missing');
+      amendCanvasPlanElement(plan, card.id, { x: card.x + dx, y: card.y + dy }, ['x', 'y']);
       relocated.add(card.id);
-      const last = lastChanges.get(card.id);
-      if (last === undefined) throw new Error('canvas_layout_change_missing');
-      changes[last] = { ...changes[last], after: element };
     }
+    for (const card of following)
+      amendCanvasPlanElement(plan, card.id, { x: card.x + dx, y: card.y + dy }, ['x', 'y']);
   }
-  return {
-    ...plan,
-    state: { ...plan.state, elements: [...rows.values()] },
-    changes,
-    results: plan.results.map(result =>
-      result.id && relocated.has(result.id) && result.status === 'applied'
-        ? { ...result, reason: 'placed_around_current_obstacle' }
-        : result
-    ),
-  };
+  plan.results = plan.results.map(result =>
+    result.id && relocated.has(result.id) && result.status === 'applied'
+      ? { ...result, reason: 'placed_around_current_obstacle' }
+      : result
+  );
 }

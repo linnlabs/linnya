@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ConversationActivitySchema } from './conversation-activity';
 
 /**
  * 项目概览的对话页：列出项目里的对话、每个对话改过的文档与占用的存储。
@@ -70,6 +71,32 @@ export const ProjectConversationsSchema = z.object({
   project_id: Id,
   conversations: z.array(ProjectConversationRowSchema),
 }).strict();
+
+export const ProjectConversationQueryOptionsSchema = z.object({
+  query: z.string().trim().max(200).default(''),
+  agent: Id.nullable().default(null),
+  activity: z.enum(['any', 'today', 'week', 'month']).default('any'),
+  documents: z.enum(['any', 'changed', 'unchanged']).default('any'),
+  sort: z.enum(['title', 'turns', 'documents', 'activity', 'storage']).default('activity'),
+  direction: z.enum(['asc', 'desc']).default('desc'),
+}).strict();
+
+export const ProjectConversationsQueryRequestSchema = z.object({
+  project_id: Id,
+  ...ProjectConversationQueryOptionsSchema.shape,
+}).strict();
+
+export const ProjectConversationsQuerySchema = z.object({
+  project_id: Id,
+  conversations: z.array(ProjectConversationRowSchema),
+  excerpts: z.record(z.string(), z.string().nullable()),
+  activities: z.record(z.string(), ConversationActivitySchema),
+  truncated: z.boolean(),
+}).strict();
+
+export type ProjectConversationQueryOptions = z.infer<typeof ProjectConversationQueryOptionsSchema>;
+export type ProjectConversationsQueryRequest = z.infer<typeof ProjectConversationsQueryRequestSchema>;
+export type ProjectConversationsQuery = z.infer<typeof ProjectConversationsQuerySchema>;
 
 export const ProjectConversationChangedDocumentSchema = z.object({
   document_id: Id,

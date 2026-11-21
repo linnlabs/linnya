@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { appendFileSync, closeSync, openSync, realpathSync, rmSync, statSync } from 'node:fs';
+import { appendFileSync, closeSync, copyFileSync, existsSync, openSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,13 +12,14 @@ import { connectCdp, evaluate, findPage, waitFor } from '../infrastructure/cdpCl
 import { readOptional, readSession, writeSession } from '../infrastructure/instanceStore.mjs';
 import { startIsolatedRenderer } from '../infrastructure/rendererProcess.mjs';
 import { observeTree, readProcessTable, sameProcess, stopOwnedTree } from '../infrastructure/processTree.mjs';
+import { APP_LAUNCHER_HANDLES_RELAUNCH_ENV, APP_LAUNCHER_RELAUNCH_EXIT_CODE } from '../../build-session/definitions/appLauncherRelaunch.mjs';
 
 const require = createRequire(import.meta.url);
 const root = process.argv[2];
 const session = readSession(root);
 const { options, logs } = session;
 const toy = options.entry === 'toy';
-const stopping = Promise.withResolvers();
+let stopping = Promise.withResolvers();
 const owned = new Map();
 const ownedChildren = new Map();
 let electron;
@@ -27,6 +28,7 @@ let cdp;
 let sequence = 0;
 let stopReason;
 let desktopExit;
+let relaunches = 0;
 
 function requestStop(reason) {
   stopReason ??= reason;
@@ -86,6 +88,8 @@ async function connectRenderer() {
 
 function startElectron() {
   const profile = join(root, 'user-data');
+  // 由 Desktop 请求的重开保留上一份日志，方便核对重开前发生了什么。
+  if (relaunches > 0 && existsSync(logs.desktop)) copyFileSync(logs.desktop, `${logs.desktop}.before-relaunch-${relaunches}`);
   const desktop = openSync(logs.desktop, 'w', 0o600);
   const entry = toy ? fileURLToPath(new URL('../acceptance/toy-app', import.meta.url)) : join(repoRoot, 'dist/main/main.cjs');
   const bootstrap = fileURLToPath(new URL('../runtime/electronBootstrap.cjs', import.meta.url));
@@ -116,6 +120,7 @@ function startElectron() {
         LINNYA_PLUGIN_BACKEND_LOADING: 'disk', LINNYA_PLUGIN_DIRECT_DIRS: '',
         LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: resolveDevelopmentBackendDirectories(plugins),
         VITE_DEV_SERVER_URL: session.viteUrl,
+        [APP_LAUNCHER_HANDLES_RELAUNCH_ENV]: '1',
         LINNYA_PROBE_WINDOW: options.window,
         LINNYA_PROBE_WIDTH: String(options.width), LINNYA_PROBE_HEIGHT: String(options.height),
       },
@@ -124,7 +129,10 @@ function startElectron() {
     closeSync(desktop);
   }
   electron.once('error', error => { desktopExit = error.message; requestStop('electron-error'); });
-  electron.once('exit', (code, signal) => { desktopExit = code ?? signal; requestStop('electron-exit'); });
+  electron.once('exit', (code, signal) => {
+    desktopExit = code ?? signal;
+    requestStop(code === APP_LAUNCHER_RELAUNCH_EXIT_CODE ? 'electron-relaunch' : 'electron-exit');
+  });
 }
 
 function observeChildren() {
@@ -141,30 +149,7 @@ function observeChildren() {
   }
 }
 
-let failure;
-try {
-  const supervisor = readProcessTable().get(process.pid);
-  save({ supervisor });
-  appendFileSync(logs.renderer, '', { mode: 0o600, flag: 'w' });
-  if (toy) {
-    const { createServer } = await import('node:http');
-    const server = createServer((_request, response) => {
-      response.setHeader('Content-Type', 'text/html; charset=utf-8');
-      response.end(readOptional(fileURLToPath(new URL('../acceptance/toy-app/page.html', import.meta.url))));
-    });
-    await new Promise((resolve, reject) => {
-      server.once('error', reject);
-      server.listen(session.preferredRendererPort ?? 0, '127.0.0.1', resolve);
-    });
-    vite = { close: () => new Promise(resolve => server.close(resolve)) };
-    save({ viteUrl: `http://127.0.0.1:${server.address().port}` });
-  } else {
-    vite = await startIsolatedRenderer({
-      cacheDir: join(root, 'vite-cache'), logPath: logs.vite, port: session.preferredRendererPort,
-    });
-    void vite.exited.then(() => requestStop('vite-exit'));
-    save({ viteUrl: vite.url, vite: readProcessTable().get(vite.child.pid) });
-  }
+async function launchDesktop() {
   checkStarting();
   startElectron();
   const identity = await waitFor(() => {
@@ -212,11 +197,49 @@ try {
     state: 'ready', apiPort: ready.apiPort, viewport, sizeAdjusted, readyMs: Date.now() - session.startedAt,
     ...(ready.plugins === 'failed' && { pluginLoad: 'failed' }),
   });
-  while (!stopReason) {
-    observeChildren();
-    if (Date.now() - statSync(join(root, 'last-used')).mtimeMs > idleMs) requestStop('idle');
-    if (!cdp.connected && !stopReason) await connectRenderer().catch(error => console.error(error.message));
-    await Promise.race([stopping.promise, sleep(750)]);
+}
+
+let failure;
+try {
+  const supervisor = readProcessTable().get(process.pid);
+  save({ supervisor });
+  appendFileSync(logs.renderer, '', { mode: 0o600, flag: 'w' });
+  if (toy) {
+    const { createServer } = await import('node:http');
+    const server = createServer((_request, response) => {
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(readOptional(fileURLToPath(new URL('../acceptance/toy-app/page.html', import.meta.url))));
+    });
+    await new Promise((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(session.preferredRendererPort ?? 0, '127.0.0.1', resolve);
+    });
+    vite = { close: () => new Promise(resolve => server.close(resolve)) };
+    save({ viteUrl: `http://127.0.0.1:${server.address().port}` });
+  } else {
+    vite = await startIsolatedRenderer({
+      cacheDir: join(root, 'vite-cache'), logPath: logs.vite, port: session.preferredRendererPort,
+    });
+    void vite.exited.then(() => requestStop('vite-exit'));
+    save({ viteUrl: vite.url, vite: readProcessTable().get(vite.child.pid) });
+  }
+  await launchDesktop();
+  while (true) {
+    while (!stopReason) {
+      observeChildren();
+      if (Date.now() - statSync(join(root, 'last-used')).mtimeMs > idleMs) requestStop('idle');
+      if (!cdp.connected && !stopReason) await connectRenderer().catch(error => console.error(error.message));
+      await Promise.race([stopping.promise, sleep(750)]);
+    }
+    if (stopReason !== 'electron-relaunch') break;
+    // Desktop 请求由启动器重开（后台服务停止后恢复）：保留 Vite，只重启 Electron。
+    relaunches += 1;
+    stopReason = undefined;
+    stopping = Promise.withResolvers();
+    cdp?.close();
+    owned.clear();
+    save({ state: 'starting', relaunches });
+    await launchDesktop();
   }
   if (stopReason === 'vite-exit') throw new ProbeError('START_FAILED', 'Vite 已提前结束', logs.vite);
   if (stopReason === 'electron-error' || stopReason === 'electron-exit') {

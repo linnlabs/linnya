@@ -31,7 +31,9 @@
       >
         <span :class="['selected-value', classNames.selectedValue]">{{ displayValue }}</span>
       </slot>
+      <!-- 空插槽会回退到默认箭头，只放图标的触发器用 hideArrow 去掉箭头。 -->
       <slot
+        v-if="!hideArrow"
         name="arrow-icon"
         :is-open="computedIsOpen"
       >
@@ -51,6 +53,7 @@
         <div 
           v-if="computedIsOpen" 
           ref="optionsRef"
+          data-linnya-scrollbar="large"
           :class="[
             'custom-select__options',
             'select-options', 
@@ -282,6 +285,8 @@ interface CustomSelectProps {
   variant?: CustomSelectVariant;
   disabled?: boolean;
   bordered?: boolean;
+  /** 不显示下拉箭头，例如只放一个图标的紧凑触发器。 */
+  hideArrow?: boolean;
   externalTriggerRef?: DropdownElementReference;
   enableKeyboardNav?: boolean;
   usePortalToBody?: boolean;
@@ -309,6 +314,7 @@ const props = withDefaults(defineProps<CustomSelectProps>(), {
   variant: 'default',
   disabled: false,
   bordered: true,
+  hideArrow: false,
   externalTriggerRef: null,
   enableKeyboardNav: false,
   usePortalToBody: false,

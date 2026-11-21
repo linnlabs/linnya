@@ -9,7 +9,6 @@ import {
 import { workspaceToolClasses } from '../../../../tools/workspace';
 import { todoToolClasses } from '../../../../tools/todo';
 import { toolOutputToolClasses } from '../../../../tools/tool_output';
-import { deepResearchToolClasses } from '../../../../tools/deep_research';
 import { webSearchToolClasses, webReadToolClasses, imageSearchToolClasses } from '../../../../tools/web';
 import { skillToolClasses } from '../../../../tools/skill';
 import { ProcessTool, ShellTool } from '../../../../tools/commands';
@@ -32,7 +31,6 @@ export const legacyBuiltinToolClasses = [
   ...subagentToolClasses,
   ...subrunBatchToolClasses,
   ...toolOutputToolClasses,
-  ...deepResearchToolClasses,
   ...webSearchToolClasses,
   ...webReadToolClasses,
   ...imageSearchToolClasses,

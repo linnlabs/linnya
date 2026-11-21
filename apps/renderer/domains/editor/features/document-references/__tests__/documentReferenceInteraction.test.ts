@@ -1,6 +1,14 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { nextTick } from 'vue';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Editor } from '@tiptap/core';
+import {
+  clearLocalizationRegistryForTest,
+  registerMessageCatalogs,
+  useLocalizationStore,
+} from '@app/localization';
+import { EDITOR_MESSAGE_CATALOG } from '../../../definitions/editorMessageCatalog';
 import { createMarkdownDocumentExtensions } from '@linnya/markdown-document-core';
 import type { DocumentReferencePresentation } from '@app/schemas';
 import { createDocumentReferenceExtension } from '../orchestration/createDocumentReferenceExtension';
@@ -9,8 +17,11 @@ import { createDocumentReferenceSuggestionView } from '../ui/createDocumentRefer
 import type { DocumentReferenceUiPort } from '../definitions/documentReferenceUi';
 import { createEditorFocusBoundary } from '@/domains/editor/shared/focus';
 
+beforeEach(() => setActivePinia(createPinia()));
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
+  clearLocalizationRegistryForTest();
   document.body.replaceChildren();
 });
 const presentation: DocumentReferencePresentation = {
@@ -237,5 +248,89 @@ describe('document reference interaction', () => {
     view.destroy();
     expect(leave).not.toHaveBeenCalled();
     expect(document.querySelector('.document-reference-preview')).toBeNull();
+  });
+  it('英文界面显示英文标签与预览名称，不再出现中文', async () => {
+    registerMessageCatalogs(EDITOR_MESSAGE_CATALOG);
+    useLocalizationStore().setCurrentLocale('en-US');
+    vi.useFakeTimers();
+    const f = port();
+    vi.mocked(f.value.resolve).mockResolvedValue({ ...presentation, title: null });
+    const view = createDocumentReferenceNodeView('target', 'ref', f.value);
+    document.body.append(view.dom);
+    expect(view.dom.textContent).toBe('Document');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(view.dom.textContent).toBe('Document');
+    vi.mocked(f.value.resolve).mockResolvedValue({ ...presentation, title: null, status: 'deleted' });
+    f.changed.current();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(view.dom.textContent).toBe('Unavailable');
+    vi.mocked(f.value.resolve).mockResolvedValue({ ...presentation, title: null, status: 'outside_project' });
+    f.changed.current();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(view.dom.textContent).toBe('Document in another project');
+    expect(view.dom.getAttribute('aria-label')).toBe('Document in another project');
+    view.dom.dispatchEvent(new MouseEvent('mouseenter'));
+    await vi.advanceTimersByTimeAsync(400);
+    expect(document.querySelector('.document-reference-preview')?.getAttribute('aria-label')).toBe(
+      'Document preview'
+    );
+    view.destroy();
+  });
+  it('切换界面语言时，已显示的通用标签随之重画；销毁后不再更新', async () => {
+    registerMessageCatalogs(EDITOR_MESSAGE_CATALOG);
+    const f = port();
+    vi.mocked(f.value.resolve).mockResolvedValue({ ...presentation, title: null, status: 'deleted' });
+    const view = createDocumentReferenceNodeView('target', 'ref', f.value);
+    document.body.append(view.dom);
+    await vi.waitFor(() => expect(view.dom.textContent).toBe('已失效'));
+    const store = useLocalizationStore();
+    store.setCurrentLocale('en-US');
+    await nextTick();
+    expect(view.dom.textContent).toBe('Unavailable');
+    expect(view.dom.getAttribute('aria-label')).toBe('Unavailable');
+    store.setCurrentLocale('zh-CN');
+    await nextTick();
+    expect(view.dom.textContent).toBe('已失效');
+    view.destroy();
+    store.setCurrentLocale('en-US');
+    await nextTick();
+    expect(view.dom.textContent).toBe('已失效');
+  });
+  it('预览挂载失败时浮层里给可读提示，内部原因只交给日志', async () => {
+    vi.useFakeTimers();
+    const f = port(),
+      failure = new Error('IPC channel workspace:preview rejected: SQLITE_BUSY');
+    vi.mocked(f.value.mountPreview).mockRejectedValue(failure);
+    const view = createDocumentReferenceNodeView('target', 'ref', f.value);
+    document.body.append(view.dom);
+    view.dom.dispatchEvent(new MouseEvent('mouseenter'));
+    await vi.advanceTimersByTimeAsync(400);
+    const panel = document.querySelector('.document-reference-preview');
+    expect(panel?.textContent).toBe('无法预览此文档，请稍后重试。');
+    expect(panel?.textContent).not.toContain('SQLITE_BUSY');
+    expect(f.value.report).toHaveBeenCalledWith(failure);
+    view.destroy();
+  });
+  it('预览浮层已被关闭或被取消时，迟到的失败不再往里写提示', async () => {
+    vi.useFakeTimers();
+    const f = port();
+    let fail: (reason: Error) => void = () => {};
+    vi.mocked(f.value.mountPreview).mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          fail = reject;
+        })
+    );
+    const view = createDocumentReferenceNodeView('target', 'ref', f.value);
+    document.body.append(view.dom);
+    view.dom.dispatchEvent(new MouseEvent('mouseenter'));
+    await vi.advanceTimersByTimeAsync(400);
+    view.dom.dispatchEvent(new MouseEvent('mouseleave'));
+    await vi.advanceTimersByTimeAsync(200);
+    fail(new Error('late'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(document.querySelector('.document-reference-preview')).toBeNull();
+    expect(f.value.report).not.toHaveBeenCalled();
+    view.destroy();
   });
 });

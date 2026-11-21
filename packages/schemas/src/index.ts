@@ -210,6 +210,7 @@ export * from './project-saved-filters';
 export * from './semantic-schema-management';
 export * from './history-time';
 export * from './project-conversations';
+export * from './conversation-activity';
 export * from './project-mutation-events';
 
 export * from './document-references';

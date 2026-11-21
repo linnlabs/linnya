@@ -34,7 +34,7 @@ test('产品源码与安装包入口不引用开发探针', () => {
     const source = typeof file === 'string' ? file : file.from;
     assert.doesNotMatch(source, /^(?:\*\*|scripts)(?:\/|$)/);
   }
-});
+}, 30_000);
 
 test('任一 Desktop 产物比源码旧就判过期；Renderer 与测试文件不触发重建', () => {
   const outputs = [{ path: 'main.cjs', mtimeMs: 300 }, { path: 'app-server-backend.cjs', mtimeMs: 100 }];

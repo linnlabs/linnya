@@ -278,27 +278,6 @@
   flex: 1;
 }
 
-.kb-settings-tab .project-column::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.kb-settings-tab .project-column::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.kb-settings-tab .project-column::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.kb-settings-tab .project-column::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}
-
 .kb-settings-tab .project-column .project-empty {
   display: flex;
   align-items: center;

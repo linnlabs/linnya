@@ -91,31 +91,6 @@
   max-height: 300px;
 }
 
-.review-agent-creator-view .field-control::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.review-agent-creator-view .field-control::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.review-agent-creator-view .field-control::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: var(--radius-sm);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.review-agent-creator-view .field-control:hover::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-}
-
-.review-agent-creator-view .field-control::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
 .review-agent-creator-view .field-control:hover {
   border-color: var(--color-accent);
 }

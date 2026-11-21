@@ -38,19 +38,6 @@
   padding: var(--space-1);
 }
 
-.symbol-palette .palette-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.symbol-palette .palette-content::-webkit-scrollbar-thumb {
-  background-color: var(--color-border-default);
-  border-radius: var(--radius-full);
-}
-
-.symbol-palette .palette-content::-webkit-scrollbar-track {
-  background-color: transparent;
-}
-
 .symbol-palette .symbol-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));

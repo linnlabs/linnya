@@ -10,6 +10,7 @@ import type {
   WorkspacePresentationPort,
 } from '@plugin/slides/backend-coordinator';
 import type { DeckSpec } from '@plugin/slides/shared';
+import { DECK_LAYOUT_VERSION } from '@plugin/slides/shared/deckSpec';
 import type {
   DeckAssemblerPort,
   PptxReaderPort,
@@ -118,6 +119,8 @@ describe('PptCoordinator', () => {
         artifact: { state: 'ready', revisionId: 'revision-7', buffer: Buffer.from('stored-pptx') },
       })),
       savePresentationPptxArtifact: vi.fn(async () => true),
+      getPresentationLayoutState: vi.fn(async () => ({ currentRevisionId: 'revision-7', layoutVersion: DECK_LAYOUT_VERSION })),
+      refreshPresentationDeckSpec: vi.fn(async () => true),
       getRevisionSource: vi.fn(async () => null),
       listRevisions: vi.fn(async () => []),
       saveTemplate: vi.fn(async () => 'template-1'),

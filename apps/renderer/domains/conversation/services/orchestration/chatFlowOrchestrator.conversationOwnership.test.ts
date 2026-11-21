@@ -2,7 +2,13 @@ import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AssistantServiceCallbacks, Conversation } from '../../types';
 import type { InvokeAssistantParams } from '../assistantService';
-import { ConversationAgentIds, PromptKeys, type ConversationUserInputCommittedEvent } from '@app/schemas';
+import {
+  ConversationAgentIds,
+  ConversationSelectedAgentIdSchema,
+  type ConversationUserInputCommittedEvent,
+} from '@app/schemas';
+
+const RETIRED_LEADER_AGENT_ID = ConversationSelectedAgentIdSchema.parse('deep_research_leader');
 import { consumeQuotaOrNull } from '../../../../shared/quota/quotaClient';
 
 vi.mock('../../features/client-notices/orchestration/clientNoticeApi', () => ({ sendClientNotice: vi.fn(async () => { throw new Error('notice offline'); }) }));
@@ -221,13 +227,13 @@ describe('chatFlowOrchestrator edit and resend', () => {
   });
 
   it.each(['saved-choice', 'explicit-prompt'] as const)(
-    '旧研究入口 %s 拒绝发送，保留选择且不扣配额或写入消息',
+    '已退役旧研究入口 %s 拒绝发送，保留选择且不扣配额或写入消息',
     async (entry) => {
-      if (entry === 'saved-choice') harness.conversationA.selectedAgentId = ConversationAgentIds.DEEP_RESEARCH;
+      if (entry === 'saved-choice') harness.conversationA.selectedAgentId = RETIRED_LEADER_AGENT_ID;
       const before = harness.conversationA.selectedAgentId;
       const committed = await useChatFlowOrchestrator().sendChatMessage(
         { text: '继续研究' },
-        entry === 'explicit-prompt' ? { promptKey: PromptKeys.DEEP_RESEARCH_LEADER } : {},
+        entry === 'explicit-prompt' ? { promptKey: 'deep_research_experimental' } : {},
       );
       expect(committed).toBe(false);
       expect(harness.assistantStore.setError).toHaveBeenCalledWith('conversation.flow.deepResearch.unavailable');
@@ -238,8 +244,8 @@ describe('chatFlowOrchestrator edit and resend', () => {
     },
   );
 
-  it('旧研究重新生成在取消暂停运行之前拒绝，保留历史与原选择', async () => {
-    harness.conversationA.selectedAgentId = ConversationAgentIds.DEEP_RESEARCH;
+  it('已退役旧研究重新生成在取消暂停运行之前拒绝，保留历史与原选择', async () => {
+    harness.conversationA.selectedAgentId = RETIRED_LEADER_AGENT_ID;
     harness.interactiveRunStore.snapshotFor.mockReturnValue({ status: 'paused' });
     const messages = [...harness.conversationA.messages];
     const committed = await useChatFlowOrchestrator().regenerateResponseForMessage({ messageId: 'message-a' });
@@ -248,7 +254,7 @@ describe('chatFlowOrchestrator edit and resend', () => {
     expect(harness.invokeAssistantMock).not.toHaveBeenCalled();
     expect(harness.assistantStore.commitUserInput).not.toHaveBeenCalled();
     expect(harness.conversationA.messages).toEqual(messages);
-    expect(harness.conversationA.selectedAgentId).toBe(ConversationAgentIds.DEEP_RESEARCH);
+    expect(harness.conversationA.selectedAgentId).toBe(RETIRED_LEADER_AGENT_ID);
   });
 
   it('新版研究选择通过普通发送链传给 Host，不触发旧入口拒绝或配额', async () => {

@@ -23,6 +23,7 @@ import {
 } from '../../history/orchestration/deleteConversationsFromHistory';
 import { useConversationSelectionStore } from '../../history/store/conversationSelectionStore';
 import { useConversationTitleFeature } from '../../features/conversation-title';
+import { useConversationRunStatus } from '../../features/conversation-activity';
 import { isSidebarConversationActive } from '../../functions/sidebarConversationSelection';
 import {
   createSingleConversationBatchSelection,
@@ -158,6 +159,15 @@ export function useSidebarChatList(
       expanded: isConversationListExpanded.value,
     })
   ));
+
+  const runStatus = useConversationRunStatus();
+  // 右侧面板的历史下拉不显示行首位，运行状态也只在侧栏列表出现。
+  const runStatusOf = (conversationId: string) => (
+    variant.value === 'sidebar' ? runStatus.presentationOf(conversationId) : null
+  );
+  const runTrailingTextOf = (conversationId: string): string | null => (
+    variant.value === 'sidebar' ? runStatus.trailingTextOf(conversationId) : null
+  );
 
   const isConversationActive = (conversationId: string): boolean => (
     isSidebarConversationActive({
@@ -723,5 +733,7 @@ export function useSidebarChatList(
     handleContextMenuSelect,
     handleClickConversation,
     handleSelectConversation,
+    runStatusOf,
+    runTrailingTextOf,
   };
 }

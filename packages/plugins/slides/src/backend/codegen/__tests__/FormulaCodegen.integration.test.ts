@@ -31,7 +31,9 @@ slide.add(createFormula({
 const sentence = createText([
   { text: '能量关系 ', style: { bold: true, color: '#A13456' } },
   { formula: 'E = mc^2', style: { fontSize: 24, color: '#1F2A44' } },
-  { text: ' 保持在同一段。' },
+  { text: ' 保持在同一段。\\n换行后 ' },
+  { formula: 'a^2', style: { fontSize: 24, color: '#1F2A44' } },
+  { text: ' 仍在第二段。' },
 ]);
 sentence.position = 'absolute';
 sentence.x = 1;
@@ -118,6 +120,12 @@ describe('Formula codegen integration', () => {
     expect(slideXml).toContain('能量关系 ');
     expect(slideXml).toContain('A13456');
     expect(slideXml).toContain(' 保持在同一段。');
+    // 换行后紧跟的公式与其后文字必须留在同一段，且每段都带行距。
+    const paragraphs = slideXml.split('<a:p>').slice(1).map(part => part.split('</a:p>')[0] ?? '');
+    const secondParagraph = paragraphs.find(paragraph => paragraph.includes('换行后 '));
+    expect(secondParagraph).toContain('<a14:m');
+    expect(secondParagraph).toContain(' 仍在第二段。');
+    expect(secondParagraph).toContain('<a:lnSpc>');
     expect(slideXml).not.toContain('LINNYA_FORMULA_');
     expect(slideXml).not.toContain('\\frac');
   });

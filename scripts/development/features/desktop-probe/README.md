@@ -10,7 +10,7 @@
 2. 已知 ID 时用 `pnpm -s probe open <ID>` 直接打开对话、文档或项目，省去在界面里逐层寻找。`pnpm -s probe snapshot --grep 设置` 只看相关几行；知道文字时目标直接写 `text=设置`。按返回的 `@n…` 执行 `click`、`hover`，或用 `shot @n… --pad 8` 截取局部。页面刷新后重新取引用。
 3. `pnpm -s probe wait --selector '.project-overview' --state visible` 等业务条件成立。看动画结束画面用 `wait --settle`，看过程用 `record`。
 4. 拖动验收用 `drag --by 80,0 --steps 8 --sample '<求值表达式>' --expect-follow x`。表达式返回分隔线或目标的 CSS 像素坐标，探针比较每一步的值与指针位移。
-5. `pnpm -s probe logs --level error` 查看 Renderer 报错。验证完成用 `stop` 保留日志和截图，或用 `stop --clean` 回收整个探针实例。
+5. `pnpm -s probe logs --level error` 查看 Renderer 报错。验证完成用 `stop` 保留日志和截图，或用 `stop --clean` 回收整个探针实例；忘了清理也不会无限堆积，见下文“实例回收”。
 
 `pnpm -s probe` 每次输出一行 JSON。失败返回非零退出码与 `error.code`、`message`、必要时的 `hint`；命令或选项写错时 `hint` 给出最接近的写法（如 `list` → `status --all`、`screenshot` → `shot`）。截图、完整快照和录制数据用 `artifacts[].path` 打开。短命令可直接用 `node scripts/development/features/desktop-probe/bin/probe.mjs`，省去 pnpm 启动时间。
 
@@ -22,6 +22,7 @@
 | `up --clone-data <目录>` | 停止状态下把一份 Linnya 数据目录（含 `workspace/workspace.sqlite`，如 `_dev_data`）以 APFS 写时复制克隆进实例，替换实例原有 Workspace。同卷克隆瞬时完成，几乎不占空间。只读源目录，不打开源库。跳过基准结果、对话工作目录、日志、缓存与运行锁。模型凭据在 Electron profile 里，不随数据克隆，克隆实例里用户配置的模型显示缺少凭据；需要真实模型的 Agent 试跑在日常开发实例里做。源库正在写入时在副本上做 `quick_check`，不一致则报 `CLONE_INCONSISTENT`。 |
 | `open` | `open <ID>` 只读查询实例数据库，识别对话、文档或项目，再通过 Vite 取 Renderer 正在使用的导航端口打开，与用户点击走同一条链。`open assistant` 回到 Linnya 助手，`open <ID> --overview` 打开该对象所在项目的概览。仅 `--mode dev`。 |
 | `status` / `stop` | `status --all` 列出当前 worktree 的实例。状态含 CDP、Vite、API 端口、日志位置和 `workspaceDb`（实例 Workspace 数据库，只读核对数据时用；`up` 结果里也有）。停止会先关 Desktop 再关 Vite。 |
+| `prune` | `prune [--older-than <天数>] [--dry-run]` 手动回收当前 worktree 的旧实例，规则与 `up` 的自动回收相同，默认 3 天；`--dry-run` 只列出将回收的实例、归档与锁文件，不改动。作用于整个 worktree，不接受 `--name`。输出一行 JSON：`removed`（实例、闲置天数、占用字节、归档路径）、`kept`（保留原因 `recent` / `running` / `lock-held` / `starting` / `target`）、`expiredArtifacts`、`staleLocks`、`reclaimedBytes`、`errors`。 |
 | `snapshot` / `shot` | `snapshot --within @n25 --all --max-lines 100 --json`。`--grep <文字>` 按名称和值过滤（不分大小写，含正文），`--role button,link` 按角色过滤，两者只保留命中项及其祖先链。截图接受引用、`--selector <css>` 或 `--clip x,y,w,h`，支持 `--pad`、`--device`、`--jpeg`。默认 1× CSS 像素。`timing` 分别报告等待画面稳定和 CDP 抓取的耗时。 |
 | `fonts` | `fonts @n25 text=workspace` 返回每个目标的声明字体栈、字号字重与 Chromium 实际排版字体（`CSS.getPlatformFontsForNode`）。首个具名字体未生效时 `firstDeclaredUsed` 为 `false`，常见于字体名写错或系统匹配不到。 |
 | `click` / `dblclick` / `hover` | 目标为 `@n25`、`text=<文字>`、`--selector <css>` 或 `--at x,y`。`text=` 取直接含该文字的可见元素，文字被拆成多段时取包含它的最内层可见元素；多个命中时依次优先文字完全相同的、指针点得到的、弹出层（菜单、列表框、对话框、fixed 层）里的。仍分不出就报 `AMBIGUOUS_TARGET`，`hint` 列出候选的 `@n` 引用，不静默挑第一个。选择器和引用会检查可见性、位置稳定和命中。坐标用于明确指定像素位置。 |
@@ -38,13 +39,23 @@
 
 `--name` 适用于每条命令。负数参数使用等号，如 `--by=-60,0`。默认隐藏模式仍使用真实页面绘制和 CDP 可信输入。探针主窗口禁用 Electron 后台绘制节流，保证长时间隐藏后仍能快速抓图。隐藏和 `inactive` 模式会模拟应用收到的窗口焦点通知，悬停提示可用，系统前台应用保持不变。`--window inactive` 适合人眼旁观，`visible` 允许正常激活窗口。系统菜单、原生对话框、输入法候选窗和系统拖放需走对应的桌面验收。
 
+## 实例回收
+
+`stop` 默认保留实例的全部隔离数据（Workspace 副本、Qdrant、user-data、Vite 缓存、日志、artifacts），便于复盘；一个实例常有数百 MB 到 1 GB。为避免旧实例无限堆积，`up` 启动前会顺带回收**当前 worktree** 里的旧实例，`prune` 命令按同样规则手动执行：
+
+- **回收对象**：已停止、且距最近一次使用超过 3 天的实例。最近一次使用取 `last-used` 标记、`stoppedAt`、`startedAt` 中最晚的一个。其他 worktree 的实例不在回收范围（实例目录按 worktree 路径分开）。
+- **保留条件（不动）**：会话里登记的看管器、Desktop、Vite 或子进程身份仍存活；任一进程的命令行仍指向该实例目录；生命周期锁被持有（正在 `up` / `stop`）；看管进程正在发布启动身份；本次 `up` 要启动的实例。这些检查与 `stop` 判断归属用同一套进程身份（`ps` 启动时间加命令行）与 SQLite 文件锁，并且在取得该实例的锁之后才读进程表，所以检查与删除之间不会有人启动它。进程状态无法确认（例如读进程表失败）时保留实例。
+- **保留证据**：删除实例前把它的 `artifacts/`（截图与验收证据，体积很小）移到同一实例根目录下的 `_artifacts/<实例名>-<日期>/`；归档失败则不删这个实例。归档保留 30 天，到期由下一次回收清理。验收记录里写的 `<实例>/artifacts/` 路径在回收后改到这里找。
+- **无主锁文件**：没有实例目录、也没有人持锁的 `*.lock.sqlite`（例如 `stop --clean` 之后留下的）一并清理；共享的 `build.lock.sqlite` 与近期创建的锁文件不动。
+- **失败不影响启动**：自动回收出错只在 `up` 结果的 `pruned.errors` 里报告；有变化时 `up` 的输出多一个 `pruned`（回收的实例名、字节数、清理的归档与锁数），没有变化时输出不变。
+
 ## 归属与测试
 
-常驻看管进程保存状态、Renderer 日志和进程身份，CLI 每次临时连入。Vite 单独运行，因为它的信号处理会结束所在进程。Desktop 以本次启动的就绪日志为准，CDP 只开放本机回环。停止只向探针记录且身份匹配的进程发送信号。Desktop 收到停止信号后先把 localStorage 等写盘，再按正常退出流程关闭，重启后界面偏好仍在。30 分钟没有命令时实例自动退出。临时目录只对当前用户开放，CDP 可被同一台机器上的其他进程访问，应用仅供开发验证。
+常驻看管进程保存状态、Renderer 日志和进程身份，CLI 每次临时连入。Vite 单独运行，因为它的信号处理会结束所在进程。Desktop 以本次启动的就绪日志为准，CDP 只开放本机回环。停止只向探针记录且身份匹配的进程发送信号。Desktop 收到停止信号后先把 localStorage 等写盘，再按正常退出流程关闭，重启后界面偏好仍在。30 分钟没有命令时实例自动退出。Desktop 以退出码 75 结束表示请求重开（后台服务意外停止后的自动重开，见 [App Server Health](../../../../src/electron-main/app-server-health/README.md#谁来重开)）：看管器保留 Vite，重新启动 Electron，状态里的 `relaunches` 加一，上一份 Desktop 日志另存为 `desktop.log.before-relaunch-<N>`。重开时正在执行的命令会报 CDP 连接已关闭，等 `status` 回到 `ready` 再继续。临时目录只对当前用户开放，CDP 可被同一台机器上的其他进程访问，应用仅供开发验证。
 
 看管器意外退出后，`stop` 会清理身份匹配的 Electron、Vite 和已记录的子进程，`up` 也可清理后复用原隔离数据。启动和停止由 Node 内置 SQLite 的文件锁互斥，持锁命令退出后由系统释放。旁边的 `*.lock/owner.json` 记录持锁 PID 与启动时间，强制退出留下的记录会在下次接管时更新。
 
-- `pnpm run test:desktop-probe` 运行输入合同和隔离边界检查，再跑玩具 Electron。验收含可信点击、中文输入、编辑快捷键、逐步拖动、延迟两帧的过渡、定格一致性、看管器强杀及锁接管。
+- `pnpm run test:desktop-probe` 运行输入合同、隔离边界和实例回收（假实例目录、真实进程身份与 SQLite 锁）检查，再跑玩具 Electron。验收含可信点击、中文输入、编辑快捷键、逐步拖动、延迟两帧的过渡、定格一致性、看管器强杀及锁接管。
 - `pnpm run test:desktop-probe:real` 在真实 Linnya 验证知识库跳转、项目夹具、真实筛选菜单定格、隐藏及 inactive 的设置提示、逐步列宽、Slides、实际窗口尺寸和异常退出后的进程清理。
 - `pnpm run test:desktop-probe:idle` 让真实隐藏实例空闲 10 分钟，验证帧率、定时器和截图。
 - 场景脚本复用 CDP 与动作模块。交互回归继续走真实应用的正式导航、读写和持久化合同。
@@ -59,3 +70,18 @@
 `accept` 始终新建自己的实例，不接受 `--name`，不会复用当前调试会话。
 扩展业务场景时复用 `acceptance()` 和 `evidence.check()`，把真实断言放入具名步骤，将测试和外部夹具列入 testFiles。
 不要把动作执行成功等同于用户行为正确，也不从页面截图推断数据库写入成功。
+
+## 只读附着日常 dev:electron 会话
+
+`pnpm run dev:electron` 启动时只在 `127.0.0.1` 开一个随机 CDP 端口，并把端口与 Renderer 地址写进本实例 profile 的 `_dev_electron/runtime/dev-attach.json`（会话结束即删除；`LINNYA_DEV_INSTANCE_ROOT` 覆盖时一起移动）。主窗口 Renderer 控制台同时按天写入 `_dev_data/logs/renderer-YYYY-MM-DD.jsonl`，格式与探针实例的 `renderer.jsonl` 相同。
+
+在同一 worktree 加 `--attach` 即可只读查看用户正在用的会话，不接管、不重启、不关闭：
+
+| 命令 | 用途 |
+| --- | --- |
+| `status --attach` | 端口、Renderer 地址、日志路径 |
+| `snapshot --attach` / `shot --attach` | 当前界面快照与截图（产物在 `_dev_electron/runtime/probe-attach/artifacts`） |
+| `eval --attach '<表达式>'` / `wait --attach …` / `fonts --attach …` | Renderer 只读求值与等待 |
+| `logs --attach [--level error] [--grep …]` | 主窗口 Renderer 控制台 |
+
+点击、输入、拖动、重载、打开对象、启停等会改动用户会话的命令不接受 `--attach`，`eval --main` 也不开放；需要操作时在隔离实例里复现（`pnpm -s probe up --clone-data _dev_data`）。CDP 端口任何本机进程都能连接，所以只在源码开发会话开放，打包产物不开。已在运行的旧会话要重启一次才会写出附着信息。

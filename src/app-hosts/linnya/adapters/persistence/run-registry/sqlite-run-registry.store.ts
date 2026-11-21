@@ -3,6 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type { runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import { RunIdSchema } from '@linnlabs/linnkit/contracts';
 import { CONVERSATION_RUN_KIND } from '../definitions/conversationRunKind';
+import { notifyRunActivityChanged } from '../run-activity-signal';
 
 type ListRunsFilter = runSupervisor.ListRunsFilter;
 type RunRecord = runSupervisor.RunRecord;
@@ -28,6 +29,8 @@ interface RunRow {
 
 interface ExistingRunOwnerRow {
   conversation_id: string;
+  status: string;
+  paused_ts: number | null;
 }
 
 interface RunFactsRow {
@@ -172,7 +175,7 @@ export class SQLiteRunRegistryStore implements RunRegistryStore {
     const existingOwner = this.db
       .prepare(
         `
-      SELECT conversation_id
+      SELECT conversation_id, status, paused_ts
       FROM runs
       WHERE id = ?
       LIMIT 1
@@ -241,6 +244,14 @@ export class SQLiteRunRegistryStore implements RunRegistryStore {
         toJson(record.errorIfAny),
         toJson(record.metadata)
       );
+    // 运行中会反复保存当前节点和迭代数；只有新运行、状态或暂停收口变化才影响对话的运行状态。
+    if (
+      !existingOwner
+      || existingOwner.status !== record.status
+      || existingOwner.paused_ts !== (record.pausedAt ?? null)
+    ) {
+      notifyRunActivityChanged(this.db, record.conversationId);
+    }
   }
 
   async load(runId: string): Promise<RunRecord | null> {
@@ -360,6 +371,9 @@ export class SQLiteRunRegistryStore implements RunRegistryStore {
         `[SQLiteRunRegistryStore] run ${runId} owns ${fact.source} facts; delete it through the EventStore history workflow`
       );
     }
-    this.db.prepare('DELETE FROM runs WHERE id = ?').run(runId);
+    const deleted = this.db
+      .prepare('DELETE FROM runs WHERE id = ? RETURNING conversation_id')
+      .get(runId) as { conversation_id: string } | undefined;
+    if (deleted) notifyRunActivityChanged(this.db, deleted.conversation_id);
   }
 }

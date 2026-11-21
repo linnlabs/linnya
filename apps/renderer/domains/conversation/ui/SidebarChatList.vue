@@ -38,6 +38,7 @@
           'is-cleanup-pending': conversation.cleanup_pending === true,
           'is-renaming': editingConversationId === conversation.conversation_id,
           'is-history-reveal-pulse': isHistoryRevealPulseActive,
+          'is-awaiting-user': runTrailingTextOf(conversation.conversation_id) !== null,
         }"
         role="button"
         :tabindex="isConversationUnavailable(conversation) ? -1 : 0"
@@ -48,8 +49,13 @@
         @keydown.space.prevent="handleSelectConversation(conversation)"
       >
         <span class="workspace-sidebar-row-icon chat-list-status-slot">
+          <ConversationRunStatusIndicator
+            v-if="runStatusOf(conversation.conversation_id)"
+            :status="runStatusOf(conversation.conversation_id)!.status"
+            :label="runStatusOf(conversation.conversation_id)!.label"
+          />
           <PinIcon
-            v-if="conversation.is_pinned === true"
+            v-else-if="conversation.is_pinned === true"
             class="chat-list-status-icon"
           />
         </span>
@@ -65,12 +71,13 @@
         <span
           v-if="editingConversationId !== conversation.conversation_id"
           class="chat-list-time"
+          :class="{ 'is-run-flag': runTrailingTextOf(conversation.conversation_id) !== null }"
         >
           {{ isConversationDeleting(conversation.conversation_id)
             ? conversationMessage('conversation.sidebar.deleting')
             : conversation.cleanup_pending === true
               ? conversationMessage('conversation.sidebar.cleanupPending')
-              : formatListTime(conversation.last_event_at) }}
+              : runTrailingTextOf(conversation.conversation_id) ?? formatListTime(conversation.last_event_at) }}
         </span>
         <span
           v-if="editingConversationId !== conversation.conversation_id"
@@ -159,6 +166,7 @@ import type { SidebarChatListEmit, SidebarChatListProps } from './sidebarChatLis
 import { PinIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect, IconButton, InlineTextInput, SkeletonRows } from '@linnya/renderer-ui';
+import { ConversationRunStatusIndicator } from '../features/conversation-activity';
 const props = defineProps<SidebarChatListProps>();
 const emit = defineEmits<SidebarChatListEmit>();
 
@@ -203,5 +211,7 @@ const {
   handleContextMenuSelect,
   handleClickConversation,
   handleSelectConversation,
+  runStatusOf,
+  runTrailingTextOf,
 } = useSidebarChatList(props, emit);
 </script>

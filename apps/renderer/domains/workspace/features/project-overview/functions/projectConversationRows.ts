@@ -1,10 +1,7 @@
 import type { ProjectConversationRow, ProjectConversationStorage, ProjectConversationSubagent } from '@app/schemas';
 import type {
   ProjectConversationColumnId,
-  ProjectConversationFilters,
-  ProjectConversationSort,
 } from '../definitions/projectConversations';
-import { modifiedRangeStart } from './projectOverviewRows';
 
 /** 对话占用的总字节。过程文件不可读时只计可读的部分。 */
 export function projectConversationStorageBytes(storage: ProjectConversationStorage): number {
@@ -19,28 +16,6 @@ export function projectConversationsTotalBytes(rows: readonly ProjectConversatio
     total += projectConversationStorageBytes(row.storage);
   }
   return total;
-}
-
-export interface ProjectConversationFilterContext {
-  readonly now: Date;
-  /** 搜索命中的对话；没有搜索时为 null。 */
-  readonly matches: ReadonlyMap<string, string | null> | null;
-}
-
-export function filterProjectConversationRows(
-  rows: readonly ProjectConversationRow[],
-  filters: ProjectConversationFilters,
-  context: ProjectConversationFilterContext,
-): ProjectConversationRow[] {
-  const activityStart = modifiedRangeStart(filters.activity, context.now);
-  return rows.filter(row => {
-    if (context.matches !== null && !context.matches.has(row.conversation_id)) return false;
-    if (filters.agent !== null && !row.replied_agent_ids.some(agentId => (agentId ?? '') === filters.agent)) return false;
-    if (activityStart !== null && row.last_event_at < activityStart) return false;
-    if (filters.documents === 'changed' && row.changed_document_count === 0) return false;
-    if (filters.documents === 'unchanged' && row.changed_document_count > 0) return false;
-    return true;
-  });
 }
 
 /** 筛选菜单里的 Agent：这些对话里回复过的全部 Agent，默认 Agent 记为空字符串（与筛选值一致）。 */
@@ -65,46 +40,18 @@ export function projectConversationSubrunCount(subagents: readonly ProjectConver
   return subagents.reduce((total, item) => total + item.run_count, 0);
 }
 
-export interface ProjectConversationSortLabels {
-  readonly title: (row: ProjectConversationRow) => string;
-  readonly agent: (row: ProjectConversationRow) => string;
-}
-
 const collator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });
 
-/**
- * 置顶的对话始终在前（与侧栏一致），各自组内按所选列排序。
- * 没测过占用的对话按占用排序时排在最后，与升降序无关。
- */
-export function sortProjectConversationRows(
+/** 本地化 Agent 名称属于 Renderer 展示；其余排序和全部筛选归 Host 查询。 */
+export function sortProjectConversationsByAgentLabel(
   rows: readonly ProjectConversationRow[],
-  sort: ProjectConversationSort,
-  labels: ProjectConversationSortLabels,
+  direction: 'asc' | 'desc',
+  label: (row: ProjectConversationRow) => string,
 ): ProjectConversationRow[] {
-  const direction = sort.direction === 'asc' ? 1 : -1;
-  const value = (row: ProjectConversationRow): string | number | null => {
-    switch (sort.key) {
-      case 'title': return labels.title(row);
-      case 'agent': return labels.agent(row);
-      case 'turns': return row.turn_count;
-      case 'documents': return row.changed_document_count;
-      case 'activity': return row.last_event_at;
-      case 'storage': return row.storage === null ? null : projectConversationStorageBytes(row.storage);
-    }
-  };
   return [...rows].sort((left, right) => {
     if (left.is_pinned !== right.is_pinned) return left.is_pinned ? -1 : 1;
-    const a = value(left);
-    const b = value(right);
-    if (a === null || b === null) {
-      if (a !== b) return a === null ? 1 : -1;
-    } else {
-      const compared = typeof a === 'string' || typeof b === 'string'
-        ? collator.compare(String(a), String(b))
-        : a - b;
-      if (compared !== 0) return compared * direction;
-    }
-    return right.last_event_at - left.last_event_at || left.conversation_id.localeCompare(right.conversation_id);
+    return collator.compare(label(left), label(right)) * (direction === 'asc' ? 1 : -1)
+      || right.last_event_at - left.last_event_at || left.conversation_id.localeCompare(right.conversation_id);
   });
 }
 

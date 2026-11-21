@@ -88,7 +88,7 @@ export function typecheckCodegenSource(
   const diagnostics = [
     ...program.getSyntacticDiagnostics(programUserSf),
     ...program.getSemanticDiagnostics(programUserSf),
-  ];
+  ].filter((diagnostic) => !isLegacyRunLineSpacingDiagnostic(typescript, diagnostic));
 
   const formatted = formatDiagnosticsForAi(diagnostics, {
     sourceText: source,
@@ -101,6 +101,21 @@ export function typecheckCodegenSource(
     message: formatted.message,
     records: formatted.records,
   };
+}
+
+/**
+ * 富文本 run 的 `style.lineSpacing` 已从接口删除（行距是段落属性，run 上没有对应），
+ * 但旧稿里残留的写法必须还能写入：类型检查放过它，由 compose 解析忽略并给 parse 提示。
+ * 只放过这一个字段；run style 里的其他未知字段仍然报错。
+ */
+const LEGACY_RUN_LINE_SPACING_MESSAGE = "'lineSpacing' does not exist in type 'LayoutTextRunStyleInput'";
+
+function isLegacyRunLineSpacingDiagnostic(
+  typescript: SlidesTypeScriptRuntime,
+  diagnostic: ts.Diagnostic,
+): boolean {
+  return typescript.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+    .includes(LEGACY_RUN_LINE_SPACING_MESSAGE);
 }
 
 function buildCompilerOptions(typescript: SlidesTypeScriptRuntime): ts.CompilerOptions {

@@ -11,6 +11,7 @@ import {
 import { getMainWindow } from '../../window-manager';
 
 const PLUGIN_RENDERER_PUSH_CHANNEL = 'plugin:push';
+const CONVERSATION_ACTIVITY_CHANGED_CHANNEL = 'conversation-activity-changed';
 
 function publishToRenderer(channel: string, payload: unknown): void {
   for (const window of BrowserWindow.getAllWindows()) {
@@ -57,6 +58,10 @@ export function createElectronBackendRendererIntegrationPort(): BackendRendererI
     },
     publishPluginDataChanged(pluginId) {
       publishToRenderer('plugins-data-changed', pluginId);
+    },
+    publishConversationActivityChanged() {
+      // 每个窗口都有侧栏，全部发送；只是失效信号，数据仍由各窗口读 HTTP。
+      publishToRenderer(CONVERSATION_ACTIVITY_CHANGED_CHANNEL, undefined);
     },
   };
   return Object.freeze(port);

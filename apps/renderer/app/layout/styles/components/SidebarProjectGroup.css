@@ -73,3 +73,9 @@
   opacity: 0;
   transform: translateY(-4px);
 }
+
+/* 收起项目的运行状态记号；悬停时行右侧已为两个操作按钮留出空间，记号随之左移，仍可悬停看数量。 */
+.workspace-sidebar .sidebar-project-group .project-row-run-summary {
+  display: inline-flex;
+  flex: none;
+}

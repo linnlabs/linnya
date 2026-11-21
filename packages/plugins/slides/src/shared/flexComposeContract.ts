@@ -16,7 +16,8 @@ export type LayoutTextLineSpacingInput =
   | { kind: 'multiple'; value: number }
   | { kind: 'exactPt'; value: number };
 
-export interface LayoutTextStyleInput {
+/** 富文本 run 的局部样式。行距是段落属性，run 上没有对应；整框行距写在 Text 的 lineHeight 上。 */
+export interface LayoutTextRunStyleInput {
   fontSize?: number;
   fontFamily?: string;
   bold?: boolean;
@@ -25,14 +26,18 @@ export interface LayoutTextStyleInput {
   color?: string;
   align?: LayoutTextAlign;
   valign?: LayoutVerticalAlign;
-  lineSpacing?: LayoutTextLineSpacingInput;
   /** 字间距，单位为 pt。 */
   letterSpacing?: number;
 }
 
+/** 整段文字或表格单元格的样式：在 run 样式之上多一个行距。 */
+export interface LayoutTextStyleInput extends LayoutTextRunStyleInput {
+  lineSpacing?: LayoutTextLineSpacingInput;
+}
+
 export interface LayoutPlainTextRun {
   text: string;
-  style?: LayoutTextStyleInput;
+  style?: LayoutTextRunStyleInput;
 }
 
 export interface LayoutFormulaTextRun {
@@ -40,7 +45,7 @@ export interface LayoutFormulaTextRun {
     latex: string;
     altText?: string;
   };
-  style?: LayoutTextStyleInput;
+  style?: LayoutTextRunStyleInput;
 }
 
 export type LayoutTextRun = LayoutPlainTextRun | LayoutFormulaTextRun;
@@ -457,7 +462,7 @@ export interface LayoutTextConfig extends FlexProps, LayoutAuthoringTargetConfig
    * verticalAlign 的 top/middle/bottom 控制列组靠右/居中/靠左。不支持行内公式。
    */
   writingMode?: 'horizontal-tb' | 'vertical-rl';
-  /** 行高倍数；富文本 run 的精确行距使用 style.lineSpacing。 */
+  /** 行高倍数。行距是段落属性，对整个文本框生效；富文本 run 不单独设置行距。 */
   lineHeight?: number;
   /** 字间距，单位为 pt。 */
   letterSpacing?: number;

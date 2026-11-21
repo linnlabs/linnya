@@ -12,6 +12,11 @@ export const PLUGIN_CONTRIBUTION_MESSAGE_FALLBACKS = {
   'plugins.contribution.agentChoice.deepResearch.pillText': '研究',
   'plugins.contribution.agentChoice.deepResearch.ariaLabel':
     '查找资料、独立复核并交付可编辑的研究文章。',
+  'plugins.contribution.documentType.recovery.enable': '启用插件',
+  'plugins.contribution.documentType.recovery.openStore': '前往插件商店',
+  'plugins.contribution.workspaceReference.error.outsideProject': '引用不在当前项目，无法预览或打开',
+  'plugins.contribution.workspaceReference.error.pluginUnavailable': '需要启用或安装对应插件，请在预览中操作',
+  'plugins.contribution.workspaceReference.error.unavailable': '引用文档当前不可访问',
 } as const satisfies Readonly<Record<PluginContributionMessageKey, string>>;
 
 export const PLUGIN_CONTRIBUTION_MESSAGE_CATALOG: MessageCatalogContribution = {
@@ -29,6 +34,14 @@ export const PLUGIN_CONTRIBUTION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'plugins.contribution.agentChoice.deepResearch.pillText': 'Research',
       'plugins.contribution.agentChoice.deepResearch.ariaLabel':
         'Investigate sources, independently review, and deliver an editable article.',
+      'plugins.contribution.documentType.recovery.enable': 'Enable plugin',
+      'plugins.contribution.documentType.recovery.openStore': 'Go to plugin store',
+      'plugins.contribution.workspaceReference.error.outsideProject':
+        'This reference is not in the current project, so it cannot be previewed or opened.',
+      'plugins.contribution.workspaceReference.error.pluginUnavailable':
+        'Enable or install the required plugin from the preview to open this document.',
+      'plugins.contribution.workspaceReference.error.unavailable':
+        'The referenced document is not accessible right now.',
     },
   },
 };

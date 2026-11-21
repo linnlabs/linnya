@@ -58,7 +58,7 @@ export const GALLERY_SECTIONS = [
   {
     id: 'candidates',
     label: '候选组件（计划中）',
-    description: '计划进入 renderer-ui 的组件原型：侧栏 Agent 运行状态、徽标、空状态、折叠区与加载。原型在画廊 prototypes/，还不是包内组件。',
+    description: '计划进入 renderer-ui 的组件原型：徽标、空状态、折叠区与加载（侧栏运行状态见“方向对比：侧栏运行状态”）。原型在画廊 prototypes/，还不是包内组件。',
   },
   {
     id: 'document-top',
@@ -79,6 +79,16 @@ export const GALLERY_SECTIONS = [
     id: 'scheduled-tasks',
     label: '方向对比：定时任务',
     description: '定时任务的入口、任务视图与运行记录、新建表单、Agent 建任务后的提示和相关确认框。用真实组件拼的示意，不是真实页面。',
+  },
+  {
+    id: 'sidebar-run-status',
+    label: '方向对比：侧栏运行状态',
+    description: '侧栏对话行的 Agent 运行状态：进行中、待回答、待审批、已中断（打开后消失）、无运行。现状、推荐做法与 11-17 候选并排，另有置顶、正在看、悬停、收起项目和窄侧栏的情形。用真实组件拼的示意，不是真实页面。',
+  },
+  {
+    id: 'backend-recovery',
+    label: '方向对比：后台中断兜底',
+    description: '后台服务意外停止、没有响应、工具不响应停止时的界面：自动重启中、已恢复、反复停止、无响应确认与停止期限。用真实组件拼的示意，不是真实页面。',
   },
   {
     id: 'conversation-steering',

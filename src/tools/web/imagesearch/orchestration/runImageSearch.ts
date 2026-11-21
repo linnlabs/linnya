@@ -13,6 +13,7 @@ import { searchCommonsImages } from '../../../../infra/adapters/image-search/com
 import { OPENVERSE_MAX_PAGE_SIZE, searchOpenverseImages } from '../../../../infra/adapters/image-search/openverseImageSearchAdapter';
 import { getWebFailureKind, WebFailureError } from '../../shared/webFailure';
 import { getImageSourceRegistry, type ImageSourceRegistry } from '../../shared/images/imageSourceRegistry';
+import { resolveToolConversationId } from 'src/app-hosts/linnya/adapters/tools/conversation-scope';
 import { commonsCandidate, openverseCandidate, type ImageCandidateDraft } from '../functions/toImageCandidates';
 import { buildImageSearchObservation } from '../functions/buildImageSearchObservation';
 
@@ -42,7 +43,7 @@ function interleave(lists: readonly (readonly ImageCandidateDraft[])[], limit: n
 
 export async function runImageSearch(
   args: ImageSearchArgs,
-  context: Pick<ToolContext, 'abortSignal'>,
+  context: Pick<ToolContext, 'abortSignal' | 'conversationId'>,
   dependencies: ImageSearchDependencies = {},
 ): Promise<string> {
   const limit = args.max_results ?? IMAGE_SEARCH_DEFAULT_RESULTS;
@@ -102,7 +103,9 @@ export async function runImageSearch(
   }));
 
   const registry = dependencies.imageSources ?? getImageSourceRegistry();
-  for (const candidate of candidates) {
+  // 来源只记在当前对话下；没有对话身份（独立基准）时不记，之后下载如实说明来源未记录。
+  const imageScope = resolveToolConversationId(context);
+  if (imageScope) for (const candidate of candidates) {
     const record = {
       foundVia: 'image_search' as const,
       pageUrl: candidate.page_url,
@@ -112,8 +115,8 @@ export async function runImageSearch(
       license: candidate.license,
       attribution: candidate.attribution,
     };
-    registry.remember(candidate.download_url, record);
-    registry.remember(candidate.image_url, record);
+    registry.remember(imageScope, candidate.download_url, record);
+    registry.remember(imageScope, candidate.image_url, record);
   }
 
   logger.info('[runImageSearch] 完成', {

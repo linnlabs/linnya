@@ -1,5 +1,5 @@
 import { onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue';
-import type { ProjectConversationDetail } from '@app/schemas';
+import type { ProjectConversationDetail, ProjectConversationDetailRequest } from '@app/schemas';
 import { readProjectConversationDetail } from '../infrastructure/projectConversationsGateway';
 
 /**
@@ -7,8 +7,7 @@ import { readProjectConversationDetail } from '../infrastructure/projectConversa
  * 重读期间保留旧内容，不闪空。
  */
 export function useProjectConversationDetail(
-  projectId: Readonly<Ref<string>>,
-  conversationId: Readonly<Ref<string | null>>,
+  selection: Readonly<Ref<ProjectConversationDetailRequest | null>>,
   revision: Readonly<Ref<number>>,
 ) {
   const detail = shallowRef<ProjectConversationDetail | null>(null);
@@ -29,18 +28,18 @@ export function useProjectConversationDetail(
     }
   }
 
-  watch([projectId, conversationId, revision], ([target, id], previous) => {
+  watch([selection, revision], ([target], previous) => {
     generation += 1;
-    if (!id) {
+    if (!target) {
       detail.value = null;
       status.value = 'idle';
       return;
     }
-    if (previous?.[1] !== id || previous[0] !== target) {
+    if (previous?.[0]?.conversation_id !== target.conversation_id || previous[0]?.project_id !== target.project_id) {
       detail.value = null;
       status.value = 'loading';
     }
-    void load(target, id, generation);
+    void load(target.project_id, target.conversation_id, generation);
   }, { immediate: true });
 
   onScopeDispose(() => { generation += 1; });

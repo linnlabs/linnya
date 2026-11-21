@@ -84,7 +84,10 @@ const licenseTerms = computed(() => {
   ].join(conversationMessage('conversation.tool.webReadImage.termsSeparator'));
 });
 
-/** 没有许可记录时，给出网页上的署名或版权声明原文；都没有就提示引用前看来源网页。 */
+/**
+ * 没有许可记录时，给出网页上的署名或版权声明原文，并标明这是网页声称、未核实；
+ * 都没有就提示引用前看来源网页。
+ */
 const notes = computed(() => {
   const value = data.value;
   if (value.kind !== 'image' || value.license) return [];
@@ -92,6 +95,7 @@ const notes = computed(() => {
     ...(value.credit ? [conversationMessage('conversation.tool.webReadImage.credit', { credit: value.credit })] : []),
     ...(value.pageRights ? [conversationMessage('conversation.tool.webReadImage.pageRights', { text: value.pageRights })] : []),
   ];
-  return items.length > 0 ? items : [conversationMessage('conversation.tool.webReadImage.noLicense')];
+  if (items.length === 0) return [conversationMessage('conversation.tool.webReadImage.noLicense')];
+  return value.pageClaim ? [...items, conversationMessage('conversation.tool.webReadImage.pageClaimUnverified')] : items;
 });
 </script>

@@ -19,6 +19,17 @@ export function cancelDocumentHistoryPanelRequest(documentId: string): void {
   if (pendingRequest.value?.documentId === documentId) pendingRequest.value = null;
 }
 
+/** 当前文档是否有尚未过期的待打开请求；不消费，供等待文档表面就绪时查询。 */
+export function hasDocumentHistoryPanelRequest(activeDocumentId: string | null): boolean {
+  const request = pendingRequest.value;
+  if (!request) return false;
+  if (Date.now() - request.requestedAt > REQUEST_TTL_MS) {
+    pendingRequest.value = null;
+    return false;
+  }
+  return request.documentId === activeDocumentId;
+}
+
 /** 顶栏在当前文档就是目标、且该类型提供历史时消费请求；一次请求只打开一次。 */
 export function consumeDocumentHistoryPanelRequest(activeDocumentId: string | null): boolean {
   const request = pendingRequest.value;

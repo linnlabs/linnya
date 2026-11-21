@@ -431,7 +431,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 | 会话物理文件 | `src/domains/conversation-files/README.md` |
 | 文档 Citation 阅读 | `src/domains/citation/features/document-read/README.md` |
 | Evidence 边界 | `src/domains/evidence/README.md` |
-| Deep Research | `src/app-hosts/linnya/agent-registry/agents/deep_research/README.md` |
+| Deep Research | `src/app-hosts/linnya/application/research/README.md` |
 | Linnkit 语义边界 | [独立 Linnkit 仓的定位文档](https://github.com/linnlabs/linnkit/blob/main/docs/framework/00-vision-and-positioning.md) |
 | SharedMemory 退役 | `docs/shared-memory-canonical-identity-refactor.md` |
 | TaskState | `src/domains/task-state/README.md` |

@@ -9,10 +9,11 @@
       <div
         v-if="ptyScreen"
         class="command-execution-card__output command-execution-card__output--pty"
+        data-linnya-scrollbar="small"
       >
         <PtyTerminalScreen :screen="ptyScreen" />
       </div>
-      <pre v-else-if="data.observation" class="command-execution-card__output">{{
+      <pre v-else-if="data.observation" class="command-execution-card__output" data-linnya-scrollbar="small">{{
         data.observation
       }}</pre>
 

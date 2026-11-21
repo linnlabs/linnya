@@ -54,6 +54,7 @@ export const PANEL_MESSAGES = defineCanvasMessages(
     'canvas.history.budget':
       '版本历史占用 {used} MiB，超出 {budget} MiB 软预算 {over} MiB。最近5个版本和仍在使用的资源会继续保留。',
     'canvas.detail.label': '所选文档只读详情',
+    'canvas.detail.mountFailed': '无法预览此文档，请稍后重试。',
     'canvas.view.pickImage': '选择图片',
     'canvas.view.imageAlt': '画布图片',
     'canvas.view.discardTitle': '使用已保存内容？',
@@ -147,6 +148,7 @@ export const PANEL_MESSAGES = defineCanvasMessages(
     'canvas.history.budget':
       'Version history uses {used} MiB, which is {over} MiB over the {budget} MiB soft budget. The latest 5 versions and resources still in use are kept.',
     'canvas.detail.label': 'Read-only details of the selected document',
+    'canvas.detail.mountFailed': 'Unable to preview this document. Please try again later.',
     'canvas.view.pickImage': 'Choose image',
     'canvas.view.imageAlt': 'Canvas image',
     'canvas.view.discardTitle': 'Use saved content?',

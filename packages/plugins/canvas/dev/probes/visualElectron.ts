@@ -4,6 +4,7 @@ import { verifyCanvasLineVisual } from './verifyCanvasLineVisual';
 import { readCanvasVisualDiagnostic, runCanvasSoftwareLineDiagnostic } from './visualDiagnostic';
 import { verifySceneVisual } from './sceneVisualElectron';
 import { readCanvasLinePalette } from '../../src/shared';
+import { CANVAS_BITMAP_FADE_MS } from '../../src/renderer/kernel/definitions/canvasBitmapFade';
 import { app, BrowserWindow, nativeImage, type WebContents, type Event, type RenderProcessGoneDetails } from 'electron';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -133,12 +134,17 @@ async function verifyFade(win: BrowserWindow) {
       assertSoftwareVisualSampling(initial.sampling);
       if (initial.reduced || initial.stats.fadingCards || initial.stats.retiringBytes || !initial.rendered || initial.oldWidth || initial.stats.bitmapBytes !== 28000
         || initial.uploaded.firstPresented || initial.uploaded.rendered) throw new Error('software_texture_replacement_not_immediate_or_draw_not_observed');
-    } else if (initial.stats.fadingCards !== 1 || initial.rendered || initial.oldWidth !== 50 || initial.stats.bitmapBytes !== 35000) throw new Error('real_texture_fade_did_not_start');
+    } else if (initial.stats.fadingCards !== 1 || initial.rendered || initial.oldWidth !== 50 || initial.stats.bitmapBytes !== 35000) {
+      const { elapsed, rendered, oldWidth, stats: { fadingCards, bitmapBytes } } = initial;
+      throw new Error(`real_texture_fade_did_not_start:${JSON.stringify({ elapsed, fadingCards, rendered, oldWidth, bitmapBytes })}`);
+    }
     await recordCanvasVisualFrame({ ...initial, data: initial.image }, output, 'fade-initial', softwareProfile);
     await new Promise(resolve => setTimeout(resolve, 40));
     const middle = fadeState.parse(await evaluate(win.webContents, 'window.readCanvasFadeVisualProbe()'));
     const middleFrame = await recordCanvasVisualFrame({ ...middle, data: middle.image }, output, 'fade-midpoint', softwareProfile);
-    const mixed = visualFrameColor(middleFrame, { x: 100, y: 80 }), midpointObserved = middle.stats.fadingCards > 0;
+    // 只在确实处于淡入中段时验混色：过了七成，旧图的红色已不足以越过阈值，慢机上截到的末段不算中点。
+    const mixed = visualFrameColor(middleFrame, { x: 100, y: 80 }),
+      midpointObserved = middle.stats.fadingCards > 0 && middle.elapsed <= CANVAS_BITMAP_FADE_MS * 0.7;
     if (softwareProfile && (middle.stats.fadingCards || middle.stats.retiringBytes || !middle.rendered
       || mixed.r !== 32 || mixed.g !== 48 || mixed.b !== 224)) throw new Error('software_texture_final_blue_pixels_missing');
     if (midpointObserved && (mixed.r < 50 || mixed.b < 60)) throw new Error(`fade_midpoint_pixels_missing:${JSON.stringify(mixed)}`);

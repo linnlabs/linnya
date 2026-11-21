@@ -10,7 +10,7 @@
     @close="onClose"
   >
     <div class="alert-dialog-content">
-      <div class="alert-dialog-copy">
+      <div class="alert-dialog-copy" data-linnya-scrollbar="large">
         <div class="alert-dialog-message">{{ message }}</div>
 
         <div

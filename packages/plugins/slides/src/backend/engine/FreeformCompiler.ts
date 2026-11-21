@@ -50,6 +50,8 @@ export class FreeformCompiler extends FreeformPptxCompiler {
       formulaPlan,
       shapeTextPlan,
       declaredThemeFonts: deckSpec.theme?.fonts,
+      markEastAsianRunLanguage: true,
+      renumberObjectIds: true,
     });
   }
 }

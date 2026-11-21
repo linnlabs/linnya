@@ -61,21 +61,6 @@ export function planCanvasCommit(input: {
     }
   }
   if (plan.changes.length) fitCanvasPlanSections(plan);
-  validateCanvasGraph([...plan.elements.values()].map(row => row.element));
-  const result: CanvasCommitPlan = {
-    origin: input.origin,
-    changes: plan.changes,
-    results: plan.results,
-    refs: plan.refs,
-    state: {
-      ...input.state,
-      sequence: input.state.sequence + (plan.changes.length > 0 ? 1 : 0),
-      nextCard: plan.nextCard,
-      nextEdge: plan.nextEdge,
-      elements: [...plan.elements.values()],
-      deletedOrigins: input.state.deletedOrigins,
-    },
-  };
   const groups = input.layoutGroups?.map(group =>
     group.flatMap(id => {
       const resolved = resolveCanvasPlanElement(plan, id);
@@ -94,7 +79,20 @@ export function planCanvasCommit(input: {
       )
       .map(change => change.id)
   );
-  return groups?.length
-    ? clearCanvasLayoutObstacles(result, groups, plan.reservedRectangles, moved)
-    : result;
+  if (groups?.length) clearCanvasLayoutObstacles(plan, groups, moved);
+  validateCanvasGraph([...plan.elements.values()].map(row => row.element));
+  return {
+    origin: input.origin,
+    changes: plan.changes,
+    results: plan.results,
+    refs: plan.refs,
+    state: {
+      ...input.state,
+      sequence: input.state.sequence + (plan.changes.length > 0 ? 1 : 0),
+      nextCard: plan.nextCard,
+      nextEdge: plan.nextEdge,
+      elements: [...plan.elements.values()],
+      deletedOrigins: input.state.deletedOrigins,
+    },
+  };
 }

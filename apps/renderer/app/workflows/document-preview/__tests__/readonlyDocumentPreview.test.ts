@@ -3,6 +3,12 @@ import { createApp, h, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { expect, it, vi } from 'vitest';
 import { DOCUMENT_PREVIEW_LAYOUT } from '@linnya/document-preview';
+import {
+  clearLocalizationRegistryForTest,
+  registerMessageCatalogs,
+  useLocalizationStore,
+} from '@app/localization';
+import { DOCUMENT_PREVIEW_MESSAGE_CATALOG } from '../definitions/documentPreviewMessageCatalog';
 import type { RendererPluginAvailabilityChange } from '@linnya/plugin-host-contract/renderer/pluginRuntime';
 import { useNavigationScope } from '@/app/navigation';
 import ReadonlyDocumentPreview from '../ui/ReadonlyDocumentPreview.vue';
@@ -366,5 +372,90 @@ it('fades the detail viewport only while real content remains below', async () =
     app.unmount();
     host.remove();
     vi.unstubAllGlobals();
+  }
+});
+it('界面文案跟随语言：读取中显示英文提示，读取失败显示可读提示而不是内部报错', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  );
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  ports.availability.mockReturnValue(ports.stopAvailability);
+  const host = document.createElement('div'),
+    pinia = createPinia();
+  document.body.append(host);
+  setActivePinia(pinia);
+  registerMessageCatalogs(DOCUMENT_PREVIEW_MESSAGE_CATALOG);
+  useLocalizationStore().setCurrentLocale('en-US');
+  useNavigationScope().enterProject('project');
+  let fail: (reason: Error) => void = () => {};
+  ports.read.mockImplementation(
+    () =>
+      new Promise((_resolve, reject) => {
+        fail = reject;
+      })
+  );
+  const app = createApp({
+    render: () =>
+      h(ReadonlyDocumentPreview, { readTarget: () => ({ documentId: 'doc', projectId: 'project' }) }),
+  }).use(pinia);
+  try {
+    app.mount(host);
+    await vi.waitFor(() => expect(host.textContent).toContain('Loading document preview…'));
+    expect(host.querySelector('section')?.getAttribute('aria-label')).toBe(
+      'Read-only document preview'
+    );
+    fail(new Error('IPC channel workspace:preview rejected: SQLITE_BUSY'));
+    await vi.waitFor(() =>
+      expect(host.textContent).toContain('Unable to preview this document. Please try again later.')
+    );
+    expect(host.textContent).not.toContain('SQLITE_BUSY');
+  } finally {
+    app.unmount();
+    clearLocalizationRegistryForTest();
+    useLocalizationStore().setCurrentLocale('zh-CN');
+  }
+});
+it('已删除目标的预览按界面语言显示，切换语言后原地重画', async () => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  );
+  ports.availability.mockReturnValue(ports.stopAvailability);
+  ports.read.mockResolvedValue({ documentId: 'doc', status: 'deleted', title: null, nodeType: null, path: null });
+  ports.preview.mockResolvedValue({ documentId: 'doc', title: null, nodeType: null, status: 'deleted' });
+  const host = document.createElement('div'),
+    pinia = createPinia();
+  document.body.append(host);
+  setActivePinia(pinia);
+  registerMessageCatalogs(DOCUMENT_PREVIEW_MESSAGE_CATALOG);
+  const store = useLocalizationStore();
+  store.setCurrentLocale('en-US');
+  useNavigationScope().enterProject('project');
+  const app = createApp({
+    render: () =>
+      h(ReadonlyDocumentPreview, {
+        readTarget: () => ({ documentId: 'doc', projectId: 'project' }),
+        widthPx: 320,
+      }),
+  }).use(pinia);
+  try {
+    app.mount(host);
+    await vi.waitFor(() => expect(host.textContent).toContain('This document has been deleted'));
+    expect(host.textContent).toContain('Document unavailable');
+    expect(host.textContent).not.toMatch(/[一-龥]/);
+    store.setCurrentLocale('zh-CN');
+    await vi.waitFor(() => expect(host.textContent).toContain('文档已删除'));
+    expect(host.textContent).toContain('文档当前不可访问');
+  } finally {
+    app.unmount();
+    clearLocalizationRegistryForTest();
+    store.setCurrentLocale('zh-CN');
   }
 });

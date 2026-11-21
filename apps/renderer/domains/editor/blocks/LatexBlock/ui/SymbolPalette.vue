@@ -29,7 +29,7 @@
         {{ categoryLabel(category.id) }}
       </button>
     </div>
-    <div class="palette-content">
+    <div class="palette-content" data-linnya-scrollbar="medium">
       <div
         v-for="category in symbolCategories"
         :key="category.id"

@@ -231,7 +231,7 @@ describe('renderer plugin registry enabled filtering', () => {
       },
       conversationAgentChoices: [{
         id: 'registry-test-research',
-        agentId: ConversationAgentIds.DEEP_RESEARCH,
+        agentId: ConversationAgentIds.RESEARCH,
         menuText: '测试研究',
         pillText: '研究',
         ariaLabel: '已开启：测试研究',

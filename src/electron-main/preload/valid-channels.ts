@@ -38,6 +38,14 @@ const UPDATE_CHANNELS = [
   'renderer-ready',
 ] as const;
 
+// --- 后台服务状态 ---
+const APP_SERVER_HEALTH_CHANNELS = [
+  'app-server-health:state',
+  'app-server-health:get-state',
+  'app-server-health:restart',
+  'app-server-health:open-log-folder',
+] as const;
+
 // --- 窗口关闭 ---
 const WINDOW_CLOSE_CHANNELS = [
   'window-close-renderer-ready',
@@ -155,6 +163,11 @@ const TODO_CHANNELS = [
 ] as const;
 const TODO_NOTIFY_CHANNELS = ['todos-changed'] as const;
 
+// --- 对话运行状态 ---
+// `conversation-activity-changed`：App Server 运行状态写入后的失效信号（无 payload），
+// 侧栏收到后重读 GET /api/v1/conversation/activity。
+const CONVERSATION_ACTIVITY_CHANNELS = ['conversation-activity-changed'] as const;
+
 // --- Plugins 安装/启停通道 ---
 const PLUGIN_CHANNELS = [
   'plugin:invoke',
@@ -197,6 +210,7 @@ export const VALID_CHANNELS = [
   ...FILE_DIALOG_CHANNELS,
   ...MODEL_CHANNELS,
   ...UPDATE_CHANNELS,
+  ...APP_SERVER_HEALTH_CHANNELS,
   ...WINDOW_CLOSE_CHANNELS,
   ...WINDOW_CHANNELS,
   ...MEDIA_CHANNELS,
@@ -212,6 +226,7 @@ export const VALID_CHANNELS = [
   ...AUDIO_BLOCK_CHANNELS,
   ...TODO_CHANNELS,
   ...TODO_NOTIFY_CHANNELS,
+  ...CONVERSATION_ACTIVITY_CHANNELS,
   ...PLUGIN_CHANNELS,
   ...BLOCK_HISTORY_CHANNELS,
 ] as const;

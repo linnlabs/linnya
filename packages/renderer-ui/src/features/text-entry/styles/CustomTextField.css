@@ -66,30 +66,6 @@
   resize: none;
 }
 
-.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
-  background-color: var(--scrollbar-thumb-color);
-  background-clip: content-box;
-}
-
-.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}
-
-.tt-text-field--textarea .tt-text-field__control::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
 .tt-text-field--compact:not(.tt-text-field--textarea) .tt-text-field__control {
   height: 28px;
   padding: 0 var(--space-2);

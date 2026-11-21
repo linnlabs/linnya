@@ -71,8 +71,7 @@ import { ensureHistoryWindowTailForBottom } from '../../history';
 import { generateMessageId } from '@shared/utils/idUtils';
 import {
   ConversationHistorySummaryPayloadSchema,
-  ConversationAgentIds,
-  PromptKeys,
+  isRetiredDeepResearchAgentId,
   type ConversationUserInputCommittedEvent,
 } from '@app/schemas';
 import type { ConversationAttachmentSelection } from '@app/schemas';
@@ -206,12 +205,12 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
       : { kind: 'linnya-assistant' };
     console.log(`[ChatFlowOrchestrator] sendChatMessage - Active conversation ID: ${conversationId}`);
 
-    // 旧会话保留原 Agent 身份，但不能发起新任务，也不能因不可用入口消耗旧配额。
+    // 旧会话保留原 Agent 身份；已退役的旧版深度研究不能发起新任务，也不切换到其它 Agent。
     const selectedAgentIdForSend = options.promptKey
       ? undefined
       : options.selectedAgentId ?? conversation.selectedAgentId ?? undefined;
-    const usesLegacyResearch = selectedAgentIdForSend === ConversationAgentIds.DEEP_RESEARCH
-      || options.promptKey === PromptKeys.DEEP_RESEARCH_LEADER;
+    const usesLegacyResearch = isRetiredDeepResearchAgentId(selectedAgentIdForSend ?? '')
+      || isRetiredDeepResearchAgentId(options.promptKey ?? '');
     if (usesLegacyResearch) {
       captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'validate', reason_code: 'legacy_research_unavailable' });
       assistantStore.setError(resolveCurrentConversationMessage('conversation.flow.deepResearch.unavailable'));
@@ -291,7 +290,7 @@ export function useChatFlowOrchestrator(orchestratorOptions: {
       return false;
     }
 
-    if (conversation.selectedAgentId === ConversationAgentIds.DEEP_RESEARCH) {
+    if (conversation.selectedAgentId && isRetiredDeepResearchAgentId(conversation.selectedAgentId)) {
       captureConversationClientNotice(assistantStore.activeConversationId, { error_kind: 'validation', operation: 'validate', reason_code: 'legacy_research_unavailable' });
       assistantStore.setError(resolveCurrentConversationMessage('conversation.flow.deepResearch.unavailable'));
       return false;

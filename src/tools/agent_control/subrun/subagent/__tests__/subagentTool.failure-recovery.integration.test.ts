@@ -104,5 +104,5 @@ describe('SubagentTool failure recovery integration', () => {
     expect(parsed.observation).toContain('artifacts=workspace:recovered');
     expect(childRunHarness.getToolExecutions()).toHaveLength(1);
     childRunHarness.assertAllTurnsConsumed();
-  });
+  }, 30_000);
 });

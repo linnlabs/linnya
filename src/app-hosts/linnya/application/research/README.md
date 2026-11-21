@@ -14,9 +14,9 @@ Agent 与研究父子角色共用正式 deep-research Skill；版本和资源由
 | `research_v1` | 已持久化的 Agent 身份与 promptKey；`v1` 不是试验开关，也不是 Skill 版本 |
 | `research_*_v1` | 当前四种专项调查、复核角色身份，由父角色通过普通 subagent 调用 |
 | `deep-research` | 研究方法 Skill 的 slug；方法、写作与图文资源由 Skills owner 维护，独立版本化 |
-| `deep_research_*` | 旧 beta / CLI 实验身份；停止接纳新根运行，仅留历史解析与兼容恢复所需定义 |
+| `deep_research_*` | 已删除的旧 beta / CLI 实验身份；只留退役身份列表，用于历史展示与终止旧运行 |
 
-产品展示名与持久身份分开。改显示名称不需要迁移旧 run；如确需改 Agent ID，须同时设计会话选择、请求、descriptor 和恢复迁移，不能把旧 key 静默别名到新流程。历史实现参见[退役研究角色](../../agent-registry/agents/deep_research/README.md)。
+产品展示名与持久身份分开。改显示名称不需要迁移旧 run；如确需改 Agent ID，须同时设计会话选择、请求、descriptor 和恢复迁移，不能把旧 key 静默别名到新流程。旧版深度研究 beta 与 CLI 实验角色的定义、提示和 `write_report` 已删除；其历史对话仍可查看，暂停的旧运行在继续时明确终止，合同见 [Agent Registry](../../agent-registry/README.md#已删除的旧研究身份)。
 
 正式维护的真源是本页、Agent Registry、Skills 和通用工具 owner 文档。已结束的实验不继续作为生产操作指南；正式 benchmark 和业务回归保留，原始研究资料不进入公开源码或构建依赖。源码中的正式入口、实际运行进程加载的版本、Desktop 安装包发布是三个不同事实；发布仍按[构建与验收](../../../../../docs/development/build-and-test.md)执行。
 
@@ -66,6 +66,8 @@ inode，不引入研究回调。
 CLI `--research-scope-json`
 声明 question、reader、open/fixed/update、Workspace 材料和时间范围；接纳后随请求冻结为 researchScope。显式范围拒绝未绑定的历史、附件和编辑器上下文；fixed/update 要有正式材料。fixed 禁止外部查找的要求进入父系统提示，父再明确交给每个子任务；不再通过 Web/Knowledge
 decorator 或文件工具实施研究特判。Shell 权限沿通用设置执行，真实任务越界仍需审计。
+
+输入框上下文用量估算只读地复用同一接纳函数（`contextEstimate`）。下一条消息尚未写出，开放范围的问题用中性占位，其余项目、附件校验不变；占位只进入估算，不进入任何运行，返回请求的原文也不被改写。无项目等会被拒绝的会话没有可估算的下一次请求，估算返回空值而不是服务端错误。
 
 新研究和普通子任务复用持久 child
 admission、RunSupervisor、EventStore、Audit 与通用工具恢复。TaskState 只记录计划，不是运行真源。旧

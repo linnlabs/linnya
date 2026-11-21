@@ -13,12 +13,11 @@
         v-for="tab in tabsState.tabs"
         :key="tab.id"
         class="document-tab"
-        :class="{ 'is-active': tab.id === activeId, 'is-preview': tab.preview }"
+        :class="{ 'is-active': tab.id === activeId }"
         role="tab"
         :aria-selected="tab.id === activeId"
         :title="tabTitle(tab)"
         @click="activate(tab)"
-        @dblclick="pin(tab)"
         @auxclick.middle.prevent="close([tab.id])"
         @contextmenu.prevent="openTabMenu($event, tab)"
       >
@@ -165,10 +164,6 @@ function tabIcon(tab: DocumentTab): Component {
 function activate(tab: DocumentTab): void {
   if (tab.id === activeId.value) return;
   void activateDocumentTab(tab);
-}
-
-function pin(tab: DocumentTab): void {
-  tabsStore.requestPin(props.projectId, tab.id);
 }
 
 function close(ids: readonly string[]): void {

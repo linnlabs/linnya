@@ -19,6 +19,11 @@ export function isCanvasSection(element: CanvasElement): element is CanvasSectio
   return element.type === 'section';
 }
 
+/** 分区只有一层：成员的父必须是分区，分区自身不能有父。写入校验与读取隔离共用此规则。 */
+export function canvasSectionParentValid(card: CanvasCard, parent: CanvasElement | undefined) {
+  return card.type !== 'section' && parent?.type === 'section';
+}
+
 /** 能命中、拖动分区的只有标题条；其余区域留给框选、新建与放卡。 */
 export function canvasSectionHeader(section: CanvasRectangle): CanvasRectangle {
   return {

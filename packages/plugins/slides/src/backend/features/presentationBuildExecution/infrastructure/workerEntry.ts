@@ -51,6 +51,13 @@ async function handleBuildRequest(message: unknown): Promise<void> {
       case 'materialize': {
         const buffer = await materializePresentationPptx(
           readPresentationMaterializationInput(request),
+          {
+            debug() {},
+            warn(event, details) {
+              // 不影响导出的降级事实只留在 Worker 所属 App Server 的内部 stderr，不进入 response DTO。
+              process.stderr.write(`${JSON.stringify({ event, execution: 'worker', requestId, ...details })}\n`);
+            },
+          },
         );
         buildWorkerPort.postMessage(
           createPresentationBuildWorkerMaterializeResultMessage({ requestId, buffer }),

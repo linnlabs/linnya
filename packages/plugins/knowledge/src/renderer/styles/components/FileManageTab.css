@@ -207,31 +207,6 @@
   cursor: not-allowed;
 }
 
-.manage-tab .file-list-items::-webkit-scrollbar,
-.manage-tab .file-list-header::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.manage-tab .file-list-items::-webkit-scrollbar-track,
-.manage-tab .file-list-header::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.manage-tab .file-list-items::-webkit-scrollbar-thumb,
-.manage-tab .file-list-header::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-
-.manage-tab .file-list-items::-webkit-scrollbar-thumb:hover,
-.manage-tab .file-list-header::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}
-
 .manage-tab .parse-status-badge.is-failed,
 .knowledge-file-failure {
   color: var(--color-error-text);

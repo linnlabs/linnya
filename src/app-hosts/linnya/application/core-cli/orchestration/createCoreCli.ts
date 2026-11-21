@@ -4,9 +4,9 @@ import { createSqliteActionLedger } from 'src/domains/action-ledger';
 import { readPersistedWorkspaceVfsNode } from 'src/features/workspace/vfs';
 import {
   readConversationTranscript,
-  readProjectConversations,
-  searchProjectConversations,
+  queryProjectConversations,
 } from '../../project-conversations';
+import { readConversationActivity, type ConversationActivityPorts } from '../../conversation-activity';
 import { formatConversationList, formatConversationTranscript } from '../functions/formatConversations';
 import { formatDocumentChanges } from '../functions/formatDocumentChanges';
 import { CHANGES_USAGE, parseChangesCommand } from '../functions/parseChangesCommand';
@@ -27,6 +27,7 @@ export function createCoreCli(
   db: Database.Database,
   maxOutputCharacters: number,
   fileReader: PhysicalFileReaderPort,
+  activity: ConversationActivityPorts,
 ): BackendPluginCliContribution {
   return {
     prepare({ argv, conversationRoot }) {
@@ -40,7 +41,7 @@ export function createCoreCli(
       if (command === 'changes' && args.length === 1 && args[0] === '--help') {
         return { status: 'completed', result: { exitCode: 0, stdout: CHANGES_USAGE + '\n', stderr: '' } };
       }
-      if (command === 'conversations') return prepareConversations(db, args, maxOutputCharacters);
+      if (command === 'conversations') return prepareConversations(db, args, maxOutputCharacters, activity);
       if (command !== 'changes') {
         return { status: 'completed', result: { exitCode: 2, stdout: '', stderr: CORE_USAGE + '\n' } };
       }
@@ -79,6 +80,7 @@ function prepareConversations(
   db: Database.Database,
   args: readonly string[],
   maxOutputCharacters: number,
+  activity: ConversationActivityPorts,
 ): ReturnType<BackendPluginCliContribution['prepare']> {
   if (args.length === 1 && args[0] === '--help') {
     return { status: 'completed', result: { exitCode: 0, stdout: CONVERSATIONS_USAGE + '\n', stderr: '' } };
@@ -98,12 +100,9 @@ function prepareConversations(
         signal.throwIfAborted();
         if (!projectId) return { exitCode: 2, stdout: '', stderr: '当前对话没有所属项目。\n' };
         if (command.kind === 'list') {
-          const rows = readProjectConversations(db, { project_id: projectId }).conversations;
-          const search = command.query === null ? null : searchProjectConversations(db, { project_id: projectId, query: command.query });
+          const result = await queryProjectConversations(db, { ...command.query, project_id: projectId }, activity);
           const stdout = formatConversationList({
-            rows,
-            matches: search === null ? null : new Map(search.matches.map(match => [match.conversation_id, match.excerpt])),
-            searchTruncated: search?.truncated ?? false,
+            result,
             limit: command.limit,
             maxCharacters: maxOutputCharacters,
           });
@@ -116,7 +115,8 @@ function prepareConversations(
           limit: command.limit,
         });
         if (!page) return { exitCode: 1, stdout: '', stderr: '当前项目里没有这个对话。\n' };
-        return { exitCode: 0, stdout: formatConversationTranscript(page, maxOutputCharacters), stderr: '' };
+        const currentActivity = await readConversationActivity(activity, page.conversationId);
+        return { exitCode: 0, stdout: formatConversationTranscript(page, maxOutputCharacters, currentActivity), stderr: '' };
       },
     },
   };

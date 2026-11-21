@@ -4,13 +4,14 @@ import { defaultOptions, ProbeError } from '../definitions/probeContract.mjs';
 const definitions = {
   up: { string: ['mode', 'window', 'size', 'entry', 'clone-data'], boolean: ['fresh', 'no-build'] },
   restart: { string: ['mode', 'window', 'size'], boolean: ['fresh', 'no-build'] },
-  status: { boolean: ['all'] },
+  status: { boolean: ['all', 'attach'] },
   stop: { boolean: ['clean'] },
+  prune: { string: ['older-than'], boolean: ['dry-run'] },
   reload: {},
-  snapshot: { string: ['within', 'max-lines', 'grep', 'role'], boolean: ['all', 'json'] },
+  snapshot: { string: ['within', 'max-lines', 'grep', 'role'], boolean: ['all', 'json', 'attach'] },
   open: { boolean: ['overview'] },
-  fonts: {},
-  shot: { string: ['selector', 'clip', 'pad'], boolean: ['device', 'jpeg'] },
+  fonts: { boolean: ['attach'] },
+  shot: { string: ['selector', 'clip', 'pad'], boolean: ['device', 'jpeg', 'attach'] },
   click: { string: ['selector', 'at', 'button'] },
   dblclick: { string: ['selector', 'at', 'button'] },
   hover: { string: ['selector', 'at'] },
@@ -18,13 +19,16 @@ const definitions = {
   press: {},
   drag: { string: ['selector', 'at', 'by', 'to', 'steps', 'sample', 'expect-follow', 'tolerance'] },
   scroll: { string: ['selector', 'at', 'dx', 'dy'] },
-  wait: { string: ['selector', 'state', 'text', 'expr', 'timeout'], boolean: ['settle'] },
-  eval: { boolean: ['main'] },
-  logs: { string: ['source', 'level', 'since', 'grep', 'limit'] },
+  wait: { string: ['selector', 'state', 'text', 'expr', 'timeout'], boolean: ['settle', 'attach'] },
+  eval: { boolean: ['main', 'attach'] },
+  logs: { string: ['source', 'level', 'since', 'grep', 'limit'], boolean: ['attach'] },
   record: { string: ['target', 'props', 'duration', 'at'] },
   fixture: {},
   accept: {},
 };
+
+/** 这些命令作用于当前 worktree 的全部实例，不接受 --name。 */
+const worktreeWideCommands = new Set(['accept', 'prune']);
 
 export function usage(message, hint = '运行 pnpm -s probe help 查看命令。') {
   throw new ProbeError('USAGE', message, hint);
@@ -81,7 +85,7 @@ function unknownOption(command, error) {
   const option = /Unknown option '--?([^']+)'/.exec(error.message)?.[1];
   if (!option) usage(error.message);
   const spec = definitions[command];
-  const known = [...(command === 'accept' ? [] : ['name']), ...(spec.string ?? []), ...(spec.boolean ?? [])];
+  const known = [...(worktreeWideCommands.has(command) ? [] : ['name']), ...(spec.string ?? []), ...(spec.boolean ?? [])];
   const near = closest(option, known);
   const listed = known.map(key => `--${key}`).join(' ');
   usage(`${command} 没有 --${option} 选项`, [
@@ -109,7 +113,7 @@ export function parseProbeArgs([command = 'help', ...args]) {
   const actionStart = command === 'record' ? args.indexOf('--') : -1;
   const spec = definitions[command];
   const options = {
-    ...(command === 'accept' ? {} : { name: { type: 'string', default: defaultOptions.name } }),
+    ...(worktreeWideCommands.has(command) ? {} : { name: { type: 'string', default: defaultOptions.name } }),
     ...Object.fromEntries((spec.string ?? []).map(key => [key, { type: 'string' }])),
     ...Object.fromEntries((spec.boolean ?? []).map(key => [key, { type: 'boolean' }])),
   };

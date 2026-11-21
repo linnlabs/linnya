@@ -445,6 +445,7 @@ import {
   listProjectOverviewTags,
   sortProjectOverviewRows,
 } from '../functions/projectOverviewRows';
+import { useProjectOverviewBoardOverrides } from '../orchestration/useProjectOverviewBoardOverrides';
 import { useProjectOverviewData } from '../orchestration/useProjectOverviewData';
 import {
   PROJECT_OVERVIEW_CONTENT_SEARCH_MAX_MATCHES,
@@ -714,9 +715,8 @@ function setGroupBy(id: string): void {
   view.value = { kind: 'board', groupBy: id };
 }
 
-// 看板拖动：先在界面上挪过去，写入成功后补读这份文档；失败时挪回并说明原因。
-const boardOverrides = ref<ReadonlyMap<string, string | null>>(new Map());
-watch(rows, () => { boardOverrides.value = new Map(); });
+// 看板拖动：先在界面上挪过去，写入成功后补读这份文档、读到新值再撤掉；失败时挪回并说明原因。
+const { overrides: boardOverrides, place: placeBoardOverride } = useProjectOverviewBoardOverrides(projectIdRef);
 const board = computed(() => (boardField.value === null
   ? { lanes: [], excluded: 0 }
   : groupProjectOverviewBoard(
@@ -728,7 +728,7 @@ const board = computed(() => (boardField.value === null
 async function moveCard(row: ProjectOverviewRow, optionId: string | null): Promise<void> {
   const field = boardField.value;
   if (!field) return;
-  boardOverrides.value = new Map([...boardOverrides.value, [row.documentId, optionId]]);
+  const releaseOverride = placeBoardOverride(row.documentId, optionId);
   const valueName = optionId === null
     ? workspaceMessage('workspace.projectOverview.board.unset')
     : field.options.find(option => option.id === optionId)?.name ?? optionId;
@@ -744,15 +744,18 @@ async function moveCard(row: ProjectOverviewRow, optionId: string | null): Promi
       reportError(result.code === 'revision_conflict'
         ? workspaceMessage('workspace.projectOverview.board.moveConflict')
         : workspaceMessage('workspace.projectOverview.board.moveFailed', { value: valueName, message: result.message }));
+      releaseOverride();
     }
   } catch (error: unknown) {
     console.error('[ProjectOverview] 看板改值失败:', error);
     reportError(workspaceMessage('workspace.projectOverview.board.moveFailed', {
       value: valueName, message: error instanceof Error ? error.message : String(error),
     }));
+    releaseOverride();
   }
-  // 成功与否都补读：成功拿到新版本，失败（如版本冲突）拿到当前值并撤掉界面上的挪动。
-  refreshDocuments([row.documentId]);
+  // 成功与否都补读：成功拿到新版本，失败（如版本冲突）拿到当前值。写入成功的挪动保留到读到新值，
+  // 补读失败时不丢，别的文档变化也不会清掉它。
+  void refreshDocuments([row.documentId]).then(releaseOverride);
 }
 function boardWhenText(row: ProjectOverviewRow): string {
   const actor = modifiedActorText(row);

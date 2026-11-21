@@ -47,8 +47,11 @@ export function useProjectConversationsData(
       console.error('[ProjectConversations] 加载对话列表失败:', error);
       if (status.value !== 'ready') status.value = 'error';
     } finally {
-      loading = false;
-      if (current === generation && pending) { pending = false; void load(); }
+      // 串行锁属于当前代次：换项目后旧请求的收尾不能放开新项目请求持有的锁。
+      if (current === generation) {
+        loading = false;
+        if (pending) { pending = false; void load(); }
+      }
     }
     if (current === generation) void measureStale();
   }

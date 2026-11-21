@@ -856,3 +856,64 @@ describe('D77 fixed risk authorization', () => {
     });
   });
 });
+
+describe('conversation-local file removal (W-0303)', () => {
+  const ROOT = '/tmp/linnya-conversations/abc';
+  const decide = (command: string, cwd = ROOT, conversationRoot: string | null = ROOT) => evaluateCommandAuthorization({
+    proposal: proposal({ command, cwd }),
+    permissionRequirement: permissionRequirement('selected_level'),
+    platform: 'macos',
+    shellSemanticsId: 'zsh',
+    conversationApprovals: [],
+    ...(conversationRoot ? { conversationRoot } : {}),
+  }).status;
+
+  it.each([
+    'rm -f data.csv',
+    'rm -f data.csv && curl -sS -o data.csv https://example.com/data.csv',
+    'rm out/report.md notes.txt',
+    'rm -fv -- tmp_*.json',
+    'rm -f 结果.csv',
+  ])('does not ask before removing plain files inside the conversation directory: %s', command => {
+    expect(decide(command)).toBe('authorized');
+    expect(decide(command, `${ROOT}/sub`)).toBe('authorized');
+  });
+
+  it.each([
+    ['recursive', 'rm -rf build'],
+    ['directory flag', 'rm -d emptydir'],
+    ['parent escape', 'rm -f ../other.csv'],
+    ['absolute path', 'rm -f /etc/hosts'],
+    ['home path', 'rm -f ~/notes.txt'],
+    ['trailing slash', 'rm -f link/'],
+    ['variable', 'rm -f $TARGET'],
+    ['command substitution', 'rm -f $(cat list.txt)'],
+    ['directory change', 'cd /tmp && rm -f x.csv'],
+    ['nested shell', "bash -c 'rm -f x.csv'"],
+    ['sudo wrapper', 'sudo rm -f x.csv'],
+    ['xargs', 'ls | xargs rm -f'],
+    ['unlink', 'unlink x.csv'],
+    ['zsh glob qualifier', 'rm *(e:true:)'],
+  ])('still asks for approval: %s', (_label, command) => {
+    expect(decide(command)).toBe('approval_required');
+  });
+
+  it('still asks when the cwd is outside the conversation directory or the root is unknown', () => {
+    expect(decide('rm -f data.csv', '/tmp/linnya-conversations/other')).toBe('approval_required');
+    expect(decide('rm -f data.csv', '/tmp/linnya-conversations/abc-sibling')).toBe('approval_required');
+    expect(decide('rm -f data.csv', ROOT, null)).toBe('approval_required');
+  });
+
+  it.each(['rm -f $(cat list.txt)', 'rm $(ls)', 'rm -rf `pwd`/x'])(
+    'flags deletions whose targets come from an unquoted command substitution: %s',
+    command => {
+      expect(matchFixedRiskRule({ command, platform: 'macos', shellSemanticsId: 'zsh' }))
+        .toMatchObject({ status: 'matched', findings: expect.arrayContaining([expect.objectContaining({ ruleId: 'macos.delete.rm' })]) });
+    },
+  );
+
+  it('keeps the rule finding for the same command when no conversation scope is given', () => {
+    expect(matchFixedRiskRule({ command: 'rm -f data.csv', platform: 'macos', shellSemanticsId: 'zsh' }))
+      .toMatchObject({ status: 'matched', findings: [{ ruleId: 'macos.delete.rm' }] });
+  });
+});

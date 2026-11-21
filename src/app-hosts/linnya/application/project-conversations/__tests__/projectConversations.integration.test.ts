@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
+import { ProjectConversationQueryOptionsSchema, type ProjectConversationQueryOptions } from '@app/schemas';
+import { createCoreCli } from '../../core-cli';
+import { createConversationActivityPorts } from '../../../adapters/persistence/run-registry';
 
 import { attachCitationSourceResolver } from 'src/domains/citation';
 import { createProjectLifecycle } from 'src/domains/projects';
@@ -13,6 +16,7 @@ import {
   readProjectConversationDetail,
   readProjectConversations,
   searchProjectConversations,
+  queryProjectConversations,
 } from '..';
 
 let database: DatabaseService;
@@ -31,8 +35,8 @@ function addConversation(id: string, title: string, project: string | null, last
 }
 
 function addRun(id: string, conversationId: string, agent: string | null, startTs = 1, parentRunId: string | null = null, kind = 'agent') {
-  db().prepare(`INSERT INTO runs (id, conversation_id, kind, status, agent_spec_id, start_ts, parent_run_id) VALUES (?, ?, ?, 'completed', ?, ?, ?)`)
-    .run(id, conversationId, kind, agent, startTs, parentRunId);
+  db().prepare(`INSERT INTO runs (id, conversation_id, kind, status, agent_spec_id, start_ts, parent_run_id, metadata_json) VALUES (?, ?, ?, 'completed', ?, ?, ?, ?)`)
+    .run(id, conversationId, kind, agent, startTs, parentRunId, JSON.stringify({ lane: agent === 'conversation_title' ? 'auxiliary' : 'foreground' }));
 }
 
 let sortSeq = 0;
@@ -75,6 +79,90 @@ afterEach(async () => {
 });
 
 describe('项目对话页', () => {
+  it('面板 Host 查询与 CLI 同条件同序：回复过的 Agent、日历窗口、文档、搜索、置顶及各排序', async () => {
+    const today = new Date(2026, 10, 17, 12).getTime();
+    now = today;
+    addConversation('a', '定价10', projectId, today, { agent: 'selected-but-never-replied', turns: 2 });
+    addConversation('b', '定价2', projectId, today - 86400000 * 8, { turns: 4, pinned: true });
+    addConversation('c', '旧资料', projectId, today - 86400000 * 40, { agent: 'research_v1' });
+    addConversation('other', '私有定价', otherProjectId, today);
+    for (const id of ['a', 'b', 'c', 'other']) addRun(`run-${id}`, id, 'default');
+    addMessage('a', 'run-a', 'final_answer', '定价结论');
+    addRun('changed-agent', 'a', 'research_v1', 2);
+    addMessage('a', 'changed-agent', 'partial_answer', '研究里的定价');
+    addMessage('b', 'run-b', 'final_answer', '以前的定价');
+    addMessage('other', 'run-other', 'final_answer', '其他项目的秘密');
+    addRun('title-agent', 'c', 'conversation_title');
+    addMessage('c', 'title-agent', 'final_answer', '内部标题');
+    addRun('child-agent', 'c', 'child-agent');
+    db().prepare('UPDATE runs SET parent_run_id = ? WHERE id = ?').run('run-c', 'child-agent');
+    addMessage('c', 'child-agent', 'final_answer', '子运行不算回复');
+    await new WriteFileTool().run({ locator: 'workspace:/定价.md', content: '# 定价' }, context('a', 'run-a', 'query-change'));
+    const activity = createConversationActivityPorts(db(), { readControlPending: () => [] });
+    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('query must not read files'); } }, activity);
+    async function command(args: string[], project: string | undefined = projectId) {
+      const prepared = cli.prepare({ argv: ['conversations', ...args], invocationId: 'query', conversationRoot: '/unused' });
+      if (prepared.status === 'completed') return prepared.result;
+      expect(prepared.plan.access).toMatchObject({ internalDataAccess: 'required', conversationFiles: 'none' });
+      return prepared.plan.execute({ projectId: project, conversationId: 'a', hostContext: {}, signal: new AbortController().signal });
+    }
+    const lists: Partial<ProjectConversationQueryOptions>[] = [
+      {}, { agent: 'research_v1' }, { agent: 'default' }, { agent: 'selected-but-never-replied' },
+      { activity: 'today' }, { activity: 'week' }, { activity: 'month' }, { documents: 'changed' },
+      { documents: 'unchanged' }, { query: '定价', agent: 'research_v1' },
+      ...(['title', 'turns', 'documents', 'activity', 'storage'] as const).flatMap(sort =>
+        (['asc', 'desc'] as const).map(direction => ({ sort, direction }))),
+    ];
+    for (const options of lists) {
+      const query = ProjectConversationQueryOptionsSchema.parse(options);
+      const panel = await queryProjectConversations(db(), { ...query, project_id: projectId }, activity);
+      const argv = Object.entries(query).flatMap(([key, value]) => value === null || value === '' ? [] : [`--${key}`, value]);
+      const shell = await command(['list', ...argv]);
+      expect(shell.exitCode).toBe(0);
+      const output = JSON.parse(shell.stdout);
+      expect(output.conversations.map((row: { id: string }) => row.id)).toEqual(panel.conversations.map(row => row.conversation_id));
+      expect(shell.stdout).not.toContain('其他项目的秘密');
+    }
+    const rows = readProjectConversations(db(), { project_id: projectId }).conversations;
+    // 回复过的 Agent 取根运行、最近在前；标题等内部 Agent 与子运行不算，默认 Agent 为 null。
+    expect(rows.find(row => row.conversation_id === 'a')?.replied_agent_ids).toEqual(['research_v1', null]);
+    expect(rows.find(row => row.conversation_id === 'c')?.replied_agent_ids).toEqual([null]);
+    expect((await command(['list', '--agent', 'research_v1'])).stdout).toContain('定价10');
+    expect((await command(['read', 'other'])).exitCode).toBe(1);
+    expect((await command(['read', 'missing'])).stderr).toBe((await command(['read', 'other'])).stderr);
+    expect((await command(['list', '--project', otherProjectId])).exitCode).toBe(2);
+    const prepared = cli.prepare({ argv: ['conversations', 'list'], invocationId: 'no-project', conversationRoot: '/unused' });
+    if (prepared.status !== 'ready') throw new Error('list was not prepared');
+    expect((await prepared.plan.execute({ hostContext: {}, signal: new AbortController().signal })).exitCode).toBe(2);
+  });
+
+  it('超过200条搜索命中时先按回复过的 Agent筛选，旧对话不会被其他Agent的结果挤掉', async () => {
+    for (let index = 0; index < 205; index += 1) {
+      const id = `other-agent-${index}`;
+      addConversation(id, `共同标题${index}`, projectId, 1000 + index);
+      addRun(`run-${id}`, id, 'default');
+      addMessage(id, `run-${id}`, 'final_answer', '共同内容关键词');
+    }
+    addConversation('older-match', '共同标题：需要的研究', projectId, 1);
+    addRun('older-research', 'older-match', 'research_v1');
+    addMessage('older-match', 'older-research', 'final_answer', '共同内容关键词');
+    const activity = createConversationActivityPorts(db(), { readControlPending: () => [] });
+    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('unused'); } }, activity);
+    for (const query of ['共同标题', '共同内容关键词']) {
+      expect(searchProjectConversations(db(), { project_id: projectId, query })).toMatchObject({ truncated: true });
+      const result = await queryProjectConversations(db(), {
+        ...ProjectConversationQueryOptionsSchema.parse({ query, agent: 'research_v1' }), project_id: projectId,
+      }, activity);
+      expect(result.conversations.map(row => row.conversation_id)).toEqual(['older-match']);
+      expect(result.truncated).toBe(false);
+      const prepared = cli.prepare({ argv: ['conversations', 'list', '--query', query, '--agent', 'research_v1'], invocationId: 'cap', conversationRoot: '/unused' });
+      if (prepared.status !== 'ready') throw new Error('list not prepared');
+      const output = await prepared.plan.execute({ projectId, hostContext: {}, signal: new AbortController().signal });
+      expect(output.exitCode).toBe(0);
+      expect(JSON.parse(output.stdout).conversations.map((row: { id: string }) => row.id)).toEqual(['older-match']);
+    }
+  });
+
   it('列出本项目对话：置顶在前、Agent 为实际回复过的（最近在前，内部 Agent 与子运行不算）、改过的文档按账本去重', async () => {
     addConversation('conv-a', '三季度汇报初稿', projectId, 500, { turns: 9, agent: 'research_v1' });
     addConversation('conv-b', '欧洲市场渠道梳理', projectId, 400, { pinned: true, agent: 'research_v1', turns: 3 });

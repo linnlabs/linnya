@@ -216,6 +216,12 @@ export interface AgentRequestAdmissionContext {
   /** 已按历史隔离和编辑重发裁剪的正式历史。 */
   history: readonly RuntimeEvent[];
   hostToolCall?: HostToolCallRequestData;
+  /**
+   * 只读估算下一次请求的上下文：用户消息尚未写出，结果不得持久化、冻结或启动运行。
+   * 定义只可为“依赖尚未存在的消息”的字段使用中性占位，其余校验与正式接纳相同；
+   * 请求会被拒绝时仍抛出 `AgentRequestAdmissionError`。
+   */
+  contextEstimate?: true;
 }
 
 /**

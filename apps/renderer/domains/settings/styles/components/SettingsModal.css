@@ -181,31 +181,6 @@
 
 /* --- 滚动条 --- */
 
-.settings-modal-nav-scroll::-webkit-scrollbar,
-.settings-modal-panel-body::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.settings-modal-nav-scroll::-webkit-scrollbar-track,
-.settings-modal-panel-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.settings-modal-nav-scroll::-webkit-scrollbar-thumb,
-.settings-modal-panel-body::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb-color);
-  background-clip: content-box;
-  border: 2px solid transparent;
-  border-radius: var(--radius-full);
-  transition: background-color var(--duration-medium) var(--ease-standard);
-}
-
-.settings-modal-nav-scroll::-webkit-scrollbar-thumb:hover,
-.settings-modal-panel-body::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}
-
 /*
  * 进出场：与 renderer-ui 的 Modal 同一套动效（--modal-* token）——遮罩只淡底色和模糊，设置面板本体另走缩放。
  * 遮罩根节点必须保留一条真实的 transition：Vue 的 <Transition> 只读根节点的过渡时长来决定何时移除节点。

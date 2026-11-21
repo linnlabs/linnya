@@ -17,4 +17,5 @@
 - success、error、info、warning 的图标、class 与颜色保持现有结果；
 - 通知位于视口底部，Host 根据 CharacterCount 的真实宽度增加右侧预留；
 - 新通知覆盖当前通知并从新请求重新计时；
+- 后台服务正在重启或已停止时（`@app/backend-health` 的 `isUnavailable`）不显示 error 通知，顶部状态条是这段时间唯一的错误出口；warning 及以下照常显示；
 - 手动隐藏、timer 到期和 app lifecycle 清理分别由明确 owner 负责，展示组件没有反向状态副作用。

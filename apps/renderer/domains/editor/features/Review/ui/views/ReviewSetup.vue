@@ -87,6 +87,7 @@
         <textarea
           ref="backgroundTextarea"
           class="field-control auto-resize"
+          data-linnya-scrollbar-reveal="hover"
           :value="reviewStore.reviewBackground"
           rows="1"
           :placeholder="editorMessage('editor.review.setup.backgroundPlaceholder')"
@@ -99,6 +100,7 @@
         <textarea
           ref="goalTextarea"
           class="field-control auto-resize"
+          data-linnya-scrollbar-reveal="hover"
           :value="reviewStore.reviewGoal"
           rows="1"
           :placeholder="editorMessage('editor.review.setup.goalPlaceholder')"

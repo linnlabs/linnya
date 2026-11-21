@@ -74,6 +74,7 @@ import {
 import { PresentationPageRasterizationRuntime } from '../features/presentationPageRasterization';
 import type { ManualEditHistoryStore, PresentationManualEditTracePort } from '../features/presentationManualEditing';
 import { PresentationPptxArtifactRuntime } from '../features/presentationPptxArtifact';
+import { PresentationLayoutRefreshRuntime } from '../features/presentationLayoutRefresh';
 import type {
   PresentationExportRequest,
   PresentationExportResult,
@@ -187,6 +188,14 @@ export class PptCoordinator {
       engine: this.engine,
       getCodegenDeckBuilder: () => this.codegenRuntime.getDeckBuilder(),
       pptxArtifacts,
+      layoutRefresh: new PresentationLayoutRefreshRuntime({
+        repository: this.presentationRepo,
+        buildDeckSpecFromSource: ({ nodeId, source, theme }) => this.codegenRuntime.getDeckBuilder().buildDeckSpecFromSource({
+          nodeId,
+          source,
+          sourceContext: { theme },
+        }),
+      }),
     });
     const exportPageRasterization = new PresentationPageRasterizationRuntime();
     this.presentationExportRuntime = new PresentationExportRuntime({

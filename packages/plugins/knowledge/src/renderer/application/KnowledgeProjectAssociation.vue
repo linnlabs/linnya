@@ -22,7 +22,7 @@
               {{ knowledgeBaseMessage('knowledgeBase.projectAssociation.count', { count: linkedKnowledgeBases.length }) }}
             </span>
           </div>
-          <div class="column">
+          <div class="column" data-linnya-scrollbar="medium">
             <SkeletonRows
               v-if="isLoading"
               class="kb-list-skeleton"
@@ -69,7 +69,7 @@
               {{ knowledgeBaseMessage('knowledgeBase.projectAssociation.count', { count: availableKnowledgeBases.length }) }}
             </span>
           </div>
-          <div class="column">
+          <div class="column" data-linnya-scrollbar="medium">
             <SkeletonRows
               v-if="isLoading"
               class="kb-list-skeleton"

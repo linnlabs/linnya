@@ -1,4 +1,5 @@
 export { readProjectConversations } from './orchestration/readProjectConversations';
+export { queryProjectConversations } from './orchestration/queryProjectConversations';
 export { readProjectConversationDetail } from './orchestration/readProjectConversationDetail';
 export { searchProjectConversations } from './orchestration/searchProjectConversations';
 export {

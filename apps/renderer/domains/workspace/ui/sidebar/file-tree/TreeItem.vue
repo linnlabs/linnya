@@ -14,7 +14,6 @@
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
     @click="handleItemClick"
-    @dblclick="handleItemDoubleClick"
     @contextmenu.prevent="handleContextMenu"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
@@ -118,7 +117,6 @@
 
 <script setup>
 import { computed, ref, onMounted, onUnmounted, nextTick, watch, inject } from 'vue';
-import { useDocumentTabsStore } from '@/app/document-tabs';
 // import TreeItem from './TreeItem.vue'; 
 import { useWorkspaceSelectionStore } from '../../../store/index.js';
 import { useWorkspaceTree} from '../../../tree';
@@ -302,12 +300,6 @@ const handleItemClick = (event) => { // Accept the full event object
 
     // Emit the node and the original event
     emit('item-click', { node: props.node, event });
-};
-
-/** 单击打开的是临时标签；双击文档把它固定下来。 */
-const handleItemDoubleClick = () => {
-    if (isRenaming.value || props.node.type === 'folder' || props.node.isVirtual) return;
-    useDocumentTabsStore().requestPin(props.node.projectId ?? props.node.project_id ?? null, props.node.id);
 };
 
 // +++ Add context menu handler +++

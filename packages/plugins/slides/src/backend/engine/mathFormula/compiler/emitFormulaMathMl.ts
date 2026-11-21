@@ -5,6 +5,7 @@ import type {
   FormulaSequenceNode,
   FormulaTokenNode,
 } from '../definitions/canonicalFormula';
+import { POWERPOINT_MATH_LAYOUT } from '../definitions/powerPointMathLayout';
 
 const MATHML_NS = 'http://www.w3.org/1998/Math/MathML';
 
@@ -14,7 +15,9 @@ const MATHML_NS = 'http://www.w3.org/1998/Math/MathML';
  */
 export function emitFormulaMathMl(ir: CanonicalFormulaIr, source: MathFormulaSource): string {
   const display = source.display === 'block' ? 'block' : 'inline';
-  return `<math xmlns="${MATHML_NS}" display="${display}" mathcolor="${source.color}">${emitSequence(ir.root)}</math>`;
+  // 上下标与行内分式的缩放比例跟随 PowerPoint 的数学字体，见 POWERPOINT_MATH_LAYOUT。
+  const scriptSize = POWERPOINT_MATH_LAYOUT.scriptSizeMultiplier;
+  return `<math xmlns="${MATHML_NS}" display="${display}" mathcolor="${source.color}" scriptsizemultiplier="${scriptSize}">${emitSequence(ir.root)}</math>`;
 }
 
 function emitNode(node: CanonicalFormulaNode): string {

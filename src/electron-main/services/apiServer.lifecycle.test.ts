@@ -63,6 +63,7 @@ function createRouteDependencies(): RouteDependencies {
       publishPluginRendererPush: () => undefined,
       publishTodosChanged: () => undefined,
       publishModelsChanged: vi.fn(),
+      publishConversationActivityChanged: vi.fn(),
       publishPluginsChanged: () => undefined,
       publishPluginDataChanged: () => undefined,
     },

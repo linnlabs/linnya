@@ -125,6 +125,8 @@ async function createProject(root) {
   );
   await copyFile(path.join(repositoryRoot, 'dist/main/plugin-cli-runtime/win32/x64/linnya-plugin-cli-client.exe'),
     path.join(project, 'host-cli-fixtures/linnya-platform.exe'));
+  await copyFile(path.join(repositoryRoot, 'dist/main/plugin-cli-runtime/win32/x64/linnya-plugin-cli-client.exe'),
+    path.join(project, 'host-cli-fixtures/linnya.exe'));
   const manifest = bindElectronVersion(
     JSON.parse(await readFile(path.join(fixtureDirectory, 'package.json'), 'utf8'))
   );
@@ -161,6 +163,7 @@ async function cleanupAndVerifyRemote(sshArgs, target, paths) {
     `$archive = ${quotePowerShell(paths.archive)}`,
     `$controller = ${quotePowerShell(paths.controller)}`,
     `$appProcessId = ${paths.appProcessId ?? '$null'}`,
+    `$taskName = ${paths.taskName ? quotePowerShell(paths.taskName) : '$null'}`,
     "$extendedRoot = '\\\\?\\' + [IO.Path]::GetFullPath($root)",
     '$deadline = [DateTime]::UtcNow.AddSeconds(15)',
     '$deleteError = $null',
@@ -186,8 +189,9 @@ async function cleanupAndVerifyRemote(sshArgs, target, paths) {
     '  archive = [int](Test-Path -LiteralPath $archive)',
     '  controller = [int](Test-Path -LiteralPath $controller)',
     '  appProcess = [int]$appProcess.Count',
+    '  scheduledTask = if ($taskName) { @(Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue).Count } else { 0 }',
     '}',
-    'if ($facts.runRoot -or $facts.archive -or $facts.controller -or $facts.appProcess) {',
+    'if ($facts.runRoot -or $facts.archive -or $facts.controller -or $facts.appProcess -or $facts.scheduledTask) {',
     "  $detail = if ($null -eq $deleteError) { '' } else { '; delete=' + $deleteError.Message }",
     "  throw ('remote cleanup postcondition failed: ' + ($facts | ConvertTo-Json -Compress) + $detail)",
     '}',
@@ -237,6 +241,9 @@ async function validateWindows(project, root) {
   assert(path.win32.isAbsolute(commonRoot), 'Windows common documents must be absolute');
   const remoteRunRoot = path.win32.join(commonRoot, `linnya-windows-host-cli-${token}`).replaceAll('\\', '/');
   let appProcessId;
+  let taskName;
+  let result;
+  let cleanup;
   try {
     await runChecked('scp', [
       ...sshArgs,
@@ -270,17 +277,20 @@ async function validateWindows(project, root) {
       ],
       { timeoutMs: 600_000 }
     );
-    const result = JSON.parse(remote.stdout.trim().split(/\r?\n/u).at(-1));
+    result = JSON.parse(remote.stdout.trim().split(/\r?\n/u).at(-1));
     appProcessId = result.appProcessId;
-    return result;
+    taskName = result.taskName;
+    assert.equal(typeof taskName, 'string');
   } finally {
-    await cleanupAndVerifyRemote(sshArgs, target, {
+    cleanup = await cleanupAndVerifyRemote(sshArgs, target, {
       runRoot: remoteRunRoot,
       archive: remoteArchive,
       controller: remoteController,
       appProcessId,
+      taskName,
     });
   }
+  return { ...result, cleanup };
 }
 
 const isolated = await createIsolatedRunRoot('windows-current-host-cli-corpus');
@@ -297,6 +307,10 @@ try {
     result.cases.map(item => [item.id, item.exitCode]),
     [
       ['plugin-bridge', 0],
+      ['conversations-filter', 0],
+      ['conversations-read', 0],
+      ['conversations-other-project', 1],
+      ['conversations-forged-project', 2],
       ['app-owner-environment', 0],
       ['powershell', 0],
       ['where-exe', 0],

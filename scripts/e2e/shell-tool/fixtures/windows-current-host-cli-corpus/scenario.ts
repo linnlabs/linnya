@@ -5,6 +5,9 @@ import path from 'node:path';
 import { promises as fsp } from 'node:fs';
 
 import { app } from 'electron';
+import { createProjectLifecycle } from '../../../../../src/domains/projects';
+import { createFinalAnswerEvent, routeRuntimeEvent, RunIdSchema } from '@linnlabs/linnkit/contracts';
+import { SQLiteRunRegistryStore } from '../../../../../src/app-hosts/linnya/adapters/persistence/run-registry';
 import { createElectronCommandRunnerProcessPort } from '../../../../../src/electron-main/commands/runner-runtime';
 import { resolveLocalProcessPlatformRuntime } from '../../../../../src/infra/adapters/local-process-runtime/production-runtime';
 import {
@@ -32,6 +35,7 @@ interface CorpusCase {
   readonly id: string;
   readonly command: string;
   readonly expectedExitCode: number;
+  readonly permissionLevel?: 'read_only';
   readonly stdoutIncludes: readonly string[];
   readonly stderrIncludes: readonly string[];
 }
@@ -47,6 +51,27 @@ const MISSING_COMMAND = 'linnya_missing_cli_7b972af6';
 
 const CORPUS: readonly CorpusCase[] = Object.freeze([
   { id: 'plugin-bridge', command: 'linnya-platform inspect "中文参数 空格"; exit $LASTEXITCODE', expectedExitCode: 0, stdoutIncludes: ['PLUGIN_BRIDGE_OK'], stderrIncludes: [] },
+  {
+    id: 'conversations-filter', permissionLevel: 'read_only',
+    command: 'linnya conversations list --query "定价" --agent research_v1 --activity today --documents unchanged --sort title; exit $LASTEXITCODE',
+    expectedExitCode: 0, stdoutIncludes: ['conversation-windows-readable', 'cancelled'], stderrIncludes: [],
+  },
+  {
+    id: 'conversations-read', permissionLevel: 'read_only',
+    command: 'linnya conversations read conversation-windows-readable; exit $LASTEXITCODE',
+    expectedExitCode: 0, stdoutIncludes: ['定价的可读回答'], stderrIncludes: [],
+  },
+  {
+    id: 'conversations-other-project', permissionLevel: 'read_only',
+    command: 'linnya conversations read conversation-windows-private; exit $LASTEXITCODE',
+    expectedExitCode: 1, stdoutIncludes: [], stderrIncludes: ['当前项目里没有这个对话'],
+  },
+  {
+    id: 'conversations-forged-project', permissionLevel: 'read_only',
+    command: 'linnya conversations list --project other; exit $LASTEXITCODE',
+    expectedExitCode: 2, stdoutIncludes: [], stderrIncludes: ['--project'],
+  },
+
   {
     id: 'app-owner-environment',
     command: [
@@ -149,11 +174,11 @@ const permissionSettings = {
   process_lifecycle: 'terminate_with_run' as const,
 };
 
-function commandPermission() {
+function commandPermission(permissionLevel: 'standard' | 'read_only' = 'standard') {
   return {
     status: 'available' as const,
     snapshot: createCommandRunPermissionSnapshot({
-      settings: permissionSettings,
+      settings: { ...permissionSettings, permission_level: permissionLevel },
       rootAgentRunId: AGENT_RUN_ID,
       capturedAtMs: Date.now(),
     }),
@@ -282,7 +307,26 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
   });
 
   try {
-    await eventStore.ensureConversation(CONVERSATION_ID, [], undefined, 'agent');
+    const projects = createProjectLifecycle(db);
+    const projectId = projects.create({ name: 'Windows conversations' });
+    const otherProject = projects.create({ name: 'Windows private conversations' });
+    await eventStore.ensureConversation(CONVERSATION_ID, [], projectId, 'agent');
+    const registry = new SQLiteRunRegistryStore(db);
+    for (const [conversationId, project, content] of [
+      ['conversation-windows-readable', projectId, '定价的可读回答'],
+      ['conversation-windows-private', otherProject, '其他项目的秘密'],
+    ]) {
+      await eventStore.ensureConversation(conversationId, [], project, 'agent');
+      const runId = RunIdSchema.parse(`run-${conversationId}`);
+      await registry.save({ runId, conversationId, status: 'cancelled', agentSpecId: 'research_v1',
+        startedAt: Date.now(), updatedAt: Date.now(), metadata: { lane: 'foreground' } });
+      const session = await eventStore.openRunSession(conversationId, runId);
+      await eventStore.appendEventToRun(session, routeRuntimeEvent(createFinalAnswerEvent(
+        `answer-${conversationId}`, conversationId, `turn-${conversationId}`, content,
+        { completion_reason: 'interrupted' },
+      ), { run_id: runId, lane: 'foreground', visibility: 'conversation' }));
+    }
+    const beforeMessages = db.prepare('SELECT message_id, content FROM conversation_ui_messages ORDER BY message_id').all();
     const directory = await lifecycle.workDirectoryAdmission.withAdmission(
       { conversationId: CONVERSATION_ID }, admitted => admitted,
     );
@@ -305,7 +349,7 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
         agentRunId: AGENT_RUN_ID,
         originToolCallId,
         toolOutputInstanceId: 'default',
-        commandRunPermission: commandPermission(),
+        commandRunPermission: commandPermission(corpusCase.permissionLevel),
       });
       assert.equal(result.status, 'completed', `${corpusCase.id} must complete`);
       if (result.status !== 'completed') throw new Error(`${corpusCase.id} did not complete`);
@@ -321,6 +365,17 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
         assert(raw.stderr.includes(expected), `${corpusCase.id} stderr missing ${expected}`);
         assert(result.observation.includes(expected), `${corpusCase.id} observation missing ${expected}`);
       }
+      if (corpusCase.id === 'conversations-filter') {
+        const output = JSON.parse(raw.stdout);
+        assert.deepEqual(output.conversations.map((row: { id: string }) => row.id), ['conversation-windows-readable']);
+        assert.equal(output.conversations[0]?.activity.state, 'interrupted');
+        assert.equal(output.conversations[0]?.activity.reason, 'cancelled');
+        assert.ok(!raw.stdout.includes('其他项目的秘密'));
+      }
+      if (corpusCase.id === 'conversations-read') {
+        const output = JSON.parse(raw.stdout);
+        assert.deepEqual(output.messages.map((message: { text: string }) => message.text), ['定价的可读回答']);
+      }
       if (corpusCase.id === 'powershell') {
         assert(raw.stdout.includes(`PS_CWD:${directory.absolutePath}`));
       }
@@ -332,6 +387,7 @@ export async function runWindowsCurrentHostCliCorpusScenario(input: {
       });
     }
 
+    assert.deepEqual(db.prepare('SELECT message_id, content FROM conversation_ui_messages ORDER BY message_id').all(), beforeMessages);
     assert.equal(audit.read().filter(event => event.kind === 'execution_started').length, CORPUS.length);
     assert.equal(audit.read().filter(event => event.kind === 'execution_terminal').length, CORPUS.length);
     const agentRunEndBarrier = await commandScope.agentRunLifecycle.endAgentRun({

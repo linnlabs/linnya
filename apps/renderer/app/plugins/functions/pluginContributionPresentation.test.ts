@@ -70,7 +70,7 @@ describe('pluginContributionPresentation', () => {
   it('resolves conversation agent choice localized text when present', () => {
     const presentation = resolveConversationAgentChoiceTextPresentation({
       id: 'deep_research',
-      agentId: ConversationAgentIds.DEEP_RESEARCH,
+      agentId: ConversationAgentIds.RESEARCH,
       menuText: 'Deep research',
       pillText: 'Research',
       ariaLabel: 'Enabled: Deep research',

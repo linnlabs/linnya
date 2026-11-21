@@ -1,4 +1,5 @@
 import { evaluateRendererUiCompatibility } from '@app/schemas';
+import { createTimer } from '@linnya/renderer-ui';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import {
   rendererUiPluginRuntimeEntries,
@@ -18,6 +19,13 @@ import {
 import { isRecord } from '@linnya/foundation';
 
 const rendererPluginLoaderLogPrefix = '[renderer-plugin-loader]';
+/**
+ * 单个插件入口 import 的最长等待时间。生产态入口是本地 plugin:// 文件，正常亚秒级完成；
+ * 开发态入口是 Vite /@fs/ 源码，首次访问要转换整棵插件源码图，冷缓存下可能还要等依赖预构建，
+ * 实测通常在数秒到十余秒。取 30 秒给开发态冷启动留足余量，同时保证永不 settle 的 import
+ * 不会无限堵住后续入口、App 启动链和 loader 串行队列。
+ */
+export const RENDERER_PLUGIN_ENTRY_IMPORT_TIMEOUT_MS = 30_000;
 const requiredPluginSdkHostModuleIds = [
   '@plugin/renderer/aiInvocationPort',
   '@plugin/renderer/composerCommandPort',
@@ -76,6 +84,20 @@ export interface RuntimeRendererPluginLoaderOptions {
   readonly rendererEntriesApi?: () => Promise<unknown>;
   readonly importEntry?: (entryUrl: string) => Promise<unknown>;
   readonly installHostModules?: () => void | Promise<void>;
+  /** 测试注入；默认 {@link RENDERER_PLUGIN_ENTRY_IMPORT_TIMEOUT_MS}。 */
+  readonly importTimeoutMs?: number;
+}
+
+export type RendererPluginSyncFailureReason = 'import-timeout' | 'error';
+
+export class RendererPluginEntryImportTimeoutError extends Error {
+  readonly timeoutMs: number;
+
+  constructor(pluginId: string, version: string, timeoutMs: number) {
+    super(`renderer 插件入口导入超时（${timeoutMs}ms）: ${pluginId}@${version}`);
+    this.name = 'RendererPluginEntryImportTimeoutError';
+    this.timeoutMs = timeoutMs;
+  }
 }
 
 type RendererPluginLoadPhase =
@@ -148,9 +170,10 @@ interface RendererPluginLoadDiagnostics {
   contribution: RendererPluginContributionDiagnostics | null;
 }
 
-interface RendererPluginSyncFailureDiagnostics {
+export interface RendererPluginSyncFailureDiagnostics {
   readonly entry: RendererPluginEntryDiagnostics;
   readonly phase: RendererPluginLoadPhase;
+  readonly reason: RendererPluginSyncFailureReason;
   readonly moduleExports: RendererPluginModuleExportDiagnostics;
   readonly contribution: RendererPluginContributionDiagnostics | null;
   readonly registryBefore: ReturnType<typeof describeRendererPluginRegistryForDiagnostics>;
@@ -162,7 +185,7 @@ interface RendererPluginSyncFailureDiagnostics {
   readonly error: Record<string, unknown>;
 }
 
-interface RendererPluginSyncDiagnostics {
+export interface RendererPluginSyncDiagnostics {
   readonly processedPluginIds: readonly string[];
   readonly deactivatedPluginIds: readonly string[];
   readonly failures: readonly RendererPluginSyncFailureDiagnostics[];
@@ -202,8 +225,32 @@ declare global {
   var __LINNYA_RENDERER_PLUGIN_LOADER_DIAGNOSTICS__: RuntimeRendererPluginLoaderDiagnostics | undefined;
 }
 
+type RuntimeRendererPluginLoaderDiagnosticsListener = (
+  diagnostics: RuntimeRendererPluginLoaderDiagnostics,
+) => void;
+
+const rendererPluginLoaderDiagnosticsListeners = new Set<RuntimeRendererPluginLoaderDiagnosticsListener>();
+
 function publishRendererPluginLoaderDiagnostics(): void {
   globalThis.__LINNYA_RENDERER_PLUGIN_LOADER_DIAGNOSTICS__ = latestRendererPluginLoaderDiagnostics;
+  const snapshot = latestRendererPluginLoaderDiagnostics;
+  for (const listener of rendererPluginLoaderDiagnosticsListeners) {
+    try {
+      listener(snapshot);
+    } catch (error) {
+      console.error(`${rendererPluginLoaderLogPrefix} diagnostics-listener-failed`, error);
+    }
+  }
+}
+
+/** 订阅 loader 诊断快照，供 App 层投影加载失败提示；监听方异常不影响同步本身。 */
+export function subscribeRuntimeRendererPluginLoaderDiagnostics(
+  listener: RuntimeRendererPluginLoaderDiagnosticsListener,
+): () => void {
+  rendererPluginLoaderDiagnosticsListeners.add(listener);
+  return () => {
+    rendererPluginLoaderDiagnosticsListeners.delete(listener);
+  };
 }
 
 export function getRuntimeRendererPluginLoaderDiagnostics(): RuntimeRendererPluginLoaderDiagnostics {
@@ -512,6 +559,35 @@ async function importRuntimeRendererPluginEntry(entryUrl: string): Promise<unkno
   return import(/* @vite-ignore */ entryUrl);
 }
 
+/**
+ * 等待入口 import，超时即放弃这次等待并报错。超时后迟到的模块结果被丢弃，不会再注册；
+ * 用户重试会走新一轮同步。
+ */
+function importRendererPluginEntryWithTimeout(
+  entry: RendererPluginEntry,
+  importEntry: (entryUrl: string) => Promise<unknown>,
+  timeoutMs: number,
+): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const timer = createTimer();
+    timer.start(() => {
+      reject(new RendererPluginEntryImportTimeoutError(entry.pluginId, entry.version, timeoutMs));
+    }, timeoutMs);
+    Promise.resolve()
+      .then(() => importEntry(entry.entryUrl))
+      .then(
+        (moduleExports) => {
+          timer.cancel();
+          resolve(moduleExports);
+        },
+        (error: unknown) => {
+          timer.cancel();
+          reject(error);
+        },
+      );
+  });
+}
+
 async function installRuntimeRendererPluginHostModules(): Promise<void> {
   const { installRendererPluginHostModules } = await import('./hostModuleProvider');
   installRendererPluginHostModules();
@@ -520,6 +596,7 @@ async function installRuntimeRendererPluginHostModules(): Promise<void> {
 async function loadRendererPluginEntry(
   entry: RendererPluginEntry,
   importEntry: (entryUrl: string) => Promise<unknown>,
+  importTimeoutMs: number,
   diagnostics: RendererPluginLoadDiagnostics,
 ): Promise<RendererPluginContribution | null> {
   if (hasRendererPlugin(entry.pluginId)) {
@@ -537,7 +614,7 @@ async function loadRendererPluginEntry(
   logRendererPluginLoadStep('import-start', entry, {
     registryBefore: diagnostics.registryBefore,
   });
-  const moduleExports = await importEntry(entry.entryUrl);
+  const moduleExports = await importRendererPluginEntryWithTimeout(entry, importEntry, importTimeoutMs);
   diagnostics.phase = 'import-success';
   diagnostics.moduleExports = describeRendererPluginModuleExports(moduleExports);
   logRendererPluginLoadStep('import-success', entry, {
@@ -575,6 +652,7 @@ async function loadRendererPluginEntry(
 async function syncActiveRendererPluginEntries(
   entries: readonly RendererPluginEntry[],
   importEntry: (entryUrl: string) => Promise<unknown>,
+  importTimeoutMs: number,
 ): Promise<RendererPluginSyncDiagnostics> {
   const desiredPluginIds = new Set(entries.map((entry) => entry.pluginId));
   const deactivatedPluginIds: string[] = [];
@@ -617,7 +695,7 @@ async function syncActiveRendererPluginEntries(
       logRendererPluginLoadStep('compatibility-admission', entry, {
         hostRendererUiVersion: RENDERER_UI_VERSION,
       });
-      loadedContribution = await loadRendererPluginEntry(entry, importEntry, diagnostics);
+      loadedContribution = await loadRendererPluginEntry(entry, importEntry, importTimeoutMs, diagnostics);
       const stylesheets = entry.cssUrls.length > 0
         ? entry.cssUrls
         : loadedContribution?.stylesheets ?? getRendererPluginContribution(entry.pluginId)?.stylesheets ?? [];
@@ -647,6 +725,7 @@ async function syncActiveRendererPluginEntries(
       const failure: RendererPluginSyncFailureDiagnostics = {
         entry: diagnostics.entry,
         phase: diagnostics.phase,
+        reason: error instanceof RendererPluginEntryImportTimeoutError ? 'import-timeout' : 'error',
         moduleExports: diagnostics.moduleExports,
         contribution: diagnostics.contribution,
         registryBefore: diagnostics.registryBefore,
@@ -662,6 +741,7 @@ async function syncActiveRendererPluginEntries(
         pluginId: entry.pluginId,
         version: entry.version,
         phase: failure.phase,
+        reason: failure.reason,
         sourceKind: failure.entry.sourceKind,
         entryUrl: entry.entryUrl,
         pluginDir: failure.entry.pluginDir,
@@ -766,7 +846,11 @@ async function syncRuntimeRendererPlugins(options: RuntimeRendererPluginLoaderOp
     hostModules: describeRendererPluginHostModules(),
     registryBeforeSync: summarizeRendererRegistry(describeRendererPluginRegistryForDiagnostics()),
   });
-  const sync = await syncActiveRendererPluginEntries(result.data, importEntry);
+  const sync = await syncActiveRendererPluginEntries(
+    result.data,
+    importEntry,
+    options.importTimeoutMs ?? RENDERER_PLUGIN_ENTRY_IMPORT_TIMEOUT_MS,
+  );
   const registryAfterSync = describeRendererPluginRegistryForDiagnostics();
   latestRendererPluginLoaderDiagnostics = {
     ...latestRendererPluginLoaderDiagnostics,
@@ -785,6 +869,7 @@ async function syncRuntimeRendererPlugins(options: RuntimeRendererPluginLoaderOp
       pluginId: failure.entry.pluginId,
       version: failure.entry.version,
       phase: failure.phase,
+      reason: failure.reason,
       sourceKind: failure.entry.sourceKind,
       entryUrl: failure.entry.entryUrl,
       error: summarizeRendererPluginError(failure.error),

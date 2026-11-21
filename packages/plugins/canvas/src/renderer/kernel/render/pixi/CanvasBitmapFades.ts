@@ -1,4 +1,5 @@
 import type { CanvasCardId } from '../../../../shared';
+import { CANVAS_BITMAP_FADE_MS } from '../../definitions/canvasBitmapFade';
 import {
   setCanvasBitmapLayerAlpha,
   type CanvasBitmapLayer,
@@ -44,7 +45,7 @@ export class CanvasBitmapFades {
     if (this.fades.size && this.timer === undefined) this.timer = setTimeout(this.pulse, 8);
   }
   private advance(fade: Fade, now: number): boolean {
-    const progress = Math.min(1, (now - fade.started) / 120);
+    const progress = Math.min(1, (now - fade.started) / CANVAS_BITMAP_FADE_MS);
     for (const previous of fade.previous)
       setCanvasBitmapLayerAlpha(previous.layer, previous.from * (1 - progress));
     setCanvasBitmapLayerAlpha(fade.target, progress);

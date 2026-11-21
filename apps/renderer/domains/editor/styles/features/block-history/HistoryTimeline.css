@@ -202,23 +202,3 @@
   margin-top: var(--space-0-5);
 }
 
-.history-timeline .timeline-axis::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.history-timeline .timeline-axis::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.history-timeline .timeline-axis::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: var(--radius-full);
-  background-color: var(--color-border-default);
-  background-clip: content-box;
-  transition: background-color var(--duration-medium) var(--ease-standard);
-}
-
-.history-timeline .timeline-axis::-webkit-scrollbar-thumb:hover {
-  background-color: var(--color-border-hover);
-}

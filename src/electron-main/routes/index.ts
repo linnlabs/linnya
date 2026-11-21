@@ -120,6 +120,7 @@ import { createConversationClientNoticeRouter } from '../../features/conversatio
 import { createSqliteClientNoticeAdmission } from '../../app-hosts/linnya/adapters/persistence/conversation-client-notices/sqliteClientNoticeAdmission';
 import { SqliteUiProjectionApplier } from '../../app-hosts/linnya/adapters/persistence/event-store/ui-projection/sqliteApplier';
 import { createHistoryRouter } from '../../features/conversation/history/history.router';
+import { createConversationActivityRouter } from '../../features/conversation/activity/conversationActivityRouter';
 import {
   createFlowHistoryAccessPort,
   HistoryHandlerService,
@@ -205,6 +206,9 @@ import {
 import { createLocalManagedStorageInventoryPort } from 'src/infra/adapters/storage-space/local-inventory';
 import { createStorageSpaceRouter } from 'src/features/storage-space/storageSpace.router';
 import { createProjectConversationsRouter } from 'src/features/project-conversations/projectConversations.router';
+import { createConversationActivityPorts } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
+import { subscribeRunActivity } from 'src/app-hosts/linnya/adapters/persistence/run-activity-signal';
+import { connectConversationActivityChanges } from 'src/app-hosts/linnya/application/conversation-activity';
 import {
   createProjectConversationStorageMeasurer,
   type ProjectConversationStorageMeasurer,
@@ -980,6 +984,7 @@ export async function configureRoutes(
     auditControl
   ) {
     const db = getDatabaseService().getDb();
+    const conversationActivity = createConversationActivityPorts(db, dependencies.commandApprovalControl);
     const preparedRoutes = await completeConversationRuntimeInitialization({
       commandScope: commandProductionScope,
       sandboxScope: sandboxProductionScope,
@@ -990,22 +995,17 @@ export async function configureRoutes(
         }),
         conversationImagePreview: createWorkspaceImagePreviewRouter({ imagePreview }),
         workspaceImagePreview: createWorkspaceImagePreviewRouter({ imagePreview }),
-        documentImagePreview: createWorkspaceImagePreviewRouter({
-          imagePreview: documentImagePreview,
-        }),
-        clientNotices: createConversationClientNoticeRouter(
-          createSqliteClientNoticeAdmission({
-            db,
-            project: fact => new SqliteUiProjectionApplier(db).projectClientNotice(fact),
-          })
-        ),
+        documentImagePreview: createWorkspaceImagePreviewRouter({ imagePreview: documentImagePreview }),
+        clientNotices: createConversationClientNoticeRouter(createSqliteClientNoticeAdmission({
+          db,
+          project: fact => new SqliteUiProjectionApplier(db).projectClientNotice(fact),
+        })),
+        activity: createConversationActivityRouter(conversationActivity),
         history: createHistoryRouter(historyService),
         flow: createConversationFlowRouter(flowOrchestrator),
         storageSpace: createStorageSpaceRouter(storageSpaceUseCase),
-        projectConversations: createProjectConversationsRouter({
-          db,
-          measurer: projectConversationMeasurer,
-        }),
+        projectConversations: createProjectConversationsRouter({ db, measurer: projectConversationMeasurer,
+          activity: conversationActivity }),
       }),
       registerCommandOwner: lifecycle =>
         dependencies.commandOwnerLifecycleRegistration.register(lifecycle),
@@ -1021,10 +1021,22 @@ export async function configureRoutes(
     app.use('/api/v1/workspace', preparedRoutes.workspaceImagePreview);
     app.use('/api/v1/markdown', preparedRoutes.documentImagePreview);
     app.use('/api/v1/conversation', preparedRoutes.clientNotices);
+    app.use('/api/v1/conversation', preparedRoutes.activity);
     app.use('/api/v1/conversation', preparedRoutes.history);
     app.use('/api/v1/conversation', preparedRoutes.flow);
     app.use('/api/v1/storage-space', preparedRoutes.storageSpace);
     app.use('/api/v1/project-conversations', preparedRoutes.projectConversations);
+    // 运行状态写入后让各窗口重读侧栏状态；订阅与本进程的数据库连接同寿命。
+    connectConversationActivityChanges({
+      subscribe: listener => subscribeRunActivity(db, listener),
+      publish: () => dependencies.rendererIntegration.publishConversationActivityChanged(),
+      onPublishFailure: error => logger.warn('[ConversationActivity] 运行状态失效信号发送失败', {
+        errorName: error instanceof Error ? error.name : typeof error,
+      }),
+    });
+    // 启动恢复在订阅之前收口遗留运行；App Server 重启后已打开的窗口要重读一次，
+    // 先于本接口挂载就读取失败的窗口也靠这一次补上。
+    dependencies.rendererIntegration.publishConversationActivityChanged();
     app.use(
       CONVERSATION_CONTROL_BRIDGE_PATH,
       createConversationControlBridgeRouter({

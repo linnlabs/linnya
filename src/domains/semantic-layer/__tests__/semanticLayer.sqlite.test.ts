@@ -83,6 +83,11 @@ describe('标签与字段定义', () => {
     const status = layer.defineProperty({ name: '状态', valueType: 'select', options: ['未读', '已读'] });
     expect(status.options.map(option => option.name)).toEqual(['未读', '已读']);
     expect(codeOf(() => layer.defineProperty({ name: 'slides.pageCount', valueType: 'number' }))).toBe('reserved_name');
+    for (const builtin of ['type', 'Name', 'ＣＲＥＡＴＥＤ', ' updated ']) {
+      expect(codeOf(() => layer.defineProperty({ name: builtin, valueType: 'text' }))).toBe('reserved_name');
+    }
+    layer.defineProperty({ name: '类型', valueType: 'text' });
+    expect(codeOf(() => layer.renameProperty('类型', 'TYPE'))).toBe('reserved_name');
     expect(codeOf(() => layer.defineProperty({ name: '分类', valueType: 'select' }))).toBe('invalid_definition');
     expect(codeOf(() => layer.defineProperty({ name: '页数', valueType: 'number', options: ['1'] }))).toBe('invalid_definition');
   });

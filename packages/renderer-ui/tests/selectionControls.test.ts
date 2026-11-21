@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { CustomCheckbox, CustomRadio, Switch, TagChip } from '@linnya/renderer-ui';
+import { CustomCheckbox, CustomRadio, CustomSelect, Switch, TagChip } from '@linnya/renderer-ui';
 
 interface MountedSwitch {
   input: HTMLInputElement;
@@ -145,5 +145,25 @@ describe('selection classNames', () => {
 
     app.unmount();
     host.remove();
+  });
+});
+
+describe('CustomSelect arrow', () => {
+  function renderSelect(props: Record<string, unknown>): { host: HTMLElement; unmount: () => void } {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const app = createApp({ render: () => h(CustomSelect, { modelValue: 'a', options: [{ value: 'a', text: 'A' }], ...props }) });
+    app.mount(host);
+    return { host, unmount: () => { app.unmount(); host.remove(); } };
+  }
+
+  it('shows the default arrow and drops it with hideArrow', () => {
+    const shown = renderSelect({});
+    expect(shown.host.querySelector('.arrow-icon')).not.toBeNull();
+    shown.unmount();
+    const hidden = renderSelect({ hideArrow: true });
+    expect(hidden.host.querySelector('.select-trigger')).not.toBeNull();
+    expect(hidden.host.querySelector('.arrow-icon')).toBeNull();
+    hidden.unmount();
   });
 });

@@ -16,6 +16,10 @@ App Server 自己完成的账号目录同步通过 `publishModelsChanged()` 发�
 Desktop 投影到既有 `models-updated` channel；它不借用只覆盖 Cloud 的目录订阅。Renderer 先订阅再初次读取，
 因此窗口创建前完成的同步也能由首次 HTTP 快照接纳，不需要缓存通知或向 Main 复制一份模型目录。
 
+对话运行状态同理：runs 表写入后 `publishConversationActivityChanged()` 发出无 payload 的失效通知（50 ms 内合并），
+Desktop 投影到 `conversation-activity-changed` 并发给所有窗口；侧栏先订阅再读 `GET /api/v1/conversation/activity`。
+信号来源与合并见 [conversation-activity](../application/conversation-activity/README.md)。
+
 Backend hidden worker runtime 保留已有插件 `hiddenWorkers` contribution、worker id、codec、同步 registry 与调用语义。
 `createBackendHiddenWorkerRuntime` 在 Backend 内把请求、取消和响应编解码，Desktop 的
 `DesktopHiddenWorkerHostPort` 只接收 worker descriptor 与已经编码的原始 envelope，不接收 codec function、插件实例或

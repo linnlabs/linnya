@@ -93,10 +93,10 @@
               </div>
             </div>
 
-            <div v-if="status === 'loading'" class="project-overview__state">
+            <div v-if="status === 'loading' || (queryLoading && !queryResult)" class="project-overview__state">
               <SkeletonRows :label="message('workspace.projectOverview.loading')" :rows="8" />
             </div>
-            <p v-else-if="status === 'error'" class="project-overview__state project-overview__state--text">
+            <p v-else-if="status === 'error' || searchFailed" class="project-overview__state project-overview__state--text">
               {{ message('workspace.projectOverview.loadFailed') }}
             </p>
             <p v-else-if="rows.length === 0" class="project-overview__state project-overview__state--text">
@@ -332,6 +332,7 @@ import {
   type ProjectConversationChangedDocument,
   type ProjectConversationRow,
   type ProjectConversationStorage,
+  type ProjectConversationQueryOptions,
 } from '@app/schemas';
 import type { WorkspaceMessageKey } from '@/domains/workspace/definitions/workspaceMessages';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
@@ -349,17 +350,16 @@ import {
 import type { ProjectOverviewDocumentTarget, ProjectOverviewPresentation } from '../definitions/projectOverview';
 import {
   defaultProjectConversationSortDirection,
-  filterProjectConversationRows,
   formatProjectConversationAgents,
   projectConversationRepliedAgents,
   projectConversationStorageBytes,
   projectConversationSubrunCount,
-  sortProjectConversationRows,
+  sortProjectConversationsByAgentLabel,
 } from '../functions/projectConversationRows';
 import { isExcerptShown } from '../functions/projectConversationExcerpt';
 import { clearProjectConversationWorkFiles } from '../orchestration/clearProjectConversationWorkFiles';
 import { useProjectConversationDetail } from '../orchestration/useProjectConversationDetail';
-import { useProjectConversationSearch } from '../orchestration/useProjectConversationSearch';
+import { useProjectConversationQuery } from '../orchestration/useProjectConversationQuery';
 import ProjectConversationMoreMenu from './ProjectConversationMoreMenu.vue';
 import ProjectOverviewFilterMenu from './ProjectOverviewFilterMenu.vue';
 
@@ -385,6 +385,9 @@ const ALL = '__all__';
 const { workspaceMessage: message, currentLocale } = useWorkspaceLocalization();
 const projectIdRef = toRef(props, 'projectId');
 const revisionRef = toRef(props, 'revision');
+const { historyTime, now: historyClock } = useHistoryTime();
+const calendarDay = computed(() => new Date(historyClock.value).toDateString());
+const queryRefreshKey = computed(() => [props.rows, calendarDay.value]);
 
 const filters = ref<ProjectConversationFilters>({ ...EMPTY_PROJECT_CONVERSATION_FILTERS });
 const sort = ref<ProjectConversationSort>({ key: 'activity', direction: 'desc' });
@@ -392,13 +395,20 @@ const query = computed({
   get: () => filters.value.query,
   set: value => { filters.value = { ...filters.value, query: value }; },
 });
-const { matches, truncated: searchTruncated, failed: searchFailed } = useProjectConversationSearch(projectIdRef, query, revisionRef);
+const queryOptions = computed<ProjectConversationQueryOptions>(() => ({
+  ...filters.value,
+  agent: filters.value.agent === '' ? 'default' : filters.value.agent,
+  sort: sort.value.key === 'agent' ? 'activity' : sort.value.key,
+  direction: sort.value.key === 'agent' ? 'desc' : sort.value.direction,
+}));
+const { result: queryResult, failed: searchFailed, loading: queryLoading } = useProjectConversationQuery(
+  projectIdRef, queryOptions, queryRefreshKey,
+);
+const searchTruncated = computed(() => queryResult.value?.truncated ?? false);
+const matches = computed(() => new Map(Object.entries(queryResult.value?.excerpts ?? {})));
 
 watch(projectIdRef, () => { filters.value = { ...EMPTY_PROJECT_CONVERSATION_FILTERS }; });
 
-// 相对时间与活跃度筛选共用一个时钟，见 useHistoryTime。
-const { historyTime, now: historyClock } = useHistoryTime();
-const now = computed(() => new Date(historyClock.value));
 
 function agentText(agentId: string | null): string {
   return props.presentation.agentName(agentId);
@@ -424,14 +434,11 @@ const isFiltering = computed(() => (
   || filters.value.query.trim().length > 0
 ));
 const sortedRows = computed(() => {
-  const filtered = filterProjectConversationRows(props.rows, filters.value, {
-    now: now.value,
-    matches: filters.value.query.trim() ? matches.value : null,
-  });
-  return sortProjectConversationRows(filtered, sort.value, {
-    title: titleText,
-    agent: row => repliedAgentsText(row) ?? '',
-  });
+  const rows = queryResult.value?.project_id === props.projectId ? queryResult.value.conversations : [];
+  // 插件显示名仅由 Renderer 贡献；保留这一个展示排序，CLI 不冒用 ID 代替它。
+  return sort.value.key === 'agent'
+    ? sortProjectConversationsByAgentLabel(rows, sort.value.direction, row => repliedAgentsText(row) ?? '')
+    : rows;
 });
 
 function clearFilters(): void {
@@ -530,7 +537,12 @@ watch(sortedRows, list => {
   selectedId.value = list[0]?.conversation_id ?? null;
 }, { immediate: true });
 const selectedRow = computed(() => sortedRows.value.find(row => row.conversation_id === selectedId.value) ?? null);
-const { detail, status: detailStatus } = useProjectConversationDetail(projectIdRef, selectedId, revisionRef);
+// 查询结果携带项目归属，选择必须从同一结果派生，不能在切项目时拼接新项目与旧对话 ID。
+const selectedRequest = computed(() => selectedRow.value && queryResult.value ? {
+  project_id: queryResult.value.project_id,
+  conversation_id: selectedRow.value.conversation_id,
+} : null);
+const { detail, status: detailStatus } = useProjectConversationDetail(selectedRequest, revisionRef);
 const selectedStorage = computed(() => selectedRow.value?.storage ?? null);
 const selectedSubrunCount = computed(() => projectConversationSubrunCount(detail.value?.subagents ?? []));
 const selectedExcerpt = computed(() => {

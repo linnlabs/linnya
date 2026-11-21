@@ -26,7 +26,7 @@
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/KnowledgeSearchCard.css
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/QuestionActions.css
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/QuestionItem.css
-4	COLOR-01-base-palette	apps/renderer/domains/conversation/styles/components/RawRenderer.css
+2	COLOR-01-base-palette	apps/renderer/domains/conversation/styles/components/RawRenderer.css
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SharedMemoryDocListCard.css
 3	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SharedMemoryDocReadCard.css
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SharedMemoryDocWriteCard.css

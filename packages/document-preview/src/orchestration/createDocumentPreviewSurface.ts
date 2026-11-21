@@ -6,7 +6,7 @@ import type {
 import { DOCUMENT_PREVIEW_LAYOUT as layout } from '../definitions/documentPreviewSurface';
 import {
   createDocumentPreviewIcon,
-  documentPreviewMessage,
+  documentPreviewText,
 } from '../functions/documentPreviewPresentation';
 
 const releases = new WeakMap<HTMLElement, () => void>();
@@ -41,6 +41,7 @@ async function renderBody(detail: DocumentPreviewDetail, input: DocumentPreviewS
       maxHeight,
       theme: input.theme,
       signal: input.signal,
+      ...(input.locale ? { locale: input.locale } : {}),
       referenceIcon: nodeType =>
         createDocumentPreviewIcon(
           input.document,
@@ -72,6 +73,7 @@ export async function createDocumentPreviewSurface(
 ): Promise<DocumentPreviewSurface> {
   input.signal.throwIfAborted();
   const { document, preview } = input;
+  const text = documentPreviewText(input.locale);
   const element = document.createElement('section');
   element.className = 'document-preview-surface';
   element.setAttribute('data-linnya-ui-theme', input.theme);
@@ -87,11 +89,11 @@ export async function createDocumentPreviewSurface(
   }
   const title = document.createElement(input.onOpen ? 'button' : 'div');
   title.className = 'document-preview-title';
-  title.title = preview.title ?? documentPreviewMessage(preview.status);
+  title.title = preview.title ?? text.status[preview.status];
   if (input.onOpen) {
     title.setAttribute('type', 'button');
     title.addEventListener('click', () => input.onOpen?.());
-    title.setAttribute('aria-label', `打开文档：${preview.title ?? ''}`);
+    title.setAttribute('aria-label', text.openLabel(preview.title ?? ''));
   }
   const icon = document.createElement('span');
   icon.className = 'document-preview-type-icon';
@@ -99,7 +101,7 @@ export async function createDocumentPreviewSurface(
   icon.append(createDocumentPreviewIcon(document, input.icon ?? undefined));
   const name = document.createElement('span');
   name.className = 'document-preview-name';
-  name.textContent = preview.title ?? '文档当前不可访问';
+  name.textContent = preview.title ?? text.unavailableTitle;
   title.append(icon, name);
   const body = document.createElement('div');
   body.className = 'document-preview-body';
@@ -146,7 +148,7 @@ export async function createDocumentPreviewSurface(
       const status = document.createElement('p');
       status.className = 'document-preview-status';
       status.setAttribute('role', 'status');
-      status.textContent = documentPreviewMessage(preview.status);
+      status.textContent = text.status[preview.status];
       if (preview.status === 'plugin_unavailable' && preview.content?.summary) body.append(status);
       else body.replaceChildren(status);
     }

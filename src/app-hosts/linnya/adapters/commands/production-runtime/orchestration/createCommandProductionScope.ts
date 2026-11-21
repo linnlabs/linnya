@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createPluginCliInferenceSession, createPluginInferencePort } from '../../../inference';
 import type Database from 'better-sqlite3';
 import { SQLiteEventStore } from 'src/app-hosts/linnya/adapters/persistence/event-store';
+import { createConversationActivityPorts } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
 
 import { ToolOutputBlobSourceSchema } from 'src/tools/tool_output';
 import { createToolOutputTextBlobWriter } from 'src/tools/tool_output/orchestration/createToolOutputTextBlobWriter';
@@ -92,7 +93,8 @@ export async function createCommandProductionScope(input: {
   const conversationFacts = new SQLiteEventStore(input.db);
   const pluginCliBridge = await startPluginCliShellBridgeRuntime({
     resolveCli: input.resolvePluginCli,
-    coreCli: createCoreCli(input.db, COMMAND_TEXT_PROJECTION_LIMITS.maxCharactersPerStream, createNodePhysicalFileReader()),
+    coreCli: createCoreCli(input.db, COMMAND_TEXT_PROJECTION_LIMITS.maxCharactersPerStream, createNodePhysicalFileReader(),
+      createConversationActivityPorts(input.db, input.approvalHost)),
     readConversationProjectId: async conversationId => (
       (await conversationFacts.getConversationMetadata(conversationId))?.project_id
     ),

@@ -7,6 +7,8 @@ import './styles/index.css'
 import './layout/styles/index.css'
 import './pages/styles/index.css'
 import './update/styles/index.css'
+import './backend-health/styles/index.css'
+import './plugins/styles/RendererPluginLoadFailureNotice.css'
 import '../domains/editor/styles/index.css'
 import '../domains/settings/styles/index.css'
 import '../domains/skills/styles/index.css'
@@ -40,6 +42,7 @@ import {
   provideSharedComponentLocalization,
 } from './localization/orchestration/provideSharedComponentLocalization'
 import { ensureUpdateLocalizationRegistered } from './update/orchestration/ensureUpdateLocalizationRegistered'
+import { ensureBackendHealthLocalizationRegistered, startBackendHealthLifecycle } from './backend-health'
 import { ensureSystemLocalizationRegistered } from './system/orchestration/ensureSystemLocalizationRegistered'
 import { ensurePluginStoreLocalizationRegistered } from '../domains/plugin-store/orchestration/ensurePluginStoreLocalizationRegistered'
 import { ensureWorkspaceLocalizationRegistered } from '../domains/workspace/orchestration/ensureWorkspaceLocalizationRegistered'
@@ -47,7 +50,9 @@ import { ensureConversationLocalizationRegistered } from '../domains/conversatio
 import { ensureConversationObservabilityRegistered } from '../domains/conversation/registrations/ensureConversationObservabilityRegistered'
 import { ensureEditorLocalizationRegistered } from '../domains/editor/orchestration/ensureEditorLocalizationRegistered'
 import { ensurePluginContributionLocalizationRegistered } from './plugins/orchestration/ensurePluginContributionLocalizationRegistered'
+import { ensureRendererPluginLoadLocalizationRegistered } from './plugins/orchestration/ensureRendererPluginLoadLocalizationRegistered'
 import { ensureTableFillLocalizationRegistered } from './workflows/table-fill/orchestration/ensureTableFillLocalizationRegistered'
+import { ensureDocumentPreviewLocalizationRegistered } from './workflows/document-preview/orchestration/ensureDocumentPreviewLocalizationRegistered'
 import { provideHoverTooltipWindowFocus } from './orchestration/provideHoverTooltipWindowFocus'
 import { startNotificationAutoDismissal } from './notification'
 import { useUIStore } from '../../../apps/renderer/shared/stores/ui'
@@ -55,6 +60,7 @@ import {
   startModelCatalogLifecycle,
   startModelPickerLifecycle,
 } from '../domains/model-configuration'
+import { startConversationActivityLifecycle } from '../domains/conversation/features/conversation-activity'
 import { useUpdateActions } from './update/runtime'
 
 const conversationFixtureId = import.meta.env.DEV
@@ -100,6 +106,7 @@ migrateLegacyEditorDocumentSettings()
 ensureLayoutLocalizationRegistered()
 ensureSharedComponentLocalizationRegistered()
 ensureUpdateLocalizationRegistered()
+ensureBackendHealthLocalizationRegistered()
 ensureSystemLocalizationRegistered()
 if (import.meta.env.DEV) {
   void import('./system/features/process-memory-observation').then(({ ensureProcessMemoryObservationRegistered }) => {
@@ -111,7 +118,9 @@ ensureWorkspaceLocalizationRegistered()
 ensureConversationLocalizationRegistered()
 ensureEditorLocalizationRegistered()
 ensurePluginContributionLocalizationRegistered()
+ensureRendererPluginLoadLocalizationRegistered()
 ensureTableFillLocalizationRegistered()
+ensureDocumentPreviewLocalizationRegistered()
 
 app.use(pinia)
 app.onUnmount(startNotificationAutoDismissal())
@@ -152,6 +161,10 @@ if (!isConversationFixture) {
   startModelPickerLifecycle().catch(error => {
     console.error('[main] 模型选择器初始化失败:', error)
   })
+  // 后台服务停止、重启或卡住：Main 唯一持有状态，这里只订阅快照。
+  startBackendHealthLifecycle()
+  // 侧栏运行状态：先订阅 App Server 的失效信号，再读一次全工作区状态。
+  startConversationActivityLifecycle()
 
 }
 

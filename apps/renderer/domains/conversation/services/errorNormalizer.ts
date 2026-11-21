@@ -185,6 +185,17 @@ const extractRawMessageFromHttpBody = (bodyText: string): string | undefined => 
   return undefined;
 };
 
+/** 后端在控制命令拒绝体中给出的稳定业务错误码（例如退役 Agent 的运行终止）。 */
+const extractErrorCodeFromHttpBody = (bodyText: string): string | undefined => {
+  if (!bodyText) return undefined;
+  try {
+    const parsed = JSON.parse(bodyText) as unknown;
+    return isRecord(parsed) ? getString(parsed, 'error_code') : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 /**
  * 将 HTTP 非 2xx（或网络层判定失败）的响应信息转换为用户友好错误。
  * 注意：这是纯函数，不读取 Response，不做 IO。
@@ -198,6 +209,17 @@ export function normalizeHttpErrorPayload(input: {
   const statusText = input.statusText;
   const bodyText = typeof input.bodyText === 'string' ? input.bodyText : '';
   const rawMessage = extractRawMessageFromHttpBody(bodyText);
+  const bodyErrorCode = extractErrorCodeFromHttpBody(bodyText);
+
+  if (bodyErrorCode === 'AGENT_RETIRED') {
+    return {
+      userMessage: resolveErrorMessage('conversation.flow.deepResearch.retiredRunTerminated', options),
+      errorCode: bodyErrorCode,
+      retryable: false,
+      rawMessage,
+      details: { status, statusText, bodyText: bodyText.slice(0, 2000) },
+    };
+  }
 
   // 用户友好文案（不把供应商/协议细节直接甩给用户）
   const userMessage = (() => {

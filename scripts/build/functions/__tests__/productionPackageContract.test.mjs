@@ -105,7 +105,8 @@ describe('electron-builder production command contract', () => {
     });
     const output = execFileSync(process.execPath, [...args, '--version'], { encoding: 'utf8' });
     expect(output.trim()).toBe(require('electron-builder/package.json').version);
-  });
+    // 启动真实 Node 并加载 electron-builder，冷启动的 CI macOS 机器上超过默认 5 秒。
+  }, 30_000);
 
   it('显式传入更新地址时覆盖发布配置，未传入时不改动', () => {
     const base = { platform: 'darwin', architecture: 'arm64', adHocMacSigning: true };

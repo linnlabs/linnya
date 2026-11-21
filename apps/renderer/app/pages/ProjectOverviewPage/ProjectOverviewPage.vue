@@ -30,6 +30,8 @@ import {
   resolveConversationAgentChoiceTextPresentation,
   resolveDocumentTypeTextPresentation,
 } from '@/app/plugins/functions/pluginContributionPresentation';
+import { listRetiredConversationAgentNames } from '@/domains/conversation/features/agent-choice';
+import { useConversationLocalization } from '@/domains/conversation/ui/useConversationLocalization';
 import ProjectOverviewView from '@/domains/workspace/features/project-overview/ui/ProjectOverviewView.vue';
 import { resolveProjectOverviewAgentName } from '@/domains/workspace/features/project-overview/functions/projectOverviewPresentation';
 import { useProjectKnowledgeBaseModalStore } from '@/domains/workspace/features/project-overview/store/projectKnowledgeBaseModalStore';
@@ -64,6 +66,7 @@ const {
 const pluginsStore = useEnabledPluginsStore();
 const { t } = useLocalization();
 const { workspaceMessage } = useWorkspaceLocalization();
+const { conversationMessage } = useConversationLocalization();
 
 // 文档类型和插件名从插件注册表查；注册表变化（插件启停）时整体重算。
 const presentation = computed<ProjectOverviewPresentation>(() => {
@@ -75,10 +78,14 @@ const presentation = computed<ProjectOverviewPresentation>(() => {
     }]),
   );
   const pluginNames = new Map(pluginsStore.states.map(state => [state.meta.id, state.meta.name]));
-  const agentNames = new Map<string, string>(agentChoices.value.map(choice => [
-    choice.agentId,
-    resolveConversationAgentChoiceTextPresentation(choice, t).pillText,
-  ]));
+  // 已删除定义的旧 Agent 仍出现在历史对话与改动来源里，用可读的“已退役”名称代替注册表 ID。
+  const agentNames = new Map<string, string>([
+    ...listRetiredConversationAgentNames(conversationMessage),
+    ...agentChoices.value.map(choice => [
+      choice.agentId,
+      resolveConversationAgentChoiceTextPresentation(choice, t).pillText,
+    ] as const),
+  ]);
   return {
     documentType: nodeType => byNodeType.get(nodeType) ?? { label: nodeType, iconComponent: DocumentIcon, iconClass: '' },
     pluginName: pluginId => pluginNames.get(pluginId) ?? null,

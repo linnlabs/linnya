@@ -96,26 +96,3 @@
   white-space: pre-wrap;
 }
 
-.slides-draft-failure-log__content::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.slides-draft-failure-log__content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.slides-draft-failure-log__content::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
-  background-color: var(--scrollbar-thumb-color);
-  background-clip: content-box;
-}
-
-.slides-draft-failure-log__content::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}
-
-.slides-draft-failure-log__content::-webkit-scrollbar-corner {
-  background: transparent;
-}

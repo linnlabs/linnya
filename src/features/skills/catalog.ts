@@ -141,16 +141,29 @@ export function readSkillResourceForDigest(name: string, resourcePath: string): 
 // ─── 内部辅助 ───
 
 /**
+ * 已从内置包删除的 Skill。历史对话与旧习惯仍可能点名它们，找不到时说明已退役并给出替代入口；
+ * 不把旧名别名到其他 Skill。
+ */
+const RETIRED_BUILTIN_SKILL_NOTES: ReadonlyMap<string, string> = new Map([
+  [
+    'mckinsey-research',
+    '该内置 Skill 已退役；商业分析可用的方法见 deep-research 的 references/business-analysis.md。',
+  ],
+]);
+
+/**
  * 查找 Skill，不存在时 throw（消除调用方重复的查找 + 报错逻辑）
  */
 function requireSkill(name: string): SkillMetadata {
   const skill = getSkillByName(name);
   if (!skill) {
     const available = filterAvailableSkills(discoverSkills()).map(s => s.name);
+    const retired = RETIRED_BUILTIN_SKILL_NOTES.get(name);
+    const missing = retired ? `找不到 Skill "${name}"：${retired}` : `找不到 Skill "${name}"。`;
     throw new Error(
       available.length > 0
-        ? `找不到 Skill "${name}"。可用：${available.join(', ')}`
-        : `找不到 Skill "${name}"。当前未发现任何可用 Skill（请检查内置 Skill 路径）`
+        ? `${missing}可用：${available.join(', ')}`
+        : `${missing}当前未发现任何可用 Skill（请检查内置 Skill 路径）`
     );
   }
   return skill;

@@ -45,6 +45,9 @@ Flow 不负责：
 首次准备先执行 Agent Registry 的新运行可用性接纳。旧入口可保留 definition 和历史身份，
 同时通过 `newRunUnavailableReason` 拒绝 start；该检查必须先于运行注册、替换旧暂停运行
 和 incoming facts 提交。resume / continue / persist-only 不执行此检查，仍使用原身份。
+例外是定义已删除的旧版深度研究身份（`RETIRED_DEEP_RESEARCH_AGENT_IDS`）：start 同样以
+`AGENT_NEW_RUN_UNAVAILABLE` 拒绝；continue 与 interaction response 在恢复兼容检查之前取消原根运行并返回
+`AGENT_RETIRED`，HTTP 拒绝体带同名 `error_code`，不换用其它 Agent 续跑。
 
 首次准备通过 Registry 调用可选 `requestAdmission`，接纳规则归具体 Agent；Flow 不判断研究
 或其它业务。接纳后的 Host 请求交给后续冻结，持久化后的准备只刷新 context history，保留原

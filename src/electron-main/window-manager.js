@@ -7,6 +7,8 @@ import { app, BrowserWindow, dialog, Menu, ipcMain } from 'electron';
 import { HTML_CANVAS_BLINK_FEATURES } from './desktop-capabilities/html-canvas/definitions/htmlCanvasWindowPreferences.js';
 import { randomUUID } from 'node:crypto';
 import path from 'path';
+import { recordDevelopmentRendererConsole } from './development/recordDevelopmentRendererConsole.ts';
+import { getLogDirectory } from '../shared/utils/pathManager.js';
 import { createMainWindowCloseLifecycle } from './app-lifecycle/orchestration/createMainWindowCloseLifecycle.ts';
 import { createWindowClosePreparationHost } from './app-lifecycle/orchestration/createWindowClosePreparationHost.ts';
 import {
@@ -254,6 +256,12 @@ function createWindow() {
   const targetWindow = mainWindow;
   const targetContents = mainWindow.webContents;
   if (process.env.NODE_ENV === 'development') {
+    // 主窗口控制台落盘，agent 用探针 logs --attach 读取，不必让用户手动开 DevTools 复制。
+    try {
+      recordDevelopmentRendererConsole(targetContents, getLogDirectory());
+    } catch (error) {
+      console.warn('[window-manager] 开发 Renderer 控制台落盘未启用:', error);
+    }
     // 开发快捷键属于当前窗口，不能注册全局热键抢走另一个 worktree 的按键。
     targetContents.on('before-input-event', (event, input) => {
       const modifier = process.platform === 'darwin' ? input.meta : input.control;

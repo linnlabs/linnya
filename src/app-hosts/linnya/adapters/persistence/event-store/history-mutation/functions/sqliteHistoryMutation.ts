@@ -6,6 +6,7 @@ import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { SqliteEventAssetLinks } from '../../event-asset-links/sqliteEventAssetLinks';
 import type { SqliteUiProjectionApplier } from '../../ui-projection/sqliteApplier';
 import { SqliteSubrunTraceHistoryCleanup } from '../../../subrun-trace-history/sqliteSubrunTraceHistoryCleanup';
+import { notifyRunActivityChanged } from '../../../run-activity-signal';
 import { parseStoredRuntimeEvent } from '../../functions/runtimeEventStorageCodec';
 
 interface StoredEventTargetRow {
@@ -123,6 +124,7 @@ export function deleteHistoryFromRun(
     .prepare(`DELETE FROM runs WHERE id IN (${placeholders})`)
     .run(...runIds)
     .changes;
+  if (deletedRunCount > 0) notifyRunActivityChanged(params.db, params.conversationId);
 
   return { deletedEventCount, deletedRunCount };
 }

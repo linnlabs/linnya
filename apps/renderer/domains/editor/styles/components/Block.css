@@ -88,8 +88,6 @@
   display: none;
 }
 
-
-
 /* 
  * 基础块视觉样式
  * 作用：为基础块提供特定的视觉风格
@@ -519,7 +517,7 @@
   position: relative; /* 为了定位 ::before 伪元素 */
   transition: background-color var(--duration-medium) var(--ease-standard); /* 背景色过渡动画 */
   scrollbar-width: thin; /* Firefox 滚动条宽度 */
-  scrollbar-color: var(--color-border-default) var(--code-block-bg);
+  scrollbar-color: var(--scrollbar-thumb-color) transparent; /* 与 small 档一致；代码块 DOM 由编辑器生成，不挂属性 */
 }
 
 .code-block code {
@@ -531,15 +529,8 @@
 }
 
 /* ① 只负责高度（横向滚动条） */
-.code-block pre::-webkit-scrollbar {
-  height: 8px;                 /* 仅尺寸 */
-}
 
 /* ③ 滑块主体 */
-.code-block pre::-webkit-scrollbar-thumb {
-  background: var(--color-border-default);
-  border-radius: var(--radius-sm);
-}
 
 /* 
  * LaTeX 块视觉样式

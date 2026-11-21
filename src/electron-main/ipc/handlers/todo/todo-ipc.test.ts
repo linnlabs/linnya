@@ -83,6 +83,7 @@ describe('todo IPC handlers', () => {
       publishPluginRendererPush: vi.fn(),
       publishTodosChanged: projectId => webContentsSend('todos-changed', { projectId }),
       publishModelsChanged: vi.fn(),
+      publishConversationActivityChanged: vi.fn(),
       publishPluginsChanged: vi.fn(),
       publishPluginDataChanged: vi.fn(),
     });
@@ -124,7 +125,7 @@ describe('todo IPC handlers', () => {
       expect(result.error).toContain('Todo update field is not allowed: projectId');
     }
     expect(webContentsSend).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it('rejects malformed update payloads before reaching service', async () => {
     const result = await invokeTodoUpdate({

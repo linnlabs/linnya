@@ -1,19 +1,21 @@
 import { ConversationControlError } from '../definitions/conversationControlError';
 import type { ConversationControlRunRecord } from '../definitions/conversationControlUseCase';
 
-const ACTIVE_STATUSES = new Set<ConversationControlRunRecord['status']>([
+export const ACTIVE_RUN_STATUSES: readonly ConversationControlRunRecord['status'][] = [
   'pending',
   'running',
   'awaiting_user',
   'paused',
-]);
+];
+
+export const TERMINAL_RUN_STATUSES: readonly ConversationControlRunRecord['status'][] = ['completed', 'failed', 'cancelled'];
 
 export function isForegroundRootRun(run: ConversationControlRunRecord): boolean {
   return run.parentRunId === undefined && run.metadata?.lane === 'foreground';
 }
 
 export function isActiveRun(run: ConversationControlRunRecord): boolean {
-  return ACTIVE_STATUSES.has(run.status);
+  return ACTIVE_RUN_STATUSES.includes(run.status);
 }
 
 /** 已收口暂停可被正式新消息原子替代；仍在停止的 execution 不允许抢占。 */

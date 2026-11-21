@@ -36,7 +36,7 @@ beforeEach(() => {
   push.mockClear();
   installBackendRendererIntegrationPort({ connectModelCatalogUpdates: async () => () => undefined,
     publishTranscriptionProgress: vi.fn(), publishWorkspaceMutation: vi.fn(),
-    publishPluginRendererPush: push, publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishPluginsChanged: vi.fn(),
+    publishPluginRendererPush: push, publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishConversationActivityChanged: vi.fn(), publishPluginsChanged: vi.fn(),
   });
   projectId = createProjectLifecycle(db).create({ name: '画布测试' });
   runtime = createCanvasDocumentRuntime(db);

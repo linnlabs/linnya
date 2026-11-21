@@ -10,6 +10,7 @@ import {
   DESKTOP_RENDERER_PLUGINS_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_PLUGIN_DATA_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_MODELS_CHANGED_RPC_METHOD,
+  DESKTOP_RENDERER_CONVERSATION_ACTIVITY_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_TODOS_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_TRANSCRIPTION_PROGRESS_RPC_METHOD,
   DESKTOP_RENDERER_WORKSPACE_MUTATION_RPC_METHOD,
@@ -74,6 +75,11 @@ export function createDesktopRendererIntegrationRpcHandlers(
     }],
     [DESKTOP_RENDERER_PLUGIN_DATA_CHANGED_RPC_METHOD, payload => {
       port.publishPluginDataChanged(RendererIntegrationPluginDataChangedRpcSchema.parse(payload));
+      return null;
+    }],
+    [DESKTOP_RENDERER_CONVERSATION_ACTIVITY_CHANGED_RPC_METHOD, payload => {
+      RendererIntegrationVoidRpcSchema.parse(payload);
+      port.publishConversationActivityChanged();
       return null;
     }],
   ]);

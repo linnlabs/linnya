@@ -17,3 +17,5 @@ export const DESKTOP_RENDERER_PLUGIN_DATA_CHANGED_RPC_METHOD =
 
 export const DESKTOP_RENDERER_MODELS_CHANGED_RPC_METHOD =
   'desktop.renderer_integration.models.changed' as const;
+export const DESKTOP_RENDERER_CONVERSATION_ACTIVITY_CHANGED_RPC_METHOD =
+  'desktop.renderer_integration.conversation_activity.changed' as const;

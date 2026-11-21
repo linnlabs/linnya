@@ -1,0 +1,67 @@
+/* 后台服务状态条：占内容区顶部一行，把内容往下推，不遮挡对话或文档。 */
+.backend-health-strip {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  align-items: center;
+  align-self: center;
+  width: min(720px, calc(100% - var(--space-8))); /* scale-exempt: 与对话正文同宽 */
+  min-height: 36px; /* scale-exempt: 与侧栏行同高 */
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-footnote);
+  border-radius: var(--radius-sm);
+}
+
+.backend-health-strip.is-progress {
+  background-color: var(--color-bg-hover);
+}
+
+.backend-health-strip.is-warning {
+  background-color: var(--color-warning-bg);
+}
+
+.backend-health-strip.is-error {
+  background-color: var(--color-error-bg);
+}
+
+.backend-health-strip.is-success {
+  background-color: var(--color-success-bg);
+}
+
+.backend-health-strip__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+}
+
+.backend-health-strip__icon > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.backend-health-strip.is-warning .backend-health-strip__icon {
+  color: var(--color-warning-text);
+}
+
+.backend-health-strip.is-error .backend-health-strip__icon {
+  color: var(--color-error-text);
+}
+
+.backend-health-strip.is-success .backend-health-strip__icon {
+  color: var(--color-success-text);
+}
+
+.backend-health-strip__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.backend-health-strip__actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--space-1);
+}

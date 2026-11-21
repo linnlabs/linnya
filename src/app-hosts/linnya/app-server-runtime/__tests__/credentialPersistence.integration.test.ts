@@ -162,7 +162,8 @@ describe('App Server 统一文件凭据业务', () => {
     await owner.endpoints.put('after-crash', 'new-value');
     expect(open().storage.read('fixture').size).toBe(40);
     expect(open().endpoints.resolve('after-crash')).toBe('new-value');
-  });
+    // 三次真实子进程各自加载 tsx，ci:local 并发负载下会超过默认 5 秒。
+  }, 30_000);
 
   it('业务记录格式损坏时不允许替换，旧凭据文件不会被导入', async () => {
     const owner = open();

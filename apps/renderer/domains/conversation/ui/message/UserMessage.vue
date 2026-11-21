@@ -140,6 +140,7 @@
             ref="textareaRef"
             v-model="editedContent"
             class="edit-textarea"
+            data-linnya-scrollbar="medium"
             :disabled="isEditSubmitting"
             @input="adjustTextareaHeight"
             @keydown.enter.exact.prevent="saveEdit"

@@ -18,6 +18,8 @@ const CANDIDATES_PER_CONVERSATION = 20;
 export function searchProjectConversations(
   db: Database.Database,
   request: ProjectConversationsSearchRequest,
+  /** 先应用结构化筛选再截断搜索，避免别的 Agent/日期挤掉本次候选。 */
+  allowedConversations?: ReadonlySet<string>,
 ): ProjectConversationsSearch {
   const query = request.query.trim();
   const needle = query.toLowerCase();
@@ -27,6 +29,7 @@ export function searchProjectConversations(
     'SELECT conversation_id, title FROM conversations WHERE project_id = ? ORDER BY last_event_at DESC',
   ).all(request.project_id);
   for (const conversation of conversations) {
+    if (allowedConversations && !allowedConversations.has(conversation.conversation_id)) continue;
     if (conversation.title.toLowerCase().includes(needle)) {
       matches.set(conversation.conversation_id, { conversation_id: conversation.conversation_id, excerpt: null });
     }
@@ -50,6 +53,7 @@ export function searchProjectConversations(
 
   const seen = new Map<string, number>();
   for (const candidate of candidates) {
+    if (allowedConversations && !allowedConversations.has(candidate.conversation_id)) continue;
     const existing = matches.get(candidate.conversation_id);
     if (existing && existing.excerpt !== null) continue;
     const checked = seen.get(candidate.conversation_id) ?? 0;

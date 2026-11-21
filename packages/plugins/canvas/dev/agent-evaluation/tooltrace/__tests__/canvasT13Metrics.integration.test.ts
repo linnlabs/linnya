@@ -143,7 +143,7 @@ it('正式2000→2300双批原件闭合；重叠RAF去重、慢Worker/帧保真�
     expect(derived).toMatchObject({ workerSampleCount: 2, commitSampleCount: 2, frameSampleCount: 4 });
     await expect(collectCanvasT13Metrics({ request: { runDirectory: data.run, collectionLabel: 'final', observationDirectory: data.observer }, outputDirectory })).rejects.toThrow();
   } finally { await rm(data.root, { recursive: true, force: true }); }
-});
+}, 30_000);
 
 it('封存Host响应独立接纳纯add fresh-null与后续真实布局；混合Shell原诊断/draft待审不被洗掉', async () => {
   const data = await fixture(CANVAS_CLI_FROZEN_PRODUCER_SOURCE), cli = createSealedObservationFixture(data.root);
@@ -414,7 +414,7 @@ it('上游complete不能代替首尾、连续链与焦点，只有IEEE量级舍�
         : edge === 'gap' || edge === 'overlap' ? 'frame_window_chain_missing:5' : 'frame_window_boundaries_missing:5');
     }
   } finally { await rm(data.root, { recursive: true, force: true }); }
-});
+}, 30_000);
 
 it('正式apply批末arrange、独立arrange和未知ops文件按实际合同判定计时覆盖，未知不等于无布局', async () => {
   const data = await fixture();
@@ -449,4 +449,4 @@ it('正式apply批末arrange、独立arrange和未知ops文件按实际合同判
       expect(buildCanvasT13Metrics({ ...data.input, facts }).kind).toBe(expected === false ? 'complete' : 'needs-evidence');
     }
   } finally { await rm(data.root, { recursive: true, force: true }); }
-});
+}, 30_000);

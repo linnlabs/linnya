@@ -49,6 +49,11 @@ export function createDevelopmentProcessScope({ env = process.env } = {}) {
       if (stopping) {
         ready.reject(new Error(`${task.id} 已停止`));
         done.resolve();
+      } else if (task.relaunchExitCode !== undefined && code === task.relaunchExitCode) {
+        // 运行进程请求由启动器重开（例如后台服务停止后恢复），不是失败。
+        console.info(`[dev:${task.id}] requested relaunch`);
+        ready.reject(new Error(`${task.id} 请求重新启动`));
+        done.resolve('relaunch');
       } else if (code === 0 && !task.watch) {
         // Desktop 是运行进程；正常退出（包括第二实例退出）不能冒充构建或应用就绪。
         if (task.runtime) {

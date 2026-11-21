@@ -51,7 +51,7 @@
                 </div>
                 <span v-if="webPublishedAt" class="web-meta-date">{{ webPublishedAt }}</span>
               </div>
-              <div class="citation-snippet">
+              <div class="citation-snippet" data-linnya-scrollbar-reveal="hover">
                 {{ displaySnippet }}
               </div>
             </div>
@@ -70,7 +70,7 @@
             </div>
             <div class="citation-body">
               <p v-if="sourceDeleted" class="citation-source-deleted">{{ conversationMessage('conversation.citation.sourceDeleted') }}</p>
-              <div class="citation-snippet">
+              <div class="citation-snippet" data-linnya-scrollbar-reveal="hover">
                 {{ displaySnippet }}
               </div>
             </div>

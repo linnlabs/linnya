@@ -66,30 +66,6 @@
   transition: height var(--duration-micro) var(--ease-standard);
 }
 
-.create-project-content .settings-textarea::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.create-project-content .settings-textarea::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.create-project-content .settings-textarea::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
-  background-color: var(--scrollbar-thumb-color);
-  background-clip: content-box;
-}
-
-.create-project-content .settings-textarea::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover-color);
-}
-
-.create-project-content .settings-textarea::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
 /* 底色在静止、悬停、聚焦时保持不变（与 renderer-ui 输入框一致），聚焦只加强调色描边。 */
 .create-project-content .settings-input:focus:not(:disabled),
 .create-project-content .settings-textarea:focus:not(:disabled) {

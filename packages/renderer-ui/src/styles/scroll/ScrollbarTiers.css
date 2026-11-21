@@ -1,0 +1,103 @@
+/**
+ * Renderer UI 原生滚动条三档
+ *
+ * 中文说明：
+ * - 全应用默认就是 large：下面的 :where(*) 默认规则优先级最低，任何没声明档位的滚动区都用它（用户 2026-11-20 定：所有滚动条统一为大/中/小三档）；
+ * - 需要其他档位时在滚动容器上声明 data-linnya-scrollbar="large | medium | small | hidden"，不再复制伪元素规则；
+ * - large：轨道 10px、滑块可见 6px（2px 透明边 + content-box）、胶囊、悬停 200ms 变色，用于正文、面板、弹窗等主要滚动区；
+ * - medium：轨道与滑块 6px、胶囊，用于侧边小面板、列表、浮层等紧凑区域；
+ * - small：系统细条（scrollbar-width: thin），用于代码块、命令输出等嵌在内容里的小滚动区；
+ * - hidden：不显示滚动条，仍可滚动；
+ * - .linnya-dropdown-surface 是本包的下拉面板根类，由多处通过常量套用，直接归入 large；
+ * - 颜色只用 --scrollbar-thumb-color / --scrollbar-thumb-hover-color，每套主题一种，与覆盖式滚动条一致。
+ */
+
+
+/* 全局默认 = large。:where() 让本地规则和档位属性都能覆盖它。 */
+:where(*)::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+:where(*)::-webkit-scrollbar-track,
+:where(*)::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+:where(*)::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
+}
+
+:where(*)::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+:is([data-linnya-scrollbar='large'], .linnya-dropdown-surface)::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-linnya-scrollbar='medium']::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+:is([data-linnya-scrollbar='large'], .linnya-dropdown-surface)::-webkit-scrollbar-track,
+:is([data-linnya-scrollbar='large'], .linnya-dropdown-surface)::-webkit-scrollbar-corner,
+[data-linnya-scrollbar='medium']::-webkit-scrollbar-track,
+[data-linnya-scrollbar='medium']::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+:is([data-linnya-scrollbar='large'], .linnya-dropdown-surface)::-webkit-scrollbar-thumb,
+[data-linnya-scrollbar='medium']::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: var(--radius-full);
+  transition: background-color var(--duration-medium) var(--ease-standard);
+}
+
+:is([data-linnya-scrollbar='large'], .linnya-dropdown-surface)::-webkit-scrollbar-thumb {
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+[data-linnya-scrollbar='medium']::-webkit-scrollbar-thumb {
+  background-clip: border-box;
+  border: 0;
+}
+
+:is([data-linnya-scrollbar='large'], .linnya-dropdown-surface)::-webkit-scrollbar-thumb:hover,
+[data-linnya-scrollbar='medium']::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
+
+[data-linnya-scrollbar='small'] {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-color) transparent;
+}
+
+[data-linnya-scrollbar='hidden'] {
+  scrollbar-width: none;
+}
+
+[data-linnya-scrollbar='hidden']::-webkit-scrollbar {
+  display: none;
+}
+
+/* 修饰：悬停才显示滑块（引用片段、代码块、表单输入等嵌在内容里的滚动区）。 */
+[data-linnya-scrollbar-reveal='hover']::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+[data-linnya-scrollbar-reveal='hover']:hover::-webkit-scrollbar-thumb,
+[data-linnya-scrollbar-reveal-root]:hover [data-linnya-scrollbar-reveal='hover']::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+}
+
+[data-linnya-scrollbar-reveal='hover']::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover-color);
+}
