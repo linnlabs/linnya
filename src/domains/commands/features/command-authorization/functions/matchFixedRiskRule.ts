@@ -1,6 +1,7 @@
 import {
   CommandRiskRuleCatalogSchema,
   type CommandRiskEvaluation,
+  type CommandRiskExecutionScope,
   type CommandRiskRuleCatalog,
   type CommandRiskRuleMatcher,
 } from '../definitions/commandRiskRule';
@@ -28,9 +29,10 @@ function matchesRule(params: {
   readonly matcher: CommandRiskRuleMatcher;
   readonly scan: ReturnType<typeof scanCommandRiskLexemes>;
   readonly shellSemanticsId: string;
+  readonly executionScope?: CommandRiskExecutionScope;
 }): boolean {
   return params.platform === 'macos'
-    ? matchesMacosRiskRule(params.matcher, params.scan)
+    ? matchesMacosRiskRule(params.matcher, params.scan, params.executionScope)
     : matchesWindowsRiskRule(
       params.matcher,
       params.scan,
@@ -143,6 +145,7 @@ export function matchFixedRiskRule(params: {
   readonly platform: 'macos' | 'windows';
   readonly shellSemanticsId: string;
   readonly catalog?: unknown;
+  readonly executionScope?: CommandRiskExecutionScope;
 }): CommandRiskEvaluation {
   return evaluateFixedRiskScan({
     scan: scanCommandRiskLexemes({
@@ -153,6 +156,7 @@ export function matchFixedRiskRule(params: {
     platform: params.platform,
     shellSemanticsId: params.shellSemanticsId,
     catalog: params.catalog,
+    executionScope: params.executionScope,
   });
 }
 
@@ -161,6 +165,7 @@ function evaluateFixedRiskScan(params: {
   readonly platform: 'macos' | 'windows';
   readonly shellSemanticsId: string;
   readonly catalog?: unknown;
+  readonly executionScope?: CommandRiskExecutionScope;
 }): CommandRiskEvaluation {
   const parsedCatalog = CommandRiskRuleCatalogSchema.safeParse(
     params.catalog ?? resolveFixedRiskRuleCatalog(params.platform),
@@ -188,6 +193,7 @@ function evaluateFixedRiskScan(params: {
         matcher: rule.matcher,
         scan,
         shellSemanticsId: params.shellSemanticsId,
+        executionScope: params.executionScope,
       }))
       .map(rule => ({
         ruleId: rule.id,

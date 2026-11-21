@@ -513,6 +513,20 @@ describe('ShellToolRuntime production orchestration', () => {
     expect(f.toolOutputInstanceIds).toEqual(['instance-shell-test']);
   });
 
+  it('标准档在本会话目录里删除自己的普通文件不弹审批，递归删除仍审批（W-0303）', async () => {
+    const local = fixture({ immediate: true, approvalChoice: 'deny' });
+    await expect(local.runtime.executeShell(shellRequest({
+      command: 'rm -f data.csv && echo refreshed > data.csv', permissionLevel: 'standard',
+    }))).resolves.toMatchObject({ status: 'completed' });
+    expect(local.lifecycle).not.toContain('approval:requested');
+
+    const recursive = fixture({ immediate: true, approvalChoice: 'allow_once' });
+    await expect(recursive.runtime.executeShell(shellRequest({
+      command: 'rm -rf build', permissionLevel: 'standard',
+    }))).resolves.toMatchObject({ status: 'completed' });
+    expect(recursive.lifecycle).toContain('approval:requested');
+  });
+
   it('只读档的显式写入申请只提升本条到 standard，并在审批前不启动', async () => {
     const f = fixture({ immediate: true, approvalChoice: 'allow_once' });
     const result = await f.runtime.executeShell(shellRequest({
@@ -624,7 +638,7 @@ describe('ShellToolRuntime production orchestration', () => {
 
   it('持久化对话批准后才 claim/start，并让超快终态不发布 handle', async () => {
     const f = fixture({ approvalChoice: 'allow_for_conversation', immediate: true });
-    const result = await f.runtime.executeShell(shellRequest({ command: 'rm file.txt' }));
+    const result = await f.runtime.executeShell(shellRequest({ command: 'rm -r old-output' }));
 
     expect(result).toMatchObject({
       status: 'completed',
@@ -664,7 +678,7 @@ describe('ShellToolRuntime production orchestration', () => {
 
   it('拒绝审批时不准备 runtime、不 spawn，并释放 reservation', async () => {
     const f = fixture({ approvalChoice: 'deny' });
-    const result = await f.runtime.executeShell(shellRequest({ command: 'rm file.txt' }));
+    const result = await f.runtime.executeShell(shellRequest({ command: 'rm -r old-output' }));
 
     expect(result).toMatchObject({ status: 'rejected', code: 'approval_denied' });
     expect(f.lifecycle).toEqual([
@@ -724,7 +738,7 @@ describe('ShellToolRuntime production orchestration', () => {
       failAuditKinds: new Set<CommandExecutionAuditEvent['kind']>(['authorization_settled']),
     });
 
-    await expect(f.runtime.executeShell(shellRequest({ command: 'rm file.txt' })))
+    await expect(f.runtime.executeShell(shellRequest({ command: 'rm -r old-output' })))
       .resolves.toMatchObject({ status: 'rejected', code: 'audit_unavailable' });
     expect(f.lifecycle).toEqual([
       'admission',
@@ -798,8 +812,8 @@ describe('ShellToolRuntime production orchestration', () => {
 
   it('后续相同命令复用已持久化的对话批准，并保留来源差异', async () => {
     const f = fixture({ approvalChoice: 'allow_for_conversation', immediate: true });
-    const first = await f.runtime.executeShell(shellRequest({ command: 'rm file.txt' }));
-    const second = await f.runtime.executeShell(shellRequest({ command: 'rm file.txt' }));
+    const first = await f.runtime.executeShell(shellRequest({ command: 'rm -r old-output' }));
+    const second = await f.runtime.executeShell(shellRequest({ command: 'rm -r old-output' }));
 
     expect(first).toMatchObject({
       status: 'completed',
@@ -817,7 +831,7 @@ describe('ShellToolRuntime production orchestration', () => {
     const page = approval.openRendererPage(71);
     if (!page) return;
     const f = fixture({ approval, immediate: true });
-    const execution = f.runtime.executeShell(shellRequest({ command: 'rm file.txt' }));
+    const execution = f.runtime.executeShell(shellRequest({ command: 'rm -r old-output' }));
 
     await expect.poll(() => (
       approval.readRendererPage({
@@ -860,7 +874,7 @@ describe('ShellToolRuntime production orchestration', () => {
     const approval = createCommandApprovalHost();
     approval.setControlEndpointAvailable(true);
     const f = fixture({ approval, immediate: true });
-    const execution = f.runtime.executeShell(shellRequest({ command: 'rm file.txt' }));
+    const execution = f.runtime.executeShell(shellRequest({ command: 'rm -r old-output' }));
     await expect.poll(() => approval.readControlPending(CONVERSATION_ID)?.length).toBe(1);
     const pending = approval.readControlPending(CONVERSATION_ID)?.[0];
     if (!pending) throw new Error('expected pending Shell approval');
@@ -885,7 +899,7 @@ describe('ShellToolRuntime production orchestration', () => {
       failRemember: true,
     });
     await expect(persistenceFailure.runtime.executeShell(
-      shellRequest({ command: 'rm file.txt' }),
+      shellRequest({ command: 'rm -r old-output' }),
     )).resolves.toMatchObject({ status: 'rejected', code: 'permission_unavailable' });
     expect(persistenceFailure.lifecycle).toEqual([
       'admission',
@@ -912,7 +926,7 @@ describe('ShellToolRuntime production orchestration', () => {
       onApprovalRequest: () => abort.abort(),
     });
     await expect(f.runtime.executeShell({
-      ...shellRequest({ command: 'rm file.txt' }),
+      ...shellRequest({ command: 'rm -r old-output' }),
       abortSignal: abort.signal,
     })).resolves.toMatchObject({ status: 'rejected', code: 'permission_unavailable' });
     expect(f.lifecycle).toEqual([
@@ -958,7 +972,7 @@ describe('ShellToolRuntime production orchestration', () => {
     });
 
     await expect(f.runtime.executeShell(
-      shellRequest({ command: 'rm file.txt' }),
+      shellRequest({ command: 'rm -r old-output' }),
     )).resolves.toMatchObject({ status: 'rejected', code: 'permission_unavailable' });
     expect(f.launches).toHaveLength(0);
     expect(f.owner.readActivitySnapshot().reservedCount).toBe(0);
@@ -972,7 +986,7 @@ describe('ShellToolRuntime production orchestration', () => {
     });
 
     await expect(f.runtime.executeShell({
-      ...shellRequest({ command: 'rm file.txt' }),
+      ...shellRequest({ command: 'rm -r old-output' }),
       abortSignal: abort.signal,
     })).resolves.toMatchObject({ status: 'rejected', code: 'permission_unavailable' });
     expect(f.lifecycle).toContain('approval:persisted');
@@ -992,7 +1006,7 @@ describe('ShellToolRuntime production orchestration', () => {
     });
 
     await expect(f.runtime.executeShell({
-      ...shellRequest({ command: 'rm file.txt' }),
+      ...shellRequest({ command: 'rm -r old-output' }),
       abortSignal: abort.signal,
     })).resolves.toMatchObject({ status: 'rejected', code: 'approval_denied' });
     expect(f.auditEvents.map(event => event.kind)).toEqual([
@@ -1079,7 +1093,7 @@ describe('ShellToolRuntime production orchestration', () => {
     });
 
     await expect(f.runtime.executeShell({
-      ...shellRequest({ command: 'rm file.txt' }),
+      ...shellRequest({ command: 'rm -r old-output' }),
       abortSignal: abort.signal,
     })).resolves.toMatchObject({ status: 'rejected', code: 'permission_unavailable' });
     expect(f.auditEvents[f.auditEvents.length - 1]).toMatchObject({
@@ -1098,7 +1112,7 @@ describe('ShellToolRuntime production orchestration', () => {
       onApprovalRequest: () => owner?.beginConversationStop(CONVERSATION_ID),
     });
     owner = f.owner;
-    const result = await f.runtime.executeShell(shellRequest({ command: 'rm file.txt' }));
+    const result = await f.runtime.executeShell(shellRequest({ command: 'rm -r old-output' }));
 
     expect(result).toMatchObject({ status: 'rejected', code: 'capacity_unavailable' });
     expect(f.lifecycle).toContain('approval:persisted');
