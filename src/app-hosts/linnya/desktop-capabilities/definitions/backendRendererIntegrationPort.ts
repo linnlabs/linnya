@@ -22,4 +22,6 @@ export interface BackendRendererIntegrationPort {
   publishTodosChanged(projectId: string): void;
   publishPluginsChanged(): void;
   publishModelsChanged(): void;
+  /** 运行状态失效信号：不带内容，Renderer 收到后重读 GET /api/v1/conversation/activity。 */
+  publishConversationActivityChanged(): void;
 }

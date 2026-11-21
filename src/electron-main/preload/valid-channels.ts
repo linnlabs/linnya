@@ -164,6 +164,11 @@ const AUDIO_BLOCK_CHANNELS = [
 const TODO_CHANNELS = ['todo:get-overview', 'todo:get-for-project', 'todo:add', 'todo:update', 'todo:delete'] as const;
 const TODO_NOTIFY_CHANNELS = ['todos-changed'] as const;
 
+// --- 对话运行状态 ---
+// `conversation-activity-changed`：App Server 运行状态写入后的失效信号（无 payload），
+// 侧栏收到后重读 GET /api/v1/conversation/activity。
+const CONVERSATION_ACTIVITY_CHANNELS = ['conversation-activity-changed'] as const;
+
 // --- Plugins 安装/启停通道 ---
 const PLUGIN_CHANNELS = [
   'plugin:invoke',
@@ -231,6 +236,7 @@ export const VALID_CHANNELS = [
   ...AUDIO_BLOCK_CHANNELS,
   ...TODO_CHANNELS,
   ...TODO_NOTIFY_CHANNELS,
+  ...CONVERSATION_ACTIVITY_CHANNELS,
   ...PLUGIN_CHANNELS,
   ...BLOCK_HISTORY_CHANNELS,
   ...PROJECT_KB_LINK_CHANNELS,

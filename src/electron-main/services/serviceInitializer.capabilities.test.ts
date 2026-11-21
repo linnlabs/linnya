@@ -205,6 +205,7 @@ describe('服务初始化：能力步骤失败只停掉这项能力', () => {
       publishTodosChanged: vi.fn(),
       publishPluginsChanged: vi.fn(),
       publishModelsChanged: vi.fn(),
+      publishConversationActivityChanged: vi.fn(),
     });
     const reason = 'EACCES: source_of_truth unavailable';
     graphConstruction.mockImplementationOnce(() => {

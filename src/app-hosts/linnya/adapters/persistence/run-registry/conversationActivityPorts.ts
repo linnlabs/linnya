@@ -1,7 +1,15 @@
 import type Database from 'better-sqlite3';
 import type { CommandApprovalControlPort } from 'src/domains/commands';
-import type { ConversationActivityPorts } from '../../../application/conversation-activity';
+import type {
+  ConversationActivityCandidate,
+  ConversationActivityListPorts,
+} from '../../../application/conversation-activity';
 import { ACTIVE_RUN_STATUSES, TERMINAL_RUN_STATUSES, type ConversationControlRunRecord } from '../../../application/conversation-control';
+
+interface ActivityCandidateRow {
+  conversation_id: string;
+  project_id: string | null;
+}
 
 interface ActivityRunRow {
   id: string;
@@ -19,7 +27,7 @@ interface ActivityRunRow {
 export function createConversationActivityPorts(
   db: Database.Database,
   approvals: Pick<CommandApprovalControlPort, 'readControlPending'>,
-): ConversationActivityPorts {
+): ConversationActivityListPorts {
   const activeParameters = ACTIVE_RUN_STATUSES.map(() => '?').join(', ');
   const terminalParameters = TERMINAL_RUN_STATUSES.map(() => '?').join(', ');
   // 活跃根全部保留，让 selectStatusRun 继续检查冲突；终态只需最近一个。
@@ -48,6 +56,26 @@ export function createConversationActivityPorts(
     FROM runs JOIN scope ON runs.id = scope.id
     ORDER BY runs.start_ts DESC, COALESCE(runs.updated_ts, runs.start_ts) DESC, runs.id DESC
   `;
+  // 全工作区候选：活跃前台根，或最近一次终态前台根是 failed/cancelled 的对话。终态先后与
+  // readCandidates 的 LIMIT 1 用同一排序；后面跟着 completed 根的旧中断不进入候选。
+  // 规划器默认会走 parent_run_id 索引扫全表，指定状态索引后只碰非 completed 的运行。
+  const interruptedStatuses = TERMINAL_RUN_STATUSES.filter(status => status !== 'completed');
+  const interruptedParameters = interruptedStatuses.map(() => '?').join(', ');
+  const candidateQuery = `
+    SELECT DISTINCT conversations.conversation_id, conversations.project_id
+    FROM runs AS root INDEXED BY idx_runs_status_start_ts
+    JOIN conversations ON conversations.conversation_id = root.conversation_id
+    WHERE root.status IN (${activeParameters}, ${interruptedParameters})
+      AND root.parent_run_id IS NULL AND json_extract(root.metadata_json, '$.lane') = 'foreground'
+      AND (root.status IN (${activeParameters}) OR NOT EXISTS (
+        SELECT 1 FROM runs AS later
+        WHERE later.conversation_id = root.conversation_id
+          AND later.parent_run_id IS NULL AND json_extract(later.metadata_json, '$.lane') = 'foreground'
+          AND later.status IN (${terminalParameters})
+          AND (COALESCE(later.updated_ts, later.start_ts), later.start_ts, later.id)
+            > (COALESCE(root.updated_ts, root.start_ts), root.start_ts, root.id)
+      ))
+  `;
   return { runs: { async readCandidates(conversationIds) {
     const records = new Map<string, ConversationControlRunRecord[]>();
     if (conversationIds.length === 0) return records;
@@ -62,5 +90,9 @@ export function createConversationActivityPorts(
       records.set(row.conversation_id, conversation);
     }
     return records;
+  }, async listActivityCandidates(): Promise<readonly ConversationActivityCandidate[]> {
+    const statement = db.prepare<string[], ActivityCandidateRow>(candidateQuery);
+    return statement.all(...ACTIVE_RUN_STATUSES, ...interruptedStatuses, ...ACTIVE_RUN_STATUSES, ...TERMINAL_RUN_STATUSES)
+      .map(row => ({ conversationId: row.conversation_id, projectId: row.project_id }));
   } }, approvals };
 }

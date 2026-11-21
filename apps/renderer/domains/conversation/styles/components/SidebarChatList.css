@@ -154,3 +154,13 @@
 .sidebar-chat-list.sidebar-chat-list--dropdown .chat-list-item:focus-within .chat-list-time {
   opacity: 1;
 }
+
+/* 运行状态（W-0352）：等你回答或审批时行尾换成文字并提亮标题；颜色不区分两种，靠文字说明。 */
+.sidebar-chat-list .chat-list-item.is-awaiting-user .chat-list-title {
+  color: var(--color-text-primary);
+}
+
+.sidebar-chat-list .chat-list-time.is-run-flag {
+  color: var(--color-accent-text);
+  font-weight: var(--font-weight-medium);
+}

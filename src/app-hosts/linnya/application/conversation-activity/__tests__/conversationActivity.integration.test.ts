@@ -1,11 +1,13 @@
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ExecutionIdSchema, RunIdSchema, ToolCallIdSchema, type AgentSpec } from '@linnlabs/linnkit/contracts';
 import { execution, graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
 import { parseCommandApprovalRequest } from '@app/schemas/commands';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { createConversationActivityPorts, SQLiteRunRegistryStore } from '../../../adapters/persistence/run-registry';
 import { createCommandApprovalHost } from '../../../adapters/commands/approval-host';
-import { readConversationActivity } from '..';
+import { subscribeRunActivity } from '../../../adapters/persistence/run-activity-signal';
+import { SQLiteEventStore } from '../../../adapters/persistence/event-store/sqlite.implementation';
+import { connectConversationActivityChanges, listConversationActivities, readConversationActivity } from '..';
 
 let database: DatabaseService;
 let registry: SQLiteRunRegistryStore;
@@ -27,9 +29,9 @@ beforeEach(() => {
 });
 afterEach(async () => { approvals.endOwner(); await supervisor.drain({ timeoutMs: 100 }); database.close(); });
 
-async function register(id: string, parentRunId?: string, lane = 'foreground') {
+async function register(id: string, parentRunId?: string, lane = 'foreground', conversation = conversationId) {
   const handle = await supervisor.registerRun({
-    runId: RunIdSchema.parse(id), conversationId, agentSpec, request: { query: 'fixture' },
+    runId: RunIdSchema.parse(id), conversationId: conversation, agentSpec, request: { query: 'fixture' },
     ...(parentRunId ? { parentRunId: RunIdSchema.parse(parentRunId) } : {}),
     eventBus: new execution.EventBus(`event-${id}`), eventStore: new graph.MemoryEventStore(),
     costCollector: { snapshot: () => ({ tokensInput: 0, tokensOutput: 0, latencyMs: 0 }) },
@@ -121,4 +123,70 @@ it('批量轻投影保留较早活跃根、最新终态及当前后代，不按�
   expect(await read()).toMatchObject({ state: 'running', run_id: active.runId });
   await register('conflicting-active');
   await expect(read()).rejects.toThrow('multiple active foreground runs');
+});
+
+
+it('全工作区列表只返回非空闲对话并带项目；旧中断之后已完成的对话不再出现', async () => {
+  const db = database.getDb();
+  db.exec("INSERT INTO projects (id, name, created_at, updated_at) VALUES ('project-a', 'A', 1, 1)");
+  const insert = db.prepare('INSERT INTO conversations (conversation_id, title, created_at, last_event_at, project_id) VALUES (?, ?, 1, 1, ?)');
+  for (const [id, project] of [['recovered', null], ['interrupted', 'project-a'], ['idle', null]] as const) insert.run(id, id, project);
+  const failedThenDone = await register('recovered-failed', undefined, 'foreground', 'recovered');
+  await failedThenDone.markFailed({ errorCode: 'model_error', message: 'failure', recoverable: false });
+  await (await register('recovered-done', undefined, 'foreground', 'recovered')).markCompleted();
+  await (await register('cancelled', undefined, 'foreground', 'interrupted')).cancel({ reason: 'user_cancel' });
+  await (await register('idle-done', undefined, 'foreground', 'idle')).markCompleted();
+  await register('running-root');
+  const list = await listConversationActivities(createConversationActivityPorts(db, approvals));
+  expect(list.conversations.map(item => [item.conversation_id, item.project_id, item.activity.state]).sort()).toEqual([
+    [conversationId, null, 'running'],
+    ['interrupted', 'project-a', 'interrupted'],
+  ]);
+});
+
+it('runs 写入发出失效信号：状态变化才通知，同状态保存不通知，删除对话也通知', async () => {
+  const changed = vi.fn<(conversation: string) => void>();
+  const unsubscribe = subscribeRunActivity(database.getDb(), changed);
+  const handle = await register('signal-root');
+  expect(changed).toHaveBeenCalledWith(conversationId);
+  changed.mockClear();
+  const record = await registry.load(handle.runId);
+  if (!record) throw new Error('run disappeared');
+  await registry.save({ ...record, currentNode: 'next-node', updatedAt: record.updatedAt + 1 });
+  expect(changed).not.toHaveBeenCalled();
+  await handle.markAwaitingUser();
+  expect(changed).toHaveBeenCalledTimes(1);
+  await handle.markFailed({ errorCode: 'model_error', message: 'failure', recoverable: false });
+  expect(changed).toHaveBeenCalledTimes(2);
+  const events = new SQLiteEventStore(database.getDb());
+  await events.beginRunSession(conversationId, 'event-store-run', { kind: 'agent' });
+  expect(changed).toHaveBeenCalledTimes(3);
+  await events.deleteConversation(conversationId);
+  expect(changed).toHaveBeenCalledTimes(4);
+  unsubscribe();
+  database.getDb().prepare('INSERT INTO conversations (conversation_id, title, created_at, last_event_at) VALUES (?, ?, 1, 1)')
+    .run('after-unsubscribe', 'after');
+  await register('after-unsubscribe-run', undefined, 'foreground', 'after-unsubscribe');
+  expect(changed).toHaveBeenCalledTimes(4);
+});
+
+it('失效通知在 50 ms 内合并成一次发布，断开后不再发布', async () => {
+  vi.useFakeTimers();
+  try {
+    const publish = vi.fn();
+    const disconnect = connectConversationActivityChanges({
+      subscribe: listener => subscribeRunActivity(database.getDb(), () => listener()),
+      publish,
+    });
+    await register('coalesce-root');
+    expect(publish).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(60);
+    expect(publish).toHaveBeenCalledTimes(1);
+    disconnect();
+    await register('coalesce-other', undefined, 'auxiliary');
+    await vi.advanceTimersByTimeAsync(60);
+    expect(publish).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.useRealTimers();
+  }
 });

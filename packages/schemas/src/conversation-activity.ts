@@ -14,3 +14,14 @@ export const ConversationActivitySchema = z.object({
 }).strict();
 
 export type ConversationActivity = z.infer<typeof ConversationActivitySchema>;
+
+/** 全工作区的非空闲对话；不在列表里的对话就是空闲。 */
+export const ConversationActivityListSchema = z.object({
+  conversations: z.array(z.object({
+    conversation_id: z.string().min(1),
+    project_id: z.string().min(1).nullable(),
+    activity: ConversationActivitySchema,
+  }).strict()),
+}).strict();
+
+export type ConversationActivityList = z.infer<typeof ConversationActivityListSchema>;

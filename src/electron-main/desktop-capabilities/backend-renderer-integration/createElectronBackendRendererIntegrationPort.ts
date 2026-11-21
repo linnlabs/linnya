@@ -13,6 +13,7 @@ import { getMainWindow } from '../../window-manager';
 import type { QueueJobPresentationPublisher } from '../../../infra/task-queue/definitions/queueJobPresentationPublisher';
 
 const PLUGIN_RENDERER_PUSH_CHANNEL = 'plugin:push';
+const CONVERSATION_ACTIVITY_CHANGED_CHANNEL = 'conversation-activity-changed';
 
 // 前端协议仍使用历史字段名；仅在 Desktop adapter 末端编码，避免污染后端通用 job 契约。
 const LEGACY_JOB_ID_FIELD = ['task', 'Id'].join('');
@@ -134,6 +135,10 @@ export function createElectronBackendRendererIntegrationPort(): BackendRendererI
     },
     publishPluginsChanged() {
       publishToPrimaryRenderer('plugins-changed', undefined);
+    },
+    publishConversationActivityChanged() {
+      // 每个窗口都有侧栏，全部发送；只是失效信号，数据仍由各窗口读 HTTP。
+      publishToRenderer(CONVERSATION_ACTIVITY_CHANGED_CHANNEL, undefined);
     },
   };
   return Object.freeze(port);

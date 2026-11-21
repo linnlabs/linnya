@@ -1,0 +1,29 @@
+/* 侧栏运行状态记号（W-0352 画廊推荐做法）：占行首 18px 图标位，颜色不随置顶或选中变化。 */
+.conversation-run-status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+}
+
+.conversation-run-status__loading {
+  width: 16px;
+  height: 16px;
+}
+
+.conversation-run-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+}
+
+.conversation-run-status--interrupted .conversation-run-status__dot {
+  width: 6px;
+  height: 6px;
+  background-color: var(--color-error);
+}

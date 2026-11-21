@@ -61,6 +61,7 @@ import {
   startModelCatalogLifecycle,
   startModelPickerLifecycle,
 } from '../domains/model-configuration'
+import { startConversationActivityLifecycle } from '../domains/conversation/features/conversation-activity'
 import { useKnowledgeBase } from '../domains/knowledgebase/runtime.js'
 import { useUpdateActions } from './update/runtime'
 
@@ -163,6 +164,8 @@ if (!isConversationFixture) {
   startModelPickerLifecycle().catch(error => {
     console.error('[main] 模型选择器初始化失败:', error)
   })
+  // 侧栏运行状态：先订阅 App Server 的失效信号，再读一次全工作区状态。
+  startConversationActivityLifecycle()
 
   const knowledgeBaseStore = useKnowledgeBase()
   knowledgeBaseStore.fetchKnowledgeBases().catch(error => {

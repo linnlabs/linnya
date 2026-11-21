@@ -66,7 +66,7 @@ beforeEach(async () => {
   publishPluginRendererPush = vi.fn(() => { expect(database.inTransaction).toBe(false); });
   installBackendRendererIntegrationPort({ connectModelCatalogUpdates: async () => () => undefined,
     publishIngestionStatus: vi.fn(), queueJobPresentationPublisher: { publishProgress: vi.fn(), publishCompletion: vi.fn(), publishFailure: vi.fn() },
-    publishKnowledgeGraphProgress: vi.fn(), publishTranscriptionProgress: vi.fn(), publishWorkspaceMutation: vi.fn(), publishPluginRendererPush, publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishPluginsChanged: vi.fn(),
+    publishKnowledgeGraphProgress: vi.fn(), publishTranscriptionProgress: vi.fn(), publishWorkspaceMutation: vi.fn(), publishPluginRendererPush, publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishConversationActivityChanged: vi.fn(), publishPluginsChanged: vi.fn(),
   });
   projectId = createProjectLifecycle(database).create({ name: '历史集成' });
   runtime = createCanvasDocumentRuntime(database);

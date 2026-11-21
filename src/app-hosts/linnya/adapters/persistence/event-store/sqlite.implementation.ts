@@ -35,6 +35,7 @@ import {
   SqliteUiProjectionApplier,
 } from './ui-projection/sqliteApplier';
 import { SqliteEventAssetLinks } from './event-asset-links/sqliteEventAssetLinks';
+import { notifyRunActivityChanged } from '../run-activity-signal';
 import {
   deleteHistoryFromRun,
   readStoredEventTarget,
@@ -181,6 +182,7 @@ export class SQLiteEventStore implements IEventStore {
     });
 
     transaction();
+    notifyRunActivityChanged(this.db, conversationId);
     return { runId, conversationId, startedAt };
   }
 
@@ -333,6 +335,7 @@ export class SQLiteEventStore implements IEventStore {
     });
 
     transaction();
+    notifyRunActivityChanged(this.db, session.conversationId);
   }
 
   async failRun(session: RunSession, error: { code: string; message: string }): Promise<void> {
@@ -346,6 +349,7 @@ export class SQLiteEventStore implements IEventStore {
     });
 
     transaction();
+    notifyRunActivityChanged(this.db, session.conversationId);
   }
 
   private insertRunRecord(
@@ -1057,7 +1061,9 @@ export class SQLiteEventStore implements IEventStore {
     `
       )
       .run(conversationId);
-    this.db.prepare('DELETE FROM runs WHERE conversation_id = ?').run(conversationId);
+    if (this.db.prepare('DELETE FROM runs WHERE conversation_id = ?').run(conversationId).changes > 0) {
+      notifyRunActivityChanged(this.db, conversationId);
+    }
     return this.db
       .prepare('DELETE FROM conversations WHERE conversation_id = ?')
       .run(conversationId).changes;

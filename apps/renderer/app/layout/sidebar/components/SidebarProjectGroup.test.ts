@@ -2,6 +2,10 @@
 import { createApp, h, nextTick, reactive } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('@/domains/conversation/ui/SidebarChatList.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/domains/conversation/features/conversation-activity', () => ({
+  ConversationRunStatusIndicator: { render: () => null },
+  useConversationRunStatus: () => ({ projectSummaryOf: () => null }),
+}));
 vi.mock('@/domains/workspace/ui/useWorkspaceLocalization', () => ({ useWorkspaceLocalization: () => ({ workspaceMessage: (key: string) => key }) }));
 vi.mock('@/domains/workspace/ui/sidebar', async () => ({
   ...await import('@/domains/workspace/ui/sidebar/composables/useFixedDropdownPosition'),

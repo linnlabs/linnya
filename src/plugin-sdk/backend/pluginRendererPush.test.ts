@@ -33,6 +33,7 @@ describe('pluginRendererPush', () => {
       publishPluginRendererPush,
       publishTodosChanged: vi.fn(),
       publishModelsChanged: vi.fn(),
+      publishConversationActivityChanged: vi.fn(),
       publishPluginsChanged: vi.fn(),
     });
   });

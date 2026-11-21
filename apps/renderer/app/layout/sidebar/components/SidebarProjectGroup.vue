@@ -13,6 +13,12 @@
     >
       <FolderIcon class="workspace-sidebar-row-icon project-row-icon" />
       <span class="workspace-sidebar-row-label project-row-name">{{ project.name }}</span>
+      <span v-if="collapsedRunSummary" class="project-row-run-summary">
+        <ConversationRunStatusIndicator
+          :status="collapsedRunSummary.status"
+          :label="collapsedRunSummary.label"
+        />
+      </span>
       <span class="workspace-sidebar-row-actions project-row-actions" @click.stop @dblclick.stop>
         <IconButton
           :label="workspaceMessage('workspace.sidebar.project.open')"
@@ -88,6 +94,10 @@ import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { FolderOpenIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect, IconButton, onNextFrame, type IconButtonExposed } from '@linnya/renderer-ui';
 import SidebarChatList from '@/domains/conversation/ui/SidebarChatList.vue';
+import {
+  ConversationRunStatusIndicator,
+  useConversationRunStatus,
+} from '@/domains/conversation/features/conversation-activity';
 import type { Project } from '@/domains/workspace/store';
 import {
   buildProjectMenuOptions,
@@ -121,6 +131,9 @@ const moreButton = ref<IconButtonExposed | null>(null);
 const moreButtonRef = computed<HTMLButtonElement | null>(() => moreButton.value?.element ?? null);
 const hasMountedConversations = ref(props.isExpanded === true);
 const { workspaceMessage } = useWorkspaceLocalization();
+const runStatus = useConversationRunStatus();
+/* 收起时行尾只给项目里最需要处理的一种状态，悬停记号看数量；展开后由各对话行自己显示。 */
+const collapsedRunSummary = computed(() => (props.isExpanded ? null : runStatus.projectSummaryOf(props.project.id)));
 const projectMenuOptions = computed<ProjectMenuOption[]>(() => buildProjectMenuOptions(props.project, workspaceMessage));
 const {
   dropdownRef,

@@ -37,7 +37,7 @@ beforeEach(() => {
   installBackendRendererIntegrationPort({ connectModelCatalogUpdates: async () => () => undefined,
     publishIngestionStatus: vi.fn(), queueJobPresentationPublisher: { publishProgress: vi.fn(), publishCompletion: vi.fn(), publishFailure: vi.fn() },
     publishKnowledgeGraphProgress: vi.fn(), publishTranscriptionProgress: vi.fn(), publishWorkspaceMutation: vi.fn(),
-    publishPluginRendererPush: push, publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishPluginsChanged: vi.fn(),
+    publishPluginRendererPush: push, publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishConversationActivityChanged: vi.fn(), publishPluginsChanged: vi.fn(),
   });
   projectId = createProjectLifecycle(db).create({ name: '画布测试' });
   runtime = createCanvasDocumentRuntime(db);
