@@ -49,6 +49,8 @@ SRT 0.0.81 的配置 schema 已显式使用 `zod/v3`，可复用 Zod 4 包内的
 
 Windows 受限 Shell 的完整 CLI 回归使用 `test:shell-tool:windows-current-host-cli-corpus`。除 SSH host/user/key 外，须指定 `LINNYA_WINDOWS_INTERACTIVE_USER`：专用 VM 中已经登录桌面的普通测试用户。SSH 只编排交互式任务；实际打包 Electron、PowerShell、插件 CLI 与审批链路通过普通用户桌面运行，不申请管理员隔离初始化。不能把 SSH 的 Session 0 当作桌面登录环境；结束后回收本次任务与文件。
 
+Windows 整机卸载复用 NSIS 升级卸载的暂存与恢复：普通卸载必须移除安装目录，才移除 HKCU 登记和快捷方式；程序文件被占用时保留卸载入口并允许重试。默认卸载不触碰用户数据。运行 `pnpm run test:shell-tool:windows-nsis-current-user-lifecycle` 验证真实 NSIS 覆盖安装、NTFS 独占锁和解锁后重试；不要以 NSIS 外层启动器的退出码代替回读安装目录、登记和快捷方式。完整 Desktop 候选包另行验收。
+
 对话命令权限使用 `pnpm run test:conversation-command-permissions:electron` 验证 Desktop 入口、SQLite 回读、
 完全访问确认以及全局收紧。每次启动隔离的 Electron profile 和 Workspace，并记录截图证据。
 

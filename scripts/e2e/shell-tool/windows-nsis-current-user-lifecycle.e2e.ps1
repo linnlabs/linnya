@@ -4,7 +4,9 @@ param(
   [Parameter(Mandatory = $true)][string]$InstallerIncludePath,
   [Parameter(Mandatory = $true)][string]$RunRoot,
   [Parameter(Mandatory = $true)][string]$ExpectedElectronVersion,
-  [switch]$CleanupOnly
+  [string]$ExpectedBuilderVersion,
+  [switch]$CleanupOnly,
+  [switch]$Prebuilt
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,7 +43,8 @@ function Invoke-BoundedProcess {
     [string]$FilePath,
     [string[]]$Arguments,
     [string]$WorkingDirectory,
-    [int]$TimeoutMilliseconds = 120000
+    [int]$TimeoutMilliseconds = 120000,
+    [int]$ExpectedExitCode = 0
   )
   $startInfo = New-Object Diagnostics.ProcessStartInfo
   $startInfo.FileName = $FilePath
@@ -63,13 +66,14 @@ function Invoke-BoundedProcess {
     }
     $stdout = $stdoutTask.Result
     $stderr = $stderrTask.Result
-    if ($process.ExitCode -ne 0) {
+    if ($process.ExitCode -ne $ExpectedExitCode) {
       $diagnostic = ($stderr + [Environment]::NewLine + $stdout)
       if ($diagnostic.Length -gt 12000) { $diagnostic = $diagnostic.Substring($diagnostic.Length - 12000) }
       throw "process failed with exit code $($process.ExitCode): $FilePath`n$diagnostic"
     }
     return [pscustomobject]@{
       ProcessId = [int]$process.Id
+      ExitCode = [int]$process.ExitCode
       Stdout = $stdout
       Stderr = $stderr
     }
@@ -88,7 +92,7 @@ function Write-FixturePackage {
     main = 'main.mjs'
     devDependencies = [ordered]@{
       electron = $ExpectedElectronVersion
-      'electron-builder' = '26.0.13'
+      'electron-builder' = $ExpectedBuilderVersion
     }
     build = [ordered]@{
       appId = 'com.linnya.validation.nsis-current-user-lifecycle'
@@ -352,39 +356,37 @@ try {
   $windowsPrincipal = New-Object Security.Principal.WindowsPrincipal($windowsIdentity)
   $isAdministrator = $windowsPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
   Assert-Condition (-not $isAdministrator) 'fixture must run as a standard Windows user'
-  Assert-Condition (-not [string]::IsNullOrWhiteSpace($NodeExecutable)) 'configured Windows node.exe is required'
-  $nodeDirectory = Split-Path -Parent $NodeExecutable
-  $npmCli = Join-Path $nodeDirectory 'node_modules\npm\bin\npm-cli.js'
-  Assert-Condition (Test-Path -LiteralPath $NodeExecutable -PathType Leaf) 'configured Windows node.exe is missing'
-  Assert-Condition (Test-Path -LiteralPath $npmCli -PathType Leaf) 'npm-cli.js beside configured node.exe is missing'
-  Assert-Condition (Test-Path -LiteralPath $FixtureMainPath -PathType Leaf) 'uploaded fixture main is missing'
-  Assert-Condition (Test-Path -LiteralPath $InstallerIncludePath -PathType Leaf) 'uploaded production NSIS include is missing'
   Assert-Condition (-not (Test-Path -LiteralPath $installRoot)) 'fixture install root must be absent before install'
   Assert-Condition (@(Find-UninstallEntries -ExpectedInstallRoot $installRoot).Count -eq 0) 'fixture registry must be absent before install'
-  # npm lifecycle scripts invoke "node" by name, even when npm-cli.js was started
-  # through an absolute node.exe path. Scope this PATH change to the controller tree.
-  $env:PATH = "$nodeDirectory;$env:PATH"
-  New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
-  Copy-Item -LiteralPath $FixtureMainPath -Destination $projectMainPath -Force
-  Copy-Item -LiteralPath $InstallerIncludePath -Destination $projectInstallerIncludePath -Force
-
-  Write-FixturePackage -Version $versionOne -Marker 'marker-version-one'
-  $dependencyInstall = Invoke-BoundedProcess -FilePath $NodeExecutable -Arguments @(
-    $npmCli, 'install', '--no-audit', '--no-fund'
-  ) -WorkingDirectory $projectRoot -TimeoutMilliseconds 600000
-  Assert-Condition (Test-Path -LiteralPath $electronBuilderCli -PathType Leaf) 'electron-builder CLI was not installed'
-
-  $versionOneBuild = Invoke-BoundedProcess -FilePath $NodeExecutable -Arguments @(
-    $electronBuilderCli, '--projectDir', $projectRoot, '--win', 'nsis', '--x64', '--config.npmRebuild=false'
-  ) -WorkingDirectory $projectRoot -TimeoutMilliseconds 300000
   $versionOneInstaller = Join-Path $outputRoot 'linnya-nsis-lifecycle-1.0.0.exe'
-  Assert-Condition (Test-Path -LiteralPath $versionOneInstaller -PathType Leaf) 'version one installer is missing'
-
-  Write-FixturePackage -Version $versionTwo -Marker 'marker-version-two'
-  $versionTwoBuild = Invoke-BoundedProcess -FilePath $NodeExecutable -Arguments @(
-    $electronBuilderCli, '--projectDir', $projectRoot, '--win', 'nsis', '--x64', '--config.npmRebuild=false'
-  ) -WorkingDirectory $projectRoot -TimeoutMilliseconds 300000
   $versionTwoInstaller = Join-Path $outputRoot 'linnya-nsis-lifecycle-1.0.1.exe'
+  if (-not $Prebuilt) {
+    Assert-Condition (-not [string]::IsNullOrWhiteSpace($ExpectedBuilderVersion)) 'repository electron-builder version is required'
+    Assert-Condition (-not [string]::IsNullOrWhiteSpace($NodeExecutable)) 'configured Windows node.exe is required'
+    $nodeDirectory = Split-Path -Parent $NodeExecutable
+    $npmCli = Join-Path $nodeDirectory 'node_modules\npm\bin\npm-cli.js'
+    Assert-Condition (Test-Path -LiteralPath $NodeExecutable -PathType Leaf) 'configured Windows node.exe is missing'
+    Assert-Condition (Test-Path -LiteralPath $npmCli -PathType Leaf) 'npm-cli.js beside configured node.exe is missing'
+    Assert-Condition (Test-Path -LiteralPath $FixtureMainPath -PathType Leaf) 'uploaded fixture main is missing'
+    Assert-Condition (Test-Path -LiteralPath $InstallerIncludePath -PathType Leaf) 'uploaded production NSIS include is missing'
+    # npm lifecycle scripts invoke "node" by name, even with an absolute npm entry point.
+    $env:PATH = "$nodeDirectory;$env:PATH"
+    New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+    Copy-Item -LiteralPath $FixtureMainPath -Destination $projectMainPath -Force
+    Copy-Item -LiteralPath $InstallerIncludePath -Destination $projectInstallerIncludePath -Force
+
+    Write-FixturePackage -Version $versionOne -Marker 'marker-version-one'
+    $dependencyInstall = Invoke-BoundedProcess -FilePath $NodeExecutable -Arguments @(
+      $npmCli, 'install', '--no-audit', '--no-fund'
+    ) -WorkingDirectory $projectRoot -TimeoutMilliseconds 600000
+    Assert-Condition (Test-Path -LiteralPath $electronBuilderCli -PathType Leaf) 'electron-builder CLI was not installed'
+    $buildArgs = @($electronBuilderCli, '--projectDir', $projectRoot, '--win', 'nsis', '--x64', '--config.npmRebuild=false')
+    $versionOneBuild = Invoke-BoundedProcess -FilePath $NodeExecutable -Arguments $buildArgs -WorkingDirectory $projectRoot -TimeoutMilliseconds 300000
+
+    Write-FixturePackage -Version $versionTwo -Marker 'marker-version-two'
+    $versionTwoBuild = Invoke-BoundedProcess -FilePath $NodeExecutable -Arguments $buildArgs -WorkingDirectory $projectRoot -TimeoutMilliseconds 300000
+  }
+  Assert-Condition (Test-Path -LiteralPath $versionOneInstaller -PathType Leaf) 'version one installer is missing'
   Assert-Condition (Test-Path -LiteralPath $versionTwoInstaller -PathType Leaf) 'version two installer is missing'
 
   # electron-builder 26 parses /D in the one-click per-user template. Registry
@@ -409,6 +411,22 @@ try {
   $processCountAfterUpgrade = Get-FixtureProcessCount
   Assert-Condition ($processCountAfterUpgrade -eq 0) 'fixture application started during silent upgrade'
 
+  $workspaceMarker = Join-Path $runRoot 'workspace-marker.txt'
+  [IO.File]::WriteAllText($workspaceMarker, 'user data outside the installation')
+  $uninstallerCopy = Join-Path $runRoot 'blocking-uninstall.exe'
+  Copy-Item -LiteralPath $stateTwo.UninstallerPath -Destination $uninstallerCopy
+  # _?= 让同字节卸载器直接运行并返回实际卸载进程的退出码，避免只等到外层启动器。
+  $fileLock = [IO.File]::Open($markerPath, 'Open', 'Read', 'None')
+  try {
+    $blockedUninstall = Invoke-BoundedProcess -FilePath $uninstallerCopy -Arguments @(
+      '/currentuser', '/S', "_?=$installRoot"
+    ) -WorkingDirectory $runRoot -ExpectedExitCode 2
+  } finally {
+    $fileLock.Dispose()
+  }
+  $stateAfterFailure = Read-InstalledState -ExpectedVersion $versionTwo -ExpectedMarker 'marker-version-two'
+  Assert-Condition ($stateAfterFailure.QuietUninstallString -eq $stateTwo.QuietUninstallString) 'blocked uninstall destroyed the retry entry'
+
   $uninstall = Invoke-BoundedProcess -FilePath $stateTwo.UninstallerPath -Arguments @(
     '/currentuser', '/S'
   ) -WorkingDirectory $runRoot
@@ -419,6 +437,7 @@ try {
   Assert-Condition (-not (Test-Path -LiteralPath $startMenuShortcut)) 'start menu shortcut remains after uninstall'
   $processCountAfterUninstall = Get-FixtureProcessCount
   Assert-Condition ($processCountAfterUninstall -eq 0) 'fixture application remains after uninstall'
+  Assert-Condition ([IO.File]::ReadAllText($workspaceMarker) -eq 'user data outside the installation') 'uninstall changed user data'
 
   $completed = $true
   [ordered]@{
@@ -435,6 +454,9 @@ try {
     versionOneInstallerPid = $versionOneInstall.ProcessId
     versionTwoInstallerPid = $versionTwoInstall.ProcessId
     uninstallerPid = $uninstall.ProcessId
+    blockedUninstallExitCode = $blockedUninstall.ExitCode
+    blockedUninstallRetainedEntry = $true
+    workspaceRetained = $true
     quietUninstallString = $stateTwo.QuietUninstallString
     processCounts = @($processCountAfterInstall, $processCountAfterUpgrade, $processCountAfterUninstall)
     desktopShortcutObserved = $true

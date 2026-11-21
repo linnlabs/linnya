@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
@@ -16,6 +17,7 @@ const controllerPath = fileURLToPath(
 );
 const repositoryRoot = path.resolve(fixtureDirectory, '../../../../..');
 const installerIncludePath = path.join(repositoryRoot, 'build/installer.nsh');
+const expectedBuilderVersion = createRequire(import.meta.url)('electron-builder/package.json').version;
 const sshHost = process.env.LINNYA_WINDOWS_SSH_HOST;
 const sshUser = process.env.LINNYA_WINDOWS_SSH_USER;
 const sshKey = process.env.LINNYA_WINDOWS_SSH_KEY;
@@ -121,6 +123,7 @@ async function validateOnWindows() {
       '-InstallerIncludePath', remoteInstallerInclude,
       '-RunRoot', remoteRunRoot,
       '-ExpectedElectronVersion', expectedElectronVersion,
+      '-ExpectedBuilderVersion', expectedBuilderVersion,
     ], { timeoutMs: 900_000 });
     result = JSON.parse(remote.stdout.trim().split(/\r?\n/u).at(-1));
   } catch (error) {
@@ -160,6 +163,9 @@ assert.equal(result.versionTwo, '1.0.1');
 assert.deepEqual(result.processCounts, [0, 0, 0]);
 assert.equal(result.desktopShortcutObserved, true);
 assert.equal(result.startMenuShortcutObserved, true);
+assert.equal(result.blockedUninstallExitCode, 2);
+assert.equal(result.blockedUninstallRetainedEntry, true);
+assert.equal(result.workspaceRetained, true);
 assert.equal(result.finalInstallRootExists, 0);
 assert.equal(result.finalUninstallEntryCount, 0);
 assert.match(result.quietUninstallString, /\/currentuser \/S$/u);
