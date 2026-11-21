@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { URL } from 'node:url';
 
 import { CommandAgentModelControlV1Schema } from '@app/schemas/commands';
+import { CitationRefSchema } from '@app/schemas';
 
 export const DETERMINISTIC_OPENAI_MAX_REQUEST_BYTES = 1024 * 1024;
 export const DETERMINISTIC_OPENAI_MAX_RESPONSE_BYTES = 64 * 1024;
@@ -42,6 +43,7 @@ const CONTROL_LINE_PREFIX = 'command_control: ';
  *   content: string,
  *   hold?: string,
  *   expectToolObservation?: { id: string, includes: string },
+ *   citeToolResult?: string,
  * }} AssistantTextStep
  */
 
@@ -263,6 +265,7 @@ function validateScript(sessionId, steps) {
     ids.add(step.id);
     if (step.kind === 'assistant_text') {
       requireNonEmptyString(step.content, `会话 ${sessionId} 的文本响应`);
+      if (step.citeToolResult !== undefined) requireNonEmptyString(step.citeToolResult, 'citeToolResult');
       continue;
     }
     requireNonEmptyString(step.name, `会话 ${sessionId} 的工具名`);
@@ -394,9 +397,18 @@ export async function startDeterministicOpenAiChatServer(
         return;
       }
 
-      const frames = step.kind === 'tool_call'
-        ? buildToolCallFrames(body.model, step, body.messages)
-        : buildTextFrames(body.model, step);
+      let frames;
+      if (step.kind === 'tool_call') {
+        frames = buildToolCallFrames(body.model, step, body.messages);
+      } else if (step.citeToolResult) {
+        const observation = readToolMessageContent(body.messages, step.citeToolResult);
+        const citation = [...observation.matchAll(/\[@([a-zA-Z0-9]{6})\]/gu)]
+          .find(([, ref]) => CitationRefSchema.safeParse(ref).success)?.[0];
+        if (!citation) failContract(`工具结果 ${step.citeToolResult} 没有可引用的真实来源`);
+        frames = buildTextFrames(body.model, { ...step, content: `${step.content} ${citation}` });
+      } else {
+        frames = buildTextFrames(body.model, step);
+      }
       const responseBytes = Buffer.byteLength(frames.join(''), 'utf8');
       if (responseBytes > maxResponseBytes) failContract('脚本响应超过大小上限');
 

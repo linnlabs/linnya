@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { readHistoricalCitationSnapshotBundle } from '../../domains/citation';
+import { hasPurgedPluginCitationSource } from '../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import { Logger } from '../../shared/logger';
+import { getDatabaseService } from '../services/database';
 
 const logger = new Logger('HistoricalCitationSnapshotRouter');
 
@@ -10,6 +12,14 @@ const logger = new Logger('HistoricalCitationSnapshotRouter');
  */
 export function createHistoricalCitationSnapshotRouter(): Router {
   const router = Router();
+  router.get('/citation-sources/:sourceId/deletion', (req, res) => {
+    const sourceId = req.params.sourceId.trim();
+    if (!sourceId || sourceId.length > 200) {
+      res.status(400).json({ error: 'Invalid citation source ID' });
+      return;
+    }
+    res.json({ deleted: hasPurgedPluginCitationSource(getDatabaseService().getDb(), 'knowledge-base', sourceId) });
+  });
   router.get('/citation-snapshots/bundles/:bundleId', async (req, res) => {
     const bundleId = req.params.bundleId.trim();
     const conversationId = typeof req.query.conversation_id === 'string'

@@ -199,6 +199,12 @@
   white-space: pre-wrap;
 }
 
+.citation-popover .citation-source-deleted {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+}
+
 .citation-popover .citation-snippet::-webkit-scrollbar {
   width: 10px;
   height: 10px;

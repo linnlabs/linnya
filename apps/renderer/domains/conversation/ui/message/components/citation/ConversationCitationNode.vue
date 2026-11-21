@@ -33,6 +33,7 @@
     :trigger-element="triggerRef"
     :loading="loading"
     :error="error"
+    :source-deleted="sourceDeleted"
     @close="hidePopover"
     @mouseenter="handlePopoverMouseEnter"
     @mouseleave="handlePopoverMouseLeave"
@@ -40,10 +41,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, watch } from 'vue';
 import type { ConversationCitation } from '@app/schemas';
 import { useConversationLocalization } from '../../../useConversationLocalization';
 import ConversationCitationPopover from './ConversationCitationPopover.vue';
+import { readKnowledgeCitationDeletion } from '../../../../features/citation-presentation/orchestration/readKnowledgeCitationDeletion';
 
 // ============================================================================
 // Props
@@ -104,6 +106,21 @@ const HIDE_DELAY = 150;
  * 获取引用数据
  */
 const citation = computed<ConversationCitation | null>(() => props.citation ?? null);
+const sourceDeleted = ref(false);
+const knowledgeSourceId = computed(() => citation.value?.sourceType === 'knowledge_base' ? citation.value.docId : null);
+
+watch([showPopover, knowledgeSourceId], ([visible, sourceId], _previous, onCleanup) => {
+  sourceDeleted.value = false;
+  if (!visible || !sourceId) return;
+  const controller = new AbortController();
+  onCleanup(() => controller.abort());
+  void readKnowledgeCitationDeletion(sourceId, controller.signal).then(deleted => {
+    if (!controller.signal.aborted) sourceDeleted.value = deleted;
+  }).catch(error => {
+    // 无法核实状态不等于来源已删除，历史摘录照常显示。
+    if (!controller.signal.aborted) console.debug('[ConversationCitation] 无法核实引用删除状态', error);
+  });
+});
 
 /**
  * 说明：

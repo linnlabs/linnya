@@ -69,6 +69,7 @@
               </span>
             </div>
             <div class="citation-body">
+              <p v-if="sourceDeleted" class="citation-source-deleted">{{ conversationMessage('conversation.citation.sourceDeleted') }}</p>
               <div class="citation-snippet">
                 {{ displaySnippet }}
               </div>
@@ -128,6 +129,7 @@ interface Props {
 
   /** 错误信息 */
   error?: string | null;
+  sourceDeleted?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {

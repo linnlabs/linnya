@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
-import type { PluginCleanupFailureReason, PluginDataSummary, PluginId, PluginManifestDataStorage } from '@app/schemas';
+import type { PluginApplicationSurfaceSlot, PluginCleanupFailureReason, PluginDataSummary, PluginId, PluginManifestDataStorage } from '@app/schemas';
 
 import { PLUGIN_CLEANUP_SCHEMA } from '../sqlite/plugin-state.schema';
 import { assertPluginDataDirectory, isMissingPathError } from './pluginDataPaths';
@@ -24,6 +24,7 @@ export interface PluginDataCleanupOptions {
   readonly dataStorage: PluginManifestDataStorage;
   /** Manifest 顶层 ownedTables：用于清理；dataStorage.userDataTables 只用于判断真实资料。 */
   readonly ownedTables?: readonly string[];
+  readonly applicationSurfaceSlot?: PluginApplicationSurfaceSlot;
   readonly stopRuntime?: () => void | Promise<void>;
   readonly signal?: AbortSignal;
   readonly onStarted?: () => void;
@@ -287,6 +288,24 @@ function dropOwnedTables(db: Database.Database, tableNames: readonly string[]): 
   }
 }
 
+function recordPurgedCitationSources(options: PluginDataCleanupOptions): void {
+  const table = options.dataStorage.citationSourceTable;
+  if (!table || !options.applicationSurfaceSlot) return;
+  const tableName = validateTableName(table);
+  if (!options.ownedTables?.includes(tableName)) throw new Error('引用来源表不属于本次插件清理');
+  if (!pluginDataTableExists(options.db, tableName)) return;
+  // 只留源身份，和删除元数据一起提交；停用、保留式卸载和中断都不能写「已删除」。
+  options.db.prepare(`
+    INSERT OR IGNORE INTO plugin_purged_citation_sources (source_slot, source_id)
+    SELECT ?, id FROM "${tableName}" WHERE typeof(id) = 'text' AND id <> ''
+  `).run(options.applicationSurfaceSlot);
+}
+
+export function hasPurgedPluginCitationSource(db: Database.Database, sourceSlot: PluginApplicationSurfaceSlot, sourceId: string): boolean {
+  return db.prepare('SELECT 1 FROM plugin_purged_citation_sources WHERE source_slot = ? AND source_id = ?')
+    .get(sourceSlot, sourceId) !== undefined;
+}
+
 /** 逐项让出事件循环；中止后不再删下一项，已经删除的项在重试时自然跳过。 */
 async function removePluginDataEntry(
   target: string,
@@ -351,6 +370,7 @@ export async function cleanupPluginData(options: PluginDataCleanupOptions): Prom
     }
     assertNotAborted(options.signal);
     const finish = options.db.transaction(() => {
+      recordPurgedCitationSources(options);
       dropOwnedTables(options.db, options.ownedTables ?? []);
       options.db.prepare('DELETE FROM plugin_migrations WHERE plugin_id = ?').run(options.pluginId);
       options.db.prepare('UPDATE installed_plugins SET schema_version = 0 WHERE plugin_id = ?').run(options.pluginId);

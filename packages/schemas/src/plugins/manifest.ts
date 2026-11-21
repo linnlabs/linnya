@@ -283,6 +283,8 @@ export const PluginManifestDataStorageSchema = z.object({
     runtime: z.array(PluginManifestAssetPathSchema).default([]),
   }).default({ source: [], derived: [], runtime: [] }),
   userDataTables: z.array(z.string().min(1)).default([]),
+  /** 自有资料表的 id 会在完整清理后保留为引用删除事实；不保留标题或原文。 */
+  citationSourceTable: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/u).optional(),
 });
 
 function hasStrictlyIncreasingMigrationVersions(
@@ -334,6 +336,13 @@ export const PluginManifestSchema = z
   .refine(manifest => !manifest.entry.renderer || manifest.compat?.rendererUi !== undefined, {
     message: 'renderer plugins must declare compat.rendererUi',
     path: ['compat', 'rendererUi'],
+  })
+  .refine(manifest => {
+    const table = manifest.dataStorage.citationSourceTable;
+    return table === undefined || (manifest.applicationSurfaceSlot !== undefined && manifest.ownedTables.includes(table));
+  }, {
+    message: 'citationSourceTable must belong to the plugin and have an application surface slot',
+    path: ['dataStorage', 'citationSourceTable'],
   });
 
 export type PluginManifest = z.infer<typeof PluginManifestSchema>;

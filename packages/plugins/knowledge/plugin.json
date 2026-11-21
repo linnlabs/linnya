@@ -37,6 +37,7 @@
     "knowledge_graph_vector_doc_status"
   ],
   "dataStorage": {
+    "citationSourceTable": "kb_documents",
     "legacyRoots": ["KnowledgeBase"],
     "directories": {
       "source": ["source_of_truth", "originals"],

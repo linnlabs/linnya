@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
 import type { PluginId, PluginMeta, PluginOperationErrorCode } from '@app/schemas';
-import type { PluginManifestDataStorage } from '@app/schemas';
+import type { PluginApplicationSurfaceSlot, PluginManifestDataStorage } from '@app/schemas';
 
 import { PluginStateService } from '../../infrastructure/sqlite/plugin-state.service';
 import { PluginActiveVersionService } from '../../infrastructure/sqlite/plugin-active-version.service';
@@ -24,6 +24,7 @@ export interface UninstallPluginLifecycleOptions {
   readonly dataRoot?: string;
   readonly dataStorage?: PluginManifestDataStorage;
   readonly ownedTables?: readonly string[];
+  readonly applicationSurfaceSlot?: PluginApplicationSurfaceSlot;
   readonly stopRuntime?: () => void | Promise<void>;
   readonly signal?: AbortSignal;
   readonly onCleanupStarted?: () => void;
@@ -181,6 +182,7 @@ export async function uninstallPluginAndDeleteData(
     dataRoot: options.dataRoot,
     dataStorage: options.dataStorage,
     ownedTables: options.ownedTables ?? [],
+    applicationSurfaceSlot: options.applicationSurfaceSlot,
     stopRuntime: options.stopRuntime,
     signal: options.signal,
     onStarted: options.onCleanupStarted,

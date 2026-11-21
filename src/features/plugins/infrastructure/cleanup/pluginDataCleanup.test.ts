@@ -10,6 +10,7 @@ import {
   calculatePluginStorageUsageAsync,
   cleanupPluginData,
   hasPluginUserData,
+  hasPurgedPluginCitationSource,
   markInterruptedPluginDataCleanups,
   readPluginDataSummaryAsync,
 } from './pluginDataCleanup';
@@ -103,6 +104,26 @@ describe('plugin data cleanup', () => {
     expect(resumed.status).toBe('completed');
     expect(fs.existsSync(path.join(root, 'not-owned'))).toBe(true);
     db.close();
+  });
+
+  it('仅在最终清理提交后保留已删除的来源 ID，且不保留资料内容', async () => {
+    const { root, db } = fixture();
+    try {
+      const options = {
+        db, pluginId: 'demo', dataRoot: root, ownedTables,
+        applicationSurfaceSlot: 'knowledge-base' as const,
+        dataStorage: { ...storage, citationSourceTable: 'plugin_owned' },
+      };
+      expect((await cleanupPluginData({ ...options, signal: AbortSignal.abort() })).status).toBe('failed');
+      expect(hasPurgedPluginCitationSource(db, 'knowledge-base', 'one')).toBe(false);
+      expect((await cleanupPluginData(options)).status).toBe('completed');
+      expect(hasPurgedPluginCitationSource(db, 'knowledge-base', 'one')).toBe(true);
+      expect(hasPurgedPluginCitationSource(db, 'knowledge-base', 'other')).toBe(false);
+      expect(db.prepare('SELECT * FROM plugin_purged_citation_sources').all()).toEqual([
+        { source_slot: 'knowledge-base', source_id: 'one' },
+      ]);
+      expect(fs.existsSync(path.join(root, 'source'))).toBe(false);
+    } finally { db.close(); }
   });
 
   it('删除数据选项先完成清理，再写入用户卸载状态', async () => {

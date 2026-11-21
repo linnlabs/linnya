@@ -35,7 +35,7 @@ const plans = Object.fromEntries(cases.flatMap(({ id, priorSearch }) => [
 ]));
 plans['in-flight'] = [
   searchCall('active-search'),
-  { kind: 'assistant_text', id: 'active-search-finished', content: 'active-search-finished' },
+  { kind: 'assistant_text', id: 'active-search-finished', content: 'active-search-finished', citeToolResult: 'active-search' },
 ];
 plans['missing-deep-model'] = [
   { kind: 'tool_call', id: 'missing-deep-model', name: toolName,
@@ -130,6 +130,31 @@ async function clickUninstall(deleteData = false) {
 let db;
 let failed;
 let busyMessages;
+let savedCitation;
+let citationConversation;
+
+async function checkSavedCitation(deleted, label) {
+  await run('open', citationConversation);
+  const selector = `.conversation-citation-node[data-citation-ref=${JSON.stringify(savedCitation.ref)}]`;
+  await run('wait', '--selector', selector);
+  // 插件重装会同步刷新工具卡。等探针截取稳定画面，避免在消息布局换位前发鼠标事件。
+  await run('shot');
+  await run('hover', '--selector', selector);
+  await run('wait', '--selector', '.citation-popover .citation-snippet');
+  if (deleted) await run('wait', '--selector', '.citation-popover .citation-source-deleted');
+  const state = await evaluate(`
+    const auth = await window.electronAPI.invoke('api:get-port');
+    const route = ${json(`/api/v1/knowledge-base/citation-sources/${encodeURIComponent(savedCitation.docId)}/deletion`)};
+    const response = await fetch('http://127.0.0.1:' + auth.port + route, { headers: { 'x-api-token': auth.token } });
+    return { status: response.status, result: await response.json(), panel: document.querySelector('.citation-popover')?.innerText };`);
+  evidence.json(label, state);
+  assert.equal(state.status, 200);
+  assert.deepEqual(state.result, { deleted });
+  assert.match(state.panel, /Synth(?:etic)? apple orchard grows apples in Taiwan/u);
+  assert.equal(state.panel.includes('来源已删除'), deleted);
+  await run('shot');
+}
+
 try {
   const up = await run('up', '--size', '1440x1000', '--mode', 'bundled');
   await installKnowledgeForScenario(run);
@@ -196,11 +221,14 @@ try {
     assert.equal(during.installation.installed, 1);
     assert.equal(during.run.status, 'running');
     assert.equal(after.status, 'completed');
-    assert.ok(events.some(event => event.type === 'tool_output'
-      && event.body.tool_name === toolName && event.body.status === 'success'
-      && event.body.data?.citations?.citations?.some(citation => citation.docTitle === 'lifecycle.md')), 'the in-flight search must return real citations');
+    const returnedSources = events.find(event => event.type === 'tool_output'
+      && event.body.tool_name === toolName && event.body.status === 'success')?.body.data?.citations?.citations;
+    savedCitation = returnedSources?.find(citation => citation.docTitle === 'lifecycle.md');
+    assert.ok(savedCitation, 'the in-flight search must return real citations');
+    citationConversation = after.conversation_id;
     assert.ok(events.some(event => event.type === 'final_answer'));
     embeddingFixture.setDelay(0);
+    await checkSavedCitation(false, 'active-source');
     await run('click', await uiRef('新对话', 'button', 'aside'));
   });
 
@@ -267,6 +295,8 @@ try {
       assert.ok(fresh.toolNames.includes('read_file'), 'the fresh run must retain ordinary project tools');
       assert.ok(!fresh.toolNames.some(name => [toolName, 'knowledge_read'].includes(name)), 'a fresh run must not expose unavailable knowledge tools');
 
+      await checkSavedCitation(operation === 'uninstall-delete', `${id}-saved-source`);
+
       if (operation !== 'uninstall-delete') {
         await run('click', await uiRef('插件', 'button', 'aside'));
         if (operation === 'disable') {
@@ -285,6 +315,14 @@ try {
   await evidence.check('商店解释正在检索时为什么不能停用或卸载', async () => {
     assert.ok(busyMessages.toggleMessage.includes(busy), 'disable must explain why it is blocked');
     assert.ok(busyMessages.uninstallMessage.some(message => message.includes(busy)), 'uninstall must explain why it is blocked');
+  });
+  await evidence.check('清空后已删除标记和历史摘录在 Desktop 重启与重装后都保留', async () => {
+    await run('stop');
+    const restarted = await run('up', '--size', '1440x1000', '--mode', 'bundled', '--no-build');
+    assert.equal(restarted.workspaceDb, up.workspaceDb);
+    await checkSavedCitation(true, 'deleted-source-after-restart');
+    await installKnowledgeForScenario(run);
+    await checkSavedCitation(true, 'deleted-source-after-reinstall');
   });
 } catch (error) {
   failed = error;

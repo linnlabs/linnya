@@ -696,6 +696,7 @@ export type ConversationMessageKey =
   | 'conversation.citation.openWebPage'
   | 'conversation.citation.page'
   | 'conversation.citation.empty'
+  | 'conversation.citation.sourceDeleted'
   | 'conversation.resourceLink.genericTitle'
   | 'conversation.resourceLink.status.invalid'
   | 'conversation.resourceLink.status.unavailable'

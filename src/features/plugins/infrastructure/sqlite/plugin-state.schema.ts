@@ -59,4 +59,9 @@ export const PLUGIN_PLATFORM_STATE_SCHEMAS = [
   PLUGIN_INSTALLATION_STATE_SCHEMA,
   PLUGIN_ACTIVE_VERSION_SCHEMA,
   PLUGIN_CLEANUP_SCHEMA,
+  `CREATE TABLE IF NOT EXISTS plugin_purged_citation_sources (
+    source_slot TEXT NOT NULL,
+    source_id   TEXT NOT NULL,
+    PRIMARY KEY (source_slot, source_id)
+  ) WITHOUT ROWID;`,
 ];
