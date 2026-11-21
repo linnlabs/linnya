@@ -14,7 +14,8 @@ afterEach(cleanupCliBridges);
 const CAPABILITIES_WITHOUT_AUDIT = ConversationControlCapabilitySchema.options
   .filter(capability => !['audit', 'audit_level'].includes(capability));
 
-describe('linnya CLI real process -> scripted bridge', () => {
+// 每条都启动真实 CLI 子进程并加载 tsx，ci:local 并发负载下会超过默认 5 秒。
+describe('linnya CLI real process -> scripted bridge', { timeout: 30_000 }, () => {
   it.each([
     ['send', 'research'],
     ['send', 'research', '--project', '   '],

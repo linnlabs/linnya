@@ -136,6 +136,21 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
         }
       }
     }
+
+    // W-0303：同一真实 Runtime 里，Agent 删除本会话目录里自己的普通文件不进入审批，直接完成。
+    fixture.command = 'printf scratch > local-scratch.csv; rm -f local-scratch.csv; printf local-removed-without-approval';
+    const localReceipt = readReceipt(await runCli(['send', 'local-removal', '--project', projectId,
+      '--agent', 'default', '--model', 'approval-fixture'], environment));
+    const localResults = fixture.toolResults.length;
+    const localDone = await runCli(['status', localReceipt.conversation_id, '--run', localReceipt.run_id,
+      '--watch', '--interval', '250', '--timeout', '20000'], environment);
+    expect(localDone.code, localDone.stderr).toBe(0);
+    expect(readLastJsonLine(localDone.stdout), `${localDone.stdout}\n${runtime.stderr}`).toMatchObject({ snapshot: {
+      run_id: localReceipt.run_id, status: 'completed', command_approvals: [],
+    } });
+    expect(fixture.toolResults).toHaveLength(localResults + 1);
+    expect(fixture.toolResults.at(-1)).toContain('local-removed-without-approval');
+
     runtime.child.kill('SIGTERM');
     expect(await waitForClose(runtime.child), runtime.stderr).toBe(0);
     removeLiveRuntime(runtime.child);
@@ -320,11 +335,12 @@ function parseObject(text: string): Record<string, unknown> {
 
 async function startApprovalModelFixture(): Promise<{
   readonly url: string;
-  readonly command: string;
+  command: string;
   readonly toolResults: string[];
 }> {
-  // 只删除不存在的夹具路径，触发真实固定风险审批；不触及用户文件或真实供应商。
-  const command = 'rm -f approval-e2e-missing-file; printf approval-e2e-executed';
+  // 递归删除不存在的夹具目录，触发真实固定风险审批；不触及用户文件或真实供应商。
+  // 本会话目录里的裸 rm -f 普通文件不再审批（W-0303），所以这里必须用 -r。
+  const state = { command: 'rm -rf approval-e2e-missing-dir; printf approval-e2e-executed' };
   const toolResults: string[] = [];
   const requestSchema = z.object({ messages: z.array(z.object({
     role: z.string(), content: z.unknown().optional(),
@@ -339,7 +355,7 @@ async function startApprovalModelFixture(): Promise<{
       response.writeHead(200, { 'content-type': 'text/event-stream' });
       const delta = result ? { content: 'Fixture completed.' } : { tool_calls: [{
         index: 0, id: 'fixture-shell-call', type: 'function',
-        function: { name: 'shell', arguments: JSON.stringify({ command }) },
+        function: { name: 'shell', arguments: JSON.stringify({ command: state.command }) },
       }] };
       const frame = (value: unknown): void => { response.write(`data: ${JSON.stringify(value)}\n\n`); };
       frame({ id: 'fixture-completion', object: 'chat.completion.chunk', created: 1, model: 'approval-fixture',
@@ -355,7 +371,12 @@ async function startApprovalModelFixture(): Promise<{
   await new Promise<void>(resolve => { server.listen(0, '127.0.0.1', resolve); });
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('Model fixture is unavailable');
-  return { url: `http://127.0.0.1:${address.port}/v1`, command, toolResults };
+  return {
+    url: `http://127.0.0.1:${address.port}/v1`,
+    get command() { return state.command; },
+    set command(value: string) { state.command = value; },
+    toolResults,
+  };
 }
 
 async function startRuntime(input: {
