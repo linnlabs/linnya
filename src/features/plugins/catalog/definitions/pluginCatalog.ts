@@ -48,8 +48,11 @@ export type PluginCatalogRejectionCode =
   | 'rollback';
 
 export class PluginCatalogRejectedError extends Error {
-  constructor(readonly code: PluginCatalogRejectionCode, message: string, options?: { cause?: unknown }) {
-    super(message, options);
+  readonly cause?: unknown;
+
+  constructor(readonly code: PluginCatalogRejectionCode, message: string, options: { readonly cause?: unknown } = {}) {
+    super(message);
     this.name = 'PluginCatalogRejectedError';
+    this.cause = options.cause;
   }
 }
