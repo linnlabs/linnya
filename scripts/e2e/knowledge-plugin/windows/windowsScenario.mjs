@@ -240,7 +240,18 @@ try {
       await application.clickText('模型配置');
       await application.clickElement('document.querySelector("#embeddingModelSelect")');
       await application.clickElement(`Array.from(document.querySelectorAll('.select-option')).find(el=>el.textContent.trim()==='Windows openai_embeddings' && el.getClientRects().length)`);
-      await application.clickElement('document.querySelector(".settings-modal-close")');
+      // 刚选完下拉选项时，下拉收起的“点击外部”可能吞掉第一次关闭点击；像真人一样确认弹窗已关，没关再点。
+      for (let attempt = 0; ; attempt += 1) {
+        await application.clickElement('document.querySelector(".settings-modal-close")');
+        const closed = await until(
+          () => application.evaluate(`!document.querySelector('.settings-modal-overlay')`),
+          Boolean,
+          'Settings modal closes',
+          3_000,
+        ).then(() => true, () => false);
+        if (closed) break;
+        assert.ok(attempt < 2, 'Settings modal stays open after three close clicks');
+      }
       // 新建知识库后界面直接进入新库的文件上传页；只有不在该页时才回列表点卡片。
       const onUploadTab = await application.evaluate(`Boolean(document.querySelector('.upload-tab input[type="file"]'))`);
       if (!onUploadTab) await application.clickText(kbName);
