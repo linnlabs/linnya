@@ -66,6 +66,9 @@ Desktop 发行身份和插件 artifact 来源是两层不同证明。当前产�
 因此产品层通过 `isOfficialPluginRemoteServiceEnabled` 明确关闭该服务，不接受环境变量覆盖。
 重新开放前必须完成 catalog 验签及安装回执准入，不能只翻转开关。当前插件下载域名保持不变。
 
+Catalog 验签合同与实现见 [`src/features/plugins/catalog`](../../src/features/plugins/catalog/README.md)：
+独立插件发布密钥签名的信封、https 下载地址、有效期上限与序号防回放；生产公钥加入前任何 catalog 都无法通过验签。
+
 ## 第三方插件
 
 当前插件 backend 是受信任的 Node 代码，可以接触数据库、文件系统、网络、IPC、CLI、migration 和原生能力。Manifest 中的 `permissions` 只是前瞻描述，不是已经执行的安全沙箱。
