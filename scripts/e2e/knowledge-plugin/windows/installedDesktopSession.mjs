@@ -109,12 +109,12 @@ export async function launchInstalledDesktop(executable, root) {
       return result;
     },
     async clickElement(expression) {
-      // 与真人点击一致：中心点上必须是目标本身或其后代，被浮层、拖拽区等挡住时继续等待并在超时时说明遮挡者。
+      // 与真人点击一致：目标可用，且中心点上是目标本身或其后代；禁用或被浮层、拖拽区挡住时继续等待，超时说明原因。
       let last = null;
       const point = await until(
         async () => {
           last = await this.evaluate(
-            `(()=>{const target=(${expression});if(!target)return null;target.scrollIntoView({block:'nearest'});const r=target.getBoundingClientRect();if(!r.width||!r.height)return null;const x=r.x+r.width/2,y=r.y+r.height/2;const hit=document.elementFromPoint(x,y);if(hit&&(hit===target||target.contains(hit)))return {x,y};const describe=e=>e?[e.tagName.toLowerCase(),e.id?'#'+e.id:'',typeof e.className==='string'&&e.className?'.'+e.className.trim().split(/\\s+/).slice(0,3).join('.'):''].join(''):'none';return {obscuredBy:describe(hit),at:{x,y}};})()`
+            `(()=>{const target=(${expression});if(!target)return null;target.scrollIntoView({block:'nearest'});const r=target.getBoundingClientRect();if(!r.width||!r.height)return null;const control=target.closest('button,[role="button"],input,select,textarea')??target;if(control.disabled||control.getAttribute('aria-disabled')==='true')return {disabled:true};const x=r.x+r.width/2,y=r.y+r.height/2;const hit=document.elementFromPoint(x,y);if(hit&&(hit===target||target.contains(hit)))return {x,y};const describe=e=>e?[e.tagName.toLowerCase(),e.id?'#'+e.id:'',typeof e.className==='string'&&e.className?'.'+e.className.trim().split(/\\s+/).slice(0,3).join('.'):''].join(''):'none';return {obscuredBy:describe(hit),at:{x,y}};})()`
           );
           return last;
         },
@@ -122,6 +122,7 @@ export async function launchInstalledDesktop(executable, root) {
         'Visible click target',
         30_000
       ).catch(error => {
+        if (last?.disabled) throw new Error('Click target stayed disabled', { cause: error });
         if (last?.obscuredBy) throw new Error(`Click target obscured by ${last.obscuredBy} at ${JSON.stringify(last.at)}`, { cause: error });
         throw error;
       });
