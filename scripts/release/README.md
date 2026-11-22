@@ -42,7 +42,7 @@ scripts/release/
   functions/pluginBundledRootContract.mjs # bundled root 与目标插件集合的一致性合同
   orchestration/verifyPluginArtifactRuntime.ts # 从隔离 root 加载真实 backend entry
   upload-plugin-artifact.mjs             # 插件 R2 上传与公网回读校验
-  generate-plugin-catalog.mjs            # 官方插件 catalog 草稿生成
+  generate-plugin-catalog.mjs            # 官方插件待签名 catalog payload 生成
   smoke-official-plugins-r2.test.ts      # 官方插件公网安装/迁移 smoke
   definitions/dependencyLegalPolicy.ts  # 跨 pnpm/npm 图共用的精确许可证与来源策略
   definitions/packageLegalEvidence.ts   # 安装 package 法律 evidence 公共合同
@@ -98,7 +98,7 @@ scripts/release/
 | `functions/pluginBundledRootContract.mjs`                      | 校验 bundled root 目录、manifest id 与预期 release target 集合完全一致                                                         | 正式随包准备与隔离 artifact smoke                                                                             |
 | `orchestration/verifyPluginArtifactRuntime.ts`                 | 用显式 bundled root 加载本次 artifact 的真实 backend contribution                                                              | 被隔离 artifact smoke 调用                                                                                    |
 | `upload-plugin-artifact.mjs`                                   | schema 校验、immutable zip 检查、上传 R2、从公网回读校验                                                                       | `pnpm run release:plugin:<id>:upload`                                                                         |
-| `generate-plugin-catalog.mjs`                                  | 从官方插件 artifact 生成 catalog 草稿                                                                                          | `pnpm run release:plugin:catalog:generate`                                                                    |
+| `generate-plugin-catalog.mjs`                                  | 从官方插件 artifact 生成待签名 catalog payload（需 `LINNYA_PLUGIN_CATALOG_SEQUENCE`；签名与上传在 linnya-release）            | `pnpm run release:plugin:catalog:generate`                                                                    |
 | `packages/schemas/src/plugins/catalog.ts`                      | catalog 公共结构与解析合同                                                                                                     | 发布生成器与后续 Host catalog runtime 共用                                                                    |
 | `smoke-official-plugins-r2.test.ts`                            | 从公网下载所有官方插件，安装、激活、执行 migration、校验 owned tables                                                          | `LINNYA_R2_SMOKE=1 pnpm run smoke:plugins:official:r2`                                                        |
 
