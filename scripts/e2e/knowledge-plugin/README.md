@@ -50,9 +50,15 @@
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/lifecycle-checkpoint.acceptance.mjs <checkpoint>` 从真实知识库界面创建测试库，停止 Desktop 后在同一隔离 profile 调用正式生命周期，并在精确写入点强杀验收子进程。支持 `uninstall-before-intent`、`uninstall-before-marker`、`cleanup-before-commit`、`cleanup-after-commit`。重新启动后从商店核对界面与 SQLite、激活记录、卸载标记和文件；清理最终事务未提交时，必须能从商店续清，事务已提交时不能出现假的“数据残留”。这些断点不模拟操作系统断电。
 
-`pnpm exec tsx scripts/e2e/knowledge-plugin/upgrade-checkpoint.acceptance.mjs <case>` 只能在系统临时目录下的独立 `linnya-knowledge-upgrade.*` linked checkout 运行。独立安装依赖、构建 `package:plugins:official`、`prepare:extra-resources` 和 `dev:electron --build-only` 后，脚本从真实旧产物创建库，再在该独立检出中生成带下一版迁移的测试 artifact。`during-migration`、`before-pointer`、`after-pointer` 验证正式升级编排的精确进程中断；`automatic-upgrade`、`rejected-migration`、`removed-before-upgrade` 用真实 Desktop 的随包启动路径验证。该测试不使用实际新版安装器，也不模拟 OS 断电。
+`pnpm exec tsx scripts/e2e/knowledge-plugin/upgrade-checkpoint.acceptance.mjs <case>` 从开发 catalog 安装当前版本、在真实界面建库并写入一份原文，再由 `scripts/e2e/plugin-remote/publishNewerDevPluginVersion.mjs` 在同一 catalog 上发布更高补丁版本：解压当前包、加一条合成迁移、重算 SHA512SUMS、重新打包并用开发密钥重签（序号 +1）。只改 `dist/dev-plugin-catalog` 这一构建输出，结束时恢复，服务下次启动也会整份重新生成，因此不需要独立检出。
 
-同一隔离脚本的 `missing-bundled-artifact`、`invalid-checksum-manifest`、`corrupt-bundled-payload` 验证商店拒装、安装账本和保留资料不变，以及还原产物后从商店重试。故障注入只触碰临时检出的随包副本。
+- `during-migration`、`before-commit`、`before-pointer`、`after-pointer`：另起进程调用与商店“更新”相同的远程安装入口，在实际写入点强杀。未提交时重启后仍是旧版本且可用，再从商店更新；已提交时重启自动完成激活。新迁移只执行一次，旧迁移不重放。
+- `store-update`：商店出现“更新”，点击后新版本激活、迁移完成、资料不变；需重启完全生效时按已安装版本判断，不再重复显示同一个更新。
+- `rejected-migration`：新版本迁移失败，提示更新失败，旧版本、启用状态与资料完全不变。
+- `removed-before-upgrade`：卸载保留数据后，从商店直接装上新版本并补跑新迁移。
+- `artifact-missing`、`artifact-digest-mismatch`、`artifact-truncated`：服务器上缺包、同长度内容被改、尾部截断。更新被拒、旧版本与资料不变；发布方修好包后同一按钮重试成功。
+
+该测试不使用实际新版安装器，也不模拟 OS 断电。
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/large-cleanup.acceptance.mjs` 在已构建的磁盘 Renderer 探针里，以 20,000 个隔离文件检查占用显示、实际删除中点停与重试完成；不是 20,000 篇资料摄入或索引性能的证据。
 
