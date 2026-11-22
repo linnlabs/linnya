@@ -308,6 +308,37 @@ describe('AI SDK stream reliability integration', () => {
     expect(JSON.stringify(events)).not.toContain('sensitive gateway disconnect detail');
   });
 
+  it('Provider 心跳 ping 不投影为输出，也不改变正常完成', async () => {
+    const model = modelWithStream(() => new ReadableStream<LanguageModelV4StreamPart>({
+      start(controller) {
+        controller.enqueue({ type: 'stream-start', warnings: [] });
+        controller.enqueue({ type: 'ping' });
+        controller.enqueue({ type: 'text-start', id: 'text-1' });
+        controller.enqueue({ type: 'text-delta', id: 'text-1', delta: '完成' });
+        controller.enqueue({ type: 'ping' });
+        controller.enqueue({ type: 'text-end', id: 'text-1' });
+        controller.enqueue({
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: 'stop' },
+          usage: {
+            inputTokens: { total: 3, noCache: 3, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 1, text: 1, reasoning: 0 },
+          },
+        });
+        controller.close();
+      },
+    }));
+    const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
+      language_models: registry(model),
+    });
+
+    const events = await collect(capability.stream(invocation()));
+
+    expect(events.filter(event => event.type === 'failure')).toEqual([]);
+    expect(JSON.stringify(events)).not.toContain('ping');
+    expect(events.at(-1)).toMatchObject({ type: 'finish', reason: 'stop' });
+  });
+
   it('在失败 attempt 结束时发布可聚合的请求形状与流终态诊断', async () => {
     const diagnostics: Array<{ readonly type: string; readonly [key: string]: unknown }> = [];
     const capability = createAiSdkInferenceCapability(route.capability_id, route.surface, {
