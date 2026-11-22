@@ -26,7 +26,7 @@
 
 ## macOS 隔离探针
 
-知识库不随安装包分发：`knowledgeStore.fixture.mjs` 加载时在本机回环地址启动开发插件 catalog（`scripts/e2e/plugin-remote/devPluginCatalog.fixture.mjs`），并设置 `LINNYA_DEV_PLUGIN_CATALOG_*`，之后探针实例里的安装、自动恢复与重装都走已验签 catalog 的远程安装路径；`reinstall-crash.fixture.ts` 在同一远程安装入口的真实写入点强杀。`upgrade-checkpoint` 与 `qdrant-startup-fault missing-binary` 仍按随包升级与随包 Qdrant 设计，改写前会明确拒绝运行。
+知识库不随安装包分发：`knowledgeStore.fixture.mjs` 加载时在本机回环地址启动开发插件 catalog（`scripts/e2e/plugin-remote/devPluginCatalog.fixture.mjs`），并设置 `LINNYA_DEV_PLUGIN_CATALOG_*`，之后探针实例里的安装、自动恢复与重装都走已验签 catalog 的远程安装路径；`reinstall-crash.fixture.ts` 在同一远程安装入口的真实写入点强杀。
 
 `KNOWLEDGE_PLUGIN_MODE=bundled pnpm exec tsx scripts/e2e/knowledge-plugin/desktop.acceptance.mjs` 使用同一隔离探针，并显式选择现有磁盘 Renderer 模式；脚本断言 `plugin://knowledge/dist/renderer/index.js`、active 安装来源和真实界面入口，不能仅用 Backend IPC 成功推断 Renderer 已加载。默认 dev 模式仍用于源码界面调试。两种模式都记录实际入口 URL。
 
@@ -34,7 +34,7 @@
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/default-install.acceptance.mjs` 验证新 profile 不装、只有旧默认库和合成派生文件不装、旧原文或旧文档记录触发安装、主动卸载后不会自动装回。其它产品场景在需要时从插件市场手动装，不依赖首启自动装。
 
-`pnpm exec tsx scripts/e2e/knowledge-plugin/qdrant-startup-fault.acceptance.mjs missing-binary|invalid-storage` 只在系统临时目录的独立 `linnya-knowledge-upgrade.*` 检出运行。通过上传界面实际触发故障，核对提示与日志分开，恢复测试产物后停启插件、重新上传并校验 SQLite。
+`pnpm exec tsx scripts/e2e/knowledge-plugin/qdrant-startup-fault.acceptance.mjs missing-binary|invalid-storage` 只在系统临时目录的独立 `linnya-knowledge-upgrade.*` 检出运行。通过上传界面实际触发故障，核对提示与日志分开。`missing-binary` 删除已安装 Qdrant 运行时组件的可执行文件，并在场景期间移走源码运行才有的 extraResources 开发副本（正式安装包没有这一份，留着会掩盖故障）；界面须提示重新安装知识库，按提示卸载保留数据后从商店安装，必须只补齐运行时组件并恢复上传。`invalid-storage` 恢复测试产物后停启插件。两者最后都重新上传并校验 SQLite。
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/surfaces.acceptance.mjs` 固定使用磁盘 Renderer：实际创建项目与关联，A 打开时右键 B 并核对摄入原文，检查 Markdown/Slides 原菜单，以及停用后的弹窗/入口撤销与关联保留。它只打开导出选项，不执行系统文件保存对话框。
 
@@ -59,3 +59,11 @@
 `pnpm exec tsx scripts/e2e/knowledge-plugin/usage-cancellation.acceptance.mjs` 在 40,000 个隔离文件的实际扫描期间点「停止统计」，验证离开详情再返回不会自行重启扫描，重新统计后与 `du` 对账，且整个过程不改动资料。
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/store-concurrency.acceptance.mjs` 在真实插件商店同时启停或重装知识库与 Slides，重复触发单个卸载确认，并用商店、知识库入口和持久化状态对账。同一窗口内事件并发不包含双窗口竞争，也不代表两个插件同时卸载。
+
+## 真实旧版升级
+
+知识库曾是核心功能（0.2.1 及更早）。实测已发布的 0.2.0 与 0.2.1：林芽云不提供模型，界面没有自定义嵌入入口，服务商目录的模型也没有嵌入路由，界面因此拒绝上传；0.2.x 用户能留下的知识库资料只有空知识库，以及旧版建库时按 1024 维预建的空 Qdrant 集合。经接口强行上传时，0.2.1 的摄入 worker 缺少 `@linnya/markdown-document-core/references`，0.2.0 的 worker 进度回报因 undefined 字段校验失败，两者都会令后台退出，文档停在 pending。
+
+`legacy-upgrade/build-legacy-baseline.mjs --app <旧版可执行文件> --expect-version <x.y.z> --legacy-ingestion none|crashes|completes [--then-app … --then-expect-version …] --out <新目录>` 用正式旧版 App 生成旧资料，只经旧版正式 HTTP 接口操作并正常退出。`none` 只建库，即界面能做到的全部；`crashes` 用临时的本机回环 provider 强行上传，记录后台退出后的残留，再像用户那样重开旧版移除该 provider；`completes` 需要旧版能完成摄入，已发布版本做不到，只用于源码构建等资料。嵌入由 `legacy-upgrade/hashingEmbeddingFixture.mjs` 按词哈希生成，不需要服务商密钥。旧版 App 应来自 download.linnya.com 并按发布索引的 sha512 校验，生成的 profile 与 Workspace 只在本机保存，不提交。
+
+`pnpm exec tsx scripts/e2e/knowledge-plugin/legacy-upgrade.acceptance.mjs <baseline目录>` 把基线复制进隔离探针（原件不改，结束时比对摘要），用当前源码 Host 与开发 catalog 启动。只有空库时不得自动下载，商店显示早期版本资料，用户安装后旧库仍在；有文档记录时后台自动安装，残留的处理中文档变为可理解的失败。两者都要求：旧版模型目录正常加载；在新版接入不同维度的嵌入模型后往旧库上传完成、检索命中；知识库页面显示旧库与文档；重启后 Qdrant 从运行时组件启动、结果不变；旧版装过的随包插件仍可用（同版本号不能换内容）。源码 Host 在这里代表新版本代码；正式候选包上的同一升级由发布流水线在 Mac 与 Windows 各执行一次。

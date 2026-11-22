@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
@@ -8,16 +8,12 @@ import { DatabaseSync } from 'node:sqlite';
 import { acceptance } from '../../development/features/desktop-probe/acceptance/probeAcceptance.mjs';
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
 import { startCustomCapabilityProtocolServer } from '../../../src/app-hosts/linnya/application/custom-api-onboarding/__tests__/fixtures/customCapabilityProtocolServer.ts';
-import { installKnowledgeForScenario, knowledgeSidebar } from './knowledgeStore.fixture.mjs';
+import { clickNamed, installKnowledgeForScenario, knowledgeSidebar, openKnowledgeStoreDetail } from './knowledgeStore.fixture.mjs';
 
 const kind = process.argv[2];
 assert.ok(['missing-binary', 'invalid-storage'].includes(kind));
-// Qdrant 改为远程运行时组件：缺失可执行文件应针对已安装组件，且源码运行的 extraResources 回退会掩盖故障。
-// 改写为针对运行时组件之前，missing-binary 明确拒绝运行。
-if (kind === 'missing-binary') {
-  console.error('[knowledge-qdrant] Qdrant 已改为远程运行时组件，missing-binary 场景待改写为针对已安装组件。');
-  process.exit(2);
-}
+// Qdrant 是远程运行时组件：missing-binary 删除已安装组件的可执行文件。源码运行在组件不可用时会回退到
+// extraResources 里的开发副本（正式安装包没有这一份），场景期间一并移走，否则回退会掩盖故障。
 const repository = realpathSync(fileURLToPath(new URL('../../..', import.meta.url)));
 assert.match(basename(dirname(repository)), /^linnya-knowledge-upgrade\.[\w]+$/u);
 assert.equal(dirname(dirname(repository)), realpathSync(tmpdir()));
@@ -32,8 +28,16 @@ const filename = 'isolated-qdrant-fault.md';
 let up;
 let failure;
 let restore;
+let restoreFallback;
 
 const evaluate = async code => (await run('eval', code)).value;
+
+function installedQdrant() {
+  const root = join(up.root, 'user-data', 'runtimes', 'qdrant');
+  const { version } = JSON.parse(readFileSync(join(root, 'active.json'), 'utf8'));
+  const receipt = JSON.parse(readFileSync(join(root, '.receipts', `${version}.json`), 'utf8'));
+  return { version, executable: join(root, version, 'qdrant'), receipt };
+}
 
 async function upload() {
   await run('click', '--selector', knowledgeSidebar);
@@ -79,10 +83,14 @@ try {
 
   await evidence.check(`Qdrant ${kind}：真实上传失败、正常界面可用、停启后恢复`, async () => {
     if (kind === 'missing-binary') {
-      const binary = join(repository, 'extraResources', 'bin', 'qdrant', 'mac-arm64', 'qdrant');
-      const saved = join(up.root, 'qdrant-orig');
-      await rename(binary, saved);
-      restore = () => rename(saved, binary);
+      const fallback = join(repository, 'extraResources', 'bin', 'qdrant', 'mac-arm64', 'qdrant');
+      const savedFallback = join(up.root, 'qdrant-development-fallback');
+      await rename(fallback, savedFallback);
+      restoreFallback = () => rename(savedFallback, fallback);
+      const component = installedQdrant();
+      evidence.json('installed-runtime-before-fault', component);
+      // 用户侧的典型损坏：组件文件被删除或被安全软件隔离；恢复走产品提示的重新安装，不把原文件放回去。
+      await rename(component.executable, join(up.root, 'qdrant-removed-by-fault'));
     } else {
       const root = join(up.root, 'workspace', 'Plugins', 'knowledge', 'qdrant');
       await mkdir(root, { recursive: true });
@@ -94,18 +102,32 @@ try {
     await run('wait', '--selector', '.file-item .status-failed');
     const page = await evaluate("document.querySelector('.upload-tab').innerText");
     const before = await readFile(up.logs.desktop, 'utf8');
-    const diagnostic = before.split('\n').filter(line => /向量服务未能启动|Qdrant binary not found|报告 HTTP listener 前退出/u.test(line));
-    assert.ok(diagnostic.some(line => (kind === 'missing-binary' ? /Qdrant binary not found/u : /报告 HTTP listener 前退出/u).test(line)));
+    const diagnostic = before.split('\n').filter(line => /向量服务未能启动|Qdrant 运行时未安装|Qdrant binary not found|报告 HTTP listener 前退出/u.test(line));
+    assert.ok(diagnostic.some(line => (kind === 'missing-binary' ? /Qdrant 运行时未安装/u : /报告 HTTP listener 前退出/u).test(line)));
     evidence.json('visible-failure', { page, diagnostic });
     await run('shot');
-    await restore();
-    restore = undefined;
-    await run('click', 'text=插件');
-    const toggle = '.switch-control:has(input[aria-label="知识库 启用状态"])';
-    await run('click', '--selector', toggle);
-    await run('wait', '--selector', knowledgeSidebar, '--state', 'detached');
-    await run('click', '--selector', toggle);
-    await run('wait', '--selector', knowledgeSidebar);
+    if (kind === 'missing-binary') {
+      // 按提示重新安装：卸载保留数据后从商店安装，插件与已装好的部分不重复下载，只补齐缺失的运行时组件。
+      await openKnowledgeStoreDetail(run);
+      await clickNamed(run, 'button', '卸载', 'main');
+      await clickNamed(run, 'button', '卸载', '.modal-overlay--alert');
+      await run('wait', '--selector', knowledgeSidebar, '--state', 'detached');
+      await run('wait', '--text', '已卸载，保留数据');
+      await clickNamed(run, 'button', '安装', 'main');
+      await run('wait', '--selector', knowledgeSidebar, '--timeout', '60000');
+      const repaired = installedQdrant();
+      assert.ok(existsSync(repaired.executable), 'reinstall must restore the runtime component executable');
+      evidence.json('installed-runtime-after-repair', repaired);
+    } else {
+      await restore();
+      restore = undefined;
+      await run('click', 'text=插件');
+      const toggle = '.switch-control:has(input[aria-label="知识库 启用状态"])';
+      await run('click', '--selector', toggle);
+      await run('wait', '--selector', knowledgeSidebar, '--state', 'detached');
+      await run('click', '--selector', toggle);
+      await run('wait', '--selector', knowledgeSidebar);
+    }
     await upload();
     await run('wait', '--selector', '.file-item .status-completed');
     const db = new DatabaseSync(up.workspaceDb, { readOnly: true });
@@ -114,7 +136,7 @@ try {
       assert.equal(db.prepare('PRAGMA quick_check').get().quick_check, 'ok');
     } finally { db.close(); }
     await run('shot');
-    assert.match(page, /向量服务.*未能启动.*重新启用/u);
+    assert.match(page, kind === 'missing-binary' ? /重新安装知识库/u : /向量服务.*未能启动.*重新启用/u);
     assert.ok(!page.includes(up.root));
   });
 } catch (error) {
@@ -122,7 +144,11 @@ try {
   if (!(error instanceof assert.AssertionError)) evidence.error(error);
 } finally {
   if (failure && up) evidence.artifact(up.logs.desktop, 'desktop');
-  try { await restore?.(); evidence.json('teardown', await test.finish({ clean: !failure })); }
+  try {
+    await restore?.();
+    await restoreFallback?.();
+    evidence.json('teardown', await test.finish({ clean: !failure }));
+  }
   catch (error) { failure ??= error; evidence.error(error); }
   await fixture.close();
   console.log(JSON.stringify(evidence.finish()));
