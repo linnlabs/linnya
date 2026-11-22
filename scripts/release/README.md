@@ -42,7 +42,8 @@ scripts/release/
   functions/pluginBundledRootContract.mjs # bundled root 与目标插件集合的一致性合同
   orchestration/verifyPluginArtifactRuntime.ts # 从隔离 root 加载真实 backend entry
   upload-plugin-artifact.mjs             # 插件 R2 上传与公网回读校验
-  generate-plugin-catalog.mjs            # 官方插件待签名 catalog payload 生成
+  generate-plugin-catalog.mjs            # 官方插件待签名 catalog payload 生成（含运行时组件）
+  package-runtime-component.mjs          # 原生运行时组件（Qdrant）打包：可执行文件 + LICENSE + NOTICE
   smoke-official-plugins-r2.test.ts      # 官方插件公网安装/迁移 smoke
   definitions/dependencyLegalPolicy.ts  # 跨 pnpm/npm 图共用的精确许可证与来源策略
   definitions/packageLegalEvidence.ts   # 安装 package 法律 evidence 公共合同

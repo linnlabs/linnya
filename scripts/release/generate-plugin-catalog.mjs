@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 import { buildSignedPluginCatalogPayload } from './functions/buildSignedPluginCatalogPayload.ts';
+import { collectCatalogRuntimes } from './functions/collectCatalogRuntimes.ts';
 import { parsePluginManifest } from '../../packages/schemas/src/plugins/manifest.ts';
 import {
   listOfficialPluginReleaseTargetIds,
@@ -54,10 +55,30 @@ const readPluginCatalogEntry = async (pluginId) => {
     artifactUrl: `${downloadBaseUrl}/${zipName}`,
     sha512: sha512Hex(zipBuffer),
     size: zipBuffer.byteLength,
-    // 原生运行时依赖在运行时组件落地后由插件 manifest 声明；在此之前为空。
-    requiresRuntimes: [],
+    // 插件 manifest 声明的原生运行时依赖；catalog 必须同时列出满足 range 的运行时组件。
+    requiresRuntimes: manifest.requiresRuntimes,
   };
 };
+
+async function readRuntimeMetadata(root) {
+  const found = [];
+  const walk = async directory => {
+    let entries;
+    try {
+      entries = await fs.readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (error?.code === 'ENOENT') return;
+      throw error;
+    }
+    for (const entry of entries) {
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else if (entry.name === 'runtime.json') found.push(await readJson(full));
+    }
+  };
+  await walk(root);
+  return found;
+}
 
 function readPositiveInteger(name, fallback) {
   const raw = process.env[name];
@@ -73,13 +94,23 @@ function readPositiveInteger(name, fallback) {
 const main = async () => {
   const channel = process.env.LINNYA_PLUGIN_CATALOG_CHANNEL ?? 'stable';
   if (channel !== 'stable' && channel !== 'beta') throw new Error(`LINNYA_PLUGIN_CATALOG_CHANNEL 无效: ${channel}`);
+  const plugins = await Promise.all(pluginIds.map(readPluginCatalogEntry));
+  // 运行时组件由 package-runtime-component 按平台产出；插件声明的运行时必须都能满足。
+  const runtimeRoot = path.resolve(repoRoot, process.env.LINNYA_PLUGIN_CATALOG_RUNTIMES_DIR ?? 'dist/runtime-components');
+  const runtimeMetadata = await readRuntimeMetadata(runtimeRoot);
+  const runtimes = collectCatalogRuntimes({
+    metadata: runtimeMetadata,
+    downloadRootUrl: process.env.LINNYA_PLUGIN_RUNTIME_DOWNLOAD_ROOT_URL ?? 'https://download.linnya.com/plugins',
+    plugins,
+  });
   // 待签名 payload：序号由发布方给出，linnya-release 签名时再对照线上 catalog 核对必须递增。
   const payload = buildSignedPluginCatalogPayload({
     channel,
     sequence: readPositiveInteger('LINNYA_PLUGIN_CATALOG_SEQUENCE'),
     issuedAt: process.env.LINNYA_PLUGIN_CATALOG_ISSUED_AT ? new Date(process.env.LINNYA_PLUGIN_CATALOG_ISSUED_AT) : new Date(),
     validDays: readPositiveInteger('LINNYA_PLUGIN_CATALOG_VALID_DAYS', 30),
-    plugins: await Promise.all(pluginIds.map(readPluginCatalogEntry)),
+    plugins,
+    runtimes,
   });
 
   await fs.mkdir(path.dirname(outputPath), { recursive: true });

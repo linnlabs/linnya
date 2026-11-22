@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
   PluginOwnedFileTypeSchema,
   PluginPermissionSchema,
+  PluginRuntimeRequirementSchema,
   type PluginMeta,
   type PluginMetaClassification,
 } from './manifest';
@@ -85,11 +86,6 @@ export const PLUGIN_CATALOG_CHANNELS = ['stable', 'beta'] as const;
 export const PLUGIN_RUNTIME_PLATFORMS = ['darwin', 'win32'] as const;
 export const PLUGIN_RUNTIME_ARCHITECTURES = ['arm64', 'x64'] as const;
 export const SIGNED_PLUGIN_CATALOG_SCHEMA_VERSION = 1 as const;
-
-export const PluginRuntimeRequirementSchema = z.object({
-  id: z.string().regex(IDENTIFIER),
-  range: z.string().refine(isValidSemverRange, SEMVER_RANGE_MESSAGE),
-}).strict();
 
 /** 已签名 catalog 中的插件条目：沿用可发现条目，并锁定 artifact 大小与所需原生运行时。 */
 export const SignedPluginCatalogEntrySchema = PluginCatalogEntrySchema.extend({

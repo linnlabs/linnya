@@ -59,5 +59,11 @@
       "version": 1,
       "description": "Adopt knowledge documents, project links and graph tables in place"
     }
+  ],
+  "requiresRuntimes": [
+    {
+      "id": "qdrant",
+      "range": "^1.14"
+    }
   ]
 }

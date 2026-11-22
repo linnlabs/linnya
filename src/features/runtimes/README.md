@@ -21,3 +21,8 @@
 `resolveInstalledRuntimeExecutable` 在每次启动运行时前执行：指针 → 回执 → 回执中的信封仍由受信 key 签发、列出本平台目标且未被撤回（含本机最近 catalog 的撤回）→ 可执行文件位于版本目录内且 SHA-256 一致。任一不符返回 `rejected` 并记诊断，不执行该文件。
 
 Qdrant 的 `resolveQdrantProcessRuntime` 在启动时才解析：已安装且复核通过的运行时组件优先，其次安装包内的副本（旧版本随包分发），都没有时抛出 `QdrantRuntimeMissingError`。
+
+## 声明与打包
+
+- 插件在 `plugin.json` 用 `requiresRuntimes: [{ id, range }]` 声明所需运行时（node-semver range，同一 id 不重复）；catalog 生成器把它写入插件条目，并要求同一份 catalog 列出满足 range 的运行时组件，否则发布前失败。
+- `scripts/release/package-runtime-component.mjs` 打包 Qdrant：可执行文件在 zip 根目录，随附按锁定 URL 与 SHA-256 获取的 LICENSE 和 NOTICE，条目时间固定以便复现；输出 `dist/runtime-components/<id>/<version>/<platform>-<arch>/` 与 `runtime.json`。正式发布由 linnya-release 先对可执行文件重签名再以 `--executable` 打包；不传时使用 prepare-qdrant-runtime 已按锁定清单校验的上游文件。

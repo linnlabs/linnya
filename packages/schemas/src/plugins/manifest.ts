@@ -300,6 +300,14 @@ function hasStrictlyIncreasingMigrationVersions(
   return true;
 }
 
+/** 插件所需的原生运行时组件（Host 通用合同）；远程安装时先装好满足 range 的版本。 */
+export const PluginRuntimeRequirementSchema = z.object({
+  id: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,127}$/u),
+  range: z.string().min(1).refine(isValidRendererUiCompatibilityRange, {
+    message: 'runtime range must be a valid node-semver range',
+  }),
+}).strict();
+
 export const PluginManifestSchema = z
   .object({
     id: z.string().min(1),
@@ -326,9 +334,14 @@ export const PluginManifestSchema = z
       userDataTables: [],
     }),
     migrations: z.array(PluginManifestMigrationSchema).default([]),
+    requiresRuntimes: z.array(PluginRuntimeRequirementSchema).default([]),
     artifact: PluginManifestArtifactSchema.optional(),
   })
   .passthrough()
+  .refine(manifest => new Set(manifest.requiresRuntimes.map(item => item.id)).size === manifest.requiresRuntimes.length, {
+    message: 'requiresRuntimes must not repeat a runtime id',
+    path: ['requiresRuntimes'],
+  })
   .refine(manifest => hasStrictlyIncreasingMigrationVersions(manifest.migrations), {
     message: 'plugin manifest migrations must be strictly increasing by version',
     path: ['migrations'],

@@ -1,6 +1,7 @@
 import {
   SignedPluginCatalogPayloadSchema,
   type PluginCatalogChannel,
+  type PluginRuntimeEntry,
   type SignedPluginCatalogEntry,
   type SignedPluginCatalogPayload,
 } from '../../../packages/schemas/src/plugins/catalog.ts';
@@ -19,6 +20,7 @@ export function buildSignedPluginCatalogPayload(input: {
   readonly issuedAt: Date;
   readonly validDays: number;
   readonly plugins: readonly SignedPluginCatalogEntry[];
+  readonly runtimes?: readonly PluginRuntimeEntry[];
 }): SignedPluginCatalogPayload {
   if (!Number.isInteger(input.validDays) || input.validDays < 1 || input.validDays > MAX_PLUGIN_CATALOG_VALID_DAYS) {
     throw new Error(`catalog 有效期必须是 1–${MAX_PLUGIN_CATALOG_VALID_DAYS} 天: ${input.validDays}`);
@@ -32,7 +34,7 @@ export function buildSignedPluginCatalogPayload(input: {
     issuedAt: issuedAt.toISOString(),
     expiresAt: new Date(issuedAt.getTime() + input.validDays * DAY_MS).toISOString(),
     plugins: input.plugins,
-    runtimes: [],
+    runtimes: input.runtimes ?? [],
     revoked: [],
   });
 }
