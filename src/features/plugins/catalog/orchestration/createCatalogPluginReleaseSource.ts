@@ -1,25 +1,12 @@
-import {
-  PLUGIN_RUNTIME_ARCHITECTURES,
-  PLUGIN_RUNTIME_PLATFORMS,
-  type PluginCatalogChannel,
-  type PluginRuntimeArchitecture,
-  type PluginRuntimePlatform,
-} from '@app/schemas';
+import type { PluginCatalogChannel } from '@app/schemas';
 
 import type { RemotePluginRelease, RemotePluginReleaseSource } from '../../install/definitions/pluginInstall';
 import { PluginOperationError } from '../../install/definitions/pluginOperationError';
 import type { TrustedPluginCatalogKeys } from '../definitions/pluginCatalog';
+import { resolveCatalogPlatform } from '../functions/resolveCatalogPlatform';
 import { selectCatalogPluginRelease } from '../functions/selectCatalogPluginRelease';
 import type { PluginCatalogStateStore } from '../infrastructure/pluginCatalogStateStore';
 import { fetchVerifiedPluginCatalog } from './fetchVerifiedPluginCatalog';
-
-function isPlatform(value: string): value is PluginRuntimePlatform {
-  return (PLUGIN_RUNTIME_PLATFORMS as readonly string[]).includes(value);
-}
-
-function isArchitecture(value: string): value is PluginRuntimeArchitecture {
-  return (PLUGIN_RUNTIME_ARCHITECTURES as readonly string[]).includes(value);
-}
 
 /**
  * official 组合的远程版本来源：每次解析都重新拉取并验签 catalog，选出本 Host 可安装的最高版本，
@@ -37,10 +24,11 @@ export function createCatalogPluginReleaseSource(input: {
 }): RemotePluginReleaseSource {
   return {
     async resolve({ pluginId, appVersion, rendererUiVersion, fetch }): Promise<RemotePluginRelease> {
-      const { platform, architecture } = input;
-      if (!isPlatform(platform) || !isArchitecture(architecture)) {
-        throw new PluginOperationError('incompatible', `当前平台不提供远程插件: ${platform}/${architecture}`, { pluginId });
+      const target = resolveCatalogPlatform(input.platform, input.architecture);
+      if (!target) {
+        throw new PluginOperationError('incompatible', `当前平台不提供远程插件: ${input.platform}/${input.architecture}`, { pluginId });
       }
+      const { platform, architecture } = target;
       const catalog = await fetchVerifiedPluginCatalog({
         catalogUrl: input.catalogUrl,
         channel: input.channel,

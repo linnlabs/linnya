@@ -32,6 +32,7 @@ export function buildPluginsPreloadApi(ipcRenderer: IpcRenderer) {
     plugins: {
       list: () => ipcRenderer.invoke('plugins:list'),
       storeList: () => ipcRenderer.invoke('plugins:store-list'),
+      remoteCatalog: () => ipcRenderer.invoke('plugins:remote-catalog'),
       getDetail: (pluginId: string) => ipcRenderer.invoke('plugins:get-detail', pluginId),
       diagnostics: () => ipcRenderer.invoke('plugins:diagnostics'),
       rendererEntries: () => ipcRenderer.invoke('plugins:renderer-entries'),

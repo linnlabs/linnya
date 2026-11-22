@@ -44,6 +44,9 @@ import { installRuntimeComponent, isRuntimeComponentCurrent } from '../../../../
 import { createCatalogPluginReleaseSource } from '../../../../features/plugins/catalog/orchestration/createCatalogPluginReleaseSource';
 import { createPluginCatalogStateStore } from '../../../../features/plugins/catalog/infrastructure/pluginCatalogStateStore';
 import { resolvePluginCatalogUrl } from '../../../../features/plugins/catalog/functions/resolvePluginCatalogUrl';
+import { buildPluginRemoteCatalogView, runtimeKey } from '../../../../features/plugins/catalog/functions/buildPluginRemoteCatalogView';
+import { resolveCatalogPlatform } from '../../../../features/plugins/catalog/functions/resolveCatalogPlatform';
+import { fetchVerifiedPluginCatalog } from '../../../../features/plugins/catalog/orchestration/fetchVerifiedPluginCatalog';
 import { trustedPluginCatalogKeys } from '../../../../features/plugins/catalog/registry/trustedPluginCatalogKeys';
 import { runPluginLifecycleOperationSerially } from '../../../../features/plugins/install/orchestration/pluginLifecycleSerialExecutor';
 import { resolveDiskPluginUpgradePlan } from '../../../plugins/install/diskPluginUpgradePlan';
@@ -59,7 +62,13 @@ import { getRuntimeEnabledPluginIds } from '../../../../app-hosts/linnya/plugin-
 import { isTrustedKnowledgeResourceSource } from '../../../../app-hosts/linnya/plugin-registry/knowledgeResourceAdmission';
 import { RENDERER_UI_VERSION } from '@linnya/renderer-ui/version';
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
-import { parsePluginManifest, type PluginDataSummary, type PluginMeta, type PluginOperationFailure } from '@app/schemas';
+import {
+  parsePluginManifest,
+  type PluginDataSummary,
+  type PluginMeta,
+  type PluginOperationFailure,
+  type PluginRemoteCatalogResult,
+} from '@app/schemas';
 import { resolvePluginCleanupDescriptor } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
 import { readPluginDataSummaryAsync, cleanupPluginData, hasPendingPluginDataCleanup } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
 import { readJsonFile } from '../../../plugins/loader/pluginLayout';
@@ -285,6 +294,56 @@ function createOfficialRuntimeInstaller(pluginId: string, userPluginRoot: string
       });
     },
   };
+}
+
+/** 商店展示用：拉取并验签官方 catalog，按本机平台与已装运行时投影为条目。失败只影响远程条目，不影响已装插件。 */
+async function readOfficialRemoteCatalog(applicationVersion: string): Promise<PluginRemoteCatalogResult> {
+  const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
+  const runtimeRoot = process.env.LINNYA_RUNTIME_ROOT;
+  try {
+    if (!userPluginRoot || !runtimeRoot) {
+      throw new PluginOperationError('source-unavailable', '插件或运行时目录未初始化，不能读取远程插件 catalog');
+    }
+    const target = resolveCatalogPlatform(process.platform, process.arch);
+    if (!target) throw new PluginOperationError('incompatible', `当前平台不提供远程插件: ${process.platform}/${process.arch}`);
+    const stateStore = createPluginCatalogStateStore({
+      userPluginRoot,
+      recordDiagnostic: message => pluginDiagnostics.record({ level: 'warn', pluginId: null, capability: null, message }),
+    });
+    const catalog = await fetchVerifiedPluginCatalog({
+      catalogUrl: resolvePluginCatalogUrl('stable'),
+      channel: 'stable',
+      trustedKeys: trustedPluginCatalogKeys,
+      stateStore,
+    });
+    const laterRevocations = stateStore.readRevocations();
+    const installedRuntimes = new Set<string>();
+    for (const runtime of catalog.runtimes) {
+      const runtimeTarget = runtime.targets.find(item => item.platform === target.platform && item.architecture === target.architecture);
+      if (!runtimeTarget) continue;
+      const current = await isRuntimeComponentCurrent({
+        runtimeRoot,
+        runtime: { id: runtime.id, version: runtime.version, target: runtimeTarget },
+        trustedKeys: trustedPluginCatalogKeys,
+        laterRevocations,
+      });
+      if (current) installedRuntimes.add(runtimeKey(runtime.id, runtime.version));
+    }
+    return {
+      status: 'available',
+      items: buildPluginRemoteCatalogView({
+        catalog,
+        appVersion: applicationVersion,
+        rendererUiVersion: RENDERER_UI_VERSION,
+        ...target,
+        installedRuntimes,
+      }),
+    };
+  } catch (error) {
+    const operationError = toPluginOperationError(error);
+    logger.warn('[plugins:remote-catalog] unavailable', { code: operationError.code, message: operationError.message });
+    return { status: 'unavailable', code: operationError.code };
+  }
 }
 
 /** official 组合的远程版本来源：只认独立插件密钥签名的 catalog，并在用户插件根记录高水位。 */
@@ -559,6 +618,13 @@ export async function registerPluginsHandlers(input: {
     }
   });
 
+  input.ipc.handle('plugins:remote-catalog', async () => {
+    if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
+      return { success: true, data: { status: 'disabled' } satisfies PluginRemoteCatalogResult };
+    }
+    return { success: true, data: await readOfficialRemoteCatalog(input.applicationVersion) };
+  });
+
   input.ipc.handle('plugins:get-detail', async (_event, rawPluginId: unknown) => {
     try {
       const pluginId = parsePluginId(rawPluginId, 'plugins:get-detail');
@@ -767,6 +833,8 @@ export async function registerPluginsHandlers(input: {
               pluginId,
               releaseSource: createOfficialPluginReleaseSource(pluginId),
               installRuntimes: createOfficialRuntimeInstaller(pluginId, userPluginRoot),
+              // 官方来源只有已验签 catalog；不随包的官方插件首次安装时按下载内容登记。
+              allowCatalogListedPlugins: true,
               appVersion: input.applicationVersion,
               rendererUiVersion: RENDERER_UI_VERSION,
               knownPlugins,

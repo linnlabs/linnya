@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type Database from 'better-sqlite3';
-import type {
-  PluginId,
-  PluginMeta,
-  PluginOperationErrorCode,
-  PluginRemoteInstallResult,
+import {
+  parsePluginManifest,
+  pluginMetaFromManifest,
+  type PluginId,
+  type PluginMeta,
+  type PluginOperationErrorCode,
+  type PluginRemoteInstallResult,
 } from '@app/schemas';
 
 import type { PluginUpgradeDiagnostic, PluginUpgradePlan } from '../../infrastructure/sqlite/plugin-upgrade.runner';
@@ -33,6 +35,11 @@ export interface InstallPluginFromRemoteAndActivateOptions {
   readonly latestManifestUrl?: string;
   readonly releaseSource?: RemotePluginReleaseSource;
   readonly installRuntimes?: RemotePluginRuntimeInstaller;
+  /**
+   * 仅与官方已验签 catalog 来源一起开启：catalog 列出的插件即使本机从未登记（不随包、首次安装）也可安装，
+   * 登记信息取自下载并通过校验的版本目录内 plugin.json，而不是 catalog 展示字段。
+   */
+  readonly allowCatalogListedPlugins?: boolean;
   readonly appVersion: string;
   readonly rendererUiVersion: string;
   readonly knownPlugins: readonly PluginMeta[];
@@ -77,6 +84,16 @@ function toSkippedCurrentResult(
   };
 }
 
+/** 从已落盘、已校验的版本目录读取登记信息；远程安装的插件不是随包内置插件。 */
+function readInstalledVersionMeta(userPluginRoot: string, pluginId: PluginId, version: string): PluginMeta {
+  const versionDir = resolvePluginVersionDir(userPluginRoot, pluginId, version);
+  const manifest = parsePluginManifest(JSON.parse(fs.readFileSync(path.join(versionDir, 'plugin.json'), 'utf8')) as unknown);
+  if (manifest.id !== pluginId || manifest.version !== version) {
+    throw new Error(`版本目录内 plugin.json 与安装目标不一致: ${manifest.id}@${manifest.version}`);
+  }
+  return pluginMetaFromManifest(manifest, { builtin: false });
+}
+
 function toFailedResult(
   pluginId: PluginId,
   version: string | null,
@@ -108,7 +125,7 @@ export async function installPluginFromRemoteAndActivate(
     previousRecord = stateService.getInstalledRecord(options.pluginId);
   }
 
-  if (!previousRecord) {
+  if (!previousRecord && !options.allowCatalogListedPlugins) {
     return toFailedResult(options.pluginId, null, `未知插件，不能远程安装: ${options.pluginId}`);
   }
 
@@ -137,13 +154,30 @@ export async function installPluginFromRemoteAndActivate(
       ...(installResult.detail ? { detail: installResult.detail } : {}),
     };
   }
+  let knownPlugins = options.knownPlugins;
+  if (!previousRecord) {
+    // catalog 已列出且版本目录已通过完整校验，按其 plugin.json 补登记（未安装状态），后续与已登记插件同一路径。
+    try {
+      const meta = readInstalledVersionMeta(options.userPluginRoot, options.pluginId, installResult.version);
+      stateService.ensureKnownPluginRegistered(meta);
+      knownPlugins = [...options.knownPlugins, meta];
+    } catch (error) {
+      const operationError = toPluginOperationError(error, { pluginId: options.pluginId });
+      return toFailedResult(options.pluginId, installResult.version, operationError.message, operationError.code);
+    }
+    previousRecord = stateService.getInstalledRecord(options.pluginId);
+    if (!previousRecord) {
+      return toFailedResult(options.pluginId, installResult.version, `插件登记失败: ${options.pluginId}`);
+    }
+  }
+
   if (installResult.status === 'skipped' && installResult.reason === 'current') {
     if (previousRecord.installed && !previousRecord.userRemoved) {
       return toSkippedCurrentResult(options, installResult.version, installResult.detail);
     }
 
     try {
-      stateService.setInstalled(options.pluginId, true, options.knownPlugins);
+      stateService.setInstalled(options.pluginId, true, knownPlugins);
       clearPluginUserRemovedMarker(options.userPluginRoot, options.pluginId);
       return {
         status: 'installed',
@@ -167,7 +201,7 @@ export async function installPluginFromRemoteAndActivate(
   const pluginDir = resolvePluginVersionDir(options.userPluginRoot, options.pluginId, versionToActivate);
 
   try {
-    stateService.setInstalled(options.pluginId, true, options.knownPlugins);
+    stateService.setInstalled(options.pluginId, true, knownPlugins);
     const upgradePlan = options.resolveUpgradePlan({
       pluginId: options.pluginId,
       version: versionToActivate,
@@ -191,7 +225,7 @@ export async function installPluginFromRemoteAndActivate(
       });
     }
     if (previousRecord.installed && !wasEnabled) {
-      stateService.setEnabled(options.pluginId, false, options.knownPlugins);
+      stateService.setEnabled(options.pluginId, false, knownPlugins);
     }
 
     clearPluginUserRemovedMarker(options.userPluginRoot, options.pluginId);
@@ -204,7 +238,7 @@ export async function installPluginFromRemoteAndActivate(
     };
   } catch (error) {
     if (!previousRecord.installed) {
-      stateService.setInstalled(options.pluginId, false, options.knownPlugins);
+      stateService.setInstalled(options.pluginId, false, knownPlugins);
       removeActivePointer(options.userPluginRoot, options.pluginId);
     }
     if (previousRecord.userRemoved) {
@@ -212,7 +246,7 @@ export async function installPluginFromRemoteAndActivate(
       markPluginUserRemoved(options.userPluginRoot, options.pluginId);
     }
     if (previousRecord.installed && !wasEnabled) {
-      stateService.setEnabled(options.pluginId, false, options.knownPlugins);
+      stateService.setEnabled(options.pluginId, false, knownPlugins);
     }
 
     const operationError = toPluginOperationError(error, { pluginId: options.pluginId });

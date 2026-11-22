@@ -254,6 +254,64 @@ describe('installPluginFromRemoteAndActivate', () => {
     expect(new PluginStateService(db).getEnabledIds()).toContain('mindmap');
   });
 
+  it('rejects an unknown plugin before any download unless the signed catalog source allows catalog-listed plugins', async () => {
+    db.prepare("DELETE FROM enabled_plugins WHERE plugin_id = 'mindmap'").run();
+    db.prepare("DELETE FROM installed_plugins WHERE plugin_id = 'mindmap'").run();
+    const zipBuffer = await createPluginZip('1.1.0');
+    const requests: string[] = [];
+    const fetcher = createFetch(zipBuffer);
+    const result = await installPluginFromRemoteAndActivate({
+      db, userPluginRoot, pluginId: 'mindmap', latestManifestUrl: latestUrl,
+      appVersion: '0.0.36', rendererUiVersion: '1.0.0', knownPlugins: [platformMeta],
+      fetch: async (input, init) => { requests.push(String(input)); return fetcher(input, init); },
+      resolveUpgradePlan: ({ pluginId, version }) => ({ pluginId, targetVersion: version, ownedTables: [], migrations: [] }),
+    });
+    expect(result).toMatchObject({ status: 'failed', error: expect.stringContaining('未知插件') });
+    expect(requests).toEqual([]);
+  });
+
+  it('first-time install of a catalog-listed plugin registers it from the verified plugin.json, not as builtin', async () => {
+    db.prepare("DELETE FROM enabled_plugins WHERE plugin_id = 'mindmap'").run();
+    db.prepare("DELETE FROM installed_plugins WHERE plugin_id = 'mindmap'").run();
+    // 真正的首次安装：迁移账本里也没有该插件的记录。
+    db.prepare("DELETE FROM plugin_migrations WHERE plugin_id = 'mindmap'").run();
+    const zipBuffer = await createPluginZip('1.1.0');
+    const result = await installPluginFromRemoteAndActivate({
+      db, userPluginRoot, pluginId: 'mindmap', latestManifestUrl: latestUrl, allowCatalogListedPlugins: true,
+      appVersion: '0.0.36', rendererUiVersion: '1.0.0', knownPlugins: [platformMeta],
+      fetch: createFetch(zipBuffer),
+      resolveUpgradePlan: ({ pluginId, version }) => ({
+        pluginId, targetVersion: version, ownedTables: ['plugin_owned'],
+        migrations: [{ version: 1, description: 'create schema', up: () => {} }],
+      }),
+    });
+    expect(result).toMatchObject({ status: 'installed', pluginId: 'mindmap', version: '1.1.0', previousVersion: null });
+    expect(new PluginStateService(db).getInstalledRecord('mindmap')).toMatchObject({
+      installed: true, builtin: false, version: '1.1.0', schemaVersion: 1,
+    });
+    expect(new PluginStateService(db).getEnabledIds()).toContain('mindmap');
+  });
+
+  it('first-time catalog install that fails activation leaves the plugin registered but not installed and without an active pointer', async () => {
+    db.prepare("DELETE FROM enabled_plugins WHERE plugin_id = 'mindmap'").run();
+    db.prepare("DELETE FROM installed_plugins WHERE plugin_id = 'mindmap'").run();
+    // 真正的首次安装：迁移账本里也没有该插件的记录。
+    db.prepare("DELETE FROM plugin_migrations WHERE plugin_id = 'mindmap'").run();
+    const zipBuffer = await createPluginZip('1.1.0');
+    const result = await installPluginFromRemoteAndActivate({
+      db, userPluginRoot, pluginId: 'mindmap', latestManifestUrl: latestUrl, allowCatalogListedPlugins: true,
+      appVersion: '0.0.36', rendererUiVersion: '1.0.0', knownPlugins: [platformMeta],
+      fetch: createFetch(zipBuffer),
+      resolveUpgradePlan: ({ pluginId, version }) => ({
+        pluginId, targetVersion: version, ownedTables: ['plugin_owned'],
+        migrations: [{ version: 1, description: 'boom', up: () => { throw new Error('migration boom'); } }],
+      }),
+    });
+    expect(result).toMatchObject({ status: 'failed', version: '1.1.0' });
+    expect(new PluginStateService(db).getInstalledRecord('mindmap')).toMatchObject({ installed: false });
+    expect(fs.existsSync(path.join(userPluginRoot, 'mindmap/active.json'))).toBe(false);
+  });
+
   it('preserves disabled state when updating an installed plugin', async () => {
     const stateService = new PluginStateService(db);
     stateService.setInstalled('mindmap', true, [platformMeta, mindmapMeta]);

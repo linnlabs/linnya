@@ -131,7 +131,7 @@ describe('拉取并验签 catalog', () => {
   it('HTTP 错误、网络错误与过期 catalog 归为来源不可用；超限响应与篡改归为完整性错误', async () => {
     const root = tempRoot();
     expect(await code(fetchVerifiedPluginCatalog(base(root, respond('nope', { status: 503 }) as unknown as typeof fetch)))).toBe('source-unavailable');
-    expect(await code(fetchVerifiedPluginCatalog(base(root, (async () => { throw new TypeError('fetch failed'); }) as unknown as typeof fetch)))).toBe('source-unavailable');
+    expect(await code(fetchVerifiedPluginCatalog(base(root, (async () => { throw new TypeError('fetch failed'); }) as unknown as typeof fetch)))).toBe('network');
     const expired = publisher.sign(catalogPayload({ issuedAt: '2026-10-01T00:00:00.000Z', expiresAt: '2026-11-01T00:00:00.000Z' }));
     expect(await code(fetchVerifiedPluginCatalog(base(root, respond(expired) as unknown as typeof fetch)))).toBe('source-unavailable');
     const huge = 'x'.repeat(MAX_PLUGIN_CATALOG_BYTES + 1);

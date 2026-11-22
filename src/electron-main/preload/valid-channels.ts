@@ -174,6 +174,7 @@ const PLUGIN_CHANNELS = [
   'plugin:push',
   'plugins:list',
   'plugins:store-list',
+  'plugins:remote-catalog',
   'plugins:get-detail',
   'plugins:diagnostics',
   'plugins:renderer-entries',

@@ -67,7 +67,8 @@ export async function fetchVerifiedPluginCatalog(input: {
   } catch (error) {
     if (error instanceof PluginOperationError) throw error;
     if (input.signal?.aborted) throw error;
-    throw new PluginOperationError('source-unavailable', `请求插件 catalog 失败: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+    // 连接失败与超时是本机网络问题；服务端返回错误状态（上面）才是插件服务不可用。
+    throw new PluginOperationError('network', `连接插件 catalog 失败: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
 
   let catalog: VerifiedPluginCatalog;
