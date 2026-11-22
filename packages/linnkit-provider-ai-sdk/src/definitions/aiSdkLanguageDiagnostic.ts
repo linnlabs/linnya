@@ -34,6 +34,8 @@ export type AiSdkLanguageStreamPartType =
   | 'file'
   | 'reasoning-file'
   | 'custom'
+  | 'steering-message'
+  | 'ping'
   | 'raw';
 
 export type AiSdkLanguageDiagnostic =

@@ -9,28 +9,28 @@ Desktop installers and plugin artifacts require their own content-derived BOM ve
 PACKAGES
 
 - @acemir/cssom@0.9.30 — MIT — https://github.com/acemir/CSSOM — sha512-9CnlMCI0LmCIq0olalQqdWrJHPzm0/tw3gzOA9zJSgvFX7Xau3D24mAGa4BtwxwY69nsuJW6kQqqCzf/mEcQgg==
-- @ai-sdk/alibaba@2.0.82 — Apache-2.0 — https://github.com/vercel/ai — sha512-rGcwCmXNIrxKmNckHzETxpzSACvdXg9S+LgaWU6ALcV49XFwZoWpgbId1AhRgqKRyt3WvigW2gRXAh/YZIlxIg==
-- @ai-sdk/anthropic@4.0.96 — Apache-2.0 — https://github.com/vercel/ai — sha512-eq6rKebpYwvOmFkvhbgrQ7J+TtPsGk3KoEDr+Hu0R1EANm562CAly4s0zaCAQW7Xzw1261oWhOnU8zYLPRxzhA==
-- @ai-sdk/cerebras@3.0.84 — Apache-2.0 — https://github.com/vercel/ai — sha512-lckLb8BPdzGKOOIObtlXkqImhUgfR61kg8G9K16E3xmjC12kTP2LBuoORYFwqdl2GkyuSiBU6Cr32mc6N8dS7Q==
-- @ai-sdk/cohere@4.0.75 — Apache-2.0 — https://github.com/vercel/ai — sha512-7xsOWdtFDIhXYOxRGbE1Ho6671Mxr4eW3+/KcOfUOpKnXXEAeftFJkHjNnAW+noaIDRRAJPOM4eHRAiQqJhkJg==
-- @ai-sdk/deepinfra@3.0.84 — Apache-2.0 — https://github.com/vercel/ai — sha512-6hkbLNFZlEwiAj3EH7Tiwnbt4f5KBzJbA7BR1xlyhMdRr1h3AzKxqFlLRXatJg4vp0YToybvnIzr0mk2WcTMqA==
-- @ai-sdk/deepseek@3.0.79 — Apache-2.0 — https://github.com/vercel/ai — sha512-mUiZXlcVdDT8GOuqu0NadbK0RWLrhGk/mRJGwKS7ZK5dLT9fOCqkURlezCU28NDGN2sawNHaQLbyHaWS9LtrPA==
-- @ai-sdk/fireworks@3.0.87 — Apache-2.0 — https://github.com/vercel/ai — sha512-hexM+fqDXuAwYDLDnXPeVoCI8FnF2lyZ8goo2ZfSY8nH870skAM+3k9lOz6sOD2AKjMqlFzepiZoW3NPUz6ZNQ==
-- @ai-sdk/gateway@4.0.135 — Apache-2.0 — https://github.com/vercel/ai — sha512-gnMpZP42WIhy24fpnbbtV7SBqEhYY8ZSMsfgoNRh5r41D1HwnJTm1k7d4uYSIpiaEb5J8IPTHVSzwgWmGoSFEA==
+- @ai-sdk/alibaba@2.0.93 — Apache-2.0 — https://github.com/vercel/ai — sha512-hZA4C8O7yKt4MWbC32ndrnpQGEJDoxGemSlWl+DB4TXiU2q0UIPi4tBV3ESaFCTUOmk+BQbxumOmqgjvFOtf6w==
+- @ai-sdk/anthropic@4.0.107 — Apache-2.0 — https://github.com/vercel/ai — sha512-7morlNCmT6Qt3Af/QgxAGaeAUXu+W3LvGIvtxL+P8jRs+5Sq7kfH9A8M8FCB9wibzuhDqtLdy6I8tb9qJqGOug==
+- @ai-sdk/cerebras@3.0.95 — Apache-2.0 — https://github.com/vercel/ai — sha512-Stxws/u52HNSEY6hry864SXp/EV2BFdqKPio8lXeZwwnsT3rQiuHhQDp2f0bwvewofs/t8HuKSpQko98fHZ+EQ==
+- @ai-sdk/cohere@4.0.86 — Apache-2.0 — https://github.com/vercel/ai — sha512-PLTEqnhzqTAVY1LY4lj9r84CZS2H3ixg/2ZmNMLjcXUnC1mg+oCn8Hwb+Yb8FTWmlzJL4WCjKW2tSdlypvgZWQ==
+- @ai-sdk/deepinfra@3.0.95 — Apache-2.0 — https://github.com/vercel/ai — sha512-mBUrLeLsZzv6dB3KI7BhfVkywghhkjeUHD7jL+Jc0Jq4c+fKdnIM3IL6BXKBlQNGsaUEtkxWR9ElECuhBbgCyA==
+- @ai-sdk/deepseek@3.0.89 — Apache-2.0 — https://github.com/vercel/ai — sha512-Azf3Vie1Rc1bbM930qgoE1y8REQ31LU6AP5O9p7H1q2T/5pgTjXUM132h7j8HnMtdYOKkvMXogmZ2kULyqukfQ==
+- @ai-sdk/fireworks@3.0.98 — Apache-2.0 — https://github.com/vercel/ai — sha512-bLifjEJWi8+Om5j0iO7TbFCMvvvoANULpU9hKnHh5AOM7+hxhkv3K6z5QlkcAoZs9T4xa0Znh9hgjlAG0ADnfw==
+- @ai-sdk/gateway@4.0.152 — Apache-2.0 — https://github.com/vercel/ai — sha512-8LYMe0uMPbT3XW/Urhca52TSgHXAlQok74EUkWL3qXWJI7naTxJGSF6B7hvIHur+V6ttSyLLZN0rJk+Qu9psqA==
 - @ai-sdk/google@4.0.94 — Apache-2.0 — https://github.com/vercel/ai — sha512-OPT9YSx6oBEVIjpOY/6E5Pkjd8yiISRFa3gowkI1LEhYygFkbU88r6IU2U750uN18SShROJoNVWXQ+/GzNPMZw==
-- @ai-sdk/groq@4.0.76 — Apache-2.0 — https://github.com/vercel/ai — sha512-2SQrA9G2hZvuY4hRUSgjWwZdWEDBhpc3iNoi91oxQatoR1Tpf2aa8YkRk6is6/DAq6a217yRB24ATI51eM5Wfw==
-- @ai-sdk/minimax@3.0.73 — Apache-2.0 — https://github.com/vercel/ai — sha512-bhWQ2/P4lvyr4IhoyQwRoDARTdIuwLNlWOvGXphHeDaWsiTgI4Jl0XDdG/hGC4tkkVOCuRmAmphxkTBjwYFmYg==
-- @ai-sdk/mistral@4.0.79 — Apache-2.0 — https://github.com/vercel/ai — sha512-/ztgaPv4XXHxsDLgf8eHCmOYVliDZZ2GZHv1eHq+ALB9HS5OT/QNm0fif7ehme3HQootZysIC6Sx46e0J8hQlQ==
-- @ai-sdk/moonshotai@3.0.84 — Apache-2.0 — https://github.com/vercel/ai — sha512-i1o4ebNi92SHAld1SCxNBIyde8UhRl161HAu5GgJq9gueVTCClyBTpDrawExoxq0YVLfOdsLBgkXI6iPOpZqHw==
-- @ai-sdk/openai@4.0.108 — Apache-2.0 — https://github.com/vercel/ai — sha512-XmCnCVnahoFs9VUWsSzn4LyONdDkFivBVs5t7YUWi74giDRwh8VRX4hnk/BtBKEhiBNGRQd80/QTWlf6GsVtng==
-- @ai-sdk/openai-compatible@3.0.84 — Apache-2.0 — https://github.com/vercel/ai — sha512-rcqkCXegblp0iOe1DTwF8IZNnhTRwldZhoK7T6q2jjoCPBi96c4LPrQg0oamTNFUewxsf2HjpRmUlxrg3q5LFQ==
+- @ai-sdk/groq@4.0.86 — Apache-2.0 — https://github.com/vercel/ai — sha512-LnpwDj6ea+pjwqQbWuI2Jx1V9TK8t9hbRZ/IfiAW7aVlaeUZaul87Cs0XFwqMYTFVlYO7zFMuSCnTcdtLjgrrg==
+- @ai-sdk/minimax@3.0.84 — Apache-2.0 — https://github.com/vercel/ai — sha512-EgAaE2FEHcIBWHmlYX3DdosS+srSDSSQzIlG0FYHayHc9gaGs04GFYLC8rbQo262ZPS4iEJXfQFiP/cwAqTezQ==
+- @ai-sdk/mistral@4.0.89 — Apache-2.0 — https://github.com/vercel/ai — sha512-NLpVs/+2Gx3NdVIVqDOfck8oCV8d2LJUWxATdDKCYK9XDhHpoA/EeGWxoDj13rUrrN3h1rtFRh9QysAr0dix2g==
+- @ai-sdk/moonshotai@3.0.95 — Apache-2.0 — https://github.com/vercel/ai — sha512-ZknTwXFeQ1E9IYrBAW3FWidsOD/toxpiFuJ4tnvH83SURDCNXz8guffnzNJFDVHl7yKmXR7QQFm08Yoz6/yk8w==
+- @ai-sdk/openai@4.0.122 — Apache-2.0 — https://github.com/vercel/ai — sha512-8Q2DX7Fte5Sgt5jl/3B9vJFWO3LQQjgr/ErfDpdNdR5e20UC6RCHLXJ/MRhjLV2mMZkKBahV8DoYxBXgMCKGPA==
+- @ai-sdk/openai-compatible@3.0.94 — Apache-2.0 — https://github.com/vercel/ai — sha512-UY2AE3/QT110AMpiBoBOBXlUJJG8NAL61y8yID6X8dPe9RjRy9QPfW9XdrifEnTOEM5MdEJP+A4Mf+NTJ93g4A==
 - @ai-sdk/provider@4.0.27 — Apache-2.0 — https://github.com/vercel/ai — sha512-TtWwm6SxFiPomlMIbTQa+yhJte+w4/oCsW+wJrJzMC3MqHpAY9e5dJF1Y4HxyKt3W2Csac0KiI76Ckio11TFYw==
-- @ai-sdk/provider@4.0.35 — Apache-2.0 — https://github.com/vercel/ai — sha512-yBz6fmLS8MSCIzy7NiHEUAq56ZLD4ZA1GR6bpXBxgbwUacP1La7LuwAr/xy9jSzthem4F8Xu2OrhvU/JrE9fYA==
+- @ai-sdk/provider@4.0.39 — Apache-2.0 — https://github.com/vercel/ai — sha512-jRvAhvW23+TeMGVCME2WGejP/TjzyDg7TplUep3t8HcEYnC2/8zqhCy9RRrjjVs1ljcygABZ8pQ21MbCRdF01w==
 - @ai-sdk/provider-utils@5.0.59 — Apache-2.0 — https://github.com/vercel/ai — sha512-eaXBTkguxBFzS+KvxGRsbdkX9A7+R1g/C4jWx9mup0oSs3Cx5Mb427/byGpD2XL8SnMYT9O8LmXBmrgo+N3TJw==
-- @ai-sdk/provider-utils@5.0.74 — Apache-2.0 — https://github.com/vercel/ai — sha512-42R/bzs520oy3PMj8FI1KGegjLEjaUsNcaEltb6yxN0KnmhihWvlgMb19pEF8CKKqv6Bq6+qMVji8mtyrMubSQ==
-- @ai-sdk/togetherai@3.0.85 — Apache-2.0 — https://github.com/vercel/ai — sha512-OBKzuGJXKemo4LuMJzBOmAmYgkh61224Yq2CsRDUJL2lXRLjryCcDZfq9majtJdEE8GY+2na1SX12Xv6/feclQ==
-- @ai-sdk/xai@5.0.38 — Apache-2.0 — https://github.com/vercel/ai — sha512-XMgqdB7zpyhp9In/4wkO+xgPt9YYSMkmLFUhKUIsJkn0UifuYx3C6iMbxHZbEa6T8AGJbs1641PvzhYT667BDw==
-- @ai-sdk/zai@3.0.46 — Apache-2.0 — https://github.com/vercel/ai — sha512-NHgmcEesqad7SpQAOHQM6Mlw4WpFUXX1FmY3cL78iOdNR/cYeae+Q5u5yZeOFdIEbR7NBFlQdrYBnR1hDd5zWw==
+- @ai-sdk/provider-utils@5.0.83 — Apache-2.0 — https://github.com/vercel/ai — sha512-5lInsmNnh64eKi2L3fQjPy5VnV2y69lwyGnZ3vfz82Tlkgy8pWsvYueUrSJGxi8gXOM67jB9tN7LtDjjEFsNLQ==
+- @ai-sdk/togetherai@3.0.96 — Apache-2.0 — https://github.com/vercel/ai — sha512-ztwoHuR56pR6fnjmo7CGu3MMUa636IJnvzfIpWsRcygx9n11qXKnfWQz82yE3zxWQ5lirBmxrS6C/QCFonluFQ==
+- @ai-sdk/xai@5.0.48 — Apache-2.0 — https://github.com/vercel/ai — sha512-+abszMHX9jsWs25SveTSiy8jnckh9k8v4aNgr8B6l2f7qJGAMKyBthq8AkK7c2SbGKqkems4T1eIVJegFjVWKg==
+- @ai-sdk/zai@3.0.57 — Apache-2.0 — https://github.com/vercel/ai — sha512-opRlsfo3cw6uAzs9pZlHEZegeYPcsqoLKXvQz7COwqOpVAreEB9wts4KrU5gt5e2Xw8s9taByrBECASgfPTgag==
 - @anthropic-ai/sandbox-runtime@0.0.81 — Apache-2.0 — https://github.com/anthropics/sandbox-runtime — sha512-bjHDu87gjIR7+Oxy9jPiK3v8CvSELCzfpXa3fjqfSKdvlZET2iF51xcXILWPayTpowB3xtZeQVf2JR916nVW/w==
 - @asamuzakjp/css-color@4.1.1 — MIT — https://github.com/asamuzaK/cssColor — sha512-B0Hv6G3gWGMn0xKJ0txEi/jM5iFpT3MfDxmhZFb4W047GvytCf1DHQ1D69W3zHI4yWe2aTZAA0JnbMZ7Xc8DuQ==
 - @asamuzakjp/dom-selector@6.7.6 — MIT — https://github.com/asamuzaK/domSelector — sha512-hBaJER6A9MpdG3WgdlOolHmbOYvSk46y7IQN/1+iqiCuUu6iWdQrs9DGKF8ocqsEqWujWf/V7b7vaDgiUmIvUg==
@@ -164,7 +164,7 @@ PACKAGES
 - adler-32@1.3.1 — Apache-2.0 — https://github.com/SheetJS/js-adler32 — sha512-ynZ4w/nUUv5rrsR8UUGoe1VC9hZj6V5hU9Qw1HlMDJGEJw5S7TfTErWTjMys6M7vr0YWcPqs3qAr4ss0nDfP+A==
 - agent-base@6.0.2 — MIT — https://github.com/TooTallNate/node-agent-base — sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==
 - agent-base@7.1.4 — MIT — https://github.com/TooTallNate/proxy-agents — sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==
-- ai@7.0.162 — Apache-2.0 — https://github.com/vercel/ai — sha512-NPzL6/GmjjPwhzM1kGP9O60TfJ3uXV4Z4A/ztljxcJFAmRAFAjgk5mAHaikk3sE8NQo4NbRCiS+DgHinE2d0sQ==
+- ai@7.0.179 — Apache-2.0 — https://github.com/vercel/ai — sha512-WT2ad3qEQPLne/5RDE/utNMSKYUuNpnGkI46AO/6Lv+IbEJ3kRwbatLX3HNfk25Y7N8LpdqOcSnMLcdw11VyIQ==
 - ai-sdk-ollama@4.5.0 — MIT — https://github.com/jagreehal/ai-sdk-ollama — sha512-4zPIHtQK4XKuP5ObuLY4CnE3QMltSUGuBQRFJeoq73+gtJtO8lH/J0gSexHNuEX6tYB/f0o5B7bSXhIwam2gkg==
 - ajv@8.20.0 — MIT — https://github.com/ajv-validator/ajv — sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==
 - ajv-formats@3.0.1 — MIT — https://github.com/ajv-validator/ajv-formats — sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==
@@ -576,7 +576,7 @@ PACKAGES
 PACKAGES WITH MANIFEST-ONLY LICENSE EVIDENCE
 
 - @ai-sdk/provider-utils@5.0.59 — declared Apache-2.0 — https://github.com/vercel/ai
-- @ai-sdk/provider-utils@5.0.74 — declared Apache-2.0 — https://github.com/vercel/ai
+- @ai-sdk/provider-utils@5.0.83 — declared Apache-2.0 — https://github.com/vercel/ai
 - @esbuild/darwin-arm64@0.25.11 — declared MIT — https://github.com/evanw/esbuild
 - @esbuild/darwin-arm64@0.25.12 — declared MIT — https://github.com/evanw/esbuild
 - @img/sharp-libvips-darwin-arm64@1.3.4 — declared LGPL-3.0-or-later — https://github.com/lovell/sharp-libvips
@@ -12997,7 +12997,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ----- LICENSE b4f9adb7c568904834d0dd6cc98d16c390d21ca32fc17ae7a267715269bd5529 -----
-Applies to: @ai-sdk/alibaba@2.0.82, @ai-sdk/anthropic@4.0.96, @ai-sdk/cerebras@3.0.84, @ai-sdk/cohere@4.0.75, @ai-sdk/deepinfra@3.0.84, @ai-sdk/deepseek@3.0.79, @ai-sdk/fireworks@3.0.87, @ai-sdk/gateway@4.0.135, @ai-sdk/google@4.0.94, @ai-sdk/groq@4.0.76, @ai-sdk/minimax@3.0.73, @ai-sdk/mistral@4.0.79, @ai-sdk/moonshotai@3.0.84, @ai-sdk/openai-compatible@3.0.84, @ai-sdk/openai@4.0.108, @ai-sdk/provider@4.0.27, @ai-sdk/provider@4.0.35, @ai-sdk/togetherai@3.0.85, @ai-sdk/xai@5.0.38, @ai-sdk/zai@3.0.46, ai@7.0.162
+Applies to: @ai-sdk/alibaba@2.0.93, @ai-sdk/anthropic@4.0.107, @ai-sdk/cerebras@3.0.95, @ai-sdk/cohere@4.0.86, @ai-sdk/deepinfra@3.0.95, @ai-sdk/deepseek@3.0.89, @ai-sdk/fireworks@3.0.98, @ai-sdk/gateway@4.0.152, @ai-sdk/google@4.0.94, @ai-sdk/groq@4.0.86, @ai-sdk/minimax@3.0.84, @ai-sdk/mistral@4.0.89, @ai-sdk/moonshotai@3.0.95, @ai-sdk/openai-compatible@3.0.94, @ai-sdk/openai@4.0.122, @ai-sdk/provider@4.0.27, @ai-sdk/provider@4.0.39, @ai-sdk/togetherai@3.0.96, @ai-sdk/xai@5.0.48, @ai-sdk/zai@3.0.57, ai@7.0.179
 Installed file names: LICENSE
 
 Copyright 2023 Vercel, Inc.

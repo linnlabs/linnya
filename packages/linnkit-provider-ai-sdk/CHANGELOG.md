@@ -2,6 +2,9 @@
 
 ## 0.1.0
 
+- 升级 AI SDK Core 至 `7.0.179` 与同批 Provider 补丁；Google 仍保留 `4.0.94`。新版流事件中的
+  `ping` 心跳与 `steering-message` 不投影为 canonical 输出（本 Adapter 不启用这两项）。
+
 - 接入正式 Linnkit 0.45.0；peer 最低兼容系列改为 0.45。0.45 让暂停或取消后最多等工具 3 秒，
   Provider 行为不变。
 

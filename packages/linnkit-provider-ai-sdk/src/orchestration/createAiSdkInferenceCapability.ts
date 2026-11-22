@@ -477,6 +477,10 @@ export function createAiSdkInferenceCapability(
               case 'file':
               case 'reasoning-file':
               case 'custom':
+              // 只在调用方启用 SDK steering / Anthropic includePings 时出现；本 Adapter 都不启用，
+              // 收到也不投影，避免把心跳或 SDK 侧追加消息当成 canonical 输出。
+              case 'steering-message':
+              case 'ping':
               case 'raw':
                 break;
             }
