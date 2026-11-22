@@ -109,15 +109,22 @@ export async function launchInstalledDesktop(executable, root) {
       return result;
     },
     async clickElement(expression) {
+      // 与真人点击一致：中心点上必须是目标本身或其后代，被浮层、拖拽区等挡住时继续等待并在超时时说明遮挡者。
+      let last = null;
       const point = await until(
-        () =>
-          this.evaluate(
-            `(()=>{const target=(${expression});if(!target)return null;target.scrollIntoView({block:'nearest'});const r=target.getBoundingClientRect();return r.width&&r.height?{x:r.x+r.width/2,y:r.y+r.height/2}:null;})()`
-          ),
-        Boolean,
+        async () => {
+          last = await this.evaluate(
+            `(()=>{const target=(${expression});if(!target)return null;target.scrollIntoView({block:'nearest'});const r=target.getBoundingClientRect();if(!r.width||!r.height)return null;const x=r.x+r.width/2,y=r.y+r.height/2;const hit=document.elementFromPoint(x,y);if(hit&&(hit===target||target.contains(hit)))return {x,y};const describe=e=>e?[e.tagName.toLowerCase(),e.id?'#'+e.id:'',typeof e.className==='string'&&e.className?'.'+e.className.trim().split(/\\s+/).slice(0,3).join('.'):''].join(''):'none';return {obscuredBy:describe(hit),at:{x,y}};})()`
+          );
+          return last;
+        },
+        value => Boolean(value && typeof value.x === 'number'),
         'Visible click target',
         30_000
-      );
+      ).catch(error => {
+        if (last?.obscuredBy) throw new Error(`Click target obscured by ${last.obscuredBy} at ${JSON.stringify(last.at)}`, { cause: error });
+        throw error;
+      });
       assert.ok(point, 'Visible click target missing');
       await cdp.send('Input.dispatchMouseEvent', {
         type: 'mousePressed',
