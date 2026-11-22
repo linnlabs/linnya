@@ -368,6 +368,19 @@ export async function verifyWindowsPluginData({
           panel: await text(panel),
           lockedFile: await stat(target).then(info => ({ size: info.size, blocks: info.blocks }), failure => ({ error: failure.code ?? failure.message })),
         };
+        // 再观察一分钟的采样状态变化：区分采样很慢、卡住不结束、结束但未计入被占用文件。
+        const timeline = [];
+        const started = Date.now();
+        while (Date.now() - started < 60_000) {
+          const current = await getDetail();
+          const entry = { status: current.data?.status ?? null, bytes: current.data?.bytes ?? null, measurement: current.dataMeasurement ?? null };
+          const previous = timeline.at(-1);
+          if (!previous || previous.status !== entry.status || previous.bytes !== entry.bytes || previous.measurement !== entry.measurement) {
+            timeline.push({ ...entry, atMs: Date.now() - started });
+          }
+          await new Promise(resolve => setTimeout(resolve, 1_000));
+        }
+        observations.ntfsLockDetail.timeline = timeline;
         throw error;
       }
       await click('.plugin-store-uninstall-button');
