@@ -41,6 +41,7 @@ import InputsSection from './sections/InputsSection.vue';
 import ListExampleSection from './sections/ListExampleSection.vue';
 import MenusSection from './sections/MenusSection.vue';
 import PluginDataSection from './sections/PluginDataSection.vue';
+import PluginRemoteInstallSection from './sections/PluginRemoteInstallSection.vue';
 import ScheduledTasksSection from './sections/ScheduledTasksSection.vue';
 import SidebarRunStatusSection from './sections/SidebarRunStatusSection.vue';
 import BackendRecoverySection from './sections/BackendRecoverySection.vue';
@@ -78,6 +79,7 @@ const SECTION_COMPONENTS: Readonly<Record<Exclude<GallerySectionId, 'dialogs'>, 
   'backend-recovery': BackendRecoverySection,
   'conversation-steering': ConversationSteeringSection,
   'plugin-data': PluginDataSection,
+  'plugin-remote': PluginRemoteInstallSection,
 };
 
 const schemeIds = gallerySchemes.map(scheme => scheme.id);
