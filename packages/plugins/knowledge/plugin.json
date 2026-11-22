@@ -1,6 +1,6 @@
 {
   "id": "knowledge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "知识库",
   "description": "管理资料、检索知识并在项目中关联使用。",
   "developer": "Linnya",

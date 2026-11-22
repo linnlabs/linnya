@@ -5,6 +5,7 @@ import { getPluginInferencePort } from '@plugin/backend/inferenceRuntime';
 import { getPluginProjectReadPort } from '@plugin/backend/projectReadRuntime';
 import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfiguration';
 import { broadcastRendererPluginMessage } from '@plugin/backend/pluginRendererPush';
+import { Logger } from '@plugin/backend/loggingRuntime';
 import { QdrantAdapter } from '../../infrastructure/vector-store/QdrantAdapter';
 import { KnowledgeVectorStartupError } from '../../infrastructure/vector-store/errors';
 import { QdrantRepositoryImpl } from '../../infrastructure/QdrantRepositoryImpl';
@@ -18,11 +19,14 @@ import { connectKnowledgeProgress } from './connectKnowledgeProgress';
 import { scheduleKnowledgeMaintenance } from './scheduleKnowledgeMaintenance';
 import { ingestionProgressStore } from '../../ingestion/store/ingestionProgressStore';
 import { scopeKnowledgeInference } from './scopeKnowledgeInference';
-import { markInterruptedKnowledgeDocuments } from './markInterruptedKnowledgeDocuments';
+import { markInterruptedKnowledgeDocuments, markOrphanedUnsavedKnowledgeDocuments } from './markInterruptedKnowledgeDocuments';
+import { releaseStaleEmptyKnowledgeCollections } from './releaseStaleEmptyKnowledgeCollections';
 import type { KnowledgeToolRuntime } from '../../tools/runtime/knowledgeToolRuntime';
 import { prepareKnowledgeData } from './prepareKnowledgeData';
 
 /** 一个 activation 持有全部知识库运行资源；这里只读 SQLite/创建目录，不启动向量或线程。 */
+const runtimeLogger = new Logger('KnowledgeRuntime');
+
 export async function createKnowledgeRuntime() {
   const storage = getAdoptedHostData('knowledge');
   const controller = new AbortController();
@@ -31,6 +35,8 @@ export async function createKnowledgeRuntime() {
   const models = getPluginModelConfigurationPort();
   const activity = createKnowledgeActivityOwner();
   const { paths, metadata, sot, originals, graphRepository, links } = await prepareKnowledgeData(storage, projects);
+  const orphaned = await markOrphanedUnsavedKnowledgeDocuments({ metadata, sot, originals });
+  if (orphaned.length > 0) runtimeLogger.warn(`上一个进程留下 ${orphaned.length} 个未保存内容的未完成文档，已标为失败`);
   let adapter: Promise<QdrantAdapter> | undefined;
   let maintenance: ReturnType<typeof scheduleKnowledgeMaintenance> | undefined;
   let interactiveMaintenanceRequested = false;
@@ -38,6 +44,7 @@ export async function createKnowledgeRuntime() {
   let accepting = true;
   let activeTools = 0;
   let interruptedTasks: readonly { docId: string; kbId: string }[] | undefined;
+  let staleCollectionRelease: Promise<void> | undefined;
   const resolveVectorUrl = async (signal?: AbortSignal) => {
     let url: string;
     try {
@@ -47,6 +54,13 @@ export async function createKnowledgeRuntime() {
       // 首次启动失败在本 activation 保持失败；提示实际可用的显式恢复操作。
       throw new KnowledgeVectorStartupError(cause);
     }
+    // 本次激活首次就绪时清掉早期版本预建的空集合；所有调用方（含派发任务）都先等它结束。
+    await (staleCollectionRelease ??= releaseStaleEmptyKnowledgeCollections({
+      metadata, collections: new QdrantAdapter({ url }),
+    }).then(
+      released => { if (released.length > 0) runtimeLogger.warn(`已移除早期版本预建的空向量集合: ${released.join(', ')}`); },
+      error => runtimeLogger.warn('检查早期版本预建的空向量集合失败，写入时会提示不一致的集合', error),
+    ));
     vectorReady = true;
     startInteractiveMaintenanceIfReady();
     return url;

@@ -27,7 +27,11 @@ import { toPointPayload } from './qdrant-repository/payload';
 import { buildQdrantFilter } from './qdrant-repository/filters';
 import { normalizeDistanceMetric } from './qdrant-repository/distance';
 import { isCollectionAlreadyExistsError } from './qdrant-repository/errors';
-import { assertCollectionSupportsSparseVectors } from './qdrant-repository/collectionSchema';
+import {
+  assertCollectionSupportsSparseVectors,
+  decideExistingCollection,
+  incompatibleCollectionError,
+} from './qdrant-repository/collectionSchema';
 import {
   runWithCollectionAccess,
   type CollectionAccessMode,
@@ -155,24 +159,18 @@ export class QdrantRepositoryImpl implements QdrantRepository {
             }
           }
         }
-      } else if (supportSparse) {
-        this.logger.info(`检查现有集合 ${collectionName} 的稀疏向量支持...`);
-
-        try {
-          const collectionInfo = await this.getCollectionInfo(collectionName);
-          const configStr = JSON.stringify(collectionInfo.config, null, 2);
-          this.logger.info(`现有集合配置: ${configStr}`);
-          assertCollectionSupportsSparseVectors(collectionName, collectionInfo.config, this.logger);
-        } catch (error) {
-          this.logger.error(`检查集合配置失败:`, error);
-          if (error instanceof Error) {
-            throw error;
-          }
-          throw new Error(`检查集合 ${collectionName} 配置失败：${String(error)}`);
-        }
+      } else {
+        const collectionInfo = await this.getCollectionInfo(collectionName);
+        const decision = decideExistingCollection({
+          config: collectionInfo.config, pointsCount: collectionInfo.points_count, vectorSize, supportSparse,
+        });
+        // 写入路径持有共享访问且跨 Worker 不互斥，不能在这里删除重建；空集合由入队前的准入处理。
+        if (decision.kind !== 'compatible') throw incompatibleCollectionError(decision.reason);
+        if (supportSparse) assertCollectionSupportsSparseVectors(collectionName, collectionInfo.config, this.logger);
       }
     });
   }
+
 
   async deleteCollection(collectionName: string): Promise<void> {
     await (await this.resolveAdapter()).deleteCollection(collectionName);
