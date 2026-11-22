@@ -480,6 +480,11 @@ import {
   type RemoteInstallProgressSummary,
 } from '../functions/pluginRemoteInstallProgress';
 import { usePluginRemoteInstallStore } from '../store/pluginRemoteInstallStore';
+import {
+  cancelRemoteInstall as requestRemoteInstallCancel,
+  installRemotePlugin,
+  refreshRemoteCatalog,
+} from '../orchestration/pluginRemoteInstall';
 import { usePluginStoreLocalization } from './usePluginStoreLocalization';
 import PluginDataPanel from './PluginDataPanel.vue';
 import type { PluginStoreMessageKey } from '../definitions/pluginStoreMessages';
@@ -822,7 +827,7 @@ function installActionText(item: PluginStoreListItem): string {
 }
 
 async function cancelRemoteInstall(pluginId: PluginId): Promise<void> {
-  await remoteInstallStore.cancel(pluginId);
+  await requestRemoteInstallCancel(pluginId);
 }
 
 function canInstallSelectedPlugin(detail: PluginStoreDetail | null): boolean {
@@ -1001,7 +1006,7 @@ async function runRemotePluginInstall(
 
   setPluginBusy(item.meta.id, true);
   try {
-    const result = await remoteInstallStore.install(item.meta.id);
+    const result = await installRemotePlugin(item.meta.id);
 
     if (result.status === 'installed') {
       if (item.state !== 'disabled') {
@@ -1320,7 +1325,7 @@ let unsubscribeDataChanges: (() => void) | undefined;
 onMounted(() => {
   unsubscribeDataChanges = pluginsStore.subscribeToDataChanges(() => selectedPluginId.value);
   void refreshPluginStoreItems();
-  void remoteInstallStore.refreshCatalog();
+  void refreshRemoteCatalog();
 });
 onBeforeUnmount(() => unsubscribeDataChanges?.());
 </script>
