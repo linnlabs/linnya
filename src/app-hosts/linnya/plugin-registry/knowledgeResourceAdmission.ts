@@ -9,6 +9,7 @@ import {
   type PluginManifestSummary,
 } from 'src/electron-main/plugins/loader/pluginLayout';
 import { requireInstalledDistributionIdentity } from 'src/shared/distribution-identity';
+import { resolveTrustedPluginCatalogKeys } from 'src/features/plugins/catalog/functions/resolvePluginCatalogSource';
 import { readInstalledRuntimePathRoots } from 'src/shared/runtime-paths';
 
 function isDevelopmentPluginDirectory(directory: string, developmentRoot: string): boolean {
@@ -67,6 +68,7 @@ export function isTrustedBackendApplicationSurface(directory: string, manifest: 
       workspaceRoot: roots.developmentRoot,
       backendDirectDirs,
       bundledPluginRoot: process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT,
+      trustedCatalogKeys: resolveTrustedPluginCatalogKeys({ identity: requireInstalledDistributionIdentity(), env: process.env }),
     }
   );
 }

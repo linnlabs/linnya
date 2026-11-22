@@ -1,7 +1,7 @@
 import { PLUGIN_RUNTIME_ARCHITECTURES, PLUGIN_RUNTIME_PLATFORMS, type PluginRuntimeArchitecture, type PluginRuntimePlatform } from '@app/schemas';
 
 import { createPluginCatalogStateStore } from 'src/features/plugins/catalog/infrastructure/pluginCatalogStateStore';
-import { trustedPluginCatalogKeys } from 'src/features/plugins/catalog/registry/trustedPluginCatalogKeys';
+import type { TrustedPluginCatalogKeys } from 'src/features/plugins/catalog/definitions/pluginCatalog';
 import { resolveInstalledRuntimeExecutable } from 'src/features/runtimes/functions/resolveInstalledRuntimeExecutable';
 import { getLogger } from 'src/shared/logger';
 
@@ -17,6 +17,8 @@ export function createInstalledRuntimeExecutableResolver(input: {
   readonly userPluginRoot: string | undefined;
   readonly platform: string;
   readonly architecture: string;
+  /** 与插件安装、启动准入同一信任环（resolveTrustedPluginCatalogKeys）。 */
+  readonly trustedKeys: TrustedPluginCatalogKeys;
 }): () => Promise<string | null> {
   return async () => {
     const { runtimeRoot } = input;
@@ -28,7 +30,7 @@ export function createInstalledRuntimeExecutableResolver(input: {
       runtimeId: input.runtimeId,
       platform,
       architecture,
-      trustedKeys: trustedPluginCatalogKeys,
+      trustedKeys: input.trustedKeys,
       laterRevocations: input.userPluginRoot ? createPluginCatalogStateStore({ userPluginRoot: input.userPluginRoot }).readRevocations() : [],
     });
     if (resolution.status === 'resolved') return resolution.executable;

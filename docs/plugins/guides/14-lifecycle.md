@@ -110,7 +110,7 @@
 进度与取消：Host 通过 `plugins-install-progress` 向所有窗口发送 `{ pluginId, progress }`，`progress` 为
 `planned`（本次下载清单与字节数）、`downloading`（按约 100ms 节流的已接收字节）或 `installing`（下载完成，
 开始解压与落盘）。`plugins:cancelRemoteInstall` 只在下载阶段生效；进入 `installing` 后不再中断，避免留下半个版本目录。
-取消前已装好的运行时保留，它们已通过完整校验，下次安装直接复用。
+取消前已装好的运行时保留，它们已通过完整校验，下次安装直接复用。Renderer 等待 `plugins:installFromRemote` 结果的上限放宽到 1 小时（插件数据清理同样），慢速网络下仍在进行的安装不会被报成失败；页面导航只取消等待，后台安装继续，最终状态以进度事件与 `plugins-changed` 为准。
 
 失败类别（`PluginOperationErrorCode`）：服务端明确拒绝为 `source-unavailable`；连接失败或中途断开为 `network`；
 用户取消为 `cancelled`；大小、摘要或解压后大小不符为 `artifact-integrity`；空间不足为 `disk-space`（附

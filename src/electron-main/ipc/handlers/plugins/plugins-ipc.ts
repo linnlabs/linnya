@@ -38,16 +38,18 @@ import { uninstallPluginAndDeleteData, uninstallPluginLifecycle } from '../../..
 import { installPluginFromRemoteAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromRemoteAndActivate';
 import { installPluginFromBundledAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromBundledAndActivate';
 import { checkPluginUpdateFromRemote } from '../../../../features/plugins/install/orchestration/installPluginUpdate';
-import { isOfficialPluginRemoteServiceEnabled } from '../../../../features/plugins/install/functions/isOfficialPluginRemoteServiceEnabled';
 import type { RemotePluginReleaseSource, RemotePluginRuntimeInstaller } from '../../../../features/plugins/install/definitions/pluginInstall';
 import { installRuntimeComponent, isRuntimeComponentCurrent } from '../../../../features/runtimes/orchestration/installRuntimeComponent';
 import { createCatalogPluginReleaseSource } from '../../../../features/plugins/catalog/orchestration/createCatalogPluginReleaseSource';
 import { createPluginCatalogStateStore } from '../../../../features/plugins/catalog/infrastructure/pluginCatalogStateStore';
-import { resolvePluginCatalogUrl } from '../../../../features/plugins/catalog/functions/resolvePluginCatalogUrl';
+import {
+  resolvePluginCatalogSource,
+  resolveTrustedPluginCatalogKeys,
+  type PluginCatalogSource,
+} from '../../../../features/plugins/catalog/functions/resolvePluginCatalogSource';
 import { buildPluginRemoteCatalogView, runtimeKey } from '../../../../features/plugins/catalog/functions/buildPluginRemoteCatalogView';
 import { resolveCatalogPlatform } from '../../../../features/plugins/catalog/functions/resolveCatalogPlatform';
 import { fetchVerifiedPluginCatalog } from '../../../../features/plugins/catalog/orchestration/fetchVerifiedPluginCatalog';
-import { trustedPluginCatalogKeys } from '../../../../features/plugins/catalog/registry/trustedPluginCatalogKeys';
 import { runPluginLifecycleOperationSerially } from '../../../../features/plugins/install/orchestration/pluginLifecycleSerialExecutor';
 import { resolveDiskPluginUpgradePlan } from '../../../plugins/install/diskPluginUpgradePlan';
 import { getRunSupervisor } from '../../../services/agentRuntimeSingletons';
@@ -262,7 +264,11 @@ function parsePluginId(value: unknown, label: string): string {
 }
 
 /** 插件所需原生运行时按同一份已验签 catalog 安装到 LINNYA_RUNTIME_ROOT。 */
-function createOfficialRuntimeInstaller(pluginId: string, userPluginRoot: string): RemotePluginRuntimeInstaller {
+function createOfficialRuntimeInstaller(
+  pluginId: string,
+  userPluginRoot: string,
+  source: PluginCatalogSource,
+): RemotePluginRuntimeInstaller {
   const resolveRuntimeRoot = (): string => {
     const runtimeRoot = process.env.LINNYA_RUNTIME_ROOT;
     if (!runtimeRoot) {
@@ -277,7 +283,7 @@ function createOfficialRuntimeInstaller(pluginId: string, userPluginRoot: string
       const laterRevocations = readRevocations();
       const pending = [];
       for (const runtime of runtimes) {
-        const current = await isRuntimeComponentCurrent({ runtimeRoot, runtime, trustedKeys: trustedPluginCatalogKeys, laterRevocations });
+        const current = await isRuntimeComponentCurrent({ runtimeRoot, runtime, trustedKeys: source.trustedKeys, laterRevocations });
         if (!current) pending.push(runtime);
       }
       return pending;
@@ -287,7 +293,7 @@ function createOfficialRuntimeInstaller(pluginId: string, userPluginRoot: string
         runtimeRoot: resolveRuntimeRoot(),
         runtime,
         provenance,
-        trustedKeys: trustedPluginCatalogKeys,
+        trustedKeys: source.trustedKeys,
         laterRevocations: readRevocations(),
         fetch: globalThis.fetch,
         control,
@@ -297,7 +303,7 @@ function createOfficialRuntimeInstaller(pluginId: string, userPluginRoot: string
 }
 
 /** 商店展示用：拉取并验签官方 catalog，按本机平台与已装运行时投影为条目。失败只影响远程条目，不影响已装插件。 */
-async function readOfficialRemoteCatalog(applicationVersion: string): Promise<PluginRemoteCatalogResult> {
+async function readRemoteCatalog(applicationVersion: string, source: PluginCatalogSource): Promise<PluginRemoteCatalogResult> {
   const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
   const runtimeRoot = process.env.LINNYA_RUNTIME_ROOT;
   try {
@@ -311,10 +317,11 @@ async function readOfficialRemoteCatalog(applicationVersion: string): Promise<Pl
       recordDiagnostic: message => pluginDiagnostics.record({ level: 'warn', pluginId: null, capability: null, message }),
     });
     const catalog = await fetchVerifiedPluginCatalog({
-      catalogUrl: resolvePluginCatalogUrl('stable'),
-      channel: 'stable',
-      trustedKeys: trustedPluginCatalogKeys,
+      catalogUrl: source.catalogUrl,
+      channel: source.channel,
+      trustedKeys: source.trustedKeys,
       stateStore,
+      allowLoopbackHttp: source.allowLoopbackHttp,
     });
     const laterRevocations = stateStore.readRevocations();
     const installedRuntimes = new Set<string>();
@@ -324,7 +331,7 @@ async function readOfficialRemoteCatalog(applicationVersion: string): Promise<Pl
       const current = await isRuntimeComponentCurrent({
         runtimeRoot,
         runtime: { id: runtime.id, version: runtime.version, target: runtimeTarget },
-        trustedKeys: trustedPluginCatalogKeys,
+        trustedKeys: source.trustedKeys,
         laterRevocations,
       });
       if (current) installedRuntimes.add(runtimeKey(runtime.id, runtime.version));
@@ -346,16 +353,17 @@ async function readOfficialRemoteCatalog(applicationVersion: string): Promise<Pl
   }
 }
 
-/** official 组合的远程版本来源：只认独立插件密钥签名的 catalog，并在用户插件根记录高水位。 */
-function createOfficialPluginReleaseSource(pluginId: string): RemotePluginReleaseSource {
+/** 远程版本来源：只认受信 key 签名的 catalog（官方或源码运行的开发 catalog），并在用户插件根记录高水位。 */
+function createCatalogReleaseSource(pluginId: string, source: PluginCatalogSource): RemotePluginReleaseSource {
   const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
   if (!userPluginRoot) {
     throw new PluginOperationError('source-unavailable', '插件目录未初始化，不能读取远程插件 catalog', { pluginId });
   }
   return createCatalogPluginReleaseSource({
-    catalogUrl: resolvePluginCatalogUrl('stable'),
-    channel: 'stable',
-    trustedKeys: trustedPluginCatalogKeys,
+    catalogUrl: source.catalogUrl,
+    channel: source.channel,
+    trustedKeys: source.trustedKeys,
+    allowLoopbackHttp: source.allowLoopbackHttp,
     stateStore: createPluginCatalogStateStore({
       userPluginRoot,
       recordDiagnostic: message => pluginDiagnostics.record({ level: 'warn', pluginId, capability: null, message }),
@@ -448,6 +456,9 @@ export async function registerPluginsHandlers(input: {
   const cleanupAbortControllers = new Map<string, AbortController>();
   /** 正在下载的远程安装；只覆盖 run() 内的下载阶段，排队中的安装没有控制器，取消请求返回 cancelled=false。 */
   const remoteInstallAbortControllers = new Map<string, AbortController>();
+  /** 远程来源在注册时确定：官方 Desktop 用官方 catalog；源码运行可用开发 catalog；都不满足时为 null，不发请求。 */
+  const remoteSource = resolvePluginCatalogSource({ identity: input.distributionIdentity, env: process.env });
+  const trustedCatalogKeys = resolveTrustedPluginCatalogKeys({ identity: input.distributionIdentity, env: process.env });
   const publishPluginDataChanged = (pluginId: string): void => {
     input.rendererIntegration.publishPluginDataChanged(pluginId);
   };
@@ -609,7 +620,7 @@ export async function registerPluginsHandlers(input: {
         success: true,
         data: {
           items: buildPluginStoreList(states, { bundledPluginIds }),
-          remoteServiceEnabled: isOfficialPluginRemoteServiceEnabled(input.distributionIdentity),
+          remoteServiceEnabled: remoteSource !== null,
         },
       };
     } catch (error) {
@@ -619,10 +630,10 @@ export async function registerPluginsHandlers(input: {
   });
 
   input.ipc.handle('plugins:remote-catalog', async () => {
-    if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
+    if (!remoteSource) {
       return { success: true, data: { status: 'disabled' } satisfies PluginRemoteCatalogResult };
     }
-    return { success: true, data: await readOfficialRemoteCatalog(input.applicationVersion) };
+    return { success: true, data: await readRemoteCatalog(input.applicationVersion, remoteSource) };
   });
 
   input.ipc.handle('plugins:get-detail', async (_event, rawPluginId: unknown) => {
@@ -713,6 +724,7 @@ export async function registerPluginsHandlers(input: {
           workspaceRoot: process.cwd(),
           backendDirectDirs: input.packaged ? [] : readBackendDirectPluginDirsFromEnv(),
           bundledPluginRoot: process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT,
+          trustedCatalogKeys,
           getRegisteredPluginDirectory: getRegisteredBackendPluginDirectory,
             recordDiagnostic: diagnostic => pluginDiagnostics.record({
               level: 'error',
@@ -772,9 +784,10 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:checkRemoteUpdate', async (_event, rawPluginId: unknown) => {
     try {
-      if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
+      if (!remoteSource) {
         throw new PluginOperationError('source-unavailable', '当前版本暂不提供插件远程安装和更新，请使用随包插件');
       }
+      const source = remoteSource;
       const pluginId = parsePluginId(rawPluginId, 'plugins:checkRemoteUpdate');
       const service = getService();
       const states = service.listStates(listRegisteredBackendPluginMetas());
@@ -788,7 +801,7 @@ export async function registerPluginsHandlers(input: {
       const installedRecord = service.getInstalledRecord(pluginId);
       const result = await checkPluginUpdateFromRemote({
         pluginId,
-        releaseSource: createOfficialPluginReleaseSource(pluginId),
+        releaseSource: createCatalogReleaseSource(pluginId, source),
         appVersion: input.applicationVersion,
         rendererUiVersion: RENDERER_UI_VERSION,
         currentVersion: installedRecord?.installed ? installedRecord.version : null,
@@ -806,9 +819,10 @@ export async function registerPluginsHandlers(input: {
 
   input.ipc.handle('plugins:installFromRemote', async (_event, rawPluginId: unknown) => {
     try {
-      if (!isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
+      if (!remoteSource) {
         throw new Error('当前版本暂不提供插件远程安装和更新，请使用随包插件');
       }
+      const source = remoteSource;
       const pluginId = parsePluginId(rawPluginId, 'plugins:installFromRemote');
       return await runPluginLifecycleOperationSerially({
         pluginId,
@@ -831,8 +845,8 @@ export async function registerPluginsHandlers(input: {
               db,
               userPluginRoot,
               pluginId,
-              releaseSource: createOfficialPluginReleaseSource(pluginId),
-              installRuntimes: createOfficialRuntimeInstaller(pluginId, userPluginRoot),
+              releaseSource: createCatalogReleaseSource(pluginId, source),
+              installRuntimes: createOfficialRuntimeInstaller(pluginId, userPluginRoot, source),
               // 官方来源只有已验签 catalog；不随包的官方插件首次安装时按下载内容登记。
               allowCatalogListedPlugins: true,
               appVersion: input.applicationVersion,
@@ -958,7 +972,7 @@ export async function registerPluginsHandlers(input: {
       const bundledPluginRoot = resolveBundledPluginRoot();
       const hasBundledSource = bundledPluginRoot !== null
         && listBundledPluginManifestIds(bundledPluginRoot).includes(pluginId);
-      if (!hasBundledSource && !isOfficialPluginRemoteServiceEnabled(input.distributionIdentity)) {
+      if (!hasBundledSource && !remoteSource) {
         throw new PluginOperationError('source-unavailable', `当前插件没有可用的随包来源，不能卸载: ${pluginId}`, { pluginId });
       }
       return await runPluginLifecycleOperationSerially({

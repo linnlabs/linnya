@@ -51,6 +51,7 @@ import { createStoredPluginCredentialRuntimePort } from '../../adapters/plugin-c
 import { createProfileCredentialStorage } from '../../adapters/credential-storage/createProfileCredentialStorage';
 import { createExportArtifactCommitRpcClient } from '../../application/export-artifact-commit';
 import { createInstalledRuntimeExecutableResolver } from '../functions/createInstalledRuntimeExecutableResolver';
+import { resolveTrustedPluginCatalogKeys } from 'src/features/plugins/catalog/functions/resolvePluginCatalogSource';
 
 /** 纯 Node App Server composition：这里创建唯一 Commands owner，并把 Desktop 能力收窄为 reverse RPC port。 */
 export function createHeadlessAppServerBackendComposition(input: {
@@ -159,6 +160,10 @@ export function createHeadlessAppServerBackendComposition(input: {
             userPluginRoot: process.env.LINNYA_PLUGIN_ROOT,
             platform: input.bootstrap.backend_facts.platform,
             architecture: input.bootstrap.backend_facts.architecture,
+            trustedKeys: resolveTrustedPluginCatalogKeys({
+              identity: input.bootstrap.backend_facts.distributionIdentity,
+              env: process.env,
+            }),
           }),
         }),
         launchOwnedPipeProcess: createLocalProcessPlatformLauncher(

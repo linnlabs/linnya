@@ -12,6 +12,15 @@ import type {
 } from '../../../app-hosts/linnya/adapters/backend-renderer-requests';
 import { getMainWindow } from '../../window-manager';
 
+/**
+ * 用户可见的长任务（远程下载安装、插件数据清理）可能远超 RPC 默认 30 秒；进度另走事件，这里只放宽等待结果的上限，
+ * 避免仍在进行的任务被 Renderer 报成失败。上限仍有界，导航、崩溃与窗口销毁照常取消等待。
+ */
+export const LONG_RUNNING_RENDERER_REQUEST_TIMEOUT_MS: Readonly<Record<string, number>> = Object.freeze({
+  'plugins:installFromRemote': 60 * 60_000,
+  'plugins:cleanup-data': 60 * 60_000,
+});
+
 interface ElectronInvokeRegistrarPort {
   handle(
     channel: string,
@@ -45,7 +54,12 @@ export async function registerBackendRendererRequestIpcHandlers(input: {
       sender.once('render-process-gone', abort);
       sender.once('destroyed', abort);
       try {
-        return await input.gateway.invoke(channel, args, { signal: controller.signal, rendererSessionId });
+        const timeoutMs = LONG_RUNNING_RENDERER_REQUEST_TIMEOUT_MS[channel];
+        return await input.gateway.invoke(channel, args, {
+          signal: controller.signal,
+          rendererSessionId,
+          ...(timeoutMs === undefined ? {} : { timeoutMs }),
+        });
       } finally {
         removeAbortListeners(sender, abort);
       }
