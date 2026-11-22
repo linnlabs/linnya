@@ -14,6 +14,7 @@ import { extractZipToDirectory } from '../../plugins/install/infrastructure/extr
 import { resolveInstalledRuntimeExecutable } from '../functions/resolveInstalledRuntimeExecutable';
 import {
   readActiveRuntimeVersion,
+  readRuntimeComponentReceipt,
   runtimeComponentDirectory,
   runtimeComponentVersionDirectory,
   writeActiveRuntimeVersion,
@@ -38,6 +39,38 @@ function executableInside(versionDirectory: string, relativeExecutable: string):
 }
 
 /** 只保留当前与上一版，避免每次升级都累积几十 MB 的旧运行时。 */
+/**
+ * 同版本目录的现状：可执行文件与本次 catalog 一致则复用；缺失，或被改动但目录自己的回执与本次是同一份发布，
+ * 视为损坏（例如被删除或被安全软件隔离），用校验过的新下载替换；回执显示是另一份发布则拒绝覆盖。
+ * 能走到这里说明组件已复核失败，没有进程在从该目录运行。
+ */
+function inspectExistingVersionDirectory(
+  runtimeRoot: string,
+  runtime: ResolvedPluginRuntime,
+  versionDirectory: string,
+): 'absent' | 'reusable' | 'damaged' | 'conflict' {
+  if (!fs.existsSync(versionDirectory)) return 'absent';
+  const executable = executableInside(versionDirectory, runtime.target.executable);
+  if (!fs.statSync(executable, { throwIfNoEntry: false })?.isFile()) return 'damaged';
+  if (sha256File(executable) === runtime.target.executableSha256) return 'reusable';
+  const receipt = readRuntimeComponentReceipt(runtimeRoot, runtime.id, runtime.version);
+  return receipt?.executableSha256 === runtime.target.executableSha256 && receipt.artifactSha512 === runtime.target.sha512
+    ? 'damaged'
+    : 'conflict';
+}
+
+/** 先把损坏目录移到临时目录里，再换上新目录；换上失败时原样移回。 */
+function replaceDamagedVersionDirectory(versionDirectory: string, extractDirectory: string, tempDirectory: string): void {
+  const damaged = path.join(tempDirectory, 'damaged');
+  fs.renameSync(versionDirectory, damaged);
+  try {
+    fs.renameSync(extractDirectory, versionDirectory);
+  } catch (error) {
+    fs.renameSync(damaged, versionDirectory);
+    throw error;
+  }
+}
+
 function pruneRuntimeVersions(runtimeRoot: string, runtimeId: string, keep: readonly string[]): void {
   const directory = runtimeComponentDirectory(runtimeRoot, runtimeId);
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -93,12 +126,13 @@ export async function installRuntimeComponent(input: {
   fs.mkdirSync(runtimeDirectory, { recursive: true });
   const tempDirectory = path.join(runtimeDirectory, `.install-${runtime.version}.${process.pid}.${Date.now()}`);
   try {
-    if (fs.existsSync(versionDirectory)) {
+    const existing = inspectExistingVersionDirectory(input.runtimeRoot, runtime, versionDirectory);
+    if (existing === 'conflict') {
+      throw new PluginOperationError('version-conflict', `运行时版本目录已存在但内容不一致: ${runtime.id}@${runtime.version}`);
+    }
+    if (existing === 'reusable') {
+      // 不可变版本目录可能来自中断前的安装：可执行文件字节一致才复用。
       control.onInstalling?.();
-      // 不可变版本目录可能来自中断前的安装：字节一致才复用，否则拒绝覆盖。
-      if (sha256File(executableInside(versionDirectory, target.executable)) !== target.executableSha256) {
-        throw new PluginOperationError('version-conflict', `运行时版本目录已存在但内容不一致: ${runtime.id}@${runtime.version}`);
-      }
     } else {
       await assertAvailableDiskSpace([{ directory: runtimeDirectory, bytes: target.size + target.unpackedSize }]);
       const extractDirectory = path.join(tempDirectory, 'extract');
@@ -124,7 +158,8 @@ export async function installRuntimeComponent(input: {
         throw new PluginOperationError('artifact-integrity', '运行时可执行文件 SHA-256 与 catalog 不一致');
       }
       if (target.platform !== 'win32') fs.chmodSync(executable, 0o755);
-      fs.renameSync(extractDirectory, versionDirectory);
+      if (existing === 'damaged') replaceDamagedVersionDirectory(versionDirectory, extractDirectory, tempDirectory);
+      else fs.renameSync(extractDirectory, versionDirectory);
     }
     writeRuntimeComponentReceipt(input.runtimeRoot, {
       schemaVersion: 1,

@@ -4,6 +4,7 @@ import type { KnowledgeBaseMessageKey } from './knowledgeBaseMessages';
 export const KNOWLEDGE_BASE_MESSAGE_FALLBACKS = {
   'knowledgeBase.runtime.error.preparationFailed': '知识库资料不可用，请修复后停用再启用。',
   'knowledgeBase.runtime.error.vectorUnavailable': '知识库向量服务未能启动。请查看诊断日志，排除故障后停用并重新启用知识库。',
+  'knowledgeBase.runtime.error.vectorRuntimeMissing': '知识库所需的 Qdrant 运行时缺失或已损坏。请在插件商店卸载知识库（保留资料）后重新安装，以补齐运行时。',
   'knowledgeBase.manage.savedContent.title': '查看已保存内容',
   'knowledgeBase.manage.savedContent.action': '查看已保存内容',
   'knowledgeBase.manage.savedContent.loading': '正在读取已保存内容…',
@@ -381,6 +382,7 @@ export const KNOWLEDGE_BASE_MESSAGE_CATALOG: MessageCatalogContribution = {
       'knowledgeBase.service.error.apiBaseUrlUnavailable': 'Could not get the API base URL',
       'knowledgeBase.runtime.error.preparationFailed': 'Knowledge data unavailable. Fix it, then disable and re-enable the plugin.',
       'knowledgeBase.runtime.error.vectorUnavailable': 'The knowledge vector service could not start. Check the diagnostics, then disable and re-enable Knowledge Base after fixing the issue.',
+      'knowledgeBase.runtime.error.vectorRuntimeMissing': 'The Qdrant runtime that Knowledge Base needs is missing or damaged. Uninstall Knowledge Base in the plugin store (keeping data) and install it again to restore the runtime.',
       'knowledgeBase.service.error.getAllIpcFailed': 'Failed to get knowledge base list (IPC)',
       'knowledgeBase.service.create.success': 'Knowledge base created',
       'knowledgeBase.service.error.createIpcFailed': 'Failed to create knowledge base (IPC)',

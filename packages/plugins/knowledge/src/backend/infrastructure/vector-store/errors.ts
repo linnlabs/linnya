@@ -20,10 +20,22 @@ export function isQdrantRuntimeUnavailableError(error: unknown): boolean {
     (error instanceof Error && error.name === 'QdrantRuntimeUnavailableError');
 }
 
+/** Host 判定本机没有可用的 Qdrant 运行时组件（缺失、损坏或复核失败）；停启无法恢复，只能重新安装补齐。 */
+export function isQdrantRuntimeMissing(error: unknown): boolean {
+  return error instanceof Error && error.name === 'QdrantRuntimeUnavailableError' &&
+    Reflect.get(error, 'reason') === 'runtime-missing';
+}
+
 export class KnowledgeVectorStartupError extends Error {
+  readonly runtimeMissing: boolean;
+
   constructor(cause: unknown) {
-    super('知识库向量服务未能启动，请检查运行日志，修复后停用并重新启用知识库。', { cause });
+    const runtimeMissing = isQdrantRuntimeMissing(cause);
+    super(runtimeMissing
+      ? '知识库所需的 Qdrant 运行时缺失或已损坏：请在插件商店卸载知识库（保留资料）后重新安装，以补齐运行时。'
+      : '知识库向量服务未能启动，请检查运行日志，修复后停用并重新启用知识库。', { cause });
     this.name = 'KnowledgeVectorStartupError';
+    this.runtimeMissing = runtimeMissing;
   }
 }
 /**

@@ -198,8 +198,9 @@ export function createKnowledgeIpc(
             return { success: true, data: result };
           } catch (error) {
             if (channel === 'upload-document' && error instanceof KnowledgeVectorStartupError) {
-              return createOperationFailure(error.message,
-                createUserFacingMessage('knowledgeBase.runtime.error.vectorUnavailable'));
+              return createOperationFailure(error.message, createUserFacingMessage(error.runtimeMissing
+                ? 'knowledgeBase.runtime.error.vectorRuntimeMissing'
+                : 'knowledgeBase.runtime.error.vectorUnavailable'));
             }
             const fallback = fallbackKeys[channel];
             return fallback

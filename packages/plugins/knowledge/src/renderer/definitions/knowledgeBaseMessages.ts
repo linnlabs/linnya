@@ -4,6 +4,7 @@ import type { LinnyaLocale, MessageParams } from '@app/localization';
 export type KnowledgeBaseMessageKey =
   | 'knowledgeBase.runtime.error.preparationFailed'
   | 'knowledgeBase.runtime.error.vectorUnavailable'
+  | 'knowledgeBase.runtime.error.vectorRuntimeMissing'
   | 'knowledgeBase.manage.savedContent.title'
   | 'knowledgeBase.manage.savedContent.action'
   | 'knowledgeBase.manage.savedContent.loading'

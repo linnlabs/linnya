@@ -170,6 +170,50 @@ describe('原生运行时组件安装与启动复核', () => {
   });
 });
 
+describe('损坏的运行时组件可以通过重新安装修复', () => {
+  async function installed() {
+    const runtimeRoot = tempDir('linnya-runtimes-');
+    const { zip, executable } = await runtimeZip();
+    const { catalog, provenance } = signed([runtimeEntry('1.14.1', zip, executable)]);
+    const install = (routes: Record<string, Buffer> = { [runtimeUrl('1.14.1')]: zip }) => installRuntimeComponent({
+      runtimeRoot, runtime: { id: 'qdrant', version: '1.14.1', target: catalog.runtimes[0]!.targets[0]! }, provenance,
+      trustedKeys: publisher.trustedKeys, fetch: servingFetch(routes).fetcher,
+    });
+    await install();
+    const executablePath = path.join(runtimeRoot, 'qdrant', '1.14.1', 'qdrant');
+    return { runtimeRoot, install, executablePath, executable };
+  }
+
+  it('可执行文件被删除（例如被安全软件隔离）：复核失败，重新安装下载校验后恢复', async () => {
+    const { runtimeRoot, install, executablePath, executable } = await installed();
+    fs.rmSync(executablePath);
+    expect((await resolve(runtimeRoot)).status).toBe('rejected');
+    await expect(install()).resolves.toMatchObject({ status: 'installed', version: '1.14.1' });
+    expect(fs.readFileSync(executablePath)).toEqual(executable);
+    expect((await resolve(runtimeRoot)).status).toBe('resolved');
+    expect(fs.readdirSync(path.join(runtimeRoot, 'qdrant')).filter(name => name.startsWith('.install-'))).toEqual([]);
+  });
+
+  it('同一份发布的可执行文件被改动：按回执判定为损坏并替换，不当成版本冲突', async () => {
+    const { runtimeRoot, install, executablePath, executable } = await installed();
+    fs.writeFileSync(executablePath, 'tampered');
+    expect((await resolve(runtimeRoot)).status).toBe('rejected');
+    await expect(install()).resolves.toMatchObject({ status: 'installed' });
+    expect(fs.readFileSync(executablePath)).toEqual(executable);
+    expect((await resolve(runtimeRoot)).status).toBe('resolved');
+  });
+
+  it('修复时下载失败：损坏目录保持原样，不留临时目录', async () => {
+    const { runtimeRoot, install, executablePath } = await installed();
+    fs.rmSync(executablePath);
+    await expect(install({})).rejects.toBeDefined();
+    expect(fs.existsSync(path.join(runtimeRoot, 'qdrant', '1.14.1'))).toBe(true);
+    expect(fs.existsSync(executablePath)).toBe(false);
+    expect(readActiveRuntimeVersion(runtimeRoot, 'qdrant')).toBe('1.14.1');
+    expect(fs.readdirSync(path.join(runtimeRoot, 'qdrant')).filter(name => name.startsWith('.install-'))).toEqual([]);
+  });
+});
+
 describe('插件远程安装先装好所需运行时', () => {
   async function pluginZip(): Promise<Buffer> {
     const zip = new JSZip();

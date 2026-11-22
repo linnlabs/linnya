@@ -244,7 +244,9 @@ export class BackendRuntimeOwner {
         console.error('[Backend Service] ❌ 收口未启动成功的 Qdrant 时出错:', stopError);
       }
       throw new QdrantRuntimeUnavailableError(
-        describeStartupCapabilityFailure('向量库没有启动成功', error)
+        describeStartupCapabilityFailure('向量库没有启动成功', error),
+        // 运行时组件缺失或复核失败（QdrantRuntimeMissingError）：停启无法恢复，插件要提示重新安装。
+        error instanceof Error && error.name === 'QdrantRuntimeMissingError' ? 'runtime-missing' : 'startup-failed',
       );
     }
   }

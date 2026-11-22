@@ -136,7 +136,7 @@ try {
       assert.equal(db.prepare('PRAGMA quick_check').get().quick_check, 'ok');
     } finally { db.close(); }
     await run('shot');
-    assert.match(page, kind === 'missing-binary' ? /重新安装知识库/u : /向量服务.*未能启动.*重新启用/u);
+    assert.match(page, kind === 'missing-binary' ? /运行时缺失或已损坏.*卸载知识库（保留资料）后重新安装/u : /向量服务.*未能启动.*重新启用/u);
     assert.ok(!page.includes(up.root));
   });
 } catch (error) {
