@@ -122,6 +122,48 @@ describe('buildPluginStoreDetail', () => {
     ]);
   });
 
+  it('远程分发插件未安装时从安装包声明读取介绍与智能体，不把声明目录当成插件大小', () => {
+    const tempRoot = makeTempRoot();
+    const declarationRoot = path.join(tempRoot, 'plugin-declarations');
+    writeJson(path.join(declarationRoot, 'remote-demo', 'plugin.json'), {
+      id: 'remote-demo',
+      version: '0.2.0',
+      name: 'Remote Demo',
+      description: 'Remote demo plugin',
+      developer: 'Linnya',
+      details: ['Introduction from the shipped declaration.'],
+      agents: [{ name: 'Remote Agent', description: 'Runs after remote install.' }],
+      entry: { backend: './dist/backend/index.cjs' },
+    });
+
+    const detail = buildPluginStoreDetail(makePluginState({ pluginId: 'remote-demo', state: 'missing' }), {
+      bundledPluginRoot: path.join(tempRoot, 'bundled'),
+      declarationRoot,
+    });
+
+    expect(detail.bundledSourceAvailable).toBe(false);
+    expect(detail.details).toEqual(['Introduction from the shipped declaration.']);
+    expect(detail.agents).toEqual([{ name: 'Remote Agent', description: 'Runs after remote install.' }]);
+    // 大小来自已验签 catalog；声明目录只有 plugin.json，不代表安装后体积。
+    expect(detail.sizeBytes).toBeUndefined();
+  });
+
+  it('同时有随包副本时以随包详情为准', () => {
+    const tempRoot = makeTempRoot();
+    const bundledPluginRoot = path.join(tempRoot, 'bundled');
+    const declarationRoot = path.join(tempRoot, 'plugin-declarations');
+    const manifest = (details: string) => ({
+      id: 'both-demo', version: '1.0.0', name: 'Both', description: 'Both', developer: 'Linnya', details: [details],
+      entry: { backend: './dist/backend/index.cjs' },
+    });
+    writeJson(path.join(bundledPluginRoot, 'both-demo', 'plugin.json'), manifest('From bundled artifact.'));
+    writeJson(path.join(declarationRoot, 'both-demo', 'plugin.json'), manifest('From declaration.'));
+
+    const detail = buildPluginStoreDetail(makePluginState({ pluginId: 'both-demo', state: 'missing' }), { bundledPluginRoot, declarationRoot });
+    expect(detail.details).toEqual(['From bundled artifact.']);
+    expect(detail.sizeBytes).toBeGreaterThan(0);
+  });
+
   it('插件启用但没有 active artifact 时回退到 bundled 市场详情', () => {
     const tempRoot = makeTempRoot();
     const bundledPluginRoot = path.join(tempRoot, 'bundled');

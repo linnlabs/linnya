@@ -12,6 +12,12 @@ import { installKnowledgeForScenario, knowledgeSidebar } from './knowledgeStore.
 
 const kind = process.argv[2];
 assert.ok(['missing-binary', 'invalid-storage'].includes(kind));
+// Qdrant 改为远程运行时组件：缺失可执行文件应针对已安装组件，且源码运行的 extraResources 回退会掩盖故障。
+// 改写为针对运行时组件之前，missing-binary 明确拒绝运行。
+if (kind === 'missing-binary') {
+  console.error('[knowledge-qdrant] Qdrant 已改为远程运行时组件，missing-binary 场景待改写为针对已安装组件。');
+  process.exit(2);
+}
 const repository = realpathSync(fileURLToPath(new URL('../../..', import.meta.url)));
 assert.match(basename(dirname(repository)), /^linnya-knowledge-upgrade\.[\w]+$/u);
 assert.equal(dirname(dirname(repository)), realpathSync(tmpdir()));

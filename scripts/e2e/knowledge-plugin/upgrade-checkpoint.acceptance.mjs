@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -46,6 +47,12 @@ assert.ok(
 );
 const bundledRoot = join(repo, 'extraResources', 'plugins');
 const bundled = join(bundledRoot, 'knowledge');
+// 本场景验证“新安装包随附更高版本知识库”的随包升级与随包 artifact 故障。知识库已改为只远程分发，
+// 升级来自已验签 catalog；在改写为远程升级之前明确拒绝运行，避免得到与生产无关的结果。
+if (!existsSync(join(bundled, 'plugin.json'))) {
+  console.error('[knowledge-upgrade] 知识库已改为远程分发（extraResources/plugins 不含 knowledge），本场景待改写为远程升级。');
+  process.exit(2);
+}
 const old = JSON.parse(readFileSync(join(bundled, 'plugin.json'), 'utf8'));
 const versions = old.version.split('.').map(Number);
 assert.equal(versions.length, 3);

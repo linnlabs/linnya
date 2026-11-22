@@ -26,6 +26,8 @@
 
 ## macOS 隔离探针
 
+知识库不随安装包分发：`knowledgeStore.fixture.mjs` 加载时在本机回环地址启动开发插件 catalog（`scripts/e2e/plugin-remote/devPluginCatalog.fixture.mjs`），并设置 `LINNYA_DEV_PLUGIN_CATALOG_*`，之后探针实例里的安装、自动恢复与重装都走已验签 catalog 的远程安装路径；`reinstall-crash.fixture.ts` 在同一远程安装入口的真实写入点强杀。`upgrade-checkpoint` 与 `qdrant-startup-fault missing-binary` 仍按随包升级与随包 Qdrant 设计，改写前会明确拒绝运行。
+
 `KNOWLEDGE_PLUGIN_MODE=bundled pnpm exec tsx scripts/e2e/knowledge-plugin/desktop.acceptance.mjs` 使用同一隔离探针，并显式选择现有磁盘 Renderer 模式；脚本断言 `plugin://knowledge/dist/renderer/index.js`、active 安装来源和真实界面入口，不能仅用 Backend IPC 成功推断 Renderer 已加载。默认 dev 模式仍用于源码界面调试。两种模式都记录实际入口 URL。
 
 这是未打包 Host 上的真实插件产物验收，不等于 macOS 已签名安装包验收。运行前按正式插件构建/预置流程生成知识库 artifact；启动不会绕过 artifact 校验。

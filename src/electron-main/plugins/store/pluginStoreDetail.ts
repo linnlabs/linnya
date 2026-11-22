@@ -17,6 +17,8 @@ import {
 export interface PluginStoreDetailOptions {
   readonly pluginRoot?: string;
   readonly bundledPluginRoot?: string | null;
+  /** 安装包内远程分发插件的 plugin.json 声明目录；未安装时用于展示介绍、技能与智能体。 */
+  readonly declarationRoot?: string | null;
   readonly directPluginDirs?: readonly string[];
   readonly reportDiagnostic?: PluginLayoutDiagnosticReporter;
 }
@@ -111,6 +113,28 @@ function readDetailFromPluginDir(
   }
 }
 
+/** 声明只有 plugin.json，不代表安装后体积；大小由商店从已验签 catalog 展示。 */
+function readDeclaredDetail(baseDetail: PluginStoreDetail, options: PluginStoreDetailOptions): PluginStoreDetail | null {
+  if (!options.declarationRoot) return null;
+  const directory = path.join(options.declarationRoot, baseDetail.meta.id);
+  if (!fs.existsSync(path.join(directory, 'plugin.json'))) return null;
+  try {
+    const manifest = readManifestFromPluginDir(directory);
+    if (manifest.id !== baseDetail.meta.id) throw new Error(`plugin.json id 不匹配: ${manifest.id}`);
+    return {
+      ...baseDetail,
+      homepage: manifest.homepage,
+      details: manifest.details,
+      releaseNotes: manifest.releaseNotes,
+      skills: manifest.skills,
+      agents: manifest.agents,
+    };
+  } catch (error) {
+    report(options.reportDiagnostic, baseDetail.meta.id, `读取插件声明失败: ${readErrorMessage(error)}`);
+    return null;
+  }
+}
+
 export function buildPluginStoreDetail(
   state: PluginStateView,
   options: PluginStoreDetailOptions
@@ -122,6 +146,10 @@ export function buildPluginStoreDetail(
   };
 
   if (state.state === 'missing') {
+    if (!baseDetail.bundledSourceAvailable) {
+      const declared = readDeclaredDetail(baseDetail, options);
+      if (declared) return declared;
+    }
     return readBundledDetailOrBase(baseDetail, options.bundledPluginRoot, options);
   }
 

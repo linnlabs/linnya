@@ -55,7 +55,7 @@ function facts(up) {
 }
 
 try {
-  await evidence.check(`随包${mode}在${checkpointName}强杀，重启后状态一致且可使用`, async () => {
+  await evidence.check(`远程${mode}在${checkpointName}强杀，重启后状态一致且可使用`, async () => {
     const up = await start();
     if (mode === 'reinstall') {
       await installKnowledgeForScenario(run);
@@ -91,8 +91,8 @@ try {
     const checkpointPath = join(up.root, 'reinstall-checkpoint.json');
     const target = fileURLToPath(new URL('./reinstall-crash.fixture.ts', import.meta.url));
     const child = spawnSync(process.execPath, ['--import', 'tsx', target,
-      up.workspaceDb, join(up.root, 'plugins'), join(up.repoRoot, 'extraResources', 'plugins'), checkpointPath, checkpointName],
-    { cwd: up.repoRoot, encoding: 'utf8', timeout: 20_000 });
+      up.workspaceDb, join(up.root, 'plugins'), join(up.root, 'user-data', 'runtimes'), checkpointPath, checkpointName],
+    { cwd: up.repoRoot, encoding: 'utf8', timeout: 120_000, env: process.env });
     assert.equal(child.signal, 'SIGKILL', child.stderr || child.error?.message);
     const checkpoint = JSON.parse(readFileSync(checkpointPath, 'utf8'));
     evidence.json('checkpoint', checkpoint);

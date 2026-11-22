@@ -73,7 +73,10 @@ import {
 } from '@app/schemas';
 import { resolvePluginCleanupDescriptor } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
 import { readPluginDataSummaryAsync, cleanupPluginData, hasPendingPluginDataCleanup, hasPluginUserData } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
-import { listOnDemandPluginDeclarations } from '../../../../features/plugins/install/infrastructure/readPluginDeclarations';
+import {
+  listOnDemandPluginDeclarations,
+  listPluginDeclarationMetas,
+} from '../../../../features/plugins/install/infrastructure/readPluginDeclarations';
 import { restoreDeclaredPluginsWithUserData } from '../../../../features/plugins/install/orchestration/restoreDeclaredPluginsWithUserData';
 import { readJsonFile } from '../../../plugins/loader/pluginLayout';
 import {
@@ -110,9 +113,12 @@ function declaresCleanableData(manifest: ReturnType<typeof parsePluginManifest>)
 
 function manifestForPlugin(pluginId: string, bundledRoot: string | null): ReturnType<typeof parsePluginManifest> | null {
   const registered = getRegisteredBackendPluginDirectory(pluginId);
+  const declarationRoot = process.env.LINNYA_RESOLVED_PLUGIN_DECLARATION_ROOT;
+  // 远程分发插件未安装时没有已登记目录与随包副本，数据声明来自安装包内的 plugin.json。
   const candidates = [
     ...(registered ? [registered] : []),
     ...(bundledRoot ? [path.join(bundledRoot, pluginId)] : []),
+    ...(declarationRoot ? [path.join(declarationRoot, pluginId)] : []),
   ];
   for (const directory of candidates) {
     try {
@@ -402,8 +408,12 @@ function listKnownPluginMetas(): PluginMeta[] {
   const metas = listRegisteredBackendPluginMetas();
   const seen = new Set(metas.map(meta => meta.id));
   const bundledRoot = resolveBundledPluginRoot();
-  if (!bundledRoot) return metas;
-  for (const meta of listBundledPluginMetas(bundledRoot)) {
+  // 随包插件与安装包内声明的远程分发插件都是“已知插件”：未安装时也能展示、统计资料与清理。
+  const candidates = [
+    ...(bundledRoot ? listBundledPluginMetas(bundledRoot) : []),
+    ...listPluginDeclarationMetas(process.env.LINNYA_RESOLVED_PLUGIN_DECLARATION_ROOT),
+  ];
+  for (const meta of candidates) {
     if (!seen.has(meta.id)) {
       seen.add(meta.id);
       metas.push(meta);
@@ -663,6 +673,7 @@ export async function registerPluginsHandlers(input: {
           pluginRoot: process.env.LINNYA_PLUGIN_ROOT,
           directPluginDirs,
           bundledPluginRoot,
+          declarationRoot: process.env.LINNYA_RESOLVED_PLUGIN_DECLARATION_ROOT,
           reportDiagnostic: diagnostic => {
             pluginDiagnostics.record({
               level: 'warn',
@@ -860,6 +871,8 @@ export async function registerPluginsHandlers(input: {
         if (result.status === 'failed') {
           throwPluginOperationResultFailure(result);
         }
+        // 安装前打开过详情会缓存“未安装”时的资料摘要；与随包安装一致，安装后立即失效。
+        invalidatePluginDataSummary(pluginId);
         // 本次运行从未加载过该插件（首次安装、不随包的插件）：没有旧代码要卸载，可直接登记，不必重启。
         const firstLoad = result.status === 'installed'
           && !listRegisteredBackendPluginMetas().some(meta => meta.id === pluginId);

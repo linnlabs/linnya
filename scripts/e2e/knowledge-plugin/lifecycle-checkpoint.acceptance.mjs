@@ -167,10 +167,11 @@ try {
         'This isolated source must survive an uninstall without data cleanup.\n'.repeat(128),
         { flag: 'wx' }
       );
+      // 知识库不随包分发：安装包只带它的 plugin.json 声明，字节与远程 artifact 内的一致。
       const manifestPath = join(
         up.repoRoot,
         'extraResources',
-        'plugins',
+        'plugin-declarations',
         'knowledge',
         'plugin.json'
       );

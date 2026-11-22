@@ -80,7 +80,8 @@ try {
     await run('shot');
   });
   await evidence.check('同一插件卸载排在启用前：过期的启用请求不会把插件装回', async () => {
-    const installed = await evaluate('window.electronAPI.plugins.installBundled("knowledge")');
+    // 知识库只远程分发：重新安装走已验签 catalog（夹具已启动本机开发 catalog）。
+    const installed = await evaluate('window.electronAPI.plugins.installFromRemote("knowledge")');
     assert.equal(installed.success, true, JSON.stringify(installed));
     await run('wait', '--selector', knowledgeSidebar);
     const [removed, enabled] = await evaluate('Promise.all([window.electronAPI.plugins.uninstall("knowledge"),window.electronAPI.plugins.setEnabled("knowledge",true)])');

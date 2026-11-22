@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { listOnDemandPluginDeclarations } from './readPluginDeclarations';
+import { listOnDemandPluginDeclarations, listPluginDeclarationMetas } from './readPluginDeclarations';
 
 const roots: string[] = [];
 afterEach(() => {
@@ -32,6 +32,15 @@ describe('安装包内的远程插件声明', () => {
     declare(root, 'broken', '{ not json');
     fs.writeFileSync(path.join(root, 'stray-file'), '');
     expect(listOnDemandPluginDeclarations(root)).toEqual(['knowledge']);
+  });
+
+  it('全部声明都作为非随包的已知插件元信息（不论是否按需）', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-declarations-'));
+    roots.push(root);
+    declare(root, 'knowledge', manifest('knowledge'));
+    declare(root, 'always', manifest('always'), false);
+    declare(root, 'mismatch', manifest('other'));
+    expect(listPluginDeclarationMetas(root).map(meta => [meta.id, meta.builtin])).toEqual([['always', false], ['knowledge', false]]);
   });
 
   it('目录不存在或未配置时为空', () => {
