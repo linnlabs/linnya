@@ -241,8 +241,11 @@ try {
       await application.clickElement('document.querySelector("#embeddingModelSelect")');
       await application.clickElement(`Array.from(document.querySelectorAll('.select-option')).find(el=>el.textContent.trim()==='Windows openai_embeddings' && el.getClientRects().length)`);
       await application.clickElement('document.querySelector(".settings-modal-close")');
-      await application.clickText(kbName);
+      // 新建知识库后界面直接进入新库的文件上传页；只有不在该页时才回列表点卡片。
+      const onUploadTab = await application.evaluate(`Boolean(document.querySelector('.upload-tab input[type="file"]'))`);
+      if (!onUploadTab) await application.clickText(kbName);
       await until(() => application.evaluate(`Boolean(document.querySelector('.upload-tab input[type="file"]'))`), Boolean, 'File upload is the new library default tab');
+      assert.ok((await application.evaluate('document.body.innerText')).includes(kbName), 'Upload tab belongs to the created library');
       assert.equal(await application.evaluate(`(() => {
         const input = document.querySelector('.upload-tab input[type="file"]');
         if (!input) return false;
