@@ -22,6 +22,14 @@ async function main(): Promise<void> {
   const rpcInput = new Socket({ fd: 5, readable: true, writable: false });
   const handlers: AppServerRpcHandlerRegistry = new Map<string, AppServerRpcHandler>([
     ['backend.fixture.echo', payload => payload],
+    // 同步占满事件循环，模拟启动期卡顿：期间到达的控制 ping 只能在阻塞结束后应答。
+    ['backend.fixture.block', payload => {
+      const milliseconds = typeof payload === 'object' && payload !== null && !Array.isArray(payload)
+        && typeof payload.milliseconds === 'number' ? payload.milliseconds : 0;
+      const until = Date.now() + milliseconds;
+      while (Date.now() < until) { /* busy wait */ }
+      return { blocked: milliseconds };
+    }],
     ['backend.fixture.wait', (_payload, context) => new Promise<never>((_resolve, reject) => {
       process.stderr.write('fixture-rpc-handler-started\n');
       context.signal.addEventListener('abort', () => {

@@ -37,6 +37,8 @@ import {
 const DEFAULT_START_TIMEOUT_MS = 30_000;
 const DEFAULT_CONTROL_TIMEOUT_MS = 5_000;
 const MAX_PENDING_CONTROL_REQUESTS = 8;
+// 已超时控制请求的记忆上限：child 卡顿后迟到的应答只需在短窗口内识别，记忆有界不随运行时长增长。
+const MAX_EXPIRED_CONTROL_REQUESTS = 32;
 // 启动期 child 因数据库等原因失败退出时，RPC pipe 可能先于 stdout 上的 fatal 帧报错（两条 pipe 互不保序）。
 // ready 之前的传输失败先等这段时间：fatal 帧或进程退出先到，用户就看到真正原因。
 const STARTUP_TRANSPORT_FAILURE_GRACE_MS = 2_000;
@@ -85,6 +87,16 @@ export function createNodeAppServerProcessSupervisor(input: {
     observedExitResolve = resolve;
   });
   const pending = new Map<string, PendingRequest>();
+  // 超时只说明 child 当时没及时应答（例如启动期事件循环卡顿）；随后到达的同一请求应答是迟到，
+  // 不是协议错误，不能借此杀掉 child。是否失去响应由健康检查按持续时间判断。
+  const expired = new Map<string, AppServerControlRequestFrame['operation']>();
+  const rememberExpired = (requestId: string, operation: AppServerControlRequestFrame['operation']): void => {
+    expired.set(requestId, operation);
+    if (expired.size > MAX_EXPIRED_CONTROL_REQUESTS) {
+      const oldest = expired.keys().next().value;
+      if (oldest !== undefined) expired.delete(oldest);
+    }
+  };
   let deferredStartupFailure: { readonly error: Error; readonly timer: NodeJS.Timeout } | null = null;
 
   const clearDeferredStartupFailure = (): Error | null => {
@@ -170,6 +182,11 @@ export function createNodeAppServerProcessSupervisor(input: {
       return;
     }
     const request = pending.get(frame.request_id);
+    if (!request && expired.get(frame.request_id) === frame.operation) {
+      expired.delete(frame.request_id);
+      input.stderrSink?.write(`[App Server supervisor] 忽略已超时的 ${frame.operation} 迟到应答\n`);
+      return;
+    }
     if (!request || request.operation !== frame.operation) {
       failProtocol(new Error('App Server response 没有匹配的控制请求'));
       return;
@@ -343,6 +360,7 @@ export function createNodeAppServerProcessSupervisor(input: {
     const settlement = new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
         pending.delete(requestId);
+        rememberExpired(requestId, operation);
         reject(new Error(`App Server ${operation} 超时（${controlTimeoutMs}ms）`));
       }, controlTimeoutMs);
       pending.set(requestId, { operation, resolve, reject, timeout });

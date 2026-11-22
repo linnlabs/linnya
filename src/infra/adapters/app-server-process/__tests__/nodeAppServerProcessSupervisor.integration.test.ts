@@ -83,6 +83,45 @@ describe('Node App Server process supervisor', () => {
     expect(stderr.join('')).toContain('fixture-rpc-handler-aborted');
   });
 
+  it('child 卡顿使 ping 超时后，迟到应答被忽略而不是判为协议失败；child 继续服务', async () => {
+    const diagnostics: string[] = [];
+    const supervisor = createNodeAppServerProcessSupervisor({
+      launch: {
+        executablePath: process.execPath,
+        entryPath: fixturePath,
+        workingDirectory: repositoryRoot,
+        environment: collectTestEnvironment(),
+        bootstrapBytes: encodeAppServerBootstrap(createBootstrap()),
+      },
+      rpcHandlers: new Map([['desktop.fixture.echo', () => ({ acknowledged: true })]]),
+      startTimeoutMs: 10_000,
+      controlTimeoutMs: 300,
+      stderrSink: new Writable({
+        write(chunk, _encoding, callback) {
+          diagnostics.push(String(chunk));
+          callback();
+        },
+      }),
+    });
+    await supervisor.start();
+    let exited = false;
+    const exit = supervisor.waitForExit().then(result => {
+      exited = true;
+      return result;
+    });
+    const blocked = supervisor.request('backend.fixture.block', { milliseconds: 1_200 }, { timeoutMs: 10_000 });
+    await new Promise(resolve => setTimeout(resolve, 100));
+    await expect(supervisor.ping()).rejects.toThrow('超时');
+    await expect(blocked).resolves.toEqual({ blocked: 1_200 });
+    // 阻塞结束后 child 补发的迟到应答必须被识别并丢弃，child 不能因此被终止。
+    await waitFor(() => diagnostics.join('').includes('忽略已超时的 ping 迟到应答'));
+    await expect(supervisor.ping()).resolves.toBeUndefined();
+    expect(exited).toBe(false);
+    expect(diagnostics.join('')).not.toContain('协议失败');
+    await expect(supervisor.shutdown()).resolves.toBeUndefined();
+    await expect(exit).resolves.toMatchObject({ code: 0, signal: null, expected: true });
+  }, 20_000);
+
   it('数据库启动阶段不计入启动超时，进度按顺序交给宿主', async () => {
     const progress: AppServerStartupProgress[] = [];
     const supervisor = createNodeAppServerProcessSupervisor({
