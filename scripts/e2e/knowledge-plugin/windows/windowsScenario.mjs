@@ -255,6 +255,16 @@ try {
         input.dispatchEvent(new Event('change', { bubbles: true }));
         return true;
       })()`), true);
+      // 文件在 change 之后异步进入列表，按钮随之可用；与 Mac 用例一样先等文件出现再点，避免点在禁用按钮上。
+      await until(
+        () => application.evaluate(`(() => {
+          const tab = document.querySelector('.upload-tab');
+          const start = [...document.querySelectorAll('button')].find(button => button.textContent.trim() === '开始解析');
+          return Boolean(tab?.innerText.includes(${json(filename)}) && start && !start.disabled);
+        })()`),
+        Boolean,
+        'Selected file is listed and parsing can start',
+      );
       await application.clickText('开始解析');
       const message = await until(
         () => application.evaluate(`document.querySelector('.upload-tab:has(.status-failed)')?.innerText ?? ''`),
