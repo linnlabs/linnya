@@ -424,8 +424,14 @@ function listKnownPluginMetas(): PluginMeta[] {
 
 function listDisplayPluginStates(service: PluginStateService): ReturnType<PluginStateService['listStates']> {
   return service.listStates(listKnownPluginMetas()).map(state => {
-    if (state.state === 'missing' || backendPluginRegistry.has(state.meta.id)) return state;
+    if (state.state === 'missing') return state;
     const installed = service.getInstalledRecord(state.meta.id);
+    if (backendPluginRegistry.has(state.meta.id)) {
+      // 远程更新已激活但后端仍是旧版本：商店按已安装版本判断是否还有更新，避免重启前一直显示“更新”。
+      return installed?.installed && installed.version !== state.meta.version
+        ? { ...state, pendingRestartVersion: installed.version }
+        : state;
+    }
     return {
       ...state,
       meta: { ...state.meta, version: installed?.version ?? state.meta.version },
@@ -843,6 +849,9 @@ export async function registerPluginsHandlers(input: {
         }
         const db = getDb();
         const knownPlugins = listKnownPluginMetas();
+        // 安装前的运行事实：插件未处于安装状态时，进程里即使还登记着旧版本，它的运行效果也已撤下。
+        const wasInstalled = getService().getInstalledRecord(pluginId)?.installed === true;
+        const registeredVersion = listRegisteredBackendPluginMetas().find(meta => meta.id === pluginId)?.version;
         assertBackendPluginCanDeactivate(pluginId);
         const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
         const controller = new AbortController();
@@ -873,9 +882,10 @@ export async function registerPluginsHandlers(input: {
         }
         // 安装前打开过详情会缓存“未安装”时的资料摘要；与随包安装一致，安装后立即失效。
         invalidatePluginDataSummary(pluginId);
-        // 本次运行从未加载过该插件（首次安装、不随包的插件）：没有旧代码要卸载，可直接登记，不必重启。
+        // 没有在运行的旧代码时可直接按新 artifact 登记、不必重启：本次运行从未加载过该插件（首次安装），
+        // 或卸载后重新安装了不同版本（旧版本仍在登记表里，但运行效果已撤下，继续沿用会让模块与目录不一致）。
         const firstLoad = result.status === 'installed'
-          && !listRegisteredBackendPluginMetas().some(meta => meta.id === pluginId);
+          && (registeredVersion === undefined || (!wasInstalled && registeredVersion !== result.version));
         return transitionRuntime(async () => {
           if (!scopedLifecycle)
             await cancelActiveRunsForPluginRuntimeChange({

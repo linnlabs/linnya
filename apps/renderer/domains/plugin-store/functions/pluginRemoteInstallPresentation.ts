@@ -31,7 +31,8 @@ export function isRemoteInstallable(item: PluginRemoteCatalogItem | undefined): 
 /** 已安装插件且 catalog 中可装的版本更高：显示“有新版本”与更新按钮。 */
 export function hasRemoteUpdate(item: PluginStoreListItem, remote: PluginRemoteCatalogItem | undefined): boolean {
   if (!remote || item.state === 'missing' || !isRemoteInstallable(remote)) return false;
-  return compareDottedVersions(item.meta.version, remote.version) === -1;
+  // 已更新、等待重启的插件按已安装版本比较；meta.version 仍是运行中的旧版本。
+  return compareDottedVersions(item.pendingRestartVersion ?? item.meta.version, remote.version) === -1;
 }
 
 const FAILURE_SHORT_KEYS: Partial<Record<PluginRuntimeUserError['code'], PluginStoreMessageKey>> = {

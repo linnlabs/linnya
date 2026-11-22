@@ -101,6 +101,8 @@ export interface PluginStateView {
   state: PluginInstallState;
   /** 安装事实仍保留，但当前后端未接纳该 artifact；不能发布运行能力。 */
   runtimeUnavailable?: true;
+  /** 已安装并激活、但当前进程仍运行旧版本（更新后需重启才完全生效）时的已安装版本；meta.version 仍是运行中的版本。 */
+  pendingRestartVersion?: string;
   /** disabled/missing 或操作失败时给设置页展示的人类可读原因；missing 时用于区分从未安装与用户主动卸载。 */
   reason?: string;
   data?: PluginDataSummary;

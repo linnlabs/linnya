@@ -35,6 +35,13 @@ describe('远程安装展示规则', () => {
     expect(hasRemoteUpdate(installed('0.2.0'), undefined)).toBe(false);
   });
 
+  it('更新已激活、等待重启时按已安装版本比较，不再显示同一个更新', () => {
+    const pending = (installedVersion: string): PluginStoreListItem => ({ ...installed('0.2.0'), pendingRestartVersion: installedVersion });
+    expect(hasRemoteUpdate(pending('0.2.1'), remote('0.2.1'))).toBe(false);
+    expect(hasRemoteUpdate(pending('0.2.1'), remote('0.2.2'))).toBe(true);
+    expect(hasRemoteUpdate(pending('0.3.0'), remote('0.2.9'))).toBe(false);
+  });
+
   it('catalog-only 条目不是随包插件，状态为未安装', () => {
     expect(toRemoteOnlyStoreItem(remote('0.2.0'))).toMatchObject({ state: 'missing', meta: { id: 'knowledge', builtin: false } });
   });
