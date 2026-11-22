@@ -275,7 +275,8 @@ function validateExtractedPlugin(extractDir: string, pluginId: string, version: 
   return manifest;
 }
 
-async function extractZipToDirectory(zipPath: string, targetDir: string): Promise<void> {
+/** 解压时每个条目都限定在目标目录内；供插件与运行时组件安装共用。 */
+export async function extractZipToDirectory(zipPath: string, targetDir: string): Promise<void> {
   const zip = await JSZip.loadAsync(fs.readFileSync(zipPath));
   const entries = Object.values(zip.files);
 
@@ -447,6 +448,14 @@ export async function installPluginUpdateFromRemote(
         reason: 'incompatible',
         detail: compatibility.detail,
       };
+    }
+
+    if (remote.runtimes && remote.runtimes.length > 0) {
+      // 运行时先于插件安装：插件已是当前版本但运行时缺失时，重装也能补齐运行时。
+      if (!remote.provenance || !options.installRuntimes) {
+        throw new PluginOperationError('incompatible', `${options.pluginId}@${remote.version} 需要的原生运行时没有可信安装途径`, { pluginId: options.pluginId });
+      }
+      await options.installRuntimes(remote.runtimes, remote.provenance);
     }
 
     const currentVersion = Object.prototype.hasOwnProperty.call(options, 'currentVersion')

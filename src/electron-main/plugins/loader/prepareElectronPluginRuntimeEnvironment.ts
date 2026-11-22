@@ -18,6 +18,9 @@ export function prepareElectronPluginRuntimeEnvironment(): PluginRuntimeEnvironm
   const userPluginRoot =
     process.env.LINNYA_PLUGIN_ROOT || path.join(app.getPath('userData'), 'plugins');
   process.env.LINNYA_PLUGIN_ROOT = userPluginRoot;
+  // 插件所需原生运行时组件与插件同属用户数据，但独立于插件安装目录（多个插件可共享同一运行时）。
+  process.env.LINNYA_RUNTIME_ROOT =
+    process.env.LINNYA_RUNTIME_ROOT || path.join(app.getPath('userData'), 'runtimes');
 
   if (!process.env.LINNYA_PLUGIN_BACKEND_LOADING && shouldUseDiskBackendByDefault()) {
     process.env.LINNYA_PLUGIN_BACKEND_LOADING = 'disk';

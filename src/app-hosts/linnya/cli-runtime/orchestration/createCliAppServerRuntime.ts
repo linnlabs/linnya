@@ -73,6 +73,8 @@ export async function createCliAppServerRuntime(
       || path.join(profileRoot, 'runtime', CONVERSATION_CONTROL_CONNECTION_FILE_NAME),
     LINNYA_PLUGIN_ROOT: environment.LINNYA_PLUGIN_ROOT
       ?? path.join(runtimePathRoots.appDataRoot, 'plugins'),
+    LINNYA_RUNTIME_ROOT: environment.LINNYA_RUNTIME_ROOT
+      ?? path.join(runtimePathRoots.appDataRoot, 'runtimes'),
     MODEL_REGISTRY_DEFAULTS_PATH: defaultModels.path,
   };
   const commandHostEnvironment = createHostProcessEnvironment(processEnvironment);

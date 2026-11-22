@@ -69,10 +69,6 @@ export function createCatalogPluginReleaseSource(input: {
           ...(latest.rendererUi ? { rendererUi: latest.rendererUi } : {}),
         };
       }
-      if (selection.runtimes.length > 0) {
-        // 原生运行时组件的下载与激活在下一阶段落地；在此之前不安装依赖运行时的版本。
-        throw new PluginOperationError('incompatible', `${pluginId}@${selection.entry.version} 需要的运行时组件暂不支持远程安装`, { pluginId });
-      }
       const { entry } = selection;
       return {
         version: entry.version,
@@ -81,6 +77,7 @@ export function createCatalogPluginReleaseSource(input: {
         ...(entry.minApp ? { minApp: entry.minApp } : {}),
         ...(entry.rendererUi ? { rendererUi: entry.rendererUi } : {}),
         provenance: { keyId: catalog.keyId, digest: catalog.digest, sequence: catalog.sequence, envelope: catalog.envelope },
+        ...(selection.runtimes.length > 0 ? { runtimes: selection.runtimes } : {}),
       };
     },
   };

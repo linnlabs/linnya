@@ -39,7 +39,8 @@ import { installPluginFromRemoteAndActivate } from '../../../../features/plugins
 import { installPluginFromBundledAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromBundledAndActivate';
 import { checkPluginUpdateFromRemote } from '../../../../features/plugins/install/orchestration/installPluginUpdate';
 import { isOfficialPluginRemoteServiceEnabled } from '../../../../features/plugins/install/functions/isOfficialPluginRemoteServiceEnabled';
-import type { RemotePluginReleaseSource } from '../../../../features/plugins/install/definitions/pluginInstall';
+import type { RemotePluginReleaseSource, RemotePluginRuntimeInstaller } from '../../../../features/plugins/install/definitions/pluginInstall';
+import { installRuntimeComponent } from '../../../../features/runtimes/orchestration/installRuntimeComponent';
 import { createCatalogPluginReleaseSource } from '../../../../features/plugins/catalog/orchestration/createCatalogPluginReleaseSource';
 import { createPluginCatalogStateStore } from '../../../../features/plugins/catalog/infrastructure/pluginCatalogStateStore';
 import { resolvePluginCatalogUrl } from '../../../../features/plugins/catalog/functions/resolvePluginCatalogUrl';
@@ -246,6 +247,27 @@ function parsePluginId(value: unknown, label: string): string {
     throw new PluginOperationError('unknown', `[${label}] pluginId 不能为空`);
   }
   return pluginId;
+}
+
+/** 插件所需原生运行时按同一份已验签 catalog 安装到 LINNYA_RUNTIME_ROOT。 */
+function createOfficialRuntimeInstaller(pluginId: string, userPluginRoot: string): RemotePluginRuntimeInstaller {
+  return async (runtimes, provenance) => {
+    const runtimeRoot = process.env.LINNYA_RUNTIME_ROOT;
+    if (!runtimeRoot) {
+      throw new PluginOperationError('source-unavailable', '运行时目录未初始化，不能安装插件所需的运行时', { pluginId });
+    }
+    const laterRevocations = createPluginCatalogStateStore({ userPluginRoot }).readRevocations();
+    for (const runtime of runtimes) {
+      await installRuntimeComponent({
+        runtimeRoot,
+        runtime,
+        provenance,
+        trustedKeys: trustedPluginCatalogKeys,
+        laterRevocations,
+        fetch: globalThis.fetch,
+      });
+    }
+  };
 }
 
 /** official 组合的远程版本来源：只认独立插件密钥签名的 catalog，并在用户插件根记录高水位。 */
@@ -718,6 +740,7 @@ export async function registerPluginsHandlers(input: {
             userPluginRoot,
             pluginId,
             releaseSource: createOfficialPluginReleaseSource(pluginId),
+            installRuntimes: createOfficialRuntimeInstaller(pluginId, userPluginRoot),
             appVersion: input.applicationVersion,
             rendererUiVersion: RENDERER_UI_VERSION,
             knownPlugins,

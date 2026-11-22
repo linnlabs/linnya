@@ -1,5 +1,10 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
+import { QdrantRuntimeMissingError } from './qdrantProcessRuntime';
 import { resolveQdrantProcessRuntime } from './resolveQdrantProcessRuntime';
 
 describe('resolveQdrantProcessRuntime', () => {
@@ -17,7 +22,7 @@ describe('resolveQdrantProcessRuntime', () => {
       },
     });
 
-    expect(runtime).toEqual({
+    expect(runtime).toMatchObject({
       binaryPath: '/workspace/extraResources/bin/qdrant/mac-arm64/qdrant',
       platform: 'darwin',
       environment: {
@@ -50,5 +55,26 @@ describe('resolveQdrantProcessRuntime', () => {
       architecture: 'x64',
       hostEnvironment: {},
     })).toThrow('不支持 linux/x64');
+  });
+
+  it('启动时先用已安装运行时组件，其次安装包内副本，都没有时报运行时缺失', async () => {
+    const resources = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-qdrant-runtime-'));
+    try {
+      const base = {
+        packaged: true, resourcesPath: resources, mainBundleDirectory: path.join(resources, 'app.asar', 'dist', 'main'),
+        platform: 'darwin' as const, architecture: 'arm64' as const, hostEnvironment: {},
+      };
+      const installed = resolveQdrantProcessRuntime({ ...base, resolveInstalledExecutable: async () => '/runtimes/qdrant/1.14.1/qdrant' });
+      await expect(installed.resolveExecutable?.()).resolves.toBe('/runtimes/qdrant/1.14.1/qdrant');
+
+      const noComponent = resolveQdrantProcessRuntime({ ...base, resolveInstalledExecutable: async () => null });
+      await expect(noComponent.resolveExecutable?.()).rejects.toBeInstanceOf(QdrantRuntimeMissingError);
+
+      fs.mkdirSync(path.join(resources, 'bin', 'qdrant'), { recursive: true });
+      fs.writeFileSync(path.join(resources, 'bin', 'qdrant', 'qdrant'), 'bundled');
+      await expect(noComponent.resolveExecutable?.()).resolves.toBe(path.join(resources, 'bin', 'qdrant', 'qdrant'));
+    } finally {
+      fs.rmSync(resources, { recursive: true, force: true });
+    }
   });
 });

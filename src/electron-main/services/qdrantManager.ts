@@ -88,7 +88,10 @@ export class QdrantManager {
     // 重复 start 也必须等待旧树与 owner 资源完整收口，不能覆盖唯一进程引用。
     if (this.process) await this.stop();
 
-    const qdrantBinary = this.processRuntime.binaryPath;
+    // 运行时组件可能在 App 运行期间安装或替换，每次启动时才解析实际可执行文件。
+    const qdrantBinary = this.processRuntime.resolveExecutable
+      ? await this.processRuntime.resolveExecutable()
+      : this.processRuntime.binaryPath;
 
     // 检查文件是否存在
     try {

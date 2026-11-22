@@ -50,6 +50,7 @@ import { resolveQueueWorkerRuntime } from '../../../../infra/task-queue/function
 import { createStoredPluginCredentialRuntimePort } from '../../adapters/plugin-credentials/createStoredPluginCredentialRuntimePort';
 import { createProfileCredentialStorage } from '../../adapters/credential-storage/createProfileCredentialStorage';
 import { createExportArtifactCommitRpcClient } from '../../application/export-artifact-commit';
+import { createInstalledRuntimeExecutableResolver } from '../functions/createInstalledRuntimeExecutableResolver';
 
 /** 纯 Node App Server composition：这里创建唯一 Commands owner，并把 Desktop 能力收窄为 reverse RPC port。 */
 export function createHeadlessAppServerBackendComposition(input: {
@@ -152,6 +153,13 @@ export function createHeadlessAppServerBackendComposition(input: {
           platform: input.bootstrap.backend_facts.platform,
           architecture: input.bootstrap.backend_facts.architecture,
           hostEnvironment: input.bootstrap.command_host_environment.entries,
+          resolveInstalledExecutable: createInstalledRuntimeExecutableResolver({
+            runtimeId: 'qdrant',
+            runtimeRoot: process.env.LINNYA_RUNTIME_ROOT,
+            userPluginRoot: process.env.LINNYA_PLUGIN_ROOT,
+            platform: input.bootstrap.backend_facts.platform,
+            architecture: input.bootstrap.backend_facts.architecture,
+          }),
         }),
         launchOwnedPipeProcess: createLocalProcessPlatformLauncher(
           input.bootstrap.local_process_platform_runtime,

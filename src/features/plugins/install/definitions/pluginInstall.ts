@@ -1,5 +1,7 @@
 import type { PluginId, PluginOperationErrorCode, PluginRemoteUpdateCheckResult } from '@app/schemas';
 
+import type { ResolvedPluginRuntime } from '../../catalog/functions/selectCatalogPluginRelease';
+
 export interface RemotePluginVersionManifest {
   readonly version: string;
   readonly minApp?: string;
@@ -18,7 +20,15 @@ export interface CatalogInstallProvenance {
 
 export interface RemotePluginRelease extends RemotePluginVersionManifest {
   readonly provenance?: CatalogInstallProvenance;
+  /** catalog 解析到本平台的原生运行时；插件安装前先装好。 */
+  readonly runtimes?: readonly ResolvedPluginRuntime[];
 }
+
+/** 由 Host 组合注入：按 catalog 来源证明安装所需运行时，失败时抛出 PluginOperationError。 */
+export type RemotePluginRuntimeInstaller = (
+  runtimes: readonly ResolvedPluginRuntime[],
+  provenance: CatalogInstallProvenance,
+) => Promise<void>;
 
 /**
  * 远程版本来源。official 组合使用已验签 catalog；未签名 latest.json 只留给开发与 R2 smoke。
@@ -38,6 +48,7 @@ export interface InstallPluginUpdateOptions {
   /** 与 releaseSource 二选一；只用于开发与 R2 smoke 的未签名 latest.json。 */
   readonly latestManifestUrl?: string;
   readonly releaseSource?: RemotePluginReleaseSource;
+  readonly installRuntimes?: RemotePluginRuntimeInstaller;
   readonly userPluginRoot: string;
   readonly appVersion: string;
   readonly rendererUiVersion: string;

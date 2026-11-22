@@ -14,7 +14,7 @@ import { clearPluginUserRemovedMarker, markPluginUserRemoved } from '../function
 import { activatePluginVersionWithMigrations } from './activatePluginVersionWithMigrations';
 import { installPluginUpdateFromRemote } from './installPluginUpdate';
 import { toPluginOperationError } from '../definitions/pluginOperationError';
-import type { RemotePluginReleaseSource } from '../definitions/pluginInstall';
+import type { RemotePluginReleaseSource, RemotePluginRuntimeInstaller } from '../definitions/pluginInstall';
 
 export interface PluginUpgradePlanResolveInput {
   readonly pluginId: PluginId;
@@ -32,6 +32,7 @@ export interface InstallPluginFromRemoteAndActivateOptions {
   /** 与 releaseSource 二选一；未签名 latest.json 只用于开发与 R2 smoke。 */
   readonly latestManifestUrl?: string;
   readonly releaseSource?: RemotePluginReleaseSource;
+  readonly installRuntimes?: RemotePluginRuntimeInstaller;
   readonly appVersion: string;
   readonly rendererUiVersion: string;
   readonly knownPlugins: readonly PluginMeta[];
@@ -113,6 +114,7 @@ export async function installPluginFromRemoteAndActivate(
     pluginId: options.pluginId,
     latestManifestUrl: options.latestManifestUrl,
     releaseSource: options.releaseSource,
+    installRuntimes: options.installRuntimes,
     userPluginRoot: options.userPluginRoot,
     appVersion: options.appVersion,
     rendererUiVersion: options.rendererUiVersion,

@@ -166,7 +166,7 @@ describe('catalog-official 远程安装与来源准入', () => {
     expect(fs.existsSync(path.join(userPluginRoot, 'sample', PLUGIN_INSTALL_RECEIPTS_DIRECTORY))).toBe(false);
   });
 
-  it('不兼容时跳过且不下载；需要原生运行时的版本在运行时组件落地前不安装', async () => {
+  it('不兼容时跳过且不下载；需要原生运行时但没有可信安装途径时不安装', async () => {
     const zip = await pluginZip();
     const incompatible = await setup(catalogPayload({ plugins: [entry(zip, { minApp: '9.0.0' })] }), zip);
     expect(await incompatible.install()).toMatchObject({ status: 'skipped', reason: 'incompatible' });
