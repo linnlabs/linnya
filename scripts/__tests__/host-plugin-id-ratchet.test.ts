@@ -30,10 +30,11 @@ function writeFile(root: string, relative: string, content: string): void {
 }
 
 describe('host plugin id ratchet', () => {
+  // 全仓扫描 Host 生产源码；共享 CI 机器在并行分片时可能超过默认 5 秒，给足时间，内容断言不变。
   it('当前 Host 插件 ID 引用与 baseline 精确一致', () => {
     const { added, removed } = runHostPluginIdRatchet();
     expect({ added, removed }).toEqual({ added: [], removed: [] });
-  });
+  }, 60_000);
 
   it('识别插件身份位置：比较、plugin 调用参数、plugin 属性与 switch 分支', () => {
     expect(found("if (entry.pluginId !== 'knowledge') return;")).toEqual(['knowledge']);
