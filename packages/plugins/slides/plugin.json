@@ -1,6 +1,6 @@
 {
   "id": "slides",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "name": "Slides",
   "description": "用 AI 规划、生成、编辑和检查演示文稿，并让 agents 沿源码协作。",
   "developer": "Linnya",
@@ -10,6 +10,11 @@
     "Slides 作为独立 runtime 插件分发、升级和卸载，主应用只保留通用平台能力。"
   ],
   "releaseNotes": [
+    {
+      "version": "1.1.3",
+      "title": "PPTX 导出与排版修正",
+      "description": "PPTX 导出保留富文本段落、作者对象 ID 与文字语言，导出前校验文字描边与阴影颜色；公式分数、单倍行距与行内编辑基线按 PowerPoint 规则排版；按旧排版规则保存的文稿会自动重新编译。"
+    },
     {
       "version": "1.1.2",
       "title": "补齐图表数字格式运行时",

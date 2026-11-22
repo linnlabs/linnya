@@ -6,6 +6,9 @@
   "license": "Apache-2.0",
   "description": "Linnya free canvas document plugin",
   "linnya": {
+    "release": {
+      "includeInOfficialRelease": true
+    },
     "development": {
       "backendLoading": "disk",
       "backendWatchConfig": "tsup.plugin.config.ts",

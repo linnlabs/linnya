@@ -34,9 +34,11 @@ Canvas 是自由画布文档插件。后端逐元素保存当前事实，Rendere
 
 ## 验证
 
-插件自身提供 typecheck、test、lint、build 入口。guard同时按仓内Prettier配置检查正式src文件，禁止压行规避物理行计量；保留120行函数上限及文件600提醒、700职责审查、800失败规则，不因格式化放宽阈值。测试覆盖真实提交/重开、失败回滚、并发/撤回与插件生命周期；技术探针放在 `dev/probes`，本地结果不成为构建依赖。插件不属于默认官方发行目标。
+插件自身提供 typecheck、test、lint、build 入口。guard同时按仓内Prettier配置检查正式src文件，禁止压行规避物理行计量；保留120行函数上限及文件600提醒、700职责审查、800失败规则，不因格式化放宽阈值。测试覆盖真实提交/重开、失败回滚、并发/撤回与插件生命周期；技术探针放在 `dev/probes`，本地结果不成为构建依赖。
 
-[Canvas Regression](../../../.github/workflows/canvas-regression.yml) 在 macOS、Windows、Linux 分别验证业务结果、离屏绘制的确定性工作量、同机DOM与位图内容以及独立Canvas制品闭包，并保留合成图像证据。身份牌与远景标签像素另由现有 `run-identity-atlas-probe.mjs` 独立验证，归档其PNG与JSON；依赖及平台准备成功后，即使前面的视觉门失败也继续运行，任一失败仍使作业失败。Linux使用Xvfb、sandbox与显式软件后端，软件出图只提供功能资格。Linux不代表新增Desktop发行平台，制品验收也不会改变官方发行目标。共享CI不比较帧耗时，也不能代替真实GPU、输入法和屏幕交互验收。固定模型任务与完整证据的评分入口见 [Agent验收](./scripts/agent-evaluation/README.md)；模型评测与无凭据CI分开运行。
+Canvas 是随安装包分发的官方插件（`package.json#linnya.release.includeInOfficialRelease`），新用户与升级的老用户都默认安装。`pnpm exec tsx scripts/e2e/canvas-plugin/bundled-lifecycle.acceptance.mjs` 在隔离探针的随包模式里验证：默认安装并启用；从项目文件新建画布、写文字卡并持久化；商店卸载（通用确认，只卸载不删资料）后入口撤下、资料不动；重启后保持卸载、不被随包来源装回；从随包重装后原画布与卡片在界面里打开。正式候选包另由发布流水线验证安装包内的 Canvas 后端读回与受管 Shell 里的 CLI。
+
+[Canvas Regression](../../../.github/workflows/canvas-regression.yml) 在 macOS、Windows、Linux 分别验证业务结果、离屏绘制的确定性工作量、同机DOM与位图内容以及独立Canvas制品闭包，并保留合成图像证据。身份牌与远景标签像素另由现有 `run-identity-atlas-probe.mjs` 独立验证，归档其PNG与JSON；依赖及平台准备成功后，即使前面的视觉门失败也继续运行，任一失败仍使作业失败。Linux使用Xvfb、sandbox与显式软件后端，软件出图只提供功能资格。Linux不代表新增Desktop发行平台。共享CI不比较帧耗时，也不能代替真实GPU、输入法和屏幕交互验收。固定模型任务与完整证据的评分入口见 [Agent验收](./scripts/agent-evaluation/README.md)；模型评测与无凭据CI分开运行。
 
 Host侧集成测试会运行实际Canvas计算Worker，须先完成插件的backend构建；其他CI job的构建产物不能代替当前job的依赖准备。
 
@@ -137,7 +139,7 @@ Agent几何动效只消费正式增量中每张卡最后一次来源；用户提
 
 独立只读CLI还支持按显式项目、对话和request-id读取持久回执。它与App facade复用`agentChanges/queries.ts`；正式制品门禁仅允许该只读闭包，仍禁止审批、写入与历史运行态进入CLI。查看回执不重新执行原命令，也不推测已丢失的模型输出。
 
-`pnpm run smoke:plugin:canvas:artifact`先构建schemas和Canvas独立制品，再用临时隔离根验证checksum/content BOM、正式disk Backend加载、Skill/worker/migration发现、无数据库的CLI help、编译CLI真实只读SQLite与写入拒绝、编译Node计算worker及正式Host HiddenWorker的PNG/JPEG/取消/字体/标签/图片路径。临时制品根与数据库测试后删除；Canvas不进入默认官方发行目标。
+`pnpm run smoke:plugin:canvas:artifact`先构建schemas和Canvas独立制品，再用临时隔离根验证checksum/content BOM、正式disk Backend加载、Skill/worker/migration发现、无数据库的CLI help、编译CLI真实只读SQLite与写入拒绝、编译Node计算worker及正式Host HiddenWorker的PNG/JPEG/取消/字体/标签/图片路径。临时制品根与数据库测试后删除。
 
 三个Node entry各有独立esbuild元数据，main/CLI/compute初始预算分别3/3.2/5 MiB。ELK只进入计算worker；main/CLI拒绝Pixi、Renderer和Host业务装配。CLI仅内联两个公开只读SDK入口，虚拟Host specifier不得留到独立进程；native模块保留懒加载并通过正式CJS Host白名单解析。公开barrel产生的空初始化闭包可保留，但输出AST必须证明未保留可执行写函数体。Renderer、HTML worker、CSS与字体引用均验证实际zip闭包，不把开发探针、元数据或源码混进制品。独立读取使用产品提供的Electron Node ABI，help也可由普通Node运行。
 

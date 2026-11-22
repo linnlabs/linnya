@@ -227,14 +227,18 @@ try {
     assert.equal(treeDigest(baselineRoot), baselineDigest);
   });
 
-  await evidence.check('旧版装过的随包插件在新版仍可用：同版本号不能换内容', async () => {
+  await evidence.check('随包插件：旧版装过的仍可用（同版本号不能换内容），新增的随包插件对老用户也默认装上', async () => {
     const { value: listing } = await run('eval', 'window.electronAPI.plugins.list()');
-    const slides = listing.data.find(item => item.meta.id === 'slides');
     const log = readFileSync(fresh.logs.desktop, 'utf8');
     const conflicts = log.split('\n').filter(line => line.includes('同版本 artifact 冲突'));
-    evidence.json('bundled-plugins-after-upgrade', { slides: slides && { state: slides.state, version: slides.meta.version }, conflicts });
+    const bundled = readdirSync(join(fresh.repoRoot, 'extraResources', 'plugins')).sort();
+    const states = Object.fromEntries(bundled.map(id => {
+      const plugin = listing.data.find(item => item.meta.id === id);
+      return [id, plugin && { state: plugin.state, version: plugin.meta.version }];
+    }));
+    evidence.json('bundled-plugins-after-upgrade', { states, conflicts });
     assert.deepEqual(conflicts, [], 'a bundled plugin kept its version but changed content since the legacy release');
-    assert.equal(slides?.state, 'enabled');
+    for (const id of bundled) assert.equal(states[id]?.state, 'enabled', `${id} after upgrade: ${json(states[id])}`);
   });
 } catch (error) {
   failed = error;
