@@ -20,7 +20,7 @@
 
 `resolveInstalledRuntimeExecutable` 在每次启动运行时前执行：指针 → 回执 → 回执中的信封仍由受信 key 签发、列出本平台目标且未被撤回（含本机最近 catalog 的撤回）→ 可执行文件位于版本目录内且 SHA-256 一致。任一不符返回 `rejected` 并记诊断，不执行该文件。
 
-Qdrant 的 `resolveQdrantProcessRuntime` 在启动时才解析：已安装且复核通过的运行时组件优先，其次安装包内的副本（旧版本随包分发），都没有时抛出 `QdrantRuntimeMissingError`。
+Qdrant 的 `resolveQdrantProcessRuntime` 在启动时才解析：已安装且复核通过的运行时组件优先，其次 `binaryPath` 副本，都没有时抛出 `QdrantRuntimeMissingError`。正式安装包不再携带 Qdrant；`binaryPath` 只在源码运行时指向 `prepare-qdrant-runtime` 准备的 `extraResources/bin/qdrant`。Windows 组件把 `msvcp140.dll`、`vcruntime140.dll`、`vcruntime140_1.dll` 与 `qdrant.exe` 放在同一目录（`package-runtime-component.mjs` 从 `build/windows-app-local-runtime/<arch>` 读取，缺失即失败）。
 
 ## 声明与打包
 

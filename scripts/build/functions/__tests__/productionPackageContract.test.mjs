@@ -280,16 +280,23 @@ describe('Windows app-local VC runtime contract', () => {
       to: '.',
       filter: ['*.dll'],
     });
-    for (const targetDirectory of [
-      'command-runtime/windows/x64',
-      'bin/qdrant',
-    ]) {
-      expect(packageConfig.build.win.extraResources).toContainEqual({
-        from: 'build/windows-app-local-runtime/x64',
-        to: targetDirectory,
-        filter: ['*.dll'],
-      });
-    }
+    expect(packageConfig.build.win.extraResources).toContainEqual({
+      from: 'build/windows-app-local-runtime/x64',
+      to: 'command-runtime/windows/x64',
+      filter: ['*.dll'],
+    });
+    // Qdrant 作为远程运行时组件分发，安装包不再携带它或为它复制运行库。
+    const packagedResources = [
+      ...packageConfig.build.extraResources,
+      ...packageConfig.build.win.extraResources,
+      ...packageConfig.build.mac.extraResources,
+    ];
+    expect(packagedResources.filter(entry => /qdrant/iu.test(`${entry.from} ${entry.to}`))).toEqual([]);
+    expect(packageConfig.build.extraResources).toContainEqual({
+      from: '../extraResources/plugin-declarations',
+      to: 'plugin-declarations',
+      filter: ['**/plugin.json', '**/.install-on-demand'],
+    });
     expect(packageConfig.build.win.extraResources).toContainEqual({
       from: 'dist/main/plugin-cli-runtime/win32/x64/linnya-plugin-cli-client.exe',
       to: 'command-runtime/plugin-cli/win32/x64/linnya-plugin-cli-client.exe',

@@ -11,6 +11,9 @@ import path from 'node:path';
 import { getRuntimeEnabledPluginIds } from '../pluginRuntimeState';
 import { pluginDiagnostics } from '../diagnostics';
 import { isTrustedBackendApplicationSurface } from '../knowledgeResourceAdmission';
+import { matchesCatalogInstall } from '../rendererApplicationSurfaceTrust';
+import { resolveTrustedPluginCatalogKeys } from 'src/features/plugins/catalog/functions/resolvePluginCatalogSource';
+import { readInstalledDistributionIdentity } from 'src/shared/distribution-identity';
 import { invalidateSkillCache } from '../../../../features/skills/discovery';
 import { validatePluginAgentRequiredSkills } from '../../../../features/skills/agentSkillExposure';
 import { replacePluginSkillSourceRoots } from '../../../../features/skills/pluginSkillSources';
@@ -109,6 +112,8 @@ function registerDiskBackendPlugins(options: {
   const trustedDirectPluginDirs = new Set(
     (options.trustedDirectPluginDirs ?? []).map(pluginDir => path.resolve(pluginDir))
   );
+  const identity = readInstalledDistributionIdentity();
+  const trustedCatalogKeys = identity ? resolveTrustedPluginCatalogKeys({ identity, env: process.env }) : null;
   for (const item of loaded) {
     const manifest = readPluginManifestSummary(item.pluginDir);
     if (manifest?.applicationSurfaceSlot) {
@@ -129,9 +134,16 @@ function registerDiskBackendPlugins(options: {
     }
     // 中文说明：高信任能力跟装配来源走，不跟某个插件 ID 走。开发者明确传入的
     // Backend direct dir，以及当前发行版随包清单中的插件，才允许贡献 Plugin CLI。
+    // 不随包的官方插件经验签 catalog 安装，回执复核通过时与随包插件同等授予。
     const allowPluginCli =
       trustedDirectPluginDirs.has(path.resolve(item.pluginDir)) ||
-      options.trustedBundledPluginIds?.has(item.contribution.meta.id) === true;
+      options.trustedBundledPluginIds?.has(item.contribution.meta.id) === true ||
+      (trustedCatalogKeys !== null && matchesCatalogInstall({
+        pluginId: item.contribution.meta.id,
+        version: item.contribution.meta.version,
+        pluginDir: item.pluginDir,
+        sourceKind: 'active',
+      }, trustedCatalogKeys));
     registerBackendPluginIfMissing(item.contribution, { allowPluginCli });
     diskPluginDirsById.set(item.contribution.meta.id, item.pluginDir);
   }

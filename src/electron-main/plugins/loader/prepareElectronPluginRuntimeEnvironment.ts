@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -41,6 +42,13 @@ export function prepareElectronPluginRuntimeEnvironment(): PluginRuntimeEnvironm
     process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT = bundledPluginRoot;
   } else {
     delete process.env.LINNYA_RESOLVED_BUNDLED_PLUGIN_ROOT;
+  }
+  // 远程分发插件的声明与随包插件同在安装资源内（resources/plugin-declarations）；源码运行对应 extraResources。
+  const declarationRoot = bundledPluginRoot ? path.join(path.dirname(bundledPluginRoot), 'plugin-declarations') : null;
+  if (declarationRoot && fs.existsSync(declarationRoot)) {
+    process.env.LINNYA_RESOLVED_PLUGIN_DECLARATION_ROOT = declarationRoot;
+  } else {
+    delete process.env.LINNYA_RESOLVED_PLUGIN_DECLARATION_ROOT;
   }
 
   const shouldSeedBundledPlugins =

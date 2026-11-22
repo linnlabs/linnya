@@ -4,6 +4,8 @@ export interface OfficialPluginReleaseTarget {
   readonly defaultR2Prefix: string;
   readonly defaultDownloadBaseUrl: string;
   readonly installByDefault?: false;
+  /** 缺省为随包分发；remote 只通过已验签 catalog 分发。 */
+  readonly distribution?: 'remote';
   readonly productionDistDirectories: readonly string[];
   readonly artifactVerification?: {
     readonly requiredFiles?: readonly {
@@ -31,6 +33,8 @@ export function discoverWorkspaceOfficialPluginReleaseTargets(
 
 export function buildPluginEnvSuffix(pluginId: string): string;
 export function listOfficialPluginReleaseTargetIds(): string[];
+export function listBundledOfficialPluginReleaseTargetIds(): string[];
+export function listRemoteOfficialPluginReleaseTargetIds(): string[];
 export function findOfficialPluginReleaseTarget(pluginId: string): OfficialPluginReleaseTarget | null;
 export function resolvePluginProductionDistDirectories(
   pluginId: string,

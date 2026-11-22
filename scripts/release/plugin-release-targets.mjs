@@ -139,6 +139,10 @@ export function discoverWorkspaceOfficialPluginReleaseTargets(root = repoRoot) {
       if (release.installByDefault !== undefined && typeof release.installByDefault !== 'boolean') {
         throw new Error(`${normalizeWorkspaceRelativePath(root, packageJsonPath)} linnya.release.installByDefault 必须是 boolean`);
       }
+      // bundled：随安装包分发；remote：只通过已验签 catalog 远程分发，安装包只带 plugin.json 声明。
+      if (release.distribution !== undefined && release.distribution !== 'bundled' && release.distribution !== 'remote') {
+        throw new Error(`${normalizeWorkspaceRelativePath(root, packageJsonPath)} linnya.release.distribution 只能是 bundled 或 remote`);
+      }
 
       const manifest = readJsonFile(manifestPath);
       if (!isRecord(manifest) || typeof manifest.id !== 'string' || manifest.id.trim().length === 0) {
@@ -151,6 +155,7 @@ export function discoverWorkspaceOfficialPluginReleaseTargets(root = repoRoot) {
         defaultR2Prefix: `plugins/${pluginId}`,
         defaultDownloadBaseUrl: `${defaultPluginDownloadRootUrl}/${pluginId}`,
         ...(release.installByDefault === false ? { installByDefault: false } : {}),
+        ...(release.distribution === 'remote' ? { distribution: 'remote' } : {}),
         productionDistDirectories: readDeclaredProductionDistDirectories({
           pluginId,
           manifest,
@@ -187,6 +192,14 @@ export const buildPluginEnvSuffix = pluginId =>
 
 export const listOfficialPluginReleaseTargetIds = () =>
   officialPluginReleaseTargets.map(target => target.id);
+
+/** 随安装包分发的官方插件：进入 extraResources/plugins。 */
+export const listBundledOfficialPluginReleaseTargetIds = () =>
+  officialPluginReleaseTargets.filter(target => target.distribution !== 'remote').map(target => target.id);
+
+/** 只远程分发的官方插件：安装包只带 plugin.json 声明（extraResources/plugin-declarations）。 */
+export const listRemoteOfficialPluginReleaseTargetIds = () =>
+  officialPluginReleaseTargets.filter(target => target.distribution === 'remote').map(target => target.id);
 
 export const findOfficialPluginReleaseTarget = pluginId =>
   officialPluginReleaseTargets.find(target => target.id === pluginId) ?? null;

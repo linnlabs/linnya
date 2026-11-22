@@ -46,6 +46,16 @@ Desktop 发行身份和插件 artifact 来源是两层不同证明。当前产�
 
 启动 seed 只接收清单中声明且字节一致的 artifact。位于 `extraResources/plugins` 或其他受扫描目录中，不会自动获得官方身份。开发 smoke 可以生成明确标记为 development 的同结构 fixture，但它不能成为生产信任输入。
 
+## Remote 分发与插件声明
+
+package 在 `linnya.release.distribution` 声明 `remote` 时只通过已验签 catalog 分发，不进入 `extraResources/plugins`；安装包改为在 `resources/plugin-declarations/<id>/` 携带它的 `plugin.json`（无代码，按需插件另有 `.install-on-demand`）。声明与随包目录同样由 Desktop 冻结，用于：
+
+- 未安装时判断本机是否已有该插件的资料、解析数据根与数据清理；
+- 按需插件的自动恢复：本机已有资料（例如从内置该功能的旧版本升级）但尚未安装、且用户没有主动卸载时，App Server 启动后在后台从 catalog 安装，逐个进行，进度照常推给商店；没有资料的用户不下载，失败只记诊断、下次启动再试；
+- 已安装版的来源授权：远程版没有随包副本，版本目录有经验签 catalog 的安装回执（同一信任环、含后续撤回）时，与随包安装同等获得旧数据根接管与 Plugin CLI。
+
+本次运行从未加载过的插件（首次安装）安装后直接登记，不需要重启；替换已加载的旧版本仍需重启。远程运行时组件（如 Qdrant）同样不进入安装包，Windows 组件自带 VC 运行库。
+
 ## Catalog 与远程安装
 
 远程安装必须遵循以下顺序：
@@ -87,6 +97,6 @@ Catalog 验签合同与实现见 [`src/features/plugins/catalog`](../../src/feat
 
 ## 当前 Desktop 发行集合
 
-0.1.0 仅随包提供 Slides；Decision 保留源码和开发入口，不进入默认生产集合。
+随包提供 Slides；知识库为 remote 分发（插件与 Qdrant 运行时组件均从 catalog 下载，安装包只带声明）；Decision 保留源码和开发入口，不进入默认生产集合。
 发行装配由 `scripts/release/plugin-release-targets.mjs` 拥有，Core 不维护插件身份特判。
 未加载插件的既有文档和表不会因此被删除；本版本不能编辑其文档类型。

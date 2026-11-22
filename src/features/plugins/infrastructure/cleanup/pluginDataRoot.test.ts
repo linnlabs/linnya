@@ -6,6 +6,10 @@ import type { PluginManifestDataStorage } from '@app/schemas';
 
 import { resolvePluginDataRoot } from './pluginDataRoot';
 import { describePluginData } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
+import { catalogPayload, catalogPlugin, createTestCatalogPublisher } from '../../catalog/__tests__/catalogTestSupport';
+import { verifyPluginCatalog } from '../../catalog/functions/verifyPluginCatalog';
+import { writePluginInstallReceipt } from '../../catalog/infrastructure/pluginInstallReceiptStore';
+import { readPluginArtifactIdentity } from '../../install/functions/readPluginArtifactIdentity';
 
 const roots: string[] = [];
 const storage = (legacyRoots: readonly string[] = []): PluginManifestDataStorage => ({
@@ -101,5 +105,49 @@ describe('plugin data root', () => {
     fs.mkdirSync(other);
     fs.symlinkSync(other, path.join(options.workspaceRoot, 'KnowledgeBase'), 'junction');
     expect(() => describePluginData(options)).toThrow('不是实际目录');
+  });
+
+  it('uses a trusted shipped declaration for plugins that are not bundled, including legacy roots and cleanup', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-root-'));
+    roots.push(root);
+    const declarationRoot = path.join(root, 'plugin-declarations');
+    writeManifest(path.join(declarationRoot, 'knowledge'), 'knowledge', ['KnowledgeBase']);
+    fs.mkdirSync(path.join(root, 'KnowledgeBase'));
+    const base = { pluginId: 'knowledge', workspaceRoot: root, declarationRoot, forCleanup: true };
+    expect(describePluginData({ ...base, declarationSourceTrusted: true })?.dataRoot).toBe(path.join(root, 'KnowledgeBase'));
+    // 不可信的声明目录不能授权清理。
+    expect(() => describePluginData({ ...base, declarationSourceTrusted: false })).toThrow('来源不可信');
+  });
+
+  it('admits a catalog-installed copy to take over legacy roots only with a valid signed receipt', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'linnya-plugin-root-'));
+    roots.push(root);
+    const activeRoot = path.join(root, 'active');
+    const installedDirectory = path.join(activeRoot, 'knowledge', '1.0.0');
+    writeManifest(installedDirectory, 'knowledge', ['KnowledgeBase']);
+    fs.writeFileSync(path.join(installedDirectory, 'SHA512SUMS'), 'official');
+    fs.mkdirSync(path.join(root, 'KnowledgeBase'));
+    const publisher = createTestCatalogPublisher();
+    const sha512 = 'd'.repeat(128);
+    const catalog = verifyPluginCatalog({
+      catalogText: publisher.sign(catalogPayload({ plugins: [catalogPlugin({ version: '1.0.0', sha512 })] })),
+      trustedKeys: publisher.trustedKeys,
+      expectedChannel: 'stable',
+      now: new Date('2026-11-22T00:00:00.000Z'),
+    });
+    const options = { pluginId: 'knowledge', workspaceRoot: root, activeRoot, registeredDirectory: installedDirectory, trustedCatalogKeys: publisher.trustedKeys };
+
+    // 没有回执：拒绝接管旧目录，也不能清理。
+    expect(() => describePluginData(options)).toThrow('不能接管旧数据根');
+    expect(() => describePluginData({ ...options, forCleanup: true })).toThrow('来源不可信');
+
+    writePluginInstallReceipt(path.join(activeRoot, 'knowledge'), {
+      schemaVersion: 1, source: 'catalog-official', pluginId: 'knowledge', version: '1.0.0', artifactSha512: sha512,
+      artifactIdentity: readPluginArtifactIdentity(installedDirectory), installedAt: '2026-11-22T00:00:00.000Z',
+      catalog: { keyId: catalog.keyId, digest: catalog.digest, sequence: catalog.sequence, envelope: catalog.envelope },
+    });
+    expect(describePluginData({ ...options, forCleanup: true })?.dataRoot).toBe(path.join(root, 'KnowledgeBase'));
+    // 信任环里没有签发 key 时同样不认。
+    expect(() => describePluginData({ ...options, forCleanup: true, trustedCatalogKeys: createTestCatalogPublisher().trustedKeys })).toThrow('来源不可信');
   });
 });

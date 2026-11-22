@@ -50,6 +50,7 @@ temp_ts_build/
 # Generated product resources
 dist_release/
 extraResources/plugins/
+extraResources/plugin-declarations/
 extraResources/headless-node-runtime/
 extraResources/bin/qdrant/
 extraResources/bin/ffmpeg/*

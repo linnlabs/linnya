@@ -234,7 +234,7 @@ Cloudflare 上传检查：
   -> package:plugin:<id>
   -> smoke:plugin:<id>:artifact
   -> release:plugin:<id>:upload
-  -> prepare:extra-resources / 随包 seed
+  -> prepare:extra-resources / 随包 seed（distribution=remote 的插件只写 plugin-declarations 声明）
   -> smoke:plugins:official:r2
   -> store detail / catalog
 ```

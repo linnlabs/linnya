@@ -40,6 +40,19 @@ if (!licenseResponse.ok) throw new Error(`下载 Qdrant LICENSE 失败: ${licens
 const licenseBytes = Buffer.from(await licenseResponse.arrayBuffer());
 if (sha256(licenseBytes) !== catalog.upstream.licenseSha256) throw new Error('Qdrant LICENSE 与锁定摘要不一致');
 
+// Windows 的 qdrant.exe 依赖 VC 运行库；安装包不再携带 Qdrant，运行库随组件一起分发，放在 exe 同目录。
+const WINDOWS_VC_RUNTIME_FILES = ['msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll'];
+const supportFiles = [];
+if (target.platform === 'win32') {
+  const runtimeDirectory = path.join(repoRoot, 'build', 'windows-app-local-runtime', target.architecture);
+  for (const name of WINDOWS_VC_RUNTIME_FILES) {
+    const filePath = path.join(runtimeDirectory, name);
+    const bytes = await fs.readFile(filePath).catch(() => null);
+    if (!bytes) throw new Error(`缺少 Windows VC 运行库 ${filePath}，请先运行 pnpm run prepare:windows-app-local-runtime`);
+    supportFiles.push({ name, bytes });
+  }
+}
+
 const noticeText = [
   `Qdrant ${catalog.version}`,
   `Source: ${catalog.upstream.repositoryUrl} (tag ${catalog.upstream.releaseTag}, commit ${catalog.upstream.releaseCommit})`,
@@ -59,6 +72,7 @@ const { zip, metadata } = await packageRuntimeComponent({
   executableBytes,
   licenseText: licenseBytes.toString('utf8'),
   noticeText,
+  supportFiles,
 });
 
 const outputDirectory = path.join(

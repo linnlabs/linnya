@@ -29,6 +29,17 @@ describe('运行时组件打包', () => {
     expect((await archive.file('qdrant')!.async('nodebuffer')).equals(executable)).toBe(true);
   });
 
+  it('依赖文件放在可执行文件同目录并计入解压后大小；重名、带目录或空文件拒绝', async () => {
+    const dll = Buffer.from('MZ fake vc runtime');
+    const packaged = await packageRuntimeComponent({ ...base, platform: 'win32', architecture: 'x64', executableFileName: 'qdrant.exe', supportFiles: [{ name: 'vcruntime140.dll', bytes: dll }] });
+    const archive = await JSZip.loadAsync(packaged.zip);
+    expect(Object.keys(archive.files).sort()).toEqual(['LICENSE', 'NOTICE', 'qdrant.exe', 'vcruntime140.dll']);
+    expect(packaged.metadata.unpackedSize).toBe(executable.byteLength + dll.byteLength + Buffer.byteLength('Apache License 2.0') + Buffer.byteLength('Qdrant 1.14.1'));
+    await expect(packageRuntimeComponent({ ...base, supportFiles: [{ name: 'LICENSE', bytes: dll }] })).rejects.toThrow('重复');
+    await expect(packageRuntimeComponent({ ...base, supportFiles: [{ name: 'lib/a.dll', bytes: dll }] })).rejects.toThrow('目录');
+    await expect(packageRuntimeComponent({ ...base, supportFiles: [{ name: 'a.dll', bytes: Buffer.alloc(0) }] })).rejects.toThrow('为空');
+  });
+
   it('拒绝空可执行文件、带目录的文件名与缺失许可证', async () => {
     await expect(packageRuntimeComponent({ ...base, executableBytes: Buffer.alloc(0) })).rejects.toThrow('为空');
     await expect(packageRuntimeComponent({ ...base, executableFileName: 'bin/qdrant' })).rejects.toThrow('目录');

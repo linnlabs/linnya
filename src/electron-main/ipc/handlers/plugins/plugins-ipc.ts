@@ -72,7 +72,9 @@ import {
   type PluginRemoteCatalogResult,
 } from '@app/schemas';
 import { resolvePluginCleanupDescriptor } from '../../../../app-hosts/linnya/plugin-registry/pluginDataRoot';
-import { readPluginDataSummaryAsync, cleanupPluginData, hasPendingPluginDataCleanup } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { readPluginDataSummaryAsync, cleanupPluginData, hasPendingPluginDataCleanup, hasPluginUserData } from '../../../../features/plugins/infrastructure/cleanup/pluginDataCleanup';
+import { listOnDemandPluginDeclarations } from '../../../../features/plugins/install/infrastructure/readPluginDeclarations';
+import { restoreDeclaredPluginsWithUserData } from '../../../../features/plugins/install/orchestration/restoreDeclaredPluginsWithUserData';
 import { readJsonFile } from '../../../plugins/loader/pluginLayout';
 import {
   listBundledPluginManifestIds,
@@ -817,69 +819,87 @@ export async function registerPluginsHandlers(input: {
     }
   });
 
+  /** 远程安装的完整生命周期：串行、下载与激活、运行态同步；IPC 与“有资料自动恢复”共用。 */
+  async function runRemotePluginInstall(pluginId: string, source: PluginCatalogSource) {
+    return runPluginLifecycleOperationSerially({
+      pluginId,
+      operation: 'install-from-remote',
+      async run() {
+        assertPluginCanInstall(pluginId);
+        const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
+        if (!userPluginRoot) {
+          throw new PluginOperationError('source-unavailable', '插件目录未初始化，不能远程安装插件', { pluginId });
+        }
+        const db = getDb();
+        const knownPlugins = listKnownPluginMetas();
+        assertBackendPluginCanDeactivate(pluginId);
+        const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
+        const controller = new AbortController();
+        remoteInstallAbortControllers.set(pluginId, controller);
+        let result: Awaited<ReturnType<typeof installPluginFromRemoteAndActivate>>;
+        try {
+          result = await installPluginFromRemoteAndActivate({
+            db,
+            userPluginRoot,
+            pluginId,
+            releaseSource: createCatalogReleaseSource(pluginId, source),
+            installRuntimes: createOfficialRuntimeInstaller(pluginId, userPluginRoot, source),
+            // 官方来源只有已验签 catalog；不随包的官方插件首次安装时按下载内容登记。
+            allowCatalogListedPlugins: true,
+            appVersion: input.applicationVersion,
+            rendererUiVersion: RENDERER_UI_VERSION,
+            knownPlugins,
+            resolveUpgradePlan: resolveDiskPluginUpgradePlan,
+            recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
+            signal: controller.signal,
+            onProgress: progress => input.rendererIntegration.publishPluginInstallProgress({ pluginId, progress }),
+          });
+        } finally {
+          if (remoteInstallAbortControllers.get(pluginId) === controller) remoteInstallAbortControllers.delete(pluginId);
+        }
+        if (result.status === 'failed') {
+          throwPluginOperationResultFailure(result);
+        }
+        // 本次运行从未加载过该插件（首次安装、不随包的插件）：没有旧代码要卸载，可直接登记，不必重启。
+        const firstLoad = result.status === 'installed'
+          && !listRegisteredBackendPluginMetas().some(meta => meta.id === pluginId);
+        return transitionRuntime(async () => {
+          if (!scopedLifecycle)
+            await cancelActiveRunsForPluginRuntimeChange({
+              pluginId,
+              operation: '安装/升级',
+              supervisor: getRunSupervisor(),
+            });
+          let registeredNow = false;
+          if (firstLoad) {
+            try {
+              resetBackendPluginRegistrationForRuntimeChange();
+              ensureBuiltinBackendPluginsRegistered({ applicationVersion: input.applicationVersion, requireComplete: true });
+              registeredNow = listRegisteredBackendPluginMetas().some(meta => meta.id === pluginId);
+            } catch (error) {
+              // 安装已经提交；登记失败只意味着需要重启，下次启动会从 active artifact 注册。
+              logger.error('[plugins:installFromRemote] installed but registration refresh failed:', error);
+            }
+          }
+          await syncPluginRuntimeState({
+            reinitializeTools: true,
+            runtimeOwner: input.runtimeOwner,
+          });
+          toolRegistry.restorePluginTools(pluginId);
+          input.rendererIntegration.publishPluginsChanged();
+          return registeredNow && result.status === 'installed' ? { ...result, restartRequired: false } : result;
+        });
+      },
+    });
+  }
+
   input.ipc.handle('plugins:installFromRemote', async (_event, rawPluginId: unknown) => {
     try {
       if (!remoteSource) {
         throw new Error('当前版本暂不提供插件远程安装和更新，请使用随包插件');
       }
-      const source = remoteSource;
       const pluginId = parsePluginId(rawPluginId, 'plugins:installFromRemote');
-      return await runPluginLifecycleOperationSerially({
-        pluginId,
-        operation: 'install-from-remote',
-        async run() {
-          assertPluginCanInstall(pluginId);
-          const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
-          if (!userPluginRoot) {
-            throw new PluginOperationError('source-unavailable', '插件目录未初始化，不能远程安装插件', { pluginId });
-          }
-          const db = databaseService.getDb();
-          const knownPlugins = listKnownPluginMetas();
-          assertBackendPluginCanDeactivate(pluginId);
-          const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
-          const controller = new AbortController();
-          remoteInstallAbortControllers.set(pluginId, controller);
-          let result: Awaited<ReturnType<typeof installPluginFromRemoteAndActivate>>;
-          try {
-            result = await installPluginFromRemoteAndActivate({
-              db,
-              userPluginRoot,
-              pluginId,
-              releaseSource: createCatalogReleaseSource(pluginId, source),
-              installRuntimes: createOfficialRuntimeInstaller(pluginId, userPluginRoot, source),
-              // 官方来源只有已验签 catalog；不随包的官方插件首次安装时按下载内容登记。
-              allowCatalogListedPlugins: true,
-              appVersion: input.applicationVersion,
-              rendererUiVersion: RENDERER_UI_VERSION,
-              knownPlugins,
-              resolveUpgradePlan: resolveDiskPluginUpgradePlan,
-              recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
-              signal: controller.signal,
-              onProgress: progress => input.rendererIntegration.publishPluginInstallProgress({ pluginId, progress }),
-            });
-          } finally {
-            if (remoteInstallAbortControllers.get(pluginId) === controller) remoteInstallAbortControllers.delete(pluginId);
-          }
-          if (result.status === 'failed') {
-            throwPluginOperationResultFailure(result);
-          }
-          return transitionRuntime(async () => {
-            if (!scopedLifecycle)
-              await cancelActiveRunsForPluginRuntimeChange({
-                pluginId,
-                operation: '安装/升级',
-                supervisor: getRunSupervisor(),
-              });
-            await syncPluginRuntimeState({
-              reinitializeTools: true,
-              runtimeOwner: input.runtimeOwner,
-            });
-            toolRegistry.restorePluginTools(pluginId);
-            input.rendererIntegration.publishPluginsChanged();
-            return { success: true, data: result };
-          });
-        },
-      });
+      return { success: true, data: await runRemotePluginInstall(pluginId, remoteSource) };
     } catch (error) {
       logger.error('[plugins:installFromRemote] failed:', error);
       return { success: false, error: classifyPluginOperationError(error) };
@@ -1046,4 +1066,24 @@ export async function registerPluginsHandlers(input: {
       return { success: false, error: classifyPluginOperationError(error, typeof rawPluginId === 'string' ? rawPluginId : undefined) };
     }
   });
+
+  // 不随包的按需插件：已有资料但未安装（例如从内置该功能的旧版本升级）时，后台从已验签 catalog 自动安装。
+  // 远程来源未开放时不做任何事；不阻塞启动，进度与结果照常推给商店。
+  if (remoteSource) {
+    const source = remoteSource;
+    void restoreDeclaredPluginsWithUserData({
+      declaredPluginIds: listOnDemandPluginDeclarations(process.env.LINNYA_RESOLVED_PLUGIN_DECLARATION_ROOT),
+      shouldRestore: pluginId => {
+        const db = getDb();
+        const record = getService().getInstalledRecord(pluginId);
+        if (record?.installed || record?.userRemoved || hasPendingPluginDataCleanup(db, pluginId)) return false;
+        const descriptor = resolvePluginCleanupDescriptor(pluginId);
+        return Boolean(descriptor && hasPluginUserData({ db, dataRoot: descriptor.dataRoot, dataStorage: descriptor.manifest.dataStorage }));
+      },
+      install: async pluginId => {
+        await runRemotePluginInstall(pluginId, source);
+      },
+      recordDiagnostic: ({ pluginId, level, message }) => pluginDiagnostics.record({ level, pluginId, capability: null, message }),
+    });
+  }
 }

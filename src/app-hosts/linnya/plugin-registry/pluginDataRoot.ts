@@ -8,6 +8,10 @@ import { getRegisteredBackendPluginDirectory } from './registeredPluginDirectori
 import { assertPluginDataId, resolvePluginDataRoot } from '../../../features/plugins/infrastructure/cleanup/pluginDataRoot';
 import { readPluginManifestForCleanup } from '../../../features/plugins/infrastructure/cleanup/pluginDataManifest';
 import { readPluginArtifactIdentity } from '../../../features/plugins/install/functions/readPluginArtifactIdentity';
+import type { TrustedPluginCatalogKeys } from '../../../features/plugins/catalog/definitions/pluginCatalog';
+import { verifyCatalogInstallReceipt } from '../../../features/plugins/catalog/functions/verifyCatalogInstallReceipt';
+import { resolveTrustedPluginCatalogKeys } from '../../../features/plugins/catalog/functions/resolvePluginCatalogSource';
+import { createPluginCatalogStateStore } from '../../../features/plugins/catalog/infrastructure/pluginCatalogStateStore';
 import legacyRootOwners from './definitions/legacyPluginDataRoots.json';
 
 const LEGACY_ROOT_OWNERS = new Map<string, PluginId>(Object.entries(legacyRootOwners));
@@ -26,24 +30,43 @@ export function describePluginData(options: {
   readonly developmentRoot?: string;
   readonly forCleanup?: boolean;
   readonly bundledSourceTrusted?: boolean;
+  /** 安装包内远程分发插件的声明目录；与随包目录同样由 Desktop 冻结。 */
+  readonly declarationRoot?: string | null;
+  readonly declarationSourceTrusted?: boolean;
+  /** 与插件安装、启动准入同一信任环；用于认定已登记目录是经验签 catalog 安装的版本。 */
+  readonly trustedCatalogKeys?: TrustedPluginCatalogKeys;
 }): PluginCleanupDescriptor | null {
   const { pluginId, workspaceRoot, registeredDirectory, bundledRoot, activeRoot, developmentRoot } = options;
   assertPluginDataId(pluginId);
-  const source = readPluginManifestForCleanup({ pluginId, registeredPluginDirectory: registeredDirectory, bundledPluginRoot: bundledRoot });
+  const source = readPluginManifestForCleanup({
+    pluginId,
+    registeredPluginDirectory: registeredDirectory,
+    bundledPluginRoot: bundledRoot,
+    declarationRoot: options.declarationRoot,
+  });
   if (!source) return null;
 
   // 自报 builtin/ID 和任意 direct dir 不是来源授权。已安装版必须与 Host
-  // 随包声明一致；源码开发只认冻结 checkout 内的正式插件目录。
-  let admitted = source.kind === 'bundled' && options.bundledSourceTrusted === true;
+  // 随包声明一致或有经验签 catalog 的安装回执；源码开发只认冻结 checkout 内的正式插件目录。
+  let admitted = (source.kind === 'bundled' && options.bundledSourceTrusted === true)
+    || (source.kind === 'declared' && options.declarationSourceTrusted === true);
   if ((options.forCleanup || source.manifest.dataStorage.legacyRoots.length > 0) && source.kind === 'registered') {
     const directory = path.resolve(source.directory);
     const officialDevelopmentDir = developmentRoot && path.resolve(developmentRoot, 'packages', 'plugins', pluginId);
     const developmentSource = officialDevelopmentDir === directory && developmentRoot !== undefined &&
       fs.realpathSync(directory) === path.resolve(fs.realpathSync(developmentRoot), 'packages', 'plugins', pluginId);
-    const bundledInstallation = options.bundledSourceTrusted === true && activeRoot && bundledRoot &&
-      directory === path.resolve(activeRoot, pluginId, source.manifest.version) &&
+    const installedDirectory = activeRoot && directory === path.resolve(activeRoot, pluginId, source.manifest.version);
+    const bundledInstallation = options.bundledSourceTrusted === true && installedDirectory && bundledRoot &&
       sameArtifact(directory, path.join(bundledRoot, pluginId));
-    admitted = developmentSource || Boolean(bundledInstallation);
+    // 远程分发插件没有随包副本：已安装版目录有经验签 catalog 的回执即视为官方来源（含后续撤回检查）。
+    const catalogInstallation = Boolean(installedDirectory && activeRoot && options.trustedCatalogKeys) && verifyCatalogInstallReceipt({
+      pluginId,
+      version: source.manifest.version,
+      pluginDirectory: directory,
+      trustedKeys: options.trustedCatalogKeys ?? {},
+      laterRevocations: createPluginCatalogStateStore({ userPluginRoot: activeRoot ?? '' }).readRevocations(),
+    }).admitted;
+    admitted = developmentSource || Boolean(bundledInstallation) || catalogInstallation;
   }
   if (options.forCleanup && !admitted) throw new Error(`插件来源不可信，不能清理数据: ${pluginId}`);
 
@@ -87,6 +110,10 @@ function describeRuntimePluginData(pluginId: PluginId, forCleanup: boolean): Plu
   const bundledSourceTrusted = Boolean(bundledRoot && (identity?.packaged || (
     developmentRoot && path.resolve(bundledRoot) === path.resolve(developmentRoot, 'extraResources', 'plugins')
   )));
+  const declarationRoot = process.env.LINNYA_RESOLVED_PLUGIN_DECLARATION_ROOT;
+  const declarationSourceTrusted = Boolean(declarationRoot && (identity?.packaged || (
+    developmentRoot && path.resolve(declarationRoot) === path.resolve(developmentRoot, 'extraResources', 'plugin-declarations')
+  )));
   return describePluginData({
     pluginId,
     workspaceRoot: pathManager.getWorkspaceRoot(),
@@ -96,5 +123,8 @@ function describeRuntimePluginData(pluginId: PluginId, forCleanup: boolean): Plu
     developmentRoot,
     forCleanup,
     bundledSourceTrusted,
+    declarationRoot,
+    declarationSourceTrusted,
+    ...(identity ? { trustedCatalogKeys: resolveTrustedPluginCatalogKeys({ identity, env: process.env }) } : {}),
   });
 }

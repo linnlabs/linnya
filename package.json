@@ -459,19 +459,8 @@
           "to": "command-runtime/plugin-cli/win32/x64/linnya-plugin-cli-client.exe"
         },
         {
-          "from": "../extraResources/bin/qdrant/win-x64/qdrant.exe",
-          "to": "bin/qdrant/qdrant.exe"
-        },
-        {
           "from": "build/windows-app-local-runtime/x64",
           "to": "command-runtime/windows/x64",
-          "filter": [
-            "*.dll"
-          ]
-        },
-        {
-          "from": "build/windows-app-local-runtime/x64",
-          "to": "bin/qdrant",
           "filter": [
             "*.dll"
           ]
@@ -521,10 +510,6 @@
         {
           "from": "dist/main/plugin-cli-runtime/darwin/arm64/linnya-plugin-cli-client",
           "to": "command-runtime/plugin-cli/darwin/arm64/linnya-plugin-cli-client"
-        },
-        {
-          "from": "../extraResources/bin/qdrant/mac-arm64/qdrant",
-          "to": "bin/qdrant/qdrant"
         }
       ]
     },
@@ -553,6 +538,14 @@
         "to": "plugins",
         "filter": [
           "**/*"
+        ]
+      },
+      {
+        "from": "../extraResources/plugin-declarations",
+        "to": "plugin-declarations",
+        "filter": [
+          "**/plugin.json",
+          "**/.install-on-demand"
         ]
       }
     ]

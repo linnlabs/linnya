@@ -32,7 +32,6 @@ async function createPackagedRuntime(artifactBytes = Buffer.from('unsigned-runti
   const vcRuntimeDirectories = [
     appOutDir,
     runtimeDirectory,
-    path.join(appOutDir, 'resources/bin/qdrant'),
   ];
   await Promise.all(vcRuntimeDirectories.map(directory => fsp.mkdir(directory, { recursive: true })));
   await Promise.all(vcRuntimeDirectories.flatMap(directory => [
@@ -383,7 +382,7 @@ describe('Windows command runtime afterSign trust contract', () => {
 
   it('拒绝最终包漏复制或混入不同版本的应用本地运行库', async () => {
     const missingRuntime = await createPackagedRuntime();
-    await fsp.rm(path.join(missingRuntime.context.appOutDir, 'resources/bin/qdrant/vcruntime140_1.dll'));
+    await fsp.rm(path.join(missingRuntime.context.appOutDir, 'resources/command-runtime/windows/x64/vcruntime140_1.dll'));
     const hook = createAfterSignRuntimeAssetsHook({
       hostPlatform: 'win32',
       environment: { LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST: 'development' },
@@ -398,7 +397,7 @@ describe('Windows command runtime afterSign trust contract', () => {
 
     const mixedRuntime = await createPackagedRuntime();
     await fsp.writeFile(
-      path.join(mixedRuntime.context.appOutDir, 'resources/bin/qdrant/msvcp140.dll'),
+      path.join(mixedRuntime.context.appOutDir, 'resources/command-runtime/windows/x64/msvcp140.dll'),
       'different-runtime-version',
     );
     await expect(hook(mixedRuntime.context)).rejects.toThrow('differs between load locations');

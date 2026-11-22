@@ -20,10 +20,10 @@ const WINDOWS_VC_RUNTIME_REQUIRED_FILES = [
   'vcruntime140.dll',
   'vcruntime140_1.dll',
 ];
+// Qdrant 不再随安装包分发（作为运行时组件下载，自带 VC 运行库），这里只校验仍在包内的加载位置。
 const WINDOWS_VC_RUNTIME_TARGET_DIRECTORIES = [
   '.',
   'resources/command-runtime/windows/x64',
-  'resources/bin/qdrant',
 ];
 const MACOS_ARCHITECTURES = new Map([
   [1, 'x64'],

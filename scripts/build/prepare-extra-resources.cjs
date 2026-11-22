@@ -17,15 +17,12 @@ const { spawnSync } = require('node:child_process');
 
 const rootDir = path.resolve(__dirname, '..', '..');
 
-const staticResourceDirectories = [
-  path.join(rootDir, 'extraResources/bin/qdrant/mac-arm64'),
-];
-
 const defaultPluginResourceRoot = path.join(rootDir, 'extraResources/plugins');
+/** 只远程分发的官方插件：安装包只带 plugin.json，供离线判断已有资料、数据清理与按需自动安装。 */
+const defaultPluginDeclarationRoot = path.join(rootDir, 'extraResources/plugin-declarations');
 
-const executableFiles = new Set([
-  path.join(rootDir, 'extraResources/bin/qdrant/mac-arm64/qdrant'),
-]);
+// Qdrant 作为远程运行时组件分发，不再进入安装包；这里没有需要可执行位的随包二进制。
+const executableFiles = new Set();
 
 function exists(filePath) {
   return fs.existsSync(filePath);
@@ -239,26 +236,62 @@ function hasSamePluginIdSet(pluginIds, expectedPluginIds) {
 }
 
 async function main() {
-  const { listOfficialPluginReleaseTargetIds, readPluginIdsFromCliOrEnv } = await import(
-    '../release/plugin-release-targets.mjs'
-  );
-  const officialPluginIds = listOfficialPluginReleaseTargetIds();
+  const {
+    listBundledOfficialPluginReleaseTargetIds,
+    listRemoteOfficialPluginReleaseTargetIds,
+    readPluginIdsFromCliOrEnv,
+  } = await import('../release/plugin-release-targets.mjs');
+  const bundledPluginIds = listBundledOfficialPluginReleaseTargetIds();
+  const remotePluginIds = listRemoteOfficialPluginReleaseTargetIds();
   const pluginIds = readPluginIdsFromCliOrEnv({
-    defaultIds: officialPluginIds,
+    defaultIds: bundledPluginIds,
   });
+  const misplaced = pluginIds.filter(pluginId => remotePluginIds.includes(pluginId));
+  if (misplaced.length > 0) {
+    throw new Error(`只远程分发的插件不能预置进安装包: ${misplaced.join(', ')}`);
+  }
   await preparePluginBundles({
     pluginIds,
     pluginResourceRoot: defaultPluginResourceRoot,
-    resetRoot: hasSamePluginIdSet(pluginIds, officialPluginIds),
-    requireExactPluginIds: hasSamePluginIdSet(pluginIds, officialPluginIds),
+    resetRoot: hasSamePluginIdSet(pluginIds, bundledPluginIds),
+    requireExactPluginIds: hasSamePluginIdSet(pluginIds, bundledPluginIds),
+  });
+  await preparePluginDeclarations({
+    pluginIds: remotePluginIds,
+    declarationRoot: defaultPluginDeclarationRoot,
   });
 
-  for (const directory of staticResourceDirectories) {
-    clearExtendedAttributes(directory);
-    normalizeModes(directory);
-  }
-
   console.log('[prepare-extra-resources] extraResources 权限与扩展属性整理完成。');
+}
+
+/**
+ * 远程分发插件的声明：只复制 plugin.json（以及按需安装标记），不含任何代码或产物。
+ * 每次按完整远程集合重置，避免已改为随包或已下线的插件留下旧声明。
+ */
+async function preparePluginDeclarations({ pluginIds, declarationRoot }) {
+  const { findOfficialPluginReleaseTarget, resolvePluginPackageDir } = await import(
+    '../release/plugin-release-targets.mjs'
+  );
+  fs.rmSync(declarationRoot, { recursive: true, force: true });
+  fs.mkdirSync(declarationRoot, { recursive: true });
+  for (const pluginId of pluginIds) {
+    const manifestPath = path.join(resolvePluginPackageDir(pluginId), 'plugin.json');
+    assertFile(manifestPath, `${pluginId} plugin.json`);
+    const manifest = readJson(manifestPath);
+    if (manifest.id !== pluginId) {
+      throw new Error(`请求声明插件 ${pluginId}，但 manifest id=${manifest.id}`);
+    }
+    if (manifest.required === true) throw new Error(`${pluginId} 必需插件不能只远程分发`);
+    const targetDir = path.join(declarationRoot, pluginId);
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.copyFileSync(manifestPath, path.join(targetDir, 'plugin.json'));
+    if (findOfficialPluginReleaseTarget(pluginId)?.installByDefault === false) {
+      fs.writeFileSync(path.join(targetDir, '.install-on-demand'), '');
+    }
+    console.log(`[prepare-extra-resources] ${pluginId} 插件声明已生成: ${targetDir}`);
+  }
+  clearExtendedAttributes(declarationRoot);
+  normalizeModes(declarationRoot);
 }
 
 async function preparePluginBundles({
@@ -303,7 +336,7 @@ async function preparePluginBundles({
   return generatedResourceDirectories;
 }
 
-module.exports = { preparePluginBundles };
+module.exports = { preparePluginBundles, preparePluginDeclarations };
 
 if (require.main === module) {
   main().catch(error => {

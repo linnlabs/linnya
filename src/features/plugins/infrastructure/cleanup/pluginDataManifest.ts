@@ -10,13 +10,15 @@ import { parsePluginManifest, type PluginId, type PluginManifest } from '@app/sc
 export interface PluginCleanupManifestSource {
   readonly manifest: PluginManifest;
   readonly directory: string;
-  readonly kind: 'registered' | 'bundled';
+  /** declared：安装包内远程分发插件的 plugin.json 声明（无代码），用于未安装时判断资料与清理。 */
+  readonly kind: 'registered' | 'bundled' | 'declared';
 }
 
 export function readPluginManifestForCleanup(options: {
   readonly pluginId: PluginId;
   readonly registeredPluginDirectory?: string;
   readonly bundledPluginRoot?: string | null;
+  readonly declarationRoot?: string | null;
 }): PluginCleanupManifestSource | null {
   const candidates: readonly { readonly directory: string; readonly kind: PluginCleanupManifestSource['kind'] }[] = [
     ...(options.registeredPluginDirectory
@@ -24,6 +26,9 @@ export function readPluginManifestForCleanup(options: {
       : []),
     ...(options.bundledPluginRoot
       ? [{ directory: path.join(options.bundledPluginRoot, options.pluginId), kind: 'bundled' as const }]
+      : []),
+    ...(options.declarationRoot
+      ? [{ directory: path.join(options.declarationRoot, options.pluginId), kind: 'declared' as const }]
       : []),
   ];
 

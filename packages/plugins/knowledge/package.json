@@ -69,6 +69,7 @@
     "release": {
       "includeInOfficialRelease": true,
       "installByDefault": false,
+      "distribution": "remote",
       "productionDistDirectories": [
         "dist/backend",
         "dist/renderer"

@@ -40,7 +40,7 @@ function matchesBundledArtifact(entry: PluginAssemblySource, bundledRoot: string
 }
 
 /** catalog-official：回执中的签名信封仍由受信 key 签发，且版本目录与安装时一致。 */
-function matchesCatalogInstall(entry: PluginAssemblySource, trustedKeys: TrustedPluginCatalogKeys): boolean {
+export function matchesCatalogInstall(entry: PluginAssemblySource, trustedKeys: TrustedPluginCatalogKeys): boolean {
   if (!entry.pluginDir || entry.sourceKind !== 'active') return false;
   // 版本目录为 <userPluginRoot>/<pluginId>/<version>；本机 catalog 状态与之同根。
   const userPluginRoot = path.dirname(path.dirname(path.resolve(entry.pluginDir)));
