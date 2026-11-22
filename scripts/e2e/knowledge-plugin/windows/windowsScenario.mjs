@@ -283,10 +283,16 @@ try {
     }
     await application.clickText('插件');
     const toggle = `document.querySelector('.switch-control:has(input[aria-label="知识库 启用状态"])')`;
+    // 停用后 Renderer 仍在同步插件运行态，期间开关处于禁用；与 Mac 用例一样等入口卸下、开关恢复可用再启用。
+    const settled = checked => `(() => {
+      const input = ${toggle}?.querySelector('input');
+      const entry = document.querySelector('.sidebar-entry:has(svg[data-icon="library"])');
+      return Boolean(input && input.checked === ${checked} && !input.disabled && (${checked} ? entry : !entry));
+    })()`;
     await application.clickElement(toggle);
-    await until(() => application.evaluate(`${toggle}?.querySelector('input').checked`), value => value === false, 'Disabled after port conflict');
+    await until(() => application.evaluate(settled(false)), Boolean, 'Disabled after port conflict');
     await application.clickElement(toggle);
-    await until(() => application.evaluate(`${toggle}?.querySelector('input').checked`), value => value === true, 'Reenabled after port conflict');
+    await until(() => application.evaluate(settled(true)), Boolean, 'Reenabled after port conflict');
     assert.equal((await docs()).some(document => document.filename === filename && document.status === 'completed'), false);
     await application.screenshot(path.join(evidence, 'qdrant-occupied-port-reenabled.png'));
     // 下一项的真实摄入和图谱检索必须在同一个 App、同一个库中成功，证明不仅是按钮状态恢复。
