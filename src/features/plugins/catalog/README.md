@@ -33,7 +33,7 @@
 - 远程安装通过 `RemotePluginReleaseSource` 取版本：official 组合使用 `createCatalogPluginReleaseSource`（每次重新拉取并验签 catalog，按上节规则选版本）；未签名 `latest.json` 只留给开发与 R2 smoke，不产生回执。需要原生运行时的版本先按同一份 catalog 安装运行时组件（见 [`src/features/runtimes`](../../runtimes/README.md)）。
 - 暂存成功后、激活之前，在 `<userPluginRoot>/<pluginId>/.receipts/<version>.json` 写入回执：插件身份、zip 摘要、版本目录 SHA512SUMS 身份，以及安装所依据的完整签名信封（key id、摘要、序号）。崩溃在暂存与回执之间时，重装同版本走 already-staged 并补写。旧版本清理会同时删除其回执，卸载会连同回执一起移除。
 - 启动准入（`isTrustedPluginAssembly` 的 catalog-official 路径）：回执中的信封必须仍由当前信任环中的 key 签发，信封列出该版本且 zip 摘要一致，版本目录身份与回执一致，且该版本未出现在本机最近接受的 catalog 撤回列表中。不看 catalog 有效期：过期不撤销已装插件；移除 key 或之后的 catalog 撤回该版本才撤销。
-- 官方 catalog 地址为 `https://download.linnya.com/plugins/catalog/<channel>.json`。远程服务仍由 `isOfficialPluginRemoteServiceEnabled` 关闭，生产公钥也尚未加入。
+- 官方 catalog 地址为 `https://download.linnya.com/plugins/catalog/<channel>.json`。生产公钥 `linnya-plugins-2026-2607f6` 已加入 `registry/trustedPluginCatalogKeys.ts`，官方远程服务已开放（只对通过发行验签的官方 Desktop）；catalog 与 artifact 由 linnya-release 的 `publish-plugins` 发布。
 - 未随包、本机从未登记的插件（例如不随安装包分发的知识库）也可从已验签 catalog 首次安装：Host 按下载并校验后的版本目录内 `plugin.json` 登记（非 builtin），不使用 catalog 展示字段。
 
 ## 来源与信任环

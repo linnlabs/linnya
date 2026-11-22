@@ -8,12 +8,12 @@ import {
 import { isOfficialPluginRemoteServiceEnabled } from './isOfficialPluginRemoteServiceEnabled';
 
 describe('isOfficialPluginRemoteServiceEnabled', () => {
-  it('catalog 验签上线前，所有发行身份均关闭插件远程服务', () => {
+  it('只有通过发行验签的官方 Desktop 连接官方插件服务；源码运行与社区打包不连接', () => {
     expect(isOfficialPluginRemoteServiceEnabled(createSourceDistributionIdentity())).toBe(false);
     expect(isOfficialPluginRemoteServiceEnabled(createCommunityDistributionIdentity())).toBe(false);
     expect(isOfficialPluginRemoteServiceEnabled(createOfficialDistributionIdentity({
       releaseChannel: 'stable',
       releaseKeyId: 'fixture',
-    }))).toBe(false);
+    }))).toBe(true);
   });
 });

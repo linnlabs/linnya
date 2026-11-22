@@ -1,7 +1,10 @@
 import type { DistributionIdentity } from '../../../../shared/distribution-identity';
 
-/** 发布者签名 catalog 完成前只提供随包插件；Desktop 身份不能代替插件来源证明。 */
-const OFFICIAL_PLUGIN_REMOTE_SERVICE_OPEN: boolean = false;
+/**
+ * 官方插件远程服务已开放：catalog 由独立插件密钥签名（trustedPluginCatalogKeys）。
+ * Desktop 身份不能代替插件来源证明；开放后每份 catalog 与每次安装仍按签名、序号与撤回规则失败关闭。
+ */
+const OFFICIAL_PLUGIN_REMOTE_SERVICE_OPEN: boolean = true;
 
 /** 服务开放后仍仅允许通过发行验签的 Desktop 连接官方插件源。 */
 export function isOfficialPluginRemoteServiceEnabled(

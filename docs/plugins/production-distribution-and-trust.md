@@ -71,10 +71,11 @@ package 在 `linnya.release.distribution` 声明 `remote` 时只通过已验签 
 
 任何失败都必须保留原 active version，不能让半安装 artifact 进入执行目录。Catalog 未完成发布方签名以前，现有 `latest.json` 与 SHA512 链路只能视为完整性机制，不能描述成完整的官方身份验证。
 
-当前公共实现已落地 Desktop 发行身份门禁，可信 Desktop key ring 已配置发行公钥。
-底层远程安装实现仍消费未签名的 `latest.json` 与 SHA512，尚未实现上述 catalog 来源证明，
-因此产品层通过 `isOfficialPluginRemoteServiceEnabled` 明确关闭该服务，不接受环境变量覆盖。
-重新开放前必须完成 catalog 验签及安装回执准入，不能只翻转开关。当前插件下载域名保持不变。
+当前公共实现已落地 Desktop 发行身份门禁与上述 catalog 来源证明：官方 Desktop 只从
+`https://download.linnya.com/plugins/catalog/<channel>.json` 读取由独立插件密钥签名的 catalog，
+安装回执与启动准入按同一信任环复核。`isOfficialPluginRemoteServiceEnabled` 只对通过发行验签的官方 Desktop 开放，
+源码运行与社区打包不连接官方服务，不接受环境变量覆盖（开发 catalog 只对源码运行、只接受回环地址）。
+未签名的 `latest.json` 只用于开发与 R2 smoke，不产生安装回执。
 
 Catalog 验签合同与实现见 [`src/features/plugins/catalog`](../../src/features/plugins/catalog/README.md)：
 独立插件发布密钥签名的信封、https 下载地址、有效期上限与序号防回放；生产公钥加入前任何 catalog 都无法通过验签。

@@ -95,8 +95,8 @@ describe('官方插件 catalog 验签', () => {
     expect(Object.isFrozen(verified.plugins[0])).toBe(true);
   });
 
-  it('生产公钥尚未加入前，任何 catalog 都不能通过验签', () => {
-    expect(Object.keys(trustedPluginCatalogKeys)).toEqual([]);
+  it('生产信任环不接受其他 key 签发的 catalog（测试 key、开发 key 都不在其中）', () => {
+    expect(Object.keys(trustedPluginCatalogKeys)).not.toContain('linnya-plugins-test');
     expect(rejection(() => verifyPluginCatalog({
       catalogText: envelope(payload()), trustedKeys: trustedPluginCatalogKeys, expectedChannel: 'stable', now: NOW,
     }))).toBe('untrusted-key');

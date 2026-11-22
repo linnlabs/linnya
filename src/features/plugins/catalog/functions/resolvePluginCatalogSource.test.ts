@@ -46,11 +46,27 @@ describe('插件 catalog 来源与信任环', () => {
     }
   });
 
-  it('打包产物（社区、官方）忽略开发变量：不发请求，信任环保持生产公钥', () => {
+  it('打包产物忽略开发变量：社区打包没有来源；官方 Desktop 只用官方 catalog 与生产公钥', () => {
+    expect(resolvePluginCatalogSource({ identity: community, env: env() })).toBeNull();
+    expect(resolvePluginCatalogSource({ identity: official, env: env() })).toEqual({
+      kind: 'official',
+      catalogUrl: 'https://download.linnya.com/plugins/catalog/stable.json',
+      channel: 'stable',
+      trustedKeys: trustedPluginCatalogKeys,
+      allowLoopbackHttp: false,
+    });
     for (const identity of [community, official]) {
-      // 官方远程服务尚未开放，官方 Desktop 此时同样没有来源。
-      expect(resolvePluginCatalogSource({ identity, env: env() })).toBeNull();
       expect(resolveTrustedPluginCatalogKeys({ identity, env: env() })).toBe(trustedPluginCatalogKeys);
+      expect(Object.keys(resolveTrustedPluginCatalogKeys({ identity, env: env() }))).not.toContain('linnya-plugins-dev');
+    }
+  });
+
+  it('生产信任环只含以 linnya-plugins- 开头、可解析的 Ed25519 公钥', async () => {
+    const { createPublicKey } = await import('node:crypto');
+    expect(Object.keys(trustedPluginCatalogKeys).length).toBeGreaterThan(0);
+    for (const [keyId, pem] of Object.entries(trustedPluginCatalogKeys)) {
+      expect(keyId).toMatch(/^linnya-plugins-\d{4}-[a-f0-9]{6}$/u);
+      expect(createPublicKey(pem).asymmetricKeyType).toBe('ed25519');
     }
   });
 
