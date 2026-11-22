@@ -27,3 +27,10 @@
 - `fetchVerifiedPluginCatalog`：拒绝重定向，20 秒超时，响应超过 1 MiB 不读入；验签通过后才把序号与摘要写入本机高水位。拒绝时按类别抛出 `PluginOperationError`：过期、尚未生效、通道不符归 `source-unavailable`（稍后可恢复），其余归 `artifact-integrity`；调用方取消原样传出。
 - 本机高水位存在用户插件根下的 `.catalog-state.json`（原子替换写入，只前进不后退，按通道分开）。插件发现只认带 `active.json` 的子目录，不会把它当插件。文件损坏时按首次接受处理并留诊断，不让远程安装永久失效。
 - `selectCatalogPluginRelease`：按版本从高到低选出当前 Host 兼容（`minApp`、`rendererUi`）且所需运行时能解析到本平台 artifact 的最高版本；运行时取满足 range 的最高版本。全部不可用时返回最高版本的原因：`incompatible` 或 `runtime-unavailable`。
+
+## 安装回执与来源准入
+
+- 远程安装通过 `RemotePluginReleaseSource` 取版本：official 组合使用 `createCatalogPluginReleaseSource`（每次重新拉取并验签 catalog，按上节规则选版本）；未签名 `latest.json` 只留给开发与 R2 smoke，不产生回执。需要原生运行时的版本在运行时组件落地前以 `incompatible` 拒绝。
+- 暂存成功后、激活之前，在 `<userPluginRoot>/<pluginId>/.receipts/<version>.json` 写入回执：插件身份、zip 摘要、版本目录 SHA512SUMS 身份，以及安装所依据的完整签名信封（key id、摘要、序号）。崩溃在暂存与回执之间时，重装同版本走 already-staged 并补写。旧版本清理会同时删除其回执，卸载会连同回执一起移除。
+- 启动准入（`isTrustedPluginAssembly` 的 catalog-official 路径）：回执中的信封必须仍由当前信任环中的 key 签发，信封列出该版本且 zip 摘要一致，版本目录身份与回执一致，且该版本未出现在本机最近接受的 catalog 撤回列表中。不看 catalog 有效期：过期不撤销已装插件；移除 key 或之后的 catalog 撤回该版本才撤销。
+- 官方 catalog 地址为 `https://download.linnya.com/plugins/catalog/<channel>.json`。远程服务仍由 `isOfficialPluginRemoteServiceEnabled` 关闭，生产公钥也尚未加入。

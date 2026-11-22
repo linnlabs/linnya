@@ -3,12 +3,18 @@ import path from 'node:path';
 import type { RendererPluginEntry } from 'src/electron-main/plugins/loader/rendererPluginEntries';
 import { readPluginManifestSummary } from 'src/electron-main/plugins/loader/pluginLayout';
 import { readPluginArtifactIdentity } from 'src/features/plugins/install/functions/readPluginArtifactIdentity';
+import type { TrustedPluginCatalogKeys } from 'src/features/plugins/catalog/definitions/pluginCatalog';
+import { verifyCatalogInstallReceipt } from 'src/features/plugins/catalog/functions/verifyCatalogInstallReceipt';
+import { trustedPluginCatalogKeys } from 'src/features/plugins/catalog/registry/trustedPluginCatalogKeys';
+import { createPluginCatalogStateStore } from 'src/features/plugins/catalog/infrastructure/pluginCatalogStateStore';
 
 export interface PluginAssemblyTrustInput {
   readonly packaged: boolean;
   readonly workspaceRoot: string;
   readonly backendDirectDirs: readonly string[];
   readonly bundledPluginRoot: string | undefined;
+  /** 默认使用内置插件 catalog 公钥；测试可注入临时 key。 */
+  readonly trustedCatalogKeys?: TrustedPluginCatalogKeys;
 }
 
 export interface ApplicationSurfaceTrustInput extends PluginAssemblyTrustInput {
@@ -33,6 +39,20 @@ function matchesBundledArtifact(entry: PluginAssemblySource, bundledRoot: string
   return readPluginArtifactIdentity(bundledDirectory) === readPluginArtifactIdentity(entry.pluginDir);
 }
 
+/** catalog-official：回执中的签名信封仍由受信 key 签发，且版本目录与安装时一致。 */
+function matchesCatalogInstall(entry: PluginAssemblySource, trustedKeys: TrustedPluginCatalogKeys): boolean {
+  if (!entry.pluginDir || entry.sourceKind !== 'active') return false;
+  // 版本目录为 <userPluginRoot>/<pluginId>/<version>；本机 catalog 状态与之同根。
+  const userPluginRoot = path.dirname(path.dirname(path.resolve(entry.pluginDir)));
+  return verifyCatalogInstallReceipt({
+    pluginId: entry.pluginId,
+    version: entry.version,
+    pluginDirectory: entry.pluginDir,
+    trustedKeys,
+    laterRevocations: createPluginCatalogStateStore({ userPluginRoot }).readRevocations(),
+  }).admitted;
+}
+
 function isDevelopmentPluginDirectory(pluginDirectory: string, workspaceRoot: string): boolean {
   const pluginsRoot = path.resolve(workspaceRoot, 'packages', 'plugins');
   const relative = path.relative(pluginsRoot, pluginDirectory);
@@ -46,7 +66,9 @@ export function isTrustedPluginAssembly(entry: PluginAssemblySource, input: Plug
     (entry.sourceKind === 'official-source' && isDevelopmentPluginDirectory(pluginDirectory, input.workspaceRoot)) ||
     input.backendDirectDirs.some(directory => path.resolve(directory) === pluginDirectory)
   );
-  return developmentSource || matchesBundledArtifact(entry, input.bundledPluginRoot);
+  return developmentSource
+    || matchesBundledArtifact(entry, input.bundledPluginRoot)
+    || matchesCatalogInstall(entry, input.trustedCatalogKeys ?? trustedPluginCatalogKeys);
 }
 
 /** Renderer 必须与通过装配准入的 Backend 来自同一目录。 */

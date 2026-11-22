@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { parsePluginManifest, type PluginId } from '@app/schemas';
 import { isRecord, errorToString as readErrorMessage } from '@linnya/foundation';
+import { removePluginInstallReceipt } from '../../catalog/infrastructure/pluginInstallReceiptStore';
 
 interface ActivePluginPointer {
   readonly version: string;
@@ -126,6 +127,7 @@ export function pruneInactivePluginVersions(
     const versionManifest = path.join(pluginDir, entry.name, 'plugin.json');
     if (!fs.existsSync(versionManifest)) continue;
     fs.rmSync(path.join(pluginDir, entry.name), { recursive: true, force: true });
+    removePluginInstallReceipt(pluginDir, entry.name);
     removed.push(entry.name);
   }
   return removed;

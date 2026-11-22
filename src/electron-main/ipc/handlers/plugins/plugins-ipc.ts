@@ -38,8 +38,12 @@ import { uninstallPluginAndDeleteData, uninstallPluginLifecycle } from '../../..
 import { installPluginFromRemoteAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromRemoteAndActivate';
 import { installPluginFromBundledAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromBundledAndActivate';
 import { checkPluginUpdateFromRemote } from '../../../../features/plugins/install/orchestration/installPluginUpdate';
-import { resolvePluginLatestManifestUrl } from '../../../../features/plugins/install/functions/resolvePluginLatestManifestUrl';
 import { isOfficialPluginRemoteServiceEnabled } from '../../../../features/plugins/install/functions/isOfficialPluginRemoteServiceEnabled';
+import type { RemotePluginReleaseSource } from '../../../../features/plugins/install/definitions/pluginInstall';
+import { createCatalogPluginReleaseSource } from '../../../../features/plugins/catalog/orchestration/createCatalogPluginReleaseSource';
+import { createPluginCatalogStateStore } from '../../../../features/plugins/catalog/infrastructure/pluginCatalogStateStore';
+import { resolvePluginCatalogUrl } from '../../../../features/plugins/catalog/functions/resolvePluginCatalogUrl';
+import { trustedPluginCatalogKeys } from '../../../../features/plugins/catalog/registry/trustedPluginCatalogKeys';
 import { runPluginLifecycleOperationSerially } from '../../../../features/plugins/install/orchestration/pluginLifecycleSerialExecutor';
 import { resolveDiskPluginUpgradePlan } from '../../../plugins/install/diskPluginUpgradePlan';
 import { getRunSupervisor } from '../../../services/agentRuntimeSingletons';
@@ -244,8 +248,23 @@ function parsePluginId(value: unknown, label: string): string {
   return pluginId;
 }
 
-function resolveKnownPluginLatestManifestUrl(pluginId: string): string {
-  return resolvePluginLatestManifestUrl({ pluginId });
+/** official 组合的远程版本来源：只认独立插件密钥签名的 catalog，并在用户插件根记录高水位。 */
+function createOfficialPluginReleaseSource(pluginId: string): RemotePluginReleaseSource {
+  const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
+  if (!userPluginRoot) {
+    throw new PluginOperationError('source-unavailable', '插件目录未初始化，不能读取远程插件 catalog', { pluginId });
+  }
+  return createCatalogPluginReleaseSource({
+    catalogUrl: resolvePluginCatalogUrl('stable'),
+    channel: 'stable',
+    trustedKeys: trustedPluginCatalogKeys,
+    stateStore: createPluginCatalogStateStore({
+      userPluginRoot,
+      recordDiagnostic: message => pluginDiagnostics.record({ level: 'warn', pluginId, capability: null, message }),
+    }),
+    platform: process.platform,
+    architecture: process.arch,
+  });
 }
 
 function shouldPreferSourceRendererPluginEntries(packaged: boolean): boolean {
@@ -659,7 +678,7 @@ export async function registerPluginsHandlers(input: {
       const installedRecord = service.getInstalledRecord(pluginId);
       const result = await checkPluginUpdateFromRemote({
         pluginId,
-        latestManifestUrl: resolveKnownPluginLatestManifestUrl(pluginId),
+        releaseSource: createOfficialPluginReleaseSource(pluginId),
         appVersion: input.applicationVersion,
         rendererUiVersion: RENDERER_UI_VERSION,
         currentVersion: installedRecord?.installed ? installedRecord.version : null,
@@ -698,7 +717,7 @@ export async function registerPluginsHandlers(input: {
             db,
             userPluginRoot,
             pluginId,
-            latestManifestUrl: resolveKnownPluginLatestManifestUrl(pluginId),
+            releaseSource: createOfficialPluginReleaseSource(pluginId),
             appVersion: input.applicationVersion,
             rendererUiVersion: RENDERER_UI_VERSION,
             knownPlugins,

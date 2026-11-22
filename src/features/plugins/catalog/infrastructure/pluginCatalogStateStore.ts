@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { PLUGIN_CATALOG_CHANNELS, type PluginCatalogChannel } from '@app/schemas';
+import {
+  PLUGIN_CATALOG_CHANNELS,
+  PluginCatalogRevocationSchema,
+  type PluginCatalogChannel,
+  type PluginCatalogRevocation,
+} from '@app/schemas';
 import { z } from 'zod';
 
 import type { PluginCatalogHighWaterMark, VerifiedPluginCatalog } from '../definitions/pluginCatalog';
@@ -14,6 +19,8 @@ const AcceptedSchema = z.object({
   digest: z.string().regex(/^[a-f0-9]{64}$/u),
   keyId: z.string().min(1),
   acceptedAt: z.string().min(1),
+  /** 最近一份已接受 catalog 的撤回列表；启动准入据此撤销旧回执对应的版本。 */
+  revoked: z.array(PluginCatalogRevocationSchema).default([]),
 }).strict();
 
 const StateSchema = z.object({
@@ -25,6 +32,8 @@ type CatalogState = z.infer<typeof StateSchema>;
 
 export interface PluginCatalogStateStore {
   readHighWaterMark(channel: PluginCatalogChannel): PluginCatalogHighWaterMark | null;
+  /** 所有通道最近一份已接受 catalog 的撤回项合集。 */
+  readRevocations(): readonly PluginCatalogRevocation[];
   /** 只前进不后退：较小序号的记录不会覆盖已知更高的记录。 */
   recordAccepted(catalog: VerifiedPluginCatalog, acceptedAt: Date): void;
 }
@@ -51,6 +60,9 @@ export function createPluginCatalogStateStore(input: {
       const accepted = read().channels[channel];
       return accepted ? { sequence: accepted.sequence, digest: accepted.digest } : null;
     },
+    readRevocations() {
+      return Object.values(read().channels).flatMap(accepted => accepted?.revoked ?? []);
+    },
     recordAccepted(catalog, acceptedAt) {
       const state = read();
       const current = state.channels[catalog.channel];
@@ -64,6 +76,7 @@ export function createPluginCatalogStateStore(input: {
             digest: catalog.digest,
             keyId: catalog.keyId,
             acceptedAt: acceptedAt.toISOString(),
+            revoked: catalog.revoked.map(item => ({ kind: item.kind, id: item.id, version: item.version })),
           },
         },
       };

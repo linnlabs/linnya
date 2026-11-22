@@ -19,6 +19,8 @@ export interface VerifiedPluginCatalog {
   readonly keyId: string;
   /** payload 原始字节的 SHA-256（hex），写入安装回执用于追溯。 */
   readonly digest: string;
+  /** 原始信封文本；写入安装回执，启动期可离线复核签名。 */
+  readonly envelope: string;
   readonly channel: PluginCatalogChannel;
   readonly sequence: number;
   readonly issuedAt: string;

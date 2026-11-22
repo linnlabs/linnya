@@ -64,18 +64,21 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+/** 验签后的原始内容：只证明 payload 由已登记 key 签发，不含有效期与回放判断。 */
+export interface OpenedPluginCatalog {
+  readonly keyId: string;
+  readonly digest: string;
+  readonly payload: SignedPluginCatalogPayload;
+}
+
 /**
- * 先对原始 payload bytes 验签，成功后才解析 payload；随后检查地址、通道、有效期与回放。
- * 任一检查失败都抛出 PluginCatalogRejectedError，调用方必须失败关闭并保留原有安装。
+ * 先对原始 payload bytes 验签，成功后才解析 payload。启动期复核已安装回执只需要这一层：
+ * catalog 过期不应让已装插件失效，key 被移出信任环才应失效。
  */
-export function verifyPluginCatalog(input: {
+export function openSignedPluginCatalog(input: {
   readonly catalogText: string;
   readonly trustedKeys: TrustedPluginCatalogKeys;
-  readonly expectedChannel: PluginCatalogChannel;
-  readonly now: Date;
-  readonly highWaterMark?: PluginCatalogHighWaterMark | null;
-  readonly allowLoopbackHttp?: boolean;
-}): VerifiedPluginCatalog {
+}): OpenedPluginCatalog {
   let envelope: z.infer<typeof EnvelopeSchema>;
   try {
     envelope = EnvelopeSchema.parse(JSON.parse(input.catalogText));
@@ -101,7 +104,22 @@ export function verifyPluginCatalog(input: {
   } catch (error) {
     throw new PluginCatalogRejectedError('malformed', 'Plugin catalog 内容无效', { cause: error });
   }
+  return { keyId: envelope.keyId, digest: createHash('sha256').update(payloadBytes).digest('hex'), payload };
+}
 
+/**
+ * 验签并检查地址、通道、有效期与回放。任一检查失败都抛出 PluginCatalogRejectedError，
+ * 调用方必须失败关闭并保留原有安装。
+ */
+export function verifyPluginCatalog(input: {
+  readonly catalogText: string;
+  readonly trustedKeys: TrustedPluginCatalogKeys;
+  readonly expectedChannel: PluginCatalogChannel;
+  readonly now: Date;
+  readonly highWaterMark?: PluginCatalogHighWaterMark | null;
+  readonly allowLoopbackHttp?: boolean;
+}): VerifiedPluginCatalog {
+  const { keyId, digest, payload } = openSignedPluginCatalog(input);
   const allowLoopbackHttp = input.allowLoopbackHttp === true;
   const urls = [
     ...payload.plugins.map(entry => entry.artifactUrl),
@@ -124,7 +142,6 @@ export function verifyPluginCatalog(input: {
   if (now + CLOCK_SKEW_MS < issuedAt) throw new PluginCatalogRejectedError('not-yet-valid', 'Plugin catalog 尚未生效');
   if (now >= expiresAt) throw new PluginCatalogRejectedError('expired', 'Plugin catalog 已过期');
 
-  const digest = createHash('sha256').update(payloadBytes).digest('hex');
   const mark = input.highWaterMark;
   if (mark && (payload.sequence < mark.sequence || (payload.sequence === mark.sequence && digest !== mark.digest))) {
     throw new PluginCatalogRejectedError('rollback', `Plugin catalog 序号回退或同序号内容不同: sequence=${payload.sequence} known=${mark.sequence}`);
@@ -137,8 +154,9 @@ export function verifyPluginCatalog(input: {
   }
 
   return deepFreeze({
-    keyId: envelope.keyId,
+    keyId,
     digest,
+    envelope: input.catalogText,
     channel: payload.channel,
     sequence: payload.sequence,
     issuedAt: payload.issuedAt,

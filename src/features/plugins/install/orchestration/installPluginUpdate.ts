@@ -18,8 +18,11 @@ import type {
   CheckPluginRemoteUpdateResult,
   InstallPluginUpdateOptions,
   InstallPluginUpdateResult,
+  RemotePluginRelease,
+  RemotePluginReleaseSource,
   RemotePluginVersionManifest,
 } from '../definitions/pluginInstall';
+import { writePluginInstallReceipt } from '../../catalog/infrastructure/pluginInstallReceiptStore';
 import { isRecord } from '@linnya/foundation';
 import { PluginOperationError, toPluginOperationError } from '../definitions/pluginOperationError';
 
@@ -103,6 +106,62 @@ function assertHttpUrl(rawUrl: string, label: string): void {
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
     throw new PluginOperationError('source-unavailable', `${label} 只允许 http/https URL`);
   }
+}
+
+async function resolveRemoteRelease(
+  options: {
+    readonly pluginId: InstallPluginUpdateOptions['pluginId'];
+    readonly appVersion: string;
+    readonly rendererUiVersion: string;
+    readonly latestManifestUrl?: string;
+    readonly releaseSource?: RemotePluginReleaseSource;
+  },
+  fetcher: typeof fetch,
+): Promise<RemotePluginRelease> {
+  if (options.releaseSource) {
+    const release = await options.releaseSource.resolve({
+      pluginId: options.pluginId,
+      appVersion: options.appVersion,
+      rendererUiVersion: options.rendererUiVersion,
+      fetch: fetcher,
+    });
+    assertHttpUrl(release.url, 'release url');
+    normalizeSha512(release.sha512);
+    return release;
+  }
+  if (!options.latestManifestUrl) {
+    throw new PluginOperationError('source-unavailable', '未配置插件远程版本来源', { pluginId: options.pluginId });
+  }
+  // 未签名 latest.json 只证明下载字节与清单一致，只用于开发与 R2 smoke，不产生安装回执。
+  assertHttpUrl(options.latestManifestUrl, 'latestManifestUrl');
+  const remote = parseRemotePluginVersionManifest(await fetchJson(fetcher, options.latestManifestUrl));
+  assertHttpUrl(remote.url, 'latest.json url');
+  return remote;
+}
+
+function recordCatalogInstallReceipt(
+  pluginInstallDir: string,
+  pluginId: string,
+  release: RemotePluginRelease,
+  targetVersionDir: string,
+  artifactSha512: string,
+): void {
+  if (!release.provenance) return;
+  writePluginInstallReceipt(pluginInstallDir, {
+    schemaVersion: 1,
+    source: 'catalog-official',
+    pluginId,
+    version: release.version,
+    artifactSha512,
+    artifactIdentity: readPluginArtifactIdentity(targetVersionDir),
+    installedAt: new Date().toISOString(),
+    catalog: {
+      keyId: release.provenance.keyId,
+      digest: release.provenance.digest,
+      sequence: release.provenance.sequence,
+      envelope: release.provenance.envelope,
+    },
+  });
 }
 
 function readActiveVersion(pluginInstallDir: string): string | null {
@@ -288,9 +347,7 @@ export async function checkPluginUpdateFromRemote(
 
   let remote: RemotePluginVersionManifest | null = null;
   try {
-    assertHttpUrl(options.latestManifestUrl, 'latestManifestUrl');
-    remote = parseRemotePluginVersionManifest(await fetchJson(fetcher, options.latestManifestUrl));
-    assertHttpUrl(remote.url, 'latest.json url');
+    remote = await resolveRemoteRelease(options, fetcher);
     normalizeSha512(remote.sha512);
 
     const compatibility = evaluateRemotePluginCompatibility({
@@ -375,11 +432,7 @@ export async function installPluginUpdateFromRemote(
   let tempInstallDir: string | null = null;
 
   try {
-    assertHttpUrl(options.latestManifestUrl, 'latestManifestUrl');
-    const remote = parseRemotePluginVersionManifest(
-      await fetchJson(fetcher, options.latestManifestUrl)
-    );
-    assertHttpUrl(remote.url, 'latest.json url');
+    const remote = await resolveRemoteRelease(options, fetcher);
 
     const compatibility = evaluateRemotePluginCompatibility({
       appVersion: options.appVersion,
@@ -453,6 +506,8 @@ export async function installPluginUpdateFromRemote(
       );
       fs.rmSync(tempInstallDir, { recursive: true, force: true });
       tempInstallDir = null;
+      // 同字节的版本可能来自中断前的暂存，补写回执才能通过来源准入。
+      recordCatalogInstallReceipt(pluginInstallDir, options.pluginId, remote, targetVersionDir, actualSha512);
       return {
         status: 'skipped',
         pluginId: options.pluginId,
@@ -464,6 +519,8 @@ export async function installPluginUpdateFromRemote(
     fs.renameSync(tempExtractDir, targetVersionDir);
     fs.rmSync(tempInstallDir, { recursive: true, force: true });
     tempInstallDir = null;
+    // 回执在激活之前落盘；崩溃在两者之间时，下次安装走 already-staged 补写。
+    recordCatalogInstallReceipt(pluginInstallDir, options.pluginId, remote, targetVersionDir, actualSha512);
 
     return {
       status: 'staged',

@@ -68,6 +68,8 @@ Desktop 发行身份和插件 artifact 来源是两层不同证明。当前产�
 
 Catalog 验签合同与实现见 [`src/features/plugins/catalog`](../../src/features/plugins/catalog/README.md)：
 独立插件发布密钥签名的信封、https 下载地址、有效期上限与序号防回放；生产公钥加入前任何 catalog 都无法通过验签。
+远程安装暂存后写入含签名信封的安装回执；启动准入复核回执签名、artifact 摘要、版本目录身份与后续撤回，
+通过后才算 `catalog-official` 来源。
 
 ## 第三方插件
 
