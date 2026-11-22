@@ -357,6 +357,7 @@ describe('CLI owned ingestion and graph completion', () => {
       )
     ).toMatchObject({ status: 'failed' });
     expect(uiCalls).toContain('ui-embedding');
-    expect(runtime.hasActiveTasks()).toBe(false);
+    // 任务状态先变为完成，队列收尾异步结束；等它收口，真正泄漏的任务仍会让等待超时失败。
+    await vi.waitFor(() => expect(runtime.hasActiveTasks()).toBe(false));
   });
 });
