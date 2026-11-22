@@ -250,7 +250,7 @@ try {
         const input = document.querySelector('.upload-tab input[type="file"]');
         if (!input) return false;
         const transfer = new DataTransfer();
-        transfer.items.add(new File(['# Synthetic port check\nApple orchard.'], ${json(filename)}, { type: 'text/markdown' }));
+        transfer.items.add(new File(['# Synthetic port check\\nApple orchard.'], ${json(filename)}, { type: 'text/markdown' }));
         input.files = transfer.files;
         input.dispatchEvent(new Event('change', { bubbles: true }));
         return true;
