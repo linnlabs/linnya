@@ -21,3 +21,9 @@
 7. 同一插件/运行时版本或同一平台目标不得重复（`malformed`）。
 
 通过后返回冻结的 `VerifiedPluginCatalog`：`keyId`、payload 摘要 `digest`（写入安装回执）、序号、有效期，以及剔除撤回版本后的插件与运行时条目。调用方必须在任何拒绝时保留原有安装，不进入下载。
+
+## 拉取、高水位与选版本
+
+- `fetchVerifiedPluginCatalog`：拒绝重定向，20 秒超时，响应超过 1 MiB 不读入；验签通过后才把序号与摘要写入本机高水位。拒绝时按类别抛出 `PluginOperationError`：过期、尚未生效、通道不符归 `source-unavailable`（稍后可恢复），其余归 `artifact-integrity`；调用方取消原样传出。
+- 本机高水位存在用户插件根下的 `.catalog-state.json`（原子替换写入，只前进不后退，按通道分开）。插件发现只认带 `active.json` 的子目录，不会把它当插件。文件损坏时按首次接受处理并留诊断，不让远程安装永久失效。
+- `selectCatalogPluginRelease`：按版本从高到低选出当前 Host 兼容（`minApp`、`rendererUi`）且所需运行时能解析到本平台 artifact 的最高版本；运行时取满足 range 的最高版本。全部不可用时返回最高版本的原因：`incompatible` 或 `runtime-unavailable`。

@@ -1,3 +1,5 @@
+import satisfies from 'semver/functions/satisfies.js';
+import valid from 'semver/functions/valid.js';
 import validRange from 'semver/ranges/valid.js';
 import { z } from 'zod';
 
@@ -71,6 +73,12 @@ const ISO_INSTANT = (value: string) => !Number.isNaN(Date.parse(value)) && new D
 export function isValidSemverRange(range: string): boolean {
   const candidate = range.trim();
   return candidate.length > 0 && validRange(candidate) !== null;
+}
+
+/** 版本与 range 都合法且满足时为 true；任一非法按不满足处理，调用方据此失败关闭。 */
+export function satisfiesSemverRange(version: string, range: string): boolean {
+  const candidate = version.trim();
+  return valid(candidate) !== null && isValidSemverRange(range) && satisfies(candidate, range.trim());
 }
 
 export const PLUGIN_CATALOG_CHANNELS = ['stable', 'beta'] as const;
