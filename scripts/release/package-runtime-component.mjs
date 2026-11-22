@@ -9,6 +9,7 @@ import { repoRoot } from './plugin-release-targets.mjs';
 /**
  * 打包原生运行时组件（当前只有 Qdrant）。正式发布由 linnya-release 先对可执行文件重签名，再以
  * `--executable <已签名文件>` 调用；不传时使用 prepare-qdrant-runtime 已按锁定清单校验的上游文件（开发/测试）。
+ * Windows 组件随附 VC 运行库：默认读 build/windows-app-local-runtime/<arch>，发布时用 --vc-runtime-dir 指定已验签目录。
  * 输出：dist/runtime-components/<id>/<version>/<platform>-<arch>/{<zip>, runtime.json}
  */
 const require = createRequire(import.meta.url);
@@ -44,7 +45,11 @@ if (sha256(licenseBytes) !== catalog.upstream.licenseSha256) throw new Error('Qd
 const WINDOWS_VC_RUNTIME_FILES = ['msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll'];
 const supportFiles = [];
 if (target.platform === 'win32') {
-  const runtimeDirectory = path.join(repoRoot, 'build', 'windows-app-local-runtime', target.architecture);
+  // 发布流水线把云构建取回的已验签运行库放在自己的目录，用 --vc-runtime-dir 传入，不写进源码工作区。
+  const explicitRuntimeDirectory = readFlag('vc-runtime-dir');
+  const runtimeDirectory = explicitRuntimeDirectory
+    ? path.resolve(explicitRuntimeDirectory)
+    : path.join(repoRoot, 'build', 'windows-app-local-runtime', target.architecture);
   for (const name of WINDOWS_VC_RUNTIME_FILES) {
     const filePath = path.join(runtimeDirectory, name);
     const bytes = await fs.readFile(filePath).catch(() => null);
