@@ -359,7 +359,17 @@ export async function verifyWindowsPluginData({
       await application.clickElement(
         '[...document.querySelectorAll(".plugin-store-card")].find(el => el.querySelector("h2")?.textContent.trim() === "知识库")'
       );
-      await waitFor(`${panel} .is-installed`);
+      try {
+        await waitFor(`${panel} .is-installed`);
+      } catch (error) {
+        // 记录 Host 当时给出的占用事实与采样状态，区分“没采到”“采样未结束”与“界面未刷新”。
+        observations.ntfsLockDetail = {
+          detail: await getDetail(),
+          panel: await text(panel),
+          lockedFile: await stat(target).then(info => ({ size: info.size, blocks: info.blocks }), failure => ({ error: failure.code ?? failure.message })),
+        };
+        throw error;
+      }
       await click('.plugin-store-uninstall-button');
       await click(`${dialog} .plugin-store-uninstall-dialog label`);
       await confirm('卸载并删除');
