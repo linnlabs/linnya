@@ -133,7 +133,12 @@ it('全工作区列表只返回非空闲对话并带项目；旧中断之后已�
   for (const [id, project] of [['recovered', null], ['interrupted', 'project-a'], ['idle', null]] as const) insert.run(id, id, project);
   const failedThenDone = await register('recovered-failed', undefined, 'foreground', 'recovered');
   await failedThenDone.markFailed({ errorCode: 'model_error', message: 'failure', recoverable: false });
-  await (await register('recovered-done', undefined, 'foreground', 'recovered')).markCompleted();
+  const recoveredDone = await register('recovered-done', undefined, 'foreground', 'recovered');
+  await recoveredDone.markCompleted();
+  // 两次运行常落在同一毫秒，排序会退到随机 run id；显式让完成晚于失败，才是本用例要的“旧中断之后已完成”。
+  const recoveredRecord = await registry.load(recoveredDone.runId);
+  if (!recoveredRecord) throw new Error('fixture run disappeared');
+  await registry.save({ ...recoveredRecord, updatedAt: recoveredRecord.updatedAt + 100 });
   await (await register('cancelled', undefined, 'foreground', 'interrupted')).cancel({ reason: 'user_cancel' });
   await (await register('idle-done', undefined, 'foreground', 'idle')).markCompleted();
   await register('running-root');
