@@ -26,6 +26,7 @@ import { prepareKnowledgeData } from './prepareKnowledgeData';
 
 /** 一个 activation 持有全部知识库运行资源；这里只读 SQLite/创建目录，不启动向量或线程。 */
 const runtimeLogger = new Logger('KnowledgeRuntime');
+const STALE_COLLECTION_REQUEST_TIMEOUT_MS = 5_000;
 
 export async function createKnowledgeRuntime() {
   const storage = getAdoptedHostData('knowledge');
@@ -55,8 +56,9 @@ export async function createKnowledgeRuntime() {
       throw new KnowledgeVectorStartupError(cause);
     }
     // 本次激活首次就绪时清掉早期版本预建的空集合；所有调用方（含派发任务）都先等它结束。
+    // 刚就绪的本机服务上只做元数据检查，单次请求 5 秒超时；超时只放弃清理，写入路径仍会给出明确提示。
     await (staleCollectionRelease ??= releaseStaleEmptyKnowledgeCollections({
-      metadata, collections: new QdrantAdapter({ url }),
+      metadata, collections: new QdrantAdapter({ url, timeout: STALE_COLLECTION_REQUEST_TIMEOUT_MS }),
     }).then(
       released => { if (released.length > 0) runtimeLogger.warn(`已移除早期版本预建的空向量集合: ${released.join(', ')}`); },
       error => runtimeLogger.warn('检查早期版本预建的空向量集合失败，写入时会提示不一致的集合', error),
