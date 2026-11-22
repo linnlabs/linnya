@@ -12,6 +12,7 @@ export function createProviderModelSynchronizationLifecycle(
   const executions = new Map<string, { controller: AbortController; settlement: Promise<void> }>();
   let started = false;
   let stopped = false;
+  let unsubscribeUserCatalogChanges: (() => void) | null = null;
 
   const synchronizeConnectedProviderModels = (connectionId: string): Promise<void> => {
     if (stopped) return Promise.reject(new Error('Provider model synchronization owner has stopped'));
@@ -41,6 +42,8 @@ export function createProviderModelSynchronizationLifecycle(
     start() {
       if (started || stopped) return;
       started = true;
+      unsubscribeUserCatalogChanges =
+        dependencies.subscribeToUserCatalogChanges?.(() => dependencies.publishModelsChanged()) ?? null;
       for (const connectionId of dependencies.startupConnectionIds) {
         void synchronizeConnectedProviderModels(connectionId).catch((error: unknown) => {
           if (error instanceof Error && error.name === 'AbortError') return;
@@ -60,6 +63,8 @@ export function createProviderModelSynchronizationLifecycle(
     },
     async stop() {
       stopped = true;
+      unsubscribeUserCatalogChanges?.();
+      unsubscribeUserCatalogChanges = null;
       const active = [...executions.values()];
       for (const execution of active) execution.controller.abort();
       await Promise.allSettled(active.map(execution => execution.settlement));

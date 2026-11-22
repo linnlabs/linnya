@@ -55,7 +55,9 @@ Provider 注册/刷新是独立可信的政策投影通道，直接更新已接�
 - 原子持久化用户模型、自定义分组连接归属和 InferenceEndpoint 元数据，写盘成功后才提交内存状态；
 - 提供 capability、UI visibility、tag、purpose default 等目录查询；
 - 在 Cloud 目录成功刷新后发布窄事件，由 Desktop Host
-  capability 桥接为 Renderer 重新拉取信号。
+  capability 桥接为 Renderer 重新拉取信号；
+- 任何入口（设置页、CLI、外部 HTTP）提交的用户目录事务在写盘并替换内存后发出
+  `onUserModelCatalogChanged`（只带 revision），写盘失败或无变化不发；监听者异常只记日志，不改变事务结果。
 
 ### 不负责
 

@@ -57,6 +57,13 @@ export interface CloudModelsLoadedEvent {
 
 export type CloudModelsLoadedListener = (event: CloudModelsLoadedEvent) => void;
 
+/** 用户目录事务已经写盘并更新内存后才发出；只是失效信号，读方重新读取目录。 */
+export interface UserModelCatalogChangedEvent {
+  readonly revision: number;
+}
+
+export type UserModelCatalogChangedListener = (event: UserModelCatalogChangedEvent) => void;
+
 function processEnvironment(): Record<string, string> {
   const environment: Record<string, string> = {};
   for (const [name, value] of Object.entries(process.env)) {
@@ -100,6 +107,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private cloudModelsLoadedSuccessfully = false;
   private cloudModelLoadInFlight: Promise<boolean> | null = null;
   private readonly cloudModelsLoadedListeners = new Set<CloudModelsLoadedListener>();
+  private readonly userModelCatalogChangedListeners = new Set<UserModelCatalogChangedListener>();
   private functionalModelDefaults: FunctionalModelDefaults = {};
 
   private constructor() {}
@@ -542,6 +550,12 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return () => this.cloudModelsLoadedListeners.delete(listener);
   }
 
+  /** 任何入口（设置页、CLI、外部 HTTP）提交的用户目录变更都经过这里，供 Host 推送目录失效。 */
+  onUserModelCatalogChanged(listener: UserModelCatalogChangedListener): () => void {
+    this.userModelCatalogChangedListeners.add(listener);
+    return () => this.userModelCatalogChangedListeners.delete(listener);
+  }
+
   private loadDefaultModels(): void {
     const modelsPath = resolveDefaultModelsPath();
     const parsed: unknown = JSON.parse(fs.readFileSync(modelsPath, 'utf8'));
@@ -591,7 +605,10 @@ export class ModelCatalogRegistry implements ModelCatalog {
         throw new ModelCatalogConflictError();
       }
       const changed = await operation();
-      if (changed !== false) this.userRevision += 1;
+      if (changed === false) return;
+      this.userRevision += 1;
+      // 事务体在写盘成功后才替换内存目录；此处通知时读方已能读到提交后的状态。
+      this.emitUserModelCatalogChanged({ revision: this.userRevision });
     });
     this.userMutationTail = result.then(
       () => undefined,
@@ -830,6 +847,17 @@ export class ModelCatalogRegistry implements ModelCatalog {
     if (!this.cloudModelRetryTimer) return;
     clearTimeout(this.cloudModelRetryTimer);
     this.cloudModelRetryTimer = null;
+  }
+
+  private emitUserModelCatalogChanged(event: UserModelCatalogChangedEvent): void {
+    for (const listener of this.userModelCatalogChangedListeners) {
+      try {
+        listener(event);
+      } catch (error) {
+        // 通知失败不能把已经提交的目录事务报告成失败。
+        logger.warn('[ModelCatalog] userModelCatalogChanged listener 执行失败:', error);
+      }
+    }
   }
 
   private emitCloudModelsLoaded(models: ModelConfig[]): void {

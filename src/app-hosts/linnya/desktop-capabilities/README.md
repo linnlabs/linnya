@@ -12,7 +12,8 @@ Backend renderer integration 只发布 Model Catalog、转录进度、Workspace 
 
 Worker 结构化克隆中的可选 `undefined` 对象字段，在 RPC 编码前按 JSON 约定省略；数组和其它非法值不会被改写。DTO 校验失败与传输失败统一送入发布者诊断口，不能从任务进度监听器抛出并把正常处理误判为失败，或二次击穿失败回报。相邻真实 pipe RPC 回归覆盖插件任务和图谱投影、非法值诊断，以及非插件通知不变。
 
-App Server 自己完成的账号目录同步通过 `publishModelsChanged()` 发出无 payload 的目录失效通知，
+App Server 自己完成的账号目录同步，以及任何入口（设置页、CLI、外部 HTTP）提交的用户目录事务，
+都通过 `publishModelsChanged()` 发出无 payload 的目录失效通知（后者由账号模型同步生命周期在 start 时订阅、stop 时退订），
 Desktop 投影到既有 `models-updated` channel；它不借用只覆盖 Cloud 的目录订阅。Renderer 先订阅再初次读取，
 因此窗口创建前完成的同步也能由首次 HTTP 快照接纳，不需要缓存通知或向 Main 复制一份模型目录。
 

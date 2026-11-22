@@ -554,6 +554,52 @@ describe('Registry default model by capability', () => {
     expect(registry.getModel('second-user-model')).toBeUndefined();
   });
 
+  it('用户目录事务提交后才通知变更：读方能读到新模型，写盘失败不通知，监听异常不影响提交', async () => {
+    fetchCloudModelsMock.mockResolvedValueOnce({
+      success: true,
+      models: [],
+      purposeDefaults: {},
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+    await registry.initialize(createSourceDistributionIdentity());
+    const seen: Array<{ revision: number; visible: boolean }> = [];
+    const unsubscribe = registry.onUserModelCatalogChanged(event => {
+      seen.push({ revision: event.revision, visible: registry.getModel('notified-model') !== undefined });
+    });
+    registry.onUserModelCatalogChanged(() => {
+      throw new Error('listener failure');
+    });
+    const startRevision = registry.getUserRevision();
+
+    await registry.registerUserModel(buildUserModel('notified-model', 'notified-endpoint'), {
+      kind: 'create',
+      endpoint: {
+        id: 'notified-endpoint',
+        route_profile_id: 'openai_chat',
+        endpoint_id: 'deepseek',
+        base_url: 'https://api.linnyai.com/proxy/deepseek',
+        auth_profile: 'bearer',
+        credential_secret: 'secret-value',
+      },
+    });
+    expect(seen).toEqual([{ revision: startRevision + 1, visible: true }]);
+
+    persisterMock.saveState.mockRejectedValueOnce(new Error('disk unavailable'));
+    await expect(
+      registry.registerUserModel(buildUserModel('failed-model', 'notified-endpoint'), {
+        kind: 'existing',
+        inference_endpoint_id: 'notified-endpoint',
+      })
+    ).rejects.toThrow('disk unavailable');
+    expect(seen).toHaveLength(1);
+
+    unsubscribe();
+    await registry.removeModel('notified-model');
+    expect(seen).toHaveLength(1);
+    expect(registry.getUserRevision()).toBe(startRevision + 2);
+  });
+
   it('删除最后一个引用模型时原子清理 endpoint 与凭据', async () => {
     fetchCloudModelsMock.mockResolvedValueOnce({
       success: true,

@@ -24,6 +24,37 @@ describe('账号模型后台同步生命周期', () => {
     await expect(lifecycle.synchronizeConnectedProviderModels('account')).rejects.toThrow('stopped');
   });
 
+  it('用户目录提交信号在 start 后转发为刷新通知，重复 start 不重复订阅，stop 后退订', async () => {
+    const listeners = new Set<() => void>();
+    const subscribeToUserCatalogChanges = vi.fn((listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    });
+    const publishModelsChanged = vi.fn();
+    const lifecycle = createProviderModelSynchronizationLifecycle({
+      startupConnectionIds: [], synchronize: vi.fn(async () => {}), publishModelsChanged,
+      subscribeToUserCatalogChanges,
+    });
+    expect(subscribeToUserCatalogChanges).not.toHaveBeenCalled();
+    lifecycle.start();
+    lifecycle.start();
+    expect(subscribeToUserCatalogChanges).toHaveBeenCalledOnce();
+    for (const listener of listeners) listener();
+    expect(publishModelsChanged).toHaveBeenCalledOnce();
+    await lifecycle.stop();
+    expect(listeners.size).toBe(0);
+    lifecycle.start();
+    expect(subscribeToUserCatalogChanges).toHaveBeenCalledOnce();
+  });
+
+  it('未提供目录订阅时照常启动与停止', async () => {
+    const lifecycle = createProviderModelSynchronizationLifecycle({
+      startupConnectionIds: [], synchronize: vi.fn(async () => {}), publishModelsChanged: vi.fn(),
+    });
+    lifecycle.start();
+    await expect(lifecycle.stop()).resolves.toBeUndefined();
+  });
+
   it('退出取消真实模型发现 HTTP 请求，收口后不提交迟到目录；重新授权可再次同步', async () => {
     const fetchStarted: AbortSignal[] = [];
     const discovery = createChatGptAccountModelDiscovery({

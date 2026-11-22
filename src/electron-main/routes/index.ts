@@ -445,6 +445,7 @@ export async function configureRoutes(
   // 本地恢复是 ready 前置；远端刷新由 App owner 在路由完成后启动并负责退出收口。
   const providerModelSynchronization = createProviderModelSynchronizationLifecycle({
     publishModelsChanged: () => dependencies.rendererIntegration.publishModelsChanged(),
+    subscribeToUserCatalogChanges: listener => modelCatalog.onUserModelCatalogChanged(() => listener()),
     startupConnectionIds: connectedChatGpt ? [CHATGPT_PROVIDER_CONNECTION_DEFINITION_ID] : [],
     synchronize: async (connectionId, signal) => {
       if (discoveredProviderModels.supports(connectionId)) {

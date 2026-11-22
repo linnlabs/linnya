@@ -76,6 +76,8 @@ export {
   modelCatalog,
   type CloudModelsLoadedEvent,
   type CloudModelsLoadedListener,
+  type UserModelCatalogChangedEvent,
+  type UserModelCatalogChangedListener,
 } from './registry/modelCatalogRegistry';
 
 /** 按 capability 读取当前首个已发布模型，供尚未升级为 purpose binding 的能力使用。 */
