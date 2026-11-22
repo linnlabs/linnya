@@ -7,7 +7,7 @@ import {
   type SignedPluginCatalogEntry,
 } from '@app/schemas';
 
-import { compareDottedVersions } from '../../functions/comparePluginVersions';
+import { compareDottedVersions } from '@app/schemas';
 import { evaluateRemotePluginCompatibility } from '../../install/functions/evaluateRemotePluginCompatibility';
 import type { VerifiedPluginCatalog } from '../definitions/pluginCatalog';
 

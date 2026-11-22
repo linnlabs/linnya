@@ -1,6 +1,6 @@
 import { evaluateRendererUiCompatibility } from '@app/schemas';
 
-import { compareDottedVersions } from '../../functions/comparePluginVersions';
+import { compareDottedVersions } from '@app/schemas';
 import { PluginOperationError } from '../definitions/pluginOperationError';
 
 export interface RemotePluginCompatibilityRequirement {

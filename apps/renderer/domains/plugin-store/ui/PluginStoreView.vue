@@ -27,6 +27,9 @@
       <p v-if="!remoteServiceEnabled" class="plugin-store-availability" role="status">
         {{ pluginStoreMessage('pluginStore.remoteUnavailable') }}
       </p>
+      <p v-else-if="isCatalogUnavailable" class="plugin-store-availability" role="status">
+        {{ pluginStoreMessage('pluginStore.remote.offline') }}
+      </p>
 
       <section v-if="storeItemsError" class="plugin-store-alert" role="alert">
         {{ storeItemsErrorMessage }}
@@ -60,8 +63,8 @@
                 <h1 id="plugin-store-detail-title">{{ selectedDetail.meta.name }}</h1>
                 <TagChip
                   class="plugin-store-state-chip"
-                  :class="`is-${selectedDetail.runtimeUnavailable ? 'warning' : getPluginStateTone(selectedDetail.state)}`"
-                  :label="resolvePluginStateLabel(selectedDetail)"
+                  :class="`is-${resolvePluginChip(selectedDetail).tone}`"
+                  :label="resolvePluginChip(selectedDetail).label"
                   :class-names="{ label: 'plugin-store-state-chip-label' }"
                 />
               </div>
@@ -71,24 +74,82 @@
             </div>
 
             <div class="plugin-store-detail-actions">
-              <Switch
-                v-if="!selectedDetail.runtimeUnavailable && !canInstallSelectedPlugin(selectedDetail)"
-                :model-value="selectedDetail.state === 'enabled'"
-                :disabled="!canToggleSelectedPlugin(selectedDetail) || isSelectedPluginBusy(selectedDetail)"
-                :ariaLabel="pluginToggleAriaLabel(selectedDetail.meta.name)"
-                @update:model-value="enabled => handleSelectedPluginEnabledChange(selectedDetail, enabled)"
-              />
               <ActionButtons
-                v-if="canInstallSelectedPlugin(selectedDetail)"
+                v-if="isRemoteInstalling(selectedDetail.meta.id)"
                 class="plugin-store-install-actions"
-                :primary-action-text="pluginStoreMessage('pluginStore.action.install')"
-                :primary-button-attributes="{ class: 'plugin-store-install-button' }"
-                :is-primary-action-disabled="isSelectedPluginBusy(selectedDetail)"
-                :show-secondary-action="false"
-                @primary-click="handleSelectedInstall(selectedDetail)"
+                :secondary-action-text="pluginStoreMessage('pluginStore.action.cancel')"
+                :secondary-button-attributes="{ class: 'plugin-store-cancel-install-button' }"
+                :show-primary-action="false"
+                @secondary-click="cancelRemoteInstall(selectedDetail.meta.id)"
               />
+              <template v-else>
+                <Switch
+                  v-if="!selectedDetail.runtimeUnavailable && !canInstallSelectedPlugin(selectedDetail) && !isRemoteInstallBlocked(selectedDetail)"
+                  :model-value="selectedDetail.state === 'enabled'"
+                  :disabled="!canToggleSelectedPlugin(selectedDetail) || isSelectedPluginBusy(selectedDetail)"
+                  :ariaLabel="pluginToggleAriaLabel(selectedDetail.meta.name)"
+                  @update:model-value="enabled => handleSelectedPluginEnabledChange(selectedDetail, enabled)"
+                />
+                <ActionButtons
+                  v-if="hasPluginRemoteUpdate(selectedDetail)"
+                  class="plugin-store-install-actions"
+                  :primary-action-text="pluginStoreMessage('pluginStore.action.update')"
+                  :primary-button-attributes="{ class: 'plugin-store-update-button' }"
+                  :is-primary-action-disabled="isSelectedPluginBusy(selectedDetail) || isCatalogUnavailable"
+                  :show-secondary-action="false"
+                  @primary-click="handleSelectedRemoteUpdate(selectedDetail)"
+                />
+                <ActionButtons
+                  v-if="canInstallSelectedPlugin(selectedDetail) || isRemoteInstallBlocked(selectedDetail)"
+                  class="plugin-store-install-actions"
+                  :primary-action-text="installActionText(selectedDetail)"
+                  :primary-button-attributes="{ class: 'plugin-store-install-button' }"
+                  :is-primary-action-disabled="isSelectedPluginBusy(selectedDetail) || isRemoteInstallBlocked(selectedDetail)"
+                  :show-secondary-action="false"
+                  @primary-click="handleSelectedInstall(selectedDetail)"
+                />
+              </template>
             </div>
           </section>
+
+          <div
+            v-if="selectedInstallSummary"
+            class="plugin-store-install-status"
+            role="status"
+          >
+            <div class="plugin-store-install-line">
+              <span>{{ resolveInstallPhaseText(selectedDetail, selectedInstallSummary) }}</span>
+              <span v-if="selectedInstallSummary.ratio !== null" class="plugin-store-install-percent">
+                {{ Math.round(selectedInstallSummary.ratio * 100) }}%
+              </span>
+            </div>
+            <div
+              v-if="selectedInstallSummary.ratio !== null"
+              class="plugin-store-progress"
+              role="progressbar"
+              :aria-label="pluginStoreMessage('pluginStore.install.progressAriaLabel', { pluginName: selectedDetail.meta.name })"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-valuenow="Math.round(selectedInstallSummary.ratio * 100)"
+            >
+              <span class="plugin-store-progress-fill" :style="{ width: `${selectedInstallSummary.ratio * 100}%` }" />
+            </div>
+            <p class="plugin-store-install-hint">{{ resolveBackgroundHint(selectedInstallSummary) }}</p>
+          </div>
+          <p
+            v-else-if="selectedOutcome?.kind === 'cancelled'"
+            class="plugin-store-install-status plugin-store-install-hint"
+            role="status"
+          >
+            {{ pluginStoreMessage('pluginStore.remote.cancelled') }}
+          </p>
+          <p
+            v-else-if="selectedOutcome?.kind === 'failed'"
+            class="plugin-store-install-status plugin-store-install-error"
+            role="alert"
+          >
+            {{ resolveFailureMessage(selectedDetail, selectedOutcome.error) }}
+          </p>
 
           <section v-if="selectedDetail.details?.length" class="plugin-store-detail-section">
             <h2>{{ pluginStoreMessage('pluginStore.section.introduction') }}</h2>
@@ -135,7 +196,11 @@
                 <span>{{ pluginStoreMessage('pluginStore.fact.developer') }}</span>
                 <strong>{{ selectedDetail.meta.developer }}</strong>
               </div>
-              <div v-if="selectedDetail.sizeBytes !== undefined" class="plugin-store-detail-fact">
+              <div v-if="selectedRemoteSize" class="plugin-store-detail-fact">
+                <span>{{ pluginStoreMessage('pluginStore.fact.size') }}</span>
+                <strong>{{ selectedRemoteSize }}</strong>
+              </div>
+              <div v-else-if="selectedDetail.sizeBytes !== undefined" class="plugin-store-detail-fact">
                 <span>{{ pluginStoreMessage('pluginStore.fact.size') }}</span>
                 <strong>{{ formatStorageBytes(selectedDetail.sizeBytes, currentLocale) }}</strong>
               </div>
@@ -166,6 +231,10 @@
               </ActionButtons>
             </div>
           </section>
+
+          <p v-for="note in selectedRuntimeNotes" :key="note" class="plugin-store-install-hint plugin-store-runtime-note">
+            {{ note }}
+          </p>
 
           <section
             v-if="visibleReleaseNotes.length"
@@ -239,7 +308,7 @@
           v-for="item in visibleStoreItems"
           :key="item.meta.id"
           class="plugin-store-card"
-          :class="{ 'is-busy': isPluginBusy(item.meta.id) }"
+          :class="{ 'is-busy': isPluginBusy(item.meta.id) && !isRemoteInstalling(item.meta.id) }"
           tabindex="0"
           :aria-label="pluginDetailAriaLabel(item.meta.name)"
           @click="handlePluginCardClick(item)"
@@ -259,8 +328,8 @@
               <h2>{{ item.meta.name }}</h2>
               <TagChip
                 class="plugin-store-state-chip"
-                :class="`is-${item.runtimeUnavailable ? 'warning' : getPluginStateTone(item.state)}`"
-                :label="resolvePluginStateLabel(item)"
+                :class="`is-${resolvePluginChip(item).tone}`"
+                :label="resolvePluginChip(item).label"
                 :class-names="{ label: 'plugin-store-state-chip-label' }"
               />
             </div>
@@ -269,27 +338,45 @@
               {{ item.meta.description }}
             </p>
             <div class="plugin-store-card-meta">
-              <span>{{ pluginStoreMessage('pluginStore.fact.version') }} {{ item.meta.version }}</span>
-              <span>{{ pluginStoreMessage('pluginStore.fact.developer') }} {{ item.meta.developer }}</span>
-              <span v-if="item.data?.status === 'legacy'">{{ formatLegacyStorageNotice(item.data.bytes) }}</span>
+              <span v-for="line in resolveCardMeta(item)" :key="line">{{ line }}</span>
+            </div>
+            <div
+              v-if="cardInstallRatio(item) !== null"
+              class="plugin-store-progress"
+              role="progressbar"
+              :aria-label="pluginStoreMessage('pluginStore.install.progressAriaLabel', { pluginName: item.meta.name })"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              :aria-valuenow="Math.round((cardInstallRatio(item) ?? 0) * 100)"
+            >
+              <span class="plugin-store-progress-fill" :style="{ width: `${(cardInstallRatio(item) ?? 0) * 100}%` }" />
             </div>
           </div>
 
-          <div class="plugin-store-card-actions" @click.stop @keydown.stop>
-              <Switch
-                v-if="!item.runtimeUnavailable && !canInstallPlugin(item)"
-                :model-value="item.state === 'enabled'"
-                :disabled="!canTogglePlugin(item) || isPluginBusy(item.meta.id)"
-                :ariaLabel="pluginToggleAriaLabel(item.meta.name)"
-                @update:model-value="enabled => handlePluginEnabledChange(item, enabled)"
-              />
+          <div v-if="!isRemoteInstalling(item.meta.id)" class="plugin-store-card-actions" @click.stop @keydown.stop>
+            <ActionButtons
+              v-if="hasPluginRemoteUpdate(item)"
+              class="plugin-store-install-actions"
+              :primary-action-text="pluginStoreMessage('pluginStore.action.update')"
+              :primary-button-attributes="{ class: 'plugin-store-update-button' }"
+              :is-primary-action-disabled="isPluginBusy(item.meta.id) || isCatalogUnavailable"
+              :show-secondary-action="false"
+              @primary-click="handleRemoteUpdate(item)"
+            />
+            <Switch
+              v-else-if="!item.runtimeUnavailable && !canInstallPlugin(item) && !isRemoteInstallBlocked(item)"
+              :model-value="item.state === 'enabled'"
+              :disabled="!canTogglePlugin(item) || isPluginBusy(item.meta.id)"
+              :ariaLabel="pluginToggleAriaLabel(item.meta.name)"
+              @update:model-value="enabled => handlePluginEnabledChange(item, enabled)"
+            />
 
             <ActionButtons
-              v-if="canInstallPlugin(item)"
+              v-if="canInstallPlugin(item) || isRemoteInstallBlocked(item)"
               class="plugin-store-install-actions"
-              :primary-action-text="pluginStoreMessage('pluginStore.action.install')"
+              :primary-action-text="installActionText(item)"
               :primary-button-attributes="{ class: 'plugin-store-install-button' }"
-              :is-primary-action-disabled="isPluginBusy(item.meta.id)"
+              :is-primary-action-disabled="isPluginBusy(item.meta.id) || isRemoteInstallBlocked(item)"
               :show-secondary-action="false"
               @primary-click="handleInstall(item)"
             />
@@ -342,7 +429,7 @@
 
 <script setup lang="ts">
 import { formatStorageBytes, useLocalization } from '@app/localization';
-import type { PluginId, PluginStoreDetail, PluginStoreListItem } from '@app/schemas';
+import type { PluginId, PluginRemoteCatalogItem, PluginStoreDetail, PluginStoreListItem } from '@app/schemas';
 import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref, type Component, type PropType } from 'vue';
 import { storeToRefs } from 'pinia';
 import { AppsIcon } from '@linnya/renderer-ui/icons';
@@ -370,7 +457,6 @@ import {
   type PluginRuntimeUserError,
 } from '@/app/plugins/definitions/pluginRuntimeErrors';
 import {
-  canCheckPluginUpdateFromRemote,
   canInstallPluginFromBundled,
   canInstallPluginFromRemote,
   canTogglePlugin,
@@ -380,6 +466,20 @@ import {
   isRequiredPlugin,
 } from '../functions/pluginStorePresentation';
 import { resolvePluginRuntimeUserErrorMessage } from '../functions/pluginRuntimeErrorPresentation';
+import {
+  canRetryRemoteFailure,
+  hasRemoteUpdate,
+  isRemoteInstallable,
+  resolveRemoteFailureMessage,
+  resolveRemoteFailureShortMessage,
+  resolveRuntimeDisplayName,
+  toRemoteOnlyStoreItem,
+} from '../functions/pluginRemoteInstallPresentation';
+import {
+  summarizeRemoteInstallProgress,
+  type RemoteInstallProgressSummary,
+} from '../functions/pluginRemoteInstallProgress';
+import { usePluginRemoteInstallStore } from '../store/pluginRemoteInstallStore';
 import { usePluginStoreLocalization } from './usePluginStoreLocalization';
 import PluginDataPanel from './PluginDataPanel.vue';
 import type { PluginStoreMessageKey } from '../definitions/pluginStoreMessages';
@@ -425,6 +525,8 @@ const { pluginStoreMessage } = usePluginStoreLocalization();
 const { currentLocale } = useLocalization();
 const { storeItems, isStoreItemsLoading, storeItemsError, storeDetailsByPluginId, remoteServiceEnabled } =
   storeToRefs(pluginsStore);
+const remoteInstallStore = usePluginRemoteInstallStore();
+const { catalogItemsById, isCatalogUnavailable, progressByPluginId, outcomeByPluginId } = storeToRefs(remoteInstallStore);
 
 const busyPluginIds = ref<ReadonlySet<PluginId>>(new Set());
 const selectedPluginId = ref<PluginId | null>(null);
@@ -434,9 +536,17 @@ const activeStoreTab = ref<PluginStoreTabId>('installed');
 const releaseNotesExpanded = ref(false);
 const uninstallDialogItem = ref<PluginStoreListItem | null>(null);
 const deleteDataChecked = ref(false);
-const manageableStoreItems = computed<PluginStoreListItem[]>(() =>
-  storeItems.value.filter(item => !isRequiredPlugin(item))
+const localPluginIds = computed<ReadonlySet<PluginId>>(() => new Set(storeItems.value.map(item => item.meta.id)));
+/** 只在已验签 catalog 中、本机从未登记的插件（例如不随安装包分发的插件）。 */
+const remoteOnlyStoreItems = computed<PluginStoreListItem[]>(() =>
+  [...catalogItemsById.value.values()]
+    .filter(item => !localPluginIds.value.has(item.id))
+    .map(toRemoteOnlyStoreItem)
 );
+const manageableStoreItems = computed<PluginStoreListItem[]>(() => [
+  ...storeItems.value.filter(item => !isRequiredPlugin(item)),
+  ...remoteOnlyStoreItems.value,
+]);
 const hasStoreItems = computed(() => manageableStoreItems.value.length > 0);
 const installedStoreItems = computed<PluginStoreListItem[]>(() =>
   manageableStoreItems.value.filter(item => item.state !== 'missing')
@@ -497,6 +607,10 @@ const selectedDetail = computed<PluginStoreDetail | null>(() => {
   if (!selectedPluginId.value) {
     return null;
   }
+  if (isRemoteOnly(selectedPluginId.value)) {
+    // 本机没有该插件的详情来源；用 catalog 展示字段，安装完成后切回 Host 详情。
+    return remoteOnlyStoreItems.value.find(item => item.meta.id === selectedPluginId.value) ?? null;
+  }
   const detail = storeDetailsByPluginId.value[selectedPluginId.value] ?? null;
   if (!detail) {
     return null;
@@ -512,6 +626,37 @@ const selectedDetail = computed<PluginStoreDetail | null>(() => {
     ...liveStoreItem,
   };
 });
+const selectedInstallSummary = computed(() =>
+  selectedPluginId.value ? installSummaryFor(selectedPluginId.value) : null
+);
+const selectedOutcome = computed(() =>
+  selectedPluginId.value ? outcomeByPluginId.value[selectedPluginId.value] ?? null : null
+);
+const selectedRemoteInstallable = computed(() => {
+  const detail = selectedDetail.value;
+  if (!detail || detail.state !== 'missing' || canInstallPluginFromBundled(detail)) return null;
+  const remote = remoteItemFor(detail.meta.id);
+  return remote?.availability.status === 'installable' ? remote.availability : null;
+});
+const selectedRemoteSize = computed(() => {
+  const availability = selectedRemoteInstallable.value;
+  return availability
+    ? pluginStoreMessage('pluginStore.fact.sizeRemote', {
+      download: formatStorageBytes(availability.downloadBytes, currentLocale.value),
+      installed: formatStorageBytes(availability.unpackedBytes, currentLocale.value),
+    })
+    : null;
+});
+const selectedRuntimeNotes = computed(() => (selectedRemoteInstallable.value?.runtimes ?? []).map(runtime => {
+  const params = {
+    runtimeName: resolveRuntimeDisplayName(runtime.id, pluginStoreMessage),
+    runtimeLabel: capitalize(runtime.id),
+    version: runtime.version,
+  };
+  return runtime.installed
+    ? pluginStoreMessage('pluginStore.runtime.installed', params)
+    : pluginStoreMessage('pluginStore.runtime.included', { ...params, size: formatStorageBytes(runtime.downloadBytes, currentLocale.value) });
+}));
 const allReleaseNotes = computed(() => selectedDetail.value?.releaseNotes ?? []);
 const visibleReleaseNotes = computed(() =>
   releaseNotesExpanded.value ? allReleaseNotes.value : allReleaseNotes.value.slice(0, 1)
@@ -548,7 +693,136 @@ function buildCapabilitySectionTitle(kind: 'skill' | 'agent', count: number): st
 
 
 function isPluginBusy(pluginId: PluginId): boolean {
-  return busyPluginIds.value.has(pluginId);
+  return busyPluginIds.value.has(pluginId) || isRemoteInstalling(pluginId);
+}
+
+function isRemoteOnly(pluginId: PluginId): boolean {
+  return !localPluginIds.value.has(pluginId) && catalogItemsById.value.has(pluginId);
+}
+
+function remoteItemFor(pluginId: PluginId): PluginRemoteCatalogItem | undefined {
+  return catalogItemsById.value.get(pluginId);
+}
+
+function isRemoteInstalling(pluginId: PluginId): boolean {
+  return Object.prototype.hasOwnProperty.call(progressByPluginId.value, pluginId);
+}
+
+function installSummaryFor(pluginId: PluginId): RemoteInstallProgressSummary | null {
+  const progress = progressByPluginId.value[pluginId];
+  return progress ? summarizeRemoteInstallProgress(progress) : null;
+}
+
+function cardInstallRatio(item: PluginStoreListItem): number | null {
+  return installSummaryFor(item.meta.id)?.ratio ?? null;
+}
+
+function hasPluginRemoteUpdate(item: PluginStoreListItem): boolean {
+  return remoteServiceEnabled.value && !isRemoteInstalling(item.meta.id) && hasRemoteUpdate(item, remoteItemFor(item.meta.id));
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+type PluginChipTone = ReturnType<typeof getPluginStateTone> | 'error';
+
+/** 状态标签：安装中与安装失败优先于安装状态；失败用错误色调，便于在列表里一眼认出。 */
+function resolvePluginChip(item: PluginStoreListItem): { readonly label: string; readonly tone: PluginChipTone } {
+  if (isRemoteInstalling(item.meta.id)) return { label: pluginStoreMessage('pluginStore.state.installing'), tone: 'warning' };
+  if (outcomeByPluginId.value[item.meta.id]?.kind === 'failed') {
+    return { label: pluginStoreMessage('pluginStore.state.installFailed'), tone: 'error' };
+  }
+  if (hasPluginRemoteUpdate(item)) return { label: pluginStoreMessage('pluginStore.state.updateAvailable'), tone: 'warning' };
+  return { label: resolvePluginStateLabel(item), tone: item.runtimeUnavailable ? 'warning' : getPluginStateTone(item.state) };
+}
+
+function resolveCardMeta(item: PluginStoreListItem): string[] {
+  const summary = installSummaryFor(item.meta.id);
+  if (summary) {
+    return [summary.totalBytes === null
+      ? resolvePhaseLabel(item, summary)
+      : pluginStoreMessage('pluginStore.card.downloading', {
+        received: formatStorageBytes(summary.receivedBytes, currentLocale.value),
+        total: formatStorageBytes(summary.totalBytes, currentLocale.value),
+      })];
+  }
+  const outcome = outcomeByPluginId.value[item.meta.id];
+  if (outcome?.kind === 'failed') return [resolveRemoteFailureShortMessage(outcome.error, pluginStoreMessage)];
+  const remote = remoteItemFor(item.meta.id);
+  if (remote && hasPluginRemoteUpdate(item) && remote.availability.status === 'installable') {
+    return [
+      pluginStoreMessage('pluginStore.card.updateFromTo', { current: item.meta.version, latest: remote.version }),
+      pluginStoreMessage('pluginStore.card.downloadSize', { size: formatStorageBytes(remote.availability.downloadBytes, currentLocale.value) }),
+    ];
+  }
+  const version = `${pluginStoreMessage('pluginStore.fact.version')} ${item.meta.version}`;
+  if (remote && item.state === 'missing' && !canInstallPluginFromBundled(item)) {
+    const availability = remote.availability;
+    if (availability.status === 'installable') {
+      return [version, pluginStoreMessage('pluginStore.card.downloadSize', { size: formatStorageBytes(availability.downloadBytes, currentLocale.value) })];
+    }
+    if (availability.status === 'requires-app-update') {
+      return [version, pluginStoreMessage('pluginStore.card.requiresAppUpdate', { minApp: availability.minApp })];
+    }
+    return [version, pluginStoreMessage(availability.status === 'incompatible'
+      ? 'pluginStore.card.incompatible'
+      : 'pluginStore.card.unsupportedPlatform')];
+  }
+  return [
+    version,
+    `${pluginStoreMessage('pluginStore.fact.developer')} ${item.meta.developer}`,
+    ...(item.data?.status === 'legacy' ? [formatLegacyStorageNotice(item.data.bytes)] : []),
+  ];
+}
+
+function resolvePhaseLabel(item: PluginStoreListItem, summary: RemoteInstallProgressSummary): string {
+  const current = summary.current;
+  if (!current) return pluginStoreMessage('pluginStore.install.phase.preparing');
+  if (current.stage === 'installing') return pluginStoreMessage('pluginStore.install.phase.installing');
+  return current.item.kind === 'runtime'
+    ? pluginStoreMessage('pluginStore.install.phase.runtime', { runtimeName: resolveRuntimeDisplayName(current.item.id, pluginStoreMessage) })
+    : pluginStoreMessage('pluginStore.install.phase.plugin', { pluginName: item.meta.name });
+}
+
+function resolveInstallPhaseText(item: PluginStoreListItem, summary: RemoteInstallProgressSummary): string {
+  const phase = resolvePhaseLabel(item, summary);
+  const current = summary.current;
+  if (current?.stage !== 'downloading' || current.item.totalBytes === null) return phase;
+  const progress = progressByPluginId.value[item.meta.id];
+  const key = `${current.item.kind}:${current.item.id}@${current.item.version}`;
+  return pluginStoreMessage('pluginStore.install.phaseBytes', {
+    phase,
+    received: formatStorageBytes(Math.min(progress?.receivedByItem[key] ?? 0, current.item.totalBytes), currentLocale.value),
+    total: formatStorageBytes(current.item.totalBytes, currentLocale.value),
+  });
+}
+
+function resolveBackgroundHint(summary: RemoteInstallProgressSummary): string {
+  return summary.totalBytes === null
+    ? pluginStoreMessage('pluginStore.install.backgroundHintNoTotal')
+    : pluginStoreMessage('pluginStore.install.backgroundHint', { total: formatStorageBytes(summary.totalBytes, currentLocale.value) });
+}
+
+function resolveFailureMessage(item: PluginStoreListItem, error: PluginRuntimeUserError): string {
+  return resolveRemoteFailureMessage({
+    error,
+    pluginName: item.meta.name,
+    remote: remoteItemFor(item.meta.id),
+    resolveMessage: pluginStoreMessage,
+    formatBytes: bytes => formatStorageBytes(bytes, currentLocale.value),
+  });
+}
+
+function installActionText(item: PluginStoreListItem): string {
+  const outcome = outcomeByPluginId.value[item.meta.id];
+  return outcome?.kind === 'failed' && canRetryRemoteFailure(outcome.error)
+    ? pluginStoreMessage('pluginStore.action.retry')
+    : pluginStoreMessage('pluginStore.action.install');
+}
+
+async function cancelRemoteInstall(pluginId: PluginId): Promise<void> {
+  await remoteInstallStore.cancel(pluginId);
 }
 
 function canInstallSelectedPlugin(detail: PluginStoreDetail | null): boolean {
@@ -557,7 +831,23 @@ function canInstallSelectedPlugin(detail: PluginStoreDetail | null): boolean {
 
 function canInstallPlugin(item: PluginStoreListItem): boolean {
   const blockedByCleanup = item.data?.status === 'cleaning' || item.data?.status === 'failed';
-  return !blockedByCleanup && (canInstallPluginFromBundled(item) || canInstallPluginFromRemote(item, remoteServiceEnabled.value));
+  return !blockedByCleanup && (canInstallPluginFromBundled(item) || canInstallRemotely(item));
+}
+
+/** 来源已开放但暂时连不上：未安装且没有随包来源的插件显示不可点的安装按钮，原因由页面顶部提示说明。 */
+function isRemoteInstallBlocked(item: PluginStoreListItem): boolean {
+  return remoteServiceEnabled.value
+    && isCatalogUnavailable.value
+    && item.state === 'missing'
+    && !isRequiredPlugin(item)
+    && !canInstallPluginFromBundled(item);
+}
+
+/** 远程安装需要来源开放、catalog 可用且列出本 Host 可装的版本。 */
+function canInstallRemotely(item: PluginStoreListItem): boolean {
+  return canInstallPluginFromRemote(item, remoteServiceEnabled.value)
+    && !isCatalogUnavailable.value
+    && isRemoteInstallable(remoteItemFor(item.meta.id));
 }
 
 function canToggleSelectedPlugin(detail: PluginStoreDetail | null): boolean {
@@ -711,7 +1001,7 @@ async function runRemotePluginInstall(
 
   setPluginBusy(item.meta.id, true);
   try {
-    const result = await pluginsStore.installPluginFromRemote(item.meta.id);
+    const result = await remoteInstallStore.install(item.meta.id);
 
     if (result.status === 'installed') {
       if (item.state !== 'disabled') {
@@ -753,15 +1043,19 @@ async function runRemotePluginInstall(
       );
     }
   } catch (caught) {
-    notificationStore.show(
-      pluginStoreMessage(options.failureMessageKey === 'pluginStore.error.installFailed'
-        ? 'pluginStore.error.installFailedWithReason'
-        : options.failureMessageKey, {
-        errorMessage: resolveErrorMessage(readErrorMessage(caught)),
-      }),
-      'error',
-      5000,
-    );
+    const error = readErrorMessage(caught);
+    // 用户主动取消不是错误：详情页显示“已取消”，不再弹出失败提示。
+    if (error.code !== 'pluginOperationCancelled') {
+      notificationStore.show(
+        pluginStoreMessage(options.failureMessageKey === 'pluginStore.error.installFailed'
+          ? 'pluginStore.error.installFailedWithReason'
+          : options.failureMessageKey, {
+          errorMessage: resolveFailureMessage(item, error),
+        }),
+        'error',
+        5000,
+      );
+    }
     await refreshPluginStoreItems();
   } finally {
     setPluginBusy(item.meta.id, false);
@@ -769,7 +1063,7 @@ async function runRemotePluginInstall(
 }
 
 async function handleRemoteInstall(item: PluginStoreListItem): Promise<void> {
-  if (!canInstallPluginFromRemote(item, remoteServiceEnabled.value)) {
+  if (!canInstallRemotely(item)) {
     return;
   }
 
@@ -830,52 +1124,18 @@ async function handleInstall(item: PluginStoreListItem): Promise<void> {
   await handleRemoteInstall(item);
 }
 
-async function checkPluginUpdateFromCard(
-  item: PluginStoreListItem,
-  options: { readonly silentFailure: boolean } = { silentFailure: false }
-): Promise<void> {
-  if (!canCheckPluginUpdateFromRemote(item, remoteServiceEnabled.value) || isPluginBusy(item.meta.id)) {
+async function handleRemoteUpdate(item: PluginStoreListItem): Promise<void> {
+  if (!hasPluginRemoteUpdate(item) || isCatalogUnavailable.value) {
     return;
   }
+  await runRemotePluginInstall(item, {
+    notifyCurrent: false,
+    failureMessageKey: 'pluginStore.error.updateFailed',
+  });
+}
 
-  setPluginBusy(item.meta.id, true);
-  try {
-    const checkResult = await pluginsStore.checkPluginRemoteUpdate(item.meta.id);
-    if (checkResult.status === 'available') {
-      setPluginBusy(item.meta.id, false);
-      await runRemotePluginInstall(item, {
-        notifyCurrent: false,
-        failureMessageKey: 'pluginStore.error.updateFailed',
-      });
-      return;
-    }
-    if (checkResult.status === 'incompatible') {
-      notificationStore.show(
-        pluginStoreMessage('pluginStore.toast.incompatible', { pluginName: item.meta.name }),
-        'warning',
-        5000,
-      );
-    } else if (checkResult.status === 'failed') {
-      throw normalizePluginRuntimeUserError({
-        code: checkResult.errorCode ?? 'unknown',
-        pluginId: checkResult.pluginId,
-      });
-    }
-  } catch (caught) {
-    // 中文说明：打开详情时的自动更新检查是后台辅助动作；官方 latest.json
-    // 尚未发布或开发环境离线时，不应把本地插件管理/打开流程打成红色错误。
-    if (!options.silentFailure) {
-      notificationStore.show(
-        pluginStoreMessage('pluginStore.error.updateCheckFailed', {
-          errorMessage: resolveErrorMessage(readErrorMessage(caught)),
-        }),
-        'error',
-        5000,
-      );
-    }
-  } finally {
-    setPluginBusy(item.meta.id, false);
-  }
+function handleSelectedRemoteUpdate(detail: PluginStoreDetail | null): void {
+  if (detail !== null) void handleRemoteUpdate(detail);
 }
 
 async function handlePluginUninstall(item: PluginStoreListItem): Promise<void> {
@@ -998,8 +1258,9 @@ async function executeUninstall(item: PluginStoreListItem, deleteData: boolean):
 async function openPluginDetail(pluginId: PluginId): Promise<void> {
   selectedPluginId.value = pluginId;
   releaseNotesExpanded.value = false;
-  isDetailLoading.value = true;
   detailError.value = null;
+  if (isRemoteOnly(pluginId)) return;
+  isDetailLoading.value = true;
   try {
     await pluginsStore.loadStoreDetail(pluginId);
   } catch (caught) {
@@ -1017,8 +1278,8 @@ async function openPluginDetail(pluginId: PluginId): Promise<void> {
 }
 
 async function handlePluginCardClick(item: PluginStoreListItem): Promise<void> {
+  // 打开详情不再自动下载更新；是否有新版本来自已验签 catalog，由用户点“更新”。
   await openPluginDetail(item.meta.id);
-  await checkPluginUpdateFromCard(item, { silentFailure: true });
 }
 
 function closePluginDetail(): void {
@@ -1059,6 +1320,7 @@ let unsubscribeDataChanges: (() => void) | undefined;
 onMounted(() => {
   unsubscribeDataChanges = pluginsStore.subscribeToDataChanges(() => selectedPluginId.value);
   void refreshPluginStoreItems();
+  void remoteInstallStore.refreshCatalog();
 });
 onBeforeUnmount(() => unsubscribeDataChanges?.());
 </script>

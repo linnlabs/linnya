@@ -4,7 +4,7 @@ import path from 'node:path';
 import { parsePluginManifest, pluginMetaFromManifest, type PluginMeta } from '@app/schemas';
 import { isPluginUserRemoved } from '../../../features/plugins/install/functions/pluginRemovalMarker';
 import { assertBundledPluginArtifactIntegrity, readPluginArtifactIdentity } from '../../../features/plugins/install/functions/readPluginArtifactIdentity';
-import { compareDottedVersions } from '../../../features/plugins/functions/comparePluginVersions';
+import { compareDottedVersions } from '@app/schemas';
 import { readJsonFile, readPluginManifestSummary } from './pluginLayout';
 import { isRecord, errorToString as readErrorMessage } from '@linnya/foundation';
 import { PluginOperationError } from '../../../features/plugins/install/definitions/pluginOperationError';

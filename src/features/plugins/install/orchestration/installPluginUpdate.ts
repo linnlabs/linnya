@@ -9,7 +9,7 @@ import {
   type PluginOperationErrorCode,
   type PluginManifest,
 } from '@app/schemas';
-import { compareDottedVersions } from '../../functions/comparePluginVersions';
+import { compareDottedVersions } from '@app/schemas';
 import { readPluginArtifactIdentity } from '../functions/readPluginArtifactIdentity';
 import { evaluateRemotePluginCompatibility } from '../functions/evaluateRemotePluginCompatibility';
 import type {

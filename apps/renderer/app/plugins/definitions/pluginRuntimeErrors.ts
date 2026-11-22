@@ -1,6 +1,6 @@
 import { isObjectLike } from '@linnya/foundation';
 import { isPluginOperationFailure } from '@app/schemas';
-import type { PluginId } from '@app/schemas';
+import type { PluginDiskSpaceShortfall, PluginId } from '@app/schemas';
 
 export type PluginRuntimeErrorCode =
   | 'pluginStateResponseInvalid'
@@ -41,6 +41,8 @@ export type PluginRuntimeErrorCode =
 
 export interface PluginRuntimeErrorContext {
   readonly pluginId?: PluginId;
+  /** 磁盘空间不足时 Host 给出的实际数字，界面据此写明需要与剩余空间。 */
+  readonly diskSpace?: PluginDiskSpaceShortfall;
 }
 
 const PLUGIN_RUNTIME_ERROR_KIND = 'linnya.plugin-runtime-error';
@@ -59,12 +61,14 @@ export class PluginRuntimeError extends Error {
   readonly kind = PLUGIN_RUNTIME_ERROR_KIND;
   readonly code: PluginRuntimeErrorCode;
   readonly pluginId?: PluginId;
+  readonly diskSpace?: PluginDiskSpaceShortfall;
 
   constructor(code: PluginRuntimeErrorCode, context: PluginRuntimeErrorContext = {}) {
     super(formatPluginRuntimeErrorMessage(code, context));
     this.name = 'PluginRuntimeError';
     this.code = code;
     this.pluginId = context.pluginId;
+    if (context.diskSpace) this.diskSpace = context.diskSpace;
   }
 }
 
@@ -103,7 +107,10 @@ export function normalizePluginRuntimeUserError(caught: unknown): PluginRuntimeU
       'active-tool': 'pluginOperationActiveTool',
       unknown: 'pluginOperationUnknown',
     } as const;
-    return new PluginRuntimeError(codeByOperation[caught.code], { pluginId: caught.pluginId });
+    return new PluginRuntimeError(codeByOperation[caught.code], {
+      pluginId: caught.pluginId,
+      ...(caught.diskSpace ? { diskSpace: caught.diskSpace } : {}),
+    });
   }
   // 原始异常可能包含路径、内部实现和服务端文案，不能穿透到用户界面。
   // 未结构化的异常统一落到 unknown，详细内容由 Host/Renderer 日志记录。

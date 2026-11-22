@@ -71,7 +71,11 @@ async function main() {
     await ensureRuntimeComponents(path.join(runtimeRoot, 'qdrant', catalog.version, `${target.platform}-${target.architecture}`));
   }
 
-  const server = http.createServer();
+  // 先占端口以确定下载地址；catalog 生成完之前的请求一律 503，不能让请求挂起。
+  let ready = false;
+  const server = http.createServer((request, response) => {
+    if (!ready) response.writeHead(503, { 'retry-after': '2' }).end('starting');
+  });
   await new Promise(resolve => server.listen(requestedPort, '127.0.0.1', resolve));
   const { port } = server.address();
   const origin = `http://127.0.0.1:${port}`;
@@ -101,6 +105,7 @@ async function main() {
     signature: sign(null, payloadBytes, privateKey).toString('base64'),
   }));
 
+  server.removeAllListeners('request');
   server.on('request', async (request, response) => {
     const requestPath = decodeURIComponent(new URL(request.url ?? '/', origin).pathname);
     const file = path.resolve(outDir, `.${requestPath}`);
@@ -127,6 +132,7 @@ async function main() {
     response.end();
   });
 
+  ready = true;
   const publicKey = createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).toString('base64');
   const digest = createHash('sha256').update(payloadBytes).digest('hex').slice(0, 12);
   console.log(`\n[dev-plugin-catalog] serving ${outDir} at ${origin} (catalog digest ${digest})`);

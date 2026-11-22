@@ -2,7 +2,7 @@ import { errorToString as toErrorMessage } from '@linnya/foundation';
 import type Database from 'better-sqlite3';
 import type { PluginDiagnosticLevel, PluginId } from '@app/schemas';
 import type { PluginMigrationDefinition } from '@plugin/backend/pluginMigration';
-import { compareDottedVersions } from '../../functions/comparePluginVersions';
+import { compareDottedVersions } from '@app/schemas';
 import { PluginDataBackup } from './plugin-data-backup';
 import { PluginMigrationRunner, type PluginMigrationRunResult } from './plugin-migration.runner';
 

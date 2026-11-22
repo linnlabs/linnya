@@ -25,7 +25,9 @@ import type {
 } from '../../apps/renderer/shared/types/fs';
 import type {
   PluginDiagnosticView,
+  PluginInstallProgressEvent,
   PluginOperationFailure,
+  PluginRemoteCatalogResult,
   PluginStateView,
   PluginRemoteInstallResult,
   PluginRemoteUpdateCheckResult,
@@ -379,6 +381,8 @@ declare global {
         storeList: () => Promise<
           { success: true; data: PluginStoreListData } | { success: false; error?: PluginOperationFailure }
         >;
+        /** 已验签 catalog 的商店条目；来源未开放时为 disabled（不发请求），失败时为 unavailable。 */
+        remoteCatalog: () => Promise<{ success: true; data: PluginRemoteCatalogResult }>;
         getDetail: (
           pluginId: string
         ) => Promise<
@@ -415,6 +419,10 @@ declare global {
         stopCleanup: (
           pluginId: string
         ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
+        /** 只在下载阶段生效；没有正在下载的安装时 cancelled 为 false。 */
+        cancelRemoteInstall: (
+          pluginId: string
+        ) => Promise<{ success: true; data: { cancelled: boolean } } | { success: false; error?: PluginOperationFailure }>;
         setDataMeasurementPaused: (
           pluginId: string,
           paused: boolean
@@ -428,6 +436,7 @@ declare global {
         ) => Promise<{ success: boolean; error?: PluginOperationFailure }>;
         onChanged: (callback: () => void) => () => void;
         onDataChanged: (callback: (pluginId: string) => void) => () => void;
+        onInstallProgress: (callback: (event: PluginInstallProgressEvent) => void) => () => void;
       };
     };
   }

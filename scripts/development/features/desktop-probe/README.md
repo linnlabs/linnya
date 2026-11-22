@@ -19,6 +19,7 @@
 | 命令 | 用法 |
 | --- | --- |
 | `up` / `restart` | `--name <实例>`、`--window hidden\|inactive\|visible`、`--mode dev\|bundled`、`--size 1400x900`、`--fresh`、`--no-build`。默认 `dev` 加载当前工作区的开发插件。仅在停止后用 `up --fresh` 清空隔离数据。用 `restart` 应用新启动选项。 |
+| `LINNYA_PROBE_BUNDLED_PLUGIN_ROOT=<目录> up` | 用指定目录代替 `extraResources/plugins` 作为随包插件来源，验收不随包分发的插件（例如从插件市场远程安装）。目录结构与 `extraResources/plugins` 相同；配合 `LINNYA_DEV_PLUGIN_CATALOG_*` 与 `scripts/e2e/plugin-remote/serve-dev-plugin-catalog.mjs` 使用。 |
 | `up --clone-data <目录>` | 停止状态下把一份 Linnya 数据目录（含 `workspace/workspace.sqlite`，如 `_dev_data`）以 APFS 写时复制克隆进实例，替换实例原有 Workspace。同卷克隆瞬时完成，几乎不占空间。只读源目录，不打开源库。跳过基准结果、对话工作目录、日志、缓存与运行锁。模型凭据在 Electron profile 里，不随数据克隆，克隆实例里用户配置的模型显示缺少凭据；需要真实模型的 Agent 试跑在日常开发实例里做。源库正在写入时在副本上做 `quick_check`，不一致则报 `CLONE_INCONSISTENT`。 |
 | `open` | `open <ID>` 只读查询实例数据库，识别对话、文档或项目，再通过 Vite 取 Renderer 正在使用的导航端口打开，与用户点击走同一条链。`open assistant` 回到 Linnya 助手，`open <ID> --overview` 打开该对象所在项目的概览。仅 `--mode dev`。 |
 | `status` / `stop` | `status --all` 列出当前 worktree 的实例。状态含 CDP、Vite、API 端口、日志位置和 `workspaceDb`（实例 Workspace 数据库，只读核对数据时用；`up` 结果里也有）。停止会先关 Desktop 再关 Vite。 |

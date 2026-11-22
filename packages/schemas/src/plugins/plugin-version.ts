@@ -1,3 +1,7 @@
+/**
+ * 插件版本是纯数字点分（`1.2.3`），缺位按 0 比较。Host 与 Renderer 共用这一份规则：
+ * 安装、升级计划、catalog 选版本与商店“有新版本”判断必须一致。非法版本返回 null，由调用方决定如何处理。
+ */
 export function compareDottedVersions(left: string, right: string): -1 | 0 | 1 | null {
   const leftParts = parseDottedVersion(left);
   const rightParts = parseDottedVersion(right);

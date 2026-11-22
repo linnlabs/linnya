@@ -116,7 +116,8 @@ function startElectron() {
         LINNYA_WORKSPACE_DIR: join(root, 'workspace'), LINNYA_CONVERSATION_ROOT: '',
         LINNYA_PLUGIN_ROOT: join(root, 'plugins'),
         LINNYA_CLI_CONNECTION_FILE: session.connectionFile,
-        LINNYA_BUNDLED_PLUGIN_ROOT: join(repoRoot, 'extraResources/plugins'),
+        // 验收“不随包分发的插件”时可换成去掉某些插件的随包目录副本。
+        LINNYA_BUNDLED_PLUGIN_ROOT: process.env.LINNYA_PROBE_BUNDLED_PLUGIN_ROOT || join(repoRoot, 'extraResources/plugins'),
         LINNYA_PLUGIN_BACKEND_LOADING: 'disk', LINNYA_PLUGIN_DIRECT_DIRS: '',
         LINNYA_PLUGIN_BACKEND_DIRECT_DIRS: resolveDevelopmentBackendDirectories(plugins),
         VITE_DEV_SERVER_URL: session.viteUrl,

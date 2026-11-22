@@ -6,7 +6,7 @@ import type {
   SignedPluginCatalogEntry,
 } from '@app/schemas';
 
-import { compareDottedVersions } from '../../functions/comparePluginVersions';
+import { compareDottedVersions } from '@app/schemas';
 import type { VerifiedPluginCatalog } from '../definitions/pluginCatalog';
 import { selectCatalogPluginRelease } from './selectCatalogPluginRelease';
 

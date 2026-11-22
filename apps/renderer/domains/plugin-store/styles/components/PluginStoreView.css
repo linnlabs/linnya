@@ -285,6 +285,11 @@
   background-color: var(--color-bg-disabled);
 }
 
+.plugin-store-state-chip.is-error {
+  color: var(--color-error-text);
+  background-color: var(--color-error-bg-subtle);
+}
+
 .plugin-store-card:hover .plugin-store-state-chip,
 .plugin-store-card:focus-visible .plugin-store-state-chip {
   background-color: color-mix(in srgb, var(--color-text-primary) 2%, var(--color-bg-subtle));
@@ -294,6 +299,12 @@
 .plugin-store-card:focus-visible .plugin-store-state-chip.is-success {
   color: var(--color-accent);
   background-color: color-mix(in srgb, var(--color-accent-bg-subtle) 90%, var(--color-accent) 10%);
+}
+
+.plugin-store-card:hover .plugin-store-state-chip.is-error,
+.plugin-store-card:focus-visible .plugin-store-state-chip.is-error {
+  color: var(--color-error-text);
+  background-color: var(--color-error-bg-subtle);
 }
 
 .plugin-store-card:hover .plugin-store-state-chip.is-warning,
@@ -641,4 +652,52 @@
   .plugin-store-detail-title-line h1 {
     font-size: var(--font-size-title);
   }
+}
+
+/* 远程安装进度：与知识库上传列表同一组参数（5px 轨道、强调色填充）。 */
+.plugin-store-progress {
+  height: 5px;
+  margin-top: var(--space-2);
+  overflow: hidden;
+  background-color: var(--color-bg-hover);
+  border-radius: var(--radius-xs);
+}
+
+.plugin-store-progress-fill {
+  display: block;
+  height: 100%;
+  background-color: var(--color-accent);
+  transition: width var(--duration-long) var(--ease-standard);
+}
+
+.plugin-store-install-status {
+  margin: var(--space-3) 0 var(--space-4);
+}
+
+.plugin-store-install-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+}
+
+.plugin-store-install-percent {
+  font-variant-numeric: tabular-nums;
+}
+
+.plugin-store-install-hint {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-caption);
+}
+
+.plugin-store-install-error {
+  color: var(--color-error-text);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-normal);
+}
+
+.plugin-store-runtime-note {
+  margin-top: calc(var(--space-2) * -1);
 }

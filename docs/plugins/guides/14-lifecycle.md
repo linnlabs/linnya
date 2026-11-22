@@ -112,6 +112,8 @@
 开始解压与落盘）。`plugins:cancelRemoteInstall` 只在下载阶段生效；进入 `installing` 后不再中断，避免留下半个版本目录。
 取消前已装好的运行时保留，它们已通过完整校验，下次安装直接复用。Renderer 等待 `plugins:installFromRemote` 结果的上限放宽到 1 小时（插件数据清理同样），慢速网络下仍在进行的安装不会被报成失败；页面导航只取消等待，后台安装继续，最终状态以进度事件与 `plugins-changed` 为准。
 
+商店：远程条目来自 `plugins:remote-catalog`；只在 catalog 中的插件进入「插件市场」，卡片显示下载大小（只计本机未安装的运行时），已安装插件在 catalog 有更高可装版本时显示「有新版本」，由用户点「更新」，打开详情不会自动下载。安装中卡片只显示进度，取消在详情页；失败的卡片显示红色「安装失败」与一句原因，详情页给出完整说明与「重试」（需要更新 Linnya 时不提供重试）。来源已开放但连不上时页面顶部提示，未安装插件的安装按钮不可点，已安装插件照常使用。进度订阅常驻，离开商店后安装继续，回来接着显示。
+
 失败类别（`PluginOperationErrorCode`）：服务端明确拒绝为 `source-unavailable`；连接失败或中途断开为 `network`；
 用户取消为 `cancelled`；大小、摘要或解压后大小不符为 `artifact-integrity`；空间不足为 `disk-space`（附
 `diskSpace.requiredBytes/availableBytes`）。任何失败都删除临时文件，不改变现有 active 版本。migration 失败

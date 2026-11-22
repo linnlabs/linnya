@@ -6,7 +6,7 @@ import type { PluginId } from '@app/schemas';
 import { parsePluginManifest } from '@app/schemas';
 import type { PluginBackendContribution } from '../../../app-hosts/linnya/plugin-registry/types';
 import { pluginDiagnostics } from '../../../app-hosts/linnya/plugin-registry/diagnostics';
-import { compareDottedVersions } from '../../../features/plugins/functions/comparePluginVersions';
+import { compareDottedVersions } from '@app/schemas';
 import { rollbackActivePluginVersion } from '../../../features/plugins/install/orchestration/activatePluginVersion';
 import { withBackendPluginHostModuleResolver } from './backendHostModuleResolver';
 import {
