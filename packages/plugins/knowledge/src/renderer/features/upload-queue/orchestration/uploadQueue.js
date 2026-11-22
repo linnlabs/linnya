@@ -31,7 +31,9 @@ class KnowledgeBaseUploadTaskError extends Error {
 function resolveUploadErrorMessage(error) {
   if (error instanceof KnowledgeBaseUploadTaskError) return error.uploadMessage
   const message = parseUserFacingMessage(error?.response?.data?.userMessage)
-  if (message?.key === 'knowledgeBase.runtime.error.vectorUnavailable') {
+  // 向量服务启动失败分两类：可停启恢复的故障，与需要重新安装补齐的运行时缺失；两者给出不同的恢复指引。
+  if (message?.key === 'knowledgeBase.runtime.error.vectorUnavailable'
+    || message?.key === 'knowledgeBase.runtime.error.vectorRuntimeMissing') {
     return createKnowledgeBaseUploadMessage(message.key)
   }
   return createKnowledgeBaseUploadMessage('knowledgeBase.upload.error.failed')
