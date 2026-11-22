@@ -95,12 +95,19 @@ export async function verifyWindowsPluginData({
   const dataRoot = path.join(application.workspace, 'Plugins', plugin);
   const collectionRoot = path.join(dataRoot, 'qdrant', 'storage', 'collections', library.id);
   const manifest = JSON.parse(await readFile(path.join(active.pluginDir, 'plugin.json'), 'utf8'));
+  // 原文由摄入 Worker 写入；向量服务未能启动而失败的上传只留失败记录、没有原文（如前面的端口占用用例）。
+  // 记为 null 并照常比对：卸载与重装前后既不能凭空出现原文，也不能丢失已有原文。
   const sourceIdentity = async () =>
     Object.fromEntries(
       await Promise.all(
         library.documentIds.map(async id => {
-          const bytes = await readFile(path.join(dataRoot, 'source_of_truth', `${id}.source.json`));
-          return [id, createHash('sha256').update(bytes).digest('hex')];
+          try {
+            const bytes = await readFile(path.join(dataRoot, 'source_of_truth', `${id}.source.json`));
+            return [id, createHash('sha256').update(bytes).digest('hex')];
+          } catch (error) {
+            if (error?.code === 'ENOENT') return [id, null];
+            throw error;
+          }
         })
       )
     );
@@ -234,6 +241,7 @@ export async function verifyWindowsPluginData({
     initial = await facts();
     assert.ok(initial.migrations.length > 0);
     originalSources = await sourceIdentity();
+    assert.ok(Object.values(originalSources).some(Boolean), 'Retained library has ingested sources to protect');
     await click('.plugin-store-uninstall-button');
     await waitFor(`${dialog} .plugin-store-uninstall-dialog input[type="checkbox"]`);
     assert.equal(await present(`${dialog} input[type="checkbox"]:checked`), false);
