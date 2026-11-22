@@ -33,6 +33,8 @@ export type PluginRuntimeErrorCode =
   | 'pluginOperationMigrationFailed'
   | 'pluginOperationIncompatible'
   | 'pluginOperationDiskSpace'
+  | 'pluginOperationNetwork'
+  | 'pluginOperationCancelled'
   | 'pluginOperationSourceUnavailable'
   | 'pluginOperationActiveTool'
   | 'pluginOperationUnknown';
@@ -96,6 +98,8 @@ export function normalizePluginRuntimeUserError(caught: unknown): PluginRuntimeU
       incompatible: 'pluginOperationIncompatible',
       'disk-space': 'pluginOperationDiskSpace',
       'source-unavailable': 'pluginOperationSourceUnavailable',
+      network: 'pluginOperationNetwork',
+      cancelled: 'pluginOperationCancelled',
       'active-tool': 'pluginOperationActiveTool',
       unknown: 'pluginOperationUnknown',
     } as const;

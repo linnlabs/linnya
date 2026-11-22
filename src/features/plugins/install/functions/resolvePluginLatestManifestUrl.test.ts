@@ -13,7 +13,7 @@ describe('resolvePluginLatestManifestUrl', () => {
   it('使用固定的 Linnya 官方下载根', () => {
     expect(resolvePluginLatestManifestUrl({
       pluginId: 'mindmap',
-    })).toBe('https://download.linnyai.com/plugins/mindmap/latest.json');
+    })).toBe('https://download.linnya.com/plugins/mindmap/latest.json');
   });
 
   it('拒绝不能作为远程路径片段的插件 ID', () => {

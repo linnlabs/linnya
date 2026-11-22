@@ -94,6 +94,8 @@ export const SignedPluginCatalogEntrySchema = PluginCatalogEntrySchema.extend({
   minApp: z.string().regex(DOTTED_VERSION).optional(),
   rendererUi: z.string().refine(isValidSemverRange, SEMVER_RANGE_MESSAGE).optional(),
   size: z.number().int().positive(),
+  /** 解压后全部文件字节数之和；安装前据此预检磁盘空间，解压时超过即判定包体被篡改。 */
+  unpackedSize: z.number().int().positive(),
   requiresRuntimes: z.array(PluginRuntimeRequirementSchema).default([]),
 }).strict();
 
@@ -103,6 +105,7 @@ export const PluginRuntimeTargetSchema = z.object({
   artifactUrl: z.string().url(),
   sha512: z.string().regex(SHA512_HEX),
   size: z.number().int().positive(),
+  unpackedSize: z.number().int().positive(),
   /** 解压后可执行文件的相对路径；执行前必须再按 executableSha256 核对。 */
   executable: z.string().min(1).refine(value => {
     const normalized = value.replace(/\\/gu, '/');

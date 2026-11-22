@@ -11,6 +11,7 @@ const plugin = {
   artifactUrl: 'https://download.linnya.com/plugins/knowledge/knowledge-0.1.0.zip',
   sha512: 'a'.repeat(128),
   size: 12_376_277,
+  unpackedSize: 40_960_000,
   requiresRuntimes: [],
 };
 

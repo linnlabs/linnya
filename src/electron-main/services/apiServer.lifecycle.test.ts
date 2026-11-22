@@ -66,6 +66,7 @@ function createRouteDependencies(): RouteDependencies {
       publishConversationActivityChanged: vi.fn(),
       publishPluginsChanged: () => undefined,
       publishPluginDataChanged: () => undefined,
+      publishPluginInstallProgress: () => undefined,
     },
     conversationExecutionRuntimeFactory: {
       create: async () => {

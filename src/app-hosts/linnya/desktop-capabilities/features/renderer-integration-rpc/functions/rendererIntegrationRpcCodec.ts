@@ -1,7 +1,8 @@
-import { JsonValueSchema, WorkspaceMutationEventSchema } from '@app/schemas';
+import { JsonValueSchema, PluginInstallProgressEventSchema, WorkspaceMutationEventSchema } from '@app/schemas';
 import { z } from 'zod';
 export const RendererIntegrationVoidRpcSchema = z.null();
 export const RendererIntegrationPluginDataChangedRpcSchema = z.string().min(1);
+export const RendererIntegrationPluginInstallProgressRpcSchema = PluginInstallProgressEventSchema;
 
 export const RendererIntegrationTranscriptionProgressRpcSchema = z.object({
   stage: z.string(),

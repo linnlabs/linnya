@@ -40,7 +40,7 @@ import { installPluginFromBundledAndActivate } from '../../../../features/plugin
 import { checkPluginUpdateFromRemote } from '../../../../features/plugins/install/orchestration/installPluginUpdate';
 import { isOfficialPluginRemoteServiceEnabled } from '../../../../features/plugins/install/functions/isOfficialPluginRemoteServiceEnabled';
 import type { RemotePluginReleaseSource, RemotePluginRuntimeInstaller } from '../../../../features/plugins/install/definitions/pluginInstall';
-import { installRuntimeComponent } from '../../../../features/runtimes/orchestration/installRuntimeComponent';
+import { installRuntimeComponent, isRuntimeComponentCurrent } from '../../../../features/runtimes/orchestration/installRuntimeComponent';
 import { createCatalogPluginReleaseSource } from '../../../../features/plugins/catalog/orchestration/createCatalogPluginReleaseSource';
 import { createPluginCatalogStateStore } from '../../../../features/plugins/catalog/infrastructure/pluginCatalogStateStore';
 import { resolvePluginCatalogUrl } from '../../../../features/plugins/catalog/functions/resolvePluginCatalogUrl';
@@ -205,9 +205,11 @@ function throwPluginOperationResultFailure(result: {
   readonly pluginId: string;
   readonly error: string;
   readonly errorCode?: PluginOperationFailure['code'];
+  readonly diskSpace?: PluginOperationFailure['diskSpace'];
 }): never {
   throw new PluginOperationError(result.errorCode ?? 'unknown', result.error, {
     pluginId: result.pluginId,
+    ...(result.diskSpace ? { diskSpace: result.diskSpace } : {}),
   });
 }
 
@@ -223,6 +225,7 @@ function classifyPluginOperationError(error: unknown, pluginId?: string): Plugin
   return {
     code: operationError.code,
     ...(effectivePluginId ? { pluginId: effectivePluginId } : {}),
+    ...(operationError.diskSpace ? { diskSpace: operationError.diskSpace } : {}),
   };
 }
 
@@ -251,22 +254,36 @@ function parsePluginId(value: unknown, label: string): string {
 
 /** 插件所需原生运行时按同一份已验签 catalog 安装到 LINNYA_RUNTIME_ROOT。 */
 function createOfficialRuntimeInstaller(pluginId: string, userPluginRoot: string): RemotePluginRuntimeInstaller {
-  return async (runtimes, provenance) => {
+  const resolveRuntimeRoot = (): string => {
     const runtimeRoot = process.env.LINNYA_RUNTIME_ROOT;
     if (!runtimeRoot) {
       throw new PluginOperationError('source-unavailable', '运行时目录未初始化，不能安装插件所需的运行时', { pluginId });
     }
-    const laterRevocations = createPluginCatalogStateStore({ userPluginRoot }).readRevocations();
-    for (const runtime of runtimes) {
+    return runtimeRoot;
+  };
+  const readRevocations = () => createPluginCatalogStateStore({ userPluginRoot }).readRevocations();
+  return {
+    async pending(runtimes) {
+      const runtimeRoot = resolveRuntimeRoot();
+      const laterRevocations = readRevocations();
+      const pending = [];
+      for (const runtime of runtimes) {
+        const current = await isRuntimeComponentCurrent({ runtimeRoot, runtime, trustedKeys: trustedPluginCatalogKeys, laterRevocations });
+        if (!current) pending.push(runtime);
+      }
+      return pending;
+    },
+    async install(runtime, provenance, control) {
       await installRuntimeComponent({
-        runtimeRoot,
+        runtimeRoot: resolveRuntimeRoot(),
         runtime,
         provenance,
         trustedKeys: trustedPluginCatalogKeys,
-        laterRevocations,
+        laterRevocations: readRevocations(),
         fetch: globalThis.fetch,
+        control,
       });
-    }
+    },
   };
 }
 
@@ -345,7 +362,10 @@ export async function registerPluginsHandlers(input: {
   readonly packaged: boolean;
   readonly distributionIdentity: DistributionIdentity;
   readonly fileReveal: DesktopFileRevealPort;
-  readonly rendererIntegration: Pick<BackendRendererIntegrationPort, 'publishPluginsChanged' | 'publishPluginDataChanged'>;
+  readonly rendererIntegration: Pick<
+    BackendRendererIntegrationPort,
+    'publishPluginsChanged' | 'publishPluginDataChanged' | 'publishPluginInstallProgress'
+  >;
 }): Promise<void> {
   const databaseService = input.runtimeOwner.getServices().databaseService;
   if (!databaseService) {
@@ -367,6 +387,8 @@ export async function registerPluginsHandlers(input: {
     return result;
   }
   const cleanupAbortControllers = new Map<string, AbortController>();
+  /** 正在下载的远程安装；只覆盖 run() 内的下载阶段，排队中的安装没有控制器，取消请求返回 cancelled=false。 */
+  const remoteInstallAbortControllers = new Map<string, AbortController>();
   const publishPluginDataChanged = (pluginId: string): void => {
     input.rendererIntegration.publishPluginDataChanged(pluginId);
   };
@@ -735,18 +757,27 @@ export async function registerPluginsHandlers(input: {
           const knownPlugins = listKnownPluginMetas();
           assertBackendPluginCanDeactivate(pluginId);
           const scopedLifecycle = isTrustedKnowledgeResourceSource(pluginId);
-          const result = await installPluginFromRemoteAndActivate({
-            db,
-            userPluginRoot,
-            pluginId,
-            releaseSource: createOfficialPluginReleaseSource(pluginId),
-            installRuntimes: createOfficialRuntimeInstaller(pluginId, userPluginRoot),
-            appVersion: input.applicationVersion,
-            rendererUiVersion: RENDERER_UI_VERSION,
-            knownPlugins,
-            resolveUpgradePlan: resolveDiskPluginUpgradePlan,
-            recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
-          });
+          const controller = new AbortController();
+          remoteInstallAbortControllers.set(pluginId, controller);
+          let result: Awaited<ReturnType<typeof installPluginFromRemoteAndActivate>>;
+          try {
+            result = await installPluginFromRemoteAndActivate({
+              db,
+              userPluginRoot,
+              pluginId,
+              releaseSource: createOfficialPluginReleaseSource(pluginId),
+              installRuntimes: createOfficialRuntimeInstaller(pluginId, userPluginRoot),
+              appVersion: input.applicationVersion,
+              rendererUiVersion: RENDERER_UI_VERSION,
+              knownPlugins,
+              resolveUpgradePlan: resolveDiskPluginUpgradePlan,
+              recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
+              signal: controller.signal,
+              onProgress: progress => input.rendererIntegration.publishPluginInstallProgress({ pluginId, progress }),
+            });
+          } finally {
+            if (remoteInstallAbortControllers.get(pluginId) === controller) remoteInstallAbortControllers.delete(pluginId);
+          }
           if (result.status === 'failed') {
             throwPluginOperationResultFailure(result);
           }
@@ -769,6 +800,17 @@ export async function registerPluginsHandlers(input: {
       });
     } catch (error) {
       logger.error('[plugins:installFromRemote] failed:', error);
+      return { success: false, error: classifyPluginOperationError(error) };
+    }
+  });
+
+  input.ipc.handle('plugins:cancelRemoteInstall', async (_event, rawPluginId: unknown) => {
+    try {
+      const pluginId = parsePluginId(rawPluginId, 'plugins:cancelRemoteInstall');
+      const controller = remoteInstallAbortControllers.get(pluginId);
+      controller?.abort();
+      return { success: true, data: { cancelled: controller !== undefined } };
+    } catch (error) {
       return { success: false, error: classifyPluginOperationError(error) };
     }
   });

@@ -179,6 +179,7 @@ const PLUGIN_CHANNELS = [
   'plugins:renderer-entries',
   'plugins:checkRemoteUpdate',
   'plugins:installFromRemote',
+  'plugins:cancelRemoteInstall',
   'plugins:installBundled',
   'plugins:uninstall',
   'plugins:cleanup-data',
@@ -188,6 +189,7 @@ const PLUGIN_CHANNELS = [
   'plugins:set-enabled',
   'plugins-changed',
   'plugins-data-changed',
+  'plugins-install-progress',
 ] as const;
 
 // --- BlockHistory 块级历史通道 ---

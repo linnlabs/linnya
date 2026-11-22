@@ -3,7 +3,7 @@ export interface ResolvePluginLatestManifestUrlOptions {
   readonly defaultRootUrl?: string;
 }
 
-const defaultPluginDownloadRootUrl = 'https://download.linnyai.com/plugins';
+const defaultPluginDownloadRootUrl = 'https://download.linnya.com/plugins';
 
 function assertRemotePluginIdPathSegment(pluginId: string): void {
   if (!/^[a-z0-9][a-z0-9._-]*$/iu.test(pluginId)) {

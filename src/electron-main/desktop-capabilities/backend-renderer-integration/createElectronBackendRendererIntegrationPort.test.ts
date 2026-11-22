@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PluginInstallProgressEvent } from '@app/schemas';
 
 const harness = vi.hoisted(() => ({
   send: vi.fn(),
@@ -86,5 +87,13 @@ describe('createElectronBackendRendererIntegrationPort', () => {
     port.publishPluginDataChanged('test-plugin');
     expect(harness.send).toHaveBeenCalledExactlyOnceWith('plugins-data-changed', 'test-plugin');
     expect(harness.secondarySend).toHaveBeenCalledExactlyOnceWith('plugins-data-changed', 'test-plugin');
+  });
+
+  it('sends remote install progress to every window so the store can resume after navigation', () => {
+    const port = createElectronBackendRendererIntegrationPort();
+    const event: PluginInstallProgressEvent = { pluginId: 'knowledge', progress: { stage: 'planned', downloads: [] } };
+    port.publishPluginInstallProgress(event);
+    expect(harness.send).toHaveBeenCalledExactlyOnceWith('plugins-install-progress', event);
+    expect(harness.secondarySend).toHaveBeenCalledExactlyOnceWith('plugins-install-progress', event);
   });
 });

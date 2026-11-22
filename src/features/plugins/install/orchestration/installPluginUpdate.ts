@@ -1,12 +1,11 @@
-import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import JSZip from 'jszip';
 import { ZodError } from 'zod';
 
 import {
   isValidRendererUiCompatibilityRange,
   parsePluginManifest,
+  type PluginInstallDownloadItem,
   type PluginOperationErrorCode,
   type PluginManifest,
 } from '@app/schemas';
@@ -25,6 +24,9 @@ import type {
 import { writePluginInstallReceipt } from '../../catalog/infrastructure/pluginInstallReceiptStore';
 import { isRecord } from '@linnya/foundation';
 import { PluginOperationError, toPluginOperationError } from '../definitions/pluginOperationError';
+import { assertAvailableDiskSpace } from '../infrastructure/assertAvailableDiskSpace';
+import { downloadVerifiedArtifact } from '../infrastructure/downloadVerifiedArtifact';
+import { extractZipToDirectory, resolveInsideDirectory } from '../infrastructure/extractZipArchive';
 
 function formatPluginManifestError(error: ZodError): string {
   const fields = error.issues
@@ -95,10 +97,6 @@ function normalizeSha512(input: string): string {
     throw new PluginOperationError('incompatible', 'latest.json sha512 必须是 128 位十六进制字符串');
   }
   return candidate;
-}
-
-function sha512Hex(buffer: Buffer): string {
-  return createHash('sha512').update(buffer).digest('hex');
 }
 
 function assertHttpUrl(rawUrl: string, label: string): void {
@@ -178,20 +176,6 @@ function readActiveVersion(pluginInstallDir: string): string | null {
   return parsed.version;
 }
 
-function resolveInsideDirectory(rootDir: string, relativePath: string): string {
-  const normalized = relativePath.replace(/\\/g, '/');
-  if (!normalized || normalized.startsWith('/') || normalized.split('/').includes('..')) {
-    throw new PluginOperationError('artifact-integrity', `插件 zip 路径不能越界: ${relativePath}`);
-  }
-
-  const resolved = path.resolve(rootDir, ...normalized.split('/'));
-  const relative = path.relative(rootDir, resolved);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new PluginOperationError('artifact-integrity', `插件 zip 路径不能越界: ${relativePath}`);
-  }
-  return resolved;
-}
-
 async function fetchJson(fetcher: typeof fetch, url: string): Promise<unknown> {
   const response = await fetcher(url);
   if (!response.ok) {
@@ -201,17 +185,6 @@ async function fetchJson(fetcher: typeof fetch, url: string): Promise<unknown> {
     );
   }
   return response.json() as Promise<unknown>;
-}
-
-async function fetchZipBuffer(fetcher: typeof fetch, url: string): Promise<Buffer> {
-  const response = await fetcher(url);
-  if (!response.ok) {
-    throw new PluginOperationError(
-      'source-unavailable',
-      `下载插件 artifact 失败: ${response.status} ${response.statusText}`,
-    );
-  }
-  return Buffer.from(await response.arrayBuffer());
 }
 
 function readExistingStagedVersion(
@@ -276,22 +249,6 @@ function validateExtractedPlugin(extractDir: string, pluginId: string, version: 
 }
 
 /** 解压时每个条目都限定在目标目录内；供插件与运行时组件安装共用。 */
-export async function extractZipToDirectory(zipPath: string, targetDir: string): Promise<void> {
-  const zip = await JSZip.loadAsync(fs.readFileSync(zipPath));
-  const entries = Object.values(zip.files);
-
-  for (const entry of entries) {
-    const targetPath = resolveInsideDirectory(targetDir, entry.name);
-    if (entry.dir) {
-      fs.mkdirSync(targetPath, { recursive: true });
-      continue;
-    }
-
-    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.writeFileSync(targetPath, await entry.async('nodebuffer'));
-  }
-}
-
 function makeTempInstallDir(pluginInstallDir: string, version: string): string {
   return path.join(pluginInstallDir, `.install-${version}.${process.pid}.${Date.now()}`);
 }
@@ -450,18 +407,46 @@ export async function installPluginUpdateFromRemote(
       };
     }
 
-    if (remote.runtimes && remote.runtimes.length > 0) {
-      // 运行时先于插件安装：插件已是当前版本但运行时缺失时，重装也能补齐运行时。
-      if (!remote.provenance || !options.installRuntimes) {
-        throw new PluginOperationError('incompatible', `${options.pluginId}@${remote.version} 需要的原生运行时没有可信安装途径`, { pluginId: options.pluginId });
-      }
-      await options.installRuntimes(remote.runtimes, remote.provenance);
-    }
-
     const currentVersion = Object.prototype.hasOwnProperty.call(options, 'currentVersion')
       ? (options.currentVersion ?? null)
       : readActiveVersion(pluginInstallDir);
     const currentDecision = classifyCurrentVersion(currentVersion, remote);
+    if (currentDecision?.status === 'failed') {
+      return { ...currentDecision, pluginId: options.pluginId };
+    }
+
+    const runtimes = remote.runtimes ?? [];
+    const installer = options.installRuntimes;
+    if (runtimes.length > 0 && (!remote.provenance || !installer)) {
+      throw new PluginOperationError('incompatible', `${options.pluginId}@${remote.version} 需要的原生运行时没有可信安装途径`, { pluginId: options.pluginId });
+    }
+    // 插件已是当前版本但运行时缺失时，重装也能补齐运行时；已装好的运行时不进入下载计划。
+    const pendingRuntimes = installer && runtimes.length > 0 ? await installer.pending(runtimes) : [];
+    const runtimeItems: PluginInstallDownloadItem[] = pendingRuntimes.map(runtime => ({
+      kind: 'runtime', id: runtime.id, version: runtime.version, totalBytes: runtime.target.size,
+    }));
+    const pluginItem: PluginInstallDownloadItem = {
+      kind: 'plugin', id: options.pluginId, version: remote.version, totalBytes: remote.size ?? null,
+    };
+    const downloads = [...runtimeItems, ...(currentDecision ? [] : [pluginItem])];
+    if (downloads.length > 0) {
+      // 运行时与插件都位于 userData 下，按插件根所在卷合并预检；运行时安装器还会按自己的目录再检一次。
+      await assertAvailableDiskSpace([{
+        directory: options.userPluginRoot,
+        bytes: pendingRuntimes.reduce((sum, runtime) => sum + runtime.target.size + runtime.target.unpackedSize, 0)
+          + (currentDecision ? 0 : (remote.size ?? 0) + (remote.unpackedSize ?? 0)),
+      }]);
+      options.onProgress?.({ stage: 'planned', downloads });
+    }
+
+    for (const [index, runtime] of pendingRuntimes.entries()) {
+      const item = runtimeItems[index]!;
+      await installer!.install(runtime, remote.provenance!, {
+        signal: options.signal,
+        onProgress: receivedBytes => options.onProgress?.({ stage: 'downloading', item, receivedBytes }),
+        onInstalling: () => options.onProgress?.({ stage: 'installing', item }),
+      });
+    }
     if (currentDecision) {
       return { ...currentDecision, pluginId: options.pluginId };
     }
@@ -483,18 +468,20 @@ export async function installPluginUpdateFromRemote(
     const tempZipPath = path.join(tempInstallDir, 'artifact.zip');
     fs.mkdirSync(tempExtractDir, { recursive: true });
 
-    const zipBuffer = await fetchZipBuffer(fetcher, remote.url);
-    const expectedSha512 = normalizeSha512(remote.sha512);
-    const actualSha512 = sha512Hex(zipBuffer);
-    if (actualSha512 !== expectedSha512) {
-      throw new PluginOperationError(
-        'artifact-integrity',
-        `插件 artifact sha512 不匹配: expected=${expectedSha512}, actual=${actualSha512}`
-      );
-    }
-
-    fs.writeFileSync(tempZipPath, zipBuffer);
-    await extractZipToDirectory(tempZipPath, tempExtractDir);
+    const download = await downloadVerifiedArtifact({
+      fetch: fetcher,
+      url: remote.url,
+      destinationPath: tempZipPath,
+      label: '插件包',
+      expectedSha512: normalizeSha512(remote.sha512),
+      expectedSize: remote.size,
+      signal: options.signal,
+      onProgress: receivedBytes => options.onProgress?.({ stage: 'downloading', item: pluginItem, receivedBytes }),
+    });
+    const actualSha512 = download.sha512;
+    // 下载完成后不再响应取消：解压与改名要么完整完成，要么由 catch 清理临时目录。
+    options.onProgress?.({ stage: 'installing', item: pluginItem });
+    await extractZipToDirectory(tempZipPath, tempExtractDir, { maxUnpackedBytes: remote.unpackedSize });
     const extractedManifest = validateExtractedPlugin(tempExtractDir, options.pluginId, remote.version);
     if (
       extractedManifest.entry.renderer
@@ -550,6 +537,7 @@ export async function installPluginUpdateFromRemote(
       version: null,
       error: operationError.message,
       errorCode: operationError.code,
+      ...(operationError.diskSpace ? { diskSpace: operationError.diskSpace } : {}),
     };
   }
 }

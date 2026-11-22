@@ -85,6 +85,8 @@ export type PluginStoreMessageKey =
   | 'pluginStore.runtimeError.pluginOperationIncompatible'
   | 'pluginStore.runtimeError.pluginOperationDiskSpace'
   | 'pluginStore.runtimeError.pluginOperationSourceUnavailable'
+  | 'pluginStore.runtimeError.pluginOperationNetwork'
+  | 'pluginStore.runtimeError.pluginOperationCancelled'
   | 'pluginStore.runtimeError.pluginOperationUnknown'
   | 'pluginStore.runtimeError.pluginOperationActiveTool'
   | 'pluginStore.toast.enabled'

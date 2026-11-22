@@ -1,4 +1,4 @@
-import type { PluginId, PluginOperationErrorCode } from '@app/schemas';
+import type { PluginDiskSpaceShortfall, PluginId, PluginOperationErrorCode } from '@app/schemas';
 
 /**
  * 插件生命周期失败的内部错误合同。
@@ -9,17 +9,23 @@ export class PluginOperationError extends Error {
   readonly code: PluginOperationErrorCode;
   readonly pluginId?: PluginId;
   readonly cause?: unknown;
+  readonly diskSpace?: PluginDiskSpaceShortfall;
 
   constructor(
     code: PluginOperationErrorCode,
     message: string,
-    options: { readonly pluginId?: PluginId; readonly cause?: unknown } = {},
+    options: {
+      readonly pluginId?: PluginId;
+      readonly cause?: unknown;
+      readonly diskSpace?: PluginDiskSpaceShortfall;
+    } = {},
   ) {
     super(message);
     this.name = 'PluginOperationError';
     this.code = code;
     this.pluginId = options.pluginId;
     this.cause = options.cause;
+    if (options.diskSpace) this.diskSpace = options.diskSpace;
   }
 }
 function isNodeErrorWithCode(value: unknown, code: string): boolean {

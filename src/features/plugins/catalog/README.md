@@ -4,7 +4,7 @@
 
 ## 合同
 
-- 数据形状在 `@app/schemas` 的 `SignedPluginCatalogPayloadSchema`：沿用可发现条目（名称、描述、开发者、权限、`artifactUrl`、`sha512` 等），并锁定 `size` 与 `requiresRuntimes`；另含原生运行时组件 `runtimes`（按平台/架构的 artifact 与可执行文件摘要）和撤回列表 `revoked`。
+- 数据形状在 `@app/schemas` 的 `SignedPluginCatalogPayloadSchema`：沿用可发现条目（名称、描述、开发者、权限、`artifactUrl`、`sha512` 等），并锁定 `size`、`unpackedSize`（解压后真实字节数，用于空间预检与解压上限）与 `requiresRuntimes`；另含原生运行时组件 `runtimes`（按平台/架构的 artifact、`size`/`unpackedSize` 与可执行文件摘要）和撤回列表 `revoked`。
 - 信封：`{ schemaVersion, keyId, payload, signature }`。`payload` 是 canonical base64 的原始 JSON 字节，`signature` 是对这些字节的 Ed25519 签名；先验签后解析。
 - 公钥在 `registry/trustedPluginCatalogKeys.ts`，与 Desktop 发行密钥分开；只放公钥，轮换新增、泄露删除。生产公钥在正式发布获批后加入，之前任何 catalog 都无法通过验签。
 

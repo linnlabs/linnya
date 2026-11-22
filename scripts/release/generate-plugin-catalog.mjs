@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { buildSignedPluginCatalogPayload } from './functions/buildSignedPluginCatalogPayload.ts';
 import { collectCatalogRuntimes } from './functions/collectCatalogRuntimes.ts';
+import { measureZipUnpackedSize } from './functions/measureZipUnpackedSize.ts';
 import { parsePluginManifest } from '../../packages/schemas/src/plugins/manifest.ts';
 import {
   listOfficialPluginReleaseTargetIds,
@@ -55,6 +56,7 @@ const readPluginCatalogEntry = async (pluginId) => {
     artifactUrl: `${downloadBaseUrl}/${zipName}`,
     sha512: sha512Hex(zipBuffer),
     size: zipBuffer.byteLength,
+    unpackedSize: await measureZipUnpackedSize(zipBuffer),
     // 插件 manifest 声明的原生运行时依赖；catalog 必须同时列出满足 range 的运行时组件。
     requiresRuntimes: manifest.requiresRuntimes,
   };

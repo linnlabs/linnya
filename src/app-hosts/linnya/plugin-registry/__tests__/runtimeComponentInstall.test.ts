@@ -10,11 +10,12 @@ import { catalogPayload, createTestCatalogPublisher } from 'src/features/plugins
 import { verifyPluginCatalog } from 'src/features/plugins/catalog/functions/verifyPluginCatalog';
 import { createPluginCatalogStateStore } from 'src/features/plugins/catalog/infrastructure/pluginCatalogStateStore';
 import { createCatalogPluginReleaseSource } from 'src/features/plugins/catalog/orchestration/createCatalogPluginReleaseSource';
+import type { PluginInstallProgress } from '@app/schemas';
 import type { CatalogInstallProvenance } from 'src/features/plugins/install/definitions/pluginInstall';
 import { installPluginUpdateFromRemote } from 'src/features/plugins/install/orchestration/installPluginUpdate';
 import { resolveInstalledRuntimeExecutable } from 'src/features/runtimes/functions/resolveInstalledRuntimeExecutable';
 import { readActiveRuntimeVersion } from 'src/features/runtimes/infrastructure/runtimeComponentStore';
-import { installRuntimeComponent } from 'src/features/runtimes/orchestration/installRuntimeComponent';
+import { installRuntimeComponent, isRuntimeComponentCurrent } from 'src/features/runtimes/orchestration/installRuntimeComponent';
 
 const NOW = new Date('2026-11-22T00:00:00.000Z');
 const CATALOG_URL = 'https://download.linnya.com/plugins/catalog/stable.json';
@@ -35,6 +36,14 @@ const sha512 = (bytes: Buffer) => createHash('sha512').update(bytes).digest('hex
 const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 const runtimeUrl = (version: string) => `https://download.linnya.com/plugins/runtimes/qdrant/${version}/darwin-arm64.zip`;
 
+/** 解压后真实字节数：catalog 的 unpackedSize。 */
+async function unpackedSize(zip: Buffer): Promise<number> {
+  const archive = await JSZip.loadAsync(zip);
+  let total = 0;
+  for (const entry of Object.values(archive.files)) if (!entry.dir) total += (await entry.async('nodebuffer')).byteLength;
+  return total;
+}
+
 async function runtimeZip(executable = Buffer.from('#!/bin/sh\necho qdrant\n')): Promise<{ zip: Buffer; executable: Buffer }> {
   const zip = new JSZip();
   zip.file('qdrant', executable);
@@ -48,7 +57,8 @@ function runtimeEntry(version: string, zip: Buffer, executable: Buffer, override
     version,
     targets: [{
       platform: 'darwin', architecture: 'arm64', artifactUrl: runtimeUrl(version),
-      sha512: sha512(zip), size: zip.byteLength, executable: 'qdrant', executableSha256: sha256(executable),
+      sha512: sha512(zip), size: zip.byteLength, unpackedSize: executable.byteLength + Buffer.byteLength('Apache-2.0'),
+      executable: 'qdrant', executableSha256: sha256(executable),
       ...overrides,
     }],
   };
@@ -172,34 +182,75 @@ describe('插件远程安装先装好所需运行时', () => {
     return zip.generateAsync({ type: 'nodebuffer' });
   }
 
-  async function scenario(runtimeOverrides: Record<string, unknown> = {}) {
+  interface ScenarioOptions {
+    readonly runtimeOverrides?: Record<string, unknown>;
+    readonly pluginOverrides?: Record<string, unknown>;
+    readonly onProgress?: (progress: PluginInstallProgress) => void;
+    readonly signal?: AbortSignal;
+    /** 在插件包第 index 块交付前调用；用于模拟下载中取消。 */
+    readonly onPluginChunk?: (index: number) => void;
+    readonly runtimeRoot?: string;
+  }
+
+  async function scenario(options: ScenarioOptions = {}) {
     const userPluginRoot = tempDir('linnya-plugins-');
-    const runtimeRoot = tempDir('linnya-runtimes-');
+    const runtimeRoot = options.runtimeRoot ?? tempDir('linnya-runtimes-');
     const plugin = await pluginZip();
     const runtime = await runtimeZip();
     const pluginUrl = 'https://download.linnya.com/plugins/artifacts/sample/1.1.0/sample-1.1.0.zip';
     const catalogText = publisher.sign(catalogPayload({
       plugins: [{
         id: 'sample', name: 'Sample', version: '1.1.0', developer: 'Linnya', description: 'Sample plugin',
-        artifactUrl: pluginUrl, sha512: sha512(plugin), size: plugin.byteLength, requiresRuntimes: [{ id: 'qdrant', range: '^1.14' }],
+        artifactUrl: pluginUrl, sha512: sha512(plugin), size: plugin.byteLength, unpackedSize: await unpackedSize(plugin), requiresRuntimes: [{ id: 'qdrant', range: '^1.14' }],
+        ...options.pluginOverrides,
       }],
-      runtimes: [runtimeEntry('1.14.1', runtime.zip, runtime.executable, runtimeOverrides)],
+      runtimes: [runtimeEntry('1.14.1', runtime.zip, runtime.executable, options.runtimeOverrides)],
     }));
-    const { fetcher, requests } = servingFetch({ [CATALOG_URL]: Buffer.from(catalogText), [pluginUrl]: plugin, [runtimeUrl('1.14.1')]: runtime.zip });
+    const serving = servingFetch({ [CATALOG_URL]: Buffer.from(catalogText), [pluginUrl]: plugin, [runtimeUrl('1.14.1')]: runtime.zip });
+    const requests = serving.requests;
+    const fetcher = (async (request: RequestInfo | URL, init?: RequestInit) => {
+      if (String(request) !== pluginUrl || !options.onPluginChunk) return serving.fetcher(request, init);
+      requests.push(pluginUrl);
+      // 分 4 块交付插件包，便于在中途取消。
+      const step = Math.ceil(plugin.byteLength / 4);
+      let index = 0;
+      return new Response(new ReadableStream<Uint8Array>({
+        pull(controller) {
+          options.onPluginChunk!(index);
+          const chunk = plugin.subarray(index * step, (index + 1) * step);
+          index += 1;
+          if (chunk.byteLength > 0) controller.enqueue(new Uint8Array(chunk));
+          else controller.close();
+        },
+      }));
+    }) as typeof fetch;
     const result = await installPluginUpdateFromRemote({
       pluginId: 'sample',
       releaseSource: createCatalogPluginReleaseSource({
         catalogUrl: CATALOG_URL, channel: 'stable', trustedKeys: publisher.trustedKeys,
         stateStore: createPluginCatalogStateStore({ userPluginRoot }), platform: 'darwin', architecture: 'arm64', now: () => NOW,
       }),
-      installRuntimes: async (runtimes, provenance) => {
-        for (const item of runtimes) {
-          await installRuntimeComponent({ runtimeRoot, runtime: item, provenance, trustedKeys: publisher.trustedKeys, fetch: fetcher });
-        }
+      installRuntimes: {
+        pending: async runtimes => {
+          const pending = [];
+          for (const item of runtimes) {
+            if (!(await isRuntimeComponentCurrent({ runtimeRoot, runtime: item, trustedKeys: publisher.trustedKeys }))) pending.push(item);
+          }
+          return pending;
+        },
+        install: async (item, provenance, control) => {
+          await installRuntimeComponent({ runtimeRoot, runtime: item, provenance, trustedKeys: publisher.trustedKeys, fetch: fetcher, control });
+        },
       },
       userPluginRoot, appVersion: '1.0.0', rendererUiVersion: '1.2.0', currentVersion: null, fetch: fetcher,
+      onProgress: options.onProgress, signal: options.signal,
     });
-    return { result, requests, userPluginRoot, runtimeRoot, pluginUrl };
+    return { result, requests, userPluginRoot, runtimeRoot, pluginUrl, plugin, runtime };
+  }
+
+  function leftovers(directory: string): string[] {
+    if (!fs.existsSync(directory)) return [];
+    return fs.readdirSync(directory).filter(name => name.startsWith('.install-'));
   }
 
   it('先安装运行时再下载插件，两者都按同一份签名 catalog 落盘', async () => {
@@ -210,9 +261,67 @@ describe('插件远程安装先装好所需运行时', () => {
   });
 
   it('运行时安装失败时不下载、不暂存插件', async () => {
-    const { result, requests, userPluginRoot, pluginUrl } = await scenario({ sha512: 'f'.repeat(128) });
+    const { result, requests, userPluginRoot, pluginUrl } = await scenario({ runtimeOverrides: { sha512: 'f'.repeat(128) } });
     expect(result).toMatchObject({ status: 'failed', errorCode: 'artifact-integrity' });
     expect(requests).not.toContain(pluginUrl);
     expect(fs.existsSync(path.join(userPluginRoot, 'sample', '1.1.0'))).toBe(false);
+  });
+
+  it('先发出完整下载计划，再按运行时 → 插件依次报告下载进度与安装阶段', async () => {
+    const events: PluginInstallProgress[] = [];
+    const { result, plugin, runtime } = await scenario({ onProgress: event => events.push(event) });
+    expect(result).toMatchObject({ status: 'staged' });
+    const runtimeItem = { kind: 'runtime', id: 'qdrant', version: '1.14.1', totalBytes: runtime.zip.byteLength };
+    const pluginItem = { kind: 'plugin', id: 'sample', version: '1.1.0', totalBytes: plugin.byteLength };
+    expect(events[0]).toEqual({ stage: 'planned', downloads: [runtimeItem, pluginItem] });
+    const stages = events.slice(1).map(event => `${event.stage}:${'item' in event ? event.item.kind : ''}`);
+    expect(stages.filter((stage, index) => stage !== stages[index - 1])).toEqual([
+      'downloading:runtime', 'installing:runtime', 'downloading:plugin', 'installing:plugin',
+    ]);
+    const runtimeProgress = events.filter(event => event.stage === 'downloading' && event.item.kind === 'runtime');
+    const lastRuntimeProgress = runtimeProgress[runtimeProgress.length - 1];
+    expect(lastRuntimeProgress).toMatchObject({ receivedBytes: runtime.zip.byteLength });
+  });
+
+  it('运行时已安装且校验通过时不进入计划、不重复下载', async () => {
+    const first = await scenario();
+    expect(first.result).toMatchObject({ status: 'staged' });
+    const events: PluginInstallProgress[] = [];
+    const second = await scenario({ runtimeRoot: first.runtimeRoot, onProgress: event => events.push(event) });
+    expect(second.result).toMatchObject({ status: 'staged' });
+    expect(second.requests).not.toContain(runtimeUrl('1.14.1'));
+    expect(events[0]).toMatchObject({ stage: 'planned', downloads: [{ kind: 'plugin' }] });
+  });
+
+  it('下载插件包时取消：返回 cancelled，不留暂存与临时目录；已装好的运行时保留', async () => {
+    const controller = new AbortController();
+    const { result, userPluginRoot, runtimeRoot } = await scenario({
+      signal: controller.signal,
+      onPluginChunk: index => { if (index === 2) controller.abort(); },
+    });
+    expect(result).toMatchObject({ status: 'failed', errorCode: 'cancelled' });
+    expect(fs.existsSync(path.join(userPluginRoot, 'sample', '1.1.0'))).toBe(false);
+    expect(leftovers(path.join(userPluginRoot, 'sample'))).toEqual([]);
+    expect((await resolve(runtimeRoot)).status).toBe('resolved');
+  });
+
+  it('空间预检不足时不发起任何下载，并返回需要与可用字节数', async () => {
+    const { result, requests, pluginUrl } = await scenario({ pluginOverrides: { unpackedSize: 2 ** 50 } });
+    expect(result).toMatchObject({ status: 'failed', errorCode: 'disk-space' });
+    if (result.status === 'failed') {
+      expect(result.diskSpace?.requiredBytes).toBeGreaterThan(2 ** 50);
+      expect(result.diskSpace?.availableBytes).toBeLessThan(result.diskSpace!.requiredBytes);
+    }
+    expect(requests).not.toContain(pluginUrl);
+    expect(requests).not.toContain(runtimeUrl('1.14.1'));
+  });
+
+  it('签名声明的解压后大小比实际小一个字节：判定包体不一致，不暂存', async () => {
+    const plugin = await pluginZip();
+    const actual = await unpackedSize(plugin);
+    const { result, userPluginRoot } = await scenario({ pluginOverrides: { unpackedSize: actual - 1 } });
+    expect(result).toMatchObject({ status: 'failed', errorCode: 'artifact-integrity' });
+    expect(fs.existsSync(path.join(userPluginRoot, 'sample', '1.1.0'))).toBe(false);
+    expect(leftovers(path.join(userPluginRoot, 'sample'))).toEqual([]);
   });
 });

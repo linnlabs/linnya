@@ -1,4 +1,10 @@
-import type { PluginId, PluginOperationErrorCode, PluginRemoteUpdateCheckResult } from '@app/schemas';
+import type {
+  PluginDiskSpaceShortfall,
+  PluginId,
+  PluginInstallProgress,
+  PluginOperationErrorCode,
+  PluginRemoteUpdateCheckResult,
+} from '@app/schemas';
 
 import type { ResolvedPluginRuntime } from '../../catalog/functions/selectCatalogPluginRelease';
 
@@ -19,16 +25,34 @@ export interface CatalogInstallProvenance {
 }
 
 export interface RemotePluginRelease extends RemotePluginVersionManifest {
+  /** catalog 声明的 zip 字节数与解压后字节数；开发用 latest.json 来源没有。 */
+  readonly size?: number;
+  readonly unpackedSize?: number;
   readonly provenance?: CatalogInstallProvenance;
   /** catalog 解析到本平台的原生运行时；插件安装前先装好。 */
   readonly runtimes?: readonly ResolvedPluginRuntime[];
 }
 
-/** 由 Host 组合注入：按 catalog 来源证明安装所需运行时，失败时抛出 PluginOperationError。 */
-export type RemotePluginRuntimeInstaller = (
-  runtimes: readonly ResolvedPluginRuntime[],
-  provenance: CatalogInstallProvenance,
-) => Promise<void>;
+/** 一次下载的取消与进度回调；进度已按时间节流。 */
+export interface ArtifactTransferControl {
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (receivedBytes: number) => void;
+  /** 下载完成、开始解压与校验时调用一次。 */
+  readonly onInstalling?: () => void;
+}
+
+/**
+ * 由 Host 组合注入的运行时安装器。pending 返回本机尚未安装或校验不通过、需要下载的运行时，
+ * 用于在下载前给出完整进度计划与空间预检；install 失败时抛出 PluginOperationError。
+ */
+export interface RemotePluginRuntimeInstaller {
+  pending(runtimes: readonly ResolvedPluginRuntime[]): Promise<readonly ResolvedPluginRuntime[]>;
+  install(
+    runtime: ResolvedPluginRuntime,
+    provenance: CatalogInstallProvenance,
+    control: ArtifactTransferControl,
+  ): Promise<void>;
+}
 
 /**
  * 远程版本来源。official 组合使用已验签 catalog；未签名 latest.json 只留给开发与 R2 smoke。
@@ -54,6 +78,9 @@ export interface InstallPluginUpdateOptions {
   readonly rendererUiVersion: string;
   readonly currentVersion?: string | null;
   readonly fetch?: typeof fetch;
+  /** 取消只在下载阶段生效；进入解压与落盘后不再中断，避免留下半个版本目录。 */
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (progress: PluginInstallProgress) => void;
 }
 
 export interface CheckPluginRemoteUpdateOptions {
@@ -90,4 +117,5 @@ export type InstallPluginUpdateResult =
       readonly version: string | null;
       readonly error: string;
       readonly errorCode?: PluginOperationErrorCode;
+      readonly diskSpace?: PluginDiskSpaceShortfall;
     };

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 export const repoRoot = path.resolve(scriptDir, '../..');
 
-const defaultPluginDownloadRootUrl = 'https://download.linnyai.com/plugins';
+const defaultPluginDownloadRootUrl = 'https://download.linnya.com/plugins';
 
 // 发行集合与源码中的开发插件独立；尚未发行的插件仍可通过开发入口加载。
 const publicOfficialPluginReleaseTargets = [

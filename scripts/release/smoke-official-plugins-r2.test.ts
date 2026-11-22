@@ -37,7 +37,7 @@ function resolveLatestManifestUrl(pluginId: string): string {
   const suffix = buildPluginEnvSuffix(pluginId);
   const explicit = process.env[`LINNYA_PLUGIN_${suffix}_LATEST_URL`];
   if (explicit) return explicit;
-  const rootUrl = process.env.LINNYA_PLUGIN_DOWNLOAD_ROOT_URL ?? 'https://download.linnyai.com/plugins';
+  const rootUrl = process.env.LINNYA_PLUGIN_DOWNLOAD_ROOT_URL ?? 'https://download.linnya.com/plugins';
   return `${rootUrl.replace(/\/+$/u, '')}/${pluginId}/latest.json`;
 }
 

@@ -86,6 +86,7 @@ describe('todo IPC handlers', () => {
       publishConversationActivityChanged: vi.fn(),
       publishPluginsChanged: vi.fn(),
       publishPluginDataChanged: vi.fn(),
+      publishPluginInstallProgress: vi.fn(),
     });
     const { registerTodoHandlers } = await import('./todo-ipc');
     registerTodoHandlers({

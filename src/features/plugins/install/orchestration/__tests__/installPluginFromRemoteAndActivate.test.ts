@@ -11,8 +11,8 @@ import { PluginStateService } from '../../../infrastructure/sqlite/plugin-state.
 import { isPluginUserRemoved, markPluginUserRemoved } from '../../functions/pluginRemovalMarker';
 import { installPluginFromRemoteAndActivate } from '../installPluginFromRemoteAndActivate';
 
-const latestUrl = 'https://download.linnyai.com/plugins/mindmap/latest.json';
-const artifactUrl = 'https://download.linnyai.com/plugins/mindmap/mindmap-1.1.0.zip';
+const latestUrl = 'https://download.linnya.com/plugins/mindmap/latest.json';
+const artifactUrl = 'https://download.linnya.com/plugins/mindmap/mindmap-1.1.0.zip';
 const rendererUiRange = '^1.0.0';
 
 const platformMeta: PluginMeta = {

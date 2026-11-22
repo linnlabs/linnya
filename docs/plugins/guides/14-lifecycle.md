@@ -88,16 +88,35 @@
 
 ## 远程安装和更新
 
-入口 `plugins:installFromRemote`，运行时只使用固定官方 latest 地址
-`https://download.linnyai.com/plugins/<pluginId>/latest.json`。只有验签通过的
-`official` Desktop 可以在发出请求前通过门禁；源码运行与社区打包不连接该服务。
-普通环境变量不能覆盖运行时下载地址。
+入口 `plugins:installFromRemote`。官方 Desktop 只从已验签的插件 catalog
+`https://download.linnya.com/plugins/catalog/<channel>.json` 选择版本（签名、序号与撤回规则见
+[生产分发与信任](../production-distribution-and-trust.md)）；只有验签通过的 `official` Desktop 能通过门禁，
+源码运行与社区打包不连接该服务，普通环境变量不能覆盖运行时下载地址。未签名的
+`<pluginId>/latest.json` 只用于开发与 R2 smoke，不产生安装回执，启动期也不会准入。
 
 安装不存在 DB-only 入口：任何「安装」都必须先拿到插件版本目录并完成迁移/active 指针切换，不能只把 `installed_plugins.installed` 改成 1。
 
-链路：读 latest.json → 校验 version/url/sha512/minApp → 下载 zip → sha512 校验 → 解压（防路径越界）→ 校验 plugin.json/entry → 落版本目录 → 加载新 backend 生成升级计划 → 标记 installed → `activatePluginVersionWithMigrations()` → 迁移成功后写 active → 通知 renderer。
+链路：
 
-失败规则：sha 不匹配不落盘；manifest 不兼容返回可读错误；migration 失败 SQLite 事务回滚；新 backend 加载失败则安装失败。同一插件的生命周期写操作由平台排队，但插件迁移仍应保持可重入，保证崩溃恢复或重试时不会破坏数据。
+1. 拉取并验签 catalog，选出本 Host 兼容的最高版本，以及本平台所需的原生运行时（`requiresRuntimes`）。
+2. 列出需要下载的组件：已安装且回执、可执行文件摘要都通过复核的运行时不进入计划。按 catalog 声明的
+   `size + unpackedSize` 预检磁盘空间，不足时不发起任何下载，错误附带需要与可用字节数。
+3. 发出 `planned` 进度事件，然后依次下载运行时与插件包。下载是流式的：边下边算 sha512 并写入临时文件，
+   字节数必须与签名声明完全一致，超出立即中止；正常读完却少于声明、或摘要不符，判定为包体不一致。
+4. 解压逐条目流式写出并累计真实字节数，超过签名声明的 `unpackedSize` 即拒绝（防压缩炸弹），并防路径越界。
+5. 校验 plugin.json/entry → 落版本目录 → 写安装回执 → 加载新 backend 生成升级计划 → 标记 installed →
+   `activatePluginVersionWithMigrations()` → 迁移成功后写 active → 通知 renderer。
+
+进度与取消：Host 通过 `plugins-install-progress` 向所有窗口发送 `{ pluginId, progress }`，`progress` 为
+`planned`（本次下载清单与字节数）、`downloading`（按约 100ms 节流的已接收字节）或 `installing`（下载完成，
+开始解压与落盘）。`plugins:cancelRemoteInstall` 只在下载阶段生效；进入 `installing` 后不再中断，避免留下半个版本目录。
+取消前已装好的运行时保留，它们已通过完整校验，下次安装直接复用。
+
+失败类别（`PluginOperationErrorCode`）：服务端明确拒绝为 `source-unavailable`；连接失败或中途断开为 `network`；
+用户取消为 `cancelled`；大小、摘要或解压后大小不符为 `artifact-integrity`；空间不足为 `disk-space`（附
+`diskSpace.requiredBytes/availableBytes`）。任何失败都删除临时文件，不改变现有 active 版本。migration 失败
+SQLite 事务回滚；新 backend 加载失败则安装失败。同一插件的生命周期写操作由平台排队，但插件迁移仍应保持可重入，
+保证崩溃恢复或重试时不会破坏数据。
 
 ## 数据迁移和回滚
 

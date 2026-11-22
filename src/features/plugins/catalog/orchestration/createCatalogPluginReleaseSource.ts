@@ -74,6 +74,8 @@ export function createCatalogPluginReleaseSource(input: {
         version: entry.version,
         url: entry.artifactUrl,
         sha512: entry.sha512,
+        size: entry.size,
+        unpackedSize: entry.unpackedSize,
         ...(entry.minApp ? { minApp: entry.minApp } : {}),
         ...(entry.rendererUi ? { rendererUi: entry.rendererUi } : {}),
         provenance: { keyId: catalog.keyId, digest: catalog.digest, sequence: catalog.sequence, envelope: catalog.envelope },

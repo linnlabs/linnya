@@ -1,4 +1,5 @@
 import type { IpcRenderer, IpcRendererEvent } from 'electron';
+import { PluginInstallProgressEventSchema, type PluginInstallProgressEvent } from '@app/schemas';
 
 function isPluginPushEnvelope(value: unknown): value is {
   readonly pluginId: string;
@@ -36,6 +37,7 @@ export function buildPluginsPreloadApi(ipcRenderer: IpcRenderer) {
       rendererEntries: () => ipcRenderer.invoke('plugins:renderer-entries'),
       checkRemoteUpdate: (pluginId: string) => ipcRenderer.invoke('plugins:checkRemoteUpdate', pluginId),
       installFromRemote: (pluginId: string) => ipcRenderer.invoke('plugins:installFromRemote', pluginId),
+      cancelRemoteInstall: (pluginId: string) => ipcRenderer.invoke('plugins:cancelRemoteInstall', pluginId),
       installBundled: (pluginId: string) => ipcRenderer.invoke('plugins:installBundled', pluginId),
       uninstall: (pluginId: string, options?: { deleteData?: boolean }) =>
         ipcRenderer.invoke('plugins:uninstall', { pluginId, ...options }),
@@ -57,6 +59,14 @@ export function buildPluginsPreloadApi(ipcRenderer: IpcRenderer) {
         };
         ipcRenderer.on('plugins-data-changed', handler);
         return () => ipcRenderer.removeListener('plugins-data-changed', handler);
+      },
+      onInstallProgress: (callback: (event: PluginInstallProgressEvent) => void) => {
+        const handler = (_event: IpcRendererEvent, value: unknown) => {
+          const parsed = PluginInstallProgressEventSchema.safeParse(value);
+          if (parsed.success) callback(parsed.data);
+        };
+        ipcRenderer.on('plugins-install-progress', handler);
+        return () => ipcRenderer.removeListener('plugins-install-progress', handler);
       },
     },
   };

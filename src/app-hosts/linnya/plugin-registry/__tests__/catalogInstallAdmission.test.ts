@@ -64,6 +64,8 @@ function entry(zip: Buffer, overrides: Record<string, unknown> = {}): Record<str
     artifactUrl: ARTIFACT_URL,
     sha512: createHash('sha512').update(zip).digest('hex'),
     size: zip.byteLength,
+    // 安装只把它当解压上限：样例包远小于 64 KiB。
+    unpackedSize: 64 * 1024,
     requiresRuntimes: [],
     ...overrides,
   };

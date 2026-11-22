@@ -35,6 +35,7 @@ export function catalogPlugin(overrides: Record<string, unknown> = {}): Record<s
     artifactUrl: `https://download.linnya.com/plugins/artifacts/knowledge/${version}/knowledge-${version}.zip`,
     sha512: 'a'.repeat(128),
     size: 12_000_000,
+    unpackedSize: 40_000_000,
     requiresRuntimes: [],
     ...overrides,
   };
@@ -49,6 +50,7 @@ export function catalogRuntime(version: string, targets: readonly { platform: st
       artifactUrl: `https://download.linnya.com/plugins/runtimes/qdrant/${version}/${target.platform}-${target.architecture}.zip`,
       sha512: 'b'.repeat(128),
       size: 25_000_000,
+      unpackedSize: 64_000_000,
       executable: target.platform === 'win32' ? 'qdrant.exe' : 'qdrant',
       executableSha256: 'c'.repeat(64),
     })),

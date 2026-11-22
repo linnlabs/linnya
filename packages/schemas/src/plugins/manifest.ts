@@ -1,7 +1,7 @@
 import * as z from 'zod';
 
 import { isValidRendererUiCompatibilityRange } from './renderer-ui-compatibility';
-import type { PluginOperationErrorCode } from './errors';
+import type { PluginDiskSpaceShortfall, PluginOperationErrorCode } from './errors';
 
 /**
  * 插件 manifest 契约。
@@ -183,6 +183,7 @@ export type PluginRemoteInstallResult =
       version: string | null;
       error: string;
       errorCode?: PluginOperationErrorCode;
+      diskSpace?: PluginDiskSpaceShortfall;
     };
 
 export type PluginDiagnosticLevel = 'error' | 'warn' | 'info';

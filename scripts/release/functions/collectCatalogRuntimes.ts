@@ -30,6 +30,7 @@ export function collectCatalogRuntimes(input: {
         artifactUrl: `${root}/runtimes/${item.id}/${item.version}/${item.platform}-${item.architecture}/${item.artifactFile}`,
         sha512: item.sha512,
         size: item.size,
+        unpackedSize: item.unpackedSize,
         executable: item.executable,
         executableSha256: item.executableSha256,
       }],

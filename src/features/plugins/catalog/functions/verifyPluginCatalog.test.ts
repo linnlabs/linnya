@@ -34,6 +34,7 @@ function payload(overrides: Record<string, unknown> = {}): Record<string, unknow
       artifactUrl: 'https://download.linnya.com/plugins/artifacts/knowledge/0.2.0/knowledge-0.2.0.zip',
       sha512: 'a'.repeat(128),
       size: 12_000_000,
+      unpackedSize: 40_000_000,
       requiresRuntimes: [{ id: 'qdrant', range: '^1.14' }],
     }],
     runtimes: [{
@@ -45,6 +46,7 @@ function payload(overrides: Record<string, unknown> = {}): Record<string, unknow
         artifactUrl: 'https://download.linnya.com/plugins/runtimes/qdrant/1.14.1/darwin-arm64/qdrant-1.14.1-darwin-arm64.zip',
         sha512: 'b'.repeat(128),
         size: 25_000_000,
+        unpackedSize: 64_000_000,
         executable: 'qdrant',
         executableSha256: 'c'.repeat(64),
       }],
@@ -86,7 +88,7 @@ describe('官方插件 catalog 验签', () => {
     expect(verified.digest).toMatch(/^[a-f0-9]{64}$/u);
     expect(verified.sequence).toBe(7);
     expect(verified.plugins).toEqual([expect.objectContaining({
-      id: 'knowledge', name: '知识库', version: '0.2.0', size: 12_000_000,
+      id: 'knowledge', name: '知识库', version: '0.2.0', size: 12_000_000, unpackedSize: 40_000_000,
       requiresRuntimes: [{ id: 'qdrant', range: '^1.14' }],
     })]);
     expect(verified.runtimes[0]?.targets[0]).toMatchObject({ platform: 'darwin', executable: 'qdrant' });

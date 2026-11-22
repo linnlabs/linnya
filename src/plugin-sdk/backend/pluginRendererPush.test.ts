@@ -29,6 +29,7 @@ describe('pluginRendererPush', () => {
       publishConversationActivityChanged: vi.fn(),
       publishPluginsChanged: vi.fn(),
       publishPluginDataChanged: vi.fn(),
+      publishPluginInstallProgress: vi.fn(),
     });
   });
 

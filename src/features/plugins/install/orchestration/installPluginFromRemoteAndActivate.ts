@@ -14,7 +14,7 @@ import { clearPluginUserRemovedMarker, markPluginUserRemoved } from '../function
 import { activatePluginVersionWithMigrations } from './activatePluginVersionWithMigrations';
 import { installPluginUpdateFromRemote } from './installPluginUpdate';
 import { toPluginOperationError } from '../definitions/pluginOperationError';
-import type { RemotePluginReleaseSource, RemotePluginRuntimeInstaller } from '../definitions/pluginInstall';
+import type { InstallPluginUpdateOptions, RemotePluginReleaseSource, RemotePluginRuntimeInstaller } from '../definitions/pluginInstall';
 
 export interface PluginUpgradePlanResolveInput {
   readonly pluginId: PluginId;
@@ -38,6 +38,8 @@ export interface InstallPluginFromRemoteAndActivateOptions {
   readonly knownPlugins: readonly PluginMeta[];
   readonly resolveUpgradePlan: PluginUpgradePlanResolver;
   readonly fetch?: typeof fetch;
+  readonly signal?: InstallPluginUpdateOptions['signal'];
+  readonly onProgress?: InstallPluginUpdateOptions['onProgress'];
   readonly recordDiagnostic?: (diagnostic: PluginUpgradeDiagnostic) => void;
 }
 
@@ -119,6 +121,8 @@ export async function installPluginFromRemoteAndActivate(
     appVersion: options.appVersion,
     rendererUiVersion: options.rendererUiVersion,
     fetch: options.fetch,
+    signal: options.signal,
+    onProgress: options.onProgress,
   });
 
   if (installResult.status === 'failed') {

@@ -54,12 +54,18 @@ describe('Backend Renderer integration RPC', () => {
     client.publishTodosChanged('project-1');
     client.publishPluginsChanged();
     client.publishPluginDataChanged('demo');
+    const progressEvent = {
+      pluginId: 'knowledge',
+      progress: { stage: 'downloading', item: { kind: 'runtime', id: 'qdrant', version: '1.14.1', totalBytes: 24_698_177 }, receivedBytes: 1_024 },
+    } as const;
+    client.publishPluginInstallProgress(progressEvent);
     client.publishModelsChanged();
     client.publishConversationActivityChanged();
 
     await vi.waitFor(() => {
       expect(port.publishPluginsChanged).toHaveBeenCalledOnce();
       expect(port.publishPluginDataChanged).toHaveBeenCalledExactlyOnceWith('demo');
+      expect(port.publishPluginInstallProgress).toHaveBeenCalledExactlyOnceWith(progressEvent);
       expect(port.publishModelsChanged).toHaveBeenCalledOnce();
       expect(port.publishConversationActivityChanged).toHaveBeenCalledOnce();
     });
@@ -165,6 +171,7 @@ function createRendererPort(
     publishConversationActivityChanged: vi.fn(),
     publishPluginsChanged: vi.fn(),
     publishPluginDataChanged: vi.fn(),
+    publishPluginInstallProgress: vi.fn(),
   };
 }
 

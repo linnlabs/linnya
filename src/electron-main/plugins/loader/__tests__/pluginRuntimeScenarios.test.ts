@@ -29,8 +29,8 @@ import { listRendererPluginEntriesFromLayout } from '../rendererPluginEntries';
 import { seedBundledPlugins } from '../pluginRuntimeBootstrap';
 import { listOfficialPluginReleaseTargetIds } from '../../../../../scripts/release/plugin-release-targets.mjs';
 
-const latestUrl = 'https://download.linnyai.com/plugins/mindmap/latest.json';
-const artifactUrl = 'https://download.linnyai.com/plugins/mindmap/mindmap-1.1.0.zip';
+const latestUrl = 'https://download.linnya.com/plugins/mindmap/latest.json';
+const artifactUrl = 'https://download.linnya.com/plugins/mindmap/mindmap-1.1.0.zip';
 const tempRoots: string[] = [];
 
 const fakeTsServiceManager = {

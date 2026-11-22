@@ -189,7 +189,7 @@ describe('plugin workspace packaging guard', () => {
         id: 'private-addon',
         packageDir: 'packages/plugins/private-addon',
         defaultR2Prefix: 'plugins/private-addon',
-        defaultDownloadBaseUrl: 'https://download.linnyai.com/plugins/private-addon',
+        defaultDownloadBaseUrl: 'https://download.linnya.com/plugins/private-addon',
         productionDistDirectories: ['dist/backend', 'dist/renderer'],
       },
     ]);

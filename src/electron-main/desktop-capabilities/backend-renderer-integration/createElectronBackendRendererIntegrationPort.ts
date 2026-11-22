@@ -59,6 +59,10 @@ export function createElectronBackendRendererIntegrationPort(): BackendRendererI
     publishPluginDataChanged(pluginId) {
       publishToRenderer('plugins-data-changed', pluginId);
     },
+    publishPluginInstallProgress(event) {
+      // 商店可能开在任一窗口，进度发给所有窗口；离开页面再回来也能接上。
+      publishToRenderer('plugins-install-progress', event);
+    },
     publishConversationActivityChanged() {
       // 每个窗口都有侧栏，全部发送；只是失效信号，数据仍由各窗口读 HTTP。
       publishToRenderer(CONVERSATION_ACTIVITY_CHANGED_CHANNEL, undefined);

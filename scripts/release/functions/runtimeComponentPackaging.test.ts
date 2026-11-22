@@ -21,6 +21,8 @@ describe('运行时组件打包', () => {
       artifactFile: 'qdrant-1.14.1-darwin-arm64.zip', executable: 'qdrant',
       executableSha256: createHash('sha256').update(executable).digest('hex'),
       sha512: createHash('sha512').update(first.zip).digest('hex'), size: first.zip.byteLength,
+      // 可执行文件 + LICENSE + NOTICE 的原始字节数之和。
+      unpackedSize: executable.byteLength + Buffer.byteLength('Apache License 2.0') + Buffer.byteLength('Qdrant 1.14.1'),
     });
     const archive = await JSZip.loadAsync(first.zip);
     expect(Object.keys(archive.files).sort()).toEqual(['LICENSE', 'NOTICE', 'qdrant']);
@@ -37,7 +39,7 @@ describe('运行时组件打包', () => {
 describe('catalog 运行时条目汇总', () => {
   const metadata = (platform: 'darwin' | 'win32', architecture: 'arm64' | 'x64') => ({
     id: 'qdrant', version: '1.14.1', platform, architecture, artifactFile: `qdrant-1.14.1-${platform}-${architecture}.zip`,
-    sha512: 'a'.repeat(128), size: 10, executable: platform === 'win32' ? 'qdrant.exe' : 'qdrant', executableSha256: 'b'.repeat(64),
+    sha512: 'a'.repeat(128), size: 10, unpackedSize: 30, executable: platform === 'win32' ? 'qdrant.exe' : 'qdrant', executableSha256: 'b'.repeat(64),
   });
   const plugin = { id: 'knowledge', version: '0.1.0', requiresRuntimes: [{ id: 'qdrant', range: '^1.14' }] };
 

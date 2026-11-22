@@ -38,6 +38,8 @@ const PLUGIN_RUNTIME_ERROR_MESSAGE_KEYS = {
   pluginOperationIncompatible: 'pluginStore.runtimeError.pluginOperationIncompatible',
   pluginOperationDiskSpace: 'pluginStore.runtimeError.pluginOperationDiskSpace',
   pluginOperationSourceUnavailable: 'pluginStore.runtimeError.pluginOperationSourceUnavailable',
+  pluginOperationNetwork: 'pluginStore.runtimeError.pluginOperationNetwork',
+  pluginOperationCancelled: 'pluginStore.runtimeError.pluginOperationCancelled',
   pluginOperationUnknown: 'pluginStore.runtimeError.pluginOperationUnknown',
   pluginOperationActiveTool: 'pluginStore.runtimeError.pluginOperationActiveTool',
 } as const satisfies Readonly<Record<PluginRuntimeErrorCode, PluginStoreMessageKey>>;

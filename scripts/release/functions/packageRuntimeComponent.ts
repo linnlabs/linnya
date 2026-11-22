@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import JSZip from 'jszip';
 
 import type { PluginRuntimeArchitecture, PluginRuntimePlatform } from '../../../packages/schemas/src/plugins/catalog.ts';
+import { measureZipUnpackedSize } from './measureZipUnpackedSize.ts';
 
 /** 运行时组件元数据：catalog 生成器据此写入按平台的 artifact 条目。 */
 export interface RuntimeComponentMetadata {
@@ -13,6 +14,7 @@ export interface RuntimeComponentMetadata {
   readonly artifactFile: string;
   readonly sha512: string;
   readonly size: number;
+  readonly unpackedSize: number;
   readonly executable: string;
   readonly executableSha256: string;
 }
@@ -54,6 +56,7 @@ export async function packageRuntimeComponent(input: {
       artifactFile: `${input.id}-${input.version}-${input.platform}-${input.architecture}.zip`,
       sha512: createHash('sha512').update(bytes).digest('hex'),
       size: bytes.byteLength,
+      unpackedSize: await measureZipUnpackedSize(bytes),
       executable: input.executableFileName,
       executableSha256: createHash('sha256').update(input.executableBytes).digest('hex'),
     },

@@ -14,7 +14,7 @@
 
 ## 安装
 
-`installRuntimeComponent` 由插件远程安装在下载插件之前调用（同一份已验签 catalog）：下载 → 大小与 sha512 → 解压（条目限定在目录内）→ 可执行文件 SHA-256 → 非 Windows 设置可执行位 → 写回执 → 切换指针。任一步失败都不改变现有 active 版本；同版本目录已存在时只在字节一致时复用，否则以 `version-conflict` 拒绝。插件已是当前版本但运行时缺失时，重装也会补齐运行时。
+`installRuntimeComponent` 由插件远程安装在下载插件之前调用（同一份已验签 catalog）：空间预检 → 流式下载（边下边算 sha512，字节数必须等于签名声明，支持取消与进度）→ 流式解压（条目限定在目录内，真实字节数不得超过 `unpackedSize`）→ 可执行文件 SHA-256 → 非 Windows 设置可执行位 → 写回执 → 切换指针。任一步失败都不改变现有 active 版本；同版本目录已存在时只在字节一致时复用，否则以 `version-conflict` 拒绝。插件已是当前版本但运行时缺失时，重装也会补齐运行时。安装前 Host 用 `isRuntimeComponentCurrent` 列出真正需要下载的运行时，用于进度计划与空间预检。
 
 ## 启动复核
 
