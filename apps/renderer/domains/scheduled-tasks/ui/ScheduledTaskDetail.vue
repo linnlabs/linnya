@@ -99,6 +99,7 @@ import { BaseButton, BaseDropdown, DropdownPanel, IconButton, Switch } from '@li
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { useNotificationStore } from '@/app/notification';
 import { useSettingsLocalization } from '@/domains/settings/public';
+import { PERMISSION_LEVEL_LABEL_KEYS } from '../functions/permissionLevelMessages';
 import { scheduledTasksClient } from '../adapters/scheduledTasksClient';
 import { describeSchedule } from '../functions/describeSchedule';
 import { isTaskEnabled, resolveTaskBanner, type ScheduledTaskBannerAction } from '../functions/presentScheduledTask';
@@ -154,13 +155,7 @@ const modelName = computed(() => {
   if (id === null) return scheduledTaskMessage('scheduledTasks.model.default');
   return props.resolveModelName(id) ?? scheduledTaskMessage('scheduledTasks.model.unknown');
 });
-const levelText = computed(() => {
-  switch (props.task.permission_level) {
-    case 'read_only': return settingsMessage('settings.commandPermission.level.readOnly');
-    case 'standard': return settingsMessage('settings.commandPermission.level.standard');
-    case 'full_access': return settingsMessage('settings.commandPermission.level.fullAccess');
-  }
-});
+const levelText = computed(() => settingsMessage(PERMISSION_LEVEL_LABEL_KEYS[props.task.permission_level]));
 
 async function mutate(action: () => Promise<ScheduledTaskMutationResult>): Promise<ScheduledTask | null> {
   if (busy.value) return null;

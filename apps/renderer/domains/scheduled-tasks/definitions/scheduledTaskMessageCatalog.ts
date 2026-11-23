@@ -53,6 +53,7 @@ export const SCHEDULED_TASK_MESSAGE_FALLBACKS = {
   'scheduledTasks.banner.pausedUnviewed': '14 天没有看过结果，已自动暂停。',
   'scheduledTasks.banner.resumeAction': '恢复',
   'scheduledTasks.banner.finished': '一次性任务已经运行，已停用。记录保留。',
+  'scheduledTasks.banner.defaultModelUnavailable': '默认模型现在不可用，到点会记为失败。可以在设置里配好模型，或给这个任务指定一个模型。',
   'scheduledTasks.banner.modelUnavailable': '指定的模型不可用。到点会记为失败，不会换成别的模型。',
   'scheduledTasks.banner.modelUnavailableAction': '换模型',
 
@@ -243,6 +244,7 @@ const EN: Readonly<Record<ScheduledTaskMessageKey, string>> = {
   'scheduledTasks.banner.pausedUnviewed': 'Paused because results were not opened for 14 days.',
   'scheduledTasks.banner.resumeAction': 'Resume',
   'scheduledTasks.banner.finished': 'This one-time task has run and is now off. Its records are kept.',
+  'scheduledTasks.banner.defaultModelUnavailable': 'The default model is not available right now, so runs will fail. Set up a model in Settings, or pick a model for this task.',
   'scheduledTasks.banner.modelUnavailable': 'The chosen model is unavailable. Runs will fail instead of switching to another model.',
   'scheduledTasks.banner.modelUnavailableAction': 'Change model',
 

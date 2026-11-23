@@ -66,6 +66,7 @@
           :key="editorKey"
           :task="editing === 'edit' ? selectedTask : null"
           :default-project-id="projectId ?? selectedTask?.project_id ?? null"
+          :initial-error="editorError"
           @saved="onSaved"
           @cancel="editing = null"
           @conflict="onConflict"
@@ -96,7 +97,7 @@ import {
 import { BaseButton, CustomNumberInput, SkeletonRows } from '@linnya/renderer-ui';
 import { AddIcon, ClockIcon } from '@linnya/renderer-ui/icons';
 import { useNotificationStore } from '@/app/notification';
-import { buildConversationModelSelectOptions, useModelPickerReadModel } from '@/domains/model-configuration';
+import { buildConversationModelSelectOptions, useModelCatalogReadModel, useModelPickerReadModel } from '@/domains/model-configuration';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store';
 import { scheduledTasksClient } from '../adapters/scheduledTasksClient';
 import { refreshScheduledTasks } from '../orchestration/refreshScheduledTasks';
@@ -121,12 +122,14 @@ const { scheduledTaskMessage } = useScheduledTaskLocalization();
 const store = useScheduledTasksStore();
 const projectsStore = useWorkspaceProjectsStore();
 const modelPicker = useModelPickerReadModel();
+const modelCatalog = useModelCatalogReadModel();
 const notifications = useNotificationStore();
 
 const selectedTaskId = ref<string | null>(props.initialTaskId ?? null);
 const editing = ref<'new' | 'edit' | null>(null);
 const editorKey = ref(0);
 const notice = ref('');
+const editorError = ref('');
 
 const selectedTask = computed<ScheduledTask | null>(() =>
   selectedTaskId.value === null ? null : store.taskById(selectedTaskId.value));
@@ -164,26 +167,32 @@ const modelNames = computed(() => {
   }
   return names;
 });
+/** 先用选择器里的显示名；在模型管理里被隐藏的模型不在选择器里，退回目录里的名字。 */
 function resolveModelName(modelConfigId: string): string | null {
-  return modelNames.value.get(modelConfigId) ?? null;
+  return modelNames.value.get(modelConfigId)
+    ?? modelCatalog.models.value.find(model => model.id === modelConfigId)?.display_name
+    ?? null;
 }
 
 function selectTask(taskId: string): void {
   selectedTaskId.value = taskId;
   editing.value = null;
   notice.value = '';
+  editorError.value = '';
 }
 
 function startNew(): void {
   editing.value = 'new';
   editorKey.value += 1;
   notice.value = '';
+  editorError.value = '';
 }
 
 function startEdit(): void {
   editing.value = 'edit';
   editorKey.value += 1;
   notice.value = '';
+  editorError.value = '';
 }
 
 function onSaved(task: ScheduledTask, created: boolean): void {
@@ -196,6 +205,7 @@ function onSaved(task: ScheduledTask, created: boolean): void {
 /** 版本冲突：重读后按新版本重开表单，用户再改一次。 */
 async function onConflict(): Promise<void> {
   await refreshScheduledTasks();
+  editorError.value = scheduledTaskMessage('scheduledTasks.editor.revisionConflict');
   editorKey.value += 1;
 }
 

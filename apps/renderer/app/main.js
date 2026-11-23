@@ -63,6 +63,7 @@ import {
 import { syncScheduledDefaultModel } from './model-inference/orchestration/syncScheduledDefaultModel'
 import { startScheduledNotificationNavigation } from './workflows/scheduled-tasks/orchestration/startScheduledNotificationNavigation'
 import { startScheduledConversationViewedReporting } from './workflows/scheduled-tasks/orchestration/startScheduledConversationViewedReporting'
+import { startScheduledConversationHistorySync } from './workflows/scheduled-tasks/orchestration/startScheduledConversationHistorySync'
 import { startConversationActivityLifecycle } from '../domains/conversation/features/conversation-activity'
 import { startScheduledTasksAppLifecycle } from '../domains/scheduled-tasks'
 import { useUpdateActions } from './update/runtime'
@@ -193,6 +194,7 @@ if (!isConversationFixture) {
   const dispose = startScheduledNotificationNavigation()
   if (dispose) app.onUnmount(dispose)
   app.onUnmount(startScheduledConversationViewedReporting())
+  app.onUnmount(startScheduledConversationHistorySync())
 }
 
 // 更新状态监听已注册后通知主进程 ready；是否检查更新由 Main 的发行身份决定。

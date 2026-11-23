@@ -59,7 +59,7 @@ export interface ScheduledTaskBanner {
 
 /** 详情顶部的提示：需要用户处理的情况才有，同一时间只给最要紧的一条。 */
 export function resolveTaskBanner(
-  task: Pick<ScheduledTask, 'state' | 'model_unavailable' | 'consecutive_failures'>,
+  task: Pick<ScheduledTask, 'state' | 'model_unavailable' | 'model_config_id' | 'consecutive_failures'>,
   message: ScheduledTaskMessageResolver,
 ): ScheduledTaskBanner | null {
   if (task.state === 'awaiting_approval') {
@@ -87,7 +87,9 @@ export function resolveTaskBanner(
   }
   if (task.model_unavailable && task.state !== 'finished') {
     return {
-      text: message('scheduledTasks.banner.modelUnavailable'),
+      text: message(task.model_config_id === null
+        ? 'scheduledTasks.banner.defaultModelUnavailable'
+        : 'scheduledTasks.banner.modelUnavailable'),
       tone: 'error',
       action: { kind: 'edit', label: message('scheduledTasks.banner.modelUnavailableAction') },
     };

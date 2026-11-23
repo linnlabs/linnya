@@ -62,11 +62,11 @@ describe('表单草稿', () => {
 describe('状态与运行记录', () => {
   it('启用任务显示下次时间；等审批给去处理', () => {
     expect(presentTaskState({ state: 'scheduled' }, message, '明天 9:00')).toEqual({ text: '下次 明天 9:00', tone: 'neutral' });
-    const banner = resolveTaskBanner({ state: 'awaiting_approval', model_unavailable: false, consecutive_failures: 0 }, message);
+    const banner = resolveTaskBanner({ state: 'awaiting_approval', model_unavailable: false, model_config_id: null, consecutive_failures: 0 }, message);
     expect(banner?.action?.kind).toBe('open_approval');
-    expect(resolveTaskBanner({ state: 'scheduled', model_unavailable: true, consecutive_failures: 0 }, message)?.action?.kind)
+    expect(resolveTaskBanner({ state: 'scheduled', model_unavailable: true, model_config_id: 'm1', consecutive_failures: 0 }, message)?.action?.kind)
       .toBe('edit');
-    expect(resolveTaskBanner({ state: 'scheduled', model_unavailable: false, consecutive_failures: 0 }, message)).toBeNull();
+    expect(resolveTaskBanner({ state: 'scheduled', model_unavailable: false, model_config_id: null, consecutive_failures: 0 }, message)).toBeNull();
   });
 
   it('完成写用时，排队写等了多久，跳过写原因与次数', () => {

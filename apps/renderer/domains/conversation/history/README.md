@@ -43,6 +43,8 @@ API 保留 request、HTTP、JSON 解码和响应合同校验阶段；loader 记�
 
 窗口外新建的对话（例如 CLI `send`）不会推送到列表。侧栏运行状态（conversation-activity）读到列表里没有的对话时调用 `revealConversations`：只重读该对话所在、且已加载过的 scope，保留已加载条数和搜索词，每个对话在本次 Renderer 生命周期只触发一次。
 
+列表行里由别处汇总的字段（定时任务折叠行的未读数、最近一次运行）变化时，调用方用 `reloadProjectScopes` 重读这些项目已加载的 scope，同样保留条数和搜索词；它可以反复触发，节流由调用方负责（定时任务在 `app/workflows/scheduled-tasks` 合并 400ms 内的推送）。
+
 - `activeConversationId` 表示当前打开的会话，是普通点击和键盘打开的唯一单选事实源。
 - `ConversationBatchSelectionState` 是列表操作选择集合，只服务右键单项操作、`Ctrl/Cmd` 切换选择、`Shift` 范围选择和批量删除；它不表示当前打开的会话。批量集合没有显式锚点时，首次 `Shift` 点击以当前打开的会话为隐式锚点；后续 `Shift` 点击只扩展到新落点，不移动锚点，行为与文件列表一致。
 - 普通点击或键盘打开会话时必须清空批量选择；组合键选择只更新批量选择，不切换活动会话；进入新草稿时两种状态都必须结束。

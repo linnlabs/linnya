@@ -146,7 +146,7 @@ import { ChatIcon } from '@linnya/renderer-ui/icons';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { SearchIcon } from '@linnya/renderer-ui/icons';
-import { GlanceIcon } from '@linnya/renderer-ui/icons';
+import { ClockIcon, GlanceIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect, HoverTooltip, IconButton } from '@linnya/renderer-ui';
 import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';

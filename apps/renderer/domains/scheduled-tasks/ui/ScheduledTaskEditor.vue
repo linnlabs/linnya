@@ -135,24 +135,27 @@
 
     <div class="scheduled-task-editor__field">
       <span class="scheduled-task-editor__label">{{ scheduledTaskMessage('scheduledTasks.editor.permission') }}</span>
-      <label
-        v-for="option in PERMISSION_LEVELS"
-        :key="`${option}-${tierGroupKey}`"
-        class="scheduled-task-editor__tier"
-      >
-        <CustomRadio
-          :model-value="permissionLevel"
-          :value="option"
-          :name="`${idPrefix}-tier`"
-          @update:model-value="chooseLevel"
-        />
-        <span class="scheduled-task-editor__tier-text">
-          <span class="scheduled-task-editor__tier-label" :class="{ 'is-full-access': option === 'full_access' }">
-            {{ levelLabel(option) }}
+      <!-- PERMISSION_LEVELS 是常量，v-for 会被编译成稳定片段、不比较 key；重建要靠外层元素的 key。 -->
+      <div :key="tierGroupKey" class="scheduled-task-editor__tiers" role="radiogroup" :aria-label="scheduledTaskMessage('scheduledTasks.editor.permission')">
+        <label
+          v-for="option in PERMISSION_LEVELS"
+          :key="option"
+          class="scheduled-task-editor__tier"
+        >
+          <CustomRadio
+            :model-value="permissionLevel"
+            :value="option"
+            :name="`${idPrefix}-tier`"
+            @update:model-value="chooseLevel"
+          />
+          <span class="scheduled-task-editor__tier-text">
+            <span class="scheduled-task-editor__tier-label" :class="{ 'is-full-access': option === 'full_access' }">
+              {{ levelLabel(option) }}
+            </span>
+            <span class="scheduled-task-editor__tier-description">{{ levelDescription(option) }}</span>
           </span>
-          <span class="scheduled-task-editor__tier-description">{{ levelDescription(option) }}</span>
-        </span>
-      </label>
+        </label>
+      </div>
       <p class="scheduled-task-editor__help">
         {{ scheduledTaskMessage('scheduledTasks.editor.permissionHelp', { tier: levelLabel(globalLevel) }) }}
       </p>
@@ -203,11 +206,13 @@ import {
   SimpleDatePicker,
   Switch,
   TimePicker,
+  useTimer,
   type CustomSelectOption,
   type SegmentedTabItem,
 } from '@linnya/renderer-ui';
 import { requestConversationCommandPermission } from '@/app/workflows/command-permissions';
-import { buildConversationModelSelectOptions, useModelPickerReadModel } from '@/domains/model-configuration';
+import { PERMISSION_LEVEL_DESCRIPTION_KEYS, PERMISSION_LEVEL_LABEL_KEYS } from '../functions/permissionLevelMessages';
+import { buildConversationModelSelectOptions, useModelCatalogReadModel, useModelPickerReadModel } from '@/domains/model-configuration';
 import { confirmPermissionLevelExpansion, useSettingsLocalization } from '@/domains/settings/public';
 import { useWorkspaceProjectsStore } from '@/domains/workspace/store';
 import { scheduledTasksClient } from '../adapters/scheduledTasksClient';
@@ -230,6 +235,8 @@ const props = defineProps<{
   readonly task: ScheduledTask | null;
   /** 新建时预选的项目。 */
   readonly defaultProjectId: string | null;
+  /** 版本冲突后按新版本重开表单时，带上那句提示。 */
+  readonly initialError?: string;
 }>();
 
 const emit = defineEmits<{
@@ -251,6 +258,11 @@ const projectsStore = useWorkspaceProjectsStore();
 const modelPicker = useModelPickerReadModel();
 
 const isNew = computed(() => props.task === null);
+/**
+ * 打开表单时的版本。任务在别处被改（设置页降档、Agent 改任务、自动暂停）时 store 会推来新版本，
+ * 保存必须仍拿打开时的版本去比，才能报冲突，而不是用表单里的旧值静默盖掉别处的修改。
+ */
+const baseRevision = props.task?.revision ?? 0;
 const name = ref(props.task?.name ?? '');
 const prompt = ref(props.task?.prompt ?? '');
 const projectId = ref<string | null>(props.task?.project_id ?? props.defaultProjectId ?? projectsStore.projects[0]?.id ?? null);
@@ -314,6 +326,11 @@ const agentOptions = computed<CustomSelectOption<ScheduledTaskAgent>[]>(() => [
   { text: scheduledTaskMessage('scheduledTasks.agent.research'), value: 'research' },
 ]);
 
+const modelCatalog = useModelCatalogReadModel();
+function catalogModelName(modelConfigId: string): string | null {
+  return modelCatalog.models.value.find(model => model.id === modelConfigId)?.display_name ?? null;
+}
+
 const modelOptions = computed(() => {
   const options = buildConversationModelSelectOptions({
     snapshot: modelPicker.snapshot.value,
@@ -327,25 +344,18 @@ const modelOptions = computed(() => {
   return [
     { text: scheduledTaskMessage('scheduledTasks.model.default'), value: DEFAULT_MODEL },
     ...(modelChoice.value !== DEFAULT_MODEL && !known
-      ? [{ text: scheduledTaskMessage('scheduledTasks.model.unknown'), value: modelChoice.value, disabled: true }]
+      // 选择器只列对话里显示的模型；被隐藏但仍在的模型照样显示名字，真删了才说“已删除”。
+      ? [{ text: catalogModelName(modelChoice.value) ?? scheduledTaskMessage('scheduledTasks.model.unknown'), value: modelChoice.value, disabled: true }]
       : []),
     ...options,
   ];
 });
 
 function levelLabel(level: CommandPermissionLevel): string {
-  switch (level) {
-    case 'read_only': return settingsMessage('settings.commandPermission.level.readOnly');
-    case 'standard': return settingsMessage('settings.commandPermission.level.standard');
-    case 'full_access': return settingsMessage('settings.commandPermission.level.fullAccess');
-  }
+  return settingsMessage(PERMISSION_LEVEL_LABEL_KEYS[level]);
 }
 function levelDescription(level: CommandPermissionLevel): string {
-  switch (level) {
-    case 'read_only': return settingsMessage('settings.commandPermission.level.readOnlyDescription');
-    case 'standard': return settingsMessage('settings.commandPermission.level.standardDescription');
-    case 'full_access': return settingsMessage('settings.commandPermission.level.fullAccessDescription');
-  }
+  return settingsMessage(PERMISSION_LEVEL_DESCRIPTION_KEYS[level]);
 }
 
 /** 原生单选框点下去就会选中；取消确认后重建这一组，让显示回到当前值。 */
@@ -371,15 +381,14 @@ async function chooseLevel(value: unknown): Promise<void> {
 const preview = ref<ScheduledTaskPreviewScheduleResult | null>(null);
 const previewPending = ref(false);
 let previewSeq = 0;
-let previewTimer: ReturnType<typeof setTimeout> | null = null;
+// 随改随问做防抖；useTimer 在组件卸载时自动取消。
+const previewTimer = useTimer();
 
 watch(draft, () => {
   previewPending.value = true;
-  if (previewTimer) clearTimeout(previewTimer);
-  previewTimer = setTimeout(() => void runPreview(), 250);
+  previewTimer.start(() => void runPreview(), 250);
 }, { immediate: true });
 onBeforeUnmount(() => {
-  if (previewTimer) clearTimeout(previewTimer);
   previewSeq += 1;
 });
 
@@ -399,15 +408,18 @@ async function runPreview(): Promise<ScheduledTaskPreviewScheduleResult | null> 
   }
 }
 
+// 新增错误码时这里会类型报错，不会静默显示空提示。
+const SCHEDULE_ERROR_MESSAGES = {
+  invalid_expression: 'scheduledTasks.scheduleError.invalidExpression',
+  too_frequent: 'scheduledTasks.scheduleError.tooFrequent',
+  in_the_past: 'scheduledTasks.scheduleError.inThePast',
+  never_runs: 'scheduledTasks.scheduleError.neverRuns',
+} as const satisfies Record<Extract<ScheduledTaskPreviewScheduleResult, { ok: false }>['code'], string>;
+
 const scheduleError = computed(() => {
   const result = preview.value;
   if (!result || result.ok) return '';
-  switch (result.code) {
-    case 'invalid_expression': return scheduledTaskMessage('scheduledTasks.scheduleError.invalidExpression');
-    case 'too_frequent': return scheduledTaskMessage('scheduledTasks.scheduleError.tooFrequent');
-    case 'in_the_past': return scheduledTaskMessage('scheduledTasks.scheduleError.inThePast');
-    case 'never_runs': return scheduledTaskMessage('scheduledTasks.scheduleError.neverRuns');
-  }
+  return scheduledTaskMessage(SCHEDULE_ERROR_MESSAGES[result.code]);
 });
 
 const schedulePreviewText = computed(() => {
@@ -429,7 +441,7 @@ const schedulePreviewText = computed(() => {
 
 const attempted = ref(false);
 const saving = ref(false);
-const saveError = ref('');
+const saveError = ref(props.initialError ?? '');
 const nameError = computed(() => (
   attempted.value && !name.value.trim() ? scheduledTaskMessage('scheduledTasks.editor.nameRequired') : ''
 ));
@@ -457,7 +469,7 @@ async function save(): Promise<void> {
       permission_level: permissionLevel.value,
     };
     const result = props.task
-      ? await scheduledTasksClient.update({ task_id: props.task.id, expected_revision: props.task.revision, ...fields })
+      ? await scheduledTasksClient.update({ task_id: props.task.id, expected_revision: baseRevision, ...fields })
       : await scheduledTasksClient.create({ project_id: projectId.value, ...fields });
     if (result.ok) {
       emit('saved', result.task, props.task === null);

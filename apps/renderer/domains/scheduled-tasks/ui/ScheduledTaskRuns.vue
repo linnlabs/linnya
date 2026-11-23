@@ -60,6 +60,7 @@ import type { CommandPermissionLevel } from '@app/schemas/commands';
 import type { ScheduledTask, ScheduledTaskRun } from '@app/schemas/scheduled-tasks';
 import { useSettingsLocalization } from '@/domains/settings/public';
 import { scheduledTasksClient } from '../adapters/scheduledTasksClient';
+import { PERMISSION_LEVEL_LABEL_KEYS } from '../functions/permissionLevelMessages';
 import { presentRun } from '../functions/presentScheduledTask';
 import { useScheduledTasksStore } from '../store/scheduledTasksStore';
 import { useScheduledTaskLocalization } from './useScheduledTaskLocalization';
@@ -136,11 +137,7 @@ const statsText = computed(() => (props.task.storage_bytes !== null && props.tas
   : scheduledTaskMessage('scheduledTasks.runs.statsCountOnly', { count: props.task.run_count })));
 
 function levelText(level: CommandPermissionLevel): string {
-  switch (level) {
-    case 'read_only': return settingsMessage('settings.commandPermission.level.readOnly');
-    case 'standard': return settingsMessage('settings.commandPermission.level.standard');
-    case 'full_access': return settingsMessage('settings.commandPermission.level.fullAccess');
-  }
+  return settingsMessage(PERMISSION_LEVEL_LABEL_KEYS[level]);
 }
 
 const rows = computed(() => {

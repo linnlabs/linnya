@@ -351,6 +351,11 @@ export function createHistoryListRuntime(state: ReturnType<typeof useHistoryList
       revealRequestedConversationIds.add(item.conversationId);
       scopes.set(key, scope);
     }
+    reloadLoadedScopes(scopes);
+  }
+
+  /** 按已加载条数与搜索词重读这些范围；没加载过的范围不读。 */
+  function reloadLoadedScopes(scopes: ReadonlyMap<string, NavigationScope>) {
     for (const [key, scope] of scopes) {
       const snapshot = state.scopeCache[key];
       if (!snapshot) continue;
@@ -360,6 +365,22 @@ export function createHistoryListRuntime(state: ReturnType<typeof useHistoryList
         search: snapshot.searchQuery || undefined,
       });
     }
+  }
+
+  /**
+   * 列表行里由别处汇总的字段变了（例如定时任务折叠行的未读数、最近一次运行），而对话本身不推送：
+   * 把这些项目已加载的范围重读一次。和 `revealConversations` 不同，可以反复触发，由调用方节流。
+   */
+  function reloadProjectScopes(projectIds: readonly (string | null)[]) {
+    const scopes = new Map<string, NavigationScope>();
+    for (const projectId of projectIds) {
+      const scope: NavigationScope = projectId
+        ? { kind: 'project', projectId }
+        : { kind: 'linnya-assistant' };
+      const key = getScopeKey(scope);
+      if (state.scopeCache[key]) scopes.set(key, scope);
+    }
+    reloadLoadedScopes(scopes);
   }
 
   return {
@@ -380,5 +401,6 @@ export function createHistoryListRuntime(state: ReturnType<typeof useHistoryList
     touchConversationTimestamp,
     prependConversation,
     revealConversations,
+    reloadProjectScopes,
   };
 }

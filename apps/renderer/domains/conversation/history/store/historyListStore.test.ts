@@ -205,4 +205,21 @@ describe('historyListStore scope loading', () => {
     expect(fetchListMock).toHaveBeenCalledTimes(1);
     expect(fetchListMock).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1', limit: 30 }));
   });
+
+  it('汇总字段变化可以反复重读已加载的项目范围，未加载的不读', async () => {
+    const scopeStore = useNavigationScope();
+    const listStore = useHistoryList();
+    scopeStore.startDraft({ kind: 'project', projectId: 'project-1' });
+    await listStore.loadList(true);
+    fetchListMock.mockClear();
+
+    listStore.reloadProjectScopes(['project-1', 'project-2']);
+    await nextTick();
+    listStore.reloadProjectScopes(['project-1']);
+    await nextTick();
+
+    expect(fetchListMock).toHaveBeenCalledTimes(2);
+    expect(fetchListMock).toHaveBeenNthCalledWith(2, expect.objectContaining({ projectId: 'project-1', limit: 30 }));
+    expect(fetchListMock).not.toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-2' }));
+  });
 });

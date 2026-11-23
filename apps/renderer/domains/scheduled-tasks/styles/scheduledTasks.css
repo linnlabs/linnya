@@ -33,6 +33,7 @@
 
 .scheduled-tasks-view__subtitle {
   max-width: 640px;
+  text-wrap: pretty;
   margin: 0;
   color: var(--color-text-tertiary);
   font-size: var(--font-size-sm);
@@ -684,4 +685,9 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-prose);
+}
+
+/* 只为取消确认后整组重建而包一层，不参与布局。 */
+.scheduled-task-editor__tiers {
+  display: contents;
 }
