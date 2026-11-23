@@ -1,8 +1,37 @@
 import { app, Notification } from 'electron';
 import { SCHEDULED_TASKS_NOTIFY_CHANNEL, type ScheduledTaskNotification } from '@app/schemas/scheduled-tasks';
+import { subscribeRendererReady, type RendererReadyTarget } from '../../events/rendererReadyEvent';
 import { getMainWindow, revealMainWindow } from '../../window-manager';
 
-export function notifyScheduledTask(event: ScheduledTaskNotification): void {
+export function createScheduledTaskDesktopNotifications() {
+  let readyTarget: RendererReadyTarget | undefined;
+  let pendingOpen: ScheduledTaskNotification | undefined;
+
+  function openWhenReady(rendererJustReady = false): void {
+    const contents = getMainWindow()?.webContents;
+    if (!contents || contents !== readyTarget || contents.isDestroyed() || (!rendererJustReady && contents.isLoadingMainFrame()) || !pendingOpen) return;
+    const event = pendingOpen;
+    pendingOpen = undefined;
+    contents.send(SCHEDULED_TASKS_NOTIFY_CHANNEL, event, true);
+  }
+
+  const unsubscribe = subscribeRendererReady(target => {
+    readyTarget = target;
+    openWhenReady(true);
+  });
+
+  return {
+    notify: (event: ScheduledTaskNotification) => deliverScheduledTaskNotice(event, () => {
+      // 启动补跑可能早于首个窗口。等正式 renderer-ready 后再投递点击意图。
+      pendingOpen = event;
+      revealMainWindow();
+      openWhenReady();
+    }),
+    dispose: unsubscribe,
+  };
+}
+
+function deliverScheduledTaskNotice(event: ScheduledTaskNotification, open: () => void): void {
   const window = getMainWindow();
   if (window?.isFocused()) {
     window.webContents.send(SCHEDULED_TASKS_NOTIFY_CHANNEL, event);
@@ -19,10 +48,6 @@ export function notifyScheduledTask(event: ScheduledTaskNotification): void {
   };
   const body = event.kind === 'catch_up' ? (chinese ? `${event.task_count} 个任务` : `${event.task_count} tasks`) : event.task_name;
   const notice = new Notification({ title: titles[event.kind], body });
-  notice.once('click', () => {
-    revealMainWindow();
-    // 点击和前台提示共用原通知 payload，Renderer 将点击交给现有 workspace navigation。
-    getMainWindow()?.webContents.send(SCHEDULED_TASKS_NOTIFY_CHANNEL, event, true);
-  });
+  notice.once('click', open);
   notice.show();
 }

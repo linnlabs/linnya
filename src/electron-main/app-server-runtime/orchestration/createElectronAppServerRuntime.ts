@@ -1,5 +1,5 @@
 import { createScheduledTaskNotificationHandlers } from '../../../app-hosts/linnya/desktop-capabilities/features/scheduled-task-notification-rpc';
-import { notifyScheduledTask } from '../../desktop-capabilities/scheduled-task-notification/notifyScheduledTask';
+import { createScheduledTaskDesktopNotifications } from '../../desktop-capabilities/scheduled-task-notification/notifyScheduledTask';
 import type { ResolvedAppServerProcessLaunch } from '../../../app-hosts/linnya/app-server-runtime';
 import path from 'node:path';
 import type { Writable } from 'node:stream';
@@ -109,7 +109,8 @@ export async function createElectronAppServerRuntime(input: {
     mailboxRoot,
     port: Object.freeze({ commit: commitAuthorizedExportArtifact }),
   }));
-  registerHandlers(rpcHandlers, createScheduledTaskNotificationHandlers(notifyScheduledTask));
+  const scheduledNotifications = createScheduledTaskDesktopNotifications();
+  registerHandlers(rpcHandlers, createScheduledTaskNotificationHandlers(scheduledNotifications.notify));
   registerHandlers(rpcHandlers, createDesktopFileRevealRpcHandlers(
     createElectronFileRevealPort(),
   ));
@@ -165,6 +166,7 @@ export async function createElectronAppServerRuntime(input: {
       if (shutdownSettlement) return shutdownSettlement;
       shutdownSettlement = (async () => {
         const failures: unknown[] = [];
+        scheduledNotifications.dispose();
         try {
           await process.shutdown();
         } catch (error: unknown) {

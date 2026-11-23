@@ -14,6 +14,7 @@ export function createScheduledTaskScheduler(ports: ScheduledTaskPorts) {
   let previousCheck: number | undefined;
   let work: Promise<unknown> = Promise.resolve();
   let pendingPoke = false;
+  const approvalsWaitingForSlot = new Map<string, Array<() => void>>();
 
   function serialize<T>(operation: () => T | Promise<T>): Promise<T> {
     const result = work.then(operation);
@@ -28,6 +29,7 @@ export function createScheduledTaskScheduler(ports: ScheduledTaskPorts) {
 
   function finish(run: ScheduledRunRecord, status: 'completed' | 'failed' | 'interrupted', reason: ScheduledTaskRunReason | null): void {
     const now = ports.now();
+    approvalsWaitingForSlot.delete(run.id);
     const task = store.read(run.task_id);
     if (!task) return;
     if (task.deleted_at !== null) {
@@ -53,10 +55,19 @@ export function createScheduledTaskScheduler(ports: ScheduledTaskPorts) {
     ports.publish();
   }
 
+  async function readFacts(runs: readonly ScheduledRunRecord[]): Promise<ReadonlyMap<string, ScheduledExecutionFact>> {
+    const live = await execution.read(runs);
+    const facts = new Map(live);
+    for (const [id, fact] of live) {
+      if (fact.state === 'running' && approvalsWaitingForSlot.has(id)) facts.set(id, { ...fact, state: 'awaiting_approval' });
+    }
+    return facts;
+  }
+
   async function reconcile(): Promise<ReadonlyMap<string, ScheduledExecutionFact>> {
     const runs = store.pendingRuns().filter(run => run.status === 'admitted');
     if (runs.length === 0) return new Map();
-    const facts = await execution.read(runs);
+    const facts = await readFacts(runs);
     for (const run of runs) {
       const fact = facts.get(run.id);
       if (fact?.state === 'completed') finish(run, 'completed', null);
@@ -93,6 +104,13 @@ export function createScheduledTaskScheduler(ports: ScheduledTaskPorts) {
       const running = [...facts.values()].filter(fact => fact.state === 'running').length;
       if (!accepting || running >= ports.settings.read().max_concurrent_runs) return;
       const pending = store.pendingRuns();
+      const waiting = pending.find(run => approvalsWaitingForSlot.has(run.id) && facts.get(run.id)?.state === 'awaiting_approval');
+      if (waiting) {
+        const deliver = approvalsWaitingForSlot.get(waiting.id) ?? [];
+        approvalsWaitingForSlot.delete(waiting.id);
+        for (const resume of deliver) resume();
+        continue;
+      }
       const queued = pending.find(run => run.status === 'queued' && (ports.schedulerEnabled || run.trigger === 'manual')
         && !pending.some(other => other.status === 'admitted' && other.task_id === run.task_id));
       if (!queued) return;
@@ -226,21 +244,31 @@ export function createScheduledTaskScheduler(ports: ScheduledTaskPorts) {
       return serialize(async () => { await stopRuns(undefined, 'app_quit'); });
     },
     async activeCount() {
-      const facts = await execution.read(store.pendingRuns().filter(run => run.status === 'admitted'));
+      const facts = await readFacts(store.pendingRuns().filter(run => run.status === 'admitted'));
       return [...facts.values()].filter(fact => ['running', 'awaiting_approval', 'awaiting_answer'].includes(fact.state)).length;
     },
   };
+  function poke(): void {
+    if (!accepting || pendingPoke) return;
+    pendingPoke = true;
+    void serialize(async () => {
+      pendingPoke = false;
+      if (!accepting || store.pendingRuns().length === 0) return;
+      await drain();
+      ports.publish();
+    }).catch(error => ports.logError('Scheduled task activity refresh failed', error));
+  }
+
   return {
-    lifecycle, serialize, tick, stopRuns, discardAutomaticQueue, enqueue, drain,
-    poke() {
-      if (!accepting || pendingPoke) return;
-      pendingPoke = true;
-      void serialize(async () => {
-        pendingPoke = false;
-        if (!accepting || store.pendingRuns().length === 0) return;
-        await drain();
-        ports.publish();
-      }).catch(error => ports.logError('Scheduled task activity refresh failed', error));
+    lifecycle, serialize, tick, stopRuns, discardAutomaticQueue, enqueue, drain, poke, readFacts,
+    deferApproval(conversationId: string, deliver: () => void): boolean {
+      const run = store.readRunForConversation(conversationId);
+      if (!run || run.status !== 'admitted') return false;
+      const waiting = approvalsWaitingForSlot.get(run.id);
+      if (waiting) waiting.push(deliver);
+      else approvalsWaitingForSlot.set(run.id, [deliver]);
+      poke();
+      return true;
     },
   };
 }

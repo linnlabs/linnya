@@ -18,3 +18,5 @@ App Server 就绪后开始分钟检查，停机先停止接纳。定时检查、
 - `/api/v1/conversation/list` 在 SQL 分页前折叠定时对话；任务详情通过 `runs` 翻历史。删除任务后，对话作为普通对话继续保留。
 - 全局档位收紧预览提供 `scheduled_task_count`，明确选择 `include_scheduled_tasks` 才一起调整。模型删除确认可读 `/api/v1/models/:id/removal-impact` 的 `scheduled_task_count`。
 - [Agent Shell CLI](../core-cli/README.md) 只按来源对话所归项目操作。修改权限高于调用方时，CLI 拒绝，并指向任务界面。
+
+命令审批继续由 Commands owner 接纳。用户允许后，App Server 在已有运行等到名额时才交付该回复；已批准的运行先于新入队任务恢复。拒绝直接交付。状态查询按正式运行 ID 读取，用户随后在同一对话继续提问也不改变该次定时结果。

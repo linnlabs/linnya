@@ -39,8 +39,11 @@ export function createScheduledTaskExecution(input: {
     },
     async read(runs) {
       if (runs.length === 0) return new Map();
-      const ids = runs.flatMap(run => run.conversation_id ? [run.conversation_id] : []);
-      const activities = await readConversationActivities(input.activity, ids);
+      const exactRuns = new Map<string, string>();
+      for (const run of runs) {
+        if (run.conversation_id && run.run_id) exactRuns.set(run.conversation_id, run.run_id);
+      }
+      const activities = await readConversationActivities(input.activity, [...exactRuns.keys()], exactRuns);
       return new Map<string, ScheduledExecutionFact>(runs.map(run => {
         const activity = run.conversation_id ? activities[run.conversation_id] : undefined;
         if (!activity?.run_id || (run.run_id && run.run_id !== activity.run_id)) return [run.id, { state: 'missing', runId: null }];

@@ -143,6 +143,33 @@ describe('scheduled tasks with a wall clock and real SQLite', () => {
     await f.tasks.lifecycle.stop();
   });
 
+  it('lets the existing approved execution resume before admitting a new task when a slot opens', async () => {
+    const f = fixture();
+    const a = await f.create('A');
+    const b = await f.create('B');
+    const c = await f.create('C');
+    await f.start();
+    await f.tasks.runNow(a);
+    const waiting = f.transition(a, 'awaiting_approval');
+    await f.tasks.runNow(b);
+    await f.tasks.runNow(c);
+    if (!waiting.conversation_id) throw new Error('Expected a waiting conversation');
+    f.transition(a, 'running'); // Commands projects an accepted reply as processing.
+    const resume = vi.fn();
+    expect(f.tasks.deferApproval(waiting.conversation_id, resume)).toBe(true);
+    await f.at(1_000);
+    expect(resume).not.toHaveBeenCalled();
+    expect((await f.tasks.list()).running_count).toBe(1);
+    f.transition(b, 'completed');
+    await f.at(2_000);
+    expect(resume).toHaveBeenCalledOnce();
+    expect(f.admitted).toEqual(['A', 'B']);
+    f.transition(a, 'completed');
+    await f.at(3_000);
+    expect(f.admitted).toEqual(['A', 'B', 'C']);
+    await f.tasks.lifecycle.stop();
+  });
+
   it('pauses after model failures, finishes a one-time task and pauses an unread recurring task', async () => {
     const f = fixture();
     const a = await f.create('fail');

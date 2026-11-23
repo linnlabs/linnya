@@ -29,7 +29,7 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
   };
   const live = async () => {
     const pending = store.pendingRuns();
-    const facts = await ports.execution.read(pending.filter(run => run.status === 'admitted'));
+    const facts = await scheduler.readFacts(pending.filter(run => run.status === 'admitted'));
     return { pending, facts };
   };
   const mutation = async (id: string): Promise<ScheduledTaskMutationResult> => {
@@ -51,6 +51,7 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
     lifecycle: scheduler.lifecycle,
     tick: scheduler.tick,
     poke: scheduler.poke,
+    deferApproval: scheduler.deferApproval,
     preview,
     async list(projectId?: string): Promise<ScheduledTasksListResult> {
       const { pending, facts } = await live();
