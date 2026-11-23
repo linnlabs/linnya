@@ -591,6 +591,7 @@
     "cheerio": "~1.0.0",
     "cors": "^2.8.5",
     "crc-32": "^1.2.2",
+    "croner": "11.0.0",
     "detect-libc": "^2.1.2",
     "diff-match-patch": "^1.0.5",
     "dompurify": "^3.4.17",

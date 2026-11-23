@@ -15,6 +15,7 @@ import {
 } from 'src/domains/commands/features/permission-settings';
 import type { CommandPermissionSettingsPort } from 'src/domains/commands/ports';
 
+import type { ScheduledTasks } from '../../scheduled-tasks';
 import type { ConversationWorkDirectoryAdmissionPort } from '../../conversation-lifecycle';
 import type {
   ConversationCommandPermissionPersistencePort,
@@ -31,6 +32,7 @@ export function createConversationCommandPermissions(input: {
   readonly store: ConversationCommandPermissionPersistencePort;
   readonly globalSettings: CommandPermissionSettingsPort;
   readonly admission: ConversationWorkDirectoryAdmissionPort;
+  readonly readScheduledTasks?: () => Pick<ScheduledTasks, 'permissionsAbove' | 'reducePermissions' | 'publish'> | undefined;
   readonly onFailure: (error: unknown) => void;
 }): ConversationCommandPermissions {
   const { store, globalSettings, admission, onFailure } = input;
@@ -125,13 +127,15 @@ export function createConversationCommandPermissions(input: {
         affected.push({ id, revision: selection.revision, createdAt });
       }
     }
+    const scheduled = input.readScheduledTasks?.()?.permissionsAbove(target);
     return {
       affected,
       preview: {
         global_revision: global.revision,
         target_level: target,
         affected_count: affected.length,
-        fence: fingerprintCommandPermissionReduction(affected),
+        ...(scheduled === undefined ? {} : { scheduled_task_count: scheduled.length }),
+        fence: fingerprintCommandPermissionReduction([...affected, ...(scheduled ?? [])]),
       },
     };
   }
@@ -161,15 +165,18 @@ export function createConversationCommandPermissions(input: {
 
   function reduce(request: Extract<Request, { kind: 'reduce' }>, global: CommandPermissionSettingsV1): Result {
     const target = request.preview.target_level;
+    const tasks = input.readScheduledTasks?.();
     const { affected, preview } = planReduction(global, target);
     if (request.preview.global_revision !== global.revision || request.preview.fence !== preview.fence
       || request.preview.affected_count !== preview.affected_count
+      || (request.preview.scheduled_task_count ?? 0) !== (preview.scheduled_task_count ?? 0)
       || compareCommandPermissionLevels(target, global.permission_level) >= 0) {
       return { kind: 'error', code: 'conflict' };
     }
     const pending = store.readPendingReduction();
     if (pending?.update.permission_level === target && pending.update.expected_revision === global.revision
-      && (!request.include_conversations || affected.length === 0)) {
+      && (!request.include_conversations || affected.length === 0)
+      && (!request.include_scheduled_tasks || !preview.scheduled_task_count)) {
       return completePendingReduction();
     }
 
@@ -193,8 +200,10 @@ export function createConversationCommandPermissions(input: {
         store.writeChange(id, change);
         changed.set(id, { createdAt, change });
       }
+      if (request.include_scheduled_tasks) tasks?.reducePermissions(target);
       store.savePendingReduction(update, changed.size);
     });
+    if (request.include_scheduled_tasks) tasks?.publish();
     for (const [id, { createdAt, change }] of changed) publishSelection(id, createdAt, change);
     return completePendingReduction();
   }

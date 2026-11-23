@@ -39,6 +39,8 @@ function createPageTicket(createUuid: () => string): CommandApprovalPageTicket {
  */
 export function createCommandApprovalHost(input: {
   readonly createUuid?: () => string;
+  /** 定时运行已经收到用户决定，可由调度 owner 等名额后再让原工具继续。 */
+  readonly deferApprovedReply?: (conversationId: string, deliver: () => void) => boolean;
 } = {}): CommandApprovalHost {
   const createUuid = input.createUuid ?? randomUUID;
   const pending = new Map<string, PendingApproval>();
@@ -105,16 +107,20 @@ export function createCommandApprovalHost(input: {
       return 'stale';
     }
     entry.status = 'processing';
-    entry.responseDelivered = true;
-    entry.resolve({
-      status: 'replied',
-      reply: CommandApprovalReplyV1Schema.parse({
-        protocol_version: 1,
-        kind: 'command_approval_reply',
-        approval_request_id: approvalRequestId,
-        choice,
-      }),
-    });
+    const deliver = (): void => {
+      if (entry.status !== 'processing' || entry.responseDelivered) return;
+      entry.responseDelivered = true;
+      entry.resolve({
+        status: 'replied',
+        reply: CommandApprovalReplyV1Schema.parse({
+          protocol_version: 1,
+          kind: 'command_approval_reply',
+          approval_request_id: approvalRequestId,
+          choice,
+        }),
+      });
+    };
+    if (choice === 'deny' || !input.deferApprovedReply?.(entry.request.proposal.identity.conversation_id, deliver)) deliver();
     notify();
     return 'accepted';
   };

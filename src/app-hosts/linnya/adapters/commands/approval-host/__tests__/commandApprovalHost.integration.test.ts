@@ -320,3 +320,23 @@ describe('command approval pending host', () => {
     await expect(host.request({ request: request(7) })).resolves.toMatchObject({ status: 'failed' });
   });
 });
+
+it('defers an accepted approval without letting an old callback override cancellation', async () => {
+  const deliveries: Array<() => void> = [];
+  const host = createCommandApprovalHost({ deferApprovedReply: (_conversationId, deliver) => {
+    deliveries.push(deliver);
+    return true;
+  } });
+  host.enableHostPresenter();
+  const approval = request(1);
+  const aborter = new AbortController();
+  const response = host.request({ request: approval, abortSignal: aborter.signal });
+  expect(host.submitHostReply({ approvalRequestId: approval.approval_request_id, choice: 'allow_once' }))
+    .toEqual({ status: 'accepted' });
+  expect(host.readHostPresenter()?.pending).toMatchObject([{ status: 'processing' }]);
+  expect(deliveries).toHaveLength(1);
+  aborter.abort();
+  deliveries[0]();
+  await expect(response).resolves.toEqual({ status: 'invalidated', reason: 'run_cancelled' });
+  host.endOwner();
+});

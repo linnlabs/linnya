@@ -35,6 +35,7 @@ export const CommandRiskCategorySchema = z.enum([
   'external_upload',
   'download_and_execute',
   'system_or_disk_impact',
+  'persistent_automation',
 ]);
 export type CommandRiskCategory = z.infer<typeof CommandRiskCategorySchema>;
 

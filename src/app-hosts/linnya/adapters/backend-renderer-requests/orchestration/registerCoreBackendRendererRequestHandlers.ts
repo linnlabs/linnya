@@ -1,3 +1,4 @@
+import { registerScheduledTaskRequests } from './registerScheduledTaskRequests';
 import type { CredentialStoragePort } from '../../../../../shared/credential-storage';
 import { registerProjectHandlers } from 'src/electron-main/ipc/handlers/projects/project-ipc';
 import { createProjectLifecycle } from 'src/domains/projects';
@@ -74,6 +75,8 @@ export async function registerCoreBackendRendererRequestHandlers(input: {
   });
   registerConversationFileLinkHandlers({ ipc, fileReveal: input.fileReveal });
   registerConversationRunDocumentChangesRequests(input.runtimeOwner, input.registry);
+  const tasks = input.runtimeOwner.getScheduledTasks();
+  if (tasks) registerScheduledTaskRequests(tasks, input.registry);
   registerProjectOverviewRequests(input.runtimeOwner, input.registry);
 
   registerRegisteredBackendPluginIpcHandlers(input.runtimeOwner);

@@ -82,6 +82,10 @@ export async function initializeAppServerBackend(
         throw new Error('路由配置失败：DocumentOcrPort 未初始化');
       }
       const routeDependencies: RouteDependencies = {
+        scheduledTaskSchedulerLifecycleRegistration: {
+          register: (tasks, lifecycle) => runtimeOwner.registerScheduledTasks(tasks, lifecycle),
+        },
+        notifyScheduledTask: hostDependencies.notifyScheduledTask,
         projectDeletionRegistration: {
           register: deletion => runtimeOwner.registerProjectDeletion(deletion),
         },

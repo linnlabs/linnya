@@ -3,7 +3,7 @@ import type { ConversationControlRunRecord } from '../../conversation-control';
 
 export interface ConversationActivityPorts {
   readonly runs: {
-    readCandidates(conversationIds: readonly string[]): Promise<ReadonlyMap<string, readonly ConversationControlRunRecord[]>>;
+    readCandidates(conversationIds: readonly string[], exactRunIds?: readonly string[]): Promise<ReadonlyMap<string, readonly ConversationControlRunRecord[]>>;
   };
   readonly approvals: Pick<CommandApprovalControlPort, 'readControlPending'>;
 }

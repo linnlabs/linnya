@@ -39,7 +39,11 @@
           'is-renaming': editingConversationId === conversation.conversation_id,
           'is-history-reveal-pulse': isHistoryRevealPulseActive,
           'is-awaiting-user': runTrailingTextOf(conversation.conversation_id) !== null,
+          'is-scheduled': conversation.scheduled_task !== undefined,
         }"
+        :title="conversation.scheduled_task
+          ? conversationMessage('conversation.sidebar.scheduledTask.tooltip', { count: conversation.scheduled_task.run_count })
+          : undefined"
         role="button"
         :tabindex="isConversationUnavailable(conversation) ? -1 : 0"
         :aria-disabled="isConversationUnavailable(conversation) ? 'true' : undefined"
@@ -54,6 +58,10 @@
             :status="runStatusOf(conversation.conversation_id)!.status"
             :label="runStatusOf(conversation.conversation_id)!.label"
           />
+          <ClockIcon
+            v-else-if="conversation.scheduled_task"
+            class="chat-list-status-icon"
+          />
           <PinIcon
             v-else-if="conversation.is_pinned === true"
             class="chat-list-status-icon"
@@ -66,10 +74,17 @@
           @cancel="cancelRename"
         />
         <span v-else class="workspace-sidebar-row-label chat-list-title">
-          {{ conversation.title || conversationMessage('conversation.sidebar.untitled') }}
+          {{ conversation.scheduled_task?.task_name
+            || conversation.title
+            || conversationMessage('conversation.sidebar.untitled') }}
         </span>
         <span
-          v-if="editingConversationId !== conversation.conversation_id"
+          v-if="editingConversationId !== conversation.conversation_id && scheduledUnreadOf(conversation) > 0"
+          class="chat-list-badge"
+          :aria-label="conversationMessage('conversation.sidebar.scheduledTask.unread', { count: scheduledUnreadOf(conversation) })"
+        >{{ scheduledUnreadOf(conversation) }}</span>
+        <span
+          v-else-if="editingConversationId !== conversation.conversation_id"
           class="chat-list-time"
           :class="{ 'is-run-flag': runTrailingTextOf(conversation.conversation_id) !== null }"
         >
@@ -163,7 +178,7 @@
 <script setup lang="ts">
 import { useSidebarChatList } from './sidebarChatList/useSidebarChatList';
 import type { SidebarChatListEmit, SidebarChatListProps } from './sidebarChatList/definitions';
-import { PinIcon } from '@linnya/renderer-ui/icons';
+import { ClockIcon, PinIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { CustomSelect, IconButton, InlineTextInput, SkeletonRows } from '@linnya/renderer-ui';
 import { ConversationRunStatusIndicator } from '../features/conversation-activity';
@@ -214,4 +229,12 @@ const {
   runStatusOf,
   runTrailingTextOf,
 } = useSidebarChatList(props, emit);
+
+/** 定时任务折叠行的未读数；删除中、清理中或有运行状态提示（如等你批准）时让位给那段文字。 */
+function scheduledUnreadOf(conversation: { conversation_id: string; scheduled_task?: { unread_count: number }; cleanup_pending?: boolean }): number {
+  if (!conversation.scheduled_task) return 0;
+  if (isConversationDeleting(conversation.conversation_id) || conversation.cleanup_pending === true) return 0;
+  if (runTrailingTextOf(conversation.conversation_id) !== null) return 0;
+  return conversation.scheduled_task.unread_count;
+}
 </script>

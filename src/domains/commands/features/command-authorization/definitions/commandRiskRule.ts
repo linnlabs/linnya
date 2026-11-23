@@ -27,6 +27,7 @@ export const CommandRiskRuleMatcherSchema = z.enum([
   'system_power',
   'system_disk',
   'system_service',
+  'linnya_schedules',
 ]);
 export type CommandRiskRuleMatcher = z.infer<typeof CommandRiskRuleMatcherSchema>;
 
@@ -52,11 +53,12 @@ const COMMAND_RISK_MATCHER_CATEGORIES: Readonly<
   system_power: 'system_or_disk_impact',
   system_disk: 'system_or_disk_impact',
   system_service: 'system_or_disk_impact',
+  linnya_schedules: 'persistent_automation',
 };
 
 export const CommandRiskRuleSchema = z.object({
   id: z.string().regex(
-    /^(macos|windows)\.(delete|move-overwrite-rename|external-upload|download-and-execute|system-or-disk-impact)\.[a-z0-9-]+$/u,
+    /^(macos|windows)\.(delete|move-overwrite-rename|external-upload|download-and-execute|system-or-disk-impact|persistent-automation)\.[a-z0-9-]+$/u,
   ).max(128),
   platform: z.enum(['macos', 'windows']),
   category: CommandRiskCategorySchema,
@@ -77,6 +79,7 @@ export const CommandRiskRuleCatalogSchema = z.object({
     external_upload: 'external-upload',
     download_and_execute: 'download-and-execute',
     system_or_disk_impact: 'system-or-disk-impact',
+    persistent_automation: 'persistent-automation',
   };
   const riskCategories: readonly CommandRiskCategory[] = [
     'delete',
@@ -84,6 +87,7 @@ export const CommandRiskRuleCatalogSchema = z.object({
     'external_upload',
     'download_and_execute',
     'system_or_disk_impact',
+    'persistent_automation',
   ];
   const macosOnlyMatchers = new Set<CommandRiskRuleMatcher>([
     'delete_rm', 'delete_find', 'move_macos',

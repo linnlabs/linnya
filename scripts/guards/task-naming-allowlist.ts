@@ -181,8 +181,16 @@ export const TASK_NAMING_ALLOWANCES: readonly TaskNamingAllowance[] = [
         'src/electron-main/preload/modules/scheduled-tasks-preload.ts',
         'scripts/development/features/ui-gallery/page/prototypes/scheduledTasksDemo.ts',
         'scripts/development/features/ui-gallery/page/prototypes/ScheduledTaskEditor.vue',
-        'scripts/development/features/ui-gallery/page/sections/ScheduledTasksSection.vue'
+        'scripts/development/features/ui-gallery/page/sections/ScheduledTasksSection.vue',
+        'apps/renderer/app/workflows/scheduled-tasks/orchestration/startScheduledNotificationNavigation.ts',
+        'src/app-hosts/linnya/adapters/backend-renderer-requests/orchestration/registerScheduledTaskRequests.ts',
+        'src/app-hosts/linnya/adapters/flow/__integration-tests__/flow.scheduled-tasks.sqlite.integration.test.ts',
+        'src/app-hosts/linnya/application/core-cli/orchestration/prepareSchedulesCli.ts',
+        'src/electron-main/desktop-capabilities/scheduled-task-notification/notifyScheduledTask.test.ts'
       )(occurrence) ||
+      // 通用对话列表只在折叠字段里写任务 ID 与名称。
+      (occurrence.file === 'src/app-hosts/linnya/adapters/persistence/event-store/sqlite.implementation.ts'
+        && /^task_(?:id|name)$/.test(occurrence.name)) ||
       /scheduled[_-]?tasks?/i.test(occurrence.name),
   },
 ];

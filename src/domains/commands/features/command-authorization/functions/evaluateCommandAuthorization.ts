@@ -114,6 +114,7 @@ export function evaluateCommandAuthorization(params: {
     };
   }
 
+  const requireOneTimeApproval = risk.status === 'matched' && risk.findings.some(finding => finding.category === 'persistent_automation');
   const referencesSensitivePath = params.proposal.references_sensitive_path === true;
   const candidate = referencesSensitivePath ? {
     status: 'derived' as const,
@@ -138,7 +139,7 @@ export function evaluateCommandAuthorization(params: {
       code: 'authorization_context_unsupported',
     };
   }
-  const remembered = candidate.status === 'derived'
+  const remembered = !requireOneTimeApproval && candidate.status === 'derived'
     ? matchConversationCommandApproval({
       conversationId: params.proposal.identity.conversation_id,
       candidate: candidate.candidate,
@@ -227,7 +228,7 @@ export function evaluateCommandAuthorization(params: {
       context,
       proposal: params.proposal,
       reasons,
-      ...(candidate.status === 'derived'
+      ...(!requireOneTimeApproval && candidate.status === 'derived'
         ? { conversationCandidate: candidate.candidate }
         : {}),
     };

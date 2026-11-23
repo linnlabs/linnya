@@ -67,6 +67,7 @@ export const CommandPermissionReductionPreviewSchema = z.object({
   global_revision: revision,
   target_level: CommandPermissionLevelSchema,
   affected_count: revision,
+  scheduled_task_count: revision.optional(),
   fence: z.string().regex(/^[0-9a-f]{64}$/),
 }).strict();
 export type CommandPermissionReductionPreview = z.infer<typeof CommandPermissionReductionPreviewSchema>;
@@ -89,6 +90,7 @@ export const ConversationCommandPermissionRequestSchema = z.discriminatedUnion('
     kind: z.literal('reduce'),
     preview: CommandPermissionReductionPreviewSchema,
     include_conversations: z.boolean(),
+    include_scheduled_tasks: z.boolean().optional(),
   }).strict(),
 ]);
 export type ConversationCommandPermissionRequest = z.infer<typeof ConversationCommandPermissionRequestSchema>;

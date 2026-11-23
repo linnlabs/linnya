@@ -307,6 +307,10 @@ export function createConversationFlowRouter(
         return;
       }
 
+      if (validation.data.options?.scheduled_run) {
+        res.status(400).json({ success: false, error: 'Scheduled runs must be created by the App Host' });
+        return;
+      }
       let body: typeof validation.data;
       try {
         body = admitConversationAgentChoice(validation.data);

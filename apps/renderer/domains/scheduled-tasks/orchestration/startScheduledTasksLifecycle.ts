@@ -8,7 +8,7 @@ import { refreshScheduledTasks } from './refreshScheduledTasks';
  * `onNotify` 由调用方决定怎么提示（应用内通知归 app 层）。
  */
 export function startScheduledTasksLifecycle(
-  onNotify: (notification: ScheduledTaskNotification) => void,
+  onNotify: (notification: ScheduledTaskNotification, open: boolean) => void,
 ): () => void {
   if (!window.electronAPI?.scheduledTasks) return () => undefined;
   const store = useScheduledTasksStore();

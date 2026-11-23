@@ -261,28 +261,10 @@ declare global {
           success: boolean;
         } & SystemOperationFailureFields
       >;
+      scheduledTasks: ReturnType<typeof import('../electron-main/preload/modules/scheduled-tasks-preload').buildScheduledTasksPreloadApi>;
       listConversationRunDocumentChanges: (
         request: import('@app/schemas').ConversationRunDocumentChangesRequest
       ) => Promise<unknown>;
-      /** 定时任务：返回值未校验，Renderer 用 `@app/schemas/scheduled-tasks` 解析。 */
-      scheduledTasks: {
-        list: (request: import('@app/schemas/scheduled-tasks').ScheduledTasksListRequest) => Promise<unknown>;
-        runs: (request: import('@app/schemas/scheduled-tasks').ScheduledTaskRunsRequest) => Promise<unknown>;
-        create: (request: import('@app/schemas/scheduled-tasks').ScheduledTaskCreateRequest) => Promise<unknown>;
-        update: (request: import('@app/schemas/scheduled-tasks').ScheduledTaskUpdateRequest) => Promise<unknown>;
-        setEnabled: (request: import('@app/schemas/scheduled-tasks').ScheduledTaskSetEnabledRequest) => Promise<unknown>;
-        runNow: (request: import('@app/schemas/scheduled-tasks').ScheduledTaskRunNowRequest) => Promise<unknown>;
-        delete: (request: import('@app/schemas/scheduled-tasks').ScheduledTaskDeleteRequest) => Promise<unknown>;
-        markViewed: (request: import('@app/schemas/scheduled-tasks').ScheduledTaskMarkViewedRequest) => Promise<unknown>;
-        previewSchedule: (request: import('@app/schemas/scheduled-tasks').ScheduledTaskPreviewScheduleRequest) => Promise<unknown>;
-        getSettings: () => Promise<unknown>;
-        setSettings: (request: import('@app/schemas/scheduled-tasks').ScheduledTaskSettings) => Promise<unknown>;
-        listForConversationRuns: (
-          request: import('@app/schemas/scheduled-tasks').ConversationRunScheduledTasksRequest
-        ) => Promise<unknown>;
-        onChanged: (callback: () => void) => () => void;
-        onNotify: (callback: (payload: unknown) => void) => () => void;
-      };
       readProjectOverview: (
         request: import('@app/schemas').ProjectOverviewRequest
       ) => Promise<unknown>;

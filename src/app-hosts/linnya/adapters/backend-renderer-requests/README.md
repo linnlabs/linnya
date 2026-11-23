@@ -26,3 +26,5 @@ Desktop file-reveal RPC 调用系统文件管理器，绝对路径不会返回 R
 文档引用请求由 document-references owner 处理；`document-references:backlinks` 与候选/身份解析采用相同 typed request 准入，当前项目校验先于已有反向索引读取。Preload、SDK、协议 shim 只透传该有界只读能力，不跨域查询正文或扩大插件管理权限。
 
 Main为每次主文档加载分配opaque会话UUID，主框架的非原地导航、渲染进程丢失和销毁通过Desktop专用RPC释放它。该RPC不登记成Renderer可调用channel。plugin:invoke通过上下文单独取得Host创建的AbortSignal，不接受业务payload代填身份；旧会话释放不会取消新一代。大mailbox加载前登记上下文，投递前复核取消，避免关闭后创建孤立视图。普通历史IPC registrar仍使用undefined event，Backend从不接收WebContents。
+
+定时任务 handler 使用 `@app/schemas/scheduled-tasks` 校验请求与结果。对话末尾的定时任务变更卡片从同一请求注册表读取，按会话和根运行身份关联。

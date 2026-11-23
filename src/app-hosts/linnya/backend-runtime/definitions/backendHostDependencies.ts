@@ -11,6 +11,7 @@ import type {
   DesktopHiddenWorkerHostPort,
   DesktopRasterPdfDocumentPort,
 } from '../../desktop-capabilities';
+import type { ScheduledTaskNotification } from '@app/schemas/scheduled-tasks';
 import type { BackendBootstrapFacts } from './backendBootstrapFacts';
 import type { WebPageRenderer } from '../../../../tools/web/webread/definitions/webPageRenderer';
 import type { AgentToolEnvironment } from './agentToolEnvironment';
@@ -35,6 +36,7 @@ export interface BackendHostDependencies {
   readonly credentialStorage: CredentialStoragePort;
   readonly hiddenWorkerHost: DesktopHiddenWorkerHostPort;
   readonly textMeasurement: BackendTextMeasurementRuntimeDependencies;
+  readonly notifyScheduledTask?: (event: ScheduledTaskNotification) => Promise<void>;
   readonly rendererIntegration: BackendRendererIntegrationPort;
   readonly rasterPdfDocument: DesktopRasterPdfDocumentPort;
   readonly externalAuthorizationBrowser: ExternalAuthorizationBrowserPort;

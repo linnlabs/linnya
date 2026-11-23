@@ -86,3 +86,5 @@
 | `logs --attach [--level error] [--grep …]` | 主窗口 Renderer 控制台 |
 
 点击、输入、拖动、重载、打开对象、启停等会改动用户会话的命令不接受 `--attach`，`eval --main` 也不开放；需要操作时在隔离实例里复现（`pnpm -s probe up --clone-data _dev_data`）。CDP 端口任何本机进程都能连接，所以只在源码开发会话开放，打包产物不开。已在运行的旧会话要重启一次才会写出附着信息。
+
+源码探针默认不触发定时任务。`pnpm -s probe up --scheduled-tasks` 在该隔离实例传入 `LINNYA_SCHEDULED_TASKS=1`。请用合成任务与脚本模型验收。

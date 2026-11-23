@@ -1,3 +1,5 @@
+import type { ScheduledTasks } from '../../scheduled-tasks';
+import type { ConversationCommandPermissions } from '../../conversation-command-permissions';
 import type Database from 'better-sqlite3';
 
 import type { ConversationCommandPermissionSelection } from '@app/schemas/commands';
@@ -12,11 +14,14 @@ export interface ConversationExecutionRuntimeScope {
   readonly sandbox: SandboxProductionScope;
   /** Agent run 与设置 UI 必须读取同一份三档命令权限 authority。 */
   readonly commandPermissionSettings: CommandPermissionSettingsPort;
+  readonly conversationPermissions?: ConversationCommandPermissions;
+  readonly subscribeCommandApprovals?: (listener: () => void) => () => void;
   readonly readConversationCommandPermission?: (conversationId: string) => ConversationCommandPermissionSelection;
 }
 
 export interface ConversationExecutionRuntimeCreateInput {
   readonly db: Database.Database;
+  readonly readScheduledTasks?: () => ScheduledTasks | undefined;
   readonly conversationAdmission: ConversationWorkDirectoryAdmissionPort;
   readonly commandExecutionAudit: CommandExecutionAuditPort;
   readonly appDataRoot: string;

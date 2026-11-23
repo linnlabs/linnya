@@ -16,7 +16,10 @@ import {
   nonOptionArguments,
 } from './commandRiskLexicalFacts';
 
+import { isLinnyaScheduleMutation } from './linnyaScheduleMutation';
+
 const rules = [
+  { id: 'windows.persistent-automation.linnya-schedules', platform: 'windows', category: 'persistent_automation', priority: 610, matcher: 'linnya_schedules' },
   { id: 'windows.system-or-disk-impact.disk', platform: 'windows', category: 'system_or_disk_impact', priority: 595, matcher: 'system_disk' },
   { id: 'windows.system-or-disk-impact.power', platform: 'windows', category: 'system_or_disk_impact', priority: 585, matcher: 'system_power' },
   { id: 'windows.system-or-disk-impact.elevation', platform: 'windows', category: 'system_or_disk_impact', priority: 575, matcher: 'system_elevation' },
@@ -120,6 +123,8 @@ export function matchesWindowsRiskRule(
 ): boolean {
   const facts = allCommandFacts(scan);
   switch (matcher) {
+    case 'linnya_schedules':
+      return facts.some(isLinnyaScheduleMutation);
     case 'delete_powershell':
       return facts.some(({
         executable, executableTokens, shellSemantics,

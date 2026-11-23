@@ -39,6 +39,10 @@ export function createConversationActivityPorts(
         AND parent_run_id IS NULL AND json_extract(metadata_json, '$.lane') = 'foreground'
         AND status IN (${activeParameters})
       UNION
+      SELECT id FROM runs WHERE id IN (SELECT value FROM json_each(?))
+        AND conversation_id IN (SELECT id FROM requested)
+        AND parent_run_id IS NULL AND json_extract(metadata_json, '$.lane') = 'foreground'
+      UNION
       SELECT (SELECT id FROM runs WHERE conversation_id = requested.id
         AND parent_run_id IS NULL AND json_extract(metadata_json, '$.lane') = 'foreground'
         AND status IN (${terminalParameters})
@@ -76,12 +80,12 @@ export function createConversationActivityPorts(
             > (COALESCE(root.updated_ts, root.start_ts), root.start_ts, root.id)
       ))
   `;
-  return { runs: { async readCandidates(conversationIds) {
+  return { runs: { async readCandidates(conversationIds, exactRunIds = []) {
     const records = new Map<string, ConversationControlRunRecord[]>();
     if (conversationIds.length === 0) return records;
     // 端口装配不访问表；只有实际查询才准备语句，普通 Shell 启动不触发对话读取。
     const statement = db.prepare<[string, ...string[]], ActivityRunRow>(query);
-    for (const row of statement.all(JSON.stringify(conversationIds), ...ACTIVE_RUN_STATUSES, ...TERMINAL_RUN_STATUSES)) {
+    for (const row of statement.all(JSON.stringify(conversationIds), ...ACTIVE_RUN_STATUSES, JSON.stringify(exactRunIds), ...TERMINAL_RUN_STATUSES)) {
       const conversation = records.get(row.conversation_id) ?? [];
       conversation.push({ runId: row.id, conversationId: row.conversation_id,
         parentRunId: row.parent_run_id ?? undefined, status: row.status,

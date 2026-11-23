@@ -72,11 +72,14 @@ export const scheduledTasksClient = {
   onChanged(callback: () => void): () => void {
     return api().onChanged(callback);
   },
-  /** 解析失败的通知只记日志，不影响界面。 */
-  onNotify(callback: (notification: ScheduledTaskNotification) => void): () => void {
-    return api().onNotify(payload => {
+  /**
+   * `open` 为 false：窗口在前台，Main 转来做应用内提示；为 true：用户点了系统通知，要打开对应位置。
+   * 解析失败的通知只记日志，不影响界面。
+   */
+  onNotify(callback: (notification: ScheduledTaskNotification, open: boolean) => void): () => void {
+    return api().onNotify((payload, open) => {
       const parsed = ScheduledTaskNotificationSchema.safeParse(payload);
-      if (parsed.success) callback(parsed.data);
+      if (parsed.success) callback(parsed.data, open);
       else console.warn('[scheduled-tasks] 收到无法识别的通知', parsed.error.issues);
     });
   },

@@ -21,6 +21,7 @@ export function createAppServerActivityRpcHandlers(
     [BACKEND_APP_ACTIVITY_READ_RPC_METHOD, async payload => {
       parseAppServerActivityReadRequest(payload);
       return encodeAppServerActivitySnapshot({
+        scheduledRunningCount: await source.countActiveScheduledRuns?.(),
         hasExecutingCommands: source.hasExecutingCommands(),
         activeAgentRuns: await source.listActiveAgentRuns(),
         knowledgeIngestionActive: source.hasActiveKnowledgeIngestion(),

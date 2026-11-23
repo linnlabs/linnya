@@ -249,7 +249,16 @@ export const HostToolCallRequest = z.object({
 
 export type HostToolCallRequestData = z.infer<typeof HostToolCallRequest>;
 
+/** App Host 生成的定时运行身份，随根运行 descriptor 冻结。 */
+export const ScheduledRunBindingSchema = z.object({
+  task_id: z.string().min(1),
+  task_run_id: z.string().min(1),
+  planned_at: z.number().int().nonnegative(),
+}).strict();
+export type ScheduledRunBinding = z.infer<typeof ScheduledRunBindingSchema>;
+
 export const ConversationOptions = z.object({
+  scheduled_run: ScheduledRunBindingSchema.optional(),
   /**
    * 执行起始节点（内部执行参数）
    *

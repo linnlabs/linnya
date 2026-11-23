@@ -46,6 +46,8 @@ import {
 } from './functions/runtimeEventStorageCodec';
 import { readConversationSelectedAgentId, type ConversationSelectedAgentId } from '@app/schemas';
 import { SqliteSubrunTraceHistoryCleanup } from '../subrun-trace-history/sqliteSubrunTraceHistoryCleanup';
+import { ScheduledConversationFoldSchema } from '@app/schemas/scheduled-tasks';
+import { scheduledConversationListProjection } from '../scheduled-tasks/scheduledConversationListProjection';
 import { isRecord } from '@linnya/foundation';
 
 const logger = getLogger('SQLiteEventStore');
@@ -64,6 +66,10 @@ interface ConversationRow {
   project_id: string | null;
   selected_agent_id: string | null;
   sort_cursor: number;
+  scheduled_task_id?: string | null;
+  scheduled_task_name?: string | null;
+  scheduled_run_count?: number;
+  scheduled_unread_count?: number;
 }
 
 interface ConversationIdentityRow {
@@ -113,6 +119,10 @@ function toConversationListItem(row: ConversationRow): ConversationListItem {
     pinned_at: typeof row.pinned_at === 'number' ? row.pinned_at : undefined,
     mode: readConversationMode(row),
     selected_agent_id: readConversationSelectedAgentId(row.selected_agent_id),
+    ...(row.scheduled_task_id ? { scheduled_task: ScheduledConversationFoldSchema.parse({
+      task_id: row.scheduled_task_id, task_name: row.scheduled_task_name,
+      unread_count: row.scheduled_unread_count, run_count: row.scheduled_run_count,
+    }) } : {}),
   };
 }
 
@@ -157,7 +167,7 @@ export class SQLiteEventStore implements IEventStore {
    * 注意：数据库连接和表创建已由 DatabaseService 统一管理，
    * 此服务只负责对话相关的业务逻辑。
    */
-  constructor(db: Database.Database) {
+  constructor(db: Database.Database, private readonly foldScheduledConversations = false) {
     logger.info('[SQLiteEventStore] Initializing with provided database connection...');
     this.db = db;
     this.uiProjection = new SqliteUiProjectionApplier(db);
@@ -752,36 +762,37 @@ export class SQLiteEventStore implements IEventStore {
         ELSE last_event_at
       END
     `;
+    const schedule = this.foldScheduledConversations ? scheduledConversationListProjection : undefined;
     let sql = `
-      SELECT *, ${sortExpression} AS sort_cursor
-      FROM conversations
-      WHERE 1 = 1
+      SELECT c.*, ${sortExpression} AS sort_cursor ${schedule?.select ?? ''}
+      FROM conversations c ${schedule?.join ?? ''}
+      WHERE 1 = 1 ${schedule?.filter ?? ''}
     `;
     const params: Array<string | number> = [];
 
     if (cursor) {
       sql += ` AND (
         ${sortExpression} < ?
-        OR (${sortExpression} = ? AND conversation_id < ?)
+        OR (${sortExpression} = ? AND c.conversation_id < ?)
       )`;
       params.push(cursor.sortCursor, cursor.sortCursor, cursor.conversationId);
     }
 
     if (options.search) {
-      sql += ' AND (title LIKE ? OR preview_text LIKE ?)';
+      sql += ' AND (c.title LIKE ? OR c.preview_text LIKE ?)';
       const searchPattern = `%${options.search}%`;
       params.push(searchPattern, searchPattern);
     }
 
     if (options.projectId) {
-      sql += ' AND project_id = ?';
+      sql += ' AND c.project_id = ?';
       params.push(options.projectId);
     } else {
-      sql += ' AND project_id IS NULL';
+      sql += ' AND c.project_id IS NULL';
     }
 
     // 中文备注：conversation_id 是 tie-breaker，避免多个会话同 sort_cursor 时跨页漏项。
-    sql += ' ORDER BY sort_cursor DESC, conversation_id DESC LIMIT ?';
+    sql += ' ORDER BY sort_cursor DESC, c.conversation_id DESC LIMIT ?';
     params.push(limit + 1); // 多取一条判断 hasMore
 
     const rows = this.db.prepare<unknown[], ConversationRow>(sql).all(...params);

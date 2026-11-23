@@ -1,3 +1,4 @@
+import type { ScheduledTasks } from '../../../../application/scheduled-tasks';
 import { createCoreCli } from '../../../../application/core-cli';
 import { createNodePhysicalFileReader } from '../../../file-read';
 import { createConversationFileInputSession } from '../../../plugin-file-input';
@@ -65,6 +66,7 @@ const logger = getLogger('CommandProductionScope');
 export async function createCommandProductionScope(input: {
   readonly credentialFilePath: string;
   readonly db: Database.Database;
+  readonly readScheduledTasks?: () => ScheduledTasks | undefined;
   readonly conversationAdmission: ConversationWorkDirectoryAdmissionPort;
   readonly approvalHost: CommandApprovalHostPort;
   readonly commandExecutionAudit: CommandExecutionAuditPort;
@@ -94,7 +96,7 @@ export async function createCommandProductionScope(input: {
   const pluginCliBridge = await startPluginCliShellBridgeRuntime({
     resolveCli: input.resolvePluginCli,
     coreCli: createCoreCli(input.db, COMMAND_TEXT_PROJECTION_LIMITS.maxCharactersPerStream, createNodePhysicalFileReader(),
-      createConversationActivityPorts(input.db, input.approvalHost)),
+      createConversationActivityPorts(input.db, input.approvalHost), input.readScheduledTasks),
     readConversationProjectId: async conversationId => (
       (await conversationFacts.getConversationMetadata(conversationId))?.project_id
     ),

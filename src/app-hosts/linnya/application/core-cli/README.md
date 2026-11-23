@@ -56,3 +56,14 @@ list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、in
 预览和读命令只要内部数据权限；写入与新建定义还需要 Shell 写权限。属性改动按 Host 冻结的运行编号查出运行、父运行和根运行记入[行动账本](../../../../domains/action-ledger/README.md)；找不到运行记录时记为外部入口。
 
 退出码：0 成功，1 业务失败（stderr 首行是 `错误码 一句原因`，随后是可用字段、相近名称或当前版本），2 用法错误。
+
+## 定时任务
+
+`linnya schedules list` 列出当前项目的任务，`show <任务 ID>` 查看详情。`create --name <名称> --prompt <任务内容>` 还需传 `--cron '<五段 cron>'` 或 `--schedule '<时间表 JSON>'`。例如每天当地时间 9 点可用 `--cron '0 9 * * *'`。`update <任务 ID>` 接受同样的字段；可带 `--revision <版本>` 确认修改的是刚读到的版本。
+
+- `--agent default|research`，默认 `default`。`--model <模型 ID>|default`，缺省时使用设置里的默认模型。
+- `--permission read_only|standard|full_access`，创建时缺省用根运行冻结的对话档位。若任务需更高档位，请在定时任务界面修改。完全访问的成功结果会提示 Agent 在最终回复中告知风险。
+- `--missed-policy run_latest|skip`，默认补最近一次。最短间隔一小时，校验与界面共用。
+- `pause <任务 ID>`、`resume <任务 ID>`、`run-now <任务 ID>`。删除从定时任务界面执行。
+
+命令只接受 Host 解析出的当前项目。写操作要求 Shell 写权限；标准档的创建、修改、恢复和立即运行需要本次批准。定时根运行及任何层级的子运行均拒绝写操作。改动记录按根运行关联到对话卡片。

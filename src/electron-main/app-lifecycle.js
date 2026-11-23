@@ -203,11 +203,7 @@ export function initialize() {
   // 关闭确认使用动态后端引用，因此生命周期可以在启动初期就接管菜单退出和重开窗口闸门。
   configureMainWindowCloseLifecycle({
     isBackendUnavailable: () => appServerExited,
-    hasExecutingCommands: async () => (
-      appServerRuntime
-        ? (await appServerRuntime.activity.read()).hasExecutingCommands
-        : false
-    ),
+    readActivity: async () => appServerRuntime ? appServerRuntime.activity.read() : { hasExecutingCommands: false },
     requestShutdown: () => appShutdownLifecycle.requestOrdinaryExit(),
     isWindowClosePermitted: () => appShutdownLifecycle.isWindowClosePermitted(),
     canAcceptWindowRequests: () => appShutdownLifecycle.canAcceptWindowRequest(),
@@ -356,6 +352,7 @@ export function initialize() {
         resourcesPath: process.resourcesPath,
         mainBundleDirectory,
         runtimePathRoots,
+        scheduledTasksEnabled: distributionIdentity.kind !== 'source' || process.env.LINNYA_SCHEDULED_TASKS === '1',
         exposeProviderOutboundDebugRoutes: process.env.NODE_ENV !== 'production',
       });
       const backendConfiguration = resolveDesktopBackendConfiguration({

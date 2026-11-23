@@ -220,6 +220,13 @@ import {
   createProjectDeletionUseCase,
   type ProjectDeletionUseCasePort,
 } from 'src/app-hosts/linnya/application/project-deletion';
+import type { ScheduledTaskNotification } from '@app/schemas/scheduled-tasks';
+import { createScheduledTasks, type ScheduledTasks, type ScheduledTaskSchedulerLifecycle } from 'src/app-hosts/linnya/application/scheduled-tasks';
+import { createSqliteScheduledTasks } from 'src/app-hosts/linnya/adapters/persistence/scheduled-tasks/sqliteScheduledTasks';
+import { createScheduledTaskExecution } from 'src/app-hosts/linnya/adapters/scheduled-tasks/createScheduledTaskExecution';
+import { createScheduledTaskSettings } from 'src/app-hosts/linnya/adapters/scheduled-tasks/createScheduledTaskSettings';
+import { createScheduledTaskUsage } from 'src/app-hosts/linnya/adapters/scheduled-tasks/createScheduledTaskUsage';
+import { createScheduledChatModelAvailability } from 'src/app-hosts/linnya/adapters/scheduled-tasks/readScheduledChatModel';
 import { createSqliteProjectDeletionCatalog } from 'src/app-hosts/linnya/adapters/persistence/project-deletion';
 import {
   selectRunRecoveryRetention,
@@ -253,6 +260,10 @@ function respondCapabilityUnavailable(message: string): RequestHandler {
  * 路由配置依赖接口
  */
 export interface RouteDependencies {
+  readonly notifyScheduledTask?: (event: ScheduledTaskNotification) => Promise<void>;
+  readonly scheduledTaskSchedulerLifecycleRegistration?: {
+    register(tasks: ScheduledTasks, lifecycle: ScheduledTaskSchedulerLifecycle): void;
+  };
   readonly projectDeletionRegistration: { register(deletion: ProjectDeletionUseCasePort): void };
   readonly agentToolEnvironment?: AgentToolEnvironment;
   readonly commandApprovalControl: CommandApprovalControlEndpointPort;
@@ -362,11 +373,14 @@ export async function configureRoutes(
     for (const routePath of MODEL_CAPABILITY_ROUTE_PATHS) app.use(routePath, unavailable);
     logger.warn('⚠️ 模型配置没有加载成功，模型相关入口返回不可用');
   }
+  let scheduledTasks: ScheduledTasks | undefined;
   const configuredModelRemoval = createConfiguredModelRemovalUseCase({
     modelCatalog,
     providerConfigurations: providerConfigurationRegistry,
     modelPickerPreferences: modelPickerPreferencesRegistry,
     idFactory: { create: randomUUID },
+    countScheduledTasks: modelId => scheduledTasks?.countModels(new Set([modelId])) ?? 0,
+    onModelRemoved: () => scheduledTasks?.publish(),
   });
   const chatGptAccountModels = createChatGptAccountModelDiscovery({
     credentials: providerAccountRequestCredentialResolver,
@@ -612,7 +626,7 @@ export async function configureRoutes(
       toolResultClaims: toolResultAssetClaims,
     });
     const checkpointer = new SqliteCheckpointer(db);
-    const conversationEventStore = new SQLiteEventStore(db);
+    const conversationEventStore = new SQLiteEventStore(db, true);
     const { runtime: agentRuntime, recoveredRuns } = await bootstrapAgentRuntimeSingletons({
       db,
       eventStore: conversationEventStore,
@@ -741,6 +755,7 @@ export async function configureRoutes(
     const executionRuntime = await dependencies.conversationExecutionRuntimeFactory.create({
       db,
       conversationAdmission: conversationLifecycle.workDirectoryAdmission,
+      readScheduledTasks: () => scheduledTasks,
       commandExecutionAudit: createEventStoreCommandExecutionAuditPort({
         auditPort,
         runs: agentRuntime.supervisor,
@@ -845,12 +860,16 @@ export async function configureRoutes(
       stopFlowAndWait: conversationId =>
         initializedFlowOrchestrator.stopConversationActivityAndWait(conversationId),
     });
-    dependencies.projectDeletionRegistration.register(
-      createProjectDeletionUseCase({
-        catalog: createSqliteProjectDeletionCatalog(db, createProjectLifecycle(db)),
-        conversations: conversationCleanup,
-      })
-    );
+    const projects = createProjectLifecycle(db);
+    const deletionCatalog = createSqliteProjectDeletionCatalog(db, projects);
+    dependencies.projectDeletionRegistration.register({
+      requestDeletion(projectId) {
+        const deletion = (stopScheduledRuns?: () => Promise<void>) => createProjectDeletionUseCase({
+          catalog: deletionCatalog, conversations: conversationCleanup, stopScheduledRuns,
+        }).requestDeletion(projectId);
+        return scheduledTasks ? scheduledTasks.withProjectDeletion(projectId, deletion) : deletion();
+      },
+    });
     storageSpaceUseCase = createStorageSpaceUseCase({
       inventory: createLocalManagedStorageInventoryPort({
         appDataRoot,
@@ -867,10 +886,11 @@ export async function configureRoutes(
       }),
       cleanup: conversationCleanup,
     });
-    projectConversationMeasurer = createProjectConversationStorageMeasurer({
+    const storageMeasurer = createProjectConversationStorageMeasurer({
       db,
       workDirectoryUsage: conversationLifecycle.workDirectoryUsage,
     });
+    projectConversationMeasurer = storageMeasurer;
 
     // cleanup job 是崩溃前已经持久化的用户意图。必须在开放 History/Flow 路由前重放，
     // 否则旧对话可能先接收新消息，再被恢复流程删除。
@@ -905,6 +925,50 @@ export async function configureRoutes(
       })
     );
     historyService = initializedHistoryService;
+    if (executionRuntime.conversationPermissions && dependencies.scheduledTaskSchedulerLifecycleRegistration) {
+      const settings = createScheduledTaskSettings(path.join(appDataRoot, 'config', 'scheduled_tasks.json'));
+      const usage = createScheduledTaskUsage(db);
+      const scheduledStore = createSqliteScheduledTasks(db);
+      const taskExecution = createScheduledTaskExecution({
+        flow: { start: request => initializedFlowOrchestrator.nextDetached(request),
+          stop: (runId, conversationId, reason) => initializedFlowOrchestrator.cancelRun(runId, conversationId, reason) },
+        history: initializedHistoryService,
+        permissions: executionRuntime.conversationPermissions,
+        activity: createConversationActivityPorts(db, dependencies.commandApprovalControl),
+      });
+      const tasks = createScheduledTasks({
+        store: scheduledStore,
+        schedulerEnabled: dependencies.backendBootstrap.scheduledTasksEnabled === true,
+        now: Date.now,
+        timezone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+        projectExists: projectId => projects.list().some(project => project.id === projectId),
+        defaultModel: () => settings.read().default_model_config_id ?? null,
+        modelAvailable: createScheduledChatModelAvailability(modelCatalog, providerAccountRegistry, Boolean(modelsFailure)),
+        execution: taskExecution,
+        settings,
+        usage: run => run.run_id ? usage.tokens(run.run_id) : null,
+        storage: usage.storage,
+        async measureStorage(project_id, conversationId) {
+          await storageMeasurer.measure({ project_id, conversation_ids: [conversationId] });
+        },
+        publish: () => dependencies.rendererIntegration.publishScheduledTasksChanged(),
+        notify: dependencies.notifyScheduledTask ?? (async () => { throw new Error('Scheduled task notifications are unavailable'); }),
+        logError: (message, error) => logger.error(message, error),
+      });
+      scheduledTasks = tasks;
+      const unsubscribeRun = subscribeRunActivity(db, conversationId => {
+        queueMicrotask(() => { if (scheduledStore.readRunForConversation(conversationId)) tasks.poke(); });
+      });
+      const unsubscribeApprovals = executionRuntime.subscribeCommandApprovals?.(tasks.poke);
+      dependencies.scheduledTaskSchedulerLifecycleRegistration.register(tasks, {
+        ...tasks.lifecycle,
+        stop() {
+          unsubscribeRun();
+          unsubscribeApprovals?.();
+          return tasks.lifecycle.stop();
+        },
+      });
+    }
     conversationControlUseCase = createLinnyaConversationControlUseCase({
       commandApprovals: dependencies.commandApprovalControl,
       projects: createProjectLifecycle(db, {

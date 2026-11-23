@@ -135,6 +135,7 @@ export async function runLinnyaAppServerProcess(
     );
     const apiPort = runtimeOwner.getPort();
     if (apiPort === null) throw new Error('App Server Backend ready 时缺少实际 API port');
+    setImmediate(() => runtimeOwner.startScheduledTasks());
     return Object.freeze({
       applicationVersion: bootstrap.backend_facts.applicationVersion,
       apiPort,

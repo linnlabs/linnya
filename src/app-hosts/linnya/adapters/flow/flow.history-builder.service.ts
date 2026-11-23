@@ -43,6 +43,7 @@ function isUserInputEvent(event: unknown): event is {
 }
 
 interface HistoryUserInput {
+  readonly timestamp: number;
   readonly id?: string;
   readonly content: string;
   readonly attachments?: RuntimeResourceRef[];
@@ -118,7 +119,7 @@ export class HistoryBuilder {
     options: ConversationNextRequest['options'],
   ): AgentInvokeRequest {
     // 尚未发送下一条消息。空 query 让 Linnkit 保留已落库历史，而不补造用户事件或重复本轮引用。
-    return this.buildFromUserInput(conversationId, { content: '' }, options);
+    return this.buildFromUserInput(conversationId, { content: '', timestamp: Date.now() }, options);
   }
   
   // ===========================================
@@ -211,6 +212,7 @@ export class HistoryBuilder {
       const rawContent = typeof last.raw_content === 'string' ? last.raw_content : last.content;
       return {
         id: last.id,
+        timestamp,
         content: createModelFacingUserInput({ rawContent, timestamp }).content,
         ...(last.attachments?.length
           ? { attachments: RuntimeResourceRefSchema.array().parse(last.attachments) }
@@ -342,6 +344,7 @@ export class HistoryBuilder {
       documentTitle: options?.document_metadata?.title,
       documentList: options?.document_list,
       projectMetadata: options?.project_metadata,
+      scheduledRun: options?.scheduled_run ? { ...options.scheduled_run, started_at: lastUser.timestamp } : undefined,
       researchScope: options?.research_scope,
       documentMetadata: options?.document_metadata,
       // 上游只从 user_input metadata 忠实传递本轮引用；寿命控制交给下游。

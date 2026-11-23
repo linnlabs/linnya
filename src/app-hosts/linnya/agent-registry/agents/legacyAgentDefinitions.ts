@@ -1,5 +1,6 @@
 import researchAgentV1 from './research_v1';
 import defaultAgent from './default';
+import { scheduledDefaultAgent, scheduledResearchAgent } from './scheduled';
 import deepWebSearchAgent from './deep_web_search';
 import researchAuthorV1 from './research_author_v1';
 import researchInvestigationReviewV1 from './research_investigation_review_v1';
@@ -23,6 +24,8 @@ import { singleTurnAgentDefinitions } from './single_turn';
 export const legacyBuiltinAgentDefinitions = [
   researchAgentV1,
   defaultAgent,
+  scheduledDefaultAgent,
+  scheduledResearchAgent,
   deepWebSearchAgent,
   researchAuthorV1,
   researchInvestigationReviewV1,

@@ -51,7 +51,7 @@ function readLiveMainWindow() {
   return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
 }
 
-async function requestExecutingCommandsCloseDecision() {
+async function requestExecutingCommandsCloseDecision(_intent, { hasExecutingCommands = true, scheduledRunningCount = 0 } = {}) {
   const targetWindow = readLiveMainWindow();
   if (!targetWindow) throw new Error('主窗口已不可用，无法确认运行中命令的关闭方式');
 
@@ -59,8 +59,9 @@ async function requestExecutingCommandsCloseDecision() {
   const result = await dialog.showMessageBox(targetWindow, {
     type: 'warning',
     title: '任务仍在运行',
-    message: '仍有命令正在运行',
-    detail: '关闭 Linnya 将停止当前命令及其全部子进程。',
+    message: hasExecutingCommands ? '仍有命令正在运行' : '仍有定时任务正在运行',
+    detail: [hasExecutingCommands ? '关闭 Linnya 将停止当前命令及其全部子进程。' : '',
+      scheduledRunningCount > 0 ? `退出将中断 ${scheduledRunningCount} 个定时运行。` : ''].filter(Boolean).join('\n'),
     buttons: ['返回继续', '停止全部并关闭'],
     defaultId: 0,
     cancelId: 0,
@@ -131,7 +132,8 @@ function installWindowCloseProtocol() {
 
 function configureMainWindowCloseLifecycle({
   isBackendUnavailable = () => false,
-  hasExecutingCommands,
+  hasExecutingCommands = () => false,
+  readActivity,
   requestExecutingCommandsDecision = requestExecutingCommandsCloseDecision,
   requestPreparationFailureDecision = requestClosePreparationFailureDecision,
   requestShutdown = async () => {
@@ -152,6 +154,7 @@ function configureMainWindowCloseLifecycle({
   mainWindowCloseLifecycle = createMainWindowCloseLifecycle({
     isBackendUnavailable,
     hasExecutingCommands,
+    readActivity,
     // 生产默认使用上面的 native dialog；显式 port 只让真实 Electron E2E 确定性驱动同一关闭链。
     requestExecutingCommandsDecision,
     requestPreparationFailureDecision,

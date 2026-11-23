@@ -147,3 +147,5 @@ macOS 使用 zsh 语义扫描，Windows 使用 PowerShell 简单命令扫描。�
 - 权限设置：[permission-settings](../permission-settings/README.md)
 - 审批 owner：[App Host approval host](../../../../app-hosts/linnya/adapters/commands/approval-host/README.md)
 - 输出和审计：[command output](../../../../app-hosts/linnya/adapters/commands/output/README.md)、[audit](../../../audit/features/command-execution-audit/README.md)
+
+`linnya schedules create|update|resume|run-now` 命中持久自动化固定风险规则。标准档只提供本次允许和拒绝。完全访问沿用既有直接授权规则；定时任务档位和来源由 Core CLI 在执行前验证。

@@ -2,8 +2,8 @@ import { parseArgs } from 'node:util';
 import { defaultOptions, ProbeError } from '../definitions/probeContract.mjs';
 
 const definitions = {
-  up: { string: ['mode', 'window', 'size', 'entry', 'clone-data'], boolean: ['fresh', 'no-build'] },
-  restart: { string: ['mode', 'window', 'size'], boolean: ['fresh', 'no-build'] },
+  up: { string: ['mode', 'window', 'size', 'entry', 'clone-data'], boolean: ['fresh', 'no-build', 'scheduled-tasks'] },
+  restart: { string: ['mode', 'window', 'size'], boolean: ['fresh', 'no-build', 'scheduled-tasks'] },
   status: { boolean: ['all', 'attach'] },
   stop: { boolean: ['clean'] },
   prune: { string: ['older-than'], boolean: ['dry-run'] },
@@ -137,6 +137,7 @@ export function parseProbeArgs([command = 'help', ...args]) {
 
 export function launchOptions(values) {
   const options = { name: values.name };
+  if (values['scheduled-tasks'] !== undefined) options.scheduledTasks = values['scheduled-tasks'];
   if (values.mode !== undefined) options.mode = oneOf(values.mode, ['dev', 'bundled'], '--mode');
   if (values.window !== undefined) options.window = oneOf(values.window, ['hidden', 'inactive', 'visible'], '--window');
   if (values.entry !== undefined) options.entry = oneOf(values.entry, ['toy'], '--entry');

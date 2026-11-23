@@ -32,6 +32,8 @@ describe('conversation selected agent contract', () => {
     expect(readConversationSelectedAgentId('default')).toBeNull();
     expect(readConversationSelectedAgentId(' default ')).toBeNull();
     expect(readConversationSelectedAgentId('research_v1')).toBe('research_v1');
+    expect(readConversationSelectedAgentId('scheduled_default')).toBeNull();
+    expect(readConversationSelectedAgentId('scheduled_research')).toBe('research_v1');
     // 已不可用的注册表 ID 不在这里判断，展示层按注册表处理。
     expect(readConversationSelectedAgentId('internal_judge')).toBe('internal_judge');
     expect(() => readConversationSelectedAgentId('   ')).toThrow();

@@ -36,6 +36,7 @@ import {
   ServiceInitializer,
   type InitializedServices,
 } from '../../../../electron-main/services/serviceInitializer';
+import type { ScheduledTasks, ScheduledTaskSchedulerLifecycle } from '../../application/scheduled-tasks';
 import type { ProviderModelSynchronizationLifecycle } from '../../application/provider-onboarding';
 import type { RouteConfigurationResult } from '../../../../electron-main/routes/index';
 import type { AppServerBackendConfiguration } from '../../app-server-bootstrap';
@@ -104,6 +105,8 @@ export class BackendRuntimeOwner {
   // 服务实例
   private services: InitializedServices | null = null;
   private routeConfigurationResult: RouteConfigurationResult | null = null;
+  private scheduledTasks: ScheduledTasks | null = null;
+  private scheduledScheduler: ScheduledTaskSchedulerLifecycle | null = null;
   private commandOwnerLifecycle: CommandAppOwnerLifecyclePort | null = null;
   private commandAppOwnerEnded = false;
   private providerModelSynchronization: ProviderModelSynchronizationLifecycle | null = null;
@@ -309,6 +312,13 @@ export class BackendRuntimeOwner {
 
     // 先停止接收新请求，随后命令 owner 才能在没有新 admission 的前提下可信收口。
     // 先同步发出取消，防止 HTTP drain 期间目录刷新继续接单或发起下一轮写入。
+    const scheduledScheduler = this.scheduledScheduler;
+    const scheduledStopped = scheduledScheduler?.stop();
+    await stopStage('定时任务', async () => {
+      await scheduledStopped;
+      this.scheduledScheduler = null;
+      this.scheduledTasks = null;
+    });
     const startupMaintenanceStopped = this.serviceInitializer.stopStartupMaintenance();
     const pluginTasksStopped = stopBackendPluginRuntimeEffects();
     const modelSynchronizationStopped = this.providerModelSynchronization?.stop();
@@ -442,6 +452,16 @@ export class BackendRuntimeOwner {
   setRouteConfigurationResult(result: RouteConfigurationResult): void {
     this.routeConfigurationResult = result;
   }
+
+  registerScheduledTasks(tasks: ScheduledTasks, lifecycle: ScheduledTaskSchedulerLifecycle): void {
+    if (this.scheduledScheduler) throw new Error('Scheduled task lifecycle already registered');
+    this.scheduledTasks = tasks;
+    this.scheduledScheduler = lifecycle;
+  }
+
+  getScheduledTasks(): ScheduledTasks | null { return this.scheduledTasks; }
+  startScheduledTasks(): void { this.scheduledScheduler?.start(); }
+  async countActiveScheduledRuns(): Promise<number> { return await this.scheduledScheduler?.activeCount() ?? 0; }
 
   registerProviderModelSynchronization(lifecycle: ProviderModelSynchronizationLifecycle): void {
     if (this.providerModelSynchronization) {

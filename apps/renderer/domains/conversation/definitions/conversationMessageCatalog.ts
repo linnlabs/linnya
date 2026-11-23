@@ -127,6 +127,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.commandApproval.reason.moveOverwriteRename': '这条命令可能移动、覆盖或重命名文件。',
   'conversation.commandApproval.reason.externalUpload': '这条命令可能向外部位置上传数据。',
   'conversation.commandApproval.reason.downloadAndExecute': '这条命令可能下载并运行内容。',
+  'conversation.commandApproval.reason.persistentAutomation': '这条命令会创建、修改或运行定时任务。',
   'conversation.commandApproval.reason.systemOrDiskImpact': '这条命令可能影响系统或磁盘。',
   'conversation.sidebar.loading': '加载中...',
   'conversation.sidebar.newConversation': '新对话',
@@ -134,6 +135,8 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.sidebar.empty.noMatch': '没有匹配的对话',
   'conversation.sidebar.empty.noConversations': '暂无对话',
   'conversation.sidebar.untitled': '未命名对话',
+  'conversation.sidebar.scheduledTask.tooltip': '定时任务 · 共 {count} 次运行，这里是最近一次',
+  'conversation.sidebar.scheduledTask.unread': '{count} 次运行还没看',
   'conversation.sidebar.moreOptions': '更多选项',
   'conversation.sidebar.expand': '展开显示',
   'conversation.sidebar.collapse': '折叠显示',
@@ -926,6 +929,7 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
         'This command may upload data to an external location.',
       'conversation.commandApproval.reason.downloadAndExecute':
         'This command may download and run content.',
+      'conversation.commandApproval.reason.persistentAutomation': 'This command can create, change, or start a scheduled task.',
       'conversation.commandApproval.reason.systemOrDiskImpact':
         'This command may affect the system or disk.',
       'conversation.sidebar.loading': 'Loading...',
@@ -934,6 +938,8 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.sidebar.empty.noMatch': 'No matching conversations',
       'conversation.sidebar.empty.noConversations': 'No conversations yet',
       'conversation.sidebar.untitled': 'Untitled conversation',
+      'conversation.sidebar.scheduledTask.tooltip': 'Scheduled task · {count} runs; this is the latest',
+      'conversation.sidebar.scheduledTask.unread': '{count} unread runs',
       'conversation.sidebar.moreOptions': 'More options',
       'conversation.sidebar.expand': 'Show more',
       'conversation.sidebar.collapse': 'Show less',

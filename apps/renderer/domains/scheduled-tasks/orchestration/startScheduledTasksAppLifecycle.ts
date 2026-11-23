@@ -19,5 +19,8 @@ export function startScheduledTasksAppLifecycle(
   const { message } = useLocalization();
   const resolve: ScheduledTaskMessageResolver = (key, params) =>
     message(key, SCHEDULED_TASK_MESSAGE_FALLBACKS[key], params);
-  return startScheduledTasksLifecycle(notification => show(formatScheduledTaskNotification(notification, resolve)));
+  // 点系统通知（open）由 app 层导航处理，这里只管前台时的应用内提示。
+  return startScheduledTasksLifecycle((notification, open) => {
+    if (!open) show(formatScheduledTaskNotification(notification, resolve));
+  });
 }

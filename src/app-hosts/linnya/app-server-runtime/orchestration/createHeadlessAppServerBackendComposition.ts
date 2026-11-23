@@ -1,4 +1,6 @@
+import { createScheduledTaskNotificationClient } from '../../desktop-capabilities/features/scheduled-task-notification-rpc';
 import path from 'node:path';
+import type { ScheduledTasks } from '../../application/scheduled-tasks';
 import type { ConversationExecutionRuntimeCreateInput } from '../../application/conversation-runtime';
 import {
   ConversationCommandPermissionRequestSchema,
@@ -74,7 +76,10 @@ export function createHeadlessAppServerBackendComposition(input: {
     settingsPath: permissionSettingsPath,
     initializationMarkerPath: `${permissionSettingsPath}.initialized`,
   });
-  const commandApprovalHost = createCommandApprovalHost();
+  let readScheduledTasks: (() => ScheduledTasks | undefined) | undefined;
+  const commandApprovalHost = createCommandApprovalHost({
+    deferApprovedReply: (conversationId, deliver) => readScheduledTasks?.()?.deferApproval(conversationId, deliver) ?? false,
+  });
   const commandApprovalPresenter = input.bootstrap.host_capabilities.command_approval_presenter;
   if (commandApprovalPresenter.available) {
     // CLI Runtime 的 API descriptor 会在 parent presenter 接上前出现；先在唯一
@@ -181,12 +186,16 @@ export function createHeadlessAppServerBackendComposition(input: {
               fact => new SqliteUiProjectionApplier(runtimeInput.db).projectCommandPermissionChange(fact),
             ),
             globalSettings: commandPermissionSettings,
+            readScheduledTasks: runtimeInput.readScheduledTasks,
             admission: runtimeInput.conversationAdmission,
             onFailure: error => input.reportAsyncFailure(toError(error)),
           });
           const scope = await executionRuntimeFactory.create(runtimeInput);
           conversationPermissions = permissions;
-          return Object.freeze({ ...scope, readConversationCommandPermission: permissions.readSelection });
+          readScheduledTasks = runtimeInput.readScheduledTasks;
+          return Object.freeze({ ...scope, conversationPermissions: permissions,
+            subscribeCommandApprovals: (listener: () => void) => commandApprovalHost.subscribe(listener),
+            readConversationCommandPermission: permissions.readSelection });
         },
       },
       credentialStorage,
@@ -206,6 +215,7 @@ export function createHeadlessAppServerBackendComposition(input: {
         useHarfBuzz: input.bootstrap.text_measurement.use_harfbuzz,
       }),
       rendererIntegration,
+      ...(input.bootstrap.host_kind === 'desktop' ? { notifyScheduledTask: createScheduledTaskNotificationClient(input.rpc) } : {}),
       rasterPdfDocument: createDesktopRasterPdfDocumentRpcClient(mailbox),
       externalAuthorizationBrowser: createExternalAuthorizationBrowserRpcClient(input.rpc),
       webPageRenderer: createDesktopWebPageRendererRpcClient(mailbox),

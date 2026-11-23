@@ -66,6 +66,28 @@
   white-space: nowrap;
 }
 
+/* 定时任务折叠行：没看过的运行次数，位置与时间相同，悬停时同样让位给“更多”按钮。 */
+.sidebar-chat-list .chat-list-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-chat-list .chat-list-item:hover .chat-list-badge,
+.sidebar-chat-list .chat-list-item:focus-within .chat-list-badge {
+  opacity: 0;
+}
+
 .sidebar-chat-list .chat-list-item.is-active .chat-list-time {
   color: var(--color-text-primary);
 }

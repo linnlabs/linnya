@@ -13,6 +13,7 @@ export interface AppServerActiveAgentRun {
 }
 
 export interface AppServerActivitySnapshot {
+  readonly scheduledRunningCount?: number;
   readonly hasExecutingCommands: boolean;
   /** 每个对话最多一项：pending/running 的前台根 run。 */
   readonly activeAgentRuns: readonly AppServerActiveAgentRun[];
@@ -32,6 +33,7 @@ export interface AppServerActivityGatewayPort {
 
 /** App Server 侧的活动来源；Agent runtime 尚未注册时返回空列表，而不是报错。 */
 export interface AppServerActivitySourcePort {
+  countActiveScheduledRuns?(): Promise<number>;
   hasExecutingCommands(): boolean;
   hasActiveKnowledgeIngestion(): boolean;
   listActiveAgentRuns(): Promise<readonly AppServerActiveAgentRun[]>;

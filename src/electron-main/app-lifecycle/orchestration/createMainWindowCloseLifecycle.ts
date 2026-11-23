@@ -19,11 +19,16 @@ export function createMainWindowCloseLifecycle(
     // 这里再问一次只会让用户对同一件事回答两遍。
     if (intent === 'ordinary_exit' && !ports.isBackendUnavailable()) {
       let hasExecutingCommands = false;
+      let scheduledRunningCount = 0;
       try {
-        const currentActivity = ports.hasExecutingCommands();
-        hasExecutingCommands = typeof currentActivity === 'boolean'
-          ? currentActivity
-          : await currentActivity;
+        if (ports.readActivity) {
+          const activity = await ports.readActivity();
+          hasExecutingCommands = activity.hasExecutingCommands;
+          scheduledRunningCount = activity.scheduledRunningCount ?? 0;
+        } else {
+          const currentActivity = ports.hasExecutingCommands();
+          hasExecutingCommands = typeof currentActivity === 'boolean' ? currentActivity : await currentActivity;
+        }
       } catch (error: unknown) {
         // RPC 超时不等于 Backend 已退出；只有监督器确认退出时才无需询问活动状态。
         if (!ports.isBackendUnavailable()) {
@@ -31,8 +36,8 @@ export function createMainWindowCloseLifecycle(
           if (decision === 'return') return 'kept_open';
         }
       }
-      if (hasExecutingCommands) {
-        const decision = await ports.requestExecutingCommandsDecision(intent);
+      if (hasExecutingCommands || scheduledRunningCount > 0) {
+        const decision = await ports.requestExecutingCommandsDecision(intent, { hasExecutingCommands, scheduledRunningCount });
         if (decision === 'return') return 'kept_open';
       }
     }

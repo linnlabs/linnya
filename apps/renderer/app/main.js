@@ -60,6 +60,9 @@ import {
   startModelCatalogLifecycle,
   startModelPickerLifecycle,
 } from '../domains/model-configuration'
+import { syncScheduledDefaultModel } from './model-inference/orchestration/syncScheduledDefaultModel'
+import { startScheduledNotificationNavigation } from './workflows/scheduled-tasks/orchestration/startScheduledNotificationNavigation'
+import { startScheduledConversationViewedReporting } from './workflows/scheduled-tasks/orchestration/startScheduledConversationViewedReporting'
 import { startConversationActivityLifecycle } from '../domains/conversation/features/conversation-activity'
 import { startScheduledTasksAppLifecycle } from '../domains/scheduled-tasks'
 import { useUpdateActions } from './update/runtime'
@@ -156,7 +159,9 @@ app.config.globalProperties.$uiStore = uiStore
 
 if (!isConversationFixture) {
   // 夹具不启动业务后台任务，避免模型请求、知识库请求和 SSE 干扰逐帧测量。
-  startModelCatalogLifecycle().catch(error => {
+  startModelCatalogLifecycle().then(() => {
+    app.onUnmount(syncScheduledDefaultModel())
+  }).catch(error => {
     console.warn('[App] 预加载模型列表失败，将在需要时重试:', error)
   })
   startModelPickerLifecycle().catch(error => {
@@ -183,6 +188,12 @@ if (!isConversationFixture) {
 }
 
 app.mount('#app')
+
+if (!isConversationFixture) {
+  const dispose = startScheduledNotificationNavigation()
+  if (dispose) app.onUnmount(dispose)
+  app.onUnmount(startScheduledConversationViewedReporting())
+}
 
 // 更新状态监听已注册后通知主进程 ready；是否检查更新由 Main 的发行身份决定。
 if (
