@@ -6,7 +6,7 @@ import {
   type CanvasElement,
 } from '@plugin/canvas/shared';
 import type { CanvasTreeCreationPlan } from '../definitions/canvasLayoutCommands';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 /** 树父子按from→to定义，与箭头画法及预留分组parentId无关。多父不能任取一条。 */
 export function planCanvasTreeCreation(
   elements: readonly CanvasElement[],
@@ -14,12 +14,12 @@ export function planCanvasTreeCreation(
   kind: 'child' | 'sibling',
   direction: 'right' | 'down'
 ): CanvasTreeCreationPlan {
-  if (selected.length !== 1) throw new Error(canvasText('canvas.error.treeNeedsOne'));
+  if (selected.length !== 1) throw new CanvasUserError(canvasText('canvas.error.treeNeedsOne'));
   const card = elements.find(
     (element): element is CanvasCard => element.id === selected[0] && element.type !== 'edge'
   );
-  if (!card) throw new Error(canvasText('canvas.error.selectedGone'));
-  if (card.locked) throw new Error(canvasText('canvas.error.selectedLocked'));
+  if (!card) throw new CanvasUserError(canvasText('canvas.error.selectedGone'));
+  if (card.locked) throw new CanvasUserError(canvasText('canvas.error.selectedLocked'));
   const parents = new Set(
     elements.flatMap(element =>
       element.type === 'edge' &&
@@ -31,7 +31,7 @@ export function planCanvasTreeCreation(
     )
   );
   if (kind === 'sibling' && parents.size > 1)
-    throw new Error(canvasText('canvas.error.multipleParents'));
+    throw new CanvasUserError(canvasText('canvas.error.multipleParents'));
   const parent = kind === 'child' ? card.id : ([...parents][0] ?? null);
   const point =
     kind === 'child'

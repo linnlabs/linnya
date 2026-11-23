@@ -1,5 +1,5 @@
 import type { CanvasCardSaveOptions, CanvasCardSave } from '../definitions/cardEditing';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError, canvasUserMessage } from '../../localization';
 
 /** 保存串行屏障与成功回执接纳；编辑打开/关闭及lease归属由编辑器生命周期提供。 */
 export function createCanvasCardSave(options: CanvasCardSaveOptions): CanvasCardSave {
@@ -23,7 +23,7 @@ export function createCanvasCardSave(options: CanvasCardSaveOptions): CanvasCard
           element => element.id === draft.elementId
         );
         if (!card || card.type !== 'text')
-          throw new Error(canvasText('canvas.error.textCardRemoved'));
+          throw new CanvasUserError(canvasText('canvas.error.textCardRemoved'));
         const result = await session.commit(
           [
             {
@@ -48,13 +48,13 @@ export function createCanvasCardSave(options: CanvasCardSaveOptions): CanvasCard
           element => element.id === draft.elementId
         );
         if (!current || current.type !== 'text')
-          throw new Error(canvasText('canvas.error.textCardRemoved'));
+          throw new CanvasUserError(canvasText('canvas.error.textCardRemoved'));
         state.saved(current.revision, draft.editSequence);
         if (finish && state.draft.value?.editSequence === draft.editSequence)
           return await finishDraft(draft, mayFinish);
         return !finish || state.draft.value === null;
       } catch (error) {
-        state.failed(error instanceof Error ? error.message : String(error));
+        state.failed(canvasUserMessage(error));
         return false;
       }
     })();

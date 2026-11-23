@@ -20,5 +20,7 @@ it('只有用户可能遇到的失败编号才交给 Renderer 换文案，其余
   expect(isCanvasUserFailureCode('canvas_image_too_large')).toBe(true);
   expect(isCanvasUserFailureCode('read_only_format')).toBe(true);
   expect(isCanvasUserFailureCode('request_id_payload_mismatch')).toBe(false);
-  expect(isCanvasUserFailureCode('画布操作失败，详细原因已记录到日志。')).toBe(false);
+  expect(isCanvasUserFailureCode('画布操作没有完成，请重试；多次失败时重启 Linnya 再试。')).toBe(
+    false
+  );
 });

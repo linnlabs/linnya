@@ -1,6 +1,6 @@
 import { CANVAS_CLIPBOARD_MIME } from '../definitions/canvasClipboard';
 import type { CanvasClipboardPort } from '../definitions/canvasClipboardPort';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 import { decodeCanvasClipboardItems } from '../functions/decodeCanvasClipboardItems';
 import {
   projectCanvasCopyFailure,
@@ -12,7 +12,7 @@ export function installCanvasClipboard(host: HTMLElement, port: CanvasClipboardP
   let disposed = false;
   const copy = async (cut = false) => {
     if (!port.canHandle() || disposed) return;
-    if (cut && !port.canWrite()) throw new Error(canvasText('canvas.input.cut.readonly'));
+    if (cut && !port.canWrite()) throw new CanvasUserError(canvasText('canvas.input.cut.readonly'));
     const source = port.read();
     if (!source.length) return;
     const prepared = port.prepare(source.map(element => element.id));
@@ -33,13 +33,14 @@ export function installCanvasClipboard(host: HTMLElement, port: CanvasClipboardP
       });
     // 剪切只删除已经复制的那份修订，不在await后重新读取选择或删掉Agent的新内容。
     if (cut && !disposed && port.canHandle()) {
-      if (!port.canWrite()) throw new Error(canvasText('canvas.input.cut.readonlyAfterCopy'));
+      if (!port.canWrite())
+        throw new CanvasUserError(canvasText('canvas.input.cut.readonlyAfterCopy'));
       await port.cut((await prepared).elements);
     }
   };
   const paste = async () => {
     if (!port.canHandle() || disposed) return;
-    if (!port.canWrite()) throw new Error(canvasText('canvas.input.paste.readonly'));
+    if (!port.canWrite()) throw new CanvasUserError(canvasText('canvas.input.paste.readonly'));
     const point = port.pastePoint();
     const payload = await navigator.clipboard
       .read()

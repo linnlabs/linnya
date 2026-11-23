@@ -10,7 +10,7 @@ import {
   projectCanvasWithdrawalSummary,
 } from '../functions/projectCanvasReviewOutcome';
 import { createCanvasAgentReviewState } from '../store/createCanvasAgentReviewState';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 
 export function createCanvasAgentReview(
   session: CanvasDocumentSession,
@@ -22,7 +22,7 @@ export function createCanvasAgentReview(
     disposed = false;
   const documentId = () => {
     const id = session.state.snapshot.value?.documentId;
-    if (!id) throw new Error(canvasText('canvas.error.notOpen'));
+    if (!id) throw new CanvasUserError(canvasText('canvas.error.notOpen'));
     return id;
   };
   const fail = (error: unknown) => state.fail(canvasReviewFailureMessage(error));

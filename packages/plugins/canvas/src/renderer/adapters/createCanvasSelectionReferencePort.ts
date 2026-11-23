@@ -8,7 +8,7 @@ import {
   focusCanvasReference,
   type CanvasSelectionReferencePort,
 } from '../features/conversationSelection';
-import { canvasText } from '../features/localization';
+import { canvasText, CanvasUserError } from '../features/localization';
 export function createCanvasSelectionReferencePort(): CanvasSelectionReferencePort {
   return {
     save: documentId => saveCanvasDocumentDrafts(documentId, false),
@@ -18,7 +18,7 @@ export function createCanvasSelectionReferencePort(): CanvasSelectionReferencePo
     async activate(metadata) {
       const projectId = getCurrentWorkspaceProjectId();
       if (projectId !== metadata.projectId)
-        throw new Error(canvasText('canvas.error.referenceOutsideProject'));
+        throw new CanvasUserError(canvasText('canvas.error.referenceOutsideProject'));
       // 选区正文可能已删除，但画布归属必须仍有效；不能按旧metadata切回已移出的文档。
       await readCanvasSelectionContext({
         documentId: metadata.documentId,
@@ -26,7 +26,7 @@ export function createCanvasSelectionReferencePort(): CanvasSelectionReferencePo
         projectId,
       });
       if (getCurrentWorkspaceProjectId() !== projectId)
-        throw new Error(canvasText('canvas.error.projectSwitched'));
+        throw new CanvasUserError(canvasText('canvas.error.projectSwitched'));
       await getWorkspaceNavigationPort().openDocumentTarget({
         documentId: metadata.documentId,
         type: CANVAS_DOCUMENT_TYPE,

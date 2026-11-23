@@ -6,6 +6,7 @@ import {
 } from '@plugin/renderer/workspaceRuntime';
 import { CANVAS_DOCUMENT_TYPE } from '@plugin/canvas/shared';
 import { saveCanvasDocumentDrafts } from './ports/canvasSaveParticipants';
+import { canvasUserMessage } from '../localization';
 
 export const canvasFileHandler: FileTypeLifecycleHandler = {
   type: CANVAS_DOCUMENT_TYPE,
@@ -20,11 +21,7 @@ export const canvasFileHandler: FileTypeLifecycleHandler = {
     try {
       return await saveCanvasDocumentDrafts(session.documentId, reason !== 'auto');
     } catch (error) {
-      showWorkspaceNotification(
-        error instanceof Error ? error.message : String(error),
-        'error',
-        5000
-      );
+      showWorkspaceNotification(canvasUserMessage(error), 'error', 5000);
       return false;
     }
   },

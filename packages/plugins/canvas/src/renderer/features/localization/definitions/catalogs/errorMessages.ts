@@ -10,6 +10,12 @@ export const ERROR_MESSAGES = defineCanvasMessages(
     'canvas.error.referenceOutsideProject': '引用不在当前项目，无法打开',
     'canvas.error.projectSwitched': '项目已切换，请重新打开引用',
     'canvas.error.receiptUnverified': '提交回执无法验证，请用原请求确认结果',
+    'canvas.error.deliveryUnknown': '没能确认这次操作是否已经生效，请稍后查看画布再决定是否重试',
+    'canvas.error.drawingUnavailable':
+      '画布无法绘制：系统没有提供绘图能力。请重启 Linnya；仍然失败时更新显卡驱动或系统后再试。',
+    'canvas.error.htmlDrawingUnavailable':
+      '卡片内容无法按原样绘制：当前运行环境缺少所需的绘制功能。请更新 Linnya 后再试。',
+    'canvas.error.graphicsContextLost': '显卡绘图暂时中断，画布正在恢复，请稍后再试。',
     'canvas.error.notOpen': '画布尚未打开',
     'canvas.error.readOnlyFormat': '此画布包含当前版本无法完整处理的内容，已进入只读模式',
     'canvas.error.unsyncedAfterCommit':
@@ -74,6 +80,14 @@ export const ERROR_MESSAGES = defineCanvasMessages(
     'canvas.error.projectSwitched': 'The project changed. Open the reference again.',
     'canvas.error.receiptUnverified':
       "The commit receipt couldn't be verified. Retry the original request to confirm the result.",
+    'canvas.error.deliveryUnknown':
+      "Linnya couldn't confirm whether this action took effect. Check the canvas before retrying.",
+    'canvas.error.drawingUnavailable':
+      "The canvas can't draw because the system didn't provide drawing support. Restart Linnya; if it still fails, update your graphics driver or system and try again.",
+    'canvas.error.htmlDrawingUnavailable':
+      "Card content can't be drawn as designed because this environment lacks a required drawing feature. Update Linnya and try again.",
+    'canvas.error.graphicsContextLost':
+      'Graphics drawing was interrupted. The canvas is recovering; try again in a moment.',
     'canvas.error.notOpen': 'The canvas is not open yet.',
     'canvas.error.readOnlyFormat':
       'This canvas contains content this version cannot fully handle, so it is read-only.',

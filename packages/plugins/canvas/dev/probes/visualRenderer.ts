@@ -9,6 +9,7 @@ import { createCardSurface } from '../../src/renderer/hidden-render-worker/funct
 import { createHtmlCardRasterizer } from '../../src/renderer/capabilities/textRasterization';
 import { createPixiCanvasKernel, type CanvasKernel } from '../../src/renderer/kernel';
 import { createCanvasRasterPresentation } from '../../src/renderer/orchestration/createCanvasRasterPresentation';
+import { canvasText } from '../../src/renderer/features/localization';
 import '@linnya/markdown-document-core/style.css';
 import '../../src/renderer/features/cardRendering/styles/canvasCardInk.css';
 import '../../src/renderer/features/cardRendering/styles/canvasMediaContent.css';
@@ -199,7 +200,7 @@ async function unsupportedApiVisual() {
     raster.refresh(); const started = performance.now();
     while (!raster.readStats().failed && performance.now() - started < 3000) await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
     if (await raster.prepareEditing(card.id) !== 'unavailable') throw new Error('unsupported_api_locked_editing');
-    if (!errors.includes('html_canvas_unavailable') || kernel.readStats().bitmaps !== 0) throw new Error(`unsupported_api_did_not_keep_identity:${errors}`);
+    if (!errors.includes(canvasText('canvas.error.htmlDrawingUnavailable')) || kernel.readStats().bitmaps !== 0) throw new Error(`unsupported_api_did_not_keep_identity:${errors}`);
     return { image: await kernel.captureImage('png'), errors, stats: kernel.readStats(), dpr: kernel.readResolution(), sampling: readCanvasVisualSampling(kernel, 'interactive') };
   } finally { raster.dispose(); }
 }

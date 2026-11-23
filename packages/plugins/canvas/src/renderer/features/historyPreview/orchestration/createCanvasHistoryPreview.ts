@@ -1,6 +1,6 @@
 import type { CanvasCard, CanvasVersionBudgetStatus } from '@plugin/canvas/shared';
 import { createPixiCanvasKernel, type CanvasKernel } from '../../../kernel';
-import { canvasKernelText, canvasText } from '../../localization';
+import { canvasKernelText, canvasText, canvasUserMessage } from '../../localization';
 import type { CanvasHistoryPreviewOptions } from '../definitions/canvasHistoryPreview';
 import { createReleaseStack } from '../functions/createReleaseStack';
 import { createCanvasHistoryPreviewState } from '../store/createCanvasHistoryPreviewState';
@@ -82,8 +82,7 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
         });
         owned.add(stopContent);
         void content.refreshReferences(cards).catch(error => {
-          if (token === generation)
-            state.fail(error instanceof Error ? error.message : String(error));
+          if (token === generation) state.fail(canvasUserMessage(error));
         });
         current.setAppearance(options.readAppearance());
         current.setElements(snapshot.elements);
@@ -101,8 +100,7 @@ export function createCanvasHistoryPreview(options: CanvasHistoryPreviewOptions)
       } catch (error) {
         owned.release();
         if (disposeView === owned.release) resetView();
-        if (token === generation)
-          state.fail(error instanceof Error ? error.message : String(error));
+        if (token === generation) state.fail(canvasUserMessage(error));
       }
     },
     fit() {

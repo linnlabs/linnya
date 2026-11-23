@@ -7,6 +7,7 @@ import {
   buildCanvasImageEditingPatch,
   canvasImageReplacementData,
 } from '../functions/buildCanvasImageEditingPatch';
+import { canvasUserMessage } from '../../localization';
 
 const editingFields = ['data', 'x', 'y', 'width', 'height'] as const;
 
@@ -17,8 +18,7 @@ export function createCanvasImageEditing(
 ) {
   const state = createCanvasImageEditingState();
   let generation = 0;
-  const fail = (error: unknown) =>
-    state.fail(error instanceof Error ? error.message : String(error));
+  const fail = (error: unknown) => state.fail(canvasUserMessage(error));
   const target = (id: CanvasCardId) =>
     resolveCanvasImageEditingTarget(requireWritableCanvas(session.state.snapshot.value), id);
   async function close() {

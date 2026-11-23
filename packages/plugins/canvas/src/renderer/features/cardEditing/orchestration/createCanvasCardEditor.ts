@@ -9,7 +9,7 @@ import type {
 } from '../definitions/cardEditing';
 import { createCardEditingState } from '../store/createCardEditingState';
 import { createCanvasTextProtection } from './createCanvasTextProtection';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 
 export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCardEditor {
   const state = createCardEditingState(),
@@ -24,8 +24,9 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
     const card = requireWritableCanvas(session.state.snapshot.value).elements.find(
       element => element.id === id
     );
-    if (!card || card.type !== 'text') throw new Error(canvasText('canvas.error.cardNotEditable'));
-    if (card.locked) throw new Error(canvasText('canvas.error.cardLocked'));
+    if (!card || card.type !== 'text')
+      throw new CanvasUserError(canvasText('canvas.error.cardNotEditable'));
+    if (card.locked) throw new CanvasUserError(canvasText('canvas.error.cardLocked'));
     return card;
   };
   async function finishDraft(draft: CanvasCardDraft, mayFinish: () => boolean) {
@@ -69,7 +70,7 @@ export function createCanvasCardEditor(session: CanvasDocumentSession): CanvasCa
       if (existing && active) return;
       const saved = existing || (await save(true, current));
       if (!current()) return;
-      if (!saved) throw new Error(canvasText('canvas.error.draftUnsaved'));
+      if (!saved) throw new CanvasUserError(canvasText('canvas.error.draftUnsaved'));
       readCard(elementId);
       const lease = protection.create(elementId);
       let accepted = false;

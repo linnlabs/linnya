@@ -8,7 +8,7 @@ import { readDocumentReference } from '@plugin/renderer/documentReferences';
 import { subscribeRendererPluginAvailability } from '@plugin/renderer/pluginRuntime';
 import { getWorkspaceNavigationPort } from '@plugin/renderer/workspaceNavigation';
 import type { CanvasCardMediaPort } from '../features/cardMedia';
-import { canvasText } from '../features/localization';
+import { canvasText, CanvasUserError } from '../features/localization';
 import { requestCanvasIpc } from './requestCanvasIpc';
 export function createCanvasCardMediaPort(
   projectId = getCurrentWorkspaceProjectId()
@@ -21,7 +21,8 @@ export function createCanvasCardMediaPort(
     },
     preview: async input => DocumentPreviewResultSchema.parse(await readDocumentPreview(input)),
     reference: documentId => {
-      if (!projectId) throw new Error(canvasText('canvas.error.projectMissingForIdentity'));
+      if (!projectId)
+        throw new CanvasUserError(canvasText('canvas.error.projectMissingForIdentity'));
       return readDocumentReference({ projectId, documentId });
     },
     subscribe: subscribeWorkspaceMutations,

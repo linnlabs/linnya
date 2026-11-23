@@ -7,6 +7,7 @@ import { createCanvasDocumentState } from '../store/createCanvasDocumentState';
 import { createCanvasDocumentMutations } from './createCanvasDocumentMutations';
 import { createCanvasEditingClaims } from './createCanvasEditingClaims';
 import { createCanvasViewRequests } from './createCanvasViewRequests';
+import { canvasUserMessage } from '../../localization';
 
 /** 一个表面拥有一个会话；Host file handler 在关闭前先等待该表面的保存屏障。 */
 export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDocumentSession {
@@ -18,7 +19,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
     port,
     viewId,
     snapshot: () => state.snapshot.value,
-    failed: error => state.fail(error instanceof Error ? error.message : String(error)),
+    failed: error => state.fail(canvasUserMessage(error)),
   });
   const views = createCanvasViewRequests({ port, viewId, flushClaims: claims.flush });
   const synchronization = createCanvasDocumentSynchronization({
@@ -61,7 +62,7 @@ export function createCanvasDocumentSession(port: CanvasDocumentPort): CanvasDoc
         state.install(snapshot);
         await synchronization.catchUp();
       } catch (error) {
-        if (token === sessionId) state.fail(error instanceof Error ? error.message : String(error));
+        if (token === sessionId) state.fail(canvasUserMessage(error));
         throw error;
       }
     },

@@ -1,7 +1,7 @@
 import type { CanvasCardId } from '@plugin/canvas/shared';
 import type { CanvasDocumentSession } from '../../canvasDocument';
 import type { CanvasTextEditingLease } from '../definitions/cardEditing';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError, canvasUserMessage } from '../../localization';
 
 /** 每次打开使用独立owner，旧异步清理不能释放新编辑（包括同一张卡）的保护。 */
 export function createCanvasTextProtection(
@@ -20,7 +20,7 @@ export function createCanvasTextProtection(
   return {
     create(elementId: CanvasCardId): CanvasTextEditingLease {
       const documentId = session.state.snapshot.value?.documentId;
-      if (!documentId) throw new Error(canvasText('canvas.error.notOpen'));
+      if (!documentId) throw new CanvasUserError(canvasText('canvas.error.notOpen'));
       return { elementId, documentId, owner: `text:${crypto.randomUUID()}` };
     },
     claim,
@@ -39,7 +39,7 @@ export function createCanvasTextProtection(
       if (lease && currentDocument(lease))
         void session
           .protect(lease.elementId, [], lease.owner)
-          .catch(error => failed(error instanceof Error ? error.message : String(error)));
+          .catch(error => failed(canvasUserMessage(error)));
     },
   };
 }

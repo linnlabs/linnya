@@ -23,6 +23,7 @@ import type {
 } from '../definitions/canvasRasterPresentation';
 import { createCanvasRasterCadence } from '../functions/createCanvasRasterCadence';
 import { prioritizeCanvasRasterCards } from '../functions/prioritizeCanvasRasterCards';
+import { canvasUserMessage } from '../features/localization';
 
 /** 可见内容的派生投影；正文/相机/主题都由各owner提供，不另存一份正文。 */
 export function createCanvasRasterPresentation(options: CanvasRasterPresentationOptions) {
@@ -241,7 +242,7 @@ class CanvasRasterPresentation {
   }
   private fail(demand: CanvasRasterDemand, error: unknown): void {
     this.failed.set(demand.card.id, demand.key);
-    this.options.reportFailure(error instanceof Error ? error.message : String(error));
+    this.options.reportFailure(canvasUserMessage(error));
   }
   private reconcileInterest(visible: readonly CanvasCard[]): boolean {
     const ids = new Set(visible.map(card => card.id));

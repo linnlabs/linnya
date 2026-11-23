@@ -2,7 +2,7 @@ import type { CanvasPageCommandSurface as Surface } from '../definitions/canvasP
 import { readCanvasCardMenuColor } from '../functions/canvasMenuActions';
 import type { CanvasPoint } from '@plugin/canvas/shared';
 import { readCanvasConnectionMenuPatch } from '../features/connections';
-import { canvasText } from '../features/localization';
+import { canvasText, CanvasUserError } from '../features/localization';
 import { readCanvasTagMenuChoice } from '../features/cardTags';
 export function createCanvasPageCommands(options: {
   readSurface(): Surface | null;
@@ -63,7 +63,7 @@ export function createCanvasPageCommands(options: {
     else if (tag) await current.tags.choose(tag);
     else if (patch && edge) await current.connections.patch(edge, patch);
     else {
-      if (!command) throw new Error(canvasText('canvas.error.unknownMenuAction'));
+      if (!command) throw new CanvasUserError(canvasText('canvas.error.unknownMenuAction'));
       await command(current);
     }
     current.closeContext();

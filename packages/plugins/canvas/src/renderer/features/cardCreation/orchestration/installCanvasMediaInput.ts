@@ -1,7 +1,7 @@
 import type { CanvasPoint } from '@plugin/canvas/shared';
 import type { EmbeddedMarkdownInsertion } from '@plugin/renderer/embeddedMarkdownEditor';
 import type { CanvasCardContent } from '../../cardMedia';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 import type { createCanvasCardCreation } from './createCanvasCardCreation';
 
 export function installCanvasMediaInput(options: {
@@ -33,7 +33,7 @@ export function installCanvasMediaInput(options: {
           })),
         })
       )
-        throw new Error(canvasText('canvas.input.image.editorClosed'));
+        throw new CanvasUserError(canvasText('canvas.input.image.editorClosed'));
     } finally {
       insertion.cancel();
       options.content.releaseStagedImages(assetIds);
@@ -49,7 +49,7 @@ export function installCanvasMediaInput(options: {
     event.preventDefault();
     event.stopPropagation();
     if (!options.canWrite()) {
-      options.report(new Error(canvasText('canvas.input.image.readonly')));
+      options.report(new CanvasUserError(canvasText('canvas.input.image.readonly')));
       return;
     }
     void (
@@ -73,7 +73,7 @@ export function installCanvasMediaInput(options: {
     if (!id && !files.length) return;
     event.preventDefault();
     if (!options.canWrite()) {
-      options.report(new Error(canvasText('canvas.input.drop.readonly')));
+      options.report(new CanvasUserError(canvasText('canvas.input.drop.readonly')));
       return;
     }
     const rect = options.stage.getBoundingClientRect(),

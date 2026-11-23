@@ -1,5 +1,8 @@
-export class CanvasDeliveryUnknownError extends Error {
-  override readonly name = 'CanvasDeliveryUnknownError';
+import { CanvasUserError } from '../../localization';
+
+/** 送达未知：写调用方据此用同一请求身份确认结果；消息已是当前语言，原文在 cause。 */
+export class CanvasDeliveryUnknownError extends CanvasUserError {
+  override readonly name: string = 'CanvasDeliveryUnknownError';
 }
 export interface CanvasConfirmedMutation<T> {
   /** send闭包冻结requestId和完整payload；确认重试不能重建用户意图。 */

@@ -6,7 +6,8 @@ export const FAILURE_MESSAGES = defineCanvasMessages(
     'canvas.failure.canvas_image_unsupported': '这张图片无法使用，请换成 PNG、JPEG 或 WebP 格式。',
     'canvas.failure.canvas_image_too_large': '图片太大，请压缩后重试。',
     'canvas.failure.canvas_invalid_request': '画布操作字段无效，请刷新后重试。',
-    'canvas.failure.canvas_operation_failed': '画布操作失败，详细原因已记录到日志。',
+    'canvas.failure.canvas_operation_failed':
+      '画布操作没有完成，请重试；多次失败时重启 Linnya 再试。',
     'canvas.failure.document_missing': '画布不存在或已删除',
     'canvas.failure.selection_removed': '所选卡片已全部移除，没有可复制的内容',
     'canvas.failure.outside_project': '不能读取其他项目的画布',
@@ -43,7 +44,7 @@ export const FAILURE_MESSAGES = defineCanvasMessages(
     'canvas.failure.canvas_invalid_request':
       'The canvas request was invalid. Refresh and try again.',
     'canvas.failure.canvas_operation_failed':
-      'The canvas operation failed. Details were written to the log.',
+      "The canvas action didn't finish. Try again; if it keeps failing, restart Linnya.",
     'canvas.failure.document_missing': "This canvas doesn't exist or was deleted.",
     'canvas.failure.selection_removed':
       'The selected cards were all removed, so there is nothing to copy.',

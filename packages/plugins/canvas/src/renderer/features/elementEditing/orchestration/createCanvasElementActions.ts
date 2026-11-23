@@ -17,7 +17,7 @@ import {
   buildLayerCommands,
   buildLockCommands,
 } from '../functions/buildCardLayoutCommands';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 
 export function createCanvasElementActions(
   session: CanvasDocumentSession,
@@ -60,7 +60,7 @@ export function createCanvasElementActions(
     async connect() {
       const [from, to] = selection.read();
       if (!from || !to || selection.read().length !== 2)
-        throw new Error(canvasText('canvas.error.pickTwoCards'));
+        throw new CanvasUserError(canvasText('canvas.error.pickTwoCards'));
       const existing = elements().find(
         element =>
           element.type === 'edge' &&

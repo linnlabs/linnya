@@ -4,7 +4,7 @@ import type { CanvasCardCreationPort, CanvasPreparedImage } from '../definitions
 import { createCanvasDocumentPickerState } from '../store/createCanvasDocumentPickerState';
 import { readImageFile } from '../functions/readImageFile';
 import { buildCanvasImageCards } from '../functions/buildCanvasImageCards';
-import { canvasText } from '../../localization';
+import { canvasText, canvasUserMessage } from '../../localization';
 export function createCanvasCardCreation(
   session: CanvasDocumentSession,
   port: CanvasCardCreationPort,
@@ -26,7 +26,7 @@ export function createCanvasCardCreation(
       if (!controller.signal.aborted && token === generation)
         picker.install(candidates.filter(candidate => candidate.documentId !== self));
     } catch (error) {
-      if (token === generation) picker.fail(error instanceof Error ? error.message : String(error));
+      if (token === generation) picker.fail(canvasUserMessage(error));
     }
   };
   return {

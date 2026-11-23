@@ -1,6 +1,6 @@
 import type { CanvasAgentGroup, CanvasCommitResult, CanvasElement } from '@plugin/canvas/shared';
 import type { CanvasWithdrawalSummary } from '../definitions/agentReview';
-import { canvasText, projectCanvasFailureText } from '../../localization';
+import { canvasText, canvasUserMessage } from '../../localization';
 import { canvasReviewCardTitle, canvasReviewFields } from './projectCanvasReviewTargets';
 
 const REASON_CODES = [
@@ -31,9 +31,9 @@ export function canvasReviewReason(reason: string | null): string {
     ? canvasText(`canvas.review.reason.${reason}`)
     : canvasText('canvas.review.reason.unknown');
 }
-/** 失败编号换成当前语言文案；请求层已换过的文字原样通过。 */
+/** 失败给用户看的那句话：失败编号与画布自己的提示照常显示，内部原文只进日志。 */
 export function canvasReviewFailureMessage(error: unknown): string {
-  return error instanceof Error ? projectCanvasFailureText(error.message) : String(error);
+  return canvasUserMessage(error);
 }
 function titleOf(
   id: string | null,

@@ -195,7 +195,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { canvasText as t } from '../features/localization';
+import { canvasText as t, CanvasUserError, canvasUserMessage } from '../features/localization';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import type { DocumentImageAsset } from '@app/schemas';
 import { ImagePreviewModal, AlertDialog } from '@linnya/renderer-ui';
@@ -393,7 +393,7 @@ const statusItems = computed(() =>
   })
 );
 const report = (error: unknown) => {
-  failure.value = error instanceof Error ? error.message : String(error);
+  failure.value = canvasUserMessage(error);
 };
 const clearFailure = () => {
   failure.value = null;
@@ -457,7 +457,7 @@ const addToConversation = () =>
       projectId = getCurrentWorkspaceProjectId(),
       documentId = current?.session.state.snapshot.value?.documentId;
     if (!current || !projectId || !documentId)
-      throw new Error(t('canvas.error.projectInaccessible'));
+      throw new CanvasUserError(t('canvas.error.projectInaccessible'));
     await addCanvasSelectionReference(
       { documentId, projectId, elementIds: current.selection.ids.value },
       createCanvasSelectionReferencePort()
@@ -517,7 +517,7 @@ onMounted(async () => {
         readTags: readCanvasTags,
         prepareClipboard: ids => readCanvasClipboard(session.documentId, ids),
         pasteImages: async (files, point) => {
-          if (!creation.value) throw new Error(t('canvas.input.surface.imageNotReady'));
+          if (!creation.value) throw new CanvasUserError(t('canvas.input.surface.imageNotReady'));
           await creation.value.importFiles(files, point);
         },
         openCard: async card => {

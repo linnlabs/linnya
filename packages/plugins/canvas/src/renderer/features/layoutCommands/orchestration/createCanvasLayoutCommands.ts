@@ -11,7 +11,7 @@ import {
 import type { CanvasArrangementPort } from '../definitions/canvasLayoutCommands';
 import { createCanvasLayoutState } from '../store/createCanvasLayoutState';
 import { planCanvasTreeCreation } from '../functions/planCanvasTreeCreation';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 
 export function createCanvasLayoutCommands(
   session: CanvasDocumentSession,
@@ -54,7 +54,7 @@ export function createCanvasLayoutCommands(
       historyGroupId?: string
     ) {
       if (disposed) throw new DOMException('Canvas layout disposed', 'AbortError');
-      if (active) throw new Error(canvasText('canvas.error.layoutBusy'));
+      if (active) throw new CanvasUserError(canvasText('canvas.error.layoutBusy'));
       const { documentId } = requireWritableCanvas(session.state.snapshot.value);
       const job = { documentId, requestId: crypto.randomUUID(), cancelled: false, started: false };
       active = job;

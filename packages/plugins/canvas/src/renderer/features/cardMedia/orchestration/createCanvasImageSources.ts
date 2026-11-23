@@ -1,7 +1,7 @@
 import type { DocumentImageAsset } from '@app/schemas';
 import { resolveCanvasDisplayImages } from '../../cardRendering/content';
 import type { CanvasCardMediaPort } from '../definitions/cardMedia';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 
 /** 只缓存显示派生；原始dataURI只在一次读取/缩小流程中存活，查看按需从Host读取。 */
 export function createCanvasImageSources(documentId: string, port: CanvasCardMediaPort) {
@@ -70,7 +70,7 @@ export function createCanvasImageSources(documentId: string, port: CanvasCardMed
     resolve: (source: string) =>
       source.startsWith('asset:')
         ? read(source.slice(6))
-        : Promise.reject(new Error(canvasText('canvas.input.image.notAdopted'))),
+        : Promise.reject(new CanvasUserError(canvasText('canvas.input.image.notAdopted'))),
     dispose() {
       resources.abort();
       displayed.clear();

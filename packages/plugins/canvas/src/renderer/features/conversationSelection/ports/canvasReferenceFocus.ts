@@ -1,5 +1,5 @@
 import type { CanvasReferenceFocus } from '../definitions/canvasSelectionReference';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 const handlers = new Map<string, Set<CanvasReferenceFocus>>();
 const waiters = new Map<string, Set<(focus: CanvasReferenceFocus | null) => void>>();
 
@@ -38,12 +38,12 @@ export async function focusCanvasReference(
     const timer = setTimeout(() => {
       waiting.delete(receive);
       if (!waiting.size) waiters.delete(documentId);
-      reject(new Error(canvasText('canvas.error.locateNotReady')));
+      reject(new CanvasUserError(canvasText('canvas.error.locateNotReady')));
     }, 5000);
     waiting.add(receive);
     waiters.set(documentId, waiting);
   });
-  if (!focus) throw new Error(canvasText('canvas.error.pluginDisabled'));
+  if (!focus) throw new CanvasUserError(canvasText('canvas.error.pluginDisabled'));
   await focus(ids);
 }
 export function clearCanvasReferenceFocus(): void {

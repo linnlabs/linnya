@@ -2,7 +2,7 @@ import { DocumentImageAssetSchema } from '@app/schemas';
 import { queryDocumentReferences } from '@plugin/renderer/documentReferences';
 import { getCurrentWorkspaceProjectId } from '@plugin/renderer/workspaceRuntime';
 import type { CanvasCardCreationPort } from '../features/cardCreation';
-import { canvasText } from '../features/localization';
+import { canvasText, CanvasUserError } from '../features/localization';
 import { requestCanvasIpc } from './requestCanvasIpc';
 export function createCanvasCardCreationPort(): CanvasCardCreationPort {
   return {
@@ -12,7 +12,7 @@ export function createCanvasCardCreationPort(): CanvasCardCreationPort {
       ),
     queryDocuments: keyword => {
       const projectId = getCurrentWorkspaceProjectId();
-      if (!projectId) throw new Error(canvasText('canvas.error.projectMissing'));
+      if (!projectId) throw new CanvasUserError(canvasText('canvas.error.projectMissing'));
       return queryDocumentReferences({ projectId, keyword, limit: 50 });
     },
   };

@@ -1,5 +1,5 @@
 import type { CanvasArrangeRequest } from '@plugin/canvas/shared';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 export function canvasLayoutPreset(value: unknown): CanvasArrangeRequest['options'] {
   switch (value) {
     case 'tree-right':
@@ -13,6 +13,6 @@ export function canvasLayoutPreset(value: unknown): CanvasArrangeRequest['option
     case 'layered-down':
       return { algorithm: 'layered', direction: 'down' };
     default:
-      throw new Error(canvasText('canvas.error.unknownLayout'));
+      throw new CanvasUserError(canvasText('canvas.error.unknownLayout'));
   }
 }

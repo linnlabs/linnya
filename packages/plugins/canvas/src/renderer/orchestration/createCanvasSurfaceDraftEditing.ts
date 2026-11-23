@@ -4,7 +4,7 @@ import { createCanvasCardMovement } from '../features/elementEditing';
 import { createCanvasTextCreation } from '../features/textCreation';
 
 import type { CanvasSurfaceDraftEditingOptions } from './definitions/canvasSurfaceComposition';
-import { canvasText } from '../features/localization';
+import { canvasText, CanvasUserError } from '../features/localization';
 
 /** 正文编辑、创建草稿和位移提交共享同一个保存边界。 */
 export function createCanvasSurfaceDraftEditing({
@@ -53,7 +53,7 @@ export function createCanvasSurfaceDraftEditing({
     },
     (operations, historyGroupId, arrangement) => {
       if (!arrangement) return session.commit(operations, historyGroupId);
-      if (!layout) throw new Error(canvasText('canvas.error.noLayoutPort'));
+      if (!layout) throw new CanvasUserError(canvasText('canvas.error.noLayoutPort'));
       return layout.run(arrangement, operations, historyGroupId);
     }
   );

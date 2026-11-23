@@ -1,6 +1,7 @@
 import type { CanvasDocumentSynchronizationOptions } from '../definitions/canvasDocumentSession';
 import { applyCanvasSynchronization } from '../functions/applyCanvasSynchronization';
 import { readCanvasProjectionChanges } from '../functions/readCanvasProjectionChanges';
+import { canvasUserMessage } from '../../localization';
 
 /** 只拥有已提交投影的追平流程；会话切换与写请求确认仍由文档会话编排。 */
 export function createCanvasDocumentSynchronization(options: CanvasDocumentSynchronizationOptions) {
@@ -40,7 +41,7 @@ export function createCanvasDocumentSynchronization(options: CanvasDocumentSynch
       error => {
         if (token === readSessionId()) {
           synchronization = null;
-          state.fail(error instanceof Error ? error.message : String(error));
+          state.fail(canvasUserMessage(error));
         }
         throw error;
       }

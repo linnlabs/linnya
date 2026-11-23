@@ -9,7 +9,7 @@ import {
   installCanvasPastePosition,
 } from '../features/clipboard';
 import { buildDeleteCommands, type createCanvasElementActions } from '../features/elementEditing';
-import { canvasText } from '../features/localization';
+import { canvasText, CanvasUserError } from '../features/localization';
 
 export function installCanvasSurfaceClipboard(options: {
   readonly host: HTMLElement;
@@ -39,7 +39,7 @@ export function installCanvasSurfaceClipboard(options: {
       ),
     prepare: ids => {
       if (!options.ports.prepareClipboard)
-        throw new Error(canvasText('canvas.input.surface.noClipboardCopy'));
+        throw new CanvasUserError(canvasText('canvas.input.surface.noClipboardCopy'));
       return options.ports.prepareClipboard(ids);
     },
     pastePoint: point,
@@ -50,7 +50,7 @@ export function installCanvasSurfaceClipboard(options: {
     pasteText: (text, destination) => options.createText(destination, text),
     pasteImages: (files, destination) => {
       if (!options.ports.pasteImages)
-        throw new Error(canvasText('canvas.input.surface.noImagePaste'));
+        throw new CanvasUserError(canvasText('canvas.input.surface.noImagePaste'));
       return options.ports.pasteImages(files, destination);
     },
     cut: async elements => {
