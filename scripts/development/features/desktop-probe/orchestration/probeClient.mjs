@@ -184,6 +184,21 @@ export async function runProbeCommand(parsed) {
   const action = actionCommands.has(command) ? parseAction(parsed) : null;
   const { session, cdp } = await connectProbePage(values.name);
   try {
+    if (command === 'scheduled-clock') {
+      if (positionals.length || (values.clock === undefined && values.timezone === undefined)) {
+        usage('scheduled-clock 需要 --clock 或 --timezone；恢复系统值时填 system');
+      }
+      const overrides = { clock: values.clock === 'system' ? null : values.clock, timezone: values.timezone === 'system' ? null : values.timezone };
+      return await evaluate(cdp, `(async () => {
+        const { port, token } = await window.electronAPI.invoke('api:get-port');
+        const response = await fetch('http://127.0.0.1:' + port + '/api/v1/debug/scheduled-tasks/clock', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Token': token },
+          body: JSON.stringify(${JSON.stringify(overrides)}),
+        });
+        if (!response.ok) throw new Error(await response.text());
+        return { applied: true };
+      })()`);
+    }
     if (action) {
       const before = await pageFacts(cdp);
       const cursor = probeLogs(session).cursor;

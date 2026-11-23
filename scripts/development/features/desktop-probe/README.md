@@ -88,3 +88,7 @@
 点击、输入、拖动、重载、打开对象、启停等会改动用户会话的命令不接受 `--attach`，`eval --main` 也不开放；需要操作时在隔离实例里复现（`pnpm -s probe up --clone-data _dev_data`）。CDP 端口任何本机进程都能连接，所以只在源码开发会话开放，打包产物不开。已在运行的旧会话要重启一次才会写出附着信息。
 
 源码探针默认不触发定时任务。`pnpm -s probe up --scheduled-tasks` 在该隔离实例传入 `LINNYA_SCHEDULED_TASKS=1`。请用合成任务与脚本模型验收。
+
+`up` 和 `restart` 接受 `--scheduled-tasks-clock` 与 `--scheduled-tasks-timezone`，例如 `pnpm -s probe up --name schedule-clock --scheduled-tasks --scheduled-tasks-clock 1997-01-01T09:00:00+08:00 --scheduled-tasks-timezone Asia/Kathmandu`。时钟从指定 ISO 时刻开始随真实时间前进，也可传 `offset:+2y`。
+
+运行中用 `pnpm -s probe scheduled-clock --name schedule-clock --clock system --timezone Europe/London` 改注入值并立即检查。两项可分别设置，`system` 恢复系统来源。每个测试场景可用独立实例，避免把前跳后的记录留在下一个场景里。

@@ -87,6 +87,8 @@ const AppServerBootstrapSchema = z.object({
     packaged: z.boolean(),
     distributionIdentity: DistributionIdentitySchema,
     scheduledTasksEnabled: z.boolean().optional(),
+    scheduledTasksBuildTime: z.number().int().nonnegative().optional(),
+    scheduledTasksDevelopment: z.object({ clockOffsetMs: z.number().int().optional(), timezone: z.string().min(1).optional() }).strict().optional(),
     resourcesPath: AbsolutePathSchema,
     mainBundleDirectory: AbsolutePathSchema,
     runtimePathRoots: z.object({

@@ -9,7 +9,8 @@ import { ScheduledTaskPermissionError } from '../definitions/scheduledTaskPermis
 import type { ScheduledTaskPorts } from '../definitions/scheduledTaskRuntime';
 import type { ScheduledTaskRecord, TaskChangeActor } from '../definitions/scheduledTaskStore';
 import { projectScheduledRun, projectScheduledTask } from '../functions/projectScheduledTask';
-import { compileSchedule, previewSchedule } from '../functions/scheduleTime';
+import { compileSchedule, createScheduleTimeZone, MINUTE_MS, previewSchedule } from '../functions/scheduleTime';
+import { readScheduledClock } from '../functions/scheduledClock';
 import { createScheduledRun, skipReasonForActiveRun } from '../functions/scheduledRunRules';
 import { createScheduledTaskScheduler } from './createScheduledTaskScheduler';
 
@@ -23,6 +24,15 @@ function checkCliPermission(level: CommandPermissionLevel, actor: TaskChangeActo
 export function createScheduledTasks(ports: ScheduledTaskPorts) {
   const { store } = ports;
   const scheduler = createScheduledTaskScheduler(ports);
+  const calendar = () => {
+    const clock = readScheduledClock(ports);
+    return { ...clock, clockAnomalous: Boolean(clock.anomaly), timezone: createScheduleTimeZone(ports.timezone()) };
+  };
+  const checkPoint = () => {
+    const { now, anomaly, trustedReference, timezone } = calendar();
+    const reference = anomaly ? trustedReference : now;
+    return { checked_through_at: reference, latest_checked_at: reference, checked_timezone: timezone.name, checked_timezone_offset: timezone.offsetAt(reference) };
+  };
   const visible = (id: string, projectId?: string): ScheduledTaskRecord | undefined => {
     const task = store.read(id);
     return task && task.deleted_at === null && (projectId === undefined || task.project_id === projectId) ? task : undefined;
@@ -35,9 +45,12 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
   const mutation = async (id: string): Promise<ScheduledTaskMutationResult> => {
     const { pending, facts } = await live();
     const task = visible(id);
-    return task ? { ok: true, task: projectScheduledTask(ports, task, pending, facts) } : MISSING;
+    return task ? { ok: true, task: projectScheduledTask(ports, task, pending, facts, calendar()) } : MISSING;
   };
-  const preview = (schedule: ScheduledTaskSchedule) => previewSchedule(schedule, ports.now(), ports.timezone());
+  const preview = (schedule: ScheduledTaskSchedule) => {
+    const { now, timezone, clockAnomalous } = calendar();
+    return previewSchedule(schedule, now, timezone.name, clockAnomalous);
+  };
 
   function save(task: ScheduledTaskRecord, actor?: TaskChangeActor, action: 'created' | 'updated' = 'updated'): void {
     store.transaction(() => {
@@ -50,15 +63,18 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
   return {
     lifecycle: scheduler.lifecycle,
     tick: scheduler.tick,
+    recheck: scheduler.recheck,
     poke: scheduler.poke,
     deferApproval: scheduler.deferApproval,
     preview,
     async list(projectId?: string): Promise<ScheduledTasksListResult> {
       const { pending, facts } = await live();
-      const tasks = store.list(projectId).map(task => projectScheduledTask(ports, task, pending, facts));
+      const current = calendar();
+      const tasks = store.list(projectId).map(task => projectScheduledTask(ports, task, pending, facts, current));
       tasks.sort((a, b) => a.project_id.localeCompare(b.project_id)
         || (a.next_run_at ?? Infinity) - (b.next_run_at ?? Infinity) || a.id.localeCompare(b.id));
       return { tasks, settings: ports.settings.read(), scheduler_enabled: ports.schedulerEnabled,
+        ...(current.anomaly ? { clock_anomaly: current.anomaly } : {}),
         running_count: [...facts.values()].filter(fact => fact.state === 'running').length };
     },
     show: async (id: string, projectId: string): Promise<ScheduledTaskMutationResult> => visible(id, projectId) ? mutation(id) : MISSING,
@@ -78,7 +94,7 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
         const now = ports.now();
         const id = randomUUID();
         save({ ...input, id, clock: compileSchedule(input.schedule), enabled: true, paused_reason: null,
-          consecutive_failures: 0, last_viewed_at: null, unviewed_since_at: now, checked_through_at: now,
+          consecutive_failures: 0, last_viewed_at: null, unviewed_since_at: now, ...checkPoint(),
           schedule_generation: 0, created_by_kind: actor ? 'agent' : 'user', created_conversation_id: actor?.conversationId ?? null,
           created_run_id: actor?.rootRunId ?? null, updated_run_id: null, revision: 0, created_at: now, updated_at: now, deleted_at: null }, actor, 'created');
         return mutation(id);
@@ -99,9 +115,9 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
           if (!validation.ok) return { ok: false, code: 'invalid_schedule', message: validation.message };
         }
         store.transaction(() => {
-          if (changedSchedule) scheduler.discardAutomaticQueue(task.id);
+          if (changedSchedule) scheduler.discardAutomaticQueue(task.id, 'superseded');
           save({ ...task, ...fields, schedule, clock: changedSchedule ? compileSchedule(schedule) : task.clock,
-            checked_through_at: changedSchedule ? Math.max(now, task.checked_through_at) : task.checked_through_at,
+            ...(changedSchedule ? checkPoint() : {}),
             paused_reason: changedSchedule && task.paused_reason === 'one_shot_done' ? 'user' : task.paused_reason,
             schedule_generation: task.schedule_generation + Number(changedSchedule),
             updated_at: now, revision: task.revision + 1, updated_run_id: actor?.rootRunId ?? task.updated_run_id }, actor);
@@ -125,7 +141,7 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
           if (!enabled) scheduler.discardAutomaticQueue(id);
           save({ ...task, enabled, paused_reason: enabled ? null : 'user',
             consecutive_failures: enabled ? 0 : task.consecutive_failures, unviewed_since_at: enabled ? now : task.unviewed_since_at,
-            checked_through_at: Math.max(task.checked_through_at, now), updated_at: now, revision: task.revision + 1,
+            ...checkPoint(), updated_at: now, revision: task.revision + 1,
             updated_run_id: actor?.rootRunId ?? task.updated_run_id }, actor);
         });
         return mutation(id);
@@ -140,8 +156,9 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
         const active = pending.find(run => run.task_id === id && run.status === 'admitted');
         const reason = skipReasonForActiveRun(active && facts.get(active.id)?.state);
         let plannedAt = ports.now();
-        while (store.readRunAt(id, plannedAt)) plannedAt++;
-        const candidate = createScheduledRun(task, plannedAt, 'manual');
+        // 整分钟留给自动计划，手动触发不能占用同一任务的日历身份。
+        while (plannedAt % MINUTE_MS === 0 || store.readRunAt(id, plannedAt)) plannedAt++;
+        const candidate = createScheduledRun(task, plannedAt, 'manual', createScheduleTimeZone(ports.timezone()));
         scheduler.enqueue(task, reason ? { ...candidate, status: 'skipped', reason, ended_at: ports.now() } : candidate);
         await scheduler.drain();
         ports.publish();
@@ -176,12 +193,13 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
         const run = store.readRunForConversation(conversationId);
         const task = run && visible(run.task_id);
         if (!run || !task) return;
-        const now = ports.now();
-        store.transaction(() => {
-          if (run.status === 'completed' && run.viewed_at === null) store.writeRun({ ...run, viewed_at: now });
-          store.write({ ...task, last_viewed_at: now });
-        });
-        ports.publish();
+        const { now, anomaly, trustedReference } = readScheduledClock(ports);
+      const viewedAt = Math.max(anomaly ? trustedReference : now, task.last_viewed_at ?? 0);
+      store.transaction(() => {
+        if (run.status === 'completed' && run.viewed_at === null) store.writeRun({ ...run, viewed_at: viewedAt });
+        store.write({ ...task, last_viewed_at: viewedAt });
+      });
+      ports.publish();
       });
     },
     getSettings: ports.settings.read,
@@ -195,9 +213,10 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
     },
     async changes({ conversation_id, root_run_ids }: ConversationRunScheduledTasksRequest): Promise<ConversationRunScheduledTasks> {
       const { pending, facts } = await live();
+      const current = calendar();
       return { tasks: store.listChanges(conversation_id, root_run_ids).map(({ permission, ...entry }) => {
         const record = visible(entry.task_id);
-        const task = record ? projectScheduledTask(ports, record, pending, facts) : null;
+        const task = record ? projectScheduledTask(ports, record, pending, facts, current) : null;
         return { ...entry, task, above_conversation_permission: task !== null && compareCommandPermissionLevels(task.permission_level, permission) > 0 };
       }) };
     },

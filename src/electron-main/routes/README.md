@@ -41,6 +41,7 @@ Provider route 装配完成本地 durable intent 恢复与账号能力投影后�
 - `/api/v1/conversation-control`：本机 CLI 使用的独立鉴权控制桥；
 - `/api/v1/ollama`：本机 Ollama 代理；
 - `/api/v1/debug/provider-outbound`：仅开发模式开放的只读诊断接口；
+- `POST /api/v1/debug/scheduled-tasks/clock`：仅源码 Desktop 开放，沿既有 API token 边界即时调整验收用的定时时钟和时区；
 - `/static`：受管静态资源。
 
 Conversation 的统一执行入口是 `POST /api/v1/conversation/next`；旧 `/api/v1/generate` 系列已删除。Conversation 的身份、事件、SSE 和历史一致性以 [Conversation Platform](../../../docs/conversation-platform/README.md) 为准。

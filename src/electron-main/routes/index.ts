@@ -47,6 +47,8 @@ import { listRegisteredBackendPluginUploadPlugins } from '../../app-hosts/linnya
 import { createHistoricalCitationSnapshotRouter } from './historicalCitationSnapshotRouter';
 import type { DocumentOcrPort } from 'src/domains/document-ocr';
 import { createProviderOutboundDebugRouter } from './providerOutboundDebugRouter';
+import { createScheduledTaskClockDebugRouter } from './scheduledTaskClockDebugRouter';
+import { createDesktopScheduledTaskClock } from 'src/app-hosts/linnya/adapters/scheduled-tasks/createDesktopScheduledTaskClock';
 import ollamaRouter from './ollamaRouter';
 import { GraphExecutor, ToolNode, UserNode, WaitUserNode } from '@linnlabs/linnkit/runtime-kernel';
 import { createDefaultLlmNode } from '../../app-hosts/linnya/adapters/runtime-assembly/graphRuntimeFactory';
@@ -261,6 +263,7 @@ function respondCapabilityUnavailable(message: string): RequestHandler {
  */
 export interface RouteDependencies {
   readonly notifyScheduledTask?: (event: ScheduledTaskNotification) => Promise<void>;
+  readonly readScheduledTaskTimezone?: () => Promise<string>;
   readonly scheduledTaskSchedulerLifecycleRegistration?: {
     register(tasks: ScheduledTasks, lifecycle: ScheduledTaskSchedulerLifecycle): void;
   };
@@ -929,6 +932,12 @@ export async function configureRoutes(
       const settings = createScheduledTaskSettings(path.join(appDataRoot, 'config', 'scheduled_tasks.json'));
       const usage = createScheduledTaskUsage(db);
       const scheduledStore = createSqliteScheduledTasks(db);
+      const desktop = dependencies.readScheduledTaskTimezone !== undefined;
+      const development = desktop && dependencies.backendBootstrap.distributionIdentity.kind === 'source';
+      const scheduledClock = createDesktopScheduledTaskClock({
+        readSystemTimezone: dependencies.readScheduledTaskTimezone,
+        development: development ? dependencies.backendBootstrap.scheduledTasksDevelopment : undefined,
+      });
       const taskExecution = createScheduledTaskExecution({
         flow: { start: request => initializedFlowOrchestrator.nextDetached(request),
           stop: (runId, conversationId, reason) => initializedFlowOrchestrator.cancelRun(runId, conversationId, reason) },
@@ -938,9 +947,11 @@ export async function configureRoutes(
       });
       const tasks = createScheduledTasks({
         store: scheduledStore,
-        schedulerEnabled: dependencies.backendBootstrap.scheduledTasksEnabled === true,
-        now: Date.now,
-        timezone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+        schedulerEnabled: desktop && dependencies.backendBootstrap.scheduledTasksEnabled === true,
+        buildTime: dependencies.backendBootstrap.scheduledTasksBuildTime,
+        now: scheduledClock.now,
+        timezone: scheduledClock.timezone,
+        refreshTimezone: scheduledClock.refreshTimezone,
         projectExists: projectId => projects.list().some(project => project.id === projectId),
         defaultModel: () => settings.read().default_model_config_id ?? null,
         modelAvailable: createScheduledChatModelAvailability(modelCatalog, providerAccountRegistry, Boolean(modelsFailure)),
@@ -956,6 +967,9 @@ export async function configureRoutes(
         logError: (message, error) => logger.error(message, error),
       });
       scheduledTasks = tasks;
+      if (development) {
+        app.use('/api/v1/debug/scheduled-tasks', createScheduledTaskClockDebugRouter({ configure: scheduledClock.configure, recheck: tasks.recheck }));
+      }
       const unsubscribeRun = subscribeRunActivity(db, conversationId => {
         queueMicrotask(() => { if (scheduledStore.readRunForConversation(conversationId)) tasks.poke(); });
       });

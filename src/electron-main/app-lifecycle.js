@@ -66,6 +66,8 @@ import { registerCommandApprovalHandlers } from './ipc/handlers/commands/command
 import { registerCommandCardControlHandlers } from './ipc/handlers/commands/command-card-control-ipc.ts';
 import { registerCommandProtectedInputHandler } from './ipc/handlers/commands/command-protected-input-ipc.ts';
 import { presentStartupFailureDialog } from './app-lifecycle/orchestration/presentStartupFailureDialog.ts';
+import { parseScheduledClockOffset } from '../app-hosts/linnya/application/scheduled-tasks/functions/scheduledClockOverride.ts';
+import { readDesktopBuildTime } from './app-lifecycle/functions/readDesktopBuildTime.ts';
 
 const logger = new Logger('app-lifecycle');
 // 版本只在 App owner 启动时解析一次，发行身份与 Backend/CLI 共享同一产品事实。
@@ -342,6 +344,10 @@ export function initialize() {
         resourcesPath: process.resourcesPath,
         developmentMainBundleDirectory: __dirname,
       });
+      const isSource = distributionIdentity.kind === 'source';
+      const clockOverride = isSource ? process.env.LINNYA_SCHEDULED_TASKS_CLOCK : undefined;
+      const clockOffsetMs = clockOverride ? parseScheduledClockOffset(clockOverride, Date.now()) : undefined;
+      if (clockOffsetMs === null) throw new Error('Invalid LINNYA_SCHEDULED_TASKS_CLOCK');
       const backendBootstrap = createBackendBootstrapFacts({
         applicationVersion,
         applicationExecutablePath: process.execPath,
@@ -352,7 +358,9 @@ export function initialize() {
         resourcesPath: process.resourcesPath,
         mainBundleDirectory,
         runtimePathRoots,
-        scheduledTasksEnabled: distributionIdentity.kind !== 'source' || process.env.LINNYA_SCHEDULED_TASKS === '1',
+        scheduledTasksEnabled: !isSource || process.env.LINNYA_SCHEDULED_TASKS === '1',
+        scheduledTasksBuildTime: readDesktopBuildTime(),
+        ...(isSource ? { scheduledTasksDevelopment: { clockOffsetMs, timezone: process.env.TZ || undefined } } : {}),
         exposeProviderOutboundDebugRoutes: process.env.NODE_ENV !== 'production',
       });
       const backendConfiguration = resolveDesktopBackendConfiguration({

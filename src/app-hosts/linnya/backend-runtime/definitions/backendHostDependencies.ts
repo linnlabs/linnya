@@ -37,6 +37,7 @@ export interface BackendHostDependencies {
   readonly hiddenWorkerHost: DesktopHiddenWorkerHostPort;
   readonly textMeasurement: BackendTextMeasurementRuntimeDependencies;
   readonly notifyScheduledTask?: (event: ScheduledTaskNotification) => Promise<void>;
+  readonly readScheduledTaskTimezone?: () => Promise<string>;
   readonly rendererIntegration: BackendRendererIntegrationPort;
   readonly rasterPdfDocument: DesktopRasterPdfDocumentPort;
   readonly externalAuthorizationBrowser: ExternalAuthorizationBrowserPort;

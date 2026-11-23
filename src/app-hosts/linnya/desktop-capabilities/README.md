@@ -21,6 +21,8 @@ Desktop 投影到既有 `models-updated` channel；它不借用只覆盖 Cloud �
 Desktop 投影到 `conversation-activity-changed` 并发给所有窗口；侧栏先订阅再读 `GET /api/v1/conversation/activity`。
 信号来源与合并见 [conversation-activity](../application/conversation-activity/README.md)。
 
+定时任务通过只返回 IANA 时区名的反向 RPC 读取 Desktop 时区。macOS 读取系统时区链接，Windows 使用 Chromium 的时区视图。App Server 用该事实更新固定 Node 进程的时区并重新计算日历计划。
+
 Backend hidden worker runtime 保留已有插件 `hiddenWorkers` contribution、worker id、codec、同步 registry 与调用语义。
 `createBackendHiddenWorkerRuntime` 在 Backend 内把请求、取消和响应编解码，Desktop 的
 `DesktopHiddenWorkerHostPort` 只接收 worker descriptor 与已经编码的原始 envelope，不接收 codec function、插件实例或

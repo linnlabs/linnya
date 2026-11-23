@@ -1,11 +1,13 @@
 import type { ScheduledTask, ScheduledTaskRun, ScheduledTaskState } from '@app/schemas/scheduled-tasks';
 import type { ScheduledExecutionFact, ScheduledTaskPorts } from '../definitions/scheduledTaskRuntime';
 import type { ScheduledRunRecord, ScheduledTaskRecord } from '../definitions/scheduledTaskStore';
-import { nextScheduledTime } from './scheduleTime';
+import { nextScheduledTime, type ScheduleTimeZone } from './scheduleTime';
 
 export function projectScheduledRun(run: ScheduledRunRecord, fact: ScheduledExecutionFact | undefined, totalTokens: number | null): ScheduledTaskRun {
   return {
     id: run.id, task_id: run.task_id, planned_at: run.planned_at, trigger: run.trigger,
+    ...(run.planned_local === null ? {} : { planned_local: run.planned_local }),
+    ...(run.time_zone === null ? {} : { time_zone: run.time_zone }),
     status: run.status === 'admitted' ? fact?.state === 'awaiting_approval' ? 'awaiting_approval' : 'running' : run.status,
     reason: run.reason, skipped_count: run.skipped_count, started_at: run.started_at, ended_at: run.ended_at,
     conversation_id: run.conversation_id, run_id: run.run_id, permission_level: run.permission_level,
@@ -29,6 +31,7 @@ export function projectScheduledTask(
   task: ScheduledTaskRecord,
   pending: readonly ScheduledRunRecord[],
   facts: ReadonlyMap<string, ScheduledExecutionFact>,
+  calendar: { now: number; clockAnomalous: boolean; timezone: ScheduleTimeZone },
 ): ScheduledTask {
   const active = pending.find(run => run.task_id === task.id);
   const lastRun = ports.store.readRuns(task.id, 1)[0];
@@ -36,12 +39,16 @@ export function projectScheduledTask(
   const { id, project_id, name, prompt, agent, model_config_id, schedule, missed_policy, permission_level,
     consecutive_failures, revision, created_at, updated_at } = task;
   const model = model_config_id ?? ports.defaultModel();
+  let next = task.enabled && !calendar.clockAnomalous ? nextScheduledTime(task.clock, calendar.now, calendar.timezone.name) : null;
+  while (next !== null && (ports.store.readRunAt(id, next) || ports.store.hasLocalOccurrence(id, calendar.timezone.localMinute(next)))) {
+    next = nextScheduledTime(task.clock, next, calendar.timezone.name);
+  }
   return {
     id, project_id, name, prompt, agent, model_config_id, schedule, missed_policy, permission_level,
     consecutive_failures, revision, created_at, updated_at, run_count, unread_count,
     state: taskState(task, active, active && facts.get(active.id)),
     model_unavailable: model === null || !ports.modelAvailable(model),
-    next_run_at: task.enabled ? nextScheduledTime(task.clock, Math.max(ports.now(), task.checked_through_at), ports.timezone()) : null,
+    next_run_at: next,
     last_run: lastRun ? projectScheduledRun(lastRun, facts.get(lastRun.id), ports.usage(lastRun)) : null,
     storage_bytes: ports.storage(task.id),
     source: task.created_by_kind === 'agent' && task.created_conversation_id && task.created_run_id
