@@ -108,7 +108,7 @@ const lowerTarget = ref<PermissionTier | null>(null);
 const lowerResult = ref('');
 /** 原生单选框点下去就会选中；放弃修改后重建这一组，让显示回到当前值。 */
 const settingsGroupKey = ref(0);
-const OVERRIDE_COUNTS = { conversations: 3, tasks: 2 } as const;
+const OVERRIDE_COUNTS = { conversations: 3, scheduledTasks: 2 } as const;
 
 function chooseGlobal(tier: PermissionTier) {
   if (tier === settingsTier.value) return;
@@ -122,18 +122,18 @@ function chooseGlobal(tier: PermissionTier) {
 }
 const lowerMessage = computed(() => {
   const target = lowerTarget.value ? TIER_LABELS[lowerTarget.value] : '';
-  return `有 ${OVERRIDE_COUNTS.conversations} 个对话和 ${OVERRIDE_COUNTS.tasks} 个定时任务单独设了“完全访问”，高于新的全局设置“${target}”。\n\n要把它们一起调到“${target}”吗？不调的话，它们仍按原来的档位运行。`;
+  return `有 ${OVERRIDE_COUNTS.conversations} 个对话和 ${OVERRIDE_COUNTS.scheduledTasks} 个定时任务单独设了“完全访问”，高于新的全局设置“${target}”。\n\n要把它们一起调到“${target}”吗？不调的话，它们仍按原来的档位运行。`;
 });
 function lowerAll() {
   if (!lowerTarget.value) return;
   settingsTier.value = lowerTarget.value;
-  lowerResult.value = `全局设置和 ${OVERRIDE_COUNTS.conversations + OVERRIDE_COUNTS.tasks} 项单独设置都已调到“${TIER_LABELS[lowerTarget.value]}”。`;
+  lowerResult.value = `全局设置和 ${OVERRIDE_COUNTS.conversations + OVERRIDE_COUNTS.scheduledTasks} 项单独设置都已调到“${TIER_LABELS[lowerTarget.value]}”。`;
   lowerTarget.value = null;
 }
 function lowerGlobalOnly() {
   if (!lowerTarget.value) return;
   settingsTier.value = lowerTarget.value;
-  lowerResult.value = `只改了全局设置。${OVERRIDE_COUNTS.conversations} 个对话和 ${OVERRIDE_COUNTS.tasks} 个定时任务仍是“完全访问”。`;
+  lowerResult.value = `只改了全局设置。${OVERRIDE_COUNTS.conversations} 个对话和 ${OVERRIDE_COUNTS.scheduledTasks} 个定时任务仍是“完全访问”。`;
   lowerTarget.value = null;
 }
 function abortLowering() {

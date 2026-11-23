@@ -9,7 +9,11 @@
  *   不用 UTC 的 `Z`，免得 Agent 把 UTC 当本地时间转述给用户。
  *
  * 不显示秒；时间一律 24 小时制。比现在晚的时间（时钟不同步）在 5 分钟内算“刚刚”，更晚的按日期显示。
- * 截止日期这类面向未来的时间、时长、日志时间不归这里。
+ *
+ * 计划时刻（定时任务的下次运行、某次运行的计划时间）另有两种写法，同样 24 小时制：
+ * - `formatScheduledTime`：今天 09:00 / 明天 09:00 / 昨天 09:00 / 11月27日 周五 10:00 / 2027年1月3日 周日 09:00。
+ * - `formatScheduledDate`：只有日期，11月30日 / 2027年1月3日。
+ * 截止日期、时长、日志时间不归这里。
  */
 
 const MINUTE_MS = 60_000;
@@ -31,18 +35,28 @@ interface Words {
   readonly justNow: string;
   readonly minutesAgo: (count: number) => string;
   readonly yesterday: (time: string) => string;
+  readonly today: (time: string) => string;
+  readonly tomorrow: (time: string) => string;
+  /** 日期、星期与钟点拼在一起：11月27日 周五 10:00 / Fri, Nov 27, 10:00。 */
+  readonly dateWeekdayTime: (date: string, weekday: string, time: string) => string;
 }
 
 const ZH: Words = {
   justNow: '刚刚',
   minutesAgo: count => `${count} 分钟前`,
   yesterday: time => `昨天 ${time}`,
+  today: time => `今天 ${time}`,
+  tomorrow: time => `明天 ${time}`,
+  dateWeekdayTime: (date, weekday, time) => `${date} ${weekday} ${time}`,
 };
 
 const EN: Words = {
   justNow: 'Just now',
   minutesAgo: count => `${count} min ago`,
   yesterday: time => `Yesterday ${time}`,
+  today: time => `Today ${time}`,
+  tomorrow: time => `Tomorrow ${time}`,
+  dateWeekdayTime: (date, weekday, time) => `${weekday}, ${date}, ${time}`,
 };
 
 function wordsFor(locale: string): Words {
@@ -108,6 +122,34 @@ export function formatHistoryTime(value: HistoryTimeInput | null | undefined, op
   if (days === 0) return clockText(ms, options);
   if (days === 1) return words.yesterday(clockText(ms, options));
   return dateText(ms, options, at.year !== today.year);
+}
+
+/**
+ * 计划时刻：今天 09:00 / 明天 09:00 / 昨天 09:00，其余写日期、星期和钟点，不是今年时带年份。
+ * 不写“几分钟后”“几分钟前”：计划时刻要让人对上钟点。
+ */
+export function formatScheduledTime(value: HistoryTimeInput | null | undefined, options: HistoryTimeOptions): string {
+  const ms = toMs(value);
+  if (ms === null) return '';
+  const now = toMs(options.now ?? Date.now()) ?? Date.now();
+  const words = wordsFor(options.locale);
+  const at = partsOf(ms, options.timeZone);
+  const today = partsOf(now, options.timeZone);
+  const days = dayNumber(at) - dayNumber(today);
+  const time = clockText(ms, options);
+  if (days === 0) return words.today(time);
+  if (days === 1) return words.tomorrow(time);
+  if (days === -1) return words.yesterday(time);
+  const weekday = new Intl.DateTimeFormat(options.locale, { timeZone: options.timeZone, weekday: 'short' }).format(ms);
+  return words.dateWeekdayTime(dateText(ms, options, at.year !== today.year), weekday, time);
+}
+
+/** 计划日期：11月30日 / Nov 30，不是今年时带年份。 */
+export function formatScheduledDate(value: HistoryTimeInput | null | undefined, options: HistoryTimeOptions): string {
+  const ms = toMs(value);
+  if (ms === null) return '';
+  const now = toMs(options.now ?? Date.now()) ?? Date.now();
+  return dateText(ms, options, partsOf(ms, options.timeZone).year !== partsOf(now, options.timeZone).year);
 }
 
 /** 完整写法：2026年11月9日 14:32（英文 Nov 9, 2026, 14:32）。 */

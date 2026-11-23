@@ -524,6 +524,24 @@
   color: var(--workspace-sidebar-label-color);
 }
 
+/* 侧栏入口右侧的未读数：定时任务完成后还没打开过的运行。 */
+.workspace-sidebar .nav-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
 .workspace-sidebar .projects-section {
   padding: 0 var(--space-2-5);
 }

@@ -65,6 +65,8 @@
             'for-plugin-store': isPluginStoreScene,
             // 项目概览：整页一览表，表头固定、表体自己滚动
             'for-project-overview': isProjectOverviewScene,
+            // 定时任务：页头固定，列表与详情各自滚动
+            'for-scheduled-tasks': isScheduledTasksScene,
             // 对话居中工作台：全屏无留白，由对话主导页内部管理布局
             'for-chat-centric': isWorkspaceScene && !isWorkspaceDocumentActive,
             'for-workspace-stage': isWorkspaceStageActive,
@@ -146,6 +148,7 @@ const isWorkspaceScene = computed(() => scene.value.kind === 'workspace');
 const isKnowledgeBaseScene = computed(() => scene.value.kind === 'knowledge-base');
 const isPluginStoreScene = computed(() => scene.value.kind === 'plugin-store');
 const isProjectOverviewScene = computed(() => scene.value.kind === 'project-overview');
+const isScheduledTasksScene = computed(() => scene.value.kind === 'scheduled-tasks');
 const isWorkspaceStageActive = computed(() => isWorkspaceScene.value);
 const activeDocumentType = computed(() => layoutStore.state.activeDocument?.type ?? null);
 const isWorkspaceDocumentActive = computed(() => {

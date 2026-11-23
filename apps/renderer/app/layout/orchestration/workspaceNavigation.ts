@@ -275,6 +275,20 @@ export function createWorkspaceNavigation(): WorkspaceNavigationPort {
       });
     },
 
+    async openScheduledTasks({ projectId, scheduledTaskId = null }) {
+      await leaveDocumentRuntimeThen(() => {
+        const layoutStore = useLayoutStore();
+        useProjectKnowledgeBaseModalStore().close();
+        if (projectId) {
+          setNavigationScope({ kind: 'project', projectId });
+          layoutStore.setSidebarNav('project');
+        } else {
+          layoutStore.setSidebarNav('list');
+        }
+        layoutStore.openBypassView({ type: 'scheduled-tasks', projectId, scheduledTaskId });
+      });
+    },
+
     async openPluginStore() {
       await leaveDocumentRuntimeThen(() => {
         const layoutStore = useLayoutStore();

@@ -4,8 +4,11 @@ import type { SettingsMessageResolver } from '../../../definitions/settingsMessa
 export function confirmPermissionLevelExpansion(
   settingsMessage: SettingsMessageResolver,
   level: 'standard' | 'full_access',
-  /** 对话里沿用设置页的内容，只把标题换成对这个对话说的。 */
-  options: { readonly title?: string } = {},
+  /**
+   * 对话里沿用设置页的内容，只把标题换成对这个对话说的。
+   * 定时任务另在风险提示后追加一段警告（空一行接上）。
+   */
+  options: { readonly title?: string; readonly riskAppendix?: string } = {},
 ): Promise<boolean> {
   const prefix = level === 'standard'
     ? 'settings.commandPermission.confirmExpansion.standard'
@@ -46,7 +49,9 @@ export function confirmPermissionLevelExpansion(
           ],
         },
       ],
-    riskMessage: settingsMessage(`${prefix}.risk`),
+    riskMessage: options.riskAppendix
+      ? `${settingsMessage(`${prefix}.risk`)}\n\n${options.riskAppendix}`
+      : settingsMessage(`${prefix}.risk`),
     confirmText: settingsMessage('settings.commandPermission.confirmExpansion.confirm'),
     cancelText: settingsMessage('settings.commandPermission.confirmExpansion.cancel'),
     isDangerousAction: true,

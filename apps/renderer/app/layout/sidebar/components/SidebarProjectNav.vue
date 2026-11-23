@@ -51,6 +51,19 @@
     </button>
 
     <button
+      class="sidebar-entry project-nav-scheduled-tasks-entry"
+      :class="{ 'is-selected': scheduledTasksSelected }"
+      type="button"
+      data-testid="sidebar-project-scheduled-tasks"
+      :aria-current="scheduledTasksSelected ? 'page' : undefined"
+      @click="$emit('open-scheduled-tasks')"
+    >
+      <ClockIcon class="nav-icon" />
+      <span class="nav-label">{{ layoutMessage('layout.sidebar.nav.scheduledTasks') }}</span>
+      <span v-if="scheduledTasksUnread > 0" class="nav-badge">{{ scheduledTasksUnread }}</span>
+    </button>
+
+    <button
       v-if="sidebarMode === 'chat'"
       class="project-nav-create-button"
       type="button"
@@ -151,6 +164,9 @@ const props = defineProps<{
   sidebarMode: WorkspaceSidebarMode;
   /** 当前正在看这个项目的概览页。 */
   overviewSelected: boolean;
+  scheduledTasksSelected: boolean;
+  /** 本项目定时任务里完成后还没打开过的运行次数。 */
+  scheduledTasksUnread: number;
   chatSearchQuery: string;
   fileSearchQuery: string;
   showCreateMenu: boolean;
@@ -160,6 +176,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   back: [];
   'open-overview': [];
+  'open-scheduled-tasks': [];
   'set-mode': [mode: WorkspaceSidebarMode];
   'new-conversation': [];
   'toggle-create-menu': [];

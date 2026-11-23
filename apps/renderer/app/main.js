@@ -54,13 +54,14 @@ import { ensureRendererPluginLoadLocalizationRegistered } from './plugins/orches
 import { ensureTableFillLocalizationRegistered } from './workflows/table-fill/orchestration/ensureTableFillLocalizationRegistered'
 import { ensureDocumentPreviewLocalizationRegistered } from './workflows/document-preview/orchestration/ensureDocumentPreviewLocalizationRegistered'
 import { provideHoverTooltipWindowFocus } from './orchestration/provideHoverTooltipWindowFocus'
-import { startNotificationAutoDismissal } from './notification'
+import { startNotificationAutoDismissal, useNotificationStore } from './notification'
 import { useUIStore } from '../../../apps/renderer/shared/stores/ui'
 import {
   startModelCatalogLifecycle,
   startModelPickerLifecycle,
 } from '../domains/model-configuration'
 import { startConversationActivityLifecycle } from '../domains/conversation/features/conversation-activity'
+import { startScheduledTasksAppLifecycle } from '../domains/scheduled-tasks'
 import { useUpdateActions } from './update/runtime'
 
 const conversationFixtureId = import.meta.env.DEV
@@ -165,6 +166,10 @@ if (!isConversationFixture) {
   startBackendHealthLifecycle()
   // 侧栏运行状态：先订阅 App Server 的失效信号，再读一次全工作区状态。
   startConversationActivityLifecycle()
+  // 定时任务：侧栏角标、整页视图共用一份任务快照；窗口在前台时的通知走应用内提示。
+  startScheduledTasksAppLifecycle(({ text, type }) => {
+    useNotificationStore().show(text, type)
+  })
 
 }
 

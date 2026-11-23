@@ -10,6 +10,7 @@ const WorkspaceStage = defineAsyncComponent(() => import('./pages/WorkspaceStage
 const KnowledgeBasePage = defineAsyncComponent(() => import('./pages/KnowledgeBasePage/KnowledgeBasePage.vue'));
 const PluginStorePage = defineAsyncComponent(() => import('./pages/PluginStorePage/PluginStorePage.vue'));
 const ProjectOverviewPage = defineAsyncComponent(() => import('./pages/ProjectOverviewPage/ProjectOverviewPage.vue'));
+const ScheduledTasksPage = defineAsyncComponent(() => import('./pages/ScheduledTasksPage/ScheduledTasksPage.vue'));
 
 // Stores
 import { useLayoutStore } from './layout/store/layoutStore';
@@ -116,6 +117,7 @@ const isPluginStoreView = computed(() => scene.value.kind === 'plugin-store');
 const projectOverviewProjectId = computed(() => (
   scene.value.kind === 'project-overview' ? scene.value.projectId : null
 ));
+const scheduledTasksScene = computed(() => (scene.value.kind === 'scheduled-tasks' ? scene.value : null));
 
 // 初始状态检查
 console.log('[App.vue] Initializing with scene:', scene.value.kind);
@@ -200,6 +202,11 @@ onBeforeUnmount(() => {
     <KnowledgeBasePage v-else-if="isKnowledgeBaseView" />
     <PluginStorePage v-else-if="isPluginStoreView" />
     <ProjectOverviewPage v-else-if="projectOverviewProjectId" :project-id="projectOverviewProjectId" />
+    <ScheduledTasksPage
+      v-else-if="scheduledTasksScene"
+      :project-id="scheduledTasksScene.projectId"
+      :scheduled-task-id="scheduledTasksScene.scheduledTaskId"
+    />
   </AppLayout>
   <FloatingToolbarContainer />
   <RendererPluginLoadFailureNotice :retry="retryRendererPluginLoad" />

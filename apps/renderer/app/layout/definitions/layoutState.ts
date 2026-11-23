@@ -20,7 +20,9 @@ export type WorkspaceScene =
   | { kind: 'knowledge-base' }
   | { kind: 'plugin-store' }
   /** 项目概览：项目里所有文件的一览表，侧栏保持在该项目。 */
-  | { kind: 'project-overview'; projectId: string };
+  | { kind: 'project-overview'; projectId: string }
+  /** 定时任务整页：从项目侧栏进来带项目（侧栏保持在该项目），从全局侧栏进来为 null。 */
+  | { kind: 'scheduled-tasks'; projectId: string | null; scheduledTaskId: string | null };
 
 // 中文说明：ActiveDocumentType 已从闭合 union 改为插件贡献的动态 ID。
 // 具体合法值由 app/plugins/documentTypeRegistry 在注册时校验。
@@ -36,6 +38,7 @@ export type BypassView =
   | { type: 'knowledge-base' }
   | { type: 'plugin-store' }
   | { type: 'project-overview'; projectId: string }
+  | { type: 'scheduled-tasks'; projectId: string | null; scheduledTaskId: string | null }
   | null;
 
 export interface DocumentPaneState {

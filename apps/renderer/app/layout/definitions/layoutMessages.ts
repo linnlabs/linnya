@@ -54,6 +54,7 @@ export type LayoutMessageKey =
   | 'layout.sidebar.nav.newProject'
   | 'layout.sidebar.nav.knowledgeBase'
   | 'layout.sidebar.nav.plugins'
+  | 'layout.sidebar.nav.scheduledTasks'
   | 'layout.sidebar.project.back'
   | 'layout.sidebar.project.viewGroup'
   | 'layout.sidebar.project.chat'

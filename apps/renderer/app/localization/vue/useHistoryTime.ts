@@ -1,4 +1,10 @@
-import { formatHistoryDateTime, formatHistoryTime, type HistoryTimeInput } from '@app/schemas';
+import {
+  formatHistoryDateTime,
+  formatHistoryTime,
+  formatScheduledDate,
+  formatScheduledTime,
+  type HistoryTimeInput,
+} from '@app/schemas';
 import { getCurrentScope, onScopeDispose, readonly, ref, type Ref } from 'vue';
 import { createRepeatingTimer } from '@linnya/renderer-ui';
 import { useLocalizationStore } from '../store/localizationStore';
@@ -30,6 +36,10 @@ export interface UseHistoryTimeResult {
   readonly historyTime: (value: HistoryTimeInput | null | undefined) => string;
   /** 完整写法：2026年11月9日 14:32；悬停提示、详情用。 */
   readonly historyDateTime: (value: HistoryTimeInput | null | undefined) => string;
+  /** 计划时刻：今天 09:00 / 明天 09:00 / 11月27日 周五 10:00；定时任务的下次运行与计划时间用。 */
+  readonly scheduledTime: (value: HistoryTimeInput | null | undefined) => string;
+  /** 计划日期：11月30日 / 2027年1月3日。 */
+  readonly scheduledDate: (value: HistoryTimeInput | null | undefined) => string;
 }
 
 /**
@@ -46,5 +56,7 @@ export function useHistoryTime(): UseHistoryTimeResult {
     now: readonly(sharedNow),
     historyTime: value => formatHistoryTime(value, { locale: store.currentLocale, now: sharedNow.value }),
     historyDateTime: value => formatHistoryDateTime(value, { locale: store.currentLocale }),
+    scheduledTime: value => formatScheduledTime(value, { locale: store.currentLocale, now: sharedNow.value }),
+    scheduledDate: value => formatScheduledDate(value, { locale: store.currentLocale, now: sharedNow.value }),
   };
 }

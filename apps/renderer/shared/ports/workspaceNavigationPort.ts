@@ -41,6 +41,10 @@ export interface WorkspaceNavigationPort {
   /** 进入项目概览页：项目里所有文件的一览表。 */
   openProjectOverview(projectId: string): Promise<void>;
   /**
+   * 进入定时任务页。带项目时侧栏保持在该项目、当前项目的任务列在前；`scheduledTaskId` 指定选中的任务。
+   */
+  openScheduledTasks(request: { readonly projectId: string | null; readonly scheduledTaskId?: string | null }): Promise<void>;
+  /**
    * 工具卡/实体引用打开文档内目标时使用。
    * 优先复用 fileSession 的保存/关闭生命周期；只读 runtime 文档仍走 documentRuntimeLoaders。
    */

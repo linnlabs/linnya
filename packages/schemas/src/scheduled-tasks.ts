@@ -27,6 +27,8 @@ export const CONVERSATION_RUN_SCHEDULED_TASKS_CHANNEL = 'conversation-run-schedu
 // ---- App Server → Renderer 推送 ----
 /** 任务或运行记录变了（含状态、未读、名额）；Renderer 收到后重新读取，推送本身不带数据。 */
 export const SCHEDULED_TASKS_CHANGED_CHANNEL = 'scheduled-tasks:changed' as const;
+/** 窗口在前台时，Main 把 `ScheduledTaskNotification` 转给 Renderer 做应用内提示（不在前台才发系统通知）。 */
+export const SCHEDULED_TASKS_NOTIFY_CHANNEL = 'scheduled-tasks:notify' as const;
 
 // ---- 产品限制 ----
 /** 任意相邻两次运行的最短间隔；界面、CLI 与自定义 cron 共用。 */

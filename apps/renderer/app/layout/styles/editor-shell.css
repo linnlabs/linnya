@@ -68,6 +68,20 @@
   flex-direction: column;
 }
 
+/* 定时任务：页头固定，左侧列表与右侧详情各自滚动。 */
+.editor-shell.for-scheduled-tasks {
+  overflow: hidden;
+  padding: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.editor-shell.for-scheduled-tasks .scroll-content-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* 插件视图：由 editor-shell 统一滚动，滚动条贴主内容区域最右侧，避免页面内部滚动条落在内容列中间。 */
 .editor-shell.for-plugin-store {
   overflow-y: auto;

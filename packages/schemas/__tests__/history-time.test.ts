@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatAgentTimestamp, formatHistoryDateTime, formatHistoryTime } from '../src/history-time';
+import {
+  formatAgentTimestamp,
+  formatHistoryDateTime,
+  formatHistoryTime,
+  formatScheduledDate,
+  formatScheduledTime,
+} from '../src/history-time';
 
 const SH = 'Asia/Shanghai';
 const NOW = Date.parse('2026-11-11T14:30:00+08:00');
@@ -69,5 +75,29 @@ describe('formatAgentTimestamp 给 Agent', () => {
     const ms = at('2026-11-09T06:32:05Z');
     expect(Date.parse(formatAgentTimestamp(ms))).toBe(ms);
     expect(formatAgentTimestamp(undefined)).toBe('');
+  });
+});
+
+describe('计划时刻', () => {
+  const plan = (iso: string, locale = 'zh-CN') => formatScheduledTime(at(iso), { locale, now: NOW, timeZone: SH });
+
+  it('今天、明天、昨天带钟点，24 小时制', () => {
+    expect(plan('2026-11-11T15:00:00+08:00')).toBe('今天 15:00');
+    expect(plan('2026-11-12T09:00:00+08:00')).toBe('明天 09:00');
+    expect(plan('2026-11-10T09:00:00+08:00')).toBe('昨天 09:00');
+    expect(plan('2026-11-12T09:00:00+08:00', 'en-US')).toBe('Tomorrow 09:00');
+  });
+
+  it('其余写日期、星期和钟点，不是今年带年份', () => {
+    expect(plan('2026-11-13T10:00:00+08:00')).toBe('11月13日 周五 10:00');
+    expect(plan('2026-11-13T10:00:00+08:00', 'en-US')).toBe('Fri, Nov 13, 10:00');
+    expect(plan('2027-01-03T09:00:00+08:00')).toBe('2027年1月3日 周日 09:00');
+  });
+
+  it('只有日期', () => {
+    const date = (iso: string, locale = 'zh-CN') => formatScheduledDate(at(iso), { locale, now: NOW, timeZone: SH });
+    expect(date('2026-11-30T00:00:00+08:00')).toBe('11月30日');
+    expect(date('2027-01-03T00:00:00+08:00')).toBe('2027年1月3日');
+    expect(date('2026-11-30T00:00:00+08:00', 'en-US')).toBe('Nov 30');
   });
 });

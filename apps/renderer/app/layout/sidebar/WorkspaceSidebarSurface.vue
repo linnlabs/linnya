@@ -16,10 +16,13 @@
       v-if="effectiveSidebarNav === 'list'"
       :active-scene="activeScene"
       :is-plugin-store-active="isPluginStoreActive()"
+      :is-scheduled-tasks-active="activeScene === 'scheduled-tasks'"
+      :scheduled-tasks-unread="scheduledTasksStore.unreadTotal"
       @new-conversation="handleNewConversation"
       @create-project="handleCreateProjectRequest"
       @knowledge-base-click="handleKnowledgeBaseClick"
       @plugin-store-click="handlePluginStoreClick"
+      @scheduled-tasks-click="handleOpenScheduledTasks(null)"
     />
 
     <SidebarProjectNav
@@ -27,12 +30,15 @@
       :project-name="projectNavProjectName"
       :sidebar-mode="sidebarMode"
       :overview-selected="activeScene === 'project-overview'"
+      :scheduled-tasks-selected="activeScene === 'scheduled-tasks'"
+      :scheduled-tasks-unread="navigationScope.currentProjectId ? scheduledTasksStore.unreadInProject(navigationScope.currentProjectId) : 0"
       :chat-search-query="projectChatSearchQuery"
       :file-search-query="projectFileSearchQuery"
       :show-create-menu="showProjectCreateMenu"
       :create-options="projectCreateOptions"
       @back="handleBackToList"
       @open-overview="handleOpenCurrentProjectOverview"
+      @open-scheduled-tasks="handleOpenScheduledTasks(navigationScope.currentProjectId ?? null)"
       @set-mode="setSidebarMode"
       @new-conversation="handleNewConversation"
       @toggle-create-menu="toggleProjectCreateMenu"
@@ -162,6 +168,7 @@ import { getNavigationScopeKey, useNavigationScope } from '@/app/navigation';
 import { useSidebarConversationHistoryRevealStore } from '@/app/layout/store/sidebarConversationHistoryRevealStore';
 import { startDraftConversation } from '@/domains/conversation/services/orchestration/startDraftConversation';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
+import { useScheduledTasksStore } from '@/domains/scheduled-tasks';
 import { AlertDialog, SkeletonRows } from '@linnya/renderer-ui';
 import { useOverlayScrollViewport } from '@linnya/renderer-ui/scroll';
 import {
@@ -228,6 +235,7 @@ const historyListStore = useHistoryList();
 const uiStore = useUIStore();
 const fileStore = useFileStore();
 const notificationStore = useNotificationStore();
+const scheduledTasksStore = useScheduledTasksStore();
 const enabledPluginsStore = useEnabledPluginsStore();
 const navigationScope = useNavigationScope();
 const sidebarHistoryRevealStore = useSidebarConversationHistoryRevealStore();
@@ -563,6 +571,15 @@ const handleOpenProjectOverview = async (projectId) => {
     await treeStore.ensureProjectTreeLoaded(projectId);
   } catch (error) {
     console.warn('[WorkspaceSidebarSurface] 打开项目概览已取消：', error);
+  }
+};
+
+const handleOpenScheduledTasks = async (projectId) => {
+  try {
+    await ensureViewSwitchSafety();
+    await getWorkspaceNavigationPort().openScheduledTasks({ projectId });
+  } catch (error) {
+    console.warn('[WorkspaceSidebarSurface] 打开定时任务已取消：', error);
   }
 };
 

@@ -327,6 +327,9 @@ export function openBypassViewState(state: LayoutState, bypassView: NonNullable<
     case 'project-overview':
       next.scene = { kind: 'project-overview', projectId: bypassView.projectId };
       break;
+    case 'scheduled-tasks':
+      next.scene = { kind: 'scheduled-tasks', projectId: bypassView.projectId, scheduledTaskId: bypassView.scheduledTaskId };
+      break;
   }
   next.bypassView = { ...bypassView };
   next.documentPane = {

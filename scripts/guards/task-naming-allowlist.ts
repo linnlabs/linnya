@@ -158,6 +158,31 @@ export const TASK_NAMING_ALLOWANCES: readonly TaskNamingAllowance[] = [
     removeAfter: '对应 domain 独立命名治理',
     allows: inFiles('src/tools/knowledgebase/search/deep/taskMessageBuilder.ts'),
   },
+  {
+    id: 'scheduled-task-product',
+    reason:
+      '“定时任务”是面向用户的产品功能名：按时间表自动新建对话去做，与 Agent 执行语义无关。只允许该功能的合同、Host 实现、Renderer 领域与界面预览，以及明确带 scheduled 前缀的标识符。',
+    removeAfter: '长期保留',
+    allows: occurrence =>
+      under(
+        'apps/renderer/domains/scheduled-tasks',
+        'apps/renderer/app/pages/ScheduledTasksPage',
+        'src/app-hosts/linnya/application/scheduled-tasks',
+        'src/app-hosts/linnya/adapters/scheduled-tasks',
+        'src/app-hosts/linnya/adapters/persistence/scheduled-tasks',
+        'src/app-hosts/linnya/agent-registry/agents/scheduled'
+      )(occurrence) ||
+      inFiles(
+        'packages/schemas/src/scheduled-tasks.ts',
+        'packages/schemas/src/scheduled-tasks.test.ts',
+        'packages/schemas/src/conversation/scheduled-fold.ts',
+        'src/electron-main/preload/modules/scheduled-tasks-preload.ts',
+        'scripts/development/features/ui-gallery/page/prototypes/scheduledTasksDemo.ts',
+        'scripts/development/features/ui-gallery/page/prototypes/ScheduledTaskEditor.vue',
+        'scripts/development/features/ui-gallery/page/sections/ScheduledTasksSection.vue'
+      )(occurrence) ||
+      /scheduled[_-]?tasks?/i.test(occurrence.name),
+  },
 ];
 
 export function findTaskNamingAllowance(
