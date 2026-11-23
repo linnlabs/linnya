@@ -16,7 +16,13 @@ export function formatScheduledTaskNotification(
     case 'completed':
       return { text: message('scheduledTasks.notify.completed', { name: notification.task_name }), type: 'success' };
     case 'awaiting_approval':
-      return { text: message('scheduledTasks.notify.awaitingApproval', { name: notification.task_name }), type: 'warning' };
+      // 重启后原审批已失效：这次运行不会再继续，提示用户回原对话看。
+      return {
+        text: message(notification.interrupted ? 'scheduledTasks.notify.approvalInterrupted' : 'scheduledTasks.notify.awaitingApproval', {
+          name: notification.task_name,
+        }),
+        type: 'warning',
+      };
     case 'failed':
       return {
         text: message('scheduledTasks.notify.failed', {

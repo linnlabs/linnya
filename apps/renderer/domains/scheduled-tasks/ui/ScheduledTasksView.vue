@@ -36,6 +36,9 @@
     <p v-if="!store.schedulerEnabled" class="scheduled-tasks-view__disabled" role="status">
       {{ scheduledTaskMessage('scheduledTasks.schedulerDisabled') }}
     </p>
+    <p v-else-if="store.clockAnomaly" class="scheduled-tasks-view__disabled" role="status" data-testid="scheduled-tasks-clock-anomaly">
+      {{ scheduledTaskMessage('scheduledTasks.clockAnomaly', { date: scheduledDate(store.clockAnomaly.now) }) }}
+    </p>
 
     <div v-if="store.loadState === 'error'" class="scheduled-tasks-view__state" role="alert">
       <p>{{ scheduledTaskMessage('scheduledTasks.loadFailed') }}</p>
@@ -89,6 +92,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useHistoryTime } from '@app/localization';
 import {
   SCHEDULED_TASK_CONCURRENCY_MAX,
   SCHEDULED_TASK_CONCURRENCY_MIN,
@@ -119,6 +123,7 @@ const emit = defineEmits<{
 }>();
 
 const { scheduledTaskMessage } = useScheduledTaskLocalization();
+const { scheduledDate } = useHistoryTime();
 const store = useScheduledTasksStore();
 const projectsStore = useWorkspaceProjectsStore();
 const modelPicker = useModelPickerReadModel();

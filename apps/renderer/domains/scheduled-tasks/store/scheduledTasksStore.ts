@@ -2,6 +2,9 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { ScheduledTask, ScheduledTaskSettings, ScheduledTasksListResult } from '@app/schemas/scheduled-tasks';
 
+/** App Server 判定系统时间不对（早于构建时间或已有记录）时的读数；期间不按时运行。 */
+export type ScheduledTaskClockAnomaly = NonNullable<ScheduledTasksListResult['clock_anomaly']>;
+
 export type ScheduledTasksLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 /** App Server 任务列表的 Renderer 快照。只保存最近一次读取的结果，读取与刷新由 orchestration 负责。 */
@@ -10,6 +13,7 @@ export const useScheduledTasksStore = defineStore('scheduled-tasks', () => {
   const settings = ref<ScheduledTaskSettings | null>(null);
   const runningCount = ref(0);
   const schedulerEnabled = ref(true);
+  const clockAnomaly = ref<ScheduledTaskClockAnomaly | null>(null);
   const loadState = ref<ScheduledTasksLoadState>('idle');
   /** 每次收到“有变化”就加一；运行记录等按需读取的视图据此重读。 */
   const changeSeq = ref(0);
@@ -29,6 +33,7 @@ export const useScheduledTasksStore = defineStore('scheduled-tasks', () => {
     settings.value = result.settings;
     runningCount.value = result.running_count;
     schedulerEnabled.value = result.scheduler_enabled;
+    clockAnomaly.value = result.clock_anomaly ?? null;
     loadState.value = 'ready';
   }
 
@@ -60,7 +65,7 @@ export const useScheduledTasksStore = defineStore('scheduled-tasks', () => {
   }
 
   return {
-    tasks, settings, runningCount, schedulerEnabled, loadState, changeSeq, unreadTotal,
+    tasks, settings, runningCount, schedulerEnabled, clockAnomaly, loadState, changeSeq, unreadTotal,
     unreadInProject, taskById, applyList, applyTask, removeTask, applySettings, markLoading, markError, noteChanged,
   };
 });

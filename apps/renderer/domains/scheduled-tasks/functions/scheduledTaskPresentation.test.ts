@@ -5,6 +5,7 @@ import type { ScheduledTaskMessageResolver } from '../definitions/scheduledTaskM
 import { formatScheduledDate } from '@app/schemas';
 import { describeSchedule } from './describeSchedule';
 import { createScheduleDraft, scheduleFromDraft, toggleWeekday } from './scheduleDraft';
+import { formatScheduledTaskNotification } from './formatScheduledTaskNotification';
 import { groupTasksByProject, presentRun, presentTaskState, resolveTaskBanner } from './presentScheduledTask';
 
 const message: ScheduledTaskMessageResolver = (key, params) =>
@@ -84,5 +85,23 @@ describe('状态与运行记录', () => {
     const grouped = groupTasksByProject([task('1', 'c'), task('2', 'a'), task('3', 'b'), task('4', 'gone')], 'a', id => names[id] ?? null, 'zh-CN');
     expect(grouped.current?.tasks.map(item => item.id)).toEqual(['2']);
     expect(grouped.others.map(group => group.projectId)).toEqual(['b', 'c', 'gone']);
+  });
+});
+
+describe('前台通知文案', () => {
+  const base = { kind: 'awaiting_approval', task_id: 't1', task_name: '每日简报', conversation_id: 'c1' } as const;
+
+  it('等待批准与重启后批准失效分开说明，都提醒用户而不是报错', () => {
+    expect(formatScheduledTaskNotification(base, message)).toEqual({ text: '定时任务“每日简报”在等你批准命令。', type: 'warning' });
+    expect(formatScheduledTaskNotification({ ...base, interrupted: true }, message)).toEqual({
+      text: '定时任务“每日简报”等待的批准因为应用重启失效了，打开对话查看。', type: 'warning',
+    });
+  });
+});
+
+describe('时钟异常横幅文案', () => {
+  it('说明系统显示的日期、暂停按时运行与“立即运行”仍可用', () => {
+    const text = message('scheduledTasks.clockAnomaly', { date: '1997年1月1日' });
+    expect(text).toBe('系统时间看起来不对（显示为 1997年1月1日），定时任务暂停按时运行，时间恢复后自动继续；“立即运行”仍可用。');
   });
 });
