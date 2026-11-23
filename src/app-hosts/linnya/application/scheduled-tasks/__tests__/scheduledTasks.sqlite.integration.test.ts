@@ -176,10 +176,11 @@ describe('scheduled tasks with a wall clock and real SQLite', () => {
     await f.at(HOUR + 60_000);
     const before = f.store.readRuns(id, 10);
     await f.at(60_000);
-    expect(f.store.readRuns(id, 10)).toEqual(before);
+    // 记录原样保留；只有未读计时的起点晚于现在，压回现在（14 天未看从现在算）。
+    expect(f.store.readRuns(id, 10)).toEqual(before.map(run => ({ ...run, unread_since_at: START + 60_000 })));
     expect((await f.tasks.list()).tasks[0].next_run_at).toBe(START + 2 * HOUR);
     await f.at(HOUR);
-    expect(f.store.readRuns(id, 10)).toEqual(before);
+    expect(f.store.readRuns(id, 10)).toEqual(before.map(run => ({ ...run, unread_since_at: START + 60_000 })));
     await f.at(2 * HOUR);
     expect(f.admitted).toEqual(['rollback', 'rollback']);
     await f.tasks.lifecycle.stop();
@@ -225,6 +226,32 @@ describe('scheduled tasks with a wall clock and real SQLite', () => {
     expect(f.store.readRuns(id, 5)).toMatchObject([{ trigger: 'catch_up', planned_at: START + 731 * DAY + 9 * HOUR },
       { status: 'skipped', skipped_count: 731 }]);
     expect(f.admitted).toEqual(['year-jump']);
+    await f.tasks.lifecycle.stop();
+  });
+
+  it('recovers from a clock that ran years ahead instead of treating the corrected time as an anomaly', async () => {
+    const f = fixture(':memory:', START - DAY);
+    const id = await f.create('ahead-and-back', { schedule: { kind: 'daily', time: '09:00' } });
+    await f.start();
+    // 误把时钟调到两年后：库里留下两年后的检查、完成与查看时刻。
+    const ahead = 731 * DAY + 10 * HOUR;
+    await f.at(ahead);
+    f.transition(id, 'completed');
+    await f.at(ahead + 60_000);
+    expect(f.store.firstUnreadAt(id)).toBe(START + ahead + 60_000);
+
+    // 改回正确时间：不是异常，按回拨重定基准，第二天 9 点照常运行。
+    await f.at(DAY + 8 * HOUR);
+    expect((await f.tasks.list()).clock_anomaly).toBeUndefined();
+    expect((await f.tasks.list()).tasks[0].next_run_at).toBe(START + DAY + 9 * HOUR);
+    await f.at(DAY + 9 * HOUR);
+    expect(f.admitted).toEqual(['ahead-and-back', 'ahead-and-back']);
+
+    // 未来的未读起点按现在算：14 天没看仍会自动暂停，而不是等到两年后。
+    expect(f.store.firstUnreadAt(id)).toBe(START + DAY + 8 * HOUR);
+    f.transition(id, 'completed');
+    await f.at(DAY + 8 * HOUR + 14 * DAY + 60_000);
+    expect(f.store.read(id)).toMatchObject({ enabled: false, paused_reason: 'unviewed' });
     await f.tasks.lifecycle.stop();
   });
 

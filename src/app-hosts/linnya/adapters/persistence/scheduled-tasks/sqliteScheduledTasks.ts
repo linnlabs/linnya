@@ -157,6 +157,14 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
         WHERE task_id = ? AND status = 'completed' AND conversation_id IS NOT NULL AND viewed_at IS NULL
       `).get(taskId)?.since ?? null;
     },
+    clampFutureClockMarks(now): boolean {
+      const runs = db.prepare(`UPDATE scheduled_task_runs SET unread_since_at = ? WHERE unread_since_at > ?`).run(now, now).changes;
+      const tasks = db.prepare(`UPDATE scheduled_tasks SET
+          last_viewed_at = CASE WHEN last_viewed_at > @now THEN @now ELSE last_viewed_at END,
+          unviewed_since_at = MIN(unviewed_since_at, @now)
+        WHERE last_viewed_at > @now OR unviewed_since_at > @now`).run({ now }).changes;
+      return runs + tasks > 0;
+    },
     anchorUnreadCompletions(now): boolean {
       return db.prepare(`UPDATE scheduled_task_runs SET unread_since_at = ? WHERE status = 'completed'
         AND conversation_id IS NOT NULL AND viewed_at IS NULL AND unread_since_at IS NULL`).run(now).changes > 0;

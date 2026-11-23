@@ -186,6 +186,7 @@ export function createScheduledTaskScheduler(ports: ScheduledTaskPorts) {
     let catchUpCount = 0;
     let changed = options.publish;
     store.transaction(() => {
+      changed = store.clampFutureClockMarks(now) || changed;
       changed = store.anchorUnreadCompletions(now) || changed;
       const pending = store.pendingRuns();
       for (const task of store.list()) {

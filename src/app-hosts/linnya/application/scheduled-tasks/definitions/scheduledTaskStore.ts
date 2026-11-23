@@ -81,6 +81,8 @@ export interface ScheduledTaskStore {
   readRunForConversation(conversationId: string): ScheduledRunRecord | undefined;
   runFacts(taskId: string): { run_count: number; unread_count: number };
   firstUnreadAt(taskId: string): number | null;
+  /** 时钟曾跑到未来时写下的未读起点、查看时刻压回现在，14 天未看计时从现在算。 */
+  clampFutureClockMarks(now: number): boolean;
   anchorUnreadCompletions(now: number): boolean;
   clearHistory(taskId: string): void;
   removeRun(id: string): void;
