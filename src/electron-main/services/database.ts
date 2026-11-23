@@ -16,7 +16,7 @@ import path from 'node:path';
 import type { ISchemaProvider } from './database/schema-provider';
 import { getWorkspaceSchemaProviders } from '../../features/workspace/infrastructure/sqlite/schema-providers';
 import { getProjectDeletionSchemaProviders } from 'src/app-hosts/linnya/adapters/persistence/project-deletion';
-import { getScheduledTaskSchemaProviders } from 'src/app-hosts/linnya/adapters/persistence/scheduled-tasks/schema-providers';
+import { completeScheduledTaskSchema, getScheduledTaskSchemaProviders } from 'src/app-hosts/linnya/adapters/persistence/scheduled-tasks/schema-providers';
 import { getProjectSavedFilterSchemaProviders } from 'src/app-hosts/linnya/adapters/persistence/saved-filters';
 import { getConversationSchemaProviders } from '../../app-hosts/linnya/adapters/persistence/event-store/schema-providers';
 import { getCitationRefClaimSchemaProviders } from '../../app-hosts/linnya/adapters/persistence/citation-ref-claims/schema-provider';
@@ -366,6 +366,7 @@ export class DatabaseService {
    * 迁移后再创建依赖最终表结构的索引、视图与触发器。
    */
   private createDependentSchema(): void {
+    completeScheduledTaskSchema(this.getDb());
     this.applyProviderSchemas({
       label: 'indexes, views and triggers',
       shouldApply: ddl => this.isDependentDdl(ddl),

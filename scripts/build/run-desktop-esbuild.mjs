@@ -12,6 +12,7 @@ for (const flag of flags) {
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const configuration = {
   ...options,
+  ...(target === 'main' ? { define: { LINNYA_DESKTOP_BUILD_TIME: String(Date.now()) } } : {}),
   bundle: true,
   sourcemap: flags.includes('--sourcemap=inline') ? 'inline' : false,
   metafile: isBundleTraceEnabled(),

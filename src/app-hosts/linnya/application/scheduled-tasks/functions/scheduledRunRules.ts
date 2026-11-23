@@ -3,13 +3,15 @@ import type { ScheduledTaskRunReason, ScheduledTaskRunTrigger } from '@app/schem
 import { SCHEDULED_TASK_CATCH_UP_WINDOW_MS, SCHEDULED_TASK_MISSED_TOLERANCE_MS } from '@app/schemas/scheduled-tasks';
 import type { ScheduledExecutionState } from '../definitions/scheduledTaskRuntime';
 import type { ScheduledRunRecord, ScheduledTaskRecord } from '../definitions/scheduledTaskStore';
-import { elapsedScheduledTimes } from './scheduleTime';
+import { elapsedScheduledTimes, type ScheduleTimeZone } from './scheduleTime';
+import { elapsedSince } from './scheduledClock';
 
-export function createScheduledRun(task: ScheduledTaskRecord, plannedAt: number, trigger: ScheduledTaskRunTrigger): ScheduledRunRecord {
+export function createScheduledRun(task: ScheduledTaskRecord, plannedAt: number, trigger: ScheduledTaskRunTrigger, timezone: ScheduleTimeZone): ScheduledRunRecord {
   return {
     id: randomUUID(), task_id: task.id, planned_at: plannedAt, trigger, status: 'queued', reason: null,
-    conversation_id: null, run_id: null, skipped_count: 1, started_at: null, ended_at: null, viewed_at: null,
-    approval_notified_at: null, model_config_id: task.model_config_id, permission_level: task.permission_level,
+    planned_local: trigger === 'manual' ? null : timezone.localMinute(plannedAt), time_zone: timezone.name,
+    unread_since_at: null, conversation_id: null, run_id: null, skipped_count: 1, started_at: null, ended_at: null, viewed_at: null,
+    approval_notified_at: null, approval_pending: 0, model_config_id: task.model_config_id, permission_level: task.permission_level,
     schedule_generation: task.schedule_generation,
   };
 }
@@ -21,12 +23,14 @@ export function skipReasonForActiveRun(state: ScheduledExecutionState | undefine
 }
 
 export function planScheduledOccurrences(input: {
-  task: ScheduledTaskRecord; now: number; timezone: string; wake: boolean;
+  task: ScheduledTaskRecord; now: number; timezone: ScheduleTimeZone; wake: boolean;
+  hasLocalOccurrence: (local: string) => boolean;
   queuedAtStartup?: ScheduledRunRecord; existing: (time: number) => ScheduledRunRecord | undefined;
   activeState?: ScheduledExecutionState;
 }): ScheduledRunRecord[] {
-  const { task, now, queuedAtStartup } = input;
-  const elapsed = elapsedScheduledTimes(task.clock, task.checked_through_at, now, input.timezone);
+  const { task, now, timezone, queuedAtStartup } = input;
+  const elapsed = elapsedScheduledTimes(task.clock, task.checked_through_at, now, timezone.name,
+    at => !input.existing(at) && !input.hasLocalOccurrence(timezone.localMinute(at)));
   if (!elapsed && !queuedAtStartup) return [];
   const latest = elapsed?.latest ?? queuedAtStartup?.planned_at;
   if (latest === undefined) return [];
@@ -35,23 +39,24 @@ export function planScheduledOccurrences(input: {
     ...run, status: 'skipped', reason, skipped_count: count, ended_at: now,
   });
   const active = skipReasonForActiveRun(input.activeState);
-  const missed = (input.wake && now - latest > SCHEDULED_TASK_MISSED_TOLERANCE_MS) || (queuedAtStartup !== undefined && elapsed === null);
+  const delay = elapsedSince(now, latest);
+  const missed = (input.wake && delay > SCHEDULED_TASK_MISSED_TOLERANCE_MS) || (queuedAtStartup !== undefined && elapsed === null);
   const reason = active ?? (missed && task.missed_policy === 'skip' ? 'missed_policy_skip'
-    : missed && now - latest > SCHEDULED_TASK_CATCH_UP_WINDOW_MS ? 'outside_catch_up_window' : null);
+    : missed && delay > SCHEDULED_TASK_CATCH_UP_WINDOW_MS ? 'outside_catch_up_window' : null);
   const trigger: ScheduledTaskRunTrigger = missed ? 'catch_up' : 'schedule';
   const earlier = (elapsed?.count ?? 0) + Number(Boolean(queuedAtStartup)) - 1;
   const groupAll = reason === 'missed_policy_skip' || reason === 'outside_catch_up_window';
   if (earlier > 0 && !groupAll) {
     const representative = queuedAtStartup?.planned_at ?? elapsed?.preceding;
     if (representative !== null && representative !== undefined) {
-      const prior = input.existing(representative) ?? createScheduledRun(task, representative, 'catch_up');
+      const prior = input.existing(representative) ?? createScheduledRun(task, representative, 'catch_up', timezone);
       if (prior.status === 'queued') rows.push(skip(prior, active ?? (task.missed_policy === 'skip'
         ? 'missed_policy_skip' : 'outside_catch_up_window'), earlier));
     }
   }
   const existing = input.existing(latest);
   if (!existing || (queuedAtStartup?.id === existing.id)) {
-    const candidate = { ...(existing ?? createScheduledRun(task, latest, trigger)), trigger };
+    const candidate = { ...(existing ?? createScheduledRun(task, latest, trigger, timezone)), trigger };
     rows.push(reason ? skip(candidate, reason, groupAll ? earlier + 1 : 1) : candidate);
     if (groupAll && queuedAtStartup && queuedAtStartup.id !== candidate.id) rows.unshift({ ...queuedAtStartup, status: 'superseded', ended_at: now });
   }

@@ -7,6 +7,20 @@ import {
 
 export const MINUTE_MS = 60_000;
 
+export function createScheduleTimeZone(name: string) {
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: name, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  });
+  const localMinute = (at: number) => formatter.format(at).replace(' ', 'T');
+  return {
+    name,
+    localMinute,
+    offsetAt: (at: number) => (Date.parse(`${localMinute(at)}Z`) - Math.floor(at / MINUTE_MS) * MINUTE_MS) / MINUTE_MS,
+  };
+}
+
+export type ScheduleTimeZone = ReturnType<typeof createScheduleTimeZone>;
+
 export type CompiledSchedule = { readonly cron: string; readonly localDateTime: null }
   | { readonly cron: null; readonly localDateTime: string };
 
@@ -35,12 +49,16 @@ export function previewSchedule(
   schedule: ScheduledTaskSchedule,
   now: number,
   timezone: string,
+  clockAnomalous = false,
 ): ScheduledTaskPreviewScheduleResult {
   const invalid = { ok: false, code: 'invalid_expression', message: 'Enter a valid five-field cron expression or local date.' } as const;
   if (schedule.kind === 'cron' && schedule.expression.split(/\s+/u).length !== 5) return invalid;
   if (schedule.kind === 'weekly'
     && schedule.weekdays.some((day, index, days) => index > 0 && day <= days[index - 1])) return invalid;
-  if (schedule.kind === 'once' && new Date(`${schedule.date}T00:00:00Z`).toISOString().slice(0, 10) !== schedule.date) return invalid;
+  if (schedule.kind === 'once') {
+    const utcDate = new Date(`${schedule.date}T00:00:00Z`);
+    if (!Number.isFinite(utcDate.getTime()) || utcDate.toISOString().slice(0, 10) !== schedule.date) return invalid;
+  }
 
   let clock: Cron;
   try {
@@ -48,7 +66,8 @@ export function previewSchedule(
   } catch {
     return invalid;
   }
-  const next = clock.nextRun(new Date(now));
+  const reference = clockAnomalous && schedule.kind === 'once' ? Date.parse(`${schedule.date}T00:00:00Z`) - 2 * 86_400_000 : now;
+  const next = clock.nextRun(new Date(reference));
   if (!next) return schedule.kind === 'once'
     ? { ok: false, code: 'in_the_past', message: 'Choose a time in the future.' }
     : { ok: false, code: 'never_runs', message: 'This cron expression has no future occurrence.' };
@@ -73,6 +92,7 @@ export function elapsedScheduledTimes(
   after: number,
   now: number,
   timezone: string,
+  include: (at: number) => boolean = () => true,
 ): { count: number; latest: number; preceding: number | null } | null {
   if (now <= after) return null;
   const clock = clockFor(schedule, timezone);
@@ -80,6 +100,7 @@ export function elapsedScheduledTimes(
   let preceding: number | null = null;
   let latest = after;
   for (let next = clock.nextRun(new Date(after)); next && next.getTime() <= now; next = clock.nextRun(next)) {
+    if (!include(next.getTime())) continue;
     preceding = count > 0 ? latest : null;
     latest = next.getTime();
     count++;

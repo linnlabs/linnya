@@ -162,6 +162,9 @@ export const ScheduledTaskRunSchema = z.object({
   task_id: Id,
   /** 计划时刻；手动运行为点击时刻。 */
   planned_at: EpochMs,
+  /** 旧记录和手动运行可能没有本地计划分钟。 */
+  planned_local: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u).optional(),
+  time_zone: z.string().min(1).optional(),
   trigger: ScheduledTaskRunTriggerSchema,
   status: ScheduledTaskRunStatusSchema,
   reason: ScheduledTaskRunReasonSchema.nullable(),
@@ -231,6 +234,7 @@ export const ScheduledTasksListResultSchema = z.object({
   running_count: NonNegativeInt,
   /** 开发环境默认关闭定时器；关闭时界面说明到点不会运行。 */
   scheduler_enabled: z.boolean(),
+  clock_anomaly: z.object({ now: EpochMs, expected_after: EpochMs }).strict().optional(),
 }).strict();
 
 export const ScheduledTaskRunsRequestSchema = z.object({
@@ -378,7 +382,10 @@ export { ScheduledConversationFoldSchema, type ScheduledConversationFold } from 
  */
 export const ScheduledTaskNotificationSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('completed'), task_id: Id, task_name: z.string().min(1), conversation_id: Id }).strict(),
-  z.object({ kind: z.literal('awaiting_approval'), task_id: Id, task_name: z.string().min(1), conversation_id: Id }).strict(),
+  z.object({ kind: z.literal('awaiting_approval'), task_id: Id, task_name: z.string().min(1), conversation_id: Id,
+    /** 重启后原审批已失效；点击仍打开原对话。 */
+    interrupted: z.literal(true).optional(),
+  }).strict(),
   z.object({
     kind: z.literal('failed'),
     task_id: Id,

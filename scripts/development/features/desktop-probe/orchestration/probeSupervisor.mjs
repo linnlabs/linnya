@@ -113,6 +113,8 @@ function startElectron() {
         NODE_ENV: 'development', APP_VERSION: require(join(repoRoot, 'package.json')).version,
         LINNYA_DEV_MODE: String(dev), LINNYA_DEV_INSTANCE_ROOT: root,
         LINNYA_SCHEDULED_TASKS: options.scheduledTasks ? '1' : '0',
+        LINNYA_SCHEDULED_TASKS_CLOCK: options.scheduledTasksClock ?? '',
+        ...(options.scheduledTasksTimezone === undefined ? {} : { TZ: options.scheduledTasksTimezone }),
         LINNYA_DISABLE_UPDATE_CHECKS: '1', LINNYA_API_PORT: '',
         LINNYA_WORKSPACE_DIR: join(root, 'workspace'), LINNYA_CONVERSATION_ROOT: '',
         LINNYA_PLUGIN_ROOT: join(root, 'plugins'),

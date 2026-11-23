@@ -48,6 +48,8 @@ import { createExportArtifactCommitRpcHandlers } from '../../../app-hosts/linnya
 import { commitAuthorizedExportArtifact } from '../../../features/system/export/orchestration/exportArtifactTargetRuntime';
 import { createDesktopDiagnosticLogRpcHandlers } from '../../../app-hosts/linnya/app-server-runtime/features/diagnostic-log-rpc';
 import { writeForwardedDiagnosticLogRecord } from '../../../shared/logger';
+import { createScheduledTaskTimezoneHandlers } from '../../../app-hosts/linnya/desktop-capabilities/features/scheduled-task-timezone-rpc';
+import { readDesktopTimezone } from '../../desktop-capabilities/scheduled-task-timezone/readDesktopTimezone';
 
 /** Electron Main 的唯一 App Server composition；这里只保留真实 Desktop capability owner。 */
 export async function createElectronAppServerRuntime(input: {
@@ -102,6 +104,7 @@ export async function createElectronAppServerRuntime(input: {
       : []),
   ]);
   const rpcHandlers = new Map<string, AppServerRpcHandler>();
+  registerHandlers(rpcHandlers, createScheduledTaskTimezoneHandlers(readDesktopTimezone));
   registerHandlers(rpcHandlers, createDesktopDiagnosticLogRpcHandlers({
     writeRecord: writeForwardedDiagnosticLogRecord,
   }));

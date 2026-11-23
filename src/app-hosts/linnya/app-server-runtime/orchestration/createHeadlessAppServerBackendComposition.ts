@@ -1,4 +1,5 @@
 import { createScheduledTaskNotificationClient } from '../../desktop-capabilities/features/scheduled-task-notification-rpc';
+import { createScheduledTaskTimezoneClient } from '../../desktop-capabilities/features/scheduled-task-timezone-rpc';
 import path from 'node:path';
 import type { ScheduledTasks } from '../../application/scheduled-tasks';
 import type { ConversationExecutionRuntimeCreateInput } from '../../application/conversation-runtime';
@@ -216,6 +217,7 @@ export function createHeadlessAppServerBackendComposition(input: {
       }),
       rendererIntegration,
       ...(input.bootstrap.host_kind === 'desktop' ? { notifyScheduledTask: createScheduledTaskNotificationClient(input.rpc) } : {}),
+      ...(input.bootstrap.host_kind === 'desktop' ? { readScheduledTaskTimezone: createScheduledTaskTimezoneClient(input.rpc) } : {}),
       rasterPdfDocument: createDesktopRasterPdfDocumentRpcClient(mailbox),
       externalAuthorizationBrowser: createExternalAuthorizationBrowserRpcClient(input.rpc),
       webPageRenderer: createDesktopWebPageRendererRpcClient(mailbox),

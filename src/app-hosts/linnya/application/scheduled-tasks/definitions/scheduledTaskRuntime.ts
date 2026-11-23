@@ -25,6 +25,8 @@ export interface ScheduledTaskPorts {
   readonly schedulerEnabled: boolean;
   readonly now: () => number;
   readonly timezone: () => string;
+  readonly refreshTimezone?: () => Promise<void>;
+  readonly buildTime?: number;
   readonly projectExists: (projectId: string) => boolean;
   readonly defaultModel: () => string | null;
   readonly modelAvailable: (id: string) => boolean;

@@ -1,4 +1,31 @@
 import type { ISchemaProvider } from 'src/shared/database/schema-provider';
+import type Database from 'better-sqlite3';
+
+/** 早期开发库已有任务表，当前版本号下的发行库没有这两张表。旧计划的时区无法从 UTC 反推。 */
+export function completeScheduledTaskSchema(db: Database.Database): void {
+  db.transaction(() => {
+    const tasks = new Set(db.prepare<[], { name: string }>('PRAGMA table_info(scheduled_tasks)').all().map(column => column.name));
+    if (!tasks.has('checked_timezone')) {
+      db.exec('ALTER TABLE scheduled_tasks ADD COLUMN checked_timezone TEXT; ALTER TABLE scheduled_tasks ADD COLUMN checked_timezone_offset INTEGER');
+    }
+    if (!tasks.has('latest_checked_at')) {
+      db.exec(`ALTER TABLE scheduled_tasks ADD COLUMN latest_checked_at INTEGER NOT NULL DEFAULT 0;
+        UPDATE scheduled_tasks SET latest_checked_at = checked_through_at`);
+    }
+    const runs = new Set(db.prepare<[], { name: string }>('PRAGMA table_info(scheduled_task_runs)').all().map(column => column.name));
+    if (!runs.has('planned_local')) {
+      db.exec('ALTER TABLE scheduled_task_runs ADD COLUMN planned_local TEXT; ALTER TABLE scheduled_task_runs ADD COLUMN time_zone TEXT');
+    }
+    if (!runs.has('unread_since_at')) {
+      db.exec(`ALTER TABLE scheduled_task_runs ADD COLUMN unread_since_at INTEGER;
+        UPDATE scheduled_task_runs SET unread_since_at = ended_at WHERE status = 'completed'`);
+    }
+    if (!runs.has('approval_pending')) {
+      db.exec(`ALTER TABLE scheduled_task_runs ADD COLUMN approval_pending INTEGER NOT NULL DEFAULT 0;
+        UPDATE scheduled_task_runs SET approval_pending = 1 WHERE status = 'admitted' AND approval_notified_at IS NOT NULL`);
+    }
+  }).immediate();
+}
 
 export function getScheduledTaskSchemaProviders(): ISchemaProvider[] {
   return [{ name: 'scheduled-tasks', getSchema: () => [
@@ -21,6 +48,9 @@ export function getScheduledTaskSchemaProviders(): ISchemaProvider[] {
       last_viewed_at INTEGER,
       unviewed_since_at INTEGER NOT NULL,
       checked_through_at INTEGER NOT NULL,
+      checked_timezone TEXT,
+      checked_timezone_offset INTEGER,
+      latest_checked_at INTEGER NOT NULL DEFAULT 0,
       schedule_generation INTEGER NOT NULL DEFAULT 0,
       created_by_kind TEXT NOT NULL CHECK(created_by_kind IN ('user', 'agent')),
       created_conversation_id TEXT,
@@ -37,6 +67,8 @@ export function getScheduledTaskSchemaProviders(): ISchemaProvider[] {
       id TEXT PRIMARY KEY,
       task_id TEXT NOT NULL REFERENCES scheduled_tasks(id) ON DELETE CASCADE,
       planned_at INTEGER NOT NULL,
+      planned_local TEXT,
+      time_zone TEXT,
       trigger TEXT NOT NULL CHECK(trigger IN ('schedule', 'catch_up', 'manual')),
       status TEXT NOT NULL CHECK(status IN ('queued', 'admitted', 'completed', 'failed', 'skipped', 'interrupted', 'superseded')),
       reason TEXT,
@@ -48,10 +80,14 @@ export function getScheduledTaskSchemaProviders(): ISchemaProvider[] {
       schedule_generation INTEGER NOT NULL,
       started_at INTEGER,
       ended_at INTEGER,
+      unread_since_at INTEGER,
       viewed_at INTEGER,
       approval_notified_at INTEGER,
+      approval_pending INTEGER NOT NULL DEFAULT 0,
       UNIQUE(task_id, planned_at)
     )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_scheduled_task_runs_local
+      ON scheduled_task_runs(task_id, planned_local) WHERE planned_local IS NOT NULL`,
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_scheduled_task_runs_conversation
       ON scheduled_task_runs(conversation_id) WHERE conversation_id IS NOT NULL`,
     `CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_unread

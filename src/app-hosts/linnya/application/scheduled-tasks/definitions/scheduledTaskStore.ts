@@ -22,6 +22,9 @@ export interface ScheduledTaskRecord extends ScheduledTaskCreateRequest {
   last_viewed_at: number | null;
   unviewed_since_at: number;
   checked_through_at: number;
+  checked_timezone: string | null;
+  checked_timezone_offset: number | null;
+  latest_checked_at: number;
   schedule_generation: number;
   created_by_kind: 'user' | 'agent';
   created_conversation_id: string | null;
@@ -37,6 +40,8 @@ export interface ScheduledRunRecord {
   id: string;
   task_id: string;
   planned_at: number;
+  planned_local: string | null;
+  time_zone: string | null;
   trigger: ScheduledTaskRunTrigger;
   status: ScheduledRunStage;
   reason: ScheduledTaskRunReason | null;
@@ -48,8 +53,10 @@ export interface ScheduledRunRecord {
   schedule_generation: number;
   started_at: number | null;
   ended_at: number | null;
+  unread_since_at: number | null;
   viewed_at: number | null;
   approval_notified_at: number | null;
+  approval_pending: 0 | 1;
 }
 
 export interface ScheduledTaskStore {
@@ -57,19 +64,24 @@ export interface ScheduledTaskStore {
   list(projectId?: string): ScheduledTaskRecord[];
   read(id: string): ScheduledTaskRecord | undefined;
   write(task: ScheduledTaskRecord): void;
-  advanceCheck(taskId: string, through: number): void;
+  writeCheck(taskId: string, through: number, timezone: string, offset: number): void;
+  latestClockEvidence(): number | null;
   recordChange(task: ScheduledTaskRecord, actor: TaskChangeActor, action: 'created' | 'updated'): void;
   listChanges(conversation: string, rootRunIds: readonly string[]): Array<{
     task_id: string; task_name: string; action: 'created' | 'updated'; permission: CommandPermissionLevel;
   }>;
   conversationTitle(id: string): string | null;
   writeRun(run: ScheduledRunRecord): boolean;
+  claimRun(run: ScheduledRunRecord): boolean;
   readRuns(taskId: string, limit: number, before?: number): ScheduledRunRecord[];
   pendingRuns(): ScheduledRunRecord[];
   readRunAt(taskId: string, plannedAt: number): ScheduledRunRecord | undefined;
+  hasLocalOccurrence(taskId: string, plannedLocal: string): boolean;
+  hasCompletedRun(taskId: string, generation: number): boolean;
   readRunForConversation(conversationId: string): ScheduledRunRecord | undefined;
   runFacts(taskId: string): { run_count: number; unread_count: number };
   firstUnreadAt(taskId: string): number | null;
+  anchorUnreadCompletions(now: number): boolean;
   clearHistory(taskId: string): void;
   removeRun(id: string): void;
 }

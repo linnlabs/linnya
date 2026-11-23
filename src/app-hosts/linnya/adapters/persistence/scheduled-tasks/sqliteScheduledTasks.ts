@@ -20,7 +20,7 @@ function toTaskRecord({ schedule_json, cron_expr, one_shot_at, enabled, ...row }
 /** 任务的写入、补跑高水位和运行快照由同一个 SQLite owner 提交。 */
 export function createSqliteScheduledTasks(db: Database.Database): ScheduledTaskStore {
   return {
-    transaction<T>(work: () => T): T { return db.transaction(work)(); },
+    transaction<T>(work: () => T): T { return db.transaction(work).immediate(); },
     list(projectId?: string): ScheduledTaskRecord[] {
       if (projectId === undefined) {
         return db.prepare<[], TaskRow>('SELECT * FROM scheduled_tasks WHERE deleted_at IS NULL').all().map(toTaskRecord);
@@ -36,12 +36,14 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
       db.prepare(`INSERT INTO scheduled_tasks (
           id, project_id, name, prompt, agent, model_config_id, schedule_kind, cron_expr, one_shot_at,
           schedule_json, missed_policy, permission_level, enabled, paused_reason, consecutive_failures,
-          last_viewed_at, unviewed_since_at, checked_through_at, schedule_generation, created_by_kind, created_conversation_id,
+          last_viewed_at, unviewed_since_at, checked_through_at, checked_timezone, checked_timezone_offset, latest_checked_at,
+          schedule_generation, created_by_kind, created_conversation_id,
           created_run_id, updated_run_id, created_at, updated_at, revision, deleted_at
         ) VALUES (
           @id, @project_id, @name, @prompt, @agent, @model_config_id, @schedule_kind, @cron_expr, @one_shot_at,
           @schedule_json, @missed_policy, @permission_level, @enabled, @paused_reason, @consecutive_failures,
-          @last_viewed_at, @unviewed_since_at, @checked_through_at, @schedule_generation, @created_by_kind, @created_conversation_id,
+          @last_viewed_at, @unviewed_since_at, @checked_through_at, @checked_timezone, @checked_timezone_offset, @latest_checked_at,
+          @schedule_generation, @created_by_kind, @created_conversation_id,
           @created_run_id, @updated_run_id, @created_at, @updated_at, @revision, @deleted_at
         ) ON CONFLICT(id) DO UPDATE SET
           name = excluded.name, prompt = excluded.prompt, agent = excluded.agent,
@@ -51,13 +53,24 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
           enabled = excluded.enabled, paused_reason = excluded.paused_reason, consecutive_failures = excluded.consecutive_failures,
           last_viewed_at = excluded.last_viewed_at, unviewed_since_at = excluded.unviewed_since_at,
           checked_through_at = excluded.checked_through_at,
+          checked_timezone = excluded.checked_timezone, checked_timezone_offset = excluded.checked_timezone_offset,
+          latest_checked_at = MAX(scheduled_tasks.latest_checked_at, excluded.latest_checked_at),
           schedule_generation = excluded.schedule_generation, updated_run_id = excluded.updated_run_id,
           updated_at = excluded.updated_at, revision = excluded.revision, deleted_at = excluded.deleted_at`)
         .run({ ...task, schedule_kind: task.schedule.kind, cron_expr: task.clock.cron, one_shot_at: task.clock.localDateTime,
           schedule_json: JSON.stringify(task.schedule), enabled: Number(task.enabled) });
     },
-    advanceCheck(taskId, through): void {
-      db.prepare('UPDATE scheduled_tasks SET checked_through_at = ? WHERE id = ? AND checked_through_at < ?').run(through, taskId, through);
+    writeCheck(taskId, through, timezone, offset): void {
+      db.prepare(`UPDATE scheduled_tasks SET checked_through_at = ?, checked_timezone = ?, checked_timezone_offset = ?,
+        latest_checked_at = MAX(latest_checked_at, ?) WHERE id = ?`)
+        .run(through, timezone, offset, through, taskId);
+    },
+    latestClockEvidence(): number | null {
+      return db.prepare<[], { latest: number | null }>(`SELECT MAX(timestamp) AS latest FROM (
+        SELECT MAX(MAX(latest_checked_at, updated_at, COALESCE(last_viewed_at, 0))) AS timestamp FROM scheduled_tasks
+        UNION ALL
+        SELECT MAX(MAX(COALESCE(started_at, 0), COALESCE(ended_at, 0), COALESCE(viewed_at, 0))) FROM scheduled_task_runs
+      )`).get()?.latest ?? null;
     },
     recordChange(task: ScheduledTaskRecord, actor: TaskChangeActor, action: 'created' | 'updated'): void {
       db.prepare(`UPDATE scheduled_tasks SET changes_json = json_insert(changes_json, '$[#]', json(?)) WHERE id = ?`)
@@ -85,18 +98,27 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
     },
     writeRun(run: ScheduledRunRecord): boolean {
       return db.prepare(`INSERT INTO scheduled_task_runs (
-          id, task_id, planned_at, trigger, status, reason, skipped_count, conversation_id, run_id,
-          permission_level, model_config_id, schedule_generation, started_at, ended_at, viewed_at, approval_notified_at
+          id, task_id, planned_at, planned_local, time_zone, trigger, status, reason, skipped_count, conversation_id, run_id,
+          permission_level, model_config_id, schedule_generation, started_at, ended_at, unread_since_at, viewed_at, approval_notified_at, approval_pending
         ) VALUES (
-          @id, @task_id, @planned_at, @trigger, @status, @reason, @skipped_count, @conversation_id, @run_id,
-          @permission_level, @model_config_id, @schedule_generation, @started_at, @ended_at, @viewed_at, @approval_notified_at
+          @id, @task_id, @planned_at, @planned_local, @time_zone, @trigger, @status, @reason, @skipped_count, @conversation_id, @run_id,
+          @permission_level, @model_config_id, @schedule_generation, @started_at, @ended_at, @unread_since_at, @viewed_at, @approval_notified_at, @approval_pending
         ) ON CONFLICT(task_id, planned_at) DO UPDATE SET
           trigger = excluded.trigger, status = excluded.status, reason = excluded.reason,
           skipped_count = excluded.skipped_count, conversation_id = excluded.conversation_id, run_id = excluded.run_id,
           permission_level = excluded.permission_level, model_config_id = excluded.model_config_id,
           schedule_generation = excluded.schedule_generation, started_at = excluded.started_at,
-          ended_at = excluded.ended_at, viewed_at = excluded.viewed_at, approval_notified_at = excluded.approval_notified_at
-        WHERE scheduled_task_runs.id = excluded.id`).run(run).changes > 0;
+          ended_at = excluded.ended_at, unread_since_at = excluded.unread_since_at,
+          viewed_at = excluded.viewed_at, approval_notified_at = excluded.approval_notified_at, approval_pending = excluded.approval_pending
+        WHERE scheduled_task_runs.id = excluded.id
+        ON CONFLICT DO NOTHING`).run(run).changes > 0;
+    },
+    claimRun(run): boolean {
+      return db.prepare(`UPDATE scheduled_task_runs SET status = 'admitted', started_at = @started_at,
+        permission_level = @permission_level, model_config_id = @model_config_id
+        WHERE id = @id AND status = 'queued' AND NOT EXISTS (
+          SELECT 1 FROM scheduled_task_runs WHERE task_id = @task_id AND status = 'admitted'
+        )`).run(run).changes === 1;
     },
     readRuns(taskId: string, limit: number, before?: number): ScheduledRunRecord[] {
       return db.prepare<[string, number, number], ScheduledRunRecord>(`SELECT * FROM scheduled_task_runs
@@ -111,6 +133,13 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
       return db.prepare<[string, number], ScheduledRunRecord>('SELECT * FROM scheduled_task_runs WHERE task_id = ? AND planned_at = ?')
         .get(taskId, plannedAt);
     },
+    hasLocalOccurrence(taskId, plannedLocal): boolean {
+      return db.prepare('SELECT 1 FROM scheduled_task_runs WHERE task_id = ? AND planned_local = ?').get(taskId, plannedLocal) !== undefined;
+    },
+    hasCompletedRun(taskId, generation): boolean {
+      return db.prepare(`SELECT 1 FROM scheduled_task_runs WHERE task_id = ? AND schedule_generation = ? AND status = 'completed' LIMIT 1`)
+        .get(taskId, generation) !== undefined;
+    },
     readRunForConversation(conversationId: string): ScheduledRunRecord | undefined {
       return db.prepare<[string], ScheduledRunRecord>('SELECT * FROM scheduled_task_runs WHERE conversation_id = ?').get(conversationId);
     },
@@ -124,9 +153,13 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
       return facts;
     },
     firstUnreadAt(taskId): number | null {
-      return db.prepare<[string], { ended_at: number | null }>(`SELECT ended_at FROM scheduled_task_runs
+      return db.prepare<[string], { since: number | null }>(`SELECT MIN(unread_since_at) AS since FROM scheduled_task_runs
         WHERE task_id = ? AND status = 'completed' AND conversation_id IS NOT NULL AND viewed_at IS NULL
-        ORDER BY ended_at LIMIT 1`).get(taskId)?.ended_at ?? null;
+      `).get(taskId)?.since ?? null;
+    },
+    anchorUnreadCompletions(now): boolean {
+      return db.prepare(`UPDATE scheduled_task_runs SET unread_since_at = ? WHERE status = 'completed'
+        AND conversation_id IS NOT NULL AND viewed_at IS NULL AND unread_since_at IS NULL`).run(now).changes > 0;
     },
     clearHistory(taskId: string): void {
       db.prepare(`DELETE FROM scheduled_task_runs WHERE task_id = ? AND status != 'admitted'`).run(taskId);
