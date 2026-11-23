@@ -171,13 +171,17 @@ async function launch(value: PreparedSmoke) {
       main = ProcessInstanceSchema.parse(await readMacosProcessInstance(mainPid));
       save(path.join(root, 'launch.json'), { command: [electron, ...command], mainPid, origin, instanceRoot: value.instanceRoot,
         pluginDirectory: value.installedArtifact, startedAt: Date.now(), appLog, modelsRequested: 0 });
+      // 插件版本取自本轮实际安装制品的 plugin.json，不写死某次构建的版本号。
+      const canvasManifest = z.object({ id: z.literal('canvas'), version: z.string().min(1) })
+        .parse(readJson(path.join(value.installedArtifact, 'plugin.json')));
+      const loadedLine = `[plugin-loader] Loaded backend plugin ${canvasManifest.id}@${canvasManifest.version} from ${value.installedArtifact}/dist/backend/index.cjs`;
       const deadline = Date.now() + 60_000; let observedAt = 0, backendPid = 0;
       while (Date.now() < deadline) {
         assert.equal(app.exitCode, null, 'App exited before activation');
         assert.equal(app.signalCode, null, 'App exited before activation');
         await rememberOwned();
         const text = readFileSync(appLog, 'utf8'), match = text.match(/App Server ready\. (\{"pid":\d+,"apiPort":\d+\})/);
-        if (match && text.includes('[Desktop] ready') && text.includes(`[plugin-loader] Loaded backend plugin canvas@0.1.0 from ${value.installedArtifact}/dist/backend/index.cjs`)) {
+        if (match && text.includes('[Desktop] ready') && text.includes(loadedLine)) {
           backendPid = z.object({ pid: z.number().int().positive() }).parse(JSON.parse(match[1])).pid;
           observedAt = Date.now(); break;
         }
