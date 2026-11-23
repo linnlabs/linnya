@@ -457,18 +457,18 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelDetails.inferenceRouteMissing': '该模型缺少正式推理路由，请删除后重新添加。',
   'settings.modelDetails.updateFailed': '更新模型失败',
   'settings.about.release.title': 'Linnya v{version}',
-  'settings.about.release.note.contextUsage':
-    '打开对话后自动估算当前上下文，切换模型、编辑与运行结束后更新，翻阅历史时继续显示。',
-  'settings.about.release.note.imageTools':
-    '可搜索和下载图片并保留来源，在对话中直接查看图片与下载进度。',
-  'settings.about.release.note.projectOverview':
-    '新增项目概览，集中查看文件与最近改动，可筛选并设置显示列。',
-  'settings.about.release.note.slidesDesign':
-    'Slides 增加图片调色、形状裁切与文字效果，改进表格、字体和 PowerPoint 导出。',
-  'settings.about.release.note.desktopReliability':
-    '改进批量提问的回答保留、模型配置、引用展示与桌面更新入口。',
-  'settings.about.release.note.pluginAvailability':
-    '本版随包提供 Slides，远程插件安装与更新暂未开放。',
+  'settings.about.release.note.scheduledTasks':
+    '新增定时任务：到点自动新建对话交给 Agent 去做，结果按项目归入对话并标出未读。',
+  'settings.about.release.note.pluginStore':
+    '自由画布随包提供并默认启用；开放插件商店，官方插件可远程安装、更新、卸载和重装。',
+  'settings.about.release.note.knowledgePlugin':
+    '知识库改为官方插件，按需安装；原有知识库升级后直接接管，照常检索。',
+  'settings.about.release.note.documentTabs':
+    '文档改为标签页，Markdown 工具栏移到文档底部；新配色，侧栏直接显示每个对话的运行状态。',
+  'settings.about.release.note.conversationControls':
+    '每个对话可单独设置命令权限；Agent 运行中也能继续发消息，下一步送达。',
+  'settings.about.release.note.customModels':
+    '可添加向量、重排、OCR 与图片生成等自定义模型；后台出错时给出可操作的提示。',
   'settings.about.release.note.modelSetup':
     '在线模型与 API 凭据由用户自行配置，当前不提供 Linnya Cloud 模型服务。',
   'settings.about.contact.title': '联系我们',
@@ -977,18 +977,18 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
         'This model has no explicit inference route. Delete it and add it again.',
       'settings.modelDetails.updateFailed': 'Failed to update model',
       'settings.about.release.title': 'Linnya v{version}',
-      'settings.about.release.note.contextUsage':
-        'Current context usage is estimated when a conversation opens and refreshed after model changes, edits and runs. It stays visible while browsing history.',
-      'settings.about.release.note.imageTools':
-        'Search and download images with source records, and see images and download progress directly in conversations.',
-      'settings.about.release.note.projectOverview':
-        'The new project overview brings files and recent changes together, with filters and configurable columns.',
-      'settings.about.release.note.slidesDesign':
-        'Slides adds image adjustments, shape masks and text effects, with improvements to tables, fonts and PowerPoint export.',
-      'settings.about.release.note.desktopReliability':
-        'Improved answer retention for batched questions, model configuration, references and the desktop update entry.',
-      'settings.about.release.note.pluginAvailability':
-        'Slides is bundled. Remote plugin installation and updates remain unavailable.',
+      'settings.about.release.note.scheduledTasks':
+        'New scheduled tasks start a conversation for the Agent at the set time. Results land in the project and are marked unread.',
+      'settings.about.release.note.pluginStore':
+        'The free-form canvas is bundled and enabled. The plugin store is open: install, update, uninstall and reinstall official plugins remotely.',
+      'settings.about.release.note.knowledgePlugin':
+        'The knowledge base is now an official plugin installed when needed. Existing knowledge bases are taken over on upgrade and stay searchable.',
+      'settings.about.release.note.documentTabs':
+        'Documents open in tabs and the Markdown toolbar moves to the bottom. A new color scheme, and the sidebar shows each conversation\'s run state.',
+      'settings.about.release.note.conversationControls':
+        'Set command permissions per conversation, and keep sending messages while the Agent runs; they arrive at its next step.',
+      'settings.about.release.note.customModels':
+        'Add custom embedding, reranking, OCR and image generation models. Background failures now come with steps you can take.',
       'settings.about.release.note.modelSetup':
         'Configure your own online models and API credentials. Linnya Cloud model services are currently unavailable.',
       'settings.about.contact.title': 'Contact us',
