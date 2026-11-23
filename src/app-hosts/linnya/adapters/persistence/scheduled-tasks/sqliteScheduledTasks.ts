@@ -36,12 +36,12 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
       db.prepare(`INSERT INTO scheduled_tasks (
           id, project_id, name, prompt, agent, model_config_id, schedule_kind, cron_expr, one_shot_at,
           schedule_json, missed_policy, permission_level, enabled, paused_reason, consecutive_failures,
-          last_viewed_at, checked_through_at, schedule_generation, created_by_kind, created_conversation_id,
+          last_viewed_at, unviewed_since_at, checked_through_at, schedule_generation, created_by_kind, created_conversation_id,
           created_run_id, updated_run_id, created_at, updated_at, revision, deleted_at
         ) VALUES (
           @id, @project_id, @name, @prompt, @agent, @model_config_id, @schedule_kind, @cron_expr, @one_shot_at,
           @schedule_json, @missed_policy, @permission_level, @enabled, @paused_reason, @consecutive_failures,
-          @last_viewed_at, @checked_through_at, @schedule_generation, @created_by_kind, @created_conversation_id,
+          @last_viewed_at, @unviewed_since_at, @checked_through_at, @schedule_generation, @created_by_kind, @created_conversation_id,
           @created_run_id, @updated_run_id, @created_at, @updated_at, @revision, @deleted_at
         ) ON CONFLICT(id) DO UPDATE SET
           name = excluded.name, prompt = excluded.prompt, agent = excluded.agent,
@@ -49,11 +49,15 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
           cron_expr = excluded.cron_expr, one_shot_at = excluded.one_shot_at, schedule_json = excluded.schedule_json,
           missed_policy = excluded.missed_policy, permission_level = excluded.permission_level,
           enabled = excluded.enabled, paused_reason = excluded.paused_reason, consecutive_failures = excluded.consecutive_failures,
-          last_viewed_at = excluded.last_viewed_at, checked_through_at = excluded.checked_through_at,
+          last_viewed_at = excluded.last_viewed_at, unviewed_since_at = excluded.unviewed_since_at,
+          checked_through_at = excluded.checked_through_at,
           schedule_generation = excluded.schedule_generation, updated_run_id = excluded.updated_run_id,
           updated_at = excluded.updated_at, revision = excluded.revision, deleted_at = excluded.deleted_at`)
         .run({ ...task, schedule_kind: task.schedule.kind, cron_expr: task.clock.cron, one_shot_at: task.clock.localDateTime,
           schedule_json: JSON.stringify(task.schedule), enabled: Number(task.enabled) });
+    },
+    advanceCheck(taskId, through): void {
+      db.prepare('UPDATE scheduled_tasks SET checked_through_at = ? WHERE id = ? AND checked_through_at < ?').run(through, taskId, through);
     },
     recordChange(task: ScheduledTaskRecord, actor: TaskChangeActor, action: 'created' | 'updated'): void {
       db.prepare(`UPDATE scheduled_tasks SET changes_json = json_insert(changes_json, '$[#]', json(?)) WHERE id = ?`)
@@ -111,11 +115,13 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
       return db.prepare<[string], ScheduledRunRecord>('SELECT * FROM scheduled_task_runs WHERE conversation_id = ?').get(conversationId);
     },
     runFacts(taskId: string): { run_count: number; unread_count: number; first_unread_at: number | null } {
-      return db.prepare<[string], { run_count: number; unread_count: number; first_unread_at: number | null }>(`
+      const facts = db.prepare<[string], { run_count: number; unread_count: number; first_unread_at: number | null }>(`
         SELECT COUNT(*) AS run_count,
           COUNT(CASE WHEN status = 'completed' AND conversation_id IS NOT NULL AND viewed_at IS NULL THEN 1 END) AS unread_count,
           MIN(CASE WHEN status = 'completed' AND conversation_id IS NOT NULL AND viewed_at IS NULL THEN ended_at END) AS first_unread_at
-        FROM scheduled_task_runs WHERE task_id = ?`).get(taskId)!;
+        FROM scheduled_task_runs WHERE task_id = ?`).get(taskId);
+      if (!facts) throw new Error(`Missing aggregate for scheduled task ${taskId}`);
+      return facts;
     },
     clearHistory(taskId: string): void {
       db.prepare(`DELETE FROM scheduled_task_runs WHERE task_id = ? AND status != 'admitted'`).run(taskId);

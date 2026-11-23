@@ -21,6 +21,11 @@ export type ConversationSelectedAgentId = z.infer<typeof ConversationSelectedAge
  *
  * 这里保存 AgentDefinition.id；即使当前值恰好与 promptKey 相同，两者也不是同一合同。
  */
+export const ScheduledAgentIds = {
+  default: 'scheduled_default',
+  research: 'scheduled_research',
+} as const;
+
 export const ConversationAgentIds = {
   RESEARCH: ConversationSelectedAgentIdSchema.parse(RESEARCH_AGENT_ID),
   PROJECT_PLANNING: ConversationSelectedAgentIdSchema.parse('project_planning'),
@@ -34,7 +39,8 @@ export const ConversationAgentIds = {
  * （历史列表与元数据）由 `readConversationSelectedAgentId` 在读取边界套用同一约定。
  */
 export function toReadModelAgentId(agentId: string | null): string | null {
-  return agentId === PromptKeys.DEFAULT ? null : agentId;
+  if (agentId === PromptKeys.DEFAULT || agentId === ScheduledAgentIds.default) return null;
+  return agentId === ScheduledAgentIds.research ? RESEARCH_AGENT_ID : agentId;
 }
 
 /**
@@ -47,9 +53,8 @@ export function toReadModelAgentId(agentId: string | null): string | null {
 export function readConversationSelectedAgentId(
   stored: string | null
 ): ConversationSelectedAgentId | null {
-  if (stored === null) return null;
-  const agentId = ConversationSelectedAgentIdSchema.parse(stored);
-  return toReadModelAgentId(agentId) === null ? null : agentId;
+  const agentId = toReadModelAgentId(stored);
+  return agentId === null ? null : ConversationSelectedAgentIdSchema.parse(agentId);
 }
 
 export const UpdateConversationSelectedAgentRequestSchema = z

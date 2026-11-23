@@ -127,6 +127,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.commandApproval.reason.moveOverwriteRename': '这条命令可能移动、覆盖或重命名文件。',
   'conversation.commandApproval.reason.externalUpload': '这条命令可能向外部位置上传数据。',
   'conversation.commandApproval.reason.downloadAndExecute': '这条命令可能下载并运行内容。',
+  'conversation.commandApproval.reason.persistentAutomation': '这条命令会创建、修改或运行定时任务。',
   'conversation.commandApproval.reason.systemOrDiskImpact': '这条命令可能影响系统或磁盘。',
   'conversation.sidebar.loading': '加载中...',
   'conversation.sidebar.newConversation': '新对话',
@@ -926,6 +927,7 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
         'This command may upload data to an external location.',
       'conversation.commandApproval.reason.downloadAndExecute':
         'This command may download and run content.',
+      'conversation.commandApproval.reason.persistentAutomation': 'This command can create, change, or start a scheduled task.',
       'conversation.commandApproval.reason.systemOrDiskImpact':
         'This command may affect the system or disk.',
       'conversation.sidebar.loading': 'Loading...',

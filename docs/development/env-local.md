@@ -107,3 +107,5 @@ CLI 切档不写文件；重启恢复启动配置，没设就是 `off`。若希�
 时设置 `LINNYA_LAUNCHER_HANDLES_RELAUNCH=1`，Main 以退出码 75 结束，由启动器重新启动 Electron 并保留 Vite。
 自己写的启动脚本若不处理退出码 75，就不要设置这个变量，Main 会改用 `app.relaunch()`。规则见
 [App Server Health](../../src/electron-main/app-server-health/README.md)。
+
+源码 Desktop 默认关闭定时触发；明确设 `LINNYA_SCHEDULED_TASKS=1` 才会按计划运行。手动运行仍可用。探针用 `up --scheduled-tasks` 为隔离实例打开该开关。

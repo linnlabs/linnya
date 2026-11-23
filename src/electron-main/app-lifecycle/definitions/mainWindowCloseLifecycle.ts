@@ -16,9 +16,11 @@ export interface MainWindowClosePreparationFailure {
 export interface MainWindowCloseLifecyclePorts {
   /** 只消费进程监督器已观察到的退出事实，不能把 RPC 失败猜成进程退出。 */
   readonly isBackendUnavailable: () => boolean;
+  readonly readActivity?: () => Promise<{ hasExecutingCommands: boolean; scheduledRunningCount?: number }>;
   readonly hasExecutingCommands: () => boolean | Promise<boolean>;
   readonly requestExecutingCommandsDecision: (
     intent: MainWindowCloseIntent,
+    activity?: { hasExecutingCommands: boolean; scheduledRunningCount: number },
   ) => Promise<MainWindowCloseDecision>;
   readonly requestPreparationFailureDecision: (
     failure: MainWindowClosePreparationFailure,

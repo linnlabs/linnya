@@ -13,10 +13,12 @@ import { CHANGES_USAGE, parseChangesCommand } from '../functions/parseChangesCom
 import { CONVERSATIONS_USAGE, parseConversationsCommand, type ConversationsCommand } from '../functions/parseConversationsCommand';
 import { PALETTE_USAGE } from '../functions/parsePaletteCommand';
 import type { PhysicalFileReaderPort } from '../../file-read';
+import type { ScheduledTasks } from '../../scheduled-tasks';
+import { prepareSchedulesCli, SCHEDULES_USAGE } from './prepareSchedulesCli';
 import { preparePaletteCli } from './preparePaletteCli';
 import { prepareSemanticCli, SEMANTIC_CLI_COMMANDS, SEMANTIC_USAGE } from './prepareSemanticCli';
 
-const CORE_USAGE = `${CHANGES_USAGE}\n${CONVERSATIONS_USAGE}\n${PALETTE_USAGE}\n${SEMANTIC_USAGE}`;
+const CORE_USAGE = `${CHANGES_USAGE}\n${CONVERSATIONS_USAGE}\n${PALETTE_USAGE}\n${SEMANTIC_USAGE}\n${SCHEDULES_USAGE}`;
 const INTERNAL_READ_ACCESS = {
   internalDataAccess: 'required', conversationFiles: 'none', externalFiles: 'denied',
   network: 'denied', guiControl: 'denied', localIpcControl: 'denied',
@@ -28,10 +30,12 @@ export function createCoreCli(
   maxOutputCharacters: number,
   fileReader: PhysicalFileReaderPort,
   activity: ConversationActivityPorts,
+  readScheduledTasks?: () => ScheduledTasks | undefined,
 ): BackendPluginCliContribution {
   return {
     prepare({ argv, conversationRoot }) {
       const [command, ...args] = argv;
+      if (command === 'schedules') return prepareSchedulesCli(db, args, readScheduledTasks);
       if (command === 'palette') return preparePaletteCli({ argv: args, conversationRoot, fileReader });
       const semantic = SEMANTIC_CLI_COMMANDS.find(name => name === command);
       if (semantic) return prepareSemanticCli({ db, command: semantic, argv: args, maxOutputCharacters });

@@ -29,5 +29,6 @@ export interface ConfiguredModelRemovalResult {
 }
 
 export interface ConfiguredModelRemovalUseCase {
+  countScheduledTasks?(modelId: string): number;
   remove(modelId: string): Promise<ConfiguredModelRemovalResult>;
 }

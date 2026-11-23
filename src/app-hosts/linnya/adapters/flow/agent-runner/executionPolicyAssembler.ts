@@ -64,6 +64,8 @@ export function assembleExecutorLocalForDefinition(
     stepCount: 0,
   };
 
+  if (params.request.scheduledRun) executorLocal.lockRequestedModelId = true;
+
   const stepPolicy = definition?.config?.stepPolicy;
   if (stepPolicy) {
     executorLocal.finalStepPolicy = stepPolicy.kind;

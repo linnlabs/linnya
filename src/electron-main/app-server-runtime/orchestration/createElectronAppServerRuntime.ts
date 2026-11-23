@@ -1,3 +1,5 @@
+import { createScheduledTaskNotificationHandlers } from '../../../app-hosts/linnya/desktop-capabilities/features/scheduled-task-notification-rpc';
+import { notifyScheduledTask } from '../../desktop-capabilities/scheduled-task-notification/notifyScheduledTask';
 import type { ResolvedAppServerProcessLaunch } from '../../../app-hosts/linnya/app-server-runtime';
 import path from 'node:path';
 import type { Writable } from 'node:stream';
@@ -107,6 +109,7 @@ export async function createElectronAppServerRuntime(input: {
     mailboxRoot,
     port: Object.freeze({ commit: commitAuthorizedExportArtifact }),
   }));
+  registerHandlers(rpcHandlers, createScheduledTaskNotificationHandlers(notifyScheduledTask));
   registerHandlers(rpcHandlers, createDesktopFileRevealRpcHandlers(
     createElectronFileRevealPort(),
   ));

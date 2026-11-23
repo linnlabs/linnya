@@ -85,6 +85,7 @@ export async function createCliAppServerRuntime(
     architecture: process.arch,
     packaged: false,
     distributionIdentity: createSourceDistributionIdentity(),
+    scheduledTasksEnabled: false,
     resourcesPath: path.join(input.developmentRoot, 'extraResources'),
     mainBundleDirectory,
     runtimePathRoots,

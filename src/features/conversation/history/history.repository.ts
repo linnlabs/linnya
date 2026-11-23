@@ -132,6 +132,7 @@ export class HistoryRepository {
       is_pinned: c.is_pinned,
       pinned_at: c.pinned_at,
       selected_agent_id: c.selected_agent_id,
+      ...(c.scheduled_task ? { scheduled_task: c.scheduled_task } : {}),
     }));
 
     return {

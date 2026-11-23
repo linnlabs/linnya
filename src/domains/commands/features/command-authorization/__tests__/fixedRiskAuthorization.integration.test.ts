@@ -917,3 +917,20 @@ describe('conversation-local file removal (W-0303)', () => {
       .toMatchObject({ status: 'matched', findings: [{ ruleId: 'macos.delete.rm' }] });
   });
 });
+
+describe.each([
+  { platform: 'macos', shellSemanticsId: 'zsh' },
+  { platform: 'windows', shellSemanticsId: 'powershell-7' },
+] as const)('$platform scheduled task approval', context => {
+  it.each(['create', 'update', 'resume', 'run-now'])('asks once for %s at standard and authorizes full access', action => {
+    const command = `linnya schedules ${action} task-id`;
+    const evaluate = (baseLevel: CommandPermissionLevel) => evaluateCommandAuthorization({ ...context,
+      proposal: proposal({ command, baseLevel }), permissionRequirement: permissionRequirement('selected_level'), conversationApprovals: [],
+    });
+    const approval = evaluate('standard');
+    expect(approval).toMatchObject({ status: 'approval_required', reasons: [{ type: 'fixed_risk_rule',
+      rule_id: `${context.platform}.persistent-automation.linnya-schedules`, category: 'persistent_automation' }] });
+    expect(approval).not.toHaveProperty('conversationCandidate');
+    expect(evaluate('full_access')).toMatchObject({ status: 'authorized' });
+  });
+});

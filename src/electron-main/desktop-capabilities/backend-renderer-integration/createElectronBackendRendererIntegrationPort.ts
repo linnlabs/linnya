@@ -1,3 +1,4 @@
+import { SCHEDULED_TASKS_CHANGED_CHANNEL } from '@app/schemas/scheduled-tasks';
 import { BrowserWindow } from 'electron';
 import { WORKSPACE_MUTATION_CHANNEL } from '@app/schemas';
 import type {
@@ -63,6 +64,7 @@ export function createElectronBackendRendererIntegrationPort(): BackendRendererI
       // 商店可能开在任一窗口，进度发给所有窗口；离开页面再回来也能接上。
       publishToRenderer('plugins-install-progress', event);
     },
+    publishScheduledTasksChanged() { publishToRenderer(SCHEDULED_TASKS_CHANGED_CHANNEL, undefined); },
     publishConversationActivityChanged() {
       // 每个窗口都有侧栏，全部发送；只是失效信号，数据仍由各窗口读 HTTP。
       publishToRenderer(CONVERSATION_ACTIVITY_CHANGED_CHANNEL, undefined);

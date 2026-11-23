@@ -1,3 +1,4 @@
+import { ScheduledConversationFoldSchema } from './scheduled-fold';
 import { z } from 'zod';
 import { ConversationSelectedAgentIdSchema } from './selected-agent';
 
@@ -21,6 +22,7 @@ export const ConversationHistoryListItemSchema = z
     selected_agent_id: ConversationSelectedAgentIdSchema.nullable(),
     /** cleanup job 仍存在时禁止重新进入，并由用户显式重试原操作。 */
     cleanup_pending: z.boolean().optional(),
+    scheduled_task: ScheduledConversationFoldSchema.optional(),
   })
   .strict();
 

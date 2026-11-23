@@ -261,6 +261,7 @@ declare global {
           success: boolean;
         } & SystemOperationFailureFields
       >;
+      scheduledTasks: ReturnType<typeof import('../electron-main/preload/modules/scheduled-tasks-preload').buildScheduledTasksPreloadApi>;
       listConversationRunDocumentChanges: (
         request: import('@app/schemas').ConversationRunDocumentChangesRequest
       ) => Promise<unknown>;

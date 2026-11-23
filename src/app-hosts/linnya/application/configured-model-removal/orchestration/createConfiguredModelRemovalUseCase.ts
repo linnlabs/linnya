@@ -10,6 +10,8 @@ export interface CreateConfiguredModelRemovalUseCaseDependencies {
   readonly modelCatalog: ConfiguredModelRemovalCatalogPort;
   readonly providerConfigurations: ConfiguredModelRemovalConfigurationPort;
   readonly modelPickerPreferences: ConfiguredModelRemovalPreferencesPort;
+  readonly countScheduledTasks?: (modelId: string) => number;
+  readonly onModelRemoved?: () => void;
   readonly idFactory: ConfiguredModelRemovalIdFactory;
 }
 
@@ -18,6 +20,7 @@ export function createConfiguredModelRemovalUseCase(
   dependencies: CreateConfiguredModelRemovalUseCaseDependencies
 ): ConfiguredModelRemovalUseCase {
   return Object.freeze({
+    countScheduledTasks: (modelId: string) => dependencies.countScheduledTasks?.(modelId) ?? 0,
     async remove(modelId: string) {
       const intent = await dependencies.providerConfigurations.beginModelRemoval({
         intent_id: dependencies.idFactory.create(),
@@ -47,6 +50,7 @@ export function createConfiguredModelRemovalUseCase(
         }
       }
 
+      dependencies.onModelRemoved?.();
       return {
         provider_association_recovery_pending: providerAssociationRecoveryPending,
         model_picker_preference_recovery_pending: modelPickerPreferenceRecoveryPending,

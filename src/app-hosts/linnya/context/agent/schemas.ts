@@ -13,7 +13,7 @@
  */
 
 import { z } from 'zod';
-import { ModelPurposeSnapshotSchema, PromptKeys, ResearchRunArgsSchema, UserQuoteSchema } from '@app/schemas';
+import { ModelPurposeSnapshotSchema, PromptKeys, ResearchRunArgsSchema, ScheduledRunBindingSchema, UserQuoteSchema } from '@app/schemas';
 import { generateAiMessageId } from '@linnlabs/linnkit/contracts';
 import * as contextManager from '@linnlabs/linnkit/context-manager';
 import type { graph } from '@linnlabs/linnkit/runtime-kernel';
@@ -63,6 +63,7 @@ export const AgentInvokeRequestSchema = z
   .object({
     query: z.string().describe('用户查询'),
     frozenSystemPrompt: z.string().optional(),
+    scheduledRun: ScheduledRunBindingSchema.extend({ started_at: z.number().int().nonnegative() }).optional(),
     researchScope: ResearchRunArgsSchema.optional(),
     callerAgentId: z.string().min(1).optional(),
     allowedSubagentTypes: z.array(z.string().min(1)).optional(),

@@ -31,6 +31,7 @@ export interface BuildBaseAgentInvokeRequestInput {
   documentTitle?: string;
   documentList?: string;
   projectMetadata?: AgentInvokeRequest['project_metadata'];
+  scheduledRun?: AgentInvokeRequest['scheduledRun'];
   researchScope?: AgentInvokeRequest['researchScope'];
   documentMetadata?: AgentInvokeRequest['document_metadata'];
   userQuote?: AgentUserQuote;
@@ -66,6 +67,7 @@ export function buildBaseAgentInvokeRequest(
     availableTools: input.availableTools,
     conversationHistory: input.conversationHistory,
     project_metadata: input.projectMetadata,
+    scheduledRun: input.scheduledRun,
     researchScope: input.researchScope,
     document_metadata: input.documentMetadata,
     document_list: input.documentList,

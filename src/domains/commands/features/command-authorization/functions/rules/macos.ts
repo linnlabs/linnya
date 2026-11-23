@@ -16,7 +16,10 @@ import {
   nonOptionArguments,
 } from './commandRiskLexicalFacts';
 
+import { isLinnyaScheduleMutation } from './linnyaScheduleMutation';
+
 const rules = [
+  { id: 'macos.persistent-automation.linnya-schedules', platform: 'macos', category: 'persistent_automation', priority: 610, matcher: 'linnya_schedules' },
   { id: 'macos.system-or-disk-impact.disk', platform: 'macos', category: 'system_or_disk_impact', priority: 590, matcher: 'system_disk' },
   { id: 'macos.system-or-disk-impact.power', platform: 'macos', category: 'system_or_disk_impact', priority: 580, matcher: 'system_power' },
   { id: 'macos.system-or-disk-impact.elevation', platform: 'macos', category: 'system_or_disk_impact', priority: 570, matcher: 'system_elevation' },
@@ -154,6 +157,8 @@ export function matchesMacosRiskRule(
 ): boolean {
   const facts = allCommandFacts(scan);
   switch (matcher) {
+    case 'linnya_schedules':
+      return facts.some(isLinnyaScheduleMutation);
     case 'delete_rm':
       return facts.some((fact, index) => (
         (fact.executable === 'rm' || fact.executable === 'rmdir' || fact.executable === 'unlink')

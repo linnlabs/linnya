@@ -124,6 +124,7 @@ export type ConversationMessageKey =
   | 'conversation.commandApproval.reason.moveOverwriteRename'
   | 'conversation.commandApproval.reason.externalUpload'
   | 'conversation.commandApproval.reason.downloadAndExecute'
+  | 'conversation.commandApproval.reason.persistentAutomation'
   | 'conversation.commandApproval.reason.systemOrDiskImpact'
   | 'conversation.sidebar.loading'
   | 'conversation.sidebar.newConversation'

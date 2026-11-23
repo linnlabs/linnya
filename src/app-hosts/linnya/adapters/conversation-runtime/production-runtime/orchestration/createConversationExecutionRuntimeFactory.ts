@@ -116,6 +116,7 @@ export function createConversationExecutionRuntimeFactory(input: {
         commandScope = await createCommandProductionScope({
           credentialFilePath: resolveProfileCredentialFilePath(input.bootstrap.runtimePathRoots),
           db: scopeInput.db,
+          readScheduledTasks: scopeInput.readScheduledTasks,
           conversationAdmission: scopeInput.conversationAdmission,
           approvalHost: input.commandApprovalHost,
           commandExecutionAudit: scopeInput.commandExecutionAudit,

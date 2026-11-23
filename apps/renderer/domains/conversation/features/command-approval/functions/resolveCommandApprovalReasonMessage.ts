@@ -19,6 +19,8 @@ export function resolveCommandApprovalReasonMessage(
       return 'conversation.commandApproval.reason.externalUpload';
     case 'download_and_execute':
       return 'conversation.commandApproval.reason.downloadAndExecute';
+    case 'persistent_automation':
+      return 'conversation.commandApproval.reason.persistentAutomation';
     case 'system_or_disk_impact':
       return 'conversation.commandApproval.reason.systemOrDiskImpact';
   }

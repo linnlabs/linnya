@@ -11,6 +11,7 @@ export interface BackendBootstrapFacts {
   readonly platform: NodeJS.Platform;
   readonly architecture: NodeJS.Architecture;
   readonly packaged: boolean;
+  readonly scheduledTasksEnabled?: boolean;
   readonly distributionIdentity: DistributionIdentity;
   readonly resourcesPath: string;
   readonly mainBundleDirectory: string;

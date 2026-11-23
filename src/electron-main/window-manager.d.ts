@@ -7,7 +7,8 @@ import type {
 
 export function configureMainWindowCloseLifecycle(options: {
   readonly isBackendUnavailable?: MainWindowCloseLifecyclePorts['isBackendUnavailable'];
-  readonly hasExecutingCommands: () => boolean | Promise<boolean>;
+  readonly readActivity?: () => Promise<{ hasExecutingCommands: boolean; scheduledRunningCount?: number }>;
+  readonly hasExecutingCommands?: () => boolean | Promise<boolean>;
   readonly requestExecutingCommandsDecision?: (
     intent: MainWindowCloseIntent,
   ) => Promise<MainWindowCloseDecision>;

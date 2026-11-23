@@ -19,6 +19,7 @@ export function getScheduledTaskSchemaProviders(): ISchemaProvider[] {
       paused_reason TEXT CHECK(paused_reason IN ('user', 'failures', 'unviewed', 'one_shot_done')),
       consecutive_failures INTEGER NOT NULL DEFAULT 0,
       last_viewed_at INTEGER,
+      unviewed_since_at INTEGER NOT NULL,
       checked_through_at INTEGER NOT NULL,
       schedule_generation INTEGER NOT NULL DEFAULT 0,
       created_by_kind TEXT NOT NULL CHECK(created_by_kind IN ('user', 'agent')),

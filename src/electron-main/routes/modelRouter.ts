@@ -150,6 +150,12 @@ export function createModelRouter(modelRemoval: ConfiguredModelRemovalUseCase): 
    * 删除模型
    * @route DELETE /api/v1/models/:id
    */
+  router.get('/:id/removal-impact', (req: Request, res: Response) => {
+    const modelId = paramIdToString(req.params.id);
+    if (!modelId || !modelCatalog.getModel(modelId)) return res.status(404).json({ error: '模型不存在' });
+    return res.json({ scheduled_task_count: modelRemoval.countScheduledTasks?.(modelId) ?? 0 });
+  });
+
   router.delete('/:id', async (req: Request, res: Response) => {
     try {
       const modelId = paramIdToString(req.params.id);

@@ -26,6 +26,7 @@ export const CONVERSATION_RUN_SCHEDULED_TASKS_CHANNEL = 'conversation-run-schedu
 
 // ---- App Server → Renderer 推送 ----
 /** 任务或运行记录变了（含状态、未读、名额）；Renderer 收到后重新读取，推送本身不带数据。 */
+export const SCHEDULED_TASKS_NOTIFY_CHANNEL = 'scheduled-tasks:notify' as const;
 export const SCHEDULED_TASKS_CHANGED_CHANNEL = 'scheduled-tasks:changed' as const;
 
 // ---- 产品限制 ----
@@ -212,6 +213,8 @@ export const ScheduledTaskSchema = z.object({
 
 export const ScheduledTaskSettingsSchema = z.object({
   max_concurrent_runs: z.number().int().min(SCHEDULED_TASK_CONCURRENCY_MIN).max(SCHEDULED_TASK_CONCURRENCY_MAX),
+  /** Renderer 同步设置里的主模型，让无界面 App Server 也可使用。 */
+  default_model_config_id: Id.nullable().optional(),
 }).strict();
 
 // ---- 请求与结果 ----
@@ -361,16 +364,7 @@ export const ConversationRunScheduledTasksSchema = z.object({
 
 // ---- 对话列表折叠 ----
 
-/**
- * 对话列表里每个任务只占一行：后端只返回该任务最近一次运行的对话，并附上这段信息。
- * 普通对话没有这一项。
- */
-export const ScheduledConversationFoldSchema = z.object({
-  task_id: Id,
-  task_name: z.string().min(1),
-  unread_count: NonNegativeInt,
-  run_count: NonNegativeInt,
-}).strict();
+export { ScheduledConversationFoldSchema, type ScheduledConversationFold } from './conversation/scheduled-fold';
 
 // ---- 通知（App Server → Electron Main） ----
 
@@ -427,5 +421,4 @@ export type ScheduledTaskMutationResult = z.infer<typeof ScheduledTaskMutationRe
 export type ConversationRunScheduledTasksRequest = z.infer<typeof ConversationRunScheduledTasksRequestSchema>;
 export type ConversationRunScheduledTask = z.infer<typeof ConversationRunScheduledTaskSchema>;
 export type ConversationRunScheduledTasks = z.infer<typeof ConversationRunScheduledTasksSchema>;
-export type ScheduledConversationFold = z.infer<typeof ScheduledConversationFoldSchema>;
 export type ScheduledTaskNotification = z.infer<typeof ScheduledTaskNotificationSchema>;

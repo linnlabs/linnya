@@ -78,6 +78,7 @@ export interface ReadRuntimeEventsOptions {
 
 // 用于 listConversations 的返回类型
 export interface ConversationListItem {
+  scheduled_task?: import('@app/schemas/scheduled-tasks').ScheduledConversationFold;
   conversation_id: string;
   title: string;
   created_at: number;

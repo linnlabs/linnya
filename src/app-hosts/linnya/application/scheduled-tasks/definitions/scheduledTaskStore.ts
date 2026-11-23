@@ -20,6 +20,7 @@ export interface ScheduledTaskRecord extends ScheduledTaskCreateRequest {
   paused_reason: SchedulePause | null;
   consecutive_failures: number;
   last_viewed_at: number | null;
+  unviewed_since_at: number;
   checked_through_at: number;
   schedule_generation: number;
   created_by_kind: 'user' | 'agent';
@@ -56,6 +57,7 @@ export interface ScheduledTaskStore {
   list(projectId?: string): ScheduledTaskRecord[];
   read(id: string): ScheduledTaskRecord | undefined;
   write(task: ScheduledTaskRecord): void;
+  advanceCheck(taskId: string, through: number): void;
   recordChange(task: ScheduledTaskRecord, actor: TaskChangeActor, action: 'created' | 'updated'): void;
   listChanges(conversation: string, rootRunIds: readonly string[]): Array<{
     task_id: string; task_name: string; action: 'created' | 'updated'; permission: CommandPermissionLevel;

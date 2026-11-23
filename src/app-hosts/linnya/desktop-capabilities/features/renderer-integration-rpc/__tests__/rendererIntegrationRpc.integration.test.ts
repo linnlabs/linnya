@@ -169,6 +169,7 @@ function createRendererPort(
     publishTodosChanged: vi.fn(),
     publishModelsChanged: vi.fn(),
     publishConversationActivityChanged: vi.fn(),
+    publishScheduledTasksChanged: vi.fn(),
     publishPluginsChanged: vi.fn(),
     publishPluginDataChanged: vi.fn(),
     publishPluginInstallProgress: vi.fn(),

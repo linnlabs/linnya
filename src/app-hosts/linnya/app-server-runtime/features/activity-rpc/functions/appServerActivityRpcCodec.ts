@@ -17,6 +17,7 @@ const ActiveAgentRunSchema = z.object({
 }).strict();
 
 const AppServerActivitySnapshotSchema = z.object({
+  scheduled_running_count: z.number().int().nonnegative().optional(),
   has_executing_commands: z.boolean(),
   active_agent_runs: z.array(ActiveAgentRunSchema).refine(
     runs => !hasDuplicates(runs.map(run => run.conversation_id)),
@@ -51,6 +52,7 @@ export function encodeAppServerActivitySnapshot(
   snapshot: AppServerActivitySnapshot,
 ): AppServerActivitySnapshotWire {
   return AppServerActivitySnapshotSchema.parse({
+    ...(snapshot.scheduledRunningCount === undefined ? {} : { scheduled_running_count: snapshot.scheduledRunningCount }),
     has_executing_commands: snapshot.hasExecutingCommands,
     active_agent_runs: snapshot.activeAgentRuns.map(run => ({
       conversation_id: run.conversationId,
@@ -63,6 +65,7 @@ export function encodeAppServerActivitySnapshot(
 export function parseAppServerActivitySnapshot(value: unknown): AppServerActivitySnapshot {
   const parsed = AppServerActivitySnapshotSchema.parse(value);
   return Object.freeze({
+    ...(parsed.scheduled_running_count === undefined ? {} : { scheduledRunningCount: parsed.scheduled_running_count }),
     hasExecutingCommands: parsed.has_executing_commands,
     activeAgentRuns: Object.freeze(parsed.active_agent_runs.map(run => Object.freeze({
       conversationId: run.conversation_id,

@@ -34,6 +34,7 @@ export function createCliRuntimeRendererIntegrationPort(): BackendRendererIntegr
     publishPluginInstallProgress() {},
     publishModelsChanged() {},
     publishConversationActivityChanged() {},
+    publishScheduledTasksChanged() {},
   });
 }
 
