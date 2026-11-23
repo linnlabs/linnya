@@ -183,6 +183,13 @@ export const SCHEDULED_TASK_MESSAGE_FALLBACKS = {
   'scheduledTasks.notify.autoPausedFailures': '定时任务“{name}”连续失败，已自动暂停。',
   'scheduledTasks.notify.autoPausedUnviewed': '定时任务“{name}” 14 天没有看过结果，已自动暂停。',
   'scheduledTasks.notify.catchUp': '补跑了 {count} 个错过的定时任务。',
+  'scheduledTasks.card.view': '查看',
+  'scheduledTasks.card.lowerToStandard': '改为标准',
+  'scheduledTasks.card.fullAccessWarning': '无人在场时自动允许所有命令，包括删除和上传文件。',
+  'scheduledTasks.card.aboveConversation': '这个任务的命令权限高于当前对话。',
+  'scheduledTasks.card.deleted': '已删除',
+  'scheduledTasks.card.updated': '已修改',
+  'scheduledTasks.card.lowered': '“{name}”的命令权限已改为“标准”。',
 } as const;
 
 export type ScheduledTaskMessageKey = keyof typeof SCHEDULED_TASK_MESSAGE_FALLBACKS;
@@ -366,6 +373,13 @@ const EN: Readonly<Record<ScheduledTaskMessageKey, string>> = {
   'scheduledTasks.notify.autoPausedFailures': 'Scheduled task “{name}” failed several times in a row and was paused.',
   'scheduledTasks.notify.autoPausedUnviewed': 'Scheduled task “{name}” was paused because its results went unread for 14 days.',
   'scheduledTasks.notify.catchUp': 'Caught up on {count} missed scheduled tasks.',
+  'scheduledTasks.card.view': 'View',
+  'scheduledTasks.card.lowerToStandard': 'Change to Standard',
+  'scheduledTasks.card.fullAccessWarning': 'Runs with no one present and allows every command, including deleting and uploading files.',
+  'scheduledTasks.card.aboveConversation': 'This task has a higher command permission than this conversation.',
+  'scheduledTasks.card.deleted': 'Deleted',
+  'scheduledTasks.card.updated': 'Updated',
+  'scheduledTasks.card.lowered': 'Command permission for “{name}” is now Standard.',
 };
 
 export const SCHEDULED_TASK_MESSAGE_CATALOG: MessageCatalogContribution = {

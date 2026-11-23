@@ -8,3 +8,7 @@ export { refreshScheduledTasks } from './orchestration/refreshScheduledTasks';
 export { ensureScheduledTasksLocalizationRegistered } from './orchestration/ensureScheduledTasksLocalizationRegistered';
 export { useScheduledTaskLocalization } from './ui/useScheduledTaskLocalization';
 export { startScheduledTasksAppLifecycle } from './orchestration/startScheduledTasksAppLifecycle';
+export { scheduledTasksClient } from './adapters/scheduledTasksClient';
+export { describeSchedule } from './functions/describeSchedule';
+export { presentTaskState } from './functions/presentScheduledTask';
+export type { ScheduledTaskMessageResolver } from './definitions/scheduledTaskMessages';

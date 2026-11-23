@@ -1,0 +1,72 @@
+/*
+ * 回答末尾的定时任务卡片：一张浅底卡，时钟图标对齐任务名那一行；
+ * 完全访问时整卡换警告底色，警告单独占一行，不和按钮挤在一起。
+ */
+.run-scheduled-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 560px;
+  margin-bottom: var(--space-2);
+}
+
+.run-scheduled-task-card {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+}
+
+.run-scheduled-task-card.is-warning {
+  background: var(--color-warning-bg);
+}
+
+/* 名称行高 20px，图标 18px：上移 1px 与名称垂直居中。 */
+.run-scheduled-task-card__icon {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--color-text-secondary);
+}
+
+.run-scheduled-task-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+
+.run-scheduled-task-card__name {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.run-scheduled-task-card__meta {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-caption);
+}
+
+.run-scheduled-task-card.is-warning .run-scheduled-task-card__meta {
+  color: var(--color-warning-text);
+}
+
+.run-scheduled-task-card__actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* 警告与名称左对齐，跨过按钮列单独一行。 */
+.run-scheduled-task-card__warning {
+  grid-column: 2 / -1;
+  margin-top: var(--space-2);
+  color: var(--color-warning-text);
+  font-size: var(--font-size-caption);
+}

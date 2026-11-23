@@ -167,6 +167,8 @@ export const TASK_NAMING_ALLOWANCES: readonly TaskNamingAllowance[] = [
       under(
         'apps/renderer/domains/scheduled-tasks',
         'apps/renderer/app/pages/ScheduledTasksPage',
+        'apps/renderer/app/workflows/conversation-run-scheduled-tasks',
+        'apps/renderer/domains/conversation/features/run-scheduled-tasks',
         'src/app-hosts/linnya/application/scheduled-tasks',
         'src/app-hosts/linnya/adapters/scheduled-tasks',
         'src/app-hosts/linnya/adapters/persistence/scheduled-tasks',

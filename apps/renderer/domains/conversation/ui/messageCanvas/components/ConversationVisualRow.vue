@@ -22,6 +22,11 @@
     </div>
 
     <div v-if="tailLayout.ownsTailRegion" class="conversation-visual-row__tail">
+      <RunScheduledTaskCards
+        v-if="runScheduledTasks.cards.value.length > 0"
+        :cards="runScheduledTasks.cards.value"
+        @act="runScheduledTasks.act"
+      />
       <div class="conversation-visual-row__tail-line">
         <ConversationWorkDurationHint
           v-if="!runChangesNote"
@@ -89,6 +94,7 @@ import {
   RunDocumentChangesNote,
   useRunDocumentChanges,
 } from '../../../features/run-document-changes';
+import { RunScheduledTaskCards, useRunScheduledTasks } from '../../../features/run-scheduled-tasks';
 import type { ConversationVisualRow as ConversationVisualRowModel } from '../definitions/conversationVisualRow';
 import type {
   ConversationMessageCanvasTrailingStatus,
@@ -143,6 +149,16 @@ const renderScope = inject(CONVERSATION_RENDER_SCOPE_KEY, null);
 const turnRunIds = computed(() => collectVisualTurnRunIds(props.turnMessages));
 // 运行中由工具卡逐条显示；本轮结束后才读改动清单。
 const runChanges = useRunDocumentChanges({
+  conversationId: renderScope?.conversationId ?? null,
+  rootRunIds: turnRunIds,
+  enabled: computed(() => (
+    props.showsRunDocumentChanges
+    && props.item.isTurnEnd
+    && !isTurnStreaming.value
+  )),
+});
+// 同一时机读本轮建了或改了哪些定时任务。
+const runScheduledTasks = useRunScheduledTasks({
   conversationId: renderScope?.conversationId ?? null,
   rootRunIds: turnRunIds,
   enabled: computed(() => (

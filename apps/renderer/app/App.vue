@@ -57,6 +57,8 @@ import { readDocumentTypeIcon, readDocumentTypeRecoveryAction, readDocumentTypeP
 import { createConversationResourceLinkPort } from './workflows/conversation-resource-link/orchestration/createConversationResourceLinkPort';
 import { registerRunDocumentChangesPort } from '@/domains/conversation/features/run-document-changes';
 import { createRunDocumentChangesPort } from './workflows/conversation-run-document-changes/orchestration/createRunDocumentChangesPort';
+import { registerRunScheduledTasksPort } from '@/domains/conversation/features/run-scheduled-tasks';
+import { createRunScheduledTasksPort } from './workflows/conversation-run-scheduled-tasks/orchestration/createRunScheduledTasksPort';
 
 const layoutStore = useLayoutStore();
 // 整个应用共享一个悬停提示服务：任何带 data-linnya-tooltip 的元素（含图标按钮、编辑器工具条）都由它绘制。
@@ -78,6 +80,7 @@ registerMarkdownDocumentEditorRuntimePort(createMarkdownDocumentEditorRuntime())
 registerConversationResourceLinkPort(createConversationResourceLinkPort());
 registerDocumentTypePresentationPort({ readIcon: readDocumentTypeIcon, readPreviewComponent: readDocumentTypePreviewComponent, readRecoveryAction: readDocumentTypeRecoveryAction });
 registerRunDocumentChangesPort(createRunDocumentChangesPort());
+registerRunScheduledTasksPort(createRunScheduledTasksPort());
 useWorkspaceVfsRuntimeContextSync();
 useWorkspaceMutationSubscription();
 useActiveDocumentPluginAvailabilityGuard();
