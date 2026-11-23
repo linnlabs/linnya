@@ -211,7 +211,7 @@ describe('knowledge activation persistence and drain', () => {
     const input = { taskId: 'retry-after-enable', kbId: 'default', docId: 'retry-source', filename: 'running.pdf',
       filePath: path.join(root, 'source.pdf'), embeddingModelId: 'embedding', forceVisionMode: false, priority: 1, retry: false };
     await expect(runtime.queues.addIngestionTask(input)).rejects.toMatchObject({
-      message: '知识库向量服务未能启动，请检查运行日志，修复后停用并重新启用知识库。', cause: vectorFailure,
+      message: '知识库向量服务未能启动：请在插件商店停用并重新启用知识库；若仍失败，请重启 Linnya。', cause: vectorFailure,
     });
     expect(runtime.queues.listIngestionTasks()).toHaveLength(0);
     vectorFailure = undefined;

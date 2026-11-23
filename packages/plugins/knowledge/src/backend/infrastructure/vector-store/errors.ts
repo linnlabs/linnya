@@ -33,7 +33,7 @@ export class KnowledgeVectorStartupError extends Error {
     const runtimeMissing = isQdrantRuntimeMissing(cause);
     super(runtimeMissing
       ? '知识库所需的 Qdrant 运行时缺失或已损坏：请在插件商店卸载知识库（保留资料）后重新安装，以补齐运行时。'
-      : '知识库向量服务未能启动，请检查运行日志，修复后停用并重新启用知识库。', { cause });
+      : '知识库向量服务未能启动：请在插件商店停用并重新启用知识库；若仍失败，请重启 Linnya。', { cause });
     this.name = 'KnowledgeVectorStartupError';
     this.runtimeMissing = runtimeMissing;
   }
