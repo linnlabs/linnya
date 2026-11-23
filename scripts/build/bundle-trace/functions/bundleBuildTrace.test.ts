@@ -6,7 +6,10 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { BundleBuildTrace } from '../definitions/bundleBuildTrace.mjs';
+import { createTsupBundleTrace } from '../adapters/tsupBundleTracePlugin.mjs';
+import { createViteBundleTracePlugin } from '../adapters/viteBundleTracePlugin.mjs';
 import {
+  assertSafeBuildTarget,
   BUNDLE_TRACE_ROOT_ENV,
   writeDerivedBundleTrace,
   writeEsbuildBundleTrace,
@@ -26,6 +29,28 @@ function readTrace(tracePath: string | undefined): BundleBuildTrace {
 function sha256(contents: string): string {
   return createHash('sha256').update(contents).digest('hex');
 }
+
+describe('bundle trace build target', () => {
+  it('accepts lowercase hyphenated targets and rejects names the official build would refuse', () => {
+    expect(() => assertSafeBuildTarget('plugin-knowledge/graph-extraction')).not.toThrow();
+    for (const target of ['plugin-knowledge/graphExtraction', '../escape', 'Plugin/x', '']) {
+      expect(() => assertSafeBuildTarget(target)).toThrow(/bundle trace build target 无效/u);
+    }
+  });
+
+  it('checks the target in every build, not only when the official build turns tracing on', () => {
+    const previous = process.env[BUNDLE_TRACE_ROOT_ENV];
+    delete process.env[BUNDLE_TRACE_ROOT_ENV];
+    try {
+      expect(() => createTsupBundleTrace({ buildTarget: 'plugin-knowledge/graphExtraction', repositoryRoot: os.tmpdir() }))
+        .toThrow(/bundle trace build target 无效/u);
+      expect(() => createViteBundleTracePlugin({ buildTarget: 'plugin-x/Renderer', repositoryRoot: os.tmpdir() }))
+        .toThrow(/bundle trace build target 无效/u);
+    } finally {
+      if (previous !== undefined) process.env[BUNDLE_TRACE_ROOT_ENV] = previous;
+    }
+  });
+});
 
 describe('bundle build trace', () => {
   it('把 esbuild 输入归一化为 workspace source 与精确 npm package identity', () => {

@@ -132,7 +132,11 @@ function normalizeTraceRoot(repositoryRoot, environment) {
   return traceRoot;
 }
 
-function assertSafeBuildTarget(buildTarget) {
+/**
+ * 目标名会变成 trace 文件名。追踪只在正式构建打开，所以各构建入口不论是否追踪都先校验，
+ * 让日常构建和 CI 就能发现正式构建才会拒绝的名字。
+ */
+export function assertSafeBuildTarget(buildTarget) {
   if (!/^[a-z0-9][a-z0-9._/-]*$/u.test(buildTarget) || buildTarget.includes('..')) {
     throw new Error(`bundle trace build target 无效：${buildTarget}`);
   }

@@ -3,12 +3,14 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import { isHostRendererExternal, resolveHostRendererExternalUrl } from '../rendererHostExternalMap.mjs';
 import { rendererStylesheetManifestPlugin } from '../build/rendererStylesheetManifestPlugin';
+import { createViteBundleTracePlugin } from '../../../scripts/build/bundle-trace/adapters/viteBundleTracePlugin.mjs';
 const packageDir = import.meta.dirname;
 const repository = path.resolve(packageDir, '../../..');
 const rendererEntry = path.resolve(packageDir, 'src/renderer/index.ts');
 export default defineConfig({
   root: packageDir,
-  plugins: [vue(), rendererStylesheetManifestPlugin({ entryPath: rendererEntry })],
+  plugins: [vue(), rendererStylesheetManifestPlugin({ entryPath: rendererEntry }),
+    createViteBundleTracePlugin({ buildTarget: 'plugin-canvas/renderer', repositoryRoot: repository })],
   // 插件 renderer 不能读 Node process；与 Slides 一致，依赖里的 process 探测在构建时折叠掉。
   define: { 'process.env.NODE_ENV': JSON.stringify('production'), process: 'undefined' },
   resolve: { alias: [

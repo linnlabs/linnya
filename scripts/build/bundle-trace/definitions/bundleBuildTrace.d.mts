@@ -77,6 +77,8 @@ export interface EsbuildMetafile {
 
 export function isBundleTraceEnabled(environment?: NodeJS.ProcessEnv): boolean;
 
+export function assertSafeBuildTarget(buildTarget: string): void;
+
 export function writeEsbuildBundleTrace(input: {
   readonly buildTarget: string;
   readonly engineVersion?: string;

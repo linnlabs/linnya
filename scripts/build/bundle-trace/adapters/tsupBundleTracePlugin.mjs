@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 import {
+  assertSafeBuildTarget,
   isBundleTraceEnabled,
   writeEsbuildBundleTrace,
 } from '../functions/bundleBuildTrace.mjs';
@@ -15,6 +16,7 @@ const tsupVersion = require('tsup/package.json').version;
  * buildEnd 明确给出 writtenFiles 后再 hash 磁盘字节，不能用延时或重试猜生命周期。
  */
 export function createTsupBundleTrace({ buildTarget, repositoryRoot }) {
+  assertSafeBuildTarget(buildTarget);
   if (!isBundleTraceEnabled()) return { esbuildPlugins: [], plugins: [] };
   const pendingMetafiles = [];
   return {

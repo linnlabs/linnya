@@ -10,7 +10,9 @@ const bundledDependencies = ['zod', '@linnya/foundation', 'uuid', 'adler-32', 'i
 const workerExternals = ['better-sqlite3', 'pdfjs-dist', '@napi-rs/canvas', '@node-rs/jieba', 'sharp'];
 
 function buildEntry(name: string, entry: string, worker: boolean): Options {
-  const trace = createTsupBundleTrace({ buildTarget: `plugin-knowledge/${name}`, repositoryRoot });
+  // trace 目标名只收小写与连字符（与 Slides 一致）；入口名保持 workers/<name>.worker。
+  const traceName = name.replace(/[A-Z]/gu, letter => `-${letter.toLowerCase()}`);
+  const trace = createTsupBundleTrace({ buildTarget: `plugin-knowledge/${traceName}`, repositoryRoot });
   return {
     entry: { [worker ? `workers/${name}.worker` : name]: entry },
     format: ['cjs'], platform: 'node', target: 'node24', outDir: 'dist/backend',
