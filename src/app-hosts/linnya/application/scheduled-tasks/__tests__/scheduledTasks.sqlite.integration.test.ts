@@ -44,9 +44,9 @@ function fixture() {
         async read(runs) { return new Map(runs.map(run => [run.id, facts.get(run.id) ?? { state: 'missing', runId: null }])); },
         async stop(_conversationId, runId) { stopped.push(runId); facts.set(runId, { state: 'interrupted', runId }); },
       },
-      settings: { read: () => ({ max_concurrent_runs: concurrency }), write: settings => { concurrency = settings.max_concurrent_runs; } },
+      settings: { read: () => ({ max_concurrent_runs: concurrency }), write: settings => { concurrency = settings.max_concurrent_runs ?? concurrency; } },
       usage: () => null, storage: () => null, publish: () => {}, notify: async event => { notifications.push(event); },
-      logError: (message, error) => { throw new Error(message, { cause: error }); },
+      logError: (message, error) => { throw new Error(`${message}: ${String(error)}`); },
     });
   }
   const tasks = owner();
@@ -137,7 +137,7 @@ describe('scheduled tasks with a wall clock and real SQLite', () => {
     expect(f.admitted).toEqual(['A', 'B', 'D']);
     f.transition(d, 'completed');
     await f.at(2 * HOUR + 2_000);
-    expect(f.admitted.at(-1)).toBe('C');
+    expect(f.admitted[f.admitted.length - 1]).toBe('C');
     await f.at(3 * HOUR);
     expect(f.store.readRuns(c, 1)).toMatchObject([{ status: 'skipped', reason: 'previous_still_running' }]);
     await f.tasks.lifecycle.stop();
@@ -164,6 +164,28 @@ describe('scheduled tasks with a wall clock and real SQLite', () => {
     await f.at(14 * DAY + 5 * HOUR + 1_000);
     expect(f.store.read(c)).toMatchObject({ enabled: false, paused_reason: 'unviewed' });
     expect(f.notifications).toContainEqual({ kind: 'auto_paused', task_id: c, task_name: 'unviewed', cause: 'unviewed' });
+    await f.tasks.lifecycle.stop();
+  });
+
+  it('keeps manual runs available with the development scheduler disabled and ignores paused time', async () => {
+    const f = fixture();
+    const id = await f.create('manual');
+    const disabled = f.owner(false);
+    await f.start(disabled);
+    await f.at(3 * HOUR, disabled);
+    expect((await disabled.list()).scheduler_enabled).toBe(false);
+    expect(f.store.readRuns(id, 5)).toEqual([]);
+    await disabled.runNow(id);
+    f.transition(id, 'completed');
+    await f.at(3 * HOUR + 1_000, disabled);
+    expect(f.store.readRuns(id, 5)).toMatchObject([{ trigger: 'manual', status: 'completed' }]);
+    await disabled.setEnabled(id, false);
+    await disabled.lifecycle.stop();
+    await f.at(9 * HOUR, f.tasks);
+    await f.start();
+    await f.tasks.setEnabled(id, true);
+    await f.at(10 * HOUR);
+    expect(f.store.readRuns(id, 5)).toMatchObject([{ planned_at: START + 10 * HOUR }, { trigger: 'manual' }]);
     await f.tasks.lifecycle.stop();
   });
 

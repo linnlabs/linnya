@@ -1,3 +1,4 @@
+import { SCHEDULE_MANAGEMENT_PROMPT } from '../scheduleManagementPrompt';
 import type { AgentDefinition } from '../../types';
 import { RESEARCH_AGENT_ID } from '@app/schemas';
 import { admitResearchRequest } from './admission';
@@ -46,7 +47,8 @@ export default {
     systemPromptBuilder: request => {
       if (!request.researchScope)
         throw new Error('Research scope must be admitted before preparing the main Agent');
-      return buildResearchLeaderPrompt(request.researchScope);
+      const basePrompt = buildResearchLeaderPrompt(request.researchScope);
+      return request.scheduledRun ? basePrompt : `${basePrompt}\n\n${SCHEDULE_MANAGEMENT_PROMPT}`;
     },
   },
 } satisfies AgentDefinition;

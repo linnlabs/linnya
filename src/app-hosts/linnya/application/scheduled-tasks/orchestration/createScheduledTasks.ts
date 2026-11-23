@@ -3,8 +3,9 @@ import { compareCommandPermissionLevels, type CommandPermissionLevel } from '@ap
 import type {
   ConversationRunScheduledTasks, ConversationRunScheduledTasksRequest, ScheduledTaskCreateRequest,
   ScheduledTaskDeleteRequest, ScheduledTaskDeleteResult, ScheduledTaskMutationResult, ScheduledTaskRunsResult,
-  ScheduledTaskSchedule, ScheduledTaskSettings, ScheduledTasksListResult, ScheduledTaskUpdateRequest,
+  ScheduledTaskSchedule, ScheduledTaskSettings, ScheduledTaskSettingsSetRequest, ScheduledTasksListResult, ScheduledTaskUpdateRequest,
 } from '@app/schemas/scheduled-tasks';
+import { ScheduledTaskPermissionError } from '../definitions/scheduledTaskPermissionError';
 import type { ScheduledTaskPorts } from '../definitions/scheduledTaskRuntime';
 import type { ScheduledTaskRecord, TaskChangeActor } from '../definitions/scheduledTaskStore';
 import { projectScheduledRun, projectScheduledTask } from '../functions/projectScheduledTask';
@@ -14,6 +15,10 @@ import { createScheduledTaskScheduler } from './createScheduledTaskScheduler';
 
 const MISSING = { ok: false, code: 'task_not_found', message: 'Scheduled task not found.' } as const;
 const INVALID_MODEL = { ok: false, code: 'model_unavailable', message: 'The selected model is unavailable.' } as const;
+
+function checkCliPermission(level: CommandPermissionLevel, actor: TaskChangeActor | undefined): void {
+  if (actor && compareCommandPermissionLevels(level, actor.permission) > 0) throw new ScheduledTaskPermissionError();
+}
 
 export function createScheduledTasks(ports: ScheduledTaskPorts) {
   const { store } = ports;
@@ -64,6 +69,7 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
     },
     create(input: ScheduledTaskCreateRequest, actor?: TaskChangeActor): Promise<ScheduledTaskMutationResult> {
       return scheduler.serialize(async () => {
+        checkCliPermission(input.permission_level, actor);
         if (!ports.projectExists(input.project_id)) return { ok: false, code: 'project_not_found', message: 'Project not found.' };
         const validation = preview(input.schedule);
         if (!validation.ok) return { ok: false, code: 'invalid_schedule', message: validation.message };
@@ -81,6 +87,7 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
       return scheduler.serialize(async () => {
         const task = visible(task_id, projectId);
         if (!task) return MISSING;
+        checkCliPermission(fields.permission_level ?? task.permission_level, actor);
         if (task.revision !== expected_revision) return { ok: false, code: 'revision_conflict', message: 'Scheduled task changed. Refresh it and try again.' };
         const now = ports.now();
         if (fields.model_config_id != null && fields.model_config_id !== task.model_config_id && !ports.modelAvailable(fields.model_config_id)) return INVALID_MODEL;
@@ -105,6 +112,7 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
       return scheduler.serialize(async () => {
         const task = visible(id, projectId);
         if (!task) return MISSING;
+        if (enabled) checkCliPermission(task.permission_level, actor);
         if (task.enabled === enabled) return mutation(id);
         if (enabled && task.schedule.kind === 'once') {
           if (task.paused_reason === 'one_shot_done') return { ok: false, code: 'invalid_schedule', message: 'Choose a new one-time schedule before enabling this task.' };
@@ -122,10 +130,11 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
         return mutation(id);
       });
     },
-    runNow(id: string, projectId?: string): Promise<ScheduledTaskMutationResult> {
+    runNow(id: string, projectId?: string, actor?: TaskChangeActor): Promise<ScheduledTaskMutationResult> {
       return scheduler.serialize(async () => {
         const task = visible(id, projectId);
         if (!task) return MISSING;
+        checkCliPermission(task.permission_level, actor);
         const { pending, facts } = await live();
         const active = pending.find(run => run.task_id === id && run.status === 'admitted');
         const reason = skipReasonForActiveRun(active && facts.get(active.id)?.state);
@@ -168,14 +177,14 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
         if (!run || !task) return;
         const now = ports.now();
         store.transaction(() => {
-          store.writeRun({ ...run, viewed_at: now });
+          if (run.status === 'completed' && run.viewed_at === null) store.writeRun({ ...run, viewed_at: now });
           store.write({ ...task, last_viewed_at: now });
         });
         ports.publish();
       });
     },
     getSettings: ports.settings.read,
-    setSettings(settings: ScheduledTaskSettings): Promise<ScheduledTaskSettings> {
+    setSettings(settings: ScheduledTaskSettingsSetRequest): Promise<ScheduledTaskSettings> {
       return scheduler.serialize(async () => {
         ports.settings.write(settings);
         await scheduler.drain();

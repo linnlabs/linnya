@@ -54,6 +54,9 @@ export function getScheduledTaskSchemaProviders(): ISchemaProvider[] {
     )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_scheduled_task_runs_conversation
       ON scheduled_task_runs(conversation_id) WHERE conversation_id IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_unread
+      ON scheduled_task_runs(task_id, ended_at)
+      WHERE status = 'completed' AND conversation_id IS NOT NULL AND viewed_at IS NULL`,
     `CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_pending
       ON scheduled_task_runs(status, planned_at) WHERE status IN ('queued', 'admitted')`,
   ] }];

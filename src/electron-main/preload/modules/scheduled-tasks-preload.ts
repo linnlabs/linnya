@@ -13,7 +13,7 @@ export function buildScheduledTasksPreloadApi(ipc: IpcRenderer) {
     markViewed: (request: contract.ScheduledTaskMarkViewedRequest): Promise<unknown> => ipc.invoke(contract.SCHEDULED_TASKS_MARK_VIEWED_CHANNEL, request),
     previewSchedule: (request: contract.ScheduledTaskPreviewScheduleRequest): Promise<unknown> => ipc.invoke(contract.SCHEDULED_TASKS_PREVIEW_SCHEDULE_CHANNEL, request),
     getSettings: (): Promise<unknown> => ipc.invoke(contract.SCHEDULED_TASKS_SETTINGS_GET_CHANNEL),
-    setSettings: (request: contract.ScheduledTaskSettings): Promise<unknown> => ipc.invoke(contract.SCHEDULED_TASKS_SETTINGS_SET_CHANNEL, request),
+    setSettings: (request: contract.ScheduledTaskSettingsSetRequest): Promise<unknown> => ipc.invoke(contract.SCHEDULED_TASKS_SETTINGS_SET_CHANNEL, request),
     listForConversationRuns: (request: contract.ConversationRunScheduledTasksRequest): Promise<unknown> => ipc.invoke(contract.CONVERSATION_RUN_SCHEDULED_TASKS_CHANNEL, request),
     onChanged(listener: () => void): () => void {
       const receive = () => listener();

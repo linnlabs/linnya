@@ -17,7 +17,8 @@ export function createScheduledTaskScheduler(ports: ScheduledTaskPorts) {
 
   function serialize<T>(operation: () => T | Promise<T>): Promise<T> {
     const result = work.then(operation);
-    work = result.catch(error => ports.logError('Scheduled task operation failed', error));
+    // 失败交还具体请求或分钟检查；后续写入仍按原顺序继续。
+    work = result.then(() => undefined, () => undefined);
     return result;
   }
 
@@ -128,7 +129,7 @@ export function createScheduledTaskScheduler(ports: ScheduledTaskPorts) {
     store.transaction(() => {
       for (const task of store.list()) {
         if (!task.enabled) continue;
-        const firstUnread = store.runFacts(task.id).first_unread_at;
+        const firstUnread = store.firstUnreadAt(task.id);
         if (firstUnread !== null && now - Math.max(firstUnread, task.last_viewed_at ?? 0, task.unviewed_since_at) >= SCHEDULED_TASK_UNVIEWED_PAUSE_MS) {
           store.write({ ...task, enabled: false, paused_reason: 'unviewed', revision: task.revision + 1, updated_at: now });
           discardAutomaticQueue(task.id);

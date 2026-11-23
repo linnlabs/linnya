@@ -53,7 +53,8 @@ export function toReadModelAgentId(agentId: string | null): string | null {
 export function readConversationSelectedAgentId(
   stored: string | null
 ): ConversationSelectedAgentId | null {
-  const agentId = toReadModelAgentId(stored);
+  if (stored === null) return null;
+  const agentId = toReadModelAgentId(ConversationSelectedAgentIdSchema.parse(stored));
   return agentId === null ? null : ConversationSelectedAgentIdSchema.parse(agentId);
 }
 

@@ -340,7 +340,11 @@ export const ScheduledTaskDeleteResultSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(false), code: z.literal('task_not_found'), message: z.string().min(1) }).strict(),
 ]);
 
-export const ScheduledTaskSettingsSetRequestSchema = ScheduledTaskSettingsSchema;
+export const ScheduledTaskSettingsSetRequestSchema = ScheduledTaskSettingsSchema.partial().refine(
+  request => request.max_concurrent_runs !== undefined || request.default_model_config_id !== undefined,
+  'Provide a setting to change.',
+);
+export type ScheduledTaskSettingsSetRequest = z.infer<typeof ScheduledTaskSettingsSetRequestSchema>;
 
 // ---- 回答末尾卡片 ----
 

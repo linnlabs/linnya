@@ -1,3 +1,5 @@
+import type { AgentInvokeRequest } from '../../../context/agent/contracts';
+import { SCHEDULE_MANAGEMENT_PROMPT } from '../scheduleManagementPrompt';
 /**
  * @file src/app-hosts/linnya/agent-registry/agents/default/index.ts
  * @description Default Agent 定义
@@ -49,8 +51,9 @@ export function buildDefaultAgentSystemPrompt(): string {
   return buildPrompt(DEFAULT_AGENT_PROMPT);
 }
 
-function buildSystemPrompt(): string {
-  return buildDefaultAgentSystemPrompt();
+function buildSystemPrompt(request: AgentInvokeRequest): string {
+  const basePrompt = buildDefaultAgentSystemPrompt();
+  return request.scheduledRun ? basePrompt : `${basePrompt}\n\n${SCHEDULE_MANAGEMENT_PROMPT}`;
 }
 
 export const AGENT_DEFINITION = {

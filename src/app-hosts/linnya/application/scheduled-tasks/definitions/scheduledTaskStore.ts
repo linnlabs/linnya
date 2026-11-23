@@ -68,7 +68,8 @@ export interface ScheduledTaskStore {
   pendingRuns(): ScheduledRunRecord[];
   readRunAt(taskId: string, plannedAt: number): ScheduledRunRecord | undefined;
   readRunForConversation(conversationId: string): ScheduledRunRecord | undefined;
-  runFacts(taskId: string): { run_count: number; unread_count: number; first_unread_at: number | null };
+  runFacts(taskId: string): { run_count: number; unread_count: number };
+  firstUnreadAt(taskId: string): number | null;
   clearHistory(taskId: string): void;
   removeRun(id: string): void;
 }

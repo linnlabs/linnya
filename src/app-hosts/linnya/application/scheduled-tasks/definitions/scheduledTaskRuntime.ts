@@ -1,4 +1,4 @@
-import type { ScheduledTaskNotification, ScheduledTaskSettings } from '@app/schemas/scheduled-tasks';
+import type { ScheduledTaskNotification, ScheduledTaskSettings, ScheduledTaskSettingsSetRequest } from '@app/schemas/scheduled-tasks';
 import type { ScheduledRunRecord, ScheduledTaskRecord, ScheduledTaskStore } from './scheduledTaskStore';
 
 export type ScheduledExecutionState = 'running' | 'awaiting_approval' | 'awaiting_answer' | 'completed' | 'failed' | 'interrupted' | 'missing';
@@ -31,7 +31,7 @@ export interface ScheduledTaskPorts {
   readonly execution: ScheduledTaskExecutionPort;
   readonly settings: {
     read(): ScheduledTaskSettings;
-    write(settings: ScheduledTaskSettings): void;
+    write(settings: ScheduledTaskSettingsSetRequest): void;
   };
   readonly usage: (run: ScheduledRunRecord) => number | null;
   readonly storage: (taskId: string) => number | null;

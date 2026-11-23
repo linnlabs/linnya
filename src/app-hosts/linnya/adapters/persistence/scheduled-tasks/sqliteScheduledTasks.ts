@@ -114,14 +114,19 @@ export function createSqliteScheduledTasks(db: Database.Database): ScheduledTask
     readRunForConversation(conversationId: string): ScheduledRunRecord | undefined {
       return db.prepare<[string], ScheduledRunRecord>('SELECT * FROM scheduled_task_runs WHERE conversation_id = ?').get(conversationId);
     },
-    runFacts(taskId: string): { run_count: number; unread_count: number; first_unread_at: number | null } {
-      const facts = db.prepare<[string], { run_count: number; unread_count: number; first_unread_at: number | null }>(`
+    runFacts(taskId: string): { run_count: number; unread_count: number } {
+      const facts = db.prepare<[{ taskId: string }], { run_count: number; unread_count: number }>(`
         SELECT COUNT(*) AS run_count,
-          COUNT(CASE WHEN status = 'completed' AND conversation_id IS NOT NULL AND viewed_at IS NULL THEN 1 END) AS unread_count,
-          MIN(CASE WHEN status = 'completed' AND conversation_id IS NOT NULL AND viewed_at IS NULL THEN ended_at END) AS first_unread_at
-        FROM scheduled_task_runs WHERE task_id = ?`).get(taskId);
+          (SELECT COUNT(*) FROM scheduled_task_runs WHERE task_id = @taskId
+            AND status = 'completed' AND conversation_id IS NOT NULL AND viewed_at IS NULL) AS unread_count
+        FROM scheduled_task_runs WHERE task_id = @taskId`).get({ taskId });
       if (!facts) throw new Error(`Missing aggregate for scheduled task ${taskId}`);
       return facts;
+    },
+    firstUnreadAt(taskId): number | null {
+      return db.prepare<[string], { ended_at: number | null }>(`SELECT ended_at FROM scheduled_task_runs
+        WHERE task_id = ? AND status = 'completed' AND conversation_id IS NOT NULL AND viewed_at IS NULL
+        ORDER BY ended_at LIMIT 1`).get(taskId)?.ended_at ?? null;
     },
     clearHistory(taskId: string): void {
       db.prepare(`DELETE FROM scheduled_task_runs WHERE task_id = ? AND status != 'admitted'`).run(taskId);

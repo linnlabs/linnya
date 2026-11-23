@@ -1,11 +1,10 @@
 import { parseArgs } from 'node:util';
 import type Database from 'better-sqlite3';
 import type { BackendPluginCliContribution } from '@linnya/plugin-host-contract/backend';
-import { compareCommandPermissionLevels } from '@app/schemas';
 import { ScheduledTaskCreateRequestSchema, ScheduledTaskUpdateRequestSchema, type ScheduledTask } from '@app/schemas/scheduled-tasks';
 import { readStoredRunActor } from 'src/domains/action-ledger';
 import { SqliteRunDescriptorStore } from 'src/app-hosts/linnya/adapters/persistence/run-descriptors';
-import type { ScheduledTasks } from '../../scheduled-tasks';
+import { ScheduledTaskPermissionError, type ScheduledTasks } from '../../scheduled-tasks';
 
 export const SCHEDULES_USAGE = `linnya schedules list | show <id>
 linnya schedules create --name <name> --prompt <instructions> (--cron <five-field-expression> | --schedule <json>) [--agent default|research] [--model <model-id>|default] [--missed-policy run_latest|skip] [--permission read_only|standard|full_access]
@@ -15,7 +14,6 @@ Examples of --schedule JSON: {"kind":"daily","time":"09:00"}, {"kind":"once","da
 Schedules use local time with at least one hour between runs. The project comes from this conversation. Default model: Settings. Default permission: this conversation. Use the Scheduled Tasks view to delete a task or set a higher permission level.`;
 
 const ACCESS = { conversationFiles: 'none', externalFiles: 'denied', network: 'denied', guiControl: 'denied', localIpcControl: 'denied' } as const;
-const ESCALATION = 'permission_above_conversation: Set the higher permission level in the Scheduled Tasks view.';
 const SELF_WRITE = 'scheduled_run_write_forbidden: A scheduled run and its child runs cannot create, change, pause, resume, or start scheduled tasks.';
 const FULL_ACCESS = 'Tell the user in your final response that this task runs unattended with Full Access and may perform high-risk operations without prompting.';
 const fail = (stderr: string, exitCode = 2) => ({ exitCode, stdout: '', stderr: `${stderr}\n` });
@@ -87,28 +85,30 @@ export function prepareSchedulesCli(db: Database.Database, argv: string[], readT
       const existing = command === 'create' ? null : await tasks.show(taskId, projectId);
       if (existing && !existing.ok) return fail(existing.message, 1);
       const requested = fields.permission_level ?? existing?.task.permission_level ?? permission;
-      let changed;
-      if (command === 'create') {
-        const input = ScheduledTaskCreateRequestSchema.safeParse({ ...fields, project_id: projectId,
-          agent: fields.agent ?? 'default', model_config_id: fields.model_config_id ?? null,
-          missed_policy: fields.missed_policy ?? 'run_latest', permission_level: requested });
-        if (!input.success) return fail(input.error.message);
-        if (compareCommandPermissionLevels(input.data.permission_level, permission) > 0) return fail(ESCALATION, 77);
-        changed = await tasks.create(input.data, actor);
-      } else if (command === 'update' && existing?.ok) {
-        const input = ScheduledTaskUpdateRequestSchema.safeParse({ ...fields, task_id: taskId, expected_revision: expectedRevision ?? existing.task.revision });
-        if (!input.success) return fail(input.error.message);
-        if (compareCommandPermissionLevels(input.data.permission_level ?? existing.task.permission_level, permission) > 0) return fail(ESCALATION, 77);
-        changed = await tasks.update(input.data, actor, projectId);
-      } else if (existing?.ok) {
-        if (command !== 'pause' && compareCommandPermissionLevels(existing.task.permission_level, permission) > 0) return fail(ESCALATION, 77);
-        changed = command === 'run-now' ? await tasks.runNow(taskId, projectId)
-          : await tasks.setEnabled(taskId, command === 'resume', actor, projectId);
-      } else {
-        return fail('Scheduled task not found.', 1);
+      try {
+        let changed;
+        if (command === 'create') {
+          const input = ScheduledTaskCreateRequestSchema.safeParse({ ...fields, project_id: projectId,
+            agent: fields.agent ?? 'default', model_config_id: fields.model_config_id ?? null,
+            missed_policy: fields.missed_policy ?? 'run_latest', permission_level: requested });
+          if (!input.success) return fail(input.error.message);
+          changed = await tasks.create(input.data, actor);
+        } else if (command === 'update' && existing?.ok) {
+          const input = ScheduledTaskUpdateRequestSchema.safeParse({ ...fields, task_id: taskId, expected_revision: expectedRevision ?? existing.task.revision });
+          if (!input.success) return fail(input.error.message);
+          changed = await tasks.update(input.data, actor, projectId);
+        } else if (existing?.ok) {
+          changed = command === 'run-now' ? await tasks.runNow(taskId, projectId, actor)
+            : await tasks.setEnabled(taskId, command === 'resume', actor, projectId);
+        } else {
+          return fail('Scheduled task not found.', 1);
+        }
+        if (!changed.ok) return fail(`${changed.code}: ${changed.message}`, 1);
+        return result({ ...summarize(changed.task), ...(changed.task.permission_level === 'full_access' ? { warning: FULL_ACCESS } : {}) });
+      } catch (error) {
+        if (error instanceof ScheduledTaskPermissionError) return fail(error.message, 77);
+        throw error;
       }
-      if (!changed.ok) return fail(`${changed.code}: ${changed.message}`, 1);
-      return result({ ...summarize(changed.task), ...(changed.task.permission_level === 'full_access' ? { warning: FULL_ACCESS } : {}) });
     },
   } };
 }

@@ -24,7 +24,8 @@ it('uses real Flow admission to freeze the scheduled identity, model and permiss
   const modelId = 'scripted-test-model';
   const restore = installRecoveryModelFixture();
   setPluginRuntimeStateForTests({ installedPluginIds: ['platform'], enabledPluginIds: ['platform'] });
-  const releaseModel = Promise.withResolvers<void>();
+  let releaseModel: (() => void) | undefined;
+  const modelMayFinish = new Promise<void>(resolve => { releaseModel = resolve; });
   let permissions: ConversationCommandPermissions | undefined;
   const globalSettings: CommandPermissionSettingsPort = {
     read: () => ({ status: 'found', serialized: serializeCommandPermissionSettings(DEFAULT_COMMAND_PERMISSION_SETTINGS) }),
@@ -35,7 +36,7 @@ it('uses real Flow admission to freeze the scheduled identity, model and permiss
   const failures: unknown[] = [];
   try {
     const f = await createDurableFlowHarness(join(directory, 'workspace.sqlite'), [{
-      assertCall: () => releaseModel.promise, contentChunks: ['Scheduled answer'], finishReason: 'stop',
+      assertCall: () => modelMayFinish, contentChunks: ['Scheduled answer'], finishReason: 'stop',
     }], [], true, {
       commandPermissionSettings: globalSettings,
       readConversationCommandPermission(id) {
@@ -99,14 +100,14 @@ it('uses real Flow admission to freeze the scheduled identity, model and permiss
         hostContext: {}, signal: new AbortController().signal });
       expect(result).toMatchObject({ exitCode: 77, stderr: expect.stringContaining('scheduled_run_write_forbidden') });
     }
-    releaseModel.resolve();
+    releaseModel?.();
     await vi.waitFor(async () => {
       await schedules.tick();
       expect(store.readRunAt(created.task.id, now)).toMatchObject({ status: 'completed', conversation_id: run.conversation_id });
     });
     expect(failures).toEqual([]);
   } finally {
-    releaseModel.resolve();
+    releaseModel?.();
     await tasks?.lifecycle.stop();
     fixture?.close();
     resetAgentRuntimeSingletonsForTest();
