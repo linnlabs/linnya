@@ -171,6 +171,7 @@ import { buildEditableLanguageModelUpdate } from '../functions/buildEditableLang
 import { updateModelInCatalog } from '../orchestration/modelCatalogOperations';
 import { confirmEmbeddingRouteEdit } from '../../../orchestration/confirmEmbeddingRouteEdit';
 import { deleteConfiguredModel } from '../../../orchestration/deleteConfiguredModel';
+import { readModelRemovalScheduledTaskCount } from '../../../orchestration/readModelRemovalImpact';
 import {
   resolveConfigurableLanguageProtocolLabelKey,
   resolveConfigurableLanguageRouteProfileId,
@@ -303,10 +304,14 @@ const handleDeleteModel = async () => {
   const modelIdToDelete = props.model.id;
   const modelNameToDelete = props.model.display_name || props.model.name || props.model.id;
 
+  const scheduledTaskCount = await readModelRemovalScheduledTaskCount(modelIdToDelete);
   const confirmed = await confirm({
     message: settingsMessage('settings.modelDetails.confirmDelete', {
       modelName: modelNameToDelete,
     }),
+    ...(scheduledTaskCount > 0
+      ? { riskMessage: settingsMessage('settings.modelDetails.scheduledTasksUseModel', { count: scheduledTaskCount }) }
+      : {}),
     isDangerousAction: true,
   });
   if (!confirmed) {

@@ -40,10 +40,7 @@
         :close-is-cancel="false"
         width="460px"
         :title="settingsMessage('settings.commandPermission.reduction.title')"
-        :message="settingsMessage('settings.commandPermission.reduction.message', {
-          count: reductionPreview.affected_count,
-          level: reductionLevelLabel,
-        })"
+        :message="reductionMessage"
         :confirm-text="settingsMessage('settings.commandPermission.reduction.apply', { level: reductionLevelLabel })"
         :cancel-text="settingsMessage('settings.commandPermission.reduction.globalOnly')"
         @confirm="applyReduction(true)"
@@ -170,5 +167,19 @@ async function setInternalDataAccess(allowed: boolean): Promise<void> {
 onMounted(() => {
   // 全局设置始终向 App Server 读取，避免把对话档位当成全局设置。
   void ensureCommandPermissionSettingsLoaded();
+});
+
+/** 单独设了更高档位的对话与定时任务一起列出；只有其中一种时只写那一种。 */
+const reductionMessage = computed(() => {
+  const current = reductionPreview.value;
+  if (!current) return '';
+  const params = {
+    count: current.affected_count,
+    taskCount: current.scheduled_task_count ?? 0,
+    level: reductionLevelLabel.value,
+  };
+  if (params.taskCount === 0) return settingsMessage('settings.commandPermission.reduction.message', params);
+  if (params.count === 0) return settingsMessage('settings.commandPermission.reduction.messageTasksOnly', params);
+  return settingsMessage('settings.commandPermission.reduction.messageWithTasks', params);
 });
 </script>

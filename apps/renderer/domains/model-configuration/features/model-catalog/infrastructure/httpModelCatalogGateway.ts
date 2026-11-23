@@ -67,4 +67,15 @@ export const httpModelCatalogGateway: ModelCatalogGateway = {
     });
     if (!response.ok) throw await readHttpError(response, '删除模型');
   },
+
+  async readRemovalImpact(modelId) {
+    const baseUrl = await getApiBaseUrl();
+    const response = await apiFetch(`${baseUrl}/api/v1/models/${encodeURIComponent(modelId)}/removal-impact`);
+    if (!response.ok) throw await readHttpError(response, '读取删除影响');
+    const body: unknown = await response.json();
+    const count = typeof body === 'object' && body !== null && 'scheduled_task_count' in body
+      ? Number((body as { scheduled_task_count: unknown }).scheduled_task_count)
+      : 0;
+    return { scheduledTaskCount: Number.isInteger(count) && count > 0 ? count : 0 };
+  },
 };

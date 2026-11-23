@@ -25,6 +25,8 @@ export function useCommandPermissionReduction() {
       kind: 'reduce',
       preview: current,
       include_conversations: includeConversations,
+      // 定时任务与对话同一个选择：确认框里一起列出，一起调低或都不调。
+      include_scheduled_tasks: includeConversations,
     });
     try {
       const settings = await commandPermissionSettingsGateway.read();
@@ -51,7 +53,7 @@ export function useCommandPermissionReduction() {
       return;
     }
     preview.value = result.preview;
-    if (result.preview.affected_count === 0) await apply(false);
+    if (result.preview.affected_count === 0 && (result.preview.scheduled_task_count ?? 0) === 0) await apply(false);
   }
 
   return { preview, partialCount, prepare, cancel, apply };
