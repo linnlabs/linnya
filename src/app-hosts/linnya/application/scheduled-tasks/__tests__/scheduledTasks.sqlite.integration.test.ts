@@ -76,6 +76,7 @@ function fixture(databasePath = ':memory:', buildTime?: number) {
     setModelAvailable: (value: boolean) => { modelAvailable = value; } };
 }
 
+// 每个用例都开真实 SQLite 并推进假定时器；本机 0.4–1.2 秒，GitHub macOS runner 慢约 4 倍，会越过 5 秒默认超时。
 describe('scheduled tasks with a wall clock and real SQLite', () => {
   it('runs on a minute boundary; restart, clock rollback and the two-minute tolerance preserve the planned identity', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -499,4 +500,4 @@ describe('scheduled tasks with a wall clock and real SQLite', () => {
     expect(f.store.readRuns(b, 5)).toEqual([]);
     await f.tasks.lifecycle.stop();
   });
-});
+}, 30_000);
