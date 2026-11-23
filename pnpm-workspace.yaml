@@ -1,3 +1,7 @@
+# 所有平台用同一个依赖目录名长度上限（pnpm 默认 Windows 60、其他 120）。打包会把依赖路径
+# 写进产物，上限不同会让同一源码在 Mac 与 Windows 打出内容不同的插件，同版本插件因此对不上。
+virtualStoreDirMaxLength: 60
+
 packages:
   - apps/*
   - packages/*

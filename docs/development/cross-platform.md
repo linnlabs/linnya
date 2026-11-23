@@ -4,6 +4,8 @@
 >
 > 本仓库使用 **pnpm**（见 `pnpm-workspace.yaml`）。下文命令统一使用 pnpm，请不要混用 npm。
 
+> `pnpm-workspace.yaml` 把依赖目录名长度上限统一设为 60（pnpm 默认 Windows 60、其他平台 120）。打包会把依赖路径写进插件和 App 产物，上限不同时同一源码在两个平台打出的同版本插件内容不同，老用户升级时会撞上“同版本内容不同”。改这个值后已有的 `node_modules` 要整体重装（`pnpm install --frozen-lockfile` 会提示清空重装）。
+
 常规安装、构建与测试见[构建与测试指南](./build-and-test.md)；返回[开发指南总览](./README.md)。
 
 ## 新电脑首次初始化
