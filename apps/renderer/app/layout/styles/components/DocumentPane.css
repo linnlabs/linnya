@@ -9,17 +9,13 @@
   overflow: hidden;
 }
 
+/* 命令条在文档底部居中，与右下字数同一底边；正文底部本来留有半屏空白，最后一行能滚到命令条上方。 */
 .document-pane__command-bar {
   position: absolute;
-  top: var(--space-2);
+  bottom: 12px;
   left: 50%;
   z-index: 2;
   transform: translateX(-50%);
-}
-
-/* 命令条高 36px、距顶 8px：正文起点让出这段，标题不被盖住；滚动后正文从命令条下面经过。 */
-.document-pane__body--with-command-bar {
-  --document-command-bar-clearance: 44px;
 }
 
 .document-pane__body {

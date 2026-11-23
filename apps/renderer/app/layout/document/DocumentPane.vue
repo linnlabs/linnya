@@ -1,6 +1,6 @@
 <template>
   <section class="document-pane" :class="`document-pane--${layoutState.layoutMode}`">
-    <div class="document-pane__body" :class="{ 'document-pane__body--with-command-bar': showCommandBar }">
+    <div class="document-pane__body">
       <EditorCommandBar v-if="showCommandBar" class="document-pane__command-bar" />
       <OutlineSidebar v-if="activeDocument?.type === 'editor'" />
       <OutlineToggleButton v-if="activeDocument?.type === 'editor'" />

@@ -1,5 +1,5 @@
 /* Markdown 悬浮命令条：表面来自 renderer-ui CommandBar，这里只管位置、标题级别与下拉。
-   位置在 DocumentPane 里决定（顶部居中，不进入布局）。 */
+   位置在 DocumentPane 里决定（底部居中，不进入布局），所以下拉向上打开。 */
 .editor-command-bar :where(.linnya-toolbar-button) {
   width: auto;
   min-width: 28px;
@@ -26,7 +26,7 @@
 
 .editor-command-bar__menu {
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
   left: 0;
   z-index: var(--linnya-ui-layer-popover);
   width: max-content;
@@ -38,18 +38,18 @@
 }
 
 .editor-command-bar-menu-enter-active {
-  transform-origin: top left;
+  transform-origin: bottom left;
   transition: var(--popup-transition-enter);
 }
 
 .editor-command-bar-menu-leave-active {
-  transform-origin: top left;
+  transform-origin: bottom left;
   transition: var(--popup-transition-leave);
 }
 
 .editor-command-bar-menu-enter-from {
   opacity: 0;
-  transform: var(--popup-enter-down);
+  transform: var(--popup-enter-up);
 }
 
 .editor-command-bar-menu-leave-to {
