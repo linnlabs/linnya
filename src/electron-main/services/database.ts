@@ -16,6 +16,7 @@ import path from 'node:path';
 import type { ISchemaProvider } from './database/schema-provider';
 import { getWorkspaceSchemaProviders } from '../../features/workspace/infrastructure/sqlite/schema-providers';
 import { getProjectDeletionSchemaProviders } from 'src/app-hosts/linnya/adapters/persistence/project-deletion';
+import { getScheduledTaskSchemaProviders } from 'src/app-hosts/linnya/adapters/persistence/scheduled-tasks/schema-providers';
 import { getProjectSavedFilterSchemaProviders } from 'src/app-hosts/linnya/adapters/persistence/saved-filters';
 import { getConversationSchemaProviders } from '../../app-hosts/linnya/adapters/persistence/event-store/schema-providers';
 import { getCitationRefClaimSchemaProviders } from '../../app-hosts/linnya/adapters/persistence/citation-ref-claims/schema-provider';
@@ -79,6 +80,7 @@ export class DatabaseService {
       ...getActionLedgerSchemaProviders(),
       ...getPluginStateSchemaProviders(),
       ...getConversationSchemaProviders(),
+      ...getScheduledTaskSchemaProviders(),
       ...getSemanticLayerSchemaProviders(),
       ...getProjectDeletionSchemaProviders(),
       ...getProjectSavedFilterSchemaProviders(),

@@ -189,6 +189,9 @@ importers:
       crc-32:
         specifier: ^1.2.2
         version: 1.2.2
+      croner:
+        specifier: 11.0.0
+        version: 11.0.0
       detect-libc:
         specifier: ^2.1.2
         version: 2.1.2
@@ -3792,6 +3795,10 @@ packages:
     resolution: {integrity: sha512-ROmzCKrTnOwybPcJApAA6WBWij23HVfGVNKqqrZpuyZOHqK2CwHSvpGuyt/UNNvaIjEd8X5IFGp4Mh+Ie1IHJQ==}
     engines: {node: '>=0.8'}
     hasBin: true
+
+  croner@11.0.0:
+    resolution: {integrity: sha512-T17ADjdttrVToyzLpLq9Xb9xzcMwpQ/M3Qs9szhh0MVNTbv6NWQ9OFYa2qlzPYXFMn+uoDlnW1IpIv6cAvFtyA==}
+    engines: {node: '>=18.0'}
 
   cross-dirname@0.1.0:
     resolution: {integrity: sha512-+R08/oI0nl3vfPcqftZRpytksBXDzOUveBq/NBVx0sUp1axwzPQrKinNx5yd5sxPu8j1wIy8AfnVQ+5eFdha6Q==}
@@ -9232,6 +9239,8 @@ snapshots:
       typescript: 5.9.3
 
   crc-32@1.2.2: {}
+
+  croner@11.0.0: {}
 
   cross-dirname@0.1.0:
     optional: true
