@@ -84,7 +84,7 @@ async function start(root, options, { fresh = false, noBuild = false, cloneData 
   }
   await recoverOrphaned(root, previous);
   const build = options.entry === 'toy' ? {} : {
-    build: await ensureFreshBuild({ build: !noBuild }),
+    build: await ensureFreshBuild({ build: !noBuild, requireBundledPlugins: options.mode === 'bundled' }),
     gitHead: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim(),
   };
   if (fresh) rmSync(root, { recursive: true, force: true });

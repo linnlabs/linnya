@@ -78,13 +78,19 @@ function pluginBuildFreshness(root, plugin) {
   return bundledFreshness;
 }
 
-export function buildFreshness(root = repoRoot) {
+export function buildFreshness(root = repoRoot, { requireBundledPlugins = false } = {}) {
   // 插件自己声明运行必需的产物；主 bundle 较新不代表上一次插件构建已完成。
   for (const plugin of discoverWorkspaceDiskBackendPlugins(root)) {
     const pluginFreshness = pluginBuildFreshness(root, plugin);
     if (pluginFreshness.stale) {
       return pluginFreshness;
     }
+  }
+  // 随包模式从 extraResources/plugins 装配插件。整个目录缺失时 Desktop 只会少掉随包插件，
+  // 旧资料里的插件随后因不在可信装配清单而让启动失败，探针只能等到 Renderer 超时；这里先生成。
+  if (requireBundledPlugins && !process.env.LINNYA_PROBE_BUNDLED_PLUGIN_ROOT
+    && !existsSync(join(root, 'extraResources', 'plugins'))) {
+    return { stale: true, kind: 'bundled', reason: '缺少 extraResources/plugins', hint: bundledPluginRefreshHint };
   }
   const sources = [
     ...listGitFiles(['--cached', '--others', '--exclude-standard', '--', 'src', 'packages'], { cwd: root })
@@ -140,10 +146,12 @@ async function runBundledPluginRefresh() {
 export async function ensureFreshBuild({
   root = repoRoot,
   build = true,
+  requireBundledPlugins = false,
   runBuildCommand = runBuild,
   refreshBundledPlugins = runBundledPluginRefresh,
 } = {}) {
-  const first = buildFreshness(root);
+  const freshnessOf = () => buildFreshness(root, { requireBundledPlugins });
+  const first = freshnessOf();
   if (!first.stale) return { rebuilt: false };
   if (!build && first.kind === 'bundled') {
     throw new ProbeError('BUILD_STALE', `随包插件产物已过期：${first.reason}`, first.hint);
@@ -152,7 +160,7 @@ export async function ensureFreshBuild({
     throw new ProbeError('BUILD_STALE', `开发产物已过期：${first.reason}`, '去掉 --no-build 让探针自动构建，或先运行 pnpm run dev:electron --build-only');
   }
   return withLifecycleLock(join(instancesRoot, 'build'), async () => {
-    const current = buildFreshness(root);
+    const current = freshnessOf();
     if (!current.stale) return { rebuilt: false, waitedForOtherBuild: true };
     const started = Date.now();
     let next = current;
@@ -169,7 +177,7 @@ export async function ensureFreshBuild({
       } else {
         await runBuildCommand();
       }
-      next = buildFreshness(root);
+      next = freshnessOf();
     }
     return {
       rebuilt: true,

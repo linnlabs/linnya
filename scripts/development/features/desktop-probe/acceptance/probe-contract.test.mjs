@@ -221,6 +221,27 @@ test('随包副本过期时返回直接修复提示，不要求重建开发产�
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('随包模式缺少整个 extraResources/plugins 时先生成，开发模式不要求', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'probe-bundled-missing-'));
+  try {
+    execFileSync('git', ['init', '-q', root]);
+    mkdirSync(join(root, 'dist/main'), { recursive: true });
+    for (const output of ['main.cjs', 'preload.js', 'app-server-backend.cjs']) {
+      writeFileSync(join(root, 'dist/main', output), 'fresh desktop output');
+    }
+    assert.equal(buildFreshness(root).stale, false);
+    assert.deepEqual(buildFreshness(root, { requireBundledPlugins: true }), {
+      stale: true, kind: 'bundled', reason: '缺少 extraResources/plugins',
+      hint: 'pnpm run package:plugins:official && pnpm run prepare:extra-resources',
+    });
+    await assert.rejects(ensureFreshBuild({ root, build: false, requireBundledPlugins: true }), /随包插件产物已过期：缺少 extraResources\/plugins/u);
+    const result = await ensureFreshBuild({ root, requireBundledPlugins: true, refreshBundledPlugins: async () => {
+      mkdirSync(join(root, 'extraResources/plugins'), { recursive: true });
+    } });
+    assert.equal(result.bundledPluginsRefreshed, true);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('默认启动发现随包副本过期时自动完整刷新并清掉旧副本', async () => {
   const root = mkdtempSync(join(tmpdir(), 'probe-plugin-bundled-refresh-'));
   try {

@@ -7,6 +7,7 @@ import { acceptance } from '../../development/features/desktop-probe/acceptance/
 import { createEvidence } from '../../test-runner/features/acceptance-evidence/createEvidence.mjs';
 import { clickNamed, knowledgeSidebar, openKnowledgeStoreDetail } from './knowledgeStore.fixture.mjs';
 import { startHashingEmbeddingFixture } from './legacy-upgrade/hashingEmbeddingFixture.mjs';
+import { assertBundledPluginsCurrent } from '../bundled-plugins/assertBundledPluginsCurrent.mjs';
 
 /**
  * 真实旧版升级：已发布旧版（知识库在核心里）产生的 profile 与 Workspace，交给当前源码 Host 启动。
@@ -32,6 +33,7 @@ const evidence = createEvidence('knowledge-legacy-upgrade', { files: [
   'scripts/e2e/knowledge-plugin/legacy-upgrade/hashingEmbeddingFixture.mjs',
   'scripts/e2e/knowledge-plugin/legacy-upgrade/build-legacy-baseline.mjs',
   'scripts/e2e/knowledge-plugin/knowledgeStore.fixture.mjs',
+  'scripts/e2e/bundled-plugins/assertBundledPluginsCurrent.mjs',
 ] });
 evidence.json('baseline', baseline);
 const test = acceptance(`knowledge-legacy-upgrade-${process.pid}`, { evidence });
@@ -227,18 +229,15 @@ try {
     assert.equal(treeDigest(baselineRoot), baselineDigest);
   });
 
-  await evidence.check('随包插件：旧版装过的仍可用（同版本号不能换内容），新增的随包插件对老用户也默认装上', async () => {
+  await evidence.check('随包插件：老用户升级后都换到安装包里的这一版（版本、内容一致且已启用），新增的随包插件也默认装上', async () => {
     const { value: listing } = await run('eval', 'window.electronAPI.plugins.list()');
     const log = readFileSync(fresh.logs.desktop, 'utf8');
     const conflicts = log.split('\n').filter(line => line.includes('同版本 artifact 冲突'));
-    const bundled = readdirSync(join(fresh.repoRoot, 'extraResources', 'plugins')).sort();
-    const states = Object.fromEntries(bundled.map(id => {
-      const plugin = listing.data.find(item => item.meta.id === id);
-      return [id, plugin && { state: plugin.state, version: plugin.meta.version }];
-    }));
-    evidence.json('bundled-plugins-after-upgrade', { states, conflicts });
+    evidence.json('bundled-plugin-conflicts', conflicts);
     assert.deepEqual(conflicts, [], 'a bundled plugin kept its version but changed content since the legacy release');
-    for (const id of bundled) assert.equal(states[id]?.state, 'enabled', `${id} after upgrade: ${json(states[id])}`);
+    const rows = assertBundledPluginsCurrent({ bundledPluginRoot: join(fresh.repoRoot, 'extraResources', 'plugins'),
+      userPluginRoot: join(fresh.root, 'plugins'), listing: listing.data });
+    evidence.json('bundled-plugins-after-upgrade', rows);
   });
 } catch (error) {
   failed = error;
