@@ -254,6 +254,18 @@ describe('scheduled tasks with a wall clock and real SQLite', () => {
     await f.tasks.lifecycle.stop();
   });
 
+  it('coalesces both sides of the repeated fall hour after sleep without suppressing admission', async () => {
+    const f = fixture();
+    f.setTimezone('America/New_York');
+    await f.at(Date.parse('2026-11-01T05:29Z') - START);
+    const id = await f.create('dst-hourly', { schedule: { kind: 'hourly', every_hours: 1, minute: 30 } });
+    await f.start();
+    await f.at(Date.parse('2026-11-01T06:32Z') - START);
+    expect(f.store.readRuns(id, 5)).toMatchObject([{ planned_at: Date.parse('2026-11-01T05:30Z'),
+      planned_local: '2026-11-01T01:30', status: 'admitted' }]);
+    await f.tasks.lifecycle.stop();
+  });
+
   it('reconciles abandoned running and approval rows at startup and replans the durable queue', async () => {
     const f = fixture();
     const waiting = await f.create('approval', { schedule: { kind: 'daily', time: '10:00' } });

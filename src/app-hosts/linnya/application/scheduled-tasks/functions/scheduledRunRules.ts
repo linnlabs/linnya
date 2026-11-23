@@ -29,8 +29,14 @@ export function planScheduledOccurrences(input: {
   activeState?: ScheduledExecutionState;
 }): ScheduledRunRecord[] {
   const { task, now, timezone, queuedAtStartup } = input;
-  const elapsed = elapsedScheduledTimes(task.clock, task.checked_through_at, now, timezone.name,
-    at => !input.existing(at) && !input.hasLocalOccurrence(timezone.localMinute(at)));
+  const localOccurrences = new Set<string>();
+  const elapsed = elapsedScheduledTimes(task.clock, task.checked_through_at, now, timezone.name, at => {
+    const local = timezone.localMinute(at);
+    // 秋季回拨时，Croner 的 interval 规则可能在同一次补跑计算中枚举本地分钟两遍。
+    if (localOccurrences.has(local) || input.existing(at) || input.hasLocalOccurrence(local)) return false;
+    localOccurrences.add(local);
+    return true;
+  });
   if (!elapsed && !queuedAtStartup) return [];
   const latest = elapsed?.latest ?? queuedAtStartup?.planned_at;
   if (latest === undefined) return [];
