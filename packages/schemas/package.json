@@ -47,6 +47,12 @@
       "require": "./dist/color-palette.js",
       "default": "./dist/esm/color-palette.js"
     },
+    "./scheduled-tasks": {
+      "types": "./dist/scheduled-tasks.d.ts",
+      "import": "./dist/esm/scheduled-tasks.js",
+      "require": "./dist/scheduled-tasks.js",
+      "default": "./dist/esm/scheduled-tasks.js"
+    },
     "./file-locator": {
       "types": "./dist/file-locator.d.ts",
       "import": "./dist/esm/file-locator.js",
