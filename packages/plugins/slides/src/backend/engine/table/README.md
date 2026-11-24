@@ -5,7 +5,13 @@
 通过窄入口 `resolveGeneratedTableLayout` 消费同一计算结果。
 
 未声明高度时，以已分配列宽、单元格文本、局部字号、显式换行、padding 与合并跨度计算
-固有高度；没有宽度约束时先测量固有列宽。测量复用 portable text measurement core 的
+固有高度；没有宽度约束时先测量固有列宽。
+
+作者写了 `columnWidths` 时，列宽只按这组比例分配表格宽度，不再叠加内容权重；表格宽度本身仍按上面的规则决定
+（显式宽度、Flex 分配或固有宽度）。`cellPadding` 的 `x`/`y` 分别替换左右与上下的自动内边距（密度决定的 0.03–0.05 英寸），
+测量、预览与 PPTX 使用同一组值；布局结果的 `padding` 因此是 `{ x, y }`。两者的准入（列数按同一套合并单元格占位规则、
+内边距 0–0.5 英寸）由 `readTableColumnWidths` / `readTableCellPadding` 负责，deck.js 编译与 compose JSON 读取共用；
+布局函数收到个数不符的比例会直接抛错，不做补齐。测量复用 portable text measurement core 的
 确定性估算，不依赖字体文件，也不冒充 Host 的最终 HarfBuzz 排版。最终质量仍由 text layout
 与 inspect 判断，不能由“自动高度已算出”推断所有文字必然合适。
 

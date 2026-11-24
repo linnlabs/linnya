@@ -162,6 +162,12 @@ export interface TableCell {
   rowspan?: number;
 }
 
+/** 已归一化的单元格内边距（英寸）：x 是左右，y 是上下；未写的一侧按表格密度自动取值。 */
+export interface TableCellPadding {
+  x?: number;
+  y?: number;
+}
+
 export type StructuredElement =
   | {
       type: 'title';
@@ -243,6 +249,9 @@ export type StructuredElement =
       position: Box;
       /** 已归一化的统一表格描边。 */
       border?: ShapeStrokeStyle;
+      /** 各列宽度的相对比例，个数等于列数；按比例分配表格宽度。 */
+      columnWidths?: number[];
+      cellPadding?: TableCellPadding;
       options?: Record<string, unknown>;
       _semanticNodeId?: string;
       _semanticRole?: string;

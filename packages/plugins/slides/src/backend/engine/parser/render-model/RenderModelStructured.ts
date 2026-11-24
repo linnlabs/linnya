@@ -236,6 +236,8 @@ export function mapStructuredTableNode(
   const layout = resolveGeneratedTableLayout({
     width: base.box.w, height: base.box.h, headers: element.headers, rows: element.rows,
     fontSize: typeof element.options?.fontSize === 'number' ? element.options.fontSize : undefined,
+    columnWidths: element.columnWidths,
+    cellPadding: element.cellPadding,
   });
   const cells: TableRenderNode['cells'] = [];
   const tableBorder = element.border ? toRenderStroke(element.border) : undefined;
@@ -269,7 +271,7 @@ export function mapStructuredTableNode(
       }],
       fill,
       ...(cellBorders ? { borders: cellBorders } : {}),
-      padding: { top: layout.padding, right: layout.padding, bottom: layout.padding, left: layout.padding },
+      padding: { top: layout.padding.y, right: layout.padding.x, bottom: layout.padding.y, left: layout.padding.x },
       verticalAlign: 'middle',
     });
   }

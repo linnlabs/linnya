@@ -58,6 +58,7 @@ export type {
   LayoutSpacerNode,
   LayoutTableCellInput,
   LayoutTableBorderInput,
+  LayoutTableCellPaddingInput,
   LayoutTableCellValue,
   LayoutTableConfig,
   LayoutTableDataLike,
