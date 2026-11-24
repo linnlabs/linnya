@@ -61,6 +61,12 @@ export interface ApiServerOptions {
   readonly now?: () => number;
 }
 
+/**
+ * 关停时等待在途连接自行结束的时间。整个后台关停（含其后的命令、沙箱与插件收口）只有 5 秒的控制期限，
+ * 这里不能占满：浏览器预建但未发请求的连接和未结束的流都不会自行关闭，到时直接断开。
+ */
+const CONNECTION_CLOSE_GRACE_MS = 1_000;
+
 export class ApiServerShutdownError extends Error {
   constructor(readonly failures: readonly unknown[]) {
     super(`API server shutdown failed in ${failures.length} stage(s)`);
@@ -329,7 +335,7 @@ export class ApiServer {
         settled = true;
         console.log('[Backend Service] Server force stopped');
         resolve();
-      }, 5000);
+      }, CONNECTION_CLOSE_GRACE_MS);
 
       server.close((error?: Error) => {
         if (settled) return;
