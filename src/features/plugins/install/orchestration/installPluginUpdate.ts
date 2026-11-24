@@ -27,6 +27,7 @@ import { PluginOperationError, toPluginOperationError } from '../definitions/plu
 import { assertAvailableDiskSpace } from '../infrastructure/assertAvailableDiskSpace';
 import { downloadVerifiedArtifact } from '../infrastructure/downloadVerifiedArtifact';
 import { extractZipToDirectory, resolveInsideDirectory } from '../infrastructure/extractZipArchive';
+import { createInstallStagingPath, removeAbandonedInstallStaging } from '../infrastructure/installStagingDirectory';
 
 function formatPluginManifestError(error: ZodError): string {
   const fields = error.issues
@@ -113,6 +114,7 @@ async function resolveRemoteRelease(
     readonly rendererUiVersion: string;
     readonly latestManifestUrl?: string;
     readonly releaseSource?: RemotePluginReleaseSource;
+    readonly signal?: AbortSignal;
   },
   fetcher: typeof fetch,
 ): Promise<RemotePluginRelease> {
@@ -122,6 +124,7 @@ async function resolveRemoteRelease(
       appVersion: options.appVersion,
       rendererUiVersion: options.rendererUiVersion,
       fetch: fetcher,
+      signal: options.signal,
     });
     assertHttpUrl(release.url, 'release url');
     normalizeSha512(release.sha512);
@@ -132,7 +135,7 @@ async function resolveRemoteRelease(
   }
   // 未签名 latest.json 只证明下载字节与清单一致，只用于开发与 R2 smoke，不产生安装回执。
   assertHttpUrl(options.latestManifestUrl, 'latestManifestUrl');
-  const remote = parseRemotePluginVersionManifest(await fetchJson(fetcher, options.latestManifestUrl));
+  const remote = parseRemotePluginVersionManifest(await fetchJson(fetcher, options.latestManifestUrl, options.signal));
   assertHttpUrl(remote.url, 'latest.json url');
   return remote;
 }
@@ -176,8 +179,8 @@ function readActiveVersion(pluginInstallDir: string): string | null {
   return parsed.version;
 }
 
-async function fetchJson(fetcher: typeof fetch, url: string): Promise<unknown> {
-  const response = await fetcher(url);
+async function fetchJson(fetcher: typeof fetch, url: string, signal: AbortSignal | undefined): Promise<unknown> {
+  const response = await fetcher(url, { signal });
   if (!response.ok) {
     throw new PluginOperationError(
       'source-unavailable',
@@ -249,10 +252,6 @@ function validateExtractedPlugin(extractDir: string, pluginId: string, version: 
 }
 
 /** 解压时每个条目都限定在目标目录内；供插件与运行时组件安装共用。 */
-function makeTempInstallDir(pluginInstallDir: string, version: string): string {
-  return path.join(pluginInstallDir, `.install-${version}.${process.pid}.${Date.now()}`);
-}
-
 function classifyCurrentVersion(
   currentVersion: string | null,
   remote: RemotePluginVersionManifest
@@ -390,6 +389,7 @@ export async function installPluginUpdateFromRemote(
   let tempInstallDir: string | null = null;
 
   try {
+    removeAbandonedInstallStaging(pluginInstallDir);
     const remote = await resolveRemoteRelease(options, fetcher);
 
     const compatibility = evaluateRemotePluginCompatibility({
@@ -463,7 +463,7 @@ export async function installPluginUpdateFromRemote(
     }
 
     fs.mkdirSync(pluginInstallDir, { recursive: true });
-    tempInstallDir = makeTempInstallDir(pluginInstallDir, remote.version);
+    tempInstallDir = createInstallStagingPath(pluginInstallDir, remote.version);
     const tempExtractDir = path.join(tempInstallDir, 'extract');
     const tempZipPath = path.join(tempInstallDir, 'artifact.zip');
     fs.mkdirSync(tempExtractDir, { recursive: true });

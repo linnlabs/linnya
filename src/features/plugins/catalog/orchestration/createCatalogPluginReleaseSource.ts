@@ -23,7 +23,7 @@ export function createCatalogPluginReleaseSource(input: {
   readonly allowLoopbackHttp?: boolean;
 }): RemotePluginReleaseSource {
   return {
-    async resolve({ pluginId, appVersion, rendererUiVersion, fetch }): Promise<RemotePluginRelease> {
+    async resolve({ pluginId, appVersion, rendererUiVersion, fetch, signal }): Promise<RemotePluginRelease> {
       const target = resolveCatalogPlatform(input.platform, input.architecture);
       if (!target) {
         throw new PluginOperationError('incompatible', `当前平台不提供远程插件: ${input.platform}/${input.architecture}`, { pluginId });
@@ -35,6 +35,7 @@ export function createCatalogPluginReleaseSource(input: {
         trustedKeys: input.trustedKeys,
         stateStore: input.stateStore,
         fetch,
+        signal,
         now: input.now,
         allowLoopbackHttp: input.allowLoopbackHttp,
       });

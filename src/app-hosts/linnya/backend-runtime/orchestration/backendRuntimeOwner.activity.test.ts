@@ -36,6 +36,7 @@ import {
   syncBackendPluginRuntimeEffects,
   clearSyncedBackendPluginRuntimeEffectsForTests,
 } from '../../plugin-registry/runtimeEffectRuntime';
+import { createPluginRemoteWork } from '../../../../features/plugins/install/orchestration/createPluginRemoteWork';
 import { QueueManager } from '../../../../infra/task-queue/queues';
 import type { ForegroundAgentRunActivityPort } from '../../adapters/flow/interactive-run/orchestration/foregroundAgentRunActivity';
 import { BackendRuntimeOwner } from './backendRuntimeOwner';
@@ -113,6 +114,33 @@ describe('BackendRuntimeOwner activity source', () => {
       unpausableConversationIds: [],
     });
     expect(() => owner.registerAgentRunActivity(createActivity())).toThrow('另一套 Agent run');
+  });
+
+  it('停止时取消正在下载的插件，并等下载收尾后才完成', async () => {
+    vi.spyOn(QueueManager.getInstance(), 'shutdown').mockResolvedValue();
+    const owner = new TestBackendRuntimeOwner();
+    await owner.start(BACKEND_CONFIGURATION);
+    const remoteWork = createPluginRemoteWork();
+    owner.registerPluginRemoteWork(remoteWork);
+    expect(() => owner.registerPluginRemoteWork(createPluginRemoteWork())).toThrow('另一套插件下载');
+    let cleaned = false;
+    const download = remoteWork.run(
+      signal =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener('abort', () => {
+            setTimeout(() => {
+              cleaned = true;
+              reject(signal.reason);
+            }, 5);
+          });
+        })
+    );
+    const outcome = expect(download).rejects.toMatchObject({ code: 'cancelled' });
+
+    await owner.stop();
+
+    expect(cleaned).toBe(true);
+    await outcome;
   });
 
   it('Backend 只聚合正式插件活动和独立 Audio，停止后不再报告旧 owner', async () => {

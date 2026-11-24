@@ -54,6 +54,7 @@ import {
   type StartupCapabilityFailure,
 } from '../../../../electron-main/services/startup/startupCapabilityFailure';
 import type { DatabaseStartupProgressPort } from '../../../../electron-main/services/database/databaseStartupProgress';
+import type { PluginRemoteWork } from '../../../../features/plugins/install/orchestration/createPluginRemoteWork';
 import type { ProjectDeletionUseCasePort } from '../../application/project-deletion';
 import type {
   ForegroundAgentRunActivityPort,
@@ -114,6 +115,7 @@ export class BackendRuntimeOwner {
   private sandboxAppOwnerEnded = false;
   private agentRunActivity: ForegroundAgentRunActivityPort | null = null;
   private projectDeletion: ProjectDeletionUseCasePort | null = null;
+  private pluginRemoteWork: PluginRemoteWork | null = null;
   private shutdownSettlement: Promise<void> | null = null;
 
   // Qdrant服务管理
@@ -320,11 +322,16 @@ export class BackendRuntimeOwner {
       this.scheduledTasks = null;
     });
     const startupMaintenanceStopped = this.serviceInitializer.stopStartupMaintenance();
+    const pluginRemoteWorkStopped = this.pluginRemoteWork?.stop();
     const pluginTasksStopped = stopBackendPluginRuntimeEffects();
     const modelSynchronizationStopped = this.providerModelSynchronization?.stop();
     await stopStage('API服务器', () => this.apiServer.stop());
     await stopStage('启动维护', async () => {
       await startupMaintenanceStopped;
+    });
+    await stopStage('插件下载', async () => {
+      await pluginRemoteWorkStopped;
+      this.pluginRemoteWork = null;
     });
     await stopStage('账号模型同步', async () => {
       await modelSynchronizationStopped;
@@ -489,6 +496,13 @@ export class BackendRuntimeOwner {
       throw new Error('当前 App owner 已注册另一套 Agent run 活动端口');
     }
     this.agentRunActivity = activity;
+  }
+
+  registerPluginRemoteWork(work: PluginRemoteWork): void {
+    if (this.pluginRemoteWork && this.pluginRemoteWork !== work) {
+      throw new Error('当前 App owner 已注册另一套插件下载');
+    }
+    this.pluginRemoteWork = work;
   }
 
   registerProjectDeletion(deletion: ProjectDeletionUseCasePort): void {

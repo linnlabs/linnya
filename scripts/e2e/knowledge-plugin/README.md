@@ -64,6 +64,8 @@
 
 `pnpm exec tsx scripts/e2e/knowledge-plugin/usage-cancellation.acceptance.mjs` 在 40,000 个隔离文件的实际扫描期间点「停止统计」，验证离开详情再返回不会自行重启扫描，重新统计后与 `du` 对账，且整个过程不改动资料。
 
+`pnpm exec tsx scripts/e2e/knowledge-plugin/quit-during-install.acceptance.mjs` 用限速的开发 catalog 在下载途中退出，检查后台正常关停、不留安装临时目录，重新打开后能从商店装好。
+
 `pnpm exec tsx scripts/e2e/knowledge-plugin/store-concurrency.acceptance.mjs` 在真实插件商店同时启停或重装知识库与 Slides，重复触发单个卸载确认，并用商店、知识库入口和持久化状态对账。同一窗口内事件并发不包含双窗口竞争，也不代表两个插件同时卸载。
 
 ## 真实旧版升级
