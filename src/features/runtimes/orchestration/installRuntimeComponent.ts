@@ -11,6 +11,7 @@ import { PluginOperationError } from '../../plugins/install/definitions/pluginOp
 import { assertAvailableDiskSpace } from '../../plugins/install/infrastructure/assertAvailableDiskSpace';
 import { downloadVerifiedArtifact } from '../../plugins/install/infrastructure/downloadVerifiedArtifact';
 import { extractZipToDirectory } from '../../plugins/install/infrastructure/extractZipArchive';
+import { createInstallStagingPath, removeAbandonedInstallStaging } from '../../plugins/install/infrastructure/installStagingDirectory';
 import { resolveInstalledRuntimeExecutable } from '../functions/resolveInstalledRuntimeExecutable';
 import {
   readActiveRuntimeVersion,
@@ -124,7 +125,8 @@ export async function installRuntimeComponent(input: {
   const runtimeDirectory = runtimeComponentDirectory(input.runtimeRoot, runtime.id);
   const versionDirectory = runtimeComponentVersionDirectory(input.runtimeRoot, runtime.id, runtime.version);
   fs.mkdirSync(runtimeDirectory, { recursive: true });
-  const tempDirectory = path.join(runtimeDirectory, `.install-${runtime.version}.${process.pid}.${Date.now()}`);
+  removeAbandonedInstallStaging(runtimeDirectory);
+  const tempDirectory = createInstallStagingPath(runtimeDirectory, runtime.version);
   try {
     const existing = inspectExistingVersionDirectory(input.runtimeRoot, runtime, versionDirectory);
     if (existing === 'conflict') {

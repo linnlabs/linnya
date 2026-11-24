@@ -37,6 +37,7 @@ import { buildPluginStoreDetail } from '../../../plugins/store/pluginStoreDetail
 import { uninstallPluginAndDeleteData, uninstallPluginLifecycle } from '../../../../features/plugins/install/orchestration/uninstallPluginLifecycle';
 import { installPluginFromRemoteAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromRemoteAndActivate';
 import { installPluginFromBundledAndActivate } from '../../../../features/plugins/install/orchestration/installPluginFromBundledAndActivate';
+import { createPluginRemoteWork } from '../../../../features/plugins/install/orchestration/createPluginRemoteWork';
 import { checkPluginUpdateFromRemote } from '../../../../features/plugins/install/orchestration/installPluginUpdate';
 import type { RemotePluginReleaseSource, RemotePluginRuntimeInstaller } from '../../../../features/plugins/install/definitions/pluginInstall';
 import { installRuntimeComponent, isRuntimeComponentCurrent } from '../../../../features/runtimes/orchestration/installRuntimeComponent';
@@ -311,7 +312,7 @@ function createOfficialRuntimeInstaller(
 }
 
 /** 商店展示用：拉取并验签官方 catalog，按本机平台与已装运行时投影为条目。失败只影响远程条目，不影响已装插件。 */
-async function readRemoteCatalog(applicationVersion: string, source: PluginCatalogSource): Promise<PluginRemoteCatalogResult> {
+async function readRemoteCatalog(applicationVersion: string, source: PluginCatalogSource, signal: AbortSignal): Promise<PluginRemoteCatalogResult> {
   const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
   const runtimeRoot = process.env.LINNYA_RUNTIME_ROOT;
   try {
@@ -329,6 +330,7 @@ async function readRemoteCatalog(applicationVersion: string, source: PluginCatal
       channel: source.channel,
       trustedKeys: source.trustedKeys,
       stateStore,
+      signal,
       allowLoopbackHttp: source.allowLoopbackHttp,
     });
     const laterRevocations = stateStore.readRevocations();
@@ -472,6 +474,8 @@ export async function registerPluginsHandlers(input: {
     return result;
   }
   const cleanupAbortControllers = new Map<string, AbortController>();
+  const remoteWork = createPluginRemoteWork();
+  input.runtimeOwner.registerPluginRemoteWork(remoteWork);
   /** 正在下载的远程安装；只覆盖 run() 内的下载阶段，排队中的安装没有控制器，取消请求返回 cancelled=false。 */
   const remoteInstallAbortControllers = new Map<string, AbortController>();
   /** 远程来源在注册时确定：官方 Desktop 用官方 catalog；源码运行可用开发 catalog；都不满足时为 null，不发请求。 */
@@ -651,7 +655,12 @@ export async function registerPluginsHandlers(input: {
     if (!remoteSource) {
       return { success: true, data: { status: 'disabled' } satisfies PluginRemoteCatalogResult };
     }
-    return { success: true, data: await readRemoteCatalog(input.applicationVersion, remoteSource) };
+    const source = remoteSource;
+    try {
+      return { success: true, data: await remoteWork.run(signal => readRemoteCatalog(input.applicationVersion, source, signal)) };
+    } catch (error) {
+      return { success: false, error: classifyPluginOperationError(error) };
+    }
   });
 
   input.ipc.handle('plugins:get-detail', async (_event, rawPluginId: unknown) => {
@@ -818,13 +827,14 @@ export async function registerPluginsHandlers(input: {
         throw new Error(`插件不在商店中: ${pluginId}`);
       }
       const installedRecord = service.getInstalledRecord(pluginId);
-      const result = await checkPluginUpdateFromRemote({
+      const result = await remoteWork.run(signal => checkPluginUpdateFromRemote({
         pluginId,
+        signal,
         releaseSource: createCatalogReleaseSource(pluginId, source),
         appVersion: input.applicationVersion,
         rendererUiVersion: RENDERER_UI_VERSION,
         currentVersion: installedRecord?.installed ? installedRecord.version : null,
-      });
+      }));
       if (result.status === 'failed') throwPluginOperationResultFailure(result);
       return {
         success: true,
@@ -838,10 +848,12 @@ export async function registerPluginsHandlers(input: {
 
   /** 远程安装的完整生命周期：串行、下载与激活、运行态同步；IPC 与“有资料自动恢复”共用。 */
   async function runRemotePluginInstall(pluginId: string, source: PluginCatalogSource) {
-    return runPluginLifecycleOperationSerially({
+    return remoteWork.run(stopSignal => runPluginLifecycleOperationSerially({
       pluginId,
       operation: 'install-from-remote',
       async run() {
+        // 排队期间 App 可能已开始退出。
+        stopSignal.throwIfAborted();
         assertPluginCanInstall(pluginId);
         const userPluginRoot = process.env.LINNYA_PLUGIN_ROOT;
         if (!userPluginRoot) {
@@ -871,7 +883,7 @@ export async function registerPluginsHandlers(input: {
             knownPlugins,
             resolveUpgradePlan: resolveDiskPluginUpgradePlan,
             recordDiagnostic: diagnostic => pluginDiagnostics.record(diagnostic),
-            signal: controller.signal,
+            signal: AbortSignal.any([controller.signal, stopSignal]),
             onProgress: progress => input.rendererIntegration.publishPluginInstallProgress({ pluginId, progress }),
           });
         } finally {
@@ -880,6 +892,8 @@ export async function registerPluginsHandlers(input: {
         if (result.status === 'failed') {
           throwPluginOperationResultFailure(result);
         }
+        // App 正在退出：安装已提交，不再启动插件运行资源，下次启动加载。
+        if (remoteWork.stopped) return result;
         // 安装前打开过详情会缓存“未安装”时的资料摘要；与随包安装一致，安装后立即失效。
         invalidatePluginDataSummary(pluginId);
         // 没有在运行的旧代码时可直接按新 artifact 登记、不必重启：本次运行从未加载过该插件（首次安装），
@@ -913,7 +927,7 @@ export async function registerPluginsHandlers(input: {
           return registeredNow && result.status === 'installed' ? { ...result, restartRequired: false } : result;
         });
       },
-    });
+    }));
   }
 
   input.ipc.handle('plugins:installFromRemote', async (_event, rawPluginId: unknown) => {
@@ -933,7 +947,7 @@ export async function registerPluginsHandlers(input: {
     try {
       const pluginId = parsePluginId(rawPluginId, 'plugins:cancelRemoteInstall');
       const controller = remoteInstallAbortControllers.get(pluginId);
-      controller?.abort();
+      controller?.abort(new PluginOperationError('cancelled', '已取消下载插件', { pluginId }));
       return { success: true, data: { cancelled: controller !== undefined } };
     } catch (error) {
       return { success: false, error: classifyPluginOperationError(error) };
@@ -1094,8 +1108,9 @@ export async function registerPluginsHandlers(input: {
   // 远程来源未开放时不做任何事；不阻塞启动，进度与结果照常推给商店。
   if (remoteSource) {
     const source = remoteSource;
-    void restoreDeclaredPluginsWithUserData({
-      declaredPluginIds: listOnDemandPluginDeclarations(process.env.LINNYA_RESOLVED_PLUGIN_DECLARATION_ROOT),
+    const declaredPluginIds = listOnDemandPluginDeclarations(process.env.LINNYA_RESOLVED_PLUGIN_DECLARATION_ROOT);
+    void remoteWork.run(() => restoreDeclaredPluginsWithUserData({
+      declaredPluginIds,
       shouldRestore: pluginId => {
         const db = getDb();
         const record = getService().getInstalledRecord(pluginId);
@@ -1107,6 +1122,6 @@ export async function registerPluginsHandlers(input: {
         await runRemotePluginInstall(pluginId, source);
       },
       recordDiagnostic: ({ pluginId, level, message }) => pluginDiagnostics.record({ level, pluginId, capability: null, message }),
-    });
+    }));
   }
 }

@@ -64,6 +64,7 @@ export interface RemotePluginReleaseSource {
     readonly appVersion: string;
     readonly rendererUiVersion: string;
     readonly fetch: typeof fetch;
+    readonly signal?: AbortSignal;
   }): Promise<RemotePluginRelease>;
 }
 
@@ -78,7 +79,7 @@ export interface InstallPluginUpdateOptions {
   readonly rendererUiVersion: string;
   readonly currentVersion?: string | null;
   readonly fetch?: typeof fetch;
-  /** 取消只在下载阶段生效；进入解压与落盘后不再中断，避免留下半个版本目录。 */
+  /** 取消只在请求 catalog 与下载阶段生效；进入解压与落盘后不再中断，避免留下半个版本目录。 */
   readonly signal?: AbortSignal;
   readonly onProgress?: (progress: PluginInstallProgress) => void;
 }
@@ -91,6 +92,7 @@ export interface CheckPluginRemoteUpdateOptions {
   readonly rendererUiVersion: string;
   readonly currentVersion: string | null;
   readonly fetch?: typeof fetch;
+  readonly signal?: AbortSignal;
 }
 
 export type CheckPluginRemoteUpdateResult = PluginRemoteUpdateCheckResult;

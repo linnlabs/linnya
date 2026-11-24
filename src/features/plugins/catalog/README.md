@@ -24,7 +24,7 @@
 
 ## 拉取、高水位与选版本
 
-- `fetchVerifiedPluginCatalog`：拒绝重定向，20 秒超时，响应超过 1 MiB 不读入；验签通过后才把序号与摘要写入本机高水位。拒绝时按类别抛出 `PluginOperationError`：过期、尚未生效、通道不符归 `source-unavailable`（稍后可恢复），其余归 `artifact-integrity`；调用方取消原样传出。
+- `fetchVerifiedPluginCatalog`：拒绝重定向，20 秒超时，响应超过 1 MiB 不读入；验签通过后才把序号与摘要写入本机高水位。拒绝时按类别抛出 `PluginOperationError`：过期、尚未生效、通道不符归 `source-unavailable`（稍后可恢复），其余归 `artifact-integrity`；调用方取消原样传出。安装、检查更新与商店目录都经 `createPluginRemoteWork` 发起：App 退出时在途请求与下载立即取消，Backend 等它们收尾后才关停；已开始落盘的安装会完成，但不再启动插件，下次启动加载。
 - 本机高水位存在用户插件根下的 `.catalog-state.json`（原子替换写入，只前进不后退，按通道分开）。插件发现只认带 `active.json` 的子目录，不会把它当插件。文件损坏时按首次接受处理并留诊断，不让远程安装永久失效。
 - `selectCatalogPluginRelease`：按版本从高到低选出当前 Host 兼容（`minApp`、`rendererUi`）且所需运行时能解析到本平台 artifact 的最高版本；运行时取满足 range 的最高版本。全部不可用时返回最高版本的原因：`incompatible` 或 `runtime-unavailable`。
 
