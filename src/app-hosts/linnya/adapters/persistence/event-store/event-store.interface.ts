@@ -1,7 +1,7 @@
 import type { RoutedRuntimeEvent, RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { WorkspaceAssetCommitRecord } from 'src/features/workspace/assets/definitions/workspaceAssetCommit';
 import type { ConversationRunKind } from '../definitions/conversationRunKind';
-import type { ConversationSelectedAgentId } from '@app/schemas';
+import type { ConversationOrigin, ConversationSelectedAgentId } from '@app/schemas';
 
 // --- 类型定义 ---
 
@@ -91,6 +91,16 @@ export interface ConversationListItem {
   pinned_at?: number;
   mode?: string;
   selected_agent_id: ConversationSelectedAgentId | null;
+  /** 发起入口；只有 Linnya CLI 创建的会话带此字段，保存在 metadata 中。 */
+  origin?: ConversationOrigin;
+}
+
+/** 由外部入口新建的会话：第一次运行前一次写入身份行、标题与入口标记。 */
+export interface OriginConversationInput {
+  readonly conversationId: string;
+  readonly projectId: string | null;
+  readonly origin: ConversationOrigin;
+  readonly title: string;
 }
 
 // --- 接口定义 ---
@@ -239,6 +249,12 @@ export interface IEventStore {
    * - pinnedAt 由调用层传入，便于测试和未来审计统一时间源。
    */
   updatePinned(conversationId: string, pinned: boolean, pinnedAt: number | null): Promise<boolean>;
+
+  /**
+   * 原子正式化外部入口新建的会话：建身份行（已有则不改项目归属），写入标题，
+   * 并把入口标记合并进 metadata（其他字段原样保留）。
+   */
+  materializeOriginConversation(input: OriginConversationInput): Promise<void>;
 
   /** 原子正式化会话并持久化 Agent 产品身份；已有会话不改写项目归属。 */
   updateSelectedAgent(

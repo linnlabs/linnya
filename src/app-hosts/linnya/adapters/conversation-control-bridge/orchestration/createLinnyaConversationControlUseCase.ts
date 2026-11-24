@@ -69,6 +69,7 @@ interface LinnyaConversationControlUseCaseOwners {
     | 'readRunFinalAnswer'
     | 'getConversationMetadata'
     | 'updateConversationSelectedAgent'
+    | 'materializeOriginConversation'
   >;
 }
 
@@ -199,6 +200,13 @@ export function createLinnyaConversationControlUseCase(
           selectedAgentId,
           projectId ?? null,
         ),
+      materializeCliToolSession: ({ conversationId, projectId, title }) =>
+        owners.history.materializeOriginConversation({
+          conversationId,
+          projectId,
+          title,
+          origin: 'linnya_cli',
+        }),
     },
     tools: {
       describe(toolNames) {

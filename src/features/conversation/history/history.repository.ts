@@ -27,6 +27,7 @@
 import type {
   AppendEventToRunOptions,
   IEventStore,
+  OriginConversationInput,
   ReplaceUserInputEventOptions,
   ReplaceUserInputEventResult,
   RunMetadata,
@@ -132,6 +133,7 @@ export class HistoryRepository {
       is_pinned: c.is_pinned,
       pinned_at: c.pinned_at,
       selected_agent_id: c.selected_agent_id,
+      ...(c.origin ? { origin: c.origin } : {}),
       ...(c.scheduled_task ? { scheduled_task: c.scheduled_task } : {}),
     }));
 
@@ -280,6 +282,7 @@ export class HistoryRepository {
       pinned_at: target.pinned_at,
       mode: target.mode, // 🔥 新增：将底层 EventStore 中的会话模式暴露给上层
       selected_agent_id: target.selected_agent_id,
+      ...(target.origin ? { origin: target.origin } : {}),
     };
   }
 
@@ -319,6 +322,10 @@ export class HistoryRepository {
     projectId: string | null,
   ): Promise<boolean> {
     return this.eventStore.updateSelectedAgent(conversationId, selectedAgentId, projectId);
+  }
+
+  async materializeOriginConversation(input: OriginConversationInput): Promise<void> {
+    return this.eventStore.materializeOriginConversation(input);
   }
 
   /**

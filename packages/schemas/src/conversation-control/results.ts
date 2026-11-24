@@ -298,6 +298,8 @@ export const ConversationControlToolsResponseSchema = z.discriminatedUnion('acti
       action: z.literal('call'),
       tool_name: ConversationControlToolNameSchema,
       receipt: ConversationControlAcceptedReceiptSchema,
+      /** 只给项目时，本次是否续用了该项目最近一段 CLI 会话。 */
+      conversation_reused: z.boolean(),
     })
     .strict(),
   z

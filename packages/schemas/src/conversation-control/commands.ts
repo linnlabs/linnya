@@ -187,12 +187,21 @@ export const ConversationControlToolsCallRequestSchema = z.object({
   args: z.record(z.string(), JsonValueSchema),
   conversation_id: OpaqueIdSchema.optional(),
   project_id: OpaqueIdSchema.optional(),
+  /** 只给项目时默认续用该项目最近一段 CLI 会话；为 true 时总是新建。 */
+  new_session: z.boolean().optional(),
 }).strict().superRefine((request, ctx) => {
   if (!request.conversation_id && !request.project_id) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['conversation_id'],
       message: 'tool call requires conversation_id or project_id',
+    });
+  }
+  if (request.new_session && request.conversation_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['new_session'],
+      message: 'new_session cannot be combined with conversation_id',
     });
   }
 });

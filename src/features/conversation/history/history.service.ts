@@ -36,6 +36,7 @@ import type {
   ReadEventsResponse,
   ConversationMetadata,
 } from './history.schemas';
+import type { OriginConversationInput } from '../../../app-hosts/linnya/adapters/persistence/event-store';
 import type {
   ConversationSubrunTraceResponse,
   SubrunTraceQuery,
@@ -413,6 +414,13 @@ export class HistoryService {
     }
 
     return this.repository.updateSelectedAgent(conversationId, selectedAgentId, projectId);
+  }
+
+  /** 外部入口（Linnya CLI）新建会话：第一次运行前写入身份行、标题与入口标记。 */
+  async materializeOriginConversation(input: OriginConversationInput): Promise<void> {
+    if (!input.conversationId.trim()) throw new Error('conversationId is required');
+    if (!input.title.trim()) throw new Error('title cannot be empty');
+    return this.repository.materializeOriginConversation(input);
   }
 
   /**

@@ -1979,6 +1979,64 @@ describe('SQLiteEventStore B3a.5 write session API', () => {
   });
 });
 
+describe('SQLiteEventStore origin conversations', () => {
+  it('CLI 会话在第一次运行前写入标题与入口标记，运行后保留且 metadata 其他字段不丢', async () => {
+    const { db, store } = createStore();
+    const conversationId = 'conv-cli-session';
+    db.prepare('INSERT INTO projects (id) VALUES (?)').run('project-cli');
+
+    await store.materializeOriginConversation({
+      conversationId,
+      projectId: 'project-cli',
+      origin: 'linnya_cli',
+      title: 'Linnya CLI · 2026-11-24 09:05',
+    });
+    await store.ensureConversation(
+      conversationId,
+      [makeUserInput('event-cli-first', conversationId, 'CLI 调用工具：write_file', 1000)],
+      'project-cli',
+      'agent'
+    );
+
+    await expect(store.getConversationMetadata(conversationId)).resolves.toMatchObject({
+      title: 'Linnya CLI · 2026-11-24 09:05',
+      project_id: 'project-cli',
+      mode: 'agent',
+      origin: 'linnya_cli',
+    });
+    await expect(store.listConversations({ projectId: 'project-cli' })).resolves.toMatchObject({
+      conversations: [{ conversation_id: conversationId, origin: 'linnya_cli' }],
+    });
+
+    // 已有会话再次标记不改项目归属。
+    db.prepare('INSERT INTO projects (id) VALUES (?)').run('project-other');
+    await store.materializeOriginConversation({
+      conversationId,
+      projectId: 'project-other',
+      origin: 'linnya_cli',
+      title: 'Linnya CLI · 2026-11-24 09:06',
+    });
+    await expect(store.getConversationMetadata(conversationId)).resolves.toMatchObject({
+      project_id: 'project-cli',
+      mode: 'agent',
+    });
+
+    store.close();
+  });
+
+  it('普通会话没有 origin；metadata 里的未知入口值不被当成普通会话', async () => {
+    const { db, store } = createStore();
+    await store.ensureConversation('conv-ordinary', [], undefined, 'agent');
+    await expect(store.getConversationMetadata('conv-ordinary')).resolves.not.toHaveProperty('origin');
+
+    db.prepare('UPDATE conversations SET metadata = ? WHERE conversation_id = ?')
+      .run(JSON.stringify({ origin: 'someone_else' }), 'conv-ordinary');
+    await expect(store.getConversationMetadata('conv-ordinary')).rejects.toThrow();
+
+    store.close();
+  });
+});
+
 describe('SQLiteEventStore legacy selected agent identity', () => {
   it('reads the literal default agent id stored by older data as the default agent', async () => {
     const { db, store } = createStore();
