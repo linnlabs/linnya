@@ -11,6 +11,7 @@ import type {
   MultiVectorCollectionConfig,
   QdrantConfig,
 } from '../types';
+import { QdrantRequestError } from '../errors';
 
 function normalizeDistance(distance: string | undefined): Distance {
   if (distance === 'Cosine' || distance === 'Euclidean' || distance === 'Dot') return distance;
@@ -95,7 +96,10 @@ export async function createCollectionImpl(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`createCollection HTTP ${response.status}: ${errorText}`);
+    // 带上状态码：并发创建的 409 要能被识别为“已存在”，不能只留在消息文字里。
+    throw new QdrantRequestError(`createCollection HTTP ${response.status}: ${errorText}`, {
+      httpStatus: response.status,
+    });
   }
 
   logger.info(`[QdrantAdapter] Collection created: ${collectionName}`);

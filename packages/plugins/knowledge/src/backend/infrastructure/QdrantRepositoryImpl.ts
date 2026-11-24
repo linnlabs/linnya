@@ -102,73 +102,65 @@ export class QdrantRepositoryImpl implements QdrantRepository {
     }
   ): Promise<void> {
     await this.runWithCollectionAccess(collectionName, 'shared', async () => {
-      const collectionExists = await this.collectionExists(collectionName);
       const defaultSegmentNumber =
         typeof options?.defaultSegmentNumber === 'number' &&
         Number.isFinite(options.defaultSegmentNumber) &&
         options.defaultSegmentNumber >= 0
           ? Math.trunc(options.defaultSegmentNumber)
           : undefined;
-
-      if (!collectionExists) {
-        if (supportSparse) {
-          // 创建多向量集合（default 稠密向量 + bm25 稀疏向量）
-          const vectorConfig: MultiVectorCollectionConfig = {
-            default: {
-              size: vectorSize,
-              distance: normalizeDistanceMetric(distanceMetric),
-            },
-            bm25: {},
-          };
-
-          this.logger.info(
-            `创建多向量集合: ${collectionName} (稠密向量: ${vectorSize}维 + BM25稀疏向量)`
-          );
-          try {
-            await (
-              await this.resolveAdapter()
-            ).createCollection(collectionName, vectorConfig, 'Cosine', {
-              optimizerConfig: {
-                defaultSegmentNumber,
-              },
-            });
-          } catch (err) {
-            if (isCollectionAlreadyExistsError(err)) {
-              this.logger.warn(`集合 ${collectionName} 并发创建发生冲突(409)，视为已存在，继续`);
-            } else {
-              throw err;
-            }
-          }
-        } else {
-          // 单向量模式（统一使用命名向量 default；由 QdrantAdapter.createCollection 保证 schema 一致）
-          this.logger.info(`创建单向量集合: ${collectionName} (${vectorSize}维)`);
-          try {
-            const normalizedDistance: Distance = normalizeDistanceMetric(distanceMetric);
-            await (
-              await this.resolveAdapter()
-            ).createCollection(collectionName, vectorSize, normalizedDistance, {
-              optimizerConfig: {
-                defaultSegmentNumber,
-              },
-            });
-          } catch (err) {
-            if (isCollectionAlreadyExistsError(err)) {
-              this.logger.warn(`集合 ${collectionName} 并发创建发生冲突(409)，视为已存在，继续`);
-            } else {
-              throw err;
-            }
-          }
-        }
-      } else {
-        const collectionInfo = await this.getCollectionInfo(collectionName);
-        const decision = decideExistingCollection({
-          config: collectionInfo.config, pointsCount: collectionInfo.points_count, vectorSize, supportSparse,
-        });
-        // 写入路径持有共享访问且跨 Worker 不互斥，不能在这里删除重建；空集合由入队前的准入处理。
-        if (decision.kind !== 'compatible') throw incompatibleCollectionError(decision.reason);
-        if (supportSparse) assertCollectionSupportsSparseVectors(collectionName, collectionInfo.config, this.logger);
+      // 共享访问下多份文档会同时写入同一个新知识库：都看到“不存在”，后到的创建收到 409。
+      // 这时集合已由先到者建好，按已存在处理，并和平常一样检查它与本次写入是否兼容。
+      if (!(await this.collectionExists(collectionName))) {
+        const created = await this.createCollectionUnlessExists(
+          collectionName,
+          vectorSize,
+          distanceMetric,
+          supportSparse,
+          defaultSegmentNumber
+        );
+        if (created) return;
       }
+      const collectionInfo = await this.getCollectionInfo(collectionName);
+      const decision = decideExistingCollection({
+        config: collectionInfo.config, pointsCount: collectionInfo.points_count, vectorSize, supportSparse,
+      });
+      // 写入路径持有共享访问且跨 Worker 不互斥，不能在这里删除重建；空集合由入队前的准入处理。
+      if (decision.kind !== 'compatible') throw incompatibleCollectionError(decision.reason);
+      if (supportSparse) assertCollectionSupportsSparseVectors(collectionName, collectionInfo.config, this.logger);
     });
+  }
+
+  /** 创建集合；集合已被并发创建（409）时返回 false，其余失败照常抛出。 */
+  private async createCollectionUnlessExists(
+    collectionName: string,
+    vectorSize: number,
+    distanceMetric: string,
+    supportSparse: boolean,
+    defaultSegmentNumber: number | undefined
+  ): Promise<boolean> {
+    const adapter = await this.resolveAdapter();
+    const optimizerConfig = { optimizerConfig: { defaultSegmentNumber } };
+    try {
+      if (supportSparse) {
+        // 多向量集合：default 稠密向量 + bm25 稀疏向量
+        const vectorConfig: MultiVectorCollectionConfig = {
+          default: { size: vectorSize, distance: normalizeDistanceMetric(distanceMetric) },
+          bm25: {},
+        };
+        this.logger.info(`创建多向量集合: ${collectionName} (稠密向量: ${vectorSize}维 + BM25稀疏向量)`);
+        await adapter.createCollection(collectionName, vectorConfig, 'Cosine', optimizerConfig);
+      } else {
+        // 单向量模式（统一使用命名向量 default；由 QdrantAdapter.createCollection 保证 schema 一致）
+        this.logger.info(`创建单向量集合: ${collectionName} (${vectorSize}维)`);
+        const normalizedDistance: Distance = normalizeDistanceMetric(distanceMetric);
+        await adapter.createCollection(collectionName, vectorSize, normalizedDistance, optimizerConfig);
+      }
+      return true;
+    } catch (err) {
+      if (!isCollectionAlreadyExistsError(err)) throw err;
+      this.logger.warn(`集合 ${collectionName} 并发创建发生冲突(409)，视为已存在，继续`);
+      return false;
+    }
   }
 
 

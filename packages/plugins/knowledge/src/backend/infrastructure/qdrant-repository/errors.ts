@@ -1,4 +1,5 @@
 import { isObjectLike } from '@linnya/foundation';
+import { isQdrantRequestError } from '../vector-store/errors';
 /**
  * @file packages/plugins/knowledge/src/backend/infrastructure/qdrant-repository/errors.ts
  *
@@ -14,6 +15,7 @@ import { isObjectLike } from '@linnya/foundation';
  */
 export function isCollectionAlreadyExistsError(error: unknown): boolean {
   try {
+    if (isQdrantRequestError(error)) return error.httpStatus === 409;
     if (isObjectLike(error)) {
       const status = error['status'];
       const statusText = error['statusText'];
