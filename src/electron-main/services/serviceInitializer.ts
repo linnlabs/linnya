@@ -205,12 +205,9 @@ export class ServiceInitializer {
     modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
     await providerAccountRegistry.initialize();
     await modelCatalog.initialize();
-    await providerConfigurationRegistry.initialize({
-      models: modelCatalog.getModels().map(model => ({
-        id: model.id,
-        inference_endpoint_id: model.inference_endpoint_id,
-      })),
-    });
+    // 停用的用户模型仍在用户文件里，对账必须把它当作存在，否则会顺带删掉它的 Provider 归属与选择器偏好。
+    const retainedModels = modelCatalog.getRetainedModelIdentities();
+    await providerConfigurationRegistry.initialize({ models: retainedModels });
     const providerConfigurationMigration = await runProviderConfigurationMigration({
       providerCatalog,
       runtimeBindings: providerOnboardingRuntimeBindingRegistry,
@@ -225,7 +222,7 @@ export class ServiceInitializer {
     });
     await modelPickerPreferencesRegistry.initialize({
       configured_provider_ids: providerConfigurationRegistry.list().map(provider => provider.id),
-      model_config_ids: modelCatalog.getModels().map(model => model.id),
+      model_config_ids: retainedModels.map(model => model.id),
     });
     console.log(
       `[ServiceInitializer] ✅ Step 3: 产品模型目录初始化完成，包含 ${modelCatalog.getModels().length} 个模型`

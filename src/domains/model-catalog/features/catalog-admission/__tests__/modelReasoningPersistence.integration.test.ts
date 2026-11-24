@@ -12,6 +12,7 @@ import type {
 } from '../../../definitions/modelCatalog';
 import type { ModelReasoningResolver } from '../../../definitions/modelReasoningResolver';
 import type { InferenceEndpointSelection } from '../../../definitions/inferenceEndpoint';
+import type { ModelCatalogRegistry } from '../../../registry/modelCatalogRegistry';
 import { createSourceDistributionIdentity } from '../../../../../shared/distribution-identity';
 
 const paths = vi.hoisted(() => ({ directory: '' }));
@@ -49,7 +50,7 @@ function model(id: string, reasoning?: ModelReasoningConfig): ModelConfig {
   };
 }
 
-async function openRegistry(resolver?: ModelReasoningResolver): Promise<ModelCatalog> {
+async function openRegistry(resolver?: ModelReasoningResolver): Promise<ModelCatalogRegistry> {
   vi.resetModules();
   const { ModelCatalogRegistry } = await import('../../../registry/modelCatalogRegistry');
   const registry = ModelCatalogRegistry.getInstance();
@@ -207,11 +208,45 @@ describe('SDK 能力装配与真实用户目录持久化', () => {
     expect(() => catalog.installModelReasoningResolver(queryReasoning)).toThrow('initialize 前');
   });
 
-  it('完全冲突的显式声明阻断准入并保留原文件，不把它伪装成无思考能力', async () => {
-    await seedModels([model('conflict', { supported_efforts: ['off'], default_effort: 'off' })]);
+  it('完全冲突的显式声明只停用该模型，不伪装成无思考能力；原条目在之后的保存与重启中保留', async () => {
+    await seedModels([
+      model('conflict', { supported_efforts: ['off'], default_effort: 'off' }),
+      model('healthy'),
+    ]);
     const before = await readUserFile();
-    await expect(openRegistry(queryReasoning)).rejects.toThrow('claude-haiku-5-5');
+    const storedConflict = JSON.parse(before).models.find(
+      (entry: { readonly id?: unknown }) => entry.id === 'conflict'
+    );
+
+    let catalog = await openRegistry(queryReasoning);
+    expect(catalog.getModel('conflict')).toBeUndefined();
+    expect(requireModel(catalog, 'healthy').reasoning).toEqual({
+      supported_efforts: ['low', 'medium', 'high'],
+      default_effort: 'medium',
+    });
+    expect(catalog.getUnadmittedUserModels()).toEqual([
+      {
+        id: 'conflict',
+        inference_endpoint_id: 'endpoint-a',
+        reason: expect.stringContaining('claude-haiku-5-5'),
+      },
+    ]);
     expect(await readUserFile()).toBe(before);
+
+    // 一次普通保存不能把停用的条目、它的连接或凭据一起删掉。
+    await catalog.removeModel('healthy');
+    const saved = JSON.parse(await readUserFile());
+    expect(saved.models).toEqual([storedConflict]);
+    expect(saved.inference_endpoints).toEqual([expect.objectContaining({ id: 'endpoint-a' })]);
+    expect(catalog.resolveInferenceEndpointCredential('endpoint-a')).toBe('fixture-key');
+
+    // 能力查询不再冲突时（例如 SDK 更新），同一条原始配置重新准入。
+    catalog = await openRegistry();
+    expect(catalog.getUnadmittedUserModels()).toEqual([]);
+    expect(requireModel(catalog, 'conflict').reasoning).toEqual({
+      supported_efforts: ['off'],
+      default_effort: 'off',
+    });
   });
 
   it.each(['update', 'diff', 'custom-group-diff'] as const)(

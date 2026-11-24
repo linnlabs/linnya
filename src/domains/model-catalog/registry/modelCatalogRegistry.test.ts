@@ -634,7 +634,7 @@ describe('Registry default model by capability', () => {
     await registry.removeModel('second-user-model');
     expect(registry.getInferenceEndpoints()).toEqual([]);
     expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:shared-endpoint');
-    expect(persisterMock.saveState).toHaveBeenLastCalledWith([], [], []);
+    expect(persisterMock.saveState).toHaveBeenLastCalledWith([], [], [], []);
   });
 
   it('删除最后引用的目录写入失败时恢复 endpoint 与凭据', async () => {
@@ -1108,5 +1108,156 @@ describe('Registry default model by capability', () => {
     expect(registry.getModel('second')?.inference_endpoint_id).toBe('new');
     expect(credentialStoreMock.put).toHaveBeenCalledOnce();
     expect(persisterMock.saveState).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Registry 用户模型准入隔离与初始化回滚', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.resetModules();
+    fetchCloudModelsMock.mockReset();
+    persisterMock.initialize.mockClear();
+    persisterMock.loadState.mockReset();
+    persisterMock.saveState.mockReset();
+    persisterMock.saveState.mockResolvedValue(undefined);
+    credentialStoreMock.initialize.mockClear();
+    credentialStoreMock.has.mockReturnValue(true);
+    credentialStoreMock.getStatus.mockReturnValue('available');
+    credentialStoreMock.put.mockClear();
+    credentialStoreMock.remove.mockClear();
+    credentialRollbackMock.mockClear();
+    process.env.MODEL_REGISTRY_DEFAULTS_PATH = path.resolve(
+      process.cwd(),
+      'src/domains/model-catalog/features/default-catalog/assets/default_models.json'
+    );
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  /** 旧版编辑接口拼出的双 route 用户模型：同一 endpoint 同时声明对话和向量 route。 */
+  function buildDualRouteUserModel(id: string, endpointId: string): ModelConfig {
+    const model = buildUserModel(id, endpointId);
+    return {
+      ...model,
+      capabilities: ['chat', 'embedding'],
+      embedding_route: {
+        api_surface: 'openai_embeddings',
+        capability_id: 'ai-sdk:openai-compatible-embeddings',
+        endpoint_id: 'deepseek',
+        endpoint_model_id: id,
+        base_url: 'https://api.linnyai.com/proxy/deepseek',
+        auth_profile: 'bearer',
+        usage: { response_usage: 'provider_reported_optional' },
+      },
+    };
+  }
+
+  it('单个用户模型准入失败只停用它：其余模型可用，保存时原样带回原条目并保留它独占的连接与凭据', async () => {
+    const broken = buildDualRouteUserModel('broken-user-model', 'broken-endpoint');
+    persisterMock.loadState.mockResolvedValue({
+      customApiGroups: [],
+      requiresMigration: false,
+      inferenceEndpoints: [
+        buildUserEndpoint('broken-endpoint'),
+        buildUserEndpoint('healthy-endpoint'),
+      ],
+      models: [broken, buildUserModel('healthy-user-model', 'healthy-endpoint')],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+
+    await registry.initialize(createSourceDistributionIdentity());
+
+    expect(registry.isInitialized()).toBe(true);
+    expect(registry.getModel('healthy-user-model')).toBeDefined();
+    expect(registry.getModel('broken-user-model')).toBeUndefined();
+    expect(registry.getUnadmittedUserModels()).toEqual([
+      {
+        id: 'broken-user-model',
+        inference_endpoint_id: 'broken-endpoint',
+        reason: expect.stringContaining('必须声明唯一的推理 route'),
+      },
+    ]);
+    expect(persisterMock.saveState).not.toHaveBeenCalled();
+    // 启动对账（Provider 归属、选择器偏好）仍把停用模型当作存在。
+    expect(registry.getRetainedModelIdentities()).toEqual(
+      expect.arrayContaining([
+        { id: 'healthy-user-model', inference_endpoint_id: 'healthy-endpoint' },
+        { id: 'broken-user-model', inference_endpoint_id: 'broken-endpoint' },
+      ])
+    );
+
+    // 删掉最后一个已准入模型：它的连接与凭据回收，停用模型的连接、凭据和原条目都不能被顺带删掉。
+    await registry.removeModel('healthy-user-model');
+    expect(persisterMock.saveState).toHaveBeenLastCalledWith(
+      [],
+      [expect.objectContaining({ id: 'broken-endpoint' })],
+      [],
+      [broken]
+    );
+    expect(credentialStoreMock.remove).toHaveBeenCalledWith('inference-endpoint:healthy-endpoint');
+    expect(credentialStoreMock.remove).not.toHaveBeenCalledWith(
+      'inference-endpoint:broken-endpoint'
+    );
+    expect(registry.getInferenceEndpoints()).toEqual([
+      expect.objectContaining({ id: 'broken-endpoint' }),
+    ]);
+
+    // 停用模型的 ID 仍被文件占用，新注册不能写出两条同 ID 的条目。
+    await expect(
+      registry.registerUserModel(buildUserModel('broken-user-model', 'broken-endpoint'), {
+        kind: 'existing',
+        inference_endpoint_id: 'broken-endpoint',
+      })
+    ).rejects.toThrow('注册模型 ID 重复或已存在');
+  });
+
+  it('旧文件迁移时未通过准入的条目原样进入新文件', async () => {
+    const broken = buildDualRouteUserModel('broken-user-model', 'shared-endpoint');
+    const healthy = buildUserModel('healthy-user-model', 'shared-endpoint');
+    persisterMock.loadState.mockResolvedValue({
+      customApiGroups: [],
+      requiresMigration: true,
+      inferenceEndpoints: [buildUserEndpoint('shared-endpoint')],
+      models: [broken, healthy],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+
+    await registry.initialize(createSourceDistributionIdentity());
+
+    expect(persisterMock.saveState).toHaveBeenCalledOnce();
+    expect(persisterMock.saveState).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 'healthy-user-model' })],
+      [expect.objectContaining({ id: 'shared-endpoint' })],
+      [],
+      [broken]
+    );
+  });
+
+  it('初始化失败时回滚已载入的连接：再次初始化报出真正原因，而不是重复连接', async () => {
+    persisterMock.loadState.mockResolvedValue({
+      customApiGroups: [{ name: 'Relay', inference_endpoint_ids: ['missing-endpoint'] }],
+      requiresMigration: false,
+      inferenceEndpoints: [buildUserEndpoint('loaded-endpoint')],
+      models: [],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+
+    await expect(registry.initialize(createSourceDistributionIdentity())).rejects.toThrow(
+      '引用不存在的 InferenceEndpoint: missing-endpoint'
+    );
+    expect(registry.isInitialized()).toBe(false);
+    expect(registry.getInferenceEndpoints()).toEqual([]);
+    expect(registry.getModels()).toEqual([]);
+
+    await expect(registry.initialize(createSourceDistributionIdentity())).rejects.toThrow(
+      '引用不存在的 InferenceEndpoint: missing-endpoint'
+    );
+    expect(persisterMock.saveState).not.toHaveBeenCalled();
   });
 });

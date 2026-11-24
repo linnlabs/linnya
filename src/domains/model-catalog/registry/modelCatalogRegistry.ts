@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import type { CustomApiGroup, CustomApiGroupMigration } from '../definitions/customApiGroup';
 import type { ModelReasoningResolver } from '../definitions/modelReasoningResolver';
 import { projectUserModelForPersistence } from '../features/user-model-persistence/functions/projectUserModelForPersistence';
+import { readStoredModelReferences } from '../features/user-model-persistence/functions/readStoredModelReferences';
 import { assertCustomApiGroupEndpoints } from '../features/custom-api-groups/functions/customApiGroupState';
 import { prepareCustomApiGroupMutation } from '../features/custom-api-groups/orchestration/prepareCustomApiGroupMutation';
 import type { CustomApiGroupMutation } from '../features/custom-api-groups/definitions/customApiGroupMutation';
@@ -21,6 +22,7 @@ import type {
   ModelCatalog,
   ModelConfig,
   ModelDiff,
+  UnadmittedUserModel,
   UserModelRegistration,
 } from '../definitions/modelCatalog';
 import { ModelCatalogConflictError } from '../definitions/modelCatalog';
@@ -64,6 +66,14 @@ export interface UserModelCatalogChangedEvent {
 
 export type UserModelCatalogChangedListener = (event: UserModelCatalogChangedEvent) => void;
 
+/** 启动时未通过准入的用户模型：只停用这一条，原始条目随之后的写盘原样保留。 */
+interface UnadmittedUserModelEntry {
+  readonly raw: unknown;
+  readonly id: string | undefined;
+  readonly inferenceEndpointId: string | undefined;
+  readonly reason: string;
+}
+
 function processEnvironment(): Record<string, string> {
   const environment: Record<string, string> = {};
   for (const [name, value] of Object.entries(process.env)) {
@@ -96,6 +106,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private readonly accountModelIds = new Map<string, Set<string>>();
   private inferenceEndpoints = new Map<string, InferenceEndpoint>();
   private customApiGroups = new Map<string, CustomApiGroup>();
+  private unadmittedUserModels: readonly UnadmittedUserModelEntry[] = [];
   private envVars: Record<string, string> = {};
   private initialized = false;
   private initializationStarted = false;
@@ -122,7 +133,24 @@ export class ModelCatalogRegistry implements ModelCatalog {
   async initialize(distributionIdentity?: DistributionIdentity): Promise<void> {
     if (this.initialized) return;
     this.initializationStarted = true;
+    // 失败要回到初始化前：半截载入的连接、分组或模型会让再次初始化报“重复”，掩盖真正的原因。
+    const restoreBeforeInitialization = this.captureInitializationRollback();
+    try {
+      await this.loadInitialSources(distributionIdentity);
+    } catch (error: unknown) {
+      restoreBeforeInitialization();
+      throw error;
+    }
+    this.initialized = true;
+    logger.info(
+      `[ModelCatalog] 初始化完成，共 ${this.models.size} 个模型` +
+        (this.unadmittedUserModels.length > 0
+          ? `，${this.unadmittedUserModels.length} 个用户模型未通过准入已停用`
+          : '')
+    );
+  }
 
+  private async loadInitialSources(distributionIdentity?: DistributionIdentity): Promise<void> {
     this.envVars = processEnvironment();
     await modelPersister.initialize();
     await endpointCredentialStore.initialize();
@@ -144,7 +172,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     }
 
     this.loadUserModels(userState.models);
-    // 旧文件完整通过准入后才覆盖；任何损坏都不能留下半迁移目录。
+    // 连接与分组全部通过准入后才覆盖旧文件；未通过准入的模型条目原样带入新文件，不会因迁移丢失。
     if (userState.requiresMigration) {
       this.persistingInitialState = true;
       try {
@@ -153,8 +181,50 @@ export class ModelCatalogRegistry implements ModelCatalog {
         this.persistingInitialState = false;
       }
     }
-    this.initialized = true;
-    logger.info(`[ModelCatalog] 初始化完成，共 ${this.models.size} 个模型`);
+  }
+
+  private captureInitializationRollback(): () => void {
+    const models = new Map(this.models);
+    const inferenceEndpoints = new Map(this.inferenceEndpoints);
+    const customApiGroups = new Map(this.customApiGroups);
+    const unadmittedUserModels = this.unadmittedUserModels;
+    const functionalModelDefaults = this.functionalModelDefaults;
+    const cloudModelsLoadedSuccessfully = this.cloudModelsLoadedSuccessfully;
+    return () => {
+      this.models = models;
+      this.inferenceEndpoints = inferenceEndpoints;
+      this.customApiGroups = customApiGroups;
+      this.unadmittedUserModels = unadmittedUserModels;
+      this.functionalModelDefaults = functionalModelDefaults;
+      this.cloudModelsLoadedSuccessfully = cloudModelsLoadedSuccessfully;
+      this.cloudModelRetryAttemptCount = 0;
+      this.clearCloudModelRetryTimer();
+    };
+  }
+
+  /** 启动时未通过准入而停用的用户模型；只给身份与原因，供诊断使用。 */
+  getUnadmittedUserModels(): UnadmittedUserModel[] {
+    return this.unadmittedUserModels.map(entry => ({
+      id: entry.id,
+      inference_endpoint_id: entry.inferenceEndpointId,
+      reason: entry.reason,
+    }));
+  }
+
+  /**
+   * 仍然存在的模型身份：运行目录里的模型，加上停用但仍保留在用户文件里的条目。
+   * Provider 归属、选择器偏好等启动对账以它判断“模型是否已被删除”；只用运行目录会把停用模型的归属一并删掉。
+   */
+  getRetainedModelIdentities(): Array<{ id: string; inference_endpoint_id: string | undefined }> {
+    return [
+      ...this.getModels().map(model => ({
+        id: model.id,
+        inference_endpoint_id: model.inference_endpoint_id,
+      })),
+      ...this.unadmittedUserModels.flatMap(entry =>
+        entry.id ? [{ id: entry.id, inference_endpoint_id: entry.inferenceEndpointId }] : []
+      ),
+    ];
   }
 
   getModels(): ModelConfig[] {
@@ -311,7 +381,10 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return this.runUserMutation(async () => {
       if (registrations.length === 0) throw new Error('批量注册至少需要一个用户模型');
       const ids = registrations.map(item => item.model.id);
-      if (new Set(ids).size !== ids.length || ids.some(id => this.models.has(id))) {
+      if (
+        new Set(ids).size !== ids.length ||
+        ids.some(id => this.models.has(id) || this.isUnadmittedUserModelId(id))
+      ) {
         throw new Error('注册模型 ID 重复或已存在');
       }
       const nextEndpoints = new Map(this.inferenceEndpoints);
@@ -580,16 +653,32 @@ export class ModelCatalogRegistry implements ModelCatalog {
     }
   }
 
+  /** 单个用户模型准入失败只停用它：其余模型照常可用，原条目留在文件里，它的连接与凭据不回收。 */
   private loadUserModels(userModels: readonly unknown[]): void {
+    const unadmitted: UnadmittedUserModelEntry[] = [];
     for (const modelData of userModels) {
-      const model = processModelConfig({
-        modelData,
-        envVars: this.envVars,
-        reasoningResolver: this.modelReasoningResolver,
-      });
-      this.assertModelEndpoint(model);
-      this.models.set(model.id, model);
+      try {
+        const model = processModelConfig({
+          modelData,
+          envVars: this.envVars,
+          reasoningResolver: this.modelReasoningResolver,
+        });
+        this.assertModelEndpoint(model);
+        this.models.set(model.id, model);
+      } catch (error: unknown) {
+        const references = readStoredModelReferences(modelData);
+        const reason = error instanceof Error ? error.message : String(error);
+        unadmitted.push({ raw: modelData, ...references, reason });
+        logger.warn(
+          `[ModelCatalog] 用户模型 ${references.id ?? '(缺少 ID)'} 没有通过准入，已停用；原配置保留在 user_models.json: ${reason}`
+        );
+      }
     }
+    this.unadmittedUserModels = unadmitted;
+  }
+
+  private isUnadmittedUserModelId(id: string): boolean {
+    return this.unadmittedUserModels.some(entry => entry.id === id);
   }
 
   /** 从读取当前目录到凭据/文件提交都串行，失败后下一条事务仍可继续。 */
@@ -658,7 +747,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
     const orphanedEndpoints = findUnreferencedInferenceEndpoints(
       nextModels.values(),
       baseEndpoints.values(),
-      nextGroups.values()
+      nextGroups.values(),
+      this.unadmittedUserModels.flatMap(entry => entry.inferenceEndpointId ?? [])
     );
     const nextEndpoints = new Map(baseEndpoints);
     const credentialRollbacks: Array<() => Promise<void>> = [];
@@ -727,7 +817,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
     await modelPersister.saveState(
       userModels,
       Array.from(inferenceEndpoints.values()),
-      Array.from(groups.values())
+      Array.from(groups.values()),
+      this.unadmittedUserModels.map(entry => entry.raw)
     );
   }
 

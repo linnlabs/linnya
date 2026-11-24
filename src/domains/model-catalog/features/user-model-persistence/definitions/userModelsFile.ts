@@ -9,8 +9,12 @@ export interface UserModelsFile {
   readonly last_updated: string;
   readonly inference_endpoints: readonly InferenceEndpoint[];
   readonly custom_api_groups: readonly CustomApiGroup[];
-  readonly models: readonly ModelConfig[];
+  /** 已准入的用户模型，后接启动时未通过准入、按原样保留的条目。 */
+  readonly models: readonly (ModelConfig | PreservedUserModelEntry)[];
 }
+
+/** 启动时未通过准入的原始模型条目；Catalog 不解释其内容，只在写盘时原样带回。 */
+export type PreservedUserModelEntry = unknown;
 
 export interface StoredUserModelState {
   readonly inferenceEndpoints: readonly unknown[];

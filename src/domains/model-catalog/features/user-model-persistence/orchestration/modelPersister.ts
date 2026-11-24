@@ -9,6 +9,7 @@ import type { InferenceEndpoint } from '../../../definitions/inferenceEndpoint';
 import type { CustomApiGroup } from '../../../definitions/customApiGroup';
 import {
   USER_MODELS_FILE_VERSION,
+  type PreservedUserModelEntry,
   type StoredUserModelState,
   type UserModelsFile,
 } from '../definitions/userModelsFile';
@@ -58,15 +59,21 @@ export class ModelPersister {
     }
   }
 
+  /** `preservedModels` 是启动时未通过准入的原始条目，原样写在已准入模型之后，不能因一次保存丢失。 */
   async saveState(
     models: readonly ModelConfig[],
     inferenceEndpoints: readonly InferenceEndpoint[],
-    customApiGroups: readonly CustomApiGroup[]
+    customApiGroups: readonly CustomApiGroup[],
+    preservedModels: readonly PreservedUserModelEntry[]
   ): Promise<void> {
     const userModels = models.filter(model => model.catalog_source === 'user');
-    await this.writeUserModelsFile(userModels, inferenceEndpoints, customApiGroups);
+    await this.writeUserModelsFile(
+      [...userModels, ...preservedModels],
+      inferenceEndpoints,
+      customApiGroups
+    );
     logger.info(
-      `[ModelPersister] Saved ${userModels.length} user models and ${inferenceEndpoints.length} inference endpoints`
+      `[ModelPersister] Saved ${userModels.length} user models, ${preservedModels.length} preserved unadmitted entries and ${inferenceEndpoints.length} inference endpoints`
     );
   }
 
@@ -85,7 +92,7 @@ export class ModelPersister {
   }
 
   private async writeUserModelsFile(
-    models: readonly ModelConfig[],
+    models: UserModelsFile['models'],
     inferenceEndpoints: readonly InferenceEndpoint[],
     customApiGroups: readonly CustomApiGroup[]
   ): Promise<void> {
