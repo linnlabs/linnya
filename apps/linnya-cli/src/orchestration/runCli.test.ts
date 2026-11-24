@@ -122,6 +122,7 @@ describe('runCli', () => {
             command: 'tools',
             action: 'call',
             tool_name: 'read_file',
+            conversation_reused: false,
             receipt: {
               conversation_id: 'conversation-1',
               user_message_id: 'message-1',
