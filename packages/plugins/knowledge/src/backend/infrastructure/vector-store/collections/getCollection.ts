@@ -8,6 +8,7 @@ import { isObjectLike } from '@linnya/foundation';
 import type { QdrantClient } from '@qdrant/js-client-rest';
 import type { Logger } from '@plugin/backend/loggingRuntime';
 import type { QdrantCollectionInfo } from '../types';
+import { readCollectionWhenReady } from './readCollectionWhenReady';
 
 
 export async function getCollectionImpl(
@@ -16,7 +17,7 @@ export async function getCollectionImpl(
   logger: Logger
 ): Promise<QdrantCollectionInfo> {
   logger.debug(`[QdrantAdapter] Getting info for collection: ${collectionName}`);
-  const raw = await client.getCollection(collectionName);
+  const raw = await readCollectionWhenReady(client, collectionName);
 
   if (!isObjectLike(raw)) {
     // 不做容错“猜测”，直接返回空对象（上层会自行兜底默认值）
