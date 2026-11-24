@@ -13,7 +13,7 @@ import { resolveAgentRequestAdmission } from 'src/app-hosts/linnya/agent-registr
 import type { AgentInvokeRequest } from 'src/app-hosts/linnya/context/agent/contracts';
 import type { ConversationListItem } from '../../../persistence/event-store/event-store.interface';
 import { HistoryBuilder } from '../../flow.history-builder.service';
-import { resolveConversationAgentPromptKey } from '../../functions/admitConversationAgentChoice';
+import { findConversationAgentPromptKey } from '../../functions/admitConversationAgentChoice';
 import { projectContextEstimate } from '../functions/projectContextEstimate';
 
 interface ContextUsageReaderDependencies {
@@ -51,7 +51,7 @@ export function createConversationContextUsageReader(dependencies: ContextUsageR
   });
   let latest: { key: string; usage: Promise<ConversationContextUsage | null> } | undefined;
 
-  async function estimate(metadata: ConversationListItem, modelId: string) {
+  async function estimate(metadata: ConversationListItem, modelId: string, promptKey: string | undefined) {
     // 历史窗口读请求可以先处理，避免本地分词占住打开对话时的第一批 I/O。
     await yieldToEventLoop();
     const conversationId = metadata.conversation_id;
@@ -59,9 +59,7 @@ export function createConversationContextUsageReader(dependencies: ContextUsageR
     const request = admitNextRequest(
       HistoryBuilder.buildForContextEstimate(conversationId, {
         model_id: modelId,
-        promptKey: metadata.selected_agent_id
-          ? resolveConversationAgentPromptKey(metadata.selected_agent_id)
-          : undefined,
+        promptKey,
         project_metadata: metadata.project_id ? { id: metadata.project_id } : undefined,
       }),
       history,
@@ -86,13 +84,19 @@ export function createConversationContextUsageReader(dependencies: ContextUsageR
     if (metadata.selected_agent_id && isRetiredDeepResearchAgentId(metadata.selected_agent_id)) {
       return null;
     }
+    // 选中的 Agent 未注册或所属插件已停用：发送会被拒绝，同样没有下一次请求。
+    // 返回空值让用量环隐藏，输入框的“Agent 已不可用”提示照旧；不能报 500 让前端反复重试。
+    const promptKey = metadata.selected_agent_id
+      ? findConversationAgentPromptKey(metadata.selected_agent_id)
+      : undefined;
+    if (metadata.selected_agent_id && promptKey === undefined) return null;
     // 只保留最近一次估算。外部运行和截断改变持久化统计，历史翻页不会改变它们。
     const key = JSON.stringify([
       conversationId, metadata.created_at, metadata.last_event_at, metadata.total_events,
       metadata.project_id, metadata.selected_agent_id, modelId, model.inference_route, model.token_route,
     ]);
     if (latest?.key === key) return latest.usage;
-    const entry = { key, usage: estimate(metadata, modelId) };
+    const entry = { key, usage: estimate(metadata, modelId, promptKey) };
     latest = entry;
     try {
       return await entry.usage;
