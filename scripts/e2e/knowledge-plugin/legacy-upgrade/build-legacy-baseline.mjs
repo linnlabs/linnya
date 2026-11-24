@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -8,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 import { launchInstalledDesktop, until } from '../windows/installedDesktopSession.mjs';
 import { HASHING_EMBEDDING_DIMENSION, startHashingEmbeddingFixture } from './hashingEmbeddingFixture.mjs';
+import { readInstalledApp } from './installedApp.mjs';
 
 /**
  * 用已发布的旧版 App（知识库仍在核心里）生成真实旧资料：旧核心表、旧 KnowledgeBase 目录与 Qdrant 集合。
@@ -40,18 +40,6 @@ function legacyApp(executableOption, versionOption, label) {
 const creator = legacyApp(values.app, values['expect-version'], '--app');
 const follower = values['then-app'] ? legacyApp(values['then-app'], values['then-expect-version'], '--then-app') : null;
 
-function bundleVersion(executable) {
-  if (process.platform === 'darwin') {
-    const plist = path.resolve(path.dirname(executable), '../Info.plist');
-    return execFileSync('plutil', ['-extract', 'CFBundleShortVersionString', 'raw', plist], { encoding: 'utf8' }).trim();
-  }
-  if (process.platform === 'win32') {
-    return execFileSync('powershell.exe', ['-NoProfile', '-Command',
-      `(Get-Item -LiteralPath '${executable.replaceAll("'", "''")}').VersionInfo.ProductVersion`], { encoding: 'utf8' }).trim();
-  }
-  throw new Error(`unsupported platform ${process.platform}`);
-}
-
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const documents = [
   { filename: 'orchard-apples.md', marker: 'legacy-orchard-marker',
@@ -63,7 +51,7 @@ const query = 'apple orchard harvest';
 const knowledgeBaseName = 'Legacy orchard library';
 
 async function launchLegacy(app, label) {
-  const actualVersion = bundleVersion(app.executable);
+  const actualVersion = readInstalledApp(app.executable).version;
   assert.equal(actualVersion, app.expectedVersion, `${label} bundle version`);
   const application = await launchInstalledDesktop(app.executable, path.join(out, 'session'));
   sessions.push({ label, application });

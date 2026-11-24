@@ -1,13 +1,27 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { QdrantClient } from '@qdrant/js-client-rest';
 import { afterEach, describe, expect, it } from 'vitest';
 import { QdrantAdapter } from '../vector-store/QdrantAdapter';
 import { QdrantRepositoryImpl } from '../QdrantRepositoryImpl';
+import {
+  isCollectionInitializingError,
+  readCollectionWhenReady,
+} from '../vector-store/collections/readCollectionWhenReady';
 
 /**
  * 最小的 Qdrant HTTP 替身：存在检查先攒够 `waitForChecks` 个才一起回答，保证并发写入都看到“不存在”；
  * 第一次创建成功，之后的创建按真实 Qdrant 的格式返回 409。
  */
-async function startQdrant(options: { waitForChecks: number; createStatus?: number }) {
+async function startQdrant(options: {
+  waitForChecks: number;
+  createStatus?: number;
+  /** 建好后前 N 次读取按真实 Qdrant 返回“副本未就绪”的 500。 */
+  initializingReads?: number;
+  /** 建好后读取一律返回其他原因的 500。 */
+  brokenReads?: boolean;
+}) {
+  let initializingReads = options.initializingReads ?? 0;
+  let reads = 0;
   const created = new Map<string, { size: number; sparse: boolean }>();
   const creates: string[] = [];
   let parked: Array<() => void> = [];
@@ -19,6 +33,22 @@ async function startQdrant(options: { waitForChecks: number; createStatus?: numb
     if (!collection) {
       send(response, 404, {
         status: { error: `Not found: Collection \`${name}\` doesn't exist!` },
+        time: 0,
+      });
+      return;
+    }
+    reads += 1;
+    if (options.brokenReads) {
+      send(response, 500, {
+        status: { error: 'Service internal error: No such file or directory' },
+        time: 0,
+      });
+      return;
+    }
+    if (initializingReads > 0) {
+      initializingReads -= 1;
+      send(response, 500, {
+        status: { error: 'Service internal error: 0 of 0 read operations failed' },
         time: 0,
       });
       return;
@@ -96,8 +126,10 @@ async function startQdrant(options: { waitForChecks: number; createStatus?: numb
   const adapter = new QdrantAdapter({ url: `http://127.0.0.1:${address.port}` });
   return {
     repository: new QdrantRepositoryImpl(async () => adapter),
+    url: `http://127.0.0.1:${address.port}`,
     creates,
     created,
+    readsAfterCreation: () => reads,
     close: () => new Promise<void>(resolve => server.close(() => resolve())),
   };
 }
@@ -153,5 +185,45 @@ describe('多份文档同时写入一个新知识库', () => {
     await expect(
       qdrant.repository.getOrCreateCollection('kb-broken', 4, 'Cosine', true)
     ).rejects.toThrow(/createCollection HTTP 500/u);
+  });
+
+  it('后到者收到 409 时集合还没就绪（读取 500）：等到就绪再继续，两次都成功', async () => {
+    const qdrant = await startQdrant({ waitForChecks: 2, initializingReads: 3 });
+    close = qdrant.close;
+    await expect(
+      Promise.all([
+        qdrant.repository.getOrCreateCollection('kb-starting', 4, 'Cosine', true),
+        qdrant.repository.getOrCreateCollection('kb-starting', 4, 'Cosine', true),
+      ])
+    ).resolves.toEqual([undefined, undefined]);
+    expect(qdrant.readsAfterCreation()).toBeGreaterThan(3);
+  });
+
+  it('存在检查遇到正在创建的集合：等到就绪后回答存在', async () => {
+    const qdrant = await startQdrant({ waitForChecks: 1, initializingReads: 2 });
+    close = qdrant.close;
+    await qdrant.repository.getOrCreateCollection('kb-checked', 4, 'Cosine', true);
+    await expect(qdrant.repository.collectionExists('kb-checked')).resolves.toBe(true);
+    expect(qdrant.readsAfterCreation()).toBe(3);
+  });
+
+  it('其他原因的 500 不等待，立即失败', async () => {
+    const qdrant = await startQdrant({ waitForChecks: 1, brokenReads: true });
+    close = qdrant.close;
+    await qdrant.repository.getOrCreateCollection('kb-damaged', 4, 'Cosine', true);
+    await expect(qdrant.repository.collectionExists('kb-damaged')).rejects.toThrow(
+      /collectionExists failed/u
+    );
+    expect(qdrant.readsAfterCreation()).toBe(1);
+  });
+
+  it('集合一直没就绪：到期限后抛出 Qdrant 的原错误', async () => {
+    const qdrant = await startQdrant({ waitForChecks: 1, initializingReads: 1_000_000 });
+    close = qdrant.close;
+    await qdrant.repository.getOrCreateCollection('kb-stuck', 4, 'Cosine', true);
+    const client = new QdrantClient({ url: qdrant.url, checkCompatibility: false });
+    const failure = await readCollectionWhenReady(client, 'kb-stuck', 150).catch(error => error);
+    expect(isCollectionInitializingError(failure)).toBe(true);
+    expect(qdrant.readsAfterCreation()).toBeGreaterThan(1);
   });
 });

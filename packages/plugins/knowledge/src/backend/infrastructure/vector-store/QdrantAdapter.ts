@@ -35,6 +35,7 @@ import { deletePointsImpl } from './delete/deletePoints';
 import { createCollectionImpl } from './collections/createCollection';
 import { updateCollectionImpl } from './collections/updateCollection';
 import { getCollectionImpl } from './collections/getCollection';
+import { readCollectionWhenReady } from './collections/readCollectionWhenReady';
 import { extractHttpStatusCode, QdrantRequestError } from './errors';
 
 const logger = new Logger('qdrant-adapter');
@@ -249,7 +250,8 @@ export class QdrantAdapter {
    */
   async collectionExists(collectionName: string): Promise<boolean> {
     try {
-      await this.client.getCollection(collectionName);
+      // 正在被并发创建的集合算存在，等它就绪再回答：调用方接着就会读写。
+      await readCollectionWhenReady(this.client, collectionName);
       return true;
     } catch (err) {
       /**

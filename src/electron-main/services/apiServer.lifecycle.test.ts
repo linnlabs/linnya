@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { createServer } from 'node:net';
+import { connect, createServer } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -82,6 +82,23 @@ function createRouteDependencies(): RouteDependencies {
 }
 
 describe('ApiServer lifecycle', () => {
+  it('有连接一直不结束时仍及时关停，给后续收口留出时间', async () => {
+    const server = new ApiServer();
+    startedServers.push(server);
+    server.setupMiddleware();
+    const port = await server.start(0);
+    // 与浏览器预建连接相同：建立后一直不发请求，Node 不把它当空闲连接关闭。
+    const socket = connect(port, '127.0.0.1');
+    const closed = new Promise<void>(resolve => socket.once('close', () => resolve()));
+    socket.on('error', () => undefined);
+    await new Promise<void>(resolve => socket.once('connect', () => resolve()));
+
+    const startedAt = Date.now();
+    await server.stop();
+    expect(Date.now() - startedAt).toBeLessThan(3_000);
+    await closed;
+  });
+
   it('并行实例独立绑定端口、页面来源和 token，关闭一个不影响另一个', async () => {
     const first = new ApiServer();
     const second = new ApiServer();
