@@ -1,10 +1,7 @@
 import type { ConversationControlConnectionContext } from '@app/schemas';
 import { resolveCliSourceCheckout } from '../functions/resolveCliSourceCheckout';
 import { readFile } from 'node:fs/promises';
-import {
-  ConversationControlCapabilitySchema,
-  ConversationControlToolsCallRequestSchema,
-} from '@app/schemas';
+import { ConversationControlCapabilitySchema } from '@app/schemas';
 import { ZodError } from 'zod';
 import type { ConversationControlProgressFrame } from '@app/schemas';
 import {
@@ -44,7 +41,7 @@ export function linnyaCliUsage(): string {
     '  linnya --version          Show version and source/bundle build identity',
     '  linnya --help             Show this help (also -h or <command> --help)',
     '  linnya send <message> --project ID [--conversation ID] [--agent ID] [--model ID] [--image-model ID] [--reasoning LEVEL]',
-    '    Research: --agent research_v1; optional --research-scope-json JSON for explicit material scope (question, reader, task_type, materials, optional time_range)',
+    '    Research: --agent research_v1; optional --research-scope-json JSON | --research-scope-file PATH for explicit material scope (question, reader, task_type, materials, optional time_range)',
     '  linnya skills list | read NAME [PATH] | validate DIRECTORY',
     '  linnya skills install|update NAME --from DIRECTORY',
     '  linnya skills remove NAME',
@@ -62,7 +59,7 @@ export function linnyaCliUsage(): string {
     '  linnya resume <conversation-id> --run ID [--timeout MS]',
     '  linnya approvals <conversation-id> --run ID',
     '  linnya approval-reply <conversation-id> --run ACTUAL_RUN_ID --request ID --choice allow_once|allow_for_conversation|deny',
-    '  linnya respond <conversation-id> --interaction ID (--approve | --skip | --submit-json JSON | --modify-json JSON) [--project ID]',
+    '  linnya respond <conversation-id> --interaction ID (--approve | --skip | --submit-json JSON | --submit-file PATH | --modify-json JSON | --modify-file PATH) [--project ID]',
     '  linnya stop <conversation-id> [--run ID] [--reason TEXT] [--timeout MS]',
     '  linnya result <conversation-id> [--run ID]',
     '  linnya audit <conversation-id> [--run ID]',
@@ -92,6 +89,7 @@ export function linnyaCliUsage(): string {
     '  A watch timeout only ends observation; it does not stop the App-owned run.',
     '  audit level changes the connected source Host default for new runs; restart resets it to startup configuration. Packaged builds never provide audit.',
     '  Source CLI connects only to its own checkout; doctor reports its directory, branch and current default audit level.',
+    '  Every --*-json option has a --*-file PATH form that reads UTF-8 JSON. Use the file form in Windows PowerShell, which strips the double quotes inside inline JSON.',
     '',
   ].join('\n');
 }
@@ -116,17 +114,6 @@ export async function runCli(
     let invocation;
     try {
       invocation = parseCliInvocation(argv);
-      if (invocation.kind === 'tool-call' && invocation.argsFile) {
-        let args: unknown;
-        try {
-          args = JSON.parse(await readFile(invocation.argsFile, 'utf8'));
-        } catch {
-          throw new LinnyaCliError('invalid_request', '--args-file must name a readable UTF-8 JSON file');
-        }
-        invocation = { ...invocation, request: ConversationControlToolsCallRequestSchema.parse({
-          ...invocation.request, args,
-        }) };
-      }
     } catch (error: unknown) {
       if (error instanceof LinnyaCliError) throw error;
       if (error instanceof ZodError) {

@@ -12,7 +12,7 @@ Server 实现。两种入口都不让 CLI 直读 SQLite，也不创建每 Agent 
 
 新版研究使用
 `send --agent research_v1`，需显式项目和可用模型，与前端“研究”使用同一主 Agent 和通用子任务入口，普通请求允许开放查找资料。严格材料任务使用
-`--research-scope-json JSON`：按 Research schema 声明
+`--research-scope-json JSON`（或 `--research-scope-file PATH`）：按 Research schema 声明
 `question`、`reader`、`task_type`（open/fixed/update）、`materials` 和可选
 `time_range`；fixed/update 必须有正式 Workspace 材料。原消息与 scope 分别保留：CLI 沿正式 options 传递
 `research_scope`，Host 首次接纳后冻结为运行请求的
@@ -155,7 +155,7 @@ pnpm linnya:cli respond <conversation-id> \
 ```
 
 也可以选择 `--skip`、`--submit-json '<json>'` 或
-`--modify-json '<json>'`，四者必须且只能选一个。响应成功后可以再次执行
+`--modify-json '<json>'`，四者必须且只能选一个；后两者也可写成 `--submit-file PATH`、`--modify-file PATH`。响应成功后可以再次执行
 `status --watch`。运行完成后精确读取该次运行的最终回答：
 
 ```bash
@@ -301,7 +301,8 @@ pnpm linnya:cli tools call write_file \
 - 两者都传：验证 Conversation 确实属于该项目；不一致时拒绝执行。两者都不传同样拒绝。
 
 `--args-file <path>` 从 UTF-8 JSON 文件读取整个工具参数对象，与 `--args-json`
-互斥，适合大型 deck.js。`--omit-args`
+互斥，适合大型 deck.js。所有 `--*-json` 选项都有对应的 `--*-file PATH`，两者互斥、解析规则相同；
+Windows PowerShell 会去掉内联 JSON 参数里的双引号，在那里一律用文件写法。`--omit-args`
 只省略 CLI 回显中的工具入参，保留结果和诊断；不修改 App 历史。结果含 error 级文档诊断时也返回退出码
 `8`，即使源码保存成功。
 

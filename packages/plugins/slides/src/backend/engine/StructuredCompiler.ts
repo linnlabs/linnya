@@ -344,8 +344,12 @@ export class StructuredCompiler {
     const layout = resolveGeneratedTableLayout({
       width: el.position.w, height: el.position.h, headers: el.headers, rows: el.rows,
       fontSize: typeof el.options?.fontSize === 'number' ? el.options.fontSize : undefined,
+      columnWidths: el.columnWidths,
+      cellPadding: el.cellPadding,
     });
     const baseFontSize = layout.fontSize;
+    // PptxGenJS 边距顺序为 [上, 右, 下, 左]，首项小于 1 时按英寸读取（准入已把边距限制在 0.5 英寸内）。
+    const margin: [number, number, number, number] = [layout.padding.y, layout.padding.x, layout.padding.y, layout.padding.x];
     const rows: PptxGenJS.TableRow[] = [];
 
     // 表头与正文的默认底色跟主题走，与 RenderModel 用同一个 resolveTableDefaultFills。
@@ -358,7 +362,7 @@ export class StructuredCompiler {
             color: stripHash(resolveTableTextColor(fills.header, colors), 'table.headerColor'),
             fill: { color: stripHash(fills.header, 'table.headerFill') },
             fontSize: layout.headerFontSize,
-            margin: layout.padding,
+            margin,
             fit: 'shrink',
           },
         } as PptxGenJS.TableCell)),
@@ -367,14 +371,14 @@ export class StructuredCompiler {
 
     // 数据行
     for (const row of el.rows) {
-      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, fontScale: layout.fontScale, padding: layout.padding, fill: fills.body, colors })));
+      rows.push(row.map((cell) => this.mapTableCell(cell, { fontSize: baseFontSize, fontScale: layout.fontScale, margin, fill: fills.body, colors })));
     }
 
     // PptxGenJS 类型上 TableProps 未包含 fit（fit 在 TextPropsOptions）；运行时表格 opt 会下发到单元格文本体，库会读取 options.fit
     const tableOpts: PptxGenJS.TableProps & Pick<PptxGenJS.TextPropsOptions, 'fit'> = {
       ...mapPosition(el.position),
       fontSize: baseFontSize,
-      margin: layout.padding,
+      margin,
       fit: 'shrink',
       valign: 'middle',
       ...(el.options as PptxGenJS.TableProps | undefined),
@@ -388,12 +392,12 @@ export class StructuredCompiler {
 
   private mapTableCell(
     cell: DomainTableCell,
-    defaults: { fontSize: number; fontScale: number; padding: number; fill: string; colors: Readonly<Record<string, string>> | undefined },
+    defaults: { fontSize: number; fontScale: number; margin: [number, number, number, number]; fill: string; colors: Readonly<Record<string, string>> | undefined },
   ): PptxGenJS.TableCell {
     const opts: PptxGenJS.TableCellProps = {
       ...mapTextParagraphStyleToProps(cell.style),
       fontSize: cell.style?.fontSize != null ? scaleTableFontSize(cell.style.fontSize, defaults.fontScale) : defaults.fontSize,
-      margin: defaults.padding,
+      margin: defaults.margin,
     };
     const fill = cell.fill ?? defaults.fill;
     opts.fill = { color: stripHash(fill, 'table.fill') };

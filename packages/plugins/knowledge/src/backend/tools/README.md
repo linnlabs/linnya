@@ -48,9 +48,9 @@
     citation ref。上层 deep-search 在接纳 `kept` 后统一批量分配，避免子工具创建另一套命名域。
   - **项目授权**：整批文档先按当前项目关联核对归属，再读取任何 SoT。子运行返回的 judge 结果也会在父深搜物化前重新核对，不能把旧选择或引用身份当作读取授权；无项目、范围外文档与子运行期间解绑均明确失败，不降级浅搜索。
 
-`assemble_documents` 与 `evidence_resolve` 分别使用 `@app/schemas` 中的工具专属合同，不得合并为通用
-Evidence payload。旧 `assemble_evidence` 已退出 live registry；其 schema 和 Renderer projector 只以
-`Historical*` 身份解释旧事件，生产 Evidence writer 不再接受该 kind。
+`assemble_documents` 使用 `@app/schemas` 中的工具专属合同，不得合并为通用 Evidence payload。旧
+`assemble_evidence` 与 `evidence_resolve` 已退出 live registry；它们的 schema 和 Renderer projector 只解释旧事件，
+生产 Evidence writer 不再接受 `assemble_evidence` kind。
 
 ---
 
@@ -89,7 +89,7 @@ Host SDK 复用 Evidence owner 的字段映射、冻结的 ToolContext scope 与
   - shallow 先批量分配，再让 observation 与 `data.citations` 消费同一批 refs；禁止 formatter 二次生成
   - deep 在接纳 assemble 结果后批量分配；`knowledge_read` 只为实际返回的 block 分配
   - `knowledge_search`、`search_in_knowledgebase` 与 `knowledge_read` 已由正式生产者自动写入 Agent 实际看见的 Evidence
-  - Workspace 协作文档 / `evidence_resolve` 只消费 canonical ref，不把 bundle id 或 KB block 当成引用身份
+  - Workspace 协作文档只消费 canonical ref，不把 bundle id 或 KB block 当成引用身份
 
 ### 3.2 observation 必须与 canonical citations 一致
 
@@ -202,9 +202,8 @@ deep_search 的目标：让子 Agent 做“检索 + 阅读 + 智能筛选”，�
   - `packages/plugins/knowledge/src/backend/tools/evidence/knowledgeEvidenceBoundary.test.ts`（跨 domain 依赖方向门禁）
   - `src/domains/evidence/index.ts`（跨 Knowledge/Web 的 Evidence 公开合同）
   - `src/tools/evidence/evidenceBundleToolContextAdapter.ts`
-  - `src/tools/evidence/EvidenceResolveTool.ts`
   - `src/app-hosts/linnya/adapters/tools/citation-source-resolution/`（从正式 owner event 与 Evidence fallback 解析已接纳来源）
-  - `packages/schemas/src/tools/evidence-resolve.ts`
+  - `packages/schemas/src/tools/evidence-resolve.ts`（已退役工具，只用于回放旧事件）
 - **scope：**
   - `packages/plugins/knowledge/src/backend/tools/scope/projectKnowledgeBaseScope.ts`
 - **统一 formatter：**

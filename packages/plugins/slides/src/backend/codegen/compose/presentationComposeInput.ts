@@ -37,6 +37,7 @@ import type {
   SvgGraphicFit,
   SvgGraphicOwnedAssetRef,
   TableCell,
+  TableCellPadding,
   TextStyle,
   TextWrapPolicy,
   ThemeSpec,
@@ -87,6 +88,7 @@ import { resolveChartPreset, buildChartOptionsFromParams } from './chartPresets.
 import type { LayoutChartControls } from '@plugin/slides/shared';
 import { parseChartControls, parseChartStyle, validateChartSemantics } from './inputParsers/chartParsers.js';
 import { parseTextContent } from './inputParsers/textContentParser.js';
+import { countGeneratedTableColumns, readTableCellPadding, readTableColumnWidths } from '../../engine/table';
 
 // ─── 公共解析入口 ──────────────────────────────────────────────────────────
 
@@ -172,6 +174,10 @@ export interface DirectElementInput extends LayoutChartControls {
   rows?: TableCell[][];
   /** 已归一化的统一表格描边。 */
   tableBorder?: ShapeStrokeStyle;
+  /** 各列宽度的相对比例，个数等于列数。 */
+  columnWidths?: number[];
+  /** 单元格内边距（英寸），公开输入可写数字或 { x, y }，读入后归一为 { x?, y? }。 */
+  cellPadding?: TableCellPadding;
   tableOptions?: Record<string, unknown>;
   /** 内部追踪元数据：deck.js 工厂调用所在源码行号。 */
   _sourceSpan?: SourceSpan;
@@ -495,6 +501,15 @@ function parseElementInput(
       ? { error: `${prefix}.tableBorder 必须是纯色描边。` }
       : { error: `${prefix}.border 必须是 { color, width } 描边对象。` };
   }
+  // 列宽与内边距在公开输入和 Flex 编译结果里写法相同，统一按 Table 合同准入；列数按同一套合并单元格占位规则计算。
+  const tableColumnWidths = type === 'table' && tableParseResult.data
+    ? readTableColumnWidths(value.columnWidths, countGeneratedTableColumns(tableParseResult.data), `${prefix}.columnWidths`)
+    : { value: undefined };
+  if ('error' in tableColumnWidths) return { error: tableColumnWidths.error };
+  const tableCellPadding = type === 'table'
+    ? readTableCellPadding(value.cellPadding, `${prefix}.cellPadding`)
+    : { value: undefined };
+  if ('error' in tableCellPadding) return { error: tableCellPadding.error };
   const imageSource: ReturnType<typeof parseImageSourceInput> = type === 'image'
     ? parseImageSourceInput(value.src)
     : {};
@@ -670,6 +685,8 @@ function parseElementInput(
     headers: tableParseResult.data?.headers,
     rows: tableParseResult.data?.rows,
     tableBorder,
+    columnWidths: tableColumnWidths.value,
+    cellPadding: tableCellPadding.value,
     tableOptions: isRecord(value.tableOptions) ? value.tableOptions : undefined,
     _sourceSpan: parseSourceSpan(value._sourceSpan),
     _authoringRef: authoringRef,
@@ -893,6 +910,8 @@ function buildStructuredElement(el: DirectElementInput): StructuredElement {
         headers: el.headers,
         rows: el.rows ?? [],
         border: el.tableBorder,
+        ...(el.columnWidths ? { columnWidths: el.columnWidths } : {}),
+        ...(el.cellPadding ? { cellPadding: el.cellPadding } : {}),
         position: el.position,
         options: el.tableOptions,
         ...sourceTracking,

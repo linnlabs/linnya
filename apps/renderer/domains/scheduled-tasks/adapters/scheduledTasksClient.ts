@@ -14,10 +14,10 @@ import {
   type ScheduledTaskDeleteResult,
   type ScheduledTaskMutationResult,
   type ScheduledTaskNotification,
+  type ScheduledTaskPreviewScheduleRequest,
   type ScheduledTaskPreviewScheduleResult,
   type ScheduledTaskRunsRequest,
   type ScheduledTaskRunsResult,
-  type ScheduledTaskSchedule,
   type ScheduledTaskSettings,
   type ScheduledTasksListRequest,
   type ScheduledTasksListResult,
@@ -57,8 +57,8 @@ export const scheduledTasksClient = {
   async markViewed(conversationId: string): Promise<void> {
     await api().markViewed({ conversation_id: conversationId });
   },
-  async previewSchedule(schedule: ScheduledTaskSchedule): Promise<ScheduledTaskPreviewScheduleResult> {
-    return ScheduledTaskPreviewScheduleResultSchema.parse(await api().previewSchedule({ schedule }));
+  async previewSchedule(request: ScheduledTaskPreviewScheduleRequest): Promise<ScheduledTaskPreviewScheduleResult> {
+    return ScheduledTaskPreviewScheduleResultSchema.parse(await api().previewSchedule(request));
   },
   async getSettings(): Promise<ScheduledTaskSettings> {
     return ScheduledTaskSettingsSchema.parse(await api().getSettings());

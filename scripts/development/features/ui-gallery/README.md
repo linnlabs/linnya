@@ -69,5 +69,6 @@ pnpm -s ui-gallery --schemes <方案目录>
 ## 维护
 
 - 画廊只使用 Renderer UI 的公开入口；新增或改变公开组件时，在对应分区补上它的真实状态。
+- 新界面先在画廊里用真实组件拼方向对比给用户选；方案落到真实界面后删掉对应分区和只为它写的原型，以后在 Desktop 里用探针看真实页面。
 - 画廊外壳与示例的样式只用 token，切换主题和方案时跟着变化。
 - 类型检查 `pnpm run typecheck:ui-gallery` 已并入 `test:renderer-ui-package-gate`：组件公开 API 变化时，画廊会一起报错。

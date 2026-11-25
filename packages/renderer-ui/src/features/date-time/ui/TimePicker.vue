@@ -1,178 +1,189 @@
 <template>
-  <div class="time-root" ref="rootRef">
-    <button
-      type="button"
-      class="time-button"
-      @click="toggleTimePopover"
-    >
-      {{ displayTime || placeholderText }}
-    </button>
+  <div
+    ref="rootRef"
+    class="linnya-time-picker"
+  >
+    <CustomTextInput
+      ref="inputRef"
+      control-class="linnya-time-picker__input"
+      role="combobox"
+      autocomplete="off"
+      :model-value="text"
+      :placeholder="placeholderText"
+      :aria-label="ariaLabel || placeholderText"
+      :aria-expanded="isOpen"
+      :aria-controls="isOpen ? listId : undefined"
+      :aria-activedescendant="isOpen && activeIndex !== null ? optionId(activeIndex) : undefined"
+      aria-haspopup="listbox"
+      aria-autocomplete="none"
+      @update:model-value="handleInput"
+      @click="openList"
+      @keydown="handleKeydown"
+      @blur="finishEditing"
+    />
 
-    <transition name="time-fade">
-      <div
-        v-if="isTimePopoverOpen"
-        class="time-popover"
+    <Teleport to="body">
+      <DropdownPanel
+        ref="panelRef"
+        class="linnya-time-picker__panel"
+        :show="isOpen"
+        :direction="direction"
+        :style="panelStyle"
+        @mousedown.prevent
       >
-      <div class="time-popover-body">
-        <div class="time-select-row">
-          <div class="time-select-wrapper">
-            <CustomSelect
-              :model-value="timeHour"
-              :options="hourOptions"
-              min-width="45px"
-              font-size="12px"
-              variant="minimal"
-              :class-names="{ trigger: 'time-select-trigger', options: 'time-select-options' }"
-              @update:model-value="timeHour = $event"
-            >
-              <template #arrow-icon="{ isOpen }">
-                <ChevronIcon
-                  direction="up"
-                  :class="['time-arrow-icon', { 'is-open': isOpen }]"
-                /> 
-              </template>
-            </CustomSelect>
-          </div>
-          <span class="time-separator">:</span>
-          <div class="time-select-wrapper">
-            <CustomSelect
-              :model-value="timeMinute"
-              :options="minuteSelectOptions"
-              min-width="45px"
-              font-size="12px"
-              variant="minimal"
-              :class-names="{ trigger: 'time-select-trigger', options: 'time-select-options' }"
-              @update:model-value="timeMinute = $event"
-            >
-              <template #arrow-icon="{ isOpen }">
-                <ChevronIcon
-                  direction="up"
-                  :class="['time-arrow-icon', { 'is-open': isOpen }]"
-                />
-              </template>
-            </CustomSelect>
-          </div>
+        <div
+          :id="listId"
+          role="listbox"
+          :aria-label="ariaLabel || placeholderText"
+        >
+          <div
+            v-for="(option, index) in TIME_PICKER_OPTIONS"
+            :id="optionId(index)"
+            :key="index"
+            class="linnya-time-picker__option"
+            :class="{ 'is-selected': index === selectedIndex, 'is-active': index === activeIndex }"
+            role="option"
+            :aria-selected="index === selectedIndex"
+            @click="selectOption(option)"
+          >{{ formatTimeOfDay(option) }}</div>
         </div>
-      </div>
-      <div class="time-popover-actions">
-        <BaseButton
-          variant="ghost"
-          @click="closeTimePopover"
-        >
-          {{ sharedComponentMessage('shared.timePicker.cancel') }}
-        </BaseButton>
-        <BaseButton
-          variant="primary"
-          @click="applyTimeSelection"
-        >
-          {{ sharedComponentMessage('shared.timePicker.confirm') }}
-        </BaseButton>
-      </div>
-      </div>
-    </transition>
+      </DropdownPanel>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import BaseButton from '../../actions/ui/BaseButton.vue';
-import { ChevronIcon } from '../../../icons';
+import { computed, nextTick, ref, useId, watch } from 'vue';
 import { useSharedComponentLocalization } from '../../../localization';
-import { CustomSelect } from '../../select-menu';
-import type { CustomSelectOption } from '../../select-menu';
-import type { TimePickerProps } from '../definitions/timePicker';
-import {
-  createPaddedTimeOptions,
-  createTimePickerMinuteValues,
-  TIME_PICKER_HOUR_VALUES,
-} from '../functions/createPaddedTimeOptions';
+import { DropdownPanel } from '../../select-menu';
+import { CustomTextInput } from '../../text-entry';
+import { usePickerPanel } from '../composables/usePickerPanel';
+import type { TimeOfDay, TimePickerProps } from '../definitions/timePicker';
 import { replaceTimePart } from '../functions/replaceTimePart';
+import {
+  formatTimeOfDay,
+  nearestTimeOptionIndex,
+  parseTimeText,
+  TIME_PICKER_OPTIONS,
+} from '../functions/timeText';
 
 const props = defineProps<TimePickerProps>();
 const emit = defineEmits<{
   (e: 'update:modelValue', v: Date | null): void;
 }>();
 
-const rootRef = ref<HTMLElement | null>(null);
-const isTimePopoverOpen = ref(false);
-const timeHour = ref<number>(props.modelValue?.getHours() ?? new Date().getHours());
-const timeMinute = ref<number>(props.modelValue?.getMinutes() ?? new Date().getMinutes());
 const { sharedComponentMessage } = useSharedComponentLocalization();
+const rootRef = ref<HTMLElement | null>(null);
+const panelRef = ref<InstanceType<typeof DropdownPanel> | null>(null);
+const inputRef = ref<InstanceType<typeof CustomTextInput> | null>(null);
+const listId = useId();
+const text = ref(currentText());
+const activeIndex = ref<number | null>(null);
+const { isOpen, direction, panelStyle, open, close } = usePickerPanel({
+  anchorRef: rootRef,
+  panelRef,
+  align: 'start',
+  onEscape: revertText,
+});
 
 const placeholderText = computed(() =>
   props.placeholder || sharedComponentMessage('shared.timePicker.placeholder')
 );
-
-// 生成小时选项（0-23）
-const hourOptions = computed<readonly CustomSelectOption<number>[]>(() =>
-  createPaddedTimeOptions(TIME_PICKER_HOUR_VALUES)
-);
-
-// 五分钟步长之外保留当前真实分钟，避免打开面板后静默丢失既有值。
-const minuteSelectOptions = computed<readonly CustomSelectOption<number>[]>(() =>
-  createPaddedTimeOptions(createTimePickerMinuteValues(timeMinute.value))
-);
-
-const displayTime = computed(() => {
-  if (!props.modelValue) return '';
-  const h = props.modelValue.getHours().toString().padStart(2, '0');
-  const m = props.modelValue.getMinutes().toString().padStart(2, '0');
-  return `${h}:${m}`;
+const selectedIndex = computed(() => {
+  const label = currentText();
+  return TIME_PICKER_OPTIONS.findIndex(option => formatTimeOfDay(option) === label);
 });
 
-function syncTimeFromValue() {
-  const base = props.modelValue ?? new Date();
-  timeHour.value = base.getHours();
-  timeMinute.value = base.getMinutes();
+watch(() => props.modelValue, revertText);
+
+function currentTime(): TimeOfDay | null {
+  return props.modelValue
+    ? { hour: props.modelValue.getHours(), minute: props.modelValue.getMinutes() }
+    : null;
 }
 
-watch(
-  () => props.modelValue,
-  () => {
-    if (isTimePopoverOpen.value) {
-      syncTimeFromValue();
-    }
-  },
-);
+function currentText(): string {
+  const time = currentTime();
+  return time ? formatTimeOfDay(time) : '';
+}
 
-function toggleTimePopover() {
-  if (!isTimePopoverOpen.value) {
-    syncTimeFromValue();
+function revertText(): void {
+  text.value = currentText();
+}
+
+function optionId(index: number): string {
+  return `${listId}-${index}`;
+}
+
+function handleInput(value: string): void {
+  text.value = value;
+  activeIndex.value = null;
+}
+
+async function openList(): Promise<void> {
+  if (isOpen.value) return;
+  activeIndex.value = null;
+  inputRef.value?.select();
+  await open();
+  const now = new Date();
+  revealOption(nearestTimeOptionIndex(currentTime() ?? { hour: now.getHours(), minute: now.getMinutes() }));
+}
+
+/** 只滚动列表自己，不带动外层的弹窗或页面。 */
+function revealOption(index: number): void {
+  const panel = panelRef.value?.element;
+  const option = panel?.querySelectorAll<HTMLElement>('[role="option"]')[index];
+  if (panel && option) panel.scrollTop = option.offsetTop - (panel.clientHeight - option.offsetHeight) / 2;
+}
+
+function commitTime(time: TimeOfDay): void {
+  const current = currentTime();
+  if (current && current.hour === time.hour && current.minute === time.minute) {
+    revertText();
+    return;
   }
-  isTimePopoverOpen.value = !isTimePopoverOpen.value;
+  text.value = formatTimeOfDay(time);
+  emit('update:modelValue', replaceTimePart(props.modelValue ?? new Date(), time.hour, time.minute));
 }
 
-function closeTimePopover() {
-  isTimePopoverOpen.value = false;
+/** 认不出的输入退回原来的时间，不提交。 */
+function commitText(): void {
+  const time = parseTimeText(text.value);
+  if (time) commitTime(time);
+  else revertText();
 }
 
-function applyTimeSelection() {
-  const base = props.modelValue ?? new Date();
-  emit('update:modelValue', replaceTimePart(base, timeHour.value, timeMinute.value));
-  isTimePopoverOpen.value = false;
+function selectOption(option: TimeOfDay): void {
+  commitTime(option);
+  close();
 }
 
-function handleClickOutside(e: MouseEvent) {
-  if (!rootRef.value) return;
-  const target = e.target instanceof Node ? e.target : null;
-  if (target && !rootRef.value.contains(target)) {
-    isTimePopoverOpen.value = false;
+function finishEditing(): void {
+  commitText();
+  close();
+}
+
+function moveActive(offset: 1 | -1): void {
+  const time = parseTimeText(text.value) ?? currentTime() ?? { hour: 9, minute: 0 };
+  const start = activeIndex.value ?? nearestTimeOptionIndex(time);
+  const next = Math.min(TIME_PICKER_OPTIONS.length - 1, Math.max(0, start + offset));
+  activeIndex.value = next;
+  void nextTick(() => revealOption(next));
+}
+
+function handleKeydown(event: KeyboardEvent): void {
+  if (event.isComposing) return;
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    const option = isOpen.value && activeIndex.value !== null ? TIME_PICKER_OPTIONS[activeIndex.value] : undefined;
+    if (option) commitTime(option);
+    else commitText();
+    close();
+    return;
   }
-}
-
-function handleKeyDown(event: KeyboardEvent): void {
-  if (event.key !== 'Escape' || !isTimePopoverOpen.value) return;
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
   event.preventDefault();
-  closeTimePopover();
+  if (isOpen.value) moveActive(event.key === 'ArrowDown' ? 1 : -1);
+  else void openList();
 }
-
-onMounted(() => {
-  window.addEventListener('click', handleClickOutside);
-  document.addEventListener('keydown', handleKeyDown);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('click', handleClickOutside);
-  document.removeEventListener('keydown', handleKeyDown);
-});
 </script>

@@ -97,6 +97,7 @@ export {
   resolveAlertDialogDangerousAction,
   useEscapeLayer,
   useImagePreviewSource,
+  useModalFocus,
 } from './features/overlays';
 export type {
   AlertDialogProps,
@@ -104,6 +105,7 @@ export type {
   EscapeLayerOptions,
   ImagePreviewModalClassNames,
   ImagePreviewModalProps,
+  ModalFocusOptions,
   ModalLayer,
   ModalProps,
   ModalScrollMode,
@@ -131,10 +133,12 @@ export type {
   TextPopoverTriggerMode,
 } from './features/select-menu';
 export {
+  MonthCalendar,
   SimpleDatePicker,
   TimePicker,
 } from './features/date-time';
 export type {
+  MonthCalendarProps,
   SimpleDatePickerClassNames,
   SimpleDatePickerProps,
   TimePickerProps,

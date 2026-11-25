@@ -1,140 +1,37 @@
-/* TimePicker 的结构、主题和动画由 Renderer UI 唯一拥有。 */
-.time-root {
-  position: relative;
+/* TimePicker 的结构、主题和状态由 Renderer UI 唯一拥有；输入框外观来自 CustomTextInput。 */
+.linnya-time-picker {
   display: inline-block;
-  width: auto;
+  width: 96px;
+  font-size: var(--font-size-body);
 }
 
-.time-root .time-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 140px;
-  height: 32px;
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--font-size-footnote);
-  color: var(--color-text-secondary);
+.linnya-time-picker__input {
+  font-variant-numeric: tabular-nums;
+}
+
+.linnya-time-picker__panel.linnya-dropdown-panel {
+  width: 96px;
+  max-height: 208px;
+  padding: var(--space-1);
+}
+
+.linnya-time-picker__option {
+  height: 28px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-body);
+  font-variant-numeric: tabular-nums;
+  line-height: 28px;
   cursor: pointer;
-  background-color: var(--color-bg-field);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  transition: background-color var(--duration-short) var(--ease-standard), border-color var(--duration-short) var(--ease-standard), color var(--duration-short) var(--ease-standard);
 }
 
-.time-root .time-button:hover {
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-field-hover);
-}
-
-.time-root .time-popover {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: var(--linnya-ui-layer-picker);
-  min-width: 140px;
-  background-color: var(--color-bg-surface);
-  border-radius: var(--radius-lg);
-  box-shadow:
-    var(--shadow-lg),
-    0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
-}
-
-.time-root .time-popover-body {
-  padding: var(--space-2) var(--space-2-5) var(--space-1-5);
-}
-
-.time-root .time-select-row {
-  display: flex;
-  gap: var(--space-1-5);
-  align-items: center;
-  justify-content: center;
-}
-
-.time-root .time-select-wrapper {
-  display: flex;
-  flex-shrink: 0;
-  justify-content: center;
-  width: auto;
-}
-
-.time-root .time-separator {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  padding: 0;
-  margin: 0;
-  font-size: var(--font-size-footnote);
-  line-height: 1;
-  color: var(--color-text-tertiary);
-}
-
-.time-root .time-arrow-icon {
-  width: 14px;
-  height: 14px;
-  margin-left: var(--space-2);
-  color: var(--color-text-tertiary);
-  pointer-events: none;
-  transition: transform var(--duration-medium) var(--ease-standard);
-}
-
-.time-root .time-arrow-icon.is-open {
-  transform: rotate(180deg);
-}
-
-.time-root .time-select-trigger {
-  position: relative;
-  width: auto;
-  min-width: 50px;
-  height: auto;
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--font-size-footnote);
-  color: var(--color-text-secondary);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-}
-
-.time-root .time-select-trigger:hover:not(:disabled) {
+.linnya-time-picker__option:hover,
+.linnya-time-picker__option.is-active {
   background-color: var(--color-bg-hover);
 }
 
-.time-root .time-select-trigger:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.time-root .time-select-options {
-  top: auto;
-  bottom: calc(100% + 4px);
-  z-index: var(--linnya-ui-layer-popover);
-  max-height: 240px;
-}
-
-.time-root .time-popover-actions {
-  display: flex;
-  gap: var(--space-2);
-  justify-content: flex-end;
-  padding: var(--space-1-5) var(--space-3) var(--space-2-5);
-}
-
-.time-root .time-fade-enter-active {
-  transform-origin: top right;
-  transition: var(--popup-transition-enter);
-}
-
-.time-root .time-fade-leave-active {
-  transform-origin: top right;
-  transition: var(--popup-transition-leave);
-}
-
-.time-root .time-fade-enter-from {
-  opacity: 0;
-  transform: var(--popup-enter-down);
-}
-
-.time-root .time-fade-leave-to {
-  opacity: 0;
-  transform: var(--popup-leave);
+.linnya-time-picker__option.is-selected {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-text);
+  font-weight: var(--font-weight-medium);
 }

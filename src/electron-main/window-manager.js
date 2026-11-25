@@ -10,11 +10,18 @@ import path from 'path';
 import { recordDevelopmentRendererConsole } from './development/recordDevelopmentRendererConsole.ts';
 import { getLogDirectory } from '../shared/utils/pathManager.js';
 import { createMainWindowCloseLifecycle } from './app-lifecycle/orchestration/createMainWindowCloseLifecycle.ts';
+import { createWindowCloseDecisionHost } from './app-lifecycle/orchestration/createWindowCloseDecisionHost.ts';
 import { createWindowClosePreparationHost } from './app-lifecycle/orchestration/createWindowClosePreparationHost.ts';
 import {
+  WINDOW_CLOSE_DECISION_DISMISS_CHANNEL,
+  WINDOW_CLOSE_DECISION_PRESENTED_CHANNEL,
+  WINDOW_CLOSE_DECISION_REQUEST_CHANNEL,
+  WINDOW_CLOSE_DECISION_RESULT_CHANNEL,
   WINDOW_CLOSE_PREPARATION_RESULT_CHANNEL,
   WINDOW_CLOSE_RENDERER_READY_CHANNEL,
   WINDOW_CLOSE_REQUEST_CHANNEL,
+  WindowCloseDecisionPresentedMessageSchema,
+  WindowCloseDecisionResultMessageSchema,
   WindowClosePreparationResultMessageSchema,
   WindowCloseRendererReadyMessageSchema,
   WindowCloseRequestIdSchema,
@@ -43,6 +50,9 @@ let mainWindowCloseLifecycle = null;
 let requestAppShutdown = null;
 let canAcceptWindowRequest = () => true;
 let windowClosePreparationHost = null;
+let windowCloseDecisionHost = null;
+// 界面在这段时间内没把弹窗画出来，就当它没有响应，改用系统框。
+const CLOSE_DECISION_PRESENTATION_TIMEOUT_MS = 2_000;
 let windowCloseProtocolInstalled = false;
 let revealWhenCreated = false;
 let mainWindowWasCreated = false;
@@ -51,45 +61,64 @@ function readLiveMainWindow() {
   return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
 }
 
-async function requestExecutingCommandsCloseDecision(_intent, { hasExecutingCommands = true, scheduledRunningCount = 0 } = {}) {
-  const targetWindow = readLiveMainWindow();
-  if (!targetWindow) throw new Error('主窗口已不可用，无法确认运行中命令的关闭方式');
+/** 弹窗在窗口里，窗口最小化或藏在后面时要先露出来。 */
+function bringWindowToFront(targetWindow) {
+  if (targetWindow.isMinimized()) targetWindow.restore();
+  targetWindow.show();
+  targetWindow.focus();
+}
 
+/**
+ * 退出前的询问先用应用内弹窗；界面没就绪、没响应或已经消失时改用系统框，保证一定能回答、一定能退出。
+ * Cmd+Q 也可能发生在窗口已销毁后，此时系统框不挂在窗口上。
+ */
+async function askCloseDecision(prompt, nativeDialog) {
+  const targetWindow = readLiveMainWindow();
+  if (targetWindow && windowCloseDecisionHost) {
+    bringWindowToFront(targetWindow);
+    const answer = await windowCloseDecisionHost.ask(prompt);
+    if (answer !== 'unavailable') return answer;
+    console.warn(`[Main Process] 界面没有响应退出询问，改用系统对话框 (${prompt.kind})`);
+  }
+  const options = { type: 'warning', defaultId: 0, cancelId: 0, noLink: true, ...nativeDialog };
+  const liveWindow = readLiveMainWindow();
+  const result = liveWindow ? await dialog.showMessageBox(liveWindow, options) : await dialog.showMessageBox(options);
+  return result.response === 1 ? 'proceed' : 'return';
+}
+
+async function requestExecutingCommandsCloseDecision(_intent, { hasExecutingCommands = true, scheduledRunningCount = 0 } = {}) {
   // 安装更新的任务确认由更新入口负责；这里只处理普通关闭。
-  const result = await dialog.showMessageBox(targetWindow, {
-    type: 'warning',
-    title: '任务仍在运行',
-    message: hasExecutingCommands ? '仍有命令正在运行' : '仍有定时任务正在运行',
-    detail: [hasExecutingCommands ? '关闭 Linnya 将停止当前命令及其全部子进程。' : '',
-      scheduledRunningCount > 0 ? `退出将中断 ${scheduledRunningCount} 个定时运行。` : ''].filter(Boolean).join('\n'),
-    buttons: ['返回继续', '停止全部并关闭'],
-    defaultId: 0,
-    cancelId: 0,
-    noLink: true,
-  });
-  return result.response === 1 ? 'stop_and_close' : 'return';
+  const decision = await askCloseDecision(
+    {
+      kind: 'running_tasks',
+      has_executing_commands: hasExecutingCommands,
+      scheduled_running_count: scheduledRunningCount,
+    },
+    {
+      title: '任务仍在运行',
+      message: hasExecutingCommands ? '仍有命令正在运行' : '仍有定时任务正在运行',
+      detail: [hasExecutingCommands ? '关闭 Linnya 将停止当前命令及其全部子进程。' : '',
+        scheduledRunningCount > 0 ? `退出将中断 ${scheduledRunningCount} 个定时运行。` : ''].filter(Boolean).join('\n'),
+      buttons: ['返回继续', '停止全部并关闭'],
+    },
+  );
+  return decision === 'proceed' ? 'stop_and_close' : 'return';
 }
 
 async function requestClosePreparationFailureDecision({ stage, intent, error }) {
   console.error(`[Main Process] 关闭准备失败 (${stage}):`, error);
-  const targetWindow = readLiveMainWindow();
-  const options = {
-    type: 'warning',
-    title: stage === 'activity_query' ? '无法确认运行中的任务' : '文档保存未完成',
-    message: stage === 'activity_query' ? '无法确认有没有正在运行的任务，仍要退出吗？' : '当前修改未能保存，仍要继续吗？',
-    detail: stage === 'activity_query'
-      ? '退出将停止当前任务及其全部子进程。你可以返回后重试。'
-      : '继续将丢失尚未保存的修改。你可以返回后重试保存。',
-    buttons: ['返回', intent === 'install_update' ? '仍要重启更新' : '仍要退出'],
-    defaultId: 0,
-    cancelId: 0,
-    noLink: true,
-  };
-  // Cmd+Q 也可能发生在窗口已销毁后，此时由 App 级对话框承接同一退出决定。
-  const result = targetWindow
-    ? await dialog.showMessageBox(targetWindow, options)
-    : await dialog.showMessageBox(options);
-  return result.response === 1 ? 'close_anyway' : 'return';
+  const decision = await askCloseDecision(
+    stage === 'activity_query' ? { kind: 'activity_unknown' } : { kind: 'save_failed', intent },
+    {
+      title: stage === 'activity_query' ? '无法确认运行中的任务' : '文档保存未完成',
+      message: stage === 'activity_query' ? '无法确认有没有正在运行的任务，仍要退出吗？' : '当前修改未能保存，仍要继续吗？',
+      detail: stage === 'activity_query'
+        ? '退出将停止当前任务及其全部子进程。你可以返回后重试。'
+        : '继续将丢失尚未保存的修改。你可以返回后重试保存。',
+      buttons: ['返回', intent === 'install_update' ? '仍要重启更新' : '仍要退出'],
+    },
+  );
+  return decision === 'proceed' ? 'close_anyway' : 'return';
 }
 
 function prepareRendererForClose() {
@@ -120,6 +149,7 @@ function installWindowCloseProtocol() {
     const parsed = WindowCloseRendererReadyMessageSchema.safeParse(value);
     if (!parsed.success) return;
     windowClosePreparationHost?.markRendererReady(parsed.data);
+    windowCloseDecisionHost?.markRendererReady(parsed.data);
   });
 
   ipcMain.on(WINDOW_CLOSE_PREPARATION_RESULT_CHANNEL, (event, value) => {
@@ -127,6 +157,18 @@ function installWindowCloseProtocol() {
     const parsed = WindowClosePreparationResultMessageSchema.safeParse(value);
     if (!parsed.success) return;
     windowClosePreparationHost?.resolvePreparation(parsed.data);
+  });
+
+  ipcMain.on(WINDOW_CLOSE_DECISION_PRESENTED_CHANNEL, (event, value) => {
+    if (!isCurrentMainFrameEvent(event)) return;
+    const parsed = WindowCloseDecisionPresentedMessageSchema.safeParse(value);
+    if (parsed.success) windowCloseDecisionHost?.markPresented(parsed.data);
+  });
+
+  ipcMain.on(WINDOW_CLOSE_DECISION_RESULT_CHANNEL, (event, value) => {
+    if (!isCurrentMainFrameEvent(event)) return;
+    const parsed = WindowCloseDecisionResultMessageSchema.safeParse(value);
+    if (parsed.success) windowCloseDecisionHost?.resolveDecision(parsed.data);
   });
 }
 
@@ -155,7 +197,7 @@ function configureMainWindowCloseLifecycle({
     isBackendUnavailable,
     hasExecutingCommands,
     readActivity,
-    // 生产默认使用上面的 native dialog；显式 port 只让真实 Electron E2E 确定性驱动同一关闭链。
+    // 生产默认使用上面的询问；显式 port 只让真实 Electron E2E 确定性驱动同一关闭链。
     requestExecutingCommandsDecision,
     requestPreparationFailureDecision,
     prepareRendererForClose,
@@ -307,12 +349,35 @@ function createWindow() {
     },
   });
   windowClosePreparationHost = closePreparationHost;
-  targetContents.on('did-start-navigation', (_event, _url, _inPlace, isMainFrame) => {
-    if (isMainFrame) closePreparationHost.invalidateRenderer();
+  const closeDecisionHost = createWindowCloseDecisionHost({
+    createRequest: (rendererSessionId, prompt) => ({
+      schema_version: 1,
+      kind: 'window_close_decision_request',
+      renderer_session_id: rendererSessionId,
+      request_id: WindowCloseRequestIdSchema.parse(randomUUID()),
+      prompt,
+    }),
+    sendRequest: message => targetContents.send(WINDOW_CLOSE_DECISION_REQUEST_CHANNEL, message),
+    sendDismiss: message => {
+      if (!targetContents.isDestroyed()) targetContents.send(WINDOW_CLOSE_DECISION_DISMISS_CHANNEL, message);
+    },
+    startPresentationTimeout: onTimeout => {
+      const timer = setTimeout(onTimeout, CLOSE_DECISION_PRESENTATION_TIMEOUT_MS);
+      return () => clearTimeout(timer);
+    },
+  });
+  windowCloseDecisionHost = closeDecisionHost;
+  targetContents.on('did-start-navigation', (_event, _url, isInPlace, isMainFrame) => {
+    // 页内跳转不换文档，原来的页面仍在监听。
+    if (!isMainFrame || isInPlace) return;
+    closePreparationHost.invalidateRenderer();
+    closeDecisionHost.rendererUnavailable();
   });
   targetContents.once('render-process-gone', () => {
     closePreparationHost.rendererUnavailable();
   });
+  targetContents.on('render-process-gone', () => closeDecisionHost.rendererUnavailable());
+  targetWindow.on('unresponsive', () => closeDecisionHost.rendererUnresponsive());
   mainWindowWasCreated = true;
   if (revealWhenCreated) revealMainWindow();
   // SEC-A4-01：主窗口不承载外部页面；外链必须走 open-external-url 的协议白名单。
@@ -403,6 +468,8 @@ function createWindow() {
     if (windowClosePreparationHost === closePreparationHost) {
       windowClosePreparationHost = null;
     }
+    closeDecisionHost.rendererUnavailable();
+    if (windowCloseDecisionHost === closeDecisionHost) windowCloseDecisionHost = null;
     mainWindow = null;
   });
   return mainWindow;

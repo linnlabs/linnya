@@ -5,9 +5,11 @@
     @click.self="closeSettings"
   >
     <div
+      ref="containerRef"
       class="settings-modal-container"
       role="dialog"
       aria-modal="true"
+      tabindex="-1"
       :aria-label="settingsMessage('settings.modal.title')"
     >
       <nav
@@ -94,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { IconButton, useEscapeLayer } from '@linnya/renderer-ui';
+import { IconButton, useEscapeLayer, useModalFocus } from '@linnya/renderer-ui';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useLocalization } from '@/app/localization';
 import { useUIStore } from '../../../shared/stores/ui';
@@ -112,6 +114,7 @@ const uiStore = useUIStore();
 const { message } = useLocalization();
 const { settingsMessage } = useSettingsLocalization();
 const activeTab = ref(uiStore.settingsInitialTabId ?? 'appearance');
+const containerRef = ref<HTMLElement | null>(null);
 const navRef = ref<HTMLElement | null>(null);
 
 const settingsTabs = computed(() => listSettingsContributions());
@@ -212,4 +215,5 @@ function focusTabButton(tabId: string): void {
 
 // 设置里再打开的 Modal 先接住 Escape；这里只在设置位于最上层时才关闭。
 useEscapeLayer({ active: true, onEscape: closeSettings });
+useModalFocus({ active: true, containerRef });
 </script>

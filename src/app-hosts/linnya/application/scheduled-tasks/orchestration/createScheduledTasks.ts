@@ -2,14 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { compareCommandPermissionLevels, type CommandPermissionLevel } from '@app/schemas';
 import type {
   ConversationRunScheduledTasks, ConversationRunScheduledTasksRequest, ScheduledTaskCreateRequest,
-  ScheduledTaskDeleteRequest, ScheduledTaskDeleteResult, ScheduledTaskMutationResult, ScheduledTaskRunsResult,
-  ScheduledTaskSchedule, ScheduledTaskSettings, ScheduledTaskSettingsSetRequest, ScheduledTasksListResult, ScheduledTaskUpdateRequest,
+  ScheduledTaskDeleteRequest, ScheduledTaskDeleteResult, ScheduledTaskMutationResult, ScheduledTaskPreviewScheduleResult,
+  ScheduledTaskRunDaysRange, ScheduledTaskRunsResult, ScheduledTaskSchedule, ScheduledTaskSettings, ScheduledTaskSettingsSetRequest, ScheduledTasksListResult, ScheduledTaskUpdateRequest,
 } from '@app/schemas/scheduled-tasks';
 import { ScheduledTaskPermissionError } from '../definitions/scheduledTaskPermissionError';
 import type { ScheduledTaskPorts } from '../definitions/scheduledTaskRuntime';
 import type { ScheduledTaskRecord, TaskChangeActor } from '../definitions/scheduledTaskStore';
 import { projectScheduledRun, projectScheduledTask } from '../functions/projectScheduledTask';
-import { compileSchedule, createScheduleTimeZone, MINUTE_MS, previewSchedule } from '../functions/scheduleTime';
+import { compileSchedule, createScheduleTimeZone, MINUTE_MS, previewSchedule, scheduledRunDays } from '../functions/scheduleTime';
 import { readScheduledClock } from '../functions/scheduledClock';
 import { createScheduledRun, skipReasonForActiveRun } from '../functions/scheduledRunRules';
 import { createScheduledTaskScheduler } from './createScheduledTaskScheduler';
@@ -47,9 +47,12 @@ export function createScheduledTasks(ports: ScheduledTaskPorts) {
     const task = visible(id);
     return task ? { ok: true, task: projectScheduledTask(ports, task, pending, facts, calendar()) } : MISSING;
   };
-  const preview = (schedule: ScheduledTaskSchedule) => {
+  const preview = (schedule: ScheduledTaskSchedule, runDaysIn?: ScheduledTaskRunDaysRange): ScheduledTaskPreviewScheduleResult => {
     const { now, timezone, clockAnomalous } = calendar();
-    return previewSchedule(schedule, now, timezone.name, clockAnomalous);
+    const result = previewSchedule(schedule, now, timezone.name, clockAnomalous);
+    return result.ok && runDaysIn
+      ? { ...result, run_days: scheduledRunDays(schedule, runDaysIn, now, timezone.name) }
+      : result;
   };
 
   function save(task: ScheduledTaskRecord, actor?: TaskChangeActor, action: 'created' | 'updated' = 'updated'): void {

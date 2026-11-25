@@ -146,6 +146,20 @@ export const SHARED_IMPLEMENTATION_RULES: readonly SharedImplementationRule[] = 
     use: '界面显示时间用 @app/localization 的 useHistoryTime（historyTime / historyDateTime）；规则在 @app/schemas 的 history-time。',
   },
   {
+    id: 'BACKEND-sqlite-preview-rollback',
+    pattern: /\bclass\s+DryRun\b|\bthrow\s+(?:ROLLBACK|new\s+DryRun)\b/u,
+    scope: ['src/', 'packages/plugins/'],
+    owners: ['src/shared/database/previewInRolledBackTransaction.ts'],
+    use: '“在事务里试做一次再整体回滚”的预览用 src/shared/database/previewInRolledBackTransaction；不要再定义回滚哨兵。',
+  },
+  {
+    id: 'SEMANTIC-object-versions',
+    pattern: /\bconst\s+KEPT_\w*VERSIONS\s*=|INSERT INTO semantic_object_versions\b/u,
+    scope: ['src/domains/semantic-layer/'],
+    owners: ['src/domains/semantic-layer/infrastructure/sqlite/semanticObjectStorage.ts'],
+    use: '语义对象的值与版本写入、版本保留数用 infrastructure/sqlite/semanticObjectStorage（recordSemanticObjectVersion、KEPT_SEMANTIC_VERSIONS）；标签创建者与结构改动的操作者用同文件的 createSemanticActorReader。',
+  },
+  {
     id: 'COLOR-srgb-transfer',
     pattern: colorCodeLine(String.raw`\b0\.04045\b|\b0\.03928\b|\b0\.0031308\b|\b12\.92\b|\b1\.055\b|Math\.pow\([^,]*255[^,]*,\s*2\.[24]\)|255\s*\)?\s*\*\*\s*2\.[24]`),
     owners: ['packages/color-core/'],
