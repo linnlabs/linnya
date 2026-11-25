@@ -45,6 +45,8 @@ import type {
 import type { AppServerHealthState } from '../shared/app-server-health/definitions/appServerHealthMessage';
 import type { CommandPermissionSettingsUpdateV1 } from '@app/schemas/commands';
 import type {
+  WindowCloseDecision,
+  WindowCloseDecisionRequestMessage,
   WindowClosePreparationResult,
   WindowCloseRequestId,
   WindowCloseRequestMessage,
@@ -191,6 +193,12 @@ declare global {
         requestId: WindowCloseRequestId,
         result: WindowClosePreparationResult
       ) => void;
+      onWindowCloseDecisionRequest: (
+        callback: (request: WindowCloseDecisionRequestMessage) => void
+      ) => () => void;
+      onWindowCloseDecisionDismiss: (callback: (requestId: WindowCloseRequestId) => void) => () => void;
+      markWindowCloseDecisionPresented: (requestId: WindowCloseRequestId) => void;
+      resolveWindowCloseDecision: (requestId: WindowCloseRequestId, decision: WindowCloseDecision) => void;
 
       // Image operations
       selectImage: () => Promise<

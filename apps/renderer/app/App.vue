@@ -21,6 +21,7 @@ import CommandApprovalPageOwner from '../domains/conversation/features/command-a
 import { initFileManager, syncFileManagerHandlers } from '../domains/workspace/services/file-manager/setup';
 import { requestSave } from '../domains/workspace/services/file-manager/index';
 import { prepareWindowClose } from './lifecycle/orchestration/prepareWindowClose';
+import WindowCloseDecisionHost from './lifecycle/ui/WindowCloseDecisionHost.vue';
 import { createWorkspaceNavigation } from './layout/orchestration/workspaceNavigation';
 import { registerWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 import { createWorkspaceContext } from './layout/orchestration/workspaceContext';
@@ -212,4 +213,5 @@ onBeforeUnmount(() => {
   </AppLayout>
   <FloatingToolbarContainer />
   <RendererPluginLoadFailureNotice :retry="retryRendererPluginLoad" />
+  <WindowCloseDecisionHost />
 </template>
