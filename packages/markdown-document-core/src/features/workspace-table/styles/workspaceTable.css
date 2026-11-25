@@ -1,0 +1,102 @@
+/*
+ * Workspace 表格唯一呈现：编辑器（编辑与阅读）、只读预览与画布卡片、PDF 共用。
+ * 选择器只认 table.table-block，不依赖 .ProseMirror；编辑器只在此之上叠加交互层（选区、列宽、AI 模式）。
+ * 颜色取 Renderer UI 语义 token；出图 worker 与 PDF 没有 token，用 currentColor 兜底，三套主题自动跟随。
+ * 分级退让（data-table-fit）与滚动位置（data-table-scroll）由 fitWorkspaceTable 在呈现时测量写入，不进入文档。
+ */
+table.table-block {
+  --workspace-table-rule: var(--color-border-light, color-mix(in srgb, currentColor 12%, transparent));
+  --workspace-table-header-rule: var(--color-border-default, color-mix(in srgb, currentColor 24%, transparent));
+  --workspace-table-header-wash: color-mix(in srgb, var(--color-text-primary, currentColor) 4%, transparent);
+  --workspace-table-pad-block: 6px;
+  --workspace-table-pad-inline: 12px;
+  /* 长文本列的最小宽度：短列不再让位后，中文一字可断会把长文本列压成一字一行。 */
+  --workspace-table-text-min: 9em;
+  box-sizing: border-box;
+  border-collapse: collapse;
+  /* 只有全部列都有存储列宽、宿主写出显式宽度时固定布局才生效；否则按内容自动分列，最多到正文栏宽度。 */
+  table-layout: fixed;
+  width: auto;
+  /* PDF 快照里表格直接是 .root-block（flex）的子项，不能被拉伸成满栏。 */
+  align-self: flex-start;
+  margin: 0;
+  font-size: var(--workspace-table-font-size, 0.875em);
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 表头下一条实线、行间一条浅线；不画竖线与外框。 */
+table.table-block :is(td, th) {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--workspace-table-pad-block) var(--workspace-table-pad-inline);
+  border: 0;
+  border-bottom: 1px solid var(--workspace-table-rule);
+  text-align: start;
+  vertical-align: top;
+}
+
+table.table-block th {
+  font-weight: 600;
+  background-color: var(--workspace-table-header-wash);
+  border-bottom-color: var(--workspace-table-header-rule);
+}
+
+/* 有合并单元格时补浅竖线，否则跨行、跨列的范围看不出来。 */
+table.table-block:has(:is(td, th):is([colspan]:not([colspan='1']), [rowspan]:not([rowspan='1']))) :is(td, th) {
+  border-inline: 1px solid var(--workspace-table-rule);
+}
+
+table.table-block .table-cell-content-block {
+  display: block;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
+  min-height: 1lh;
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* 用户存了列宽的列尊重存储宽度：不加最小宽度，短格也允许换行。 */
+table.table-block :is(td, th):not([colwidth], [data-colwidth]) > .table-cell-content-block {
+  min-width: var(--workspace-table-text-min);
+}
+
+/* 规则必须写在内容元素上：编辑器的内容块自身是 pre-wrap，只写在单元格上会被覆盖。 */
+table.table-block :is(td, th):not([colwidth], [data-colwidth]).table-cell--compact > .table-cell-content-block {
+  min-width: 2em;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+table.table-block:is([data-table-fit='tight'], [data-table-fit='scroll'], [data-table-fit='wrap']) {
+  --workspace-table-pad-inline: 8px;
+  --workspace-table-text-min: 6em;
+}
+
+/*
+ * 纸面不能滚动：收紧后仍放不下时，表格字号降一档（14px → 12px，只用于纸面，编辑器始终不缩字号），
+ * 去掉存储列宽，再从最宽的列开始逐列放开短格（由 fitWorkspaceTable 改写快照），折行的列至少 4em；
+ * 全部放开仍放不下时，fitWorkspaceTable 再去掉 4em 下限。
+ */
+table.table-block[data-table-fit='wrap'] {
+  --workspace-table-text-min: 4em;
+  table-layout: auto;
+  font-size: calc(var(--workspace-table-font-size, 0.875em) * 6 / 7);
+}
+
+table.table-block[data-table-fit='wrap'] .table-cell-content-block {
+  overflow-wrap: anywhere;
+}
+
+@media print {
+  table.table-block thead {
+    display: table-header-group;
+  }
+
+  table.table-block tr {
+    break-inside: avoid;
+  }
+}

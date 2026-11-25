@@ -14,6 +14,7 @@ export { TableColumnResizeExtension } from './extensions/TableColumnResizeExtens
 export { handleEnterKey, handleTabKey, handleShiftTabKey } from './tableKeys';
 export { TableKeyboardExtension } from './extensions/TableKeyboardExtension';
 export { TableSelectionDecoratorExtension } from './extensions/TableSelectionDecoratorExtension';
+export { TableCellCompactExtension } from './extensions/TableCellCompactExtension';
 export {
   createTableVerticalNavStatePlugin,
   TableVerticalNavigationStateExtension,

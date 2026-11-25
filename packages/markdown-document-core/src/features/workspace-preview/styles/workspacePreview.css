@@ -1,5 +1,6 @@
 @import 'katex/dist/katex.min.css';
 @import './workspaceColors.css';
+@import '../../workspace-table/styles/workspaceTable.css';
 
 /* 用户预览正文唯一排版：Canvas、标签、对话和隐藏出图均加载本文件。 */
 .workspace-markdown-preview {
@@ -59,7 +60,6 @@
   white-space: pre-wrap;
   min-height: 1lh;
 }
-.workspace-markdown-preview .table-cell-content-block { width: auto; min-height: 1lh; font: inherit; white-space: pre-wrap; }
 .workspace-markdown-preview .root-block :is(.base-block, .heading-block) { padding: 0; }
 .workspace-markdown-preview h1.heading-block { font-size: 20px; line-height: 1.35; font-weight: 700; }
 .workspace-markdown-preview h2.heading-block { font-size: 17px; line-height: 1.45; font-weight: 600; }
@@ -96,11 +96,18 @@
 .workspace-markdown-preview code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
 .workspace-markdown-preview :not(pre) > code { border-radius: 3px; background: var(--workspace-preview-wash); padding: 1px 3px; }
 .workspace-markdown-preview hr { border: 0; border-top: 1px solid var(--workspace-preview-line); margin: 12px 0; }
+/* 表格外观归 workspace-table.css；预览只接上自己的线色（出图 worker 没有 token），并保持 14px 正文字号。 */
 .workspace-markdown-preview .workspace-preview-table { max-width: 100%; overflow-x: auto; }
-.workspace-markdown-preview table { border-collapse: collapse; table-layout: auto; width: 100%; font-size: inherit; }
-.workspace-markdown-preview :is(td, th) { border: 1px solid var(--workspace-preview-line); padding: 5px 8px; min-width: 2em; vertical-align: top; }
-.workspace-markdown-preview th { background: var(--workspace-preview-wash); font-weight: 600; }
-.workspace-markdown-preview td p, .workspace-markdown-preview th p { margin: 0; }
+.workspace-markdown-preview table.table-block {
+  --workspace-table-rule: color-mix(in srgb, var(--workspace-preview-line) 60%, transparent);
+  --workspace-table-header-rule: var(--workspace-preview-line);
+  --workspace-table-header-wash: var(--workspace-preview-wash);
+  --workspace-table-font-size: 1em;
+}
+/* 收紧后仍放不下：卡片里裁切或横向滚动，右侧渐隐提示还有内容。 */
+.workspace-markdown-preview .workspace-preview-table:has(> table.table-block[data-table-fit='scroll']:not([data-table-scroll='end'])) {
+  mask-image: linear-gradient(to left, transparent, currentColor 32px);
+}
 .workspace-markdown-preview .image-block { display: block; max-width: 100%; margin: 0 auto; padding: 0; }
 .workspace-markdown-preview .image-block.align-left { margin-inline-start: 0; }
 .workspace-markdown-preview .image-block.align-right { margin-inline-end: 0; }

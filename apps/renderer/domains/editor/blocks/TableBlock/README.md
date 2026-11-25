@@ -7,6 +7,16 @@ TableBlock 是基于 Tiptap 实现的表格编辑功能，为编辑器提供轻�
 
 `TableSimpleToolbar` 与 `AiToolbarSection` 从 `@linnya/renderer-ui` 消费 `ToolbarGroup`，不再保留本地分组组件和分隔线 CSS。分隔线两侧到控件的有效间距各为 6px，与 Editor 文本工具条和 Slides 一致。表格菜单、命令、选区与 AI 模式仍归 TableBlock；分组没有新增状态或事件处理。已删除没有任何消费者的旧 `useToolbarState`，避免继续保留依赖旧分组类名的全局点击监听；当前菜单开关由 `TableSimpleToolbar` 和 `ToolbarDropdown` 拥有。
 
+## 表格外观与分级退让
+
+表格外观不在本模块定义：格线、表头、字号、内边距、短格不断行与分级退让统一归 `@linnya/markdown-document-core/workspace-table.css`，与只读预览、画布卡片和 PDF 共用。`styles/table.css` 只保留交互层（定位参考、整行浅底、选区、AI 模式、列宽调整与横向滚动渐隐），`TableCellContentBlock.css` 只保留编辑行为。
+
+- `view/WorkspaceTableView`：`TableBlock` 的 `View`。可编辑时 NodeView 由 prosemirror-tables 的列宽插件创建，不会带上配置的 `HTMLAttributes`，因此这里补 `table-block` class；同时用 `observeWorkspaceTableFit` 按正文栏宽度持续定级。横向滚动容器是 rootBlock 的 `.content`（contentDOM，写属性会被 ProseMirror 重新解析），所以定级和滚动位置只写在 `<table>`（在表格 contentDOM 之外，TableView 忽略这类 mutation）上，渐隐用 `:has()` 从滚动容器选择。
+- `extensions/TableCellCompactExtension`：短格用 decoration 加 `table-cell--compact`（单元格在 contentDOM 内，不能直接写 DOM）；文档变化只重算被改动的表，其余随映射。prosemirror-state 与 prosemirror-view 解析到不同的 prosemirror-transform 版本，映射时按 view 的 `Mapping` 重建。
+- PDF：`features/document-export` 的 `prepareMarkdownHtmlForPdf` 把表头行移进 `thead`、补短格 class，并按纸面正文宽度离屏定级（`wrap`）；表格 rootBlock 允许跨页，单行不断开。
+
+测试：`extensions/TableCellCompactExtension.test.ts`、`features/document-export/orchestration/prepareMarkdownHtmlForPdf.test.ts`；分级与短格纯函数在 markdown-document-core 的 `workspaceTable.dom.test.ts`。真实布局与主题用 Desktop 探针验收。
+
 ## 单元格选中柄定位
 
 单元格左上角选中柄使用视口坐标定位，必须保持以下约定：

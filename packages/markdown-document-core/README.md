@@ -40,6 +40,15 @@ Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因
 - 行内文档引用（`@`）的外观只在 `./style.css` 定义一次，预览 CSS 不另行覆盖；颜色只取 currentColor，随纸色与主题变化，渲染 worker 无 Host token 也能正确绘制。标签图标位与编辑器、画布同一 DOM 合同，本包不带图标资源：调用方经可选 `referenceIcon` 提供图标节点，在量高前就位；缺省只显示标题。
 - 链接保持用户可读外观，点击不直接导航；文档打开和预览交互由统一外壳负责。dispose 或 abort 立即移除测量 DOM 和已交付正文，不留下异步复活的旧内容。
 
+## 正式 Workspace 表格呈现
+
+`./workspace-table` 与 `./workspace-table.css` 是 Workspace 表格唯一的外观合同，编辑器（编辑与阅读）、只读预览与画布卡片、PDF 共用；选择器只认 `table.table-block`，不依赖 `.ProseMirror`，编辑器只在其上叠加交互层。
+
+- 外观：表头下实线、行间浅线，不画竖线与外框（有合并单元格时补浅竖线）；表头浅底、600 字重、默认左对齐；单元格字号为正文 × 0.875（预览以 `--workspace-table-font-size: 1em` 保持 14px），行高 1.55，等宽数字。颜色取 Renderer UI 语义 token，缺 token 的出图 worker 与 PDF 用 currentColor 兜底。
+- 列宽：存了 colwidth 的列尊重存储宽度；其余按内容自动分列，最多到正文栏宽度，短表不拉满。`isCompactTableCellNode` / `isCompactTableCellElement` 判定短格（单个内容块、只有文字与行内 mark、单行、估算不超过 8em），短格加 `table-cell--compact` 不断行；长文本列最小 9em。
+- 分级退让 `fitWorkspaceTable`：normal → tight（左右内边距 8px、长文本最小 6em）→ 交互表面 scroll（横向滚动，右侧渐隐）或纸面 wrap（字号降一档、去掉存储列宽、从最宽的列开始逐列放开短格直到放得下）。结果只写在 `<table>` 的 `data-table-fit` / `data-table-scroll` 上，不进入文档；判定用布局宽度，缩放的画布卡片结果不变。`observeWorkspaceTableFit` 供交互表面持续定级（下一帧执行，避免 ResizeObserver 同帧循环），`fitStaticWorkspaceTable` 供静态预览定级一次。
+- 本包不读写对齐；`align` 与单元格 style 中的 `text-align` 仍由各表面按原样输出。
+
 验证入口：`pnpm --dir packages/markdown-document-core typecheck`；仓库根运行 `pnpm exec vitest run packages/markdown-document-core/src apps/renderer/domains/editor/features/chart-reading apps/renderer/domains/editor/features/citation apps/renderer/domains/editor/core/extensionRegistry.conformance.test.ts src/domains/markdown/features/normalization`。DOM 业务测试覆盖真实 ECharts SSR、公式、引用、受管/历史图片、屏下资源跳过与中途取消；实际字体、换行、主题和静态/详情一致性仍须在浏览器验收。
 
 图表沿用 [ECharts SVG SSR](https://echarts.apache.org/handbook/en/how-to/cross-platform/server/) 的固定尺寸、关闭动画与 finally dispose 模式；无需在每张卡中保留交互实例。

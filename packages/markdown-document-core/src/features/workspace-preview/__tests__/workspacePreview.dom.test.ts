@@ -55,6 +55,9 @@ describe('正式 Workspace 用户预览', () => {
     expect(preview.element.querySelector('th')?.textContent).toBe('表头');
     expect(preview.element.querySelector('th')?.style.textAlign).toBe('right');
     expect(preview.element.querySelector('th')?.style.width).toBe('180px');
+    // 与编辑器、PDF 共用表格呈现：同一 class 与短格判定。
+    expect(preview.element.querySelector('.workspace-preview-table > table.table-block')).not.toBeNull();
+    expect(preview.element.querySelector('th')?.classList.contains('table-cell--compact')).toBe(true);
     const chart = preview.element.querySelector('.workspace-preview-chart img');
     expect(chart?.getAttribute('src')).toContain('data:image/svg+xml');
     const svg = decodeURIComponent(chart?.getAttribute('src')?.split(',').slice(1).join(',') ?? '');

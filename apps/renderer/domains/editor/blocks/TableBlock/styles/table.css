@@ -1,37 +1,26 @@
-/* 表格单元格内容块样式 */
-
-/* 针对表格的特殊样式 */
+/*
+ * 表格外观（格线、表头、字号、内边距、短格与分级退让）归 @linnya/markdown-document-core/workspace-table.css，
+ * 编辑器、只读预览与 PDF 共用。这里只放编辑器的交互层：定位参考、行悬停、选区、AI 模式、列宽与滚动提示。
+ */
 .ProseMirror table {
-  /* 确保表格布局稳定 */
-  border-collapse: collapse;
-  table-layout: fixed;
-  width: auto; /* 宽度由列宽总和决定，而不是占满容器 */
   overflow: visible;
-  box-sizing: border-box;
   position: relative; /* 为列宽调整器提供定位参考 */
 }
 
 .ProseMirror table td,
 .ProseMirror table th {
-  /* 设置单元格边框 */
-  border: 1px solid var(--color-border-default);
-  /* 设置单元格内边距，使内容不贴近边缘 */
-  padding: var(--space-2);
-  /* 防止单元格高度塌陷 */
-  min-height: 2em;
-  /* 确保足够的宽度 */
-  min-width: 2em;
-  /* 默认垂直对齐方式 */
-  vertical-align: top;
-  /* 确保没有额外的块级格式化上下文 */
+  /* 列宽调整器与选区装饰以单元格为定位参考 */
   position: relative;
-  box-sizing: border-box;
 }
 
-/* 新增：单元格悬停反馈 */
-.ProseMirror table td:hover,
-.ProseMirror table th:hover {
-  background-color: color-mix(in srgb, var(--color-text-primary) 4%, transparent);
+/* 整行浅底，比表头底色（4%）更浅；低优先级，选区、AI 列与用户底色都盖过它。表头不参与。 */
+:where(.ProseMirror table.table-block tr:hover) > td {
+  background-color: color-mix(in srgb, var(--color-text-primary) 3%, transparent);
+}
+
+/* 收紧后仍放不下时在根块内容区横向滚动，右侧渐隐提示还有内容；滚到底后消失。 */
+.root-block > .content:has(> .tableWrapper > table.table-block[data-table-fit='scroll']:not([data-table-scroll='end'])) {
+  mask-image: linear-gradient(to left, transparent, currentColor var(--space-8)); /* 遮罩只取不透明度 */
 }
 
 .ProseMirror td.is-cell-active,

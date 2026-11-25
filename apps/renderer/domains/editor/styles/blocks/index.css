@@ -1,5 +1,7 @@
 /* editor block 样式统一入口 */
 
+/* 表格外观与只读预览、PDF 共用一份；TableBlock 只在其上叠加交互层。 */
+@import '@linnya/markdown-document-core/workspace-table.css';
 @import '../../blocks/TableBlock/styles/table.css';
 @import '../../blocks/TableBlock/styles/TableAiContext.css';
 @import '../../blocks/TableBlock/styles/TableSizeSelector.css';

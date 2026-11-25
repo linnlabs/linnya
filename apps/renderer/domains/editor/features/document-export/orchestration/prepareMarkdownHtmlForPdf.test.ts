@@ -73,6 +73,40 @@ describe('Markdown PDF 内容投影', () => {
       .rejects.toThrow('Invalid linnya-chart')
   })
 
+  it('表格：表头行进 thead 跨页重复，短格与编辑器同一判定', async () => {
+    const html = '<div class="root-block-outer"><div class="root-block"><table class="table-block" style="min-width: 100px">'
+      + '<colgroup><col style="min-width: 50px"><col style="min-width: 50px"></colgroup><tbody>'
+      + '<tr><th><div class="table-cell-content-block">阶段</div></th><th><div class="table-cell-content-block">说明</div></th></tr>'
+      + '<tr><td><div class="table-cell-content-block">进行中</div></td>'
+      + '<td><div class="table-cell-content-block">这一列是比较长的说明文字，需要在纸面上换行</div></td></tr>'
+      + '</tbody></table></div></div>'
+    const printed = new DOMParser().parseFromString(await prepareMarkdownHtmlForPdf(html), 'text/html')
+    const table = printed.querySelector('table.table-block')
+    expect(table?.querySelector('thead > tr')?.textContent).toBe('阶段说明')
+    expect(table?.querySelectorAll('tbody > tr')).toHaveLength(1)
+    const compact = Array.from(table?.querySelectorAll('.table-cell--compact') ?? []).map(cell => cell.textContent)
+    expect(compact).toEqual(['阶段', '说明', '进行中'])
+    expect(table?.hasAttribute('data-table-fit')).toBe(false)
+  })
+
+  it('表格放不下纸面时降为全部可换行，不被页边裁掉', async () => {
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(600)
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(900)
+    const html = '<table class="table-block" style="width: 900px"><colgroup><col style="width: 900px"></colgroup><tbody>'
+      + '<tr><td colwidth="900"><div class="table-cell-content-block">短</div></td></tr></tbody></table>'
+    const printed = new DOMParser().parseFromString(
+      await prepareMarkdownHtmlForPdf(html, { tableWidthPx: 600 }),
+      'text/html',
+    )
+    const table = printed.querySelector<HTMLTableElement>('table.table-block')
+    expect(table?.getAttribute('data-table-fit')).toBe('wrap')
+    expect(table?.style.width).toBe('100%')
+    expect(table?.querySelector('col')?.getAttribute('style') ?? '').not.toContain('900px')
+    expect(table?.querySelector('.table-cell--compact')).toBeNull()
+    // 测量舞台用完即移除。
+    expect(document.body.children).toHaveLength(0)
+  })
+
   it('绘图失败向调用方报告，不用仅有标题的 HTML 继续导出', async () => {
     const failure = new Error('SSR rendering failed')
     vi.spyOn(chartReading, 'renderChartPrintImage').mockRejectedValueOnce(failure)

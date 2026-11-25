@@ -55,6 +55,7 @@ import { generateBlockId, generateUUID } from '../../../../shared/utils/idUtils'
 import { KeyboardRegistry } from '../../extensions/keyboard/KeyboardRegistry';
 import { CrossBlockNavigatorRegistry } from '../../extensions/keyboard/CrossBlockNavigatorRegistry';
 import { navigateIntoTable } from './tableNavigators';
+import { WorkspaceTableView } from './view/WorkspaceTableView';
 
 // 使用统一的命令注册模块，而不是直接导入命令
 import { registerAllTableCommands } from './commands/registerTableCommands';
@@ -158,6 +159,8 @@ export const TableBlock = Table.extend({
       HTMLAttributes: {
         class: 'table-block'
       },
+      // 编辑与只读两条 NodeView 路径都用它，接入共用表格呈现与分级退让。
+      View: WorkspaceTableView,
       cellContent: 'tableCellContentBlock'
     };
   },
