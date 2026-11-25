@@ -18,6 +18,8 @@ export interface BundledPluginSeedResult {
   readonly targetDir: string;
   readonly status: BundledPluginSeedStatus;
   readonly reason?: string;
+  /** 本机同版本目录与随包 artifact 内容不一致：本次只跳过这个插件，版本目录保持原样。 */
+  readonly conflict?: true;
 }
 
 export interface SeedBundledPluginsOptions {
@@ -119,6 +121,8 @@ export class RequiredBundledPluginSeedError extends PluginOperationError {
 }
 
 export class BundledPluginArtifactConflictError extends PluginOperationError {
+  readonly version: string;
+
   constructor(pluginId: string, version: string, detail: string) {
     super(
       'version-conflict',
@@ -126,6 +130,7 @@ export class BundledPluginArtifactConflictError extends PluginOperationError {
       , { pluginId },
     );
     this.name = 'BundledPluginArtifactConflictError';
+    this.version = version;
   }
 }
 
@@ -466,8 +471,20 @@ export function seedBundledPlugins(options: SeedBundledPluginsOptions): BundledP
         results.push(result);
       }
     } catch (error) {
+      // 同版本内容冲突只拦这一个插件：不覆盖版本目录，也不把随包字节当成已装版本，
+      // 其余随包插件照常准备。必需插件冲突由 assertRequiredBundledPluginSeedSucceeded 阻断启动。
       if (error instanceof BundledPluginArtifactConflictError) {
-        throw error;
+        const pluginId = error.pluginId ?? entry.name;
+        results.push({
+          pluginId,
+          version: error.version,
+          sourceDir,
+          targetDir: path.join(options.userPluginRoot, pluginId, error.version),
+          status: 'skipped',
+          reason: error.message,
+          conflict: true,
+        });
+        continue;
       }
       results.push({
         pluginId: entry.name,
