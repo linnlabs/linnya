@@ -8,6 +8,7 @@ import {
   ToolbarButton,
   ToolbarColorButton,
   HoverTooltip,
+  MonthCalendar,
   SimpleDatePicker,
   TextPopover,
   TimePicker,
@@ -83,6 +84,7 @@ const ACTION_MENU: CustomSelectOption<string>[] = [
 
 const date = ref<Date | null>(new Date(2026, 10, 17));
 const time = ref<Date | null>(new Date(2026, 10, 17, 9, 30));
+const isWeekday = (value: Date) => value.getDay() % 6 !== 0;
 const textColor = ref<string | null>('blue_text');
 const backgroundColor = ref<string | null>(null);
 const dropdownTextColor = ref<string | null>('red_text');
@@ -192,6 +194,10 @@ function blockTextColor(value: string | null): string {
       <GalleryRow label="日期与时间">
         <SimpleDatePicker v-model="date" placeholder="选择日期" />
         <TimePicker v-model="time" placeholder="选择时间" />
+      </GalleryRow>
+      <GalleryRow label="MonthCalendar" align="start">
+        <MonthCalendar :model-value="date" :min-date="new Date()" @update:model-value="date = $event" />
+        <MonthCalendar :model-value="null" :selectable="false" :is-marked="isWeekday" />
       </GalleryRow>
       <GalleryRow label="ColorPickerPanel" align="start">
         <div class="menus__panel">

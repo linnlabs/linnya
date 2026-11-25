@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, markRaw, nextTick, ref } from 'vue';
-import { CustomSelect } from '../src';
+import { CustomSelect, Modal } from '../src';
 import type { CustomSelectValue } from '../src';
 
 interface MountedCustomSelect {
@@ -507,6 +507,42 @@ describe('CustomSelect 子菜单交互与定位', () => {
     expect(document.activeElement).toBe(option);
     expect(focus).toHaveBeenCalledWith({ focusVisible: visible });
     focus.mockRestore();
+  });
+
+  it.each([
+    ['焦点在选项上', () => document.activeElement],
+    ['焦点留在触发器上', () => document.querySelector('.select-trigger')],
+  ] as const)('弹窗里菜单开着时按 Escape 只关菜单（%s）', async (_name, keyTarget) => {
+    const closeModal = vi.fn();
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const app = createApp({
+      render: () => h(Modal, { isVisible: true, onClose: closeModal }, {
+        default: () => h(CustomSelect, {
+          modelValue: 'a',
+          usePortalToBody: true,
+          options: [{ value: 'a', text: 'A' }, { value: 'b', text: 'B' }],
+        }),
+      }),
+    });
+    app.mount(host);
+    mountedSelects.push({ host, unmount: () => { app.unmount(); host.remove(); } });
+    const trigger = document.querySelector<HTMLButtonElement>('.select-trigger');
+    const pressEscape = () => keyTarget()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+
+    trigger?.click();
+    await flushRendering();
+    await flushRendering();
+    expect(trigger?.getAttribute('aria-expanded')).toBe('true');
+
+    pressEscape();
+    await flushRendering();
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+    expect(closeModal).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(trigger);
+
+    pressEscape();
+    expect(closeModal).toHaveBeenCalledOnce();
   });
 
   it('打开时只聚焦当前父项，右方向键才展开并聚焦已选子项', async () => {

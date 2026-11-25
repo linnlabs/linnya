@@ -131,10 +131,12 @@ export type {
   TextPopoverTriggerMode,
 } from './features/select-menu';
 export {
+  MonthCalendar,
   SimpleDatePicker,
   TimePicker,
 } from './features/date-time';
 export type {
+  MonthCalendarProps,
   SimpleDatePickerClassNames,
   SimpleDatePickerProps,
   TimePickerProps,

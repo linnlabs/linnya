@@ -29,6 +29,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'ImagePreviewModal',
     'InlineTextInput',
     'Modal',
+    'MonthCalendar',
     'NotificationBar',
     'PageSectionHeader',
     'RENDERER_UI_OVERLAY_LAYER_TOKENS',

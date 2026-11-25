@@ -18,7 +18,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。`usePortalToBody` 时面板默认与触发器同宽，以像素给出的 `minWidth` 可以撑宽（不超过视口），翻转与收边都按这个宽度计算。选项可用 `description` 在标签下方加一行说明；`variant` 除 `danger` 外还有 `warning`，用警示色加粗标签，表达需要留意但不是破坏性的选项。`selected-value` 插槽可把触发器内容换成图标等；`triggerTooltip` 让触发器改用共享提示服务的悬停提示（不再有原生 `title`），没有 `triggerAriaLabel` 时它也是可访问名称。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、MonthCalendar、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。`usePortalToBody` 时面板默认与触发器同宽，以像素给出的 `minWidth` 可以撑宽（不超过视口），翻转与收边都按这个宽度计算。选项可用 `description` 在标签下方加一行说明；`variant` 除 `danger` 外还有 `warning`，用警示色加粗标签，表达需要留意但不是破坏性的选项。`selected-value` 插槽可把触发器内容换成图标等；`triggerTooltip` 让触发器改用共享提示服务的悬停提示（不再有原生 `title`），没有 `triggerAriaLabel` 时它也是可访问名称。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -172,7 +172,7 @@ feature 拥有。
 
 `IconButton`（自 2.6.0）是纯图标按钮的视觉 owner：xs / sm / md / lg 四档外框与图标尺寸、ghost / subtle / overlay 三种底色、neutral / danger tone 与强调色浅底的 `active` 态。`label` 必填并同时作为 `aria-label` 与悬停提示（共享提示服务绘制，自 2.8.0 起不再使用原生 `title`；需要附加快捷键时传 `tooltipText`）；模板 ref 通过暴露的 `element` 取得原生按钮供浮层定位，函数式 ref 使用 `resolveIconButtonElement`。会 hover / 选中的行可把 `--linnya-ui-icon-button-hover-bg` 设为 `var(--linnya-ui-icon-button-hover-bg-raised)` 让按钮再高一层，除此之外业务不覆盖 `.linnya-ui-icon-button*` 内部选择器。编辑器格式工具条继续使用 `ToolbarButton`。
 
-`ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / tint，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者包括知识库页面与设置、项目知识库关联、设置页（存储空间、内存诊断、添加模型）、文档历史、编辑器面板（公式、图片尺寸、引用、查找替换、块历史、Review）、对话卡片、命令输入对话框、项目列表空态、包内 `TimePicker`，以及全部 `ActionButtons` 使用方。
+`ActionButtons` 由两个 `BaseButton` 组成，保留原有 props、事件与插槽；主操作 default / danger / accent 分别对应 primary / danger / tint，次操作 filled / ghost / plain 对应 secondary / ghost / plain，并在组内保证 80px 最小宽度。选择哪种层级、怎样组合见[设计规范](./docs/design.md#92-按钮)。目前消费者包括知识库页面与设置、项目知识库关联、设置页（存储空间、内存诊断、添加模型）、文档历史、编辑器面板（公式、图片尺寸、引用、查找替换、块历史、Review）、对话卡片、命令输入对话框、项目列表空态，以及全部 `ActionButtons` 使用方。
 
 ## 范围滑块
 
@@ -225,13 +225,17 @@ Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决�
 
 Escape 由 `/features/overlays` 的 document 级登记统一归属（自 3.12.0 起）：`Modal`、`AlertDialog`（经内层 Modal）、`ImagePreviewModal` 打开时登记，整个 document 只装一个 keydown 监听，Escape 只交给最后打开的那一层；该层 `closeOnEsc` 为 `false` 时本层接住但不关闭，也不穿透到下一层。必须保留自有 DOM 的业务浮层（当前是 Host 的 SettingsModal）通过公开的 `useEscapeLayer({ active, onEscape })` 参与同一顺序，业务不得再各自监听 document Escape 来关闭模态浮层。这份登记只管 Escape，不引入 parent 关系、inert 或外部点击；`AlertDialog` 因此不再有自己的 Escape 分支，一次按键只发出一次 close/cancel。
 
-当前 Modal 仍没有 focus trap、背景 inert 或关闭后焦点恢复，AlertDialog 的 Enter 确认也保留迁移前的 document 监听时机；菜单、Popover、Picker 等非 Modal 浮层的 Escape 仍各自管理，尚未并入这份顺序。它们是已登记的交互/可访问性欠账，不得在纯 owner 迁移中用临时判断改写；后续必须单独设计、决策和验收。
+当前 Modal 仍没有 focus trap、背景 inert 或关闭后焦点恢复，AlertDialog 的 Enter 确认也保留迁移前的 document 监听时机；菜单、Popover 等非 Modal 浮层的 Escape 仍各自管理，尚未并入这份顺序（日期、时间面板与 `CustomSelect` 的自动模式自 3.13.0 起已并入）。它们是已登记的交互/可访问性欠账，不得在纯 owner 迁移中用临时判断改写；后续必须单独设计、决策和验收。
 
 ## 日期与时间
 
-`SimpleDatePicker` 保持图标触发、固定 42 格月历、禁用跨月日期、月份/年份切换、点击外部关闭和基于可见裁剪边界的上下放置；选中日期只替换年月日，保留原有时间。业务需要调整触发器视觉时只能通过 `classNames.trigger` 注入自己的命名空间 class。
+`MonthCalendar` 是平铺的月历：周一开头、固定 6 周，换月和切到月份选择时高度不变；点标题切到月份选择。`selectable: false` 时只用来看，可以翻月、不能选日；`minDate` 之前的日子淡显且不可选（只比较年月日）；`isMarked` 标出调用方指定的日期，标注规则属于业务；`v-model:month` 是当前展示的月份（挂载时也报告一次），调用方可以按月取数，也可以切到别的月份；不传时展示选中日期或今天所在的月份。整个月历只占一个 Tab 位，方向键按天移动，Home/End 到本周首尾，PageUp/PageDown 换月。
 
-二者的外层面板均支持 Escape 和点击外部关闭，关闭不会提交值。`TimePicker` 保持 0–23 小时和五分钟步长作为新选择集合；已有值若不是五分钟整点，分钟选择器会把当前真实分钟补入排序后的选项，不舍入或改写业务数据。确认只替换时分并清零秒与毫秒。
+`SimpleDatePicker` 由图标打开日期面板，面板内容就是 `MonthCalendar`；选中日期只替换年月日，保留原有时间。业务需要调整触发器视觉时只能通过 `classNames.trigger` 注入自己的命名空间 class。
+
+`TimePicker` 是可以直接输入的时间框：9、930、0930、9:30 和全角冒号都认，回车或离开时生效，认不出或超出一天就退回原值。点开是半小时一格的列表，选中即生效；列表以外的分钟直接输入，已有值不舍入。生效时只替换时分并清零秒与毫秒，没有变化时不发事件。
+
+日期和时间面板都挂在 body 上按视口定位（规则是与 Portal 下拉共用的 `resolveFixedPanelPosition`），不受祖先滚动容器裁切；点面板以外的地方关闭，Escape 参与浮层归属，在弹窗里只关面板。
 
 ## 颜色选择
 

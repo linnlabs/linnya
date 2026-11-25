@@ -2,6 +2,7 @@ import { computed, nextTick, ref, unref, watch } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
 import type { DropdownPanelPositionStyle } from '../definitions/selectMenu';
 import { rendererUiOverlayLayer } from '../../overlays';
+import { resolveFixedPanelPosition } from '../functions/resolveFixedPanelPosition';
 
 interface UseDropdownPanelPositionOptions {
   isPortalMode: Readonly<Ref<boolean>>;
@@ -62,20 +63,13 @@ export function useDropdownPanelPosition({
       Math.max(triggerRect.width, readPixelWidth(unref(minWidth))),
       window.innerWidth - 16,
     );
-    const spaceBelow = window.innerHeight - triggerRect.bottom;
-    const spaceAbove = triggerRect.top;
-
-    let top = triggerRect.bottom + 4;
-    if (spaceBelow < panelHeight + 8 && spaceAbove > spaceBelow) {
-      top = Math.max(8, triggerRect.top - panelHeight - 4);
-    } else if (top + panelHeight > window.innerHeight - 8) {
-      top = Math.max(8, window.innerHeight - panelHeight - 8);
-    }
-
-    let left = triggerRect.left;
-    if (left + panelWidth > window.innerWidth - 8) {
-      left = Math.max(8, window.innerWidth - panelWidth - 8);
-    }
+    const { top, left } = resolveFixedPanelPosition({
+      anchor: triggerRect,
+      panelWidth,
+      panelHeight,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    });
 
     portalPosition.value = {
       top: `${top}px`,

@@ -2,6 +2,14 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.13.0 - 2026-11-25
+
+- 新增 `MonthCalendar` 与 `MonthCalendarProps`：平铺在界面里的月历，可以选日，也可以 `selectable: false` 只用来看；`minDate` 之前的日子不可选，`isMarked` 标出指定日期，`v-model:month` 是当前展示的月份。整个月历只占一个 Tab 位，方向键、Home/End、PageUp/PageDown 移动。`SimpleDatePicker` 的面板改用它。
+- `SimpleDatePicker` 的面板改为挂到 body 并按视口定位：此前触发器靠左或在滚动容器里时，面板会被裁掉一截。Escape 改为参与浮层归属，在弹窗里只关面板；打开后焦点进入月历，关闭后回到触发器。props、事件和选日保留时间的规则不变。触发器里的图标不再被调用方的内边距压扁。英文月份标题改为月在前（新增文案键 `shared.simpleDatePicker.yearMonth`）。
+- `TimePicker` 改为可以直接输入的时间框（9、930、9:30 都认，回车或离开时生效，认不出就退回原值），点开是半小时一格的列表，选中即生效；不再有时、分两个下拉和“取消 / 确定”。props、事件与“替换时分并清零秒、毫秒”的规则不变，新增可选的 `ariaLabel`。移除不再使用的文案键 `shared.timePicker.cancel`、`shared.timePicker.confirm`。
+- `CustomSelect` 自动模式的菜单参与 Escape 归属：此前在弹窗里用鼠标点开菜单再按 Escape，会直接关掉整个弹窗；现在先关菜单、焦点回到触发器，再按一次才关弹窗。子菜单里的 Escape 仍只收起这一级。`manualMode` 不变。
+- 现有 `^3.0.0` 插件保持兼容；官方插件目前没有使用日期、时间选择器。
+
 ## 3.12.2 - 2026-11-21
 
 - `Switch` 始终显示调用方确认的值。插件有检索任务正在运行而拒绝停用时，开关保持启用；请求被接受后仍按 `modelValue` 正常更新。公开接口和插件兼容范围不变。
