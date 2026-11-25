@@ -361,31 +361,59 @@ describe('plugin runtime bootstrap', () => {
     const tempRoot = makeTempRoot();
     const bundledRoot = path.join(tempRoot, 'bundled');
     const userPluginRoot = path.join(tempRoot, 'user-plugins');
-    // 冲突插件排在前面，后面的随包插件仍要准备。
-    writeBundledPlugin(bundledRoot, 'a-mindmap', '1.0.0');
-    writeBundledPlugin(bundledRoot, 'z-slides', '2.0.0');
-    const conflictDirectory = path.join(userPluginRoot, 'a-mindmap/1.0.0');
-    writePluginVersionDir(conflictDirectory, 'a-mindmap', '1.0.0', { artifactIdentity: 'different-content' });
-    writeJson(path.join(userPluginRoot, 'a-mindmap/active.json'), { version: '1.0.0' });
+    writeBundledPlugin(bundledRoot, 'mindmap', '1.0.0');
+    writeBundledPlugin(bundledRoot, 'slides', '2.0.0');
+    const conflictDirectory = path.join(userPluginRoot, 'mindmap/1.0.0');
+    writePluginVersionDir(conflictDirectory, 'mindmap', '1.0.0', { artifactIdentity: 'different-content' });
+    writeJson(path.join(userPluginRoot, 'mindmap/active.json'), { version: '1.0.0' });
 
-    const results = seedBundledPlugins({ bundledPluginRoot: bundledRoot, userPluginRoot });
+    // 目录遍历顺序不固定；无论冲突插件先遇到还是后遇到，另一个随包插件都要准备好。
+    const results = seedBundledPlugins({ bundledPluginRoot: bundledRoot, userPluginRoot })
+      .sort((left, right) => left.pluginId.localeCompare(right.pluginId));
 
     expect(results).toMatchObject([
       {
-        pluginId: 'a-mindmap',
+        pluginId: 'mindmap',
         version: '1.0.0',
         targetDir: conflictDirectory,
         status: 'skipped',
         conflict: true,
         reason: expect.stringContaining('同版本 artifact 冲突：SHA512SUMS 不一致'),
       },
-      { pluginId: 'z-slides', version: '2.0.0', status: 'staged' },
+      { pluginId: 'slides', version: '2.0.0', status: 'staged' },
     ]);
     expect(results[1]).not.toHaveProperty('conflict');
     // 冲突版本目录与 active 指针都保持原样，不被随包字节覆盖。
     expect(fs.readFileSync(path.join(conflictDirectory, 'SHA512SUMS'), 'utf8')).toBe('different-content');
-    expect(JSON.parse(fs.readFileSync(path.join(userPluginRoot, 'a-mindmap/active.json'), 'utf8'))).toEqual({ version: '1.0.0' });
-    expect(fs.existsSync(path.join(userPluginRoot, 'z-slides/2.0.0/plugin.json'))).toBe(true);
+    expect(JSON.parse(fs.readFileSync(path.join(userPluginRoot, 'mindmap/active.json'), 'utf8'))).toEqual({ version: '1.0.0' });
+    expect(fs.existsSync(path.join(userPluginRoot, 'slides/2.0.0/plugin.json'))).toBe(true);
+  });
+
+  it('does not activate a staged version directory whose contents differ from the bundled artifact', () => {
+    const tempRoot = makeTempRoot();
+    const bundledRoot = path.join(tempRoot, 'bundled');
+    const userPluginRoot = path.join(tempRoot, 'user-plugins');
+    writeBundledPlugin(bundledRoot, 'mindmap', '1.1.0');
+    writeBundledPlugin(bundledRoot, 'slides', '2.0.0');
+    writeBundledPlugin(bundledRoot, 'canvas', '3.0.0');
+    // mindmap：旧版仍 active，待升级的版本目录内容不一致；slides：从未激活的同版本目录内容不一致；canvas：内容一致。
+    writePluginVersionDir(path.join(userPluginRoot, 'mindmap/1.0.0'), 'mindmap', '1.0.0');
+    writeJson(path.join(userPluginRoot, 'mindmap/active.json'), { version: '1.0.0' });
+    writePluginVersionDir(path.join(userPluginRoot, 'mindmap/1.1.0'), 'mindmap', '1.1.0', { artifactIdentity: 'different-content' });
+    writePluginVersionDir(path.join(userPluginRoot, 'slides/2.0.0'), 'slides', '2.0.0', { artifactIdentity: 'different-content' });
+    writePluginVersionDir(path.join(userPluginRoot, 'canvas/3.0.0'), 'canvas', '3.0.0');
+    const onArtifactConflict = vi.fn<(pluginId: string, error: Error) => void>();
+
+    expect(listStagedBundledPluginActivationCandidates({ bundledPluginRoot: bundledRoot, userPluginRoot, onArtifactConflict }))
+      .toEqual([{ pluginId: 'canvas', version: '3.0.0', previousVersion: null, pluginDir: path.join(userPluginRoot, 'canvas/3.0.0') }]);
+    expect(onArtifactConflict.mock.calls
+      .map(([pluginId, error]) => [pluginId, error.message])
+      .sort(([left], [right]) => String(left).localeCompare(String(right))))
+      .toEqual([
+        ['mindmap', expect.stringContaining('SHA512SUMS 不一致')],
+        ['slides', expect.stringContaining('SHA512SUMS 不一致')],
+      ]);
+    expect(JSON.parse(fs.readFileSync(path.join(userPluginRoot, 'mindmap/active.json'), 'utf8'))).toEqual({ version: '1.0.0' });
   });
 
   it('skips a staged update whose existing version directory has no checksum identity', () => {

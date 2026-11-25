@@ -30,6 +30,8 @@ export interface SeedBundledPluginsOptions {
 interface StagedBundledActivationOptions extends SeedBundledPluginsOptions {
   readonly shouldRestoreOnDemandPlugin?: (pluginId: string) => boolean;
   readonly onStageFailure?: (pluginId: string, error: unknown) => void;
+  /** 本机版本目录与随包 artifact 内容不一致：不激活该插件，由调用方记诊断。 */
+  readonly onArtifactConflict?: (pluginId: string, error: BundledPluginArtifactConflictError) => void;
 }
 
 function isBundledInstallOnDemand(sourceDir: string): boolean {
@@ -541,6 +543,15 @@ function findStagedBundledActivationCandidate(
       return null;
     }
     previousVersion = active.version;
+  }
+
+  // seed 遇到同版本内容冲突只跳过这个插件；激活也不能把内容对不上的本机目录当成随包新版切过去。
+  try {
+    assertExistingSeedTargetVersionIdentity(sourceDir, targetVersionDir, manifest.id, manifest.version);
+  } catch (error) {
+    if (!(error instanceof BundledPluginArtifactConflictError)) throw error;
+    options.onArtifactConflict?.(manifest.id, error);
+    return null;
   }
 
   return {

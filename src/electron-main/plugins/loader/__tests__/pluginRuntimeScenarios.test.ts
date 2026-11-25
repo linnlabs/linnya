@@ -118,6 +118,13 @@ function writePluginArtifact(
     schemaVersion: 1,
     stylesheets: ['assets/style.css'],
   });
+  // 与正式打包一致：版本目录带 SHA512SUMS，随包激活按它核对内容身份。
+  const files = ['plugin.json', 'dist/backend/index.cjs', 'dist/renderer/index.js', 'dist/renderer/assets/style.css', 'dist/renderer/renderer-stylesheets.json'];
+  fs.writeFileSync(
+    path.join(pluginDir, 'SHA512SUMS'),
+    files.map(file => `${sha512Hex(fs.readFileSync(path.join(pluginDir, file)))}  ${file}\n`).join(''),
+    'utf8',
+  );
 }
 
 function createPluginStateDatabase(): Database.Database {
