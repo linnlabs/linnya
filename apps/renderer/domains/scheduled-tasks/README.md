@@ -8,7 +8,7 @@ Renderer 只读写合同 `@app/schemas/scheduled-tasks`，结果一律按合同�
 - `orchestration`：
   - `startScheduledTasksAppLifecycle` 在 App 启动时订阅变化推送并读一次全量；Main 在窗口位于前台时转来的通知，交给调用方显示为应用内提示。
   - `refreshScheduledTasks` 合并连续的推送：正在读时再收到只在读完后补读一次，不并发。
-- `functions`：纯函数。时间表一句话描述、将来时刻写法（今天 / 明天 / 带星期的日期）、表单草稿、状态与运行记录的呈现、应用内提示文案。
+- `functions`：纯函数。时间表一句话描述、将来时刻写法（今天 / 明天 / 带星期的日期）、表单草稿、状态与运行记录的呈现、应用内提示文案。与某个预设完全等价的 cron（Agent 常用 `--cron` 建任务）由 `presetFromCron` 认出，按预设显示和编辑，保存后存成预设；认不出的保持“自定义”。
 - `ui`：整页视图 `ScheduledTasksView` 在列表和单个任务的详情之间切换，新建与编辑是弹窗 `ScheduledTaskEditorDialog`；
   另有运行记录、删除确认和“更多”菜单。开关、立即运行、删除共用 `useScheduledTaskActions`。
 

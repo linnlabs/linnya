@@ -1,5 +1,6 @@
 import type { ScheduledTaskSchedule } from '@app/schemas/scheduled-tasks';
 import type { ScheduledTaskMessageKey, ScheduledTaskMessageResolver } from '../definitions/scheduledTaskMessages';
+import { presetFromCron } from './presetFromCron';
 import { localDateTimeToDate } from './scheduleDraft';
 
 export function weekdayKey(day: number): ScheduledTaskMessageKey {
@@ -9,6 +10,7 @@ export function weekdayKey(day: number): ScheduledTaskMessageKey {
 /**
  * 一句话说清时间表，用在列表、详情和卡片里；钟点是合同里的本地 `HH:MM`，原样显示。
  * 一次性任务的日期由调用方按界面语言写（`useHistoryTime().scheduledDate`）。
+ * 与预设等价的 cron 按预设说（见 {@link presetFromCron}）。
  */
 export function describeSchedule(
   schedule: ScheduledTaskSchedule,
@@ -46,7 +48,11 @@ export function describeSchedule(
       return schedule.day === 'last'
         ? message('scheduledTasks.schedule.monthlyLast', { time: schedule.time })
         : message('scheduledTasks.schedule.monthly', { day: schedule.day, time: schedule.time });
-    case 'cron':
-      return message('scheduledTasks.schedule.cron', { expression: schedule.expression });
+    case 'cron': {
+      const preset = presetFromCron(schedule.expression);
+      return preset
+        ? describeSchedule(preset, message, formatDate)
+        : message('scheduledTasks.schedule.cron', { expression: schedule.expression });
+    }
   }
 }

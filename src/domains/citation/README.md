@@ -98,7 +98,7 @@ domain 解析 ToolContext 或恢复 `citation_snapshot://` live 寻址。
 
 Web 保持页面级来源身份，不强制作者提交段落引语或页级锚点。持久化摘录是引用时的来源快照，
 没有自动证明正文论断得到支持；页码、表号等作者说明仍写在 token 外。`read_file` 保留窗口内有界快照，
-不以减少返回量为由改成仅索引或重新开放过渡期 `evidence_resolve`。
+不以减少返回量为由改成仅索引或恢复已退役的 `evidence_resolve`。
 
 工具必须通过 `requireCitationSequenceOffset` 和 `requireCitationRefAllocator` 读取 Host 绑定。直接实例化
 Citation producer 时，调用方也必须显式绑定；缺少 admission 属于配置错误，禁止默认为 `0`、退回局部哈希

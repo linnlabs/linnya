@@ -1,6 +1,5 @@
 import type Database from 'better-sqlite3';
 
-import { createRunAgentIdReader, currentActionActor } from '../../../action-ledger';
 import {
   SemanticLayerError,
   type SemanticDocumentPort,
@@ -32,8 +31,8 @@ import {
   optionsForConversion,
   semanticValueText,
 } from '../../features/schema-changes/functions/convertSemanticValue';
+import { createSemanticActorReader, recordSemanticObjectVersion, semanticObjectColumns } from './semanticObjectStorage';
 
-const KEPT_VERSIONS = 50;
 const SAMPLE_LIMIT = 5;
 
 type Values = Record<string, SemanticValue>;
@@ -129,7 +128,7 @@ function assertActorKind(value: string): SemanticChangeActor['kind'] {
  */
 export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeContext) {
   const { db, now, newId, documents } = context;
-  const readRunAgentId = createRunAgentIdReader(db);
+  const actor = createSemanticActorReader(db);
 
   const readValues = db.prepare<[string, string], { revision: number; property_values: string }>(`
     SELECT revision, json(property_values) AS property_values
@@ -164,8 +163,7 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
   `);
   const deleteObjectTag = db.prepare('DELETE FROM semantic_object_tags WHERE object_kind = ? AND object_id = ? AND tag_id = ?');
 
-  const columns = (kind: SemanticObjectKind, id: string) =>
-    [kind, id, kind === 'document' ? id : null, kind === 'conversation' ? id : null] as const;
+  const columns = semanticObjectColumns;
 
   /** 对象仍在（文档没被物理删除）。对话对象第一版不开放，按不存在处理。 */
   function objectExists(kind: SemanticObjectKind, id: string): boolean {
@@ -178,32 +176,8 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
     const current = row ? JSON.parse(row.property_values) as Values : {};
     const values = mutate ? mutate({ ...current }) : current;
     const revision = (row?.revision ?? 0) + 1;
-    const valuesJson = JSON.stringify(values);
-    db.prepare(`
-      INSERT INTO semantic_object_values (object_kind, object_id, document_id, conversation_id, revision, property_values, updated_at)
-      VALUES (?, ?, ?, ?, ?, jsonb(?), ?)
-      ON CONFLICT (object_kind, object_id) DO UPDATE SET
-        revision = excluded.revision, property_values = excluded.property_values, updated_at = excluded.updated_at
-    `).run(...columns(kind, id), revision, valuesJson, at);
     const tagIds = readTagIds.all(kind, id).map(item => item.tag_id);
-    db.prepare(`
-      INSERT INTO semantic_object_versions (object_kind, object_id, document_id, conversation_id, revision, tag_ids_json, property_values, recorded_at)
-      VALUES (?, ?, ?, ?, ?, ?, jsonb(?), ?)
-    `).run(...columns(kind, id), revision, JSON.stringify(tagIds), valuesJson, at);
-    db.prepare('DELETE FROM semantic_object_versions WHERE object_kind = ? AND object_id = ? AND revision <= ?')
-      .run(kind, id, revision - KEPT_VERSIONS);
-  }
-
-  function actor(): SemanticChangeActor {
-    const current = currentActionActor();
-    const run = current?.kind === 'run' || current?.kind === 'subrun' ? current
-      : current?.kind === 'external' ? current.run : undefined;
-    return {
-      kind: current?.kind ?? 'user',
-      conversationId: run?.conversationId ?? null,
-      runId: run?.runId ?? null,
-      agentId: run ? readRunAgentId(run.runId) : null,
-    };
+    recordSemanticObjectVersion(db, { kind, id, revision, tagIds, valuesJson: JSON.stringify(values), at });
   }
 
   function record(summary: SemanticSchemaChangeSummary, undo: UndoData, at: number): SemanticSchemaChange {

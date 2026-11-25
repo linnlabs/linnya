@@ -163,10 +163,13 @@ Linnkit 仓修复并通过不含源码 alias 的产物类型门禁后发布，Li
 
 ### 公共 CI 的执行与缓存
 
-公共测试使用 Vitest 原生三路分片，保留完整发现范围、文件隔离和既有断言；
-`Public test suite` 汇总门只有在所有分片成功后通过。各分片分别显示依赖准备、WASM、
+全量公共测试使用 Vitest 原生三路分片，保留完整发现范围、文件隔离和既有断言；
+全量测试的汇总门要求所有分片成功。各分片分别显示依赖准备、WASM、
 Main、Backend 和测试耗时。Backend 入口负责准备 schemas，不在同一任务中提前重复构建。
 平台源码构建继续覆盖 macOS 与 Windows，独立 package、架构和供应链门禁保持原有范围。
+macOS 平台任务复用本轮构建的 Backend 和 CLI，在准备锁定版本的 Node、Qdrant 并构建 Worker 后运行真实 Runtime E2E。
+
+开发分支运行 `pnpm run ci:quick` 获取本地反馈。PR 共用变更范围判断，并保留完整公共架构检查。PR 的 `Public test suite` 汇总门要求本次选中的每个任务都成功。触发范围、Canvas 平台回归和新增插件的接入方式见[插件增量 CI](../../scripts/development/features/plugin-ci/README.md)。
 
 公共 [Rust 准备入口](../../.github/actions/setup-rust-build/action.yml) 固定 Rust 与 wasm-pack，
 从 `Cargo.lock` 读取 wasm-bindgen 版本，下载校验过的预编译工具；下载失败不退回现场编译。

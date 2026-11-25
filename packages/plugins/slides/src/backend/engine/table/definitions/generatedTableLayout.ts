@@ -1,4 +1,4 @@
-import type { TableCell } from '@plugin/slides/shared';
+import type { TableCell, TableCellPadding } from '@plugin/slides/shared';
 
 export interface GeneratedTableCell {
   cell: TableCell;
@@ -15,6 +15,16 @@ export interface GeneratedTableLayoutInput {
   headers?: string[];
   rows: TableCell[][];
   fontSize?: number;
+  /** 作者声明的列宽比例；个数必须等于列数，由准入入口先校验。 */
+  columnWidths?: readonly number[];
+  /** 作者声明的内边距（英寸）；未写的一侧按密度自动取值。 */
+  cellPadding?: TableCellPadding;
+}
+
+/** 单元格内边距（英寸）：x 用于左右，y 用于上下。 */
+export interface GeneratedTableCellPadding {
+  x: number;
+  y: number;
 }
 
 export interface GeneratedTableLayout {
@@ -27,5 +37,5 @@ export interface GeneratedTableLayout {
   fontScale: number;
   fontSize: number;
   headerFontSize: number;
-  padding: number;
+  padding: GeneratedTableCellPadding;
 }

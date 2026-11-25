@@ -67,7 +67,6 @@
 |---|---|---|
 | 状态与职责所有权收敛 | store 中的异步编排、多写入方、双事实源，以及仍需从 SFC / composable 下沉的业务规则 | 按业务流程逐项立项，先建立唯一所有者与端到端门禁 |
 | `types/` → `definitions/` 迁移（R-13） | 过宽出口及其调用方 | 禁止新增定义；按职责迁移后删除 |
-| Evidence Agent facade 退出评估 | 真实研究任务中的引用正确率、全文可达性和跨 subrun 成功率 | Workspace/Citation/ToolOutput 迁移已完成；仅按 [Evidence owner 文档](../../src/domains/evidence/README.md) 的退出条件决定是否删除 `evidence_resolve` |
 | Markdown `#ref` / 批注协议退役 | 历史只读兼容、上下文投影、新批注表达和 Skill 说明 | 不迁移成 node URI；等批注真实用例与历史兼容边界确定后单独实施 |
 | 冻结热路径优化 | 见 §3 | 无可复现 bug 不改；单变量 + 真机门禁 |
 | `store/executionState.ts` 归属收敛 | 尚未迁移的 application contributed use case 执行态 | 正文禁止写入；迁移后删除 |

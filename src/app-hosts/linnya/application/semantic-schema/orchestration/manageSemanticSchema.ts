@@ -24,6 +24,7 @@ import {
   type SqliteSemanticLayer,
 } from 'src/domains/semantic-layer';
 import { readWorkspaceDocumentIdentity } from 'src/features/workspace/infrastructure/sqlite/workspaceDocumentProjection';
+import { previewInRolledBackTransaction } from 'src/shared/database/previewInRolledBackTransaction';
 import { createSqliteSavedFilterStore } from '../../../adapters/persistence/saved-filters';
 import { rewriteSavedFilterDefinition, type SavedFilterRewrite } from '../functions/rewriteSavedFilterDefinition';
 
@@ -39,13 +40,6 @@ interface SavedFilterRecord {
 }
 
 interface DocumentRow { readonly id: string; readonly name: string; readonly type: string; readonly project_id: string | null }
-
-/** 预览时用于回滚的哨兵：试做一次，取到结果后整体撤销。 */
-class DryRun<T> extends Error {
-  constructor(readonly value: T) {
-    super('dry run');
-  }
-}
 
 function layerOf(db: Database.Database): SqliteSemanticLayer {
   return createSqliteSemanticLayer(db, { read: id => readWorkspaceDocumentIdentity(db, id) });
@@ -285,17 +279,9 @@ export function previewSemanticSchemaOperation(db: Database.Database, operation:
     }
     case 'update_options': {
       // 试做一次取到准确的影响，再整体回滚。
-      try {
-        db.transaction(() => {
-          throw new DryRun(layer.updatePropertyOptions(operation.property, operation.options).summary);
-        })();
-      } catch (error) {
-        if (!(error instanceof DryRun)) throw error;
-        const summary = (error as DryRun<SemanticSchemaChange['summary']>).value;
-        if (summary.kind !== 'update_options') throw new Error('选项预览得到了别的改动');
-        return { kind: 'options', removed: [...summary.removed], documents: summary.objects, saved_filters: savedFilters };
-      }
-      throw new Error('选项预览没有回滚');
+      const summary = previewInRolledBackTransaction(db, () => layer.updatePropertyOptions(operation.property, operation.options).summary);
+      if (summary.kind !== 'update_options') throw new Error('选项预览得到了别的改动');
+      return { kind: 'options', removed: [...summary.removed], documents: summary.objects, saved_filters: savedFilters };
     }
     case 'rename_tag':
     case 'rename_property':

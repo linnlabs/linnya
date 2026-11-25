@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 
-import { createRunAgentIdReader, createSqliteActionLedger, currentActionActor, type ActionLedgerAction } from '../../../action-ledger';
+import { createSqliteActionLedger, currentActionActor, type ActionLedgerAction } from '../../../action-ledger';
 import {
   SEMANTIC_VALUE_TYPES,
   SemanticLayerError,
@@ -24,9 +24,10 @@ import { cleanSemanticName, semanticNameKey } from '../../functions/normalizeSem
 import { normalizeSemanticValue } from '../../functions/normalizeSemanticValue';
 import { assertNotBuiltinFieldName } from '../../functions/reservedSemanticNames';
 import { conformSemanticValue } from '../../features/schema-changes/functions/convertSemanticValue';
+import {
+  createSemanticActorReader, KEPT_SEMANTIC_VERSIONS, recordSemanticObjectVersion, semanticObjectColumns,
+} from './semanticObjectStorage';
 import { createSqliteSemanticSchemaChanges } from './sqliteSemanticSchemaChanges';
-
-const KEPT_VERSIONS = 50;
 
 interface PropertyRow {
   readonly id: string;
@@ -95,17 +96,13 @@ export function createSqliteSemanticLayer(
 ) {
   const now = options.now ?? Date.now;
   const newId = options.newId ?? randomUUID;
-  const readRunAgentId = createRunAgentIdReader(db);
+  const readActor = createSemanticActorReader(db);
+  // 账本在第一次需要记录时才建，不为每次对象写入重新准备语句。
+  let ledger: ReturnType<typeof createSqliteActionLedger> | undefined;
 
   function creator(): SemanticCreator {
-    const actor = currentActionActor();
-    const run = actor?.kind === 'run' || actor?.kind === 'subrun' ? actor
-      : actor?.kind === 'external' ? actor.run : undefined;
-    return {
-      kind: actor?.kind ?? 'user',
-      conversationId: run?.conversationId ?? null,
-      agentId: run ? readRunAgentId(run.runId) : null,
-    };
+    const { kind, conversationId, agentId } = readActor();
+    return { kind, conversationId, agentId };
   }
 
   const listPropertyRows = db.prepare<[], PropertyRow>(`
@@ -270,9 +267,7 @@ export function createSqliteSemanticLayer(
     return document;
   }
 
-  const objectColumns = (ref: SemanticObjectRef) => [
-    ref.kind, ref.id, ref.kind === 'document' ? ref.id : null, ref.kind === 'conversation' ? ref.id : null,
-  ] as const;
+  const objectColumns = (ref: SemanticObjectRef) => semanticObjectColumns(ref.kind, ref.id);
 
   function commit(
     write: SemanticObjectWrite,
@@ -306,24 +301,13 @@ export function createSqliteSemanticLayer(
       `);
       // 标签按打上的先后排序；同一批按传入顺序，created_at 依次加一。
       added.forEach((id, index) => insertTag.run(...columns, id, at + index));
-      const valuesJson = JSON.stringify(next.values);
-      db.prepare(`
-        INSERT INTO semantic_object_values (object_kind, object_id, document_id, conversation_id, revision, property_values, updated_at)
-        VALUES (?, ?, ?, ?, ?, jsonb(?), ?)
-        ON CONFLICT (object_kind, object_id) DO UPDATE SET
-          revision = excluded.revision, property_values = excluded.property_values, updated_at = excluded.updated_at
-      `).run(...columns, revision, valuesJson, at);
-      db.prepare(`
-        INSERT INTO semantic_object_versions (object_kind, object_id, document_id, conversation_id, revision, tag_ids_json, property_values, recorded_at)
-        VALUES (?, ?, ?, ?, ?, ?, jsonb(?), ?)
-      `).run(...columns, revision, JSON.stringify(next.tagIds), valuesJson, at);
-      db.prepare(`
-        DELETE FROM semantic_object_versions
-        WHERE object_kind = ? AND object_id = ? AND revision <= ?
-      `).run(write.ref.kind, write.ref.id, revision - KEPT_VERSIONS);
+      recordSemanticObjectVersion(db, {
+        kind: write.ref.kind, id: write.ref.id, revision, tagIds: next.tagIds, valuesJson: JSON.stringify(next.values), at,
+      });
       const actor = currentActionActor();
       if (actor && document.projectId) {
-        createSqliteActionLedger(db, { now }).recorderFor(actor, 'fine').record({
+        ledger ??= createSqliteActionLedger(db, { now });
+        ledger.recorderFor(actor, 'fine').record({
           projectId: document.projectId,
           documentId: write.ref.id,
           documentType: document.nodeType,
@@ -356,17 +340,16 @@ export function createSqliteSemanticLayer(
      * 不校验对象是否存在或在哪个项目，范围由调用方给出的 ID 决定。
      */
     listObjectTags(kind: SemanticObjectKind, objectIds: readonly string[]): ReadonlyMap<string, readonly { readonly id: string; readonly name: string }[]> {
-      const wanted = new Set(objectIds);
       const result = new Map<string, { id: string; name: string }[]>();
-      if (!wanted.size) return result;
-      const rows = db.prepare<[string], { object_id: string; id: string; name: string }>(`
+      if (!objectIds.length) return result;
+      // 只读调用方给出的对象，按主键 (object_kind, object_id, …) 查，不整类读出再过滤。
+      const rows = db.prepare<[string, string], { object_id: string; id: string; name: string }>(`
         SELECT object_tag.object_id, tag.id, tag.name FROM semantic_object_tags object_tag
         JOIN semantic_tags tag ON tag.id = object_tag.tag_id AND tag.deleted_at IS NULL
-        WHERE object_tag.object_kind = ?
+        WHERE object_tag.object_kind = ? AND object_tag.object_id IN (SELECT value FROM json_each(?))
         ORDER BY object_tag.object_id, object_tag.created_at, object_tag.tag_id
-      `).all(kind);
+      `).all(kind, JSON.stringify([...new Set(objectIds)]));
       for (const row of rows) {
-        if (!wanted.has(row.object_id)) continue;
         const list = result.get(row.object_id) ?? [];
         list.push({ id: row.id, name: row.name });
         result.set(row.object_id, list);
@@ -379,24 +362,22 @@ export function createSqliteSemanticLayer(
      * 从未写过的对象不在结果里，调用方按版本 0、没有值处理。范围由调用方给出的 ID 决定。
      */
     listObjectValues(kind: SemanticObjectKind, objectIds: readonly string[]): ReadonlyMap<string, { readonly revision: number; readonly values: Readonly<Values> }> {
-      const wanted = new Set(objectIds);
       const result = new Map<string, { revision: number; values: Values }>();
-      if (!wanted.size) return result;
+      if (!objectIds.length) return result;
+      const wantedJson = JSON.stringify([...new Set(objectIds)]);
       const tagIdsByObject = new Map<string, string[]>();
-      for (const row of db.prepare<[string], { object_id: string; tag_id: string }>(`
+      for (const row of db.prepare<[string, string], { object_id: string; tag_id: string }>(`
         SELECT object_tag.object_id, object_tag.tag_id FROM semantic_object_tags object_tag
         JOIN semantic_tags tag ON tag.id = object_tag.tag_id AND tag.deleted_at IS NULL
-        WHERE object_tag.object_kind = ?
-      `).all(kind)) {
-        if (!wanted.has(row.object_id)) continue;
+        WHERE object_tag.object_kind = ? AND object_tag.object_id IN (SELECT value FROM json_each(?))
+      `).all(kind, wantedJson)) {
         tagIdsByObject.set(row.object_id, [...(tagIdsByObject.get(row.object_id) ?? []), row.tag_id]);
       }
       const fieldsByTag = new Map(tags().map(tag => [tag.id, tag.fields.map(field => field.propertyId)]));
-      for (const row of db.prepare<[string], { object_id: string; revision: number; property_values: string }>(`
+      for (const row of db.prepare<[string, string], { object_id: string; revision: number; property_values: string }>(`
         SELECT object_id, revision, json(property_values) AS property_values
-        FROM semantic_object_values WHERE object_kind = ?
-      `).all(kind)) {
-        if (!wanted.has(row.object_id)) continue;
+        FROM semantic_object_values WHERE object_kind = ? AND object_id IN (SELECT value FROM json_each(?))
+      `).all(kind, wantedJson)) {
         const visible = new Set((tagIdsByObject.get(row.object_id) ?? []).flatMap(id => fieldsByTag.get(id) ?? []));
         const all = JSON.parse(row.property_values) as Values;
         const values: Values = {};
@@ -521,7 +502,7 @@ export function createSqliteSemanticLayer(
           WHERE object_kind = ? AND object_id = ? AND revision = ?
         `).get(write.ref.kind, write.ref.id, toRevision);
         if (!row) {
-          throw new SemanticLayerError('invalid_value', `版本 ${toRevision} 不在保留范围内（每个对象保留最近 ${KEPT_VERSIONS} 个版本）`);
+          throw new SemanticLayerError('invalid_value', `版本 ${toRevision} 不在保留范围内（每个对象保留最近 ${KEPT_SEMANTIC_VERSIONS} 个版本）`);
         }
         const active = new Set(tags().map(tag => tag.id));
         // 旧版本的值按写入时的定义存放；字段之后改过类型或选项时，按当前定义转换，放不下的清除。

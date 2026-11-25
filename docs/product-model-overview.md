@@ -223,13 +223,12 @@ Linnya 的恒定基础面是 8 个工具：
 | Knowledge | `knowledge_search`、`knowledge_read` | 访问逻辑数据库中的 Knowledge 空间 |
 | Web | `web_search`、`web_read` | 获取外部信息 |
 | 运行时结果续读 | `tool_output_read` | 按 conversation scope 继续读取被截断的长工具文本，不属于文件或资源 URI 调度 |
-| 引用证据解析 | `evidence_resolve`（过渡期专用加速器） | 按 `[@ref]` 读取对话执行空间中的 Knowledge/Web 证据；不暴露 bundle URI，也不属于文件工具 |
 | 对话生成 | 图片等多模态生成能力 | 产出进入对话，不是项目文档访问入口 |
 | 专用加速器 | 由特定 Agent 按需注册 | 优化窄小、稳定、高频的工作流 |
 
 基础工具恒定，不等于所有 Agent 必须看到完全相同的工具集合，也不等于 Linnya 永远不能新增平台能力。真正的约束是：**插件扩展文档类型时，不能把新增专属工具当作唯一接入方式；领域命令必须由插件 CLI 拥有，并经通用 `shell` / `process` 执行。**
 
-EvidenceStore 属于对话执行空间中的引用证据事实。`[@ref]` 是 Agent 和文档可见的引用身份，bundle id 只是存储、审计与冲突定位事实，不应成为模型第一层 URI 心智。Citation 文档读取已经能提供当前正文窗口的持久化来源快照；Web 长正文则由通用 ToolOutputStore 保存本次完整 observation，并通过 `tool_output_read` 分页续读，不再把 Evidence 当作大文本分页仓库。Evidence 仍覆盖未写入项目文档的对话级来源快照、引用复核和恢复，因此短期保留窄的 `evidence_resolve` 专用加速器。它只返回明确标记状态、受预算约束并置于不可信来源边界中的持久快照；退出条件由 [Evidence owner 文档](../src/domains/evidence/README.md) 维护，不能把它固化为第九个基础工具。
+EvidenceStore 属于对话执行空间中的引用证据事实。`[@ref]` 是 Agent 和文档可见的引用身份，bundle id 只是存储、审计与冲突定位事实，不应成为模型第一层 URI 心智。Citation 文档读取已经能提供当前正文窗口的持久化来源快照；Web 长正文则由通用 ToolOutputStore 保存本次完整 observation，并通过 `tool_output_read` 分页续读，不再把 Evidence 当作大文本分页仓库。过渡期的 `evidence_resolve` 专用加速器已于 2026-11-25 退役：Agent 不再直接读取 EvidenceStore，Evidence 只服务引用写入、来源解析与网页深搜的精确版本读取，见 [Evidence owner 文档](../src/domains/evidence/README.md)。
 
 引用减重应先减少来源附录的重复包装，不为此扩张基础工具参数或恢复已退出的过渡工具。
 Web 当前接受页面级引用与持久化来源快照，不要求段落锚定；保存摘录不等于认证它支持正文论断。
@@ -408,7 +407,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 - 当前专用工具中，哪些应迁移到 CLI，哪些能证明自己是高价值加速器。
 - ToolOutput 已恢复独立的 `tool_output_read(blob_id, offset?, limit?)` live 入口；`tool_output://` 只作为事件和任务状态中的持久引用，历史 Resource 结果由 strict schema/projector 回放，不再进入 live URI dispatcher。
 - Asset URI 已退出 live `resource_read`；`asset://` 只作为领域工具内部的模型输入 selection，Agent 读取物理图片使用 `read_file(locator=conversation:/...)` 或 `read_file(locator=file:///...)`，正式项目图片必须先取得 VFS 文档身份。
-- CitationSnapshot、SharedMemory 与 Evidence bundle 均已退出 live `resource_read`；Deep Research 协作产物已成为项目 VFS 正式文档，通过通用文件工具交换。Evidence 已归入独立领域，Agent 过渡期只按 canonical `[@ref]` 使用窄的 `evidence_resolve`，不理解 bundle URI 或存储身份。
+- CitationSnapshot、SharedMemory 与 Evidence bundle 均已退出 live `resource_read`；Deep Research 协作产物已成为项目 VFS 正式文档，通过通用文件工具交换。Evidence 已归入独立领域，Agent 不理解 bundle URI 或存储身份；过渡期的 `evidence_resolve` 已退役。
 - TaskState 只由成功且完成调用配对的 `task_write` Conversation 事件派生；legacy SharedMemory adapter、生产模块、instance 上下文和物理表均已删除。它不新增任务面板或 Runtime 特权，子 Agent 也不会自动继承父 TaskState。
 - 工具实现目录已按稳定能力族 / 工具 feature 两层收口：Workspace 五件套、Commands 和 Agent Control 各有明确聚合入口；Subagent 与 host-only batch 共用 `agent_control/subrun/shared` 的 child-run runner，不再互相导入 feature 内部实现。文档领域独占工具随领域或插件贡献，例如 `markdown_create_annotations` 与 TableBlock 的 `write_to_table` 均归入内建 Markdown domain，并由 App Host 与通用工具清单汇集；普通 `text/markdown` 预览不会因此获得文档实体能力。该物理目录不改变产品工具面，也不成为新的运行时 registry。
 - `apps/renderer/domains/editor` 实际承担 Markdown/富文本块编辑运行时，不是插件层的通用编辑器贡献；产品模型已改用“富文档交互界面（Document Surface）”，目录是否迁移另行评估。

@@ -1,3 +1,7 @@
+/**
+ * 已退役的 `evidence_resolve` 工具合同（2026-11-25）。backend 不再注册该工具；
+ * 这里只供 Renderer 与引用接纳严格回放旧会话事件。
+ */
 import { z } from 'zod';
 import { CitationRefSchema, HttpCitationUrlSchema } from '../citation';
 

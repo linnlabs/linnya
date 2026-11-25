@@ -52,6 +52,7 @@ export type {
   StructuredFormulaElement,
   StructuredSlideSpec,
   TableCell,
+  TableCellPadding,
   TextEffects,
   TextStyle,
 } from './slideElementSpec';

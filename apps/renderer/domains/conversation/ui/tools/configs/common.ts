@@ -265,6 +265,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   'evidence_resolve': {
     component: NoopToolContent,
     icon: ReadIcon,
+    // 只读历史事件；工具已于 2026-11-25 退役，backend 不再注册同名 executable tool。
     presentation: projectEvidenceHeaderPresentation,
     compactStep: compactStep.evidenceRead,
     layout: { fullWidth: true, hideContent: true },

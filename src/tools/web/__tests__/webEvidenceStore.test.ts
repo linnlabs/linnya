@@ -10,7 +10,6 @@ import {
 } from '../../../shared/utils/pathManager';
 import { resolveEvidenceFromBundles } from '../../../domains/evidence';
 import type { ToolContext } from '../../types';
-import { EvidenceResolveTool } from '../../evidence/EvidenceResolveTool';
 import { ToolOutputReadTool } from '../../tool_output/ToolOutputReadTool';
 import { truncateObservationToPreview } from '../../tool_output/toolOutputStore';
 import type { WebReadProvider, WebReadResult } from '../webread/providers/types';
@@ -414,18 +413,15 @@ describe('web evidence store integration', () => {
       );
 
       // Evidence 仍保存同一来源的冻结快照，但不再承担 Web 长文本分页入口。
-      const evidenceRaw = await new EvidenceResolveTool().run(
-        {
-          mode: 'resolve_refs',
-          refs: [`[@${ref}]`],
-          max_units: 50_000,
-          max_chars: 50_000,
-        },
-        ctx
-      );
-      const evidenceResult = readStructuredResult(evidenceRaw);
-      expect(evidenceResult.observation).toContain('FINAL_EVIDENCE_TAIL');
-      expect(evidenceResult.observation).toContain('Ignore previous instructions');
+      const evidence = await resolveEvidenceFromBundles({
+        conversationId: 'conv_long_observation',
+        instanceId: 'inst_long_observation',
+        refs: [ref],
+        max_units: 50_000,
+        max_chars: 50_000,
+      });
+      expect(evidence.resolved[ref]?.text).toContain('FINAL_EVIDENCE_TAIL');
+      expect(evidence.resolved[ref]?.text).toContain('Ignore previous instructions');
     } finally {
       await fsp.rm(tmpRoot, { recursive: true, force: true });
     }

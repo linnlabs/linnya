@@ -602,6 +602,8 @@ function buildTableElement(node: LayoutTableNode, position: Box): DirectElementI
     headers: table.headers,
     rows: table.rows,
     tableBorder: readOptionalTableBorder(node.border, 'Table.border'),
+    columnWidths: table.columnWidths,
+    cellPadding: table.cellPadding,
   }, node._sourceSpan);
 }
 

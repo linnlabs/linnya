@@ -1,16 +1,17 @@
-import { parseArgs } from 'node:util';
 import type Database from 'better-sqlite3';
 import type { BackendPluginCliContribution } from '@linnya/plugin-host-contract/backend';
 import { ScheduledTaskCreateRequestSchema, ScheduledTaskUpdateRequestSchema, type ScheduledTask } from '@app/schemas/scheduled-tasks';
 import { readStoredRunActor } from 'src/domains/action-ledger';
 import { SqliteRunDescriptorStore } from 'src/app-hosts/linnya/adapters/persistence/run-descriptors';
 import { ScheduledTaskPermissionError, type ScheduledTasks } from '../../scheduled-tasks';
+import { isSchedulesCommand, parseSchedulesCommand } from '../functions/parseSchedulesCommand';
 
 export const SCHEDULES_USAGE = `linnya schedules list | show <id>
-linnya schedules create --name <name> --prompt <instructions> (--cron <five-field-expression> | --schedule <json>) [--agent default|research] [--model <model-id>|default] [--missed-policy run_latest|skip] [--permission read_only|standard|full_access]
-linnya schedules update <id> [--revision <number>] [--name ...] [--prompt ...] [--cron ... | --schedule ...] [--agent ...] [--model ...] [--missed-policy ...] [--permission ...]
+linnya schedules create --name <name> --prompt <instructions> (--once <YYYY-MM-DDTHH:MM> | --cron <five-field-expression> | --schedule <json>) [--agent default|research] [--model <model-id>|default] [--missed-policy run_latest|skip] [--permission read_only|standard|full_access]
+linnya schedules update <id> [--revision <number>] [--name ...] [--prompt ...] [--once ... | --cron ... | --schedule ...] [--agent ...] [--model ...] [--missed-policy ...] [--permission ...]
 linnya schedules pause <id> | resume <id> | run-now <id>
-Examples of --schedule JSON: {"kind":"daily","time":"09:00"}, {"kind":"once","date":"2027-01-01","time":"09:00"}.
+One time: --once 2027-01-01T09:00. Recurring: --cron "0 9 * * *" (every day at 09:00) or --cron "30 8 * * 1-5" (weekdays at 08:30). Both work unchanged in PowerShell and POSIX shells.
+--schedule takes JSON such as {"kind":"daily","time":"09:00"}; shells may strip its inner double quotes (Windows PowerShell does), so prefer --once or --cron.
 Schedules use local time with at least one hour between runs. The project comes from this conversation. Default model: Settings. Default permission: this conversation. Use the Scheduled Tasks view to delete a task or set a higher permission level.`;
 
 const ACCESS = { conversationFiles: 'none', externalFiles: 'denied', network: 'denied', guiControl: 'denied', localIpcControl: 'denied' } as const;
@@ -29,39 +30,16 @@ export function prepareSchedulesCli(db: Database.Database, argv: string[], readT
   if (command === '--help' || (args.length === 1 && args[0] === '--help')) {
     return { status: 'completed', result: { exitCode: 0, stdout: `${SCHEDULES_USAGE}\n`, stderr: '' } };
   }
-  if (command !== 'create' && command !== 'update' && command !== 'list' && command !== 'show'
-    && command !== 'pause' && command !== 'resume' && command !== 'run-now') {
-    return { status: 'completed', result: fail(SCHEDULES_USAGE) };
-  }
+  if (!isSchedulesCommand(command)) return { status: 'completed', result: fail(SCHEDULES_USAGE) };
 
   const write = command !== 'list' && command !== 'show';
-  let taskId: string;
-  let expectedRevision: number | undefined;
-  let fields: Record<string, unknown>;
+  let parsed: ReturnType<typeof parseSchedulesCommand>;
   try {
-    const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
-      name: { type: 'string' }, prompt: { type: 'string' }, schedule: { type: 'string' }, cron: { type: 'string' },
-      agent: { type: 'string' }, model: { type: 'string' }, 'missed-policy': { type: 'string' }, permission: { type: 'string' },
-      revision: { type: 'string' },
-    } });
-    const hasFlags = Object.keys(values).length > 0;
-    if (hasFlags && command !== 'create' && command !== 'update') throw new Error(`Unexpected option for ${command}.`);
-    if (values.revision !== undefined && command !== 'update') throw new Error('--revision is only available for update.');
-    const expectsTask = command !== 'list' && command !== 'create';
-    if (positionals.length !== Number(expectsTask)) throw new Error(expectsTask ? 'Provide one task ID.' : 'Unexpected positional argument.');
-    if (values.schedule && values.cron) throw new Error('Use either --schedule or --cron.');
-    taskId = positionals[0];
-    expectedRevision = typeof values.revision === 'string' ? Number(values.revision) : undefined;
-    fields = {
-      name: values.name, prompt: values.prompt, agent: values.agent,
-      schedule: typeof values.schedule === 'string' ? JSON.parse(values.schedule)
-        : values.cron ? { kind: 'cron', expression: values.cron } : undefined,
-      model_config_id: values.model === 'default' ? null : values.model,
-      missed_policy: values['missed-policy'], permission_level: values.permission,
-    };
+    parsed = parseSchedulesCommand(command, args);
   } catch (error) {
     return { status: 'completed', result: fail(`${error instanceof Error ? error.message : 'Invalid arguments'}\n${SCHEDULES_USAGE}`) };
   }
+  const { taskId, expectedRevision, fields } = parsed;
   return { status: 'ready', plan: {
     access: { ...ACCESS, internalDataAccess: write ? 'write' : 'required' },
     async execute({ conversationId, agentRunId, projectId, signal }) {
