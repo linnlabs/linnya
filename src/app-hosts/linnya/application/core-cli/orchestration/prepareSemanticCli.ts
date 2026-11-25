@@ -22,6 +22,7 @@ import {
   resolveWorkspaceDocumentPath,
 } from 'src/features/workspace/infrastructure/sqlite/workspaceDocumentProjection';
 import { readPersistedWorkspaceVfsNode } from 'src/features/workspace/vfs';
+import { previewInRolledBackTransaction } from 'src/shared/database/previewInRolledBackTransaction';
 import {
   describeChange,
   fitLines,
@@ -230,8 +231,6 @@ function applyChange(layer: SqliteSemanticLayer, write: Parameters<SqliteSemanti
   }
 }
 
-const ROLLBACK = Symbol('preview');
-
 /**
  * 每份文档都要给期望版本，避免覆盖用户刚在面板里做的修改。不给版本时在事务里试写一遍再回滚：
  * 校验与真实写入完全相同，输出当前版本和变化，并给出可直接执行的命令。批量写入全部成功才提交。
@@ -262,15 +261,7 @@ function executeWrite(
       `${path}  版本 ${before.revision} → ${after.revision}  ${describeChange(before, after)}`);
     return ok(fitLines([`已写入 ${outcomes.length} 份文档：`, ...lines], runtime.maxOutputCharacters, TRUNCATED));
   }
-  let outcomes: ReturnType<typeof run> = [];
-  try {
-    db.transaction(() => {
-      outcomes = run();
-      throw ROLLBACK;
-    })();
-  } catch (error) {
-    if (error !== ROLLBACK) throw error;
-  }
+  const outcomes = previewInRolledBackTransaction(db, run);
   const lines = outcomes.map(({ path, before, after }) => `${path}  版本 ${before.revision}  ${describeChange(before, after)}`);
   const commandLine = `linnya props ${argv.map(shellQuote).join(' ')} --rev ${outcomes.map(item => item.before.revision).join(',')}`;
   // 可执行的命令放在最后且不截短；预览行在剩余预算内截。

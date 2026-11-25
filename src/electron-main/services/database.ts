@@ -36,7 +36,6 @@ import { getWorkspaceDataPath } from '../../shared/utils/pathManager';
 import {
   assertSupportedHostSchemaVersion,
   runMigrationStep,
-  runMigrations,
   SCHEMA_VERSION,
 } from './database/migrations';
 import type { DatabaseStartupProgressPort } from './database/databaseStartupProgress';
@@ -56,6 +55,11 @@ export interface DatabaseInitializeOptions {
    */
   readonly lifecycleBootstrap?: DatabaseLifecycleBootstrap;
 }
+
+/** 初始化在这两处暂停：版本准入后（已知要跑几步 Host 迁移）和每个迁移步骤完成后。 */
+type DatabaseInitializationStep =
+  | { readonly kind: 'admitted'; readonly pendingHostSteps: number }
+  | { readonly kind: 'migrated'; readonly completedSteps: number };
 
 export class DatabaseService {
   private db: Database.Database | null = null;
@@ -105,53 +109,88 @@ export class DatabaseService {
       console.warn('[DatabaseService] Database already initialized');
       return;
     }
-
     try {
       console.log('[DatabaseService] Initializing database...');
-
-      const isFreshDatabase = this.isFreshDatabaseTarget();
-      const db = this.openConnection();
-
-      const currentVersion = db.pragma('user_version', { simple: true }) as number;
-      console.log(
-        `[DatabaseService] Current DB version: ${currentVersion}, App schema version: ${SCHEMA_VERSION}`
-      );
-
-      if (!isFreshDatabase) {
-        // 兼容性检查必须早于持久化 pragma、schema provider、插件 lifecycle 或索引写入。
-        // 不受支持的数据库只报告处理方式，绝不在失败前混入当前结构。
-        assertSupportedHostSchemaVersion(currentVersion);
-      }
-
-      this.prepareConnectionAndTables(db, isFreshDatabase);
-
-      if (!isFreshDatabase) {
-        if (currentVersion < SCHEMA_VERSION) {
-          console.log(
-            `[DatabaseService] Database schema requires migration from v${currentVersion} to v${SCHEMA_VERSION}.`
-          );
-          runMigrations(db, currentVersion, SCHEMA_VERSION);
-        } else {
-          console.log('[DatabaseService] Database schema is up-to-date.');
-        }
-      }
-
-      // 插件 lifecycle 必须由 app-level orchestration 显式注入：
-      // - installed_plugins / plugin_migrations 是宿主插件平台表，由当前 provider 建立；
-      // - 插件 schema provider 不能放进 createTables()，否则会早于插件安装态执行；
-      // - worker 只需要轻量 DB 连接，不能因为 import DatabaseService 静态加载 Electron/plugin runtime。
-      options.lifecycleBootstrap?.(db);
-
-      this.createDependentSchema();
-
+      // 同步启动不报告进度：一次走完全部步骤。
+      Array.from(this.initializationSteps(options));
       console.log('[DatabaseService] Database initialized successfully');
     } catch (error) {
-      console.error('[DatabaseService] Failed to initialize database:', error);
-      // 初始化失败后不能继续通过 getDb() 使用半初始化连接。事务负责回滚当前步骤，
-      // 这里负责收口连接生命周期。
-      this.close();
-      throw error;
+      this.failInitialization(error);
     }
+  }
+
+  /**
+   * 与 `initialize()` 走同一份步骤，但把进度交给宿主：先报告 `started` 并等它送达，
+   * 再执行可能很久的同步步骤；Host 迁移逐步执行，步骤之间让出事件循环，让进度及时送出。
+   */
+  async initializeWithStartupProgress(
+    options: DatabaseInitializeOptions & { readonly progress: DatabaseStartupProgressPort }
+  ): Promise<void> {
+    if (this.db) {
+      console.warn('[DatabaseService] Database already initialized');
+      return;
+    }
+    try {
+      let upgrading = false;
+      let totalSteps = 1;
+      for (const step of this.initializationSteps(options)) {
+        if (step.kind === 'admitted') {
+          upgrading = step.pendingHostSteps > 0;
+          totalSteps = step.pendingHostSteps + 1;
+          await options.progress.report({ state: 'started', upgrading, completedSteps: 0, totalSteps });
+        } else {
+          await options.progress.report({ state: 'progress', upgrading, completedSteps: step.completedSteps, totalSteps });
+          await yieldToEventLoop();
+        }
+      }
+      await options.progress.report({ state: 'finished', upgrading, completedSteps: totalSteps, totalSteps });
+      console.log('[DatabaseService] Database initialized successfully');
+    } catch (error) {
+      this.failInitialization(error);
+    }
+  }
+
+  /**
+   * 唯一的初始化顺序：打开连接 → 版本准入 → 连接设置与建表 → 逐步 Host 迁移 → 插件 lifecycle → 依赖 DDL。
+   * 在版本准入后和每个迁移步骤后暂停，让异步调用方报告进度；同步调用方直接走完。
+   */
+  private *initializationSteps(options: DatabaseInitializeOptions): Generator<DatabaseInitializationStep, void, undefined> {
+    const isFreshDatabase = this.isFreshDatabaseTarget();
+    const db = this.openConnection();
+    const currentVersion = db.pragma('user_version', { simple: true }) as number;
+    console.log(`[DatabaseService] Current DB version: ${currentVersion}, App schema version: ${SCHEMA_VERSION}`);
+    if (!isFreshDatabase) {
+      // 兼容性检查必须早于持久化 pragma、schema provider、插件 lifecycle 或索引写入。
+      // 不受支持的数据库只报告处理方式，绝不在失败前混入当前结构。
+      assertSupportedHostSchemaVersion(currentVersion);
+    }
+    const pendingHostSteps = isFreshDatabase ? 0 : Math.max(0, SCHEMA_VERSION - currentVersion);
+    yield { kind: 'admitted', pendingHostSteps };
+
+    this.prepareConnectionAndTables(db, isFreshDatabase);
+    if (pendingHostSteps > 0) {
+      console.log(`[DatabaseService] Database schema requires migration from v${currentVersion} to v${SCHEMA_VERSION}.`);
+    } else if (!isFreshDatabase) {
+      console.log('[DatabaseService] Database schema is up-to-date.');
+    }
+    for (let step = 0; step < pendingHostSteps; step += 1) {
+      runMigrationStep(db, currentVersion + step);
+      yield { kind: 'migrated', completedSteps: step + 1 };
+    }
+
+    // 插件 lifecycle 必须由 app-level orchestration 显式注入：
+    // - installed_plugins / plugin_migrations 是宿主插件平台表，由当前 provider 建立；
+    // - 插件 schema provider 不能放进 createTables()，否则会早于插件安装态执行；
+    // - worker 只需要轻量 DB 连接，不能因为 import DatabaseService 静态加载 Electron/plugin runtime。
+    options.lifecycleBootstrap?.(db);
+    this.createDependentSchema();
+  }
+
+  /** 初始化失败后不能继续通过 getDb() 使用半初始化连接。事务负责回滚当前步骤，这里收口连接生命周期。 */
+  private failInitialization(error: unknown): never {
+    console.error('[DatabaseService] Failed to initialize database:', error);
+    this.close();
+    throw error;
   }
 
   /**
@@ -194,56 +233,6 @@ export class DatabaseService {
       );
     } else {
       this.createTables();
-    }
-  }
-
-  /**
-   * 与 `initialize()` 相同的初始化顺序，但把进度交给宿主：先报告 `started` 并等它送达，
-   * 再执行可能很久的同步步骤；Host 迁移逐步执行，步骤之间让出事件循环，让进度及时送出。
-   */
-  async initializeWithStartupProgress(
-    options: DatabaseInitializeOptions & { readonly progress: DatabaseStartupProgressPort }
-  ): Promise<void> {
-    if (this.db) {
-      console.warn('[DatabaseService] Database already initialized');
-      return;
-    }
-    const isFreshDatabase = this.isFreshDatabaseTarget();
-    let opened = false;
-    try {
-      const db = this.openConnection();
-      opened = true;
-      const currentVersion = db.pragma('user_version', { simple: true }) as number;
-      if (!isFreshDatabase) assertSupportedHostSchemaVersion(currentVersion);
-      const pendingHostSteps = isFreshDatabase ? 0 : Math.max(0, SCHEMA_VERSION - currentVersion);
-      const upgrading = pendingHostSteps > 0;
-      const totalSteps = pendingHostSteps + 1;
-      await options.progress.report({ state: 'started', upgrading, completedSteps: 0, totalSteps });
-
-      this.prepareConnectionAndTables(db, isFreshDatabase);
-      for (let step = 0; step < pendingHostSteps; step += 1) {
-        runMigrationStep(db, currentVersion + step);
-        await options.progress.report({
-          state: 'progress',
-          upgrading,
-          completedSteps: step + 1,
-          totalSteps,
-        });
-        await yieldToEventLoop();
-      }
-      options.lifecycleBootstrap?.(db);
-      this.createDependentSchema();
-      await options.progress.report({
-        state: 'finished',
-        upgrading,
-        completedSteps: totalSteps,
-        totalSteps,
-      });
-      console.log('[DatabaseService] Database initialized successfully');
-    } catch (error) {
-      console.error('[DatabaseService] Failed to initialize database:', error);
-      if (opened) this.close();
-      throw error;
     }
   }
 
