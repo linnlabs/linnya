@@ -116,7 +116,6 @@ export type LinnyaCliInvocation =
     }
   | {
       readonly kind: 'tool-call';
-      readonly argsFile?: string;
       readonly omitArgs: boolean;
       readonly request: Extract<ConversationControlToolsRequest, { action: 'call' }>;
       readonly intervalMs: number;

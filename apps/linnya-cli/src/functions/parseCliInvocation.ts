@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ConversationControlSkillsRequestSchema } from '@app/schemas';
 import {
@@ -149,7 +150,42 @@ function parseJsonOption(tokens: ParsedTokens, name: string): unknown {
   }
 }
 
-function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocation {
+/** 同步读取 UTF-8 文本；测试可替换，CLI 默认读本机文件。 */
+export type ReadCliTextFile = (path: string) => string;
+
+const readCliTextFile: ReadCliTextFile = path => readFileSync(path, 'utf8');
+
+type JsonInputName = 'args' | 'research-scope' | 'submit' | 'modify';
+
+/**
+ * `--<name>-json` 与 `--<name>-file` 二选一。Windows PowerShell 会去掉内联 JSON 参数里的双引号，
+ * 文件写法在各 Shell 都能用。两者都没给时返回 `undefined`。
+ */
+function readJsonInput(tokens: ParsedTokens, name: JsonInputName, readTextFile: ReadCliTextFile): unknown {
+  const inline = tokens.options.has(`${name}-json`);
+  const file = readString(tokens, `${name}-file`);
+  if (inline && file) usageError(`--${name}-file and --${name}-json are mutually exclusive`);
+  if (inline) return parseJsonOption(tokens, `${name}-json`);
+  if (!file) return undefined;
+  let content: string;
+  try {
+    content = readTextFile(file);
+  } catch {
+    usageError(`--${name}-file must name a readable UTF-8 JSON file`);
+  }
+  try {
+    const parsed: unknown = JSON.parse(content);
+    return parsed;
+  } catch {
+    usageError(`--${name}-file must contain valid JSON`);
+  }
+}
+
+function hasJsonInput(tokens: ParsedTokens, name: JsonInputName): boolean {
+  return tokens.options.has(`${name}-json`) || tokens.options.has(`${name}-file`);
+}
+
+function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadCliTextFile): LinnyaCliInvocation {
   const pretty = readBoolean(tokens, 'pretty');
   switch (command) {
     case 'skills': {
@@ -201,7 +237,8 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
     }
     case 'send': {
       assertAllowedOptions(tokens, [
-        'conversation', 'project', 'agent', 'model', 'image-model', 'reasoning', 'research-scope-json',
+        'conversation', 'project', 'agent', 'model', 'image-model', 'reasoning',
+        'research-scope-json', 'research-scope-file',
       ]);
       const message = tokens.positionals.join(' ').trim();
       const projectId = readString(tokens, 'project');
@@ -219,8 +256,7 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         model_id: readString(tokens, 'model'),
         image_generation_model_id: readString(tokens, 'image-model'),
         reasoning_effort: readString(tokens, 'reasoning'),
-        research_scope: tokens.options.has('research-scope-json')
-          ? parseJsonOption(tokens, 'research-scope-json') : undefined,
+        research_scope: readJsonInput(tokens, 'research-scope', readTextFile),
       });
       return { kind: 'command', request, pretty };
     }
@@ -350,13 +386,13 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
     }
     case 'respond': {
       assertAllowedOptions(tokens, [
-        'interaction', 'approve', 'skip', 'submit-json', 'modify-json', 'project',
+        'interaction', 'approve', 'skip', 'submit-json', 'submit-file', 'modify-json', 'modify-file', 'project',
       ]);
       const responseKinds = [
         readBoolean(tokens, 'approve') ? 'approve' : undefined,
         readBoolean(tokens, 'skip') ? 'skip' : undefined,
-        readString(tokens, 'submit-json') !== undefined ? 'submit' : undefined,
-        readString(tokens, 'modify-json') !== undefined ? 'modify' : undefined,
+        hasJsonInput(tokens, 'submit') ? 'submit' : undefined,
+        hasJsonInput(tokens, 'modify') ? 'modify' : undefined,
       ].filter((kind): kind is 'approve' | 'skip' | 'submit' | 'modify' => kind !== undefined);
       if (responseKinds.length !== 1) {
         usageError('respond requires exactly one response option');
@@ -365,9 +401,7 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
       if (!responseKind) usageError('respond requires a response option');
       const response = responseKind === 'approve' || responseKind === 'skip'
         ? { kind: responseKind }
-        : responseKind === 'submit'
-          ? { kind: responseKind, value: parseJsonOption(tokens, 'submit-json') }
-          : { kind: responseKind, value: parseJsonOption(tokens, 'modify-json') };
+        : { kind: responseKind, value: readJsonInput(tokens, responseKind, readTextFile) };
       const request = ConversationControlRespondRequestSchema.parse({
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
         command: 'respond',
@@ -464,23 +498,17 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
         if (tokens.positionals.length !== 2) {
           usageError('tools call requires exactly one tool name');
         }
-        if (readString(tokens, 'args-file') && readString(tokens, 'args-json')) {
-          usageError('--args-file and --args-json are mutually exclusive');
-        }
         const request = ConversationControlToolsCallRequestSchema.parse({
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
           command: 'tools',
           action: 'call',
           tool_name: tokens.positionals[1],
-          args: readString(tokens, 'args-json') === undefined
-            ? {}
-            : parseJsonOption(tokens, 'args-json'),
+          args: readJsonInput(tokens, 'args', readTextFile) ?? {},
           conversation_id: readString(tokens, 'conversation'),
           project_id: readString(tokens, 'project'),
         });
         return {
           kind: 'tool-call',
-          argsFile: readString(tokens, 'args-file'),
           omitArgs: tokens.options.has('omit-args'),
           request,
           intervalMs: readPositiveInteger(tokens, 'interval', 250),
@@ -495,9 +523,12 @@ function parseCommand(command: string, tokens: ParsedTokens): LinnyaCliInvocatio
   }
 }
 
-export function parseCliInvocation(argv: readonly string[]): LinnyaCliInvocation {
+export function parseCliInvocation(
+  argv: readonly string[],
+  readTextFile: ReadCliTextFile = readCliTextFile,
+): LinnyaCliInvocation {
   // pnpm run script -- ... 与直接调用共享同一入口；仅移除命令前的分隔符。
-  if (argv[0] === '--') return parseCliInvocation(argv.slice(1));
+  if (argv[0] === '--') return parseCliInvocation(argv.slice(1), readTextFile);
   if (argv.length === 0) return { kind: 'help' };
   if (argv[0] === '--help' || argv[0] === '-h') return { kind: 'help' };
   if (argv[0] === '--version' || argv[0] === '-v' || argv[0] === 'version') {
@@ -507,7 +538,7 @@ export function parseCliInvocation(argv: readonly string[]): LinnyaCliInvocation
   const command = argv[0];
   const tokens = parseTokens(argv.slice(1));
   if (command === 'help' || readBoolean(tokens, 'help')) return { kind: 'help' };
-  const invocation = parseCommand(command, tokens);
+  const invocation = parseCommand(command, tokens, readTextFile);
   // 最终再走顶层 union，防止各命令构造器与 wire 合同发生漂移。
   if (
     invocation.kind === 'command'

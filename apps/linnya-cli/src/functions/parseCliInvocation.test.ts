@@ -80,6 +80,33 @@ describe('parseCliInvocation', () => {
   it('拒绝两种参数来源同时出现', () => {
     expect(() => parseCliInvocation(['tools', 'call', 'write_file', '--project', 'p',
       '--args-file', 'args.json', '--args-json', '{}'])).toThrow('mutually exclusive');
+    expect(() => parseCliInvocation(['respond', 'c', '--interaction', 'i',
+      '--submit-file', 'a.json', '--submit-json', '{}'])).toThrow('mutually exclusive');
+  });
+  it('每个内联 JSON 选项都能改为读文件，免受 PowerShell 去引号影响', () => {
+    const files: Record<string, string> = {
+      'scope.json': '{"question":"Q","reader":"R","task_type":"open","materials":[]}',
+      'answer.json': '{"theme":"minimal"}',
+      'args.json': '{"locator":"workspace:/notes.md"}',
+      'broken.json': '{theme:',
+    };
+    const read = (filePath: string) => {
+      const content = files[filePath];
+      if (content === undefined) throw new Error('ENOENT');
+      return content;
+    };
+    expect(parseCliInvocation(['send', 'hi', '--project', 'p', '--agent', 'research_v1',
+      '--research-scope-file', 'scope.json'], read)).toMatchObject({
+      request: { research_scope: { question: 'Q', task_type: 'open' } },
+    });
+    expect(parseCliInvocation(['respond', 'c', '--interaction', 'i', '--modify-file', 'answer.json'], read))
+      .toMatchObject({ request: { response: { kind: 'modify', value: { theme: 'minimal' } } } });
+    expect(parseCliInvocation(['tools', 'call', 'read_file', '--project', 'p', '--args-file', 'args.json'], read))
+      .toMatchObject({ request: { args: { locator: 'workspace:/notes.md' } } });
+    expect(() => parseCliInvocation(['respond', 'c', '--interaction', 'i', '--submit-file', 'missing.json'], read))
+      .toThrow('--submit-file must name a readable UTF-8 JSON file');
+    expect(() => parseCliInvocation(['respond', 'c', '--interaction', 'i', '--submit-file', 'broken.json'], read))
+      .toThrow('--submit-file must contain valid JSON');
   });
   it('只接受 CLI 工具目录，并要求调用绑定项目或会话', () => {
     expect(parseCliInvocation(['tools', 'list'])).toMatchObject({
