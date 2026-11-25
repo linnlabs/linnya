@@ -406,13 +406,13 @@ describe('plugin runtime bootstrap', () => {
 
     expect(listStagedBundledPluginActivationCandidates({ bundledPluginRoot: bundledRoot, userPluginRoot, onArtifactConflict }))
       .toEqual([{ pluginId: 'canvas', version: '3.0.0', previousVersion: null, pluginDir: path.join(userPluginRoot, 'canvas/3.0.0') }]);
-    expect(onArtifactConflict.mock.calls
-      .map(([pluginId, error]) => [pluginId, error.message])
-      .sort(([left], [right]) => String(left).localeCompare(String(right))))
-      .toEqual([
-        ['mindmap', expect.stringContaining('SHA512SUMS 不一致')],
-        ['slides', expect.stringContaining('SHA512SUMS 不一致')],
-      ]);
+    const conflicts = onArtifactConflict.mock.calls
+      .map(([pluginId, error]): readonly [string, string] => [pluginId, error.message])
+      .sort(([left], [right]) => left.localeCompare(right));
+    expect(conflicts).toEqual([
+      ['mindmap', expect.stringContaining('SHA512SUMS 不一致')],
+      ['slides', expect.stringContaining('SHA512SUMS 不一致')],
+    ]);
     expect(JSON.parse(fs.readFileSync(path.join(userPluginRoot, 'mindmap/active.json'), 'utf8'))).toEqual({ version: '1.0.0' });
   });
 

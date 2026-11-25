@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { parsePluginManifest, pluginMetaFromManifest, type PluginMeta } from '@app/schemas';
+import { parsePluginManifest, pluginMetaFromManifest, type PluginId, type PluginMeta } from '@app/schemas';
 import { isPluginUserRemoved } from '../../../features/plugins/install/functions/pluginRemovalMarker';
 import { assertBundledPluginArtifactIntegrity, readPluginArtifactIdentity } from '../../../features/plugins/install/functions/readPluginArtifactIdentity';
 import { compareDottedVersions } from '@app/schemas';
@@ -123,9 +123,11 @@ export class RequiredBundledPluginSeedError extends PluginOperationError {
 }
 
 export class BundledPluginArtifactConflictError extends PluginOperationError {
+  // 冲突总是落在某个具体插件的某个版本上：pluginId 必有，由基类构造函数写入，这里只收窄类型。
+  declare readonly pluginId: PluginId;
   readonly version: string;
 
-  constructor(pluginId: string, version: string, detail: string) {
+  constructor(pluginId: PluginId, version: string, detail: string) {
     super(
       'version-conflict',
       `[PluginRuntime] ${pluginId}@${version} 同版本 artifact 冲突：${detail}；版本目录不可覆盖，请提升插件版本`
@@ -476,12 +478,11 @@ export function seedBundledPlugins(options: SeedBundledPluginsOptions): BundledP
       // 同版本内容冲突只拦这一个插件：不覆盖版本目录，也不把随包字节当成已装版本，
       // 其余随包插件照常准备。必需插件冲突由 assertRequiredBundledPluginSeedSucceeded 阻断启动。
       if (error instanceof BundledPluginArtifactConflictError) {
-        const pluginId = error.pluginId ?? entry.name;
         results.push({
-          pluginId,
+          pluginId: error.pluginId,
           version: error.version,
           sourceDir,
-          targetDir: path.join(options.userPluginRoot, pluginId, error.version),
+          targetDir: path.join(options.userPluginRoot, error.pluginId, error.version),
           status: 'skipped',
           reason: error.message,
           conflict: true,
