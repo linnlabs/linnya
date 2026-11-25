@@ -64,4 +64,9 @@
     SetErrorLevel 2
     Quit
   ${EndIf}
+
+  # 系统通知的激活项由应用运行时登记，指向已删除的程序；标识与 configureWindowsAppIdentity.ts 一致。
+  ${IfNot} ${isUpdated}
+    DeleteRegKey HKCU "Software\Classes\CLSID\{9923EFDD-533C-42B0-9991-1E6D45AA4BAD}"
+  ${EndIf}
 !macroend

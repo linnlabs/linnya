@@ -12,21 +12,26 @@
   >
     <div class="scheduled-task-delete">
       <p class="scheduled-task-delete__message">
-        {{ scheduledTaskMessage(isRunning ? 'scheduledTasks.delete.runningMessage' : 'scheduledTasks.delete.message', { count: task.run_count }) }}
+        {{ scheduledTaskMessage(isRunning ? 'scheduledTasks.delete.runningMessage' : 'scheduledTasks.delete.message') }}
+        <template v-if="task.run_count > 0">
+          {{ scheduledTaskMessage('scheduledTasks.delete.keptConversations', { count: task.run_count }) }}
+        </template>
       </p>
       <CustomCheckbox v-if="isRunning" v-model="stopRunning">
         {{ scheduledTaskMessage('scheduledTasks.delete.stopRunning') }}
       </CustomCheckbox>
     </div>
     <template #footer>
-      <ActionButtons
-        :primary-action-text="scheduledTaskMessage('scheduledTasks.delete.confirm')"
-        :secondary-action-text="scheduledTaskMessage('scheduledTasks.editor.cancel')"
-        primary-variant="danger"
-        :is-primary-action-disabled="busy"
-        @primary-click="emit('confirm', isRunning && stopRunning)"
-        @secondary-click="emit('cancel')"
-      />
+      <div class="scheduled-task-dialog-footer">
+        <ActionButtons
+          :primary-action-text="scheduledTaskMessage('scheduledTasks.delete.confirm')"
+          :secondary-action-text="scheduledTaskMessage('scheduledTasks.editor.cancel')"
+          primary-variant="danger"
+          :is-primary-action-disabled="busy"
+          @primary-click="emit('confirm', isRunning && stopRunning)"
+          @secondary-click="emit('cancel')"
+        />
+      </div>
     </template>
   </Modal>
 </template>

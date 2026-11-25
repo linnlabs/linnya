@@ -29,6 +29,9 @@ async function startNormalAppMode() {
   const { tryStartPluginCliMode } = require('./command-mode.js');
   if (tryStartPluginCliMode()) return;
 
+  const { configureWindowsAppIdentity } = require('./windows-app-identity/configureWindowsAppIdentity.ts');
+  configureWindowsAppIdentity(app);
+
   const developmentProfile = configureDevelopmentAppProfile({
     app,
     developmentMode: process.env.LINNYA_DEV_MODE === 'true',

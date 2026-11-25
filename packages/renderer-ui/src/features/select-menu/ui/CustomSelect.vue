@@ -258,6 +258,7 @@ import { useDropdownPanelPosition } from '../composables/useDropdownPanelPositio
 import { useSubmenu } from '../composables/useSubmenu';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useSelectFocusNavigation } from '../composables/useSelectFocusNavigation';
+import { useEscapeLayer } from '../../overlays';
 import CustomSelectOptionList from './CustomSelectOptionList.vue';
 import { ChevronIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
@@ -424,6 +425,18 @@ const {
   close,
   closeSubmenu,
   closeNestedSubmenu: forceCloseNestedSubmenu,
+});
+
+// 菜单开着时 Escape 只关菜单，不会连同它所在的弹窗一起关掉；焦点在触发器上也算。
+useEscapeLayer({
+  active: isOpen,
+  onEscape: (event) => {
+    event.preventDefault();
+    forceCloseNestedSubmenu();
+    forceCloseSubmenu();
+    close();
+    restoreTriggerFocus();
+  },
 });
 
 // 使用键盘导航逻辑

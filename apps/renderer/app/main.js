@@ -42,6 +42,7 @@ import {
   provideSharedComponentLocalization,
 } from './localization/orchestration/provideSharedComponentLocalization'
 import { ensureUpdateLocalizationRegistered } from './update/orchestration/ensureUpdateLocalizationRegistered'
+import { ensureWindowCloseLocalizationRegistered } from './lifecycle/orchestration/ensureWindowCloseLocalizationRegistered'
 import { ensureBackendHealthLocalizationRegistered, startBackendHealthLifecycle } from './backend-health'
 import { ensureSystemLocalizationRegistered } from './system/orchestration/ensureSystemLocalizationRegistered'
 import { ensurePluginStoreLocalizationRegistered } from '../domains/plugin-store/orchestration/ensurePluginStoreLocalizationRegistered'
@@ -111,6 +112,7 @@ migrateLegacyEditorDocumentSettings()
 ensureLayoutLocalizationRegistered()
 ensureSharedComponentLocalizationRegistered()
 ensureUpdateLocalizationRegistered()
+ensureWindowCloseLocalizationRegistered()
 ensureBackendHealthLocalizationRegistered()
 ensureSystemLocalizationRegistered()
 if (import.meta.env.DEV) {

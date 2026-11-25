@@ -2,6 +2,7 @@ import {
   SCHEDULED_TASK_HOURLY_INTERVALS,
   type ScheduledTaskSchedule,
 } from '@app/schemas/scheduled-tasks';
+import { presetFromCron } from './presetFromCron';
 
 export type ScheduleKind = ScheduledTaskSchedule['kind'];
 export type HourlyInterval = (typeof SCHEDULED_TASK_HOURLY_INTERVALS)[number];
@@ -36,6 +37,13 @@ export function toLocalTime(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/** 这一天所在月份的首尾两天。 */
+export function toLocalMonthRange(date: Date): { readonly from: string; readonly to: string } {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  return { from: toLocalDate(new Date(year, month, 1)), to: toLocalDate(new Date(year, month + 1, 0)) };
+}
+
 /** 把本地日期与钟点合成一个 Date，给日期、时间选择器用。 */
 export function localDateTimeToDate(date: string, time: string): Date {
   const [year, month, day] = date.split('-').map(Number);
@@ -43,7 +51,10 @@ export function localDateTimeToDate(date: string, time: string): Date {
   return new Date(year, month - 1, day, hours, minutes);
 }
 
-/** 新任务默认每个工作日 9:00；一次性默认明天。 */
+/**
+ * 新任务默认每个工作日 9:00；一次性默认明天。与预设等价的 cron 按那个预设打开，
+ * 保存时存成预设；表达式仍留在草稿里，切回“自定义”能看到原写法。
+ */
 export function createScheduleDraft(schedule: ScheduledTaskSchedule | null, now: Date): ScheduleDraft {
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const isoToday = ((now.getDay() + 6) % 7) + 1;
@@ -70,8 +81,12 @@ export function createScheduleDraft(schedule: ScheduledTaskSchedule | null, now:
       return { ...base, kind: 'weekly', weekdays: [...schedule.weekdays], time: schedule.time };
     case 'monthly':
       return { ...base, kind: 'monthly', monthDay: schedule.day, time: schedule.time };
-    case 'cron':
-      return { ...base, kind: 'cron', expression: schedule.expression };
+    case 'cron': {
+      const preset = presetFromCron(schedule.expression);
+      return preset
+        ? { ...createScheduleDraft(preset, now), expression: schedule.expression }
+        : { ...base, kind: 'cron', expression: schedule.expression };
+    }
   }
 }
 

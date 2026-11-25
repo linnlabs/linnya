@@ -284,6 +284,23 @@ describe('layoutStateTransitions', () => {
     expect(state.conversationPane.visible).toBe(false);
   });
 
+  it('每次进入定时任务都换一个 visit，停留期间的其他变化不换', () => {
+    const list = { type: 'scheduled-tasks', projectId: null, scheduledTaskId: null } as const;
+    const detail = { type: 'scheduled-tasks', projectId: 'project', scheduledTaskId: 'task' } as const;
+    const visitOf = (state: ReturnType<typeof openBypassViewState>) =>
+      state.scene.kind === 'scheduled-tasks' ? state.scene.visit : null;
+
+    const first = openBypassViewState(createInitialLayoutState(), detail);
+    const again = openBypassViewState(first, detail);
+    const resized = setPreferredRightPaneWidthState(again, 420);
+    const backToList = openBypassViewState(resized, list);
+
+    expect(visitOf(again)).not.toBe(visitOf(first));
+    expect(visitOf(resized)).toBe(visitOf(again));
+    expect(visitOf(backToList)).not.toBe(visitOf(resized));
+    expect(backToList.scene).toMatchObject({ projectId: null, scheduledTaskId: null });
+  });
+
   it('clears unavailable active document without leaving the current bypass scene', () => {
     const activeWorkspace = openDocumentInRightPaneState(createInitialLayoutState(), {
       type: 'slides',

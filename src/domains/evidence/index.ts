@@ -13,20 +13,9 @@ export type {
 } from './definitions/evidence';
 
 export {
-  listEvidenceRefs,
   resolveEvidenceFromBundles,
   saveEvidenceBundle,
 } from './evidenceDomain';
-
-export {
-  buildEvidenceRefListObservation,
-  buildEvidenceResolutionObservation,
-} from './features/ref-resolution/functions/buildEvidenceResolutionObservation';
-
-export type {
-  EvidenceRefListItem,
-  ListEvidenceRefsResult,
-} from './features/ref-resolution/orchestration/listEvidenceRefs';
 
 export type {
   IncompleteRefIssue,

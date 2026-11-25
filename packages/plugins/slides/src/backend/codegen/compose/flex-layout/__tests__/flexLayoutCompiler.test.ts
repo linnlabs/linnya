@@ -555,6 +555,46 @@ describe('FlexLayoutCompiler', () => {
       );
     });
 
+    it('Table 的列宽比例与单元格内边距归一后进入编译结果，Yoga 按同一比例分宽', () => {
+      const slide = makeSlide([{
+        _type: 'Table',
+        width: 6,
+        headers: ['公元', '窑业', '说明'],
+        rows: [[{ text: '960', colspan: 2 }, '北宋立国，定窑进入盛期']],
+        columnWidths: [1, 1, 4],
+        cellPadding: { x: 0.12 },
+      } as LayoutTableNode]);
+
+      const result = compileSlide(slide, SLIDE_W, SLIDE_H);
+
+      expect(result.elements[0].columnWidths).toEqual([1, 1, 4]);
+      expect(result.elements[0].cellPadding).toEqual({ x: 0.12 });
+      expect(result.elements[0].position.w).toBeCloseTo(6, 5);
+
+      const uniform = compileSlide(makeSlide([{
+        _type: 'Table', width: 4, rows: [['A', 'B']], cellPadding: 0.08,
+      } as LayoutTableNode]), SLIDE_W, SLIDE_H);
+      expect(uniform.elements[0].cellPadding).toEqual({ x: 0.08, y: 0.08 });
+    });
+
+    it('Table.columnWidths 个数按合并单元格占据的列计，不符或非正数直接报错', () => {
+      const compileTable = (extra: Partial<LayoutTableNode>) => compileSlide(makeSlide([{
+        _type: 'Table',
+        flex: 1,
+        rows: [[{ text: '合并', colspan: 2 }, 'C'], ['A', 'B', 'C']],
+        ...extra,
+      } as LayoutTableNode]), SLIDE_W, SLIDE_H);
+
+      expect(() => compileTable({ columnWidths: [1, 2] })).toThrow(
+        'Table.columnWidths 需要 3 个数',
+      );
+      expect(() => compileTable({ columnWidths: [1, 0, 2] })).toThrow('大于 0 的数字');
+      expect(() => compileTable({ cellPadding: 0.8 })).toThrow('0 到 0.5 英寸');
+      expect(() => compileTable({ cellPadding: { x: 0.1, top: 0.1 } as never })).toThrow(
+        'Table.cellPadding 必须是数字或 { x, y }',
+      );
+    });
+
     it('Table 通过 tableData 嵌套传入数据也能正确编译', () => {
       // 模拟 AI 常用写法：table.tableData = { headers, rows }
       const slide = makeSlide([

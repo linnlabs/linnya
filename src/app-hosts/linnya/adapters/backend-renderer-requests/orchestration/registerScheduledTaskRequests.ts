@@ -30,9 +30,10 @@ export function registerScheduledTaskRequests(tasks: ScheduledTasks, registry: B
     await tasks.markViewed(contract.ScheduledTaskMarkViewedRequestSchema.parse(request).conversation_id);
     return null;
   });
-  registry.handle(contract.SCHEDULED_TASKS_PREVIEW_SCHEDULE_CHANNEL, request => contract.ScheduledTaskPreviewScheduleResultSchema.parse(
-    tasks.preview(contract.ScheduledTaskPreviewScheduleRequestSchema.parse(request).schedule),
-  ));
+  registry.handle(contract.SCHEDULED_TASKS_PREVIEW_SCHEDULE_CHANNEL, request => {
+    const { schedule, run_days_in } = contract.ScheduledTaskPreviewScheduleRequestSchema.parse(request);
+    return contract.ScheduledTaskPreviewScheduleResultSchema.parse(tasks.preview(schedule, run_days_in));
+  });
   registry.handle(contract.SCHEDULED_TASKS_SETTINGS_GET_CHANNEL, () => contract.ScheduledTaskSettingsSchema.parse(tasks.getSettings()));
   registry.handle(contract.SCHEDULED_TASKS_SETTINGS_SET_CHANNEL, async request => contract.ScheduledTaskSettingsSchema.parse(
     await tasks.setSettings(contract.ScheduledTaskSettingsSetRequestSchema.parse(request)),

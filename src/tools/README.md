@@ -512,9 +512,9 @@ UI 注册。卡片可以按产品语义只展示 header，也可以复用同一�
   `requires_user_interaction` 控制事件 + 用户提交时唯一一条
   `tool_output(metadata.interaction)` 回复事件”。
 
-这是新增和迁移工具卡的终态要求。当前十六张实体卡、七个 live header-only 注册项
-`list_files / read_file / write_file / edit_file / grep / assemble_documents / evidence_resolve`，以及历史只读
-`assemble_evidence` 注册项由 AST
+这是新增和迁移工具卡的终态要求。当前十六张实体卡、六个 live header-only 注册项
+`list_files / read_file / write_file / edit_file / grep / assemble_documents`，以及历史只读
+`assemble_evidence / evidence_resolve` 注册项由 AST
 baseline 锁住；已知存量迁移面已经清零，[`R-22`](../../docs/conversation-platform/12-open-risks.md)
 关闭。新增正式工具仍必须在同一业务切片补共享 schema、projector、live/reload
 admission 与 baseline；历史 projector 不得被误认为 executable alias。

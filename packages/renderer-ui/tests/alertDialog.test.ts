@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from 'vitest';
-import { createApp, h, nextTick, type App } from 'vue';
+import { createApp, h, nextTick, ref, type App } from 'vue';
 import {
   AlertDialog,
   Modal,
@@ -102,6 +102,65 @@ describe('AlertDialog', () => {
       ?.click();
     expect(cancelCount).toBe(1);
     expect(closeCount).toBe(1);
+  });
+});
+
+describe('AlertDialog 的 Enter', () => {
+  function pressEnter(): void {
+    (document.activeElement ?? document.body).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+    );
+  }
+
+  it('默认确认，后果严重的确认可以改成默认取消', async () => {
+    const answers: string[] = [];
+    const visible = ref({ plain: false, risky: false });
+    mount(() => h('div', [
+      h(AlertDialog, {
+        visible: visible.value.plain,
+        isConfirmation: true,
+        onConfirm: () => answers.push('plain-confirm'),
+        onCancel: () => answers.push('plain-cancel'),
+      }),
+      h(AlertDialog, {
+        visible: visible.value.risky,
+        isConfirmation: true,
+        defaultAction: 'cancel',
+        onConfirm: () => answers.push('risky-confirm'),
+        onCancel: () => answers.push('risky-cancel'),
+      }),
+    ]));
+    visible.value = { plain: true, risky: false };
+    await nextTick();
+    pressEnter();
+    visible.value = { plain: false, risky: true };
+    await nextTick();
+    pressEnter();
+    expect(answers).toEqual(['plain-confirm', 'risky-cancel']);
+  });
+
+  it('确认框叠确认框时只有最上面的响应', async () => {
+    const answers: string[] = [];
+    const visible = ref({ below: false, above: false });
+    mount(() => h('div', [
+      h(AlertDialog, {
+        visible: visible.value.below,
+        isConfirmation: true,
+        onConfirm: () => answers.push('below-confirm'),
+      }),
+      h(AlertDialog, {
+        visible: visible.value.above,
+        isConfirmation: true,
+        defaultAction: 'cancel',
+        onCancel: () => answers.push('above-cancel'),
+      }),
+    ]));
+    visible.value = { below: true, above: false };
+    await nextTick();
+    visible.value = { below: true, above: true };
+    await nextTick();
+    pressEnter();
+    expect(answers).toEqual(['above-cancel']);
   });
 });
 

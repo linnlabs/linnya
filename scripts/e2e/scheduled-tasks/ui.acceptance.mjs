@@ -15,6 +15,7 @@ const evidence = createEvidence('scheduled-tasks-ui', { files: [
 const fixture = await startChatFixture();
 const json = JSON.stringify;
 const MODEL_NAME = 'Scheduled fixture model';
+const EDITOR = '.scheduled-task-editor';
 let failed;
 const instances = [];
 
@@ -28,7 +29,7 @@ function probeFor(name) {
     const deadline = Date.now() + timeoutMs;
     for (;;) {
       const { entries } = await run('snapshot', '--json', '--role', role, '--max-lines', '200', ...(within ? ['--within', within] : []));
-      const targets = entries.filter(entry => entry.name === name);
+      const targets = entries.filter(entry => (name instanceof RegExp ? name.test(entry.name) : entry.name === name));
       if (targets.length === 1) return run('click', targets[0].ref);
       if (Date.now() > deadline) {
         evidence.json(`missing-${name}-${role}`, (await run('snapshot', '--json', '--max-lines', '200')).entries);
@@ -59,26 +60,29 @@ function probeFor(name) {
           endpoint_model_id: 'scheduled-fixture', display_name: MODEL_NAME, context_window_tokens: 64000, max_output_tokens: 4096, supports_image_input: false }))}});
       const body=await response.json();if(!response.ok)throw new Error(JSON.stringify(body));return body.model_id;`);
   }
+  /** 打开任务列表；已经停在某个任务的详情时，点侧栏同样回到列表。 */
   async function openScheduledTasks() {
-    const open = await evaluate("return Boolean([...document.querySelectorAll('main button')].some(b => b.innerText.trim() === '新建任务'))");
-    if (open) return;
     const { entries } = await run('snapshot', '--json', '--role', 'button', '--max-lines', '80', '--within', 'aside');
     const back = entries.find(entry => entry.name === '返回');
     if (back) await run('click', back.ref);
-    await clickNamed('button', '定时任务', 'aside');
+    // 有未看的结果时，按钮名里带数字。
+    await clickNamed('button', /^定时任务/u, 'aside');
     await run('wait', '--text', '新建任务', '--timeout', '30000');
   }
   async function createTaskThroughForm(name) {
     await clickNamed('button', '新建任务', 'main');
     await run('wait', '--text', '新建定时任务', '--timeout', '30000');
-    await clickNamed('textbox', '名称', 'main');
+    await clickNamed('textbox', '名称', EDITOR);
     await run('type', name);
-    await clickNamed('textbox', '每次要做的事', 'main');
+    await clickNamed('textbox', '每次要做的事', EDITOR);
     await run('type', 'Summarize the scheduled acceptance status in one line.');
-    await clickNamed('button', '模型', 'main');
+    await clickNamed('button', '模型', EDITOR);
     await run('click', `text=${MODEL_NAME}`);
-    await clickNamed('button', '创建', 'main');
-    return until(listTasks, result => result.tasks?.some(task => task.name === name), `task ${name} created`);
+    await clickNamed('button', '创建', '.modal-overlay');
+    const result = await until(listTasks, list => list.tasks?.some(task => task.name === name), `task ${name} created`);
+    // 建好后进入这个任务的详情。
+    await run('wait', '--selector', '[data-testid="scheduled-task-detail"]', '--timeout', '15000');
+    return result;
   }
   return { run, evaluate, clickNamed, until, api, listTasks, registerFixtureModel, openScheduledTasks, createTaskThroughForm, sleep };
 }
@@ -100,6 +104,42 @@ try {
     assert.ok(task.next_run_at > Date.now(), 'next run in the future');
     await main.run('wait', '--text', '验收任务', '--timeout', '15000');
     await main.run('shot');
+  });
+
+  await evidence.check('新建弹窗：月历选日、直接输入时间，下次时间随之更新；Esc 先关面板再关弹窗，不创建任务', async () => {
+    const state = () => main.evaluate(`// 隐藏页面里的下拉也留在文档中，只看画出来的那个。
+      const panel = [...document.querySelectorAll('.linnya-dropdown-panel, .custom-select__options')]
+        .map(node => node.getBoundingClientRect()).find(rect => rect.width > 0 && rect.height > 0) ?? null;
+      return {
+        editor: Boolean(document.querySelector('.scheduled-task-editor')),
+        panel: panel && { inside: panel.top >= 0 && panel.left >= 0 && panel.bottom <= innerHeight && panel.right <= innerWidth },
+        preview: document.querySelector('[data-testid="scheduled-task-schedule-preview"]')?.innerText ?? '',
+        selected: document.querySelector('.scheduled-task-editor [data-date][aria-pressed="true"], .scheduled-task-editor [data-date][aria-selected="true"]')?.dataset.date ?? null,
+      };`);
+    await main.openScheduledTasks();
+    await main.clickNamed('button', '新建任务', 'main');
+    await main.clickNamed('button', '重复方式', EDITOR);
+    await main.until(state, value => value.panel?.inside === true, 'repeat menu inside the window', 5_000);
+    await main.run('click', 'text=仅一次');
+    await main.clickNamed('button', '下一页', EDITOR);
+    await main.run('click', '--selector', `${EDITOR} [data-date$="-15"]`);
+    await main.run('click', '--selector', `${EDITOR} .linnya-time-picker input`);
+    await main.run('type', '2115');
+    await main.until(state, value => value.panel?.inside === true, 'time list inside the window', 5_000);
+    await main.run('press', 'Enter');
+    const picked = await main.until(state, value => /15日.*21:15/u.test(value.preview), 'preview follows the picked day and time', 10_000);
+    evidence.json('once-form', picked);
+    await main.run('shot');
+    await main.run('click', '--selector', `${EDITOR} .linnya-time-picker input`);
+    await main.until(state, value => value.panel !== null, 'time list open', 5_000);
+    await main.run('press', 'Escape');
+    const afterFirst = await main.until(state, value => value.panel === null, 'first Escape closes the list', 5_000);
+    assert.equal(afterFirst.editor, true, 'dialog stays after the first Escape');
+    await main.run('press', 'Escape');
+    await main.until(state, value => !value.editor, 'second Escape closes the dialog', 5_000);
+    assert.deepEqual((await main.listTasks()).tasks.map(item => item.name), ['验收任务']);
+    await main.clickNamed('button', /^验收任务/u, 'main');
+    await main.run('wait', '--selector', '[data-testid="scheduled-task-detail"]', '--timeout', '15000');
   });
 
   await evidence.check('立即运行：运行完成写入记录，侧栏出现带未读的折叠行，前台提示完成', async () => {
@@ -293,6 +333,7 @@ try {
     void runs;
     // 运行记录里那条跳过记录显示合并次数（“……，共 N 次”），不是 N 行。
     await zones.openScheduledTasks();
+    await zones.clickNamed('button', /^时区任务/u, 'main');
     await zones.run('wait', '--text', `共 ${folded.skipped_count} 次`, '--timeout', '15000');
     await zones.run('shot');
   });

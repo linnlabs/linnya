@@ -693,6 +693,12 @@ interface LayoutTableCellInput {
   rowspan?: number;
 }
 
+/** 单元格内边距，单位为英寸：`x` 是左右，`y` 是上下；省略的一侧按表格密度自动取值。 */
+interface LayoutTableCellPaddingInput {
+  x?: number;
+  y?: number;
+}
+
 type LayoutTableCellValue = LayoutDisplayValue | LayoutTableCellInput;
 
 interface LayoutTableConfig extends FlexProps, LayoutAuthoringTargetConfig {
@@ -700,6 +706,17 @@ interface LayoutTableConfig extends FlexProps, LayoutAuthoringTargetConfig {
   rows?: LayoutTableCellValue[][];
   /** 整张表四边及内部网格线的统一描边。 */
   border?: LayoutTableBorderInput;
+  /**
+   * 各列宽度的相对比例，个数等于列数（合并单元格按它占据的列计），每个数都大于 0。
+   * 只决定表格宽度怎样分给各列；比例之和等于表格宽度（英寸）时就是逐列英寸。
+   * 不写时按内容自动分配。
+   */
+  columnWidths?: number[];
+  /**
+   * 单元格内边距，单位为英寸，取值 0–0.5：一个数表示四边相同，`{ x, y }` 分别设左右与上下。
+   * 不写时按表格密度自动取 0.03–0.05。表格被压缩时与字号同比缩小。
+   */
+  cellPadding?: number | LayoutTableCellPaddingInput;
   /** @deprecated 使用 headers 与 rows。 */
   tableData?: LayoutTableDataLike;
 }

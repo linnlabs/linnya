@@ -8,12 +8,17 @@
         @click.self="closeOnOverlayClick && close()"
       >
         <div
+          ref="containerRef"
           class="modal-container"
           :style="containerStyle"
+          :role="layer === 'alert' ? 'alertdialog' : 'dialog'"
+          aria-modal="true"
+          :aria-labelledby="titleId"
+          tabindex="-1"
         >
           <div class="modal-header">
             <div class="modal-heading">
-              <h2>{{ resolvedTitle }}</h2>
+              <h2 :id="titleId">{{ resolvedTitle }}</h2>
               <div
                 v-if="$slots['title-extra']"
                 class="modal-title-extra"
@@ -51,12 +56,13 @@
 
 <script setup lang="ts">
 import IconButton from '../../actions/ui/IconButton.vue';
-import { computed } from 'vue';
+import { computed, ref, useId } from 'vue';
 import type { CSSProperties } from 'vue';
 import { CloseIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
 import type { ModalProps, ModalSlots } from '../definitions/modal';
 import { useEscapeLayer } from '../vue/useEscapeLayer';
+import { useModalFocus } from '../vue/useModalFocus';
 
 defineOptions({ name: 'LinnyaModal' });
 
@@ -82,6 +88,8 @@ defineSlots<ModalSlots>();
 
 const { sharedComponentMessage } = useSharedComponentLocalization();
 const resolvedTitle = computed(() => props.title || sharedComponentMessage('shared.modal.title'));
+const titleId = useId();
+const containerRef = ref<HTMLElement | null>(null);
 const closeLabel = computed(() => sharedComponentMessage('shared.modal.close'));
 
 const containerStyle = computed<CSSProperties>(() => {
@@ -113,4 +121,7 @@ useEscapeLayer({
     if (props.closeOnEsc) close();
   },
 });
+const { isTopmost } = useModalFocus({ active: () => props.isVisible, containerRef });
+
+defineExpose({ isTopmost });
 </script>

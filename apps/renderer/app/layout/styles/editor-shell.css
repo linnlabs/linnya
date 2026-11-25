@@ -68,7 +68,7 @@
   flex-direction: column;
 }
 
-/* 定时任务：页头固定，左侧列表与右侧详情各自滚动。 */
+/* 定时任务：列表页与详情页各自整页滚动，滚动条贴主内容区域最右侧。 */
 .editor-shell.for-scheduled-tasks {
   overflow: hidden;
   padding: 0;

@@ -328,7 +328,12 @@ export function openBypassViewState(state: LayoutState, bypassView: NonNullable<
       next.scene = { kind: 'project-overview', projectId: bypassView.projectId };
       break;
     case 'scheduled-tasks':
-      next.scene = { kind: 'scheduled-tasks', projectId: bypassView.projectId, scheduledTaskId: bypassView.scheduledTaskId };
+      next.scene = {
+        kind: 'scheduled-tasks',
+        projectId: bypassView.projectId,
+        scheduledTaskId: bypassView.scheduledTaskId,
+        visit: state.scene.kind === 'scheduled-tasks' ? state.scene.visit + 1 : 0,
+      };
       break;
   }
   next.bypassView = { ...bypassView };

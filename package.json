@@ -39,6 +39,7 @@
       "picomatch@4": "4.0.7",
       "postcss": "8.5.28",
       "postcss-selector-parser": "6.1.5",
+      "p5.brush>p5": "-",
       "pptxgenjs@3.12.0>image-size": "-",
       "pptxgenjs@4.0.1>image-size": "-",
       "prosemirror-model": "1.25.11",

@@ -4,4 +4,6 @@
 
 App 根组件在任何插件初始化等待前注册监听并声明 renderer 就绪。preload 为每个 document 生成独立页面会话，renderer 回应原样携带主进程给出的唯一请求编号；Renderer 通过 browser-safe 公共说明符 `@linnya/app-lifecycle-contract` 消费协议，canonical owner 仍是 `src/shared/app-lifecycle/definitions/windowCloseProtocol.ts`。
 
+退出前要用户决定的事由 `ui/WindowCloseDecisionHost.vue` 弹窗询问：收到主进程的询问后新挂载一个确认框（排在其他确认框之上），画出来后回报，再交回返回或继续；Enter 和 Escape 都是返回。主进程改用系统框时会要求收起，收起后不再回答。
+
 进程停止、App 退出和命令 owner 收口不属于 renderer；renderer 只报告保存结果并等待 Main 的 typed shutdown 请求。

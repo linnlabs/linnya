@@ -1,5 +1,6 @@
 <template>
   <Modal
+    ref="modalRef"
     :is-visible="visible"
     :title="resolvedTitle"
     :width="width"
@@ -68,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from 'vue';
+import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { ActionButtons } from '../../actions';
 import { useSharedComponentLocalization } from '../../../localization';
 import type { AlertDialogProps } from '../definitions/alertDialog';
@@ -86,6 +87,7 @@ const props = withDefaults(defineProps<AlertDialogProps>(), {
   cancelText: '',
   isDangerousAction: false,
   closeIsCancel: true,
+  defaultAction: 'confirm',
   width: '400px',
   maxWidth: '90%',
 });
@@ -96,6 +98,7 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+const modalRef = useTemplateRef('modalRef');
 const { sharedComponentMessage } = useSharedComponentLocalization();
 const alertActionButtonAttributes = Object.freeze({ class: 'alert-dialog-action' });
 
@@ -132,14 +135,14 @@ const onCancel = (): void => {
   emit('cancel');
 };
 
-// Escape 由内层 Modal 的 Escape 归属处理，每次按键只关闭一次；这里只保留既有的 Enter 确认。
+// Escape 由内层 Modal 的 Escape 归属处理，每次按键只关闭一次；这里只处理 Enter 的默认操作。
+// 焦点已经移到“取消”等按钮上时，Enter 按的是那个按钮；确认框叠确认框时只有最上面的响应。
 const handleKeyDown = (event: KeyboardEvent): void => {
-  if (!props.visible) return;
-
-  if (event.key === 'Enter') {
-    event.preventDefault();
-    onConfirm();
-  }
+  if (!props.visible || event.key !== 'Enter' || !modalRef.value?.isTopmost()) return;
+  if (event.target instanceof Element && event.target.closest('.modal-container button')) return;
+  event.preventDefault();
+  if (props.isConfirmation && props.defaultAction === 'cancel') onCancel();
+  else onConfirm();
 };
 
 // 迁移期保持既有监听时机，不在 owner 迁移中改变键盘交互。

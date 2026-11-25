@@ -309,14 +309,27 @@ export const ScheduledTaskScheduleErrorCodeSchema = z.enum([
   'never_runs',
 ]);
 
+/** 月历一次最多问这么多天：一个月的页面，留出前后几天。 */
+export const SCHEDULED_TASK_RUN_DAYS_MAX_RANGE = 45;
+/** 一段本地日期，两端都算在内。 */
+export const ScheduledTaskRunDaysRangeSchema = z.object({ from: LocalDateSchema, to: LocalDateSchema }).strict()
+  .refine(({ from, to }) => {
+    const days = (Date.parse(to) - Date.parse(from)) / 86_400_000 + 1;
+    return days >= 1 && days <= SCHEDULED_TASK_RUN_DAYS_MAX_RANGE;
+  }, `range must cover 1 to ${SCHEDULED_TASK_RUN_DAYS_MAX_RANGE} days`);
+
 export const ScheduledTaskPreviewScheduleRequestSchema = z.object({
   schedule: ScheduledTaskScheduleSchema,
+  /** 另外要这段日期里会运行的日子，供月历标注；不传就不算。 */
+  run_days_in: ScheduledTaskRunDaysRangeSchema.optional(),
 }).strict();
 export const ScheduledTaskPreviewScheduleResultSchema = z.discriminatedUnion('ok', [
   z.object({
     ok: z.literal(true),
     /** 接下来最多 3 次。 */
     next_runs: z.array(EpochMs).max(3),
+    /** 请求了 `run_days_in` 才有：其中从现在起会运行的本地日期，升序。 */
+    run_days: z.array(LocalDateSchema).max(SCHEDULED_TASK_RUN_DAYS_MAX_RANGE).optional(),
   }).strict(),
   z.object({
     ok: z.literal(false),
@@ -429,6 +442,7 @@ export type ScheduledTaskDeleteRequest = z.infer<typeof ScheduledTaskDeleteReque
 export type ScheduledTaskDeleteResult = z.infer<typeof ScheduledTaskDeleteResultSchema>;
 export type ScheduledTaskMarkViewedRequest = z.infer<typeof ScheduledTaskMarkViewedRequestSchema>;
 export type ScheduledTaskScheduleErrorCode = z.infer<typeof ScheduledTaskScheduleErrorCodeSchema>;
+export type ScheduledTaskRunDaysRange = z.infer<typeof ScheduledTaskRunDaysRangeSchema>;
 export type ScheduledTaskPreviewScheduleRequest = z.infer<typeof ScheduledTaskPreviewScheduleRequestSchema>;
 export type ScheduledTaskPreviewScheduleResult = z.infer<typeof ScheduledTaskPreviewScheduleResultSchema>;
 export type ScheduledTaskMutationErrorCode = z.infer<typeof ScheduledTaskMutationErrorCodeSchema>;

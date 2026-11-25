@@ -14,6 +14,8 @@ export interface AlertDialogProps {
   readonly cancelText?: string;
   readonly isDangerousAction?: boolean;
   readonly closeIsCancel?: boolean;
+  /** 打开后直接按 Enter 执行哪个操作，默认确认；后果严重、可能被误触的确认用 `cancel`。 */
+  readonly defaultAction?: 'confirm' | 'cancel';
   readonly width?: string;
   readonly maxWidth?: string;
 }

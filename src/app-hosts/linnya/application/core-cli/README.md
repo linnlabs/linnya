@@ -59,7 +59,7 @@ list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、in
 
 ## 定时任务
 
-`linnya schedules list` 列出当前项目的任务，`show <任务 ID>` 查看详情。`create --name <名称> --prompt <任务内容>` 还需传 `--cron '<五段 cron>'` 或 `--schedule '<时间表 JSON>'`。例如每天当地时间 9 点可用 `--cron '0 9 * * *'`。`update <任务 ID>` 接受同样的字段；可带 `--revision <版本>` 确认修改的是刚读到的版本。
+`linnya schedules list` 列出当前项目的任务，`show <任务 ID>` 查看详情。`create --name <名称> --prompt <任务内容>` 还需三选一给出时间：一次性用 `--once 2027-01-01T09:00`（当地时间，不含引号），重复用 `--cron "<五段 cron>"`，例如每天 9 点 `--cron "0 9 * * *"`；其余写法用 `--schedule '<时间表 JSON>'`。帮助只推荐前两种：Windows 受管 PowerShell 会去掉原生命令参数里的双引号，JSON 到达 CLI 时已不合法，解析失败的提示会指回 `--once`/`--cron`。`update <任务 ID>` 接受同样的字段；可带 `--revision <版本>` 确认修改的是刚读到的版本。参数形状由 `functions/parseSchedulesCommand.ts` 解析，字段合法性仍由请求 schema 校验。
 
 - `--agent default|research`，默认 `default`。`--model <模型 ID>|default`，缺省时使用设置里的默认模型。
 - `--permission read_only|standard|full_access`，创建时缺省用根运行冻结的对话档位。若任务需更高档位，请在定时任务界面修改。完全访问的成功结果会提示 Agent 在最终回复中告知风险。

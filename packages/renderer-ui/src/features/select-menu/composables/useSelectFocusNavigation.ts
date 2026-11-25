@@ -134,6 +134,8 @@ export function useSelectFocusNavigation({
 
   function handleOptionsKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
+      // 自动模式由 CustomSelect 登记的浮层归属处理，焦点在触发器上时也一样。
+      if (!unref(manualMode)) return;
       event.preventDefault();
       close();
       restoreTriggerFocus();
@@ -156,6 +158,8 @@ export function useSelectFocusNavigation({
   function handleSubmenuKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape' || event.key === 'ArrowLeft') {
       event.preventDefault();
+      // 只收起这一级子菜单，不再交给整个菜单的 Escape。
+      if (!unref(manualMode)) event.stopPropagation();
       const parent = unref(optionsRef)?.querySelector(`[aria-controls="${submenuPanelId}"]`);
       closeSubmenu();
       if (parent instanceof HTMLElement) void nextTick(() => parent.focus());
