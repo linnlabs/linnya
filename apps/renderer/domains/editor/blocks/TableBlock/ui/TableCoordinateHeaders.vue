@@ -1,5 +1,9 @@
 <template>
-  <Teleport v-if="teleportTarget" :to="teleportTarget">
+  <!--
+    坐标头用视口坐标（getBoundingClientRect）定位，必须挂在 body：挂在文档窗格里时，窗格祖先的 transform
+    （即使是 translateX(0)）会让 position: fixed 以窗格为原点，文档在右侧窗格时整体偏移一个窗格的距离。
+  -->
+  <Teleport to="body">
     <transition name="tt-headers-fade" appear>
     <div v-if="visible" class="tt-table-coordinate-headers">
       <!-- 左上角单元格 (已移除) -->
@@ -38,7 +42,7 @@
 </template>
 
 <script setup>
-import { nextTick, ref, toRef, onMounted, watch } from 'vue'
+import { toRef } from 'vue'
 import { useUIStore } from '../../../../../shared/stores/ui'
 import TableColumnHeaders from './TableColumnHeaders.vue'
 import TableRowHeaders from './TableRowHeaders.vue'
@@ -72,26 +76,6 @@ const props = defineProps({
 })
 
 const uiStore = useUIStore()
-
-const teleportTarget = ref(null)
-
-const resolveTeleportTarget = async () => {
-  await nextTick()
-  await new Promise((resolve) => requestAnimationFrame(resolve))
-  const editorRoot = props.editor?.view?.dom
-  const currentEditorWrapper = editorRoot?.closest?.('.scroll-content-wrapper')
-  teleportTarget.value = currentEditorWrapper || null
-}
-
-onMounted(resolveTeleportTarget)
-
-watch(
-  () => props.editor,
-  () => {
-    teleportTarget.value = null
-    void resolveTeleportTarget()
-  },
-)
 
 const {
   columnWidths,
