@@ -142,6 +142,10 @@ export function useTableCoordinateHeaderController(
       return;
     }
 
+    // 每次测量都同步滚动位置：表格横向滚动可能发生在监听重建期间（例如进入 AI 模式新增输出列后
+    // 编辑器把选区滚进视野），只靠 scroll 事件会错过，列标的 translateX 就停在旧值。
+    updateScrollPosition();
+
     const metrics = measureTablePositionMetrics({
       tableDom,
       pageScrollContainer,
@@ -253,23 +257,32 @@ export function useTableCoordinateHeaderController(
     }
 
     lastRequestSource = source;
-    if (measureRequested) return;
-    measureRequested = true;
+    scheduleFrame('full');
+  };
 
+  /**
+   * 下一帧只排一个测量任务：整体重测（位置、滚动、列宽、行高）优先于只重算位置。
+   * 已有任务时只提升级别、不取消重排——以前滚动 / 选区事务会取消已排好的整体重测，
+   * 且 measureRequested 停在 true，之后文档变化触发的重测全部被跳过，坐标头留在旧值。
+   */
+  const scheduleFrame = (level: 'position' | 'full'): void => {
+    if (level === 'full') measureRequested = true;
+    if (rafId !== null) return;
+    const frameSessionId = currentSessionId.value;
     rafId = requestFrame(() => {
-      if (sessionId !== null && sessionId !== currentSessionId.value) {
-        dlog('requestAnimationFrame cancelled: session changed', {
-          requestSession: sessionId,
-          currentSession: currentSessionId.value,
-        });
-        rafId = null;
+      rafId = null;
+      if (frameSessionId !== currentSessionId.value) {
+        dlog('requestAnimationFrame cancelled: session changed');
         measureRequested = false;
         return;
       }
-
-      dlog('requestAnimationFrame firing', { source: lastRequestSource, sessionId: currentSessionId.value });
-      performMeasurement();
-      rafId = null;
+      if (measureRequested) {
+        dlog('frame: full measurement', { source: lastRequestSource });
+        performMeasurement();
+      } else {
+        dlog('frame: position only');
+        measureTablePosition();
+      }
     });
   };
 
@@ -300,14 +313,7 @@ export function useTableCoordinateHeaderController(
 
   const handleScroll = (): void => {
     dlog('handleScroll event');
-    cancelPendingFrame();
-
-    rafId = requestFrame(() => {
-      dlog('handleScroll rAF firing');
-      updateScrollPosition();
-      measureTablePosition();
-      rafId = null;
-    });
+    scheduleFrame('position');
   };
 
   const handleResize = (): void => {
@@ -379,16 +385,8 @@ export function useTableCoordinateHeaderController(
   /** 下一帧重新测量位置、列宽与行高；会话切换后的旧回调直接丢弃。 */
   const remeasureNextFrame = (observerSessionId: number): void => {
     if (observerSessionId !== currentSessionId.value) return;
-    cancelPendingFrame();
-    rafId = requestFrame(() => {
-      rafId = null;
-      if (observerSessionId !== currentSessionId.value) {
-        dlog('DOM change rAF cancelled: session changed');
-        return;
-      }
-      dlog('DOM change rAF firing - full measurement');
-      performMeasurement();
-    });
+    lastRequestSource = 'dom-change';
+    scheduleFrame('full');
   };
 
   const cleanupListeners = (): void => {

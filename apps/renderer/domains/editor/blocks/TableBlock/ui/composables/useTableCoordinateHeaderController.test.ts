@@ -319,6 +319,80 @@ describe('useTableCoordinateHeaderController', () => {
     expect(api.scrollLeft.value).toBe(37);
   });
 
+  it('syncs the horizontal scroll offset on every measurement, even when no scroll event was received', async () => {
+    const context = createEditorContext();
+    const visible = ref(true);
+    const tableInfo = ref<{ pos: number } | null>({ pos: context.tablePos });
+    const editor = shallowRef<TestEditor | null>(context.editor);
+    const apiHolder: { api: ControllerApi | null } = { api: null };
+
+    mountedApps.push(mountControllerHost({
+      visible,
+      tableInfo,
+      editor,
+      getCellRect: createCellRectReader(context),
+      onApi: (nextApi) => {
+        apiHolder.api = nextApi;
+      },
+    }));
+    await waitFrame();
+    const api = apiHolder.api;
+    if (!api) throw new Error('controller api not mounted');
+
+    // 例如进入 AI 模式新增输出列后，编辑器把选区滚进视野：表格滚动发生在监听重建期间，事件被错过。
+    context.contentDom.scrollLeft = 143;
+    context.editor.emitTransaction({ transaction: { getMeta: () => undefined, docChanged: true, selectionSet: false } });
+    await waitFrame();
+
+    expect(api.scrollLeft.value).toBe(143);
+  });
+
+  it('does not let a selection-only transaction cancel a pending full measurement', async () => {
+    const context = createEditorContext();
+    const visible = ref(true);
+    const tableInfo = ref<{ pos: number } | null>({ pos: context.tablePos });
+    const editor = shallowRef<TestEditor | null>(context.editor);
+    const apiHolder: { api: ControllerApi | null } = { api: null };
+    const map = TableMap.get(context.tableNode);
+    const firstColumnCells = new Set([
+      context.tablePos + 1 + map.positionAt(0, 0, context.tableNode),
+      context.tablePos + 1 + map.positionAt(1, 0, context.tableNode),
+    ]);
+    let firstColumnWidth = 100;
+    const getCellRect = (_editor: TableCoordinateHeaderEventEditor, cellDocPos: number): RectMetrics => (
+      firstColumnCells.has(cellDocPos)
+        ? { left: 0, top: 0, width: firstColumnWidth, height: 30 }
+        : { left: firstColumnWidth, top: 0, width: 140, height: 30 }
+    );
+
+    mountedApps.push(mountControllerHost({
+      visible,
+      tableInfo,
+      editor,
+      getCellRect,
+      onApi: (nextApi) => {
+        apiHolder.api = nextApi;
+      },
+    }));
+    await waitFrame();
+    const api = apiHolder.api;
+    if (!api) throw new Error('controller api not mounted');
+    expect(api.columnWidths.value).toEqual([100, 140]);
+
+    // AI 填充写入内容改变了列宽，同一帧里紧跟一个只改选区的事务。
+    firstColumnWidth = 260;
+    context.editor.emitTransaction({ transaction: { getMeta: () => undefined, docChanged: true, selectionSet: false } });
+    context.editor.emitTransaction({ transaction: { getMeta: () => undefined, docChanged: false, selectionSet: true } });
+    await waitFrame();
+    expect(api.columnWidths.value).toEqual([260, 140]);
+
+    // 之后的文档变化仍会重测，不会因为上一轮被取消而一直跳过。
+    firstColumnWidth = 180;
+    context.editor.emitTransaction({ transaction: { getMeta: () => undefined, docChanged: true, selectionSet: false } });
+    await waitFrame();
+    expect(api.columnWidths.value).toEqual([180, 140]);
+  });
+
   it('keeps transaction listener registration idempotent across context changes and cleanup', async () => {
     const context = createEditorContext();
     const visible = ref(true);
