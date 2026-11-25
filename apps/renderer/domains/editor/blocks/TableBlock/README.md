@@ -26,7 +26,9 @@ TableBlock 是基于 Tiptap 实现的表格编辑功能，为编辑器提供轻�
 - **点击**：选中整列 / 整行（`CellSelection`），浮动工具条出现在整张表上方（表格上沿在可见区内时），同时从柄的边缘展开菜单（复用 Renderer UI `CustomSelect` 的 menu 模式）。列：左 / 右侧插入列、对齐（子菜单）、按内容适配列宽（仅有存储宽度时可用）、AI 填充此列、删除列；行：上 / 下方插入行（表头之上禁用并说明原因）、第一行的设为 / 取消表头、删除行。菜单不把柄当触发元素，关闭后下一帧把焦点交回正文，撤销与继续输入都作用于编辑器。
 - **拖动**：拖柄移动行列，拖动中显示落点线；范围内有合并单元格、或要移动表头行时拒绝并提示原因。结构命令在 `structure/tableStructureCommands.ts`，都按 TableMap 逻辑行列工作，只改传入的事务（一步撤销）：移动只替换表格内部的行，表格节点不变；插入列在整表都没有存储列宽时不给新列写 150px 默认宽度；切换表头行同步 `withHeaderRow`。
 - **工具条**：插入、删除行列移到柄与菜单，工具条只保留 AI 填充、对齐、合并、拆分。
-- **列宽**：分隔处只画 2px 细线；双击按内容适配（`extensions/TableColumnFitExtension`，以 prosemirror-tables 列宽插件记录的当前分隔线为准，因为两次单击之间调整柄会被重绘）。Tiptap `updateColumns` 在列失去宽度时不清旧的 `width`，`WorkspaceTableView.update` 会补清。
+- **列宽**：调整柄透明，靠近分隔线只显示调整光标、不画线（列宽插件在边框 5px 内就挂上调整柄，画线会在指针经过格子时不断闪出绿线）；双击按内容适配（`extensions/TableColumnFitExtension`，以 prosemirror-tables 列宽插件记录的当前分隔线为准，因为两次单击之间调整柄会被重绘）。Tiptap `updateColumns` 在列失去宽度时不清旧的 `width`，`WorkspaceTableView.update` 会补清。
+- **插入的行列不写默认宽度**：整表没有存储列宽时，`insertTableColumnAt` / `insertTableRowAt`（工具条、行列柄、AI 新增输出列共用）不再给新格写 150px，否则表格变成部分列有宽度，显示、坐标头与 Agent 投影不一致；整表有存储列宽时行为不变。
+- **AI 坐标头**：列宽以实际渲染为准（`measureTableColumnWidths` 先读 DOM，DOM 不可用时才退回存储列宽）；除列宽拖动的 `style` 外，还在共用表格呈现改 `data-table-fit`（分级退让）和表格尺寸变化时下一帧整体重测位置、列宽、行高。
 - **共存**：只读编辑器、Pending（rootBlock 有修订头或处于不可编辑）与 Table AI 模式下不出现任何结构入口。菜单打开、拖动行列期间声明独立的 `table-structure-edit` 保活租约，与 `interaction-open`、`table-column-resize`、`table-ai` 互不释放。
 - **坐标系**：浮层 Teleport 到 `body`，用 `getBoundingClientRect()` 视口坐标定位，不能留在带 `transform` 的 pane 内。指针移动、滚动、窗口尺寸变化与事务都合批到下一帧重新测量（`useFrameBatch`）；柄由悬停驱动，祖先 transform 过渡期间指针静止时可能短暂不跟随，下一次指针移动即校正。
 

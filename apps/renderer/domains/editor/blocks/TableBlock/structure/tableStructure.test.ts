@@ -91,14 +91,22 @@ describe('行列柄结构命令', () => {
     expect(insertTableRowAtIndex(tr, TABLE_POS, 0)).toBe(false);
   });
 
-  it('表格没有存储列宽时，新列也不写列宽', () => {
-    const state = apply(base(), tr => insertTableColumnAtIndex(tr, TABLE_POS, 1));
+  it('表格没有存储列宽时，新列、新行都不写列宽（AI 新增输出列同一插入路径）', () => {
+    const state = apply(apply(base(), tr => insertTableColumnAtIndex(tr, TABLE_POS, 1)), tr => insertTableRowAtIndex(tr, TABLE_POS, 3));
     let widths = 0;
     tableOf(state).descendants(node => {
       if (node.attrs.colwidth !== undefined && node.attrs.colwidth !== null) widths += 1;
       return true;
     });
     expect(widths).toBe(0);
+  });
+
+  it('表格有存储列宽时，新列仍给默认宽度，新行沿用所在列宽度', () => {
+    const sized = createState([[{ text: 'a', colwidth: [120] }, { text: 'b', colwidth: [80] }], [{ text: 'c', colwidth: [120] }, { text: 'd', colwidth: [80] }]]);
+    const next = apply(apply(sized, tr => insertTableColumnAtIndex(tr, TABLE_POS, 2)), tr => insertTableRowAtIndex(tr, TABLE_POS, 2));
+    const widths: unknown[] = [];
+    tableOf(next).lastChild!.forEach(item => widths.push(item.attrs.colwidth));
+    expect(widths).toEqual([[120], [80], [150]]);
   });
 
   it('移动列：内容随列移动，表格节点不变', () => {

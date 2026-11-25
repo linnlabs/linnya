@@ -111,6 +111,7 @@ export function useTableCoordinateHeaderController(
   let pageScrollContainer: PageScrollContainer | null = null;
   let subscribedEditor: TableCoordinateHeaderEventEditor | null = null;
   let domObserver: MutationObserver | null = null;
+  let sizeObserver: ResizeObserver | null = null;
   let rafId: number | null = null;
   let measureRequested = false;
   let lastRequestSource = 'init';
@@ -166,7 +167,7 @@ export function useTableCoordinateHeaderController(
     lastTableRect = metrics.tableRect;
   };
 
-  const measureColumnWidths = (forceDomMeasurement = false): void => {
+  const measureColumnWidths = (): void => {
     const startedAt = performance.now?.() ?? Date.now();
     const editor = options.editor.value;
     const tablePos = readTablePos(options.tableInfo.value);
@@ -176,7 +177,6 @@ export function useTableCoordinateHeaderController(
       editor,
       tablePos,
       getCellRect: options.getCellRect,
-      forceDomMeasurement,
       debug: dlog,
     });
     if (!widths) return;
@@ -313,6 +313,8 @@ export function useTableCoordinateHeaderController(
   };
 
   const cleanupDomObserver = (): void => {
+    sizeObserver?.disconnect();
+    sizeObserver = null;
     if (!domObserver) return;
     dlog('cleanupDomObserver');
     domObserver.disconnect();
@@ -343,25 +345,36 @@ export function useTableCoordinateHeaderController(
       }
 
       dlog('DOM Mutation observed, immediate measurement.');
-      cancelPendingFrame();
-
-      rafId = requestFrame(() => {
-        if (observerSessionId !== currentSessionId.value) {
-          dlog('DOM Mutation rAF cancelled: session changed');
-          rafId = null;
-          return;
-        }
-
-        dlog('DOM Mutation rAF firing - immediate update');
-        measureColumnWidths(true);
-        rafId = null;
-      });
+      remeasureNextFrame(observerSessionId);
     });
 
+    // 列宽拖动改 col 的 style；共用表格呈现的分级退让改 table 的 data-table-fit（内边距、长文本最小宽度随之变化）。
     domObserver.observe(tableDom, {
       attributes: true,
-      attributeFilter: ['style'],
+      attributeFilter: ['style', 'data-table-fit'],
       subtree: true,
+    });
+
+    // 表格尺寸变化（换行、行高、按内容分列后的重新分配）不一定伴随属性变化，用尺寸观察兜底。
+    if (typeof ResizeObserver !== 'undefined') {
+      const table = tableDom.querySelector('table') ?? tableDom;
+      sizeObserver = new ResizeObserver(() => remeasureNextFrame(observerSessionId));
+      sizeObserver.observe(table);
+    }
+  };
+
+  /** 下一帧重新测量位置、列宽与行高；会话切换后的旧回调直接丢弃。 */
+  const remeasureNextFrame = (observerSessionId: number): void => {
+    if (observerSessionId !== currentSessionId.value) return;
+    cancelPendingFrame();
+    rafId = requestFrame(() => {
+      rafId = null;
+      if (observerSessionId !== currentSessionId.value) {
+        dlog('DOM change rAF cancelled: session changed');
+        return;
+      }
+      dlog('DOM change rAF firing - full measurement');
+      performMeasurement();
     });
   };
 

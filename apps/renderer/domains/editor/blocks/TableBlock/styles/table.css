@@ -183,18 +183,11 @@
   z-index: 20;
 }
 
-/* 分隔处只画一条 2px 细线；双击按内容适配列宽（TableColumnFitExtension）。 */
-.column-resize-handle::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  border-radius: var(--radius-xs);
-  background-color: var(--color-accent);
-  transform: translateX(-50%);
-}
+/*
+ * 列宽调整柄本身透明：靠近分隔线时只显示调整光标（resize-cursor），不画线。
+ * 列宽插件在边框 5px 内就会挂上调整柄，画线会让指针经过格子时不断闪出绿线。
+ * 双击分隔线按内容适配列宽（TableColumnFitExtension）。
+ */
 
 /* 拖动线样式 */
 .resize-cursor {

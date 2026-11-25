@@ -63,43 +63,12 @@ export function selectTableAxis(state: EditorState, tablePos: number, axis: Tabl
   return setTableAxisSelection(tr, tablePos, axis, index) ? tr : null;
 }
 
-/**
- * 新列沿用表格的列宽方式：整张表都没有存储列宽时，新列也不写列宽，继续按内容分列。
- * 列插入工具默认给新格 150px，这里把“全空”的列宽数组收回为 null。
- */
-function dropDefaultWidths(tr: Transaction, tablePos: number, tableHadWidths: boolean): void {
-  if (tableHadWidths) return;
-  const table = tr.doc.nodeAt(tablePos);
-  if (!table) return;
-  table.descendants((node, offset) => {
-    if (node.type.name !== 'tableCell' && node.type.name !== 'tableHeader') return true;
-    if (node.attrs.colwidth !== null) {
-      tr.setNodeMarkup(tablePos + 1 + offset, null, { ...node.attrs, colwidth: null });
-    }
-    return false;
-  });
-}
-
-function tableHasStoredWidths(table: ProseMirrorNode): boolean {
-  let found = false;
-  table.descendants(node => {
-    if (found) return false;
-    const widths: unknown = node.attrs.colwidth;
-    if (Array.isArray(widths) && widths.some(width => typeof width === 'number' && width > 0)) found = true;
-    return node.type.name !== 'tableCell' && node.type.name !== 'tableHeader';
-  });
-  return found;
-}
-
 /** 在逻辑列分界 index（0..width）插入一列；index 等于列数即末尾追加。 */
 export function insertTableColumnAtIndex(tr: Transaction, tablePos: number, index: number): boolean {
   const rect = readTable(tr.doc, tablePos);
   if (!rect || index < 0 || index > rect.map.width) return false;
-  const hadWidths = tableHasStoredWidths(rect.table);
-  const result = insertTableColumnAt({ tr, rect, col: index });
-  if (!result) return false;
-  dropDefaultWidths(tr, tablePos, hadWidths);
-  return true;
+  // 整表没有存储列宽时，插入工具不给新列写默认宽度，表格继续按内容分列。
+  return Boolean(insertTableColumnAt({ tr, rect, col: index }));
 }
 
 /** 在逻辑行分界 index（0..height）插入一行；有表头行时不在表头之上插入。 */
