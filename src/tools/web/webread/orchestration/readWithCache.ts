@@ -20,7 +20,8 @@ const logger = new Logger('WebReadCache');
 // 10：快照保存上限从 5 万字提高到 50 万字，旧条目可能在 5 万字处截断。
 // 11：保存正文主要图片候选与页面版权声明，旧条目没有这两项。
 // 12：保留 SPA hash 路由身份、校验渲染主响应状态，旧条目可能存在串页或非 2xx 误缓存。
-const WEB_READ_CACHE_ROUTE_VERSION = 12;
+// 13：新增同源 iframe、主区隐藏容器与半静态壳升级信号，以及渲染提交前跨站 HTTP 重定向支持。
+const WEB_READ_CACHE_ROUTE_VERSION = 13;
 const DEFAULT_LOCAL_PROVIDER_IDENTITY = 'local_http';
 const DEFAULT_RENDER_PROVIDER_IDENTITY = 'local_render';
 

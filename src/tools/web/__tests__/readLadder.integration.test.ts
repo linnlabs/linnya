@@ -950,4 +950,84 @@ describe('R2 本地渲染 Provider', () => {
       expect(managed.read).toHaveBeenCalledTimes(1);
     }
   });
+
+  it('Phase 1B：纯附件目录保留 metadata_only，同源 iframe / 隐藏主体 / JSON-LD 仅触发一次渲染，JSON-LD 全文绝不写入正文', async () => {
+    const fixtureServer = createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      if (req.url === '/attachments-only') {
+        res.end('<!doctype html><html><head><title>附件目录</title></head><body><main><a href="/files/circular.pdf" title="下载通知附件 PDF"></a></main></body></html>');
+        return;
+      }
+      if (req.url === '/same-origin-iframe') {
+        res.end('<!doctype html><html><head><title>政务公告壳</title></head><body><main><iframe src="/inner/bulletin.html" title="公告正文"></iframe></main></body></html>');
+        return;
+      }
+      if (req.url === '/hidden-main') {
+        res.end(`<!doctype html><html><head><title>隐藏正文</title><meta name="citation_pdf_url" content="/files/source.pdf"></head><body><main><div id="js_content" style="visibility: hidden">${'Hidden full article text waiting for reveal. '.repeat(15)}</div></main></body></html>`);
+        return;
+      }
+      if (req.url === '/jsonld-only') {
+        res.end(`<!doctype html><html><head><title>Metadata Only</title><script type="application/ld+json">${JSON.stringify({
+          headline: 'Metadata Report',
+          articleBody: 'JSONLD_HIDDEN_ARTICLE_BODY '.repeat(35),
+        })}</script></head><body><article><h1>Metadata Report</h1><p>Please sign in.</p></article></body></html>`);
+        return;
+      }
+      res.end('<!doctype html><html><body></body></html>');
+    });
+    await new Promise<void>((resolve) => fixtureServer.listen(0, '127.0.0.1', resolve));
+    const addr = fixtureServer.address();
+    if (!addr || typeof addr === 'string') throw new Error('Expected fixture port');
+    const localHttp = new LocalHttpProvider({
+      resolveHost: async (url) => ({
+        hostname: url.hostname,
+        addresses: [{ address: '127.0.0.1', family: 4 }],
+      }),
+    });
+
+    try {
+      const attachRender = createRenderProvider();
+      const attachRes = await readWebPageWithLadder(
+        { url: `http://gov.example.test:${addr.port}/attachments-only` },
+        { provider: localHttp, renderProvider: attachRender.provider, managedProvider: null },
+      );
+      expect(attachRes.selectedProvider).toBe('local_http');
+      expect(attachRes.readResult.warnings).toContain('metadata_only');
+      expect(attachRender.read).not.toHaveBeenCalled();
+
+      const iframeRender = createRenderProvider();
+      const iframeRes = await readWebPageWithLadder(
+        { url: `http://gov.example.test:${addr.port}/same-origin-iframe` },
+        { provider: localHttp, renderProvider: iframeRender.provider, managedProvider: null },
+      );
+      expect(iframeRes.selectedProvider).toBe('local_render');
+      expect(iframeRes.escalationReason).toBe('js_required');
+      expect(iframeRender.read).toHaveBeenCalledTimes(1);
+
+      const hiddenRender = createRenderProvider();
+      const hiddenRes = await readWebPageWithLadder(
+        { url: `http://gov.example.test:${addr.port}/hidden-main` },
+        { provider: localHttp, renderProvider: hiddenRender.provider, managedProvider: null },
+      );
+      expect(hiddenRes.selectedProvider).toBe('local_render');
+      expect(hiddenRender.read).toHaveBeenCalledTimes(1);
+
+      const jsonLdRender = createRenderProvider(createReadabilityResult({
+        warnings: ['empty_content'],
+        qualityScore: 0,
+        renderMode: 'js',
+      }));
+      const jsonLdErr = await readWebPageWithLadder(
+        { url: `http://gov.example.test:${addr.port}/jsonld-only` },
+        { provider: localHttp, renderProvider: jsonLdRender.provider, managedProvider: null },
+      ).catch((failure: unknown) => failure);
+      expect(jsonLdErr).toBeInstanceOf(WebFailureError);
+      expect((jsonLdErr as WebFailureError).kind).toBe('managed_disabled');
+      expect(String(jsonLdErr)).not.toContain('JSONLD_HIDDEN_ARTICLE_BODY');
+      expect(jsonLdRender.read).toHaveBeenCalledTimes(1);
+    } finally {
+      fixtureServer.closeAllConnections();
+      await new Promise<void>((resolve, reject) => fixtureServer.close((err) => (err ? reject(err) : resolve())));
+    }
+  });
 });

@@ -65,6 +65,42 @@ async function run(): Promise<void> {
       response.end();
       return;
     }
+    if (route === '/redirect-external') {
+      response.writeHead(302, { Location: `http://other-site.test:${port}/spa` });
+      response.end();
+      return;
+    }
+    if (route === '/redirect-to-script-escape') {
+      response.writeHead(302, { Location: `http://other-site.test:${port}/escape-to-third` });
+      response.end();
+      return;
+    }
+    if (route === '/redirect-denied-dns') {
+      response.writeHead(302, { Location: `http://blocked-by-dns.test:${port}/spa` });
+      response.end();
+      return;
+    }
+    if (route === '/escape-to-third') {
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><body><div id="app">Redirecting</div><script>
+        setTimeout(() => {
+          window.location.href = 'http://third-site.test:${port}/static';
+        }, 10);
+      </script></body></html>`);
+      return;
+    }
+    if (route === '/hidden-reveal') {
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><head><title>Hidden Reveal</title></head><body><main>
+        <h1>Hidden Container</h1>
+        <div id="js_content" style="visibility: hidden">PENDING</div>
+        <script>setTimeout(() => {
+          const el = document.querySelector('#js_content');
+          el.textContent = ${JSON.stringify('REVEALED MAIN BODY '.repeat(35))};
+          el.style.visibility = 'visible';
+        }, 30);</script></main></body></html>`);
+      return;
+    }
     if (route === '/redirect-site') {
       response.writeHead(302, { Location: `http://web-render.test:${port}/spa` });
       response.end();
@@ -358,6 +394,54 @@ async function run(): Promise<void> {
       await restrictedManager.dispose();
     }
 
+    const r6ValidatedHosts: string[] = [];
+    const r6Worker = new WebPageRenderWorker({
+      runtime: createElectronWebPageRenderRuntime({
+        validateRequestUrl: async (rawUrl) => {
+          const parsed = new URL(rawUrl);
+          const host = parsed.hostname.toLowerCase();
+          r6ValidatedHosts.push(host);
+          if (host === 'blocked-by-dns.test') {
+            throw new Error('Blocked fixture host');
+          }
+        },
+      }),
+      partition: `web-render:e2e-r6-${process.pid}`,
+      settleDelayMs: 250,
+      loadTimeoutMs: 2_000,
+      renderTimeoutMs: 2_000,
+      totalTimeoutMs: 5_000,
+    });
+    let externalRedirectResult = { rendered: false, finalUrlMatched: false, validatedBothHosts: false };
+    let scriptEscapeAfterRedirectKind = '';
+    let deniedDnsRedirect = { kind: '', netErrorCode: undefined as number | undefined };
+    let hiddenRevealContent = false;
+    try {
+      const extRendered = await r6Worker.render({ url: `${origin}/redirect-external` });
+      externalRedirectResult = {
+        rendered: extRendered.html.includes('SPA_RENDERED_CONTENT'),
+        finalUrlMatched: extRendered.finalUrl === `http://other-site.test:${port}/spa`,
+        validatedBothHosts: r6ValidatedHosts.includes('www.web-render.test') && r6ValidatedHosts.includes('other-site.test'),
+      };
+      scriptEscapeAfterRedirectKind = await r6Worker.render({ url: `${origin}/redirect-to-script-escape` })
+        .then(() => 'rendered', (err: unknown) => readFailure(err).kind);
+      deniedDnsRedirect = await r6Worker.render({ url: `${origin}/redirect-denied-dns` })
+        .then(
+          () => ({ kind: 'rendered', netErrorCode: undefined }),
+          (err: unknown) => {
+            const code = err && typeof err === 'object' ? Reflect.get(err, 'netErrorCode') : undefined;
+            return {
+              kind: readFailure(err).kind,
+              ...(typeof code === 'number' ? { netErrorCode: code } : {}),
+            };
+          },
+        );
+      const revealed = await new LocalRenderProvider({ renderer: worker }).read({ url: `${origin}/hidden-reveal` });
+      hiddenRevealContent = revealed.content.includes('REVEALED MAIN BODY');
+    } finally {
+      await r6Worker.dispose();
+    }
+
     const result = {
       spaRendered: spa.html.includes('SPA_RENDERED_CONTENT'),
       permissionDenied: spa.html.includes('data-permission="denied"'),
@@ -407,6 +491,10 @@ async function run(): Promise<void> {
         restrictedBeforeIdle,
         restrictedAfterIdle,
       },
+      preCommitCrossSiteRedirect: externalRedirectResult,
+      scriptEscapeAfterRedirectKind,
+      deniedDnsRedirect,
+      hiddenRevealContent,
       popupRequests: state.popupRequests,
       downloadRequests: state.downloadRequests,
     };
@@ -419,7 +507,7 @@ async function run(): Promise<void> {
 
 app.commandLine.appendSwitch('disable-gpu');
 // 合成域名只在夹具 Chromium 中解析到 localhost；生产 runtime 仍执行正常 URL/DNS 准入。
-app.commandLine.appendSwitch('host-resolver-rules', 'MAP *.web-render.test 127.0.0.1, MAP web-render.test 127.0.0.1');
+app.commandLine.appendSwitch('host-resolver-rules', 'MAP *.web-render.test 127.0.0.1, MAP web-render.test 127.0.0.1, MAP other-site.test 127.0.0.1, MAP third-site.test 127.0.0.1, MAP blocked-by-dns.test 127.0.0.1');
 app.commandLine.appendSwitch('no-proxy-server');
 // 安全测试会主动销毁最后一个隐藏窗；保持主进程存活以验证下一任务能否重建。
 app.on('window-all-closed', () => undefined);

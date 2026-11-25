@@ -6,7 +6,7 @@ Web 的读取阶梯、正文质量和来源合同见 [`Web README`](../../tools/
 
 ## 导航与请求准入
 
-主框架导航只允许 HTTP(S)、无 URL 用户名/密码，并留在请求 URL 的同一注册域。
+主框架初次导航提交前（`did-navigate` 之前）收到的服务端 HTTP 重定向（`will-redirect`）在满足最多 5 跳与公共可解析注册域准入（拒绝 IP、localhost、凭据与危险协议）时放行，逐跳仍执行 session `onBeforeRequest` URL/DNS 准入；初次提交后即锚定到提交地址，后续导航与提交后跳转仅允许留在同一注册域。
 `isAllowedRenderNavigation` 使用 `tldts` 的 Public Suffix List，包括私有后缀，因而允许
 `www.example.com → example.com` 和多层后缀下的同站跳转；不把不同 `github.io` 等托管租户合并。
 IP、localhost 和跨注册域导航拒绝。`about:blank` 只保留窗口初始化用途；弹窗仍一律拒绝。
@@ -64,5 +64,6 @@ Session 的 `onHeadersReceived` 在响应正文交给页面前观察每个主框
 真实 Electron 夹具还核对挑战页被取消后脚本与子资源请求为 0、普通 202 仍正常渲染，以及受控延迟页面：延迟数据的应用壳
 取得正文、拖住 load 的图片不致整页失败、数据请求不结束或已结束仍为空的应用壳报告未渲染、无脚本空页快速返回。
 另用真实 fetch 与 XMLHttpRequest 的连接断开验证失败事实经 Provider 进入恢复建议，不再提示重复读取无效；
-并覆盖渲染端长 403 错误页不写入正文、以及 Manager 在 `idleTimeoutMs` 回收重建 Worker 后只创建一次槽位 session 且私有回环地址准入守卫依然生效。
+并覆盖渲染端长 403 错误页不写入正文、提交前跨站 302 重定向成功与提交后脚本跨站跳转拦截、隐藏主区容器渲染揭示、
+以及 Manager 在 `idleTimeoutMs` 回收重建 Worker 后只创建一次槽位 session 且私有回环地址准入守卫依然生效。
 真实 Electron 夹具入口为 `pnpm run test:web-render:electron`，不依赖外部站点。

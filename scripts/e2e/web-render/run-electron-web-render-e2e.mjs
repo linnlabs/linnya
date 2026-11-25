@@ -101,8 +101,16 @@ try {
       restrictedBeforeIdle: { kind: 'load_failed', netErrorCode: -20 },
       restrictedAfterIdle: { kind: 'load_failed', netErrorCode: -20 },
     },
+    preCommitCrossSiteRedirect: {
+      rendered: true,
+      finalUrlMatched: true,
+      validatedBothHosts: true,
+    },
+    scriptEscapeAfterRedirectKind: 'navigation_blocked',
+    deniedDnsRedirect: { kind: 'load_failed', netErrorCode: -20 },
+    hiddenRevealContent: true,
     popupRequests: 0,
-    downloadRequests: 4,
+    downloadRequests: 5,
   };
   if (JSON.stringify(result) !== JSON.stringify(expected)) {
     throw new Error(`Electron Web Render E2E 结果不符合预期。\nactual=${JSON.stringify(result)}\nexpected=${JSON.stringify(expected)}`);

@@ -5,6 +5,7 @@ import {
 } from '../../tools/web/shared/urlPolicy';
 import type { WebResponseHeaderLookup } from '../../tools/web/shared/webAccessChallenge';
 import type {
+  WebPageRenderNavigationTrigger,
   WebPageRenderResponseDecision,
   WebPageRenderSubresourceEvent,
   WebPageRenderRuntime,
@@ -59,19 +60,41 @@ function createWindow(options: WebPageRenderWindowOptions): WebPageRenderWindow 
     getURL: () => webContents.getURL(),
     isDestroyed: () => renderWindow.isDestroyed() || webContents.isDestroyed(),
     destroy: () => renderWindow.destroy(),
-    installNavigationGuards: (isAllowed, onBlocked) => {
-      const guardNavigation = (event: { preventDefault(): void }, targetUrl: string): void => {
-        if (isAllowed(targetUrl)) return;
+    installNavigationGuards: (isAllowed, onBlocked, onDidNavigate) => {
+      const guardNavigation = (
+        event: { preventDefault(): void },
+        targetUrl: string,
+        trigger: WebPageRenderNavigationTrigger,
+      ): void => {
+        if (isAllowed(targetUrl, trigger)) return;
         event.preventDefault();
         onBlocked(targetUrl);
       };
-      webContents.on('will-navigate', guardNavigation);
-      webContents.on('will-redirect', guardNavigation);
+      const guardWillNavigate = (event: { preventDefault(): void }, targetUrl: string): void => {
+        guardNavigation(event, targetUrl, 'navigate');
+      };
+      const guardWillRedirect = (
+        event: { preventDefault(): void },
+        targetUrl: string,
+        _isInPlace: boolean,
+        isMainFrame: boolean,
+      ): void => {
+        // 只拦截主框架重定向；子框架网络跳转另有 session 准入，且同源内联会在后续单独判定。
+        if (!isMainFrame) return;
+        guardNavigation(event, targetUrl, 'redirect');
+      };
+      const handleDidNavigate = (_event: unknown, targetUrl: string): void => {
+        onDidNavigate?.(targetUrl);
+      };
+      webContents.on('will-navigate', guardWillNavigate);
+      webContents.on('will-redirect', guardWillRedirect);
+      webContents.on('did-navigate', handleDidNavigate);
       webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
       return () => {
         if (webContents.isDestroyed()) return;
-        webContents.off('will-navigate', guardNavigation);
-        webContents.off('will-redirect', guardNavigation);
+        webContents.off('will-navigate', guardWillNavigate);
+        webContents.off('will-redirect', guardWillRedirect);
+        webContents.off('did-navigate', handleDidNavigate);
       };
     },
     onClosed: (listener) => {

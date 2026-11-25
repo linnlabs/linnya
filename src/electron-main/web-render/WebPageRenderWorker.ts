@@ -13,10 +13,12 @@ import {
 import {
   detectWebAccessChallengeHeader,
   pickWebAccessChallengeHeaders,
+  type WebResponseHeaderLookup,
 } from '../../tools/web/shared/webAccessChallenge';
 import { Logger } from '../../shared/logger';
 import type {
   WebPageRenderMainFrameResponse,
+  WebPageRenderNavigationTrigger,
   WebPageRenderResponseDecision,
   WebPageRenderRuntime,
   WebPageRenderSession,
@@ -24,7 +26,10 @@ import type {
   WebPageRenderWindow,
 } from './definitions/webPageRenderRuntime';
 import { electronWebPageRenderRuntime } from './electronWebPageRenderRuntime';
-import { isAllowedRenderNavigation } from './functions/isAllowedRenderNavigation';
+import {
+  isAllowedPreCommitRedirectTarget,
+  isAllowedRenderNavigation,
+} from './functions/isAllowedRenderNavigation';
 import {
   assessRenderReadiness,
   type RenderReadinessSample,
@@ -37,6 +42,7 @@ const DEFAULT_SETTLE_DELAY_MS = 250;
 const DEFAULT_MAX_SETTLE_DELAY_MS = 3_000;
 const READINESS_POLL_INTERVAL_MS = 200;
 const DEFAULT_MAX_HTML_BYTES = 5 * 1024 * 1024;
+const MAX_PRE_COMMIT_REDIRECTS = 5;
 const READ_OUTER_HTML_SCRIPT = 'document.documentElement.outerHTML';
 const READINESS_SCRIPT = `(() => {
   const body = document.body;
@@ -91,6 +97,19 @@ async function runWithTimeout<T>(
 
 
 
+function isHttpRedirectResponse(statusCode: number, headers: WebResponseHeaderLookup): boolean {
+  if (
+    statusCode !== 301
+    && statusCode !== 302
+    && statusCode !== 303
+    && statusCode !== 307
+    && statusCode !== 308
+  ) {
+    return false;
+  }
+  return Boolean(headers.get('location')?.trim());
+}
+
 /** Electron loadURL 拒绝时附带的数值 net 错误码；只接纳负整数。 */
 function readNetErrorCode(error: unknown): number | undefined {
   if (!error || typeof error !== 'object') return undefined;
@@ -124,7 +143,9 @@ export class WebPageRenderWorker {
   private renderWindow: WebPageRenderWindow | null = null;
   private sessionSecurityCleanup: (() => void) | null = null;
   private windowLifecycle: WindowLifecycle | null = null;
-  private activeTargetUrl: string | null = null;
+  private activeAnchorUrl: string | null = null;
+  private hasCommittedNavigation = false;
+  private preCommitRedirectCount = 0;
   private activeMainResponse: WebPageMainResponse | null = null;
   private readonly activeDataRequests = new Set<number>();
   private sawDataRequest = false;
@@ -171,7 +192,9 @@ export class WebPageRenderWorker {
       this.destroyWindow();
     };
     this.cancelActive = cancel;
-    this.activeTargetUrl = params.url;
+    this.activeAnchorUrl = params.url;
+    this.hasCommittedNavigation = false;
+    this.preCommitRedirectCount = 0;
     this.activeMainResponse = null;
     this.resetSubresourceTracking();
 
@@ -195,7 +218,9 @@ export class WebPageRenderWorker {
       // 不可信远程页面不得在任务之间继续运行；只复用隔离 session，不复用页面进程。
       this.destroyWindow();
       this.cancelActive = null;
-      this.activeTargetUrl = null;
+      this.activeAnchorUrl = null;
+      this.hasCommittedNavigation = false;
+      this.preCommitRedirectCount = 0;
       this.activeMainResponse = null;
       this.resetSubresourceTracking();
     }
@@ -300,7 +325,8 @@ export class WebPageRenderWorker {
       );
     }
     const finalUrl = renderWindow.getURL() || url;
-    if (!isAllowedRenderNavigation(url, finalUrl)) {
+    const anchorUrl = this.activeAnchorUrl ?? url;
+    if (!isAllowedRenderNavigation(anchorUrl, finalUrl)) {
       this.destroyWindow();
       throw new WebPageRenderError('navigation_blocked', `网页渲染拒绝跨站导航到 ${finalUrl}。`);
     }
@@ -353,7 +379,7 @@ export class WebPageRenderWorker {
   }
 
   private handleSubresource(event: WebPageRenderSubresourceEvent): void {
-    if (this.activeTargetUrl === null) return;
+    if (this.activeAnchorUrl === null) return;
     if (event.category === 'script_or_style') {
       // 窗口销毁或导航中止的 ERR_ABORTED 是本工具自己的动作，不算站点资源失败。
       if (event.phase !== 'failed' || event.error === 'net::ERR_ABORTED') return;
@@ -434,9 +460,9 @@ export class WebPageRenderWorker {
       const renderWindow = this.runtime.createWindow({ partition: this.partition });
       const cleanups = [
         renderWindow.installNavigationGuards(
-          (candidateUrl) => this.activeTargetUrl !== null
-            && isAllowedRenderNavigation(this.activeTargetUrl, candidateUrl),
+          (candidateUrl, trigger) => this.isNavigationAllowed(candidateUrl, trigger),
           (blockedUrl) => this.handleNavigationBlocked(blockedUrl),
+          (committedUrl) => this.handleDidNavigate(committedUrl),
         ),
         renderWindow.onClosed(() => this.handleWindowUnavailable('渲染窗口已关闭。')),
         renderWindow.onRenderProcessGone((reason) => {
@@ -461,23 +487,80 @@ export class WebPageRenderWorker {
   ): WebPageRenderResponseDecision {
     const cancel = this.cancelActive;
     // 没有进行中的任务时不应有页面请求；拒绝而不是放行未知加载。
-    if (!cancel || this.activeTargetUrl === null) return 'cancel';
+    if (!cancel || this.activeAnchorUrl === null) return 'cancel';
     const mainResponse: WebPageMainResponse = {
       status: response.statusCode,
       headers: pickWebAccessChallengeHeaders(response.headers, WEB_PAGE_MAIN_RESPONSE_HEADER_MAX_CHARS),
     };
+    if (detectWebAccessChallengeHeader(response.headers)) {
+      this.activeMainResponse = mainResponse;
+      // 先让 runtime 同步取消响应，再结束任务并销毁窗口。
+      queueMicrotask(() => {
+        if (this.cancelActive !== cancel) return;
+        cancel(new WebPageRenderError(
+          'access_challenge',
+          `主文档返回站点访问验证（HTTP ${response.statusCode}），已在页面执行前停止渲染。`,
+          { mainResponse },
+        ));
+      });
+      return 'cancel';
+    }
+    if (isHttpRedirectResponse(response.statusCode, response.headers)) {
+      this.activeMainResponse = null;
+      return 'continue';
+    }
     this.activeMainResponse = mainResponse;
-    if (!detectWebAccessChallengeHeader(response.headers)) return 'continue';
-    // 先让 runtime 同步取消响应，再结束任务并销毁窗口。
-    queueMicrotask(() => {
-      if (this.cancelActive !== cancel) return;
-      cancel(new WebPageRenderError(
-        'access_challenge',
-        `主文档返回站点访问验证（HTTP ${response.statusCode}），已在页面执行前停止渲染。`,
-        { mainResponse },
-      ));
-    });
-    return 'cancel';
+    return 'continue';
+  }
+
+  private isNavigationAllowed(
+    candidateUrl: string,
+    trigger: WebPageRenderNavigationTrigger,
+  ): boolean {
+    if (this.activeAnchorUrl === null) return false;
+    // 初次主框架提交前允许服务端跨站 HTTP 重定向（短链、DOI、机构迁址），
+    // 受有界跳数和公共注册域准入约束；提交后锚定到提交地址，禁止跨站跳离。
+    let allowed: boolean;
+    if (trigger === 'redirect' && !this.hasCommittedNavigation) {
+      if (this.preCommitRedirectCount >= MAX_PRE_COMMIT_REDIRECTS) {
+        allowed = false;
+      } else if (!isAllowedPreCommitRedirectTarget(candidateUrl)) {
+        allowed = false;
+      } else {
+        this.preCommitRedirectCount += 1;
+        allowed = true;
+      }
+    } else {
+      allowed = isAllowedRenderNavigation(this.activeAnchorUrl, candidateUrl);
+    }
+    if (allowed && trigger === 'redirect') {
+      this.activeMainResponse = null;
+    }
+    return allowed;
+  }
+
+  private handleDidNavigate(committedUrl: string): void {
+    // Chromium 在请求被 net/策略拒绝（如 ERR_BLOCKED_BY_CLIENT -20）时会先触发向
+    // chrome-error:// 的内部提交，跳过它才能保留 loadURL 抛出的真实 netErrorCode。
+    if (
+      this.activeAnchorUrl === null
+      || committedUrl === 'about:blank'
+      || committedUrl.startsWith('chrome-error://')
+    ) {
+      return;
+    }
+    if (!this.hasCommittedNavigation) {
+      if (!isAllowedPreCommitRedirectTarget(committedUrl)) {
+        this.handleNavigationBlocked(committedUrl);
+        return;
+      }
+      this.hasCommittedNavigation = true;
+      this.activeAnchorUrl = committedUrl;
+      return;
+    }
+    if (!isAllowedRenderNavigation(this.activeAnchorUrl, committedUrl)) {
+      this.handleNavigationBlocked(committedUrl);
+    }
   }
 
   private handleNavigationBlocked(blockedUrl: string): void {

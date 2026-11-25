@@ -1,4 +1,5 @@
 import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
+import { normalizeExtractedText } from './extractSemanticDom';
 
 const EXCLUDED_SELECTOR = [
   'script', 'style', 'noscript', 'template', 'iframe', 'object', 'embed',
@@ -10,6 +11,12 @@ const EXCLUDED_SELECTOR = [
 const HIDDEN_SELECTOR = '[hidden], [aria-hidden="true" i]';
 const MAIN_SELECTOR = 'article, main, [role="main"]';
 const CONTROL_SELECTOR = 'button, [role="button"]';
+const HIDDEN_METRIC_IGNORED_CHROME_SELECTOR =
+  'header, [role="banner"], [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
+
+export interface PrepareReadableDocumentMetrics {
+  readonly hiddenMainTextLength: number;
+}
 
 function isHiddenStyle(declaration: string): boolean {
   const separator = declaration.indexOf(':');
@@ -19,14 +26,21 @@ function isHiddenStyle(declaration: string): boolean {
     || (property === 'visibility' && (value === 'hidden' || value === 'collapse'));
 }
 
-function hasHiddenStyle(element: Element): boolean {
+export function hasHiddenInlineStyle(element: Element): boolean {
   return (element.getAttribute('style') ?? '').split(';').some(isHiddenStyle);
+}
+
+function hasAncestorInSet(element: Element, candidates: ReadonlySet<Element>): boolean {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    if (candidates.has(parent)) return true;
+  }
+  return false;
 }
 
 function isVisibleControl(control: Element): boolean {
   if (control.matches('[disabled], [aria-disabled="true" i]')) return false;
   for (let node: Element | null = control; node; node = node.parentElement) {
-    if (node.matches(HIDDEN_SELECTOR) || hasHiddenStyle(node)) return false;
+    if (node.matches(HIDDEN_SELECTOR) || hasHiddenInlineStyle(node)) return false;
   }
   return true;
 }
@@ -78,19 +92,37 @@ function resolveContentUrl(value: string, baseUrl?: string): string | undefined 
 }
 
 /** 两条抽取路径共用可见性与链接规则，避免增强抽取器失败时把隐藏旧值当正文。 */
-export function prepareReadableDocument(document: Document, finalUrl?: string): void {
+export function prepareReadableDocument(
+  document: Document,
+  finalUrl?: string,
+): PrepareReadableDocumentMetrics {
   const declaredBase = document.querySelector('base[href]')?.getAttribute('href');
   const baseUrl = (declaredBase ? resolveContentUrl(declaredBase, finalUrl) : undefined) ?? finalUrl;
   for (const element of document.querySelectorAll(EXCLUDED_SELECTOR)) element.remove();
   expandReadableDisclosures(document);
   for (const element of document.querySelectorAll(HIDDEN_SELECTOR)) element.remove();
-  for (const element of document.querySelectorAll('[style]')) {
-    if (hasHiddenStyle(element)) element.remove();
+
+  // 先统计被内联隐藏的主区/正文区可见字符量（排除弹窗与顶栏，按最外层隐藏节点去重），
+  // 再全部移除，保证隐藏文本绝不进入任何抽取结果，同时给动态揭示容器留下升级信号。
+  const inlineHiddenElements = [...document.querySelectorAll('[style]')].filter(hasHiddenInlineStyle);
+  const inlineHiddenSet = new Set<Element>(inlineHiddenElements);
+  const hasMainRegion = document.querySelector(MAIN_SELECTOR) !== null;
+  let hiddenMainTextLength = 0;
+  for (const element of inlineHiddenElements) {
+    if (hasAncestorInSet(element, inlineHiddenSet)) continue;
+    if (element.closest(HIDDEN_METRIC_IGNORED_CHROME_SELECTOR)) continue;
+    const insideMain = element.closest(MAIN_SELECTOR) !== null;
+    if (insideMain || (!hasMainRegion && element.closest('body') !== null)) {
+      hiddenMainTextLength += normalizeExtractedText(element.textContent).length;
+    }
   }
+  for (const element of inlineHiddenElements) element.remove();
+
   for (const element of document.querySelectorAll('a[href], img[src]')) {
     const attribute = element.tagName === 'A' ? 'href' : 'src';
     const resolved = resolveContentUrl(element.getAttribute(attribute) ?? '', baseUrl);
     if (resolved) element.setAttribute(attribute, resolved);
     else element.removeAttribute(attribute);
   }
+  return { hiddenMainTextLength };
 }

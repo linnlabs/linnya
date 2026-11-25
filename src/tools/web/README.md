@@ -375,7 +375,7 @@ Reader 服务地址与环境变量名由 Web Read 自己的静态服务定义拥
 - 当前读取路由可观察边界是 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted`；失败日志还会记录状态码、响应 MIME、最终 URL、重定向数、请求尝试次数和重试次数（不记录响应正文）。`initialFailureStage` 仅用于 `dom_canonicalization/readability` 抽取阶段。尚未记录每一跳 DNS 解析地址、代理 fake-IP 判定或 DNS/连接分段耗时，不得从现有日志推断这些事实
 - 兼容 TUN 代理 fake-IP：仅域名 DNS 结果允许 `198.18/15`，字面 fake-IP、内网地址及混入内网地址的解析结果仍拒绝
 - `WebPageRenderer` port 由 Electron main 显式注入 backend bundle；渲染 worker/runtime 禁止进入 backend bundle。默认渲染 provider 只在质量信号命中后惰性创建
-- 缓存路由身份 version 12 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略、误删折叠正文、5 万字截断快照、SPA hash 路由串页及渲染端非 2xx 错误页误接纳的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss；含非空 SPA hash 路由（`#/...`、`#!/...`）的页面在 `local_http` 阶段因 HTTP 不发送 `#` 片段而强制升级渲染一次，普通 `#section` 锚点仍按原规则复用引用与缓存。
+- 缓存路由身份 version 13 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略、误删折叠正文、5 万字截断快照、SPA hash 路由串页、渲染端非 2xx 错误页误接纳及动态页面局部信号漏升级的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss；含非空 SPA hash 路由（`#/...`、`#!/...`）的页面，以及在 `local_http` 阶段出现同源内容 `iframe`（`embedded_same_origin_iframe`）、主区内联隐藏长正文（`hidden_main_content`）或半静态水合壳/超长 JSON-LD `articleBody`（`dynamic_content_pending`）的页均越过 `metadata_only` 并升级渲染一次；普通 `#section` 锚点、纯附件目录与仅含同站跨源 `iframe` 仍按原规则停在 `local_http`。JSON-LD `articleBody` 与内联隐藏文本绝不作为正文或写入 Evidence。
 
 ### 5.3 与 citations 的关系（V1：页级引用先行）
 
@@ -462,7 +462,7 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 - `WebDocument.resources` 由 Web Read provider 传递，经 `@app/schemas` 严格校验、文件缓存持久化，并在 observation 的动态不可信边界内展示；
 - 资源 URL 是页面外部内容，不是用户授权或可信操作指令。Renderer 或 Agent 若要读取它，必须重新经过 `web_read` 的 URL 策略和 Evidence 流程；
 - 当前只识别显式 DOI、全文/下载语义、常见文献仓库/正式来源链接。不要把页面所有链接暴露为“相关资源”，也不要在没有固定断言的情况下引入站点专用规则。
-- 如果正文抽取为空但页面仍提供标题、摘要或正式资源，Provider 返回成功结果并带 `metadata_only` flag；这表示“已取得页面元数据/资源，未取得正文”，不会伪装成正文成功，也不会反复升级同一 URL。没有资源的空页面仍按 `empty_content` 进入读取阶梯。
+- 如果正文抽取为空但页面仍提供标题、摘要或正式资源，Provider 返回成功结果并带 `metadata_only` flag；这表示“已取得页面元数据/资源，未取得正文”，不会伪装成正文成功，也不会反复升级同一 URL（除非同时命中明确的同源 `iframe`、主区隐藏待揭示正文或动态水合壳信号）。主区内可见尺寸、非广告/验证码的同源与同站跨源 `iframe` 均作为 `source` 资源交付；仅同源 `iframe` 在首跳触发升级信号，同站跨源 `iframe` 仅交付资源链接。没有资源的空页面仍按 `empty_content` 进入读取阶梯。
 - 短正文/质量不足进入后续读取后失败，保留此前实际发现的文件与数据资源：最多 8 条、总计约 6,000 字符（标签最多 200 字符，过长 URL 跳过而不截成新地址），全部放入失败消息的动态不可信边界。CSV/TSV 及明确的下载数据链接也可作为资源；不自动下载、换来源、分配目标 ref 或写成功 Evidence，失败不进入正文缓存。总预算 timeout 仍可交付这些线索，调用者取消不附恢复链接，策略拒绝不附资源。
 
 这一层吸收了成熟正文抽取器“正文与 metadata 独立”的经验，但不把候选库的正文选择逻辑整体移入生产。landing page 的后续扩展应先以标题、摘要、作者、日期、DOI、全文链接和正式来源链接的冻结断言验证，再决定是否新增页面角色。

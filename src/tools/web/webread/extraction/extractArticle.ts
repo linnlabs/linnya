@@ -11,6 +11,11 @@ import type { WebPageImage } from '@app/schemas';
 import { extractTabularDom, extractTabularContext } from './extractTabularDom';
 import type { WebPageResource } from '../../definitions/webDocument';
 import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
+import {
+  evaluateDynamicExtractionWarnings,
+  extractEmbeddedFrameResources,
+  inspectDynamicShellSignals,
+} from './detectDynamicPageSignals';
 import { isRecord } from '@linnya/foundation';
 
 export type ArticleExtractionWarning = WebDocumentWarning;
@@ -56,6 +61,8 @@ interface StructuredMetadata {
   byline?: string;
   publishedAt?: string;
   siteName?: string;
+  /** 仅记录 JSON-LD articleBody 的归一化字符长度作升级信号，绝不保存或输出其文本内容。 */
+  articleBodyLength?: number;
 }
 
 interface PageMetadataSnapshot {
@@ -115,13 +122,20 @@ function readJsonLdMetadata(document: Document): StructuredMetadata {
     }
   }
 
+  let metadata: Omit<StructuredMetadata, 'articleBodyLength'> = {};
+  let maxArticleBodyLength = 0;
   for (const record of records) {
+    const articleBody = readString(record['articleBody']);
+    if (articleBody) {
+      maxArticleBodyLength = Math.max(maxArticleBodyLength, normalizeExtractedText(articleBody).length);
+    }
+    if (metadata.title || metadata.publishedAt || metadata.byline || metadata.siteName) continue;
     const title = readString(record['headline']) ?? readString(record['name']);
     const publishedAt = readString(record['datePublished']);
     const byline = readNamedValue(record['author']);
     const siteName = readNamedValue(record['publisher']);
     if (title || publishedAt || byline || siteName) {
-      return {
+      metadata = {
         ...(title ? { title } : {}),
         ...(publishedAt ? { publishedAt } : {}),
         ...(byline ? { byline } : {}),
@@ -129,7 +143,10 @@ function readJsonLdMetadata(document: Document): StructuredMetadata {
       };
     }
   }
-  return {};
+  return {
+    ...metadata,
+    ...(maxArticleBodyLength > 0 ? { articleBodyLength: maxArticleBodyLength } : {}),
+  };
 }
 
 function readMeta(document: Document, selectors: string[]): string | undefined {
@@ -205,12 +222,18 @@ function extractArticleBaseline(
     extractPageResources(document, options.url, { anchors: false })
       .map(resource => [resource.url, resource] as const),
   );
+  const embeddedFrames = extractEmbeddedFrameResources(document, options.url);
+  const dynamicShellSignals = inspectDynamicShellSignals(document);
   // 懒加载属性、figure 图注和页脚版权声明在正文清理时会被删改，先从原始 DOM 读取。
   const pageImages = extractPageImages(document, options.url);
   // Readability.parse() 会原地清理 DOM；语义备选必须先读取原始主区域，
   // 否则它只能看到 Readability 已经删减过的节点，无法补回遗漏正文。
-  prepareReadableDocument(document, options.url);
-  for (const resource of extractPageResources(document, options.url, { metadata: false })) {
+  const { hiddenMainTextLength } = prepareReadableDocument(document, options.url);
+  for (const resource of [
+    ...extractPageResources(document, options.url, { metadata: false }),
+    ...embeddedFrames.sameOriginResources,
+    ...embeddedFrames.sameSiteCrossOriginResources,
+  ]) {
     if (!resourcesByUrl.has(resource.url)) resourcesByUrl.set(resource.url, resource);
   }
   const semanticCandidateCount = document.querySelectorAll('article, main, [role="main"]').length;
@@ -273,6 +296,16 @@ function extractArticleBaseline(
   if (listItemCount >= 5 && listTextLength / Math.max(1, bodyTextLength) >= 0.6) {
     warnings.add('list_dominant');
   }
+  const dynamicWarnings = evaluateDynamicExtractionWarnings({
+    textLength,
+    scriptCount,
+    sameOriginFrameCount: embeddedFrames.sameOriginResources.length,
+    hiddenMainTextLength,
+    jsonLdArticleBodyLength: jsonLd.articleBodyLength ?? 0,
+    hasEmptyMountRoot: dynamicShellSignals.hasEmptyMountRoot,
+    hasBusyMainRegion: dynamicShellSignals.hasBusyMainRegion,
+  });
+  for (const warning of dynamicWarnings) warnings.add(warning);
 
   let qualityScore = 1;
   if (warnings.has('readability_failed')) qualityScore -= 0.3;
@@ -282,6 +315,7 @@ function extractArticleBaseline(
   if (warnings.has('js_shell')) qualityScore -= 0.4;
   if (warnings.has('table_dominant')) qualityScore -= 0.15;
   if (warnings.has('list_dominant')) qualityScore -= 0.15;
+  if (dynamicWarnings.length > 0) qualityScore -= 0.3;
 
   const title = (useSemanticDom ? semantic.title : normalizeExtractedText(article?.title))
     || jsonLd.title
