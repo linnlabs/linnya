@@ -171,6 +171,7 @@ export const CONVERSATION_MESSAGE_FALLBACKS = {
   'conversation.sidebar.deleteFailed': '删除失败，请稍后重试。',
   'conversation.sidebar.loadFailed': '加载对话失败，请稍后重试。',
   'conversation.sidebar.renameFailedGeneric': '重命名失败，请稍后重试。',
+  'conversation.sidebar.pinFailed': '置顶状态没有更新，请稍后重试。',
   'conversation.sidebar.deleteFailedGeneric': '删除失败，请稍后重试。',
   'conversation.sidebar.batchDelete.title': '批量删除对话',
   'conversation.sidebar.batchDelete.message': '确定要删除选中的 {count} 个对话吗？此操作无法撤销。',
@@ -967,6 +968,7 @@ export const CONVERSATION_MESSAGE_CATALOG: MessageCatalogContribution = {
       'conversation.sidebar.deleteFailed': 'Delete failed. Please try again later.',
       'conversation.sidebar.loadFailed': 'Failed to load conversations. Please try again later.',
       'conversation.sidebar.renameFailedGeneric': 'Rename failed. Please try again later.',
+      'conversation.sidebar.pinFailed': 'Could not update the pinned state. Please try again later.',
       'conversation.sidebar.deleteFailedGeneric': 'Delete failed. Please try again later.',
       'conversation.sidebar.batchDelete.title': 'Delete conversations',
       'conversation.sidebar.batchDelete.message':

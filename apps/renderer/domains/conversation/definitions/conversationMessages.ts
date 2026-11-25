@@ -167,6 +167,7 @@ export type ConversationMessageKey =
   | 'conversation.sidebar.deleteFailed'
   | 'conversation.sidebar.loadFailed'
   | 'conversation.sidebar.renameFailedGeneric'
+  | 'conversation.sidebar.pinFailed'
   | 'conversation.sidebar.deleteFailedGeneric'
   | 'conversation.sidebar.batchDelete.title'
   | 'conversation.sidebar.batchDelete.message'
