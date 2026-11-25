@@ -57,6 +57,7 @@
   --color-accent-hover-light: var(--color-brand-550);
   --color-accent-light: var(--color-brand-500);
   --color-accent-strong-light: var(--color-brand-300);
+  --color-text-on-accent-light: var(--color-brand-800);
   --color-accent-disabled: var(--color-brand-200);
   /* 强调色文字落在强调色浅底（选中、激活）上时使用，三套主题均满足 4.5:1。 */
   --color-accent-text: var(--color-brand-700);
@@ -131,6 +132,7 @@
   --color-accent-hover-light: var(--color-brand-550);
   --color-accent-light: var(--color-brand-450);
   --color-accent-strong-light: var(--color-brand-300);
+  --color-text-on-accent-light: var(--color-brand-800);
   --color-accent-disabled: color-mix(in srgb, var(--color-brand-500) 35%, var(--color-gray-900));
   /* 强调色文字落在强调色浅底（选中、激活）上时使用，三套主题均满足 4.5:1。 */
   --color-accent-text: var(--color-brand-300);
@@ -208,6 +210,7 @@
   --color-accent-hover-light: var(--color-moon-accent-500);
   --color-accent-light: var(--color-moon-accent-400);
   --color-accent-strong-light: var(--color-moon-accent-350);
+  --color-text-on-accent-light: var(--color-moon-accent-850);
   --color-accent-disabled: var(--color-moon-accent-200);
   /* 强调色文字落在强调色浅底（选中、激活）上时使用，三套主题均满足 4.5:1。 */
   --color-accent-text: var(--color-moon-accent-700);

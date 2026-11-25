@@ -75,6 +75,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'useFrameLoop',
     'useHoverTooltipService',
     'useImagePreviewSource',
+    'useModalFocus',
     'useRepeatingTimer',
     'useTimer',
   ]),

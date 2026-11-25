@@ -6,11 +6,13 @@
     >
       <div
         v-if="isRendered"
+        ref="overlayRef"
         class="image-preview-modal"
         :class="classNames.overlay"
         role="dialog"
         aria-modal="true"
         :aria-label="displayedAlt"
+        tabindex="-1"
         @click.self="emit('close')"
       >
         <slot
@@ -42,6 +44,7 @@ import {
   resolveImagePreviewSourceImage,
 } from '../functions/imagePreviewTransition';
 import { useEscapeLayer } from '../vue/useEscapeLayer';
+import { useModalFocus } from '../vue/useModalFocus';
 
 const props = withDefaults(defineProps<ImagePreviewModalProps>(), {
   src: '',
@@ -65,6 +68,7 @@ const displayedAlt = ref(props.alt);
 // 共享元素过渡由 View Transitions 驱动，此时关闭 Vue 自带的淡入淡出类。
 const usesFadeTransition = ref(true);
 const imageRef = ref<HTMLImageElement | null>(null);
+const overlayRef = ref<HTMLElement | null>(null);
 
 function syncDisplayedContent(): void {
   displayedSrc.value = props.src ?? '';
@@ -130,4 +134,5 @@ useEscapeLayer({
   active: () => props.isVisible,
   onEscape: () => emit('close'),
 });
+useModalFocus({ active: () => props.isVisible, containerRef: overlayRef });
 </script>

@@ -501,9 +501,14 @@ Escape 归属：多层浮层同时打开时，Escape 只交给最后打开的那
 Escape 也不会落到下面的层。业务自有的全屏浮层（如设置窗）需要参与同一顺序时，调用公开的
 `useEscapeLayer({ active, onEscape })`，不要自己监听 document 的 Escape。
 
-相邻限制：组件仍未提供完整的 focus trap / 关闭后焦点恢复，背景也不会 inert；菜单、Popover、Picker 等
+键盘焦点：这三个组件打开时把焦点移进弹窗，Tab 在弹窗里循环，关闭后还给打开前的位置；业务想让某个输入框
+先得到焦点，打开后照常调用它的 `focus()` 即可。业务自有的全屏浮层调用公开的
+`useModalFocus({ active, containerRef })`，容器加 `tabindex="-1"`。确认框默认 Enter 是确认，后果严重、可能被
+误触的用 `default-action="cancel"`。
+
+相邻限制：背景不会 inert；菜单、Popover、Picker 等
 除日期、时间面板与 `CustomSelect` 的自动模式外，非 Modal 浮层各自管理 Escape，尚未并入这份顺序。业务弹窗内需要确认时必须走 `AlertDialog` 的既有上层
-语义。统一浮层栈的其余部分（焦点、inert、外部点击、非 Modal 浮层）需要单独设计并建立行为验收矩阵，
+语义。统一浮层栈的其余部分（inert、外部点击、非 Modal 浮层）需要单独设计并建立行为验收矩阵，
 不能通过滚动模式或业务 CSS 顺带修补。
 
 ## 插件 renderer 使用

@@ -535,8 +535,8 @@
   margin-left: auto;
   padding: 0 var(--space-1-5);
   border-radius: var(--radius-full);
-  background: var(--color-accent);
-  color: var(--color-text-on-accent);
+  background: var(--color-accent-strong-light);
+  color: var(--color-text-on-accent-light);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-medium);
   font-variant-numeric: tabular-nums;

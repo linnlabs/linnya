@@ -57,7 +57,7 @@
 
 强调色有三种用法，不能混用：作文字、图标、描边时用 `--color-accent`（暗色下偏亮，保证在深底上可读）；作承载反色文字的实底（主按钮等）时用 `--color-accent-solid` 与 `--color-accent-solid-hover`（暗色下更深一档，保证白字 4.5:1）；文字落在强调色浅底（选中、激活的工具条按钮与标签）上时用 `--color-accent-text`，它与 `--color-accent-bg` 的对比度在三套主题里都不低于 4.5:1，`--color-accent` 在暗色浅底上只有约 3.3:1。落在 hover 底（`--color-bg-hover`）这类带色的中性底上时也用 `--color-accent-text`：`--color-accent` 在上面浅色只有 4.49:1、暗色只有 3.9:1。
 
-`--color-accent-light` 是比 `--color-accent` 更亮的**图形**强调色，只用于渐变、光效、静止的强调描边和固定深色蒙层上的图标，不作文字色（白底 3.08:1，月蓝 3.46:1），也不表达状态或充当小圆点与手柄（这些用 `--color-accent`）。`--color-accent-strong-light` 用于强调色的浅填充与选区；强调描边与选区外框用 `--color-border-accent-light`。三者是已发布的公开 token，保留名称，不再新增文字或状态用途。
+`--color-accent-light` 是比 `--color-accent` 更亮的**图形**强调色，只用于渐变、光效、静止的强调描边和固定深色蒙层上的图标，不作文字色（白底 3.08:1，月蓝 3.46:1），也不表达状态或充当小圆点与手柄（这些用 `--color-accent`）。`--color-accent-strong-light` 用于强调色的浅填充与选区，上面要放文字（例如数字角标）时用配套的 `--color-text-on-accent-light`（三套主题里都不低于 4.5:1）；强调描边与选区外框用 `--color-border-accent-light`。三者是已发布的公开 token，保留名称，不再新增文字或状态用途。
 
 ### 2.5 功能色
 
@@ -94,6 +94,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | 克制的高对比按钮（发送、确认编辑） | `--color-bg-inverse`、`--color-bg-inverse-hover` 配 `--color-text-inverse`；浅色为深底白字，暗色为浅底深字 | 固定深灰底配白字（暗色下禁用态会比可用态更亮） |
 | 滚动条 | `--scrollbar-thumb-color`、`--scrollbar-thumb-hover-color`、`--scrollbar-track-color` | 固定灰阶 |
 | 选中、焦点、强调文字与描边 | `--color-accent`、`--color-accent-bg*`、`--color-focus-ring` | 直接引用 `--color-brand-*` |
+| 数字角标（未读、待处理的数量） | `--color-accent-strong-light` 配 `--color-text-on-accent-light`，胶囊形、`caption` 字号 | 强调色实底（太重，像主按钮）；`--color-accent-bg*`（太浅，选中行上看不出） |
 | 品牌色浅底（推荐、已选择） | `--color-accent-bg`、`--color-accent-bg-subtle` | 自行用 `color-mix` 调一个新的绿 |
 | 状态提示条、徽标 | `--color-*-bg` 配 `--color-*-text`，描边或图标用基础色 | 浅色底配基础色文字 |
 | 用户选择的内容颜色、语法高亮 | 所属 domain 的内容色 token | 把内容色上移为通用 token |

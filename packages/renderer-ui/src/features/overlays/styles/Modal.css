@@ -26,6 +26,11 @@
   box-shadow: var(--shadow-lg);
 }
 
+/* 打开时由容器接住焦点，它自己不画焦点框。 */
+.modal-container:focus {
+  outline: none;
+}
+
 .modal-header {
   display: flex;
   flex-shrink: 0;

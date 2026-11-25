@@ -2,6 +2,15 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.14.0 - 2026-11-25
+
+- `Modal`、`AlertDialog`、`ImagePreviewModal` 统一管键盘焦点：打开时焦点进入弹窗，Tab / Shift+Tab 在弹窗里循环，焦点被带到后面的页面时拉回来，关闭后回到打开前的位置（业务已经把焦点放到别处时不抢）。弹窗里打开的下拉、日期面板自己管焦点，不受影响；背景仍不设 inert。此前焦点留在后面的页面，Tab 会走到被盖住的按钮上。
+- 弹窗补上 `role="dialog"`（确认框为 `alertdialog`）、`aria-modal` 和指向标题的 `aria-labelledby`。
+- 新增 `useModalFocus({ active, containerRef })` 与类型 `ModalFocusOptions`、`ModalFocusControls`：保留自有 DOM 的模态浮层用它参与同一顺序。Host 的设置窗已改用。
+- `AlertDialog` 新增 `defaultAction`（`'confirm'` 默认、`'cancel'`）：后果严重、可能被误触的确认可以让 Enter 默认取消。焦点在弹窗里的某个按钮上时，Enter 按的是那个按钮；确认框叠确认框时只有最上面的响应 Enter，此前两层会同时确认。
+- 新增 `--color-text-on-accent-light`：落在 `--color-accent-strong-light`（强调色浅填充）上的文字，三套主题里都不低于 4.5:1。侧栏的未读数字改用这一对，原来的强调色实底太重。
+- 现有 `^3.0.0` 插件保持兼容；在弹窗打开期间自己往后面的页面放焦点的调用方会被拉回弹窗。
+
 ## 3.13.0 - 2026-11-25
 
 - 新增 `MonthCalendar` 与 `MonthCalendarProps`：平铺在界面里的月历，可以选日，也可以 `selectable: false` 只用来看；`minDate` 之前的日子不可选，`isMarked` 标出指定日期，`v-model:month` 是当前展示的月份。整个月历只占一个 Tab 位，方向键、Home/End、PageUp/PageDown 移动。`SimpleDatePicker` 的面板改用它。
