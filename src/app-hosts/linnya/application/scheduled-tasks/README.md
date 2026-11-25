@@ -16,7 +16,7 @@ Desktop App Server 就绪后开始分钟检查，停机先停止接纳。重启�
 
 ## 接入
 
-- Preload 公开 `electronAPI.scheduledTasks`。`onChanged` 是无 payload 的失效通知，时区、UTC 偏移或时钟异常状态变更时也发出。`onNotify` 接收 `ScheduledTaskNotification`。原审批因重启失效时，`awaiting_approval` 通知带 `interrupted: true`。系统通知点击还会传入 `open=true`，App 导航用现有 workspace navigation 打开对应对话并标记已读。没有对话的点击由任务界面接收。手动打开定时对话后调用 `markViewed`。
+- Preload 公开 `electronAPI.scheduledTasks`。`onChanged` 是无 payload 的失效通知，时区、UTC 偏移或时钟异常状态变更时也发出。`onNotify` 接收 `ScheduledTaskNotification`。原审批因重启失效时，`awaiting_approval` 通知带 `interrupted: true`。系统通知点击还会传入 `open=true`，App 导航用现有 workspace navigation 打开对应对话并标记已读。没有对话的点击由任务界面接收。系统通知的标题是任务名、正文只写结果（补跑汇总除外）；主进程要留住通知对象直到被点开或关掉，否则点击会丢，Windows 收进通知中心的也算还能点。手动打开定时对话后调用 `markViewed`。
 - `/api/v1/conversation/list` 在 SQL 分页前折叠定时对话；任务详情通过 `runs` 翻历史。删除任务后，对话作为普通对话继续保留。
 - 全局档位收紧预览提供 `scheduled_task_count`，明确选择 `include_scheduled_tasks` 才一起调整。模型删除确认可读 `/api/v1/models/:id/removal-impact` 的 `scheduled_task_count`。
 - [Agent Shell CLI](../core-cli/README.md) 只按来源对话所归项目操作。修改权限高于调用方时，CLI 拒绝，并指向任务界面。
