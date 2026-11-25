@@ -167,6 +167,7 @@ Linnkit 仓修复并通过不含源码 alias 的产物类型门禁后发布，Li
 `Public test suite` 汇总门只有在所有分片成功后通过。各分片分别显示依赖准备、WASM、
 Main、Backend 和测试耗时。Backend 入口负责准备 schemas，不在同一任务中提前重复构建。
 平台源码构建继续覆盖 macOS 与 Windows，独立 package、架构和供应链门禁保持原有范围。
+macOS 平台任务复用本轮构建的 Backend 和 CLI，在准备锁定版本的 Node、Qdrant 并构建 Worker 后运行真实 Runtime E2E。
 
 公共 [Rust 准备入口](../../.github/actions/setup-rust-build/action.yml) 固定 Rust 与 wasm-pack，
 从 `Cargo.lock` 读取 wasm-bindgen 版本，下载校验过的预编译工具；下载失败不退回现场编译。

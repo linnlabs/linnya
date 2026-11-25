@@ -100,7 +100,8 @@ export const LOCAL_CI_STEP_SCHEDULE: LocalCiSchedule = {
       'Build Backend': 'build',
       'Build CLI': 'build',
       'Verify built CLI against bridge': 'test',
-      // 真实 Runtime 进程的启动、审批与退出带就绪期限；它还会重建 Backend/Worker/CLI。
+      'Prepare Runtime assets and build Worker on macOS': 'build',
+      // 真实进程的启动、审批与退出有时限，构建结束后仍需独占运行。
       'Verify real Runtime lifecycle and approval on macOS': 'loadSensitive',
     },
   },
