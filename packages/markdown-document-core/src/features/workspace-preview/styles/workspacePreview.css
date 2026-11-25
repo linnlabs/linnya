@@ -18,11 +18,14 @@
   --workspace-preview-muted: #737373;
   --workspace-preview-line: #d4d4d4;
   --workspace-preview-wash: #f5f5f5;
+  /* 强调表头的浅底：与 Renderer UI --color-accent-bg 同值，出图 worker 没有 token。 */
+  --workspace-preview-accent-wash: #e7f5ec;
 }
 .workspace-markdown-preview[data-linnya-ui-theme='dark'] {
   --workspace-preview-muted: #a3a3a3;
   --workspace-preview-line: #525252;
   --workspace-preview-wash: #303030;
+  --workspace-preview-accent-wash: #264835;
 }
 .workspace-markdown-preview :where(div, p, figure, h1, h2, h3, h4, h5, h6, pre, ul, li) {
   box-sizing: border-box;
@@ -96,12 +99,15 @@
 .workspace-markdown-preview code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
 .workspace-markdown-preview :not(pre) > code { border-radius: 3px; background: var(--workspace-preview-wash); padding: 1px 3px; }
 .workspace-markdown-preview hr { border: 0; border-top: 1px solid var(--workspace-preview-line); margin: 12px 0; }
-/* 表格外观归 workspace-table.css；预览只接上自己的线色（出图 worker 没有 token），并保持 14px 正文字号。 */
+/* 表格外观归 workspace-table.css；预览只接上自己的线色与底色（出图 worker 没有 token），并保持 14px 正文字号。 */
 .workspace-markdown-preview .workspace-preview-table { max-width: 100%; overflow-x: auto; }
 .workspace-markdown-preview table.table-block {
   --workspace-table-rule: color-mix(in srgb, var(--workspace-preview-line) 60%, transparent);
   --workspace-table-header-rule: var(--workspace-preview-line);
   --workspace-table-header-wash: var(--workspace-preview-wash);
+  --workspace-table-frame-rule: color-mix(in srgb, currentColor 72%, transparent);
+  --workspace-table-band-wash: color-mix(in srgb, currentColor 4%, transparent);
+  --workspace-table-accent-wash: var(--workspace-preview-accent-wash);
   --workspace-table-font-size: 1em;
 }
 /* 收紧后仍放不下：卡片里裁切或横向滚动，右侧渐隐提示还有内容。 */

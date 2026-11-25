@@ -17,6 +17,16 @@ TableBlock 是基于 Tiptap 实现的表格编辑功能，为编辑器提供轻�
 
 测试：`extensions/TableCellCompactExtension.test.ts`、`features/document-export/orchestration/prepareMarkdownHtmlForPdf.test.ts`；分级与短格纯函数在 markdown-document-core 的 `workspaceTable.dom.test.ts`。真实布局与主题用 Desktop 探针验收。
 
+## 表格样式预设
+
+table 节点的 `tableStyle`（`default` / `three-line` / `column-rules` / `grid` / `banded` / `accent-header`）是整张表的呈现事实，与正式 schema 同名同默认值，样式表在共用的 `workspace-table.css`。
+
+- 渲染：`renderHTML` 只在非默认时输出 `data-table-style`（导出 HTML、PDF、复制粘贴读回）；可编辑时的 NodeView 不带 renderHTML 属性，由 `WorkspaceTableView` 在创建与 `update` 时同步到 `<table>`。粘贴清理只删固定的表现属性清单，不碰 `data-table-style`；外部来源没有这个属性，粘贴进来就是默认样式。
+- 入口：`menu/tableBlockMenuProvider.ts` 在块菜单末尾加“表格样式 ›”，子菜单是 `menu/tableStyleSwatches.ts` 的 24×18 缩略图 + 名称，当前项选中并带对勾（`styles/TableStyleMenu.css`）。只读或这张表有未决修订时不出现。`setTableStyle` 按 rootBlock ID 重新定位表格，一次选择是一条可撤销事务，焦点交回正文。
+- Agent：Markdown 不表达样式，Agent 读到的投影不变、也不能设置样式；Agent 改表后由 `@linnya/markdown-domain/editing` 的 `preserveUserPresentation` 沿用原样式（Pending 预览与 Backend 接受同一函数）。
+
+测试：`menu/tableBlockMenuProvider.test.ts`；Agent 改表保留样式在 `src/domains/markdown/features/document-write/__tests__/readableProjectionWrite.integration.test.ts`。
+
 ## 行列柄与结构编辑
 
 格角小圆点已删除：光标在格子里只显示聚焦描边。行列结构入口统一由 `ui/TableStructureChrome.vue` 提供，`TableInteractionManager` 只负责挂载它和 AI 坐标轴。
@@ -249,7 +259,7 @@ table (顶级表格节点)
 ### 核心节点特性
 
 1. **table**
-   - 属性: `id`, `blockType: 'table'`, `withHeaderRow: boolean`
+   - 属性: `id`, `blockType: 'table'`, `withHeaderRow: boolean`, `tableStyle`（表格样式预设，见上文）
    - 内容模型: `tableRow+`
 
 2. **tableRow**

@@ -94,6 +94,11 @@ const convertMenuItem = (item) => {
     shortcut: item.shortcut,
     isPanel: item.isPanel,
     variant: item.variant,
+    iconComponent: item.iconComponent,
+    iconClassName: item.iconClassName,
+    rightIconComponent: item.rightIconComponent,
+    selected: item.selected,
+    className: item.className,
   };
   
   // 特殊处理：颜色选择器

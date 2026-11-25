@@ -5,6 +5,7 @@
 
 import type { Editor } from '@tiptap/vue-3';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import type { Component } from 'vue';
 
 /**
  * 块菜单上下文
@@ -81,6 +82,16 @@ export interface MenuItem {
   
   /** 图标（可选） */
   icon?: string;
+  /** 选项左侧的图标组件（例如表格样式缩略图） */
+  iconComponent?: Component;
+  /** 图标组件的额外 class，用于调整尺寸 */
+  iconClassName?: string;
+  /** 选项右侧的图标组件（例如当前项的对勾） */
+  rightIconComponent?: Component;
+  /** 是否为当前选中项（单选子菜单） */
+  selected?: boolean;
+  /** 选项的额外 class */
+  className?: string;
   
   /** 样式变体（可选） */
   variant?: 'default' | 'danger';

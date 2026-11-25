@@ -7,6 +7,7 @@ import { Schema, type MarkSpec, type NodeSpec } from '@tiptap/pm/model';
 import { createWorkspaceMarkdownSchemaContract } from './definitions/workspaceMarkdownSchemaContract';
 import { assertMarkdownDocument as assertProseMirrorJsonMatchesSchema } from '../../functions/assertMarkdownDocument';
 import type { MarkdownDocJson } from './definitions/workspaceDocument';
+import { isWorkspaceTableStyle } from '../workspace-table/functions/workspaceTableStyle';
 import {
   MARKDOWN_CHART_FENCE_LANGUAGE,
   MarkdownAnnotationsSchema,
@@ -239,6 +240,13 @@ const nodes: Record<string, NodeSpec> = {
       id: { default: '' },
       blockType: { default: 'table' },
       withHeaderRow: { default: true },
+      // 表格样式预设：用户在编辑器选择的呈现事实，Markdown 不表达，Agent 改表时由编辑保真继承。
+      tableStyle: {
+        default: 'default',
+        validate: (value: unknown) => {
+          if (!isWorkspaceTableStyle(value)) throw new RangeError(`table tableStyle "${String(value)}" is not a known preset`);
+        },
+      },
     },
   },
   tableRow: {

@@ -6,7 +6,7 @@
  *
  * 1. table
  *    - 顶级表格节点。
- *    - attrs: { id, blockType: 'table', withHeaderRow: boolean }
+ *    - attrs: { id, blockType: 'table', withHeaderRow: boolean, tableStyle: 表格样式预设 }
  *    - content: 'tableRow+'
  *
  * 2. tableRow
@@ -56,6 +56,7 @@ import { KeyboardRegistry } from '../../extensions/keyboard/KeyboardRegistry';
 import { CrossBlockNavigatorRegistry } from '../../extensions/keyboard/CrossBlockNavigatorRegistry';
 import { navigateIntoTable } from './tableNavigators';
 import { WorkspaceTableView } from './view/WorkspaceTableView';
+import { readWorkspaceTableStyle, WORKSPACE_TABLE_STYLE_ATTRIBUTE, workspaceTableStyleAttributes } from '@linnya/markdown-document-core/workspace-table';
 
 // 使用统一的命令注册模块，而不是直接导入命令
 import { registerAllTableCommands } from './commands/registerTableCommands';
@@ -196,6 +197,13 @@ export const TableBlock = Table.extend({
         renderHTML: attributes => ({
           'data-with-header-row': attributes.withHeaderRow ? 'true' : 'false',
         }),
+      },
+      // 表格样式预设（持久化合同，与正式 schema 同名同默认值）。默认样式不输出属性；
+      // 可编辑时的 NodeView 不带 renderHTML 的属性，由 WorkspaceTableView 同步到 table 元素。
+      tableStyle: {
+        default: 'default',
+        parseHTML: element => readWorkspaceTableStyle(element.getAttribute(WORKSPACE_TABLE_STYLE_ATTRIBUTE)),
+        renderHTML: attributes => workspaceTableStyleAttributes(attributes.tableStyle),
       },
     };
   },

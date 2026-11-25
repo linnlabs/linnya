@@ -3,7 +3,7 @@ import type { WorkspaceMarkdownPreview } from '@app/schemas';
 import { renderWorkspaceLatex } from './workspaceLatexPresentation';
 import { deriveCitations, getBibliographyStyleId, formatBibliographyAuthors, formatCitationDate, type CitationDerivationResult } from '../../workspace-citations';
 import { renderWorkspaceImageBlock, renderWorkspaceRootBlock, renderWorkspaceTextBlock } from './workspaceBlockPresentation';
-import { isCompactTableCellNode, WORKSPACE_TABLE_CLASS, WORKSPACE_TABLE_COMPACT_CELL_CLASS } from '../../workspace-table';
+import { isCompactTableCellNode, WORKSPACE_TABLE_CLASS, WORKSPACE_TABLE_COMPACT_CELL_CLASS, workspaceTableStyleAttributes } from '../../workspace-table';
 
 function string(node: ProseMirrorNode, key: string): string {
   const value: unknown = node.attrs[key];
@@ -113,7 +113,7 @@ export function createWorkspacePreviewSerializer(input: {
       if (string(node, 'src') && !source) throw new Error(`preview_image_resource_missing:${id || string(node, 'id')}`);
       return renderWorkspaceImageBlock(node, document, { imageSource: source ?? '', emptyImageLabel: locale.startsWith('zh') ? '未添加图片' : 'No image' });
     },
-    table: () => ['div', { class: 'workspace-preview-table' }, ['table', { class: WORKSPACE_TABLE_CLASS }, ['tbody', 0]]],
+    table: node => ['div', { class: 'workspace-preview-table' }, ['table', { class: WORKSPACE_TABLE_CLASS, ...workspaceTableStyleAttributes(node.attrs.tableStyle) }, ['tbody', 0]]],
     tableRow: () => ['tr', 0], tableCell: node => tableCell(node, document), tableHeader: node => tableCell(node, document),
     tableCellContentBlock: () => ['p', { class: 'table-cell-content-block' }, 0],
     documentReference: node => documentReference(node, content, document, locale, referenceIcon),

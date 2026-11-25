@@ -2,14 +2,18 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { workspaceMarkdownSchemaLite } from '../../workspace-schema';
 import {
+  applyWorkspaceTableStyle,
   estimateTableTextWidthEm,
   fitStaticWorkspaceTable,
   fitWorkspaceTable,
   isCompactTableCellElement,
   isCompactTableCellNode,
   isCompactTableCellText,
+  readWorkspaceTableStyle,
   syncWorkspaceTableScroll,
   WORKSPACE_TABLE_COMPACT_CELL_CLASS,
+  WORKSPACE_TABLE_STYLES,
+  workspaceTableStyleAttributes,
 } from '../index';
 
 const text = (value: string) => ({ type: 'text', text: value });
@@ -155,5 +159,34 @@ describe('分级退让', () => {
     table.removeAttribute('data-table-fit');
     syncWorkspaceTableScroll(table, scroller);
     expect(table.hasAttribute('data-table-scroll')).toBe(false);
+  });
+});
+
+describe('表格样式预设', () => {
+  const table = (attrs: Record<string, unknown>) => ({
+    type: 'doc',
+    content: [{ type: 'rootBlock', attrs: { id: 'root' }, content: [{ type: 'table', attrs, content: [
+      { type: 'tableRow', content: [{ type: 'tableCell', content: [{ type: 'tableCellContentBlock', content: [text('格')] }] }] },
+    ] }] }],
+  });
+
+  it('正式 schema 缺省为默认样式，只接受六种预设', () => {
+    expect(workspaceMarkdownSchemaLite.nodeFromJSON(table({})).firstChild?.firstChild?.attrs.tableStyle).toBe('default');
+    for (const style of WORKSPACE_TABLE_STYLES) {
+      expect(workspaceMarkdownSchemaLite.nodeFromJSON(table({ tableStyle: style })).firstChild?.firstChild?.attrs.tableStyle).toBe(style);
+    }
+    expect(() => workspaceMarkdownSchemaLite.nodeFromJSON(table({ tableStyle: 'rainbow' }))).toThrow('not a known preset');
+  });
+
+  it('默认样式不写 DOM 属性，无法识别的值按默认显示', () => {
+    expect(readWorkspaceTableStyle(undefined)).toBe('default');
+    expect(readWorkspaceTableStyle('rainbow')).toBe('default');
+    expect(workspaceTableStyleAttributes('default')).toEqual({});
+    expect(workspaceTableStyleAttributes('three-line')).toEqual({ 'data-table-style': 'three-line' });
+    const element = document.createElement('table');
+    applyWorkspaceTableStyle(element, 'banded');
+    expect(element.getAttribute('data-table-style')).toBe('banded');
+    applyWorkspaceTableStyle(element, 'default');
+    expect(element.hasAttribute('data-table-style')).toBe(false);
   });
 });

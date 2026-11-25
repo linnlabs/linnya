@@ -39,6 +39,19 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); document.body.replaceChildren(); });
 
 describe('正式 Workspace 用户预览', () => {
+  it('只读预览输出表格样式，默认样式不写属性', async () => {
+    const cell = { type: 'tableRow', content: [{ type: 'tableCell', content: [{ type: 'tableCellContentBlock', content: [text('格')] }] }] };
+    const content = WorkspaceMarkdownPreviewSchema.parse({
+      format: 'workspace-markdown',
+      document: { type: 'doc', content: [root('styled', 'table', { tableStyle: 'accent-header' }, [cell]), root('plain', 'table', {}, [cell])] },
+      assets: {}, references: {},
+    });
+    const preview = await createWorkspaceMarkdownPreview({ content, document, widthPx: 320, theme: 'light', signal: new AbortController().signal });
+    const tables = preview.element.querySelectorAll('table.table-block');
+    expect(tables[0]?.getAttribute('data-table-style')).toBe('accent-header');
+    expect(tables[1]?.hasAttribute('data-table-style')).toBe(false);
+  });
+
   it('真实正文、资产、图表、公式、编号与参考文献在同一个静态表面完整呈现', async () => {
     const controller = new AbortController();
     const preview = await createWorkspaceMarkdownPreview({ content: fixture(), document, widthPx: 320, theme: 'dark', signal: controller.signal });

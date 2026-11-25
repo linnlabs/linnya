@@ -8,6 +8,7 @@
 @import '../../blocks/TableBlock/styles/TableFloatingToolbar.css';
 @import '../../blocks/TableBlock/styles/TableCoordinateHeaders.css';
 @import '../../blocks/TableBlock/styles/TableStructureChrome.css';
+@import '../../blocks/TableBlock/styles/TableStyleMenu.css';
 @import './latex/LatexBlockView.css';
 @import './latex/InlineLatexView.css';
 @import './latex/LatexInputPanel.css';

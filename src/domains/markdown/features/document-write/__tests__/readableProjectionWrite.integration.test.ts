@@ -286,3 +286,31 @@ it('带粗体和斜体的行内公式经真实写入、接受、存储重读及�
   expect(importedDocument.content[0]?.content?.[0]?.content?.find(node => node.type === 'inlineLatex')?.marks)
     .toEqual([{ type: 'bold' }, { type: 'italic' }]);
 });
+
+it('Agent 改表（改字、插行）经真实写入与接受后保留用户选的表格样式，样式本身不产生编辑', async () => {
+  const { store, normalizer, read, write } = setup();
+  const created = await buildMarkdownDocumentFromText({
+    markdown: '| 产品线 | 营收 |\n| --- | ---: |\n| 桌面端 | 1,284.6 |\n| 云服务 | 892.3 |',
+    normalizer, resolveCitationSources: async () => [],
+  });
+  store.createDocument('doc', created.content);
+  const initial = store.getDocument('doc');
+  const table = initial.content[0].content?.[0];
+  if (table?.type !== 'table') throw new Error('Missing table');
+  table.attrs = { ...table.attrs, tableStyle: 'three-line' };
+  store.updateDocument('doc', initial);
+  const current = read()?.text ?? '';
+  expect(current).not.toContain('three-line');
+  expect((await write(current)).edits).toEqual([]);
+  await write(current.replace('892.3', '901.0').replace('| 云服务 |', '| 插件市场 | 436.0 |\n| 云服务 |'));
+  expect(store.getPendingRevisions('doc')).toHaveLength(1);
+  await new PendingRevisionApplyService(store).commitEditorRevision({
+    documentId: 'doc', expectedVersionNumber: store.getLatestVersion('doc')!.version_number,
+    expectedPending: store.getPendingRevisions('doc').map(({ id, revision }) => ({ id, revision })),
+    baseline: store.getDocument('doc'), decision: { mode: 'accept' },
+  });
+  const final = store.getDocument('doc').content[0].content?.[0];
+  expect(final).toMatchObject({ type: 'table', attrs: { tableStyle: 'three-line' } });
+  expect(final?.content).toHaveLength(4);
+  expect(read()?.text).toContain('901.0');
+});

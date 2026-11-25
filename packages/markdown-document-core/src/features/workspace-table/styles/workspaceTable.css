@@ -3,11 +3,16 @@
  * 选择器只认 table.table-block，不依赖 .ProseMirror；编辑器只在此之上叠加交互层（选区、列宽、AI 模式）。
  * 颜色取 Renderer UI 语义 token；出图 worker 与 PDF 没有 token，用 currentColor 兜底，三套主题自动跟随。
  * 分级退让（data-table-fit）与滚动位置（data-table-scroll）由 fitWorkspaceTable 在呈现时测量写入，不进入文档。
+ * 表格样式预设（data-table-style，来自 table 节点的 tableStyle）只换线、表头与行底色，见文件后段。
  */
 table.table-block {
   --workspace-table-rule: var(--color-border-light, color-mix(in srgb, currentColor 12%, transparent));
   --workspace-table-header-rule: var(--color-border-default, color-mix(in srgb, currentColor 24%, transparent));
   --workspace-table-header-wash: color-mix(in srgb, var(--color-text-primary, currentColor) 4%, transparent);
+  /* 表格样式预设用：三线表的粗线、斑马纹的隔行浅底、强调表头的强调色浅底。 */
+  --workspace-table-frame-rule: color-mix(in srgb, var(--color-text-primary, currentColor) 72%, transparent);
+  --workspace-table-band-wash: color-mix(in srgb, var(--color-text-primary, currentColor) 4%, transparent);
+  --workspace-table-accent-wash: var(--color-accent-bg, var(--workspace-table-header-wash));
   --workspace-table-pad-block: 6px;
   --workspace-table-pad-inline: 12px;
   /* 长文本列的最小宽度：短列不再让位后，中文一字可断会把长文本列压成一字一行。 */
@@ -89,6 +94,66 @@ table.table-block[data-table-fit='wrap'] {
 
 table.table-block[data-table-fit='wrap'] .table-cell-content-block {
   overflow-wrap: anywhere;
+}
+
+/*
+ * 表格样式预设。表头行 = 只含 th 的行（编辑器在 tbody，PDF 快照移进 thead）；首列表头不算表头行。
+ * 底色只改变量或叠 background-image：编辑器的悬停、选区与 AI 列底色（background-color）始终能盖过或透出。
+ */
+
+/* 三线表：上下两条粗线、表头下一条细线；不画行线，表头不加底色。 */
+table.table-block[data-table-style='three-line'] {
+  --workspace-table-header-wash: transparent;
+  border-top: 1.5px solid var(--workspace-table-frame-rule);
+  border-bottom: 1.5px solid var(--workspace-table-frame-rule);
+}
+
+table.table-block[data-table-style='three-line'] :is(td, th) {
+  border-bottom: 0;
+}
+
+table.table-block[data-table-style='three-line'] tr:not(:has(> td)) > th {
+  border-bottom: 1px solid var(--workspace-table-frame-rule);
+}
+
+/* 列分割线：默认样式加列间浅竖线，不画外框。 */
+table.table-block[data-table-style='column-rules'] :is(td, th) + :is(td, th) {
+  border-inline-start: 1px solid var(--workspace-table-rule);
+}
+
+/* 全框线：每格四边浅线，表头下一条实线。 */
+table.table-block[data-table-style='grid'] :is(td, th) {
+  border: 1px solid var(--workspace-table-rule);
+}
+
+table.table-block[data-table-style='grid'] tr:not(:has(> td)) > th {
+  border-bottom-color: var(--workspace-table-header-rule);
+}
+
+/* 斑马纹：不画行线，数据行隔行浅底；表头不加底色，只留表头下实线。 */
+table.table-block[data-table-style='banded'] {
+  --workspace-table-header-wash: transparent;
+}
+
+table.table-block[data-table-style='banded'] :is(td, th) {
+  border-bottom: 0;
+}
+
+table.table-block[data-table-style='banded'] tr:not(:has(> td)) > th {
+  border-bottom: 1px solid var(--workspace-table-header-rule);
+}
+
+table.table-block[data-table-style='banded'] tr:nth-child(even of :has(> td)) > :is(td, th) {
+  background-image: linear-gradient(var(--workspace-table-band-wash), var(--workspace-table-band-wash));
+}
+
+/* 强调表头：表头行换成主题强调色浅底，文字仍是正文色（强调色字配浅底是菜单“选中”的样子）；不加同色描边。 */
+table.table-block[data-table-style='accent-header'] tr:not(:has(> td)) {
+  --workspace-table-header-wash: var(--workspace-table-accent-wash);
+}
+
+table.table-block[data-table-style='accent-header'] tr:not(:has(> td)) > th {
+  border-bottom-color: transparent;
 }
 
 @media print {

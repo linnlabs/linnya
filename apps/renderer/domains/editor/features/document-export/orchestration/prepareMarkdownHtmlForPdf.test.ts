@@ -89,10 +89,10 @@ describe('Markdown PDF 内容投影', () => {
     expect(table?.hasAttribute('data-table-fit')).toBe(false)
   })
 
-  it('表格放不下纸面时降为全部可换行，不被页边裁掉', async () => {
+  it('表格放不下纸面时降为全部可换行，不被页边裁掉，用户选的表格样式随之打印', async () => {
     vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(600)
     vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(900)
-    const html = '<table class="table-block" style="width: 900px"><colgroup><col style="width: 900px"></colgroup><tbody>'
+    const html = '<table class="table-block" data-table-style="banded" style="width: 900px"><colgroup><col style="width: 900px"></colgroup><tbody>'
       + '<tr><td colwidth="900"><div class="table-cell-content-block">短</div></td></tr></tbody></table>'
     const printed = new DOMParser().parseFromString(
       await prepareMarkdownHtmlForPdf(html, { tableWidthPx: 600 }),
@@ -100,6 +100,7 @@ describe('Markdown PDF 内容投影', () => {
     )
     const table = printed.querySelector<HTMLTableElement>('table.table-block')
     expect(table?.getAttribute('data-table-fit')).toBe('wrap')
+    expect(table?.getAttribute('data-table-style')).toBe('banded')
     expect(table?.style.width).toBe('100%')
     expect(table?.querySelector('col')?.getAttribute('style') ?? '').not.toContain('900px')
     expect(table?.querySelector('.table-cell--compact')).toBeNull()
