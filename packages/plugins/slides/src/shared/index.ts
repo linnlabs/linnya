@@ -371,6 +371,7 @@ export type {
   LayoutSpacerNode,
   LayoutTableCellInput,
   LayoutTableBorderInput,
+  LayoutTableCellPaddingInput,
   LayoutTableCellValue,
   LayoutTableConfig,
   LayoutTableDataLike,
@@ -724,6 +725,7 @@ export type {
   StructuredFormulaElement,
   StructuredSlideSpec,
   TableCell,
+  TableCellPadding,
   TextEffects,
   TextStyle,
 } from './deckSpec';

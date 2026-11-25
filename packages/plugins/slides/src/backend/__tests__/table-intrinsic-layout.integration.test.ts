@@ -85,6 +85,59 @@ describe('generated table intrinsic layout through compose, preview and native P
     expect(pptxSizes[4]).toBeCloseTo(body, 5);
   });
 
+  it('列宽比例与单元格内边距穿过 compose 回读，预览与 PPTX 拿到同一组列宽和边距', async () => {
+    const { deck, node, document } = await compileTable({
+      _type: 'Table', width: 6, headers: ['公元', '窑业', '说明'],
+      rows: [['960', '定窑', '北宋立国，定窑进入盛期'], ['1127', '磁州窑', '南迁之后北方民窑延续']],
+      columnWidths: [1, 1, 4], cellPadding: { x: 0.12, y: 0.04 },
+    });
+    const spec = deck.slides[0].spec;
+    const element = spec.type === 'structured'
+      ? spec.elements.find(candidate => candidate.type === 'table')
+      : undefined;
+    expect(element).toMatchObject({ columnWidths: [1, 1, 4], cellPadding: { x: 0.12, y: 0.04 } });
+    // 比例之和等于表格宽度时就是逐列英寸；compileTable 已核对 PPTX gridCol 与预览列宽一致。
+    expect(node.columns[0]).toBeCloseTo(1, 5);
+    expect(node.columns[1]).toBeCloseTo(1, 5);
+    expect(node.columns[2]).toBeCloseTo(4, 5);
+    expect(node.cells[0]?.padding).toEqual({ top: 0.04, right: 0.12, bottom: 0.04, left: 0.12 });
+    const margins = Array.from(document.getElementsByTagName('a:tcPr')).map(cell => ({
+      left: Number(cell.getAttribute('marL')) / 914400,
+      top: Number(cell.getAttribute('marT')) / 914400,
+    }));
+    expect(margins).toHaveLength(9);
+    for (const margin of margins) {
+      expect(margin.left).toBeCloseTo(0.12, 4);
+      expect(margin.top).toBeCloseTo(0.04, 4);
+    }
+  });
+
+  it('列宽比例不随表格宽度固定为英寸：盒宽变化时按比例分配；更大的上下边距让自动高度变高', async () => {
+    const { node } = await compileTable({
+      _type: 'Table', width: 3, rows: [['A', 'B', 'C']], columnWidths: [1, 1, 4],
+    });
+    expect(node.columns.map(width => width / 3)).toEqual([
+      expect.closeTo(1 / 6, 5), expect.closeTo(1 / 6, 5), expect.closeTo(4 / 6, 5),
+    ]);
+    const compact = await compileTable({ _type: 'Table', width: 4, rows: [['A', 'B']] });
+    const roomy = await compileTable({
+      _type: 'Table', width: 4, rows: [['A', 'B']], cellPadding: { y: 0.15 },
+    });
+    expect(roomy.node.box.h).toBeGreaterThan(compact.node.box.h + 0.15);
+  });
+
+  it('压缩的表格按同一比例缩小作者写的内边距，预览与 PPTX 一致', async () => {
+    const { node, document } = await compileTable({
+      _type: 'Table', width: 4, height: 0.6, cellPadding: 0.1,
+      rows: Array.from({ length: 6 }, (_, index) => [`第 ${index + 1} 行`, String(index)]),
+    });
+    const padding = node.cells[0]?.padding;
+    expect(padding?.left).toBeLessThan(0.1);
+    expect(padding?.left).toBeCloseTo(padding?.top ?? 0, 8);
+    const firstMargin = Number(document.getElementsByTagName('a:tcPr')[0]?.getAttribute('marL')) / 914400;
+    expect(firstMargin).toBeCloseTo(padding?.left ?? 0, 4);
+  });
+
   it('自动尺寸测量与渲染共同跳过跨行合并占据的列，保留跨列和换行内容', async () => {
     const { node } = await compileTable({
       _type: 'Table', width: 4,

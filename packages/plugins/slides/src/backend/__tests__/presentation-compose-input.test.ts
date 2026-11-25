@@ -206,6 +206,40 @@ describe('presentationComposeInput', () => {
     );
   });
 
+  it('normalizes table column widths and cell padding into DeckSpec, and rejects a wrong column count', () => {
+    const parsed = readDirectComposeInput({
+      title: 'Sized Table',
+      slides: [{ elements: [{
+        type: 'table',
+        position: { x: 0.5, y: 0.8, w: 6, h: 2 },
+        headers: ['公元', '窑业', '说明'],
+        rows: [['960', '定窑', '北宋']],
+        columnWidths: [1, 1, 4],
+        cellPadding: 0.1,
+      }] }],
+    });
+    expect(parsed.error).toBeUndefined();
+    const slide = buildDeckSpecFromDirectInput(parsed.input!).slides[0].spec;
+    expect(slide.type === 'structured' ? slide.elements[0] : undefined).toMatchObject({
+      type: 'table',
+      columnWidths: [1, 1, 4],
+      cellPadding: { x: 0.1, y: 0.1 },
+    });
+
+    const mismatched = readDirectComposeInput({
+      title: 'Wrong Count',
+      slides: [{ elements: [{
+        type: 'table',
+        position: { x: 0, y: 0, w: 5, h: 3 },
+        rows: [['A', 'B', 'C']],
+        columnWidths: [1, 2],
+      }] }],
+    });
+    expect(mismatched.error).toBe(
+      'slides[0].elements[0].columnWidths 需要 3 个数（与表格列数一致，合并单元格按占据的列计），实际 2 个。',
+    );
+  });
+
   it('rejects invalid table rows instead of silently skipping malformed cells', () => {
     const parsed = readDirectComposeInput({
       title: 'Broken Table',

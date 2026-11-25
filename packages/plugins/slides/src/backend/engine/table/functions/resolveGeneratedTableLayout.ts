@@ -2,7 +2,7 @@ import { defaultTextMeasureService } from '@linnya/text-measurement-core';
 import { resolveLineHeightEm, type TableCell, type TextStyle } from '@plugin/slides/shared';
 import { buildTableColumnWidths, estimateTableDensity } from '../../visual/presentationVisualDefaults';
 import type {
-  GeneratedTableCell, GeneratedTableLayout, GeneratedTableLayoutInput,
+  GeneratedTableCell, GeneratedTableCellPadding, GeneratedTableLayout, GeneratedTableLayoutInput,
 } from '../definitions/generatedTableLayout';
 
 /**
@@ -11,27 +11,38 @@ import type {
  */
 export function resolveGeneratedTableLayout(input: GeneratedTableLayoutInput): GeneratedTableLayout {
   const cells = placeCells(input);
-  const columnCount = cells.reduce((max, cell) => Math.max(max, cell.column + cell.colSpan), 1);
+  const columnCount = countPlacedColumns(cells);
   const rowCount = cells.reduce((max, cell) => Math.max(max, cell.row + cell.rowSpan), 1);
+  if (input.columnWidths && input.columnWidths.length !== columnCount) {
+    // 准入入口已按同一套占位规则校验；走到这里说明调用方绕过了准入。
+    throw new Error(`Table.columnWidths 需要 ${columnCount} 个数，实际 ${input.columnWidths.length} 个。`);
+  }
   // 样式不依赖最终高度，否则 auto-height 会在测量与物化之间产生循环定义。
   const dense = estimateTableDensity(input.headers, input.rows) > 110 || rowCount >= 5;
   const fontSize = input.fontSize ?? (dense ? 9.5 : 11);
   const headerFontSize = fontSize + 0.5;
-  const padding = dense ? 0.03 : 0.05;
-  const naturalColumns = Array.from({ length: columnCount }, () => padding * 2);
+  const automaticPadding = dense ? 0.03 : 0.05;
+  const padding: GeneratedTableCellPadding = {
+    x: input.cellPadding?.x ?? automaticPadding,
+    y: input.cellPadding?.y ?? automaticPadding,
+  };
+  const naturalColumns = Array.from({ length: columnCount }, () => padding.x * 2);
   for (const placement of cells) {
     const style = resolveCellStyle(placement, fontSize, headerFontSize);
     const measured = measureCell(placement.cell.text, style, 1, padding, 'none');
-    const required = measured.maxLineWidthInches + padding * 2;
+    const required = measured.maxLineWidthInches + padding.x * 2;
     growSpan(naturalColumns, placement.column, placement.colSpan, required);
   }
   const width = input.width ?? sum(naturalColumns);
-  const columns = buildTableColumnWidths(width, input.headers, input.rows)
-    ?? Array.from({ length: columnCount }, () => width / columnCount);
-  // 消除旧列宽三位小数舍入的累计误差，格线总宽严格等于表格盒宽。
+  // 作者给了比例就只按比例分宽，不再叠加内容权重；表格宽度仍按原规则决定。
+  const columns = input.columnWidths
+    ? [...input.columnWidths]
+    : buildTableColumnWidths(width, input.headers, input.rows)
+      ?? Array.from({ length: columnCount }, () => width / columnCount);
+  // 比例归一到盒宽；同时消除旧列宽三位小数舍入的累计误差，格线总宽严格等于表格盒宽。
   const columnTotal = sum(columns);
   if (columnTotal > 0) columns.forEach((value, index) => { columns[index] = value * width / columnTotal; });
-  const naturalRows = Array.from({ length: rowCount }, () => padding * 2);
+  const naturalRows = Array.from({ length: rowCount }, () => padding.y * 2);
   for (const placement of cells) {
     const style = resolveCellStyle(placement, fontSize, headerFontSize);
     const cellWidth = sum(columns.slice(placement.column, placement.column + placement.colSpan));
@@ -55,8 +66,17 @@ export function resolveGeneratedTableLayout(input: GeneratedTableLayoutInput): G
     columns, rows, cells, width, height, fontScale,
     fontSize: scaleTableFontSize(fontSize, fontScale),
     headerFontSize: scaleTableFontSize(headerFontSize, fontScale),
-    padding: padding * fontScale,
+    padding: { x: padding.x * fontScale, y: padding.y * fontScale },
   };
+}
+
+/** 表格占据的列数：与布局相同的合并单元格占位规则，供准入入口校验 `columnWidths` 个数。 */
+export function countGeneratedTableColumns(input: Pick<GeneratedTableLayoutInput, 'headers' | 'rows'>): number {
+  return countPlacedColumns(placeCells(input));
+}
+
+function countPlacedColumns(cells: readonly GeneratedTableCell[]): number {
+  return cells.reduce((max, cell) => Math.max(max, cell.column + cell.colSpan), 1);
 }
 
 /** 单元格声明字号与表格压缩比例的乘积；向下取到 0.1pt，保证不比行高要求的大。 */
@@ -64,7 +84,7 @@ export function scaleTableFontSize(fontSize: number, fontScale: number): number 
   return fontScale >= 1 ? fontSize : Math.floor(fontSize * fontScale * 10) / 10;
 }
 
-function placeCells(input: GeneratedTableLayoutInput): GeneratedTableCell[] {
+function placeCells(input: Pick<GeneratedTableLayoutInput, 'headers' | 'rows'>): GeneratedTableCell[] {
   const cells: GeneratedTableCell[] = [];
   const occupied: Set<number>[] = [];
   const sourceRows: TableCell[][] = input.headers?.length
@@ -97,7 +117,13 @@ function resolveCellStyle(cell: GeneratedTableCell, fontSize: number, headerFont
   };
 }
 
-function measureCell(text: string, style: TextStyle & { fontSize: number }, width: number, padding: number, wrap: 'word' | 'none') {
+function measureCell(
+  text: string,
+  style: TextStyle & { fontSize: number },
+  width: number,
+  padding: GeneratedTableCellPadding,
+  wrap: 'word' | 'none',
+) {
   return defaultTextMeasureService.measure({
     paragraphs: [{ text }],
     style: {
@@ -108,7 +134,7 @@ function measureCell(text: string, style: TextStyle & { fontSize: number }, widt
       letterSpacingPt: style.letterSpacing,
       lineHeightMultiplier: resolveLineHeightEm(style.lineSpacing, style.fontSize),
     },
-    box: { widthInches: width, wrap, padding: { top: padding, right: padding, bottom: padding, left: padding } },
+    box: { widthInches: width, wrap, padding: { top: padding.y, right: padding.x, bottom: padding.y, left: padding.x } },
     sourceKind: 'generated',
   });
 }

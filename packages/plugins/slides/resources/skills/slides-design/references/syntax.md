@@ -347,9 +347,24 @@ createTable({
 })
 ```
 
-`width` 单位为 pt；当前语义是整张表的外框和内部网格线，前端预览与 PPTX 导出使用同一描边事实。第一版不开放逐单元格边框、`tableOptions`、`colW` 或 `rowH`，也不把底层 PptxGenJS/ECharts 参数泄漏到 deck.js。用逐格 `fill` 与 `style` 表达表头、强调列和结论行，比在表格外另加色块更可靠。不写 `fill` 时，正文用表格所在页的底色（页底是图片或渐变时用主题 `colors.background`），表头用主题 `accent1` 往这层底色里淡淡染一层；没写字色的格子按自己的底色自动用主题文字色、深灰或白色里看得清的一种，深色 `fill` 不必再配反白字。强调表头、强调列和结论行仍逐格写 `fill` 与 `style`（做法见 [`design.md`](./design.md) 高频问题第 8 条）。
+`width` 单位为 pt；当前语义是整张表的外框和内部网格线，前端预览与 PPTX 导出使用同一描边事实。不开放逐单元格边框、`tableOptions`、`colW` 或 `rowH`，也不把底层 PptxGenJS/ECharts 参数泄漏到 deck.js。用逐格 `fill` 与 `style` 表达表头、强调列和结论行，比在表格外另加色块更可靠。不写 `fill` 时，正文用表格所在页的底色（页底是图片或渐变时用主题 `colors.background`），表头用主题 `accent1` 往这层底色里淡淡染一层；没写字色的格子按自己的底色自动用主题文字色、深灰或白色里看得清的一种，深色 `fill` 不必再配反白字。强调表头、强调列和结论行仍逐格写 `fill` 与 `style`（做法见 [`design.md`](./design.md) 高频问题第 8 条）。
 
-`tableData/body/data` 只用于兼容旧 source。原始 `tableOptions`、`colW`、`rowH` 不是 deck.js 正式语法；当前列宽与行高由表格布局链计算，不能借 PptxGenJS 参数绕过。原生表格也没有单元格内边距，窄列的文字会贴得很近或单字成行；对列距有明确要求的核心证据表，可以改用 Text 加细线手排，代价是它不再是原生表格（做法见 [`style-consulting-report.md`](./style-consulting-report.md)）。
+列宽和单元格内边距用 `columnWidths` 与 `cellPadding` 指定：
+
+```typescript
+createTable({
+  width: 6,
+  headers: ['公元', '窑业', '说明'],
+  rows: [['960', '定窑', '北宋立国，定窑进入盛期']],
+  columnWidths: [1, 1, 4],        // 相对比例，个数等于列数
+  cellPadding: { x: 0.12, y: 0.04 }, // 英寸；一个数表示四边相同
+})
+```
+
+- `columnWidths` 是相对比例，只决定表格宽度怎样分给各列；比例之和等于表格宽度（英寸）时就是逐列英寸，表格变宽变窄时按比例跟着变。个数必须等于列数，合并单元格按它占据的列计；每个数都要大于 0。不写时按内容自动分配。窄列给小比例、长说明列给大比例，避免短列被撑宽、长列被挤成单字断行。
+- `cellPadding` 单位英寸，取值 0–0.5：`x` 是左右，`y` 是上下，省略的一侧按表格密度自动取 0.03–0.05。列与列的文字贴得太近时加大 `x`（0.1–0.15 常用）；`y` 会直接加高每一行。表格被压缩时，内边距与字号按同一比例缩小。
+
+`tableData/body/data` 只用于兼容旧 source。原始 `tableOptions`、`colW`、`rowH` 不是 deck.js 正式语法；行高由表格布局链计算，列宽只能经 `columnWidths` 指定，不能借 PptxGenJS 参数绕过。
 
 表格 `width/height` 与其他布局节点相同，以英寸或百分比表达（不要与 `border.width` 的 pt 混淆）。正文较长时优先给定宽度、省略高度，让布局根据换行和合并单元格计算固有高度。显式高度或 `flex` 可以控制分配空间；空间不足时会压缩格线，应按 inspect 和截图调整布局，不能假定自动排版一定不溢出。
 
