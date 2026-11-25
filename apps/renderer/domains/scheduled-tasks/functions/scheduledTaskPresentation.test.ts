@@ -35,7 +35,12 @@ describe('时间表描述', () => {
     expect(describeSchedule({ kind: 'monthly', day: 'last', time: '18:30' }, message, zhDate)).toBe('每月最后一天 18:30');
     expect(describeSchedule({ kind: 'once', date: '2026-11-30', time: '09:00' }, message, zhDate)).toBe('11月30日 09:00，仅一次');
     expect(describeSchedule({ kind: 'once', date: '2027-01-03', time: '09:00' }, message, zhDate)).toBe('2027年1月3日 09:00，仅一次');
-    expect(describeSchedule({ kind: 'cron', expression: '0 9 * * 1-5' }, message, zhDate)).toBe('自定义：0 9 * * 1-5');
+    expect(describeSchedule({ kind: 'cron', expression: '0 9 1,15 * *' }, message, zhDate)).toBe('自定义：0 9 1,15 * *');
+  });
+
+  it('与预设等价的 cron 按预设说', () => {
+    expect(describeSchedule({ kind: 'cron', expression: '0 9 * * 1-5' }, message, zhDate)).toBe('工作日 09:00');
+    expect(describeSchedule({ kind: 'cron', expression: '0 10 * * 1,5' }, message, zhDate)).toBe('每周一、五 10:00');
   });
 });
 
@@ -53,6 +58,15 @@ describe('表单草稿', () => {
     expect(scheduleFromDraft(draft)).toEqual({ kind: 'monthly', day: 15, time: '08:30' });
     expect(scheduleFromDraft({ ...draft, kind: 'cron', expression: ' 0  9 * *  1-5 ' }))
       .toEqual({ kind: 'cron', expression: '0 9 * * 1-5' });
+  });
+
+  it('与预设等价的 cron 按预设打开、存成预设，原表达式留在草稿里', () => {
+    const draft = createScheduleDraft({ kind: 'cron', expression: '30 8 * * 1-5' }, now);
+    expect(draft.kind).toBe('weekdays');
+    expect(draft.time).toBe('08:30');
+    expect(scheduleFromDraft(draft)).toEqual({ kind: 'weekdays', time: '08:30' });
+    expect(scheduleFromDraft({ ...draft, kind: 'cron' })).toEqual({ kind: 'cron', expression: '30 8 * * 1-5' });
+    expect(createScheduleDraft({ kind: 'cron', expression: '0 9 1,15 * *' }, now).kind).toBe('cron');
   });
 
   it('星期至少留一天', () => {
