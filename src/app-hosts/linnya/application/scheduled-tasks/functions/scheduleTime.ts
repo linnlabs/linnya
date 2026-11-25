@@ -2,6 +2,7 @@ import { Cron } from 'croner';
 import {
   SCHEDULED_TASK_MIN_INTERVAL_MS,
   type ScheduledTaskPreviewScheduleResult,
+  type ScheduledTaskRunDaysRange,
   type ScheduledTaskSchedule,
 } from '@app/schemas/scheduled-tasks';
 
@@ -84,6 +85,26 @@ export function previewSchedule(
     previous = current;
   }
   return { ok: true, next_runs: sample };
+}
+
+/** 这段本地日期里，从现在起会运行的日子。规则须已通过 `previewSchedule`。 */
+export function scheduledRunDays(
+  schedule: ScheduledTaskSchedule,
+  range: ScheduledTaskRunDaysRange,
+  now: number,
+  timezone: string,
+): string[] {
+  const clock = clockFor(compileSchedule(schedule), timezone);
+  const { localMinute } = createScheduleTimeZone(timezone);
+  // 本地日期最早比 UTC 同一天早 14 小时开始；多算的部分按本地日期滤掉。
+  const start = Math.max(now, Date.parse(`${range.from}T00:00:00Z`) - 15 * 3_600_000);
+  const days = new Set<string>();
+  for (let next = clock.nextRun(new Date(start)); next; next = clock.nextRun(next)) {
+    const day = localMinute(next.getTime()).slice(0, 10);
+    if (day > range.to) break;
+    if (day >= range.from) days.add(day);
+  }
+  return [...days];
 }
 
 /** 高水位与运行记录同事务提交。休眠很久时只保留时刻边界和次数。 */

@@ -54,7 +54,7 @@ export type ScheduledTaskBannerAction = 'open_approval' | 'resume' | 'edit';
 export interface ScheduledTaskBanner {
   readonly text: string;
   readonly tone: ScheduledTaskTone;
-  readonly action: { readonly kind: ScheduledTaskBannerAction; readonly label: string } | null;
+  readonly action: { readonly kind: ScheduledTaskBannerAction; readonly label: string };
 }
 
 /** 详情顶部的提示：需要用户处理的情况才有，同一时间只给最要紧的一条。 */
@@ -94,9 +94,6 @@ export function resolveTaskBanner(
       action: { kind: 'edit', label: message('scheduledTasks.banner.modelUnavailableAction') },
     };
   }
-  if (task.state === 'finished') {
-    return { text: message('scheduledTasks.banner.finished'), tone: 'muted', action: null };
-  }
   return null;
 }
 
@@ -130,22 +127,25 @@ export function runReasonText(reason: ScheduledTaskRunReason, message: Scheduled
 }
 
 export interface ScheduledTaskRunPresentation {
-  readonly statusText: string;
+  /** 这次的结果：完成写用时，其余写状态和原因。 */
+  readonly resultText: string;
   readonly tone: ScheduledTaskTone;
-  /** 原因、用时或排队时长；没有可说的为空串。 */
-  readonly detail: string;
   /** 手动 / 补跑的小标记。 */
   readonly triggerText: string | null;
+  /** 比计划晚了一分钟以上才开始、结果里又没写排队多久时，另写开始时刻；否则为 null。 */
+  readonly lateStartAt: number | null;
 }
 
 const MINUTE_MS = 60_000;
 
-/** 运行记录一行：状态、原因或用时。计划时刻与开始时刻由视图按时间格式另行显示。 */
+/** 运行记录一行的结果。计划时刻与开始时刻由视图按时间格式另行显示。 */
 export function presentRun(run: ScheduledTaskRun, message: ScheduledTaskMessageResolver): ScheduledTaskRunPresentation {
   const status = RUN_STATUS[run.status];
   const triggerText = run.trigger === 'manual'
     ? message('scheduledTasks.runs.manual')
     : run.trigger === 'catch_up' ? message('scheduledTasks.runs.catchUp') : null;
+  const waited = run.started_at === null ? 0 : run.started_at - run.planned_at;
+  let lateStartAt = waited >= MINUTE_MS ? run.started_at : null;
   let detail = '';
   if (run.reason) {
     const reason = runReasonText(run.reason, message);
@@ -153,8 +153,8 @@ export function presentRun(run: ScheduledTaskRun, message: ScheduledTaskMessageR
       ? message('scheduledTasks.runs.skippedTimes', { reason, count: run.skipped_count })
       : reason;
   } else if (run.status === 'completed' && run.started_at !== null && run.ended_at !== null) {
-    const waited = run.started_at - run.planned_at;
     if (run.trigger === 'schedule' && waited >= MINUTE_MS) {
+      lateStartAt = null;
       detail = message('scheduledTasks.runs.queuedWait', { minutes: Math.round(waited / MINUTE_MS) });
     } else {
       const took = run.ended_at - run.started_at;
@@ -163,7 +163,11 @@ export function presentRun(run: ScheduledTaskRun, message: ScheduledTaskMessageR
         : message('scheduledTasks.runs.duration', { minutes: Math.round(took / MINUTE_MS) });
     }
   }
-  return { statusText: message(status.key), tone: status.tone, detail, triggerText };
+  const statusText = message(status.key);
+  const resultText = detail === '' ? statusText
+    : run.status === 'completed' ? detail
+      : message('scheduledTasks.runs.statusWithDetail', { status: statusText, detail });
+  return { resultText, tone: status.tone, triggerText, lateStartAt };
 }
 
 export interface ScheduledTaskProjectGroup {
@@ -172,33 +176,27 @@ export interface ScheduledTaskProjectGroup {
   readonly tasks: readonly ScheduledTask[];
 }
 
-/**
- * 视图左侧分组：当前项目在前（项目视图），其余按项目名排；项目内保持 App Server 给的顺序。
- * 全局视图没有当前项目，全部进 `others`。
- */
+/** 列表分组：有任务的当前项目在前，其余按项目名排；项目内保持 App Server 给的顺序。 */
 export function groupTasksByProject(
   tasks: readonly ScheduledTask[],
   currentProjectId: string | null,
   projectName: (projectId: string) => string | null,
   locale: string,
-): { readonly current: ScheduledTaskProjectGroup | null; readonly others: readonly ScheduledTaskProjectGroup[] } {
+): readonly ScheduledTaskProjectGroup[] {
   const byProject = new Map<string, ScheduledTask[]>();
   for (const task of tasks) {
     const list = byProject.get(task.project_id) ?? [];
     list.push(task);
     byProject.set(task.project_id, list);
   }
-  const current = currentProjectId === null
-    ? null
-    : { projectId: currentProjectId, projectName: projectName(currentProjectId), tasks: byProject.get(currentProjectId) ?? [] };
   const collator = new Intl.Collator(locale);
-  const others = [...byProject.entries()]
-    .filter(([projectId]) => projectId !== currentProjectId)
+  return [...byProject.entries()]
     .map(([projectId, list]) => ({ projectId, projectName: projectName(projectId), tasks: list }))
     .sort((a, b) => {
+      if (a.projectId === currentProjectId) return -1;
+      if (b.projectId === currentProjectId) return 1;
       if (a.projectName === null) return 1;
       if (b.projectName === null) return -1;
       return collator.compare(a.projectName, b.projectName);
     });
-  return { current, others };
 }

@@ -33,11 +33,19 @@ import {
 } from '../../../shared/app-server-health/definitions/appServerHealthMessage';
 import type { ExportArtifactTargetRequest } from '@linnya/plugin-host-contract/renderer/exportArtifact';
 import {
+  WINDOW_CLOSE_DECISION_DISMISS_CHANNEL,
+  WINDOW_CLOSE_DECISION_PRESENTED_CHANNEL,
+  WINDOW_CLOSE_DECISION_REQUEST_CHANNEL,
+  WINDOW_CLOSE_DECISION_RESULT_CHANNEL,
   WINDOW_CLOSE_PREPARATION_RESULT_CHANNEL,
   WINDOW_CLOSE_RENDERER_READY_CHANNEL,
   WINDOW_CLOSE_REQUEST_CHANNEL,
+  WindowCloseDecisionDismissMessageSchema,
+  WindowCloseDecisionRequestMessageSchema,
   WindowCloseRendererSessionIdSchema,
   WindowCloseRequestMessageSchema,
+  type WindowCloseDecision,
+  type WindowCloseDecisionRequestMessage,
   type WindowClosePreparationResult,
   type WindowCloseRequestId,
   type WindowCloseRequestMessage,
@@ -115,6 +123,54 @@ export function buildSystemPreloadApi(ipcRenderer: IpcRenderer) {
         renderer_session_id: rendererSessionId,
         request_id: requestId,
         result,
+      });
+    },
+
+    /** 退出前要用户决定的事，由界面弹窗询问。 */
+    onWindowCloseDecisionRequest: (
+      callback: (request: WindowCloseDecisionRequestMessage) => void
+    ) => {
+      const listener = (_event: IpcRendererEvent, value: unknown) => {
+        const parsed = WindowCloseDecisionRequestMessageSchema.safeParse(value);
+        if (!parsed.success || parsed.data.renderer_session_id !== rendererSessionId) return;
+        callback(parsed.data);
+      };
+      ipcRenderer.on(WINDOW_CLOSE_DECISION_REQUEST_CHANNEL, listener);
+      return () => {
+        ipcRenderer.removeListener(WINDOW_CLOSE_DECISION_REQUEST_CHANNEL, listener);
+      };
+    },
+
+    /** 主进程已改用系统框，收起对应的弹窗。 */
+    onWindowCloseDecisionDismiss: (callback: (requestId: WindowCloseRequestId) => void) => {
+      const listener = (_event: IpcRendererEvent, value: unknown) => {
+        const parsed = WindowCloseDecisionDismissMessageSchema.safeParse(value);
+        if (!parsed.success || parsed.data.renderer_session_id !== rendererSessionId) return;
+        callback(parsed.data.request_id);
+      };
+      ipcRenderer.on(WINDOW_CLOSE_DECISION_DISMISS_CHANNEL, listener);
+      return () => {
+        ipcRenderer.removeListener(WINDOW_CLOSE_DECISION_DISMISS_CHANNEL, listener);
+      };
+    },
+
+    /** 弹窗已经画出来；主进程据此继续等用户，否则改用系统框。 */
+    markWindowCloseDecisionPresented: (requestId: WindowCloseRequestId) => {
+      ipcRenderer.send(WINDOW_CLOSE_DECISION_PRESENTED_CHANNEL, {
+        schema_version: 1,
+        kind: 'window_close_decision_presented',
+        renderer_session_id: rendererSessionId,
+        request_id: requestId,
+      });
+    },
+
+    resolveWindowCloseDecision: (requestId: WindowCloseRequestId, decision: WindowCloseDecision) => {
+      ipcRenderer.send(WINDOW_CLOSE_DECISION_RESULT_CHANNEL, {
+        schema_version: 1,
+        kind: 'window_close_decision_result',
+        renderer_session_id: rendererSessionId,
+        request_id: requestId,
+        decision,
       });
     },
 

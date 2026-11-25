@@ -38,6 +38,11 @@
     0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
 }
 
+/* 打开时由容器接住焦点，它自己不画焦点框。 */
+.settings-modal-overlay > .settings-modal-container:focus {
+  outline: none;
+}
+
 /* --- 左侧导航 --- */
 
 .settings-modal-nav {

@@ -3,10 +3,10 @@
 -->
 <template>
   <section class="scheduled-task-runs" :aria-label="scheduledTaskMessage('scheduledTasks.runs.title')">
-    <div class="scheduled-task-runs__header">
-      <span>{{ scheduledTaskMessage('scheduledTasks.runs.title') }}</span>
-      <span class="scheduled-task-runs__stats">{{ statsText }}</span>
-    </div>
+    <header class="scheduled-task-runs__header">
+      <h2 class="scheduled-task-runs__title">{{ scheduledTaskMessage('scheduledTasks.runs.title') }}</h2>
+      <span v-if="task.run_count > 0" class="scheduled-task-runs__stats">{{ statsText }}</span>
+    </header>
 
     <p v-if="loadFailed && runs.length === 0" class="scheduled-task-runs__empty">
       {{ scheduledTaskMessage('scheduledTasks.loadFailed') }}
@@ -16,32 +16,22 @@
       {{ scheduledTaskMessage('scheduledTasks.runs.empty') }}
     </p>
 
-    <div
+    <component
+      :is="item.run.conversation_id ? 'button' : 'div'"
       v-for="item in rows"
       :key="item.run.id"
+      :type="item.run.conversation_id ? 'button' : undefined"
       class="scheduled-task-run"
       :class="{ 'is-unread': item.run.unread }"
       data-testid="scheduled-task-run"
+      @click="item.run.conversation_id && emit('open-conversation', item.run.conversation_id)"
     >
-      <span class="scheduled-task-run__dot" aria-hidden="true" />
-      <span class="scheduled-task-run__time">
-        <span class="scheduled-task-run__planned">{{ item.plannedText }}</span>
-        <span v-if="item.startedText" class="scheduled-task-run__started">{{ item.startedText }}</span>
-      </span>
-      <span class="scheduled-task-run__status" :class="`is-${item.presentation.tone}`">{{ item.presentation.statusText }}</span>
-      <span class="scheduled-task-run__detail" :title="item.detailText">{{ item.detailText }}</span>
-      <span class="scheduled-task-run__tier" :class="{ 'is-full-access': item.run.permission_level === 'full_access' }">
-        {{ item.levelText }}
-      </span>
+      <span class="scheduled-task-run__time">{{ item.plannedText }}</span>
+      <span class="scheduled-task-run__result" :class="`is-${item.tone}`" :title="item.resultText">{{ item.resultText }}</span>
+      <span class="scheduled-task-run__level" :class="{ 'is-full-access': item.run.permission_level === 'full_access' }">{{ item.levelText }}</span>
       <span class="scheduled-task-run__tokens">{{ item.tokensText }}</span>
-      <button
-        v-if="item.run.conversation_id"
-        type="button"
-        class="scheduled-task-runs__link"
-        @click="emit('open-conversation', item.run.conversation_id)"
-      >{{ scheduledTaskMessage('scheduledTasks.runs.openConversation') }}</button>
-      <span v-else />
-    </div>
+      <ChevronIcon v-if="item.run.conversation_id" direction="right" class="scheduled-task-run__go" />
+    </component>
 
     <button
       v-if="hasMore"
@@ -58,6 +48,7 @@ import { computed, ref, watch } from 'vue';
 import { formatStorageBytes, useHistoryTime } from '@app/localization';
 import type { CommandPermissionLevel } from '@app/schemas/commands';
 import type { ScheduledTask, ScheduledTaskRun } from '@app/schemas/scheduled-tasks';
+import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { useSettingsLocalization } from '@/domains/settings/public';
 import { scheduledTasksClient } from '../adapters/scheduledTasksClient';
 import { PERMISSION_LEVEL_LABEL_KEYS } from '../functions/permissionLevelMessages';
@@ -144,18 +135,19 @@ const rows = computed(() => {
   const numberFormat = new Intl.NumberFormat(currentLocale.value);
   return runs.value.map(run => {
     const presentation = presentRun(run, scheduledTaskMessage);
-    const startedLate = run.started_at !== null && run.started_at - run.planned_at >= 60_000;
     return {
       run,
-      presentation,
+      tone: presentation.tone,
       plannedText: scheduledTime(run.planned_at),
-      startedText: startedLate && run.started_at !== null
-        ? scheduledTaskMessage('scheduledTasks.runs.started', {
-          time: scheduledTime(run.started_at),
-        })
-        : '',
-      detailText: [presentation.triggerText, presentation.detail].filter(Boolean).join(' · '),
-      levelText: levelText(run.permission_level),
+      resultText: [
+        presentation.triggerText,
+        presentation.lateStartAt === null
+          ? ''
+          : scheduledTaskMessage('scheduledTasks.runs.started', { time: scheduledTime(presentation.lateStartAt) }),
+        presentation.resultText,
+      ].filter(Boolean).join(' · '),
+      // 只在这次运行的权限和任务现在的不一样时才写，避免每行重复。
+      levelText: run.permission_level === props.task.permission_level ? '' : levelText(run.permission_level),
       tokensText: run.total_tokens
         ? scheduledTaskMessage('scheduledTasks.runs.tokens', { count: numberFormat.format(run.total_tokens) })
         : '',

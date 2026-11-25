@@ -51,6 +51,10 @@ const WINDOW_CLOSE_CHANNELS = [
   'window-close-renderer-ready',
   'window-close-request',
   'window-close-preparation-result',
+  'window-close-decision-request',
+  'window-close-decision-presented',
+  'window-close-decision-result',
+  'window-close-decision-dismiss',
 ] as const;
 
 // --- 窗口操作 ---

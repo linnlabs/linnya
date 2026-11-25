@@ -1,190 +1,172 @@
 <!--
-  新建 / 编辑定时任务。下次运行时间与时间表校验一律问 App Server（previewSchedule），这里不推算。
+  定时任务的表单：左边像写消息一样写任务，右边定时间。
+  下次运行、月历上的运行日期与时间表校验一律问 App Server（previewSchedule），这里不推算。
 -->
 <template>
   <form class="scheduled-task-editor" novalidate @submit.prevent="save">
-    <header class="scheduled-task-editor__header">
-      <h3 class="scheduled-task-editor__title">
-        {{ scheduledTaskMessage(isNew ? 'scheduledTasks.editor.titleNew' : 'scheduledTasks.editor.titleEdit') }}
-      </h3>
-      <p v-if="!isNew" class="scheduled-task-editor__note">{{ scheduledTaskMessage('scheduledTasks.editor.editNote') }}</p>
-    </header>
-
-    <div class="scheduled-task-editor__field">
-      <label class="scheduled-task-editor__label" :for="`${idPrefix}-name`">{{ scheduledTaskMessage('scheduledTasks.editor.name') }}</label>
+    <div class="scheduled-task-editor__brief">
       <CustomTextInput
-        :id="`${idPrefix}-name`"
+        ref="nameInput"
         v-model="name"
+        control-class="scheduled-task-editor__name"
+        :bordered="false"
         :maxlength="SCHEDULED_TASK_NAME_MAX_CHARS"
         :placeholder="scheduledTaskMessage('scheduledTasks.editor.namePlaceholder')"
+        :aria-label="scheduledTaskMessage('scheduledTasks.editor.name')"
         data-testid="scheduled-task-name"
       />
-      <p v-if="nameError" class="scheduled-task-editor__error">{{ nameError }}</p>
-    </div>
-
-    <div class="scheduled-task-editor__field">
-      <label class="scheduled-task-editor__label" :for="`${idPrefix}-prompt`">{{ scheduledTaskMessage('scheduledTasks.editor.prompt') }}</label>
+      <p v-if="nameError" class="scheduled-task-editor__error is-inset">{{ nameError }}</p>
+      <p v-if="promptError" class="scheduled-task-editor__error is-inset">{{ promptError }}</p>
       <CustomTextarea
-        :id="`${idPrefix}-prompt`"
         v-model="prompt"
-        :rows="4"
+        class="scheduled-task-editor__prompt-field"
+        control-class="scheduled-task-editor__prompt"
+        :bordered="false"
+        :rows="6"
         :maxlength="SCHEDULED_TASK_PROMPT_MAX_CHARS"
         :placeholder="scheduledTaskMessage('scheduledTasks.editor.promptPlaceholder')"
+        :aria-label="scheduledTaskMessage('scheduledTasks.editor.prompt')"
         data-testid="scheduled-task-prompt"
       />
-      <p v-if="promptError" class="scheduled-task-editor__error">{{ promptError }}</p>
-    </div>
 
-    <div class="scheduled-task-editor__field">
-      <span class="scheduled-task-editor__label">{{ scheduledTaskMessage('scheduledTasks.editor.schedule') }}</span>
-      <SegmentedTabs
-        :model-value="draft.kind"
-        :tabs="presetTabs"
-        :aria-label="scheduledTaskMessage('scheduledTasks.editor.repeat')"
-        @update:model-value="value => patchDraft({ kind: value as ScheduleKind })"
-      />
-      <div class="scheduled-task-editor__schedule">
-        <template v-if="draft.kind === 'once'">
-          <SimpleDatePicker
-            :model-value="onceDate"
-            :placeholder="scheduledTaskMessage('scheduledTasks.editor.date')"
-            @update:model-value="setOnceDate"
-          />
-          <TimePicker :model-value="timeValue" @update:model-value="setTime" />
-        </template>
-        <template v-else-if="draft.kind === 'hourly'">
-          <CustomSelect
-            class="scheduled-task-editor__select-sm"
-            :model-value="draft.everyHours"
-            :options="hourlyOptions"
-            :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.interval')"
-            @update:model-value="value => patchDraft({ everyHours: value as HourlyInterval })"
-          />
-          <span class="scheduled-task-editor__inline-text">{{ scheduledTaskMessage('scheduledTasks.editor.atMinuteBefore') }}</span>
-          <CustomNumberInput
-            :model-value="draft.minute"
-            :min="0"
-            :max="59"
-            :step="1"
-            input-width="48px"
-            @update:model-value="value => patchDraft({ minute: clampMinute(value) })"
-          />
-          <span class="scheduled-task-editor__inline-text">{{ scheduledTaskMessage('scheduledTasks.editor.atMinuteAfter') }}</span>
-        </template>
-        <template v-else-if="draft.kind === 'daily' || draft.kind === 'weekdays'">
-          <TimePicker :model-value="timeValue" @update:model-value="setTime" />
-        </template>
-        <template v-else-if="draft.kind === 'weekly'">
-          <div class="scheduled-task-editor__weekdays" role="group" :aria-label="scheduledTaskMessage('scheduledTasks.editor.weekdays')">
-            <button
-              v-for="day in ISO_WEEKDAYS"
-              :key="day"
-              type="button"
-              class="scheduled-task-editor__weekday"
-              :class="{ 'is-selected': draft.weekdays.includes(day) }"
-              :aria-pressed="draft.weekdays.includes(day)"
-              @click="patchDraft({ weekdays: toggleWeekday(draft.weekdays, day) })"
-            >{{ scheduledTaskMessage(weekdayKey(day)) }}</button>
-          </div>
-          <TimePicker :model-value="timeValue" @update:model-value="setTime" />
-        </template>
-        <template v-else-if="draft.kind === 'monthly'">
-          <CustomSelect
-            class="scheduled-task-editor__select-sm"
-            :model-value="String(draft.monthDay)"
-            :options="monthDayOptions"
-            :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.date')"
-            @update:model-value="value => patchDraft({ monthDay: value === 'last' ? 'last' : Number(value) })"
-          />
-          <TimePicker :model-value="timeValue" @update:model-value="setTime" />
-        </template>
-        <template v-else>
-          <CustomTextInput
-            class="scheduled-task-editor__cron"
-            :model-value="draft.expression"
-            :placeholder="scheduledTaskMessage('scheduledTasks.editor.cronPlaceholder')"
-            data-testid="scheduled-task-cron"
-            @update:model-value="value => patchDraft({ expression: String(value) })"
-          />
-        </template>
-      </div>
-      <p v-if="scheduleError" class="scheduled-task-editor__error" data-testid="scheduled-task-schedule-error">{{ scheduleError }}</p>
-      <p v-else class="scheduled-task-editor__help" data-testid="scheduled-task-schedule-preview">{{ schedulePreviewText }}</p>
-    </div>
-
-    <div class="scheduled-task-editor__grid">
-      <div class="scheduled-task-editor__field">
-        <span class="scheduled-task-editor__label">{{ scheduledTaskMessage('scheduledTasks.editor.project') }}</span>
+      <div class="scheduled-task-editor__bar">
         <CustomSelect
           v-model="projectId"
+          v-bind="barSelect"
+          min-width="180px"
           :options="projectOptions"
           :disabled="!isNew"
           :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.project')"
+          :trigger-tooltip="scheduledTaskMessage('scheduledTasks.editor.project')"
+        />
+        <CustomSelect
+          v-model="agent"
+          v-bind="barSelect"
+          min-width="140px"
+          :options="agentOptions"
+          :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.agent')"
+          :trigger-tooltip="scheduledTaskMessage('scheduledTasks.editor.agent')"
+        />
+        <CustomSelect
+          v-model="modelChoice"
+          v-bind="barSelect"
+          min-width="240px"
+          option-label-overflow="ellipsis"
+          :options="modelOptions"
+          :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.model')"
+          :trigger-tooltip="scheduledTaskMessage('scheduledTasks.editor.model')"
+        />
+        <CustomSelect
+          v-bind="barSelect"
+          min-width="300px"
+          :class="{ 'is-full-access': permissionLevel === 'full_access' }"
+          :model-value="permissionLevel"
+          :options="permissionOptions"
+          :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.permission')"
+          :trigger-tooltip="scheduledTaskMessage('scheduledTasks.editor.permission')"
+          data-testid="scheduled-task-permission"
+          @update:model-value="chooseLevel"
         />
       </div>
-      <div class="scheduled-task-editor__field">
-        <span class="scheduled-task-editor__label">{{ scheduledTaskMessage('scheduledTasks.editor.agent') }}</span>
-        <CustomSelect v-model="agent" :options="agentOptions" :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.agent')" />
-      </div>
-      <div class="scheduled-task-editor__field scheduled-task-editor__field--wide">
-        <span class="scheduled-task-editor__label">{{ scheduledTaskMessage('scheduledTasks.editor.model') }}</span>
-        <CustomSelect v-model="modelChoice" :options="modelOptions" :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.model')" />
-        <p class="scheduled-task-editor__help">{{ scheduledTaskMessage('scheduledTasks.editor.modelHelp') }}</p>
-      </div>
     </div>
 
-    <div class="scheduled-task-editor__field">
-      <span class="scheduled-task-editor__label">{{ scheduledTaskMessage('scheduledTasks.editor.permission') }}</span>
-      <!-- PERMISSION_LEVELS 是常量，v-for 会被编译成稳定片段、不比较 key；重建要靠外层元素的 key。 -->
-      <div :key="tierGroupKey" class="scheduled-task-editor__tiers" role="radiogroup" :aria-label="scheduledTaskMessage('scheduledTasks.editor.permission')">
-        <label
-          v-for="option in PERMISSION_LEVELS"
-          :key="option"
-          class="scheduled-task-editor__tier"
-        >
-          <CustomRadio
-            :model-value="permissionLevel"
-            :value="option"
-            :name="`${idPrefix}-tier`"
-            @update:model-value="chooseLevel"
-          />
-          <span class="scheduled-task-editor__tier-text">
-            <span class="scheduled-task-editor__tier-label" :class="{ 'is-full-access': option === 'full_access' }">
-              {{ levelLabel(option) }}
-            </span>
-            <span class="scheduled-task-editor__tier-description">{{ levelDescription(option) }}</span>
-          </span>
-        </label>
+    <div class="scheduled-task-editor__when">
+      <div class="scheduled-task-editor__row">
+        <CustomSelect
+          use-portal-to-body
+          :model-value="draft.kind"
+          :options="kindOptions"
+          :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.repeat')"
+          @update:model-value="kind => patchDraft({ kind })"
+        />
+        <TimePicker
+          v-if="hasTimeOfDay"
+          :model-value="timeValue"
+          :aria-label="scheduledTaskMessage('scheduledTasks.editor.schedule')"
+          @update:model-value="setTime"
+        />
       </div>
-      <p class="scheduled-task-editor__help">
-        {{ scheduledTaskMessage('scheduledTasks.editor.permissionHelp', { tier: levelLabel(globalLevel) }) }}
-      </p>
-    </div>
 
-    <div class="scheduled-task-editor__switch-row">
-      <span class="scheduled-task-editor__switch-text">
-        <span class="scheduled-task-editor__label">{{ scheduledTaskMessage('scheduledTasks.editor.skipMissed') }}</span>
-        <span class="scheduled-task-editor__help">{{ scheduledTaskMessage('scheduledTasks.editor.skipMissedHelp') }}</span>
-      </span>
-      <Switch v-model="skipMissed" :ariaLabel="scheduledTaskMessage('scheduledTasks.editor.skipMissed')" />
-    </div>
-
-    <p v-if="saveError" class="scheduled-task-editor__error" role="alert">{{ saveError }}</p>
-
-    <footer class="scheduled-task-editor__footer">
-      <ActionButtons
-        :primary-action-text="scheduledTaskMessage(isNew ? 'scheduledTasks.editor.create' : 'scheduledTasks.editor.save')"
-        :secondary-action-text="scheduledTaskMessage('scheduledTasks.editor.cancel')"
-        :is-primary-action-disabled="saving"
-        @primary-click="save"
-        @secondary-click="emit('cancel')"
+      <div v-if="draft.kind === 'hourly'" class="scheduled-task-editor__row">
+        <CustomSelect
+          use-portal-to-body
+          :model-value="draft.everyHours"
+          :options="hourlyOptions"
+          :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.interval')"
+          @update:model-value="everyHours => patchDraft({ everyHours })"
+        />
+        <CustomSelect
+          use-portal-to-body
+          :model-value="draft.minute"
+          :options="minuteOptions"
+          :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.minute')"
+          @update:model-value="minute => patchDraft({ minute })"
+        />
+      </div>
+      <div
+        v-else-if="draft.kind === 'weekly'"
+        class="scheduled-task-editor__weekdays"
+        role="group"
+        :aria-label="scheduledTaskMessage('scheduledTasks.editor.weekdays')"
+      >
+        <button
+          v-for="day in ISO_WEEKDAYS"
+          :key="day"
+          type="button"
+          class="scheduled-task-editor__weekday"
+          :class="{ 'is-selected': draft.weekdays.includes(day) }"
+          :aria-pressed="draft.weekdays.includes(day)"
+          @click="patchDraft({ weekdays: toggleWeekday(draft.weekdays, day) })"
+        >{{ scheduledTaskMessage(weekdayKey(day)) }}</button>
+      </div>
+      <CustomSelect
+        v-else-if="draft.kind === 'monthly'"
+        use-portal-to-body
+        :model-value="String(draft.monthDay)"
+        :options="monthDayOptions"
+        :trigger-aria-label="scheduledTaskMessage('scheduledTasks.editor.date')"
+        @update:model-value="value => patchDraft({ monthDay: value === 'last' ? 'last' : Number(value) })"
       />
-    </footer>
+      <CustomTextInput
+        v-else-if="draft.kind === 'cron'"
+        control-class="scheduled-task-editor__cron"
+        :model-value="draft.expression"
+        :maxlength="120"
+        :placeholder="scheduledTaskMessage('scheduledTasks.editor.cronPlaceholder')"
+        :aria-label="scheduledTaskMessage('scheduledTasks.editor.preset.cron')"
+        data-testid="scheduled-task-cron"
+        @update:model-value="expression => patchDraft({ expression })"
+      />
+
+      <MonthCalendar
+        v-model:month="displayMonth"
+        :model-value="onceDate"
+        :selectable="draft.kind === 'once'"
+        :min-date="today"
+        :is-marked="draft.kind === 'once' ? undefined : isRunDay"
+        @update:model-value="date => patchDraft({ date: toLocalDate(date) })"
+      />
+
+      <p v-if="scheduleError" class="scheduled-task-editor__error" data-testid="scheduled-task-schedule-error">{{ scheduleError }}</p>
+      <p v-else class="scheduled-task-editor__next" data-testid="scheduled-task-schedule-preview">{{ nextRunText }}</p>
+
+      <div class="scheduled-task-editor__missed">
+        <span>{{ scheduledTaskMessage('scheduledTasks.fact.missed') }}</span>
+        <CustomSelect
+          v-model="missedPolicy"
+          use-portal-to-body
+          :options="missedOptions"
+          :trigger-aria-label="scheduledTaskMessage('scheduledTasks.fact.missed')"
+        />
+      </div>
+    </div>
+
+    <p v-if="saveError" class="scheduled-task-editor__error scheduled-task-editor__save-error" role="alert">{{ saveError }}</p>
   </form>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useHistoryTime } from '@app/localization';
 import {
   SCHEDULED_TASK_HOURLY_INTERVALS,
@@ -192,23 +174,18 @@ import {
   SCHEDULED_TASK_PROMPT_MAX_CHARS,
   type ScheduledTask,
   type ScheduledTaskAgent,
+  type ScheduledTaskMissedPolicy,
   type ScheduledTaskPreviewScheduleResult,
 } from '@app/schemas/scheduled-tasks';
 import type { CommandPermissionLevel } from '@app/schemas/commands';
 import {
-  ActionButtons,
-  CustomNumberInput,
-  CustomRadio,
   CustomSelect,
   CustomTextarea,
   CustomTextInput,
-  SegmentedTabs,
-  SimpleDatePicker,
-  Switch,
+  MonthCalendar,
   TimePicker,
   useTimer,
   type CustomSelectOption,
-  type SegmentedTabItem,
 } from '@linnya/renderer-ui';
 import { requestConversationCommandPermission } from '@/app/workflows/command-permissions';
 import { PERMISSION_LEVEL_DESCRIPTION_KEYS, PERMISSION_LEVEL_LABEL_KEYS } from '../functions/permissionLevelMessages';
@@ -223,6 +200,7 @@ import {
   scheduleFromDraft,
   toggleWeekday,
   toLocalDate,
+  toLocalMonthRange,
   toLocalTime,
   type HourlyInterval,
   type ScheduleDraft,
@@ -241,7 +219,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   saved: [task: ScheduledTask, created: boolean];
-  cancel: [];
   /** 版本冲突：外层重读列表，表单按新版本重开。 */
   conflict: [];
 }>();
@@ -250,7 +227,6 @@ const ISO_WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
 const PERMISSION_LEVELS: readonly CommandPermissionLevel[] = ['read_only', 'standard', 'full_access'];
 const DEFAULT_MODEL = '';
 
-const idPrefix = `scheduled-task-${useId()}`;
 const { scheduledTaskMessage } = useScheduledTaskLocalization();
 const { scheduledTime } = useHistoryTime();
 const { settingsMessage } = useSettingsLocalization();
@@ -268,14 +244,17 @@ const prompt = ref(props.task?.prompt ?? '');
 const projectId = ref<string | null>(props.task?.project_id ?? props.defaultProjectId ?? projectsStore.projects[0]?.id ?? null);
 const agent = ref<ScheduledTaskAgent>(props.task?.agent ?? 'default');
 const modelChoice = ref<string>(props.task?.model_config_id ?? DEFAULT_MODEL);
-const skipMissed = ref(props.task?.missed_policy === 'skip');
+const missedPolicy = ref<ScheduledTaskMissedPolicy>(props.task?.missed_policy ?? 'run_latest');
 const draft = ref<ScheduleDraft>(createScheduleDraft(props.task?.schedule ?? null, new Date()));
 
 /** 全局档位：新建默认跟它一致，但最高到“标准”；完全访问必须手动选。 */
 const globalLevel = ref<CommandPermissionLevel>('standard');
 const permissionLevel = ref<CommandPermissionLevel>(props.task?.permission_level ?? 'standard');
 const levelTouched = ref(false);
+const nameInput = ref<InstanceType<typeof CustomTextInput> | null>(null);
 onMounted(async () => {
+  // 焦点进到弹窗里，键盘不会停在被盖住的页面上。
+  nameInput.value?.focus();
   const result = await requestConversationCommandPermission({ kind: 'read', target: null });
   if (result.kind !== 'view') return;
   globalLevel.value = result.view.global_level;
@@ -288,26 +267,39 @@ function patchDraft(patch: Partial<ScheduleDraft>): void {
   draft.value = { ...draft.value, ...patch };
 }
 
+const today = new Date();
+const hasTimeOfDay = computed(() => draft.value.kind !== 'hourly' && draft.value.kind !== 'cron');
 const timeValue = computed(() => localDateTimeToDate(draft.value.date, draft.value.time));
-const onceDate = computed(() => localDateTimeToDate(draft.value.date, '00:00'));
+/** 只有“仅一次”在月历上选日子；其余方式月历只标出会运行的日子。 */
+const onceDate = computed(() => (draft.value.kind === 'once' ? localDateTimeToDate(draft.value.date, '00:00') : null));
 function setTime(value: Date | null): void {
   if (value) patchDraft({ time: toLocalTime(value) });
 }
-function setOnceDate(value: Date | null): void {
-  if (value) patchDraft({ date: toLocalDate(value) });
-}
-function clampMinute(value: unknown): number {
-  const minute = Math.round(Number(value));
-  return Number.isFinite(minute) ? Math.min(59, Math.max(0, minute)) : 0;
-}
 
-const presetTabs = computed<SegmentedTabItem[]>(() => (
+/** 任务框底部一排选择器的共同写法：只有文字，与对话输入框一致。 */
+const barSelect = {
+  variant: 'minimal',
+  bordered: false,
+  fontSize: '12px',
+  usePortalToBody: true,
+  showSelectedCheckmark: true,
+  classNames: { trigger: 'scheduled-task-editor__bar-trigger', arrowIcon: 'scheduled-task-editor__bar-arrow' },
+} as const;
+
+const kindOptions = computed<CustomSelectOption<ScheduleKind>[]>(() => (
   ['once', 'hourly', 'daily', 'weekdays', 'weekly', 'monthly', 'cron'] as const
-).map(kind => ({ id: kind, label: scheduledTaskMessage(`scheduledTasks.editor.preset.${kind}`) })));
+).map(kind => ({ value: kind, text: scheduledTaskMessage(`scheduledTasks.editor.preset.${kind}`) })));
 
-const hourlyOptions = computed<CustomSelectOption<number>[]>(() => SCHEDULED_TASK_HOURLY_INTERVALS.map(hours => ({
+const hourlyOptions = computed<CustomSelectOption<HourlyInterval>[]>(() => SCHEDULED_TASK_HOURLY_INTERVALS.map(hours => ({
   text: scheduledTaskMessage('scheduledTasks.editor.everyHours', { hours }),
   value: hours,
+})));
+
+const minuteOptions = computed<CustomSelectOption<number>[]>(() => Array.from({ length: 60 }, (_, minute) => ({
+  text: minute === 0
+    ? scheduledTaskMessage('scheduledTasks.editor.onTheHour')
+    : scheduledTaskMessage('scheduledTasks.editor.atMinute', { minute }),
+  value: minute,
 })));
 
 const monthDayOptions = computed<CustomSelectOption<string>[]>(() => [
@@ -322,8 +314,8 @@ const projectOptions = computed<CustomSelectOption<string>[]>(() =>
   projectsStore.projects.map(project => ({ text: project.name, value: project.id })));
 
 const agentOptions = computed<CustomSelectOption<ScheduledTaskAgent>[]>(() => [
-  { text: scheduledTaskMessage('scheduledTasks.agent.default'), value: 'default' },
-  { text: scheduledTaskMessage('scheduledTasks.agent.research'), value: 'research' },
+  { text: scheduledTaskMessage('scheduledTasks.editor.agentDefault'), value: 'default' },
+  { text: scheduledTaskMessage('scheduledTasks.editor.agentResearch'), value: 'research' },
 ]);
 
 const modelCatalog = useModelCatalogReadModel();
@@ -358,20 +350,30 @@ function levelDescription(level: CommandPermissionLevel): string {
   return settingsMessage(PERMISSION_LEVEL_DESCRIPTION_KEYS[level]);
 }
 
-/** 原生单选框点下去就会选中；取消确认后重建这一组，让显示回到当前值。 */
-const tierGroupKey = ref(0);
-async function chooseLevel(value: unknown): Promise<void> {
-  const next = value as CommandPermissionLevel;
+const permissionOptions = computed<CustomSelectOption<CommandPermissionLevel>[]>(() => PERMISSION_LEVELS.map(level => ({
+  value: level,
+  text: levelLabel(level),
+  description: levelDescription(level),
+  ...(level === 'full_access' ? { variant: 'warning' as const } : {}),
+})));
+
+const missedOptions = computed<CustomSelectOption<ScheduledTaskMissedPolicy>[]>(() => [
+  {
+    value: 'run_latest',
+    text: scheduledTaskMessage('scheduledTasks.missed.runLatest'),
+    description: scheduledTaskMessage('scheduledTasks.editor.missedRunLatestHint'),
+  },
+  { value: 'skip', text: scheduledTaskMessage('scheduledTasks.missed.skip') },
+]);
+
+async function chooseLevel(next: CommandPermissionLevel): Promise<void> {
   levelTouched.value = true;
   if (next === 'full_access' && permissionLevel.value !== 'full_access') {
     const confirmed = await confirmPermissionLevelExpansion(settingsMessage, 'full_access', {
       title: scheduledTaskMessage('scheduledTasks.editor.fullAccessTitle'),
       riskAppendix: scheduledTaskMessage('scheduledTasks.editor.fullAccessWarning'),
     });
-    if (!confirmed) {
-      tierGroupKey.value += 1;
-      return;
-    }
+    if (!confirmed) return;
   }
   permissionLevel.value = next;
 }
@@ -379,33 +381,49 @@ async function chooseLevel(value: unknown): Promise<void> {
 // ---- 时间表：随改随问 App Server ----
 
 const preview = ref<ScheduledTaskPreviewScheduleResult | null>(null);
-const previewPending = ref(false);
+const displayMonth = ref<Date | null>(null);
 let previewSeq = 0;
 // 随改随问做防抖；useTimer 在组件卸载时自动取消。
 const previewTimer = useTimer();
 
-watch(draft, () => {
-  previewPending.value = true;
-  previewTimer.start(() => void runPreview(), 250);
-}, { immediate: true });
+watch(draft, () => previewTimer.start(() => void runPreview().then(showNextRunMonth), 150), { immediate: true });
+watch(() => (displayMonth.value ? toLocalMonthRange(displayMonth.value).from : null), (_month, previous) => {
+  if (previous && draft.value.kind !== 'once') void runPreview();
+});
 onBeforeUnmount(() => {
   previewSeq += 1;
 });
 
 async function runPreview(): Promise<ScheduledTaskPreviewScheduleResult | null> {
   const seq = ++previewSeq;
+  const schedule = scheduleFromDraft(draft.value);
+  if (schedule.kind === 'cron' && schedule.expression === '') {
+    preview.value = { ok: false, code: 'invalid_expression', message: 'empty expression' };
+    return preview.value;
+  }
   try {
-    const result = await scheduledTasksClient.previewSchedule(scheduleFromDraft(draft.value));
-    if (seq !== previewSeq) return null;
-    preview.value = result;
+    const result = await scheduledTasksClient.previewSchedule({
+      schedule,
+      ...(schedule.kind !== 'once' && displayMonth.value ? { run_days_in: toLocalMonthRange(displayMonth.value) } : {}),
+    });
+    if (seq === previewSeq) preview.value = result;
     return result;
   } catch (error: unknown) {
     console.warn('[scheduled-tasks] 检查时间失败', error);
     if (seq === previewSeq) preview.value = null;
     return null;
-  } finally {
-    if (seq === previewSeq) previewPending.value = false;
   }
+}
+
+/** 改了时间表后，月历翻到下次运行所在的月份；用户自己翻月时不干预。 */
+function showNextRunMonth(result: ScheduledTaskPreviewScheduleResult | null): void {
+  const next = result?.ok && draft.value.kind !== 'once' ? result.next_runs[0] : undefined;
+  if (next !== undefined) displayMonth.value = new Date(next);
+}
+
+const runDays = computed(() => new Set(preview.value?.ok ? preview.value.run_days ?? [] : []));
+function isRunDay(date: Date): boolean {
+  return runDays.value.has(toLocalDate(date));
 }
 
 // 新增错误码时这里会类型报错，不会静默显示空提示。
@@ -422,19 +440,9 @@ const scheduleError = computed(() => {
   return scheduledTaskMessage(SCHEDULE_ERROR_MESSAGES[result.code]);
 });
 
-const schedulePreviewText = computed(() => {
-  const localTime = scheduledTaskMessage('scheduledTasks.editor.localTime');
-  const result = preview.value;
-  if (previewPending.value && !result) return scheduledTaskMessage('scheduledTasks.editor.checking');
-  if (!result?.ok || result.next_runs.length === 0) return localTime;
-  const separator = scheduledTaskMessage('scheduledTasks.schedule.daySeparator');
-  const times = result.next_runs
-    .map(epoch => scheduledTime(epoch))
-    .join(separator);
-  const parts = [scheduledTaskMessage('scheduledTasks.editor.nextRuns', { times })];
-  if (draft.value.kind === 'once') parts.push(scheduledTaskMessage('scheduledTasks.editor.onceNote'));
-  parts.push(localTime);
-  return parts.join(' ');
+const nextRunText = computed(() => {
+  const next = preview.value?.ok ? preview.value.next_runs[0] : undefined;
+  return next === undefined ? '' : scheduledTaskMessage('scheduledTasks.state.scheduled', { time: scheduledTime(next) });
 });
 
 // ---- 保存 ----
@@ -458,14 +466,15 @@ async function save(): Promise<void> {
   try {
     // 保存前用当前草稿再问一次，避免拿着几百毫秒前的结果放行。
     const checked = await runPreview();
-    if (!checked || !checked.ok) return;
+    if (!checked) saveError.value = scheduledTaskMessage('scheduledTasks.editor.checkFailed');
+    if (!checked?.ok) return;
     const fields = {
       name: name.value.trim(),
       prompt: prompt.value.trim(),
       agent: agent.value,
       model_config_id: modelChoice.value === DEFAULT_MODEL ? null : modelChoice.value,
       schedule: scheduleFromDraft(draft.value),
-      missed_policy: skipMissed.value ? 'skip' as const : 'run_latest' as const,
+      missed_policy: missedPolicy.value,
       permission_level: permissionLevel.value,
     };
     const result = props.task
@@ -488,4 +497,7 @@ async function save(): Promise<void> {
     saving.value = false;
   }
 }
+
+// 操作按钮在弹窗底部，由外层触发保存。
+defineExpose({ save, saving });
 </script>

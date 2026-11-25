@@ -36,6 +36,13 @@ export function toLocalTime(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/** 这一天所在月份的首尾两天。 */
+export function toLocalMonthRange(date: Date): { readonly from: string; readonly to: string } {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  return { from: toLocalDate(new Date(year, month, 1)), to: toLocalDate(new Date(year, month + 1, 0)) };
+}
+
 /** 把本地日期与钟点合成一个 Date，给日期、时间选择器用。 */
 export function localDateTimeToDate(date: string, time: string): Date {
   const [year, month, day] = date.split('-').map(Number);

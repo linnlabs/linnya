@@ -94,6 +94,7 @@ info 同时是“信息流入”类入口的识别色：导入、上传、同步
 | 克制的高对比按钮（发送、确认编辑） | `--color-bg-inverse`、`--color-bg-inverse-hover` 配 `--color-text-inverse`；浅色为深底白字，暗色为浅底深字 | 固定深灰底配白字（暗色下禁用态会比可用态更亮） |
 | 滚动条 | `--scrollbar-thumb-color`、`--scrollbar-thumb-hover-color`、`--scrollbar-track-color` | 固定灰阶 |
 | 选中、焦点、强调文字与描边 | `--color-accent`、`--color-accent-bg*`、`--color-focus-ring` | 直接引用 `--color-brand-*` |
+| 数字角标（未读、待处理的数量） | `--color-accent-bg-hover` 配 `--color-accent-text`，胶囊形、`caption` 字号 | 强调色实底（太重，像主按钮）；`--color-accent-strong-light`（比浅底重，抢内容） |
 | 品牌色浅底（推荐、已选择） | `--color-accent-bg`、`--color-accent-bg-subtle` | 自行用 `color-mix` 调一个新的绿 |
 | 状态提示条、徽标 | `--color-*-bg` 配 `--color-*-text`，描边或图标用基础色 | 浅色底配基础色文字 |
 | 用户选择的内容颜色、语法高亮 | 所属 domain 的内容色 token | 把内容色上移为通用 token |
