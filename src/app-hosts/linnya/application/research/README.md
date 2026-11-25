@@ -63,7 +63,7 @@ inode，不引入研究回调。
 项目会话选择“研究”或 CLI
 `send --agent research_v1`，普通请求以开放调查接纳。原请求、正式历史与编辑器上下文各走既有通道；无项目或本轮图片附件在接纳前拒绝。
 
-CLI `--research-scope-json`
+CLI `--research-scope-json`（或 `--research-scope-file`）
 声明 question、reader、open/fixed/update、Workspace 材料和时间范围；接纳后随请求冻结为 researchScope。显式范围拒绝未绑定的历史、附件和编辑器上下文；fixed/update 要有正式材料。fixed 禁止外部查找的要求进入父系统提示，父再明确交给每个子任务；不再通过 Web/Knowledge
 decorator 或文件工具实施研究特判。Shell 权限沿通用设置执行，真实任务越界仍需审计。
 

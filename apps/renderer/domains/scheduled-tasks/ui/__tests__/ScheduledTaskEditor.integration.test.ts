@@ -203,7 +203,7 @@ describe('定时任务编辑表单', () => {
   });
 
   it('自定义写法清空时直接提示，不去问 App Server', async () => {
-    mount({ task: task({ schedule: { kind: 'cron', expression: '0 9 * * 1' } }), defaultProjectId: 'p1' });
+    mount({ task: task({ schedule: { kind: 'cron', expression: '0 9 1,15 * *' } }), defaultProjectId: 'p1' });
     await settlePreview();
     mocks.previewSchedule.mockClear();
     const input = host.querySelector<HTMLInputElement>('[data-testid="scheduled-task-cron"]')!;
@@ -212,6 +212,16 @@ describe('定时任务编辑表单', () => {
     await settlePreview();
     expect(host.querySelector('[data-testid="scheduled-task-schedule-error"]')?.textContent).toContain('需要 5 段');
     expect(mocks.previewSchedule).not.toHaveBeenCalled();
+  });
+
+  it('Agent 用 cron 建的工作日 8:30 按预设打开，保存成预设', async () => {
+    mocks.update.mockResolvedValueOnce({ ok: true, task: task() } satisfies ScheduledTaskMutationResult);
+    mount({ task: task({ schedule: { kind: 'cron', expression: '30 8 * * 1-5' } }), defaultProjectId: 'p1' });
+    await settlePreview();
+    expect(selectTrigger(host, '重复方式').textContent?.trim()).toBe('工作日');
+    expect(host.querySelector('[data-testid="scheduled-task-cron"]')).toBeNull();
+    await submit(host);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ schedule: { kind: 'weekdays', time: '08:30' } }));
   });
 
   it('名称或任务没写时提示，不保存', async () => {

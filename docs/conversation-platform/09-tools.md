@@ -215,7 +215,7 @@ strict schema A   ──▶  显式字段转换 + 再次 parse  ──▶  stric
 compact port 返回未命中并显示通用诊断标题；已注册 projector 抛出的合同错误必须拒绝 detached 批次，
 不得静默回退。registry 只汇聚、查重和解析 alias，禁止理解 query、command、URI 等业务参数。
 
-这是工具卡的**终态规范**。当前 AST baseline 已锁住 Questionnaire、TaskState、AgentTodo、ToolOutputRead、WorkspaceDocumentView、WebSearch、WebRead、Skill、ImageGeneration、ImageRead、DocumentList、DocumentContent、KnowledgeSearch、SharedMemory list/read/write，以及 SubrunCard、SubrunProgressCard、SubrunBatchCollection 共十九张完成迁移的实体卡；独立的 header-only baseline 锁住七个 live 注册项 `list_files / read_file / write_file / edit_file / grep / assemble_documents / evidence_resolve`，以及一个只读历史注册项 `assemble_evidence`，要求 projector 存在且禁止恢复 raw title resolver。已知存量迁移面已经清零，[R-22](./12-open-risks.md) 关闭；新增工具仍必须在同一 vertical slice 补共享 schema、projector、双 admission 与 baseline，禁止重新建立 raw resolver。
+这是工具卡的**终态规范**。当前 AST baseline 已锁住 Questionnaire、TaskState、AgentTodo、ToolOutputRead、WorkspaceDocumentView、WebSearch、WebRead、Skill、ImageGeneration、ImageRead、DocumentList、DocumentContent、KnowledgeSearch、SharedMemory list/read/write，以及 SubrunCard、SubrunProgressCard、SubrunBatchCollection 共十九张完成迁移的实体卡；独立的 header-only baseline 锁住六个 live 注册项 `list_files / read_file / write_file / edit_file / grep / assemble_documents`，以及两个只读历史注册项 `assemble_evidence / evidence_resolve`，要求 projector 存在且禁止恢复 raw title resolver。已知存量迁移面已经清零，[R-22](./12-open-risks.md) 关闭；新增工具仍必须在同一 vertical slice 补共享 schema、projector、双 admission 与 baseline，禁止重新建立 raw resolver。
 
 卡片需要 subrun trace 或按 conversation scope 读取历史资源时，必须在 `ToolUiConfig.runtime` 逐项声明
 capability。Host 只透传被声明的 live/durable trace、历史 lazy source 或 active conversation identity；这些
@@ -295,8 +295,8 @@ VFS 或文档插件内部读取详情转发到工具结果，分页 continuation
 `write_file / edit_file` 不把 Markdown edits 或插件内部写入详情转发到公共结果，只保留具名文件事实、
 标准 diagnostics 与 edit 的实际替换数量。插件节点类型按稳定标识符接纳，具体 owner 与启用状态由 registry 判定。
 
-`assemble_documents / evidence_resolve` 保持正式 header-only UI，并分别拥有工具专属 `@app/schemas` 合同。
-`assemble_evidence` 已无 live producer，只由独立 `Historical*` schema/projector 严格回放旧事件。三者不共享
+`assemble_documents` 保持正式 header-only UI，并拥有工具专属 `@app/schemas` 合同。
+`assemble_evidence` 与 `evidence_resolve` 已无 live producer，只由各自的 strict schema/projector 回放旧事件。三者不共享
 “万能 Evidence payload”；历史 projector 也不构成 executable alias。projector 只拥有标题和 admission，
 不改变 Deep Search 终止、EvidenceStore 或 citations 注册行为。
 

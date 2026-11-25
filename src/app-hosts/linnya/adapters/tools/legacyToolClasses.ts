@@ -1,4 +1,3 @@
-import { evidenceToolClasses } from '../../../../tools/evidence';
 import { imageGenerationToolClasses } from '../../../../tools/image_generation';
 import {
   askToolClasses,
@@ -21,7 +20,6 @@ import { markdownToolClasses } from '../../../../domains/markdown/tools';
  * 不要从这里读取 enabled 状态；运行期消费必须走 BackendPluginRegistry。
  */
 export const legacyBuiltinToolClasses = [
-  ...evidenceToolClasses,
   ...imageGenerationToolClasses,
   ...askToolClasses,
   ...workspaceToolClasses,

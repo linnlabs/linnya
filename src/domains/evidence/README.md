@@ -2,8 +2,8 @@
 
 本 README 放在实现附近，作为 **EvidenceStore + Ref Resolver** 的唯一权威说明文档。
 
-> **演进状态**：Knowledge/Web 生产者自动捕获证据、Workspace Citation 写入和 `assemble_evidence` 退役
-> 已完成。当前只继续验证 `evidence_resolve` 的独立消费者与退出条件；稳定退出标准由本文维护。
+> **演进状态**：Knowledge/Web 生产者自动捕获证据、Workspace Citation 写入、`assemble_evidence` 与
+> `evidence_resolve` 退役均已完成。Evidence 只服务引用写入、插件 citation source 与网页深搜的精确版本读取。
 
 ### 一句话目标
 
@@ -48,11 +48,10 @@
 
 - **EvidenceStore live 写入**：`src/domains/evidence/features/bundle-store/orchestration/saveEvidenceBundle.ts`
 - **Bundle repository port / 文件系统 adapter**：`src/domains/evidence/features/bundle-store/{ports,adapters}`；
-  ref resolver 与 list 不再理解目录、路径或 JSON 文件读取
+  ref resolver 不理解目录、路径或 JSON 文件读取
 - **resolve 稳定合同**：`src/domains/evidence/features/ref-resolution/definitions/evidenceResolution.ts`
 - **bundle wire admission**：`src/domains/evidence/features/ref-resolution/functions/parseEvidenceBundleItems.ts`；
   同时接纳 live bundle 与历史 `assemble_evidence`，但不从 Evidence 顶层公开
-- **ref 列表编排**：`src/domains/evidence/features/ref-resolution/orchestration/listEvidenceRefs.ts`
 - **ToolContext adapter**：`src/tools/evidence/evidenceBundleToolContextAdapter.ts`
 - **工具接入点**：
   - `web_search/web_read`：Web 只生成 owner-owned capture DTO；`src/app-hosts/linnya/adapters/tools/webEvidenceWriterToolContextDecorator.ts` 在 Host 组合边界映射 Evidence command 并注入 conversation scope
@@ -60,9 +59,7 @@
   - `knowledge_read`：由 `packages/plugins/knowledge/src/backend/tools/reader/knowledgeReadEvidenceAdapter.ts` 交付 Knowledge owner capture，不向 Agent 返回 bundle 身份
   - `knowledge_search/search_in_knowledgebase`：交付 Agent 实际看到的 snippet 或 deep reading view 完整块
   - `packages/plugins/knowledge/src/backend/tools/evidence/knowledgeEvidenceBundleAdapter.ts` 是上述 Knowledge capture 到 Evidence command 的唯一映射点
-  - `evidence_resolve`：`src/tools/evidence/EvidenceResolveTool.ts`（模型可直接读取 EvidenceStore）
-    - `mode="resolve_refs"`：按 `refs=[...]` 解析证据预览
-    - `mode="list_refs"`：浏览当前 instance 下已有的 `[@ref]` 列表（推荐给模型使用，不需要 bundle_id）
+  - 网页深搜：`src/app-hosts/linnya/adapters/tools/deepWebSnapshotToolContextDecorator.ts` 按 `bundle_id` 读取精确取得版本
 
 ---
 
@@ -86,7 +83,6 @@
 - `src/domains/evidence/features/ref-resolution/functions/materializeResolvedEvidenceItem.ts`：中英单位预算与字符硬上限
 - `src/domains/evidence/evidenceDomain.ts`：生产 composition，只在这一层绑定文件系统 read/write adapter
 - `src/domains/evidence/features/ref-resolution/orchestration/resolveEvidenceFromBundles.ts`：只编排 repository port、admission 与纯规则
-- `src/domains/evidence/features/ref-resolution/orchestration/listEvidenceRefs.ts`：模型友好的 ref 分页列表；磁盘布局不泄漏给 Tool facade
 - `src/domains/evidence/features/bundle-store/definitions/evidenceBundleWrite.ts`：live write command、scope 与 audit
 - `src/domains/evidence/features/bundle-store/definitions/evidenceBundleRecord.ts`：live persistence record 与历史 record，均不从 domain 顶层公开
 - `src/domains/evidence/features/bundle-store/functions/createEvidenceBundleRecord.ts`：确定性 bundle ID 与 persistence record 构建
@@ -147,14 +143,9 @@ token、来源锚点、预算摘录和明确状态。EvidenceStore 仍服务生�
 
 ### 工具侧行为（失败语义必须可解释）
 
-- **`evidence_resolve` Agent observation**：
-  - 只使用 canonical `[@XXXXXX]` 展示身份；宽松输入格式只属于参数 admission；
-  - 每条来源明确标记 `snapshot_status=persisted source_status=not_checked`；
-  - ref、来源类型、`doc_id + block_id` 或 canonical URL、截断状态属于可信骨架；
-  - 标题与正文属于不可信来源数据，逐条进入动态 `BEGIN/END_UNTRUSTED_EVIDENCE_SOURCE` 边界；
-  - `list_refs` 不把来源标题注入 observation，bundle id 只留在结构化诊断和内部审计。
-  - Evidence bundle 不再通过 Knowledge HTTP route 或 ToolContext bundle-id facade 直读；live 读取统一按
-    canonical ref 进入 resolver，历史 wire 只由内部 admission/projector 解释。
+- **Agent 不直接读取 EvidenceStore**：`evidence_resolve` 已退役（2026-11-25，退役时没有任何内置 Agent 或公开插件把它列入白名单）。
+  Web 长文本续读走 `tool_output_read`，Knowledge 当前事实走 `knowledge_read`，持久引用由项目 CitationMark 承载。
+  旧会话里的 `evidence_resolve` 事件不重放工具，只由 strict historical schema、引用接纳与 header-only 工具卡回放。
 
 - **Workspace 协作文档**：
   - 新建与更新统一复用 Markdown normalization 和 citation hydration；
@@ -173,17 +164,6 @@ token、来源锚点、预算摘录和明确状态。EvidenceStore 仍服务生�
   - shallow 结果先构建 Knowledge owner capture，再保存模型实际看到的 citation snippet；空结果不制造 bundle
   - deep formatter 显式返回实际发射块，只有未被 observation 总预算截掉的完整块才按 `knowledge_document_chunk` 保存
   - 不从 observation 反解析来源，也不后台保存 Agent 没看见的 SoT 块
-
-### `evidence_resolve` 退出条件
-
-以下条件必须全部由真实任务验证，才能删除 live facade、白名单、Prompt 和 canonical UI：
-
-1. Web 完整抓取正文可通过既有 `tool_output_read` 续读（已完成）。
-2. Knowledge 当前事实可通过 `knowledge_read` 重读，持久快照由项目 CitationMark 或正式交接承载。
-3. Deep Research 角色不再需要独立 ref snapshot 读取；Default、General subagent、已退役的 Researcher subagent、Slides 和 SupplyStrata 已完成退出；旧版深度研究 beta 角色已随定义删除，内置 Agent 目前都不再把它列入白名单。
-4. 减少工具后，真实任务中的引用正确率、全文可达性和跨 subrun 成功率不下降。
-
-旧事件不随 live facade 删除，继续由 strict historical schema/projector 回放。未满足全部条件前，不用 alias、fallback 或新的通用读取工具掩盖迁移缺口。
 
 ---
 
@@ -215,7 +195,6 @@ pnpm vitest run src/app-hosts/linnya/adapters/tools/citation-source-resolution/_
 ### 相关文档
 
 - 正式研究角色与引用要求：`src/app-hosts/linnya/application/research/README.md`
-- Agent facade 的剩余退出条件：见本文“`evidence_resolve` 退出条件”
 - 历史设计与推进记录：请通过 git history 追溯
 
 网页深搜筛选通过 `resolveEvidenceFromBundles` 的可选 `bundle_id` 读取精确取得版本，

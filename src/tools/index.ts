@@ -8,8 +8,6 @@
  * 插件领域工具通过各包的 contribution 注册，不从平台工具聚合重导出。
  */
 
-export * from './evidence';
-
 // 导出图片生成工具
 export * from './image_generation';
 

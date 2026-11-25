@@ -1,7 +1,8 @@
 // Runnable single-slide deck.js example.
 // Use as standalone source; do not concatenate with another example.
 //
-// 语法重点：createTable 的 headers / rows 结构。逐格底色与文字样式见 media-and-paint.js。
+// 语法重点：createTable 的 headers / rows 结构，以及 columnWidths（列宽比例）与 cellPadding（单元格内边距）。
+// 逐格底色与文字样式见 media-and-paint.js。
 // 配色和版式是这份示例的一次性选择，不是默认风格。
 
 // slide 1 — table · 对比评估矩阵
@@ -37,6 +38,10 @@ table.rows = [
   ["推荐度", "×", "△", "✓"],
 ];
 table.border = { color: "#CBD5E1", width: 0.75 };
+// 维度列放得下四个字即可，三个方案列等宽；比例只决定怎样分配表格宽度。
+table.columnWidths = [1.4, 1, 1, 1];
+// 左右各 0.12 英寸，列与列的文字不贴在一起；上下不写，按表格密度自动取值。
+table.cellPadding = { x: 0.12 };
 container.add(table);
 
 const recommend = createText("推荐：混合方案 — 兼顾上线速度（3 个月）与定制能力；TCO 中等可控。");
