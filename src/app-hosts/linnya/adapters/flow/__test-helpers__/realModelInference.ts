@@ -64,11 +64,9 @@ export async function installDevelopmentModelServices(input: {
   modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
   await providerAccountRegistry.initialize();
   await modelCatalog.initialize(createSourceDistributionIdentity());
+  // 与生产启动接线一致：停用的用户模型也算存在，临时副本里的 Provider 归属不被对账删掉。
   await providerConfigurationRegistry.initialize({
-    models: modelCatalog.getModels().map(model => ({
-      id: model.id,
-      inference_endpoint_id: model.inference_endpoint_id,
-    })),
+    models: modelCatalog.getModelIdentitiesIncludingUnadmitted(),
   });
   return () => {
     resetWorkspaceRootToDefault();

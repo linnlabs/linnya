@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { parsePluginManifest, pluginMetaFromManifest, type PluginMeta } from '@app/schemas';
+import { parsePluginManifest, pluginMetaFromManifest, type PluginId, type PluginMeta } from '@app/schemas';
 import { isPluginUserRemoved } from '../../../features/plugins/install/functions/pluginRemovalMarker';
 import { assertBundledPluginArtifactIntegrity, readPluginArtifactIdentity } from '../../../features/plugins/install/functions/readPluginArtifactIdentity';
 import { compareDottedVersions } from '@app/schemas';
@@ -18,6 +18,8 @@ export interface BundledPluginSeedResult {
   readonly targetDir: string;
   readonly status: BundledPluginSeedStatus;
   readonly reason?: string;
+  /** 本机同版本目录与随包 artifact 内容不一致：本次只跳过这个插件，版本目录保持原样。 */
+  readonly conflict?: true;
 }
 
 export interface SeedBundledPluginsOptions {
@@ -28,6 +30,8 @@ export interface SeedBundledPluginsOptions {
 interface StagedBundledActivationOptions extends SeedBundledPluginsOptions {
   readonly shouldRestoreOnDemandPlugin?: (pluginId: string) => boolean;
   readonly onStageFailure?: (pluginId: string, error: unknown) => void;
+  /** 本机版本目录与随包 artifact 内容不一致：不激活该插件，由调用方记诊断。 */
+  readonly onArtifactConflict?: (pluginId: string, error: BundledPluginArtifactConflictError) => void;
 }
 
 function isBundledInstallOnDemand(sourceDir: string): boolean {
@@ -119,13 +123,18 @@ export class RequiredBundledPluginSeedError extends PluginOperationError {
 }
 
 export class BundledPluginArtifactConflictError extends PluginOperationError {
-  constructor(pluginId: string, version: string, detail: string) {
+  // 冲突总是落在某个具体插件的某个版本上：pluginId 必有，由基类构造函数写入，这里只收窄类型。
+  declare readonly pluginId: PluginId;
+  readonly version: string;
+
+  constructor(pluginId: PluginId, version: string, detail: string) {
     super(
       'version-conflict',
       `[PluginRuntime] ${pluginId}@${version} 同版本 artifact 冲突：${detail}；版本目录不可覆盖，请提升插件版本`
       , { pluginId },
     );
     this.name = 'BundledPluginArtifactConflictError';
+    this.version = version;
   }
 }
 
@@ -466,8 +475,19 @@ export function seedBundledPlugins(options: SeedBundledPluginsOptions): BundledP
         results.push(result);
       }
     } catch (error) {
+      // 同版本内容冲突只拦这一个插件：不覆盖版本目录，也不把随包字节当成已装版本，
+      // 其余随包插件照常准备。必需插件冲突由 assertRequiredBundledPluginSeedSucceeded 阻断启动。
       if (error instanceof BundledPluginArtifactConflictError) {
-        throw error;
+        results.push({
+          pluginId: error.pluginId,
+          version: error.version,
+          sourceDir,
+          targetDir: path.join(options.userPluginRoot, error.pluginId, error.version),
+          status: 'skipped',
+          reason: error.message,
+          conflict: true,
+        });
+        continue;
       }
       results.push({
         pluginId: entry.name,
@@ -524,6 +544,15 @@ function findStagedBundledActivationCandidate(
       return null;
     }
     previousVersion = active.version;
+  }
+
+  // seed 遇到同版本内容冲突只跳过这个插件；激活也不能把内容对不上的本机目录当成随包新版切过去。
+  try {
+    assertExistingSeedTargetVersionIdentity(sourceDir, targetVersionDir, manifest.id, manifest.version);
+  } catch (error) {
+    if (!(error instanceof BundledPluginArtifactConflictError)) throw error;
+    options.onArtifactConflict?.(manifest.id, error);
+    return null;
   }
 
   return {

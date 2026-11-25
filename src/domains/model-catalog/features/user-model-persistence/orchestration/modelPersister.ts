@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { errorToString } from '@linnya/foundation';
 import { Logger } from 'src/shared/logger';
 import { pathManager } from 'src/shared/utils/pathManager';
 
@@ -50,23 +51,27 @@ export class ModelPersister {
     } catch (error: unknown) {
       // 只写文件名：启动失败的原因会展示给用户，不需要完整路径。
       throw Object.assign(
-        new Error(
-          `${path.basename(userModelsPath)} 无法读取：${error instanceof Error ? error.message : String(error)}`
-        ),
+        new Error(`${path.basename(userModelsPath)} 无法读取：${errorToString(error)}`),
         { cause: error }
       );
     }
   }
 
+  /** `unadmittedModelEntries` 是启动时停用条目的原始内容，原样写在已准入模型之后，不能因一次保存丢失。 */
   async saveState(
     models: readonly ModelConfig[],
     inferenceEndpoints: readonly InferenceEndpoint[],
-    customApiGroups: readonly CustomApiGroup[]
+    customApiGroups: readonly CustomApiGroup[],
+    unadmittedModelEntries: readonly unknown[]
   ): Promise<void> {
     const userModels = models.filter(model => model.catalog_source === 'user');
-    await this.writeUserModelsFile(userModels, inferenceEndpoints, customApiGroups);
+    await this.writeUserModelsFile(
+      [...userModels, ...unadmittedModelEntries],
+      inferenceEndpoints,
+      customApiGroups
+    );
     logger.info(
-      `[ModelPersister] Saved ${userModels.length} user models and ${inferenceEndpoints.length} inference endpoints`
+      `[ModelPersister] Saved ${userModels.length} user models, ${unadmittedModelEntries.length} unadmitted entries kept as-is and ${inferenceEndpoints.length} inference endpoints`
     );
   }
 
@@ -85,7 +90,7 @@ export class ModelPersister {
   }
 
   private async writeUserModelsFile(
-    models: readonly ModelConfig[],
+    models: UserModelsFile['models'],
     inferenceEndpoints: readonly InferenceEndpoint[],
     customApiGroups: readonly CustomApiGroup[]
   ): Promise<void> {

@@ -22,6 +22,7 @@ export type {
   ModelImageGenerationRoute,
   ModelRerankingRoute,
   TranscriptionRoute,
+  UnadmittedUserModel,
 } from './definitions/modelCatalog';
 export type { CustomApiGroup, CustomApiGroupMigration } from './definitions/customApiGroup';
 export type {

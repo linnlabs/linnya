@@ -1,6 +1,9 @@
 import type { ProviderCatalog } from '@linnya/provider-catalog';
 import type { ModelCatalog } from 'src/domains/model-catalog';
-import type { ProviderConfigurationRegistry } from 'src/domains/provider-configuration';
+import {
+  findFirstCatalogedProviderMember,
+  type ProviderConfigurationRegistry,
+} from 'src/domains/provider-configuration';
 import {
   ProviderModelDiscoveryError,
   type ProviderDiscoveredModel,
@@ -15,7 +18,7 @@ export interface ProviderModelDiscoveryDependencies {
     ProviderConfigurationRegistry,
     'getByProviderConnectionDefinitionId'
   >;
-  readonly models: Pick<ModelCatalog, 'resolveCredential'>;
+  readonly models: Pick<ModelCatalog, 'getModel' | 'resolveCredential'>;
   readonly bindings: Pick<ProviderOnboardingRuntimeBindingRegistry, 'get'>;
   readonly discovery: ReturnType<typeof createProviderModelDiscovery>;
 }
@@ -54,9 +57,12 @@ export function createProviderModelDiscoveryUseCase(
       if (!entry || !binding || !configured || !dependencies.discovery.supports(connectionId)) {
         throw new ProviderModelDiscoveryError('该供应商尚未接入在线模型发现', 400);
       }
-      const credentialModelId = configured.models[0]?.model_config_id;
-      const apiKey = credentialModelId
-        ? dependencies.models.resolveCredential(credentialModelId)
+      // 凭据取第一个仍在运行目录里的成员；排在前面的停用成员不能让整个 Provider 显得没有凭据。
+      const credentialModel = findFirstCatalogedProviderMember(configured, modelConfigId =>
+        dependencies.models.getModel(modelConfigId)
+      )?.model;
+      const apiKey = credentialModel
+        ? dependencies.models.resolveCredential(credentialModel.id)
         : undefined;
       if (!apiKey) {
         throw new ProviderModelDiscoveryError('供应商凭据不可用，请重新连接后刷新', 401);
