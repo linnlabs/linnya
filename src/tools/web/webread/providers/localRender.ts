@@ -3,9 +3,14 @@ import {
   type WebPageMainResponse,
   type WebPageRenderer,
 } from '../definitions/webPageRenderer';
-import { WebFailureError, type WebFailureKind } from '../../shared/webFailure';
+import {
+  classifyWebHttpFailureStatus,
+  WebFailureError,
+  type WebFailureKind,
+} from '../../shared/webFailure';
 import {
   createWebAccessChallengeHeaderLookup,
+  detectWebAccessChallenge,
   detectWebAccessChallengeHeader,
 } from '../../shared/webAccessChallenge';
 import { extractArticle } from '../extraction/extractArticle';
@@ -117,10 +122,36 @@ export class LocalRenderProvider implements WebReadProvider {
       throw error;
     }
 
-    if (detectWebAccessChallengeHeader(
-      createWebAccessChallengeHeaderLookup(rendered.mainResponse.headers),
-    )) {
+    const headerLookup = createWebAccessChallengeHeaderLookup(rendered.mainResponse.headers);
+    if (detectWebAccessChallengeHeader(headerLookup)) {
       throw createRenderAccessChallengeError(rendered.mainResponse);
+    }
+
+    const { status } = rendered.mainResponse;
+    if (status < 200 || status >= 300) {
+      const challengeSignal = detectWebAccessChallenge({
+        status,
+        headers: headerLookup,
+        bodyPreview: rendered.html.trim().slice(0, 4_096),
+      });
+      if (challengeSignal) {
+        throw new WebFailureError('captcha', `本地网页渲染收到站点访问验证响应: HTTP ${status}。`, {
+          status,
+          details: {
+            failureStage: 'local_render',
+            status,
+            challengeSignal,
+          },
+        });
+      }
+      const kind = classifyWebHttpFailureStatus(status);
+      throw new WebFailureError(kind, `本地网页渲染主文档返回非成功状态: HTTP ${status}。`, {
+        status,
+        details: {
+          failureStage: 'local_render',
+          status,
+        },
+      });
     }
 
     const extracted = extractArticle(rendered.html, { url: rendered.finalUrl });
@@ -129,7 +160,14 @@ export class LocalRenderProvider implements WebReadProvider {
         extracted.accessBarrier,
         extracted.accessBarrier === 'captcha'
           ? '本地渲染后仍返回人机验证页面。'
-          : '本地渲染后仍要求登录才能读取。'
+          : '本地渲染后仍要求登录才能读取。',
+        {
+          status,
+          details: {
+            failureStage: 'local_render',
+            status,
+          },
+        },
       );
     }
     if (!extracted.text && extracted.resources.length === 0) {
@@ -139,8 +177,8 @@ export class LocalRenderProvider implements WebReadProvider {
     return createWebReadResult({
       url: params.url,
       finalUrl: rendered.finalUrl,
-      // 状态码来自主框架实际响应，只作结果事实，不参与本地渲染质量决策。
-      status: rendered.mainResponse.status,
+      // 非 2xx 主响应已在上方分类拦截，此处只回传 2xx 实际状态码。
+      status,
       contentType: 'text/html; charset=utf-8',
       title: extracted.title,
       content: extracted.text,

@@ -64,4 +64,48 @@ describe('Web 读取质量判定', () => {
       contentChecks: { checked: 4, failed: ['source', 'calculation', 'withdrawn', 'table'] },
     });
   });
+
+  it('支持 text_present、text_absent（噪音不得出现）以及 resources_only / blocked 三类预期', () => {
+    const withNoise: WebReadReliabilityCase = {
+      ...baseCase,
+      contentAssertions: [
+        { id: 'body', kind: 'text_present', text: 'Official Notice 2026-01' },
+        { id: 'no-cookie', kind: 'text_absent', text: 'Accept All Cookies' },
+      ],
+    };
+    expect(evaluateReadQuality(withNoise, {
+      title: 'Notice',
+      content: 'Expected subject Official Notice 2026-01 details.',
+    })).toMatchObject({ success: true, contentChecks: { checked: 2, failed: [] } });
+    expect(evaluateReadQuality(withNoise, {
+      title: 'Notice',
+      content: 'Expected subject Official Notice 2026-01 Accept All Cookies.',
+    })).toMatchObject({
+      success: false,
+      failureKind: 'content_assertion_failed',
+      contentChecks: { checked: 2, failed: ['no-cookie'] },
+    });
+
+    const resourcesOnly: WebReadReliabilityCase = {
+      ...baseCase,
+      minChars: 0,
+      expectedAnyKeywords: [],
+      expectedOutcome: 'resources_only',
+    };
+    expect(evaluateReadQuality(resourcesOnly, { title: 'Attachments', content: '', resourcesCount: 2 }).success).toBe(true);
+    expect(evaluateReadQuality(resourcesOnly, { title: 'Attachments', content: '', resourcesCount: 0 })).toMatchObject({
+      success: false,
+      failureKind: 'expected_resources_missing',
+    });
+
+    const blocked: WebReadReliabilityCase = {
+      ...baseCase,
+      expectedOutcome: 'blocked',
+      expectedFailureKind: ['http_403', 'login_required'],
+    };
+    expect(evaluateReadQuality(blocked, { title: 'Unexpected', content: 'body' })).toMatchObject({
+      success: false,
+      failureKind: 'expected_blocked_not_returned',
+    });
+  });
 });

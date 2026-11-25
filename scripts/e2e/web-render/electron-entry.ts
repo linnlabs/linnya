@@ -1,5 +1,6 @@
 import { app } from 'electron';
 import { createServer } from 'node:http';
+import { WebPageRenderManager } from '../../../src/electron-main/web-render/WebPageRenderManager';
 import { WebPageRenderWorker } from '../../../src/electron-main/web-render/WebPageRenderWorker';
 import { createElectronWebPageRenderRuntime } from '../../../src/electron-main/web-render/electronWebPageRenderRuntime';
 import { LocalRenderProvider } from '../../../src/tools/web/webread/providers/localRender';
@@ -168,6 +169,11 @@ async function run(): Promise<void> {
       response.end('<!doctype html><html><body>accepted fixture</body></html>');
       return;
     }
+    if (route === '/forbidden-long') {
+      response.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+      response.end(`<!doctype html><html><head><title>403 Forbidden</title></head><body><article><h1>Access Denied</h1><p>${'Forbidden gateway error page details. '.repeat(40)}</p></article></body></html>`);
+      return;
+    }
     if (route === '/static') {
       response.setHeader('Content-Type', 'text/html; charset=utf-8');
       response.end('<!doctype html><html><body>static fixture</body></html>');
@@ -293,6 +299,65 @@ async function run(): Promise<void> {
     const dataDiagnostics = getWebFailureDiagnostics(brokenData);
     const dataFeedback = buildWebReadFailureFeedback(brokenData, { hostname: 'www.web-render.test' });
 
+    const forbiddenLongError = await new LocalRenderProvider({ renderer: worker })
+      .read({ url: `${origin}/forbidden-long` })
+      .then(() => null, (error: unknown) => (error instanceof WebFailureError ? error : null));
+    if (!forbiddenLongError) throw new Error('渲染长 403 页面不得作为正文成功返回');
+    const forbiddenLong = {
+      kind: forbiddenLongError.kind,
+      status: forbiddenLongError.status,
+    };
+
+    const managerPartitions: string[] = [];
+    let managerSessionCalls = 0;
+    const countingRuntime = {
+      ...fixtureRuntime,
+      createSession(partition: string) {
+        managerSessionCalls += 1;
+        managerPartitions.push(partition);
+        return fixtureRuntime.createSession(partition);
+      },
+    };
+    const slotManager = new WebPageRenderManager({
+      maxConcurrency: 1,
+      idleTimeoutMs: 100,
+      runtime: countingRuntime,
+      partitionPrefix: `web-render-e2e-slot-${process.pid}`,
+    });
+    const restrictedManager = new WebPageRenderManager({
+      maxConcurrency: 1,
+      idleTimeoutMs: 100,
+      partitionPrefix: `web-render-e2e-restricted-${process.pid}`,
+    });
+    let spaAfterIdle = false;
+    let restrictedBeforeIdle: { kind: string; netErrorCode?: number } = { kind: '' };
+    let restrictedAfterIdle: { kind: string; netErrorCode?: number } = { kind: '' };
+    try {
+      await slotManager.render({ url: `${origin}/static` });
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const spaSecond = await slotManager.render({ url: `${origin}/spa` });
+      spaAfterIdle = spaSecond.html.includes('SPA_RENDERED_CONTENT');
+
+      const readRestrictedError = async (): Promise<{ kind: string; netErrorCode?: number }> => {
+        try {
+          await restrictedManager.render({ url: `http://127.0.0.1:${port}/static` });
+          return { kind: 'rendered' };
+        } catch (error: unknown) {
+          const code = error && typeof error === 'object' ? Reflect.get(error, 'netErrorCode') : undefined;
+          return {
+            kind: error && typeof error === 'object' ? String(Reflect.get(error, 'kind') ?? '') : '',
+            ...(typeof code === 'number' ? { netErrorCode: code } : {}),
+          };
+        }
+      };
+      restrictedBeforeIdle = await readRestrictedError();
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      restrictedAfterIdle = await readRestrictedError();
+    } finally {
+      await slotManager.dispose();
+      await restrictedManager.dispose();
+    }
+
     const result = {
       spaRendered: spa.html.includes('SPA_RENDERED_CONTENT'),
       permissionDenied: spa.html.includes('data-permission="denied"'),
@@ -333,6 +398,14 @@ async function run(): Promise<void> {
         scriptFailuresAbsent: dataDiagnostics.subresourceFailureCount === undefined,
         suggestsRetry: dataFeedback.includes('可稍后重试'),
         claimsRetryUseless: dataFeedback.includes('重复读取同一地址通常不会改变结果'),
+      },
+      forbiddenLong,
+      slotIdleReuse: {
+        createSessionCalls: managerSessionCalls,
+        uniquePartitions: new Set(managerPartitions).size,
+        spaAfterIdle,
+        restrictedBeforeIdle,
+        restrictedAfterIdle,
       },
       popupRequests: state.popupRequests,
       downloadRequests: state.downloadRequests,

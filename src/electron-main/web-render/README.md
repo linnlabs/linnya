@@ -14,7 +14,10 @@ IP、localhost 和跨注册域导航拒绝。`about:blank` 只保留窗口初始
 站点相同不等于已经取得网络准入。Session 的 `onBeforeRequest` 对每次主框架请求（含重定向）
 重新调用既有 URL/DNS policy，不复用之前同主机的准入结果。子资源沿用会话内既有的主机解析缓存，
 每次渲染清理 storage 时同步清空。DNS 准入不是 Chromium socket 地址钉扎，不宣称消除所有 DNS 竞争窗口。
-每个任务结束销毁窗口，worker 只复用隔离 session；取消、超时和渲染进程退出仍由同一 worker 管理。
+`WebPageRenderManager` 按槽位使用有界固定 partition（默认 `web-render:slot-0`、`web-render:slot-1`），
+由 `createSlotRenderSession` 按槽位生命周期安装一次安全守卫与响应/子资源观察器，空闲期间（无活跃任务）
+主响应观察默认拒绝；Worker 空闲销毁时只销毁窗口并清理 storage/cache，不卸载槽位安全守卫，也不按随机
+UUID 无限创建底层 Chromium session；取消、超时和渲染进程退出仍由当前活跃 Worker 管理。
 
 ## 加载与就绪
 
@@ -60,5 +63,6 @@ Session 的 `onHeadersReceived` 在响应正文交给页面前观察每个主框
 取消决定和异常拒绝，以及数据请求观察；`functions/assessRenderReadiness.test.ts` 覆盖就绪规则边界。
 真实 Electron 夹具还核对挑战页被取消后脚本与子资源请求为 0、普通 202 仍正常渲染，以及受控延迟页面：延迟数据的应用壳
 取得正文、拖住 load 的图片不致整页失败、数据请求不结束或已结束仍为空的应用壳报告未渲染、无脚本空页快速返回。
-另用真实 fetch 与 XMLHttpRequest 的连接断开验证失败事实经 Provider 进入恢复建议，不再提示重复读取无效。
+另用真实 fetch 与 XMLHttpRequest 的连接断开验证失败事实经 Provider 进入恢复建议，不再提示重复读取无效；
+并覆盖渲染端长 403 错误页不写入正文、以及 Manager 在 `idleTimeoutMs` 回收重建 Worker 后只创建一次槽位 session 且私有回环地址准入守卫依然生效。
 真实 Electron 夹具入口为 `pnpm run test:web-render:electron`，不依赖外部站点。

@@ -5,6 +5,7 @@ import {
   getWebExtractionFailureStage,
   getWebFailureKind,
   isEscalatableWebFailureKind,
+  resolveWebAccessBlockKind,
   type WebExtractionFailureStage,
   type WebFailureKind,
 } from '../../shared/webFailure';
@@ -94,7 +95,12 @@ async function readManagedFallback(args: {
       args.previousFailure === undefined
         ? args.initialFailureStage
         : (getWebExtractionFailureStage(args.previousFailure) ?? args.initialFailureStage);
-    const failureReason = previousFailureKind ?? args.initialFailureKind ?? args.reason;
+    const accessBlockKind = resolveWebAccessBlockKind({
+      previousFailureKind,
+      initialFailureKind: args.initialFailureKind,
+      escalationReason: args.reason,
+    });
+    const failureReason = accessBlockKind ?? previousFailureKind ?? args.initialFailureKind ?? args.reason;
     const stageSuffix = extractionStage ? `，stage=${extractionStage}` : '';
     throw attachWebReadRecoveryResources(new WebFailureError<WebReadEscalationReason>(
       'managed_disabled',

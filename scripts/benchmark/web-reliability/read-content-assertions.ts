@@ -17,6 +17,8 @@ export function checkWebContentAssertions(
 ): WebContentCheckResult {
   if (assertions.length === 0) return { checked: 0, failed: [] };
   const document = load(markdown.render(content));
+  const rawNormalizedLower = normalizedText(content).toLocaleLowerCase();
+  const renderedNormalizedLower = normalizedText(document.root().text()).toLocaleLowerCase();
   const failed = assertions.filter(assertion => {
     switch (assertion.kind) {
       case 'link':
@@ -43,6 +45,14 @@ export function checkWebContentAssertions(
             });
           });
         });
+      case 'text_present': {
+        const needle = normalizedText(assertion.text).toLocaleLowerCase();
+        return !renderedNormalizedLower.includes(needle) && !rawNormalizedLower.includes(needle);
+      }
+      case 'text_absent': {
+        const needle = normalizedText(assertion.text).toLocaleLowerCase();
+        return renderedNormalizedLower.includes(needle) || rawNormalizedLower.includes(needle);
+      }
     }
   }).map(assertion => assertion.id);
   return { checked: assertions.length, failed };

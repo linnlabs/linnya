@@ -4,8 +4,14 @@ import type {
 } from '../definitions/readLadder';
 import type { WebReadResult } from '../providers/types';
 import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
+import { hasSpaHashRouteUrl } from '../../websearch/citations/normalizeUrl';
 
 function findReadabilityEscalationReason(result: WebReadResult): WebReadEscalationReason | undefined {
+  // HTTP 请求不会向服务端发送 `#` 片段；显式 SPA hash 路由页在静态首跳只能取到根壳，
+  // 即使根壳含导语、摘要或表格，也必须升级到客户端渲染后再按常规质量评估。
+  if (result.renderMode === 'http' && hasSpaHashRouteUrl(result.url)) {
+    return 'js_required';
+  }
   // metadata_only 是有意返回的终态：正文未取得，但页面元数据/正式资源已经
   // 通过本地抽取器捕获。继续升级只会重复请求同一页，不能把资源变成正文。
   if (result.warnings.includes('metadata_only') && !result.warnings.includes('js_shell')) {

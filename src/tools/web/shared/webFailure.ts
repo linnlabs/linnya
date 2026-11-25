@@ -256,11 +256,7 @@ export class WebFailureError<TReason extends string = WebFailureKind> extends Er
   /** 禁用后备读取时仍公开已确认的访问阻断根因，不能把所有 managed_disabled 当作拦截。 */
   get code(): WebFailureKind {
     if (this.kind !== 'managed_disabled') return this.kind;
-    const reason =
-      this.details?.previousFailureKind ??
-      this.details?.initialFailureKind ??
-      this.details?.escalationReason;
-    return isWebAccessBlockKind(reason) ? reason : this.kind;
+    return resolveWebAccessBlockKind(this.details) ?? this.kind;
   }
 }
 
@@ -268,6 +264,29 @@ export type WebAccessBlockKind = 'captcha' | 'http_403' | 'login_required';
 
 export function isWebAccessBlockKind(kind: unknown): kind is WebAccessBlockKind {
   return kind === 'captcha' || kind === 'http_403' || kind === 'login_required';
+}
+
+/** 从失败链细节中保留已确认的访问拦截根因；更具体的 captcha / login_required 优先于 http_403。 */
+export function resolveWebAccessBlockKind(
+  details: Pick<WebFailureDetails<string>, 'previousFailureKind' | 'initialFailureKind' | 'escalationReason'> | undefined,
+): WebAccessBlockKind | undefined {
+  const candidates = [
+    details?.previousFailureKind,
+    details?.initialFailureKind,
+    details?.escalationReason,
+  ].filter(isWebAccessBlockKind);
+  if (candidates.length === 0) return undefined;
+  return candidates.find(kind => kind === 'captcha' || kind === 'login_required') ?? candidates[0];
+}
+
+/** 统一把上游非 2xx 状态码映射为内部失败分类，供本地抓取与渲染路径共用。 */
+export function classifyWebHttpFailureStatus(status: number): WebFailureKind {
+  if (status === 403) return 'http_403';
+  if (status === 404) return 'http_404';
+  if (status === 401) return 'auth';
+  if (status === 429) return 'rate_limited';
+  if (status >= 500) return 'http_5xx';
+  return 'http_error';
 }
 
 /** 只读正式分类；网络、超时、抽取失败和未知 provider_error 都不推断为站点拦截。 */
@@ -309,12 +328,13 @@ export function getWebFailureKind(error: unknown): WebFailureKind {
     if (isWebAccessChallengeSignal(error['challengeSignal'] ?? details?.['challengeSignal'])) {
       return 'captcha';
     }
+    const rawKind = error['kind'];
+    if (rawKind === 'login_required' || rawKind === 'captcha') return rawKind;
     if (status === 403) return 'http_403';
     if (status === 404) return 'http_404';
     if (hasDnsFailure(error)) return 'dns_error';
-    const kind = error['kind'];
-    if (typeof kind === 'string') {
-      const knownKind = WEB_FAILURE_KIND_VALUES.find(candidate => candidate === kind);
+    if (typeof rawKind === 'string') {
+      const knownKind = WEB_FAILURE_KIND_VALUES.find(candidate => candidate === rawKind);
       if (knownKind) return knownKind;
     }
   }

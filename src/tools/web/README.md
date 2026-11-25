@@ -375,7 +375,7 @@ Reader 服务地址与环境变量名由 Web Read 自己的静态服务定义拥
 - 当前读取路由可观察边界是 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted`；失败日志还会记录状态码、响应 MIME、最终 URL、重定向数、请求尝试次数和重试次数（不记录响应正文）。`initialFailureStage` 仅用于 `dom_canonicalization/readability` 抽取阶段。尚未记录每一跳 DNS 解析地址、代理 fake-IP 判定或 DNS/连接分段耗时，不得从现有日志推断这些事实
 - 兼容 TUN 代理 fake-IP：仅域名 DNS 结果允许 `198.18/15`，字面 fake-IP、内网地址及混入内网地址的解析结果仍拒绝
 - `WebPageRenderer` port 由 Electron main 显式注入 backend bundle；渲染 worker/runtime 禁止进入 backend bundle。默认渲染 provider 只在质量信号命中后惰性创建
-- 缓存路由身份 version 10 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略、误删折叠正文及 5 万字截断快照的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss
+- 缓存路由身份 version 12 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略、误删折叠正文、5 万字截断快照、SPA hash 路由串页及渲染端非 2xx 错误页误接纳的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss；含非空 SPA hash 路由（`#/...`、`#!/...`）的页面在 `local_http` 阶段因 HTTP 不发送 `#` 片段而强制升级渲染一次，普通 `#section` 锚点仍按原规则复用引用与缓存。
 
 ### 5.3 与 citations 的关系（V1：页级引用先行）
 
@@ -510,8 +510,8 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 ### 5.10 失败内容与工具错误码
 
 - HTTP 失败的 `bodyText`、`statusText`，以及供应商 JSON / MCP 错误中的 `message/detail` 都是不可信外部内容，不能拼入工具异常、observation、RuntimeEvent、审计或日志。错误文案由 Web owner 的固定模板与数值状态生成；成功网页正文仍走现有动态不可信边界。
-- 挑战页识别只在 HTTP 响应边界读取响应头与有限正文，错误对象仅保留 `challengeSignal`（`aws_waf_challenge/aws_waf_captcha/cloudflare_challenge/page_marker`），不携带 `bodyPreview` 或原始头值。重试与读取阶梯复用该判定；阶段包装把 HTTP 状态提升到顶层后，已确认的挑战信号仍先于 403/404 状态归类，不能为删正文或补诊断而丢失 captcha 分类或改变升级规则。诊断以 `challenge=<signal>` 展示信号，恢复建议明确工具不执行或绕过验证。
-- `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 通常与 `kind` 一致；唯一例外是 `kind=managed_disabled` 且结构化根因已确定为 `captcha/http_403/login_required`，此时 code 保留该访问拦截根因。读取阶梯与诊断仍保留 `managed_disabled`，不改变升级/重试规则；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
+- 挑战页识别只在 HTTP 响应边界读取响应头与有限正文，错误对象仅保留 `challengeSignal`（`aws_waf_challenge/aws_waf_captcha/cloudflare_challenge/page_marker/js_verification`），不携带 `bodyPreview` 或原始头值。其中 412/521 仅在响应体同时出现明确访问验证关键词或 `<script>` Cookie-重载校验特征时归为挑战（412/521 排除泛化的 `cloudflare` 关键词，避免 Cloudflare 521 源站宕机页误判；裸 412/521 保持 `http_error` / `http_5xx` 与原有重试策略）。`LocalRenderProvider` 在抽取正文前同样执行主响应挑战与非 2xx 状态分类（403/404/401/429/5xx 等），长错误页不得写入 Evidence。阶段包装把 HTTP 状态提升到顶层后，已确认的挑战信号以及显式 `login_required`/`captcha` 仍先于 `403/404` 状态归类，不能为删正文或补诊断而丢失拦截根因或改变升级规则。诊断以 `challenge=<signal>` 展示信号，恢复建议明确工具不执行或绕过验证。
+- `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 通常与 `kind` 一致；唯一例外是 `kind=managed_disabled` 且失败链结构化细节中已确定访问拦截根因（`captcha/login_required` 优先于笼统 `http_403`），此时 code 与阶梯归因即使遇到渲染不可用等次级失败也保留该访问拦截根因。读取阶梯与诊断仍保留 `managed_disabled`，不改变升级/重试规则；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
 - 无内容失败不能写成功 Evidence；401 不因错误文案或状态码而自动交给第三方 Reader。错误安全不新增 fallback、审计开关或新的导出协议。
 - 安全诊断统一由 `shared/webFailure.ts` 投影：保留实际执行阶段（search/local_http/local_render/managed_reader/read_ladder）、已知首跳/前跳 kind、抽取阶段、本地渲染具体 kind、HTTP/RPC 数值状态及尝试次数。另保留已知 Retry-After 毫秒值、重试停止原因（非瞬态/次数已用尽/等待超限/预算不足）、超限或正文下载超时时实际已收字节、上限及声明 Content-Length、是否已尝试本机渲染（`render_attempted`）、质量不足时实际取得的正文字符数（`extracted_chars`），以及本地渲染主框架加载失败的 Chromium 数值错误码（`net_error`）和脚本/样式表下载失败次数与首个合法错误名（`subresource_failures`、`subresource_error`）。声明长度可能对应压缩传输，不能当完整解压大小。模型收到的持久工具错误附同源诊断；后端日志复用同一投影，不要求 Audit 开启，也不从正文复原字段。`max_chars` 不扩大下载预算。
 - 本地渲染主框架加载失败（`load_failed`）按 Chromium 错误码归类：`-20`（本地 URL/DNS 准入拦截）为 `policy_denied`；`≤ -100`（连接、TLS、证书、HTTP 协议、DNS）为 `network_error`，建议说明站点或本机网络路径问题；其余（如 `-3` 导航中止）仍为渲染能力失败。应用壳未渲染或 DOM 未就绪时若有脚本/样式表下载失败，建议改为网络或站点暂时问题，不再断言重复读取无效。

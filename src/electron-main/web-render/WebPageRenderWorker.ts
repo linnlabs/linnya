@@ -50,6 +50,7 @@ const READINESS_SCRIPT = `(() => {
 export interface WebPageRenderWorkerOptions {
   readonly runtime?: WebPageRenderRuntime;
   readonly partition?: string;
+  readonly session?: WebPageRenderSession;
   readonly loadTimeoutMs?: number;
   readonly renderTimeoutMs?: number;
   readonly totalTimeoutMs?: number;
@@ -110,6 +111,7 @@ function readReadinessSample(value: unknown): RenderReadinessSample | null {
 export class WebPageRenderWorker {
   private readonly runtime: WebPageRenderRuntime;
   private readonly partition: string;
+  private readonly providedSession: WebPageRenderSession | undefined;
   private readonly loadTimeoutMs: number;
   private readonly renderTimeoutMs: number;
   private readonly totalTimeoutMs: number;
@@ -137,6 +139,7 @@ export class WebPageRenderWorker {
   constructor(options: WebPageRenderWorkerOptions = {}) {
     this.runtime = options.runtime ?? electronWebPageRenderRuntime;
     this.partition = options.partition ?? `web-render:${randomUUID()}`;
+    this.providedSession = options.session;
     this.loadTimeoutMs = options.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT_MS;
     this.renderTimeoutMs = options.renderTimeoutMs ?? DEFAULT_RENDER_TIMEOUT_MS;
     this.totalTimeoutMs = options.totalTimeoutMs ?? DEFAULT_TOTAL_TIMEOUT_MS;
@@ -205,7 +208,13 @@ export class WebPageRenderWorker {
     this.destroyWindow();
     this.sessionSecurityCleanup?.();
     this.sessionSecurityCleanup = null;
+    const session = this.renderSession;
     this.renderSession = null;
+    if (session) {
+      await session.clearStorageData().catch((error: unknown) => {
+        this.logger.warn('[web-render] 销毁时清理存储失败', error);
+      });
+    }
   }
 
   private async performRender(
@@ -406,7 +415,7 @@ export class WebPageRenderWorker {
     readonly renderSession: WebPageRenderSession;
   } {
     if (!this.renderSession) {
-      const renderSession = this.runtime.createSession(this.partition);
+      const renderSession = this.providedSession ?? this.runtime.createSession(this.partition);
       const removeSecurityGuards = renderSession.installSecurityGuards();
       const removeResponseObserver = renderSession.observeMainFrameResponses(
         (response) => this.handleMainFrameResponse(response),

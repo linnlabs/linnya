@@ -826,4 +826,128 @@ describe('R2 本地渲染 Provider', () => {
         details: { challengeSignal: 'cloudflare_challenge' },
       });
   });
+
+  it.each([
+    { status: 403, html: `<html><body><article>${'Forbidden details '.repeat(50)}</article></body></html>`, expectedKind: 'http_403' },
+    { status: 403, html: '<html><title>Human verification</title><body><p>Please verify</p></body></html>', expectedKind: 'captcha', challengeSignal: 'page_marker' },
+    { status: 404, html: `<html><body><article>${'Not found details '.repeat(50)}</article></body></html>`, expectedKind: 'http_404' },
+    { status: 401, html: `<html><body><article>${'Unauthorized details '.repeat(50)}</article></body></html>`, expectedKind: 'auth' },
+    { status: 429, html: `<html><body><article>${'Rate limited details '.repeat(50)}</article></body></html>`, expectedKind: 'rate_limited' },
+    { status: 503, html: `<html><body><article>${'Service unavailable '.repeat(50)}</article></body></html>`, expectedKind: 'http_5xx' },
+    { status: 410, html: `<html><body><article>${'Gone permanently '.repeat(50)}</article></body></html>`, expectedKind: 'http_error' },
+    { status: 521, html: '<html><script>document.cookie="__jsl_clearance=1";location.reload();</script></html>', expectedKind: 'captcha', challengeSignal: 'js_verification' },
+    { status: 521, html: '<html><title>521 Web server is down | Cloudflare</title></html>', expectedKind: 'http_5xx' },
+  ])('渲染主响应 HTTP $status 在抽取前归类为 $expectedKind，不把错误页当正文', async ({ status, html, expectedKind, challengeSignal }) => {
+    const renderer: WebPageRenderer = {
+      render: vi.fn().mockResolvedValue({
+        finalUrl: 'https://example.com/error-page',
+        html,
+        mainResponse: { status, headers: {} },
+      }),
+    };
+    await expect(new LocalRenderProvider({ renderer }).read({ url: 'https://example.com/error-page' }))
+      .rejects.toMatchObject({
+        kind: expectedKind,
+        status,
+        details: {
+          failureStage: 'local_render',
+          status,
+          ...(challengeSignal ? { challengeSignal } : {}),
+        },
+      });
+  });
+
+  it('SPA hash 路由页静态首跳强制升级本地渲染，普通 #section 静态页仍停在 local_http', async () => {
+    const staticRootHtml = `<!doctype html><html><head><title>Portal</title></head><body><article><h1>Portal Overview</h1><p>${'Static portal introduction paragraph. '.repeat(20)}</p></article></body></html>`;
+    const httpProvider: WebReadProvider = {
+      name: 'local_http',
+      read: vi.fn(async (params: WebReadParams) => createWebReadResult({
+        url: params.url,
+        finalUrl: params.url.split('#')[0]!,
+        status: 200,
+        contentType: 'text/html',
+        title: 'Portal',
+        content: staticRootHtml.repeat(1).slice(0, 300),
+        contentFormat: 'markdown',
+        extractor: 'readability',
+        renderMode: 'http',
+        provider: 'local_http',
+        rawLength: staticRootHtml.length,
+        qualityScore: 1,
+        warnings: [],
+        latencyMs: 2,
+      })),
+    };
+    const render = createRenderProvider();
+    const managed = createManagedProvider();
+
+    const hashResult = await readWebPageWithLadder(
+      { url: 'https://gov.example.test/#/notice/2026-01' },
+      { provider: httpProvider, renderProvider: render.provider, managedProvider: managed.provider },
+    );
+    expect(hashResult).toMatchObject({
+      selectedProvider: 'local_render',
+      renderAttempted: true,
+      escalationReason: 'js_required',
+    });
+    expect(render.read).toHaveBeenCalledTimes(1);
+    expect(managed.read).not.toHaveBeenCalled();
+
+    const anchorResult = await readWebPageWithLadder(
+      { url: 'https://example.com/article#section-2' },
+      { provider: httpProvider, renderProvider: render.provider, managedProvider: managed.provider },
+    );
+    expect(anchorResult).toMatchObject({
+      selectedProvider: 'local_http',
+      renderAttempted: false,
+      escalated: false,
+    });
+    expect(render.read).toHaveBeenCalledTimes(1);
+  });
+
+  it('渲染阶段遇 404/500 保持终态且不触发托管 Reader；渲染遇 403/login_required 保留拦截根因', async () => {
+    const initialProvider: WebReadProvider = {
+      name: 'local_http',
+      read: async () => createReadabilityResult({ warnings: ['js_shell'], qualityScore: 0.2 }),
+    };
+    for (const terminalKind of ['http_404', 'http_5xx', 'auth', 'rate_limited'] as const) {
+      const managed = createManagedProvider();
+      await expect(readWebPageWithLadder(
+        { url: 'https://example.com/error' },
+        {
+          provider: initialProvider,
+          renderProvider: createFailingProvider(terminalKind, 'local_render'),
+          managedProvider: managed.provider,
+        },
+      )).rejects.toMatchObject({ kind: terminalKind });
+      expect(managed.read).not.toHaveBeenCalled();
+    }
+
+    for (const barrier of ['http_403', 'captcha', 'login_required'] as const) {
+      const disabledError = await readWebPageWithLadder(
+        { url: 'https://example.com/barrier' },
+        {
+          provider: initialProvider,
+          renderProvider: createFailingProvider(barrier, 'local_render'),
+          managedProvider: null,
+          config: { renderEnabled: true, managedReader: 'none' },
+        },
+      ).catch((failure: unknown) => failure);
+      expect(disabledError).toBeInstanceOf(WebFailureError);
+      expect((disabledError as WebFailureError).kind).toBe('managed_disabled');
+      expect((disabledError as WebFailureError).code).toBe(barrier);
+
+      const managed = createManagedProvider();
+      const recovered = await readWebPageWithLadder(
+        { url: 'https://example.com/barrier' },
+        {
+          provider: initialProvider,
+          renderProvider: createFailingProvider(barrier, 'local_render'),
+          managedProvider: managed.provider,
+        },
+      );
+      expect(recovered.selectedProvider).toBe('managed_fixture');
+      expect(managed.read).toHaveBeenCalledTimes(1);
+    }
+  });
 });

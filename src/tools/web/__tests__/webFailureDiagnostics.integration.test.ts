@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { WebReadTool } from '../webread/WebReadTool';
 import { LocalRenderProvider } from '../webread/providers/localRender';
 import { WebPageRenderError } from '../webread/definitions/webPageRenderer';
-import { WebFailureError, getWebFailureDiagnostics } from '../shared/webFailure';
+import { WebFailureError, getWebAccessBlockKind, getWebFailureDiagnostics } from '../shared/webFailure';
+import { buildWebReadFailureFeedback } from '../webread/functions/buildWebReadFailureFeedback';
 import { WebHttpError } from '../../../infra/adapters/web-http/webHttpFetch';
 import { createWebReadResult } from '../webread/functions/createWebReadResult';
 import type { WebDocumentWarning } from '../definitions/webDocument';
@@ -340,5 +341,93 @@ describe('网页失败的模型、审计和安全诊断边界', () => {
       rpcCode: -32000,
     });
     expect(JSON.stringify(diagnostics)).not.toContain(UNSAFE_TEXT);
+  });
+
+  it('G1/G2：渲染长 404/403 不写 Evidence，访问拦截根因在渲染不可用/关闭渲染/升级后遇验证码登录墙下均不丢失', async () => {
+    const save = vi.fn(async () => ({ bundleId: '0123456789abcdef' }));
+    const historyRead = vi.fn(() => ({ blocked: 1, succeeded: 0, unclassified: 0 }));
+    const ctx = context();
+    ctx.webReadAccessHistory = { read: historyRead };
+
+    // 1) 渲染长 404 不写 Evidence，且保持终态
+    const render404Tool = new WebReadTool({
+      provider: { name: 'local_http', read: async () => { throw new WebFailureError('js_required', 'shell'); } },
+      renderProvider: new LocalRenderProvider({
+        renderer: {
+          render: async () => ({
+            finalUrl: 'https://example.com/missing',
+            mainResponse: { status: 404, headers: {} },
+            html: `<html><body><article>${'Not Found long error page. '.repeat(40)}</article></body></html>`,
+          }),
+        },
+      }),
+      managedProvider: null,
+      evidenceWriter: { save },
+    });
+    await expect(render404Tool.run({ url: 'https://example.com/missing' }, ctx)).rejects.toMatchObject({
+      kind: 'http_404',
+      status: 404,
+    });
+    expect(save).not.toHaveBeenCalled();
+
+    // 2) 渲染长 403 且 managedReader=none：不写 Evidence，code=http_403，计入 §5.11 拦截历史
+    const render403Tool = new WebReadTool({
+      provider: { name: 'local_http', read: async () => { throw new WebFailureError('js_required', 'shell'); } },
+      renderProvider: new LocalRenderProvider({
+        renderer: {
+          render: async () => ({
+            finalUrl: 'https://example.com/denied',
+            mainResponse: { status: 403, headers: {} },
+            html: `<html><body><article>${'403 Forbidden long gateway page. '.repeat(40)}</article></body></html>`,
+          }),
+        },
+      }),
+      managedProvider: null,
+      config: { renderEnabled: true, managedReader: 'none' },
+      evidenceWriter: { save },
+    });
+    const render403Error = await render403Tool.run({ url: 'https://example.com/denied' }, ctx).catch((f: unknown) => f);
+    expect(render403Error).toBeInstanceOf(WebFailureError);
+    expect((render403Error as WebFailureError).kind).toBe('managed_disabled');
+    expect((render403Error as WebFailureError).code).toBe('http_403');
+    expect((render403Error as Error).message).toContain('当前访问被拦截');
+    expect(historyRead).toHaveBeenCalledTimes(1);
+    expect(save).not.toHaveBeenCalled();
+
+    // 3) renderEnabled=false + http_403/captcha/login_required 保留 code 与 §5.11 计数
+    for (const barrier of ['http_403', 'captcha', 'login_required'] as const) {
+      const noRenderTool = new WebReadTool({
+        provider: { name: 'local_http', read: async () => { throw new WebFailureError(barrier, barrier); } },
+        renderProvider: null,
+        managedProvider: null,
+        config: { renderEnabled: false, managedReader: 'none' },
+        evidenceWriter: { save },
+      });
+      const err = await noRenderTool.run({ url: 'https://example.com/blocked' }, ctx).catch((f: unknown) => f);
+      expect((err as WebFailureError).kind).toBe('managed_disabled');
+      expect((err as WebFailureError).code).toBe(barrier);
+    }
+    expect(historyRead).toHaveBeenCalledTimes(4);
+
+    // 4) 模拟 CLI 无渲染端口：initial=http_403 + previous=provider_error 仍保留 http_403 与拦截建议
+    const cliMaskedError = new WebFailureError('managed_disabled', '[WEB_READ_MANAGED_DISABLED]', {
+      details: {
+        initialFailureKind: 'http_403',
+        previousFailureKind: 'provider_error',
+        renderFailureKind: 'unavailable',
+        failureStage: 'local_render',
+      },
+    });
+    expect(cliMaskedError.code).toBe('http_403');
+    expect(getWebAccessBlockKind(cliMaskedError)).toBe('http_403');
+    const cliFeedback = buildWebReadFailureFeedback(cliMaskedError, { hostname: 'example.com' });
+    expect(cliFeedback).toContain('当前访问被拦截');
+    expect(cliFeedback).not.toContain('本机渲染能力本次不可用');
+
+    // 5) 初始 http_403 后若次级遇到更具体的 login_required / captcha，优先保留更具体原因
+    const loginAfter403 = new WebFailureError('managed_disabled', '[WEB_READ_MANAGED_DISABLED]', {
+      details: { initialFailureKind: 'http_403', previousFailureKind: 'login_required' },
+    });
+    expect(loginAfter403.code).toBe('login_required');
   });
 });
