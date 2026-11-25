@@ -3,7 +3,19 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import os from 'node:os';
 import path from 'node:path';
 import { expect, it } from 'vitest';
+import { pluginCiTargets, pluginOwnerCommands } from '../definitions/pluginCiGates';
 import { selectPluginCiScope } from '../functions/selectPluginCiScope';
+
+it('单插件 PR 只把公共静态检查交给架构任务，本地仍执行这些检查', () => {
+  for (const [plugin, target] of pluginCiTargets) {
+    const local = pluginOwnerCommands(plugin);
+    const shared = [['run', 'guard:plugin-boundaries']];
+    if (!target.regressionWorkflow) shared.push(['exec', 'eslint', '--max-warnings', '0', `packages/plugins/${plugin}/src`]);
+    const inPublic = new Set(shared.map(args => args.join(' ')));
+    expect(local.filter(args => inPublic.has(args.join(' ')))).toEqual(shared);
+    expect(pluginOwnerCommands(plugin, 'pull-request')).toEqual(local.filter(args => !inPublic.has(args.join(' '))));
+  }
+});
 
 it('按真实 Git 差异和 pnpm 反向依赖选择插件、共享合同与跨包移动', () => {
   const root = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'plugin-ci-scope-')));

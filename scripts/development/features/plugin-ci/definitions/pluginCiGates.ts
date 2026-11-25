@@ -39,20 +39,24 @@ export const pluginCiTargets = new Map<string, PluginCiTarget>([
 ]);
 
 /** 每项都是 pnpm 的 argv，本地与 PR 在同一入口执行，首个失败保留退出状态。 */
-export function pluginOwnerCommands(plugin: string): readonly (readonly string[])[] {
+export function pluginOwnerCommands(
+  plugin: string,
+  mode: 'local' | 'pull-request' = 'local',
+): readonly (readonly string[])[] {
   const target = pluginCiTargets.get(plugin);
   if (!target) throw new Error(`尚未登记插件门禁：${plugin}`);
   const owner = ['--filter', `@plugin/${plugin}`, 'run'];
   const checks = target.regressionWorkflow ? [] : [
-    ['exec', 'eslint', '--max-warnings', '0', `packages/plugins/${plugin}/src`],
+    ...(mode === 'local' ? [['exec', 'eslint', '--max-warnings', '0', `packages/plugins/${plugin}/src`]] : []),
     [...owner, 'typecheck'],
     [...owner, 'test'],
   ];
+  // PR 的 public architecture job 已经执行全仓 lint 和这些公共边界门禁。
+  // 本地快速入口仍保留完整门禁，保证脱离 GitHub 也能发现边界问题。
+  const sharedGates = mode === 'local' ? [['run', 'guard:plugin-boundaries']] : [];
   return [
     ['install', '--frozen-lockfile'],
-    ['run', 'guard:agent-boundary'],
-    ['run', 'guard:plugin-table-ownership'],
-    ['run', 'guard:host-plugin-id'],
+    ...sharedGates,
     ...target.preparation,
     ...checks,
     ['run', 'build:wasm'],

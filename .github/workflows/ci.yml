@@ -44,9 +44,7 @@ jobs:
           pnpm run guard:public-document-boundary
           pnpm run guard:remote-telemetry-boundary
           pnpm run guard:public-package-private-plugin-boundary
-          pnpm run guard:agent-boundary
-          pnpm run guard:plugin-table-ownership
-          pnpm run guard:host-plugin-id
+          pnpm run guard:plugin-boundaries
           pnpm run guard:tsc-baseline
           pnpm run guard:shell-tool-boundary
           pnpm run guard:markdown-domain-boundary
@@ -93,7 +91,10 @@ jobs:
           pnpm --filter @linnya/plugin-host-contract typecheck
           pnpm --filter @plugin/slides lint
           pnpm --filter @plugin/slides typecheck
-          pnpm run test:workspace-plugins
+          pnpm run test:workspace-plugins:except-canvas
+      # 与 Canvas 回归使用同一条命令。本机共用检出时复用结果；GitHub 的独立 runner 各自验证。
+      - name: Run Canvas business cases
+        run: pnpm --filter @plugin/canvas test
 
   test-shards:
     if: ${{ !inputs.architecture-only }}
