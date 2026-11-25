@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PendingMarkdownEditor } from '../pendingRevisionHelpers'
-import { Schema } from 'prosemirror-model'
+import { Schema, type Node as ProseMirrorNode } from 'prosemirror-model'
 
 import { workspaceMarkdownSchemaLite } from 'src/domains/markdown'
 import type { PendingTopLevelBlockParseResult } from '../pendingMarkdownRuntime'
@@ -28,6 +28,15 @@ import {
 
 function createSchemaOnlyEditor(): PendingMarkdownEditor {
   return { state: { schema: workspaceMarkdownSchemaLite } }
+}
+
+/** 逐格读出列宽：待审投影要和接受后的数据库版本一样不带列宽，按内容自动排布。 */
+function cellColwidths(rows: readonly ProseMirrorNode[]): unknown[] {
+  return rows.flatMap((row) => {
+    const widths: unknown[] = []
+    row.forEach((cell) => widths.push(cell.attrs.colwidth))
+    return widths
+  })
 }
 
 /** 能表达段落、但没有 horizontalRuleBlock 的最小 Schema。 */
@@ -97,6 +106,7 @@ describe('buildTableRowsFromParsedTable', () => {
     )
 
     expect(rows).toHaveLength(2)
+    expect(cellColwidths(rows)).toEqual([null, null])
 
     const headerContent = rows[0]?.firstChild?.firstChild?.content?.toJSON()
     expect(headerContent).toEqual([{ type: 'text', text: '表头', marks: [{ type: 'bold' }] }])
@@ -182,6 +192,7 @@ describe('buildTableRowsFromParsedTable', () => {
 
     expect(result.source).toBe('wasm-table-model')
     expect(parsePendingMarkdownToInlineProjection).not.toHaveBeenCalled()
+    expect(cellColwidths(result.rows)).toEqual([null, null])
 
     const headerContent = result.rows[0]?.firstChild?.firstChild?.content?.toJSON()
     expect(headerContent).toEqual([
