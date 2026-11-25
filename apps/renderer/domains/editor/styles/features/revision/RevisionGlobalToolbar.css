@@ -1,8 +1,9 @@
 .revision-global-toolbar {
-  /* 挂载到当前文档的非滚动视口，分栏移动和缩放直接由布局保持居中。 */
+  /* 挂载到当前文档的非滚动视口，分栏移动和缩放直接由布局保持居中。
+     文档窗格底部若有命令条，按窗格给出的预留距离叠在它上方；没有窗格预留时照旧离底 24px。 */
   position: absolute;
   left: 0;
-  bottom: 24px;
+  bottom: max(24px, var(--document-pane-bottom-reserve, 0px));
   z-index: 1200;
   display: flex;
   justify-content: center;

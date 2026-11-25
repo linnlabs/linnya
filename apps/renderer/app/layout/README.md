@@ -276,6 +276,8 @@ surface 或 DOM；返回行为仍归 `ConversationHost` 的精确消息锚点导
 
 几何计算优先使用 `WorkspaceStage` 的 `ResizeObserver` 实测宽度。侧栏展开、收起和拖拽过程中，Header 与内容 pane 必须逐帧消费这一个测量结果，不能分别使用目标 sidebar 宽度推算。
 
+`DocumentPane` 拥有文档窗格底部这块区域。Markdown 命令条贴底居中；命令条显示时，`DocumentPane` 实测它的高度，在 `.document-pane__body` 上给出 `--document-pane-bottom-reserve`（贴底距离 + 命令条高度 + 间隔）。其它悬浮在窗格底部的条（如编辑器的文档级修订工具条）至少离底这么多，叠在命令条上方，不能各自写死离底距离而互相遮挡按钮；不在文档窗格里时这个变量不存在，按各自默认距离。
+
 分割线属于 `WorkspaceStage`，不能再放回 `DocumentPane`、`ConversationSidePane` 或具体空态。真实文档、文件空态和右侧对话必须复用同一个拖拽入口和同一份宽度偏好。
 
 交换主 pane 与右 pane 时，内容和当前实际宽度必须一起交换。交换编排使用 `WorkspaceStage` 的实测宽度和统一几何函数镜像分割线，不能只改 `layoutMode` 而把宽度留在物理槽位上。
