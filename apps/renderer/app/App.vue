@@ -207,8 +207,7 @@ onBeforeUnmount(() => {
     <ProjectOverviewPage v-else-if="projectOverviewProjectId" :project-id="projectOverviewProjectId" />
     <ScheduledTasksPage
       v-else-if="scheduledTasksScene"
-      :project-id="scheduledTasksScene.projectId"
-      :scheduled-task-id="scheduledTasksScene.scheduledTaskId"
+      :scene="scheduledTasksScene"
     />
   </AppLayout>
   <FloatingToolbarContainer />

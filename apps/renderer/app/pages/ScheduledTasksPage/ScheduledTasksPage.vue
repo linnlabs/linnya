@@ -5,8 +5,7 @@
 -->
 <template>
   <ScheduledTasksView
-    :project-id="projectId"
-    :initial-task-id="scheduledTaskId"
+    :entry="scene"
     @open-conversation="handleOpenConversation"
   />
 </template>
@@ -16,8 +15,7 @@ import { ScheduledTasksView } from '@/domains/scheduled-tasks';
 import { getWorkspaceNavigationPort } from '@/shared/ports/workspaceNavigationPort';
 
 defineProps<{
-  projectId: string | null;
-  scheduledTaskId: string | null;
+  scene: { readonly projectId: string | null; readonly scheduledTaskId: string | null; readonly visit: number };
 }>();
 
 function handleOpenConversation(projectId: string, conversationId: string): void {

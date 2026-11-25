@@ -1,104 +1,123 @@
 <!--
-  定时任务整页：顶部说明与并发设置，左侧任务列表，右侧选中任务的详情或编辑表单。
-  从项目侧栏进来时 `projectId` 是该项目，当前项目的任务列在前面；从全局侧栏进来为 null。
+  定时任务整页：列表、一个任务的详情，以及新建 / 编辑弹窗。
+  从项目侧栏进来时 entry.projectId 是该项目，它的任务列在前面；从全局侧栏进来为 null。
 -->
 <template>
   <main class="scheduled-tasks-view" data-testid="scheduled-tasks-view">
-    <header class="scheduled-tasks-view__header">
-      <div class="scheduled-tasks-view__heading">
-        <h2 class="scheduled-tasks-view__title">{{ scheduledTaskMessage('scheduledTasks.title') }}</h2>
-        <p class="scheduled-tasks-view__subtitle">{{ scheduledTaskMessage('scheduledTasks.subtitle') }}</p>
-      </div>
-      <div class="scheduled-tasks-view__toolbar">
-        <span v-if="store.settings" class="scheduled-tasks-view__concurrency">
-          {{ scheduledTaskMessage('scheduledTasks.concurrency.before') }}
-          <CustomNumberInput
-            :model-value="store.settings.max_concurrent_runs"
-            :min="SCHEDULED_TASK_CONCURRENCY_MIN"
-            :max="SCHEDULED_TASK_CONCURRENCY_MAX"
-            :step="1"
-            input-width="72px"
-            show-spin-buttons
-            @update:model-value="setConcurrency"
+    <!-- 列表一直挂着，从详情返回时滚动位置不变。 -->
+    <div v-show="openedTask === null" class="scheduled-tasks-page" data-linnya-scrollbar="large">
+      <div class="scheduled-tasks-page__inner">
+        <PageSectionHeader
+          :title="scheduledTaskMessage('scheduledTasks.title')"
+          :subtitle="scheduledTaskMessage('scheduledTasks.subtitle')"
+        >
+          <template #actions>
+            <BaseButton
+              variant="outline"
+              tone="accent"
+              size="lg"
+              shape="pill"
+              block
+              data-testid="scheduled-task-new"
+              @click="startNew"
+            >
+              <template #icon><AddIcon /></template>
+              {{ scheduledTaskMessage('scheduledTasks.newTask') }}
+            </BaseButton>
+          </template>
+        </PageSectionHeader>
+
+        <p v-if="!store.schedulerEnabled" class="scheduled-tasks-page__notice" role="status">
+          {{ scheduledTaskMessage('scheduledTasks.schedulerDisabled') }}
+        </p>
+        <p v-else-if="store.clockAnomaly" class="scheduled-tasks-page__notice is-warning" role="status" data-testid="scheduled-tasks-clock-anomaly">
+          {{ scheduledTaskMessage('scheduledTasks.clockAnomaly', { date: scheduledDate(store.clockAnomaly.now) }) }}
+        </p>
+
+        <div v-if="store.loadState === 'error'" class="scheduled-tasks-page__state" role="alert">
+          <p>{{ scheduledTaskMessage('scheduledTasks.loadFailed') }}</p>
+          <BaseButton variant="secondary" size="md" @click="retry">{{ scheduledTaskMessage('scheduledTasks.retry') }}</BaseButton>
+        </div>
+
+        <SkeletonRows
+          v-else-if="store.loadState !== 'ready'"
+          class="scheduled-tasks-page__skeleton"
+          :rows="4"
+          :label="scheduledTaskMessage('scheduledTasks.title')"
+        />
+
+        <div v-else-if="store.tasks.length === 0" class="scheduled-tasks-page__state">
+          <ClockIcon class="scheduled-tasks-page__state-icon" />
+          <p class="scheduled-tasks-page__state-title">{{ scheduledTaskMessage('scheduledTasks.empty.title') }}</p>
+          <p>{{ scheduledTaskMessage('scheduledTasks.empty.hint') }}</p>
+        </div>
+
+        <template v-else>
+          <ScheduledTaskList
+            :tasks="store.tasks"
+            :current-project-id="entry.projectId"
+            :project-name="projectName"
+            @open="openTask"
+            @edit="startEdit"
           />
-          {{ scheduledTaskMessage('scheduledTasks.concurrency.after') }}
-          <span v-if="store.runningCount > 0" class="scheduled-tasks-view__running">
-            {{ scheduledTaskMessage('scheduledTasks.concurrency.running', { running: store.runningCount }) }}
-          </span>
-        </span>
-        <BaseButton variant="primary" size="md" data-testid="scheduled-task-new" @click="startNew">
-          <template #icon><AddIcon /></template>
-          {{ scheduledTaskMessage('scheduledTasks.newTask') }}
-        </BaseButton>
+          <div v-if="store.settings" class="scheduled-tasks-page__concurrency">
+            <span>{{ scheduledTaskMessage('scheduledTasks.concurrency.label') }}</span>
+            <CustomSelect
+              class="scheduled-tasks-page__concurrency-select"
+              variant="minimal"
+              min-width="88px"
+              font-size="12px"
+              use-portal-to-body
+              :bordered="false"
+              :model-value="store.settings.max_concurrent_runs"
+              :options="concurrencyOptions"
+              :trigger-aria-label="scheduledTaskMessage('scheduledTasks.concurrency.label')"
+              @update:model-value="setConcurrency"
+            />
+            <span v-if="store.runningCount > 0">
+              {{ scheduledTaskMessage('scheduledTasks.concurrency.running', { running: store.runningCount }) }}
+            </span>
+          </div>
+        </template>
       </div>
-    </header>
-
-    <p v-if="!store.schedulerEnabled" class="scheduled-tasks-view__disabled" role="status">
-      {{ scheduledTaskMessage('scheduledTasks.schedulerDisabled') }}
-    </p>
-    <p v-else-if="store.clockAnomaly" class="scheduled-tasks-view__disabled" role="status" data-testid="scheduled-tasks-clock-anomaly">
-      {{ scheduledTaskMessage('scheduledTasks.clockAnomaly', { date: scheduledDate(store.clockAnomaly.now) }) }}
-    </p>
-
-    <div v-if="store.loadState === 'error'" class="scheduled-tasks-view__state" role="alert">
-      <p>{{ scheduledTaskMessage('scheduledTasks.loadFailed') }}</p>
-      <BaseButton variant="secondary" size="sm" @click="retry">{{ scheduledTaskMessage('scheduledTasks.retry') }}</BaseButton>
     </div>
 
-    <div v-else-if="store.loadState !== 'ready'" class="scheduled-tasks-view__state">
-      <SkeletonRows :rows="4" :label="scheduledTaskMessage('scheduledTasks.title')" />
-    </div>
-
-    <div v-else-if="store.tasks.length === 0 && editing === null" class="scheduled-tasks-view__state scheduled-tasks-view__empty">
-      <ClockIcon class="scheduled-tasks-view__empty-icon" />
-      <p class="scheduled-tasks-view__empty-title">{{ scheduledTaskMessage('scheduledTasks.empty.title') }}</p>
-      <p class="scheduled-tasks-view__empty-hint">{{ scheduledTaskMessage('scheduledTasks.empty.hint') }}</p>
-    </div>
-
-    <div v-else class="scheduled-tasks-view__body">
-      <ScheduledTaskList
-        :tasks="store.tasks"
-        :current-project-id="projectId"
-        :selected-task-id="editing === 'new' ? null : selectedTaskId"
-        :project-name="projectName"
-        @select="selectTask"
-      />
-      <section class="scheduled-tasks-view__pane">
-        <ScheduledTaskEditor
-          v-if="editing !== null"
-          :key="editorKey"
-          :task="editing === 'edit' ? selectedTask : null"
-          :default-project-id="projectId ?? selectedTask?.project_id ?? null"
-          :initial-error="editorError"
-          @saved="onSaved"
-          @cancel="editing = null"
-          @conflict="onConflict"
-        />
+    <div v-if="openedTask" :key="openedTask.id" class="scheduled-tasks-page" data-linnya-scrollbar="large">
+      <div class="scheduled-tasks-page__inner">
         <ScheduledTaskDetail
-          v-else-if="selectedTask"
-          :task="selectedTask"
-          :project-name="projectName(selectedTask.project_id)"
+          :task="openedTask"
+          :project-name="projectName(openedTask.project_id)"
           :resolve-model-name="resolveModelName"
-          :notice="notice"
-          @edit="startEdit"
-          @deleted="onDeleted"
-          @open-conversation="conversationId => openConversation(selectedTask!.project_id, conversationId)"
+          @back="closeTask"
+          @edit="startEdit(openedTask.id)"
+          @deleted="closeTask"
+          @open-conversation="conversationId => emit('open-conversation', openedTask!.project_id, conversationId)"
         />
-        <p v-else class="scheduled-tasks-view__select">{{ scheduledTaskMessage('scheduledTasks.select') }}</p>
-      </section>
+      </div>
     </div>
+
+    <ScheduledTaskEditorDialog
+      :visible="editorOpen"
+      :task="editorTask"
+      :default-project-id="entry.projectId"
+      :form-key="editorKey"
+      :initial-error="editorError"
+      @close="editorOpen = false"
+      @saved="onSaved"
+      @conflict="onConflict"
+    />
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { useHistoryTime } from '@app/localization';
 import {
   SCHEDULED_TASK_CONCURRENCY_MAX,
   SCHEDULED_TASK_CONCURRENCY_MIN,
   type ScheduledTask,
 } from '@app/schemas/scheduled-tasks';
-import { BaseButton, CustomNumberInput, SkeletonRows } from '@linnya/renderer-ui';
+import { BaseButton, CustomSelect, PageSectionHeader, SkeletonRows, type CustomSelectOption } from '@linnya/renderer-ui';
 import { AddIcon, ClockIcon } from '@linnya/renderer-ui/icons';
 import { useNotificationStore } from '@/app/notification';
 import { buildConversationModelSelectOptions, useModelCatalogReadModel, useModelPickerReadModel } from '@/domains/model-configuration';
@@ -107,15 +126,17 @@ import { scheduledTasksClient } from '../adapters/scheduledTasksClient';
 import { refreshScheduledTasks } from '../orchestration/refreshScheduledTasks';
 import { useScheduledTasksStore } from '../store/scheduledTasksStore';
 import ScheduledTaskDetail from './ScheduledTaskDetail.vue';
-import ScheduledTaskEditor from './ScheduledTaskEditor.vue';
+import ScheduledTaskEditorDialog from './ScheduledTaskEditorDialog.vue';
 import ScheduledTaskList from './ScheduledTaskList.vue';
 import { useScheduledTaskLocalization } from './useScheduledTaskLocalization';
 import '../styles/scheduledTasks.css';
 
 const props = defineProps<{
-  readonly projectId: string | null;
-  /** 从通知、折叠行等处进来时要选中的任务。 */
-  readonly initialTaskId?: string | null;
+  /**
+   * 这一次进入页面的去处。每从侧栏、通知或对话卡片进来一次 visit 就变，
+   * 所以停在详情时再点侧栏会回到列表，再点同一个任务的通知会重新打开它。
+   */
+  readonly entry: { readonly projectId: string | null; readonly scheduledTaskId: string | null; readonly visit: number };
 }>();
 
 const emit = defineEmits<{
@@ -130,34 +151,23 @@ const modelPicker = useModelPickerReadModel();
 const modelCatalog = useModelCatalogReadModel();
 const notifications = useNotificationStore();
 
-const selectedTaskId = ref<string | null>(props.initialTaskId ?? null);
-const editing = ref<'new' | 'edit' | null>(null);
-const editorKey = ref(0);
-const notice = ref('');
-const editorError = ref('');
+const openedTaskId = ref<string | null>(null);
+/** 任务在别处被删掉时自然回到列表。 */
+const openedTask = computed<ScheduledTask | null>(() =>
+  openedTaskId.value === null ? null : store.taskById(openedTaskId.value));
+watch(() => props.entry.visit, () => { openedTaskId.value = props.entry.scheduledTaskId; }, { immediate: true });
 
-const selectedTask = computed<ScheduledTask | null>(() =>
-  selectedTaskId.value === null ? null : store.taskById(selectedTaskId.value));
+function openTask(taskId: string): void {
+  openedTaskId.value = taskId;
+}
+
+function closeTask(): void {
+  openedTaskId.value = null;
+}
 
 function projectName(projectId: string): string | null {
   return projectsStore.projects.find(project => project.id === projectId)?.name ?? null;
 }
-
-/** 默认选中：当前项目的第一个，没有就整张表第一个；选中的任务被删了也回到这里。 */
-function firstTaskId(): string | null {
-  const inProject = props.projectId === null ? undefined : store.tasks.find(task => task.project_id === props.projectId);
-  return (inProject ?? store.tasks[0])?.id ?? null;
-}
-watch(() => [store.tasks, props.projectId] as const, () => {
-  if (editing.value === 'new') return;
-  if (selectedTaskId.value === null || !store.taskById(selectedTaskId.value)) {
-    selectedTaskId.value = firstTaskId();
-    if (editing.value === 'edit' && selectedTaskId.value === null) editing.value = null;
-  }
-}, { immediate: true });
-watch(() => props.initialTaskId, taskId => {
-  if (taskId) selectTask(taskId);
-});
 
 const modelNames = computed(() => {
   const names = new Map<string, string>();
@@ -179,56 +189,65 @@ function resolveModelName(modelConfigId: string): string | null {
     ?? null;
 }
 
-function selectTask(taskId: string): void {
-  selectedTaskId.value = taskId;
-  editing.value = null;
-  notice.value = '';
+// ---- 新建与编辑 ----
+
+const editorOpen = ref(false);
+/** 打开时的任务；弹窗收起的过程中标题不变。 */
+const editorTask = shallowRef<ScheduledTask | null>(null);
+const editorKey = ref(0);
+const editorError = ref('');
+
+function openEditor(task: ScheduledTask | null): void {
+  editorTask.value = task;
   editorError.value = '';
+  editorKey.value += 1;
+  editorOpen.value = true;
 }
 
 function startNew(): void {
-  editing.value = 'new';
-  editorKey.value += 1;
-  notice.value = '';
-  editorError.value = '';
+  openEditor(null);
 }
 
-function startEdit(): void {
-  editing.value = 'edit';
-  editorKey.value += 1;
-  notice.value = '';
-  editorError.value = '';
+function startEdit(taskId: string): void {
+  const task = store.taskById(taskId);
+  if (task) openEditor(task);
 }
 
 function onSaved(task: ScheduledTask, created: boolean): void {
   store.applyTask(task);
-  selectedTaskId.value = task.id;
-  editing.value = null;
-  notice.value = created ? '' : scheduledTaskMessage('scheduledTasks.detail.saved');
+  editorOpen.value = false;
+  if (created) openTask(task.id);
+  else notifications.show(scheduledTaskMessage('scheduledTasks.detail.saved'), 'success');
 }
 
-/** 版本冲突：重读后按新版本重开表单，用户再改一次。 */
+/** 版本冲突：重读后按新版本重开表单，用户再改一次；任务已经没了就收起。 */
 async function onConflict(): Promise<void> {
+  const taskId = editorTask.value?.id;
   await refreshScheduledTasks();
+  const task = taskId === undefined ? null : store.taskById(taskId);
+  if (!task) {
+    editorOpen.value = false;
+    return;
+  }
+  editorTask.value = task;
   editorError.value = scheduledTaskMessage('scheduledTasks.editor.revisionConflict');
   editorKey.value += 1;
 }
 
-function onDeleted(): void {
-  selectedTaskId.value = firstTaskId();
-  notice.value = '';
-}
+// ---- 同时运行的数量 ----
 
-function openConversation(projectId: string, conversationId: string): void {
-  emit('open-conversation', projectId, conversationId);
-}
+const concurrencyOptions = computed<CustomSelectOption<number>[]>(() => Array.from(
+  { length: SCHEDULED_TASK_CONCURRENCY_MAX - SCHEDULED_TASK_CONCURRENCY_MIN + 1 },
+  (_, index) => {
+    const count = SCHEDULED_TASK_CONCURRENCY_MIN + index;
+    return { value: count, text: scheduledTaskMessage('scheduledTasks.concurrency.option', { count }) };
+  },
+));
 
-async function setConcurrency(value: unknown): Promise<void> {
-  const next = Math.round(Number(value));
-  if (!Number.isFinite(next) || !store.settings || next === store.settings.max_concurrent_runs) return;
-  const clamped = Math.min(SCHEDULED_TASK_CONCURRENCY_MAX, Math.max(SCHEDULED_TASK_CONCURRENCY_MIN, next));
+async function setConcurrency(next: number): Promise<void> {
+  if (next === store.settings?.max_concurrent_runs) return;
   try {
-    store.applySettings(await scheduledTasksClient.setSettings({ max_concurrent_runs: clamped }));
+    store.applySettings(await scheduledTasksClient.setSettings({ max_concurrent_runs: next }));
   } catch (error: unknown) {
     console.warn('[scheduled-tasks] 保存并发设置失败', error);
     notifications.show(scheduledTaskMessage('scheduledTasks.actionFailed', { reason: String(error) }), 'error');

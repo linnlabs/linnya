@@ -22,6 +22,12 @@ export function describeSchedule(
         time: schedule.time,
       });
     case 'hourly':
+      // 整点不用写“第 0 分钟”。
+      if (schedule.minute === 0) {
+        return schedule.every_hours === 1
+          ? message('scheduledTasks.schedule.hourlyOnTheHour')
+          : message('scheduledTasks.schedule.everyHoursOnTheHour', { hours: schedule.every_hours });
+      }
       return schedule.every_hours === 1
         ? message('scheduledTasks.schedule.hourly', { minute: schedule.minute })
         : message('scheduledTasks.schedule.everyHours', { hours: schedule.every_hours, minute: schedule.minute });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ScheduledTaskCreateRequestSchema,
+  ScheduledTaskPreviewScheduleRequestSchema,
   ScheduledTaskScheduleSchema,
   ScheduledTaskUpdateRequestSchema,
 } from './scheduled-tasks';
@@ -24,6 +25,17 @@ describe('scheduled task contract', () => {
     expect(ScheduledTaskScheduleSchema.safeParse({ kind: 'hourly', every_hours: 5, minute: 0 }).success).toBe(false);
     expect(ScheduledTaskScheduleSchema.safeParse({ kind: 'monthly', day: 31, time: '09:00' }).success).toBe(false);
     expect(ScheduledTaskScheduleSchema.safeParse({ kind: 'weekly', weekdays: [0], time: '09:00' }).success).toBe(false);
+  });
+
+  it('预览可以另要一个月的运行日期，范围不能倒着也不能过长', () => {
+    const schedule = { kind: 'daily', time: '09:00' };
+    const request = (from: string, to: string) => ScheduledTaskPreviewScheduleRequestSchema.safeParse({ schedule, run_days_in: { from, to } }).success;
+    expect(ScheduledTaskPreviewScheduleRequestSchema.parse({ schedule })).toEqual({ schedule });
+    expect(request('2026-11-01', '2026-11-30')).toBe(true);
+    expect(request('2026-11-30', '2026-11-30')).toBe(true);
+    expect(request('2026-11-30', '2026-11-01')).toBe(false);
+    expect(request('2026-01-01', '2026-12-31')).toBe(false);
+    expect(request('2026-13-01', '2026-13-02')).toBe(false);
   });
 
   it('新建要给全字段，修改只给要改的', () => {

@@ -62,12 +62,28 @@ async function flush(): Promise<void> {
   }
 }
 
-function radios(host: HTMLElement): HTMLInputElement[] {
-  return [...host.querySelectorAll<HTMLInputElement>('.scheduled-task-editor__tier input[type=radio]')];
+function selectTrigger(host: HTMLElement, label: string): HTMLButtonElement {
+  const trigger = host.querySelector<HTMLButtonElement>(`.select-trigger[aria-label="${label}"]`);
+  if (!trigger) throw new Error(`select not found: ${label}`);
+  return trigger;
 }
 
-function checkedLevel(host: HTMLElement): string | undefined {
-  return radios(host).find(input => input.checked)?.value;
+/** 选择器的菜单挂在 body 上；点开后按文字选一项。 */
+async function choose(host: HTMLElement, label: string, text: string): Promise<void> {
+  selectTrigger(host, label).click();
+  await flush();
+  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent?.includes(text));
+  if (!option) throw new Error(`option not found: ${text}`);
+  option.click();
+  await flush();
+}
+
+const FULL_ACCESS = 'settings.commandPermission.level.fullAccess';
+const permissionText = (host: HTMLElement) => selectTrigger(host, '命令权限').textContent?.trim();
+
+async function settlePreview(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(200);
+  await flush();
 }
 
 async function submit(host: HTMLElement): Promise<void> {
@@ -80,7 +96,7 @@ describe('定时任务编辑表单', () => {
   let host: HTMLDivElement;
 
   beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], now: new Date(2026, 10, 23, 10, 0) });
     setActivePinia(createPinia());
     mocks.previewSchedule.mockReset().mockResolvedValue({ ok: true, next_runs: [NOW + 3_600_000] });
     mocks.update.mockReset();
@@ -113,22 +129,99 @@ describe('定时任务编辑表单', () => {
     return { emitted, state };
   }
 
-  it('取消完全访问确认后，单选回到原来的档位；再点会再问一次', async () => {
+  it('取消完全访问确认后，权限保持原来的档位；再选会再问一次', async () => {
     mount({ task: task(), defaultProjectId: 'p1' });
     await flush();
-    expect(checkedLevel(host)).toBe('standard');
+    expect(permissionText(host)).toBe('settings.commandPermission.level.standard');
 
     mocks.confirmExpansion.mockResolvedValueOnce(false);
-    radios(host).find(input => input.value === 'full_access')!.click();
-    await flush();
+    await choose(host, '命令权限', FULL_ACCESS);
     expect(mocks.confirmExpansion).toHaveBeenCalledTimes(1);
-    expect(checkedLevel(host)).toBe('standard');
+    expect(permissionText(host)).toBe('settings.commandPermission.level.standard');
 
     mocks.confirmExpansion.mockResolvedValueOnce(true);
-    radios(host).find(input => input.value === 'full_access')!.click();
-    await flush();
+    await choose(host, '命令权限', FULL_ACCESS);
     expect(mocks.confirmExpansion).toHaveBeenCalledTimes(2);
-    expect(checkedLevel(host)).toBe('full_access');
+    expect(permissionText(host)).toBe(FULL_ACCESS);
+  });
+
+  it('重复的任务：月历只标出 App Server 给的运行日期，翻月时重新问', async () => {
+    mocks.previewSchedule.mockResolvedValue({ ok: true, next_runs: [NOW + 3_600_000], run_days: ['2026-11-24', '2026-11-25'] });
+    mount({ task: task(), defaultProjectId: 'p1' });
+    await settlePreview();
+    expect(mocks.previewSchedule).toHaveBeenLastCalledWith({
+      schedule: { kind: 'weekdays', time: '09:00' },
+      run_days_in: { from: '2026-11-01', to: '2026-11-30' },
+    });
+    expect([...host.querySelectorAll('.is-marked')].map(cell => cell.getAttribute('data-date'))).toEqual(['2026-11-24', '2026-11-25']);
+    expect([...host.querySelectorAll<HTMLButtonElement>('[data-date]')].every(cell => cell.disabled)).toBe(true);
+
+    host.querySelectorAll<HTMLButtonElement>('.linnya-month-calendar .linnya-ui-icon-button')[1]?.click();
+    await flush();
+    expect(mocks.previewSchedule).toHaveBeenLastCalledWith({
+      schedule: { kind: 'weekdays', time: '09:00' },
+      run_days_in: { from: '2026-12-01', to: '2026-12-31' },
+    });
+  });
+
+  it('改了时间表，月历翻到下次运行的月份', async () => {
+    mocks.previewSchedule.mockResolvedValue({ ok: true, next_runs: [new Date(2026, 11, 1, 9).getTime()], run_days: ['2026-12-01'] });
+    mount({ task: task(), defaultProjectId: 'p1' });
+    await settlePreview();
+    expect(host.querySelector('.is-marked')?.getAttribute('data-date')).toBe('2026-12-01');
+    expect(mocks.previewSchedule).toHaveBeenLastCalledWith(expect.objectContaining({ run_days_in: { from: '2026-12-01', to: '2026-12-31' } }));
+  });
+
+  it('仅一次：在月历上选日子，过去的日子选不了，保存带上选的日期', async () => {
+    mount({ task: task(), defaultProjectId: 'p1' });
+    await choose(host, '重复方式', '仅一次');
+    await settlePreview();
+    expect(mocks.previewSchedule).toHaveBeenLastCalledWith({ schedule: { kind: 'once', date: '2026-11-24', time: '09:00' } });
+
+    expect(host.querySelector<HTMLButtonElement>('[data-date="2026-11-22"]')?.disabled).toBe(true);
+    host.querySelector<HTMLButtonElement>('[data-date="2026-11-27"]')?.click();
+    await flush();
+    expect(host.querySelector('.is-selected[data-date="2026-11-27"]')).not.toBeNull();
+
+    mocks.update.mockResolvedValueOnce({ ok: true, task: task() } satisfies ScheduledTaskMutationResult);
+    await submit(host);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ schedule: { kind: 'once', date: '2026-11-27', time: '09:00' } }));
+  });
+
+  it('时间不合规则时写明原因、不保存；检查没成功时也会说', async () => {
+    mocks.previewSchedule.mockResolvedValue({ ok: false, code: 'too_frequent', message: 'too frequent' });
+    mount({ task: task(), defaultProjectId: 'p1' });
+    await settlePreview();
+    expect(host.querySelector('[data-testid="scheduled-task-schedule-error"]')?.textContent).toContain('最短是 1 小时');
+    await submit(host);
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    mocks.previewSchedule.mockRejectedValueOnce(new Error('offline'));
+    await submit(host);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('没能检查时间');
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('自定义写法清空时直接提示，不去问 App Server', async () => {
+    mount({ task: task({ schedule: { kind: 'cron', expression: '0 9 * * 1' } }), defaultProjectId: 'p1' });
+    await settlePreview();
+    mocks.previewSchedule.mockClear();
+    const input = host.querySelector<HTMLInputElement>('[data-testid="scheduled-task-cron"]')!;
+    input.value = '';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await settlePreview();
+    expect(host.querySelector('[data-testid="scheduled-task-schedule-error"]')?.textContent).toContain('需要 5 段');
+    expect(mocks.previewSchedule).not.toHaveBeenCalled();
+  });
+
+  it('名称或任务没写时提示，不保存', async () => {
+    const { emitted } = mount({ task: null, defaultProjectId: 'p1' });
+    await flush();
+    await submit(host);
+    expect(host.textContent).toContain('写一个名称');
+    expect(host.textContent).toContain('写清楚每次要做什么');
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(emitted.saved).toHaveLength(0);
   });
 
   it('保存用打开表单时的版本；任务在别处被改后报冲突，不静默覆盖', async () => {

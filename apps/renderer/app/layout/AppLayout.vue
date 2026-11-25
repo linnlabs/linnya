@@ -65,7 +65,7 @@
             'for-plugin-store': isPluginStoreScene,
             // 项目概览：整页一览表，表头固定、表体自己滚动
             'for-project-overview': isProjectOverviewScene,
-            // 定时任务：页头固定，列表与详情各自滚动
+            // 定时任务：列表页与详情页各自整页滚动
             'for-scheduled-tasks': isScheduledTasksScene,
             // 对话居中工作台：全屏无留白，由对话主导页内部管理布局
             'for-chat-centric': isWorkspaceScene && !isWorkspaceDocumentActive,
