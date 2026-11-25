@@ -171,57 +171,6 @@
   position: static;
 }
 
-/* 表格单元格交互选中柄样式 */
-.cell-handle-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: var(--color-accent);
-  border: 1px solid var(--color-bg-surface);
-  box-shadow: 0 0 2px color-mix(in srgb, var(--color-black) 50%, transparent);
-  cursor: pointer;
-  z-index: 1000;
-  pointer-events: auto;
-  transition: background-color var(--duration-medium) var(--ease-standard);
-  will-change: transform;
-}
-
-.cell-handle-overlay:hover,
-.cell-handle-overlay.hovering {
-  background-color: var(--color-accent);
-}
-
-/* 旧的 cell-interaction-handle 样式保留以防其他地方使用 */
-.cell-interaction-handle {
-  position: absolute;
-  /* 将一个12px的圆形手柄的中心定位在单元格左上角边框交汇处 */
-  left: -6px; 
-  top: -6px;  
-  width: 12px;
-  height: 12px;
-  border-radius: 50%; /* 圆形 */
-  cursor: pointer;
-  z-index: 100; /* 确保在其他内容之上 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 2px var(--color-accent-bg-hover);
-  background-color: var(--color-accent-strong-light);
-  border: 1px solid var(--color-bg-surface);
-  box-sizing: border-box;
-  /* 根据实际视觉效果调整 transform，使其位于单元格左上角外侧一点 */
-  /* 如果需要在圆圈内放一个 '+' 或其他图标，可以在这里设置字体大小和颜色 */
-  /* font-size: 10px; */
-  /* color: white; */
-}
-
-.cell-interaction-handle:hover {
-  background-color: var(--color-accent);
-}
-
 /* 列宽调整器样式 */
 .column-resize-handle {
   position: absolute;
@@ -234,10 +183,17 @@
   z-index: 20;
 }
 
-/* 拖动时的样式指示器 */
-.column-resize-handle:hover,
-.column-resize-handle.dragging {
+/* 分隔处只画一条 2px 细线；双击按内容适配列宽（TableColumnFitExtension）。 */
+.column-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  border-radius: var(--radius-xs);
   background-color: var(--color-accent);
+  transform: translateX(-50%);
 }
 
 /* 拖动线样式 */

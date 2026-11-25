@@ -44,7 +44,7 @@
 1	SCALE-03-line-height	apps/renderer/domains/conversation/styles/components/WorkspaceDocumentViewCard.css
 3	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/WorkspaceDocumentViewCard.css
 7	SCALE-05-spacing	apps/renderer/domains/conversation/styles/features/command-approval/CommandApprovalPanel.css
-3	SCALE-06-z-index	apps/renderer/domains/editor/blocks/TableBlock/styles/table.css
+1	SCALE-06-z-index	apps/renderer/domains/editor/blocks/TableBlock/styles/table.css
 1	SCALE-05-spacing	apps/renderer/domains/editor/blocks/TableBlock/styles/TableAiContext.css
 1	SCALE-06-z-index	apps/renderer/domains/editor/blocks/TableBlock/styles/TableSizeSelector.css
 1	SCALE-03-line-height	apps/renderer/domains/editor/styles/blocks/audio/AudioEditorTabs.css

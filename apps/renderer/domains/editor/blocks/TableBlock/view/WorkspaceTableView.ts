@@ -18,7 +18,36 @@ export class WorkspaceTableView extends TableView {
     this.releaseFit = observeWorkspaceTableFit(this.table, this.dom, () => this.dom.parentElement);
   }
 
+  update(node: ProseMirrorNode): boolean {
+    const updated = super.update(node);
+    if (updated) clearStaleColumnWidths(this.colgroup, node);
+    return updated;
+  }
+
   destroy(): void {
     this.releaseFit();
   }
+}
+
+/**
+ * Tiptap 的 updateColumns 在列失去存储宽度时只补 min-width，不清掉旧的 width，
+ * “按内容适配列宽”后列仍保持原宽度直到重新挂载。这里按第一行的 colwidth 清掉不再成立的 width。
+ */
+export function clearStaleColumnWidths(colgroup: HTMLTableColElement, node: ProseMirrorNode): void {
+  const row = node.firstChild;
+  if (!row) return;
+  const widths: (number | null)[] = [];
+  row.forEach(cell => {
+    const colspan = typeof cell.attrs.colspan === 'number' ? cell.attrs.colspan : 1;
+    const colwidth: unknown = cell.attrs.colwidth;
+    for (let index = 0; index < colspan; index++) {
+      const width: unknown = Array.isArray(colwidth) ? colwidth[index] : null;
+      widths.push(typeof width === 'number' && width > 0 ? width : null);
+    }
+  });
+  Array.from(colgroup.children).forEach((column, index) => {
+    if (column instanceof HTMLElement && widths[index] === null && column.style.width) {
+      column.style.removeProperty('width');
+    }
+  });
 }

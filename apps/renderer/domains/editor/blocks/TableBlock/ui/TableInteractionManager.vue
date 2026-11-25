@@ -2,13 +2,8 @@
 <!-- 表格交互管理器 - 统一管理表格的所有交互功能 -->
 <template>
   <div class="table-interaction-manager-content">
-    <!-- 表格单元格选中柄overlay -->
-    <TableCellHandleOverlay
-      :editor="editorValue"
-      :active-cell-pos="activeCellPos"
-      :show-handle="showHandle"
-      @mousedown="onHandleClick"
-    />
+    <!-- 行列柄：只在指针所在的行列出现；光标在格子里只显示聚焦描边，不再显示格角圆点 -->
+    <TableStructureChrome :editor="editorValue" />
 
     <!-- 表格坐标轴（AI模式） -->
     <TableCoordinateHeaders
@@ -26,9 +21,8 @@
 import { computed, unref, ref, onMounted, onUnmounted, watch } from 'vue';
 import type { Editor } from '@tiptap/core';
 import type { Ref } from 'vue';
-import { CellSelection } from '@tiptap/pm/tables';
 
-import TableCellHandleOverlay from './TableCellHandleOverlay.vue';
+import TableStructureChrome from './TableStructureChrome.vue';
 import TableCoordinateHeaders from './TableCoordinateHeaders.vue';
 import { TableCellInteractionPluginKey } from '../extensions/TableCellInteractionExtension.js';
 import type { TableInfo } from './composables/types/tableAiTypes.js';
@@ -53,9 +47,6 @@ const editorId = computed(() => props.editorId ?? 'main');
 
 const editorValue = computed(() => unref(props.editor));
 
-// 1. 创建本地响应式状态，不再依赖 useTableState
-const activeCellPos = ref<number | null>(null);
-const showHandle = ref<boolean>(false);
 const transactionVersion = ref(0);
 
 // === Table AI 模式会话的 UI 投影 ===
@@ -98,15 +89,10 @@ const currentTableInfo = computed<TableInfo | null>(() => {
 });
 
 /**
- * 表格浮层保活目标：
- * - AI 坐标轴依赖 table DOM 真实存在，用 tablePos 保活；
- * - 普通单元格 handle 依赖 cell DOM 真实存在，用 activeCellPos 保活。
+ * 表格浮层保活目标：AI 坐标轴依赖 table DOM 真实存在，用 tablePos 保活。
+ * 行列柄的菜单与拖动由 TableStructureChrome 自己声明 table-structure-edit 租约。
  */
-const activeTableInteractionPos = computed<number | null>(() => {
-  if (currentTableInfo.value) return currentTableInfo.value.pos;
-  if (showHandle.value && activeCellPos.value !== null) return activeCellPos.value;
-  return null;
-});
+const activeTableInteractionPos = computed<number | null>(() => currentTableInfo.value?.pos ?? null);
 
 const activeTableInteractionBlockId = computed<string | null>(() => {
   return currentTableInfo.value?.rootBlockId ?? null;
@@ -118,40 +104,6 @@ useTableRenderVirtualizationKeepAlive({
   activeBlockId: activeTableInteractionBlockId,
 });
 
-// +++ 新增：处理手柄点击事件 +++
-const onHandleClick = (event: globalThis.MouseEvent) => {
-  const editor = editorValue.value;
-  const pos = activeCellPos.value;
-
-  if (!editor || pos === null) {
-    return;
-  }
-
-  // 阻止默认事件，例如文本选择或拖动
-  event.preventDefault();
-  event.stopPropagation();
-
-  const { state, dispatch } = editor.view;
-  const { tr } = state;
-
-  try {
-    // 解析单元格位置并创建 CellSelection
-    const $cell = state.doc.resolve(pos);
-    const selection = new CellSelection($cell);
-    tr.setSelection(selection);
-
-    dispatch(tr);
-
-    // 点击后让编辑器重新获得焦点
-    if (!editor.isFocused) {
-      editor.view.focus();
-    }
-
-  } catch {
-    // console.error("[TableInteractionManager] Error creating CellSelection on handle click:", error);
-  }
-};
-
 // 2. 从 Prosemirror 插件同步状态到本地
 const syncStateFromPlugin = () => {
   const editor = editorValue.value;
@@ -160,14 +112,6 @@ const syncStateFromPlugin = () => {
   }
 
   transactionVersion.value += 1;
-
-  // 直接从 JS 扩展的插件中获取状态
-  const pluginState = TableCellInteractionPluginKey.getState(editor.state);
-
-  if (pluginState) {
-    activeCellPos.value = pluginState.activeCellPos;
-    showHandle.value = pluginState.showHandle;
-  }
 };
 
 /**
