@@ -1230,6 +1230,29 @@ describe('Registry 用户模型准入隔离与初始化回滚', () => {
     );
   });
 
+  it('同时发起的初始化共用一次载入：不报重复连接，失败的一方也不会回滚掉成功的结果', async () => {
+    persisterMock.loadState.mockResolvedValue({
+      customApiGroups: [],
+      requiresMigration: false,
+      inferenceEndpoints: [buildUserEndpoint('healthy-endpoint')],
+      models: [buildUserModel('healthy-user-model', 'healthy-endpoint')],
+    });
+    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
+    const registry = ModelCatalogRegistry.getInstance();
+
+    await Promise.all([
+      registry.initialize(createSourceDistributionIdentity()),
+      registry.initialize(createSourceDistributionIdentity()),
+    ]);
+
+    expect(persisterMock.loadState).toHaveBeenCalledOnce();
+    expect(registry.isInitialized()).toBe(true);
+    expect(registry.getModel('healthy-user-model')).toBeDefined();
+    expect(registry.getInferenceEndpoints()).toEqual([
+      expect.objectContaining({ id: 'healthy-endpoint' }),
+    ]);
+  });
+
   it('初始化失败时回滚已载入的连接：再次初始化报出真正原因，而不是重复连接', async () => {
     persisterMock.loadState.mockResolvedValue({
       customApiGroups: [{ name: 'Relay', inference_endpoint_ids: ['missing-endpoint'] }],

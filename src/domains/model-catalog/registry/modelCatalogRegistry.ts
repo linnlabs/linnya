@@ -103,6 +103,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private envVars: Record<string, string> = {};
   private initialized = false;
   private initializationStarted = false;
+  /** 进行中的初始化；结束（成功或失败）后清空，失败后的下一次调用重新载入。 */
+  private initialization: Promise<void> | null = null;
   /**
    * 旧版文件在连接与分组全部通过准入后，初始化会回写一次迁移结果（停用的模型条目原样带入）；
    * 除此之外，未初始化成功时禁止写用户配置。
@@ -126,8 +128,16 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return ModelCatalogRegistry.instance;
   }
 
-  async initialize(distributionIdentity?: DistributionIdentity): Promise<void> {
-    if (this.initialized) return;
+  initialize(distributionIdentity?: DistributionIdentity): Promise<void> {
+    if (this.initialized) return Promise.resolve();
+    // 并发调用共用同一次初始化：各自载入会互相撞“重复连接”，失败那次的回滚还会清掉成功那次的结果。
+    this.initialization ??= this.runInitialization(distributionIdentity).finally(() => {
+      this.initialization = null;
+    });
+    return this.initialization;
+  }
+
+  private async runInitialization(distributionIdentity?: DistributionIdentity): Promise<void> {
     this.initializationStarted = true;
     // 失败要回到初始化前：半截载入的连接、分组或模型会让再次初始化报“重复”，掩盖真正的原因。
     const restoreBeforeInitialization = this.captureInitializationRollback();
