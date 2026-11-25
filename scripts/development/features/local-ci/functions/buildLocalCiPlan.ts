@@ -155,6 +155,11 @@ function readDefaults(...sources: readonly unknown[]) {
   return { shell, workingDirectory };
 }
 
+/** 全量计划直接执行底下的工作流。只排除这个编排入口，新增的 PR 专项门禁仍会进入本地计划。 */
+export function isLocalCiWorkflow(workflow: ParsedWorkflow): boolean {
+  return workflow.file !== 'pull-request.yml';
+}
+
 /**
  * 从工作流生成 macOS 本地计划：矩阵里有 macOS 时只取 macOS 组合；固定 Linux 的任务按可移植任务在 macOS 执行；
  * 只在 Windows 上跑的任务跳过。步骤条件留到运行时按真实结果求值。
@@ -163,6 +168,7 @@ export function buildLocalCiPlan(workflows: readonly ParsedWorkflow[], filter: L
   const steps: LocalCiStep[] = [];
   const skippedJobs: LocalCiSkippedJob[] = [];
   for (const workflow of workflows) {
+    if (!isLocalCiWorkflow(workflow)) continue;
     const document = readRecord(workflow.document);
     const workflowName = readString(document.name) ?? workflow.file;
     if (!matchesFilter(filter.workflows, workflow.file, workflowName)) continue;

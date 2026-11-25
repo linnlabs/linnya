@@ -13,6 +13,7 @@ const allowCrossTarget = process.argv.slice(2).includes('--allow-cross-target');
 
 prepareHeadlessNodeRuntime({
   rootDir,
+  archiveCacheDirectory: process.env.LINNYA_RUNTIME_ARCHIVE_CACHE_DIR,
   platform: targetPlatform,
   architecture: targetArchitecture,
   allowCrossTarget,

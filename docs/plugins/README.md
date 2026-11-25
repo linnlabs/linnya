@@ -70,6 +70,8 @@ Linnya Core 的静态运行面只有 `platform`。当前产品发行可以随包
 - **重型插件样例**（App Server backend 重引擎 + Profiled Code Sandbox + Desktop 隐藏预览）：`packages/plugins/slides`。
 - 重型功能「事后插件化」的现行参考见 [Slides 插件说明](../../packages/plugins/slides/README.md)；旧的 `docs/archive/slides-pluginization/` 归档不在仓库内。
 
+开发分支运行 `pnpm run ci:quick`，单插件改动按公共选择器执行该插件及相关 Host 用例。新增插件时在一处登记特殊门禁，见[插件增量 CI](../../scripts/development/features/plugin-ci/README.md)。
+
 ## 核心概念速查
 
 | 概念 | 一句话 | 真源 |
