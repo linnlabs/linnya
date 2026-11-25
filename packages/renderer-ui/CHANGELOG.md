@@ -8,7 +8,6 @@
 - 弹窗补上 `role="dialog"`（确认框为 `alertdialog`）、`aria-modal` 和指向标题的 `aria-labelledby`。
 - 新增 `useModalFocus({ active, containerRef })` 与类型 `ModalFocusOptions`、`ModalFocusControls`：保留自有 DOM 的模态浮层用它参与同一顺序。Host 的设置窗已改用。
 - `AlertDialog` 新增 `defaultAction`（`'confirm'` 默认、`'cancel'`）：后果严重、可能被误触的确认可以让 Enter 默认取消。焦点在弹窗里的某个按钮上时，Enter 按的是那个按钮；确认框叠确认框时只有最上面的响应 Enter，此前两层会同时确认。
-- 新增 `--color-text-on-accent-light`：落在 `--color-accent-strong-light`（强调色浅填充）上的文字，三套主题里都不低于 4.5:1。侧栏的未读数字改用这一对，原来的强调色实底太重。
 - 现有 `^3.0.0` 插件保持兼容；在弹窗打开期间自己往后面的页面放焦点的调用方会被拉回弹窗。
 
 ## 3.13.0 - 2026-11-25
