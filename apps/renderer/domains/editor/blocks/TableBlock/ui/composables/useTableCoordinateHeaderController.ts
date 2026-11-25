@@ -24,6 +24,8 @@ export interface UseTableCoordinateHeaderControllerOptions {
   tableInfo: Ref<unknown>;
   editor: Ref<TableCoordinateHeaderEventEditor | null | undefined>;
   getCellRect: (editor: TableCoordinateHeaderEditor, cellDocPos: number) => RectMetrics | null;
+  /** 坐标头所在内容层（编辑器滚动内容里的 .scroll-content-wrapper）；样式按它的原点换算为 absolute 坐标。 */
+  layerElement?: Readonly<Ref<HTMLElement | null>>;
   debug?: (message: string, payload?: unknown) => void;
 }
 
@@ -95,6 +97,8 @@ export function useTableCoordinateHeaderController(
   const scrollTop = ref(0);
   const containerRect = ref<PointMetrics>({ ...EMPTY_POINT });
   const tableScrollContainerRect = ref<PointMetrics>({ ...EMPTY_POINT });
+  const layerOrigin = ref<PointMetrics>({ ...EMPTY_POINT });
+  const scrollPaddingTop = ref(0);
   const editorShellScrollbarHeight = ref(0);
   const editorShellBottomInViewport = ref(0);
   const tableVisibleWidth = ref(0);
@@ -145,6 +149,15 @@ export function useTableCoordinateHeaderController(
       previousRect: lastTableRect,
     });
 
+    // 与表格同一时刻测量内容层原点：两者一起随滚动平移，换算出的相对位置与滚动无关。
+    const layer = options.layerElement?.value ?? null;
+    if (layer) {
+      const layerRect = layer.getBoundingClientRect();
+      layerOrigin.value = { left: layerRect.left, top: layerRect.top };
+    }
+    if (isHTMLElement(pageScrollContainer)) {
+      scrollPaddingTop.value = Number.parseFloat(getComputedStyle(pageScrollContainer).paddingTop) || 0;
+    }
     containerRect.value = metrics.containerRect;
     tableTopInContainer.value = metrics.tableTopInContainer;
     editorShellScrollbarHeight.value = metrics.editorShellScrollbarHeight;
@@ -532,6 +545,8 @@ export function useTableCoordinateHeaderController(
     scrollTop,
     containerRect,
     tableScrollContainerRect,
+    layerOrigin,
+    scrollPaddingTop,
     editorShellScrollbarHeight,
     editorShellBottomInViewport,
     tableVisibleWidth,

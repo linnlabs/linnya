@@ -32,13 +32,9 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  editorShellScrollbarHeight: {
-    type: Number,
-    default: 0
-  },
-  editorShellBottom: {
-    type: Number,
-    default: 0
+  layerOrigin: {
+    type: Object,
+    required: true
   }
 })
 
@@ -48,12 +44,12 @@ const updatePosition = () => {
   floatingStyle.value = buildTableRowHeaderStyle({
     tableRect: props.tableRect,
     tableScrollContainerRect: props.tableScrollContainerRect,
-    editorShellBottom: props.editorShellBottom
+    layerOrigin: props.layerOrigin
   })
 }
 
 watch(
-  [() => props.tableRect, () => props.tableScrollContainerRect, () => props.editorShellBottom],
+  [() => props.tableRect, () => props.tableScrollContainerRect, () => props.layerOrigin],
   updatePosition,
   { immediate: true, deep: true }
 )

@@ -4,11 +4,16 @@
  * 静止三级文字色；悬停叠加 bg-hover、文字变一级；选中 accent-bg + accent-text。
  * 插入点与末尾加号都是骑在边框上的小圆点，悬停才画插入位置线；插入线与拖动落点线用 accent；出现动效 micro，从 0.96 放大。
  */
+/* 挂在编辑器滚动内容层里，随内容原生滚动、被滚动容器原生裁切；找不到内容层时退回视口坐标。 */
 .table-structure-chrome {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: var(--linnya-ui-layer-inline-menu);
   pointer-events: none;
+}
+
+.table-structure-chrome.is-detached {
+  position: fixed;
 }
 
 .table-structure-handle,

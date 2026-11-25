@@ -2,15 +2,16 @@
   表格行列柄（二期结构入口）。
   - 只在指针所在的那一列、那一行出现一个柄；靠近分界出插入点，最后一行、最后一列附近出末尾加号。
   - 点柄选中整列 / 整行并打开菜单；拖柄移动行列；菜单与拖动期间声明 table-structure-edit 保活。
-  - Teleport 到 body 用视口坐标定位，与单元格选中柄同一坐标系（见 TableBlock README）。
+  - 浮层挂在编辑器滚动内容里的 .scroll-content-wrapper，用相对内容层的 absolute 定位：纵向滚动由浏览器带着走，
+    滚出编辑区被滚动容器原生裁切，也不受右侧文档窗格祖先 transform 的影响。菜单仍挂 body（滚动时关闭）。
   - 只读、Pending、Table AI 模式下不出现。
 -->
 <template>
-  <Teleport to="body">
+  <Teleport :to="layer ?? 'body'">
     <div
       v-if="layout"
       class="table-structure-chrome"
-      :class="{ 'is-dragging': drag !== null }"
+      :class="{ 'is-dragging': drag !== null, 'is-detached': !layer }"
     >
       <button
         v-for="item in layout.columnHandles"
@@ -104,7 +105,9 @@
         :style="layout.dropLine"
       />
     </div>
+  </Teleport>
 
+  <Teleport to="body">
     <div
       v-if="menu"
       ref="menuWrapper"
@@ -176,8 +179,8 @@ interface ActiveTable {
   readonly pos: number;
   readonly node: ProseMirrorNode;
   readonly geometry: TableStructureGeometry;
-  /** 编辑器可见区域的上下界，滚出可见区的柄不画在其他界面上。 */
-  readonly viewport: TableBand;
+  /** 浮层所在内容层在视口中的原点；与几何同一时刻测量，换算出的位置与滚动无关。 */
+  readonly origin: { readonly left: number; readonly top: number };
 }
 
 interface MenuState {
@@ -199,6 +202,8 @@ const notifications = useNotificationStore();
 const tableAiModeStore = useTableAiModeStore();
 
 const active = shallowRef<ActiveTable | null>(null);
+/** 浮层所在内容层：编辑器滚动内容里的 .scroll-content-wrapper；找不到时退回 body + fixed。 */
+const layer = shallowRef<HTMLElement | null>(null);
 const hover = shallowRef<TableStructureHover>(EMPTY_TABLE_HOVER);
 const menu = shallowRef<MenuState | null>(null);
 const drag = shallowRef<DragState | null>(null);
@@ -253,9 +258,11 @@ function measure(editor: Editor, element: HTMLTableElement): ActiveTable | null 
     scroller: element.closest('.root-block > .content') as HTMLElement | null,
   });
   if (!geometry) return null;
-  const shell = editor.view.dom.closest('.editor-shell') ?? editor.view.dom;
-  const shellRect = shell.getBoundingClientRect();
-  return { element, pos, node, geometry, viewport: { start: shellRect.top, end: shellRect.bottom } };
+  const layerElement = editor.view.dom.closest('.scroll-content-wrapper');
+  const nextLayer = layerElement instanceof HTMLElement ? layerElement : null;
+  if (layer.value !== nextLayer) layer.value = nextLayer;
+  const layerRect = nextLayer?.getBoundingClientRect();
+  return { element, pos, node, geometry, origin: { left: layerRect?.left ?? 0, top: layerRect?.top ?? 0 } };
 }
 
 /* ---------- 指针跟踪（下一帧合批） ---------- */
@@ -358,9 +365,11 @@ function px(value: number): string {
 const layout = computed(() => {
   const table = active.value;
   if (!table) return null;
-  const { geometry, viewport } = table;
+  const { geometry, origin } = table;
+  // 几何是视口坐标；减去内容层原点得到相对内容层的位置，纵向滚动时浏览器原生带着走、原生裁切。
+  const x = (value: number) => px(value - origin.left);
+  const y = (value: number) => px(value - origin.top);
   const selected = axisSelection.value?.tablePos === table.pos ? axisSelection.value : null;
-  const inView = (y: number) => y >= viewport.start && y <= viewport.end;
   const columnVisible = (band: TableBand) => {
     const center = (band.start + band.end) / 2;
     return center >= geometry.visible.start && center <= geometry.visible.end;
@@ -378,25 +387,25 @@ const layout = computed(() => {
   const edges = visibleTableEdges(geometry);
 
   const columnHandles = [...columnIndexes]
-    .filter(index => geometry.columns[index] && columnVisible(geometry.columns[index]!) && inView(geometry.top))
+    .filter(index => geometry.columns[index] && columnVisible(geometry.columns[index]!))
     .filter(index => !quiet || menu.value?.axis === 'column' && menu.value.index === index || selected?.axis === 'column' && selected.index === index)
     .map(index => {
       const band = geometry.columns[index]!;
       return {
         index,
         active: (selected?.axis === 'column' && selected.index === index) || (menu.value?.axis === 'column' && menu.value.index === index),
-        style: { left: px((band.start + band.end) / 2 - HANDLE.long / 2), top: px(geometry.top - HANDLE.outset) },
+        style: { left: x((band.start + band.end) / 2 - HANDLE.long / 2), top: y(geometry.top - HANDLE.outset) },
       };
     });
   const rowHandles = [...rowIndexes]
-    .filter(index => geometry.rows[index] && inView((geometry.rows[index]!.start + geometry.rows[index]!.end) / 2))
+    .filter(index => geometry.rows[index])
     .filter(index => !quiet || menu.value?.axis === 'row' && menu.value.index === index || selected?.axis === 'row' && selected.index === index)
     .map(index => {
       const band = geometry.rows[index]!;
       return {
         index,
         active: (selected?.axis === 'row' && selected.index === index) || (menu.value?.axis === 'row' && menu.value.index === index),
-        style: { left: px(edges.left - HANDLE.outset), top: px((band.start + band.end) / 2 - HANDLE.long / 2) },
+        style: { left: x(edges.left - HANDLE.outset), top: y((band.start + band.end) / 2 - HANDLE.long / 2) },
       };
     });
 
@@ -406,16 +415,16 @@ const layout = computed(() => {
     insert = {
       axis: 'column',
       index: hover.value.insertColumnAt,
-      style: { left: px(edge - INSERT_SIZE / 2), top: px(geometry.top - INSERT_SIZE / 2) },
-      lineStyle: { left: px(edge - 1), top: px(geometry.top), width: '2px', height: px(geometry.bottom - geometry.top) },
+      style: { left: x(edge - INSERT_SIZE / 2), top: y(geometry.top - INSERT_SIZE / 2) },
+      lineStyle: { left: x(edge - 1), top: y(geometry.top), width: '2px', height: px(geometry.bottom - geometry.top) },
     };
   } else if (!quiet && hover.value.insertRowAt !== null) {
     const edge = geometry.rows[hover.value.insertRowAt - 1]!.end;
     insert = {
       axis: 'row',
       index: hover.value.insertRowAt,
-      style: { left: px(edges.left - INSERT_SIZE / 2), top: px(edge - INSERT_SIZE / 2) },
-      lineStyle: { left: px(edges.left), top: px(edge - 1), width: px(edges.right - edges.left), height: '2px' },
+      style: { left: x(edges.left - INSERT_SIZE / 2), top: y(edge - INSERT_SIZE / 2) },
+      lineStyle: { left: x(edges.left), top: y(edge - 1), width: px(edges.right - edges.left), height: '2px' },
     };
   }
 
@@ -423,19 +432,19 @@ const layout = computed(() => {
   const appends: { axis: TableAxis; style: Record<string, string>; lineStyle: Record<string, string> }[] = [];
   const visibleLeft = edges.left;
   const visibleRight = edges.right;
-  if (!quiet && hover.value.appendRow && inView(geometry.bottom)) {
+  if (!quiet && hover.value.appendRow) {
     appends.push({
       axis: 'row',
-      style: { left: px((visibleLeft + visibleRight) / 2 - INSERT_SIZE / 2), top: px(geometry.bottom - INSERT_SIZE / 2) },
-      lineStyle: { left: px(visibleLeft), top: px(geometry.bottom - 1), width: px(visibleRight - visibleLeft), height: '2px' },
+      style: { left: x((visibleLeft + visibleRight) / 2 - INSERT_SIZE / 2), top: y(geometry.bottom - INSERT_SIZE / 2) },
+      lineStyle: { left: x(visibleLeft), top: y(geometry.bottom - 1), width: px(visibleRight - visibleLeft), height: '2px' },
     });
   }
   const bodyTop = geometry.rows.length > 1 ? geometry.rows[1]!.start : geometry.top;
   if (!quiet && hover.value.appendColumn && geometry.right <= geometry.visible.end + 1) {
     appends.push({
       axis: 'column',
-      style: { left: px(geometry.right - INSERT_SIZE / 2), top: px((bodyTop + geometry.bottom) / 2 - INSERT_SIZE / 2) },
-      lineStyle: { left: px(geometry.right - 1), top: px(geometry.top), width: '2px', height: px(geometry.bottom - geometry.top) },
+      style: { left: x(geometry.right - INSERT_SIZE / 2), top: y((bodyTop + geometry.bottom) / 2 - INSERT_SIZE / 2) },
+      lineStyle: { left: x(geometry.right - 1), top: y(geometry.top), width: '2px', height: px(geometry.bottom - geometry.top) },
     });
   }
 
@@ -447,8 +456,8 @@ const layout = computed(() => {
       const start = Math.max(band.start, edges.left);
       const end = Math.min(band.end, edges.right);
       highlights.push(mark.axis === 'column'
-        ? { left: px(start), top: px(geometry.top), width: px(Math.max(0, end - start)), height: px(geometry.bottom - geometry.top) }
-        : { left: px(edges.left), top: px(band.start), width: px(edges.right - edges.left), height: px(band.end - band.start) });
+        ? { left: x(start), top: y(geometry.top), width: px(Math.max(0, end - start)), height: px(geometry.bottom - geometry.top) }
+        : { left: x(edges.left), top: y(band.start), width: px(edges.right - edges.left), height: px(band.end - band.start) });
     }
   }
 
@@ -458,8 +467,8 @@ const layout = computed(() => {
     const bands = dragging.axis === 'column' ? geometry.columns : geometry.rows;
     const edge = dragging.boundary === 0 ? bands[0]!.start : bands[dragging.boundary - 1]!.end;
     dropLine = dragging.axis === 'column'
-      ? { left: px(edge - 1.5), top: px(geometry.top - 6), width: '3px', height: px(geometry.bottom - geometry.top + 12) }
-      : { left: px(edges.left - 6), top: px(edge - 1.5), width: px(edges.right - edges.left + 12), height: '3px' };
+      ? { left: x(edge - 1.5), top: y(geometry.top - 6), width: '3px', height: px(geometry.bottom - geometry.top + 12) }
+      : { left: x(edges.left - 6), top: y(edge - 1.5), width: px(edges.right - edges.left + 12), height: '3px' };
   }
 
   return { columnHandles, rowHandles, insert, appends, highlights, dropLine };
