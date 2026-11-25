@@ -33,11 +33,6 @@ function resolveStorageIdentity(filename: string): EvidenceBundleStorageIdentity
   if (canonicalMatch) {
     return { kind: 'canonical_bundle', bundleId: canonicalMatch[1] };
   }
-  if (/\.json$/i.test(filename)) {
-    // 历史 list_refs 会接纳可解析的非 canonical JSON；这里保留既有行为，
-    // 但不再让上层编排重复理解扩展名。
-    return { kind: 'noncanonical_json' };
-  }
   return { kind: 'other_file' };
 }
 

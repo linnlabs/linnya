@@ -68,7 +68,6 @@ describe('subagent definitions', () => {
       'write_file',
       'web_read',
     ]));
-    expect(def?.config?.availableTools).not.toContain('evidence_resolve');
     expect(def?.config?.availableTools).not.toContain('markdown_edit');
     expect(def?.config?.availableTools).not.toContain('mindmap_create_node');
     expect(def?.config?.availableTools).not.toContain('sharedmemory_write');

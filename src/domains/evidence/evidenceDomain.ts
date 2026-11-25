@@ -12,11 +12,6 @@ import type {
 } from './features/bundle-store/definitions/evidenceBundleWrite';
 import { saveEvidenceBundleWithWriter } from './features/bundle-store/orchestration/saveEvidenceBundle';
 import {
-  listEvidenceRefsWithRepository,
-  type ListEvidenceRefsParams,
-  type ListEvidenceRefsResult,
-} from './features/ref-resolution/orchestration/listEvidenceRefs';
-import {
   resolveEvidenceFromBundlesWithRepository,
   type ResolveEvidenceFromBundlesParams,
 } from './features/ref-resolution/orchestration/resolveEvidenceFromBundles';
@@ -33,10 +28,4 @@ export function resolveEvidenceFromBundles(
   params: ResolveEvidenceFromBundlesParams,
 ): Promise<ResolveEvidenceResult> {
   return resolveEvidenceFromBundlesWithRepository(params, fileSystemEvidenceBundleRepository);
-}
-
-export function listEvidenceRefs(
-  params: ListEvidenceRefsParams,
-): Promise<ListEvidenceRefsResult> {
-  return listEvidenceRefsWithRepository(params, fileSystemEvidenceBundleRepository);
 }

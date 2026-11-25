@@ -94,6 +94,7 @@ function admitToolResult(
     case 'resource_read':
       return admitResourceReadResult(result);
     case 'evidence_resolve': {
+      // 已退役工具，只为旧会话回放接纳引用。
       const parsed = EvidenceResolveToolOutputSchema.parse(result);
       return parsed.data.mode === 'resolve_refs'
         ? admitSearchCitations(parsed.data.citations?.citations ?? [])

@@ -1,6 +1,5 @@
 export type EvidenceBundleStorageIdentity =
   | { readonly kind: 'canonical_bundle'; readonly bundleId: string }
-  | { readonly kind: 'noncanonical_json' }
   | { readonly kind: 'other_file' };
 
 export type EvidenceBundleSnapshot = {
@@ -8,7 +7,7 @@ export type EvidenceBundleSnapshot = {
   readonly displayName: string;
   /**
    * 文件名与扩展名只由持久化 adapter 解释。
-   * resolver/list 消费领域身份，不能再次理解磁盘命名规则。
+   * resolver 消费领域身份，不能再次理解磁盘命名规则。
    */
   readonly storageIdentity: EvidenceBundleStorageIdentity;
 } & (
