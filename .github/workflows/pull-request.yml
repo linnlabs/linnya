@@ -1,0 +1,79 @@
+name: Pull request checks
+
+on: pull_request
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Select checks from the change
+    runs-on: ubuntu-latest
+    outputs:
+      scope: ${{ steps.plan.outputs.scope }}
+      jobs: ${{ steps.plan.outputs.jobs }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+      - id: plan
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: pnpm -s ci:quick --base "$BASE" --list
+
+  public:
+    needs: plan
+    if: contains(fromJSON(needs.plan.outputs.jobs), 'public')
+    uses: ./.github/workflows/ci.yml
+    with:
+      architecture-only: ${{ needs.plan.outputs.scope != 'full' }}
+
+  platform:
+    needs: plan
+    if: contains(fromJSON(needs.plan.outputs.jobs), 'platform')
+    uses: ./.github/workflows/platform-build.yml
+
+  canvas-regression:
+    needs: plan
+    if: contains(fromJSON(needs.plan.outputs.jobs), 'canvas-regression')
+    uses: ./.github/workflows/canvas-regression.yml
+
+  owner:
+    name: Plugin checks (${{ needs.plan.outputs.scope }})
+    needs: plan
+    if: contains(fromJSON(needs.plan.outputs.jobs), 'owner')
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: ./.github/actions/setup-rust-build
+      - name: Run selected owner checks
+        env:
+          OWNER: ${{ needs.plan.outputs.scope }}
+        run: pnpm -s ci:quick --owner "$OWNER"
+
+  tests:
+    name: Public test suite
+    if: always()
+    needs: [plan, owner, public, platform, canvas-regression]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every selected job to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -e '. as $jobs | .plan.result == "success" and
+            (.plan.outputs.jobs | fromjson | length > 0 and all(.[]; $jobs[.].result == "success"))' <<< "$RESULTS"

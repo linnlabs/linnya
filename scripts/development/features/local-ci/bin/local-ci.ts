@@ -28,6 +28,7 @@ const USAGE = `用法：pnpm run ci:local [选项]
   --list                只列出计划与调度类别，不执行
   --workflow <文件>     只跑这个工作流（可重复，如 ci.yml 或 ci）
   --job <任务 id>       只跑这个任务（可重复，如 architecture）
+  --working-copy        把 Git 可见的未提交改动带入临时检出，用于开发期快速检查
   --in-place            直接在当前目录跑（含未提交改动，但会受本地残留影响）
   --keep                保留临时干净检出，便于排查
   --concurrency <n>     同时运行的步骤上限（默认 ${LOCAL_CI_DEFAULT_CONCURRENCY}；1 为逐步执行）
@@ -39,6 +40,7 @@ const USAGE = `用法：pnpm run ci:local [选项]
 interface Options {
   readonly list: boolean;
   readonly inPlace: boolean;
+  readonly workingCopy?: boolean;
   readonly keep: boolean;
   readonly workflows: string[];
   readonly jobs: string[];
@@ -53,6 +55,7 @@ function parseArgs(argv: readonly string[]): Options | null {
     const arg = argv[index];
     if (arg === '--help' || arg === '-h') return null;
     else if (arg === '--list') mutable.list = true;
+    else if (arg === '--working-copy') mutable.workingCopy = true;
     else if (arg === '--in-place') mutable.inPlace = true;
     else if (arg === '--keep') mutable.keep = true;
     else if ((arg === '--concurrency' || arg === '--test-workers') && argv[index + 1]) {
@@ -63,6 +66,7 @@ function parseArgs(argv: readonly string[]): Options | null {
       index += 1;
     } else throw new Error(`无法识别的参数：${arg}\n\n${USAGE}`);
   }
+  if (options.workingCopy && options.inPlace) throw new Error('--working-copy 与 --in-place 不能同时使用');
   return options;
 }
 
@@ -143,7 +147,7 @@ async function main(): Promise<number> {
 
   const pruned = pruneOrphanedLocalCiCheckouts(repositoryRoot);
   if (pruned.length) console.log(`已回收 ${pruned.length} 份被强制结束的运行留下的检出`);
-  const checkout = prepareLocalCiCheckout(repositoryRoot, { inPlace: options.inPlace, keep: options.keep });
+  const checkout = prepareLocalCiCheckout(repositoryRoot, { inPlace: options.inPlace, keep: options.keep, workingCopy: options.workingCopy });
   const logDirectory = path.join(repositoryRoot, '_dev_data/ci-local', timestamp());
   mkdirSync(logDirectory, { recursive: true });
   // 本次目录已建好，算在最近 N 个之内；清理失败只提示，不影响这次运行。
@@ -155,7 +159,7 @@ async function main(): Promise<number> {
   } catch (error) {
     console.log(`清理旧的本地 CI 结果失败（已忽略）：${error instanceof Error ? error.message : String(error)}`);
   }
-  console.log(`本地 CI：提交 ${checkout.commit.slice(0, 9)}，${checkout.clean ? `干净检出 ${checkout.root}` : '当前目录'}`);
+  console.log(`本地 CI：提交 ${checkout.commit.slice(0, 9)}，${options.inPlace ? '当前目录' : `${checkout.clean ? '干净检出' : '含工作副本改动的临时检出'} ${checkout.root}`}`);
   if (checkout.clean && checkout.uncommitted.length) {
     console.log(`注意：有 ${checkout.uncommitted.length} 个未提交改动，干净检出不包含它们（CI 也只看提交）；要带上请先提交或用 --in-place。`);
   }
@@ -204,7 +208,7 @@ async function main(): Promise<number> {
     completed = true;
   } finally {
     const { results, mergedTestRuns } = outcome;
-    const evidence = checkout.clean ? collectLocalCiEvidence(plan, results, checkout.root, logDirectory) : [];
+    const evidence = !options.inPlace ? collectLocalCiEvidence(plan, results, checkout.root, logDirectory) : [];
     // 复用别的步骤结果（去重、合并分片）的失败只算一次：算在真正执行的那一步上。
     const failures = results.filter(result => result.outcome === 'failure' && !result.reusedFrom);
     const summaryFile = writeLocalCiSummary(logDirectory, {
@@ -213,7 +217,7 @@ async function main(): Promise<number> {
       clean: checkout.clean,
       // 只有不加 --workflow / --job、计划里每一步都有结果的干净检出才代表“全部 CI 在这份代码上通过”。
       // 测试分片只在覆盖 1..N 每一片时才合并，覆盖记录见 mergedTestRuns。
-      fullRun: options.workflows.length === 0 && options.jobs.length === 0 && results.length === plan.steps.length,
+      fullRun: !options.workingCopy && options.workflows.length === 0 && options.jobs.length === 0 && results.length === plan.steps.length,
       passed: completed && failures.length === 0 && !controller.signal.aborted,
       durationMs: Date.now() - started,
       interrupted: controller.signal.aborted,
@@ -223,8 +227,8 @@ async function main(): Promise<number> {
       skippedJobs: plan.skippedJobs,
       evidence,
     });
-    if (checkout.clean && !options.keep) checkout.remove();
-    else if (checkout.clean) console.log(`\n已保留干净检出：${checkout.root}（用完请 git worktree remove --force 回收）`);
+    if (!options.inPlace && !options.keep) checkout.remove();
+    else if (!options.inPlace) console.log(`\n已保留临时检出：${checkout.root}（用完请 git worktree remove --force 回收）`);
 
     const passed = results.filter(result => result.outcome === 'success').length;
     const skipped = results.filter(result => result.outcome === 'skipped');

@@ -73,13 +73,24 @@ export function pruneOrphanedLocalCiCheckouts(repositoryRoot: string, now = Date
   return pruned;
 }
 
+/** 独立索引先接纳暂存区，再读取工作副本和未忽略的新文件。原工作区的暂存状态始终归开发者所有。 */
+function copyWorkingChanges(repositoryRoot: string, root: string): void {
+  const index = path.join(path.dirname(root), 'working-copy.index');
+  const snapshotGit = (...args: string[]) => execFileSync('git', args, {
+    cwd: repositoryRoot, env: { ...process.env, GIT_INDEX_FILE: index }, encoding: 'utf8',
+  }).trim();
+  snapshotGit('read-tree', git(repositoryRoot, ['write-tree']));
+  snapshotGit('add', '-A', '--', '.');
+  git(root, ['read-tree', '--reset', '-u', snapshotGit('write-tree')]);
+}
+
 /**
  * CI 每次都从提交的干净检出开始：没有本地 `_dev_data`、构建产物和未提交改动。默认在系统临时目录建一个
  * detached worktree 复现这一点；`inPlace` 直接用当前目录，快但会受本地残留影响。
  */
 export function prepareLocalCiCheckout(
   repositoryRoot: string,
-  options: { readonly inPlace: boolean; readonly keep?: boolean },
+  options: { readonly inPlace: boolean; readonly keep?: boolean; readonly workingCopy?: boolean },
 ): LocalCiCheckout {
   const commit = git(repositoryRoot, ['rev-parse', 'HEAD']);
   const tree = git(repositoryRoot, ['rev-parse', `${commit}^{tree}`]);
@@ -93,10 +104,19 @@ export function prepareLocalCiCheckout(
   writeFileSync(path.join(container, OWNER_FILE), JSON.stringify(owner));
   const root = path.join(container, 'checkout');
   git(repositoryRoot, ['worktree', 'add', '--detach', root, commit]);
+  const withChanges = options.workingCopy === true && uncommitted.length > 0;
+  if (withChanges) {
+    try {
+      copyWorkingChanges(repositoryRoot, root);
+    } catch (error) {
+      removeCheckout(repositoryRoot, root);
+      throw error;
+    }
+  }
   let removed = false;
   return {
     root,
-    clean: true,
+    clean: !withChanges,
     commit,
     tree,
     uncommitted,
