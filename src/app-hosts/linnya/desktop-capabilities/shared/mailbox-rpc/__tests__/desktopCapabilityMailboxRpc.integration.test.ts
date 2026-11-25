@@ -210,6 +210,19 @@ describe('Desktop capability mailbox RPC', () => {
             mainResponse: { status: 202, headers: { 'x-amzn-waf-action': 'challenge' } },
           });
         }
+        if (url.endsWith('/with-capture')) {
+          return {
+            html: '<html><body><p>iframe body</p></body></html>',
+            finalUrl: `${url}/rendered`,
+            mainResponse: { status: 200, headers: {} },
+            capture: {
+              warnings: ['inlined_same_origin_iframe', 'lazy_content_incomplete'],
+              inlinedFrameResources: [
+                { kind: 'source', url: 'https://example.com/sub/notice.html', label: '公告框架' },
+              ],
+            },
+          };
+        }
         return {
           html: largeHtml,
           finalUrl: `${url}/rendered`,
@@ -274,6 +287,21 @@ describe('Desktop capability mailbox RPC', () => {
           kind: 'navigation_blocked',
         })
       );
+      await expect(
+        client.render({
+          url: 'https://example.com/with-capture',
+        })
+      ).resolves.toEqual({
+        html: '<html><body><p>iframe body</p></body></html>',
+        finalUrl: 'https://example.com/with-capture/rendered',
+        mainResponse: { status: 200, headers: {} },
+        capture: {
+          warnings: ['inlined_same_origin_iframe', 'lazy_content_incomplete'],
+          inlinedFrameResources: [
+            { kind: 'source', url: 'https://example.com/sub/notice.html', label: '公告框架' },
+          ],
+        },
+      });
     } finally {
       pair.dispose();
       await fixture.dispose();

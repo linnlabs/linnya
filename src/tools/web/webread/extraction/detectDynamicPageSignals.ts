@@ -4,6 +4,10 @@ import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
 import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
 import { normalizeExtractedText } from './extractSemanticDom';
 import { hasHiddenInlineStyle } from './prepareReadableDocument';
+import {
+  READABLE_MAIN_SELECTOR,
+  RENDER_IGNORED_IFRAME_URL_PATTERN_SOURCE,
+} from '../render-capture/definitions/renderCaptureContract';
 
 const FRAME_EXCLUDED_CONTAINER_SELECTOR = [
   'nav',
@@ -37,11 +41,10 @@ const SHELL_CHROME_SELECTOR = [
   '[role="dialog"]',
 ].join(', ');
 
-const MAIN_REGION_SELECTOR = 'article, main, [role="main"]';
+const MAIN_REGION_SELECTOR = READABLE_MAIN_SELECTOR;
 const EMPTY_MOUNT_SELECTOR = '#app, #root, #__next, #__nuxt, [data-reactroot]';
 
-const IGNORED_IFRAME_URL_PATTERN =
-  /(?:recaptcha|hcaptcha|turnstile|doubleclick\.net|googlesyndication\.com|googletagmanager\.com|googleadservices\.com)/i;
+const IGNORED_IFRAME_URL_PATTERN = new RegExp(RENDER_IGNORED_IFRAME_URL_PATTERN_SOURCE, 'i');
 
 const MIN_EMBEDDED_FRAME_DIMENSION_PX = 10;
 const MIN_HIDDEN_MAIN_TEXT_CHARS = 300;

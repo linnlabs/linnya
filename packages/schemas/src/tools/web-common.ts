@@ -81,8 +81,10 @@ export const WEB_DOCUMENT_WARNING_VALUES = [
   'table_dominant',
   'list_dominant',
   'embedded_same_origin_iframe',
+  'inlined_same_origin_iframe',
   'hidden_main_content',
   'dynamic_content_pending',
+  'lazy_content_incomplete',
 ] as const;
 export const WebDocumentWarningSchema = z.enum(WEB_DOCUMENT_WARNING_VALUES);
 export type WebDocumentWarning = z.infer<typeof WebDocumentWarningSchema>;

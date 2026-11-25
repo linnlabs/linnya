@@ -1030,4 +1030,47 @@ describe('R2 本地渲染 Provider', () => {
       await new Promise<void>((resolve, reject) => fixtureServer.close((err) => (err ? reject(err) : resolve())));
     }
   });
+
+  it('Phase 2：浏览器采集登录遮罩直接报 login_required；内联同源 iframe 资源与 lazy_content_incomplete 透传但不混淆 truncated', async () => {
+    const loginMaskRenderer: WebPageRenderer = {
+      render: vi.fn().mockResolvedValue({
+        finalUrl: 'https://example.com/paywall',
+        mainResponse: { status: 200, headers: {} },
+        html: '',
+        capture: {
+          accessBarrier: 'login_required',
+        },
+      }),
+    };
+    await expect(new LocalRenderProvider({ renderer: loginMaskRenderer }).read({
+      url: 'https://example.com/paywall',
+    })).rejects.toMatchObject({
+      kind: 'login_required',
+      status: 200,
+    });
+
+    const inlinedRenderer: WebPageRenderer = {
+      render: vi.fn().mockResolvedValue({
+        finalUrl: 'https://gov.example.test/portal.html',
+        mainResponse: { status: 200, headers: {} },
+        html: `<!doctype html><html><body><article><h1>通知公告</h1><section data-linnya-inlined-frame="true"><p>${'关于开展专项检查的通知全文。'.repeat(30)}</p><a href="https://gov.example.test/files/rule.pdf">下载实施细则 PDF</a></section></article></body></html>`,
+        capture: {
+          warnings: ['inlined_same_origin_iframe', 'lazy_content_incomplete'],
+          inlinedFrameResources: [
+            { kind: 'source', url: 'https://gov.example.test/sub/notice.html', label: '通知正文框架' },
+          ],
+        },
+      }),
+    };
+    const result = await new LocalRenderProvider({ renderer: inlinedRenderer }).read({
+      url: 'https://gov.example.test/portal.html',
+    });
+    expect(result.warnings).toContain('inlined_same_origin_iframe');
+    expect(result.warnings).toContain('lazy_content_incomplete');
+    expect(result.truncated).toBe(false);
+    expect(result.resources).toEqual(expect.arrayContaining([
+      { kind: 'source', url: 'https://gov.example.test/sub/notice.html', label: '通知正文框架' },
+      { kind: 'document', url: 'https://gov.example.test/files/rule.pdf', label: '下载实施细则 PDF' },
+    ]));
+  });
 });

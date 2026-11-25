@@ -1,5 +1,10 @@
 import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
 import { normalizeExtractedText } from './extractSemanticDom';
+import {
+  READABLE_CONTROL_SELECTOR,
+  READABLE_HIDDEN_SELECTOR,
+  READABLE_MAIN_SELECTOR,
+} from '../render-capture/definitions/renderCaptureContract';
 
 const EXCLUDED_SELECTOR = [
   'script', 'style', 'noscript', 'template', 'iframe', 'object', 'embed',
@@ -8,9 +13,9 @@ const EXCLUDED_SELECTOR = [
   'input[type="hidden" i]',
 ].join(', ');
 
-const HIDDEN_SELECTOR = '[hidden], [aria-hidden="true" i]';
-const MAIN_SELECTOR = 'article, main, [role="main"]';
-const CONTROL_SELECTOR = 'button, [role="button"]';
+const HIDDEN_SELECTOR = READABLE_HIDDEN_SELECTOR;
+const MAIN_SELECTOR = READABLE_MAIN_SELECTOR;
+const CONTROL_SELECTOR = READABLE_CONTROL_SELECTOR;
 const HIDDEN_METRIC_IGNORED_CHROME_SELECTOR =
   'header, [role="banner"], [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
 

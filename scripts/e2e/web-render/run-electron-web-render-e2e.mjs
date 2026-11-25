@@ -41,8 +41,8 @@ try {
     let stderr = '';
     const timeout = setTimeout(() => {
       child.kill('SIGKILL');
-      reject(new Error(`Electron Web Render E2E 超过 30 秒。\n${stdout}\n${stderr}`));
-    }, 30_000);
+      reject(new Error(`Electron Web Render E2E 超过 60 秒。\n${stdout}\n${stderr}`));
+    }, 60_000);
     child.stdout.on('data', (chunk) => {
       stdout += chunk.toString();
     });
@@ -109,6 +109,58 @@ try {
     scriptEscapeAfterRedirectKind: 'navigation_blocked',
     deniedDnsRedirect: { kind: 'load_failed', netErrorCode: -20 },
     hiddenRevealContent: true,
+    hashRouteE2e: {
+      aHasNoticeA: true,
+      bHasNoticeB: true,
+      bExcludesNoticeA: true,
+      distinctRefs: true,
+      findHitB: true,
+      snapshotBExcludesA: true,
+      hashAnchorSharedRef: true,
+    },
+    visibilityContract: {
+      disclosuresKept: true,
+      nestedHiddenExcluded: true,
+      loginMaskKind: 'login_required',
+      jsonLdExcluded: true,
+    },
+    govIframeE2e: {
+      selectedProvider: 'local_render',
+      escalationReason: 'js_required',
+      hasDocNo: true,
+      hasTableValues: true,
+      hasResolvedAttachment: true,
+      hasInlinedWarning: true,
+      hasFrameResource: true,
+      hasAttachmentResource: true,
+      attachDirStayedHttp: true,
+      crossOriginStayedHttpWithLink: true,
+    },
+    shadowAndCss: {
+      summaryOnce: true,
+      defaultOnce: true,
+      unslottedExcluded: true,
+      cookieExcluded: true,
+      inactiveTabExcluded: true,
+      opacityZeroKept: true,
+    },
+    slowHydrationAndPolling: {
+      slowHasContent: true,
+      pollingFast: true,
+      pollingHasContent: true,
+    },
+    lazyAndInfiniteScroll: {
+      lazyHasAll3Screens: true,
+      lazyNoIncompleteWarning: true,
+      infiniteCapturedBatch: true,
+      infiniteHasWarning: true,
+      infiniteTruncatedFalse: true,
+    },
+    heavyBlockingAndOnerror: {
+      heavyRequestsZero: true,
+      onerrorPreservedImage: true,
+      cspOnerrorPreservedImage: true,
+    },
     popupRequests: 0,
     downloadRequests: 5,
   };

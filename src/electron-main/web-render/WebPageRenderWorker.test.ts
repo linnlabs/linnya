@@ -93,7 +93,7 @@ class FakeRenderWindow implements WebPageRenderWindow {
     this.url = url;
     this.session?.respond(url);
   };
-  executeImpl: () => Promise<unknown> = async () => this.html;
+  executeImpl: ((script: string) => Promise<unknown>) = async () => this.html;
   private isAllowed: ((url: string, trigger: WebPageRenderNavigationTrigger) => boolean) | undefined;
   private onBlocked: ((url: string) => void) | undefined;
   private onDidNavigateListener: ((url: string) => void) | undefined;
@@ -106,9 +106,9 @@ class FakeRenderWindow implements WebPageRenderWindow {
     return this.loadURLImpl(url);
   }
 
-  executeJavaScript(): Promise<unknown> {
+  executeJavaScript(script: string): Promise<unknown> {
     this.executeCount += 1;
-    return this.executeImpl();
+    return this.executeImpl(script);
   }
 
   getURL(): string {
@@ -667,5 +667,129 @@ describe('WebPageRenderWorker', () => {
     } finally {
       await worker.dispose();
     }
+  });
+
+  it('浏览器采集脚本异常或返回非法形状时，安全回退 outerHTML', async () => {
+    const runtime = new FakeRenderRuntime();
+    const throwingWindow = new FakeRenderWindow();
+    throwingWindow.executeImpl = async (script) => {
+      if (script.includes('mainTextLength') && !script.includes('outDoc')) {
+        return { readyState: 'complete', textLength: 900, mainTextLength: 900, scriptCount: 1 };
+      }
+      if (script.includes('readScrollProbe')) {
+        return { scrollY: 0, scrollHeight: 800, viewportHeight: 900, mainTextLength: 900, atBottom: true };
+      }
+      if (script.includes('outDoc')) {
+        throw new Error('capture script syntax failure');
+      }
+      return '<html><body>fallback outer html</body></html>';
+    };
+    runtime.nextWindow = throwingWindow;
+
+    const worker = createWorker(runtime, {
+      maxSettleDelayMs: 50,
+      renderTimeoutMs: 500,
+      totalTimeoutMs: 2_000,
+    });
+    const fallbackResult = await worker.render({ url: 'https://example.com/fallback' });
+    expect(fallbackResult.html).toBe('<html><body>fallback outer html</body></html>');
+
+    const invalidPayloadWindow = new FakeRenderWindow();
+    invalidPayloadWindow.executeImpl = async (script) => {
+      if (script.includes('mainTextLength') && !script.includes('outDoc')) {
+        return { readyState: 'complete', textLength: 900, mainTextLength: 900, scriptCount: 1 };
+      }
+      if (script.includes('readScrollProbe')) {
+        return { scrollY: 0, scrollHeight: 800, viewportHeight: 900, mainTextLength: 900, atBottom: true };
+      }
+      if (script.includes('outDoc')) {
+        return { html: 42, accessBarrier: 'unexpected' };
+      }
+      return '<html><body>schema fallback outer html</body></html>';
+    };
+    runtime.nextWindow = invalidPayloadWindow;
+    const schemaFallback = await worker.render({ url: 'https://example.com/bad-schema' });
+    expect(schemaFallback.html).toBe('<html><body>schema fallback outer html</body></html>');
+    await worker.dispose();
+  });
+
+  it('受控滚动：无限追加在最大步数刹车并附带 lazy_content_incomplete，已达字数上限时立即停止', async () => {
+    const runtime = new FakeRenderRuntime();
+    const infiniteWindow = new FakeRenderWindow();
+    let scrollStep = 0;
+    infiniteWindow.executeImpl = async (script) => {
+      if (script.includes('readScrollProbe') && script.includes('window.scrollTo')) {
+        scrollStep += 1;
+        return {
+          scrollY: scrollStep * 900,
+          scrollHeight: (scrollStep + 3) * 900,
+          viewportHeight: 900,
+          mainTextLength: 1_000 + scrollStep * 500,
+          atBottom: false,
+        };
+      }
+      if (script.includes('readScrollProbe')) {
+        return {
+          scrollY: scrollStep * 900,
+          scrollHeight: (scrollStep + 2) * 900,
+          viewportHeight: 900,
+          mainTextLength: 1_000 + scrollStep * 500,
+          atBottom: false,
+        };
+      }
+      if (script.includes('outDoc')) {
+        return {
+          html: '<html><body>infinite items</body></html>',
+          warnings: [],
+          inlinedFrameResources: [],
+          mainTextLength: 2_500,
+        };
+      }
+      return { readyState: 'complete', textLength: 1_000, mainTextLength: 1_000, scriptCount: 1 };
+    };
+    runtime.nextWindow = infiniteWindow;
+
+    const worker = createWorker(runtime, {
+      maxScrollSteps: 3,
+      scrollStepDelayMs: 5,
+      maxScrollDurationMs: 2_000,
+      maxSettleDelayMs: 50,
+      renderTimeoutMs: 500,
+      totalTimeoutMs: 2_000,
+    });
+    const cappedResult = await worker.render({ url: 'https://example.com/infinite' });
+    expect(scrollStep).toBe(3);
+    expect(cappedResult.capture?.warnings).toContain('lazy_content_incomplete');
+
+    let textCapScrolls = 0;
+    const textCapWindow = new FakeRenderWindow();
+    textCapWindow.executeImpl = async (script) => {
+      if (script.includes('window.scrollTo')) {
+        textCapScrolls += 1;
+      }
+      if (script.includes('readScrollProbe')) {
+        return {
+          scrollY: textCapScrolls * 900,
+          scrollHeight: 10_000,
+          viewportHeight: 900,
+          mainTextLength: textCapScrolls === 0 ? 1_000 : 160_000,
+          atBottom: false,
+        };
+      }
+      if (script.includes('outDoc')) {
+        return {
+          html: '<html><body>huge scroll</body></html>',
+          warnings: [],
+          inlinedFrameResources: [],
+          mainTextLength: 160_000,
+        };
+      }
+      return { readyState: 'complete', textLength: 1_000, mainTextLength: 1_000, scriptCount: 1 };
+    };
+    runtime.nextWindow = textCapWindow;
+    const textCapResult = await worker.render({ url: 'https://example.com/huge-lazy' });
+    expect(textCapScrolls).toBe(1);
+    expect(textCapResult.capture?.warnings).toContain('lazy_content_incomplete');
+    await worker.dispose();
   });
 });

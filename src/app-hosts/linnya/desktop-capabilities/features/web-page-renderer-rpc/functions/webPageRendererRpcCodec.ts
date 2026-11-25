@@ -5,6 +5,9 @@ import {
   type WebAccessChallengeHeaderName,
 } from '../../../../../../tools/web/shared/webAccessChallenge';
 import {
+  BROWSER_CAPTURE_WARNING_VALUES,
+} from '../../../../../../tools/web/webread/render-capture/definitions/renderCaptureContract';
+import {
   WEB_PAGE_MAIN_RESPONSE_HEADER_MAX_CHARS,
   WEB_PAGE_NET_ERROR_NAME_PATTERN,
   type WebPageMainResponse,
@@ -28,6 +31,18 @@ const WebPageSubresourceFailuresRpcSchema = z.object({
   sample_error: z.string().regex(WEB_PAGE_NET_ERROR_NAME_PATTERN).optional(),
 }).strict();
 
+const WebPageRenderCaptureResourceRpcSchema = z.object({
+  kind: z.literal('source'),
+  url: z.string().url().max(2_048),
+  label: z.string().min(1).max(200).optional(),
+}).strict();
+
+const WebPageRenderCaptureRpcSchema = z.object({
+  access_barrier: z.enum(['login_required', 'captcha']).optional(),
+  warnings: z.array(z.enum(BROWSER_CAPTURE_WARNING_VALUES)).max(4).optional(),
+  inlined_frame_resources: z.array(WebPageRenderCaptureResourceRpcSchema).max(16).optional(),
+}).strict();
+
 export const WebPageRenderRpcRequestSchema = z.object({
   url: z.string().url(),
   timeout_ms: z.number().int().positive().optional(),
@@ -40,6 +55,7 @@ export const WebPageRenderRpcResultSchema = z.discriminatedUnion('ok', [
       html: z.string(),
       final_url: z.string().url(),
       main_response: WebPageMainResponseRpcSchema,
+      capture: WebPageRenderCaptureRpcSchema.optional(),
     }).strict(),
   }).strict(),
   z.object({

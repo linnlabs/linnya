@@ -1,4 +1,4 @@
-import { errorToString as toErrorMessage, sleep as delay } from '@linnya/foundation';
+import { errorToString as toErrorMessage, isRecord, sleep as delay } from '@linnya/foundation';
 import { randomUUID } from 'node:crypto';
 import { Buffer } from 'node:buffer';
 import {
@@ -6,10 +6,23 @@ import {
   WEB_PAGE_NET_ERROR_NAME_PATTERN,
   WebPageRenderError,
   type WebPageMainResponse,
+  type WebPageRenderCaptureMetadata,
   type WebPageSubresourceFailures,
   type WebPageRenderParams,
   type WebPageRenderResult,
 } from '../../tools/web/webread/definitions/webPageRenderer';
+import {
+  buildDomCaptureScript,
+  buildReadinessSampleScript,
+  buildScrollProbeScript,
+  buildScrollStepScript,
+} from '../../tools/web/webread/render-capture/functions/buildRenderCaptureScripts';
+import {
+  parseBrowserCapturePayload,
+  parseBrowserReadinessSample,
+  parseBrowserScrollProbe,
+} from '../../tools/web/webread/render-capture/functions/parseRenderCaptureResult';
+import type { BrowserCaptureWarning } from '../../tools/web/webread/render-capture/definitions/renderCaptureContract';
 import {
   detectWebAccessChallengeHeader,
   pickWebAccessChallengeHeaders,
@@ -31,8 +44,9 @@ import {
   isAllowedRenderNavigation,
 } from './functions/isAllowedRenderNavigation';
 import {
-  assessRenderReadiness,
-  type RenderReadinessSample,
+  assessRenderReadinessDetailed,
+  RENDER_MAIN_GROWTH_MIN_CHARS,
+  type RenderReadinessReason,
 } from './functions/assessRenderReadiness';
 
 const DEFAULT_LOAD_TIMEOUT_MS = 20_000;
@@ -40,18 +54,19 @@ const DEFAULT_RENDER_TIMEOUT_MS = 5_000;
 const DEFAULT_TOTAL_TIMEOUT_MS = 30_000;
 const DEFAULT_SETTLE_DELAY_MS = 250;
 const DEFAULT_MAX_SETTLE_DELAY_MS = 3_000;
+const DEFAULT_READINESS_TIMEOUT_MS = 8_000;
+const DEFAULT_MAX_SCROLL_STEPS = 4;
+const DEFAULT_MAX_SCROLL_TEXT_CHARS = 150_000;
+const DEFAULT_MAX_SCROLL_DURATION_MS = 3_000;
+const DEFAULT_SCROLL_STEP_DELAY_MS = 250;
 const READINESS_POLL_INTERVAL_MS = 200;
 const DEFAULT_MAX_HTML_BYTES = 5 * 1024 * 1024;
 const MAX_PRE_COMMIT_REDIRECTS = 5;
 const READ_OUTER_HTML_SCRIPT = 'document.documentElement.outerHTML';
-const READINESS_SCRIPT = `(() => {
-  const body = document.body;
-  return {
-    readyState: document.readyState,
-    textLength: body?.innerText?.length ?? 0,
-    scriptCount: document.scripts.length,
-  };
-})()`;
+const READINESS_SCRIPT = buildReadinessSampleScript();
+const SCROLL_PROBE_SCRIPT = buildScrollProbeScript();
+const SCROLL_STEP_SCRIPT = buildScrollStepScript();
+const DOM_CAPTURE_SCRIPT = buildDomCaptureScript();
 
 export interface WebPageRenderWorkerOptions {
   readonly runtime?: WebPageRenderRuntime;
@@ -62,6 +77,11 @@ export interface WebPageRenderWorkerOptions {
   readonly totalTimeoutMs?: number;
   readonly settleDelayMs?: number;
   readonly maxSettleDelayMs?: number;
+  readonly readinessTimeoutMs?: number;
+  readonly maxScrollSteps?: number;
+  readonly maxScrollTextChars?: number;
+  readonly maxScrollDurationMs?: number;
+  readonly scrollStepDelayMs?: number;
   readonly maxHtmlBytes?: number;
   readonly logger?: Pick<Logger, 'info' | 'warn' | 'error'>;
 }
@@ -117,16 +137,6 @@ function readNetErrorCode(error: unknown): number | undefined {
   return typeof errno === 'number' && Number.isSafeInteger(errno) && errno < 0 ? errno : undefined;
 }
 
-function readReadinessSample(value: unknown): RenderReadinessSample | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const objectValue: object = value;
-  const readyState = Reflect.get(objectValue, 'readyState');
-  const textLength = Reflect.get(objectValue, 'textLength');
-  const scriptCount = Reflect.get(objectValue, 'scriptCount');
-  if (typeof readyState !== 'string' || typeof textLength !== 'number') return null;
-  return { readyState, textLength, scriptCount: typeof scriptCount === 'number' ? scriptCount : 0 };
-}
-
 export class WebPageRenderWorker {
   private readonly runtime: WebPageRenderRuntime;
   private readonly partition: string;
@@ -136,6 +146,11 @@ export class WebPageRenderWorker {
   private readonly totalTimeoutMs: number;
   private readonly settleDelayMs: number;
   private readonly maxSettleDelayMs: number;
+  private readonly readinessTimeoutMs: number | undefined;
+  private readonly maxScrollSteps: number;
+  private readonly maxScrollTextChars: number;
+  private readonly maxScrollDurationMs: number;
+  private readonly scrollStepDelayMs: number;
   private readonly maxHtmlBytes: number;
   private readonly logger: Pick<Logger, 'info' | 'warn' | 'error'>;
 
@@ -166,6 +181,11 @@ export class WebPageRenderWorker {
     this.totalTimeoutMs = options.totalTimeoutMs ?? DEFAULT_TOTAL_TIMEOUT_MS;
     this.settleDelayMs = options.settleDelayMs ?? DEFAULT_SETTLE_DELAY_MS;
     this.maxSettleDelayMs = options.maxSettleDelayMs ?? DEFAULT_MAX_SETTLE_DELAY_MS;
+    this.readinessTimeoutMs = options.readinessTimeoutMs;
+    this.maxScrollSteps = options.maxScrollSteps ?? DEFAULT_MAX_SCROLL_STEPS;
+    this.maxScrollTextChars = options.maxScrollTextChars ?? DEFAULT_MAX_SCROLL_TEXT_CHARS;
+    this.maxScrollDurationMs = options.maxScrollDurationMs ?? DEFAULT_MAX_SCROLL_DURATION_MS;
+    this.scrollStepDelayMs = options.scrollStepDelayMs ?? DEFAULT_SCROLL_STEP_DELAY_MS;
     this.maxHtmlBytes = options.maxHtmlBytes ?? DEFAULT_MAX_HTML_BYTES;
     this.logger = options.logger ?? new Logger('WebPageRenderWorker');
   }
@@ -183,6 +203,8 @@ export class WebPageRenderWorker {
 
     const startedAt = Date.now();
     const totalTimeoutMs = params.timeoutMs ?? this.totalTimeoutMs;
+    const taskDeadline = startedAt + totalTimeoutMs;
+    const extractReserveMs = Math.min(this.renderTimeoutMs, Math.floor(totalTimeoutMs * 0.25));
     let rejectCancellation: ((error: WebPageRenderError) => void) | undefined;
     const cancellation = new Promise<never>((_resolve, reject) => {
       rejectCancellation = reject;
@@ -205,13 +227,14 @@ export class WebPageRenderWorker {
     }, totalTimeoutMs);
 
     try {
-      const result = await this.performRender(params.url, cancellation);
+      const renderOutcome = await this.performRender(params.url, cancellation, taskDeadline, extractReserveMs);
       this.logger.info('[web-render] 页面渲染完成', {
-        finalUrl: result.finalUrl,
-        htmlBytes: Buffer.byteLength(result.html, 'utf8'),
+        finalUrl: renderOutcome.result.finalUrl,
+        htmlBytes: Buffer.byteLength(renderOutcome.result.html, 'utf8'),
+        readinessReason: renderOutcome.readinessReason,
         tookMs: Date.now() - startedAt,
       });
-      return result;
+      return renderOutcome.result;
     } finally {
       clearTimeout(totalTimer);
       params.signal?.removeEventListener('abort', abort);
@@ -245,7 +268,9 @@ export class WebPageRenderWorker {
   private async performRender(
     url: string,
     cancellation: Promise<never>,
-  ): Promise<WebPageRenderResult> {
+    taskDeadline: number,
+    extractReserveMs: number,
+  ): Promise<{ readonly result: WebPageRenderResult; readonly readinessReason: RenderReadinessReason | 'fallback' }> {
     const { renderWindow, renderSession } = this.ensureRuntime();
     await raceCancellation(renderSession.clearStorageData(), cancellation);
 
@@ -286,12 +311,20 @@ export class WebPageRenderWorker {
     }
 
     const domReadyAt = Date.now();
+    const readinessCap = this.readinessTimeoutMs ?? Math.min(this.loadTimeoutMs, DEFAULT_READINESS_TIMEOUT_MS);
+    const uncappedReadinessDeadline = Math.max(
+      domReadyAt + readinessCap,
+      domReadyAt + this.maxSettleDelayMs,
+    );
+    const readinessDeadline = Math.min(
+      uncappedReadinessDeadline,
+      Math.max(domReadyAt, taskDeadline - extractReserveMs),
+    );
     const readiness = await this.waitForRenderReadiness(renderWindow, cancellation, {
       domReadyAt,
-      // 等待上限沿用既有预算：原先愿意等 load 的时长，且 DOM 就绪后至少保留一个 settle 窗口。
-      deadline: Math.max(navigationStartedAt + this.loadTimeoutMs, domReadyAt + this.maxSettleDelayMs),
+      deadline: readinessDeadline,
     });
-    if (readiness === 'app_shell_not_rendered') {
+    if (readiness.decision === 'app_shell_not_rendered') {
       this.destroyWindow();
       throw new WebPageRenderError(
         'app_shell_not_rendered',
@@ -300,23 +333,17 @@ export class WebPageRenderWorker {
       );
     }
 
-    let rawHtml: unknown;
-    try {
-      rawHtml = await runWithTimeout(
-        raceCancellation(renderWindow.executeJavaScript(READ_OUTER_HTML_SCRIPT), cancellation),
-        this.renderTimeoutMs,
-        () => new WebPageRenderError('render_timeout', `网页在 ${this.renderTimeoutMs}ms 内未完成 DOM 提取。`),
-        () => this.destroyWindow(),
-      );
-    } catch (error: unknown) {
-      if (error instanceof WebPageRenderError) throw error;
-      throw new WebPageRenderError('render_failed', `网页 DOM 提取失败：${toErrorMessage(error)}`);
-    }
+    const scrollOutcome = readiness.sawMainTextField
+      ? await this.performBoundedScroll(renderWindow, cancellation, taskDeadline, extractReserveMs)
+      : { lazyContentIncomplete: false };
 
-    if (typeof rawHtml !== 'string') {
-      throw new WebPageRenderError('render_failed', '网页 DOM 提取没有返回 HTML 字符串。');
-    }
-    const htmlBytes = Buffer.byteLength(rawHtml, 'utf8');
+    const captured = await this.captureRenderedDocument(
+      renderWindow,
+      cancellation,
+      scrollOutcome.lazyContentIncomplete,
+    );
+
+    const htmlBytes = Buffer.byteLength(captured.html, 'utf8');
     if (htmlBytes > this.maxHtmlBytes) {
       this.destroyWindow();
       throw new WebPageRenderError(
@@ -335,20 +362,36 @@ export class WebPageRenderWorker {
       // 状态码只来自真实主响应；没有观察到时不补造 200。
       throw new WebPageRenderError('render_failed', '网页渲染没有观察到主文档 HTTP 响应。');
     }
-    return { html: rawHtml, finalUrl, mainResponse };
+    return {
+      readinessReason: readiness.reason,
+      result: {
+        html: captured.html,
+        finalUrl,
+        mainResponse,
+        ...(captured.capture ? { capture: captured.capture } : {}),
+      },
+    };
   }
 
   private async waitForRenderReadiness(
     renderWindow: WebPageRenderWindow,
     cancellation: Promise<never>,
     timing: { readonly domReadyAt: number; readonly deadline: number },
-  ): Promise<'ready' | 'app_shell_not_rendered'> {
+  ): Promise<{
+    readonly decision: 'ready' | 'app_shell_not_rendered';
+    readonly reason: RenderReadinessReason | 'fallback';
+    readonly sawMainTextField: boolean;
+  }> {
     if (this.settleDelayMs > 0) {
       await raceCancellation(delay(this.settleDelayMs), cancellation);
     }
 
-    let previousTextLength: number | undefined;
+    let peakMainTextLength: number | undefined;
+    let lastMainGrowthAt = Date.now();
+    let previousEffectiveLength: number | undefined;
+    let previousReadyState: string | undefined;
     let stableSamples = 0;
+    let sawMainTextField = false;
     while (true) {
       const snapshot = await runWithTimeout(
         raceCancellation(renderWindow.executeJavaScript(READINESS_SCRIPT), cancellation),
@@ -356,26 +399,212 @@ export class WebPageRenderWorker {
         () => new WebPageRenderError('render_timeout', `网页在 ${this.renderTimeoutMs}ms 内未响应就绪采样。`),
         () => this.destroyWindow(),
       );
-      const sample = readReadinessSample(snapshot);
-      if (!sample) return 'ready';
+      if (isRecord(snapshot) && typeof snapshot['mainTextLength'] === 'number') {
+        sawMainTextField = true;
+      }
+      const sample = parseBrowserReadinessSample(snapshot);
+      if (!sample) return { decision: 'ready', reason: 'fallback', sawMainTextField: false };
 
-      stableSamples = sample.textLength === previousTextLength ? stableSamples + 1 : 0;
-      previousTextLength = sample.textLength;
       const now = Date.now();
-      const decision = assessRenderReadiness({
+      const effectiveMainLength = sample.mainTextLength;
+      if (peakMainTextLength === undefined) {
+        peakMainTextLength = effectiveMainLength;
+        lastMainGrowthAt = now;
+      } else if (effectiveMainLength >= peakMainTextLength + RENDER_MAIN_GROWTH_MIN_CHARS) {
+        peakMainTextLength = effectiveMainLength;
+        lastMainGrowthAt = now;
+      }
+      if (previousEffectiveLength === undefined || sample.readyState !== previousReadyState) {
+        stableSamples = 0;
+      } else if (effectiveMainLength < RENDER_MAIN_GROWTH_MIN_CHARS) {
+        stableSamples = effectiveMainLength === previousEffectiveLength ? stableSamples + 1 : 0;
+      } else {
+        stableSamples = Math.abs(effectiveMainLength - previousEffectiveLength) < RENDER_MAIN_GROWTH_MIN_CHARS
+          ? stableSamples + 1
+          : 0;
+      }
+      previousEffectiveLength = effectiveMainLength;
+      previousReadyState = sample.readyState;
+
+      const assessment = assessRenderReadinessDetailed({
         sample,
         stableSamples,
         dataRequestsInFlight: this.activeDataRequests.size,
         sawDataRequest: this.sawDataRequest,
         dataQuietMs: this.activeDataRequests.size > 0 ? 0 : now - this.lastDataActivityAt,
+        ...(sawMainTextField ? { mainQuietMs: now - lastMainGrowthAt } : {}),
         sinceDomReadyMs: now - timing.domReadyAt,
         maxSettleDelayMs: this.maxSettleDelayMs,
         deadlineReached: now >= timing.deadline,
       });
-      if (decision !== 'wait') return decision;
+      if (assessment.decision !== 'wait') {
+        return {
+          decision: assessment.decision,
+          reason: assessment.reason,
+          sawMainTextField,
+        };
+      }
       const remainingMs = Math.max(0, timing.deadline - now);
       await raceCancellation(delay(Math.min(READINESS_POLL_INTERVAL_MS, remainingMs)), cancellation);
     }
+  }
+
+  private async performBoundedScroll(
+    renderWindow: WebPageRenderWindow,
+    cancellation: Promise<never>,
+    taskDeadline: number,
+    extractReserveMs: number,
+  ): Promise<{ readonly lazyContentIncomplete: boolean }> {
+    if (this.maxScrollSteps <= 0) return { lazyContentIncomplete: false };
+    const maxBudgetDeadline = Math.max(Date.now(), taskDeadline - extractReserveMs);
+    const scrollDeadline = Math.min(Date.now() + this.maxScrollDurationMs, maxBudgetDeadline);
+    if (scrollDeadline - Date.now() < 150) return { lazyContentIncomplete: false };
+
+    let current = parseBrowserScrollProbe(
+      await runWithTimeout(
+        raceCancellation(renderWindow.executeJavaScript(SCROLL_PROBE_SCRIPT), cancellation),
+        this.renderTimeoutMs,
+        () => new WebPageRenderError('render_timeout', `网页在 ${this.renderTimeoutMs}ms 内未响应滚动探测。`),
+        () => this.destroyWindow(),
+      ).catch(() => null),
+    );
+    if (!current || current.scrollHeight <= current.viewportHeight * 1.05 || current.atBottom) {
+      return { lazyContentIncomplete: false };
+    }
+    if (current.mainTextLength >= this.maxScrollTextChars) {
+      return { lazyContentIncomplete: true };
+    }
+
+    let anyGrowth = false;
+    let lastStepGrew = false;
+    let stepsRun = 0;
+    while (stepsRun < this.maxScrollSteps) {
+      if (Date.now() >= scrollDeadline) {
+        return { lazyContentIncomplete: anyGrowth && (!current.atBottom || lastStepGrew) };
+      }
+      const stepped = await runWithTimeout(
+        raceCancellation(renderWindow.executeJavaScript(SCROLL_STEP_SCRIPT), cancellation),
+        this.renderTimeoutMs,
+        () => new WebPageRenderError('render_timeout', `网页在 ${this.renderTimeoutMs}ms 内未响应滚动动作。`),
+        () => this.destroyWindow(),
+      ).catch(() => null);
+      if (!parseBrowserScrollProbe(stepped)) {
+        return { lazyContentIncomplete: false };
+      }
+      stepsRun += 1;
+
+      const waitMs = Math.min(this.scrollStepDelayMs, Math.max(0, scrollDeadline - Date.now()));
+      if (waitMs > 0) await raceCancellation(delay(waitMs), cancellation);
+      const dataWaitDeadline = Math.min(Date.now() + 400, scrollDeadline);
+      while (this.activeDataRequests.size > 0 && Date.now() < dataWaitDeadline) {
+        await raceCancellation(delay(Math.min(100, Math.max(0, dataWaitDeadline - Date.now()))), cancellation);
+      }
+
+      const next = parseBrowserScrollProbe(
+        await runWithTimeout(
+          raceCancellation(renderWindow.executeJavaScript(SCROLL_PROBE_SCRIPT), cancellation),
+          this.renderTimeoutMs,
+          () => new WebPageRenderError('render_timeout', `网页在 ${this.renderTimeoutMs}ms 内未响应滚动后探测。`),
+          () => this.destroyWindow(),
+        ).catch(() => null),
+      );
+      if (!next) return { lazyContentIncomplete: false };
+
+      const textDelta = next.mainTextLength - current.mainTextLength;
+      const heightDelta = next.scrollHeight - current.scrollHeight;
+      lastStepGrew = textDelta >= 40 || heightDelta >= 50;
+      if (lastStepGrew) anyGrowth = true;
+      current = next;
+
+      if (current.mainTextLength >= this.maxScrollTextChars) {
+        return { lazyContentIncomplete: anyGrowth || !current.atBottom };
+      }
+      if (!lastStepGrew && (current.atBottom || !anyGrowth) && this.activeDataRequests.size === 0) {
+        return { lazyContentIncomplete: false };
+      }
+    }
+    return { lazyContentIncomplete: anyGrowth && (!current.atBottom || lastStepGrew) };
+  }
+
+  private async captureRenderedDocument(
+    renderWindow: WebPageRenderWindow,
+    cancellation: Promise<never>,
+    lazyContentIncomplete: boolean,
+  ): Promise<{ readonly html: string; readonly capture?: WebPageRenderCaptureMetadata }> {
+    let rawCapture: unknown;
+    try {
+      rawCapture = await runWithTimeout(
+        raceCancellation(renderWindow.executeJavaScript(DOM_CAPTURE_SCRIPT), cancellation),
+        this.renderTimeoutMs,
+        () => new WebPageRenderError('render_timeout', `网页在 ${this.renderTimeoutMs}ms 内未完成 DOM 提取。`),
+        () => this.destroyWindow(),
+      );
+    } catch (error: unknown) {
+      if (error instanceof WebPageRenderError && (error.kind === 'render_timeout' || error.kind === 'aborted' || error.kind === 'total_timeout' || error.kind === 'unavailable' || error.kind === 'render_process_gone')) {
+        throw error;
+      }
+      this.logger.warn('[web-render] 浏览器采集脚本执行失败，回退 outerHTML', error);
+      return this.fallbackOuterHtml(renderWindow, cancellation, lazyContentIncomplete);
+    }
+
+    if (typeof rawCapture === 'string') {
+      return {
+        html: rawCapture,
+        ...(lazyContentIncomplete ? { capture: { warnings: ['lazy_content_incomplete'] } } : {}),
+      };
+    }
+    const payload = parseBrowserCapturePayload(rawCapture);
+    if (!payload) {
+      this.logger.warn('[web-render] 浏览器采集结果未通过 schema 校验，回退 outerHTML');
+      return this.fallbackOuterHtml(renderWindow, cancellation, lazyContentIncomplete);
+    }
+
+    const warnings: BrowserCaptureWarning[] = [...payload.warnings];
+    if (lazyContentIncomplete && !warnings.includes('lazy_content_incomplete')) {
+      warnings.push('lazy_content_incomplete');
+    }
+    const capture: WebPageRenderCaptureMetadata = {
+      ...(payload.accessBarrier ? { accessBarrier: payload.accessBarrier } : {}),
+      ...(warnings.length > 0 ? { warnings } : {}),
+      ...(payload.inlinedFrameResources.length > 0
+        ? { inlinedFrameResources: payload.inlinedFrameResources }
+        : {}),
+    };
+    const hasCaptureMeta = Boolean(
+      capture.accessBarrier
+      || (capture.warnings && capture.warnings.length > 0)
+      || (capture.inlinedFrameResources && capture.inlinedFrameResources.length > 0),
+    );
+    return {
+      html: payload.html,
+      ...(hasCaptureMeta ? { capture } : {}),
+    };
+  }
+
+  private async fallbackOuterHtml(
+    renderWindow: WebPageRenderWindow,
+    cancellation: Promise<never>,
+    lazyContentIncomplete: boolean,
+  ): Promise<{ readonly html: string; readonly capture?: WebPageRenderCaptureMetadata }> {
+    let rawHtml: unknown;
+    try {
+      rawHtml = await runWithTimeout(
+        raceCancellation(renderWindow.executeJavaScript(READ_OUTER_HTML_SCRIPT), cancellation),
+        this.renderTimeoutMs,
+        () => new WebPageRenderError('render_timeout', `网页在 ${this.renderTimeoutMs}ms 内未完成 DOM 提取。`),
+        () => this.destroyWindow(),
+      );
+    } catch (error: unknown) {
+      if (error instanceof WebPageRenderError) throw error;
+      throw new WebPageRenderError('render_failed', `网页 DOM 提取失败：${toErrorMessage(error)}`);
+    }
+    if (typeof rawHtml !== 'string') {
+      throw new WebPageRenderError('render_failed', '网页 DOM 提取没有返回 HTML 字符串。');
+    }
+    return {
+      html: rawHtml,
+      ...(lazyContentIncomplete ? { capture: { warnings: ['lazy_content_incomplete'] } } : {}),
+    };
   }
 
   private handleSubresource(event: WebPageRenderSubresourceEvent): void {

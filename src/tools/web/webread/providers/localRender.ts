@@ -13,6 +13,8 @@ import {
   detectWebAccessChallenge,
   detectWebAccessChallengeHeader,
 } from '../../shared/webAccessChallenge';
+import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
+import type { WebDocumentWarning, WebPageResource } from '../../definitions/webDocument';
 import { extractArticle } from '../extraction/extractArticle';
 import { createWebReadResult } from '../functions/createWebReadResult';
 import { getWebPageRenderer } from '../ports/webPageRenderer';
@@ -154,6 +156,22 @@ export class LocalRenderProvider implements WebReadProvider {
       });
     }
 
+    if (rendered.capture?.accessBarrier) {
+      throw new WebFailureError(
+        rendered.capture.accessBarrier,
+        rendered.capture.accessBarrier === 'captcha'
+          ? '本地渲染检测到人机验证遮罩。'
+          : '本地渲染检测到登录遮罩，未提取页面正文。',
+        {
+          status,
+          details: {
+            failureStage: 'local_render',
+            status,
+          },
+        },
+      );
+    }
+
     const extracted = extractArticle(rendered.html, { url: rendered.finalUrl });
     if (extracted.accessBarrier) {
       throw new WebFailureError(
@@ -170,7 +188,33 @@ export class LocalRenderProvider implements WebReadProvider {
         },
       );
     }
-    if (!extracted.text && extracted.resources.length === 0) {
+    const mergedResourcesByUrl = new Map<string, WebPageResource>();
+    for (const resource of extracted.resources) {
+      mergedResourcesByUrl.set(resource.url, resource);
+    }
+    for (const frameResource of rendered.capture?.inlinedFrameResources ?? []) {
+      try {
+        const validatedUrl = assertAllowedWebUrl(frameResource.url).href;
+        if (!mergedResourcesByUrl.has(validatedUrl)) {
+          mergedResourcesByUrl.set(validatedUrl, {
+            kind: frameResource.kind,
+            url: validatedUrl,
+            ...(frameResource.label ? { label: frameResource.label } : {}),
+          });
+        }
+      } catch (error: unknown) {
+        if (error instanceof TypeError || error instanceof WebUrlPolicyError) continue;
+        throw error;
+      }
+    }
+    const resources = [...mergedResourcesByUrl.values()].slice(0, 16);
+    const mergedWarnings: WebDocumentWarning[] = [...extracted.warnings];
+    for (const captureWarning of rendered.capture?.warnings ?? []) {
+      if (!mergedWarnings.includes(captureWarning)) mergedWarnings.push(captureWarning);
+    }
+    const warnings = mergedWarnings.slice(0, 16);
+
+    if (!extracted.text && resources.length === 0) {
       throw new WebFailureError('empty_content', '本地渲染后的网页正文抽取结果为空。');
     }
 
@@ -193,8 +237,8 @@ export class LocalRenderProvider implements WebReadProvider {
       maxChars: params.maxChars,
       rawLength: rendered.html.length,
       qualityScore: extracted.qualityScore,
-      warnings: extracted.warnings,
-      resources: extracted.resources,
+      warnings,
+      resources,
       images: extracted.images,
       ...(extracted.pageRights ? { pageRights: extracted.pageRights } : {}),
       latencyMs: Date.now() - startedAt,
