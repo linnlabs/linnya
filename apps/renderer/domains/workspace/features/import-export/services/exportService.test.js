@@ -27,7 +27,8 @@ describe('Markdown PDF 交付', () => {
     let complete;
     prepare.mockImplementation(() => new Promise(resolve => { complete = resolve; }));
     const exporting = exportAsPDF({ getHTML: () => '<figure>原始标题</figure>' });
-    await vi.waitFor(() => expect(prepare).toHaveBeenCalledWith('<figure>原始标题</figure>'));
+    // 默认 A4、页边距 2.54cm：纸面正文 601px，减去根块内边距 10px 与测量余量 8px，表格按 583px 定级。
+    await vi.waitFor(() => expect(prepare).toHaveBeenCalledWith('<figure>原始标题</figure>', { tableWidthPx: 583 }));
     expect(savePdf).not.toHaveBeenCalled();
     complete('<figure><img src="data:image/svg+xml,complete-chart"></figure>');
     await exporting;
