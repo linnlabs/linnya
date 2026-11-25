@@ -206,8 +206,8 @@ export class ServiceInitializer {
     await providerAccountRegistry.initialize();
     await modelCatalog.initialize();
     // 停用的用户模型仍在用户文件里，对账必须把它当作存在，否则会顺带删掉它的 Provider 归属与选择器偏好。
-    const retainedModels = modelCatalog.getRetainedModelIdentities();
-    await providerConfigurationRegistry.initialize({ models: retainedModels });
+    const modelIdentities = modelCatalog.getModelIdentitiesIncludingUnadmitted();
+    await providerConfigurationRegistry.initialize({ models: modelIdentities });
     const providerConfigurationMigration = await runProviderConfigurationMigration({
       providerCatalog,
       runtimeBindings: providerOnboardingRuntimeBindingRegistry,
@@ -222,7 +222,7 @@ export class ServiceInitializer {
     });
     await modelPickerPreferencesRegistry.initialize({
       configured_provider_ids: providerConfigurationRegistry.list().map(provider => provider.id),
-      model_config_ids: retainedModels.map(model => model.id),
+      model_config_ids: modelIdentities.map(model => model.id),
     });
     console.log(
       `[ServiceInitializer] ✅ Step 3: 产品模型目录初始化完成，包含 ${modelCatalog.getModels().length} 个模型`

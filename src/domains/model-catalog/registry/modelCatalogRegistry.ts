@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import type { CustomApiGroup, CustomApiGroupMigration } from '../definitions/customApiGroup';
 import type { ModelReasoningResolver } from '../definitions/modelReasoningResolver';
 import { projectUserModelForPersistence } from '../features/user-model-persistence/functions/projectUserModelForPersistence';
-import { readStoredModelReferences } from '../features/user-model-persistence/functions/readStoredModelReferences';
+import { partitionStoredUserModels } from '../features/user-model-persistence/functions/partitionStoredUserModels';
+import type { UnadmittedUserModelEntry } from '../features/user-model-persistence/definitions/userModelsFile';
 import { assertCustomApiGroupEndpoints } from '../features/custom-api-groups/functions/customApiGroupState';
 import { prepareCustomApiGroupMutation } from '../features/custom-api-groups/orchestration/prepareCustomApiGroupMutation';
 import type { CustomApiGroupMutation } from '../features/custom-api-groups/definitions/customApiGroupMutation';
@@ -66,14 +67,6 @@ export interface UserModelCatalogChangedEvent {
 
 export type UserModelCatalogChangedListener = (event: UserModelCatalogChangedEvent) => void;
 
-/** 启动时未通过准入的用户模型：只停用这一条，原始条目随之后的写盘原样保留。 */
-interface UnadmittedUserModelEntry {
-  readonly raw: unknown;
-  readonly id: string | undefined;
-  readonly inferenceEndpointId: string | undefined;
-  readonly reason: string;
-}
-
 function processEnvironment(): Record<string, string> {
   const environment: Record<string, string> = {};
   for (const [name, value] of Object.entries(process.env)) {
@@ -110,7 +103,10 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private envVars: Record<string, string> = {};
   private initialized = false;
   private initializationStarted = false;
-  /** 初始化本身在全部准入通过后会回写一次迁移结果；除此之外，未初始化成功时禁止写用户配置。 */
+  /**
+   * 旧版文件在连接与分组全部通过准入后，初始化会回写一次迁移结果（停用的模型条目原样带入）；
+   * 除此之外，未初始化成功时禁止写用户配置。
+   */
   private persistingInitialState = false;
   private modelReasoningResolver: ModelReasoningResolver | undefined;
   private cloudModelRetryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -202,7 +198,10 @@ export class ModelCatalogRegistry implements ModelCatalog {
     };
   }
 
-  /** 启动时未通过准入而停用的用户模型；只给身份与原因，供诊断使用。 */
+  /**
+   * 启动时未通过准入而停用的用户模型；只给身份与原因，不给原始配置。
+   * Provider 接入用例据此区分“停用成员”（跳过）与“归属悬空”（配置损坏）。
+   */
   getUnadmittedUserModels(): UnadmittedUserModel[] {
     return this.unadmittedUserModels.map(entry => ({
       id: entry.id,
@@ -212,10 +211,13 @@ export class ModelCatalogRegistry implements ModelCatalog {
   }
 
   /**
-   * 仍然存在的模型身份：运行目录里的模型，加上停用但仍保留在用户文件里的条目。
+   * 运行目录里的模型身份，加上停用但仍保留在用户文件里的条目。
    * Provider 归属、选择器偏好等启动对账以它判断“模型是否已被删除”；只用运行目录会把停用模型的归属一并删掉。
    */
-  getRetainedModelIdentities(): Array<{ id: string; inference_endpoint_id: string | undefined }> {
+  getModelIdentitiesIncludingUnadmitted(): Array<{
+    id: string;
+    inference_endpoint_id: string | undefined;
+  }> {
     return [
       ...this.getModels().map(model => ({
         id: model.id,
@@ -381,10 +383,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return this.runUserMutation(async () => {
       if (registrations.length === 0) throw new Error('批量注册至少需要一个用户模型');
       const ids = registrations.map(item => item.model.id);
-      if (
-        new Set(ids).size !== ids.length ||
-        ids.some(id => this.models.has(id) || this.isUnadmittedUserModelId(id))
-      ) {
+      if (new Set(ids).size !== ids.length || ids.some(id => this.models.has(id))) {
         throw new Error('注册模型 ID 重复或已存在');
       }
       const nextEndpoints = new Map(this.inferenceEndpoints);
@@ -655,30 +654,24 @@ export class ModelCatalogRegistry implements ModelCatalog {
 
   /** 单个用户模型准入失败只停用它：其余模型照常可用，原条目留在文件里，它的连接与凭据不回收。 */
   private loadUserModels(userModels: readonly unknown[]): void {
-    const unadmitted: UnadmittedUserModelEntry[] = [];
-    for (const modelData of userModels) {
-      try {
-        const model = processModelConfig({
-          modelData,
-          envVars: this.envVars,
-          reasoningResolver: this.modelReasoningResolver,
-        });
-        this.assertModelEndpoint(model);
-        this.models.set(model.id, model);
-      } catch (error: unknown) {
-        const references = readStoredModelReferences(modelData);
-        const reason = error instanceof Error ? error.message : String(error);
-        unadmitted.push({ raw: modelData, ...references, reason });
-        logger.warn(
-          `[ModelCatalog] 用户模型 ${references.id ?? '(缺少 ID)'} 没有通过准入，已停用；原配置保留在 user_models.json: ${reason}`
-        );
-      }
+    const { admitted, unadmitted } = partitionStoredUserModels(userModels, modelData => {
+      const model = processModelConfig({
+        modelData,
+        envVars: this.envVars,
+        reasoningResolver: this.modelReasoningResolver,
+      });
+      this.assertModelEndpoint(model);
+      return model;
+    });
+    for (const model of admitted) this.models.set(model.id, model);
+    for (const { entry, error } of unadmitted) {
+      // 带上错误对象：准入失败与代码本身出错的文案可能相似，调用栈才分得清。
+      logger.warn(
+        `[ModelCatalog] 用户模型 ${entry.id ?? '(缺少 ID)'} 没有通过准入，已停用；原配置保留在 user_models.json: ${entry.reason}`,
+        error
+      );
     }
-    this.unadmittedUserModels = unadmitted;
-  }
-
-  private isUnadmittedUserModelId(id: string): boolean {
-    return this.unadmittedUserModels.some(entry => entry.id === id);
+    this.unadmittedUserModels = unadmitted.map(({ entry }) => entry);
   }
 
   /** 从读取当前目录到凭据/文件提交都串行，失败后下一条事务仍可继续。 */

@@ -60,9 +60,9 @@ async function openRegistry(resolver?: ModelReasoningResolver): Promise<ModelCat
   return registry;
 }
 
-async function seedModels(models: ModelConfig[]): Promise<void> {
-  const catalog = await openRegistry();
-  const registrations: UserModelRegistration[] = models.map((item, index) => ({
+/** 第一个模型新建连接 endpoint-a，其余复用它。 */
+function fixtureRegistrations(models: readonly ModelConfig[]): UserModelRegistration[] {
+  return models.map((item, index) => ({
     model: item,
     endpoint:
       index === 0
@@ -79,7 +79,21 @@ async function seedModels(models: ModelConfig[]): Promise<void> {
           }
         : { kind: 'existing', inference_endpoint_id: 'endpoint-a' },
   }));
-  await catalog.registerCustomApiModels('Relay', registrations, catalog.getUserRevision());
+}
+
+async function seedModels(models: ModelConfig[]): Promise<void> {
+  const catalog = await openRegistry();
+  await catalog.registerCustomApiModels(
+    'Relay',
+    fixtureRegistrations(models),
+    catalog.getUserRevision()
+  );
+}
+
+/** 不经自定义分组登记：没有分组引用 endpoint-a，连接只靠模型条目引用维持。 */
+async function seedModelsOutsideGroups(models: ModelConfig[]): Promise<void> {
+  const catalog = await openRegistry();
+  await catalog.registerUserModels(fixtureRegistrations(models));
 }
 
 function requireModel(catalog: ModelCatalog, id: string): ModelConfig {
@@ -209,14 +223,16 @@ describe('SDK 能力装配与真实用户目录持久化', () => {
   });
 
   it('完全冲突的显式声明只停用该模型，不伪装成无思考能力；原条目在之后的保存与重启中保留', async () => {
-    await seedModels([
+    const { readStoredUserModelState } = await import(
+      '../../user-model-persistence/functions/readStoredUserModelState'
+    );
+    await seedModelsOutsideGroups([
       model('conflict', { supported_efforts: ['off'], default_effort: 'off' }),
       model('healthy'),
     ]);
     const before = await readUserFile();
-    const storedConflict = JSON.parse(before).models.find(
-      (entry: { readonly id?: unknown }) => entry.id === 'conflict'
-    );
+    const [storedConflict] = readStoredUserModelState(JSON.parse(before)).models;
+    expect(storedConflict).toMatchObject({ id: 'conflict' });
 
     let catalog = await openRegistry(queryReasoning);
     expect(catalog.getModel('conflict')).toBeUndefined();
@@ -234,10 +250,12 @@ describe('SDK 能力装配与真实用户目录持久化', () => {
     expect(await readUserFile()).toBe(before);
 
     // 一次普通保存不能把停用的条目、它的连接或凭据一起删掉。
+    // 没有分组引用 endpoint-a：healthy 删掉后，连接与凭据只靠停用条目留住。
     await catalog.removeModel('healthy');
-    const saved = JSON.parse(await readUserFile());
+    const saved = readStoredUserModelState(JSON.parse(await readUserFile()));
+    expect(saved.customApiGroups).toEqual([]);
     expect(saved.models).toEqual([storedConflict]);
-    expect(saved.inference_endpoints).toEqual([expect.objectContaining({ id: 'endpoint-a' })]);
+    expect(saved.inferenceEndpoints).toEqual([expect.objectContaining({ id: 'endpoint-a' })]);
     expect(catalog.resolveInferenceEndpointCredential('endpoint-a')).toBe('fixture-key');
 
     // 能力查询不再冲突时（例如 SDK 更新），同一条原始配置重新准入。

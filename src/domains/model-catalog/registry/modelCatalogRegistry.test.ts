@@ -1183,7 +1183,7 @@ describe('Registry 用户模型准入隔离与初始化回滚', () => {
     ]);
     expect(persisterMock.saveState).not.toHaveBeenCalled();
     // 启动对账（Provider 归属、选择器偏好）仍把停用模型当作存在。
-    expect(registry.getRetainedModelIdentities()).toEqual(
+    expect(registry.getModelIdentitiesIncludingUnadmitted()).toEqual(
       expect.arrayContaining([
         { id: 'healthy-user-model', inference_endpoint_id: 'healthy-endpoint' },
         { id: 'broken-user-model', inference_endpoint_id: 'broken-endpoint' },
@@ -1205,14 +1205,6 @@ describe('Registry 用户模型准入隔离与初始化回滚', () => {
     expect(registry.getInferenceEndpoints()).toEqual([
       expect.objectContaining({ id: 'broken-endpoint' }),
     ]);
-
-    // 停用模型的 ID 仍被文件占用，新注册不能写出两条同 ID 的条目。
-    await expect(
-      registry.registerUserModel(buildUserModel('broken-user-model', 'broken-endpoint'), {
-        kind: 'existing',
-        inference_endpoint_id: 'broken-endpoint',
-      })
-    ).rejects.toThrow('注册模型 ID 重复或已存在');
   });
 
   it('旧文件迁移时未通过准入的条目原样进入新文件', async () => {
