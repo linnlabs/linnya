@@ -69,7 +69,9 @@ Runtime 在 stdout 输出一次 ready JSON 后保持前台运行；另一个终�
 owner，竞争启动以 `conversation_busy` 拒绝，不做隐式 attach、接管或另开数据库。
 
 `build:linnya-runtime` 先按锁定清单准备并校验独立 Node 与 Qdrant，再编译 Backend、队列 Worker 与 CLI；
-全新 checkout 不依赖曾经运行 Desktop 构建留下的 `extraResources`。进程 E2E 复用同一构建入口。
+全新 checkout 不依赖曾经运行 Desktop 构建留下的 `extraResources`。进程 E2E 的独立入口
+`test:linnya-runtime:e2e` 会先调用这个构建入口。平台 CI 已经完成同一工作流中的 Backend、Worker、CLI 和运行时资源构建时，
+使用 `test:linnya-runtime:e2e:prepared` 只运行 E2E 本身，避免同一 job 重复构建。
 
 关闭某个 `send/status`
 客户端不会停止已接纳的 run。关闭 Runtime 终端、Ctrl+C 或 SIGTERM 会停止该 Runtime 拥有的 Backend、所有任务和子进程；CLI

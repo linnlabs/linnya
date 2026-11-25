@@ -10,7 +10,7 @@ import {
   mergedVitestCommand,
   readVitestShard,
 } from '../functions/buildLocalCiLanes';
-import { buildLocalCiPlan, type ParsedWorkflow } from '../functions/buildLocalCiPlan';
+import { buildLocalCiPlan, isLocalCiWorkflow, type ParsedWorkflow } from '../functions/buildLocalCiPlan';
 import { pickLocalCiStarts, resolveLocalCiParallelism, type LocalCiSchedulingUnit } from '../functions/pickLocalCiStarts';
 
 describe('测试分片合并', () => {
@@ -82,7 +82,7 @@ describe('仓库工作流的调度声明', () => {
   const workflows: ParsedWorkflow[] = readdirSync(directory)
     .filter(file => /\.ya?ml$/u.test(file))
     .map(file => ({ file, document: YAML.parse(readFileSync(path.join(directory, file), 'utf8')) }));
-  const allRunSteps = workflows.flatMap(workflow =>
+  const allRunSteps = workflows.filter(isLocalCiWorkflow).flatMap(workflow =>
     Object.entries((workflow.document as { jobs: Record<string, { steps?: { name?: string; run?: string }[] }> }).jobs).flatMap(([job, body]) =>
       (body.steps ?? []).filter(step => step.run !== undefined).map(step => ({ workflow: workflow.file, job, name: step.name ?? '' }))
     )
@@ -96,6 +96,11 @@ describe('仓库工作流的调度声明', () => {
       Object.entries(jobs).flatMap(([job, steps]) => Object.keys(steps).map(name => `${workflow}/${job}/${name}`))
     );
     expect(stale.filter(key => !existing.has(key))).toEqual([]);
+  });
+
+  it('全量直接执行架构、包、分片、平台和 Canvas，跳过 PR 路由', () => {
+    const jobs = new Set(buildLocalCiPlan(workflows).steps.filter(step => step.command).map(step => step.job));
+    expect([...jobs].sort()).toEqual(['architecture', 'deterministic', 'packages', 'source-build', 'test-shards']);
   });
 
   it('公共测试的全部分片合并为一次运行，覆盖每个分片', () => {

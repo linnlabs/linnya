@@ -30,7 +30,10 @@ async function downloadArchive(input) {
     if (error && error.code === 'ENOENT') return undefined;
     throw error;
   });
-  if (cachedBytes && sha256(cachedBytes) === input.expectedSha256) return cachedBytes;
+  if (cachedBytes && sha256(cachedBytes) === input.expectedSha256) {
+    console.log('[qdrant-runtime] 归档 SHA-256 校验通过，复用下载包');
+    return cachedBytes;
+  }
   if (cachedBytes) await fsp.rm(input.cachePath, { force: true });
 
   const response = await globalThis.fetch(input.sourceUrl, { redirect: 'follow' });
@@ -121,9 +124,7 @@ async function prepareQdrantRuntime(input) {
   }
 
   const cachePath = path.join(
-    input.rootDir,
-    'node_modules',
-    '.cache',
+    input.archiveCacheDirectory ?? path.join(input.rootDir, 'node_modules', '.cache'),
     'linnya-qdrant-runtime',
     target.archiveFileName
   );

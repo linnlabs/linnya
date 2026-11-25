@@ -1,7 +1,7 @@
 name: Canvas Regression
 
 on:
-  pull_request:
+  workflow_call:
   push:
     branches: [main]
   workflow_dispatch:
@@ -63,7 +63,7 @@ jobs:
       - name: Run Canvas business cases
         run: pnpm --filter @plugin/canvas test
       - name: Run actual Host persistence and restoration cases
-        run: pnpm exec vitest run packages/plugins/__tests__/canvasDocument.sqlite.integration.test.ts packages/plugins/__tests__/canvasVersionHistory.sqlite.integration.test.ts
+        run: pnpm exec vitest run packages/plugins/__tests__/canvas
       - name: Check drawing workload on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a pnpm exec cross-env CANVAS_PERFORMANCE_SOFTWARE=1 CANVAS_PERFORMANCE_DETERMINISTIC=1 node packages/plugins/canvas/dev/probes/run-performance-probe.mjs

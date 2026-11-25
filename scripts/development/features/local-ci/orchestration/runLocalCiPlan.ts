@@ -65,6 +65,7 @@ export interface LocalCiStartEvent {
 interface RunOptions {
   readonly root: string;
   readonly logDirectory: string;
+  readonly env?: Readonly<Record<string, string>>;
   readonly concurrency: number;
   readonly testWorkers: number;
   readonly onStep: (result: LocalCiStepResult, step: LocalCiStep) => void;
@@ -107,6 +108,7 @@ interface CommandInput {
   readonly root: string;
   readonly logFile: string;
   readonly runnerTemp: string;
+  readonly env?: Readonly<Record<string, string>>;
   readonly signal: AbortSignal;
   readonly killGraceMs: number;
 }
@@ -125,6 +127,7 @@ function runCommand(input: CommandInput): Promise<boolean> {
       cwd: input.step.workingDirectory ? path.join(input.root, input.step.workingDirectory) : input.root,
       env: {
         ...process.env,
+        ...input.env,
         CI: 'true',
         RUNNER_OS: LOCAL_CI_RUNNER_OS,
         RUNNER_TEMP: input.runnerTemp,
@@ -290,7 +293,7 @@ export async function runLocalCiPlan(plan: LocalCiPlan, options: RunOptions): Pr
     options.onStart({ label, step, unit, elapsedMs: startedAtMs });
     const suffix = unit.shardMerge ? '-merged-shards' : '';
     const logFile = path.join(options.logDirectory, `${String(index + 1).padStart(3, '0')}-${slug(step.job)}-${slug(step.name)}${suffix}.log`);
-    const promise = runCommand({ step, command, root: options.root, logFile, runnerTemp: state.runnerTemp, signal: options.signal, killGraceMs }).then(ok => {
+    const promise = runCommand({ step, command, root: options.root, logFile, runnerTemp: state.runnerTemp, env: options.env, signal: options.signal, killGraceMs }).then(ok => {
       const durationMs = Date.now() - started - startedAtMs;
       running.delete(fingerprint);
       finished.set(fingerprint, { ok, key: step.key });
