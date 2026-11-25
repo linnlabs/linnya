@@ -12,11 +12,19 @@ const databaseUpgrade = `${host}databaseUpgrade.sqlite`;
 export const pluginCiTargets = new Map<string, PluginCiTarget>([
   ['slides', {
     preparation: [['run', 'codegen-first:check'], ['run', 'smoke:plugin:slides:artifact']],
-    hostTests: [...documentHostTests, databaseUpgrade, `${host}agentToolSchema`, `${host}workspaceVfsIntegration`, 'scripts/__tests__/slides-skill-contract'],
+    hostTests: [
+      ...documentHostTests, databaseUpgrade, `${host}agentToolSchema`, `${host}workspaceVfsIntegration`,
+      'scripts/__tests__/slides-skill-contract', 'scripts/codegen/layoutDts/__tests__/factorySignatures',
+    ],
   }],
   ['knowledge', {
     preparation: [['run', 'smoke:plugin:knowledge:artifact']],
-    hostTests: [databaseUpgrade, `${host}knowledge`, `${host}emptyProjectDeletion`, 'src/plugin-sdk/backend/worker/__tests__/documentParsingWorker'],
+    hostTests: [
+      databaseUpgrade, `${host}knowledge`, `${host}emptyProjectDeletion`,
+      'src/plugin-sdk/backend/worker/__tests__/documentParsingWorker',
+      'apps/renderer/app/plugins/testing/knowledgeProjectCreation',
+      'src/app-hosts/linnya/desktop-capabilities/features/renderer-integration-rpc/__tests__/rendererIntegrationRpc',
+    ],
   }],
   ['decision', {
     preparation: [['run', 'build:schemas'], ['--filter', '@plugin/decision', 'run', 'build']],
