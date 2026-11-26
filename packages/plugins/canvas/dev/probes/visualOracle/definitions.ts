@@ -72,6 +72,9 @@ export const VISUAL_TEXT_LIMITS = Object.freeze({
   graphemeResidualRatio: 0.2,
   lineResidualRatio: 0.05,
   solidColorDelta: 8,
+  // 参考实色内核只取离前景4以内的像素，验收仍按solidColorDelta(8)：两者之间留出余量，参考像素恰在8上时，
+  // 光栅1–2个色阶的差不会把“保住”翻成“没保住”。这是收紧取样，不是放宽验收界限。
+  solidCoreDelta: 4,
   solidCoverage: 0.9,
   outsideColorDelta: 8,
 });

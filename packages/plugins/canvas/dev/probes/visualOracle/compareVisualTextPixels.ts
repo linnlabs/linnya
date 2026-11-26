@@ -84,5 +84,5 @@ export function compareVisualTextPixels(reference: VisualImage, actual: VisualIm
   const outsideText = outsideTextFacts(reference, actual, layout, options.pixi === true);
   const vectors = compareVisualVectorPixels({ reference, actual, mask, monochrome, layout });
   return { pass: outsideText.pass && graphemes.length > 0 && lines.length > 0 && [...graphemes, ...lines, ...vectors].every(region => region.failures.length === 0),
-    oracleRevision: 3, nonAaPixels, limits: VISUAL_TEXT_LIMITS, outsideText, graphemes, lines, vectors };
+    oracleRevision: 4, nonAaPixels, limits: VISUAL_TEXT_LIMITS, outsideText, graphemes, lines, vectors };
 }

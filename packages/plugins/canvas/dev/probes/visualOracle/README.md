@@ -28,6 +28,8 @@ comparison `oracleRevision: 2` 将统计模型分型：旧referenceMass/actualMa
 
 `oracleRevision: 3` 让结构决策也遵循同一逐像素资格：`structure.model`明确标为`per-pixel-qualified-rgb-mean`，只有已获单色资格且同源paint模型成立时，使用RGB平均alpha乘fg/bg最大通道对比，再与原24比较；未知、彩色、重叠冲突仍用严格max。每个像素只取一致的fg/bg身份，不能用首字颜色解释整行，也不能重复累加重叠Range稀释分母。行/簇的5%/20%结构门仅改读新`structure`，旧union/residual/residualRatio与max质量字段完整保留，不改旧原件或阈值。合法LCD弱fringe不再因单一通道跨24被误作缺笔画；真实reference墨迹被擦成背景仍是两侧ink不一致，即使alpha0符合paint线也必须接受非AA结构拒绝。颜色8、实色/峰值、质量/位置、文字范围外检查均不变。
 
+`oracleRevision: 4` 把实色内核的取样与验收分开：reference像素离computed前景≤4才算实色内核（`solidCoreDelta`），actual仍按原通道差8判“保住”、出现前景峰仍按8计。原先取样与验收同用8，深色主题浅字的灰阶内核常恰好离前景8，Worker光栅只差1个色阶就从8变9，被误判换色——预览一致性探针在origin/main上深色raster路线8项失败即此，文档引用标签“稳”“前”两字的翻转全是8→9，整图最大差1–2。这是收紧取样、不是放宽界限：8、90%内核保留与峰值守卫的数字不变；没有离前景4以内内核的字簇不参与实色/峰值两项，与小标点无内核时相同，仍受非空、质量、位置、结构与颜色残差检查。同机完整visual probe的8个正例与15个反例在改动前后结果相同，每个反例被拒的规则与次数逐项一致。
+
 Node回归同时覆盖合法fringe的黑/低对比前景、同行不同作者色、真实CPU字形横向擦笔画、已知字体小标点整擦、未知字体/emoji重叠禁止与既有全部损坏。色段矩阵只验证统计单位，不冒充真实字体/DOM/GPU资格；真实正负例仍须在相同字体/DPR环境重新验证。
 
 作者色同时保存旧same-pixel `solidCoverage`；新`solidRoleCoverage`仍要求≥0.9，但验证的是reference core处actual仍有墨迹且颜色与原fg→bg线兼容，不能把正确AA覆盖变动误叫换色。reference有实色核时actual也必须仍出现真实fg实色峰，整体opacity0.8冲淡必须被这一峰值守卫拒绝。非AA结构/颜色残差、覆盖质量、逐簇位置、未知/emoji严格颜色检查均不能绕过，阈值没有扩大。
@@ -36,7 +38,7 @@ ghost守卫只验证线没有擦掉已经正确的body bitmap，以同一灰阶r
 
 Windows Chromium 150 的系统 LCD 字体与透明 Canvas 的灰阶 AA 可以不同，参见[Windows 字体创建](https://github.com/chromium/chromium/blob/150.0.7871.250/third_party/blink/renderer/platform/fonts/win/font_platform_data_win.cc)、[Canvas surface 属性](https://github.com/chromium/chromium/blob/150.0.7871.250/third_party/blink/renderer/platform/graphics/canvas_resource_provider.cc)。本 oracle 不修改生产样式、不强制灰阶，不自动对齐或缩放图像来掩盖错位。
 
-当前候选界限由 `definitions.ts` 唯一拥有：排版误差0.125物理像素、前景与背景通道对比24、质心误差0.5物理像素、墨迹质量比0.7–1.35、字簇/行非AA结构残差0.2/0.05、实色通道差8及90%内核保留。数字在 GPU 采集前固定；Node 通过不表示 Windows 已校准。真实同环境正负例若失败，先留下完整证据并解释，不扩大界限制造通过。
+当前候选界限由 `definitions.ts` 唯一拥有：排版误差0.125物理像素、前景与背景通道对比24、质心误差0.5物理像素、墨迹质量比0.7–1.35、字簇/行非AA结构残差0.2/0.05、实色通道差8及90%内核保留（内核取reference离前景4以内的像素）。数字在 GPU 采集前固定；Node 通过不表示 Windows 已校准。真实同环境正负例若失败，先留下完整证据并解释，不扩大界限制造通过。
 
 `applyVisualNegative.ts` 只损坏独立反例的实际光栅源 DOM，reference 和原正例 PNG 不改。固定反例是缺一个汉字、标点、emoji或列表marker，末行裁切，一物理像素位移，错误字号，红字变蓝、emoji换色/丢色，文字区域之外的黑条及整体opacity冲淡，另有缺文档SVG图标/图标换蓝/图标一物理像素位移。`verifyVisualTextNegatives.ts` 要求每个反例分别被 raster/Pixi 的像素检查拒绝；metadata 不同不能代算像素拒绝。全部反例及正例的字体、DPR、内容、字形及图形几何资格必须匹配。
 
