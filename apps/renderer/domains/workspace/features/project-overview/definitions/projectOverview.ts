@@ -77,6 +77,11 @@ export interface ProjectOverviewView {
 export const DEFAULT_PROJECT_OVERVIEW_SORT: ProjectOverviewSort = Object.freeze({ key: 'modified', direction: 'desc' });
 export const DEFAULT_PROJECT_OVERVIEW_VIEW: ProjectOverviewView = Object.freeze({ kind: 'table', groupBy: null });
 
+/** 子任务的发起 Agent：`agentId` 为 null 是默认 Agent（Linnya Agent），与 `creatorAgentId` 同一约定。 */
+export interface ProjectOverviewRootAgent {
+  readonly agentId: string | null;
+}
+
 /** 界面用的一行：只保留展示、筛选和排序需要的事实。 */
 export interface ProjectOverviewRow {
   readonly documentId: string;
@@ -89,12 +94,15 @@ export interface ProjectOverviewRow {
   readonly creatorPluginId: string | null;
   /** 新建它的 Agent；null 是默认 Agent，`creatorActor` 不是运行时无意义。 */
   readonly creatorAgentId: string | null;
+  /** 子任务新建时发起它的 Agent；不是子任务或查不回发起者时为 null。 */
+  readonly creatorRootAgent: ProjectOverviewRootAgent | null;
   readonly conversationId: string | null;
   readonly conversationTitle: string | null;
   readonly lastModifiedAt: number;
   readonly lastModifiedActor: ProjectOverviewActor | null;
   readonly lastModifiedPluginId: string | null;
   readonly lastModifiedAgentId: string | null;
+  readonly lastModifiedRootAgent: ProjectOverviewRootAgent | null;
   readonly pendingRevisionCount: number | null;
   /** 当前标签，按打标签的先后。 */
   readonly tags: readonly { readonly id: string; readonly name: string }[];

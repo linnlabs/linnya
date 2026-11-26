@@ -94,6 +94,8 @@ export interface ActionLedgerDocumentChange {
   readonly conversationId: string | null;
   /** 执行这次运行的 Agent（注册表 ID）；用户、插件和没有 Agent 的运行为 null。 */
   readonly agentId: string | null;
+  /** 根运行的 Agent，见 {@link ActionRunAgents}。 */
+  readonly rootAgentId: string | null;
   readonly actions: readonly ActionLedgerAction[];
   readonly entryCount: number;
   readonly granularity: ActionLedgerGranularity | 'mixed';
@@ -119,11 +121,27 @@ export interface ActionLedgerDocumentSummary {
     /** 新建发生在别的项目（文档后来转入）时为 null，与按运行查询的可见规则一致。 */
     readonly conversationId: string | null;
     readonly agentId: string | null;
+    readonly rootAgentId: string | null;
   } | null;
   readonly last: {
     readonly actorKind: ActionActorKind;
     readonly pluginId: string | null;
     readonly agentId: string | null;
+    readonly rootAgentId: string | null;
     readonly recordedAt: number;
   };
+}
+
+/**
+ * 运行执行者的两个 Agent（注册表 ID），登记时由账本按运行记录查出，owner 与调用方都不能提供。
+ *
+ * - `agentId`：执行这次运行的 Agent。子运行时是子 Agent，它没有面向用户的名字。
+ * - `rootAgentId`：用户这次请求的根运行的 Agent，也就是发起子任务的 Agent；主运行时与 `agentId` 相同。
+ *
+ * 对话删除会级联删掉运行记录，所以登记时就把两者存进账本，之后读取不再查运行记录。
+ * 查不到运行记录（没有运行表的装配、无模型的 CLI 运行没有 Agent）时为 null。
+ */
+export interface ActionRunAgents {
+  readonly agentId: string | null;
+  readonly rootAgentId: string | null;
 }

@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-import { createRunAgentIdReader, currentActionActor } from '../../../action-ledger';
+import { createRunAgentsReader, currentActionActor } from '../../../action-ledger';
 import type { SemanticObjectKind } from '../../definitions/semanticLayer';
 import type { SemanticChangeActor } from '../../features/schema-changes/definitions/semanticSchemaChanges';
 
@@ -40,20 +40,22 @@ export function recordSemanticObjectVersion(db: Database.Database, input: {
 }
 
 /**
- * 当前写入的操作者。运行、子运行和带运行的外部调用都记到发起它的对话、运行与 Agent；
+ * 当前写入的操作者。运行、子运行和带运行的外部调用都记到发起它的对话、运行、Agent 与根运行 Agent；
  * 没有登记操作者时算用户。标签/字段的创建者与结构改动记录共用这一份规则。
  */
 export function createSemanticActorReader(db: Database.Database): () => SemanticChangeActor {
-  const readRunAgentId = createRunAgentIdReader(db);
+  const readRunAgents = createRunAgentsReader(db);
   return () => {
     const actor = currentActionActor();
     const run = actor?.kind === 'run' || actor?.kind === 'subrun' ? actor
       : actor?.kind === 'external' ? actor.run : undefined;
+    const agents = run ? readRunAgents(run) : { agentId: null, rootAgentId: null };
     return {
       kind: actor?.kind ?? 'user',
       conversationId: run?.conversationId ?? null,
       runId: run?.runId ?? null,
-      agentId: run ? readRunAgentId(run.runId) : null,
+      agentId: agents.agentId,
+      rootAgentId: agents.rootAgentId,
     };
   };
 }

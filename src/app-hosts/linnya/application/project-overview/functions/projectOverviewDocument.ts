@@ -1,4 +1,4 @@
-import { toReadModelAgentId, type ProjectOverviewActor, type ProjectOverviewDocument } from '@app/schemas';
+import { toReadModelAgentId, toReadModelRootAgent, type ProjectOverviewActor, type ProjectOverviewDocument } from '@app/schemas';
 import type { ActionActorKind, ActionLedgerDocumentSummary } from 'src/domains/action-ledger';
 import type { WorkspaceProjectDocument } from 'src/features/workspace/vfs';
 
@@ -57,6 +57,7 @@ export function projectOverviewDocument(input: {
           actor: toProjectOverviewActor(creator.actorKind),
           plugin_id: creator.pluginId,
           agent_id: toReadModelAgentId(creator.agentId),
+          root_agent: toReadModelRootAgent(creator.actorKind, creator.rootAgentId),
           // 对话已删除或不再属于本项目时，不给出无法打开的对话。
           conversation_id: conversationTitle === undefined ? null : conversationId,
           conversation_title: conversationTitle ?? null,
@@ -67,6 +68,7 @@ export function projectOverviewDocument(input: {
           actor: toProjectOverviewActor(summary.last.actorKind),
           plugin_id: summary.last.pluginId,
           agent_id: toReadModelAgentId(summary.last.agentId),
+          root_agent: toReadModelRootAgent(summary.last.actorKind, summary.last.rootAgentId),
         }
       : null,
     pending_revision_count: input.pendingRevisionCount,

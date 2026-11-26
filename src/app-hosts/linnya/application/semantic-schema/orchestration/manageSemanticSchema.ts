@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3';
 import {
   SemanticSchemaChangeSummarySchema,
   toReadModelAgentId,
+  toReadModelRootAgent,
   type ProjectSavedFilterDefinition,
   type SemanticSchemaActor,
   type SemanticSchemaChangeItem,
@@ -90,6 +91,7 @@ function actorItem(actor: SemanticChangeActor | SemanticCreator, titles: Readonl
     conversation_id: actor.conversationId,
     conversation_title: actor.conversationId === null ? null : titles.get(actor.conversationId) ?? null,
     agent_id: toReadModelAgentId(actor.agentId),
+    root_agent: toReadModelRootAgent(actor.kind, actor.rootAgentId),
   };
 }
 

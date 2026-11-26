@@ -82,6 +82,13 @@ describe('SubagentTool Workspace 集成', () => {
       ],
     });
     fixture = createSubagentWorkspaceTestFixture();
+    // 生产中根运行先由运行登记写入运行记录；账本登记子运行时按它查出发起子任务的 Agent。
+    fixture.db.prepare(
+      'INSERT INTO conversations (conversation_id, title, project_id, created_at, last_event_at) VALUES (?, ?, ?, 1, 1)',
+    ).run('conv_subagent_workspace_integration', '子任务测试', fixture.projectId);
+    fixture.db.prepare(
+      "INSERT INTO runs (id, conversation_id, kind, status, start_ts, agent_spec_id) VALUES (?, ?, 'agent', 'running', 1, 'default')",
+    ).run('run_subagent_workspace_parent', 'conv_subagent_workspace_integration');
     const context = fixture.createContext({
       conversationId: 'conv_subagent_workspace_integration',
       patch: {
@@ -123,6 +130,7 @@ describe('SubagentTool Workspace 集成', () => {
         actions: ['create'],
         rootRunId: 'run_subagent_workspace_parent',
         parentRunId: 'run_subagent_workspace_parent',
+        rootAgentId: 'default',
       }),
     ]);
     expect(changes.changes[0]?.runId).not.toBe('run_subagent_workspace_parent');

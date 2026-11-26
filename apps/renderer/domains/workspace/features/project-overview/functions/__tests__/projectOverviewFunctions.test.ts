@@ -36,12 +36,14 @@ const row = (overrides: Partial<ProjectOverviewRow> & { readonly documentId: str
   creatorActor: null,
   creatorPluginId: null,
   creatorAgentId: null,
+  creatorRootAgent: null,
   conversationId: null,
   conversationTitle: null,
   lastModifiedAt: 0,
   lastModifiedActor: null,
   lastModifiedPluginId: null,
   lastModifiedAgentId: null,
+  lastModifiedRootAgent: null,
   pendingRevisionCount: null,
   tags: [],
   fieldRevision: 0,
@@ -184,13 +186,17 @@ describe('展示文案', () => {
     expect(resolveProjectOverviewAgentName('removed_agent', agents, message)).toBe('removed_agent');
   });
 
-  it('来源：主运行显示具体 Agent，子运行显示子任务；用户、Linnya CLI；插件用插件名', () => {
-    expect(formatProjectOverviewActor('run', { pluginName: null, agentName: 'Linnya Agent' }, message)).toBe('Linnya Agent');
-    expect(formatProjectOverviewActor('run', { pluginName: null, agentName: 'Research' }, message)).toBe('Research');
-    expect(formatProjectOverviewActor('subrun', { pluginName: null, agentName: 'subagent_document_editor' }, message)).toBe('子任务');
-    expect(formatProjectOverviewActor('user', { pluginName: null, agentName: '' }, message)).toBe('用户');
-    expect(formatProjectOverviewActor('external', { pluginName: null, agentName: '' }, message)).toBe('Linnya CLI');
-    expect(formatProjectOverviewActor('plugin', { pluginName: 'Slides', agentName: '' }, message)).toBe('Slides');
-    expect(formatProjectOverviewActor('plugin', { pluginName: null, agentName: '' }, message)).toBe('插件');
+  it('来源：主运行显示具体 Agent，子运行显示发起它的 Agent 的子任务；用户、Linnya CLI；插件用插件名', () => {
+    const names = { pluginName: null, agentName: '', rootAgentName: null };
+    expect(formatProjectOverviewActor('run', { ...names, agentName: 'Linnya Agent' }, message)).toBe('Linnya Agent');
+    expect(formatProjectOverviewActor('run', { ...names, agentName: 'Research' }, message)).toBe('Research');
+    expect(formatProjectOverviewActor('subrun', { ...names, agentName: 'subagent_document_editor', rootAgentName: 'Linnya Agent' }, message))
+      .toBe('Linnya Agent 的子任务');
+    // 查不回发起者的历史记录（运行记录已随对话删除）只说“子任务”。
+    expect(formatProjectOverviewActor('subrun', { ...names, agentName: 'subagent_document_editor' }, message)).toBe('子任务');
+    expect(formatProjectOverviewActor('user', names, message)).toBe('用户');
+    expect(formatProjectOverviewActor('external', names, message)).toBe('Linnya CLI');
+    expect(formatProjectOverviewActor('plugin', { ...names, pluginName: 'Slides' }, message)).toBe('Slides');
+    expect(formatProjectOverviewActor('plugin', names, message)).toBe('插件');
   });
 });
