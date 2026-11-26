@@ -24,6 +24,8 @@ import {
 } from '../../document-read/orchestration/readSavedKnowledgeContent';
 import { validatePdfOcrUploadPageLimit } from '../../ingestion/functions/pdfOcrUploadPageLimit';
 import { KnowledgeVectorStartupError, type KnowledgeVectorStartupFailureKind } from '../../infrastructure/vector-store/errors';
+import { KnowledgeSearchEmbeddingError } from '../../application/search/knowledgeSearchEmbeddingError';
+import type { KnowledgeEmbeddingFailureReason } from '../../infrastructure/inference/embeddingFailureReason';
 import {
   resolveKnowledgeBaseScopeFromContext,
   assertKbAllowedInScope,
@@ -35,6 +37,13 @@ const VECTOR_STARTUP_MESSAGE_KEYS = {
   'data-directory-too-long': 'knowledgeBase.runtime.error.vectorDataDirectoryTooLong',
   'startup-failed': 'knowledgeBase.runtime.error.vectorUnavailable',
 } as const satisfies Record<KnowledgeVectorStartupFailureKind, string>;
+
+/** 检索时嵌入模型失败按原因给恢复办法；后端原文只作诊断，不进界面。 */
+const SEARCH_EMBEDDING_MESSAGE_KEYS = {
+  'model-unavailable': 'knowledgeBase.search.error.embeddingModelUnavailable',
+  credential: 'knowledgeBase.search.error.embeddingCredential',
+  'request-failed': 'knowledgeBase.search.error.embeddingRequestFailed',
+} as const satisfies Record<KnowledgeEmbeddingFailureReason, string>;
 
 /** IPC 只解析业务输入；实例与取消身份始终由当前 activation 冻结。 */
 export function createKnowledgeIpc(
@@ -207,6 +216,9 @@ export function createKnowledgeIpc(
             // 任何通道只要因向量服务启动失败而中断，都给同一份本地化原因，不让中文原文直达英文界面，也不套用各通道的通用失败文案。
             if (error instanceof KnowledgeVectorStartupError) {
               return createOperationFailure(error.message, createUserFacingMessage(VECTOR_STARTUP_MESSAGE_KEYS[error.kind]));
+            }
+            if (error instanceof KnowledgeSearchEmbeddingError) {
+              return createOperationFailure(error.message, createUserFacingMessage(SEARCH_EMBEDDING_MESSAGE_KEYS[error.reason]));
             }
             const fallback = fallbackKeys[channel];
             return fallback

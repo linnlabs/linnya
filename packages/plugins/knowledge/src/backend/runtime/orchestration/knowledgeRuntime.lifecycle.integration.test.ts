@@ -26,6 +26,7 @@ import type { ToolContext } from '@plugin/backend/toolRuntime';
 import { attachCitationRefAllocator, attachCitationSequence } from 'src/domains/citation';
 import { KnowledgeSearchTool } from '../../tools/search/KnowledgeSearchTool';
 import { SearchInKnowledgeBaseTool } from '../../tools/search/SearchInKnowledgeBaseTool';
+import { EmbeddingFailure } from '@plugin/backend/inferenceFailures';
 
 let root: string;
 let database: Database.Database;
@@ -35,10 +36,14 @@ let vectorOwned: boolean;
 let vectorOwners: number;
 let vectorStarts: number;
 let vectorFailure: Error | undefined;
+let embeddingFailure: Error | undefined;
 let runtime: KnowledgeRuntime | undefined;
 const pushes: unknown[] = [];
 const inference: PluginInferencePort = {
-  embedding: { embed: async request => ({ vectors: request.values.map(() => [1, 0]), spaceId: 'fixture' }) },
+  embedding: { embed: async request => {
+    if (embeddingFailure) throw embeddingFailure;
+    return { vectors: request.values.map(() => [1, 0]), spaceId: 'fixture' };
+  } },
   reranking: { rerank: async () => ({ ranking: [] }) },
   textGeneration: { generate: async () => ({ text: '{}', reasoning: '', finishReason: 'stop' }) },
   documentOcr: { resolveModelProfile: async () => undefined, recognizeDocument: async () => ({ pages: [] }) },
@@ -101,7 +106,7 @@ beforeEach(async () => {
     bundle: true, platform: 'node', format: 'cjs', target: 'node24', logLevel: 'silent' });
   registeredBackendPluginDirectories.set('knowledge', artifact);
   setPluginRuntimeStateForTests({ enabledPluginIds: ['knowledge'] });
-  enabled = true; vectorOwned = false; vectorOwners = 0; vectorStarts = 0; vectorFailure = undefined; pushes.length = 0;
+  enabled = true; vectorOwned = false; vectorOwners = 0; vectorStarts = 0; vectorFailure = undefined; embeddingFailure = undefined; pushes.length = 0;
 });
 afterEach(async () => {
   vi.restoreAllMocks();
@@ -296,6 +301,55 @@ describe('knowledge activation persistence and drain', () => {
       }
       await effect.deactivate();
     }
+  });
+  it('检索时嵌入模型失败：IPC 按原因给本地化键，Agent 工具单库与多库都给英文原因，不再返回空结果', async () => {
+    const effect = knowledgePlugin.runtimeEffects?.[0];
+    if (!effect) throw new Error('Missing knowledge runtime effect');
+    await effect.activate();
+    const handlers = new Map<string, BackendPluginIpcHandler>();
+    knowledgePlugin.ipc?.register(undefined, (_pluginId, channel, handler) => handlers.set(channel, handler));
+    const search = handlers.get('search');
+    if (!search) throw new Error('Missing search handler');
+    const metadata = new BetterSqliteMetadataRepository(database);
+    await metadata.createKnowledgeBase({ id: 'second', name: 'Second' });
+    database.prepare('INSERT OR IGNORE INTO projects(id) VALUES (?)').run('project-single');
+    database.prepare('INSERT OR IGNORE INTO projects(id) VALUES (?)').run('project-multi');
+    for (const kbId of ['default', 'second']) {
+      await metadata.addDocument(createDocument(`doc-${kbId}`, kbId, 'notes.md', 7));
+      metadata.indexState.publishRebuilt(kbId, { modelId: 'embedding', spaceId: 'fixture' });
+    }
+    const link = database.prepare('INSERT OR REPLACE INTO project_knowledge_base_links(project_id,kb_id,role,created_at,updated_at) VALUES (?,?,?,?,?)');
+    link.run('project-single', 'default', 'read_write', Date.now(), Date.now());
+    link.run('project-multi', 'default', 'read_write', Date.now(), Date.now());
+    link.run('project-multi', 'second', 'read_write', Date.now(), Date.now());
+
+    const cases = [
+      { failure: new EmbeddingFailure('protocol', 'model_not_found', false, 'Host 诊断原文 模型不存在'), key: 'knowledgeBase.search.error.embeddingModelUnavailable', hint: /embedding model used for this knowledge base is unavailable.*Settings › Models/u },
+      { failure: new EmbeddingFailure('protocol', 'credential_missing', false, 'Host 诊断原文 缺少凭据'), key: 'knowledgeBase.search.error.embeddingCredential', hint: /no API key, or the provider rejected the key/u },
+      { failure: new EmbeddingFailure('transport', 'provider_transport_error', true, 'Host 诊断原文 网络失败'), key: 'knowledgeBase.search.error.embeddingRequestFailed', hint: /request to the embedding model did not succeed.*Retrying later may help/u },
+    ] as const;
+    for (const { failure, key, hint } of cases) {
+      embeddingFailure = failure;
+      const response = await search(undefined, { kbId: 'default', request: { query: '知识', embeddingModelId: 'embedding', useReranking: false } });
+      // 界面据 userMessage.key 按语言取文案；error 只是诊断，不能是“成功但 0 条”。
+      expect(response).toMatchObject({ success: false, userMessage: { key } });
+      expect(response).not.toHaveProperty('userMessage.params');
+
+      for (const projectId of ['project-single', 'project-multi']) {
+        for (const tool of [new KnowledgeSearchTool(), new SearchInKnowledgeBaseTool()]) {
+          const context: ToolContext = { conversationId: 'conversation', turnId: 'turn', workspaceProjectId: projectId };
+          attachCitationSequence(context, { offset: 0 });
+          attachCitationRefAllocator(context, { allocate: async anchors => anchors.map((_anchor, index) => `Ref${index}`) });
+          const result = await tool.run({ query: 'knowledge' }, context).catch((error: unknown) => error);
+          expect(result).toBeInstanceOf(Error);
+          expect(result).toHaveProperty('message', expect.stringMatching(/^Knowledge search failed: /u));
+          expect(result).toHaveProperty('message', expect.stringMatching(hint));
+          expect(result).not.toHaveProperty('message', expect.stringMatching(/[\u4e00-\u9fff]/u));
+        }
+      }
+    }
+    // 嵌入失败在检索之前，不需要也不会启动向量服务。
+    expect(vectorStarts).toBe(0);
   });
   it('数据目录未超限：同样的上传照常接纳任务', async () => {
     const effect = knowledgePlugin.runtimeEffects?.[0];

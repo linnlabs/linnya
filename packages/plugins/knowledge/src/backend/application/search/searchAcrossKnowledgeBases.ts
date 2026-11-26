@@ -47,6 +47,7 @@ export async function searchAcrossKnowledgeBases(
 
   // 1) 汇总所有知识库的候选结果（每个知识库先取 topK 条）
   const merged: Array<Record<string, unknown>> = [];
+  const failures: unknown[] = [];
   for (const kbId of normalizedKbIds) {
     try {
       const items = await deps.searchService.searchRawResults(kbId, query, topK, undefined, true);
@@ -56,10 +57,17 @@ export async function searchAcrossKnowledgeBases(
         merged.push(mergedItem);
       }
     } catch (error) {
+      failures.push(error);
       logger.warn(
         `[KnowledgeBaseCoordinator] 聚合搜索：知识库 ${kbId} 搜索失败：${error instanceof Error ? error.message : String(error)}`
       );
     }
+  }
+
+  // 一个库失败时仍交出其他库的命中；但一条都没有且有库失败时，“没有匹配”是假话——
+  // 例如嵌入模型不可用会让每个库都失败，必须把失败原因交给工具层，而不是返回空结果。
+  if (merged.length === 0 && failures.length > 0) {
+    throw failures[0];
   }
 
   if (merged.length === 0) {
