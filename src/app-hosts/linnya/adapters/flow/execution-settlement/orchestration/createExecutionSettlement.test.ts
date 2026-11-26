@@ -89,6 +89,8 @@ function createHarness(input?: {
     clearCheckpoint: 0,
     releaseResources: 0,
   };
+  // 与生产释放用例（releaseTerminalRunRecovery）同一前提：run 写入终态之前不能释放断点。
+  let terminal = false;
   const runHandle: ExecutionSettlementRunHandle = {
     runId: RunIdSchema.parse('run-1'),
     markAwaitingUser: async params => {
@@ -100,16 +102,19 @@ function createHarness(input?: {
       calls.completed += 1;
       completedInputs.push(params);
       order.push('mark-completed');
+      terminal = true;
     },
     markFailed: async (_error, params) => {
       calls.failed += 1;
       failedInputs.push(params);
       order.push('mark-failed');
+      terminal = true;
     },
     cancel: async (_opts, patch) => {
       calls.cancelled += 1;
       cancelledInputs.push(patch);
       order.push('cancel');
+      terminal = true;
     },
   };
   const ports: ExecutionSettlementPorts = {
@@ -132,6 +137,7 @@ function createHarness(input?: {
     clearCheckpoint: async () => {
       calls.clearCheckpoint += 1;
       order.push('clear-checkpoint');
+      if (!terminal) throw new Error('Recovery resources require a settled root run');
       if (input?.checkpointCleanupFailure) throw input.checkpointCleanupFailure;
     },
     releaseRunResources: () => {
@@ -214,7 +220,7 @@ describe('execution settlement orchestration', () => {
     });
   });
 
-  it('durable metrics drain 成功后才落 completed，再释放终态资源', async () => {
+  it('metrics drain 成功后才落 completed，再释放终态资源与断点', async () => {
     const harness = createHarness();
 
     await harness.orchestration.settleSuccessfulExecution({
@@ -226,9 +232,9 @@ describe('execution settlement orchestration', () => {
     expect(harness.order).toEqual([
       'publish:run_execution_metrics',
       'drain',
-      'clear-checkpoint',
       'mark-completed',
       'release-resources',
+      'clear-checkpoint',
     ]);
     expect(harness.published[0]).toMatchObject({
       type: 'run_execution_metrics',
@@ -377,39 +383,24 @@ describe('execution settlement orchestration', () => {
     expect(harness.calls.releaseResources).toBe(1);
   });
 
-  it('Graph 完成后 checkpoint 清理失败时，不先锁死 completed 终态，也不重试失败清理', async () => {
+  it('completed 之后断点清理失败只记日志，不把已完成的回答改判为 failed', async () => {
     const cleanupError = new Error('checkpoint database unavailable');
     const harness = createHarness({ checkpointCleanupFailure: cleanupError });
 
-    await expect(
-      harness.orchestration.settleSuccessfulExecution({
-        checkpointNodeId: 'answer',
-        stepCount: 4,
-      })
-    ).rejects.toBe(cleanupError);
-
-    const failureFact = createPublishedFailureFact(cleanupError);
-    await harness.orchestration.settleFailedExecution({
-      kind: 'failed',
+    await harness.orchestration.settleSuccessfulExecution({
+      checkpointNodeId: 'answer',
       stepCount: 4,
-      failureFact,
     });
 
     expect(harness.order).toEqual([
       'publish:run_execution_metrics',
       'drain',
-      'clear-checkpoint',
-      'drain',
-      'mark-failed',
+      'mark-completed',
       'release-resources',
+      'clear-checkpoint',
     ]);
-    expect(harness.published[0]).toMatchObject({
-      type: 'run_execution_metrics',
-      outcome: 'completed',
-    });
-    expect(harness.calls.completed).toBe(0);
-    expect(harness.calls.failed).toBe(1);
-    expect(harness.failedInputs).toEqual([{ iterationsUsed: 4 }]);
+    expect(harness.calls.completed).toBe(1);
+    expect(harness.calls.failed).toBe(0);
     expect(harness.calls.clearCheckpoint).toBe(1);
   });
 

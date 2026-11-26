@@ -30,11 +30,10 @@ export interface ExecutionSettlementPorts {
   readonly runHandle: ExecutionSettlementRunHandle;
   /** 读取同一逻辑 run 在本 execution 前已经累计的步数。 */
   readonly readRunIterationsUsed?: () => Promise<number | undefined>;
+  /** 释放本 run 的断点；生产实现要求 run 已写终态，所以只能在 completed / failed / cancelled 之后调用。 */
   readonly clearCheckpoint: (runId: string) => Promise<void>;
   readonly releaseRunResources: (runId: string) => void;
   readonly now: () => number;
-  /** yielded checkpoint 已持久化；先写不可逆终态，遗留 checkpoint 由 owner 清理。 */
-  readonly durableContinuation?: boolean;
 }
 
 export interface SuccessfulExecutionSettlement {
