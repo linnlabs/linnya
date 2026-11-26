@@ -123,7 +123,7 @@ runId / turnId / executionId / status / pendingInteraction / 当前 transport co
 
 同一 conversation 同时最多一个 active foreground run。
 
-auxiliary run（自动标题等）拥有独立 `runId`，使用 `lane=auxiliary + visibility=none`，**不进入**正文控制状态和消息投影。
+auxiliary run（自动标题等）拥有独立 `runId`，使用 `lane=auxiliary + visibility=none`，**不进入**正文控制状态和消息投影。它与正文 run 走同一准入和结算：先写终态再释放断点；不落库、不可续跑。
 
 ### 3.2 run 与 transport 分离（[INV-06](./00-invariants.md#inv-06--释放语义分层)）
 
