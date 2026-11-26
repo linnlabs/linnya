@@ -227,7 +227,7 @@ package 更新也不修改 Host 的模型资料、onboarding、Linnkit 或 Agent
 ### 上游升级边界
 
 OpenAI-compatible 的工具图片使用 `@ai-sdk/openai-compatible` 自 `3.0.62` 提供的
-`supportsMultiPartToolContent`，当前冻结版本为 `3.0.94`。只有 Host 已准入的
+`supportsMultiPartToolContent`，当前冻结版本为 `3.0.96`。只有 Host 已准入的
 `AiSdkInferenceRoute.tool_result_image=true` 才向 factory 开启该选项；省略时保留上游默认行为和文本工具 wire。
 Adapter 不按模型名或 URL 判定能力，不自行编码图片，也不插入额外 user message。
 AI SDK 当前没有通用的图片角色能力发现接口，模型的视觉标记不能等同工具图片支持。
