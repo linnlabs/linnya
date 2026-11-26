@@ -71,9 +71,10 @@ jobs:
           if [[ "$FONT_CACHE_HIT" != true ]]; then
             apt-get download "fonts-noto-cjk=$FONT_VERSION"
           fi
-          # 即使命中缓存，也按本轮已签名 APT 索引校验安装包，再经 APT 安装并生成字体索引。
+          # 作为本地 .deb 参数传给 APT 时，相同版本仍可能从镜像下载；放入 APT 归档再按版本安装。
           printf '%s  %s\n' "$FONT_SHA256" ./*.deb | sha256sum --check
-          sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 ./*.deb
+          sudo install -m 0644 ./*.deb /var/cache/apt/archives/
+          sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 "fonts-noto-cjk=$FONT_VERSION"
           dpkg-query -W fonts-noto-cjk
           fc-match -f '%{family}\n' 'sans-serif:lang=zh-cn'
       - name: Prepare Linux Electron sandbox helper
