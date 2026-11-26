@@ -90,6 +90,8 @@ process adapter 从锁定 Qdrant 制品的 Actix `starting service ... listening
 升级 Qdrant 时必须运行真实并行端口测试验证该输出合同。队列将实际 URL 传给摄入与图谱索引 Worker，
 Worker 不读进程环境或固定 6333。固定端口 Host 保持原有 HTTP/gRPC 配置。
 
+Windows 上数据目录超过 `WINDOWS_QDRANT_DATA_DIRECTORY_MAX_LENGTH`（100 字符）时，`QdrantManager` 在建目录和写配置之前抛出 `QdrantDataDirectoryTooLongError`，Backend 投影为 `QdrantRuntimeUnavailableError` 的 `data-directory-too-long` 原因交给插件。上限来自 RocksDB 不支持长路径的实测，依据写在 `process-runtime/qdrantDataDirectoryLength.ts`；升级 Qdrant 时要重测。
+
 配置由 `renderQdrantConfig` 按锁定版本的 `storage.storage_path`、`storage.wal`、`storage.optimizers` 渲染。
 `scripts/e2e/knowledge-index/qdrant-config.acceptance.ts` 可通过 `node --import tsx` 运行，唯一参数是对应平台的随包 Qdrant 绝对路径。
 验收会启动真实 Qdrant、通过 HTTP 核对新集合配置和旧集合兼容性，并检查运行时删除是否清空集合目录。

@@ -28,12 +28,17 @@ class KnowledgeBaseUploadTaskError extends Error {
   }
 }
 
+const VECTOR_STARTUP_MESSAGE_KEYS = new Set([
+  'knowledgeBase.runtime.error.vectorUnavailable',
+  'knowledgeBase.runtime.error.vectorRuntimeMissing',
+  'knowledgeBase.runtime.error.vectorDataDirectoryTooLong',
+])
+
 function resolveUploadErrorMessage(error) {
   if (error instanceof KnowledgeBaseUploadTaskError) return error.uploadMessage
   const message = parseUserFacingMessage(error?.response?.data?.userMessage)
-  // 向量服务启动失败分两类：可停启恢复的故障，与需要重新安装补齐的运行时缺失；两者给出不同的恢复指引。
-  if (message?.key === 'knowledgeBase.runtime.error.vectorUnavailable'
-    || message?.key === 'knowledgeBase.runtime.error.vectorRuntimeMissing') {
+  // 向量服务启动失败分三类：可停启恢复的故障、需要重新安装补齐的运行时缺失、Windows 上数据目录太长需换目录重启；各给不同的恢复指引。
+  if (message && VECTOR_STARTUP_MESSAGE_KEYS.has(message.key)) {
     return createKnowledgeBaseUploadMessage(message.key)
   }
   return createKnowledgeBaseUploadMessage('knowledgeBase.upload.error.failed')
