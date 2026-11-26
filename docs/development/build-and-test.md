@@ -202,9 +202,20 @@ pnpm run build:main
 
 `better-sqlite3`、Electron、图像与音频原生模块必须匹配当前 Node、Electron、平台和架构。切换 Node 或 Electron 版本后，先重新执行冻结安装，再运行仓库提供的 runtime 验证；不要复制另一台机器的 `node_modules`。
 
-App Server 与后台 Worker 使用独立 Node，只能读取物理文件，不能解析 `app.asar`。生产
-`node_modules` 统一解包，包括原生加载器的 JavaScript 依赖与 Worker 的普通 npm 依赖；
-不维护只覆盖顶层原生包的零散名单。Tiktoken 按包目录定位 WASM，必须保留 external 包边界。
+App Server 与后台 Worker 使用独立 Node，只能读取物理文件，不能解析 `app.asar`，所以生产
+`node_modules` 整棵解包。Tiktoken 按包目录定位 WASM，必须保留 external 包边界。
+
+生产 `node_modules` 只装运行时真正要从包目录加载的依赖（原生模块、按包目录找资源的包及其
+传递依赖）。Main、App Server、Worker 和 Renderer 的其余 npm 依赖已经打进各自的 bundle，不再
+重复安装。名单在
+[`productionRuntimeDependencies.mjs`](../../scripts/build/definitions/productionRuntimeDependencies.mjs)，
+生产 lock 由它生成；`guard:production-runtime-dependencies` 在 `dist_build` 装完依赖后用 esbuild
+读出成品脚本实际引用的外部包并与名单比对，成品要用却没登记、登记了却没人用都会让打包失败。
+新增不能内联的依赖时，同时改 bundler 的 external、这份名单，并运行
+`pnpm run release:lock:production:update`。门禁看不到运行时拼出来的加载（`createRequire`
+的返回值等），这类依赖要登记到名单的动态部分并写明加载方。
+已内联依赖的许可证声明由随包的 `THIRD_PARTY_NOTICES.txt` 覆盖；安全审计
+（`release:lock:production:audit`）同时审计生产 lock 和 pnpm 的生产依赖图。
 安装验收必须把完整 App 复制到仓库外再启动；仅在 `dist_build` 内运行可能借用祖先目录的
 `node_modules`，掩盖安装包漏依赖。平台源码 CI 同时执行官方插件 artifact 编排，验证
 Windows 的批处理入口和 Mac 的直接进程入口均可完成构建与打包。

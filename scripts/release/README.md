@@ -63,6 +63,8 @@ scripts/release/
   functions/artifactBundleComponentMap.ts # build trace 到真实 artifact occurrence 的确定性映射
   ../build/bundle-trace/                 # Vite/esbuild/tsup/派生输出的外置构建 trace
   ../build/functions/productionPackageManifest.mjs # Desktop 最小生产 manifest 投影
+  ../build/definitions/productionRuntimeDependencies.mjs # 以 node_modules 形式随包的运行时依赖名单
+  ../guards/production-runtime-dependency-guard.mjs # 用成品脚本核对上面的名单（漏包、多包都失败）
   ../build/functions/productionPackageLock.mjs # npm v3 生产 lock 合同
   ../build/orchestration/updateProductionPackageLock.mjs # 生产 lock 更新/复核编排
   orchestration/generatePluginArtifactContentBom.ts # 从正式插件 ZIP 生成/复核内容 BOM

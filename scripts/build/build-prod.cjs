@@ -200,6 +200,8 @@ if (fs.existsSync(packagesDir)) {
 console.log('\n📦 步骤 4/8: 从冻结 lock 安装 dist_build 生产依赖...');
 console.log('⏳ 这可能需要几分钟时间...');
 exec('npm ci --omit=dev --no-audit --no-fund --ignore-scripts', distBuildDir);
+// 清单只留运行时要加载的包；装完立刻用成品脚本核对，漏包或多包都在签名和打包之前失败。
+exec('pnpm run guard:production-runtime-dependencies', rootDir);
 
 /**
  * 步骤 5: 复制预编译的原生模块

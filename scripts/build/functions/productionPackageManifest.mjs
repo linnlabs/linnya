@@ -1,11 +1,4 @@
-const bundledWorkspaceDependencyNames = Object.freeze([
-  '@linnlabs/linnkit-provider-ai-sdk',
-  '@linnya/provider-catalog',
-  '@linnya/markdown-document-core',
-  '@linnya/document-preview',
-  '@linnya/renderer-ui',
-  'parser-wasm',
-]);
+import { productionRuntimeDependencyNames } from '../definitions/productionRuntimeDependencies.mjs';
 
 const installDependencySections = Object.freeze([
   'dependencies',
@@ -36,9 +29,9 @@ const productionManifestKeys = Object.freeze([
 const isRecord = value => !!value && typeof value === 'object' && !Array.isArray(value);
 
 /**
- * dist_build 不是 pnpm workspace。生产代码已经把下列本地 package 编入 main、renderer、
- * backend 或 worker；parser-wasm 的 Node 产物则由 electron-builder files 显式携带。
- * 因此生产安装清单必须删除这些开发期解析入口，不能把 workspace:* 交给 npm 猜测。
+ * dist_build 不是 pnpm workspace，由 npm 按这份清单装出扁平的生产 node_modules。
+ * 清单只保留成品在运行时要从 node_modules 加载的根依赖；已经打进 bundle 的包和 workspace
+ * 本地包都不进入，所以不会把 workspace:* 交给 npm 猜测。
  */
 export function projectProductionPackageManifest(sourceManifest) {
   if (
@@ -57,17 +50,15 @@ export function projectProductionPackageManifest(sourceManifest) {
       .filter(key => sourceManifest[key] !== undefined)
       .map(key => [key, globalThis.structuredClone(sourceManifest[key])])
   );
-  projected.dependencies = globalThis.structuredClone(sourceManifest.dependencies);
+  projected.dependencies = Object.fromEntries(productionRuntimeDependencyNames.map(packageName => {
+    const range = sourceManifest.dependencies[packageName];
+    if (typeof range !== 'string') {
+      throw new Error(`生产 package 投影需要根 dependencies 声明 ${packageName}`);
+    }
+    return [packageName, range];
+  }));
   // electron-builder 通过应用 manifest 确定 runtime 版本；其他构建工具不属于发布树。
   projected.devDependencies = { electron: electronVersion };
-  for (const packageName of bundledWorkspaceDependencyNames) {
-    if (projected.dependencies[packageName] !== 'workspace:*') {
-      throw new Error(
-        `生产 package 投影预期 ${packageName}=workspace:*，实际为 ${String(projected.dependencies[packageName])}`
-      );
-    }
-    delete projected.dependencies[packageName];
-  }
 
   const unresolved = [];
   for (const sectionName of installDependencySections) {
@@ -86,8 +77,6 @@ export function projectProductionPackageManifest(sourceManifest) {
   }
   return projected;
 }
-
-export const productionBundledWorkspaceDependencyNames = bundledWorkspaceDependencyNames;
 
 /** Desktop 携带 schemas 已编译的 dist；npm 不应再解析这个本地包的构建与测试工具。 */
 export function projectPackagedSchemasManifest(sourceManifest) {

@@ -255,6 +255,7 @@
     "guard:backend-ai-sdk-runtime": "node scripts/guards/backend-ai-sdk-runtime-guard.mjs",
     "guard:backend-web-render-boundary": "node scripts/guards/backend-web-render-boundary-guard.mjs",
     "guard:app-server-backend-boundary": "node scripts/guards/app-server-backend-boundary-guard.mjs",
+    "guard:production-runtime-dependencies": "node scripts/guards/production-runtime-dependency-guard.mjs",
     "build:worker": "pnpm run build:worker:bundle && pnpm run guard:worker-bundle",
     "watch:worker": "pnpm run build:worker:bundle --watch",
     "compile:bytecode": "node scripts/build/compile-electron-main-bytecode.cjs dist/main/main.cjs dist/main/main.jsc",
