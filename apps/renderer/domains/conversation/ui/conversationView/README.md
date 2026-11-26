@@ -142,5 +142,9 @@ transform 会影响 `getBoundingClientRect()` 和滚动溢出区域，所以不�
 
 若异常涉及切换会话、新草稿、错误通知或流式 terminal 时序，先运行 `pnpm run test:conversation-navigation:electron` 并查看捕获到的第一个 `Runtime.exceptionThrown`。`nextSibling`、`subTree`、`emitsOptions` 等错误常是前一轮 patch 中断后的级联结果，不应直接在报错行增加空值判断。
 
+输入框未配置模型时，磨砂玻璃遮罩盖住整个输入框，底栏（加号、命令档位、模型选择、发送）也在玻璃下面，
+点任意位置都进入模型设置。验收需要操作输入框时先登记一个模型，让遮罩按产品规则消失，不把底栏抬到玻璃之上；
+`pnpm run test:conversation-command-permissions:electron` 在登记前检查底栏被遮罩盖住。
+
 输入框未配置模型时的边框装饰由 model-setup track 的 `overflow: clip` 约束。CSS mask 只约束绘制，
 不能单独阻止沿路径运动的光场扩张祖先 scrollHeight；不能通过反复滚到底补偿装饰造成的虚假滚动范围。

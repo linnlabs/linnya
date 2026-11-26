@@ -15,6 +15,9 @@
  * 未配置模型时的引导层：磨砂玻璃压住 composer，文字和状态点直接浮在玻璃上。
  * 不再用一个独立的药丸容器，避免它自带的描边/背景和外层输入框的边框叠成两层边框。
  * 流光沿 composer 自己的圆角矩形边框匀速绕行，替代静态描边的“活着”的信号。
+ * 玻璃必须盖住整个输入框，底栏（加号、命令档位、模型选择、发送）也在下面：没有模型时
+ * 点哪里都进入模型设置。不要为了让测试点到底栏而把底栏抬到玻璃之上；需要操作输入框的
+ * 验收先登记一个模型，遮罩会按产品规则消失（见 conversation-command-permissions 场景）。
  */
 .ai-assistant-input__model-setup-overlay {
   position: absolute;
@@ -36,11 +39,6 @@
   transition:
     backdrop-filter var(--duration-long) var(--ease-standard),
     -webkit-backdrop-filter var(--duration-long) var(--ease-standard);
-}
-
-/* 命令档位属于对话，即使尚未选模型，也能通过底栏切换。 */
-.ai-assistant-input .is-model-setup-required .ai-assistant-input-footer {
-  z-index: 2;
 }
 
 /* 玻璃自身不上色，底色交给这一层，避免 backdrop-filter 与背景色互相叠加变脏。 */
