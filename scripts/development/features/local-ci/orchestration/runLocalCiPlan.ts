@@ -10,10 +10,16 @@ import {
   type LocalCiUnit,
   type StepOutcome,
 } from '../definitions/localCiPlan';
+import {
+  LOCAL_CI_FAILURE_DIGEST_LIMITS,
+  type LocalCiFailureDigest,
+  type LocalCiIsolatedRerun,
+} from '../definitions/localCiFailureDigest';
 import type { LocalCiSchedule, LocalCiStepKind } from '../definitions/localCiSchedule';
-import { buildLocalCiLanes, isHeavyUnit, localCiStepFingerprint } from '../functions/buildLocalCiLanes';
+import { buildLocalCiLanes, isHeavyUnit, isolatedVitestCommand, localCiStepFingerprint } from '../functions/buildLocalCiLanes';
 import { evaluateWorkflowCondition } from '../functions/evaluateWorkflowCondition';
 import { pickLocalCiStarts } from '../functions/pickLocalCiStarts';
+import { summarizeLocalCiFailure } from '../functions/summarizeLocalCiFailure';
 
 export interface LocalCiStepResult {
   readonly key: string;
@@ -30,6 +36,8 @@ export interface LocalCiStepResult {
   readonly mergedRun?: string;
   readonly note?: string;
   readonly log?: string;
+  /** 只有真正执行且失败的步骤有：失败用例、断言消息、日志末尾与诊断信号，长度有上限。 */
+  readonly failureDigest?: LocalCiFailureDigest;
 }
 
 /** 合并测试分片的回执：证明一次运行覆盖了哪些分片、原命令是什么、实际执行了什么。 */
@@ -70,6 +78,8 @@ interface RunOptions {
   readonly testWorkers: number;
   readonly onStep: (result: LocalCiStepResult, step: LocalCiStep) => void;
   readonly onStart: (event: LocalCiStartEvent) => void;
+  /** 合并测试的失败文件隔离重跑结束时调用；结果已写进该步骤的 failureDigest。 */
+  readonly onIsolatedRerun?: (result: LocalCiStepResult, rerun: LocalCiIsolatedRerun) => void;
   readonly signal: AbortSignal;
   /** 中断时先 SIGTERM，超过这段时间仍未退出的进程组改用 SIGKILL。 */
   readonly killGraceMs?: number;
@@ -205,6 +215,7 @@ export async function runLocalCiPlan(plan: LocalCiPlan, options: RunOptions): Pr
   const mergedTestRuns: LocalCiMergedTestRun[] = [];
   const finished = new Map<string, { readonly ok: boolean; readonly key: string }>();
   const running = new Map<string, Running>();
+  const failedMergedRuns: FailedMergedRun[] = [];
   const states: LaneState[] = lanes.map((lane, index) => ({
     lane,
     runnerTemp: path.join(options.logDirectory, 'runner-temp', `${String(index + 1).padStart(2, '0')}-${slug(lane.label)}`),
@@ -218,7 +229,7 @@ export async function runLocalCiPlan(plan: LocalCiPlan, options: RunOptions): Pr
     unit: LocalCiUnit,
     outcome: StepOutcome,
     durationMs: number,
-    extra: { note?: string; log?: string; startedAtMs?: number; reusedFrom?: string } = {}
+    extra: { note?: string; log?: string; startedAtMs?: number; reusedFrom?: string; failureDigest?: LocalCiFailureDigest } = {}
   ) => {
     const primary = plan.steps[unit.steps[0]!]!;
     if (primary.stepId) state.stepOutcomes[primary.stepId] = outcome;
@@ -228,6 +239,7 @@ export async function runLocalCiPlan(plan: LocalCiPlan, options: RunOptions): Pr
       const step = plan.steps[index]!;
       const base = { key: step.key, jobLabel: step.jobLabel, name: step.name, outcome, kind: unit.kind, ...(mergedRun ? { mergedRun } : {}) };
       let result: LocalCiStepResult;
+      // 失败摘要只挂在真正执行的那一步（at === 0）上；复用结果的步骤用 reusedFrom 指向它。
       if (at === 0) result = { ...base, durationMs, ...extra };
       else if (outcome === 'skipped') result = { ...base, durationMs: 0, note: step.localSkip ?? extra.note };
       else if (unit.shardMerge) {
@@ -299,7 +311,9 @@ export async function runLocalCiPlan(plan: LocalCiPlan, options: RunOptions): Pr
       const note = unit.shardMerge
         ? `${unit.shardMerge.total} 个分片合并为一次运行（--maxWorkers=${unit.shardMerge.testWorkers}）`
         : undefined;
-      record(state, unit, outcome, durationMs, { log: logFile, startedAtMs, ...(note ? { note } : {}) });
+      const failureDigest = ok ? undefined : summarizeLocalCiFailure(readFileSync(logFile, 'utf8'), unit.kind);
+      record(state, unit, outcome, durationMs, { log: logFile, startedAtMs, ...(note ? { note } : {}), ...(failureDigest ? { failureDigest } : {}) });
+      if (unit.shardMerge && failureDigest) failedMergedRuns.push({ index, step, command, digest: failureDigest });
       if (unit.shardMerge) {
         mergedTestRuns.push({
           key: step.key,
@@ -350,7 +364,47 @@ export async function runLocalCiPlan(plan: LocalCiPlan, options: RunOptions): Pr
   }
   // 中断后等所有子进程组退出（SIGTERM → 宽限期 → SIGKILL），不留孤儿进程。
   await Promise.all([...running.values()].map(item => item.promise));
+  // 所有步骤都结束后才重跑，此时没有任何其他步骤占用机器，才谈得上“隔离”。
+  for (const failed of failedMergedRuns) {
+    if (options.signal.aborted) break;
+    const isolatedRerun = await rerunFailedFilesInIsolation(failed, options, killGraceMs);
+    const primary = results[failed.index];
+    if (!isolatedRerun || !primary?.failureDigest) continue;
+    results[failed.index] = { ...primary, failureDigest: { ...primary.failureDigest, isolatedRerun } };
+    options.onIsolatedRerun?.(results[failed.index]!, isolatedRerun);
+  }
   return { results: results.filter((result): result is LocalCiStepResult => result !== undefined), mergedTestRuns };
+}
+
+interface FailedMergedRun {
+  readonly index: number;
+  readonly step: LocalCiStep;
+  readonly command: string;
+  readonly digest: LocalCiFailureDigest;
+}
+
+/**
+ * 合并测试失败后，把失败的测试文件单独、串行再跑一次，判断是负载下的偶发还是确定性失败。
+ * 只用于诊断：本轮仍判失败，结果记进摘要，让“先红后绿”的用例留在历史里，作为改成独占执行的依据。
+ * 失败文件过多（多半是确定性失败）或没有解析出失败文件时不重跑。
+ */
+async function rerunFailedFilesInIsolation(failed: FailedMergedRun, options: RunOptions, killGraceMs: number): Promise<LocalCiIsolatedRerun | undefined> {
+  const files = failed.digest.failedTestFiles;
+  if (files.length === 0 || files.length > LOCAL_CI_FAILURE_DIGEST_LIMITS.isolatedRerunFiles) return undefined;
+  const command = isolatedVitestCommand(failed.command, files);
+  const log = path.join(options.logDirectory, `${String(failed.index + 1).padStart(3, '0')}-${slug(failed.step.job)}-isolated-rerun.log`);
+  const started = Date.now();
+  const ok = await runCommand({
+    step: failed.step,
+    command,
+    root: options.root,
+    logFile: log,
+    runnerTemp: path.join(options.logDirectory, 'runner-temp', 'isolated-rerun'),
+    env: options.env,
+    signal: options.signal,
+    killGraceMs,
+  });
+  return { files, command, outcome: ok ? 'success' : 'failure', durationMs: Date.now() - started, log };
 }
 
 /** 有失败的任务按 upload-artifact 声明把证据从检出复制到日志目录，检出删掉后仍可查看。 */
@@ -369,10 +423,6 @@ export function collectLocalCiEvidence(plan: LocalCiPlan, results: readonly Loca
     }
   }
   return copied;
-}
-
-export function readLogTail(file: string, lines: number): string {
-  return readFileSync(file, 'utf8').split('\n').slice(-lines).join('\n');
 }
 
 export function writeLocalCiSummary(logDirectory: string, summary: unknown): string {

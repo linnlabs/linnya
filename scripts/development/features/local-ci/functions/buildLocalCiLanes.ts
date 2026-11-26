@@ -38,6 +38,16 @@ export function mergedVitestCommand(command: string, testWorkers: number): strin
   return base.replace(/\bvitest\s+run\b/u, match => `${match} --maxWorkers=${testWorkers}`);
 }
 
+/**
+ * 合并测试失败后的隔离重跑命令：同一条 vitest 命令只跑失败的文件，worker 数为 1，文件逐个串行执行。
+ * vitest 把位置参数当作文件路径过滤条件；路径来自它自己的失败报告，相对同一个根目录。
+ */
+export function isolatedVitestCommand(mergedCommand: string, files: readonly string[]): string {
+  const base = mergedCommand.replace(MAX_WORKERS_FLAG, '');
+  const quoted = files.map(file => `'${file.replaceAll("'", `'\\''`)}'`).join(' ');
+  return `${base.replace(/\bvitest\s+run\b/u, match => `${match} --maxWorkers=1`)} ${quoted}`;
+}
+
 /** 分片集合必须正好是 1..total，各出现一次；缺一片或多一片都不合并。 */
 export function coversEveryShard(shards: readonly number[], total: number): boolean {
   if (!Number.isInteger(total) || total < 1 || shards.length !== total) return false;

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
@@ -211,6 +211,72 @@ it('测试分片合并为一次运行：只执行一次，每个分片都有指�
       steps: [1, 2, 3].map(shard => `wf.yml/shards (shard=${shard})/2`),
     }),
   ]);
+});
+
+/**
+ * 模拟 vitest：worker 数大于 1（并发）时报告一个超时失败；只用 1 个 worker 单独跑时，
+ * FLAKY=1 表示通过（负载下的偶发），否则照样失败（确定性失败）。
+ */
+const FAKE_VITEST = `#!/usr/bin/env bash
+echo "$*" >> runs.txt
+if [[ " $* " == *" --maxWorkers=1 "* && "$FLAKY" == 1 ]]; then echo " Test Files  1 passed (1)"; exit 0; fi
+cat <<'OUT'
+stderr | sub/other.test.ts > 打印日志
+Error: 测试自己打印的错误日志，不是失败
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  sub/supervisor.test.ts > 进程监管 > 负载下按时就绪
+Error: Test timed out in 5000ms.
+ ❯ sub/supervisor.test.ts:12:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 9 passed (10)
+OUT
+exit 1
+`;
+
+it.each([
+  { flaky: '1', rerunOutcome: 'success' },
+  { flaky: '0', rerunOutcome: 'failure' },
+])('合并测试失败后单独串行重跑失败文件（FLAKY=$flaky）：重跑结果记进摘要，本轮仍判失败', async ({ flaky, rerunOutcome }) => {
+  const root = scratch();
+  writeFileSync(path.join(root, 'fake-vitest.sh'), FAKE_VITEST);
+  const plan: LocalCiPlan = {
+    skippedJobs: [],
+    steps: [1, 2].map(shard => ({
+      key: `wf.yml/shards (shard=${shard})/1`,
+      workflow: 'wf.yml',
+      job: 'shards',
+      jobLabel: `WF / shards (${shard}/2)`,
+      name: 'test',
+      matrix: { shard },
+      env: { FLAKY: flaky },
+      command: `bash fake-vitest.sh vitest run --maxWorkers=2 --shard=${shard}/2`,
+    })),
+  };
+  const reruns: string[] = [];
+  const { results } = await runLocalCiPlan(
+    plan,
+    options(root, { schedule: { 'wf.yml': { shards: { test: 'test' } } }, onIsolatedRerun: (_, rerun) => reruns.push(rerun.outcome) })
+  );
+
+  expect(readFileSync(path.join(root, 'runs.txt'), 'utf8')).toBe(
+    "vitest run --maxWorkers=3\nvitest run --maxWorkers=1 sub/supervisor.test.ts\n"
+  );
+  expect(results.map(result => result.outcome)).toEqual(['failure', 'failure']);
+  const digest = results[0]!.failureDigest!;
+  expect(digest.failedTests.map(failure => [failure.file, failure.test, failure.message[0]])).toEqual([
+    ['sub/supervisor.test.ts', '进程监管 > 负载下按时就绪', 'Error: Test timed out in 5000ms.'],
+  ]);
+  expect(digest.isolatedRerun).toEqual(
+    expect.objectContaining({ files: ['sub/supervisor.test.ts'], command: "bash fake-vitest.sh vitest run --maxWorkers=1 'sub/supervisor.test.ts'", outcome: rerunOutcome })
+  );
+  expect(existsSync(digest.isolatedRerun!.log)).toBe(true);
+  expect(reruns).toEqual([rerunOutcome]);
+  // 摘要只挂在真正执行的那一步上；被合并的分片指向它。
+  expect(results[1]!.failureDigest).toBeUndefined();
+  expect(results[1]!.reusedFrom).toBe(results[0]!.key);
 });
 
 it('命令退出后回收组里残留的后台进程；中断时停掉正在运行的步骤', async () => {

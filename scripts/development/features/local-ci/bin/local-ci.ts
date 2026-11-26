@@ -14,9 +14,9 @@ import { resolveLocalCiParallelism, type LocalCiParallelism } from '../functions
 import { prepareLocalCiCheckout, pruneOrphanedLocalCiCheckouts } from '../orchestration/prepareLocalCiCheckout';
 import { pruneLocalCiRuns } from '../orchestration/pruneLocalCiRuns';
 import { LOCAL_CI_KEEP_RUNS, LOCAL_CI_RECEIPT_KEEP_DAYS } from '../definitions/localCiRetention';
+import { formatLocalCiFailureDigest } from '../functions/summarizeLocalCiFailure';
 import {
   collectLocalCiEvidence,
-  readLogTail,
   runLocalCiPlan,
   writeLocalCiSummary,
   type LocalCiRunOutcome,
@@ -204,10 +204,13 @@ async function main(): Promise<number> {
         const note = result.note ? `（${result.note}）` : '';
         const clock = formatClock(Date.now() - started);
         console.log(`${mark} [${clock}] ${step.jobLabel} › ${step.name}  ${formatDuration(result.durationMs)}${note}`);
-        if (result.outcome === 'failure' && result.log && !result.reusedFrom) {
-          console.log(readLogTail(result.log, 25).replace(/^/gmu, '    '));
+        if (result.outcome === 'failure' && result.failureDigest) {
+          for (const line of formatLocalCiFailureDigest(result.failureDigest)) console.log(`    ${line}`);
           console.log(`    完整日志：${result.log}`);
         }
+      },
+      onIsolatedRerun: (result, rerun) => {
+        console.log(`\n隔离重跑 ${result.jobLabel} › ${result.name} 的 ${rerun.files.length} 个失败文件：${rerun.outcome === 'success' ? '通过' : '仍失败'}（${formatDuration(rerun.durationMs)}）\n    ${rerun.log}`);
       },
     });
     completed = true;
@@ -238,7 +241,14 @@ async function main(): Promise<number> {
     const passed = results.filter(result => result.outcome === 'success').length;
     const skipped = results.filter(result => result.outcome === 'skipped');
     console.log(`\n用时 ${formatDuration(Date.now() - started)}：通过 ${passed}，失败 ${failures.length}，跳过 ${skipped.length}`);
-    for (const failure of failures) console.log(`  ✗ ${failure.jobLabel} › ${failure.name}\n    ${failure.log}`);
+    for (const failure of failures) {
+      const digest = failure.failureDigest;
+      const signals = [
+        digest?.networkFailure && '网络原因',
+        digest?.isolatedRerun && `隔离重跑${digest.isolatedRerun.outcome === 'success' ? '通过' : '仍失败'}`,
+      ].filter(Boolean);
+      console.log(`  ✗ ${failure.jobLabel} › ${failure.name}${signals.length ? `（${signals.join('，')}）` : ''}\n    ${failure.log}`);
+    }
     for (const run of mergedTestRuns) {
       const totals = [run.testFiles && `Test Files ${run.testFiles}`, run.tests && `Tests ${run.tests}`].filter(Boolean).join('；');
       console.log(`测试分片 ${run.shards.map(shard => `${shard}/${run.total}`).join('、')} 合并为一次运行（${formatDuration(run.durationMs)}）${totals ? `：${totals}` : ''}`);
