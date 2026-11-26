@@ -31,10 +31,10 @@ conversationView/
 │   ├── useTimelineLayoutReserveAnimation.ts
 │   ├── useConversationVirtualizerGeometry.ts
 │   ├── useConversationFooterMaskLayout.ts
-│   ├── useMessageEntryAnimation.ts
-│   └── useStreamingWaitingIndicator.ts
+│   └── useMessageEntryAnimation.ts
 ├── functions/
 │   ├── historyBackfillPolicy.ts
+│   ├── removalViewportAnchor.ts
 │   ├── conversationContentWidth.ts
 │   ├── scrollPositionController.ts
 │   ├── conversationVirtualizerGeometry.ts
@@ -56,15 +56,21 @@ conversationView/
 ```text
 window rows + live messages
   -> selectors 合成 activeMessages
-  -> useAppendOnlyConversationVisualRows
+  -> useAppendOnlyConversationVisualRows（消息行）
+  -> features/turn-work-fold 的 useTurnWorkFoldRows（终态折叠投影）
   -> ConversationVisualRow[]
   -> useTanstackConversationVirtualizer
   -> VirtualConversationCanvas（只适配 placement / measureElement）
   -> ../messageCanvas/ConversationMessageCanvas
-  -> ConversationVisualRow / Message / actions / work-duration
+  -> ConversationVisualRow / Message / 折叠行 / actions / 运行状态行
 ```
 
-`ConversationVisualRow` 是消息画布的唯一展示 item，粒度为一条可见 message。主时间线把它作为唯一虚拟 item；Subrun 详情把它作为普通文档流 row。每行携带稳定 `key`、`visualTurnId`、turn 边界、估高和 bounded 标记。父工具下的 subrun collection 属于工具消息 leaf，内部展开由 `SubrunCard/UiCardGroup` 自己管理，不提升为额外顶层 visual-row。
+终态折叠在增量 builder 之后套一层投影：builder 只产出消息行，折叠投影按轮次插入或去掉折叠行、隐去过程行，
+内容没变的行沿用原对象。折叠与展开会让视口里的行消失，`useTanstackConversationVirtualizer` 在非吸底模式下用
+`functions/removalViewportAnchor.ts` 记下被删行之后第一条保留行的位置，测量后恢复，正在读的回答不会跳动。
+时间线索引、`scrollToMessage` 仍读未折叠的消息行。
+
+`ConversationVisualRow` 是消息画布的唯一展示 item，粒度为一条可见 message（`kind: 'message'`），主时间线另有终态折叠行（`kind: 'turn-work-fold'`）。主时间线把它作为唯一虚拟 item；Subrun 详情把它作为普通文档流 row。每行携带稳定 `key`、`visualTurnId`、turn 边界、估高和 bounded 标记。父工具下的 subrun collection 属于工具消息 leaf，内部展开由 `SubrunCard/UiCardGroup` 自己管理，不提升为额外顶层 visual-row。
 
 TanStack 仍是主时间线几何的唯一 owner。`VirtualConversationCanvas` 只能把 visible item 转成 placement，不能复制共享 row 模板；`ConversationMessageCanvas` 只接收 placement，不能 import TanStack 或写滚动位置。Subrun 详情不需要虚拟化，也不得因此绕开共享 row、直接循环 `Message.vue` 或另加统一消息 `gap`。
 

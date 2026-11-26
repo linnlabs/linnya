@@ -100,22 +100,20 @@ afterEach(() => {
 });
 
 describe('一轮回复末尾的改动清单', () => {
-  it('按本轮运行查询；收起时一行写总数和待审阅数，已工作时长移到最下面', async () => {
+  it('按本轮运行查询；收起时一行写总数和待审阅数，尾部不再有已工作时长', async () => {
     const host = await mountTail({ durationMs: 18 * 60_000 + 40_000 });
     expect(port.list).toHaveBeenCalledWith({ conversationId: 'conv-1', rootRunIds: ['run-1'] });
 
     const tail = host.querySelector('.conversation-visual-row__tail');
     const note = tail?.querySelector('.conversation-visual-row__tail-line > .run-document-changes-note');
     expect(note?.textContent?.replace(/\s+/g, ' ').trim()).toBe('改了 2 份文档·1 份待审阅');
-    expect(tail?.querySelector('.conversation-visual-row__tail-line > .turn-work-duration-hint')).toBeNull();
-    const duration = tail?.lastElementChild;
-    expect(duration?.classList.contains('turn-work-duration-hint')).toBe(true);
-    expect(duration?.textContent).toContain('18m 40s');
+    // 时长改由终态折叠行“已工作 x 分 x 秒”表达，回答下方不再重复。
+    expect(tail?.textContent).not.toContain('18m 40s');
     expect(tail?.querySelector('.run-document-changes-list')).toBeNull();
     expect(port.watch).toHaveBeenCalledWith(new Set([report.documentId, deck.documentId]), expect.any(Function));
   });
 
-  it('展开后待审阅排前、各自去自己的审阅或历史；时长仍在清单下面', async () => {
+  it('展开后待审阅排前、各自去自己的审阅或历史', async () => {
     const host = await mountTail({ durationMs: 6 * 60_000 });
     (host.querySelector('.run-document-changes-note') as HTMLButtonElement).click();
     await nextTick();
@@ -126,7 +124,7 @@ describe('一轮回复末尾的改动清单', () => {
     expect(rows[0]?.textContent).toContain('4 处待审阅');
     expect(rows[1]?.textContent).toContain('子任务修改');
     expect(rows[1]?.textContent).toContain('已生效');
-    expect(list?.nextElementSibling?.classList.contains('turn-work-duration-hint')).toBe(true);
+    expect(list?.nextElementSibling).toBeNull();
 
     (rows[1]?.querySelector('.run-document-changes-row__action') as HTMLButtonElement).click();
     (rows[0] as HTMLElement).click();
@@ -134,9 +132,8 @@ describe('一轮回复末尾的改动清单', () => {
     expect(port.open.mock.calls).toEqual([[deck, 'history'], [report, 'review']]);
   });
 
-  it('不到 5 分钟不显示时长；Subrun 详情等未开启的画布不查询', async () => {
+  it('Subrun 详情等未开启的画布不查询', async () => {
     const host = await mountTail({ durationMs: 60_000 });
-    expect(host.querySelector('.turn-work-duration-hint')).toBeNull();
     expect(host.querySelector('.run-document-changes-note')).not.toBeNull();
 
     port.list.mockClear();

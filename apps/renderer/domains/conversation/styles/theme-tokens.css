@@ -2,6 +2,8 @@
 
 :root {
   --conversation-tool-card-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
+  /* 思考行与“已工作”折叠行的箭头左移量：14px 箭头图形自带留白，左移后与正文左缘对齐。两处共用。 */
+  --thought-message-arrow-shift: -3px;
 }
 
 /* 工具卡描边与错误描边都从语义 token 派生，三套主题层级一致。 */

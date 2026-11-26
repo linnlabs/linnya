@@ -1,7 +1,7 @@
 import { shallowRef, triggerRef, watch, type Ref } from 'vue';
 import type { BaseMessage } from '../../../types';
 import { createAppendOnlyConversationVisualRowsBuilder } from '../logic/appendOnlyConversationVisualRowsBuilder';
-import type { ConversationVisualRow } from '../../messageCanvas';
+import type { ConversationMessageVisualRow } from '../../messageCanvas';
 import type { EstimationRegistry } from '../utils/estimationRegistry';
 
 interface UseAppendOnlyConversationVisualRowsInput {
@@ -16,7 +16,7 @@ export function useAppendOnlyConversationVisualRows(
   input: UseAppendOnlyConversationVisualRowsInput,
 ) {
   const builder = createAppendOnlyConversationVisualRowsBuilder();
-  const visualRows = shallowRef<ConversationVisualRow[]>([]);
+  const visualRows = shallowRef<ConversationMessageVisualRow[]>([]);
   let appliedResetKey = input.resetKey.value;
 
   const applyProjection = (): void => {

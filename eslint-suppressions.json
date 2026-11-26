@@ -170,11 +170,6 @@
       "count": 1
     }
   },
-  "apps/renderer/domains/conversation/ui/conversationView/composables/useStreamingWaitingIndicator.ts": {
-    "no-restricted-properties": {
-      "count": 1
-    }
-  },
   "apps/renderer/domains/conversation/ui/conversationView/composables/useTanstackConversationVirtualizer.ts": {
     "no-restricted-properties": {
       "count": 2

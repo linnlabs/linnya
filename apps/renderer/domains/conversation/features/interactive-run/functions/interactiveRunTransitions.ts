@@ -136,6 +136,14 @@ export function isInteractiveRunBusy(snapshot: InteractiveRunSnapshot | undefine
   );
 }
 
+/**
+ * 运行还没结束：忙碌中，或已暂停等用户继续。时间线的状态行、终态折叠和任务进度都按这一口径，
+ * 因为暂停后的运行还会接着做，它的过程仍是用户正在看的内容。
+ */
+export function isInteractiveRunUnfinished(snapshot: InteractiveRunSnapshot | undefined): boolean {
+  return isInteractiveRunBusy(snapshot) || snapshot?.status === 'paused';
+}
+
 export function assertInteractiveRunCanStart(
   conversationId: string,
   snapshot: InteractiveRunSnapshot | undefined

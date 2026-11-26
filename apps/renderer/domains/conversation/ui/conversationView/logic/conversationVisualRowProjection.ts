@@ -17,11 +17,11 @@ import {
   type EstimationRegistry,
 } from '../utils/estimationRegistry';
 import type {
-  ConversationVisualRow,
+  ConversationMessageVisualRow,
   ConversationVisualTurnContext,
 } from '../../messageCanvas';
 
-export type VisualRowDraft = Omit<ConversationVisualRow, 'isTurnEnd' | 'isTurnStart'>;
+export type VisualRowDraft = Omit<ConversationMessageVisualRow, 'isTurnEnd' | 'isTurnStart'>;
 export type EstimateVisualMessageLayout = (
   message: BaseMessage,
   registry: EstimationRegistry,
@@ -125,7 +125,7 @@ export function createVisualRowDraft(input: {
   };
 }
 
-export function finalizeVisualRowDrafts(drafts: readonly VisualRowDraft[]): ConversationVisualRow[] {
+export function finalizeVisualRowDrafts(drafts: readonly VisualRowDraft[]): ConversationMessageVisualRow[] {
   return drafts.map((draft, index) => ({
     ...draft,
     isTurnStart: index === 0 || drafts[index - 1]?.visualTurnId !== draft.visualTurnId,

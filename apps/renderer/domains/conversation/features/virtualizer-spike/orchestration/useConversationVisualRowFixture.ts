@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/vue-virtual';
 import type { EditUserMessageCommand, RegenerateUserMessageCommand } from '../../../definitions/userMessageContent';
 import type { BaseMessage } from '../../../types';
 import { projectConversationVisualRows } from '../../../ui/conversationView/logic/projectConversationVisualRows';
-import type { ConversationVisualRow } from '../../../ui/messageCanvas';
+import type { ConversationMessageVisualRow } from '../../../ui/messageCanvas';
 import { extractRenderedAnswerHtml } from '../../../ui/tools/knowledge/clipboard/richClipboardActions';
 import { projectConversationCitationsToEditorHtml } from '../../citation-presentation';
 import type { RenderedAnswerTransferPort } from '../../../ui/tools/knowledge/clipboard/definitions/renderedAnswerTransfer';
@@ -81,12 +81,12 @@ export function useConversationVisualRowFixture(
     if (element instanceof HTMLElement) virtualizer.value.measureElement(element);
   };
 
-  const readTurnAnswers = (row: ConversationVisualRow): BaseMessage[] => {
+  const readTurnAnswers = (row: ConversationMessageVisualRow): BaseMessage[] => {
     const sourceIds = new Set(row.turnContext.sourceMessageIds);
     return resolveTurnFinalAnswers(messages.value.filter(message => sourceIds.has(message.id)));
   };
 
-  const buildRenderedTransfer = async (row: ConversationVisualRow, kind: 'copy' | 'save') => {
+  const buildRenderedTransfer = async (row: ConversationMessageVisualRow, kind: 'copy' | 'save') => {
     const scroller = scrollerRef.value;
     const rowElement = Array.from(
       scroller?.querySelectorAll<HTMLElement>('[data-visual-row-key]') ?? [],
@@ -104,11 +104,11 @@ export function useConversationVisualRowFixture(
     return { renderedHtml, rowElement };
   };
 
-  const copyTurn = async (row: ConversationVisualRow): Promise<void> => {
+  const copyTurn = async (row: ConversationMessageVisualRow): Promise<void> => {
     await buildRenderedTransfer(row, 'copy');
     await navigator.clipboard.writeText(readTurnAnswers(row).map(answer => answer.content).join('\n\n'));
   };
-  const saveTurn = async (row: ConversationVisualRow): Promise<void> => {
+  const saveTurn = async (row: ConversationMessageVisualRow): Promise<void> => {
     await buildRenderedTransfer(row, 'save');
   };
   const recordInteraction = (

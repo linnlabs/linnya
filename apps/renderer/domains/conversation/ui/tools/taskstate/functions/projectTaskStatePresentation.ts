@@ -13,6 +13,7 @@ import type {
   TaskStatePresentationOperation,
 } from '../definitions/taskStatePresentation';
 import { buildTaskStateStepRows } from './buildTaskStateStepRows';
+import { TASK_STATE_UPDATE_TITLE_KEYS } from '../../../../definitions/taskStatePhaseMessages';
 
 export function projectTaskStatePresentation(
   input: ToolPresentationProjectorInput
@@ -49,9 +50,7 @@ export function projectTaskStatePresentation(
         taskstate: result.data.taskstate,
         nextStepRows: buildTaskStateStepRows(result.data.taskstate.next_steps),
       },
-      title: createConversationToolTitleDescriptor('conversation.tool.taskState.readVersion', {
-        version: result.data.version,
-      }),
+      title: createConversationToolTitleDescriptor('conversation.tool.taskState.read'),
     };
   }
 
@@ -66,10 +65,9 @@ export function projectTaskStatePresentation(
       taskstate: result.data.taskstate,
       nextStepRows: buildTaskStateStepRows(result.data.taskstate.next_steps),
     },
-    title: createConversationToolTitleDescriptor('conversation.tool.taskState.updateVersionPhase', {
-      version: result.data.version,
-      phase: result.data.taskstate.current_phase,
-    }),
+    title: createConversationToolTitleDescriptor(
+      TASK_STATE_UPDATE_TITLE_KEYS[result.data.taskstate.current_phase],
+    ),
   };
 }
 

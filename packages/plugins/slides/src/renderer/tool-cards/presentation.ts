@@ -37,6 +37,7 @@ export const presentationToolConfigs: Record<string, ToolUiConfig> = {
 
   'ppt_plan': {
     component: PptPlanApprovalCard,
+    activity: 'plan',
     presentation: projectSlidesPlanPresentation,
     compactStep: compactStep('slides.tool.compact.plan'),
     layout: {
@@ -50,6 +51,7 @@ export const presentationToolConfigs: Record<string, ToolUiConfig> = {
 
   'ppt_inspect': {
     component: PresentationInspectCard,
+    activity: 'read',
     icon: ReadIcon,
     presentation: projectSlidesInspectPresentation,
     compactStep: compactStep('slides.tool.compact.inspect'),

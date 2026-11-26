@@ -5,6 +5,8 @@ export type {
   ConversationVisualRowMeasureElement,
 } from './definitions/conversationMessageCanvas';
 export type {
+  ConversationMessageVisualRow,
+  ConversationTurnWorkFoldVisualRow,
   ConversationVisualRow,
   ConversationVisualTurnContext,
 } from './definitions/conversationVisualRow';

@@ -53,6 +53,7 @@ apps/renderer/domains/conversation/
 │   ├── model-selection/         # Host picker 快照到 Provider → 模型 → 思考强度菜单的纯投影与选择编排
 │   ├── realtime-event-routing/  # 请求级 dispatcher、会话/turn/可见性门禁与事件去重
 │   ├── reference-mention/       # @ 候选宿主扩展
+│   ├── run-task-progress/       # 运行中输入框上方的任务进度托盘（读本次运行最新 task_write）
 │   ├── resource-link/           # 回答中三类 canonical file locator 的识别、展示与公开 port
 │   ├── subrun-card/             # 完整 child message admission、Host 父进度卡与插件公开卡
 │   ├── subrun-collection/       # Host batch 进度归一与插件多卡合同
@@ -61,12 +62,13 @@ apps/renderer/domains/conversation/
 │   ├── subrun-trace/            # 子 run 过程契约、历史/增量 accumulator、durable 刷新
 │   ├── summary-presentation/    # summarization_progress presentation 纯函数
 │   ├── timeline/                # 全量 turn index 与窗口内/外导航
+│   ├── turn-work-fold/          # 终态折叠：正常结束的轮次把过程收成“已工作 x 分 x 秒”
 │   ├── user-input-admission/    # durable user_input ack 的唯一身份校验与接纳入口
 │   └── virtualizer-spike/       # 确定性滚动回归门禁，暂不删除
 ├── ports/                       # 对外窄 contract
 ├── registrations/               # 域内注册装配
 ├── shared/                      # 域内共享（含 observability 与 virtualization 桥接）
-│   └── execution-presentation/   # run 归属、工具活动态、统一动画与状态文案
+│   └── execution-presentation/   # run 归属、工具活动态、统一动画、状态文案与底部运行状态行
 ├── store/                       # live 投影状态、执行状态与公开 selectors
 ├── styles/                      # 域内样式
 ├── testing/                     # 测试消息构造等测试专用工具

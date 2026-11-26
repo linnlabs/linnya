@@ -37,6 +37,7 @@ const INLINE_LAYOUT = {
 export const webToolConfigs: Record<string, ToolUiEntry> = {
   web_search: {
     component: WebSearchCard,
+    activity: 'search',
     icon: SearchIcon,
     presentation: projectWebSearchPresentation,
     compactStep: projectWebSearchCompactStep,
@@ -46,6 +47,7 @@ export const webToolConfigs: Record<string, ToolUiEntry> = {
 
   search_web: {
     component: WebSearchCard,
+    activity: 'search',
     icon: SearchIcon,
     presentation: projectWebSearchPresentation,
     compactStep: projectWebSearchCompactStep,
@@ -65,6 +67,7 @@ export const webToolConfigs: Record<string, ToolUiEntry> = {
   },
   [WEB_READ_PAGE_UI_KEY]: {
     component: WebReadCard,
+    activity: 'read',
     icon: ReadIcon,
     presentation: projectWebReadPresentation,
     compactStep: projectWebReadCompactStep,
@@ -72,6 +75,7 @@ export const webToolConfigs: Record<string, ToolUiEntry> = {
   },
   [WEB_READ_IMAGE_UI_KEY]: {
     component: WebReadImageCard,
+    activity: 'read',
     icon: ImageIcon,
     presentation: projectWebReadImagePresentation,
     compactStep: createStaticToolCompactStepProjector('conversation.tool.webReadImage.compact'),
@@ -80,6 +84,7 @@ export const webToolConfigs: Record<string, ToolUiEntry> = {
 
   image_search: {
     component: ImageSearchLine,
+    activity: 'search',
     icon: ImageIcon,
     presentation: projectImageSearchPresentation,
     compactStep: createStaticToolCompactStepProjector('conversation.tool.imageSearch.compact'),
