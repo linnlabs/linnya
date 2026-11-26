@@ -7,24 +7,29 @@ import {
 } from './tableCoordinateHeaderStyles';
 
 describe('tableCoordinateHeaderStyles', () => {
-  it('builds column header styles from measured geometry without reading DOM', () => {
+  it('positions the column header track relative to the content layer, with a sticky bar inside', () => {
     const styles = buildTableColumnHeaderStyles({
       columnWidths: [100, 120, 140],
       tableRect: { left: 30, top: 80, width: 360, height: 200 },
       scrollLeft: 45,
-      containerRect: { left: 10, top: 50 },
       tableScrollContainerRect: { left: 30, top: 80 },
       visibleWidth: 240,
       hasScrollContainer: true,
+      layerOrigin: { left: 10, top: -150 },
+      scrollPaddingTop: 16,
     });
 
-    expect(styles.floatingStyle).toMatchObject({
-      position: 'fixed',
-      left: '30px',
-      top: `${80 - TABLE_COLUMN_HEADER_HEIGHT}px`,
-      height: `${TABLE_COLUMN_HEADER_HEIGHT}px`,
+    expect(styles.trackStyle).toMatchObject({
+      position: 'absolute',
+      left: '20px',
+      top: `${80 + 150 - TABLE_COLUMN_HEADER_HEIGHT}px`,
       width: '240px',
-      visibility: 'visible',
+      height: `${200 + TABLE_COLUMN_HEADER_HEIGHT}px`,
+    });
+    expect(styles.floatingStyle).toMatchObject({
+      position: 'sticky',
+      top: '-16px',
+      height: `${TABLE_COLUMN_HEADER_HEIGHT}px`,
     });
     expect(styles.scrollerStyle).toEqual({
       width: '360px',
@@ -32,19 +37,26 @@ describe('tableCoordinateHeaderStyles', () => {
     });
   });
 
-  it('sticks column header to the editor shell top and hides it when table is above viewport', () => {
-    const styles = buildTableColumnHeaderStyles({
-      columnWidths: [100],
-      tableRect: { left: 30, top: 10, width: 100, height: 20 },
-      scrollLeft: 0,
-      containerRect: { left: 10, top: 50 },
-      tableScrollContainerRect: { left: 30, top: 20 },
-      visibleWidth: 0,
-      hasScrollContainer: true,
+  it('gives the same layer-relative position before and after the page scrolls (headers scroll natively)', () => {
+    const at = (scroll: number) => ({
+      track: buildTableColumnHeaderStyles({
+        columnWidths: [100],
+        tableRect: { left: 30, top: 300 - scroll, width: 100, height: 60 },
+        scrollLeft: 0,
+        tableScrollContainerRect: { left: 30, top: 300 - scroll },
+        visibleWidth: 100,
+        hasScrollContainer: true,
+        layerOrigin: { left: 0, top: 40 - scroll },
+        scrollPaddingTop: 0,
+      }).trackStyle,
+      row: buildTableRowHeaderStyle({
+        tableRect: { left: 30, top: 300 - scroll, width: 100, height: 60 },
+        tableScrollContainerRect: { left: 30, top: 300 - scroll },
+        layerOrigin: { left: 0, top: 40 - scroll },
+      }),
     });
 
-    expect(styles.floatingStyle.top).toBe('50px');
-    expect(styles.floatingStyle.visibility).toBe('hidden');
+    expect(at(400)).toEqual(at(0));
   });
 
   it('hides column header when table scroll container is not bound yet', () => {
@@ -52,29 +64,30 @@ describe('tableCoordinateHeaderStyles', () => {
       columnWidths: [100],
       tableRect: { left: 0, top: 0, width: 100, height: 100 },
       scrollLeft: 0,
-      containerRect: { left: 0, top: 0 },
       tableScrollContainerRect: { left: 0, top: 0 },
       visibleWidth: 0,
       hasScrollContainer: false,
+      layerOrigin: { left: 0, top: 0 },
+      scrollPaddingTop: 0,
     });
 
-    expect(styles.floatingStyle).toEqual({ visibility: 'hidden' });
+    expect(styles.trackStyle).toEqual({ visibility: 'hidden' });
     expect(styles.scrollerStyle).toEqual({});
   });
 
-  it('builds row header style and clamps height at editor shell bottom', () => {
+  it('places row headers left of the table scroll container, as tall as the table', () => {
     const style = buildTableRowHeaderStyle({
-      tableRect: { left: 30, top: 80, width: 360, height: 240 },
-      tableScrollContainerRect: { left: 30, top: 80 },
-      editorShellBottom: 260,
+      tableRect: { left: 60, top: 80, width: 360, height: 240 },
+      tableScrollContainerRect: { left: 60, top: 80 },
+      layerOrigin: { left: 10, top: -150 },
     });
 
     expect(style).toMatchObject({
-      position: 'fixed',
-      left: `${30 - TABLE_ROW_HEADER_WIDTH}px`,
-      top: '80px',
+      position: 'absolute',
+      left: `${60 - 10 - TABLE_ROW_HEADER_WIDTH}px`,
+      top: '230px',
       width: `${TABLE_ROW_HEADER_WIDTH}px`,
-      height: '180px',
+      height: '240px',
     });
   });
 });

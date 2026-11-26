@@ -4,6 +4,8 @@ import { Fragment, type Mark, type Node } from 'prosemirror-model';
 import { alignUnchangedBlocks } from '../../../shared/functions/alignUnchangedBlocks';
 
 const PRESENTATION_MARKS = new Set(['textColor', 'textHighlight']);
+/** 整块的呈现属性：Markdown 不表达，Agent 改写同类型块时沿用旧稿的值。 */
+const BLOCK_PRESENTATION_ATTRS: Readonly<Record<string, readonly string[]>> = { table: ['tableStyle'] };
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
 function isDeleted(node: Node): boolean {
@@ -107,12 +109,22 @@ function preserveTextBlock(before: Node, after: Node): Node {
   return after.copy(Fragment.fromArray(children));
 }
 
+/** 同类型内容块沿用旧稿的整块呈现属性（表格样式）；类型变了不继承。 */
+function preserveBlockPresentation(before: Node, after: Node): Node {
+  const original = before.firstChild, proposed = after.firstChild;
+  if (!original || !proposed || original.type !== proposed.type) return after;
+  const names = (BLOCK_PRESENTATION_ATTRS[original.type.name] ?? []).filter(name => original.attrs[name] !== proposed.attrs[name]);
+  if (names.length === 0) return after;
+  const attrs: Record<string, unknown> = { ...proposed.attrs };
+  for (const name of names) attrs[name] = original.attrs[name];
+  return after.copy(after.content.replaceChild(0, proposed.type.create(attrs, proposed.content, proposed.marks)));
+}
+
 /**
- * 只为同一个 rootBlock 恢复未改文字的颜色、高亮，不为新增文字或新块推断样式。
  * 表格先锚定未改的单元格，再配对间隙内的修改，避免插行后机械按坐标套用样式。
  * Renderer 的删除投影不参与新稿对齐，但保留原节点，部分拒绝时仍能恢复原样。
  */
-export function preserveInlinePresentation(before: Node, after: Node): Node {
+function preserveInlineMarks(before: Node, after: Node): Node {
   if (!before.firstChild || before.firstChild.type !== after.firstChild?.type) return after;
   const originals = collectTextBlocks(before), proposed = collectTextBlocks(after);
   let hasPresentation = false;
@@ -144,4 +156,12 @@ export function preserveInlinePresentation(before: Node, after: Node): Node {
     return node.copy(Fragment.fromArray(children));
   };
   return restore(after);
+}
+
+/**
+ * 同一个 rootBlock 的 Agent 改写沿用用户在编辑器设置、Markdown 无法表达的呈现：
+ * 未改文字的颜色与高亮、表格样式。不为新增文字或新块推断样式。
+ */
+export function preserveUserPresentation(before: Node, after: Node): Node {
+  return preserveInlineMarks(before, preserveBlockPresentation(before, after));
 }

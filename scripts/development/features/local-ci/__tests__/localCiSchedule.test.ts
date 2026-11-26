@@ -7,6 +7,7 @@ import { LOCAL_CI_STEP_SCHEDULE } from '../definitions/localCiSchedule';
 import {
   buildLocalCiLanes,
   coversEveryShard,
+  localCiStepFingerprint,
   mergedVitestCommand,
   readVitestShard,
 } from '../functions/buildLocalCiLanes';
@@ -101,6 +102,22 @@ describe('仓库工作流的调度声明', () => {
   it('全量直接执行架构、包、分片、平台和 Canvas，跳过 PR 路由', () => {
     const jobs = new Set(buildLocalCiPlan(workflows).steps.filter(step => step.command).map(step => step.job));
     expect([...jobs].sort()).toEqual(['architecture', 'deterministic', 'packages', 'source-build', 'test-shards']);
+  });
+
+  it('公共架构任务覆盖插件 PR 委托给它的源码 lint 和边界门禁', () => {
+    const { steps } = buildLocalCiPlan(workflows, { jobs: ['architecture'] });
+    const commands = steps.flatMap(step => step.command?.split('\n') ?? []);
+    expect(commands).toEqual(expect.arrayContaining(['pnpm run lint:code', 'pnpm run guard:plugin-boundaries']));
+  });
+
+  it('公共包和 Canvas 单独运行时各带业务测试，合跑时命令、目录和环境允许复用', () => {
+    const fingerprints = ['packages', 'deterministic'].map(job => {
+      const { steps } = buildLocalCiPlan(workflows, { jobs: [job] });
+      const cases = steps.filter(step => step.command === 'pnpm --filter @plugin/canvas test' && !step.localSkip);
+      expect(cases).toHaveLength(1);
+      return localCiStepFingerprint(cases[0]!);
+    });
+    expect(fingerprints[0]).toBe(fingerprints[1]);
   });
 
   it('公共测试的全部分片合并为一次运行，覆盖每个分片', () => {

@@ -1,6 +1,10 @@
 import { vi } from 'vitest';
 
-import type { InferenceEndpointView, ModelConfig } from 'src/domains/model-catalog';
+import type {
+  InferenceEndpointView,
+  ModelConfig,
+  UnadmittedUserModel,
+} from 'src/domains/model-catalog';
 import type {
   ConfiguredProvider,
   PendingProviderModelRegistration,
@@ -15,6 +19,7 @@ import type {
 export function createStatefulProviderOnboardingStorage() {
   let endpoints: InferenceEndpointView[] = [];
   let models: ModelConfig[] = [];
+  let unadmittedModels: UnadmittedUserModel[] = [];
   let configuredProvider: ConfiguredProvider | undefined;
   let pendingIntent: PendingProviderModelRegistration | undefined;
   const catalog: ProviderOnboardingModelCatalogPort & {
@@ -22,6 +27,7 @@ export function createStatefulProviderOnboardingStorage() {
     replaceInferenceEndpointCredential: ReturnType<typeof vi.fn>;
   } = {
     getModel: modelConfigId => models.find(model => model.id === modelConfigId),
+    getUnadmittedUserModels: () => unadmittedModels,
     getInferenceEndpoints: () => endpoints,
     registerUserModel: vi.fn(async (model: ModelConfig, endpoint) => {
       const inferenceEndpointId =
@@ -97,5 +103,23 @@ export function createStatefulProviderOnboardingStorage() {
     readEndpoints: () => endpoints,
     readModels: () => models,
     readConfiguredProvider: () => configuredProvider,
+    /** 模拟重启时这条模型没有通过准入：离开运行目录、进入停用列表，Provider 归属保持不变。 */
+    disableAtRestart(modelConfigId: string) {
+      const model = models.find(candidate => candidate.id === modelConfigId);
+      if (!model) throw new Error(`fixture model missing: ${modelConfigId}`);
+      models = models.filter(candidate => candidate.id !== modelConfigId);
+      unadmittedModels = [
+        ...unadmittedModels,
+        {
+          id: model.id,
+          inference_endpoint_id: model.inference_endpoint_id,
+          reason: '必须声明唯一的推理 route',
+        },
+      ];
+    },
+    /** 模拟归属与目录失去一致：模型既不在运行目录、也不是停用条目，归属却还在。 */
+    dropFromCatalogOnly(modelConfigId: string) {
+      models = models.filter(candidate => candidate.id !== modelConfigId);
+    },
   };
 }

@@ -857,7 +857,7 @@ describe('D77 fixed risk authorization', () => {
   });
 });
 
-describe('conversation-local file removal (W-0303)', () => {
+describe('conversation-local file removal', () => {
   const ROOT = '/tmp/linnya-conversations/abc';
   const decide = (command: string, cwd = ROOT, conversationRoot: string | null = ROOT) => evaluateCommandAuthorization({
     proposal: proposal({ command, cwd }),

@@ -112,6 +112,15 @@ export function updateProductionPackageLock(input = {}) {
         stdio: 'inherit',
       });
     }
+    if (audit) {
+      // 生产 lock 只含以 node_modules 形式随包的依赖；打进 bundle 的包来自 pnpm 的生产依赖图，
+      // 上面的 npm 审计看不到它们，所以对这张图再审计一次。
+      execFileSync('pnpm', ['audit', '--prod', '--audit-level=low'], {
+        cwd: rootDir,
+        stdio: 'inherit',
+        shell: process.platform === 'win32',
+      });
+    }
     process.stdout.write(
       `[production-package-lock] ${verify ? 'verified' : 'updated'} ${path.relative(rootDir, outputPath)}\n`
     );

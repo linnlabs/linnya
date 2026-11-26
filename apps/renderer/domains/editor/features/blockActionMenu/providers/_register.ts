@@ -16,6 +16,7 @@ import { registerCommonMenuProvider, registerBlockMenuProvider } from '../regist
 import { commonProvider } from './commonProvider';
 import { imageBlockMenuProvider } from '../../../blocks/ImageBlock/menu/imageBlockMenuProvider';
 import { chartBlockMenuProvider } from '../../../blocks/ChartBlock/menu/chartBlockMenuProvider';
+import { tableBlockMenuProvider } from '../../../blocks/TableBlock/menu/tableBlockMenuProvider';
 
 // 模块级标记，确保只注册一次
 let registered = false;
@@ -35,6 +36,7 @@ export function ensureProvidersRegistered(): void {
   // 注册块专属 Provider
   registerBlockMenuProvider('imageBlock', imageBlockMenuProvider);
   registerBlockMenuProvider('chartBlock', chartBlockMenuProvider);
+  registerBlockMenuProvider('table', tableBlockMenuProvider);
   // 已移除注册完成 console.log：避免启动时刷屏
 }
 

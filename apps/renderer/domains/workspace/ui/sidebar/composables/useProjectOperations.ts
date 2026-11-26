@@ -75,51 +75,54 @@ export function useProjectOperations(
   };
 
   /**
+   * 新建项目记录，普通创建与 AI 辅助创建共用。重名或后端拒绝时提示并返回 null。
+   * 返回项目身份之后项目就已经存在：后续的关联、刷新、打开或规划失败，只能说明那一步没完成，不能再报“创建失败”。
+   */
+  const createProjectRecord = async (
+    name: string,
+    description: string
+  ): Promise<{ projectId: string; projectName: string } | null> => {
+    // 在调用后端之前，先在前端做一次项目名唯一性校验，避免触发数据库 UNIQUE 约束错误
+    const projectName = name.trim();
+    if (workspaceStore.projects.some(project => project.name === projectName)) {
+      notificationStore.show(workspaceMessage('workspace.project.operation.duplicateName', { projectName }), 'error');
+      return null;
+    }
+    try {
+      const result = await projectGateway.create({ name: projectName, description: description || undefined });
+      if (result.success) return { projectId: result.data.projectId, projectName };
+      notificationStore.show(
+        resolveWorkspaceOperationFailure(result, workspaceMessage, 'workspace.project.operation.createFailed'),
+        'error'
+      );
+    } catch (error) {
+      console.error('[useProjectOperations] 创建项目失败:', error);
+      notificationStore.show(workspaceMessage('workspace.project.operation.createFailed'), 'error');
+    }
+    return null;
+  };
+
+  /**
    * 处理项目创建
    */
   const handleCreateProject = async ({ name, description, kbIds }: ProjectFormValues) => {
+    const created = await createProjectRecord(name, description);
+    if (!created) return;
+    const { projectId, projectName } = created;
+    notificationStore.show(workspaceMessage('workspace.project.operation.created', { projectName }), 'success');
+    closeProjectDialog();
+
+    // 先写入“创建弹窗里选择的关联知识库”，保证后续进入项目时能立刻读到；失败由它自己提示。
+    await applyProjectKnowledgeBaseLinks(projectId, kbIds);
+
     try {
-      // 在调用后端之前，先在前端做一次项目名唯一性校验，避免触发数据库 UNIQUE 约束错误
-      const trimmedName = name.trim();
-      const duplicated = workspaceStore.projects.some(project => project.name === trimmedName);
-      if (duplicated) {
-        notificationStore.show(workspaceMessage('workspace.project.operation.duplicateName', { projectName: trimmedName }), 'error');
-        return;
-      }
-
-      const result = await projectGateway.create({
-        name: trimmedName,
-        description: description || undefined
-      });
-      
-      if (result.success) {
-        notificationStore.show(workspaceMessage('workspace.project.operation.created', { projectName: name }), 'success');
-        const projectId = result.data.projectId;
-
-        closeProjectDialog();
-
-        // 先写入“创建弹窗里选择的关联知识库”，保证后续进入项目时能立刻读到
-        await applyProjectKnowledgeBaseLinks(projectId, kbIds);
-
-        // 已加载的列表保持挂载，正式目录刷新会按创建时间把新项目插在顶部。
-        await refreshProjectCatalog();
-
-        // 自动进入新创建的项目
-        // 项目创建与点击既有项目共用导航：先保存并退出旧文档，再提交新项目身份。
-        await openProjectWorkspace(projectId);
-      } else {
-        notificationStore.show(
-          resolveWorkspaceOperationFailure(
-            result,
-            workspaceMessage,
-            'workspace.project.operation.createFailed'
-          ),
-          'error'
-        );
-      }
+      // 已加载的列表保持挂载，正式目录刷新会按创建时间把新项目插在顶部。
+      await refreshProjectCatalog();
+      // 项目创建与点击既有项目共用导航：先保存并退出旧文档，再提交新项目身份。
+      await openProjectWorkspace(projectId);
     } catch (error) {
-      console.error('[useProjectOperations] Failed to create project:', error);
-      notificationStore.show(workspaceMessage('workspace.project.operation.createFailed'), 'error');
+      console.error('[useProjectOperations] 项目已创建，但没能打开:', error);
+      notificationStore.show(workspaceMessage('workspace.project.operation.createdButOpenFailed', { projectName }), 'error');
     }
   };
 
@@ -210,57 +213,29 @@ export function useProjectOperations(
    * 3. 在统一项目对话中开启项目初始化 Agent
    */
   const handleAiCreateProject = async ({ name, description, kbIds }: ProjectFormValues) => {
+    // 1. 立即创建真实项目
+    const created = await createProjectRecord(name, description);
+    if (!created) return;
+    const { projectId, projectName } = created;
+    closeProjectDialog();
+
+    // 先写入“关联知识库”，再进入项目/创建对话，确保后续上下文读取到最新关联
+    await applyProjectKnowledgeBaseLinks(projectId, kbIds);
+
+    // 2. 由 app 组合层统一导航并开启项目初始化 Agent。
+    // 这里不能提前切 scope，否则导航会把跨项目切换误判成同项目。
+    // 首条消息没有发出去时返回 false（例如没有可用模型），这时规划并没有开始。
+    let planningStarted = false;
     try {
-      // 与普通创建保持一致：AI 辅助创建前同样做项目名唯一性检查
-      const trimmedName = name.trim();
-      const duplicated = workspaceStore.projects.some(project => project.name === trimmedName);
-      if (duplicated) {
-        notificationStore.show(workspaceMessage('workspace.project.operation.duplicateName', { projectName: trimmedName }), 'error');
-        return;
-      }
-
-      // 1. 立即创建真实项目
-      const result = await projectGateway.create({
-        name: trimmedName,
-        description: description || undefined
-      });
-      
-      if (!result.success) {
-        notificationStore.show(
-          resolveWorkspaceOperationFailure(
-            result,
-            workspaceMessage,
-            'workspace.project.operation.createFailed'
-          ),
-          'error'
-        );
-        return;
-      }
-      
-      const projectId = result.data.projectId;
-      console.log('[useProjectOperations] AI 辅助创建项目成功，projectId:', projectId);
-
-      closeProjectDialog();
-
-      // 先写入“关联知识库”，再进入项目/创建对话，确保后续上下文读取到最新关联
-      await applyProjectKnowledgeBaseLinks(projectId, kbIds);
-
-      // 刷新项目列表
       await refreshProjectCatalog();
-      
-      // 2. 由 app 组合层统一导航并开启项目初始化 Agent。
-      // 这里不能提前切 scope，否则导航会把跨项目切换误判成同项目。
-      await startProjectPlanning({
-        id: projectId,
-        name: trimmedName,
-        description: description || '',
-      });
-      
-      notificationStore.show(workspaceMessage('workspace.project.operation.createdWithAiPlanning', { projectName: name }), 'success');
-      
+      planningStarted = await startProjectPlanning({ id: projectId, name: projectName, description: description || '' });
     } catch (error) {
-      console.error('[useProjectOperations] AI 辅助创建项目失败:', error);
-      notificationStore.show(workspaceMessage('workspace.project.operation.createFailed'), 'error');
+      console.error('[useProjectOperations] 项目已创建，但 AI 辅助规划没有开始:', error);
+    }
+    if (planningStarted) {
+      notificationStore.show(workspaceMessage('workspace.project.operation.createdWithAiPlanning', { projectName }), 'success');
+    } else {
+      notificationStore.show(workspaceMessage('workspace.project.operation.createdButPlanningNotStarted', { projectName }), 'warning');
     }
   };
 
@@ -279,14 +254,17 @@ export function useProjectOperations(
       const project = workspaceStore.projects.find(p => p.id === projectId);
       const projectName = project ? project.name : workspaceMessage('workspace.project.operation.currentProject');
 
-      await startProjectPlanning({
+      const planningStarted = await startProjectPlanning({
         id: projectId,
         name: projectName,
         description: project?.description ?? '',
       });
-
-      notificationStore.show(workspaceMessage('workspace.project.operation.aiPlanningStarted', { projectName }), 'success');
-
+      // 首条消息没有发出去（返回 false）时规划没有开始，不能提示成功。
+      if (planningStarted) {
+        notificationStore.show(workspaceMessage('workspace.project.operation.aiPlanningStarted', { projectName }), 'success');
+      } else {
+        notificationStore.show(workspaceMessage('workspace.project.operation.aiInitFailed'), 'error');
+      }
     } catch (error) {
       console.error('[useProjectOperations] AI 初始化项目失败:', error);
       notificationStore.show(workspaceMessage('workspace.project.operation.aiInitFailed'), 'error');

@@ -220,7 +220,7 @@ Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确�
 | `audit <conversation-id>`          | 只读导出统一 Audit Domain 的安全执行摘要；App 未启用审计时拒绝    | `--run`                                                                                                |
 | `tools list`                       | 列出 CLI 允许调用的 Workspace 工具名称与简介                      | 无                                                                                                     |
 | `tools describe <tool-name>`       | 查询一个 Workspace 工具的真实参数合同                             | 无                                                                                                     |
-| `tools call <tool-name>`           | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果 | `--conversation`、`--project`、`--args-json` / `--args-file`、`--omit-args`、`--interval`、`--timeout` |
+| `tools call <tool-name>`           | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果；只给 `--project` 时续用该项目 30 分钟内最近一段 CLI 会话（输出 `conversation_reused`） | `--conversation`、`--project`、`--new-session`（只给项目时总是新建会话）、`--args-json` / `--args-file`、`--omit-args`、`--interval`、`--timeout` |
 
 `messages` 的游标属于整个会话，所以不提供 `--run`
 过滤。按 run 精确读取结果应使用 `result --run`；客户端先分页再过滤会让

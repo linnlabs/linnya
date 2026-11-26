@@ -22,7 +22,7 @@ Revision 的行内显示不是可保存正文。会话通过 Revision 的公开�
 
 保存、块决策、全部决策和行内部分决策统一使用 `workspace:commit-markdown-revision`。请求与响应由 `@app/schemas` 校验，正文结构由生产 Markdown/Editor schema 校验。正文版本与 Pending revision 同时作为并发校验条件，防止对旧显示执行新提议。
 
-决策期间暂时停用输入，提交完成后恢复；提交失败保留草稿和 Pending。后端已提交但前端装载失败时，前端不得标记 clean 或把旧视图再次写回。后续刷新必须先解决草稿冲突。数据库提交后的恢复使用正式文档历史，不能靠扫描 mark 重建 Pending。
+决策期间暂时停用输入，提交完成后恢复；提交失败保留草稿和 Pending。读取或提交失败抛出 `DocumentOperationFailedError`：`message` 是后端原文，只供日志；后端给出用户可读原因（`userMessage`，如正文损坏、正文里有无法保存的引用）时随错误带出，打开与保存入口优先显示它。后端已提交但前端装载失败时，前端不得标记 clean 或把旧视图再次写回。后续刷新必须先解决草稿冲突。数据库提交后的恢复使用正式文档历史，不能靠扫描 mark 重建 Pending。
 
 ## 修改地图
 

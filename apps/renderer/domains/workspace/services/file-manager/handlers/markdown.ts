@@ -145,10 +145,21 @@ export const markdownHandler: FileTypeLifecycleHandler = {
       return true;
     } catch (error) {
       console.error(`[MarkdownHandler] IPC save failed (${reason}):`, error);
+      // 后端给了用户可读原因时（如正文里有无法保存的引用）显示它，不显示后台原文；
+      // 其余失败沿用错误文字（会话层抛出的冲突、已关闭等提示本身就是给用户看的）。
+      const userMessage = error instanceof Error
+        ? parseUserFacingMessage(Reflect.get(error, 'userMessage')) ?? undefined
+        : undefined;
       notificationStore.show(
-        error instanceof Error ? error.message : resolveCurrentWorkspaceMessage('workspace.fileManager.save.exception'),
+        userMessage
+          ? resolveWorkspaceOperationFailure(
+              { error: error instanceof Error ? error.message : String(error), userMessage },
+              resolveCurrentWorkspaceMessage,
+              'workspace.fileManager.save.exception',
+            )
+          : error instanceof Error ? error.message : resolveCurrentWorkspaceMessage('workspace.fileManager.save.exception'),
         'error',
-        3500,
+        userMessage ? 8000 : 3500,
       );
       return false;
     } finally {

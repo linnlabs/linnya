@@ -81,4 +81,11 @@ describe('conversation context usage reader', () => {
     // 没有项目时发送会被研究接纳拒绝；此时没有可估算的下一次请求。
     await expect(readUsage(metadata('research_v1', null))).resolves.toBeNull();
   });
+
+  it('reports no estimate when the selected Agent is unavailable, without raising a server error', async () => {
+    // 注册表只列出已启用插件的 Agent：插件停用后它的 Agent 与已删除的 Agent 走同一条路径。
+    // beforeEach 只启用 platform，插件 Agent 在这里都不可用。
+    await expect(readUsage(metadata('slides_agent'))).resolves.toBeNull();
+    await expect(readUsage(metadata('agent-that-was-removed'))).resolves.toBeNull();
+  });
 });

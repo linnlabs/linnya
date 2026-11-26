@@ -3,6 +3,13 @@ import { z } from 'zod';
 import { ConversationSelectedAgentIdSchema } from './selected-agent';
 
 /**
+ * 会话由哪个入口发起。目前只标记 Linnya CLI 工具调用创建的会话；没有该字段即普通会话。
+ */
+export const ConversationOriginSchema = z.enum(['linnya_cli']);
+
+export type ConversationOrigin = z.infer<typeof ConversationOriginSchema>;
+
+/**
  * History API 对外暴露的会话列表项。
  *
  * selected_agent_id 是正式控制面；metadata 不得承载 Agent 选择。
@@ -20,6 +27,7 @@ export const ConversationHistoryListItemSchema = z
     is_pinned: z.boolean(),
     pinned_at: z.number().finite().optional(),
     selected_agent_id: ConversationSelectedAgentIdSchema.nullable(),
+    origin: ConversationOriginSchema.optional(),
     /** cleanup job 仍存在时禁止重新进入，并由用户显式重试原操作。 */
     cleanup_pending: z.boolean().optional(),
     scheduled_task: ScheduledConversationFoldSchema.optional(),

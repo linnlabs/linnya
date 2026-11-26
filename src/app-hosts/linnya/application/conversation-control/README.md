@@ -50,7 +50,8 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
   tool failure，不输出诊断 code/message/target，也不从零 error 推断编译通过。
 - `tools` 默认开放五个 Workspace 工具：`list_files / read_file / grep / write_file / edit_file`。`web_access` 临时开放或关闭 `web_search / web_read / tool_output_read`；状态归当前 use case 实例，Host 重启重置为关闭，不进入用户设置。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
 - `tools call` 先使用工具 registry 的同一个 `validateArguments` 做命令准入。非法 locator、双身份等返回 `invalid_request`（CLI 退出 2），不创建运行。ToolNode 继续拥有所有调用方的执行前 admission，CLI 不复制 locator 或工具参数规则。
-- 只给项目时创建前端可见的新 Conversation；只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。
+- 只给项目时续用该项目最近一段 CLI 会话：会话由 Linnya CLI 创建（会话 metadata 的 `origin: linnya_cli`）、距上次活动不超过 30 分钟、当前没有前台运行，取最近的一段；没有就新建一段前端可见的会话，运行前由事件库一次写入身份行、标题 `Linnya CLI · YYYY-MM-DD HH:mm` 与入口标记。`new_session: true` 总是新建；最近一段正在运行时也新建，不排队、不并入。响应的 `conversation_reused` 说明本次是否续用。代价：两个外部调用方同时操作同一项目会进同一段会话，CLI 目前分不出调用方；工具卡、账本（external 与运行身份）照常完整记录。`send` 仍各自独立成会话。
+- 只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。
 - Host 工具请求使用 `yield_after_batch`：完整工具批次结算后结束 run，不调用 LLM。工具 decision/output、权限、审计、pending revision 与 UI projection 仍走普通工具链，不能在本 feature 复制工具执行逻辑。
 - 这类 run 没有模型，结果交给外部调用方，由调用方自己决定看不看图：Host 的 `toolResultImagePolicy` 对这次调用（`authorizedHostToolCall.resultReceiver='host_caller'`）一律允许附带图片，例如 `read_file` 读图片或 PDF `page_image`。CLI 拿到带附件的工具消息后，逐个用 `tools read_attachment` 读取原件：只认该会话最近 200 条消息里这条工具消息已登记的附件，经受管图片账本复核并核对字节数与 SHA-256，再把文件写到系统临时目录 `linnya-cli/attachments/<conversation_id>/<sha256>.<ext>`（仅当前用户可读），输出 `attachment_files` 给出路径与尺寸。
 - Web 开关在提交 Flow 前检查；关闭后不接纳新 Web 调用，已接纳的 run 不被暗中取消。普通 Agent 不受此开关影响。CLI 拒绝 `deep_search=true`，保证此入口不隐式启动模型子运行；外部 Agent 自行编排普通搜索与阅读。`tool_output_read` 必须沿用原会话，以保留 blob 归属。

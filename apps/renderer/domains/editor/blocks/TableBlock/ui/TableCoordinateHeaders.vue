@@ -1,22 +1,25 @@
 <template>
-  <Teleport v-if="teleportTarget" :to="teleportTarget">
+  <!--
+    坐标头挂在编辑器滚动内容里的 .scroll-content-wrapper，用 absolute 定位（见 tableCoordinateHeaderStyles）：
+    纵向滚动由浏览器带着走，滚出编辑区被滚动容器原生裁切；absolute 也不受右侧文档窗格祖先 transform 的影响。
+  -->
+  <Teleport
+    v-if="layer"
+    :to="layer"
+  >
     <transition name="tt-headers-fade" appear>
     <div v-if="visible" class="tt-table-coordinate-headers">
-      <!-- 左上角单元格 (已移除) -->
-
       <!-- 列标 -->
       <TableColumnHeaders
         v-if="columnWidths.length > 0"
         :column-widths="columnWidths"
         :table-rect="tableRect"
         :scroll-left="scrollLeft"
-        :scroll-top="scrollTop"
-        :container-rect="containerRect"
-        :table-element="tableElement"
         :visible-width="tableVisibleWidth"
         :scroll-container="tableScrollContainer"
         :table-scroll-container-rect="tableScrollContainerRect"
-        :table-top-in-container="tableTopInContainer"
+        :layer-origin="layerOrigin"
+        :scroll-padding-top="scrollPaddingTop"
       />
 
       <!-- 行标 -->
@@ -24,13 +27,8 @@
         v-if="rowHeights.length > 0"
         :row-heights="rowHeights"
         :table-rect="tableRect"
-        :scroll-left="scrollLeft"
-        :scroll-top="scrollTop"
-        :container-rect="containerRect"
-        :table-element="tableElement"
         :table-scroll-container-rect="tableScrollContainerRect"
-        :editor-shell-scrollbar-height="editorShellScrollbarHeight"
-        :editor-shell-bottom="editorShellBottomInViewport"
+        :layer-origin="layerOrigin"
       />
     </div>
     </transition>
@@ -38,7 +36,8 @@
 </template>
 
 <script setup>
-import { nextTick, ref, toRef, onMounted, watch } from 'vue'
+import { onMounted, shallowRef, toRef, watch } from 'vue'
+import { onNextFrame } from '@linnya/renderer-ui'
 import { useUIStore } from '../../../../../shared/stores/ui'
 import TableColumnHeaders from './TableColumnHeaders.vue'
 import TableRowHeaders from './TableRowHeaders.vue'
@@ -73,23 +72,23 @@ const props = defineProps({
 
 const uiStore = useUIStore()
 
-const teleportTarget = ref(null)
+/** 坐标头所在内容层：编辑器滚动内容里的 .scroll-content-wrapper（position: relative）。 */
+const layer = shallowRef(null)
 
-const resolveTeleportTarget = async () => {
-  await nextTick()
-  await new Promise((resolve) => requestAnimationFrame(resolve))
-  const editorRoot = props.editor?.view?.dom
-  const currentEditorWrapper = editorRoot?.closest?.('.scroll-content-wrapper')
-  teleportTarget.value = currentEditorWrapper || null
+const resolveLayer = () => {
+  // 编辑器 DOM 挂载后才能定位内容层；下一帧再找，避免拿到尚未插入文档的节点。
+  onNextFrame(() => {
+    layer.value = props.editor?.view?.dom?.closest?.('.scroll-content-wrapper') ?? null
+  })
 }
 
-onMounted(resolveTeleportTarget)
+onMounted(resolveLayer)
 
 watch(
   () => props.editor,
   () => {
-    teleportTarget.value = null
-    void resolveTeleportTarget()
+    layer.value = null
+    resolveLayer()
   },
 )
 
@@ -98,22 +97,24 @@ const {
   rowHeights,
   tableRect,
   scrollLeft,
-  scrollTop,
-  containerRect,
   tableScrollContainerRect,
-  editorShellScrollbarHeight,
-  editorShellBottomInViewport,
+  layerOrigin,
+  scrollPaddingTop,
   tableVisibleWidth,
-  tableTopInContainer,
   tableScrollContainer,
-  tableElement,
   measureTablePosition
 } = useTableCoordinateHeaderController({
   visible: toRef(props, 'visible'),
   tableInfo: toRef(props, 'tableInfo'),
   editor: toRef(props, 'editor'),
   getCellRect: getCellBoundingRect,
+  layerElement: layer,
   debug: dlog
+})
+
+// 内容层就位或更换后按新原点重新测量，坐标头才落在正确位置。
+watch(layer, (next) => {
+  if (next) measureTablePosition()
 })
 
 useTableCoordinateHeaderLayoutSync({

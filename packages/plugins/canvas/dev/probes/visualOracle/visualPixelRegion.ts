@@ -59,7 +59,8 @@ export function readVisualPixelRegion(input: { reference: VisualImage; actual: V
       }
     }
     // 只从reference实际存在的实色内核取证；小标点没有内核时仍必须通过非空/质量/位置检查。
-    if (referenceInk && visualColorDistance(reference.rgba, i, foreground) <= VISUAL_TEXT_LIMITS.solidColorDelta) {
+    // 内核取样(solidCoreDelta)比验收(solidColorDelta)严：深色浅字的灰阶内核常恰在验收界上，1个色阶就会误判换色。
+    if (referenceInk && visualColorDistance(reference.rgba, i, foreground) <= VISUAL_TEXT_LIMITS.solidCoreDelta) {
       solid++;
       const exact = visualColorDistance(actual.rgba, i, foreground) <= VISUAL_TEXT_LIMITS.solidColorDelta;
       if (exact) solidPreserved++;

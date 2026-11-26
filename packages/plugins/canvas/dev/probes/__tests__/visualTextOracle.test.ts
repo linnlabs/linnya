@@ -5,7 +5,7 @@ import { compareVisualTextPixels, compareVisualTextLayout, qualifiesMonochromeMo
 
 // CPU Skia生成真实字形，只验证oracle规则；不能代替Electron的真实Range/Win AA资格与GPU负例。
 const tokens = ['中', ...Array.from({ length: 40 }, () => '文'), '、', '🖼️', '红'];
-function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | 'size' | 'color' | 'opacity', fontFamily = 'sans-serif') {
+function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | 'size' | 'color' | 'opacity', fontFamily = 'sans-serif', ink = '#000') {
   const canvas = createCanvas(1600, 100), context = canvas.getContext('2d');
   context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height);
   context.font = `24px ${fontFamily}`; context.textBaseline = 'top';
@@ -19,7 +19,7 @@ function fixture(change?: 'han' | 'punctuation' | 'emoji' | 'clip' | 'shift' | '
       color: text === '红' ? [204, 0, 0] : [0, 0, 0], background: [255, 255, 255], fontAvailable: true } });
     if ((change === 'han' && index === 0) || (change === 'punctuation' && text === '、') || (change === 'emoji' && text === '🖼️')) return;
     context.font = `${change === 'size' ? 30 : 24}px ${fontFamily}`;
-    context.fillStyle = text === '红' ? change === 'color' ? '#00c' : '#c00' : '#000';
+    context.fillStyle = text === '红' ? change === 'color' ? '#00c' : '#c00' : ink;
     context.globalAlpha = change === 'opacity' ? 0.8 : 1;
     context.fillText(text, rect.x + (change === 'shift' ? 1 : 0), rect.y);
   });
@@ -51,6 +51,21 @@ it('整体opacity .8虽然保留合理颜色混合，真实前景峰仍必须拒
   expect(han?.coverage.model).toBe('rgb-alpha-mean');
   expect(han?.foregroundPeakPresent).toBe(false);
   expect(han?.failures).toContain('foreground_peak');
+  expect(result.pass).toBe(false);
+});
+
+it('参考内核恰在验收界8上、光栅只差1个色阶时不误判换色；没有离前景4以内的内核就不算实色核', () => {
+  // 声明前景仍是黑；参考字形画成离黑正好8，实际离黑9（深色浅字灰阶内核的同类情形）。
+  const reference = fixture(undefined, 'sans-serif', '#080808'), actual = fixture(undefined, 'sans-serif', '#090909');
+  const result = compareVisualTextPixels(reference.image, actual.image, reference.layout);
+  expect(result.graphemes.some(grapheme => grapheme.failures.includes('solid_color'))).toBe(false);
+  expect(result.pass).toBe(true);
+});
+
+it('内核取样收紧不放宽验收：参考内核正是前景、实际偏离10时仍按换色拒绝', () => {
+  const reference = fixture(), actual = fixture(undefined, 'sans-serif', '#0a0a0a');
+  const result = compareVisualTextPixels(reference.image, actual.image, reference.layout);
+  expect(result.graphemes.some(grapheme => grapheme.failures.includes('solid_color'))).toBe(true);
   expect(result.pass).toBe(false);
 });
 
@@ -177,7 +192,7 @@ function structureFixture(mixed = false, grayForeground: 0 | 200 = 0) {
 
 it.each([0, 200] as const)('合格LCD fringe与gray按同一平均覆盖判形状，前景%d也保留原24对比单位', foreground => {
   const source = structureFixture(false, foreground), result = compareVisualTextPixels(source.reference, source.actual, source.layout), line = result.lines[0];
-  expect(result.oracleRevision).toBe(3); expect(result.pass).toBe(true);
+  expect(result.oracleRevision).toBe(4); expect(result.pass).toBe(true);
   expect(line.residual).toBeGreaterThan(0); expect(line.residualRatio).toBeGreaterThan(0.05);
   expect(line.structure.model).toBe('per-pixel-qualified-rgb-mean'); expect(line.structure.residual).toBe(0);
   expect(line.structure.union).toBe(56); expect(line.structure.union).toBeLessThan(line.union);

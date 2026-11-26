@@ -32,7 +32,6 @@ function normalizeBlockTypeName(blockType: string): string {
 
 export interface TableRowsMaterializationOptions {
   hydrateProjection?: (projection: MarkdownInlineProjection) => MarkdownInlineProjection
-  defaultColWidth?: number
   createCellContentAttrs?: () => Record<string, unknown> | undefined
 }
 
@@ -57,10 +56,12 @@ export function buildTableRowsFromInlineProjectionGrid(
     return null
   }
 
+  // GFM 表格不带列宽，物化出的单元格也不写列宽，交给共用表格呈现按内容排布；
+  // 只有用户在编辑器里拖过的列才写 colwidth。这样待审投影、Markdown 导入与接受后的数据库版本宽度一致。
   const cellAttrs = (index: number) => {
     const align = model.alignments?.[index]
     return {
-      colwidth: [options.defaultColWidth ?? 150],
+      colwidth: null,
       align: align === 'left' || align === 'center' || align === 'right' ? align : null,
     }
   }

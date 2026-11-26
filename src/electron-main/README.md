@@ -35,6 +35,8 @@ macOS 麦克风授权请求异步发起，不作为 App Server 或窗口就绪�
 
 Main 不允许加载 `app-server-backend.cjs`、打开 `workspace.sqlite`，也不存在同进程 Backend fallback。
 
+主进程包（`dist/main/main.cjs`）也不得把 Backend 的装配代码内联进来：`build:main` 按 esbuild metafile 检查输入模块和代码体积（规则见 [`desktopMainBundleBoundary.mjs`](../../scripts/build/functions/desktopMainBundleBoundary.mjs)），发现只属于 App Server 的模块或超过上限即构建失败。Main 与 App Server 共用的模块如果有聚合入口，只属于 App Server 的转出要放进单独入口，例如 `backend-renderer-requests/app-server.ts`。
+
 文档受管图片的 `media://load/asset-image/` 也遵守此边界：协议在 App Server ready 后注册，通过当前实例认证的固定 HTTP 端点读取图片；资产归属和内容校验留在 Backend。不能在协议里调用数据库单例。详见 [Markdown 图片资产编排](../app-hosts/linnya/application/markdown-image-assets/README.md)。
 
 ## 修改地图

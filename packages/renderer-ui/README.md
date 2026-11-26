@@ -276,7 +276,7 @@ Escape 由 `/features/overlays` 的 document 级登记统一归属（自 3.12.0 
 
 ## 通知展示
 
-`NotificationBar` 是无状态的通知 presentation，只由 `visible`、`message`、`type` 和数值 `right` 控制。它保留 success/error/info/warning 的原有字符图标、DOM class、单行截断、过渡和 status 1000 层级，不读取 Pinia，不创建 timer，也不在卸载时触发关闭。
+`NotificationBar` 是无状态的通知 presentation，只由 `visible`、`message`、`type` 和数值 `right` 控制。它保留 success/error/info/warning 的原有字符图标、DOM class、过渡和 status 1000 层级；长提示折行（最宽 360px，图标对齐首行、续行与首行文字左对齐，最多 4 行后省略），单行提示的尺寸与原来一致，不读取 Pinia，不创建 timer，也不在卸载时触发关闭。
 
 Host notification feature 负责当前通知状态、自动关闭 orchestration 和 CharacterCount 避让位置；插件通过 Host workspace runtime 提交通知时也进入同一个 owner。独立 package consumer 可以直接渲染展示组件，但 package 不提供全局 toast queue 或业务错误解释。
 

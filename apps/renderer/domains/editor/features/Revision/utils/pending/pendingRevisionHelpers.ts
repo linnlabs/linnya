@@ -154,8 +154,8 @@ export async function buildTableRowsFromTableModel(
  * 从解析后的表格数据构建 ProseMirror 表格节点
  * 
  * 注意：
- * - 这里复用了表格节点的创建逻辑，确保与 tableCoreOperations 中的表格创建保持一致
- * - 列宽设置为默认 150px，与手动创建表格的行为一致
+ * - 单元格由 markdownRuntime 的共用物化函数创建，与整表解析路径一致
+ * - 不写列宽：GFM 表格没有列宽，待审投影要和接受后的数据库版本一样按内容自动排布
  */
 export async function buildTableRowsFromParsedTable(
   editor: PendingMarkdownEditor,

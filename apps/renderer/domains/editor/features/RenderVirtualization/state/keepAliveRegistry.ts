@@ -24,6 +24,8 @@ export const RENDER_VIRTUALIZATION_KEEP_ALIVE_REASONS = [
   'scroll-handshake',
   'table-ai',
   'table-column-resize',
+  // 表格行列菜单打开、拖动行列期间：与 interaction-open / table-column-resize / table-ai 互不释放。
+  'table-structure-edit',
 ] as const
 
 export type RenderVirtualizationKeepAliveReason =

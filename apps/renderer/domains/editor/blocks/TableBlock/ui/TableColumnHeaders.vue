@@ -1,20 +1,26 @@
 <template>
+  <!-- 轨道与表格等高（向上多一条列标高度），列标条在其中 sticky 贴住编辑区顶部，表格滚出去时随轨道离开。 -->
   <div
-    ref="floatingRef"
-    class="tt-table-column-headers"
-    :style="floatingStyle"
+    class="tt-table-column-headers-track"
+    :style="trackStyle"
   >
     <div
-      class="tt-table-column-headers-scroller"
-      :style="scrollerStyle"
+      ref="floatingRef"
+      class="tt-table-column-headers"
+      :style="floatingStyle"
     >
       <div
-        v-for="(width, index) in columnWidths"
-        :key="index"
-        class="tt-col-header-cell"
-        :style="{ width: `${width}px` }"
+        class="tt-table-column-headers-scroller"
+        :style="scrollerStyle"
       >
-        {{ columnIndexToLetters(index) }}
+        <div
+          v-for="(width, index) in columnWidths"
+          :key="index"
+          class="tt-col-header-cell"
+          :style="{ width: `${width}px` }"
+        >
+          {{ columnIndexToLetters(index) }}
+        </div>
       </div>
     </div>
   </div>
@@ -38,18 +44,6 @@ const props = defineProps({
     type: Number,
     default: 0
   },
-  scrollTop: {
-    type: Number,
-    default: 0
-  },
-  containerRect: {
-    type: Object,
-    required: true
-  },
-  tableElement: {
-    type: Object,
-    default: null
-  },
   visibleWidth: {
     type: Number,
     default: 0
@@ -62,13 +56,18 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  tableTopInContainer: {
+  layerOrigin: {
+    type: Object,
+    required: true
+  },
+  scrollPaddingTop: {
     type: Number,
     default: 0
   }
 })
 
 const floatingRef = ref(null)
+const trackStyle = ref({})
 const floatingStyle = ref({})
 const scrollerStyle = ref({})
 
@@ -77,28 +76,27 @@ const updatePosition = () => {
     columnWidths: props.columnWidths,
     tableRect: props.tableRect,
     scrollLeft: props.scrollLeft,
-    containerRect: props.containerRect,
     tableScrollContainerRect: props.tableScrollContainerRect,
     visibleWidth: props.visibleWidth,
-    hasScrollContainer: !!props.scrollContainer
+    hasScrollContainer: !!props.scrollContainer,
+    layerOrigin: props.layerOrigin,
+    scrollPaddingTop: props.scrollPaddingTop
   })
-
+  trackStyle.value = nextStyles.trackStyle
   floatingStyle.value = nextStyles.floatingStyle
   scrollerStyle.value = nextStyles.scrollerStyle
 }
 
 // 说明：定位由父级 controller 统一监听滚动 / resize / hydrate 后 DOM 重绑；
-// 子组件只消费测量结果，避免持有可能过期的 scrollContainer autoUpdate。
-
+// 子组件只消费测量结果。纵向滚动由浏览器带着轨道走，这里不必为 scrollTop 重算。
 watch([
   () => props.tableRect,
-  () => props.scrollTop,
   () => props.scrollLeft,
-  () => props.containerRect,
   () => props.columnWidths,
   () => props.visibleWidth,
   () => props.scrollContainer,
   () => props.tableScrollContainerRect,
-  () => props.tableTopInContainer
+  () => props.layerOrigin,
+  () => props.scrollPaddingTop
 ], updatePosition, { immediate: true, deep: true })
 </script>

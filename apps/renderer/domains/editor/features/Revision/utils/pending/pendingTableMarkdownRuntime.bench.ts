@@ -172,9 +172,9 @@ async function buildTableRowsFromParsedTableByNodeWasm(fixture: BenchmarkFixture
     throw new Error('table schema is incomplete for benchmark')
   }
 
-  const defaultColWidth = 150
+  // 与共用物化函数一致：GFM 表格不写列宽。
   const cellAttrs = {
-    colwidth: [defaultColWidth],
+    colwidth: null,
   }
 
   const buildCellContentNode = async (cellMarkdown: string) => {

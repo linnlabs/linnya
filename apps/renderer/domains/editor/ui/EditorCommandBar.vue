@@ -4,14 +4,14 @@
     class="editor-command-bar"
     :aria-label="editorMessage('editor.menu.label')"
   >
-    <ToolbarGroup>
+    <!-- 光标在表格里时，单元格放不下的块（标题、列表、引用、表格）直接隐藏，不再一排灰掉。 -->
+    <ToolbarGroup v-if="!isInTable">
       <div class="editor-command-bar__anchor">
         <ToolbarButton
           :active="isAnyHeadingActive || openMenu === 'heading'"
           :aria-expanded="openMenu === 'heading'"
-          :disabled="isInTable"
-          :label="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.headingLevel')"
-          :data-linnya-tooltip="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.headingLevel')"
+          :label="editorMessage('editor.menu.headingLevel')"
+          :data-linnya-tooltip="editorMessage('editor.menu.headingLevel')"
           @click="toggleMenu('heading')"
         >
           <span v-if="currentHeadingLevel" class="editor-command-bar__level">H{{ currentHeadingLevel }}</span>
@@ -35,14 +35,13 @@
       </div>
     </ToolbarGroup>
 
-    <ToolbarGroup>
+    <ToolbarGroup v-if="!isInTable">
       <div class="editor-command-bar__anchor">
         <ToolbarButton
           :active="isListActive || openMenu === 'list'"
           :aria-expanded="openMenu === 'list'"
-          :disabled="isInTable"
-          :label="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.list')"
-          :data-linnya-tooltip="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.list')"
+          :label="editorMessage('editor.menu.list')"
+          :data-linnya-tooltip="editorMessage('editor.menu.list')"
           @click="toggleMenu('list')"
         >
           <NumberedListIcon v-if="activeListType === 'ordered'" />
@@ -66,9 +65,8 @@
       </div>
       <ToolbarButton
         :active="editor.isActive('quoteBlock')"
-        :disabled="isInTable"
-        :label="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.quoteBlock')"
-        :data-linnya-tooltip="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.quoteBlock')"
+        :label="editorMessage('editor.menu.quoteBlock')"
+        :data-linnya-tooltip="editorMessage('editor.menu.quoteBlock')"
         @click="toggleQuoteBlock"
       >
         <QuoteIcon />
@@ -83,13 +81,15 @@
       >
         <ImageIcon />
       </ToolbarButton>
-      <div class="editor-command-bar__anchor">
+      <div
+        v-if="!isInTable"
+        class="editor-command-bar__anchor"
+      >
         <ToolbarButton
           :active="openMenu === 'table'"
           :aria-expanded="openMenu === 'table'"
-          :disabled="isInTable"
-          :label="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.insertTable')"
-          :data-linnya-tooltip="isInTable ? editorMessage('editor.common.unavailableInTable') : editorMessage('editor.menu.insertTable')"
+          :label="editorMessage('editor.menu.insertTable')"
+          :data-linnya-tooltip="editorMessage('editor.menu.insertTable')"
           @click="toggleMenu('table')"
         >
           <TableIcon />

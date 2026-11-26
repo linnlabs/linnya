@@ -3,6 +3,8 @@ import type { WorkspaceMarkdownPreview } from '@app/schemas';
 import { renderWorkspaceLatex } from './workspaceLatexPresentation';
 import { deriveCitations, getBibliographyStyleId, formatBibliographyAuthors, formatCitationDate, type CitationDerivationResult } from '../../workspace-citations';
 import { renderWorkspaceImageBlock, renderWorkspaceRootBlock, renderWorkspaceTextBlock } from './workspaceBlockPresentation';
+import { isCompactTableCellNode, WORKSPACE_TABLE_CLASS, WORKSPACE_TABLE_COMPACT_CELL_CLASS, workspaceTableStyleAttributes } from '../../workspace-table';
+import { documentReferenceLabel } from '../../../references';
 
 function string(node: ProseMirrorNode, key: string): string {
   const value: unknown = node.attrs[key];
@@ -33,9 +35,8 @@ function documentReference(node: ProseMirrorNode, content: WorkspaceMarkdownPrev
   const label = document.createElement('span');
   label.className = 'markdown-document-reference-label';
   label.setAttribute('data-document-reference-label', '');
-  label.textContent = presentation?.status === 'outside_project' ? (locale.startsWith('zh') ? '项目外文档' : 'Outside this project')
-    : presentation?.status === 'deleted' || !presentation ? (locale.startsWith('zh') ? '文档已删除' : 'Deleted document')
-    : presentation.title ?? (locale.startsWith('zh') ? '文档' : 'Document');
+  // 预览内容里查不到这条引用的展示信息，说明目标已经不在：与已删除同样显示。
+  label.textContent = documentReferenceLabel(presentation ?? { status: 'deleted', title: null }, locale);
   element.append(label);
   return element;
 }
@@ -63,6 +64,8 @@ function bibliography(citations: CitationDerivationResult, style: string, docume
 }
 function tableCell(node: ProseMirrorNode, document: Document) {
   const cell = document.createElement(node.type.name === 'tableHeader' ? 'th' : 'td');
+  // 与编辑器同一短格判定，两边分列一致。
+  if (isCompactTableCellNode(node)) cell.classList.add(WORKSPACE_TABLE_COMPACT_CELL_CLASS);
   for (const key of ['colspan', 'rowspan']) {
     const value: unknown = node.attrs[key];
     if (typeof value === 'number') cell.setAttribute(key, String(value));
@@ -110,7 +113,7 @@ export function createWorkspacePreviewSerializer(input: {
       if (string(node, 'src') && !source) throw new Error(`preview_image_resource_missing:${id || string(node, 'id')}`);
       return renderWorkspaceImageBlock(node, document, { imageSource: source ?? '', emptyImageLabel: locale.startsWith('zh') ? '未添加图片' : 'No image' });
     },
-    table: () => ['div', { class: 'workspace-preview-table' }, ['table', ['tbody', 0]]],
+    table: node => ['div', { class: 'workspace-preview-table' }, ['table', { class: WORKSPACE_TABLE_CLASS, ...workspaceTableStyleAttributes(node.attrs.tableStyle) }, ['tbody', 0]]],
     tableRow: () => ['tr', 0], tableCell: node => tableCell(node, document), tableHeader: node => tableCell(node, document),
     tableCellContentBlock: () => ['p', { class: 'table-cell-content-block' }, 0],
     documentReference: node => documentReference(node, content, document, locale, referenceIcon),

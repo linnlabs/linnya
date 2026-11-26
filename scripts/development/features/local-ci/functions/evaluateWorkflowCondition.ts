@@ -65,7 +65,7 @@ function resolveName(name: string, context: WorkflowConditionContext, source: st
   if (name === 'null') return null;
   if (name === 'runner.os') return context.runnerOs;
   // 本地全量按 main 的 push 事件直接运行每个工作流，workflow_call 的输入在这里为空。
-  if (name === 'inputs.architecture-only') return false;
+  if (name === 'inputs.architecture-only' || name === 'inputs.public-lint') return false;
   const matrix = /^matrix\.([\w-]+)$/u.exec(name);
   if (matrix) {
     const value = context.matrix[matrix[1]!];

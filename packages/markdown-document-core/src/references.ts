@@ -1,6 +1,23 @@
-import { InlineDocumentReferenceAttrsSchema, type DocumentReferenceInput, type DocumentReferenceMarkdownBinding, type JsonValue } from '@app/schemas';
+import { InlineDocumentReferenceAttrsSchema, type DocumentReferenceInput, type DocumentReferenceMarkdownBinding, type DocumentReferencePresentation, type JsonValue } from '@app/schemas';
 
 export type ReferenceJsonObject = { [key: string]: JsonValue };
+
+/**
+ * 文档引用标签上的文字，编辑器标签与只读预览（含画布卡片）共用这一份，不能各写一套：
+ * 目标已删除、在其他项目时说明状态，否则显示标题，没有标题时用通用的“文档”。
+ * 只区分中文与其他语言（其他语言用英文），与预览的 locale 约定一致。
+ */
+export function documentReferenceLabel(presentation: Pick<DocumentReferencePresentation, 'status' | 'title'>, locale: string): string {
+  const chinese = locale.startsWith('zh');
+  if (presentation.status === 'deleted') return chinese ? '文档已删除' : 'Deleted document';
+  if (presentation.status === 'outside_project') return chinese ? '其他项目的文档' : 'Document in another project';
+  return presentation.title ?? documentReferenceGenericLabel(locale);
+}
+
+/** 还不知道目标状态（编辑器正在查询）或目标没有标题时的通用文字。 */
+export function documentReferenceGenericLabel(locale: string): string {
+  return locale.startsWith('zh') ? '文档' : 'Document';
+}
 export function referenceObject(value: JsonValue | undefined): ReferenceJsonObject | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value) ? value : null;
 }

@@ -9,6 +9,7 @@ import {
   ConversationSelectedAgentIdSchema,
   ConversationControlSendRequestSchema,
   ConversationUiMessageSchema,
+  type ConversationHistoryListItem,
   type ConversationInteractionResponseRequest,
   type ConversationNextRequest,
   type ConversationUiMessage,
@@ -295,6 +296,8 @@ function fixture(
     auditAllowed?: boolean;
     tailMessages?: ReturnType<typeof activeInteractionMessage>[];
     attachmentImages?: ConversationControlUseCasePorts['attachmentImages'];
+    /** 依次分配的新会话 ID；用完后回到 conversation-1。 */
+    conversationIds?: readonly string[];
   } = {}
 ) {
   const commandApprovals = createCommandApprovalHost();
@@ -314,6 +317,10 @@ function fixture(
   const stopRequests: string[] = [];
   let finalAnswer: ReturnType<typeof finalAnswerMessage> | null = finalAnswerMessage();
   let conversationProjectId: string | null | undefined = 'project-1';
+  let clock = 115;
+  let nextConversationIndex = 0;
+  const cliSessions: ConversationHistoryListItem[] = [];
+  const cliSessionWrites: Array<{ conversationId: string; projectId: string; title: string }> = [];
 
   const ports: ConversationControlUseCasePorts = {
     ...(options.attachmentImages ? { attachmentImages: options.attachmentImages } : {}),
@@ -368,8 +375,8 @@ function fixture(
       },
     },
     runs: {
-      async findByConversation() {
-        return runs;
+      async findByConversation(conversationId) {
+        return runs.filter(item => item.conversationId === conversationId);
       },
     },
     executionProgress: {
@@ -428,8 +435,26 @@ function fixture(
       },
     },
     history: {
-      async list() {
-        return { conversations: [], has_more: false };
+      async list(query) {
+        return {
+          conversations: cliSessions.filter(item => !query.projectId || item.project_id === query.projectId),
+          has_more: false,
+        };
+      },
+      async materializeCliToolSession(input) {
+        cliSessionWrites.push({ ...input });
+        cliSessions.push({
+          conversation_id: input.conversationId,
+          title: input.title,
+          created_at: clock,
+          last_event_at: clock,
+          event_count: 0,
+          user_message_count: 0,
+          project_id: input.projectId,
+          is_pinned: false,
+          selected_agent_id: null,
+          origin: 'linnya_cli',
+        });
       },
       async readTail(conversationId) {
         return {
@@ -551,8 +576,8 @@ function fixture(
       level: 'off', trust: { packaged: options.auditAllowed === false },
       readRunLevel: async () => 'off', sink: { emit() {} },
     }),
-    createConversationId: () => 'conversation-1',
-    now: () => 115,
+    createConversationId: () => options.conversationIds?.[nextConversationIndex++] ?? 'conversation-1',
+    now: () => clock,
   };
 
   return {
@@ -564,6 +589,10 @@ function fixture(
     selectedAgentWrites,
     stopRequests,
     resumeRequests,
+    cliSessionWrites,
+    setNow(next: number) {
+      clock = next;
+    },
     setRuns(next: ConversationControlRunRecord[]) {
       runs = [...next];
     },
@@ -684,8 +713,13 @@ describe('conversation-control use case', () => {
     expect(response).toMatchObject({
       action: 'call',
       tool_name: 'write_file',
+      conversation_reused: false,
       receipt: { conversation_id: 'conversation-1', run_id: 'run-1' },
     });
+    // 新建的 CLI 会话在运行前带上标题与 Linnya CLI 入口标记。
+    expect(test.cliSessionWrites).toEqual([
+      { conversationId: 'conversation-1', projectId: 'project-1', title: expect.stringMatching(/^Linnya CLI · /) },
+    ]);
     expect(test.startRequests[0]).toMatchObject({
       conversation_id: 'conversation-1',
       project_id: 'project-1',
@@ -698,6 +732,39 @@ describe('conversation-control use case', () => {
         },
       },
     });
+  });
+
+  it('只给项目的连续 CLI 调用续用同一段会话；超时、new_session 或该会话正在运行时另起一段', async () => {
+    const test = fixture([], { conversationIds: ['cli-a', 'cli-b', 'cli-c', 'cli-d'] });
+    const call = { schema_version: 1, command: 'tools', action: 'call', tool_name: 'write_file',
+      args: { locator: 'workspace:/notes.md', content: '# Notes' }, project_id: 'project-1' } as const;
+
+    const first = await test.useCase.tools(call);
+    test.setRuns([run('completed', { conversationId: 'cli-a' })]);
+    test.setNow(115 + 29 * 60_000);
+    const second = await test.useCase.tools(call);
+    expect([first, second]).toMatchObject([
+      { conversation_reused: false, receipt: { conversation_id: 'cli-a' } },
+      { conversation_reused: true, receipt: { conversation_id: 'cli-a' } },
+    ]);
+    expect(test.cliSessionWrites).toHaveLength(1);
+
+    // 显式要求新会话：即使上一段仍可续用也新建。
+    test.setRuns([run('completed', { conversationId: 'cli-a' })]);
+    const fresh = await test.useCase.tools({ ...call, new_session: true });
+    expect(fresh).toMatchObject({ conversation_reused: false, receipt: { conversation_id: 'cli-b' } });
+
+    // 最近一段正在运行：不并进去也不排队，另起一段。
+    test.setRuns([run('running', { conversationId: 'cli-b' })]);
+    const parallel = await test.useCase.tools(call);
+    expect(parallel).toMatchObject({ conversation_reused: false, receipt: { conversation_id: 'cli-c' } });
+
+    // 超过 30 分钟没有活动：新建。
+    test.setRuns([]);
+    test.setNow(115 + 29 * 60_000 + 31 * 60_000);
+    const later = await test.useCase.tools(call);
+    expect(later).toMatchObject({ conversation_reused: false, receipt: { conversation_id: 'cli-d' } });
+    expect(test.cliSessionWrites.map(write => write.conversationId)).toEqual(['cli-a', 'cli-b', 'cli-c', 'cli-d']);
   });
 
   it('CLI 没有模型也接纳任何 read_file 读取，图片由调用方自己接收', async () => {

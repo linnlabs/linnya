@@ -1,1 +1,1 @@
-export { preserveInlinePresentation } from './functions/preserveInlinePresentation';
+export { preserveUserPresentation } from './functions/preserveUserPresentation';

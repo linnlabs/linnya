@@ -15,6 +15,7 @@ import {
   PendingRevisionApplyService,
   importPendingMarkdownRootBlock,
 } from 'src/domains/markdown';
+import { DocumentReferenceError } from 'src/domains/document-references';
 import type { BackendRuntimeOwner } from '../../../../../../app-hosts/linnya/backend-runtime/orchestration/backendRuntimeOwner';
 import { WorkspaceService } from '../../../../../services/workspace/workspace';
 import { Logger } from '../../../../../../shared/logger';
@@ -129,7 +130,16 @@ export function registerMarkdownDocumentHandlers(
       return { success: true, data: result };
     } catch (error: unknown) {
       logger.error('[workspace:commit-markdown-revision] Commit failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      const message = error instanceof Error ? error.message : String(error);
+      // 正文里新出现的引用指向已删除或其他项目的文档时，引用准入会拒绝整篇保存，之后每次自动保存都会失败。
+      // 这是用户能自己修的状态（删掉那个引用即可），所以给可读原因；其余引用错误是程序状态问题，保留原文便于排查。
+      if (error instanceof DocumentReferenceError && (error.code === 'target_not_found' || error.code === 'outside_project')) {
+        return createOperationFailure(message, createUserFacingMessage(
+          'workspace.fileManager.markdown.referenceNotSavable',
+          { diagnostic: message },
+        ));
+      }
+      return { success: false, error: message };
     }
   });
 

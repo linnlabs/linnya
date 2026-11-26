@@ -5,6 +5,7 @@ import {
   ProviderModelDiscoveryError,
   type ProviderDiscoveredModel,
 } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
+import type { ModelConfig } from 'src/domains/model-catalog';
 import { createProviderModelDiscoveryUseCase } from './createProviderModelDiscoveryUseCase';
 import { createModelPickerUseCase } from '../../model-picker';
 
@@ -18,7 +19,19 @@ const freshModel: ProviderModelDefinition = {
   capabilities: { image_input: true, tool_call: true, reasoning: true },
 };
 
-function fixture() {
+function catalogModel(id: string): ModelConfig {
+  return {
+    id,
+    model_name: id,
+    display_name: id,
+    description: '',
+    catalog_source: 'user',
+    capabilities: ['chat'],
+    ui_visibility: ['chat'],
+  };
+}
+
+function fixture(catalogModelIds: readonly string[] = ['existing']) {
   const configured = {
     id: 'configured-deepseek',
     provider_definition_id: 'deepseek',
@@ -26,13 +39,16 @@ function fixture() {
     models: [{ model_config_id: 'existing', provider_model_id: 'old-flash' }],
   };
   let currentConfigured: typeof configured | undefined = configured;
-  const resolveCredential = vi.fn(() => 'fixture-secret');
+  const resolveCredential = vi.fn((_modelConfigId: string) => 'fixture-secret');
   const discover = vi.fn<() => Promise<readonly ProviderDiscoveredModel[]>>();
   const discovery = createProviderModelDiscoveryUseCase({
     catalog: providerCatalog,
     bindings: providerOnboardingRuntimeBindingRegistry,
     configurations: { getByProviderConnectionDefinitionId: () => currentConfigured },
-    models: { resolveCredential },
+    models: {
+      getModel: id => (catalogModelIds.includes(id) ? catalogModel(id) : undefined),
+      resolveCredential,
+    },
     discovery: { supports: id => id === 'deepseek', discover },
   });
   return {
@@ -148,6 +164,24 @@ describe('正式 Provider 在线发现交接', () => {
     });
     await expect(target.discovery.refresh('deepseek')).rejects.toMatchObject({ statusCode: 409 });
     expect(target.discovery.read('deepseek')).toBeUndefined();
+  });
+
+  it('排在第一位的成员启动时停用，凭据取第一个仍在目录里的成员', async () => {
+    const target = fixture(['healthy']);
+    target.setConfigured({
+      ...target.configured,
+      models: [
+        { model_config_id: 'disabled-at-startup', provider_model_id: 'old-flash' },
+        { model_config_id: 'healthy', provider_model_id: 'new-flash' },
+      ],
+    });
+    target.discover.mockResolvedValue([{ status: 'available', definition: freshModel }]);
+
+    await target.discovery.refresh('deepseek');
+
+    expect(target.resolveCredential).toHaveBeenCalledWith('healthy');
+    expect(target.resolveCredential).not.toHaveBeenCalledWith('disabled-at-startup');
+    expect(target.discover).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'fixture-secret' }));
   });
 
   it('凭据不可用时明确失败，不把空 Key 发往供应商', async () => {

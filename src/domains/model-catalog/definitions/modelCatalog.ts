@@ -212,6 +212,18 @@ export interface ModelDiff {
 export type FunctionalModelDefaults = Record<string, string>;
 
 /**
+ * `user_models.json` 中启动时没有通过准入的用户模型。
+ *
+ * 它不进入运行目录，也不能被选择或调用；原始条目在之后的用户目录写盘中原样保留，
+ * 它引用的连接与凭据不会被回收。只暴露身份与原因，不暴露原始配置内容。
+ */
+export interface UnadmittedUserModel {
+  readonly id: string | undefined;
+  readonly inference_endpoint_id: string | undefined;
+  readonly reason: string;
+}
+
+/**
  * 模型注册表接口
  *
  * @description 定义了模型注册表的核心功能

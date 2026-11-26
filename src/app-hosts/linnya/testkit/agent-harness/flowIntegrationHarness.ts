@@ -170,6 +170,12 @@ export class InMemoryFlowEventStore implements IEventStore {
     return true;
   }
 
+  async materializeOriginConversation(input: { readonly conversationId: string }): Promise<void> {
+    if (!this.eventsByConversation.has(input.conversationId)) {
+      this.eventsByConversation.set(input.conversationId, []);
+    }
+  }
+
   async deleteConversation(conversationId: string): Promise<boolean> {
     return this.eventsByConversation.delete(conversationId);
   }

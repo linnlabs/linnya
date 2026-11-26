@@ -45,7 +45,6 @@ export interface TableSizeMeasurementOptions {
   editor: TableCoordinateHeaderEditor;
   tablePos: number;
   getCellRect: (editor: TableCoordinateHeaderEditor, cellDocPos: number) => RectMetrics | null;
-  forceDomMeasurement?: boolean;
   debug?: (message: string, payload?: unknown) => void;
 }
 
@@ -356,18 +355,19 @@ export function measureTableColumnWidths(options: TableSizeMeasurementOptions): 
         map,
         col,
       });
-      const colwidth = resolveColumnWidthFromDocument(targets, col);
-
-      if (colwidth !== null && options.forceDomMeasurement !== true) {
-        widths.push(colwidth);
-        options.debug?.(`Column ${col} width from doc colwidth: ${colwidth}px`);
-        continue;
-      }
-
+      // 列宽以实际渲染为准：没有存储列宽或只有部分列有存储宽度的表格按内容分列（共用表格呈现），
+      // 存储值不等于显示宽度。DOM 不可用（虚拟化占位、重建中）时才退回存储列宽。
       const domWidth = resolveColumnWidthFromDom(options, targets);
       if (domWidth !== null) {
         widths.push(domWidth);
         options.debug?.(`Column ${col} width from DOM: ${domWidth}px`);
+        continue;
+      }
+
+      const colwidth = resolveColumnWidthFromDocument(targets, col);
+      if (colwidth !== null) {
+        widths.push(colwidth);
+        options.debug?.(`Column ${col} width from doc colwidth: ${colwidth}px`);
       } else {
         options.debug?.(`Column ${col} using default width`);
         widths.push(DEFAULT_COLUMN_WIDTH);

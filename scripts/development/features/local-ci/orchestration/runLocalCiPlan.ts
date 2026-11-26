@@ -189,9 +189,7 @@ interface LaneState {
 }
 
 interface Running {
-  readonly lane: LaneState;
   readonly unit: LocalCiUnit;
-  readonly fingerprint: string;
   readonly promise: Promise<void>;
 }
 
@@ -319,17 +317,21 @@ export async function runLocalCiPlan(plan: LocalCiPlan, options: RunOptions): Pr
       }
       state.position += 1;
     });
-    running.set(fingerprint, { lane: state, unit, fingerprint, promise });
+    running.set(fingerprint, { unit, promise });
   };
 
   while (!options.signal.aborted) {
     states.forEach(settle);
     const waiting = states.filter(state => state.position < state.lane.units.length);
+    // 同一轮内一起就绪的步骤也要先去重，否则分配两个执行槽后才写 running，后者会覆盖前者。
+    const scheduled = new Set(running.keys());
     const ready = waiting.filter(state => {
       const unit = state.lane.units[state.position]!;
       const step = plan.steps[unit.steps[0]!]!;
-      // 同一命令正在别的线上执行：等它结束后复用。
-      return !running.has(localCiStepFingerprint(step, unit.command ?? step.command!)) && ![...running.values()].some(item => item.lane === state);
+      const fingerprint = localCiStepFingerprint(step, unit.command ?? step.command!);
+      if (scheduled.has(fingerprint)) return false;
+      scheduled.add(fingerprint);
+      return true;
     });
     const picks = pickLocalCiStarts({
       ready: ready.map(state => {

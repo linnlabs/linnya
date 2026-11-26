@@ -9,7 +9,7 @@ import { rebaseEditorDocument } from '../../../functions/rebaseEditorDocument';
 import { loadDocumentJsonAtomically } from '../../../services/editorDocumentStateLoader';
 import { bindDocumentSession, getDocumentSession, unbindDocumentSession, setDocumentSnapshot } from '../store/documentSessions';
 import type { MarkdownDocumentSession, MarkdownDocumentSessionPorts } from '../definitions/documentSession';
-import { DocumentReadFailedError } from '../definitions/documentReadFailedError';
+import { DocumentOperationFailedError } from '../definitions/documentOperationFailedError';
 
 function isCurrent(editor: Editor, session: MarkdownDocumentSession): boolean {
   return !editor.isDestroyed && getDocumentSession(editor) === session;
@@ -21,7 +21,7 @@ function samePending(left: MarkdownRevisionSnapshot, right: MarkdownRevisionSnap
 async function readSnapshot(documentId: string): Promise<MarkdownRevisionSnapshot> {
   const response = await workspaceGateway['read-document']({ documentId });
   // 保留后端给出的用户消息，打开入口据此说明是读取错误还是格式错误。
-  if (!response.success) throw new DocumentReadFailedError(response.error, response.userMessage);
+  if (!response.success) throw new DocumentOperationFailedError(response.error, response.userMessage);
   return MarkdownRevisionSnapshotSchema.parse(response.data);
 }
 async function installSnapshot(editor: Editor, session: MarkdownDocumentSession, snapshot: MarkdownRevisionSnapshot,
@@ -111,7 +111,8 @@ async function commitMarkdownDocument(editor: Editor, session: MarkdownDocumentS
         expectedPending: snapshot.pendingRevisions.map(({ id, revision }) => ({ id, revision })),
         baseline: baseline.toJSON(), ...(decision ? { decision } : {}),
       });
-      if (!response.success) throw new Error(response.error);
+      // 保留后端给出的用户消息：如正文里有指向已删除或其他项目文档的引用，保存入口据此告诉用户怎么修。
+      if (!response.success) throw new DocumentOperationFailedError(response.error, response.userMessage);
       if (!isCurrent(editor, session)) return;
       const committed = MarkdownRevisionSnapshotSchema.parse(response.data);
       const committedBaseline = parseEditorDocumentJson(committed.content, editor.schema);

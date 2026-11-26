@@ -32,6 +32,11 @@ export function previewParityFixture(document: Document) {
         root('quote', 'quoteBlock', { indent: 1 }, [text('引用缩进与颜色需要一致。')]),
         root('chart', 'chartBlock', { spec: { chartType: 'bar', title: '真实图表', categories: ['一月', '二月', '三月'], series: [{ name: '收入', values: [2, 4, 3] }] } }),
         root('table', 'table', {}, [{ type: 'tableRow', content: [{ type: 'tableHeader', attrs: { style: 'text-align:right', colwidth: [120] }, content: [{ type: 'tableCellContentBlock', content: [text('正式表格')] }] }] }]),
+        // 表格样式预设：强调表头的浅底在出图 worker（无 token）与宿主上要一致。
+        root('table-style', 'table', { tableStyle: 'accent-header' }, [
+          { type: 'tableRow', content: ['样式', '数值'].map(value => ({ type: 'tableHeader', content: [{ type: 'tableCellContentBlock', content: [text(value)] }] })) },
+          { type: 'tableRow', content: ['强调表头', '12.5'].map(value => ({ type: 'tableCell', content: [{ type: 'tableCellContentBlock', content: [text(value)] }] })) },
+        ]),
         root('citation', 'baseBlock', {}, [text('来源'), { type: 'citationNode', attrs: { citationId: 'cite-1', sourceId: 'source-1', sourceType: 'web', title: '用户可读的参考文献', authors: ['甲', '乙', '丙'], date: '2026-11-09', url: 'https://example.com/reference' } }]),
         root('bibliography', 'bibliographyBlock', {}),
         root('tail', 'baseBlock', {}, [text('文末验收标记 END')]),

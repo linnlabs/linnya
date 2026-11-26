@@ -63,6 +63,8 @@ scripts/release/
   functions/artifactBundleComponentMap.ts # build trace 到真实 artifact occurrence 的确定性映射
   ../build/bundle-trace/                 # Vite/esbuild/tsup/派生输出的外置构建 trace
   ../build/functions/productionPackageManifest.mjs # Desktop 最小生产 manifest 投影
+  ../build/definitions/productionRuntimeDependencies.mjs # 以 node_modules 形式随包的运行时依赖名单
+  ../guards/production-runtime-dependency-guard.mjs # 用成品脚本核对上面的名单（漏包、多包都失败）
   ../build/functions/productionPackageLock.mjs # npm v3 生产 lock 合同
   ../build/orchestration/updateProductionPackageLock.mjs # 生产 lock 更新/复核编排
   orchestration/generatePluginArtifactContentBom.ts # 从正式插件 ZIP 生成/复核内容 BOM
@@ -99,7 +101,7 @@ scripts/release/
 | `functions/pluginBundledRootContract.mjs`                      | 校验 bundled root 目录、manifest id 与预期 release target 集合完全一致                                                         | 正式随包准备与隔离 artifact smoke                                                                             |
 | `orchestration/verifyPluginArtifactRuntime.ts`                 | 用显式 bundled root 加载本次 artifact 的真实 backend contribution                                                              | 被隔离 artifact smoke 调用                                                                                    |
 | `upload-plugin-artifact.mjs`                                   | schema 校验、immutable zip 检查、上传 R2、从公网回读校验                                                                       | `pnpm run release:plugin:<id>:upload`                                                                         |
-| `generate-plugin-catalog.mjs`                                  | 从官方插件 artifact 生成待签名 catalog payload（需 `LINNYA_PLUGIN_CATALOG_SEQUENCE`；签名与上传在 linnya-release）            | `pnpm run release:plugin:catalog:generate`                                                                    |
+| `generate-plugin-catalog.mjs`                                  | 从官方插件 artifact 生成待签名 catalog payload（需 `LINNYA_PLUGIN_CATALOG_SEQUENCE`；签名与上传在受保护的发布环境完成）            | `pnpm run release:plugin:catalog:generate`                                                                    |
 | `packages/schemas/src/plugins/catalog.ts`                      | catalog 公共结构与解析合同                                                                                                     | 发布生成器与后续 Host catalog runtime 共用                                                                    |
 | `smoke-official-plugins-r2.test.ts`                            | 从公网下载所有官方插件，安装、激活、执行 migration、校验 owned tables                                                          | `LINNYA_R2_SMOKE=1 pnpm run smoke:plugins:official:r2`                                                        |
 

@@ -24,7 +24,6 @@
           'is-selector-interacting': isSelectorInteracting,
           'is-disabled': isInputDisabled,
           'has-input-accessories': visibleInputAccessories.length > 0,
-          'is-model-setup-required': isModelSetupRequired,
         }"
       >
         <component

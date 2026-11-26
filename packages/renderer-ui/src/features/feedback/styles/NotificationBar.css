@@ -3,9 +3,12 @@
   bottom: 10px;
   z-index: var(--linnya-ui-layer-status);
   display: flex;
-  align-items: center;
-  max-width: 300px;
+  /* 长提示折行：图标跟首行对齐，续行与首行文字左对齐（不缩到图标下面）。 */
+  align-items: flex-start;
+  max-width: 360px;
   padding: calc(var(--space-1-5) - 1px) var(--space-2-5);
+  /* 图标与正文的行高比例写死在这里，下面正文首行的下移量按它算。 */
+  line-height: var(--line-height-normal);
   color: var(--color-text-primary);
   pointer-events: none;
   background-color: color-mix(in srgb, var(--color-bg-surface) 90%, transparent);
@@ -30,11 +33,21 @@
 }
 
 .notification-content {
+  display: -webkit-box;
   flex-grow: 1;
+  min-width: 0;
+
+  /* 图标字号大于正文，首行下移两者行盒差的一半，单行时与原来的上下居中完全一致。 */
+  margin-top: calc((var(--font-size-body) - var(--font-size-caption)) * var(--line-height-normal) / 2);
   overflow: hidden;
   font-size: var(--font-size-caption);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+
+  /* 文案通常 1–3 行；后台原文等超长内容最多 4 行，避免通知条盖住大片界面。 */
+  line-clamp: 4;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 }
 
 .notification-type-success {

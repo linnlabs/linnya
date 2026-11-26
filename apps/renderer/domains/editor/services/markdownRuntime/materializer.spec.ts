@@ -160,6 +160,40 @@ describe('markdownRuntime materializer', () => {
     expect(() => workspaceMarkdownSchemaLite.nodeFromJSON(docJson as never)).not.toThrow()
   })
 
+  it('GFM 表格物化后不写列宽、保留列对齐，与接受后的数据库版本一样按内容自动排布', () => {
+    const rows = buildTableRowsFromTableModel(
+      {
+        with_header_row: true,
+        alignments: ['left', 'right'],
+        header: [
+          { content: [{ type: 'text', text: '名称', marks: [] }] },
+          { content: [{ type: 'text', text: '金额', marks: [] }] },
+        ],
+        rows: [
+          {
+            cells: [
+              { content: [{ type: 'text', text: '桌面端', marks: [] }] },
+              { content: [{ type: 'text', text: '1,200', marks: [] }] },
+            ],
+          },
+        ],
+      },
+      workspaceMarkdownSchemaLite
+    )
+
+    const cells = (rows ?? []).flatMap(row => {
+      const rowCells: Array<{ colwidth: unknown; align: unknown }> = []
+      row.forEach(cell => rowCells.push({ colwidth: cell.attrs.colwidth, align: cell.attrs.align }))
+      return rowCells
+    })
+    expect(cells).toEqual([
+      { colwidth: null, align: 'left' },
+      { colwidth: null, align: 'right' },
+      { colwidth: null, align: 'left' },
+      { colwidth: null, align: 'right' },
+    ])
+  })
+
   it('allows callers to hydrate table cell projection before node materialization', () => {
     const rows = buildTableRowsFromTableModel(
       {

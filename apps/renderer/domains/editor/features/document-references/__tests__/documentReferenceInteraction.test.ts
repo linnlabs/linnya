@@ -263,7 +263,7 @@ describe('document reference interaction', () => {
     vi.mocked(f.value.resolve).mockResolvedValue({ ...presentation, title: null, status: 'deleted' });
     f.changed.current();
     await vi.advanceTimersByTimeAsync(0);
-    expect(view.dom.textContent).toBe('Unavailable');
+    expect(view.dom.textContent).toBe('Deleted document');
     vi.mocked(f.value.resolve).mockResolvedValue({ ...presentation, title: null, status: 'outside_project' });
     f.changed.current();
     await vi.advanceTimersByTimeAsync(0);
@@ -282,19 +282,19 @@ describe('document reference interaction', () => {
     vi.mocked(f.value.resolve).mockResolvedValue({ ...presentation, title: null, status: 'deleted' });
     const view = createDocumentReferenceNodeView('target', 'ref', f.value);
     document.body.append(view.dom);
-    await vi.waitFor(() => expect(view.dom.textContent).toBe('已失效'));
+    await vi.waitFor(() => expect(view.dom.textContent).toBe('文档已删除'));
     const store = useLocalizationStore();
     store.setCurrentLocale('en-US');
     await nextTick();
-    expect(view.dom.textContent).toBe('Unavailable');
-    expect(view.dom.getAttribute('aria-label')).toBe('Unavailable');
+    expect(view.dom.textContent).toBe('Deleted document');
+    expect(view.dom.getAttribute('aria-label')).toBe('Deleted document');
     store.setCurrentLocale('zh-CN');
     await nextTick();
-    expect(view.dom.textContent).toBe('已失效');
+    expect(view.dom.textContent).toBe('文档已删除');
     view.destroy();
     store.setCurrentLocale('en-US');
     await nextTick();
-    expect(view.dom.textContent).toBe('已失效');
+    expect(view.dom.textContent).toBe('文档已删除');
   });
   it('预览挂载失败时浮层里给可读提示，内部原因只交给日志', async () => {
     vi.useFakeTimers();

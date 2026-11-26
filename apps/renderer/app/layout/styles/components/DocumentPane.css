@@ -12,21 +12,32 @@
 /* 命令条在文档底部居中，与右下字数同一底边；正文底部本来留有半屏空白，最后一行能滚到命令条上方。 */
 .document-pane__command-bar {
   position: absolute;
-  bottom: 12px;
+  bottom: var(--document-pane-dock-inset);
   left: 50%;
   z-index: 2;
   transform: translateX(-50%);
 }
 
 .document-pane__body {
+  /* 底部浮条共用的贴底距离；命令条高度由 DocumentPane.vue 实测后写入。 */
+  --document-pane-dock-inset: 12px;
+  --document-pane-bottom-reserve: 0px;
+
   position: relative;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
+/* 命令条显示时，其它底部浮条（如修订工具条）至少离底这么多，叠在命令条上方，不被它挡住按钮。 */
+.document-pane__body:has(> .document-pane__command-bar) {
+  --document-pane-bottom-reserve: calc(
+    var(--document-pane-dock-inset) + var(--document-pane-command-bar-height) + var(--space-2)
+  );
+}
+
 .document-pane__character-count {
   position: absolute;
   right: 16px;
-  bottom: 12px;
+  bottom: var(--document-pane-dock-inset);
 }

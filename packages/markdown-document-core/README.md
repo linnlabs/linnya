@@ -24,7 +24,7 @@ Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因
 
 受管 image 可以携带可选的 `assetId`（字符串或 null），与 src 分开。DOM 使用 `data-asset-id` 保存身份，Host 可据此将展示地址替换为已接纳图片字节；本包不查资产库、不推断 URL 身份或执行接管。Markdown 的图片源地址仍由调用方准备，写回时的受管身份绑定由 Host 负责。
 
-`./references` 是仅依赖 schemas 的纯 JSON 链接/稳定引用变换入口，供 Backend 与 Revision 复用已准入 Pending 身份；它不加载 Tiptap、DOM 或路径解析。`assertPortableMarkdownDocument` 使用本包唯一 canonical schema 做严格结构校验，Backend 不应另外构造近似 schema。
+`./references` 是仅依赖 schemas 的纯 JSON 链接/稳定引用变换入口，供 Backend 与 Revision 复用已准入 Pending 身份；它不加载 Tiptap、DOM 或路径解析。引用标签上的文字（已删除、在其他项目、标题或通用“文档”）也只在这里定义一次（`documentReferenceLabel`），本包预览与编辑器标签共用，改文案只改这一处。`assertPortableMarkdownDocument` 使用本包唯一 canonical schema 做严格结构校验，Backend 不应另外构造近似 schema。
 
 ## 正式 Workspace 正文预览
 
@@ -39,6 +39,16 @@ Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因
 - `./workspace-citations` 拥有引用去重、编号和参考文献派生/格式化。稳定文档引用只显示静态身份和标题，不递归挂载其他预览。
 - 行内文档引用（`@`）的外观只在 `./style.css` 定义一次，预览 CSS 不另行覆盖；颜色只取 currentColor，随纸色与主题变化，渲染 worker 无 Host token 也能正确绘制。标签图标位与编辑器、画布同一 DOM 合同，本包不带图标资源：调用方经可选 `referenceIcon` 提供图标节点，在量高前就位；缺省只显示标题。
 - 链接保持用户可读外观，点击不直接导航；文档打开和预览交互由统一外壳负责。dispose 或 abort 立即移除测量 DOM 和已交付正文，不留下异步复活的旧内容。
+
+## 正式 Workspace 表格呈现
+
+`./workspace-table` 与 `./workspace-table.css` 是 Workspace 表格唯一的外观合同，编辑器（编辑与阅读）、只读预览与画布卡片、PDF 共用；选择器只认 `table.table-block`，不依赖 `.ProseMirror`，编辑器只在其上叠加交互层。
+
+- 外观：表头下实线、行间浅线，不画竖线与外框（有合并单元格时补浅竖线）；表头浅底、600 字重、默认左对齐；单元格字号为正文 × 0.875（预览以 `--workspace-table-font-size: 1em` 保持 14px），行高 1.55，等宽数字。颜色取 Renderer UI 语义 token，缺 token 的出图 worker 与 PDF 用 currentColor 兜底。
+- 列宽：存了 colwidth 的列尊重存储宽度；其余按内容自动分列，最多到正文栏宽度，短表不拉满。`isCompactTableCellNode` / `isCompactTableCellElement` 判定短格（单个内容块、只有文字与行内 mark、单行、估算不超过 8em），短格加 `table-cell--compact` 不断行；长文本列最小 9em。
+- 分级退让 `fitWorkspaceTable`：normal → tight（左右内边距 8px、长文本最小 6em）→ 交互表面 scroll（横向滚动，右侧渐隐）或纸面 wrap（字号降一档、去掉存储列宽、从最宽的列开始逐列放开短格直到放得下）。结果只写在 `<table>` 的 `data-table-fit` / `data-table-scroll` 上，不进入文档；判定用布局宽度，缩放的画布卡片结果不变。`observeWorkspaceTableFit` 供交互表面持续定级（下一帧执行，避免 ResizeObserver 同帧循环），`fitStaticWorkspaceTable` 供静态预览定级一次。
+- 样式预设：table 节点的 `tableStyle` 取 `WORKSPACE_TABLE_STYLES`（默认、三线表、列分割线、全框线、斑马纹、强调表头），正式 schema 校验枚举。各表面只在非默认时给 `<table>` 写 `data-table-style`（`workspaceTableStyleAttributes` / `applyWorkspaceTableStyle`），无法识别的值按默认显示。预设只换线、表头与行底色，字号、内边距、短格与分级退让不变；底色只改变量或叠 `background-image`，编辑器的悬停、选区与 AI 列底色照常可见。三线表粗线、斑马纹与强调表头的颜色变量为 `--workspace-table-frame-rule` / `--workspace-table-band-wash` / `--workspace-table-accent-wash`，只读预览接自己的颜色（出图 worker 没有 token）。
+- 本包不读写对齐；`align` 与单元格 style 中的 `text-align` 仍由各表面按原样输出。
 
 验证入口：`pnpm --dir packages/markdown-document-core typecheck`；仓库根运行 `pnpm exec vitest run packages/markdown-document-core/src apps/renderer/domains/editor/features/chart-reading apps/renderer/domains/editor/features/citation apps/renderer/domains/editor/core/extensionRegistry.conformance.test.ts src/domains/markdown/features/normalization`。DOM 业务测试覆盖真实 ECharts SSR、公式、引用、受管/历史图片、屏下资源跳过与中途取消；实际字体、换行、主题和静态/详情一致性仍须在浏览器验收。
 

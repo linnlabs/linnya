@@ -198,6 +198,12 @@ export interface ConversationControlHistoryPort {
     selectedAgentId: ConversationSelectedAgentId,
     projectId?: string
   ): Promise<boolean>;
+  /** CLI 工具调用新建的会话：运行前写入身份行、标题与 Linnya CLI 入口标记。 */
+  materializeCliToolSession(input: {
+    readonly conversationId: string;
+    readonly projectId: string;
+    readonly title: string;
+  }): Promise<void>;
 }
 
 export interface ConversationControlToolCatalogPort {

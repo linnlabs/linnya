@@ -105,7 +105,7 @@ const main = async () => {
     downloadRootUrl: process.env.LINNYA_PLUGIN_RUNTIME_DOWNLOAD_ROOT_URL ?? 'https://download.linnya.com/plugins',
     plugins,
   });
-  // 待签名 payload：序号由发布方给出，linnya-release 签名时再对照线上 catalog 核对必须递增。
+  // 待签名 payload：序号由发布方给出，发布环境签名时再对照线上 catalog 核对必须递增。
   const payload = buildSignedPluginCatalogPayload({
     channel,
     sequence: readPositiveInteger('LINNYA_PLUGIN_CATALOG_SEQUENCE'),

@@ -2,6 +2,7 @@ import { createVNode, render, watch } from 'vue';
 import { DocumentIcon } from '@linnya/renderer-ui/icons';
 import type { DocumentReferencePresentation } from '@app/schemas';
 import { useLocalizationStore } from '@app/localization';
+import { documentReferenceGenericLabel, documentReferenceLabel } from '@linnya/markdown-document-core/references';
 import type { DocumentReferenceUiPort } from '../definitions/documentReferenceUi';
 import type { RegisterEditorFocusPortal } from '@/domains/editor/shared/focus';
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage';
@@ -29,7 +30,6 @@ export function createDocumentReferenceNodeView(
   const label = document.createElement('span');
   label.className = 'markdown-document-reference-label';
   label.dataset.documentReferenceLabel = '';
-  label.textContent = resolveCurrentEditorMessage('editor.documentReference.label.default');
   dom.append(icon, label);
   let iconType: string | null = null;
   let presentation: DocumentReferencePresentation | null = null;
@@ -60,15 +60,11 @@ export function createDocumentReferenceNodeView(
     panel?.remove();
     detail?.();
   }
-  // 标题以外的通用文字（文档、已失效、其他项目的文档）按当前界面语言显示，切换语言时重画。
+  // 标签文字取自 markdown-document-core，与只读预览、画布卡片同一份，不在编辑器词条里另写一套；
+  // 还没查到目标时先显示通用的“文档”。按当前界面语言显示，切换语言时重画。
   function paintLabel() {
-    const status = presentation?.status;
-    label.textContent =
-      status === 'deleted'
-        ? resolveCurrentEditorMessage('editor.documentReference.label.deleted')
-        : status === 'outside_project'
-          ? resolveCurrentEditorMessage('editor.documentReference.label.outsideProject')
-          : (presentation?.title ?? resolveCurrentEditorMessage('editor.documentReference.label.default'));
+    const locale = useLocalizationStore().currentLocale;
+    label.textContent = presentation ? documentReferenceLabel(presentation, locale) : documentReferenceGenericLabel(locale);
     dom.setAttribute('aria-label', label.textContent);
   }
   async function refresh() {
@@ -165,6 +161,7 @@ export function createDocumentReferenceNodeView(
     close();
     void refresh().catch(port.report);
   });
+  paintLabel();
   const stopLocaleWatch = watch(() => useLocalizationStore().currentLocale, paintLabel);
   void refresh().catch(port.report);
   return {

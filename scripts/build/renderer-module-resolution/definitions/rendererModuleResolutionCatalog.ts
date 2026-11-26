@@ -87,6 +87,11 @@ export const RENDERER_MODULE_RESOLUTION_CATALOG = [
     'exact'
   ),
   browser(
+    '@linnya/markdown-document-core/workspace-table',
+    'packages/markdown-document-core/src/features/workspace-table/index.ts',
+    'exact'
+  ),
+  browser(
     '@linnya/markdown-document-core/workspace-presentation',
     'packages/markdown-document-core/src/features/workspace-preview/functions/workspaceBlockPresentation.ts',
     'exact'

@@ -462,7 +462,13 @@ export function useSidebarChatList(
 
   const handleTogglePinned = async (conversation: ConversationListItem): Promise<void> => {
     const nextPinned = conversation.is_pinned !== true;
-    await historyListStore.updatePinned(conversation.conversation_id, nextPinned);
+    try {
+      await historyListStore.updatePinned(conversation.conversation_id, nextPinned);
+    } catch (error: unknown) {
+      // 列表状态只在后端确认后更新，失败时原样保留；告诉用户这次没有生效。
+      console.error('[SidebarChatList] 更新置顶状态失败:', error);
+      notificationStore.show(conversationMessage('conversation.sidebar.pinFailed'), 'error', 4000);
+    }
   };
 
   const startRename = (conversation: ConversationListItem): void => {
