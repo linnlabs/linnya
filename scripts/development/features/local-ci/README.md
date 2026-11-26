@@ -17,6 +17,8 @@
 - **Canvas 制品只打包一次**：干净全量运行中，官方插件生命周期和 Canvas 专项隔离验收使用同一份 Canvas 制品。打包与产物门禁成功后记录本轮 SHA-512，两套验收各自创建隔离目录并检查实际 ZIP。单独运行 Canvas 工作流、直接调用专项 smoke 或使用 `--in-place`、`--working-copy` 时仍从头准备。
 - **并行但不放松**：任务之间按声明的调度类别并行，任务内部仍按工作流顺序执行；测试分片合并为一次多 worker 运行。见下文“并行与串行”。
 - **证据**：失败任务的 `upload-artifact` 路径会从干净检出复制到日志目录。
+- **失败摘要**：每个真正执行并失败的步骤，在回执里带一份有长度上限的 `failureDigest`，终端也打印它，代替整段日志末尾。内容是失败用例、断言消息和报错位置（只读 vitest 在全部用例跑完后输出的失败段落，测试自己打印的错误与警告不会混进来）、步骤日志末尾若干行，以及两个诊断信号：`networkFailure`（构建脚本重试用尽后写下的 `[network-failure]` 标记，见[构建与测试](../../../../docs/development/build-and-test.md)）和隔离重跑结果。失败类别直接看步骤的调度类别 `kind`，不另做日志分类。
+- **失败用例隔离重跑（只做诊断）**：合并测试失败、且解析出的失败文件不超过 10 个时，等所有步骤结束、机器上没有其他步骤在跑，再用同一条 vitest 命令、1 个 worker 把这些文件串行跑一次，结果记在该步骤摘要的 `isolatedRerun`。本轮结论不变，仍判失败：重跑通过说明多半是负载下的偶发，反复出现就把它改为独占执行；仍失败说明是确定性失败。
 
 ## 平台怎么取舍
 
@@ -59,7 +61,7 @@ pnpm run ci:local --test-workers 8       # 合并测试的 vitest worker 数
 
 默认并行上限 4，合并测试的 worker 数为“核数 - 6”（至少 2），给并行的源码检查和系统留出余量；也可用环境变量 `LINNYA_CI_LOCAL_CONCURRENCY`、`LINNYA_CI_LOCAL_TEST_WORKERS` 设置，命令行参数优先。
 
-日志在 `_dev_data/ci-local/<时间>/`：每个执行步骤一个日志文件，`summary.json` 记录全部结果；失败时终端打印日志末尾。有失败或中断时退出码为 1。`summary.json` 的 `tree` 按代码内容标识被测提交，`fullRun` 表示没有用 `--workflow` / `--job` 缩小范围且计划里每一步都有结果，`passed` 表示没有失败也没有中断；`clean`、`fullRun`、`passed` 同时为真，才说明全部本地 CI 在这份代码上通过。`Ctrl+C` 会停掉所有正在运行的步骤并回收临时检出。运行被强制结束（`SIGKILL`、agent 停掉后台任务）时来不及回收；下一次启动会先回收进程已退出、又没用 `--keep` 保留的检出（每份约 1.6 GB）。
+日志在 `_dev_data/ci-local/<时间>/`：每个执行步骤一个日志文件，`summary.json` 记录全部结果；失败时终端打印失败摘要。有失败或中断时退出码为 1。`summary.json` 的 `tree` 按代码内容标识被测提交，`fullRun` 表示没有用 `--workflow` / `--job` 缩小范围且计划里每一步都有结果，`passed` 表示没有失败也没有中断；`clean`、`fullRun`、`passed` 同时为真，才说明全部本地 CI 在这份代码上通过。`Ctrl+C` 会停掉所有正在运行的步骤并回收临时检出。运行被强制结束（`SIGKILL`、agent 停掉后台任务）时来不及回收；下一次启动会先回收进程已退出、又没用 `--keep` 保留的检出（每份约 1.6 GB）。
 
 ## 结果保留
 
@@ -80,5 +82,6 @@ pnpm run ci:local --test-workers 8       # 合并测试的 vitest worker 数
 - `functions/pickLocalCiStarts.ts`：按类别决定下一批启动哪些步骤；worker 数与并行上限的取值。
 - `orchestration/prepareLocalCiCheckout.ts`：临时干净检出。
 - `definitions/localCiRetention.ts`、`functions/selectLocalCiRunsToPrune.ts`、`orchestration/pruneLocalCiRuns.ts`：运行结果保留规则、纯函数判定与实际清理。
-- `orchestration/runLocalCiPlan.ts`：并行执行、日志、去重、进程回收、证据复制。
+- `definitions/localCiFailureDigest.ts`、`functions/summarizeLocalCiFailure.ts`：失败摘要的结构、长度上限，以及从步骤日志生成摘要的纯函数。
+- `orchestration/runLocalCiPlan.ts`：并行执行、日志、去重、进程回收、证据复制、失败摘要与隔离重跑。
 - `bin/local-ci.ts`：命令入口与汇总输出。

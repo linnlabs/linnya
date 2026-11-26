@@ -14,6 +14,8 @@ const {
   readHeadlessNodeRuntimeCatalog,
   resolveHeadlessNodeRuntimeTarget,
 } = require('../definitions/headless-node-runtime-catalog.cjs');
+const { describeTransientFetchError } = require('../../functions/transientNetworkFailure.cjs');
+const { retryTransientNetwork } = require('../../orchestration/retryTransientNetwork.cjs');
 
 const NODE_DISTRIBUTION_BASE_URL = 'https://nodejs.org/dist';
 const HEADLESS_NODE_RUNTIME_MANIFEST_FILE_NAME = 'runtime-manifest.json';
@@ -52,11 +54,18 @@ async function downloadArchive(input) {
   }
   if (cachedBytes) await fsp.rm(input.cachePath, { force: true });
 
-  const response = await fetch(input.sourceUrl, { redirect: 'follow' });
-  if (!response.ok) {
-    throw new Error(`下载 Headless Node runtime 失败：HTTP ${response.status}`);
-  }
-  const bytes = Buffer.from(await response.arrayBuffer());
+  // 只有断线、超时这类临时传输错误会重试；HTTP 错误和下面的校验不符当场失败。
+  const bytes = await retryTransientNetwork({
+    label: '下载 Headless Node runtime',
+    describeTransient: describeTransientFetchError,
+    attempt: async () => {
+      const response = await fetch(input.sourceUrl, { redirect: 'follow' });
+      if (!response.ok) {
+        throw new Error(`下载 Headless Node runtime 失败：HTTP ${response.status}`);
+      }
+      return Buffer.from(await response.arrayBuffer());
+    },
+  });
   const actualSha256 = sha256(bytes);
   if (actualSha256 !== input.expectedSha256) {
     throw new Error(

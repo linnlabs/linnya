@@ -75,6 +75,12 @@ Qdrant 与 Headless Node 按各自锁定目录准备。已安装 Node 的 manife
 通过正式 runtime resolver 校验后直接复用；宿主目标还验证实际 Node 版本。损坏或版本变化才重新准备，不能仅凭文件存在跳过校验。
 这些准备只发生在源码开发或打包阶段；Desktop 安装包通过 `extraResources` 携带已经校验的独立 runtime，最终用户启动应用时不再下载。
 
+runtime 下载与生产依赖安全审计访问网络时，只对可识别的临时传输错误（连接被拒或被重置、超时、DNS 暂时失败）
+重试两次，间隔 5 秒、15 秒；HTTP 错误、证书错误、归档校验不符和审计查出的漏洞都当场失败。重试用尽后日志里写一行
+`[network-failure]`，本地 CI 的失败摘要据此把这一步标为网络原因。判定在
+[`transientNetworkFailure.cjs`](../../scripts/build/functions/transientNetworkFailure.cjs)，重试在
+[`retryTransientNetwork.cjs`](../../scripts/build/orchestration/retryTransientNetwork.cjs)。
+
 App Server ready 仍要求本地数据库、目录恢复和正式路由可用；账号的远端模型目录刷新在此后由 Backend owner
 后台执行，完成后通知 Renderer 重读目录。上游网络慢不会阻塞开窗。设置页面按实际进入的 Tab 加载；Vite 不监听运行数据与隐藏窗口生成物，避免写日志或 worker 构建触发主页面重载。
 
