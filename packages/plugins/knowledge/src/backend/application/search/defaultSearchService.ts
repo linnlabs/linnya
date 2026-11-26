@@ -26,6 +26,7 @@ import type { MetadataRepository } from '../../infrastructure/metadataRepository
 import type { SotRepository } from '../../infrastructure/sotRepository';
 import type { KnowledgeGraphRepository } from '../../graph/infrastructure/knowledgeGraphRepository';
 import { formatSearchResultsForLLM } from '../../utils/searchUtils';
+import { KnowledgeBaseNotFoundError } from '../../definitions/knowledgeBaseErrors';
 
 import type {
   RankedRetrievedPoint,
@@ -78,7 +79,7 @@ export class DefaultSearchService implements SearchService {
 
   private async hasDocuments(kbId: string): Promise<boolean> {
     if (!(await this.metadataRepository.getKnowledgeBaseById(kbId))) {
-      throw new Error(`找不到知识库: ${kbId}`);
+      throw new KnowledgeBaseNotFoundError(kbId);
     }
     const counts = await this.metadataRepository.getDocumentCountsByKnowledgeBaseIds([kbId]);
     return (counts[kbId] ?? 0) > 0;

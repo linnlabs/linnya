@@ -37,7 +37,7 @@ export function readKnowledgeVectorStartupFailureKind(error: unknown): Knowledge
 
 const KNOWLEDGE_VECTOR_STARTUP_MESSAGES: Readonly<Record<KnowledgeVectorStartupFailureKind, string>> = {
   'runtime-missing': '知识库所需的 Qdrant 运行时缺失或已损坏：请在插件商店卸载知识库（保留资料）后重新安装，以补齐运行时。',
-  'data-directory-too-long': '知识库数据目录的路径太长，Windows 上的向量库无法在其中建立索引：请把环境变量 LINNYA_WORKSPACE_DIR 指向更短的目录，或换用名字更短的 Windows 用户目录，然后重启 Linnya。',
+  'data-directory-too-long': '知识库数据目录的路径太长，Windows 上的向量库无法在其中建立索引：请把环境变量 LINNYA_WORKSPACE_DIR 指向更短的目录，或换用名字更短的 Windows 用户目录，然后重启 Linnya。原有数据不会自动搬到新目录。',
   'startup-failed': '知识库向量服务未能启动：请在插件商店停用并重新启用知识库；若仍失败，请重启 Linnya。',
 };
 
@@ -47,7 +47,7 @@ const KNOWLEDGE_VECTOR_STARTUP_MESSAGES: Readonly<Record<KnowledgeVectorStartupF
  */
 const KNOWLEDGE_VECTOR_STARTUP_TOOL_MESSAGES: Readonly<Record<KnowledgeVectorStartupFailureKind, string>> = {
   'runtime-missing': 'Knowledge search is unavailable: the Qdrant runtime that Knowledge Base needs is missing or damaged. Retrying will not help. Tell the user to uninstall Knowledge Base in the plugin store (keeping data) and install it again.',
-  'data-directory-too-long': 'Knowledge search is unavailable: the Knowledge Base data folder path is too long for the vector store on Windows. Retrying will not help. Tell the user to point the LINNYA_WORKSPACE_DIR environment variable to a shorter folder (or use a Windows user folder with a shorter name), then restart Linnya.',
+  'data-directory-too-long': 'Knowledge search is unavailable: the Knowledge Base data folder path is too long for the vector store on Windows. Retrying will not help. Tell the user to point the LINNYA_WORKSPACE_DIR environment variable to a shorter folder (or use a Windows user folder with a shorter name), then restart Linnya. Existing data is not moved to the new folder automatically.',
   'startup-failed': 'Knowledge search is unavailable: the knowledge vector service failed to start. Retrying will not help. Tell the user to disable and re-enable Knowledge Base in the plugin store; if it still fails, restart Linnya.',
 };
 

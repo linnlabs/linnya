@@ -25,6 +25,12 @@ import {
 import { validatePdfOcrUploadPageLimit } from '../../ingestion/functions/pdfOcrUploadPageLimit';
 import { KnowledgeVectorStartupError, type KnowledgeVectorStartupFailureKind } from '../../infrastructure/vector-store/errors';
 import { KnowledgeSearchEmbeddingError } from '../../application/search/knowledgeSearchEmbeddingError';
+import { KnowledgeSearchRerankError } from '../../application/search/knowledgeSearchRerankError';
+import {
+  KnowledgeIndexRebuildRequiredError,
+  KnowledgeIndexSpaceMismatchError,
+} from '../../index-rebuild/definitions/knowledgeIndex';
+import { KnowledgeBaseNotFoundError } from '../../definitions/knowledgeBaseErrors';
 import type { KnowledgeEmbeddingFailureReason } from '../../infrastructure/inference/embeddingFailureReason';
 import {
   resolveKnowledgeBaseScopeFromContext,
@@ -219,6 +225,19 @@ export function createKnowledgeIpc(
             }
             if (error instanceof KnowledgeSearchEmbeddingError) {
               return createOperationFailure(error.message, createUserFacingMessage(SEARCH_EMBEDDING_MESSAGE_KEYS[error.reason]));
+            }
+            // 索引状态与重排失败同样只给本地化键；中文 message 只作诊断，不直达英文界面。
+            if (error instanceof KnowledgeIndexRebuildRequiredError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.index.error.rebuildRequired'));
+            }
+            if (error instanceof KnowledgeIndexSpaceMismatchError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.index.error.spaceMismatch'));
+            }
+            if (error instanceof KnowledgeSearchRerankError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.search.error.rerankFailed'));
+            }
+            if (error instanceof KnowledgeBaseNotFoundError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.common.notFound'));
             }
             const fallback = fallbackKeys[channel];
             return fallback

@@ -1,12 +1,4 @@
-import { KnowledgeVectorStartupError } from '../../../infrastructure/vector-store/errors';
-import { KnowledgeSearchEmbeddingError } from '../../../application/search/knowledgeSearchEmbeddingError';
-
-/** 已知原因、自带英文工具说明的检索失败：向量服务启动失败与嵌入模型调用失败。 */
-export function isReasonedSearchFailure(
-  error: unknown
-): error is KnowledgeVectorStartupError | KnowledgeSearchEmbeddingError {
-  return error instanceof KnowledgeVectorStartupError || error instanceof KnowledgeSearchEmbeddingError;
-}
+import { isReasonedSearchFailure } from '../../../application/search/reasonedSearchFailure';
 
 /**
  * 搜索工具失败时交给 Agent 的错误。

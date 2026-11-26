@@ -16,7 +16,6 @@ import {
   SearchFilterOptions,
   SearchResult,
 } from './qdrantRepository';
-import { isQdrantRuntimeUnavailableError } from './vector-store/errors';
 import { QdrantAdapter } from './vector-store';
 import { Logger } from '@plugin/backend/loggingRuntime';
 import { rrfFusion } from '../utils/ranking';
@@ -230,9 +229,9 @@ export class QdrantRepositoryImpl implements QdrantRepository {
         this.logger.info(`语义搜索完成，找到 ${retrievedPoints.length} 个结果`);
         return retrievedPoints;
       } catch (error) {
-        this.logger.error(`语义搜索失败: ${error}`);
-        if (isQdrantRuntimeUnavailableError(error)) throw error;
-        return [];
+        // 检索报错一律上抛：吞成空结果会让“索引坏了”看起来像“没有匹配”。只有检索成功且无命中才是空结果。
+        this.logger.error(`语义搜索失败（集合 ${collectionName}）: ${String(error)}`);
+        throw error;
       }
     });
   }
@@ -267,9 +266,8 @@ export class QdrantRepositoryImpl implements QdrantRepository {
 
         return retrievedPoints;
       } catch (error) {
-        this.logger.error(`关键词搜索失败: ${String(error)}`);
-        if (isQdrantRuntimeUnavailableError(error)) throw error;
-        return [];
+        this.logger.error(`关键词搜索失败（集合 ${collectionName}）: ${String(error)}`);
+        throw error;
       }
     });
   }
