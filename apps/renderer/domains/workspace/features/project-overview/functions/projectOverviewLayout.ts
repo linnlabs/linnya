@@ -15,7 +15,8 @@ const DEFAULT_NAME_WIDTH = 280;
 const DEFAULT_COLUMNS: readonly ProjectOverviewColumnLayout[] = [
   { id: 'tags', visible: true, width: 160 },
   { id: 'location', visible: true, width: 120 },
-  { id: 'source', visible: true, width: 84 },
+  // 来源要放得下“Linnya Agent 的子任务”（13px 实测 136px）与英文“Subtask of Linnya Agent”（149px）；单元格没有内边距。
+  { id: 'source', visible: true, width: 152 },
   { id: 'conversation', visible: true, width: 200 },
   { id: 'modified', visible: true, width: 168 },
   { id: 'pending', visible: true, width: 112 },
