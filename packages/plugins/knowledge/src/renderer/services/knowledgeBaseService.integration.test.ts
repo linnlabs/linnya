@@ -71,13 +71,13 @@ it('检索遇到向量服务启动失败：按当前语言显示原因，不显�
   const english = await knowledgeBaseService.searchInKnowledgeBase('kb', { query: 'q', embeddingModelId: 'e', rerankModelId: 'r' })
     .catch((error: unknown) => error);
   expect(english).toBeInstanceOf(Error);
-  expect(english).toHaveProperty('message', expect.stringMatching(/^The Knowledge Base data folder path is too long .*LINNYA_WORKSPACE_DIR.*restart Linnya\.$/u));
+  expect(english).toHaveProperty('message', expect.stringMatching(/^The Knowledge Base data folder path is too long .*LINNYA_WORKSPACE_DIR.*restart Linnya\. Existing data is not moved to the new folder automatically\.$/u));
   expect(english).not.toHaveProperty('message', expect.stringMatching(/后端诊断原文/u));
 
   changeLocale('zh-CN');
   const chinese = await knowledgeBaseService.searchInKnowledgeBase('kb', { query: 'q', embeddingModelId: 'e', rerankModelId: 'r' })
     .catch((error: unknown) => error);
-  expect(chinese).toHaveProperty('message', expect.stringMatching(/^知识库数据目录的路径太长.*LINNYA_WORKSPACE_DIR.*重启 Linnya。$/u));
+  expect(chinese).toHaveProperty('message', expect.stringMatching(/^知识库数据目录的路径太长.*LINNYA_WORKSPACE_DIR.*重启 Linnya。原有数据不会自动搬到新目录。$/u));
   expect(chinese).not.toHaveProperty('message', expect.stringMatching(/后端诊断原文/u));
 });
 
