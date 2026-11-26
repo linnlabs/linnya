@@ -7,7 +7,7 @@ import { packageRuntimeComponent } from './functions/packageRuntimeComponent.ts'
 import { repoRoot } from './plugin-release-targets.mjs';
 
 /**
- * 打包原生运行时组件（当前只有 Qdrant）。正式发布由 linnya-release 先对可执行文件重签名，再以
+ * 打包原生运行时组件（当前只有 Qdrant）。正式发布先在受保护的发布环境对可执行文件重签名，再以
  * `--executable <已签名文件>` 调用；不传时使用 prepare-qdrant-runtime 已按锁定清单校验的上游文件（开发/测试）。
  * Windows 组件随附 VC 运行库：默认读 build/windows-app-local-runtime/<arch>，发布时用 --vc-runtime-dir 指定已验签目录。
  * 输出：dist/runtime-components/<id>/<version>/<platform>-<arch>/{<zip>, runtime.json}

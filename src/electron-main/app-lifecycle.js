@@ -239,6 +239,11 @@ export function initialize() {
             })),
           }),
       );
+      for (const result of pluginRuntime.seedResults) {
+        if (result.conflict) {
+          logger.warn('[PluginRuntime] 随包插件与本机同版本目录内容不一致，本次只跳过该插件: ' + result.reason);
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (error instanceof RequiredBundledPluginSeedError) {

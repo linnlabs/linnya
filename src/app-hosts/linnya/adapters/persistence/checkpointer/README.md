@@ -31,7 +31,8 @@ EventStore 保存正式事实，RunRegistry 保存生命周期，Descriptor 保�
 父级尚未结算时，已完成 child 的原结果也必须保留。
 
 先写根 run 终态，再释放整棵 run tree 的断点和描述，根描述最后删除。
-中途崩溃时启动恢复完成剩余释放。取消和删除仍可终止运行，不复活历史终态。
+中途崩溃时启动恢复完成剩余释放。不落库运行（对话标题、补全、审阅等 `persist:false` 请求）
+走同一结算顺序，不可续跑，正常结束不留断点；终态已写后的清理失败只记日志，不改判运行失败。取消和删除仍可终止运行，不复活历史终态。
 
 启动 GC 使用固定 30 天窗口，但必须先通过
 `selectRunRecoveryRetention` 保护所有非终态 root 及其 child（包括已完成 child）。
@@ -43,3 +44,4 @@ EventStore 保存正式事实，RunRegistry 保存生命周期，Descriptor 保�
 相邻 SQLite contract 测试覆盖持久读取、身份隔离、单 run 清理与保护范围。
 Flow 的 `flow.durable-continuation.integration.test.ts` 穿过真实 SQLite、
 正式 npm Graph、生产 Audit off 装配，验证进程崩溃、审批窗口、工具提交、原 child 与预算连续性。
+`flow.auxiliary-run-settlement.integration.test.ts` 用同一装配验证不落库的单轮与带工具多步运行结束后记为完成且不留断点。

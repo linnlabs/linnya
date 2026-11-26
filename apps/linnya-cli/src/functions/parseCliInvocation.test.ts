@@ -128,6 +128,13 @@ describe('parseCliInvocation', () => {
         args: { locator: 'workspace:/notes.md', content: '# Notes' },
       },
     });
+    expect(parseCliInvocation([
+      'tools', 'call', 'list_files', '--project', 'project-1', '--new-session',
+    ])).toMatchObject({ kind: 'tool-call', request: { project_id: 'project-1', new_session: true } });
+    // 续用只在只给项目时有意义；指定会话再要新会话是矛盾的。
+    expect(() => parseCliInvocation([
+      'tools', 'call', 'list_files', '--conversation', 'conversation-1', '--new-session',
+    ])).toThrow();
     expect(() => parseCliInvocation([
       'tools', 'call', 'shell', '--project', 'project-1',
     ])).toThrow();

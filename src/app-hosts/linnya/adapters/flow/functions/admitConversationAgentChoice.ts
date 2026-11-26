@@ -3,16 +3,23 @@ import { findRegisteredAgentDefinitionById } from 'src/app-hosts/linnya/agent-re
 
 /**
  * 产品 Agent 身份到 Host 内部 promptKey 的唯一解析边界。
- * start 与 wait-user resume 必须复用它，避免同一逻辑 run 在恢复时掉回 default。
+ * 选中的 Agent 未注册或所属插件已停用时返回 undefined；只读入口（如上下文用量估算）据此判断没有下一次请求。
  */
-export function resolveConversationAgentPromptKey(agentId: string): string {
+export function findConversationAgentPromptKey(agentId: string): string | undefined {
   // 退役身份的 id 与 promptKey 相同且已无 definition；保留原身份交给接纳/恢复入口拒绝或终止。
   if (isRetiredDeepResearchAgentId(agentId)) return agentId;
-  const definition = findRegisteredAgentDefinitionById(agentId);
-  if (!definition) {
+  return findRegisteredAgentDefinitionById(agentId)?.promptKey;
+}
+
+/**
+ * 同一解析边界的必选版本：start 与 wait-user resume 必须复用它，避免同一逻辑 run 在恢复时掉回 default。
+ */
+export function resolveConversationAgentPromptKey(agentId: string): string {
+  const promptKey = findConversationAgentPromptKey(agentId);
+  if (promptKey === undefined) {
     throw new Error(`[FlowRouter] selected agent is unavailable: ${agentId}`);
   }
-  return definition.promptKey;
+  return promptKey;
 }
 
 /**

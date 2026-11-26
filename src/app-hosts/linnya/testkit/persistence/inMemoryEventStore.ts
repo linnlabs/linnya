@@ -1,6 +1,7 @@
 import type {
   ConversationListItem,
   IEventStore,
+  OriginConversationInput,
   ReadRuntimeEventsOptions,
   RunMetadata,
   RunSession,
@@ -304,6 +305,16 @@ export class InMemoryEventStore implements IEventStore {
       },
     });
     return true;
+  }
+
+  async materializeOriginConversation(input: OriginConversationInput): Promise<void> {
+    await this.ensureConversation(input.conversationId, [], input.projectId ?? undefined);
+    const existing = this.conversations.get(input.conversationId);
+    if (!existing) throw new Error('conversation materialization failed');
+    this.conversations.set(input.conversationId, {
+      ...existing,
+      metadata: { ...existing.metadata, title: input.title, origin: input.origin },
+    });
   }
 
   async deleteConversation(conversationId: string): Promise<boolean> {

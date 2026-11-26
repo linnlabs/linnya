@@ -48,20 +48,24 @@ preTransformTokens、postTransformTokens、postTransformNodes。
 ParseOptions: requireClosingStrong
 requireClosingStrong（boolean，可选）控制解析器在解析 inline 内容时如何处理未闭合的 ** 加粗分隔符。默认值：true。
 
-true：要求存在匹配的关闭 ** 才会生成加粗（strong）节点。未闭合的 ** 会被保留为普通文本。这是非交互渲染（例如静态页面或服务器端渲染）推荐的严格模式，可以避免像 [**cxx](xxx) 这类在链接文本中错误地解析出 dangling strong 的问题。
+true：要求存在匹配的关闭 ** 才会生成加粗（strong）节点。未闭合的 ** 会被保留为普通文本。这是非交互渲染（例如静态页面或服务器端渲染）推荐的严格模式，可以避免像 `[**cxx](xxx)` 这类在链接文本中错误地解析出 dangling strong 的问题。
 false：允许中间态/未完成的 **（适用于编辑器的实时预览），解析器会在某些未闭合情况下仍生成临时的加粗节点。
 示例 — 严格模式（默认）：
 
-
+```ts
 import { parseMarkdownToStructure } from 'packages/markdown-parser'
 
 const nodes = parseMarkdownToStructure('[**cxx](xxx)', undefined, { requireClosingStrong: true })
 // 文本 `[**cxx](xxx)` 将被保留，不会创建不完整的加粗节点
+```
+
 示例 — 编辑器友好模式：
 
-
+```ts
 const nodes = parseMarkdownToStructure('[**cxx](xxx)', undefined, { requireClosingStrong: false })
 // 允许在实时预览中创建临时/中间态的加粗节点
+```
+
 流式内联 HTML 中间态（html_inline）
 在流式/聊天/编辑器场景中，内联 HTML 往往以不完整的片段逐步到达。解析器采用保守的中间态策略来减少抖动，同时尽早输出可稳定渲染的 HTML。
 

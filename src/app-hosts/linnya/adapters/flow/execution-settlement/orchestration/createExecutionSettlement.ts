@@ -29,7 +29,6 @@ export function createExecutionSettlement(
 ): ExecutionSettlementOrchestration {
   let executionMetricsPublished = false;
   let persistenceDrainFailed = false;
-  let checkpointCleanupFailed = false;
 
   const publishMetricsOnce = (
     outcome: RunExecutionOutcome,
@@ -60,15 +59,6 @@ export function createExecutionSettlement(
       await ports.drainPersistence();
     } catch (error) {
       persistenceDrainFailed = true;
-      throw error;
-    }
-  };
-
-  const clearCheckpointOrThrow = async (): Promise<void> => {
-    try {
-      await ports.clearCheckpoint(ports.runHandle.runId);
-    } catch (error) {
-      checkpointCleanupFailed = true;
       throw error;
     }
   };
@@ -109,19 +99,21 @@ export function createExecutionSettlement(
       return;
     }
 
-    // 可恢复 Graph 已持久保存 yielded 边界。先删除会留下“尚未 completed 却没有断点”的崩溃窗口。
-    if (!ports.durableContinuation) await clearCheckpointOrThrow();
+    /*
+     * 落库与不落库（对话标题、补全、审阅等）的运行同一顺序：先写 completed，再释放资源和断点。
+     * 释放用例要求根运行已是终态，先删断点必然被拒；对可恢复运行，先删还会留下
+     * “尚未 completed 却没有断点”的崩溃窗口。回答已经完成，清理失败不能把它改判为 failed，
+     * 只记日志：可恢复运行由启动维护补完释放，不落库运行的遗留断点由启动 GC 按保留窗口清理。
+     */
     await ports.runHandle.markCompleted({
       currentNode: input.checkpointNodeId,
       iterationsUsed: runIterationsUsed,
     });
     ports.releaseRunResources(ports.runHandle.runId);
-    if (ports.durableContinuation) {
-      try {
-        await clearCheckpointOrThrow();
-      } catch (error) {
-        logger.error('Completed run checkpoint cleanup deferred to owner maintenance', error);
-      }
+    try {
+      await ports.clearCheckpoint(ports.runHandle.runId);
+    } catch (error) {
+      logger.error('Completed run checkpoint cleanup failed after terminal settlement', error);
     }
   };
 
@@ -163,13 +155,10 @@ export function createExecutionSettlement(
       );
     }
 
-    if (!checkpointCleanupFailed) {
-      try {
-        await ports.clearCheckpoint(ports.runHandle.runId);
-      } catch (cleanupError) {
-        checkpointCleanupFailed = true;
-        logger.error('Failed to clear checkpoint after terminal run settlement', cleanupError);
-      }
+    try {
+      await ports.clearCheckpoint(ports.runHandle.runId);
+    } catch (cleanupError) {
+      logger.error('Failed to clear checkpoint after terminal run settlement', cleanupError);
     }
     ports.releaseRunResources(ports.runHandle.runId);
   };

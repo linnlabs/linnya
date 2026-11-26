@@ -62,6 +62,7 @@ export function useProjectOverviewConversations(projectId: Readonly<Ref<string>>
         return true;
       } catch (error: unknown) {
         console.error('[ProjectOverview] 置顶对话失败:', error);
+        notifications.show(conversationMessage('conversation.sidebar.pinFailed'), 'error', 4000);
         return false;
       }
     },

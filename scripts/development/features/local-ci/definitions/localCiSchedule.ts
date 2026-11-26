@@ -73,6 +73,7 @@ export const LOCAL_CI_STEP_SCHEDULE: LocalCiSchedule = {
       // schemas / provider 包的 pack-smoke 会 rimraf 并重建各自 dist；Canvas Backend 运行时从 dist 解析 @app/schemas，
       // 所以它和测试不能重叠。
       'Verify public packages': 'build',
+      'Run Canvas business cases': 'test',
     },
     'test-shards': {
       'Install dependencies': 'build',

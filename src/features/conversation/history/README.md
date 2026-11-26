@@ -1,6 +1,6 @@
 # Conversation History
 
-> 对话工作目录和删除顺序见 [Conversation Files Domain](../../domains/conversation-files/README.md) 与 [Conversation Lifecycle Workflow](../../app-hosts/linnya/application/conversation-lifecycle/README.md)。
+> 对话工作目录和删除顺序见 [Conversation Files Domain](../../../domains/conversation-files/README.md) 与 [Conversation Lifecycle Workflow](../../../app-hosts/linnya/application/conversation-lifecycle/README.md)。
 
 ```text
 src/features/conversation/history/

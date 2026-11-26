@@ -160,6 +160,8 @@ export type WorkspaceMessageKey =
   | 'workspace.project.operation.projectNotFound'
   | 'workspace.project.operation.defaultProjectDeleteBlocked'
   | 'workspace.project.operation.created'
+  | 'workspace.project.operation.createdButOpenFailed'
+  | 'workspace.project.operation.createdButPlanningNotStarted'
   | 'workspace.project.operation.createFailed'
   | 'workspace.project.operation.updated'
   | 'workspace.project.operation.updateFailed'

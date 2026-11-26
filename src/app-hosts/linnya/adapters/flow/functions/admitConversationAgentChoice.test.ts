@@ -4,6 +4,7 @@ import type { AgentDefinition } from 'src/app-hosts/linnya/agent-registry/types'
 import { findRegisteredAgentDefinitionById } from 'src/app-hosts/linnya/agent-registry/agentDefinitionResolver';
 import {
   admitConversationAgentChoice,
+  findConversationAgentPromptKey,
   resolveConversationAgentPromptKey,
 } from './admitConversationAgentChoice';
 
@@ -42,6 +43,14 @@ describe('admitConversationAgentChoice', () => {
 
     expect(resolveConversationAgentPromptKey('plugin_agent_fixture')).toBe('plugin_prompt_fixture');
     expect(findRegisteredAgentDefinitionById).toHaveBeenCalledWith('plugin_agent_fixture');
+  });
+
+  it('只读入口用 find 版本：未知或未启用 Agent 得到 undefined，不抛错', () => {
+    vi.mocked(findRegisteredAgentDefinitionById).mockReturnValue(undefined);
+    expect(findConversationAgentPromptKey('plugin_agent_fixture')).toBeUndefined();
+
+    vi.mocked(findRegisteredAgentDefinitionById).mockReturnValue(slidesAgent);
+    expect(findConversationAgentPromptKey('plugin_agent_fixture')).toBe('plugin_prompt_fixture');
   });
 
   it('未知或未启用 Agent 明确失败，不回退 default 或 promptKey alias', () => {

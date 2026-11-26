@@ -1,7 +1,7 @@
 # 验收证据
 
 这里收集现有测试和 Desktop 场景的执行事实，不负责测试选择、源码切换或发布。
-Vitest 使用 `vitestReporter.mjs`；普通场景使用 `createEvidence.mjs`。不依赖外部工作台。
+Vitest 使用 `vitestReporter.mjs`；普通场景使用 `createEvidence.mjs`。不依赖任何外部任务管理工具。
 
 调用者通过 `ACCEPTANCE_EVIDENCE_DIR` 提供本次独占的输出目录；未设置时创建系统临时目录。
 结束生成 `evidence.json`（version 1）：`scenario`、`testFiles`、`checks`、`errors`、`artifacts`。

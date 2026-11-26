@@ -131,6 +131,8 @@ Vitest 不自动沿用 `.gitignore`，新增源码根或生成目录时必须同
 
 公共源码净化门禁使用 `pnpm run guard:public-source-sanitization`。它扫描 Git 已跟踪和未忽略的候选文本文件，拒绝开发者用户目录、机器卷、盘符根开发 checkout、父级个人工作区路径、macOS 用户临时目录、绝对符号链接和已退役产品身份；文档与测试只能使用 `name`、`example`、`${变量}` 或 `<用户名>` 一类明确占位符，门禁本身不得记录真实用户名、本机路径或旧名称字面量。
 
+Markdown 链接门禁使用 `pnpm run guard:markdown-links`。它按 Git 已跟踪和未忽略的文件清单检查全部 Markdown 的仓库内链接：不能越出仓库根，目标必须在仓库里，标题锚点必须存在。按文件清单而不是磁盘判断，是因为多写一级 `../` 会在开发机上落到仓库外的父目录，公开仓库里却是坏链接。写法规则见[文档规范](./documentation.md#4-链接路径与示例)。
+
 **代码检查基线。** `pnpm run lint:code` 在公共 CI 执行。规则只有 error 和 off 两档，只管正确性与边界，不检查排版（Canvas 的排版由它自己的 guard 用 Prettier 检查）。接入 CI 前已有的问题按文件和规则计数记在根目录 `eslint-suppressions.json`（ESLint 自带的批量压制），同一文件再出现同类问题就会失败；修掉旧问题后 lint 会提示基线过宽，运行 `pnpm run lint:code:prune` 收紧。基线里的路径相对于仓库根目录，所以插件自己的 `lint` 脚本也从根目录运行（`pnpm -w exec eslint … packages/plugins/<id>/src`），与根检查共用同一份基线。不要用 `--suppress-all` 把新问题写进基线，也不要为过门禁加 `eslint-disable`；确需例外时写成 `eslint-disable-next-line <规则> -- <原因>`。反复纠正 Agent 的同一种错误时，优先在 `eslint.config.js` 加一条带说明的规则，而不是在文档里多写一句提醒。
 
 全仓仍有来自渐进式 JavaScript/TypeScript 迁移的存量类型错误。`guard:tsc-baseline` 分别统计根项目（`tsc -p tsconfig.json`，基线 `.baseline/typescript-errors.txt`）和 Renderer（`vue-tsc -p apps/renderer/tsconfig.json`，基线 `.baseline/renderer-typescript-errors.txt`）的错误总数，只允许减少、不允许增加，并在公共 CI 执行；错误减少后运行 `pnpm run guard:tsc-baseline:update` 收紧基线。Shell E2E 的 `fixtures/` 与 `harness/` 已纳入根 TypeScript 发现范围，并在同一门禁中强制零错误；

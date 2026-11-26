@@ -9,6 +9,7 @@ import type {
   InferenceEndpointSelection,
   InferenceEndpointView,
   ModelConfig,
+  UnadmittedUserModel,
 } from 'src/domains/model-catalog';
 import type {
   ProviderCatalogGeneration,
@@ -35,6 +36,8 @@ export interface ProviderOnboardingRuntimeBindingPort {
 
 export interface ProviderOnboardingModelCatalogPort {
   getModel(modelConfigId: string): ModelConfig | undefined;
+  /** 启动时停用（未通过准入）的用户模型：仍保留 Provider 归属，但不在运行目录里。 */
+  getUnadmittedUserModels(): readonly UnadmittedUserModel[];
   getInferenceEndpoints(): InferenceEndpointView[];
   registerUserModel(model: ModelConfig, endpoint: InferenceEndpointSelection): Promise<void>;
   updateModel(model: ModelConfig): Promise<void>;

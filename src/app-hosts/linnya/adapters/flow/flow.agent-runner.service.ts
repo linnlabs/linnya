@@ -269,7 +269,6 @@ export class AgentRunnerService {
           clearDocumentReferenceMarkdownReader(this.databaseService.getDb(), JSON.stringify([conversationId, runId]));
         },
         now: () => Date.now(),
-        durableContinuation: Boolean(runRequest.recoveryInputs),
       }
     );
 

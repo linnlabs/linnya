@@ -25,6 +25,10 @@ import { buildRefreshedDirectProviderModel } from '../functions/buildRefreshedDi
 import { findReusableDirectProviderEndpoint } from '../functions/findReusableDirectProviderEndpoint';
 import { findStaleConfiguredProviderModels } from '../functions/findStaleConfiguredProviderModels';
 import { isProviderModelRegistered } from '../functions/isProviderModelRegistered';
+import {
+  listCatalogedProviderModels,
+  resolveConfiguredProviderMember,
+} from '../functions/resolveConfiguredProviderMember';
 import { resolveProviderOnboardingAuthMethod } from '../functions/resolveProviderOnboardingAuthMethod';
 import { resolveProviderOnboardingModelRuntimeBinding } from 'src/app-hosts/linnya/adapters/inference';
 import type { CredentialReference, ModelConfig } from 'src/domains/model-catalog';
@@ -173,11 +177,10 @@ export function createProviderOnboardingUseCase(
       );
     }
     const inferenceEndpoints = dependencies.modelCatalog.getInferenceEndpoints();
-    const configuredModels =
-      configuredProvider?.models.map(model =>
-        dependencies.modelCatalog.getModel(model.model_config_id)
-      ) ?? [];
-    if (configuredProvider && configuredModels.some(model => !model?.inference_endpoint_id)) {
+    const configuredModels = configuredProvider
+      ? listCatalogedProviderModels(configuredProvider, dependencies.modelCatalog)
+      : [];
+    if (configuredModels.some(model => !model.inference_endpoint_id)) {
       throw new ProviderOnboardingError(
         'provider_onboarding.configuration_invalid',
         'Provider 配置引用的模型或推理连接无效',
@@ -185,7 +188,7 @@ export function createProviderOnboardingUseCase(
       );
     }
     const configuredEndpointIds = new Set(
-      configuredModels.flatMap(model => model?.inference_endpoint_id ?? [])
+      configuredModels.flatMap(model => model.inference_endpoint_id ?? [])
     );
     const configuredEndpoints = inferenceEndpoints.filter(endpoint =>
       configuredEndpointIds.has(endpoint.id)
@@ -492,11 +495,12 @@ export function createProviderOnboardingUseCase(
         );
       }
 
-      const configuredModels = configuredProvider.models.map(association =>
-        dependencies.modelCatalog.getModel(association.model_config_id)
+      const configuredModels = listCatalogedProviderModels(
+        configuredProvider,
+        dependencies.modelCatalog
       );
       const endpointIds = new Set(
-        configuredModels.flatMap(model => model?.inference_endpoint_id ?? [])
+        configuredModels.flatMap(model => model.inference_endpoint_id ?? [])
       );
       const endpoints = dependencies.modelCatalog
         .getInferenceEndpoints()
@@ -504,7 +508,7 @@ export function createProviderOnboardingUseCase(
       const [credentialEndpoint] = endpoints;
       if (
         !credentialEndpoint ||
-        configuredModels.some(model => model?.inference_endpoint_id === undefined) ||
+        configuredModels.some(model => model.inference_endpoint_id === undefined) ||
         endpoints.length !== endpointIds.size
       ) {
         throw new ProviderOnboardingError(
@@ -582,6 +586,7 @@ export function createProviderOnboardingUseCase(
       const effectiveModels =
         dependencies.discoveredModels.readAvailable(connection.id) ?? connection.models;
       let updatedModelCount = 0;
+      let skippedUnadmittedModelCount = 0;
       for (const configuredModel of configuredProvider.models) {
         // 与账号同步一致，只在完整 durable 更新之间取消，不丢弃进行中的提交。
         signal?.throwIfAborted();
@@ -589,15 +594,13 @@ export function createProviderOnboardingUseCase(
           model => model.id === configuredModel.provider_model_id
         );
         if (!providerModel) continue;
-        const existingModel = dependencies.modelCatalog.getModel(configuredModel.model_config_id);
-        if (!existingModel) {
-          throw new ProviderOnboardingError(
-            'provider_onboarding.configuration_invalid',
-            'Provider 配置引用的模型或推理连接无效',
-            500
-          );
+        const member = resolveConfiguredProviderMember(configuredModel, dependencies.modelCatalog);
+        // 停用的成员等待修复或删除，刷新不改写它，也不因它中断其余模型的刷新。
+        if (member.kind === 'unadmitted') {
+          skippedUnadmittedModelCount += 1;
+          continue;
         }
-        if (await refreshRegisteredProviderModel(connection, providerModel, existingModel)) {
+        if (await refreshRegisteredProviderModel(connection, providerModel, member.model)) {
           updatedModelCount += 1;
         }
       }
@@ -606,6 +609,7 @@ export function createProviderOnboardingUseCase(
         provider_connection_definition_id: connection.id,
         registered_model_count: configuredProvider.models.length,
         updated_model_count: updatedModelCount,
+        skipped_unadmitted_model_count: skippedUnadmittedModelCount,
       });
     },
 
@@ -652,6 +656,7 @@ export function createProviderOnboardingUseCase(
       let registeredModelCount = 0;
       let updatedModelCount = 0;
       let existingModelCount = 0;
+      let skippedUnadmittedModelCount = 0;
       logger.info('provider_model_synchronization.started', {
         provider_definition_id: provider.id,
         provider_connection_definition_id: connection.id,
@@ -666,15 +671,16 @@ export function createProviderOnboardingUseCase(
           model => model.provider_model_id === providerModel.id
         );
         if (configuredModel) {
-          const existingModel = dependencies.modelCatalog.getModel(configuredModel.model_config_id);
-          if (!existingModel) {
-            throw new ProviderOnboardingError(
-              'provider_onboarding.configuration_invalid',
-              'Provider 配置引用的模型或推理连接无效',
-              500
-            );
+          const member = resolveConfiguredProviderMember(
+            configuredModel,
+            dependencies.modelCatalog
+          );
+          // 停用的成员保留归属：同步不改写它，也不能当成未注册再建一条重复的 ModelConfig。
+          if (member.kind === 'unadmitted') {
+            skippedUnadmittedModelCount += 1;
+            continue;
           }
-          if (await refreshRegisteredProviderModel(connection, providerModel, existingModel)) {
+          if (await refreshRegisteredProviderModel(connection, providerModel, member.model)) {
             updatedModelCount += 1;
           }
           existingModelCount += 1;
@@ -706,9 +712,17 @@ export function createProviderOnboardingUseCase(
         dependencies.providerConfigurations.getByProviderConnectionDefinitionId(connection.id),
         providerModels
       );
+      let removedModelCount = 0;
       for (const staleModel of staleModels) {
         signal?.throwIfAborted();
+        const member = resolveConfiguredProviderMember(staleModel, dependencies.modelCatalog);
+        // 停用的成员不在运行目录里，删除用例会报“模型不存在”；它由停用条目的删除入口处理，同步不替用户删。
+        if (member.kind === 'unadmitted') {
+          skippedUnadmittedModelCount += 1;
+          continue;
+        }
         await dependencies.modelRemoval.remove(staleModel.model_config_id);
+        removedModelCount += 1;
       }
       logger.info('provider_model_synchronization.completed', {
         provider_definition_id: provider.id,
@@ -716,7 +730,8 @@ export function createProviderOnboardingUseCase(
         registered_model_count: registeredModelCount,
         updated_model_count: updatedModelCount,
         existing_model_count: existingModelCount,
-        removed_model_count: staleModels.length,
+        removed_model_count: removedModelCount,
+        skipped_unadmitted_model_count: skippedUnadmittedModelCount,
       });
     },
   };

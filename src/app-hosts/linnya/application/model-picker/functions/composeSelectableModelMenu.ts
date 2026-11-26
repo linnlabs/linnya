@@ -10,9 +10,10 @@ import {
 } from '@app/schemas/custom-api-onboarding';
 import type { ProviderConnectionDefinition } from '@linnya/provider-catalog';
 import type { ModelConfig } from 'src/domains/model-catalog';
-import type {
-  ConfiguredProvider,
-  ConfiguredProviderModel,
+import {
+  findFirstCatalogedProviderMember,
+  type ConfiguredProvider,
+  type ConfiguredProviderModel,
 } from 'src/domains/provider-configuration';
 import { readCustomApiProviderName } from '../../custom-api-onboarding';
 import { isModelRuntimeAvailable } from '../../model-runtime-availability';
@@ -93,13 +94,12 @@ function providerCredentialStatus(
       ? { available: true }
       : { available: false, reason: status === 'available' ? 'missing' : status };
   }
-  const firstModelConfigId = provider.models[0]?.model_config_id;
-  if (!firstModelConfigId) return { available: false, reason: 'missing' };
-  const firstEndpointId = input.models.find(
-    model => model.id === firstModelConfigId
-  )?.inference_endpoint_id;
-  if (!firstEndpointId) return { available: false, reason: 'missing' };
-  const endpoint = input.inference_endpoints.find(candidate => candidate.id === firstEndpointId);
+  const credentialModel = findFirstCatalogedProviderMember(provider, modelConfigId =>
+    input.models.find(model => model.id === modelConfigId)
+  )?.model;
+  const endpointId = credentialModel?.inference_endpoint_id;
+  if (!credentialModel || !endpointId) return { available: false, reason: 'missing' };
+  const endpoint = input.inference_endpoints.find(candidate => candidate.id === endpointId);
   if (!endpoint) return { available: false, reason: 'missing' };
   if (endpoint.credential_reference.kind === 'provider_account') {
     const status = input.get_provider_account_credential_status(
@@ -110,7 +110,7 @@ function providerCredentialStatus(
       ? { available: true }
       : { available: false, reason: status === 'available' ? 'missing' : status };
   }
-  const status = input.get_credential_status(firstModelConfigId);
+  const status = input.get_credential_status(credentialModel.id);
   const resolvedStatus = endpoint.credential_status === 'missing' ? 'missing' : status;
   return resolvedStatus === 'available'
     ? { available: true }

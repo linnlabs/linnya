@@ -4,7 +4,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * 通过的完整回执：干净检出、没有缩小范围、没有失败或中断。
- * 与工作台 main 门禁（合入与推送 main 前查找回执）接受的条件一致；两边必须同步修改。
+ * 这是对外的回执合同（见 README“结果保留”）：本机工具按同一条件认定回执，修改条件就是修改合同。
  */
 export function isPassingFullReceipt(receipt: LocalCiReceiptFacts | null): boolean {
   return receipt?.passed === true && receipt.clean === true && receipt.fullRun === true;

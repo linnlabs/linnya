@@ -12,6 +12,7 @@ export type {
   ProviderConnectionLookup,
 } from './definitions/providerConfiguration';
 export { readProviderConnectionLookup } from './features/configuration-persistence/orchestration/readProviderConnectionLookup';
+export { findFirstCatalogedProviderMember } from './shared/functions/findFirstCatalogedProviderMember';
 export {
   ProviderConfigurationRegistry,
   providerConfigurationRegistry,

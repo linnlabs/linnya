@@ -67,7 +67,7 @@ export function linnyaCliUsage(): string {
     '  linnya tools list',
     '  linnya tools web <on|off|status>',
     '  linnya tools describe <tool-name>',
-    '  linnya tools call <tool-name> (--conversation ID | --project ID) [--args-json JSON | --args-file PATH] [--omit-args] [--interval MS] [--timeout MS]',
+    '  linnya tools call <tool-name> (--conversation ID | --project ID [--new-session]) [--args-json JSON | --args-file PATH] [--omit-args] [--interval MS] [--timeout MS]',
     '',
     'Output:',
     '  Single commands write one JSON value to stdout. status --watch writes JSONL frames.',

@@ -6,6 +6,7 @@
 export type {
   IEventStore,
   ConversationListItem,
+  OriginConversationInput,
   RunMetadata,
   RunSession,
   AppendEventToRunOptions,

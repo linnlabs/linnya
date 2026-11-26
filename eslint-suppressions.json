@@ -11,7 +11,7 @@
   },
   "apps/renderer/app/model-inference/orchestration/unifiedApiService.js": {
     "no-unused-vars": {
-      "count": 3
+      "count": 2
     }
   },
   "apps/renderer/app/plugins/composables.ts": {

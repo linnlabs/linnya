@@ -230,6 +230,10 @@ class UniqueIdEventStore implements IEventStore {
     return true;
   }
 
+  async materializeOriginConversation(): Promise<void> {
+    throw new Error('not implemented');
+  }
+
   async deleteConversation(conversationId: string): Promise<boolean> {
     const deletedEvents = this.eventsByConversation.get(conversationId) ?? [];
     for (const event of deletedEvents) {

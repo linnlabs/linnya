@@ -45,6 +45,8 @@ jobs:
     needs: plan
     if: contains(fromJSON(needs.plan.outputs.jobs), 'canvas-regression')
     uses: ./.github/workflows/canvas-regression.yml
+    with:
+      public-lint: ${{ needs.plan.outputs.scope != 'full' }}
 
   owner:
     name: Plugin checks (${{ needs.plan.outputs.scope }})
@@ -63,7 +65,7 @@ jobs:
       - name: Run selected owner checks
         env:
           OWNER: ${{ needs.plan.outputs.scope }}
-        run: pnpm -s ci:quick --owner "$OWNER"
+        run: pnpm -s ci:quick --pr-owner "$OWNER"
 
   tests:
     name: Public test suite

@@ -37,6 +37,7 @@ const BOOLEAN_OPTIONS = new Set([
   'approve',
   'skip',
   'omit-args',
+  'new-session',
   'create',
   'yes',
 ]);
@@ -493,7 +494,8 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
       }
       if (action === 'call') {
         assertAllowedOptions(tokens, [
-          'conversation', 'project', 'args-json', 'args-file', 'omit-args', 'interval', 'timeout',
+          'conversation', 'project', 'args-json', 'args-file', 'omit-args', 'new-session',
+          'interval', 'timeout',
         ]);
         if (tokens.positionals.length !== 2) {
           usageError('tools call requires exactly one tool name');
@@ -506,6 +508,7 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
           args: readJsonInput(tokens, 'args', readTextFile) ?? {},
           conversation_id: readString(tokens, 'conversation'),
           project_id: readString(tokens, 'project'),
+          ...(tokens.options.has('new-session') ? { new_session: true } : {}),
         });
         return {
           kind: 'tool-call',

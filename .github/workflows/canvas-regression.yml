@@ -2,6 +2,11 @@ name: Canvas Regression
 
 on:
   workflow_call:
+    inputs:
+      public-lint:
+        description: The plugin PR also requires the public architecture lint
+        type: boolean
+        default: false
   push:
     branches: [main]
   workflow_dispatch:
@@ -53,6 +58,7 @@ jobs:
       - name: Check Canvas architecture and frame closure
         run: pnpm exec tsx packages/plugins/canvas/scripts/guard.ts
       - name: Lint Canvas production code
+        if: ${{ !inputs.public-lint }}
         run: pnpm --filter @plugin/canvas lint
       - name: Verify source formatting guard rejects compressed statements
         run: pnpm --filter @plugin/canvas exec vitest run --config vitest.config.ts scripts/quality/__tests__/canvasSourceFormatting.test.ts

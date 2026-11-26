@@ -39,6 +39,11 @@ import { selectRunResumeTarget } from '../functions/selectRunResumeTarget';
 import { controlCommandApprovals, readCommandApprovals } from './controlCommandApprovals';
 import { createConversationControlToolAccess } from '../store/conversationControlToolAccess';
 import { assertCliToolAvailable, assertCliToolCallAllowed, selectCliTools } from '../functions/cliToolAccess';
+import {
+  CLI_TOOL_SESSION_LOOKUP_LIMIT,
+  formatCliToolSessionTitle,
+  selectReusableCliToolSession,
+} from '../functions/cliToolSession';
 
 function firstIncomingEventId(acceptance: ConversationControlFlowAcceptance): string {
   const eventId = acceptance.incomingEventIds[0];
@@ -291,6 +296,21 @@ async function projectStatusResponse(
       readCommandApprovals(ports, request.conversation_id, projectedRun.runId, runs),
     ),
   };
+}
+
+/** 续用候选正在运行时不排队等它，也不并进去，直接新建一段 CLI 会话。 */
+async function findReusableCliToolSession(
+  ports: ConversationControlUseCasePorts,
+  projectId: string,
+): Promise<string | undefined> {
+  const { conversations } = await ports.history.list({
+    limit: CLI_TOOL_SESSION_LOOKUP_LIMIT,
+    projectId,
+  });
+  const candidate = selectReusableCliToolSession(conversations, { projectId, now: ports.now() });
+  if (!candidate) return undefined;
+  const runs = await ports.runs.findByConversation(candidate.conversation_id);
+  return runs.some(blocksForegroundAdmission) ? undefined : candidate.conversation_id;
 }
 
 export function createConversationControlUseCase(
@@ -653,7 +673,13 @@ export function createConversationControlUseCase(
           'CLI tool call requires a project or a conversation bound to a Workspace project'
         );
       }
-      const conversationId = request.conversation_id ?? ports.createConversationId();
+      // 只给项目时续用该项目最近一段未超时、空闲的 CLI 会话；显式会话或 new_session 不走续用。
+      const reusedConversationId = request.conversation_id || request.new_session
+        ? undefined
+        : await findReusableCliToolSession(ports, projectId);
+      const conversationId = request.conversation_id
+        ?? reusedConversationId
+        ?? ports.createConversationId();
       const existingRuns = await ports.runs.findByConversation(conversationId);
       if (existingRuns.some(blocksForegroundAdmission)) {
         throw new ConversationControlError(
@@ -670,6 +696,14 @@ export function createConversationControlUseCase(
         throw new ConversationControlError('invalid_request',
           argumentsValidation.error ?? `Invalid arguments for CLI tool ${request.tool_name}`);
       }
+      // 新建的 CLI 会话在运行前带上入口标记与标题，后续调用才能找到并续用它。
+      if (!request.conversation_id && !reusedConversationId) {
+        await ports.history.materializeCliToolSession({
+          conversationId,
+          projectId,
+          title: formatCliToolSessionTitle(ports.now()),
+        });
+      }
       const acceptance = await ports.flow.start(
         buildToolRequest({
           request,
@@ -684,6 +718,7 @@ export function createConversationControlUseCase(
         command: 'tools',
         action: 'call',
         tool_name: request.tool_name,
+        conversation_reused: reusedConversationId !== undefined,
         receipt: {
           conversation_id: acceptance.conversationId,
           user_message_id: firstIncomingEventId(acceptance),

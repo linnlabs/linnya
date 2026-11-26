@@ -190,7 +190,7 @@ Onboarding 按正式模型注册流程管理。目录只保存引用，OAuth tok
 
 `registerCustomApiModels` 注册分组及模型；`applyCustomApiGroupModelDiff` 在一次提交中同时新增与删除，已有模型不写回时保留其 ID 与用户编辑；`rebindCustomApiGroup` 支持含零模型的连接编辑；`removeCustomApiGroup` 才删除分组引用。endpoint 只在既没有模型引用、也没有任何自定义分组引用时回收，共享凭据仍按所有剩余 endpoint 引用计算。`resolveInferenceEndpointCredential` 使刷新不再依赖一个占位模型。
 
-v4 文件只从明确 `custom_provider_name` 和 endpoint 引用生成分组，所有条目通过准入后一次覆盖为 v5；不按 route、URL 或模型名猜测正式 Provider。历史未命名模型由 App 在正式 membership 恢复后显式调用 `migrateCustomApiGroups`，同一事务规范化模型归属并补齐引用。重复迁移无状态差异时不写盘、不递增版本，也不会丢失独立空组。
+v4 文件只从明确 `custom_provider_name` 和 endpoint 引用生成分组，连接与分组全部通过准入后一次覆盖为 v5（停用的模型条目原样带入，见下文“单个用户模型停用”）；不按 route、URL 或模型名猜测正式 Provider。历史未命名模型由 App 在正式 membership 恢复后显式调用 `migrateCustomApiGroups`，同一事务规范化模型归属并补齐引用。重复迁移无状态差异时不写盘、不递增版本，也不会丢失独立空组。
 
 分组的纯规则位于 `custom-api-groups/functions`，凭据准备与失败撤回位于该 feature 的 `orchestration`；registry 继续只拥有串行队列、目录版本校验和统一发布。目录文件写入失败时模型与分组不发布，凭据变更按已有事务协议撤回。跨文件凭据存储仍不宣称具有进程崩溃级事务。
 
@@ -280,9 +280,30 @@ reference；不得复用 InferenceEndpoint 或恢复模型顶层 `provider`
 
 编辑、批量更新和连接改绑复用同一准入规则：与旧身份自动推导结果完全相同且本次未改变的 `reasoning` 不当作新声明，由新模型 identity 与 capability 重新推导。更窄范围、不同默认值，以及本次主动修改的声明继续参与能力交集；这与持久化采用相同的值相等规则，不声称能识别历史真实来源。
 
-能力查询在初始化开始前冻结，default、Cloud、account、user 的加载和每条更新准入均使用同一解析器。显式能力冲突沿用现有加载语义：用户/default 目录冲突会使初始化失败并保留原文件；Cloud 准入失败保留此前目录并报告刷新失败，不额外跳过非法模型。
+能力查询在初始化开始前冻结，default、Cloud、account、user 的加载和每条更新准入均使用同一解析器。default 目录冲突会使初始化失败；Cloud 准入失败保留此前目录并报告刷新失败，不额外跳过非法模型；用户目录按下面“单个用户模型停用”处理。
 
-初始化没有成功时（例如 `user_models.json` 无法读取，错误里写明文件名），目录拒绝任何写入用户配置的操作，原文件保持不变；初始化自身在全部准入通过后回写一次迁移结果不受此限。启动把模型配置当作可停掉的能力，见 [Backend 启动步骤](../../app-hosts/linnya/backend-runtime/README.md#启动步骤分两类)。
+### 单个用户模型停用
+
+启动时某一条用户模型没有通过准入（显式能力冲突、route 与 InferenceEndpoint 不一致、旧版拼出的多 route 等），
+只停用这一条：它不进入运行目录，其余模型照常可用，诊断日志记下模型 ID 与原因。目录不修复、不猜测这条配置。
+停用的条目仍是用户数据：
+
+- 原始条目在之后每次用户目录写盘（以及 v4→v5 迁移）时原样写回，排在已准入模型之后；
+- 它引用的 InferenceEndpoint 与凭据算作仍被引用，删除其他模型或分组时不回收（删除它所属的自定义分组也不删除它）；
+- `getModelIdentitiesIncludingUnadmitted()` 把它与运行目录一起交给启动对账，Provider 归属与选择器偏好不会因为它暂时停用而被删除。
+
+`getUnadmittedUserModels()` 只给出 ID、端点引用与原因，不暴露原始配置。因为归属被保留，正式 Provider 的成员可能指向停用模型：
+选择器、在线模型发现与 Ollama 接入按归属顺序取第一个仍在目录里的成员代表凭据与连接（provider-configuration 的 `findFirstCatalogedProviderMember`），
+Provider 接入用例的添加、换 Key、刷新与账号同步跳过停用成员，同步也不把它当过期模型删除；归属既不在目录、也不是停用条目时仍按配置损坏报错。
+目前的限制：界面不展示停用条目、没有删除入口，刷新也不按定义重建它；在选择器里重新添加同一个模型会返回“已经添加”（409）。
+Provider 只剩停用成员时（单模型 Provider 的那个模型停用，或“移除 Provider”只删掉已物化的模型后），选择器显示凭据缺失，
+换 Key 报配置无效，移除 Provider 也删不掉它，Ollama 再添加报“已绑定另一服务地址”，在线发现报凭据不可用；出路是停用条目的删除入口。
+停用条目也不参与开发期一次性的旧 Provider 归属迁移（只在 `provider_configurations.json` 不存在时运行）：这条模型拿不到正式归属，
+日后恢复准入时会被归入自定义 API 分组。能力查询变化（例如 SDK 更新）或手工修好文件后，下次启动同一条目重新准入。
+`user_models.json` 本身无法读取、envelope、连接或分组不合法时仍按下段整体失败。
+
+初始化失败时恢复到初始化前的内存状态，再次初始化报告同一原因，而不是已载入半截的“重复连接”。并发调用共用同一次载入，不会各自载入后互相撞“重复连接”；载入失败后，下一次调用重新载入。
+初始化没有成功时（例如 `user_models.json` 无法读取，错误里写明文件名），目录拒绝任何写入用户配置的操作，原文件保持不变；初始化自身在连接与分组全部通过准入后回写一次迁移结果不受此限。启动把模型配置当作可停掉的能力，见 [Backend 启动步骤](../../app-hosts/linnya/backend-runtime/README.md#启动步骤分两类)。
 
 Model
 Catalog 不再保存或归一化顶层通用 API 地址。用户输入地址的格式处理属于对应 onboarding
@@ -351,9 +372,9 @@ KV 只通过 `scripts/cloud-model-kv-v2-migration/`
 | Catalog admission   | route/identity 一致性、capability、reasoning、credential 引用                                                                 |
 | Default path        | 只接受已存在绝对路径、开发/发布资产唯一选择、缺失时失败                                                                       |
 | Cloud catalog       | 单请求、typed route、非法 payload、purpose defaults、能力保真                                                                 |
-| User persistence    | v4 envelope、端点引用、损坏文件失败、原子写入                                                                                 |
+| User persistence    | v4 envelope、端点引用、损坏文件失败、原子写入、停用条目原样写回                                                               |
 | Endpoint credential | 统一文件、重启读取、文件权限、损坏保留、原子提交与删除                                                                                    |
-| Registry            | 来源优先级、端点/模型一致性、端点复用、最后模型/分组引用删除时清理端点与凭据、改绑与原位换 Key、Cloud 替换/retry/event、写盘失败不提交内存并撤销凭据变更 |
+| Registry            | 来源优先级、端点/模型一致性、端点复用、最后模型/分组引用删除时清理端点与凭据、改绑与原位换 Key、Cloud 替换/retry/event、写盘失败不提交内存并撤销凭据变更、单个用户模型准入失败只停用它（写盘与迁移原样带回、连接与凭据不回收）、初始化失败回滚 |
 | Electron bridge     | renderer-ready 前后刷新信号不丢失，payload 不成为第二目录                                                                     |
 
 日常至少运行：

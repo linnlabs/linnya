@@ -29,6 +29,7 @@ function createClient(reads: unknown[]): ConversationControlClient['execute'] {
     if (request.command === 'tools' && request.action === 'call') {
       return {
         schema_version: 1, ok: true, command: 'tools', action: 'call', tool_name: 'read_file',
+        conversation_reused: false,
         receipt: {
           conversation_id: conversationId, user_message_id: 'message-1', turn_id: 'turn-1', run_id: 'run-1',
           execution_id: 'execution-1', agent_id: 'default', accepted_at: 1,

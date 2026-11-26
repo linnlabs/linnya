@@ -90,7 +90,7 @@ Durable window 的依赖闭包由 Host 在选定 rows 后生成；MessageProject
 必须直接投影完整字段，不能从作者显示文本或域名重建来源快照。缺失字段不猜补；已有旧快照也不从
 其它消息或来源版本拼接元数据。
 
-完整合同见 [`Conversation Citation`](../../docs/citation.md)。
+完整合同见 [Citation domain](../../../../../../src/domains/citation/README.md)。
 
 ### 开发约定（避免退化）
 

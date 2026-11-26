@@ -103,6 +103,10 @@ class FakeEventStore implements IEventStore {
     return true;
   }
 
+  async materializeOriginConversation(): Promise<void> {
+    throw new Error('not implemented');
+  }
+
   async deleteConversation(_conversationId: string): Promise<boolean> {
     throw new Error('not implemented');
   }

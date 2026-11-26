@@ -137,7 +137,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
       }
     }
 
-    // W-0303：同一真实 Runtime 里，Agent 删除本会话目录里自己的普通文件不进入审批，直接完成。
+    // 同一真实 Runtime 里，Agent 删除本会话目录里自己的普通文件不进入审批，直接完成。
     fixture.command = 'printf scratch > local-scratch.csv; rm -f local-scratch.csv; printf local-removed-without-approval';
     const localReceipt = readReceipt(await runCli(['send', 'local-removal', '--project', projectId,
       '--agent', 'default', '--model', 'approval-fixture'], environment));
@@ -339,7 +339,7 @@ async function startApprovalModelFixture(): Promise<{
   readonly toolResults: string[];
 }> {
   // 递归删除不存在的夹具目录，触发真实固定风险审批；不触及用户文件或真实供应商。
-  // 本会话目录里的裸 rm -f 普通文件不再审批（W-0303），所以这里必须用 -r。
+  // 本会话目录里的裸 rm -f 普通文件不再审批，所以这里必须用 -r。
   const state = { command: 'rm -rf approval-e2e-missing-dir; printf approval-e2e-executed' };
   const toolResults: string[] = [];
   const requestSchema = z.object({ messages: z.array(z.object({

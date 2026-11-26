@@ -10,4 +10,6 @@
 
 本地 owner 命令在当前工作目录执行。全量回退和 Canvas 回归会使用独立临时检出，带入 Git 可见的工作副本，重新生成依赖与探针产物。合入和推送 `main` 使用 `pnpm run ci:local` 的干净提交回执。
 
+单插件 PR 由公共架构任务执行全仓 ESLint 和三项边界检查（Agent 包、插件表、Host 插件 ID）。插件任务执行类型、业务、产物及 Host 用例，汇总门要求所有选中的任务通过。Canvas 专属矩阵负责结构、格式、绘制与像素验证。本地 `ci:quick` 会执行相应的源码 lint 和三项边界检查。
+
 新增插件时在[门禁声明](./definitions/pluginCiGates.ts)登记该插件的构建或产物入口、包外 Host 用例以及专属回归（如有）。公共包的影响范围来自 pnpm 的反向依赖图。直接读取插件资源、按约定加载插件的 Host 用例须由 owner 随变更维护。各分支吸收同一公共提交即可复用。[PR 工作流](../../../../.github/workflows/pull-request.yml)

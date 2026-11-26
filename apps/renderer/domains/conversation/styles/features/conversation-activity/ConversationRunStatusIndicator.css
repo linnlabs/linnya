@@ -1,4 +1,4 @@
-/* 侧栏运行状态记号（W-0352 画廊推荐做法）：占行首 18px 图标位，颜色不随置顶或选中变化。 */
+/* 侧栏运行状态记号：占行首 18px 图标位，颜色不随置顶或选中变化。 */
 .conversation-run-status {
   display: inline-flex;
   flex: none;

@@ -172,6 +172,7 @@ export async function executeToolCall(options: ExecuteToolCallOptions) {
           command: 'tools' as const,
           action: 'call' as const,
           conversation_id: accepted.receipt.conversation_id,
+          conversation_reused: accepted.conversation_reused,
           run_id: accepted.receipt.run_id,
           tool: matches[0],
           ...(attachmentFiles.length > 0 ? { attachment_files: attachmentFiles } : {}),

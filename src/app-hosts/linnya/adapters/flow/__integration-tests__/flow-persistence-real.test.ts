@@ -28,6 +28,7 @@ const mockEventStore: Mocked<IEventStore> = {
   updateTitle: vi.fn(),
   updatePinned: vi.fn(),
   updateSelectedAgent: vi.fn(),
+  materializeOriginConversation: vi.fn(),
   deleteConversationsWithoutProject: vi.fn(),
   deleteConversation: vi.fn(),
   truncateFromEvent: vi.fn(),

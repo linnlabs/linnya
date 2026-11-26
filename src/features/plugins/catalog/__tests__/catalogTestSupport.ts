@@ -1,6 +1,6 @@
 import { generateKeyPairSync, sign, type KeyObject } from 'node:crypto';
 
-/** 测试用发布方：临时 Ed25519 密钥签名 catalog；生产私钥只在 linnya-release。 */
+/** 测试用发布方：临时 Ed25519 密钥签名 catalog；生产私钥只在受保护的发布环境。 */
 export function createTestCatalogPublisher(keyId = 'linnya-plugins-test'): {
   readonly keyId: string;
   readonly trustedKeys: Readonly<Record<string, string>>;

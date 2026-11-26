@@ -79,6 +79,18 @@ function options(root: string, extra: Partial<Parameters<typeof runLocalCiPlan>[
   };
 }
 
+it('同一轮调度里两个任务同时就绪，只启动一次业务测试，两个任务都收到失败', async () => {
+  const root = scratch();
+  const steps = ['packages', 'regression'].map(job => step('cases', {
+    key: `${job}/cases`, job, jobLabel: job, command: 'echo ran >> runs.txt; exit 1',
+  }));
+  const schedule = { 'wf.yml': { packages: { cases: 'test' }, regression: { cases: 'test' } } } as const;
+  const { results } = await runLocalCiPlan({ steps, skippedJobs: [] }, options(root, { schedule }));
+  expect(readFileSync(path.join(root, 'runs.txt'), 'utf8')).toBe('ran\n');
+  expect(results.map(result => result.outcome)).toEqual(['failure', 'failure']);
+  expect(results[1]?.reusedFrom).toBe(results[0]?.key);
+});
+
 /** 每个步骤在开始和结束时各写一行，事后按顺序检查哪些步骤重叠过。 */
 function traced(name: string, seconds: number): string {
   return `echo "start ${name}" >> trace.txt; sleep ${seconds}; echo "end ${name}" >> trace.txt`;

@@ -11,6 +11,7 @@ import type {
   AppendEventToRunOptions,
   ConversationListItem,
   IEventStore,
+  OriginConversationInput,
   ReplaceUserInputEventOptions,
   ReplaceUserInputEventResult,
   ReadRuntimeEventsOptions,
@@ -44,7 +45,11 @@ import {
   parseStoredRuntimeEvent,
   serializeStoredRuntimeEvent,
 } from './functions/runtimeEventStorageCodec';
-import { readConversationSelectedAgentId, type ConversationSelectedAgentId } from '@app/schemas';
+import {
+  ConversationOriginSchema,
+  readConversationSelectedAgentId,
+  type ConversationSelectedAgentId,
+} from '@app/schemas';
 import { SqliteSubrunTraceHistoryCleanup } from '../subrun-trace-history/sqliteSubrunTraceHistoryCleanup';
 import { ScheduledConversationFoldSchema } from '@app/schemas/scheduled-tasks';
 import { scheduledConversationListProjection } from '../scheduled-tasks/scheduledConversationListProjection';
@@ -105,7 +110,18 @@ function readConversationMode(
   }
 }
 
+function readConversationOrigin(
+  row: Pick<ConversationRow, 'conversation_id' | 'metadata'>
+): ConversationListItem['origin'] {
+  if (!row.metadata) return undefined;
+  const origin: unknown = parseConversationMetadata(row.conversation_id, row.metadata).origin;
+  if (origin === undefined) return undefined;
+  // 写入方只有 materializeOriginConversation；读到未知值说明数据被外部改写，不能静默当作普通会话。
+  return ConversationOriginSchema.parse(origin);
+}
+
 function toConversationListItem(row: ConversationRow): ConversationListItem {
+  const origin = readConversationOrigin(row);
   return {
     conversation_id: row.conversation_id,
     title: row.title,
@@ -119,6 +135,7 @@ function toConversationListItem(row: ConversationRow): ConversationListItem {
     pinned_at: typeof row.pinned_at === 'number' ? row.pinned_at : undefined,
     mode: readConversationMode(row),
     selected_agent_id: readConversationSelectedAgentId(row.selected_agent_id),
+    ...(origin ? { origin } : {}),
     ...(row.scheduled_task_id ? { scheduled_task: ScheduledConversationFoldSchema.parse({
       task_id: row.scheduled_task_id, task_name: row.scheduled_task_name,
       unread_count: row.scheduled_unread_count, run_count: row.scheduled_run_count,
@@ -902,6 +919,26 @@ export class SQLiteEventStore implements IEventStore {
       logger.error('Failed to update pinned state:', error);
       throw error;
     }
+  }
+
+  async materializeOriginConversation(input: OriginConversationInput): Promise<void> {
+    this.db.transaction(() => {
+      materializeConversation(this.db, {
+        conversationId: input.conversationId,
+        projectId: input.projectId,
+        at: Date.now(),
+      });
+      const row = this.db
+        .prepare<unknown[], ConversationIdentityRow>(
+          'SELECT conversation_id, created_at, metadata FROM conversations WHERE conversation_id = ? LIMIT 1'
+        )
+        .get(input.conversationId);
+      if (!row) throw new Error(`[SQLiteEventStore] conversation ${input.conversationId} was not materialized`);
+      const metadata = parseConversationMetadata(input.conversationId, row.metadata);
+      this.db
+        .prepare('UPDATE conversations SET title = ?, metadata = ? WHERE conversation_id = ?')
+        .run(input.title, JSON.stringify({ ...metadata, origin: input.origin }), input.conversationId);
+    })();
   }
 
   async updateSelectedAgent(
