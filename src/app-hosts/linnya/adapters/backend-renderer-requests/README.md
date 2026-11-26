@@ -14,6 +14,8 @@ App Server 进程注册，Electron Main 只向已登记 channel 转发 data-only
 AppData 私有 mailbox；大 leaf 独立写入权限收紧的文件，RPC 只携带 operation id、随机 token 和提交事实，
 避免在 Electron Main 对 50 MiB Slides 模板做同步 base64。纯 JSON 大值可整体写入一个受预算约束的 JSON 文件，避免 metadata 随字段数量膨胀；读取后仍执行准入。Desktop 调用结束后只清理本轮随机目录。
 
+本目录有两个入口：`index.ts` 是 Electron Main 与 App Server 共用的传输、codec 和注册表合同；`app-server.ts` 只转出 `registerCoreBackendRendererRequestHandlers`，只能由 App Server 进程引用。两者不能合并，否则 Main 取传输合同时会把数据库、插件与全部业务 handler 打进主进程包，`build:main` 的主进程包边界检查会失败。
+
 `registerCoreBackendRendererRequestHandlers` 已把 Workspace、Agent 配置、Todo、知识库关联、Markdown、
 AudioBlock、BlockHistory、Web Search/Web Read 配置、插件安装/启停/诊断和已启用插件的 `plugin:invoke`
 注册到同一 App Server

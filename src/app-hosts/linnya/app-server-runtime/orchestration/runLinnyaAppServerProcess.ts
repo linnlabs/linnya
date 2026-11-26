@@ -16,9 +16,9 @@ import {
   createBackendRendererRequestRegistry,
   createBackendRendererRequestRpcHandlers,
   prepareBackendRendererRequestMailboxRoot,
-  registerCoreBackendRendererRequestHandlers,
   resolveBackendRendererRequestMailboxRoot,
 } from '../../adapters/backend-renderer-requests';
+import { registerCoreBackendRendererRequestHandlers } from '../../adapters/backend-renderer-requests/app-server';
 import {
   initializeAppServerBackend,
   shutdownAppServerBackend,
