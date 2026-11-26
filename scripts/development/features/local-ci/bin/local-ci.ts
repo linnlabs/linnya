@@ -15,7 +15,10 @@ import { prepareLocalCiCheckout, pruneOrphanedLocalCiCheckouts } from '../orches
 import { pruneLocalCiRuns } from '../orchestration/pruneLocalCiRuns';
 import { LOCAL_CI_KEEP_RUNS, LOCAL_CI_RECEIPT_KEEP_DAYS } from '../definitions/localCiRetention';
 import { formatLocalCiFailureDigest } from '../functions/summarizeLocalCiFailure';
+import { LOCAL_CI_LOAD_SAMPLE_MS } from '../definitions/localCiHistory';
+import { buildLocalCiHistoryEntry, summarizeLocalCiLoad } from '../functions/buildLocalCiHistoryEntry';
 import {
+  appendLocalCiHistory,
   collectLocalCiEvidence,
   runLocalCiPlan,
   writeLocalCiSummary,
@@ -149,7 +152,9 @@ async function main(): Promise<number> {
   if (pruned.length) console.log(`已回收 ${pruned.length} 份被强制结束的运行留下的检出`);
   const checkout = prepareLocalCiCheckout(repositoryRoot, { inPlace: options.inPlace, keep: options.keep, workingCopy: options.workingCopy });
   const fullScope = !options.workingCopy && options.workflows.length === 0 && options.jobs.length === 0;
-  const logDirectory = path.join(repositoryRoot, '_dev_data/ci-local', timestamp());
+  const ciDirectory = path.join(repositoryRoot, '_dev_data/ci-local');
+  const runName = timestamp();
+  const logDirectory = path.join(ciDirectory, runName);
   mkdirSync(logDirectory, { recursive: true });
   // 本次目录已建好，算在最近 N 个之内；清理失败只提示，不影响这次运行。
   try {
@@ -181,6 +186,10 @@ async function main(): Promise<number> {
   process.once('SIGTERM', interrupt);
   process.once('SIGHUP', interrupt);
   const started = Date.now();
+  // 同一份代码时快时慢，多半是机器上同时在跑别的任务；负载写进回执和运行历史，复盘时据此区分。
+  const loadSamples: number[] = [];
+  const loadTimer = setInterval(() => loadSamples.push(os.loadavg()[0]!), LOCAL_CI_LOAD_SAMPLE_MS);
+  loadTimer.unref();
   let outcome: LocalCiRunOutcome = { results: [], mergedTestRuns: [] };
   // 调度本身出错时没有完整结果，不能写出“通过”的回执。
   let completed = false;
@@ -215,26 +224,36 @@ async function main(): Promise<number> {
     });
     completed = true;
   } finally {
+    clearInterval(loadTimer);
     const { results, mergedTestRuns } = outcome;
     const evidence = !options.inPlace ? collectLocalCiEvidence(plan, results, checkout.root, logDirectory) : [];
     // 复用别的步骤结果（去重、合并分片）的失败只算一次：算在真正执行的那一步上。
     const failures = results.filter(result => result.outcome === 'failure' && !result.reusedFrom);
-    const summaryFile = writeLocalCiSummary(logDirectory, {
+    const finished = Date.now();
+    const runFacts = {
+      startedAt: new Date(started).toISOString(),
+      finishedAt: new Date(finished).toISOString(),
       commit: checkout.commit,
       tree: checkout.tree,
       clean: checkout.clean,
+      fullScope,
       // 只有不加 --workflow / --job、计划里每一步都有结果的干净检出才代表“全部 CI 在这份代码上通过”。
       // 测试分片只在覆盖 1..N 每一片时才合并，覆盖记录见 mergedTestRuns。
       fullRun: fullScope && results.length === plan.steps.length,
       passed: completed && failures.length === 0 && !controller.signal.aborted,
-      durationMs: Date.now() - started,
+      durationMs: finished - started,
       interrupted: controller.signal.aborted,
+      load: summarizeLocalCiLoad(os.availableParallelism(), loadSamples),
+    };
+    const summaryFile = writeLocalCiSummary(logDirectory, {
+      ...runFacts,
       schedule: { cores: os.availableParallelism(), ...parallelism },
       results,
       mergedTestRuns,
       skippedJobs: plan.skippedJobs,
       evidence,
     });
+    appendLocalCiHistory(ciDirectory, buildLocalCiHistoryEntry({ run: runName, ...runFacts, results }));
     if (!options.inPlace && !options.keep) checkout.remove();
     else if (!options.inPlace) console.log(`\n已保留临时检出：${checkout.root}（用完请 git worktree remove --force 回收）`);
 
