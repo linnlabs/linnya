@@ -86,7 +86,7 @@ async function createRuntime() {
   return { db, path, runs, eventStore, persistence, checkpoints, checkpoint, publishResult };
 }
 
-async function createReceiptRuntime() {
+async function createReceiptRuntime(inFlightCallIds: readonly string[] = ['original-call']) {
   const runtime = await createRuntime();
   runtime.db.prepare('INSERT INTO agent_run_descriptors (run_id, descriptor_json) VALUES (?, ?)')
     .run(runId, '{}');
@@ -94,9 +94,9 @@ async function createReceiptRuntime() {
     ...runtime.checkpoint,
     executionStatus: 'executing',
     local: {
-      executingToolCallId: ToolCallIdSchema.parse('original-call'),
-      pendingToolCalls: [{ id: ToolCallIdSchema.parse('original-call'), type: 'function',
-        function: { name: 'lookup', arguments: '{}' } }],
+      executingToolCallIds: inFlightCallIds.map(id => ToolCallIdSchema.parse(id)),
+      pendingToolCalls: inFlightCallIds.map(id => ({ id: ToolCallIdSchema.parse(id),
+        type: 'function' as const, function: { name: 'lookup', arguments: '{}' } })),
     },
   });
   const receipts = new SqliteToolResultReceipts(runtime.db);
@@ -126,6 +126,32 @@ describe('EventBus → SQLite execution checkpoint commit', () => {
       .toThrow('no committed execution intent');
     expect(runtime.receipts.read(runId, 'original-call', 'lookup'))
       .toMatchObject({ result: 'original result', atomic_owner: 1 });
+  });
+
+  it('并行组的多个在途调用各自保存凭据，已结算或不在途的调用仍被拒绝', async () => {
+    const runtime = await createReceiptRuntime(['call-a', 'call-b']);
+    // 两个调用同时在途时，后完成的先提交也必须被接纳；守卫按在途集合而不是唯一调用判断。
+    runtime.port.returned('call-b', 'lookup', 'result b');
+    runtime.port.returned('call-a', 'lookup', 'result a');
+    expect(runtime.receipts.read(runId, 'call-a', 'lookup')).toMatchObject({ result: 'result a' });
+    expect(runtime.receipts.read(runId, 'call-b', 'lookup')).toMatchObject({ result: 'result b' });
+    expect(() => runtime.port.returned('call-c', 'lookup', 'result c'))
+      .toThrow('no committed execution intent');
+
+    // call-b 结算后离开在途集合；它的迟到凭据不能再写入。
+    const settled = await runtime.checkpoints.load(runId);
+    if (!settled?.local) throw new Error('Missing checkpoint');
+    await runtime.checkpoints.save(runId, {
+      ...settled,
+      local: {
+        ...settled.local,
+        executingToolCallIds: [ToolCallIdSchema.parse('call-a')],
+        pendingToolCalls: settled.local.pendingToolCalls?.filter(call => call.id === 'call-a'),
+      },
+    });
+    expect(() => runtime.port.returned('call-b', 'lookup', 'result b'))
+      .toThrow('no committed execution intent');
+    expect(() => runtime.port.returned('call-a', 'lookup', 'result a')).not.toThrow();
   });
 
   it('返回结果的真实存储错误继续报告，不伪装成取消或完成', async () => {

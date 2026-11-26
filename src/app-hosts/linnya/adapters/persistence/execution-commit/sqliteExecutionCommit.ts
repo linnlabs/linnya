@@ -35,11 +35,12 @@ export class SqliteExecutionCommit {
           // Supervisor 先撤销动作权限，Graph 随后收尾。取消时队列中可能已有一个 ready/executing
           // 提交：原 activation 可沿现存 revision 链排空到 yielded，但不能覆盖终止边界或复活断点。
           // 这里只允许事实/位置落盘；工具效果仍必须通过 requireExecutionOwner，取消后始终拒绝。
+          // 并行组可能同时有多个在途调用；收口到 yielded 时它们必须全部已结算。
           if (!previous || previous.executionStatus === 'yielded'
             || checkpoint.revision !== (previous.revision ?? 0) + 1
             || (checkpoint.executionStatus === 'yielded'
               && ((checkpoint.local?.pendingToolCalls?.length ?? 0) !== 0
-                || checkpoint.local?.executingToolCallId !== undefined))) {
+                || (checkpoint.local?.executingToolCallIds?.length ?? 0) !== 0))) {
             throw new Error(`[SqliteExecutionCommit] execution ${executionId} no longer owns run ${runId}: invalid cancellation settlement boundary`);
           }
         }
