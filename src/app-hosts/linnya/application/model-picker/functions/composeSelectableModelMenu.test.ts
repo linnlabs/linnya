@@ -122,6 +122,7 @@ function input(
     provider_definitions: [],
     configured_providers: [],
     models: [],
+    unadmitted_models: [],
     inference_endpoints: [],
     custom_api_groups: [],
     provider_accounts: [],
@@ -139,11 +140,17 @@ describe('composeSelectableModelMenu', () => {
     const model = chatModel('company-gpt', 'user', 'custom-endpoint', 'Company GPT');
     model.custom_provider_name = 'Company Gateway';
 
-    expect(composeSelectableModelMenu(input({
-      models: [model],
-      custom_api_groups: [{ name: 'Company Gateway', inference_endpoint_ids: ['custom-endpoint'] }],
-      inference_endpoints: [customEndpoint('custom-endpoint')],
-    })).custom_providers).toEqual([
+    expect(
+      composeSelectableModelMenu(
+        input({
+          models: [model],
+          custom_api_groups: [
+            { name: 'Company Gateway', inference_endpoint_ids: ['custom-endpoint'] },
+          ],
+          inference_endpoints: [customEndpoint('custom-endpoint')],
+        })
+      ).custom_providers
+    ).toEqual([
       expect.objectContaining({
         provider_name: 'Company Gateway',
         api_format: 'openai_responses',
@@ -154,58 +161,85 @@ describe('composeSelectableModelMenu', () => {
   });
 
   it('空自定义分组仍从已保存连接投影刷新和编辑身份，不伪造可用模型', () => {
-    const result = ModelPickerSnapshotSchema.parse(composeSelectableModelMenu(input({
-      custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
-      inference_endpoints: [customEndpoint('relay', 'missing')],
-    })));
+    const result = ModelPickerSnapshotSchema.parse(
+      composeSelectableModelMenu(
+        input({
+          custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
+          inference_endpoints: [customEndpoint('relay', 'missing')],
+        })
+      )
+    );
 
-    expect(result.custom_providers).toEqual([{
-      provider_id: 'custom:Relay',
-      provider_name: 'Relay',
-      api_format: 'openai_responses',
-      base_url: 'https://relay.example.com/v1',
-      endpoint_id: 'relay',
-      models: [],
-    }]);
+    expect(result.custom_providers).toEqual([
+      {
+        provider_id: 'custom:Relay',
+        provider_name: 'Relay',
+        api_format: 'openai_responses',
+        base_url: 'https://relay.example.com/v1',
+        endpoint_id: 'relay',
+        models: [],
+        unadmitted_models: [],
+      },
+    ]);
     expect(result.custom_models).toEqual([]);
   });
 
   it('自定义分组归属、快捷选择偏好和运行凭据可用性分别投影', () => {
     const usable = { ...chatModel('usable', 'user', 'ready'), custom_provider_name: 'Relay' };
-    const unavailable = { ...chatModel('unavailable', 'user', 'missing'), custom_provider_name: 'Relay' };
-    const result = composeSelectableModelMenu(input({
-      models: [usable, unavailable],
-      custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['ready', 'missing'] }],
-      inference_endpoints: [customEndpoint('ready'), customEndpoint('missing', 'missing')],
-      preferences: {
-        provider_preferences: [],
-        model_preferences: [
-          { model_config_id: usable.id, visible: false },
-          { model_config_id: unavailable.id, visible: true },
-        ],
-      },
-    }));
+    const unavailable = {
+      ...chatModel('unavailable', 'user', 'missing'),
+      custom_provider_name: 'Relay',
+    };
+    const result = composeSelectableModelMenu(
+      input({
+        models: [usable, unavailable],
+        custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['ready', 'missing'] }],
+        inference_endpoints: [customEndpoint('ready'), customEndpoint('missing', 'missing')],
+        preferences: {
+          provider_preferences: [],
+          model_preferences: [
+            { model_config_id: usable.id, visible: false },
+            { model_config_id: unavailable.id, visible: true },
+          ],
+        },
+      })
+    );
 
     expect(result.custom_providers?.[0]?.models).toEqual([
-      expect.objectContaining({ model_config_id: 'usable', picker_enabled: false, runtime_available: true }),
-      expect.objectContaining({ model_config_id: 'unavailable', picker_enabled: true, runtime_available: false }),
+      expect.objectContaining({
+        model_config_id: 'usable',
+        picker_enabled: false,
+        runtime_available: true,
+      }),
+      expect.objectContaining({
+        model_config_id: 'unavailable',
+        picker_enabled: true,
+        runtime_available: false,
+      }),
     ]);
   });
 
   it('Provider 目录未知也不把正式 membership 或未声明分组的模型转入自定义', () => {
-    const formal = { ...chatModel('unknown-model', 'user', 'relay'), custom_provider_name: 'Relay' };
+    const formal = {
+      ...chatModel('unknown-model', 'user', 'relay'),
+      custom_provider_name: 'Relay',
+    };
     const ungrouped = { ...chatModel('ungrouped', 'user', 'relay'), custom_provider_name: 'Other' };
-    const result = composeSelectableModelMenu(input({
-      models: [formal, ungrouped],
-      custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
-      inference_endpoints: [customEndpoint('relay')],
-      configured_providers: [{
-        id: 'configured-unknown',
-        provider_definition_id: 'unknown',
-        provider_connection_definition_id: 'unknown',
-        models: [{ model_config_id: formal.id, provider_model_id: 'remote' }],
-      }],
-    }));
+    const result = composeSelectableModelMenu(
+      input({
+        models: [formal, ungrouped],
+        custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
+        inference_endpoints: [customEndpoint('relay')],
+        configured_providers: [
+          {
+            id: 'configured-unknown',
+            provider_definition_id: 'unknown',
+            provider_connection_definition_id: 'unknown',
+            models: [{ model_config_id: formal.id, provider_model_id: 'remote' }],
+          },
+        ],
+      })
+    );
 
     expect(result.custom_providers?.[0]?.models).toEqual([]);
     expect(result.custom_models).toEqual([]);
@@ -313,7 +347,9 @@ describe('composeSelectableModelMenu', () => {
     const result = composeSelectableModelMenu(
       input({
         provider_definitions: [providerDefinition('openai', 'OpenAI', ['gpt-a', 'gpt-b'])],
-        configured_providers: [configuredProvider('configured-openai', 'openai', ['gpt-a', 'gpt-b'])],
+        configured_providers: [
+          configuredProvider('configured-openai', 'openai', ['gpt-a', 'gpt-b']),
+        ],
         // gpt-a 没有通过准入：归属还在，但它不在运行目录里。
         models: [chatModel('openai-gpt-b', 'user', 'endpoint-openai', 'GPT B')],
         inference_endpoints: [customEndpoint('endpoint-openai')],
@@ -326,6 +362,145 @@ describe('composeSelectableModelMenu', () => {
       materialized: true,
       runtime_available: true,
     });
+  });
+
+  it('停用的 Provider 成员只出现在“配置无效”里，不当作可启用候选；定义里还在的可修复', () => {
+    const result = ModelPickerSnapshotSchema.parse(
+      composeSelectableModelMenu(
+        input({
+          provider_definitions: [providerDefinition('openai', 'OpenAI', ['gpt-a', 'gpt-b'])],
+          configured_providers: [
+            {
+              ...configuredProvider('configured-openai', 'openai', ['gpt-a', 'gpt-b']),
+              // gpt-old 已从 Provider 定义下架，只能删除。
+              models: [
+                { provider_model_id: 'gpt-a', model_config_id: 'openai-gpt-a' },
+                { provider_model_id: 'gpt-b', model_config_id: 'openai-gpt-b' },
+                { provider_model_id: 'gpt-old', model_config_id: 'openai-gpt-old' },
+              ],
+            },
+          ],
+          models: [chatModel('openai-gpt-b', 'user', 'endpoint-openai', 'GPT B')],
+          unadmitted_models: [
+            {
+              id: 'openai-gpt-a',
+              inference_endpoint_id: 'endpoint-openai',
+              custom_api_group_name: undefined,
+              display_name: 'GPT A',
+              reason: '用户模型 openai-gpt-a 的 route 与 InferenceEndpoint endpoint-openai 不一致',
+              reason_kind: 'route_endpoint_mismatch',
+            },
+            {
+              id: 'openai-gpt-old',
+              inference_endpoint_id: 'endpoint-openai',
+              custom_api_group_name: undefined,
+              display_name: undefined,
+              reason: '用户模型 openai-gpt-old 必须声明唯一的推理 route',
+              reason_kind: 'multiple_routes',
+            },
+          ],
+          inference_endpoints: [customEndpoint('endpoint-openai')],
+        })
+      )
+    );
+
+    const [provider] = result.providers;
+    expect(provider?.models.map(model => model.provider_model_id)).toEqual(['gpt-b']);
+    expect(provider?.unadmitted_models).toEqual([
+      {
+        model_config_id: 'openai-gpt-a',
+        display_name: 'GPT A',
+        reason_kind: 'route_endpoint_mismatch',
+        reason: '用户模型 openai-gpt-a 的 route 与 InferenceEndpoint endpoint-openai 不一致',
+        repairable: true,
+      },
+      {
+        model_config_id: 'openai-gpt-old',
+        display_name: 'gpt-old',
+        reason_kind: 'multiple_routes',
+        reason: '用户模型 openai-gpt-old 必须声明唯一的推理 route',
+        repairable: false,
+      },
+    ]);
+    expect(result.unassigned_unadmitted_models).toEqual([]);
+  });
+
+  it('Provider 只剩停用成员时凭据按它们引用的连接判断，不误报凭据缺失', () => {
+    const unadmitted = (credentialStatus: InferenceEndpointView['credential_status']) =>
+      composeSelectableModelMenu(
+        input({
+          provider_definitions: [providerDefinition('openai', 'OpenAI', ['gpt-a'])],
+          configured_providers: [configuredProvider('configured-openai', 'openai', ['gpt-a'])],
+          unadmitted_models: [
+            {
+              id: 'openai-gpt-a',
+              inference_endpoint_id: 'endpoint-openai',
+              custom_api_group_name: undefined,
+              display_name: 'GPT A',
+              reason: '用户模型 openai-gpt-a 的 route 与 InferenceEndpoint endpoint-openai 不一致',
+              reason_kind: 'route_endpoint_mismatch',
+            },
+          ],
+          inference_endpoints: [customEndpoint('endpoint-openai', credentialStatus)],
+        })
+      ).providers[0];
+
+    expect(unadmitted('configured')).toMatchObject({ credential_available: true, models: [] });
+    expect(unadmitted('missing')).toMatchObject({
+      credential_available: false,
+      credential_unavailable_reason: 'missing',
+    });
+  });
+
+  it('自定义分组的停用条目归分组、只能删除；归属已不存在的放进“未归类”', () => {
+    const result = ModelPickerSnapshotSchema.parse(
+      composeSelectableModelMenu(
+        input({
+          custom_api_groups: [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
+          inference_endpoints: [customEndpoint('relay'), customEndpoint('gone')],
+          unadmitted_models: [
+            {
+              id: 'relay-legacy',
+              inference_endpoint_id: 'relay',
+              custom_api_group_name: 'Relay',
+              display_name: 'kimi-k3-legacy',
+              reason: '用户模型 relay-legacy 必须声明唯一的推理 route',
+              reason_kind: 'multiple_routes',
+            },
+            {
+              id: 'orphan',
+              inference_endpoint_id: 'gone',
+              custom_api_group_name: undefined,
+              display_name: undefined,
+              reason: 'InferenceEndpoint 不存在: gone-old',
+              reason_kind: 'endpoint_missing',
+            },
+            // 没有 ID 的条目无法删除或引用，不进入设置页。
+            {
+              id: undefined,
+              inference_endpoint_id: undefined,
+              custom_api_group_name: undefined,
+              display_name: 'nameless',
+              reason: 'Invalid model config: expected object',
+              reason_kind: 'invalid_structure',
+            },
+          ],
+        })
+      )
+    );
+
+    expect(result.custom_providers?.[0]?.unadmitted_models).toEqual([
+      expect.objectContaining({ model_config_id: 'relay-legacy', repairable: false }),
+    ]);
+    expect(result.unassigned_unadmitted_models).toEqual([
+      {
+        model_config_id: 'orphan',
+        display_name: 'orphan',
+        reason_kind: 'endpoint_missing',
+        reason: 'InferenceEndpoint 不存在: gone-old',
+        repairable: false,
+      },
+    ]);
   });
 
   it('按稳定 ConfiguredProvider 归属分组，不读取 URL 或模型名前缀猜 Provider', () => {

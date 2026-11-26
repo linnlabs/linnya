@@ -1,6 +1,7 @@
 import { errorToString } from '@linnya/foundation';
 
 import type { ModelConfig } from '../../../definitions/modelCatalog';
+import { ModelAdmissionError } from '../../../definitions/modelAdmissionError';
 import type { UnadmittedUserModelEntry } from '../definitions/userModelsFile';
 import { readStoredModelReferences } from './readStoredModelReferences';
 
@@ -28,7 +29,13 @@ export function partitionStoredUserModels(
     try {
       admitted.push(admit(raw));
     } catch (error: unknown) {
-      const entry = { raw, ...readStoredModelReferences(raw), reason: errorToString(error) };
+      const entry = {
+        raw,
+        ...readStoredModelReferences(raw),
+        reason: errorToString(error),
+        // 类别只认抛错处给出的；其余异常是检查过程本身出错，不按原文猜成某种配置问题。
+        reasonKind: error instanceof ModelAdmissionError ? error.kind : ('unexpected' as const),
+      };
       unadmitted.push({ entry, error });
     }
   }

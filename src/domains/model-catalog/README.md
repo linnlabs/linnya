@@ -271,7 +271,7 @@ reference；不得复用 InferenceEndpoint 或恢复模型顶层 `provider`
 - 用户 credential 只允许出现在一次连接创建命令中；系统模型使用显式
   `credential_reference`，日志只允许记录缺失的环境变量名；
 - reasoning 档位使用 Linnkit 共享合同，不能扩大为任意字符串；
-- reasoning 优先查询 App 在初始化前安装的 `ModelReasoningResolver`；窄 port 只接收 route 的 capability 与 endpoint model identity，Catalog 不依赖 SDK 或 Host。SDK 有结果时显式声明取交集，合法显式默认值保留，其余默认值复用 Linnkit `resolveEffectiveEffort`；完全无共同档位是带模型标识的准入错误，不伪装成无能力；
+- reasoning 优先查询 App 在初始化前安装的 `ModelReasoningResolver`；窄 port 只接收 route 的 capability 与 endpoint model identity，Catalog 不依赖 SDK 或 Host。SDK 有结果时显式声明取交集，合法显式默认值保留，其余默认值复用 Linnkit `resolveEffectiveEffort`。显式声明只能在模型能力范围内缩窄；完全没有共同档位时这条声明无法执行，整条忽略（含它的默认档位），按 SDK 报告的档位启用并记 warn 日志（模型、被忽略的声明、实际档位），不停用模型——界面没有改档位的入口，停用会让用户无法自行恢复（2026-11-26 用户定）。启动只忽略、不回写文件；之后该模型所在目录再写盘时，按下文“只保存与自动结果不同的声明”的规则，这条被忽略的声明不再写回；
 - SDK 查询无结果才保留显式声明和既有模型名兼容知识。Claude 正则只保留 SDK 缺少正向支持 flag 的 legacy 3.7/4 extended-thinking，不继续扩充新版本；新型号能力由 SDK 查询提供。其它模型仍受现有 codec 能力边界约束，例如 Ollama GLM-5.3 只公开 `low` / `high`；
 - Cloud、本地默认和用户模型走同一个
   `processModelConfig`，不得各维护一份相似校验。
@@ -284,20 +284,41 @@ reference；不得复用 InferenceEndpoint 或恢复模型顶层 `provider`
 
 ### 单个用户模型停用
 
-启动时某一条用户模型没有通过准入（显式能力冲突、route 与 InferenceEndpoint 不一致、旧版拼出的多 route 等），
-只停用这一条：它不进入运行目录，其余模型照常可用，诊断日志记下模型 ID 与原因。目录不修复、不猜测这条配置。
+启动时某一条用户模型没有通过准入（route 与 InferenceEndpoint 不一致、旧版拼出的多 route、引用的连接缺失等），
+只停用这一条：它不进入运行目录，其余模型照常可用，诊断日志记下模型 ID 与原因。目录不在启动时修复、猜测或清理这条配置。
 停用的条目仍是用户数据：
 
 - 原始条目在之后每次用户目录写盘（以及 v4→v5 迁移）时原样写回，排在已准入模型之后；
-- 它引用的 InferenceEndpoint 与凭据算作仍被引用，删除其他模型或分组时不回收（删除它所属的自定义分组也不删除它）；
+- 它引用的 InferenceEndpoint 与凭据算作仍被引用，删除其他模型时不回收；
 - `getModelIdentitiesIncludingUnadmitted()` 把它与运行目录一起交给启动对账，Provider 归属与选择器偏好不会因为它暂时停用而被删除。
 
-`getUnadmittedUserModels()` 只给出 ID、端点引用与原因，不暴露原始配置。因为归属被保留，正式 Provider 的成员可能指向停用模型：
+**原因类别。** 准入在抛错处用 `ModelAdmissionError` 给出类别（`multiple_routes`、`route_endpoint_mismatch`、`endpoint_missing`、
+`invalid_route`、`credential_declaration`、`invalid_structure`），枚举是 `@app/schemas/model-picker` 的 `UnadmittedModelReasonKindSchema`；
+不是 `ModelAdmissionError` 的异常记为 `unexpected`（检查过程本身出错）。界面按类别显示白话说明、悬停显示原文；不能反过来从原文猜类别，
+新增准入失败时在抛错处选类别。
+
+**读取。** `getUnadmittedUserModels()` 给出 ID、端点引用、自定义分组归属、原始条目里的显示名（`display_name`，没有时取 `model_name`）、
+原因与类别，不暴露原始配置。分组归属与已准入模型同一规则（`unadmittedEntryBelongsToCustomApiGroup`：分组名一致且连接属于该分组）；
+分组改名或换连接后旧条目不再满足规则，转为无归属。模型设置的投影见 Host [model-picker](../../app-hosts/linnya/application/model-picker/)：
+正式 Provider 成员归 Provider、其余按分组归属、都不属于的进“未归类”；没有 ID 的条目无法被引用或删除，不进入投影。
+
+**删除与修复。** 三个写入口都在同一次写盘里移除原始条目，按下一版本的引用重新计算连接回收（无人引用的连接与独占凭据一起删），
+写盘失败时撤销凭据删除，内存（含停用条目列表）保持事务前状态：
+
+- `removeModel(id)` 同时删运行目录里的模型和文件里同 ID 的停用条目；HTTP `DELETE /api/v1/models/:id` 与 `removal-impact` 认停用条目 ID，
+  仍经 [Configured Model Removal](../../app-hosts/linnya/application/configured-model-removal/README.md) 收口 Provider 归属与选择器偏好；
+- `removeCustomApiGroup` 连带删除属于该分组的停用条目（用户 2026-11-26 定：留下会让用户以为已删除的 Key 继续存在），
+  自定义 API 用例把它们的 ID 放进 `removed_model_ids` 清理偏好与用途绑定；旧版删分组留下的无归属条目只在“未归类”里由用户逐条删除，
+  启动时不静默清理；
+- `replaceUnadmittedUserModel(model, endpoint)` 只接受停用条目的 ID，用已准入的模型替换它，供正式 Provider 按定义修复
+  （provider-onboarding 的 `repairUnadmittedProviderModels`）；不能借此覆盖已准入模型。自定义分组的“同步模型列表”不重建停用条目，只给删除。
+
+因为归属被保留，正式 Provider 的成员可能指向停用模型：
 选择器、在线模型发现与 Ollama 接入按归属顺序取第一个仍在目录里的成员代表凭据与连接（provider-configuration 的 `findFirstCatalogedProviderMember`），
-Provider 接入用例的添加、换 Key、刷新与账号同步跳过停用成员，同步也不把它当过期模型删除；归属既不在目录、也不是停用条目时仍按配置损坏报错。
-目前的限制：界面不展示停用条目、没有删除入口，刷新也不按定义重建它；在选择器里重新添加同一个模型会返回“已经添加”（409）。
-Provider 只剩停用成员时（单模型 Provider 的那个模型停用，或“移除 Provider”只删掉已物化的模型后），选择器显示凭据缺失，
-换 Key 报配置无效，移除 Provider 也删不掉它，Ollama 再添加报“已绑定另一服务地址”，在线发现报凭据不可用；出路是停用条目的删除入口。
+Provider 接入用例的添加与账号同步跳过停用成员、普通刷新不改写它，同步也不把它当过期模型删除；归属既不在目录、也不是停用条目时仍按配置损坏报错。
+换 Key 与选择器的凭据状态把停用成员引用的连接算进凭据边界，所以 Provider 只剩停用成员时不再误报凭据缺失、换 Key 可用；
+选择器不再把停用成员当作可启用的候选（以前打开开关会返回“已经添加”409），而是列在“配置无效”里。
+删除 Provider 时界面把停用成员一起逐个删除（确认框列出）；Ollama 再添加、在线发现等仍按归属找成员的入口，在停用成员删除或修复后恢复正常。
 停用条目也不参与开发期一次性的旧 Provider 归属迁移（只在 `provider_configurations.json` 不存在时运行）：这条模型拿不到正式归属，
 日后恢复准入时会被归入自定义 API 分组。能力查询变化（例如 SDK 更新）或手工修好文件后，下次启动同一条目重新准入。
 `user_models.json` 本身无法读取、envelope、连接或分组不合法时仍按下段整体失败。
@@ -372,7 +393,7 @@ KV 只通过 `scripts/cloud-model-kv-v2-migration/`
 | Catalog admission   | route/identity 一致性、capability、reasoning、credential 引用                                                                 |
 | Default path        | 只接受已存在绝对路径、开发/发布资产唯一选择、缺失时失败                                                                       |
 | Cloud catalog       | 单请求、typed route、非法 payload、purpose defaults、能力保真                                                                 |
-| User persistence    | v4 envelope、端点引用、损坏文件失败、原子写入、停用条目原样写回                                                               |
+| User persistence    | v4 envelope、端点引用、损坏文件失败、原子写入、停用条目原样写回；停用条目删除、随分组删除、按定义替换（含写盘失败回滚与重启，见 `user-model-persistence/__tests__/unadmittedUserModels.integration.test.ts`） |
 | Endpoint credential | 统一文件、重启读取、文件权限、损坏保留、原子提交与删除                                                                                    |
 | Registry            | 来源优先级、端点/模型一致性、端点复用、最后模型/分组引用删除时清理端点与凭据、改绑与原位换 Key、Cloud 替换/retry/event、写盘失败不提交内存并撤销凭据变更、单个用户模型准入失败只停用它（写盘与迁移原样带回、连接与凭据不回收）、初始化失败回滚 |
 | Electron bridge     | renderer-ready 前后刷新信号不丢失，payload 不成为第二目录                                                                     |

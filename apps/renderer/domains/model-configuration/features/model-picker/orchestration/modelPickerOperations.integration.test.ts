@@ -16,6 +16,7 @@ import {
 const snapshot: ModelPickerSnapshot = {
   providers: [],
   custom_models: [],
+  unassigned_unadmitted_models: [],
 };
 
 function gateway(): ModelPickerGateway {
@@ -125,24 +126,33 @@ describe('modelPickerOperations', () => {
     const target = gateway();
     const oldSnapshot: ModelPickerSnapshot = {
       ...snapshot,
-      custom_models: [{
-        materialized: true,
-        model_config_id: 'removed',
-        display_name: 'Removed',
-        picker_enabled: true,
-        runtime_available: true,
-        capabilities: ['chat'],
-        image_input: false,
-      }],
+      unassigned_unadmitted_models: [],
+      custom_models: [
+        {
+          materialized: true,
+          model_config_id: 'removed',
+          display_name: 'Removed',
+          picker_enabled: true,
+          runtime_available: true,
+          capabilities: ['chat'],
+          image_input: false,
+        },
+      ],
     };
-    oldSnapshot.custom_providers = [{
-      provider_id: 'custom:Relay',
-      provider_name: 'Relay',
-      models: oldSnapshot.custom_models,
-    }];
+    oldSnapshot.custom_providers = [
+      {
+        provider_id: 'custom:Relay',
+        provider_name: 'Relay',
+        unadmitted_models: [],
+        models: oldSnapshot.custom_models,
+      },
+    ];
     let complete!: (value: ModelPickerSnapshot) => void;
     vi.mocked(target.load).mockImplementationOnce(
-      () => new Promise(resolve => { complete = resolve; })
+      () =>
+        new Promise(resolve => {
+          complete = resolve;
+        })
     );
     const loading = synchronizeModelPickerSnapshot(target);
     const removing = removeCommittedModelsFromPicker(['removed']);
@@ -150,10 +160,13 @@ describe('modelPickerOperations', () => {
     complete(oldSnapshot);
     await Promise.all([loading, removing]);
     expect(useModelPickerStore().snapshot?.custom_models).toEqual([]);
-    expect(useModelPickerStore().snapshot?.custom_providers).toEqual([{
-      provider_id: 'custom:Relay',
-      provider_name: 'Relay',
-      models: [],
-    }]);
+    expect(useModelPickerStore().snapshot?.custom_providers).toEqual([
+      {
+        provider_id: 'custom:Relay',
+        provider_name: 'Relay',
+        unadmitted_models: [],
+        models: [],
+      },
+    ]);
   });
 });

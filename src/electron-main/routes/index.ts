@@ -527,6 +527,7 @@ export async function configureRoutes(
     preferences: modelPickerPreferencesRegistry,
     providerAccounts: providerAccountRegistry,
     providerModelActivation: providerOnboardingUseCase,
+    providerModelRepair: providerOnboardingUseCase,
   });
   app.use('/api/v1/model-picker', createModelPickerRouter(modelPickerUseCase));
   logger.info('✅ 模型选择器路由已挂载: /api/v1/model-picker');

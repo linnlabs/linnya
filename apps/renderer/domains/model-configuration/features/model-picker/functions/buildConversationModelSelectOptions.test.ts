@@ -37,10 +37,12 @@ describe('buildConversationModelSelectOptions', () => {
             kind: 'direct',
             picker_enabled: true,
             credential_available: true,
+            unadmitted_models: [],
             models: [model('provider-gpt', 'GPT-5.6')],
           },
         ],
         custom_models: [model('custom', '公司模型', false)],
+        unassigned_unadmitted_models: [],
       },
       labels: {
         providerGroup: '模型供应商',
@@ -83,6 +85,7 @@ describe('buildConversationModelSelectOptions', () => {
             kind: 'direct',
             picker_enabled: true,
             credential_available: true,
+            unadmitted_models: [],
             models: [model('api-gpt', 'GPT-5.6'), model('api-only', 'GPT API 专属')],
           },
           {
@@ -96,10 +99,12 @@ describe('buildConversationModelSelectOptions', () => {
             kind: 'direct',
             picker_enabled: true,
             credential_available: true,
+            unadmitted_models: [],
             models: [model('subscription-gpt', 'GPT-5.6')],
           },
         ],
         custom_models: [],
+        unassigned_unadmitted_models: [],
       },
       labels: {
         providerGroup: '模型供应商',

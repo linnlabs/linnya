@@ -14,11 +14,20 @@ export async function removeCustomApiProvider(
 ): Promise<CustomApiProviderRemovalResponse> {
   const revision = dependencies.modelCatalog.getUserRevision();
   requireCustomApiGroup(command.provider_name, dependencies.modelCatalog.getCustomApiGroups());
-  const ids = selectCustomApiProviderModels(
+  const admittedIds = selectCustomApiProviderModels(
     command.provider_name,
     dependencies.modelCatalog.getModels(),
     modelId => dependencies.providerMembership.getByModelConfigId(modelId) !== undefined
   ).map(model => model.id);
+  // Catalog 删除分组时按同一归属规则连带删掉其中的停用条目；这里只取它们的 ID，交给偏好与用途绑定清理。
+  const unadmittedIds = dependencies.modelCatalog
+    .getUnadmittedUserModels()
+    .flatMap(entry =>
+      entry.id !== undefined && entry.custom_api_group_name === command.provider_name
+        ? [entry.id]
+        : []
+    );
+  const ids = [...admittedIds, ...unadmittedIds];
   try {
     await dependencies.modelCatalog.removeCustomApiGroup(command.provider_name, revision);
   } catch (error: unknown) {

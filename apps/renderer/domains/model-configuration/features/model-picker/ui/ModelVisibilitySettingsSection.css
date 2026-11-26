@@ -46,11 +46,13 @@
 }
 
 .model-visibility-source-list .settings-list,
+.model-visibility-invalid .settings-list,
 .model-visibility-model-list .settings-list {
   gap: var(--space-0-5);
 }
 
 .model-visibility-source-list .settings-list-row,
+.model-visibility-invalid .settings-list-row,
 .model-visibility-model-list .settings-list-row {
   padding: var(--space-1-5) var(--space-2);
 }
@@ -105,7 +107,10 @@
 }
 
 .model-visibility-source-tab {
-  display: block;
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  justify-content: space-between;
   width: 100%;
   padding: 0;
   color: var(--color-text-primary);
@@ -182,4 +187,104 @@
   .model-visibility-sources {
     max-height: 220px;
   }
+}
+
+/* ===== 启动时停用的用户模型：左侧“N 个无效”与右侧“配置无效”区块 ===== */
+
+.model-visibility-source-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 状态靠文字表达：warning 表示“需要你处理、但没有失败”。 */
+.model-visibility-source-invalid {
+  flex-shrink: 0;
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  color: var(--color-warning-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.model-visibility-invalid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-3);
+  border-bottom: var(--border-width-hairline) solid
+    var(--settings-hairline, var(--color-border-light));
+}
+
+.model-visibility-invalid.is-last {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+
+.model-visibility-invalid-header {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-2);
+}
+
+.model-visibility-invalid-header h5 {
+  margin: 0;
+  font-size: var(--font-size-footnote);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-primary);
+}
+
+.model-visibility-invalid-description {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-tertiary);
+}
+
+.model-visibility-invalid-repair {
+  flex-shrink: 0;
+}
+
+.model-visibility-invalid-repair .is-spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* 条目两行：名称在上，原因在下；原因允许换行，不截断。 */
+.model-visibility-invalid-row .settings-list-row-main {
+  align-items: flex-start;
+}
+
+.model-visibility-invalid-row .settings-list-row-title {
+  overflow: visible;
+  white-space: normal;
+}
+
+.model-visibility-invalid-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+
+.model-visibility-invalid-name {
+  color: var(--color-text-secondary);
+}
+
+.model-visibility-invalid-reason {
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-tertiary);
+  overflow-wrap: anywhere;
+}
+
+.model-visibility-invalid-flag {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-warning-text);
 }

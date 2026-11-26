@@ -91,3 +91,24 @@ export async function deleteModelFromCatalog(
     }
   });
 }
+
+/**
+ * 删除启动时停用的条目：它们从未进入前端 catalog 快照（GET /models 只返回已准入的模型），
+ * 所以只提交后端删除，不调用 store.removeModel——那里“待删除模型必须在目录中”的断言保护的是已准入模型。
+ */
+export async function deleteUnadmittedModelFromCatalog(
+  modelId: string,
+  gateway: ModelCatalogGateway = httpModelCatalogGateway
+): Promise<void> {
+  const store = useModelCatalogStore();
+  return enqueue(store, async () => {
+    store.beginOperation('delete');
+    try {
+      await gateway.delete(modelId);
+      store.finishOperation();
+    } catch (error) {
+      store.failOperation(createModelCatalogError('delete', error));
+      throw error;
+    }
+  });
+}

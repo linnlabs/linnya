@@ -3,6 +3,9 @@ import type { ModelInferenceRoute } from '../../../definitions/modelCatalog';
 import type { ModelReasoningResolver } from '../../../definitions/modelReasoningResolver';
 import { inferReasoningConfigByModelName } from './inferReasoningConfigByModelName';
 import { readReasoningConfig } from './readReasoningConfig';
+import { Logger } from 'src/shared/logger';
+
+const logger = new Logger('ModelCatalog');
 
 /** SDK 能力限定可执行范围，显式声明只能缩窄；缺少 SDK 信息才使用既有目录知识。 */
 export function resolveModelReasoningConfig(input: {
@@ -22,20 +25,41 @@ export function resolveModelReasoningConfig(input: {
     return declared ?? inferReasoningConfigByModelName(input.modelName);
   }
   const available = readReasoningConfig(resolved);
-  const supported = declared
-    ? (available?.supported_efforts ?? []).filter(effort =>
-        declared.supported_efforts.includes(effort)
-      )
-    : (available?.supported_efforts ?? []);
-  if (declared && supported.length === 0) {
-    throw new Error(`模型 ${input.modelName} 的 reasoning 声明与当前推理能力没有共同档位`);
+  const availableEfforts = available?.supported_efforts ?? [];
+  const narrowed = declared
+    ? availableEfforts.filter(effort => declared.supported_efforts.includes(effort))
+    : availableEfforts;
+  // 显式声明只能在模型能力范围内缩窄。缩窄到模型做不到的档位时这条声明无法执行：
+  // 用户 2026-11-26 定不再因此停用整个模型（界面也没有改档位的入口，用户修不了），
+  // 改为整条忽略这条声明（包括它的默认档位），按 SDK 报告的档位启用，并留下日志便于排查。
+  const ignoredDeclaration = declared && narrowed.length === 0 ? declared : undefined;
+  const effectiveDeclared = ignoredDeclaration ? undefined : declared;
+  const supported = ignoredDeclaration ? availableEfforts : narrowed;
+  const result = available
+    ? applyDefaultEffort(supported, effectiveDeclared?.default_effort, available.default_effort)
+    : undefined;
+  if (ignoredDeclaration) {
+    logger.warn(
+      `[ModelCatalog] 模型 ${input.modelName} 的 reasoning 声明与当前推理能力没有共同档位，已忽略这条声明，按推理能力启用`,
+      {
+        ignored_reasoning: ignoredDeclaration,
+        applied_reasoning: result ?? null,
+      }
+    );
   }
-  if (!available) return undefined;
+  return result;
+}
+
+function applyDefaultEffort(
+  supported: ModelReasoningConfig['supported_efforts'],
+  declaredDefault: ModelReasoningConfig['default_effort'],
+  availableDefault: ModelReasoningConfig['default_effort']
+): ModelReasoningConfig {
   const defaultEffort =
-    declared?.default_effort && supported.includes(declared.default_effort)
-      ? declared.default_effort
-      : available.default_effort && supported.includes(available.default_effort)
-        ? available.default_effort
+    declaredDefault && supported.includes(declaredDefault)
+      ? declaredDefault
+      : availableDefault && supported.includes(availableDefault)
+        ? availableDefault
         : undefined;
   const config = { supported_efforts: supported, default_effort: defaultEffort };
   // 产品默认沿用 Linnkit 的 canonical 规则；SDK 只提供能力事实，不承担 UI 默认策略。

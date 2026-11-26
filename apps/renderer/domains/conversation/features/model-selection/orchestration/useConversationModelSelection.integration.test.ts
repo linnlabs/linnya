@@ -46,6 +46,7 @@ function catalogResponse(reasoning: ModelCatalogItem['reasoning']): Response {
 
 const pickerSnapshot: ModelPickerSnapshot = {
   providers: [],
+  unassigned_unadmitted_models: [],
   custom_models: [modelId, otherModelId].map(id => ({
     materialized: true,
     model_config_id: id,

@@ -1,5 +1,11 @@
-import type { ModelSourceRemovalResult } from '../definitions/modelSourceRemoval';
-import { deleteModelFromCatalog } from '../features/model-catalog/orchestration/modelCatalogOperations';
+import type {
+  ModelSourceRemovalResult,
+  ModelSourceRemovalTargets,
+} from '../definitions/modelSourceRemoval';
+import {
+  deleteModelFromCatalog,
+  deleteUnadmittedModelFromCatalog,
+} from '../features/model-catalog/orchestration/modelCatalogOperations';
 import type { ModelCatalogGateway } from '../features/model-catalog/definitions/modelCatalogGateway';
 import {
   loadModelPicker,
@@ -10,16 +16,25 @@ import { clearBindingsForModel } from '../features/purpose-model-bindings/orches
 
 /** 正式 Provider 的每个归属删除仍走 Host durable intent；整批结束后再同步一次列表。 */
 export async function removeModelSource(
-  modelConfigIds: readonly string[],
+  targets: ModelSourceRemovalTargets,
   catalogGateway?: ModelCatalogGateway,
   pickerGateway?: ModelPickerGateway
 ): Promise<ModelSourceRemovalResult> {
   const removedModelIds: string[] = [];
   let failure: ModelSourceRemovalResult['failure'] = null;
-  for (const modelId of modelConfigIds) {
+  const steps = [
+    ...targets.modelConfigIds.map(modelId => ({ modelId, unadmitted: false })),
+    ...targets.unadmittedModelConfigIds.map(modelId => ({ modelId, unadmitted: true })),
+  ];
+  for (const { modelId, unadmitted } of steps) {
     try {
-      await deleteModelFromCatalog(modelId, catalogGateway);
-      clearBindingsForModel(modelId);
+      if (unadmitted) {
+        // 停用条目不可选、不进用途绑定，只删后端；选择器快照在下面按回执一并移除。
+        await deleteUnadmittedModelFromCatalog(modelId, catalogGateway);
+      } else {
+        await deleteModelFromCatalog(modelId, catalogGateway);
+        clearBindingsForModel(modelId);
+      }
       removedModelIds.push(modelId);
     } catch (error: unknown) {
       failure = { modelId, error };

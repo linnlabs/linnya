@@ -13,7 +13,9 @@ export type {
   ProviderOnboardingModelCatalogPort,
   ProviderOnboardingRuntimeBindingPort,
   ProviderOnboardingUseCase,
+  ProviderModelRepairResult,
 } from './definitions/providerOnboardingPorts';
+export { canRepairUnadmittedProviderModels } from './functions/resolveProviderCredentialBoundary';
 export {
   resolveProviderOnboardingAuthMethod,
   type ProviderOnboardingAuthMethod,

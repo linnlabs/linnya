@@ -26,6 +26,7 @@ const activatedPickerSnapshot: ModelPickerSnapshot = {
       kind: 'direct',
       picker_enabled: true,
       credential_available: true,
+      unadmitted_models: [],
       models: [
         {
           materialized: true,
@@ -41,6 +42,7 @@ const activatedPickerSnapshot: ModelPickerSnapshot = {
     },
   ],
   custom_models: [],
+  unassigned_unadmitted_models: [],
 };
 
 const activatedCatalogSnapshot: ModelCatalogSnapshot = {

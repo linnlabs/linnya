@@ -1178,7 +1178,11 @@ describe('Registry 用户模型准入隔离与初始化回滚', () => {
       {
         id: 'broken-user-model',
         inference_endpoint_id: 'broken-endpoint',
+        custom_api_group_name: undefined,
+        display_name: 'broken-user-model',
         reason: expect.stringContaining('必须声明唯一的推理 route'),
+        // 类别在抛错处给出，界面据此显示白话原因。
+        reason_kind: 'multiple_routes',
       },
     ]);
     expect(persisterMock.saveState).not.toHaveBeenCalled();

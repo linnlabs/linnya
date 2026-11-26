@@ -512,7 +512,7 @@ describe('SDK reasoning 能力与显式声明的准入', () => {
     });
   });
 
-  it('无共同档位明确报配置冲突，SDK无结果保留已知legacy规则', () => {
+  it('无共同档位时忽略声明、按 SDK 档位与默认值启用，SDK无结果保留已知legacy规则', () => {
     const raw = makeModelData({
       model_name: 'claude-sonnet-4-5',
       inference_route: {
@@ -520,7 +520,7 @@ describe('SDK reasoning 能力与显式声明的准入', () => {
         endpoint_model_id: 'claude-sonnet-4-5',
       },
     });
-    expect(() =>
+    expect(
       processModelConfig({
         modelData: {
           ...raw,
@@ -531,8 +531,8 @@ describe('SDK reasoning 能力与显式声明的准入', () => {
         },
         envVars: {},
         reasoningResolver: () => ({ supported_efforts: ['low', 'medium', 'high'] }),
-      })
-    ).toThrow('claude-sonnet-4-5');
+      }).reasoning
+    ).toEqual({ supported_efforts: ['low', 'medium', 'high'], default_effort: 'medium' });
     expect(
       processModelConfig({ modelData: raw, envVars: {}, reasoningResolver: () => undefined })
         .reasoning

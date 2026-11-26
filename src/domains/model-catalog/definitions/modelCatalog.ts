@@ -1,3 +1,4 @@
+import type { UnadmittedModelReasonKind } from '@app/schemas/model-picker';
 import type { CredentialStoragePort } from 'src/shared/credential-storage';
 import type { CustomApiGroup, CustomApiGroupMigration } from './customApiGroup';
 import type { ModelReasoningResolver } from './modelReasoningResolver';
@@ -215,12 +216,19 @@ export type FunctionalModelDefaults = Record<string, string>;
  * `user_models.json` 中启动时没有通过准入的用户模型。
  *
  * 它不进入运行目录，也不能被选择或调用；原始条目在之后的用户目录写盘中原样保留，
- * 它引用的连接与凭据不会被回收。只暴露身份与原因，不暴露原始配置内容。
+ * 它引用的连接与凭据不会被回收，直到用户删除它（`removeModel`）、删除它所属的自定义分组，
+ * 或由正式 Provider 按定义重建（`replaceUnadmittedUserModel`）。
+ * 只暴露身份、归属、显示名与原因，不暴露原始配置内容。
  */
 export interface UnadmittedUserModel {
   readonly id: string | undefined;
   readonly inference_endpoint_id: string | undefined;
+  /** 按与已准入模型相同的规则归入的自定义分组；不属于任何现存分组时为 undefined。 */
+  readonly custom_api_group_name: string | undefined;
+  /** 原始条目里的显示名或模型名；两者都没有时为 undefined，由界面退回 ID。 */
+  readonly display_name: string | undefined;
   readonly reason: string;
+  readonly reason_kind: UnadmittedModelReasonKind;
 }
 
 /**

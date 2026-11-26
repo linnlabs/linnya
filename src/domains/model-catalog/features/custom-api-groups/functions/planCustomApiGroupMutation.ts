@@ -9,6 +9,7 @@ import {
   assertCustomApiGroupEndpoints,
   belongsToCustomApiGroup,
   requireCustomApiGroup,
+  unadmittedEntryBelongsToCustomApiGroup,
 } from './customApiGroupState';
 
 /** 分组成员、模型差异与连接引用的完整下一版本，只计算、不发布状态。 */
@@ -20,6 +21,7 @@ export function planCustomApiGroupMutation(
   const models = new Map(state.models);
   const endpoints = new Map(state.endpoints);
   const groups = new Map(state.groups);
+  let unadmitted = state.unadmitted;
   let changed = false;
   const saveGroup = (name: string, ids: Iterable<string>) => {
     const group = CustomApiGroupSchema.parse({ name, inference_endpoint_ids: [...new Set(ids)] });
@@ -116,6 +118,11 @@ export function planCustomApiGroupMutation(
       for (const model of models.values()) {
         if (belongsToCustomApiGroup(model, group)) models.delete(model.id);
       }
+      // 用户 2026-11-26 定：分组里配置无效的条目连同连接与独占 Key 一起删，确认框会先列出它们；
+      // 留在本机会让用户以为已经删掉的 Key 继续存在。
+      unadmitted = unadmitted.filter(
+        entry => !unadmittedEntryBelongsToCustomApiGroup(entry, group)
+      );
       groups.delete(group.name);
       changed = true;
       break;
@@ -151,5 +158,5 @@ export function planCustomApiGroupMutation(
       break;
     }
   }
-  return { models, endpoints, groups, changed };
+  return { models, endpoints, groups, unadmitted, changed };
 }
