@@ -15,6 +15,8 @@ const {
   resolvePreparedQdrantDirectory,
   sha256,
 } = require('../functions/qdrant-runtime-integrity.cjs');
+const { describeTransientFetchError } = require('../../functions/transientNetworkFailure.cjs');
+const { retryTransientNetwork } = require('../../orchestration/retryTransientNetwork.cjs');
 
 function assertHostTarget(platform, architecture) {
   if (platform !== process.platform || architecture !== process.arch) {
@@ -36,9 +38,16 @@ async function downloadArchive(input) {
   }
   if (cachedBytes) await fsp.rm(input.cachePath, { force: true });
 
-  const response = await globalThis.fetch(input.sourceUrl, { redirect: 'follow' });
-  if (!response.ok) throw new Error(`下载 Qdrant runtime 失败：HTTP ${response.status}`);
-  const bytes = Buffer.from(await response.arrayBuffer());
+  // 只有断线、超时这类临时传输错误会重试；HTTP 错误和下面的校验不符当场失败。
+  const bytes = await retryTransientNetwork({
+    label: '下载 Qdrant runtime',
+    describeTransient: describeTransientFetchError,
+    attempt: async () => {
+      const response = await globalThis.fetch(input.sourceUrl, { redirect: 'follow' });
+      if (!response.ok) throw new Error(`下载 Qdrant runtime 失败：HTTP ${response.status}`);
+      return Buffer.from(await response.arrayBuffer());
+    },
+  });
   const actualSha256 = sha256(bytes);
   if (actualSha256 !== input.expectedSha256) {
     throw new Error(
