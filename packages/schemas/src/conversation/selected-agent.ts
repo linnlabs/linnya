@@ -44,6 +44,28 @@ export function toReadModelAgentId(agentId: string | null): string | null {
 }
 
 /**
+ * 子任务是哪个 Agent 发起的：用户这次请求的根运行 Agent，`agent_id` 按 `toReadModelAgentId` 约定（默认 Agent 为 null）。
+ *
+ * 外面再包一层对象，是为了把“默认 Agent”（`{ agent_id: null }`）和“不知道”（整个字段为 null）分开：
+ * 根运行 Agent 入库之前、运行记录又已随对话删除的历史子任务查不回发起者，界面只能显示“子任务”。
+ */
+export const ReadModelRootAgentSchema = z.object({ agent_id: z.string().min(1).nullable() }).strict();
+
+export type ReadModelRootAgent = z.infer<typeof ReadModelRootAgentSchema>;
+
+/**
+ * 只对子运行给出发起它的 Agent：主运行的发起者就是它自己（见同级 `agent_id`），其他执行者没有运行。
+ * 项目概览与语义层改动记录共用这条约定。
+ */
+export function toReadModelRootAgent(
+  actorKind: 'user' | 'run' | 'subrun' | 'plugin' | 'external',
+  rootAgentId: string | null,
+): ReadModelRootAgent | null {
+  if (actorKind !== 'subrun' || rootAgentId === null) return null;
+  return { agent_id: toReadModelAgentId(rootAgentId) };
+}
+
+/**
  * 持久化的会话 Agent 选择 → 读取合同：默认 Agent 一律是 null，其余为 AgentDefinition.id。
  *
  * 旧数据曾把默认 Agent 的 ID 字面量 `default` 原样写进库（例如 CLI 的 `send --agent default`）。

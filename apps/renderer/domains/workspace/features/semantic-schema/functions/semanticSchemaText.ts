@@ -5,6 +5,7 @@ import type {
   SemanticValueTypeValue,
 } from '@app/schemas';
 import type { WorkspaceMessageKey, WorkspaceMessageResolver } from '@/domains/workspace/definitions/workspaceMessages';
+import { formatSubrunActorLabel } from '@/domains/workspace/functions/formatSubrunActorLabel';
 
 /** 界面上可选的字段类型，按常用程度排。 */
 export const SEMANTIC_VALUE_TYPE_ORDER: readonly SemanticValueTypeValue[] = [
@@ -38,7 +39,13 @@ export interface SemanticSchemaTextContext {
   readonly timeText: (timestamp: number) => string;
 }
 
-/** 谁做的：你、具体哪个 Agent 或子任务（带对话名）、命令行、插件。 */
+/** 运行执行者的名字：主运行是具体的 Agent，子运行是发起它的 Agent 的子任务。 */
+function runActorName(kind: 'run' | 'subrun', actor: SemanticSchemaActor, context: SemanticSchemaTextContext): string {
+  if (kind === 'run') return context.agentName(actor.agent_id);
+  return formatSubrunActorLabel(actor.root_agent === null ? null : context.agentName(actor.root_agent.agent_id), context.message);
+}
+
+/** 谁做的：你、具体哪个 Agent 或“XX 的子任务”（带对话名）、命令行、插件。 */
 export function actorText(actor: SemanticSchemaActor, context: SemanticSchemaTextContext): string {
   const { message } = context;
   const conversation = actor.conversation_id === null
@@ -49,8 +56,9 @@ export function actorText(actor: SemanticSchemaActor, context: SemanticSchemaTex
       case 'user': return message('workspace.semanticSchema.actor.user');
       case 'plugin': return message('workspace.semanticSchema.actor.plugin');
       case 'external': return message('workspace.semanticSchema.actor.external');
-      case 'run': return context.agentName(actor.agent_id);
-      case 'subrun': return message('workspace.projectOverview.actor.subrun');
+      case 'run':
+      case 'subrun':
+        return runActorName(actor.kind, actor, context);
     }
   })();
   return conversation ? `${who} · ${conversation}` : who;
@@ -63,7 +71,7 @@ export function tagOriginText(actor: SemanticSchemaActor | null, createdAt: numb
   if (actor === null) return message('workspace.semanticSchema.origin.unknown', { time });
   if (actor.kind === 'user') return message('workspace.semanticSchema.origin.user', { time });
   if (actor.kind === 'run' || actor.kind === 'subrun') {
-    const agent = actor.kind === 'run' ? context.agentName(actor.agent_id) : message('workspace.projectOverview.actor.subrun');
+    const agent = runActorName(actor.kind, actor, context);
     return actor.conversation_id === null
       ? message('workspace.semanticSchema.origin.agent', { agent, time })
       : message('workspace.semanticSchema.origin.agentInConversation', {

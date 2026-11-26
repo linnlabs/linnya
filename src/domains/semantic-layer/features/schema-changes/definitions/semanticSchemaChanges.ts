@@ -19,12 +19,17 @@ export const SEMANTIC_SCHEMA_CHANGE_KINDS = [
 ] as const;
 export type SemanticSchemaChangeKind = (typeof SEMANTIC_SCHEMA_CHANGE_KINDS)[number];
 
-/** 改动由谁做的。身份来自入口绑定的执行者；没有绑定时按用户。Agent 由运行记录查出。 */
+/**
+ * 改动由谁做的。身份来自入口绑定的执行者；没有绑定时按用户。
+ * Agent 与根运行 Agent 由账本的同一规则从运行记录查出（见行动账本 `ActionRunAgents`）：
+ * 子运行的 Agent 没有面向用户的名字，界面用根运行 Agent 说“XX 的子任务”。
+ */
 export interface SemanticChangeActor {
   readonly kind: 'user' | 'run' | 'subrun' | 'plugin' | 'external';
   readonly conversationId: string | null;
   readonly runId: string | null;
   readonly agentId: string | null;
+  readonly rootAgentId: string | null;
 }
 
 /** 列表里显示用的摘要：名称取改动当时的名称，计数是受影响的对象数。 */

@@ -45,15 +45,11 @@ import {
   parseStoredRuntimeEvent,
   serializeStoredRuntimeEvent,
 } from './functions/runtimeEventStorageCodec';
-import {
-  ConversationOriginSchema,
-  readConversationSelectedAgentId,
-  type ConversationSelectedAgentId,
-} from '@app/schemas';
+import { readConversationSelectedAgentId, type ConversationSelectedAgentId } from '@app/schemas';
+import { parseConversationMetadata, readConversationOrigin } from './functions/conversationMetadata';
 import { SqliteSubrunTraceHistoryCleanup } from '../subrun-trace-history/sqliteSubrunTraceHistoryCleanup';
 import { ScheduledConversationFoldSchema } from '@app/schemas/scheduled-tasks';
 import { scheduledConversationListProjection } from '../scheduled-tasks/scheduledConversationListProjection';
-import { isRecord } from '@linnya/foundation';
 
 const logger = getLogger('SQLiteEventStore');
 
@@ -110,18 +106,8 @@ function readConversationMode(
   }
 }
 
-function readConversationOrigin(
-  row: Pick<ConversationRow, 'conversation_id' | 'metadata'>
-): ConversationListItem['origin'] {
-  if (!row.metadata) return undefined;
-  const origin: unknown = parseConversationMetadata(row.conversation_id, row.metadata).origin;
-  if (origin === undefined) return undefined;
-  // 写入方只有 materializeOriginConversation；读到未知值说明数据被外部改写，不能静默当作普通会话。
-  return ConversationOriginSchema.parse(origin);
-}
-
 function toConversationListItem(row: ConversationRow): ConversationListItem {
-  const origin = readConversationOrigin(row);
+  const origin = readConversationOrigin(row.conversation_id, row.metadata);
   return {
     conversation_id: row.conversation_id,
     title: row.title,
@@ -141,24 +127,6 @@ function toConversationListItem(row: ConversationRow): ConversationListItem {
       unread_count: row.scheduled_unread_count, run_count: row.scheduled_run_count,
     }) } : {}),
   };
-}
-
-function parseConversationMetadata(
-  conversationId: string,
-  metadata: string | null
-): Record<string, unknown> {
-  if (!metadata) {
-    return {};
-  }
-
-  const parsed: unknown = JSON.parse(metadata);
-  if (!isRecord(parsed)) {
-    throw new Error(
-      `[SQLiteEventStore] conversation ${conversationId} metadata must be a JSON object`
-    );
-  }
-
-  return { ...parsed };
 }
 
 function buildPreviewText(content: string): string {

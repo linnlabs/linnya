@@ -39,11 +39,15 @@ export interface SemanticTagField {
   readonly defaultValue?: SemanticValue;
 }
 
-/** 新建标签的是谁：用户直接建的只有种类；Agent 建的带对话与 Agent，迁移前建的没有记录。 */
+/**
+ * 新建标签的是谁：用户直接建的只有种类；Agent 建的带对话、Agent 与根运行 Agent，迁移前建的没有记录。
+ * 标签不记运行编号，子任务在根运行 Agent 入库之前建的标签查不回发起它的 Agent，`rootAgentId` 为 null。
+ */
 export interface SemanticCreator {
   readonly kind: 'user' | 'run' | 'subrun' | 'plugin' | 'external';
   readonly conversationId: string | null;
   readonly agentId: string | null;
+  readonly rootAgentId: string | null;
 }
 
 export interface SemanticTagDefinition {

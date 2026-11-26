@@ -1,10 +1,15 @@
-import type { ProjectOverviewActor, ProjectOverviewDocument } from '@app/schemas';
+import type { ProjectOverviewActor, ProjectOverviewDocument, ReadModelRootAgent } from '@app/schemas';
 import type {
   ProjectOverviewFilters,
   ProjectOverviewModifiedRange,
+  ProjectOverviewRootAgent,
   ProjectOverviewRow,
   ProjectOverviewSort,
 } from '../definitions/projectOverview';
+
+function toRootAgent(rootAgent: ReadModelRootAgent | null): ProjectOverviewRootAgent | null {
+  return rootAgent === null ? null : { agentId: rootAgent.agent_id };
+}
 
 export function toProjectOverviewRow(document: ProjectOverviewDocument): ProjectOverviewRow {
   return {
@@ -17,12 +22,14 @@ export function toProjectOverviewRow(document: ProjectOverviewDocument): Project
     creatorActor: document.creator?.actor ?? null,
     creatorPluginId: document.creator?.plugin_id ?? null,
     creatorAgentId: document.creator?.agent_id ?? null,
+    creatorRootAgent: toRootAgent(document.creator?.root_agent ?? null),
     conversationId: document.creator?.conversation_id ?? null,
     conversationTitle: document.creator?.conversation_title ?? null,
     lastModifiedAt: document.last_modified_at,
     lastModifiedActor: document.last_modified_by?.actor ?? null,
     lastModifiedPluginId: document.last_modified_by?.plugin_id ?? null,
     lastModifiedAgentId: document.last_modified_by?.agent_id ?? null,
+    lastModifiedRootAgent: toRootAgent(document.last_modified_by?.root_agent ?? null),
     pendingRevisionCount: document.pending_revision_count,
     tags: document.tags,
     fieldRevision: document.properties.revision,

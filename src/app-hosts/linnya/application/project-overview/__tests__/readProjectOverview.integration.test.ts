@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
+import { ProjectOverviewSchema } from '@app/schemas';
 
 import { withActionActor } from 'src/domains/action-ledger';
 import { attachCitationSourceResolver } from 'src/domains/citation';
@@ -36,7 +37,15 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-function context(run: { readonly runId: string; readonly callId: string; readonly conversationId?: string } | null): ToolContext {
+interface RunIdentity {
+  readonly runId: string;
+  readonly callId: string;
+  readonly conversationId?: string;
+  /** 子运行：派出它的父运行与用户这次请求的根运行。 */
+  readonly subrunOf?: { readonly parentRunId: string; readonly rootRunId: string };
+}
+
+function context(run: RunIdentity | null): ToolContext {
   const value: ToolContext = {
     databaseService: database,
     workspaceService: workspace,
@@ -46,7 +55,8 @@ function context(run: { readonly runId: string; readonly callId: string; readonl
           conversationId: run.conversationId ?? 'conv',
           parentToolCallId: ToolCallIdSchema.parse(run.callId),
           runId: RunIdSchema.parse(run.runId),
-          rootRunId: run.runId,
+          rootRunId: run.subrunOf?.rootRunId ?? run.runId,
+          ...(run.subrunOf ? { parentRunId: RunIdSchema.parse(run.subrunOf.parentRunId) } : {}),
         }
       : {}),
   };
@@ -57,10 +67,10 @@ function context(run: { readonly runId: string; readonly callId: string; readonl
 const write = (locator: string, content: string, ctx: ToolContext) => new WriteFileTool().run({ locator, content }, ctx);
 
 /** 账本按运行编号从运行记录查 Agent。 */
-function insertRun(runId: string, conversationId: string, agentSpecId: string): void {
+function insertRun(runId: string, conversationId: string, agentSpecId: string, parentRunId: string | null = null): void {
   database.getDb().prepare(
-    "INSERT INTO runs (id, conversation_id, kind, status, start_ts, agent_spec_id) VALUES (?, ?, 'root', 'completed', 1, ?)",
-  ).run(runId, conversationId, agentSpecId);
+    "INSERT INTO runs (id, conversation_id, kind, status, start_ts, agent_spec_id, parent_run_id) VALUES (?, ?, 'root', 'completed', 1, ?, ?)",
+  ).run(runId, conversationId, agentSpecId, parentRunId);
 }
 
 describe('项目概览', () => {
@@ -114,6 +124,44 @@ describe('项目概览', () => {
       last_modified_at: now + 60_000,
       last_modified_by: null,
     });
+  });
+
+  it('子任务的改动带上发起它的 Agent，对话删除后仍在；查不回发起者的历史记录不带', async () => {
+    insertRun('run-root', 'conv', 'research_v1');
+    insertRun('run-child', 'conv', 'subagent_general', 'run-root');
+    const subrun = { parentRunId: 'run-root', rootRunId: 'run-root' };
+    await write('workspace:/子任务稿.md', '# 初稿', context({ runId: 'run-child', callId: 'c1', subrunOf: subrun }));
+    await write('workspace:/主运行稿.md', '# 主运行', context({ runId: 'run-root', callId: 'c2' }));
+    await write('workspace:/主运行稿.md', '# 子任务改', context({ runId: 'run-child', callId: 'c3', subrunOf: subrun }));
+    // 删除对话会级联删掉运行记录；之后的读取不能再依赖运行表。
+    database.getDb().prepare('DELETE FROM conversations WHERE conversation_id = ?').run('conv');
+    expect(database.getDb().prepare('SELECT COUNT(*) AS count FROM runs').get()).toEqual({ count: 0 });
+
+    await write('workspace:/历史.md', '# 历史', context({ runId: 'run-old-child', callId: 'c4', subrunOf: { parentRunId: 'run-old', rootRunId: 'run-old' } }));
+    // 根运行 Agent 入库之前登记、运行记录又已删除的子任务：迁移回填不了，保持空。
+    expect(database.getDb().prepare("SELECT root_agent_id FROM action_ledger_entries WHERE run_id = 'run-old-child'").get())
+      .toEqual({ root_agent_id: null });
+
+    // 按 Renderer 网关同一份合同校验。
+    const overview = ProjectOverviewSchema.parse(readProjectOverview(database.getDb(), { project_id: projectId }));
+    const byTitle = new Map(overview.documents.map(document => [document.title, document]));
+    expect(byTitle.get('子任务稿.md')).toMatchObject({
+      creator: { actor: 'subrun', agent_id: 'subagent_general', root_agent: { agent_id: 'research_v1' } },
+      last_modified_by: { actor: 'subrun', root_agent: { agent_id: 'research_v1' } },
+    });
+    expect(byTitle.get('主运行稿.md')).toMatchObject({
+      // 主运行的发起者就是它自己，只给 agent_id。
+      creator: { actor: 'run', agent_id: 'research_v1', root_agent: null },
+      last_modified_by: { actor: 'subrun', root_agent: { agent_id: 'research_v1' } },
+    });
+    expect(byTitle.get('历史.md')).toMatchObject({ creator: { actor: 'subrun', root_agent: null } });
+  });
+
+  it('默认 Agent 派出的子任务按读取约定给 null，界面显示 Linnya Agent 的子任务', async () => {
+    insertRun('run-root', 'conv', 'default');
+    await write('workspace:/a.md', '# A', context({ runId: 'run-child', callId: 'c1', subrunOf: { parentRunId: 'run-root', rootRunId: 'run-root' } }));
+    const [document] = readProjectOverview(database.getDb(), { project_id: projectId }).documents;
+    expect(document?.creator).toMatchObject({ actor: 'subrun', root_agent: { agent_id: null } });
   });
 
   it('按文档补读只返回仍在项目里的那几份，不给文件夹数', async () => {

@@ -414,10 +414,10 @@ describe('改动记录', () => {
     withActionActor(run, () => layer.defineTag({ name: '论文' }));
     layer.defineTag({ name: '会议' });
     const byName = new Map(layer.listTags().map(item => [item.name, item.createdBy]));
-    expect(byName.get('论文')).toEqual({ kind: 'run', conversationId: 'conv-1', agentId: 'linnya-ai' });
-    expect(byName.get('会议')).toEqual({ kind: 'user', conversationId: null, agentId: null });
+    expect(byName.get('论文')).toEqual({ kind: 'run', conversationId: 'conv-1', agentId: 'linnya-ai', rootAgentId: 'linnya-ai' });
+    expect(byName.get('会议')).toEqual({ kind: 'user', conversationId: null, agentId: null, rootAgentId: null });
     const change = withActionActor(run, () => layer.deleteTag('论文'));
-    expect(change.actor).toEqual({ kind: 'run', conversationId: 'conv-1', runId: 'run-1', agentId: 'linnya-ai' });
+    expect(change.actor).toEqual({ kind: 'run', conversationId: 'conv-1', runId: 'run-1', agentId: 'linnya-ai', rootAgentId: 'linnya-ai' });
     layer.renameTag('会议', '会议纪要');
     expect(layer.listChanges().map(item => item.summary.kind)).toEqual(['rename_tag', 'delete_tag']);
   });

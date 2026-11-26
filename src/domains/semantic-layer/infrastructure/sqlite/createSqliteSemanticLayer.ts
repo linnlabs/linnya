@@ -44,12 +44,15 @@ interface TagRow {
   readonly created_by_kind: string | null;
   readonly created_conversation_id: string | null;
   readonly created_agent_id: string | null;
+  readonly created_root_agent_id: string | null;
 }
 const CREATOR_KINDS = ['user', 'run', 'subrun', 'plugin', 'external'] as const;
 
 function toCreator(row: TagRow): SemanticCreator | undefined {
   const kind = CREATOR_KINDS.find(candidate => candidate === row.created_by_kind);
-  return kind ? { kind, conversationId: row.created_conversation_id, agentId: row.created_agent_id } : undefined;
+  return kind
+    ? { kind, conversationId: row.created_conversation_id, agentId: row.created_agent_id, rootAgentId: row.created_root_agent_id }
+    : undefined;
 }
 interface TagFieldRow { readonly tag_id: string; readonly property_id: string; readonly default_json: string | null }
 interface ValueRow { readonly revision: number; readonly property_values: string }
@@ -101,8 +104,8 @@ export function createSqliteSemanticLayer(
   let ledger: ReturnType<typeof createSqliteActionLedger> | undefined;
 
   function creator(): SemanticCreator {
-    const { kind, conversationId, agentId } = readActor();
-    return { kind, conversationId, agentId };
+    const { kind, conversationId, agentId, rootAgentId } = readActor();
+    return { kind, conversationId, agentId, rootAgentId };
   }
 
   const listPropertyRows = db.prepare<[], PropertyRow>(`
@@ -110,7 +113,7 @@ export function createSqliteSemanticLayer(
     FROM semantic_properties WHERE deleted_at IS NULL ORDER BY name_key
   `);
   const listTagRows = db.prepare<[], TagRow>(
-    `SELECT id, name, created_at, created_by_kind, created_conversation_id, created_agent_id
+    `SELECT id, name, created_at, created_by_kind, created_conversation_id, created_agent_id, created_root_agent_id
      FROM semantic_tags WHERE deleted_at IS NULL ORDER BY name_key`
   );
   const listTagFieldRows = db.prepare<[], TagFieldRow>(`
@@ -439,9 +442,10 @@ export function createSqliteSemanticLayer(
         const tag = { id: newId(), name, createdAt: now() };
         const by = creator();
         db.prepare(`
-          INSERT INTO semantic_tags (id, name, name_key, color, created_at, created_by_kind, created_conversation_id, created_agent_id)
-          VALUES (?, ?, ?, NULL, ?, ?, ?, ?)
-        `).run(tag.id, name, semanticNameKey(name), tag.createdAt, by.kind, by.conversationId, by.agentId);
+          INSERT INTO semantic_tags (
+            id, name, name_key, color, created_at, created_by_kind, created_conversation_id, created_agent_id, created_root_agent_id
+          ) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)
+        `).run(tag.id, name, semanticNameKey(name), tag.createdAt, by.kind, by.conversationId, by.agentId, by.rootAgentId);
         writeTagFields(tag.id, fields);
         return tags().find(item => item.id === tag.id) ?? { ...tag, fields: [] };
       }).immediate();

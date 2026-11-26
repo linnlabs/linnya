@@ -29,9 +29,10 @@ function db() {
   return database.getDb();
 }
 
-function addConversation(id: string, title: string, project: string | null, lastEventAt: number, extra: { pinned?: boolean; agent?: string | null; turns?: number } = {}) {
-  db().prepare(`INSERT INTO conversations (conversation_id, title, project_id, created_at, last_event_at, is_pinned, selected_agent_id, user_message_count)
-    VALUES (?, ?, ?, 1, ?, ?, ?, ?)`).run(id, title, project, lastEventAt, extra.pinned ? 1 : 0, extra.agent ?? null, extra.turns ?? 0);
+function addConversation(id: string, title: string, project: string | null, lastEventAt: number, extra: { pinned?: boolean; agent?: string | null; turns?: number; origin?: 'linnya_cli' } = {}) {
+  db().prepare(`INSERT INTO conversations (conversation_id, title, project_id, created_at, last_event_at, is_pinned, selected_agent_id, user_message_count, metadata)
+    VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)`).run(id, title, project, lastEventAt, extra.pinned ? 1 : 0, extra.agent ?? null, extra.turns ?? 0,
+    extra.origin ? JSON.stringify({ origin: extra.origin }) : null);
 }
 
 function addRun(id: string, conversationId: string, agent: string | null, startTs = 1, parentRunId: string | null = null, kind = 'agent') {
@@ -134,6 +135,47 @@ describe('项目对话页', () => {
     const prepared = cli.prepare({ argv: ['conversations', 'list'], invocationId: 'no-project', conversationRoot: '/unused' });
     if (prepared.status !== 'ready') throw new Error('list was not prepared');
     expect((await prepared.plan.execute({ hostContext: {}, signal: new AbortController().signal })).exitCode).toBe(2);
+  });
+
+  it('Linnya CLI 创建的对话：带 origin，不把无模型的工具运行算作 Agent 回复；Agent 筛选与 Shell 的 agents 同用 linnya_cli', async () => {
+    addConversation('cli', 'Linnya CLI · 2026-11-26 15:19', projectId, 300, { origin: 'linnya_cli' });
+    // CLI 的 Host 工具运行没有模型，运行记录里的 Agent 是默认 Agent。
+    addRun('run-cli-1', 'cli', 'default', 10);
+    addRun('run-cli-2', 'cli', 'default', 20);
+    addConversation('chat', '普通对话', projectId, 200);
+    addRun('run-chat', 'chat', 'default');
+    addConversation('research', '研究对话', projectId, 100);
+    addRun('run-research', 'research', 'research_v1');
+
+    const rows = readProjectConversations(db(), { project_id: projectId }).conversations;
+    const byId = (id: string) => rows.find(row => row.conversation_id === id);
+    expect(byId('cli')).toMatchObject({ origin: 'linnya_cli', replied_agent_ids: [] });
+    expect(byId('chat')?.replied_agent_ids).toEqual([null]);
+    expect(byId('chat')).not.toHaveProperty('origin');
+
+    const activity = createConversationActivityPorts(db(), { readControlPending: () => [] });
+    const panel = async (agent: string | null) => (await queryProjectConversations(db(), {
+      ...ProjectConversationQueryOptionsSchema.parse({ agent }), project_id: projectId,
+    }, activity)).conversations.map(row => row.conversation_id);
+    expect(await panel(null)).toEqual(['cli', 'chat', 'research']);
+    expect(await panel('linnya_cli')).toEqual(['cli']);
+    // CLI 对话不再冒充“默认 Agent 回复过”。
+    expect(await panel('default')).toEqual(['chat']);
+    expect(await panel('research_v1')).toEqual(['research']);
+
+    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('unused'); } }, activity);
+    async function shellList(args: string[]) {
+      const prepared = cli.prepare({ argv: ['conversations', 'list', ...args], invocationId: 'origin', conversationRoot: '/unused' });
+      if (prepared.status !== 'ready') throw new Error('list not prepared');
+      const output = await prepared.plan.execute({ projectId, hostContext: {}, signal: new AbortController().signal });
+      expect(output.exitCode).toBe(0);
+      return JSON.parse(output.stdout).conversations as { id: string; agents: string[] }[];
+    }
+    const all = await shellList([]);
+    expect(all.find(item => item.id === 'cli')?.agents).toEqual(['linnya_cli']);
+    // 输出里看到的值就是 --agent 的筛选值，结果与面板一致。
+    expect((await shellList(['--agent', 'linnya_cli'])).map(item => item.id)).toEqual(await panel('linnya_cli'));
+    expect((await shellList(['--agent', 'default'])).map(item => item.id)).toEqual(await panel('default'));
   });
 
   it('超过200条搜索命中时先按回复过的 Agent筛选，旧对话不会被其他Agent的结果挤掉', async () => {
