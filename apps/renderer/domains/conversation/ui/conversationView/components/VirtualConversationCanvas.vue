@@ -12,6 +12,7 @@
     shows-run-document-changes
     @edit-message="$emit('edit-message', $event)"
     @regenerate-response="$emit('regenerate-response', $event)"
+    @toggle-work-fold="$emit('toggle-work-fold', $event)"
   />
 </template>
 
@@ -37,7 +38,7 @@ import {
 type MeasureElement = ReturnType<typeof useTanstackConversationVirtualizer>['measureElement'];
 
 const props = withDefaults(defineProps<{
-  items: ConversationVisualRow[];
+  items: readonly ConversationVisualRow[];
   messages: BaseMessage[];
   virtualRows: TanstackConversationVisibleItem[];
   totalHeight: number;
@@ -46,17 +47,18 @@ const props = withDefaults(defineProps<{
   measureElement: MeasureElement;
   activeRunIds?: readonly string[];
   answerRenderWidthPx?: number;
-  trailingStatus?: ConversationMessageCanvasTrailingStatus;
+  trailingStatus?: ConversationMessageCanvasTrailingStatus | null;
 }>(), {
   activeRunIds: () => [],
   answerRenderWidthPx: 720,
-  trailingStatus: () => ({ active: false, visible: false }),
+  trailingStatus: null,
 });
 
 const emit = defineEmits<{
   'layout-change': [positions: TanstackConversationTimelinePosition[]];
   'edit-message': [command: EditUserMessageCommand];
   'regenerate-response': [command: RegenerateUserMessageCommand];
+  'toggle-work-fold': [rootUserMessageId: string];
 }>();
 
 const placements = computed<readonly ConversationMessageCanvasRowPlacement[]>(() => (

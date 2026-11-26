@@ -13,6 +13,7 @@ const CommandExecutionCard = defineAsyncComponent(
 
 const commandExecutionConfig: ToolUiConfig = {
   component: CommandExecutionCard,
+  activity: 'command',
   titleComponent: defineAsyncComponent(() => import('./ui/CommandExecutionTitle.vue')),
   icon: TerminalIcon,
   presentation: projectCommandExecutionPresentation,

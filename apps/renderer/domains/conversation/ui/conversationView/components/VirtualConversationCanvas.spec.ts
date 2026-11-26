@@ -11,7 +11,10 @@ import {
   createTestUserMessage,
 } from '../../../testing/functions/createConversationTestMessage';
 import type { TanstackConversationVisibleItem } from '../composables/useTanstackConversationVirtualizer';
-import type { ConversationVisualRow } from '../../messageCanvas';
+import type {
+  ConversationMessageCanvasTrailingStatus,
+  ConversationMessageVisualRow,
+} from '../../messageCanvas';
 import VirtualConversationCanvas from './VirtualConversationCanvas.vue';
 
 vi.mock('../../Message.vue', () => ({
@@ -29,17 +32,13 @@ vi.mock('../../messageCanvas/components/ConversationVisualRowActions.vue', () =>
   default: defineComponent({ setup: () => () => h('div') }),
 }));
 
-vi.mock('../../components/ConversationWorkDurationHint.vue', () => ({
-  default: defineComponent({ setup: () => () => h('div') }),
-}));
-
 function createMessage(id: string, type: BaseMessage['type'] = 'final_answer'): BaseMessage {
   return type === 'user_input'
     ? createTestUserMessage({ id, content: id, timestamp: 0 })
     : createTestAnswerMessage({ id, content: id, timestamp: 0 });
 }
 
-function createRow(id: string, index: number): ConversationVisualRow {
+function createRow(id: string, index: number): ConversationMessageVisualRow {
   const payload = createMessage(id, index === 0 ? 'user_input' : 'final_answer');
   return {
     key: `msg_${id}`,
@@ -59,7 +58,7 @@ function createRow(id: string, index: number): ConversationVisualRow {
   };
 }
 
-function createVirtualRows(items: ConversationVisualRow[]): TanstackConversationVisibleItem[] {
+function createVirtualRows(items: ConversationMessageVisualRow[]): TanstackConversationVisibleItem[] {
   return items.map((item, index) => ({
     item,
     index,
@@ -136,11 +135,14 @@ describe('VirtualConversationCanvas', () => {
     expect(editMessage).toHaveBeenCalledWith(createMessage('answer-1'));
   });
 
-  it('把等待图标接入最后一行的共享 tail region，显隐不增删占位', async () => {
-    const items = [{ ...createRow('user-1', 0), isTurnEnd: true }];
+  it('运行状态行只接入最后一行的共享 tail region，文字变化不增删占位，运行结束后释放', async () => {
+    const items = [createRow('user-1', 0), { ...createRow('answer-1', 1), isTurnEnd: true }];
     const rows = createVirtualRows(items);
-    const trailingStatusActive = ref(true);
-    const trailingStatusVisible = ref(false);
+    const status = ref<ConversationMessageCanvasTrailingStatus | null>({
+      text: '正在查找',
+      elapsedText: '35秒',
+      motion: 'processing',
+    });
     const mountPoint = document.createElement('div');
     document.body.appendChild(mountPoint);
 
@@ -149,33 +151,30 @@ describe('VirtualConversationCanvas', () => {
         items,
         messages: items.map(item => item.payload),
         virtualRows: rows,
-        totalHeight: 120,
+        totalHeight: 240,
         scrollMargin: 20,
         timelinePositions: [],
         measureElement: () => undefined,
-        trailingStatus: {
-          active: trailingStatusActive.value,
-          visible: trailingStatusVisible.value,
-        },
+        trailingStatus: status.value,
       }),
     });
     app.mount(mountPoint);
     await nextTick();
 
+    const statusRows = mountPoint.querySelectorAll('[data-run-status-row]');
+    expect(statusRows).toHaveLength(1);
+    expect(statusRows[0]?.closest('[data-index]')?.getAttribute('data-index')).toBe('1');
+    expect(statusRows[0]?.textContent?.replace(/\s+/g, '')).toBe('正在查找·35秒');
     const tailRegion = mountPoint.querySelector('.conversation-visual-row__tail');
-    const indicator = mountPoint.querySelector('.conversation-visual-row__waiting-indicator');
-    expect(tailRegion).not.toBeNull();
-    expect(indicator?.classList.contains('is-visible')).toBe(false);
-    expect(mountPoint.querySelector('.waiting-indicator')).toBeNull();
 
-    trailingStatusVisible.value = true;
+    status.value = { text: '等你批准命令', elapsedText: '1分钟28秒', motion: 'still' };
     await nextTick();
     expect(mountPoint.querySelector('.conversation-visual-row__tail')).toBe(tailRegion);
-    expect(indicator?.classList.contains('is-visible')).toBe(true);
+    expect(mountPoint.querySelector('[data-run-status-row]')?.classList.contains('is-still')).toBe(true);
 
-    trailingStatusActive.value = false;
+    status.value = null;
     await nextTick();
-    expect(mountPoint.querySelector('.conversation-visual-row__tail')).toBeNull();
+    expect(mountPoint.querySelector('[data-run-status-row]')).toBeNull();
   });
 
   it('run 终态后仍由有效回答的 tail region 提供 hover actions 区域', async () => {
@@ -193,7 +192,7 @@ describe('VirtualConversationCanvas', () => {
         scrollMargin: 20,
         timelinePositions: [],
         measureElement: () => undefined,
-        trailingStatus: { active: false, visible: false },
+        trailingStatus: null,
       }),
     });
     app.mount(mountPoint);
@@ -202,6 +201,6 @@ describe('VirtualConversationCanvas', () => {
     const tailRegions = mountPoint.querySelectorAll('.conversation-visual-row__tail');
     expect(tailRegions).toHaveLength(1);
     expect(tailRegions[0]?.closest('[data-index]')?.getAttribute('data-index')).toBe('1');
-    expect(tailRegions[0]?.querySelector('.conversation-visual-row__waiting-indicator')).toBeNull();
+    expect(tailRegions[0]?.querySelector('[data-run-status-row]')).toBeNull();
   });
 });

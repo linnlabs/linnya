@@ -16,11 +16,6 @@
       </div>
     </div>
 
-    <ConversationWorkDurationHint
-      v-if="row.isTurnEnd"
-      :duration-ms="turnDurationMs"
-      :is-streaming="false"
-    />
     <ConversationAnswerActions
       v-if="isTerminalAnswerRow"
       variant="turn"
@@ -42,8 +37,7 @@ import { computed } from 'vue';
 import type { BaseMessage } from '../../../types';
 import Message from '../../../ui/Message.vue';
 import ConversationAnswerActions from '../../../ui/components/ConversationAnswerActions.vue';
-import ConversationWorkDurationHint from '../../../ui/components/ConversationWorkDurationHint.vue';
-import type { ConversationVisualRow } from '../../../ui/messageCanvas';
+import type { ConversationMessageVisualRow } from '../../../ui/messageCanvas';
 import { resolveTerminalFinalAnswer } from '../../../functions/resolveTerminalFinalAnswer';
 import type {
   EditUserMessageCommand,
@@ -51,13 +45,13 @@ import type {
 } from '../../../definitions/userMessageContent';
 
 const props = defineProps<{
-  row: ConversationVisualRow;
+  row: ConversationMessageVisualRow;
   messages: readonly BaseMessage[];
 }>();
 
 defineEmits<{
-  'copy-turn': [row: ConversationVisualRow];
-  'save-turn': [row: ConversationVisualRow];
+  'copy-turn': [row: ConversationMessageVisualRow];
+  'save-turn': [row: ConversationMessageVisualRow];
   'edit-message': [command: EditUserMessageCommand];
   'regenerate-response': [command: RegenerateUserMessageCommand];
 }>();
@@ -66,13 +60,6 @@ const sourceMessageIdSet = computed(() => new Set(props.row.turnContext.sourceMe
 const sourceMessages = computed(() => props.messages.filter(message => sourceMessageIdSet.value.has(message.id)));
 const terminalFinalAnswer = computed(() => resolveTerminalFinalAnswer(sourceMessages.value));
 const isTerminalAnswerRow = computed(() => terminalFinalAnswer.value?.id === props.row.payload.id);
-const turnDurationMs = computed(() => {
-  const userMessage = sourceMessages.value.find(message => message.id === props.row.turnContext.userMessageId);
-  const agentWork = userMessage?.type === 'user_input' ? userMessage.metadata?.agent_work : undefined;
-  if (!agentWork || typeof agentWork !== 'object' || Array.isArray(agentWork)) return undefined;
-  const duration = Reflect.get(agentWork, 'duration_ms');
-  return typeof duration === 'number' && Number.isFinite(duration) ? duration : undefined;
-});
 const rowClasses = computed(() => ({
   'is-turn-start': props.row.isTurnStart,
   'is-turn-end': props.row.isTurnEnd,

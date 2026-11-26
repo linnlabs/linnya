@@ -18,6 +18,7 @@ export const workspaceReadToolConfigs: Record<string, ToolUiEntry> = {
   },
   workspace_read_file: {
     component: WorkspaceReadFileCard,
+    activity: 'read',
     icon: ReadIcon,
     presentation: projectWorkspaceReadFilePresentation,
     compactStep: createStaticToolCompactStepProjector('conversation.tool.workspace.compact.read'),

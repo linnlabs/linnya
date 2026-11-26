@@ -1,0 +1,118 @@
+/*
+ * 与 PendingSteerTray 同一块托盘：同底色、同 squircle 顶角、底部被输入框压住 14px。
+ * 两块同时出现时任务进度在上、待送达插话在下，上一块的底部同样被下一块压住，看起来是一整块。
+ */
+.task-tray {
+  --task-tray-overlap: 14px;
+
+  display: flex;
+  flex-direction: column;
+  margin: 0 var(--space-5) calc(var(--task-tray-overlap) * -1);
+  padding: var(--space-1) var(--space-1-5) var(--task-tray-overlap) var(--space-3);
+  /* 与输入框外壳同为 squircle：按设计规范取圆弧半径的 1.75 倍。 */
+  border-radius: calc(var(--radius-lg) * 1.75) calc(var(--radius-lg) * 1.75) 0 0;
+  corner-shape: squircle;
+  background: color-mix(in srgb, var(--color-text-primary) 0.6%, var(--color-bg-subtle));
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
+
+.task-tray.is-compact {
+  margin-inline: var(--space-3);
+  padding-left: var(--space-2-5);
+}
+
+.task-tray__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+  min-height: 26px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.task-tray__bar:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.task-tray__icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--color-text-tertiary);
+}
+
+.task-tray__phase {
+  flex: none;
+  color: var(--color-text-tertiary);
+}
+
+.task-tray__phase::after {
+  margin-left: var(--space-1-5);
+  color: var(--color-text-placeholder);
+  content: '·';
+}
+
+.task-tray__step {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.task-tray__chevron {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-right: var(--space-1);
+  color: var(--color-text-tertiary);
+}
+
+.task-tray__detail {
+  max-height: min(40vh, 320px);
+  margin-bottom: var(--space-1);
+  padding: var(--space-2) var(--space-1) var(--space-2) var(--space-0-5);
+  overflow-y: auto;
+  border-bottom: var(--border-width-hairline) solid var(--color-border-light);
+  color: var(--color-text-secondary);
+}
+
+.task-tray__goal {
+  margin-bottom: var(--space-2);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.task-tray__section {
+  margin: var(--space-1-5) 0 var(--space-0-5);
+  color: var(--color-text-tertiary);
+}
+
+.task-tray__plan,
+.task-tray__next {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.task-tray__plan {
+  list-style: decimal;
+}
+
+.task-tray__next {
+  list-style: disc;
+}
+
+.task-tray__plan li,
+.task-tray__next li {
+  padding: 1px 0;
+}

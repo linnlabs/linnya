@@ -7,7 +7,7 @@ import {
   finalizeVisualRowDrafts,
   shouldProjectConversationVisualMessage,
 } from './conversationVisualRowProjection';
-import type { ConversationVisualRow } from '../../messageCanvas';
+import type { ConversationMessageVisualRow } from '../../messageCanvas';
 
 export interface ProjectConversationVisualRowsOptions {
   readonly estimationRegistry?: EstimationRegistry;
@@ -17,7 +17,7 @@ export interface ProjectConversationVisualRowsOptions {
 export function projectConversationVisualRows(
   messages: readonly BaseMessage[],
   options: ProjectConversationVisualRowsOptions = {},
-): ConversationVisualRow[] {
+): ConversationMessageVisualRow[] {
   const assignments = buildVisualTurnAssignments(messages);
   const runtime = createVisualRowProjectionRuntime(options);
   const drafts = messages.flatMap((message) => {

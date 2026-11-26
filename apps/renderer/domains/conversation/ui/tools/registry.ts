@@ -9,7 +9,8 @@
  * 新增工具卡片时，应由对应插件贡献 toolCards，避免 UI 卡片和工具启停状态分叉。
  */
 
-import type { ToolUiConfig, ToolUiEntry } from './types';
+import type { ToolUiActivity, ToolUiConfig, ToolUiEntry } from './types';
+import type { ToolCallMessage } from '../../types';
 import { isAliasConfig } from './types';
 import { listToolCards } from '@/app/plugins/registry';
 import { useEnabledPluginsStore } from '@/app/plugins/enabledPluginsStore';
@@ -64,4 +65,16 @@ export function resolveToolUiConfigWithKey(
   if (!resolved || isAliasConfig(resolved)) return null;
 
   return { uiKey: resolvedKey, config: resolved };
+}
+
+/**
+ * 状态行与终态折叠读取工具 owner 声明的活动类别。已 admission 的消息按固定 uiKey 读取，
+ * 与工具卡选择配置的方式一致；没有声明时返回 undefined，由调用方落到通用文字。
+ */
+export function readToolMessageActivity(message: ToolCallMessage): ToolUiActivity | undefined {
+  const uiKey = message.toolPresentation?.uiKey;
+  const config = uiKey
+    ? readToolUiConfigByKey(uiKey)
+    : resolveToolUiConfig(message.metadata.tool_name, message.metadata.args ?? {}, message.metadata.data);
+  return config?.activity;
 }

@@ -243,6 +243,26 @@ describe('useTanstackConversationVirtualizer', () => {
     }
   });
 
+  it('keeps the row being read in place when visible rows above it collapse near the list end', async () => {
+    const fixture = mountAdapter({
+      items: Array.from({ length: 20 }, (_, index) => createVisualRow(`row-${index}`, 100)),
+      viewportHeight: 600,
+      scrollTop: 1_300,
+      scrollHeight: 2_000,
+      scrollMode: 'anchored',
+    });
+    await nextTick();
+
+    // 视口里 row-14..16 收进折叠行；正在读的 row-17 原本在视口顶下方 400px。
+    // 列表尾部剩余高度不够时，“行顶对齐视口顶”的偏移会被钳到最大滚动量，不能拿它当行起点。
+    const removed = new Set(['row-14', 'row-15', 'row-16']);
+    fixture.items.value = fixture.items.value.filter(item => !removed.has(item.key));
+    fixture.setScrollHeight(1_700);
+    await flushEstimateInvalidation();
+
+    expect(fixture.element.scrollTop).toBe(1_000);
+  });
+
   it('keeps follow-bottom pinned across repeated width round trips', async () => {
     const fixture = mountAdapter({
       items: Array.from({ length: 20 }, (_, index) => createVisualRow(`row-${index}`, 100)),

@@ -47,6 +47,7 @@ import { computed } from 'vue';
 import { useConversationLocalization } from '../../useConversationLocalization';
 import type { ToolCardPresentation } from '../types';
 import type { TaskStatePresentationData } from './definitions/taskStatePresentation';
+import { TASK_STATE_PHASE_LABEL_KEYS } from '../../../definitions/taskStatePhaseMessages';
 
 const props = defineProps<{
   presentation: ToolCardPresentation<TaskStatePresentationData>;
@@ -73,7 +74,9 @@ const loadingText = computed(() => {
 
 const goal = computed(() => data.value.kind === 'snapshot' ? data.value.taskstate.goal : '');
 const phaseText = computed(() => (
-  data.value.kind === 'snapshot' ? data.value.taskstate.current_phase : ''
+  data.value.kind === 'snapshot'
+    ? conversationMessage(TASK_STATE_PHASE_LABEL_KEYS[data.value.taskstate.current_phase])
+    : ''
 ));
 const planCountText = computed(() => conversationMessage('conversation.tool.taskState.planCount', {
   count: data.value.kind === 'snapshot' ? data.value.taskstate.current_plan.length : 0,

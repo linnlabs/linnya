@@ -1,0 +1,39 @@
+/* 与 tail 首行同高（42px），由 tail region 绝对定位；文字随状态变化不改变行高。 */
+.run-status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: 100%;
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  user-select: none;
+}
+
+.run-status-row__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.run-status-row.is-still .run-status-row__icon {
+  color: var(--color-text-muted);
+}
+
+.run-status-row__text {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.run-status-row__sep {
+  flex: none;
+  color: var(--color-text-placeholder);
+}
+
+.run-status-row__time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
