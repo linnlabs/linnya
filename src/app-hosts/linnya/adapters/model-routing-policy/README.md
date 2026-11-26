@@ -13,7 +13,7 @@
 - 不解析 Provider response body、SDK error message 或 HTTP payload。
 - 不改写 Provider request/response，continuation wire codec 属于 inference capability。
 - 不选择具体 fallback model，不持有 Model Catalog，不管理 retry/attempt 预算。
-- 不处理 Cloud quota 专用降级，该规则仍由 Linnkit 明确编排。
+- 不做云端额度用尽后的换模型：客户端（Linnya 与 Linnkit）都不做这项降级，需要时由提供额度的服务端处理。
 
 Provider 特定错误只能在 AI SDK 边界归一为无敏感信息的稳定 code；新规则必须先有 capability 集成测试和本模块决策测试。
 
