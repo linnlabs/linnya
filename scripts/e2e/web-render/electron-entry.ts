@@ -1,3 +1,6 @@
+import assert from 'node:assert/strict';
+import { serveEmbeddedNotice, verifyEmbeddedNotice } from './embedded-notice';
+import { WebReadResultSchema } from '@app/schemas';
 import { app } from 'electron';
 import { createServer } from 'node:http';
 import { WebPageRenderManager } from '../../../src/electron-main/web-render/WebPageRenderManager';
@@ -70,6 +73,12 @@ async function run(): Promise<void> {
   let port = 0;
   const server = createServer((request, response) => {
     const route = request.url ?? '/';
+    if (serveEmbeddedNotice(route, response)) return;
+    if (route === '/short-notice') {
+      response.writeHead(302, { Location: '/spa-hash#/notice/b' });
+      response.end();
+      return;
+    }
     if (route === '/redirect-same') {
       response.writeHead(302, { Location: '/spa' });
       response.end();
@@ -186,11 +195,16 @@ async function run(): Promise<void> {
       }, 3_200);
       return;
     }
-    if (route === '/spa-hash') {
+    if (route === '/spa-markdown' && request.headers.accept?.includes('text/markdown')) {
+      response.writeHead(200, { 'Content-Type': 'text/markdown' });
+      response.end('HOME MARKDOWN');
+      return;
+    }
+    if (route === '/spa-hash' || route === '/spa-markdown') {
       response.setHeader('Content-Type', 'text/html; charset=utf-8');
       response.end(`<!doctype html><html><head><title>政务发布大厅</title></head><body>
         <nav>首页 | 政务公开 | 政策解读</nav>
-        <main><div id="app">Loading...</div></main>
+        <main><div id="app">${'ROOT ARTICLE HOME. '.repeat(50)}</div></main>
         <script>window.__a=1;</script><script>window.__b=2;</script>
         <script>
           function renderRoute() {
@@ -278,26 +292,27 @@ async function run(): Promise<void> {
       </body></html>`);
       return;
     }
-    if (route === '/jsonp-list') {
+    if (route === '/jsonp-list' || route === '/jsonp-blank') {
       // 列表数据经 load 之后插入的脚本返回（JSONP），不是 xhr/fetch；框架文字先稳定下来。
       response.setHeader('Content-Type', 'text/html; charset=utf-8');
       response.end(`<!doctype html><html><head><title>公告列表</title></head><body>
-        <main><h1>公告列表</h1><p>${'栏目说明文字。'.repeat(40)}</p><ul id="rows"></ul></main>
-        <script>
+        <main><h1>公告列表</h1><p>${route === '/jsonp-list' ? '栏目说明文字。'.repeat(40) : 'Loading...'}</p><ul id="rows"></ul></main>
+        <script></script><script></script><script>
+          ${route === '/jsonp-blank' ? "fetch('/ping');" : ''}
           window.__fill = (rows) => { document.querySelector('#rows').innerHTML = rows.map((row) => '<li>' + row + '</li>').join(''); };
           window.addEventListener('load', () => setTimeout(() => {
             const tag = document.createElement('script');
-            tag.src = '/jsonp-list.js';
+            tag.src = '${route}.js';
             document.body.appendChild(tag);
           }, 100));
         </script></body></html>`);
       return;
     }
-    if (route === '/jsonp-list.js') {
+    if (route === '/jsonp-list.js' || route === '/jsonp-blank.js') {
       setTimeout(() => {
         response.setHeader('Content-Type', 'application/javascript');
         response.end(`window.__fill(${JSON.stringify(Array.from({ length: 30 }, (_, i) => `JSONP ANNOUNCEMENT ROW ${i + 1} 关于某事项的公告`))});`);
-      }, 1_200);
+      }, route === '/jsonp-blank.js' ? 2_400 : 1_200);
       return;
     }
     if (route === '/jsonld-empty-body') {
@@ -407,6 +422,17 @@ async function run(): Promise<void> {
           setInterval(() => { fetch('/data-empty').catch(() => {}); }, 300);
         </script>
       </body></html>`);
+      return;
+    }
+    if (route === '/recycled-rows') {
+      response.writeHead(200, { 'Content-Type': 'text/html' });
+      response.end(`<main style="height:3000px"><ul id="rows"></ul></main><script>
+        function display() {
+          const page = window.scrollY > 100 ? 'SECOND' : 'FIRST';
+          document.getElementById('rows').innerHTML = Array.from({ length: 20 }, (_, i) => '<li>Public fiscal item ' + page + ' ' + i + '</li>').join('');
+        }
+        display(); window.addEventListener('scroll', display);
+      </script>`);
       return;
     }
     if (route === '/lazy-3screens') {
@@ -873,7 +899,12 @@ async function run(): Promise<void> {
       const hashUrlA = `${origin}/spa-hash#/notice/a`;
       const hashUrlB = `${origin}/spa-hash#/notice/b`;
       const parsedA = JSON.parse(await runReadWebPage({ url: hashUrlA }, e2eContext, hashDeps));
+      const shortB = WebReadResultSchema.parse(JSON.parse(await runReadWebPage({ url: `${origin}/short-notice` }, e2eContext, hashDeps)));
+      assert.match(shortB.observation, /NOTICE B FISCAL CIRCULAR/);
+      const markdownB = WebReadResultSchema.parse(JSON.parse(await runReadWebPage({ url: `${origin}/spa-markdown#/notice/b` }, e2eContext, hashDeps)));
+      assert.match(markdownB.observation, /NOTICE B FISCAL CIRCULAR/);
       const parsedB = JSON.parse(await runReadWebPage({ url: hashUrlB }, e2eContext, hashDeps));
+      assert.equal(parsedB.data.cacheStatus, 'hit');
       const parsedFindB = JSON.parse(await runReadWebPage({ url: hashUrlB, find: 'NOTICE B FISCAL CIRCULAR' }, e2eContext, hashDeps));
       const sec1 = JSON.parse(await runReadWebPage({ url: `${origin}/anchor-article#sec-1` }, e2eContext, hashDeps));
       const sec2 = JSON.parse(await runReadWebPage({ url: `${origin}/anchor-article#sec-2` }, e2eContext, hashDeps));
@@ -914,6 +945,9 @@ async function run(): Promise<void> {
           (res) => (res.content.includes('PUBLIC ARTICLE BODY SENTENCE') ? 'rendered' : 'rendered_without_body'),
           (err: unknown) => (err instanceof WebFailureError ? err.kind : ''),
         );
+      await verifyEmbeddedNotice(origin, localHttp, phase2RenderProvider);
+      const delayed = await phase2RenderProvider.read({ url: `${origin}/jsonp-blank` });
+      assert.match(delayed.content, /JSONP ANNOUNCEMENT ROW 30/);
       const jsonpList = await phase2RenderProvider.read({ url: `${origin}/jsonp-list` });
       positionedContent = {
         stickyTableKept: stickyTable.content.includes('STICKY HEADER NAME')
@@ -977,6 +1011,10 @@ async function run(): Promise<void> {
       };
 
       // 6. 3 屏懒加载与无限追加刹车
+      const recycled = await phase2RenderProvider.read({ url: `${origin}/recycled-rows` });
+      assert.match(recycled.content, /Public fiscal item FIRST 0/);
+      assert.doesNotMatch(recycled.content, /Public fiscal item SECOND/);
+      assert.ok(recycled.warnings.includes('lazy_content_incomplete'));
       const lazyRes = await phase2RenderProvider.read({ url: `${origin}/lazy-3screens` });
       const infRes = await phase2RenderProvider.read({ url: `${origin}/infinite-append` });
       lazyAndInfiniteScroll = {

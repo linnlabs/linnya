@@ -480,6 +480,7 @@ export class WebPageRenderWorker {
       return { lazyContentIncomplete: true };
     }
 
+    const firstWindow = current;
     let anyGrowth = false;
     let lastStepGrew = false;
     let stepsRun = 0;
@@ -515,6 +516,20 @@ export class WebPageRenderWorker {
       );
       if (!next) return { lazyContentIncomplete: false };
 
+      // 虚拟列表在原行节点上替换内容，高度和字数可以完全不变。回到原位置重新采集，
+      // 保留可核实的起始窗口；最终访问屏障判定仍在当前页面执行。
+      if (firstWindow.firstRow && next.firstRow && next.firstRow !== firstWindow.firstRow
+        && next.scrollY !== firstWindow.scrollY && next.scrollHeight === firstWindow.scrollHeight) {
+        await runWithTimeout(
+          raceCancellation(renderWindow.executeJavaScript(buildScrollStepScript({ scrollToY: firstWindow.scrollY })), cancellation),
+          this.renderTimeoutMs,
+          () => new WebPageRenderError('render_timeout', '虚拟列表未在时限内返回起始位置。'),
+          () => this.destroyWindow(),
+        );
+        const remaining = Math.min(this.scrollStepDelayMs, Math.max(0, scrollDeadline - Date.now()));
+        if (remaining > 0) await raceCancellation(delay(remaining), cancellation);
+        return { lazyContentIncomplete: true };
+      }
       const textDelta = next.mainTextLength - current.mainTextLength;
       const heightDelta = next.scrollHeight - current.scrollHeight;
       lastStepGrew = textDelta >= 40 || heightDelta >= 50;

@@ -11,14 +11,14 @@ const markdown = new MarkdownIt({ html: true });
 const normalizedText = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
 /** 对来源冻结的局部事实做确定性核对，不能用 Markdown 格式的存在替代内容正确。 */
-export function checkWebContentAssertions(
+export function inspectWebBenchmarkContent(
   content: string,
   assertions: readonly WebContentAssertion[],
-): WebContentCheckResult {
-  if (assertions.length === 0) return { checked: 0, failed: [] };
+) {
   const document = load(markdown.render(content));
-  const rawNormalizedLower = normalizedText(content).toLocaleLowerCase();
-  const renderedNormalizedLower = normalizedText(document.root().text()).toLocaleLowerCase();
+  document('head, nav, [role="navigation"], footer, aside, script, style, template, [hidden], [aria-hidden="true"]').remove();
+  const visibleText = normalizedText(document('body').prop('innerText') ?? '');
+  const normalizedBody = visibleText.toLowerCase();
   const failed = assertions.filter(assertion => {
     switch (assertion.kind) {
       case 'link':
@@ -45,15 +45,24 @@ export function checkWebContentAssertions(
             });
           });
         });
-      case 'text_present': {
-        const needle = normalizedText(assertion.text).toLocaleLowerCase();
-        return !renderedNormalizedLower.includes(needle) && !rawNormalizedLower.includes(needle);
+      case 'dated_document_link': {
+        // 列表的业务事实是带日期的详情条目。只在同一行/条目里关联链接与日期。
+        const date = /20\d{2}[-/.年]\d{1,2}[-/.月]\d{1,2}/;
+        return !document('a[href]').toArray().some(node => {
+          const link = document(node);
+          const href = link.attr('href') ?? '';
+          if (!/^(?:https?:\/\/|\/[^/])/.test(href) || !/\.pdf(?:$|[?#])/i.test(href) || !link.text().trim()) return false;
+          const entry = link.closest('tr, li, p');
+          return entry.length > 0 && date.test(entry.text());
+        });
       }
-      case 'text_absent': {
-        const needle = normalizedText(assertion.text).toLocaleLowerCase();
-        return renderedNormalizedLower.includes(needle) || rawNormalizedLower.includes(needle);
-      }
+      case 'text_present':
+        return !normalizedBody.includes(normalizedText(assertion.text).toLowerCase());
+      case 'text_absent':
+        return normalizedBody.includes(normalizedText(assertion.text).toLowerCase());
     }
   }).map(assertion => assertion.id);
-  return { checked: assertions.length, failed };
+  const bodyVerified = !assertions.some(assertion => failed.includes(assertion.id)
+    && (assertion.kind === 'text_present' || assertion.kind === 'text_absent' || assertion.kind === 'dated_document_link'));
+  return { visibleText, bodyVerified, contentChecks: { checked: assertions.length, failed } };
 }

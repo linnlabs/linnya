@@ -5,7 +5,6 @@ import type {
 import type { WebDocumentWarning } from '../../definitions/webDocument';
 import type { WebReadResult } from '../providers/types';
 import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
-import { hasSpaHashRouteUrl } from '../../websearch/citations/normalizeUrl';
 
 const HTTP_DYNAMIC_ESCALATION_WARNINGS: readonly WebDocumentWarning[] = [
   'embedded_same_origin_iframe',
@@ -63,11 +62,6 @@ function isCompleteShortNoticeWithDocument(result: WebReadResult): boolean {
 }
 
 function findReadabilityEscalationReason(result: WebReadResult): WebReadEscalationReason | undefined {
-  // HTTP 请求不会向服务端发送 `#` 片段；显式 SPA hash 路由页在静态首跳只能取到根壳，
-  // 即使根壳含导语、摘要或表格，也必须升级到客户端渲染后再按常规质量评估。
-  if (result.renderMode === 'http' && hasSpaHashRouteUrl(result.url)) {
-    return 'js_required';
-  }
   // 同源内容 iframe、主区隐藏待揭示正文与半静态水合壳允许越过 metadata_only 终态，
   // 交由本地 Chromium 渲染一次；纯附件目录与跨源 iframe 保持 metadata_only 终态。
   if (

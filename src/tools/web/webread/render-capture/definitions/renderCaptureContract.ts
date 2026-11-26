@@ -1,7 +1,7 @@
 /**
  * Web 域与 Electron 渲染端共享的 DOM 选择器、采样与浏览器内采集结果合同。
  * 主区、隐藏属性与控件选择器在这里只有一份；页面外围的判定在浏览器端依赖计算样式，
- * 规则写在采集脚本里（见 buildRenderCaptureScripts.ts 的 isElementInChrome）。
+ * 规则写在采集脚本里（见 readableDomScript.ts 的 isElementInChrome）。
  */
 
 export const READABLE_MAIN_SELECTOR = 'article, main, [role="main"]';
@@ -19,6 +19,8 @@ export interface BrowserReadinessSample {
 }
 
 export interface BrowserScrollProbe {
+  /** 起始行的有界标识，仅用于识别滚动时的替换，不进入日志或 Evidence。 */
+  readonly firstRow?: string;
   readonly scrollY: number;
   readonly scrollHeight: number;
   readonly viewportHeight: number;
@@ -30,6 +32,7 @@ export type BrowserCaptureAccessBarrier = 'login_required' | 'captcha';
 
 export const BROWSER_CAPTURE_WARNING_VALUES = [
   'inlined_same_origin_iframe',
+  'embedded_frame_blocked',
   'lazy_content_incomplete',
   'capture_truncated',
 ] as const;

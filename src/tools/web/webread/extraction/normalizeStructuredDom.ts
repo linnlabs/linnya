@@ -91,48 +91,133 @@ export function unwrapLayoutTables(document: Document): number {
   return unwrapped;
 }
 
-function parseAriaSpan(value: string | null): number | undefined {
-  if (!value) return undefined;
-  const trimmed = value.trim();
-  if (!/^\d+$/.test(trimmed)) return undefined;
+function positiveAriaInteger(value: string | null): number | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed || !/^\d+$/.test(trimmed)) return undefined;
   const parsed = Number(trimmed);
-  if (!Number.isSafeInteger(parsed) || parsed < 2 || parsed > MAX_ARIA_SPAN) return undefined;
-  return parsed;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function parseAriaSpan(value: string | null): number | undefined {
+  const span = positiveAriaInteger(value);
+  return span !== undefined && span >= 2 && span <= MAX_ARIA_SPAN ? span : undefined;
 }
 
 function isColumnHeaderRow(cells: readonly Element[]): boolean {
   return cells.length > 0 && cells.every((cell) => cell.getAttribute('role') === 'columnheader');
 }
 
+interface AriaRow {
+  readonly source: Element;
+  readonly cells: Element[];
+}
+
+/** HTML 表格一行的隐式列会跳过上一行的 rowspan。只有已挂载单元格能确定空缺的位置。 */
+function locateAriaColumns(rows: readonly AriaRow[], columnCount: number | undefined) {
+  const gaps = new Map<Element, number[]>();
+  const occupiedUntil = new Map<number, number>();
+  let partial = false;
+  let previousRow = 0;
+  for (const { source, cells } of rows) {
+    const row = positiveAriaInteger(source.getAttribute('aria-rowindex')) ?? previousRow + 1;
+    // 跳过逻辑行时，原生 rowspan 会落到错误的物理行；此时改为按坐标列出已知单元格。
+    if (row <= previousRow || (row > previousRow + 1 && occupiedUntil.size > 0)) return undefined;
+    previousRow = row;
+    for (const [col, endRow] of occupiedUntil) if (endRow < row) occupiedUntil.delete(col);
+    let next = 1;
+    for (const [index, cell] of cells.entries()) {
+      while (occupiedUntil.has(next)) next++;
+      const raw = cell.getAttribute('aria-colindex') ?? (index === 0 ? source.getAttribute('aria-colindex') : null);
+      const start = raw === null ? next : positiveAriaInteger(raw);
+      const width = positiveAriaInteger(cell.getAttribute('aria-colspan')) ?? 1;
+      const height = positiveAriaInteger(cell.getAttribute('aria-rowspan')) ?? 1;
+      if (width > MAX_ARIA_SPAN || height > MAX_ARIA_SPAN) return undefined;
+      // HTML colspan 上限是 1000。过宽或矛盾的窗口保留原始坐标，避免按属性数值分配 DOM。
+      if (start === undefined || start < next || start - next > 1000
+        || (columnCount !== undefined && start + width - 1 > columnCount)) return undefined;
+      const missing: number[] = [];
+      while (next < start) {
+        const first = next;
+        while (next < start && !occupiedUntil.has(next)) next++;
+        if (first < next) missing.push(next - first);
+        while (next < start && occupiedUntil.has(next)) next++;
+      }
+      if (missing.length) {
+        partial = true;
+        gaps.set(cell, missing);
+      }
+      for (let col = start; col < start + width; col++) {
+        if (occupiedUntil.has(col)) return undefined;
+        if (height > 1) occupiedUntil.set(col, row + height - 1);
+      }
+      next = start + width;
+    }
+    while (occupiedUntil.has(next)) next++;
+    if (columnCount !== undefined && next <= columnCount) partial = true;
+  }
+  return { gaps, partial };
+}
+
+function describePartialAriaTable(document: Document, rows: readonly AriaRow[], label: string): Element {
+  const section = document.createElement('section');
+  const heading = document.createElement('p');
+  heading.textContent = [label, '部分表格（列位置无法完整还原）'].filter(Boolean).join(' · ');
+  section.appendChild(heading);
+  for (const { source, cells } of rows) {
+    const line = document.createElement('p');
+    for (const [index, cell] of cells.entries()) {
+      const col = positiveAriaInteger(cell.getAttribute('aria-colindex')
+        ?? (index === 0 ? source.getAttribute('aria-colindex') : null));
+      line.appendChild(document.createTextNode(`${index ? ' | ' : ''}${col ? `第 ${col} 列` : '列位置未确定'}：`));
+      moveChildNodes(cell, line);
+    }
+    section.appendChild(line);
+  }
+  return section;
+}
+
 function buildSemanticTableFromAria(
   document: Document,
   container: Element,
-  rowCellsList: readonly (readonly Element[])[],
+  rows: readonly AriaRow[],
 ): Element {
+  const label = normalizeExtractedText(container.getAttribute('aria-label'));
+  const layout = locateAriaColumns(rows, positiveAriaInteger(container.getAttribute('aria-colcount')));
+  if (!layout) return describePartialAriaTable(document, rows, label);
   const table = document.createElement('table');
   const id = container.getAttribute('id')?.trim();
   if (id) table.setAttribute('id', id);
   const describedBy = container.getAttribute('aria-describedby')?.trim();
   if (describedBy) table.setAttribute('aria-describedby', describedBy);
 
-  const label = normalizeExtractedText(container.getAttribute('aria-label'));
-  if (label) {
+  if (label || layout.partial) {
     const caption = document.createElement('caption');
-    caption.textContent = label;
+    caption.textContent = [label, layout.partial ? '部分表格（有列未呈现）' : ''].filter(Boolean).join(' · ');
     table.appendChild(caption);
   }
 
   let headerRowCount = 0;
   while (
-    headerRowCount < rowCellsList.length
-    && isColumnHeaderRow(rowCellsList[headerRowCount] ?? [])
+    headerRowCount < rows.length
+    && isColumnHeaderRow(rows[headerRowCount]?.cells ?? [])
   ) {
     headerRowCount += 1;
   }
 
+  // HTML 的 rowspan 不能跨 thead/tbody；跨边界的显式表头仍保留 th/scope，放入同一行组。
+  const spansAcrossHeader = rows.slice(0, headerRowCount).some(({ cells }, index) =>
+    cells.some(cell => index + (parseAriaSpan(cell.getAttribute('aria-rowspan')) ?? 1) > headerRowCount));
+  if (spansAcrossHeader) headerRowCount = 0;
+
   const appendRowTo = (section: Element, cells: readonly Element[]): void => {
     const tr = document.createElement('tr');
     for (const cell of cells) {
+      for (const gap of layout.gaps.get(cell) ?? []) {
+        const placeholder = document.createElement('td');
+        if (gap > 1) placeholder.setAttribute('colspan', String(gap));
+        placeholder.textContent = '（未呈现）';
+        tr.appendChild(placeholder);
+      }
       const role = cell.getAttribute('role');
       const isColHeader = role === 'columnheader';
       const isRowHeader = role === 'rowheader';
@@ -152,15 +237,15 @@ function buildSemanticTableFromAria(
   if (headerRowCount > 0) {
     const thead = document.createElement('thead');
     for (let index = 0; index < headerRowCount; index += 1) {
-      appendRowTo(thead, rowCellsList[index] ?? []);
+      appendRowTo(thead, rows[index]?.cells ?? []);
     }
     table.appendChild(thead);
   }
 
-  if (headerRowCount < rowCellsList.length) {
+  if (headerRowCount < rows.length) {
     const tbody = document.createElement('tbody');
-    for (let index = headerRowCount; index < rowCellsList.length; index += 1) {
-      appendRowTo(tbody, rowCellsList[index] ?? []);
+    for (let index = headerRowCount; index < rows.length; index += 1) {
+      appendRowTo(tbody, rows[index]?.cells ?? []);
     }
     table.appendChild(tbody);
   }
@@ -186,7 +271,7 @@ export function normalizeAriaTables(document: Document): number {
     const ownRows = [...container.querySelectorAll('[role="row"]')].filter(
       (row) => row.closest(ARIA_TABLE_SELECTOR) === container,
     );
-    const rowCellsList: Element[][] = [];
+    const rows: AriaRow[] = [];
     let multiCellRowCount = 0;
 
     for (const row of ownRows) {
@@ -194,16 +279,20 @@ export function normalizeAriaTables(document: Document): number {
         (cell) => cell.closest('[role="row"]') === row,
       );
       if (cells.length === 0) continue;
-      rowCellsList.push(cells);
+      rows.push({ source: row, cells });
       const nonEmptyCount = cells.filter(
         (cell) => normalizeExtractedText(cell.textContent).length > 0,
       ).length;
       if (nonEmptyCount >= 2) multiCellRowCount += 1;
     }
 
-    if (rowCellsList.length < 2 || multiCellRowCount < 2) continue;
+    // 虚拟窗口可以只挂载一个有列号的数据单元格；有二维表头时仍能恢复其列身份。
+    const indexedData = multiCellRowCount > 0 && rows.some(row => isColumnHeaderRow(row.cells))
+      && rows.some(({ source, cells }) => !isColumnHeaderRow(cells)
+        && (source.hasAttribute('aria-colindex') || cells.some(cell => cell.hasAttribute('aria-colindex'))));
+    if (rows.length < 2 || (multiCellRowCount < 2 && !indexedData)) continue;
 
-    const semanticTable = buildSemanticTableFromAria(document, container, rowCellsList);
+    const semanticTable = buildSemanticTableFromAria(document, container, rows);
     parent.replaceChild(semanticTable, container);
     normalized += 1;
   }

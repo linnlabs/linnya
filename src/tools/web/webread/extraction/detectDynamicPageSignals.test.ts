@@ -26,6 +26,17 @@ function assessHttpHtml(url: string, html: string) {
 }
 
 describe('Phase 1B 动态页面升级信号与资源提取', () => {
+  it('公开短文中的隐藏登录或验证码不升级成整页屏障，可见的同类控件仍生效', () => {
+    const url = 'https://portal.example.test/public';
+    const body = '<article><p>' + '这是公开发布的简短通知。'.repeat(24) + '</p></article>';
+    const probe = (controls: string) => assessHttpHtml(url, `<html><body>${body}${controls}</body></html>`).extracted;
+    const hidden = '<div style="display: none !important"><input type="password"></div><div hidden><div data-sitekey="x"></div></div>';
+    expect(probe(hidden).accessBarrier).toBeUndefined();
+    expect(probe(hidden).text).toContain('公开发布');
+    expect(probe(hidden + '<input type="password">').accessBarrier).toBe('login_required');
+    expect(probe(hidden + '<div data-sitekey="y"></div>').accessBarrier).toBe('captcha');
+  });
+
   it('同源内容 iframe 记为正式资源并越过 metadata_only 升级，同站跨源 iframe 仅交付链接', () => {
     const sameOriginHtml = `<!doctype html><html><head><title>政务公告壳</title></head><body>
       <header><nav>政务公开 <a href="/home">首页</a></nav></header>

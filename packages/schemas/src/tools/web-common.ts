@@ -82,6 +82,7 @@ export const WEB_DOCUMENT_WARNING_VALUES = [
   'list_dominant',
   'embedded_same_origin_iframe',
   'inlined_same_origin_iframe',
+  'embedded_frame_blocked',
   'hidden_main_content',
   'dynamic_content_pending',
   'lazy_content_incomplete',

@@ -78,6 +78,11 @@ try {
   const blockedAttempts = attempts.filter((attempt) => attempt.expectedOutcome === 'blocked');
   const covered = contentAttempts.filter((attempt) => attempt.contentCovered).length;
   const contentContractPassed = contentAttempts.filter((attempt) => attempt.contractSuccess).length;
+  // 同一 URL 的语言别名与多轮请求只算一个来源；全部读取通过才记为稳定覆盖。
+  const coveredUrls = new Map();
+  for (const attempt of contentAttempts) {
+    coveredUrls.set(attempt.url, (coveredUrls.get(attempt.url) ?? true) && attempt.contentCovered);
+  }
   const resourcesPassed = resourcesAttempts.filter((attempt) => attempt.contractSuccess).length;
   const blockedPassed = blockedAttempts.filter((attempt) => attempt.contractSuccess).length;
   const rendered = contentAttempts.filter((attempt) => attempt.selectedProvider === 'local_render').length;
@@ -93,6 +98,7 @@ try {
 
   console.log('# Web Read Local HTTP + Chromium Coverage Report\n');
   console.log(`- content coverage: ${covered}/${contentAttempts.length} (${(coverage * 100).toFixed(2)}%), contract passed: ${contentContractPassed}/${contentAttempts.length}`);
+  console.log(`- consistently covered unique content URLs: ${[...coveredUrls.values()].filter(Boolean).length}/${coveredUrls.size}`);
   console.log(`- resources_only passed: ${resourcesPassed}/${resourcesAttempts.length}`);
   console.log(`- blocked passed: ${blockedPassed}/${blockedAttempts.length}`);
   console.log(`- expected route matched: ${routeMatchedCount}/${attempts.length}`);

@@ -93,7 +93,10 @@ export function parseBrowserScrollProbe(value: unknown): BrowserScrollProbe | nu
   ) {
     return null;
   }
-  return { scrollY, scrollHeight, viewportHeight, mainTextLength, atBottom };
+  const firstRow = value['firstRow'];
+  return { scrollY, scrollHeight, viewportHeight, mainTextLength, atBottom,
+    ...(typeof firstRow === 'string' && firstRow.length <= 192 ? { firstRow } : {}),
+  };
 }
 
 /**

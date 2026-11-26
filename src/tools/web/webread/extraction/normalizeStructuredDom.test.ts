@@ -41,6 +41,21 @@ describe('结构化 DOM 规范化（布局表展平与 ARIA 表格）', () => {
     expect(doc('tbody tr').eq(1).children().map((_, cell) => doc(cell).text()).get()).toEqual(['Q2', '113']);
   });
 
+  it('稀疏列和行跨度共同决定决算数值的位置，缺列不代表零', () => {
+    const html = `<main><h1>支出明细</h1><div role="grid" aria-colcount="3">
+      <div role="row"><b role="columnheader">项目</b><b role="columnheader">预算</b><b role="columnheader">决算</b></div>
+      <div role="row"><b role="rowheader" aria-rowspan="2">年度支出</b><b role="cell" aria-colindex="3">420</b></div>
+      <div role="row" aria-colindex="3"><b role="cell">430</b></div></div></main>`;
+    const doc = load(extractArticle(html).text);
+    expect(doc('thead th').map((_, el) => doc(el).text()).get()).toEqual(['项目', '预算', '决算']);
+    expect(doc('tbody tr').eq(0).children().map((_, el) => doc(el).text()).get()).toEqual(['年度支出', '（未呈现）', '420']);
+    expect(doc('tbody tr').eq(1).children().map((_, el) => doc(el).text()).get()).toEqual(['（未呈现）', '430']);
+    expect(doc('caption').text()).toContain('部分表格');
+    const inconsistent = extractArticle(html.replace('aria-colindex="3">420', 'aria-colindex="1">420')).text;
+    expect(inconsistent).toContain('列位置无法完整还原');
+    expect(inconsistent).toContain('第 1 列：420');
+  });
+
   it('ARIA 表格内的 hidden、display:none 与 aria-hidden 行和单元格绝不泄露', () => {
     const html = `<!doctype html><html><head><title>Safe Grid</title></head><body><article>
       <h1>Public Report</h1>

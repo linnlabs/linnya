@@ -112,6 +112,31 @@ describe('WebPageRenderManager', () => {
     await manager.dispose();
   });
 
+  it('闲置清理完成后直接交给最早未取消的读取', async () => {
+    vi.useFakeTimers();
+    const cleaned = deferred<void>();
+    const worker = new ControlledWorker();
+    const manager = new WebPageRenderManager({ idleTimeoutMs: 100, createWorker: () => worker });
+    vi.spyOn(worker, 'dispose').mockReturnValueOnce(cleaned.promise);
+    const first = manager.render({ url: 'https://example.com/first' });
+    await flushMicrotasks();
+    worker.pending[0]?.resolve(rendered('first', 'https://example.com/first'));
+    await first;
+    await vi.advanceTimersByTimeAsync(100);
+    const controller = new AbortController();
+    const cancelled = manager.render({ url: 'https://example.com/a', signal: controller.signal });
+    const next = manager.render({ url: 'https://example.com/b' });
+    controller.abort();
+    await expect(cancelled).rejects.toMatchObject({ kind: 'aborted' });
+    expect(worker.calls).toHaveLength(1);
+    cleaned.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(worker.calls.map(call => call.url)).toEqual(['https://example.com/first', 'https://example.com/b']);
+    worker.pending[1]?.resolve(rendered('b', 'https://example.com/b'));
+    await next;
+    await manager.dispose();
+  });
+
   it('按槽位分配固定 partition（slot-0 / slot-1），空闲回收重建仍复用同一槽位 partition', async () => {
     vi.useFakeTimers();
     const assignedPartitions: string[] = [];

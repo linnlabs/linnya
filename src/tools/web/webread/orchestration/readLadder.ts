@@ -1,3 +1,4 @@
+import { hasSpaHashRouteUrl } from '../../websearch/citations/normalizeUrl';
 import { Logger } from '@shared/logger';
 import {
   WebFailureError,
@@ -271,6 +272,12 @@ async function executeReadLadder(
 
   try {
     readResult = await initialProvider.read(params);
+    // HTTP 不发送片段，目标页路由也可能来自重定向。首页的正文、附件和摘录都不能归给目标路由。
+    if (readResult.renderMode === 'http' && !readResult.filePayload
+      && (readResult.extractor !== 'raw_text' || readResult.markdown !== undefined)
+      && (hasSpaHashRouteUrl(params.url) || hasSpaHashRouteUrl(readResult.finalUrl))) {
+      throw new WebFailureError('js_required', '目标路由需要浏览器渲染后才能取得正文。');
+    }
   } catch (cause: unknown) {
     const error = createWebReadFailure(cause, 'local_http');
     const failureKind = getWebFailureKind(error);

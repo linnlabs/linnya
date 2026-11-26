@@ -44,6 +44,7 @@ interface ProcessMemorySnapshot {
 interface RenderCoverageAttempt {
   readonly round: number;
   readonly caseId: string;
+  readonly url: string;
   readonly category: string;
   readonly expectedOutcome: WebReadExpectedOutcome;
   readonly expectedRoute: WebReadExpectedRoute;
@@ -278,6 +279,7 @@ async function evaluateCase(params: {
     const attempt: RenderCoverageAttempt = {
       round: params.round,
       caseId: params.caseDefinition.id,
+      url: params.caseDefinition.url,
       category: params.caseDefinition.category,
       expectedOutcome,
       expectedRoute,
@@ -339,6 +341,7 @@ async function evaluateCase(params: {
   const attempt: RenderCoverageAttempt = {
     round: params.round,
     caseId: params.caseDefinition.id,
+    url: params.caseDefinition.url,
     category: params.caseDefinition.category,
     expectedOutcome,
     expectedRoute,

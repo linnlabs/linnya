@@ -74,6 +74,7 @@ export function assessRenderReadinessDetailed(facts: RenderReadinessFacts): Rend
   const stable = facts.stableSamples >= RENDER_READINESS_STABLE_SAMPLES;
   const complete = facts.sample.readyState === 'complete';
   const dataQuiet = facts.dataRequestsInFlight === 0 && facts.dataQuietMs >= RENDER_DATA_QUIET_MS;
+  const pageLoadQuiet = facts.pageLoadRequestsInFlight === 0 && facts.pageLoadQuietMs >= RENDER_PAGE_LOAD_QUIET_MS;
   const mainQuiet = facts.mainQuietMs !== undefined && facts.mainQuietMs >= RENDER_MAIN_QUIET_MS;
   const mainSubstantial = effectiveMainLength >= WEB_READ_SUBSTANTIAL_CONTENT_CHARS;
   const appShell = isLikelyWebAppShell({
@@ -86,7 +87,7 @@ export function assessRenderReadinessDetailed(facts: RenderReadinessFacts): Rend
       return { decision: 'app_shell_not_rendered', reason: 'app_shell_deadline' };
     }
     // 应用尚未发出任何数据请求时可能仍在启动，不能用“安静”推断已经渲染完。
-    const settledBlank = stable && complete && facts.sawDataRequest && dataQuiet;
+    const settledBlank = stable && complete && facts.sawDataRequest && dataQuiet && pageLoadQuiet;
     return settledBlank
       ? { decision: 'app_shell_not_rendered', reason: 'app_shell_settled_blank' }
       : { decision: 'wait', reason: 'wait_app_shell' };
@@ -113,7 +114,7 @@ export function assessRenderReadinessDetailed(facts: RenderReadinessFacts): Rend
     return { decision: 'wait', reason: 'wait_data_in_flight' };
   }
   // 正文还没到实质长度、只是“看起来稳定”时，脚本仍在加载或刚加载完就再等一等；等待受上面的安定上限约束。
-  if (facts.pageLoadRequestsInFlight > 0 || facts.pageLoadQuietMs < RENDER_PAGE_LOAD_QUIET_MS) {
+  if (!pageLoadQuiet) {
     return { decision: 'wait', reason: 'wait_page_load_in_flight' };
   }
   return complete || dataQuiet

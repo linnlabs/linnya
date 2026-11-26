@@ -3,7 +3,7 @@ import type { WebDocumentWarning, WebPageResource } from '../../definitions/webD
 import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
 import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
 import { normalizeExtractedText } from './extractSemanticDom';
-import { hasHiddenInlineStyle } from './prepareReadableDocument';
+import { isExplicitlyHidden } from './prepareReadableDocument';
 import {
   READABLE_MAIN_SELECTOR,
   RENDER_IGNORED_IFRAME_URL_PATTERN_SOURCE,
@@ -54,6 +54,7 @@ const MAX_BUSY_REGION_TEXT_CHARS = 80;
 const MAX_SHELL_SIGNAL_TEXT_CHARS = 400;
 
 export interface EmbeddedFrameResourcesResult {
+  readonly hasInlineDocument: boolean;
   readonly sameOriginResources: readonly WebPageResource[];
   readonly sameSiteCrossOriginResources: readonly WebPageResource[];
 }
@@ -95,13 +96,6 @@ function hasZeroOrTinyFrameDimension(element: Element): boolean {
   return false;
 }
 
-function hasAnyHiddenInlineStyleAncestor(element: Element): boolean {
-  for (let node: Element | null = element; node; node = node.parentElement) {
-    if (hasHiddenInlineStyle(node)) return true;
-  }
-  return false;
-}
-
 function readFrameLabel(frame: Element): string {
   for (const attr of ['title', 'aria-label', 'name'] as const) {
     const text = normalizeExtractedText(frame.getAttribute(attr)).slice(0, 200);
@@ -126,16 +120,25 @@ export function extractEmbeddedFrameResources(
     ?? document.baseURI;
   const pageUrl = parseFrameUrl(finalUrl ?? resolvedBase);
   if (!pageUrl) {
-    return { sameOriginResources: [], sameSiteCrossOriginResources: [] };
+    return { hasInlineDocument: false, sameOriginResources: [], sameSiteCrossOriginResources: [] };
   }
   const pageDomain = getDomain(pageUrl.hostname, { allowPrivateDomains: true });
   const sameOriginByUrl = new Map<string, WebPageResource>();
   const sameSiteByUrl = new Map<string, WebPageResource>();
 
-  for (const frame of document.querySelectorAll('iframe[src]')) {
+  let hasInlineDocument = false;
+  for (const frame of document.querySelectorAll('iframe[src], iframe[srcdoc]')) {
     if (frame.closest(FRAME_EXCLUDED_CONTAINER_SELECTOR)) continue;
-    if (hasZeroOrTinyFrameDimension(frame) || hasAnyHiddenInlineStyleAncestor(frame)) continue;
+    if (hasZeroOrTinyFrameDimension(frame) || isExplicitlyHidden(frame)) continue;
 
+    // srcdoc 优先于 src，且不拥有独立资源 URL。只在浏览器能访问子文档时请求内联采集。
+    if (frame.hasAttribute('srcdoc')) {
+      const sandbox = frame.getAttribute('sandbox');
+      if (frame.getAttribute('srcdoc')?.trim() && (sandbox === null || sandbox.split(/\s+/).includes('allow-same-origin'))) {
+        hasInlineDocument = true;
+      }
+      continue;
+    }
     const frameUrl = parseFrameUrl(frame.getAttribute('src'), resolvedBase);
     if (!frameUrl || frameUrl.href === pageUrl.href) continue;
     if (IGNORED_IFRAME_URL_PATTERN.test(frameUrl.href)) continue;
@@ -156,6 +159,7 @@ export function extractEmbeddedFrameResources(
   }
 
   return {
+    hasInlineDocument,
     sameOriginResources: [...sameOriginByUrl.values()],
     sameSiteCrossOriginResources: [...sameSiteByUrl.values()],
   };

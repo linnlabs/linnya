@@ -1,5 +1,5 @@
 import type { WebReadExpectedOutcome, WebReadReliabilityCase } from './read-cases';
-import { checkWebContentAssertions, type WebContentCheckResult } from './read-content-assertions';
+import { inspectWebBenchmarkContent, type WebContentCheckResult } from './read-content-assertions';
 
 export interface ReadQualityResult {
   success: boolean;
@@ -51,10 +51,10 @@ export function evaluateReadQuality(
 ): ReadQualityResult {
   const expectedOutcome = resolveExpectedOutcome(caseDefinition);
   const hasTitle = result.title.trim().length > 0;
-  const charCount = result.content.length;
+  const { visibleText, bodyVerified, contentChecks } = inspectWebBenchmarkContent(result.content, caseDefinition.contentAssertions ?? []);
+  const charCount = visibleText.length;
   const codeBlockMarkupPresent = /```[\s\S]*?```/.test(result.content) || /(^|\n) {4}\S/.test(result.content);
   const tableMarkupPresent = /\|[^\n]+\|\n\|(?:\s*:?-+:?\s*\|)+/.test(result.content) || /<table[\s>]/i.test(result.content);
-  const contentChecks = checkWebContentAssertions(result.content, caseDefinition.contentAssertions ?? []);
 
   if (expectedOutcome === 'blocked') {
     return {
@@ -88,7 +88,7 @@ export function evaluateReadQuality(
     };
   }
 
-  const normalizedText = `${result.title}\n${result.content}`.toLocaleLowerCase();
+  const normalizedText = visibleText.toLocaleLowerCase();
   const expectedContentFound = caseDefinition.expectedAnyKeywords.length === 0
     || caseDefinition.expectedAnyKeywords.some((keyword) =>
       normalizedText.includes(keyword.toLocaleLowerCase()),
@@ -107,7 +107,7 @@ export function evaluateReadQuality(
             : contentChecks.failed.length > 0 ? 'content_assertion_failed' : undefined;
   const contentAvailable = hasTitle
     && charCount >= caseDefinition.minChars
-    && expectedContentFound;
+    && expectedContentFound && bodyVerified;
 
   return {
     success: failureKind === undefined,

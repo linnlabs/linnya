@@ -43,12 +43,12 @@ function hasAncestorInSet(element: Element, candidates: ReadonlySet<Element>): b
   return false;
 }
 
-function isVisibleControl(control: Element): boolean {
-  if (control.matches('[disabled], [aria-disabled="true" i]')) return false;
-  for (let node: Element | null = control; node; node = node.parentElement) {
-    if (node.matches(HIDDEN_SELECTOR) || hasHiddenInlineStyle(node)) return false;
+/** 静态 DOM 只能识别明确隐藏的节点及其祖先，外部 CSS 的实际布局由渲染端判断。 */
+export function isExplicitlyHidden(element: Element): boolean {
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    if (node.matches(`${HIDDEN_SELECTOR}, [inert], input[type="hidden" i]`) || hasHiddenInlineStyle(node)) return true;
   }
-  return true;
+  return false;
 }
 
 function hasReadMoreName(element: Element): boolean {
@@ -61,7 +61,7 @@ function expandReadableDisclosures(document: Document): void {
   const targets = new Set<Element>();
   for (const control of document.querySelectorAll(CONTROL_SELECTOR)) {
     const main = control.closest(MAIN_SELECTOR);
-    if (!main || !isVisibleControl(control)) continue;
+    if (!main || control.matches('[disabled], [aria-disabled="true" i]') || isExplicitlyHidden(control)) continue;
     if (control.getAttribute('aria-expanded') === 'false') {
       for (const id of (control.getAttribute('aria-controls') ?? '').split(/\s+/).filter(Boolean)) {
         const target = document.getElementById(id);

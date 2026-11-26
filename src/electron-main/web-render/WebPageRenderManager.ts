@@ -88,13 +88,11 @@ export class WebPageRenderManager implements WebPageRenderer {
 
   async render(params: WebPageRenderParams): Promise<WebPageRenderResult> {
     const slot = await this.acquire(params.signal);
-    const worker = slot.worker;
-    if (!worker) {
-      this.release(slot);
-      throw new WebPageRenderError('unavailable', '本地网页渲染 worker 未就绪。');
-    }
     try {
-      return await worker.render(params);
+      if (this.disposed) throw new WebPageRenderError('unavailable', '本地网页渲染 manager 已退出。');
+      // 获取槽位后才创建 worker，创建失败也通过 finally 归还槽位并唤醒队首。
+      slot.worker ??= this.spawnWorker(slot);
+      return await slot.worker.render(params);
     } finally {
       this.release(slot);
     }
@@ -150,21 +148,12 @@ export class WebPageRenderManager implements WebPageRenderer {
     if (signal?.aborted) {
       return Promise.reject(new WebPageRenderError('aborted', '网页渲染已由调用方取消。'));
     }
-    const idleWithWorker = this.slots.find((slot) => !slot.busy && slot.worker !== null);
-    if (idleWithWorker) {
-      idleWithWorker.busy = true;
+    const available = this.slots.find(slot => !slot.busy && slot.worker !== null)
+      ?? this.slots.find(slot => !slot.busy && !slot.pendingDispose);
+    if (available) {
+      available.busy = true;
       this.scheduleIdleDispose();
-      return Promise.resolve(idleWithWorker);
-    }
-    const idleEmpty = this.slots.find((slot) => !slot.busy);
-    if (idleEmpty) {
-      idleEmpty.busy = true;
-      this.scheduleIdleDispose();
-      if (!idleEmpty.pendingDispose) {
-        idleEmpty.worker = this.spawnWorker(idleEmpty);
-        return Promise.resolve(idleEmpty);
-      }
-      return this.acquireAfterPendingDispose(idleEmpty, signal);
+      return Promise.resolve(available);
     }
     return new Promise<WorkerSlot>((resolve, reject) => {
       const pending: PendingAcquire = {
@@ -182,47 +171,6 @@ export class WebPageRenderManager implements WebPageRenderer {
     });
   }
 
-  private async acquireAfterPendingDispose(
-    slot: WorkerSlot,
-    signal?: AbortSignal,
-  ): Promise<WorkerSlot> {
-    const pendingDispose = slot.pendingDispose;
-    if (pendingDispose) {
-      await new Promise<void>((resolve, reject) => {
-        if (signal?.aborted) {
-          slot.busy = false;
-          reject(new WebPageRenderError('aborted', '网页渲染已由调用方取消。'));
-          return;
-        }
-        let settled = false;
-        const onAbort = (): void => {
-          if (settled) return;
-          settled = true;
-          signal?.removeEventListener('abort', onAbort);
-          slot.busy = false;
-          reject(new WebPageRenderError('aborted', '网页渲染已由调用方取消。'));
-        };
-        signal?.addEventListener('abort', onAbort, { once: true });
-        void pendingDispose.finally(() => {
-          if (settled) return;
-          settled = true;
-          signal?.removeEventListener('abort', onAbort);
-          resolve();
-        });
-      });
-    }
-    if (this.disposed) {
-      slot.busy = false;
-      throw new WebPageRenderError('unavailable', '本地网页渲染 manager 已退出。');
-    }
-    if (signal?.aborted) {
-      slot.busy = false;
-      throw new WebPageRenderError('aborted', '网页渲染已由调用方取消。');
-    }
-    slot.worker = this.spawnWorker(slot);
-    return slot;
-  }
-
   private release(slot: WorkerSlot): void {
     if (this.disposed) {
       slot.busy = false;
@@ -230,10 +178,8 @@ export class WebPageRenderManager implements WebPageRenderer {
     }
     const waiter = this.waiters.shift();
     if (waiter) {
+      slot.busy = true;
       waiter.signal?.removeEventListener('abort', waiter.abort);
-      if (!slot.worker) {
-        slot.worker = this.spawnWorker(slot);
-      }
       waiter.resolve(slot);
       return;
     }
@@ -257,7 +203,9 @@ export class WebPageRenderManager implements WebPageRenderer {
         slot.worker = null;
         if (!worker) continue;
         const cleanup = worker.dispose().catch(() => undefined).finally(() => {
-          if (slot.pendingDispose === cleanup) slot.pendingDispose = null;
+          // 回收中的请求都在同一 FIFO 中等待；清理完成本身就应唤醒队首。
+          slot.pendingDispose = null;
+          this.release(slot);
         });
         slot.pendingDispose = cleanup;
       }

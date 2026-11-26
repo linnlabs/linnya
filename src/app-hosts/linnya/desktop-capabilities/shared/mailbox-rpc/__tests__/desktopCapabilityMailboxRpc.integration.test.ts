@@ -194,7 +194,7 @@ describe('Desktop capability mailbox RPC', () => {
     const fixture = await createFixture();
     const largeHtml = `<html>${'正文'.repeat(1024 * 1024)}</html>`;
     const port: WebPageRenderer = {
-      render: vi.fn(async ({ url }) => {
+      render: vi.fn<WebPageRenderer['render']>(async ({ url }) => {
         if (url.endsWith('/blocked')) {
           throw new WebPageRenderError('navigation_blocked', '拒绝跨站导航');
         }
@@ -216,7 +216,7 @@ describe('Desktop capability mailbox RPC', () => {
             finalUrl: `${url}/rendered`,
             mainResponse: { status: 200, headers: {} },
             capture: {
-              warnings: ['inlined_same_origin_iframe', 'lazy_content_incomplete'],
+              warnings: ['inlined_same_origin_iframe', 'embedded_frame_blocked', 'lazy_content_incomplete'],
               inlinedFrameResources: [
                 { kind: 'source', url: 'https://example.com/sub/notice.html', label: '公告框架' },
               ],
@@ -296,7 +296,7 @@ describe('Desktop capability mailbox RPC', () => {
         finalUrl: 'https://example.com/with-capture/rendered',
         mainResponse: { status: 200, headers: {} },
         capture: {
-          warnings: ['inlined_same_origin_iframe', 'lazy_content_incomplete'],
+          warnings: ['inlined_same_origin_iframe', 'embedded_frame_blocked', 'lazy_content_incomplete'],
           inlinedFrameResources: [
             { kind: 'source', url: 'https://example.com/sub/notice.html', label: '公告框架' },
           ],

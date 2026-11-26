@@ -3,7 +3,7 @@ import type { WebDocumentWarning, WebPageAccessBarrier } from '../../definitions
 import { WebFailureError } from '../../shared/webFailure';
 import { extractSemanticDom, normalizeExtractedText } from './extractSemanticDom';
 import { parseCanonicalHtmlDocument } from './parseCanonicalHtmlDocument';
-import { prepareReadableDocument } from './prepareReadableDocument';
+import { isExplicitlyHidden, prepareReadableDocument } from './prepareReadableDocument';
 import { renderReadableMarkdown } from './renderReadableMarkdown';
 import { extractPageResources } from './extractPageResources';
 import { extractPageImages } from './extractPageImages';
@@ -195,11 +195,14 @@ function clampScore(value: number): number {
 function detectAccessBarrier(document: Document, bodyTextLength: number): WebPageAccessBarrier | undefined {
   // 常规页面经常嵌入不可见验证或登录组件；只在正文稀疏时把明确 DOM 标记视为访问屏障。
   if (bodyTextLength >= 500) return undefined;
-  const captchaMarker = document.querySelector(
+  const captchaMarkers = document.querySelectorAll(
     '[id*="captcha"], [class*="captcha"], iframe[src*="recaptcha"], iframe[src*="hcaptcha"], [data-sitekey]',
   );
-  if (captchaMarker) return 'captcha';
-  return document.querySelector('input[type="password"]') ? 'login_required' : undefined;
+  for (const marker of captchaMarkers) if (!isExplicitlyHidden(marker)) return 'captcha';
+  for (const input of document.querySelectorAll('input[type="password"]')) {
+    if (!isExplicitlyHidden(input)) return 'login_required';
+  }
+  return undefined;
 }
 
 function extractArticleBaseline(
@@ -305,6 +308,7 @@ function extractArticleBaseline(
     hasEmptyMountRoot: dynamicShellSignals.hasEmptyMountRoot,
     hasBusyMainRegion: dynamicShellSignals.hasBusyMainRegion,
   });
+  if (embeddedFrames.hasInlineDocument) warnings.add('embedded_same_origin_iframe');
   for (const warning of dynamicWarnings) warnings.add(warning);
 
   let qualityScore = 1;

@@ -163,6 +163,19 @@ describe('浏览器采集脚本行为与严格四步顺序', () => {
     expect(sample!.mainTextLength).toBe(0);
   });
 
+  it('并列与嵌套主区只计一次，隐藏祖先和导航内的文章不计入', () => {
+    const articles = Array.from({ length: 500 }, () => '<article><main>ABCD</main></article>').join('');
+    const dom = createDomSandbox(`<html><body>${articles}<nav><article>菜单</article></nav>
+      <div hidden><article>隐藏</article></div></body></html>`);
+    let containsCalls = 0;
+    for (const candidate of dom.document.querySelectorAll('article, main')) {
+      const contains = candidate.contains.bind(candidate);
+      candidate.contains = node => { containsCalls++; return contains(node); };
+    }
+    expect(parseBrowserReadinessSample(dom.run(buildReadinessSampleScript()))?.mainTextLength).toBe(2000);
+    expect(containsCalls).toBeLessThan(2000);
+  });
+
   it('第一步优先于剪枝：移除固定登录遮罩前先判定 login_required，不露出背后截断正文', () => {
     const styles = new WeakMap<Element, ComputedStyleSpec>();
     const dom = createDomSandbox(
