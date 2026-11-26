@@ -5,6 +5,7 @@ import type { CustomApiGroup, CustomApiGroupMigration } from '../definitions/cus
 import type { ModelReasoningResolver } from '../definitions/modelReasoningResolver';
 import { projectUserModelForPersistence } from '../features/user-model-persistence/functions/projectUserModelForPersistence';
 import { partitionStoredUserModels } from '../features/user-model-persistence/functions/partitionStoredUserModels';
+import { projectUnadmittedUserModels } from '../features/user-model-persistence/functions/projectUnadmittedUserModels';
 import type { UnadmittedUserModelEntry } from '../features/user-model-persistence/definitions/userModelsFile';
 import { assertCustomApiGroupEndpoints } from '../features/custom-api-groups/functions/customApiGroupState';
 import { prepareCustomApiGroupMutation } from '../features/custom-api-groups/orchestration/prepareCustomApiGroupMutation';
@@ -27,6 +28,7 @@ import type {
   UserModelRegistration,
 } from '../definitions/modelCatalog';
 import { ModelCatalogConflictError } from '../definitions/modelCatalog';
+import { ModelAdmissionError } from '../definitions/modelAdmissionError';
 import type {
   CredentialReference,
   InferenceEndpoint,
@@ -209,15 +211,11 @@ export class ModelCatalogRegistry implements ModelCatalog {
   }
 
   /**
-   * 启动时未通过准入而停用的用户模型；只给身份与原因，不给原始配置。
-   * Provider 接入用例据此区分“停用成员”（跳过）与“归属悬空”（配置损坏）。
+   * 启动时未通过准入而停用的用户模型；只给身份、归属、显示名与原因，不给原始配置。
+   * Provider 接入用例据此区分“停用成员”与“归属悬空”（配置损坏），模型设置据此列出可删除、可修复的条目。
    */
   getUnadmittedUserModels(): UnadmittedUserModel[] {
-    return this.unadmittedUserModels.map(entry => ({
-      id: entry.id,
-      inference_endpoint_id: entry.inferenceEndpointId,
-      reason: entry.reason,
-    }));
+    return projectUnadmittedUserModels(this.unadmittedUserModels, this.customApiGroups.values());
   }
 
   /**
@@ -441,12 +439,45 @@ export class ModelCatalogRegistry implements ModelCatalog {
           const processedModel = this.bindUserModelToEndpoint(model, prepared.endpoint);
           nextModels.set(processedModel.id, processedModel);
         }
-        await this.commitModelsAndPruneEndpoints(nextModels, nextEndpoints);
+        await this.commitModelsAndPruneEndpoints({ models: nextModels, endpoints: nextEndpoints });
       } catch (error: unknown) {
         await prepared.rollback();
         throw error;
       }
     }, expectedRevision);
+  }
+
+  /**
+   * 用一条已准入的模型替换同 ID 的停用条目（正式 Provider 按当前定义修复）。
+   *
+   * 同一事务里移除原始条目、准备连接并写盘：原条目引用的连接若因此无人引用，连同独占凭据一起回收；
+   * 写盘失败时撤销本次凭据变更，内存仍是修复前的状态。只接受停用条目的 ID，不能借此覆盖已准入模型。
+   */
+  replaceUnadmittedUserModel(
+    model: ModelConfig,
+    selection: InferenceEndpointSelection
+  ): Promise<void> {
+    return this.runUserMutation(async () => {
+      const unadmitted = this.unadmittedUserModels.filter(entry => entry.id !== model.id);
+      if (this.models.has(model.id) || unadmitted.length === this.unadmittedUserModels.length) {
+        throw new Error(`停用的用户模型不存在: ${model.id}`);
+      }
+      const nextEndpoints = new Map(this.inferenceEndpoints);
+      const prepared = await prepareInferenceEndpointSelection(selection, nextEndpoints);
+      try {
+        const nextModels = new Map(this.models);
+        const processedModel = this.bindUserModelToEndpoint(model, prepared.endpoint);
+        nextModels.set(processedModel.id, processedModel);
+        await this.commitModelsAndPruneEndpoints({
+          models: nextModels,
+          endpoints: nextEndpoints,
+          unadmitted,
+        });
+      } catch (error: unknown) {
+        await prepared.rollback();
+        throw error;
+      }
+    });
   }
 
   async replaceInferenceEndpointCredential(
@@ -526,7 +557,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
       });
       this.assertModelEndpoint(processedModel);
       nextModels.set(processedModel.id, processedModel);
-      await this.commitModelsAndPruneEndpoints(nextModels);
+      await this.commitModelsAndPruneEndpoints({ models: nextModels });
     });
   }
 
@@ -542,16 +573,23 @@ export class ModelCatalogRegistry implements ModelCatalog {
       });
       this.assertModelEndpoint(processedModel);
       nextModels.set(processedModel.id, processedModel);
-      await this.commitModelsAndPruneEndpoints(nextModels);
+      await this.commitModelsAndPruneEndpoints({ models: nextModels });
     });
   }
 
+  /**
+   * 删除一个模型 ID：运行目录里的模型，以及文件里同 ID 的停用条目（启动时未通过准入）。
+   * 停用条目不能选择，但仍是用户数据，删除入口与已准入模型相同；它的连接与独占凭据在无人引用时同一事务回收。
+   */
   async removeModel(id: string): Promise<void> {
     return this.runUserMutation(async () => {
-      if (!this.models.has(id)) throw new Error(`模型不存在: ${id}`);
+      const unadmitted = this.unadmittedUserModels.filter(entry => entry.id !== id);
+      if (!this.models.has(id) && unadmitted.length === this.unadmittedUserModels.length) {
+        throw new Error(`模型不存在: ${id}`);
+      }
       const nextModels = new Map(this.models);
       nextModels.delete(id);
-      await this.commitModelsAndPruneEndpoints(nextModels);
+      await this.commitModelsAndPruneEndpoints({ models: nextModels, unadmitted });
     });
   }
 
@@ -581,7 +619,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
       for (const id of diff.removed) {
         if (!nextModels.delete(id)) throw new Error(`模型不存在: ${id}`);
       }
-      await this.commitModelsAndPruneEndpoints(nextModels);
+      await this.commitModelsAndPruneEndpoints({ models: nextModels });
     }, expectedRevision);
   }
 
@@ -722,17 +760,19 @@ export class ModelCatalogRegistry implements ModelCatalog {
           models: previousModels,
           endpoints: this.inferenceEndpoints,
           groups: this.customApiGroups,
+          unadmitted: this.unadmittedUserModels,
         },
         (model, endpoint) => this.bindUserModelToEndpoint(model, endpoint)
       );
       if (!prepared.changed) return false;
       try {
-        await this.commitModelsAndPruneEndpoints(
-          prepared.models,
-          prepared.endpoints,
-          prepared.groups,
-          previousModels
-        );
+        await this.commitModelsAndPruneEndpoints({
+          models: prepared.models,
+          endpoints: prepared.endpoints,
+          groups: prepared.groups,
+          previousModels,
+          unadmitted: prepared.unadmitted,
+        });
       } catch (error: unknown) {
         await prepared.rollback();
         throw error;
@@ -741,17 +781,28 @@ export class ModelCatalogRegistry implements ModelCatalog {
     }, expectedRevision);
   }
 
-  private async commitModelsAndPruneEndpoints(
-    nextModels: Map<string, ModelConfig>,
-    baseEndpoints: ReadonlyMap<string, InferenceEndpoint> = this.inferenceEndpoints,
-    nextGroups: ReadonlyMap<string, CustomApiGroup> = this.customApiGroups,
-    previousModels: ReadonlyMap<string, ModelConfig> = new Map(this.models)
-  ): Promise<void> {
+  /**
+   * 提交一次用户目录变更：按下一版本的模型、分组与停用条目计算无人引用的连接，回收它们与独占凭据，再一次写盘。
+   * 写盘成功后才替换内存；失败时撤销凭据删除，内存（含停用条目）保持事务前的状态。
+   */
+  private async commitModelsAndPruneEndpoints(next: {
+    readonly models: Map<string, ModelConfig>;
+    readonly endpoints?: ReadonlyMap<string, InferenceEndpoint>;
+    readonly groups?: ReadonlyMap<string, CustomApiGroup>;
+    readonly previousModels?: ReadonlyMap<string, ModelConfig>;
+    /** 只有删除或修复停用条目的事务才传入；其余事务原样保留当前停用条目。 */
+    readonly unadmitted?: readonly UnadmittedUserModelEntry[];
+  }): Promise<void> {
+    const nextModels = next.models;
+    const baseEndpoints = next.endpoints ?? this.inferenceEndpoints;
+    const nextGroups = next.groups ?? this.customApiGroups;
+    const previousModels = next.previousModels ?? new Map(this.models);
+    const nextUnadmitted = next.unadmitted ?? this.unadmittedUserModels;
     const orphanedEndpoints = findUnreferencedInferenceEndpoints(
       nextModels.values(),
       baseEndpoints.values(),
       nextGroups.values(),
-      this.unadmittedUserModels.flatMap(entry => entry.inferenceEndpointId ?? [])
+      nextUnadmitted.flatMap(entry => entry.inferenceEndpointId ?? [])
     );
     const nextEndpoints = new Map(baseEndpoints);
     const credentialRollbacks: Array<() => Promise<void>> = [];
@@ -771,7 +822,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
         await endpointCredentialStore.remove(credentialId);
         credentialRollbacks.push(rollback);
       }
-      await this.persistUserState(nextModels, nextEndpoints, nextGroups);
+      await this.persistUserState(nextModels, nextEndpoints, nextGroups, nextUnadmitted);
     } catch (error: unknown) {
       for (const rollback of credentialRollbacks.reverse()) await rollback();
       throw error;
@@ -780,6 +831,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     this.models = applyCommittedModelChanges(this.models, previousModels, nextModels);
     this.inferenceEndpoints = nextEndpoints;
     this.customApiGroups = new Map(nextGroups);
+    this.unadmittedUserModels = nextUnadmitted;
   }
 
   /** 用户模型只能引用一个 endpoint；route 身份必须与该 endpoint 完全一致。 */
@@ -811,7 +863,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private async persistUserState(
     models: Map<string, ModelConfig>,
     inferenceEndpoints: Map<string, InferenceEndpoint>,
-    groups: ReadonlyMap<string, CustomApiGroup> = this.customApiGroups
+    groups: ReadonlyMap<string, CustomApiGroup> = this.customApiGroups,
+    unadmitted: readonly UnadmittedUserModelEntry[] = this.unadmittedUserModels
   ): Promise<void> {
     if (!this.persistingInitialState) this.assertUserConfigurationWritable();
     const userModels = Array.from(models.values())
@@ -821,7 +874,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
       userModels,
       Array.from(inferenceEndpoints.values()),
       Array.from(groups.values()),
-      this.unadmittedUserModels.map(entry => entry.raw)
+      unadmitted.map(entry => entry.raw)
     );
   }
 
@@ -834,14 +887,27 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private assertModelEndpoint(model: ModelConfig): void {
     if (model.catalog_source !== 'user') {
       if (model.inference_endpoint_id) {
-        throw new Error(`非用户模型 ${model.id} 不得引用用户 InferenceEndpoint`);
+        throw new ModelAdmissionError(
+          'invalid_structure',
+          `非用户模型 ${model.id} 不得引用用户 InferenceEndpoint`
+        );
       }
       return;
     }
     if (!model.inference_endpoint_id) {
-      throw new Error(`用户模型 ${model.id} 必须引用 InferenceEndpoint`);
+      throw new ModelAdmissionError(
+        'endpoint_missing',
+        `用户模型 ${model.id} 必须引用 InferenceEndpoint`
+      );
     }
-    assertEndpointMatchesModel(this.requireInferenceEndpoint(model.inference_endpoint_id), model);
+    const endpoint = this.inferenceEndpoints.get(model.inference_endpoint_id);
+    if (!endpoint) {
+      throw new ModelAdmissionError(
+        'endpoint_missing',
+        `InferenceEndpoint 不存在: ${model.inference_endpoint_id}`
+      );
+    }
+    assertEndpointMatchesModel(endpoint, model);
   }
 
   private resolveCredentialReference(reference: CredentialReference): string | undefined {

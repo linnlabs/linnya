@@ -1,3 +1,4 @@
+import type { UnadmittedModelReasonKind } from '@app/schemas/model-picker';
 import type { InferenceEndpoint } from '../../../definitions/inferenceEndpoint';
 import type { CustomApiGroup } from '../../../definitions/customApiGroup';
 /** v5 将自定义分组连接归属与模型生命周期分开；v4 仅在加载时迁移一次。 */
@@ -18,13 +19,17 @@ export interface UserModelsFile {
 
 /**
  * 启动时没有通过准入而停用的用户模型条目（例如旧版写出的双 route 模型）。
- * `raw` 是文件里的原始内容，之后每次写盘原样带回；只读出身份字段，供连接回收与归属对账使用。
+ * `raw` 是文件里的原始内容，之后每次写盘原样带回或在删除、修复时整条移除；
+ * 只读出身份、归属与显示名，供连接回收、归属对账和界面列出使用。
  */
 export interface UnadmittedUserModelEntry {
   readonly raw: unknown;
   readonly id: string | undefined;
   readonly inferenceEndpointId: string | undefined;
+  readonly customProviderName: string | undefined;
+  readonly displayName: string | undefined;
   readonly reason: string;
+  readonly reasonKind: UnadmittedModelReasonKind;
 }
 
 export interface StoredUserModelState {

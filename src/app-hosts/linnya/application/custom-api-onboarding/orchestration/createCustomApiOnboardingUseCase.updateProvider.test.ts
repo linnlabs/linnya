@@ -102,6 +102,7 @@ function setup(input: {
     modelDiscovery: { discover: vi.fn() },
     modelCatalog: {
       getUserRevision: () => 0,
+      getUnadmittedUserModels: () => [],
       applyCustomApiGroupModelDiff: vi.fn(),
       removeCustomApiGroup: vi.fn(),
       getCustomApiGroups: () => groups,

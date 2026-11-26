@@ -150,9 +150,15 @@ export function createModelRouter(modelRemoval: ConfiguredModelRemovalUseCase): 
    * 删除模型
    * @route DELETE /api/v1/models/:id
    */
+  /** 启动时停用的用户模型不在运行目录里，但同样可以删除，删除前也要提醒定时任务。 */
+  function isUnadmittedUserModel(modelId: string): boolean {
+    return modelCatalog.getUnadmittedUserModels().some(entry => entry.id === modelId);
+  }
+
   router.get('/:id/removal-impact', (req: Request, res: Response) => {
     const modelId = paramIdToString(req.params.id);
-    if (!modelId || !modelCatalog.getModel(modelId)) return res.status(404).json({ error: '模型不存在' });
+    if (!modelId || (!modelCatalog.getModel(modelId) && !isUnadmittedUserModel(modelId)))
+      return res.status(404).json({ error: '模型不存在' });
     return res.json({ scheduled_task_count: modelRemoval.countScheduledTasks?.(modelId) ?? 0 });
   });
 
@@ -164,16 +170,16 @@ export function createModelRouter(modelRemoval: ConfiguredModelRemovalUseCase): 
       }
       console.log(`[ModelRouter] 收到删除模型请求: ${modelId}`);
 
-      // 检查模型是否存在
+      // 检查模型是否存在；停用条目只来自用户文件，按用户模型删除
       const existingModel = modelCatalog.getModel(modelId);
-      if (!existingModel) {
+      if (!existingModel && !isUnadmittedUserModel(modelId)) {
         return res.status(404).json({
           error: '模型不存在',
           details: `ID为 ${modelId} 的模型不存在`,
         });
       }
 
-      if (existingModel.catalog_source !== 'user') {
+      if (existingModel && existingModel.catalog_source !== 'user') {
         return res.status(403).json({
           error: '无法删除系统默认模型',
           details: `模型 ${modelId} 不是用户模型，无法删除`,

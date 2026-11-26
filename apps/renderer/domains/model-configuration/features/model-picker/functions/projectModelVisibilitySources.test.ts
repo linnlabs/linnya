@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   filterModelVisibilityModels,
+  filterUnadmittedModels,
   projectModelVisibilitySources,
 } from './projectModelVisibilitySources';
 
@@ -22,9 +23,11 @@ describe('projectModelVisibilitySources', () => {
             kind: 'direct',
             picker_enabled: true,
             credential_available: true,
+            unadmitted_models: [],
             models: [],
           },
         ],
+        unassigned_unadmitted_models: [],
         custom_models: [
           {
             materialized: true,
@@ -37,7 +40,7 @@ describe('projectModelVisibilitySources', () => {
           },
         ],
       },
-      '自定义模型'
+      { customModels: '自定义模型', unassigned: '未归类的配置' }
     );
 
     expect(sources.map(source => [source.kind, source.displayName])).toEqual([
@@ -62,6 +65,7 @@ describe('projectModelVisibilitySources', () => {
             kind: 'direct',
             picker_enabled: true,
             credential_available: true,
+            unadmitted_models: [],
             models: [
               {
                 materialized: true,
@@ -86,8 +90,9 @@ describe('projectModelVisibilitySources', () => {
           },
         ],
         custom_models: [],
+        unassigned_unadmitted_models: [],
       },
-      '自定义模型'
+      { customModels: '自定义模型', unassigned: '未归类的配置' }
     )[0];
     if (!source) throw new Error('测试来源缺失');
 
@@ -111,6 +116,7 @@ describe('projectModelVisibilitySources', () => {
             kind: 'direct',
             picker_enabled: true,
             credential_available: true,
+            unadmitted_models: [],
             models: [],
           },
           {
@@ -124,17 +130,63 @@ describe('projectModelVisibilitySources', () => {
             kind: 'direct',
             picker_enabled: true,
             credential_available: true,
+            unadmitted_models: [],
             models: [],
           },
         ],
         custom_models: [],
+        unassigned_unadmitted_models: [],
       },
-      '自定义模型'
+      { customModels: '自定义模型', unassigned: '未归类的配置' }
     );
 
     expect(sources.map(source => source.displayName)).toEqual([
       'OpenAI · OpenAI API',
       'OpenAI · ChatGPT 订阅',
     ]);
+  });
+
+  it('配置无效的条目随所属来源投影；归属已不存在的单独成“未归类”来源，没有时不出现', () => {
+    const invalid = (id: string, displayName: string) => ({
+      model_config_id: id,
+      display_name: displayName,
+      reason_kind: 'multiple_routes' as const,
+      reason: `用户模型 ${id} 必须声明唯一的推理 route`,
+      repairable: false,
+    });
+    const snapshot = {
+      providers: [],
+      custom_models: [],
+      custom_providers: [
+        {
+          provider_id: 'custom:Relay',
+          provider_name: 'Relay',
+          models: [],
+          unadmitted_models: [
+            invalid('relay-legacy', 'kimi-k3-legacy'),
+            invalid('relay-qwen', 'qwen-plus'),
+          ],
+        },
+      ],
+      unassigned_unadmitted_models: [invalid('orphan', 'glm-5.3-old')],
+    };
+    const labels = { customModels: '自定义模型', unassigned: '未归类的配置' };
+    const sources = projectModelVisibilitySources(snapshot, labels);
+    expect(
+      sources.map(source => [source.kind, source.displayName, source.unadmittedModels.length])
+    ).toEqual([
+      ['custom_provider', 'Relay', 2],
+      ['unassigned', '未归类的配置', 1],
+    ]);
+    const [relay] = sources;
+    if (!relay) throw new Error('fixture source missing');
+    expect(filterUnadmittedModels(relay, 'QWEN').map(model => model.model_config_id)).toEqual([
+      'relay-qwen',
+    ]);
+    expect(
+      projectModelVisibilitySources({ ...snapshot, unassigned_unadmitted_models: [] }, labels).map(
+        source => source.kind
+      )
+    ).toEqual(['custom_provider']);
   });
 });

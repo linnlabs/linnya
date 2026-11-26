@@ -9,6 +9,7 @@
 - 候选是本进程缓存；退出后重新查询。已经启用的 ModelConfig、容量与用户偏好照常持久化，重启不会丢失。
 - 只读取已配置 connection 的凭据；Renderer 仅传 configured provider
   ID，不得到 secret、URL 或调用协议。
+- 凭据取第一个仍在运行目录里的成员；成员全部在启动时停用时，取停用成员仍在的连接（同一正式 Provider 的连接共用一份凭据），否则“刷新修复”会在全部停用时先因读不到 Key 失败。规则见 `functions/resolveProviderMemberCredential.ts`。
 
 App composition 用 `ProviderModelSynchronizationLifecycle`
 合并同 connection 并发刷新、取消和退出收口，再调用 onboarding 刷新已激活模型。API-Key 目录不自动激活新模型，不删除旧配置，也不按别名替换历史模型 ID。支持在线发现的 connection 启动时不再用 bundled 资料覆盖已经保存的模型事实；其余供应商保留原发布目录行为。ChatGPT 使用原账号目录同步，不借用此 API-Key 发现流程。

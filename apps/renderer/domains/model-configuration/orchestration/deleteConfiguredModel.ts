@@ -8,6 +8,24 @@ export async function deleteConfiguredModel(
   gateway?: ModelCatalogGateway,
   modelPickerGateway?: ModelPickerGateway
 ): Promise<void> {
-  const result = await removeModelSource([modelId], gateway, modelPickerGateway);
+  const result = await removeModelSource(
+    { modelConfigIds: [modelId], unadmittedModelConfigIds: [] },
+    gateway,
+    modelPickerGateway
+  );
+  if (result.failure) throw result.failure.error;
+}
+
+/** 删除启动时停用的条目（设置页“配置无效”列表）；与单模型删除同一条后端用例，只是前端没有 catalog 条目可移除。 */
+export async function deleteUnadmittedModel(
+  modelId: string,
+  gateway?: ModelCatalogGateway,
+  modelPickerGateway?: ModelPickerGateway
+): Promise<void> {
+  const result = await removeModelSource(
+    { modelConfigIds: [], unadmittedModelConfigIds: [modelId] },
+    gateway,
+    modelPickerGateway
+  );
   if (result.failure) throw result.failure.error;
 }

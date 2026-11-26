@@ -19,12 +19,15 @@ import type {
   ModelDiscoveryService,
   UserModelRegistration,
   CustomApiGroup,
+  UnadmittedUserModel,
 } from 'src/domains/model-catalog';
 import type { ModelPickerModelPreference } from 'src/domains/model-picker-preferences';
 import type { ConfiguredProvider } from 'src/domains/provider-configuration';
 
 export interface CustomApiOnboardingModelCatalogPort {
   getModels(): ModelConfig[];
+  /** 启动时停用的条目；删除分组时属于该分组的会被 Catalog 一并删除，要随结果交回以清理偏好与用途绑定。 */
+  getUnadmittedUserModels(): readonly UnadmittedUserModel[];
   getInferenceEndpoints(): InferenceEndpointView[];
   getCustomApiGroups(): readonly CustomApiGroup[];
   resolveInferenceEndpointCredential(endpointId: string): string | undefined;

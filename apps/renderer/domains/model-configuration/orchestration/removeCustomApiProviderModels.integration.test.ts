@@ -34,7 +34,11 @@ describe('删除自定义分组后的 Renderer 同步', () => {
       delete: vi.fn(),
     };
     const picker: ModelPickerGateway = {
-      load: vi.fn(async () => ({ providers: [], custom_models: [] })),
+      load: vi.fn(async () => ({
+        providers: [],
+        custom_models: [],
+        unassigned_unadmitted_models: [],
+      })),
       refreshProviderModels: vi.fn(),
       activateProviderModel: vi.fn(),
       setModelVisibility: vi.fn(),
@@ -52,13 +56,17 @@ describe('删除自定义分组后的 Renderer 同步', () => {
     useModelPickerStore().replaceSnapshot({
       providers: [],
       custom_models: [],
-      custom_providers: [{
-        provider_id: 'custom:Relay',
-        provider_name: 'Relay',
-        api_format: 'openai_compatible',
-        base_url: 'https://relay.example/v1',
-        models: [],
-      }],
+      unassigned_unadmitted_models: [],
+      custom_providers: [
+        {
+          provider_id: 'custom:Relay',
+          provider_name: 'Relay',
+          unadmitted_models: [],
+          api_format: 'openai_compatible',
+          base_url: 'https://relay.example/v1',
+          models: [],
+        },
+      ],
     });
     const removal: CustomApiProviderRemovalGateway = {
       removeProvider: vi.fn(async () => ({
@@ -72,15 +80,18 @@ describe('删除自定义分组后的 Renderer 同步', () => {
       delete: vi.fn(),
     };
     const picker: ModelPickerGateway = {
-      load: vi.fn(async () => { throw new Error('picker unavailable'); }),
+      load: vi.fn(async () => {
+        throw new Error('picker unavailable');
+      }),
       refreshProviderModels: vi.fn(),
       activateProviderModel: vi.fn(),
       setModelVisibility: vi.fn(),
       setProviderVisibility: vi.fn(),
     };
 
-    await expect(removeCustomApiProviderModels('Relay', removal, catalog, picker))
-      .resolves.toEqual({ synchronizationFailed: true });
+    await expect(removeCustomApiProviderModels('Relay', removal, catalog, picker)).resolves.toEqual(
+      { synchronizationFailed: true }
+    );
     expect(useModelPickerReadModel().snapshot.value?.custom_providers).toEqual([]);
     expect(removal.removeProvider).toHaveBeenCalledExactlyOnceWith({ provider_name: 'Relay' });
     expect(picker.load).toHaveBeenCalledOnce();

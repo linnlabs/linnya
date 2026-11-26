@@ -36,6 +36,7 @@ definitions 路径仅 re-export。索引影响查询注册返回 disposer，停�
 | 后端模型列表 DTO、加载、增删改                | `features/model-catalog/`                                                                                                                   |
 | 后端 Provider 公开目录 DTO                    | `features/provider-catalog/`；跨端 schema 位于 `packages/schemas/src/provider-catalog/`                                                     |
 | 快捷选择器可见性与分组投影                    | `features/model-picker/`；Host use case 位于 `src/app-hosts/linnya/application/model-picker/`                                               |
+| 启动时停用（配置无效）模型的列出、删除与刷新修复 | `features/model-picker/ui/UnadmittedModelsSection.vue`、`functions/unadmittedModelPresentation.ts`；规则见 `src/domains/model-catalog/README.md`“单个用户模型停用” |
 | 正式 API-Key Provider 接入与更换 Key          | `features/direct-provider-onboarding/`；后端 workflow 位于 `src/app-hosts/linnya/application/provider-onboarding/`                          |
 | 正式账号型 Provider 授权与模型注册            | `features/provider-account-model-registration/`；授权 Host use case 位于 `src/app-hosts/linnya/application/provider-account-authorization/` |
 | 已有模型的容量解析与 route 编辑               | `features/inference-endpoints/`                                                                                                             |
@@ -260,6 +261,13 @@ availability 已由 Host 一次投影完成。
 以错误色展示具体原因；API-Key 接入以“更新 API Key”为首选恢复操作，同时保留“删除凭据并重新添加”操作。该操作通过 domain-level
 模型删除编排清理 Provider 的已激活模型、孤儿 endpoint 与本机凭据，不在 Renderer 直接访问凭据文件。
 
+启动时没有通过准入而停用的模型（“配置无效”）由快照的 `unadmitted_models`（正式 Provider、自定义分组各一份）与
+`unassigned_unadmitted_models`（归属已不存在，界面放在“其他 · 未归类的配置”）给出，Renderer 不判断归属。它们不进入模型开关列表，
+只在来源页顶部单独列出：按 `reason_kind` 显示白话原因、悬停显示后端原文；删除走 `deleteUnadmittedModel`（与单模型删除同一条后端用例，
+同样先提醒定时任务）；正式 Provider 的条目 `repairable` 时给“刷新修复”，与标题旁的刷新是同一个命令。删除 Provider 时把停用成员的 ID
+放在 `removeModelSource` 的 `unadmittedModelConfigIds` 里，删除自定义分组由 Host 连带删除；两个确认框都用 `sections` 列出会被一并删除的条目。
+停用条目从未进入前端 catalog 快照，所以只删后端、不调用 catalog store 的 `removeModel`（那里“待删除模型必须在目录中”的断言只对已准入模型成立）。
+
 store 只持有最后一次严格解析后的快照、当前操作和结构化错误。HTTP、更新流程和同步 state
 action 分别位于 infrastructure、orchestration 和 store。新增目录模型不会在 Renderer 生成默认偏好；尚未 materialize 的正式 Provider 模型只服务 Settings 全目录，不进入快捷选择候选。
 
@@ -390,7 +398,8 @@ read model。编辑已有模型时不能改变为与已绑定端点不一致的 
 profile；后端会在 catalog admission 明确拒绝。
 
 删除时，`deleteConfiguredModel`
-先删除后端目录实体和前端 catalog，再清理指向该 id 的全部显式用途绑定；删除整个来源时 `removeModelSource` 按顺序复用它。不得在 UI、store 或其他 domain 复制这些流程。
+先删除后端目录实体和前端 catalog，再清理指向该 id 的全部显式用途绑定；删除整个来源时 `removeModelSource` 按顺序复用它，
+已准入模型与停用条目分两组传入。不得在 UI、store 或其他 domain 复制这些流程。
 
 编辑来源连接时，自定义分组提交后重读模型目录与选择投影；正式 Provider 更换 Key 只改变凭据可用性，成功后重读选择投影。
 

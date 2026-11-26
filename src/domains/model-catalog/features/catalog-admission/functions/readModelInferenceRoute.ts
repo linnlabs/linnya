@@ -1,7 +1,5 @@
-import {
-  ModelInferenceRouteSchema,
-  type ModelInferenceRoute,
-} from '@app/schemas/model-inference';
+import { ModelInferenceRouteSchema, type ModelInferenceRoute } from '@app/schemas/model-inference';
+import { ModelAdmissionError } from '../../../definitions/modelAdmissionError';
 
 interface ModelInferenceRouteSource {
   readonly modelName: string;
@@ -14,7 +12,10 @@ export function readModelInferenceRoute(
 ): ModelInferenceRoute | undefined {
   if (value === undefined || value === null) {
     if (source.hasChatCapability) {
-      throw new Error('[ModelConfigProcessor] chat 模型必须声明 inference_route。');
+      throw new ModelAdmissionError(
+        'invalid_route',
+        '[ModelConfigProcessor] chat 模型必须声明 inference_route。'
+      );
     }
     return undefined;
   }
@@ -22,13 +23,19 @@ export function readModelInferenceRoute(
   const result = ModelInferenceRouteSchema.safeParse(value);
   if (!result.success) {
     const issue = result.error.issues[0];
-    const field = issue?.path.length ? `inference_route.${issue.path.join('.')}` : 'inference_route';
-    throw new Error(`[ModelConfigProcessor] ${field} 无效：${issue?.message ?? '未知错误'}。`);
+    const field = issue?.path.length
+      ? `inference_route.${issue.path.join('.')}`
+      : 'inference_route';
+    throw new ModelAdmissionError(
+      'invalid_route',
+      `[ModelConfigProcessor] ${field} 无效：${issue?.message ?? '未知错误'}。`
+    );
   }
   const route = result.data;
 
   if (route.endpoint_model_id !== source.modelName) {
-    throw new Error(
+    throw new ModelAdmissionError(
+      'invalid_route',
       `[ModelConfigProcessor] inference_route.endpoint_model_id 必须与 model_name 一致: ${route.endpoint_model_id} !== ${source.modelName}`
     );
   }

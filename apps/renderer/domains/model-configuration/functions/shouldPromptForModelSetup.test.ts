@@ -4,15 +4,26 @@ import { shouldPromptForModelSetup } from './shouldPromptForModelSetup';
 describe('shouldPromptForModelSetup', () => {
   it('snapshot 未加载或输入不可用时不遮挡输入区', () => {
     expect(shouldPromptForModelSetup(null, false)).toBe(false);
-    expect(shouldPromptForModelSetup({ providers: [], custom_models: [] }, true)).toBe(false);
+    expect(
+      shouldPromptForModelSetup(
+        { providers: [], custom_models: [], unassigned_unadmitted_models: [] },
+        true
+      )
+    ).toBe(false);
   });
 
   it('没有配置 Provider 且没有自定义模型时提示配置', () => {
-    expect(shouldPromptForModelSetup({ providers: [], custom_models: [] }, false)).toBe(true);
+    expect(
+      shouldPromptForModelSetup(
+        { providers: [], custom_models: [], unassigned_unadmitted_models: [] },
+        false
+      )
+    ).toBe(true);
     expect(
       shouldPromptForModelSetup(
         {
           providers: [],
+          unassigned_unadmitted_models: [],
           custom_models: [
             {
               materialized: true,
@@ -46,10 +57,12 @@ describe('shouldPromptForModelSetup', () => {
               kind: 'direct',
               picker_enabled: true,
               credential_available: true,
+              unadmitted_models: [],
               models: [],
             },
           ],
           custom_models: [],
+          unassigned_unadmitted_models: [],
         },
         false
       )

@@ -79,10 +79,18 @@ credential，重复执行只跳过已经关联的目录模型；若某一项只�
 
 Provider 归属可能指向 Model Catalog 启动时停用（未通过准入）的用户模型：它保留归属，等待修复或删除，但不在运行目录里。
 `functions/resolveConfiguredProviderMember` 是这里唯一的判定：成员要么在目录里，要么是停用条目；两者都不是说明归属与目录
-失去一致，按 `configuration_invalid` 失败。添加模型、换 Key 只用目录里的成员确定 credential boundary 与可复用 endpoint；
-刷新与账号同步跳过停用成员、不改写它，也不把它当未注册再建一条；账号目录不再列出它时，同步不交给删除用例
-（删除用例会报“模型不存在”），日志以 `skipped_unadmitted_model_count` 记下跳过数。重新添加同一个停用模型仍返回
-`model_already_registered`；停用条目的展示、删除与按定义修复属于后续工作。
+失去一致，按 `configuration_invalid` 失败。添加模型只用目录里的成员确定 credential boundary 与可复用 endpoint；
+换 Key 用 `functions/listProviderMemberEndpoints` 把停用成员仍存在的连接也算进凭据边界（Provider 只剩停用成员时它们是唯一的 Key）。
+普通刷新与账号同步跳过停用成员、不改写它，也不把它当未注册再建一条；账号目录不再列出它时，同步不交给删除用例，
+日志以 `skipped_unadmitted_model_count` 记下跳过数。重新添加同一个停用模型仍返回 `model_already_registered`。
+
+`repairUnadmittedProviderModels` 按 Provider 当前模型定义（本次在线发现成功的候选优先，否则安装包目录）重建停用成员：
+整条按定义重新生成，只沿用 `model_config_id`，归属不变所以不走注册 intent；连接与凭据按注册同一规则
+（`functions/resolveProviderCredentialBoundary`）复用或在同一凭据边界内新建，经 Model Catalog `replaceUnadmittedUserModel`
+一次提交，原连接无人引用时同事务回收。定义里已没有该模型的成员保持停用，只能删除。只接受模型资料来自 Provider 目录的
+bundled 直连 connection（`canRepairUnadmittedProviderModels`）；账号目录型删除后由账号同步重新注册，本地运行时没有可依据的定义。
+模型管理的“刷新”在可在线刷新时先刷新，再调用修复（用户 2026-11-26 定：刷新即修复），没有在线刷新的 bundled Provider 也会修复；
+启动刷新不修复，修复只在用户点刷新时发生。修复需要该 Provider 的 Key 仍在本机，Key 缺失时先更新 API Key。
 
 OpenCode Go 是首个多 route API-Key 产品：用户只粘贴一次 Key，首次启用最多三个近期模型（稳定版优先）；Kimi 等完整公开目录继续显示在模型管理中。Host 私有
 binding 将模型显式分配给 OpenAI-compatible Chat、OpenAI Responses 或 Anthropic Messages。Renderer

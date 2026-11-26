@@ -198,7 +198,11 @@ describe('ModelRegistrationSettingsPage', () => {
       purposeDefaults: {},
       cloudModelsReady: true,
     });
-    mocks.loadModelPicker.mockResolvedValue({ providers: [], custom_models: [] });
+    mocks.loadModelPicker.mockResolvedValue({
+      providers: [],
+      custom_models: [],
+      unassigned_unadmitted_models: [],
+    });
     mocks.loadProviders.mockResolvedValue({
       generation: {
         id: 'test-generation',
@@ -493,10 +497,12 @@ describe('ModelRegistrationSettingsPage', () => {
             credential_kind: 'api_key',
             picker_enabled: false,
             credential_available: true,
+            unadmitted_models: [],
             models: [],
           },
         ],
         custom_models: [],
+        unassigned_unadmitted_models: [],
       });
       app = createApp(ModelRegistrationSettingsPage);
       app.use(pinia);
@@ -535,10 +541,12 @@ describe('ModelRegistrationSettingsPage', () => {
           credential_kind: 'api_key',
           picker_enabled: true,
           credential_available: true,
+          unadmitted_models: [],
           models: [],
         },
       ],
       custom_models: [],
+      unassigned_unadmitted_models: [],
     });
     app = createApp(ModelRegistrationSettingsPage);
     app.use(pinia);
