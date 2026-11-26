@@ -3,6 +3,8 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+import { removeFencedCode } from './functions/markdownLocalLinks.ts';
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const documentationRoots = [
   'src/domains/commands',
@@ -27,7 +29,6 @@ const formalDocuments = documentationRoots.flatMap(root => listMarkdownFiles(roo
 for (const relativePath of formalDocuments) {
   const source = read(relativePath);
   verifyFences(relativePath, source);
-  verifyLocalLinks(relativePath, source);
   if (/docs\/bash-tool-(?:research|validation|implementation)|docs\/bash-tool-research\.md/u.test(source)) {
     violations.push(`${relativePath}: 不得引用已删除的旧 Bash 文档体系`);
   }
@@ -44,7 +45,7 @@ if (violations.length > 0) {
 }
 
 process.stdout.write(
-  `[shell-tool-documentation-guard] 通过：${formalDocuments.length} 份模块文档，入口、链接、代码块、重复内容和旧体系引用检查均有效。\n`,
+  `[shell-tool-documentation-guard] 通过：${formalDocuments.length} 份模块文档，入口、代码块、重复内容和旧体系引用检查均有效（链接由 guard:markdown-links 检查）。\n`,
 );
 
 function verifyRootNavigation() {
@@ -94,42 +95,6 @@ function verifyFences(relativePath, source) {
   if (openFence !== null) violations.push(`${relativePath}:${openFence.line}: Markdown 代码块未闭合`);
 }
 
-function verifyLocalLinks(relativePath, source) {
-  const sourceWithoutCode = removeFencedCode(source);
-  const linkPattern = /!?(?:\[[^\]]*\])\(([^)]+)\)/gu;
-  for (const match of sourceWithoutCode.matchAll(linkPattern)) {
-    const rawDestination = match[1].trim().replace(/^<|>$/gu, '');
-    const destination = rawDestination.split(/\s+['"]/u, 1)[0];
-    if (
-      destination.length === 0
-      || destination.startsWith('#')
-      || /^[a-z][a-z0-9+.-]*:/iu.test(destination)
-    ) continue;
-
-    const [rawFilePart, rawAnchor] = destination.split('#', 2);
-    const targetPath = path.resolve(
-      path.dirname(path.join(repoRoot, relativePath)),
-      decodeURIComponent(rawFilePart),
-    );
-    const resolved = fs.existsSync(targetPath)
-      ? targetPath
-      : fs.existsSync(`${targetPath}.md`)
-        ? `${targetPath}.md`
-        : fs.existsSync(path.join(targetPath, 'README.md'))
-          ? path.join(targetPath, 'README.md')
-          : null;
-    if (resolved === null) {
-      violations.push(`${relativePath}: 链接目标不存在 ${destination}`);
-      continue;
-    }
-    if (!rawAnchor || !resolved.endsWith('.md')) continue;
-    const anchor = decodeURIComponent(rawAnchor).toLowerCase();
-    if (!collectHeadingAnchors(fs.readFileSync(resolved, 'utf8')).has(anchor)) {
-      violations.push(`${relativePath}: 标题锚点不存在 ${destination}`);
-    }
-  }
-}
-
 function verifyNoLongDuplicateParagraphs() {
   const paragraphOwners = new Map();
   for (const relativePath of formalDocuments) {
@@ -146,46 +111,6 @@ function verifyNoLongDuplicateParagraphs() {
       }
     }
   }
-}
-
-function collectHeadingAnchors(source) {
-  const anchors = new Set();
-  const counts = new Map();
-  for (const line of removeFencedCode(source).split(/\r?\n/u)) {
-    const match = line.match(/^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$/u);
-    if (!match) continue;
-    const base = githubHeadingSlug(match[1]);
-    const count = counts.get(base) ?? 0;
-    counts.set(base, count + 1);
-    anchors.add(count === 0 ? base : `${base}-${count}`);
-  }
-  return anchors;
-}
-
-function githubHeadingSlug(heading) {
-  return heading
-    .toLowerCase()
-    .replace(/!?(?:\[([^\]]*)\])\([^)]*\)/gu, '$1')
-    .replace(/<[^>]+>/gu, '')
-    .replace(/[`*_~]/gu, '')
-    .replace(/[^\p{L}\p{N}\s_-]/gu, '')
-    .trim()
-    .replace(/\s+/gu, '-');
-}
-
-function removeFencedCode(source) {
-  let openFence = null;
-  return source.split(/\r?\n/u).map(line => {
-    const match = line.match(/^ {0,3}(`{3,}|~{3,})/u);
-    if (match) {
-      const marker = match[1][0];
-      const length = match[1].length;
-      if (openFence === null) openFence = { marker, length };
-      else if (openFence.marker === marker && length >= openFence.length) openFence = null;
-      return '';
-    }
-    return openFence === null ? line : '';
-  }).join('\n');
 }
 
 function listMarkdownFiles(root) {
