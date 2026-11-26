@@ -31,7 +31,8 @@ describe('production package manifest', () => {
   });
 
   it('运行时依赖从根 dependencies 消失时拒绝投影，不让安装包悄悄少一个包', () => {
-    const { sharp: _removed, ...withoutSharp } = runtimeDependencies;
+    const withoutSharp = { ...runtimeDependencies };
+    delete withoutSharp.sharp;
     expect(() =>
       projectProductionPackageManifest({
         dependencies: withoutSharp,
