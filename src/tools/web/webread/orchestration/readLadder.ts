@@ -6,6 +6,7 @@ import {
   getWebExtractionFailureStage,
   getWebFailureKind,
   isEscalatableWebFailureKind,
+  isWebAccessBlockKind,
   resolveWebAccessBlockKind,
   type WebExtractionFailureStage,
   type WebFailureKind,
@@ -14,7 +15,7 @@ import type { WebReadEscalationReason, WebReadLadderResult } from '../definition
 import { DEFAULT_WEB_READ_CONFIG, type WebReadConfig } from '../definitions/webReadConfig';
 import { createWebReadFailure } from '../functions/createWebReadFailure';
 import { getWebFileFormat } from '../file-acquisition/functions/validateWebFile';
-import { assessWebReadQuality } from '../functions/assessWebReadQuality';
+import { assessWebReadQuality, hasRenderedCodeExample, shouldRenderEmbeddedCode } from '../functions/assessWebReadQuality';
 import {
   createLocalRenderWebReadProvider,
   createLocalWebReadProvider,
@@ -258,6 +259,26 @@ async function readRenderedOrManaged(args: {
   });
 }
 
+/** 对已有正文的代码示例做一次本地增强。保留访问拒绝、取消和总时限的正常语义。 */
+async function readOptionalCodeExample(
+  params: WebReadParams, initial: WebReadLadderResult, renderer: WebReadProvider,
+): Promise<WebReadLadderResult> {
+  const attempted: WebReadLadderResult = { ...initial, renderAttempted: true, escalationReason: 'js_required' };
+  try {
+    const rendered = await renderer.read(params);
+    if (hasRenderedCodeExample(initial.readResult, rendered)) {
+      return { ...attempted, readResult: rendered, selectedProvider: renderer.name };
+    }
+  } catch (cause: unknown) {
+    const error = createWebReadFailure(cause, 'local_render', { renderAttempted: true });
+    const kind = error.kind;
+    if (params.signal?.aborted || isWebAccessBlockKind(kind) || !MANAGED_AFTER_RENDER_FAILURE.has(kind)) {
+      throw error;
+    }
+  }
+  return attempted;
+}
+
 async function executeReadLadder(
   params: WebReadParams,
   dependencies: WebReadLadderDependencies
@@ -313,13 +334,14 @@ async function executeReadLadder(
 
   const quality = assessWebReadQuality(readResult);
   if (!quality.shouldEscalate || !quality.reason) {
-    return {
-      readResult,
-      initialProvider: initialProvider.name,
-      selectedProvider: initialProvider.name,
-      renderAttempted: false,
-      escalated: false,
+    const initial = {
+      readResult, initialProvider: initialProvider.name, selectedProvider: initialProvider.name,
+      renderAttempted: false, escalated: false,
     };
+    if (renderEnabled && shouldRenderEmbeddedCode(readResult)) {
+      return readOptionalCodeExample(params, initial, dependencies.renderProvider ?? createLocalRenderWebReadProvider());
+    }
+    return initial;
   }
 
   if (renderEnabled && shouldAttemptRender(quality.reason)) {

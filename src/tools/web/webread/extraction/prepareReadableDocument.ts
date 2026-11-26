@@ -22,6 +22,7 @@ const HIDDEN_METRIC_IGNORED_CHROME_SELECTOR =
 
 export interface PrepareReadableDocumentMetrics {
   readonly hiddenMainTextLength: number;
+  readonly hasPendingCodeExample: boolean;
 }
 
 function isHiddenStyle(declaration: string): boolean {
@@ -87,6 +88,30 @@ function expandReadableDisclosures(document: Document): void {
   }
 }
 
+/**
+ * 浏览器代码编辑器通常只把示例保存在可编辑的 div 中，Readability 会把
+ * 这类控件当作交互外壳而丢弃。将已有的逐行 DOM 规范化成 pre/code，保留
+ * 代码文本，不执行或信任编辑器里的属性和脚本。
+ */
+function normalizeCodeEditors(document: Document): void {
+  for (const editor of document.querySelectorAll('.cm-editor .cm-content')) {
+    if (!editor.closest(MAIN_SELECTOR) || editor.closest('pre, code')) continue;
+    const lines = [...editor.children];
+    // CodeMirror 的占位块可能跨越尚未挂载的行，不能跨过它拼接两段源码。
+    if (!lines.length || !lines.every(line => line.classList.contains('cm-line'))) continue;
+    const text = lines.map(line => line.textContent ?? '').join('\n');
+    if (!text.trim()) continue;
+
+    const code = document.createElement('code');
+    const language = editor.getAttribute('data-language');
+    if (language) code.setAttribute('data-language', language);
+    code.textContent = text;
+    const pre = document.createElement('pre');
+    pre.appendChild(code);
+    editor.replaceWith(pre);
+  }
+}
+
 function resolveContentUrl(value: string, baseUrl?: string): string | undefined {
   try {
     return assertAllowedWebUrl(new URL(value, baseUrl).href).href;
@@ -124,6 +149,8 @@ export function prepareReadableDocument(
   }
   for (const element of inlineHiddenElements) element.remove();
 
+  normalizeCodeEditors(document);
+
   for (const element of document.querySelectorAll('a[href], img[src]')) {
     const attribute = element.tagName === 'A' ? 'href' : 'src';
     const resolved = resolveContentUrl(element.getAttribute(attribute) ?? '', baseUrl);
@@ -132,5 +159,11 @@ export function prepareReadableDocument(
   }
   unwrapLayoutTables(document);
   normalizeAriaTables(document);
-  return { hiddenMainTextLength };
+  // 空自定义元素必须在已清理的主区内，且声明了源文件名；文件地址不会被主动请求。
+  const hasPendingCodeExample = [...document.querySelectorAll('[filename]')].some(element =>
+    element.localName.includes('-') && element.closest(MAIN_SELECTOR)
+    && !element.closest(`${HIDDEN_METRIC_IGNORED_CHROME_SELECTOR}, pre, code`)
+    && /\.(?:[cm]?[jt]sx?|py|css|html|json)$/i.test(element.getAttribute('filename') ?? '')
+    && !element.firstElementChild && !element.textContent?.trim());
+  return { hiddenMainTextLength, hasPendingCodeExample };
 }

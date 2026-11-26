@@ -2,6 +2,8 @@ import { Readability } from '@mozilla/readability';
 import type { WebDocumentWarning, WebPageAccessBarrier } from '../../definitions/webDocument';
 import { WebFailureError } from '../../shared/webFailure';
 import { extractSemanticDom, normalizeExtractedText } from './extractSemanticDom';
+import { READABLE_MAIN_SELECTOR } from '../render-capture/definitions/renderCaptureContract';
+import { extractDatedRegionList } from './extractDatedRegionList';
 import { parseCanonicalHtmlDocument } from './parseCanonicalHtmlDocument';
 import { isExplicitlyHidden, prepareReadableDocument } from './prepareReadableDocument';
 import { renderReadableMarkdown } from './renderReadableMarkdown';
@@ -231,7 +233,7 @@ function extractArticleBaseline(
   const pageImages = extractPageImages(document, options.url);
   // Readability.parse() 会原地清理 DOM；语义备选必须先读取原始主区域，
   // 否则它只能看到 Readability 已经删减过的节点，无法补回遗漏正文。
-  const { hiddenMainTextLength } = prepareReadableDocument(document, options.url);
+  const { hiddenMainTextLength, hasPendingCodeExample } = prepareReadableDocument(document, options.url);
   for (const resource of [
     ...extractPageResources(document, options.url, { metadata: false }),
     ...embeddedFrames.sameOriginResources,
@@ -239,9 +241,11 @@ function extractArticleBaseline(
   ]) {
     if (!resourcesByUrl.has(resource.url)) resourcesByUrl.set(resource.url, resource);
   }
-  const semanticCandidateCount = document.querySelectorAll('article, main, [role="main"]').length;
-  const semantic = extractSemanticDom(document);
-  const tabular = semanticCandidateCount === 0 ? extractTabularDom(document) : undefined;
+  const mainRegions = document.querySelectorAll(READABLE_MAIN_SELECTOR);
+  const tabular = mainRegions.length === 0 ? extractTabularDom(document) : undefined;
+  const datedList = mainRegions.length === 0 && !tabular?.tableCount ? extractDatedRegionList(document) : undefined;
+  const semantic = extractSemanticDom(datedList ? [datedList] : mainRegions);
+  const semanticCandidateCount = datedList ? 1 : mainRegions.length;
   let article: ReadabilityResult;
   try {
     article = options.parseReadability
@@ -272,7 +276,7 @@ function extractArticleBaseline(
   // 链接地址和保留的表格标记不是正文文字，不能让它们抬高质量信号或改变主区域选择。
   const useSemanticDom = semantic.textLength > readabilityLength
     && (readabilityLength < 200
-      || (semantic.textLength - readabilityLength >= 300
+      || (!datedList && semantic.textLength - readabilityLength >= 300
         && semantic.textLength >= readabilityLength * 1.35));
   const primaryText = useSemanticDom ? semantic.text : readabilityText;
   const primaryLength = useSemanticDom ? semantic.textLength : readabilityLength;
@@ -287,6 +291,7 @@ function extractArticleBaseline(
   const textToHtmlRatio = textLength / Math.max(1, html.length);
   const warnings = new Set<ArticleExtractionWarning>();
 
+  if (hasPendingCodeExample) warnings.add('embedded_code_pending');
   if (!article) warnings.add('readability_failed');
   if (!textLength) warnings.add('empty_content');
   if (!textLength && resourcesByUrl.size > 0) warnings.add('metadata_only');

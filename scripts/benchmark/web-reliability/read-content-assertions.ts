@@ -23,6 +23,8 @@ export function inspectWebBenchmarkContent(
     switch (assertion.kind) {
       case 'link':
         return !document('a[href]').toArray().some(node => document(node).attr('href') === assertion.url);
+      case 'code_contains':
+        return !document('pre code').toArray().some(node => document(node).text().includes(assertion.text));
       case 'code':
         return !document('pre').toArray().some(node =>
           document(node).text().replace(/\r\n?/g, '\n').trimEnd() === assertion.text.trimEnd());
@@ -45,6 +47,20 @@ export function inspectWebBenchmarkContent(
             });
           });
         });
+      case 'dated_page_links': {
+        const links = new Set<string>();
+        for (const node of document('a[href]').toArray()) {
+          const link = document(node);
+          const href = link.attr('href') ?? '';
+          if (!href.startsWith(assertion.urlPrefix) || !/\.html?$/i.test(href) || !link.text().trim()) continue;
+          const row = link.closest('li, tr');
+          if (!row.length || row.find('a[href]').length !== 1) continue;
+          const label = row.clone();
+          label.find('a').remove();
+          if (/20\d{2}[-/.年]\d{1,2}[-/.月]\d{1,2}/.test(label.text())) links.add(href);
+        }
+        return links.size < 2;
+      }
       case 'dated_document_link': {
         // 列表的业务事实是带日期的详情条目。只在同一行/条目里关联链接与日期。
         const date = /20\d{2}[-/.年]\d{1,2}[-/.月]\d{1,2}/;
@@ -63,6 +79,6 @@ export function inspectWebBenchmarkContent(
     }
   }).map(assertion => assertion.id);
   const bodyVerified = !assertions.some(assertion => failed.includes(assertion.id)
-    && (assertion.kind === 'text_present' || assertion.kind === 'text_absent' || assertion.kind === 'dated_document_link'));
+    && (assertion.kind === 'text_present' || assertion.kind === 'text_absent' || assertion.kind === 'dated_document_link' || assertion.kind === 'dated_page_links'));
   return { visibleText, bodyVerified, contentChecks: { checked: assertions.length, failed } };
 }

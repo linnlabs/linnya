@@ -101,6 +101,12 @@ describe('R2 本地 HTTP → 本地渲染 → 托管读取阶梯', () => {
 
   beforeAll(async () => {
     server = createServer((request, response) => {
+      if (request.url === '/tutorial') {
+        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        response.end(`<article><h1>Guide</h1><p>${'Public tutorial text. '.repeat(50)}</p>
+          <demo-editor filename="example.ts"></demo-editor></article>`);
+        return;
+      }
       if (request.url === '/article') {
         response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         response.end(`<!doctype html><html><head><title>Local Article</title></head><body><article><h1>Local Article</h1><p>${'稳定的本地正文内容。'.repeat(50)}</p></article></body></html>`);
@@ -173,6 +179,28 @@ describe('R2 本地 HTTP → 本地渲染 → 托管读取阶梯', () => {
       readResult: { renderMode: 'http', extractor: 'readability' },
     });
     expect(render.read).not.toHaveBeenCalled();
+    expect(managed.read).not.toHaveBeenCalled();
+  });
+
+  it('示例未加载时保留首跳教程，渲染访问墙和取消仍回报原错误', async () => {
+    const params = { url: `http://ladder.test:${port}/tutorial` };
+    const provider = createLocalProvider();
+    const managed = createManagedProvider();
+    const onlyEditor = createRenderProvider(createWebReadResult({
+      url: params.url, status: 200, contentType: 'text/html', contentFormat: 'markdown',
+      content: '```ts\nconst unrelated = 42;\n```', extractor: 'semantic_dom', renderMode: 'js', rawLength: 90, latencyMs: 1,
+    }));
+    for (const renderProvider of [null, createFailingProvider('provider_error'), createRenderProvider().provider, onlyEditor.provider]) {
+      const result = await readWebPageWithLadder(params, { provider, renderProvider, managedProvider: managed.provider });
+      expect(result.renderAttempted).toBe(renderProvider !== null);
+      expect(result.readResult.content).toContain('Public tutorial text.');
+      expect(result.readResult.warnings).toContain('embedded_code_pending');
+    }
+    for (const kind of ['login_required', 'captcha', 'policy_denied', 'aborted'] as const) {
+      await expect(readWebPageWithLadder(params, {
+        provider, renderProvider: createFailingProvider(kind), managedProvider: managed.provider,
+      })).rejects.toMatchObject({ kind });
+    }
     expect(managed.read).not.toHaveBeenCalled();
   });
 

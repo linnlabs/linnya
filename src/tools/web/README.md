@@ -368,6 +368,8 @@ Reader 服务地址与环境变量名由 Web Read 自己的静态服务定义拥
 - R2 已启用三层生产阶梯：本地 HTTP 合格即返回；JS 壳、没有可用正式资源的空正文、质量信号、`network_error`、单跳 `timeout` 与 DOM 规范化失败按需调用一次本地 Chromium；正文为空但已捕获正式资源的 `metadata_only` 是终态，不重复升级；渲染仍不合格或渲染能力失败才调用一次托管兜底。canonical DOM 上的 Readability 异常会跳过机械渲染，直接进入已配置的托管 Reader。整条阶梯 90 秒总预算触发的 `timeout` 仍是终态
 - `text/html` 先由 Cheerio 默认的 WHATWG `parse5` tree builder 规范化成唯一 `html/head/body`，再创建轻量 linkedom DOM；禁止用正则、站点白名单或手工移动第二个 body 修复 tag soup
 - HTML 抽取先用 Readability；失败或明显遗漏时，从 `article/main/[role=main]` 的可访问主区域补取正文，并过滤导航、侧栏、页脚和隐藏节点。Readability 抛错但语义正文已存在时保留正文并记录 warning；完全无正文且没有可用正式资源时才产生 `empty_content` 失败
+- 旧式门户没有声明主区、Readability 正文不足 200 字且没有可用数据表时，从带名称的 ARIA region 中查找公告列表。至少三个不同的详情链接分别和完整日期出现在同一条目，才按来源顺序输出标题、链接与日期。普通菜单、空列表和其他区域的页脚日期不参与补取。
+- 教程正文中的空自定义元素若声明了示例源文件名，会留下 `embedded_code_pending`。首跳正文已合格但缺代码块时，Desktop 可再渲染一次；同一页实际取得代码块才采用渲染正文，渲染关闭或示例未加载时保留可用的首跳正文。主区 CodeMirror 的已呈现行按顺序转成 Markdown 代码块，保留行间空白和缩进。
 - 没有语义主区域且文章抽取不足时，可选择 `tabular_dom` 窄视图：只保留清理后的叶子数据表（有表头至少两行独立数值、无表头至少三行），保留原行列、空单元格、caption/summary 和显式关联说明，再附已选正文中的表外说明。布局表、空骨架和导航不因原 HTML 表格行数多而获得正文资格；空内容与 JS 壳仍执行质量升级。Readability 残表只有全部数据行对应同一已捕获表时才去掉，不凭共同表头删掉另一张表。不回退整个 body，也不承诺恢复全页脚注或尚未加载的数据
 - 主区域选择与内容表达分离：Readability 选中的 HTML 与语义主区域共用 Turndown 转换为 Markdown，保留来源链接、代码缩进与安全代码围栏语言（仅对 `pre > code` 白名单回填语言类）、KaTeX/MathML 中显式 TeX/LaTeX `<annotation>` 源码（还原为 `$...$` / `$$...$$`，不转义 LaTeX 语法）、有序列表、删除线、图注与图片 alt。质量判定使用可见文字长度，避免链接地址和标记抬高质量信号
 - 两条路径在选区前共用隐藏节点/内联隐藏样式清理。先移除导航、脚本与 inert 区域，再识别同一主区域内可见、可用按钮声明的折叠正文：`aria-expanded=false` 配合 `aria-controls` 的明确目标，或 read/show-more 命名的按钮与相邻同类命名正文（允许仅包裹按钮的一层容器）。只移除该目标层的隐藏状态，其内部独立隐藏的旧值仍排除；不按域名匹配，不点击控件、不执行额外脚本，也不凭单个类名恢复任意隐藏内容。未识别的折叠方式仍可能遗漏，`truncated=false` 只表示未触及字符上限，不承诺正文完整
@@ -384,7 +386,7 @@ Reader 服务地址与环境变量名由 Web Read 自己的静态服务定义拥
 - HTTP 请求地址或最终地址含显式 SPA 路由时，HTML 首页和协商返回的首页 Markdown 都须经客户端渲染才能作为目标页正文。普通页内锚点和已验证的下载文件沿用原读取方式。
 - ARIA 表格按行或单元格声明的列号定位，计算前面各行仍占用的列。未挂载的中间列标记为“未呈现”，显式索引相互冲突时按可确定的坐标列出已取得的内容。
 - 静态短文的屏障判断排除明确隐藏的控件。可读的同源 `srcdoc` 由浏览器内联，使用子文档有效基址解析附件，来源归于父页面。受阻的辅助框留有 `embedded_frame_blocked` 提示。
-- 缓存路由身份 version 16 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略、误删折叠正文、5 万字截断快照、SPA hash 路由串页、渲染端非 2xx 错误页误接纳、动态页面局部信号漏升级、浏览器内采集（主区就绪/同源内联 iframe/受控滚动）之前，以及固定列与表头被当作浮层删除、正文充足的页面被误判登录墙或验证码时期的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss；含非空 SPA hash 路由（`#/...`、`#!/...`）的页面，以及在 `local_http` 阶段出现同源内容 `iframe`（`embedded_same_origin_iframe`）、主区内联隐藏长正文（`hidden_main_content`）或半静态水合壳/超长 JSON-LD `articleBody`（`dynamic_content_pending`）的页均越过 `metadata_only` 并升级渲染一次；普通 `#section` 锚点、纯附件目录与仅含同站跨源 `iframe` 仍按原规则停在 `local_http`。JSON-LD `articleBody` 与内联隐藏文本绝不作为正文或写入 Evidence。
+- 缓存路由身份 version 17 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略、误删折叠正文、5 万字截断快照、SPA hash 路由串页、渲染端非 2xx 错误页误接纳、动态页面局部信号漏升级、浏览器内采集（主区就绪/同源内联 iframe/受控滚动）之前，以及固定列与表头被当作浮层删除、正文充足的页面被误判登录墙或验证码时期的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss；含非空 SPA hash 路由（`#/...`、`#!/...`）的页面，以及在 `local_http` 阶段出现同源内容 `iframe`（`embedded_same_origin_iframe`）、主区内联隐藏长正文（`hidden_main_content`）或半静态水合壳/超长 JSON-LD `articleBody`（`dynamic_content_pending`）的页均越过 `metadata_only` 并升级渲染一次；普通 `#section` 锚点、纯附件目录与仅含同站跨源 `iframe` 仍按原规则停在 `local_http`。JSON-LD `articleBody` 与内联隐藏文本绝不作为正文或写入 Evidence。
 
 ### 5.3 与 citations 的关系（V1：页级引用先行）
 

@@ -73,6 +73,17 @@ async function run(): Promise<void> {
   let port = 0;
   const server = createServer((request, response) => {
     const route = request.url ?? '/';
+    if (route === '/tutorial-example') {
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      response.end(`<article><h1>Public guide</h1><p>${'This tutorial explains the sample calculation. '.repeat(20)}</p>
+        <demo-editor filename="quote.ts"></demo-editor></article><script>
+        const view = document.querySelector('demo-editor').attachShadow({mode: 'open'});
+        view.innerHTML = '<div class="cm-editor"><div class="cm-content" data-language="typescript">' +
+          '<div class="cm-line"><span>function</span> quote() {</div><div class="cm-line"><br></div>' +
+          '<div class="cm-line">  return 42;</div><div class="cm-line">}</div></div></div>';
+        </script>`);
+      return;
+    }
     if (serveEmbeddedNotice(route, response)) return;
     if (route === '/short-notice') {
       response.writeHead(302, { Location: '/spa-hash#/notice/b' });
@@ -945,6 +956,12 @@ async function run(): Promise<void> {
           (res) => (res.content.includes('PUBLIC ARTICLE BODY SENTENCE') ? 'rendered' : 'rendered_without_body'),
           (err: unknown) => (err instanceof WebFailureError ? err.kind : ''),
         );
+      const tutorial = await readWebPageWithLadder({ url: `${origin}/tutorial-example` }, {
+        provider: localHttp, renderProvider: phase2RenderProvider, managedProvider: null,
+      });
+      assert.equal(tutorial.selectedProvider, 'local_render');
+      assert.match(tutorial.readResult.content, /This tutorial explains/);
+      assert.match(tutorial.readResult.content, /```(?:typescript)?\nfunction quote\(\) \{\n\n  return 42;\n\}\n```/);
       await verifyEmbeddedNotice(origin, localHttp, phase2RenderProvider);
       const delayed = await phase2RenderProvider.read({ url: `${origin}/jsonp-blank` });
       assert.match(delayed.content, /JSONP ANNOUNCEMENT ROW 30/);

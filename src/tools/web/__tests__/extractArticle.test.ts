@@ -8,6 +8,21 @@ async function readFixture(name: string): Promise<string> {
 }
 
 describe('extractArticle 确定性正文抽取', () => {
+  it('从旧式门户的命名区域还原逐条公告，不把菜单、孤立日期或隐藏链接当成正文', () => {
+    const region = (body: string) => `<div role="region" aria-label="Bulletins">${body}</div>`;
+    const entry = (id: number) => `<table><tr><td><a href="./${id}.htm">年度公开市场业务公告第 ${id} 号</a> <span>2026-10-${id}</span></td></tr></table>`;
+    const menu = '<a href="/menu">部门网站导航</a>';
+    const html = region(menu + entry(11) + entry(12) + entry(13) + entry(11) + `<div hidden>${entry(14)}</div>`)
+      + `<footer>${menu} 2026-10-10</footer>`;
+    const options = { url: 'https://agency.example/news/', parseReadability: () => null };
+    const { text } = extractArticle(html, options);
+    expect(text).toContain('[年度公开市场业务公告第 12 号](https://agency.example/news/12.htm) 2026-10-12');
+    expect(text.match(/11\.htm/g)).toHaveLength(1);
+    expect(text).not.toMatch(/14\.htm|部门网站导航/);
+    expect(extractArticle(region(menu + entry(12) + entry(12)) + '<footer>2026-10-20</footer>', options).text).toBe('');
+    expect(extractArticle(`<article><p>本页独立正文</p></article>${html}`, options).text).toBe('本页独立正文');
+  });
+
   it('压缩 HTML 的段落与表格数值保留边界，空单元格不与相邻数字粘连', () => {
     const result = extractArticle('<html><head><title>Capacity report</title></head><body><main>' +
       '<p>' + 'Official capacity data and scenario assumptions. '.repeat(30) + '</p>' +

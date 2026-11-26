@@ -114,3 +114,34 @@ export function assessWebReadQuality(result: WebReadResult): WebReadQualityAsses
     ...(result.qualityScore !== undefined ? { qualityScore: result.qualityScore } : {}),
   };
 }
+
+/** 已有可读正文，仅在首跳缺少整块示例时尝试补取；其他升级原因由正常阶梯处理。 */
+export function shouldRenderEmbeddedCode(result: WebReadResult): boolean {
+  return result.renderMode === 'http' && result.warnings.includes('embedded_code_pending')
+    && !result.warnings.includes('metadata_only') && !hasFencedCode(result);
+}
+
+function hasFencedCode(result: WebReadResult): boolean {
+  // 本地 Markdown 转换器使用反引号围栏。逐行配对，截断在示例中间不算已补全。
+  let fenceLength = 0;
+  let hasCode = false;
+  for (const line of (result.markdown ?? '').split('\n')) {
+    if (!fenceLength) {
+      fenceLength = /^(`{3,})[^`]*$/.exec(line)?.[1]?.length ?? 0;
+    } else if (/^`{3,}\s*$/.test(line) && line.trimEnd().length >= fenceLength) {
+      if (hasCode) return true;
+      fenceLength = 0;
+    } else if (line.trim()) {
+      hasCode = true;
+    }
+  }
+  return false;
+}
+
+export function hasRenderedCodeExample(initial: WebReadResult, rendered: WebReadResult): boolean {
+  if (rendered.finalUrl !== initial.finalUrl || !hasFencedCode(rendered)
+    || assessWebReadQuality(rendered).shouldEscalate) return false;
+  // 单独挂载的编辑器可能替换整篇教程；至少要仍能定位首跳的首段，才用渲染视图交付。
+  const firstBodyLine = initial.content.split('\n').map(line => line.trim()).find(line => line && !line.startsWith('#'));
+  return firstBodyLine !== undefined && rendered.content.includes(firstBodyLine);
+}

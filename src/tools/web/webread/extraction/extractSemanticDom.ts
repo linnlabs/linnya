@@ -29,9 +29,9 @@ function extractCandidate(element: Element): SemanticDomExtraction {
  * Readability 无法覆盖应用型页面时，只从页面声明的主内容区域读取可访问文本。
  * 禁止回退到整个 body，否则导航、侧栏和页脚会被误当成正文。
  */
-export function extractSemanticDom(document: Document): SemanticDomExtraction {
+export function extractSemanticDom(candidates: Iterable<Element>): SemanticDomExtraction {
   let selected: SemanticDomExtraction = { text: '', textLength: 0 };
-  for (const candidate of document.querySelectorAll('article, main, [role="main"]')) {
+  for (const candidate of candidates) {
     const extracted = extractCandidate(candidate);
     if (extracted.textLength > selected.textLength) selected = extracted;
   }

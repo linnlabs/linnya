@@ -25,7 +25,8 @@ const logger = new Logger('WebReadCache');
 // 15：固定表头/固定列与定位应用容器不再被当作外围删除，登录与验证码屏障只在正文确实被挡住时判定，
 //     旧条目可能缺表格列或把可读页面记成访问受阻。
 // 16：HTTP 首页不能代表重定向后的客户端路由；旧正文也可能遗漏内嵌内容或错置虚拟表格列。
-const WEB_READ_CACHE_ROUTE_VERSION = 16;
+// 17：旧快照可能缺少嵌入示例代码，或只有门户的布局模板。
+const WEB_READ_CACHE_ROUTE_VERSION = 17;
 const DEFAULT_LOCAL_PROVIDER_IDENTITY = 'local_http';
 const DEFAULT_RENDER_PROVIDER_IDENTITY = 'local_render';
 

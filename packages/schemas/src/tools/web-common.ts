@@ -85,6 +85,7 @@ export const WEB_DOCUMENT_WARNING_VALUES = [
   'embedded_frame_blocked',
   'hidden_main_content',
   'dynamic_content_pending',
+  'embedded_code_pending',
   'lazy_content_incomplete',
   'capture_truncated',
 ] as const;

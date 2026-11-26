@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateReadQuality } from './read-evaluation';
-import { WEB_READ_PHASE0_PROBE_CASES, type WebReadReliabilityCase } from './read-cases';
+import { WEB_READ_RELIABILITY_CASES, WEB_READ_PHASE0_PROBE_CASES, type WebReadReliabilityCase } from './read-cases';
 
 const baseCase: WebReadReliabilityCase = {
   id: 'quality-test',
@@ -81,6 +81,19 @@ describe('Web 读取质量判定', () => {
     expect(evaluateReadQuality(external, { title: 'Guide', content: 'expected subject [manual](https://example.test/loadSidebar)' }).success).toBe(true);
     const notice = '上市公司年度公告详情'.repeat(45) + '\n\n- 2026-11-25 [年度报告](https://example.test/announcement.pdf)';
     expect(evaluateReadQuality(exchange, { title: '公司公告', content: notice }).success).toBe(true);
+  });
+
+  it('滚动新闻要求多个独立详情条目各带日期，代码示例断言只在代码块内匹配', () => {
+    const news = WEB_READ_RELIABILITY_CASES.find(item => item.id === 'zh-news-gov');
+    const tutorial = WEB_READ_PHASE0_PROBE_CASES.find(item => item.id === 'en-shadow-lit-components');
+    if (!news || !tutorial) throw new Error('基准缺少样本');
+    const body = '页面公开正文与说明 Lit component。'.repeat(80);
+    const entry = (id: number) => `- [公告 ${id}](https://www.gov.cn/yaowen/liebiao/${id}.htm) 2026-11-26`;
+    const checkNews = (list: string) => evaluateReadQuality(news, { title: 'News', content: `${body}\n\n${list}` }).success;
+    expect(checkNews(`${entry(1)}\n${entry(2)}`)).toBe(true);
+    expect(checkNews(`${entry(1)}\n${entry(1)}`)).toBe(false);
+    expect(checkNews(`${entry(1)}\n${entry(2).replace('2026-11-26', '')}\n\n2026-11-26`)).toBe(false);
+    expect(evaluateReadQuality(tutorial, { title: 'Guide', content: `${body} class SimpleGreeting extends LitElement\n\n` + '```js\nother()\n```' }).success).toBe(false);
   });
 
   it('支持 text_present、text_absent（噪音不得出现）以及 resources_only / blocked 三类预期', () => {
