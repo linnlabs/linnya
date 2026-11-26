@@ -19,7 +19,7 @@ import { KnowledgeQueues } from '../../queue/orchestration/KnowledgeQueues';
 import { createKnowledgeActivityOwner } from './createKnowledgeActivityOwner';
 import knowledgePlugin from '../../index';
 import { getKnowledgeToolRuntime } from '../../tools/runtime/knowledgeToolRuntime';
-import type { BackendPluginIpcHandler } from '@plugin/backend/pluginIpcRuntime';
+import { createBackendPluginUploadEvent, type BackendPluginIpcHandler } from '@plugin/backend/pluginIpcRuntime';
 import { createKnowledgeCli } from '../../cli/orchestration/createKnowledgeCli';
 import type { BackendPluginCliExecutionContext } from '@plugin/backend/pluginCli';
 
@@ -220,6 +220,54 @@ describe('knowledge activation persistence and drain', () => {
     runtime = await createKnowledgeRuntime();
     await expect(runtime.queues.addIngestionTask(input)).resolves.toBe('retry-after-enable');
     expect(vectorOwners).toBe(2);
+  });
+  it('Windows 数据目录太长：上传不接纳任务、文档记失败并给出换短目录后重启的提示', async () => {
+    // Host 在 Qdrant 启动前按目录长度拦下时，跨 artifact 只传错误名称与原因字段。
+    vectorFailure = Object.assign(new Error('Qdrant 数据目录长度 131 超过 Windows 上限 100'), {
+      name: 'QdrantRuntimeUnavailableError', reason: 'data-directory-too-long',
+    });
+    const effect = knowledgePlugin.runtimeEffects?.[0];
+    if (!effect) throw new Error('Missing knowledge runtime effect');
+    await effect.activate();
+    const handlers = new Map<string, BackendPluginIpcHandler>();
+    knowledgePlugin.ipc?.register(undefined, (_pluginId, channel, handler) => handlers.set(channel, handler));
+    const upload = handlers.get('upload-document');
+    if (!upload) throw new Error('Missing upload handler');
+    const filePath = path.join(root, 'notes.md');
+    await writeFile(filePath, '# notes');
+    const acceptFile = vi.fn();
+    const send = () => upload(
+      createBackendPluginUploadEvent({ file: { path: filePath, name: 'notes.md', size: 7 }, signal: new AbortController().signal, acceptFile }),
+      { kbId: 'default', embedding_model_id: 'embedding' },
+    );
+    await expect(send()).resolves.toMatchObject({ success: false,
+      userMessage: { key: 'knowledgeBase.runtime.error.vectorDataDirectoryTooLong' } });
+    // Host 在同一 activation 保留这次失败，再次上传仍得到同一提示。
+    await expect(send()).resolves.toMatchObject({ success: false,
+      userMessage: { key: 'knowledgeBase.runtime.error.vectorDataDirectoryTooLong' } });
+    expect(acceptFile).not.toHaveBeenCalled();
+    const service = getKnowledgeToolRuntime().service;
+    const documents = await service.getDocumentsInKnowledgeBase('default');
+    expect(documents.map(document => document.status)).toEqual([DocumentStatus.FAILED, DocumentStatus.FAILED]);
+    expect(documents[0]?.errorMessage).toMatch(/LINNYA_WORKSPACE_DIR/u);
+  });
+  it('数据目录未超限：同样的上传照常接纳任务', async () => {
+    const effect = knowledgePlugin.runtimeEffects?.[0];
+    if (!effect) throw new Error('Missing knowledge runtime effect');
+    await effect.activate();
+    const handlers = new Map<string, BackendPluginIpcHandler>();
+    knowledgePlugin.ipc?.register(undefined, (_pluginId, channel, handler) => handlers.set(channel, handler));
+    const upload = handlers.get('upload-document');
+    if (!upload) throw new Error('Missing upload handler');
+    const filePath = path.join(root, 'complete.md');
+    await writeFile(filePath, '# notes');
+    const acceptFile = vi.fn();
+    await expect(upload(
+      createBackendPluginUploadEvent({ file: { path: filePath, name: 'complete.md', size: 7 }, signal: new AbortController().signal, acceptFile }),
+      { kbId: 'default', embedding_model_id: 'embedding' },
+    )).resolves.toMatchObject({ success: true });
+    expect(vectorStarts).toBe(1);
+    expect(acceptFile).toHaveBeenCalledOnce();
   });
   it('真实摄入Worker未退出前维护与重建不可进入，取消释放后可以维护，其他库不受影响', async () => {
     const activity = createKnowledgeActivityOwner();

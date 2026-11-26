@@ -5,6 +5,7 @@ export type KnowledgeBaseMessageKey =
   | 'knowledgeBase.runtime.error.preparationFailed'
   | 'knowledgeBase.runtime.error.vectorUnavailable'
   | 'knowledgeBase.runtime.error.vectorRuntimeMissing'
+  | 'knowledgeBase.runtime.error.vectorDataDirectoryTooLong'
   | 'knowledgeBase.manage.savedContent.title'
   | 'knowledgeBase.manage.savedContent.action'
   | 'knowledgeBase.manage.savedContent.loading'
