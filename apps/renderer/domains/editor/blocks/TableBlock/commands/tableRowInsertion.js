@@ -10,6 +10,7 @@ import {
   tableNodeTypes,
 } from 'prosemirror-tables';
 import { generateBlockId } from '../../../../../shared/utils/idUtils';
+import { tableHasStoredColumnWidths } from './tableStoredWidths';
 
 const DEFAULT_COLUMN_WIDTH = 150;
 
@@ -40,7 +41,7 @@ function createInsertedCell(params) {
   } = params;
   const cellContent = createCellContentBlock(schema, createId);
   return cellType.create(
-    { colwidth: [colwidth] },
+    { colwidth: colwidth === null ? null : [colwidth] },
     cellContent
   );
 }
@@ -62,6 +63,7 @@ export function insertTableRowAt(params) {
   let expandedCellCount = 0;
 
   if (!schema.nodes.tableCellContentBlock) return null;
+  const hasStoredWidths = tableHasStoredColumnWidths(table);
 
   for (let rowIndex = 0; rowIndex < row; rowIndex++) {
     rowPos += table.child(rowIndex).nodeSize;
@@ -92,9 +94,12 @@ export function insertTableRowAt(params) {
     const referenceCellPos = refRow === null ? null : map.map[index + refRow * map.width];
     const referenceCell = referenceCellPos === null ? null : table.nodeAt(referenceCellPos);
     const cellType = referenceCell ? referenceCell.type : tableTypes.cell;
-    const colwidth = referenceCellPos === null
-      ? DEFAULT_COLUMN_WIDTH
-      : getColumnWidthForReferenceCell(map, referenceCellPos, referenceCell, col);
+    // 整表没有存储列宽时新行也不写宽度，否则这一行的格子会按“有列宽”呈现。
+    const colwidth = !hasStoredWidths
+      ? null
+      : referenceCellPos === null
+        ? DEFAULT_COLUMN_WIDTH
+        : getColumnWidthForReferenceCell(map, referenceCellPos, referenceCell, col);
     const newCell = createInsertedCell({
       schema,
       cellType,

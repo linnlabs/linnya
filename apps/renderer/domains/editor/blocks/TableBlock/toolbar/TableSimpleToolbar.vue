@@ -6,39 +6,7 @@
     <!-- AI 功能组（使用原有的 AiToolbarSection，带高亮按钮） -->
     <AiToolbarSection @action="handleAIActionFromSection" />
 
-    <!-- 插入操作组：下拉菜单 -->
-    <ToolbarGroup>
-      <ToolbarDropdown
-        v-model:is-open="insertDropdownOpen"
-        :options="insertOptions"
-        :title="editorMessage('editor.tableBlock.toolbar.insertTitle')"
-        button-class="toolbar-button"
-        @select="handleInsertAction"
-      >
-        <template #trigger>
-          {{ editorMessage('editor.tableBlock.toolbar.insert') }}
-        </template>
-      </ToolbarDropdown>
-    </ToolbarGroup>
-
-    <!-- 删除操作组：两个按钮 -->
-    <ToolbarGroup>
-      <ToolbarButton
-        :title="editorMessage('editor.tableBlock.toolbar.deleteRow')"
-        danger
-        @click="deleteRowCommand"
-      >
-        {{ editorMessage('editor.tableBlock.toolbar.deleteRow') }}
-      </ToolbarButton>
-      <ToolbarButton
-        :title="editorMessage('editor.tableBlock.toolbar.deleteColumn')"
-        danger
-        @click="deleteColumnCommand"
-      >
-        {{ editorMessage('editor.tableBlock.toolbar.deleteColumn') }}
-      </ToolbarButton>
-    </ToolbarGroup>
-
+    <!-- 插入、删除行列移到行列柄与菜单（见 TableStructureChrome）；工具条只保留对多格选区有意义的动作。 -->
     <!-- 对齐操作组：下拉菜单 -->
     <ToolbarGroup>
       <ToolbarDropdown
@@ -75,8 +43,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { Editor } from '@tiptap/core';
-import { addRowBefore, addRowAfter, addColumnBefore, addColumnAfter } from '../commands/tableToolbarCommands';
-import { deleteRow, deleteColumn } from '../commands/tableDeleteCommands';
 import { mergeCells, splitCell } from '../commands/tableCellCommands';
 import { alignCellLeft, alignCellCenter, alignCellRight } from '../commands/tableAlignCommands';
 import { useTableAiInteraction } from '../ui/composables/useTableAiInteraction';
@@ -87,12 +53,8 @@ import ToolbarButton from '../ui/FloatingToolbar/ToolbarButton.vue';
 import ToolbarDropdown from '../ui/FloatingToolbar/ToolbarDropdown.vue';
 import { useTableAiModeStore } from '../../../features/table-ai-mode';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
+import { buildTableBlockAlignOptions } from '../functions/tableBlockPresentation';
 import {
-  buildTableBlockAlignOptions,
-  buildTableBlockInsertOptions,
-} from '../functions/tableBlockPresentation';
-import {
-  collapseSelectionToTopLeftCell,
   executeTableToolbarCommand,
   type TableToolbarCommand,
 } from './tableToolbarSelection';
@@ -103,7 +65,6 @@ const props = defineProps<{
 
 const tableAiModeStore = useTableAiModeStore();
 const { editorMessage } = useEditorLocalization();
-const insertOptions = computed(() => buildTableBlockInsertOptions(editorMessage));
 const alignOptions = computed(() => buildTableBlockAlignOptions(editorMessage));
 // 监听 AI 模式状态，一旦进入 AI 模式则关闭工具栏
 watch(() => tableAiModeStore.isActive, (isTableMode) => {
@@ -132,30 +93,12 @@ const { handleAIAction } = useTableAiInteraction({
   },
 });
 
-const insertDropdownOpen = ref(false);
 const alignDropdownOpen = ref(false);
 
 const executeTableCommand = (commandFn: TableToolbarCommand): boolean => {
   return executeTableToolbarCommand(props.editor, commandFn);
 };
 
-// 在选区“第一行上方”插入行：如果是多行选区，则显式将选区收缩到左上角单元格，再调用 addRowBefore
-const addRowBeforeCommand = () =>
-  executeTableCommand((editorInstance) => {
-    try {
-      collapseSelectionToTopLeftCell(editorInstance);
-    } catch (error) {
-      console.warn('[TableSimpleToolbar] addRowBeforeCommand: 调整选区到左上角单元格失败，回退为默认行为。', error);
-    }
-
-    return addRowBefore(editorInstance);
-  });
-
-const addRowAfterCommand = () => executeTableCommand(addRowAfter);
-const addColumnAfterCommand = () => executeTableCommand(addColumnAfter);
-const addColumnBeforeCommand = () => executeTableCommand(addColumnBefore);
-const deleteRowCommand = () => executeTableCommand(deleteRow);
-const deleteColumnCommand = () => executeTableCommand(deleteColumn);
 const mergeCellsCommand = () => executeTableCommand(mergeCells);
 const splitCellCommand = () => executeTableCommand(splitCell);
 
@@ -182,24 +125,6 @@ const handleAIActionFromSection = (action: string) => {
   } else {
     handleAIAction(action);
   }
-};
-
-const handleInsertAction = (value: string) => {
-  switch (value) {
-    case 'addRowBefore':
-      addRowBeforeCommand();
-      break;
-    case 'addRowAfter':
-      addRowAfterCommand();
-      break;
-    case 'addColumnBefore':
-      addColumnBeforeCommand();
-      break;
-    case 'addColumnAfter':
-      addColumnAfterCommand();
-      break;
-  }
-  insertDropdownOpen.value = false;
 };
 
 const handleAlignAction = (value: string) => {

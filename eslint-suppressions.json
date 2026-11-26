@@ -517,11 +517,6 @@
       "count": 1
     }
   },
-  "apps/renderer/domains/editor/blocks/TableBlock/ui/TableCoordinateHeaders.vue": {
-    "no-restricted-globals": {
-      "count": 1
-    }
-  },
   "apps/renderer/domains/editor/blocks/TableBlock/ui/TableSizeSelector.vue": {
     "no-restricted-globals": {
       "count": 1
@@ -529,11 +524,6 @@
   },
   "apps/renderer/domains/editor/blocks/TableBlock/ui/composables/useTableAiActions.ts": {
     "no-restricted-globals": {
-      "count": 1
-    }
-  },
-  "apps/renderer/domains/editor/blocks/TableBlock/ui/composables/useTableCellHandlePosition.ts": {
-    "no-restricted-properties": {
       "count": 1
     }
   },

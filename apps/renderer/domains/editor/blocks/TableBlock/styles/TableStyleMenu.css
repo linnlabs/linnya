@@ -1,0 +1,18 @@
+/* 块菜单“表格样式”子菜单：缩略图比默认 14px 图标大，才看得出线的区别；当前项的对勾跟随强调色。 */
+.block-action-menu-submenu .table-style-option .option-icon.table-style-swatch {
+  width: 24px;
+  height: 18px;
+  margin-right: var(--space-2-5);
+  color: var(--color-text-secondary);
+}
+
+.block-action-menu-submenu .table-style-option.is-selected .option-icon.table-style-swatch {
+  color: inherit;
+}
+
+.block-action-menu-submenu .table-style-option.is-selected .option-right-icon {
+  width: 16px;
+  height: 16px;
+  color: inherit;
+  opacity: 1;
+}

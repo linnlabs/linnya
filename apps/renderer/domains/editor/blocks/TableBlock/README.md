@@ -7,19 +7,42 @@ TableBlock 是基于 Tiptap 实现的表格编辑功能，为编辑器提供轻�
 
 `TableSimpleToolbar` 与 `AiToolbarSection` 从 `@linnya/renderer-ui` 消费 `ToolbarGroup`，不再保留本地分组组件和分隔线 CSS。分隔线两侧到控件的有效间距各为 6px，与 Editor 文本工具条和 Slides 一致。表格菜单、命令、选区与 AI 模式仍归 TableBlock；分组没有新增状态或事件处理。已删除没有任何消费者的旧 `useToolbarState`，避免继续保留依赖旧分组类名的全局点击监听；当前菜单开关由 `TableSimpleToolbar` 和 `ToolbarDropdown` 拥有。
 
-## 单元格选中柄定位
+## 表格外观与分级退让
 
-单元格左上角选中柄使用视口坐标定位，必须保持以下约定：
+表格外观不在本模块定义：格线、表头、字号、内边距、短格不断行与分级退让统一归 `@linnya/markdown-document-core/workspace-table.css`，与只读预览、画布卡片和 PDF 共用。`styles/table.css` 只保留交互层（定位参考、整行浅底、选区、AI 模式、列宽调整与横向滚动渐隐），`TableCellContentBlock.css` 只保留编辑行为。
 
-- `TableCellHandleOverlay` Teleport 到 `body`，与 `getBoundingClientRect()` 保持同一坐标系。
-- 不能把 `position: fixed` 的选中柄留在带 `transform` 的 pane 内；即使是 `translateX(0)`，祖先也会建立新的 fixed containing block，造成右侧文档 pane 中的横向偏移被重复计算。
-- `useTableCellHandlePosition` 只负责测量时机和位置状态，不读取 app layout store。滚动、编辑器尺寸变化、祖先 class/style 变化以及祖先布局过渡统一合批到 animation frame。
-- 祖先 `transform` 过渡不会触发 `ResizeObserver`，过渡期间需要逐帧测量；handle 隐藏或组件卸载时必须释放 frame、监听器和 observer。
-- `TableInteractionManager` 只负责把 ProseMirror 插件状态投影为 Vue props，以及把 handle 的 mousedown 转换为 `CellSelection` 事务。
+- `view/WorkspaceTableView`：`TableBlock` 的 `View`。可编辑时 NodeView 由 prosemirror-tables 的列宽插件创建，不会带上配置的 `HTMLAttributes`，因此这里补 `table-block` class；同时用 `observeWorkspaceTableFit` 按正文栏宽度持续定级。横向滚动容器是 rootBlock 的 `.content`（contentDOM，写属性会被 ProseMirror 重新解析），所以定级和滚动位置只写在 `<table>`（在表格 contentDOM 之外，TableView 忽略这类 mutation）上，渐隐用 `:has()` 从滚动容器选择。
+- `extensions/TableCellCompactExtension`：短格用 decoration 加 `table-cell--compact`（单元格在 contentDOM 内，不能直接写 DOM）；文档变化只重算被改动的表，其余随映射。prosemirror-state 与 prosemirror-view 解析到不同的 prosemirror-transform 版本，映射时按 view 的 `Mapping` 重建。
+- PDF：`features/document-export` 的 `prepareMarkdownHtmlForPdf` 把表头行移进 `thead`、补短格 class，并按纸面正文宽度离屏定级（`wrap`）；表格 rootBlock 允许跨页，单行不断开。
 
-测试覆盖：
+测试：`extensions/TableCellCompactExtension.test.ts`、`features/document-export/orchestration/prepareMarkdownHtmlForPdf.test.ts`；分级与短格纯函数在 markdown-document-core 的 `workspaceTable.dom.test.ts`。真实布局与主题用 Desktop 探针验收。
 
-- `ui/composables/useTableCellHandlePosition.test.ts`：视口坐标换算、单元格内部位置解析、祖先 transform 过渡逐帧跟随、pane 属性和编辑器尺寸变化后的重测量。
+## 表格样式预设
+
+table 节点的 `tableStyle`（`default` / `three-line` / `column-rules` / `grid` / `banded` / `accent-header`）是整张表的呈现事实，与正式 schema 同名同默认值，样式表在共用的 `workspace-table.css`。
+
+- 渲染：`renderHTML` 只在非默认时输出 `data-table-style`（导出 HTML、PDF、复制粘贴读回）；可编辑时的 NodeView 不带 renderHTML 属性，由 `WorkspaceTableView` 在创建与 `update` 时同步到 `<table>`。粘贴清理只删固定的表现属性清单，不碰 `data-table-style`；外部来源没有这个属性，粘贴进来就是默认样式。
+- 入口：`menu/tableBlockMenuProvider.ts` 在块菜单末尾加“表格样式 ›”，子菜单是 `menu/tableStyleSwatches.ts` 的 24×18 缩略图 + 名称，当前项选中并带对勾（`styles/TableStyleMenu.css`）。只读或这张表有未决修订时不出现。`setTableStyle` 按 rootBlock ID 重新定位表格，一次选择是一条可撤销事务，焦点交回正文。
+- Agent：Markdown 不表达样式，Agent 读到的投影不变、也不能设置样式；Agent 改表后由 `@linnya/markdown-domain/editing` 的 `preserveUserPresentation` 沿用原样式（Pending 预览与 Backend 接受同一函数）。
+
+测试：`menu/tableBlockMenuProvider.test.ts`；Agent 改表保留样式在 `src/domains/markdown/features/document-write/__tests__/readableProjectionWrite.integration.test.ts`。
+
+## 行列柄与结构编辑
+
+格角小圆点已删除：光标在格子里只显示聚焦描边。行列结构入口统一由 `ui/TableStructureChrome.vue` 提供，`TableInteractionManager` 只负责挂载它和 AI 坐标轴。
+
+- **出现时机**：指针停在哪一列、哪一行，只在那一列上边框居中、那一行左边框居中出现一个柄；整行 / 整列选中或菜单打开时柄保持显示。指针靠近两列（两行）分界且在上边框（左边框）附近时出现插入点，同方向的柄让位；指针到最后一行、最后一列附近时，下边框、右边框中点出现末尾加号。插入点和末尾加号都骑在边框上，悬停时才画出 accent 插入位置线，不占表格外空间（下一段正文离表格只有约 8px）。判定是纯函数 `structure/tableStructureGeometry.ts` 的 `resolveTableStructureHover`，横向滚动时行方向的柄、插入点与高亮都以滚动容器的可见左沿为准，滚出可见范围的列不出柄。
+- **外观**：与块拖动柄同一六点图形，列柄 20×12、行柄 12×20，表面色加发丝边框，骑在边框上只压住单元格内边距；静止三级文字色，悬停叠加 `--color-bg-hover`，选中 `--color-accent-bg` + `--color-accent-text`。样式在 `styles/TableStructureChrome.css`。
+- **点击**：选中整列 / 整行（`CellSelection`），浮动工具条出现在整张表上方（表格上沿在可见区内时），同时从柄的边缘展开菜单（复用 Renderer UI `CustomSelect` 的 menu 模式）。列：左 / 右侧插入列、对齐（子菜单）、按内容适配列宽（仅有存储宽度时可用）、AI 填充此列、删除列；行：上 / 下方插入行（表头之上禁用并说明原因）、第一行的设为 / 取消表头、删除行。菜单不把柄当触发元素，关闭后下一帧把焦点交回正文，撤销与继续输入都作用于编辑器。
+- **拖动**：拖柄移动行列，拖动中显示落点线；范围内有合并单元格、或要移动表头行时拒绝并提示原因。结构命令在 `structure/tableStructureCommands.ts`，都按 TableMap 逻辑行列工作，只改传入的事务（一步撤销）：移动只替换表格内部的行，表格节点不变；插入列在整表都没有存储列宽时不给新列写 150px 默认宽度；切换表头行同步 `withHeaderRow`。
+- **工具条**：插入、删除行列移到柄与菜单，工具条只保留 AI 填充、对齐、合并、拆分。
+- **列宽**：指针靠近分隔线时在分隔线上画一条 2px accent 细线。`td > * { position: static }` 曾把调整柄一并变成 static，线被画到列中间，柄的选择器必须带 `.ProseMirror table :is(td, th) >` 压过它；双击按内容适配（`extensions/TableColumnFitExtension`，以 prosemirror-tables 列宽插件记录的当前分隔线为准，因为两次单击之间调整柄会被重绘）。Tiptap `updateColumns` 在列失去宽度时不清旧的 `width`，`WorkspaceTableView.update` 会补清。
+- **插入的行列不写默认宽度**：整表没有存储列宽时，`insertTableColumnAt` / `insertTableRowAt`（工具条、行列柄、AI 新增输出列共用）不再给新格写 150px，否则表格变成部分列有宽度，显示、坐标头与 Agent 投影不一致；整表有存储列宽时行为不变。
+- **AI 坐标头与行列柄的挂载**：都放进编辑器滚动内容里的 `.scroll-content-wrapper`（position: relative），用相对内容层的 absolute 定位：纵向滚动由浏览器带着走（不再晚一帧），滚出编辑区被滚动容器原生裁切（不会压到窗格顶部标签栏）；absolute 也不受右侧文档窗格 `transform: translateX(0)` 的影响（fixed 会以该窗格为原点而整体偏移）。列坐标条在与表格等高的轨道里 `position: sticky`，top 取负的滚动容器上内边距，贴住编辑区可见区域最上沿；横向仍由 translateX 跟随表格 scrollLeft。菜单挂 `body`，滚动时关闭。AI 坐标头的列宽以实际渲染为准（`measureTableColumnWidths` 先读 DOM，DOM 不可用时才退回存储列宽）；除列宽拖动的 `style` 外，还在共用表格呈现改 `data-table-fit`（分级退让）和表格尺寸变化时下一帧整体重测位置、列宽、行高。每次测量都同步表格横向与页面纵向滚动位置（进入 AI 模式新增输出列时编辑器会把表格横向滚进视野，这次滚动可能发生在监听重建期间）；整体重测与只重算位置合并为同一个下一帧任务，整体重测优先，滚动或选区事务不会取消已排好的整体重测。
+- **共存**：只读编辑器、Pending（rootBlock 有修订头或处于不可编辑）与 Table AI 模式下不出现任何结构入口。菜单打开、拖动行列期间声明独立的 `table-structure-edit` 保活租约，与 `interaction-open`、`table-column-resize`、`table-ai` 互不释放。
+- **坐标系**：几何按视口坐标测量（`getBoundingClientRect()`），渲染时减去内容层原点（同一时刻测量），位置与滚动无关。指针移动、滚动、窗口尺寸变化与事务都合批到下一帧重新测量（`useFrameBatch`）；找不到内容层时退回 `body` + fixed。
+
+测试：`structure/tableStructure.test.ts`（选中、插入、末尾追加、移动与合并拒绝、表头固定、清除列宽、切换表头；悬停判定、滚动后的可见左沿、拖动落点）。真实交互用 Desktop 探针验收。
 
 ## 近期重要架构调整（Table AI 模式 UI 稳定性根因修复）
 
@@ -236,7 +259,7 @@ table (顶级表格节点)
 ### 核心节点特性
 
 1. **table**
-   - 属性: `id`, `blockType: 'table'`, `withHeaderRow: boolean`
+   - 属性: `id`, `blockType: 'table'`, `withHeaderRow: boolean`, `tableStyle`（表格样式预设，见上文）
    - 内容模型: `tableRow+`
 
 2. **tableRow**

@@ -385,6 +385,10 @@ function activateStagedBundledPluginVersions(
       level: 'error', pluginId, capability: 'migration',
       message: `按需插件自动安装准备失败: ${error instanceof Error ? error.message : String(error)}`,
     }),
+    onArtifactConflict: (pluginId, error) => pluginDiagnostics.record({
+      level: 'warn', pluginId, capability: 'migration',
+      message: `随包插件与本机同版本目录内容不一致，未切换 active 指针: ${error.message}`,
+    }),
   });
   if (candidates.length === 0) {
     return;

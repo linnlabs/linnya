@@ -39,14 +39,27 @@ const calculatePosition = (view) => {
     }
     
     if (selection instanceof CellSelection) {
-        // You would import and use your more complex calculateToolbarPosition for tables here
-        const cell = view.domAtPos(selection.from).node.closest('td, th');
-        if (cell) {
-            const rect = cell.getBoundingClientRect();
-            return {
-                top: rect.top - 40,
-                left: rect.left,
-            };
+        // 表格上沿在编辑器可见区内时放在整张表上方，不遮住任何单元格；否则放在选区首尾两格的上方。
+        // 多留 6px 给骑在表格上边框的行列柄。
+        const cells = [selection.$anchorCell.pos, selection.$headCell.pos]
+          .map(pos => view.nodeDOM(pos))
+          .filter(node => node instanceof Element);
+        const rects = cells.map(node => node.getBoundingClientRect());
+        if (rects.length > 0) {
+            const table = cells[0].closest('table');
+            const shell = view.dom.closest('.editor-shell') ?? view.dom;
+            const tableTop = table ? table.getBoundingClientRect().top : null;
+            const visibleTop = shell.getBoundingClientRect().top;
+            const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+            const APPROX_TOOLBAR_WIDTH = 260;
+            const MARGIN = 8;
+            const selectionTop = Math.min(...rects.map(rect => rect.top));
+            const top = tableTop !== null && tableTop - 46 >= visibleTop ? tableTop : selectionTop;
+            let left = Math.min(...rects.map(rect => rect.left));
+            if (left + APPROX_TOOLBAR_WIDTH > viewportWidth - MARGIN) {
+              left = Math.max(MARGIN, viewportWidth - MARGIN - APPROX_TOOLBAR_WIDTH);
+            }
+            return { top: top - 46, left };
         }
     }
 

@@ -175,6 +175,61 @@ describe('createOllamaOnboardingUseCase', () => {
     });
   });
 
+  it('归属第一位的模型启动时停用，仍复用其余成员的同一服务 endpoint，不另建连接', async () => {
+    const catalog = modelCatalog();
+    catalog.getInferenceEndpoints = () => [
+      {
+        id: 'endpoint-existing',
+        route_profile_id: 'openai_compatible_chat',
+        endpoint_id: 'ollama:endpoint-existing',
+        base_url: 'http://localhost:11434/v1',
+        auth_profile: 'none',
+        credential_reference: { kind: 'none' },
+        credential_status: 'not_required',
+      },
+    ];
+    // model-disabled 没有通过准入：归属还在，但不在运行目录里。
+    catalog.getModel = modelConfigId =>
+      modelConfigId === 'model-existing'
+        ? {
+            id: 'model-existing',
+            model_name: 'qwen3:8b',
+            catalog_source: 'user',
+            inference_endpoint_id: 'endpoint-existing',
+            capabilities: ['chat'],
+            ui_visibility: [],
+            display_name: 'Qwen',
+            description: '',
+          }
+        : undefined;
+    const configurations = providerConfigurations();
+    configurations.getByProviderConnectionDefinitionId = () => ({
+      id: 'configured-ollama',
+      provider_definition_id: 'ollama',
+      provider_connection_definition_id: 'ollama',
+      models: [
+        { provider_model_id: 'qwen3:4b', model_config_id: 'model-disabled' },
+        { provider_model_id: 'qwen3:8b', model_config_id: 'model-existing' },
+      ],
+    });
+    const ids = ['model-2', 'intent-2'];
+    const useCase = createOllamaOnboardingUseCase({
+      providerCatalog: {
+        getConnection: () => ({ provider: OLLAMA_PROVIDER, connection: OLLAMA_CONNECTION }),
+      },
+      modelCatalog: catalog,
+      providerConfigurations: configurations,
+      idFactory: { create: () => ids.shift() ?? 'unexpected-id' },
+    });
+
+    await useCase.registerModel({ ...command, endpoint_model_id: 'llama3.2:3b' });
+
+    expect(catalog.registerUserModel.mock.calls[0]?.[1]).toEqual({
+      kind: 'existing',
+      inference_endpoint_id: 'endpoint-existing',
+    });
+  });
+
   it('已有 Ollama Provider 不允许静默切换到另一服务地址', async () => {
     const catalog = modelCatalog();
     catalog.getInferenceEndpoints = () => [

@@ -77,6 +77,13 @@ Renderer 不再要求用户逐模型添加。批量同步逐项提交，并按 r
 credential，重复执行只跳过已经关联的目录模型；若某一项只写入 Model Catalog、尚未提交 Provider
 归属，则停止后续同步并交给启动恢复，避免同一账号产生重复 route。已关联模型不会因为“存在”而跳过元数据：上游窗口、图片能力或展示名变化时必须更新原 ModelConfig，历史静态容量不能继续残留。账号目录是当前授权身份的模型集合真相；上游不再返回的旧静态模型复用 Configured Model Removal 的 intent、endpoint 引用计数和偏好清理流程退出，不能在同步器里复制删除顺序。
 
+Provider 归属可能指向 Model Catalog 启动时停用（未通过准入）的用户模型：它保留归属，等待修复或删除，但不在运行目录里。
+`functions/resolveConfiguredProviderMember` 是这里唯一的判定：成员要么在目录里，要么是停用条目；两者都不是说明归属与目录
+失去一致，按 `configuration_invalid` 失败。添加模型、换 Key 只用目录里的成员确定 credential boundary 与可复用 endpoint；
+刷新与账号同步跳过停用成员、不改写它，也不把它当未注册再建一条；账号目录不再列出它时，同步不交给删除用例
+（删除用例会报“模型不存在”），日志以 `skipped_unadmitted_model_count` 记下跳过数。重新添加同一个停用模型仍返回
+`model_already_registered`；停用条目的展示、删除与按定义修复属于后续工作。
+
 OpenCode Go 是首个多 route API-Key 产品：用户只粘贴一次 Key，首次启用最多三个近期模型（稳定版优先）；Kimi 等完整公开目录继续显示在模型管理中。Host 私有
 binding 将模型显式分配给 OpenAI-compatible Chat、OpenAI Responses 或 Anthropic Messages。Renderer
 不展示协议选项，也不按模型名或 URL 猜测协议。

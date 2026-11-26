@@ -133,6 +133,7 @@ function modelCatalog(): ProviderOnboardingModelCatalogPort & {
 } {
   return {
     getModel: () => undefined,
+    getUnadmittedUserModels: () => [],
     getInferenceEndpoints: () => [],
     registerUserModel: vi.fn(async (_model: ModelConfig) => undefined),
     updateModel: vi.fn(async (_model: ModelConfig) => undefined),
