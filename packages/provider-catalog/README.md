@@ -209,6 +209,8 @@ Catalog 与 Host-only runtime binding。根目录的 `build:backend`、`dev:back
 `watch:backend` 会先执行 `prepare:backend-workspace-dependencies`，构建 schema 后再构建本
 package；不得让 Backend 直接读取未验证的历史 `dist`，也不得在运行时回退到 `src`。
 
+本机干净全量 CI 中，公共包门禁和 Backend 复用本轮第一次成功编译的 Catalog。单独运行 Backend 或 `pack-smoke` 会重新编译；`pack-smoke` 在两种运行方式下都会实际打包并解包验收。
+
 `pack-smoke` 不只检查 tarball 存在：它会解包制品，分别通过 Node ESM/CJS 导入两个公开入口，
 验证 public catalog 与 runtime binding 属于同一 generation，并执行代表性的 connection/binding
 查询。根 `test:provider-package-gate` 同时覆盖本 Catalog package 与 AI SDK adapter package。

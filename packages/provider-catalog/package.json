@@ -25,11 +25,12 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepare:runtime": "node ../../scripts/build/orchestration/prepareWorkspaceRuntime.mjs",
     "sync": "tsx bin/provider-catalog-sync.ts",
     "sync:check": "tsx bin/provider-catalog-sync.ts --check",
     "test": "vitest run src",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "pack-smoke": "pnpm run build && node scripts/verifyPackedRuntime.mjs"
+    "pack-smoke": "pnpm run prepare:runtime && node scripts/verifyPackedRuntime.mjs"
   },
   "dependencies": {
     "@app/schemas": "workspace:*",

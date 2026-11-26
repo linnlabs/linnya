@@ -8,7 +8,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "rimraf dist && pnpm run build:runtime",
-    "prepare:runtime": "node scripts/prepare-runtime.mjs",
+    "prepare:runtime": "node ../../scripts/build/orchestration/prepareWorkspaceRuntime.mjs scripts/verify-runtime-exports.cjs",
     "pack-smoke": "pnpm run prepare:runtime && node scripts/verify-packed-runtime.mjs",
     "dev": "node scripts/watch-runtime.cjs",
     "clean": "rimraf dist",

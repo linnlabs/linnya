@@ -82,7 +82,7 @@
     "sync:provider-catalog": "pnpm --filter @linnya/provider-catalog sync",
     "build:schemas": "pnpm --dir packages/schemas run prepare:runtime",
     "test:schemas-package-gate": "pnpm --dir packages/schemas run pack-smoke",
-    "build:provider-catalog": "pnpm --dir packages/provider-catalog run build",
+    "build:provider-catalog": "pnpm --dir packages/provider-catalog run prepare:runtime",
     "prepare:backend-workspace-dependencies": "pnpm run build:schemas && pnpm run build:provider-catalog",
     "setup:electron": "node scripts/native/ensure-electron-installed.cjs",
     "postinstall": "node scripts/native/ensure-electron-installed.cjs && node scripts/native/rebuild-native-modules.cjs && node scripts/native/verify-better-sqlite3-runtimes.cjs",
