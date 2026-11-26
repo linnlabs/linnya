@@ -537,7 +537,7 @@ describe('ShellToolRuntime production orchestration', () => {
     expect(f.toolOutputInstanceIds).toEqual(['instance-shell-test']);
   });
 
-  it('标准档在本会话目录里删除自己的普通文件不弹审批，递归删除仍审批（W-0303）', async () => {
+  it('标准档在本会话目录里删除自己的普通文件不弹审批，递归删除仍审批', async () => {
     const local = fixture({ immediate: true, approvalChoice: 'deny' });
     await expect(local.runtime.executeShell(shellRequest({
       command: 'rm -f data.csv && echo refreshed > data.csv', permissionLevel: 'standard',

@@ -1,7 +1,7 @@
 # Konva Builders 子模块
 
 > 长期权威。新增 RenderNode 类型 / 新增视觉字段时**必须**同步本文。
-> 跨进程边界见 [`../../../../../../../README.md`](../../../../../../../README.md)；Paint 字段贯通见 [`../../../../../../docs/visual-paint-contract.md`](../../../../../../docs/visual-paint-contract.md)。
+> 跨进程边界见 [Slides 插件 README](../../../../../../README.md)；Paint 字段贯通见 [`../../../../../../docs/visual-paint-contract.md`](../../../../../../docs/visual-paint-contract.md)。
 
 ## 角色
 

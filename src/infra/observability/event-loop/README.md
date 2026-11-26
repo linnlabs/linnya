@@ -22,4 +22,4 @@
 
 Node event-loop sample 只能证明所在进程的调度状态，不能证明 Renderer 仍然丝滑。Agent 执行响应性的完整量化验收还必须在真实 Electron 中并发运行 Command 高输出/持续写盘、Slides build 和后台 Worker，同时测量 Renderer input-to-paint、long task、rAF gap，并持续执行输入、选择复制、滚动、切换会话、展开命令卡、审批、PTY、取消和窗口 resize。
 
-当前 App Server cutover 与人工前端零回归验收已经通过，但上述 Renderer/组合压力量化 fixture 尚未形成稳定自动化门禁。它由 [`docs/conversation-platform/11-testing-gates.md`](../../../../docs/conversation-platform/11-testing-gates.md) 和 [`docs/audit/risk-register.md`](../../../../docs/audit/risk-register.md) 的 `F6-01` 继续跟踪；不能把“已异步”或单独一份 event-loop sample 当成完整响应性证明。
+当前 App Server cutover 与人工前端零回归验收已经通过，但上述 Renderer/组合压力量化 fixture 尚未形成稳定自动化门禁。它由 [`docs/conversation-platform/11-testing-gates.md`](../../../../docs/conversation-platform/11-testing-gates.md) 登记的性能风险基线 `F6-01` 继续跟踪；不能把“已异步”或单独一份 event-loop sample 当成完整响应性证明。

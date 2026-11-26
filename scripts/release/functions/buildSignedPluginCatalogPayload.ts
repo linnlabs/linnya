@@ -11,7 +11,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const MAX_PLUGIN_CATALOG_VALID_DAYS = 90;
 
 /**
- * 生成待签名的 catalog payload。签名在 linnya-release 的受保护环境完成，本函数只组装与校验数据；
+ * 生成待签名的 catalog payload。签名在受保护的发布环境完成，本函数只组装与校验数据；
  * 序号由发布方给出且必须大于已发布的 catalog（由签名工具对照线上版本核对）。
  */
 export function buildSignedPluginCatalogPayload(input: {
