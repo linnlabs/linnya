@@ -7,6 +7,7 @@ import type {
   ColorPaletteRelation,
   ColorPaletteSubject,
   ColorPaletteSuggestion,
+  ColorPaletteUseOutcome,
 } from '@app/schemas/color-palette';
 import { hueRangeLabel, paletteFamilies } from '@linnya/color-core/palette';
 
@@ -26,9 +27,12 @@ function roles(palette: ColorPaletteDraft): string {
   return `bg${palette.bg} sf${palette.surface} ink${palette.ink} mu${palette.muted} ac${palette.accent.join(',')} ch${palette.chart.join(',')}`;
 }
 
+function familiesLabel(families: readonly string[]): string {
+  return families.length > 0 ? families.join('+') : '无彩';
+}
+
 function paletteLine(palette: ColorPalette): string {
-  const families = paletteFamilies(palette);
-  const style = [RELATION_NAMES[palette.relation], BASE_NAMES[palette.base], families.length > 0 ? families.join('+') : '无彩'].join('·');
+  const style = [RELATION_NAMES[palette.relation], BASE_NAMES[palette.base], familiesLabel(paletteFamilies(palette))].join('·');
   return `${palette.id} ${style} ${roles(palette)}`;
 }
 
@@ -66,4 +70,9 @@ export function formatPaletteCheck(result: ColorPaletteCheckResult): string {
     ...result.findings.map(findingLine),
     result.suggested ? `建议 ${roles(result.suggested)}` : '无法自动修复，需要换一组颜色',
   ].join('\n') + '\n';
+}
+
+/** 记下后回显组合：之后的建议对“底色明暗 + 色系”相同的配色降权，不只是这一套。 */
+export function formatPaletteUse(used: Extract<ColorPaletteUseOutcome, { status: 'ok' }>['used']): string {
+  return `已记下 ${used.id} ${BASE_NAMES[used.base]}·${familiesLabel(used.families)}；之后的建议少给这个组合\n`;
 }

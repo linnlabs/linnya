@@ -7,11 +7,14 @@ import {
   type ColorPaletteFailure,
   type ColorPaletteSuggestOptions,
   type ColorPaletteSuggestOutcome,
+  type ColorPaletteUseOutcome,
 } from '@app/schemas/color-palette';
 import {
   checkPalette,
   decodeRngId,
+  encodeRngId,
   MAX_PALETTE_IMAGES,
+  paletteCombination,
   suggestPalettes,
   type PaletteImagePixels,
 } from '@linnya/color-core/palette';
@@ -20,6 +23,7 @@ import {
   decodeImageThumbnailPixels,
   ImagePixelsDecodeError,
 } from 'src/shared/media/image-pixels';
+import type { ColorPaletteHistoryPort } from '../definitions/colorPaletteHistory';
 import { projectCheckResult, projectSuggestion } from '../functions/projectColorPalette';
 
 const THUMBNAIL_MAX_EDGE = 128;
@@ -58,7 +62,15 @@ async function decodeImages(
   return { pixels, skipped };
 }
 
-export async function suggestColorPalettes(input: SuggestColorPalettesInput): Promise<ColorPaletteSuggestOutcome> {
+/**
+ * 出配色：对本工作区最近选用过的组合降权，并记下这组编号和每套的组合，供 `useColorPalette` 凭编号查。
+ * 复现（带 `rng`）时用这组发出时的最近用过，不用现在的：否则选用其中一套之后再复现，结果就变了。
+ * 这组编号没在本工作区发出过（或已清理）时，按现在的最近用过算。
+ */
+export async function suggestColorPalettes(
+  input: SuggestColorPalettesInput,
+  history: ColorPaletteHistoryPort,
+): Promise<ColorPaletteSuggestOutcome> {
   const { images = [], signal, ...rawOptions } = input;
   const parsed = ColorPaletteSuggestOptionsSchema.safeParse(rawOptions);
   if (!parsed.success) return invalidOptions(parsed.error);
@@ -66,7 +78,8 @@ export async function suggestColorPalettes(input: SuggestColorPalettesInput): Pr
   if (images.length > MAX_PALETTE_IMAGES) {
     return failure('too_many_images', `最多 ${MAX_PALETTE_IMAGES} 张图片，只传主要的`);
   }
-  if (options.rng !== undefined && decodeRngId(options.rng) === null) {
+  const seed = options.rng === undefined ? null : decodeRngId(options.rng);
+  if (options.rng !== undefined && seed === null) {
     return failure('invalid_rng', '编号不是配色建议输出的编号；去掉它，或使用建议结果里的编号');
   }
 
@@ -76,9 +89,16 @@ export async function suggestColorPalettes(input: SuggestColorPalettesInput): Pr
     return failure('image_unreadable', '图片都读不出来；检查路径和格式（支持 JPEG、PNG、WebP）');
   }
 
-  const result = suggestPalettes({ ...options, images: pixels });
+  // 编号按规范写法查（模型可能写成大写）；与结果里的 id 同一写法。
+  const recentCombinations = (seed === null ? null : history.readIssuedRecent(encodeRngId(seed))) ?? history.readRecentUses();
+  const result = suggestPalettes({ ...options, images: pixels, recentCombinations });
   switch (result.kind) {
     case 'palettes':
+      history.recordSuggestion({
+        id: result.id,
+        recent: recentCombinations,
+        palettes: result.palettes.map(palette => ({ id: palette.id, ...paletteCombination(palette) })),
+      });
       return { status: 'ok', suggestion: projectSuggestion(result), skippedImages: skipped };
     case 'no_subject_color':
       return failure('no_subject_color', '图片里取不出彩色（彩度过低）；改用种子色，或退回原有配色方式');
@@ -87,6 +107,13 @@ export async function suggestColorPalettes(input: SuggestColorPalettesInput): Pr
     case 'pinned_color_conflict':
       return failure('pinned_color_conflict', '指定色在要求的底色上达不到对比度；去掉底色要求，或自己写一套再检查');
   }
+}
+
+/** 记下选用了哪一套（单套编号，如 `pl8f2a-2`）。只认本工作区最近发出过的编号。 */
+export function useColorPalette(paletteId: string, history: ColorPaletteHistoryPort): ColorPaletteUseOutcome {
+  const used = history.recordUse(paletteId);
+  if (!used) return failure('palette_not_found', `没有找到配色 ${paletteId}；用最近一次建议里的单套编号，如 pl8f2a-2`);
+  return { status: 'ok', used: { id: used.id, base: used.base, families: [...used.families] } };
 }
 
 export function checkColorPalette(input: ColorPaletteCheckInput): ColorPaletteCheckOutcome {

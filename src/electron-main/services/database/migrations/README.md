@@ -33,6 +33,8 @@ v79→v80 为 `knowledge_bases` 加可空的 `embedding_space_id`。它记录实
 
 [定时任务](../../../../app-hosts/linnya/application/scheduled-tasks/README.md)的任务和运行记录由 schema provider 在 v80 内创建。
 
+配色的“最近用过”（`color_palette_suggestions`、`color_palette_uses`，见 [color-palette domain](../../../../domains/color-palette/README.md#最近用过)）由 schema provider 在 v80 内创建，已有库启动时补建空表，不提升版本、没有迁移步骤。
+
 ## 升级耗时与启动进度
 
 每个 Host 迁移步骤是独立事务：成功后才提升 `user_version`，中途退出只回滚当前步骤，下次启动从该步骤重来。每步完成后日志记录耗时和数据库大小，用来积累不同数据量下的实际耗时。

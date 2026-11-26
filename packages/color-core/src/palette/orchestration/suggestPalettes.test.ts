@@ -4,10 +4,11 @@ import { deltaEOK, rgbToOklab, rgbToOklch } from '../../functions/colorSpace.js'
 import { contrastRatio } from '../../functions/contrast.js'
 import { hueDistance } from '../../functions/hue.js'
 import { parseColor } from '../../functions/parseColor.js'
-import type { Palette, PaletteImagePixels, PaletteSuggestion } from '../definitions/palette.js'
+import type { Palette, PaletteCombination, PaletteImagePixels, PaletteSuggestion, SuggestPalettesInput } from '../definitions/palette.js'
 import { ACCENT_MIN_SEPARATION, NEUTRAL_MAX_CHROMA } from '../definitions/paletteConstants.js'
 import { isHueExcluded } from '../functions/excludedHues.js'
-import { createRandom, decodeRngId, encodeRngId } from '../functions/random.js'
+import { createRandom, decodeRngId, encodeRngId, suggestionIdOfPalette } from '../functions/random.js'
+import { paletteCombination, recentUseFactor } from '../functions/recentUse.js'
 import { paletteFamilies } from '../functions/scorePalette.js'
 import { suggestPalettes } from './suggestPalettes.js'
 
@@ -395,7 +396,77 @@ describe('每次不同与可复现', () => {
   it('编号可以往返解析，不认识的编号报错', () => {
     expect(decodeRngId(encodeRngId(12345))).toBe(12345)
     expect(decodeRngId('nope')).toBeNull()
+    expect(suggestionIdOfPalette(palettesOf(suggestPalettes({ seedColors: ['#4f813a'], rng: 'pl00ab' })).palettes[1]?.id ?? '')).toBe('pl00ab')
+    expect(suggestionIdOfPalette('pl00ab')).toBeNull()
+    expect(suggestionIdOfPalette('pl00ab-0')).toBeNull()
     expect(() => suggestPalettes({ seedColors: ['#4f813a'], rng: 'nope' })).toThrow('Unknown palette id')
+  })
+})
+
+describe('最近用过', () => {
+  /** 10 次调用用的编号：固定下来，有无“最近用过”两边逐次对照，结果可复现。 */
+  const TEN_RUNS = Array.from({ length: 10 }, (_, index) => encodeRngId(index * 97 + 13))
+  const keyOf = (combination: PaletteCombination) => `${combination.base}:${combination.families.join('+')}`
+
+  function countCombinations(
+    input: SuggestPalettesInput,
+    runs: readonly string[],
+    recentCombinations: readonly PaletteCombination[],
+  ): Map<string, { readonly combination: PaletteCombination; count: number }> {
+    const counts = new Map<string, { readonly combination: PaletteCombination; count: number }>()
+    for (const rng of runs) {
+      for (const palette of palettesOf(suggestPalettes({ ...input, rng, recentCombinations })).palettes) {
+        const combination = paletteCombination(palette)
+        const entry = counts.get(keyOf(combination)) ?? { combination, count: 0 }
+        entry.count += 1
+        counts.set(keyOf(combination), entry)
+      }
+    }
+    return counts
+  }
+
+  function mostFrequent(counts: ReturnType<typeof countCombinations>) {
+    const [top] = [...counts.values()].sort((left, right) => right.count - left.count)
+    if (!top) throw new Error('no palettes')
+    return top
+  }
+
+  it('同样的图连续 10 次：刚选用过的组合出现次数明显下降', () => {
+    const input = { images: BRONZE_IMAGES }
+    const used = mostFrequent(countCombinations(input, TEN_RUNS, []))
+    expect(used.count).toBeGreaterThanOrEqual(4)
+    const after = countCombinations(input, TEN_RUNS, [used.combination]).get(keyOf(used.combination))?.count ?? 0
+    expect(after, keyOf(used.combination)).toBeLessThanOrEqual(used.count / 3)
+  })
+
+  it('只降权不排除：组合少的用图仍会再出现，全部组合都刚用过时照样出满 3 套', () => {
+    const input = { seedColors: ['#77a5c4'] }
+    const runs = Array.from({ length: 100 }, (_, index) => encodeRngId(index * 7 + 3))
+    const baseline = countCombinations(input, runs, [])
+    const used = mostFrequent(baseline)
+    const after = countCombinations(input, runs, [used.combination]).get(keyOf(used.combination))?.count ?? 0
+    expect(after).toBeGreaterThan(0)
+    expect(after).toBeLessThan(used.count * 0.6)
+
+    const everything = [...baseline.values()].map(entry => entry.combination)
+    for (const rng of runs.slice(0, 20)) {
+      expect(palettesOf(suggestPalettes({ ...input, rng, recentCombinations: everything })).palettes).toHaveLength(3)
+    }
+  })
+
+  it('更早用过的降得少，再早的不降；同一组合色系先后不同也认得出', () => {
+    const combination = { base: 'light', families: ['绿', '褐'] } as const
+    const other = { base: 'dark', families: ['蓝'] } as const
+    expect(recentUseFactor({ base: 'light', families: ['褐', '绿'] }, [combination])).toBe(0.15)
+    expect(recentUseFactor(combination, [...Array.from({ length: 5 }, () => other), combination])).toBe(0.5)
+    expect(recentUseFactor(combination, [...Array.from({ length: 15 }, () => other), combination])).toBe(1)
+    expect(recentUseFactor({ base: 'tint', families: ['绿', '褐'] }, [combination])).toBe(1)
+  })
+
+  it('最近用过也是输入：同样的输入、编号和最近用过，结果完全相同', () => {
+    const recentCombinations = [{ base: 'light', families: ['绿', '褐'] }] as const
+    expect(suggestPalettes({ images: BRONZE_IMAGES, rng: 'pl00ab', recentCombinations }))
+      .toEqual(suggestPalettes({ images: BRONZE_IMAGES, rng: 'pl00ab', recentCombinations }))
   })
 })
 

@@ -68,7 +68,8 @@
    - 距离 = 两套色系集合的 Jaccard 距离 + 底色明暗不同时加 0.25 + 0.5 × 角色加权 ΔEOK。只换深浅的几套色系相同，算作相近。
    - 第一套从高分段里按分数加权抽。之后每套与已选各套的距离不低于门槛：从 0.7 起，逐步放宽到 0。满足门槛的候选里优先没用过的关系，再按分数加权抽。
    - 这是 O'Donovan 2011 给多条建议的做法，相当于贪心 MMR。
-8. **可复现**：结果编号（`pl` + 4 位 base36）就是随机种子。同样输入加同一 `rng` 结果逐字节相同；不传则每次不同。
+8. **最近用过**：见下一节。降权只乘在最后一步按分数加权抽的权重上。
+9. **可复现**：结果编号（`pl` + 4 位 base36）就是随机种子，单套编号是它加序号（`pl8f2a-2`，`suggestionIdOfPalette` 取回整组编号）。同样输入（含 `recentCombinations`）加同一 `rng` 结果逐字节相同；不传则每次不同。
 
 生成颜色时用 `oklchToRgb(..., { jnd: 0 })`：严格保持色相，排除区判断才可靠。取色本身是确定的，随机只用在采样风格基因和挑选上。黑白图、拓片取不出彩色时返回 `{ kind: 'no_subject_color' }`，不编造颜色。
 
@@ -83,6 +84,14 @@
 | 储能（1 种本色加 1 种点缀色） | 7 种 | 100/100 | 29% | 71% | 0% |
 
 只有一种主色的用图，搭配色多是合成的，组合自然少。一次取色加出配色约 13–41 ms。
+
+### 最近用过
+
+`suggestPalettes({ recentCombinations })` 接受最近选用过的组合，由近到远，最多看 `PALETTE_RECENT_USE_LIMIT`（15）个。组合（`paletteCombination`）= 底色明暗 + 色系集合，与 `paletteDistance` 的主维度相同。本包不存数据：记录、读取归 [color-palette domain](../../src/domains/color-palette/README.md#最近用过)。
+
+- **系数**（`recentUseFactor`）：最近 5 次用过的 ×0.15，第 6–15 次的 ×0.5，更早的不降；同一组合只看最近那一次，不叠乘。取值与 Slides 方向抽取的“本机最近用过”一致（`drawDirection` 的手法卡窗口），改一处时核对另一处。
+- **只降权不排除**：系数只乘在高分段里按分数加权抽的权重上，不改分数、不影响高分段门槛。本色少的用图组合本来就少，排除会凑不齐几套；用户想再用同一种时也仍拿得到。全部组合都刚用过时照样出满。
+- 效果（测试里的合成图，同样 10 个编号对照）：青铜器三张图里最常出的组合 10 次从 6 套降到 0 套；只有一种蓝色的种子色 100 次里从 39 套降到 17 套。
 
 ### 用户指定颜色
 
@@ -107,8 +116,8 @@
 ## 消费方
 
 - Editor 图表（`apps/renderer/domains/editor/features/chart-reading`）：细线色派生与填充内文字色。
-- [color-palette domain](../../src/domains/color-palette/README.md)：`./palette` 接到 Host，对外是 `linnya palette` 和 `@plugin/backend/colorPalette`。
+- [color-palette domain](../../src/domains/color-palette/README.md)：`./palette` 接到 Host，对外是 `linnya palette` 和 `@plugin/backend/colorPalette`，并保存“最近用过”。
 
 ## 验证
 
-`pnpm exec vitest run packages/color-core`：已知值、往返误差、两种色域映射、ΔEOK、色觉模拟、色相区间、解析与混色；配色部分覆盖取色、点缀色、对侧色排除、无彩图、随机 1000 次的排除区、对比度、强调色个数与图表明度单调、一次 3 套色系组合各不相同、只在一张图里出现的颜色不当主色、100 次里色系组合与单一色系占比、指定 6 个强调色时彼此分得开、用户指定颜色（原色值、调底色、丢对侧图片色、互为对侧、失败码）、`checkPalette` 的各条规则与最小改动、编号复现与 10 张图 500 ms 性能上限。CSS Color 4 映射曾与 colorjs.io 的 `toGamut({ method: 'css' })` 在 4560 个 OKLCH 采样点上对照，最大差 ΔEOK 0.012（近黑处 1 个通道值）。
+`pnpm exec vitest run packages/color-core`：已知值、往返误差、两种色域映射、ΔEOK、色觉模拟、色相区间、解析与混色；配色部分覆盖取色、点缀色、对侧色排除、无彩图、随机 1000 次的排除区、对比度、强调色个数与图表明度单调、一次 3 套色系组合各不相同、只在一张图里出现的颜色不当主色、100 次里色系组合与单一色系占比、指定 6 个强调色时彼此分得开、用户指定颜色（原色值、调底色、丢对侧图片色、互为对侧、失败码）、`checkPalette` 的各条规则与最小改动、最近用过（10 次里刚用过的组合明显变少、只降权不排除、窗口系数、带最近用过仍可复现）、编号复现与 10 张图 500 ms 性能上限。CSS Color 4 映射曾与 colorjs.io 的 `toGamut({ method: 'css' })` 在 4560 个 OKLCH 采样点上对照，最大差 ΔEOK 0.012（近黑处 1 个通道值）。
