@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ProviderConnectionDefinition, ProviderDefinition } from '@linnya/provider-catalog';
+import type {
+  ProviderConnectionDefinition,
+  ProviderDefinition,
+  ProviderModelDefinition,
+} from '@linnya/provider-catalog';
 import type { ProviderAccountModelDefinition } from 'src/domains/provider-account';
 
 import type { ProviderOnboardingRuntimeBindingPort } from '../definitions/providerOnboardingPorts';
@@ -94,14 +98,18 @@ const RUNTIME_BINDINGS: ProviderOnboardingRuntimeBindingPort = {
   },
 };
 
-function setup(account?: {
-  readonly discoverModels: () => Promise<readonly ProviderAccountModelDefinition[]>;
-}) {
+function setup(
+  account?: {
+    readonly discoverModels: () => Promise<readonly ProviderAccountModelDefinition[]>;
+  },
+  /** 模拟在线发现返回的最新定义；不给时用安装包内的目录。 */
+  latestDefinitions: { current?: readonly ProviderModelDefinition[] } = {}
+) {
   const storage = createStatefulProviderOnboardingStorage();
   const removal = { remove: vi.fn(async (_modelConfigId: string) => undefined) };
   let id = 0;
   const useCase = createProviderOnboardingUseCase({
-    discoveredModels: { readAvailable: () => undefined },
+    discoveredModels: { readAvailable: () => latestDefinitions.current },
     providerCatalog: {
       generation: {
         id: 'generation-1',
@@ -232,5 +240,70 @@ describe('Provider 归属里有启动时停用的模型', () => {
     await expect(
       useCase.refreshRegisteredProviderModels(API_KEY_CONNECTION.id)
     ).rejects.toMatchObject({ code: 'provider_onboarding.configuration_invalid' });
+  });
+
+  it('全部成员停用时：换 Key 用停用成员的连接，刷新修复按最新定义重建同 ID，定义里已没有的保持停用', async () => {
+    const latestDefinitions: { current?: readonly ProviderModelDefinition[] } = {};
+    const { storage, useCase } = setup(undefined, latestDefinitions);
+    await useCase.configureDirectProvider({
+      provider_connection_definition_id: API_KEY_CONNECTION.id,
+      api_key: 'original-secret',
+    });
+    const members = requireProviderMembers(storage);
+    const [endpoint] = storage.readEndpoints();
+    if (!endpoint) throw new Error('fixture provider was not configured');
+    for (const member of members) storage.disableAtRestart(member.model_config_id);
+    expect(storage.readModels()).toEqual([]);
+
+    // 只剩停用成员：凭据边界就在它们引用的连接上，换 Key 不能报配置损坏。
+    await useCase.replaceDirectProviderCredential({
+      provider_connection_definition_id: API_KEY_CONNECTION.id,
+      api_key: 'rotated-secret',
+    });
+    expect(storage.catalog.replaceInferenceEndpointCredential).toHaveBeenCalledWith(
+      endpoint.id,
+      'rotated-secret'
+    );
+
+    // 最新定义里 gpt-a 已经下架，gpt-b 的容量变了。
+    const definitions = API_KEY_CONNECTION.models.filter(model => model.id !== 'gpt-a');
+    latestDefinitions.current = definitions.map(model =>
+      model.id === 'gpt-b' ? { ...model, max_output_tokens: 32_000 } : model
+    );
+    await expect(useCase.repairUnadmittedProviderModels(API_KEY_CONNECTION.id)).resolves.toEqual({
+      repaired_model_count: 2,
+      unrepairable_model_count: 1,
+    });
+
+    // 修复沿用原 model_config_id 与归属，复用原连接，资料来自最新定义。
+    const [memberA, memberB, memberC] = members;
+    expect(storage.readModels().map(model => model.id)).toEqual([
+      memberB?.model_config_id,
+      memberC?.model_config_id,
+    ]);
+    expect(storage.readModels().map(model => model.inference_endpoint_id)).toEqual([
+      endpoint.id,
+      endpoint.id,
+    ]);
+    expect(storage.readModels()[0]?.inference_route?.max_output_tokens).toBe(32_000);
+    expect(storage.readEndpoints().map(candidate => candidate.id)).toEqual([endpoint.id]);
+    expect(requireProviderMembers(storage)).toEqual(members);
+    expect(storage.catalog.getUnadmittedUserModels().map(entry => entry.id)).toEqual([
+      memberA?.model_config_id,
+    ]);
+
+    // 再刷新一次：仍下架的那条保持停用，不猜一个相近的模型代替。
+    await expect(useCase.repairUnadmittedProviderModels(API_KEY_CONNECTION.id)).resolves.toEqual({
+      repaired_model_count: 0,
+      unrepairable_model_count: 1,
+    });
+    expect(storage.catalog.replaceUnadmittedUserModel).toHaveBeenCalledTimes(2);
+  });
+
+  it('账号目录型 Provider 的停用成员不能按定义修复（由账号同步重新注册），只能删除', async () => {
+    const { useCase } = setup();
+    await expect(
+      useCase.repairUnadmittedProviderModels(ACCOUNT_CONNECTION.id)
+    ).rejects.toMatchObject({ code: 'provider_onboarding.provider_not_supported' });
   });
 });

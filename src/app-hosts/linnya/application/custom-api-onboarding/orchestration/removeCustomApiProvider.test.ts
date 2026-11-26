@@ -21,6 +21,7 @@ function setup() {
       getModels: () => models,
       getInferenceEndpoints: () => [],
       getUserRevision: () => 7,
+      getUnadmittedUserModels: () => [],
       applyCustomApiGroupModelDiff: vi.fn(),
       getCustomApiGroups: () => [{ name: 'Relay', inference_endpoint_ids: ['relay'] }],
       resolveInferenceEndpointCredential: vi.fn(),
@@ -70,6 +71,30 @@ describe('删除自定义分组', () => {
     });
     expect(removeCustomApiGroup).toHaveBeenCalledExactlyOnceWith('Relay', 7);
     expect(removeModelPreferences).toHaveBeenCalledWith(['a', 'b']);
+  });
+
+  it('分组里配置无效的条目随分组删除，其 ID 一并交回清理偏好；未归类与其他分组的不受影响', async () => {
+    const { dependencies, removeModelPreferences } = setup();
+    const unadmitted = (id: string, group: string | undefined) => ({
+      id,
+      inference_endpoint_id: 'relay',
+      custom_api_group_name: group,
+      display_name: id,
+      reason: '用户模型必须声明唯一的推理 route',
+      reason_kind: 'multiple_routes' as const,
+    });
+    dependencies.modelCatalog.getUnadmittedUserModels = () => [
+      unadmitted('broken', 'Relay'),
+      unadmitted('orphan', undefined),
+      unadmitted('elsewhere', 'Other'),
+    ];
+    await expect(
+      removeCustomApiProvider({ provider_name: 'Relay' }, dependencies)
+    ).resolves.toEqual({
+      removed_model_ids: ['a', 'b', 'broken'],
+      model_picker_preference_recovery_pending: false,
+    });
+    expect(removeModelPreferences).toHaveBeenCalledWith(['a', 'b', 'broken']);
   });
 
   it('目录冲突时保留偏好，目录已删除后的偏好失败则报告成功并等待启动清理', async () => {

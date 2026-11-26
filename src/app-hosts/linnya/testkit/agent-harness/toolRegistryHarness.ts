@@ -59,6 +59,8 @@ function buildDefinition(tool: BaseTool): ToolRuntimeDefinition {
     validateArguments: args => tool['validateArguments'](args),
     idempotency: tool.idempotency,
     streaming: tool.streaming,
+    // 与正式 ToolRegistry 一致地交出并行声明，夹具里的 ToolNode 才会按产品方式分组执行。
+    parallel: tool.parallel,
   };
 }
 

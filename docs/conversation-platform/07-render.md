@@ -64,10 +64,18 @@ Host 主时间线的 `subagent/subrun_batch` 只保留父卡轻量进度，完�
 共享 `ConversationMessageCanvas` 不属于第四层虚拟化：它只把已经投影的 row 按宿主提供的 placement 渲染。主时间线传入 TanStack placement 与 `measureElement`；Subrun 详情不传 placement，按普通文档流展示。语义行距统一收口在 `ConversationVisualRow.css` 的 turn 边界 padding，宿主禁止叠加统一 `gap`。
 
 最后一个 turn-end row 同时是唯一尾部几何 owner。`resolveConversationRowTailLayout` 决定它是否持有
-tail region，以及主时间线的 waiting indicator 是否归属于该 region；duration、answer actions 和 waiting
-只改变区域内内容，不改变区域高度。tail 已由 `measureElement` 计入 row，`ConversationView` 和
-virtualizer geometry 不得再添加 waiting slot 或把 tail 重复计入 `scrollEndThreshold`。Subrun 普通画布
-默认不启用 trailing status，但回答 actions 仍遵守同一 row tail 合同。
+tail region，以及主时间线的运行状态行是否归属于该 region；answer actions 和运行状态行只改变区域内内容，
+不改变区域高度。tail 已由 `measureElement` 计入 row，`ConversationView` 和 virtualizer geometry 不得再添加
+等待占位或把 tail 重复计入 `scrollEndThreshold`。Subrun 普通画布默认不启用 trailing status，但回答 actions
+仍遵守同一 row tail 合同。
+
+运行状态行在整轮运行期间常驻（含等用户回答、等批准命令、已暂停），写“在做什么 · 已用时长”。文字由
+运行事实与工具 owner 在 `ToolUiConfig.activity` 声明的类别派生，每条至少停留 2 秒；规则见
+[`shared/execution-presentation`](../../apps/renderer/domains/conversation/shared/execution-presentation/README.md)。
+
+正常结束且有最终回答的轮次，主时间线把本轮思考、叙述与工具调用收成一行“已工作 x 分 x 秒”，点击原地展开；
+插话、最终回答与交付成果（生成的图片）留在折叠外，失败与停止的轮次不折叠。折叠是 visual-row 之后的一层
+投影，不改消息事实；规则见 [`features/turn-work-fold`](../../apps/renderer/domains/conversation/features/turn-work-fold/README.md)。
 
 ---
 

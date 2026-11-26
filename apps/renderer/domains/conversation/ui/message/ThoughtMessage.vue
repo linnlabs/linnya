@@ -31,6 +31,7 @@ import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import ConversationMarkdownRenderer from './components/stream/ConversationMarkdownRenderer'
 import { useMessageExecutionActivity } from '../../shared/execution-presentation';
 import { useConversationLocalization } from '../useConversationLocalization';
+import { formatConversationDuration } from '../../functions/formatConversationDuration';
 
 interface Props {
   message: ThoughtMessageModel;
@@ -77,25 +78,11 @@ const thinkingDuration = computed(() => {
   return duration;
 });
 
-// 格式化时间显示
-const formatDuration = (seconds: number): string => {
-  if (seconds < 60) {
-    return conversationMessage('conversation.thought.duration.seconds', { seconds });
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return conversationMessage('conversation.thought.duration.minutesSeconds', {
-    minutes,
-    seconds: remainingSeconds,
-  });
-};
-
 // 动态思考标题
 const thoughtTitle = computed(() => {
   if (isThoughtCompleted.value) {
     return conversationMessage('conversation.thought.completed', {
-      duration: formatDuration(thinkingDuration.value),
+      duration: formatConversationDuration(thinkingDuration.value * 1000, conversationMessage),
     });
   }
   return conversationMessage(isThinking.value ? 'conversation.thought.running' : activity.value.labelKey);

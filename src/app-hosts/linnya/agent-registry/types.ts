@@ -118,7 +118,7 @@ export interface AgentConfiguration {
    * 🔥 步数收尾策略（注册式）
    *
    * 背景：
-   * - maxSteps 统计 Graph 节点；同一批工具调用由一个 ToolNode 串行排空；
+   * - maxSteps 统计 Graph 节点；同一批工具调用由 ToolNode 排空（声明可并行的相邻调用同时执行，其余串行）；
    * - 某些 Agent（例如 deep_search）必须在仍有 ToolNode 预算时强制调用最终工具，
    *   避免临界 LLM 才调用工具但来不及执行。
    *

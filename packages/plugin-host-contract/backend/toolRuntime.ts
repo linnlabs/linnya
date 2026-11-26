@@ -121,3 +121,9 @@ export declare function runRegisteredSubagent(
 export declare function runRegisteredSubagentsInParallel(
   params: RunRegisteredSubagentsInParallelParams,
 ): Promise<RunRegisteredSubagentResult[]>;
+
+/**
+ * Host 的持久接纳拒绝了超出 Agent `maxCallsPerParentRun` 的子运行。
+ * 这是确定的额度拒绝（子运行没有启动），插件可据此改走自己的降级；其他错误照常上抛。
+ */
+export declare function isChildRunLimitExceeded(error: unknown): boolean;

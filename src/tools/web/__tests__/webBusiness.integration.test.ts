@@ -406,7 +406,17 @@ describe('Web Phase 1 本地优先读取业务 E2E', () => {
     vi.spyOn(builtinPluginRegistry, 'getRegisteredToolClasses').mockReturnValue([WebSearchTool, WebReadTool]);
     vi.spyOn(builtinPluginRegistry, 'getRegisteredHostOnlyToolNames').mockReturnValue([]);
     setPluginRuntimeStateForTests({ enabledPluginIds: ['platform'] });
-    vi.spyOn(builtinPluginRegistry, 'getRegisteredToolContextDecorators').mockReturnValue([]);
+    // 与产品一样由 decorator 给每个调用的上下文绑定引用顺序、分配器和证据写入：
+    // Linnkit 为每次调用派生新的 ToolContext，绑在装配上下文上的 WeakMap 不会跟过去。
+    vi.spyOn(builtinPluginRegistry, 'getRegisteredToolContextDecorators').mockReturnValue([{
+      toolNames: [toolName],
+      decorate: callContext => {
+        if (typeof callContext !== 'object' || callContext === null) throw new Error('Missing tool context');
+        attachCitationSequence(callContext, { offset: 4 });
+        attachCitationRefAllocator(callContext, createCitationRefAllocatorFixture());
+        decorateWebEvidenceWriterToolContext(callContext);
+      },
+    }]);
     const registry = new ToolRegistry({ strictInitialization: true });
     const execution = vi.spyOn(registry, 'executeTool');
     const diagnostic = vi.spyOn(Logger.prototype, 'error');

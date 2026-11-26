@@ -74,6 +74,11 @@ export const DEEP_SEARCH_AGENT_DEFINITION: AgentDefinition = {
     modelPolicy: { kind: 'fixed', modelId: 'cloud-deepseek-chat' },
     // 不需要知识库 ID，由父 Agent 传递上下文
     preferredModelCapability: 'tool_calling',
+    /**
+     * 同一父 run 最多 2 次深度搜索（大量 token 消耗的确定性闸门）。由 Host 持久 admission 事务计数：
+     * 并行调用与暂停恢复都不会越过；超额由 knowledge_search 识别后降级为浅搜索。
+     */
+    maxCallsPerParentRun: 2,
     // 收尾策略：主产物来自 assemble_documents；在仍能执行 ToolNode 时收缩到该最终工具。
     stepPolicy: {
       kind: 'force_tools',

@@ -31,6 +31,7 @@ const DocumentContentCard = defineAsyncComponent(
 export const knowledgeBaseToolConfigs: Record<string, ToolUiConfig> = {
   list_knowledge_base: {
     component: DocumentListCard,
+    activity: 'search',
     icon: LibraryIcon,
     presentation: projectDocumentListPresentation,
     compactStep: listKnowledgeBaseCompactStep,
@@ -39,6 +40,7 @@ export const knowledgeBaseToolConfigs: Record<string, ToolUiConfig> = {
 
   knowledge_search: {
     component: KnowledgeSearchCard,
+    activity: 'search',
     icon: LibraryIcon,
     presentation: projectKnowledgeSearchPresentation,
     compactStep: projectKnowledgeSearchCompactStep,
@@ -52,6 +54,7 @@ export const knowledgeBaseToolConfigs: Record<string, ToolUiConfig> = {
   /** 只接纳历史会话中已经持久化的旧 Tool 事件，不对应后端可执行工具。 */
   search_knowledge_base: {
     component: KnowledgeSearchCard,
+    activity: 'search',
     icon: LibraryIcon,
     presentation: projectKnowledgeSearchPresentation,
     compactStep: projectKnowledgeSearchCompactStep,
@@ -71,6 +74,7 @@ export const knowledgeBaseToolConfigs: Record<string, ToolUiConfig> = {
    */
   search_in_knowledgebase: {
     component: KnowledgeSearchCard,
+    activity: 'search',
     icon: LibraryIcon,
     presentation: projectKnowledgeSearchPresentation,
     compactStep: projectKnowledgeSearchCompactStep,
@@ -81,6 +85,7 @@ export const knowledgeBaseToolConfigs: Record<string, ToolUiConfig> = {
   /** search_in_knowledge_base */
   search_in_knowledge_base: {
     component: KnowledgeSearchCard,
+    activity: 'search',
     icon: LibraryIcon,
     presentation: projectKnowledgeSearchPresentation,
     compactStep: projectKnowledgeSearchCompactStep,
@@ -90,6 +95,7 @@ export const knowledgeBaseToolConfigs: Record<string, ToolUiConfig> = {
 
   knowledge_read: {
     component: DocumentContentCard,
+    activity: 'read',
     icon: ReadIcon,
     presentation: projectDocumentContentPresentation,
     compactStep: readKnowledgeDocumentCompactStep,
@@ -99,6 +105,7 @@ export const knowledgeBaseToolConfigs: Record<string, ToolUiConfig> = {
   /** 只接纳历史会话中已经持久化的旧 Tool 事件，不对应后端可执行工具。 */
   browse_document_by_chunk: {
     component: DocumentContentCard,
+    activity: 'read',
     icon: ReadIcon,
     presentation: projectDocumentContentPresentation,
     compactStep: readKnowledgeDocumentCompactStep,

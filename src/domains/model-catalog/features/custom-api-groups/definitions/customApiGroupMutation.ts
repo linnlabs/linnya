@@ -8,6 +8,7 @@ import type {
   ModelDiff,
   UserModelRegistration,
 } from '../../../definitions/modelCatalog';
+import type { UnadmittedUserModelEntry } from '../../user-model-persistence/definitions/userModelsFile';
 export type CustomApiGroupMutation =
   | {
       readonly kind: 'register';
@@ -29,4 +30,6 @@ export interface CustomApiGroupState {
   readonly models: ReadonlyMap<string, ModelConfig>;
   readonly endpoints: ReadonlyMap<string, InferenceEndpoint>;
   readonly groups: ReadonlyMap<string, CustomApiGroup>;
+  /** 启动时停用、原样保留的条目；只有删除分组会连带移除其中属于该分组的。 */
+  readonly unadmitted: readonly UnadmittedUserModelEntry[];
 }

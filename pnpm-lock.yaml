@@ -83,8 +83,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(encoding@0.1.13)
       '@linnlabs/linnkit':
-        specifier: 0.47.0
-        version: 0.47.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.48.0
+        version: 0.48.0(vitest@4.1.12)(zod@4.6.7)
       '@linnlabs/linnkit-provider-ai-sdk':
         specifier: workspace:*
         version: link:packages/linnkit-provider-ai-sdk
@@ -710,8 +710,8 @@ importers:
         version: 4.5.0(ai@7.0.183(zod@4.6.7))(zod@4.6.7)
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.47.0
-        version: 0.47.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.48.0
+        version: 0.48.0(vitest@4.1.12)(zod@4.6.7)
       '@linnya/foundation':
         specifier: workspace:*
         version: link:../foundation
@@ -799,8 +799,8 @@ importers:
         specifier: workspace:*
         version: link:../schemas
       '@linnlabs/linnkit':
-        specifier: 0.47.0
-        version: 0.47.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.48.0
+        version: 0.48.0(vitest@4.1.12)(zod@4.6.7)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -898,8 +898,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.47.0
-        version: 0.47.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.48.0
+        version: 0.48.0(vitest@4.1.12)(zod@4.6.7)
       '@linnya/plugin-host-contract':
         specifier: workspace:*
         version: link:../../plugin-host-contract
@@ -1056,8 +1056,8 @@ importers:
         version: 4.6.7
     devDependencies:
       '@linnlabs/linnkit':
-        specifier: 0.47.0
-        version: 0.47.0(vitest@4.1.12)(zod@4.6.7)
+        specifier: 0.48.0
+        version: 0.48.0(vitest@4.1.12)(zod@4.6.7)
       '@linnya/foundation':
         specifier: workspace:*
         version: link:../../foundation
@@ -2182,8 +2182,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@linnlabs/linnkit@0.47.0':
-    resolution: {integrity: sha512-/J+/wzGBDPf19jY3/AVd7gVUfKKcNUq/Ow3ts7PA+VWqs7E24gIUis+5CyfezoODHfAnhIdKwo6aKXjq31/+Zw==}
+  '@linnlabs/linnkit@0.48.0':
+    resolution: {integrity: sha512-2VkRpZTQZ0UUxtwL9UlmzJRBnhngZZTW2U6J/V1q0otZ0nk3K23zx5ZgjWv/BESaVyGu3c1OwQ7vTnkIVon0Sw==}
     hasBin: true
     peerDependencies:
       vitest: ^2.0.0 || ^3.0.0 || ^4.0.0
@@ -7568,7 +7568,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@linnlabs/linnkit@0.47.0(vitest@4.1.12)(zod@4.6.7)':
+  '@linnlabs/linnkit@0.48.0(vitest@4.1.12)(zod@4.6.7)':
     dependencies:
       eventsource-parser: 3.1.1
       tiktoken: 1.0.22

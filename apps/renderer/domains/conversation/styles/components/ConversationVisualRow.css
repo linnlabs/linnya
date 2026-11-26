@@ -21,6 +21,10 @@
   padding-top: 0;
 }
 
+.conversation-visual-row.follows-work-fold {
+  padding-top: var(--space-2);
+}
+
 .conversation-visual-row.is-turn-start {
   padding-top: 0;
 }
@@ -48,9 +52,9 @@
 }
 
 /*
- * tail region 是最后一轮 duration/actions/waiting/改动清单的唯一几何 owner。
- * 首行固定 42px，子元素全部绝对定位，图标延迟显隐和 disabled actions 都不能改变虚拟行高度。
- * 本轮改了文档时，尾注占首行左侧，展开的清单和已工作时长依次排在首行下方。
+ * tail region 是最后一轮 actions / 运行状态行 / 改动清单的唯一几何 owner。
+ * 首行固定 42px，子元素全部绝对定位，状态文字变化和 disabled actions 都不能改变虚拟行高度。
+ * 本轮改了文档时，尾注占首行左侧，展开的清单排在首行下方。
  */
 .conversation-visual-row__tail {
   position: relative;
@@ -59,13 +63,6 @@
 .conversation-visual-row__tail-line {
   position: relative;
   height: 42px;
-}
-
-.conversation-visual-row__tail-line > .turn-work-duration-hint {
-  position: absolute;
-  inset: 0;
-  min-height: 0;
-  margin-top: 0;
 }
 
 .conversation-visual-row__tail-line > .conversation-answer-actions--turn {
@@ -82,43 +79,13 @@
   max-width: calc(100% - 64px);
 }
 
-.conversation-visual-row__tail > .turn-work-duration-hint.conversation-visual-row__tail-duration {
-  margin-top: var(--space-1);
-}
-
-.conversation-visual-row__tail > .run-document-changes-list + .turn-work-duration-hint.conversation-visual-row__tail-duration {
-  margin-top: var(--space-3);
-}
-
-.conversation-visual-row__waiting-indicator {
+/* 运行状态行占首行左侧；暂停后回答操作可能同时出现在右侧，同样让出位置。 */
+.conversation-visual-row__tail-line > .conversation-visual-row__run-status {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  visibility: hidden;
-  opacity: 0;
-}
-
-.conversation-visual-row__waiting-indicator.is-visible {
-  visibility: visible;
-  opacity: 1;
-}
-
-.conversation-visual-row__waiting-indicator.is-visible > svg {
-  animation: conversation-row-waiting-fade-in var(--duration-long) var(--ease-standard);
-}
-
-@keyframes conversation-row-waiting-fade-in {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  top: 0;
+  bottom: 0;
+  left: 0;
+  max-width: calc(100% - 64px);
 }
 
 .conversation-visual-row.is-bounded .conversation-visual-row__content-inner {

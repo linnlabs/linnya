@@ -91,6 +91,7 @@ describe('对话标题模型选择（设置页）', () => {
     useModelPickerStore().replaceSnapshot({
       providers: [],
       custom_models: [pickerModel('main', 'Main Model'), pickerModel('title-flash', 'Flash Model')],
+      unassigned_unadmitted_models: [],
     });
     setModelPurposeBinding('primary', 'main');
   });

@@ -35,8 +35,9 @@ export class SqliteToolResultReceipts {
         >('SELECT state_json FROM engine_checkpoints WHERE conversation_id = ?')
         .get(runId);
       const state = checkpoint && graph.parseEngineCheckpoint(JSON.parse(checkpoint.state_json));
+      // 并行组里多个调用同时在途，凭据只需属于其中之一；不能再要求“唯一在途调用”。
       if (
-        state?.local?.executingToolCallId !== callId ||
+        !state?.local?.executingToolCallIds?.some(id => id === callId) ||
         !state.local.pendingToolCalls?.some(
           call => call.id === callId && call.function.name === toolName
         )

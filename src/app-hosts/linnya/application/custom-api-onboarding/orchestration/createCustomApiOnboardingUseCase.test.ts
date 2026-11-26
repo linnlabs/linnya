@@ -22,6 +22,7 @@ import { createCustomApiOnboardingUseCase } from './createCustomApiOnboardingUse
 function modelCatalog() {
   return {
     getUserRevision: () => 0,
+    getUnadmittedUserModels: () => [],
     applyCustomApiGroupModelDiff: vi.fn(),
     removeCustomApiGroup: vi.fn(),
     getCustomApiGroups: () => [],
@@ -247,6 +248,7 @@ describe('createCustomApiOnboardingUseCase', () => {
       modelDiscovery: { discover: vi.fn() },
       modelCatalog: {
         getUserRevision: () => 0,
+        getUnadmittedUserModels: () => [],
         applyCustomApiGroupModelDiff: vi.fn(),
         removeCustomApiGroup: vi.fn(),
         getCustomApiGroups: () => [],
@@ -304,6 +306,7 @@ describe('createCustomApiOnboardingUseCase', () => {
         provider_definitions: [],
         configured_providers: [],
         models,
+        unadmitted_models: [],
         inference_endpoints: [],
         provider_accounts: [],
         preferences: registry.read(),

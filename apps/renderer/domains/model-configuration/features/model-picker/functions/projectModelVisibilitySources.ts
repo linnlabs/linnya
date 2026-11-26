@@ -5,7 +5,11 @@ import type {
   ModelPickerMaterializedModel,
   ModelPickerProviderModel,
   ModelPickerSnapshot,
+  ModelPickerUnadmittedModel,
 } from '@app/schemas/model-picker';
+
+/** 选择 Host 投影里的“未归类”来源时使用的固定 ID；它不是正式 Provider 或自定义分组。 */
+export const UNASSIGNED_MODEL_SOURCE_ID = 'unassigned' as const;
 
 export type ModelVisibilitySource =
   | {
@@ -13,6 +17,7 @@ export type ModelVisibilitySource =
       readonly kind: 'cloud';
       readonly displayName: string;
       readonly models: readonly ModelPickerMaterializedModel[];
+      readonly unadmittedModels: readonly ModelPickerUnadmittedModel[];
     }
   | {
       readonly id: string;
@@ -26,6 +31,8 @@ export type ModelVisibilitySource =
       readonly credentialAvailable: boolean;
       readonly credentialUnavailableReason?: ModelPickerCredentialUnavailableReason;
       readonly models: readonly ModelPickerProviderModel[];
+      /** 启动时停用的成员；只能删除，或按 Provider 定义刷新修复。 */
+      readonly unadmittedModels: readonly ModelPickerUnadmittedModel[];
     }
   | {
       readonly id: string;
@@ -37,17 +44,27 @@ export type ModelVisibilitySource =
       readonly baseUrl?: string;
       readonly endpointId?: string;
       readonly models: readonly ModelPickerMaterializedModel[];
+      readonly unadmittedModels: readonly ModelPickerUnadmittedModel[];
     }
   | {
       readonly id: 'custom';
       readonly kind: 'custom';
       readonly displayName: string;
       readonly models: readonly ModelPickerMaterializedModel[];
+      readonly unadmittedModels: readonly ModelPickerUnadmittedModel[];
+    }
+  | {
+      /** 归属已不存在的停用条目（多为旧版删分组遗留），只给删除；只在存在这类条目时出现。 */
+      readonly id: typeof UNASSIGNED_MODEL_SOURCE_ID;
+      readonly kind: 'unassigned';
+      readonly displayName: string;
+      readonly models: readonly ModelPickerMaterializedModel[];
+      readonly unadmittedModels: readonly ModelPickerUnadmittedModel[];
     };
 
 export function projectModelVisibilitySources(
   snapshot: ModelPickerSnapshot,
-  customModelsLabel: string
+  labels: { readonly customModels: string; readonly unassigned: string }
 ): readonly ModelVisibilitySource[] {
   const connectionCountByProviderId = new Map<string, number>();
   for (const provider of snapshot.providers) {
@@ -67,6 +84,7 @@ export function projectModelVisibilitySources(
     baseUrl: group.base_url,
     endpointId: group.endpoint_id,
     models: group.models,
+    unadmittedModels: group.unadmitted_models,
   }));
 
   // 如果没有按 custom_providers 组织，回退到以前单一的 custom_models
@@ -80,6 +98,7 @@ export function projectModelVisibilitySources(
             kind: 'cloud' as const,
             displayName: snapshot.cloud.display_name,
             models: snapshot.cloud.models,
+            unadmittedModels: [],
           },
         ]
       : []),
@@ -100,6 +119,7 @@ export function projectModelVisibilitySources(
         ? { credentialUnavailableReason: provider.credential_unavailable_reason }
         : {}),
       models: provider.models,
+      unadmittedModels: provider.unadmitted_models,
     })),
     ...customProviders,
     ...(!hasCustomProviders && snapshot.custom_models.length > 0
@@ -107,8 +127,20 @@ export function projectModelVisibilitySources(
           {
             id: 'custom' as const,
             kind: 'custom' as const,
-            displayName: customModelsLabel,
+            displayName: labels.customModels,
             models: snapshot.custom_models,
+            unadmittedModels: [],
+          },
+        ]
+      : []),
+    ...(snapshot.unassigned_unadmitted_models.length > 0
+      ? [
+          {
+            id: UNASSIGNED_MODEL_SOURCE_ID,
+            kind: 'unassigned' as const,
+            displayName: labels.unassigned,
+            models: [],
+            unadmittedModels: snapshot.unassigned_unadmitted_models,
           },
         ]
       : []),
@@ -122,6 +154,18 @@ export function filterModelVisibilitySources(
   const normalized = query.trim().toLocaleLowerCase();
   if (!normalized) return sources;
   return sources.filter(source => source.displayName.toLocaleLowerCase().includes(normalized));
+}
+
+/** 停用条目按显示名搜索，与模型列表共用同一个搜索框。 */
+export function filterUnadmittedModels(
+  source: ModelVisibilitySource,
+  query: string
+): readonly ModelPickerUnadmittedModel[] {
+  const normalized = query.trim().toLocaleLowerCase();
+  if (!normalized) return source.unadmittedModels;
+  return source.unadmittedModels.filter(model =>
+    model.display_name.toLocaleLowerCase().includes(normalized)
+  );
 }
 
 export function filterModelVisibilityModels(

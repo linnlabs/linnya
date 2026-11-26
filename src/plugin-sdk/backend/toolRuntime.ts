@@ -15,6 +15,7 @@ import type {
 import type {
   PluginToolContext,
 } from '@linnya/plugin-host-contract/backend/toolRuntime';
+import { ChildRunLimitExceededError } from 'src/app-hosts/linnya/application/run-resumption';
 export { createUntrustedContentBoundaryToken, wrapUntrustedContentBoundary } from '../../shared/ai-observation/functions/untrustedContentBoundary';
 
 export {
@@ -60,6 +61,10 @@ export async function runRegisteredSubagentsInParallel(
 ): Promise<RunRegisteredSubagentResult[]> {
   const runner = await import('src/tools/agent_control/subrun/shared');
   return runner.runRegisteredSubagentsInParallel(params);
+}
+
+export function isChildRunLimitExceeded(error: unknown): boolean {
+  return error instanceof ChildRunLimitExceededError;
 }
 
 export type HostToolContext = import('src/tools/types').ToolContext;

@@ -14,3 +14,6 @@ export {
 } from './composables/useExecutionActivity';
 export { default as ToolActivityIndicator } from './ui/ToolActivityIndicator.vue';
 export { default as ExecutionProgressText } from './ui/ExecutionProgressText.vue';
+export type { RunStatusMotion, RunStatusRowView } from './definitions/runStatus';
+export { useRunStatusRow } from './composables/useRunStatusRow';
+export { default as RunStatusRow } from './ui/RunStatusRow.vue';

@@ -1,5 +1,5 @@
 import type { BaseMessage } from '../../../types';
-import type { ConversationVisualRow } from '../../messageCanvas';
+import type { ConversationMessageVisualRow } from '../../messageCanvas';
 import type { EstimationRegistry } from '../utils/estimationRegistry';
 import {
   appendVisualTurnAssignment,
@@ -28,7 +28,7 @@ export interface AppendOnlyConversationVisualRowsDiagnostics {
 
 interface BuilderState {
   assignments: VisualTurnAssignmentState;
-  rows: ConversationVisualRow[];
+  rows: ConversationMessageVisualRow[];
   rowIndexByMessageId: Map<string, number>;
   processedCount: number;
   firstProcessedId: string;
@@ -39,7 +39,7 @@ interface BuilderState {
   registry: EstimationRegistry;
 }
 
-function appendFinalizedDraft(rows: ConversationVisualRow[], draft: VisualRowDraft): void {
+function appendFinalizedDraft(rows: ConversationMessageVisualRow[], draft: VisualRowDraft): void {
   const previousIndex = rows.length - 1;
   const previous = rows[previousIndex];
   if (previous && previous.visualTurnId === draft.visualTurnId && previous.isTurnEnd) {
@@ -66,7 +66,7 @@ export function createAppendOnlyConversationVisualRowsBuilder(
   const fullRebuild = (
     messages: readonly BaseMessage[],
     options: AppendOnlyConversationVisualRowsOptions,
-  ): ConversationVisualRow[] => {
+  ): ConversationMessageVisualRow[] => {
     const runtime = createVisualRowProjectionRuntime({
       ...options,
       estimateMessageLayout: dependencies.estimateMessageLayout,
@@ -133,7 +133,7 @@ export function createAppendOnlyConversationVisualRowsBuilder(
   const applyTailContentUpdate = (
     message: BaseMessage,
     runtime: VisualRowProjectionRuntime,
-  ): ConversationVisualRow[] => {
+  ): ConversationMessageVisualRow[] => {
     if (!state) return [];
     const rowIndex = state.rowIndexByMessageId.get(message.id);
     if (rowIndex === undefined) return state.rows;
@@ -157,7 +157,7 @@ export function createAppendOnlyConversationVisualRowsBuilder(
   const apply = (
     messages: readonly BaseMessage[],
     options: AppendOnlyConversationVisualRowsOptions,
-  ): ConversationVisualRow[] => {
+  ): ConversationMessageVisualRow[] => {
     if (!state) return fullRebuild(messages, options);
     const registry = createVisualRowProjectionRuntime(options).registry;
     const boundaryId = state.processedCount > 0 ? messages[state.processedCount - 1]?.id ?? '' : '';

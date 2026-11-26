@@ -8,6 +8,7 @@ export type {
 export {
   assertInteractiveRunCanStart,
   isInteractiveRunBusy,
+  isInteractiveRunUnfinished,
   reduceInteractiveRunEvent,
 } from './functions/interactiveRunTransitions';
 export { useInteractiveRunStore } from './store/interactiveRunStore';

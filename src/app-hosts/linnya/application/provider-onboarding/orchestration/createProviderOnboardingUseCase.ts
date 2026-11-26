@@ -23,6 +23,7 @@ import { getLogger } from 'src/shared/logger';
 import { buildDirectProviderModelRegistration } from '../functions/buildDirectProviderModelRegistration';
 import { buildRefreshedDirectProviderModel } from '../functions/buildRefreshedDirectProviderModel';
 import { findReusableDirectProviderEndpoint } from '../functions/findReusableDirectProviderEndpoint';
+import { listProviderMemberEndpoints } from '../functions/listProviderMemberEndpoints';
 import { findStaleConfiguredProviderModels } from '../functions/findStaleConfiguredProviderModels';
 import { isProviderModelRegistered } from '../functions/isProviderModelRegistered';
 import {
@@ -30,8 +31,15 @@ import {
   resolveConfiguredProviderMember,
 } from '../functions/resolveConfiguredProviderMember';
 import { resolveProviderOnboardingAuthMethod } from '../functions/resolveProviderOnboardingAuthMethod';
+import {
+  isSameCredentialReference,
+  readProviderCredentialBoundary,
+  resolveProviderCredentialReference,
+  resolveReusableProviderCredentialPolicy,
+} from '../functions/resolveProviderCredentialBoundary';
+import { repairUnadmittedProviderModels } from './repairUnadmittedProviderModels';
 import { resolveProviderOnboardingModelRuntimeBinding } from 'src/app-hosts/linnya/adapters/inference';
-import type { CredentialReference, ModelConfig } from 'src/domains/model-catalog';
+import type { ModelConfig } from 'src/domains/model-catalog';
 import type {
   ProviderConnectionDefinition,
   ProviderModelDefinition,
@@ -40,25 +48,6 @@ import { projectProviderAccountModelDefinition } from '../functions/projectProvi
 import { selectInitialProviderModels } from '../functions/selectInitialProviderModels';
 
 const logger = getLogger('ProviderOnboarding');
-
-function isSameCredentialReference(left: CredentialReference, right: CredentialReference): boolean {
-  if (left.kind !== right.kind) return false;
-  switch (left.kind) {
-    case 'none':
-      return true;
-    case 'environment_variable':
-      return (
-        right.kind === 'environment_variable' &&
-        left.environment_variable === right.environment_variable
-      );
-    case 'stored_secret':
-      return right.kind === 'stored_secret' && left.credential_id === right.credential_id;
-    case 'provider_account':
-      return right.kind === 'provider_account' && left.account_id === right.account_id;
-    case 'host_managed':
-      return right.kind === 'host_managed' && left.credential_id === right.credential_id;
-  }
-}
 
 export interface CreateProviderOnboardingUseCaseDependencies {
   readonly providerCatalog: ProviderOnboardingCatalogPort;
@@ -200,44 +189,14 @@ export function createProviderOnboardingUseCase(
         500
       );
     }
-    const configuredCredentialReference = configuredEndpoints[0]?.credential_reference;
-    if (
-      configuredCredentialReference &&
-      configuredEndpoints.some(
-        endpoint =>
-          !isSameCredentialReference(endpoint.credential_reference, configuredCredentialReference)
-      )
-    ) {
-      throw new ProviderOnboardingError(
-        'provider_onboarding.configuration_invalid',
-        'Provider 配置存在多个凭据边界',
-        500
-      );
-    }
-    if (
-      authMethod === 'api_key' &&
-      configuredCredentialReference &&
-      configuredCredentialReference.kind !== 'stored_secret'
-    ) {
-      throw new ProviderOnboardingError(
-        'provider_onboarding.configuration_invalid',
-        'Provider 配置的凭据边界无效',
-        500
-      );
-    }
+    const configuredCredentialReference = readProviderCredentialBoundary(
+      configuredEndpoints,
+      authMethod
+    );
     const reusableEndpoint = findReusableDirectProviderEndpoint(
       configuredEndpoints,
       modelBinding,
-      providerAccountId
-        ? { kind: 'provider_account', account_id: providerAccountId }
-        : {
-            kind: 'stored_secret',
-            credential_id:
-              configuredCredentialReference?.kind === 'stored_secret'
-                ? configuredCredentialReference.credential_id
-                : undefined,
-            allow_missing: true,
-          }
+      resolveReusableProviderCredentialPolicy(providerAccountId, configuredCredentialReference)
     );
     if (
       authMethod === 'api_key' &&
@@ -272,14 +231,11 @@ export function createProviderOnboardingUseCase(
       binding: modelBinding,
       displayName: command.display_name,
       credentialSecret: command.api_key,
-      credentialReference: providerAccountId
-        ? { kind: 'provider_account', account_id: providerAccountId }
-        : configuredCredentialReference?.kind === 'stored_secret'
-          ? configuredCredentialReference
-          : {
-              kind: 'stored_secret',
-              credential_id: `configured-provider:${configuredProviderId}`,
-            },
+      credentialReference: resolveProviderCredentialReference({
+        providerAccountId,
+        boundary: configuredCredentialReference,
+        configuredProviderId,
+      }),
       reusableEndpoint,
     });
     const inferenceEndpointId =
@@ -499,17 +455,18 @@ export function createProviderOnboardingUseCase(
         configuredProvider,
         dependencies.modelCatalog
       );
-      const endpointIds = new Set(
-        configuredModels.flatMap(model => model.inference_endpoint_id ?? [])
-      );
-      const endpoints = dependencies.modelCatalog
-        .getInferenceEndpoints()
-        .filter(endpoint => endpointIds.has(endpoint.id));
+      // 停用成员的连接同属这个 Provider 的凭据边界：只剩停用成员时，换 Key 要换的就是它们的 Key，
+      // 修复（按定义重建）也要靠这份 Key。已准入成员的连接必须都在，停用条目的连接可能正是缺失原因。
+      const endpoints = listProviderMemberEndpoints(configuredProvider, dependencies.modelCatalog);
+      const endpointIds = new Set(endpoints.map(endpoint => endpoint.id));
       const [credentialEndpoint] = endpoints;
       if (
         !credentialEndpoint ||
-        configuredModels.some(model => model.inference_endpoint_id === undefined) ||
-        endpoints.length !== endpointIds.size
+        configuredModels.some(
+          model =>
+            model.inference_endpoint_id === undefined ||
+            !endpointIds.has(model.inference_endpoint_id)
+        )
       ) {
         throw new ProviderOnboardingError(
           'provider_onboarding.configuration_invalid',
@@ -611,6 +568,11 @@ export function createProviderOnboardingUseCase(
         updated_model_count: updatedModelCount,
         skipped_unadmitted_model_count: skippedUnadmittedModelCount,
       });
+    },
+
+    repairUnadmittedProviderModels(providerConnectionDefinitionId: string, signal?: AbortSignal) {
+      assertCatalogGeneration();
+      return repairUnadmittedProviderModels(providerConnectionDefinitionId, dependencies, signal);
     },
 
     async synchronizeConnectedProviderModels(

@@ -27,6 +27,11 @@ pnpm run dev:electron
 
 `pnpm-lock.yaml` 是根工作区唯一依赖锁文件。不要在根目录或 workspace package 中运行 `npm install`，也不要提交 `node_modules`、WASM 生成目录、构建产物或本地凭据文件。
 
+合并或拉取改了依赖的提交后要在该工作目录重新 `pnpm install --frozen-lockfile`。`pnpm-workspace.yaml` 设了
+`verifyDepsBeforeRun: error`：依赖与 lockfile 不一致时，`pnpm run` / `pnpm exec` 直接以
+`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` 失败。加 `-s` 时 pnpm 会连这条提示一起吞掉，只剩退出码 1，
+因此 `pnpm -s …` 无输出失败时先运行一次 `pnpm install --frozen-lockfile`。
+
 安全依赖升级需要覆盖根应用、插件和独立 E2E fixture 的实际消费者，以及仍引用旧版本的
 间接依赖；检查 lock diff，避免同时刷新无关 peer 依赖。原生图像依赖升级后，除冻结安装、
 类型和业务测试外，还需执行 Slides 的 `smoke:raster-worker`，验证真实 Electron 像素链路。
@@ -56,7 +61,7 @@ Windows 整机卸载复用 NSIS 升级卸载的暂存与恢复：普通卸载必
 
 macOS 的 `test:shell-tool:production-command-approval-dom` 使用真实 Renderer/Preload，覆盖可见凭据路径的三档权限、本次批准与保存规则。两类 E2E 都会重建 command runner，须顺序运行，不能共享 `dist/main/commands` 并发构建。
 
-产品及官方插件使用正式 npm Linnkit 0.47.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查
+产品及官方插件使用正式 npm Linnkit 0.48.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查
 模型列表的缺省字段、工具错误路径、图表诊断与递归 JSON 输入类型，并重建 schemas 的 CJS/ESM
 产物和生产锁。不能只通过依赖覆盖声明兼容；运行合同与独立打包消费门禁都必须通过。
 

@@ -230,6 +230,8 @@ export class ToolRegistry implements ToolCatalogPort, ToolExecutionPort {
       validateArguments: args => tool['validateArguments'](args),
       idempotency: tool.idempotency,
       streaming: tool.streaming,
+      // ToolNode 只认这里交出的声明来决定能否与相邻调用同时执行；漏传等于静默退回串行。
+      parallel: tool.parallel,
     };
   }
 

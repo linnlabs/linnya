@@ -15,6 +15,7 @@ function readToolDefinitionCompat(toolName: string) {
     return {
       parameters: tool.parameters,
       idempotency: tool.idempotency,
+      parallel: tool.parallel,
     };
   }
   return undefined;

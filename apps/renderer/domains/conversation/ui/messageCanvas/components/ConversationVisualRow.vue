@@ -12,7 +12,13 @@
   >
     <div class="conversation-visual-row__content">
       <div class="conversation-visual-row__content-inner">
+        <TurnWorkFoldRow
+          v-if="item.kind === 'turn-work-fold'"
+          :fold="item.fold"
+          @toggle="$emit('toggle-work-fold', item.fold.rootUserMessageId)"
+        />
         <Message
+          v-else
           :message="item.payload"
           :is-streaming="isMessageStreaming"
           @edit-message="$emit('edit-message', $event)"
@@ -28,11 +34,6 @@
         @act="runScheduledTasks.act"
       />
       <div class="conversation-visual-row__tail-line">
-        <ConversationWorkDurationHint
-          v-if="!runChangesNote"
-          :duration-ms="turnDurationMs"
-          :is-streaming="isTurnStreaming"
-        />
         <RunDocumentChangesNote
           v-if="runChangesNote"
           :note="runChangesNote"
@@ -45,14 +46,11 @@
           :is-streaming="isTurnStreaming"
           variant="turn"
         />
-        <div
-          v-if="tailLayout.ownsTrailingStatus"
-          class="conversation-visual-row__waiting-indicator"
-          :class="{ 'is-visible': trailingStatus.visible }"
-          aria-hidden="true"
-        >
-          <LinnyaLoadingIcon activity="thinking" />
-        </div>
+        <RunStatusRow
+          v-if="tailLayout.ownsTrailingStatus && trailingStatus"
+          class="conversation-visual-row__run-status"
+          :status="trailingStatus"
+        />
       </div>
       <RunDocumentChangesList
         v-if="runChangesNote && !runChangesNote.single && runChanges.expanded.value"
@@ -61,13 +59,6 @@
         :truncated="runChanges.list.value?.truncated ?? false"
         @open="runChanges.open"
         @show-all="runChanges.showAllItems()"
-      />
-      <!-- 有改动清单时，已工作时长放在清单最下面。 -->
-      <ConversationWorkDurationHint
-        v-if="runChangesNote"
-        class="conversation-visual-row__tail-duration"
-        :duration-ms="turnDurationMs"
-        :is-streaming="isTurnStreaming"
       />
     </div>
   </section>
@@ -81,7 +72,6 @@ import type {
   RegenerateUserMessageCommand,
 } from '../../../definitions/userMessageContent';
 import { resolveTurnFinalAnswers } from '../../../functions/resolveTerminalFinalAnswer';
-import { isRecord } from '../../../utils/typeGuards';
 import {
   collectVisualTurnRunIds,
   isAnswerSegmentStreaming,
@@ -101,10 +91,10 @@ import type {
   ConversationVisualRowMeasureElement,
 } from '../definitions/conversationMessageCanvas';
 import { resolveConversationRowTailLayout } from '../functions/resolveConversationRowTailLayout';
+import { TurnWorkFoldRow } from '../../../features/turn-work-fold';
+import { RunStatusRow } from '../../../shared/execution-presentation';
 import Message from '../../Message.vue';
-import ConversationWorkDurationHint from '../../components/ConversationWorkDurationHint.vue';
 import ConversationVisualRowActions from './ConversationVisualRowActions.vue';
-import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 
 const props = withDefaults(defineProps<{
   item: ConversationVisualRowModel;
@@ -116,7 +106,8 @@ const props = withDefaults(defineProps<{
   activeRunIds?: readonly string[];
   actionsVisible?: boolean;
   isLastRow?: boolean;
-  trailingStatus?: ConversationMessageCanvasTrailingStatus;
+  /** 只有主画布最后一行收到；null 表示没有运行。 */
+  trailingStatus?: ConversationMessageCanvasTrailingStatus | null;
   /** 只有主时间线列出本轮改动的文档；Subrun 详情不列。 */
   showsRunDocumentChanges?: boolean;
 }>(), {
@@ -126,7 +117,7 @@ const props = withDefaults(defineProps<{
   activeRunIds: () => [],
   actionsVisible: false,
   isLastRow: false,
-  trailingStatus: () => ({ active: false, visible: false }),
+  trailingStatus: null,
   showsRunDocumentChanges: false,
 });
 
@@ -135,13 +126,14 @@ defineEmits<{
   'row-mouseleave': [row: ConversationVisualRowModel, event: globalThis.MouseEvent];
   'edit-message': [command: EditUserMessageCommand];
   'regenerate-response': [command: RegenerateUserMessageCommand];
+  'toggle-work-fold': [rootUserMessageId: string];
 }>();
 
 const isTurnStreaming = computed(() => (
   isVisualTurnOwnedByActiveRun(props.turnMessages, props.activeRunIds)
 ));
 const isMessageStreaming = computed(() => (
-  isAnswerSegmentStreaming(props.item.payload, isTurnStreaming.value)
+  props.item.kind === 'message' && isAnswerSegmentStreaming(props.item.payload, isTurnStreaming.value)
 ));
 const actionAnswers = computed(() => resolveTurnFinalAnswers(props.turnMessages));
 
@@ -172,20 +164,12 @@ const tailLayout = computed(() => resolveConversationRowTailLayout({
   isTurnEnd: props.item.isTurnEnd,
   isLastRow: props.isLastRow,
   hasAnswerActions: actionAnswers.value.length > 0,
-  trailingStatusActive: props.trailingStatus.active,
+  trailingStatusActive: props.trailingStatus !== null,
   hasRunDocumentChanges: runChangesNote.value !== null,
 }));
-const turnDurationMs = computed(() => {
-  const userMessage = props.turnMessages.find(
-    message => message.id === props.item.turnContext.userMessageId,
-  );
-  const agentWork = userMessage?.type === 'user_input' ? userMessage.metadata?.agent_work : undefined;
-  if (!isRecord(agentWork)) return undefined;
-  const duration = agentWork['duration_ms'];
-  return typeof duration === 'number' && Number.isFinite(duration) && duration >= 0
-    ? duration
-    : undefined;
-});
+const previousIsUserMessage = computed(() => (
+  props.previousRow?.kind === 'message' && props.previousRow.payload.type === 'user_input'
+));
 const rowClasses = computed(() => ({
   'virtual-conversation-item': props.offsetPx !== undefined,
   'virtual-conversation-canvas-item': props.offsetPx !== undefined,
@@ -193,9 +177,11 @@ const rowClasses = computed(() => ({
   'is-turn-end': props.item.isTurnEnd,
   'is-bounded': props.item.bounded,
   'is-actions-visible': props.actionsVisible,
-  'follows-user-message': props.previousRow?.payload.type === 'user_input',
-  'follows-user-thought': props.previousRow?.payload.type === 'user_input'
-    && props.item.payload.type === 'thought',
+  'follows-user-message': previousIsUserMessage.value,
+  // 折叠行与思考行同一种行头，紧贴用户消息的间距规则也相同。
+  'follows-user-thought': previousIsUserMessage.value
+    && (props.item.kind === 'turn-work-fold' || props.item.payload.type === 'thought'),
+  'follows-work-fold': props.previousRow?.kind === 'turn-work-fold',
 }));
 const rowStyle = computed<CSSProperties | undefined>(() => (
   props.offsetPx === undefined

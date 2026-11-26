@@ -1,0 +1,46 @@
+/* 几何与配色沿用 ThoughtMessage 的行头（同一组 --thought-message-* token），只是没有“…”记号。 */
+.turn-work-fold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+}
+
+.turn-work-fold__arrow {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--thought-message-arrow-shift);
+  color: var(--thought-message-arrow-color);
+  transition: color var(--duration-medium) var(--ease-standard);
+}
+
+.turn-work-fold__label {
+  color: var(--thought-message-title-color);
+  font-size: var(--font-size-footnote);
+  white-space: nowrap;
+  transition: color var(--duration-medium) var(--ease-standard);
+}
+
+.turn-work-fold:hover .turn-work-fold__label {
+  color: var(--thought-message-title-hover-color);
+}
+
+.turn-work-fold:hover .turn-work-fold__arrow {
+  color: var(--thought-message-arrow-hover-color);
+}
+
+.turn-work-fold:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}

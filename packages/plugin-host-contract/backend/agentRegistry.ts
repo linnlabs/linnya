@@ -58,6 +58,11 @@ export interface AgentConfiguration {
   readonly preferredModelCapability?: string;
   /** 当前 Agent 单次 execution 的 Graph 节点预算；未声明时使用 Linnkit 框架默认值。 */
   readonly maxSteps?: number;
+  /**
+   * 同一父 run 最多启动几次本 Agent 的子运行。由 Host 在持久 admission 事务里计数，
+   * 并行调用与暂停恢复都不会越过；超额时子运行不启动，调用方用 `isChildRunLimitExceeded` 识别。
+   */
+  readonly maxCallsPerParentRun?: number;
   readonly stepPolicy?: AgentStepPolicy;
   readonly skill?: AgentSkillPolicy;
   readonly contextPolicy?: AgentSpecContextPolicy;

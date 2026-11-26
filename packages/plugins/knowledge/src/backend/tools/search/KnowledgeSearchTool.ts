@@ -12,7 +12,7 @@
 
 import { runWithKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
 
-import { BaseTool, ToolParameterSchema, ToolContext, CommonParameterTypes } from '@plugin/backend/toolRuntime';
+import { BaseTool, ToolParameterSchema, ToolContext, CommonParameterTypes, isChildRunLimitExceeded } from '@plugin/backend/toolRuntime';
 import { KnowledgeSearchArgsSchema, KnowledgeSearchResultSchema } from '@app/schemas';
 import { runShallowSearch } from './shallow/runShallowSearch';
 import { runDeepSearch, DeepSearchFailedError } from './deep/runDeepSearch';
@@ -26,30 +26,13 @@ import { requireCitationSequenceOffset } from '@plugin/backend/citationSourceRun
 const logger = new Logger('KnowledgeSearchTool');
 
 /**
- * 🔥 deep_search 调用次数硬约束（根因级治理）
+ * deep_search 次数上限（同一父 run 最多 2 次）。
  *
- * 背景：
- * - 上层 Agent 有时会在同一轮 run 中多次调用 deep_search（deep_search=true），造成 token 巨量浪费；
- * - 仅靠 prompt/描述约束不可靠，必须在工具层做确定性限制。
- *
- * 约束：
- * - 同一个 run 内最多执行 2 次 deep_search；
- * - 第 3 次及以后：自动降级为浅搜索（保持产品可用性）。
- *
- * 说明：同一 run 的 ToolNode 共享同一个 ToolContext；WeakMap 既保持 run 隔离，
- * 也允许 run 结束后随上下文自动释放，禁止在长生命周期工具实例上保存 runId Map。
+ * 真正的计数在 Host：deep-search Agent 声明 `maxCallsPerParentRun`，子运行接纳时在 SQLite 事务里
+ * 计数，并行调用和恢复都不会越过。这里只保留数字用于日志与超额降级的说明。
+ * 不能改回按 ToolContext 对象计数：Linnkit 0.48 起每个调用拿到派生的上下文，按对象计数永远是 0。
  */
 const MAX_DEEP_SEARCH_CALLS_PER_RUN = 2;
-const deepSearchCallCountByContext = new WeakMap<object, number>();
-
-function getDeepSearchExecutedCount(context: ToolContext): number {
-  return deepSearchCallCountByContext.get(context) ?? 0;
-}
-
-function markDeepSearchExecuted(context: ToolContext): void {
-  const prev = deepSearchCallCountByContext.get(context) ?? 0;
-  deepSearchCallCountByContext.set(context, prev + 1);
-}
 
 /**
  * Deep Search 工具侧配置常量（仅包含“递归防护”等工具语义）
@@ -68,6 +51,12 @@ const DEEP_SEARCH_TOOL_CONFIG = {
  */
 export class KnowledgeSearchTool extends BaseTool {
   readonly name = 'knowledge_search';
+  /**
+   * 深度搜索起一个分钟级子运行，相邻调用同时执行才有墙钟收益；浅搜索只读，一起并行也安全。
+   * 深搜额度由子运行持久 admission 事务计数（见 deep-search Agent 的 maxCallsPerParentRun），
+   * 不依赖 ToolContext 对象：Linnkit 为每个调用派生独立上下文，按上下文计数会失效。
+   */
+  readonly parallel = true;
 
   get description() {
     return `Unified search tool for the knowledge base.
@@ -199,46 +188,22 @@ Important (ID semantics):
 
     // 递归防护硬闸统一使用 runtime 的 childRunDepth。
     const deepSearchDepth = readDeepSearchRuntimeDepth(context);
-    /**
-     * 🔥 deep_search 次数上限（同一 run 内最多 2 次）
-     *
-     * 注意：这里限制的是“实际执行 deep_search 的次数”，而不是参数传入次数。
-     * - 当达到上限时，shouldDeepSearch=false，后续流程将走浅搜索；
-     * - 这是确定性限制：避免 token 巨量浪费，同时不影响可用性。
-     */
-    const deepSearchExecutedCount = getDeepSearchExecutedCount(context);
-    const canExecuteMoreDeepSearch = deepSearchExecutedCount < MAX_DEEP_SEARCH_CALLS_PER_RUN;
-    const isBlockedByDeepSearchCallLimit = deep_search && !canExecuteMoreDeepSearch;
-    const shouldDeepSearch =
-      deep_search &&
-      deepSearchDepth < DEEP_SEARCH_TOOL_CONFIG.MAX_DEPTH &&
-      canExecuteMoreDeepSearch;
+    const shouldDeepSearch = deep_search && deepSearchDepth < DEEP_SEARCH_TOOL_CONFIG.MAX_DEPTH;
 
     // ✅ 图谱能力档位由业务决定（ToolContext 注入 / childRunDepth），模型无权选择
     const graphPolicy = resolveGraphPolicyFromContext(context);
 
     if (deep_search && !shouldDeepSearch) {
-      if (deepSearchDepth >= DEEP_SEARCH_TOOL_CONFIG.MAX_DEPTH) {
-        logger.warn('深度搜索触发递归限制，改走浅搜索', {
-          runId: context.runId,
-          childRunDepth: deepSearchDepth,
-          maxDepth: DEEP_SEARCH_TOOL_CONFIG.MAX_DEPTH,
-        });
-      } else if (!canExecuteMoreDeepSearch) {
-        logger.warn('深度搜索触发单次 run 限额，改走浅搜索', {
-          runId: context.runId,
-          executedCount: deepSearchExecutedCount,
-          limit: MAX_DEEP_SEARCH_CALLS_PER_RUN,
-        });
-      }
+      logger.warn('深度搜索触发递归限制，改走浅搜索', {
+        runId: context.runId,
+        childRunDepth: deepSearchDepth,
+        maxDepth: DEEP_SEARCH_TOOL_CONFIG.MAX_DEPTH,
+      });
     }
-
 
     // 深度搜索模式：启动子 Agent
     if (shouldDeepSearch) {
       try {
-        // 进入 deep_search 前先计数：确保同一 run 内最多执行 2 次
-        markDeepSearchExecuted(context);
         const deepResult = await runDeepSearch({
           query,
           docId: doc_id,
@@ -262,6 +227,25 @@ Important (ID semantics):
         if (e instanceof Error && e.name === 'AbortError') {
           throw e;
         }
+        /**
+         * 🔥 deep_search 次数上限降级策略：显式请求深搜但本父 run 额度已用完时，为保持召回覆盖面，
+         * 浅搜索 topK 至少提升到 CANDIDATE_TOP_K。只认 Host 的额度拒绝（子运行未启动），其他错误不降级。
+         */
+        if (isChildRunLimitExceeded(e)) {
+          logger.warn('深度搜索触发单次 run 限额，改走浅搜索', {
+            runId: context.runId,
+            limit: MAX_DEEP_SEARCH_CALLS_PER_RUN,
+          });
+          const shallowResult = await runShallowSearch({
+            query,
+            docId: doc_id,
+            topK: Math.max(top_k, DEEP_SEARCH_AGENT_CONFIG.CANDIDATE_TOP_K),
+            context,
+            citationOffset,
+            graph: graphPolicy,
+          });
+          return JSON.stringify(shallowResult);
+        }
         // deep_search 失败：按既有产品语义降级为浅搜索
         if (e instanceof DeepSearchFailedError) {
           logger.warn('深度搜索执行失败，改走浅搜索', {
@@ -282,26 +266,11 @@ Important (ID semantics):
       }
     }
 
-    // 浅搜索模式
-    /**
-     * 🔥 deep_search 次数上限降级策略（你提出的规则）
-     *
-     * 目标：
-     * - 当用户/模型显式请求 deep_search（deep_search=true），但因为“同一 run 超过 2 次”被拦截时，
-     *   为了保持召回覆盖面，浅搜索 topK 至少提升到 DEEP_SEARCH_AGENT_CONFIG.CANDIDATE_TOP_K。
-     *
-     * 注意：
-     * - 这是“超限降级”的确定性策略；
-     * - 递归防护（childRunDepth）导致的降级不在此列，仍然尊重调用方传入的 top_k（默认 5）。
-     */
-    const effectiveShallowTopK =
-      isBlockedByDeepSearchCallLimit && deepSearchDepth < DEEP_SEARCH_TOOL_CONFIG.MAX_DEPTH
-        ? Math.max(top_k, DEEP_SEARCH_AGENT_CONFIG.CANDIDATE_TOP_K)
-        : top_k;
+    // 浅搜索模式（含递归防护导致的降级：仍尊重调用方传入的 top_k）
     const shallowResult = await runShallowSearch({
       query,
       docId: doc_id,
-      topK: effectiveShallowTopK,
+      topK: top_k,
       context,
       citationOffset,
       graph: graphPolicy,

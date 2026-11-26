@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 
 import { createPinia, setActivePinia } from 'pinia';
-import type { ModelSourceRemovalResult } from '../../../definitions/modelSourceRemoval';
+import type {
+  ModelSourceRemovalResult,
+  ModelSourceRemovalTargets,
+} from '../../../definitions/modelSourceRemoval';
 import type { ModelPickerSnapshot } from '@app/schemas/model-picker';
 import type { CustomApiProviderUpdateRequest } from '@app/schemas/custom-api-onboarding';
 import type { DirectProviderCredentialReplacementCommand } from '@app/schemas/provider-onboarding';
@@ -15,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   removeCustomApiProviderModels:
     vi.fn<(name: string) => Promise<{ synchronizationFailed: boolean }>>(),
   removeModelSource:
-    vi.fn<(modelConfigIds: readonly string[]) => Promise<ModelSourceRemovalResult>>(),
+    vi.fn<(targets: ModelSourceRemovalTargets) => Promise<ModelSourceRemovalResult>>(),
   refreshModelCatalog: vi.fn<() => Promise<void>>(),
   loadModelPicker: vi.fn<() => Promise<ModelPickerSnapshot>>(),
   updateProvider: vi.fn<(request: CustomApiProviderUpdateRequest) => Promise<unknown>>(),
@@ -93,6 +96,7 @@ function snapshot(overrides: { readonly credentialAvailable?: boolean } = {}): M
         credential_kind: 'api_key',
         picker_enabled: true,
         credential_available: overrides.credentialAvailable ?? true,
+        unadmitted_models: [],
         ...(overrides.credentialAvailable === false
           ? { credential_unavailable_reason: 'missing' as const }
           : {}),
@@ -109,14 +113,17 @@ function snapshot(overrides: { readonly credentialAvailable?: boolean } = {}): M
         credential_kind: 'provider_account',
         picker_enabled: true,
         credential_available: true,
+        unadmitted_models: [],
         models: [materializedModel('chatgpt-sol')],
       },
     ],
     custom_models: [materializedModel('relay-a'), materializedModel('relay-b')],
+    unassigned_unadmitted_models: [],
     custom_providers: [
       {
         provider_id: 'custom:Relay',
         provider_name: 'Relay',
+        unadmitted_models: [],
         api_format: 'openai_compatible',
         base_url: 'https://relay.example.com/v1',
         endpoint_id: 'relay-endpoint',
@@ -246,6 +253,7 @@ describe('ModelVisibilitySettingsSection 供应商编辑与删除', () => {
     await flushUi();
     expect(mocks.confirm).toHaveBeenLastCalledWith({
       message: 'settings.modelPicker.removeCustomProvider.confirm',
+      sections: [],
       isDangerousAction: true,
     });
     expect(mocks.removeCustomApiProviderModels).toHaveBeenCalledWith('Relay');

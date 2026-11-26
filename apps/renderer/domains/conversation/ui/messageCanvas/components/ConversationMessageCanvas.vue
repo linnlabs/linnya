@@ -16,12 +16,13 @@
       :active-run-ids="activeRunIds"
       :actions-visible="hoveredVisualTurnId === placement.item.visualTurnId"
       :is-last-row="placement.index === items.length - 1"
-      :trailing-status="trailingStatus"
+      :trailing-status="placement.index === items.length - 1 ? trailingStatus : null"
       :shows-run-document-changes="showsRunDocumentChanges"
       @row-mouseenter="hoveredVisualTurnId = $event.visualTurnId"
       @row-mouseleave="handleRowMouseLeave"
       @edit-message="$emit('edit-message', $event)"
       @regenerate-response="$emit('regenerate-response', $event)"
+      @toggle-work-fold="$emit('toggle-work-fold', $event)"
     />
     <ConversationAnswerRenderHost
       ref="answerRenderHostRef"
@@ -61,7 +62,8 @@ const props = withDefaults(defineProps<{
   measureElement?: ConversationVisualRowMeasureElement;
   activeRunIds?: readonly string[];
   answerRenderWidthPx?: number;
-  trailingStatus?: ConversationMessageCanvasTrailingStatus;
+  /** 状态行每秒更新，只交给最后一行，避免可见行全部跟着重渲染。 */
+  trailingStatus?: ConversationMessageCanvasTrailingStatus | null;
   showsRunDocumentChanges?: boolean;
 }>(), {
   placements: undefined,
@@ -69,13 +71,14 @@ const props = withDefaults(defineProps<{
   measureElement: undefined,
   activeRunIds: () => [],
   answerRenderWidthPx: 720,
-  trailingStatus: () => ({ active: false, visible: false }),
+  trailingStatus: null,
   showsRunDocumentChanges: false,
 });
 
 defineEmits<{
   'edit-message': [command: EditUserMessageCommand];
   'regenerate-response': [command: RegenerateUserMessageCommand];
+  'toggle-work-fold': [rootUserMessageId: string];
 }>();
 
 const hoveredVisualTurnId = ref<ConversationVisualTurnId | null>(null);

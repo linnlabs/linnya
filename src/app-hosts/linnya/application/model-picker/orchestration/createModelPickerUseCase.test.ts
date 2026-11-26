@@ -74,6 +74,7 @@ describe('createModelPickerUseCase', () => {
       },
       modelCatalog: {
         getModels: () => [],
+        getUnadmittedUserModels: () => [],
         getModel: () => undefined,
         getInferenceEndpoints: () => [],
         getCustomApiGroups: () => [],
@@ -91,6 +92,7 @@ describe('createModelPickerUseCase', () => {
         getCredentialStatus: () => 'missing',
       },
       providerModelActivation: { registerDirectProviderModel },
+      providerModelRepair: { repairUnadmittedProviderModels: vi.fn() },
     });
 
     await useCase.activateProviderModel('configured-openai', 'gpt-new');
@@ -124,6 +126,7 @@ describe('createModelPickerUseCase', () => {
       },
       modelCatalog: {
         getModels: () => [],
+        getUnadmittedUserModels: () => [],
         getModel: () => undefined,
         getInferenceEndpoints: () => [],
         getCustomApiGroups: () => [],
@@ -141,10 +144,76 @@ describe('createModelPickerUseCase', () => {
         getCredentialStatus: () => 'missing',
       },
       providerModelActivation: { registerDirectProviderModel: vi.fn() },
+      providerModelRepair: { repairUnadmittedProviderModels: vi.fn() },
     });
 
     await expect(
       useCase.activateProviderModel('configured-openai', 'claude-foreign')
     ).rejects.toMatchObject({ code: 'model_picker.provider_model_not_found' });
+  });
+
+  it('刷新先按支持情况拉取最新目录，再按 Provider 定义修复停用成员；没有在线刷新的 bundled Provider 也修复', async () => {
+    const calls: string[] = [];
+    const build = (supportsRefresh: boolean) =>
+      createModelPickerUseCase({
+        discoveredModels: { read: () => undefined, readAvailable: () => undefined },
+        providerModelRefresh: {
+          supports: () => supportsRefresh,
+          refresh: vi.fn(async () => {
+            calls.push('refresh');
+          }),
+        },
+        providerCatalog: {
+          list: () => [openai],
+          getConnection: id =>
+            id === openAiConnection.id
+              ? { provider: openai, connection: openAiConnection }
+              : undefined,
+        },
+        providerConfigurations: {
+          list: () => [
+            {
+              id: 'configured-openai',
+              provider_definition_id: 'openai',
+              provider_connection_definition_id: 'openai-api',
+              models: [
+                { provider_model_id: 'gpt-existing', model_config_id: 'model-gpt-existing' },
+              ],
+            },
+          ],
+          getByModelConfigId: () => undefined,
+        },
+        modelCatalog: {
+          getModels: () => [],
+          getUnadmittedUserModels: () => [],
+          getModel: () => undefined,
+          getInferenceEndpoints: () => [],
+          getCustomApiGroups: () => [],
+          hasCredential: () => false,
+          getCredentialStatus: () => 'missing',
+        },
+        preferences: {
+          read: () => ({ provider_preferences: [], model_preferences: [] }),
+          setProviderVisibility: vi.fn(),
+          setModelVisibility: vi.fn(),
+        },
+        providerAccounts: {
+          list: () => [],
+          hasCredential: () => false,
+          getCredentialStatus: () => 'missing',
+        },
+        providerModelActivation: { registerDirectProviderModel: vi.fn() },
+        providerModelRepair: {
+          repairUnadmittedProviderModels: vi.fn(async (connectionId: string) => {
+            calls.push(`repair:${connectionId}`);
+          }),
+        },
+      });
+
+    await build(true).refreshProviderModels('configured-openai');
+    expect(calls).toEqual(['refresh', 'repair:openai-api']);
+    calls.length = 0;
+    await build(false).refreshProviderModels('configured-openai');
+    expect(calls).toEqual(['repair:openai-api']);
   });
 });

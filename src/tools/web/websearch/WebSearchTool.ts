@@ -28,6 +28,11 @@ export class WebSearchTool extends BaseTool {
     };
   }
   readonly name = 'web_search';
+  /**
+   * 深度搜索起一个分钟级子运行，相邻调用同时执行才有墙钟收益；浅搜索只读，一起并行也安全。
+   * 每父 run 4 次的深搜额度由持久 admission 事务计数，并发调用不会越过额度。
+   */
+  readonly parallel = true;
   readonly argumentValidationErrorCode = 'WEB_SEARCH_ARGUMENTS_INVALID';
   readonly description = `Search the web. Default returns titles, URLs and search snippets.
 Use deep_search=true for a focused question needing multi-query discovery, actual reading and selected source excerpts. An internal agent uses the current model; it returns materials and gaps, not a verified answer. At most 4 deep starts per run; further requests explicitly use ordinary search. Internally it can perform multiple searches and reads. Only cite returned [@ref]. Search snippets and metadata-only pages are not full article reads.

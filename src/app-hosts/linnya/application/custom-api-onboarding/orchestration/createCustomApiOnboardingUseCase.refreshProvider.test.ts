@@ -98,6 +98,7 @@ async function setup(fetchFn: typeof fetch, endpoints = [connection]) {
   const useCase = createCustomApiOnboardingUseCase({
     modelCatalog: {
       getUserRevision: () => revision,
+      getUnadmittedUserModels: () => [],
       applyCustomApiGroupModelDiff,
       removeCustomApiGroup: vi.fn(),
       getCustomApiGroups: () => groups,

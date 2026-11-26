@@ -107,6 +107,7 @@ const ImageReadCard = defineAsyncComponent(
 
 const subagentToolUiConfig: ToolUiConfig = {
   component: SubrunProgressCard,
+  activity: 'delegate',
   titleComponent: SubrunCompactStepTitle,
   icon: BulletListIcon,
   presentation: projectSingleSubrunPresentation,
@@ -135,6 +136,7 @@ const askToolUiConfig: ToolUiConfig = {
 
 const imageGenerationToolUiConfig: ToolUiConfig = {
   component: ImageGenerationCard,
+  activity: 'image',
   presentation: projectImageGenerationPresentation,
   compactStep: compactStep.image,
   layout: {
@@ -175,6 +177,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'skill_resource_read': {
     component: SkillLearnedCard,
+    activity: 'read',
     presentation: projectSkillPresentation,
     compactStep: compactStep.skill,
     layout: {
@@ -199,6 +202,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
 
   'image_read': {
     component: ImageReadCard,
+    activity: 'read',
     icon: ImageIcon,
     presentation: projectImageReadPresentation,
     compactStep: compactStep.imageRead,
@@ -217,6 +221,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // ---------------------------------------------------------------------------
   'list_files': {
     component: NoopToolContent,
+    activity: 'search',
     icon: BulletListIcon,
     presentation: projectWorkspaceListFilesPresentation,
     compactStep: compactStep.listFiles,
@@ -224,6 +229,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'write_file': {
     component: NoopToolContent,
+    activity: 'edit',
     icon: EditIcon,
     presentation: projectWorkspaceWriteFilePresentation,
     compactStep: compactStep.writeFile,
@@ -231,6 +237,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'edit_file': {
     component: NoopToolContent,
+    activity: 'edit',
     icon: EditIcon,
     presentation: projectWorkspaceEditFilePresentation,
     compactStep: compactStep.editFile,
@@ -238,6 +245,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'grep': {
     component: NoopToolContent,
+    activity: 'search',
     icon: SearchIcon,
     presentation: projectWorkspaceGrepPresentation,
     compactStep: compactStep.grep,
@@ -276,6 +284,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // ---------------------------------------------------------------------------
   'sharedmemory_list': {
     component: SharedMemoryDocListCard,
+    activity: 'search',
     icon: BulletListIcon,
     presentation: projectSharedMemoryListPresentation,
     compactStep: compactStep.sharedMemoryList,
@@ -283,6 +292,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'sharedmemory_read': {
     component: SharedMemoryDocReadCard,
+    activity: 'read',
     icon: ReadIcon,
     presentation: projectConversationArtifactReadPresentation,
     compactStep: compactStep.sharedMemoryRead,
@@ -290,6 +300,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'sharedmemory_write': {
     component: SharedMemoryDocWriteCard,
+    activity: 'edit',
     icon: EditIcon,
     presentation: projectSharedMemoryWritePresentation,
     compactStep: compactStep.sharedMemoryWrite,
@@ -308,6 +319,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'task_write': {
     component: TaskStateCard,
+    activity: 'plan',
     icon: EditIcon,
     presentation: projectTaskStatePresentation,
     compactStep: compactStep.taskWrite,
@@ -323,6 +335,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'taskstate_write': {
     component: TaskStateCard,
+    activity: 'plan',
     icon: EditIcon,
     presentation: projectTaskStatePresentation,
     compactStep: compactStep.taskWrite,
@@ -341,6 +354,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'todo_write': {
     component: AgentTodoCard,
+    activity: 'plan',
     icon: BulletListIcon,
     presentation: projectAgentTodoPresentation,
     compactStep: compactStep.todoWrite,
@@ -352,6 +366,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   // ---------------------------------------------------------------------------
   'tool_output_read': {
     component: ToolOutputReadCard,
+    activity: 'read',
     icon: ReadIcon,
     presentation: projectToolOutputReadPresentation,
     compactStep: compactStep.toolOutput,
@@ -378,6 +393,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'research_run': {
     component: ResearchRunCard,
+    activity: 'delegate',
     presentation: projectResearchRunPresentation,
     compactStep: projectResearchRunCompactStep,
     runtime: { subrunTrace: true },
@@ -385,6 +401,7 @@ export const commonToolConfigs: Record<string, ToolUiConfig> = {
   },
   'subrun_batch': {
     component: SubrunBatchCollection,
+    activity: 'delegate',
     presentation: projectSubrunBatchPresentation,
     compactStep: compactStep.subrunBatch,
     runtime: { subrunTrace: true },
