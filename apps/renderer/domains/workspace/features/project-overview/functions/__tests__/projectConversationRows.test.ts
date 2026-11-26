@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { ProjectConversationRow } from '@app/schemas';
 import {
   chunkConversationIds,
-  formatProjectConversationAgents,
-  projectConversationRepliedAgents,
+  formatProjectConversationActors,
+  projectConversationActorFilterValues,
   projectConversationSubrunCount,
   projectConversationsTotalBytes,
   sortProjectConversationsByAgentLabel,
@@ -40,15 +40,23 @@ const storage = (bytes: number) => ({
 
 
 describe('项目对话行', () => {
-  it('Agent 显示：回复过的按最近在前连接，没有回复时为 null；筛选项是全部回复过的 Agent', () => {
+  it('Agent 列：回复过的按最近在前连接，没有回复时为 null；筛选项是全部回复过的 Agent', () => {
     const name = (agentId: string | null) => agentId ?? 'Linnya Agent';
-    expect(formatProjectConversationAgents(['slides_agent', null], name, '、')).toBe('slides_agent、Linnya Agent');
-    expect(formatProjectConversationAgents([], name, '、')).toBeNull();
-    expect(projectConversationRepliedAgents([
+    expect(formatProjectConversationActors(row('a', { replied_agent_ids: ['slides_agent', null] }), name, '、')).toBe('slides_agent、Linnya Agent');
+    expect(formatProjectConversationActors(row('b', { replied_agent_ids: [] }), name, '、')).toBeNull();
+    expect(projectConversationActorFilterValues([
       row('a', { replied_agent_ids: ['research_v1', null] }),
       row('b', { replied_agent_ids: [null] }),
       row('c', { replied_agent_ids: [] }),
     ])).toEqual(['research_v1', '']);
+  });
+
+  it('Linnya CLI 创建的对话：Agent 列只显示入口，筛选项多一个入口值，不冒出默认 Agent', () => {
+    const name = (actorId: string | null) => actorId ?? 'Linnya Agent';
+    const cli = row('cli', { origin: 'linnya_cli', replied_agent_ids: [] });
+    expect(formatProjectConversationActors(cli, name, '、')).toBe('linnya_cli');
+    expect(projectConversationActorFilterValues([cli, row('a', { replied_agent_ids: ['research_v1'] })]))
+      .toEqual(['linnya_cli', 'research_v1']);
   });
 
   it('子任务按全部子运行合计，不按 Agent 分列', () => {

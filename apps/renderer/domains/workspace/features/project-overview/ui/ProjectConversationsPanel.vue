@@ -350,13 +350,14 @@ import {
 import type { ProjectOverviewDocumentTarget, ProjectOverviewPresentation } from '../definitions/projectOverview';
 import {
   defaultProjectConversationSortDirection,
-  formatProjectConversationAgents,
-  projectConversationRepliedAgents,
+  formatProjectConversationActors,
+  projectConversationActorFilterValues,
   projectConversationStorageBytes,
   projectConversationSubrunCount,
   sortProjectConversationsByAgentLabel,
 } from '../functions/projectConversationRows';
 import { isExcerptShown } from '../functions/projectConversationExcerpt';
+import { resolveProjectConversationActorName } from '../functions/projectOverviewPresentation';
 import { clearProjectConversationWorkFiles } from '../orchestration/clearProjectConversationWorkFiles';
 import { useProjectConversationDetail } from '../orchestration/useProjectConversationDetail';
 import { useProjectConversationQuery } from '../orchestration/useProjectConversationQuery';
@@ -413,9 +414,13 @@ watch(projectIdRef, () => { filters.value = { ...EMPTY_PROJECT_CONVERSATION_FILT
 function agentText(agentId: string | null): string {
   return props.presentation.agentName(agentId);
 }
+/** Agent 列、筛选菜单和详情“回复过”共用：发起入口（Linnya CLI）与 Agent 同在一个取值空间。 */
+function actorText(actorId: string | null): string {
+  return resolveProjectConversationActorName(actorId, agentText, message);
+}
 const listSeparator = computed(() => message('workspace.projectOverview.condition.join'));
 function repliedAgentsText(row: ProjectConversationRow): string | null {
-  return formatProjectConversationAgents(row.replied_agent_ids, agentText, listSeparator.value);
+  return formatProjectConversationActors(row, actorText, listSeparator.value);
 }
 function titleText(row: ProjectConversationRow): string {
   return row.title.trim() || message('workspace.projectOverview.untitledConversation');
@@ -449,8 +454,8 @@ function filterText(labelKey: WorkspaceMessageKey, value: string | null): string
 }
 
 const agentOptions = computed<CustomSelectOption<string>[]>(() => {
-  const agents = projectConversationRepliedAgents(props.rows)
-    .map(agent => ({ value: agent, text: agentText(agent || null) }))
+  const agents = projectConversationActorFilterValues(props.rows)
+    .map(actor => ({ value: actor, text: actorText(actor || null) }))
     .sort((left, right) => left.text.localeCompare(right.text, currentLocale.value));
   return [
     { value: ALL, text: message('workspace.projectOverview.conversations.filter.agentAll') },
@@ -458,7 +463,7 @@ const agentOptions = computed<CustomSelectOption<string>[]>(() => {
     ...agents,
   ];
 });
-const agentFilterText = computed(() => (filters.value.agent === null ? null : agentText(filters.value.agent || null)));
+const agentFilterText = computed(() => (filters.value.agent === null ? null : actorText(filters.value.agent || null)));
 function setAgentFilter(value: string): void {
   filters.value = { ...filters.value, agent: value === ALL ? null : value };
 }
