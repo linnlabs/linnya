@@ -56,7 +56,7 @@ export const LOCAL_CI_STEP_SCHEDULE: LocalCiSchedule = {
       'Verify identity and overview label pixels on Linux': 'loadSensitive',
       'Verify identity and overview label pixels on macOS and Windows': 'loadSensitive',
       'Diagnose Linux large-cluster paint lifecycle independently': 'loadSensitive',
-      // 冒烟还会重建 schemas 并重新打包 Canvas（同时是写产物的步骤），独占执行也覆盖了这一点。
+      // 专项冒烟运行真实 Electron，独占执行；单独运行时还会构建 schemas 和 Canvas 制品。
       'Verify isolated Canvas artifact on Linux': 'loadSensitive',
       'Verify isolated Canvas artifact on macOS and Windows': 'loadSensitive',
     },

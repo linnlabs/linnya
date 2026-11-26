@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, mkdirSync } from 'node:fs';
+import { readdirSync, readFileSync, mkdirSync, realpathSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -148,6 +148,7 @@ async function main(): Promise<number> {
   const pruned = pruneOrphanedLocalCiCheckouts(repositoryRoot);
   if (pruned.length) console.log(`已回收 ${pruned.length} 份被强制结束的运行留下的检出`);
   const checkout = prepareLocalCiCheckout(repositoryRoot, { inPlace: options.inPlace, keep: options.keep, workingCopy: options.workingCopy });
+  const fullScope = !options.workingCopy && options.workflows.length === 0 && options.jobs.length === 0;
   const logDirectory = path.join(repositoryRoot, '_dev_data/ci-local', timestamp());
   mkdirSync(logDirectory, { recursive: true });
   // 本次目录已建好，算在最近 N 个之内；清理失败只提示，不影响这次运行。
@@ -188,7 +189,11 @@ async function main(): Promise<number> {
       root: checkout.root,
       logDirectory,
       // 只跨干净检出保留锁定的下载包，每轮仍在自己的 extraResources 解包并验收。
-      env: { LINNYA_RUNTIME_ARCHIVE_CACHE_DIR: path.join(repositoryRoot, '_dev_data', 'ci-local', 'runtime-archives') },
+      env: {
+        LINNYA_RUNTIME_ARCHIVE_CACHE_DIR: path.join(repositoryRoot, '_dev_data', 'ci-local', 'runtime-archives'),
+        // 两个任务共用这次临时检出。定向、工作副本和原地运行仍各自从头打包。
+        LINNYA_CI_ARTIFACT_CHECKOUT: checkout.clean && fullScope ? realpathSync(checkout.root) : '',
+      },
       signal: controller.signal,
       concurrency: parallelism.concurrency,
       testWorkers: parallelism.testWorkers,
@@ -217,7 +222,7 @@ async function main(): Promise<number> {
       clean: checkout.clean,
       // 只有不加 --workflow / --job、计划里每一步都有结果的干净检出才代表“全部 CI 在这份代码上通过”。
       // 测试分片只在覆盖 1..N 每一片时才合并，覆盖记录见 mergedTestRuns。
-      fullRun: !options.workingCopy && options.workflows.length === 0 && options.jobs.length === 0 && results.length === plan.steps.length,
+      fullRun: fullScope && results.length === plan.steps.length,
       passed: completed && failures.length === 0 && !controller.signal.aborted,
       durationMs: Date.now() - started,
       interrupted: controller.signal.aborted,
