@@ -131,6 +131,7 @@ export type WorkspaceMessageKey =
   | 'workspace.fileManager.markdown.editorUnavailable'
   | 'workspace.fileManager.markdown.documentIdMissing'
   | 'workspace.fileManager.markdown.saved'
+  | 'workspace.fileManager.markdown.referenceNotSavable'
   | 'workspace.fileManager.save.unknownError'
   | 'workspace.fileManager.save.failed'
   | 'workspace.fileManager.save.exception'

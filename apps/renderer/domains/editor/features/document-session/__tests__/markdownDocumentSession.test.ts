@@ -138,6 +138,18 @@ it('全部接受与本地未保存正文一起提交，失败不清除视图或�
   expect(editor.isEditable).toBe(true);
 });
 
+it('保存被后端以用户可读原因拒绝（如正文里有无法保存的引用）时，原因随错误交给保存入口，草稿保留', async () => {
+  const editor = createEditor();
+  await open(editor, snapshot(['baseline'], []));
+  editBlock(editor, 0, 'local draft');
+  mocks.read.mockResolvedValue({ success: true, data: snapshot(['baseline'], []) });
+  const userMessage = { key: 'workspace.fileManager.markdown.referenceNotSavable', diagnostic: 'Document reference: target_not_found' };
+  mocks.commit.mockResolvedValueOnce({ success: false, error: 'Document reference: target_not_found', userMessage });
+  const failure = await saveMarkdownDocumentSession(editor, 'doc-a').catch((error: unknown) => error);
+  expect(failure).toMatchObject({ message: 'Document reference: target_not_found', userMessage });
+  expect(editor.state.doc.textContent).toBe('local draft');
+});
+
 it('保存期间新输入继续保留，且不会被错误标记为已保存', async () => {
   const editor = createEditor();
   await open(editor, snapshot(['baseline'], []));
