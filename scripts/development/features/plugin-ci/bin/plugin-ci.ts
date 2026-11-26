@@ -8,6 +8,7 @@ const { values } = parseArgs({ options: {
   base: { type: 'string', default: 'origin/main' },
   list: { type: 'boolean' },
   owner: { type: 'string' },
+  'pr-owner': { type: 'string' },
 } });
 const root = realpathSync(process.cwd());
 function run(args: readonly string[]): void {
@@ -15,9 +16,12 @@ function run(args: readonly string[]): void {
   execFileSync('pnpm', args, { cwd: root, stdio: 'inherit', env: { ...process.env, CI: 'true' } });
 }
 
-if (values.owner !== undefined) {
-  // PR 的独立 runner 接收已选中的 owner；平台矩阵由同一 PR 的可复用工作流调度。
-  for (const args of pluginOwnerCommands(values.owner)) run(args);
+if (values.owner !== undefined && values['pr-owner'] !== undefined) throw new Error('--owner 和 --pr-owner 只能选一个');
+const owner = values['pr-owner'] ?? values.owner;
+if (owner !== undefined) {
+  // 只有同时要求 public 任务成功的 PR 入口才把静态检查交给它。
+  const mode = values['pr-owner'] === undefined ? 'local' : 'pull-request';
+  for (const args of pluginOwnerCommands(owner, mode)) run(args);
 } else {
   const plan = selectPluginCiScope(root, values.base);
   console.log(JSON.stringify(plan, null, 2));
