@@ -4,6 +4,7 @@ import type { WorkspaceMarkdownPreviewInput, WorkspaceMarkdownPreviewSurface } f
 import { createWorkspacePreviewSerializer } from '../functions/createWorkspacePreviewSerializer';
 import { workspaceListNumbers } from '../functions/workspaceListNumbers';
 import { prepareWorkspacePreviewBlock, waitForPreviewResource } from './prepareWorkspacePreviewBlock';
+import { fitStaticWorkspaceTable, WORKSPACE_TABLE_CLASS } from '../../workspace-table';
 
 /**
  * 首屏与详情使用同一渲染；按真实块高逐步准备，到相交块停止，绝不先渲染全部图表再裁切。
@@ -59,6 +60,11 @@ export async function createWorkspaceMarkdownPreview(input: WorkspaceMarkdownPre
       }
       element.append(blockElement);
       await prepareWorkspacePreviewBlock(block, blockElement, input);
+      // 字体就绪后按本次宽度给表格定级，再量块高；与编辑器同一套退让规则。
+      for (const table of Array.from(blockElement.querySelectorAll<HTMLElement>(`table.${WORKSPACE_TABLE_CLASS}`))) {
+        const scroller = table.parentElement;
+        if (scroller) fitStaticWorkspaceTable(table, scroller);
+      }
       position += block.nodeSize;
       if (input.maxHeight !== undefined && element.getBoundingClientRect().height >= input.maxHeight) {
         element.style.maxHeight = `${input.maxHeight}px`;

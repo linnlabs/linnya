@@ -11,6 +11,7 @@ import {
   tableNodeTypes,
 } from 'prosemirror-tables';
 import { generateBlockId } from '../../../../../shared/utils/idUtils';
+import { tableHasStoredColumnWidths } from './tableStoredWidths';
 
 const DEFAULT_COLUMN_WIDTH = 150;
 
@@ -24,7 +25,7 @@ function createCellContentBlock(schema, createId) {
 function createInsertedCell(schema, cellType, createId, defaultColumnWidth) {
   const cellContent = createCellContentBlock(schema, createId);
   return cellType.create(
-    { colwidth: [defaultColumnWidth] },
+    { colwidth: defaultColumnWidth === null ? null : [defaultColumnWidth] },
     cellContent
   );
 }
@@ -47,6 +48,8 @@ export function insertTableColumnAt(params) {
   let expandedCellCount = 0;
 
   if (!schema.nodes.tableCellContentBlock) return null;
+  // 整表没有存储列宽时新列也不写宽度，表格继续按内容分列。
+  const newColumnWidth = tableHasStoredColumnWidths(table) ? defaultColumnWidth : null;
 
   if (columnIsHeader(map, table, col + refColumn)) {
     refColumn = col === 0 || col === map.width ? null : 0;
@@ -71,7 +74,7 @@ export function insertTableColumnAt(params) {
 
     const referenceCell = refColumn === null ? null : table.nodeAt(map.map[index + refColumn]);
     const cellType = referenceCell ? referenceCell.type : tableTypes.cell;
-    const newCell = createInsertedCell(schema, cellType, createId, defaultColumnWidth);
+    const newCell = createInsertedCell(schema, cellType, createId, newColumnWidth);
     const insertPosInTable = map.positionAt(row, col, table);
     const mappedInsertPos = tr.mapping.map(tableStart + insertPosInTable);
 

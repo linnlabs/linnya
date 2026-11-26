@@ -309,6 +309,25 @@ describe('composeSelectableModelMenu', () => {
     ).toBe(true);
   });
 
+  it('排在归属第一位的模型启动时停用，Provider 凭据仍按其余成员判断，其余模型照常可选', () => {
+    const result = composeSelectableModelMenu(
+      input({
+        provider_definitions: [providerDefinition('openai', 'OpenAI', ['gpt-a', 'gpt-b'])],
+        configured_providers: [configuredProvider('configured-openai', 'openai', ['gpt-a', 'gpt-b'])],
+        // gpt-a 没有通过准入：归属还在，但它不在运行目录里。
+        models: [chatModel('openai-gpt-b', 'user', 'endpoint-openai', 'GPT B')],
+        inference_endpoints: [customEndpoint('endpoint-openai')],
+      })
+    );
+
+    const [provider] = result.providers;
+    expect(provider?.credential_available).toBe(true);
+    expect(provider?.models.find(model => model.provider_model_id === 'gpt-b')).toMatchObject({
+      materialized: true,
+      runtime_available: true,
+    });
+  });
+
   it('按稳定 ConfiguredProvider 归属分组，不读取 URL 或模型名前缀猜 Provider', () => {
     const openai = configuredProvider('configured-openai', 'openai', ['gpt-a', 'gpt-b']);
     const anthropic = configuredProvider('configured-anthropic', 'anthropic', [

@@ -34,6 +34,8 @@ import {
   TableKeyboardExtension,
   TablePasteExtension,
   TableSelectionDecoratorExtension,
+  TableCellCompactExtension,
+  TableColumnFitExtension,
   TableVerticalNavigationStateExtension,
   CustomTableCell,
   CustomTableHeader
@@ -227,6 +229,8 @@ export function getAllExtensions(dependencies: ExtensionDependencies): Extension
     AnnotationKeyboardExtension,
     TableCellContentBlock,
     TableSelectionDecoratorExtension,
+    TableCellCompactExtension,
+    TableColumnFitExtension,
     ColumnReferenceNode,
     TableVerticalNavigationStateExtension,
     

@@ -223,7 +223,9 @@ export async function exportAsPDF(editor, settings = {}) {
     // 在异步绘制前固定本次文档；图表生成归 Editor，Workspace 只协调交付。
     const editorHtml = editor.getHTML();
     const { prepareMarkdownHtmlForPdf } = await import('@/domains/editor/document-export');
-    const printableHtml = await prepareMarkdownHtmlForPdf(editorHtml);
+    const printableHtml = await prepareMarkdownHtmlForPdf(editorHtml, {
+      tableWidthPx: resolvePrintableTableWidthPx(finalSettings),
+    });
     const styles = await getAllAppStyles();
     const completeHtml = createHtmlForPdf(printableHtml, styles, finalSettings);
     await requestExportPdf(defaultFileName, completeHtml);
@@ -247,6 +249,19 @@ export function exportAsWord(editor) {
 }
 
 // +++ 新增：尝试收集所有应用的 CSS 样式 +++
+/** 纸张宽度（cm，纵向）。打印样式只写 @page size，方向不改变版面宽度。 */
+const PDF_PAGE_WIDTH_CM = { A4: 21, A3: 29.7, Letter: 21.59, Legal: 21.59 };
+
+/**
+ * 表格可用的纸面宽度（CSS px）：纸宽减左右页边距，再减打印样式里 .root-block 左右各 5px 的内边距，
+ * 另留 8px 余量吸收字体与测量差异。PDF 快照按它给表格定级。
+ */
+function resolvePrintableTableWidthPx({ pageSize, margins }) {
+  const pageWidthCm = PDF_PAGE_WIDTH_CM[pageSize] ?? PDF_PAGE_WIDTH_CM.A4;
+  const contentCm = Math.max(1, pageWidthCm - margins.left - margins.right);
+  return Math.floor((contentCm * 96) / 2.54) - 10 - 8;
+}
+
 /**
  * 异步收集当前文档中所有可访问的 CSS 规则。
  * @returns {Promise<string>} 一个包含所有 CSS 规则的字符串。
@@ -347,8 +362,8 @@ function createHtmlForPdf(editorHtml, styles, settings) {
         margin-top: 0 !important;
         padding-top: 0 !important;
       }
-      /* 尝试避免在根块内部断页 */
-      .root-block-outer {
+      /* 尝试避免在根块内部断页；表格允许跨页（表头随 thead 重复，单行不断开，见 workspace-table.css）。 */
+      .root-block-outer:not(:has(table.table-block)) {
         page-break-inside: avoid;
         /* 移除：这里的左右边距重置无效 
         margin-left: 0 !important;

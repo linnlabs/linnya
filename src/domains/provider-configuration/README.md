@@ -51,6 +51,13 @@ case 取消 intent；domain registry 不反向调用 Model Catalog。
 Registry 串行执行每条 intent 命令的校验、快照读取、写盘和内存发布，防止账号后台同步与用户注册/删除互相
 覆盖 pending intent 或已提交归属。一条写盘失败只影响该命令，后续命令继续基于最后一次成功快照执行。
 
+启动对账只删掉指向已删除模型的归属。Model Catalog 启动时停用（未通过准入）的用户模型仍算存在，
+它的归属保留，等待修复或删除，所以一条归属可能指向不在运行目录里的模型。需要一个成员代表 Provider 的凭据或连接时，
+调用方用公开的 `findFirstCatalogedProviderMember(provider, findModel)` 按归属顺序取第一个能在目录里找到的成员，
+不要固定读 `models[0]`；本 domain 不访问 Model Catalog，查找函数由调用方传入。它只负责选出代表成员，
+会跳过所有找不到的成员，不能用来判断归属与目录是否一致；改动 Provider 的用例需要区分“停用”与“悬空”时，
+用 provider-onboarding 的成员判定。
+
 独立 Worker 通过公开 `readProviderConnectionLookup()` 在任务初始化时读取一次已提交的模型归属，
 把窄 lookup 注入 Host 推理装配。只读入口只接受当前版本，缺文件、旧版本、损坏和重复归属直接失败，
 不会创建目录或文件、迁移、恢复 intent 或 reconcile；App Server 必须先完成正式配置初始化。

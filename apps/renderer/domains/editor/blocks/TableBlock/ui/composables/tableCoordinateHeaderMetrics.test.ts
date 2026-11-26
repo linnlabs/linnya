@@ -148,24 +148,25 @@ function getCellDocPos(tableNode: ProseMirrorNode, tablePos: number, row: number
 }
 
 describe('tableCoordinateHeaderMetrics', () => {
-  it('reads column widths from document colwidth before DOM measurement', () => {
+  it('prefers rendered DOM widths over stored colwidth (tables may lay out by content)', () => {
     const context = createEditorContext([
       [createCell('a1', [120]), createCell('b1', [180])],
       [createCell('a2'), createCell('b2')],
     ]);
+    const firstCellPos = getCellDocPos(context.tableNode, context.tablePos, 0, 0);
 
     const widths = measureTableColumnWidths({
       editor: context.editor,
       tablePos: context.tablePos,
-      getCellRect: () => {
-        throw new Error('存在 colwidth 时不应读取 DOM');
-      },
+      getCellRect: (_editor, cellDocPos) => (cellDocPos === firstCellPos
+        ? { left: 0, top: 0, width: 96, height: 24 }
+        : { left: 96, top: 0, width: 140, height: 24 }),
     });
 
-    expect(widths).toEqual([120, 180]);
+    expect(widths).toEqual([96, 140]);
   });
 
-  it('reads per-column colwidth from a colspan cell', () => {
+  it('falls back to per-column colwidth (including colspan cells) when the DOM is unavailable', () => {
     const context = createEditorContext([
       [
         createCell('wide', { colspan: 2, colwidth: [110, 150] }),
@@ -177,9 +178,7 @@ describe('tableCoordinateHeaderMetrics', () => {
     const widths = measureTableColumnWidths({
       editor: context.editor,
       tablePos: context.tablePos,
-      getCellRect: () => {
-        throw new Error('存在 colwidth 时不应读取 DOM');
-      },
+      getCellRect: () => null,
     });
 
     expect(widths).toEqual([110, 150, 200]);

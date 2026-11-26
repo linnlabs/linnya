@@ -2,6 +2,7 @@ import type {
   OllamaModelRegistrationCommand,
   OllamaModelRegistrationResponse,
 } from '@app/schemas/ollama-onboarding';
+import { findFirstCatalogedProviderMember } from 'src/domains/provider-configuration';
 import { getLogger } from 'src/shared/logger';
 
 import { OllamaOnboardingError } from '../definitions/ollamaOnboardingError';
@@ -51,8 +52,11 @@ export function createOllamaOnboardingUseCase(
 
       const configuredProvider =
         dependencies.providerConfigurations.getByProviderConnectionDefinitionId(connection.id);
+      // 复用已有连接时，取第一个仍在运行目录里的成员；停用的成员不代表连接。
       const configuredModel = configuredProvider
-        ? dependencies.modelCatalog.getModel(configuredProvider.models[0]?.model_config_id ?? '')
+        ? findFirstCatalogedProviderMember(configuredProvider, modelConfigId =>
+            dependencies.modelCatalog.getModel(modelConfigId)
+          )?.model
         : undefined;
       const configuredEndpoint = configuredProvider
         ? dependencies.modelCatalog

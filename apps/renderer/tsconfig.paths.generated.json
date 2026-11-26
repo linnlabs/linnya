@@ -60,6 +60,9 @@
       "@linnya/markdown-document-core/workspace-schema": [
         "../../packages/markdown-document-core/src/features/workspace-schema/index.ts"
       ],
+      "@linnya/markdown-document-core/workspace-table": [
+        "../../packages/markdown-document-core/src/features/workspace-table/index.ts"
+      ],
       "@linnya/markdown-domain/editing": [
         "../../src/domains/markdown/editing.ts"
       ],
