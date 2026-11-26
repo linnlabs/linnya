@@ -7,8 +7,7 @@ vi.mock('@/domains/conversation/features/conversation-activity', () => ({
   useConversationRunStatus: () => ({ projectSummaryOf: () => null }),
 }));
 vi.mock('@/domains/workspace/ui/useWorkspaceLocalization', () => ({ useWorkspaceLocalization: () => ({ workspaceMessage: (key: string) => key }) }));
-vi.mock('@/domains/workspace/ui/sidebar', async () => ({
-  ...await import('@/domains/workspace/ui/sidebar/composables/useFixedDropdownPosition'),
+vi.mock('@/domains/workspace/ui/sidebar', () => ({
   buildProjectMenuOptions: () => [],
   isProjectDeleteDisabled: () => false,
 }));

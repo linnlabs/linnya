@@ -2,6 +2,7 @@
   <Transition name="resize-panel-fade">
     <div
       v-if="isVisible"
+      ref="panelRef"
       class="image-resize-panel"
       :style="panelStyle"
       @keydown.esc.prevent="handleCancel"
@@ -64,7 +65,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import { BaseButton, CustomNumberInput } from '@linnya/renderer-ui';
+import { BaseButton, CustomNumberInput, useAnchoredPosition } from '@linnya/renderer-ui';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 
 // Props
@@ -89,9 +90,10 @@ const props = defineProps({
     type: Number,
     default: 0
   },
-  position: {
-    type: Object,
-    default: () => ({ top: 0, left: 0 })
+  /** 面板贴在它下方左对齐，放不下时翻到上方。 */
+  anchor: {
+    type: Element,
+    default: null
   }
 });
 
@@ -100,6 +102,7 @@ const emit = defineEmits(['confirm', 'cancel']);
 const { editorMessage } = useEditorLocalization();
 
 // Refs
+const panelRef = ref(null);
 const widthInputRef = ref(null);
 const widthInput = ref(0);
 const heightInput = ref(0);
@@ -108,12 +111,13 @@ const heightInput = ref(0);
 const MAX_WIDTH = 740;
 
 // Computed
-const panelStyle = computed(() => ({
-  position: 'fixed',
-  top: `${props.position.top}px`,
-  left: `${props.position.left}px`,
-  zIndex: 1100,
-}));
+const anchored = useAnchoredPosition({
+  anchor: () => props.anchor,
+  floating: panelRef,
+  open: () => props.isVisible,
+  placement: { side: 'bottom', align: 'start', gap: 8 },
+});
+const panelStyle = computed(() => ({ ...anchored.style.value, zIndex: 1100 }));
 
 const isInputValid = computed(() => {
   return widthInput.value >= 36 && heightInput.value >= 36;

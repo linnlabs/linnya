@@ -175,14 +175,13 @@ import { IconButton } from '@linnya/renderer-ui';
 import { FolderAddIcon } from '@linnya/renderer-ui/icons';
 import { DocumentAddIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect } from '@linnya/renderer-ui';
+import { CustomSelect, useAnchoredPosition } from '@linnya/renderer-ui';
 import { ChevronIcon, LinnyaIcon } from '@linnya/renderer-ui/icons';
 import BatchExportMarkdownModal from '../../../features/import-export/ui/export/BatchExportMarkdownModal.vue';
 import { batchExportProjectAsMarkdown } from '../../../features/import-export/services/batchExportService';
 import { describeBatchExportResult } from '../../../functions/describeBatchExportResult';
 import { useWorkspaceTree } from '../../../tree';
 import { useNotificationStore } from '@/app/notification';
-import { useFixedDropdownPosition } from '../composables/useFixedDropdownPosition';
 import { useLocalizedCreatableDocumentTypes } from '@/app/plugins/ui/useDocumentTypePresentation';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 
@@ -224,11 +223,13 @@ const currentProjectNameForExport = computed(() => props.currentProjectName || w
 const showCreateMenu = ref(false);
 const newFileButton = ref(null);
 const newFileButtonRef = computed(() => newFileButton.value?.element ?? null);
-const {
-  dropdownRef: createDropdownRef,
-  dropdownStyle: createDropdownStyle,
-  positionDropdownAfterRender: positionCreateDropdownAfterRender,
-} = useFixedDropdownPosition();
+const createDropdownRef = ref(null);
+const { style: createDropdownStyle } = useAnchoredPosition({
+  anchor: newFileButtonRef,
+  floating: createDropdownRef,
+  open: showCreateMenu,
+  placement: { gap: 4 },
+});
 
 const documentCreateActions = useLocalizedCreatableDocumentTypes();
 // 空项目直接露出的类型数（按 createPriority 排序后的前几种），其余收进“更多类型”。
@@ -255,11 +256,13 @@ const createOptions = computed(() => [
 const showMoreMenu = ref(false);
 const moreButton = ref(null);
 const moreButtonRef = computed(() => moreButton.value?.element ?? null);
-const {
-  dropdownRef: moreDropdownRef,
-  dropdownStyle: moreDropdownStyle,
-  positionDropdownAfterRender: positionMoreDropdownAfterRender,
-} = useFixedDropdownPosition();
+const moreDropdownRef = ref(null);
+const { style: moreDropdownStyle } = useAnchoredPosition({
+  anchor: moreButtonRef,
+  floating: moreDropdownRef,
+  open: showMoreMenu,
+  placement: { gap: 4 },
+});
 
 // 更多菜单选项
 const moreMenuOptions = computed(() => [
@@ -285,7 +288,6 @@ const toggleCreateMenu = () => {
   showCreateMenu.value = !showCreateMenu.value;
   if (showCreateMenu.value) {
     showMoreMenu.value = false;
-    void positionCreateDropdownAfterRender(newFileButtonRef.value);
   }
 };
 
@@ -309,7 +311,6 @@ const toggleMoreMenu = () => {
   showMoreMenu.value = !showMoreMenu.value;
   if (showMoreMenu.value) {
     showCreateMenu.value = false;
-    void positionMoreDropdownAfterRender(moreButtonRef.value);
   }
 };
 

@@ -1,7 +1,7 @@
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import type { CSSProperties, Ref } from 'vue';
 import { rendererUiOverlayLayer, useEscapeLayer } from '../../overlays';
-import { resolveFixedPanelPosition } from '../../select-menu';
+import { anchoredMotionDirection, useAnchoredPosition } from '../../anchored-position';
 import type { DropdownMotionDirection } from '../../select-menu';
 
 interface PickerPanelElement {
@@ -24,43 +24,28 @@ interface UsePickerPanelResult {
   readonly close: () => void;
 }
 
+/** 与下拉框 Portal 面板同一间距：面板像下拉框一样贴着触发器。 */
+const PICKER_PANEL_GAP = 4;
+
 /**
  * 日期、时间面板共用的开合与定位：面板挂在 body 上按视口定位，不被滚动容器裁切；
  * 点面板和触发器以外的地方、或在本层按 Escape 时关闭。
  */
 export function usePickerPanel({ anchorRef, panelRef, align, onEscape }: UsePickerPanelOptions): UsePickerPanelResult {
   const isOpen = ref(false);
-  const direction = ref<DropdownMotionDirection>('down');
-  const panelStyle = ref<CSSProperties>({});
+  const anchored = useAnchoredPosition({
+    anchor: anchorRef,
+    floating: () => panelRef.value?.element,
+    open: isOpen,
+    placement: { side: 'bottom', align, gap: PICKER_PANEL_GAP },
+  });
 
-  function updatePosition(): void {
-    const anchor = anchorRef.value;
-    const panel = panelRef.value?.element;
-    if (!anchor || !panel) return;
-    const position = resolveFixedPanelPosition({
-      anchor: anchor.getBoundingClientRect(),
-      panelWidth: panel.offsetWidth,
-      panelHeight: panel.offsetHeight,
-      viewportWidth: window.innerWidth,
-      viewportHeight: window.innerHeight,
-      align,
-    });
-    direction.value = position.direction;
-    panelStyle.value = {
-      position: 'fixed',
-      top: `${position.top}px`,
-      left: `${position.left}px`,
-      zIndex: rendererUiOverlayLayer('portalMenu'),
-    };
-  }
-
+  /** 面板渲染并定好位才返回，调用方随后把焦点移进面板时它已在最终位置。 */
   async function open(): Promise<void> {
     if (isOpen.value) return;
-    // 先按尺寸排好再显示，避免面板从错误的位置闪一下。
-    panelStyle.value = { position: 'fixed', top: '0', left: '0', visibility: 'hidden' };
     isOpen.value = true;
     await nextTick();
-    updatePosition();
+    await anchored.update();
   }
 
   function close(): void {
@@ -76,8 +61,6 @@ export function usePickerPanel({ anchorRef, panelRef, align, onEscape }: UsePick
 
   function listen(method: 'addEventListener' | 'removeEventListener'): void {
     document[method]('pointerdown', handlePointerDown as EventListener, true);
-    window[method]('resize', updatePosition);
-    window[method]('scroll', updatePosition, true);
   }
 
   watch(isOpen, opened => listen(opened ? 'addEventListener' : 'removeEventListener'));
@@ -92,5 +75,11 @@ export function usePickerPanel({ anchorRef, panelRef, align, onEscape }: UsePick
     },
   });
 
-  return { isOpen, direction, panelStyle, open, close };
+  return {
+    isOpen,
+    direction: computed(() => anchoredMotionDirection(anchored.side.value)),
+    panelStyle: computed(() => ({ ...anchored.style.value, zIndex: rendererUiOverlayLayer('portalMenu') })),
+    open,
+    close,
+  };
 }

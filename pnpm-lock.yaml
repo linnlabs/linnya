@@ -1140,6 +1140,9 @@ importers:
 
   packages/renderer-ui:
     dependencies:
+      '@floating-ui/dom':
+        specifier: 1.7.4
+        version: 1.7.4
       '@linnya/foundation':
         specifier: workspace:*
         version: link:../foundation

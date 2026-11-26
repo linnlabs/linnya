@@ -32,14 +32,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch, type Component, type CSSProperties } from 'vue';
+import { computed, onMounted, ref, watch, type Component } from 'vue';
 import { useHistoryList } from '../list';
 import { useAssistantStore } from '../../store/assistantStore';
 import { useNavigationScope } from '@/app/navigation';
 import { getWorkspaceNavigationPort } from '@shared/ports/workspaceNavigationPort';
 import type { ConversationListItem } from '../services/historyApiService';
 import { HistoryIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, measureFloatingLayoutSize } from '@linnya/renderer-ui';
+import { CustomSelect, useAnchoredPosition } from '@linnya/renderer-ui';
 import { useHistoryTime } from '@app/localization';
 import { useConversationLocalization } from '../../ui/useConversationLocalization';
 
@@ -75,7 +75,13 @@ const navigationScope = useNavigationScope();
 const { conversationMessage } = useConversationLocalization();
 const { historyTime } = useHistoryTime();
 const dropdownWrapperRef = ref<HTMLElement | null>(null);
-const dropdownStyle = ref<CSSProperties>({});
+// 列表加载完撑高面板时由尺寸观察自动重算，不再手动跟着数据变化重新定位。
+const { style: dropdownStyle } = useAnchoredPosition({
+  anchor: () => props.buttonRef,
+  floating: dropdownWrapperRef,
+  open: () => props.isVisible,
+  placement: { align: 'end', gap: 4 },
+});
 
 const conversations = computed(() => listStore.conversations);
 const isLoading = computed(() => listStore.isLoading);
@@ -127,36 +133,6 @@ const historyOptions = computed<HistoryDropdownOption[]>(() => {
   return options;
 });
 
-const calculatePosition = (): void => {
-  const buttonEl = props.buttonRef;
-  const wrapperEl = dropdownWrapperRef.value;
-  if (!buttonEl || !wrapperEl) return;
-
-  const buttonRect = buttonEl.getBoundingClientRect();
-  const wrapperRect = measureFloatingLayoutSize(wrapperEl);
-  const viewportGap = 8;
-  const offset = 4;
-  let top = buttonRect.bottom + offset;
-  let left = buttonRect.right - wrapperRect.width;
-
-  if (left < viewportGap) {
-    left = viewportGap;
-  }
-
-  if (top + wrapperRect.height > window.innerHeight - viewportGap) {
-    top = buttonRect.top - wrapperRect.height - offset;
-  }
-
-  if (top < viewportGap) {
-    top = viewportGap;
-  }
-
-  dropdownStyle.value = {
-    top: `${top}px`,
-    left: `${left}px`,
-  };
-};
-
 const ensureListLoaded = (): void => {
   if (conversations.value.length > 0 || isLoading.value) return;
   void listStore.loadScopeList(navigationScope.currentScope, {
@@ -205,24 +181,10 @@ watch(
   (isVisible) => {
     if (!isVisible) return;
     ensureListLoaded();
-    void nextTick(() => {
-      calculatePosition();
-    });
-  },
-);
-
-watch(
-  [displayedConversations, isLoading],
-  () => {
-    if (!props.isVisible) return;
-    void nextTick(() => {
-      calculatePosition();
-    });
   },
 );
 
 onMounted(() => {
   ensureListLoaded();
-  calculatePosition();
 });
 </script>

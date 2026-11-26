@@ -92,7 +92,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { FolderOpenIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, IconButton, onNextFrame, type IconButtonExposed } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton, onNextFrame, useAnchoredPosition, type IconButtonExposed } from '@linnya/renderer-ui';
 import SidebarChatList from '@/domains/conversation/ui/SidebarChatList.vue';
 import {
   ConversationRunStatusIndicator,
@@ -102,7 +102,6 @@ import type { Project } from '@/domains/workspace/store';
 import {
   buildProjectMenuOptions,
   isProjectDeleteDisabled,
-  useFixedDropdownPosition,
 } from '@/domains/workspace/ui/sidebar';
 import type { ProjectMenuAction, ProjectMenuOption } from '@/domains/workspace/ui/sidebar';
 import { useWorkspaceLocalization } from '@/domains/workspace/ui/useWorkspaceLocalization';
@@ -135,17 +134,16 @@ const runStatus = useConversationRunStatus();
 /* 收起时行尾只给项目里最需要处理的一种状态，悬停记号看数量；展开后由各对话行自己显示。 */
 const collapsedRunSummary = computed(() => (props.isExpanded ? null : runStatus.projectSummaryOf(props.project.id)));
 const projectMenuOptions = computed<ProjectMenuOption[]>(() => buildProjectMenuOptions(props.project, workspaceMessage));
-const {
-  dropdownRef,
-  dropdownStyle,
-  positionDropdownAfterRender,
-} = useFixedDropdownPosition();
+const dropdownRef = ref<HTMLElement | null>(null);
+const { style: dropdownStyle } = useAnchoredPosition({
+  anchor: moreButtonRef,
+  floating: dropdownRef,
+  open: isProjectMenuOpen,
+  placement: { gap: 4 },
+});
 
 function toggleProjectMenu(): void {
   isProjectMenuOpen.value = !isProjectMenuOpen.value;
-  if (!isProjectMenuOpen.value) return;
-
-  void positionDropdownAfterRender(moreButtonRef.value);
 }
 
 function closeProjectMenu(): void {

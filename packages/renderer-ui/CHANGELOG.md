@@ -2,6 +2,14 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.15.0 - 2026-11-27
+
+- 新增 `useAnchoredPosition({ anchor, floating, open, placement })`：菜单、下拉、Popover、面板等贴着锚点弹出的浮层的统一定位入口，返回绑定到浮层根元素的 `style`、实际落在哪一侧的 `side`、`isPositioned` 与 `update()`。`placement` 可选 `side`（默认 `bottom`）、`align`（默认 `start`）、`gap`（默认 8）、`alignOffset`、`viewportMargin`（默认 8）、`flip`（默认翻转）、`matchAnchorWidth`、`fitViewportHeight`。打开期间跟随祖先滚动、窗口缩放与锚点 / 浮层尺寸变化；关闭后停在最后位置，让退场动画原地结束。同时新增 `computeAnchoredPosition`（一次性计算）、`createPointAnchor(x, y)`（右键菜单等以点击位置为锚）、`anchoredMotionDirection(side)` 与类型 `AnchoredSide`、`AnchoredAlign`、`AnchoredAnchor`、`AnchoredPositionOptions`、`AnchoredPosition`、`AnchoredFloatingStyle`、`UseAnchoredPositionOptions`、`AnchoredPositionControls`。
+- 新增运行依赖 `@floating-ui/dom`（MIT，浏览器安全，此前已随编辑器依赖装在工作区）。计算交给它：量浮层用布局尺寸，入场缩放不影响打开当帧的位置；放不下时翻到对侧，上下都放不下时整体推回视口。
+- Portal 下拉面板、`SimpleDatePicker` / `TimePicker` 面板与 `TextPopover` 改用它。Portal 下拉与 `TextPopover` 打开期间随滚动、窗口缩放跟着触发器走，此前只在打开时算一次，滚动后会与触发器脱开；props、事件与间距不变。
+- `measureFloatingLayoutSize` 标为弃用：包内与 Host、官方插件已不再使用，新浮层改用 `useAnchoredPosition`。导出保留，现有插件不受影响。
+- 现有 `^3.0.0` 插件保持兼容；Slides 与 Canvas 改用新入口，兼容范围升到 `^3.15.0`。
+
 ## 3.14.1 - 2026-11-26
 
 - `NotificationBar` 的长提示改为折行，不再单行截断：此前宽 300px 只显示一行，英文界面大约三分之一的提示后半句被省略号截掉（如“删掉后才能保存”这类关键说明）。现在最宽 360px，图标对齐首行，续行与首行文字左对齐，`text-wrap: pretty` 避免末行只剩一两个字；超长内容（如后台原文）最多 4 行后省略。单行提示的尺寸与位置不变。

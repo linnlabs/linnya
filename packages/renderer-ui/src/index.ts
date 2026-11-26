@@ -182,6 +182,23 @@ export type {
   FloatingLayoutSize,
 } from './features/floating-panels';
 
+export {
+  anchoredMotionDirection,
+  computeAnchoredPosition,
+  createPointAnchor,
+  useAnchoredPosition,
+} from './features/anchored-position';
+export type {
+  AnchoredAlign,
+  AnchoredAnchor,
+  AnchoredFloatingStyle,
+  AnchoredPosition,
+  AnchoredPositionControls,
+  AnchoredPositionOptions,
+  AnchoredSide,
+  UseAnchoredPositionOptions,
+} from './features/anchored-position';
+
 export { CommandBar, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from './features/toolbars';
 export type { FloatingToolbarPosition, FloatingToolbarProps, ToolbarButtonProps, ToolbarColorButtonProps } from './features/toolbars';
 export {

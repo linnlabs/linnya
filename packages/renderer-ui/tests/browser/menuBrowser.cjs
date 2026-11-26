@@ -246,6 +246,46 @@ async function run() {
     assert.equal(selected.slotRight, idle.slotRight, detail);
     assert.notEqual(selected.rowBackground, idle.rowBackground, detail);
   }
+  // 锚定定位（useAnchoredPosition）的真实几何。
+  const anchored = async options => {
+    await evaluate(`window.menuFixture.mountAnchored(${JSON.stringify(options)})`);
+    return evaluate('window.menuFixture.anchoredGeometry()');
+  };
+  let geometry = await anchored({ x: 100, y: 100 });
+  assert.equal(geometry.floating.side, 'bottom', JSON.stringify(geometry));
+  assert.equal(geometry.floating.top, geometry.anchor.bottom + 8, JSON.stringify(geometry));
+  assert.equal(geometry.floating.left, geometry.anchor.left, JSON.stringify(geometry));
+  geometry = await anchored({ x: 300, y: 100, gap: 4, align: 'end' });
+  assert.equal(geometry.floating.top, geometry.anchor.bottom + 4, JSON.stringify(geometry));
+  assert.equal(geometry.floating.right, geometry.anchor.right, JSON.stringify(geometry));
+  geometry = await anchored({ x: 300, y: 100, alignOffset: -8 });
+  assert.equal(geometry.floating.left, geometry.anchor.left - 8, JSON.stringify(geometry));
+  geometry = await anchored({ x: 300, y: 100, align: 'end', alignOffset: -8 });
+  assert.equal(geometry.floating.right, geometry.anchor.right + 8, JSON.stringify(geometry));
+  // 下方放不下翻到上方；浮层仍在入场缩放中，也必须按布局尺寸留出 8px，不贴住锚点。
+  geometry = await anchored({ x: 100, y: 540, scaled: true });
+  assert.equal(geometry.floating.side, 'top', JSON.stringify(geometry));
+  assert.equal(geometry.floating.bottom, geometry.anchor.top - 8, JSON.stringify(geometry));
+  geometry = await anchored({ x: 100, y: 540, flip: false });
+  assert.equal(geometry.floating.side, 'bottom', JSON.stringify(geometry));
+  // 上下都放不下：推回视口，不出屏。
+  geometry = await anchored({ x: 100, y: 260, panelHeight: 400 });
+  assert(geometry.floating.top >= 8 && geometry.floating.bottom <= geometry.viewport.height - 8, JSON.stringify(geometry));
+  geometry = await anchored({ x: 860, y: 100 });
+  assert.equal(geometry.floating.right, geometry.viewport.width - 8, JSON.stringify(geometry));
+  geometry = await anchored({ x: 100, y: 100, inScroller: true });
+  const topBeforeScroll = geometry.floating.top;
+  await evaluate('window.menuFixture.scrollAnchored(50)');
+  geometry = await evaluate('window.menuFixture.anchoredGeometry()');
+  assert.equal(topBeforeScroll - geometry.floating.top, 50, JSON.stringify(geometry));
+  assert.equal(geometry.floating.top, geometry.anchor.bottom + 8, JSON.stringify(geometry));
+  geometry = await anchored({ x: 400, y: 300, point: true, gap: 0 });
+  assert.equal(geometry.floating.top, 300, JSON.stringify(geometry));
+  assert.equal(geometry.floating.left, 400, JSON.stringify(geometry));
+  geometry = await anchored({ x: 100, y: 100, matchAnchorWidth: true });
+  assert.equal(geometry.floating.width, geometry.anchor.width, JSON.stringify(geometry));
+  geometry = await anchored({ x: 100, y: 100, panelHeight: 2000, fitViewportHeight: true });
+  assert.equal(geometry.floating.bottom, geometry.viewport.height - 8, JSON.stringify(geometry));
   window.setContentSize(260, 240);
   await mount({ manual: true, x: 20, y: 20 });
   await focus('.custom-select__options .select-option');
@@ -271,7 +311,7 @@ async function run() {
   }
   window.destroy();
   console.log(
-    'Menu Chromium checks passed: 170/171 rows, 3 themes, manual/Teleport, native keys/wheel, 2 levels, resize, custom content, trigger arrow gap, selected checkmark.'
+    'Menu Chromium checks passed: 170/171 rows, 3 themes, manual/Teleport, native keys/wheel, 2 levels, resize, custom content, trigger arrow gap, selected checkmark, anchored position (gap, align offset, flip, shift, scale, scroll, point, width, height).'
   );
 }
 run().then(

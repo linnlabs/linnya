@@ -13,7 +13,7 @@
         :aria-label="triggerAriaLabel"
         aria-haspopup="dialog"
         :aria-expanded="isOpen"
-        @click="handleTriggerClick($event, toggle, isOpen)"
+        @click="toggle"
       >
         <LinnyaLoadingIcon v-if="props.presentation.status === 'loading'" />
         <svg
@@ -53,7 +53,7 @@
               DROPDOWN_SURFACE_CLASSES.root,
               DROPDOWN_SURFACE_CLASSES.panel,
               DROPDOWN_SURFACE_CLASSES.portal,
-              { 'is-positioned': panelPositioned },
+              { 'is-positioned': isPanelPositioned },
             ]"
             :style="panelStyle"
           >
@@ -77,8 +77,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { BaseDropdown, DROPDOWN_SURFACE_CLASSES, measureFloatingLayoutSize } from '@linnya/renderer-ui';
+import { computed, ref } from 'vue';
+import { BaseDropdown, DROPDOWN_SURFACE_CLASSES, useAnchoredPosition } from '@linnya/renderer-ui';
 import { LinnyaLoadingIcon } from '@linnya/renderer-ui/icons';
 import type {
   ContextWindowUsagePanelDetailRow,
@@ -98,7 +98,6 @@ import {
   formatConversationCreatedAt,
   formatConversationUserMessageCount,
 } from '../functions/projectConversationInformation';
-import { resolveContextUsagePanelPosition } from '../functions/resolveContextUsagePanelPosition';
 import ContextWindowUsagePanel from './ContextWindowUsagePanel.vue';
 
 const props = defineProps<{
@@ -109,8 +108,16 @@ const props = defineProps<{
 const { conversationMessage, currentLocale } = useConversationLocalization();
 const triggerRef = ref<HTMLButtonElement | null>(null);
 const panelRef = ref<HTMLElement | null>(null);
-const panelPositioned = ref(false);
-const panelPosition = ref({ top: 0, left: 0 });
+// 面板只在打开时渲染，元素存在即为打开。输入区在窗口底部，面板默认在按钮上方、右沿对齐。
+const {
+  style: panelStyle,
+  isPositioned: isPanelPositioned,
+} = useAnchoredPosition({
+  anchor: triggerRef,
+  floating: panelRef,
+  open: () => panelRef.value !== null,
+  placement: { side: 'top', align: 'end' },
+});
 
 const available = computed(() => (
   'usage' in props.presentation ? props.presentation : null
@@ -182,11 +189,6 @@ const panelRows = computed<readonly ContextWindowUsagePanelRow[]>(() => {
 
 const emptyMessage = computed(() => available.value ? '' : triggerAriaLabel.value);
 
-const panelStyle = computed(() => ({
-  top: `${panelPosition.value.top}px`,
-  left: `${panelPosition.value.left}px`,
-}));
-
 const conversationDetailRows = computed<readonly ContextWindowUsagePanelDetailRow[]>(() => {
   const information = props.conversationInformation;
   if (!information) return [];
@@ -205,56 +207,4 @@ const conversationDetailRows = computed<readonly ContextWindowUsagePanelDetailRo
   ];
 });
 
-function updatePanelPosition(): void {
-  const trigger = triggerRef.value;
-  const panel = panelRef.value;
-  if (!trigger || !panel) return;
-  const triggerRect = trigger.getBoundingClientRect();
-  const panelRect = measureFloatingLayoutSize(panel);
-  panelPosition.value = resolveContextUsagePanelPosition({
-    trigger: {
-      top: triggerRect.top,
-      right: triggerRect.right,
-      bottom: triggerRect.bottom,
-    },
-    panel: { width: panelRect.width, height: panelRect.height },
-    viewport: { width: window.innerWidth, height: window.innerHeight },
-    gap: 8,
-    padding: 8,
-  });
-  panelPositioned.value = true;
-}
-
-async function handleTriggerClick(
-  event: MouseEvent,
-  toggle: (event: MouseEvent) => void,
-  isOpen: boolean,
-): Promise<void> {
-  toggle(event);
-  if (isOpen) {
-    panelPositioned.value = false;
-    return;
-  }
-  await nextTick();
-  updatePanelPosition();
-}
-
-function handleViewportChange(): void {
-  if (panelRef.value) updatePanelPosition();
-}
-
-watch(() => props.presentation, () => {
-  if (!panelRef.value) return;
-  void nextTick(updatePanelPosition);
-});
-
-onMounted(() => {
-  window.addEventListener('resize', handleViewportChange);
-  window.addEventListener('scroll', handleViewportChange, true);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleViewportChange);
-  window.removeEventListener('scroll', handleViewportChange, true);
-});
 </script>

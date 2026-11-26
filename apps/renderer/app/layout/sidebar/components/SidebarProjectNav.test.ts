@@ -2,7 +2,6 @@
 import { createApp, h, nextTick, reactive } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('@/app/layout/composables/useLayoutLocalization', () => ({ useLayoutLocalization: () => ({ layoutMessage: (key: string) => key }) }));
-vi.mock('@/domains/workspace/ui/sidebar', async () => import('@/domains/workspace/ui/sidebar/composables/useFixedDropdownPosition'));
 import SidebarProjectNav from './SidebarProjectNav.vue';
 describe('项目概览侧栏入口', () => {
   it.each(['chat', 'file'] as const)('%s 模式都可进入概览，并反映当前页面', async sidebarMode => {

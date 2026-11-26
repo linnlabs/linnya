@@ -94,11 +94,11 @@ import {
   CustomSelect,
   DROPDOWN_SURFACE_CLASSES,
   SegmentedTabs,
+  useAnchoredPosition,
   type CustomSelectOption,
   type SegmentedTabItem,
 } from '@linnya/renderer-ui';
 import { PinIcon } from '@linnya/renderer-ui/icons';
-import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
 import { ALL_FILES_FILTER_ID, arrangeSavedFilters } from '../functions/projectSavedFilters';
 
 export interface ProjectSavedFiltersBarLabels {
@@ -146,12 +146,20 @@ const suggestTriggerRef = ref<HTMLElement | null>(null);
 const menuAnchor = ref<HTMLElement | null>(null);
 const contextTargetId = ref<string | null>(null);
 
-const { dropdownRef: menuRef, dropdownStyle: menuStyle, positionDropdownAfterRender: positionMenu } = useFixedDropdownPosition({ align: 'start' });
-const {
-  dropdownRef: suggestPanelRef,
-  dropdownStyle: suggestStyle,
-  positionDropdownAfterRender: positionSuggestions,
-} = useFixedDropdownPosition({ align: 'start' });
+const menuRef = ref<HTMLElement | null>(null);
+const suggestPanelRef = ref<HTMLElement | null>(null);
+const { style: menuStyle } = useAnchoredPosition({
+  anchor: menuAnchor,
+  floating: menuRef,
+  open: () => openMenu.value === 'more' || openMenu.value === 'context',
+  placement: { gap: 4 },
+});
+const { style: suggestStyle } = useAnchoredPosition({
+  anchor: suggestTriggerRef,
+  floating: suggestPanelRef,
+  open: () => openMenu.value === 'suggestions',
+  placement: { gap: 4 },
+});
 
 function tabButton(id: string): HTMLElement | null {
   const index = tabs.value.findIndex(tab => tab.id === id);
@@ -161,11 +169,6 @@ function tabButton(id: string): HTMLElement | null {
 function toggle(menu: Menu): void {
   openMenu.value = openMenu.value === menu ? null : menu;
 }
-
-watch(openMenu, menu => {
-  if (menu === 'suggestions') void positionSuggestions(suggestTriggerRef.value);
-  if (menu === 'more' || menu === 'context') void positionMenu(menuAnchor.value);
-}, { flush: 'post' });
 
 function selectTab(id: string): void {
   if (id !== MORE) {

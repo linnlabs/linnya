@@ -18,7 +18,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、MonthCalendar、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useEscapeLayer`、`useModalFocus`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。`usePortalToBody` 时面板默认与触发器同宽，以像素给出的 `minWidth` 可以撑宽（不超过视口），翻转与收边都按这个宽度计算。选项可用 `description` 在标签下方加一行说明；`variant` 除 `danger` 外还有 `warning`，用警示色加粗标签，表达需要留意但不是破坏性的选项。`selected-value` 插槽可把触发器内容换成图标等；`triggerTooltip` 让触发器改用共享提示服务的悬停提示（不再有原生 `title`），没有 `triggerAriaLabel` 时它也是可访问名称。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、MonthCalendar、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、锚定浮层定位（`useAnchoredPosition` 等，见“锚定浮层定位”）、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useEscapeLayer`、`useModalFocus`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。`usePortalToBody` 时面板默认与触发器同宽，以像素给出的 `minWidth` 可以撑宽（不超过视口），翻转与收边都按这个宽度计算。选项可用 `description` 在标签下方加一行说明；`variant` 除 `danger` 外还有 `warning`，用警示色加粗标签，表达需要留意但不是破坏性的选项。`selected-value` 插槽可把触发器内容换成图标等；`triggerTooltip` 让触发器改用共享提示服务的悬停提示（不再有原生 `title`），没有 `triggerAriaLabel` 时它也是可访问名称。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -237,7 +237,7 @@ Escape 由 `/features/overlays` 的 document 级登记统一归属（自 3.12.0 
 
 `TimePicker` 是可以直接输入的时间框：9、930、0930、9:30 和全角冒号都认，回车或离开时生效，认不出或超出一天就退回原值。点开是半小时一格的列表，选中即生效；列表以外的分钟直接输入，已有值不舍入。生效时只替换时分并清零秒与毫秒，没有变化时不发事件。
 
-日期和时间面板都挂在 body 上按视口定位（规则是与 Portal 下拉共用的 `resolveFixedPanelPosition`），不受祖先滚动容器裁切；点面板以外的地方关闭，Escape 参与浮层归属，在弹窗里只关面板。
+日期和时间面板都挂在 body 上按视口定位（与 Portal 下拉一样由 `useAnchoredPosition` 贴着触发器摆放），不受祖先滚动容器裁切；点面板以外的地方关闭，Escape 参与浮层归属，在弹窗里只关面板。
 
 ## 颜色选择
 
@@ -300,6 +300,14 @@ DropdownPanel 与 CustomSelect 主菜单复用包内唯一的 DropdownTransition
 
 `TextPopover` 提供 click/hover 两种触发方式与 auto/top/bottom/left/right 定位。`content` 保留现有 HTML 渲染合同，只允许传入应用自身生成的可信内容；外部或用户输入应通过 content 插槽按普通文本渲染。
 
+## 锚定浮层定位
+
+`useAnchoredPosition({ anchor, floating, open, placement })`（自 3.15.0）是菜单、下拉、Popover、编辑面板等“贴着某个东西弹出”的浮层的唯一定位入口。调用方只给锚点、浮层根元素和开关，把返回的 `style` 绑到浮层根元素，再合并自己的层级（`zIndex`）与宽度；`side` 是实际落下的一侧，用来选入场动效方向（`anchoredMotionDirection`）。锚点可以是元素，也可以是只有视口矩形的虚拟锚点：右键菜单用 `createPointAnchor(clientX, clientY)`，画布等自有坐标系换算成视口矩形后传 `{ getBoundingClientRect }`。
+
+规则由 [Floating UI](https://floating-ui.com/) 统一执行：量浮层用布局尺寸（入场缩放不影响打开当帧的位置）；放不下翻到对侧，`flip: false` 时锁定一侧；左右收进视口，上下都放不下时整体推回视口；`matchAnchorWidth` 与锚点同宽，`fitViewportHeight` 把高度限制在所在一侧的可用空间。打开期间跟随祖先滚动、窗口缩放与尺寸变化；关闭后停在最后位置让退场动画原地结束，再次打开从头计算。位置在浏览器绘制前写上，初始样式不隐藏浮层，打开后立即聚焦的调用方不受影响；需要在打开后读最终位置时 `await update()`。
+
+不适用：悬浮提示走 `HoverTooltip` / `useHoverTooltipService`；子菜单由 `CustomSelect` 自己摆放；带箭头的引用卡片和 ProseMirror NodeView 里按帧跟随的文档引用预览直接使用 Floating UI，前者要箭头坐标，后者不在 Vue 组件里。新代码不要再手写“放在按钮下方、放不下翻上去、左右收进视口”。几何行为由 `pnpm run test:browser` 在真实 Chromium 里验证（jsdom 没有布局）。
+
 ## 边界
 
 包根和 UI feature 允许依赖 Vue public API、DOM/browser API、包内稳定切片和经审核的 browser-safe UI 依赖。
@@ -330,7 +338,7 @@ Host 只加载一次 `/styles.css`，顺序固定为：Host reset/document basel
 
 ## 独立门禁
 
-运行 `pnpm --dir packages/renderer-ui run gate`。该命令独立执行 Vue/TypeScript 检查、ActionButtons/font-stack/selection/theme/scroll/localization/Tooltip/Notification 行为测试、CSS token/theme/资产闭包审计，并把真实 tarball 解包后交给一个最小 Vite/Vue consumer 构建。consumer 会真实导入并渲染 ActionButtons、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar 与 `/icons` 图标，并调用 `/font-stack`、颜色/面板/Tooltip 定位纯函数和 `/localization` fallback；发布内容、显式 exports、runtime dependency、Vue SFC、CSS side-effect 与固定 `tokens.css`/`styles.css` 身份因此不依赖 Host 源码碰巧存在。
+运行 `pnpm --dir packages/renderer-ui run gate`。该命令独立执行 Vue/TypeScript 检查、ActionButtons/font-stack/selection/theme/scroll/localization/Tooltip/Notification 行为测试、CSS token/theme/资产闭包审计，并把真实 tarball 解包后交给一个最小 Vite/Vue consumer 构建。consumer 会真实导入并渲染 ActionButtons、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar 与 `/icons` 图标，并调用 `/font-stack`、锚定浮层定位（经 `@floating-ui/dom` 运行依赖）、颜色/面板/Tooltip 定位纯函数和 `/localization` fallback；发布内容、显式 exports、runtime dependency、Vue SFC、CSS side-effect 与固定 `tokens.css`/`styles.css` 身份因此不依赖 Host 源码碰巧存在。
 
 菜单尺寸、滚动或焦点时序改动另运行 `pnpm --dir packages/renderer-ui run test:browser`：使用本仓 Electron/Chromium 与独立临时 profile、Vite 页面和端口验证原生按键／滚轮、170/171 项、两级、manual/Teleport、三主题及自定义内容，不连接 Desktop Backend。完整 Workspace 转移、Editor 与插件页面仍按消费者验收，不能以此 harness 代替。
 

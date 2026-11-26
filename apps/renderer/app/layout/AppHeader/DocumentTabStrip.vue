@@ -91,7 +91,7 @@
 
     <Teleport to="body">
       <transition name="app-header-menu-fade">
-        <div v-if="tabMenu" class="document-tab-strip__menu" :style="tabMenu.style">
+        <div v-if="tabMenu" ref="tabMenuEl" class="document-tab-strip__menu" :style="tabMenuStyle">
           <CustomSelect
             :model-value="null"
             :options="tabMenuOptions"
@@ -108,8 +108,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component, type CSSProperties } from 'vue';
-import { CustomSelect, DropdownPanel, type CustomSelectOption } from '@linnya/renderer-ui';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue';
+import { createPointAnchor, CustomSelect, DropdownPanel, useAnchoredPosition, type AnchoredAnchor, type CustomSelectOption } from '@linnya/renderer-ui';
 import { ChevronIcon, CloseIcon, DocumentIcon } from '@linnya/renderer-ui/icons';
 import { useDocumentTabsStore, type DocumentTab } from '@/app/document-tabs';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
@@ -204,20 +204,23 @@ watch(() => [activeId.value, tabsState.value.tabs.length] as const, () => void n
 /* ---------- 全部标签 ---------- */
 const listQuery = ref('');
 const listOpen = ref(false);
-const listStyle = ref<CSSProperties>({});
 const allButtonEl = ref<HTMLButtonElement | null>(null);
 const filterEl = ref<HTMLInputElement | null>(null);
 const listPanel = ref<{ element: HTMLDivElement | null } | null>(null);
+const { style: listStyle } = useAnchoredPosition({
+  anchor: allButtonEl,
+  floating: () => listPanel.value?.element,
+  open: listOpen,
+  placement: { side: 'bottom', align: 'end', gap: 6 },
+});
 
 function toggleList(): void {
   if (listOpen.value) {
     listOpen.value = false;
     return;
   }
-  const rect = allButtonEl.value?.getBoundingClientRect();
-  if (!rect) return;
+  if (!allButtonEl.value) return;
   listQuery.value = '';
-  listStyle.value = { top: `${rect.bottom + 6}px`, right: `${Math.max(8, window.innerWidth - rect.right)}px` };
   listOpen.value = true;
   void nextTick(() => filterEl.value?.focus());
 }
@@ -243,7 +246,15 @@ const listedTabs = computed(() => {
 
 /* ---------- 右键菜单 ---------- */
 type TabMenuAction = 'close' | 'close-others' | 'close-right' | 'close-all' | 'reopen';
-const tabMenu = ref<{ readonly tabId: string; readonly style: CSSProperties } | null>(null);
+const tabMenu = ref<{ readonly tabId: string; readonly anchor: AnchoredAnchor } | null>(null);
+const tabMenuEl = ref<HTMLElement | null>(null);
+// 右键菜单以点击位置为锚点，放不下时翻到点击位置上方 / 左侧。
+const { style: tabMenuStyle } = useAnchoredPosition({
+  anchor: () => tabMenu.value?.anchor,
+  floating: tabMenuEl,
+  open: () => tabMenu.value !== null,
+  placement: { gap: 0 },
+});
 
 const tabMenuOptions = computed<CustomSelectOption<TabMenuAction>[]>(() => {
   const { tabs, closed } = tabsState.value;
@@ -264,14 +275,7 @@ const tabMenuOptions = computed<CustomSelectOption<TabMenuAction>[]>(() => {
 });
 
 function openTabMenu(event: MouseEvent, tab: DocumentTab): void {
-  const gap = 8;
-  tabMenu.value = {
-    tabId: tab.id,
-    style: {
-      top: `${Math.min(event.clientY, window.innerHeight - gap)}px`,
-      left: `${Math.min(event.clientX, window.innerWidth - gap)}px`,
-    },
-  };
+  tabMenu.value = { tabId: tab.id, anchor: createPointAnchor(event.clientX, event.clientY) };
 }
 
 function handleTabMenuSelect(action: TabMenuAction | null): void {

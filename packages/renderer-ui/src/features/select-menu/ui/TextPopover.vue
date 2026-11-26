@@ -6,6 +6,7 @@
     <!-- 触发器：可以是按钮、图标或文本 -->
     <button 
       v-if="!externalTriggerRef"
+      ref="triggerRef"
       type="button"
       class="popover-trigger"
       :class="triggerClass"
@@ -53,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, isRef, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, isRef, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { CSSProperties } from 'vue';
 import type {
   DropdownElementReference,
@@ -61,7 +62,7 @@ import type {
   TextPopoverTriggerMode,
 } from '../definitions/selectMenu';
 import { CloseIcon } from '../../../icons';
-import { measureFloatingLayoutSize } from '../../floating-panels/functions/floatingLayoutSize';
+import { useAnchoredPosition } from '../../anchored-position';
 import { useSharedComponentLocalization } from '../../../localization';
 
 interface TextPopoverProps {
@@ -106,14 +107,9 @@ const { sharedComponentMessage } = useSharedComponentLocalization();
 // Refs
 const containerRef = ref<HTMLElement | null>(null);
 const popoverRef = ref<HTMLElement | null>(null);
-// 面板实际落在触发点的哪一侧；进出动画据此选择缩放原点（auto 在首次定位前先按“下方”处理）。
-const resolvedPlacement = ref<'top' | 'bottom' | 'left' | 'right'>(
-  props.placement === 'auto' ? 'bottom' : props.placement,
-);
 const internalIsOpen = ref(false);
 let closeTimer: number | null = null;
 let delayedListenerTimer: number | null = null;
-let positionAnimationFrame: number | null = null;
 
 const isHoverMode = computed(() => props.triggerMode === 'hover');
 // 说明：hover 模式下避免浏览器原生 title tooltip 与弹出卡片叠加冲突
@@ -128,12 +124,23 @@ const computedIsOpen = computed(() => {
   return props.manualMode ? props.isOpen : internalIsOpen.value;
 });
 
-// 弹窗位置
-const popoverPosition = ref<CSSProperties>({
-  top: '0px',
-  left: '0px',
-  maxWidth: props.maxWidth
+const triggerRef = ref<HTMLElement | null>(null);
+const anchorElement = computed(() => {
+  const external = isRef(props.externalTriggerRef) ? props.externalTriggerRef.value : props.externalTriggerRef;
+  return external instanceof HTMLElement ? external : triggerRef.value;
 });
+// auto 优先放下方、放不下翻到上方；指定方向时不翻转，只收进视口。
+const anchored = useAnchoredPosition({
+  anchor: anchorElement,
+  floating: popoverRef,
+  open: computedIsOpen,
+  placement: () => (props.placement === 'auto'
+    ? { side: 'bottom', align: 'start' }
+    : { side: props.placement, align: 'start', flip: false }),
+});
+// 面板实际落在触发点的哪一侧；进出动画据此选择缩放原点。
+const resolvedPlacement = anchored.side;
+const popoverPosition = computed<CSSProperties>(() => ({ ...anchored.style.value, maxWidth: props.maxWidth }));
 
 /**
  * 切换弹窗
@@ -222,87 +229,6 @@ const handlePanelMouseLeave = () => {
 /**
  * 计算弹窗位置
  */
-const calculatePosition = () => {
-  const externalTrigger = isRef(props.externalTriggerRef)
-    ? props.externalTriggerRef.value
-    : props.externalTriggerRef;
-  const internalTrigger = containerRef.value?.querySelector('.popover-trigger');
-  const trigger = externalTrigger instanceof HTMLElement
-    ? externalTrigger
-    : internalTrigger instanceof HTMLElement
-      ? internalTrigger
-      : null;
-  const popover = popoverRef.value;
-  
-  if (!trigger || !popover) return;
-  
-  const triggerRect = trigger.getBoundingClientRect();
-  const popoverRect = measureFloatingLayoutSize(popover);
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  
-  let top = 0;
-  let left = 0;
-  
-  // 根据 placement 计算位置
-  if (props.placement === 'auto') {
-    // 自动选择最佳位置
-    const spaceBelow = viewportHeight - triggerRect.bottom;
-    const spaceAbove = triggerRect.top;
-    const spaceRight = viewportWidth - triggerRect.right;
-    const spaceLeft = triggerRect.left;
-    
-    // 优先显示在下方
-    if (spaceBelow >= popoverRect.height || spaceBelow >= spaceAbove) {
-      top = triggerRect.bottom + 8;
-      left = triggerRect.left;
-      resolvedPlacement.value = 'bottom';
-    } else {
-      // 显示在上方
-      top = triggerRect.top - popoverRect.height - 8;
-      left = triggerRect.left;
-      resolvedPlacement.value = 'top';
-    }
-    
-    // 确保不超出右边界
-    if (left + popoverRect.width > viewportWidth - 8) {
-      left = viewportWidth - popoverRect.width - 8;
-    }
-    
-    // 确保不超出左边界
-    if (left < 8) {
-      left = 8;
-    }
-    
-    // 确保不超出上下边界
-    if (top < 8) {
-      top = 8;
-    }
-    if (top + popoverRect.height > viewportHeight - 8) {
-      top = viewportHeight - popoverRect.height - 8;
-    }
-  } else if (props.placement === 'bottom') {
-    top = triggerRect.bottom + 8;
-    left = triggerRect.left;
-  } else if (props.placement === 'top') {
-    top = triggerRect.top - popoverRect.height - 8;
-    left = triggerRect.left;
-  } else if (props.placement === 'right') {
-    top = triggerRect.top;
-    left = triggerRect.right + 8;
-  } else if (props.placement === 'left') {
-    top = triggerRect.top;
-    left = triggerRect.left - popoverRect.width - 8;
-  }
-  
-  popoverPosition.value = {
-    position: 'fixed',
-    top: `${top}px`,
-    left: `${left}px`,
-    maxWidth: props.maxWidth
-  };
-};
-
 /**
  * 处理点击外部关闭
  */
@@ -321,16 +247,9 @@ const handleClickOutside = (event: MouseEvent) => {
 };
 
 // 监听打开状态变化，计算位置
-watch(computedIsOpen, async (newValue) => {
+watch(computedIsOpen, (newValue) => {
   if (newValue) {
     emit('open');
-    await nextTick();
-    // 等待渲染后计算位置
-    if (positionAnimationFrame !== null) cancelAnimationFrame(positionAnimationFrame);
-    positionAnimationFrame = requestAnimationFrame(() => {
-      calculatePosition();
-      positionAnimationFrame = null;
-    });
   } else {
     emit('close');
   }
@@ -346,7 +265,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (delayedListenerTimer !== null) window.clearTimeout(delayedListenerTimer);
-  if (positionAnimationFrame !== null) cancelAnimationFrame(positionAnimationFrame);
   document.removeEventListener('click', handleClickOutside);
   clearCloseTimer();
 });

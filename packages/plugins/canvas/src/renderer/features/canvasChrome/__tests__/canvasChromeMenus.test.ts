@@ -6,40 +6,12 @@ import {
   canvasZoomMenuOptions,
   canvasZoomPreset,
 } from '../functions/canvasZoomMenu';
-import { placeCanvasMenu } from '../functions/placeCanvasMenu';
 import {
   CANVAS_SAVE_STATUS_DELAY_MS,
   useCanvasSaveStatus,
 } from '../orchestration/useCanvasSaveStatus';
 
 afterEach(() => vi.useRealTimers());
-const viewport = { width: 1000, height: 600 };
-
-it('菜单默认在按钮下方左对齐，end 对齐按钮右边，横向收进视口', () => {
-  const button = { left: 900, top: 40, right: 928, bottom: 68 };
-  expect(
-    placeCanvasMenu({ ...button, align: 'start' }, { width: 200, height: 160 }, viewport)
-  ).toEqual({ left: 792, top: 72 });
-  expect(
-    placeCanvasMenu({ ...button, align: 'end' }, { width: 200, height: 160 }, viewport)
-  ).toEqual({ left: 728, top: 72 });
-  expect(
-    placeCanvasMenu(
-      { left: 2, top: 40, right: 30, bottom: 68, align: 'start' },
-      { width: 200, height: 160 },
-      viewport
-    ).left
-  ).toBe(8);
-});
-
-it('下方放不下时翻到锚点上方，上下都放不下时贴视口底边', () => {
-  const nearBottom = { left: 100, top: 500, right: 100, bottom: 500, align: 'start' } as const;
-  expect(placeCanvasMenu(nearBottom, { width: 180, height: 300 }, viewport).top).toBe(196);
-  expect(
-    placeCanvasMenu({ ...nearBottom, top: 200, bottom: 200 }, { width: 180, height: 400 }, viewport)
-      .top
-  ).toBe(192);
-});
 
 it('保存短于阈值不闪“正在保存”，超过阈值才显示，未保存的修改立即显示', async () => {
   vi.useFakeTimers();
