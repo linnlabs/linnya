@@ -22,6 +22,10 @@ import { getKnowledgeToolRuntime } from '../../tools/runtime/knowledgeToolRuntim
 import { createBackendPluginUploadEvent, type BackendPluginIpcHandler } from '@plugin/backend/pluginIpcRuntime';
 import { createKnowledgeCli } from '../../cli/orchestration/createKnowledgeCli';
 import type { BackendPluginCliExecutionContext } from '@plugin/backend/pluginCli';
+import type { ToolContext } from '@plugin/backend/toolRuntime';
+import { attachCitationRefAllocator, attachCitationSequence } from 'src/domains/citation';
+import { KnowledgeSearchTool } from '../../tools/search/KnowledgeSearchTool';
+import { SearchInKnowledgeBaseTool } from '../../tools/search/SearchInKnowledgeBaseTool';
 
 let root: string;
 let database: Database.Database;
@@ -250,6 +254,48 @@ describe('knowledge activation persistence and drain', () => {
     const documents = await service.getDocumentsInKnowledgeBase('default');
     expect(documents.map(document => document.status)).toEqual([DocumentStatus.FAILED, DocumentStatus.FAILED]);
     expect(documents[0]?.errorMessage).toMatch(/LINNYA_WORKSPACE_DIR/u);
+  });
+  it('向量服务启动失败时检索：IPC 带原因的结构化错误，Agent 工具给英文原因，都不回传中文原文', async () => {
+    const cases = [
+      { reason: 'runtime-missing', key: 'knowledgeBase.runtime.error.vectorRuntimeMissing', hint: /Qdrant runtime .* missing or damaged.*install it again/u },
+      { reason: 'data-directory-too-long', key: 'knowledgeBase.runtime.error.vectorDataDirectoryTooLong', hint: /data folder path is too long.*LINNYA_WORKSPACE_DIR/u },
+      { reason: 'startup-failed', key: 'knowledgeBase.runtime.error.vectorUnavailable', hint: /failed to start.*disable and re-enable Knowledge Base/u },
+    ] as const;
+    for (const { reason, key, hint } of cases) {
+      vectorFailure = Object.assign(new Error(`Host 诊断原文 ${reason}`), { name: 'QdrantRuntimeUnavailableError', reason });
+      const effect = knowledgePlugin.runtimeEffects?.[0];
+      if (!effect) throw new Error('Missing knowledge runtime effect');
+      await effect.activate();
+      const handlers = new Map<string, BackendPluginIpcHandler>();
+      knowledgePlugin.ipc?.register(undefined, (_pluginId, channel, handler) => handlers.set(channel, handler));
+      const search = handlers.get('search');
+      if (!search) throw new Error('Missing search handler');
+      // 空库和尚无索引身份的库都在启动向量服务前就返回；要让检索真正走到向量启动，库里得有资料和可用的索引身份。
+      const metadata = new BetterSqliteMetadataRepository(database);
+      await metadata.addDocument(createDocument(`doc-${reason}`, 'default', 'notes.md', 7));
+      metadata.indexState.publishRebuilt('default', { modelId: 'embedding', spaceId: 'fixture' });
+      // Agent 工具只在项目对话里检索项目关联的库。
+      database.prepare('INSERT OR IGNORE INTO projects(id) VALUES (?)').run('project-a');
+      database.prepare('INSERT OR REPLACE INTO project_knowledge_base_links(project_id,kb_id,role,created_at,updated_at) VALUES (?,?,?,?,?)')
+        .run('project-a', 'default', 'read_write', Date.now(), Date.now());
+      const response = await search(undefined, { kbId: 'default', request: { query: '知识', embeddingModelId: 'embedding', useReranking: false } });
+      // 界面据 userMessage.key 按语言取文案；error 只是诊断，不是给用户看的文字。
+      expect(response).toMatchObject({ success: false, userMessage: { key } });
+      expect(JSON.stringify(response)).not.toContain('Host 诊断原文');
+
+      for (const tool of [new KnowledgeSearchTool(), new SearchInKnowledgeBaseTool()]) {
+        const context: ToolContext = { conversationId: 'conversation', turnId: 'turn', workspaceProjectId: 'project-a' };
+        attachCitationSequence(context, { offset: 0 });
+        attachCitationRefAllocator(context, { allocate: async anchors => anchors.map((_anchor, index) => `Ref${index}`) });
+        const failure = await tool.run({ query: 'knowledge' }, context).catch((error: unknown) => error);
+        expect(failure).toBeInstanceOf(Error);
+        expect(failure).toHaveProperty('message', expect.stringMatching(hint));
+        expect(failure).toHaveProperty('message', expect.stringMatching(/^Knowledge search is unavailable: /u));
+        // 中文说明留给 CLI 与摄入失败记录，工具结果不能夹带。
+        expect(failure).not.toHaveProperty('message', expect.stringMatching(/[\u4e00-\u9fff]/u));
+      }
+      await effect.deactivate();
+    }
   });
   it('数据目录未超限：同样的上传照常接纳任务', async () => {
     const effect = knowledgePlugin.runtimeEffects?.[0];

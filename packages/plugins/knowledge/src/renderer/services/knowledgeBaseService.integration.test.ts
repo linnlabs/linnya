@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
+import { changeLocale } from '@app/localization';
+import { ensureKnowledgeBaseLocalizationRegistered } from '../orchestration/ensureKnowledgeBaseLocalizationRegistered';
 import { knowledgeBaseService } from './knowledgeBaseService';
 import { startKnowledgeRequestSession, stopKnowledgeRequestSession } from './knowledgeRequestSession';
 
 const invoke = vi.fn<(id: string, channel: string, payload: unknown) => Promise<unknown>>();
 beforeEach(() => {
+  setActivePinia(createPinia());
+  ensureKnowledgeBaseLocalizationRegistered();
   invoke.mockReset();
   vi.stubGlobal('window', { electronAPI: { 'plugin:invoke': invoke } });
   startKnowledgeRequestSession();
@@ -53,4 +58,25 @@ it('新索引 job 状态解码后仍通过既有取消 wire 提交同一身份',
   invoke.mockResolvedValueOnce({ success: true, data: { cancelled: true } });
   await knowledgeBaseService.cancelTask(started.jobId);
   expect(invoke).toHaveBeenLastCalledWith('knowledge', 'cancel-task', { taskId: 'rebuild-1' });
+});
+
+it('检索遇到向量服务启动失败：按当前语言显示原因，不显示后端中文原文', async () => {
+  const failure = {
+    success: false, error: '知识库数据目录的路径太长，后端诊断原文',
+    userMessage: { key: 'knowledgeBase.runtime.error.vectorDataDirectoryTooLong' },
+  };
+  invoke.mockResolvedValue(failure);
+
+  changeLocale('en-US');
+  const english = await knowledgeBaseService.searchInKnowledgeBase('kb', { query: 'q', embeddingModelId: 'e', rerankModelId: 'r' })
+    .catch((error: unknown) => error);
+  expect(english).toBeInstanceOf(Error);
+  expect(english).toHaveProperty('message', expect.stringMatching(/^The Knowledge Base data folder path is too long .*LINNYA_WORKSPACE_DIR.*restart Linnya\.$/u));
+  expect(english).not.toHaveProperty('message', expect.stringMatching(/后端诊断原文/u));
+
+  changeLocale('zh-CN');
+  const chinese = await knowledgeBaseService.searchInKnowledgeBase('kb', { query: 'q', embeddingModelId: 'e', rerankModelId: 'r' })
+    .catch((error: unknown) => error);
+  expect(chinese).toHaveProperty('message', expect.stringMatching(/^知识库数据目录的路径太长.*LINNYA_WORKSPACE_DIR.*重启 Linnya。$/u));
+  expect(chinese).not.toHaveProperty('message', expect.stringMatching(/后端诊断原文/u));
 });
