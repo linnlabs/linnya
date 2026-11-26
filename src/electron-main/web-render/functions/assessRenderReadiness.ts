@@ -9,6 +9,11 @@ export const RENDER_DATA_QUIET_MS = 1_000;
 export const RENDER_MAIN_QUIET_MS = 700;
 /** 视为“主区正在有效增长”的最小高水位增量；忽略倒计时跳动、轮播切换等微小抖动。 */
 export const RENDER_MAIN_GROWTH_MIN_CHARS = 24;
+/**
+ * 脚本与样式表全部结束后需持续安静的时长。JSONP 和按需加载的脚本链不是 xhr/fetch，
+ * 只看数据请求会在 load 之后、列表数据返回之前就判定就绪（公告列表页只读到页面框架）。
+ */
+export const RENDER_PAGE_LOAD_QUIET_MS = 500;
 
 export interface RenderReadinessSample {
   readonly readyState: string;
@@ -29,6 +34,10 @@ export interface RenderReadinessFacts {
   readonly dataQuietMs: number;
   /** 主区可见字数高水位停止有效增长以来的静默时长。 */
   readonly mainQuietMs?: number;
+  /** 在途的脚本与样式表请求数。 */
+  readonly pageLoadRequestsInFlight: number;
+  /** 最近一次脚本或样式表请求开始或结束以来的安静时长；有请求在途时为 0。 */
+  readonly pageLoadQuietMs: number;
   readonly sinceDomReadyMs: number;
   readonly maxSettleDelayMs: number;
   readonly deadlineReached: boolean;
@@ -40,6 +49,7 @@ export type RenderReadinessReason =
   | 'wait_app_shell'
   | 'wait_unstable'
   | 'wait_data_in_flight'
+  | 'wait_page_load_in_flight'
   | 'wait_main_growing'
   | 'app_shell_deadline'
   | 'app_shell_settled_blank'
@@ -101,6 +111,10 @@ export function assessRenderReadinessDetailed(facts: RenderReadinessFacts): Rend
   // 正文稳定但仍有数据请求在途时，在设定窗口内继续等待它们补全正文。
   if (facts.dataRequestsInFlight > 0) {
     return { decision: 'wait', reason: 'wait_data_in_flight' };
+  }
+  // 正文还没到实质长度、只是“看起来稳定”时，脚本仍在加载或刚加载完就再等一等；等待受上面的安定上限约束。
+  if (facts.pageLoadRequestsInFlight > 0 || facts.pageLoadQuietMs < RENDER_PAGE_LOAD_QUIET_MS) {
+    return { decision: 'wait', reason: 'wait_page_load_in_flight' };
   }
   return complete || dataQuiet
     ? { decision: 'ready', reason: 'complete_or_data_quiet' }

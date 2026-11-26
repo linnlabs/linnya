@@ -85,6 +85,7 @@ export const WEB_DOCUMENT_WARNING_VALUES = [
   'hidden_main_content',
   'dynamic_content_pending',
   'lazy_content_incomplete',
+  'capture_truncated',
 ] as const;
 export const WebDocumentWarningSchema = z.enum(WEB_DOCUMENT_WARNING_VALUES);
 export type WebDocumentWarning = z.infer<typeof WebDocumentWarningSchema>;

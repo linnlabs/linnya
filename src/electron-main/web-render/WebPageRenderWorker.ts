@@ -165,6 +165,8 @@ export class WebPageRenderWorker {
   private readonly activeDataRequests = new Set<number>();
   private sawDataRequest = false;
   private lastDataActivityAt = 0;
+  private readonly activePageLoadRequests = new Set<number>();
+  private lastPageLoadActivityAt = 0;
   private subresourceFailureCount = 0;
   private subresourceSampleError: string | undefined;
   private dataRequestFailureCount = 0;
@@ -276,6 +278,7 @@ export class WebPageRenderWorker {
 
     const navigationStartedAt = Date.now();
     this.lastDataActivityAt = navigationStartedAt;
+    this.lastPageLoadActivityAt = navigationStartedAt;
     let resolveDomReady: (() => void) | undefined;
     const domReady = new Promise<void>((resolve) => {
       resolveDomReady = resolve;
@@ -432,6 +435,8 @@ export class WebPageRenderWorker {
         dataRequestsInFlight: this.activeDataRequests.size,
         sawDataRequest: this.sawDataRequest,
         dataQuietMs: this.activeDataRequests.size > 0 ? 0 : now - this.lastDataActivityAt,
+        pageLoadRequestsInFlight: this.activePageLoadRequests.size,
+        pageLoadQuietMs: this.activePageLoadRequests.size > 0 ? 0 : now - this.lastPageLoadActivityAt,
         ...(sawMainTextField ? { mainQuietMs: now - lastMainGrowthAt } : {}),
         sinceDomReadyMs: now - timing.domReadyAt,
         maxSettleDelayMs: this.maxSettleDelayMs,
@@ -610,6 +615,13 @@ export class WebPageRenderWorker {
   private handleSubresource(event: WebPageRenderSubresourceEvent): void {
     if (this.activeAnchorUrl === null) return;
     if (event.category === 'script_or_style') {
+      // 脚本链与 JSONP 的在途状态供就绪判定使用；只结算本任务内发出的请求。
+      if (event.phase === 'started') {
+        this.activePageLoadRequests.add(event.id);
+        this.lastPageLoadActivityAt = Date.now();
+        return;
+      }
+      if (this.activePageLoadRequests.delete(event.id)) this.lastPageLoadActivityAt = Date.now();
       // 窗口销毁或导航中止的 ERR_ABORTED 是本工具自己的动作，不算站点资源失败。
       if (event.phase !== 'failed' || event.error === 'net::ERR_ABORTED') return;
       this.subresourceFailureCount += 1;
@@ -659,6 +671,8 @@ export class WebPageRenderWorker {
     this.activeDataRequests.clear();
     this.sawDataRequest = false;
     this.lastDataActivityAt = Date.now();
+    this.activePageLoadRequests.clear();
+    this.lastPageLoadActivityAt = Date.now();
     this.subresourceFailureCount = 0;
     this.subresourceSampleError = undefined;
     this.dataRequestFailureCount = 0;

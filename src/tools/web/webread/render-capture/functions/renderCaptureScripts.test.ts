@@ -334,6 +334,87 @@ describe('浏览器采集脚本行为与严格四步顺序', () => {
     expect(extracted.resources.some((r) => r.url === 'https://docs.example.test/archive/list.html' && r.kind === 'source')).toBe(true);
   });
 
+  it('sticky 的表头、固定列和吸顶小标题属于正文；sticky 导航条仍被剪掉', () => {
+    const styles = new WeakMap<Element, ComputedStyleSpec>();
+    const sticky: ComputedStyleSpec = { position: 'sticky', display: 'block', visibility: 'visible', opacity: '1' };
+    const dom = createDomSandbox(
+      `<!doctype html><html><body>
+        <div id="topbar">吸顶站点导航条文字</div>
+        <div id="content">
+          <h2 id="section">吸顶小标题第三季度</h2>
+          <table>
+            <thead><tr><th id="head">固定表头项目名称</th><th>金额</th></tr></thead>
+            <tbody><tr><td id="pinned">固定首列营业收入</td><td>${'1,234.56 '.repeat(60)}</td></tr></tbody>
+          </table>
+        </div>
+      </body></html>`,
+      {
+        computedStyles: styles,
+        setup: (doc) => {
+          for (const id of ['topbar', 'section', 'head', 'pinned']) {
+            const el = doc.getElementById(id);
+            if (el) styles.set(el, sticky);
+          }
+        },
+      },
+    );
+    const payload = parseBrowserCapturePayload(dom.run(buildDomCaptureScript()));
+    expect(payload).not.toBeNull();
+    expect(payload!.accessBarrier).toBeUndefined();
+    expect(payload!.html).toContain('固定表头项目名称');
+    expect(payload!.html).toContain('固定首列营业收入');
+    expect(payload!.html).toContain('吸顶小标题第三季度');
+    expect(payload!.html).not.toContain('吸顶站点导航条文字');
+  });
+
+  it('reCAPTCHA v3 角标不算验证码拦截；正文充足时页面内嵌的登录框也不算登录墙', () => {
+    const dom = createDomSandbox(
+      `<!doctype html><html><body>
+        <main><h1>公开文章</h1><p>${'这是一段任何人都能读到的公开正文内容。'.repeat(40)}</p>
+          <form id="inline-login"><input type="password" placeholder="密码"></form>
+        </main>
+        <div class="grecaptcha-badge"><iframe src="https://www.google.com/recaptcha/api2/anchor?k=x"></iframe></div>
+      </body></html>`,
+    );
+    const payload = parseBrowserCapturePayload(dom.run(buildDomCaptureScript()));
+    expect(payload).not.toBeNull();
+    expect(payload!.accessBarrier).toBeUndefined();
+    expect(payload!.html).toContain('这是一段任何人都能读到的公开正文内容');
+  });
+
+  it('正文不足时，验证码与密码框仍判为访问屏障', () => {
+    const captcha = createDomSandbox(
+      `<!doctype html><html><body><main><p>请完成验证</p>
+        <iframe src="https://www.google.com/recaptcha/api2/anchor?k=x" width="300" height="80"></iframe>
+      </main></body></html>`,
+    );
+    expect(parseBrowserCapturePayload(captcha.run(buildDomCaptureScript()))!.accessBarrier).toBe('captcha');
+    const login = createDomSandbox(
+      `<!doctype html><html><body><main><p>登录后继续</p><input type="password"></main></body></html>`,
+    );
+    expect(parseBrowserCapturePayload(login.run(buildDomCaptureScript()))!.accessBarrier).toBe('login_required');
+  });
+
+  it('内联 SVG 的图形文字不进正文；嵌套超过上限时截断并给出 capture_truncated', () => {
+    const svg = createDomSandbox(
+      `<!doctype html><html><body><main><p>${'图表旁边的说明正文。'.repeat(30)}</p>
+        <svg viewBox="0 0 10 10"><text>图表坐标轴刻度文字</text></svg>
+      </main></body></html>`,
+    );
+    const svgPayload = parseBrowserCapturePayload(svg.run(buildDomCaptureScript()));
+    expect(svgPayload!.html).toContain('图表旁边的说明正文');
+    expect(svgPayload!.html).not.toContain('图表坐标轴刻度文字');
+    expect(svgPayload!.warnings).not.toContain('capture_truncated');
+
+    const deep = createDomSandbox(
+      `<!doctype html><html><body><main><p>${'嵌套层之前的正文。'.repeat(30)}</p>${'<div>'.repeat(300)}最深处的文字${'</div>'.repeat(300)}</main></body></html>`,
+    );
+    const deepPayload = parseBrowserCapturePayload(deep.run(buildDomCaptureScript()));
+    expect(deepPayload!.html).toContain('嵌套层之前的正文');
+    expect(deepPayload!.html).not.toContain('最深处的文字');
+    expect(deepPayload!.warnings).toContain('capture_truncated');
+  });
+
   it('滚动探针与步进脚本返回合法有界快照', () => {
     const dom = createDomSandbox('<!doctype html><html><body><main><p>Scrollable content</p></main></body></html>');
     const probe = parseBrowserScrollProbe(dom.run(buildScrollProbeScript()));

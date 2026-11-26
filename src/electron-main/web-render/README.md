@@ -27,9 +27,12 @@ UUID 无限创建底层 Chromium session；取消、超时和渲染进程退出�
 会挂起到页面停止加载）；单次脚本受 `renderTimeoutMs` 与任务总截止约束，保证滚动与最终采集留有余地。
 
 - **重资源拦截**：默认 `blockHeavyResources = true`，窗口启用 `webPreferences.images = false` 禁止 Blink 加载图片且不触发 `img.onerror`（即使在严格 CSP 下也不丢失 `<img onerror>` 图片候选），同时在 `onBeforeRequest` 取消 `image`、`media` 与 `font` 请求作纵深防护；`observeSubresources` 会过滤 `Accept: text/event-stream` 的 SSE 连接，不让长连接阻塞就绪。
-- **主区感知就绪**：`render-capture` 脚本返回 `mainTextLength`（与 Web 共用语义噪音选择器，排除导航、侧栏、页脚、弹窗及 `position: fixed/sticky` 遮罩，存在明确 `<main>`/`<article>` 时不将外围导航计入，并穿透开放 Shadow DOM 与同源 `iframe`）。`functions/assessRenderReadiness` 只把主区高水位有效增长视作进展：主区达到 800 字且高水位静默 `RENDER_MAIN_QUIET_MS`（700ms）后立即提取（不受轮询与数字跳动拖死）；未达 800 字时允许在 8 秒就绪上限内继续等待数据请求或主区增长；空白应用壳到截止或数据请求安静后仍为空壳则报 `app_shell_not_rendered`。
+- **主区感知就绪**：`render-capture` 脚本返回 `mainTextLength`（与 Web 共用语义噪音选择器，排除导航、侧栏、页脚、弹窗及 `position: fixed/sticky` 的外围浮层，存在明确 `<main>`/`<article>` 时不将外围导航计入，并穿透开放 Shadow DOM 与同源 `iframe`）。`functions/assessRenderReadiness` 只把主区高水位有效增长视作进展：主区达到 800 字且高水位静默 `RENDER_MAIN_QUIET_MS`（700ms）后立即提取（不受轮询与数字跳动拖死）；未达 800 字时允许在 8 秒就绪上限内继续等待数据请求或主区增长；空白应用壳到截止或数据请求安静后仍为空壳则报 `app_shell_not_rendered`。正文未达 800 字、只是文字暂时不变时，脚本或样式表请求仍在途或结束不足 `RENDER_PAGE_LOAD_QUIET_MS`（500ms）就继续等（`wait_page_load_in_flight`）：经 JSONP 或后续脚本取数的列表页不会在数据到达前被提取；等待仍受 3 秒安定上限约束，挂住的统计脚本不会拖过上限。
 - **受控轻量滚动**：首屏高度大于视口时按最多 4 步、单次滚动阶段不超过 3 秒、主区达 150,000 字即停的三重硬刹车增量向下滚动；普通单屏或无增量页面立即结束，因硬刹车停止且仍有增量或未到底时在采集结果中附带 `lazy_content_incomplete`。
 - **四步只读采集**：在离线克隆副本中按“① 先判可见登录/人机遮罩 → ② 保护明确关联的可展开折叠正文与 `<details>` → ③ `slot.assignedNodes({ flatten: true })` 展平开放 Shadow DOM、内联同源 `iframe` 并按子文档 URL 解析相对路径 → ④ 计算样式剪枝（保留 `opacity: 0`）与 `data-src` 等懒加载图回填”执行，结果经 `parseBrowserCapturePayload` 严格校验，异常或格式非法时记录告警并安全回退 `document.documentElement.outerHTML`。
+- **定位元素的归属**：`fixed/sticky` 不等于外围。`sticky` 的表格单元格与行、标题、位于表格内或包住表格的容器是正文（固定表头、固定列、吸顶小标题）；占视口宽高各六成以上且承载页面一半以上文字的 `fixed/sticky` 容器是单页应用的界面本体。其余才按外围浮层从就绪采样和采集结果中排除。
+- **访问屏障要真的挡住正文**：主区不足 500 字时，可见的验证码或密码框直接判屏障；主区充足时，只有位于浮层内、且视口 3×3 采样点多数落在浮层上才判 `captcha` / `login_required`。`.grecaptcha-badge`（reCAPTCHA v3 角标）不算验证码，角落登录卡、吸顶登录条不算登录墙。
+- **采集上限**：单次采集最多克隆 200,000 个节点、嵌套 256 层，触达时停止深入并附带 `capture_truncated`；内联 SVG 整体跳过，图形里的文字不进正文。
 
 子资源只经 session 的 `onSendHeaders/onCompleted/onErrorOccurred` 观察：xhr 类型（Chromium 把 fetch 也归为 xhr，已排除 SSE）
 按请求 id 只结算本任务发出的数据请求，失败与成功均结束在途计时；失败额外记录为 `dataRequestFailures`，

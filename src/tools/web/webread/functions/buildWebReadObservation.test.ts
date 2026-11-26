@@ -74,4 +74,25 @@ describe('buildWebReadObservation 来源边界', () => {
     expect(observation.indexOf('Related page resources:', begin)).toBeGreaterThan(begin);
     expect(observation).toContain('Download report https://example.com/report.pdf');
   });
+
+  it('采集不完整时在可信骨架里说明内容只是部分，普通抽取标记不加这句', () => {
+    const base = {
+      ref: 'Par123',
+      title: 'Announcements',
+      url: 'https://example.com/list',
+      content: 'row 1',
+      contentHash: 'partial-hash',
+      capturedCharCount: 5,
+      captureTruncated: false,
+    };
+    const partialNotice = 'do not conclude that something is absent from the page';
+    for (const warning of ['lazy_content_incomplete', 'capture_truncated'] as const) {
+      const observation = buildWebReadObservation({ ...base, warnings: [warning] });
+      const begin = observation.indexOf('<<<BEGIN_UNTRUSTED_WEB_CONTENT_');
+      const notice = observation.indexOf(partialNotice);
+      expect(notice).toBeGreaterThanOrEqual(0);
+      expect(notice).toBeLessThan(begin);
+    }
+    expect(buildWebReadObservation({ ...base, warnings: ['inlined_same_origin_iframe'] })).not.toContain(partialNotice);
+  });
 });

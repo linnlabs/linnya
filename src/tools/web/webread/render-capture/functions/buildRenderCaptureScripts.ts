@@ -3,16 +3,17 @@ import {
   READABLE_HIDDEN_SELECTOR,
   READABLE_MAIN_SELECTOR,
   RENDER_IGNORED_IFRAME_URL_PATTERN_SOURCE,
-  RENDER_READINESS_CHROME_SELECTOR,
 } from '../definitions/renderCaptureContract';
 
 const SHARED_DOM_HELPERS = `
   var MAIN_SELECTOR = ${JSON.stringify(READABLE_MAIN_SELECTOR)};
   var HIDDEN_ATTR_SELECTOR = ${JSON.stringify(READABLE_HIDDEN_SELECTOR)};
   var CONTROL_SELECTOR = ${JSON.stringify(READABLE_CONTROL_SELECTOR)};
-  var CHROME_SELECTOR = ${JSON.stringify(RENDER_READINESS_CHROME_SELECTOR)};
   var IGNORED_IFRAME_RE = new RegExp(${JSON.stringify(RENDER_IGNORED_IFRAME_URL_PATTERN_SOURCE)}, 'i');
-  var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEMPLATE: 1, SVG: 1, OBJECT: 1, EMBED: 1 };
+  // HTML 文档里 svg 元素的 tagName 是小写（外来命名空间不转大写），两种写法都要列。
+  var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEMPLATE: 1, SVG: 1, svg: 1, OBJECT: 1, EMBED: 1 };
+  var TABLE_CONTAINER_SELECTOR = 'table, [role="table"], [role="grid"], [role="treegrid"]';
+  var STICKY_CONTENT_SELECTOR = 'th, td, tr, thead, tbody, tfoot, caption, h1, h2, h3, h4, h5, h6, [role="columnheader"], [role="rowheader"], [role="cell"], [role="gridcell"], [role="row"]';
   var CHROME_CONTAINER_SELECTOR = 'nav, footer, aside, [role="navigation"], [role="complementary"], [role="contentinfo"], [role="dialog"], [role="alertdialog"], [aria-modal="true"], [inert]';
 
   function normLen(text) {
@@ -56,6 +57,46 @@ const SHARED_DOM_HELPERS = `
     return st.display === 'none' || st.visibility === 'hidden' || st.visibility === 'collapse';
   }
 
+  var docTextLengthCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function docTextLength(doc) {
+    if (docTextLengthCache && docTextLengthCache.has(doc)) return docTextLengthCache.get(doc);
+    var len = doc && doc.body ? normLen(doc.body.textContent) : 0;
+    if (docTextLengthCache) docTextLengthCache.set(doc, len);
+    return len;
+  }
+
+  // 单页应用常把整个界面放进一个 fixed/sticky 的满屏容器；它承载页面多数文字，是正文而不是浮层。
+  // 同时要求占满大半个视口，Cookie 条、角落提示卡这类窄条即使页面正文还没渲染出来也不会被当成正文。
+  function isPositionedAppContainer(el, doc) {
+    if (!el.getBoundingClientRect) return false;
+    var win = doc.defaultView;
+    var vw = win ? win.innerWidth : 0;
+    var vh = win ? win.innerHeight : 0;
+    if (!(vw > 0 && vh > 0)) return false;
+    var rect = el.getBoundingClientRect();
+    if (rect.width < vw * 0.6 || rect.height < vh * 0.6) return false;
+    var ownLen = normLen(el.textContent);
+    return ownLen >= 200 && ownLen * 2 >= docTextLength(doc);
+  }
+
+  /**
+   * fixed/sticky 元素是否属于页面外围浮层（导航条、Cookie 条、遮罩）。
+   * sticky 仍在文档流里：固定表头、固定列和吸顶小标题是正文，删掉会让表格缺列缺表头且没有任何提示。
+   */
+  function isFloatingChrome(el, doc) {
+    var st = safeStyle(el);
+    if (!st || (st.position !== 'fixed' && st.position !== 'sticky')) return false;
+    if (el === doc.documentElement || el === doc.body) return false;
+    if (el.matches && el.matches(MAIN_SELECTOR)) return false;
+    if (el.querySelector && el.querySelector(MAIN_SELECTOR)) return false;
+    if (st.position === 'sticky') {
+      if (el.matches && el.matches(STICKY_CONTENT_SELECTOR)) return false;
+      if (el.closest && el.closest(TABLE_CONTAINER_SELECTOR)) return false;
+      if (el.querySelector && el.querySelector(TABLE_CONTAINER_SELECTOR)) return false;
+    }
+    return !isPositionedAppContainer(el, doc);
+  }
+
   function isElementInChrome(el, doc) {
     if (!el || el.nodeType !== 1) return false;
     if (el.matches && el.matches(CHROME_CONTAINER_SELECTOR)) return true;
@@ -68,15 +109,7 @@ const SHARED_DOM_HELPERS = `
       return !(banner.closest && banner.closest(MAIN_SELECTOR))
         && !(el.closest && el.closest(MAIN_SELECTOR) && banner.contains(el.closest(MAIN_SELECTOR)));
     }
-    var st = safeStyle(el);
-    if (st && (st.position === 'fixed' || st.position === 'sticky')) {
-      if (el !== doc.documentElement && el !== doc.body
-        && !(el.matches && el.matches(MAIN_SELECTOR))
-        && !(el.querySelector && el.querySelector(MAIN_SELECTOR))) {
-        return true;
-      }
-    }
-    return false;
+    return isFloatingChrome(el, doc);
   }
 
   function isIgnoredOrTinyIframe(frame, doc) {
@@ -297,10 +330,15 @@ export function buildDomCaptureScript(): string {
   return `(() => {
 ${SHARED_DOM_HELPERS}
   var CAPTCHA_SELECTOR = '[id*="captcha" i], [class*="captcha" i], [data-sitekey], iframe[src*="recaptcha" i], iframe[src*="hcaptcha" i], iframe[src*="turnstile" i]';
+  // reCAPTCHA v3 的角标只表示页面接入了评分，不向访问者出题，不是访问屏障。
+  var CAPTCHA_BADGE_SELECTOR = '.grecaptcha-badge';
+  var BARRIER_MIN_MAIN_TEXT = 500;
   var LOGIN_GATE_RE = /(?:登录(?:后?(?:查看|阅读|继续|解锁))|请先登录|立即登录|扫码登录|账号登录|sign\\s+in\\s+to\\s+(?:continue|read|view)|log\\s+in\\s+to\\s+(?:continue|read|view)|create\\s+an?\\s+account\\s+to\\s+continue)/i;
   var VOID_TAGS = { AREA: 1, BASE: 1, BR: 1, COL: 1, EMBED: 1, HR: 1, IMG: 1, INPUT: 1, LINK: 1, META: 1, PARAM: 1, SOURCE: 1, TRACK: 1, WBR: 1 };
-  var MAX_CLONE_NODES = 50000;
-  var MAX_CLONE_DEPTH = 64;
+  // 上限只为防止病态页面拖垮渲染进程；真实的长表格（数千行）和深层嵌套页面应当完整采集。
+  // 触达上限时必须带 capture_truncated 提示，不能让调用方把残缺内容当成全文。
+  var MAX_CLONE_NODES = 200000;
+  var MAX_CLONE_DEPTH = 256;
   var MAX_IFRAME_DEPTH = 2;
   var MAX_INLINED_FRAMES = 8;
 
@@ -332,49 +370,80 @@ ${SHARED_DOM_HELPERS}
     return true;
   }
 
-  function isOverlayElement(el) {
+  // 浮层 = 对话框，或被判为页面外围的 fixed/sticky 元素；固定表头、应用容器这类定位正文不算。
+  function isOverlayElement(el, doc) {
     if (!el || el.nodeType !== 1) return false;
     if (el.matches && el.matches('[role="dialog"], [role="alertdialog"], [aria-modal="true"]')) return true;
-    var st = safeStyle(el);
-    return Boolean(st && (st.position === 'fixed' || st.position === 'sticky'));
+    return isFloatingChrome(el, doc);
   }
 
   function findVisibleOverlayAncestor(el, doc) {
     for (var p = el; p && p.nodeType === 1 && p !== doc.body && p !== doc.documentElement; p = p.parentElement) {
-      if (isOverlayElement(p) && isVisiblyRendered(p, doc)) return p;
+      if (isOverlayElement(p, doc) && isVisiblyRendered(p, doc)) return p;
     }
     return null;
   }
 
+  /**
+   * 视口是否被浮层挡住：在 3×3 个采样点上做命中测试，多数点落在浮层（含遮罩背景）上才算。
+   * 角落的登录提示卡、底部提示条、侧栏吸顶卡片都不挡正文，页面仍然可读，不能据此判成访问屏障。
+   * 没有排版引擎（单元测试的 DOM）时无法命中测试，按“挡住”处理，交给调用方的其余条件判断。
+   */
+  function isViewportObscured(doc) {
+    var win = doc.defaultView;
+    if (!hasLayoutEngine(doc) || !win || typeof doc.elementFromPoint !== 'function') return true;
+    var vw = win.innerWidth;
+    var vh = win.innerHeight;
+    if (!(vw > 0 && vh > 0)) return true;
+    var fractions = [0.2, 0.5, 0.8];
+    var covered = 0;
+    for (var xi = 0; xi < fractions.length; xi += 1) {
+      for (var yi = 0; yi < fractions.length; yi += 1) {
+        var hit = doc.elementFromPoint(vw * fractions[xi], vh * fractions[yi]);
+        if (hit && findVisibleOverlayAncestor(hit, doc)) covered += 1;
+      }
+    }
+    return covered >= 5;
+  }
+
   // 第一步：在移除任何浮层之前先识别可见人机验证与登录遮罩，防止露出截断壳。
+  // 判成屏障的前提是访问者确实读不到正文：浮层挡住了视口，或页面主区本身没有多少文字。
   function detectAccessBarrier(doc, mainTextLen) {
     if (!doc || !doc.body) return null;
     var layoutActive = hasLayoutEngine(doc);
+    var contentThin = mainTextLen < BARRIER_MIN_MAIN_TEXT;
+    var obscuredCache = null;
+    function contentBlocked() {
+      if (contentThin) return true;
+      if (obscuredCache === null) obscuredCache = isViewportObscured(doc);
+      return obscuredCache;
+    }
     var captchaNodes = doc.querySelectorAll ? doc.querySelectorAll(CAPTCHA_SELECTOR) : [];
     for (var c = 0; c < captchaNodes.length; c += 1) {
       var cap = captchaNodes[c];
+      if (cap.closest && cap.closest(CAPTCHA_BADGE_SELECTOR)) continue;
       if (!isVisiblyRendered(cap, doc)) continue;
-      if (findVisibleOverlayAncestor(cap, doc) || mainTextLen < 500) return 'captcha';
+      if (contentThin || (findVisibleOverlayAncestor(cap, doc) && contentBlocked())) return 'captcha';
     }
     var pwNodes = doc.querySelectorAll ? doc.querySelectorAll('input[type="password"]') : [];
     for (var p = 0; p < pwNodes.length; p += 1) {
       var pw = pwNodes[p];
       if (!isVisiblyRendered(pw, doc)) continue;
-      if (findVisibleOverlayAncestor(pw, doc) || mainTextLen < 500) return 'login_required';
+      if (contentThin || (findVisibleOverlayAncestor(pw, doc) && contentBlocked())) return 'login_required';
     }
     var overlayCandidates = doc.querySelectorAll
       ? doc.querySelectorAll('[role="dialog"], [role="alertdialog"], [aria-modal="true"], div, section, aside, form')
       : [];
     for (var i = 0; i < overlayCandidates.length; i += 1) {
       var el = overlayCandidates[i];
-      if (!isOverlayElement(el) || !isVisiblyRendered(el, doc)) continue;
+      if (!isOverlayElement(el, doc) || !isVisiblyRendered(el, doc)) continue;
       if (layoutActive && el.getBoundingClientRect) {
         var r = el.getBoundingClientRect();
         var isDialog = el.matches && el.matches('[role="dialog"], [role="alertdialog"], [aria-modal="true"]');
         if (!isDialog && (r.width < 200 || r.height < 120)) continue;
       }
       var overlayText = (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
-      if (overlayText && overlayText.length <= 2000 && LOGIN_GATE_RE.test(overlayText)) {
+      if (overlayText && overlayText.length <= 2000 && LOGIN_GATE_RE.test(overlayText) && contentBlocked()) {
         return 'login_required';
       }
     }
@@ -524,13 +593,7 @@ ${SHARED_DOM_HELPERS}
     var st = safeStyle(el);
     if (st) {
       if (st.display === 'none' || st.visibility === 'hidden' || st.visibility === 'collapse') return true;
-      if ((st.position === 'fixed' || st.position === 'sticky')
-        && el !== doc.documentElement && el !== doc.body
-        && !(el.matches && el.matches(MAIN_SELECTOR))
-        && !(el.querySelector && el.querySelector(MAIN_SELECTOR))
-        && !ancestorsOfProtected.has(el)) {
-        return true;
-      }
+      if (!ancestorsOfProtected.has(el) && isFloatingChrome(el, doc)) return true;
     }
     // 故意不按 opacity: 0 剪枝，保留滚入渐显文本。
     if (!VOID_TAGS[el.tagName]
@@ -647,7 +710,9 @@ ${SHARED_DOM_HELPERS}
   }
 
   function cloneSubtree(srcNode, ctx) {
-    if (!srcNode || state.barrier || state.nodeCount >= MAX_CLONE_NODES || ctx.depth > MAX_CLONE_DEPTH) {
+    if (!srcNode || state.barrier) return null;
+    if (state.nodeCount >= MAX_CLONE_NODES || ctx.depth > MAX_CLONE_DEPTH) {
+      addWarning('capture_truncated');
       return null;
     }
     if (srcNode.nodeType === 3) {

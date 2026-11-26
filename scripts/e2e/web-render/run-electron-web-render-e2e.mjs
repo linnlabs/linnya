@@ -124,6 +124,15 @@ try {
       loginMaskKind: 'login_required',
       jsonLdExcluded: true,
     },
+    positionedContent: {
+      stickyTableKept: true,
+      stickyNavExcluded: true,
+      fixedAppKept: true,
+      fixedBarExcluded: true,
+      sideCardKind: 'rendered',
+      loginWallKind: 'login_required',
+      jsonpRowsCaptured: true,
+    },
     govIframeE2e: {
       selectedProvider: 'local_render',
       escalationReason: 'js_required',

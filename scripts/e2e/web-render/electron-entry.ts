@@ -243,6 +243,63 @@ async function run(): Promise<void> {
       </body></html>`);
       return;
     }
+    if (route === '/sticky-table') {
+      // 固定表头与固定首列用 sticky 实现：它们是表格正文，只有吸顶导航条才是外围。
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><head><title>固定列表格</title></head><body>
+        <div style="position: sticky; top: 0; background: #fff;">STICKY TOPBAR NAV</div>
+        <div><h2 style="position: sticky; top: 24px;">STICKY SECTION HEADING</h2>
+        <table><thead><tr><th style="position: sticky; top: 0; left: 0;">STICKY HEADER NAME</th><th style="position: sticky; top: 0;">STICKY HEADER AMOUNT</th></tr></thead>
+        <tbody>${Array.from({ length: 40 }, (_, i) => `<tr><td style="position: sticky; left: 0;">PINNED ROW ${i + 1}</td><td>amount ${i * 17 + 3}</td></tr>`).join('')}</tbody></table></div>
+      </body></html>`);
+      return;
+    }
+    if (route === '/fixed-app-container') {
+      // 单页应用把整个界面放进满屏 fixed 容器，页面没有 main：容器里的文字就是正文。
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><head><title>满屏应用</title></head><body style="margin: 0">
+        <div style="position: fixed; inset: 0; overflow: auto;"><h1>应用内文档</h1><p>${'FIXED APP CONTAINER BODY '.repeat(60)}</p></div>
+        <div style="position: fixed; bottom: 0; left: 0; right: 0; height: 40px;">FIXED COOKIE BAR</div>
+      </body></html>`);
+      return;
+    }
+    if (route === '/login-side-card' || route === '/login-wall-long') {
+      // 两页正文同样充足：角落的登录卡和 reCAPTCHA 角标不挡正文；满屏登录层挡住正文，仍是登录墙。
+      const wall = route === '/login-wall-long';
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><head><title>社区文章</title></head><body style="margin: 0">
+        <article><h1>社区文章</h1>${`<p>${'PUBLIC ARTICLE BODY SENTENCE. '.repeat(20)}</p>`.repeat(8)}</article>
+        <div style="position: fixed; ${wall ? 'inset: 0; background: #fff;' : 'right: 16px; bottom: 16px; width: 240px; height: 160px;'}">
+          <p>登录后查看更多精彩内容</p><input type="password" placeholder="密码">
+        </div>
+        <div class="grecaptcha-badge" style="position: fixed; right: 0; bottom: 200px; width: 70px; height: 60px;">
+          <iframe src="about:blank" title="reCAPTCHA" width="256" height="60"></iframe>
+        </div>
+      </body></html>`);
+      return;
+    }
+    if (route === '/jsonp-list') {
+      // 列表数据经 load 之后插入的脚本返回（JSONP），不是 xhr/fetch；框架文字先稳定下来。
+      response.setHeader('Content-Type', 'text/html; charset=utf-8');
+      response.end(`<!doctype html><html><head><title>公告列表</title></head><body>
+        <main><h1>公告列表</h1><p>${'栏目说明文字。'.repeat(40)}</p><ul id="rows"></ul></main>
+        <script>
+          window.__fill = (rows) => { document.querySelector('#rows').innerHTML = rows.map((row) => '<li>' + row + '</li>').join(''); };
+          window.addEventListener('load', () => setTimeout(() => {
+            const tag = document.createElement('script');
+            tag.src = '/jsonp-list.js';
+            document.body.appendChild(tag);
+          }, 100));
+        </script></body></html>`);
+      return;
+    }
+    if (route === '/jsonp-list.js') {
+      setTimeout(() => {
+        response.setHeader('Content-Type', 'application/javascript');
+        response.end(`window.__fill(${JSON.stringify(Array.from({ length: 30 }, (_, i) => `JSONP ANNOUNCEMENT ROW ${i + 1} 关于某事项的公告`))});`);
+      }, 1_200);
+      return;
+    }
     if (route === '/jsonld-empty-body') {
       response.setHeader('Content-Type', 'text/html; charset=utf-8');
       response.end(`<!doctype html><html><head><title>Empty Shell</title>
@@ -741,6 +798,15 @@ async function run(): Promise<void> {
       loginMaskKind: '',
       jsonLdExcluded: false,
     };
+    let positionedContent = {
+      stickyTableKept: false,
+      stickyNavExcluded: false,
+      fixedAppKept: false,
+      fixedBarExcluded: false,
+      sideCardKind: '',
+      loginWallKind: '',
+      jsonpRowsCaptured: false,
+    };
     let govIframeE2e = {
       selectedProvider: '',
       escalationReason: '',
@@ -838,6 +904,28 @@ async function run(): Promise<void> {
           && !disclosuresRes.content.includes('STALE CSS SECRET'),
         loginMaskKind,
         jsonLdExcluded: !jsonLdErrText.includes('JSONLD NEVER EVIDENCE'),
+      };
+
+      // 2b. 定位元素归属：sticky 表格部件与满屏应用容器是正文；浮层只有真的挡住正文才算访问屏障
+      const stickyTable = await phase2RenderProvider.read({ url: `${origin}/sticky-table` });
+      const fixedApp = await phase2RenderProvider.read({ url: `${origin}/fixed-app-container` });
+      const readKind = (route: string): Promise<string> => phase2RenderProvider.read({ url: `${origin}${route}` })
+        .then(
+          (res) => (res.content.includes('PUBLIC ARTICLE BODY SENTENCE') ? 'rendered' : 'rendered_without_body'),
+          (err: unknown) => (err instanceof WebFailureError ? err.kind : ''),
+        );
+      const jsonpList = await phase2RenderProvider.read({ url: `${origin}/jsonp-list` });
+      positionedContent = {
+        stickyTableKept: stickyTable.content.includes('STICKY HEADER NAME')
+          && stickyTable.content.includes('STICKY HEADER AMOUNT')
+          && stickyTable.content.includes('PINNED ROW 40')
+          && stickyTable.content.includes('STICKY SECTION HEADING'),
+        stickyNavExcluded: !stickyTable.content.includes('STICKY TOPBAR NAV'),
+        fixedAppKept: fixedApp.content.includes('FIXED APP CONTAINER BODY'),
+        fixedBarExcluded: !fixedApp.content.includes('FIXED COOKIE BAR'),
+        sideCardKind: await readKind('/login-side-card'),
+        loginWallKind: await readKind('/login-wall-long'),
+        jsonpRowsCaptured: jsonpList.content.includes('JSONP ANNOUNCEMENT ROW 30'),
       };
 
       // 3. 政务同源 iframe 端到端 + 纯附件目录 + 同站跨源对照
@@ -968,6 +1056,7 @@ async function run(): Promise<void> {
       hiddenRevealContent,
       hashRouteE2e,
       visibilityContract,
+      positionedContent,
       govIframeE2e,
       shadowAndCss,
       slowHydrationAndPolling,
