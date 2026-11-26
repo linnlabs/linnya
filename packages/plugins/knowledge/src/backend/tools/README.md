@@ -162,6 +162,7 @@ deep_search 的目标：让子 Agent 做“检索 + 阅读 + 智能筛选”，�
 - 激活时注册 `runtime/knowledgeToolRuntime.ts` 的 service、当前项目关联读取口与活动任务计数；每个公开工具入场后持有租约，成功、失败与取消均释放。停用后的旧工具实例不得再调用服务。
 - ToolContext 只提供 Host 已冻结的项目、Conversation、run、abort 与引用能力，不再注入完整知识库服务或用于读取项目关联的数据库。
 - 深搜通过公共 runner 调用真实 child invoker，保留 subrun、parentToolCallId、审计 source、judgeToolOutput 与取消传播。插件撤销只阻止新执行，不删除 Host 持久化的子运行与引用证据。
+- `knowledge_search` 声明可并行：同一次回复里相邻的多个调用同时执行（组内上限 3）。每父 run 最多 2 次深搜由深搜 Agent 的 `maxCallsPerParentRun` 交给 Host 持久 admission 计数，超额时工具用 `isChildRunLimitExceeded` 识别并降级为浅搜索；不按 ToolContext 对象计数，因为每个调用拿到的是各自派生的上下文。
 
 - **项目知识库 scope**：通过 `resolveKnowledgeBaseScopeFromContext(context)` 解析当前会话允许访问的 kbId 集合。
 - **跨项目禁止**：`assertDocumentKbAllowedInScope` 强制校验 doc/kb 是否在 scope 内，避免越权读取。

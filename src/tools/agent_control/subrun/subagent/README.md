@@ -48,7 +48,7 @@ subagent Tool
 
 Renderer 通过独立的 `SubagentPresentationArgsSchema` 回放曾带有 input_documents 的历史参数；此只读兼容不恢复 live 参数，不启动旧交接流程。历史实际 child 输入仍以其持久运行事实为准。
 
-本工具每次执行一个 child。普通 ToolNode 顺序执行同一 decision 的多个 `subagent` 调用，不能据模型一次请求多个调用声称并行。现有 `subrun_batch` 是 Host 同 worker 批量协议，不代替异构角色委派；未来并行扩展须复用 shared runner 并定义统一批量合同。
+本工具每次执行一个 child，并声明 `parallel: true`：同一 decision 里相邻的多个 `subagent` 调用由 ToolNode 同时执行（组内上限 3，Linnkit 默认值），每个调用有自己的父工具身份、trace 和断点，规则见 [10-subruns](../../../../../docs/conversation-platform/10-subruns.md#一次回复里的并行调用)。工具说明要求每个 child 写自己的产物路径；写入领域不加锁，同一路径后写覆盖先写。现有 `subrun_batch` 是 Host 同 worker 批量协议，不代替异构角色委派。
 
 ## Runner 约束
 

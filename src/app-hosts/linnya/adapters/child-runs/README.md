@@ -287,6 +287,7 @@ Host 端到端测试必须按事实 owner 取数：run 注册前提交的 `user_
 断言迭代数和终态节点已补全；只断言 AbortSignal 或返回值 `cancelled=true` 不足以证明持久状态正确。
 
 涉及父级同一 decision 的多个串行 child 工具调用时，还必须覆盖首个执行中取消、后续调用未启动的场景，并关闭重开 SQLite 后通过正式 history reader 断言所有 tool call 已配对且不存在 loading 行。
+同一 decision 的多个可并行 child 工具调用（`subagent` 等）还要证明真的重叠执行、各自 trace 挂在各自父调用、取消传到每个 child、暂停后续跑只补未完成者，见 `flow.parallel-subagents.sqlite.integration.test.ts`。
 
 ---
 

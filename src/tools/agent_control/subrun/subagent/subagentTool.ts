@@ -39,7 +39,7 @@ Important:
 - Leaf subagents cannot delegate. Registered coordinators can call only their admitted direct child types.
 - Subagents automatically receive the admitted project/current-view environment, but not the parent conversation history or TaskState. The prompt is the sole task-semantic handoff; include the goal, task-specific inputs, allowed and forbidden sources/actions, and expected output. Pass on all applicable user restrictions; inherited command permissions do not replace task-specific restrictions.
 - Prefer having the subagent return findings in its final answer, then compose the final output yourself.
-- If durable output is needed, ask the subagent to create or edit Workspace files with write_file/edit_file.
+- If durable output is needed, ask the subagent to create or edit Workspace files with write_file/edit_file. Several subagent calls in the same reply run at the same time, so give each one its own output path; writes to the same path overwrite each other.
 - The tool returns \`status\` plus reusable \`artifacts\`: Workspace VFS inodes (\`workspace:<nodeId>\`) and durable ToolOutput references (\`tool_output://blobs/<id>\`). Read Workspace artifacts with \`read_file(inode=..., view="document")\`; continue ToolOutput artifacts with \`tool_output_read(blob_id=...)\`.
 `;
 }
@@ -92,6 +92,12 @@ function requireExecutionModelId(context: ToolContext): string {
 
 export class SubagentTool extends BaseTool {
   readonly name = 'subagent';
+  /**
+   * 同一次回复里相邻的多个 subagent 调用同时执行（组内上限由 Linnkit ToolNode 决定，默认 3）。
+   * 每个 child 有自己的父工具调用身份与断点；写入冲突不加锁，由委派说明要求各写各的产物路径。
+   * 本工具不能返回 requireUser / terminateRun / finalAnswer 控制，否则并行组按合同错误结算。
+   */
+  readonly parallel = true;
 
   readonly description = buildSubagentDescription();
 

@@ -51,6 +51,12 @@ const DEEP_SEARCH_TOOL_CONFIG = {
  */
 export class KnowledgeSearchTool extends BaseTool {
   readonly name = 'knowledge_search';
+  /**
+   * 深度搜索起一个分钟级子运行，相邻调用同时执行才有墙钟收益；浅搜索只读，一起并行也安全。
+   * 深搜额度由子运行持久 admission 事务计数（见 deep-search Agent 的 maxCallsPerParentRun），
+   * 不依赖 ToolContext 对象：Linnkit 为每个调用派生独立上下文，按上下文计数会失效。
+   */
+  readonly parallel = true;
 
   get description() {
     return `Unified search tool for the knowledge base.

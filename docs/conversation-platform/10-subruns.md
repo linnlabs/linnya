@@ -62,10 +62,24 @@ Run（一次用户意图）
 
 批量执行分成两条真实路径：
 
-- LLM 批量：Agent 在一次决策中多次调用普通 `subagent`；每次调用拥有自己的工具对和 subrun，不承诺并行。
+- LLM 批量：Agent 在一次决策中多次调用普通 `subagent`；每次调用拥有自己的工具对和 subrun。相邻的可并行调用同时执行，规则见下方“一次回复里的并行调用”。
 - 系统批量：按钮或确定性业务编排使用 Host-only `subrun_batch`，一次启动 N 个 child run；它可以注册在 Host ToolRegistry，但不能进入任何 AgentDefinition 或模型工具白名单。
 
 系统批量由无工具的 `system_batch_summarizer` 收尾，父工具结果保存完整逐项事实与权威 `subrun_ids`，observation 保持有界。Host 使用标准 ToolNode 合同形成 `tool_call/tool_output`，不能手工合成一套事件；写回副作用通过业务 owner 的窄 port 完成，不能由 child 自报的行列、路径或开放 metadata 决定目标。
+
+### 一次回复里的并行调用
+
+Linnkit 0.48.0 起，工具声明 `parallel: true` 后，模型一次回复里**相邻**的可并行调用分成一组同时执行；未声明的调用是屏障，前面一组全部结算后它才开始，它结束后才开始下一个调用。合同见 Linnkit `docs/integration/tools.md` §5.1。
+
+- **哪些工具可并行**：首版只有子任务类工具——`subagent`、`knowledge_search`、`web_search`（深度搜索各起一个分钟级子运行；这两个工具的浅搜索只读，同组并行也安全）。`read_file`、`grep` 等读取工具和所有写入、审批类工具不声明，保持串行。
+- **上限**：组内同时在跑的调用最多 3 个（Linnkit 默认值，Host 不改、模型不能改），多出的按调用顺序排队。嵌套时每层各自生效，深度上限不变。深搜额度（网页每父 run 4 次、知识库 2 次）由子运行持久 admission 事务计数，并发调用不会越过。
+- **失败**：一个调用失败只影响自己的结果，同伴照常完成，模型在下一轮看到全部结果。
+- **取消**：组内调用共用 run 的停止信号，取消传到每个在跑的子运行；在跑的结算为执行中取消，未启动的结算为执行前取消，每个调用都有配对的 `tool_output`。
+- **暂停与续跑**：已完成调用的结果各自提交，不会重跑；断点的 `executingToolCallIds` 记录仍在跑的调用，继续时逐个对账——已完成的子运行只读原结果，未完成的从自己的断点继续。
+- **结果顺序**：历史里的 `tool_output` 按完成先后排列，发给模型前由 Linnkit 排回调用顺序；Renderer 与回放一律按 `tool_call_id` 配对，不依赖先后。同一组里多个引用生产者可能得到重叠的 `citations[].index`（生产顺序，不是身份），引用身份仍是会话内唯一的 `ref`。
+- **写冲突**：不加锁。委派说明要求每个子任务写各自的产物路径；同一路径的 `write_file` 后写覆盖先写。
+
+时间线上同一组的多张子任务卡同时显示进行中，各自完成各自变完成；子运行详情照旧挂在各自的父工具卡上（每个调用有独立的 `parentToolCallId`）。
 
 表格填充是首个垂直切片：`app/workflows/table-fill` 发起 forced `subrun_batch`，Editor 的 `table-fill-write` port 串行提交真实 ProseMirror 写入，Conversation 只承载活动、trace 和最终展示，不识别 table 业务字段。
 
@@ -96,7 +110,7 @@ child 工具链的三类事实语义与主 ToolNode 一致；已提交的上下�
 | `tool_output` | 单个调用的 terminal status 与结构化 output；成功结果可带有序 durable attachment refs | 是，收敛为 success/error |
 | `history_summary` | 已提交摘要的统计、替换来源 ID 与压缩比；不复制摘要正文 | 是，仅在完整 child message 详情中复用现有 Summary 行 |
 
-`tool_call_decision` 不表示工具已开始，也不创建 queued/pending 可见行。ToolNode 当前串行执行时，用户会看到工具随 `tool_process(start)` 一个个出现；未来并行执行时只会有多个步骤同时 loading，Renderer 无需新增 queue 状态。
+`tool_call_decision` 不表示工具已开始，也不创建 queued/pending 可见行。串行工具随 `tool_process(start)` 一个个出现；可并行的一组会有多个步骤同时 loading，排队中的调用在真正开始前不出现可见行，Renderer 无需 queue 状态。
 
 ### 3.1 decision 为什么必须保存完整批次
 
