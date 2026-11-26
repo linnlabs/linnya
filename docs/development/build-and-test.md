@@ -178,6 +178,8 @@ macOS 平台任务复用本轮构建的 Backend 和 CLI，在准备锁定版本�
 Cargo 只缓存这三个原生 workspace 的依赖，不缓存安装包、签名结果、用户数据或私有配置。
 pnpm 缓存仍由 `setup-node` 管理，缺少任意缓存时均从正式锁文件重新准备。
 
+Canvas 的 Ubuntu 绘制任务从当轮 APT 索引读取 `fonts-noto-cjk` 的版本与 SHA-256，只缓存对应的 `.deb`。命中后仍核对摘要并通过 APT 安装，Xvfb、Electron 系统依赖及绘制验收照常执行。
+
 连续推送只取消同一 PR 的旧运行。main 使用独立运行分组，保证每次提交都保留完整检查。
 不对 Markdown 做整体路径排除：Skill、提示词、发行说明和部分测试输入也是 Markdown。
 修改 CI 后，应比较同一产品源码的实际 job 与 step 时间，并区分冷缓存和热缓存。

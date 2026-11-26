@@ -41,10 +41,41 @@ jobs:
       - name: Install dependencies
         id: dependencies
         run: pnpm install --frozen-lockfile
+      - name: Resolve Linux drawing font
+        id: linux-font
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' }}
+        run: |
+          sudo apt-get update
+          version=$(apt-cache policy fonts-noto-cjk | awk '/Candidate:/ {print $2}')
+          digest=$(apt-cache show "fonts-noto-cjk=$version" | awk '/^SHA256: / {print $2; exit}')
+          [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - name: Cache Linux drawing font
+        id: font-cache
+        if: ${{ !cancelled() && steps.linux-font.outcome == 'success' }}
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ runner.temp }}/canvas-font/*.deb
+          key: canvas-font-ubuntu-24.04-${{ steps.linux-font.outputs.digest }}
       - name: Prepare Linux offscreen display
         id: linux-display
-        if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' }}
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 fonts-noto-cjk
+        if: ${{ !cancelled() && steps.linux-font.outcome == 'success' }}
+        env:
+          FONT_VERSION: ${{ steps.linux-font.outputs.version }}
+          FONT_SHA256: ${{ steps.linux-font.outputs.digest }}
+          FONT_CACHE_HIT: ${{ steps.font-cache.outputs.cache-hit }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/canvas-font"
+          cd "$RUNNER_TEMP/canvas-font"
+          if [[ "$FONT_CACHE_HIT" != true ]]; then
+            apt-get download "fonts-noto-cjk=$FONT_VERSION"
+          fi
+          # 即使命中缓存，也按本轮已签名 APT 索引校验安装包，再经 APT 安装并生成字体索引。
+          printf '%s  %s\n' "$FONT_SHA256" ./*.deb | sha256sum --check
+          sudo apt-get install -y xvfb libgtk-3-0t64 libnss3 libasound2t64 ./*.deb
+          dpkg-query -W fonts-noto-cjk
+          fc-match -f '%{family}\n' 'sans-serif:lang=zh-cn'
       - name: Prepare Linux Electron sandbox helper
         id: linux-sandbox
         if: ${{ !cancelled() && runner.os == 'Linux' && steps.dependencies.outcome == 'success' }}
