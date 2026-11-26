@@ -11,6 +11,7 @@ import type {
   WebPageRenderWindow,
 } from './definitions/webPageRenderRuntime';
 import { WebPageRenderManager } from './WebPageRenderManager';
+import { electronWebPageRenderRuntime } from './electronWebPageRenderRuntime';
 
 function deferred<T>(): {
   readonly promise: Promise<T>;
@@ -232,31 +233,35 @@ describe('WebPageRenderManager', () => {
       },
     };
 
-    const manager = new WebPageRenderManager({
-      maxConcurrency: 1,
-      idleTimeoutMs: 30,
-      runtime,
-    });
-
-    for (let cycle = 0; cycle < 3; cycle += 1) {
-      const res = await manager.render({ url: `https://example.com/cycle-${cycle}` });
-      expect(res.mainResponse.status).toBe(200);
-      expect(guardsInstalled).toBe(1);
-      expect(guardsRemoved).toBe(0);
-      await new Promise((resolve) => setTimeout(resolve, 60));
-      // idle 销毁 worker 后，安全守卫不能被卸载，且无活跃任务的主框架响应必须被拒绝。
-      expect(guardsRemoved).toBe(0);
-      expect(responseObserver?.({
-        url: 'https://example.com/idle-unexpected',
-        statusCode: 200,
-        headers: { get: () => undefined },
-      })).toBe('cancel');
+    // 从默认工厂观察真实 session 分配，让同一断言也可回放尚无 runtime 注入参数的旧版。
+    const createSession = vi.spyOn(electronWebPageRenderRuntime, 'createSession').mockImplementation(runtime.createSession);
+    const createWindow = vi.spyOn(electronWebPageRenderRuntime, 'createWindow').mockImplementation(runtime.createWindow);
+    const manager = new WebPageRenderManager({ maxConcurrency: 1, idleTimeoutMs: 30 });
+    const idleStates = [];
+    try {
+      for (let cycle = 0; cycle < 3; cycle += 1) {
+        const res = await manager.render({ url: `https://example.com/cycle-${cycle}` });
+        expect(res.mainResponse.status).toBe(200);
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        idleStates.push({
+          guardsInstalled, guardsRemoved,
+          decision: responseObserver?.({
+            url: 'https://example.com/idle-unexpected', statusCode: 200,
+            headers: { get: () => undefined },
+          }),
+        });
+      }
+      expect(partitions).toEqual(['web-render:slot-0']);
+      for (const idle of idleStates) {
+        expect(idle).toEqual({ guardsInstalled: 1, guardsRemoved: 0, decision: 'cancel' });
+      }
+      // 每轮 render 开头清理 + 每轮 idle 销毁清理，至少 6 次。
+      expect(clearCount).toBeGreaterThanOrEqual(6);
+    } finally {
+      await manager.dispose();
+      createWindow.mockRestore();
+      createSession.mockRestore();
     }
-
-    expect(partitions).toEqual(['web-render:slot-0']);
-    // 每轮 render 开头清理 + 每轮 idle 销毁清理，至少 6 次。
-    expect(clearCount).toBeGreaterThanOrEqual(6);
-    await manager.dispose();
     expect(guardsRemoved).toBe(1);
   });
 });
