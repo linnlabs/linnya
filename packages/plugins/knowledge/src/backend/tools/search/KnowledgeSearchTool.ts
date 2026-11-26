@@ -18,6 +18,7 @@ import { runShallowSearch } from './shallow/runShallowSearch';
 import { runDeepSearch, DeepSearchFailedError } from './deep/runDeepSearch';
 import { resolveGraphPolicyFromContext } from './graphPolicy';
 import { readDeepSearchRuntimeDepth } from './deepSearchDepth';
+import { rethrowSearchErrorForAgent } from './functions/rethrowSearchErrorForAgent';
 import { DEEP_SEARCH_CONFIG as DEEP_SEARCH_AGENT_CONFIG } from '../../agents/deep-search';
 import { Logger } from '@plugin/backend/loggingRuntime';
 import { requireCitationSequenceOffset } from '@plugin/backend/citationSourceRuntime';
@@ -171,7 +172,11 @@ Important (ID semantics):
   }
 
   async run(args: Record<string, unknown>, context: ToolContext): Promise<string> {
-    return runWithKnowledgeToolRuntime(() => this.runAdmitted(args, context));
+    try {
+      return await runWithKnowledgeToolRuntime(() => this.runAdmitted(args, context));
+    } catch (error) {
+      rethrowSearchErrorForAgent(error);
+    }
   }
 
   private async runAdmitted(args: Record<string, unknown>, context: ToolContext): Promise<string> {

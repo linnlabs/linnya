@@ -52,6 +52,7 @@ interface ChangeRow {
   readonly agent_id: string | null;
   readonly created_at: number;
   readonly undone_at: number | null;
+  readonly root_agent_id: string | null;
 }
 
 interface TaggedObject { readonly kind: SemanticObjectKind; readonly id: string; readonly createdAt: number }
@@ -185,9 +186,12 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
     const who = actor();
     db.prepare(`
       INSERT INTO semantic_schema_changes
-        (id, kind, summary_json, undo_json, attachments_json, actor_kind, conversation_id, run_id, agent_id, created_at, undone_at)
-      VALUES (?, ?, ?, ?, '{}', ?, ?, ?, ?, ?, NULL)
-    `).run(id, summary.kind, JSON.stringify(summary), JSON.stringify(undo), who.kind, who.conversationId, who.runId, who.agentId, at);
+        (id, kind, summary_json, undo_json, attachments_json, actor_kind, conversation_id, run_id, agent_id, created_at, undone_at, root_agent_id)
+      VALUES (?, ?, ?, ?, '{}', ?, ?, ?, ?, ?, NULL, ?)
+    `).run(
+      id, summary.kind, JSON.stringify(summary), JSON.stringify(undo),
+      who.kind, who.conversationId, who.runId, who.agentId, at, who.rootAgentId,
+    );
     return { id, summary, actor: who, createdAt: at, undoneAt: null, attachments: {} };
   }
 
@@ -201,6 +205,7 @@ export function createSqliteSemanticSchemaChanges(context: SemanticSchemaChangeC
         conversationId: row.conversation_id,
         runId: row.run_id,
         agentId: row.agent_id,
+        rootAgentId: row.root_agent_id,
       },
       createdAt: row.created_at,
       undoneAt: row.undone_at,

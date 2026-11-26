@@ -9,6 +9,7 @@ import {
   type SemanticSchemaOperation,
 } from '@app/schemas';
 import { createProjectLifecycle } from 'src/domains/projects';
+import { withActionActor, type ActionRunActor } from 'src/domains/action-ledger';
 import { createSqliteSemanticLayer } from 'src/domains/semantic-layer';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { WorkspaceService } from 'src/electron-main/services/workspace/workspace';
@@ -99,7 +100,8 @@ describe('读出', () => {
     const tags = new Map(overview.tags.map(tag => [tag.name, tag]));
     expect(tags.get('论文')).toMatchObject({ document_count: 2, similar: [{ id: research2.id, name: '研究论文' }] });
     expect(tags.get('研究论文')).toMatchObject({ document_count: 2, field_ids: [status.id, year.id] });
-    expect(tags.get('论文')?.created_by).toEqual({ kind: 'user', conversation_id: null, conversation_title: null, agent_id: null });
+    expect(tags.get('论文')?.created_by)
+      .toEqual({ kind: 'user', conversation_id: null, conversation_title: null, agent_id: null, root_agent: null });
     const properties = new Map(overview.properties.map(property => [property.name, property]));
     expect(properties.get('年份')?.document_count).toBe(2);
     expect([...(properties.get('年份')?.tag_ids ?? [])].sort()).toEqual([paper.id, research2.id].sort());
@@ -112,6 +114,33 @@ describe('读出', () => {
     expect(usage.projects.map(project => [project.name, project.document_count])).toEqual([['调研', 1], ['资料', 1]]);
     expect(usage.documents.map(document => document.title)).toEqual(['c.md', 'd.md']);
     expect(usage.saved_filters.map(filter => [filter.name, filter.project_name])).toEqual([['全部论文', '资料']]);
+  });
+});
+
+describe('子任务做的改动', () => {
+  it('标签创建者与改动记录带上发起子任务的 Agent，对话删除后仍在', () => {
+    const { db } = seed();
+    db.prepare('INSERT INTO conversations (conversation_id, title, project_id, created_at, last_event_at) VALUES (?, ?, NULL, 1, 1)')
+      .run('conv', '整理论文');
+    const insertRun = db.prepare(
+      "INSERT INTO runs (id, conversation_id, kind, status, start_ts, agent_spec_id, parent_run_id) VALUES (?, 'conv', 'agent', 'running', 1, ?, ?)",
+    );
+    insertRun.run('run-root', 'research_v1', null);
+    insertRun.run('run-child', 'subagent_general', 'run-root');
+    const subrun: ActionRunActor = {
+      kind: 'subrun', runId: 'run-child', rootRunId: 'run-root', parentRunId: 'run-root', conversationId: 'conv', toolCallId: 'call-1',
+    };
+    const layer = createSqliteSemanticLayer(db, { read: id => readWorkspaceDocumentIdentity(db, id) });
+    withActionActor(subrun, () => {
+      layer.defineTag({ name: '综述' });
+      manage({ action: 'apply', operation: { op: 'rename_tag', tag: '论文', name: '期刊论文' } });
+    });
+    db.prepare('DELETE FROM conversations WHERE conversation_id = ?').run('conv');
+
+    const overview = ok('read', { action: 'read' }).overview;
+    const subtask = { kind: 'subrun', agent_id: 'subagent_general', root_agent: { agent_id: 'research_v1' } };
+    expect(overview.tags.find(tag => tag.name === '综述')?.created_by).toMatchObject(subtask);
+    expect(overview.changes[0]).toMatchObject({ summary: { kind: 'rename_tag', to: '期刊论文' }, actor: subtask });
   });
 });
 

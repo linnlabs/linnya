@@ -1,7 +1,7 @@
 # Host 数据库基线与迁移
 
 本目录只管理 Linnya Host 在 `workspace.sqlite` 中拥有的 Schema。当前不兼容开发基线是
-v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v80。
+v61；v1-v60 的运行时迁移实现和专项测试已经删除。当前 Schema 版本为 v81。
 
 v67→v68 为 image_blocks 增加默认空字符串的 caption；已有 alt/title、尺寸、来源保持不变，旧图片不会自动显示文件名题注。
 
@@ -33,7 +33,9 @@ v79→v80 为 `knowledge_bases` 加可空的 `embedding_space_id`。它记录实
 
 [定时任务](../../../../app-hosts/linnya/application/scheduled-tasks/README.md)的任务和运行记录由 schema provider 在 v80 内创建。
 
-配色的“最近用过”（`color_palette_suggestions`、`color_palette_uses`，见 [color-palette domain](../../../../domains/color-palette/README.md#最近用过)）由 schema provider 在 v80 内创建，已有库启动时补建空表，不提升版本、没有迁移步骤。
+v80→v81 给行动账本加 `root_agent_id`、语义层改动批次加 `root_agent_id`、标签加 `created_root_agent_id`，记下用户这次请求的根运行 Agent，子运行的改动据此显示“XX 的子任务”（见[行动账本](../../../../domains/action-ledger/README.md#执行者与作者)）。只加列并回填空值：账本按根运行编号查仍在的运行记录，运行已随对话删除时取根运行自己账本行里的 Agent；主运行的根运行 Agent 就是它自己的 Agent；语义层改动批次沿运行记录的父运行链找根。运行记录已删除的子运行和不记运行编号的子任务标签留空，界面显示“子任务”。
+
+配色的“最近用过”（`color_palette_suggestions`、`color_palette_uses`，见 [color-palette domain](../../../../domains/color-palette/README.md#最近用过)）由 schema provider 创建，已有库启动时补建空表，不提升版本、没有迁移步骤。
 
 ## 升级耗时与启动进度
 

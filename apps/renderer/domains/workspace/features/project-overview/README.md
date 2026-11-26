@@ -15,7 +15,7 @@
 资源库内部文档不在表中。数据口径由 Host 的 `application/project-overview` 定义。
 
 对话页列出项目里的对话：标题（置顶的标题后带图钉）、Agent（这个对话里实际回复过的 Agent，最近的在前；Linnya CLI 创建的对话显示“Linnya CLI”，与文件来源同名；还没有回复时显示“—”）、轮次、改过的文档数、最近活动（本窗口观察到正在回复时显示“正在回复”）和占用；
-Agent 筛选按这一列的值匹配：回复过的 Agent，以及“Linnya CLI”（有这类对话时才出现在菜单里）。右侧详情先分开写“回复过”“当前选用”和“子任务 N 次”（全部子运行合计；子 Agent 还没有面向用户的名字，与文件来源一样统称子任务，合同里的逐 Agent 计数暂不展示），再给第一个问题、最后的答复、改过的文档（可打开，已删除的标出）和占用分项。搜索覆盖标题和可读对话内容，
+Agent 筛选按这一列的值匹配：回复过的 Agent，以及“Linnya CLI”（有这类对话时才出现在菜单里）。右侧详情先分开写“回复过”“当前选用”和“子任务 N 次”（全部子运行合计；子 Agent 还没有面向用户的名字，不按子 Agent 分开，合同里的逐 Agent 计数暂不展示），再给第一个问题、最后的答复、改过的文档（可打开，已删除的标出）和占用分项。搜索覆盖标题和可读对话内容，
 命中片段已在详情里完整出现时不重复显示。数据口径由 Host 的 `application/project-conversations` 定义。
 对话筛选、全文搜索和标题/活动/轮次/文档数/占用排序统一请求 Host query，与 Shell 内建 CLI 同条件同序。Agent 筛选看实际回复者（不是当前选中的 Agent），可以匹配同一对话的多个历史回复者；Linnya CLI 创建的对话用入口值 `linnya_cli`，与 Shell CLI 的 `--agent` 同值。只有 Agent 本地化显示名排序保留为 Renderer 展示规则，CLI 不提供该排序。筛选失败明确展示错误，不拿旧条件的结果冒充。
 列表随时读取（页签上要显示数量）；占用只在对话页打开时分批补测，全部测完才在页头显示总占用。
@@ -34,6 +34,6 @@ Agent 筛选按这一列的值匹配：回复过的 Agent，以及“Linnya CLI�
 
 验收入口：相关 Vitest 测试，以及 `scripts/e2e/conversation-navigation/run-electron-conversation-navigation-e2e.mjs` 的 `project-overview` 场景（通过 `LINNYA_CONVERSATION_E2E_SCENARIO` 选择）。真实 Desktop 场景使用隔离临时数据库，验证导航、筛选、列设置、知识库关联、变更刷新及大量文档的虚拟渲染。
 
-来源与最近修改按具体 Agent 显示：默认 Agent 显示为 Linnya Agent，其他 Agent 用注册表里的显示名，已删除的旧版深度研究身份显示为“旧版深度研究（已退役）”，其余查不到（例如所属插件已停用）时显示注册表 ID；规则只在 `resolveProjectOverviewAgentName` 一处，文件列表、对话列表和标签管理共用。子运行显示为“子任务”，因为子 Agent 没有面向用户的名字，与对话“本次改动”的用语一致。按来源排序时先分类别（Agent、子任务、Linnya CLI、插件、用户），同为 Agent 再按显示名。
+来源与最近修改按具体 Agent 显示：默认 Agent 显示为 Linnya Agent，其他 Agent 用注册表里的显示名，已删除的旧版深度研究身份显示为“旧版深度研究（已退役）”，其余查不到（例如所属插件已停用）时显示注册表 ID；规则只在 `resolveProjectOverviewAgentName` 一处，文件列表、对话列表和标签管理共用。子运行显示为发起它的 Agent 的子任务（“Linnya Agent 的子任务”，发起者同样按上面的显示名规则），因为子 Agent 没有面向用户的名字；查不回发起者的历史记录只显示“子任务”。这条规则在 workspace 域的 `formatSubrunActorLabel`，文件来源与标签管理的改动记录共用。按来源排序时先分类别（Agent、子任务、Linnya CLI、插件、用户），同类别内再按显示文字（不同 Agent、不同发起者的子任务各自排在一起）。
 
 当前边界：插件用户编辑未完整进入账本时只展示修改时间，这项来源精度由各写入入口后续补齐，不由本视图推测。
