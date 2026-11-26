@@ -177,7 +177,7 @@
   opacity: 1;
 }
 
-/* 运行状态（W-0352）：等你回答或审批时行尾换成文字并提亮标题；颜色不区分两种，靠文字说明。 */
+/* 运行状态：等你回答或审批时行尾换成文字并提亮标题；颜色不区分两种，靠文字说明。 */
 .sidebar-chat-list .chat-list-item.is-awaiting-user .chat-list-title {
   color: var(--color-text-primary);
 }
