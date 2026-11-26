@@ -29,7 +29,7 @@ import {
   assertKbAllowedInScope,
 } from '../../tools/scope/projectKnowledgeBaseScope';
 
-/** 上传队列按启动失败类别展示对应的恢复办法。 */
+/** 界面按启动失败类别展示对应的恢复办法；上传、检索、重建索引等所有触及向量服务的通道共用这一份映射。 */
 const VECTOR_STARTUP_MESSAGE_KEYS = {
   'runtime-missing': 'knowledgeBase.runtime.error.vectorRuntimeMissing',
   'data-directory-too-long': 'knowledgeBase.runtime.error.vectorDataDirectoryTooLong',
@@ -204,7 +204,8 @@ export function createKnowledgeIpc(
             }
             return { success: true, data: result };
           } catch (error) {
-            if (channel === 'upload-document' && error instanceof KnowledgeVectorStartupError) {
+            // 任何通道只要因向量服务启动失败而中断，都给同一份本地化原因，不让中文原文直达英文界面，也不套用各通道的通用失败文案。
+            if (error instanceof KnowledgeVectorStartupError) {
               return createOperationFailure(error.message, createUserFacingMessage(VECTOR_STARTUP_MESSAGE_KEYS[error.kind]));
             }
             const fallback = fallbackKeys[channel];

@@ -41,15 +41,28 @@ const KNOWLEDGE_VECTOR_STARTUP_MESSAGES: Readonly<Record<KnowledgeVectorStartupF
   'startup-failed': '知识库向量服务未能启动：请在插件商店停用并重新启用知识库；若仍失败，请重启 Linnya。',
 };
 
+/**
+ * 给 Agent 工具的英文说明：模型据此判断重试无效，并把恢复办法转告用户。
+ * 与上面的中文说明、界面文案按同一个 kind 对应，恢复办法必须一致。
+ */
+const KNOWLEDGE_VECTOR_STARTUP_TOOL_MESSAGES: Readonly<Record<KnowledgeVectorStartupFailureKind, string>> = {
+  'runtime-missing': 'Knowledge search is unavailable: the Qdrant runtime that Knowledge Base needs is missing or damaged. Retrying will not help. Tell the user to uninstall Knowledge Base in the plugin store (keeping data) and install it again.',
+  'data-directory-too-long': 'Knowledge search is unavailable: the Knowledge Base data folder path is too long for the vector store on Windows. Retrying will not help. Tell the user to point the LINNYA_WORKSPACE_DIR environment variable to a shorter folder (or use a Windows user folder with a shorter name), then restart Linnya.',
+  'startup-failed': 'Knowledge search is unavailable: the knowledge vector service failed to start. Retrying will not help. Tell the user to disable and re-enable Knowledge Base in the plugin store; if it still fails, restart Linnya.',
+};
+
 export class KnowledgeVectorStartupError extends Error {
   readonly kind: KnowledgeVectorStartupFailureKind;
+  /** 面向 Agent 工具的英文说明；用户界面不用它，而是按 kind 取本地化文案。 */
+  readonly toolMessage: string;
 
   constructor(cause: unknown) {
     const kind = readKnowledgeVectorStartupFailureKind(cause);
-    // 工具、CLI 与摄入失败记录直接展示这段说明，界面另按 kind 取本地化文案。
+    // CLI 与摄入失败记录直接展示这段中文说明，界面另按 kind 取本地化文案，工具另用 toolMessage。
     super(KNOWLEDGE_VECTOR_STARTUP_MESSAGES[kind], { cause });
     this.name = 'KnowledgeVectorStartupError';
     this.kind = kind;
+    this.toolMessage = KNOWLEDGE_VECTOR_STARTUP_TOOL_MESSAGES[kind];
   }
 }
 
