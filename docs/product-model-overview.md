@@ -357,7 +357,7 @@ Agent 本身可以自由注册。Subagent 的本质是**协同工作**，不是�
 
 Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插件工作。某个 Agent 可以隐藏与任务无关的工具，也可以注册满足 §3.3 条件的专用加速器；但专用工具不能成为“只有这个 Agent 才能完成”的能力门槛。
 
-命名：默认 Agent 在界面上叫 **Linnya Agent**，其他 Agent 用注册时的显示名；界面里“谁做的”（文件来源、最近修改、对话的 Agent）显示具体是哪个 Agent；子 Agent 是协作细节，没有面向用户的名字，它做的改动显示为“子任务”。“Linnya AI”是 Linnya 全部 AI 功能的泛称，不作为任何 Agent 或执行者的名字。
+命名：默认 Agent 在界面上叫 **Linnya Agent**，其他 Agent 用注册时的显示名；界面里“谁做的”（文件来源、最近修改、对话的 Agent）显示具体是哪个 Agent；子 Agent 是协作细节，没有面向用户的名字，它做的改动显示为发起它的 Agent 的子任务（如“Linnya Agent 的子任务”），查不回发起者的历史记录只显示“子任务”。“Linnya AI”是 Linnya 全部 AI 功能的泛称，不作为任何 Agent 或执行者的名字。
 
 四个概念，回答“谁在做什么”时不能混用：
 

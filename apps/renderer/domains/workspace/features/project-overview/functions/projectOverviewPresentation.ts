@@ -1,6 +1,7 @@
 import { ConversationOriginSchema, type ProjectOverviewActor } from '@app/schemas';
 import type { LinnyaLocale } from '@app/localization';
 import type { WorkspaceMessageKey, WorkspaceMessageResolver } from '@/domains/workspace/definitions/workspaceMessages';
+import { formatSubrunActorLabel } from '@/domains/workspace/functions/formatSubrunActorLabel';
 import type { ProjectOverviewSortKey } from '../definitions/projectOverview';
 
 /**
@@ -32,16 +33,17 @@ export function resolveProjectConversationActorName(
 
 /**
  * 名字由调用方查好：插件从插件注册表查，查不到时统称“插件”；主运行的 Agent 见 `resolveProjectOverviewAgentName`。
- * 子运行显示为“子任务”：子 Agent 是 Agent 内部的协作，没有面向用户的名字，与对话“本次改动”里的“子任务新建/修改”一致。
+ * 子运行显示为发起它的 Agent 的子任务（`rootAgentName`，同样按 Agent 显示名规则查）：子 Agent 是 Agent 内部的协作，
+ * 没有面向用户的名字。查不回发起者的历史记录为 null，只显示“子任务”。
  */
 export function formatProjectOverviewActor(
   actor: ProjectOverviewActor,
-  names: { readonly pluginName: string | null; readonly agentName: string },
+  names: { readonly pluginName: string | null; readonly agentName: string; readonly rootAgentName: string | null },
   message: WorkspaceMessageResolver,
 ): string {
   switch (actor) {
     case 'run': return names.agentName;
-    case 'subrun': return message('workspace.projectOverview.actor.subrun');
+    case 'subrun': return formatSubrunActorLabel(names.rootAgentName, message);
     case 'user': return message('workspace.projectOverview.actor.user');
     case 'external': return message('workspace.projectOverview.actor.external');
     case 'plugin': return names.pluginName ?? message('workspace.projectOverview.actor.plugin');

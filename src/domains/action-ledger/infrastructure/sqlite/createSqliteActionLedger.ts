@@ -12,6 +12,8 @@ import {
   type ActionLedgerEntryInput,
   type ActionLedgerGranularity,
   type ActionLedgerRecorder,
+  type ActionRunActor,
+  type ActionRunAgents,
 } from '../../definitions/actionLedger';
 
 import { pruneDocumentActions } from './pruneDocumentActions';
@@ -40,9 +42,11 @@ interface SummaryRow {
   readonly first_plugin_id: string | null;
   readonly first_conversation_id: string | null;
   readonly first_agent_id: string | null;
+  readonly first_root_agent_id: string | null;
   readonly last_actor_kind: string;
   readonly last_plugin_id: string | null;
   readonly last_agent_id: string | null;
+  readonly last_root_agent_id: string | null;
   readonly last_recorded_at: number;
 }
 
@@ -56,6 +60,7 @@ interface ChangeRow {
   readonly parent_run_id: string | null;
   readonly conversation_id: string | null;
   readonly agent_id: string | null;
+  readonly root_agent_id: string | null;
   readonly actions: string;
   readonly entry_count: number;
   readonly min_granularity: string;
@@ -74,10 +79,10 @@ export function createSqliteActionLedger(
       recorded_at, project_id, document_id, document_type, action, granularity,
       part, before_ref, after_ref, summary_json,
       actor_kind, actor_plugin_id, author_run_id,
-      conversation_id, run_id, root_run_id, parent_run_id, tool_call_id, agent_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      conversation_id, run_id, root_run_id, parent_run_id, tool_call_id, agent_id, root_agent_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  const readRunAgentId = createRunAgentIdReader(db);
+  const readRunAgents = createRunAgentsReader(db);
   const hasFineEntryForCall = db.prepare(`
     SELECT 1 FROM action_ledger_entries
     WHERE root_run_id = ? AND run_id = ? AND tool_call_id = ? AND document_id = ? AND granularity = 'fine'
@@ -99,6 +104,8 @@ export function createSqliteActionLedger(
         ) {
           return;
         }
+        // 每次登记时查：端口可能早于运行记录写入就已绑定。
+        const agents = run ? readRunAgents(run) : { agentId: null, rootAgentId: null };
         insert.run(
           now(),
           entry.projectId,
@@ -118,7 +125,8 @@ export function createSqliteActionLedger(
           run?.rootRunId ?? null,
           run?.parentRunId ?? null,
           run?.toolCallId ?? null,
-          run ? readRunAgentId(run.runId) : null
+          agents.agentId,
+          agents.rootAgentId
         );
         pruneDocumentActions(db, entry.documentId);
       });
@@ -155,13 +163,13 @@ export function createSqliteActionLedger(
             CASE WHEN entry.project_id = node.project_id THEN entry.root_run_id END AS root_run_id,
             CASE WHEN entry.project_id = node.project_id THEN entry.parent_run_id END AS parent_run_id,
             CASE WHEN entry.project_id = node.project_id THEN entry.conversation_id END AS conversation_id,
-            entry.agent_id
+            entry.agent_id, entry.root_agent_id
           FROM workspace_nodes node JOIN action_ledger_entries entry ON entry.document_id = node.id
           WHERE ${where.join(' AND ')}
         )
         SELECT document_id, MIN(document_type) AS document_type, actor_kind, actor_plugin_id, run_id,
           MIN(root_run_id) AS root_run_id, MIN(parent_run_id) AS parent_run_id, MIN(conversation_id) AS conversation_id,
-          MIN(agent_id) AS agent_id,
+          MIN(agent_id) AS agent_id, MIN(root_agent_id) AS root_agent_id,
           GROUP_CONCAT(DISTINCT action) AS actions, COUNT(*) AS entry_count,
           MIN(granularity) AS min_granularity, MAX(granularity) AS max_granularity,
           MIN(recorded_at) AS first_recorded_at, MAX(recorded_at) AS last_recorded_at
@@ -187,7 +195,7 @@ export function createSqliteActionLedger(
           SELECT entry.document_id, entry.action, entry.actor_kind, entry.recorded_at,
             CASE WHEN entry.project_id = node.project_id THEN entry.actor_plugin_id END AS plugin_id,
             CASE WHEN entry.project_id = node.project_id THEN entry.conversation_id END AS conversation_id,
-            entry.agent_id,
+            entry.agent_id, entry.root_agent_id,
             ROW_NUMBER() OVER (PARTITION BY entry.document_id ORDER BY entry.recorded_at, entry.id) AS first_rank,
             ROW_NUMBER() OVER (PARTITION BY entry.document_id ORDER BY entry.recorded_at DESC, entry.id DESC) AS last_rank
           FROM workspace_nodes node JOIN action_ledger_entries entry ON entry.document_id = node.id
@@ -196,8 +204,9 @@ export function createSqliteActionLedger(
         SELECT first.document_id,
           first.action AS first_action, first.actor_kind AS first_actor_kind,
           first.plugin_id AS first_plugin_id, first.conversation_id AS first_conversation_id,
-          first.agent_id AS first_agent_id,
+          first.agent_id AS first_agent_id, first.root_agent_id AS first_root_agent_id,
           last.actor_kind AS last_actor_kind, last.plugin_id AS last_plugin_id, last.agent_id AS last_agent_id,
+          last.root_agent_id AS last_root_agent_id,
           last.recorded_at AS last_recorded_at
         FROM ranked first JOIN ranked last ON last.document_id = first.document_id AND last.last_rank = 1
         WHERE first.first_rank = 1
@@ -227,12 +236,14 @@ function toDocumentSummary(row: SummaryRow): ActionLedgerDocumentSummary {
           pluginId: row.first_plugin_id,
           conversationId: row.first_conversation_id,
           agentId: row.first_agent_id,
+          rootAgentId: row.first_root_agent_id,
         }
       : null,
     last: {
       actorKind: assertOneOf(row.last_actor_kind, ACTOR_KINDS, 'actor_kind'),
       pluginId: row.last_plugin_id,
       agentId: row.last_agent_id,
+      rootAgentId: row.last_root_agent_id,
       recordedAt: row.last_recorded_at,
     },
   };
@@ -251,6 +262,7 @@ function toDocumentChange(row: ChangeRow): ActionLedgerDocumentChange {
     parentRunId: row.parent_run_id,
     conversationId: row.conversation_id,
     agentId: row.agent_id,
+    rootAgentId: row.root_agent_id,
     actions: row.actions.split(',').map(action => assertOneOf(action, ACTIONS, 'action')),
     entryCount: row.entry_count,
     granularity: minGranularity === maxGranularity ? minGranularity : 'mixed',
@@ -260,14 +272,21 @@ function toDocumentChange(row: ChangeRow): ActionLedgerDocumentChange {
 }
 
 /**
- * Agent 身份由 Host 从运行记录里查，不由工具上下文或 owner 提供：Linnkit 的工具上下文不带 Agent，
- * 运行记录在工具执行前已由对话持久化写入。没有运行表的装配（只建账本的测试）记为 null。
+ * 运行执行者的 Agent 由账本从运行记录里查，不由工具上下文或 owner 提供：Linnkit 的工具上下文不带 Agent，
+ * 运行记录在工具执行前已由对话持久化写入（根运行先于它派出的子运行）。账本与语义层共用这一份规则。
+ * 没有运行表的装配（只建账本的测试）两者都记为 null。
  */
-export function createRunAgentIdReader(db: Database.Database): (runId: string) => string | null {
+export function createRunAgentsReader(
+  db: Database.Database,
+): (run: Pick<ActionRunActor, 'runId' | 'rootRunId'>) => ActionRunAgents {
   const hasRuns = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'runs'").get();
-  if (!hasRuns) return () => null;
+  if (!hasRuns) return () => ({ agentId: null, rootAgentId: null });
   const select = db.prepare<[string], { agent_spec_id: string | null }>('SELECT agent_spec_id FROM runs WHERE id = ?');
-  return runId => select.get(runId)?.agent_spec_id ?? null;
+  const agentOf = (runId: string): string | null => select.get(runId)?.agent_spec_id ?? null;
+  return run => {
+    const agentId = agentOf(run.runId);
+    return { agentId, rootAgentId: run.rootRunId === run.runId ? agentId : agentOf(run.rootRunId) };
+  };
 }
 
 function assertOneOf<T extends string>(value: string, allowed: readonly T[], field: string): T {

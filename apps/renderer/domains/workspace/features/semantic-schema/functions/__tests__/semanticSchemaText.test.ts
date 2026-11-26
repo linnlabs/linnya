@@ -15,21 +15,28 @@ const context: SemanticSchemaTextContext = {
   timeText: () => '10:42',
 };
 
-const agent = { kind: 'run', conversation_id: 'c1', conversation_title: '整理资料', agent_id: null } as const;
+const agent = { kind: 'run', conversation_id: 'c1', conversation_title: '整理资料', agent_id: null, root_agent: null } as const;
+const user = { kind: 'user', conversation_id: null, conversation_title: null, agent_id: null, root_agent: null } as const;
 
 describe('标签管理文案', () => {
   it('新建来源：Agent 带对话名，用户说“你”，迁移前的只给时间', () => {
     expect(tagOriginText(agent, 1, context)).toBe('Linnya Agent 在对话“整理资料”里新建 · 10:42');
     expect(tagOriginText({ ...agent, agent_id: 'research', conversation_id: null }, 1, context)).toBe('研究助手 新建 · 10:42');
-    expect(tagOriginText({ ...agent, kind: 'subrun', agent_id: 'subagent_general' }, 1, context)).toBe('子任务 在对话“整理资料”里新建 · 10:42');
-    expect(tagOriginText({ kind: 'user', conversation_id: null, conversation_title: null, agent_id: null }, 1, context)).toBe('你新建 · 10:42');
+    const subtask = { ...agent, kind: 'subrun', agent_id: 'subagent_general' } as const;
+    expect(tagOriginText({ ...subtask, root_agent: { agent_id: null } }, 1, context))
+      .toBe('Linnya Agent 的子任务 在对话“整理资料”里新建 · 10:42');
+    expect(tagOriginText({ ...subtask, root_agent: { agent_id: 'research' }, conversation_id: null }, 1, context))
+      .toBe('研究助手 的子任务 新建 · 10:42');
+    // 查不回发起者的子任务标签只说“子任务”。
+    expect(tagOriginText(subtask, 1, context)).toBe('子任务 在对话“整理资料”里新建 · 10:42');
+    expect(tagOriginText(user, 1, context)).toBe('你新建 · 10:42');
     expect(tagOriginText(null, 1, context)).toBe('新建于 10:42');
   });
 
   it('改动摘要与说明：计数、保存的筛选、谁、何时', () => {
     const change: SemanticSchemaChangeItem = {
       id: 'x', summary: { kind: 'merge_tags', source: '研究论文', target: '论文', objects: 3 },
-      actor: { kind: 'user', conversation_id: null, conversation_title: null, agent_id: null },
+      actor: user,
       saved_filter_count: 1, created_at: 1, undone_at: null,
     };
     expect(changeSummaryText(change.summary, message)).toBe('合并标签：研究论文 → 论文');
@@ -40,6 +47,8 @@ describe('标签管理文案', () => {
     };
     expect(changeSummaryText(retype.summary, message)).toBe('字段“年份”改成数字');
     expect(changeMetaText(retype, context)).toBe('11 份文档，2 份转不了 · Linnya Agent · 对话“整理资料” · 10:42');
+    const bySubtask = { ...retype, actor: { ...agent, kind: 'subrun', agent_id: 'subagent_general', root_agent: { agent_id: 'research' } } } as const;
+    expect(changeMetaText(bySubtask, context)).toBe('11 份文档，2 份转不了 · 研究助手 的子任务 · 对话“整理资料” · 10:42');
     expect(changeSummaryText({
       kind: 'update_options', property: '状态', added: ['氢能'], renamed: [{ from: '在读', to: '正在读' }], removed: [], objects: 0,
     }, message)).toBe('字段“状态”的选项：新增“氢能”，改名 在读 → 正在读');

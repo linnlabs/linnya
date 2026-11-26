@@ -417,6 +417,7 @@ import {
   type ProjectOverviewFilters,
   type ProjectOverviewModifiedRange,
   type ProjectOverviewPresentation,
+  type ProjectOverviewRootAgent,
   type ProjectOverviewRow,
   type ProjectOverviewSort,
   type ProjectOverviewSortKey,
@@ -619,7 +620,7 @@ const sortedRows = computed(() => {
     contentMatches: contentMatches.value,
     fieldMatches: fieldMatches.value,
   });
-  return sortProjectOverviewRows(filtered, sort.value, { typeLabel, sourceLabel: row => actorText(row.creatorActor, row.creatorPluginId, row.creatorAgentId) });
+  return sortProjectOverviewRows(filtered, sort.value, { typeLabel, sourceLabel: creatorActorText });
 });
 
 function clearFilters(): void {
@@ -1013,16 +1014,26 @@ function timeText(timestamp: number): string {
   return historyTime(timestamp);
 }
 
-function actorText(actor: ProjectOverviewRow['creatorActor'], pluginId: string | null, agentId: string | null): string {
+function actorText(
+  actor: ProjectOverviewRow['creatorActor'],
+  pluginId: string | null,
+  agentId: string | null,
+  rootAgent: ProjectOverviewRootAgent | null,
+): string {
   if (actor === null) return '';
   return formatProjectOverviewActor(actor, {
     pluginName: pluginId ? props.presentation.pluginName(pluginId) : null,
     agentName: props.presentation.agentName(agentId),
+    rootAgentName: rootAgent ? props.presentation.agentName(rootAgent.agentId) : null,
   }, workspaceMessage);
 }
 
+function creatorActorText(row: ProjectOverviewRow): string {
+  return actorText(row.creatorActor, row.creatorPluginId, row.creatorAgentId, row.creatorRootAgent);
+}
+
 function modifiedActorText(row: ProjectOverviewRow): string {
-  return actorText(row.lastModifiedActor, row.lastModifiedPluginId, row.lastModifiedAgentId);
+  return actorText(row.lastModifiedActor, row.lastModifiedPluginId, row.lastModifiedAgentId, row.lastModifiedRootAgent);
 }
 
 function conversationText(row: ProjectOverviewRow): string {
@@ -1041,7 +1052,7 @@ function cellText(id: ProjectOverviewColumnId, row: ProjectOverviewRow): string 
     case 'location':
       return row.location.length > 0 ? row.location.join(' / ') : workspaceMessage('workspace.projectOverview.location.root');
     case 'source':
-      return actorText(row.creatorActor, row.creatorPluginId, row.creatorAgentId);
+      return creatorActorText(row);
     case 'type':
       return typeLabel(row.nodeType);
     case 'created':
