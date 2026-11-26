@@ -263,7 +263,7 @@ ImageGeneration 卡只消费经过 admission 的图片路径和可选尺寸。�
 
 图片生成成功与聊天模型看图能力解耦：Renderer 始终消费同一 `media` 成功结果。模型的 `image_input` 只表达图片理解
 能力；生成图能否继续进入模型，还要单独满足实际 route 的 `tool_result_image`。是否附带由 Host 的
-`toolResultImagePolicy` 判断（Agent 按工具结果接下来交给的模型，即 Linnkit 注入的 `activeModelId`——云端额度兜底后是兜底模型而不是原选定模型；CLI 调用方默认接收）：可附带时工具事件另带图片 attachment，
+`toolResultImagePolicy` 判断（Agent 按本 run 模型，CLI 调用方默认接收）：可附带时工具事件另带图片 attachment，
 不可附带时仍返回成功 observation、locator 与用户可见图片，但不创建模型附件。这里不能把 placement 缺失投影成工具失败，也不能由 Renderer 根据模型能力补造附件，
 更不能把图片伪装成后续 user message。
 

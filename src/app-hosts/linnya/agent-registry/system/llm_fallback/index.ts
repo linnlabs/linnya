@@ -8,8 +8,6 @@
  * - 但同样要求：**所有硬编码模型 id 必须集中到 agent-registry 体系内**，便于统一管理/审计。
  */
 
-import { CLOUD_DEEPSEEK_REASONER_MODEL_ID } from 'src/domains/model-catalog';
-
 /**
  * 降级聊天模型优先级（按偏好从高到低）
  *
@@ -24,13 +22,3 @@ export const LLM_FALLBACK_CHAT_MODEL_PREFERRED_ORDER: readonly string[] = [
   'deepseek-reasoner',
   'glm-4.5-air',
 ];
-
-/**
- * 云端模型限额降级目标（同一个 run 内续跑专用）
- *
- * 中文说明：
- * - 当某个云端模型在 run 中途触发 quota/限额错误时，LlmCaller 会静默切到此模型继续；
- * - 选择 deepseek-reasoner 的理由：限额相对宽松、OpenAI-compat 协议通用、推理能力足够续跑；
- * - ID 前缀 `cloud-` 对应 cloud-models.ts 的命名规则（`cloud-${item.id}`）。
- */
-export const CLOUD_QUOTA_FALLBACK_MODEL_ID = CLOUD_DEEPSEEK_REASONER_MODEL_ID;

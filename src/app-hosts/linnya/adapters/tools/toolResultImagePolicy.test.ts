@@ -25,25 +25,19 @@ const policy = createToolResultImagePolicy(catalog);
 
 describe('createToolResultImagePolicy', () => {
   it('交给模型的结果按本次上下文的模型目录能力判断', () => {
-    expect(policy.deliveryFor({ modelId: 'vision-model', activeModelId: 'vision-model', parentToolCallId: callId } as ToolContext)).toBe('attach');
-    expect(policy.deliveryFor({ modelId: 'text-model', activeModelId: 'text-model', parentToolCallId: callId } as ToolContext)).toBe('metadata_only');
+    expect(policy.deliveryFor({ modelId: 'vision-model', parentToolCallId: callId } as ToolContext)).toBe('attach');
+    expect(policy.deliveryFor({ modelId: 'text-model', parentToolCallId: callId } as ToolContext)).toBe('metadata_only');
     expect(policy.deliveryFor({ parentToolCallId: callId } as ToolContext)).toBe('metadata_only');
-  });
-
-  it('云端额度兜底锁定到不能看图的模型后不再附图，即使原选定模型能看图', () => {
-    // activeModelId 由 Linnkit 工具节点按本 run 的模型锁定注入；modelId 仍是用户选定的模型。
-    expect(policy.deliveryFor({ modelId: 'vision-model', activeModelId: 'text-model', parentToolCallId: callId } as ToolContext))
-      .toBe('metadata_only');
   });
 
   it('批次后直接交还 Host 调用方的那次调用默认附带图片，与 run 模型无关', () => {
     const hostCall = { toolName: 'read_file', toolCallId: callId, resultReceiver: 'host_caller' as const };
-    expect(policy.deliveryFor({ modelId: 'text-model', activeModelId: 'text-model', parentToolCallId: callId,
+    expect(policy.deliveryFor({ modelId: 'text-model', parentToolCallId: callId,
       authorizedHostToolCall: hostCall } as ToolContext)).toBe('attach');
     // 同一 run 里其他调用（或结果仍交给模型的 Host 调用）不借用这项判断。
-    expect(policy.deliveryFor({ modelId: 'text-model', activeModelId: 'text-model', parentToolCallId: ToolCallIdSchema.parse('call-2'),
+    expect(policy.deliveryFor({ modelId: 'text-model', parentToolCallId: ToolCallIdSchema.parse('call-2'),
       authorizedHostToolCall: hostCall } as ToolContext)).toBe('metadata_only');
-    expect(policy.deliveryFor({ modelId: 'text-model', activeModelId: 'text-model', parentToolCallId: callId,
+    expect(policy.deliveryFor({ modelId: 'text-model', parentToolCallId: callId,
       authorizedHostToolCall: { toolName: 'read_file', toolCallId: callId } } as ToolContext)).toBe('metadata_only');
   });
 });
