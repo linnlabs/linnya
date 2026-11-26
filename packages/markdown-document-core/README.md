@@ -24,7 +24,7 @@ Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因
 
 受管 image 可以携带可选的 `assetId`（字符串或 null），与 src 分开。DOM 使用 `data-asset-id` 保存身份，Host 可据此将展示地址替换为已接纳图片字节；本包不查资产库、不推断 URL 身份或执行接管。Markdown 的图片源地址仍由调用方准备，写回时的受管身份绑定由 Host 负责。
 
-`./references` 是仅依赖 schemas 的纯 JSON 链接/稳定引用变换入口，供 Backend 与 Revision 复用已准入 Pending 身份；它不加载 Tiptap、DOM 或路径解析。`assertPortableMarkdownDocument` 使用本包唯一 canonical schema 做严格结构校验，Backend 不应另外构造近似 schema。
+`./references` 是仅依赖 schemas 的纯 JSON 链接/稳定引用变换入口，供 Backend 与 Revision 复用已准入 Pending 身份；它不加载 Tiptap、DOM 或路径解析。引用标签上的文字（已删除、在其他项目、标题或通用“文档”）也只在这里定义一次（`documentReferenceLabel`），本包预览与编辑器标签共用，改文案只改这一处。`assertPortableMarkdownDocument` 使用本包唯一 canonical schema 做严格结构校验，Backend 不应另外构造近似 schema。
 
 ## 正式 Workspace 正文预览
 

@@ -76,12 +76,12 @@ describe('预览外壳文字按界面语言显示', () => {
     const english = await surface(preview, 'en-US');
     document.body.append(english.element);
     const labels = [...english.element.querySelectorAll('.markdown-document-reference-label')].map(e => e.textContent);
-    expect(labels).toEqual(['Deleted document', 'Outside this project']);
+    expect(labels).toEqual(['Deleted document', 'Document in another project']);
     expect(english.element.querySelector('.workspace-preview-bibliography h3')?.textContent).toBe('References');
     english.dispose();
     const chinese = await surface(preview);
     document.body.append(chinese.element);
-    expect([...chinese.element.querySelectorAll('.markdown-document-reference-label')].map(e => e.textContent)).toEqual(['文档已删除', '项目外文档']);
+    expect([...chinese.element.querySelectorAll('.markdown-document-reference-label')].map(e => e.textContent)).toEqual(['文档已删除', '其他项目的文档']);
     chinese.dispose();
   });
 });
