@@ -120,6 +120,7 @@ Conversation 合同见 [Citation domain](../../../../../../src/domains/citation/
 新增引用检索只消费 Editor 的 `KnowledgeCitationSearchPort`。App 装配将当前项目冻结后调用
 知识库正式 IPC；列表只展示项目显式关联的库，检索由 Backend 在读取前重新校验项目范围。
 Editor 保留原有多库并发、去重、排序与部分失败展示，不导入知识库 Renderer store/service。
+失败原因直接显示插件按当前语言给出的文字；有库失败且没有任何结果时不再显示“没有匹配结果”，免得把失败读成“检索成功但没找到”。
 关闭面板、切换项目或停用插件后，旧请求不得回写结果或选择；停用撤销检索入口，手动/Web 引用仍可用。
 当前通用插件 IPC 不提供中途取消协议，界面的 AbortSignal 只取消结果接纳，不代表上游推理已经停止。
 

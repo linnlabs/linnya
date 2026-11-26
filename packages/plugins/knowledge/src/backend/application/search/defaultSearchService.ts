@@ -1,8 +1,3 @@
-import {
-  KnowledgeIndexRebuildRequiredError,
-  KnowledgeIndexSpaceMismatchError,
-} from '../../index-rebuild/definitions/knowledgeIndex';
-import { isQdrantRuntimeUnavailableError } from '../../infrastructure/vector-store/errors';
 /**
  * @file packages/plugins/knowledge/src/backend/application/search/defaultSearchService.ts
  *
@@ -15,10 +10,13 @@ import { isQdrantRuntimeUnavailableError } from '../../infrastructure/vector-sto
  *   - DefaultSearchRanker：排序/重排
  *   - DocumentExistenceFilter：过滤孤儿 doc_id
  *   - graphEnhancedAgentSearch：仅负责 Agent 格式化输出的软图谱增强
+ *
+ * 失败语义：只有“库里还没有任何资料”在业务上等于没有结果，直接返回空；
+ * 嵌入模型、向量服务、索引身份、重排等任何一步失败都原样上抛，由 IPC / 工具按错误类型给出原因。
+ * 过去这里把未列名的错误吞成 0 条结果，用户只看到“没有匹配”而看不到嵌入模型坏了，不能再加回兜底。
  */
 
 import { type EmbeddingPort, type RerankingPort } from '@plugin/backend/inferenceRuntime';
-import { RerankingFailure } from '@plugin/backend/inferenceFailures';
 
 import { Logger } from '@plugin/backend/loggingRuntime';
 const logger = new Logger('knowledge');
@@ -36,7 +34,7 @@ import type {
   SearchServiceOptions,
 } from './types';
 import { DefaultSearchRanker } from './defaultSearchRanker';
-import { KnowledgeBaseEmbeddingMismatchError, QueryVectorBuilder } from './queryVectorBuilder';
+import { QueryVectorBuilder } from './queryVectorBuilder';
 import { DocumentExistenceFilter } from './documentExistenceFilter';
 import { buildAgentSearchOutputWithGraph } from './graphEnhancedAgentSearch';
 import type { KnowledgeBaseGraphSearchOptions } from '../knowledgeBaseService';
@@ -93,51 +91,34 @@ export class DefaultSearchService implements SearchService {
     const { query, kbId } = request;
     const topK = request.topK || 10;
 
-    try {
-      // 新库尚未摄入，没有索引和模型来源；空结果不能触发猜测维度建集合。
-      if (!(await this.hasDocuments(kbId))) {
-        return { semanticResults: [], keywordResults: [], combinedResults: [] };
-      }
-      // 1) 生成查询向量（统一校验 number[]）
-      logger.info(`为查询生成嵌入向量: ${query}`);
-      const { queryVector } = await this.queryVectorBuilder.buildQueryVectorOrThrow({
-        kbId,
-        query,
-        requestedEmbeddingModelId: request.embeddingModelId,
-      });
-
-      // 2) 设置搜索过滤器（如果需要）
-      const filter =
-        request.filter &&
-        (request.filter.docIds?.length ||
-          request.filter.blockTypes?.length ||
-          request.filter.pageRange)
-          ? {
-              docIds: request.filter.docIds,
-              blockTypes: request.filter.blockTypes,
-              pageRange: request.filter.pageRange,
-            }
-          : undefined;
-
-      // 3) 执行混合搜索
-      logger.info(`在知识库 ${kbId} 执行混合搜索`);
-      return await this.qdrantRepository.hybridSearch(kbId, query, queryVector, topK, filter);
-    } catch (error) {
-      if (
-        error instanceof KnowledgeIndexRebuildRequiredError ||
-        error instanceof KnowledgeIndexSpaceMismatchError ||
-        error instanceof KnowledgeBaseEmbeddingMismatchError ||
-        isQdrantRuntimeUnavailableError(error)
-      ) {
-        throw error;
-      }
-      logger.error(`搜索处理失败: ${error}`);
-      return {
-        semanticResults: [],
-        keywordResults: [],
-        combinedResults: [],
-      };
+    // 新库尚未摄入，没有索引和模型来源：业务上就是“没有可检索的内容”，也不能触发猜测维度建集合。
+    if (!(await this.hasDocuments(kbId))) {
+      return { semanticResults: [], keywordResults: [], combinedResults: [] };
     }
+    // 1) 生成查询向量（统一校验 number[]）；嵌入失败在 QueryVectorBuilder 里按原因归类后上抛
+    logger.info(`为查询生成嵌入向量: ${query}`);
+    const { queryVector } = await this.queryVectorBuilder.buildQueryVectorOrThrow({
+      kbId,
+      query,
+      requestedEmbeddingModelId: request.embeddingModelId,
+    });
+
+    // 2) 设置搜索过滤器（如果需要）
+    const filter =
+      request.filter &&
+      (request.filter.docIds?.length ||
+        request.filter.blockTypes?.length ||
+        request.filter.pageRange)
+        ? {
+            docIds: request.filter.docIds,
+            blockTypes: request.filter.blockTypes,
+            pageRange: request.filter.pageRange,
+          }
+        : undefined;
+
+    // 3) 执行混合搜索
+    logger.info(`在知识库 ${kbId} 执行混合搜索`);
+    return await this.qdrantRepository.hybridSearch(kbId, query, queryVector, topK, filter);
   }
 
   /**
@@ -146,86 +127,64 @@ export class DefaultSearchService implements SearchService {
   async search(request: ResolvedKnowledgeBaseSearchRequest): Promise<SearchResponse> {
     const startTime = Date.now();
 
-    try {
-      // 1) 处理搜索请求，获取原始结果
-      const searchResult = await this.processSearchRequest(request);
+    // 1) 处理搜索请求，获取原始结果
+    const searchResult = await this.processSearchRequest(request);
 
-      // 2) combinedResults 作为“候选集合”（后续会做排序/重排）
-      let combinedResults: RankedRetrievedPoint[] = searchResult.combinedResults;
+    // 2) combinedResults 作为“候选集合”（后续会做排序/重排）
+    let combinedResults: RankedRetrievedPoint[] = searchResult.combinedResults;
 
-      // 4) 应用智能排序
-      combinedResults = await this.searchRanker.applyIntelligentLayeredSorting(
-        combinedResults,
-        request.query
-      );
+    // 4) 应用智能排序
+    combinedResults = await this.searchRanker.applyIntelligentLayeredSorting(
+      combinedResults,
+      request.query
+    );
 
-      // 5) 如果启用了重排序，则应用重排序
-      if (request.useReranking !== false) {
-        const rerankModelId = request.rerankModelId;
-        if (rerankModelId) {
-          logger.info(`使用模型 ${rerankModelId} 对结果进行重排序`);
-          combinedResults = await this.searchRanker.rerankResults(
-            this.reranking,
-            rerankModelId,
-            request.query,
-            combinedResults,
-            request.topK
-          );
-        }
+    // 5) 如果启用了重排序，则应用重排序
+    if (request.useReranking !== false) {
+      const rerankModelId = request.rerankModelId;
+      if (rerankModelId) {
+        logger.info(`使用模型 ${rerankModelId} 对结果进行重排序`);
+        combinedResults = await this.searchRanker.rerankResults(
+          this.reranking,
+          rerankModelId,
+          request.query,
+          combinedResults,
+          request.topK
+        );
       }
-
-      // 6) 根因修复：过滤掉元数据不存在的 doc_id
-      combinedResults =
-        await this.documentExistenceFilter.filterResultsByExistingDocuments(combinedResults);
-
-      // 7) 限制返回结果数量
-      const finalResults = combinedResults.slice(0, request.topK || 10);
-
-      // 8) 转换结果为标准响应格式
-      const response: SearchResponse = {
-        results: finalResults.map(result => ({
-          text: result.payload.document,
-          docId: result.payload.doc_id || '',
-          docTitle: result.payload.doc_title || '未知文档',
-          score: result.score,
-          matchType: result.final_match_type ?? result.match_type ?? 'semantic',
-          blockType: result.payload.block_type || '',
-          blockId: result.payload.block_id || '',
-          page: result.payload.page_number || 0,
-        })),
-        meta: {
-          processingTimeMs: Date.now() - startTime,
-          vectorModel:
-            (await this.metadataRepository.getKnowledgeBaseEmbeddingProvenance(request.kbId)) ||
-            undefined,
-          rerankModel:
-            request.useReranking !== false ? request.rerankModelId || undefined : undefined,
-          totalResults: combinedResults.length,
-        },
-      };
-
-      return response;
-    } catch (error) {
-      if (
-        error instanceof KnowledgeIndexRebuildRequiredError ||
-        error instanceof KnowledgeIndexSpaceMismatchError ||
-        error instanceof KnowledgeBaseEmbeddingMismatchError ||
-        error instanceof RerankingFailure ||
-        isQdrantRuntimeUnavailableError(error)
-      ) {
-        throw error;
-      }
-      logger.error(`搜索失败: ${error}`);
-      return {
-        results: [],
-        meta: {
-          processingTimeMs: Date.now() - startTime,
-          vectorModel: undefined,
-          rerankModel: undefined,
-          totalResults: 0,
-        },
-      };
     }
+
+    // 6) 根因修复：过滤掉元数据不存在的 doc_id
+    combinedResults =
+      await this.documentExistenceFilter.filterResultsByExistingDocuments(combinedResults);
+
+    // 7) 限制返回结果数量
+    const finalResults = combinedResults.slice(0, request.topK || 10);
+
+    // 8) 转换结果为标准响应格式
+    const response: SearchResponse = {
+      results: finalResults.map(result => ({
+        text: result.payload.document,
+        docId: result.payload.doc_id || '',
+        docTitle: result.payload.doc_title || '未知文档',
+        score: result.score,
+        matchType: result.final_match_type ?? result.match_type ?? 'semantic',
+        blockType: result.payload.block_type || '',
+        blockId: result.payload.block_id || '',
+        page: result.payload.page_number || 0,
+      })),
+      meta: {
+        processingTimeMs: Date.now() - startTime,
+        vectorModel:
+          (await this.metadataRepository.getKnowledgeBaseEmbeddingProvenance(request.kbId)) ||
+          undefined,
+        rerankModel:
+          request.useReranking !== false ? request.rerankModelId || undefined : undefined,
+        totalResults: combinedResults.length,
+      },
+    };
+
+    return response;
   }
 
   /**

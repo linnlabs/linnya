@@ -92,6 +92,14 @@ Node 的 `fs.stat().blocks` 在 Windows 上由 libuv 取 NTFS AllocationSize 换
 - 界面：plugin IPC 的任何通道遇到该错误，都返回同一组 `knowledgeBase.runtime.error.vector*` 本地化键，Renderer 按当前语言显示；上传队列、编辑器引用面板的知识库检索、重建索引等共用这一份，不显示后端中文原文。
 - Agent 工具：`knowledge_search` 与 `search_in_knowledgebase` 抛出英文说明（写明原因、重试无效、该请用户做什么），不夹带中文原文。工具卡里显示的就是这段英文，不随界面语言切换；要按语言显示，需要 Host 为插件工具提供错误码到本地化文案的映射，目前没有。
 - CLI 与摄入失败记录：沿用 `KnowledgeVectorStartupError.message` 的中文说明。
+
+检索只在两种情况下返回空结果：库里还没有任何资料（此时不调用模型、不启动向量服务），或嵌入和检索都成功但确实没有命中。其他任何一步失败都上抛，不再吞成 0 条结果。嵌入查询失败时，`QueryVectorBuilder` 把 Host 的 `EmbeddingFailure` 转成 `KnowledgeSearchEmbeddingError`，原因只按 Host 推理合同的失败码判定（`infrastructure/inference/embeddingFailureReason.ts`，不读错误文字）：
+- 嵌入模型不可用：`model_not_found`、`route_missing`、`provider_http_404`，即模型已删除、未启用、不是嵌入模型或服务商找不到它；
+- 缺凭据：`credential_missing`、`provider_http_401`、`provider_http_403`；索引重建的“认证失败”提示用的是同一份分类；
+- 请求失败：其余失败码（网络、服务端错误、限流、返回内容不合法等）。
+- `embedding_space_mismatch` 仍按“向量空间不一致、需要重建索引”处理，不算嵌入模型故障。
+
+界面经 plugin IPC 收到 `knowledgeBase.search.error.embedding*` 键，按语言提示去“设置 › 模型”检查模型或密钥；Agent 工具抛出以 `Knowledge search failed:` 开头的英文说明，请求失败时按 Host 的 `retryable` 说明重试是否有用。多库聚合检索中有库失败、且所有库都没有命中时，同样上抛失败原因；有其他库的命中时仍返回这些命中，失败的库只写日志。
 Windows 上 Qdrant 数据目录（`<数据根>/qdrant`，即实际传给 Qdrant 的工作目录）超过 100 个字符时，Host 在建任何目录前拒绝启动向量服务，原因为 `data-directory-too-long`。依据是随包 Qdrant 1.14.1 的 RocksDB 不支持长路径：实测正文集合在目录 109 字符通过、110 失败，图谱集合（`kg_nodes_` / `kg_edges_` 前缀）100 通过、101 失败，取较严的 100，避免正文能建、图谱建不成。上限常量与实测记录在 Host 的 `qdrantDataDirectoryLength.ts`，升级 Qdrant 或改集合命名时要重测。
 超限后本次 activation 的向量操作都给出同一提示（以上传队列为例）：显示“路径太长，把 `LINNYA_WORKSPACE_DIR` 指向更短的目录或换用更短的 Windows 用户目录，然后重启 Linnya”，停启插件不能恢复；元数据和已保存内容照常可读。正式版默认目录约为 65 + 用户目录名长度（旧资料沿用的 `KnowledgeBase/qdrant` 约 61 +），通常只有 `LINNYA_WORKSPACE_DIR` 指到很深的目录才会触发。不提供移动数据目录的功能。
 知识库自己的目录或元数据准备失败时，保留用户的启用选择，普通项目仍可启动；知识库页面和工具返回明确的局部故障与修复后停启指引。该失败实例不领取向量或 Worker 资源，不自动重试；Host 数据库迁移与 SDK 装配错误仍按原来的必需服务规则报告。
