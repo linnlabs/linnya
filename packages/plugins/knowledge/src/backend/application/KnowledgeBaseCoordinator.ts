@@ -733,6 +733,7 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
         searchService: this.searchService,
         sotRepository: this.sotRepository,
         knowledgeGraphRepository: this.knowledgeGraphRepository,
+        metadataRepository: this.metadataRepository,
       },
       request
     );

@@ -20,6 +20,7 @@ import { getTelemetrySchemaProviders } from '../../../../app-hosts/linnya/adapte
 import { getWorkspaceSchemaProviders } from '../../../../features/workspace/infrastructure/sqlite/schema-providers';
 import { getAssetSchemaProviders } from '../../../../domains/assets/features/asset-ledger/infrastructure/sqlite/schemaProviders';
 import { getMarkdownSchemaProviders } from '../../../../domains/markdown/features/document-storage/infrastructure/sqlite/schemaProviders';
+import { getColorPaletteSchemaProviders } from '../../../../domains/color-palette/infrastructure/sqlite/schemaProviders';
 
 interface ProviderDdl {
   readonly providerName: string;
@@ -44,6 +45,7 @@ function getCoreSchemaProviders(): ISchemaProvider[] {
     ...getCommandCardSettlementsSchemaProviders(),
     ...getCheckpointerSchemaProviders(),
     ...getTelemetrySchemaProviders(),
+    ...getColorPaletteSchemaProviders(),
   ];
 }
 

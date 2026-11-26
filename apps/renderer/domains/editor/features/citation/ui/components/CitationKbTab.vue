@@ -57,7 +57,8 @@
 
     <!-- 搜索结果 -->
     <div class="results-section">
-      <template v-if="store.kbResults.length === 0 && !store.kbLoading">
+      <!-- 有库检索失败时不写“没有匹配”：失败原因已在上方，再写“没有匹配”会让人以为检索成功、只是没找到。 -->
+      <template v-if="store.kbResults.length === 0 && !store.kbLoading && !store.hasKbErrors">
         <div class="no-results">
           {{ localQuery.trim() ? editorMessage('editor.citation.kb.noResults') : editorMessage('editor.citation.kb.startSearch') }}
         </div>

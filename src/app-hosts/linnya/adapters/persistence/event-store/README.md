@@ -43,6 +43,7 @@ event-store/
 - `subrun_trace_runs / subrun_trace_items` 是 parent trace 的紧凑历史 read model，不是 RuntimeEvent 事实表；只保存完整语义项，不能反向替代 child facts 或 lifecycle
 - EventStore、rebuild 与 UI projector 只接收 `RoutedRuntimeEvent`；缺 routing identity 的事实不属于当前合同
 - `conversations.is_pinned / pinned_at` 是历史列表排序语义，前端不能用内存状态替代
+- 会话发起入口 `origin` 保存在 `conversations.metadata`，唯一写入方是 `materializeOriginConversation`，唯一读取口径是 `functions/conversationMetadata.ts` 的 `readConversationOrigin`（历史列表与项目对话查询共用）；读到未知值显式失败，不当作普通会话
 - `ConversationListItem.project_id` 是 scoped history 的归属契约；列表和 metadata 都必须透传，不能只在查询条件里使用
 - 持久化资格统一走 `requirePersistableRoutedRuntimeEvent(...)`；`ephemeral` / `tool_process` 直写必须失败
 - `RunSession` 参数只做 conversation/run 一致性校验；事件身份只读顶层正式字段，不从 metadata 或 session 补齐

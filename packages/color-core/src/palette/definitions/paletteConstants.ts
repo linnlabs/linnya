@@ -321,6 +321,20 @@ export const CANDIDATE_COUNT = 240
 export const MIN_PALETTE_DISTANCES: readonly number[] = [0.7, 0.55, 0.4, 0.25, 0.1, 0]
 export const QUALITY_BAND = 0.75
 /**
+ * 最近用过的组合降权：最近 5 次用过的 ×0.15，第 6–15 次的 ×0.5，更早的不降。取值与 Slides 方向抽取的
+ * “本机最近用过”一致（drawDirection 的手法卡窗口），同一个人在两处感到的“换着来”是同一种节奏；改一处时核对另一处。
+ * - 只降权不排除：本色少的用图（如只有蓝色加一点黄绿的储能图）一共只有几种组合，排除会凑不齐几套；
+ *   用户想再用同一种时也仍拿得到。
+ * - 系数只乘在挑选时的抽取权重上，不改分数，也不影响“高分段”门槛：降权不会把好配色挤出候选，只让它更少被抽中。
+ * - 0.15：同分段里刚用过的组合大约只剩六七分之一的机会，连续几次基本换着来；0.5：再早一些的仍略让位。
+ */
+export const RECENT_USE_WINDOWS: readonly { readonly uses: number; readonly factor: number }[] = [
+  { uses: 5, factor: 0.15 },
+  { uses: 15, factor: 0.5 },
+]
+/** 降权只看最近这么多次选用；调用方读、存“最近用过”都以它为上限。 */
+export const PALETTE_RECENT_USE_LIMIT = Math.max(...RECENT_USE_WINDOWS.map(window => window.uses))
+/**
  * 感知距离里各角色的权重（ΔEOK 加权平均）。墨与弱墨几乎总是深灰或浅灰，权重大了会把差异稀释掉；
  * 看一套配色时先看到的是纸、点题和图表。
  */

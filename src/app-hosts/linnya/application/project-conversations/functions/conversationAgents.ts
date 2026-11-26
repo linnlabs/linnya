@@ -1,4 +1,4 @@
-import { toReadModelAgentId, type ProjectConversationSubagent } from '@app/schemas';
+import { toReadModelAgentId, type ConversationOrigin, type ProjectConversationSubagent } from '@app/schemas';
 import type { ConversationRunAgentRow } from '../../../adapters/persistence/event-store';
 
 export interface ConversationAgents {
@@ -40,4 +40,16 @@ export function groupConversationAgents(
     });
   }
   return result;
+}
+
+/**
+ * 对话里回复过的 Agent（列表与筛选用）。Linnya CLI 创建的对话里只有没有模型的 Host 工具运行，
+ * 这些运行的 Agent 都记成默认 Agent，但没有任何 Agent 回复过；若照常统计会显示成“Linnya Agent”，
+ * 所以这类对话不报回复者，由 `origin` 表达“是 Linnya CLI 在用”。
+ */
+export function selectRepliedAgents(
+  origin: ConversationOrigin | undefined,
+  agents: ConversationAgents | undefined,
+): (string | null)[] {
+  return origin === undefined ? agents?.replied ?? [] : [];
 }

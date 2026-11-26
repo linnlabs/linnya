@@ -12,6 +12,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { pathManager } from '../../shared/utils/pathManager';
 import {
+  assertQdrantDataDirectoryLength,
   createOwnedQdrantProcess,
   renderQdrantConfig,
   type OwnedQdrantProcess,
@@ -84,6 +85,8 @@ export class QdrantManager {
    */
   async start(): Promise<void> {
     await this.initialize();
+    // 必须先于建目录：超限时 Qdrant 建集合必然失败，不留下半个数据目录或配置文件。
+    assertQdrantDataDirectoryLength(this.processRuntime.platform, this.dataDir);
 
     // 重复 start 也必须等待旧树与 owner 资源完整收口，不能覆盖唯一进程引用。
     if (this.process) await this.stop();

@@ -12,15 +12,10 @@ import { KnowledgeIndexSpaceMismatchError } from '../../index-rebuild/definition
 
 import { type EmbeddingPort } from '@plugin/backend/inferenceRuntime';
 import { EmbeddingFailure } from '@plugin/backend/inferenceFailures';
+import { KnowledgeSearchEmbeddingError } from './knowledgeSearchEmbeddingError';
+import { KnowledgeBaseNotFoundError } from '../../definitions/knowledgeBaseErrors';
 
 import type { MetadataRepository } from '../../infrastructure/metadataRepository';
-
-export class KnowledgeBaseEmbeddingMismatchError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'KnowledgeBaseEmbeddingMismatchError';
-  }
-}
 
 export class QueryVectorBuilder {
   private readonly metadataRepository: MetadataRepository;
@@ -62,7 +57,7 @@ export class QueryVectorBuilder {
   }): Promise<{ embeddingModelId: string; queryVector: number[] }> {
     const { kbId, query } = args;
     const kb = await this.metadataRepository.getKnowledgeBaseById(kbId);
-    if (!kb) throw new Error(`找不到知识库: ${kbId}`);
+    if (!kb) throw new KnowledgeBaseNotFoundError(kbId);
     const identity = this.metadataRepository.indexState.requireReady(kbId);
     const embeddingModelId = args.requestedEmbeddingModelId || identity.modelId;
     const result = await this.embedding
@@ -72,8 +67,10 @@ export class QueryVectorBuilder {
         expectedSpaceId: identity.spaceId,
       })
       .catch((error: unknown) => {
-        if (error instanceof EmbeddingFailure && error.code === 'embedding_space_mismatch') {
-          throw new KnowledgeIndexSpaceMismatchError(kbId);
+        if (error instanceof EmbeddingFailure) {
+          // 空间不一致的出路是重建索引，单独成类；其余 Host 失败按失败码归因，让检索报出原因而不是空结果。
+          if (error.code === 'embedding_space_mismatch') throw new KnowledgeIndexSpaceMismatchError(kbId);
+          throw new KnowledgeSearchEmbeddingError(error);
         }
         throw error;
       });

@@ -8,8 +8,9 @@
   按 Agent 去重、最近回复的在前；当前选用的 Agent 取自对话。Agent 注册为 `internal` 的运行（标题生成、单轮写作、
   批量收尾等）不算；默认 Agent 与未记录 Agent 的运行都写作 `null`（`toReadModelAgentId`）。概念区分见
   [产品模型总览 §5.2](../../../../../docs/product-model-overview.md#52-agent-自由注册)。轮次是用户消息数。置顶在前，再按最近活动。
+- 发起入口 `origin`：读自对话 metadata（只有 Linnya CLI 的工具调用创建的对话带 `linnya_cli`，读取经事件库的 `readConversationOrigin`，与对话历史合同同一个口径）。CLI 的工具调用是没有模型的 Host 工具运行，运行记录里的 Agent 是默认 Agent，但并没有 Agent 回复；所以带 `origin` 的对话 `replied_agent_ids` 恒为空，由 `origin` 说明这是 Linnya CLI 在用，不会显示成“Linnya Agent”。代价：用户在界面里接着这个对话向某个 Agent 提问，那次回复也不计入回复过的 Agent（目前 CLI 只用于开发与评测，没有为此引入按运行区分的标记）。
 - 派出的子 Agent：详情里按 Agent 计子运行次数（含多层子运行），次数多的在前，同样不算内部 Agent。子 Agent 还没有面向用户的名字，界面目前只显示合计的“子任务 N 次”。
-- `queryProjectConversations` / `POST /:projectId/query` 是面板和 Shell 的同一查询，统一 query、Agent、活动日历窗口、文档有无及五种排序。Agent 筛选看回复过的 Agent（`replied_agent_ids`），筛选值 `default` 即默认 Agent，不拿当前选用的 Agent 替代。结构化筛选先于全文搜索的 200 条上限；置顶在前，未测占用组内末尾。活动是宿主当地今天、含今天的七天/三十天，跨夏令时按日历计算。Agent 本地化名称排序仍归 Renderer 展示层，CLI 不开放该排序。
+- `queryProjectConversations` / `POST /:projectId/query` 是面板和 Shell 的同一查询，统一 query、Agent、活动日历窗口、文档有无及五种排序。Agent 筛选看对话里的执行者（`projectConversationActorIds`：发起入口在前，其后是回复过的 Agent `replied_agent_ids`），筛选值 `default` 即默认 Agent，`linnya_cli` 是 Linnya CLI 创建的对话，不拿当前选用的 Agent 替代；这些值与 Shell 内建 CLI 输出的 `agents` 一致。入口值与 Agent 注册表 ID 共用一个取值空间，注册表 ID 不得取 `linnya_cli`。结构化筛选先于全文搜索的 200 条上限；置顶在前，未测占用组内末尾。活动是宿主当地今天、含今天的七天/三十天，跨夏令时按日历计算。Agent 本地化名称排序仍归 Renderer 展示层，CLI 不开放该排序。
 - 查询返回[当前执行事实](../conversation-activity/README.md)，基于 RunRegistry 与 Commands 审批 owner，不新增状态表、不消费“已查看”。list/read 的项目范围都由已授权调用方给出。
 - 改过的文档：[行动账本](../../../../domains/action-ledger/README.md)按对话去重计数；详情另给每份文档的类型、最近改动时间、
   是否已删除（已删除不可打开），内建 Markdown 再给待审阅修订数。

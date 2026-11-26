@@ -14,7 +14,7 @@ import {
 } from 'src/domains/assets/features/managed-svg-asset';
 import { readManagedImageStoreBinding } from 'src/domains/assets/features/managed-image-store-binding';
 import { getAppDataPath } from 'src/shared/utils/pathManager';
-import { requireDocumentAssetDatabase } from './documentAssetRuntimeDatabase';
+import { requirePluginHostDatabase } from './pluginHostDatabase';
 
 const DOCUMENT_SVG_MAX_BYTES = 64 * 1024;
 
@@ -23,7 +23,7 @@ let runtimeByDatabase = new WeakMap<Database.Database, PluginDocumentSvgAssetRun
 export function createDocumentSvgAssetRuntime(
   databaseValue: unknown
 ): PluginDocumentSvgAssetRuntimePort {
-  const database = requireDocumentAssetDatabase(databaseValue);
+  const database = requirePluginHostDatabase(databaseValue, 'Document asset runtime');
   const cached = runtimeByDatabase.get(database);
   if (cached) return cached;
 

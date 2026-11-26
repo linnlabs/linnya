@@ -5,11 +5,14 @@ import type {
   ColorPaletteHueRange,
   ColorPaletteSuggestOptions,
 } from '@app/schemas/color-palette';
+import { suggestionIdOfPalette } from '@linnya/color-core/palette';
 
 export const PALETTE_USAGE = [
   'linnya palette suggest <图片>... [--seed HEX]... [--color HEX]... [--accents 1-6] [--n 1-5] [--base light|tint|dark] [--avoid HEX]... [--rng 编号] [--preview] [--json]',
   'linnya palette check --bg HEX --sf HEX --ink HEX --mu HEX --ac HEX,... --ch HEX,... [--excluded 起-止]... [--color HEX]... [--json]',
+  'linnya palette use <单套编号>   选定一套后记下（如 pl8f2a-2），之后的建议少给同样的底色与色系组合',
   '图片是当前对话工作目录里的相对路径或 conversation:/...，第一张是主图，最多 20 张。HEX 写 6 位、不带 #，否则 Shell 会把 # 后面当注释。',
+  'suggest 与 use 会读写本工作区的“最近用过”，Shell 需要写权限（requires_write_access）；check 不需要。',
 ].join('\n');
 
 export type PaletteCommand =
@@ -21,7 +24,8 @@ export type PaletteCommand =
       readonly preview: boolean;
       readonly json: boolean;
     }
-  | { readonly kind: 'check'; readonly input: ColorPaletteCheckInput; readonly json: boolean };
+  | { readonly kind: 'check'; readonly input: ColorPaletteCheckInput; readonly json: boolean }
+  | { readonly kind: 'use'; readonly paletteId: string };
 
 function hex(value: string): string {
   const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/iu.exec(value.trim());
@@ -100,7 +104,7 @@ function parseSuggest(argv: readonly string[]): PaletteCommand {
       ...(count === undefined ? {} : { count }),
       ...(requestedBase === undefined ? {} : { base: requestedBase }),
       // 模型常把单套编号（pl8f2a-1）整段传回来；复现按整组编号。
-      ...(values.rng === undefined ? {} : { rng: values.rng.replace(/-\d+$/u, '') }),
+      ...(values.rng === undefined ? {} : { rng: suggestionIdOfPalette(values.rng) ?? values.rng }),
     },
   };
 }
@@ -142,11 +146,24 @@ function parseCheck(argv: readonly string[]): PaletteCommand {
   };
 }
 
+function parseUse(argv: readonly string[]): PaletteCommand {
+  const { values, positionals } = parseArgs({
+    args: [...argv],
+    allowPositionals: true,
+    options: { help: { type: 'boolean', default: false } },
+  });
+  if (values.help) return { kind: 'help' };
+  const [paletteId, ...extra] = positionals;
+  if (paletteId === undefined || extra.length > 0) throw new Error('use 只接受一个单套编号，如 pl8f2a-2');
+  return { kind: 'use', paletteId };
+}
+
 /** argv 不含前面的 `palette`。 */
 export function parsePaletteCommand(argv: readonly string[]): PaletteCommand {
   const [command, ...args] = argv;
   if (command === undefined || command === '--help') return { kind: 'help' };
   if (command === 'suggest') return parseSuggest(args);
   if (command === 'check') return parseCheck(args);
+  if (command === 'use') return parseUse(args);
   throw new Error(`未知子命令：${command}`);
 }

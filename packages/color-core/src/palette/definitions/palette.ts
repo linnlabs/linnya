@@ -53,6 +53,15 @@ export interface Palette {
   readonly chart: readonly string[]
 }
 
+/**
+ * 一套配色的“组合”：底色明暗加色系集合（如 染纸·绿+黄）。“最近用过”按它降权，与挑选时衡量差异的主维度一致：
+ * 只换深浅、色系相同的几套，用户看来是同一种配色。色系按名称排序，便于存储和比较。
+ */
+export interface PaletteCombination {
+  readonly base: PaletteBase
+  readonly families: readonly string[]
+}
+
 /** 被排除的色相区间：从 `from` 顺时针到 `to`（OKLCH 色相，度）。 */
 export type HueRange = readonly [number, number]
 
@@ -92,6 +101,11 @@ export interface SuggestPalettesInput {
   readonly avoidColors?: readonly string[]
   /** 之前结果的编号（如 `pl8f2a`）；不传则随机。 */
   readonly rng?: string
+  /**
+   * 最近选用过的组合，由近到远，最多看 `PALETTE_RECENT_USE_LIMIT` 个；这些组合在挑选时降权，不排除。
+   * 它和图片、编号一样是输入：同样的输入、编号和最近用过，结果逐字节相同。
+   */
+  readonly recentCombinations?: readonly PaletteCombination[]
 }
 
 /** 待检查的一套配色（Agent 自己写的，或用户给的色板）。 */

@@ -1,3 +1,4 @@
+import type Database from 'better-sqlite3';
 import { randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -7,17 +8,26 @@ import type {
   BackendPluginCliPreparation,
   BackendPluginCliResult,
 } from '@linnya/plugin-host-contract/backend';
-import { checkColorPalette, renderPalettePreview, suggestColorPalettes } from 'src/domains/color-palette';
+import {
+  checkColorPalette,
+  createSqliteColorPaletteHistory,
+  renderPalettePreview,
+  suggestColorPalettes,
+  useColorPalette,
+} from 'src/domains/color-palette';
 import { encodeRgbaPng } from 'src/shared/media/image-pixels';
 import { PhysicalFileReadError, type PhysicalFileReaderPort } from '../../file-read';
-import { formatPaletteCheck, formatPaletteSuggestion } from '../functions/formatPalette';
+import { formatPaletteCheck, formatPaletteSuggestion, formatPaletteUse } from '../functions/formatPalette';
 import { PALETTE_USAGE, parsePaletteCommand, type PaletteCommand } from '../functions/parsePaletteCommand';
 
 const UNREADABLE = new Uint8Array();
 
-function access(conversationFiles: BackendPluginCliAccessPlan['conversationFiles']): BackendPluginCliAccessPlan {
+function access(
+  internalDataAccess: BackendPluginCliAccessPlan['internalDataAccess'],
+  conversationFiles: BackendPluginCliAccessPlan['conversationFiles'],
+): BackendPluginCliAccessPlan {
   return {
-    internalDataAccess: 'none', conversationFiles, externalFiles: 'denied',
+    internalDataAccess, conversationFiles, externalFiles: 'denied',
     network: 'denied', guiControl: 'denied', localIpcControl: 'denied',
   };
 }
@@ -63,13 +73,14 @@ async function writePreview(root: string, suggestion: ColorPaletteSuggestion, si
 
 async function executeSuggest(
   command: Extract<PaletteCommand, { kind: 'suggest' }>,
+  db: Database.Database,
   reader: PhysicalFileReaderPort,
   root: string,
   signal: AbortSignal,
 ): Promise<BackendPluginCliResult> {
   const images: Uint8Array[] = [];
   for (const reference of command.images) images.push(await readImage(reader, root, reference, signal));
-  const outcome = await suggestColorPalettes({ ...command.options, images, signal });
+  const outcome = await suggestColorPalettes({ ...command.options, images, signal }, createSqliteColorPaletteHistory(db));
   if (outcome.status === 'failed') return { exitCode: 1, stdout: '', stderr: `${outcome.code} ${outcome.message}\n` };
   const preview = command.preview ? await writePreview(root, outcome.suggestion, signal) : null;
   const skippedImages = outcome.skippedImages.flatMap(index => command.images[index] ?? []);
@@ -86,8 +97,19 @@ function executeCheck(command: Extract<PaletteCommand, { kind: 'check' }>): Back
   return { exitCode: outcome.check.ok ? 0 : 1, stdout, stderr: '' };
 }
 
-/** prepare 只解析参数；读图和写预览在通过父 Shell 权限校验后才发生。 */
+function executeUse(command: Extract<PaletteCommand, { kind: 'use' }>, db: Database.Database): BackendPluginCliResult {
+  const outcome = useColorPalette(command.paletteId, createSqliteColorPaletteHistory(db));
+  if (outcome.status === 'failed') return { exitCode: 1, stdout: '', stderr: `${outcome.code} ${outcome.message}\n` };
+  return { exitCode: 0, stdout: formatPaletteUse(outcome.used), stderr: '' };
+}
+
+/**
+ * prepare 只解析参数；读图、读写“最近用过”和写预览在通过父 Shell 权限校验后才发生。
+ * suggest 会读最近用过并记下发出的编号、use 会写选用记录，都是工作区内部数据的写入，按 write 声明；
+ * check 只算颜色，什么都不读写。
+ */
 export function preparePaletteCli(input: {
+  readonly db: Database.Database;
   readonly argv: readonly string[];
   readonly conversationRoot: string;
   readonly fileReader: PhysicalFileReaderPort;
@@ -106,7 +128,7 @@ export function preparePaletteCli(input: {
       const check = command;
       return {
         status: 'ready',
-        plan: { access: access('none'), execute: async () => executeCheck(check) },
+        plan: { access: access('none', 'none'), execute: async () => executeCheck(check) },
       };
     }
     case 'suggest': {
@@ -114,8 +136,21 @@ export function preparePaletteCli(input: {
       return {
         status: 'ready',
         plan: {
-          access: access(suggest.preview ? 'write' : 'none'),
-          execute: async ({ signal }) => await executeSuggest(suggest, input.fileReader, input.conversationRoot, signal),
+          access: access('write', suggest.preview ? 'write' : 'none'),
+          execute: async ({ signal }) => await executeSuggest(suggest, input.db, input.fileReader, input.conversationRoot, signal),
+        },
+      };
+    }
+    case 'use': {
+      const use = command;
+      return {
+        status: 'ready',
+        plan: {
+          access: access('write', 'none'),
+          execute: async ({ signal }) => {
+            signal.throwIfAborted();
+            return executeUse(use, input.db);
+          },
         },
       };
     }

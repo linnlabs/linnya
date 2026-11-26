@@ -23,7 +23,10 @@ import {
  */
 
 // 导入Qdrant管理器
-import { QdrantRuntimeUnavailableError } from '../../../../infra/adapters/vector-store/qdrant/errors';
+import {
+  QdrantRuntimeUnavailableError,
+  type QdrantRuntimeUnavailableReason,
+} from '../../../../infra/adapters/vector-store/qdrant/errors';
 import { QdrantManager } from '../../../../electron-main/services/qdrantManager';
 import {
   createOnDemandQdrantRuntime,
@@ -43,7 +46,10 @@ import type { AppServerBackendConfiguration } from '../../app-server-bootstrap';
 import { QueueManager } from '../../../../infra/task-queue/queues';
 import type { CommandAppOwnerLifecyclePort } from '../../adapters/commands/production-runtime';
 import type { SandboxAppOwnerLifecyclePort } from '../../application/conversation-runtime';
-import type { QdrantProcessRuntime } from '../../../../infra/adapters/vector-store/qdrant';
+import {
+  QdrantDataDirectoryTooLongError,
+  type QdrantProcessRuntime,
+} from '../../../../infra/adapters/vector-store/qdrant';
 import type { LaunchOwnedPipeProcess } from '../../../../shared/process-runtime';
 import type { QueueWorkerRuntime } from '../../../../infra/task-queue/definitions/queueWorkerRuntime';
 import type { RuntimePathRoots } from '../../../../shared/runtime-paths';
@@ -86,6 +92,14 @@ export class BackendRuntimeStartupError extends Error {
   get cause(): unknown {
     return this.startupFailure;
   }
+}
+
+/** 插件按原因给出不同的恢复办法：停启、重新安装，还是换短目录后重启。 */
+function classifyQdrantStartupFailure(error: unknown): QdrantRuntimeUnavailableReason {
+  // 运行时组件缺失或复核失败（QdrantRuntimeMissingError）：停启无法恢复，插件要提示重新安装。
+  if (error instanceof Error && error.name === 'QdrantRuntimeMissingError') return 'runtime-missing';
+  if (error instanceof QdrantDataDirectoryTooLongError) return 'data-directory-too-long';
+  return 'startup-failed';
 }
 
 /**
@@ -250,8 +264,7 @@ export class BackendRuntimeOwner {
       }
       throw new QdrantRuntimeUnavailableError(
         describeStartupCapabilityFailure('向量库没有启动成功', error),
-        // 运行时组件缺失或复核失败（QdrantRuntimeMissingError）：停启无法恢复，插件要提示重新安装。
-        error instanceof Error && error.name === 'QdrantRuntimeMissingError' ? 'runtime-missing' : 'startup-failed',
+        classifyQdrantStartupFailure(error),
       );
     }
   }

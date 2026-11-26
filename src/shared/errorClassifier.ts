@@ -378,24 +378,6 @@ export class ErrorClassifier {
     // 其他可重试错误使用建议的延迟或基础延迟
     return classification.suggestedDelay || baseDelay;
   }
-
-  /**
-   * 判断错误是否为"云端额度/限额"类错误
-   *
-   * 中文说明：
-   * - 精确匹配 Linnya Cloud Worker 返回的限额文案；
-   * - 用于 LlmCaller 在同一 run 内做静默降级判定（区别于通用分类逻辑）。
-   */
-  static isCloudQuotaError(error: Error): boolean {
-    const msg = (error.message || '').toLowerCase();
-    const patterns = [
-      '额度上限',
-      '已达上限',
-      '免费期已结束',
-      '该模型暂不可用',
-    ];
-    return patterns.some(p => msg.includes(p));
-  }
 }
 
 /**

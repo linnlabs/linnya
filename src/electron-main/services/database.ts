@@ -31,6 +31,7 @@ import { getAssetSchemaProviders } from '../../domains/assets/features/asset-led
 import { getMarkdownSchemaProviders } from '../../domains/markdown/features/document-storage/infrastructure/sqlite/schemaProviders';
 import { getActionLedgerSchemaProviders } from '../../domains/action-ledger/infrastructure/sqlite/schemaProviders';
 import { getSemanticLayerSchemaProviders } from '../../domains/semantic-layer/infrastructure/sqlite/schemaProviders';
+import { getColorPaletteSchemaProviders } from '../../domains/color-palette/infrastructure/sqlite/schemaProviders';
 import { getPluginStateSchemaProviders } from '../../features/plugins/infrastructure/sqlite/schema-providers';
 import { getWorkspaceDataPath } from '../../shared/utils/pathManager';
 import {
@@ -86,6 +87,7 @@ export class DatabaseService {
       ...getConversationSchemaProviders(),
       ...getScheduledTaskSchemaProviders(),
       ...getSemanticLayerSchemaProviders(),
+      ...getColorPaletteSchemaProviders(),
       ...getProjectDeletionSchemaProviders(),
       ...getProjectSavedFilterSchemaProviders(),
       ...getCitationRefClaimSchemaProviders(),

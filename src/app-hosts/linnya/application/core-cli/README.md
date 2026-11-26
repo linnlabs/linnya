@@ -13,7 +13,7 @@
 
 `linnya conversations` 让 Agent 读同一项目里别的对话，只给可读内容（用户的话、AI 的答复、工具前言和被中断的答复），不给思考和工具过程。口径见[可读对话](../../../../../docs/conversation-platform/06-read-model.md#8-可读对话)。
 
-- `linnya conversations list [--query 文字] [--agent ID] [--activity any|today|week|month] [--documents any|changed|unchanged] [--sort activity|title|turns|documents|storage] [--direction asc|desc] [--limit 1..200]`：与项目对话面板共用 Host 查询，默认 30 个。每个对话含回复过的 Agent（`agents`，最近的在前）、当前选用的 Agent（`selectedAgent`）、当前执行状态（`activity`）、轮次、改过的文档数和时间。Agent 筛选看回复过的 Agent，`default` 为默认 Agent；当前选用但从未回复的不计。活动窗口按宿主本地日历，week/month 含今天共七/三十天；文档按行动账本去重计数。
+- `linnya conversations list [--query 文字] [--agent ID] [--activity any|today|week|month] [--documents any|changed|unchanged] [--sort activity|title|turns|documents|storage] [--direction asc|desc] [--limit 1..200]`：与项目对话面板共用 Host 查询，默认 30 个。每个对话含执行者（`agents`：Linnya CLI 创建的对话先给 `linnya_cli`，其后是回复过的 Agent，最近的在前）、当前选用的 Agent（`selectedAgent`）、当前执行状态（`activity`）、轮次、改过的文档数和时间。Agent 筛选的值就是 `agents` 里的值：`default` 为默认 Agent，`linnya_cli` 为 Linnya CLI 创建的对话；当前选用但从未回复的不计。活动窗口按宿主本地日历，week/month 含今天共七/三十天；文档按行动账本去重计数。
   置顶始终在前，默认最近活动降序，标题默认升序，其余默认降序；未测量占用排组内末尾。`--query` 搜标题与可读内容，结构化筛选先于搜索截断，并给命中片段。Agent 本地化显示名仅由 Renderer 贡献，因此 CLI 本轮不开放 `--sort agent`，不拿 ID 冒用显示名排序；未知排序返回参数错误。未开放按具体文档筛选，查哪些文档被改用 `linnya changes`。
 - `linnya conversations read 对话ID [--after 序号] [--limit 1..200]`：按顺序读一个对话的可读消息，默认 50 条。没读完时输出 `nextAfterSeq`，作为下一次的 `--after`。一条消息超过输出预算时截短并标 `textTruncated`。
 
@@ -23,10 +23,13 @@ list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、in
 
 ## 配色
 
-`linnya palette` 给 Agent 出配色、检查配色。算法与错误码归 [color-palette domain](../../../../domains/color-palette/README.md)。不读内部数据，只在 `--preview` 时需要写权限。
+`linnya palette` 给 Agent 出配色、检查配色、记下选用的一套。算法、错误码与“最近用过”归 [color-palette domain](../../../../domains/color-palette/README.md)。
 
 - `linnya palette suggest <图片>...`：从 1–20 张图取色，默认给 3 套。可选 `--color` 指定主色（1–6 个）、`--seed` 补充本色、`--accents` 定强调色数量、`--n` 定套数、`--base` 定底色明暗、`--avoid` 排除颜色、`--rng` 复现之前的结果。
 - `linnya palette check --bg --sf --ink --mu --ac --ch`：检查自己写的一套，可加 `--excluded`、`--color`。不合格时退出码为 1，并给出改动最少的版本。
+- `linnya palette use <单套编号>`：选定一套后记下（如 `pl8f2a-2`），输出这套的组合（底色明暗与色系）。之后的 `suggest` 对同一组合降权，不排除；同一套再记一次只移到最前。编号不是本工作区最近 100 组建议里的报 `palette_not_found`。
+
+权限：`suggest` 读本工作区的最近用过并记下发出的编号，`use` 写选用记录，两者都声明内部数据写入（`internalDataAccess: write`）：内部数据关闭时拒绝，只读档要给 Shell 设 `requires_write_access`。`check` 只算颜色，不读写任何数据。`--preview` 另需写工作目录。
 
 图片是当前对话工作目录里的相对路径或 `conversation:/...`，边界与 `read_file` 相同，符号链接不能带到目录外。相对路径按工作目录根解析，不跟随 Shell 的 `cd`。`workspace:/` 和 `file:///` 按读不出处理。
 

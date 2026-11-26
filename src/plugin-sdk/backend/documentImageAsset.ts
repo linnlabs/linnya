@@ -15,7 +15,7 @@ import { readManagedImageStoreBinding } from 'src/domains/assets/features/manage
 import { createManagedImageStoragePaths } from 'src/domains/assets/shared/managed-image-storage';
 import { createWorkspaceVerifiedImageLoader } from 'src/features/workspace/assets/shared/verified-image';
 import { getAppDataPath } from 'src/shared/utils/pathManager';
-import { requireDocumentAssetDatabase } from './documentAssetRuntimeDatabase';
+import { requirePluginHostDatabase } from './pluginHostDatabase';
 
 let runtimeByDatabase = new WeakMap<Database.Database, PluginDocumentImageAssetRuntimePort>();
 export function readDocumentImageAssetLimits() {
@@ -25,7 +25,7 @@ export function readDocumentImageAssetLimits() {
 export function createDocumentImageAssetRuntime(
   databaseValue: unknown
 ): PluginDocumentImageAssetRuntimePort {
-  const database = requireDocumentAssetDatabase(databaseValue);
+  const database = requirePluginHostDatabase(databaseValue, 'Document asset runtime');
   const cached = runtimeByDatabase.get(database);
   if (cached) return cached;
 

@@ -2,8 +2,18 @@
 
 ## 0.1.0
 
+- 升级 AI SDK Core 至 `7.0.183` 与同批 Provider 补丁（Anthropic `4.0.110`、OpenAI `4.0.125`、xAI `5.0.52` 等）；
+  Google 仍保留 `4.0.94`。Anthropic 内部能力目录改为按模型 ID 声明，本 Adapter 读取的兼容投影字段不变；
+  OpenAI / xAI Responses 流可接收超过 64 MiB 的单个事件；新增的 step warnings 与 `stoppedBy` 本 Adapter 不消费。
+
 - 升级 AI SDK Core 至 `7.0.179` 与同批 Provider 补丁；Google 仍保留 `4.0.94`。新版流事件中的
   `ping` 心跳与 `steering-message` 不投影为 canonical 输出（本 Adapter 不启用这两项）。
+
+- 接入正式 Linnkit 0.47.0；peer 最低兼容系列改为 0.47。0.47 去掉客户端云端额度兜底与 `billing_mode`，
+  不再客户端重试的模型改由 `enable_client_retry: false` 表达；Provider 行为不变。
+
+- 接入正式 Linnkit 0.46.0；peer 最低兼容系列改为 0.46。0.46 让工具上下文带上工具结果接下来交给的模型（`activeModelId`），
+  Provider 行为不变。
 
 - 接入正式 Linnkit 0.45.0；peer 最低兼容系列改为 0.45。0.45 让暂停或取消后最多等工具 3 秒，
   Provider 行为不变。

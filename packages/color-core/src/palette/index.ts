@@ -4,6 +4,7 @@ export type {
   Palette,
   PaletteBase,
   PaletteCheckResult,
+  PaletteCombination,
   PaletteCheckRule,
   PaletteDraft,
   PaletteFailure,
@@ -20,5 +21,7 @@ export { checkPalette } from './functions/checkPalette.js'
 export { describePalette, type PaletteLook } from './functions/describePalette.js'
 export { excludedHueRanges, isColorExcluded } from './functions/excludedHues.js'
 export { paletteDistance, paletteFamilies } from './functions/scorePalette.js'
-export { decodeRngId, encodeRngId } from './functions/random.js'
+export { paletteCombination } from './functions/recentUse.js'
+export { PALETTE_RECENT_USE_LIMIT } from './definitions/paletteConstants.js'
+export { decodeRngId, encodeRngId, suggestionIdOfPalette } from './functions/random.js'
 export { MAX_PALETTE_IMAGES, suggestPalettes } from './orchestration/suggestPalettes.js'

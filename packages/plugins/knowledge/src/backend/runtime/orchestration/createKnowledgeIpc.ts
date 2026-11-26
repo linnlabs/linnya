@@ -23,11 +23,33 @@ import {
   readSavedKnowledgeContent,
 } from '../../document-read/orchestration/readSavedKnowledgeContent';
 import { validatePdfOcrUploadPageLimit } from '../../ingestion/functions/pdfOcrUploadPageLimit';
-import { KnowledgeVectorStartupError } from '../../infrastructure/vector-store/errors';
+import { KnowledgeVectorStartupError, type KnowledgeVectorStartupFailureKind } from '../../infrastructure/vector-store/errors';
+import { KnowledgeSearchEmbeddingError } from '../../application/search/knowledgeSearchEmbeddingError';
+import { KnowledgeSearchRerankError } from '../../application/search/knowledgeSearchRerankError';
+import {
+  KnowledgeIndexRebuildRequiredError,
+  KnowledgeIndexSpaceMismatchError,
+} from '../../index-rebuild/definitions/knowledgeIndex';
+import { KnowledgeBaseNotFoundError } from '../../definitions/knowledgeBaseErrors';
+import type { KnowledgeEmbeddingFailureReason } from '../../infrastructure/inference/embeddingFailureReason';
 import {
   resolveKnowledgeBaseScopeFromContext,
   assertKbAllowedInScope,
 } from '../../tools/scope/projectKnowledgeBaseScope';
+
+/** 界面按启动失败类别展示对应的恢复办法；上传、检索、重建索引等所有触及向量服务的通道共用这一份映射。 */
+const VECTOR_STARTUP_MESSAGE_KEYS = {
+  'runtime-missing': 'knowledgeBase.runtime.error.vectorRuntimeMissing',
+  'data-directory-too-long': 'knowledgeBase.runtime.error.vectorDataDirectoryTooLong',
+  'startup-failed': 'knowledgeBase.runtime.error.vectorUnavailable',
+} as const satisfies Record<KnowledgeVectorStartupFailureKind, string>;
+
+/** 检索时嵌入模型失败按原因给恢复办法；后端原文只作诊断，不进界面。 */
+const SEARCH_EMBEDDING_MESSAGE_KEYS = {
+  'model-unavailable': 'knowledgeBase.search.error.embeddingModelUnavailable',
+  credential: 'knowledgeBase.search.error.embeddingCredential',
+  'request-failed': 'knowledgeBase.search.error.embeddingRequestFailed',
+} as const satisfies Record<KnowledgeEmbeddingFailureReason, string>;
 
 /** IPC 只解析业务输入；实例与取消身份始终由当前 activation 冻结。 */
 export function createKnowledgeIpc(
@@ -197,10 +219,25 @@ export function createKnowledgeIpc(
             }
             return { success: true, data: result };
           } catch (error) {
-            if (channel === 'upload-document' && error instanceof KnowledgeVectorStartupError) {
-              return createOperationFailure(error.message, createUserFacingMessage(error.runtimeMissing
-                ? 'knowledgeBase.runtime.error.vectorRuntimeMissing'
-                : 'knowledgeBase.runtime.error.vectorUnavailable'));
+            // 任何通道只要因向量服务启动失败而中断，都给同一份本地化原因，不让中文原文直达英文界面，也不套用各通道的通用失败文案。
+            if (error instanceof KnowledgeVectorStartupError) {
+              return createOperationFailure(error.message, createUserFacingMessage(VECTOR_STARTUP_MESSAGE_KEYS[error.kind]));
+            }
+            if (error instanceof KnowledgeSearchEmbeddingError) {
+              return createOperationFailure(error.message, createUserFacingMessage(SEARCH_EMBEDDING_MESSAGE_KEYS[error.reason]));
+            }
+            // 索引状态与重排失败同样只给本地化键；中文 message 只作诊断，不直达英文界面。
+            if (error instanceof KnowledgeIndexRebuildRequiredError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.index.error.rebuildRequired'));
+            }
+            if (error instanceof KnowledgeIndexSpaceMismatchError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.index.error.spaceMismatch'));
+            }
+            if (error instanceof KnowledgeSearchRerankError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.search.error.rerankFailed'));
+            }
+            if (error instanceof KnowledgeBaseNotFoundError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.common.notFound'));
             }
             const fallback = fallbackKeys[channel];
             return fallback

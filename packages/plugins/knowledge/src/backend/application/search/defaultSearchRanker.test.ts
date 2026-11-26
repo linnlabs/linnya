@@ -3,6 +3,7 @@ import { type RerankingPort } from '@plugin/backend/inferenceRuntime';
 import { RerankingFailure } from '@plugin/backend/inferenceFailures';
 
 import { DefaultSearchRanker } from './defaultSearchRanker';
+import { KnowledgeSearchRerankError } from './knowledgeSearchRerankError';
 import type { RankedRetrievedPoint } from './types';
 
 function point(id: string, document: string, score: number): RankedRetrievedPoint {
@@ -62,17 +63,23 @@ describe('DefaultSearchRanker reranking', () => {
     ).resolves.toBe(searchResults);
   });
 
-  it('不吞掉路由和凭据等不可重试配置错误', async () => {
+  it('不吞掉路由和凭据等不可重试配置错误：带原因上抛，Agent 说明只用英文与失败码', async () => {
+    const failure = new RerankingFailure('protocol', 'credential_missing', false, '缺少凭据的 Host 诊断');
     const reranking: RerankingPort = {
       rerank: async () => {
-        throw new RerankingFailure('protocol', 'credential_missing', false, 'missing credential');
+        throw failure;
       },
     };
 
-    await expect(
-      new DefaultSearchRanker().rerankResults(reranking, 'reranking-model', 'query', [
-        point('first', 'first text', 0.8),
-      ])
-    ).rejects.toMatchObject({ code: 'credential_missing', retryable: false });
+    const error = await new DefaultSearchRanker()
+      .rerankResults(reranking, 'reranking-model', 'query', [point('first', 'first text', 0.8)])
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(KnowledgeSearchRerankError);
+    expect(error).toMatchObject({ cause: failure });
+    expect(error).toHaveProperty(
+      'toolMessage',
+      expect.stringMatching(/reranking model did not succeed \(credential_missing\)\. Retrying will not help/u)
+    );
+    expect(error).not.toHaveProperty('toolMessage', expect.stringMatching(/[一-鿿]/u));
   });
 });

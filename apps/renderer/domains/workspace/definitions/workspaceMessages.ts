@@ -262,6 +262,7 @@ export type WorkspaceMessageKey =
   | 'workspace.projectOverview.columns.resize'
   | 'workspace.projectOverview.actor.defaultAgent'
   | 'workspace.projectOverview.actor.subrun'
+  | 'workspace.projectOverview.actor.subrunOf'
   | 'workspace.projectOverview.actor.user'
   | 'workspace.projectOverview.actor.external'
   | 'workspace.projectOverview.actor.plugin'

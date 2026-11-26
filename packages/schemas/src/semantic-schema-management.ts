@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ReadModelRootAgentSchema } from './conversation/selected-agent';
 
 /**
  * 标签管理：改名、合并、删除标签，改名、删除字段，改字段类型，编辑选项；每次改动一批，可整批撤回。
@@ -42,12 +43,16 @@ const Count = z.number().int().nonnegative();
 const Time = z.number().int().nonnegative();
 const Named = z.object({ id: z.string().min(1), name: z.string().min(1) }).strict();
 
-/** 谁做的：Agent 带对话和 Agent ID；对话删除后标题为 null。 */
+/**
+ * 谁做的：Agent 带对话和 Agent ID；对话删除后标题为 null。
+ * 子任务另带发起它的 Agent（`root_agent`，按 `toReadModelRootAgent` 的约定），不知道时为 null。
+ */
 export const SemanticSchemaActorSchema = z.object({
   kind: z.enum(['user', 'run', 'subrun', 'plugin', 'external']),
   conversation_id: z.string().min(1).nullable(),
   conversation_title: z.string().nullable(),
   agent_id: z.string().min(1).nullable(),
+  root_agent: ReadModelRootAgentSchema.nullable(),
 }).strict();
 
 export const SemanticSchemaTagItemSchema = z.object({
