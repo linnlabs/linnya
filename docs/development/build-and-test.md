@@ -27,6 +27,11 @@ pnpm run dev:electron
 
 `pnpm-lock.yaml` 是根工作区唯一依赖锁文件。不要在根目录或 workspace package 中运行 `npm install`，也不要提交 `node_modules`、WASM 生成目录、构建产物或本地凭据文件。
 
+合并或拉取改了依赖的提交后要在该工作目录重新 `pnpm install --frozen-lockfile`。`pnpm-workspace.yaml` 设了
+`verifyDepsBeforeRun: error`：依赖与 lockfile 不一致时，`pnpm run` / `pnpm exec` 直接以
+`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` 失败。加 `-s` 时 pnpm 会连这条提示一起吞掉，只剩退出码 1，
+因此 `pnpm -s …` 无输出失败时先运行一次 `pnpm install --frozen-lockfile`。
+
 安全依赖升级需要覆盖根应用、插件和独立 E2E fixture 的实际消费者，以及仍引用旧版本的
 间接依赖；检查 lock diff，避免同时刷新无关 peer 依赖。原生图像依赖升级后，除冻结安装、
 类型和业务测试外，还需执行 Slides 的 `smoke:raster-worker`，验证真实 Electron 像素链路。
