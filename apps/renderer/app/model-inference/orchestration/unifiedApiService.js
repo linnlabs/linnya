@@ -15,6 +15,7 @@
 
 import { getApiBaseUrl, apiFetch } from '../../../shared/services/aiService/common';
 import { determineModelId } from './determineModelId';
+import { readGenerationEventStream } from './readGenerationEventStream';
 import { useAiSettingsStore } from '../../../shared/stores/aiSettings';
 import { readPrimaryReasoningEffort } from '@/domains/model-configuration';
 
@@ -159,80 +160,19 @@ export async function generateText(requestParams, signal = null) {
       throw new Error(errorDetails);
     }
 
-    // 使用SSE流式API，但缓冲完整结果
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
+    // 后端只回 SSE：读完整条流再返回全文。失败（运行报错、未正常收尾）由读取模块抛出，不能当成空文字成功。
     let generatedText = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      
-      if (done) {
-        console.log(`[UnifiedAPI] 非流式请求成功完成（通过SSE缓冲）`);
-        break;
+    await readGenerationEventStream(response.body, (event) => {
+      if (event.type === 'final_answer_chunk') {
+        generatedText += event.chunk;
+      } else if (event.type === 'final_answer_reset') {
+        // 模型重试会撤回已发出的分片，之后的分片重新开始。
+        generatedText = '';
+      } else if (event.type === 'final_answer') {
+        generatedText = event.content;
       }
+    }, signal);
 
-      buffer += decoder.decode(value, { stream: true });
-      
-      // 处理完整的SSE事件
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // 保留最后一个不完整的行
-
-      let currentEventType = 'message';
-      
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          currentEventType = line.substring(7).trim();
-          continue;
-        }
-        
-        if (line.startsWith('data: ')) {
-          const data = line.substring(6);
-          
-          try {
-            const eventData = JSON.parse(data);
-            
-            /**
-             * SSE 协议（严格模式）
-             *
-             * 只支持新架构事件：
-             * - final_answer_chunk：增量字段为 chunk
-             * - final_answer：完整字段为 content
-             *
-             * 说明：本项目的协议定义在 packages/schemas/src/sse-events.ts，
-             * 这里不再做旧字段/旧事件兼容，避免“吞掉协议错误”导致前端静默为空。
-             */
-            const isFinalAnswerChunk =
-              currentEventType === 'final_answer_chunk' || eventData.type === 'final_answer_chunk';
-            const isFinalAnswer =
-              currentEventType === 'final_answer' || eventData.type === 'final_answer';
-
-            if (isFinalAnswerChunk) {
-              /**
-               * SSE 协议对齐（非常关键）：
-               * - 新架构 SSEFinalAnswerChunkEvent 字段名是 chunk（不是 content）
-               *   见：packages/schemas/src/sse-events.ts
-               *
-               * 这里我们选择“严格模式”：只接受 chunk 字段。
-               * 如果出现 chunk 为空但后端实际有输出，说明前后端协议不一致，需要回到事件契约层修正，而不是在这里吞掉错误。
-               */
-              const chunkText = typeof eventData.chunk === 'string' ? eventData.chunk : '';
-              if (chunkText.length > 0) {
-                generatedText += chunkText;
-              }
-            } else if (isFinalAnswer) {
-              if (typeof eventData.content === 'string' && eventData.content.length > 0) {
-                generatedText = eventData.content;
-              }
-            }
-          } catch (parseError) {
-            // 忽略无法解析的数据
-          }
-        }
-      }
-    }
-    
     return {
       generated_text: generatedText
     };
@@ -372,86 +312,25 @@ export async function generateTextStream(requestParams, callbacks = {}, signal =
     callbacks.onOpen?.();
     console.log(`[UnifiedAPI] SSE流连接已建立`);
 
-    // 使用ReadableStream处理SSE响应
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let streamEndedCalled = false; // Add a flag to prevent multiple calls
-
-    while (true) {
-      if (signal?.aborted) {
-        console.log(`[UnifiedAPI] 流式请求被取消`);
-        reader.cancel('Request aborted by user');
-        throw new DOMException('Request aborted by user', 'AbortError');
+    /*
+     * 成功与失败只由整条流的收尾决定：读完且 Host 以 complete 收尾才回调 onStreamEnd；
+     * 运行报错或未收尾时读取模块抛错，走下方 catch：回调 onError 并抛出，与 HTTP 失败同一合同。
+     */
+    let finalAnswer;
+    await readGenerationEventStream(response.body, (event) => {
+      if (event.type === 'summarization_start') {
+        callbacks.onSummarizationStart?.(event);
+      } else if (event.type === 'summarization_end') {
+        callbacks.onSummarizationEnd?.(event);
+      } else if (event.type === 'thought') {
+        callbacks.onThought?.(event);
+      } else if (event.type === 'final_answer_chunk') {
+        if (event.chunk) callbacks.onTextChunk?.(event.chunk);
+      } else if (event.type === 'final_answer') {
+        finalAnswer = event;
       }
-
-      const { done, value } = await reader.read();
-      
-      if (done) {
-        console.log(`[UnifiedAPI] 流式请求正常结束`);
-        if (!streamEndedCalled) {
-          callbacks.onStreamEnd?.();
-        }
-        break;
-      }
-
-      // 解码新的数据块
-      const chunk = decoder.decode(value, { stream: true });
-      buffer += chunk;
-
-      // 处理完整的SSE事件
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // 保留最后一个不完整的行
-
-      let currentEventType = 'message'; // 默认事件类型
-
-      for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          currentEventType = line.substring(7).trim();
-          continue;
-        }
-        
-        if (line.startsWith('data: ')) {
-          const data = line.substring(6);
-          
-          try {
-            const eventData = JSON.parse(data);
-            
-            // 🔥 新架构：根据事件类型分发
-            if (currentEventType === 'summarization_start') {
-              callbacks.onSummarizationStart?.(eventData);
-            } else if (currentEventType === 'summarization_end') {
-              callbacks.onSummarizationEnd?.(eventData);
-            } else if (currentEventType === 'thought') {
-              callbacks.onThought?.(eventData);
-            } else if (currentEventType === 'message' || currentEventType === 'final_answer_chunk') {
-              // 处理 final_answer_chunk 事件（新架构的流式内容）
-              if (eventData.type === 'final_answer_chunk') {
-                // SSEFinalAnswerChunkEvent 字段名为 chunk（严格模式：不兼容旧字段名）
-                const chunkText = typeof eventData.chunk === 'string' ? eventData.chunk : '';
-                if (chunkText) {
-                  callbacks.onTextChunk?.(chunkText);
-                }
-              } else if (eventData.type === 'final_answer' && eventData.is_complete) {
-                // final_answer 结束信号
-                console.log(`[UnifiedAPI] 收到流结束信号`);
-                if (!streamEndedCalled) {
-                  callbacks.onStreamEnd?.(eventData);
-                  streamEndedCalled = true;
-                }
-              } else if (eventData.type === 'error') {
-                console.error(`[UnifiedAPI] 流传输错误:`, eventData);
-                callbacks.onError?.(new Error(eventData.message || 'Stream transport error'));
-                return;
-              }
-              // 严格模式：不再兼容旧的 text / latex_complete 事件
-            }
-          } catch (parseError) {
-            console.warn(`[UnifiedAPI] 解析SSE数据失败:`, parseError, 'Data:', data);
-          }
-        }
-      }
-    }
+    }, signal);
+    callbacks.onStreamEnd?.(finalAnswer);
 
   } catch (error) {
     if (error.name === 'AbortError') {

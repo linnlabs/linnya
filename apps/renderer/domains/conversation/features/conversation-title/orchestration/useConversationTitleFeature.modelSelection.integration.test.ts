@@ -7,6 +7,11 @@ import {
   stopModelCatalogLifecycle,
   type ModelCatalogItem,
 } from '@/domains/model-configuration';
+import {
+  createSSEFinalAnswerEvent,
+  createSSETransportEndEvent,
+  serializeServerSentEventFrame,
+} from '@linnlabs/linnkit/contracts';
 import { useConversationTitleCandidateStore } from '../store/conversationTitleCandidateStore';
 import { useConversationTitleFeature } from './useConversationTitleFeature';
 
@@ -52,9 +57,14 @@ async function loadCatalog(models: readonly ModelCatalogItem[]): Promise<void> {
   await startModelCatalogLifecycle();
 }
 
+/** 与 Backend 同形的成功标题流：最终回答后由 Host 以 complete 收尾。 */
 function titleResponse(title: string): Response {
+  const events = [
+    createSSEFinalAnswerEvent('answer-1', CONVERSATION_ID, 'title-turn', title, { completion_reason: 'terminal' }),
+    createSSETransportEndEvent('end-1', CONVERSATION_ID, 'title-turn', { execution_id: 'exec-1', reason: 'complete' }),
+  ];
   return new Response(
-    `event: final_answer\ndata: ${JSON.stringify({ type: 'final_answer', content: title })}\n\n`
+    events.map(event => serializeServerSentEventFrame({ event: event.type, data: JSON.stringify(event) })).join('')
   );
 }
 
