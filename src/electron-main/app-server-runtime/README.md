@@ -5,7 +5,7 @@ bootstrap、托管子进程生命周期，并注册隐藏 Chromium worker、文�
 与 Web Read renderer 等窄 Desktop reverse RPC。Backend 业务、Commands owner 和 Sandbox owner 不在这里创建。
 
 模型、OAuth 和插件凭据统一由 App Server 直接保存到应用 profile 的文件存储。Main 不拥有凭据文件，
-不注册加解密、迁移或凭据读写 RPC。公开合同见[文件凭据存储](../../../infra/adapters/credential-storage/file/README.md)。
+不注册加解密、迁移或凭据读写 RPC。公开合同见[文件凭据存储](../../infra/adapters/credential-storage/file/README.md)。
 
 App Server 不继承 Electron Main 的环境。命令所需的完整宿主登录环境走独立 bootstrap contract；sidecar 自身只取得
 声明过的系统与 Linnya 配置变量，明确排除 `ELECTRON_RUN_AS_NODE`、`NODE_OPTIONS` 等启动注入入口。
