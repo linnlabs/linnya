@@ -105,7 +105,7 @@ describe('底部运行状态行', () => {
     const { messages, read } = mount([user]);
     await nextTick();
     // 从用户消息算起：挂载时已过去 2 秒。
-    expect(read()).toEqual({ text: '正在分析问题', elapsedText: '2秒', motion: 'thinking' });
+    expect(read()).toEqual({ text: '正在分析问题', elapsedText: '2秒', motion: 'sway' });
 
     // 思考马上开始，但“正在分析问题”还没停够 2 秒，不能一闪而过。
     messages.value = [user, thought('th1', T0 + 2_000, false)];
@@ -122,7 +122,7 @@ describe('底部运行状态行', () => {
     // 思考结束、开始联网搜索：工具 owner 声明的类别决定文字。
     messages.value = [user, thought('th1', T0 + 2_000, true), tool('s1', 'web_search', 'loading', T0 + 33_000)];
     await advance(1_000);
-    expect(read()).toMatchObject({ text: '正在查找', motion: 'processing' });
+    expect(read()).toMatchObject({ text: '正在查找', motion: 'sway' });
 
     // 搜索返回、模型还没给出下一步。
     messages.value = [user, thought('th1', T0 + 2_000, true), tool('s1', 'web_search', 'success', T0 + 33_000)];
@@ -161,7 +161,7 @@ describe('底部运行状态行', () => {
       createTestAnswerMessage({ id: 'a1', metadata: { run_id: RUN_ID, is_complete: false } }),
     ];
     await advance(2_000);
-    expect(read()).toMatchObject({ text: '正在写回答', motion: 'generating' });
+    expect(read()).toMatchObject({ text: '正在写回答', motion: 'sway' });
   });
 });
 

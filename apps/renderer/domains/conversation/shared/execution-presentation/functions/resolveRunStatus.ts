@@ -97,32 +97,32 @@ function resolveTrailingToolSignal(
 }
 
 const TOOL_TEXT: Readonly<Record<ToolUiActivity, RunStatusText>> = {
-  search: { labelKey: 'conversation.runStatus.search', motion: 'processing' },
-  read: { labelKey: 'conversation.runStatus.read', motion: 'processing' },
-  edit: { labelKey: 'conversation.runStatus.edit', motion: 'generating' },
-  command: { labelKey: 'conversation.runStatus.command', motion: 'processing' },
-  delegate: { labelKey: 'conversation.runStatus.delegate', motion: 'processing' },
-  plan: { labelKey: 'conversation.runStatus.plan', motion: 'thinking' },
-  image: { labelKey: 'conversation.runStatus.image', motion: 'generating' },
+  search: { labelKey: 'conversation.runStatus.search', motion: 'sway' },
+  read: { labelKey: 'conversation.runStatus.read', motion: 'sway' },
+  edit: { labelKey: 'conversation.runStatus.edit', motion: 'sway' },
+  command: { labelKey: 'conversation.runStatus.command', motion: 'sway' },
+  delegate: { labelKey: 'conversation.runStatus.delegate', motion: 'sway' },
+  plan: { labelKey: 'conversation.runStatus.plan', motion: 'sway' },
+  image: { labelKey: 'conversation.runStatus.image', motion: 'sway' },
 };
 
-const WORKING_TEXT: RunStatusText = { labelKey: 'conversation.runStatus.working', motion: 'processing' };
+const WORKING_TEXT: RunStatusText = { labelKey: 'conversation.runStatus.working', motion: 'sway' };
 
 /** 信号 → 文字与图标动态的唯一映射；没有声明类别的工具落到“努力工作中”。 */
 export function resolveRunStatusText(signal: RunStatusSignal): RunStatusText {
   switch (signal.kind) {
     case 'starting':
-      return { labelKey: 'conversation.runStatus.starting', motion: 'thinking' };
+      return { labelKey: 'conversation.runStatus.starting', motion: 'sway' };
     case 'thinking':
       return signal.thoughtMs >= RUN_STATUS_LONG_THOUGHT_MS
-        ? { labelKey: 'conversation.runStatus.thinkingHard', motion: 'thinking' }
-        : { labelKey: 'conversation.runStatus.thinking', motion: 'thinking' };
+        ? { labelKey: 'conversation.runStatus.thinkingHard', motion: 'sway' }
+        : { labelKey: 'conversation.runStatus.thinking', motion: 'sway' };
     case 'tool':
       return signal.activity ? TOOL_TEXT[signal.activity] : WORKING_TEXT;
     case 'after_tool':
-      return { labelKey: 'conversation.runStatus.reviewingResults', motion: 'processing' };
+      return { labelKey: 'conversation.runStatus.reviewingResults', motion: 'sway' };
     case 'answering':
-      return { labelKey: 'conversation.runStatus.answering', motion: 'generating' };
+      return { labelKey: 'conversation.runStatus.answering', motion: 'sway' };
     case 'working':
       return WORKING_TEXT;
     case 'awaiting_answer':
@@ -130,9 +130,9 @@ export function resolveRunStatusText(signal: RunStatusSignal): RunStatusText {
     case 'awaiting_approval':
       return { labelKey: 'conversation.runStatus.awaitingApproval', motion: 'still' };
     case 'compacting':
-      return { labelKey: 'conversation.runStatus.compacting', motion: 'processing' };
+      return { labelKey: 'conversation.runStatus.compacting', motion: 'sway' };
     case 'retrying':
-      return { labelKey: 'conversation.runStatus.retrying', motion: 'processing' };
+      return { labelKey: 'conversation.runStatus.retrying', motion: 'sway' };
     case 'paused':
       return { labelKey: 'conversation.runStatus.paused', motion: 'still' };
   }

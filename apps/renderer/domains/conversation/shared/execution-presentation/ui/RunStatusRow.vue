@@ -21,7 +21,7 @@ defineProps<{
     data-run-status-row
   >
     <LinnyaIcon v-if="status.motion === 'still'" class="run-status-row__icon" />
-    <LinnyaLoadingIcon v-else class="run-status-row__icon" :activity="status.motion" />
+    <LinnyaLoadingIcon v-else class="run-status-row__icon" activity="thinking" />
     <span class="run-status-row__text" data-run-status-text>{{ status.text }}</span>
     <span class="run-status-row__sep" aria-hidden="true">·</span>
     <span class="run-status-row__time">{{ status.elapsedText }}</span>

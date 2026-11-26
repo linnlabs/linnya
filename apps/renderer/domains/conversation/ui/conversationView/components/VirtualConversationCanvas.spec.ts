@@ -141,7 +141,7 @@ describe('VirtualConversationCanvas', () => {
     const status = ref<ConversationMessageCanvasTrailingStatus | null>({
       text: '正在查找',
       elapsedText: '35秒',
-      motion: 'processing',
+      motion: 'sway',
     });
     const mountPoint = document.createElement('div');
     document.body.appendChild(mountPoint);
