@@ -12,7 +12,11 @@ import {
   resizeProjectOverviewColumn,
   toggleProjectOverviewColumn,
 } from '../projectOverviewLayout';
-import { formatProjectOverviewActor, resolveProjectOverviewAgentName } from '../projectOverviewPresentation';
+import {
+  formatProjectOverviewActor,
+  resolveProjectConversationActorName,
+  resolveProjectOverviewAgentName,
+} from '../projectOverviewPresentation';
 import {
   filterProjectOverviewRows,
   listProjectOverviewTags,
@@ -182,6 +186,13 @@ describe('展示文案', () => {
     expect(resolveProjectOverviewAgentName(null, agents, message)).toBe('Linnya Agent');
     expect(resolveProjectOverviewAgentName('research_v1', agents, message)).toBe('Research');
     expect(resolveProjectOverviewAgentName('removed_agent', agents, message)).toBe('removed_agent');
+  });
+
+  it('对话列表的执行者：Linnya CLI 入口与文件页来源同名，其余按 Agent 名', () => {
+    const agentName = (agentId: string | null) => resolveProjectOverviewAgentName(agentId, new Map([['research_v1', 'Research']]), message);
+    expect(resolveProjectConversationActorName('linnya_cli', agentName, message)).toBe('Linnya CLI');
+    expect(resolveProjectConversationActorName(null, agentName, message)).toBe('Linnya Agent');
+    expect(resolveProjectConversationActorName('research_v1', agentName, message)).toBe('Research');
   });
 
   it('来源：主运行显示具体 Agent，子运行显示子任务；用户、Linnya CLI；插件用插件名', () => {

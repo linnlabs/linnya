@@ -1,4 +1,4 @@
-import type { ProjectOverviewActor } from '@app/schemas';
+import { ConversationOriginSchema, type ProjectOverviewActor } from '@app/schemas';
 import type { LinnyaLocale } from '@app/localization';
 import type { WorkspaceMessageKey, WorkspaceMessageResolver } from '@/domains/workspace/definitions/workspaceMessages';
 import type { ProjectOverviewSortKey } from '../definitions/projectOverview';
@@ -14,6 +14,20 @@ export function resolveProjectOverviewAgentName(
 ): string {
   if (agentId === null) return message('workspace.projectOverview.actor.defaultAgent');
   return agentNames.get(agentId) ?? agentId;
+}
+
+/**
+ * 对话列表里执行者的显示名。入口值（目前只有 Linnya CLI 创建的对话）与注册表 Agent 共用一个取值空间
+ * （见 `projectConversationActorIds`），入口显示为文件页“来源”里同一个外部入口的名字，其余按 Agent 名。
+ */
+export function resolveProjectConversationActorName(
+  actorId: string | null,
+  agentName: (agentId: string | null) => string,
+  message: WorkspaceMessageResolver,
+): string {
+  const origin = ConversationOriginSchema.safeParse(actorId);
+  if (origin.success) return message('workspace.projectOverview.actor.external');
+  return agentName(actorId);
 }
 
 /**

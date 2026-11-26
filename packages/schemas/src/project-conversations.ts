@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ConversationActivitySchema } from './conversation-activity';
+import { ConversationOriginSchema } from './conversation/history';
 
 /**
  * 项目概览的对话页：列出项目里的对话、每个对话改过的文档与占用的存储。
@@ -56,6 +57,8 @@ export const ProjectConversationRowSchema = z.object({
   replied_agent_ids: z.array(ReadModelAgentId),
   /** 对话当前选用的 Agent，下一次回复由它执行。 */
   selected_agent_id: ReadModelAgentId,
+  /** 发起入口；只有 Linnya CLI 工具调用创建的对话带此字段，没有即普通对话。取值与对话历史合同的 `origin` 相同。 */
+  origin: ConversationOriginSchema.optional(),
   /** 用户发了几条消息。 */
   turn_count: NonNegativeInt,
   /** 账本里这个对话在本项目改过的文档数（去重）。 */
@@ -66,6 +69,17 @@ export const ProjectConversationRowSchema = z.object({
   /** 最近一次测量的结果；没有测过，或测量后对话又有新活动时为 null，需要重新测量。 */
   storage: ProjectConversationStorageSchema.nullable(),
 }).strict();
+
+/**
+ * 对话里出过力的执行者，既是对话列表“Agent”列的显示项，也是 Agent 筛选和 CLI `--agent` 的取值：
+ * 发起入口在前，其后是实际回复过的 Agent（默认 Agent 为 null）。
+ * 入口的取值（目前只有 `linnya_cli`）与 Agent 注册表 ID 共用这一个命名空间，注册表 ID 不得取入口的值。
+ */
+export function projectConversationActorIds(
+  row: Pick<ProjectConversationRow, 'origin' | 'replied_agent_ids'>,
+): (string | null)[] {
+  return [...(row.origin ? [row.origin] : []), ...row.replied_agent_ids];
+}
 
 export const ProjectConversationsSchema = z.object({
   project_id: Id,

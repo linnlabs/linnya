@@ -1,4 +1,10 @@
-import { formatAgentTimestamp, type ConversationActivity, type ProjectConversationRow, type ProjectConversationsQuery } from '@app/schemas';
+import {
+  formatAgentTimestamp,
+  projectConversationActorIds,
+  type ConversationActivity,
+  type ProjectConversationRow,
+  type ProjectConversationsQuery,
+} from '@app/schemas';
 import type { ConversationTranscriptPage } from '../../project-conversations';
 
 const listNotice = '结果超过条数或输出上限，只列出按所选条件排序的一部分。可用 --query、--agent、--activity 或 --documents 缩小范围。';
@@ -9,8 +15,9 @@ function projectRow(row: ProjectConversationRow, activity: ConversationActivity,
   return {
     id: row.conversation_id,
     title: row.title,
-    // 回复过的 Agent（最近的在前）与当前选用的 Agent；默认 Agent 写作 default。
-    agents: row.replied_agent_ids.map(agentId => agentId ?? 'default'),
+    // 发起入口（Linnya CLI 创建的对话为 linnya_cli）在前，其后是回复过的 Agent（最近的在前）；默认 Agent 写作 default。
+    // 这些值就是 --agent 的筛选值。selectedAgent 是当前选用的 Agent。
+    agents: projectConversationActorIds(row).map(actorId => actorId ?? 'default'),
     selectedAgent: row.selected_agent_id ?? 'default',
     activity,
     turns: row.turn_count,
