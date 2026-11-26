@@ -482,6 +482,8 @@ Agent/runtime 类型必须从 `linnkit/contracts` 导入，不允许在 `@app/sc
 specifier 修正；两种格式和 runtime exports 校验均完成才向开发会话发送首次成功事件。不能只监听 CJS、让
 Renderer 或 ESM 消费者继续使用历史产物。独立 build/pack gate 仍是发行合同的验收入口。
 
+`build:schemas` 和 `pack-smoke` 通过本包的 `prepare:runtime` 准备产物。在本地全量 CI 的同一份干净检出里，首次准备清空 `dist` 并完成构建。后续消费者直接对已编译的公开入口执行导入验收。`pack-smoke` 每次都打包、解包并从独立消费目录验收。独立构建与定向检查每次从头编译。
+
 常用门禁：
 
 - 构建包：`pnpm --filter @app/schemas build`。

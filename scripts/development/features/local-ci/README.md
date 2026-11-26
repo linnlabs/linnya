@@ -11,7 +11,9 @@
 - **Runtime 下载包**：本工作区的 `_dev_data/ci-local/runtime-archives/` 保留 Headless Node 与 Qdrant 的上游归档。准备脚本按当前目录清单的 SHA-256 校验后才使用，缺失或不匹配时重新下载。每轮在自己的检出里重新解包并验证可执行文件。删除该缓存后下次恢复冷启动。
 - **失败不停**：CI 里步骤默认 `success()`，前面一失败后面就跳过，后面的问题被遮住。本地继续执行，最后汇总全部失败。显式写了 `if:` 的步骤仍按真实结果求值。
 - **相同步骤只跑一次**：命令、环境、目录都相同的步骤（例如每个任务开头的装依赖）复用第一次的结果；另一个任务正在跑同一步时等它结束再复用。
+- **Schemas 编译一次**。干净全量运行中，公共包、Canvas、Backend 和官方插件共用首次成功编译的 schemas。每个消费者仍校验公开入口的类型声明并实际加载 CommonJS 和 ESM，公共包门禁仍从 tarball 解包验收。直接调用、定向 CI、`--working-copy` 和 `--in-place` 每次从头构建。
 - 公共包任务和 Canvas 回归都通过 Canvas 包自己的 `test` 脚本跑业务用例。本机全量运行的两条记录指向同一次执行，失败也会复用。只选其中一个任务时会实际执行一次。Host 持久化用例另行加载本轮构建的 Worker，绘制、像素和隔离产物仍各有独立结果。
+- **Canvas 制品只打包一次**：干净全量运行中，官方插件生命周期和 Canvas 专项隔离验收使用同一份 Canvas 制品。打包与产物门禁成功后记录本轮 SHA-512，两套验收各自创建隔离目录并检查实际 ZIP。单独运行 Canvas 工作流、直接调用专项 smoke 或使用 `--in-place`、`--working-copy` 时仍从头准备。
 - **并行但不放松**：任务之间按声明的调度类别并行，任务内部仍按工作流顺序执行；测试分片合并为一次多 worker 运行。见下文“并行与串行”。
 - **证据**：失败任务的 `upload-artifact` 路径会从干净检出复制到日志目录。
 
@@ -30,7 +32,7 @@
 | 类别 | 含义 | 调度 |
 | --- | --- | --- |
 | `static` | 只读受 Git 跟踪的源码：lint、typecheck、架构门禁、Canvas 结构门禁、脚本单元测试。在 GitHub 上它们都排在本任务任何构建之前，不可能依赖产物 | 随时填空位，可以和构建同时跑 |
-| `build` | 写共享产物：装依赖、WASM/Backend/Main/Renderer/CLI 构建、Canvas Worker、官方插件打包、公共包检查（schemas/provider 的 pack-smoke 会 rimraf 并重建各自 dist，而 Canvas Backend 运行时从 dist 解析 `@app/schemas`） | 一次一个；运行时不跑任何 `test`；有构建在等时不启动新测试 |
+| `build` | 写共享产物：装依赖、WASM/Backend/Main/Renderer/CLI 构建、Canvas Worker、官方插件打包、公共包检查（首次准备 schemas 和 provider 的 pack-smoke 都要重建各自的 dist，Canvas Backend 运行时从 dist 解析 `@app/schemas`） | 一次一个；运行时不跑任何 `test`；有构建在等时不启动新测试 |
 | `test` | 运行时读产物：合并后的公共测试、Canvas 业务与 Host 持久化用例、CLI 对 bridge 验证 | 构建全部完成后并行；合并后的公共测试单独占用测试资源，不与其他测试重叠 |
 | `loadSensitive` | 测量绘制计数、DOM/位图与像素、帧，或真实进程生命周期：Canvas 绘制计数探针及其计数校验、DOM/位图比对、身份牌像素、隔离产物冒烟，真实 Runtime 生命周期与审批 | 没有任何其他步骤运行、也没有其他步骤可启动时单独执行，所以排在最后 |
 

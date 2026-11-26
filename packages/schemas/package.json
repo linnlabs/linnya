@@ -8,7 +8,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "rimraf dist && pnpm run build:runtime",
-    "pack-smoke": "pnpm run build && node scripts/verify-packed-runtime.mjs",
+    "prepare:runtime": "node scripts/prepare-runtime.mjs",
+    "pack-smoke": "pnpm run prepare:runtime && node scripts/verify-packed-runtime.mjs",
     "dev": "node scripts/watch-runtime.cjs",
     "clean": "rimraf dist",
     "build:runtime": "pnpm --dir ../foundation run build:types && tsc -p tsconfig.json && tsc -p tsconfig.esm.json && node -e \"const fs=require('fs'); fs.mkdirSync('dist/esm',{recursive:true}); fs.writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}, null, 2));\" && node scripts/fix-esm-specifiers.cjs && node scripts/inlineFoundation.mjs && node scripts/verify-runtime-exports.cjs"

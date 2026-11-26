@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
+import { preparePluginArtifactForSmoke } from './orchestration/preparePluginArtifactForSmoke.mjs';
 
 import {
   listOfficialPluginReleaseTargetIds,
@@ -8,27 +9,35 @@ import {
   resolvePluginPackageDir,
 } from './plugin-release-targets.mjs';
 
-const scriptKind = process.argv[2];
-const supportedScriptKinds = new Set(['package', 'smoke-artifact']);
+const [scriptKind, ...args] = process.argv.slice(2);
+function selectTargets() {
+  if (args.length === 0 && ['package', 'smoke-artifact'].includes(scriptKind)) return listOfficialPluginReleaseTargetIds();
+  if (scriptKind === 'prepare-smoke' && args.length === 1 && /^[a-z0-9][a-z0-9._-]{0,127}$/u.test(args[0])) return args;
+  throw new Error('Usage: run-official-plugin-scripts.mjs package | smoke-artifact | prepare-smoke <pluginId>');
+}
 
-if (!supportedScriptKinds.has(scriptKind)) {
-  console.error('Usage: node scripts/release/run-official-plugin-scripts.mjs <package|smoke-artifact>');
-  process.exitCode = 1;
-} else {
-  const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  // 插件的独立浏览器入口消费 schemas 的正式导出；全新 checkout 不能借用旧 dist。
-  runCommand(pnpmCommand, ['run', 'build:schemas'], repoRoot);
-  for (const pluginId of listOfficialPluginReleaseTargetIds()) {
-    const packageDir = resolvePluginPackageDir(pluginId);
-    console.log(`[official-plugin:${scriptKind}] ${pluginId} package:artifact`);
-    runCommand(pnpmCommand, ['run', 'package:artifact'], packageDir);
-    if (scriptKind === 'smoke-artifact') {
-      runCommand(process.execPath, [
-        'scripts/release/smoke-plugin-artifact.mjs',
-        pluginId,
-        '--require-renderer-assets',
-      ], repoRoot);
+const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+let schemasBuilt = false;
+for (const id of selectTargets()) {
+  // 专项 smoke 的 Worker 与夹具属于仓内插件；发行批次则遵循发行目标的路径覆盖。
+  const packageDir = resolvePluginPackageDir(id, scriptKind === 'prepare-smoke' ? {} : process.env);
+  const build = () => {
+    // 插件的独立浏览器入口消费 schemas 的正式导出，同一批打包只需要准备一次。
+    if (!schemasBuilt) {
+      runCommand(pnpmCommand, ['run', 'build:schemas'], repoRoot);
+      schemasBuilt = true;
     }
+    console.log(`[official-plugin:${scriptKind}] ${id} package:artifact`);
+    runCommand(pnpmCommand, ['run', 'package:artifact'], packageDir);
+  };
+  if (scriptKind === 'package') build();
+  else preparePluginArtifactForSmoke({ packageDir, repoRoot, build });
+  if (scriptKind === 'smoke-artifact') {
+    runCommand(process.execPath, [
+      'scripts/release/smoke-plugin-artifact.mjs',
+      id,
+      '--require-renderer-assets',
+    ], repoRoot);
   }
 }
 
