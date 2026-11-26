@@ -131,7 +131,6 @@ export const WORKSPACE_MESSAGE_FALLBACKS = {
   'workspace.fileManager.markdown.editorUnavailable': '保存失败：编辑器不可用',
   'workspace.fileManager.markdown.documentIdMissing': '保存失败：文档 ID 丢失',
   'workspace.fileManager.markdown.saved': '已保存',
-  // 通知条只显示一行（约 23 个汉字宽），这句要一行放得下，否则“删掉后才能保存”会被省略号截掉。
   'workspace.fileManager.markdown.referenceNotSavable': '引用的文档已删除或在其他项目，删掉后才能保存',
   'workspace.fileManager.save.unknownError': '未知错误',
   'workspace.fileManager.save.failed': '保存失败',
