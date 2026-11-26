@@ -1,5 +1,6 @@
 import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
 import { normalizeExtractedText } from './extractSemanticDom';
+import { normalizeAriaTables, unwrapLayoutTables } from './normalizeStructuredDom';
 import {
   READABLE_CONTROL_SELECTOR,
   READABLE_HIDDEN_SELECTOR,
@@ -129,5 +130,7 @@ export function prepareReadableDocument(
     if (resolved) element.setAttribute(attribute, resolved);
     else element.removeAttribute(attribute);
   }
+  unwrapLayoutTables(document);
+  normalizeAriaTables(document);
   return { hiddenMainTextLength };
 }

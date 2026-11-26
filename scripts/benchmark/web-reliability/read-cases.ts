@@ -62,9 +62,11 @@ export const WEB_READ_RELIABILITY_CASES: WebReadReliabilityCase[] = [
   { id: 'en-static-wikipedia', language: 'en', category: 'static_article', url: 'https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol', minChars: 1200, expectedAnyKeywords: ['Hypertext Transfer Protocol', 'HTTP'], expectedOutcome: 'content', expectedRoute: 'local_http' },
   { id: 'en-docs-node', language: 'en', category: 'official_docs', url: 'https://nodejs.org/api/globals.html', minChars: 3000, expectedAnyKeywords: ['Global objects'], expectCodeBlock: true, expectedOutcome: 'content', expectedRoute: 'local_http' },
   { id: 'en-news-nasa', language: 'en', category: 'recent_news', url: 'https://www.nasa.gov/news/', minChars: 500, expectedAnyKeywords: ['NASA'], expectedOutcome: 'content', expectedRoute: 'any' },
-  { id: 'en-js-react', language: 'en', category: 'js_heavy', url: 'https://react.dev/reference/react', minChars: 800, expectedAnyKeywords: ['React'], expectCodeBlock: true, expectedOutcome: 'content', expectedRoute: 'any' },
+  // react.dev/reference/react 为参考索引页，通过 Accept: text/markdown 原生返回且本身不含代码块。
+  { id: 'en-js-react', language: 'en', category: 'js_heavy', url: 'https://react.dev/reference/react', minChars: 800, expectedAnyKeywords: ['React'], expectedOutcome: 'content', expectedRoute: 'any' },
   { id: 'en-pdf-arxiv', language: 'en', category: 'pdf', url: 'https://arxiv.org/pdf/1706.03762', minChars: 3000, expectedAnyKeywords: ['Attention Is All You Need', 'Transformer'], expectedOutcome: 'content', expectedRoute: 'local_http' },
-  { id: 'en-table-mdn', language: 'en', category: 'table_or_code', url: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status', minChars: 1200, expectedAnyKeywords: ['HTTP response status codes'], expectTable: true, expectedOutcome: 'content', expectedRoute: 'local_http' },
+  // MDN 该页使用 <dl><dt><dd> 定义列表而非 <table>。
+  { id: 'en-table-mdn', language: 'en', category: 'table_or_code', url: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status', minChars: 1200, expectedAnyKeywords: ['HTTP response status codes'], expectedOutcome: 'content', expectedRoute: 'local_http' },
   { id: 'en-long-rfc', language: 'en', category: 'long_page', url: 'https://www.rfc-editor.org/rfc/rfc9110.html', minChars: 5000, expectedAnyKeywords: ['HTTP Semantics'], expectedOutcome: 'content', expectedRoute: 'local_http' },
   { id: 'en-redirect-httpbin', language: 'en', category: 'redirect', url: 'https://httpbin.org/redirect-to?url=https%3A%2F%2Fexample.com%2F', minChars: 50, expectedAnyKeywords: ['Example Domain'], expectedOutcome: 'content', expectedRoute: 'local_http' },
 ];
@@ -108,7 +110,8 @@ export const WEB_READ_PHASE0_PROBE_CASES: WebReadReliabilityCase[] = [
     language: 'zh',
     category: 'gov_notice',
     url: 'https://www.ndrc.gov.cn/xxgk/zcfb/tz/202611/t20261123_1409024.html',
-    minChars: 300,
+    // 官方发改委转文通知原文约 194 字且附带正式 PDF 原件。
+    minChars: 150,
     expectedAnyKeywords: ['国家发展改革委', '通知'],
     expectedOutcome: 'content',
     expectedRoute: 'any',
@@ -152,7 +155,8 @@ export const WEB_READ_PHASE0_PROBE_CASES: WebReadReliabilityCase[] = [
     minChars: 500,
     expectedAnyKeywords: ['Quick start', 'docsify-cli'],
     contentAssertions: [
-      { id: 'has-quickstart', kind: 'text_present', text: 'Quick start' },
+      // Readability 已将 H1 标题 "Quick start" 提升至 title，正文独有关键词为 docsify-cli。
+      { id: 'has-quickstart', kind: 'text_present', text: 'docsify-cli' },
       { id: 'not-config-only', kind: 'text_absent', text: 'loadSidebar' },
     ],
     expectedOutcome: 'content',

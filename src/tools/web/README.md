@@ -218,9 +218,13 @@ src/tools/web/webread/
 │   ├── projectActiveWebReadConfig.ts
 │   └── resolveWebReadConfigUpdate.ts
 ├── extraction/
+│   ├── detectDynamicPageSignals.ts
 │   ├── extractArticle.ts
+│   ├── extractPageImages.ts
 │   ├── extractPageResources.ts
 │   ├── extractSemanticDom.ts
+│   ├── extractTabularDom.ts
+│   ├── normalizeStructuredDom.ts
 │   ├── parseCanonicalHtmlDocument.ts
 │   ├── prepareReadableDocument.ts
 │   └── renderReadableMarkdown.ts
@@ -365,8 +369,10 @@ Reader 服务地址与环境变量名由 Web Read 自己的静态服务定义拥
 - `text/html` 先由 Cheerio 默认的 WHATWG `parse5` tree builder 规范化成唯一 `html/head/body`，再创建轻量 linkedom DOM；禁止用正则、站点白名单或手工移动第二个 body 修复 tag soup
 - HTML 抽取先用 Readability；失败或明显遗漏时，从 `article/main/[role=main]` 的可访问主区域补取正文，并过滤导航、侧栏、页脚和隐藏节点。Readability 抛错但语义正文已存在时保留正文并记录 warning；完全无正文且没有可用正式资源时才产生 `empty_content` 失败
 - 没有语义主区域且文章抽取不足时，可选择 `tabular_dom` 窄视图：只保留清理后的叶子数据表（有表头至少两行独立数值、无表头至少三行），保留原行列、空单元格、caption/summary 和显式关联说明，再附已选正文中的表外说明。布局表、空骨架和导航不因原 HTML 表格行数多而获得正文资格；空内容与 JS 壳仍执行质量升级。Readability 残表只有全部数据行对应同一已捕获表时才去掉，不凭共同表头删掉另一张表。不回退整个 body，也不承诺恢复全页脚注或尚未加载的数据
-- 主区域选择与内容表达分离：Readability 选中的 HTML 与语义主区域共用 Turndown 转换为 Markdown，保留来源链接、代码缩进、有序列表、删除线、图注与图片 alt。质量判定使用可见文字长度，避免链接地址和标记抬高质量信号
+- 主区域选择与内容表达分离：Readability 选中的 HTML 与语义主区域共用 Turndown 转换为 Markdown，保留来源链接、代码缩进与安全代码围栏语言（仅对 `pre > code` 白名单回填语言类）、KaTeX/MathML 中显式 TeX/LaTeX `<annotation>` 源码（还原为 `$...$` / `$$...$$`，不转义 LaTeX 语法）、有序列表、删除线、图注与图片 alt。质量判定使用可见文字长度，避免链接地址和标记抬高质量信号
 - 两条路径在选区前共用隐藏节点/内联隐藏样式清理。先移除导航、脚本与 inert 区域，再识别同一主区域内可见、可用按钮声明的折叠正文：`aria-expanded=false` 配合 `aria-controls` 的明确目标，或 read/show-more 命名的按钮与相邻同类命名正文（允许仅包裹按钮的一层容器）。只移除该目标层的隐藏状态，其内部独立隐藏的旧值仍排除；不按域名匹配，不点击控件、不执行额外脚本，也不凭单个类名恢复任意隐藏内容。未识别的折叠方式仍可能遗漏，`truncated=false` 只表示未触及字符上限，不承诺正文完整
+- 完成隐藏清理与链接规范化后、正文抽取前统一执行结构化 DOM 规范化（`normalizeStructuredDom.ts`）：按从深到浅顺序安全展平明确布局型 `<table>`（`role="presentation"/"none"`、嵌套 `<table>` 容器、无自身表语义的单行/单列块布局容器），保留内层数据表与链接且绝不拆毁多行多列纯 `<td>` 数据表；同时将满足二维表格语义（至少 2 行且至少 2 行含 `>= 2` 非空单元格）的 ARIA `table`/`grid`/`treegrid` 映射为语义 `<table>`（保留 `aria-label`、`aria-describedby`、`columnheader`/`rowheader` 作用域与合法跨度），使 Readability、`semantic_dom` 与 `tabular_dom` 自动复用同一套表格保留与质量约束
+- 当正文不满 200 字符但同时满足存在具备正式文档扩展名（如 `.pdf`/`.docx`/`.xlsx`/`.pptx`/`.csv`/`.tsv`/`.wps`/`.ofd`，不含通用 `/download` 页）的 `kind='document'` 正式附件资源、无访问屏障及 `table_dominant`/`list_dominant` 信号、且去除 Markdown 链接与格式后仍有足够实体文字（`>= 120` 纯字符、CJK 加权 `>= 220` 单位并至少含一句完整陈述句）时，判定为完整短正式通知并直接合格返回，不再误触 `content_too_short` 升级
 - HTML 相对链接依据最终 URL 与有效 base URL 还原，只保留符合既有同步 URL 策略的地址；链接出现不代表目标已读取，后续请求仍须完整校验 DNS 和连接
 - 表格保留精简 HTML 中的空单元格、caption、rowspan/colspan 和表头关联属性；不展开跨度、不猜测会计口径。保留的 HTML 删除事件、样式等非内容属性。静态抽取不承诺解析外部样式表的完整可见性或理解图片里的数字
 - 同一安全 GET 通过 Accept 优先请求来源站点的 Markdown；按实际 Content-Type 分流，不额外请求或自动换 Provider。原生 Markdown 保留来源表示（包括相对链接），不伪造未取得的标题/日期元数据；HTML 不支持协商时继续走原抽取链
@@ -669,6 +675,9 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - `src/tools/web/__tests__/webEvidenceBoundary.test.ts`
 - `src/tools/web/__tests__/jinaReaderProvider.integration.test.ts`
 - `src/tools/web/__tests__/extractArticle.test.ts`
+- `src/tools/web/webread/extraction/normalizeStructuredDom.test.ts`
+- `src/tools/web/webread/extraction/renderReadableMarkdown.test.ts`
+- `src/tools/web/webread/functions/assessWebReadQuality.test.ts`
 - `src/tools/web/__tests__/localHttpProvider.integration.test.ts`
 - `src/tools/web/__tests__/webCacheInfrastructure.test.ts`
 - `src/tools/web/__tests__/webCacheBusiness.integration.test.ts`
