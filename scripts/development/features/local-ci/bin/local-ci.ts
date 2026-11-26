@@ -191,7 +191,7 @@ async function main(): Promise<number> {
       // 只跨干净检出保留锁定的下载包，每轮仍在自己的 extraResources 解包并验收。
       env: {
         LINNYA_RUNTIME_ARCHIVE_CACHE_DIR: path.join(repositoryRoot, '_dev_data', 'ci-local', 'runtime-archives'),
-        // 两个任务共用这次临时检出。定向、工作副本和原地运行仍各自从头打包。
+        // schemas 与插件制品只在这次干净全量检出内复用；定向、工作副本和原地运行仍独立构建。
         LINNYA_CI_ARTIFACT_CHECKOUT: checkout.clean && fullScope ? realpathSync(checkout.root) : '',
       },
       signal: controller.signal,
