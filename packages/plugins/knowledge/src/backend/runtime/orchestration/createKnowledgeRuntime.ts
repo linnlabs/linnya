@@ -41,6 +41,8 @@ export async function createKnowledgeRuntime() {
   let adapter: Promise<QdrantAdapter> | undefined;
   let maintenance: ReturnType<typeof scheduleKnowledgeMaintenance> | undefined;
   let interactiveMaintenanceRequested = false;
+  // 最近一次界面请求带来的图谱抽取模型；向量服务就绪前收到的请求要等就绪后再交给回填。
+  let interactiveGraphExtractionModelId: string | null = null;
   let vectorReady = false;
   let accepting = true;
   let activeTools = 0;
@@ -69,17 +71,17 @@ export async function createKnowledgeRuntime() {
   };
   function startInteractiveMaintenanceIfReady() {
     // CLI 的项目范围操作不能顺带以交互界面的全局权限维护其他库。
-    if (accepting && interactiveMaintenanceRequested && vectorReady && !maintenance) {
-      maintenance = scheduleKnowledgeMaintenance({
-        metadataRepository: metadata,
-        qdrantRepository: vectors,
-        sotRepository: sot,
-        originalDocumentRepository: originals,
-        knowledgeGraphRepository: graphRepository,
-        activity,
-      });
-      graph.startBackfill();
-    }
+    if (!accepting || !interactiveMaintenanceRequested || !vectorReady) return;
+    maintenance ??= scheduleKnowledgeMaintenance({
+      metadataRepository: metadata,
+      qdrantRepository: vectors,
+      sotRepository: sot,
+      originalDocumentRepository: originals,
+      knowledgeGraphRepository: graphRepository,
+      activity,
+    });
+    // 每次界面操作都交给图谱回填：它自己保证无模型时只补一次索引、有模型时只补一次抽取。
+    graph.startBackfill(interactiveGraphExtractionModelId);
   }
   const vectors = new QdrantRepositoryImpl(
     () => (adapter ??= resolveVectorUrl(controller.signal).then(url => new QdrantAdapter({ url })))
@@ -116,7 +118,8 @@ export async function createKnowledgeRuntime() {
     queues,
     graphTasks: graph,
     temporaryDirectory: paths.temporaryDirectory,
-    enqueueGraphExtraction: (kbId, docId) => graph.enqueueGraphExtractionForDocument(kbId, docId),
+    enqueueGraphExtraction: (kbId, docId, llmModelId) =>
+      graph.enqueueGraphExtractionForDocument(kbId, docId, llmModelId),
     activity,
     metadataRepository: metadata,
     qdrantRepository: vectors,
@@ -171,8 +174,9 @@ export async function createKnowledgeRuntime() {
     inference,
     queues,
     // 历史图谱是用户界面的后台工作；CLI 获准的一次写入不能顺带启动其他库的模型调用。
-    startInteractiveMaintenance() {
+    startInteractiveMaintenance(graphExtractionModelId: string | null) {
       interactiveMaintenanceRequested = true;
+      interactiveGraphExtractionModelId = graphExtractionModelId;
       startInteractiveMaintenanceIfReady();
     },
     signal: controller.signal,

@@ -504,4 +504,21 @@ describe('knowledge activation persistence and drain', () => {
     expect((await runtime.metadata.getDocumentById('running'))?.status).toBe(DocumentStatus.FAILED);
     expect(vectorOwned).toBe(false);
   });
+
+  it('图谱回填等待SoT时停用，收尾等待旧读取且不会写queued或启动新任务', async () => {
+    runtime = await createKnowledgeRuntime();
+    await runtime.metadata.addDocument({ ...createDocument('graph-doc','default','graph.md',20), status: DocumentStatus.COMPLETED });
+    database.prepare("UPDATE knowledge_bases SET enable_graph_indexing=1, embedding_model_id='embedding', embedding_space_id='fixture' WHERE id=?").run('default');
+    let release: (value: DocumentSoT) => void = () => {};
+    const delayed = new Promise<DocumentSoT>(resolve => { release = resolve; });
+    const read = vi.spyOn(runtime.sot, 'get').mockReturnValueOnce(delayed);
+    runtime.graph.startBackfill('language');
+    await vi.waitFor(() => expect(read).toHaveBeenCalled());
+    let stopped = false;
+    const stopping = runtime.stop().then(() => { stopped = true; });
+    await Promise.resolve(); expect(stopped).toBe(false);
+    release(source('graph-doc')); await stopping;
+    expect(database.prepare('SELECT * FROM knowledge_graph_doc_status').all()).toEqual([]);
+    expect(runtime.queues.listGraphExtractionTasks()).toEqual([]);
+  });
 });
