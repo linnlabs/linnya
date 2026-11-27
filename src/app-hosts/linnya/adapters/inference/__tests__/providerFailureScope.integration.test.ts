@@ -8,7 +8,7 @@ import { createDefaultHostInferencePort } from '../orchestration/createDefaultHo
 
 const route: ModelInferenceRoute = {
   api_surface: 'openai_chat_completions', capability_id: 'ai-sdk:openai-compatible',
-  endpoint_id: 'linnya-cloud', endpoint_model_id: 'shared-model',
+  endpoint_id: 'shared-endpoint', endpoint_model_id: 'shared-model',
   base_url: 'https://opencode.ai/inference/go/v1', auth_profile: 'bearer',
   context_window_tokens: 128_000, max_output_tokens: 4_096,
   input_support: { user_image: false, tool_result_image: false },
@@ -16,15 +16,10 @@ const route: ModelInferenceRoute = {
   continuation: { tool_replay: 'optional' },
 };
 
-const models: readonly ModelConfig[] = ['cloud', 'go', 'custom', 'unknown'].map(id => ({
+const models: readonly ModelConfig[] = ['go', 'custom', 'unknown'].map(id => ({
   id, model_name: 'shared-model', display_name: id, description: '',
-  catalog_source: id === 'cloud' ? 'cloud' : 'user',
+  catalog_source: 'user',
   capabilities: ['chat'], ui_visibility: ['chat'], inference_route: route,
-  ...(id === 'cloud' ? {
-    credential_reference: { kind: 'host_managed' as const, credential_id: 'linnya-cloud' as const },
-  } : id === 'custom' ? {
-    credential_reference: { kind: 'stored_secret' as const, credential_id: 'linnya-cloud' },
-  } : {}),
 }));
 
 afterEach(() => vi.restoreAllMocks());
@@ -37,7 +32,6 @@ async function concurrentFailures(error: Readonly<Record<string, unknown>>, stre
       getModel: id => models.find(model => model.id === id),
       getInferenceRouteProfileId: () => 'openai_compatible_chat',
     },
-    // Cloud 不在普通 Provider 配置表里；不能用 endpoint 名或 URL 猜其身份。
     resolve_provider_connection_id: id => id === 'go' ? 'opencode-go'
       : id === 'custom' ? 'custom-api' : undefined,
     credential_resolver: { resolve: async () => ({ profile: 'bearer', secret: 'fixture-secret' }) },
@@ -74,23 +68,10 @@ describe('产品失败分类按正式请求身份隔离', () => {
     }
   });
 
-  it('相同中文额度文案仅在宿主管理Cloud连接成为产品额度错误', async () => {
-    const results = await concurrentFailures({ type: 'invalid_request_error', message: '今日使用次数已达上限 PRIVATE_DETAIL' }, false);
-    for (const result of results) {
-      expect(result.terminal).toMatchObject({
-        code: result.model === 'cloud' ? 'cloud_quota_exhausted' : 'provider_http_400',
-        retryable: result.model === 'go',
-      });
-    }
-  });
-
-  it.each([false, true])('保留既有HTTP/流式额度语义，其它连接不误称Cloud，stream=%s', async stream => {
+  it.each([false, true])('额度拒绝对所有连接保持通用额度语义，stream=%s', async stream => {
     const results = await concurrentFailures({ code: 'insufficient_quota', status: 400, message: 'PRIVATE_DETAIL' }, stream);
     for (const result of results) {
-      expect(result.terminal).toMatchObject({
-        code: result.model === 'cloud' && stream ? 'cloud_quota_exhausted' : 'provider_quota_exhausted',
-        retryable: false,
-      });
+      expect(result.terminal).toMatchObject({ code: 'provider_quota_exhausted', retryable: false });
     }
   });
 });

@@ -92,7 +92,7 @@ function appendSeparator(target: ModelSelectOption[]): void {
 
 /**
  * 对话快捷选择器只投影 Host 已判定的来源、显隐与运行时可用性。
- * Provider 归属、Cloud 特权和自定义模型语义都不允许在 Renderer 再猜一次。
+ * Provider 归属和自定义模型语义都不允许在 Renderer 再猜一次。
  */
 export function projectConversationModelMenu(
   input: ConversationModelMenuInput
@@ -100,16 +100,6 @@ export function projectConversationModelMenu(
   const options: ModelSelectOption[] = [];
   const normalModelIds = new Set<string>();
   const snapshot = input.snapshot;
-
-  if (snapshot?.cloud) {
-    appendDirectGroup(
-      options,
-      normalModelIds,
-      snapshot.cloud.display_name,
-      snapshot.cloud.models,
-      input
-    );
-  }
 
   const providerOptions: ModelSelectOption[] = [];
   for (const provider of snapshot?.providers ?? []) {

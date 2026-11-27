@@ -646,14 +646,6 @@ export const PROVIDER_ADMISSION_POLICIES: readonly ProviderAdmissionPolicy[] = [
     },
   },
   {
-    provider_definition_id: 'linnya-cloud',
-    display_name: 'Linnya Cloud',
-    kind: 'cloud',
-    release_status: 'stable',
-    setup_fields: [],
-    model_discovery: 'cloud_catalog',
-  },
-  {
     provider_definition_id: 'ollama',
     display_name: 'Ollama',
     connection_display_name: 'Ollama 本地',

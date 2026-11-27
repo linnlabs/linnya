@@ -13,13 +13,6 @@ export const UNASSIGNED_MODEL_SOURCE_ID = 'unassigned' as const;
 
 export type ModelVisibilitySource =
   | {
-      readonly id: 'cloud';
-      readonly kind: 'cloud';
-      readonly displayName: string;
-      readonly models: readonly ModelPickerMaterializedModel[];
-      readonly unadmittedModels: readonly ModelPickerUnadmittedModel[];
-    }
-  | {
       readonly id: string;
       readonly kind: 'provider';
       readonly displayName: string;
@@ -91,17 +84,6 @@ export function projectModelVisibilitySources(
   const hasCustomProviders = customProviders.length > 0;
 
   return [
-    ...(snapshot.cloud
-      ? [
-          {
-            id: 'cloud' as const,
-            kind: 'cloud' as const,
-            displayName: snapshot.cloud.display_name,
-            models: snapshot.cloud.models,
-            unadmittedModels: [],
-          },
-        ]
-      : []),
     ...snapshot.providers.map(provider => ({
       id: `provider:${provider.configured_provider_id}`,
       kind: 'provider' as const,

@@ -55,7 +55,7 @@ const ConversationControlModelSummaryBaseFields = {
   model_config_id: OpaqueIdSchema,
   model_name: OpaqueIdSchema,
   display_name: OpaqueIdSchema,
-  catalog_source: z.enum(['default', 'cloud', 'account', 'user']),
+  catalog_source: z.enum(['default', 'account', 'user']),
   input_support: z
     .object({
       user_image: z.boolean(),

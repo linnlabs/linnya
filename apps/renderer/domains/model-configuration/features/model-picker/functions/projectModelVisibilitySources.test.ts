@@ -7,10 +7,9 @@ import {
 } from './projectModelVisibilitySources';
 
 describe('projectModelVisibilitySources', () => {
-  it('固定 Cloud、正式 Provider、自定义模型顺序且不制造 Custom Provider', () => {
+  it('固定正式 Provider、自定义模型顺序且不制造 Custom Provider', () => {
     const sources = projectModelVisibilitySources(
       {
-        cloud: { display_name: 'Linnya Cloud', models: [] },
         providers: [
           {
             configured_provider_id: 'configured-openai',
@@ -44,7 +43,6 @@ describe('projectModelVisibilitySources', () => {
     );
 
     expect(sources.map(source => [source.kind, source.displayName])).toEqual([
-      ['cloud', 'Linnya Cloud'],
       ['provider', 'OpenAI'],
       ['custom', '自定义模型'],
     ]);

@@ -17,9 +17,6 @@ export function removeCommittedPickerModels(
     !removed.has(model.model_config_id);
   return {
     ...snapshot,
-    ...(snapshot.cloud
-      ? { cloud: { ...snapshot.cloud, models: snapshot.cloud.models.filter(retained) } }
-      : {}),
     providers: snapshot.providers.map(provider => ({
       ...provider,
       models: provider.models.filter(retained),

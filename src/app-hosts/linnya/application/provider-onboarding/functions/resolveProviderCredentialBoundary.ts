@@ -22,8 +22,6 @@ export function isSameCredentialReference(
       return right.kind === 'stored_secret' && left.credential_id === right.credential_id;
     case 'provider_account':
       return right.kind === 'provider_account' && left.account_id === right.account_id;
-    case 'host_managed':
-      return right.kind === 'host_managed' && left.credential_id === right.credential_id;
   }
 }
 

@@ -76,7 +76,7 @@ export interface ModelTokenPricing {
 }
 
 /** 模型条目进入目录的事实来源，不表示用户购买或选择的 Provider。 */
-export type ModelCatalogSource = 'default' | 'cloud' | 'account' | 'user';
+export type ModelCatalogSource = 'default' | 'account' | 'user';
 
 /**
  * 模型配置接口
@@ -90,7 +90,7 @@ export interface ModelConfig {
   model_name: string;
   /** 目录来源；推理协议与目标 endpoint 只读取 typed route。 */
   catalog_source: ModelCatalogSource;
-  /** default/cloud/account 模型的显式凭据引用；用户模型使用 inference_endpoint_id。 */
+  /** default/account 模型的显式凭据引用；用户模型使用 inference_endpoint_id。 */
   credential_reference?: CredentialReference;
   /** 用户模型绑定的内部推理 endpoint。 */
   inference_endpoint_id?: string;
@@ -123,13 +123,10 @@ export interface ModelConfig {
   transcription_route?: TranscriptionRoute;
 
   /**
-   * 计费模式（用于决定“客户端是否允许重试”等策略）。
-   *
-   * 中文备注：
-   * - `byok`：用户自带 key，本地直连上游；
-   * - `cloud`：走 Linnya Cloud（积分计费），建议客户端不做重试/降级，统一由服务端网关控制。
+   * 计费模式；目前只有用户自带 key、本地直连上游的 `byok`。
+   * 它进入运行恢复的兼容指纹，将来增加计费方式时旧运行不会被当作同一配置续跑。
    */
-  billing_mode?: 'byok' | 'cloud';
+  billing_mode?: 'byok';
 
   /** 当前模型的 token accounting route；不配置则表示 host 尚未声明 route 能力。 */
   token_route?: ModelTokenRoute;
@@ -138,11 +135,10 @@ export interface ModelConfig {
   token_pricing?: ModelTokenPricing;
 
   /**
-   * 是否允许客户端侧重试（默认 true；若 `billing_mode='cloud'` 且未显式配置，则建议视为 false）。
+   * 是否允许客户端侧重试（默认 true）。
    *
-   * 设计目的：
-   * - 让“是否允许客户端重试”变成显式配置，而不是靠猜 route 地址/域名等脆弱规则；
-   * - 避免 Cloud 模式下由于客户端重试导致的一次点击多次上游调用，从而破坏账单语义。
+   * 用显式配置表达，而不是靠猜 route 地址/域名等脆弱规则；按次计费的上游可关闭，
+   * 避免一次点击因客户端重试变成多次上游调用。
    */
   enable_client_retry?: boolean;
 

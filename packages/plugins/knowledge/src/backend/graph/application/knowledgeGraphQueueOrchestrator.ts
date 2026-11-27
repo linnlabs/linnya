@@ -32,8 +32,6 @@ import {
   getGraphEdgesCollectionName,
   getGraphNodesCollectionName,
 } from '../infrastructure/qdrantCollections';
-import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfiguration';
-import { PromptKeys } from '@app/schemas';
 import { KNOWLEDGE_GRAPH_DOCUMENT_MAX_RETRIES } from '../definitions/extractionRetryPolicy';
 
 type MaybeKbIdCarrier = { kbId?: unknown } | null;
@@ -44,13 +42,15 @@ function readStringField(obj: unknown, key: string): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
-function resolveGraphExtractionModelId(): string | null {
-  // ✅ 单一来源：internals/knowledge_graph_extraction/index.ts
-  return (
-    getPluginModelConfigurationPort().readAuxiliaryModelBinding(
-      PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION
-    ) ?? null
-  );
+/**
+ * 没有上传快照、也没有失败 job 自带模型时的抽取模型。
+ *
+ * 用户选的图谱抽取模型只保存在界面里，随上传冻结进任务；Host 也不发布功能默认模型。
+ * 因此 PDF 失败页续跑和启动回填这两个后端自发入口目前拿不到模型，只能跳过抽取。
+ * 补上正式来源前不要在这里随手挑一个对话模型：同一知识库混用模型会让图谱前后不一致。
+ */
+function readBackendGraphExtractionModelId(): string | null {
+  return null;
 }
 
 export class KnowledgeGraphQueueOrchestrator {
@@ -373,7 +373,7 @@ export class KnowledgeGraphQueueOrchestrator {
           await this.graphProgressService.onDocQueued(kbId, docId, chunkCount);
 
           // 自动重试必须复用失败 job 的显式模型，避免同一文档在重试时悄悄换模型。
-          const llmModelId = retryLlmModelId ?? resolveGraphExtractionModelId();
+          const llmModelId = retryLlmModelId;
           if (!llmModelId) {
             this.logger.warn(`自动重试放弃：无可用抽取模型: kbId=${kbId}, docId=${docId}`);
             this.clearRetryTimer(kbId, docId);
@@ -670,9 +670,9 @@ export class KnowledgeGraphQueueOrchestrator {
       task.data.graphExtractionModelId.trim().length > 0
         ? task.data.graphExtractionModelId.trim()
         : null;
-    const llmModelId = graphExtractionModelSnapshot ?? resolveGraphExtractionModelId();
+    const llmModelId = graphExtractionModelSnapshot;
     if (!llmModelId) {
-      this.logger.warn('跳过图谱抽取：未找到可用的聊天模型', { kbId, docId });
+      this.logger.warn('跳过图谱抽取：上传时没有选择图谱抽取模型', { kbId, docId });
       return;
     }
 
@@ -774,9 +774,9 @@ export class KnowledgeGraphQueueOrchestrator {
       return;
     }
 
-    const llmModelId = resolveGraphExtractionModelId();
+    const llmModelId = readBackendGraphExtractionModelId();
     if (!llmModelId) {
-      this.logger.warn('跳过图谱抽取：未找到可用的聊天模型', { kbId, docId });
+      this.logger.warn('跳过图谱抽取：后端入口没有图谱抽取模型来源', { kbId, docId });
       return;
     }
 
@@ -867,7 +867,7 @@ export class KnowledgeGraphQueueOrchestrator {
         continue;
       }
 
-      const llmModelId = resolveGraphExtractionModelId();
+      const llmModelId = readBackendGraphExtractionModelId();
       if (!llmModelId) {
         skippedOther += 1;
         continue;

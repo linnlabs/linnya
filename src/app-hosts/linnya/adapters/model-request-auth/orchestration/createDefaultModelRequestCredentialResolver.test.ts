@@ -1,15 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
-import {
-  createOfficialDistributionIdentity,
-  createSourceDistributionIdentity,
-} from 'src/shared/distribution-identity';
 import { createDefaultModelRequestCredentialResolver } from './createDefaultModelRequestCredentialResolver';
-
-// 这里验证 Cloud 服务开放后的接入逻辑；服务当前是否开放由 isLinnyaCloudClientEnabled 自己的测试负责。
-vi.mock('src/app-hosts/linnya/adapters/model-request-auth/functions/isLinnyaCloudClientEnabled', () => ({
-  isLinnyaCloudClientEnabled: (identity: { readonly kind: string }) => identity.kind === 'official',
-}));
 
 function model(id: string, credentialReference: ModelConfig['credential_reference']): ModelConfig {
   return {
@@ -24,53 +15,33 @@ function model(id: string, credentialReference: ModelConfig['credential_referenc
   };
 }
 
+const noProviderAccounts = {
+  resolve: async () => {
+    throw new Error('fixture 不使用 Provider account');
+  },
+};
+
 describe('default model request credential resolver', () => {
-  it('只为 host-managed Linnya Cloud credential 动态注入设备身份', async () => {
-    const cloudModel = model('cloud-model', {
-      kind: 'host_managed',
-      credential_id: 'linnya-cloud',
-    });
+  it('本机凭据只返回 profile 与 secret，未配置时在请求前拒绝', async () => {
     const byokModel = model('byok-model', {
       kind: 'environment_variable',
       environment_variable: 'FIXTURE_API_KEY',
     });
     const resolver = createDefaultModelRequestCredentialResolver({
       catalog: {
-        getModel: id => (id === cloudModel.id ? cloudModel : byokModel),
-        getCredentialReference: id =>
-          id === cloudModel.id ? cloudModel.credential_reference : byokModel.credential_reference,
-        resolveCredential: id => (id === cloudModel.id ? 'linnya-cloud' : 'byok-secret'),
+        getModel: () => byokModel,
+        getCredentialReference: () => byokModel.credential_reference,
+        resolveCredential: id => (id === byokModel.id ? 'byok-secret' : undefined),
       },
-      resolveCloudDeviceId: async () => 'device-fixture',
-      distributionIdentity: createOfficialDistributionIdentity({
-        releaseChannel: 'stable',
-        releaseKeyId: 'fixture',
-      }),
-      providerAccounts: {
-        resolve: async () => {
-          throw new Error('fixture 不使用 Provider account');
-        },
-      },
+      providerAccounts: noProviderAccounts,
     });
 
     await expect(
-      resolver.resolve({
-        model_id: cloudModel.id,
-        endpoint_id: 'linnya-cloud',
-        auth_profile: 'bearer',
-      })
-    ).resolves.toEqual({
-      profile: 'bearer',
-      secret: 'linnya-cloud',
-      request_headers: { 'X-Device-ID': 'device-fixture' },
-    });
-    await expect(
-      resolver.resolve({
-        model_id: byokModel.id,
-        endpoint_id: 'fixture',
-        auth_profile: 'bearer',
-      })
+      resolver.resolve({ model_id: byokModel.id, endpoint_id: 'fixture', auth_profile: 'bearer' })
     ).resolves.toEqual({ profile: 'bearer', secret: 'byok-secret' });
+    await expect(
+      resolver.resolve({ model_id: 'missing-model', endpoint_id: 'fixture', auth_profile: 'bearer' })
+    ).rejects.toThrow('Model request credential is not configured for model: missing-model');
   });
 
   it('Provider account 由账号边界解析 access token 与附属请求头', async () => {
@@ -86,7 +57,6 @@ describe('default model request credential resolver', () => {
           throw new Error('Model Catalog 不得解密 Provider account');
         },
       },
-      resolveCloudDeviceId: async () => null,
       providerAccounts: {
         resolve: async () => ({
           access_token: 'oauth-access-token',
@@ -112,44 +82,5 @@ describe('default model request credential resolver', () => {
         originator: 'linnya',
       },
     });
-  });
-
-  it('源码发行身份在请求边界拒绝 Cloud，不解析凭据也不生成设备身份', async () => {
-    const cloudModel = model('cloud-model', {
-      kind: 'host_managed',
-      credential_id: 'linnya-cloud',
-    });
-    let credentialResolutionCount = 0;
-    let deviceIdentityResolutionCount = 0;
-    const resolver = createDefaultModelRequestCredentialResolver({
-      catalog: {
-        getModel: () => cloudModel,
-        getCredentialReference: () => cloudModel.credential_reference,
-        resolveCredential: () => {
-          credentialResolutionCount += 1;
-          return 'linnya-cloud';
-        },
-      },
-      resolveCloudDeviceId: async () => {
-        deviceIdentityResolutionCount += 1;
-        return 'device-fixture';
-      },
-      providerAccounts: {
-        resolve: async () => {
-          throw new Error('fixture 不使用 Provider account');
-        },
-      },
-      distributionIdentity: createSourceDistributionIdentity(),
-    });
-
-    await expect(
-      resolver.resolve({
-        model_id: cloudModel.id,
-        endpoint_id: 'linnya-cloud',
-        auth_profile: 'bearer',
-      })
-    ).rejects.toThrow('disabled for this Desktop distribution');
-    expect(credentialResolutionCount).toBe(0);
-    expect(deviceIdentityResolutionCount).toBe(0);
   });
 });

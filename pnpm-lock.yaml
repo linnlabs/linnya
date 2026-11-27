@@ -289,9 +289,6 @@ importers:
       node-fetch:
         specifier: ^2.7.0
         version: 2.7.0(encoding@0.1.13)
-      node-machine-id:
-        specifier: ^1.1.12
-        version: 1.1.12
       node-pty:
         specifier: 1.2.0-beta.14
         version: 1.2.0-beta.14
@@ -5233,9 +5230,6 @@ packages:
 
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
-
-  node-machine-id@1.1.12:
-    resolution: {integrity: sha512-QNABxbrPa3qEIfrE6GOJ7BYIuignnJw7iQ2YPbc3Nla1HzRJjXzZOiikfF8m7eAMfichLt3M4VgLOetqgDmgGQ==}
 
   node-pty@1.2.0-beta.14:
     resolution: {integrity: sha512-XORU9BQgpxVgqr7WivjJ17mLenOHUgKKWzuZZNaw3NDYgHc/wPJQMSaoLDrpEgqV6aU1nNwil1o/OqYj6lWmUA==}
@@ -10840,8 +10834,6 @@ snapshots:
       which: 6.0.1
 
   node-int64@0.4.0: {}
-
-  node-machine-id@1.1.12: {}
 
   node-pty@1.2.0-beta.14:
     dependencies:

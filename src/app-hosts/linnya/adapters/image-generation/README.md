@@ -35,8 +35,7 @@ options 进入 SDK codec，`WxH` 使用 AI SDK 标准 size。响应必须是
 `b64_json`，不接受 URL 回退。
 
 图片 adapter 不直接调用
-`ModelCatalog.resolveCredential()`。环境变量、加密 secret、Linnya
-Cloud 设备身份和 Provider account OAuth 都由共享的
+`ModelCatalog.resolveCredential()`。环境变量、加密 secret 和 Provider account OAuth 都由共享的
 `ModelRequestCredentialResolver` 解析。ChatGPT 账号图片请求会携带 bearer、
 `chatgpt-account-id` 和 `originator`；Responses 专属 `OpenAI-Beta`
 不属于账号身份，因此不会进入图片请求。

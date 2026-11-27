@@ -101,12 +101,6 @@ export const ModelPickerConfiguredProviderSchema = z
   })
   .strict();
 
-export const ModelPickerDirectGroupSchema = z
-  .object({
-    display_name: NonEmptyStringSchema,
-    models: z.array(ModelPickerMaterializedModelSchema),
-  })
-  .strict();
 
 export const ModelPickerCustomProviderGroupSchema = z
   .object({
@@ -126,7 +120,6 @@ export type ModelPickerCustomProviderGroup = z.infer<typeof ModelPickerCustomPro
 /** Settings 和对话入口共同消费的 Host 投影；前端不自行猜 Provider 归属。 */
 export const ModelPickerSnapshotSchema = z
   .object({
-    cloud: ModelPickerDirectGroupSchema.optional(),
     providers: z.array(ModelPickerConfiguredProviderSchema),
     custom_models: z.array(ModelPickerMaterializedModelSchema),
     custom_providers: z.array(ModelPickerCustomProviderGroupSchema).optional(),
@@ -153,7 +146,6 @@ export type ModelPickerConfiguredProvider = z.infer<typeof ModelPickerConfigured
 export type ModelPickerCredentialUnavailableReason = z.infer<
   typeof CredentialUnavailableReasonSchema
 >;
-export type ModelPickerDirectGroup = z.infer<typeof ModelPickerDirectGroupSchema>;
 export type ModelPickerSnapshot = z.infer<typeof ModelPickerSnapshotSchema>;
 export type SetModelPickerProviderVisibilityCommand = z.infer<
   typeof SetModelPickerProviderVisibilityCommandSchema

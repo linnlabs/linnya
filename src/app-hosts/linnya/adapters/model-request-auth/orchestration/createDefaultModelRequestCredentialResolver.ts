@@ -11,12 +11,6 @@ import {
   ModelRequestCredentialError,
   type ModelRequestCredentialResolver,
 } from '../definitions/modelRequestCredential';
-import { isLinnyaCloudClientEnabled } from '../functions/isLinnyaCloudClientEnabled';
-import { getLinnyaCloudDeviceId } from '../functions/linnyaCloudDeviceId';
-import {
-  requireInstalledDistributionIdentity,
-  type DistributionIdentity,
-} from 'src/shared/distribution-identity';
 
 interface DefaultCredentialCatalog {
   getModel(modelId: string): ModelConfig | undefined;
@@ -26,21 +20,18 @@ interface DefaultCredentialCatalog {
 
 export interface DefaultModelRequestCredentialResolverDependencies {
   readonly catalog: DefaultCredentialCatalog;
-  readonly resolveCloudDeviceId: () => Promise<string | null>;
   readonly providerAccounts: ProviderAccountRequestCredentialResolver;
-  readonly distributionIdentity?: DistributionIdentity;
 }
 
 /**
  * 解析 Host 发起一次模型 HTTP 请求所需的凭据。
  *
- * 设备身份是 Linnya Cloud host-managed credential 的组成部分，不属于模型目录快照。
- * 因此 language inference 与 remote token count 必须在各自请求开始时调用同一解析器。
+ * Provider account 的 access token 会过期刷新，必须在每次请求开始时解析；language inference
+ * 与 remote token count 共用这一个解析器，不各自读取凭据。
  */
 export function createDefaultModelRequestCredentialResolver(
   dependencies: DefaultModelRequestCredentialResolverDependencies = {
     catalog: modelCatalog,
-    resolveCloudDeviceId: getLinnyaCloudDeviceId,
     providerAccounts: providerAccountRequestCredentialResolver,
   }
 ): ModelRequestCredentialResolver {
@@ -63,37 +54,13 @@ export function createDefaultModelRequestCredentialResolver(
           );
         }
       }
-      const isLinnyaCloudCredential =
-        credentialReference?.kind === 'host_managed' &&
-        credentialReference.credential_id === 'linnya-cloud';
-      if (
-        isLinnyaCloudCredential &&
-        !isLinnyaCloudClientEnabled(
-          dependencies.distributionIdentity ?? requireInstalledDistributionIdentity()
-        )
-      ) {
-        throw new ModelRequestCredentialError(
-          'Linnya Cloud model requests are disabled for this Desktop distribution.'
-        );
-      }
       const secret = dependencies.catalog.resolveCredential(request.model_id)?.trim();
       if (!secret) {
         throw new ModelRequestCredentialError(
           `Model request credential is not configured for model: ${request.model_id}`
         );
       }
-      if (!isLinnyaCloudCredential) {
-        return { profile: request.auth_profile, secret };
-      }
-      const deviceId = await dependencies.resolveCloudDeviceId();
-      if (!deviceId) {
-        throw new ModelRequestCredentialError('Linnya Cloud device identity is unavailable.');
-      }
-      return {
-        profile: request.auth_profile,
-        secret,
-        request_headers: { 'X-Device-ID': deviceId },
-      };
+      return { profile: request.auth_profile, secret };
     },
   };
 }

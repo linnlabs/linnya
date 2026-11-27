@@ -21,10 +21,9 @@ function model(
 }
 
 describe('buildConversationModelSelectOptions', () => {
-  it('按 Cloud、模型供应商、自定义模型投影设置中的对话模型菜单', () => {
+  it('按模型供应商、自定义模型投影设置中的对话模型菜单', () => {
     const options = buildConversationModelSelectOptions({
       snapshot: {
-        cloud: { display_name: 'Linnya Cloud', models: [model('cloud', 'Cloud GPT')] },
         providers: [
           {
             configured_provider_id: 'configured-openai',
@@ -52,8 +51,6 @@ describe('buildConversationModelSelectOptions', () => {
     });
 
     expect(options).toEqual([
-      { isGroup: true, label: 'Linnya Cloud' },
-      expect.objectContaining({ value: 'cloud', text: 'Cloud GPT' }),
       { isGroup: true, label: '模型供应商' },
       expect.objectContaining({
         text: 'OpenAI',
