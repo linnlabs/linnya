@@ -103,7 +103,7 @@
     "linnya:runtime": "pnpm run build:linnya-runtime && tsx apps/linnya-cli/src/main.ts runtime start",
     "test:linnya-benchmark": "pnpm --dir apps/linnya-benchmark run test",
     "test:linnya-cli": "pnpm --dir apps/linnya-cli run test",
-    "test:linnya-cli:bundle": "pnpm build:linnya-cli && cross-env LINNYA_CLI_TEST_ENTRY=bundle vitest run apps/linnya-cli/src/__integration-tests__",
+    "test:linnya-cli:bundle": "pnpm build:linnya-cli && cross-env LINNYA_CLI_TEST_ENTRY=bundle vitest run apps/linnya-cli/src/__integration-tests__ src/app-hosts/linnya/adapters/conversation-control-bridge/__tests__/installedCliLauncher.integration.test.ts",
     "test:linnya-runtime:e2e": "pnpm build:linnya-runtime && pnpm run test:linnya-runtime:e2e:prepared",
     "test:linnya-runtime:e2e:prepared": "cross-env LINNYA_CLI_RUNTIME_E2E=1 vitest run apps/linnya-cli/src/__integration-tests__/runtimeHostProcess.e2e.test.ts",
     "typecheck:linnya-benchmark": "pnpm --dir apps/linnya-benchmark run typecheck",
@@ -276,7 +276,7 @@
     "clean:build": "node -e \"require('fs').rmSync('dist_build', { recursive: true, force: true })\"",
     "prepare:extra-resources": "node scripts/build/prepare-extra-resources.cjs",
     "prepare:windows-app-local-runtime": "node scripts/build/prepare-windows-app-local-runtime.cjs --project-dir dist_build --arch x64",
-    "build:electron:prepare": "pnpm run guard:ai-sdk-third-party-notice && pnpm run package:plugins:official && pnpm run prepare:qdrant-runtime && pnpm run prepare:extra-resources && pnpm run prepare:headless-node-runtime && pnpm run clean:build && pnpm run build:wasm && pnpm run build:frontend && pnpm run build:main && pnpm run build:preload && pnpm run build:measurement-worker && pnpm run build:measurement-preload && pnpm run build:worker && pnpm run build:backend && pnpm run guard:public-artifact-private-plugin-boundary && pnpm run build:windows-command-native-runtime && pnpm run compile:bytecode && pnpm run build:loader && pnpm run copy:files",
+    "build:electron:prepare": "pnpm run guard:ai-sdk-third-party-notice && pnpm run package:plugins:official && pnpm run prepare:qdrant-runtime && pnpm run prepare:extra-resources && pnpm run prepare:headless-node-runtime && pnpm run clean:build && pnpm run build:wasm && pnpm run build:frontend && pnpm run build:main && pnpm run build:preload && pnpm run build:measurement-worker && pnpm run build:measurement-preload && pnpm run build:worker && pnpm run build:backend && pnpm run build:linnya-cli && pnpm run guard:public-artifact-private-plugin-boundary && pnpm run build:windows-command-native-runtime && pnpm run compile:bytecode && pnpm run build:loader && pnpm run copy:files",
     "copy:files": "node scripts/build/copy-files.js",
     "build:electron": "cross-env LINNYA_BUILD_TARGET_PLATFORM=win32 LINNYA_BUILD_TARGET_ARCH=x64 pnpm run build:electron:prepare && pnpm run prepare:windows-app-local-runtime && cross-env LINNYA_WINDOWS_COMMAND_RUNTIME_BUILD_TRUST=development npm_config_msvs_settings_cflags=\"-IC:/msys64/mingw64/include/cairo -IC:/msys64/mingw64/include/pango-1.0 -IC:/msys64/mingw64/include/glib-2.0 -IC:/msys64/mingw64/lib/glib-2.0/include -IC:/msys64/mingw64/include\" npm_config_msvs_settings_ldflags=\"-LC:/msys64/mingw64/lib\" electron-builder --projectDir dist_build --win",
     "build:electron:prod": "node scripts/build/build-prod.cjs",
@@ -539,6 +539,18 @@
       {
         "from": "dist/main/sandbox/sandboxEvaluatorProcess.cjs",
         "to": "sandbox-runtime/evaluator/sandboxEvaluatorProcess.cjs"
+      },
+      {
+        "from": "../apps/linnya-cli/bin/linnya.cjs",
+        "to": "linnya-cli/bin/linnya.cjs"
+      },
+      {
+        "from": "../apps/linnya-cli/dist",
+        "to": "linnya-cli/dist",
+        "filter": [
+          "cli.cjs",
+          "build.json"
+        ]
       },
       {
         "from": "../extraResources/plugins",

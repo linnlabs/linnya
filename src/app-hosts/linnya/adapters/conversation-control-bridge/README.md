@@ -48,6 +48,20 @@ Host 从实际代码 bundle 根解析真实路径与分支，不把 Workspace �
 
 descriptor owner 在 API Server 已绑定真实端口且 Conversation 路由装配成功后才原子发布文件。目录和文件权限分别为 `0700`、`0600`。撤销时只删除仍属于当前 `app_instance_id` 的文件，避免旧进程删除新实例刚发布的连接信息；Server 关闭时先撤销描述，再关闭 listener。异常退出遗留的文件不代表 owner 存活；新 Host 仍必须先取得 Workspace 排他锁，再用新实例 identity 原子替换。
 
+## 安装版的 `linnya` 入口
+
+安装版 Host 在连接描述发布成功后，把 `linnya` 入口脚本写到用户主目录的 `.linnya/bin/`
+（macOS 为 `linnya`，Windows 为 `linnya.cmd`）。它用 App Server 自己所用的随包 Node 运行
+`Resources/linnya-cli/` 里的 CLI bundle，供外部 Agent 的 Skill 调用。使用方式与边界见
+[Linnya CLI §1.1](../../../../../apps/linnya-cli/README.md#11-安装版的-linnya-入口)。
+
+- `functions/createInstalledCliLauncher.ts` 只负责生成路径与脚本文本；`orchestration/publishInstalledCliLauncher.ts`
+  负责写入。内容不变时不写，变了才原子替换：外部 Agent 可能正在执行这个文件。
+- 只有“安装版 + 使用默认用户级连接文件”的实例发布入口。源码运行和把连接文件改到别处的实例不写用户主目录。
+- 入口不随 Host 退出撤销。它不含凭据，退出后保留才能让调用方立刻得到“未运行”的回执。
+- Windows 批处理按系统代码页解码，脚本里不写用户主目录的字面路径，而用 `%USERPROFILE%` 相对形式，
+  这样中文用户名不会被读坏。修改脚本文本时保持纯 ASCII。
+
 ## 依赖装配
 
 `createLinnyaConversationControlUseCase.ts` 是 app-level composition root：把 Model Catalog、Provider Account、Flow、run registry、durable Conversation history、Tool runtime 与 Telemetry 安全查询映射到 use case 的窄 ports。Tool runtime 只用于读取 CLI allowlist 中工具的真实 schema；默认五个 Workspace 工具，临时开关再开放 Web 搜索、读取和长输出续读。开关与接纳规则由 application feature 持有；bridge 不修改 Web 配置或工具实现，也不开放任意注册工具。模型查询只投影安全选择事实，并复用正式模型运行可用性判断；业务条件、状态选择、审计聚合和结果语义必须留在 application feature 的 functions，HTTP router 只能完成 parse、调用与错误投影。
@@ -61,7 +75,7 @@ pnpm exec vitest run \
   src/electron-main/services/apiServer.lifecycle.test.ts
 ```
 
-门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期。`src/electron-main/routes/conversationControlAuditCapability.integration.test.ts` 把 App Server 环境白名单、Audit 等级解析、运行时作用域与握手串起来，并用真实 CLI 进程验证 `off` 仍能读取审计、切档后握手和错误显示实时档位。`projectCliProcess.integration.test.ts` 使用真实 CLI 子进程、HTTP router 和 SQLite 验证项目写入、失败边界与持久化；不放入独立 CLI 包，以保持其与 Backend 的编译边界。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
+门禁覆盖真实 HTTP router、strict request/response、描述文件原子发布与权限、实例安全撤销、Renderer/CLI token 双向隔离，以及 API Server 启停生命周期（含安装版入口只在用户实例发布、退出后保留）。`installedCliLauncher.integration.test.ts` 按安装包的资源布局摆放已构建的 CLI bundle，真实执行入口脚本，覆盖未运行、连接后诊断与项目读写、拒绝无界面运行、App 被移走后的回执与重新发布，以及 macOS 上被沙箱拦截连接时的提示；它需要已构建的 bundle，随 `pnpm test:linnya-cli:bundle` 与平台构建 CI 运行。`src/electron-main/routes/conversationControlAuditCapability.integration.test.ts` 把 App Server 环境白名单、Audit 等级解析、运行时作用域与握手串起来，并用真实 CLI 进程验证 `off` 仍能读取审计、切档后握手和错误显示实时档位。`projectCliProcess.integration.test.ts` 使用真实 CLI 子进程、HTTP router 和 SQLite 验证项目写入、失败边界与持久化；不放入独立 CLI 包，以保持其与 Backend 的编译边界。普通 CLI 子进程测试见 `apps/linnya-cli/src/__integration-tests__/cliProcess.integration.test.ts`；无 Electron Runtime 的冷启动、并行、owner 竞争、重启和强制终止恢复见 `runtimeHostProcess.e2e.test.ts`。
 
 `projects` 的 `list / get / create / update / delete` 委托 `domains/projects` 公开生命周期端口，
 不复制项目规则或读取 SQL。列表返回 `project_id / name`；`get / create / update` 返回安全项目详情，

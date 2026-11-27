@@ -84,6 +84,10 @@ export function classifyDesktopArtifactPath(
   ) {
     return 'bundled-runtime';
   }
+  // 随包的 linnya 命令是 Linnya 自己的代码，不是第三方运行时；内联的 npm 包由 bundle trace 归因。
+  if (lowerPath.includes('/resources/linnya-cli/') || lowerPath.startsWith('resources/linnya-cli/')) {
+    return 'application-code';
+  }
   if (lowerPath.endsWith('/third_party_notices.txt') || lowerPath === 'third_party_notices.txt') {
     return 'legal-notice';
   }

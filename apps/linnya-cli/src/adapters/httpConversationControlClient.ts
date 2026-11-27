@@ -18,6 +18,7 @@ import {
   type ConversationControlClient,
   type ConversationControlSuccessResponse,
 } from '../definitions/cli';
+import { isLoopbackConnectDenied } from '../functions/isLoopbackConnectDenied';
 
 interface HttpConversationControlClientOptions {
   readonly descriptor: ConversationControlConnectionDescriptor;
@@ -76,6 +77,15 @@ async function postJson(
     return { response, body: await readResponseBody(response) };
   } catch (error: unknown) {
     if (error instanceof LinnyaCliError && !controller.signal.aborted) throw error;
+    if (!controller.signal.aborted && isLoopbackConnectDenied(error)) {
+      // 沙箱拦截时 App 往往正在运行；这里不能沿用“连接已过期”的说法，否则调用方会去重启 App。
+      throw new LinnyaCliError(
+        'transport_failure',
+        'The operating system denied the connection to the Linnya App on this machine (connect EPERM). This usually means the command is running inside an agent sandbox that blocks local network access. Linnya may be running normally: rerun this linnya command outside the sandbox (ask the user to approve it or allow local network access), then retry.',
+        true,
+        command,
+      );
+    }
     throw new LinnyaCliError(
       controller.signal.aborted ? 'transport_failure' : 'stale_connection',
       controller.signal.aborted
@@ -103,7 +113,7 @@ async function handshake(
   if (!result.response.ok || !parsed.success) {
     throw new LinnyaCliError(
       'protocol_incompatible',
-      `Linnya App handshake does not match CLI ${LINNYA_CLI_VERSION} (${LINNYA_CLI_BUILD_ID}), protocol ${CONVERSATION_CONTROL_PROTOCOL_VERSION}. Rebuild with pnpm build:linnya-cli and verify the running App version.`,
+      `Linnya App handshake does not match CLI ${LINNYA_CLI_VERSION} (${LINNYA_CLI_BUILD_ID}), protocol ${CONVERSATION_CONTROL_PROTOCOL_VERSION}. Installed Linnya: quit and reopen the desktop app so the app and its bundled command are the same version. Source checkout: rebuild with pnpm build:linnya-cli and restart the App.`,
     );
   }
   if (parsed.data.app_instance_id !== options.descriptor.app_instance_id) {

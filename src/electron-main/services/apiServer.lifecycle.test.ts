@@ -27,6 +27,7 @@ afterEach(async () => {
     temporaryRoots.splice(0).map(root => fs.rm(root, { recursive: true, force: true })),
   );
   vi.mocked(configureRoutes).mockReset();
+  vi.unstubAllEnvs();
 });
 
 function createRouteDependencies(): RouteDependencies {
@@ -203,6 +204,52 @@ describe('ApiServer lifecycle', () => {
     await server.stop();
     await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
     expect(dependencies.commandApprovalControl.readControlPending('example')).toBeUndefined();
+  });
+
+  it('安装版启动后把 linnya 入口发布到用户主目录并在退出后保留；源码运行和连接文件改到别处的实例不发布', async () => {
+    const homeDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-api-server-home-'));
+    temporaryRoots.push(homeDirectory);
+    vi.stubEnv('HOME', homeDirectory);
+    vi.stubEnv('USERPROFILE', homeDirectory);
+    vi.stubEnv('LINNYA_CLI_CONNECTION_FILE', '');
+    vi.mocked(configureRoutes).mockResolvedValue({
+      conversationRoutesMounted: true,
+      conversationControlBridgeMounted: true,
+    });
+    const launcherFile = path.join(
+      homeDirectory, '.linnya', 'bin', process.platform === 'win32' ? 'linnya.cmd' : 'linnya',
+    );
+    const resourcesPath = path.join(homeDirectory, 'Applications', 'Linnya.app', 'Contents', 'Resources');
+    async function boot(packaged: boolean, connectionFile?: string): Promise<ApiServer> {
+      const server = new ApiServer(connectionFile ? { conversationControlConnectionFile: connectionFile } : {});
+      startedServers.push(server);
+      server.setupMiddleware();
+      await server.start(0);
+      const dependencies = createRouteDependencies();
+      await server.configureRoutes({
+        ...dependencies,
+        backendBootstrap: {
+          ...dependencies.backendBootstrap, packaged, platform: process.platform, resourcesPath,
+        },
+      });
+      return server;
+    }
+
+    await (await boot(false)).stop();
+    await expect(fs.stat(launcherFile)).rejects.toMatchObject({ code: 'ENOENT' });
+
+    // 候选包验收会把连接文件改到隔离目录；它不能把用户日常使用的入口改指向候选包。
+    await (await boot(true, path.join(homeDirectory, 'isolated', 'runtime', 'connection.json'))).stop();
+    await expect(fs.stat(launcherFile)).rejects.toMatchObject({ code: 'ENOENT' });
+
+    const installed = await boot(true);
+    const launcher = await fs.readFile(launcherFile, 'utf8');
+    expect(launcher).toContain(path.join('linnya-cli', 'bin', 'linnya.cjs'));
+    await installed.stop();
+    // 入口要在桌面端退出后继续存在，外部 Agent 才能拿到“未运行”的明确回执。
+    expect(await fs.readFile(launcherFile, 'utf8')).toBe(launcher);
+    await expect(fs.stat(path.join(homeDirectory, '.linnya', 'runtime', 'conversation-control-v1.json')))
+      .rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('最高端口冲突时保留原始错误，不尝试越过 TCP 端口范围', async () => {
