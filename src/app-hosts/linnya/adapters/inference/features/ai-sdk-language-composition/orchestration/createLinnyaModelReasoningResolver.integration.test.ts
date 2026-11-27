@@ -4,7 +4,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
-import { createSourceDistributionIdentity } from 'src/shared/distribution-identity';
 import { createLinnyaModelReasoningResolver } from './createLinnyaModelReasoningResolver';
 
 const paths = vi.hoisted(() => ({ directory: '' }));
@@ -76,7 +75,7 @@ describe('Host SDK 能力装配', () => {
     const catalog = ModelCatalogRegistry.getInstance();
     catalog.installEndpointCredentialStorage(createFileCredentialStorage(path.join(paths.directory, 'credentials.json')));
     catalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
-    await catalog.initialize(createSourceDistributionIdentity());
+    await catalog.initialize();
 
     expect(catalog.getModel(model.id)).toMatchObject({
       id: model.id,

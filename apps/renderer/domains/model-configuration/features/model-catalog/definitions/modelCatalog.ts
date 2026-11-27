@@ -37,14 +37,10 @@ export type ModelCatalogItem = z.infer<typeof ModelCatalogItemSchema>;
 
 export const ModelCatalogSnapshotSchema = z.object({
   models: z.array(ModelCatalogItemSchema),
-  task_defaults: z.record(z.string(), z.string()),
-  cloud_models_ready: z.boolean(),
 });
 
 export interface ModelCatalogSnapshot {
   readonly models: readonly ModelCatalogItem[];
-  readonly purposeDefaults: Readonly<Record<string, string>>;
-  readonly cloudModelsReady: boolean;
 }
 
 export type ModelCatalogOperation = 'load' | 'update' | 'delete';

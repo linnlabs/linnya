@@ -21,8 +21,6 @@ describe('deleteConfiguredModel', () => {
       models: [
         { id: 'custom-1', catalog_source: 'user', capabilities: ['chat', 'image_generation'] },
       ],
-      purposeDefaults: {},
-      cloudModelsReady: true,
     });
     setModelPurposeBinding('primary', 'custom-1');
     setModelPurposeBinding('image_generation', 'custom-1');
@@ -54,8 +52,6 @@ describe('deleteConfiguredModel', () => {
     const catalog = useModelCatalogStore();
     catalog.replaceSnapshot({
       models: [{ id: 'a', catalog_source: 'user', capabilities: ['chat'] }],
-      purposeDefaults: {},
-      cloudModelsReady: false,
     });
     const gateway: ModelCatalogGateway = {
       load: vi.fn(),
@@ -79,8 +75,6 @@ describe('deleteConfiguredModel', () => {
     const catalog = useModelCatalogStore();
     catalog.replaceSnapshot({
       models: [{ id: 'healthy', catalog_source: 'user', capabilities: ['chat'] }],
-      purposeDefaults: {},
-      cloudModelsReady: false,
     });
     const disabled = {
       model_config_id: 'disabled',

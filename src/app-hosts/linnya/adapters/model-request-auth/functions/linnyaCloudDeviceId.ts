@@ -1,5 +1,5 @@
 /**
- * @file src/domains/model-catalog/features/cloud-catalog/functions/deviceId.ts
+ * @file src/app-hosts/linnya/adapters/model-request-auth/functions/linnyaCloudDeviceId.ts
  *
  * @description
  * 生成稳定的匿名设备 ID（用于 Linnya Cloud 限额标识）。
@@ -70,7 +70,7 @@ function isNodeMachineIdModule(value: unknown): value is NodeMachineIdModule {
  * 结果会缓存，多次调用返回同一值。
  * 失败时返回 null（不阻塞流程）。
  */
-export async function getDeviceId(): Promise<string | null> {
+export async function getLinnyaCloudDeviceId(): Promise<string | null> {
   if (cachedDeviceId) return cachedDeviceId;
 
   try {

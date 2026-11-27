@@ -85,8 +85,6 @@ describe('对话标题模型选择（设置页）', () => {
 
     useModelCatalogStore().replaceSnapshot({
       models: [catalogModel('main'), catalogModel('title-flash')],
-      purposeDefaults: {},
-      cloudModelsReady: false,
     });
     useModelPickerStore().replaceSnapshot({
       providers: [],

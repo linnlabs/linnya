@@ -185,9 +185,7 @@ read model，具体菜单层级、图片草稿禁用态和“管理模型…”�
 Catalog 的正式流程。正式 Provider 的详情标题在总开关左侧提供删除入口；确认后通过 `removeModelSource` 清理该 Provider 的配置、凭据和已激活模型。connection 的 `credential_kind` 为 `api_key` 时，删除入口左侧另有“更新 API Key”，只单向提交新 Key，由 Host 在原 credential boundary 内替换，模型、可见性与用途绑定不变；账号型和本地运行时不提供该入口。
 
 自定义分组的详情标题提供“编辑供应商”和删除入口。编辑弹窗以 Host 快照预填名称、API 格式与地址，Key 留空表示沿用当前凭据；提交后由 Host 决定保留或新建 endpoint、是否需要重新填写 Key，并原子改绑分组内全部模型，Renderer 随后重读模型目录与选择投影。删除需确认，逐个复用模型删除流程，最后一个模型删除时 Host 自动清理 endpoint 与凭据。弹窗只在打开期间挂载，草稿与未提交的 Key 随关闭一并丢弃。Linnya
-Cloud 是官方管理的优先来源，客户端不显示 Provider 总开关，也不显示单模型开关；Cloud 模型的上架、下架和可用性由 Cloud
-Model
-Catalog 统一控制。图片生成默认模型也必须由 Cloud Catalog 以 `image_generation` capability 发布，客户端不得把本地环境变量模型改名伪装成 Linnya Cloud。Cloud 与正式 Provider 模型行都不提供详情点击入口。左侧来源导航只负责选择详情，不承载开关或启用数量。
+Cloud 来源的模型由官方管理，客户端不显示 Provider 总开关，也不显示单模型开关；客户端目前不拉取 Cloud 模型目录，这类模型不会出现，客户端也不得把本地环境变量模型改名伪装成 Linnya Cloud。Cloud 与正式 Provider 模型行都不提供详情点击入口。左侧来源导航只负责选择详情，不承载开关或启用数量。
 
 删除模型时，Host app-level removal workflow 在 Model
 Catalog 删除成功后同步删除 picker 稀疏偏好，再提交正式 Provider 归属删除；后两步失败均不能把已经成功的模型删除伪装成失败，分别由启动 reconcile 或 durable
@@ -237,10 +235,9 @@ identity 可以恢复请求。模型目录、授权状态和模型配置继续�
 ### Model catalog
 
 目录以 `GET /api/v1/models` 为唯一事实源。主进程 `models-updated`
-只是 Cloud 目录变更后的重新读取信号，事件 payload 不是第二份目录数据。本地自定义 API、正式 Provider 与 Ollama 注册不依赖该信号，注册完成编排必须主动重读模型目录。
+只是目录变更（账号模型同步、任何入口提交的用户目录事务）后的重新读取信号，事件 payload 不是第二份目录数据。本地自定义 API、正式 Provider 与 Ollama 注册不依赖该信号，注册完成编排必须主动重读模型目录。
 
-`modelCatalogStore` 只保存已解析模型、当前操作、结构化错误、purpose
-defaults 和 Cloud 目录确认状态。它不持久化，也不执行网络请求。HTTP 网关只接受当前包装对象 wire；旧数组响应不会双读。增删改 orchestration 先调用网关，成功后再提交同步 store
+`modelCatalogStore` 只保存已解析模型、当前操作和结构化错误。它不持久化，也不执行网络请求。HTTP 网关只接受当前包装对象 wire；旧数组响应不会双读。增删改 orchestration 先调用网关，成功后再提交同步 store
 action。
 
 自定义 chat 模型详情允许编辑 `context_window_tokens` 与
@@ -364,9 +361,9 @@ Catalog 中的正式本地运行时，不归到“自定义模型”，也不用
 该 feature 区分“用户显式选择”和“当前有效模型”：
 
 - 显式选择写入 `modelPurposeBindingsStore`；
-- 有效模型由目录、Cloud readiness、purpose defaults 和显式选择实时派生；
+- 有效模型由目录、用途默认规则和显式选择实时派生；显式选中的模型不在目录里时有效模型为空，不悄悄换成别的模型；
 - 业务运行入口必须通过公开查询读取有效模型；显式选择只用于设置编辑、持久化和删除清理，不能直接作为运行时模型；
-- 辅助用途的默认策略在 purpose registry 声明：`primary_model` 表示未显式选择时读时跟随主模型（设置页提供“使用主模型”选项，选回该项即清除显式选择，不写入主模型 ID），`fixed_model` 表示使用 purpose defaults；对话标题、AI 写作、批注、审阅和音频摘要使用前者；
+- 辅助用途的默认策略在 purpose registry 声明：`primary_model` 表示未显式选择时读时跟随主模型（设置页提供“使用主模型”选项，选回该项即清除显式选择，不写入主模型 ID），`fixed_model` 表示使用 purpose registry 声明的默认模型 ID（没有声明则为空）；对话标题、AI 写作、批注、审阅和音频摘要使用前者；
 - reasoning effort 使用 Linnkit 共享规则读时降级，不改写用户原选择；
 - 删除模型后由根编排清理所有显式绑定。
 

@@ -33,8 +33,6 @@ function createResolutionContext(): ModelPurposeResolutionContext {
   const bindings = useModelPurposeBindingsStore();
   return {
     models: catalog.models,
-    purposeDefaults: catalog.purposeDefaults,
-    cloudModelsReady: catalog.cloudModelsReady,
     selections: {
       primaryModelId: bindings.primaryModelId,
       primaryReasoningEffort: bindings.primaryReasoningEffort,

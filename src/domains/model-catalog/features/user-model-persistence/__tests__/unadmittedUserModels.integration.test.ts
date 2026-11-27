@@ -7,7 +7,6 @@ import { isRecord } from '@linnya/foundation';
 import { createFileCredentialStorage } from 'src/infra/adapters/credential-storage/file/createFileCredentialStorage';
 import type { ModelConfig } from '../../../definitions/modelCatalog';
 import type { ModelCatalogRegistry } from '../../../registry/modelCatalogRegistry';
-import { createSourceDistributionIdentity } from '../../../../../shared/distribution-identity';
 
 /**
  * 启动时停用的用户模型（未通过准入、原样留在 user_models.json 里）可以被删除、随分组删除，
@@ -72,7 +71,7 @@ async function openRegistry(): Promise<ModelCatalogRegistry> {
   registry.installEndpointCredentialStorage(
     createFileCredentialStorage(path.join(paths.directory, 'credentials.json'))
   );
-  await registry.initialize(createSourceDistributionIdentity());
+  await registry.initialize();
   return registry;
 }
 

@@ -20,7 +20,6 @@ import {
 import { Logger } from 'src/shared/logger';
 
 import type {
-  FunctionalModelDefaults,
   ModelCatalog,
   ModelConfig,
   ModelDiff,
@@ -37,8 +36,6 @@ import type {
   EndpointCredentialStatus,
 } from '../definitions/inferenceEndpoint';
 import { processModelConfig } from '../features/catalog-admission/functions/processModelConfig';
-import { fetchCloudModels } from '../features/cloud-catalog/orchestration/fetchCloudModels';
-import { isLinnyaCloudClientEnabled } from '../features/cloud-catalog/functions/isLinnyaCloudClientEnabled';
 import { resolveDefaultModelsPath } from '../features/default-catalog/functions/resolveDefaultModelsPath';
 import { applyCommittedModelChanges } from '../features/user-model-persistence/functions/applyCommittedModelChanges';
 import { modelPersister } from '../features/user-model-persistence/orchestration/modelPersister';
@@ -47,20 +44,8 @@ import { findUnreferencedInferenceEndpoints } from '../features/inference-endpoi
 import { readInferenceEndpoint } from '../features/inference-endpoints/functions/readInferenceEndpoint';
 import { prepareInferenceEndpointSelection } from '../features/inference-endpoints';
 import { endpointCredentialStore } from '../features/inference-endpoints/orchestration/endpointCredentialStore';
-import {
-  requireInstalledDistributionIdentity,
-  type DistributionIdentity,
-} from '../../../shared/distribution-identity';
 
 const logger = new Logger('ModelCatalog');
-const CLOUD_MODEL_RETRY_INTERVAL_MS = 30_000;
-
-export interface CloudModelsLoadedEvent {
-  readonly count: number;
-  readonly models: ModelConfig[];
-}
-
-export type CloudModelsLoadedListener = (event: CloudModelsLoadedEvent) => void;
 
 /** 用户目录事务已经写盘并更新内存后才发出；只是失效信号，读方重新读取目录。 */
 export interface UserModelCatalogChangedEvent {
@@ -89,7 +74,7 @@ function readModelsEnvelope(value: unknown): unknown[] {
 /**
  * 产品模型目录的进程内索引。
  *
- * 它只合并 default、Cloud、account 与 user 四个来源并提供查询/变更事件；具体 Provider 调用、
+ * 它只合并 default、account 与 user 三个来源并提供查询/变更事件；具体 Provider 调用、
  * 业务模型选择和 Renderer 状态由各自 owner 负责。
  */
 export class ModelCatalogRegistry implements ModelCatalog {
@@ -113,13 +98,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
    */
   private persistingInitialState = false;
   private modelReasoningResolver: ModelReasoningResolver | undefined;
-  private cloudModelRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  private cloudModelRetryAttemptCount = 0;
-  private cloudModelsLoadedSuccessfully = false;
-  private cloudModelLoadInFlight: Promise<boolean> | null = null;
-  private readonly cloudModelsLoadedListeners = new Set<CloudModelsLoadedListener>();
   private readonly userModelCatalogChangedListeners = new Set<UserModelCatalogChangedListener>();
-  private functionalModelDefaults: FunctionalModelDefaults = {};
 
   private constructor() {}
 
@@ -130,21 +109,21 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return ModelCatalogRegistry.instance;
   }
 
-  initialize(distributionIdentity?: DistributionIdentity): Promise<void> {
+  initialize(): Promise<void> {
     if (this.initialized) return Promise.resolve();
     // 并发调用共用同一次初始化：各自载入会互相撞“重复连接”，失败那次的回滚还会清掉成功那次的结果。
-    this.initialization ??= this.runInitialization(distributionIdentity).finally(() => {
+    this.initialization ??= this.runInitialization().finally(() => {
       this.initialization = null;
     });
     return this.initialization;
   }
 
-  private async runInitialization(distributionIdentity?: DistributionIdentity): Promise<void> {
+  private async runInitialization(): Promise<void> {
     this.initializationStarted = true;
     // 失败要回到初始化前：半截载入的连接、分组或模型会让再次初始化报“重复”，掩盖真正的原因。
     const restoreBeforeInitialization = this.captureInitializationRollback();
     try {
-      await this.loadInitialSources(distributionIdentity);
+      await this.loadInitialSources();
     } catch (error: unknown) {
       restoreBeforeInitialization();
       throw error;
@@ -158,7 +137,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     );
   }
 
-  private async loadInitialSources(distributionIdentity?: DistributionIdentity): Promise<void> {
+  private async loadInitialSources(): Promise<void> {
     this.envVars = processEnvironment();
     await modelPersister.initialize();
     await endpointCredentialStore.initialize();
@@ -169,16 +148,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
       this.customApiGroups.set(group.name, group);
     }
     this.loadDefaultModels();
-
-    if (
-      isLinnyaCloudClientEnabled(distributionIdentity ?? requireInstalledDistributionIdentity())
-    ) {
-      const cloudModelsLoaded = await this.loadCloudModels();
-      if (!cloudModelsLoaded) this.scheduleCloudModelRetry('启动阶段首次拉取失败');
-    } else {
-      logger.info('[ModelCatalog] 当前 Desktop 发行身份已关闭 Linnya Cloud 目录');
-    }
-
     this.loadUserModels(userState.models);
     // 连接与分组全部通过准入后才覆盖旧文件；未通过准入的模型条目原样带入新文件，不会因迁移丢失。
     if (userState.requiresMigration) {
@@ -196,17 +165,11 @@ export class ModelCatalogRegistry implements ModelCatalog {
     const inferenceEndpoints = new Map(this.inferenceEndpoints);
     const customApiGroups = new Map(this.customApiGroups);
     const unadmittedUserModels = this.unadmittedUserModels;
-    const functionalModelDefaults = this.functionalModelDefaults;
-    const cloudModelsLoadedSuccessfully = this.cloudModelsLoadedSuccessfully;
     return () => {
       this.models = models;
       this.inferenceEndpoints = inferenceEndpoints;
       this.customApiGroups = customApiGroups;
       this.unadmittedUserModels = unadmittedUserModels;
-      this.functionalModelDefaults = functionalModelDefaults;
-      this.cloudModelsLoadedSuccessfully = cloudModelsLoadedSuccessfully;
-      this.cloudModelRetryAttemptCount = 0;
-      this.clearCloudModelRetryTimer();
     };
   }
 
@@ -633,18 +596,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return this.getModelsByCapability(normalizedCapability)[0]?.id;
   }
 
-  getFunctionalModelDefaults(): FunctionalModelDefaults {
-    return { ...this.functionalModelDefaults };
-  }
-
-  getFunctionalDefaultModelId(purposeKey: string): string | undefined {
-    const normalizedPurposeKey = purposeKey.trim();
-    if (!normalizedPurposeKey) return undefined;
-    const modelId = this.functionalModelDefaults[normalizedPurposeKey];
-    if (!modelId) return undefined;
-    return this.getModel(modelId)?.id;
-  }
-
   getModelsByUIVisibility(visibility: string): ModelConfig[] {
     return this.getModels().filter(model => model.ui_visibility.includes(visibility));
   }
@@ -653,21 +604,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return this.getModels().filter(model => model.tags?.includes(tag) === true);
   }
 
-  areCloudModelsReady(): boolean {
-    return this.cloudModelsLoadedSuccessfully;
-  }
-
-  hasLoadedCloudModels(): boolean {
-    return this.cloudModelsLoadedSuccessfully;
-  }
-
   isInitialized(): boolean {
     return this.initialized;
-  }
-
-  onCloudModelsLoaded(listener: CloudModelsLoadedListener): () => void {
-    this.cloudModelsLoadedListeners.add(listener);
-    return () => this.cloudModelsLoadedListeners.delete(listener);
   }
 
   /** 任何入口（设置页、CLI、外部 HTTP）提交的用户目录变更都经过这里，供 Host 推送目录失效。 */
@@ -752,7 +690,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     expectedRevision: number
   ): Promise<void> {
     return this.runUserMutation(async () => {
-      // 凭据准备可能让出执行权；发布时必须与准备前快照比较，保留期间更新的账号/Cloud 投影。
+      // 凭据准备可能让出执行权；发布时必须与准备前快照比较，保留期间更新的账号投影。
       const previousModels = new Map(this.models);
       const prepared = await prepareCustomApiGroupMutation(
         mutation,
@@ -940,75 +878,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return 'missing';
   }
 
-  private async loadCloudModels(): Promise<boolean> {
-    if (this.cloudModelLoadInFlight) return this.cloudModelLoadInFlight;
-    this.cloudModelLoadInFlight = this.loadCloudModelsInternal();
-    try {
-      return await this.cloudModelLoadInFlight;
-    } finally {
-      this.cloudModelLoadInFlight = null;
-    }
-  }
-
-  private async loadCloudModelsInternal(): Promise<boolean> {
-    const result = await fetchCloudModels();
-    if (!result.success) {
-      logger.warn(`[ModelCatalog] 云端目录加载失败: ${result.failureReason ?? 'unknown'}`);
-      return false;
-    }
-
-    let cloudModels: ModelConfig[];
-    try {
-      cloudModels = result.models.map(modelData =>
-        processModelConfig({
-          modelData,
-          envVars: this.envVars,
-          reasoningResolver: this.modelReasoningResolver,
-        })
-      );
-    } catch (error) {
-      logger.error('[ModelCatalog] 云端目录准入失败:', error);
-      return false;
-    }
-
-    const nextCloudIds = new Set(cloudModels.map(model => model.id));
-    for (const [modelId, model] of this.models) {
-      if (model.billing_mode === 'cloud' && !nextCloudIds.has(modelId)) this.models.delete(modelId);
-    }
-    for (const model of cloudModels) this.models.set(model.id, model);
-
-    this.functionalModelDefaults = result.purposeDefaults;
-    this.cloudModelsLoadedSuccessfully = true;
-    this.cloudModelRetryAttemptCount = 0;
-    this.clearCloudModelRetryTimer();
-    this.emitCloudModelsLoaded(cloudModels);
-    logger.info(`[ModelCatalog] 云端目录加载完成，共 ${cloudModels.length} 个模型`);
-    return true;
-  }
-
-  private scheduleCloudModelRetry(reason: string): void {
-    if (this.cloudModelsLoadedSuccessfully || this.cloudModelRetryTimer) return;
-    logger.info(`[ModelCatalog] 云端目录将在 30 秒后重试: ${reason}`);
-    this.cloudModelRetryTimer = setTimeout(() => {
-      this.cloudModelRetryTimer = null;
-      void this.retryLoadCloudModels();
-    }, CLOUD_MODEL_RETRY_INTERVAL_MS);
-    this.cloudModelRetryTimer.unref?.();
-  }
-
-  private async retryLoadCloudModels(): Promise<void> {
-    if (this.cloudModelsLoadedSuccessfully) return;
-    this.cloudModelRetryAttemptCount += 1;
-    const loaded = await this.loadCloudModels();
-    if (!loaded) this.scheduleCloudModelRetry(`第 ${this.cloudModelRetryAttemptCount} 次失败`);
-  }
-
-  private clearCloudModelRetryTimer(): void {
-    if (!this.cloudModelRetryTimer) return;
-    clearTimeout(this.cloudModelRetryTimer);
-    this.cloudModelRetryTimer = null;
-  }
-
   private emitUserModelCatalogChanged(event: UserModelCatalogChangedEvent): void {
     for (const listener of this.userModelCatalogChangedListeners) {
       try {
@@ -1016,17 +885,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
       } catch (error) {
         // 通知失败不能把已经提交的目录事务报告成失败。
         logger.warn('[ModelCatalog] userModelCatalogChanged listener 执行失败:', error);
-      }
-    }
-  }
-
-  private emitCloudModelsLoaded(models: ModelConfig[]): void {
-    const event: CloudModelsLoadedEvent = { count: models.length, models: [...models] };
-    for (const listener of this.cloudModelsLoadedListeners) {
-      try {
-        listener(event);
-      } catch (error) {
-        logger.warn('[ModelCatalog] cloudModelsLoaded listener 执行失败:', error);
       }
     }
   }

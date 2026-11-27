@@ -5,6 +5,7 @@
 ## 边界
 
 - `definitions/` 只定义一次模型请求需要的 secret、认证 profile 和 credential 附属请求头。
+- `functions/` 放 Linnya Cloud 的两条接入规则：发行身份开关（Cloud 模型服务开放前所有发行都关闭）和稳定匿名设备 ID。它们只被本目录使用；客户端已不拉取 Cloud 模型目录，目前没有来源会产生 `host_managed:linnya-cloud` 模型。
 - `orchestration/` 按模型 ID 解析当前 credential；只有验签通过的 `official` 发行身份才可能为 `host_managed:linnya-cloud` 动态取得 `X-Device-ID`。`source` 和 `community` 在解析凭据和设备身份前直接拒绝 Cloud 请求。
 - Language inference 与 remote token count 依赖本目录公开入口，不能分别维护 Cloud header 或再次读取 ModelConfig 通用 header map。
 - Provider 主认证头仍由对应协议 capability 根据 `profile + secret` 生成；本模块不拼 `Authorization`、`x-api-key` 或厂商版本头。

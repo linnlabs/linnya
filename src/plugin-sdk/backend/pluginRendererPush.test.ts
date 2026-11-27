@@ -20,7 +20,6 @@ describe('pluginRendererPush', () => {
     clearBackendRendererIntegrationPortForTesting();
     publishPluginRendererPush.mockReset();
     installBackendRendererIntegrationPort({
-      connectModelCatalogUpdates: async () => () => undefined,
       publishTranscriptionProgress: vi.fn(),
       publishWorkspaceMutation: vi.fn(),
       publishPluginRendererPush,

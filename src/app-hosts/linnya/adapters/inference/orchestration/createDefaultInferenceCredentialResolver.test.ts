@@ -4,7 +4,7 @@ import { createOfficialDistributionIdentity } from 'src/shared/distribution-iden
 import { createDefaultInferenceCredentialResolver } from './createDefaultInferenceCredentialResolver';
 
 // 这里验证 Cloud 服务开放后的接入逻辑；服务当前是否开放由 isLinnyaCloudClientEnabled 自己的测试负责。
-vi.mock('src/domains/model-catalog/features/cloud-catalog/functions/isLinnyaCloudClientEnabled', () => ({
+vi.mock('src/app-hosts/linnya/adapters/model-request-auth/functions/isLinnyaCloudClientEnabled', () => ({
   isLinnyaCloudClientEnabled: (identity: { readonly kind: string }) => identity.kind === 'official',
 }));
 

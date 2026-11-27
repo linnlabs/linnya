@@ -21,7 +21,6 @@ describe('captureModelPurposeSnapshot', () => {
         { id: 'vision-selected', catalog_source: 'user', capabilities: ['vision'] },
         { id: 'graph-selected', catalog_source: 'user', capabilities: ['chat'] },
       ],
-      purposeDefaults: {}, cloudModelsReady: true,
     });
     setModelPurposeBinding('embedding', 'embedding-selected');
     setModelPurposeBinding('pdf_ocr', 'ocr-selected');
@@ -35,7 +34,7 @@ describe('captureModelPurposeSnapshot', () => {
     });
     expect(Object.isFrozen(first)).toBe(true);
     expect(captureModelPurposeSnapshot().embeddingModelId).toBe('embedding-default');
-    catalog.replaceSnapshot({ models: [], purposeDefaults: {}, cloudModelsReady: true });
+    catalog.replaceSnapshot({ models: [] });
     expect(captureModelPurposeSnapshot()).toEqual({
       embeddingModelId: null, pdfOcrModelId: null, imageVisionModelId: null, graphExtractionModelId: null,
     });

@@ -19,7 +19,6 @@ import type {
 } from '@app/schemas/model-inference';
 import type { DocumentOcrRoute } from '@app/schemas/document-ocr';
 import type { TranscriptionRoute } from '@app/schemas/transcription';
-import type { DistributionIdentity } from '../../../shared/distribution-identity';
 import type {
   CredentialReference,
   InferenceEndpointSelection,
@@ -50,7 +49,7 @@ export interface TokenRouteCapabilities {
  *
  * 中文备注：
  * - 同一个模型经官方、OpenRouter、硅基流动或 Linnya Cloud proxy 是不同 route；
- * - route 必须由配置显式声明或由 cloud catalog 显式生成，不能靠模型名猜计数能力。
+ * - route 必须由配置显式声明，不能靠模型名猜计数能力。
  * - capabilityId 与 endpointModelId 都是 Host 侧不透明 identity，不表达 Provider 产品归属。
  */
 export interface ModelTokenRoute {
@@ -64,8 +63,7 @@ export interface ModelTokenRoute {
 /**
  * 已解析好的 token 单价，单位为 USD / 1M tokens。
  *
- * 阶梯、币种换算、优惠等复杂规则不在 registry 内计算；上游配置或 cloud catalog
- * 需要先解析为这里的有效单价，后续由 linnkit 的纯 computeCost 消费。
+ * 阶梯、币种换算、优惠等复杂规则不在 registry 内计算；上游配置需要先解析为这里的有效单价，后续由 linnkit 的纯 computeCost 消费。
  */
 export interface ModelTokenPricing {
   currency: 'USD';
@@ -172,7 +170,7 @@ export interface ModelConfig {
    * 用户可见的 UI 标签（可选）。
    *
    * 纯展示用途：在模型列表/选择器中显示附加标识（如"限免"、"限额"、"新"等）。
-   * 云端模型的 tags 来自 Cloud KV，本地模型的 tags 来自 default_models.json。
+   * 内置模型的 tags 来自 default_models.json。
    *
    * 注意区分：
    * - `tags`：给用户看的 UI 标签，不影响程序逻辑
@@ -209,8 +207,6 @@ export interface ModelDiff {
   /** 删除的模型ID */
   removed: string[];
 }
-
-export type FunctionalModelDefaults = Record<string, string>;
 
 /**
  * `user_models.json` 中启动时没有通过准入的用户模型。
@@ -390,30 +386,9 @@ export interface ModelCatalog {
    */
   getDefaultModelIdByCapability(capability: string): string | undefined;
 
-  /**
-   * 获取功能默认模型表。
-   *
-   * 返回值中的 model id 已经是客户端本地 Model Catalog ID（例如 cloud-deepseek-v4-flash），
-   * 不再是云端原始模型名。
-   */
-  getFunctionalModelDefaults(): FunctionalModelDefaults;
-
-  /**
-   * 按功能键获取默认模型 ID。
-   */
-  getFunctionalDefaultModelId(purposeKey: string): string | undefined;
-
-  /**
-   * 当前进程内是否已成功拉取过云端模型列表。
-   */
-  areCloudModelsReady(): boolean;
-
   /** 当前进程内目录是否完成初始化。 */
   isInitialized(): boolean;
 
-  /**
-   * 初始化注册表
-   * @param envVars 环境变量映射
-   */
-  initialize(distributionIdentity?: DistributionIdentity): Promise<void>;
+  /** 初始化注册表：载入内置目录、用户模型、端点与分组；并发调用共用同一次初始化。 */
+  initialize(): Promise<void>;
 }

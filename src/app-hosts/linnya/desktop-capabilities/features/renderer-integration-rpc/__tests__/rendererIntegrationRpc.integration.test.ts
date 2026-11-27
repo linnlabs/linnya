@@ -11,8 +11,7 @@ import { createDesktopRendererIntegrationRpcHandlers } from '../orchestration/cr
 
 describe('Backend Renderer integration RPC', () => {
   it('保持既有业务 port 与投影事实，不把 channel 选择交给 Backend', async () => {
-    const disconnect = vi.fn();
-    const port = createRendererPort(async () => disconnect);
+    const port = createRendererPort();
     const pair = createPeerPair(port);
     const failures: Error[] = [];
     const client = createBackendRendererIntegrationRpcClient({
@@ -20,7 +19,6 @@ describe('Backend Renderer integration RPC', () => {
       onAsyncFailure: error => failures.push(error),
     });
 
-    const disposeModelCatalog = await client.connectModelCatalogUpdates();
     client.publishTranscriptionProgress({
       stage: 'merge',
       percent: 80,
@@ -69,7 +67,6 @@ describe('Backend Renderer integration RPC', () => {
       expect(port.publishModelsChanged).toHaveBeenCalledOnce();
       expect(port.publishConversationActivityChanged).toHaveBeenCalledOnce();
     });
-    expect(port.connectModelCatalogUpdates).toHaveBeenCalledOnce();
     expect(port.publishTranscriptionProgress).toHaveBeenCalledWith({
       stage: 'merge',
       percent: 80,
@@ -91,8 +88,6 @@ describe('Backend Renderer integration RPC', () => {
     expect(port.publishTodosChanged).toHaveBeenCalledWith('project-1');
     expect(failures).toEqual([]);
 
-    disposeModelCatalog();
-    await vi.waitFor(() => expect(disconnect).toHaveBeenCalledOnce());
     pair.dispose();
   });
 
@@ -158,11 +153,8 @@ describe('Backend Renderer integration RPC', () => {
   });
 });
 
-function createRendererPort(
-  connectModelCatalogUpdates = async (): Promise<() => void> => () => undefined
-): BackendRendererIntegrationPort {
+function createRendererPort(): BackendRendererIntegrationPort {
   return {
-    connectModelCatalogUpdates: vi.fn(connectModelCatalogUpdates),
     publishTranscriptionProgress: vi.fn(),
     publishWorkspaceMutation: vi.fn(),
     publishPluginRendererPush: vi.fn(),

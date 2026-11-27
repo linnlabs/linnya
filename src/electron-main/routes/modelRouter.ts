@@ -74,8 +74,6 @@ export function createModelRouter(modelRemoval: ConfiguredModelRemovalUseCase): 
       const response = {
         models: models,
         total: models.length,
-        task_defaults: modelCatalog.getFunctionalModelDefaults(),
-        cloud_models_ready: modelCatalog.areCloudModelsReady(),
         timestamp: new Date().toISOString(),
       };
 

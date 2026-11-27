@@ -64,7 +64,7 @@ beforeEach(async () => {
   installPluginHostTestRuntime({ installedPluginIds: ['platform', 'canvas'], enabledPluginIds: ['platform', 'canvas'] });
   backendPluginRegistry.register(platformBackendPlugin); backendPluginRegistry.register(createCanvasBackendPlugin(), { allowPluginCli: true });
   publishPluginRendererPush = vi.fn(() => { expect(database.inTransaction).toBe(false); });
-  installBackendRendererIntegrationPort({ connectModelCatalogUpdates: async () => () => undefined,
+  installBackendRendererIntegrationPort({
     publishTranscriptionProgress: vi.fn(), publishWorkspaceMutation: vi.fn(), publishPluginRendererPush, publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishConversationActivityChanged: vi.fn(), publishPluginsChanged: vi.fn(),
   });
   projectId = createProjectLifecycle(database).create({ name: '历史集成' });

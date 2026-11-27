@@ -20,8 +20,6 @@ function chatModel(id: string): ModelCatalogItem {
 function loadCatalog(models: readonly ModelCatalogItem[]): void {
   useModelCatalogStore().replaceSnapshot({
     models,
-    purposeDefaults: {},
-    cloudModelsReady: false,
   });
 }
 
