@@ -24,7 +24,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 ## 关键语义
 
 - `models` 返回已经物化的 Chat 与图片生成模型；`model_config_id` 是 `send --model / --image-model` 接受的精确身份。输出不含 route、credential reference 或 secret，并分别保留用户图片与工具结果图片能力。
-- `send` 先用与 `models` 相同的规则校验显式 Chat/图片模型，再拒绝已有 active foreground root run、保存显式 Agent 选择并进入正式 Flow admission；不存在、用途错误、缺 route 或缺凭据必须在任何持久化或 Flow side effect 前失败。
+- `send` 先用与 `models` 相同的规则校验显式 Chat/图片模型，再拒绝已有 active foreground root run、保存显式 Agent 选择并进入正式 Flow admission；不存在、用途错误、缺 route 或缺凭据必须在任何持久化或 Flow side effect 前失败。没有指定模型、且一个聊天模型都没配置时，同样在这里以 `capability_unavailable` 拒绝，并说明可以改用 `tools call` 或让用户去设置里添加模型。
 - `image_generation_model_id` 是单次请求覆盖项，只映射到现有 Flow request，不拥有或修改 Renderer 的全局图片模型偏好。
 - `send` 的 success receipt 必须包含 durable committed user message identity 和 Host 接纳的 `turn_id / run_id / execution_id`。回执不代表运行完成。
 - `send.research_scope` 是新版研究工程入口的显式问题/读者/模式/材料范围，仅与显式 `research_v1` 选择一起接纳。控制面将其投影为 `ConversationOptions.research_scope`，不生成 `host_tool_call`。研究 Agent 首次接纳后将其保存为 descriptor 请求的 `researchScope`，主模型与受控子任务读取同一范围。完整原消息继续走用户消息通道；范围与未绑定上下文由 Research 接纳边界校验，普通 Default 请求不受影响。
@@ -53,6 +53,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - 只给项目时续用该项目最近一段 CLI 会话：会话由 Linnya CLI 创建（会话 metadata 的 `origin: linnya_cli`）、距上次活动不超过 30 分钟、当前没有前台运行，取最近的一段；没有就新建一段前端可见的会话，运行前由事件库一次写入身份行、标题 `Linnya CLI · YYYY-MM-DD HH:mm` 与入口标记。`new_session: true` 总是新建；最近一段正在运行时也新建，不排队、不并入。响应的 `conversation_reused` 说明本次是否续用。代价：两个外部调用方同时操作同一项目会进同一段会话，CLI 目前分不出调用方；工具卡、账本（external 与运行身份）照常完整记录。`send` 仍各自独立成会话。
 - 只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。
 - Host 工具请求使用 `yield_after_batch`：完整工具批次结算后结束 run，不调用 LLM。工具 decision/output、权限、审计、pending revision 与 UI projection 仍走普通工具链，不能在本 feature 复制工具执行逻辑。
+- 这类 run 不要求 Linnya 配置任何聊天模型：新安装不预置模型，只用外部 Agent 的用户也可以一个都不配，读写文档照常接纳并执行。
 - 这类 run 没有模型，结果交给外部调用方，由调用方自己决定看不看图：Host 的 `toolResultImagePolicy` 对这次调用（`authorizedHostToolCall.resultReceiver='host_caller'`）一律允许附带图片，例如 `read_file` 读图片或 PDF `page_image`。CLI 拿到带附件的工具消息后，逐个用 `tools read_attachment` 读取原件：只认该会话最近 200 条消息里这条工具消息已登记的附件，经受管图片账本复核并核对字节数与 SHA-256，再把文件写到系统临时目录 `linnya-cli/attachments/<conversation_id>/<sha256>.<ext>`（仅当前用户可读），输出 `attachment_files` 给出路径与尺寸。
 - Web 开关在提交 Flow 前检查；关闭后不接纳新 Web 调用，已接纳的 run 不被暗中取消。普通 Agent 不受此开关影响。CLI 拒绝 `deep_search=true`，保证此入口不隐式启动模型子运行；外部 Agent 自行编排普通搜索与阅读。`tool_output_read` 必须沿用原会话，以保留 blob 归属。
 

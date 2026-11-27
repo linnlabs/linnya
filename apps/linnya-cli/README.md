@@ -388,6 +388,8 @@ CLI 与 Host 都要升级并重启 Host；旧协议会明确拒绝，不做双�
 例如 OpenCode 使用 `~/.config/opencode/skills/deep-research/SKILL.md`；任务明确要求先加载
 `deep-research`，用其原生文件读取工具查看参考资源，再用 Linnya CLI 操作 Web 和 Workspace。
 不要用 `send` 代替外部推理：`send` 会启动 Linnya 的 Agent 和模型，`tools call` 才是无模型工具入口。
+`tools call` 不要求 Linnya 配置任何模型：新安装不预置模型，`linnya models` 为空时照样能读写文档。
+这时 `send` 会以 `capability_unavailable`（退出码 7）拒绝，并提示改用 `tools call` 或请用户在设置里添加模型。
 
 ### 3.2 与 Slides CLI 的区别
 
