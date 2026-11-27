@@ -72,8 +72,11 @@ export const LOCAL_CI_STEP_SCHEDULE: LocalCiSchedule = {
     packages: {
       'Install dependencies': 'build',
       // schemas / provider 包的 pack-smoke 会 rimraf 并重建各自 dist；Canvas Backend 运行时从 dist 解析 @app/schemas，
-      // 所以它和测试不能重叠。
-      'Verify public packages': 'build',
+      // 所以构建与包验证拆成 build / static / test 三步：先落盘 schemas 与 provider dist，再并行跑只读检查，
+      // 最后和其他测试按测试规则错峰执行插件测试。
+      'Verify schemas and provider package gates': 'build',
+      'Verify renderer-ui and workspace package checks': 'static',
+      'Run workspace plugin tests': 'test',
       'Run Canvas business cases': 'test',
     },
     'test-shards': {

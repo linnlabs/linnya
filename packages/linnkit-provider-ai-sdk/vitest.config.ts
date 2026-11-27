@@ -1,3 +1,4 @@
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
@@ -19,5 +20,6 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    maxWorkers: Math.max(1, Math.min(os.availableParallelism(), 4)),
   },
 });

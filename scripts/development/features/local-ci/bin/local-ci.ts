@@ -202,6 +202,8 @@ async function main(): Promise<number> {
         LINNYA_RUNTIME_ARCHIVE_CACHE_DIR: path.join(repositoryRoot, '_dev_data', 'ci-local', 'runtime-archives'),
         // schemas 与插件制品只在这次干净全量检出内复用；定向、工作副本和原地运行仍独立构建。
         LINNYA_CI_ARTIFACT_CHECKOUT: checkout.clean && fullScope ? realpathSync(checkout.root) : '',
+        // 临时检出每次路径唯一，tsx 磁盘缓存既无法跨次复用，又会让全局 $TMPDIR/tsx-* 持续膨胀成启动与内存瓶颈。
+        TSX_DISABLE_CACHE: process.env.TSX_DISABLE_CACHE ?? '1',
       },
       signal: controller.signal,
       concurrency: parallelism.concurrency,

@@ -38,31 +38,32 @@ jobs:
         run: pnpm run lint:code
       - name: Run public architecture gates
         run: |
-          pnpm run guard:github-actions-pinned
-          pnpm run guard:markdown-links
-          pnpm run guard:public-source-sanitization
-          pnpm run guard:public-document-boundary
-          pnpm run guard:remote-telemetry-boundary
-          pnpm run guard:public-package-private-plugin-boundary
-          pnpm run guard:plugin-boundaries
           pnpm run guard:tsc-baseline
-          pnpm run guard:shell-tool-boundary
-          pnpm run guard:markdown-domain-boundary
-          pnpm run guard:tool-directory-boundary
-          pnpm run guard:model-inference-boundary
-          pnpm run guard:provider-package-boundary
-          pnpm run guard:no-empty-catch
-          pnpm run guard:renderer-state-boundary
-          pnpm run guard:module-barrel-boundary
-          pnpm run guard:shared-implementations
-          pnpm run guard:renderer-module-resolution
-          pnpm run lint:style
-          pnpm run guard:no-font-binary-fixtures
-          pnpm run test:dependency-license-evidence
-          pnpm run guard:dependency-license-evidence:public
-          pnpm run test:production-package-lock
-          pnpm run release:lock:production:audit
-          pnpm run test:artifact-content-bom
+          pnpm run guard:plugin-boundaries
+          node scripts/guards/run-parallel-pnpm-scripts.mjs \
+            guard:shell-tool-boundary \
+            guard:no-empty-catch \
+            lint:style \
+            guard:public-source-sanitization \
+            guard:renderer-state-boundary \
+            release:lock:production:audit \
+            guard:model-inference-boundary \
+            guard:markdown-links \
+            guard:remote-telemetry-boundary \
+            guard:public-package-private-plugin-boundary \
+            guard:module-barrel-boundary \
+            guard:public-document-boundary \
+            guard:github-actions-pinned \
+            guard:markdown-domain-boundary \
+            guard:shared-implementations \
+            guard:provider-package-boundary \
+            guard:tool-directory-boundary \
+            guard:dependency-license-evidence:public \
+            guard:renderer-module-resolution \
+            test:artifact-content-bom \
+            test:production-package-lock \
+            test:dependency-license-evidence \
+            guard:no-font-binary-fixtures
 
   packages:
     if: ${{ !inputs.architecture-only }}
@@ -81,17 +82,20 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Verify public packages
+      - name: Verify schemas and provider package gates
         run: |
           pnpm run test:schemas-package-gate
-          pnpm run typecheck:linnya-cli
           pnpm run test:provider-package-gate
+      - name: Verify renderer-ui and workspace package checks
+        run: |
+          pnpm --filter @plugin/slides lint
           pnpm run test:renderer-ui-package-gate
+          pnpm run typecheck:linnya-cli
           pnpm --filter @linnya/foundation typecheck
           pnpm --filter @linnya/plugin-host-contract typecheck
-          pnpm --filter @plugin/slides lint
           pnpm --filter @plugin/slides typecheck
-          pnpm run test:workspace-plugins:except-canvas
+      - name: Run workspace plugin tests
+        run: pnpm run test:workspace-plugins:except-canvas
       # 与 Canvas 回归使用同一条命令。本机共用检出时复用结果；GitHub 的独立 runner 各自验证。
       - name: Run Canvas business cases
         run: pnpm --filter @plugin/canvas test
