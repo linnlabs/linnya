@@ -93,3 +93,29 @@
   margin: 0;
   white-space: nowrap;
 }
+
+/* 开关打开但没选图谱抽取模型：紧跟说明文字，和说明同宽，用警告色 */
+.config-tab .parsing-option-warning {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-footnote);
+  color: var(--color-warning-text);
+}
+
+.config-tab .parsing-option-link {
+  padding: 0 var(--space-0-5);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.config-tab .parsing-option-link:hover {
+  background-color: var(--color-accent-bg-subtle);
+}
+
+.config-tab .parsing-option-link:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}

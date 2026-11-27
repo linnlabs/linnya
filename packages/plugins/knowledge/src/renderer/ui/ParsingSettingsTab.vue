@@ -23,6 +23,12 @@
               <p class="parsing-option-description">
                 {{ knowledgeBaseMessage('knowledgeBase.parsing.graph.description') }}
               </p>
+              <p v-if="showGraphExtractionModelNotice" class="parsing-option-warning" role="status">
+                {{ knowledgeBaseMessage('knowledgeBase.parsing.graph.modelMissing') }}
+                <button type="button" class="parsing-option-link" @click="openModelConfiguration">
+                  {{ knowledgeBaseMessage('knowledgeBase.parsing.graph.chooseModel') }}
+                </button>
+              </p>
             </div>
             <div class="option-control">
               <Switch
@@ -70,10 +76,10 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { openModelConfiguration } from '@plugin/renderer/modelConfiguration'
 import { useKnowledgeBase } from '../runtime.js'
 import { showWorkspaceNotification } from '@plugin/renderer/workspaceRuntime'
 import { useKnowledgeBaseLocalization } from './useKnowledgeBaseLocalization'
+import { useGraphExtractionModelNotice } from '../orchestration/useGraphExtractionModelNotice'
 import { SettingsIcon } from '@linnya/renderer-ui/icons';
 import { BaseButton, CustomSelect, Switch } from '@linnya/renderer-ui';
 
@@ -98,6 +104,12 @@ const { knowledgeBaseMessage } = useKnowledgeBaseLocalization()
 const localForceVisionMode = ref(false)
 // 知识图谱构建：默认关闭（只有显式开启才会触发后续抽取/索引）
 const localEnableGraphIndexing = ref(false)
+// 开关打开但全局没选图谱抽取模型时，后端只会跳过抽取，这里负责把这件事告诉用户
+const {
+  graphExtractionModelMissing,
+  showGraphExtractionModelNotice,
+  openModelConfiguration,
+} = useGraphExtractionModelNotice(localEnableGraphIndexing)
 
 // --- Computed ---
 const storeForceVisionMode = computed(() => kbStore.parsingSettings?.forceVisionMode ?? false)
@@ -159,13 +171,21 @@ const updateEnableGraphIndexing = async (newValue) => {
   localEnableGraphIndexing.value = newValue
   try {
     await kbStore.updateKbModelSettings(kbId, { enableGraphIndexing: newValue })
-    showWorkspaceNotification(
-      newValue
-        ? knowledgeBaseMessage('knowledgeBase.parsing.toast.graphEnabled')
-        : knowledgeBaseMessage('knowledgeBase.parsing.toast.graphDisabled'),
-      'success',
-      2500
-    )
+    if (newValue && graphExtractionModelMissing.value) {
+      showWorkspaceNotification(
+        knowledgeBaseMessage('knowledgeBase.parsing.toast.graphEnabledWithoutModel'),
+        'warning',
+        4500
+      )
+    } else {
+      showWorkspaceNotification(
+        newValue
+          ? knowledgeBaseMessage('knowledgeBase.parsing.toast.graphEnabled')
+          : knowledgeBaseMessage('knowledgeBase.parsing.toast.graphDisabled'),
+        'success',
+        2500
+      )
+    }
   } catch (error) {
     console.error('[ParsingSettingsTab] 更新知识图谱构建开关失败:', error)
     // 回滚 UI（以 store 为准）

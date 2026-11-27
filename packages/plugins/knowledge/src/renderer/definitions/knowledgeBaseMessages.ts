@@ -124,6 +124,7 @@ export type KnowledgeBaseMessageKey =
   | 'knowledgeBase.upload.scopeHint.link'
   | 'knowledgeBase.upload.scopeHint.afterLink'
   | 'knowledgeBase.upload.pdfForceOcrLimit'
+  | 'knowledgeBase.upload.graphModelMissing'
   | 'knowledgeBase.upload.startParsing'
   | 'knowledgeBase.upload.empty.title'
   | 'knowledgeBase.upload.empty.description'
@@ -243,7 +244,10 @@ export type KnowledgeBaseMessageKey =
   | 'knowledgeBase.parsing.toast.noKnowledgeBase'
   | 'knowledgeBase.parsing.toast.updateFailed'
   | 'knowledgeBase.parsing.toast.graphEnabled'
-  | 'knowledgeBase.parsing.toast.graphDisabled';
+  | 'knowledgeBase.parsing.toast.graphDisabled'
+  | 'knowledgeBase.parsing.toast.graphEnabledWithoutModel'
+  | 'knowledgeBase.parsing.graph.modelMissing'
+  | 'knowledgeBase.parsing.graph.chooseModel';
 
 export type KnowledgeBaseMessageResolver = (
   key: KnowledgeBaseMessageKey,

@@ -123,6 +123,7 @@ export const KNOWLEDGE_BASE_MESSAGE_FALLBACKS = {
   'knowledgeBase.upload.scopeHint.link': '这里',
   'knowledgeBase.upload.scopeHint.afterLink': '。',
   'knowledgeBase.upload.pdfForceOcrLimit': '已开启强制 OCR 解析：PDF 会受当前 OCR 模型页数上限影响，超出上限会被拒绝。',
+  'knowledgeBase.upload.graphModelMissing': '本知识库已开启知识图谱构建，但还没有选择图谱抽取模型：文档照常入库，图谱暂不构建。',
   'knowledgeBase.upload.startParsing': '开始解析',
   'knowledgeBase.upload.empty.title': '暂无文件',
   'knowledgeBase.upload.empty.description': '将文件拖拽到上方上传区域，或点击上传区域选择文件',
@@ -243,6 +244,9 @@ export const KNOWLEDGE_BASE_MESSAGE_FALLBACKS = {
   'knowledgeBase.parsing.toast.updateFailed': '更新失败，请稍后重试',
   'knowledgeBase.parsing.toast.graphEnabled': '已启用知识图谱构建',
   'knowledgeBase.parsing.toast.graphDisabled': '已关闭知识图谱构建',
+  'knowledgeBase.parsing.toast.graphEnabledWithoutModel': '已启用知识图谱构建，但还没有选择图谱抽取模型，选好后才会开始构建',
+  'knowledgeBase.parsing.graph.modelMissing': '还没有选择图谱抽取模型，图谱暂不会构建；选好后，下次搜索或上传时会补上。',
+  'knowledgeBase.parsing.graph.chooseModel': '去选择',
 } as const satisfies Readonly<Record<KnowledgeBaseMessageKey, string>>;
 
 export const KNOWLEDGE_BASE_MESSAGE_CATALOG: MessageCatalogContribution = {
@@ -367,6 +371,7 @@ export const KNOWLEDGE_BASE_MESSAGE_CATALOG: MessageCatalogContribution = {
       'knowledgeBase.upload.scopeHint.link': 'here',
       'knowledgeBase.upload.scopeHint.afterLink': '.',
       'knowledgeBase.upload.pdfForceOcrLimit': 'Forced OCR parsing is enabled. PDFs are limited by the selected OCR model page cap and will be rejected when they exceed it.',
+      'knowledgeBase.upload.graphModelMissing': 'Knowledge graph build is on for this knowledge base, but no graph extraction model is selected. Documents are still added; graphs are not built yet.',
       'knowledgeBase.upload.startParsing': 'Start parsing',
       'knowledgeBase.upload.empty.title': 'No files yet',
       'knowledgeBase.upload.empty.description': 'Drag files to the upload area above, or click the upload area to choose files',
@@ -491,6 +496,9 @@ export const KNOWLEDGE_BASE_MESSAGE_CATALOG: MessageCatalogContribution = {
       'knowledgeBase.parsing.toast.updateFailed': 'Update failed. Please try again later.',
       'knowledgeBase.parsing.toast.graphEnabled': 'Knowledge graph build enabled',
       'knowledgeBase.parsing.toast.graphDisabled': 'Knowledge graph build disabled',
+      'knowledgeBase.parsing.toast.graphEnabledWithoutModel': 'Knowledge graph build enabled, but no graph extraction model is selected. Building starts once you choose one.',
+      'knowledgeBase.parsing.graph.modelMissing': 'No graph extraction model is selected, so no graph is built yet. Once you choose one, graphs are filled in on the next search or upload.',
+      'knowledgeBase.parsing.graph.chooseModel': 'Choose model',
     },
   },
 };

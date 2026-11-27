@@ -46,6 +46,12 @@
         <p v-if="kbStore.parsingSettings?.forceVisionMode" class="control-hint-text warning-text">
           {{ knowledgeBaseMessage('knowledgeBase.upload.pdfForceOcrLimit') }}
         </p>
+        <p v-if="showGraphExtractionModelNotice" class="control-hint-text warning-text" role="status">
+          {{ knowledgeBaseMessage('knowledgeBase.upload.graphModelMissing') }}
+          <span class="scope-link" role="button" tabindex="0" @click.stop="openModelConfiguration" @keydown.enter.prevent="openModelConfiguration">
+            {{ knowledgeBaseMessage('knowledgeBase.parsing.graph.chooseModel') }}
+          </span>
+        </p>
       </div>
       <div class="right-controls">
         <input 
@@ -130,6 +136,7 @@ import { showWorkspaceNotification } from '@plugin/renderer/workspaceRuntime'
 import { ActionButtons } from '@linnya/renderer-ui';
 import { UploadIcon } from '@linnya/renderer-ui/icons';
 import { useKnowledgeBaseLocalization } from './useKnowledgeBaseLocalization';
+import { useGraphExtractionModelNotice } from '../orchestration/useGraphExtractionModelNotice';
 import {
   resolveUploadTaskErrorText,
   resolveUploadTaskStatusText,
@@ -149,6 +156,13 @@ const kbStore = useKnowledgeBase()
 const { currentLocale, knowledgeBaseMessage } = useKnowledgeBaseLocalization()
 const fileInput = ref(null)
 const isDragging = ref(false)
+
+// 新文件归属 selectedKbId；只要这个库开了图谱而全局没选抽取模型，就提示这批文档不会建图谱
+const selectedKbGraphEnabled = computed(() => {
+  const kb = props.selectedKbId ? kbStore.getKnowledgeBaseById(props.selectedKbId) : null
+  return kb?.enableGraphIndexing === true
+})
+const { showGraphExtractionModelNotice, openModelConfiguration } = useGraphExtractionModelNotice(selectedKbGraphEnabled)
 
 // 支持的文件类型提示文案，基于后端/配置常量实时生成，避免文案与实际支持列表不一致
 const supportedFileTypesText = computed(() => {
