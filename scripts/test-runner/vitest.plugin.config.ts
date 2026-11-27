@@ -1,7 +1,26 @@
+import os from 'node:os';
 import type { Alias, AliasOptions } from 'vite';
 import { defineConfig } from 'vitest/config';
 
 import hostVitestConfig from '../../vitest.config';
+
+export const DEFAULT_PLUGIN_VITEST_MAX_WORKERS = 12;
+
+export function resolvePluginVitestMaxWorkers(
+  rawValue = process.env.LINNYA_PLUGIN_VITEST_MAX_WORKERS,
+  availableCores = os.availableParallelism(),
+): number {
+  const cappedDefault = Math.max(1, Math.min(availableCores, DEFAULT_PLUGIN_VITEST_MAX_WORKERS));
+  if (rawValue === undefined) return cappedDefault;
+  const trimmed = rawValue.trim();
+  if (trimmed === '') return cappedDefault;
+  if (!/^[1-9]\d*$/u.test(trimmed)) {
+    throw new Error(
+      `LINNYA_PLUGIN_VITEST_MAX_WORKERS must be a positive integer, got: ${JSON.stringify(rawValue)}`,
+    );
+  }
+  return Number(trimmed);
+}
 
 export interface PluginVitestConfigOptions {
   readonly packageDirectory: string;
@@ -22,6 +41,10 @@ export function createPluginVitestConfig(
   return defineConfig({
     ...hostVitestConfig,
     root: options.packageDirectory,
+    test: {
+      ...hostVitestConfig.test,
+      maxWorkers: resolvePluginVitestMaxWorkers(),
+    },
     resolve: {
       ...hostVitestConfig.resolve,
       alias: [

@@ -53,7 +53,7 @@
     "test": "vitest run --config vitest.config.ts src",
     "typecheck:svg-phase0": "tsc --noEmit -p dev/tsconfig.svg-phase0.json",
     "validate:svg-phase0": "pnpm run typecheck:svg-phase0 && node ../../../scripts/build/run-esbuild.mjs dev/tools/svgPhase0Validation.ts --bundle --platform=node --outfile=dist/dev/svg-phase0-validation.cjs --format=cjs --external:electron --external:sharp --external:pptxgenjs --external:jszip --external:@xmldom/xmldom --tsconfig=tsconfig.json && electron dist/dev/svg-phase0-validation.cjs",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.brush-worker.json && vue-tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.brush-worker.json && vue-tsc --noEmit -p tsconfig.json",
     "watch:raster-preload": "pnpm run build:raster-preload --sourcemap=inline --watch",
     "watch:brush-preload": "pnpm run build:brush-preload --sourcemap=inline --watch",
     "watch:raster-worker": "vite build --config vite.raster-worker.config.mts --watch",

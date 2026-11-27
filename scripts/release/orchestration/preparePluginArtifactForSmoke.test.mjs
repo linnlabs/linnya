@@ -18,26 +18,28 @@ afterEach(() => {
   rmSync(temporary, { recursive: true, force: true });
 });
 
-it('shares a completed package, rejects replacement and builds afresh for standalone smoke', () => {
-  const build = vi.fn(() => writeFileSync(manifest, JSON.stringify({ sha512: 'original' })));
+it('shares a completed package, rejects replacement and builds afresh for standalone smoke', async () => {
+  const build = vi.fn(async () => {
+    writeFileSync(manifest, JSON.stringify({ sha512: 'original' }));
+  });
   const prepare = () => preparePluginArtifactForSmoke({ packageDir, repoRoot, build });
-  prepare();
-  prepare();
+  await prepare();
+  await prepare();
   expect(build).toHaveBeenCalledTimes(1);
   writeFileSync(manifest, JSON.stringify({ sha512: 'replacement' }));
-  expect(prepare).toThrow('artifact changed');
+  await expect(prepare()).rejects.toThrow('artifact changed');
   vi.stubEnv('LINNYA_CI_ARTIFACT_CHECKOUT', '');
-  prepare();
+  await prepare();
   expect(build).toHaveBeenCalledTimes(2);
 });
 
-it('propagates the failed artifact guard even if the packager has already written its outputs', () => {
-  const build = vi.fn(() => {
+it('propagates the failed artifact guard even if the packager has already written its outputs', async () => {
+  const build = vi.fn(async () => {
     writeFileSync(manifest, JSON.stringify({ sha512: 'incomplete' }));
     throw new Error('artifact guard failed');
   });
   const prepare = () => preparePluginArtifactForSmoke({ packageDir, repoRoot, build });
-  expect(prepare).toThrow('artifact guard failed');
-  expect(prepare).toThrow('did not finish successfully');
+  await expect(prepare()).rejects.toThrow('artifact guard failed');
+  await expect(prepare()).rejects.toThrow('did not finish successfully');
   expect(build).toHaveBeenCalledTimes(1);
 });

@@ -42,7 +42,7 @@
     "./backend-test-support": "./src/backend/test-support.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json && vue-tsc --noEmit -p tsconfig.json",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "test": "vitest run --config vitest.config.ts src",
     "lint": "pnpm -w exec eslint --max-warnings 0 packages/plugins/canvas/src",
     "build:backend": "node scripts/build/cleanBackend.mjs && tsup --config tsup.plugin.config.ts",

@@ -2,9 +2,9 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 /** 两套 smoke 始终分别运行；只在 CI 的同一份临时检出内共享一次已成功的打包。 */
-export function preparePluginArtifactForSmoke({ packageDir, repoRoot, build }) {
+export async function preparePluginArtifactForSmoke({ packageDir, repoRoot, build }) {
   if (process.env.LINNYA_CI_ARTIFACT_CHECKOUT !== repoRoot || !packageDir.startsWith(`${repoRoot}${path.sep}`)) {
-    build();
+    await build();
     return;
   }
   const owner = path.relative(repoRoot, packageDir);
@@ -20,7 +20,7 @@ export function preparePluginArtifactForSmoke({ packageDir, repoRoot, build }) {
   }
   // 包的末尾还有大小与内容门禁。打包中止时留下空凭据，后续验收也报失败。
   writeFileSync(receipt, '');
-  build();
+  await build();
   const sha512 = digest();
   writeFileSync(receipt, sha512);
   console.log(`[artifact-smoke] prepared ${owner} sha512=${sha512}`);
