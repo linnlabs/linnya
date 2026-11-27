@@ -2,6 +2,11 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.18.0 - 2026-11-27
+
+- `LinnyaLoadingIcon` 删除“光流”动态：`activity="processing"` 弃用，显示与 `thinking` 相同的摇曳（根节点 `data-state` 为 `thinking`），下一个 major 删除这个取值；默认 `activity` 从 `processing` 改为 `thinking`，不传时显示摇曳。转写、翻译、审阅等处理已有材料的位置随之改为摇曳。光流专用的 30% 浅色底、亮带遮罩与 `linnya-ui-icon-flow` 关键帧一并删除；减少动态效果时直接停住部件，仍是完整实色标识。摇曳、生长的每一帧不变。
+- 现有 `^3.0.0` 插件保持兼容，仍传 `processing` 的插件不用改动，显示为摇曳。
+
 ## 3.17.0 - 2026-11-27
 
 - 新增只读查询 `isModalOverlayOpen()`：浮层栈里有没有模态层（弹窗、确认框、图片预览、用 `useModalOverlay` 的自有模态浮层）；下拉、日期面板等临时浮层不算。Host 的全局快捷键据此不作用于被盖住的页面，接住还是放行由 Host 决定。

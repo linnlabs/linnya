@@ -117,19 +117,9 @@
 
 /*
  * AI 进行中：Linnya 标识按活动选动态，几何不变形。
- * 三层叠放：ghost 是 30% 不透明度的浅色完整标识，plant 是可分部件的实色标识，flow 是被渐变亮带遮罩的实色标识。
- * 光流只把浅色加深到实色，任何一处都不比浅色底更浅；生成不用浅色底。没加载本样式表时三层叠成一枚完整实色标识。
+ * plant 是可分部件（茎 / 左叶 / 右叶）的实色标识；没加载本样式表或动画停下时就是一枚完整实色标识。
+ * 原先的光流（processing，浅色底上亮带流过）用户 2026-11-27 定为删除，组件把 processing 显示为摇曳。
  */
-.linnya-ui-icon[data-icon="linnya-loading"] [data-part="ghost"] {
-  opacity: 0.3;
-}
-
-.linnya-ui-icon[data-icon="linnya-loading"][data-state="thinking"] :is([data-part="ghost"], [data-part="flow"]),
-.linnya-ui-icon[data-icon="linnya-loading"][data-state="generating"] :is([data-part="ghost"], [data-part="flow"]),
-.linnya-ui-icon[data-icon="linnya-loading"][data-state="processing"] [data-part="plant"] {
-  display: none;
-}
-
 /* 思考：整株绕茎底随风轻摆，叶片绕交汇点慢半拍。向右多、向左少，叶尖不出画布 */
 @keyframes linnya-ui-icon-sway {
   0%, 100% { transform: rotate(-2deg); }
@@ -207,29 +197,10 @@
   animation: linnya-ui-icon-grow-right calc(var(--duration-loop) * 2) linear infinite;
 }
 
-/* 处理：浅色标识不动，一道渐变亮带从茎底沿叶片向上流过，把颜色加深到实色 */
-@keyframes linnya-ui-icon-flow {
-  from { transform: translateY(24px); }
-  to { transform: translateY(-14px); }
-}
-
-.linnya-ui-icon[data-icon="linnya-loading"][data-state="processing"] [data-part="band"] {
-  animation: linnya-ui-icon-flow var(--duration-loop) linear infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   /* 各图标的动画规则选择器更具体，这里用 !important 统一压住 */
+  /* AI 进行中的部件停下后叠成完整的实色标识，不用另换图层 */
   .linnya-ui-icon [data-part] {
     animation: none !important;
-  }
-
-  /* AI 进行中停在完整的实色标识 */
-  .linnya-ui-icon[data-icon="linnya-loading"] [data-part="ghost"] {
-    display: inline !important;
-    opacity: 1;
-  }
-
-  .linnya-ui-icon[data-icon="linnya-loading"] :is([data-part="plant"], [data-part="flow"]) {
-    display: none;
   }
 }

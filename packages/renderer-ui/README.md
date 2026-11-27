@@ -37,8 +37,9 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 调用方可在图标根节点通过自己的 class 设置颜色。组件不绘制背景，首页空态由页面 owner 布局。由 Linnya 执行的
 操作（AI 引用、AI 创建、AI 批注等）用 compact 稿作入口图标；放在品牌色实底按钮里时，调用方把颜色改为按钮文字色。
 
-`LinnyaLoadingIcon` 是 Linnya 正在工作时的加载图标，按 `activity` 表达在做什么：`processing`（默认）处理已有材料，
-如转写、翻译、审阅、摘要；`thinking` 等待回复、推理中；`generating` 生成新内容。默认 18×18，可传 `color` 改色。
+`LinnyaLoadingIcon` 是 Linnya 正在工作时的加载图标，按 `activity` 表达在做什么：`thinking`（默认，摇曳）等待回复、推理中，
+以及转写、翻译、审阅、摘要等处理已有材料；`generating`（生长）生成新内容。`processing` 已弃用，显示为摇曳，下一个 major 删除。
+默认 18×18，可传 `color` 改色。
 少数图标带状态动效（方向箭头、复制、显示 / 隐藏、播放 / 暂停、发送 / 暂停 / 继续、刷新、加载），样式随 `/styles.css` 提供，
 只引用 motion token，减少动态效果时停在静态图形。
 

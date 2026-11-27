@@ -25,8 +25,7 @@ const NOTIFICATIONS: readonly { type: NotificationType; message: string }[] = [
 ];
 
 const ACTIVITIES = [
-  { activity: 'processing', label: '处理已有材料' },
-  { activity: 'thinking', label: '等待回复、推理中' },
+  { activity: 'thinking', label: '等待回复、推理中、处理已有材料' },
   { activity: 'generating', label: '生成新内容' },
 ] as const;
 
