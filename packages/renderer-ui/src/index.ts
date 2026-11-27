@@ -90,6 +90,7 @@ export {
 export {
   AlertDialog,
   ImagePreviewModal,
+  isModalOverlayOpen,
   Modal,
   RENDERER_UI_OVERLAY_LAYER_TOKENS,
   RENDERER_UI_OVERLAY_LAYER_VALUES,
@@ -98,6 +99,7 @@ export {
   useEscapeLayer,
   useImagePreviewSource,
   useModalFocus,
+  useModalOverlay,
 } from './features/overlays';
 export type {
   AlertDialogProps,
@@ -105,8 +107,11 @@ export type {
   EscapeLayerOptions,
   ImagePreviewModalClassNames,
   ImagePreviewModalProps,
+  ModalBackdropListeners,
   ModalFocusOptions,
   ModalLayer,
+  ModalOverlayControls,
+  ModalOverlayOptions,
   ModalProps,
   ModalScrollMode,
   ModalSlots,
@@ -181,6 +186,23 @@ export type {
   DraggablePanelVariant,
   FloatingLayoutSize,
 } from './features/floating-panels';
+
+export {
+  anchoredMotionDirection,
+  computeAnchoredPosition,
+  createPointAnchor,
+  useAnchoredPosition,
+} from './features/anchored-position';
+export type {
+  AnchoredAlign,
+  AnchoredAnchor,
+  AnchoredFloatingStyle,
+  AnchoredPosition,
+  AnchoredPositionControls,
+  AnchoredPositionOptions,
+  AnchoredSide,
+  UseAnchoredPositionOptions,
+} from './features/anchored-position';
 
 export { CommandBar, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton } from './features/toolbars';
 export type { FloatingToolbarPosition, FloatingToolbarProps, ToolbarButtonProps, ToolbarColorButtonProps } from './features/toolbars';

@@ -1,5 +1,3 @@
-import type { CSSProperties } from 'vue';
-import { measureFloatingLayoutSize } from '@linnya/renderer-ui';
 import type { ConversationListItem } from '../../history/services/historyApiService';
 import type { ConversationMessageResolver } from '../../definitions/conversationMessages';
 
@@ -42,43 +40,4 @@ export function buildContextMenuOptions(
     text: conversationMessage('conversation.sidebar.menu.delete'),
     variant: 'danger',
   }];
-}
-
-export function positionChatMenuDropdown(
-  buttonEl: HTMLElement,
-  dropdownEl: HTMLElement,
-  viewport: { width: number; height: number },
-): CSSProperties {
-  const viewportGap = 8;
-  const offset = 4;
-  const buttonRect = buttonEl.getBoundingClientRect();
-  const dropdownRect = measureFloatingLayoutSize(dropdownEl);
-  let top = buttonRect.bottom + offset;
-  let left = buttonRect.left;
-
-  if (left + dropdownRect.width > viewport.width - viewportGap) {
-    left = buttonRect.right - dropdownRect.width;
-  }
-  if (left < viewportGap) left = viewportGap;
-
-  if (top + dropdownRect.height > viewport.height - viewportGap) {
-    top = buttonRect.top - dropdownRect.height - offset;
-  }
-  if (top < viewportGap) top = viewportGap;
-
-  return {
-    top: `${top}px`,
-    left: `${left}px`,
-  };
-}
-
-export function positionChatContextMenu(
-  event: Pick<MouseEvent, 'clientX' | 'clientY'>,
-  viewport: { width: number; height: number },
-): CSSProperties {
-  const viewportGap = 8;
-  return {
-    top: `${Math.min(event.clientY, viewport.height - viewportGap)}px`,
-    left: `${Math.min(event.clientX, viewport.width - viewportGap)}px`,
-  };
 }

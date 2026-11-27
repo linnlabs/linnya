@@ -74,7 +74,7 @@ export interface KnowledgeBaseCoordinatorDeps {
   queues: KnowledgeQueues;
   graphTasks: KnowledgeGraphTaskControl;
   temporaryDirectory: string;
-  enqueueGraphExtraction(kbId: string, docId: string): Promise<void>;
+  enqueueGraphExtraction(kbId: string, docId: string, llmModelId: string | null): Promise<void>;
   activity: KnowledgeActivityOwner;
   metadataRepository: MetadataRepository;
   qdrantRepository: QdrantRepository;
@@ -293,6 +293,7 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
     options?: {
       pdfOcrModelId?: string | null;
       embeddingModelId?: string | null;
+      graphExtractionModelId?: string | null;
     }
   ) {
     const lease = this.activity.begin(kbId, 'ingestion');
@@ -733,6 +734,7 @@ export class KnowledgeBaseCoordinator implements KnowledgeBaseService {
         searchService: this.searchService,
         sotRepository: this.sotRepository,
         knowledgeGraphRepository: this.knowledgeGraphRepository,
+        metadataRepository: this.metadataRepository,
       },
       request
     );

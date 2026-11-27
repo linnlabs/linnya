@@ -140,15 +140,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 import { AddIcon } from '@linnya/renderer-ui/icons';
 import { ChatIcon } from '@linnya/renderer-ui/icons';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { ChevronIcon } from '@linnya/renderer-ui/icons';
 import { SearchIcon } from '@linnya/renderer-ui/icons';
 import { ClockIcon, GlanceIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, HoverTooltip, IconButton } from '@linnya/renderer-ui';
-import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
+import { CustomSelect, HoverTooltip, IconButton, useAnchoredPosition } from '@linnya/renderer-ui';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
 
 export type WorkspaceSidebarMode = 'chat' | 'files';
@@ -188,25 +187,17 @@ const emit = defineEmits<{
 
 const { layoutMessage } = useLayoutLocalization();
 const projectCreateButtonRef = ref<HTMLButtonElement | null>(null);
-const {
-  dropdownRef: projectCreateDropdownRef,
-  dropdownStyle: projectCreateDropdownStyle,
-  positionDropdownAfterRender: positionProjectCreateDropdownAfterRender,
-} = useFixedDropdownPosition({ matchTriggerWidth: true });
-
-watch(
-  () => props.showCreateMenu,
-  (showCreateMenu) => {
-    if (!showCreateMenu) return;
-    void positionProjectCreateDropdownAfterRender(projectCreateButtonRef.value);
-  },
-  { flush: 'post' },
-);
+const projectCreateDropdownRef = ref<HTMLElement | null>(null);
+const { style: projectCreateDropdownStyle } = useAnchoredPosition({
+  anchor: projectCreateButtonRef,
+  floating: projectCreateDropdownRef,
+  open: () => props.showCreateMenu,
+  placement: { gap: 4, matchAnchorWidth: true },
+});
 
 defineExpose({
   projectCreateButtonRef,
   projectCreateDropdownRef,
-  positionProjectCreateDropdownAfterRender,
 });
 
 function readInputValue(event: Event): string {

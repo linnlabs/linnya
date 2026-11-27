@@ -9,6 +9,12 @@
 - 升级 AI SDK Core 至 `7.0.179` 与同批 Provider 补丁；Google 仍保留 `4.0.94`。新版流事件中的
   `ping` 心跳与 `steering-message` 不投影为 canonical 输出（本 Adapter 不启用这两项）。
 
+- 接入正式 Linnkit 0.48.0；peer 最低兼容系列改为 0.48。0.48 让声明可并行的相邻工具调用同时执行，
+  并把断点里的在途调用改为数组 `executingToolCallIds`；Provider 行为不变。
+
+- 接入正式 Linnkit 0.47.0；peer 最低兼容系列改为 0.47。0.47 去掉客户端云端额度兜底与 `billing_mode`，
+  不再客户端重试的模型改由 `enable_client_retry: false` 表达；Provider 行为不变。
+
 - 接入正式 Linnkit 0.46.0；peer 最低兼容系列改为 0.46。0.46 让工具上下文带上工具结果接下来交给的模型（`activeModelId`），
   Provider 行为不变。
 

@@ -2,7 +2,7 @@ import { loadModelPicker, synchronizeModelPickerSnapshot } from './modelPickerOp
 
 let unsubscribeFromBackendUpdates: (() => void) | null = null;
 
-/** 启动 Host 组合读模型，并在 Cloud catalog 更新后重新投影运行可用性。 */
+/** 启动 Host 组合读模型，并在模型目录变更信号后重新投影运行可用性。 */
 export async function startModelPickerLifecycle(): Promise<void> {
   if (!unsubscribeFromBackendUpdates) {
     unsubscribeFromBackendUpdates =

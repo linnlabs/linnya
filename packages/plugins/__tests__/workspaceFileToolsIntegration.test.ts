@@ -54,6 +54,7 @@ import { PptInspectTool } from '@plugin/slides/backend-tool-classes';
 import {
   attachPresentationCoordinatorToToolContext,
   attachPresentationInspectTargetResolverToToolContext,
+  copyPresentationCoordinatorBindingToToolContext,
 } from '@plugin/slides/backend-tools';
 import type { PresentationRenderModel } from '@plugin/slides/shared';
 import {
@@ -1785,7 +1786,17 @@ describe('list_files / read_file', () => {
     const runtime = createToolRuntimeHarness([new WriteFileTool()]);
     try {
       const nodeResult = await new ToolNode({
-        toolRuntime: runtime.toolRuntime,
+        // ToolNode 为每次调用派生新的 ToolContext；产品由 Slides decorator 给调用上下文绑定 coordinator，
+        // 这里沿用插件的 binding migrator 把夹具绑定迁到调用上下文，而不是依赖共享装配对象。
+        toolRuntime: {
+          ...runtime.toolRuntime,
+          executeTool: (toolName, args, callContext) =>
+            runtime.toolRuntime.executeTool(
+              toolName,
+              args,
+              copyPresentationCoordinatorBindingToToolContext(writeContext, callContext)
+            ),
+        },
         observationPreview: {
           truncateObservation: async ({ text }) => ({ truncated: false, preview: text }),
         },

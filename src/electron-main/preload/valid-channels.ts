@@ -22,7 +22,7 @@ const FILE_DIALOG_CHANNELS = ['open-file-dialog', 'open-directory-dialog'] as co
 // --- 模型管理 ---
 // 中文说明：
 // - `get-models` / `update-models`：渲染进程主动发起的 invoke
-// - `models-updated`：主进程在云端模型异步加载成功后向渲染进程的推送通道
+// - `models-updated`：模型目录变化后主进程向渲染进程推送的失效信号
 //   （渲染进程收到后应重新拉取模型列表，触发 UI 刷新）
 const MODEL_CHANNELS = ['get-models', 'update-models', 'models-updated'] as const;
 

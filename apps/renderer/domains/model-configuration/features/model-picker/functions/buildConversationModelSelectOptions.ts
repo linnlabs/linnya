@@ -48,14 +48,6 @@ export function buildPurposeModelSelectOptions(
   if (!snapshot) return [];
 
   const options: ConversationModelSelectOption[] = [];
-  const cloudModels =
-    snapshot.cloud?.models
-      .filter(model => model.capabilities.includes(input.capability))
-      .map(model => modelOption(model, input.labels.unavailable)) ?? [];
-  if (snapshot.cloud && cloudModels.length > 0) {
-    options.push({ isGroup: true, label: snapshot.cloud.display_name }, ...cloudModels);
-  }
-
   const providerGroups = new Map<
     string,
     {

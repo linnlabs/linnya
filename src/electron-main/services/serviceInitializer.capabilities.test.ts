@@ -42,7 +42,6 @@ type StepName = 'initializeDatabaseService' | 'initializeModelCatalog' | 'initia
 
 let root: string;
 let database: DatabaseService;
-let disposeModelCatalogUpdates: ReturnType<typeof vi.fn>;
 
 function stubStep(name: StepName, implementation: () => Promise<unknown>) {
   // 私有步骤是本组要替换的边界；按名字替换，不改变生产类型。
@@ -77,9 +76,8 @@ beforeEach(() => {
   root = mkdtempSync(path.join(tmpdir(), 'linnya-service-capabilities-'));
   database = new DatabaseService(path.join(root, 'workspace.sqlite'));
   database.initialize();
-  disposeModelCatalogUpdates = vi.fn();
   stubStep('initializeDatabaseService', async () => database);
-  stubStep('initializeModelCatalog', async () => disposeModelCatalogUpdates);
+  stubStep('initializeModelCatalog', async () => undefined);
   stubStep('initializeQueueSystem', async () => undefined);
 });
 
@@ -97,8 +95,6 @@ describe('服务初始化：能力步骤失败只停掉这项能力', () => {
     expect(scheduleStartupMaintenanceOnce).toHaveBeenCalledWith({
       databaseService: database,
     });
-    services.disposeRendererIntegration();
-    expect(disposeModelCatalogUpdates).toHaveBeenCalledOnce();
   });
 
   it('模型配置加载失败：照常完成，记下原因，其余能力不受影响', async () => {
@@ -112,7 +108,6 @@ describe('服务初始化：能力步骤失败只停掉这项能力', () => {
         message: '模型配置没有加载成功（user_models.json 无法读取：Unexpected end of JSON input）',
       },
     ]);
-    expect(() => services.disposeRendererIntegration()).not.toThrow();
   });
 
   it('音频队列没有启动：数据库和插件已装配，记下原因', async () => {

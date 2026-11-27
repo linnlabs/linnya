@@ -60,6 +60,8 @@ export interface DrawDirectionInput {
   readonly cards?: readonly TechniqueCard[];
 }
 
+// 手法卡的最近用过窗口与系数，配色系统按同样取值降权（color-core 的 RECENT_USE_WINDOWS）；改一处时核对另一处。
+// 这里会打进 build Worker，不引入 color-core，所以是两份常量。
 const RECENT_CARD_WINDOW = 5;
 const RECENT_CARD_FACTOR = 0.15;
 const OLDER_CARD_WINDOW = 15;

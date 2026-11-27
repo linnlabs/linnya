@@ -25,7 +25,8 @@ Citation domain 管理跨 producer 的公共引用规则：Conversation 内的 6
 - `index` 是生产顺序，不是引用身份，也不是 Renderer 最终展示编号；
 - Linnkit 只保存和回放通用 `RuntimeEvent`，不解释 `data.citations`；
 - Linnya host 在 citation producer 执行前读取当前 working history，并把本 turn 已产生的
-  citation 数量绑定到本次工具上下文。
+  citation 数量绑定到本次工具上下文。同一并行组（Linnkit 0.48 可并行工具）的调用读到同一份历史，
+  可能得到重叠的 `index`；这不影响引用身份，身份始终是会话内唯一的 `ref`。
 - Conversation 中的 `ref` 是有作用域的短别名：当前 scope 精确命中优先，跨 scope 仅在所有候选指向
   同一稳定来源时解析；冲突或缺失必须 unresolved，禁止跨 Conversation fallback。
 - 可见 Conversation message 必须携带正文实际使用的 citation dependency snapshot；该 snapshot 是

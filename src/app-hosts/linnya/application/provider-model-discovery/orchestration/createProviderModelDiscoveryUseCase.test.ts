@@ -5,7 +5,11 @@ import {
   ProviderModelDiscoveryError,
   type ProviderDiscoveredModel,
 } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
-import type { ModelConfig } from 'src/domains/model-catalog';
+import type {
+  InferenceEndpointView,
+  ModelConfig,
+  UnadmittedUserModel,
+} from 'src/domains/model-catalog';
 import { createProviderModelDiscoveryUseCase } from './createProviderModelDiscoveryUseCase';
 import { createModelPickerUseCase } from '../../model-picker';
 
@@ -18,6 +22,18 @@ const freshModel: ProviderModelDefinition = {
   max_output_tokens: 100_000,
   capabilities: { image_input: true, tool_call: true, reasoning: true },
 };
+
+function endpointView(id: string): InferenceEndpointView {
+  return {
+    id,
+    route_profile_id: 'deepseek_chat',
+    endpoint_id: `deepseek:${id}`,
+    base_url: 'https://api.deepseek.com',
+    auth_profile: 'bearer',
+    credential_reference: { kind: 'stored_secret', credential_id: 'configured-provider:fixture' },
+    credential_status: 'configured',
+  };
+}
 
 function catalogModel(id: string): ModelConfig {
   return {
@@ -40,6 +56,8 @@ function fixture(catalogModelIds: readonly string[] = ['existing']) {
   };
   let currentConfigured: typeof configured | undefined = configured;
   const resolveCredential = vi.fn((_modelConfigId: string) => 'fixture-secret');
+  const resolveInferenceEndpointCredential = vi.fn((_endpointId: string) => 'endpoint-secret');
+  let unadmitted: UnadmittedUserModel[] = [];
   const discover = vi.fn<() => Promise<readonly ProviderDiscoveredModel[]>>();
   const discovery = createProviderModelDiscoveryUseCase({
     catalog: providerCatalog,
@@ -48,14 +66,21 @@ function fixture(catalogModelIds: readonly string[] = ['existing']) {
     models: {
       getModel: id => (catalogModelIds.includes(id) ? catalogModel(id) : undefined),
       resolveCredential,
+      getUnadmittedUserModels: () => unadmitted,
+      getInferenceEndpoints: () => [endpointView('member-endpoint')],
+      resolveInferenceEndpointCredential,
     },
     discovery: { supports: id => id === 'deepseek', discover },
   });
   return {
     configured,
     resolveCredential,
+    resolveInferenceEndpointCredential,
     discover,
     discovery,
+    setUnadmitted(value: UnadmittedUserModel[]) {
+      unadmitted = value;
+    },
     setConfigured(value: typeof configured | undefined) {
       currentConfigured = value;
     },
@@ -88,6 +113,7 @@ describe('正式 Provider 在线发现交接', () => {
       },
       modelCatalog: {
         getModels: () => [],
+        getUnadmittedUserModels: () => [],
         getModel: () => undefined,
         getInferenceEndpoints: () => [],
         getCustomApiGroups: () => [],
@@ -105,6 +131,7 @@ describe('正式 Provider 在线发现交接', () => {
         setModelVisibility: vi.fn(),
       },
       providerModelActivation: { registerDirectProviderModel: register },
+      providerModelRepair: { repairUnadmittedProviderModels: vi.fn() },
     });
     const result = await picker.refreshProviderModels(target.configured.id);
     expect(target.discover).toHaveBeenCalledOnce();
@@ -181,7 +208,44 @@ describe('正式 Provider 在线发现交接', () => {
 
     expect(target.resolveCredential).toHaveBeenCalledWith('healthy');
     expect(target.resolveCredential).not.toHaveBeenCalledWith('disabled-at-startup');
-    expect(target.discover).toHaveBeenCalledWith(expect.objectContaining({ apiKey: 'fixture-secret' }));
+    expect(target.discover).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: 'fixture-secret' })
+    );
+  });
+
+  it('成员全部启动时停用，凭据取停用成员仍在的连接；连接已不存在的停用成员不算', async () => {
+    const target = fixture([]);
+    target.setConfigured({
+      ...target.configured,
+      models: [
+        { model_config_id: 'endpoint-gone', provider_model_id: 'old-flash' },
+        { model_config_id: 'disabled-flash', provider_model_id: 'new-flash' },
+      ],
+    });
+    const entry = (id: string, endpointId: string): UnadmittedUserModel => ({
+      id,
+      inference_endpoint_id: endpointId,
+      custom_api_group_name: undefined,
+      display_name: id,
+      reason: 'route mismatch',
+      reason_kind: 'route_endpoint_mismatch',
+    });
+    target.setUnadmitted([
+      entry('endpoint-gone', 'deleted-endpoint'),
+      entry('disabled-flash', 'member-endpoint'),
+    ]);
+    target.discover.mockResolvedValue([{ status: 'available', definition: freshModel }]);
+
+    await target.discovery.refresh('deepseek');
+
+    expect(target.resolveCredential).not.toHaveBeenCalled();
+    expect(target.resolveInferenceEndpointCredential).toHaveBeenCalledWith('member-endpoint');
+    expect(target.discover).toHaveBeenCalledWith(
+      expect.objectContaining({ apiKey: 'endpoint-secret' })
+    );
+
+    target.setUnadmitted([]);
+    await expect(target.discovery.refresh('deepseek')).rejects.toMatchObject({ statusCode: 401 });
   });
 
   it('凭据不可用时明确失败，不把空 Key 发往供应商', async () => {

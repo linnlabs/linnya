@@ -1,8 +1,7 @@
 # Model Catalog Domain
 
 `model-catalog`
-是桌面后端产品模型目录和用户 InferenceEndpoint 的唯一 owner。它合并内置默认目录、Linnya
-Cloud 目录、账号能力投影和用户自定义目录，完成严格准入、凭据引用解析、用户模型、自定义分组连接归属与端点元数据持久化、进程内查询及 Cloud 刷新事件。正式 Provider 的本地配置身份与模型归属由
+是桌面后端产品模型目录和用户 InferenceEndpoint 的唯一 owner。它合并内置默认目录、账号能力投影和用户自定义目录，完成严格准入、凭据引用解析、用户模型、自定义分组连接归属与端点元数据持久化、进程内查询及用户目录变更事件。正式 Provider 的本地配置身份与模型归属由
 [`provider-configuration`](../provider-configuration/README.md)
 独立拥有，不能塞回通用 `ModelConfig`。
 
@@ -20,12 +19,11 @@ codec、usage/continuation 投影和单次请求编排位于
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `ModelConfig`、目录 diff、公开 port               | `definitions/modelCatalog.ts`                                                                                          |
 | route、identity、capability、API base 准入        | `features/catalog-admission/`                                                                                          |
-| Linnya Cloud 模型拉取、ID、设备身份               | `features/cloud-catalog/`                                                                                              |
 | 内置默认模型与启动路径                            | `features/default-catalog/`                                                                                            |
 | InferenceEndpoint、CredentialReference 与凭据引用 | `features/inference-endpoints/`                                                                                        |
 | 自定义 API 分组连接引用与生命周期               | `features/custom-api-groups/`                                                                                          |
 | `user_models.json` 格式与原子写入                 | `features/user-model-persistence/`                                                                                     |
-| 四个来源如何合并、CRUD、Cloud retry/event         | `registry/modelCatalogRegistry.ts`                                                                                     |
+| 三个来源如何合并、CRUD、目录变更事件              | `registry/modelCatalogRegistry.ts`                                                                                     |
 | App Host 启动如何冻结默认目录路径                 | `app-hosts/linnya/backend-runtime/functions/resolveAppDefaultModelsPath.ts`                                             |
 | HTTP 模型查询/编辑/删除入口                       | `electron-main/routes/modelRouter.ts`                                                                                  |
 | 模型注册入口                                      | `app-hosts/linnya/application/provider-onboarding/`、`custom-api-onboarding/` 与 `ollama-onboarding/`                  |
@@ -44,7 +42,7 @@ Provider 注册/刷新是独立可信的政策投影通道，直接更新已接�
 ### 负责
 
 - 持有桌面后端 `ModelConfig` 和目录 CRUD 公共合同；
-- 从 default、Cloud、account、user 四个来源形成当前进程目录；
+- 从 default、account、user 三个来源形成当前进程目录；
 - 对 route schema、endpoint model/base identity、capability、reasoning 和 API
   base 做统一准入；
 - 解析显式
@@ -53,9 +51,7 @@ Provider 注册/刷新是独立可信的政策投影通道，直接更新已接�
 - 在同一个正式 Provider connection 的 endpoint 上添加模型时复用 credential
   boundary；同品牌另一 connection 必须使用独立 endpoint/credential，用户再次提交 Key 只替换当前 boundary 的 secret，目录写盘失败时恢复旧 secret；
 - 原子持久化用户模型、自定义分组连接归属和 InferenceEndpoint 元数据，写盘成功后才提交内存状态；
-- 提供 capability、UI visibility、tag、purpose default 等目录查询；
-- 在 Cloud 目录成功刷新后发布窄事件，由 Desktop Host
-  capability 桥接为 Renderer 重新拉取信号；
+- 提供 capability、UI visibility、tag 等目录查询；
 - 任何入口（设置页、CLI、外部 HTTP）提交的用户目录事务在写盘并替换内存后发出
   `onUserModelCatalogChanged`（只带 revision），写盘失败或无变化不发；监听者异常只记日志，不改变事务结果。
 
@@ -83,12 +79,11 @@ model-catalog/
 ├── definitions/                         # domain 公共合同
 ├── features/
 │   ├── catalog-admission/               # 原始配置到合法 ModelConfig 的纯规则
-│   ├── cloud-catalog/                   # Cloud 目录 transport、ID 与设备身份
 │   ├── custom-api-groups/              # 分组连接归属、模型快照同步与空连接生命周期
 │   ├── default-catalog/                 # credential-free 默认资产与路径合同
 │   ├── inference-endpoints/            # 端点准入、credential 记录与事务
 │   └── user-model-persistence/          # 用户模型文件 envelope 与原子读写
-├── registry/                            # 来源合并、内存索引、CRUD、retry 与事件
+├── registry/                            # 来源合并、内存索引、CRUD 与事件
 ├── index.ts                             # 唯一跨 domain 入口
 └── README.md
 ```
@@ -100,12 +95,11 @@ model-catalog/
 | `definitions/`   | 类型、DTO、diff、窄 port                         | 文件 IO、HTTP、SDK 调用                  |
 | `functions/`     | 解析、校验、规范化、稳定 ID 等纯规则             | 修改 registry、发网络请求                |
 | `orchestration/` | 单一来源的 IO 流程                               | 拥有全局目录、决定业务 fallback          |
-| `registry/`      | 合并来源、内存索引、目录事务、事件与 Cloud retry | Provider 请求、Renderer 状态、Agent 策略 |
+| `registry/`      | 合并来源、内存索引、目录事务与事件               | Provider 请求、Renderer 状态、Agent 策略 |
 | `assets/`        | 可发布且不含凭据的只读目录事实                   | 本机密钥、用户选择、运行时缓存           |
 
 Feature 内部文件不得被其他 domain 深层导入。外部调用方只能从
-`src/domains/model-catalog` 导入；直接验证 Cloud
-transport 的跨端测试可以指向内部入口。生产代码需要新能力时，应先把真正稳定的窄能力加入根
+`src/domains/model-catalog` 导入。生产代码需要新能力时，应先把真正稳定的窄能力加入根
 `index.ts`，而不是扩大内部可见面。
 
 ---
@@ -131,30 +125,13 @@ lifecycle 从启动 cwd 所代表的仓库根解析该源码资产；`app.getApp
 
 完整 App 或企业部署可以显式提供另一条已存在的绝对路径。相对路径和不存在的路径直接拒绝，因为它们不能在 Main、Backend 和 Worker 之间保持同一身份。
 
-### Cloud catalog
+### Linnya Cloud 模型
 
-Model Catalog 使用 Desktop Host 经严格 bootstrap 传入的发行身份，不再读取
-`LINNYA_DEV_MODE` 判断 Cloud。`source` 和 `community` 不加载 Cloud catalog，也不安排后台
-重试；只有发行清单验签通过的 `official` 保留 Cloud 客户端接入边界。发行公钥由
-[Desktop key ring](../../electron-main/distribution/registry/trustedDesktopDistributionKeys.ts) 管理，
-公钥存在不代表当前构建具有官方身份。发行身份也不是服务端授权；当前 Cloud 数据面独立关闭，
-源码和正式包均只使用 default/user/BYOK 模型，不因验签成功自动开放 Cloud。
+客户端不内置 Linnya Cloud 模型接入：Cloud 已不再向客户端提供模型，目录拉取、`cloud` 目录来源、
+宿主管理凭据、设备标识、Cloud 额度错误分类与模型菜单里的 Cloud 分组都已删除，Host 也不发布功能默认模型。
+旧版本保存过的 `cloud-` 前缀模型选择找不到对应模型，按“选中的模型不在目录里”处理，不自动换成别的模型。
 
-Cloud transport 启用时，每次只执行一次 `/v1/models` 请求，并把公开模型映射为本地
-`cloud-` ID。公开项必须直接给出 `client_base_url` 和完整
-`client_*_route`；桌面不再根据 Cloud
-alias、展示 provider 或上游厂商拼 URL。Cloud route 的 `endpoint_id`
-表示客户端下一跳
-`linnya-cloud`，不泄露 Cloud 私有上游。非法条目不会进入目录；整包没有合法条目时结果标记为失败。官方发行态首次网络失败不阻断本地/default/user 模型启动，registry 只对 Cloud 来源安排后台重试。
-
-Cloud 成功快照会原子替换旧 Cloud 模型、更新 purpose
-defaults 并发布刷新事件。事件 payload 不是第二份目录；Renderer 收到 Electron 信号后仍从 HTTP
-API 重新读取目录。
-
-未来 Cloud 改造成开源 API 网关时，只替换 Cloud 数据面、管理面和必要的本 feature
-transport。桌面 `ModelConfig`、本地持久化、Provider runtime 与 Linnkit canonical
-contract 不因此合并。上游 endpoint、真实模型 ID、认证方式和 host
-credential 只属于 Cloud 私有记录，不得进入本 domain 的公共 Cloud DTO。
+将来 Cloud 重新提供模型时，需要和账号鉴权一起重新设计客户端接入，而不是恢复旧的匿名目录拉取与设备标识。
 
 ### 模型名称与能力
 
@@ -208,9 +185,9 @@ Key 和 API 格式是在配置一个推理端点，不是在创建 Provider。�
 用户密钥不属于 Workspace。App Server 注入 `CredentialStoragePort`，端点只拥有
 `model-endpoints` namespace，底层与 OAuth、插件共用 profile 下的 `AIService/config/credentials.json`。
 文件权限、原子更新、并发写入及损坏处理见[文件凭据存储](../../infra/adapters/credential-storage/file/README.md)。
-环境变量和 Linnya Cloud host credential 仍使用显式 reference，不复制到该文件。旧凭据不迁移。
+环境变量与 Provider Account 凭据使用各自的显式 reference，不复制到该文件。旧凭据不迁移。
 
-用户模型必须引用一个 InferenceEndpoint，default/Cloud 模型不得引用用户端点。端点与模型 route 的 profile、
+用户模型必须引用一个 InferenceEndpoint，default/account 模型不得引用用户端点。端点与模型 route 的 profile、
 endpoint identity、base URL 和 auth profile 必须完全一致。推理读取由 App Server 同步完成，不跨进程调用
 Desktop。文件读取或结构错误必须传播，不能把坏文件视为空或在下一次保存时覆盖。
 InferenceEndpoint 由模型和自定义分组共同引用；两类引用全部移除时才清理端点与独占凭据。
@@ -238,7 +215,7 @@ membership、credential 生命周期和 typed route 准入。
 
 Registry 串行执行用户注册、增、改、删和 diff 的完整事务，从读取当前目录到凭据与文件提交均属于同一队列；
 一条事务失败不会阻塞后续事务。每次先计算下一快照，再写入临时文件并 rename，只有成功后才发布本次变更。
-内存发布按事务前后差异应用，保留写盘期间发生的其他账号/Cloud 投影变化，不能用旧的整份 Map 覆盖当前目录。
+内存发布按事务前后差异应用，保留写盘期间发生的其他账号投影变化，不能用旧的整份 Map 覆盖当前目录。
 这样后台模型同步与用户编辑不会互相覆盖，也不会出现“接口报告成功但重启丢失”或“磁盘失败、当前进程却继续使用幽灵模型”的分叉。
 
 旧用户模型缺少当前 typed
@@ -263,41 +240,61 @@ reference；不得复用 InferenceEndpoint 或恢复模型顶层 `provider`
 - route 的 `endpoint_model_id`
   必须等于该 endpoint 实际接收的模型 ID，`endpoint_id`
   必须等于本次客户端下一跳；typed route 的 `base_url`
-  是模型请求地址的唯一真相源，用户模型还必须与其 InferenceEndpoint 完全一致，Cloud
-  transport 则必须与服务端明确下发的 `client_base_url` 一致；
+  是模型请求地址的唯一真相源，用户模型还必须与其 InferenceEndpoint 完全一致；
 - route capability 必须来自共享 schema 已批准 profile，不能输入 `legacy:*`
   或未注册字符串；
 - capability 只表达产品可用能力，不替代 route；一个能力不能借用另一个能力的协议合同；
 - 用户 credential 只允许出现在一次连接创建命令中；系统模型使用显式
   `credential_reference`，日志只允许记录缺失的环境变量名；
 - reasoning 档位使用 Linnkit 共享合同，不能扩大为任意字符串；
-- reasoning 优先查询 App 在初始化前安装的 `ModelReasoningResolver`；窄 port 只接收 route 的 capability 与 endpoint model identity，Catalog 不依赖 SDK 或 Host。SDK 有结果时显式声明取交集，合法显式默认值保留，其余默认值复用 Linnkit `resolveEffectiveEffort`；完全无共同档位是带模型标识的准入错误，不伪装成无能力；
+- reasoning 优先查询 App 在初始化前安装的 `ModelReasoningResolver`；窄 port 只接收 route 的 capability 与 endpoint model identity，Catalog 不依赖 SDK 或 Host。SDK 有结果时显式声明取交集，合法显式默认值保留，其余默认值复用 Linnkit `resolveEffectiveEffort`。显式声明只能在模型能力范围内缩窄；完全没有共同档位时这条声明无法执行，整条忽略（含它的默认档位），按 SDK 报告的档位启用并记 warn 日志（模型、被忽略的声明、实际档位），不停用模型——界面没有改档位的入口，停用会让用户无法自行恢复（2026-11-26 用户定）。启动只忽略、不回写文件；之后该模型所在目录再写盘时，按下文“只保存与自动结果不同的声明”的规则，这条被忽略的声明不再写回；
 - SDK 查询无结果才保留显式声明和既有模型名兼容知识。Claude 正则只保留 SDK 缺少正向支持 flag 的 legacy 3.7/4 extended-thinking，不继续扩充新版本；新型号能力由 SDK 查询提供。其它模型仍受现有 codec 能力边界约束，例如 Ollama GLM-5.3 只公开 `low` / `high`；
-- Cloud、本地默认和用户模型走同一个
+- 本地默认、账号和用户模型走同一个
   `processModelConfig`，不得各维护一份相似校验。
 
 自动 reasoning 能力与用户配置分开：写用户文件时，仅省略与当前自动解析结果完全相同的档位和默认值；更窄的显式范围、不同的合法默认值继续持久化。已有文件不猜测历史来源，不批量改写；新 SDK 在下一次启动重新提供自动能力，不要求重新添加模型。真实持久化与升级回归见 [`modelReasoningPersistence.integration.test.ts`](./features/catalog-admission/__tests__/modelReasoningPersistence.integration.test.ts)。
 
 编辑、批量更新和连接改绑复用同一准入规则：与旧身份自动推导结果完全相同且本次未改变的 `reasoning` 不当作新声明，由新模型 identity 与 capability 重新推导。更窄范围、不同默认值，以及本次主动修改的声明继续参与能力交集；这与持久化采用相同的值相等规则，不声称能识别历史真实来源。
 
-能力查询在初始化开始前冻结，default、Cloud、account、user 的加载和每条更新准入均使用同一解析器。default 目录冲突会使初始化失败；Cloud 准入失败保留此前目录并报告刷新失败，不额外跳过非法模型；用户目录按下面“单个用户模型停用”处理。
+能力查询在初始化开始前冻结，default、account、user 的加载和每条更新准入均使用同一解析器。default 目录冲突会使初始化失败；用户目录按下面“单个用户模型停用”处理。
 
 ### 单个用户模型停用
 
-启动时某一条用户模型没有通过准入（显式能力冲突、route 与 InferenceEndpoint 不一致、旧版拼出的多 route 等），
-只停用这一条：它不进入运行目录，其余模型照常可用，诊断日志记下模型 ID 与原因。目录不修复、不猜测这条配置。
+启动时某一条用户模型没有通过准入（route 与 InferenceEndpoint 不一致、旧版拼出的多 route、引用的连接缺失等），
+只停用这一条：它不进入运行目录，其余模型照常可用，诊断日志记下模型 ID 与原因。目录不在启动时修复、猜测或清理这条配置。
 停用的条目仍是用户数据：
 
 - 原始条目在之后每次用户目录写盘（以及 v4→v5 迁移）时原样写回，排在已准入模型之后；
-- 它引用的 InferenceEndpoint 与凭据算作仍被引用，删除其他模型或分组时不回收（删除它所属的自定义分组也不删除它）；
+- 它引用的 InferenceEndpoint 与凭据算作仍被引用，删除其他模型时不回收；
 - `getModelIdentitiesIncludingUnadmitted()` 把它与运行目录一起交给启动对账，Provider 归属与选择器偏好不会因为它暂时停用而被删除。
 
-`getUnadmittedUserModels()` 只给出 ID、端点引用与原因，不暴露原始配置。因为归属被保留，正式 Provider 的成员可能指向停用模型：
+**原因类别。** 准入在抛错处用 `ModelAdmissionError` 给出类别（`multiple_routes`、`route_endpoint_mismatch`、`endpoint_missing`、
+`invalid_route`、`credential_declaration`、`invalid_structure`），枚举是 `@app/schemas/model-picker` 的 `UnadmittedModelReasonKindSchema`；
+不是 `ModelAdmissionError` 的异常记为 `unexpected`（检查过程本身出错）。界面按类别显示白话说明、悬停显示原文；不能反过来从原文猜类别，
+新增准入失败时在抛错处选类别。
+
+**读取。** `getUnadmittedUserModels()` 给出 ID、端点引用、自定义分组归属、原始条目里的显示名（`display_name`，没有时取 `model_name`）、
+原因与类别，不暴露原始配置。分组归属与已准入模型同一规则（`unadmittedEntryBelongsToCustomApiGroup`：分组名一致且连接属于该分组）；
+分组改名或换连接后旧条目不再满足规则，转为无归属。模型设置的投影见 Host [model-picker](../../app-hosts/linnya/application/model-picker/)：
+正式 Provider 成员归 Provider、其余按分组归属、都不属于的进“未归类”；没有 ID 的条目无法被引用或删除，不进入投影。
+
+**删除与修复。** 三个写入口都在同一次写盘里移除原始条目，按下一版本的引用重新计算连接回收（无人引用的连接与独占凭据一起删），
+写盘失败时撤销凭据删除，内存（含停用条目列表）保持事务前状态：
+
+- `removeModel(id)` 同时删运行目录里的模型和文件里同 ID 的停用条目；HTTP `DELETE /api/v1/models/:id` 与 `removal-impact` 认停用条目 ID，
+  仍经 [Configured Model Removal](../../app-hosts/linnya/application/configured-model-removal/README.md) 收口 Provider 归属与选择器偏好；
+- `removeCustomApiGroup` 连带删除属于该分组的停用条目（用户 2026-11-26 定：留下会让用户以为已删除的 Key 继续存在），
+  自定义 API 用例把它们的 ID 放进 `removed_model_ids` 清理偏好与用途绑定；旧版删分组留下的无归属条目只在“未归类”里由用户逐条删除，
+  启动时不静默清理；
+- `replaceUnadmittedUserModel(model, endpoint)` 只接受停用条目的 ID，用已准入的模型替换它，供正式 Provider 按定义修复
+  （provider-onboarding 的 `repairUnadmittedProviderModels`）；不能借此覆盖已准入模型。自定义分组的“同步模型列表”不重建停用条目，只给删除。
+
+因为归属被保留，正式 Provider 的成员可能指向停用模型：
 选择器、在线模型发现与 Ollama 接入按归属顺序取第一个仍在目录里的成员代表凭据与连接（provider-configuration 的 `findFirstCatalogedProviderMember`），
-Provider 接入用例的添加、换 Key、刷新与账号同步跳过停用成员，同步也不把它当过期模型删除；归属既不在目录、也不是停用条目时仍按配置损坏报错。
-目前的限制：界面不展示停用条目、没有删除入口，刷新也不按定义重建它；在选择器里重新添加同一个模型会返回“已经添加”（409）。
-Provider 只剩停用成员时（单模型 Provider 的那个模型停用，或“移除 Provider”只删掉已物化的模型后），选择器显示凭据缺失，
-换 Key 报配置无效，移除 Provider 也删不掉它，Ollama 再添加报“已绑定另一服务地址”，在线发现报凭据不可用；出路是停用条目的删除入口。
+Provider 接入用例的添加与账号同步跳过停用成员、普通刷新不改写它，同步也不把它当过期模型删除；归属既不在目录、也不是停用条目时仍按配置损坏报错。
+换 Key 与选择器的凭据状态把停用成员引用的连接算进凭据边界，所以 Provider 只剩停用成员时不再误报凭据缺失、换 Key 可用；
+选择器不再把停用成员当作可启用的候选（以前打开开关会返回“已经添加”409），而是列在“配置无效”里。
+删除 Provider 时界面把停用成员一起逐个删除（确认框列出）；Ollama 再添加、在线发现等仍按归属找成员的入口，在停用成员删除或修复后恢复正常。
 停用条目也不参与开发期一次性的旧 Provider 归属迁移（只在 `provider_configurations.json` 不存在时运行）：这条模型拿不到正式归属，
 日后恢复准入时会被归入自定义 API 分组。能力查询变化（例如 SDK 更新）或手工修好文件后，下次启动同一条目重新准入。
 `user_models.json` 本身无法读取、envelope、连接或分组不合法时仍按下段整体失败。
@@ -311,8 +308,7 @@ command；进入目录后，language/embedding/reranking/image/OCR/ASR 只读取
 route。通用 `adapter` 已删除，禁止恢复地址或字符串启发式选路。
 
 模型目录不存储通用请求头。Language inference 与 remote token
-count 通过同一个 Host model-request-auth 边界按请求解析凭据及 Linnya
-Cloud 设备身份；Web 外部服务由 Web domain 自己拥有认证合同。禁止在 `ModelConfig`
+count 通过同一个 Host model-request-auth 边界按请求解析凭据；Web 外部服务由 Web domain 自己拥有认证合同。禁止在 `ModelConfig`
 恢复 `extra_headers` 或其它任意 header map。
 
 ---
@@ -321,8 +317,7 @@ Cloud 设备身份；Web 外部服务由 Web domain 自己拥有认证合同。�
 
 - Electron route、App Host、Parser、Knowledge Base、Graph 和工具只能依赖根
   `index.ts`；
-- 本 domain 可以依赖共享 route schema、Logger、底层 path infrastructure 和 Cloud
-  HTTP；
+- 本 domain 可以依赖共享 route schema、Logger 和底层 path infrastructure；
 - 本 domain 禁止 import Electron、Renderer、AI SDK、Agent registry、Knowledge
   Base 或具体业务 feature；
 - Model inference Host 读取本 domain 已准入的 route/credential；目录通过自己定义、由
@@ -346,20 +341,11 @@ smoke。
 ### 新增或修改 route
 
 按“共享 schema → catalog admission → Host capability → Renderer route producer →
-default/Cloud 配置”的顺序修改。只改 catalog JSON 或 Provider 下拉项不算完成。
+default 配置”的顺序修改。只改 catalog JSON 或 Provider 下拉项不算完成。
 
 ### 修改用户模型格式
 
 先说明新版本为何必要，并决定是否接受不兼容清理。当前不维护多版本 reader；若业务明确要求数据迁移，应提供独立、一次性、可验证的迁移步骤，不能把双读长期留在运行时。
-
-### 修改 Cloud 目录
-
-Cloud v2 存储记录在服务端分为公共 `catalog` 与私有 `upstream_route`；Cloud
-API、Admin producer、Worker 公共投影、桌面 fetch 和 Renderer
-projection 必须使用同一公开 wire 合同。测试需覆盖合法条目、非法整包、purpose
-defaults、能力保真、桌面不拼 URL，以及 credential/upstream 字段绝不下发。存量 Cloud
-KV 只通过 `scripts/cloud-model-kv-v2-migration/`
-迁入新 namespace，不在本 domain 增加 v1 双读。
 
 ---
 
@@ -371,11 +357,9 @@ KV 只通过 `scripts/cloud-model-kv-v2-migration/`
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Catalog admission   | route/identity 一致性、capability、reasoning、credential 引用                                                                 |
 | Default path        | 只接受已存在绝对路径、开发/发布资产唯一选择、缺失时失败                                                                       |
-| Cloud catalog       | 单请求、typed route、非法 payload、purpose defaults、能力保真                                                                 |
-| User persistence    | v4 envelope、端点引用、损坏文件失败、原子写入、停用条目原样写回                                                               |
+| User persistence    | v4 envelope、端点引用、损坏文件失败、原子写入、停用条目原样写回；停用条目删除、随分组删除、按定义替换（含写盘失败回滚与重启，见 `user-model-persistence/__tests__/unadmittedUserModels.integration.test.ts`） |
 | Endpoint credential | 统一文件、重启读取、文件权限、损坏保留、原子提交与删除                                                                                    |
-| Registry            | 来源优先级、端点/模型一致性、端点复用、最后模型/分组引用删除时清理端点与凭据、改绑与原位换 Key、Cloud 替换/retry/event、写盘失败不提交内存并撤销凭据变更、单个用户模型准入失败只停用它（写盘与迁移原样带回、连接与凭据不回收）、初始化失败回滚 |
-| Electron bridge     | renderer-ready 前后刷新信号不丢失，payload 不成为第二目录                                                                     |
+| Registry            | 来源优先级、端点/模型一致性、端点复用、最后模型/分组引用删除时清理端点与凭据、改绑与原位换 Key、写盘失败不提交内存并撤销凭据变更、单个用户模型准入失败只停用它（写盘与迁移原样带回、连接与凭据不回收）、初始化失败回滚 |
 
 日常至少运行：
 
@@ -420,7 +404,7 @@ smoke。单纯目录重构不需要等待 Windows/macOS 正式签名安装包发
 
 `getUserRevision` 是当前进程用户目录/凭据的提交版本。跨网络的应用用例在读取事实前取得版本，并在
 `registerUserModels`、`rebindUserModels` 或 `applyDiff` 提交时传入；版本在事务队列内部校验，冲突抛出公开的
-`ModelCatalogConflictError`。失败不增加版本，后续任务仍可继续；Cloud/account 投影不改变用户目录版本。
+`ModelCatalogConflictError`。失败不增加版本，后续任务仍可继续；account 投影不改变用户目录版本。
 版本不写盘，因为重启后不存在跨进程遗留的在途用例。它保护请求执行期间的交错更新，不提供多进程共同写目录的锁。
 
 Model Discovery 的 URL、响应解析、错误合同与网络流程分别归属其 feature 的 functions、definitions、orchestration。

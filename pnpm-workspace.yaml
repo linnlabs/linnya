@@ -2,6 +2,11 @@
 # 写进产物，上限不同会让同一源码在 Mac 与 Windows 打出内容不同的插件，同版本插件因此对不上。
 virtualStoreDirMaxLength: 60
 
+# 依赖和 lockfile 对不上时，pnpm run / exec 直接报错并提示先 pnpm install。合并带依赖升级的提交后
+# 若忘了重装，构建会把旧依赖和新代码打在一起（例如 Linnkit 引擎与 Host 合同版本错开，运行时才出错），
+# 探针按源码判断新旧也发现不了。不用 install 自动重装：别的进程正用着依赖时会被替换掉。
+verifyDepsBeforeRun: error
+
 packages:
   - apps/*
   - packages/*

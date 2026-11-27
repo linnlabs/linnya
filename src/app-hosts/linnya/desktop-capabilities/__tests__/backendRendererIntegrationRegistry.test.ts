@@ -22,7 +22,6 @@ describe('Backend renderer integration registry', () => {
 
 function createPort(): BackendRendererIntegrationPort {
   return Object.freeze({
-    connectModelCatalogUpdates: async () => () => undefined,
     publishTranscriptionProgress: vi.fn(),
     publishWorkspaceMutation: vi.fn(),
     publishPluginRendererPush: vi.fn(),

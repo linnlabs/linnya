@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { onRendererPluginPush } from '@plugin/renderer/pluginPushClient';
-import { readPurposeModelId } from '@plugin/renderer/modelConfiguration';
+import { readAuxiliaryModelId, readPurposeModelId } from '@plugin/renderer/modelConfiguration';
 import type { RendererPluginUploadProgress } from '@plugin/renderer/pluginMultipartUpload';
 import {
   KnowledgeBaseSchema, KnowledgeBaseSummarySchema, KnowledgeDocumentSummarySchema,
@@ -12,10 +12,20 @@ import type { KnowledgeSettingsUpdate, KnowledgeUploadModels, KnowledgeSearchReq
 import { resolveCurrentKnowledgeBaseMessage } from '../functions/resolveCurrentKnowledgeBaseMessage';
 import { invokeKnowledgeRequest, uploadKnowledgeMultipart } from './knowledgeRequestSession';
 
+/**
+ * 这几个界面操作会顺带让后端补历史图谱（回填、开关打开后的旧文档、续跑的新页），
+ * 补抽取用界面当前选的图谱抽取模型（用户 2026-11-27 定），所以每次请求都带上当前选择。
+ */
+function readInteractiveGraphModelId(): string | null {
+  return readAuxiliaryModelId('graph_extraction');
+}
+
 /** 只有插件声明的 IPC 与 Host 登记的 multipart；响应以同一业务 owner 的 schema 解码。 */
 export const knowledgeBaseService = {
   async rebuildIndex(kbId: string, modelId: string) {
-    return KnowledgeIndexJobStatusSchema.parse(await invokeKnowledgeRequest('rebuild-index', { kbId, modelId }));
+    return KnowledgeIndexJobStatusSchema.parse(await invokeKnowledgeRequest('rebuild-index', {
+      kbId, modelId, graphExtractionModelId: readInteractiveGraphModelId(),
+    }));
   },
   async getIndexRebuildStatus(kbId: string) {
     return KnowledgeIndexJobStatusSchema.nullable().parse(await invokeKnowledgeRequest('index-rebuild-status', { kbId }));
@@ -65,7 +75,9 @@ export const knowledgeBaseService = {
     await invokeKnowledgeRequest('delete-document', { kbId, docId });
   },
   async continueFailedPdfPages(kbId: string, docId: string, modelConfig: { pdfOcrModelId?: string | null; embeddingModelId?: string | null } = {}) {
-    const result = KnowledgeContinueFailedPagesResultSchema.parse(await invokeKnowledgeRequest('continue-failed-pages', { kbId, docId, modelConfig }));
+    const result = KnowledgeContinueFailedPagesResultSchema.parse(await invokeKnowledgeRequest('continue-failed-pages', {
+      kbId, docId, modelConfig, graphExtractionModelId: readInteractiveGraphModelId(),
+    }));
     return { ...result, success: true, timestamp: new Date().toISOString() };
   },
   async getTasksStatus(docIds: string[]) {
@@ -76,7 +88,9 @@ export const knowledgeBaseService = {
     }]));
   },
   async updateKbSettings(kbId: string, settings: KnowledgeSettingsUpdate) {
-    return KnowledgeBaseSchema.parse(await invokeKnowledgeRequest('update-settings', { kbId, settings }));
+    return KnowledgeBaseSchema.parse(await invokeKnowledgeRequest('update-settings', {
+      kbId, settings, graphExtractionModelId: readInteractiveGraphModelId(),
+    }));
   },
   async cancelTask(taskId: string): Promise<void> {
     await invokeKnowledgeRequest('cancel-task', { taskId });
@@ -88,7 +102,9 @@ export const knowledgeBaseService = {
       embeddingModelId: request.embeddingModelId ?? readPurposeModelId('embedding'),
       rerankModelId: request.rerankModelId ?? readPurposeModelId('rerank'),
     };
-    return KnowledgeSearchResponseSchema.parse(await invokeKnowledgeRequest('search', { kbId, request: payload }));
+    return KnowledgeSearchResponseSchema.parse(await invokeKnowledgeRequest('search', {
+      kbId, request: payload, graphExtractionModelId: readInteractiveGraphModelId(),
+    }));
   },
   async listProjects(signal?: AbortSignal) {
     return z.array(KnowledgeProjectSummarySchema).parse(await invokeKnowledgeRequest('list-projects', {}, signal));

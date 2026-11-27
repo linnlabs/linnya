@@ -35,7 +35,7 @@
             class="app-update-entry__button"
             :class="`is-${presentation.tone}`"
             :aria-expanded="presentation.opensPanel ? isOpen : undefined"
-            @click="handleIconClick($event, toggle, isOpen)"
+            @click="handleIconClick($event, toggle)"
           >
             <UpdateIcon :progress="presentation.progress" />
           </IconButton>
@@ -131,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch, type ComponentPublicInstance } from 'vue';
+import { computed, ref, watch, type ComponentPublicInstance } from 'vue';
 import { useElementSize } from '@vueuse/core';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
@@ -141,6 +141,7 @@ import {
   DROPDOWN_SURFACE_CLASSES,
   HoverTooltip,
   IconButton,
+  useAnchoredPosition,
 } from '@linnya/renderer-ui';
 import { RefreshIcon, UpdateIcon } from '@linnya/renderer-ui/icons';
 import { useNotificationStore } from '@/app/notification';
@@ -165,7 +166,8 @@ const emit = defineEmits<{
 
 const PANEL_WIDTH = 280;
 const PANEL_GAP = 6;
-const VIEWPORT_MARGIN = 8;
+/** 面板左沿比按钮多伸出 8px，面板内文字的内边距正好与按钮图标对齐。 */
+const PANEL_ALIGN_OFFSET = -8;
 
 const store = useUpdateStore();
 const actions = useUpdateActions();
@@ -177,7 +179,12 @@ const entryRef = ref<ComponentPublicInstance | null>(null);
 const measureRef = ref<HTMLElement | null>(null);
 const triggerRef = ref<HTMLElement | null>(null);
 const panelRef = ref<HTMLElement | null>(null);
-const panelPosition = ref({ top: 0, left: 0 });
+const panelAnchored = useAnchoredPosition({
+  anchor: triggerRef,
+  floating: panelRef,
+  open: () => panelRef.value !== null,
+  placement: { side: 'bottom', align: 'start', gap: PANEL_GAP, alignOffset: PANEL_ALIGN_OFFSET },
+});
 
 const presentation = computed(() => resolveUpdateEntryPresentation(state.value));
 const progress = computed(() => state.value?.progress ?? null);
@@ -246,30 +253,14 @@ const releaseNotesHtml = computed(() => {
   return typeof html === 'string' ? DOMPurify.sanitize(html) : '';
 });
 
-const panelStyle = computed(() => ({
-  top: `${panelPosition.value.top}px`,
-  left: `${panelPosition.value.left}px`,
-  width: `${PANEL_WIDTH}px`,
-}));
+const panelStyle = computed(() => ({ ...panelAnchored.style.value, width: `${PANEL_WIDTH}px` }));
 
-function positionPanel(): void {
-  const rect = triggerRef.value?.getBoundingClientRect();
-  if (!rect) return;
-  const maxLeft = window.innerWidth - PANEL_WIDTH - VIEWPORT_MARGIN;
-  panelPosition.value = {
-    top: rect.bottom + PANEL_GAP,
-    left: Math.max(VIEWPORT_MARGIN, Math.min(rect.left - VIEWPORT_MARGIN, maxLeft)),
-  };
-}
-
-function handleIconClick(event: MouseEvent, toggle: (event?: Event) => void, isOpen: boolean): void {
+function handleIconClick(event: MouseEvent, toggle: (event?: Event) => void): void {
   if (!presentation.value?.opensPanel) {
     void actions.download();
     return;
   }
-  if (!isOpen) positionPanel();
   toggle(event);
-  if (!isOpen) void nextTick(positionPanel);
 }
 
 function cancelAndClose(close: () => void): void {

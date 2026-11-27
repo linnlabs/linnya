@@ -276,7 +276,7 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
     '用于新对话首次发送后自动生成标题；默认“使用主模型”，会随主模型变化。',
   'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.label': '知识图谱抽取',
   'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.description':
-    '用于新上传文档的图谱抽取快照；默认模型由辅助用途注册表指定。',
+    '知识库开启图谱构建后用它抽取图谱：上传时记在任务里，补建旧文档、继续解析的新页也用当前选择。没有默认模型，不选则不建图谱。',
   'settings.modelConfig.imageGeneration.label': '图片生成模型',
   'settings.modelConfig.imageGeneration.placeholder': '请选择图片生成模型',
   'settings.modelConfig.imageGeneration.selectTitle': '选择图片生成模型',
@@ -395,6 +395,32 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.modelPicker.removeCustomProvider.confirm':
     '确定删除自定义模型供应商“{providerName}”及其下 {count} 个模型吗？仅由这些模型使用的 API Key 会一并清除，此操作无法撤销。',
   'settings.modelPicker.replaceApiKey': '更新 API Key',
+  'settings.modelPicker.invalid.title': '配置无效（{count}）',
+  'settings.modelPicker.invalid.sourceCount': '{count} 个无效',
+  'settings.modelPicker.invalid.flag': '配置无效',
+  'settings.modelPicker.invalid.description.repairable':
+    '启动时没有通过检查，已停用，对话里选不到。刷新会按 {providerName} 最新的模型定义重新生成，也可以直接删除。',
+  'settings.modelPicker.invalid.description.removeOnly':
+    '启动时没有通过检查，已停用，对话里选不到。可以删除后重新添加。',
+  'settings.modelPicker.invalid.repair': '刷新修复',
+  'settings.modelPicker.invalid.remove': '删除 {modelName}',
+  'settings.modelPicker.invalid.reason.multiple_routes':
+    '旧版本留下的配置，同时写了不止一种调用方式',
+  'settings.modelPicker.invalid.reason.route_endpoint_mismatch': '调用方式与它所用的连接设置对不上',
+  'settings.modelPicker.invalid.reason.endpoint_missing': '找不到它所用的连接',
+  'settings.modelPicker.invalid.reason.invalid_route': '调用方式的设置缺失或格式不对',
+  'settings.modelPicker.invalid.reason.credential_declaration':
+    '用的是旧版本的密钥写法，当前版本不再支持',
+  'settings.modelPicker.invalid.reason.invalid_structure': '这条配置的格式不对',
+  'settings.modelPicker.invalid.reason.unexpected': '检查这条配置时出错',
+  'settings.modelPicker.unassigned.group': '其他',
+  'settings.modelPicker.unassigned.title': '未归类的配置',
+  'settings.modelPicker.unassigned.description':
+    '它们原来所属的供应商已经删除，但配置、连接和 API Key 还留在本机。删除后会一并清除。',
+  'settings.modelPicker.removeProvider.invalidSection':
+    '另有 {count} 个配置无效的模型也会一并删除（含原配置和连接）',
+  'settings.modelPicker.removeCustomProvider.invalidSection':
+    '另有 {count} 个配置无效的模型也会一并删除（含原配置、连接和 API Key）',
   'settings.modelPicker.replaceApiKey.title': '更新 {providerName} 的 API Key',
   'settings.modelPicker.replaceApiKey.description':
     '新 Key 会替换该供应商当前保存的 Key，已启用的模型、可见性和用途绑定保持不变。',
@@ -785,7 +811,7 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.label':
         'Knowledge graph extraction',
       'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.description':
-        'Captured for graph extraction on newly uploaded documents. The default model is specified by the auxiliary purpose registry.',
+        'Used to build knowledge graphs once a knowledge base enables it: captured with each upload, and the current choice is also used for existing documents and re-parsed pages. There is no default; without a choice no graph is built.',
       'settings.modelConfig.imageGeneration.label': 'Image generation model',
       'settings.modelConfig.imageGeneration.placeholder': 'Choose image generation model',
       'settings.modelConfig.imageGeneration.selectTitle': 'Choose image generation model',
@@ -906,6 +932,36 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.modelPicker.removeCustomProvider.confirm':
         'Delete the custom provider "{providerName}" and its {count} models? API keys used only by these models are removed as well. This cannot be undone.',
       'settings.modelPicker.replaceApiKey': 'Update API key',
+      'settings.modelPicker.invalid.title': 'Invalid configuration ({count})',
+      'settings.modelPicker.invalid.sourceCount': '{count} invalid',
+      'settings.modelPicker.invalid.flag': 'Invalid',
+      'settings.modelPicker.invalid.description.repairable':
+        'These did not pass the startup check, so they are disabled and cannot be selected in conversations. Refreshing rebuilds them from the latest {providerName} model definitions, or you can delete them.',
+      'settings.modelPicker.invalid.description.removeOnly':
+        'These did not pass the startup check, so they are disabled and cannot be selected in conversations. Delete them and add them again.',
+      'settings.modelPicker.invalid.repair': 'Refresh to repair',
+      'settings.modelPicker.invalid.remove': 'Delete {modelName}',
+      'settings.modelPicker.invalid.reason.multiple_routes':
+        'Left by an older version; it declares more than one way to call the model',
+      'settings.modelPicker.invalid.reason.route_endpoint_mismatch':
+        'Its call settings do not match the connection it uses',
+      'settings.modelPicker.invalid.reason.endpoint_missing':
+        'The connection it uses cannot be found',
+      'settings.modelPicker.invalid.reason.invalid_route':
+        'Its call settings are missing or malformed',
+      'settings.modelPicker.invalid.reason.credential_declaration':
+        'It stores the API key in an old way that is no longer supported',
+      'settings.modelPicker.invalid.reason.invalid_structure':
+        'This configuration entry is malformed',
+      'settings.modelPicker.invalid.reason.unexpected': 'Checking this configuration failed',
+      'settings.modelPicker.unassigned.group': 'Other',
+      'settings.modelPicker.unassigned.title': 'Unassigned configurations',
+      'settings.modelPicker.unassigned.description':
+        'The provider these belonged to was deleted, but their configuration, connection and API key are still on this device. Deleting them removes all of these.',
+      'settings.modelPicker.removeProvider.invalidSection':
+        '{count} invalid models will also be deleted, including their configuration and connection',
+      'settings.modelPicker.removeCustomProvider.invalidSection':
+        '{count} invalid models will also be deleted, including their configuration, connection and API key',
       'settings.modelPicker.replaceApiKey.title': 'Update API key for {providerName}',
       'settings.modelPicker.replaceApiKey.description':
         'The new key replaces the key saved for this provider. Enabled models, visibility, and purpose bindings stay unchanged.',

@@ -12768,21 +12768,6 @@
       ]
     },
     {
-      "id": "linnya-cloud",
-      "display_name": "Linnya Cloud",
-      "connections": [
-        {
-          "id": "linnya-cloud",
-          "display_name": "Linnya Cloud",
-          "kind": "cloud",
-          "release_status": "stable",
-          "setup_fields": [],
-          "model_discovery": "cloud_catalog",
-          "models": []
-        }
-      ]
-    },
-    {
       "id": "ollama",
       "display_name": "Ollama",
       "connections": [

@@ -25,12 +25,11 @@ function setup() {
       capabilities: ['chat', 'image_generation', 'embedding'],
       reasoning: { supported_efforts: ['low', 'high'] },
     })),
-    purposeDefaults: {},
-    cloudModelsReady: false,
   };
   useModelCatalogStore().replaceSnapshot(initialCatalog);
   const initialPicker: ModelPickerSnapshot = {
     providers: [],
+    unassigned_unadmitted_models: [],
     custom_models: ['removed', 'retained'].map(id => ({
       materialized: true,
       model_config_id: id,
@@ -45,6 +44,7 @@ function setup() {
   initialPicker.custom_providers = initialPicker.custom_models.map(model => ({
     provider_id: `custom:${model.model_config_id}`,
     provider_name: model.model_config_id,
+    unadmitted_models: [],
     models: [model],
   }));
   useModelPickerStore().replaceSnapshot(initialPicker);
@@ -83,7 +83,10 @@ function setup() {
   const picker: ModelPickerGateway = {
     load: vi.fn(async () => ({
       ...initialPicker,
-      custom_models: initialPicker.custom_models.filter(model => model.model_config_id !== 'removed'),
+      custom_models: initialPicker.custom_models.filter(
+        model => model.model_config_id !== 'removed'
+      ),
+      unassigned_unadmitted_models: [],
       custom_providers: initialPicker.custom_providers?.map(group => ({
         ...group,
         models: group.models.filter(model => model.model_config_id !== 'removed'),
@@ -138,11 +141,17 @@ describe('自定义分组远端快照同步后的 Renderer 清理', () => {
       expect(bindings.effectivePrimaryModelId.value).toBe('retained');
       expect(useModelCatalogStore().models.map(model => model.id)).not.toContain('removed');
       const pickerSnapshot = useModelPickerReadModel().snapshot.value;
-      expect(pickerSnapshot?.custom_models.map(model => model.model_config_id)).toEqual(['retained']);
-      expect(pickerSnapshot?.custom_providers?.find(group => group.provider_name === 'removed'))
-        .toMatchObject({ models: [] });
-      expect(pickerSnapshot?.custom_providers?.flatMap(group => group.models.map(model => model.model_config_id)))
-        .not.toContain('removed');
+      expect(pickerSnapshot?.custom_models.map(model => model.model_config_id)).toEqual([
+        'retained',
+      ]);
+      expect(
+        pickerSnapshot?.custom_providers?.find(group => group.provider_name === 'removed')
+      ).toMatchObject({ models: [] });
+      expect(
+        pickerSnapshot?.custom_providers?.flatMap(group =>
+          group.models.map(model => model.model_config_id)
+        )
+      ).not.toContain('removed');
       expect(catalog.load).toHaveBeenCalledOnce();
       expect(picker.load).toHaveBeenCalledOnce();
       expect(refresh.refreshProvider).toHaveBeenCalledOnce();

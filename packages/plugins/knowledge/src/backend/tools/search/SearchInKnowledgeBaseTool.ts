@@ -21,7 +21,8 @@ import { runWithKnowledgeToolRuntime } from '../runtime/knowledgeToolRuntime';
 
 import { BaseTool, ToolParameterSchema, ToolContext, CommonParameterTypes } from '@plugin/backend/toolRuntime';
 import { runShallowSearch } from './shallow/runShallowSearch';
-import { isReasonedSearchFailure, rethrowSearchErrorForAgent } from './functions/rethrowSearchErrorForAgent';
+import { rethrowSearchErrorForAgent } from './functions/rethrowSearchErrorForAgent';
+import { isReasonedSearchFailure } from '../../application/search/reasonedSearchFailure';
 import { resolveGraphPolicyFromContext } from './graphPolicy';
 import { KnowledgeSearchResultSchema, KnowledgeShallowSearchArgsSchema } from '@app/schemas';
 import { requireCitationSequenceOffset } from '@plugin/backend/citationSourceRuntime';
@@ -150,7 +151,7 @@ but it intentionally does NOT expose the \`deep_search\` parameter.
       // 轻量化：不 pretty-print，降低 tool_output 体积
       return JSON.stringify(result);
     } catch (error) {
-      // 向量服务启动失败、嵌入模型不可用等已知原因：原样上抛，由 run 换成面向 Agent 的原因说明，避免被前缀包成中文原文。
+      // 向量服务启动失败、嵌入模型不可用、需重建索引等已知原因：原样上抛，由 run 换成面向 Agent 的原因说明，避免被前缀包成中文原文。
       if (isReasonedSearchFailure(error)) throw error;
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to search knowledge base: ${errorMsg}`);

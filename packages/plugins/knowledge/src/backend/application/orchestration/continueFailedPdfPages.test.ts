@@ -40,7 +40,7 @@ vi.mock('src/features/parsers/pdfParser/strategies/VisionRecognitionStrategy', (
 const KB_ID = 'kb-1';
 const DOC_ID = 'doc-1';
 
-type GraphEnqueueFn = (kbId: string, docId: string) => Promise<void>;
+type GraphEnqueueFn = (kbId: string, docId: string, llmModelId: string | null) => Promise<void>;
 
 describe('continueFailedPdfPages', () => {
   let tempDir: string;
@@ -91,7 +91,8 @@ describe('continueFailedPdfPages', () => {
         ...createInferenceCapabilities(),
       },
       KB_ID,
-      DOC_ID
+      DOC_ID,
+      { graphExtractionModelId: 'ui-graph' }
     );
 
     expect(result).toMatchObject({
@@ -114,7 +115,8 @@ describe('continueFailedPdfPages', () => {
     expect(qdrant.addedPoints).toHaveLength(1);
     expect(qdrant.addedPoints[0]?.payload.doc_id).toBe(DOC_ID);
     expect(qdrant.addedPoints[0]?.payload.page_number).toBe(2);
-    expect(graphEnqueue).toHaveBeenCalledWith(KB_ID, DOC_ID);
+    // 恢复的新页用界面当前选的图谱抽取模型补图谱。
+    expect(graphEnqueue).toHaveBeenCalledWith(KB_ID, DOC_ID, 'ui-graph');
 
     const updatedDocument = await metadata.getDocumentById(DOC_ID);
     expect(updatedDocument?.parseDiagnostics?.parsedPages).toEqual([1, 2]);

@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 
 import type {
+  InferenceEndpointSelection,
   InferenceEndpointView,
   ModelConfig,
   UnadmittedUserModel,
@@ -22,29 +23,43 @@ export function createStatefulProviderOnboardingStorage() {
   let unadmittedModels: UnadmittedUserModel[] = [];
   let configuredProvider: ConfiguredProvider | undefined;
   let pendingIntent: PendingProviderModelRegistration | undefined;
+  const commitModel = (model: ModelConfig, endpoint: InferenceEndpointSelection) => {
+    const inferenceEndpointId =
+      endpoint.kind === 'create' ? endpoint.endpoint.id : endpoint.inference_endpoint_id;
+    models = [...models, { ...model, inference_endpoint_id: inferenceEndpointId }];
+    if (endpoint.kind === 'create') {
+      const credentialReference = endpoint.endpoint.credential_reference ?? { kind: 'none' };
+      endpoints = [
+        ...endpoints,
+        {
+          ...endpoint.endpoint,
+          credential_reference: credentialReference,
+          credential_status: credentialReference.kind === 'none' ? 'not_required' : 'configured',
+        },
+      ];
+    }
+  };
   const catalog: ProviderOnboardingModelCatalogPort & {
     registerUserModel: ReturnType<typeof vi.fn>;
+    replaceUnadmittedUserModel: ReturnType<typeof vi.fn>;
     replaceInferenceEndpointCredential: ReturnType<typeof vi.fn>;
   } = {
     getModel: modelConfigId => models.find(model => model.id === modelConfigId),
     getUnadmittedUserModels: () => unadmittedModels,
     getInferenceEndpoints: () => endpoints,
-    registerUserModel: vi.fn(async (model: ModelConfig, endpoint) => {
-      const inferenceEndpointId =
-        endpoint.kind === 'create' ? endpoint.endpoint.id : endpoint.inference_endpoint_id;
-      models = [...models, { ...model, inference_endpoint_id: inferenceEndpointId }];
-      if (endpoint.kind === 'create') {
-        const credentialReference = endpoint.endpoint.credential_reference ?? { kind: 'none' };
-        endpoints = [
-          ...endpoints,
-          {
-            ...endpoint.endpoint,
-            credential_reference: credentialReference,
-            credential_status: credentialReference.kind === 'none' ? 'not_required' : 'configured',
-          },
-        ];
-      }
+    registerUserModel: vi.fn(async (model: ModelConfig, endpoint: InferenceEndpointSelection) => {
+      commitModel(model, endpoint);
     }),
+    // 与 Model Catalog 同一合同：只替换同 ID 的停用条目，不覆盖已准入模型。
+    replaceUnadmittedUserModel: vi.fn(
+      async (model: ModelConfig, endpoint: InferenceEndpointSelection) => {
+        if (!unadmittedModels.some(entry => entry.id === model.id)) {
+          throw new Error(`停用的用户模型不存在: ${model.id}`);
+        }
+        unadmittedModels = unadmittedModels.filter(entry => entry.id !== model.id);
+        commitModel(model, endpoint);
+      }
+    ),
     updateModel: vi.fn(async (model: ModelConfig) => {
       models = models.map(candidate => (candidate.id === model.id ? model : candidate));
     }),
@@ -113,9 +128,16 @@ export function createStatefulProviderOnboardingStorage() {
         {
           id: model.id,
           inference_endpoint_id: model.inference_endpoint_id,
+          custom_api_group_name: undefined,
+          display_name: model.display_name,
           reason: '必须声明唯一的推理 route',
+          reason_kind: 'multiple_routes',
         },
       ];
+    },
+    /** 模拟连接被手工删掉：停用条目还引用它，但它已不在文件里。 */
+    dropEndpoint(endpointId: string) {
+      endpoints = endpoints.filter(endpoint => endpoint.id !== endpointId);
     },
     /** 模拟归属与目录失去一致：模型既不在运行目录、也不是停用条目，归属却还在。 */
     dropFromCatalogOnly(modelConfigId: string) {

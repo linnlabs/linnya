@@ -41,11 +41,12 @@ function catalogResponse(reasoning: ModelCatalogItem['reasoning']): Response {
     },
     { id: otherModelId, catalog_source: 'user', capabilities: ['chat'] },
   ];
-  return Response.json({ models, task_defaults: {}, cloud_models_ready: false });
+  return Response.json({ models });
 }
 
 const pickerSnapshot: ModelPickerSnapshot = {
   providers: [],
+  unassigned_unadmitted_models: [],
   custom_models: [modelId, otherModelId].map(id => ({
     materialized: true,
     model_config_id: id,

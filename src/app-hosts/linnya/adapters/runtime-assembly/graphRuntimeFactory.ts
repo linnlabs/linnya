@@ -10,10 +10,7 @@ import type {
   TokenizerPort,
 } from '@linnlabs/linnkit/ports';
 import { defaultToolRuntimePort } from 'src/app-hosts/linnya/adapters/tools/defaultPorts';
-import {
-  CLOUD_QUOTA_FALLBACK_MODEL_ID,
-  LLM_FALLBACK_CHAT_MODEL_PREFERRED_ORDER,
-} from 'src/app-hosts/linnya/agent-registry/system/llm_fallback';
+import { LLM_FALLBACK_CHAT_MODEL_PREFERRED_ORDER } from 'src/app-hosts/linnya/agent-registry/system/llm_fallback';
 import { createDefaultGraphExecutorContextBuilder } from 'src/app-hosts/linnya/adapters/context-injection/defaultGraphExecutorContextBuilder';
 import type { LinnyaTokenCalibrationCollector } from 'src/app-hosts/linnya/adapters/token-accounting';
 import { defaultModelCatalog } from './modelCatalog';
@@ -39,7 +36,6 @@ export interface DefaultGraphRuntimeOverrides {
   /** 自定义工具目录时配套注入名称、校验和摘要能力，避免使用全局 registry。 */
   toolManager?: agentTools.ToolManager;
   contextBuilder?: graph.GraphExecutorContextBuilder;
-  cloudQuotaFallbackModelId?: string;
   modelCatalog?: llm.ModelCatalogLike;
   modelResolver?: llm.ModelResolver;
   /**
@@ -137,9 +133,6 @@ export function createDefaultGraphRuntimeDependencies(
     llmCaller,
     toolRuntime: overrides.toolRuntime ?? defaultToolRuntimePort,
     contextBuilder,
-    cloudQuotaFallbackModelId:
-      // 兜底模型 ID 由 agent-registry 集中定义（硬编码模型 ID 只能放在那里），这里只引用。
-      overrides.cloudQuotaFallbackModelId ?? CLOUD_QUOTA_FALLBACK_MODEL_ID,
     modelCatalog,
     modelResolver,
     telemetryPort: overrides.telemetryPort,

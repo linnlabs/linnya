@@ -34,7 +34,7 @@ beforeEach(() => {
   backendPluginRegistry.register(platformBackendPlugin);
   backendPluginRegistry.register(createCanvasBackendPlugin(), { allowPluginCli: true });
   push.mockClear();
-  installBackendRendererIntegrationPort({ connectModelCatalogUpdates: async () => () => undefined,
+  installBackendRendererIntegrationPort({
     publishTranscriptionProgress: vi.fn(), publishWorkspaceMutation: vi.fn(),
     publishPluginRendererPush: push, publishTodosChanged: vi.fn(), publishModelsChanged: vi.fn(), publishConversationActivityChanged: vi.fn(), publishPluginsChanged: vi.fn(),
   });

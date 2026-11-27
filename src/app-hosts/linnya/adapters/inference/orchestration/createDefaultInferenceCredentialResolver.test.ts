@@ -1,12 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ModelConfig } from 'src/domains/model-catalog';
-import { createOfficialDistributionIdentity } from 'src/shared/distribution-identity';
 import { createDefaultInferenceCredentialResolver } from './createDefaultInferenceCredentialResolver';
-
-// 这里验证 Cloud 服务开放后的接入逻辑；服务当前是否开放由 isLinnyaCloudClientEnabled 自己的测试负责。
-vi.mock('src/domains/model-catalog/features/cloud-catalog/functions/isLinnyaCloudClientEnabled', () => ({
-  isLinnyaCloudClientEnabled: (identity: { readonly kind: string }) => identity.kind === 'official',
-}));
 
 function model(id: string, credentialReference: ModelConfig['credential_reference']): ModelConfig {
   return {
@@ -21,52 +15,32 @@ function model(id: string, credentialReference: ModelConfig['credential_referenc
   };
 }
 
+const noProviderAccounts = {
+  resolve: async () => {
+    throw new Error('fixture 不使用 Provider account');
+  },
+};
+
 describe('default inference credential resolver', () => {
-  it('host-managed Cloud credential 按 attempt 注入设备身份，BYOK credential 不附带 Cloud header', async () => {
-    const cloudModel = model('cloud-model', {
-      kind: 'host_managed',
-      credential_id: 'linnya-cloud',
-    });
+  it('本机凭据原样交给推理；缺少凭据投影为推理准入错误', async () => {
     const byokModel = model('byok-model', {
       kind: 'environment_variable',
       environment_variable: 'FIXTURE_API_KEY',
     });
     const resolver = createDefaultInferenceCredentialResolver({
       catalog: {
-        getModel: id => (id === cloudModel.id ? cloudModel : byokModel),
-        getCredentialReference: id =>
-          id === cloudModel.id ? cloudModel.credential_reference : byokModel.credential_reference,
-        resolveCredential: id => (id === cloudModel.id ? 'linnya-cloud' : 'byok-secret'),
+        getModel: () => byokModel,
+        getCredentialReference: () => byokModel.credential_reference,
+        resolveCredential: id => (id === byokModel.id ? 'byok-secret' : undefined),
       },
-      resolveCloudDeviceId: async () => 'device-fixture',
-      distributionIdentity: createOfficialDistributionIdentity({
-        releaseChannel: 'stable',
-        releaseKeyId: 'fixture',
-      }),
-      providerAccounts: {
-        resolve: async () => {
-          throw new Error('fixture 不使用 Provider account');
-        },
-      },
+      providerAccounts: noProviderAccounts,
     });
 
     await expect(
-      resolver.resolve({
-        model_id: cloudModel.id,
-        endpoint_id: 'linnya-cloud',
-        auth_profile: 'bearer',
-      })
-    ).resolves.toEqual({
-      profile: 'bearer',
-      secret: 'linnya-cloud',
-      request_headers: { 'X-Device-ID': 'device-fixture' },
-    });
-    await expect(
-      resolver.resolve({
-        model_id: byokModel.id,
-        endpoint_id: 'fixture',
-        auth_profile: 'bearer',
-      })
+      resolver.resolve({ model_id: byokModel.id, endpoint_id: 'fixture', auth_profile: 'bearer' })
     ).resolves.toEqual({ profile: 'bearer', secret: 'byok-secret' });
+    await expect(
+      resolver.resolve({ model_id: 'missing-model', endpoint_id: 'fixture', auth_profile: 'bearer' })
+    ).rejects.toMatchObject({ name: 'InferenceAdmissionError' });
   });
 });

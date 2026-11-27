@@ -35,7 +35,6 @@
 2	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/SubrunTracePanel.css
 1	SCALE-03-line-height	apps/renderer/domains/conversation/styles/components/SummaryMessage.css
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/TaskStateCard.css
-1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/ThoughtMessage.css
 1	SCALE-06-z-index	apps/renderer/domains/conversation/styles/components/TimelineNav.css
 1	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/ToolCallsMessage.css
 3	SCALE-05-spacing	apps/renderer/domains/conversation/styles/components/ToolOutputReadCard.css

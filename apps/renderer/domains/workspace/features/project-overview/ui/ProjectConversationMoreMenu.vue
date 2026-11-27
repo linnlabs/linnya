@@ -42,10 +42,15 @@
 </template>
 
 <script setup lang="ts" generic="Action extends string">
-import { computed, ref, watch, type ComponentPublicInstance } from 'vue';
-import { CustomSelect, IconButton, resolveIconButtonElement, type CustomSelectOption } from '@linnya/renderer-ui';
+import { computed, ref, type ComponentPublicInstance } from 'vue';
+import {
+  CustomSelect,
+  IconButton,
+  resolveIconButtonElement,
+  useAnchoredPosition,
+  type CustomSelectOption,
+} from '@linnya/renderer-ui';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
 
 defineProps<{
   label: string;
@@ -59,14 +64,13 @@ const emit = defineEmits<{
 const triggerRef = ref<Element | ComponentPublicInstance | null>(null);
 const triggerElement = computed(() => resolveIconButtonElement(triggerRef.value));
 const isOpen = ref(false);
-const {
-  dropdownRef: menuRef,
-  dropdownStyle: menuStyle,
-  positionDropdownAfterRender,
-} = useFixedDropdownPosition({ align: 'end' });
-watch(isOpen, open => {
-  if (open) void positionDropdownAfterRender(triggerElement.value);
-}, { flush: 'post' });
+const menuRef = ref<HTMLElement | null>(null);
+const { style: menuStyle } = useAnchoredPosition({
+  anchor: triggerElement,
+  floating: menuRef,
+  open: isOpen,
+  placement: { align: 'end', gap: 4 },
+});
 
 function handleSelect(value: Action | null): void {
   isOpen.value = false;

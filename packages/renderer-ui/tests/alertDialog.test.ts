@@ -162,6 +162,24 @@ describe('AlertDialog 的 Enter', () => {
     pressEnter();
     expect(answers).toEqual(['above-cancel']);
   });
+
+  it('挂载时就可见的确认框同样响应 Enter，关闭后不再响应', async () => {
+    const answers: string[] = [];
+    const visible = ref(true);
+    mount(() => h(AlertDialog, {
+      visible: visible.value,
+      isConfirmation: true,
+      onConfirm: () => {
+        answers.push('confirm');
+        visible.value = false;
+      },
+    }));
+    await nextTick();
+    pressEnter();
+    await nextTick();
+    pressEnter();
+    expect(answers).toEqual(['confirm']);
+  });
 });
 
 describe('resolveAlertDialogDangerousAction', () => {

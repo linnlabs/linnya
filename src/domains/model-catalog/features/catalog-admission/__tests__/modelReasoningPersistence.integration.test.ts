@@ -13,7 +13,6 @@ import type {
 import type { ModelReasoningResolver } from '../../../definitions/modelReasoningResolver';
 import type { InferenceEndpointSelection } from '../../../definitions/inferenceEndpoint';
 import type { ModelCatalogRegistry } from '../../../registry/modelCatalogRegistry';
-import { createSourceDistributionIdentity } from '../../../../../shared/distribution-identity';
 
 const paths = vi.hoisted(() => ({ directory: '' }));
 vi.mock('src/shared/utils/pathManager', () => ({
@@ -56,7 +55,7 @@ async function openRegistry(resolver?: ModelReasoningResolver): Promise<ModelCat
   const registry = ModelCatalogRegistry.getInstance();
   if (resolver) registry.installModelReasoningResolver(resolver);
   registry.installEndpointCredentialStorage(createFileCredentialStorage(path.join(paths.directory, 'credentials.json')));
-  await registry.initialize(createSourceDistributionIdentity());
+  await registry.initialize();
   return registry;
 }
 
@@ -222,45 +221,29 @@ describe('SDK 能力装配与真实用户目录持久化', () => {
     expect(() => catalog.installModelReasoningResolver(queryReasoning)).toThrow('initialize 前');
   });
 
-  it('完全冲突的显式声明只停用该模型，不伪装成无思考能力；原条目在之后的保存与重启中保留', async () => {
-    const { readStoredUserModelState } = await import(
-      '../../user-model-persistence/functions/readStoredUserModelState'
-    );
+  it('与推理能力完全没有共同档位的显式声明被忽略：模型照常准入、按 SDK 档位启用，原配置不被改写', async () => {
     await seedModelsOutsideGroups([
       model('conflict', { supported_efforts: ['off'], default_effort: 'off' }),
       model('healthy'),
     ]);
     const before = await readUserFile();
-    const [storedConflict] = readStoredUserModelState(JSON.parse(before)).models;
-    expect(storedConflict).toMatchObject({ id: 'conflict' });
 
     let catalog = await openRegistry(queryReasoning);
-    expect(catalog.getModel('conflict')).toBeUndefined();
+    // 声明无法执行，但不再因此停用整个模型：档位与默认值都按 SDK 能力取。
+    expect(requireModel(catalog, 'conflict').reasoning).toEqual({
+      supported_efforts: ['low', 'medium', 'high'],
+      default_effort: 'medium',
+    });
     expect(requireModel(catalog, 'healthy').reasoning).toEqual({
       supported_efforts: ['low', 'medium', 'high'],
       default_effort: 'medium',
     });
-    expect(catalog.getUnadmittedUserModels()).toEqual([
-      {
-        id: 'conflict',
-        inference_endpoint_id: 'endpoint-a',
-        reason: expect.stringContaining('claude-haiku-5-5'),
-      },
-    ]);
+    expect(catalog.getUnadmittedUserModels()).toEqual([]);
+    // 启动只是忽略声明，不回写文件。
     expect(await readUserFile()).toBe(before);
 
-    // 一次普通保存不能把停用的条目、它的连接或凭据一起删掉。
-    // 没有分组引用 endpoint-a：healthy 删掉后，连接与凭据只靠停用条目留住。
-    await catalog.removeModel('healthy');
-    const saved = readStoredUserModelState(JSON.parse(await readUserFile()));
-    expect(saved.customApiGroups).toEqual([]);
-    expect(saved.models).toEqual([storedConflict]);
-    expect(saved.inferenceEndpoints).toEqual([expect.objectContaining({ id: 'endpoint-a' })]);
-    expect(catalog.resolveInferenceEndpointCredential('endpoint-a')).toBe('fixture-key');
-
-    // 能力查询不再冲突时（例如 SDK 更新），同一条原始配置重新准入。
+    // 没有能力查询时（SDK 不报告该模型），原声明照旧生效。
     catalog = await openRegistry();
-    expect(catalog.getUnadmittedUserModels()).toEqual([]);
     expect(requireModel(catalog, 'conflict').reasoning).toEqual({
       supported_efforts: ['off'],
       default_effort: 'off',

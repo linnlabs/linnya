@@ -42,9 +42,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { BaseButton, CustomSelect, type CustomSelectOption } from '@linnya/renderer-ui';
-import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
+import { ref } from 'vue';
+import { BaseButton, CustomSelect, useAnchoredPosition, type CustomSelectOption } from '@linnya/renderer-ui';
 
 /** 按钮加一个选项菜单（合并到哪个标签）；与文件页筛选菜单同一套定位和动效。 */
 defineProps<{
@@ -57,10 +56,8 @@ const emit = defineEmits<{ pick: [value: string] }>();
 
 const anchorRef = ref<HTMLElement | null>(null);
 const isOpen = ref(false);
-const { dropdownRef: menuRef, dropdownStyle: menuStyle, positionDropdownAfterRender } = useFixedDropdownPosition({ align: 'start' });
-watch(isOpen, open => {
-  if (open) void positionDropdownAfterRender(anchorRef.value);
-}, { flush: 'post' });
+const menuRef = ref<HTMLElement | null>(null);
+const { style: menuStyle } = useAnchoredPosition({ anchor: anchorRef, floating: menuRef, open: isOpen, placement: { gap: 4 } });
 
 function pick(value: string | null): void {
   isOpen.value = false;

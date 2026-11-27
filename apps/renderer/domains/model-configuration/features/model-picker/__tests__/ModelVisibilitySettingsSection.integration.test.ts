@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 
 import { createPinia, getActivePinia, setActivePinia } from 'pinia';
-import type { ModelSourceRemovalResult } from '../../../definitions/modelSourceRemoval';
+import type {
+  ModelSourceRemovalResult,
+  ModelSourceRemovalTargets,
+} from '../../../definitions/modelSourceRemoval';
 import type { ModelPickerSnapshot } from '@app/schemas/model-picker';
 import type {
   CustomApiProviderRefreshCommand,
@@ -20,7 +23,7 @@ const mocks = vi.hoisted(() => ({
   removeCustomApiProviderModels:
     vi.fn<(name: string) => Promise<{ synchronizationFailed: boolean }>>(),
   removeModelSource:
-    vi.fn<(modelConfigIds: readonly string[]) => Promise<ModelSourceRemovalResult>>(),
+    vi.fn<(targets: ModelSourceRemovalTargets) => Promise<ModelSourceRemovalResult>>(),
   refreshProviderModels: vi.fn<(id: string) => Promise<ModelPickerSnapshot>>(),
   setModelVisibility: vi.fn<() => Promise<ModelPickerSnapshot>>(),
   refreshCustomProvider:
@@ -124,6 +127,7 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
           kind: 'direct',
           picker_enabled: true,
           credential_available: true,
+          unadmitted_models: [],
           models: [
             {
               materialized: true,
@@ -139,6 +143,7 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
         },
       ],
       custom_models: [],
+      unassigned_unadmitted_models: [],
     });
 
     host = document.createElement('div');
@@ -152,10 +157,12 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
       const snapshot: ModelPickerSnapshot = {
         providers: [],
         custom_models: [],
+        unassigned_unadmitted_models: [],
         custom_providers: [
           {
             provider_id: 'custom:Relay',
             provider_name: 'Relay',
+            unadmitted_models: [],
             api_format: 'openai_compatible',
             base_url: 'https://relay.example.com/v1',
             endpoint_id: 'relay-endpoint',
@@ -204,8 +211,6 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
             ui_visibility: [],
           },
         ],
-        purposeDefaults: {},
-        cloudModelsReady: true,
       });
       if (outcome !== 'refresh-failed') {
         mocks.refreshCustomProvider.mockResolvedValue({
@@ -261,10 +266,12 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     const emptyGroup: ModelPickerSnapshot = {
       providers: [],
       custom_models: [],
+      unassigned_unadmitted_models: [],
       custom_providers: [
         {
           provider_id: 'custom:Relay',
           provider_name: 'Relay',
+          unadmitted_models: [],
           api_format: 'openai_compatible',
           base_url: 'https://relay.example.com/v1',
           endpoint_id: 'relay-endpoint',
@@ -282,8 +289,6 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     mocks.loadPicker.mockResolvedValue(emptyGroup);
     mocks.loadCatalog.mockResolvedValue({
       models: [],
-      purposeDefaults: {},
-      cloudModelsReady: false,
     });
     await flushUi();
     const button = host.querySelector<HTMLButtonElement>('.model-visibility-refresh-btn');
@@ -309,10 +314,12 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     useModelPickerStore().replaceSnapshot({
       providers: [],
       custom_models: [],
+      unassigned_unadmitted_models: [],
       custom_providers: [
         {
           provider_id: 'custom:Relay',
           provider_name: 'Relay',
+          unadmitted_models: [],
           api_format: 'openai_compatible',
           base_url: 'https://relay.example.com/v1',
           models: [],
@@ -322,8 +329,6 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     mocks.confirm.mockResolvedValue(true);
     mocks.loadCatalog.mockResolvedValue({
       models: [],
-      purposeDefaults: {},
-      cloudModelsReady: false,
     });
     mocks.loadPicker.mockRejectedValue(new Error('picker unavailable'));
     await flushUi();
@@ -524,9 +529,13 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     await flushUi();
     expect(mocks.confirm).toHaveBeenLastCalledWith({
       message: 'settings.modelPicker.removeProvider.confirm',
+      sections: [],
       isDangerousAction: true,
     });
     expect(mocks.removeModelSource).toHaveBeenCalledOnce();
-    expect(mocks.removeModelSource).toHaveBeenCalledWith(['openai-gpt-test']);
+    expect(mocks.removeModelSource).toHaveBeenCalledWith({
+      modelConfigIds: ['openai-gpt-test'],
+      unadmittedModelConfigIds: [],
+    });
   });
 });

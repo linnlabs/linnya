@@ -258,6 +258,7 @@
           v-if="activeHeaderTool"
           ref="headerToolPanelRef"
           class="header-tool-panel"
+          :style="headerToolPanelStyle"
         >
           <header class="header-tool-panel__header">
             <span class="header-tool-panel__title">{{ activeHeaderToolTitle }}</span>
@@ -293,6 +294,7 @@
           v-show="showDocMenu"
           ref="docMenuWrapperRef"
           class="app-header-doc-menu-wrapper"
+          :style="docMenuStyle"
         >
           <CustomSelect
             :model-value="null"
@@ -357,7 +359,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type CSSProperties } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, type CSSProperties } from 'vue';
 import { useUIStore } from '@/shared/stores/ui';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import { useNavigationScope } from '@/app/navigation';
@@ -375,7 +377,7 @@ import { readDocumentTypeIcon } from '@/app/plugins/documentTypePresentation';
 import { DocumentHistoryPanel, useHistoryMessages } from '@/domains/document-history';
 import { getDocumentTypeByActiveType, getDocumentTypeByNodeType } from '@/app/plugins/registry';
 import type { DocumentActionMenuOptionValue } from '@/app/plugins/types';
-import { CustomSelect, HoverTooltip, IconButton, type CustomSelectOption, type IconButtonExposed, measureFloatingLayoutSize } from '@linnya/renderer-ui';
+import { CustomSelect, HoverTooltip, IconButton, useAnchoredPosition, type CustomSelectOption, type IconButtonExposed } from '@linnya/renderer-ui';
 import { resolveWorkspaceNodeDisplayName } from '@/domains/workspace/functions/resolveWorkspaceNodeDisplayName';
 import { WindowActionIcon } from '@linnya/renderer-ui/icons';
 import { CloseIcon } from '@linnya/renderer-ui/icons';
@@ -609,23 +611,6 @@ const currentHeaderToolButton = computed(() => {
   return null;
 });
 
-const positionHeaderToolPanel = () => {
-  const triggerEl = currentHeaderToolButton.value;
-  const panelEl = headerToolPanelRef.value;
-  if (!triggerEl || !panelEl) return;
-
-  const triggerRect = triggerEl.getBoundingClientRect();
-  const panelRect = measureFloatingLayoutSize(panelEl);
-  const gap = 8;
-  const viewportPadding = 8;
-  const desiredLeft = triggerRect.right - panelRect.width;
-  const maxLeft = window.innerWidth - panelRect.width - viewportPadding;
-  const left = Math.max(viewportPadding, Math.min(desiredLeft, maxLeft));
-
-  panelEl.style.top = `${triggerRect.bottom + gap}px`;
-  panelEl.style.left = `${left}px`;
-};
-
 const handleToggleTimeline = () => {
   if (!canToggleTimeline.value) return;
   assistantStore.toggleTimelineCollapsed();
@@ -648,14 +633,6 @@ const handleHeaderToolKeydown = (event: KeyboardEvent) => {
   }
 };
 
-watch(activeHeaderTool, (tool) => {
-  if (tool) {
-    nextTick(() => {
-      positionHeaderToolPanel();
-    });
-  }
-});
-
 watch(
   () => scene.value.kind,
   (sceneKind) => {
@@ -667,13 +644,11 @@ watch(
 );
 
 onMounted(() => {
-  window.addEventListener('resize', positionHeaderToolPanel);
   document.addEventListener('pointerdown', handleHeaderToolOutsidePointerDown, true);
   document.addEventListener('keydown', handleHeaderToolKeydown);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', positionHeaderToolPanel);
   document.removeEventListener('pointerdown', handleHeaderToolOutsidePointerDown, true);
   document.removeEventListener('keydown', handleHeaderToolKeydown);
 });
@@ -721,6 +696,19 @@ const docMenuButton = ref<IconButtonExposed | null>(null);
 const docMenuButtonRef = computed<HTMLElement | null>(() => docMenuButton.value?.element ?? null);
 // 菜单容器引用
 const docMenuWrapperRef = ref<HTMLElement | null>(null);
+const { style: docMenuStyle } = useAnchoredPosition({
+  anchor: docMenuButtonRef,
+  floating: docMenuWrapperRef,
+  open: showDocMenu,
+  placement: { gap: 4 },
+});
+// 文档级工具面板（审阅等）从“更多”按钮右沿向下展开。
+const { style: headerToolPanelStyle } = useAnchoredPosition({
+  anchor: currentHeaderToolButton,
+  floating: headerToolPanelRef,
+  open: () => activeHeaderTool.value !== null,
+  placement: { align: 'end' },
+});
 
 // 当前激活文档对应的 Workspace 节点（用于判断文档类型）
 const currentDocumentNode = computed(() => {
@@ -860,40 +848,5 @@ const handleDocMenuSelect = async (value: unknown) => {
 
   showDocMenu.value = false;
 };
-
-// 计算并设置下拉菜单位置（参考侧边栏更多菜单的实现）
-const positionDocMenu = () => {
-  const triggerEl = docMenuButtonRef.value;
-  const wrapperEl = docMenuWrapperRef.value;
-  if (!triggerEl || !wrapperEl) return;
-
-  const triggerRect = triggerEl.getBoundingClientRect();
-  const wrapperRect = measureFloatingLayoutSize(wrapperEl);
-
-  let top = triggerRect.bottom + 4;
-  let left = triggerRect.left;
-
-  // 右侧溢出时向左对齐
-  if (left + wrapperRect.width > window.innerWidth) {
-    left = triggerRect.right - wrapperRect.width;
-  }
-
-  // 下方溢出时显示在按钮上方
-  if (top + wrapperRect.height > window.innerHeight) {
-    top = triggerRect.top - wrapperRect.height - 4;
-  }
-
-  wrapperEl.style.top = `${top}px`;
-  wrapperEl.style.left = `${left}px`;
-};
-
-// 监听菜单打开，计算位置
-watch(showDocMenu, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => {
-      positionDocMenu();
-    });
-  }
-});
 
 </script>

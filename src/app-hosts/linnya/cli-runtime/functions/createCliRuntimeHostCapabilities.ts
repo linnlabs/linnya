@@ -24,7 +24,6 @@ function unavailable(capability: string): CliRuntimeCapabilityUnavailableError {
 /** CLI 没有 Renderer；这里消费瞬时展示通知，持久业务事实仍由各自 owner 写入数据库。 */
 export function createCliRuntimeRendererIntegrationPort(): BackendRendererIntegrationPort {
   return Object.freeze({
-    async connectModelCatalogUpdates() { return () => undefined; },
     publishTranscriptionProgress() {},
     publishWorkspaceMutation() {},
     publishPluginRendererPush() {},

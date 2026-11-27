@@ -5,6 +5,7 @@ import type { CustomApiGroup, CustomApiGroupMigration } from '../definitions/cus
 import type { ModelReasoningResolver } from '../definitions/modelReasoningResolver';
 import { projectUserModelForPersistence } from '../features/user-model-persistence/functions/projectUserModelForPersistence';
 import { partitionStoredUserModels } from '../features/user-model-persistence/functions/partitionStoredUserModels';
+import { projectUnadmittedUserModels } from '../features/user-model-persistence/functions/projectUnadmittedUserModels';
 import type { UnadmittedUserModelEntry } from '../features/user-model-persistence/definitions/userModelsFile';
 import { assertCustomApiGroupEndpoints } from '../features/custom-api-groups/functions/customApiGroupState';
 import { prepareCustomApiGroupMutation } from '../features/custom-api-groups/orchestration/prepareCustomApiGroupMutation';
@@ -19,7 +20,6 @@ import {
 import { Logger } from 'src/shared/logger';
 
 import type {
-  FunctionalModelDefaults,
   ModelCatalog,
   ModelConfig,
   ModelDiff,
@@ -27,6 +27,7 @@ import type {
   UserModelRegistration,
 } from '../definitions/modelCatalog';
 import { ModelCatalogConflictError } from '../definitions/modelCatalog';
+import { ModelAdmissionError } from '../definitions/modelAdmissionError';
 import type {
   CredentialReference,
   InferenceEndpoint,
@@ -35,8 +36,6 @@ import type {
   EndpointCredentialStatus,
 } from '../definitions/inferenceEndpoint';
 import { processModelConfig } from '../features/catalog-admission/functions/processModelConfig';
-import { fetchCloudModels } from '../features/cloud-catalog/orchestration/fetchCloudModels';
-import { isLinnyaCloudClientEnabled } from '../features/cloud-catalog/functions/isLinnyaCloudClientEnabled';
 import { resolveDefaultModelsPath } from '../features/default-catalog/functions/resolveDefaultModelsPath';
 import { applyCommittedModelChanges } from '../features/user-model-persistence/functions/applyCommittedModelChanges';
 import { modelPersister } from '../features/user-model-persistence/orchestration/modelPersister';
@@ -45,20 +44,8 @@ import { findUnreferencedInferenceEndpoints } from '../features/inference-endpoi
 import { readInferenceEndpoint } from '../features/inference-endpoints/functions/readInferenceEndpoint';
 import { prepareInferenceEndpointSelection } from '../features/inference-endpoints';
 import { endpointCredentialStore } from '../features/inference-endpoints/orchestration/endpointCredentialStore';
-import {
-  requireInstalledDistributionIdentity,
-  type DistributionIdentity,
-} from '../../../shared/distribution-identity';
 
 const logger = new Logger('ModelCatalog');
-const CLOUD_MODEL_RETRY_INTERVAL_MS = 30_000;
-
-export interface CloudModelsLoadedEvent {
-  readonly count: number;
-  readonly models: ModelConfig[];
-}
-
-export type CloudModelsLoadedListener = (event: CloudModelsLoadedEvent) => void;
 
 /** 用户目录事务已经写盘并更新内存后才发出；只是失效信号，读方重新读取目录。 */
 export interface UserModelCatalogChangedEvent {
@@ -87,7 +74,7 @@ function readModelsEnvelope(value: unknown): unknown[] {
 /**
  * 产品模型目录的进程内索引。
  *
- * 它只合并 default、Cloud、account 与 user 四个来源并提供查询/变更事件；具体 Provider 调用、
+ * 它只合并 default、account 与 user 三个来源并提供查询/变更事件；具体 Provider 调用、
  * 业务模型选择和 Renderer 状态由各自 owner 负责。
  */
 export class ModelCatalogRegistry implements ModelCatalog {
@@ -111,13 +98,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
    */
   private persistingInitialState = false;
   private modelReasoningResolver: ModelReasoningResolver | undefined;
-  private cloudModelRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  private cloudModelRetryAttemptCount = 0;
-  private cloudModelsLoadedSuccessfully = false;
-  private cloudModelLoadInFlight: Promise<boolean> | null = null;
-  private readonly cloudModelsLoadedListeners = new Set<CloudModelsLoadedListener>();
   private readonly userModelCatalogChangedListeners = new Set<UserModelCatalogChangedListener>();
-  private functionalModelDefaults: FunctionalModelDefaults = {};
 
   private constructor() {}
 
@@ -128,21 +109,21 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return ModelCatalogRegistry.instance;
   }
 
-  initialize(distributionIdentity?: DistributionIdentity): Promise<void> {
+  initialize(): Promise<void> {
     if (this.initialized) return Promise.resolve();
     // 并发调用共用同一次初始化：各自载入会互相撞“重复连接”，失败那次的回滚还会清掉成功那次的结果。
-    this.initialization ??= this.runInitialization(distributionIdentity).finally(() => {
+    this.initialization ??= this.runInitialization().finally(() => {
       this.initialization = null;
     });
     return this.initialization;
   }
 
-  private async runInitialization(distributionIdentity?: DistributionIdentity): Promise<void> {
+  private async runInitialization(): Promise<void> {
     this.initializationStarted = true;
     // 失败要回到初始化前：半截载入的连接、分组或模型会让再次初始化报“重复”，掩盖真正的原因。
     const restoreBeforeInitialization = this.captureInitializationRollback();
     try {
-      await this.loadInitialSources(distributionIdentity);
+      await this.loadInitialSources();
     } catch (error: unknown) {
       restoreBeforeInitialization();
       throw error;
@@ -156,7 +137,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     );
   }
 
-  private async loadInitialSources(distributionIdentity?: DistributionIdentity): Promise<void> {
+  private async loadInitialSources(): Promise<void> {
     this.envVars = processEnvironment();
     await modelPersister.initialize();
     await endpointCredentialStore.initialize();
@@ -167,16 +148,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
       this.customApiGroups.set(group.name, group);
     }
     this.loadDefaultModels();
-
-    if (
-      isLinnyaCloudClientEnabled(distributionIdentity ?? requireInstalledDistributionIdentity())
-    ) {
-      const cloudModelsLoaded = await this.loadCloudModels();
-      if (!cloudModelsLoaded) this.scheduleCloudModelRetry('启动阶段首次拉取失败');
-    } else {
-      logger.info('[ModelCatalog] 当前 Desktop 发行身份已关闭 Linnya Cloud 目录');
-    }
-
     this.loadUserModels(userState.models);
     // 连接与分组全部通过准入后才覆盖旧文件；未通过准入的模型条目原样带入新文件，不会因迁移丢失。
     if (userState.requiresMigration) {
@@ -194,30 +165,20 @@ export class ModelCatalogRegistry implements ModelCatalog {
     const inferenceEndpoints = new Map(this.inferenceEndpoints);
     const customApiGroups = new Map(this.customApiGroups);
     const unadmittedUserModels = this.unadmittedUserModels;
-    const functionalModelDefaults = this.functionalModelDefaults;
-    const cloudModelsLoadedSuccessfully = this.cloudModelsLoadedSuccessfully;
     return () => {
       this.models = models;
       this.inferenceEndpoints = inferenceEndpoints;
       this.customApiGroups = customApiGroups;
       this.unadmittedUserModels = unadmittedUserModels;
-      this.functionalModelDefaults = functionalModelDefaults;
-      this.cloudModelsLoadedSuccessfully = cloudModelsLoadedSuccessfully;
-      this.cloudModelRetryAttemptCount = 0;
-      this.clearCloudModelRetryTimer();
     };
   }
 
   /**
-   * 启动时未通过准入而停用的用户模型；只给身份与原因，不给原始配置。
-   * Provider 接入用例据此区分“停用成员”（跳过）与“归属悬空”（配置损坏）。
+   * 启动时未通过准入而停用的用户模型；只给身份、归属、显示名与原因，不给原始配置。
+   * Provider 接入用例据此区分“停用成员”与“归属悬空”（配置损坏），模型设置据此列出可删除、可修复的条目。
    */
   getUnadmittedUserModels(): UnadmittedUserModel[] {
-    return this.unadmittedUserModels.map(entry => ({
-      id: entry.id,
-      inference_endpoint_id: entry.inferenceEndpointId,
-      reason: entry.reason,
-    }));
+    return projectUnadmittedUserModels(this.unadmittedUserModels, this.customApiGroups.values());
   }
 
   /**
@@ -309,7 +270,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
     switch (reference.kind) {
       case 'none':
       case 'provider_account':
-      case 'host_managed':
         return 'available';
       case 'environment_variable':
         return this.envVars[reference.environment_variable]?.trim() ? 'available' : 'missing';
@@ -441,12 +401,45 @@ export class ModelCatalogRegistry implements ModelCatalog {
           const processedModel = this.bindUserModelToEndpoint(model, prepared.endpoint);
           nextModels.set(processedModel.id, processedModel);
         }
-        await this.commitModelsAndPruneEndpoints(nextModels, nextEndpoints);
+        await this.commitModelsAndPruneEndpoints({ models: nextModels, endpoints: nextEndpoints });
       } catch (error: unknown) {
         await prepared.rollback();
         throw error;
       }
     }, expectedRevision);
+  }
+
+  /**
+   * 用一条已准入的模型替换同 ID 的停用条目（正式 Provider 按当前定义修复）。
+   *
+   * 同一事务里移除原始条目、准备连接并写盘：原条目引用的连接若因此无人引用，连同独占凭据一起回收；
+   * 写盘失败时撤销本次凭据变更，内存仍是修复前的状态。只接受停用条目的 ID，不能借此覆盖已准入模型。
+   */
+  replaceUnadmittedUserModel(
+    model: ModelConfig,
+    selection: InferenceEndpointSelection
+  ): Promise<void> {
+    return this.runUserMutation(async () => {
+      const unadmitted = this.unadmittedUserModels.filter(entry => entry.id !== model.id);
+      if (this.models.has(model.id) || unadmitted.length === this.unadmittedUserModels.length) {
+        throw new Error(`停用的用户模型不存在: ${model.id}`);
+      }
+      const nextEndpoints = new Map(this.inferenceEndpoints);
+      const prepared = await prepareInferenceEndpointSelection(selection, nextEndpoints);
+      try {
+        const nextModels = new Map(this.models);
+        const processedModel = this.bindUserModelToEndpoint(model, prepared.endpoint);
+        nextModels.set(processedModel.id, processedModel);
+        await this.commitModelsAndPruneEndpoints({
+          models: nextModels,
+          endpoints: nextEndpoints,
+          unadmitted,
+        });
+      } catch (error: unknown) {
+        await prepared.rollback();
+        throw error;
+      }
+    });
   }
 
   async replaceInferenceEndpointCredential(
@@ -526,7 +519,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
       });
       this.assertModelEndpoint(processedModel);
       nextModels.set(processedModel.id, processedModel);
-      await this.commitModelsAndPruneEndpoints(nextModels);
+      await this.commitModelsAndPruneEndpoints({ models: nextModels });
     });
   }
 
@@ -542,16 +535,23 @@ export class ModelCatalogRegistry implements ModelCatalog {
       });
       this.assertModelEndpoint(processedModel);
       nextModels.set(processedModel.id, processedModel);
-      await this.commitModelsAndPruneEndpoints(nextModels);
+      await this.commitModelsAndPruneEndpoints({ models: nextModels });
     });
   }
 
+  /**
+   * 删除一个模型 ID：运行目录里的模型，以及文件里同 ID 的停用条目（启动时未通过准入）。
+   * 停用条目不能选择，但仍是用户数据，删除入口与已准入模型相同；它的连接与独占凭据在无人引用时同一事务回收。
+   */
   async removeModel(id: string): Promise<void> {
     return this.runUserMutation(async () => {
-      if (!this.models.has(id)) throw new Error(`模型不存在: ${id}`);
+      const unadmitted = this.unadmittedUserModels.filter(entry => entry.id !== id);
+      if (!this.models.has(id) && unadmitted.length === this.unadmittedUserModels.length) {
+        throw new Error(`模型不存在: ${id}`);
+      }
       const nextModels = new Map(this.models);
       nextModels.delete(id);
-      await this.commitModelsAndPruneEndpoints(nextModels);
+      await this.commitModelsAndPruneEndpoints({ models: nextModels, unadmitted });
     });
   }
 
@@ -581,7 +581,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
       for (const id of diff.removed) {
         if (!nextModels.delete(id)) throw new Error(`模型不存在: ${id}`);
       }
-      await this.commitModelsAndPruneEndpoints(nextModels);
+      await this.commitModelsAndPruneEndpoints({ models: nextModels });
     }, expectedRevision);
   }
 
@@ -595,18 +595,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return this.getModelsByCapability(normalizedCapability)[0]?.id;
   }
 
-  getFunctionalModelDefaults(): FunctionalModelDefaults {
-    return { ...this.functionalModelDefaults };
-  }
-
-  getFunctionalDefaultModelId(purposeKey: string): string | undefined {
-    const normalizedPurposeKey = purposeKey.trim();
-    if (!normalizedPurposeKey) return undefined;
-    const modelId = this.functionalModelDefaults[normalizedPurposeKey];
-    if (!modelId) return undefined;
-    return this.getModel(modelId)?.id;
-  }
-
   getModelsByUIVisibility(visibility: string): ModelConfig[] {
     return this.getModels().filter(model => model.ui_visibility.includes(visibility));
   }
@@ -615,21 +603,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return this.getModels().filter(model => model.tags?.includes(tag) === true);
   }
 
-  areCloudModelsReady(): boolean {
-    return this.cloudModelsLoadedSuccessfully;
-  }
-
-  hasLoadedCloudModels(): boolean {
-    return this.cloudModelsLoadedSuccessfully;
-  }
-
   isInitialized(): boolean {
     return this.initialized;
-  }
-
-  onCloudModelsLoaded(listener: CloudModelsLoadedListener): () => void {
-    this.cloudModelsLoadedListeners.add(listener);
-    return () => this.cloudModelsLoadedListeners.delete(listener);
   }
 
   /** 任何入口（设置页、CLI、外部 HTTP）提交的用户目录变更都经过这里，供 Host 推送目录失效。 */
@@ -714,7 +689,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     expectedRevision: number
   ): Promise<void> {
     return this.runUserMutation(async () => {
-      // 凭据准备可能让出执行权；发布时必须与准备前快照比较，保留期间更新的账号/Cloud 投影。
+      // 凭据准备可能让出执行权；发布时必须与准备前快照比较，保留期间更新的账号投影。
       const previousModels = new Map(this.models);
       const prepared = await prepareCustomApiGroupMutation(
         mutation,
@@ -722,17 +697,19 @@ export class ModelCatalogRegistry implements ModelCatalog {
           models: previousModels,
           endpoints: this.inferenceEndpoints,
           groups: this.customApiGroups,
+          unadmitted: this.unadmittedUserModels,
         },
         (model, endpoint) => this.bindUserModelToEndpoint(model, endpoint)
       );
       if (!prepared.changed) return false;
       try {
-        await this.commitModelsAndPruneEndpoints(
-          prepared.models,
-          prepared.endpoints,
-          prepared.groups,
-          previousModels
-        );
+        await this.commitModelsAndPruneEndpoints({
+          models: prepared.models,
+          endpoints: prepared.endpoints,
+          groups: prepared.groups,
+          previousModels,
+          unadmitted: prepared.unadmitted,
+        });
       } catch (error: unknown) {
         await prepared.rollback();
         throw error;
@@ -741,17 +718,28 @@ export class ModelCatalogRegistry implements ModelCatalog {
     }, expectedRevision);
   }
 
-  private async commitModelsAndPruneEndpoints(
-    nextModels: Map<string, ModelConfig>,
-    baseEndpoints: ReadonlyMap<string, InferenceEndpoint> = this.inferenceEndpoints,
-    nextGroups: ReadonlyMap<string, CustomApiGroup> = this.customApiGroups,
-    previousModels: ReadonlyMap<string, ModelConfig> = new Map(this.models)
-  ): Promise<void> {
+  /**
+   * 提交一次用户目录变更：按下一版本的模型、分组与停用条目计算无人引用的连接，回收它们与独占凭据，再一次写盘。
+   * 写盘成功后才替换内存；失败时撤销凭据删除，内存（含停用条目）保持事务前的状态。
+   */
+  private async commitModelsAndPruneEndpoints(next: {
+    readonly models: Map<string, ModelConfig>;
+    readonly endpoints?: ReadonlyMap<string, InferenceEndpoint>;
+    readonly groups?: ReadonlyMap<string, CustomApiGroup>;
+    readonly previousModels?: ReadonlyMap<string, ModelConfig>;
+    /** 只有删除或修复停用条目的事务才传入；其余事务原样保留当前停用条目。 */
+    readonly unadmitted?: readonly UnadmittedUserModelEntry[];
+  }): Promise<void> {
+    const nextModels = next.models;
+    const baseEndpoints = next.endpoints ?? this.inferenceEndpoints;
+    const nextGroups = next.groups ?? this.customApiGroups;
+    const previousModels = next.previousModels ?? new Map(this.models);
+    const nextUnadmitted = next.unadmitted ?? this.unadmittedUserModels;
     const orphanedEndpoints = findUnreferencedInferenceEndpoints(
       nextModels.values(),
       baseEndpoints.values(),
       nextGroups.values(),
-      this.unadmittedUserModels.flatMap(entry => entry.inferenceEndpointId ?? [])
+      nextUnadmitted.flatMap(entry => entry.inferenceEndpointId ?? [])
     );
     const nextEndpoints = new Map(baseEndpoints);
     const credentialRollbacks: Array<() => Promise<void>> = [];
@@ -771,7 +759,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
         await endpointCredentialStore.remove(credentialId);
         credentialRollbacks.push(rollback);
       }
-      await this.persistUserState(nextModels, nextEndpoints, nextGroups);
+      await this.persistUserState(nextModels, nextEndpoints, nextGroups, nextUnadmitted);
     } catch (error: unknown) {
       for (const rollback of credentialRollbacks.reverse()) await rollback();
       throw error;
@@ -780,6 +768,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
     this.models = applyCommittedModelChanges(this.models, previousModels, nextModels);
     this.inferenceEndpoints = nextEndpoints;
     this.customApiGroups = new Map(nextGroups);
+    this.unadmittedUserModels = nextUnadmitted;
   }
 
   /** 用户模型只能引用一个 endpoint；route 身份必须与该 endpoint 完全一致。 */
@@ -811,7 +800,8 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private async persistUserState(
     models: Map<string, ModelConfig>,
     inferenceEndpoints: Map<string, InferenceEndpoint>,
-    groups: ReadonlyMap<string, CustomApiGroup> = this.customApiGroups
+    groups: ReadonlyMap<string, CustomApiGroup> = this.customApiGroups,
+    unadmitted: readonly UnadmittedUserModelEntry[] = this.unadmittedUserModels
   ): Promise<void> {
     if (!this.persistingInitialState) this.assertUserConfigurationWritable();
     const userModels = Array.from(models.values())
@@ -821,7 +811,7 @@ export class ModelCatalogRegistry implements ModelCatalog {
       userModels,
       Array.from(inferenceEndpoints.values()),
       Array.from(groups.values()),
-      this.unadmittedUserModels.map(entry => entry.raw)
+      unadmitted.map(entry => entry.raw)
     );
   }
 
@@ -834,14 +824,27 @@ export class ModelCatalogRegistry implements ModelCatalog {
   private assertModelEndpoint(model: ModelConfig): void {
     if (model.catalog_source !== 'user') {
       if (model.inference_endpoint_id) {
-        throw new Error(`非用户模型 ${model.id} 不得引用用户 InferenceEndpoint`);
+        throw new ModelAdmissionError(
+          'invalid_structure',
+          `非用户模型 ${model.id} 不得引用用户 InferenceEndpoint`
+        );
       }
       return;
     }
     if (!model.inference_endpoint_id) {
-      throw new Error(`用户模型 ${model.id} 必须引用 InferenceEndpoint`);
+      throw new ModelAdmissionError(
+        'endpoint_missing',
+        `用户模型 ${model.id} 必须引用 InferenceEndpoint`
+      );
     }
-    assertEndpointMatchesModel(this.requireInferenceEndpoint(model.inference_endpoint_id), model);
+    const endpoint = this.inferenceEndpoints.get(model.inference_endpoint_id);
+    if (!endpoint) {
+      throw new ModelAdmissionError(
+        'endpoint_missing',
+        `InferenceEndpoint 不存在: ${model.inference_endpoint_id}`
+      );
+    }
+    assertEndpointMatchesModel(endpoint, model);
   }
 
   private resolveCredentialReference(reference: CredentialReference): string | undefined {
@@ -859,8 +862,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
         throw new Error(
           `Provider account credential 必须由 Host auth boundary 解析: ${reference.account_id}`
         );
-      case 'host_managed':
-        return reference.credential_id;
     }
   }
 
@@ -874,75 +875,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
     return 'missing';
   }
 
-  private async loadCloudModels(): Promise<boolean> {
-    if (this.cloudModelLoadInFlight) return this.cloudModelLoadInFlight;
-    this.cloudModelLoadInFlight = this.loadCloudModelsInternal();
-    try {
-      return await this.cloudModelLoadInFlight;
-    } finally {
-      this.cloudModelLoadInFlight = null;
-    }
-  }
-
-  private async loadCloudModelsInternal(): Promise<boolean> {
-    const result = await fetchCloudModels();
-    if (!result.success) {
-      logger.warn(`[ModelCatalog] 云端目录加载失败: ${result.failureReason ?? 'unknown'}`);
-      return false;
-    }
-
-    let cloudModels: ModelConfig[];
-    try {
-      cloudModels = result.models.map(modelData =>
-        processModelConfig({
-          modelData,
-          envVars: this.envVars,
-          reasoningResolver: this.modelReasoningResolver,
-        })
-      );
-    } catch (error) {
-      logger.error('[ModelCatalog] 云端目录准入失败:', error);
-      return false;
-    }
-
-    const nextCloudIds = new Set(cloudModels.map(model => model.id));
-    for (const [modelId, model] of this.models) {
-      if (model.billing_mode === 'cloud' && !nextCloudIds.has(modelId)) this.models.delete(modelId);
-    }
-    for (const model of cloudModels) this.models.set(model.id, model);
-
-    this.functionalModelDefaults = result.purposeDefaults;
-    this.cloudModelsLoadedSuccessfully = true;
-    this.cloudModelRetryAttemptCount = 0;
-    this.clearCloudModelRetryTimer();
-    this.emitCloudModelsLoaded(cloudModels);
-    logger.info(`[ModelCatalog] 云端目录加载完成，共 ${cloudModels.length} 个模型`);
-    return true;
-  }
-
-  private scheduleCloudModelRetry(reason: string): void {
-    if (this.cloudModelsLoadedSuccessfully || this.cloudModelRetryTimer) return;
-    logger.info(`[ModelCatalog] 云端目录将在 30 秒后重试: ${reason}`);
-    this.cloudModelRetryTimer = setTimeout(() => {
-      this.cloudModelRetryTimer = null;
-      void this.retryLoadCloudModels();
-    }, CLOUD_MODEL_RETRY_INTERVAL_MS);
-    this.cloudModelRetryTimer.unref?.();
-  }
-
-  private async retryLoadCloudModels(): Promise<void> {
-    if (this.cloudModelsLoadedSuccessfully) return;
-    this.cloudModelRetryAttemptCount += 1;
-    const loaded = await this.loadCloudModels();
-    if (!loaded) this.scheduleCloudModelRetry(`第 ${this.cloudModelRetryAttemptCount} 次失败`);
-  }
-
-  private clearCloudModelRetryTimer(): void {
-    if (!this.cloudModelRetryTimer) return;
-    clearTimeout(this.cloudModelRetryTimer);
-    this.cloudModelRetryTimer = null;
-  }
-
   private emitUserModelCatalogChanged(event: UserModelCatalogChangedEvent): void {
     for (const listener of this.userModelCatalogChangedListeners) {
       try {
@@ -950,17 +882,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
       } catch (error) {
         // 通知失败不能把已经提交的目录事务报告成失败。
         logger.warn('[ModelCatalog] userModelCatalogChanged listener 执行失败:', error);
-      }
-    }
-  }
-
-  private emitCloudModelsLoaded(models: ModelConfig[]): void {
-    const event: CloudModelsLoadedEvent = { count: models.length, models: [...models] };
-    for (const listener of this.cloudModelsLoadedListeners) {
-      try {
-        listener(event);
-      } catch (error) {
-        logger.warn('[ModelCatalog] cloudModelsLoaded listener 执行失败:', error);
       }
     }
   }

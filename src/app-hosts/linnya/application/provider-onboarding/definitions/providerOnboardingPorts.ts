@@ -40,6 +40,11 @@ export interface ProviderOnboardingModelCatalogPort {
   getUnadmittedUserModels(): readonly UnadmittedUserModel[];
   getInferenceEndpoints(): InferenceEndpointView[];
   registerUserModel(model: ModelConfig, endpoint: InferenceEndpointSelection): Promise<void>;
+  /** 用按 Provider 定义重建的模型替换同 ID 的停用条目；归属不变，所以不经过注册 intent。 */
+  replaceUnadmittedUserModel(
+    model: ModelConfig,
+    endpoint: InferenceEndpointSelection
+  ): Promise<void>;
   updateModel(model: ModelConfig): Promise<void>;
   replaceInferenceEndpointCredential(
     inferenceEndpointId: string,
@@ -101,4 +106,18 @@ export interface ProviderOnboardingUseCase {
     providerConnectionDefinitionId: string,
     signal?: AbortSignal
   ): Promise<void>;
+  /**
+   * 按 Provider 当前模型定义重建启动时停用的成员，沿用原 model_config_id 与归属。
+   * 定义里已经没有的成员保持停用，只能删除；只接受能按定义修复的 connection。
+   */
+  repairUnadmittedProviderModels(
+    providerConnectionDefinitionId: string,
+    signal?: AbortSignal
+  ): Promise<ProviderModelRepairResult>;
+}
+
+export interface ProviderModelRepairResult {
+  readonly repaired_model_count: number;
+  /** Provider 定义里已没有对应模型、仍保持停用的成员数。 */
+  readonly unrepairable_model_count: number;
 }

@@ -36,7 +36,7 @@ export function createCoreCli(
     prepare({ argv, conversationRoot }) {
       const [command, ...args] = argv;
       if (command === 'schedules') return prepareSchedulesCli(db, args, readScheduledTasks);
-      if (command === 'palette') return preparePaletteCli({ argv: args, conversationRoot, fileReader });
+      if (command === 'palette') return preparePaletteCli({ db, argv: args, conversationRoot, fileReader });
       const semantic = SEMANTIC_CLI_COMMANDS.find(name => name === command);
       if (semantic) return prepareSemanticCli({ db, command: semantic, argv: args, maxOutputCharacters });
       if (argv.length === 1 && command === '--help') {

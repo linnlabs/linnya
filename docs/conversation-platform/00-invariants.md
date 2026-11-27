@@ -195,7 +195,7 @@ Linnkit 只管理通用工具执行生命周期和上下文策略，不识别具
 
 ### INV-25 · 工具 batch 必须完整结算
 
-`tool_call_decision` 只表示模型提交调用清单，`tool_process(start)` 才表示单个调用实际开始。普通 ToolNode 串行消费，工具专属 batch 可在自身合同内并发；两者都必须保证每个 assistant tool call 最终有一条 durable `tool_output`。执行中取消与尚未启动取消都由 ToolNode 在抛出 `AbortError` 前结算。Host、投影器和 Renderer 禁止扫描 loading 行补终态。
+`tool_call_decision` 只表示模型提交调用清单，`tool_process(start)` 才表示单个调用实际开始。普通 ToolNode 串行消费，声明可并行的相邻调用按组并发，工具专属 batch 可在自身合同内并发；两者都必须保证每个 assistant tool call 最终有一条 durable `tool_output`。执行中取消与尚未启动取消都由 ToolNode 在抛出 `AbortError` 前结算。Host、投影器和 Renderer 禁止扫描 loading 行补终态。
 
 ### INV-26 · Subrun 是投影，不是第二事实源
 
@@ -287,7 +287,7 @@ virtualizer 是滚动执行的唯一写者；`useConversationScrollController` �
 
 ### INV-59 · 完整消息共享同一个 visual-row 展示 owner
 
-主时间线与 Subrun 就地详情都通过 `ui/messageCanvas` 渲染完整消息，共享 row DOM、视觉轮次边界、语义间距、streaming 归属、回答 footer 与 `Message.vue` leaf。最后一个 turn-end row 是 duration、answer actions 与 waiting indicator 的唯一 tail geometry owner；tail 作为 row 实测高度只参与一次 scroll geometry，宿主不得再创建独立 waiting reserve。主时间线的 TanStack adapter 只提供可见行、绝对位置与测量；Subrun 详情使用普通文档流，不创建第二个 virtualizer。禁止详情直接循环 `Message.vue`、自定义统一消息 `gap`，也禁止共享画布反向读取 foreground store、历史分页、timeline 或滚动状态。
+主时间线与 Subrun 就地详情都通过 `ui/messageCanvas` 渲染完整消息，共享 row DOM、视觉轮次边界、语义间距、streaming 归属、回答 footer 与 `Message.vue` leaf。最后一个 turn-end row 是 answer actions 与运行状态行的唯一 tail geometry owner；tail 作为 row 实测高度只参与一次 scroll geometry，宿主不得再创建独立等待占位。主时间线的 TanStack adapter 只提供可见行、绝对位置与测量；Subrun 详情使用普通文档流，不创建第二个 virtualizer。禁止详情直接循环 `Message.vue`、自定义统一消息 `gap`，也禁止共享画布反向读取 foreground store、历史分页、timeline 或滚动状态。
 
 ---
 

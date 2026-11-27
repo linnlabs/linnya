@@ -53,7 +53,6 @@ const launch = vi.fn(async (): Promise<never> => {
 function initializedServices(): InitializedServices {
   return {
     capabilityFailures: [],
-    disposeRendererIntegration() {},
     get transcriptionService(): never {
       throw new Error('unused transcription');
     },

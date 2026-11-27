@@ -27,6 +27,11 @@ pnpm run dev:electron
 
 `pnpm-lock.yaml` 是根工作区唯一依赖锁文件。不要在根目录或 workspace package 中运行 `npm install`，也不要提交 `node_modules`、WASM 生成目录、构建产物或本地凭据文件。
 
+合并或拉取改了依赖的提交后要在该工作目录重新 `pnpm install --frozen-lockfile`。`pnpm-workspace.yaml` 设了
+`verifyDepsBeforeRun: error`：依赖与 lockfile 不一致时，`pnpm run` / `pnpm exec` 直接以
+`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` 失败。加 `-s` 时 pnpm 会连这条提示一起吞掉，只剩退出码 1，
+因此 `pnpm -s …` 无输出失败时先运行一次 `pnpm install --frozen-lockfile`。
+
 安全依赖升级需要覆盖根应用、插件和独立 E2E fixture 的实际消费者，以及仍引用旧版本的
 间接依赖；检查 lock diff，避免同时刷新无关 peer 依赖。原生图像依赖升级后，除冻结安装、
 类型和业务测试外，还需执行 Slides 的 `smoke:raster-worker`，验证真实 Electron 像素链路。
@@ -56,7 +61,7 @@ Windows 整机卸载复用 NSIS 升级卸载的暂存与恢复：普通卸载必
 
 macOS 的 `test:shell-tool:production-command-approval-dom` 使用真实 Renderer/Preload，覆盖可见凭据路径的三档权限、本次批准与保存规则。两类 E2E 都会重建 command runner，须顺序运行，不能共享 `dist/main/commands` 并发构建。
 
-产品及官方插件使用正式 npm Linnkit 0.46.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查
+产品及官方插件使用正式 npm Linnkit 0.48.0 与 Zod 4.6.7。Zod 主版本升级必须同时检查
 模型列表的缺省字段、工具错误路径、图表诊断与递归 JSON 输入类型，并重建 schemas 的 CJS/ESM
 产物和生产锁。不能只通过依赖覆盖声明兼容；运行合同与独立打包消费门禁都必须通过。
 
@@ -69,6 +74,14 @@ macOS 的 `test:shell-tool:production-command-approval-dom` 使用真实 Rendere
 Qdrant 与 Headless Node 按各自锁定目录准备。已安装 Node 的 manifest、目标平台、归档身份与可执行文件 hash
 通过正式 runtime resolver 校验后直接复用；宿主目标还验证实际 Node 版本。损坏或版本变化才重新准备，不能仅凭文件存在跳过校验。
 这些准备只发生在源码开发或打包阶段；Desktop 安装包通过 `extraResources` 携带已经校验的独立 runtime，最终用户启动应用时不再下载。
+
+Linnya 是桌面产品，安装包体积、磁盘缓存和运行内存都是用户能感知的成本。需要新的依赖、模型或下载时，按“已有依赖 → 系统自带能力（如 macOS Vision）→ 云端 → 本地模型”的顺序选，并给出每个方案的体积、内存和平台覆盖；默认不往安装包里加推理运行时和模型，按需下载要先说明大小。是否引入由用户决定。
+
+runtime 下载与生产依赖安全审计访问网络时，只对可识别的临时传输错误（连接被拒或被重置、超时、DNS 暂时失败）
+重试两次，间隔 5 秒、15 秒；HTTP 错误、证书错误、归档校验不符和审计查出的漏洞都当场失败。重试用尽后日志里写一行
+`[network-failure]`，本地 CI 的失败摘要据此把这一步标为网络原因。判定在
+[`transientNetworkFailure.cjs`](../../scripts/build/functions/transientNetworkFailure.cjs)，重试在
+[`retryTransientNetwork.cjs`](../../scripts/build/orchestration/retryTransientNetwork.cjs)。
 
 App Server ready 仍要求本地数据库、目录恢复和正式路由可用；账号的远端模型目录刷新在此后由 Backend owner
 后台执行，完成后通知 Renderer 重读目录。上游网络慢不会阻塞开窗。设置页面按实际进入的 Tab 加载；Vite 不监听运行数据与隐藏窗口生成物，避免写日志或 worker 构建触发主页面重载。
@@ -177,6 +190,8 @@ macOS 平台任务复用本轮构建的 Backend 和 CLI，在准备锁定版本�
 从 `Cargo.lock` 读取 wasm-bindgen 版本，下载校验过的预编译工具；下载失败不退回现场编译。
 Cargo 只缓存这三个原生 workspace 的依赖，不缓存安装包、签名结果、用户数据或私有配置。
 pnpm 缓存仍由 `setup-node` 管理，缺少任意缓存时均从正式锁文件重新准备。
+
+Canvas 的 Ubuntu 绘制任务从当轮 APT 索引读取 `fonts-noto-cjk` 的版本与 SHA-256，只缓存对应的 `.deb`。命中后仍核对摘要并通过 APT 安装，Xvfb、Electron 系统依赖及绘制验收照常执行。
 
 连续推送只取消同一 PR 的旧运行。main 使用独立运行分组，保证每次提交都保留完整检查。
 不对 Markdown 做整体路径排除：Skill、提示词、发行说明和部分测试输入也是 Markdown。

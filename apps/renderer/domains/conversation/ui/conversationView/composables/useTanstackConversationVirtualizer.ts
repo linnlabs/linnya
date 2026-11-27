@@ -19,6 +19,7 @@ import { createVueVirtualizerScrollBridge } from '../../../shared/virtualization
 import type { ConversationScrollMode } from '../functions/scrollPositionController';
 import type { ConversationVisualRow } from '../../messageCanvas';
 import type { ConversationVisualTurnId } from '@app/schemas';
+import { resolveRemovalViewportAnchor, type ViewportRowGeometry } from '../functions/removalViewportAnchor';
 
 export interface TanstackConversationVisibleItem {
   readonly item: ConversationVisualRow;
@@ -75,7 +76,7 @@ export interface ConversationPrependRenderTransaction {
 }
 
 export function useConversationPrependRenderTransaction<T>(
-  items: Ref<T[]>,
+  items: Readonly<Ref<readonly T[]>>,
   getKey: (item: T) => string,
 ): ConversationPrependRenderTransaction {
   const active = ref(false);
@@ -129,7 +130,15 @@ function captureEstimateInvalidationAnchor(
   };
 }
 
-function restoreEstimateInvalidationAnchor(input: {
+function readRenderedRowGeometry(
+  instance: Virtualizer<HTMLElement, HTMLElement>,
+): readonly ViewportRowGeometry[] {
+  return instance.getVirtualItems().flatMap(item => (
+    typeof item.key === 'string' ? [{ key: item.key, start: item.start, end: item.end }] : []
+  ));
+}
+
+function restoreViewportAnchor(input: {
   readonly anchor: ConversationEstimateInvalidationAnchor | null;
   readonly instance: Virtualizer<HTMLElement, HTMLElement>;
   readonly items: readonly ConversationVisualRow[];
@@ -146,13 +155,15 @@ function restoreEstimateInvalidationAnchor(input: {
   if (index < 0) return;
   // measure() 只标记 memo 失效；先通过公开读取物化新 measurements，随后再解析 anchor offset。
   input.instance.getTotalSize();
-  const offsetInfo = input.instance.getOffsetForIndex(index, 'start');
-  if (!offsetInfo) return;
-  input.instance.scrollToOffset(offsetInfo[0] + anchor.offsetFromRowStartPx);
+  // 用行的真实起点，不用 getOffsetForIndex：后者把“行顶对齐视口顶”的目标钳到最大滚动量，
+  // 锚定行在视口中下方（offset 为负）时会多减一截，正在看的回答因此往下跳。最终值由 scrollToOffset 钳位。
+  const measurement = input.instance.measurementsCache[index];
+  if (!measurement) return;
+  input.instance.scrollToOffset(measurement.start + anchor.offsetFromRowStartPx);
 }
 
 export function useTanstackConversationVirtualizer(params: {
-  readonly items: Ref<ConversationVisualRow[]>;
+  readonly items: Readonly<Ref<readonly ConversationVisualRow[]>>;
   readonly enabled: ComputedRef<boolean>;
   readonly isStreaming: ComputedRef<boolean>;
   readonly scrollMode: ComputedRef<ConversationScrollMode>;
@@ -164,6 +175,9 @@ export function useTanstackConversationVirtualizer(params: {
 }) {
   const activeTimelineScrollCleanups = new Set<() => void>();
   let estimateInvalidationRevision = 0;
+  // 最近一次渲染时可见（含 overscan）行的几何。行被移除时 items 已经是新数组，
+  // 而 TanStack 的 measurementsCache 按需用当前 items 解析 key，不能再拿来读旧几何。
+  let renderedRowGeometry: readonly ViewportRowGeometry[] = [];
   const prependTransaction = useConversationPrependRenderTransaction(
     params.items,
     item => item.key,
@@ -192,7 +206,10 @@ export function useTanstackConversationVirtualizer(params: {
     // 避免默认 debounce 把上一次 scroll 捕获的旧 offset 写回，导致顶部漏挂载。
     useScrollendEvent: true,
     scrollToFn: scrollBridge.scrollToFn,
-    onChange: instance => scrollBridge.flushAfterRender(instance),
+    onChange: instance => {
+      renderedRowGeometry = readRenderedRowGeometry(instance);
+      scrollBridge.flushAfterRender(instance);
+    },
   })));
 
   watch(
@@ -213,7 +230,7 @@ export function useTanstackConversationVirtualizer(params: {
         instance.measure();
         void nextTick(() => {
           if (revision !== estimateInvalidationRevision) return;
-          restoreEstimateInvalidationAnchor({
+          restoreViewportAnchor({
             anchor,
             instance,
             items: params.items.value,
@@ -223,6 +240,41 @@ export function useTanstackConversationVirtualizer(params: {
       });
     },
     // 必须同步捕获旧 geometry；若等到 pre/post flush，builder 已写入新估高，旧视口身份会丢失。
+    { flush: 'sync' },
+  );
+
+  // 列表中段移除行（本轮结束收起工作过程、用户收起折叠行）时保持正在看的行不动。
+  // 必须同步捕获：此时 virtualizer 还是旧几何，等到 pre/post flush 新行已经写入测量。
+  let removalAnchorRevision = 0;
+  watch(
+    params.items,
+    (next, previous) => {
+      if (params.scrollMode.value === 'follow-bottom' || previous.length === 0 || next.length === 0) return;
+      // 首尾变化属于窗口分页或追加，由 prepend 事务与 followOnAppend 负责。
+      if (previous[0]?.key !== next[0]?.key || previous[previous.length - 1]?.key !== next[next.length - 1]?.key) {
+        return;
+      }
+      const nextKeys = new Set(next.map(item => item.key));
+      if (previous.every(item => nextKeys.has(item.key))) return;
+      const instance = virtualizer.value;
+      const anchor = resolveRemovalViewportAnchor({
+        previous: renderedRowGeometry,
+        nextKeys,
+        scrollOffset: instance.scrollOffset ?? params.scrollElement.value?.scrollTop ?? 0,
+        viewportHeight: instance.scrollRect?.height ?? params.scrollElement.value?.clientHeight ?? 0,
+      });
+      if (!anchor) return;
+      const revision = ++removalAnchorRevision;
+      const scrollMode = params.scrollMode.value;
+      // 第一次 tick 后新行数提交到 virtualizer，第二次 tick 后画布高度提交，才能按新几何定位。
+      void nextTick(() => {
+        if (revision !== removalAnchorRevision) return;
+        void nextTick(() => {
+          if (revision !== removalAnchorRevision) return;
+          restoreViewportAnchor({ anchor, instance, items: params.items.value, scrollMode });
+        });
+      });
+    },
     { flush: 'sync' },
   );
 
@@ -378,6 +430,7 @@ export function useTanstackConversationVirtualizer(params: {
 
   onUnmounted(() => {
     estimateInvalidationRevision += 1;
+    removalAnchorRevision += 1;
     for (const cleanup of [...activeTimelineScrollCleanups]) cleanup();
     activeTimelineScrollCleanups.clear();
   });

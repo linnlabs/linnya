@@ -16,6 +16,7 @@ export { useModelCatalogStore } from './store/modelCatalogStore';
 export { useModelCatalogReadModel } from './orchestration/modelCatalogReadModel';
 export {
   deleteModelFromCatalog,
+  deleteUnadmittedModelFromCatalog,
   loadModelCatalog,
   removeCommittedModelsFromCatalog,
   updateModelInCatalog,

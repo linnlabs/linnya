@@ -57,7 +57,6 @@ function createRouteDependencies(): RouteDependencies {
     },
     externalAuthorizationBrowser: { open: async () => undefined },
     rendererIntegration: {
-      connectModelCatalogUpdates: async () => () => undefined,
       publishTranscriptionProgress: () => undefined,
       publishWorkspaceMutation: () => undefined,
       publishPluginRendererPush: () => undefined,

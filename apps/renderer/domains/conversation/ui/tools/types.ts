@@ -19,6 +19,7 @@ export type {
   ToolPresentationProjectorInput,
   ToolTitleConfig,
   ToolTitleDescriptor,
+  ToolUiActivity,
   ToolUiAliasConfig,
   ToolUiImageAttachmentRef,
   ToolUiConfig,

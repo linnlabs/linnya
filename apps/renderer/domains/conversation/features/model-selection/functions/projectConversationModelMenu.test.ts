@@ -41,9 +41,8 @@ const noReasoning = {
 } as const;
 
 describe('projectConversationModelMenu', () => {
-  it('Cloud 和自定义模型直接展开，正式 Provider 只占一个父菜单项', () => {
+  it('自定义模型直接展开，正式 Provider 只占一个父菜单项', () => {
     const snapshot: ModelPickerSnapshot = {
-      cloud: { display_name: 'Linnya Cloud', models: [model('cloud-gpt', 'GPT Cloud')] },
       providers: [
         {
           configured_provider_id: 'provider-openai',
@@ -56,10 +55,12 @@ describe('projectConversationModelMenu', () => {
           kind: 'direct',
           picker_enabled: true,
           credential_available: true,
+          unadmitted_models: [],
           models: [model('gpt-5.6', 'GPT-5.6')],
         },
       ],
       custom_models: [model('intranet', '公司模型')],
+      unassigned_unadmitted_models: [],
     };
 
     const result = projectConversationModelMenu({
@@ -71,8 +72,6 @@ describe('projectConversationModelMenu', () => {
     });
 
     expect(result.options).toEqual([
-      { isGroup: true, label: 'Linnya Cloud' },
-      expect.objectContaining({ value: 'cloud-gpt', text: 'GPT Cloud' }),
       { isGroup: true, label: '模型供应商' },
       expect.objectContaining({
         text: 'OpenAI',
@@ -100,10 +99,12 @@ describe('projectConversationModelMenu', () => {
           kind: 'direct',
           picker_enabled: false,
           credential_available: true,
+          unadmitted_models: [],
           models: [model('hidden-model', '隐藏模型'), model('other-model', '其他模型')],
         },
       ],
       custom_models: [],
+      unassigned_unadmitted_models: [],
     };
     const result = projectConversationModelMenu({
       snapshot,
@@ -125,7 +126,7 @@ describe('projectConversationModelMenu', () => {
 
   it('来源已经不存在的历史当前模型只保留临时项，不伪造第四个来源分组', () => {
     const result = projectConversationModelMenu({
-      snapshot: { providers: [], custom_models: [] },
+      snapshot: { providers: [], custom_models: [], unassigned_unadmitted_models: [] },
       currentModel: { id: 'removed-model', displayName: '历史模型', imageInput: true },
       hasImageDrafts: false,
       labels,
@@ -157,10 +158,12 @@ describe('projectConversationModelMenu', () => {
           kind: 'direct',
           picker_enabled: true,
           credential_available: true,
+          unadmitted_models: [],
           models: [{ ...model('gpt-text', 'GPT Text'), image_input: false }],
         },
       ],
       custom_models: [],
+      unassigned_unadmitted_models: [],
     };
     const result = projectConversationModelMenu({
       snapshot,
@@ -198,10 +201,12 @@ describe('projectConversationModelMenu', () => {
           kind: 'direct',
           picker_enabled: true,
           credential_available: true,
+          unadmitted_models: [],
           models: [model('gpt-5.6', 'GPT-5.6')],
         },
       ],
       custom_models: [],
+      unassigned_unadmitted_models: [],
     };
 
     const result = projectConversationModelMenu({

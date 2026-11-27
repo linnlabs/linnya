@@ -445,7 +445,15 @@ export class RegisteredChildRunInvoker implements RegisteredChildRunInvokerPort 
           }
         ));
       } catch (error) {
-        if (durable && (await lifecycleRun.handle.meta()).status !== 'cancelled') {
+        // 用户取消父 run 时，Supervisor 先 abort 再落 cancelled 状态，转发到 child 的信号会比
+        // child 自己的终态更早到达；此时读状态还不是 cancelled。非暂停原因的 abort 就是取消，
+        // 不能当成“执行中断待续跑”，否则父工具调用没有配对结果、run 以错误结束。
+        const stoppedByCancel = childAbortSignal.aborted && !graph.isRunPauseSignal(childAbortSignal);
+        if (
+          durable &&
+          !stoppedByCancel &&
+          (await lifecycleRun.handle.meta()).status !== 'cancelled'
+        ) {
           logger.warn('Durable child attempt interrupted', { childRunId, error });
           // 未知 child 结果不能作为父工具失败终态；保留原子图，父图等待同一次调用恢复。
           lifecycleRun.persistence.finishCheckpointWrites();

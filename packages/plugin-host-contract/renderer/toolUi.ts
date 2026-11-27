@@ -151,9 +151,27 @@ export interface ToolCardPresentation<TData = unknown> extends ToolPresentationP
   readonly phase: ConversationToolMessagePhase;
 }
 
+/**
+ * 工具运行时“在做什么”的类别，由工具 owner 声明。
+ *
+ * Conversation 底部状态行据此显示“正在查找 / 正在阅读……”，Host 不维护工具名到类别的映射；
+ * 没有声明的工具显示通用的“努力工作中”。`image` 表示生成图片：结果本身就是交付给用户的成果，
+ * 终态折叠工作过程时留在折叠行外面。
+ */
+export type ToolUiActivity =
+  | 'search'
+  | 'read'
+  | 'edit'
+  | 'command'
+  | 'delegate'
+  | 'plan'
+  | 'image';
+
 export interface ToolUiConfig {
   /** 专用渲染组件；正式工具卡只接收 admission 后的 presentation，不得读取 raw payload。 */
   readonly component: Component;
+  /** 运行中的活动类别；只影响状态文字与终态折叠，不改变工具卡渲染。 */
+  readonly activity?: ToolUiActivity;
   /**
    * 标准工具卡标题正文的可选专用组件。
    *

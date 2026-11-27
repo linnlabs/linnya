@@ -71,8 +71,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
-import { BaseButton, CustomSelect, IconButton, resolveIconButtonElement } from '@linnya/renderer-ui';
-import { useFixedDropdownPosition } from '../composables/useFixedDropdownPosition';
+import { BaseButton, CustomSelect, IconButton, resolveIconButtonElement, useAnchoredPosition } from '@linnya/renderer-ui';
 import { buildProjectMenuOptions, isProjectDeleteDisabled } from '../functions/projectMenuModel';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 
@@ -94,11 +93,13 @@ const { workspaceMessage } = useWorkspaceLocalization();
 
 // 更多按钮引用映射
 const moreButtonRefs = ref({});
-const {
-  dropdownRef,
-  dropdownStyle,
-  positionDropdownAfterRender,
-} = useFixedDropdownPosition();
+const dropdownRef = ref(null);
+const { style: dropdownStyle } = useAnchoredPosition({
+  anchor: () => (activeMenuProjectId.value ? moreButtonRefs.value[activeMenuProjectId.value] : null),
+  floating: dropdownRef,
+  open: () => activeMenuProjectId.value !== null,
+  placement: { gap: 4 },
+});
 
 const activeMenuProject = computed(() => {
   if (!activeMenuProjectId.value) return null;
@@ -142,7 +143,6 @@ const toggleMenu = (projectId, event) => {
     closeMenu();
   } else {
     activeMenuProjectId.value = projectId;
-    void positionDropdownAfterRender(moreButtonRefs.value[projectId]);
   }
 };
 

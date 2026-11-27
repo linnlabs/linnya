@@ -1,3 +1,4 @@
+import type { UnadmittedModelReasonKind } from '@app/schemas/model-picker';
 import type { CredentialStoragePort } from 'src/shared/credential-storage';
 import type { CustomApiGroup, CustomApiGroupMigration } from './customApiGroup';
 import type { ModelReasoningResolver } from './modelReasoningResolver';
@@ -18,7 +19,6 @@ import type {
 } from '@app/schemas/model-inference';
 import type { DocumentOcrRoute } from '@app/schemas/document-ocr';
 import type { TranscriptionRoute } from '@app/schemas/transcription';
-import type { DistributionIdentity } from '../../../shared/distribution-identity';
 import type {
   CredentialReference,
   InferenceEndpointSelection,
@@ -49,7 +49,7 @@ export interface TokenRouteCapabilities {
  *
  * 中文备注：
  * - 同一个模型经官方、OpenRouter、硅基流动或 Linnya Cloud proxy 是不同 route；
- * - route 必须由配置显式声明或由 cloud catalog 显式生成，不能靠模型名猜计数能力。
+ * - route 必须由配置显式声明，不能靠模型名猜计数能力。
  * - capabilityId 与 endpointModelId 都是 Host 侧不透明 identity，不表达 Provider 产品归属。
  */
 export interface ModelTokenRoute {
@@ -63,8 +63,7 @@ export interface ModelTokenRoute {
 /**
  * 已解析好的 token 单价，单位为 USD / 1M tokens。
  *
- * 阶梯、币种换算、优惠等复杂规则不在 registry 内计算；上游配置或 cloud catalog
- * 需要先解析为这里的有效单价，后续由 linnkit 的纯 computeCost 消费。
+ * 阶梯、币种换算、优惠等复杂规则不在 registry 内计算；上游配置需要先解析为这里的有效单价，后续由 linnkit 的纯 computeCost 消费。
  */
 export interface ModelTokenPricing {
   currency: 'USD';
@@ -77,7 +76,7 @@ export interface ModelTokenPricing {
 }
 
 /** 模型条目进入目录的事实来源，不表示用户购买或选择的 Provider。 */
-export type ModelCatalogSource = 'default' | 'cloud' | 'account' | 'user';
+export type ModelCatalogSource = 'default' | 'account' | 'user';
 
 /**
  * 模型配置接口
@@ -91,7 +90,7 @@ export interface ModelConfig {
   model_name: string;
   /** 目录来源；推理协议与目标 endpoint 只读取 typed route。 */
   catalog_source: ModelCatalogSource;
-  /** default/cloud/account 模型的显式凭据引用；用户模型使用 inference_endpoint_id。 */
+  /** default/account 模型的显式凭据引用；用户模型使用 inference_endpoint_id。 */
   credential_reference?: CredentialReference;
   /** 用户模型绑定的内部推理 endpoint。 */
   inference_endpoint_id?: string;
@@ -124,13 +123,10 @@ export interface ModelConfig {
   transcription_route?: TranscriptionRoute;
 
   /**
-   * 计费模式（用于决定“客户端是否允许重试”等策略）。
-   *
-   * 中文备注：
-   * - `byok`：用户自带 key，本地直连上游；
-   * - `cloud`：走 Linnya Cloud（积分计费），建议客户端不做重试/降级，统一由服务端网关控制。
+   * 计费模式；目前只有用户自带 key、本地直连上游的 `byok`。
+   * 它进入运行恢复的兼容指纹，将来增加计费方式时旧运行不会被当作同一配置续跑。
    */
-  billing_mode?: 'byok' | 'cloud';
+  billing_mode?: 'byok';
 
   /** 当前模型的 token accounting route；不配置则表示 host 尚未声明 route 能力。 */
   token_route?: ModelTokenRoute;
@@ -139,11 +135,10 @@ export interface ModelConfig {
   token_pricing?: ModelTokenPricing;
 
   /**
-   * 是否允许客户端侧重试（默认 true；若 `billing_mode='cloud'` 且未显式配置，则建议视为 false）。
+   * 是否允许客户端侧重试（默认 true）。
    *
-   * 设计目的：
-   * - 让“是否允许客户端重试”变成显式配置，而不是靠猜 route 地址/域名等脆弱规则；
-   * - 避免 Cloud 模式下由于客户端重试导致的一次点击多次上游调用，从而破坏账单语义。
+   * 用显式配置表达，而不是靠猜 route 地址/域名等脆弱规则；按次计费的上游可关闭，
+   * 避免一次点击因客户端重试变成多次上游调用。
    */
   enable_client_retry?: boolean;
 
@@ -171,7 +166,7 @@ export interface ModelConfig {
    * 用户可见的 UI 标签（可选）。
    *
    * 纯展示用途：在模型列表/选择器中显示附加标识（如"限免"、"限额"、"新"等）。
-   * 云端模型的 tags 来自 Cloud KV，本地模型的 tags 来自 default_models.json。
+   * 内置模型的 tags 来自 default_models.json。
    *
    * 注意区分：
    * - `tags`：给用户看的 UI 标签，不影响程序逻辑
@@ -209,18 +204,23 @@ export interface ModelDiff {
   removed: string[];
 }
 
-export type FunctionalModelDefaults = Record<string, string>;
-
 /**
  * `user_models.json` 中启动时没有通过准入的用户模型。
  *
  * 它不进入运行目录，也不能被选择或调用；原始条目在之后的用户目录写盘中原样保留，
- * 它引用的连接与凭据不会被回收。只暴露身份与原因，不暴露原始配置内容。
+ * 它引用的连接与凭据不会被回收，直到用户删除它（`removeModel`）、删除它所属的自定义分组，
+ * 或由正式 Provider 按定义重建（`replaceUnadmittedUserModel`）。
+ * 只暴露身份、归属、显示名与原因，不暴露原始配置内容。
  */
 export interface UnadmittedUserModel {
   readonly id: string | undefined;
   readonly inference_endpoint_id: string | undefined;
+  /** 按与已准入模型相同的规则归入的自定义分组；不属于任何现存分组时为 undefined。 */
+  readonly custom_api_group_name: string | undefined;
+  /** 原始条目里的显示名或模型名；两者都没有时为 undefined，由界面退回 ID。 */
+  readonly display_name: string | undefined;
   readonly reason: string;
+  readonly reason_kind: UnadmittedModelReasonKind;
 }
 
 /**
@@ -382,30 +382,9 @@ export interface ModelCatalog {
    */
   getDefaultModelIdByCapability(capability: string): string | undefined;
 
-  /**
-   * 获取功能默认模型表。
-   *
-   * 返回值中的 model id 已经是客户端本地 Model Catalog ID（例如 cloud-deepseek-v4-flash），
-   * 不再是云端原始模型名。
-   */
-  getFunctionalModelDefaults(): FunctionalModelDefaults;
-
-  /**
-   * 按功能键获取默认模型 ID。
-   */
-  getFunctionalDefaultModelId(purposeKey: string): string | undefined;
-
-  /**
-   * 当前进程内是否已成功拉取过云端模型列表。
-   */
-  areCloudModelsReady(): boolean;
-
   /** 当前进程内目录是否完成初始化。 */
   isInitialized(): boolean;
 
-  /**
-   * 初始化注册表
-   * @param envVars 环境变量映射
-   */
-  initialize(distributionIdentity?: DistributionIdentity): Promise<void>;
+  /** 初始化注册表：载入内置目录、用户模型、端点与分组；并发调用共用同一次初始化。 */
+  initialize(): Promise<void>;
 }

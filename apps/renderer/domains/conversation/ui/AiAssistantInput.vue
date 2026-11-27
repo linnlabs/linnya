@@ -10,6 +10,12 @@
   >
     <!-- 输入区域 -->
     <div class="input-container">
+      <RunTaskProgressTray
+        v-if="runTaskProgress"
+        :key="runTaskProgressKey"
+        :task-state="runTaskProgress"
+        :compact="variant === 'compact'"
+      />
       <PendingSteerTray
         v-if="runSteering.items.value.length > 0"
         :items="runSteering.items.value"
@@ -243,6 +249,7 @@ import {
 } from '../features/interactive-run';
 import { useRunSteering } from '../features/run-steering/orchestration/useRunSteering';
 import PendingSteerTray from '../features/run-steering/ui/PendingSteerTray.vue';
+import { RunTaskProgressTray, useRunTaskProgress } from '../features/run-task-progress';
 
 const props = defineProps<{
   placeholder?: string;
@@ -503,6 +510,12 @@ const isInputDisabled = computed(
     (inputExecution.isBusy.value && !isSteerMode.value) ||
     isSubmissionStarting.value
 );
+// 任务进度托盘读当前运行最新一次 task_write；换对话时重建托盘，展开状态不带到别的对话。
+const runTaskProgress = useRunTaskProgress({
+  conversationId: () => assistantStore.activeConversationId,
+  messages: () => assistantStore.activeMessages,
+});
+const runTaskProgressKey = computed(() => assistantStore.activeConversationId ?? '');
 const runSteering = useRunSteering({
   conversationId: computed(() => assistantStore.activeConversationId),
   readDraft: () => assistantStore.inputText,

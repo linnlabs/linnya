@@ -35,6 +35,8 @@ v79→v80 为 `knowledge_bases` 加可空的 `embedding_space_id`。它记录实
 
 v80→v81 给行动账本加 `root_agent_id`、语义层改动批次加 `root_agent_id`、标签加 `created_root_agent_id`，记下用户这次请求的根运行 Agent，子运行的改动据此显示“XX 的子任务”（见[行动账本](../../../../domains/action-ledger/README.md#执行者与作者)）。只加列并回填空值：账本按根运行编号查仍在的运行记录，运行已随对话删除时取根运行自己账本行里的 Agent；主运行的根运行 Agent 就是它自己的 Agent；语义层改动批次沿运行记录的父运行链找根。运行记录已删除的子运行和不记运行编号的子任务标签留空，界面显示“子任务”。
 
+配色的“最近用过”（`color_palette_suggestions`、`color_palette_uses`，见 [color-palette domain](../../../../domains/color-palette/README.md#最近用过)）由 schema provider 创建，已有库启动时补建空表，不提升版本、没有迁移步骤。
+
 ## 升级耗时与启动进度
 
 每个 Host 迁移步骤是独立事务：成功后才提升 `user_version`，中途退出只回滚当前步骤，下次启动从该步骤重来。每步完成后日志记录耗时和数据库大小，用来积累不同数据量下的实际耗时。

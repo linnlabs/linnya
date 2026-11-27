@@ -8,6 +8,7 @@ import type {
   InferenceEndpointView,
   ModelConfig,
   CustomApiGroup,
+  UnadmittedUserModel,
 } from 'src/domains/model-catalog';
 import type { ProviderCatalog, ProviderDefinition } from '@linnya/provider-catalog';
 import type { ConfiguredProvider } from 'src/domains/provider-configuration';
@@ -20,6 +21,8 @@ import type { ProviderModelDiscoveryReadPort } from '../../provider-model-discov
 
 export interface ModelPickerModelCatalogPort {
   getModels(): ModelConfig[];
+  /** 启动时停用的用户模型；设置页单独列出，不能当作可启用的候选。 */
+  getUnadmittedUserModels(): readonly UnadmittedUserModel[];
   getModel(modelConfigId: string): ModelConfig | undefined;
   getInferenceEndpoints(): InferenceEndpointView[];
   getCustomApiGroups(): readonly CustomApiGroup[];
@@ -46,6 +49,11 @@ export interface ModelPickerPreferencesPort {
   setModelVisibility(modelConfigId: string, visible: boolean): Promise<void>;
 }
 
+/** 按 Provider 当前定义重建停用成员；只对能按定义修复的 connection 调用。 */
+export interface ModelPickerProviderModelRepairPort {
+  repairUnadmittedProviderModels(providerConnectionDefinitionId: string): Promise<unknown>;
+}
+
 export interface ModelPickerProviderModelActivationPort {
   registerDirectProviderModel(
     command: DirectProviderModelRegistrationCommand
@@ -58,6 +66,7 @@ export interface ComposeSelectableModelMenuInput {
   readonly provider_definitions: readonly ProviderDefinition[];
   readonly configured_providers: readonly ConfiguredProvider[];
   readonly models: readonly ModelConfig[];
+  readonly unadmitted_models: readonly UnadmittedUserModel[];
   readonly inference_endpoints: readonly InferenceEndpointView[];
   readonly custom_api_groups: readonly CustomApiGroup[];
   readonly provider_accounts: readonly ProviderAccount[];

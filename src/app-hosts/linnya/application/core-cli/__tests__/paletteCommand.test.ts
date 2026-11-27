@@ -14,6 +14,7 @@ describe('parsePaletteCommand', () => {
 
   it('--rng 接受单套编号，按整组复现', () => {
     expect(parsePaletteCommand(['suggest', 'a.jpg', '--rng', 'pl8f2a-2'])).toMatchObject({ options: { rng: 'pl8f2a' } });
+    expect(parsePaletteCommand(['suggest', 'a.jpg', '--rng', 'pl8f2a'])).toMatchObject({ options: { rng: 'pl8f2a' } });
   });
 
   it('没有任何颜色来源、参数不成立时拒绝', () => {
@@ -22,7 +23,9 @@ describe('parsePaletteCommand', () => {
     expect(() => parsePaletteCommand(['suggest', 'a.jpg', '--n', 'two'])).toThrow('整数');
     expect(() => parsePaletteCommand(['suggest', 'a.jpg', '--base', 'paper'])).toThrow('--base');
     expect(() => parsePaletteCommand(['suggest', 'a.jpg', '--output', 'x'])).toThrow();
-    expect(() => parsePaletteCommand(['use', 'pl8f2a-1'])).toThrow('未知子命令');
+    expect(() => parsePaletteCommand(['pick', 'pl8f2a-1'])).toThrow('未知子命令');
+    expect(() => parsePaletteCommand(['use'])).toThrow('一个单套编号');
+    expect(() => parsePaletteCommand(['use', 'pl8f2a-1', 'pl8f2a-2'])).toThrow('一个单套编号');
   });
 
   it('check 解析角色、列表和排除区，兼容输出里带度数符号的写法', () => {

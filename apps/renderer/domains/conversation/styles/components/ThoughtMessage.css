@@ -27,7 +27,7 @@
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  margin-left: -3px;
+  margin-left: var(--thought-message-arrow-shift);
   transition: transform var(--duration-medium) var(--ease-standard), color var(--duration-medium) var(--ease-standard);
   color: var(--thought-message-arrow-color);
 }

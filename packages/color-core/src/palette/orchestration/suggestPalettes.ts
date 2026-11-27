@@ -36,7 +36,8 @@ import { buildPalette } from '../functions/buildPalette.js'
 import { excludedHueRanges, isHueExcluded, withoutPinnedHues } from '../functions/excludedHues.js'
 import { extractSubjectColors } from '../functions/extractSubjectColors.js'
 import { quantizeImage } from '../functions/quantizeImage.js'
-import { createRandom, decodeRngId, encodeRngId, freshSeed, type RandomSource } from '../functions/random.js'
+import { createRandom, decodeRngId, encodeRngId, freshSeed, paletteIdOf, type RandomSource } from '../functions/random.js'
+import { combinationOf, recentUseFactor } from '../functions/recentUse.js'
 import { paletteColors, paletteDistance, type PaletteColors, scorePalette } from '../functions/scorePalette.js'
 
 /** 一次最多处理的图片数。 */
@@ -58,6 +59,8 @@ interface Candidate {
   readonly palette: Palette
   readonly colors: PaletteColors
   readonly quality: number
+  /** 最近用过的降权系数，只乘在抽取权重上（见 RECENT_USE_WINDOWS）。 */
+  readonly recentFactor: number
 }
 
 function parseOklch(hex: string): Oklch | null {
@@ -122,6 +125,7 @@ function partnerOnlyFlags(subject: readonly SubjectColor[], imageCount: number):
 /**
  * 按差异挑选：第一套在高分段里按分数加权抽；之后每套必须与已选各套的感知距离不低于门槛（门槛从高到低放宽），
  * 满足门槛的候选里优先没用过的关系，再按分数加权抽。这样每套都好，彼此又尽量不同。
+ * 最近用过的组合只在最后一步按分数加权抽时乘系数：高分段按原分数划，降权不会把它挤出候选。
  */
 function selectDiverse(candidates: readonly Candidate[], count: number, random: RandomSource): Candidate[] {
   const picked: Candidate[] = []
@@ -138,7 +142,10 @@ function selectDiverse(candidates: readonly Candidate[], count: number, random: 
     if (freshRelation.length > 0) eligible = freshRelation
     const best = Math.max(...eligible.map(index => candidates[index]?.quality ?? 0))
     const band = eligible.filter(index => (candidates[index]?.quality ?? 0) >= best * QUALITY_BAND)
-    const chosenIndex = pickWeighted(band, index => candidates[index]?.quality ?? 0, random)
+    const chosenIndex = pickWeighted(band, index => {
+      const candidate = candidates[index]
+      return candidate ? candidate.quality * candidate.recentFactor : 0
+    }, random)
     const chosen = chosenIndex === null ? undefined : candidates[chosenIndex]
     if (!chosen) break
     picked.push(chosen)
@@ -188,6 +195,7 @@ export function suggestPalettes(input: SuggestPalettesInput): PaletteSuggestion 
   const accentCount = input.accentCount === undefined ? undefined : Math.min(MAX_ACCENT_COUNT, Math.max(1, Math.round(input.accentCount)))
 
   const pinnedHexes = pinned.map(color => color.hex)
+  const recent = input.recentCombinations ?? []
   const styles = styleSpace(
     pinned.length >= 2 ? [relationOfPinned(pinned)] : RELATIONS.filter(relation => relation !== 'multi' || multiAvailable),
     BASES.filter(base => input.base === undefined || base === input.base),
@@ -202,10 +210,11 @@ export function suggestPalettes(input: SuggestPalettesInput): PaletteSuggestion 
     const palette = buildPalette({ id, relation: style.relation, base: style.base, ground: style.ground, tone: style.tone, subject: subjectColors, partnerOnly, excluded, random, accentCount, pinnedHexes })
     if (!palette) continue
     const colors = paletteColors(palette)
-    candidates.push({ palette, colors, quality: scorePalette(palette, colors) })
+    const recentFactor = recentUseFactor(combinationOf(palette.base, colors.families), recent)
+    candidates.push({ palette, colors, quality: scorePalette(palette, colors), recentFactor })
   }
 
-  const palettes: Palette[] = selectDiverse(candidates, count, random).map((candidate, index) => ({ ...candidate.palette, id: `${id}-${index + 1}` }))
+  const palettes: Palette[] = selectDiverse(candidates, count, random).map((candidate, index) => ({ ...candidate.palette, id: paletteIdOf(id, index) }))
   if (pinned.length > 0 && palettes.length === 0) return { kind: 'pinned_color_conflict' }
 
   return { kind: 'palettes', id, subject, neutrals: extracted.neutrals, excludedHues: excluded, palettes }

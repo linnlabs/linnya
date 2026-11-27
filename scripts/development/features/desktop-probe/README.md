@@ -12,7 +12,7 @@
 4. 拖动验收用 `drag --by 80,0 --steps 8 --sample '<求值表达式>' --expect-follow x`。表达式返回分隔线或目标的 CSS 像素坐标，探针比较每一步的值与指针位移。
 5. `pnpm -s probe logs --level error` 查看 Renderer 报错。验证完成用 `stop` 保留日志和截图，或用 `stop --clean` 回收整个探针实例；忘了清理也不会无限堆积，见下文“实例回收”。
 
-`pnpm -s probe` 每次输出一行 JSON。失败返回非零退出码与 `error.code`、`message`、必要时的 `hint`；命令或选项写错时 `hint` 给出最接近的写法（如 `list` → `status --all`、`screenshot` → `shot`）。截图、完整快照和录制数据用 `artifacts[].path` 打开。短命令可直接用 `node scripts/development/features/desktop-probe/bin/probe.mjs`，省去 pnpm 启动时间。
+`pnpm -s probe` 每次输出一行 JSON。失败返回非零退出码与 `error.code`、`message`、必要时的 `hint`；命令或选项写错时 `hint` 给出最接近的写法（如 `list` → `status --all`、`screenshot` → `shot`）。非零退出却没有任何输出时，是 pnpm 在探针启动前发现依赖与 lockfile 不一致（`-s` 吞掉了提示，见[构建与测试](../../../../docs/development/build-and-test.md#2-安装与启动)），先运行 `pnpm install --frozen-lockfile`；探针判断产物新旧只比对源码，不比对依赖。截图、完整快照和录制数据用 `artifacts[].path` 打开。短命令可直接用 `node scripts/development/features/desktop-probe/bin/probe.mjs`，省去 pnpm 启动时间。
 
 ## 命令
 

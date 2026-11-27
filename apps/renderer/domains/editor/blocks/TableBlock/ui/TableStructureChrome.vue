@@ -132,12 +132,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, unref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, unref, watch } from 'vue';
 import type { Ref } from 'vue';
 import type { Editor } from '@tiptap/core';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { CellSelection, TableMap } from '@tiptap/pm/tables';
-import { CustomSelect, measureFloatingLayoutSize, onNextFrame, useFrameBatch, type CustomSelectOption } from '@linnya/renderer-ui';
+import { CustomSelect, onNextFrame, useAnchoredPosition, useFrameBatch, type CustomSelectOption } from '@linnya/renderer-ui';
 import { useNotificationStore } from '@/app/notification';
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
 import { useTableAiModeStore } from '../../../features/table-ai-mode';
@@ -212,7 +212,13 @@ const insertHover = ref(false);
 const appendHover = ref<TableAxis | null>(null);
 const selectionVersion = ref(0);
 const menuWrapper = ref<HTMLElement | null>(null);
-const menuStyle = ref<Record<string, string>>({ position: 'fixed', top: '0px', left: '0px' });
+// 菜单从柄的边缘展开：列柄向下、行柄向右，间距 4px；放不下时翻转并收进视口。
+const { style: menuStyle } = useAnchoredPosition({
+  anchor: () => menu.value?.anchor,
+  floating: menuWrapper,
+  open: () => menu.value !== null,
+  placement: () => ({ side: menu.value?.axis === 'row' ? 'right' : 'bottom', align: 'start', gap: 4 }),
+});
 
 const columnCount = computed(() => active.value?.geometry.columns.length ?? 0);
 const rowCount = computed(() => active.value?.geometry.rows.length ?? 0);
@@ -642,22 +648,6 @@ function currentColumnAlignment(table: ProseMirrorNode, column: number): 'left' 
 
 function openMenu(axis: TableAxis, index: number, anchor: HTMLElement): void {
   menu.value = { axis, index, anchor };
-  void nextTick(positionMenu);
-}
-
-function positionMenu(): void {
-  const current = menu.value;
-  if (!current) return;
-  const rect = current.anchor.getBoundingClientRect();
-  const size = menuWrapper.value ? measureFloatingLayoutSize(menuWrapper.value) : { width: 188, height: 260 };
-  const width = size.width || 188;
-  const height = size.height || 260;
-  // 菜单从柄的边缘展开：列柄向下，行柄向右，间距 4px；贴不下时收回视口内。
-  let left = current.axis === 'column' ? rect.left : rect.right + 4;
-  let top = current.axis === 'column' ? rect.bottom + 4 : rect.top;
-  left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
-  if (top + height > window.innerHeight - 8) top = Math.max(8, (current.axis === 'column' ? rect.top - 4 : rect.bottom) - height);
-  menuStyle.value = { position: 'fixed', top: `${top}px`, left: `${left}px` };
 }
 
 function closeMenu(): void {

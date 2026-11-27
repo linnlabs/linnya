@@ -21,6 +21,7 @@ import { readModelImageGenerationRoute } from './readModelImageGenerationRoute';
 import { readDocumentOcrRoute } from './readDocumentOcrRoute';
 import { readTranscriptionRoute } from './readTranscriptionRoute';
 import { readCredentialReference } from '../../inference-endpoints/functions/readCredentialReference';
+import { ModelAdmissionError } from '../../../definitions/modelAdmissionError';
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -41,10 +42,13 @@ function readString(value: unknown, fallback = ''): string {
 }
 
 function readCatalogSource(value: unknown): ModelConfig['catalog_source'] {
-  if (value === 'default' || value === 'cloud' || value === 'account' || value === 'user') {
+  if (value === 'default' || value === 'account' || value === 'user') {
     return value;
   }
-  throw new Error("ModelConfig.catalog_source 必须是 'default'、'cloud'、'account' 或 'user'");
+  throw new ModelAdmissionError(
+    'invalid_structure',
+    "ModelConfig.catalog_source 必须是 'default'、'account' 或 'user'"
+  );
 }
 
 function readNonNegativeNumber(value: unknown): number | undefined {
@@ -76,7 +80,8 @@ function readTokenRoute(value: unknown): ModelTokenRoute | undefined {
   const capabilityId = readString(raw.capabilityId).trim();
   const modelId = readString(raw.modelId).trim();
   if (!capabilityId || !modelId) {
-    throw new Error(
+    throw new ModelAdmissionError(
+      'invalid_structure',
       '[ModelConfigProcessor] token_route.capabilityId 与 token_route.modelId 必须为非空字符串。'
     );
   }
@@ -101,10 +106,16 @@ function readTokenPricing(value: unknown): ModelTokenPricing | undefined {
   const currency = raw.currency;
   const unit = raw.unit;
   if (currency !== 'USD') {
-    throw new Error("[ModelConfigProcessor] token_pricing.currency 必须为 'USD'。");
+    throw new ModelAdmissionError(
+      'invalid_structure',
+      "[ModelConfigProcessor] token_pricing.currency 必须为 'USD'。"
+    );
   }
   if (unit !== 'per_1m_tokens') {
-    throw new Error("[ModelConfigProcessor] token_pricing.unit 必须为 'per_1m_tokens'。");
+    throw new ModelAdmissionError(
+      'invalid_structure',
+      "[ModelConfigProcessor] token_pricing.unit 必须为 'per_1m_tokens'。"
+    );
   }
 
   const pricing: ModelTokenPricing = {
@@ -128,12 +139,12 @@ export function processModelConfig(args: {
 }): ModelConfig {
   const modelData = asRecord(args.modelData);
   if (!modelData) {
-    throw new Error('Invalid model config: expected object');
+    throw new ModelAdmissionError('invalid_structure', 'Invalid model config: expected object');
   }
 
   const billingMode = (() => {
     const raw = modelData.billing_mode;
-    if (raw === 'byok' || raw === 'cloud') return raw;
+    if (raw === 'byok') return raw;
     return undefined;
   })();
 
@@ -158,14 +169,18 @@ export function processModelConfig(args: {
   })();
 
   if ('api_key' in modelData || 'api_key_env_var' in modelData) {
-    throw new Error(
+    throw new ModelAdmissionError(
+      'credential_declaration',
       'ModelConfig 不再接受 api_key/api_key_env_var，请使用 credential_reference 或 inference_endpoint_id'
     );
   }
   const credentialReference = readCredentialReference(modelData.credential_reference);
   const inferenceEndpointId = readString(modelData.inference_endpoint_id).trim() || undefined;
   if (credentialReference && inferenceEndpointId) {
-    throw new Error('ModelConfig 不能同时声明 credential_reference 与 inference_endpoint_id');
+    throw new ModelAdmissionError(
+      'credential_declaration',
+      'ModelConfig 不能同时声明 credential_reference 与 inference_endpoint_id'
+    );
   }
   const capabilities = Array.isArray(modelData.capabilities)
     ? modelData.capabilities.filter((value): value is string => typeof value === 'string')

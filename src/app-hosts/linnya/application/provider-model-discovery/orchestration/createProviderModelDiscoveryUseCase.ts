@@ -1,9 +1,5 @@
 import type { ProviderCatalog } from '@linnya/provider-catalog';
-import type { ModelCatalog } from 'src/domains/model-catalog';
-import {
-  findFirstCatalogedProviderMember,
-  type ProviderConfigurationRegistry,
-} from 'src/domains/provider-configuration';
+import type { ProviderConfigurationRegistry } from 'src/domains/provider-configuration';
 import {
   ProviderModelDiscoveryError,
   type ProviderDiscoveredModel,
@@ -11,6 +7,10 @@ import {
 } from 'src/app-hosts/linnya/adapters/provider-model-discovery';
 import type { ProviderOnboardingRuntimeBindingRegistry } from 'src/app-hosts/linnya/adapters/inference';
 import type { ProviderModelDiscoveryUseCase } from '../definitions/providerModelDiscovery';
+import {
+  resolveProviderMemberCredential,
+  type ProviderMemberCredentialCatalog,
+} from '../functions/resolveProviderMemberCredential';
 
 export interface ProviderModelDiscoveryDependencies {
   readonly catalog: Pick<ProviderCatalog, 'getConnection'>;
@@ -18,7 +18,7 @@ export interface ProviderModelDiscoveryDependencies {
     ProviderConfigurationRegistry,
     'getByProviderConnectionDefinitionId'
   >;
-  readonly models: Pick<ModelCatalog, 'getModel' | 'resolveCredential'>;
+  readonly models: ProviderMemberCredentialCatalog;
   readonly bindings: Pick<ProviderOnboardingRuntimeBindingRegistry, 'get'>;
   readonly discovery: ReturnType<typeof createProviderModelDiscovery>;
 }
@@ -57,13 +57,7 @@ export function createProviderModelDiscoveryUseCase(
       if (!entry || !binding || !configured || !dependencies.discovery.supports(connectionId)) {
         throw new ProviderModelDiscoveryError('该供应商尚未接入在线模型发现', 400);
       }
-      // 凭据取第一个仍在运行目录里的成员；排在前面的停用成员不能让整个 Provider 显得没有凭据。
-      const credentialModel = findFirstCatalogedProviderMember(configured, modelConfigId =>
-        dependencies.models.getModel(modelConfigId)
-      )?.model;
-      const apiKey = credentialModel
-        ? dependencies.models.resolveCredential(credentialModel.id)
-        : undefined;
+      const apiKey = resolveProviderMemberCredential(configured, dependencies.models);
       if (!apiKey) {
         throw new ProviderModelDiscoveryError('供应商凭据不可用，请重新连接后刷新', 401);
       }

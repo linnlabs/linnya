@@ -11,6 +11,10 @@ export interface FloatingLayoutSize {
   readonly height: number;
 }
 
+/**
+ * @deprecated 3.15.0 起贴着锚点弹出的浮层改用 `useAnchoredPosition`，它内部已按布局尺寸量浮层。
+ * 保留导出只为兼容现有插件。
+ */
 export function measureFloatingLayoutSize(element: HTMLElement): FloatingLayoutSize {
   return { width: element.offsetWidth, height: element.offsetHeight };
 }

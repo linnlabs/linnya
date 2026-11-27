@@ -2,7 +2,7 @@
 
 本包是 Linnya Host 与插件包之间的**纯类型公开合同**。它让 backend 插件、renderer 插件和 Host SDK facade 依赖同一组窄接口，不承载实现、状态或业务流程。
 
-Backend 的 `adoptedHostDataRuntime` 只给接管 Host 既有表的官方插件（目前只有知识库）借用工作区连接的 prepare/transaction 和产品映射的数据目录；连接覆盖整个工作区库，插件只能读写 manifest `ownedTables` 声明的表，运行时不按表拦截，新插件需要独立存储时不要用它。它不提供 exec、close 或任意路径。`vectorRuntime` 只创建产品已装配的本地向量进程，暴露按需就绪与停止，不开放 binary、端口或环境；目前同样只向知识库开放。两者的准入都沿 App 已准入的官方来源判定，不依赖插件自报 ID 或 builtin。`modelConfiguration` 仅返回当前实际消费的默认 OCR 角色、功能模型 ID 和显示名；用户显式用途选择由请求冻结，不把它混同于默认 capability，也不输出目录或凭据。
+Backend 的 `adoptedHostDataRuntime` 只给接管 Host 既有表的官方插件（目前只有知识库）借用工作区连接的 prepare/transaction 和产品映射的数据目录；连接覆盖整个工作区库，插件只能读写 manifest `ownedTables` 声明的表，运行时不按表拦截，新插件需要独立存储时不要用它。它不提供 exec、close 或任意路径。`vectorRuntime` 只创建产品已装配的本地向量进程，暴露按需就绪与停止，不开放 binary、端口或环境；目前同样只向知识库开放。两者的准入都沿 App 已准入的官方来源判定，不依赖插件自报 ID 或 builtin。`modelConfiguration` 仅返回当前实际消费的默认 OCR 角色和显示名；Host 不发布功能默认模型，用户显式用途选择由请求冻结，不把它混同于默认 capability，也不输出目录或凭据。
 
 ## 1. 边界
 
@@ -36,7 +36,7 @@ Backend 的 `adoptedHostDataRuntime` 只给接管 Host 既有表的官方插件�
   [Renderer 本地化](../../apps/renderer/app/localization/README.md)拥有。
 - `@linnya/plugin-host-contract/renderer/executionPresentation`：Host 工具活动指示器的组件合同；插件通过 `@plugin/renderer/executionPresentation` 使用运行实现，可选择扫光、呼吸或静态文字。执行态、动画实现与标题/正文的动画归属均由 Host 持有，插件不复制判断或 keyframes。
 - `backend/childRunDelivery`：供已授权插件 CLI 读取当前会话中正式 subagent 交付、生命周期和当前项目 Markdown 版本观察；只读，不接受自报运行结果，不开放数据库表或任意历史。
-- `backend/colorPalette`：从内存图片 bytes 或指定颜色给出多套配色，并按同一标准检查自写配色。DTO 与错误码来自 `@app/schemas/color-palette`；解码由 Host 负责，路径和资产归插件。
+- `backend/colorPalette`：从内存图片 bytes 或指定颜色给出多套配色，插件选定一套时用 `useColorPalette` 记下，并按同一标准检查自写配色。`suggestColorPalettes` 与 `useColorPalette` 带插件的工作区数据库连接：建议对本工作区最近用过的组合降权，选用记录与 `linnya palette use` 是同一份。DTO 与错误码来自 `@app/schemas/color-palette`；解码由 Host 负责，路径和资产归插件。
 - `backend/semanticTags`：工作区标签（语义层 #标签）的只读投影：列出现有标签、按 ID 读当前名称（已合并的跟到合并目标，已删除的不返回）、按 ID 或名称解析（与语义层同一套名称归一化，找不到时给出相近名称）。插件可以在自己的内容里存标签 ID，名称每次经这里读；新建、改名、合并、删除只走 Host 的标签入口，不开放写。无 App 装配依赖，独立 CLI 的只读连接也可使用。
 - `backend/runInputQuote`：供已授权插件 CLI 匹配当前 root 原接纳输入中的短引语，返回 Host 生成的事件身份和文本 hash；不检索历史，不接纳 child 委派，不认证人类身份、现实事实或执行授权。实现与生命周期见 App Host 的 run-input-provenance owner。
 - 包根：仅用于确实同时适用于两端的类型聚合；业务代码优先使用明确子入口。
@@ -109,6 +109,8 @@ Host 只传递已经由 durable `tool_output.attachments` 映射出的 `ToolUiIm
 重新调用工具读取图片。
 
 动态工具标题只允许通过可选 `ToolUiConfig.titleComponent` 替换标准外壳中的标题正文；图标、标签、折叠和点击仍归 Host。标题组件只接收已解析的 fallback 标题、已 admission 的 presentation、工具 lifecycle，以及该卡在 `runtime` 显式声明的能力，不能读取 Conversation store 或重新解释工具 raw payload。注册后运行态标题视觉由该组件负责，但执行判定必须消费 Host 的统一活动态，不能从工具 loading 推断；Host 在暂停等非执行阶段不显示 header 状态。普通静态标题继续由 presentation projector 提供，不应为样式差异注册组件。
+
+工具可以在 `ToolUiConfig.activity` 声明运行中的活动类别（`search` 查找、`read` 阅读、`edit` 编辑文档、`command` 运行命令、`delegate` 深入研究、`plan` 规划、`image` 生成图片）。字段可选，省略时 Conversation 底部状态行显示通用的“努力工作中”；旧插件无需修改。类别只由工具 owner 声明，Host 不维护工具名到类别的映射，也不从参数或标题推断。`image` 另有一层含义：生成的图片是交付给用户的成果，本轮结束、工作过程折叠成一行时它留在外面。该字段只影响 Conversation 的状态文字与折叠，不改变工具卡渲染、wire 或持久化。本包是 `private` 的纯类型包，没有独立版本号与 CHANGELOG；这类可选新增按向后兼容处理，消费方随同一提交更新。
 
 工具默认沿用通用错误卡。`retainPresentationOnError` 是可选的 Renderer 布局能力，省略等同 `false`；不改变 wire、SQLite 或工具 API payload，旧插件无需修改。只有显式声明 `ToolUiConfig.layout.retainPresentationOnError` 的卡片，错误态才保留已 admission 的标题与专用内容；标准 `ToolErrorCard` 仍负责错误原因与修复动作。该开关不允许读取原始 payload，也不把错误结果解释为已保存产物。过程卡可继续展示正式子运行索引；单次提交卡可明确本次失败语义。未声明的工具错误展示不变。
 

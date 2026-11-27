@@ -88,8 +88,7 @@ describe('projectTaskStatePresentation', () => {
         },
         title: {
           text: {
-            key: 'conversation.tool.taskState.updateVersionPhase',
-            params: { version: 3, phase: 'execute' },
+            key: 'conversation.tool.taskState.updatePhase.execute',
           },
         },
       });
@@ -121,8 +120,7 @@ describe('projectTaskStatePresentation', () => {
       },
       title: {
         text: {
-          key: 'conversation.tool.taskState.readVersion',
-          params: { version: 3 },
+          key: 'conversation.tool.taskState.read',
         },
       },
     });

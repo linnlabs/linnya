@@ -309,7 +309,7 @@ describe('execution pause through real Flow, Graph, SQLite and CLI status projec
       executionStatus: 'ready',
       local: { pendingToolCalls: [] },
     });
-    expect(checkpoint?.local?.executingToolCallId).toBeUndefined();
+    expect(checkpoint?.local?.executingToolCallIds ?? []).toEqual([]);
     await fixture.flow.continueRun(
       active.run_id,
       {

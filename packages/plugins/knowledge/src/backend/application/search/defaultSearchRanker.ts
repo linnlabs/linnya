@@ -12,6 +12,7 @@ import { type RerankingPort } from '@plugin/backend/inferenceRuntime';
 import { RerankingFailure } from '@plugin/backend/inferenceFailures';
 
 import { Logger } from '@plugin/backend/loggingRuntime';
+import { KnowledgeSearchRerankError } from './knowledgeSearchRerankError';
 const logger = new Logger('knowledge');
 import type { RankedRetrievedPoint, SearchRanker } from './types';
 import { applyIntelligentLayeredSorting, type LayeredRankingResult } from '../../utils/ranking';
@@ -84,6 +85,7 @@ export class DefaultSearchRanker implements SearchRanker {
         logger.warn(`Reranking 暂时不可用，保留已有排序：${error.code}`);
         return searchResults;
       }
+      if (error instanceof RerankingFailure) throw new KnowledgeSearchRerankError(error);
       throw error;
     }
   }

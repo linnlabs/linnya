@@ -35,6 +35,7 @@ export const LOCAL_CI_STEP_SCHEDULE: LocalCiSchedule = {
     deterministic: {
       'Install dependencies': 'build',
       // 以下 Linux 步骤在 macOS 上按条件跳过；声明只为表格完整。
+      'Resolve Linux drawing font': 'build',
       'Prepare Linux offscreen display': 'build',
       'Prepare Linux Electron sandbox helper': 'build',
       'Typecheck Canvas': 'static',

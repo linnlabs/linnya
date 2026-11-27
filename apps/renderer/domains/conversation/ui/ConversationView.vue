@@ -39,7 +39,7 @@
             class="conversation-streaming-content"
           >
             <VirtualConversationCanvas
-              :items="visualRows"
+              :items="displayRows"
               :messages="messages"
               :virtual-rows="virtualRows"
               :total-height="virtualTotalHeight"
@@ -48,10 +48,11 @@
               :measure-element="measureVirtualElement"
               :active-run-ids="assistantStore.activeConversationRunIds"
               :answer-render-width-px="committedContentWidthPx"
-              :trailing-status="trailingStatus"
+              :trailing-status="runStatusRow"
               @layout-change="handleVirtualTurnLayoutChange"
               @edit-message="handleEditMessage"
               @regenerate-response="handleRegenerateResponse"
+              @toggle-work-fold="turnWorkFold.toggle"
             />
           </div>
         </div>
@@ -78,7 +79,6 @@ import type {
 import type { MessageWindowLoadMode, MessageWindowStatus } from '../message-window';
 import { useConversationScrollController } from './conversationView/composables/useConversationScrollController';
 import { useConversationTimelinePositions } from './conversationView/composables/useConversationTimelinePositions';
-import { useStreamingWaitingIndicator } from './conversationView/composables/useStreamingWaitingIndicator';
 import { useStreamingScrollGlide } from './conversationView/composables/useStreamingScrollGlide';
 import { useAppendOnlyConversationVisualRows } from './conversationView/composables/useAppendOnlyConversationVisualRows';
 import { useMessageEntryAnimation } from './conversationView/composables/useMessageEntryAnimation';
@@ -98,6 +98,9 @@ import { MESSAGE_ENTRY_ANIMATION_PORT_KEY } from '../definitions/messageEntryAni
 import { CONVERSATION_RENDER_SCOPE_KEY } from '../definitions/conversationRenderScope';
 import { CONVERSATION_RENDER_SCHEDULING_PORT_KEY } from '../definitions/conversationRenderScheduling';
 import type { ConversationVisualTurnId } from '@app/schemas';
+import { useRunStatusRow } from '../shared/execution-presentation';
+import { useTurnWorkFoldRows } from '../features/turn-work-fold';
+import { readToolMessageActivity } from './tools/registry';
 
 /**
  * 功能 (What): 对话视图组件，展示AI助手的对话消息列表，支持流式传输状态管理
@@ -243,6 +246,15 @@ const { visualRows } = useAppendOnlyConversationVisualRows({
   estimationRegistry,
 });
 
+// 终态折叠只改变主时间线展示哪些行；消息投影、timeline 索引与 Subrun 详情都不受影响。
+const turnWorkFold = useTurnWorkFoldRows({
+  conversationId: () => props.conversationId,
+  rows: visualRows,
+  foldRowEstimatedHeight: () => estimationRegistry.message.min,
+  isDeliverableTool: message => readToolMessageActivity(message) === 'image',
+});
+const displayRows = turnWorkFold.rows;
+
 const hasRenderableSourceMessages = computed(() => {
   return hasRenderableConversationMessages(messages.value);
 });
@@ -324,7 +336,7 @@ const streamingScrollGlide = useStreamingScrollGlide({
 });
 
 const virtualizer = useTanstackConversationVirtualizer({
-  items: visualRows,
+  items: displayRows,
   enabled: computed(() => true),
   isStreaming: conversationIsStreaming,
   scrollMode,
@@ -368,7 +380,7 @@ const footerMaskLayoutWatchKey = computed(() => {
   const last = list.length > 0 ? list[list.length - 1] : undefined;
   return [
     props.conversationId,
-    String(visualRows.value.length),
+    String(displayRows.value.length),
     String(list.length),
     last?.id ?? '',
     conversationIsStreaming.value ? 'streaming' : 'settled',
@@ -382,7 +394,7 @@ const { updateLayout: updateFooterMaskLayout } = useConversationFooterMaskLayout
 });
 
 watch(
-  () => [props.useOverlayScrollViewport, props.conversationId, visualRows.value.length] as const,
+  () => [props.useOverlayScrollViewport, props.conversationId, displayRows.value.length] as const,
   () => {
     syncOverlayScrollViewport();
     scheduleOverlayScrollUpdateIfNeeded();
@@ -465,16 +477,12 @@ defineExpose({
   scrollToVisualTurn,
 });
 
-// 通用等待指示器（副作用拆分，且移除 any 解析）
-const { isWaitingSlotActive, isWaitingIndicatorVisible } = useStreamingWaitingIndicator({
-  messages,
-  isStreaming: conversationIsStreaming,
-  activeRunIds: computed(() => assistantStore.activeConversationRunIds),
+// 底部常驻状态行：整轮运行（含等回答、等批准、已暂停）都显示在做什么与已用时长。
+const runStatusRow = useRunStatusRow({
+  conversationId: () => props.conversationId,
+  messages: () => messages.value,
+  resolveToolActivity: readToolMessageActivity,
 });
-const trailingStatus = computed(() => ({
-  active: isWaitingSlotActive.value,
-  visible: isWaitingIndicatorVisible.value,
-}));
 
 /**
  * @description

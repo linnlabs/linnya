@@ -41,7 +41,7 @@ CLI 的 `--presentation` 接收 presentation ID，不接收 Workspace locator、
 
 ## 配色：linnya palette
 
-`linnya palette` 是 Linnya 内置命令，不属于 `linnya-slides`。图片写工作目录相对路径或 `conversation:/...`；颜色写 6 位、不带 `#`，否则 Shell 会当成注释。
+`linnya palette` 是 Linnya 内置命令，不属于 `linnya-slides`。图片写工作目录相对路径或 `conversation:/...`；颜色写 6 位、不带 `#`，否则 Shell 会当成注释。`suggest` 会读写本工作区的“最近用过”（少给最近选用过的配色），只读对话里调用 Shell 时传 `requires_write_access: true`。
 
 ```text
 linnya palette suggest assets/cover.jpg assets/p3.jpg assets/p7.jpg

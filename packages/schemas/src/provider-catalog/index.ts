@@ -62,10 +62,10 @@ export const ProviderConnectionDefinitionSchema = z
     description: NonEmptyStringSchema.optional(),
     badge: NonEmptyStringSchema.optional(),
     setup_help_url: z.string().url().optional(),
-    kind: z.enum(['direct', 'cloud', 'local_runtime']),
+    kind: z.enum(['direct', 'local_runtime']),
     release_status: z.enum(['stable', 'preview', 'hidden']),
     setup_fields: z.array(ProviderSetupFieldSchema),
-    model_discovery: z.enum(['bundled', 'account_catalog', 'cloud_catalog', 'local_runtime']),
+    model_discovery: z.enum(['bundled', 'account_catalog', 'local_runtime']),
     models: z.array(ProviderModelDefinitionSchema),
   })
   .strict();

@@ -13,6 +13,7 @@ import { KnowledgeIndexSpaceMismatchError } from '../../index-rebuild/definition
 import { type EmbeddingPort } from '@plugin/backend/inferenceRuntime';
 import { EmbeddingFailure } from '@plugin/backend/inferenceFailures';
 import { KnowledgeSearchEmbeddingError } from './knowledgeSearchEmbeddingError';
+import { KnowledgeBaseNotFoundError } from '../../definitions/knowledgeBaseErrors';
 
 import type { MetadataRepository } from '../../infrastructure/metadataRepository';
 
@@ -56,7 +57,7 @@ export class QueryVectorBuilder {
   }): Promise<{ embeddingModelId: string; queryVector: number[] }> {
     const { kbId, query } = args;
     const kb = await this.metadataRepository.getKnowledgeBaseById(kbId);
-    if (!kb) throw new Error(`找不到知识库: ${kbId}`);
+    if (!kb) throw new KnowledgeBaseNotFoundError(kbId);
     const identity = this.metadataRepository.indexState.requireReady(kbId);
     const embeddingModelId = args.requestedEmbeddingModelId || identity.modelId;
     const result = await this.embedding

@@ -31,6 +31,17 @@ export function decodeRngId(id: string): number | null {
   return match?.[1] ? Number.parseInt(match[1], RNG_ALPHABET_SIZE) : null
 }
 
+/** 单套编号是整组编号加序号（`pl8f2a-2`）：`index` 是从 0 起的下标，编号里的序号从 1 起。 */
+export function paletteIdOf(suggestionId: string, index: number): string {
+  return `${suggestionId}-${index + 1}`
+}
+
+/** 从单套编号取整组编号；不是 `pl` + 4 位加序号的写法时返回 null。 */
+export function suggestionIdOfPalette(paletteId: string): string | null {
+  const match = /^(pl[0-9a-z]{4})-[1-9]\d*$/.exec(paletteId.trim().toLowerCase())
+  return match?.[1] ?? null
+}
+
 export function freshSeed(): number {
   const values = new Uint32Array(1)
   globalThis.crypto.getRandomValues(values)

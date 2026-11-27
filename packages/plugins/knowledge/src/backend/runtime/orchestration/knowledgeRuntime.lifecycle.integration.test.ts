@@ -52,7 +52,7 @@ const inference: PluginInferencePort = {
 vi.mock('@plugin/backend/adoptedHostDataRuntime', () => ({ getAdoptedHostData: () => ({ database, dataDirectory: path.join(root, 'Plugins/knowledge') }) }));
 vi.mock('@plugin/backend/projectReadRuntime', () => ({ getPluginProjectReadPort: () => ({ get: () => undefined, list: () => [] }) }));
 vi.mock('@plugin/backend/modelConfiguration', () => ({ getPluginModelConfigurationPort: () => ({
-  readDefaultModelIdByCapability: () => 'ocr', readAuxiliaryModelBinding: () => 'language', getModelDisplayName: (id: string) => id,
+  readDefaultModelIdByCapability: () => 'ocr', getModelDisplayName: (id: string) => id,
 }) }));
 vi.mock('@plugin/backend/inferenceRuntime', () => ({ getPluginInferencePort: () => inference }));
 vi.mock('@plugin/backend/vectorRuntime', () => ({ createPluginVectorRuntime: () => {
@@ -351,6 +351,31 @@ describe('knowledge activation persistence and drain', () => {
     // 嵌入失败在检索之前，不需要也不会启动向量服务。
     expect(vectorStarts).toBe(0);
   });
+  it('检索索引需要重建：IPC 给本地化键，Agent 工具给英文恢复办法，不再显示中文原文', async () => {
+    const effect = knowledgePlugin.runtimeEffects?.[0];
+    if (!effect) throw new Error('Missing knowledge runtime effect');
+    await effect.activate();
+    const handlers = new Map<string, BackendPluginIpcHandler>();
+    knowledgePlugin.ipc?.register(undefined, (_pluginId, channel, handler) => handlers.set(channel, handler));
+    const search = handlers.get('search');
+    if (!search) throw new Error('Missing search handler');
+    // 有资料、但还没有可用的检索索引身份（早期版本的库或重建中断）。
+    await new BetterSqliteMetadataRepository(database).addDocument(createDocument('doc-unindexed', 'default', 'notes.md', 7));
+
+    const response = await search(undefined, { kbId: 'default', request: { query: '知识', embeddingModelId: 'embedding', useReranking: false } });
+    expect(response).toMatchObject({ success: false, userMessage: { key: 'knowledgeBase.index.error.rebuildRequired' } });
+
+    database.prepare('INSERT OR IGNORE INTO projects(id) VALUES (?)').run('project-single');
+    database.prepare('INSERT OR REPLACE INTO project_knowledge_base_links(project_id,kb_id,role,created_at,updated_at) VALUES (?,?,?,?,?)')
+      .run('project-single', 'default', 'read_write', Date.now(), Date.now());
+    const context: ToolContext = { conversationId: 'conversation', turnId: 'turn', workspaceProjectId: 'project-single' };
+    attachCitationSequence(context, { offset: 0 });
+    attachCitationRefAllocator(context, { allocate: async anchors => anchors.map((_anchor, index) => `Ref${index}`) });
+    const result = await new KnowledgeSearchTool().run({ query: 'knowledge' }, context).catch((error: unknown) => error);
+    expect(result).toHaveProperty('message', expect.stringMatching(/^Knowledge search failed: the search index of this knowledge base must be rebuilt\..*Rebuild search index/u));
+    expect(result).not.toHaveProperty('message', expect.stringMatching(/[\u4e00-\u9fff]/u));
+    expect(vectorStarts).toBe(0);
+  });
   it('数据目录未超限：同样的上传照常接纳任务', async () => {
     const effect = knowledgePlugin.runtimeEffects?.[0];
     if (!effect) throw new Error('Missing knowledge runtime effect');
@@ -487,7 +512,7 @@ describe('knowledge activation persistence and drain', () => {
     let release: (value: DocumentSoT) => void = () => {};
     const delayed = new Promise<DocumentSoT>(resolve => { release = resolve; });
     const read = vi.spyOn(runtime.sot, 'get').mockReturnValueOnce(delayed);
-    runtime.graph.startBackfill();
+    runtime.graph.startBackfill('language');
     await vi.waitFor(() => expect(read).toHaveBeenCalled());
     let stopped = false;
     const stopping = runtime.stop().then(() => { stopped = true; });

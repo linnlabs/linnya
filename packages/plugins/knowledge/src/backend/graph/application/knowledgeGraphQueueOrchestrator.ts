@@ -32,8 +32,6 @@ import {
   getGraphEdgesCollectionName,
   getGraphNodesCollectionName,
 } from '../infrastructure/qdrantCollections';
-import { getPluginModelConfigurationPort } from '@plugin/backend/modelConfiguration';
-import { PromptKeys } from '@app/schemas';
 import { KNOWLEDGE_GRAPH_DOCUMENT_MAX_RETRIES } from '../definitions/extractionRetryPolicy';
 
 type MaybeKbIdCarrier = { kbId?: unknown } | null;
@@ -44,13 +42,11 @@ function readStringField(obj: unknown, key: string): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
-function resolveGraphExtractionModelId(): string | null {
-  // ✅ 单一来源：internals/knowledge_graph_extraction/index.ts
-  return (
-    getPluginModelConfigurationPort().readAuxiliaryModelBinding(
-      PromptKeys.KNOWLEDGE_GRAPH_EXTRACTION
-    ) ?? null
-  );
+/** 回填范围：省略 kbId 表示本次运行扫描全部开了图谱的知识库。 */
+interface GraphBackfillScope {
+  readonly kbId?: string;
+  /** 触发这次回填的界面请求带来的图谱抽取模型；为空时只补图谱向量索引。 */
+  readonly llmModelId: string | null;
 }
 
 export class KnowledgeGraphQueueOrchestrator {
@@ -63,7 +59,12 @@ export class KnowledgeGraphQueueOrchestrator {
   private started = false;
   private stopped = false;
   private readonly subscriptions: Array<() => void> = [];
-  private backfillStarted = false;
+  // 图谱抽取模型只保存在界面里，Host 不发布默认（用户 2026-11-27 定：补抽取用界面当前模型）。
+  // 所以全库回填分两档：没有模型时只补向量索引；之后第一次带模型的界面操作再整体补抽取一次。
+  private indexBackfillStarted = false;
+  private extractionBackfillStarted = false;
+  // 回填依次执行：“队列里是否已有该文档任务”的检查与入队之间有等待，两轮并行会重复入队。
+  private backfillChain: Promise<void> = Promise.resolve();
   private readonly pendingOperations = new Set<Promise<void>>();
 
   /**
@@ -373,7 +374,7 @@ export class KnowledgeGraphQueueOrchestrator {
           await this.graphProgressService.onDocQueued(kbId, docId, chunkCount);
 
           // 自动重试必须复用失败 job 的显式模型，避免同一文档在重试时悄悄换模型。
-          const llmModelId = retryLlmModelId ?? resolveGraphExtractionModelId();
+          const llmModelId = retryLlmModelId;
           if (!llmModelId) {
             this.logger.warn(`自动重试放弃：无可用抽取模型: kbId=${kbId}, docId=${docId}`);
             this.clearRetryTimer(kbId, docId);
@@ -561,12 +562,34 @@ export class KnowledgeGraphQueueOrchestrator {
     return { cancelledExtraction, cancelledIndexing };
   }
 
-  startBackfill(): void {
+  /** 本次运行的全库回填，由界面操作触发；llmModelId 是该请求带来的界面当前图谱抽取模型。 */
+  startBackfill(llmModelId: string | null): void {
+    if (this.stopped || this.extractionBackfillStarted) return;
+    if (llmModelId) {
+      this.extractionBackfillStarted = true;
+    } else if (this.indexBackfillStarted) {
+      return;
+    }
+    this.indexBackfillStarted = true;
+    this.logger.info(
+      llmModelId
+        ? `启动回填：扫描历史文档，为未完成图谱的文档入队（modelId=${llmModelId}）`
+        : '启动回填：界面没有选择图谱抽取模型，本轮只补图谱向量索引'
+    );
+    this.enqueueBackfill({ llmModelId });
+  }
+
+  /** 打开某个知识库的图谱构建后，为它已有的文档补图谱。 */
+  startKnowledgeBaseBackfill(kbId: string, llmModelId: string | null): void {
     if (this.stopped) return;
-    if (this.backfillStarted) return;
-    this.backfillStarted = true;
-    this.logger.info('启动回填：将扫描历史文档并为未完成图谱抽取的文档入队（异步，不阻塞启动）');
-    this.runBackground(this.runBackfill(), '图谱抽取回填失败');
+    this.logger.info(`知识库开启图谱构建，回填已有文档: kbId=${kbId}, modelId=${llmModelId ?? 'none'}`);
+    this.enqueueBackfill({ kbId, llmModelId });
+  }
+
+  private enqueueBackfill(scope: GraphBackfillScope): void {
+    const run = this.backfillChain.then(() => this.runBackfill(scope));
+    this.backfillChain = run.catch(() => undefined);
+    this.runBackground(run, '图谱回填失败');
   }
 
   private hasGraphExtractionTaskForDoc(kbId: string, docId: string): boolean {
@@ -670,9 +693,9 @@ export class KnowledgeGraphQueueOrchestrator {
       task.data.graphExtractionModelId.trim().length > 0
         ? task.data.graphExtractionModelId.trim()
         : null;
-    const llmModelId = graphExtractionModelSnapshot ?? resolveGraphExtractionModelId();
+    const llmModelId = graphExtractionModelSnapshot;
     if (!llmModelId) {
-      this.logger.warn('跳过图谱抽取：未找到可用的聊天模型', { kbId, docId });
+      this.logger.warn('跳过图谱抽取：上传时没有选择图谱抽取模型', { kbId, docId });
       return;
     }
 
@@ -746,18 +769,25 @@ export class KnowledgeGraphQueueOrchestrator {
    * 典型来源：PDF partial 文档“继续解析失败页”恢复了新 blocks。
    * 该方法保持 graph domain 的队列细节封装，调用方只表达“文档需要重新抽取图谱”。
    */
-  enqueueGraphExtractionForDocument(kbId: string, docId: string): Promise<void> {
+  enqueueGraphExtractionForDocument(
+    kbId: string,
+    docId: string,
+    llmModelId: string | null
+  ): Promise<void> {
     if (this.stopped) return Promise.resolve();
-    const operation = this.enqueueGraphExtractionForDocumentInternal(kbId, docId).finally(() =>
-      this.pendingOperations.delete(operation)
-    );
+    const operation = this.enqueueGraphExtractionForDocumentInternal(
+      kbId,
+      docId,
+      llmModelId
+    ).finally(() => this.pendingOperations.delete(operation));
     this.pendingOperations.add(operation);
     return operation;
   }
 
   private async enqueueGraphExtractionForDocumentInternal(
     kbId: string,
-    docId: string
+    docId: string,
+    llmModelId: string | null
   ): Promise<void> {
     if (typeof kbId !== 'string' || kbId.trim().length === 0) return;
     if (typeof docId !== 'string' || docId.trim().length === 0) return;
@@ -774,9 +804,8 @@ export class KnowledgeGraphQueueOrchestrator {
       return;
     }
 
-    const llmModelId = resolveGraphExtractionModelId();
     if (!llmModelId) {
-      this.logger.warn('跳过图谱抽取：未找到可用的聊天模型', { kbId, docId });
+      this.logger.warn('跳过图谱抽取：界面没有选择图谱抽取模型', { kbId, docId });
       return;
     }
 
@@ -836,8 +865,14 @@ export class KnowledgeGraphQueueOrchestrator {
     await this.queueManager.addGraphExtractionTask(payload);
   }
 
-  private async runBackfill(): Promise<void> {
-    const kbs = await this.metadataRepo.getAllKnowledgeBases();
+  private async runBackfill(scope: GraphBackfillScope): Promise<void> {
+    if (this.stopped) return;
+    const { llmModelId } = scope;
+    const kbs = scope.kbId
+      ? [await this.metadataRepo.getKnowledgeBaseById(scope.kbId)].filter(
+          (kb): kb is NonNullable<typeof kb> => kb !== undefined
+        )
+      : await this.metadataRepo.getAllKnowledgeBases();
     if (kbs.length === 0) {
       this.logger.info('回填结束：当前没有任何知识库');
       return;
@@ -855,6 +890,7 @@ export class KnowledgeGraphQueueOrchestrator {
     let indexAlreadyCompleted = 0;
     let indexSkippedOther = 0;
     let skippedOther = 0;
+    let extractionSkippedNoModel = 0;
 
     for (const kb of kbs) {
       const kbId = kb.id;
@@ -867,8 +903,9 @@ export class KnowledgeGraphQueueOrchestrator {
         continue;
       }
 
-      const llmModelId = resolveGraphExtractionModelId();
-      if (!llmModelId) {
+      // 没有 embedding 出身的知识库还没摄入过内容，没有可补的文档；跳过它，不能让它中断其余知识库的回填。
+      const embeddingModelIdForKb = await this.metadataRepo.getKnowledgeBaseEmbeddingProvenance(kbId);
+      if (!embeddingModelIdForKb) {
         skippedOther += 1;
         continue;
       }
@@ -878,7 +915,6 @@ export class KnowledgeGraphQueueOrchestrator {
       // 预读取该 KB 下的索引状态，避免对每个 doc 单独 get
       const indexStatuses = await this.graphRepo.listVectorDocStatusByKb(kbId);
       const indexStatusByDocId = new Map(indexStatuses.map(s => [s.docId, s]));
-      const embeddingModelIdForKb = await this.resolveEmbeddingModelIdForKb(kbId);
 
       for (const doc of docs) {
         docTotal += 1;
@@ -941,6 +977,13 @@ export class KnowledgeGraphQueueOrchestrator {
             alreadyRunningQueued += 1;
             continue;
           }
+        }
+        // 抽取未完成的文档要用触发这轮回填的界面模型补；没有模型时保留原状态，等带模型的回填。
+        if (!llmModelId) {
+          extractionSkippedNoModel += 1;
+          continue;
+        }
+        if (existing && (existing.status === 'running' || existing.status === 'queued')) {
           // 僵尸状态：允许重新入队（running 需要先回收）
           if (existing.status === 'running') {
             this.logger.warn(
@@ -996,6 +1039,7 @@ export class KnowledgeGraphQueueOrchestrator {
       indexAlreadyCompleted,
       indexSkippedOther,
       skippedOther,
+      extractionSkippedNoModel,
     });
   }
 }

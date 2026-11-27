@@ -17,6 +17,7 @@ import {
   settingsRequest,
   searchRequest,
   uploadFields,
+  interactiveGraphModel,
 } from '../definitions/knowledgeIpcRequests';
 import {
   listKnowledgeDocumentsWithSource,
@@ -25,6 +26,12 @@ import {
 import { validatePdfOcrUploadPageLimit } from '../../ingestion/functions/pdfOcrUploadPageLimit';
 import { KnowledgeVectorStartupError, type KnowledgeVectorStartupFailureKind } from '../../infrastructure/vector-store/errors';
 import { KnowledgeSearchEmbeddingError } from '../../application/search/knowledgeSearchEmbeddingError';
+import { KnowledgeSearchRerankError } from '../../application/search/knowledgeSearchRerankError';
+import {
+  KnowledgeIndexRebuildRequiredError,
+  KnowledgeIndexSpaceMismatchError,
+} from '../../index-rebuild/definitions/knowledgeIndex';
+import { KnowledgeBaseNotFoundError } from '../../definitions/knowledgeBaseErrors';
 import type { KnowledgeEmbeddingFailureReason } from '../../infrastructure/inference/embeddingFailureReason';
 import {
   resolveKnowledgeBaseScopeFromContext,
@@ -46,6 +53,20 @@ const SEARCH_EMBEDDING_MESSAGE_KEYS = {
 } as const satisfies Record<KnowledgeEmbeddingFailureReason, string>;
 
 /** IPC 只解析业务输入；实例与取消身份始终由当前 activation 冻结。 */
+const readInteractiveGraphModel = (payload: unknown): string | null =>
+  interactiveGraphModel.parse(payload).graphExtractionModelId ?? null;
+
+/**
+ * 这些界面操作顺带启动本次运行的历史维护，值是读取该请求带来的图谱抽取模型的方式。
+ * CLI 不走这里：项目范围的一次写入不能以界面的全局权限维护其他库。
+ */
+const INTERACTIVE_MAINTENANCE_TRIGGERS: Readonly<Record<string, (payload: unknown) => string | null>> = {
+  search: readInteractiveGraphModel,
+  'rebuild-index': readInteractiveGraphModel,
+  'continue-failed-pages': readInteractiveGraphModel,
+  'upload-document': payload => uploadFields.parse(payload).graph_extraction_model_id ?? null,
+};
+
 export function createKnowledgeIpc(
   getRuntime: () => KnowledgeRuntime
 ): BackendPluginIpcContribution {
@@ -71,9 +92,15 @@ export function createKnowledgeIpc(
     },
     'list-documents': (runtime, payload) =>
       listKnowledgeDocumentsWithSource(runtime.service, runtime.sot, kbTarget.parse(payload).kbId),
-    'update-settings': (runtime, payload) => {
+    'update-settings': async (runtime, payload) => {
       const input = settingsRequest.parse(payload);
-      return runtime.service.updateKnowledgeBaseSettings(input.kbId, input.settings);
+      const before = await runtime.service.getKnowledgeBaseById(input.kbId);
+      const updated = await runtime.service.updateKnowledgeBaseSettings(input.kbId, input.settings);
+      // 开关只写配置；刚打开时由这里为已有文档补图谱，否则要等下次启动后的回填。
+      if (before?.enableGraphIndexing !== true && updated.enableGraphIndexing === true) {
+        runtime.graph.startKnowledgeBaseBackfill(input.kbId, input.graphExtractionModelId ?? null);
+      }
+      return updated;
     },
     'delete-document': async (runtime, payload) => {
       const input = documentTarget.parse(payload);
@@ -92,8 +119,12 @@ export function createKnowledgeIpc(
             })
             .optional(),
         })
+        .merge(interactiveGraphModel)
         .parse(payload);
-      return runtime.service.continueFailedPdfPages(input.kbId, input.docId, input.modelConfig);
+      return runtime.service.continueFailedPdfPages(input.kbId, input.docId, {
+        ...input.modelConfig,
+        graphExtractionModelId: input.graphExtractionModelId ?? null,
+      });
     },
     'task-status': (runtime, payload) =>
       runtime.service.getTasksStatus(
@@ -208,8 +239,9 @@ export function createKnowledgeIpc(
             signal.throwIfAborted();
             const result = await operation(runtime, payload, signal, event);
             signal.throwIfAborted();
-            if (['search', 'upload-document', 'rebuild-index', 'continue-failed-pages'].includes(channel)) {
-              runtime.startInteractiveMaintenance();
+            const readMaintenanceModel = INTERACTIVE_MAINTENANCE_TRIGGERS[channel];
+            if (readMaintenanceModel) {
+              runtime.startInteractiveMaintenance(readMaintenanceModel(payload));
             }
             return { success: true, data: result };
           } catch (error) {
@@ -219,6 +251,19 @@ export function createKnowledgeIpc(
             }
             if (error instanceof KnowledgeSearchEmbeddingError) {
               return createOperationFailure(error.message, createUserFacingMessage(SEARCH_EMBEDDING_MESSAGE_KEYS[error.reason]));
+            }
+            // 索引状态与重排失败同样只给本地化键；中文 message 只作诊断，不直达英文界面。
+            if (error instanceof KnowledgeIndexRebuildRequiredError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.index.error.rebuildRequired'));
+            }
+            if (error instanceof KnowledgeIndexSpaceMismatchError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.index.error.spaceMismatch'));
+            }
+            if (error instanceof KnowledgeSearchRerankError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.search.error.rerankFailed'));
+            }
+            if (error instanceof KnowledgeBaseNotFoundError) {
+              return createOperationFailure(error.message, createUserFacingMessage('knowledgeBase.common.notFound'));
             }
             const fallback = fallbackKeys[channel];
             return fallback

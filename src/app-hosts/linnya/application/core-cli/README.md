@@ -23,10 +23,13 @@ list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、in
 
 ## 配色
 
-`linnya palette` 给 Agent 出配色、检查配色。算法与错误码归 [color-palette domain](../../../../domains/color-palette/README.md)。不读内部数据，只在 `--preview` 时需要写权限。
+`linnya palette` 给 Agent 出配色、检查配色、记下选用的一套。算法、错误码与“最近用过”归 [color-palette domain](../../../../domains/color-palette/README.md)。
 
 - `linnya palette suggest <图片>...`：从 1–20 张图取色，默认给 3 套。可选 `--color` 指定主色（1–6 个）、`--seed` 补充本色、`--accents` 定强调色数量、`--n` 定套数、`--base` 定底色明暗、`--avoid` 排除颜色、`--rng` 复现之前的结果。
 - `linnya palette check --bg --sf --ink --mu --ac --ch`：检查自己写的一套，可加 `--excluded`、`--color`。不合格时退出码为 1，并给出改动最少的版本。
+- `linnya palette use <单套编号>`：选定一套后记下（如 `pl8f2a-2`），输出这套的组合（底色明暗与色系）。之后的 `suggest` 对同一组合降权，不排除；同一套再记一次只移到最前。编号不是本工作区最近 100 组建议里的报 `palette_not_found`。
+
+权限：`suggest` 读本工作区的最近用过并记下发出的编号，`use` 写选用记录，两者都声明内部数据写入（`internalDataAccess: write`）：内部数据关闭时拒绝，只读档要给 Shell 设 `requires_write_access`。`check` 只算颜色，不读写任何数据。`--preview` 另需写工作目录。
 
 图片是当前对话工作目录里的相对路径或 `conversation:/...`，边界与 `read_file` 相同，符号链接不能带到目录外。相对路径按工作目录根解析，不跟随 Shell 的 `cd`。`workspace:/` 和 `file:///` 按读不出处理。
 

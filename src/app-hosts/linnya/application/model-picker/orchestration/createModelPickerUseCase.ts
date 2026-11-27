@@ -6,12 +6,14 @@ import type {
   ModelPickerPreferencesPort,
   ModelPickerProviderAccountPort,
   ModelPickerProviderModelActivationPort,
+  ModelPickerProviderModelRepairPort,
   ModelPickerProviderCatalogPort,
   ModelPickerProviderConfigurationPort,
   ModelPickerUseCase,
 } from '../definitions/modelPickerPorts';
 import { composeSelectableModelMenu } from '../functions/composeSelectableModelMenu';
 import type { ProviderModelDiscoveryReadPort } from '../../provider-model-discovery';
+import { canRepairUnadmittedProviderModels } from '../../provider-onboarding';
 
 export interface CreateModelPickerUseCaseDependencies {
   readonly discoveredModels: Pick<ProviderModelDiscoveryReadPort, 'read' | 'readAvailable'>;
@@ -25,6 +27,7 @@ export interface CreateModelPickerUseCaseDependencies {
   readonly preferences: ModelPickerPreferencesPort;
   readonly providerAccounts: ModelPickerProviderAccountPort;
   readonly providerModelActivation: ModelPickerProviderModelActivationPort;
+  readonly providerModelRepair: ModelPickerProviderModelRepairPort;
 }
 
 export function createModelPickerUseCase(
@@ -37,6 +40,7 @@ export function createModelPickerUseCase(
       provider_definitions: dependencies.providerCatalog.list(),
       configured_providers: dependencies.providerConfigurations.list(),
       models: dependencies.modelCatalog.getModels(),
+      unadmitted_models: dependencies.modelCatalog.getUnadmittedUserModels(),
       inference_endpoints: dependencies.modelCatalog.getInferenceEndpoints(),
       custom_api_groups: dependencies.modelCatalog.getCustomApiGroups(),
       provider_accounts: dependencies.providerAccounts.list(),
@@ -64,7 +68,16 @@ export function createModelPickerUseCase(
           404
         );
       }
-      await dependencies.providerModelRefresh.refresh(provider.provider_connection_definition_id);
+      const connectionId = provider.provider_connection_definition_id;
+      if (dependencies.providerModelRefresh.supports(connectionId)) {
+        await dependencies.providerModelRefresh.refresh(connectionId);
+      }
+      // 用户 2026-11-26 定：刷新即按 Provider 最新定义修复停用成员；先刷新，修复用的才是最新定义。
+      // 没有在线刷新的 bundled Provider 也走这里，用安装包内的定义修复。
+      const connection = dependencies.providerCatalog.getConnection(connectionId)?.connection;
+      if (connection && canRepairUnadmittedProviderModels(connection)) {
+        await dependencies.providerModelRepair.repairUnadmittedProviderModels(connectionId);
+      }
       return read();
     },
     async setProviderVisibility(
@@ -94,7 +107,6 @@ export function createModelPickerUseCase(
         throw new ModelPickerError('model_picker.model_not_found', '模型不存在', 404);
       }
       const isManagedModel =
-        model.catalog_source === 'cloud' ||
         model.catalog_source === 'account' ||
         model.catalog_source === 'user';
       if (!isManagedModel) {

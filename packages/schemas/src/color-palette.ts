@@ -74,6 +74,7 @@ export const ColorPaletteErrorCodeSchema = z.enum([
   'no_subject_color',
   'pinned_color_neutral',
   'pinned_color_conflict',
+  'palette_not_found',
 ]);
 export type ColorPaletteErrorCode = z.infer<typeof ColorPaletteErrorCodeSchema>;
 
@@ -94,6 +95,21 @@ export const ColorPaletteSuggestOutcomeSchema = z.discriminatedUnion('status', [
   ColorPaletteFailureSchema,
 ]);
 export type ColorPaletteSuggestOutcome = z.infer<typeof ColorPaletteSuggestOutcomeSchema>;
+
+/** 记下选用的一套：回显它的组合（底色明暗加色系），之后的建议对这个组合降权。 */
+export const ColorPaletteUseOutcomeSchema = z.discriminatedUnion('status', [
+  z.strictObject({
+    status: z.literal('ok'),
+    used: z.strictObject({
+      id: z.string().min(1),
+      base: ColorPaletteBaseSchema,
+      /** 这套用到的色系名（如 绿、褐），按名称排序；没有色系的灰阶配色为空。 */
+      families: z.array(z.string().min(1)),
+    }),
+  }),
+  ColorPaletteFailureSchema,
+]);
+export type ColorPaletteUseOutcome = z.infer<typeof ColorPaletteUseOutcomeSchema>;
 
 /** 待检查的配色不校验色值：写错的颜色由检查结果逐项报告。 */
 export const ColorPaletteDraftSchema = z.strictObject({

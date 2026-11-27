@@ -17,69 +17,32 @@
     />
     <template v-else-if="sources.length > 0">
       <div class="model-visibility-layout">
-        <aside class="model-visibility-sources">
-          <header class="model-visibility-sources-header">
-            <h4>{{ settingsMessage('settings.modelGroups.provider') }}</h4>
-          </header>
-          <CustomTextInput
-            v-model="sourceQuery"
-            type="search"
-            size="compact"
-            :bordered="false"
-            clearable
-            :placeholder="settingsMessage('settings.modelPicker.sourceSearch')"
-          />
-          <div class="model-visibility-scroll-host">
-            <div class="model-visibility-source-list">
-              <SettingsList :bordered="false">
-                <!-- 标准 / 官方提供商 -->
-                <SettingsListRow
-                  v-for="source in standardSources"
-                  :key="source.id"
-                  :class="{ 'is-active': source.id === selectedSourceId }"
-                >
-                  <template #title>
-                    <button
-                      type="button"
-                      class="model-visibility-source-tab"
-                      :data-model-source-id="source.id"
-                      :aria-pressed="source.id === selectedSourceId"
-                      @click="selectedSourceId = source.id"
-                    >
-                      <span>{{ source.displayName }}</span>
-                    </button>
-                  </template>
-                </SettingsListRow>
+        <ModelVisibilitySourceList
+          :sources="sources"
+          :selected-source-id="selectedSourceId"
+          @select="selectedSourceId = $event"
+        />
 
-                <!-- 自定义模型供应商 分组 -->
-                <template v-if="customSources.length > 0">
-                  <div class="model-visibility-source-group-title">
-                    {{ settingsMessage('settings.modelPicker.customProviders') }}
-                  </div>
-                  <SettingsListRow
-                    v-for="source in customSources"
-                    :key="source.id"
-                    :class="{ 'is-active': source.id === selectedSourceId }"
-                  >
-                    <template #title>
-                      <button
-                        type="button"
-                        class="model-visibility-source-tab"
-                        :data-model-source-id="source.id"
-                        :aria-pressed="source.id === selectedSourceId"
-                        @click="selectedSourceId = source.id"
-                      >
-                        <span>{{ source.displayName }}</span>
-                      </button>
-                    </template>
-                  </SettingsListRow>
-                </template>
-              </SettingsList>
+        <div v-if="selectedSource?.kind === 'unassigned'" class="model-visibility-models">
+          <header class="model-visibility-models-header">
+            <div class="model-visibility-models-header-left">
+              <h4>{{ selectedSource.displayName }}</h4>
+            </div>
+          </header>
+          <div class="model-visibility-models-content">
+            <div class="model-visibility-scroll-host">
+              <UnadmittedModelsSection
+                :models="selectedSource.unadmittedModels"
+                :description="settingsMessage('settings.modelPicker.unassigned.description')"
+                :show-repair="false"
+                :is-repairing="false"
+                :disabled="isMutating"
+                @failed="removalError = $event"
+              />
             </div>
           </div>
-        </aside>
-
-        <div v-if="selectedSource" class="model-visibility-models">
+        </div>
+        <div v-else-if="selectedSource" class="model-visibility-models">
           <header class="model-visibility-models-header">
             <div class="model-visibility-models-header-left">
               <h4>{{ selectedSource.displayName }}</h4>
@@ -177,6 +140,21 @@
               :placeholder="settingsMessage('settings.modelPicker.modelSearch')"
             />
             <div class="model-visibility-scroll-host">
+              <UnadmittedModelsSection
+                v-if="filteredUnadmittedModels.length > 0"
+                :models="filteredUnadmittedModels"
+                :title="
+                  settingsMessage('settings.modelPicker.invalid.title', {
+                    count: filteredUnadmittedModels.length,
+                  })
+                "
+                :description="unadmittedDescription"
+                :show-repair="canRepairSelectedSource"
+                :is-repairing="isRefreshingSourceId === selectedSource.id"
+                :disabled="isMutating"
+                @repair="refreshSourceModels(selectedSource)"
+                @failed="removalError = $event"
+              />
               <div class="model-visibility-model-list">
                 <SettingsList :bordered="false">
                   <SettingsListRow
@@ -188,7 +166,7 @@
                     :interactive="isCustomModelEditable(model)"
                     @select="openCustomModelDetails(model)"
                   >
-                    <template v-if="selectedSource.kind !== 'cloud'" #trailing>
+                    <template #trailing>
                       <Switch
                         :model-value="model.materialized && model.picker_enabled"
                         v-bind="{ ariaLabel: model.display_name }"
@@ -291,10 +269,13 @@ import { removeModelSource } from '../../../orchestration/removeModelSource';
 import { refreshCustomApiProviderModels } from '../../../orchestration/refreshCustomApiProviderModels';
 import {
   filterModelVisibilityModels,
-  filterModelVisibilitySources,
+  filterUnadmittedModels,
   projectModelVisibilitySources,
   type ModelVisibilitySource,
 } from '../functions/projectModelVisibilitySources';
+import { buildUnadmittedRemovalSections } from '../functions/unadmittedModelPresentation';
+import ModelVisibilitySourceList from './ModelVisibilitySourceList.vue';
+import UnadmittedModelsSection from './UnadmittedModelsSection.vue';
 import { resolveModelPickerErrorPresentation } from '../functions/modelPickerErrorPresentation';
 import './ModelVisibilitySettingsSection.css';
 
@@ -313,7 +294,6 @@ const modelPickerErrorMessage = computed(() =>
     ? resolveModelPickerErrorPresentation(modelPicker.error.value, settingsMessage)
     : ''
 );
-const sourceQuery = ref('');
 const modelQuery = ref('');
 const selectedSourceId = ref<string | null>(
   modelPicker.managementProviderId.value
@@ -331,23 +311,11 @@ const replacingCredentialProvider = ref<{
 
 const sources = computed(() =>
   modelPicker.snapshot.value
-    ? projectModelVisibilitySources(
-        modelPicker.snapshot.value,
-        settingsMessage('settings.modelPicker.customModels')
-      )
+    ? projectModelVisibilitySources(modelPicker.snapshot.value, {
+        customModels: settingsMessage('settings.modelPicker.customModels'),
+        unassigned: settingsMessage('settings.modelPicker.unassigned.title'),
+      })
     : []
-);
-
-const filteredSources = computed(() =>
-  filterModelVisibilitySources(sources.value, sourceQuery.value)
-);
-
-const standardSources = computed(() =>
-  filteredSources.value.filter(s => s.kind !== 'custom_provider' && s.kind !== 'custom')
-);
-
-const customSources = computed(() =>
-  filteredSources.value.filter(s => s.kind === 'custom_provider' || s.kind === 'custom')
 );
 
 const isRefreshingSourceId = ref<string | null>(null);
@@ -400,6 +368,22 @@ const refreshUnavailableMessage = computed(() => {
 });
 const filteredModels = computed(() =>
   selectedSource.value ? filterModelVisibilityModels(selectedSource.value, modelQuery.value) : []
+);
+const filteredUnadmittedModels = computed(() =>
+  selectedSource.value ? filterUnadmittedModels(selectedSource.value, modelQuery.value) : []
+);
+// 后端按“connection 支持按定义重建、且定义里仍有该模型”判定；有一条可修复就给刷新修复。
+const canRepairSelectedSource = computed(
+  () =>
+    selectedSource.value?.kind === 'provider' &&
+    selectedSource.value.unadmittedModels.some(model => model.repairable)
+);
+const unadmittedDescription = computed(() =>
+  canRepairSelectedSource.value && selectedSource.value
+    ? settingsMessage('settings.modelPicker.invalid.description.repairable', {
+        providerName: selectedSource.value.displayName,
+      })
+    : settingsMessage('settings.modelPicker.invalid.description.removeOnly')
 );
 const isMutating = computed(
   () =>
@@ -473,8 +457,15 @@ function closeModelDetails(): void {
 async function removeSelectedProvider(): Promise<void> {
   const source = selectedSource.value;
   if (source?.kind !== 'provider' || isRemovingProvider.value) return;
+  // 用户 2026-11-26 定：删除正式 Provider 时一并删除它的无效成员，确认框列出；否则只剩停用成员的 Provider 删不掉。
   const confirmed = await confirm({
     message: settingsMessage('settings.modelPicker.removeProvider.confirm'),
+    sections: buildUnadmittedRemovalSections(
+      source.unadmittedModels,
+      settingsMessage('settings.modelPicker.removeProvider.invalidSection', {
+        count: source.unadmittedModels.length,
+      })
+    ),
     isDangerousAction: true,
   });
   if (!confirmed) return;
@@ -482,14 +473,17 @@ async function removeSelectedProvider(): Promise<void> {
   isRemovingProvider.value = true;
   removalError.value = null;
   try {
-    const modelConfigIds = source.models
-      .filter(model => model.materialized)
-      .map(model => model.model_config_id);
-    const result = await removeModelSource(modelConfigIds);
+    const targets = {
+      modelConfigIds: source.models.flatMap(model =>
+        model.materialized ? [model.model_config_id] : []
+      ),
+      unadmittedModelConfigIds: source.unadmittedModels.map(model => model.model_config_id),
+    };
+    const result = await removeModelSource(targets);
     if (result.failure) {
       removalError.value = settingsMessage('settings.modelPicker.removeProvider.partialFailed', {
         removed: result.removedModelIds.length,
-        total: modelConfigIds.length,
+        total: targets.modelConfigIds.length + targets.unadmittedModelConfigIds.length,
       });
     } else if (result.synchronizationFailed) {
       removalError.value = settingsMessage('settings.modelPicker.modelsRemovedSyncFailed');
@@ -513,6 +507,13 @@ async function removeSelectedCustomProvider(
       providerName: source.displayName,
       count: source.models.length,
     }),
+    // 后端删除分组时按同一归属连带删掉这些条目及其连接与独占 Key，这里先列给用户看。
+    sections: buildUnadmittedRemovalSections(
+      source.unadmittedModels,
+      settingsMessage('settings.modelPicker.removeCustomProvider.invalidSection', {
+        count: source.unadmittedModels.length,
+      })
+    ),
     isDangerousAction: true,
   });
   if (!confirmed) return;

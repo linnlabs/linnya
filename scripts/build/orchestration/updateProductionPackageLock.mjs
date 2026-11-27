@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { projectPackagedSchemasManifest, projectProductionPackageManifest } from '../functions/productionPackageManifest.mjs';
 import { assertProductionPackageLock } from '../functions/productionPackageLock.mjs';
+import { runRegistryCommand } from './retryTransientNetwork.cjs';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const outputPath = path.join(rootDir, 'production-package-lock.json');
@@ -40,22 +40,20 @@ function createCleanNpmEnvironment(tempRoot) {
   };
 }
 
-function generateStablePackageLock(tempRoot) {
+async function generateStablePackageLock(tempRoot) {
   const packageLockPath = path.join(tempRoot, 'package-lock.json');
   let previous = fs.existsSync(packageLockPath)
     ? fs.readFileSync(packageLockPath, 'utf8')
     : undefined;
 
   for (let pass = 1; pass <= MAX_LOCK_CONVERGENCE_PASSES; pass += 1) {
-    execFileSync(
-      'npm',
-      ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
-      {
-        cwd: tempRoot,
-        env: createCleanNpmEnvironment(tempRoot),
-        stdio: 'inherit',
-      }
-    );
+    await runRegistryCommand({
+      label: 'npm 解析生产 package lock',
+      command: 'npm',
+      args: ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
+      cwd: tempRoot,
+      env: createCleanNpmEnvironment(tempRoot),
+    });
     const current = fs.readFileSync(packageLockPath, 'utf8');
     if (current === previous) return JSON.parse(current);
     previous = current;
@@ -66,7 +64,7 @@ function generateStablePackageLock(tempRoot) {
   throw new Error(`生产 package lock 在 ${MAX_LOCK_CONVERGENCE_PASSES} 轮 npm 解析后仍未收敛`);
 }
 
-export function updateProductionPackageLock(input = {}) {
+export async function updateProductionPackageLock(input = {}) {
   const fresh = input.fresh === true;
   const audit = input.audit === true;
   const verify = input.verify === true || audit;
@@ -83,14 +81,16 @@ export function updateProductionPackageLock(input = {}) {
       fs.copyFileSync(outputPath, path.join(tempRoot, 'package-lock.json'));
     }
 
-    const generatedLock = generateStablePackageLock(tempRoot);
+    const generatedLock = await generateStablePackageLock(tempRoot);
     assertProductionPackageLock(generatedLock, productionManifest);
     const serialized = `${JSON.stringify(generatedLock, null, 2)}\n`;
     if (verifyInstall) {
-      execFileSync('npm', ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], {
+      await runRegistryCommand({
+        label: 'npm 冻结生产安装',
+        command: 'npm',
+        args: ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'],
         cwd: tempRoot,
         env: createCleanNpmEnvironment(tempRoot),
-        stdio: 'inherit',
       });
       if (fs.readFileSync(path.join(tempRoot, 'package-lock.json'), 'utf8') !== serialized) {
         throw new Error('冻结生产安装修改了 package lock');
@@ -106,18 +106,23 @@ export function updateProductionPackageLock(input = {}) {
     if (audit) {
       // Desktop 安装的是这棵 npm 冻结图；pnpm 的安全覆盖不会自动进入成品。
       // 先核对受跟踪 lock，再只读审计，避免审计了临时解析的新树却放行旧成品。
-      execFileSync('npm', ['audit', '--package-lock-only', '--omit=dev', '--audit-level=low'], {
+      // 审计接口是 POST，npm 不做内置重试；只有断线、超时会重试，查出漏洞当场失败。
+      await runRegistryCommand({
+        label: 'npm 审计生产依赖',
+        command: 'npm',
+        args: ['audit', '--package-lock-only', '--omit=dev', '--audit-level=low'],
         cwd: tempRoot,
         env: createCleanNpmEnvironment(tempRoot),
-        stdio: 'inherit',
       });
     }
     if (audit) {
       // 生产 lock 只含以 node_modules 形式随包的依赖；打进 bundle 的包来自 pnpm 的生产依赖图，
       // 上面的 npm 审计看不到它们，所以对这张图再审计一次。
-      execFileSync('pnpm', ['audit', '--prod', '--audit-level=low'], {
+      await runRegistryCommand({
+        label: 'pnpm 审计生产依赖',
+        command: 'pnpm',
+        args: ['audit', '--prod', '--audit-level=low'],
         cwd: rootDir,
-        stdio: 'inherit',
         shell: process.platform === 'win32',
       });
     }
@@ -136,5 +141,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     verify: args.includes('--verify'),
     verifyInstall: args.includes('--verify-install'),
     audit: args.includes('--audit'),
+  }).catch(error => {
+    // 失败原因已在上方输出（命令原文或网络失败标记），这里只给结论，不打印堆栈。
+    process.stderr.write(`[production-package-lock] ${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
   });
 }

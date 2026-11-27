@@ -53,10 +53,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { CustomSelect, type CustomSelectOption } from '@linnya/renderer-ui';
+import { computed, ref } from 'vue';
+import { CustomSelect, useAnchoredPosition, type CustomSelectOption } from '@linnya/renderer-ui';
 import { ChevronIcon, CloseIcon } from '@linnya/renderer-ui/icons';
-import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
 
 const props = defineProps<{
   label: string;
@@ -77,14 +76,13 @@ const emit = defineEmits<{
 const triggerRef = ref<HTMLButtonElement | null>(null);
 const isOpen = ref(false);
 // 与侧栏“新建”菜单同一套：挂到 body、按触发按钮定位、共享弹出动效。
-const {
-  dropdownRef: menuRef,
-  dropdownStyle: menuStyle,
-  positionDropdownAfterRender,
-} = useFixedDropdownPosition({ align: 'start' });
-watch(isOpen, open => {
-  if (open) void positionDropdownAfterRender(triggerRef.value);
-}, { flush: 'post' });
+const menuRef = ref<HTMLElement | null>(null);
+const { style: menuStyle } = useAnchoredPosition({
+  anchor: triggerRef,
+  floating: menuRef,
+  open: isOpen,
+  placement: { gap: 4 },
+});
 const triggerText = computed(() => (props.valueText === null ? props.label : props.activeText));
 
 function handleSelect(value: string | null): void {

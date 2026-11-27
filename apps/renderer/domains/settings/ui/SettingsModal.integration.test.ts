@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue';
-import { Modal } from '@linnya/renderer-ui';
+import { CustomSelect, Modal } from '@linnya/renderer-ui';
 import { createPinia } from 'pinia';
 import { afterEach, describe, expect, it } from 'vitest';
 import { useUIStore } from '@/shared/stores/ui';
@@ -66,6 +66,44 @@ describe('设置里的嵌套弹窗', () => {
     expect(uiStore.settingsModalVisible).toBe(true);
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await nextTick();
+    expect(uiStore.settingsModalVisible).toBe(false);
+  });
+
+  it('开着下拉时第一次点遮罩只关下拉，再点一次才关闭设置', async () => {
+    clearSettingsContributionsForTest();
+    registerSettingsContribution({ id: 'appearance', title: '外观', group: 'general', order: 0,
+      component: defineComponent({ render: () => h(CustomSelect, {
+        modelValue: 'zh-CN',
+        options: [{ value: 'zh-CN', text: '简体中文' }, { value: 'en', text: 'English' }],
+      }) }) });
+    const pinia = createPinia();
+    const uiStore = useUIStore(pinia);
+    uiStore.openSettingsModal('appearance');
+    const Host = defineComponent({
+      setup: () => () => (uiStore.settingsModalVisible ? h(SettingsModal) : null),
+    });
+    container = document.createElement('div'); document.body.append(container);
+    app = createApp(Host); app.use(pinia); app.mount(container);
+    await nextTick();
+
+    const trigger = container.querySelector<HTMLButtonElement>('.select-trigger');
+    trigger?.click();
+    await nextTick();
+    expect(trigger?.getAttribute('aria-expanded')).toBe('true');
+
+    // 真实点击先在遮罩上按下，再收到 click。
+    const clickBackdrop = (): void => {
+      const overlay = container?.querySelector('.settings-modal-overlay');
+      overlay?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      overlay?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    };
+    clickBackdrop();
+    await nextTick();
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+    expect(uiStore.settingsModalVisible).toBe(true);
+
+    clickBackdrop();
     await nextTick();
     expect(uiStore.settingsModalVisible).toBe(false);
   });

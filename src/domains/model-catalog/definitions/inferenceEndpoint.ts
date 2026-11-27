@@ -9,8 +9,7 @@ export type CredentialReference =
   | { readonly kind: 'none' }
   | { readonly kind: 'environment_variable'; readonly environment_variable: string }
   | { readonly kind: 'stored_secret'; readonly credential_id: string }
-  | { readonly kind: 'provider_account'; readonly account_id: string }
-  | { readonly kind: 'host_managed'; readonly credential_id: 'linnya-cloud' };
+  | { readonly kind: 'provider_account'; readonly account_id: string };
 
 export interface InferenceEndpoint {
   readonly id: string;

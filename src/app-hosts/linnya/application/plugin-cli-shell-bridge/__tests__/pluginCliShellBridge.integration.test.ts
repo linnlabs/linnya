@@ -799,21 +799,33 @@ describe('Plugin CLI Shell bridge', () => {
   });
 
   describe('内建 palette', () => {
+    const paletteDatabases: DatabaseService[] = [];
+    afterEach(() => {
+      for (const database of paletteDatabases.splice(0)) database.close();
+    });
+
     async function createPaletteHarness() {
       const root = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-palette-cli-')));
       temporaryRoots.push(root);
       const image = await sharp({ create: { width: 48, height: 48, channels: 3, background: '#4e7a68' } }).png().toBuffer();
       await fsp.writeFile(path.join(root, 'cover.png'), image);
+      // “最近用过”记在工作区库里：用正式 DatabaseService 建库，表由 color-palette 的 schema provider 建立。
+      const database = new DatabaseService(':memory:');
+      database.initialize();
+      paletteDatabases.push(database);
       const bridge = await startPluginCliShellBridgeRuntime({
         resolveCli: () => { throw new Error('Core commands must not resolve a plugin'); },
-        // palette 不读数据库；传入任何数据库访问都会让测试失败。
-        coreCli: createCoreCli(null as never, 8000, createNodePhysicalFileReader(), { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } }),
+        coreCli: createCoreCli(database.getDb(), 8000, createNodePhysicalFileReader(), { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } }),
         internalDataContext: {},
         diagnostics: { recordUnexpectedFailure: ({ error }) => { throw error; } },
       });
       bridges.push(bridge);
-      const run = async (argv: string[], permissionLevel: 'read_only' | 'standard' = 'standard') => {
-        const launch = createLaunch({ permissionLevel, internalDataAccess: 'denied', conversationRoot: root });
+      const run = async (
+        argv: string[],
+        permissionLevel: 'read_only' | 'standard' = 'standard',
+        internalDataAccess: 'allowed' | 'denied' = 'allowed',
+      ) => {
+        const launch = createLaunch({ permissionLevel, internalDataAccess, conversationRoot: root });
         const prepared = createPreparedRuntime(launch);
         const scope = bridge.prepareExecution(launch);
         const runtime = scope.decorate(prepared.runtime);
@@ -831,9 +843,13 @@ describe('Plugin CLI Shell bridge', () => {
       return { root, run };
     }
 
-    it('在内部数据和写权限都关闭时也能从工作目录读图出配色', async () => {
+    it('suggest 读写工作区的最近用过：内部数据关闭或只读时拒绝，标准档从工作目录读图出配色', async () => {
       const { run } = await createPaletteHarness();
-      const result = await run(['suggest', 'cover.png', 'conversation:/cover.png', '--json'], 'read_only');
+      expect((await run(['suggest', 'cover.png'], 'standard', 'denied')).terminal)
+        .toMatchObject({ code: 'permission_denied', exit_code: 77 });
+      expect((await run(['suggest', 'cover.png'], 'read_only')).terminal)
+        .toMatchObject({ code: 'permission_denied', exit_code: 77 });
+      const result = await run(['suggest', 'cover.png', 'conversation:/cover.png', '--json']);
       expect(result.terminal).toMatchObject({ kind: 'plugin_cli_terminal', exit_code: 0 });
       const parsed: unknown = JSON.parse(result.stdout);
       const { skippedImages, ...suggestion } = parsed as { skippedImages: string[] };
@@ -875,7 +891,8 @@ describe('Plugin CLI Shell bridge', () => {
     it('check 用退出码区分合格与否，用法错误与业务错误分开', async () => {
       const { run } = await createPaletteHarness();
       const roles = ['--bg', 'ffffff', '--sf', 'f2f2f2', '--mu', '555555', '--ac', '1f3a5f', '--ch', '112233,445566,778899'];
-      const good = await run(['check', ...roles, '--ink', '111111']);
+      // check 只算颜色，不读写任何数据，只读、内部数据关闭时都能用。
+      const good = await run(['check', ...roles, '--ink', '111111'], 'read_only', 'denied');
       expect(good).toMatchObject({ stdout: '通过\n', terminal: { exit_code: 0 } });
       const bad = await run(['check', ...roles, '--ink', 'bbbbbb']);
       expect(bad.terminal).toMatchObject({ exit_code: 1 });
@@ -887,13 +904,30 @@ describe('Plugin CLI Shell bridge', () => {
       expect(failed.stderr).toMatch(/^invalid_rng /u);
     });
 
+    it('use 记下选用的一套，之后的建议少给这个组合；编号不对时给稳定错误码', async () => {
+      const { run } = await createPaletteHarness();
+      const suggested = await run(['suggest', 'cover.png', '--n', '2']);
+      const paletteId = /^(pl[0-9a-z]{4}-1) /mu.exec(suggested.stdout)?.[1];
+      if (!paletteId) throw new Error(`no palette id in ${suggested.stdout}`);
+
+      expect((await run(['use', paletteId], 'read_only')).terminal).toMatchObject({ code: 'permission_denied', exit_code: 77 });
+      const used = await run(['use', paletteId]);
+      expect(used.terminal).toMatchObject({ exit_code: 0 });
+      expect(used.stdout).toMatch(new RegExp(`^已记下 ${paletteId} (浅底|染纸|深底)·\\S+；`, 'u'));
+
+      const missing = await run(['use', 'pl0000-1']);
+      expect(missing.terminal).toMatchObject({ exit_code: 1 });
+      expect(missing.stderr).toMatch(/^palette_not_found /u);
+      expect((await run(['use'])).terminal).toMatchObject({ exit_code: 2 });
+    });
+
     it.runIf(Boolean(process.env.LINNYA_PLUGIN_CLI_NATIVE_CLIENT_E2E_PATH))('真实 native client 以 linnya 身份调用 palette', async () => {
       const nativeClientPath = process.env.LINNYA_PLUGIN_CLI_NATIVE_CLIENT_E2E_PATH;
       if (!nativeClientPath) throw new Error('native client path is required');
       const { root } = await createPaletteHarness();
       const bridge = bridges[bridges.length - 1];
       if (!bridge) throw new Error('bridge is required');
-      const launch = createLaunch({ internalDataAccess: 'denied', conversationRoot: root });
+      const launch = createLaunch({ conversationRoot: root });
       const prepared = createPreparedRuntime(launch);
       const scope = bridge.prepareExecution(launch);
       const runtime = scope.decorate(prepared.runtime);
