@@ -95,7 +95,7 @@ try {
     path.join(consumerRoot, 'main.ts'),
     [
       "import { createApp, defineComponent, h, ref } from 'vue';",
-      "import { ActionButtons, BaseButton, ColorPickerPanel, IconButton, SkeletonRows, CustomNumberInput, CustomSlider, CustomTextInput, DraggablePanel, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton, DropdownPanel, HoverTooltip, NotificationBar, SimpleDatePicker, TimePicker, anchoredMotionDirection, createColorPickerOptions, createPointAnchor, resolveDraggablePanelPosition, resolveHoverTooltipPosition, useAnchoredPosition, useModalOverlay } from '@linnya/renderer-ui';",
+      "import { ActionButtons, BaseButton, ColorPickerPanel, IconButton, SkeletonRows, CustomNumberInput, CustomSlider, CustomTextInput, DraggablePanel, FloatingToolbar, ToolbarGroup, ToolbarButton, ToolbarColorButton, DropdownPanel, HoverTooltip, NotificationBar, SimpleDatePicker, TimePicker, anchoredMotionDirection, createColorPickerOptions, createPointAnchor, resolveDraggablePanelPosition, resolveHoverTooltipPosition, isModalOverlayOpen, useAnchoredPosition, useModalOverlay } from '@linnya/renderer-ui';",
       "import { ChevronIcon } from '@linnya/renderer-ui/icons';",
       "import { resolveBrowserFontStack } from '@linnya/renderer-ui/font-stack';",
       "import { FALLBACK_SHARED_COMPONENT_LOCALIZATION_PORT } from '@linnya/renderer-ui/localization';",
@@ -109,7 +109,7 @@ try {
       "const AnchoredProbe = defineComponent({ setup() { const floating = ref<HTMLElement | null>(null); const anchored = useAnchoredPosition({ anchor: createPointAnchor(40, 40), floating, open: true, placement: { gap: 0 } }); return () => h('div', { ref: floating, style: anchored.style.value, 'data-motion': anchoredMotionDirection(anchored.side.value) }, 'Anchored'); } });",
       "const ModalOverlayProbe = defineComponent({ setup() { const containerRef = ref<HTMLElement | null>(null); const { backdropListeners } = useModalOverlay({ active: true, containerRef, onEscape: () => undefined, onBackdropClick: () => undefined }); return () => h('div', { onPointerdown: backdropListeners.pointerdown, onClick: backdropListeners.click }, [h('div', { ref: containerRef, tabindex: -1 }, 'Modal overlay')]); } });",
       'createApp({',
-      "  render: () => h('main', { 'data-version': RENDERER_UI_VERSION, 'data-font-stack': fontStack }, [",
+      "  render: () => h('main', { 'data-version': RENDERER_UI_VERSION, 'data-font-stack': fontStack, 'data-modal-open': String(isModalOverlayOpen()) }, [",
       "    h(ChevronIcon, { direction: 'right', 'aria-label': label }),",
       "    h(ActionButtons, { primaryActionText: 'Continue' }),",
       "    h(BaseButton, { variant: 'outline', tone: 'accent', size: 'lg', shape: 'pill' }, () => 'Create'),",

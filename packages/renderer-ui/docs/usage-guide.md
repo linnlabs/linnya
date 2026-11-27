@@ -496,7 +496,7 @@ footer。表单规则、列表状态、保存流程、错误处理仍属于各�
 列表是否能到达首尾、小视口是否仍能关闭或提交。不要用测试锁死 scrollbar 宽度、padding、
 颜色或整页 UI snapshot。
 
-浮层先后：`Modal`、`AlertDialog`、`ImagePreviewModal`、`CustomSelect` 与日期、时间面板按打开顺序进入同一份浮层栈，
+浮层先后：`Modal`、`AlertDialog`、`ImagePreviewModal`、`CustomSelect`、`BaseDropdown` 与日期、时间面板按打开顺序进入同一份浮层栈，
 Escape、遮罩点击与键盘焦点都只交给最上面一层（规则见 [README 的浮层栈](../README.md#浮层栈)）。最上层的 `closeOnEsc`
 为 `false`（例如处理中）时，本层不关闭，Escape 也不会落到下面的层；弹窗里开着下拉时，第一次点遮罩只关下拉。
 
@@ -506,8 +506,11 @@ Escape、遮罩点击与键盘焦点都只交给最上面一层（规则见 [REA
 与遮罩先后时调用 `useEscapeLayer({ active, onEscape })`。确认框默认 Enter 是确认，后果严重、可能被误触的用
 `default-action="cancel"`。业务弹窗内需要确认时走 `AlertDialog` 的既有上层语义。
 
-相邻限制：背景不会 inert；`BaseDropdown`、`TextPopover` 与 Host、插件各自的菜单和 Popover 尚未入栈，
-仍自己处理 Escape 与外部点击。不能通过滚动模式或业务 CSS 顺带修补它们的先后。
+作用于页面的全局快捷键（例如关闭标签、打开查找面板）先看 `isModalOverlayOpen()`：弹窗开着时不要动被盖住的页面。
+放行的按键会交给系统默认处理（`⌘W` 会关闭窗口），需要时接住（`preventDefault`）再返回。
+
+相邻限制：背景不会 inert；页面上的临时浮层（Host、插件各自的菜单和 Popover）不入栈，仍自己处理 Escape 与外部点击。
+会开在弹窗里、或打开后会叠上弹窗的临时浮层改用 `useEscapeLayer`，不能通过滚动模式或业务 CSS 顺带修补先后。
 
 ## 插件 renderer 使用
 

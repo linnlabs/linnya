@@ -90,6 +90,7 @@ export {
 export {
   AlertDialog,
   ImagePreviewModal,
+  isModalOverlayOpen,
   Modal,
   RENDERER_UI_OVERLAY_LAYER_TOKENS,
   RENDERER_UI_OVERLAY_LAYER_VALUES,

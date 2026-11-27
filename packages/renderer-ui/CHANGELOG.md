@@ -2,6 +2,12 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.17.0 - 2026-11-27
+
+- 新增只读查询 `isModalOverlayOpen()`：浮层栈里有没有模态层（弹窗、确认框、图片预览、用 `useModalOverlay` 的自有模态浮层）；下拉、日期面板等临时浮层不算。Host 的全局快捷键据此不作用于被盖住的页面，接住还是放行由 Host 决定。
+- `BaseDropdown` 打开时进入浮层栈，不再自己监听 document 的 Escape：开在弹窗里时第一次 Escape 只关下拉，此前会连同弹窗一起关闭。关闭时照旧停止冒泡、把焦点还给触发器；props、事件与插槽不变。
+- 现有 `^3.0.0` 插件保持兼容。
+
 ## 3.16.0 - 2026-11-27
 
 - Escape、遮罩点击与键盘焦点改由同一份浮层栈按打开顺序归属，此前 Escape 与焦点各有一份登记、各装一组 document 监听。新增 `useModalOverlay({ active, containerRef, onEscape, onBackdropClick })`，返回 `isTopmost()` 与绑定到遮罩元素的 `backdropListeners`；新增类型 `ModalOverlayOptions`、`ModalOverlayControls`、`ModalBackdropListeners`。

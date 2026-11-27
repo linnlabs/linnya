@@ -7,6 +7,7 @@
  */
 
 import { onMounted, onBeforeUnmount } from 'vue';
+import { isModalOverlayOpen } from '@linnya/renderer-ui';
 import { useUIStore } from '@/shared/stores/ui';
 import { useFileStore } from '@/app/active-document';
 import { useNotificationStore } from '@/app/notification';
@@ -77,6 +78,9 @@ export function useGlobalKeyboardShortcuts() {
    * 处理查找快捷键
    */
   const handleFindShortcut = (event: KeyboardEvent) => {
+    // 弹窗盖着编辑器时不在背后打开查找面板：面板的输入框会把焦点从弹窗里抢走。
+    if (isModalOverlayOpen()) return;
+
     // 检查当前焦点元素
     const activeElement = document.activeElement as HTMLElement | null;
     const tagName = activeElement?.tagName?.toLowerCase();

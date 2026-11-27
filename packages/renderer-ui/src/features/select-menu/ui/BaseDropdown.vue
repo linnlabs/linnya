@@ -22,7 +22,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef } from 'vue';
+import { computed, nextTick, ref, toRef } from 'vue';
+import { useEscapeLayer } from '../../overlays';
 import type { DropdownActions } from '../definitions/dropdownPanel';
 import type { DropdownElementReference } from '../definitions/selectMenu';
 import { useDropdown } from '../composables/useDropdown';
@@ -138,15 +139,16 @@ const closeAndFocus = () => {
   if (target?.isConnected) void nextTick(() => target.focus({ preventScroll: true }));
 };
 
-const handleEscape = (event: KeyboardEvent) => {
-  if (event.key !== 'Escape' || !computedIsOpen.value) return;
-  event.preventDefault();
-  event.stopPropagation();
-  closeAndFocus();
-};
-
-onMounted(() => document.addEventListener('keydown', handleEscape));
-onBeforeUnmount(() => document.removeEventListener('keydown', handleEscape));
+// 打开时进入浮层栈：Escape 只关最上面一层，下拉里再开的面板先关。
+// 关闭时停止冒泡，与此前自有监听一致：window 上的 Escape 处理（如画布取消拖动）不再收到这次按键。
+useEscapeLayer({
+  active: computedIsOpen,
+  onEscape: (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAndFocus();
+  },
+});
 
 // 暴露方法给父组件
 const actions: DropdownActions = { open, close, closeAndFocus };

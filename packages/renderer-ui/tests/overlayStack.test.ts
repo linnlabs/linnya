@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue';
 import {
   AlertDialog,
+  BaseDropdown,
   CustomSelect,
   ImagePreviewModal,
+  isModalOverlayOpen,
   Modal,
   SimpleDatePicker,
   useEscapeLayer,
@@ -116,6 +118,28 @@ describe('浮层栈', () => {
 
     pressKey('Escape');
     expect(onEscape).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('有没有弹窗打开', () => {
+  it('只看模态层：开着下拉时不算，弹窗打开到关闭期间算', async () => {
+    const modalOpen = ref(false);
+    mount(() => h('div', [
+      h(CustomSelect, { modelValue: 'a', options: [{ value: 'a', text: 'A' }, { value: 'b', text: 'B' }] }),
+      h(Modal, { isVisible: modalOpen.value, title: '设置', onClose: () => { modalOpen.value = false; } }),
+    ]));
+    await nextTick();
+    element('.select-trigger').click();
+    await nextTick();
+    expect(isModalOverlayOpen()).toBe(false);
+
+    modalOpen.value = true;
+    await nextTick();
+    expect(isModalOverlayOpen()).toBe(true);
+
+    pressKey('Escape');
+    await nextTick();
+    expect(isModalOverlayOpen()).toBe(false);
   });
 });
 
@@ -267,6 +291,34 @@ describe('浮层叠放时的 Escape', () => {
     pressKey('Escape');
     expect(previewClose).toHaveBeenCalledTimes(1);
     expect(modalClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('BaseDropdown 在浮层栈里', () => {
+  it('开在弹窗里时，第一次 Escape 只关下拉，第二次才关弹窗', async () => {
+    const modalClose = vi.fn();
+    mount(() => h(Modal, { isVisible: true, title: '导出', onClose: modalClose }, {
+      default: () => h(BaseDropdown, null, {
+        trigger: ({ toggle, isOpen }: { readonly toggle: (event?: Event) => void; readonly isOpen: boolean }) => h('button', {
+          id: 'dropdown-trigger',
+          'aria-expanded': String(isOpen),
+          onClick: toggle,
+        }, '格式'),
+        content: ({ isOpen }: { readonly isOpen: boolean }) => (isOpen ? h('div', { id: 'dropdown-panel' }, '选项') : null),
+      }),
+    }));
+    await nextTick();
+    element('#dropdown-trigger').click();
+    await nextTick();
+    expect(document.querySelector('#dropdown-panel')).not.toBeNull();
+
+    pressKey('Escape');
+    await nextTick();
+    expect(document.querySelector('#dropdown-panel')).toBeNull();
+    expect(modalClose).not.toHaveBeenCalled();
+
+    pressKey('Escape');
+    expect(modalClose).toHaveBeenCalledTimes(1);
   });
 });
 

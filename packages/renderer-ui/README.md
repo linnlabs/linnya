@@ -230,7 +230,7 @@ Alert 与 portal menu 同为 2100，视觉前后仍由同层 DOM 顺序决定；
 入栈的有两类：
 
 - 模态层：`Modal`、`AlertDialog`（经内层 Modal）、`ImagePreviewModal`，以及保留自有 DOM 的业务模态浮层。后者（当前是 Host 的 SettingsModal）调用公开的 `useModalOverlay({ active, containerRef, onEscape, onBackdropClick })`，容器需要 `tabindex="-1"`，遮罩元素绑定返回的 `backdropListeners`。
-- 临时浮层：`CustomSelect` 自动模式、`SimpleDatePicker` / `TimePicker` 面板，经公开的 `useEscapeLayer({ active, onEscape })` 入栈；外部点击仍由它们自己关闭。
+- 临时浮层：`CustomSelect` 自动模式、`BaseDropdown`（自 3.17.0）、`SimpleDatePicker` / `TimePicker` 面板，经公开的 `useEscapeLayer({ active, onEscape })` 入栈；外部点击仍由它们自己关闭。
 
 规则：
 
@@ -241,7 +241,9 @@ Alert 与 portal menu 同为 2100，视觉前后仍由同层 DOM 顺序决定；
 
 业务不得再各自监听 document 的 Escape、写 Tab 循环，或用 `@click.self` 关闭模态浮层。`useModalFocus` 自 3.16.0 起弃用：它只管焦点，Escape 对它透明、也不处理遮罩，下一个 major 删除。
 
-背景不设 inert：遮罩已经挡住指针，焦点由栈圈住。尚未入栈的有 `BaseDropdown`、`TextPopover` 和 Host、插件各自的菜单与 Popover，它们仍自己处理 Escape 与外部点击；Host 全局快捷键也还不知道有弹窗打开。这些要逐个核对与 Host 自有监听的先后后再接入，不得用临时判断改写。
+只读查询 `isModalOverlayOpen()`（自 3.17.0）告诉 Host 现在有没有模态层。Host 作用于页面的全局快捷键（标签栏的切换、关闭、重新打开，打开查找面板）在弹窗开着时不处理；接住还是放行由 Host 按快捷键决定，renderer-ui 不反向调用 Host。
+
+背景不设 inert：遮罩已经挡住指针，焦点由栈圈住。页面上的临时浮层（标题栏工具、编辑器的引用 / 修订 / 历史浮层、Slides 右键菜单等）不入栈，仍自己处理 Escape 与外部点击：弹窗盖住页面后指针碰不到它们，它们也不会从自己打开弹窗而保持打开，所以不会与弹窗真实叠放。开在弹窗里、或打开后会叠上弹窗的临时浮层必须入栈。`TextPopover` 本身不响应 Escape，没有入栈。
 
 ## 日期与时间
 

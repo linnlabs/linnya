@@ -32,6 +32,8 @@ export interface OverlayStack {
    * 遮罩要按“按下那一刻谁在最上面”判断，松开时栈顶可能已经换了。
    */
   readonly wasTopAtPointerDown: (entry: OverlayStackEntry) => boolean;
+  /** 栈里有没有模态层；下拉、日期面板等临时浮层不算。 */
+  readonly hasModal: () => boolean;
 }
 
 const stacks = new WeakMap<Window, OverlayStack>();
@@ -138,6 +140,7 @@ function createOverlayStack(view: Window): OverlayStack {
     register,
     isTop: entry => readTop() === entry,
     wasTopAtPointerDown: entry => topAtPointerDown === entry,
+    hasModal: () => entries.some(entry => entry.focus !== undefined),
   };
 }
 
@@ -151,4 +154,12 @@ export function getOverlayStack(view: Window): OverlayStack {
   const created = createOverlayStack(view);
   stacks.set(view, created);
   return created;
+}
+
+/**
+ * 现在有没有打开的模态浮层（弹窗、确认框、图片预览、设置窗）；下拉、日期面板等临时浮层不算。
+ * 只读：Host 的全局快捷键据此不作用于被盖住的页面，具体接住还是放行由 Host 决定。
+ */
+export function isModalOverlayOpen(): boolean {
+  return getOverlayStack(window).hasModal();
 }

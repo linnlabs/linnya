@@ -109,11 +109,12 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue';
-import { createPointAnchor, CustomSelect, DropdownPanel, useAnchoredPosition, type AnchoredAnchor, type CustomSelectOption } from '@linnya/renderer-ui';
+import { createPointAnchor, CustomSelect, DropdownPanel, isModalOverlayOpen, useAnchoredPosition, type AnchoredAnchor, type CustomSelectOption } from '@linnya/renderer-ui';
 import { ChevronIcon, CloseIcon, DocumentIcon } from '@linnya/renderer-ui/icons';
 import { useDocumentTabsStore, type DocumentTab } from '@/app/document-tabs';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
+import { decideDocumentTabShortcut } from '@/app/layout/functions/documentTabShortcut';
 import {
   activateDocumentTab,
   closeDocumentTabIds,
@@ -289,25 +290,26 @@ function handleTabMenuSelect(action: TabMenuAction | null): void {
   else void reopenClosedDocumentTab(props.projectId);
 }
 
-/* ---------- 快捷键：Ctrl+Tab 按最近使用切换、⌘W 关闭、⇧⌘T 重新打开 ---------- */
+/* ---------- 快捷键：Ctrl+Tab 按最近使用切换、⌘W 关闭、⇧⌘T 重新打开；弹窗开着时不动背后的标签 ---------- */
 function handleKeydown(event: KeyboardEvent): void {
-  const mod = isMac ? event.metaKey : event.ctrlKey;
-  const key = event.key.toLowerCase();
-  if (event.ctrlKey && key === 'tab') {
-    event.preventDefault();
-    void cycleDocumentTab(props.projectId, event.shiftKey ? -1 : 1);
-    return;
-  }
-  if (mod && !event.altKey && key === 'w' && !event.shiftKey) {
-    if (!activeId.value) return;
-    event.preventDefault();
-    close([activeId.value]);
-    return;
-  }
-  if (mod && !event.altKey && key === 't' && event.shiftKey) {
-    event.preventDefault();
-    void reopenClosedDocumentTab(props.projectId);
-  }
+  const current = activeId.value;
+  const decision = decideDocumentTabShortcut({
+    key: event.key,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey,
+    altKey: event.altKey,
+    isMac,
+    modalOpen: isModalOverlayOpen(),
+    hasActiveTab: current !== null,
+  });
+  if (decision.kind === 'pass') return;
+  event.preventDefault();
+  if (decision.kind === 'swallow') return;
+  const { shortcut } = decision;
+  if (shortcut.kind === 'cycle') void cycleDocumentTab(props.projectId, shortcut.offset);
+  else if (shortcut.kind === 'reopen') void reopenClosedDocumentTab(props.projectId);
+  else if (current !== null) close([current]);
 }
 
 onMounted(() => {

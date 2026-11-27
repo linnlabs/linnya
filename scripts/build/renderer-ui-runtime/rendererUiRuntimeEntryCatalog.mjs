@@ -59,6 +59,7 @@ export const rendererUiRuntimeEntries = Object.freeze([
     'computeAnchoredPosition',
     'constrainDraggablePanelGeometry',
     'isColorPickerOptionCurrent',
+    'isModalOverlayOpen',
     'measureFloatingLayoutSize',
     'nextFrame',
     'nextPaint',
