@@ -153,7 +153,7 @@
       >
         <LinnyaLoadingIcon
           v-if="!approval && activeGroup?.writing"
-          activity="thinking"
+          activity="generating"
           class="canvas-agent-status-icon"
         />
         <span v-else-if="!approval && activeGroup" class="canvas-agent-status" aria-hidden="true" />

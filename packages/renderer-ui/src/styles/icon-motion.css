@@ -118,13 +118,14 @@
 /*
  * AI 进行中：Linnya 标识按活动选动态，几何不变形。
  * 三层叠放：ghost 是 30% 不透明度的浅色完整标识，plant 是可分部件的实色标识，flow 是被渐变亮带遮罩的实色标识。
- * 光流只把浅色加深到实色，任何一处都不比浅色底更浅。没加载本样式表时三层叠成一枚完整实色标识。
+ * 光流只把浅色加深到实色，任何一处都不比浅色底更浅；生成不用浅色底。没加载本样式表时三层叠成一枚完整实色标识。
  */
 .linnya-ui-icon[data-icon="linnya-loading"] [data-part="ghost"] {
   opacity: 0.3;
 }
 
 .linnya-ui-icon[data-icon="linnya-loading"][data-state="thinking"] :is([data-part="ghost"], [data-part="flow"]),
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="generating"] :is([data-part="ghost"], [data-part="flow"]),
 .linnya-ui-icon[data-icon="linnya-loading"][data-state="processing"] [data-part="plant"] {
   display: none;
 }
@@ -158,6 +159,52 @@
 .linnya-ui-icon[data-icon="linnya-loading"][data-state="thinking"] [data-part="leaf-right"] {
   transform-origin: 13.03px 13.18px;
   animation: linnya-ui-icon-sway-right calc(var(--duration-loop) * 2) ease-in-out calc(var(--duration-loop) * -1.8) infinite;
+}
+
+/*
+ * 生成：不带浅色底，凭空长出。茎沿中心线从茎底向上描出，左叶、右叶从交汇点依次舒展；
+ * 长成后按同样的顺序一节一节匀速淡出：右叶刚长满茎就开始变淡，右叶还没淡尽茎已重新长出。
+ * 每节的出现、停留、淡出都在同一条关键帧里，节与节之间不靠两条动画对齐，接缝处不会闪。
+ * 生长用 standard 缓动：enter 起步太快，茎会在一瞬间冒出半截，看起来像闪了一下。
+ */
+@keyframes linnya-ui-icon-grow-stem {
+  0% { stroke-dashoffset: 1.15; opacity: 1; animation-timing-function: var(--ease-standard); }
+  26% { stroke-dashoffset: 0; opacity: 1; }
+  44% { stroke-dashoffset: 0; opacity: 1; }
+  66%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@keyframes linnya-ui-icon-grow-left {
+  0%, 16% { transform: scale(0); opacity: 1; animation-timing-function: var(--ease-standard); }
+  38% { transform: scale(1); opacity: 1; }
+  56% { transform: scale(1); opacity: 1; }
+  78%, 100% { transform: scale(1); opacity: 0; }
+}
+
+/* 右叶的淡出跨过循环接缝，和下一轮茎的生长重叠；淡尽后先在不可见时缩回，再等下一次舒展 */
+@keyframes linnya-ui-icon-grow-right {
+  0% { transform: scale(1); opacity: 0.22; }
+  8% { transform: scale(1); opacity: 0; }
+  9% { transform: scale(0); opacity: 0; }
+  10%, 26% { transform: scale(0); opacity: 1; animation-timing-function: var(--ease-standard); }
+  50% { transform: scale(1); opacity: 1; }
+  72% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.22; }
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="generating"] [data-part="stem-reveal"] {
+  stroke-dasharray: 1 2;
+  animation: linnya-ui-icon-grow-stem calc(var(--duration-loop) * 2) linear infinite;
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="generating"] [data-part="leaf-left"] {
+  transform-origin: 12.11px 13.41px;
+  animation: linnya-ui-icon-grow-left calc(var(--duration-loop) * 2) linear infinite;
+}
+
+.linnya-ui-icon[data-icon="linnya-loading"][data-state="generating"] [data-part="leaf-right"] {
+  transform-origin: 13.03px 13.18px;
+  animation: linnya-ui-icon-grow-right calc(var(--duration-loop) * 2) linear infinite;
 }
 
 /* 处理：浅色标识不动，一道渐变亮带从茎底沿叶片向上流过，把颜色加深到实色 */
