@@ -46,7 +46,7 @@ Host 冻结 route 后产生 `embedding-space:v1:<SHA256>`：身份覆盖 surface
 | `@app/schemas/model-inference` | language/embedding/reranking route 的跨端类型、schema、严格 parser；已启用 surface 与稳定 capability identity 的映射 | 模型目录、密钥、价格、Provider 实例、网络调用、retry | Zod 与基础 JSON 合同 |
 | `@app/schemas/document-ocr` | 文档 OCR layout/job route 的跨端判别联合与 Host capability identity | Parser 策略、凭据、网络调用、Cloud 网关实现 | Zod 与基础 JSON 合同 |
 | `@app/schemas/transcription` | OpenAI Audio/DashScope ASR route 的跨端判别联合与 capability identity | 音频切分、模型选择、凭据和网络调用 | Zod 与基础 JSON 合同 |
-| `src/domains/model-catalog/` | 模型目录、用户/默认/Cloud 模型持久化、route 与 model/base identity 一致性、价格与 token route | 根据模型名/URL 猜协议、创建 SDK Provider、调用模型、决定 Agent fallback | 对应共享 route contract |
+| `src/domains/model-catalog/` | 模型目录、用户/默认/账号模型持久化、route 与 model/base identity 一致性、价格与 token route | 根据模型名/URL 猜协议、创建 SDK Provider、调用模型、决定 Agent fallback | 对应共享 route contract |
 | Renderer `model-configuration` domain | Provider connection projection、自定义模型注册、纯 route builder、catalog projection 与用途绑定 | 手写 capability ID、识别 SDK package、保存/读回明文 credential、推理运行时、消费方业务规则 | 共享 route contract、Settings public integration、feature-local ports |
 | Cloud Admin | 选择已批准 surface，配置 Cloud proxy/upstream 与模型能力，提交完整 typed route | 自由输入 capability ID、改变桌面 retry/tool 语义、替客户端猜 route | 共享 route contract、Cloud Admin API |
 | Cloud Worker | 以 v2 记录分离公共 catalog 与私有 upstream route；执行 quota/auth/proxy；逐字段发布客户端 route | 暴露上游拓扑/credential、重解释 route、补旧字段、客户端 retry、Provider SDK fallback | 共享 route contract、Cloud 自有存储/代理合同 |
@@ -100,7 +100,7 @@ Model Catalog 可以在共享 schema 之外增加目录一致性校验，例如 
 - 普通用户从 Renderer 的 Provider preset registry 选择正式 Provider 或显式 compatible endpoint，纯函数生成完整 route；UI 不接受裸 capability ID。
 - Cloud Admin 从已启用 surface allowlist 选择，不能编辑裸 capability ID。
 - surface 与 capability 必须组成共享 allowlist 中的 route profile。同一 wire surface 可以有官方 Provider 与通用兼容 Provider 两个 profile，但配置端不能自由拼接。新增组合必须先注册 Host capability 和 conformance，再加入共享 allowlist。
-- `endpoint_id` 是客户端下一跳 route identity，不参与 capability 选择。Cloud 模型的下一跳是 `linnya-cloud`，不是 Cloud 私有上游厂商；新 BYOK 连接使用绑定连接实例的 endpoint identity，不能把同一厂商品牌常量当成所有网关实例的共同身份。
+- `endpoint_id` 是客户端下一跳 route identity，不参与 capability 选择。新 BYOK 连接使用绑定连接实例的 endpoint identity，不能把同一厂商品牌常量当成所有网关实例的共同身份。
 - `endpoint_model_id` 和 `base_url` 必须在写入时明确，读取时不修复。Cloud 的真实上游模型 ID 与认证只存在私有 `upstream_route`。
 - 原始 language route 配置可以省略 `context_window_tokens / max_output_tokens`；共享 schema owner 只在字段真正缺失时分别规范化为 `256000 / 16384`。显式非法值必须拒绝，不能回退。
 - 解析后的 canonical language route 始终携带明确容量；continuation、input placement、usage 与输出限制仍是 route 必有能力，不允许 Renderer、Model Catalog、Host、Linnkit 或 Provider capability 各自再补默认值。

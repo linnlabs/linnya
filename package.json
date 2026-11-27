@@ -631,7 +631,6 @@
     "mitt": "^3.0.1",
     "node-abi": "4.33.0",
     "node-fetch": "^2.7.0",
-    "node-machine-id": "^1.1.12",
     "node-pty": "1.2.0-beta.14",
     "open-simplex-noise": "^2.5.0",
     "parser-wasm": "workspace:*",

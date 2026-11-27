@@ -36,14 +36,6 @@ export function readCredentialReference(value: unknown): CredentialReference | u
         );
       }
       return { kind: 'provider_account', account_id: value.account_id.trim() };
-    case 'host_managed':
-      if (value.credential_id !== 'linnya-cloud') {
-        throw new ModelAdmissionError(
-          'credential_declaration',
-          '未知 host_managed credential reference'
-        );
-      }
-      return { kind: 'host_managed', credential_id: 'linnya-cloud' };
     default:
       throw new ModelAdmissionError('credential_declaration', '未知 credential_reference kind');
   }

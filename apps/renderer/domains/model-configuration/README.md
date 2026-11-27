@@ -77,7 +77,6 @@ definitions 路径仅 re-export。索引影响查询注册返回 disposer，停�
   inference capability；
 - Conversation 的会话级 Agent 选择、消息生命周期或 SSE 投影；
 - Knowledge Base 索引重建规则、文档数量计算或数据访问；
-- Cloud catalog、KV、Admin 或未来 FastAPI/API 网关的实现；
 - ASR、文档 OCR 等非语言模型 runtime adapter；
 - 保存或回显明文 credential。
 
@@ -166,16 +165,15 @@ profile 的 simple direct Provider 不需要修改 Vue 分支。
 ### Model picker product boundary
 
 `features/model-picker` 只消费 Host
-`ModelPickerSnapshot`：Cloud、已配置正式 Provider 与自定义模型的归属、凭据可用性、runtime 可用性和 picker 可见性已经由 Host
+`ModelPickerSnapshot`：已配置正式 Provider 与自定义模型的归属、凭据可用性、runtime 可用性和 picker 可见性已经由 Host
 app workflow 组合完成。Renderer 不允许再读取 URL、`catalog_source`
 或模型名前缀推断 Provider。
 
-所有对话模型选择菜单统一使用 `Linnya Cloud`、`模型供应商`、`自定义模型`
-三个来源分组。输入框快捷菜单、设置中的主模型和辅助对话模型都必须消费同一份
-`ModelPickerSnapshot`：Cloud 与自定义模型直接展开，正式 Provider 按稳定品牌 ID 聚合为“品牌 → 模型”单层子菜单。跨 connection 只有同名模型发生歧义时才加 connection 后缀，最终选择仍保存具体 ModelConfig
+所有对话模型选择菜单统一使用 `模型供应商`、`自定义模型`
+两个来源分组。输入框快捷菜单、设置中的主模型和辅助对话模型都必须消费同一份
+`ModelPickerSnapshot`：自定义模型直接展开，正式 Provider 按稳定品牌 ID 聚合为“品牌 → 模型”单层子菜单。跨 connection 只有同名模型发生歧义时才加 connection 后缀，最终选择仍保存具体 ModelConfig
 ID，不按名称随机选择 route。模型管理保留具体 ConfiguredProvider
-connection；同一品牌配置多条 connection 时显示接入方式标签。图片生成模型复用同一 Provider 分组：Cloud 图片模型归
-`Linnya Cloud`，账号图片模型归对应正式 Provider。Embedding、OCR、转录等其他用途仍消费自己的目录投影。
+connection；同一品牌配置多条 connection 时显示接入方式标签。图片生成模型复用同一 Provider 分组：账号图片模型归对应正式 Provider。Embedding、OCR、转录等其他用途仍消费自己的目录投影。
 
 “模型管理”设置页负责 Provider/模型的选择可见性；开关不删除 credential、endpoint、ModelConfig 或用途绑定。正式 Provider 的未激活目录模型通过公开 activation
 command 复用现有 credential，不能再次向用户索要 Key。对话域只能从本 domain 公开入口读取 picker
@@ -184,8 +182,7 @@ read model，具体菜单层级、图片草稿禁用态和“管理模型…”�
 模型管理的开关层级由来源语义决定：正式 Provider 在详情标题提供总开关，关闭后其模型区域整体不可编辑；每个模型仍有独立开关。自定义模型按 Host 投影的分组名称展示在“自定义模型供应商”下，没有伪造的 Provider 总开关，只提供单模型开关；点击自定义模型主内容打开详情弹窗，编辑与删除复用 Model
 Catalog 的正式流程。正式 Provider 的详情标题在总开关左侧提供删除入口；确认后通过 `removeModelSource` 清理该 Provider 的配置、凭据和已激活模型。connection 的 `credential_kind` 为 `api_key` 时，删除入口左侧另有“更新 API Key”，只单向提交新 Key，由 Host 在原 credential boundary 内替换，模型、可见性与用途绑定不变；账号型和本地运行时不提供该入口。
 
-自定义分组的详情标题提供“编辑供应商”和删除入口。编辑弹窗以 Host 快照预填名称、API 格式与地址，Key 留空表示沿用当前凭据；提交后由 Host 决定保留或新建 endpoint、是否需要重新填写 Key，并原子改绑分组内全部模型，Renderer 随后重读模型目录与选择投影。删除需确认，逐个复用模型删除流程，最后一个模型删除时 Host 自动清理 endpoint 与凭据。弹窗只在打开期间挂载，草稿与未提交的 Key 随关闭一并丢弃。Linnya
-Cloud 来源的模型由官方管理，客户端不显示 Provider 总开关，也不显示单模型开关；客户端目前不拉取 Cloud 模型目录，这类模型不会出现，客户端也不得把本地环境变量模型改名伪装成 Linnya Cloud。Cloud 与正式 Provider 模型行都不提供详情点击入口。左侧来源导航只负责选择详情，不承载开关或启用数量。
+自定义分组的详情标题提供“编辑供应商”和删除入口。编辑弹窗以 Host 快照预填名称、API 格式与地址，Key 留空表示沿用当前凭据；提交后由 Host 决定保留或新建 endpoint、是否需要重新填写 Key，并原子改绑分组内全部模型，Renderer 随后重读模型目录与选择投影。删除需确认，逐个复用模型删除流程，最后一个模型删除时 Host 自动清理 endpoint 与凭据。弹窗只在打开期间挂载，草稿与未提交的 Key 随关闭一并丢弃。正式 Provider 模型行不提供详情点击入口。左侧来源导航只负责选择详情，不承载开关或启用数量。
 
 删除模型时，Host app-level removal workflow 在 Model
 Catalog 删除成功后同步删除 picker 稀疏偏好，再提交正式 Provider 归属删除；后两步失败均不能把已经成功的模型删除伪装成失败，分别由启动 reconcile 或 durable
@@ -250,7 +247,7 @@ store、Conversation 或 Settings 中保存第二份容量。
 `features/model-picker` 只消费 Host 的 `GET /api/v1/model-picker`
 组合快照，并提交按 `configured_provider_id` 或 `model_config_id`
 索引的可见性命令。Renderer 不按 URL、模型名、endpoint 或 catalog
-source 猜正式 Provider；Cloud、正式 Provider、自定义模型和 runtime
+source 猜正式 Provider；正式 Provider、自定义模型和 runtime
 availability 已由 Host 一次投影完成。
 
 当正式 Provider 的本机凭据不可用时，快照会同时返回受控的
@@ -268,9 +265,8 @@ availability 已由 Host 一次投影完成。
 store 只持有最后一次严格解析后的快照、当前操作和结构化错误。HTTP、更新流程和同步 state
 action 分别位于 infrastructure、orchestration 和 store。新增目录模型不会在 Renderer 生成默认偏好；尚未 materialize 的正式 Provider 模型只服务 Settings 全目录，不进入快捷选择候选。
 
-模型目录注册、Provider 目录模型激活、删除或 Cloud 更新后必须同时重读 model catalog 与 model picker read
-model。快捷可见性与用途绑定互不覆盖：关闭显示不清空 primary/辅助/Embedding/OCR 等绑定。Cloud 模型上下架由 Cloud
-Model Catalog 在发布前控制，客户端不再镜像一个恒真的 `ModelConfig.enabled`。
+模型目录注册、Provider 目录模型激活或删除后必须同时重读 model catalog 与 model picker read
+model。快捷可见性与用途绑定互不覆盖：关闭显示不清空 primary/辅助/Embedding/OCR 等绑定。客户端不镜像一个恒真的 `ModelConfig.enabled`。
 
 Provider 目录模型激活虽然从 picker 设置界面发起，但 Host 会创建新的 ModelConfig，因此 Renderer 必须通过 domain 根
 `orchestration/activateConfiguredProviderModel.ts` 完成跨 feature 编排。model-picker feature 只提交激活并接纳新的 picker
@@ -470,7 +466,7 @@ capability。只改下拉文案或 provider 字符串不算接入完成。
 | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | Catalog projection       | 当前包装 wire、route schema、元数据映射、非法响应拒绝                                                          |
 | Catalog operations       | load/update/delete 的状态提交与失败语义                                                                        |
-| Purpose resolution       | 显式选择、默认值、Cloud readiness、能力过滤、reasoning 降级                                                    |
+| Purpose resolution       | 显式选择、默认值、能力过滤、reasoning 降级                                                                     |
 | Cross-feature delete     | 后端删除成功后目录与全部绑定同步清理                                                                           |
 | Registration             | 三条 Host onboarding command 的窄输入、route/endpoint 的 Host ownership、credential 单向提交、section 独立状态 |
 | Source editing           | 分组编辑与更换 Key 的窄 command、预填与本地校验、成功后刷新、失败保留弹窗、仅 API-Key connection 可换 Key   |
@@ -484,7 +480,7 @@ capability。只改下拉文案或 provider 字符串不算接入完成。
 - `pnpm run guard:tsc-baseline`
 - `pnpm run build:frontend`
 
-提交时还必须通过仓库 pre-commit gate。涉及 Host route、Cloud
+提交时还必须通过仓库 pre-commit gate。涉及 Host route、Provider
 catalog 或打包行为时，再按 Proposal 和启动/打包手册扩大验证；单纯 Renderer
 domain 重构不要求 Windows/macOS 安装包验收。
 

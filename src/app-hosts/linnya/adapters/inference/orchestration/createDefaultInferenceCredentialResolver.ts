@@ -12,12 +12,7 @@ import {
 export type DefaultCredentialResolverDependencies =
   DefaultModelRequestCredentialResolverDependencies;
 
-/**
- * 解析单次推理 attempt 的认证材料。
- *
- * Linnya Cloud 的设备身份属于 host-managed credential，而不是模型资料；只有显式
- * `host_managed:linnya-cloud` reference 可以获得该附属请求头。
- */
+/** 解析单次推理 attempt 的认证材料，凭据错误统一投影为推理准入错误。 */
 export function createDefaultInferenceCredentialResolver(
   dependencies?: DefaultCredentialResolverDependencies
 ): InferenceCredentialResolver {

@@ -42,12 +42,12 @@ function readString(value: unknown, fallback = ''): string {
 }
 
 function readCatalogSource(value: unknown): ModelConfig['catalog_source'] {
-  if (value === 'default' || value === 'cloud' || value === 'account' || value === 'user') {
+  if (value === 'default' || value === 'account' || value === 'user') {
     return value;
   }
   throw new ModelAdmissionError(
     'invalid_structure',
-    "ModelConfig.catalog_source 必须是 'default'、'cloud'、'account' 或 'user'"
+    "ModelConfig.catalog_source 必须是 'default'、'account' 或 'user'"
   );
 }
 
@@ -144,7 +144,7 @@ export function processModelConfig(args: {
 
   const billingMode = (() => {
     const raw = modelData.billing_mode;
-    if (raw === 'byok' || raw === 'cloud') return raw;
+    if (raw === 'byok') return raw;
     return undefined;
   })();
 

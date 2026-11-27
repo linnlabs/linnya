@@ -270,7 +270,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
     switch (reference.kind) {
       case 'none':
       case 'provider_account':
-      case 'host_managed':
         return 'available';
       case 'environment_variable':
         return this.envVars[reference.environment_variable]?.trim() ? 'available' : 'missing';
@@ -863,8 +862,6 @@ export class ModelCatalogRegistry implements ModelCatalog {
         throw new Error(
           `Provider account credential 必须由 Host auth boundary 解析: ${reference.account_id}`
         );
-      case 'host_managed':
-        return reference.credential_id;
     }
   }
 

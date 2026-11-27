@@ -25,7 +25,7 @@ exports 消费目录；旧 `src/domains/provider-catalog`
   ModelConfig；
 - AI SDK factory、请求体、SSE、usage、continuation 或错误分类；
 - Agent loop、上下文、工具执行、retry/fallback；
-- ChatGPT `/models`、Linnya Cloud 或 Ollama 本地运行时的动态模型发现；
+- ChatGPT `/models` 或 Ollama 本地运行时的动态模型发现；
 - Renderer 状态和设置交互。
 
 ## 上游事实复用原则
@@ -188,7 +188,7 @@ Host 只按精确 ID 补充缺失的容量等资料，官方响应决定实际�
 未审核的模型级 provider override 仍然报错，历史 route binding 在本次资料源中缺失则不阻断元数据查询；
 完整发布同步继续校验双投影与失效绑定。Renderer 只接收 Host 投影后的 HTTP DTO。
 
-ChatGPT `/models`、Linnya Cloud catalog 与 Ollama 本地发现是运行时动态来源，不进入
+ChatGPT `/models` 与 Ollama 本地发现是运行时动态来源，不进入
 bundled models，也不由同步器联网刷新。Ollama Cloud 是同一 Ollama 品牌下的独立 API
 Key connection；其 bundled 模型资料来自 models.dev，随正式 Catalog 审查发布。
 用户刷新时，由 Host 查询 Ollama 官方 `/api/tags`、`/api/show` 决定当前候选与实时能力，

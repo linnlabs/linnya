@@ -209,7 +209,6 @@ describe('generateProviderCatalog', () => {
     const chatgpt = findConnection('openai', 'openai-chatgpt-subscription');
     const opencodeGo = findConnection('opencode-go');
     const deepseek = findConnection('deepseek');
-    const cloud = findConnection('linnya-cloud');
     const mistral = findConnection('mistral');
     const xai = findConnection('xai');
     const groq = findConnection('groq');
@@ -384,9 +383,6 @@ describe('generateProviderCatalog', () => {
           }),
         ],
       })
-    );
-    expect(cloud).toEqual(
-      expect.objectContaining({ model_discovery: 'cloud_catalog', models: [] })
     );
     expect(mistral).toEqual(
       expect.objectContaining({

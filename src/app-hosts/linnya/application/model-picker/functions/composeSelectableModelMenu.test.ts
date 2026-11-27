@@ -50,14 +50,6 @@ function chatModel(
     model_name: id,
     catalog_source: catalogSource,
     ...(catalogSource === 'user' ? { inference_endpoint_id: endpointId } : {}),
-    ...(catalogSource === 'cloud'
-      ? {
-          credential_reference: {
-            kind: 'host_managed' as const,
-            credential_id: 'linnya-cloud' as const,
-          },
-        }
-      : {}),
     capabilities: ['chat'],
     ui_visibility: ['chat'],
     display_name: displayName,
@@ -296,7 +288,6 @@ describe('composeSelectableModelMenu', () => {
       })
     );
 
-    expect(result.cloud).toBeUndefined();
     expect(result.providers[0]?.models).toEqual([
       expect.objectContaining({
         materialized: true,
@@ -560,12 +551,11 @@ describe('composeSelectableModelMenu', () => {
     expect(result.custom_models).toEqual([]);
   });
 
-  it('Cloud 固定独立投影，自定义模型不生成 Provider，默认内置模型不冒充自定义', () => {
+  it('自定义模型不生成 Provider，默认内置模型不冒充自定义', () => {
     const result = composeSelectableModelMenu(
       input({
         custom_api_groups: [{ name: '自定义模型', inference_endpoint_ids: ['custom-endpoint'] }],
         models: [
-          chatModel('cloud-gpt', 'cloud', 'cloud', 'Cloud GPT'),
           chatModel('custom-intranet', 'user', 'custom-endpoint', '公司内网模型'),
           chatModel('legacy-default', 'default', 'legacy', '历史默认模型'),
         ],
@@ -583,7 +573,6 @@ describe('composeSelectableModelMenu', () => {
       })
     );
 
-    expect(result.cloud?.models.map(model => model.display_name)).toEqual(['Cloud GPT']);
     expect(result.custom_models.map(model => model.display_name)).toEqual(['公司内网模型']);
     expect(JSON.stringify(result)).not.toContain('历史默认模型');
   });

@@ -127,14 +127,11 @@ lifecycle 从启动 cwd 所代表的仓库根解析该源码资产；`app.getApp
 
 ### Linnya Cloud 模型
 
-客户端不拉取 Linnya Cloud 模型目录：Cloud 已不再向客户端提供模型（公开目录与代理入口固定返回不可用），
-启动时不请求 Cloud、不安排后台重试，也没有 Cloud 目录刷新事件或功能默认模型表。旧版本保存过的
-`cloud-` 前缀模型选择找不到对应模型，按“选中的模型不在目录里”处理，不自动换成别的模型。
+客户端不内置 Linnya Cloud 模型接入：Cloud 已不再向客户端提供模型，目录拉取、`cloud` 目录来源、
+宿主管理凭据、设备标识、Cloud 额度错误分类与模型菜单里的 Cloud 分组都已删除，Host 也不发布功能默认模型。
+旧版本保存过的 `cloud-` 前缀模型选择找不到对应模型，按“选中的模型不在目录里”处理，不自动换成别的模型。
 
-`catalog_source: 'cloud'`、`host_managed:linnya-cloud` 凭据引用与请求时的 Cloud 鉴权边界（见
-[`model-request-auth`](../../app-hosts/linnya/adapters/model-request-auth/README.md)）仍保留在合同里，
-但目前没有任何来源会产生 Cloud 模型。将来 Cloud 重新提供模型时，需要和账号鉴权一起重新设计客户端接入，
-而不是恢复旧的匿名目录拉取。
+将来 Cloud 重新提供模型时，需要和账号鉴权一起重新设计客户端接入，而不是恢复旧的匿名目录拉取与设备标识。
 
 ### 模型名称与能力
 
@@ -188,9 +185,9 @@ Key 和 API 格式是在配置一个推理端点，不是在创建 Provider。�
 用户密钥不属于 Workspace。App Server 注入 `CredentialStoragePort`，端点只拥有
 `model-endpoints` namespace，底层与 OAuth、插件共用 profile 下的 `AIService/config/credentials.json`。
 文件权限、原子更新、并发写入及损坏处理见[文件凭据存储](../../infra/adapters/credential-storage/file/README.md)。
-环境变量和 Linnya Cloud host credential 仍使用显式 reference，不复制到该文件。旧凭据不迁移。
+环境变量与 Provider Account 凭据使用各自的显式 reference，不复制到该文件。旧凭据不迁移。
 
-用户模型必须引用一个 InferenceEndpoint，default/Cloud 模型不得引用用户端点。端点与模型 route 的 profile、
+用户模型必须引用一个 InferenceEndpoint，default/account 模型不得引用用户端点。端点与模型 route 的 profile、
 endpoint identity、base URL 和 auth profile 必须完全一致。推理读取由 App Server 同步完成，不跨进程调用
 Desktop。文件读取或结构错误必须传播，不能把坏文件视为空或在下一次保存时覆盖。
 InferenceEndpoint 由模型和自定义分组共同引用；两类引用全部移除时才清理端点与独占凭据。
@@ -311,8 +308,7 @@ command；进入目录后，language/embedding/reranking/image/OCR/ASR 只读取
 route。通用 `adapter` 已删除，禁止恢复地址或字符串启发式选路。
 
 模型目录不存储通用请求头。Language inference 与 remote token
-count 通过同一个 Host model-request-auth 边界按请求解析凭据及 Linnya
-Cloud 设备身份；Web 外部服务由 Web domain 自己拥有认证合同。禁止在 `ModelConfig`
+count 通过同一个 Host model-request-auth 边界按请求解析凭据；Web 外部服务由 Web domain 自己拥有认证合同。禁止在 `ModelConfig`
 恢复 `extra_headers` 或其它任意 header map。
 
 ---

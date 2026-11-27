@@ -29,8 +29,8 @@ body（诊断日志只记录 package 脱敏、限长后的 HTTP 拒绝说明 `pr
 - `features/ai-sdk-language-composition/`：把 Linnya resolved
   route/credential 投影到 package 窄合同，并在 Host seam 核对 Catalog
   binding 与 factory coverage；把 SDK 已识别的思考能力投影到 Catalog 的窄查询端口。
-- [`features/provider-failure-policy/`](./features/provider-failure-policy/README.md)：注入 Linnya
-  Cloud 等产品级错误语义，并在 SDK 精确分类后投影正式连接范围内的容错政策；通用 AI SDK taxonomy 留在 package。
+- [`features/provider-failure-policy/`](./features/provider-failure-policy/README.md)：注入 OpenCode Go
+  会话缺失等产品级错误语义，并在 SDK 精确分类后投影正式连接范围内的容错政策；通用 AI SDK taxonomy 留在 package。
 - `features/ai-sdk-diagnostic-logging/`：把 package 已脱敏的诊断事件写入 Linnya
   Logger；package 不反向依赖日志实现。
 - `capabilities/ai-sdk/`：首版拆包后只保留 Embedding、Reranking 和 runtime-manifest
@@ -156,8 +156,7 @@ App Server 使用运行中 Provider registry；独立 Worker 在任务初始化�
 HTTP 400 猜成相同原因。Host 请求集成测试覆盖三种真实 SDK surface、跨 run/attempt 与并发会话、
 独立生成、Custom API 隔离及错误脱敏；离线测试不替代真实 Go 两轮验收。
 
-产品失败分类同样必须限定正式身份：Go会话错误只属于Go，Cloud额度错误只属于Cloud。
-Cloud用Model Catalog中宿主管理的凭据引用确认，不要求它有普通Provider配置行。
+产品失败分类同样必须限定正式身份：Go会话错误只属于Go。
 Host将本次身份绑定为invocation-scoped classifier；共享SDK capability不持有全局产品分类器，
 SDK合同不接收Linnya连接字段。相同URL、endpoint名或错误文案不能让BYOK冒充产品服务。
 
@@ -382,7 +381,7 @@ diagnostics 能定位故障层级，同时不会泄漏 prompt、响应正文或 
 policy 可消费的窄合同。Routing policy 不得 deep import package failure
 feature、复制 code 字符串或解析错误正文。新增 AI
 SDK 解码后错误形状应局部修改 package `failure-projection` 与 conformance
-fixture；Linnya Cloud 等产品错误只修改 Host
+fixture；OpenCode Go 会话缺失等产品错误只修改 Host
 `provider-failure-policy`，不能要求 Linnkit、Renderer 或 Model Catalog 理解 SDK
 shape。
 

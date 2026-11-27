@@ -105,7 +105,6 @@ vi.mock('@plugin/backend/projectReadRuntime', () => ({
 vi.mock('@plugin/backend/modelConfiguration', () => ({
   getPluginModelConfigurationPort: () => ({
     readDefaultModelIdByCapability: () => null,
-    readAuxiliaryModelBinding: () => 'ui-graph',
   }),
 }));
 vi.mock('@plugin/backend/inferenceRuntime', () => ({ getPluginInferencePort: () => uiInference }));
@@ -315,14 +314,7 @@ describe('CLI owned ingestion and graph completion', () => {
     runtime.startInteractiveMaintenance();
     runtime.startInteractiveMaintenance();
     expect(maintenanceSchedules).toBe(1);
-    await vi.waitFor(() => expect(uiCalls).toContain('ui-graph'));
-    await vi.waitFor(() =>
-      expect(
-        runtime.queues
-          .listGraphIndexingTasks()
-          .filter(job => job.data.kbId === b.id && job.state === 'completed')
-      ).toHaveLength(1)
-    );
+    // 回填本身目前没有图谱抽取模型来源（见 knowledgeGraphQueueOrchestrator），这里只验证维护只排一次。
   });
   it('重试耗尽返回失败并保原文；父取消等待自己的 Host 请求收口，不取消并行 UI 摄入', async () => {
     const a = await createLibrary('A', true);
