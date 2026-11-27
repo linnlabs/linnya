@@ -26,8 +26,7 @@ const NOTIFICATIONS: readonly { type: NotificationType; message: string }[] = [
 
 const ACTIVITIES = [
   { activity: 'processing', label: '处理已有材料' },
-  { activity: 'thinking', label: '等待回复、推理中' },
-  { activity: 'generating', label: '生成新内容' },
+  { activity: 'thinking', label: '等待回复、推理中、生成新内容' },
 ] as const;
 
 const SKELETON_LINE_WIDTHS = ['92%', '78%', '85%', '40%'] as const;

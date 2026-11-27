@@ -20,7 +20,7 @@ export type RunStatusSignal =
 
 /**
  * 运行中图标一律是 Linnya 标识的“摇曳”（LinnyaLoadingIcon 的 thinking 动态），不按状态换动态：
- * 用户 2026-11-26 定，沿用原底部等待图标的摇曳；“生长”（generating）不好看、将来要删，不能在这里用。
+ * 用户 2026-11-26 定，沿用原底部等待图标的摇曳。
  * `still` 表示球在用户这边（等回答、等批准、已暂停），图标静止变灰。
  */
 export type RunStatusMotion = 'sway' | 'still';
