@@ -1,5 +1,10 @@
 import type { WebRenderFailureKind } from '@app/schemas';
 import type { WebAccessChallengeHeaderName } from '../../shared/webAccessChallenge';
+import type {
+  BrowserCaptureAccessBarrier,
+  BrowserCaptureWarning,
+  BrowserCapturedFrameResource,
+} from '../render-capture/definitions/renderCaptureContract';
 
 export type WebPageRenderFailureKind = WebRenderFailureKind;
 
@@ -55,10 +60,17 @@ export interface WebPageRenderParams {
   readonly timeoutMs?: number;
 }
 
+export interface WebPageRenderCaptureMetadata {
+  readonly accessBarrier?: BrowserCaptureAccessBarrier;
+  readonly warnings?: readonly BrowserCaptureWarning[];
+  readonly inlinedFrameResources?: readonly BrowserCapturedFrameResource[];
+}
+
 export interface WebPageRenderResult {
   readonly html: string;
   readonly finalUrl: string;
   readonly mainResponse: WebPageMainResponse;
+  readonly capture?: WebPageRenderCaptureMetadata;
 }
 
 export interface WebPageRenderer {

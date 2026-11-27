@@ -63,6 +63,21 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
         response.end('<html><title>Human verification</title><body>UPSTREAM_BODY_INJECTION</body></html>');
         return;
       }
+      if (request.url === '/challenge-521-js') {
+        response.writeHead(521, { 'Content-Type': 'text/html' });
+        response.end('<html><script>document.cookie="__jsl_clearance=1";location.reload();</script></html>');
+        return;
+      }
+      if (request.url === '/bare-521') {
+        response.writeHead(521, { 'Content-Type': 'text/html' });
+        response.end('<html><title>521 Web server is down | Cloudflare</title></html>');
+        return;
+      }
+      if (request.url === '/bare-412') {
+        response.writeHead(412, { 'Content-Type': 'text/plain' });
+        response.end('Precondition Failed');
+        return;
+      }
       if (request.url === '/retry-503' || request.url === '/retry-429') {
         const attempts = (transientAttempts.get(request.url) ?? 0) + 1;
         transientAttempts.set(request.url, attempts);
@@ -218,6 +233,28 @@ describe('localHttpFetch 本地真实 HTTP 合同', () => {
     expect(error).not.toHaveProperty('bodyPreview');
     expect(String(error)).not.toContain('UPSTREAM_');
     expect(requestedPaths.filter(path => path === '/challenge-429')).toHaveLength(1);
+  });
+
+  it('412/521 出现明确 JS 校验特征时归为访问验证且不重试；裸 521 保留瞬态重试，裸 412 保留 http_error', async () => {
+    const js521 = await localHttpFetch(`http://fixture.test:${port}/challenge-521-js`, {}, {
+      resolveHost: resolveFixtureHost,
+      sleep: async () => undefined,
+    }).catch((caught: unknown) => caught);
+    expect(js521).toMatchObject({ status: 521, code: 'captcha', challengeSignal: 'js_verification', retryCount: 0 });
+    expect(getWebFailureKind(js521)).toBe('captcha');
+    expect(requestedPaths.filter(path => path === '/challenge-521-js')).toHaveLength(1);
+
+    const bare521 = await localHttpFetch(`http://fixture.test:${port}/bare-521`, {}, {
+      resolveHost: resolveFixtureHost,
+      sleep: async () => undefined,
+    }).catch((caught: unknown) => caught);
+    expect(bare521).toMatchObject({ status: 521, kind: 'http_5xx', code: 'http_5xx', retryCount: 1 });
+
+    const bare412 = await localHttpFetch(`http://fixture.test:${port}/bare-412`, {}, {
+      resolveHost: resolveFixtureHost,
+      sleep: async () => undefined,
+    }).catch((caught: unknown) => caught);
+    expect(bare412).toMatchObject({ status: 412, kind: 'http_error', code: 'http_error', retryCount: 0 });
   });
 
   it.each([

@@ -1,3 +1,4 @@
+import { hasSpaHashRouteUrl } from '../../websearch/citations/normalizeUrl';
 import { Logger } from '@shared/logger';
 import {
   WebFailureError,
@@ -5,6 +6,8 @@ import {
   getWebExtractionFailureStage,
   getWebFailureKind,
   isEscalatableWebFailureKind,
+  isWebAccessBlockKind,
+  resolveWebAccessBlockKind,
   type WebExtractionFailureStage,
   type WebFailureKind,
 } from '../../shared/webFailure';
@@ -12,7 +15,7 @@ import type { WebReadEscalationReason, WebReadLadderResult } from '../definition
 import { DEFAULT_WEB_READ_CONFIG, type WebReadConfig } from '../definitions/webReadConfig';
 import { createWebReadFailure } from '../functions/createWebReadFailure';
 import { getWebFileFormat } from '../file-acquisition/functions/validateWebFile';
-import { assessWebReadQuality } from '../functions/assessWebReadQuality';
+import { assessWebReadQuality, hasRenderedCodeExample, shouldRenderEmbeddedCode } from '../functions/assessWebReadQuality';
 import {
   createLocalRenderWebReadProvider,
   createLocalWebReadProvider,
@@ -94,7 +97,12 @@ async function readManagedFallback(args: {
       args.previousFailure === undefined
         ? args.initialFailureStage
         : (getWebExtractionFailureStage(args.previousFailure) ?? args.initialFailureStage);
-    const failureReason = previousFailureKind ?? args.initialFailureKind ?? args.reason;
+    const accessBlockKind = resolveWebAccessBlockKind({
+      previousFailureKind,
+      initialFailureKind: args.initialFailureKind,
+      escalationReason: args.reason,
+    });
+    const failureReason = accessBlockKind ?? previousFailureKind ?? args.initialFailureKind ?? args.reason;
     const stageSuffix = extractionStage ? `，stage=${extractionStage}` : '';
     throw attachWebReadRecoveryResources(new WebFailureError<WebReadEscalationReason>(
       'managed_disabled',
@@ -251,6 +259,26 @@ async function readRenderedOrManaged(args: {
   });
 }
 
+/** 对已有正文的代码示例做一次本地增强。保留访问拒绝、取消和总时限的正常语义。 */
+async function readOptionalCodeExample(
+  params: WebReadParams, initial: WebReadLadderResult, renderer: WebReadProvider,
+): Promise<WebReadLadderResult> {
+  const attempted: WebReadLadderResult = { ...initial, renderAttempted: true, escalationReason: 'js_required' };
+  try {
+    const rendered = await renderer.read(params);
+    if (hasRenderedCodeExample(initial.readResult, rendered)) {
+      return { ...attempted, readResult: rendered, selectedProvider: renderer.name };
+    }
+  } catch (cause: unknown) {
+    const error = createWebReadFailure(cause, 'local_render', { renderAttempted: true });
+    const kind = error.kind;
+    if (params.signal?.aborted || isWebAccessBlockKind(kind) || !MANAGED_AFTER_RENDER_FAILURE.has(kind)) {
+      throw error;
+    }
+  }
+  return attempted;
+}
+
 async function executeReadLadder(
   params: WebReadParams,
   dependencies: WebReadLadderDependencies
@@ -265,6 +293,12 @@ async function executeReadLadder(
 
   try {
     readResult = await initialProvider.read(params);
+    // HTTP 不发送片段，目标页路由也可能来自重定向。首页的正文、附件和摘录都不能归给目标路由。
+    if (readResult.renderMode === 'http' && !readResult.filePayload
+      && (readResult.extractor !== 'raw_text' || readResult.markdown !== undefined)
+      && (hasSpaHashRouteUrl(params.url) || hasSpaHashRouteUrl(readResult.finalUrl))) {
+      throw new WebFailureError('js_required', '目标路由需要浏览器渲染后才能取得正文。');
+    }
   } catch (cause: unknown) {
     const error = createWebReadFailure(cause, 'local_http');
     const failureKind = getWebFailureKind(error);
@@ -300,13 +334,14 @@ async function executeReadLadder(
 
   const quality = assessWebReadQuality(readResult);
   if (!quality.shouldEscalate || !quality.reason) {
-    return {
-      readResult,
-      initialProvider: initialProvider.name,
-      selectedProvider: initialProvider.name,
-      renderAttempted: false,
-      escalated: false,
+    const initial = {
+      readResult, initialProvider: initialProvider.name, selectedProvider: initialProvider.name,
+      renderAttempted: false, escalated: false,
     };
+    if (renderEnabled && shouldRenderEmbeddedCode(readResult)) {
+      return readOptionalCodeExample(params, initial, dependencies.renderProvider ?? createLocalRenderWebReadProvider());
+    }
+    return initial;
   }
 
   if (renderEnabled && shouldAttemptRender(quality.reason)) {

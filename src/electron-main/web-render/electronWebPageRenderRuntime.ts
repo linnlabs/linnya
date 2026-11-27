@@ -5,6 +5,7 @@ import {
 } from '../../tools/web/shared/urlPolicy';
 import type { WebResponseHeaderLookup } from '../../tools/web/shared/webAccessChallenge';
 import type {
+  WebPageRenderNavigationTrigger,
   WebPageRenderResponseDecision,
   WebPageRenderSubresourceEvent,
   WebPageRenderRuntime,
@@ -15,6 +16,20 @@ import type {
 
 export interface ElectronWebPageRenderRuntimeOptions {
   readonly validateRequestUrl?: (url: string) => Promise<void>;
+  /** 文本抓取默认启用 Blink `images: false` 并取消图片/媒体/字体请求，既防内存暴涨又避免触发 img.onerror。 */
+  readonly blockHeavyResources?: boolean;
+}
+
+function isSseRequestHeaders(
+  requestHeaders: Record<string, string | string[]> | undefined,
+): boolean {
+  if (!requestHeaders) return false;
+  for (const [name, value] of Object.entries(requestHeaders)) {
+    if (name.toLowerCase() !== 'accept') continue;
+    const joined = Array.isArray(value) ? value.join(', ') : value;
+    if (joined.toLowerCase().includes('text/event-stream')) return true;
+  }
+  return false;
 }
 
 async function validatePublicWebRequest(rawUrl: string): Promise<void> {
@@ -35,7 +50,10 @@ function createResponseHeaderLookup(
   return { get: (name) => headers.get(name.toLowerCase()) };
 }
 
-function createWindow(options: WebPageRenderWindowOptions): WebPageRenderWindow {
+function createWindow(
+  options: WebPageRenderWindowOptions,
+  blockHeavyResources: boolean,
+): WebPageRenderWindow {
   const renderWindow = new BrowserWindow({
     show: false,
     width: 1280,
@@ -47,6 +65,7 @@ function createWindow(options: WebPageRenderWindowOptions): WebPageRenderWindow 
       webSecurity: true,
       devTools: false,
       backgroundThrottling: false,
+      images: !blockHeavyResources,
       partition: options.partition,
     },
   });
@@ -59,19 +78,41 @@ function createWindow(options: WebPageRenderWindowOptions): WebPageRenderWindow 
     getURL: () => webContents.getURL(),
     isDestroyed: () => renderWindow.isDestroyed() || webContents.isDestroyed(),
     destroy: () => renderWindow.destroy(),
-    installNavigationGuards: (isAllowed, onBlocked) => {
-      const guardNavigation = (event: { preventDefault(): void }, targetUrl: string): void => {
-        if (isAllowed(targetUrl)) return;
+    installNavigationGuards: (isAllowed, onBlocked, onDidNavigate) => {
+      const guardNavigation = (
+        event: { preventDefault(): void },
+        targetUrl: string,
+        trigger: WebPageRenderNavigationTrigger,
+      ): void => {
+        if (isAllowed(targetUrl, trigger)) return;
         event.preventDefault();
         onBlocked(targetUrl);
       };
-      webContents.on('will-navigate', guardNavigation);
-      webContents.on('will-redirect', guardNavigation);
+      const guardWillNavigate = (event: { preventDefault(): void }, targetUrl: string): void => {
+        guardNavigation(event, targetUrl, 'navigate');
+      };
+      const guardWillRedirect = (
+        event: { preventDefault(): void },
+        targetUrl: string,
+        _isInPlace: boolean,
+        isMainFrame: boolean,
+      ): void => {
+        // 只拦截主框架重定向；子框架网络跳转另有 session 准入，且同源内联会在后续单独判定。
+        if (!isMainFrame) return;
+        guardNavigation(event, targetUrl, 'redirect');
+      };
+      const handleDidNavigate = (_event: unknown, targetUrl: string): void => {
+        onDidNavigate?.(targetUrl);
+      };
+      webContents.on('will-navigate', guardWillNavigate);
+      webContents.on('will-redirect', guardWillRedirect);
+      webContents.on('did-navigate', handleDidNavigate);
       webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
       return () => {
         if (webContents.isDestroyed()) return;
-        webContents.off('will-navigate', guardNavigation);
-        webContents.off('will-redirect', guardNavigation);
+        webContents.off('will-navigate', guardWillNavigate);
+        webContents.off('will-redirect', guardWillRedirect);
+        webContents.off('did-navigate', handleDidNavigate);
       };
     },
     onClosed: (listener) => {
@@ -105,6 +146,7 @@ function createWindow(options: WebPageRenderWindowOptions): WebPageRenderWindow 
 function createSession(
   partition: string,
   validateRequestUrl: (url: string) => Promise<void>,
+  blockHeavyResources: boolean,
 ): WebPageRenderSession {
   const renderSession = session.fromPartition(partition, { cache: false });
   const validatedHosts = new Map<string, Promise<void>>();
@@ -126,6 +168,15 @@ function createSession(
         details: { url: string; resourceType: string },
         callback: (response: { cancel: boolean }) => void,
       ): void => {
+        if (
+          blockHeavyResources
+          && (details.resourceType === 'image'
+            || details.resourceType === 'media'
+            || details.resourceType === 'font')
+        ) {
+          callback({ cancel: true });
+          return;
+        }
         let hostname: string;
         try {
           hostname = new URL(details.url).hostname.toLowerCase();
@@ -187,17 +238,33 @@ function createSession(
     },
     observeSubresources: (listener) => {
       const subresourceFilter = { urls: ['http://*/*', 'https://*/*'] };
+      const ignoredDataRequestIds = new Set<number>();
       const categorize = (resourceType: string): WebPageRenderSubresourceEvent['category'] | undefined => {
         if (resourceType === 'xhr') return 'data';
         if (resourceType === 'script' || resourceType === 'stylesheet') return 'script_or_style';
         return undefined;
       };
       const emit = (
-        details: { id: number; resourceType: string; error?: string },
+        details: {
+          id: number;
+          resourceType: string;
+          error?: string;
+          requestHeaders?: Record<string, string | string[]>;
+        },
         phase: WebPageRenderSubresourceEvent['phase'],
       ): void => {
         const category = categorize(details.resourceType);
         if (!category) return;
+        if (category === 'data') {
+          if (phase === 'started') {
+            if (isSseRequestHeaders(details.requestHeaders)) {
+              ignoredDataRequestIds.add(details.id);
+              return;
+            }
+          } else if (ignoredDataRequestIds.delete(details.id)) {
+            return;
+          }
+        }
         listener({
           id: details.id,
           category,
@@ -209,6 +276,7 @@ function createSession(
       renderSession.webRequest.onCompleted(subresourceFilter, (details) => emit(details, 'completed'));
       renderSession.webRequest.onErrorOccurred(subresourceFilter, (details) => emit(details, 'failed'));
       return () => {
+        ignoredDataRequestIds.clear();
         renderSession.webRequest.onSendHeaders(subresourceFilter, null);
         renderSession.webRequest.onCompleted(subresourceFilter, null);
         renderSession.webRequest.onErrorOccurred(subresourceFilter, null);
@@ -221,9 +289,10 @@ export function createElectronWebPageRenderRuntime(
   options: ElectronWebPageRenderRuntimeOptions = {},
 ): WebPageRenderRuntime {
   const validateRequestUrl = options.validateRequestUrl ?? validatePublicWebRequest;
+  const blockHeavyResources = options.blockHeavyResources ?? true;
   return {
-    createWindow,
-    createSession: (partition) => createSession(partition, validateRequestUrl),
+    createWindow: (windowOptions) => createWindow(windowOptions, blockHeavyResources),
+    createSession: (partition) => createSession(partition, validateRequestUrl, blockHeavyResources),
   };
 }
 

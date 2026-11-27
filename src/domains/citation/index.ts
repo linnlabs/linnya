@@ -77,7 +77,10 @@ export {
   admitCitationSourceAnchor,
   createCitationSourceIdentity,
 } from './shared/functions/citationSourceAnchor';
-export { normalizeCitationWebUrl } from './shared/functions/normalizeCitationWebUrl';
+export {
+  hasSpaHashRouteUrl,
+  normalizeCitationWebUrl,
+} from './shared/functions/normalizeCitationWebUrl';
 export {
   attachCitationSourceResolver,
   copyCitationSourceResolver,

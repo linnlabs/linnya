@@ -6,13 +6,18 @@ import { setWorkspaceRoot, resetWorkspaceRootToDefault } from '../../../src/shar
 import { resolveEvidenceFromBundles } from '../../../src/domains/evidence';
 import { createWebCacheRuntime } from '../../../src/tools/web/shared/cache/webCacheFactory';
 import { MemoryWebCache } from '../../../src/tools/web/shared/cache/adapters/memoryWebCache';
+import { saveConversationWebFile } from '../../../src/infra/adapters/web-files/conversationWebFileStore';
 import { getWebFailureKind } from '../../../src/tools/web/shared/webFailure';
 import { runReadWebPage } from '../../../src/tools/web/webread/orchestration/readWebPage';
 import { MetasoReaderProvider } from '../../../src/tools/web/webread/providers/metaso';
 import { JinaReaderProvider } from '../../../src/tools/web/webread/providers/jina';
 import type { WebReadProvider } from '../../../src/tools/web/webread/providers/types';
 import { WEB_READ_RELIABILITY_CASES, type WebReadReliabilityCase } from './read-cases';
-import { evaluateReadQuality } from './read-evaluation';
+import {
+  evaluateReadQuality,
+  matchesExpectedFailureKind,
+  resolveExpectedOutcome,
+} from './read-evaluation';
 import { createWebBenchmarkContext } from './createWebBenchmarkContext';
 
 type ManagedRoute = 'metaso' | 'jina_direct' | 'jina_browser';
@@ -163,10 +168,12 @@ async function runRoute(params: {
   managedProvider: WebReadProvider;
   caseDefinition: WebReadReliabilityCase;
   round: number;
+  fileRoot: string;
 }): Promise<ReadAttemptReport> {
   const startedAt = Date.now();
   const conversationId = `web_read_live_${params.route}_${params.round}_${params.caseDefinition.id}`;
   const instanceId = 'benchmark';
+  const expectedOutcome = resolveExpectedOutcome(params.caseDefinition);
   try {
     const output = await runReadWebPage(
       { url: params.caseDefinition.url, maxChars: 50_000 },
@@ -180,9 +187,12 @@ async function runRoute(params: {
         renderProvider: null,
         managedProvider: params.managedProvider,
         cacheRuntime: createWebCacheRuntime(new MemoryWebCache()),
+        fileStore: {
+          save: (input) => saveConversationWebFile(params.fileRoot, input),
+        },
       },
     );
-    if (params.caseDefinition.expectedFailureKind) {
+    if (expectedOutcome === 'blocked') {
       return {
         managedRoute: params.route,
         selectedProvider: 'unexpected_success',
@@ -192,7 +202,7 @@ async function runRoute(params: {
         round: params.round,
         success: false,
         expectedTerminal: true,
-        failureKind: 'expected_terminal_not_returned',
+        failureKind: 'expected_blocked_not_returned',
         escalated: false,
         tookMs: Date.now() - startedAt,
         charCount: 0,
@@ -228,7 +238,8 @@ async function runRoute(params: {
     };
   } catch (error: unknown) {
     const failureKind = getWebFailureKind(error);
-    const expectedTerminal = params.caseDefinition.expectedFailureKind === failureKind;
+    const expectedTerminal = expectedOutcome === 'blocked'
+      && matchesExpectedFailureKind(params.caseDefinition.expectedFailureKind, failureKind);
     return {
       managedRoute: params.route,
       selectedProvider: expectedTerminal ? 'local_http' : 'none',
@@ -283,7 +294,6 @@ function renderReport(attempts: ReadAttemptReport[], minSuccessRate: number): st
     }
     lines.push('');
   }
-  lines.push('PDF 用例验证当前 unsupported_mime 稳定终态；成功不代表已解析 PDF。');
   return lines.join('\n');
 }
 
@@ -306,7 +316,7 @@ async function main(): Promise<void> {
         for (const route of options.routes) {
           const managedProvider = providers.get(route);
           if (!managedProvider) throw new Error(`未创建托管 Provider: ${route}`);
-          const attempt = await runRoute({ route, managedProvider, caseDefinition, round });
+          const attempt = await runRoute({ route, managedProvider, caseDefinition, round, fileRoot: tempRoot });
           attempts.push(attempt);
           console.log(JSON.stringify(attempt));
         }

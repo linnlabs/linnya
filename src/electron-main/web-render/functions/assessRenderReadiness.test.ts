@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   RENDER_DATA_QUIET_MS,
+  RENDER_MAIN_QUIET_MS,
+  RENDER_PAGE_LOAD_QUIET_MS,
   assessRenderReadiness,
+  assessRenderReadinessDetailed,
   type RenderReadinessFacts,
 } from './assessRenderReadiness';
 
@@ -15,6 +18,8 @@ function facts(overrides: Partial<RenderReadinessFacts>): RenderReadinessFacts {
     dataRequestsInFlight: 0,
     sawDataRequest: false,
     dataQuietMs: RENDER_DATA_QUIET_MS,
+    pageLoadRequestsInFlight: 0,
+    pageLoadQuietMs: RENDER_PAGE_LOAD_QUIET_MS,
     sinceDomReadyMs: 500,
     maxSettleDelayMs: 3_000,
     deadlineReached: false,
@@ -65,5 +70,55 @@ describe('渲染就绪判断', () => {
   it('预算耗尽时普通页面按现有 DOM 提取，不因未稳定而失败', () => {
     expect(assessRenderReadiness(facts({ stableSamples: 0, dataRequestsInFlight: 3, deadlineReached: true })))
       .toBe('ready');
+  });
+
+  it('主区感知：导航与弹窗文字 >300 字而主区仍为空时，必须继续等待慢水合', () => {
+    const navOnly = { readyState: 'complete', textLength: 420, mainTextLength: 0, scriptCount: 4 };
+    expect(assessRenderReadinessDetailed(facts({
+      sample: navOnly,
+      sawDataRequest: false,
+      sinceDomReadyMs: 3_500,
+    }))).toEqual({ decision: 'wait', reason: 'wait_app_shell' });
+  });
+
+  it('主区达到实质长度且高水位静默后，即使轮询 XHR 在途且整页总字数微小抖动，也及时就绪', () => {
+    const pollingPage = { readyState: 'interactive', textLength: 1_210, mainTextLength: 1_000, scriptCount: 5 };
+    expect(assessRenderReadinessDetailed(facts({
+      sample: pollingPage,
+      stableSamples: 0,
+      dataRequestsInFlight: 1,
+      dataQuietMs: 0,
+      mainQuietMs: RENDER_MAIN_QUIET_MS,
+      sinceDomReadyMs: 900,
+    }))).toEqual({ decision: 'ready', reason: 'main_substantial_quiet' });
+  });
+
+  it('主区未达实质长度且仍在等待数据或增长时，maxSettleDelayMs 到达后仍续期到总就绪上限', () => {
+    const growing = { readyState: 'complete', textLength: 400, mainTextLength: 320, scriptCount: 4 };
+    expect(assessRenderReadinessDetailed(facts({
+      sample: growing,
+      stableSamples: 2,
+      dataRequestsInFlight: 1,
+      dataQuietMs: 0,
+      mainQuietMs: 200,
+      sinceDomReadyMs: 3_000,
+      maxSettleDelayMs: 3_000,
+      deadlineReached: false,
+    }))).toEqual({ decision: 'wait', reason: 'wait_main_growing' });
+  });
+
+  it('正文未达实质长度时，JSONP 或脚本链仍在加载或刚结束就继续等待，安定上限后照常提取', () => {
+    // 公告列表页：load 已完成、框架文字稳定，但列表数据经 JSONP 脚本返回，不是 xhr/fetch。
+    const listShell = { readyState: 'complete', textLength: 900, mainTextLength: 270, scriptCount: 30 };
+    expect(assessRenderReadinessDetailed(facts({ sample: listShell, pageLoadRequestsInFlight: 1, pageLoadQuietMs: 0 })))
+      .toEqual({ decision: 'wait', reason: 'wait_page_load_in_flight' });
+    expect(assessRenderReadinessDetailed(facts({ sample: listShell, pageLoadQuietMs: RENDER_PAGE_LOAD_QUIET_MS - 1 })))
+      .toEqual({ decision: 'wait', reason: 'wait_page_load_in_flight' });
+    expect(assessRenderReadinessDetailed(facts({ sample: listShell })))
+      .toEqual({ decision: 'ready', reason: 'complete_or_data_quiet' });
+    // 一个永远不结束的统计脚本不能把页面拖过安定上限。
+    expect(assessRenderReadinessDetailed(facts({
+      sample: listShell, pageLoadRequestsInFlight: 1, pageLoadQuietMs: 0, sinceDomReadyMs: 3_000, mainQuietMs: RENDER_MAIN_QUIET_MS,
+    }))).toEqual({ decision: 'ready', reason: 'max_settle_elapsed' });
   });
 });

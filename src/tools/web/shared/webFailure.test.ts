@@ -3,12 +3,14 @@ import { WebHttpError } from '../../../infra/adapters/web-http/webHttpFetch';
 import {
   ESCALATABLE,
   WebFailureError,
+  classifyWebHttpFailureStatus,
   getWebExtractionFailureStage,
   getWebFailureDiagnostics,
   getWebAccessBlockKind,
   formatWebFailureDiagnostics,
   getWebFailureKind,
   isEscalatableWebFailureKind,
+  resolveWebAccessBlockKind,
   type EscalatableWebFailureKind,
   type WebFailureKind,
 } from './webFailure';
@@ -36,11 +38,32 @@ describe('Web 终态失败分类与升级子集', () => {
     }
     for (const reason of ['timeout', 'provider_error', 'js_required'] as const) {
       const error = new WebFailureError('managed_disabled', 'managed reader disabled', {
-        details: { previousFailureKind: reason, initialFailureKind: 'captcha' },
+        details: { previousFailureKind: reason, initialFailureKind: 'js_required' },
       });
       expect(error.code).toBe('managed_disabled');
       expect(getWebAccessBlockKind(error)).toBeUndefined();
     }
+    const cliBlocked = new WebFailureError('managed_disabled', 'managed reader disabled', {
+      details: { previousFailureKind: 'provider_error', initialFailureKind: 'http_403' },
+    });
+    expect(cliBlocked.code).toBe('http_403');
+    expect(getWebAccessBlockKind(cliBlocked)).toBe('http_403');
+    expect(resolveWebAccessBlockKind({
+      initialFailureKind: 'http_403',
+      previousFailureKind: 'captcha',
+    })).toBe('captcha');
+    expect(resolveWebAccessBlockKind({
+      initialFailureKind: 'http_403',
+      previousFailureKind: 'login_required',
+    })).toBe('login_required');
+    expect(getWebFailureKind(new WebFailureError('login_required', 'login wall', { status: 403 }))).toBe('login_required');
+    expect(getWebFailureKind(new WebFailureError('captcha', 'captcha wall', { status: 403 }))).toBe('captcha');
+    expect(classifyWebHttpFailureStatus(403)).toBe('http_403');
+    expect(classifyWebHttpFailureStatus(404)).toBe('http_404');
+    expect(classifyWebHttpFailureStatus(401)).toBe('auth');
+    expect(classifyWebHttpFailureStatus(429)).toBe('rate_limited');
+    expect(classifyWebHttpFailureStatus(503)).toBe('http_5xx');
+    expect(classifyWebHttpFailureStatus(412)).toBe('http_error');
     expect(getWebAccessBlockKind(new WebFailureError('managed_disabled', 'captcha in a message is not evidence'))).toBeUndefined();
   });
 

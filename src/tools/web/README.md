@@ -218,9 +218,13 @@ src/tools/web/webread/
 │   ├── projectActiveWebReadConfig.ts
 │   └── resolveWebReadConfigUpdate.ts
 ├── extraction/
+│   ├── detectDynamicPageSignals.ts
 │   ├── extractArticle.ts
+│   ├── extractPageImages.ts
 │   ├── extractPageResources.ts
 │   ├── extractSemanticDom.ts
+│   ├── extractTabularDom.ts
+│   ├── normalizeStructuredDom.ts
 │   ├── parseCanonicalHtmlDocument.ts
 │   ├── prepareReadableDocument.ts
 │   └── renderReadableMarkdown.ts
@@ -364,18 +368,25 @@ Reader 服务地址与环境变量名由 Web Read 自己的静态服务定义拥
 - R2 已启用三层生产阶梯：本地 HTTP 合格即返回；JS 壳、没有可用正式资源的空正文、质量信号、`network_error`、单跳 `timeout` 与 DOM 规范化失败按需调用一次本地 Chromium；正文为空但已捕获正式资源的 `metadata_only` 是终态，不重复升级；渲染仍不合格或渲染能力失败才调用一次托管兜底。canonical DOM 上的 Readability 异常会跳过机械渲染，直接进入已配置的托管 Reader。整条阶梯 90 秒总预算触发的 `timeout` 仍是终态
 - `text/html` 先由 Cheerio 默认的 WHATWG `parse5` tree builder 规范化成唯一 `html/head/body`，再创建轻量 linkedom DOM；禁止用正则、站点白名单或手工移动第二个 body 修复 tag soup
 - HTML 抽取先用 Readability；失败或明显遗漏时，从 `article/main/[role=main]` 的可访问主区域补取正文，并过滤导航、侧栏、页脚和隐藏节点。Readability 抛错但语义正文已存在时保留正文并记录 warning；完全无正文且没有可用正式资源时才产生 `empty_content` 失败
+- 旧式门户没有声明主区、Readability 正文不足 200 字且没有可用数据表时，从带名称的 ARIA region 中查找公告列表。至少三个不同的详情链接分别和完整日期出现在同一条目，才按来源顺序输出标题、链接与日期。普通菜单、空列表和其他区域的页脚日期不参与补取。
+- 教程正文中的空自定义元素若声明了示例源文件名，会留下 `embedded_code_pending`。首跳正文已合格但缺代码块时，Desktop 可再渲染一次；同一页实际取得代码块才采用渲染正文，渲染关闭或示例未加载时保留可用的首跳正文。主区 CodeMirror 的已呈现行按顺序转成 Markdown 代码块，保留行间空白和缩进。
 - 没有语义主区域且文章抽取不足时，可选择 `tabular_dom` 窄视图：只保留清理后的叶子数据表（有表头至少两行独立数值、无表头至少三行），保留原行列、空单元格、caption/summary 和显式关联说明，再附已选正文中的表外说明。布局表、空骨架和导航不因原 HTML 表格行数多而获得正文资格；空内容与 JS 壳仍执行质量升级。Readability 残表只有全部数据行对应同一已捕获表时才去掉，不凭共同表头删掉另一张表。不回退整个 body，也不承诺恢复全页脚注或尚未加载的数据
-- 主区域选择与内容表达分离：Readability 选中的 HTML 与语义主区域共用 Turndown 转换为 Markdown，保留来源链接、代码缩进、有序列表、删除线、图注与图片 alt。质量判定使用可见文字长度，避免链接地址和标记抬高质量信号
+- 主区域选择与内容表达分离：Readability 选中的 HTML 与语义主区域共用 Turndown 转换为 Markdown，保留来源链接、代码缩进与安全代码围栏语言（仅对 `pre > code` 白名单回填语言类）、KaTeX/MathML 中显式 TeX/LaTeX `<annotation>` 源码（还原为 `$...$` / `$$...$$`，不转义 LaTeX 语法）、有序列表、删除线、图注与图片 alt。质量判定使用可见文字长度，避免链接地址和标记抬高质量信号
 - 两条路径在选区前共用隐藏节点/内联隐藏样式清理。先移除导航、脚本与 inert 区域，再识别同一主区域内可见、可用按钮声明的折叠正文：`aria-expanded=false` 配合 `aria-controls` 的明确目标，或 read/show-more 命名的按钮与相邻同类命名正文（允许仅包裹按钮的一层容器）。只移除该目标层的隐藏状态，其内部独立隐藏的旧值仍排除；不按域名匹配，不点击控件、不执行额外脚本，也不凭单个类名恢复任意隐藏内容。未识别的折叠方式仍可能遗漏，`truncated=false` 只表示未触及字符上限，不承诺正文完整
+- 完成隐藏清理与链接规范化后、正文抽取前统一执行结构化 DOM 规范化（`normalizeStructuredDom.ts`）：按从深到浅顺序安全展平明确布局型 `<table>`（`role="presentation"/"none"`、嵌套 `<table>` 容器、无自身表语义的单行/单列块布局容器），保留内层数据表与链接且绝不拆毁多行多列纯 `<td>` 数据表；同时将满足二维表格语义（多行多列，或有二维表头和显式列号的数据行）的 ARIA `table`/`grid`/`treegrid` 映射为语义 `<table>`（保留 `aria-label`、`aria-describedby`、`columnheader`/`rowheader` 作用域与合法跨度），使 Readability、`semantic_dom` 与 `tabular_dom` 自动复用同一套表格保留与质量约束
+- 当正文不满 200 字符但同时满足存在具备正式文档扩展名（如 `.pdf`/`.docx`/`.xlsx`/`.pptx`/`.csv`/`.tsv`/`.wps`/`.ofd`，不含通用 `/download` 页）的 `kind='document'` 正式附件资源、无访问屏障及 `table_dominant`/`list_dominant` 信号、且去除 Markdown 链接与格式后仍有足够实体文字（`>= 120` 纯字符、CJK 加权 `>= 220` 单位并至少含一句完整陈述句）时，判定为完整短正式通知并直接合格返回，不再误触 `content_too_short` 升级
 - HTML 相对链接依据最终 URL 与有效 base URL 还原，只保留符合既有同步 URL 策略的地址；链接出现不代表目标已读取，后续请求仍须完整校验 DNS 和连接
 - 表格保留精简 HTML 中的空单元格、caption、rowspan/colspan 和表头关联属性；不展开跨度、不猜测会计口径。保留的 HTML 删除事件、样式等非内容属性。静态抽取不承诺解析外部样式表的完整可见性或理解图片里的数字
-- 同一安全 GET 通过 Accept 优先请求来源站点的 Markdown；按实际 Content-Type 分流，不额外请求或自动换 Provider。原生 Markdown 保留来源表示（包括相对链接），不伪造未取得的标题/日期元数据；HTML 不支持协商时继续走原抽取链
+- 同一安全 GET 通过 Accept 优先请求来源站点的 Markdown；按实际 Content-Type 分流，不额外请求或自动换 Provider。响应没有 Content-Type 时按正文开头识别（`%PDF-` 为 PDF，`<!doctype html>`/`<html>`/`<head>`/`<body>` 为 HTML），认不出仍按不支持类型拒绝；带了 Content-Type 的响应不做嗅探。原生 Markdown 保留来源表示（包括相对链接），不伪造未取得的标题/日期元数据；HTML 不支持协商时继续走原抽取链
 - GitHub `blob` 地址在本地 HTTP 首跳自动转换为 `raw.githubusercontent.com`，转换后的域名仍完整执行 URL/DNS 校验与 IP 钉扎；`web_read` 读取 HTML/文本，并在独立 30 MiB 单文件上限内保存通过类型检查的 PDF/CSV/XLSX 原文件（网页正文仍为 5 MiB，会话文件总量 50 MiB）；PDF 同时按页返回文字层，XLSX 交给 Shell（见下节）
 - 本地抓取每一跳都做 URL/DNS 校验，并用已校验 IP 建立连接；禁止改回 fetch 自动重定向
 - 当前读取路由可观察边界是 `failureKind`、`initialFailureKind`、`initialFailureStage`、`escalationReason` 和 `renderAttempted`；失败日志还会记录状态码、响应 MIME、最终 URL、重定向数、请求尝试次数和重试次数（不记录响应正文）。`initialFailureStage` 仅用于 `dom_canonicalization/readability` 抽取阶段。尚未记录每一跳 DNS 解析地址、代理 fake-IP 判定或 DNS/连接分段耗时，不得从现有日志推断这些事实
 - 兼容 TUN 代理 fake-IP：仅域名 DNS 结果允许 `198.18/15`，字面 fake-IP、内网地址及混入内网地址的解析结果仍拒绝
 - `WebPageRenderer` port 由 Electron main 显式注入 backend bundle；渲染 worker/runtime 禁止进入 backend bundle。默认渲染 provider 只在质量信号命中后惰性创建
-- 缓存路由身份 version 10 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略、误删折叠正文及 5 万字截断快照的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss
+- HTTP 请求地址或最终地址含显式 SPA 路由时，HTML 首页和协商返回的首页 Markdown 都须经客户端渲染才能作为目标页正文。普通页内锚点和已验证的下载文件沿用原读取方式。
+- ARIA 表格按行或单元格声明的列号定位，计算前面各行仍占用的列。未挂载的中间列标记为“未呈现”，显式索引相互冲突时按可确定的坐标列出已取得的内容。
+- 静态短文的屏障判断排除明确隐藏的控件。可读的同源 `srcdoc` 由浏览器内联，使用子文档有效基址解析附件，来源归于父页面。受阻的辅助框留有 `embedded_frame_blocked` 提示。
+- 缓存路由身份 version 17 包含渲染开关和选中 Reader，并使旧表格遗漏、旧纯文本抽取、旧 Accept 策略、误删折叠正文、5 万字截断快照、SPA hash 路由串页、渲染端非 2xx 错误页误接纳、动态页面局部信号漏升级、浏览器内采集（主区就绪/同源内联 iframe/受控滚动）之前，以及固定列与表头被当作浮层删除、正文充足的页面被误判登录墙或验证码时期的缓存自然 miss；同一路由固定请求表示偏好，条件请求仅复用该路由记录的 validator 和正文。开关渲染或切换 Reader 自然 miss，只替换 Key 不强制 miss；含非空 SPA hash 路由（`#/...`、`#!/...`）的页面，以及在 `local_http` 阶段出现同源内容 `iframe`（`embedded_same_origin_iframe`）、主区内联隐藏长正文（`hidden_main_content`）或半静态水合壳/超长 JSON-LD `articleBody`（`dynamic_content_pending`）的页均越过 `metadata_only` 并升级渲染一次；普通 `#section` 锚点、纯附件目录与仅含同站跨源 `iframe` 仍按原规则停在 `local_http`。JSON-LD `articleBody` 与内联隐藏文本绝不作为正文或写入 Evidence。
 
 ### 5.3 与 citations 的关系（V1：页级引用先行）
 
@@ -445,7 +456,7 @@ PDF、CSV、XLSX 通过同一安全 GET 取得，限额内自动保存到会话�
 
 Firecrawl `/scrape` 可在未来作为新的 BYOK 第三方网页解析 Provider 接入，与秘塔/Jina 同级；它不是零配置免费能力，也不改变 Linnya 默认的本地读取链路。当前不实现 `web_crawl`；若未来重新评估，多页编排仍必须与单页 `/scrape` 分开设计。
 
-Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例外：隐藏窗无 preload，启用 sandbox/contextIsolation/webSecurity、禁用 Node 集成；独立 session 拒绝权限、弹窗、下载、跨注册域导航和内网/回环子请求。每次任务拿到 HTML 后立即销毁远程页面，manager 只复用隔离 session，并限制并发与 idle 生命周期。DOM 提取不再固定等待一个不可解释的时长，也不再以 load 事件为前提：从主框架 DOM 就绪起，按可见正文稳定性、`document.readyState` 与页面 xhr/fetch 是否结束轮询，并受既有加载、渲染阶段与总墙钟上限约束；前端应用壳空白稳定不算就绪，在预算内仍未渲染出正文时报告 `app_shell_not_rendered`，Web 映射为 `js_required` 并在诊断中保留 `render=app_shell_not_rendered`，建议改查该页实际提供的原件、导出文件或接口链接（规则见[本地网页渲染](../../electron-main/web-render/README.md)）；该能力只返回 HTML/finalUrl 与主框架实际响应的状态码及挑战判定所需头，不暴露浏览器动作或 IPC 桥。主文档响应头命中访问挑战时，在正文交给页面前取消该响应并以 `access_challenge` 结束，挑战脚本不执行；`LocalRenderProvider` 仍按同一 Web 规则复核并归类为 `captcha`，渲染端的停止只是安全动作，不是分类来源。
+Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例外：隐藏窗无 preload，启用 sandbox/contextIsolation/webSecurity、禁用 Node 集成；独立 session 拒绝权限、弹窗、下载、跨注册域导航和内网/回环子请求；默认通过 `webPreferences.images = false` 关闭 Blink 图片加载（不触发 `img.onerror`），并在 `onBeforeRequest` 取消 `image`/`media`/`font` 请求作为纵深防护，减少内存与带宽消耗同时避免站点 `onerror` 删图丢失图片候选。每次任务采集完成后立即销毁远程页面，manager 只复用隔离 session，并限制并发与 idle 生命周期。浏览器就绪判断采用“主区感知就绪”：主区定义与 Node 侧共享，过滤外围导航/侧栏/弹窗及固定浮层，主区达实质长度（800 字）且高水位静默 700ms 即可提取（不受后台轮询和数字跳动拖死），未达实质长度时允许增长或数据请求在 8 秒上限内续期。就绪后按严格受控预算执行轻量增量滚动（最多 4 步、≤3 秒、主区达 15 万字即停），触发刹车停止时附带 `lazy_content_incomplete`（不复用 `truncated`）。采集触达节点或嵌套上限时附带 `capture_truncated`；这两个标记出现时，返回给模型的说明会明确“页面还有内容没有进入本次结果，列表和表格只是部分，不能据此断定某项不存在”。固定表头/固定列、满屏应用容器的归属与“浮层须真的挡住正文才算访问屏障”的规则见 `src/electron-main/web-render/README.md`。最终在只读克隆副本中按四步固定顺序采集 DOM：① 先判可见登录/人机遮罩并提前返回壁垒；② 保护明确关联的可展开折叠正文与 `<details>`；③ 按 `slot.assignedNodes({ flatten: true })` 展平开放 Shadow DOM 并内联同源正文 `iframe`（按子文档 URL 解析附件与内部相对路径，产出 `inlined_same_origin_iframe` 与有独立 HTTP 地址的 frame 资源，同站跨源 frame 仍只交付链接）；④ 执行计算样式剪枝（不按 `opacity: 0` 删除）与懒加载图片回填，异常时安全回退 `outerHTML`。该能力仅返回裁剪后 HTML、`finalUrl`、主响应事实及受控采集元数据，绝不接纳 JSON-LD `articleBody` 作为正文，不暴露浏览器动作或 IPC 桥。主文档响应头命中访问挑战时，在正文交给页面前取消该响应并以 `access_challenge` 结束，挑战脚本不执行；`LocalRenderProvider` 仍按同一 Web 规则复核并归类为 `captcha`，渲染端的停止只是安全动作，不是分类来源。
 
 #### 5.5.1 正文抽取器合同与差分验证
 
@@ -462,7 +473,7 @@ Electron 本地渲染是“外网页不进入产品窗口”原则的唯一例�
 - `WebDocument.resources` 由 Web Read provider 传递，经 `@app/schemas` 严格校验、文件缓存持久化，并在 observation 的动态不可信边界内展示；
 - 资源 URL 是页面外部内容，不是用户授权或可信操作指令。Renderer 或 Agent 若要读取它，必须重新经过 `web_read` 的 URL 策略和 Evidence 流程；
 - 当前只识别显式 DOI、全文/下载语义、常见文献仓库/正式来源链接。不要把页面所有链接暴露为“相关资源”，也不要在没有固定断言的情况下引入站点专用规则。
-- 如果正文抽取为空但页面仍提供标题、摘要或正式资源，Provider 返回成功结果并带 `metadata_only` flag；这表示“已取得页面元数据/资源，未取得正文”，不会伪装成正文成功，也不会反复升级同一 URL。没有资源的空页面仍按 `empty_content` 进入读取阶梯。
+- 如果正文抽取为空但页面仍提供标题、摘要或正式资源，Provider 返回成功结果并带 `metadata_only` flag；这表示“已取得页面元数据/资源，未取得正文”，不会伪装成正文成功，也不会反复升级同一 URL（除非同时命中明确的同源 `iframe`、主区隐藏待揭示正文或动态水合壳信号）。主区内可见尺寸、非广告/验证码的同源与同站跨源 `iframe` 均作为 `source` 资源交付；仅同源 `iframe` 在首跳触发升级信号，同站跨源 `iframe` 仅交付资源链接。没有资源的空页面仍按 `empty_content` 进入读取阶梯。
 - 短正文/质量不足进入后续读取后失败，保留此前实际发现的文件与数据资源：最多 8 条、总计约 6,000 字符（标签最多 200 字符，过长 URL 跳过而不截成新地址），全部放入失败消息的动态不可信边界。CSV/TSV 及明确的下载数据链接也可作为资源；不自动下载、换来源、分配目标 ref 或写成功 Evidence，失败不进入正文缓存。总预算 timeout 仍可交付这些线索，调用者取消不附恢复链接，策略拒绝不附资源。
 
 这一层吸收了成熟正文抽取器“正文与 metadata 独立”的经验，但不把候选库的正文选择逻辑整体移入生产。landing page 的后续扩展应先以标题、摘要、作者、日期、DOI、全文链接和正式来源链接的冻结断言验证，再决定是否新增页面角色。
@@ -510,8 +521,8 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 ### 5.10 失败内容与工具错误码
 
 - HTTP 失败的 `bodyText`、`statusText`，以及供应商 JSON / MCP 错误中的 `message/detail` 都是不可信外部内容，不能拼入工具异常、observation、RuntimeEvent、审计或日志。错误文案由 Web owner 的固定模板与数值状态生成；成功网页正文仍走现有动态不可信边界。
-- 挑战页识别只在 HTTP 响应边界读取响应头与有限正文，错误对象仅保留 `challengeSignal`（`aws_waf_challenge/aws_waf_captcha/cloudflare_challenge/page_marker`），不携带 `bodyPreview` 或原始头值。重试与读取阶梯复用该判定；阶段包装把 HTTP 状态提升到顶层后，已确认的挑战信号仍先于 403/404 状态归类，不能为删正文或补诊断而丢失 captcha 分类或改变升级规则。诊断以 `challenge=<signal>` 展示信号，恢复建议明确工具不执行或绕过验证。
-- `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 通常与 `kind` 一致；唯一例外是 `kind=managed_disabled` 且结构化根因已确定为 `captcha/http_403/login_required`，此时 code 保留该访问拦截根因。读取阶梯与诊断仍保留 `managed_disabled`，不改变升级/重试规则；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
+- 挑战页识别只在 HTTP 响应边界读取响应头与有限正文，错误对象仅保留 `challengeSignal`（`aws_waf_challenge/aws_waf_captcha/cloudflare_challenge/page_marker/js_verification`），不携带 `bodyPreview` 或原始头值。其中 412/521 仅在响应体同时出现明确访问验证关键词或 `<script>` Cookie-重载校验特征时归为挑战（412/521 排除泛化的 `cloudflare` 关键词，避免 Cloudflare 521 源站宕机页误判；裸 412/521 保持 `http_error` / `http_5xx` 与原有重试策略）。`LocalRenderProvider` 在抽取正文前同样执行主响应挑战与非 2xx 状态分类（403/404/401/429/5xx 等），长错误页不得写入 Evidence。阶段包装把 HTTP 状态提升到顶层后，已确认的挑战信号以及显式 `login_required`/`captcha` 仍先于 `403/404` 状态归类，不能为删正文或补诊断而丢失拦截根因或改变升级规则。诊断以 `challenge=<signal>` 展示信号，恢复建议明确工具不执行或绕过验证。
+- `WebHttpError` 通过既有分类函数暴露只读 `code`，`WebFailureError.code` 通常与 `kind` 一致；唯一例外是 `kind=managed_disabled` 且失败链结构化细节中已确定访问拦截根因（`captcha/login_required` 优先于笼统 `http_403`），此时 code 与阶梯归因即使遇到渲染不可用等次级失败也保留该访问拦截根因。读取阶梯与诊断仍保留 `managed_disabled`，不改变升级/重试规则；Host ToolRegistry 只转交通用错误合同，不理解 Web 枚举。运行时的 `errorKind=execution` 与 owner 的 `error_code` 分别保留，不能互相覆盖。
 - 无内容失败不能写成功 Evidence；401 不因错误文案或状态码而自动交给第三方 Reader。错误安全不新增 fallback、审计开关或新的导出协议。
 - 安全诊断统一由 `shared/webFailure.ts` 投影：保留实际执行阶段（search/local_http/local_render/managed_reader/read_ladder）、已知首跳/前跳 kind、抽取阶段、本地渲染具体 kind、HTTP/RPC 数值状态及尝试次数。另保留已知 Retry-After 毫秒值、重试停止原因（非瞬态/次数已用尽/等待超限/预算不足）、超限或正文下载超时时实际已收字节、上限及声明 Content-Length、是否已尝试本机渲染（`render_attempted`）、质量不足时实际取得的正文字符数（`extracted_chars`），以及本地渲染主框架加载失败的 Chromium 数值错误码（`net_error`）和脚本/样式表下载失败次数与首个合法错误名（`subresource_failures`、`subresource_error`）。声明长度可能对应压缩传输，不能当完整解压大小。模型收到的持久工具错误附同源诊断；后端日志复用同一投影，不要求 Audit 开启，也不从正文复原字段。`max_chars` 不扩大下载预算。
 - 本地渲染主框架加载失败（`load_failed`）按 Chromium 错误码归类：`-20`（本地 URL/DNS 准入拦截）为 `policy_denied`；`≤ -100`（连接、TLS、证书、HTTP 协议、DNS）为 `network_error`，建议说明站点或本机网络路径问题；其余（如 `-3` 导航中止）仍为渲染能力失败。应用壳未渲染或 DOM 未就绪时若有脚本/样式表下载失败，建议改为网络或站点暂时问题，不再断言重复读取无效。
@@ -669,6 +680,9 @@ composition 必须显式传同一 `cacheRuntime`。`WebReadTool` 原样传递读
 - `src/tools/web/__tests__/webEvidenceBoundary.test.ts`
 - `src/tools/web/__tests__/jinaReaderProvider.integration.test.ts`
 - `src/tools/web/__tests__/extractArticle.test.ts`
+- `src/tools/web/webread/extraction/normalizeStructuredDom.test.ts`
+- `src/tools/web/webread/extraction/renderReadableMarkdown.test.ts`
+- `src/tools/web/webread/functions/assessWebReadQuality.test.ts`
 - `src/tools/web/__tests__/localHttpProvider.integration.test.ts`
 - `src/tools/web/__tests__/webCacheInfrastructure.test.ts`
 - `src/tools/web/__tests__/webCacheBusiness.integration.test.ts`
@@ -727,3 +741,5 @@ pnpm -s benchmark:web-acquisition analyze --batch <批次目录>
 - **Renderer message snapshot**：`apps/renderer/domains/conversation/features/citation-presentation/`
 - **Popover**：`apps/renderer/domains/conversation/ui/message/components/citation/ConversationCitationPopover.vue`
 - **编辑器 CitationMark**：`apps/renderer/domains/editor/features/citation/marks/CitationMark.ts`
+
+网页可靠性基准按可见正文核对字数、关键词和正文断言，链接目的地单独核对。公告列表的定向检查要求日期和详情链接出现在同一条目。Chromium 报告同时列出逐次结果及按去重 URL 统计的稳定覆盖（同一地址的各次读取全部通过）。

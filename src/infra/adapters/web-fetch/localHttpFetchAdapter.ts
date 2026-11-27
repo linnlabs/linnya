@@ -151,6 +151,20 @@ function decodeBody(response: WebHttpResponse): { bodyText: string; charset: str
   };
 }
 
+const HTML_LEADING_TAG_PATTERN = /^(?:<!doctype\s+html|<html[\s>]|<head[\s>]|<body[\s>])/i;
+
+/**
+ * 响应没有 Content-Type 时按内容判断类型。RFC 9110 §8.3 允许接收方在缺失时检查数据；
+ * 浏览器对同样的响应会按 HTML 渲染，这里只认开头明确的 HTML 文档与 PDF 文件头，其余仍按未知二进制处理。
+ * 服务器明确声明了类型时不走这里，不覆盖声明。
+ */
+function sniffMissingContentType(bodyData: Uint8Array): string {
+  const head = Buffer.from(bodyData.subarray(0, 512)).toString('latin1').replace(/^\u00ef\u00bb\u00bf/, '').trimStart();
+  if (head.startsWith('%PDF-')) return 'application/pdf';
+  if (HTML_LEADING_TAG_PATTERN.test(head)) return 'text/html';
+  return 'application/octet-stream';
+}
+
 function readMimeType(contentType: string): string {
   return (contentType.split(';', 1)[0] ?? '').trim().toLowerCase() || 'application/octet-stream';
 }
@@ -407,7 +421,7 @@ export async function localHttpFetch(
         retryStopReason: retryStopReason(upstreamError, retryCount),
       });
     }
-    const contentType = response.headers.get('content-type')?.trim() || 'application/octet-stream';
+    const contentType = response.headers.get('content-type')?.trim() || sniffMissingContentType(response.bodyData);
     const decoded = decodeBody(response);
     const result: LocalHttpFetchResult = {
       notModified: false,

@@ -181,3 +181,5 @@ Renderer 投影入口见 [Message Projection README](../../../apps/renderer/doma
 ## Web 原文件来源
 
 Web 在限额内取得 PDF/CSV/XLSX 后仍按 canonical URL 分配 ref。Citation 的 snippet 保存明确标注的文件身份说明（取得时间、大小和 SHA-256），不伪装成原文摘录；结构化取得事实由 Web 工具回执拥有。页码由正文表述，不自动认证。Markdown 持久化同一来源快照，不依赖会话工作副本永久存在；ref 是来源 URL 身份，不是文件版本号。
+
+`normalizeCitationWebUrl` 是 Web producer 与 Markdown 链接水合共用的 URL 身份归一规则：普通页内锚点（`#section`、`#:~:text=...`、空 `#`）以及 SPA 根壳碎片（`#/`、`#!/`）在规范化时剥离并复用原网页 ref；以 `#/...`、`#!/...` 表示的非空 SPA hash 路由视为独立页面身份保留（规范化末尾斜杠、剥离二级子锚点与内部追踪查询参数），防止同站不同 SPA 路由页在缓存与引用中串页。

@@ -82,6 +82,19 @@ describe('LocalHttpProvider 本地真实 HTTP 集成', () => {
         response.end('opaque body');
         return;
       }
+      if (request.url === '/no-content-type-html') {
+        // Node 不会自动补 Content-Type：模拟间歇不带该头的站点。
+        response.writeHead(200);
+        response.end(
+          `\uFEFF\n<!DOCTYPE html><html><head><title>No Type Article</title></head><body><article><h1>No Type Article</h1><p>${'没有内容类型头的正文。'.repeat(40)}</p></article></body></html>`
+        );
+        return;
+      }
+      if (request.url === '/no-content-type-binary') {
+        response.writeHead(200);
+        response.end(Buffer.from([0x00, 0x01, 0x02, 0x03, 0xff, 0xfe]));
+        return;
+      }
       if (request.url === '/pdf') {
         response.writeHead(200, { 'Content-Type': 'application/pdf' });
         response.end('%PDF-1.7\nfixture\n%%EOF');
@@ -139,6 +152,16 @@ describe('LocalHttpProvider 本地真实 HTTP 集成', () => {
     expect(failure).toMatchObject({ kind: 'unsupported_mime' });
     if (!(failure instanceof Error)) throw new Error('missing unsupported type error');
     expect(failure.message).not.toContain('ignore prior instructions');
+  });
+
+  it('响应缺少 Content-Type 时按正文开头识别 HTML，认不出的仍按不支持类型拒绝', async () => {
+    const provider = new LocalHttpProvider({ resolveHost: resolveFixtureHost });
+    const result = await provider.read({ url: `http://provider.test:${port}/no-content-type-html` });
+    expect(result).toMatchObject({ title: 'No Type Article', extractor: 'readability', contentType: 'text/html' });
+    expect(result.content).toContain('没有内容类型头的正文');
+    const failure = await provider.read({ url: `http://provider.test:${port}/no-content-type-binary` })
+      .catch((error: unknown) => error);
+    expect(failure).toMatchObject({ kind: 'unsupported_mime' });
   });
 
   it('真实贯通 GET 抓取、HTML 抽取和统一 Provider 结果', async () => {

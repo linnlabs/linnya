@@ -4,6 +4,8 @@ export interface WebPageRenderWindowOptions {
   readonly partition: string;
 }
 
+export type WebPageRenderNavigationTrigger = 'navigate' | 'redirect';
+
 export interface WebPageRenderWindow {
   loadURL(url: string): Promise<void>;
   executeJavaScript(script: string): Promise<unknown>;
@@ -11,8 +13,9 @@ export interface WebPageRenderWindow {
   isDestroyed(): boolean;
   destroy(): void;
   installNavigationGuards(
-    isAllowed: (url: string) => boolean,
+    isAllowed: (url: string, trigger: WebPageRenderNavigationTrigger) => boolean,
     onBlocked: (url: string) => void,
+    onDidNavigate?: (url: string) => void,
   ): () => void;
   onClosed(listener: () => void): () => void;
   onRenderProcessGone(listener: (reason: string) => void): () => void;

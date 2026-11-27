@@ -14,6 +14,7 @@ export const WEB_ACCESS_CHALLENGE_SIGNAL_VALUES = [
   'aws_waf_captcha',
   'cloudflare_challenge',
   'page_marker',
+  'js_verification',
 ] as const;
 export type WebAccessChallengeSignal = (typeof WEB_ACCESS_CHALLENGE_SIGNAL_VALUES)[number];
 
@@ -84,6 +85,37 @@ const CHALLENGE_PAGE_MARKERS = [
   /人机验证|安全验证|访问验证|验证码/,
 ] as const;
 
+// 412/521 上排除泛化的 cloudflare 词条，避免 Cloudflare "521 Web server is down" 源站宕机页误判为访问校验。
+const JS_VERIFICATION_PAGE_MARKERS = [
+  /captcha/i,
+  /verify\s+(?:you|that)\s+you(?:'re| are)\s+human/i,
+  /human\s+verification/i,
+  /access\s+(?:verification|challenge)/i,
+  /challenge-platform/i,
+  /huawei\s*cloud\s*waf/i,
+  /人机验证|安全验证|访问验证|验证码/,
+] as const;
+
+const JS_VERIFICATION_RELOAD_PATTERN =
+  /location\.(?:reload|replace|assign|href)|window\.location|document\.location|history\.go\s*\(\s*0\s*\)/i;
+const JS_VERIFICATION_TOKEN_PATTERN = /__jsl_clearance|__jsluid|acw_sc__v2/i;
+const META_REFRESH_PATTERN = /<meta[^>]+http-equiv\s*=\s*["']?refresh["']?/i;
+
+function detectJsVerificationChallenge(
+  status: number | undefined,
+  bodyPreview: string | undefined,
+): WebAccessChallengeSignal | undefined {
+  if (bodyPreview === undefined || (status !== 412 && status !== 521)) return undefined;
+  if (JS_VERIFICATION_PAGE_MARKERS.some(marker => marker.test(bodyPreview))) return 'page_marker';
+  if (!/<script\b/i.test(bodyPreview)) return undefined;
+  const hasCookieReload =
+    /document\.cookie/i.test(bodyPreview) && JS_VERIFICATION_RELOAD_PATTERN.test(bodyPreview);
+  if (hasCookieReload || JS_VERIFICATION_TOKEN_PATTERN.test(bodyPreview) || META_REFRESH_PATTERN.test(bodyPreview)) {
+    return 'js_verification';
+  }
+  return undefined;
+}
+
 /** 仅凭状态码不足以断定挑战；必须同时出现有限的结构化页面特征。 */
 export function isWebChallengeResponse(
   status: number | undefined,
@@ -101,5 +133,6 @@ export function detectWebAccessChallenge(response: {
 }): WebAccessChallengeSignal | undefined {
   const headerSignal = response.headers ? detectWebAccessChallengeHeader(response.headers) : undefined;
   if (headerSignal) return headerSignal;
-  return isWebChallengeResponse(response.status, response.bodyPreview) ? 'page_marker' : undefined;
+  if (isWebChallengeResponse(response.status, response.bodyPreview)) return 'page_marker';
+  return detectJsVerificationChallenge(response.status, response.bodyPreview);
 }

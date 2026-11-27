@@ -1,4 +1,11 @@
 import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
+import { normalizeExtractedText } from './extractSemanticDom';
+import { normalizeAriaTables, unwrapLayoutTables } from './normalizeStructuredDom';
+import {
+  READABLE_CONTROL_SELECTOR,
+  READABLE_HIDDEN_SELECTOR,
+  READABLE_MAIN_SELECTOR,
+} from '../render-capture/definitions/renderCaptureContract';
 
 const EXCLUDED_SELECTOR = [
   'script', 'style', 'noscript', 'template', 'iframe', 'object', 'embed',
@@ -7,9 +14,16 @@ const EXCLUDED_SELECTOR = [
   'input[type="hidden" i]',
 ].join(', ');
 
-const HIDDEN_SELECTOR = '[hidden], [aria-hidden="true" i]';
-const MAIN_SELECTOR = 'article, main, [role="main"]';
-const CONTROL_SELECTOR = 'button, [role="button"]';
+const HIDDEN_SELECTOR = READABLE_HIDDEN_SELECTOR;
+const MAIN_SELECTOR = READABLE_MAIN_SELECTOR;
+const CONTROL_SELECTOR = READABLE_CONTROL_SELECTOR;
+const HIDDEN_METRIC_IGNORED_CHROME_SELECTOR =
+  'header, [role="banner"], [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
+
+export interface PrepareReadableDocumentMetrics {
+  readonly hiddenMainTextLength: number;
+  readonly hasPendingCodeExample: boolean;
+}
 
 function isHiddenStyle(declaration: string): boolean {
   const separator = declaration.indexOf(':');
@@ -19,16 +33,23 @@ function isHiddenStyle(declaration: string): boolean {
     || (property === 'visibility' && (value === 'hidden' || value === 'collapse'));
 }
 
-function hasHiddenStyle(element: Element): boolean {
+export function hasHiddenInlineStyle(element: Element): boolean {
   return (element.getAttribute('style') ?? '').split(';').some(isHiddenStyle);
 }
 
-function isVisibleControl(control: Element): boolean {
-  if (control.matches('[disabled], [aria-disabled="true" i]')) return false;
-  for (let node: Element | null = control; node; node = node.parentElement) {
-    if (node.matches(HIDDEN_SELECTOR) || hasHiddenStyle(node)) return false;
+function hasAncestorInSet(element: Element, candidates: ReadonlySet<Element>): boolean {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    if (candidates.has(parent)) return true;
   }
-  return true;
+  return false;
+}
+
+/** 静态 DOM 只能识别明确隐藏的节点及其祖先，外部 CSS 的实际布局由渲染端判断。 */
+export function isExplicitlyHidden(element: Element): boolean {
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    if (node.matches(`${HIDDEN_SELECTOR}, [inert], input[type="hidden" i]`) || hasHiddenInlineStyle(node)) return true;
+  }
+  return false;
 }
 
 function hasReadMoreName(element: Element): boolean {
@@ -41,7 +62,7 @@ function expandReadableDisclosures(document: Document): void {
   const targets = new Set<Element>();
   for (const control of document.querySelectorAll(CONTROL_SELECTOR)) {
     const main = control.closest(MAIN_SELECTOR);
-    if (!main || !isVisibleControl(control)) continue;
+    if (!main || control.matches('[disabled], [aria-disabled="true" i]') || isExplicitlyHidden(control)) continue;
     if (control.getAttribute('aria-expanded') === 'false') {
       for (const id of (control.getAttribute('aria-controls') ?? '').split(/\s+/).filter(Boolean)) {
         const target = document.getElementById(id);
@@ -67,6 +88,30 @@ function expandReadableDisclosures(document: Document): void {
   }
 }
 
+/**
+ * 浏览器代码编辑器通常只把示例保存在可编辑的 div 中，Readability 会把
+ * 这类控件当作交互外壳而丢弃。将已有的逐行 DOM 规范化成 pre/code，保留
+ * 代码文本，不执行或信任编辑器里的属性和脚本。
+ */
+function normalizeCodeEditors(document: Document): void {
+  for (const editor of document.querySelectorAll('.cm-editor .cm-content')) {
+    if (!editor.closest(MAIN_SELECTOR) || editor.closest('pre, code')) continue;
+    const lines = [...editor.children];
+    // CodeMirror 的占位块可能跨越尚未挂载的行，不能跨过它拼接两段源码。
+    if (!lines.length || !lines.every(line => line.classList.contains('cm-line'))) continue;
+    const text = lines.map(line => line.textContent ?? '').join('\n');
+    if (!text.trim()) continue;
+
+    const code = document.createElement('code');
+    const language = editor.getAttribute('data-language');
+    if (language) code.setAttribute('data-language', language);
+    code.textContent = text;
+    const pre = document.createElement('pre');
+    pre.appendChild(code);
+    editor.replaceWith(pre);
+  }
+}
+
 function resolveContentUrl(value: string, baseUrl?: string): string | undefined {
   try {
     return assertAllowedWebUrl(new URL(value, baseUrl).href).href;
@@ -78,19 +123,47 @@ function resolveContentUrl(value: string, baseUrl?: string): string | undefined 
 }
 
 /** 两条抽取路径共用可见性与链接规则，避免增强抽取器失败时把隐藏旧值当正文。 */
-export function prepareReadableDocument(document: Document, finalUrl?: string): void {
+export function prepareReadableDocument(
+  document: Document,
+  finalUrl?: string,
+): PrepareReadableDocumentMetrics {
   const declaredBase = document.querySelector('base[href]')?.getAttribute('href');
   const baseUrl = (declaredBase ? resolveContentUrl(declaredBase, finalUrl) : undefined) ?? finalUrl;
   for (const element of document.querySelectorAll(EXCLUDED_SELECTOR)) element.remove();
   expandReadableDisclosures(document);
   for (const element of document.querySelectorAll(HIDDEN_SELECTOR)) element.remove();
-  for (const element of document.querySelectorAll('[style]')) {
-    if (hasHiddenStyle(element)) element.remove();
+
+  // 先统计被内联隐藏的主区/正文区可见字符量（排除弹窗与顶栏，按最外层隐藏节点去重），
+  // 再全部移除，保证隐藏文本绝不进入任何抽取结果，同时给动态揭示容器留下升级信号。
+  const inlineHiddenElements = [...document.querySelectorAll('[style]')].filter(hasHiddenInlineStyle);
+  const inlineHiddenSet = new Set<Element>(inlineHiddenElements);
+  const hasMainRegion = document.querySelector(MAIN_SELECTOR) !== null;
+  let hiddenMainTextLength = 0;
+  for (const element of inlineHiddenElements) {
+    if (hasAncestorInSet(element, inlineHiddenSet)) continue;
+    if (element.closest(HIDDEN_METRIC_IGNORED_CHROME_SELECTOR)) continue;
+    const insideMain = element.closest(MAIN_SELECTOR) !== null;
+    if (insideMain || (!hasMainRegion && element.closest('body') !== null)) {
+      hiddenMainTextLength += normalizeExtractedText(element.textContent).length;
+    }
   }
+  for (const element of inlineHiddenElements) element.remove();
+
+  normalizeCodeEditors(document);
+
   for (const element of document.querySelectorAll('a[href], img[src]')) {
     const attribute = element.tagName === 'A' ? 'href' : 'src';
     const resolved = resolveContentUrl(element.getAttribute(attribute) ?? '', baseUrl);
     if (resolved) element.setAttribute(attribute, resolved);
     else element.removeAttribute(attribute);
   }
+  unwrapLayoutTables(document);
+  normalizeAriaTables(document);
+  // 空自定义元素必须在已清理的主区内，且声明了源文件名；文件地址不会被主动请求。
+  const hasPendingCodeExample = [...document.querySelectorAll('[filename]')].some(element =>
+    element.localName.includes('-') && element.closest(MAIN_SELECTOR)
+    && !element.closest(`${HIDDEN_METRIC_IGNORED_CHROME_SELECTOR}, pre, code`)
+    && /\.(?:[cm]?[jt]sx?|py|css|html|json)$/i.test(element.getAttribute('filename') ?? '')
+    && !element.firstElementChild && !element.textContent?.trim());
+  return { hiddenMainTextLength, hasPendingCodeExample };
 }

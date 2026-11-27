@@ -19,7 +19,14 @@ const logger = new Logger('WebReadCache');
 // 继续返回旧算法结果。
 // 10：快照保存上限从 5 万字提高到 50 万字，旧条目可能在 5 万字处截断。
 // 11：保存正文主要图片候选与页面版权声明，旧条目没有这两项。
-const WEB_READ_CACHE_ROUTE_VERSION = 11;
+// 12：保留 SPA hash 路由身份、校验渲染主响应状态，旧条目可能存在串页或非 2xx 误缓存。
+// 13：新增同源 iframe、主区隐藏容器与半静态壳升级信号，以及渲染提交前跨站 HTTP 重定向支持。
+// 14：渲染改为浏览器内采集，新增布局表展平、ARIA 表格、代码语言与公式保留。
+// 15：固定表头/固定列与定位应用容器不再被当作外围删除，登录与验证码屏障只在正文确实被挡住时判定，
+//     旧条目可能缺表格列或把可读页面记成访问受阻。
+// 16：HTTP 首页不能代表重定向后的客户端路由；旧正文也可能遗漏内嵌内容或错置虚拟表格列。
+// 17：旧快照可能缺少嵌入示例代码，或只有门户的布局模板。
+const WEB_READ_CACHE_ROUTE_VERSION = 17;
 const DEFAULT_LOCAL_PROVIDER_IDENTITY = 'local_http';
 const DEFAULT_RENDER_PROVIDER_IDENTITY = 'local_render';
 

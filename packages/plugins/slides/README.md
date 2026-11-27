@@ -245,6 +245,8 @@ host 不复制 presentation 字段。
 - `ThemeSpec.fonts.major/minor` 当前是单字体声明。生成 PPTX 时必须由 `engine/pptx`
   统一写入 theme 的 `latin/ea/cs/Hans` 槽位，不能只依赖 PptxGenJS 的 Latin 输出，也不能在
   structured/freeform compiler 各自修补。
+- 设计技能和质量检查不给固定版式：不提供版式函数、坐标模板、灰稿或版式编号，也不规定“几成页面要有图”“必须有呼吸页”这类配额；骨架分布等多样性指标只观察，不设门槛。构图由每页要表达的关系和视觉主角推出，放不下就换构图或拆页，不为凑构图增删内容。原因是固定版式会让 Agent 为填版式而删改内容，早期自动布局链正因此退役（见 [backend/engine](./src/backend/engine/README.md)）。版式与图片手法只写成文字参考并注明“仅供参考，不是约束”，进技能前先做有无对照实验。同理不内置纹样库或装饰素材包，技能只教按题材从实物找图形。
+- 仓库里的样例、测试数据和对外展示案例只用可商用图片；用户文稿的署名引用规则由技能 [`references/assets.md`](./resources/skills/slides-design/references/assets.md) 负责。
 - 直接 PPTX 文档导入目前没有对外 IPC 入口；`slides:template-import`
   只服务模板上传。重新接入文档导入前，需要先补 imported deck 到 Konva
   render-model 的保真验收。

@@ -139,7 +139,7 @@ const WebReadDataObjectSchema = z.object({
   initialFailureKind: WebFailureKindSchema.optional(),
   initialFailureStage: WebExtractionFailureStageSchema.optional(),
   /** 提取器启发式信号，不代表来源可信度或全文完整性。 */
-  warnings: z.array(WebDocumentWarningSchema).max(8).optional(),
+  warnings: z.array(WebDocumentWarningSchema).max(16).optional(),
   resources: z.array(WebPageResourceSchema).max(16).optional(),
   /** 网页上的主要图片候选（最多 8 张）与页面版权声明；下载用 web_read 读图片地址。 */
   images: z.array(WebPageImageSchema).max(WEB_PAGE_IMAGES_MAX).optional(),

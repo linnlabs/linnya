@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { isAllowedRenderNavigation } from './isAllowedRenderNavigation';
+import {
+  isAllowedPreCommitRedirectTarget,
+  isAllowedRenderNavigation,
+} from './isAllowedRenderNavigation';
 
 describe('Web 渲染站点导航', () => {
   it.each([
@@ -31,5 +34,17 @@ describe('Web 渲染站点导航', () => {
     expect(isAllowedRenderNavigation('https://first.blogspot.com', 'https://second.blogspot.com')).toBe(false);
     expect(isAllowedRenderNavigation('https://8.8.8.8', 'https://8.8.8.8/path')).toBe(false);
     expect(isAllowedRenderNavigation('https://localhost', 'https://localhost/path')).toBe(false);
+  });
+
+  it('isAllowedPreCommitRedirectTarget 只放行具备公共注册域的 HTTP(S) 目标', () => {
+    expect(isAllowedPreCommitRedirectTarget('https://target.example.org/doc')).toBe(true);
+    expect(isAllowedPreCommitRedirectTarget('https://sub.gov.co.uk/notice')).toBe(true);
+    expect(isAllowedPreCommitRedirectTarget('about:blank')).toBe(false);
+    expect(isAllowedPreCommitRedirectTarget('http://localhost/path')).toBe(false);
+    expect(isAllowedPreCommitRedirectTarget('http://127.0.0.1/path')).toBe(false);
+    expect(isAllowedPreCommitRedirectTarget('https://8.8.8.8/path')).toBe(false);
+    expect(isAllowedPreCommitRedirectTarget('https://user:pass@target.example.org/doc')).toBe(false);
+    expect(isAllowedPreCommitRedirectTarget('file:///etc/passwd')).toBe(false);
+    expect(isAllowedPreCommitRedirectTarget('javascript:alert(1)')).toBe(false);
   });
 });

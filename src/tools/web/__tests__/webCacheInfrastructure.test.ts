@@ -107,6 +107,13 @@ describe('Web M4 缓存基础合同', () => {
       url: 'https://example.com/article',
       route: { version: 2, providers: ['local_http', 'local_render', 'managed_default'] },
     }));
+    expect(createWebDocumentCacheKey({
+      url: 'https://gov.example.test/#/notice/a',
+      route: localRoute,
+    })).not.toBe(createWebDocumentCacheKey({
+      url: 'https://gov.example.test/#/notice/b',
+      route: localRoute,
+    }));
   });
 
   it('文件缓存跨实例命中，过期后保留 stale 内容供条件请求复用', async () => {

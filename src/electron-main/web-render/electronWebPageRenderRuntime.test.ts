@@ -1,3 +1,4 @@
+import { BrowserWindow } from 'electron';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { assertAllowedWebUrl, resolveAndAssertPublicHost } from '../../tools/web/shared/urlPolicy';
 import { createElectronWebPageRenderRuntime } from './electronWebPageRenderRuntime';
@@ -18,11 +19,32 @@ const state = vi.hoisted((): {
     callback: (response: { cancel: boolean }) => void,
   ) => void) | null;
   headersReceived: HeadersReceivedListener | null;
-  dataListeners: Record<string, ((details: { id: number; resourceType: string; error?: string }) => void) | null>;
+  dataListeners: Record<string, ((details: {
+    id: number;
+    resourceType: string;
+    error?: string;
+    requestHeaders?: Record<string, string | string[]>;
+  }) => void) | null>;
 } => ({ beforeRequest: null, headersReceived: null, dataListeners: {} }));
 
 vi.mock('electron', () => ({
-  BrowserWindow: vi.fn(),
+  BrowserWindow: vi.fn(function mockWindow() {
+    return {
+      loadURL: vi.fn(),
+      isDestroyed: () => false,
+      destroy: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+      webContents: {
+        mainFrame: { executeJavaScript: vi.fn() },
+        getURL: () => '',
+        isDestroyed: () => false,
+        on: vi.fn(),
+        off: vi.fn(),
+        setWindowOpenHandler: vi.fn(),
+      },
+    };
+  }),
   session: {
     fromPartition: () => ({
       clearStorageData: vi.fn().mockResolvedValue(undefined),
@@ -51,7 +73,10 @@ vi.mock('electron', () => ({
   },
 }));
 
-async function request(url: string, resourceType = 'mainFrame'): Promise<{ cancel: boolean }> {
+async function request(
+  url: string,
+  resourceType = 'mainFrame',
+): Promise<{ cancel: boolean }> {
   const beforeRequest = state.beforeRequest;
   if (!beforeRequest) throw new Error('Security guards not installed');
   return new Promise(resolve => beforeRequest({ url, resourceType }, resolve));
@@ -107,6 +132,34 @@ describe('渲染请求 URL/DNS 准入', () => {
     await session.clearStorageData();
     expect(await request('https://example.com/two', 'script')).toEqual({ cancel: false });
     expect(validateRequestUrl).toHaveBeenCalledTimes(3);
+  });
+
+  it('默认启用 images=false 并在请求层取消 image/media/font，同时保持主框架/脚本准入；关闭时恢复 images=true', async () => {
+    const validateRequestUrl = vi.fn(async () => undefined);
+    const runtime = createElectronWebPageRenderRuntime({ validateRequestUrl });
+    runtime.createWindow({ partition: 'test-part' });
+    expect(vi.mocked(BrowserWindow)).toHaveBeenLastCalledWith(expect.objectContaining({
+      webPreferences: expect.objectContaining({ images: false }),
+    }));
+    const session = runtime.createSession('test');
+    session.installSecurityGuards();
+
+    expect(await request('https://cdn.example.com/hero.jpg', 'image')).toEqual({ cancel: true });
+    expect(await request('https://cdn.example.com/video.mp4', 'media')).toEqual({ cancel: true });
+    expect(await request('https://cdn.example.com/font.woff2', 'font')).toEqual({ cancel: true });
+    expect(validateRequestUrl).not.toHaveBeenCalled();
+
+    expect(await request('https://example.com/app.js', 'script')).toEqual({ cancel: false });
+    expect(validateRequestUrl).toHaveBeenCalledTimes(1);
+
+    const optOutRuntime = createElectronWebPageRenderRuntime({
+      validateRequestUrl,
+      blockHeavyResources: false,
+    });
+    optOutRuntime.createWindow({ partition: 'test-optout' });
+    expect(vi.mocked(BrowserWindow)).toHaveBeenLastCalledWith(expect.objectContaining({
+      webPreferences: expect.objectContaining({ images: true }),
+    }));
   });
 });
 
@@ -173,6 +226,12 @@ describe('子资源观察', () => {
     state.dataListeners.errorOccurred?.({ id: 3, resourceType: 'script', error: 'net::ERR_SSL_PROTOCOL_ERROR' });
     state.dataListeners.errorOccurred?.({ id: 4, resourceType: 'stylesheet', error: 'net::ERR_CONNECTION_CLOSED' });
     state.dataListeners.errorOccurred?.({ id: 5, resourceType: 'image', error: 'net::ERR_FAILED' });
+    state.dataListeners.sendHeaders?.({
+      id: 6,
+      resourceType: 'xhr',
+      requestHeaders: { Accept: 'text/event-stream' },
+    });
+    state.dataListeners.completed?.({ id: 6, resourceType: 'xhr' });
 
     expect(events).toEqual([
       { id: 1, category: 'data', phase: 'started' },

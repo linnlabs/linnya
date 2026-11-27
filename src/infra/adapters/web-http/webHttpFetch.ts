@@ -139,11 +139,11 @@ export function createWebUpstreamHttpError(provider: string, response: WebHttpRe
         ? 'http_5xx'
         : 'http_error';
   // 失败正文与 statusText 同样不可信；只在响应边界判定挑战，不把原文挂入异常链。
-  // 厂商响应头可出现在 2xx（如 AWS WAF 202）或非 2xx 上，正文标记只补充 403/419/429。
+  // 厂商响应头可出现在 2xx（如 AWS WAF 202）或非 2xx 上，正文标记只补充 403/419/429 与 412/521。
   const challengeSignal = detectWebAccessChallenge({
     status: response.status,
     headers: response.headers,
-    bodyPreview: response.bodyText.trim().slice(0, 512),
+    bodyPreview: response.bodyText.trim().slice(0, 4_096),
   });
   return new WebHttpError(
     kind,

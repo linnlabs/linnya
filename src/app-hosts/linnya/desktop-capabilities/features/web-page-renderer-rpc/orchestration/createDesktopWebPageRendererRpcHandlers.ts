@@ -37,6 +37,21 @@ export function createDesktopWebPageRendererRpcHandlers(input: {
             html: result.html,
             final_url: result.finalUrl,
             main_response: copyWebPageMainResponse(result.mainResponse),
+            ...(result.capture
+              ? {
+                  capture: {
+                    ...(result.capture.accessBarrier
+                      ? { access_barrier: result.capture.accessBarrier }
+                      : {}),
+                    ...(result.capture.warnings && result.capture.warnings.length > 0
+                      ? { warnings: result.capture.warnings }
+                      : {}),
+                    ...(result.capture.inlinedFrameResources && result.capture.inlinedFrameResources.length > 0
+                      ? { inlined_frame_resources: result.capture.inlinedFrameResources }
+                      : {}),
+                  },
+                }
+              : {}),
           },
         });
       } catch (error: unknown) {

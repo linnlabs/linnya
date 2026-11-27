@@ -1,11 +1,12 @@
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, symlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { desktopEsbuildTargets } from '../../build/definitions/desktopEsbuildTargets.mjs';
 
 const require = createRequire(import.meta.url);
 const electronPath = require('electron');
@@ -14,6 +15,7 @@ const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'linnya-web-render-e2e-'))
 const bundlePath = path.join(tempRoot, 'electron-entry.cjs');
 
 try {
+  await symlink(path.join(repoRoot, 'node_modules'), path.join(tempRoot, 'node_modules'));
   await build({
     entryPoints: [path.join(repoRoot, 'scripts/e2e/web-render/electron-entry.ts')],
     outfile: bundlePath,
@@ -21,7 +23,7 @@ try {
     platform: 'node',
     format: 'cjs',
     target: 'node20',
-    external: ['electron'],
+    external: desktopEsbuildTargets.main.external,
     logLevel: 'silent',
   });
 
@@ -31,6 +33,7 @@ try {
       env: {
         ...process.env,
         ELECTRON_DISABLE_SECURITY_WARNINGS: 'true',
+        NODE_PATH: [path.join(repoRoot, 'node_modules'), process.env.NODE_PATH].filter(Boolean).join(path.delimiter),
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -38,8 +41,8 @@ try {
     let stderr = '';
     const timeout = setTimeout(() => {
       child.kill('SIGKILL');
-      reject(new Error(`Electron Web Render E2E 超过 30 秒。\n${stdout}\n${stderr}`));
-    }, 30_000);
+      reject(new Error(`Electron Web Render E2E 超过 60 秒。\n${stdout}\n${stderr}`));
+    }, 60_000);
     child.stdout.on('data', (chunk) => {
       stdout += chunk.toString();
     });
@@ -90,8 +93,85 @@ try {
       kind: 'js_required', renderKind: 'app_shell_not_rendered', failed: true,
       sampleIsNetError: true, scriptFailuresAbsent: true, suggestsRetry: true, claimsRetryUseless: false,
     },
+    forbiddenLong: { kind: 'http_403', status: 403 },
+    slotIdleReuse: {
+      createSessionCalls: 1,
+      uniquePartitions: 1,
+      spaAfterIdle: true,
+      restrictedBeforeIdle: { kind: 'load_failed', netErrorCode: -20 },
+      restrictedAfterIdle: { kind: 'load_failed', netErrorCode: -20 },
+    },
+    preCommitCrossSiteRedirect: {
+      rendered: true,
+      finalUrlMatched: true,
+      validatedBothHosts: true,
+    },
+    scriptEscapeAfterRedirectKind: 'navigation_blocked',
+    deniedDnsRedirect: { kind: 'load_failed', netErrorCode: -20 },
+    hiddenRevealContent: true,
+    hashRouteE2e: {
+      aHasNoticeA: true,
+      bHasNoticeB: true,
+      bExcludesNoticeA: true,
+      distinctRefs: true,
+      findHitB: true,
+      snapshotBExcludesA: true,
+      hashAnchorSharedRef: true,
+    },
+    visibilityContract: {
+      disclosuresKept: true,
+      nestedHiddenExcluded: true,
+      loginMaskKind: 'login_required',
+      jsonLdExcluded: true,
+    },
+    positionedContent: {
+      stickyTableKept: true,
+      stickyNavExcluded: true,
+      fixedAppKept: true,
+      fixedBarExcluded: true,
+      sideCardKind: 'rendered',
+      loginWallKind: 'login_required',
+      jsonpRowsCaptured: true,
+    },
+    govIframeE2e: {
+      selectedProvider: 'local_render',
+      escalationReason: 'js_required',
+      hasDocNo: true,
+      hasTableValues: true,
+      hasResolvedAttachment: true,
+      hasInlinedWarning: true,
+      hasFrameResource: true,
+      hasAttachmentResource: true,
+      attachDirStayedHttp: true,
+      crossOriginStayedHttpWithLink: true,
+    },
+    shadowAndCss: {
+      summaryOnce: true,
+      defaultOnce: true,
+      unslottedExcluded: true,
+      cookieExcluded: true,
+      inactiveTabExcluded: true,
+      opacityZeroKept: true,
+    },
+    slowHydrationAndPolling: {
+      slowHasContent: true,
+      pollingFast: true,
+      pollingHasContent: true,
+    },
+    lazyAndInfiniteScroll: {
+      lazyHasAll3Screens: true,
+      lazyNoIncompleteWarning: true,
+      infiniteCapturedBatch: true,
+      infiniteHasWarning: true,
+      infiniteTruncatedFalse: true,
+    },
+    heavyBlockingAndOnerror: {
+      heavyRequestsZero: true,
+      onerrorPreservedImage: true,
+      cspOnerrorPreservedImage: true,
+    },
     popupRequests: 0,
-    downloadRequests: 3,
+    downloadRequests: 5,
   };
   if (JSON.stringify(result) !== JSON.stringify(expected)) {
     throw new Error(`Electron Web Render E2E 结果不符合预期。\nactual=${JSON.stringify(result)}\nexpected=${JSON.stringify(expected)}`);

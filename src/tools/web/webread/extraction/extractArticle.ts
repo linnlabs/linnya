@@ -2,8 +2,10 @@ import { Readability } from '@mozilla/readability';
 import type { WebDocumentWarning, WebPageAccessBarrier } from '../../definitions/webDocument';
 import { WebFailureError } from '../../shared/webFailure';
 import { extractSemanticDom, normalizeExtractedText } from './extractSemanticDom';
+import { READABLE_MAIN_SELECTOR } from '../render-capture/definitions/renderCaptureContract';
+import { extractDatedRegionList } from './extractDatedRegionList';
 import { parseCanonicalHtmlDocument } from './parseCanonicalHtmlDocument';
-import { prepareReadableDocument } from './prepareReadableDocument';
+import { isExplicitlyHidden, prepareReadableDocument } from './prepareReadableDocument';
 import { renderReadableMarkdown } from './renderReadableMarkdown';
 import { extractPageResources } from './extractPageResources';
 import { extractPageImages } from './extractPageImages';
@@ -11,6 +13,11 @@ import type { WebPageImage } from '@app/schemas';
 import { extractTabularDom, extractTabularContext } from './extractTabularDom';
 import type { WebPageResource } from '../../definitions/webDocument';
 import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
+import {
+  evaluateDynamicExtractionWarnings,
+  extractEmbeddedFrameResources,
+  inspectDynamicShellSignals,
+} from './detectDynamicPageSignals';
 import { isRecord } from '@linnya/foundation';
 
 export type ArticleExtractionWarning = WebDocumentWarning;
@@ -56,6 +63,8 @@ interface StructuredMetadata {
   byline?: string;
   publishedAt?: string;
   siteName?: string;
+  /** 仅记录 JSON-LD articleBody 的归一化字符长度作升级信号，绝不保存或输出其文本内容。 */
+  articleBodyLength?: number;
 }
 
 interface PageMetadataSnapshot {
@@ -115,13 +124,20 @@ function readJsonLdMetadata(document: Document): StructuredMetadata {
     }
   }
 
+  let metadata: Omit<StructuredMetadata, 'articleBodyLength'> = {};
+  let maxArticleBodyLength = 0;
   for (const record of records) {
+    const articleBody = readString(record['articleBody']);
+    if (articleBody) {
+      maxArticleBodyLength = Math.max(maxArticleBodyLength, normalizeExtractedText(articleBody).length);
+    }
+    if (metadata.title || metadata.publishedAt || metadata.byline || metadata.siteName) continue;
     const title = readString(record['headline']) ?? readString(record['name']);
     const publishedAt = readString(record['datePublished']);
     const byline = readNamedValue(record['author']);
     const siteName = readNamedValue(record['publisher']);
     if (title || publishedAt || byline || siteName) {
-      return {
+      metadata = {
         ...(title ? { title } : {}),
         ...(publishedAt ? { publishedAt } : {}),
         ...(byline ? { byline } : {}),
@@ -129,7 +145,10 @@ function readJsonLdMetadata(document: Document): StructuredMetadata {
       };
     }
   }
-  return {};
+  return {
+    ...metadata,
+    ...(maxArticleBodyLength > 0 ? { articleBodyLength: maxArticleBodyLength } : {}),
+  };
 }
 
 function readMeta(document: Document, selectors: string[]): string | undefined {
@@ -178,11 +197,14 @@ function clampScore(value: number): number {
 function detectAccessBarrier(document: Document, bodyTextLength: number): WebPageAccessBarrier | undefined {
   // 常规页面经常嵌入不可见验证或登录组件；只在正文稀疏时把明确 DOM 标记视为访问屏障。
   if (bodyTextLength >= 500) return undefined;
-  const captchaMarker = document.querySelector(
+  const captchaMarkers = document.querySelectorAll(
     '[id*="captcha"], [class*="captcha"], iframe[src*="recaptcha"], iframe[src*="hcaptcha"], [data-sitekey]',
   );
-  if (captchaMarker) return 'captcha';
-  return document.querySelector('input[type="password"]') ? 'login_required' : undefined;
+  for (const marker of captchaMarkers) if (!isExplicitlyHidden(marker)) return 'captcha';
+  for (const input of document.querySelectorAll('input[type="password"]')) {
+    if (!isExplicitlyHidden(input)) return 'login_required';
+  }
+  return undefined;
 }
 
 function extractArticleBaseline(
@@ -205,17 +227,25 @@ function extractArticleBaseline(
     extractPageResources(document, options.url, { anchors: false })
       .map(resource => [resource.url, resource] as const),
   );
+  const embeddedFrames = extractEmbeddedFrameResources(document, options.url);
+  const dynamicShellSignals = inspectDynamicShellSignals(document);
   // 懒加载属性、figure 图注和页脚版权声明在正文清理时会被删改，先从原始 DOM 读取。
   const pageImages = extractPageImages(document, options.url);
   // Readability.parse() 会原地清理 DOM；语义备选必须先读取原始主区域，
   // 否则它只能看到 Readability 已经删减过的节点，无法补回遗漏正文。
-  prepareReadableDocument(document, options.url);
-  for (const resource of extractPageResources(document, options.url, { metadata: false })) {
+  const { hiddenMainTextLength, hasPendingCodeExample } = prepareReadableDocument(document, options.url);
+  for (const resource of [
+    ...extractPageResources(document, options.url, { metadata: false }),
+    ...embeddedFrames.sameOriginResources,
+    ...embeddedFrames.sameSiteCrossOriginResources,
+  ]) {
     if (!resourcesByUrl.has(resource.url)) resourcesByUrl.set(resource.url, resource);
   }
-  const semanticCandidateCount = document.querySelectorAll('article, main, [role="main"]').length;
-  const semantic = extractSemanticDom(document);
-  const tabular = semanticCandidateCount === 0 ? extractTabularDom(document) : undefined;
+  const mainRegions = document.querySelectorAll(READABLE_MAIN_SELECTOR);
+  const tabular = mainRegions.length === 0 ? extractTabularDom(document) : undefined;
+  const datedList = mainRegions.length === 0 && !tabular?.tableCount ? extractDatedRegionList(document) : undefined;
+  const semantic = extractSemanticDom(datedList ? [datedList] : mainRegions);
+  const semanticCandidateCount = datedList ? 1 : mainRegions.length;
   let article: ReadabilityResult;
   try {
     article = options.parseReadability
@@ -246,7 +276,7 @@ function extractArticleBaseline(
   // 链接地址和保留的表格标记不是正文文字，不能让它们抬高质量信号或改变主区域选择。
   const useSemanticDom = semantic.textLength > readabilityLength
     && (readabilityLength < 200
-      || (semantic.textLength - readabilityLength >= 300
+      || (!datedList && semantic.textLength - readabilityLength >= 300
         && semantic.textLength >= readabilityLength * 1.35));
   const primaryText = useSemanticDom ? semantic.text : readabilityText;
   const primaryLength = useSemanticDom ? semantic.textLength : readabilityLength;
@@ -261,6 +291,7 @@ function extractArticleBaseline(
   const textToHtmlRatio = textLength / Math.max(1, html.length);
   const warnings = new Set<ArticleExtractionWarning>();
 
+  if (hasPendingCodeExample) warnings.add('embedded_code_pending');
   if (!article) warnings.add('readability_failed');
   if (!textLength) warnings.add('empty_content');
   if (!textLength && resourcesByUrl.size > 0) warnings.add('metadata_only');
@@ -273,6 +304,17 @@ function extractArticleBaseline(
   if (listItemCount >= 5 && listTextLength / Math.max(1, bodyTextLength) >= 0.6) {
     warnings.add('list_dominant');
   }
+  const dynamicWarnings = evaluateDynamicExtractionWarnings({
+    textLength,
+    scriptCount,
+    sameOriginFrameCount: embeddedFrames.sameOriginResources.length,
+    hiddenMainTextLength,
+    jsonLdArticleBodyLength: jsonLd.articleBodyLength ?? 0,
+    hasEmptyMountRoot: dynamicShellSignals.hasEmptyMountRoot,
+    hasBusyMainRegion: dynamicShellSignals.hasBusyMainRegion,
+  });
+  if (embeddedFrames.hasInlineDocument) warnings.add('embedded_same_origin_iframe');
+  for (const warning of dynamicWarnings) warnings.add(warning);
 
   let qualityScore = 1;
   if (warnings.has('readability_failed')) qualityScore -= 0.3;
@@ -282,6 +324,7 @@ function extractArticleBaseline(
   if (warnings.has('js_shell')) qualityScore -= 0.4;
   if (warnings.has('table_dominant')) qualityScore -= 0.15;
   if (warnings.has('list_dominant')) qualityScore -= 0.15;
+  if (dynamicWarnings.length > 0) qualityScore -= 0.3;
 
   const title = (useSemanticDom ? semantic.title : normalizeExtractedText(article?.title))
     || jsonLd.title

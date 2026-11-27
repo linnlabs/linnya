@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type {
   WebPageRenderMainFrameResponse,
+  WebPageRenderNavigationTrigger,
   WebPageRenderResponseDecision,
   WebPageRenderRuntime,
   WebPageRenderSession,
@@ -92,9 +93,10 @@ class FakeRenderWindow implements WebPageRenderWindow {
     this.url = url;
     this.session?.respond(url);
   };
-  executeImpl: () => Promise<unknown> = async () => this.html;
-  private isAllowed: ((url: string) => boolean) | undefined;
+  executeImpl: ((script: string) => Promise<unknown>) = async () => this.html;
+  private isAllowed: ((url: string, trigger: WebPageRenderNavigationTrigger) => boolean) | undefined;
   private onBlocked: ((url: string) => void) | undefined;
+  private onDidNavigateListener: ((url: string) => void) | undefined;
   private closedListener: (() => void) | undefined;
   private goneListener: ((reason: string) => void) | undefined;
   private unresponsiveListener: (() => void) | undefined;
@@ -104,9 +106,9 @@ class FakeRenderWindow implements WebPageRenderWindow {
     return this.loadURLImpl(url);
   }
 
-  executeJavaScript(): Promise<unknown> {
+  executeJavaScript(script: string): Promise<unknown> {
     this.executeCount += 1;
-    return this.executeImpl();
+    return this.executeImpl(script);
   }
 
   getURL(): string {
@@ -123,14 +125,17 @@ class FakeRenderWindow implements WebPageRenderWindow {
   }
 
   installNavigationGuards(
-    isAllowed: (url: string) => boolean,
+    isAllowed: (url: string, trigger: WebPageRenderNavigationTrigger) => boolean,
     onBlocked: (url: string) => void,
+    onDidNavigate?: (url: string) => void,
   ): () => void {
     this.isAllowed = isAllowed;
     this.onBlocked = onBlocked;
+    this.onDidNavigateListener = onDidNavigate;
     return () => {
       this.isAllowed = undefined;
       this.onBlocked = undefined;
+      this.onDidNavigateListener = undefined;
     };
   }
 
@@ -166,8 +171,13 @@ class FakeRenderWindow implements WebPageRenderWindow {
     this.domReadyListener?.();
   }
 
-  attemptNavigation(url: string): void {
-    if (!this.isAllowed?.(url)) this.onBlocked?.(url);
+  attemptNavigation(url: string, trigger: WebPageRenderNavigationTrigger = 'navigate'): void {
+    if (!this.isAllowed?.(url, trigger)) this.onBlocked?.(url);
+  }
+
+  fireDidNavigate(url: string): void {
+    this.url = url;
+    this.onDidNavigateListener?.(url);
   }
 }
 
@@ -566,4 +576,220 @@ describe('WebPageRenderWorker', () => {
       }
     },
   );
+
+  it('提交前跨站 HTTP 重定向放行并重锚定到提交域；提交后脚本跨站、本地回环及超跳数重定向仍拦截', async () => {
+    const runtime = new FakeRenderRuntime();
+    const okWindow = new FakeRenderWindow();
+    okWindow.loadURLImpl = async () => {
+      okWindow.attemptNavigation('https://target.example.org/article', 'redirect');
+      okWindow.fireDidNavigate('https://target.example.org/article');
+      runtime.session.respond('https://target.example.org/article');
+      okWindow.fireDomReady();
+    };
+    runtime.nextWindow = okWindow;
+    const worker = createWorker(runtime);
+    try {
+      const ok = await worker.render({ url: 'https://short.example.com/go' });
+      expect(ok.finalUrl).toBe('https://target.example.org/article');
+
+      const postEscapeWindow = new FakeRenderWindow();
+      postEscapeWindow.loadURLImpl = async () => {
+        postEscapeWindow.attemptNavigation('https://target.example.org/article', 'redirect');
+        postEscapeWindow.fireDidNavigate('https://target.example.org/article');
+        postEscapeWindow.attemptNavigation('https://third.example.net/escape', 'navigate');
+        await new Promise<void>(() => undefined);
+      };
+      runtime.nextWindow = postEscapeWindow;
+      await expect(worker.render({ url: 'https://short.example.com/go' })).rejects.toMatchObject({
+        kind: 'navigation_blocked',
+      });
+
+      const postRedirectWindow = new FakeRenderWindow();
+      postRedirectWindow.loadURLImpl = async () => {
+        postRedirectWindow.attemptNavigation('https://target.example.org/article', 'redirect');
+        postRedirectWindow.fireDidNavigate('https://target.example.org/article');
+        postRedirectWindow.attemptNavigation('https://third.example.net/late', 'redirect');
+        await new Promise<void>(() => undefined);
+      };
+      runtime.nextWindow = postRedirectWindow;
+      await expect(worker.render({ url: 'https://short.example.com/go' })).rejects.toMatchObject({
+        kind: 'navigation_blocked',
+      });
+
+      const loopbackRedirectWindow = new FakeRenderWindow();
+      loopbackRedirectWindow.loadURLImpl = async () => {
+        loopbackRedirectWindow.attemptNavigation('http://127.0.0.1/secret', 'redirect');
+        await new Promise<void>(() => undefined);
+      };
+      runtime.nextWindow = loopbackRedirectWindow;
+      await expect(worker.render({ url: 'https://short.example.com/go' })).rejects.toMatchObject({
+        kind: 'navigation_blocked',
+      });
+
+      const tooManyHopsWindow = new FakeRenderWindow();
+      tooManyHopsWindow.loadURLImpl = async () => {
+        for (let hop = 1; hop <= 6; hop += 1) {
+          tooManyHopsWindow.attemptNavigation(`https://hop${hop}.example.org/next`, 'redirect');
+        }
+        await new Promise<void>(() => undefined);
+      };
+      runtime.nextWindow = tooManyHopsWindow;
+      await expect(worker.render({ url: 'https://short.example.com/go' })).rejects.toMatchObject({
+        kind: 'navigation_blocked',
+      });
+
+      const netDeniedWindow = new FakeRenderWindow();
+      netDeniedWindow.loadURLImpl = async () => {
+        netDeniedWindow.fireDidNavigate('chrome-error://chromewebdata/');
+        throw Object.assign(new Error('ERR_BLOCKED_BY_CLIENT'), { errno: -20 });
+      };
+      runtime.nextWindow = netDeniedWindow;
+      await expect(worker.render({ url: 'https://short.example.com/go' })).rejects.toMatchObject({
+        kind: 'load_failed',
+        netErrorCode: -20,
+      });
+
+      const redirectDeniedWindow = new FakeRenderWindow();
+      redirectDeniedWindow.loadURLImpl = async () => {
+        runtime.session.respond('https://short.example.com/go', 302, {
+          Location: 'https://denied.example.org/spa',
+        });
+        redirectDeniedWindow.attemptNavigation('https://denied.example.org/spa', 'redirect');
+        redirectDeniedWindow.fireDomReady();
+        throw Object.assign(new Error('ERR_BLOCKED_BY_CLIENT'), { errno: -20 });
+      };
+      runtime.nextWindow = redirectDeniedWindow;
+      await expect(worker.render({ url: 'https://short.example.com/go' })).rejects.toMatchObject({
+        kind: 'load_failed',
+        netErrorCode: -20,
+      });
+      expect(redirectDeniedWindow.executeCount).toBe(0);
+    } finally {
+      await worker.dispose();
+    }
+  });
+
+  it('浏览器采集脚本异常或返回非法形状时，安全回退 outerHTML', async () => {
+    const runtime = new FakeRenderRuntime();
+    const throwingWindow = new FakeRenderWindow();
+    throwingWindow.executeImpl = async (script) => {
+      if (script.includes('mainTextLength') && !script.includes('outDoc')) {
+        return { readyState: 'complete', textLength: 900, mainTextLength: 900, scriptCount: 1 };
+      }
+      if (script.includes('readScrollProbe')) {
+        return { scrollY: 0, scrollHeight: 800, viewportHeight: 900, mainTextLength: 900, atBottom: true };
+      }
+      if (script.includes('outDoc')) {
+        throw new Error('capture script syntax failure');
+      }
+      return '<html><body>fallback outer html</body></html>';
+    };
+    runtime.nextWindow = throwingWindow;
+
+    const worker = createWorker(runtime, {
+      maxSettleDelayMs: 50,
+      renderTimeoutMs: 500,
+      totalTimeoutMs: 2_000,
+    });
+    const fallbackResult = await worker.render({ url: 'https://example.com/fallback' });
+    expect(fallbackResult.html).toBe('<html><body>fallback outer html</body></html>');
+
+    const invalidPayloadWindow = new FakeRenderWindow();
+    invalidPayloadWindow.executeImpl = async (script) => {
+      if (script.includes('mainTextLength') && !script.includes('outDoc')) {
+        return { readyState: 'complete', textLength: 900, mainTextLength: 900, scriptCount: 1 };
+      }
+      if (script.includes('readScrollProbe')) {
+        return { scrollY: 0, scrollHeight: 800, viewportHeight: 900, mainTextLength: 900, atBottom: true };
+      }
+      if (script.includes('outDoc')) {
+        return { html: 42, accessBarrier: 'unexpected' };
+      }
+      return '<html><body>schema fallback outer html</body></html>';
+    };
+    runtime.nextWindow = invalidPayloadWindow;
+    const schemaFallback = await worker.render({ url: 'https://example.com/bad-schema' });
+    expect(schemaFallback.html).toBe('<html><body>schema fallback outer html</body></html>');
+    await worker.dispose();
+  });
+
+  it('受控滚动：无限追加在最大步数刹车并附带 lazy_content_incomplete，已达字数上限时立即停止', async () => {
+    const runtime = new FakeRenderRuntime();
+    const infiniteWindow = new FakeRenderWindow();
+    let scrollStep = 0;
+    infiniteWindow.executeImpl = async (script) => {
+      if (script.includes('readScrollProbe') && script.includes('window.scrollTo')) {
+        scrollStep += 1;
+        return {
+          scrollY: scrollStep * 900,
+          scrollHeight: (scrollStep + 3) * 900,
+          viewportHeight: 900,
+          mainTextLength: 1_000 + scrollStep * 500,
+          atBottom: false,
+        };
+      }
+      if (script.includes('readScrollProbe')) {
+        return {
+          scrollY: scrollStep * 900,
+          scrollHeight: (scrollStep + 2) * 900,
+          viewportHeight: 900,
+          mainTextLength: 1_000 + scrollStep * 500,
+          atBottom: false,
+        };
+      }
+      if (script.includes('outDoc')) {
+        return {
+          html: '<html><body>infinite items</body></html>',
+          warnings: [],
+          inlinedFrameResources: [],
+          mainTextLength: 2_500,
+        };
+      }
+      return { readyState: 'complete', textLength: 1_000, mainTextLength: 1_000, scriptCount: 1 };
+    };
+    runtime.nextWindow = infiniteWindow;
+
+    const worker = createWorker(runtime, {
+      maxScrollSteps: 3,
+      scrollStepDelayMs: 5,
+      maxScrollDurationMs: 2_000,
+      maxSettleDelayMs: 50,
+      renderTimeoutMs: 500,
+      totalTimeoutMs: 2_000,
+    });
+    const cappedResult = await worker.render({ url: 'https://example.com/infinite' });
+    expect(scrollStep).toBe(3);
+    expect(cappedResult.capture?.warnings).toContain('lazy_content_incomplete');
+
+    let textCapScrolls = 0;
+    const textCapWindow = new FakeRenderWindow();
+    textCapWindow.executeImpl = async (script) => {
+      if (script.includes('window.scrollTo')) {
+        textCapScrolls += 1;
+      }
+      if (script.includes('readScrollProbe')) {
+        return {
+          scrollY: textCapScrolls * 900,
+          scrollHeight: 10_000,
+          viewportHeight: 900,
+          mainTextLength: textCapScrolls === 0 ? 1_000 : 160_000,
+          atBottom: false,
+        };
+      }
+      if (script.includes('outDoc')) {
+        return {
+          html: '<html><body>huge scroll</body></html>',
+          warnings: [],
+          inlinedFrameResources: [],
+          mainTextLength: 160_000,
+        };
+      }
+      return { readyState: 'complete', textLength: 1_000, mainTextLength: 1_000, scriptCount: 1 };
+    };
+    runtime.nextWindow = textCapWindow;
+    const textCapResult = await worker.render({ url: 'https://example.com/huge-lazy' });
+    expect(textCapScrolls).toBe(1);
+    expect(textCapResult.capture?.warnings).toContain('lazy_content_incomplete');
+    await worker.dispose();
+  });
 });

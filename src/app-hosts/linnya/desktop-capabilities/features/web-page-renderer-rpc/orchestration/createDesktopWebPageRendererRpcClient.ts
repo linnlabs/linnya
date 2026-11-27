@@ -61,10 +61,22 @@ export function createDesktopWebPageRendererRpcClient(
             : {}),
         });
       }
+      const capture = result.value.capture;
       return {
         html: result.value.html,
         finalUrl: result.value.final_url,
         mainResponse: copyWebPageMainResponse(result.value.main_response),
+        ...(capture
+          ? {
+              capture: {
+                ...(capture.access_barrier ? { accessBarrier: capture.access_barrier } : {}),
+                ...(capture.warnings ? { warnings: capture.warnings } : {}),
+                ...(capture.inlined_frame_resources
+                  ? { inlinedFrameResources: capture.inlined_frame_resources }
+                  : {}),
+              },
+            }
+          : {}),
       };
     },
   };

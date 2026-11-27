@@ -188,6 +188,13 @@ export function buildWebReadObservation(params: BuildWebReadObservationParams): 
     ...(params.warnings && params.warnings.length > 0
       ? [
           `Extraction flags: ${params.warnings.join(', ')}. These are extraction heuristics, not a source reliability or completeness verdict. Check the captured passage and table context before citing a key claim.`,
+          ...(params.warnings.includes('embedded_frame_blocked')
+            ? ['The public page was readable. An embedded frame required access verification and its contents were omitted.']
+            : []),
+          // 这两个标记是确定事实而不是启发式：页面还有内容没有进入本次结果，不能被上一句的“不是完整性结论”盖过去。
+          ...(params.warnings.includes('lazy_content_incomplete') || params.warnings.includes('capture_truncated')
+            ? ['The page had more content than was captured (items changed while scrolling, more content was loading, or the capture size limit was reached). Treat lists and tables here as partial; do not conclude that something is absent from the page.']
+            : []),
         ]
       : []),
     '',

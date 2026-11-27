@@ -4,6 +4,6 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["./*.ts"],
+  "include": ["./*.ts", "../../../src/features/font-resolution/definitions/fontkit.d.ts"],
   "exclude": []
 }

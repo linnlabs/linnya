@@ -101,6 +101,12 @@ describe('R2 本地 HTTP → 本地渲染 → 托管读取阶梯', () => {
 
   beforeAll(async () => {
     server = createServer((request, response) => {
+      if (request.url === '/tutorial') {
+        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        response.end(`<article><h1>Guide</h1><p>${'Public tutorial text. '.repeat(50)}</p>
+          <demo-editor filename="example.ts"></demo-editor></article>`);
+        return;
+      }
       if (request.url === '/article') {
         response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         response.end(`<!doctype html><html><head><title>Local Article</title></head><body><article><h1>Local Article</h1><p>${'稳定的本地正文内容。'.repeat(50)}</p></article></body></html>`);
@@ -173,6 +179,28 @@ describe('R2 本地 HTTP → 本地渲染 → 托管读取阶梯', () => {
       readResult: { renderMode: 'http', extractor: 'readability' },
     });
     expect(render.read).not.toHaveBeenCalled();
+    expect(managed.read).not.toHaveBeenCalled();
+  });
+
+  it('示例未加载时保留首跳教程，渲染访问墙和取消仍回报原错误', async () => {
+    const params = { url: `http://ladder.test:${port}/tutorial` };
+    const provider = createLocalProvider();
+    const managed = createManagedProvider();
+    const onlyEditor = createRenderProvider(createWebReadResult({
+      url: params.url, status: 200, contentType: 'text/html', contentFormat: 'markdown',
+      content: '```ts\nconst unrelated = 42;\n```', extractor: 'semantic_dom', renderMode: 'js', rawLength: 90, latencyMs: 1,
+    }));
+    for (const renderProvider of [null, createFailingProvider('provider_error'), createRenderProvider().provider, onlyEditor.provider]) {
+      const result = await readWebPageWithLadder(params, { provider, renderProvider, managedProvider: managed.provider });
+      expect(result.renderAttempted).toBe(renderProvider !== null);
+      expect(result.readResult.content).toContain('Public tutorial text.');
+      expect(result.readResult.warnings).toContain('embedded_code_pending');
+    }
+    for (const kind of ['login_required', 'captcha', 'policy_denied', 'aborted'] as const) {
+      await expect(readWebPageWithLadder(params, {
+        provider, renderProvider: createFailingProvider(kind), managedProvider: managed.provider,
+      })).rejects.toMatchObject({ kind });
+    }
     expect(managed.read).not.toHaveBeenCalled();
   });
 
@@ -825,5 +853,252 @@ describe('R2 本地渲染 Provider', () => {
         status: 403,
         details: { challengeSignal: 'cloudflare_challenge' },
       });
+  });
+
+  it.each([
+    { status: 403, html: `<html><body><article>${'Forbidden details '.repeat(50)}</article></body></html>`, expectedKind: 'http_403' },
+    { status: 403, html: '<html><title>Human verification</title><body><p>Please verify</p></body></html>', expectedKind: 'captcha', challengeSignal: 'page_marker' },
+    { status: 404, html: `<html><body><article>${'Not found details '.repeat(50)}</article></body></html>`, expectedKind: 'http_404' },
+    { status: 401, html: `<html><body><article>${'Unauthorized details '.repeat(50)}</article></body></html>`, expectedKind: 'auth' },
+    { status: 429, html: `<html><body><article>${'Rate limited details '.repeat(50)}</article></body></html>`, expectedKind: 'rate_limited' },
+    { status: 503, html: `<html><body><article>${'Service unavailable '.repeat(50)}</article></body></html>`, expectedKind: 'http_5xx' },
+    { status: 410, html: `<html><body><article>${'Gone permanently '.repeat(50)}</article></body></html>`, expectedKind: 'http_error' },
+    { status: 521, html: '<html><script>document.cookie="__jsl_clearance=1";location.reload();</script></html>', expectedKind: 'captcha', challengeSignal: 'js_verification' },
+    { status: 521, html: '<html><title>521 Web server is down | Cloudflare</title></html>', expectedKind: 'http_5xx' },
+  ])('渲染主响应 HTTP $status 在抽取前归类为 $expectedKind，不把错误页当正文', async ({ status, html, expectedKind, challengeSignal }) => {
+    const renderer: WebPageRenderer = {
+      render: vi.fn().mockResolvedValue({
+        finalUrl: 'https://example.com/error-page',
+        html,
+        mainResponse: { status, headers: {} },
+      }),
+    };
+    await expect(new LocalRenderProvider({ renderer }).read({ url: 'https://example.com/error-page' }))
+      .rejects.toMatchObject({
+        kind: expectedKind,
+        status,
+        details: {
+          failureStage: 'local_render',
+          status,
+          ...(challengeSignal ? { challengeSignal } : {}),
+        },
+      });
+  });
+
+  it('SPA hash 路由页静态首跳强制升级本地渲染，普通 #section 静态页仍停在 local_http', async () => {
+    const staticRootHtml = `<!doctype html><html><head><title>Portal</title></head><body><article><h1>Portal Overview</h1><p>${'Static portal introduction paragraph. '.repeat(20)}</p></article></body></html>`;
+    const httpProvider: WebReadProvider = {
+      name: 'local_http',
+      read: vi.fn(async (params: WebReadParams) => createWebReadResult({
+        url: params.url,
+        finalUrl: params.url.split('#')[0]!,
+        status: 200,
+        contentType: 'text/html',
+        title: 'Portal',
+        content: staticRootHtml.repeat(1).slice(0, 300),
+        contentFormat: 'markdown',
+        extractor: 'readability',
+        renderMode: 'http',
+        provider: 'local_http',
+        rawLength: staticRootHtml.length,
+        qualityScore: 1,
+        warnings: [],
+        latencyMs: 2,
+      })),
+    };
+    const render = createRenderProvider();
+    const managed = createManagedProvider();
+
+    const hashResult = await readWebPageWithLadder(
+      { url: 'https://gov.example.test/#/notice/2026-01' },
+      { provider: httpProvider, renderProvider: render.provider, managedProvider: managed.provider },
+    );
+    expect(hashResult).toMatchObject({
+      selectedProvider: 'local_render',
+      renderAttempted: true,
+      escalationReason: 'js_required',
+    });
+    expect(render.read).toHaveBeenCalledTimes(1);
+    expect(managed.read).not.toHaveBeenCalled();
+
+    const anchorResult = await readWebPageWithLadder(
+      { url: 'https://example.com/article#section-2' },
+      { provider: httpProvider, renderProvider: render.provider, managedProvider: managed.provider },
+    );
+    expect(anchorResult).toMatchObject({
+      selectedProvider: 'local_http',
+      renderAttempted: false,
+      escalated: false,
+    });
+    expect(render.read).toHaveBeenCalledTimes(1);
+  });
+
+  it('渲染阶段遇 404/500 保持终态且不触发托管 Reader；渲染遇 403/login_required 保留拦截根因', async () => {
+    const initialProvider: WebReadProvider = {
+      name: 'local_http',
+      read: async () => createReadabilityResult({ warnings: ['js_shell'], qualityScore: 0.2 }),
+    };
+    for (const terminalKind of ['http_404', 'http_5xx', 'auth', 'rate_limited'] as const) {
+      const managed = createManagedProvider();
+      await expect(readWebPageWithLadder(
+        { url: 'https://example.com/error' },
+        {
+          provider: initialProvider,
+          renderProvider: createFailingProvider(terminalKind, 'local_render'),
+          managedProvider: managed.provider,
+        },
+      )).rejects.toMatchObject({ kind: terminalKind });
+      expect(managed.read).not.toHaveBeenCalled();
+    }
+
+    for (const barrier of ['http_403', 'captcha', 'login_required'] as const) {
+      const disabledError = await readWebPageWithLadder(
+        { url: 'https://example.com/barrier' },
+        {
+          provider: initialProvider,
+          renderProvider: createFailingProvider(barrier, 'local_render'),
+          managedProvider: null,
+          config: { renderEnabled: true, managedReader: 'none' },
+        },
+      ).catch((failure: unknown) => failure);
+      expect(disabledError).toBeInstanceOf(WebFailureError);
+      expect((disabledError as WebFailureError).kind).toBe('managed_disabled');
+      expect((disabledError as WebFailureError).code).toBe(barrier);
+
+      const managed = createManagedProvider();
+      const recovered = await readWebPageWithLadder(
+        { url: 'https://example.com/barrier' },
+        {
+          provider: initialProvider,
+          renderProvider: createFailingProvider(barrier, 'local_render'),
+          managedProvider: managed.provider,
+        },
+      );
+      expect(recovered.selectedProvider).toBe('managed_fixture');
+      expect(managed.read).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('Phase 1B：纯附件目录保留 metadata_only，同源 iframe / 隐藏主体 / JSON-LD 仅触发一次渲染，JSON-LD 全文绝不写入正文', async () => {
+    const fixtureServer = createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      if (req.url === '/attachments-only') {
+        res.end('<!doctype html><html><head><title>附件目录</title></head><body><main><a href="/files/circular.pdf" title="下载通知附件 PDF"></a></main></body></html>');
+        return;
+      }
+      if (req.url === '/same-origin-iframe') {
+        res.end('<!doctype html><html><head><title>政务公告壳</title></head><body><main><iframe src="/inner/bulletin.html" title="公告正文"></iframe></main></body></html>');
+        return;
+      }
+      if (req.url === '/hidden-main') {
+        res.end(`<!doctype html><html><head><title>隐藏正文</title><meta name="citation_pdf_url" content="/files/source.pdf"></head><body><main><div id="js_content" style="visibility: hidden">${'Hidden full article text waiting for reveal. '.repeat(15)}</div></main></body></html>`);
+        return;
+      }
+      if (req.url === '/jsonld-only') {
+        res.end(`<!doctype html><html><head><title>Metadata Only</title><script type="application/ld+json">${JSON.stringify({
+          headline: 'Metadata Report',
+          articleBody: 'JSONLD_HIDDEN_ARTICLE_BODY '.repeat(35),
+        })}</script></head><body><article><h1>Metadata Report</h1><p>Please sign in.</p></article></body></html>`);
+        return;
+      }
+      res.end('<!doctype html><html><body></body></html>');
+    });
+    await new Promise<void>((resolve) => fixtureServer.listen(0, '127.0.0.1', resolve));
+    const addr = fixtureServer.address();
+    if (!addr || typeof addr === 'string') throw new Error('Expected fixture port');
+    const localHttp = new LocalHttpProvider({
+      resolveHost: async (url) => ({
+        hostname: url.hostname,
+        addresses: [{ address: '127.0.0.1', family: 4 }],
+      }),
+    });
+
+    try {
+      const attachRender = createRenderProvider();
+      const attachRes = await readWebPageWithLadder(
+        { url: `http://gov.example.test:${addr.port}/attachments-only` },
+        { provider: localHttp, renderProvider: attachRender.provider, managedProvider: null },
+      );
+      expect(attachRes.selectedProvider).toBe('local_http');
+      expect(attachRes.readResult.warnings).toContain('metadata_only');
+      expect(attachRender.read).not.toHaveBeenCalled();
+
+      const iframeRender = createRenderProvider();
+      const iframeRes = await readWebPageWithLadder(
+        { url: `http://gov.example.test:${addr.port}/same-origin-iframe` },
+        { provider: localHttp, renderProvider: iframeRender.provider, managedProvider: null },
+      );
+      expect(iframeRes.selectedProvider).toBe('local_render');
+      expect(iframeRes.escalationReason).toBe('js_required');
+      expect(iframeRender.read).toHaveBeenCalledTimes(1);
+
+      const hiddenRender = createRenderProvider();
+      const hiddenRes = await readWebPageWithLadder(
+        { url: `http://gov.example.test:${addr.port}/hidden-main` },
+        { provider: localHttp, renderProvider: hiddenRender.provider, managedProvider: null },
+      );
+      expect(hiddenRes.selectedProvider).toBe('local_render');
+      expect(hiddenRender.read).toHaveBeenCalledTimes(1);
+
+      const jsonLdRender = createRenderProvider(createReadabilityResult({
+        warnings: ['empty_content'],
+        qualityScore: 0,
+        renderMode: 'js',
+      }));
+      const jsonLdErr = await readWebPageWithLadder(
+        { url: `http://gov.example.test:${addr.port}/jsonld-only` },
+        { provider: localHttp, renderProvider: jsonLdRender.provider, managedProvider: null },
+      ).catch((failure: unknown) => failure);
+      expect(jsonLdErr).toBeInstanceOf(WebFailureError);
+      expect((jsonLdErr as WebFailureError).kind).toBe('managed_disabled');
+      expect(String(jsonLdErr)).not.toContain('JSONLD_HIDDEN_ARTICLE_BODY');
+      expect(jsonLdRender.read).toHaveBeenCalledTimes(1);
+    } finally {
+      fixtureServer.closeAllConnections();
+      await new Promise<void>((resolve, reject) => fixtureServer.close((err) => (err ? reject(err) : resolve())));
+    }
+  });
+
+  it('Phase 2：浏览器采集登录遮罩直接报 login_required；内联同源 iframe 资源与 lazy_content_incomplete 透传但不混淆 truncated', async () => {
+    const loginMaskRenderer: WebPageRenderer = {
+      render: vi.fn().mockResolvedValue({
+        finalUrl: 'https://example.com/paywall',
+        mainResponse: { status: 200, headers: {} },
+        html: '',
+        capture: {
+          accessBarrier: 'login_required',
+        },
+      }),
+    };
+    await expect(new LocalRenderProvider({ renderer: loginMaskRenderer }).read({
+      url: 'https://example.com/paywall',
+    })).rejects.toMatchObject({
+      kind: 'login_required',
+      status: 200,
+    });
+
+    const inlinedRenderer: WebPageRenderer = {
+      render: vi.fn().mockResolvedValue({
+        finalUrl: 'https://gov.example.test/portal.html',
+        mainResponse: { status: 200, headers: {} },
+        html: `<!doctype html><html><body><article><h1>通知公告</h1><section data-linnya-inlined-frame="true"><p>${'关于开展专项检查的通知全文。'.repeat(30)}</p><a href="https://gov.example.test/files/rule.pdf">下载实施细则 PDF</a></section></article></body></html>`,
+        capture: {
+          warnings: ['inlined_same_origin_iframe', 'lazy_content_incomplete'],
+          inlinedFrameResources: [
+            { kind: 'source', url: 'https://gov.example.test/sub/notice.html', label: '通知正文框架' },
+          ],
+        },
+      }),
+    };
+    const result = await new LocalRenderProvider({ renderer: inlinedRenderer }).read({
+      url: 'https://gov.example.test/portal.html',
+    });
+    expect(result.warnings).toContain('inlined_same_origin_iframe');
+    expect(result.warnings).toContain('lazy_content_incomplete');
+    expect(result.truncated).toBe(false);
+    expect(result.resources).toEqual(expect.arrayContaining([
+      { kind: 'source', url: 'https://gov.example.test/sub/notice.html', label: '通知正文框架' },
+      { kind: 'document', url: 'https://gov.example.test/files/rule.pdf', label: '下载实施细则 PDF' },
+    ]));
   });
 });
