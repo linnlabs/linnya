@@ -37,7 +37,8 @@ const BANNED_LIVE_CONTRACTS = [
   { label: '已退役的 family edit 工具', pattern: /\bppt_edit_(?:text|data|image|style|geometry|arrangement)\b/u },
   { label: '已退役的 ppt_manage_slides 工具', pattern: /\bppt_manage_slides\b/u },
   { label: '未向 Agent 暴露的 ppt_export 工具', pattern: /\bppt_export\b/u },
-  { label: '不存在的 Slides CLI export 子命令', pattern: /\blinnya-slides\s+export\b/u },
+  // export 子命令只给外部 Agent 经 linnya 命令行取文件；Linnya 里的 Agent 引导用户走界面导出，技能不教它自行导出。
+  { label: 'Linnya Agent 自行导出的 Slides CLI export 用法', pattern: /\blinnya-slides\s+export\b/u },
   { label: '已删除的 Quality Gate 口径', pattern: /Quality Gate/u },
   { label: '已删除的 passed/blockers 验收口径', pattern: /passed[\s\S]{0,80}blockers/u },
   { label: '已删除的 blockers 质量字段', pattern: /\bblockers\b/u },
@@ -239,7 +240,7 @@ function checkWorkflowContract(skill: string, problems: SlidesSkillProblem[]): v
     { label: 'presentation ID 来源', pattern: /presentation_id[\s\S]{0,160}details\.presentationId/u },
     { label: 'CLI inspect 主路径', pattern: /linnya-slides inspect --presentation/u },
     { label: '按需 render', pattern: /需要确认像素效果时才 render/u },
-    { label: 'Agent 导出边界', pattern: /Agent 当前没有可调用的 PPTX export 工具/u },
+    { label: 'Agent 导出边界', pattern: /说明产品界面“更多”菜单的导出入口，不要自行导出/u },
     { label: '同因失败停止原样重试', pattern: /同一输入、同一错误 code 或同一 Shell exit code/u },
     { label: '最终 revision 像素验收', pattern: /最终 revision 上检查全部页面/u },
     { label: '同版截图只读取一次', pattern: /presentation\.versionId \+ slideNumber[\s\S]{0,80}最多读取一次/u },

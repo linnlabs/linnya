@@ -3,11 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { RunIdSchema, ToolCallIdSchema } from '@linnlabs/linnkit/contracts';
-import { PluginCliToolResultDataSchema, type PluginCliToolResultData } from '@app/schemas';
+import { PluginCliToolStructuredResultSchema, type PluginCliToolResultData } from '@app/schemas';
 import { CommandAgentRunIdSchema } from '@app/schemas/commands';
 import type { BackendPluginCliContribution } from '@linnya/plugin-host-contract/backend';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
 
 import { createCommandRunPermissionSnapshot } from 'src/domains/commands/features/permission-settings';
 import { deriveConversationWorkDirectoryIdentity } from 'src/domains/conversation-files';
@@ -112,11 +111,9 @@ function createHarness(input: {
   };
 }
 
-// 结果必须符合 schemas 里的共享合同：linnya 命令行按同一份合同读取 stdout。
-const ToolOutputSchema = z.object({ data: PluginCliToolResultDataSchema, observation: z.string() });
-
+// 结果必须符合 schemas 里的共享合同：linnya 命令行与界面工具卡按同一份合同读取。
 function parseData(output: string): PluginCliToolResultData {
-  return ToolOutputSchema.parse(JSON.parse(output)).data;
+  return PluginCliToolStructuredResultSchema.parse(JSON.parse(output)).data;
 }
 
 describe('plugin_cli 工具：外部命令行调用已启用插件的命令', () => {

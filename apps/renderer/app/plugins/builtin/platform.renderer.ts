@@ -11,6 +11,7 @@ import { resourceToolConfigs } from '@/domains/conversation/ui/tools/configs/res
 import { workspaceReadToolConfigs } from '@/domains/conversation/ui/tools/configs/workspace';
 import { tableFillToolCards } from '@/app/workflows/table-fill/ui/tool-card/tableFillToolCards';
 import { commandExecutionToolConfigs } from '@/domains/conversation/features/command-execution-presentation';
+import { pluginCliToolConfigs } from '@/domains/conversation/ui/tools/configs/pluginCli';
 import { platformHeaderOnlyToolCards } from './tool-cards/platformHeaderOnlyToolCards';
 
 export const platformRendererPlugin: RendererPluginContribution = {
@@ -119,6 +120,7 @@ export const platformRendererPlugin: RendererPluginContribution = {
     ...webToolConfigs,
     ...resourceToolConfigs,
     ...commandExecutionToolConfigs,
+    ...pluginCliToolConfigs,
     ...platformHeaderOnlyToolCards,
   },
 };

@@ -16,3 +16,20 @@ export const PluginCliToolResultDataSchema = z.object({
   stderr: z.string(),
 }).strict();
 export type PluginCliToolResultData = z.infer<typeof PluginCliToolResultDataSchema>;
+
+/** 工具结构化结果：data 之外的 observation 是给模型看的文字投影。 */
+export const PluginCliToolStructuredResultSchema = z.object({
+  data: PluginCliToolResultDataSchema,
+  observation: z.string(),
+}).strict();
+export type PluginCliToolStructuredResult = z.infer<typeof PluginCliToolStructuredResultSchema>;
+
+/**
+ * 界面在运行中、失败时只能读到调用参数，用它显示命令行。参数校验（ID 格式、个数与长度上限）
+ * 仍归 Host 工具；这里只认展示需要的两个字段，读不出时界面不显示命令。
+ */
+export const PluginCliToolDisplayArgsSchema = z.object({
+  plugin_id: z.string().min(1),
+  argv: z.array(z.string()),
+});
+export type PluginCliToolDisplayArgs = z.infer<typeof PluginCliToolDisplayArgsSchema>;
