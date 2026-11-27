@@ -4,12 +4,6 @@ import { WORKSPACE_MUTATION_CHANNEL } from '@app/schemas';
 import type {
   BackendRendererIntegrationPort,
 } from '../../../app-hosts/linnya/desktop-capabilities';
-import { subscribeRendererReady } from '../../events/rendererReadyEvent';
-import {
-  installCloudModelsBroadcaster,
-  notifyCloudModelsRendererReady,
-} from '../../services/modelCatalog/cloudModelsBroadcaster';
-import { getMainWindow } from '../../window-manager';
 
 const PLUGIN_RENDERER_PUSH_CHANNEL = 'plugin:push';
 const CONVERSATION_ACTIVITY_CHANGED_CHANNEL = 'conversation-activity-changed';
@@ -29,14 +23,6 @@ function publishToPrimaryRenderer(channel: string, payload: unknown): void {
 
 export function createElectronBackendRendererIntegrationPort(): BackendRendererIntegrationPort {
   const port: BackendRendererIntegrationPort = {
-    async connectModelCatalogUpdates() {
-      const uninstallBroadcaster = installCloudModelsBroadcaster(getMainWindow);
-      const unsubscribeRendererReady = subscribeRendererReady(notifyCloudModelsRendererReady);
-      return () => {
-        unsubscribeRendererReady();
-        uninstallBroadcaster();
-      };
-    },
     publishTranscriptionProgress(event) {
       // 保持既有单主窗口语义；多窗口 fanout 属于产品行为变化，不在本次迁移中引入。
       publishToPrimaryRenderer('transcription:progress', event);

@@ -1,6 +1,4 @@
 import {
-  getLinnyaCloudDeviceId,
-  isLinnyaCloudClientEnabled,
   modelCatalog,
   type CredentialReference,
   type ModelConfig,
@@ -13,6 +11,8 @@ import {
   ModelRequestCredentialError,
   type ModelRequestCredentialResolver,
 } from '../definitions/modelRequestCredential';
+import { isLinnyaCloudClientEnabled } from '../functions/isLinnyaCloudClientEnabled';
+import { getLinnyaCloudDeviceId } from '../functions/linnyaCloudDeviceId';
 import {
   requireInstalledDistributionIdentity,
   type DistributionIdentity,

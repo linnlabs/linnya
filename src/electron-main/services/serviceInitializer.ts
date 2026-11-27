@@ -20,7 +20,6 @@ import { providerCatalog } from '@linnya/provider-catalog';
 import { providerConfigurationRegistry } from 'src/domains/provider-configuration';
 import { modelPickerPreferencesRegistry } from 'src/domains/model-picker-preferences';
 import { providerAccountRegistry } from 'src/domains/provider-account';
-import { getBackendRendererIntegrationPort } from 'src/app-hosts/linnya/desktop-capabilities';
 import {
   providerOnboardingRuntimeBindingRegistry,
   createLinnyaModelReasoningResolver,
@@ -47,7 +46,6 @@ export interface InitializedServices {
   documentOcr: DocumentOcrPort;
   /** 本次启动停掉的能力；为空表示全部启动成功。 */
   capabilityFailures: readonly StartupCapabilityFailure[];
-  disposeRendererIntegration(): void;
 }
 
 const CAPABILITY_FAILURE_SUMMARIES: Readonly<Record<StartupCapability, string>> = Object.freeze({
@@ -80,7 +78,6 @@ export class ServiceInitializer {
     console.log('[🔥 SERVICE-INIT] ===== initializeServices() METHOD CALLED =====');
     console.log('[ServiceInitializer] 🔧 开始详细的服务初始化...');
 
-    let disposeRendererIntegration: (() => void) | null = null;
     const capabilityFailures: StartupCapabilityFailure[] = [];
     // 能力步骤失败只停掉这项能力并记一条诊断日志；必需步骤仍然直接抛出，由启动失败对话框说明。
     const runCapabilityStep = async <T>(
@@ -122,9 +119,7 @@ export class ServiceInitializer {
       // 步骤2：准备环境变量
 
       // 步骤3：初始化产品模型目录（能力：失败时模型相关入口说明原因，不覆写已有配置）
-      disposeRendererIntegration = await runCapabilityStep('models', () =>
-        this.initializeModelCatalog()
-      );
+      await runCapabilityStep('models', () => this.initializeModelCatalog());
 
       const documentOcr = createDocumentOcrPort({ catalog: modelCatalog });
       // 模型 Host 已就绪后才激活插件。知识库 activation 不请求模型或启动向量服务。
@@ -147,17 +142,14 @@ export class ServiceInitializer {
         );
       }
 
-      const disposeModelCatalogUpdates = disposeRendererIntegration;
       return {
         transcriptionService,
         databaseService,
         documentOcr,
         capabilityFailures: Object.freeze([...capabilityFailures]),
-        disposeRendererIntegration: () => disposeModelCatalogUpdates?.(),
       };
     } catch (error) {
       await this.stopStartupMaintenance();
-      disposeRendererIntegration?.();
       console.error('[🔥 SERVICE-INIT] ❌❌❌ SERVICE INITIALIZATION FAILED:', error);
       console.error('[ServiceInitializer] 💥 服务初始化过程中出现严重错误:', error);
       throw error;
@@ -199,7 +191,7 @@ export class ServiceInitializer {
   /**
    * 准备环境变量映射
    */
-  private async initializeModelCatalog(): Promise<() => void> {
+  private async initializeModelCatalog(): Promise<void> {
     console.log('[ServiceInitializer] 🤖 Step 3: 初始化产品模型目录...');
 
     modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
@@ -228,16 +220,6 @@ export class ServiceInitializer {
       `[ServiceInitializer] ✅ Step 3: 产品模型目录初始化完成，包含 ${modelCatalog.getModels().length} 个模型`
     );
     console.log('[ServiceInitializer] ✅ Provider 配置迁移完成', providerConfigurationMigration);
-
-    // 安装“云端模型加载成功 → Renderer 刷新信号”桥接器。
-    // 设计要点：
-    // - 必须放在 modelCatalog.initialize() 之后；初始化内部已经触发了首次拉取，
-    //   首次成功的事件可能在此之前就已经 emit（彼时无监听器，自然丢弃，无副作用）；
-    // - 渲染进程在 main.js 启动时会主动 fetchModels 一次，所以"丢失首次事件"无害；
-    // - 真正需要广播的是后台重试链路里成功的那一次——监听器一定能收到。
-    const disconnectUpdates =
-      await getBackendRendererIntegrationPort().connectModelCatalogUpdates();
-    return disconnectUpdates;
   }
 
   /**

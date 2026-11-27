@@ -30,12 +30,9 @@ const emptySelections: ModelPurposeSelections = {
 function context(
   models: readonly ModelCatalogItem[],
   selections: Partial<ModelPurposeSelections> = {},
-  cloudModelsReady = false
 ): ModelPurposeResolutionContext {
   return {
     models,
-    purposeDefaults: { autocomplete: 'cloud-fast' },
-    cloudModelsReady,
     selections: { ...emptySelections, ...selections },
   };
 }
@@ -65,17 +62,18 @@ describe('model purpose resolution', () => {
     expect(resolvePrimaryModelId(context(models))).toBeNull();
   });
 
-  it('云目录确认后才把已消失的云选择切到当前 purpose default', () => {
+  it('选中的模型已不在目录里时返回空，不悄悄换成别的模型', () => {
     const models: ModelCatalogItem[] = [
-      { id: 'primary', catalog_source: 'default', capabilities: ['chat'] },
-      { id: 'cloud-fast', catalog_source: 'default', capabilities: ['chat'] },
+      { id: 'primary', catalog_source: 'user', capabilities: ['chat'], ui_visibility: ['chat'] },
     ];
-    const selections = { auxiliaryModelIds: { autocomplete: 'cloud-removed' } };
+    // 例如旧版本选过、现已不再下发的 Cloud 模型。
+    const resolutionContext = context(models, {
+      primaryModelId: 'cloud-removed',
+      auxiliaryModelIds: { autocomplete: 'cloud-removed' },
+    });
 
-    expect(resolveAuxiliaryModelId(context(models, selections, false), 'autocomplete')).toBeNull();
-    expect(resolveAuxiliaryModelId(context(models, selections, true), 'autocomplete')).toBe(
-      'cloud-fast'
-    );
+    expect(resolvePrimaryModelId(resolutionContext)).toBeNull();
+    expect(resolveAuxiliaryModelId(resolutionContext, 'autocomplete')).toBeNull();
   });
 
   it('图片理解默认值优先避开文档上传 OCR 模型', () => {

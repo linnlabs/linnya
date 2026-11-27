@@ -20,9 +20,9 @@ const roots = installRuntimePathRoots(
     })
     .parse(workerData)
 );
-const identity = installDistributionIdentity(createSourceDistributionIdentity());
+installDistributionIdentity(createSourceDistributionIdentity());
 void (async () => {
-  await initializeWorkerModelServices({ runtimePathRoots: roots, distributionIdentity: identity });
+  await initializeWorkerModelServices({ runtimePathRoots: roots });
   const oauth = await providerAccountRequestCredentialResolver.resolve('chatgpt-subscription');
   // 测试消息也只返回匹配结果，不让凭据进入队列结果或诊断日志。
   parentPort?.postMessage({

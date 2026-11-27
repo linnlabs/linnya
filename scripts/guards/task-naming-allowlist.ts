@@ -122,27 +122,6 @@ export const TASK_NAMING_ALLOWANCES: readonly TaskNamingAllowance[] = [
       )(occurrence),
   },
   {
-    id: 'cloud-model-task-defaults-wire',
-    reason:
-      'Linnya Cloud /v1/models 与现有 renderer 模型响应仍使用 task_defaults；客户端业务内部已收敛为 purpose defaults。',
-    removeAfter: '独立云端模型协议迁移',
-    allows: occurrence =>
-      occurrence.name === 'task_defaults' &&
-      inFiles(
-        'src/domains/model-catalog/features/cloud-catalog/orchestration/fetchCloudModels.ts',
-        'src/domains/model-catalog/features/cloud-catalog/__tests__/fetchCloudModels.test.ts',
-        'src/electron-main/routes/modelRouter.ts',
-        'apps/renderer/domains/model-configuration/features/model-catalog/definitions/modelCatalog.ts',
-        'apps/renderer/domains/model-configuration/features/model-catalog/functions/modelCatalogProjection.ts',
-        'apps/renderer/domains/model-configuration/features/model-catalog/functions/modelCatalogProjection.test.ts',
-        'scripts/cloud-model-kv-v2-migration/functions/buildMigrationPlan.ts',
-        'scripts/cloud-model-kv-v2-migration/functions/cloudModelKvV2Migration.test.ts',
-        'apps/renderer/domains/conversation/features/model-selection/orchestration/useConversationModelSelection.integration.test.ts',
-        'apps/renderer/domains/conversation/features/conversation-title/orchestration/useConversationTitleFeature.modelSelection.integration.test.ts',
-        'docs/conversation-platform/10-subruns.md'
-      )(occurrence),
-  },
-  {
     id: 'explicitly-excluded-internal-audit-api',
     reason: 'TaskTrackingMeta 与 audit path 删除属于另一个公开/共享表面治理项。',
     removeAfter: '独立 audit API 治理',

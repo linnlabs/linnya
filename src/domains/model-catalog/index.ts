@@ -1,7 +1,7 @@
 /**
  * 桌面后端 Model Catalog 的唯一跨 domain 入口。
  *
- * 本入口只暴露产品模型目录合同、准入纯函数、Cloud 模型稳定 ID 和唯一目录实例。
+ * 本入口只暴露产品模型目录合同、准入纯函数和唯一目录实例。
  * Provider SDK、推理执行、Renderer 状态与业务模型选择均不属于本 domain。
  */
 
@@ -9,7 +9,6 @@ import { modelCatalog } from './registry/modelCatalogRegistry';
 
 export type {
   DocumentOcrRoute,
-  FunctionalModelDefaults,
   InferenceApiSurface,
   InferenceAuthProfile,
   ModelCatalog,
@@ -40,13 +39,6 @@ export type {
   EndpointCredentialStatus,
 } from './definitions/inferenceEndpoint';
 
-export {
-  CLOUD_DEEPSEEK_CHAT_MODEL_ID,
-  CLOUD_DEEPSEEK_REASONER_MODEL_ID,
-  toCloudModelId,
-} from './features/cloud-catalog/functions/cloudModelIds';
-export { getDeviceId as getLinnyaCloudDeviceId } from './features/cloud-catalog/functions/deviceId';
-export { isLinnyaCloudClientEnabled } from './features/cloud-catalog/functions/isLinnyaCloudClientEnabled';
 export { normalizeModelCapabilities } from './features/catalog-admission/functions/normalizeModelCapabilities';
 export { parseEditableModelPatch } from './features/catalog-admission/functions/parseEditableModelPatch';
 export { readDocumentOcrRoute } from './features/catalog-admission/functions/readDocumentOcrRoute';
@@ -75,8 +67,6 @@ export {
 export {
   ModelCatalogRegistry,
   modelCatalog,
-  type CloudModelsLoadedEvent,
-  type CloudModelsLoadedListener,
   type UserModelCatalogChangedEvent,
   type UserModelCatalogChangedListener,
 } from './registry/modelCatalogRegistry';

@@ -211,8 +211,6 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
             ui_visibility: [],
           },
         ],
-        purposeDefaults: {},
-        cloudModelsReady: true,
       });
       if (outcome !== 'refresh-failed') {
         mocks.refreshCustomProvider.mockResolvedValue({
@@ -291,8 +289,6 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     mocks.loadPicker.mockResolvedValue(emptyGroup);
     mocks.loadCatalog.mockResolvedValue({
       models: [],
-      purposeDefaults: {},
-      cloudModelsReady: false,
     });
     await flushUi();
     const button = host.querySelector<HTMLButtonElement>('.model-visibility-refresh-btn');
@@ -333,8 +329,6 @@ describe('ModelVisibilitySettingsSection Provider 操作', () => {
     mocks.confirm.mockResolvedValue(true);
     mocks.loadCatalog.mockResolvedValue({
       models: [],
-      purposeDefaults: {},
-      cloudModelsReady: false,
     });
     mocks.loadPicker.mockRejectedValue(new Error('picker unavailable'));
     await flushUi();

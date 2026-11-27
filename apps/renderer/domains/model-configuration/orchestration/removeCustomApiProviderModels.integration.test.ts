@@ -16,8 +16,6 @@ describe('删除自定义分组后的 Renderer 同步', () => {
   it('清理 Host 实际删除模型的绑定，重读失败独立报告且不重发删除', async () => {
     useModelCatalogStore().replaceSnapshot({
       models: [{ id: 'a', catalog_source: 'user', capabilities: ['chat'] }],
-      purposeDefaults: {},
-      cloudModelsReady: false,
     });
     setModelPurposeBinding('primary', 'a');
     const removal: CustomApiProviderRemovalGateway = {
@@ -75,7 +73,7 @@ describe('删除自定义分组后的 Renderer 同步', () => {
       })),
     };
     const catalog: ModelCatalogGateway = {
-      load: vi.fn(async () => ({ models: [], purposeDefaults: {}, cloudModelsReady: false })),
+      load: vi.fn(async () => ({ models: [] })),
       update: vi.fn(),
       delete: vi.fn(),
     };

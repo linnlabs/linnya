@@ -305,9 +305,7 @@ function walk(dir: string, extensions: ReadonlySet<string>, files: string[]): vo
   }
 }
 
-function collectTaskNamingOccurrencesFromRepository(
-  candidateIncludes?: string,
-): TaskNamingOccurrence[] {
+export function collectTaskNamingOccurrences(): TaskNamingOccurrence[] {
   const files: string[] = [];
   for (const root of SOURCE_ROOTS) walk(path.join(REPO_ROOT, root), SCANNABLE_EXTENSIONS, files);
   walk(path.join(REPO_ROOT, 'docs'), DOCUMENTATION_EXTENSIONS, files);
@@ -315,31 +313,8 @@ function collectTaskNamingOccurrencesFromRepository(
   return files.flatMap((filePath) => {
     const relativePath = normalizeFilePath(path.relative(REPO_ROOT, filePath));
     const content = fs.readFileSync(filePath, 'utf8');
-    if (
-      candidateIncludes !== undefined
-      && !relativePath.includes(candidateIncludes)
-      && !content.includes(candidateIncludes)
-    ) {
-      return [];
-    }
     return findTaskNamingOccurrences(relativePath, content);
   });
-}
-
-export function collectTaskNamingOccurrences(): TaskNamingOccurrence[] {
-  return collectTaskNamingOccurrencesFromRepository();
-}
-
-/**
- * 全仓核对某个精确合同名时，只为可能命中的文件建立 AST。
- *
- * 这里仍遍历所有治理目录，避免允许列表测试因写死文件清单而漏掉新调用方；候选过滤只跳过
- * 文件名和正文都不含目标名称的文件，不改变最终 occurrence 的语义判断。
- */
-export function collectTaskNamingOccurrencesByExactName(name: string): TaskNamingOccurrence[] {
-  return collectTaskNamingOccurrencesFromRepository(name).filter(
-    occurrence => occurrence.name === name
-  );
 }
 
 export function collectTaskNamingViolations(): TaskNamingOccurrence[] {

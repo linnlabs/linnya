@@ -25,8 +25,6 @@ function setup() {
       capabilities: ['chat', 'image_generation', 'embedding'],
       reasoning: { supported_efforts: ['low', 'high'] },
     })),
-    purposeDefaults: {},
-    cloudModelsReady: false,
   };
   useModelCatalogStore().replaceSnapshot(initialCatalog);
   const initialPicker: ModelPickerSnapshot = {

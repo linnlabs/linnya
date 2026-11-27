@@ -6,7 +6,6 @@ import type { ScriptedLlmCall } from '@linnlabs/linnkit/testkit';
 import { modelCatalog } from 'src/domains/model-catalog';
 import { providerAccountRegistry } from 'src/domains/provider-account';
 import { providerConfigurationRegistry } from 'src/domains/provider-configuration';
-import { createSourceDistributionIdentity } from 'src/shared/distribution-identity';
 import { resetWorkspaceRootToDefault, setWorkspaceRoot } from 'src/shared/utils/pathManager';
 import { createProfileCredentialStorage } from '../../credential-storage/createProfileCredentialStorage';
 import { createDefaultHostInferencePort, createLinnyaModelReasoningResolver } from '../../inference';
@@ -30,8 +29,7 @@ export interface RecordedRealModelInference {
  * 用一个开发实例已经配置好的模型与凭据装配生产模型目录。
  *
  * - 模型与 Provider 配置（不含密钥）复制进临时 workspace，测试不会改动开发实例的配置；
- * - 凭据由 Linnya 凭据存储直接从开发 profile 读取，初始化只读，不复制、不输出；
- * - 发行身份按源码版，Linnya Cloud 目录保持关闭。
+ * - 凭据由 Linnya 凭据存储直接从开发 profile 读取，初始化只读，不复制、不输出。
  */
 export async function installDevelopmentModelServices(input: {
   readonly instanceRoot: string;
@@ -63,7 +61,7 @@ export async function installDevelopmentModelServices(input: {
   providerAccountRegistry.installCredentialStorage(storage);
   modelCatalog.installModelReasoningResolver(createLinnyaModelReasoningResolver());
   await providerAccountRegistry.initialize();
-  await modelCatalog.initialize(createSourceDistributionIdentity());
+  await modelCatalog.initialize();
   // 与生产启动接线一致：停用的用户模型也算存在，临时副本里的 Provider 归属不被对账删掉。
   await providerConfigurationRegistry.initialize({
     models: modelCatalog.getModelIdentitiesIncludingUnadmitted(),

@@ -9,7 +9,6 @@ import type {
   ModelConfig,
   UserModelRegistration,
 } from '../../../definitions/modelCatalog';
-import { createSourceDistributionIdentity } from '../../../../../shared/distribution-identity';
 
 const paths = vi.hoisted(() => ({ directory: '' }));
 vi.mock('src/shared/utils/pathManager', () => ({
@@ -70,7 +69,7 @@ async function openRegistry(): Promise<ModelCatalog> {
   const { ModelCatalogRegistry } = await import('../../../registry/modelCatalogRegistry');
   const registry = ModelCatalogRegistry.getInstance();
   registry.installEndpointCredentialStorage(createFileCredentialStorage(path.join(paths.directory, 'credentials.json')));
-  await registry.initialize(createSourceDistributionIdentity());
+  await registry.initialize();
   return registry;
 }
 

@@ -4,8 +4,6 @@ import type { ZodType } from 'zod';
 import type { AppServerRpcPeer } from '../../../../app-server-rpc';
 import type { BackendRendererIntegrationPort } from '../../../definitions/backendRendererIntegrationPort';
 import {
-  DESKTOP_RENDERER_MODEL_CATALOG_CONNECT_RPC_METHOD,
-  DESKTOP_RENDERER_MODEL_CATALOG_DISCONNECT_RPC_METHOD,
   DESKTOP_RENDERER_PLUGIN_PUSH_RPC_METHOD,
   DESKTOP_RENDERER_PLUGINS_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_PLUGIN_DATA_CHANGED_RPC_METHOD,
@@ -47,14 +45,6 @@ export function createBackendRendererIntegrationRpcClient(input: {
   };
 
   const port: BackendRendererIntegrationPort = {
-    async connectModelCatalogUpdates() {
-      const response = await input.rpc.request(
-        DESKTOP_RENDERER_MODEL_CATALOG_CONNECT_RPC_METHOD,
-        null
-      );
-      RendererIntegrationVoidRpcSchema.parse(response);
-      return () => publish(DESKTOP_RENDERER_MODEL_CATALOG_DISCONNECT_RPC_METHOD, null);
-    },
     publishTranscriptionProgress(event) {
       publish(
         DESKTOP_RENDERER_TRANSCRIPTION_PROGRESS_RPC_METHOD,

@@ -17,7 +17,7 @@ vi.mock('../../../../electron-main/services/serviceInitializer', () => ({
   ServiceInitializer: class TestServiceInitializer {
     async stopStartupMaintenance(): Promise<void> {}
     async initializeServices() {
-      return { disposeRendererIntegration() {} };
+      return {};
     }
   },
 }));

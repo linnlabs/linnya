@@ -11,8 +11,6 @@ import { removeModelSource } from './removeModelSource';
 function setup() {
   useModelCatalogStore().replaceSnapshot({
     models: ['a', 'b', 'c'].map(id => ({ id, catalog_source: 'user', capabilities: ['chat'] })),
-    purposeDefaults: {},
-    cloudModelsReady: false,
   });
   setModelPurposeBinding('primary', 'a');
   const catalog: ModelCatalogGateway = {

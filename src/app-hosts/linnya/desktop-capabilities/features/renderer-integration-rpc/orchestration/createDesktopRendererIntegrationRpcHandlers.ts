@@ -4,8 +4,6 @@ import type {
 } from '../../../../app-server-rpc';
 import type { BackendRendererIntegrationPort } from '../../../definitions/backendRendererIntegrationPort';
 import {
-  DESKTOP_RENDERER_MODEL_CATALOG_CONNECT_RPC_METHOD,
-  DESKTOP_RENDERER_MODEL_CATALOG_DISCONNECT_RPC_METHOD,
   DESKTOP_RENDERER_PLUGIN_PUSH_RPC_METHOD,
   DESKTOP_RENDERER_PLUGINS_CHANGED_RPC_METHOD,
   DESKTOP_RENDERER_PLUGIN_DATA_CHANGED_RPC_METHOD,
@@ -31,22 +29,7 @@ import {
 export function createDesktopRendererIntegrationRpcHandlers(
   port: BackendRendererIntegrationPort,
 ): AppServerRpcHandlerRegistry {
-  let disconnectModelCatalogUpdates: (() => void) | null = null;
   return new Map<string, AppServerRpcHandler>([
-    [DESKTOP_RENDERER_MODEL_CATALOG_CONNECT_RPC_METHOD, async payload => {
-      RendererIntegrationVoidRpcSchema.parse(payload);
-      if (disconnectModelCatalogUpdates) {
-        throw new Error('Model Catalog Renderer bridge 已连接');
-      }
-      disconnectModelCatalogUpdates = await port.connectModelCatalogUpdates();
-      return null;
-    }],
-    [DESKTOP_RENDERER_MODEL_CATALOG_DISCONNECT_RPC_METHOD, payload => {
-      RendererIntegrationVoidRpcSchema.parse(payload);
-      disconnectModelCatalogUpdates?.();
-      disconnectModelCatalogUpdates = null;
-      return null;
-    }],
     [DESKTOP_RENDERER_TRANSCRIPTION_PROGRESS_RPC_METHOD, payload => {
       port.publishTranscriptionProgress(
         RendererIntegrationTranscriptionProgressRpcSchema.parse(payload),
