@@ -5,7 +5,7 @@
         v-if="isVisible"
         class="modal-overlay"
         :class="{ 'modal-overlay--alert': layer === 'alert' }"
-        @click.self="closeOnOverlayClick && close()"
+        v-on="backdropListeners"
       >
         <div
           ref="containerRef"
@@ -61,8 +61,7 @@ import type { CSSProperties } from 'vue';
 import { CloseIcon } from '../../../icons';
 import { useSharedComponentLocalization } from '../../../localization';
 import type { ModalProps, ModalSlots } from '../definitions/modal';
-import { useEscapeLayer } from '../vue/useEscapeLayer';
-import { useModalFocus } from '../vue/useModalFocus';
+import { useModalOverlay } from '../vue/useModalOverlay';
 
 defineOptions({ name: 'LinnyaModal' });
 
@@ -114,14 +113,18 @@ const close = (): void => {
   emit('close');
 };
 
-// Escape 只交给最后打开的浮层；closeOnEsc 为 false 时本层接住但不关闭，也不让下一层响应。
-useEscapeLayer({
+// Escape 与遮罩点击只交给最上面一层：closeOnEsc 为 false 时本层接住 Escape 但不关闭，也不让下一层响应；
+// 弹窗里开着下拉或日期面板时，第一次点遮罩只关那个面板。
+const { isTopmost, backdropListeners } = useModalOverlay({
   active: () => props.isVisible,
+  containerRef,
   onEscape: () => {
     if (props.closeOnEsc) close();
   },
+  onBackdropClick: () => {
+    if (props.closeOnOverlayClick) close();
+  },
 });
-const { isTopmost } = useModalFocus({ active: () => props.isVisible, containerRef });
 
 defineExpose({ isTopmost });
 </script>

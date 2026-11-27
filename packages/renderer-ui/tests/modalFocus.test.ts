@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp, defineComponent, h, nextTick, ref, type App, type Ref } from 'vue';
-import { AlertDialog, ImagePreviewModal, Modal, useModalFocus } from '@linnya/renderer-ui';
+import { AlertDialog, ImagePreviewModal, Modal, useModalOverlay } from '@linnya/renderer-ui';
 
 const mountedApps: Array<{ readonly app: App; readonly host: HTMLElement }> = [];
 
@@ -226,7 +226,7 @@ describe('弹窗的键盘焦点', () => {
     const own = ref(false);
     const OwnLayer = defineComponent(() => {
       const containerRef = ref<HTMLElement | null>(null);
-      useModalFocus({ active: own, containerRef });
+      useModalOverlay({ active: own, containerRef, onEscape: () => undefined, onBackdropClick: () => undefined });
       return () => (own.value ? h('div', { ref: containerRef, id: 'own', tabindex: -1 }) : null);
     });
     mount(() => h('div', [

@@ -98,6 +98,7 @@ export {
   useEscapeLayer,
   useImagePreviewSource,
   useModalFocus,
+  useModalOverlay,
 } from './features/overlays';
 export type {
   AlertDialogProps,
@@ -105,8 +106,11 @@ export type {
   EscapeLayerOptions,
   ImagePreviewModalClassNames,
   ImagePreviewModalProps,
+  ModalBackdropListeners,
   ModalFocusOptions,
   ModalLayer,
+  ModalOverlayControls,
+  ModalOverlayOptions,
   ModalProps,
   ModalScrollMode,
   ModalSlots,

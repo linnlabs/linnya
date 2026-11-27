@@ -1,9 +1,17 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, ref, type App } from 'vue';
-import { AlertDialog, ImagePreviewModal, Modal, useEscapeLayer } from '@linnya/renderer-ui';
-import { getEscapeLayerRegistry } from '../src/features/overlays/registry/escapeLayerRegistry';
+import {
+  AlertDialog,
+  CustomSelect,
+  ImagePreviewModal,
+  Modal,
+  SimpleDatePicker,
+  useEscapeLayer,
+  useModalFocus,
+} from '@linnya/renderer-ui';
+import { getOverlayStack } from '../src/features/overlays/registry/overlayStack';
 
 const mountedApps: Array<{ readonly app: App; readonly host: HTMLDivElement }> = [];
 
@@ -20,6 +28,21 @@ function pressKey(key: string): void {
   document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
 }
 
+/** 一次真实点击：先在 pressOn 上按下，再在 target 上收到 click（按下和松开不在同一处时 click 落在共同祖先上）。 */
+function clickAt(target: Element, pressOn: Element = target): void {
+  pressOn.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  target.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+
+function element(selector: string): HTMLElement {
+  const found = document.querySelector<HTMLElement>(selector);
+  if (!found) throw new Error(`missing ${selector}`);
+  return found;
+}
+
+// 关闭动画在 jsdom 里不会结束，上一个用例关掉的遮罩会留在 body 上，每个用例从空页面开始。
+beforeEach(() => document.body.replaceChildren());
+
 afterEach(() => {
   while (mountedApps.length > 0) {
     const mounted = mountedApps.pop();
@@ -29,12 +52,12 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('Escape 注册表', () => {
-  it('只把 Escape 交给最后登记的层，退出后再交给上一层', () => {
-    const registry = getEscapeLayerRegistry(document);
+describe('浮层栈', () => {
+  it('Escape 只交给最后入栈的层，出栈后再交给上一层', () => {
+    const stack = getOverlayStack(window);
     const calls: string[] = [];
-    const unregisterLower = registry.register({ onEscape: () => calls.push('lower') });
-    const unregisterUpper = registry.register({ onEscape: () => calls.push('upper') });
+    const unregisterLower = stack.register({ onEscape: () => calls.push('lower') });
+    const unregisterUpper = stack.register({ onEscape: () => calls.push('upper') });
 
     pressKey('Escape');
     expect(calls).toEqual(['upper']);
@@ -49,9 +72,8 @@ describe('Escape 注册表', () => {
   });
 
   it('不是 Escape 的按键不交给任何层', () => {
-    const registry = getEscapeLayerRegistry(document);
     const onEscape = vi.fn();
-    const unregister = registry.register({ onEscape });
+    const unregister = getOverlayStack(window).register({ onEscape });
 
     pressKey('Enter');
     pressKey('a');
@@ -60,14 +82,17 @@ describe('Escape 注册表', () => {
     unregister();
   });
 
-  it('整个 document 只装一个监听，最后一层退出后移除，重复退出无副作用', () => {
+  it('只装一组监听：第一层入栈时安装，最后一层出栈后移除，重复出栈无副作用', () => {
     const add = vi.spyOn(document, 'addEventListener');
     const remove = vi.spyOn(document, 'removeEventListener');
-    const registry = getEscapeLayerRegistry(document);
+    const addOnWindow = vi.spyOn(window, 'addEventListener');
+    const removeOnWindow = vi.spyOn(window, 'removeEventListener');
+    const stack = getOverlayStack(window);
 
-    const unregisterFirst = registry.register({ onEscape: () => undefined });
-    const unregisterSecond = registry.register({ onEscape: () => undefined });
+    const unregisterFirst = stack.register({ onEscape: () => undefined });
+    const unregisterSecond = stack.register({ onEscape: () => undefined });
     expect(add.mock.calls.filter(([type]) => type === 'keydown')).toHaveLength(1);
+    expect(addOnWindow.mock.calls.filter(([type]) => type === 'pointerdown')).toHaveLength(1);
 
     unregisterFirst();
     unregisterFirst();
@@ -75,6 +100,22 @@ describe('Escape 注册表', () => {
 
     unregisterSecond();
     expect(remove.mock.calls.filter(([type]) => type === 'keydown')).toHaveLength(1);
+    expect(removeOnWindow.mock.calls.filter(([type]) => type === 'pointerdown')).toHaveLength(1);
+  });
+
+  it('弃用的 useModalFocus 只管焦点，Escape 照旧交给下面处理 Escape 的层', async () => {
+    const onEscape = vi.fn();
+    const Own = defineComponent(() => {
+      const containerRef = ref<HTMLElement | null>(null);
+      useEscapeLayer({ active: true, onEscape });
+      useModalFocus({ active: true, containerRef });
+      return () => h('div', { ref: containerRef, tabindex: -1 });
+    });
+    mount(() => h(Own));
+    await nextTick();
+
+    pressKey('Escape');
+    expect(onEscape).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -226,5 +267,69 @@ describe('浮层叠放时的 Escape', () => {
     pressKey('Escape');
     expect(previewClose).toHaveBeenCalledTimes(1);
     expect(modalClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('遮罩点击只给最上面一层', () => {
+  it('弹窗里开着下拉时，第一次点遮罩只关下拉，第二次才关弹窗', async () => {
+    const modalClose = vi.fn();
+    mount(() => h(Modal, { isVisible: true, title: '设置', onClose: modalClose }, {
+      default: () => h(CustomSelect, {
+        modelValue: 'zh',
+        options: [{ value: 'zh', text: '简体中文' }, { value: 'en', text: 'English' }],
+      }),
+    }));
+    await nextTick();
+    element('.select-trigger').click();
+    await nextTick();
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull();
+
+    clickAt(element('.modal-overlay'));
+    await nextTick();
+    expect(document.querySelector('.custom-select .select-trigger')?.getAttribute('aria-expanded')).toBe('false');
+    expect(modalClose).not.toHaveBeenCalled();
+
+    clickAt(element('.modal-overlay'));
+    expect(modalClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('按下就关闭的日期面板同样只关面板，不连带关闭弹窗', async () => {
+    const modalClose = vi.fn();
+    mount(() => h(Modal, { isVisible: true, title: '筛选', onClose: modalClose }, {
+      default: () => h(SimpleDatePicker, { modelValue: null }),
+    }));
+    await nextTick();
+    element('.sdp-input').click();
+    await nextTick();
+    expect(document.querySelector('.sdp-panel')).not.toBeNull();
+
+    clickAt(element('.modal-overlay'));
+    await nextTick();
+    expect(modalClose).not.toHaveBeenCalled();
+
+    clickAt(element('.modal-overlay'));
+    expect(modalClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('在弹窗里按下、拖到遮罩上松开不算点遮罩', async () => {
+    const modalClose = vi.fn();
+    mount(() => h(Modal, { isVisible: true, title: '编辑', onClose: modalClose }, {
+      default: () => h('textarea', { id: 'draft' }),
+    }));
+    await nextTick();
+
+    clickAt(element('.modal-overlay'), element('#draft'));
+    expect(modalClose).not.toHaveBeenCalled();
+  });
+
+  it('图片预览只在点到图片以外时关闭', async () => {
+    const previewClose = vi.fn();
+    mount(() => h(ImagePreviewModal, { isVisible: true, src: 'blob:preview', alt: '预览', onClose: previewClose }));
+    await nextTick();
+
+    clickAt(element('.image-preview-modal img'));
+    expect(previewClose).not.toHaveBeenCalled();
+    clickAt(element('.image-preview-modal'));
+    expect(previewClose).toHaveBeenCalledTimes(1);
   });
 });

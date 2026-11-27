@@ -496,20 +496,18 @@ footer。表单规则、列表状态、保存流程、错误处理仍属于各�
 列表是否能到达首尾、小视口是否仍能关闭或提交。不要用测试锁死 scrollbar 宽度、padding、
 颜色或整页 UI snapshot。
 
-Escape 归属：多层浮层同时打开时，Escape 只交给最后打开的那一层（`Modal`、`AlertDialog`、
-`ImagePreviewModal` 已接入同一份登记）。最上层的 `closeOnEsc` 为 `false`（例如处理中）时，本层不关闭，
-Escape 也不会落到下面的层。业务自有的全屏浮层（如设置窗）需要参与同一顺序时，调用公开的
-`useEscapeLayer({ active, onEscape })`，不要自己监听 document 的 Escape。
+浮层先后：`Modal`、`AlertDialog`、`ImagePreviewModal`、`CustomSelect` 与日期、时间面板按打开顺序进入同一份浮层栈，
+Escape、遮罩点击与键盘焦点都只交给最上面一层（规则见 [README 的浮层栈](../README.md#浮层栈)）。最上层的 `closeOnEsc`
+为 `false`（例如处理中）时，本层不关闭，Escape 也不会落到下面的层；弹窗里开着下拉时，第一次点遮罩只关下拉。
 
-键盘焦点：这三个组件打开时把焦点移进弹窗，Tab 在弹窗里循环，关闭后还给打开前的位置；业务想让某个输入框
-先得到焦点，打开后照常调用它的 `focus()` 即可。业务自有的全屏浮层调用公开的
-`useModalFocus({ active, containerRef })`，容器加 `tabindex="-1"`。确认框默认 Enter 是确认，后果严重、可能被
-误触的用 `default-action="cancel"`。
+业务自有的全屏模态浮层（如设置窗）调用 `useModalOverlay({ active, containerRef, onEscape, onBackdropClick })`，
+容器加 `tabindex="-1"`，遮罩元素写 `v-on="backdropListeners"`，不要自己监听 document 的 Escape、写 Tab 循环或用
+`@click.self` 关闭。业务想让某个输入框先得到焦点，打开后照常调用它的 `focus()` 即可。自写的临时面板要参与 Escape
+与遮罩先后时调用 `useEscapeLayer({ active, onEscape })`。确认框默认 Enter 是确认，后果严重、可能被误触的用
+`default-action="cancel"`。业务弹窗内需要确认时走 `AlertDialog` 的既有上层语义。
 
-相邻限制：背景不会 inert；菜单、Popover、Picker 等
-除日期、时间面板与 `CustomSelect` 的自动模式外，非 Modal 浮层各自管理 Escape，尚未并入这份顺序。业务弹窗内需要确认时必须走 `AlertDialog` 的既有上层
-语义。统一浮层栈的其余部分（inert、外部点击、非 Modal 浮层）需要单独设计并建立行为验收矩阵，
-不能通过滚动模式或业务 CSS 顺带修补。
+相邻限制：背景不会 inert；`BaseDropdown`、`TextPopover` 与 Host、插件各自的菜单和 Popover 尚未入栈，
+仍自己处理 Escape 与外部点击。不能通过滚动模式或业务 CSS 顺带修补它们的先后。
 
 ## 插件 renderer 使用
 

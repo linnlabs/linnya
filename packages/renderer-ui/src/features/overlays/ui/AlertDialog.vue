@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { ActionButtons } from '../../actions';
 import { useSharedComponentLocalization } from '../../../localization';
 import type { AlertDialogProps } from '../definitions/alertDialog';
@@ -135,26 +135,20 @@ const onCancel = (): void => {
   emit('cancel');
 };
 
-// Escape 由内层 Modal 的 Escape 归属处理，每次按键只关闭一次；这里只处理 Enter 的默认操作。
-// 焦点已经移到“取消”等按钮上时，Enter 按的是那个按钮；确认框叠确认框时只有最上面的响应。
+// Escape 由内层 Modal 在浮层栈里处理，每次按键只关闭一次；这里只处理 Enter 的默认操作。
+// 焦点已经移到“取消”等按钮上时，Enter 按的是那个按钮；上面还叠着别的弹窗或面板时不响应。
 const handleKeyDown = (event: KeyboardEvent): void => {
-  if (!props.visible || event.key !== 'Enter' || !modalRef.value?.isTopmost()) return;
+  if (event.key !== 'Enter' || !modalRef.value?.isTopmost()) return;
   if (event.target instanceof Element && event.target.closest('.modal-container button')) return;
   event.preventDefault();
   if (props.isConfirmation && props.defaultAction === 'cancel') onCancel();
   else onConfirm();
 };
 
-// 迁移期保持既有监听时机，不在 owner 迁移中改变键盘交互。
-watch(() => props.visible, (newValue) => {
-  if (newValue) {
-    document.addEventListener('keydown', handleKeyDown);
-  } else {
-    document.removeEventListener('keydown', handleKeyDown);
-  }
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', handleKeyDown);
-});
+// 挂载时就可见的确认框同样要响应 Enter，所以立即执行；关闭或卸载时由清理函数移除监听。
+watch(() => props.visible, (visible, _previous, onCleanup) => {
+  if (!visible) return;
+  document.addEventListener('keydown', handleKeyDown);
+  onCleanup(() => document.removeEventListener('keydown', handleKeyDown));
+}, { immediate: true });
 </script>

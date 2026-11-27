@@ -3,7 +3,7 @@ export { default as ImagePreviewModal } from './ui/ImagePreviewModal.vue';
 export { default as Modal } from './ui/Modal.vue';
 export { resolveAlertDialogDangerousAction } from './functions/resolveAlertDialogDangerousAction';
 export { useEscapeLayer } from './vue/useEscapeLayer';
-export { useModalFocus } from './vue/useModalFocus';
+export { useModalFocus, useModalOverlay } from './vue/useModalOverlay';
 export { useImagePreviewSource } from './vue/useImagePreviewSource';
 export {
   RENDERER_UI_OVERLAY_LAYER_TOKENS,
@@ -16,6 +16,12 @@ export type {
   ImagePreviewModalClassNames,
   ImagePreviewModalProps,
 } from './definitions/imagePreviewModal';
-export type { ModalFocusControls, ModalFocusOptions } from './definitions/modalFocus';
+export type {
+  ModalBackdropListeners,
+  ModalFocusControls,
+  ModalFocusOptions,
+  ModalOverlayControls,
+  ModalOverlayOptions,
+} from './definitions/modalOverlay';
 export type { ModalLayer, ModalProps, ModalScrollMode, ModalSlots } from './definitions/modal';
 export type { RendererUiOverlayLayer } from './definitions/overlayLayer';

@@ -18,7 +18,7 @@ deep import，或重新建立 Host 级通用组件杂物目录。完整消费示
 
 ## 公开入口
 
-- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、MonthCalendar、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、锚定浮层定位（`useAnchoredPosition` 等，见“锚定浮层定位”）、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、`useEscapeLayer`、`useModalFocus`、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。`usePortalToBody` 时面板默认与触发器同宽，以像素给出的 `minWidth` 可以撑宽（不超过视口），翻转与收边都按这个宽度计算。选项可用 `description` 在标签下方加一行说明；`variant` 除 `danger` 外还有 `warning`，用警示色加粗标签，表达需要留意但不是破坏性的选项。`selected-value` 插槽可把触发器内容换成图标等；`triggerTooltip` 让触发器改用共享提示服务的悬停提示（不再有原生 `title`），没有 `triggerAriaLabel` 时它也是可访问名称。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
+- 包根：BaseButton、IconButton、`resolveIconButtonElement`、Skeleton、SkeletonBlock、SkeletonRows、CommandBar、FloatingToolbar、ToolbarGroup、ToolbarButton、ToolbarColorButton、DropdownPanel、ActionButtons、CharacterCount、CustomCheckbox、CustomRadio、Switch、TagChip、SegmentedTabs、PageSectionHeader、ScrollToBottomButton、CustomTextInput、InlineTextInput、SecretInput、CustomTextarea、CustomNumberInput、CustomSlider、CustomSelect、BaseDropdown、TextPopover、Modal、AlertDialog、ImagePreviewModal、MonthCalendar、SimpleDatePicker、TimePicker、ColorPickerPanel、DraggablePanel、HoverTooltip、NotificationBar、`applyTextareaAutoResize`、锚定浮层定位（`useAnchoredPosition` 等，见“锚定浮层定位”）、颜色/面板/Tooltip 定位纯函数、Tooltip 窗口焦点 port、`useHoverTooltipService`、浮层栈（`useModalOverlay`、`useEscapeLayer`，弃用的 `useModalFocus`，见“浮层栈”）、`useImagePreviewSource`、界面调度函数（见“界面时序”）、Renderer UI overlay layer 常量/纯函数，以及对应公开 props/value/variant/option/section/geometry/notification/classNames 类型。`CustomSelect` 可通过 `optionLabelOverflow` 为受宽度约束的选项启用省略或 hover 滚动，通过 `showOptionLabelTooltip` 控制长选项是否使用浏览器原生 tooltip，并通过 `optionsMotionDirection` 表达上下展开动效；`showSelectedCheckmark` 在可直接选中的选项右侧为选中项显示对勾（预留定宽槽位，默认关闭）。`usePortalToBody` 时面板默认与触发器同宽，以像素给出的 `minWidth` 可以撑宽（不超过视口），翻转与收边都按这个宽度计算。选项可用 `description` 在标签下方加一行说明；`variant` 除 `danger` 外还有 `warning`，用警示色加粗标签，表达需要留意但不是破坏性的选项。`selected-value` 插槽可把触发器内容换成图标等；`triggerTooltip` 让触发器改用共享提示服务的悬停提示（不再有原生 `title`），没有 `triggerAriaLabel` 时它也是可访问名称。默认值保持既有菜单行为。新增导出必须属于跨业务稳定 UI 能力，并同步 runtime entry catalog。
 - `/font-stack`：Office/CJK/Latin 候选字体栈、CSS `font-family` 格式化与公开结果类型；这是无 Vue、DOM、CSS、Host 状态的纯叶子入口。
 - `/icons`：无业务语义的平台图标。
 - `/localization`：组件 message、fallback、resolver 与注入合同。
@@ -219,15 +219,29 @@ workspace/runtime 的产品逻辑 namespace，不是 GitHub 或 npm 身份声明
 
 跨 owner 浮层统一使用 `--linnya-ui-layer-*` token；JS 定位使用 `rendererUiOverlayLayer()`，不得在 package 组件或插件全局浮层中另写任意大数。当前 token 只把迁移前层级命名化：inline menu 100、picker 120、popover 与 status 1000、floating panel 1001、modal 2000、alert 与 portal menu 2100、image preview 3000、tooltip 4000。
 
-Alert 与 portal menu 保持同层是现有行为，仍由同层 DOM 顺序决定，不表示已经建立统一弹层栈。迁移期间禁止借 token 重排前后关系；完整 Esc/focus/stack manager 属于独立交互演进。
+Alert 与 portal menu 同为 2100，视觉前后仍由同层 DOM 顺序决定；Escape、遮罩点击与焦点的先后由下文的浮层栈决定，不靠 z-index。禁止借 token 重排前后关系。
 
 `Modal` 只拥有通用遮罩、标题、关闭入口、视口尺寸约束、`content|internal` 滚动模式和可选 footer；业务表单与流程继续归调用方。自 2.8.0 起进出场由遮罩淡底色与弹窗本体缩放（`--modal-*` token）组成，正文滚动时不加分隔线。自 3.9.0 起四边边距由 Modal 统一为 `--modal-inset`：默认滚动模式下正文与 footer 的左右、底部边距归 Modal，调用方只写上下间距；`internal` 模式下调用方根节点用 `var(--modal-inset)` 写左右边距并占满宽度（规则见 [设计规范 9.5](./docs/design.md#95-弹窗)）。自 2.7.0 起，可通过 `title-extra` 插槽在标题旁放来源或状态标签，标题本身的字阶和长标题换行仍由 Modal 拥有。`AlertDialog` 保持现有确认/取消/关闭事件投影，并支持结构化 section 和风险文案；危险样式优先由 `isDangerousAction` 明确声明，当前仍保留既有中英文文案推断以确保迁移等价。`ImagePreviewModal` 的 `classNames` 只向 overlay 和 image 节点注入业务命名空间 class，不把内部 selector 变成公共 CSS API。自 2.8.0 起可传入 `sourceElement`（缩略图或包着缩略图的按钮，调用方用 `useImagePreviewSource()` 在点击处记录），大图从缩略图展开、关闭时缩回；不传或不满足条件（缩略图离屏、浏览器不支持、减少动态效果）时保持淡入淡出。
 
-Escape 由 `/features/overlays` 的 document 级登记统一归属（自 3.12.0 起）：`Modal`、`AlertDialog`（经内层 Modal）、`ImagePreviewModal` 打开时登记，整个 document 只装一个 keydown 监听，Escape 只交给最后打开的那一层；该层 `closeOnEsc` 为 `false` 时本层接住但不关闭，也不穿透到下一层。必须保留自有 DOM 的业务浮层（当前是 Host 的 SettingsModal）通过公开的 `useEscapeLayer({ active, onEscape })` 参与同一顺序，业务不得再各自监听 document Escape 来关闭模态浮层。这份登记只管 Escape，不引入 parent 关系、inert 或外部点击；`AlertDialog` 因此不再有自己的 Escape 分支，一次按键只发出一次 close/cancel。
+### 浮层栈
 
-键盘焦点由另一份 document 级登记归属（自 3.14.0 起）：同样三个组件打开时登记，只有最上面的弹窗管焦点——打开时把焦点移进来（业务已经放好就不动），Tab 在弹窗里循环，焦点落到被盖住的内容上时拉回来，关闭后还给打开前的位置。判断“被盖住”看 DOM 顺序：弹窗里打开的下拉、日期面板挂在 body 上、排在弹窗之后，自己管焦点。业务自有 DOM 的模态浮层（SettingsModal）用公开的 `useModalFocus({ active, containerRef })`，容器需要 `tabindex="-1"`；不要各自写 Tab 循环或给背景加 inert。`AlertDialog` 的 Enter 只由最上面一层响应，默认执行确认，`defaultAction: 'cancel'` 改为默认取消。
+`/features/overlays` 为每个窗口维护一份按打开顺序排列的浮层栈（Escape 自 3.12.0、焦点自 3.14.0，3.16.0 起合并为一份并接管遮罩点击）。Host 与插件共用同一个 renderer-ui 单例时也共用这一份。整个 document 只装一组监听：keydown、focusin，以及 window 捕获阶段的 pointerdown；最后一层出栈后移除。
 
-当前 Modal 仍没有 focus trap、背景 inert 或关闭后焦点恢复，AlertDialog 的 Enter 确认也保留迁移前的 document 监听时机；菜单、Popover 等非 Modal 浮层的 Escape 仍各自管理，尚未并入这份顺序（日期、时间面板与 `CustomSelect` 的自动模式自 3.13.0 起已并入）。它们是已登记的交互/可访问性欠账，不得在纯 owner 迁移中用临时判断改写；后续必须单独设计、决策和验收。
+入栈的有两类：
+
+- 模态层：`Modal`、`AlertDialog`（经内层 Modal）、`ImagePreviewModal`，以及保留自有 DOM 的业务模态浮层。后者（当前是 Host 的 SettingsModal）调用公开的 `useModalOverlay({ active, containerRef, onEscape, onBackdropClick })`，容器需要 `tabindex="-1"`，遮罩元素绑定返回的 `backdropListeners`。
+- 临时浮层：`CustomSelect` 自动模式、`SimpleDatePicker` / `TimePicker` 面板，经公开的 `useEscapeLayer({ active, onEscape })` 入栈；外部点击仍由它们自己关闭。
+
+规则：
+
+1. Escape 只交给最上面一层。该层 `closeOnEsc` 为 `false`（如处理中）时接住但不关闭，也不穿透到下一层；`AlertDialog` 没有自己的 Escape 分支，一次按键只发出一次 close/cancel。
+2. 遮罩点击只给最上面一层：按下和松开都在遮罩本身，且按下那一刻本层在最上面，才算点了遮罩。弹窗里开着下拉或日期面板时，第一次点遮罩只关面板；在弹窗里按下、拖到遮罩上松开不关闭。“按下那一刻”在 window 捕获阶段记录，所以按下即关闭的面板也不会连带关闭弹窗。
+3. 焦点只由最上面的模态层管理：打开时把焦点移进来（业务已经放好就不动），Tab 在弹窗里循环，焦点落到被盖住的内容上时拉回来，关闭后还给打开前的位置。“被盖住”看 DOM 顺序：弹窗里打开的下拉、日期面板挂在 body 上、排在弹窗之后，自己管焦点。
+4. `AlertDialog` 的 Enter 只在它位于最上面时响应，默认执行确认，`defaultAction: 'cancel'` 改为默认取消；挂载时就可见的确认框同样响应。
+
+业务不得再各自监听 document 的 Escape、写 Tab 循环，或用 `@click.self` 关闭模态浮层。`useModalFocus` 自 3.16.0 起弃用：它只管焦点，Escape 对它透明、也不处理遮罩，下一个 major 删除。
+
+背景不设 inert：遮罩已经挡住指针，焦点由栈圈住。尚未入栈的有 `BaseDropdown`、`TextPopover` 和 Host、插件各自的菜单与 Popover，它们仍自己处理 Escape 与外部点击；Host 全局快捷键也还不知道有弹窗打开。这些要逐个核对与 Host 自有监听的先后后再接入，不得用临时判断改写。
 
 ## 日期与时间
 

@@ -2,6 +2,13 @@
 
 本文件记录 `@linnya/renderer-ui` 的公开 JS、CSS、token、主题、overlay 与 scroll 合同变化。
 
+## 3.16.0 - 2026-11-27
+
+- Escape、遮罩点击与键盘焦点改由同一份浮层栈按打开顺序归属，此前 Escape 与焦点各有一份登记、各装一组 document 监听。新增 `useModalOverlay({ active, containerRef, onEscape, onBackdropClick })`，返回 `isTopmost()` 与绑定到遮罩元素的 `backdropListeners`；新增类型 `ModalOverlayOptions`、`ModalOverlayControls`、`ModalBackdropListeners`。
+- 遮罩点击只给最上面一层：`Modal`、`ImagePreviewModal` 里开着 `CustomSelect` 或日期、时间面板时，第一次点遮罩只关面板，不再连同弹窗一起关闭；在弹窗里按下、拖到遮罩上松开不再关闭弹窗。只派发 `click`、没有先在遮罩上按下指针的程序化点击不再关闭弹窗。
+- `AlertDialog` 挂载时就可见也响应 Enter，此前要等 `visible` 变化一次才开始监听；上面还开着下拉或面板时不响应 Enter。
+- `useModalFocus` 弃用：它只管焦点、不处理 Escape 与遮罩，改用 `useModalOverlay`，下一个 major 删除。导出与行为保留，现有 `^3.0.0` 插件保持兼容。
+
 ## 3.15.0 - 2026-11-27
 
 - 新增 `useAnchoredPosition({ anchor, floating, open, placement })`：菜单、下拉、Popover、面板等贴着锚点弹出的浮层的统一定位入口，返回绑定到浮层根元素的 `style`、实际落在哪一侧的 `side`、`isPositioned` 与 `update()`。`placement` 可选 `side`（默认 `bottom`）、`align`（默认 `start`）、`gap`（默认 8）、`alignOffset`、`viewportMargin`（默认 8）、`flip`（默认翻转）、`matchAnchorWidth`、`fitViewportHeight`。打开期间跟随祖先滚动、窗口缩放与锚点 / 浮层尺寸变化；关闭后停在最后位置，让退场动画原地结束。同时新增 `computeAnchoredPosition`（一次性计算）、`createPointAnchor(x, y)`（右键菜单等以点击位置为锚）、`anchoredMotionDirection(side)` 与类型 `AnchoredSide`、`AnchoredAlign`、`AnchoredAnchor`、`AnchoredPositionOptions`、`AnchoredPosition`、`AnchoredFloatingStyle`、`UseAnchoredPositionOptions`、`AnchoredPositionControls`。
