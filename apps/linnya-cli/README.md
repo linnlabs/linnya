@@ -262,7 +262,7 @@ Agent 执行评审任务并保留会话，但普通评审文档不会自动进�
 ### 3.1 调用工具
 
 CLI 默认开放
-`list_files / read_file / grep / write_file / edit_file`；Web 工具需显式开启。它不会接受 Shell、插件工具或任意注册工具。`tools list`
+`list_files / read_file / grep / write_file / edit_file` 与 `plugin_cli`；Web 工具需显式开启。它不会接受 Shell 或任意注册工具，插件能力只经 `plugin_cli` 调用插件自己的命令。`tools list`
 只返回名称与简介；需要调用时再用 `tools describe`
 读取 App 当前注册的完整正式 schema，避免为发现工具反复传输全部参数合同：
 
@@ -315,6 +315,29 @@ UI 投影执行，因此前端能看到这次工具调用的历史，写入行�
 Agent 使用同一工具时完全一致。CLI 会等待 run 和工具卡都完成：工具成功时把完整工具消息写到 stdout；工具自身返回 error 时把同一消息写到 stderr，并以退出码
 `8` 结束。
 
+#### 调用插件命令（plugin_cli）
+
+`plugin_cli` 运行已启用插件自己的命令，与 Linnya Agent 在 Shell 里运行 `linnya-<plugin>` 走同一份执行规则
+（[Plugin CLI bridge](../../src/app-hosts/linnya/application/plugin-cli-shell-bridge/README.md)）：
+同一套命令合同、权限判断、内部数据访问开关和审计，结果进入该 Conversation 的工具记录。参数是
+`{"plugin_id": "...", "argv": [...]}`，`argv` 就是插件 CLI 的参数，例如 Slides 的
+`["export", "--presentation", "<presentation-id>"]`；先用 `["--help"]` 看插件支持的子命令。
+
+- 不调用 Linnya 的模型：声明需要 Host 推理的插件命令（例如 Knowledge 导入）以 `permission_denied` 拒绝，这类命令只能由 Linnya Agent 在 Shell 里运行。
+- 权限取本次运行冻结的权限：内部数据访问关闭时拒绝；需要写文件或写内部数据的命令在只读档位拒绝。
+  这个入口没有审批环节，需要写权限时调整运行权限，不能在 CLI 里批准。
+- 插件写出的文件在会话工作目录里，插件报告是 `conversation:/` 定位符，工具结果不含本机路径。
+  CLI 回执额外给出 `conversation_directory`（会话目录本机路径）和 `conversation_files`
+  （`[{locator, path}]`）：只列插件 JSON 报告里完整的 `conversation:/` 字符串值、且文件确实存在的产物，
+  文件名可以带空格；`--help` 等说明文字里提到的地址不算产物。外部 Agent 直接用 `path` 查看截图或拿走导出文件。
+- 插件退出码非 0 时工具结果为 error，CLI 以退出码 `8` 结束，stderr 里有插件的错误码与说明。
+
+Slides 的无模型交稿流程：`write_file` 写 `.slides` 源码（回执带编译诊断）→ `plugin_cli` 运行
+`inspect` 拿诊断、`render` 拿每页截图 → `edit_file` 修改后重复 → `plugin_cli` 运行 `export`
+得到可在 PowerPoint 里编辑的 `.pptx`。每次写入都是演示稿历史里的一版；`export` 导出最近一次构建成功的版本，
+源码还有未通过的草稿时拒绝并说明。Slides 子命令、报告与退出码见
+[`presentationCli/README.md`](../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
+
 #### 临时开放 Web
 
 ```bash
@@ -357,15 +380,15 @@ CLI 与 Host 都要升级并重启 Host；旧协议会明确拒绝，不做双�
 
 | 入口                                            | 适用调用方              | 当前职责                                                                            | 是否依赖正在运行的 Linnya                                            |
 | ----------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `linnya ...`                                    | 外部 Agent、脚本、人    | 启动源码 Runtime、Conversation 控制，以及五个 Workspace 工具；可读写 `.slides` 源码 | 普通命令依赖 Desktop 或 CLI Runtime；`runtime start` 不依赖 Electron |
-| `linnya-slides ...`                             | Linnya Agent 的 `shell` | 通过当前 Shell 的临时 bridge 执行 Slides `inspect / render / fonts`                 | 是，而且只能在受管 Shell execution 内使用                            |
+| `linnya ...`                                    | 外部 Agent、脚本、人    | 启动源码 Runtime、Conversation 控制、五个 Workspace 工具与 `plugin_cli`；可读写 `.slides` 源码，并经 `plugin_cli` 运行 Slides `inspect / render / export / fonts` | 普通命令依赖 Desktop 或 CLI Runtime；`runtime start` 不依赖 Electron |
+| `linnya-slides ...`                             | Linnya Agent 的 `shell` | 通过当前 Shell 的临时 bridge 执行 Slides `inspect / render / export / fonts`        | 是，而且只能在受管 Shell execution 内使用                            |
 | `pnpm slides:cli -- ...` / 插件 `entry.command` | 外部 Agent、人、CI      | Standalone Slides 只读诊断、检查图与字体查询                                        | 否；自行提供数据库和输出目录                                         |
 
 `linnya-slides`
 不是给外部进程直连 App 的通用命令：它依赖父 Shell 临时注入的 execution
-token。外部 Agent 若只需要编辑当前 Linnya 项目，应使用
-`linnya tools call`；若需要脱离 App 做 Slides 检查或渲染，应使用 Standalone
-Slides CLI。两者当前没有相互转发。Slides CLI 的完整参数与运行环境见
+token。外部 Agent 编辑当前 Linnya 项目并检查、截图、导出时，应使用
+`linnya tools call`（Slides 命令走 `plugin_cli`，与 `linnya-slides` 是同一份插件命令）；若需要脱离 App
+做只读检查或渲染，应使用 Standalone Slides CLI，它不能导出。Slides CLI 的完整参数与运行环境见
 [`presentationCli/README.md`](../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
 
 `audit <conversation-id> [--run ID]`

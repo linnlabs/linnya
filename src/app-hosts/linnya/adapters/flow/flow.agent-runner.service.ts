@@ -61,6 +61,7 @@ import type { ConversationCommandPermissionSelection } from '@app/schemas/comman
 import { resolveCommandRunPermissionContext } from 'src/app-hosts/linnya/adapters/context-injection/commandRunPermissionContextBinding';
 import { CommandAgentRunIdSchema, CommandConversationIdSchema } from '@app/schemas/commands';
 import type { ShellToolRuntimePort } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';
+import type { PluginCliToolRuntimePort } from 'src/app-hosts/linnya/application/plugin-cli-tool';
 import type { PhysicalFileReaderPort } from 'src/app-hosts/linnya/application/file-read';
 import type { ConversationWorkDirectoryAdmissionPort } from 'src/app-hosts/linnya/application/conversation-lifecycle';
 import type {
@@ -106,6 +107,7 @@ export interface AgentRunnerRuntimePort {
     | {
         readonly kind: 'enabled';
         readonly shellToolRuntime: ShellToolRuntimePort;
+        readonly pluginCliToolRuntime: PluginCliToolRuntimePort;
         readonly agentRunLifecycle: CommandAgentRunLifecyclePort;
       };
 }
@@ -419,6 +421,10 @@ export class AgentRunnerService {
                 shellToolRuntime:
                   this.runtime.commandRuntime.kind === 'enabled'
                     ? this.runtime.commandRuntime.shellToolRuntime
+                    : undefined,
+                pluginCliToolRuntime:
+                  this.runtime.commandRuntime.kind === 'enabled'
+                    ? this.runtime.commandRuntime.pluginCliToolRuntime
                     : undefined,
                 physicalFileReader: this.runtime.physicalFileReader,
                 conversationWorkDirectoryAdmission: this.runtime.conversationWorkDirectoryAdmission,

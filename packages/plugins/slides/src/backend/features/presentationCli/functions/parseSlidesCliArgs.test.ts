@@ -91,7 +91,7 @@ describe('parseSlidesCliArgs', () => {
     expect(() => parseSlidesCliArgs([
       'diagnose',
       '--presentation', 'deck-1',
-    ])).toThrow('Expected one of: render, inspect, fonts');
+    ])).toThrow('Expected one of: render, inspect, export, fonts');
   });
 
   it('拒绝互相冲突的页选择参数并返回稳定 usage exit code', () => {
@@ -223,5 +223,20 @@ describe('parseSlidesCliArgs', () => {
     expect(() => parseSlidesCliArgs([
       'fonts', 'check', '--family', 'Georgia', '--presentation', 'deck-1',
     ])).toThrow('Presentation options are not available');
+  });
+
+  it('独立 CLI 没有受管导出目录，export 不可用', () => {
+    expect(() => parseSlidesCliArgs(['export', '--presentation', 'deck-1']))
+      .toThrow(/export is available only inside Linnya/u);
+  });
+
+  it('选项写错时报出具体哪个选项，外部 Agent 能据此自行改正', () => {
+    expect(() => parseSlidesCliArgs(['render', '--presentation', 'deck-1', '--slides', '2']))
+      .toThrowError(expect.objectContaining<Partial<SlidesCliError>>({
+        code: 'slides.cli.invalid_arguments',
+        message: "Invalid command options: Unknown option '--slides'",
+      }));
+    expect(() => parseSlidesCliArgs(['fonts', 'check', '--family']))
+      .toThrow(/^Invalid font command options: Option '--family <value>' argument missing/u);
   });
 });

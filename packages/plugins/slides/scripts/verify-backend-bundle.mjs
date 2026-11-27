@@ -20,7 +20,9 @@ import {
 // Worker 必需的两份纯身份 schema 随插件内联，增加约 50 KiB；ppt_direction 的视觉方向池与
 // inspect 的方向贯彻检查在 App Server 运行，约 95 KiB（池内中文按 \u 转义计）；仍禁止整套物化栈回流。
 // 插件清单合同新增数据存储声明与应用面槽位（插件全生命周期），随 plugin-host-contract 内联约 1.4 KiB。
-const MAX_BACKEND_ENTRY_BYTES = 2.31 * 1024 * 1024;
+// 2026-11 外部命令行导出 PPTX（export 子命令的编排、文件名、原子写入、帮助文本与参数报错原因）增加约 6.4 KiB，
+// 当时余量 4.7 KiB，故由 2.31 MiB 放宽到 2.32 MiB；导出仍复用 coordinator.export，未带入新依赖。
+const MAX_BACKEND_ENTRY_BYTES = 2.32 * 1024 * 1024;
 // TypeScript/Yoga、PptxGenJS/JSZip 与原生公式装配均归同一 build Worker；预算只保留小幅
 // 依赖漂移空间，防止 parser、Host SDK 或完整 backend 被意外卷入（这类回流都是数百 KiB 起）。
 // 2026-11 图片取景（crop/focus 的作者校验、几何与 srcRect 导出）增加约 5 KiB，当时余量仅

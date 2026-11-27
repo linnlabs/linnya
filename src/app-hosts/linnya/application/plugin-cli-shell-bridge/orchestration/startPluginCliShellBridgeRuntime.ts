@@ -7,16 +7,13 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { CommandLaunchSnapshotV1 } from '@app/schemas/commands';
 import { CommandRunnerInternalEnvironmentV1Schema } from '@app/schemas/commands';
 import type { BackendPluginCliRegistration } from '../../../plugin-registry/registry';
-import { acquireBackendPluginCliInvocation } from '../../../plugin-registry/pluginCliInvocationRuntime';
 import type { PreparedCommandExecutionRuntime } from '../../../../../domains/commands';
 import type { CommandExecutionRuntimeStopCause } from '../../../../../domains/commands';
 import {
   PLUGIN_CLI_BRIDGE_PROTOCOL_VERSION,
   PLUGIN_CLI_OUTPUT_FRAME_BYTES,
-  PluginCliOutputLimitExceededError,
   parsePluginCliBridgeInvocationRequest,
-  parsePluginCliExecutionResult,
-  type PluginCliBridgeFailureCode,
+  type PluginCliExecutionResult,
   type PluginCliBridgeFrameV1,
   type PluginCliBridgeInvocationRequestV1,
 } from '../definitions/pluginCliBridgeProtocol';
@@ -29,7 +26,12 @@ import type {
 import type {
   ShellCommandExecutionScope,
 } from '../../../adapters/commands/shell-runtime';
-import { parsePluginCliAccessPlan } from '../functions/parsePluginCliAccessPlan';
+import {
+  PluginCliBridgeFailure,
+  PluginCliInvocationUnexpectedError,
+  type PluginCliInvocationDependencies,
+} from '../definitions/pluginCliInvocation';
+import { invokePluginCliContribution } from './invokePluginCliContribution';
 
 const BRIDGE_BIND_HOST = '127.0.0.1';
 const BRIDGE_ROUTE = '/v1/plugin-cli/invoke';
@@ -57,44 +59,6 @@ interface ExecutionScopeState {
   acquire(): InvocationLease | undefined;
   activate(): void;
   closeAndWait(): Promise<void>;
-}
-
-class PluginCliBridgeFailure extends Error {
-  constructor(
-    readonly code: PluginCliBridgeFailureCode,
-    readonly exitCode: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'PluginCliBridgeFailure';
-  }
-}
-
-interface CombinedSignal {
-  readonly signal: AbortSignal;
-  dispose(): void;
-}
-
-function combineAbortSignals(signals: readonly AbortSignal[]): CombinedSignal {
-  const controller = new AbortController();
-  const listeners: Array<{ readonly signal: AbortSignal; readonly listener: () => void }> = [];
-  for (const signal of signals) {
-    if (signal.aborted) {
-      controller.abort(signal.reason);
-      break;
-    }
-    const listener = (): void => controller.abort(signal.reason);
-    signal.addEventListener('abort', listener, { once: true });
-    listeners.push({ signal, listener });
-  }
-  return {
-    signal: controller.signal,
-    dispose() {
-      for (const { signal, listener } of listeners) {
-        signal.removeEventListener('abort', listener);
-      }
-    },
-  };
 }
 
 function createRequestAbortSignal(request: IncomingMessage): {
@@ -239,6 +203,15 @@ export async function startPluginCliShellBridgeRuntime(input: {
   const createCorrelationId = input.createCorrelationId ?? randomUUID;
   const scopes = new Map<string, ExecutionScopeState>();
   let lifecycle: 'active' | 'closing' | 'closed' = 'active';
+  const invocationDependencies: PluginCliInvocationDependencies = Object.freeze({
+    ...(input.coreCli ? { coreCli: input.coreCli } : {}),
+    resolveCli: input.resolveCli,
+    internalDataContext: input.internalDataContext,
+    ...(input.createInferenceSession ? { createInferenceSession: input.createInferenceSession } : {}),
+    ...(input.createConversationInput ? { createConversationInput: input.createConversationInput } : {}),
+    ...(input.readConversationProjectId ? { readConversationProjectId: input.readConversationProjectId } : {}),
+    createInvocationId,
+  });
 
   function normalizeUnexpectedFailure(
     error: unknown,
@@ -270,122 +243,41 @@ export async function startPluginCliShellBridgeRuntime(input: {
     lease: InvocationLease,
     request: PluginCliBridgeInvocationRequestV1,
     clientSignal: AbortSignal,
-  ) {
-    const invocationId = `${lease.launch.proposal.identity.command_execution_id}_cli_${createInvocationId()}`;
-    let stage: PluginCliBridgeUnexpectedFailureStage = 'resolve_plugin';
-    let pluginLease: ReturnType<typeof acquireBackendPluginCliInvocation>;
-    let signals: CombinedSignal | undefined;
-    let fileInput: PluginCliConversationInputSession | undefined;
-    let inferenceSession: ReturnType<NonNullable<typeof input.createInferenceSession>> | undefined;
+  ): Promise<PluginCliExecutionResult> {
     try {
-      let cli: BackendPluginCliContribution;
-      if (request.kind === 'core_cli_invoke') {
-        if (!input.coreCli) throw new PluginCliBridgeFailure('runtime_failure', 69, 'Core CLI is unavailable.');
-        cli = input.coreCli;
-        signals = combineAbortSignals([lease.signal, clientSignal]);
-      } else {
-        const registration = input.resolveCli(request.plugin_id);
-        if (!registration) throw new PluginCliBridgeFailure('plugin_unavailable', 69, 'Plugin CLI is unavailable.');
-        stage = 'acquire_plugin';
-        pluginLease = acquireBackendPluginCliInvocation(registration);
-        if (!pluginLease) throw new PluginCliBridgeFailure('plugin_unavailable', 69, 'Plugin CLI is not accepting work.');
-        cli = registration.cli;
-        signals = combineAbortSignals([lease.signal, pluginLease.signal, clientSignal]);
-      }
-      signals.signal.throwIfAborted();
-      stage = 'prepare';
-      const preparation = cli.prepare({
+      return await invokePluginCliContribution({
+        target: request.kind === 'core_cli_invoke'
+          ? { kind: 'core' }
+          : { kind: 'plugin', pluginId: request.plugin_id },
         argv: request.argv,
-        invocationId,
-        conversationRoot: lease.launch.conversation_root,
+        scope: {
+          conversationId: lease.launch.proposal.identity.conversation_id,
+          agentRunId: lease.launch.proposal.identity.agent_run_id,
+          conversationRoot: lease.launch.conversation_root,
+          invocationIdPrefix: lease.launch.proposal.identity.command_execution_id,
+          permission: {
+            internalDataAccess: lease.launch.permission.internal_data_access,
+            effectiveLevel: lease.launch.permission.effective_level,
+          },
+          permissionSubject: 'this Shell execution',
+          hostInference: {
+            status: 'available',
+            ...(lease.modelPurposeSnapshot ? { modelPurposeSnapshot: lease.modelPurposeSnapshot } : {}),
+          },
+          signals: [lease.signal, clientSignal],
+        },
+        dependencies: invocationDependencies,
       });
-      if (preparation.status === 'completed') {
-        stage = 'project_result';
-        return parsePluginCliExecutionResult(preparation.result);
-      }
-      stage = 'validate_access';
-      const access = parsePluginCliAccessPlan(preparation.plan.access);
-      const needsInternalData = access.internalDataAccess !== 'none';
-      if (access.hostInference?.length && access.internalDataAccess !== 'write') {
-        throw new PluginCliBridgeFailure('permission_denied', 77, 'Host inference requires explicit internal write access.');
-      }
-      if (
-        needsInternalData
-        && lease.launch.permission.internal_data_access !== 'allowed'
-      ) {
-        throw new PluginCliBridgeFailure(
-          'permission_denied',
-          77,
-          'Internal Linnya data access is disabled for this Shell execution.',
-        );
-      }
-      if (
-        (access.conversationFiles === 'write' || access.internalDataAccess === 'write')
-        && lease.launch.permission.effective_level === 'read_only'
-      ) {
-        throw new PluginCliBridgeFailure(
-          'permission_denied',
-          77,
-          'This plugin CLI command requires Shell write access.',
-        );
-      }
-      signals.signal.throwIfAborted();
-      stage = 'execute';
-      if (access.hostInference?.length) {
-        if (!input.createInferenceSession) throw new PluginCliBridgeFailure('runtime_failure', 69, 'Host inference is unavailable.');
-        inferenceSession = input.createInferenceSession({ operations: access.hostInference, signal: signals.signal });
-      }
-      const conversationId = lease.launch.proposal.identity.conversation_id;
-      const projectId = needsInternalData
-        ? await input.readConversationProjectId?.(conversationId)
-        : undefined;
-      signals.signal.throwIfAborted();
-      if (access.conversationFiles !== 'none') {
-        fileInput = input.createConversationInput?.({ conversationId, signal: signals.signal });
-      }
-      const result = await preparation.plan.execute({
-        conversationId,
-        agentRunId: lease.launch.proposal.identity.agent_run_id,
-        ...(projectId ? { projectId } : {}),
-        ...(inferenceSession ? {
-          inference: inferenceSession.inference,
-          ...(lease.modelPurposeSnapshot ? { modelPurposeSnapshot: lease.modelPurposeSnapshot } : {}),
-        } : {}),
-        hostContext: needsInternalData
-          ? input.internalDataContext
-          : Object.freeze({}),
-        signal: signals.signal,
-        ...(fileInput ? { stageConversationFile: fileInput.stage } : {}),
-      });
-      signals.signal.throwIfAborted();
-      stage = 'project_result';
-      return parsePluginCliExecutionResult(result);
     } catch (error: unknown) {
-      if (signals?.signal.aborted) {
-        throw new PluginCliBridgeFailure('cancelled', 130, 'Plugin CLI invocation was cancelled.');
+      if (error instanceof PluginCliInvocationUnexpectedError) {
+        throw normalizeUnexpectedFailure(error.causeError, {
+          stage: error.stage,
+          lease,
+          ...(error.pluginId ? { pluginId: error.pluginId } : {}),
+          ...(error.invocationId ? { invocationId: error.invocationId } : {}),
+        });
       }
-      if (error instanceof PluginCliOutputLimitExceededError) {
-        throw new PluginCliBridgeFailure(
-          'output_limit_exceeded',
-          74,
-          'Plugin CLI output exceeds the bridge byte limit.',
-        );
-      }
-      throw normalizeUnexpectedFailure(error, {
-        stage,
-        lease,
-        ...(request.kind === 'plugin_cli_invoke' ? { pluginId: request.plugin_id } : {}),
-        invocationId,
-      });
-    } finally {
-      try {
-        await inferenceSession?.close();
-        await fileInput?.close();
-      }
-      finally {
-        signals?.dispose();
-        pluginLease?.release();
-      }
+      throw error;
     }
   }
 

@@ -13,6 +13,7 @@ const HELP = `Linnya Slides CLI
 Usage:
   slides render --presentation <id> --output <directory> [options]
   slides inspect --presentation <id> [options]
+  slides export --presentation <id>        (inside Linnya only)
   slides fonts list --script <latin|eastAsian|complex> [--target <office|local>] [--limit <number>] [--offset <number>]
   slides fonts check --family <name>
 
@@ -34,6 +35,11 @@ Render options:
   --pixel-ratio <number>  Raster pixel ratio (default: 1)
   --overwrite             Replace selected files in a standalone output directory
 
+Export:
+  Writes the latest successful version as an editable .pptx into the conversation directory
+  (slides-exports/). Available through linnya-slides in Linnya's shell or the plugin_cli tool of
+  the linnya command; the standalone CLI reads the database read-only and cannot export.
+
 Inspect options:
   --max-slides <number>   Limit returned pages and mark the report truncated
   --heuristics            Include Tier-2 low-confidence hints
@@ -50,6 +56,7 @@ Automation contract:
   exit status: a non-zero exit code means the command failed; do not pipe render through
   tail/|| true when checking whether rendering succeeded.
   inspect: stdout is one compact JSON report; operational logs go to stderr.
+  export: stdout is one compact JSON report with the version number and the .pptx locator.
   Linux execution requires DISPLAY or WAYLAND_DISPLAY (for CI, run under Xvfb).
 `;
 
@@ -57,6 +64,11 @@ export function parseSlidesCliArgs(
   argv: readonly string[],
   options: {
     readonly resolveManagedRenderOutput?: (presentationId: string) => {
+      readonly root: string;
+      readonly directoryReference: ConversationFileLocator;
+    };
+    /** 只有 Linnya App 内的调用提供；缺省时 export 不可用。 */
+    readonly resolveManagedExportOutput?: (presentationId: string) => {
       readonly root: string;
       readonly directoryReference: ConversationFileLocator;
     };
@@ -69,16 +81,14 @@ export function parseSlidesCliArgs(
   if (commandName === 'fonts') {
     return parseFontCommand(argv.slice(1));
   }
+  if (commandName === 'export') {
+    return parseExportCommand(argv.slice(1), options.resolveManagedExportOutput);
+  }
   if (commandName !== 'render' && commandName !== 'inspect') {
-    throw usageError('Expected one of: render, inspect, fonts');
+    throw usageError('Expected one of: render, inspect, export, fonts');
   }
 
-  let parsed: ReturnType<typeof parseCommandOptions>;
-  try {
-    parsed = parseCommandOptions(argv.slice(1));
-  } catch {
-    throw usageError('Invalid command options');
-  }
+  const parsed = parseCommandOptionsOrUsageError(argv.slice(1), 'Invalid command options');
 
   if (parsed.values.help === true) {
     return { kind: 'help', text: HELP };
@@ -171,6 +181,37 @@ export function parseSlidesCliArgs(
   return { kind: 'command', command };
 }
 
+function parseExportCommand(
+  args: readonly string[],
+  resolveManagedExportOutput: ((presentationId: string) => {
+    readonly root: string;
+    readonly directoryReference: ConversationFileLocator;
+  }) | undefined,
+): SlidesCliInvocation {
+  const parsed = parseCommandOptionsOrUsageError(args, 'Invalid export options');
+  if (parsed.values.help === true) {
+    return { kind: 'help', text: HELP };
+  }
+  const { presentation, format, ...others } = parsed.values;
+  // help 已在上面处理；其余选项都属于 render、inspect 或 fonts。
+  if (Object.entries(others).some(([name, value]) => name !== 'help' && value !== undefined)) {
+    throw usageError('export accepts only --presentation and --format');
+  }
+  if (!resolveManagedExportOutput) {
+    throw usageError('export is available only inside Linnya (linnya-slides, or the plugin_cli tool of the linnya command)');
+  }
+  const presentationId = requireNonEmpty(presentation, '--presentation');
+  return {
+    kind: 'command',
+    command: {
+      kind: 'export',
+      format: readOutputFormat(format),
+      presentationId,
+      output: resolveManagedExportOutput(presentationId),
+    },
+  };
+}
+
 function parseFontCommand(args: readonly string[]): SlidesCliInvocation {
   const action = args[0];
   if (action === undefined || action === '--help' || action === '-h') {
@@ -180,12 +221,7 @@ function parseFontCommand(args: readonly string[]): SlidesCliInvocation {
     throw usageError('Expected one of: fonts check, fonts list');
   }
 
-  let parsed: ReturnType<typeof parseCommandOptions>;
-  try {
-    parsed = parseCommandOptions(args.slice(1));
-  } catch {
-    throw usageError('Invalid font command options');
-  }
+  const parsed = parseCommandOptionsOrUsageError(args.slice(1), 'Invalid font command options');
   if (parsed.values.help === true) {
     return { kind: 'help', text: HELP };
   }
@@ -266,6 +302,29 @@ function parseCommandOptions(args: readonly string[]) {
       offset: { type: 'string' },
     },
   });
+}
+
+/**
+ * 外部 Agent 只能靠报错文字自行改参数，所以把 parseArgs 的原因（例如 Unknown option '--slides'）
+ * 原样附上；它只引用调用方自己传入的选项与值。不是参数解析错误的异常照常抛出，不伪装成用法错误。
+ */
+function parseCommandOptionsOrUsageError(
+  args: readonly string[],
+  summary: string,
+): ReturnType<typeof parseCommandOptions> {
+  try {
+    return parseCommandOptions(args);
+  } catch (error: unknown) {
+    if (isParseArgsError(error)) throw usageError(`${summary}: ${error.message}`);
+    throw error;
+  }
+}
+
+function isParseArgsError(error: unknown): error is TypeError & { readonly code: string } {
+  return error instanceof TypeError
+    && 'code' in error
+    && typeof error.code === 'string'
+    && error.code.startsWith('ERR_PARSE_ARGS_');
 }
 
 function assertOnlyFontOptions(

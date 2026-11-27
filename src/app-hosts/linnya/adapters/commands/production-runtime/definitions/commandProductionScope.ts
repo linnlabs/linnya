@@ -1,4 +1,5 @@
 import type { ShellToolRuntimePort } from '../../shell-runtime';
+import type { PluginCliToolRuntimePort } from 'src/app-hosts/linnya/application/plugin-cli-tool';
 import type { CommandAgentRunLifecyclePort } from '../../process-owner';
 import type {
   CommandExecutionOwnerPort,
@@ -18,6 +19,8 @@ export interface CommandAppOwnerLifecyclePort {
  */
 export interface CommandProductionScope extends CommandAppOwnerLifecyclePort {
   readonly shellToolRuntime: ShellToolRuntimePort;
+  /** 外部命令行 plugin_cli 工具的插件命令入口；与 Shell 桥共用执行规则。 */
+  readonly pluginCliToolRuntime: PluginCliToolRuntimePort;
   readonly agentRunLifecycle: CommandAgentRunLifecyclePort;
   /** 只供 App 级对话删除工作流使用，不向 History 或 renderer 暴露进程 owner。 */
   readonly conversationCleanupCommands: Pick<

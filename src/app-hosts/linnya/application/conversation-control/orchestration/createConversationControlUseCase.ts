@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { controlSkills } from './controlSkills';
 import { controlProjects } from './controlProjects';
 import {
+  CONVERSATION_CONTROL_PLUGIN_CLI_TOOL_NAME,
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   type ConversationControlCommandRequest,
   type ConversationControlListRequest,
@@ -712,6 +713,10 @@ export function createConversationControlUseCase(
           timestamp: ports.now(),
         })
       );
+      // 插件命令的产物写在会话目录；外部调用方要直接读截图和导出文件，回执里给出本机路径。
+      const conversationDirectory = request.tool_name === CONVERSATION_CONTROL_PLUGIN_CLI_TOOL_NAME
+        ? await ports.conversationDirectories.resolveLocalPath(acceptance.conversationId)
+        : undefined;
       return {
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
         ok: true,
@@ -719,6 +724,7 @@ export function createConversationControlUseCase(
         action: 'call',
         tool_name: request.tool_name,
         conversation_reused: reusedConversationId !== undefined,
+        ...(conversationDirectory ? { conversation_directory: conversationDirectory } : {}),
         receipt: {
           conversation_id: acceptance.conversationId,
           user_message_id: firstIncomingEventId(acceptance),

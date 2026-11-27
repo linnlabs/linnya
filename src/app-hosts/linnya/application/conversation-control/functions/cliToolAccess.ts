@@ -1,14 +1,20 @@
 import {
+  CONVERSATION_CONTROL_PLUGIN_CLI_TOOL_NAME,
   CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES,
   type ConversationControlToolName,
   type ConversationControlToolsRequest,
 } from '@app/schemas';
 import { ConversationControlError } from '../definitions/conversationControlError';
 
+const CLI_DEFAULT_TOOLS: readonly ConversationControlToolName[] = [
+  ...CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES,
+  CONVERSATION_CONTROL_PLUGIN_CLI_TOOL_NAME,
+];
+
 export function selectCliTools(webEnabled: boolean): readonly ConversationControlToolName[] {
   return webEnabled
-    ? [...CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES, 'web_search', 'web_read', 'image_search', 'tool_output_read']
-    : CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES;
+    ? [...CLI_DEFAULT_TOOLS, 'web_search', 'web_read', 'image_search', 'tool_output_read']
+    : CLI_DEFAULT_TOOLS;
 }
 
 export function assertCliToolAvailable(name: ConversationControlToolName, webEnabled: boolean): void {

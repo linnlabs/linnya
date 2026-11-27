@@ -2,17 +2,17 @@
 
 跨插件的 CLI 所有权、active artifact、宿主执行、启停和验收规范见 [插件 CLI 与宿主受控执行](../../../../../../../docs/plugins/guides/21-plugin-cli.md)。本文件只描述 Slides 自己的 parser、领域操作、JSON 报告和截图产物。
 
-`presentationCli` 是 Slides CLI 领域 feature。它提供 `render`、`inspect` 和 `fonts` 子命令。
+`presentationCli` 是 Slides CLI 领域 feature。它提供 `render`、`inspect`、`export` 和 `fonts` 子命令；`export` 只在 App 内可用。
 
 ## 与 Linnya CLI 的区别
 
 | 入口 | 调用方 | 作用域与能力 |
 | --- | --- | --- |
-| `linnya tools ...` | 外部 Agent、脚本、人 | 连接正在运行的 Linnya，在 Conversation/项目作用域内调用五个 Workspace 工具；可用 `write_file/edit_file` 修改 `.slides` 源码 |
+| `linnya tools ...` | 外部 Agent、脚本、人 | 连接正在运行的 Linnya，在 Conversation/项目作用域内调用五个 Workspace 工具与 `plugin_cli`；用 `write_file/edit_file` 修改 `.slides` 源码，经 `plugin_cli` 运行本 CLI 的 `inspect/render/export/fonts`，与 `linnya-slides` 是同一份 App 内执行 |
 | `linnya-slides ...` | Linnya Agent 的受管 Shell | 使用本次 Shell execution 的临时 bridge，复用当前 App 的数据库、Coordinator、权限和 raster worker |
-| Standalone Slides CLI | 外部 Agent、人、CI | 独立 Electron command，直接读取指定 Workspace 数据库；只提供 `render/inspect/fonts`，不修改文稿 |
+| Standalone Slides CLI | 外部 Agent、人、CI | 独立 Electron command，直接只读打开指定 Workspace 数据库；只提供 `render/inspect/fonts`，不修改文稿，也不能导出 |
 
-三者不是别名。尤其不能从普通终端直接拿 `linnya-slides` facade 连接当前 App：它只在 Linnya 启动的父 Shell 内拥有短期有效的 endpoint/token。外部进程使用 Standalone 模式；需要通过当前 App 修改文稿时使用 [Linnya Conversation CLI](../../../../../../../apps/linnya-cli/README.md)。
+三者不是别名。尤其不能从普通终端直接拿 `linnya-slides` facade 连接当前 App：它只在 Linnya 启动的父 Shell 内拥有短期有效的 endpoint/token。外部进程需要修改当前 App 的文稿，或在 App 内检查、截图、导出时，使用 [Linnya Conversation CLI](../../../../../../../apps/linnya-cli/README.md) 的 `write_file/edit_file` 与 `plugin_cli`；脱离 App 的只读检查使用 Standalone 模式。
 
 CLI 是独立 Electron main process，不经过完整应用的 platform runtime effects。除轻量 `help` 与 `fonts` 查询外，进入 presentation 命令前必须显式初始化同一份系统字体解析目录与 system text measurement runtime，并等待完成；否则 RenderModel 会把字体记为 `not-ready`、cluster advance 退回 heuristic，CLI 截图与主应用可能产生不同断行或字形边界。构建制品因此必须同时携带 Yoga 与 HarfBuzz 两个窄 CJS runtime loader。
 前两者共用 parser、领域 orchestration、presentation inspection 和 hidden raster worker，不拥有第二套 PPT
@@ -55,6 +55,7 @@ CLI 将 `sharp`、`better-sqlite3`、`fontkit`、Yoga、HarfBuzz、jieba 和 PDF
 - `fonts check --family <name>` 做不受候选分页影响的精确字体族检查。结果保留请求名称，并在命中时返回规范 family、脚本候选、regular/bold/italic 与 monospace；另带 `office`，按 `shared/fontDelivery` 字体表给出 Windows 与 Mac 版 PowerPoint 的交付状态（`core/cloud/unavailable`）和替换方向。本机已安装不代表可交付。
 - `fonts list --script <latin|eastAsian|complex>` 默认 `--target office`，列 Office 通用字体表并逐项标 `installedHere`，不分页。`--target local` 按脚本发现本机候选，默认 30 项、最多 100 项，以 `--offset` 继续分页；结果稳定排序、按 family 去重，并过滤点号前缀的系统内部 UI 字体。
 - `fonts` 输出不包含字体文件路径、PostScript name、face index、缓存位置或替代算法；OS/2 脚本元数据只代表候选，不代表完整覆盖某个自然语言。
+- `export --presentation <id>` 把最近一次构建成功的版本导出为可编辑的 `.pptx`，复用 App 的 `PptCoordinator.export`，与界面导出同一份文件。它只在 App 内可用（`linnya-slides` 或 `plugin_cli`），文件写进会话目录 `slides-exports/presentation-<presentation ID 哈希>/`，文件名取演示稿标题加 `-v<版本号>.pptx`，同名覆盖；先写临时文件再改名，失败不留半个文件。access plan 声明读取内部数据、写会话文件，只读档位拒绝。Standalone CLI 只读打开数据库，`export` 以参数错误拒绝。
 - standalone CLI 的 `--database` 可显式指定 workspace SQLite；省略时使用 CLI host 注入路径。它始终以只读连接打开数据库，不执行迁移或表写入。Agent bridge 明确拒绝该参数。
 
 完整参数以 `pnpm slides:cli -- --help` 为准。
@@ -64,6 +65,8 @@ CLI 将 `sharp`、`better-sqlite3`、`fontkit`、Yoga、HarfBuzz、jieba 和 PDF
 - `render` stdout 是单行 `linnya.slides.render-report` JSON。报告只含 schema/CLI 版本、presentation 的 `id/versionId/versionNumber`，以及每页的 `slideNumber + locator`；Agent bridge 返回 `conversation:`，standalone CLI 返回 `file:`。
 - Agent 调用是否成功看 Shell 的真实 `data.terminal.process_exit.exit_code`；只有 exit code 0 的完整 stdout 才是可消费报告，长任务可用父 Shell 返回的 process handle 跟进。
 - Agent 直接把 `slides[].locator` 交给 `read_file(locator=...)`，不要自行拼接路径。
+- `export` stdout 是单行 `linnya.slides.export-report` JSON：schema/CLI 版本、presentation 的 `id/versionId/versionNumber`，以及 `file` 的 `format/fileName/sizeBytes/locator`（`conversation:` 定位符）。外部调用方经 `plugin_cli` 调用时，`linnya` CLI 回执的 `conversation_files` 给出本机路径。
+- 经 `plugin_cli` 调用时成功与否看工具结果：插件退出码非 0 时工具为 error，`linnya` CLI 以退出码 8 结束，stderr 带本 CLI 的错误码与说明。
 - `inspect` 的 stdout 是单行紧凑 JSON 文档；运行日志全部写 stderr。
 - standalone Electron command 必须等待 stdout/stderr 写入完成后退出，保证大型 inspection 报告仍是完整 JSON；调用方不需要按行拼接残缺片段。
 - inspection report schema v10 与 `ppt_inspect` 共享 finding、源码定位、可选 focus 和 projection 契约，并在 `manualEditWarnings` 报告当前未应用或被移除的人工记录。CLI 保留完整 evidence/source/remediation，并序列化同源 priority、summary 与 root group finding IDs；Agent observation 只做低 token 文本投影，二者都不得自行重算分级、根因或几何关系。
@@ -73,6 +76,7 @@ CLI 将 `sharp`、`better-sqlite3`、`fontkit`、Yoga、HarfBuzz、jieba 和 PDF
 - `fonts check/list` 的 stdout 也是单个带 `kind/schemaVersion/cliVersion` 的 JSON 文档；扫描未启动或失败时返回 `slides.cli.font_catalog_unavailable`，不能输出假空名单。
 - render report 与 inspection report 都不保存数据库路径、output root、图片 source、data URI、图片 bytes、asset ID、字体文件路径或 conversation ID。render report 不含 `deck.js` 源码或 inspection finding；inspection report 保留文稿身份、页选择、buildStatus 与标准 finding/projection。字体替换通过 `font_family_substituted` finding 明确表达。
 - CLI 只生产普通 JPEG 检查图，不写 `assets`、`project_asset_links` 或 `conversation_event_asset_links`。调用方只消费成功 stdout 已给出的 locator，图片使用 `read_file(locator=...)`；reader 按真实内容识别媒体类型，图片不传 inode 或字符窗口。`read_file` 选中的 JPEG 会按原字节进入受管附件、模型输入和 Conversation 历史。
+- `export` 遇到未解决的 current draft 时返回 `slides.cli.unresolved_draft`（exit 3），说明最近一次构建成功的版本号和 `read_file` → `edit_file/write_file` 的恢复动作，不导出旧版本冒充最新稿。
 - current draft 存在时，inspect/render 继续严格拒绝旧 compiled checkpoint，并返回 `slides.cli.unresolved_draft`（exit 3）。stderr 同时携带 draft 的稳定 `build_failure_code` 和 `read_file` → `edit_file/write_file` 恢复动作；旧短 error kind 只在只读 adapter 中映射，不能继续写入。
 
 ## Exit Code
@@ -80,14 +84,14 @@ CLI 将 `sharp`、`better-sqlite3`、`fontkit`、Yoga、HarfBuzz、jieba 和 PDF
 | code | 含义 |
 | ---: | --- |
 | 0 | 成功或 help |
-| 2 | 参数错误 |
+| 2 | 参数错误；stderr 附 Node 参数解析的原因（例如 `Unknown option '--slides'`），调用方据此改正 |
 | 3 | workspace 数据库不可读，或 presentation 不存在、draft 未解决、查询不可用 |
 | 4 | 栅格化、资源加载或 PNG 复核失败 |
 | 5 | 输出冲突或写入失败 |
 | 6 | Electron/display 或系统字体目录运行环境不可用 |
 | 10 | 未分类的 CLI 启动错误 |
 
-stderr 的稳定错误前缀来自 `slides.cli.*` 或 `slides.screenshot.*` code；数据库启动失败使用 `slides.cli.database_unavailable`，unresolved draft 使用 `slides.cli.unresolved_draft`，输出目录创建、检查、清理和写入失败均使用 `slides.screenshot.output_write_failed`。底层 SQLite path、文件系统 path、stack 和 worker payload 不回显。
+stderr 的稳定错误前缀来自 `slides.cli.*` 或 `slides.screenshot.*` code；数据库启动失败使用 `slides.cli.database_unavailable`，unresolved draft 使用 `slides.cli.unresolved_draft`，输出目录创建、检查、清理和写入失败均使用 `slides.screenshot.output_write_failed`；`export` 写文件失败使用 `slides.cli.output_write_failed`（exit 5），只带系统错误码。底层 SQLite path、文件系统 path、stack 和 worker payload 不回显。
 无法识别的内部 inspection/quality 合同故障使用 `slides.cli.internal_error` 与 exit code 10；不得伪装成 presentation 不存在或查询不可用。
 
 ## Headless Linux

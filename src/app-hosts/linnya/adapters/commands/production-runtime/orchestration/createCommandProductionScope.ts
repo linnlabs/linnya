@@ -50,6 +50,7 @@ import type {
 import {
   startPluginCliShellBridgeRuntime,
 } from 'src/app-hosts/linnya/application/plugin-cli-shell-bridge';
+import { createPluginCliToolRuntime } from 'src/app-hosts/linnya/application/plugin-cli-tool';
 
 const COMMAND_TEXT_PROJECTION_LIMITS = Object.freeze({
   // stdout + stderr + Shell 控制/续读说明必须留在 Linnkit 默认 20k/1200 行治理阈值内，
@@ -93,11 +94,10 @@ export async function createCommandProductionScope(input: {
     storageRoot: input.artifactStorageRoot,
   });
   const conversationFacts = new SQLiteEventStore(input.db);
-  const pluginCliBridge = await startPluginCliShellBridgeRuntime({
+  // Shell 桥与外部命令行的 plugin_cli 工具共用同一组插件命令依赖，权限规则只在执行核心里判断一次。
+  const pluginCliInvocationDependencies = Object.freeze({
     resolveCli: input.resolvePluginCli,
-    coreCli: createCoreCli(input.db, COMMAND_TEXT_PROJECTION_LIMITS.maxCharactersPerStream, createNodePhysicalFileReader(),
-      createConversationActivityPorts(input.db, input.approvalHost), input.readScheduledTasks),
-    readConversationProjectId: async conversationId => (
+    readConversationProjectId: async (conversationId: string) => (
       (await conversationFacts.getConversationMetadata(conversationId))?.project_id
     ),
     internalDataContext: Object.freeze({
@@ -105,10 +105,37 @@ export async function createCommandProductionScope(input: {
         getDb: () => input.db,
       }),
     }),
-    createConversationInput: ({ conversationId, signal }) => createConversationFileInputSession({
-      conversationId, signal, admission: input.conversationAdmission,
-      temporaryDirectory: path.join(pathManager.getUploadsPath(), 'temp'),
-    }),
+    createConversationInput: ({ conversationId, signal }: { readonly conversationId: string; readonly signal: AbortSignal }) => (
+      createConversationFileInputSession({
+        conversationId, signal, admission: input.conversationAdmission,
+        temporaryDirectory: path.join(pathManager.getUploadsPath(), 'temp'),
+      })
+    ),
+  });
+  const pluginCliToolRuntime = createPluginCliToolRuntime({
+    dependencies: pluginCliInvocationDependencies,
+    conversationAdmission: input.conversationAdmission,
+    diagnostics: {
+      recordUnexpectedFailure({ correlationId, stage, conversationId, agentRunId, toolCallId, pluginId, invocationId, error }) {
+        logger.error('plugin_cli 工具发生未知异常', {
+          correlationId,
+          stage,
+          conversationId,
+          agentRunId,
+          toolCallId,
+          pluginId,
+          invocationId,
+          errorName: error instanceof Error ? error.name : typeof error,
+          errorMessage: error instanceof Error ? error.message : 'Non-Error failure',
+          errorStack: error instanceof Error ? error.stack : undefined,
+        });
+      },
+    },
+  });
+  const pluginCliBridge = await startPluginCliShellBridgeRuntime({
+    ...pluginCliInvocationDependencies,
+    coreCli: createCoreCli(input.db, COMMAND_TEXT_PROJECTION_LIMITS.maxCharactersPerStream, createNodePhysicalFileReader(),
+      createConversationActivityPorts(input.db, input.approvalHost), input.readScheduledTasks),
     createInferenceSession: ({ operations, signal }) => createPluginCliInferenceSession({
       operations, signal, inference: createPluginInferencePort(),
     }),
@@ -224,6 +251,7 @@ export async function createCommandProductionScope(input: {
 
   return Object.freeze({
     shellToolRuntime,
+    pluginCliToolRuntime,
     agentRunLifecycle,
     conversationCleanupCommands: owner,
     conversationApprovalDeletion: approvals,

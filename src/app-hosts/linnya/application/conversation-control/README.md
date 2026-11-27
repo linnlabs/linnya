@@ -48,7 +48,8 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
   同时标注缺失和容量限制；不把历史观测冒认为当前 pause cause 或新的恢复许可。
   `workspace_documents` 另行报告成功保存中的文档诊断严重度计数与截断数；不把它混入
   tool failure，不输出诊断 code/message/target，也不从零 error 推断编译通过。
-- `tools` 默认开放五个 Workspace 工具：`list_files / read_file / grep / write_file / edit_file`。`web_access` 临时开放或关闭 `web_search / web_read / tool_output_read`；状态归当前 use case 实例，Host 重启重置为关闭，不进入用户设置。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
+- `tools` 默认开放五个 Workspace 工具：`list_files / read_file / grep / write_file / edit_file`，以及运行已启用插件命令的 `plugin_cli`（执行规则见 [plugin_cli 工具运行时](../plugin-cli-tool/README.md)）。`web_access` 临时开放或关闭 `web_search / web_read / tool_output_read`；状态归当前 use case 实例，Host 重启重置为关闭，不进入用户设置。`list / describe` 读取真实 Tool registry schema；`call` 必须绑定项目或已有 Conversation，并复用正式 Flow admission 与 ToolNode 执行。
+- `plugin_cli` 的 `call` 回执额外带 `conversation_directory`：该会话工作目录的本机路径，由会话目录准入端口解析，只回给命令行调用方，不进入工具结果、事件或界面。其他工具的回执不带它。
 - `tools call` 先使用工具 registry 的同一个 `validateArguments` 做命令准入。非法 locator、双身份等返回 `invalid_request`（CLI 退出 2），不创建运行。ToolNode 继续拥有所有调用方的执行前 admission，CLI 不复制 locator 或工具参数规则。
 - 只给项目时续用该项目最近一段 CLI 会话：会话由 Linnya CLI 创建（会话 metadata 的 `origin: linnya_cli`）、距上次活动不超过 30 分钟、当前没有前台运行，取最近的一段；没有就新建一段前端可见的会话，运行前由事件库一次写入身份行、标题 `Linnya CLI · YYYY-MM-DD HH:mm` 与入口标记。`new_session: true` 总是新建；最近一段正在运行时也新建，不排队、不并入。响应的 `conversation_reused` 说明本次是否续用。代价：两个外部调用方同时操作同一项目会进同一段会话，CLI 目前分不出调用方；工具卡、账本（external 与运行身份）照常完整记录。`send` 仍各自独立成会话。
 - 只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。

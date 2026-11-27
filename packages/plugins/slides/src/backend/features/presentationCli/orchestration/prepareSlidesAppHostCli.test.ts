@@ -1,7 +1,14 @@
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  coordinator: {},
+  coordinator: {
+    getDocumentBuildState: vi.fn(),
+    export: vi.fn(),
+  },
   getSharedPptCoordinator: vi.fn(),
   executeSlidesCliCommand: vi.fn(),
   executeSlidesCliFontCommand: vi.fn(),
@@ -29,6 +36,8 @@ vi.mock('./executeSlidesCliFontCommand', () => ({
 import { slidesPluginCli } from './prepareSlidesAppHostCli';
 
 beforeEach(() => {
+  mocks.coordinator.getDocumentBuildState.mockReset();
+  mocks.coordinator.export.mockReset();
   mocks.getSharedPptCoordinator.mockReset();
   mocks.getSharedPptCoordinator.mockReturnValue(mocks.coordinator);
   mocks.executeSlidesCliCommand.mockReset();
@@ -153,5 +162,88 @@ describe('slidesPluginCli', () => {
       },
       expect.any(AbortSignal),
     );
+  });
+
+  it('export 把当前版本的 PPTX 写进会话目录，报告版本号与 conversation: 定位符', async () => {
+    const conversationRoot = await mkdtemp(path.join(os.tmpdir(), 'slides-export-'));
+    try {
+      const pptx = Buffer.from('PK\u0003\u0004 pptx bytes');
+      mocks.coordinator.getDocumentBuildState.mockResolvedValue({
+        state: 'ready', presentationId: 'deck-1', versionId: 'revision-3', versionNumber: 3, sourceHash: 'a'.repeat(64),
+      });
+      mocks.coordinator.export.mockResolvedValue({ fileName: '季度/复盘:草案.pptx', buffer: pptx });
+      const preparation = slidesPluginCli.prepare({
+        argv: ['export', '--presentation', 'deck-1'],
+        invocationId: 'call_export',
+        conversationRoot,
+      });
+      if (preparation.status !== 'ready') throw new Error('slides export was not prepared');
+      // 写会话文件需要写权限；只读档的运行由宿主在执行前拒绝。
+      expect(preparation.plan.access).toMatchObject({ internalDataAccess: 'required', conversationFiles: 'write' });
+      expect(mocks.getSharedPptCoordinator).not.toHaveBeenCalled();
+
+      const result = await preparation.plan.execute({
+        conversationId: 'conversation-1',
+        agentRunId: 'run-1',
+        hostContext: { databaseService: { getDb: () => ({ kind: 'workspace-db' }) } },
+        signal: new AbortController().signal,
+      });
+
+      expect(result.exitCode).toBe(0);
+      const report = JSON.parse(result.stdout);
+      expect(report).toMatchObject({
+        kind: 'linnya.slides.export-report',
+        presentation: { id: 'deck-1', versionId: 'revision-3', versionNumber: 3 },
+        file: { format: 'pptx', fileName: '季度_复盘_草案-v3.pptx', sizeBytes: pptx.byteLength },
+      });
+      const relativePath = String(report.file.locator).replace(/^conversation:\//u, '');
+      expect(relativePath).toMatch(/^slides-exports\/presentation-[0-9a-f]{24}\/季度_复盘_草案-v3\.pptx$/u);
+      expect(await readFile(path.join(conversationRoot, ...relativePath.split('/')))).toEqual(pptx);
+      // 先写临时文件再改名，目录里不留半成品。
+      expect(await readdir(path.dirname(path.join(conversationRoot, ...relativePath.split('/'))))).toEqual(['季度_复盘_草案-v3.pptx']);
+    } finally {
+      await rm(conversationRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('export 遇到未解决的源码草稿时给出明确错误，不导出上一版', async () => {
+    const conversationRoot = await mkdtemp(path.join(os.tmpdir(), 'slides-export-draft-'));
+    try {
+      mocks.coordinator.getDocumentBuildState.mockResolvedValue({
+        state: 'draft', presentationId: 'deck-1', versionId: 'revision-2', versionNumber: 2,
+        sourceHash: 'b'.repeat(64), draftStatus: 'failed',
+      });
+      const preparation = slidesPluginCli.prepare({
+        argv: ['export', '--presentation', 'deck-1'],
+        invocationId: 'call_export',
+        conversationRoot,
+      });
+      if (preparation.status !== 'ready') throw new Error('slides export was not prepared');
+      const result = await preparation.plan.execute({
+        conversationId: 'conversation-1',
+        agentRunId: 'run-1',
+        hostContext: { databaseService: { getDb: () => ({ kind: 'workspace-db' }) } },
+        signal: new AbortController().signal,
+      });
+
+      expect(result).toMatchObject({ exitCode: 3, stdout: '' });
+      expect(result.stderr).toMatch(/^slides\.cli\.unresolved_draft: .*version 2 is the last successful build/u);
+      expect(mocks.coordinator.export).not.toHaveBeenCalled();
+      expect(await readdir(conversationRoot)).toEqual([]);
+    } finally {
+      await rm(conversationRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('export 只接受 --presentation 与 --format', () => {
+    const preparation = slidesPluginCli.prepare({
+      argv: ['export', '--presentation', 'deck-1', '--slide', '2'],
+      invocationId: 'call_export',
+      conversationRoot: '/tmp/slides-conversation',
+    });
+    expect(preparation).toMatchObject({
+      status: 'completed',
+      result: { exitCode: 2, stderr: 'slides.cli.invalid_arguments: export accepts only --presentation and --format\n' },
+    });
   });
 });

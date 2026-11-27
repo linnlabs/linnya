@@ -10,7 +10,7 @@ import { todoToolClasses } from '../../../../tools/todo';
 import { toolOutputToolClasses } from '../../../../tools/tool_output';
 import { webSearchToolClasses, webReadToolClasses, imageSearchToolClasses } from '../../../../tools/web';
 import { skillToolClasses } from '../../../../tools/skill';
-import { ProcessTool, ShellTool } from '../../../../tools/commands';
+import { PluginCliTool, ProcessTool, ShellTool } from '../../../../tools/commands';
 import { markdownToolClasses } from '../../../../domains/markdown/tools';
 
 /**
@@ -35,4 +35,5 @@ export const legacyBuiltinToolClasses = [
   ...skillToolClasses,
   ShellTool,
   ProcessTool,
+  PluginCliTool,
 ] as const;
