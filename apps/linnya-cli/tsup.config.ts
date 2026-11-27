@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { createTsupBundleTrace } from '../../scripts/build/bundle-trace/adapters/tsupBundleTracePlugin.mjs';
 
 // 与 CJS launcher 共用同一指纹算法；保持原生加载，避免配置打包器改写 Node require。
 const { createCliSourceFingerprint }: typeof import('./build/sourceFingerprint.cjs') =
@@ -11,6 +12,11 @@ const { createCliSourceFingerprint }: typeof import('./build/sourceFingerprint.c
 
 const cliRoot = path.dirname(fileURLToPath(import.meta.url));
 const sourceHash = createCliSourceFingerprint(cliRoot);
+// CLI bundle 随桌面安装包分发（Resources/linnya-cli），发行证据要能把内联的 npm 包归因到它。
+const bundleTrace = createTsupBundleTrace({
+  buildTarget: 'desktop/linnya-cli',
+  repositoryRoot: path.resolve(cliRoot, '../..'),
+});
 
 export default defineConfig({
   entry: { cli: 'src/main.ts' },
@@ -25,6 +31,8 @@ export default defineConfig({
   dts: false,
   noExternal: ['@app/schemas', '@linnya/foundation', 'zod'],
   define: { __LINNYA_CLI_BUILD_ID__: JSON.stringify(sourceHash) },
+  esbuildPlugins: bundleTrace.esbuildPlugins,
+  plugins: bundleTrace.plugins,
   async onSuccess() {
     if (createCliSourceFingerprint(cliRoot) !== sourceHash) {
       throw new Error('CLI sources changed during build; build again before using the bundle.');

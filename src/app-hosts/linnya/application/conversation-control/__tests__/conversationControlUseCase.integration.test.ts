@@ -298,6 +298,8 @@ function fixture(
     attachmentImages?: ConversationControlUseCasePorts['attachmentImages'];
     /** 依次分配的新会话 ID；用完后回到 conversation-1。 */
     conversationIds?: readonly string[];
+    /** 只用外部 Agent 的安装：没有登录也没有配置任何聊天模型。 */
+    noChatModels?: boolean;
   } = {}
 ) {
   const commandApprovals = createCommandApprovalHost();
@@ -399,7 +401,7 @@ function fixture(
     models: {
       list() {
         return {
-          chat: [
+          chat: options.noChatModels ? [] : [
             {
               model_config_id: 'chat-model',
               model_name: 'chat-model-upstream',
@@ -801,6 +803,22 @@ describe('conversation-control use case', () => {
     const later = await test.useCase.tools(call);
     expect(later).toMatchObject({ conversation_reused: false, receipt: { conversation_id: 'cli-d' } });
     expect(test.cliSessionWrites.map(write => write.conversationId)).toEqual(['cli-a', 'cli-b', 'cli-c', 'cli-d']);
+  });
+
+  it('一个聊天模型都没配置时：直接读写文档照常接纳，发消息给 Linnya 的 Agent 说明原因和出路', async () => {
+    const test = fixture([], { noChatModels: true });
+    await test.useCase.tools({ schema_version: 1, command: 'tools', action: 'call', tool_name: 'write_file',
+      project_id: 'project-1', args: { locator: 'workspace:/report.md', content: '# Report' } });
+    expect(test.startRequests).toHaveLength(1);
+    test.setRuns([run('completed')]);
+
+    await expect(test.useCase.send({ schema_version: 1, command: 'send', message: '帮我写一份报告' }))
+      .rejects.toMatchObject({
+        code: 'capability_unavailable',
+        message: expect.stringContaining('linnya tools call'),
+      });
+    expect(test.selectedAgentWrites).toEqual([]);
+    expect(test.startRequests).toHaveLength(1);
   });
 
   it('CLI 没有模型也接纳任何 read_file 读取，图片由调用方自己接收', async () => {

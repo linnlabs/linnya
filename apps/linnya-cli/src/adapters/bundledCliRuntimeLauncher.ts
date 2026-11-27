@@ -9,6 +9,7 @@ import type {
 import type { LinnyaCliRuntimeLauncherPort } from '../definitions/cli';
 import { LINNYA_CLI_VERSION, LinnyaCliError } from '../definitions/cli';
 import { resolveCliRuntimeModule } from '../functions/resolveCliRuntimeModule';
+import { resolveCliSourceCheckout } from '../functions/resolveCliSourceCheckout';
 import { createTerminalCommandApprovalPrompt } from './createTerminalCommandApprovalPrompt';
 
 interface CliRuntimeHostModule {
@@ -36,12 +37,7 @@ export function createBundledCliRuntimeLauncher(
 ): LinnyaCliRuntimeLauncherPort {
   const launcher: LinnyaCliRuntimeLauncherPort = {
     async run(input) {
-      const resolved = resolveCliRuntimeModule({
-        processEntryPath: process.argv[1],
-        workingDirectory: process.cwd(),
-        configuredModulePath: environment.LINNYA_CLI_RUNTIME_MODULE,
-        configuredDevelopmentRoot: environment.LINNYA_CLI_DEVELOPMENT_ROOT,
-      });
+      const resolved = resolveRuntimeModule(environment);
       const requireModule = createRequire(path.join(
         resolved.developmentRoot,
         '.linnya-cli-runtime-loader.cjs',
@@ -77,6 +73,27 @@ export function createBundledCliRuntimeLauncher(
     },
   };
   return Object.freeze(launcher);
+}
+
+function resolveRuntimeModule(environment: NodeJS.ProcessEnv): ReturnType<typeof resolveCliRuntimeModule> {
+  try {
+    return resolveCliRuntimeModule({
+      processEntryPath: process.argv[1],
+      workingDirectory: process.cwd(),
+      configuredModulePath: environment.LINNYA_CLI_RUNTIME_MODULE,
+      configuredDevelopmentRoot: environment.LINNYA_CLI_DEVELOPMENT_ROOT,
+    });
+  } catch (error: unknown) {
+    // 随桌面安装包分发的命令只有控制面，不带无界面 Backend。显式配置了 Runtime 模块或身处源码
+    // checkout 时保留原错误（那是构建没做完），其余情况给出产品层面的拒绝。
+    if (!environment.LINNYA_CLI_RUNTIME_MODULE?.trim() && resolveCliSourceCheckout() === null) {
+      throw new LinnyaCliError(
+        'capability_unavailable',
+        'This Linnya installation does not include the headless runtime. Open the Linnya desktop app and use the other linnya commands; `runtime start` is only available from a source checkout.',
+      );
+    }
+    throw error;
+  }
 }
 
 function toError(error: unknown): Error {

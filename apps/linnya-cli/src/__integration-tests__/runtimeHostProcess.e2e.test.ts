@@ -296,6 +296,45 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
   }, 90_000);
 
+  it('没有配置任何聊天模型时，外部命令照常写入并读回文档；发消息给 Linnya 的 Agent 得到明确说明', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-runtime-e2e-'));
+    temporaryRoots.push(root);
+    const workspace = path.join(root, 'workspace');
+    const connectionFile = path.join(root, 'connection.json');
+    // 新安装不预置任何模型；只用自己的外部 Agent 的用户也不会去配置。
+    const modelCatalog = path.join(root, 'default-models.json');
+    await fs.mkdir(workspace, { recursive: true });
+    await fs.writeFile(modelCatalog, JSON.stringify({ models: [] }));
+    const environment = await createRuntimeEnvironment({ connectionFile, modelCatalog });
+    const runtime = await startRuntime({ workspace, environment });
+
+    expect(parseJson((await runCli(['models'], environment)).stdout)).toMatchObject({ chat: [] });
+    const created = await runCli(['projects', 'create', 'No Model'], environment);
+    expect(created.code, created.stderr).toBe(0);
+    const creation = ConversationControlProjectsResponseSchema.parse(parseJson(created.stdout));
+    if (creation.action !== 'create') throw new Error('Expected project creation');
+    const projectId = creation.project.project_id;
+
+    const written = await runCli(['tools', 'call', 'write_file', '--project', projectId, '--args-json',
+      JSON.stringify({ locator: 'workspace:/notes/plan.md', content: '# Plan\n\nWritten without a Linnya model.\n' }),
+      '--timeout', '30000'], environment);
+    expect(written.code, written.stderr).toBe(0);
+    const read = await runCli(['tools', 'call', 'read_file', '--project', projectId, '--args-json',
+      JSON.stringify({ locator: 'workspace:/notes/plan.md' }), '--timeout', '30000'], environment);
+    expect(read.code, read.stderr).toBe(0);
+    expect(read.stdout).toContain('Written without a Linnya model.');
+
+    const sent = await runCli(['send', 'hello', '--project', projectId], environment);
+    expect(sent.code).toBe(7);
+    expect(parseJson(sent.stderr)).toMatchObject({
+      error: { code: 'capability_unavailable', message: expect.stringContaining('linnya tools call') },
+    });
+
+    runtime.child.kill('SIGTERM');
+    expect(await waitForClose(runtime.child), runtime.stderr).toBe(0);
+    removeLiveRuntime(runtime.child);
+  }, 90_000);
+
   it('launcher 被 SIGKILL 后 App Server 通过 pipe EOF 收口，并允许同一 Workspace 重启', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-runtime-crash-e2e-'));
     temporaryRoots.push(root);
@@ -508,7 +547,8 @@ async function createRuntimeEnvironment(input: {
   await fs.mkdir(developmentRoot, { recursive: true });
   // Workspace 与 AppData 分属不同路径。仅覆盖 Workspace 会读到开发者的权限设置和凭据。
   // 只复用本次构建的只读资产，所有可写运行状态保留在临时 development root。
-  for (const directory of ['dist', 'extraResources', 'src/features/skills/builtin/skills']) {
+  // parser-wasm 的 Node 产物由 build:wasm 生成，后端规范化 Markdown 写入时按 development root 查找。
+  for (const directory of ['dist', 'extraResources', 'src/features/skills/builtin/skills', 'packages/parser-wasm/pkg-node']) {
     await fs.mkdir(path.dirname(path.join(developmentRoot, directory)), { recursive: true });
     await fs.symlink(path.join(repoRoot, directory), path.join(developmentRoot, directory), 'junction');
   }

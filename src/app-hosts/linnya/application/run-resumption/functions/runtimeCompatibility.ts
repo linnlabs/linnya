@@ -17,6 +17,7 @@ import {
 import { findRegisteredAgentDefinitionByPromptKey } from '../../../agent-registry/agentDefinitionResolver';
 import { getRegisteredBackendPluginVersions } from '../../../plugin-registry/builtin';
 import type { RunDescriptor } from '../definitions/runDescriptor';
+import { runCompletesWithoutModel } from './runCompletesWithoutModel';
 
 type RuntimeCompatibility = RunDescriptor['compatibility'];
 
@@ -90,9 +91,13 @@ function readSkillRevision(name: string): string {
     .digest('hex');
 }
 
+/**
+ * `modelId` 是本次运行绑定的模型；不请求模型的运行（见 `runCompletesWithoutModel`）没有绑定模型，
+ * 传 `undefined`，兼容性里只记录当时目录中的聊天模型。
+ */
 export function captureRuntimeCompatibility(
   promptKey: string,
-  modelId: string,
+  modelId: string | undefined,
   descriptor?: RunDescriptor
 ): RuntimeCompatibility {
   const definition = findRegisteredAgentDefinitionByPromptKey(promptKey);
@@ -101,7 +106,10 @@ export function captureRuntimeCompatibility(
   const plugins = getRegisteredBackendPluginVersions();
   const modelIds = original
     ? Object.keys(original.models)
-    : [...new Set([modelId, ...modelCatalog.getModelsByCapability('chat').map(model => model.id)])];
+    : [...new Set([
+        ...(modelId === undefined ? [] : [modelId]),
+        ...modelCatalog.getModelsByCapability('chat').map(model => model.id),
+      ])];
   const skillNames = original
     ? Object.keys(original.skills)
     : definition.config?.skill?.enabled
@@ -133,7 +141,10 @@ export function captureRuntimeCompatibility(
 
 export function requireRuntimeCompatibility(descriptor: RunDescriptor): void {
   const modelId = descriptor.request.modelId ?? descriptor.request.model_id;
-  if (!modelId) throw new Error('Run descriptor has no original model');
+  // 只有不请求模型的运行可以没有原模型；其余描述缺模型说明记录损坏，不能续跑。
+  if (!modelId && !runCompletesWithoutModel(descriptor.options)) {
+    throw new Error('Run descriptor has no original model');
+  }
   const current = captureRuntimeCompatibility(descriptor.request.promptKey, modelId, descriptor);
   if (!isDeepStrictEqual(current, descriptor.compatibility)) {
     throw new Error(
