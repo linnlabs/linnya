@@ -19,6 +19,9 @@ Windows 使用相同命令，将输出目录替换为本机的新绝对路径，
 生成进程使用输出目录内的独立 Electron profile，不连接现有 Desktop。Office adapter 只关闭本次打开的合成文稿，
 不调用 PowerPoint Quit，不保存源 PPTX，也不关闭其他文稿。Windows COM 创建的空应用实例可能保持打开，由运行者关闭。
 
+但这挡不住进程崩溃：含非法图表 XML 的样稿可能让 PowerPoint 整个重启，连带丢掉其他未保存的文稿。所以 macOS 导出前若 PowerPoint 开着文稿，工具会停下并说明原因，先请用户保存并关闭。
+坏样稿之后，同一进程里的后续样稿也会打不开（文稿不存在或保存后没有 PDF）；排查时每次换新的 PowerPoint 进程，避免把后面的样本误判为坏文件。
+
 ## 分段运行
 
 ```bash
