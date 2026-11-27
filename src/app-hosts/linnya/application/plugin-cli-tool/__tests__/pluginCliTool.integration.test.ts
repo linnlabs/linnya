@@ -17,6 +17,7 @@ import type { ConversationWorkDirectoryAdmissionPort } from '../../conversation-
 import {
   activateDesiredBackendPluginClis,
   clearBackendPluginClisForTests,
+  deactivateStaleBackendPluginClis,
 } from '../../../plugin-registry/pluginCliInvocationRuntime';
 import type { BackendPluginCliRegistration } from '../../../plugin-registry/registry';
 import { createPluginCliToolRuntime, type PluginCliToolDiagnosticPort } from '..';
@@ -335,6 +336,62 @@ describe('plugin_cli 工具：外部命令行调用已启用插件的命令', ()
 
     await expect(harness.run({ plugin_id: 'slides', argv: ['render', '--presentation', 'deck-1'] }))
       .rejects.toThrow(/cancelled/u);
+  });
+
+  it('用户停用插件时：进行中的命令被取消并等它收尾，停用后拒绝新调用，重新启用后恢复', async () => {
+    const conversationRoot = await createConversationRoot();
+    const executed = vi.fn();
+    let markStarted: () => void = () => {};
+    const started = new Promise<void>(resolve => {
+      markStarted = resolve;
+    });
+    let cleanedUp = false;
+    const cli: BackendPluginCliContribution = {
+      prepare: () => ({
+        status: 'ready',
+        plan: {
+          access: {
+            internalDataAccess: 'none',
+            conversationFiles: 'none',
+            externalFiles: 'denied',
+            network: 'denied',
+            guiControl: 'denied',
+            localIpcControl: 'denied',
+          },
+          execute: context => {
+            executed();
+            if (executed.mock.calls.length > 1) return Promise.resolve({ exitCode: 0, stdout: '{}\n', stderr: '' });
+            return new Promise((_resolve, reject) => {
+              context.signal.addEventListener('abort', () => {
+                // 插件收到取消后先收尾（例如删掉写了一半的导出文件），停用流程要等到这里结束。
+                setTimeout(() => {
+                  cleanedUp = true;
+                  reject(context.signal.reason);
+                }, 10);
+              }, { once: true });
+              markStarted();
+            });
+          },
+        },
+      }),
+    };
+    const registration = registerCli(cli);
+    const harness = createHarness({ conversationRoot, registration });
+
+    const running = harness.run({ plugin_id: 'slides', argv: ['export', '--presentation', 'deck-1'] });
+    await started;
+    await deactivateStaleBackendPluginClis([]);
+    expect(cleanedUp).toBe(true);
+    await expect(running).rejects.toThrow(/cancelled/u);
+
+    await expect(harness.run({ plugin_id: 'slides', argv: ['export', '--presentation', 'deck-1'] }))
+      .rejects.toThrow(/plugin_unavailable/u);
+    expect(executed).toHaveBeenCalledTimes(1);
+
+    activateDesiredBackendPluginClis([registration]);
+    const output = await harness.run({ plugin_id: 'slides', argv: ['export', '--presentation', 'deck-1'] });
+    expect(parseData(output).exit_code).toBe(0);
+    expect(executed).toHaveBeenCalledTimes(2);
   });
 
   it('参数沿用 Shell 桥的上限：插件 ID 与参数格式不合法时在执行前拒绝', async () => {
