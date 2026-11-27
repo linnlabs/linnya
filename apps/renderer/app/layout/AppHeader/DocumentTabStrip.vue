@@ -91,7 +91,7 @@
 
     <Teleport to="body">
       <transition name="app-header-menu-fade">
-        <div v-if="tabMenu" class="document-tab-strip__menu" :style="tabMenu.style">
+        <div v-if="tabMenu" ref="tabMenuEl" class="document-tab-strip__menu" :style="tabMenuStyle">
           <CustomSelect
             :model-value="null"
             :options="tabMenuOptions"
@@ -108,12 +108,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component, type CSSProperties } from 'vue';
-import { CustomSelect, DropdownPanel, type CustomSelectOption } from '@linnya/renderer-ui';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue';
+import { createPointAnchor, CustomSelect, DropdownPanel, isModalOverlayOpen, useAnchoredPosition, type AnchoredAnchor, type CustomSelectOption } from '@linnya/renderer-ui';
 import { ChevronIcon, CloseIcon, DocumentIcon } from '@linnya/renderer-ui/icons';
 import { useDocumentTabsStore, type DocumentTab } from '@/app/document-tabs';
 import { useLayoutStore } from '@/app/layout/store/layoutStore';
 import { useLayoutLocalization } from '@/app/layout/composables/useLayoutLocalization';
+import { decideDocumentTabShortcut } from '@/app/layout/functions/documentTabShortcut';
 import {
   activateDocumentTab,
   closeDocumentTabIds,
@@ -204,20 +205,23 @@ watch(() => [activeId.value, tabsState.value.tabs.length] as const, () => void n
 /* ---------- 全部标签 ---------- */
 const listQuery = ref('');
 const listOpen = ref(false);
-const listStyle = ref<CSSProperties>({});
 const allButtonEl = ref<HTMLButtonElement | null>(null);
 const filterEl = ref<HTMLInputElement | null>(null);
 const listPanel = ref<{ element: HTMLDivElement | null } | null>(null);
+const { style: listStyle } = useAnchoredPosition({
+  anchor: allButtonEl,
+  floating: () => listPanel.value?.element,
+  open: listOpen,
+  placement: { side: 'bottom', align: 'end', gap: 6 },
+});
 
 function toggleList(): void {
   if (listOpen.value) {
     listOpen.value = false;
     return;
   }
-  const rect = allButtonEl.value?.getBoundingClientRect();
-  if (!rect) return;
+  if (!allButtonEl.value) return;
   listQuery.value = '';
-  listStyle.value = { top: `${rect.bottom + 6}px`, right: `${Math.max(8, window.innerWidth - rect.right)}px` };
   listOpen.value = true;
   void nextTick(() => filterEl.value?.focus());
 }
@@ -243,7 +247,15 @@ const listedTabs = computed(() => {
 
 /* ---------- 右键菜单 ---------- */
 type TabMenuAction = 'close' | 'close-others' | 'close-right' | 'close-all' | 'reopen';
-const tabMenu = ref<{ readonly tabId: string; readonly style: CSSProperties } | null>(null);
+const tabMenu = ref<{ readonly tabId: string; readonly anchor: AnchoredAnchor } | null>(null);
+const tabMenuEl = ref<HTMLElement | null>(null);
+// 右键菜单以点击位置为锚点，放不下时翻到点击位置上方 / 左侧。
+const { style: tabMenuStyle } = useAnchoredPosition({
+  anchor: () => tabMenu.value?.anchor,
+  floating: tabMenuEl,
+  open: () => tabMenu.value !== null,
+  placement: { gap: 0 },
+});
 
 const tabMenuOptions = computed<CustomSelectOption<TabMenuAction>[]>(() => {
   const { tabs, closed } = tabsState.value;
@@ -264,14 +276,7 @@ const tabMenuOptions = computed<CustomSelectOption<TabMenuAction>[]>(() => {
 });
 
 function openTabMenu(event: MouseEvent, tab: DocumentTab): void {
-  const gap = 8;
-  tabMenu.value = {
-    tabId: tab.id,
-    style: {
-      top: `${Math.min(event.clientY, window.innerHeight - gap)}px`,
-      left: `${Math.min(event.clientX, window.innerWidth - gap)}px`,
-    },
-  };
+  tabMenu.value = { tabId: tab.id, anchor: createPointAnchor(event.clientX, event.clientY) };
 }
 
 function handleTabMenuSelect(action: TabMenuAction | null): void {
@@ -285,25 +290,26 @@ function handleTabMenuSelect(action: TabMenuAction | null): void {
   else void reopenClosedDocumentTab(props.projectId);
 }
 
-/* ---------- 快捷键：Ctrl+Tab 按最近使用切换、⌘W 关闭、⇧⌘T 重新打开 ---------- */
+/* ---------- 快捷键：Ctrl+Tab 按最近使用切换、⌘W 关闭、⇧⌘T 重新打开；弹窗开着时不动背后的标签 ---------- */
 function handleKeydown(event: KeyboardEvent): void {
-  const mod = isMac ? event.metaKey : event.ctrlKey;
-  const key = event.key.toLowerCase();
-  if (event.ctrlKey && key === 'tab') {
-    event.preventDefault();
-    void cycleDocumentTab(props.projectId, event.shiftKey ? -1 : 1);
-    return;
-  }
-  if (mod && !event.altKey && key === 'w' && !event.shiftKey) {
-    if (!activeId.value) return;
-    event.preventDefault();
-    close([activeId.value]);
-    return;
-  }
-  if (mod && !event.altKey && key === 't' && event.shiftKey) {
-    event.preventDefault();
-    void reopenClosedDocumentTab(props.projectId);
-  }
+  const current = activeId.value;
+  const decision = decideDocumentTabShortcut({
+    key: event.key,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey,
+    altKey: event.altKey,
+    isMac,
+    modalOpen: isModalOverlayOpen(),
+    hasActiveTab: current !== null,
+  });
+  if (decision.kind === 'pass') return;
+  event.preventDefault();
+  if (decision.kind === 'swallow') return;
+  const { shortcut } = decision;
+  if (shortcut.kind === 'cycle') void cycleDocumentTab(props.projectId, shortcut.offset);
+  else if (shortcut.kind === 'reopen') void reopenClosedDocumentTab(props.projectId);
+  else if (current !== null) close([current]);
 }
 
 onMounted(() => {

@@ -73,7 +73,6 @@ export function createDefaultHostInferencePort(
       route,
       client_version: version,
       conversation_session_id: getCurrentInferenceSessionId(),
-      credential_reference: catalog.getModel(request.model_id)?.credential_reference,
       resolve_provider_connection_id: resolveProviderConnectionId,
     }),
   });

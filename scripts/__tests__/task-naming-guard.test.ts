@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findTaskNamingAllowance } from '../guards/task-naming-allowlist';
-import {
-  collectTaskNamingOccurrencesByExactName,
-  findTaskNamingViolations,
-} from '../guards/task-naming-guard';
+import { findTaskNamingViolations } from '../guards/task-naming-guard';
 
 function ruleIds(filePath: string, source: string): string[] {
   return findTaskNamingViolations(filePath, source).map(violation => violation.ruleId);
@@ -143,13 +139,7 @@ describe('task naming guard', () => {
     ).toContain('TASK-NAMING-02-identifier');
   });
 
-  it('只保留云模型 task_defaults wire key，不放行辅助模型内部 task 类型', () => {
-    expect(
-      ruleIds(
-        'src/domains/model-catalog/features/cloud-catalog/orchestration/fetchCloudModels.ts',
-        'interface CloudResponse { task_defaults?: Record<string, string> }'
-      )
-    ).toEqual([]);
+  it('不放行辅助模型内部 task 类型', () => {
     expect(
       ruleIds(
         'apps/renderer/domains/settings/definitions/auxiliaryModelPurposes.ts',
@@ -157,17 +147,6 @@ describe('task naming guard', () => {
       )
     ).toContain('TASK-NAMING-02-identifier');
   });
-
-  it('真实云模型客户端边界中的 task_defaults 都由精确长期允许项解释', () => {
-    const occurrences = collectTaskNamingOccurrencesByExactName('task_defaults');
-
-    expect(occurrences.length).toBeGreaterThan(0);
-    expect(
-      occurrences.every(
-        occurrence => findTaskNamingAllowance(occurrence)?.id === 'cloud-model-task-defaults-wire'
-      )
-    ).toBe(true);
-  }, 30_000);
 
   it('只允许插件 AgentDefinition.task 字段，不放行旧 promptKey', () => {
     const pluginAgentPath = 'packages/plugins/example/src/backend/agents/subagent_example/index.ts';

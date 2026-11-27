@@ -41,9 +41,8 @@ const noReasoning = {
 } as const;
 
 describe('projectConversationModelMenu', () => {
-  it('Cloud 和自定义模型直接展开，正式 Provider 只占一个父菜单项', () => {
+  it('自定义模型直接展开，正式 Provider 只占一个父菜单项', () => {
     const snapshot: ModelPickerSnapshot = {
-      cloud: { display_name: 'Linnya Cloud', models: [model('cloud-gpt', 'GPT Cloud')] },
       providers: [
         {
           configured_provider_id: 'provider-openai',
@@ -73,8 +72,6 @@ describe('projectConversationModelMenu', () => {
     });
 
     expect(result.options).toEqual([
-      { isGroup: true, label: 'Linnya Cloud' },
-      expect.objectContaining({ value: 'cloud-gpt', text: 'GPT Cloud' }),
       { isGroup: true, label: '模型供应商' },
       expect.objectContaining({
         text: 'OpenAI',

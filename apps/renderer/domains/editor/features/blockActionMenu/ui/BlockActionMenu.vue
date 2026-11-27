@@ -51,22 +51,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
 import { blockActionMenuService } from '../service';
-import { CustomSelect, measureFloatingLayoutSize } from '@linnya/renderer-ui';
+import { CustomSelect, useAnchoredPosition } from '@linnya/renderer-ui';
 import BlockColorPicker from './BlockColorPicker.vue';
 import { PositionUtils } from '../../../extensions/position/PositionUtils';
 
 // 菜单包裹元素引用
 const menuWrapperRef = ref(null);
 
-// 菜单位置
-const menuPosition = ref({
-  position: 'fixed',
-  top: '0px',
-  left: '0px',
-  zIndex: 9999,
-});
 
 // 从服务获取状态
 const isOpen = computed(() => blockActionMenuService.state.isOpen);
@@ -131,79 +124,14 @@ const selectOptions = computed(() => {
   return items.value.map(item => convertMenuItem(item));
 });
 
-/**
- * 计算菜单位置
- */
-const calculateMenuPosition = () => {
-  if (!anchorElement.value) {
-    return;
-  }
-  
-  const rect = anchorElement.value.getBoundingClientRect();
-  
-  // 视口尺寸
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  
-  // 获取实际菜单尺寸（如果已渲染）
-  let menuWidth = 180; // 默认宽度
-  let menuHeight = 280; // 默认高度（用于首次渲染）
-  
-  if (menuWrapperRef.value) {
-    const menuRect = measureFloatingLayoutSize(menuWrapperRef.value);
-    if (menuRect.height > 0) {
-      menuHeight = menuRect.height;
-    }
-    if (menuRect.width > 0) {
-      menuWidth = menuRect.width;
-    }
-  }
-  
-  // 计算垂直位置：优先显示在 drag-handle 顶部对齐
-  let finalTop = rect.top;
-  const spaceBelow = viewportHeight - rect.top;
-  const spaceAbove = rect.bottom;
-  
-  // 如果下方空间不够，尝试显示在上方
-  if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
-    // 上方空间更多，显示在 drag-handle 上方，菜单底部对齐 drag-handle 底部
-    finalTop = rect.bottom - menuHeight;
-    // 确保不超出视口顶部
-    if (finalTop < 8) {
-      finalTop = 8;
-    }
-  } else {
-    // 下方空间足够，或上方空间也不够时，正常显示在下方
-    // 即使超出视口底部也允许（用户可以滚动）
-    finalTop = rect.top;
-  }
-  
-  // 计算水平位置：优先在左侧显示，菜单右边缘紧贴 drag-handle 左边缘
-  const leftPosition = rect.left - menuWidth - 6; // 左侧，菜单在 drag-handle 左边
-  const rightPosition = rect.right + 6; // 右侧紧贴，保持 6px 间距
-  
-  let finalLeft;
-  
-  // 如果左侧空间足够，显示在左侧
-  if (leftPosition >= 8) {
-    finalLeft = leftPosition;
-  } 
-  // 左侧空间不够，显示在右侧
-  else if (rightPosition + menuWidth <= viewportWidth - 8) {
-    finalLeft = rightPosition;
-  }
-  // 两侧都不够，优先左侧，但确保不超出边界
-  else {
-    finalLeft = Math.max(8, Math.min(leftPosition, viewportWidth - menuWidth - 8));
-  }
-  
-  menuPosition.value = {
-    position: 'fixed',
-    top: `${finalTop}px`,
-    left: `${finalLeft}px`,
-    zIndex: 9999,
-  };
-};
+// 菜单在拖拽柄左侧、顶部对齐；左侧放不下翻到右侧，下方放不下改为底部对齐。
+const anchored = useAnchoredPosition({
+  anchor: anchorElement,
+  floating: menuWrapperRef,
+  open: isOpen,
+  placement: { side: 'left', align: 'start', gap: 6 },
+});
+const menuPosition = computed(() => ({ ...anchored.style.value, zIndex: 9999 }));
 
 /**
  * 处理选项选择
@@ -263,37 +191,13 @@ const stopDomCheck = () => {
 };
 
 // 监听打开状态，计算位置并启动 DOM 检查
-watch(isOpen, async (newValue) => {
+watch(isOpen, (newValue) => {
   if (newValue) {
-    await nextTick();
-    // 首次计算位置（使用默认尺寸）
-    calculateMenuPosition();
-    
-    // 等待菜单完全渲染后，使用实际尺寸重新计算位置
-    await nextTick();
-    requestAnimationFrame(() => {
-      calculateMenuPosition();
-    });
-    
     startDomCheck(); // 开始检查 DOM
     document.addEventListener('keydown', handleKeyDown, true); // 添加键盘监听
   } else {
     stopDomCheck(); // 停止检查 DOM
     document.removeEventListener('keydown', handleKeyDown, true); // 移除键盘监听
-  }
-});
-
-// 监听 anchorElement 变化，重新计算位置（解决切换不同block的draghandle时位置不更新的问题）
-watch(anchorElement, async (newValue) => {
-  if (newValue && isOpen.value) {
-    await nextTick();
-    calculateMenuPosition();
-    
-    // 等待菜单完全渲染后，使用实际尺寸重新计算位置
-    await nextTick();
-    requestAnimationFrame(() => {
-      calculateMenuPosition();
-    });
   }
 });
 
@@ -371,19 +275,7 @@ const handleColorPickerClear = () => {
   // blockActionMenuService.close();
 };
 
-// 监听窗口大小变化，重新计算位置
-const handleResize = () => {
-  if (isOpen.value) {
-    calculateMenuPosition();
-  }
-};
-
-onMounted(() => {
-  window.addEventListener('resize', handleResize);
-});
-
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize);
   document.removeEventListener('keydown', handleKeyDown, true); // 确保移除监听
   stopDomCheck(); // 清理定时器
 });

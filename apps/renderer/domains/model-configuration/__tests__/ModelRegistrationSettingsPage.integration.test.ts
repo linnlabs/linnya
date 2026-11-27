@@ -195,8 +195,6 @@ describe('ModelRegistrationSettingsPage', () => {
     });
     mocks.loadModels.mockResolvedValue({
       models: [],
-      purposeDefaults: {},
-      cloudModelsReady: true,
     });
     mocks.loadModelPicker.mockResolvedValue({
       providers: [],

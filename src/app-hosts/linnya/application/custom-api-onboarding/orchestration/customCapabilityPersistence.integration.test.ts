@@ -21,13 +21,11 @@ async function open() {
   const [
     { ModelCatalogRegistry },
     { createFileCredentialStorage },
-    { createSourceDistributionIdentity },
     { createCustomApiOnboardingUseCase },
     { ModelDiscoveryService },
   ] = await Promise.all([
     import('src/domains/model-catalog/registry/modelCatalogRegistry'),
     import('src/infra/adapters/credential-storage/file/createFileCredentialStorage'),
-    import('src/shared/distribution-identity'),
     import('./createCustomApiOnboardingUseCase'),
     import('src/domains/model-catalog'),
   ]);
@@ -35,7 +33,7 @@ async function open() {
   catalog.installEndpointCredentialStorage(
     createFileCredentialStorage(path.join(state.directory, 'credentials.json'))
   );
-  await catalog.initialize(createSourceDistributionIdentity());
+  await catalog.initialize();
   const useCase = createCustomApiOnboardingUseCase({
     modelCatalog: catalog,
     providerMembership: { getByModelConfigId: () => undefined },

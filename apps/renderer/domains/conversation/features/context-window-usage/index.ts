@@ -13,5 +13,4 @@ export {
   formatConversationUserMessageCount,
   projectConversationInformation,
 } from './functions/projectConversationInformation';
-export { resolveContextUsagePanelPosition } from './functions/resolveContextUsagePanelPosition';
 export { useContextWindowUsagePresentation } from './orchestration/useContextWindowUsagePresentation';

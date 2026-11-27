@@ -56,8 +56,6 @@ const activatedCatalogSnapshot: ModelCatalogSnapshot = {
       ui_visibility: [],
     },
   ],
-  purposeDefaults: {},
-  cloudModelsReady: true,
 };
 
 describe('activateConfiguredProviderModel', () => {

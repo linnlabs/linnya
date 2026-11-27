@@ -71,23 +71,15 @@ vi.mock('src/domains/model-picker-preferences', async importOriginal => {
     ),
   };
 });
-// 只用到模型目录更新桥接，其余 Renderer 推送与本组无关。
-vi.mock('src/app-hosts/linnya/desktop-capabilities', async importOriginal => ({
-  ...(await importOriginal<typeof import('src/app-hosts/linnya/desktop-capabilities')>()),
-  getBackendRendererIntegrationPort: () => ({
-    connectModelCatalogUpdates: async () => () => undefined,
-  }),
-}));
-
 import { modelCatalog } from 'src/domains/model-catalog';
 import { providerAccountRegistry } from 'src/domains/provider-account';
 import { providerConfigurationRegistry } from 'src/domains/provider-configuration';
 import { modelPickerPreferencesRegistry } from 'src/domains/model-picker-preferences';
 import { ServiceInitializer } from './serviceInitializer';
 
-type ModelCatalogStep = { initializeModelCatalog(): Promise<() => void> };
+type ModelCatalogStep = { initializeModelCatalog(): Promise<void> };
 
-function runModelCatalogStep(): Promise<() => void> {
+function runModelCatalogStep(): Promise<void> {
   const initializer = new ServiceInitializer(
     Object.freeze({
       pluginBootstrapScriptPath: '/test/plugin-runtime.cjs',
@@ -123,8 +115,7 @@ describe('服务初始化第 3 步：启动对账保留停用模型的归属与�
       { id: 'disabled-at-startup', inference_endpoint_id: 'endpoint-openai' },
     ]);
 
-    const disconnect = await runModelCatalogStep();
-    disconnect();
+    await runModelCatalogStep();
 
     expect(
       providerConfigurationRegistry.list()[0]?.models.map(member => member.model_config_id)

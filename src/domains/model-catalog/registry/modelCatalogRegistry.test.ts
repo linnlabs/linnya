@@ -1,22 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import path from 'node:path';
 import type { ModelConfig } from '../definitions/modelCatalog';
-import {
-  createOfficialDistributionIdentity,
-  createSourceDistributionIdentity,
-} from '../../../shared/distribution-identity';
 
-// 这里验证 Cloud 服务开放后的接入逻辑；服务当前是否开放由 isLinnyaCloudClientEnabled 自己的测试负责。
-vi.mock('../features/cloud-catalog/functions/isLinnyaCloudClientEnabled', () => ({
-  isLinnyaCloudClientEnabled: (identity: { readonly kind: string }) => identity.kind === 'official',
-}));
-
-const { credentialStoreMock, credentialRollbackMock, fetchCloudModelsMock, persisterMock } =
+const { credentialStoreMock, credentialRollbackMock, persisterMock } =
   vi.hoisted(() => {
     const credentialRollbackMock = vi.fn(async (_credentialId: string) => {});
     return {
       credentialRollbackMock,
-      fetchCloudModelsMock: vi.fn(),
       persisterMock: {
         initialize: vi.fn(async () => {}),
         loadState: vi.fn<
@@ -49,10 +39,6 @@ const { credentialStoreMock, credentialRollbackMock, fetchCloudModelsMock, persi
     };
   });
 
-vi.mock('../features/cloud-catalog/orchestration/fetchCloudModels', () => ({
-  fetchCloudModels: fetchCloudModelsMock,
-}));
-
 vi.mock('../features/user-model-persistence/orchestration/modelPersister', () => ({
   modelPersister: persisterMock,
 }));
@@ -60,34 +46,6 @@ vi.mock('../features/user-model-persistence/orchestration/modelPersister', () =>
 vi.mock('../features/inference-endpoints/orchestration/endpointCredentialStore', () => ({
   endpointCredentialStore: credentialStoreMock,
 }));
-
-function buildCloudModel(id: string): ModelConfig {
-  return {
-    id,
-    model_name: id,
-    catalog_source: 'cloud',
-    credential_reference: { kind: 'host_managed', credential_id: 'linnya-cloud' },
-    capabilities: ['chat'],
-    ui_visibility: ['chat'],
-    display_name: id,
-    description: 'test cloud model',
-    billing_mode: 'cloud',
-    enable_client_retry: false,
-    inference_route: {
-      api_surface: 'openai_chat_completions',
-      capability_id: 'ai-sdk:openai-chat',
-      endpoint_id: 'deepseek',
-      endpoint_model_id: id,
-      base_url: 'https://api.linnyai.com/proxy/deepseek',
-      auth_profile: 'bearer',
-      context_window_tokens: 64_000,
-      max_output_tokens: 8_192,
-      input_support: { user_image: false, tool_result_image: false },
-      usage: { response_usage: 'provider_reported_optional' },
-      continuation: { tool_replay: 'required' },
-    },
-  };
-}
 
 function buildUserEndpoint(id: string) {
   return {
@@ -102,11 +60,30 @@ function buildUserEndpoint(id: string) {
 
 function buildUserModel(id: string, endpointId: string): ModelConfig {
   return {
-    ...buildCloudModel(id),
+    id,
+    model_name: id,
     catalog_source: 'user',
-    billing_mode: 'byok',
     credential_reference: undefined,
     inference_endpoint_id: endpointId,
+    capabilities: ['chat'],
+    ui_visibility: ['chat'],
+    display_name: id,
+    description: 'test user model',
+    billing_mode: 'byok',
+    enable_client_retry: false,
+    inference_route: {
+      api_surface: 'openai_chat_completions',
+      capability_id: 'ai-sdk:openai-chat',
+      endpoint_id: 'deepseek',
+      endpoint_model_id: id,
+      base_url: 'https://api.linnyai.com/proxy/deepseek',
+      auth_profile: 'bearer',
+      context_window_tokens: 64_000,
+      max_output_tokens: 8_192,
+      input_support: { user_image: false, tool_result_image: false },
+      usage: { response_usage: 'provider_reported_optional' },
+      continuation: { tool_replay: 'required' },
+    },
   };
 }
 
@@ -136,96 +113,10 @@ function buildAccountImageModel(id: string, accountId: string): ModelConfig {
   };
 }
 
-describe('Registry cloud retry', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.resetModules();
-    fetchCloudModelsMock.mockReset();
-    persisterMock.initialize.mockClear();
-    persisterMock.loadState.mockReset();
-    persisterMock.loadState.mockResolvedValue({
-      customApiGroups: [],
-      requiresMigration: false,
-      inferenceEndpoints: [],
-      models: [],
-    });
-    persisterMock.saveState.mockReset();
-    persisterMock.saveState.mockResolvedValue(undefined);
-    credentialStoreMock.initialize.mockClear();
-    credentialStoreMock.has.mockReturnValue(true);
-    credentialStoreMock.getStatus.mockReturnValue('available');
-    credentialStoreMock.put.mockClear();
-    credentialStoreMock.remove.mockClear();
-    credentialRollbackMock.mockClear();
-    process.env.MODEL_REGISTRY_DEFAULTS_PATH = path.resolve(
-      process.cwd(),
-      'src/domains/model-catalog/features/default-catalog/assets/default_models.json'
-    );
-  });
-
-  afterEach(() => {
-    vi.clearAllTimers();
-    vi.useRealTimers();
-  });
-
-  it('retries cloud model loading in background after startup failure', async () => {
-    fetchCloudModelsMock
-      .mockResolvedValueOnce({
-        success: false,
-        models: [],
-        failureReason: 'network_error',
-      })
-      .mockResolvedValueOnce({
-        success: true,
-        models: [buildCloudModel('cloud-test-model')],
-        purposeDefaults: {
-          autocomplete: 'cloud-test-model',
-        },
-      });
-
-    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
-    const registry = ModelCatalogRegistry.getInstance();
-
-    await registry.initialize(
-      createOfficialDistributionIdentity({
-        releaseChannel: 'stable',
-        releaseKeyId: 'fixture',
-      })
-    );
-
-    expect(fetchCloudModelsMock).toHaveBeenCalledTimes(1);
-    expect(registry.getModel('cloud-test-model')).toBeUndefined();
-
-    await vi.advanceTimersByTimeAsync(30_000);
-
-    expect(fetchCloudModelsMock).toHaveBeenCalledTimes(2);
-    expect(registry.getModel('cloud-test-model')).toMatchObject({
-      id: 'cloud-test-model',
-      billing_mode: 'cloud',
-    });
-    expect(registry.getFunctionalDefaultModelId('autocomplete')).toBe('cloud-test-model');
-
-    await vi.advanceTimersByTimeAsync(30_000);
-    expect(fetchCloudModelsMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('源码发行身份不请求 Cloud，也不安排后台重试', async () => {
-    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
-    const registry = ModelCatalogRegistry.getInstance();
-
-    await registry.initialize(createSourceDistributionIdentity());
-
-    expect(fetchCloudModelsMock).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(90_000);
-    expect(fetchCloudModelsMock).not.toHaveBeenCalled();
-  });
-});
-
 describe('Registry default model by capability', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.resetModules();
-    fetchCloudModelsMock.mockReset();
     persisterMock.initialize.mockClear();
     persisterMock.loadState.mockReset();
     persisterMock.loadState.mockResolvedValue({
@@ -254,11 +145,6 @@ describe('Registry default model by capability', () => {
   });
 
   it('返回第一个 capability 匹配模型 ID', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -277,17 +163,12 @@ describe('Registry default model by capability', () => {
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
 
     expect(registry.getDefaultModelIdByCapability('unit_test_default')).toBe('first-ocr');
   });
 
   it('无 capability 匹配时返回 undefined', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -297,20 +178,15 @@ describe('Registry default model by capability', () => {
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
 
     expect(registry.getDefaultModelIdByCapability('missing_capability')).toBeUndefined();
   });
 
   it('账号模型只进入进程目录，登出删除且非法替换不破坏已有投影', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     persisterMock.saveState.mockClear();
 
     const accountId = 'chatgpt-subscription';
@@ -339,46 +215,13 @@ describe('Registry default model by capability', () => {
     expect(persisterMock.saveState).not.toHaveBeenCalled();
   });
 
-  it('保存云端功能默认模型表，并忽略当前不可用的默认模型', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [buildCloudModel('cloud-fast-model')],
-      purposeDefaults: {
-        autocomplete: 'cloud-fast-model',
-        knowledge_graph_extraction: 'cloud-missing-model',
-      },
-    });
-    persisterMock.loadState.mockResolvedValueOnce({
-      customApiGroups: [],
-      requiresMigration: false,
-      inferenceEndpoints: [],
-      models: [],
-    });
-
-    const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
-    const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(
-      createOfficialDistributionIdentity({
-        releaseChannel: 'stable',
-        releaseKeyId: 'fixture',
-      })
-    );
-
-    expect(registry.getFunctionalModelDefaults()).toEqual({
-      autocomplete: 'cloud-fast-model',
-      knowledge_graph_extraction: 'cloud-missing-model',
-    });
-    expect(registry.getFunctionalDefaultModelId('autocomplete')).toBe('cloud-fast-model');
-    expect(registry.getFunctionalDefaultModelId('knowledge_graph_extraction')).toBeUndefined();
-  });
-
   it('初始化没有成功时拒绝写入用户配置：不准备凭据，也不覆写原文件', async () => {
     persisterMock.loadState.mockRejectedValueOnce(
       new Error('user_models.json 无法读取：Unexpected end of JSON input')
     );
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await expect(registry.initialize(createSourceDistributionIdentity())).rejects.toThrow(
+    await expect(registry.initialize()).rejects.toThrow(
       'user_models.json 无法读取'
     );
 
@@ -400,14 +243,9 @@ describe('Registry default model by capability', () => {
   });
 
   it('同一 InferenceEndpoint 可跨模型复用，持久化快照不包含明文凭据', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
 
     await registry.registerUserModel(buildUserModel('first-user-model', 'shared-endpoint'), {
       kind: 'create',
@@ -435,11 +273,6 @@ describe('Registry default model by capability', () => {
   });
 
   it('正式 Provider 新模型可在同一 endpoint 内替换凭据', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -448,7 +281,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.put.mockClear();
 
     await registry.registerUserModel(buildUserModel('second-user-model', 'shared-endpoint'), {
@@ -467,14 +300,9 @@ describe('Registry default model by capability', () => {
   });
 
   it('同一正式 Provider 的多协议 endpoint 共享一份凭据，并在最后一条 route 删除后清理', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     const credentialReference = {
       kind: 'stored_secret' as const,
       credential_id: 'configured-provider:opencode-go',
@@ -522,11 +350,6 @@ describe('Registry default model by capability', () => {
   });
 
   it('替换凭据后目录写入失败时恢复旧 secret 且不注册模型', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -535,7 +358,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.put.mockClear();
     persisterMock.saveState.mockRejectedValueOnce(new Error('disk unavailable'));
 
@@ -555,14 +378,9 @@ describe('Registry default model by capability', () => {
   });
 
   it('用户目录事务提交后才通知变更：读方能读到新模型，写盘失败不通知，监听异常不影响提交', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     const seen: Array<{ revision: number; visible: boolean }> = [];
     const unsubscribe = registry.onUserModelCatalogChanged(event => {
       seen.push({ revision: event.revision, visible: registry.getModel('notified-model') !== undefined });
@@ -601,14 +419,9 @@ describe('Registry default model by capability', () => {
   });
 
   it('删除最后一个引用模型时原子清理 endpoint 与凭据', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
 
     await registry.registerUserModel(buildUserModel('first-user-model', 'shared-endpoint'), {
       kind: 'create',
@@ -638,14 +451,9 @@ describe('Registry default model by capability', () => {
   });
 
   it('删除最后引用的目录写入失败时恢复 endpoint 与凭据', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
 
     await registry.registerUserModel(buildUserModel('only-user-model', 'only-endpoint'), {
       kind: 'create',
@@ -673,7 +481,6 @@ describe('Registry default model by capability', () => {
   });
 
   it('改绑一组用户模型到新 endpoint 时清理旧 endpoint 与独占凭据', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -685,7 +492,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.has.mockImplementation(
       (credentialId: string) => credentialId !== 'inference-endpoint:new-endpoint'
     );
@@ -726,7 +533,6 @@ describe('Registry default model by capability', () => {
   });
 
   it('改绑时复用仍被新 endpoint 引用的凭据，不删除凭据', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -735,7 +541,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.put.mockClear();
     credentialStoreMock.remove.mockClear();
 
@@ -773,7 +579,6 @@ describe('Registry default model by capability', () => {
   });
 
   it('改绑写盘失败时保留旧目录并撤销新旧凭据变更', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -782,7 +587,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.has.mockImplementation(
       (credentialId: string) => credentialId !== 'inference-endpoint:new-endpoint'
     );
@@ -818,7 +623,6 @@ describe('Registry default model by capability', () => {
   });
 
   it('改绑只接受已存在的用户模型，失败时不写凭据', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -827,7 +631,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.put.mockClear();
 
     await expect(
@@ -844,7 +648,6 @@ describe('Registry default model by capability', () => {
   });
 
   it('在原 credential boundary 内替换 endpoint 凭据且不改写目录文件', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({ success: true, models: [], purposeDefaults: {} });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -853,7 +656,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.put.mockClear();
     persisterMock.saveState.mockClear();
 
@@ -883,7 +686,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     let complete!: () => void;
     persisterMock.saveState.mockImplementationOnce(
       () =>
@@ -914,7 +717,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     registry.replaceAccountModels('account', [buildAccountImageModel('image', 'account')]);
     persisterMock.saveState.mockRejectedValueOnce(new Error('disk unavailable'));
     const failed = registry.updateModel({ ...model, display_name: 'failed' });
@@ -936,11 +739,6 @@ describe('Registry default model by capability', () => {
   });
 
   it('用户目录写入失败时不提交内存变更', async () => {
-    fetchCloudModelsMock.mockResolvedValueOnce({
-      success: true,
-      models: [],
-      purposeDefaults: {},
-    });
     persisterMock.loadState.mockResolvedValueOnce({
       customApiGroups: [],
       requiresMigration: false,
@@ -950,7 +748,7 @@ describe('Registry default model by capability', () => {
 
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.has.mockReturnValue(false);
     persisterMock.saveState.mockRejectedValueOnce(new Error('disk unavailable'));
 
@@ -984,7 +782,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     const revision = registry.getUserRevision();
     const registrations = ['a', 'b'].map(id => ({
       model: buildUserModel(id, 'shared'),
@@ -1015,7 +813,7 @@ describe('Registry default model by capability', () => {
   it('后一个注册失败时撤销前面的凭据准备，不发布半批模型', async () => {
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.has.mockReturnValue(false);
     await expect(
       registry.registerUserModels(
@@ -1057,7 +855,7 @@ describe('Registry default model by capability', () => {
     });
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     const before = registry.getModels();
     const revision = registry.getUserRevision();
     persisterMock.saveState.mockRejectedValueOnce(new Error('disk full'));
@@ -1079,7 +877,7 @@ describe('Registry default model by capability', () => {
   it('同批后续模型可引用刚创建的连接，密钥只写一次', async () => {
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
     credentialStoreMock.has.mockReturnValueOnce(false).mockReturnValue(true);
     await registry.registerUserModels(
       [
@@ -1115,7 +913,6 @@ describe('Registry 用户模型准入隔离与初始化回滚', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.resetModules();
-    fetchCloudModelsMock.mockReset();
     persisterMock.initialize.mockClear();
     persisterMock.loadState.mockReset();
     persisterMock.saveState.mockReset();
@@ -1169,7 +966,7 @@ describe('Registry 用户模型准入隔离与初始化回滚', () => {
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
 
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
 
     expect(registry.isInitialized()).toBe(true);
     expect(registry.getModel('healthy-user-model')).toBeDefined();
@@ -1223,7 +1020,7 @@ describe('Registry 用户模型准入隔离与初始化回滚', () => {
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
 
-    await registry.initialize(createSourceDistributionIdentity());
+    await registry.initialize();
 
     expect(persisterMock.saveState).toHaveBeenCalledOnce();
     expect(persisterMock.saveState).toHaveBeenCalledWith(
@@ -1245,8 +1042,8 @@ describe('Registry 用户模型准入隔离与初始化回滚', () => {
     const registry = ModelCatalogRegistry.getInstance();
 
     await Promise.all([
-      registry.initialize(createSourceDistributionIdentity()),
-      registry.initialize(createSourceDistributionIdentity()),
+      registry.initialize(),
+      registry.initialize(),
     ]);
 
     expect(persisterMock.loadState).toHaveBeenCalledOnce();
@@ -1267,14 +1064,14 @@ describe('Registry 用户模型准入隔离与初始化回滚', () => {
     const { ModelCatalogRegistry } = await import('./modelCatalogRegistry');
     const registry = ModelCatalogRegistry.getInstance();
 
-    await expect(registry.initialize(createSourceDistributionIdentity())).rejects.toThrow(
+    await expect(registry.initialize()).rejects.toThrow(
       '引用不存在的 InferenceEndpoint: missing-endpoint'
     );
     expect(registry.isInitialized()).toBe(false);
     expect(registry.getInferenceEndpoints()).toEqual([]);
     expect(registry.getModels()).toEqual([]);
 
-    await expect(registry.initialize(createSourceDistributionIdentity())).rejects.toThrow(
+    await expect(registry.initialize()).rejects.toThrow(
       '引用不存在的 InferenceEndpoint: missing-endpoint'
     );
     expect(persisterMock.saveState).not.toHaveBeenCalled();

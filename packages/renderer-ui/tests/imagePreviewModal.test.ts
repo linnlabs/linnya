@@ -65,8 +65,10 @@ describe('ImagePreviewModal', () => {
     expect(overlay.classList).toContain('image-preview-contract-overlay');
     expect(image.classList).toContain('image-preview-contract-image');
 
+    image.dispatchEvent(new Event('pointerdown', { bubbles: true }));
     image.click();
     expect(mounted.closeCount.value).toBe(0);
+    overlay.dispatchEvent(new Event('pointerdown', { bubbles: true }));
     overlay.click();
     expect(mounted.closeCount.value).toBe(1);
   });

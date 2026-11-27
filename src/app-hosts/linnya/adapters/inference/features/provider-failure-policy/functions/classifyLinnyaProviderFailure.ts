@@ -4,18 +4,6 @@ import type {
   AiSdkProviderFailureClassifier,
 } from '@linnlabs/linnkit-provider-ai-sdk';
 
-const LINNYA_CLOUD_QUOTA_BODY_MARKERS = [
-  '额度上限',
-  '已达上限',
-  '免费期已结束',
-  '该模型暂不可用',
-] as const;
-
-function isQuotaDiscriminator(candidate: AiSdkProviderFailureCandidate): boolean {
-  const discriminator = `${candidate.type ?? ''} ${candidate.code ?? ''} ${candidate.reason ?? ''}`;
-  return /(insufficient[_ -]?quota)/u.test(discriminator);
-}
-
 function readHttpProviderErrorType(body: string | undefined): string | undefined {
   if (body === undefined) return undefined;
   let parsed: unknown;
@@ -46,14 +34,6 @@ export function classifyLinnyaProviderFailure(
 ): AiSdkFailureProjection | undefined {
   if (providerConnectionDefinitionId === 'opencode-go' && isOpenCodeSessionRequired(candidate)) {
     return { kind: 'provider', code: 'opencode_session_required', retryable: false };
-  }
-  if (providerConnectionDefinitionId !== 'linnya-cloud') return undefined;
-  const body = candidate.response_body?.toLowerCase() ?? '';
-  if (
-    LINNYA_CLOUD_QUOTA_BODY_MARKERS.some(marker => body.includes(marker)) ||
-    isQuotaDiscriminator(candidate)
-  ) {
-    return { kind: 'provider', code: 'cloud_quota_exhausted', retryable: false };
   }
   return undefined;
 }

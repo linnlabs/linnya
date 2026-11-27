@@ -13,7 +13,6 @@ import type {
 import type { ModelReasoningResolver } from '../../../definitions/modelReasoningResolver';
 import type { InferenceEndpointSelection } from '../../../definitions/inferenceEndpoint';
 import type { ModelCatalogRegistry } from '../../../registry/modelCatalogRegistry';
-import { createSourceDistributionIdentity } from '../../../../../shared/distribution-identity';
 
 const paths = vi.hoisted(() => ({ directory: '' }));
 vi.mock('src/shared/utils/pathManager', () => ({
@@ -56,7 +55,7 @@ async function openRegistry(resolver?: ModelReasoningResolver): Promise<ModelCat
   const registry = ModelCatalogRegistry.getInstance();
   if (resolver) registry.installModelReasoningResolver(resolver);
   registry.installEndpointCredentialStorage(createFileCredentialStorage(path.join(paths.directory, 'credentials.json')));
-  await registry.initialize(createSourceDistributionIdentity());
+  await registry.initialize();
   return registry;
 }
 

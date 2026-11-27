@@ -22,6 +22,8 @@ import {
   type KnowledgeRuntime,
 } from '../knowledge/src/backend/runtime/orchestration/createKnowledgeRuntime';
 import { createKnowledgeCli } from '../knowledge/src/backend/cli/orchestration/createKnowledgeCli';
+import { createKnowledgeIpc } from '../knowledge/src/backend/runtime/orchestration/createKnowledgeIpc';
+import type { BackendPluginIpcHandler } from '@plugin/backend/pluginIpcRuntime';
 import { createDocument, DocumentStatus } from '../knowledge/src/backend/domain/document';
 import { BlockType } from '../knowledge/src/backend/domain/block';
 import { pluginWorkerSdkAliases } from '../../../scripts/build/plugin-worker-sdk.mjs';
@@ -105,7 +107,6 @@ vi.mock('@plugin/backend/projectReadRuntime', () => ({
 vi.mock('@plugin/backend/modelConfiguration', () => ({
   getPluginModelConfigurationPort: () => ({
     readDefaultModelIdByCapability: () => null,
-    readAuxiliaryModelBinding: () => 'ui-graph',
   }),
 }));
 vi.mock('@plugin/backend/inferenceRuntime', () => ({ getPluginInferencePort: () => uiInference }));
@@ -227,6 +228,37 @@ async function createLibrary(name: string, graph: boolean) {
     .run('project-a', kb.id, 'read_write', Date.now(), Date.now());
   return kb;
 }
+/** 一篇已摄入完成、只差图谱的历史文档。 */
+async function seedCompletedDocument(kbId: string, docId: string) {
+  await runtime.metadata.addDocument({
+    ...createDocument(docId, kbId, `${docId}.md`, 10),
+    status: DocumentStatus.COMPLETED,
+  });
+  await runtime.sot.save(docId, {
+    doc_id: docId,
+    doc_title: docId,
+    metadata: {},
+    content_blocks: { paragraph: { block_type: BlockType.PARAGRAPH, text: docId } },
+    structure: { root: ['paragraph'] },
+  });
+}
+function completedGraphIndexDocs(kbId: string): string[] {
+  return [
+    ...new Set(
+      runtime.queues
+        .listGraphIndexingTasks()
+        .filter(job => job.data.kbId === kbId && job.state === 'completed')
+        .map(job => job.data.docId)
+    ),
+  ].sort();
+}
+function knowledgeIpcHandlers(): Map<string, BackendPluginIpcHandler> {
+  const handlers = new Map<string, BackendPluginIpcHandler>();
+  createKnowledgeIpc(() => runtime).register(undefined, (_pluginId, channel, handler) => {
+    handlers.set(channel, handler);
+  });
+  return handlers;
+}
 async function importDocument(
   kbId: string,
   filename: string,
@@ -312,17 +344,64 @@ describe('CLI owned ingestion and graph completion', () => {
       indexing: undefined,
     });
     expect(maintenanceSchedules).toBe(0);
-    runtime.startInteractiveMaintenance();
-    runtime.startInteractiveMaintenance();
+    runtime.startInteractiveMaintenance('ui-graph');
+    runtime.startInteractiveMaintenance('ui-graph');
     expect(maintenanceSchedules).toBe(1);
+    // 回填用界面请求带来的当前图谱模型，不用 CLI 冻结的模型。
     await vi.waitFor(() => expect(uiCalls).toContain('ui-graph'));
+    await vi.waitFor(() => expect(completedGraphIndexDocs(b.id)).toEqual(['b-history']));
+  });
+  it('界面没选图谱模型时回填只补向量索引，之后第一次带模型的界面操作用它补抽取；空图谱库不打断回填', async () => {
+    const empty = await runtime.service.createKnowledgeBase('Empty');
+    await runtime.metadata.updateKnowledgeBase(empty.id, { enableGraphIndexing: true });
+    const b = await createLibrary('B', true);
+    await seedCompletedDocument(b.id, 'b-extracted');
+    await seedCompletedDocument(b.id, 'b-pending');
+    database
+      .prepare(
+        'INSERT INTO knowledge_graph_doc_status(kb_id,doc_id,chunk_count,done_chunks,status,updated_at) VALUES (?,?,?,?,?,?)'
+      )
+      .run(b.id, 'b-extracted', 1, 1, 'completed', Date.now());
+    // 维护等向量服务就绪后才开始；界面里触发维护的操作本身会启动它，这里借一次不建图谱的导入。
+    const warmup = await createLibrary('Warmup', false);
+    expect((await importDocument(warmup.id, 'warmup.md')).exitCode).toBe(0);
+
+    runtime.startInteractiveMaintenance(null);
+    await vi.waitFor(() => expect(completedGraphIndexDocs(b.id)).toEqual(['b-extracted']));
+    expect(runtime.queues.listGraphExtractionTasks()).toEqual([]);
+    expect(await runtime.graph.getDocumentWorkStatus(b.id, 'b-pending')).toEqual({
+      extraction: undefined,
+      indexing: undefined,
+    });
+
+    runtime.startInteractiveMaintenance('ui-graph');
     await vi.waitFor(() =>
-      expect(
-        runtime.queues
-          .listGraphIndexingTasks()
-          .filter(job => job.data.kbId === b.id && job.state === 'completed')
-      ).toHaveLength(1)
+      expect(completedGraphIndexDocs(b.id)).toEqual(['b-extracted', 'b-pending'])
     );
+    expect(uiCalls).toContain('ui-graph');
+    expect(
+      runtime.queues.listGraphExtractionTasks().map(job => [job.data.docId, job.data.llmModelId])
+    ).toEqual([['b-pending', 'ui-graph']]);
+  });
+  it('打开图谱开关时用请求带来的界面模型为已有文档补图谱，只补这一个库', async () => {
+    const b = await createLibrary('B', false);
+    await seedCompletedDocument(b.id, 'b-old');
+    const update = knowledgeIpcHandlers().get('update-settings');
+    if (!update) throw new Error('Expected update-settings handler');
+
+    await expect(
+      update(undefined, {
+        kbId: b.id,
+        settings: { enableGraphIndexing: true },
+        graphExtractionModelId: 'ui-graph',
+      })
+    ).resolves.toMatchObject({ success: true });
+    await vi.waitFor(() => expect(completedGraphIndexDocs(b.id)).toEqual(['b-old']));
+    expect(
+      runtime.queues.listGraphExtractionTasks().map(job => [job.data.docId, job.data.llmModelId])
+    ).toEqual([['b-old', 'ui-graph']]);
+    // 开关打开只补本库；这条请求不是界面维护入口，不会排全局维护。
+    expect(maintenanceSchedules).toBe(0);
   });
   it('重试耗尽返回失败并保原文；父取消等待自己的 Host 请求收口，不取消并行 UI 摄入', async () => {
     const a = await createLibrary('A', true);

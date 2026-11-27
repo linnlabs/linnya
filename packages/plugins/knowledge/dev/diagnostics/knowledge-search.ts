@@ -61,10 +61,8 @@ async function initializeDiagnosticModelServices(workspaceRoot: string) {
     workspaceRoot,
     workspaceRootIsCustom: workspaceRoot !== path.join(developmentRoot, '_dev_data'),
   });
-  await initializeWorkerModelServices({
-    runtimePathRoots,
-    distributionIdentity: installDistributionIdentity(createSourceDistributionIdentity()),
-  });
+  installDistributionIdentity(createSourceDistributionIdentity());
+  await initializeWorkerModelServices({ runtimePathRoots });
   const { createEmbeddingPort, createRerankingPort } = await import(
     'src/app-hosts/linnya/adapters/inference'
   );

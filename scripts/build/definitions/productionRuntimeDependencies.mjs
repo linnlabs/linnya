@@ -31,8 +31,6 @@ export const staticallyLoadedProductionDependencies = Object.freeze([
 export const dynamicallyLoadedProductionDependencies = Object.freeze({
   // prism-media 按名字探测 Opus 实现（它的可选 peer），音频 Worker 解码录音靠它。
   '@discordjs/opus': 'prism-media 的 Opus 解码器探测',
-  // deviceId.ts 用 createRequire 加载，bundler 不会内联。
-  'node-machine-id': 'Cloud 模型目录的设备标识',
 });
 
 /**

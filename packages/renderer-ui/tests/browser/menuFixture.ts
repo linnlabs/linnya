@@ -1,7 +1,8 @@
 import { createApp, h, nextTick, ref } from 'vue';
 import type { App } from 'vue';
-import { CustomSelect, ColorPickerPanel } from '../../src';
+import { CustomSelect, ColorPickerPanel, createPointAnchor, useAnchoredPosition } from '../../src';
 import type {
+  AnchoredPositionOptions,
   CustomSelectOption,
   CustomSelectOptionLabelOverflow,
   CustomSelectVariant,
@@ -141,6 +142,93 @@ async function mount({
   });
   app.mount('#fixture');
   if (!manual) document.querySelector<HTMLButtonElement>('.select-trigger')?.click();
+  await settle();
+}
+
+interface AnchoredCase extends AnchoredPositionOptions {
+  readonly x: number;
+  readonly y: number;
+  readonly panelWidth?: number;
+  readonly panelHeight?: number;
+  /** 浮层保持入场缩放（scale 0.96），检验定位按布局尺寸算。 */
+  readonly scaled?: boolean;
+  /** 锚点放进可滚动容器，检验滚动后浮层跟着锚点走。 */
+  readonly inScroller?: boolean;
+  /** 以点击位置为锚（右键菜单）。 */
+  readonly point?: boolean;
+}
+
+/** 锚定定位的真实几何：jsdom 没有布局，翻转、收边和缩放下的量尺寸只能在浏览器里验证。 */
+async function mountAnchored(input: AnchoredCase) {
+  app?.unmount();
+  await settle();
+  document.body.style.margin = '0';
+  document.body.style.height = 'auto';
+  const { x, y, panelWidth = 160, panelHeight = 120, scaled, inScroller, point, ...placement } = input;
+  app = createApp({
+    setup() {
+      const anchor = ref<HTMLElement | null>(null);
+      const floating = ref<HTMLElement | null>(null);
+      const pointAnchor = point ? createPointAnchor(x, y) : null;
+      const anchored = useAnchoredPosition({
+        anchor: () => pointAnchor ?? anchor.value,
+        floating,
+        open: true,
+        placement,
+      });
+      const anchorStyle = { left: `${x}px`, top: `${y}px`, width: '80px', height: '24px' };
+      return () => h('div', [
+        inScroller
+          ? h('div', {
+            id: 'anchored-scroller',
+            style: { position: 'fixed', left: '0', top: '0', width: '600px', height: '400px', overflow: 'auto' },
+          }, [
+            h('div', { style: { position: 'relative', height: '1600px' } }, [
+              h('button', { ref: anchor, id: 'anchored-anchor', style: { position: 'absolute', ...anchorStyle } }),
+            ]),
+          ])
+          : h('button', { ref: anchor, id: 'anchored-anchor', style: { position: 'fixed', ...anchorStyle } }),
+        h('div', {
+          ref: floating,
+          id: 'anchored-floating',
+          'data-side': anchored.side.value,
+          style: {
+            ...anchored.style.value,
+            ...(placement.matchAnchorWidth ? {} : { width: `${panelWidth}px` }),
+            height: `${panelHeight}px`,
+            ...(scaled ? { transform: 'scale(0.96)' } : {}),
+          },
+        }),
+      ]);
+    },
+  });
+  app.mount('#fixture');
+  await settle();
+}
+
+/** 浮层用布局坐标（style 上的 top/left 与 offset 尺寸），不受 scale 影响。 */
+function anchoredGeometry() {
+  const anchor = document.getElementById('anchored-anchor')?.getBoundingClientRect();
+  const floating = document.getElementById('anchored-floating');
+  if (!anchor || !floating) throw new Error('Anchored fixture not mounted');
+  const top = Number.parseFloat(floating.style.top);
+  const left = Number.parseFloat(floating.style.left);
+  return {
+    viewport: { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight },
+    anchor: { top: anchor.top, left: anchor.left, right: anchor.right, bottom: anchor.bottom, width: anchor.width },
+    floating: {
+      top,
+      left,
+      right: left + floating.offsetWidth,
+      bottom: top + floating.offsetHeight,
+      width: floating.offsetWidth,
+      side: floating.dataset.side,
+    },
+  };
+}
+
+async function scrollAnchored(top: number) {
+  document.getElementById('anchored-scroller')?.scrollTo({ top });
   await settle();
 }
 
@@ -311,10 +399,13 @@ function submenuRows() {
 }
 
 const fixture = {
+  anchoredGeometry,
   checkmarkGeometry,
   mount,
+  mountAnchored,
   mountCheckmarkSelect,
   mountTrigger,
+  scrollAnchored,
   settle,
   snapshot,
   submenuRows,

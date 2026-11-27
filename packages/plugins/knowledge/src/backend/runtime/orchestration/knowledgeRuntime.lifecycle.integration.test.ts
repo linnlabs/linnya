@@ -52,7 +52,7 @@ const inference: PluginInferencePort = {
 vi.mock('@plugin/backend/adoptedHostDataRuntime', () => ({ getAdoptedHostData: () => ({ database, dataDirectory: path.join(root, 'Plugins/knowledge') }) }));
 vi.mock('@plugin/backend/projectReadRuntime', () => ({ getPluginProjectReadPort: () => ({ get: () => undefined, list: () => [] }) }));
 vi.mock('@plugin/backend/modelConfiguration', () => ({ getPluginModelConfigurationPort: () => ({
-  readDefaultModelIdByCapability: () => 'ocr', readAuxiliaryModelBinding: () => 'language', getModelDisplayName: (id: string) => id,
+  readDefaultModelIdByCapability: () => 'ocr', getModelDisplayName: (id: string) => id,
 }) }));
 vi.mock('@plugin/backend/inferenceRuntime', () => ({ getPluginInferencePort: () => inference }));
 vi.mock('@plugin/backend/vectorRuntime', () => ({ createPluginVectorRuntime: () => {
@@ -512,7 +512,7 @@ describe('knowledge activation persistence and drain', () => {
     let release: (value: DocumentSoT) => void = () => {};
     const delayed = new Promise<DocumentSoT>(resolve => { release = resolve; });
     const read = vi.spyOn(runtime.sot, 'get').mockReturnValueOnce(delayed);
-    runtime.graph.startBackfill();
+    runtime.graph.startBackfill('language');
     await vi.waitFor(() => expect(read).toHaveBeenCalled());
     let stopped = false;
     const stopping = runtime.stop().then(() => { stopped = true; });

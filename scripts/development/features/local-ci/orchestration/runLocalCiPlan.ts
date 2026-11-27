@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync, cpSync } from 'node:fs';
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync, cpSync } from 'node:fs';
 import path from 'node:path';
 import {
   LOCAL_CI_RUNNER_OS,
@@ -15,6 +15,7 @@ import {
   type LocalCiFailureDigest,
   type LocalCiIsolatedRerun,
 } from '../definitions/localCiFailureDigest';
+import { LOCAL_CI_HISTORY_FILE, type LocalCiHistoryEntry } from '../definitions/localCiHistory';
 import type { LocalCiSchedule, LocalCiStepKind } from '../definitions/localCiSchedule';
 import { buildLocalCiLanes, isHeavyUnit, isolatedVitestCommand, localCiStepFingerprint } from '../functions/buildLocalCiLanes';
 import { evaluateWorkflowCondition } from '../functions/evaluateWorkflowCondition';
@@ -429,4 +430,9 @@ export function writeLocalCiSummary(logDirectory: string, summary: unknown): str
   const file = path.join(logDirectory, 'summary.json');
   writeFileSync(file, `${JSON.stringify(summary, null, 2)}\n`);
   return file;
+}
+
+/** 运行历史放在运行目录之外（`_dev_data/ci-local/` 下），清理旧运行目录时不会删它。 */
+export function appendLocalCiHistory(ciDirectory: string, entry: LocalCiHistoryEntry): void {
+  appendFileSync(path.join(ciDirectory, LOCAL_CI_HISTORY_FILE), `${JSON.stringify(entry)}\n`);
 }

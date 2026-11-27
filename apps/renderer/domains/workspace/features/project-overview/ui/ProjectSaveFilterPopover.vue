@@ -40,10 +40,9 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { PROJECT_SAVED_FILTER_NAME_MAX_LENGTH } from '@app/schemas';
-import { ActionButtons, CustomTextInput, DROPDOWN_SURFACE_CLASSES } from '@linnya/renderer-ui';
-import { useFixedDropdownPosition } from '@/domains/workspace/ui/sidebar';
+import { ActionButtons, CustomTextInput, DROPDOWN_SURFACE_CLASSES, useAnchoredPosition } from '@linnya/renderer-ui';
 
 const props = defineProps<{
   open: boolean;
@@ -69,23 +68,17 @@ const emit = defineEmits<{
 
 const name = ref('');
 const inputRef = ref<{ focus: () => void } | null>(null);
-const startPosition = useFixedDropdownPosition({ align: 'start' });
-const endPosition = useFixedDropdownPosition({ align: 'end' });
 const panelRef = ref<HTMLElement | null>(null);
-const panelStyle = ref<Record<string, string>>({});
+const { style: panelStyle } = useAnchoredPosition({
+  anchor: () => props.anchor,
+  floating: panelRef,
+  open: () => props.open,
+  placement: () => ({ align: props.align, gap: 4 }),
+});
 
-async function place(): Promise<void> {
-  const position = props.align === 'end' ? endPosition : startPosition;
-  await nextTick();
-  position.dropdownRef.value = panelRef.value;
-  position.positionDropdown(props.anchor);
-  panelStyle.value = position.dropdownStyle.value as Record<string, string>;
-}
-
-watch(() => props.open, async open => {
+watch(() => props.open, open => {
   if (!open) return;
   name.value = props.initialName;
-  await place();
   // 从右键菜单打开时，菜单关闭会把焦点还给页签；等它收尾后再聚焦输入框并全选名称。
   requestAnimationFrame(() => {
     inputRef.value?.focus();

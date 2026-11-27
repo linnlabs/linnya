@@ -396,7 +396,6 @@ describe('BackendRuntimeOwner command owner lifecycle', () => {
         throw new Error('unused OCR');
       },
       capabilityFailures: [],
-      disposeRendererIntegration() {},
     });
     const next = new TestBackendRuntimeOwner();
     try {

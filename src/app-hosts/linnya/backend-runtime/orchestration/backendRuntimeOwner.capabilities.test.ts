@@ -79,7 +79,6 @@ function initializedServices(
   // 本组只有生命周期端口会被访问；误读业务服务应当直接暴露测试范围错误。
   return {
     capabilityFailures,
-    disposeRendererIntegration() {},
     get transcriptionService(): never {
       throw new Error('unused transcription');
     },

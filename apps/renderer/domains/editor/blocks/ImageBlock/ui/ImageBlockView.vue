@@ -143,7 +143,7 @@
         :initial-height="props.node.attrs.height"
         :natural-width="naturalImageWidth"
         :natural-height="naturalImageHeight"
-        :position="resizePanelPosition"
+        :anchor="resizePanelAnchor"
         @confirm="handleResizeConfirm"
         @cancel="closeResizeModal"
       />
@@ -242,7 +242,7 @@ const figureStyle = computed(() => {
 const isResizeModalOpen = ref(false);
 const isPreviewModalOpen = ref(false);
 const { sourceElement: previewSource, rememberSource } = useImagePreviewSource();
-const resizePanelPosition = ref({ top: 0, left: 0 });
+const resizePanelAnchor = computed(() => nodeViewWrapperRef.value?.$el ?? null);
 
 // 响应式控件逻辑
 const shouldShowCompactControls = computed(() => {
@@ -322,21 +322,7 @@ const setAlignment = (alignment) => {
   }
 };
 
-const openResizeModal = async () => {
-  // 计算面板位置
-  const rect = nodeViewWrapperRef.value?.$el?.getBoundingClientRect();
-  if (rect) {
-    resizePanelPosition.value = {
-      top: rect.bottom + 8,
-      left: rect.left
-    };
-  } else {
-    resizePanelPosition.value = {
-      top: window.innerHeight / 2 - 100,
-      left: window.innerWidth / 2 - 175
-    };
-  }
-
+const openResizeModal = () => {
   isResizeModalOpen.value = true;
 };
 

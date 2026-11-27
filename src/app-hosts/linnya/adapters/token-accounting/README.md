@@ -19,7 +19,7 @@ count surface、actual usage 校准样本和 run cost 聚合。
 本模块负责：
 
 - 始终使用当前 `TokenRoute.baseURL`，不根据模型名改发厂商官网。
-- 认证 profile 读取 typed inference route；secret 与 Linnya Cloud 设备身份通过 Host `model-request-auth` 边界按请求解析，不读取 ModelConfig 通用 header。
+- 认证 profile 读取 typed inference route；secret 通过 Host `model-request-auth` 边界按请求解析，不读取 ModelConfig 通用 header。
 - 仅在 route 明确声明 remote count 时执行一次请求，不做 retry/fallback。
 - 将已核验 count surface 的请求和响应投影为 `TokenCountResult`。
 - 只把 `confidence=actual` 的 response usage 配对成 route-isolated 校准样本。

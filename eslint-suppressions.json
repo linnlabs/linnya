@@ -939,11 +939,6 @@
       "count": 1
     }
   },
-  "apps/renderer/domains/editor/features/blockActionMenu/ui/BlockActionMenu.vue": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
   "apps/renderer/domains/editor/features/chart-editing/orchestration/useChartEditDraft.ts": {
     "no-restricted-globals": {
       "count": 1
@@ -1399,9 +1394,6 @@
     }
   },
   "packages/renderer-ui/src/features/select-menu/ui/TextPopover.vue": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "no-restricted-properties": {
       "count": 2
     },

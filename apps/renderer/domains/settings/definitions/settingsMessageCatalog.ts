@@ -276,7 +276,7 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
     '用于新对话首次发送后自动生成标题；默认“使用主模型”，会随主模型变化。',
   'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.label': '知识图谱抽取',
   'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.description':
-    '用于新上传文档的图谱抽取快照；默认模型由辅助用途注册表指定。',
+    '知识库开启图谱构建后用它抽取图谱：上传时记在任务里，补建旧文档、继续解析的新页也用当前选择。没有默认模型，不选则不建图谱。',
   'settings.modelConfig.imageGeneration.label': '图片生成模型',
   'settings.modelConfig.imageGeneration.placeholder': '请选择图片生成模型',
   'settings.modelConfig.imageGeneration.selectTitle': '选择图片生成模型',
@@ -811,7 +811,7 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
       'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.label':
         'Knowledge graph extraction',
       'settings.modelConfig.auxiliary.purposes.knowledgeGraphExtraction.description':
-        'Captured for graph extraction on newly uploaded documents. The default model is specified by the auxiliary purpose registry.',
+        'Used to build knowledge graphs once a knowledge base enables it: captured with each upload, and the current choice is also used for existing documents and re-parsed pages. There is no default; without a choice no graph is built.',
       'settings.modelConfig.imageGeneration.label': 'Image generation model',
       'settings.modelConfig.imageGeneration.placeholder': 'Choose image generation model',
       'settings.modelConfig.imageGeneration.selectTitle': 'Choose image generation model',

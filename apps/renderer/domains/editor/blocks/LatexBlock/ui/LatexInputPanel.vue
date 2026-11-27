@@ -35,11 +35,10 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import { useLatexEditorStore } from '../store/latexEditor';
 import { useLatexEditorActions } from '../runtime';
-import { computePosition, offset, flip, shift, autoUpdate } from '@floating-ui/dom';
 import { NodeFinder } from '../../../extensions/position/NodeFinder';
 import SymbolPalette from './SymbolPalette.vue'; // ++ 导入符号面板组件 ++
 import { useEditorLocalization } from '../../../ui/useEditorLocalization';
-import { applyTextareaAutoResize, BaseButton } from '@linnya/renderer-ui';
+import { applyTextareaAutoResize, BaseButton, useAnchoredPosition } from '@linnya/renderer-ui';
 
 // --- Store and Editor ---
 const latexStore = useLatexEditorStore();
@@ -51,12 +50,14 @@ const panelContainerRef = ref(null);
 const inputRef = ref(null);
 
 // --- Computed Properties ---
-const panelStyle = computed(() => ({
-  position: 'fixed', // Use fixed for positioning relative to viewport
-  top: `${latexStore.panelPosition.top}px`,
-  left: `${latexStore.panelPosition.left}px`,
-  zIndex: 1100, // Ensure it's above other elements
-}));
+// 面板贴在公式下方，放不下时翻到上方；打开期间跟随滚动。
+const anchored = useAnchoredPosition({
+  anchor: () => latexStore.referenceElement,
+  floating: panelContainerRef,
+  open: () => latexStore.isPanelVisible,
+  placement: { side: 'bottom', align: 'start', gap: 6, viewportMargin: 5 },
+});
+const panelStyle = computed(() => ({ ...anchored.style.value, zIndex: 1100 }));
 
 // --- Event Handlers ---
 const handleInput = (event) => {
@@ -227,7 +228,6 @@ watch(() => latexStore.isPanelVisible, (isVisible) => {
           console.warn('[LatexInputPanel] inputRef not available in focus timeout.');
         }
       }, 10);
-      computeInitialPosition();
       setTimeout(() => document.addEventListener('click', handleClickOutside, { capture: true }), 0);
     });
   } else {
@@ -242,40 +242,6 @@ watch(() => latexStore.currentSource, (newSource, oldSource) => {
       });
     }
 }, { immediate: false });
-
-// ++ 新增：计算初始位置的函数 ++
-const computeInitialPosition = () => {
-  if (latexStore.referenceElement && panelContainerRef.value) {
-    if (!(latexStore.referenceElement instanceof Element)) {
-      console.warn('[LatexInputPanel] Reference element is not a valid DOM element');
-      latexStore.updatePosition({
-        top: window.innerHeight / 2 - 150, // Fallback position
-        left: window.innerWidth / 2 - 200
-      });
-      return;
-    }
-
-    computePosition(latexStore.referenceElement, panelContainerRef.value, {
-      placement: 'bottom-start',
-      strategy: 'fixed',
-      middleware: [offset(6), flip(), shift({ padding: 5 })],
-    }).then(({ x, y }) => {
-      latexStore.updatePosition({ top: y, left: x });
-    }).catch(err => {
-      console.error('[LatexInputPanel] Error computing initial position:', err);
-      latexStore.updatePosition({ // Fallback position on error
-        top: window.innerHeight / 2 - 150,
-        left: window.innerWidth / 2 - 200
-      });
-    });
-  } else {
-    console.warn('[LatexInputPanel] Cannot compute initial position: Reference element or panel container missing.');
-    latexStore.updatePosition({ // Fallback position if elements missing
-      top: window.innerHeight / 2 - 150,
-      left: window.innerWidth / 2 - 200
-    });
-  }
-};
 
 // ++ 在 onBeforeUnmount 中确保移除 click listener ++
 onBeforeUnmount(() => {

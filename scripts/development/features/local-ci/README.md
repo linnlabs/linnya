@@ -61,7 +61,7 @@ pnpm run ci:local --test-workers 8       # 合并测试的 vitest worker 数
 
 默认并行上限 4，合并测试的 worker 数为“核数 - 6”（至少 2），给并行的源码检查和系统留出余量；也可用环境变量 `LINNYA_CI_LOCAL_CONCURRENCY`、`LINNYA_CI_LOCAL_TEST_WORKERS` 设置，命令行参数优先。
 
-日志在 `_dev_data/ci-local/<时间>/`：每个执行步骤一个日志文件，`summary.json` 记录全部结果；失败时终端打印失败摘要。有失败或中断时退出码为 1。`summary.json` 的 `tree` 按代码内容标识被测提交，`fullRun` 表示没有用 `--workflow` / `--job` 缩小范围且计划里每一步都有结果，`passed` 表示没有失败也没有中断；`clean`、`fullRun`、`passed` 同时为真，才说明全部本地 CI 在这份代码上通过。`Ctrl+C` 会停掉所有正在运行的步骤并回收临时检出。运行被强制结束（`SIGKILL`、agent 停掉后台任务）时来不及回收；下一次启动会先回收进程已退出、又没用 `--keep` 保留的检出（每份约 1.6 GB）。
+日志在 `_dev_data/ci-local/<时间>/`：每个执行步骤一个日志文件，`summary.json` 记录全部结果；失败时终端打印失败摘要。有失败或中断时退出码为 1。`summary.json` 的 `tree` 按代码内容标识被测提交，`fullRun` 表示没有用 `--workflow` / `--job` 缩小范围且计划里每一步都有结果，`passed` 表示没有失败也没有中断；`clean`、`fullRun`、`passed` 同时为真，才说明全部本地 CI 在这份代码上通过。`summary.json` 还记录起止时间 `startedAt` / `finishedAt`、`fullScope`（没有用 `--workflow` / `--job` / `--working-copy` 缩小范围；被中断的全量运行仍为真，而 `fullRun` 为假）和 `load`（运行期间每 30 秒采一次 1 分钟负载：核数、样本数、均值、最大值）。`Ctrl+C` 会停掉所有正在运行的步骤并回收临时检出。运行被强制结束（`SIGKILL`、agent 停掉后台任务）时来不及回收；下一次启动会先回收进程已退出、又没用 `--keep` 保留的检出（每份约 1.6 GB）。
 
 ## 结果保留
 
@@ -73,6 +73,8 @@ pnpm run ci:local --test-workers 8       # 合并测试的 vitest worker 数
 
 上面“通过的完整回执”的条件是对外的回执合同：本机工具可以按代码内容 `tree` 在各 worktree 的 `_dev_data/ci-local/*/summary.json` 里查找通过的完整回执，例如合入或推送主分支前确认这份代码跑过完整本地 CI。规则 2、3 保证这类查找还可能用到的回执不会被清理：待合入分支顶端、本地 main 顶端的回执属于某个 worktree 的 HEAD；分支继续前进后，旧回执仍在 7 天窗口里。失败、中断、只跑了部分任务或读不出回执的旧运行只受规则 1 保护，超出就删除。名字不是运行时间戳（如 `2026-11-19T10-30-55`）的条目不动。清理失败只提示，不影响本次运行。判定是 `functions/selectLocalCiRunsToPrune.ts` 的纯函数；修改通过条件就是修改回执合同，依赖它的本机工具要随之更新。
 
+**运行历史**：每次运行（`--list` 除外）结束时，向 `_dev_data/ci-local/history.jsonl` 追加一行：运行目录名、起止时间、提交与 `tree`、`clean`、`fullScope`、`fullRun`、`passed`、`interrupted`、用时、负载，以及失败步骤（`任务 › 步骤`、调度类别、是否网络原因、隔离重跑结果；复用别的步骤结果的失败只算一次）。它不是运行目录，上面的清理不会删它，所以运行目录只留最近一批时，仍能看几周的通过率、用时和偶发失败趋势。本机工具按行里的版本号 `v` 读取，改字段含义时把版本加一；格式定义在 `definitions/localCiHistory.ts`。
+
 ## 结构
 
 - `functions/evaluateWorkflowCondition.ts`：仓库工作流用到的 GitHub 表达式子集（`runner.os`、`matrix.*`、`steps.<id>.outcome`、`always()` 等）；其他写法抛出“本地无法判断”。
@@ -83,5 +85,6 @@ pnpm run ci:local --test-workers 8       # 合并测试的 vitest worker 数
 - `orchestration/prepareLocalCiCheckout.ts`：临时干净检出。
 - `definitions/localCiRetention.ts`、`functions/selectLocalCiRunsToPrune.ts`、`orchestration/pruneLocalCiRuns.ts`：运行结果保留规则、纯函数判定与实际清理。
 - `definitions/localCiFailureDigest.ts`、`functions/summarizeLocalCiFailure.ts`：失败摘要的结构、长度上限，以及从步骤日志生成摘要的纯函数。
-- `orchestration/runLocalCiPlan.ts`：并行执行、日志、去重、进程回收、证据复制、失败摘要与隔离重跑。
+- `definitions/localCiHistory.ts`、`functions/buildLocalCiHistoryEntry.ts`：运行历史的行格式、负载汇总与从步骤结果生成历史行的纯函数。
+- `orchestration/runLocalCiPlan.ts`：并行执行、日志、去重、进程回收、证据复制、失败摘要、隔离重跑，以及回执与历史的写入。
 - `bin/local-ci.ts`：命令入口与汇总输出。

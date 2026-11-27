@@ -13,7 +13,7 @@
         aria-modal="true"
         :aria-label="displayedAlt"
         tabindex="-1"
-        @click.self="emit('close')"
+        v-on="backdropListeners"
       >
         <slot
           v-if="!displayedSrc"
@@ -43,8 +43,7 @@ import {
   IMAGE_PREVIEW_TRANSITION_NAME,
   resolveImagePreviewSourceImage,
 } from '../functions/imagePreviewTransition';
-import { useEscapeLayer } from '../vue/useEscapeLayer';
-import { useModalFocus } from '../vue/useModalFocus';
+import { useModalOverlay } from '../vue/useModalOverlay';
 
 const props = withDefaults(defineProps<ImagePreviewModalProps>(), {
   src: '',
@@ -130,9 +129,11 @@ watch(() => [props.src, props.alt], () => {
   if (props.isVisible) syncDisplayedContent();
 });
 
-useEscapeLayer({
+// 遮罩就是弹窗本身：点到图片以外的地方才算点了遮罩。
+const { backdropListeners } = useModalOverlay({
   active: () => props.isVisible,
+  containerRef: overlayRef,
   onEscape: () => emit('close'),
+  onBackdropClick: () => emit('close'),
 });
-useModalFocus({ active: () => props.isVisible, containerRef: overlayRef });
 </script>

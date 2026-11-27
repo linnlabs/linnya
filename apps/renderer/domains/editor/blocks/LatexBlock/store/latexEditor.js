@@ -8,7 +8,6 @@ export const useLatexEditorStore = defineStore('latexEditor', () => {
   const targetNodeId = ref(null);
   const currentSource = ref('');
   const originalSource = ref('');
-  const panelPosition = ref({ top: 0, left: 0 });
   const referenceElement = ref(null); // DOM element for Floating UI
   // Editor/ProseMirror 依赖对象身份，技术实例不能被深层响应式代理。
   const editorInstance = shallowRef(null);
@@ -74,14 +73,6 @@ export const useLatexEditorStore = defineStore('latexEditor', () => {
   }
 
   /**
-   * 更新面板的计算位置 (通常由面板组件调用)
-   * @param {{top: number, left: number}} position
-   */
-  function updatePosition(position) {
-    panelPosition.value = position;
-  }
-
-  /**
    * 设置用于定位的参考元素 (通常由触发者调用)
    * @param {HTMLElement | null} refEl
    */
@@ -98,7 +89,6 @@ export const useLatexEditorStore = defineStore('latexEditor', () => {
   function resetHiddenPanel() {
     targetNodeId.value = null;
     originalSource.value = '';
-    panelPosition.value = { top: 0, left: 0 };
     referenceElement.value = null;
   }
 
@@ -108,7 +98,6 @@ export const useLatexEditorStore = defineStore('latexEditor', () => {
     targetNodeId,
     currentSource,
     originalSource,
-    panelPosition,
     referenceElement,
     editorInstance,
     pendingOpenNodeId, // ++ 导出状态
@@ -120,7 +109,6 @@ export const useLatexEditorStore = defineStore('latexEditor', () => {
     // Actions
     showPanel,
     updateSource,
-    updatePosition,
     setReferenceElement,
     setEditor,
     setPendingOpenNodeId, // ++ 导出

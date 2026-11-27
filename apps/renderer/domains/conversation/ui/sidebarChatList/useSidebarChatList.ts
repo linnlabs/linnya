@@ -4,11 +4,16 @@ import {
   onMounted,
   onUnmounted,
   ref,
+  shallowRef,
   watch,
   type ComponentPublicInstance,
-  type CSSProperties,
 } from 'vue';
-import { resolveIconButtonElement } from '@linnya/renderer-ui';
+import {
+  createPointAnchor,
+  resolveIconButtonElement,
+  useAnchoredPosition,
+  type AnchoredAnchor,
+} from '@linnya/renderer-ui';
 import { useAssistantStore } from '../../store/assistantStore';
 import type { ConversationListItem } from '../../history/services/historyApiService';
 import { useHistoryList } from '../../history/list';
@@ -37,8 +42,6 @@ import { useConversationLocalization } from '../useConversationLocalization';
 import {
   buildChatMenuOptions,
   buildContextMenuOptions,
-  positionChatContextMenu,
-  positionChatMenuDropdown,
   type ChatMenuAction,
 } from './sidebarChatListMenu';
 import type {
@@ -83,10 +86,10 @@ export function useSidebarChatList(
   const activeMenuConversationId = ref<string | null>(null);
   const menuButtonRefs = new Map<string, HTMLButtonElement>();
   const menuDropdownRef = ref<HTMLElement | null>(null);
-  const menuDropdownStyle = ref<CSSProperties>({ top: '0px', left: '0px' });
   const contextMenuDropdownRef = ref<HTMLElement | null>(null);
-  const contextMenuDropdownStyle = ref<CSSProperties>({ top: '0px', left: '0px' });
   const contextMenuConversationId = ref<string | null>(null);
+  // 右键菜单以点击位置为锚。
+  const contextMenuAnchor = shallowRef<AnchoredAnchor | null>(null);
   const isHistoryRevealPulseActive = ref(false);
   const pendingRevealPulseKey = ref<number | null>(null);
   const isConversationListExpanded = ref(false);
@@ -372,6 +375,19 @@ export function useSidebarChatList(
     return menuButtonRefs.get(activeMenuConversationId.value) ?? null;
   });
 
+  const { style: menuDropdownStyle } = useAnchoredPosition({
+    anchor: activeMenuButtonRef,
+    floating: menuDropdownRef,
+    open: () => activeMenuConversationId.value !== null,
+    placement: { gap: 4 },
+  });
+  const { style: contextMenuDropdownStyle } = useAnchoredPosition({
+    anchor: contextMenuAnchor,
+    floating: contextMenuDropdownRef,
+    open: () => contextMenuConversationId.value !== null,
+    placement: { gap: 0 },
+  });
+
   const activeMenuOptions = computed(() => (
     buildChatMenuOptions(activeMenuConversation.value, conversationMessage)
   ));
@@ -388,21 +404,8 @@ export function useSidebarChatList(
     menuButtonRefs.delete(conversationId);
   };
 
-  const positionMenuDropdown = (): void => {
-    const buttonEl = activeMenuButtonRef.value;
-    const dropdownEl = menuDropdownRef.value;
-    if (!buttonEl || !dropdownEl) return;
-
-    menuDropdownStyle.value = positionChatMenuDropdown(buttonEl, dropdownEl, {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    });
-  };
-
-  const openMoreMenu = async (conversationId: string): Promise<void> => {
+  const openMoreMenu = (conversationId: string): void => {
     activeMenuConversationId.value = conversationId;
-    await nextTick();
-    positionMenuDropdown();
   };
 
   const closeMoreMenu = (): void => {
@@ -420,7 +423,7 @@ export function useSidebarChatList(
       return;
     }
 
-    void openMoreMenu(conversation.conversation_id);
+    openMoreMenu(conversation.conversation_id);
   };
 
   const contextMenuConversation = computed(() => {
@@ -434,13 +437,6 @@ export function useSidebarChatList(
     buildContextMenuOptions(conversationMessage)
   ));
 
-  const positionContextMenu = (event: MouseEvent): void => {
-    contextMenuDropdownStyle.value = positionChatContextMenu(event, {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    });
-  };
-
   const handleContextMenu = (event: MouseEvent, conversation: ConversationListItem): void => {
     if (!selectionEnabled.value || isConversationUnavailable(conversation)) return;
     if (!batchSelectedConversationIds.value.includes(conversation.conversation_id)) {
@@ -450,8 +446,8 @@ export function useSidebarChatList(
       );
     }
     closeMoreMenu();
+    contextMenuAnchor.value = createPointAnchor(event.clientX, event.clientY);
     contextMenuConversationId.value = conversation.conversation_id;
-    positionContextMenu(event);
   };
 
   const handleContextMenuSelect = async (value: ChatMenuAction | null): Promise<void> => {

@@ -303,12 +303,12 @@
 
 <script setup lang="ts">
 import { ToolActivityIndicator } from '@plugin/renderer/executionPresentation';
-import { computed, nextTick, onBeforeUnmount, ref, type Component, type ComponentPublicInstance, type CSSProperties } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, type Component, type ComponentPublicInstance } from 'vue';
 import {
   ActionButtons,
   CustomSelect,
   CustomTextarea,
-  measureFloatingLayoutSize,
+  useAnchoredPosition,
 } from '@linnya/renderer-ui';
 import {
   AddIcon,
@@ -345,12 +345,6 @@ const dragOverInsertIndex = ref<number | null>(null);
 const activePageMenuLocalId = ref<string | null>(null);
 const pageMenuWrapperRef = ref<HTMLElement | null>(null);
 const pageDragHandleRefs = ref<Record<string, HTMLElement>>({});
-const pageMenuPosition = ref<CSSProperties>({
-  position: 'fixed',
-  top: '0px',
-  left: '0px',
-  zIndex: 2100,
-});
 const pageHandleMouseDown = ref<{ localId: string; x: number; y: number } | null>(null);
 
 const toolProps = computed(() => props);
@@ -383,6 +377,14 @@ const activePageMenuAnchor = computed(() => {
   const localId = activePageMenuLocalId.value;
   return localId ? pageDragHandleRefs.value[localId] ?? null : null;
 });
+// 页面菜单默认贴在拖拽手柄左侧，左边放不下翻到右侧，下方放不下改为底边对齐。
+const pageMenuAnchored = useAnchoredPosition({
+  anchor: activePageMenuAnchor,
+  floating: pageMenuWrapperRef,
+  open: () => activePageMenuLocalId.value !== null,
+  placement: { side: 'left', align: 'start', gap: 6 },
+});
+const pageMenuPosition = computed(() => ({ ...pageMenuAnchored.style.value, zIndex: 2100 }));
 const activePageMenuOptions = computed(() => {
   const pageIndex = activePageMenuIndex.value;
   return pageIndex >= 0 ? buildPageMenuOptions(pageIndex) : [];
@@ -510,52 +512,8 @@ function setPageDragHandleRef(localId: string, element: Element | ComponentPubli
   delete pageDragHandleRefs.value[localId];
 }
 
-function calculatePageMenuPosition(): void {
-  const anchor = activePageMenuAnchor.value;
-  if (!anchor) return;
-
-  const anchorRect = anchor.getBoundingClientRect();
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  let menuWidth = 160;
-  let menuHeight = 220;
-
-  if (pageMenuWrapperRef.value) {
-    const menuRect = measureFloatingLayoutSize(pageMenuWrapperRef.value);
-    if (menuRect.width > 0) {
-      menuWidth = menuRect.width;
-    }
-    if (menuRect.height > 0) {
-      menuHeight = menuRect.height;
-    }
-  }
-
-  const leftCandidate = anchorRect.left - menuWidth - 6;
-  const rightCandidate = anchorRect.right + 6;
-  let left = leftCandidate >= 8 ? leftCandidate : rightCandidate;
-  if (left + menuWidth > viewportWidth - 8) {
-    left = Math.max(8, viewportWidth - menuWidth - 8);
-  }
-
-  let top = anchorRect.top;
-  if (top + menuHeight > viewportHeight - 8 && anchorRect.bottom > viewportHeight - anchorRect.top) {
-    top = Math.max(8, anchorRect.bottom - menuHeight);
-  }
-
-  pageMenuPosition.value = {
-    position: 'fixed',
-    top: `${top}px`,
-    left: `${left}px`,
-    zIndex: 2100,
-  };
-}
-
-async function openPageActionMenu(localId: string): Promise<void> {
+function openPageActionMenu(localId: string): void {
   activePageMenuLocalId.value = localId;
-  await nextTick();
-  calculatePageMenuPosition();
-  await nextTick();
-  calculatePageMenuPosition();
 }
 
 function closePageActionMenu(): void {
@@ -568,7 +526,7 @@ function togglePageActionMenu(localId: string): void {
     closePageActionMenu();
     return;
   }
-  void openPageActionMenu(localId);
+  openPageActionMenu(localId);
 }
 
 function handlePageHandleMouseDown(localId: string, event: MouseEvent): void {

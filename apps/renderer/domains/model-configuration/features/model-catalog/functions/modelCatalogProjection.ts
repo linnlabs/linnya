@@ -16,11 +16,7 @@ function describeInvalidPayload(error: ZodError): string {
 export function parseModelCatalogSnapshot(payload: unknown): ModelCatalogSnapshot {
   const parsed = ModelCatalogSnapshotSchema.safeParse(payload);
   if (!parsed.success) throw new Error(describeInvalidPayload(parsed.error));
-  return {
-    models: parsed.data.models,
-    purposeDefaults: parsed.data.task_defaults,
-    cloudModelsReady: parsed.data.cloud_models_ready,
-  };
+  return { models: parsed.data.models };
 }
 
 export function parseModelCatalogItem(payload: unknown): ModelCatalogItem {

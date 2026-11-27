@@ -2,7 +2,7 @@
 <template>
   <div
     class="settings-modal-overlay"
-    @click.self="closeSettings"
+    v-on="backdropListeners"
   >
     <div
       ref="containerRef"
@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { IconButton, useEscapeLayer, useModalFocus } from '@linnya/renderer-ui';
+import { IconButton, useModalOverlay } from '@linnya/renderer-ui';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useLocalization } from '@/app/localization';
 import { useUIStore } from '../../../shared/stores/ui';
@@ -213,7 +213,12 @@ function focusTabButton(tabId: string): void {
   }
 }
 
-// 设置里再打开的 Modal 先接住 Escape；这里只在设置位于最上层时才关闭。
-useEscapeLayer({ active: true, onEscape: closeSettings });
-useModalFocus({ active: true, containerRef });
+// 设置窗保留自有的两栏 DOM，Escape、遮罩点击和焦点按 renderer-ui 浮层栈归属：
+// 设置里再打开的弹窗或下拉先接住 Escape 和遮罩点击，设置只在位于最上层时才关闭。
+const { backdropListeners } = useModalOverlay({
+  active: true,
+  containerRef,
+  onEscape: closeSettings,
+  onBackdropClick: closeSettings,
+});
 </script>

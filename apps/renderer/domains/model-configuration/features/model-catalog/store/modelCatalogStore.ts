@@ -12,8 +12,6 @@ export const useModelCatalogStore = defineStore('modelCatalog', () => {
   const models = ref<ModelCatalogItem[]>([]);
   const activeOperation = ref<ModelCatalogOperation | null>(null);
   const error = ref<ModelCatalogError | null>(null);
-  const purposeDefaults = ref<Record<string, string>>({});
-  const cloudModelsReady = ref(false);
 
   function beginOperation(operation: ModelCatalogOperation): void {
     activeOperation.value = operation;
@@ -31,8 +29,6 @@ export const useModelCatalogStore = defineStore('modelCatalog', () => {
 
   function replaceSnapshot(snapshot: ModelCatalogSnapshot): void {
     models.value = [...snapshot.models];
-    purposeDefaults.value = { ...snapshot.purposeDefaults };
-    cloudModelsReady.value = snapshot.cloudModelsReady;
   }
 
   function replaceModel(model: ModelCatalogItem): void {
@@ -55,8 +51,6 @@ export const useModelCatalogStore = defineStore('modelCatalog', () => {
     models,
     activeOperation,
     error,
-    purposeDefaults,
-    cloudModelsReady,
     beginOperation,
     finishOperation,
     failOperation,

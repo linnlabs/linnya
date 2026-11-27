@@ -8,7 +8,6 @@ export {
   findSelectedOption,
   normalizeInlineNumberValue,
 } from './functions/selectOptionValue';
-export { resolveFixedPanelPosition } from './functions/resolveFixedPanelPosition';
 export {
   DROPDOWN_SURFACE_CLASSES,
 } from './definitions/selectMenu';

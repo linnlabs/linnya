@@ -23,25 +23,3 @@ export type ContextWindowUsagePresentation =
     readonly segments: readonly ContextWindowUsageSegment[];
   };
 
-export interface ContextUsagePanelPositionInput {
-  readonly trigger: {
-    readonly top: number;
-    readonly right: number;
-    readonly bottom: number;
-  };
-  readonly panel: {
-    readonly width: number;
-    readonly height: number;
-  };
-  readonly viewport: {
-    readonly width: number;
-    readonly height: number;
-  };
-  readonly gap: number;
-  readonly padding: number;
-}
-
-export interface ContextUsagePanelPosition {
-  readonly top: number;
-  readonly left: number;
-}

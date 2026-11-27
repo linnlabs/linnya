@@ -97,11 +97,7 @@ describe('对话标题的模型选择', () => {
     harness.titleResponse.mockReset();
     harness.apiFetch.mockReset().mockImplementation(async (url) => (
       url.endsWith('/api/v1/models')
-        ? Response.json({
-          models: harness.catalogModels,
-          task_defaults: {},
-          cloud_models_ready: false,
-        })
+        ? Response.json({ models: harness.catalogModels })
         : harness.titleResponse()
     ));
     harness.updateTitle.mockReset().mockResolvedValue(true);

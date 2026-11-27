@@ -4,8 +4,6 @@ import type { PluginInstallProgressEvent } from '@app/schemas';
 const harness = vi.hoisted(() => ({
   send: vi.fn(),
   secondarySend: vi.fn(),
-  connect: vi.fn(() => () => undefined),
-  subscribe: vi.fn(() => () => undefined),
 }));
 
 vi.mock('electron', () => ({
@@ -21,15 +19,6 @@ vi.mock('electron', () => ({
       webContents: { isDestroyed: () => false, send: harness.secondarySend },
     }],
   },
-}));
-
-vi.mock('../../window-manager', () => ({ getMainWindow: () => null }));
-vi.mock('../../events/rendererReadyEvent', () => ({
-  subscribeRendererReady: harness.subscribe,
-}));
-vi.mock('../../services/modelCatalog/cloudModelsBroadcaster', () => ({
-  installCloudModelsBroadcaster: harness.connect,
-  notifyCloudModelsRendererReady: vi.fn(),
 }));
 
 import { createElectronBackendRendererIntegrationPort } from './createElectronBackendRendererIntegrationPort';

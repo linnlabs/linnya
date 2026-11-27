@@ -127,10 +127,9 @@ import { FolderIcon } from '@linnya/renderer-ui/icons';
 import { ImageIcon } from '@linnya/renderer-ui/icons';
 import { MoreIcon } from '@linnya/renderer-ui/icons';
 import { DocumentErrorIcon } from '@linnya/renderer-ui/icons';
-import { CustomSelect, IconButton, InlineTextInput } from '@linnya/renderer-ui';
+import { CustomSelect, IconButton, InlineTextInput, useAnchoredPosition } from '@linnya/renderer-ui';
 import { useTreeItemDragDrop } from '../composables/useTreeItemDragDrop.js';
 import { getNodeMenuOptions } from '../composables/useContextMenu.js';
-import { useFixedDropdownPosition } from '../composables/useFixedDropdownPosition';
 import { useDocumentTypeAvailabilityByNodeType } from '@/app/plugins/composables';
 import { useWorkspaceLocalization } from '../../useWorkspaceLocalization';
 import { resolveWorkspaceNodeDisplayName } from '../../../functions/resolveWorkspaceNodeDisplayName';
@@ -173,11 +172,13 @@ const isMoreMenuOpen = ref(false);
 const menuTarget = ref(null);
 const moreButton = ref(null);
 const moreButtonRef = computed(() => moreButton.value?.element ?? null);
-const {
-    dropdownRef,
-    dropdownStyle,
-    positionDropdownAfterRender,
-} = useFixedDropdownPosition();
+const dropdownRef = ref(null);
+const { style: dropdownStyle } = useAnchoredPosition({
+    anchor: moreButtonRef,
+    floating: dropdownRef,
+    open: isMoreMenuOpen,
+    placement: { gap: 4 },
+});
 
 // 菜单选项：与右键菜单共用同一数据源，避免两套定义分叉
 const moreMenuOptions = computed(() => {
@@ -327,9 +328,6 @@ const toggleMoreMenu = (event) => {
 
     if (!isMoreMenuOpen.value) menuTarget.value = Object.freeze({ ...props.node });
     isMoreMenuOpen.value = !isMoreMenuOpen.value;
-    if (isMoreMenuOpen.value) {
-        void positionDropdownAfterRender(moreButtonRef.value);
-    }
 };
 
 const closeMoreMenu = () => {

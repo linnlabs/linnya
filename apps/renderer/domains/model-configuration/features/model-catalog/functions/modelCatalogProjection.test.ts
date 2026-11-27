@@ -29,8 +29,6 @@ describe('parseModelCatalogSnapshot', () => {
         inference_route: inferenceRoute,
         ignored_backend_field: true,
       }],
-      task_defaults: { autocomplete: 'model-1' },
-      cloud_models_ready: true,
       total: 1,
     })).toEqual({
       models: [{
@@ -42,8 +40,6 @@ describe('parseModelCatalogSnapshot', () => {
         ui_visibility: ['chat'],
         inference_route: inferenceRoute,
       }],
-      purposeDefaults: { autocomplete: 'model-1' },
-      cloudModelsReady: true,
     });
   });
 

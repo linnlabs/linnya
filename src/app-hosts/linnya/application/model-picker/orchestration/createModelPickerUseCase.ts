@@ -107,7 +107,6 @@ export function createModelPickerUseCase(
         throw new ModelPickerError('model_picker.model_not_found', '模型不存在', 404);
       }
       const isManagedModel =
-        model.catalog_source === 'cloud' ||
         model.catalog_source === 'account' ||
         model.catalog_source === 'user';
       if (!isManagedModel) {

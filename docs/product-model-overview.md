@@ -228,6 +228,8 @@ Linnya 的恒定基础面是 8 个工具：
 
 基础工具恒定，不等于所有 Agent 必须看到完全相同的工具集合，也不等于 Linnya 永远不能新增平台能力。真正的约束是：**插件扩展文档类型时，不能把新增专属工具当作唯一接入方式；领域命令必须由插件 CLI 拥有，并经通用 `shell` / `process` 执行。**
 
+**Knowledge 是唯一的历史例外，以后不再新增。** Knowledge 已经是插件，但它的 `knowledge_search`、`knowledge_read`、`search_in_knowledgebase`、`list_knowledge_base` 仍直接写在 Core 的 Agent 工具清单里（默认 Agent、子 Agent 等），引用接纳与续跑恢复也按这些工具名识别。这是插件化之前留下的形态；保留它，是因为检索是独立意图，现有引用体系也依赖这些工具的结构化结果。其他插件不得照此办理：插件工具只出现在插件自己注册的 Agent 里，Core Agent 使用插件能力一律走 CLI + Skill。否则每接入一个插件，所有 Agent 的工具都会再多几个。Core 中按名字写死的 Knowledge 工具后续改为由插件声明，但不因此扩大到其他插件。
+
 EvidenceStore 属于对话执行空间中的引用证据事实。`[@ref]` 是 Agent 和文档可见的引用身份，bundle id 只是存储、审计与冲突定位事实，不应成为模型第一层 URI 心智。Citation 文档读取已经能提供当前正文窗口的持久化来源快照；Web 长正文则由通用 ToolOutputStore 保存本次完整 observation，并通过 `tool_output_read` 分页续读，不再把 Evidence 当作大文本分页仓库。过渡期的 `evidence_resolve` 专用加速器已于 2026-11-25 退役：Agent 不再直接读取 EvidenceStore，Evidence 只服务引用写入、来源解析与网页深搜的精确版本读取，见 [Evidence owner 文档](../src/domains/evidence/README.md)。
 
 引用减重应先减少来源附录的重复包装，不为此扩张基础工具参数或恢复已退出的过渡工具。
@@ -355,7 +357,7 @@ Linnya 早期内聚了 Agent 循环，后来抽成独立包 linnkit 并开源。
 
 Agent 本身可以自由注册。Subagent 的本质是**协同工作**，不是能力隔离：它主要用于节省主 Agent 上下文、并行完成独立任务，以及应用更专门的 prompt、步骤策略和输出格式。
 
-Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插件工作。某个 Agent 可以隐藏与任务无关的工具，也可以注册满足 §3.3 条件的专用加速器；但专用工具不能成为“只有这个 Agent 才能完成”的能力门槛。
+Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插件工作。某个 Agent 可以隐藏与任务无关的工具，也可以注册满足 §3.3 条件的专用加速器；但专用工具不能成为“只有这个 Agent 才能完成”的能力门槛。插件注册的专用工具只能挂在插件自己的 Agent 上，不能加进 Core Agent 的工具清单（Knowledge 例外见 §3.1）。
 
 命名：默认 Agent 在界面上叫 **Linnya Agent**，其他 Agent 用注册时的显示名；界面里“谁做的”（文件来源、最近修改、对话的 Agent）显示具体是哪个 Agent；子 Agent 是协作细节，没有面向用户的名字，它做的改动显示为发起它的 Agent 的子任务（如“Linnya Agent 的子任务”），查不回发起者的历史记录只显示“子任务”。“Linnya AI”是 Linnya 全部 AI 功能的泛称，不作为任何 Agent 或执行者的名字。
 
@@ -383,7 +385,7 @@ Default Agent 和 Subagent 都应能通过基础工具、Skill 和 CLI 完成插
 3. **VFS 提供基础可读投影** —— 每种项目文档都能被发现和理解，但不承诺通用可写或完整结构化表达。
 4. **`read_file` 统一文件阅读动作** —— 它按 `workspace:`、`conversation:`、`file:` 三种显式 locator 读取；文本直接返回，图片作为模型输入，其他二进制明确交给 Shell/CLI 转换。
 5. **命名空间保持隔离** —— Knowledge、对话执行事实和 Skill 资源不混进项目路径树；conversation 与 host 文件虽可由 `read_file` 阅读，仍不是项目文档节点。
-6. **8 个基础工具恒定** —— 新增或启停文档类型插件，不新增必需的 Agent 工具名。
+6. **8 个基础工具恒定** —— 新增或启停文档类型插件，不新增必需的 Agent 工具名。插件工具不进入 Core Agent 的工具清单；Knowledge 是唯一的历史例外，不再新增第二个（见 §3.1）。
 7. **读取边界清楚** —— 文件 locator 只统一文件阅读动作；Knowledge、Web、Skill 和运行时 blob 仍保留所属领域的身份、权限和分页合同，不恢复万能 URI 资源读取器。
 8. **宿主不复制插件语义** —— 通用 host 只负责注册、调度、权限与审计，不硬编码具体插件的业务分支或 CLI 参数。
 9. **过程与产物分开** —— 会话工作目录文件不会隐式进入项目树；对话产物不会自动变成文档节点。

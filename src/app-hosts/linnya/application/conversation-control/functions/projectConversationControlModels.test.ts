@@ -36,8 +36,8 @@ function imageModel(): ModelConfig {
   return {
     id: 'image-model',
     model_name: 'image-upstream',
-    catalog_source: 'cloud',
-    credential_reference: { kind: 'host_managed', credential_id: 'linnya-cloud' },
+    catalog_source: 'default',
+    credential_reference: { kind: 'environment_variable', environment_variable: 'IMAGE_MODEL_API_KEY' },
     capabilities: ['image_generation'],
     ui_visibility: ['image_generation'],
     display_name: 'Image Model',
@@ -97,7 +97,7 @@ describe('projectConversationControlModels', () => {
       model_config_id: 'image-model',
       model_name: 'image-upstream',
       display_name: 'Image Model',
-      catalog_source: 'cloud',
+      catalog_source: 'default',
       available: true,
     }]);
   });

@@ -131,8 +131,8 @@ describe('SimpleDatePicker', () => {
     const trigger = require$(HTMLButtonElement, host, '.sdp-input');
     expect(trigger.classList).toContain('citation-date-trigger');
     trigger.click();
-    await nextTick();
-    await nextTick();
+    // 打开要等面板渲染并定好位（定位是 Promise）才把焦点移进月历。
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute('data-date')).toBe('2026-09-10'));
 
     const panel = require$(HTMLElement, document, '.sdp-panel');
     expect(host.contains(panel)).toBe(false);

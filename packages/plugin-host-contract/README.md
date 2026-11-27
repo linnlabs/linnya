@@ -2,7 +2,7 @@
 
 本包是 Linnya Host 与插件包之间的**纯类型公开合同**。它让 backend 插件、renderer 插件和 Host SDK facade 依赖同一组窄接口，不承载实现、状态或业务流程。
 
-Backend 的 `adoptedHostDataRuntime` 只给接管 Host 既有表的官方插件（目前只有知识库）借用工作区连接的 prepare/transaction 和产品映射的数据目录；连接覆盖整个工作区库，插件只能读写 manifest `ownedTables` 声明的表，运行时不按表拦截，新插件需要独立存储时不要用它。它不提供 exec、close 或任意路径。`vectorRuntime` 只创建产品已装配的本地向量进程，暴露按需就绪与停止，不开放 binary、端口或环境；目前同样只向知识库开放。两者的准入都沿 App 已准入的官方来源判定，不依赖插件自报 ID 或 builtin。`modelConfiguration` 仅返回当前实际消费的默认 OCR 角色、功能模型 ID 和显示名；用户显式用途选择由请求冻结，不把它混同于默认 capability，也不输出目录或凭据。
+Backend 的 `adoptedHostDataRuntime` 只给接管 Host 既有表的官方插件（目前只有知识库）借用工作区连接的 prepare/transaction 和产品映射的数据目录；连接覆盖整个工作区库，插件只能读写 manifest `ownedTables` 声明的表，运行时不按表拦截，新插件需要独立存储时不要用它。它不提供 exec、close 或任意路径。`vectorRuntime` 只创建产品已装配的本地向量进程，暴露按需就绪与停止，不开放 binary、端口或环境；目前同样只向知识库开放。两者的准入都沿 App 已准入的官方来源判定，不依赖插件自报 ID 或 builtin。`modelConfiguration` 仅返回当前实际消费的默认 OCR 角色和显示名；Host 不发布功能默认模型，用户显式用途选择由请求冻结，不把它混同于默认 capability，也不输出目录或凭据。
 
 ## 1. 边界
 

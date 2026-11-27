@@ -8,7 +8,6 @@ import type { PluginInstallProgressEvent } from '@app/schemas';
  * 将这些调用编码为 reverse desktop capability，Electron adapter 再投影到现有 IPC。
  */
 export interface BackendRendererIntegrationPort {
-  connectModelCatalogUpdates(): Promise<() => void>;
   readonly publishTranscriptionProgress: TranscriptionProgressPublisher;
   readonly publishWorkspaceMutation: WorkspaceMutationPublisher['publish'];
   publishPluginRendererPush(envelope: RendererPluginPushEnvelope): void;

@@ -15,8 +15,6 @@ import {
 
 export interface ModelPurposeResolutionContext {
   readonly models: readonly ModelCatalogItem[];
-  readonly purposeDefaults: Readonly<Record<string, string>>;
-  readonly cloudModelsReady: boolean;
   readonly selections: ModelPurposeSelections;
 }
 
@@ -34,11 +32,8 @@ function resolveAvailableSelection(
 ): string | null {
   const hasModel = (modelId: string): boolean => context.models.some(model => model.id === modelId);
   if (selectedId) {
-    if (hasModel(selectedId)) return selectedId;
-    if (context.cloudModelsReady && selectedId.startsWith('cloud-')) {
-      return defaultId && hasModel(defaultId) ? defaultId : null;
-    }
-    return null;
+    // 选中的模型不在目录里时不悄悄换成默认模型，由调用方按“未选模型”处理。
+    return hasModel(selectedId) ? selectedId : null;
   }
   return defaultId && hasModel(defaultId) ? defaultId : null;
 }
@@ -86,7 +81,7 @@ export function resolveAuxiliaryPurposeDefaultModelId(
   if (definition.defaultStrategy === ModelPurposeDefaultStrategy.PRIMARY_MODEL) {
     return resolvePrimaryModelId(context);
   }
-  return context.purposeDefaults[purposeKey] ?? definition.defaultModelId ?? null;
+  return definition.defaultModelId ?? null;
 }
 
 export function resolveAuxiliaryModelId(

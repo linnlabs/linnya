@@ -15,8 +15,6 @@ function createGateway(): ModelCatalogGateway {
   return {
     load: vi.fn().mockResolvedValue({
       models: [{ id: 'custom-1', catalog_source: 'user', display_name: 'Before' }],
-      purposeDefaults: { autocomplete: 'custom-1' },
-      cloudModelsReady: true,
     }),
     update: vi.fn().mockResolvedValue({
       id: 'custom-1',
@@ -38,8 +36,6 @@ describe('model catalog operations', () => {
     expect(store.models).toEqual([
       { id: 'custom-1', catalog_source: 'user', display_name: 'Before' },
     ]);
-    expect(store.purposeDefaults).toEqual({ autocomplete: 'custom-1' });
-    expect(store.cloudModelsReady).toBe(true);
 
     await updateModelInCatalog('custom-1', { display_name: 'After' }, gateway);
     expect(store.models[0]?.display_name).toBe('After');

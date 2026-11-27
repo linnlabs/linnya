@@ -166,7 +166,7 @@
                     :interactive="isCustomModelEditable(model)"
                     @select="openCustomModelDetails(model)"
                   >
-                    <template v-if="selectedSource.kind !== 'cloud'" #trailing>
+                    <template #trailing>
                       <Switch
                         :model-value="model.materialized && model.picker_enabled"
                         v-bind="{ ariaLabel: model.display_name }"

@@ -205,6 +205,7 @@ export interface KnowledgeBaseService {
     options?: {
       pdfOcrModelId?: string | null;
       embeddingModelId?: string | null;
+      graphExtractionModelId?: string | null;
     }
   ): Promise<{
     docId: string;

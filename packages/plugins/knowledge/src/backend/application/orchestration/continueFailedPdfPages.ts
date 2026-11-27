@@ -35,7 +35,7 @@ const logger = new Logger('knowledge-base:continue-failed-pdf-pages');
 export interface ContinueFailedPdfPagesDeps {
   signal?: AbortSignal;
   temporaryDirectory: string;
-  enqueueGraphExtraction(kbId: string, docId: string): Promise<void>;
+  enqueueGraphExtraction(kbId: string, docId: string, llmModelId: string | null): Promise<void>;
   metadataRepository: MetadataRepository;
   sotRepository: SotRepository;
   qdrantRepository: QdrantRepository;
@@ -57,6 +57,8 @@ export interface ContinueFailedPdfPagesResult {
 export interface ContinueFailedPdfPagesOptions {
   pdfOcrModelId?: string | null;
   embeddingModelId?: string | null;
+  /** 界面当前选的图谱抽取模型；恢复的新页用它补图谱（用户 2026-11-27 定）。 */
+  graphExtractionModelId?: string | null;
 }
 
 export async function continueFailedPdfPages(
@@ -151,7 +153,12 @@ export async function continueFailedPdfPages(
       parsedBlocks,
       nextDiagnostics,
     });
-    await enqueueGraphExtractionAfterIncrementalUpdate(deps, kbId, docId);
+    await enqueueGraphExtractionAfterIncrementalUpdate(
+      deps,
+      kbId,
+      docId,
+      options.graphExtractionModelId ?? null
+    );
   } else {
     const updated = await deps.metadataRepository.updateDocumentParseDiagnostics(
       docId,
@@ -183,10 +190,11 @@ async function resolveEmbeddingModelForIncrementalCommit(args: {
 async function enqueueGraphExtractionAfterIncrementalUpdate(
   deps: ContinueFailedPdfPagesDeps,
   kbId: string,
-  docId: string
+  docId: string,
+  llmModelId: string | null
 ): Promise<void> {
   try {
-    await deps.enqueueGraphExtraction(kbId, docId);
+    await deps.enqueueGraphExtraction(kbId, docId, llmModelId);
   } catch (error) {
     logger.warn(
       `PDF 失败页续跑已完成，但图谱抽取入队失败；chunk 检索不受影响，图谱增强将等待后续回填: kbId=${kbId}, docId=${docId}`,

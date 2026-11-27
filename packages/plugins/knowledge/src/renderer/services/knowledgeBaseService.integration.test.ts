@@ -6,6 +6,11 @@ import { ensureKnowledgeBaseLocalizationRegistered } from '../orchestration/ensu
 import { knowledgeBaseService } from './knowledgeBaseService';
 import { startKnowledgeRequestSession, stopKnowledgeRequestSession } from './knowledgeRequestSession';
 
+vi.mock('@plugin/renderer/modelConfiguration', () => ({
+  readPurposeModelId: (slot: string) => `${slot}-model`,
+  readAuxiliaryModelId: () => 'ui-graph',
+}));
+
 const invoke = vi.fn<(id: string, channel: string, payload: unknown) => Promise<unknown>>();
 beforeEach(() => {
   setActivePinia(createPinia());
@@ -52,6 +57,10 @@ it('新索引 job 状态解码后仍通过既有取消 wire 提交同一身份',
   const job = { jobId: 'rebuild-1', kbId: 'kb', modelId: 'model', status: 'running', progress: 20, message: 'building', updatedAt: 1 };
   invoke.mockResolvedValueOnce({ success: true, data: job });
   const started = await knowledgeBaseService.rebuildIndex('kb', 'model');
+  // 重建索引会顺带触发历史图谱回填，请求要带上界面当前的图谱抽取模型。
+  expect(invoke).toHaveBeenLastCalledWith('knowledge', 'rebuild-index', {
+    kbId: 'kb', modelId: 'model', graphExtractionModelId: 'ui-graph',
+  });
   invoke.mockResolvedValueOnce({ success: true, data: job });
   const current = await knowledgeBaseService.getIndexRebuildStatus('kb');
   expect(current?.jobId).toBe(started.jobId);

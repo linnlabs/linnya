@@ -379,13 +379,6 @@ export class BackendRuntimeOwner {
       }
     }
 
-    if (this.services) {
-      const services = this.services;
-      await stopStage('Renderer integration', async () => {
-        services.disposeRendererIntegration();
-      });
-    }
-
     // 两类 App owner 已经收口后再停 worker，避免退出期间后台 owner 交叉产生新工作。
     await stopStage('后台任务队列', () => QueueManager.getInstance().shutdown());
     const pluginsStopped = await stopStage('插件运行资源', async () => {

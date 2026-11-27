@@ -77,7 +77,6 @@ describe('todo IPC handlers', () => {
     const rendererIntegration = await import('../../../../app-hosts/linnya/desktop-capabilities');
     rendererIntegration.clearBackendRendererIntegrationPortForTesting();
     rendererIntegration.installBackendRendererIntegrationPort({
-      connectModelCatalogUpdates: async () => () => undefined,
       publishTranscriptionProgress: vi.fn(),
       publishWorkspaceMutation: vi.fn(),
       publishPluginRendererPush: vi.fn(),

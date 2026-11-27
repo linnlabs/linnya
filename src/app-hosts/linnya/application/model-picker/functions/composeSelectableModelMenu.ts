@@ -219,7 +219,7 @@ function projectConfiguredProvider(
   const connection = definition?.connections.find(
     candidate => candidate.id === provider.provider_connection_definition_id
   );
-  if (!definition || !connection || connection.kind === 'cloud') return undefined;
+  if (!definition || !connection) return undefined;
   const associationsByProviderModelId = new Map(
     provider.models.map(association => [association.provider_model_id, association])
   );
@@ -344,9 +344,6 @@ export function composeSelectableModelMenu(
   const unassignedUnadmittedModels = unadmittedModels
     .filter(entry => entry.custom_api_group_name === undefined)
     .map(entry => projectUnadmittedModel(entry, entry.id, false));
-  const cloudModels = input.models
-    .filter(model => model.catalog_source === 'cloud')
-    .map(model => projectMaterializedModel(model, input, model.ui_visibility.includes('chat')));
   // 分组拥有连接的生命周期；远端模型为空时仍保留设置中的刷新、编辑和删除入口。
   const customProviders = input.custom_api_groups.map(group => {
     const endpoint = input.inference_endpoints.find(
@@ -381,9 +378,6 @@ export function composeSelectableModelMenu(
   const customModels = customProviders.flatMap(group => group.models);
 
   return {
-    ...(cloudModels.length > 0
-      ? { cloud: { display_name: 'Linnya Cloud', models: cloudModels } }
-      : {}),
     providers: input.configured_providers.flatMap(
       provider => projectConfiguredProvider(provider, input) ?? []
     ),

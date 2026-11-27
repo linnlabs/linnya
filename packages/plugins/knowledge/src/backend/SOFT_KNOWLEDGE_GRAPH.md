@@ -81,6 +81,11 @@ type RelationEdge = {
   - 行为：摄入完成后自动尝试为该 doc 入队图谱抽取（Graph Extraction）
 - **抽取完成后串联索引**：`graphExtraction:taskCompleted` 事件
   - 行为：抽取完成后自动入队图谱向量化（Graph Indexing），将 nodes/edges 写入 Qdrant
+- **抽取模型从哪来**（用户 2026-11-27 定）：图谱抽取模型只在界面“模型配置 → 辅助模型”里选，没有默认值。
+  - 上传：用上传时冻结在任务里的模型；CLI 同样使用调用时冻结的快照。
+  - 抽取失败的自动重试：沿用失败任务里的模型。
+  - 其余补抽取一律用触发它的界面请求带来的“界面当前模型”：PDF 继续解析的新页；打开图谱开关时该库已有的文档；本次运行第一次搜索、上传、重建索引或继续解析之后的全库回填（抽取失败、中途退出、尚未抽取的文档）。同一知识库可能因此混用模型，这是有意接受的代价。
+  - 界面没选模型时：抽取跳过，回填仍补图谱向量索引；之后第一次带模型的界面操作再整体补一次抽取。还没摄入过内容的知识库直接跳过，不中断其余知识库的回填。
 - **KB 级进度刷新**：
   - `graphExtraction:taskProgress/taskCompleted`
   - `graphIndexing:taskProgress/taskCompleted/taskFailed`

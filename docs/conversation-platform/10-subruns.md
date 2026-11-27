@@ -94,7 +94,7 @@ Linnkit 0.48.0 起，工具声明 `parallel: true` 后，模型一次回复里**
 | 历史隔离 | `historyIsolation: 'isolated'`；wire `history_mode: 'isolated'` |
 | 结构化工作状态 | `TaskState`、`task_read`、`task_write`，这是独立业务概念，不等于 subrun |
 
-Linnkit 的 `IAgentTask` 等公开上下文装配 API、知识库外部 `task_id` 协议和 Cloud `task_defaults` 不属于 Conversation 命名整理范围；若要修改必须各自设计公开迁移，不能在本模块顺手改名。
+Linnkit 的 `IAgentTask` 等公开上下文装配 API 和知识库外部 `task_id` 协议不属于 Conversation 命名整理范围；若要修改必须各自设计公开迁移，不能在本模块顺手改名。
 
 ---
 

@@ -87,6 +87,8 @@ describe('Modal', () => {
     await nextTick();
 
     const overlay = document.body.querySelector<HTMLElement>('.modal-overlay');
+    // 真实点击先按下再松开；只派发 click 不足以证明开关生效。
+    overlay?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
     overlay?.click();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(closeCount).toBe(0);

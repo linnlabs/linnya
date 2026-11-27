@@ -6,7 +6,6 @@ export interface LatexEditorState {
   targetNodeId: string | null;
   currentSource: string;
   originalSource: string;
-  panelPosition: { top: number; left: number };
   referenceElement: HTMLElement | null;
   editorInstance: Editor | null;
   pendingOpenNodeId: string | null;
@@ -23,7 +22,6 @@ export interface LatexEditorActions {
     editor?: Editor | null
   ): void;
   updateSource(source: string): void;
-  updatePosition(position: LatexEditorState['panelPosition']): void;
   setReferenceElement(reference: HTMLElement | null): void;
   setEditor(editor: Editor): void;
   setPendingOpenNodeId(nodeId: string): void;
