@@ -28,7 +28,8 @@ linnya tools call plugin_cli
 `conversation:/` 定位符；工具结果（`PluginCliToolResultDataSchema`，见 `@app/schemas`）只含插件 ID、argv、
 退出码、stdout 与 stderr，不含会话目录或任何本机绝对路径，因为它会写进事件并投影到界面。
 本机路径只由 conversation-control 在 `tools call` 回执的 `conversation_directory` 里给命令行调用方，
-`linnya` CLI 再据此列出 `conversation_files`。
+`linnya` CLI 再据此列出 `conversation_files`。界面工具卡（`apps/renderer/domains/conversation/ui/tools/pluginCli/`）按
+`PluginCliToolStructuredResultSchema` 显示命令行与插件输出，不解释某个插件的报告字段。
 
 ## 失败
 
