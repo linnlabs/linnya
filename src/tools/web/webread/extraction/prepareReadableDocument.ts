@@ -1,5 +1,5 @@
 import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
-import { normalizeExtractedText } from './extractSemanticDom';
+import { normalizeExtractedText } from './normalizeExtractedText';
 import { normalizeAriaTables, unwrapLayoutTables } from './normalizeStructuredDom';
 import {
   READABLE_CONTROL_SELECTOR,

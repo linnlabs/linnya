@@ -2,7 +2,7 @@ import { getDomain } from 'tldts';
 import type { WebDocumentWarning, WebPageResource } from '../../definitions/webDocument';
 import { assertAllowedWebUrl, WebUrlPolicyError } from '../../shared/urlPolicy';
 import { WEB_READ_SUBSTANTIAL_CONTENT_CHARS } from '../definitions/readLadder';
-import { normalizeExtractedText } from './extractSemanticDom';
+import { normalizeExtractedText } from './normalizeExtractedText';
 import { isExplicitlyHidden } from './prepareReadableDocument';
 import {
   READABLE_MAIN_SELECTOR,

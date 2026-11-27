@@ -1,4 +1,4 @@
-import { normalizeExtractedText } from './extractSemanticDom';
+import { normalizeExtractedText } from './normalizeExtractedText';
 
 const ARIA_TABLE_SELECTOR = '[role="table"], [role="grid"], [role="treegrid"]';
 const ARIA_CELL_SELECTOR = '[role="columnheader"], [role="rowheader"], [role="cell"], [role="gridcell"]';
