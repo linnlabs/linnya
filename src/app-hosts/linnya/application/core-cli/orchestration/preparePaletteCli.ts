@@ -1,8 +1,8 @@
 import type Database from 'better-sqlite3';
 import { randomBytes } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { parseFileLocator, type ColorPaletteSuggestion } from '@app/schemas';
+import type { ColorPaletteSuggestion } from '@app/schemas';
 import type {
   BackendPluginCliAccessPlan,
   BackendPluginCliPreparation,
@@ -16,10 +16,12 @@ import {
   useColorPalette,
 } from 'src/domains/color-palette';
 import { encodeRgbaPng } from 'src/shared/media/image-pixels';
-import { PhysicalFileReadError, type PhysicalFileReaderPort } from '../../file-read';
+import type { PhysicalFileReaderPort } from '../../file-read';
 import { formatPaletteCheck, formatPaletteSuggestion, formatPaletteUse } from '../functions/formatPalette';
 import { PALETTE_USAGE, parsePaletteCommand, type PaletteCommand } from '../functions/parsePaletteCommand';
+import { readConversationImage } from './conversationImageFiles';
 
+/** 读不出的图片交回空 bytes，由 domain 统一按跳过处理并判断是否全军覆没。 */
 const UNREADABLE = new Uint8Array();
 
 function access(
@@ -34,33 +36,6 @@ function access(
 
 function completed(exitCode: number, stdout: string, stderr: string): BackendPluginCliPreparation {
   return { status: 'completed', result: { exitCode, stdout, stderr } };
-}
-
-/** 只认当前对话工作目录；Workspace 文档和宿主文件不是这里的图片来源。 */
-function conversationPath(root: string, reference: string): string | null {
-  if (!/^[a-z]+:/iu.test(reference)) return path.resolve(root, reference);
-  try {
-    const parsed = parseFileLocator(reference);
-    return parsed.kind === 'conversation' ? path.resolve(root, ...parsed.relativePath.split('/')) : null;
-  } catch {
-    return null;
-  }
-}
-
-/** 读不出的图片交回空 bytes，由 domain 统一按跳过处理并判断是否全军覆没。 */
-async function readImage(
-  reader: PhysicalFileReaderPort, root: string, reference: string, signal: AbortSignal,
-): Promise<Uint8Array> {
-  signal.throwIfAborted();
-  const absolutePath = conversationPath(root, reference);
-  if (!absolutePath) return UNREADABLE;
-  try {
-    const physical = await reader.readFile({ absolutePath, scope: { kind: 'conversation', rootPath: root } });
-    return physical.kind === 'image_source' ? await readFile(physical.resolvedPath, { signal }) : UNREADABLE;
-  } catch (error) {
-    if (error instanceof PhysicalFileReadError) return UNREADABLE;
-    throw error;
-  }
 }
 
 /** 文件名带随机后缀、独占创建，工作目录里预先放好的符号链接不能把写入带到目录外。 */
@@ -79,7 +54,7 @@ async function executeSuggest(
   signal: AbortSignal,
 ): Promise<BackendPluginCliResult> {
   const images: Uint8Array[] = [];
-  for (const reference of command.images) images.push(await readImage(reader, root, reference, signal));
+  for (const reference of command.images) images.push(await readConversationImage(reader, root, reference, signal) ?? UNREADABLE);
   const outcome = await suggestColorPalettes({ ...command.options, images, signal }, createSqliteColorPaletteHistory(db));
   if (outcome.status === 'failed') return { exitCode: 1, stdout: '', stderr: `${outcome.code} ${outcome.message}\n` };
   const preview = command.preview ? await writePreview(root, outcome.suggestion, signal) : null;

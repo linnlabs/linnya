@@ -67,6 +67,23 @@ pl8f2a-1 同色系·染纸·绿 bg#e8eddf sf#f4f6ee ink#1f2a1e mu#5a6656 ac#4f7a
 
 用户直接给了整套配色时用 `check`，不合格会给出改动最少的版本，退出码为 1。
 
+## 素材处理：linnya image
+
+`linnya image` 也是 Linnya 内置命令。只用它做 deck.js 做不到的像素处理；裁剪取景（`crop`/`focus`）、调色（`adjust`）、形状遮罩（`maskShape`）和投影（`shadow`）都直接写在 Image 上，导出后仍能在 PowerPoint 里改。结果写进 `assets/`，输出一行 `conversation:/assets/… 宽×高 格式 大小`，照抄路径引用。除了不带 `--save` 的 `trim`，调用 Shell 时都传 `requires_write_access: true`。
+
+| 要做什么 | 命令 | 写进 deck.js |
+|---|---|---|
+| 图四周有白边、扫描黑边 | `linnya image trim assets/a.jpg` | 输出的 `crop {...}` 原样写进 Image 的 `crop`，不另存 |
+| 拓片、书法、白描、印章叠在底色或照片上 | `linnya image ink assets/rubbing.jpg [--color 1f1a17]` | 透明 PNG，墨色换成配色里的颜色 |
+| 磨砂卡（卡片背后的照片是模糊的） | `linnya image frost assets/bg.jpg --aspect 16:9 --region 0.55,0.15,0.38,0.7 --radius 0.06` | 结果铺满页面（`fitMode: "cover"`，不写 `focus`）；卡片用 Frame 叠在同一位置，半透明白底、细描边 |
+| 斜放的展板、屏幕、封面流 | `linnya image perspective assets/p.jpg --to 0.08,0.12,0.94,0,0.94,1,0.08,0.88` | 透明 PNG，用 `fitMode: "contain"` 放进盒子 |
+| 看不准主体在图上哪里 | `linnya image grid assets/a.jpg` | 读网格图，按输出的换算写 `crop`/`focus` |
+| 纸纹底、照片加颗粒 | `linnya image texture paper --size 1920x1080`；`texture grain --size 1920x1080` | 纸纹铺底；颗粒铺在照片上，用 Image 的 `transparency` 调强弱 |
+
+- 位置和区域都按宽高的 0–1 写，量法与 `crop`/`focus` 相同。frost 的 `--region` 是卡片在页面上的位置除以页面宽高，`--aspect` 写页面比例，`--radius` 是圆角占卡片短边的比例，与 Frame 的 `borderRadius` 对齐。
+- perspective 的四个角按左上、右上、右下、左下给出，是画布上的位置；画布默认和原图一样大，`--size` 可改。
+- 报 `background_not_light` 说明这张不是白纸上的墨迹，照片不要用 `ink`。
+
 ## Shell 与输出
 
 - `fonts check` 同时给出本机安装事实 `installed` 和 PowerPoint 交付事实 `office.status`：`core` 两端都有，`cloud` 需要 Microsoft 365 或 Office 2021 及以上联网下载，`unavailable` 会被替换，`office.alternatives` 是替换方向。`fonts list` 默认列 Office 通用字体，`installedHere=false` 表示本机预览用替代字体，放映端仍是原字体。

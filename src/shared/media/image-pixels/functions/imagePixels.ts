@@ -12,7 +12,10 @@ export class ImagePixelsDecodeError extends Error {
   readonly name = 'ImagePixelsDecodeError';
 }
 
-/** 解码成长边不超过 maxEdge 的 RGBA 缩略图。只接受 JPEG、PNG、WebP，不按其余格式猜测。 */
+/**
+ * 解码成长边不超过 maxEdge 的 RGBA 缩略图。只接受 JPEG、PNG、WebP，不按其余格式猜测。
+ * 先按 EXIF 摆正：手机照片存的像素方向和显示方向可能不同，裁切比例、网格坐标都要按用户看到的方向算。
+ */
 export async function decodeImageThumbnailPixels(input: {
   readonly bytes: Uint8Array;
   readonly maxEdge: number;
@@ -24,6 +27,7 @@ export async function decodeImageThumbnailPixels(input: {
   }
   try {
     const { data, info } = await sharp(bytes, { failOn: 'error', limitInputPixels: input.maxInputPixels })
+      .rotate()
       .resize(input.maxEdge, input.maxEdge, { fit: 'inside', withoutEnlargement: true })
       .ensureAlpha()
       .raw()
