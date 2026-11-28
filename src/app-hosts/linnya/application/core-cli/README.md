@@ -9,6 +9,14 @@
 
 运行改的项另给 `agent`（Agent 注册表 ID）。每项是同一执行者对同一文档的保留记录。覆盖范围、精简与跨项目的可见规则见[行动账本](../../../../domains/action-ledger/README.md)。这里只开放只读查询。外部脚本用的 Conversation CLI 见 [Linnya CLI](../../../../../apps/linnya-cli/README.md)。
 
+## 与外部命令行是同一棵命令树
+
+外部终端里的 `linnya`（对话控制，见 [Linnya CLI](../../../../../apps/linnya-cli/README.md)）和这里的内建命令同名，命令集不同。两边共用 `@app/schemas/linnya-commands` 的命令目录：
+
+- `linnya --help` 在本环境各命令的用法之后，附上与外部终端一字不差的总览，写明每条命令在哪种环境可用。
+- 在 Shell 里调用外部终端的命令（例如 `linnya send`）时，退出码 2，stderr 只有一句去处，不倒出整份用法；目录外的名字才输出完整帮助。
+- 新增或删除命令要在目录里登记，`__tests__/commandCatalog.test.ts` 核对目录与实际分发一致。
+
 ## 读别的对话
 
 `linnya conversations` 让 Agent 读同一项目里别的对话，只给可读内容（用户的话、AI 的答复、工具前言和被中断的答复），不给思考和工具过程。口径见[可读对话](../../../../../docs/conversation-platform/06-read-model.md#8-可读对话)。

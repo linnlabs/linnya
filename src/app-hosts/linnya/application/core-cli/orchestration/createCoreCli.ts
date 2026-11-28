@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import type { BackendPluginCliContribution } from '@linnya/plugin-host-contract/backend';
+import { describeLinnyaCommandElsewhere, findLinnyaCommand, formatLinnyaCommandOverview } from '@app/schemas/linnya-commands';
 import { createSqliteActionLedger } from 'src/domains/action-ledger';
 import type { ForegroundMaskPort } from 'src/domains/image-processing';
 import { readPersistedWorkspaceVfsNode } from 'src/features/workspace/vfs';
@@ -22,6 +23,8 @@ import { preparePaletteCli } from './preparePaletteCli';
 import { prepareSemanticCli, SEMANTIC_CLI_COMMANDS, SEMANTIC_USAGE } from './prepareSemanticCli';
 
 const CORE_USAGE = `${CHANGES_USAGE}\n${CONVERSATIONS_USAGE}\n${PALETTE_USAGE}\n${IMAGE_USAGE}\n${SEMANTIC_USAGE}\n${SCHEDULES_USAGE}`;
+/** 完整帮助：本环境各命令的用法，加上与外部终端共用的命令总览。 */
+const CORE_HELP = `${CORE_USAGE}\n\n${formatLinnyaCommandOverview('agent_shell')}`;
 const INTERNAL_READ_ACCESS = {
   internalDataAccess: 'required', conversationFiles: 'none', externalFiles: 'denied',
   network: 'denied', guiControl: 'denied', localIpcControl: 'denied',
@@ -45,14 +48,19 @@ export function createCoreCli(
       const semantic = SEMANTIC_CLI_COMMANDS.find(name => name === command);
       if (semantic) return prepareSemanticCli({ db, command: semantic, argv: args, maxOutputCharacters });
       if (argv.length === 1 && command === '--help') {
-        return { status: 'completed', result: { exitCode: 0, stdout: CORE_USAGE + '\n', stderr: '' } };
+        return { status: 'completed', result: { exitCode: 0, stdout: CORE_HELP + '\n', stderr: '' } };
       }
       if (command === 'changes' && args.length === 1 && args[0] === '--help') {
         return { status: 'completed', result: { exitCode: 0, stdout: CHANGES_USAGE + '\n', stderr: '' } };
       }
       if (command === 'conversations') return prepareConversations(db, args, maxOutputCharacters, activity);
       if (command !== 'changes') {
-        return { status: 'completed', result: { exitCode: 2, stdout: '', stderr: CORE_USAGE + '\n' } };
+        // 外部终端里的对话控制命令在 Shell 里不可用：说明去处，不把整份用法倒出来。
+        const elsewhere = command === undefined ? undefined : findLinnyaCommand(command);
+        if (elsewhere?.environment === 'terminal') {
+          return { status: 'completed', result: { exitCode: 2, stdout: '', stderr: describeLinnyaCommandElsewhere(elsewhere) + '\n' } };
+        }
+        return { status: 'completed', result: { exitCode: 2, stdout: '', stderr: CORE_HELP + '\n' } };
       }
       let filters: ReturnType<typeof parseChangesCommand>;
       try {

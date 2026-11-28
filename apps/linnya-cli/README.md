@@ -451,6 +451,15 @@ CLI 与 Host 都要升级并重启 Host；旧协议会明确拒绝，不做双�
 `tools call` 不要求 Linnya 配置任何模型：新安装不预置模型，`linnya models` 为空时照样能读写文档。
 这时 `send` 会以 `capability_unavailable`（退出码 7）拒绝，并提示改用 `tools call` 或请用户在设置里添加模型。
 
+### 与对话 Shell 里的 `linnya` 是同一棵命令树
+
+Linnya Agent 在对话的 Shell 里也有 `linnya`：`changes`、`conversations`、`schema`、`props`、`query`、`links`、`palette`、`image`、`schedules`
+（见 [Agent Shell 内建 CLI](../../src/app-hosts/linnya/application/core-cli/README.md)）。两边命令集不同，但共用一份命令目录
+（`@app/schemas/linnya-commands`）：`linnya --help` 末尾的 “All linnya commands” 在两种环境一字不差，写明每条命令在哪里可用。
+
+在终端里调用 Shell 里的命令（例如 `linnya changes`）返回用法错误（退出码 2），`message` 说明它只在 Linnya 对话里可用，
+并提示用 `linnya send` 请 Linnya Agent 去做；这些命令目前没有外部直达的入口。
+
 ### 3.2 与 Slides CLI 的区别
 
 | 入口                                            | 适用调用方              | 当前职责                                                                            | 是否依赖正在运行的 Linnya                                            |

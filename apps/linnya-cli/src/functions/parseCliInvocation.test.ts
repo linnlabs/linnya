@@ -1,7 +1,26 @@
 import { describe, expect, it } from 'vitest';
+import { describeLinnyaCommandElsewhere, LINNYA_COMMANDS } from '@app/schemas/linnya-commands';
 import { parseCliInvocation } from './parseCliInvocation';
 
 describe('parseCliInvocation', () => {
+  it('命令目录与实际解析一致：终端命令都认得，对话 Shell 里的命令给出去处', () => {
+    for (const command of LINNYA_COMMANDS) {
+      let message = '';
+      try {
+        parseCliInvocation([command.name]);
+      } catch (error) {
+        message = error instanceof Error ? error.message : String(error);
+      }
+      if (command.environment === 'terminal') {
+        // 缺参数可以报用法错误，但不能是“未知命令”。
+        expect(message, command.name).not.toContain('Unknown command');
+      } else {
+        expect(message, command.name).toBe(describeLinnyaCommandElsewhere(command));
+      }
+    }
+    expect(() => parseCliInvocation(['no-such-command'])).toThrow('Unknown command: no-such-command');
+  });
+
   it('审计切档和读取使用不同命令，非法档位、混用参数在连接前拒绝', () => {
     expect(parseCliInvocation(['audit', 'level'])).toMatchObject({ request: { command: 'audit_level' } });
     for (const level of ['off', 'behavior', 'response', 'stream']) {
