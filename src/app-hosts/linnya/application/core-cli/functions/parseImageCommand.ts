@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import type { ImageQuad, ImageRegion, RgbColor, TextureKind } from 'src/domains/image-processing';
+import type { ImageQuad, ImageRegion, RgbColor, SheetKeyMode, TextureKind } from 'src/domains/image-processing';
 
 export const IMAGE_USAGE = [
   'linnya image trim <图片> [--tolerance 1-100] [--save]   量出四周的白边、黑边或水印条，给出裁剪比例；--save 才另存裁好的图',
@@ -8,6 +8,7 @@ export const IMAGE_USAGE = [
   'linnya image perspective <图片> --to x1,y1,x2,y2,x3,y3,x4,y4 [--size 宽x高]   投影进四边形（左上、右上、右下、左下），四边形外透明',
   'linnya image grid <图片> [--n 2-26]   叠坐标网格（列 0 起、行 A 起），看图后按格子换算裁剪或焦点比例',
   'linnya image texture paper|grain --size 宽x高 [--color HEX]   程序生成纸纹（不透明）或颗粒（透明叠加层）',
+  'linnya image slice <图片> [--key auto|magenta|green|flood] [--grid 列x行]   把纯色底的宫格切成透明小图（默认按连通块，粘连时按格子），另出带序号的检查图',
   '图片是当前对话工作目录里的相对路径或 conversation:/...；位置和区域都按宽高的 0–1 写，与裁剪、焦点同一种量法。',
   '结果写进工作目录的 assets/，输出 conversation:/ 路径；写文件的子命令需要 Shell 写权限（requires_write_access），trim 不带 --save 只读。',
   '只想裁取景、调色、加形状遮罩或投影时，先看文档类型自己能不能做：原生的裁剪与调色导出后仍可修改。',
@@ -26,7 +27,8 @@ export type ImageCommand =
   | { readonly kind: 'frost'; readonly image: string; readonly region: ImageRegion; readonly blur: number; readonly radius: number; readonly aspect?: number }
   | { readonly kind: 'perspective'; readonly image: string; readonly quad: ImageQuad; readonly width?: number; readonly height?: number }
   | { readonly kind: 'grid'; readonly image: string; readonly divisions: number }
-  | { readonly kind: 'texture'; readonly texture: TextureKind; readonly width: number; readonly height: number; readonly color?: RgbColor };
+  | { readonly kind: 'texture'; readonly texture: TextureKind; readonly width: number; readonly height: number; readonly color?: RgbColor }
+  | { readonly kind: 'slice'; readonly image: string; readonly key: SheetKeyMode | 'auto'; readonly grid?: { readonly columns: number; readonly rows: number } };
 
 type Subcommand = Exclude<ImageCommand['kind'], 'help'>;
 
@@ -67,7 +69,7 @@ function aspect(value: string): number {
 
 function size(value: string, name: string): { readonly width: number; readonly height: number } {
   const match = /^(\d+)[x×*](\d+)$/u.exec(value.trim());
-  if (!match?.[1] || !match[2]) throw new Error(`--${name} 须写成 宽x高，如 1920x1080`);
+  if (!match?.[1] || !match[2]) throw new Error(name === 'grid' ? '--grid 须写成 列x行，如 3x3' : `--${name} 须写成 宽x高，如 1920x1080`);
   return { width: Number(match[1]), height: Number(match[2]) };
 }
 
@@ -92,6 +94,8 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
       to: { type: 'string' },
       size: { type: 'string' },
       n: { type: 'string' },
+      key: { type: 'string' },
+      grid: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
   });
@@ -104,6 +108,7 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
     perspective: ['to', 'size'],
     grid: ['n'],
     texture: ['size', 'color'],
+    slice: ['key', 'grid'],
   };
   const extra = Object.entries(values)
     .filter(([key, value]) => key !== 'help' && value !== undefined && value !== false && !allowed[subcommand].includes(key));
@@ -140,6 +145,15 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
     }
     case 'grid':
       return { kind: 'grid', image: oneImage(positionals, subcommand), divisions: number(values.n, 'n', DEFAULT_GRID_DIVISIONS) };
+    case 'slice': {
+      const key = values.key ?? 'auto';
+      if (key !== 'auto' && key !== 'magenta' && key !== 'green' && key !== 'flood') throw new Error('--key 须为 auto、magenta、green 或 flood');
+      const grid = values.grid === undefined ? undefined : size(values.grid, 'grid');
+      return {
+        kind: 'slice', image: oneImage(positionals, subcommand), key,
+        ...(grid === undefined ? {} : { grid: { columns: grid.width, rows: grid.height } }),
+      };
+    }
     case 'texture': {
       const [texture, ...rest] = positionals;
       if ((texture !== 'paper' && texture !== 'grain') || rest.length > 0) throw new Error('texture 须为 paper 或 grain');
@@ -152,7 +166,7 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
   }
 }
 
-const SUBCOMMANDS: readonly Subcommand[] = ['trim', 'ink', 'frost', 'perspective', 'grid', 'texture'];
+const SUBCOMMANDS: readonly Subcommand[] = ['trim', 'ink', 'frost', 'perspective', 'grid', 'texture', 'slice'];
 
 function isSubcommand(value: string): value is Subcommand {
   return SUBCOMMANDS.some(subcommand => subcommand === value);

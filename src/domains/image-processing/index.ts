@@ -9,6 +9,8 @@ export type {
   ImageQuad,
   ImageRegion,
   RgbColor,
+  SheetKeyMode,
+  SheetSlice,
   TextureKind,
   TrimMeasurement,
 } from './definitions/imageProcessing';
@@ -21,3 +23,4 @@ export {
   overlayImageGrid,
   warpImageToQuad,
 } from './orchestration/imageProcessing';
+export { sliceSheet } from './orchestration/sliceSheet';

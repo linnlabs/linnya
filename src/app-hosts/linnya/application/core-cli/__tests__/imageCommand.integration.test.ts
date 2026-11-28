@@ -58,6 +58,24 @@ describe('linnya image', () => {
     expect(second.stdout).not.toBe(first.stdout);
   });
 
+  it('slice 每块写一个文件，序号与检查图一致；首行写实测底色和块数', async () => {
+    const root = await workDirectory();
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="100%" height="100%" fill="#ff00ff"/>'
+      + '<circle cx="100" cy="100" r="60" fill="#285ac8"/><rect x="240" y="40" width="120" height="120" fill="#2a9d3a"/></svg>';
+    await sharp(Buffer.from(svg)).png().toFile(path.join(root, 'src', '宫格.png'));
+    const result = await run(root, ['slice', 'src/宫格.png']);
+    expect(result).toMatchObject({ exitCode: 0, stderr: '', access: 'write' });
+    const lines = result.stdout.trimEnd().split('\n');
+    expect(lines[0]).toMatch(/^底色 品红 #ff00ff（实测）· 2 块 · 残留键色 0\.00%$/u);
+    expect(lines[1]).toMatch(/^1 conversation:\/assets\/宫格-slice1-[0-9a-f]{6}\.png 120×120 png /u);
+    expect(lines[2]).toMatch(/^2 conversation:\/assets\/宫格-slice2-[0-9a-f]{6}\.png 120×120 png /u);
+    expect(lines[3]).toMatch(/^检查图 conversation:\/assets\/宫格-slice-check-[0-9a-f]{6}\.jpg /u);
+    expect(await readdir(path.join(root, 'assets'))).toHaveLength(3);
+    const grid = await run(root, ['slice', 'src/宫格.png', '--grid', '3']);
+    expect(grid.exitCode).toBe(2);
+    expect(grid.stderr).toContain('--grid 须写成 列x行');
+  });
+
   it('trim 默认只读，给出可直接抄的裁剪比例，不写任何文件', async () => {
     const root = await workDirectory();
     const result = await run(root, ['trim', 'src/拓片.jpg']);

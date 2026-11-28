@@ -9,12 +9,13 @@ import {
   frostImageRegion,
   measureImageTrim,
   overlayImageGrid,
+  sliceSheet,
   warpImageToQuad,
   type EncodedImage,
   type ImageProcessingOutcome,
 } from 'src/domains/image-processing';
 import type { PhysicalFileReaderPort } from '../../file-read';
-import { formatGrid, formatTrim, formatWrittenImage } from '../functions/formatImage';
+import { formatGrid, formatSlice, formatTrim, formatWrittenImage } from '../functions/formatImage';
 import { imageUsageFor, parseImageCommand, type ImageCommand } from '../functions/parseImageCommand';
 import {
   ConversationAssetWriteError,
@@ -54,7 +55,7 @@ async function writeResult(
 /** 一张输入图、一张输出图的子命令共用：读图 → 处理 → 写进 assets/。 */
 async function processOne(
   context: ImageCliContext,
-  command: Exclude<ProcessingCommand, { kind: 'trim' | 'texture' }>,
+  command: Exclude<ProcessingCommand, { kind: 'trim' | 'texture' | 'slice' }>,
 ): Promise<BackendPluginCliResult> {
   const bytes = await readConversationImage(context.reader, context.root, command.image, context.signal);
   if (!bytes) return failed('image_unreadable', `读不出 ${command.image}：不在当前对话工作目录里，或不是 JPEG、PNG、WebP`);
@@ -88,6 +89,22 @@ async function processOne(
   return { exitCode: 0, stdout, stderr: '' };
 }
 
+/** 一张宫格切出多张：每块一个文件，序号与检查图上的一致。 */
+async function slice(
+  context: ImageCliContext, command: Extract<ProcessingCommand, { kind: 'slice' }>,
+): Promise<BackendPluginCliResult> {
+  const bytes = await readConversationImage(context.reader, context.root, command.image, context.signal);
+  if (!bytes) return failed('image_unreadable', `读不出 ${command.image}：不在当前对话工作目录里，或不是 JPEG、PNG、WebP`);
+  const outcome = await sliceSheet({ bytes, key: command.key, ...(command.grid === undefined ? {} : { grid: command.grid }) });
+  if (outcome.status === 'failed') return failed(outcome.code, outcome.message);
+  const pieces: { locator: string; image: EncodedImage }[] = [];
+  for (const [index, image] of outcome.value.pieces.entries()) {
+    pieces.push({ locator: await writeResult(context, command.image, `slice${index + 1}`, image), image });
+  }
+  const check = { locator: await writeResult(context, command.image, 'slice-check', outcome.value.check), image: outcome.value.check };
+  return { exitCode: 0, stdout: formatSlice({ ...outcome.value, pieces, check }), stderr: '' };
+}
+
 async function execute(context: ImageCliContext, command: ProcessingCommand): Promise<BackendPluginCliResult> {
   try {
     if (command.kind === 'texture') {
@@ -108,6 +125,7 @@ async function execute(context: ImageCliContext, command: ProcessingCommand): Pr
       const saved = image ? { locator: await writeResult(context, command.image, 'trim', image), image } : null;
       return { exitCode: 0, stdout: formatTrim({ ...measurement, saved }), stderr: '' };
     }
+    if (command.kind === 'slice') return await slice(context, command);
     return await processOne(context, command);
   } catch (error) {
     // 写不进 assets/ 是可预期的业务失败（例如它被换成了指向别处的链接），其余异常照常抛给 Shell 桥记录。

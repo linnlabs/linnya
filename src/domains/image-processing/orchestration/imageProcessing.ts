@@ -1,17 +1,9 @@
-import sharp, { type Sharp } from 'sharp';
-import {
-  decodeImageThumbnailPixels,
-  ImagePixelsDecodeError,
-  type ImageThumbnailPixels,
-} from 'src/shared/media/image-pixels';
+import sharp from 'sharp';
 import {
   GRID_MAX_EDGE,
-  MAX_INPUT_PIXELS,
   PROCESSING_MAX_EDGE,
   TEXTURE_MAX_EDGE,
   type EncodedImage,
-  type ImageProcessingErrorCode,
-  type ImageProcessingFailure,
   type ImageProcessingOutcome,
   type ImageQuad,
   type ImageRegion,
@@ -22,57 +14,20 @@ import {
 import { gridOverlaySvg, MAX_GRID_DIVISIONS } from '../functions/gridOverlay';
 import { borderMedianLuma, grayToInk, LIGHT_BACKGROUND_MIN_LUMA } from '../functions/inkAlpha';
 import { quadProblem, warpIntoQuad } from '../functions/perspectiveWarp';
+import {
+  decode,
+  encode,
+  failure,
+  hasTransparency,
+  isFailure,
+  ok,
+  raw,
+  toPixels,
+  type RgbaImage,
+} from '../shared/pixelCodec';
 
-const JPEG_QUALITY = 90;
 /** 纸色默认取未漂白宣纸的暖白。 */
 const PAPER_COLOR: RgbColor = [239, 231, 214];
-
-function failure(code: ImageProcessingErrorCode, message: string): ImageProcessingFailure {
-  return { status: 'failed', code, message };
-}
-
-function ok<T>(value: T): ImageProcessingOutcome<T> {
-  return { status: 'ok', value };
-}
-
-async function decode(bytes: Uint8Array, maxEdge: number): Promise<ImageThumbnailPixels | ImageProcessingFailure> {
-  try {
-    return await decodeImageThumbnailPixels({ bytes, maxEdge, maxInputPixels: MAX_INPUT_PIXELS });
-  } catch (error) {
-    if (error instanceof ImagePixelsDecodeError) return failure('image_unreadable', error.message);
-    throw error;
-  }
-}
-
-function isFailure(value: ImageThumbnailPixels | ImageProcessingFailure): value is ImageProcessingFailure {
-  return 'status' in value;
-}
-
-function hasTransparency(data: Uint8Array): boolean {
-  for (let i = 3; i < data.length; i += 4) if (data[i] < 255) return true;
-  return false;
-}
-
-function raw(pixels: ImageThumbnailPixels): Sharp {
-  return sharp(Buffer.from(pixels.data.buffer, pixels.data.byteOffset, pixels.data.byteLength), {
-    raw: { width: pixels.width, height: pixels.height, channels: 4 },
-  });
-}
-
-/** 有透明就出 PNG；整张不透明的照片出 JPEG，2400px 的照片存 PNG 要大好几倍。 */
-async function encode(pixels: ImageThumbnailPixels, keepPng = false): Promise<EncodedImage> {
-  if (keepPng || hasTransparency(pixels.data)) {
-    const bytes = await raw(pixels).png().toBuffer();
-    return { bytes: new Uint8Array(bytes), format: 'png', width: pixels.width, height: pixels.height };
-  }
-  const bytes = await raw(pixels).removeAlpha().jpeg({ quality: JPEG_QUALITY }).toBuffer();
-  return { bytes: new Uint8Array(bytes), format: 'jpeg', width: pixels.width, height: pixels.height };
-}
-
-async function toPixels(pipeline: Sharp): Promise<ImageThumbnailPixels> {
-  const { data, info } = await pipeline.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  return { width: info.width, height: info.height, data: new Uint8Array(data) };
-}
 
 function round4(value: number): number {
   return Math.round(value * 10_000) / 10_000;
@@ -139,7 +94,7 @@ export async function convertInkToAlpha(input: {
 }
 
 /** 按宽高比居中裁，与文档里 cover 铺满、不写焦点时显示的部分一致。 */
-async function centerCrop(pixels: ImageThumbnailPixels, aspect: number): Promise<ImageThumbnailPixels> {
+async function centerCrop(pixels: RgbaImage, aspect: number): Promise<RgbaImage> {
   const width = Math.min(pixels.width, Math.round(pixels.height * aspect));
   const height = Math.min(pixels.height, Math.round(pixels.width / aspect));
   const box = { left: (pixels.width - width) >> 1, top: (pixels.height - height) >> 1, width, height };

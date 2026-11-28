@@ -49,10 +49,11 @@ list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、in
 - `perspective <图片> --to x1,y1,…,x4,y4 [--size 宽x高]`：投影进四边形，四边形外透明。
 - `grid <图片> [--n 2-26]`：叠坐标网格，输出里写明格子怎么换算成比例。
 - `texture paper|grain --size 宽x高 [--color HEX]`：程序生成纸纹或颗粒叠加层。
+- `slice <图片> [--key auto|magenta|green|flood] [--grid 列x行]`：把纯色底的宫格切成透明小图，默认按连通块，粘连时按格子。首行是实测底色、块数和残留键色，之后一块一行（带序号），最后一行是带同样序号的检查图。
 
 图片的读法与配色相同：工作目录里的相对路径或 `conversation:/...`，不能越出工作目录。位置和区域按宽高的 0–1 写。
 
-结果写进工作目录的 `assets/`，文件名是“原图名-操作-随机后缀”，独占创建。`assets` 是符号链接或不是文件夹时报 `output_unwritable`，不会写到工作目录外。每个结果输出一行：`conversation:/assets/… 宽×高 格式 大小`。
+结果写进工作目录的 `assets/`，文件名是“原图名-操作-随机后缀”，独占创建。`assets` 是符号链接或不是文件夹时报 `output_unwritable`，不会写到工作目录外。每个结果输出一行：`conversation:/assets/… 宽×高 格式 大小`；`slice` 每块各写一个文件。
 
 权限：都不读写内部数据（`internalDataAccess: none`）。`trim` 不带 `--save` 只读工作目录，其余子命令都要写，需要给 Shell 设 `requires_write_access`。
 
