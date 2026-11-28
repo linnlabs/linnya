@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { controlSkills } from './controlSkills';
 import { controlProjects } from './controlProjects';
 import {
+  CONVERSATION_CONTROL_PLUGIN_CLI_TOOL_NAME,
   CONVERSATION_CONTROL_SCHEMA_VERSION,
   type ConversationControlCommandRequest,
   type ConversationControlListRequest,
@@ -360,7 +361,18 @@ export function createConversationControlUseCase(
     commandApprovals: request => controlCommandApprovals(ports, request),
 
     async send(request) {
-      if (request.model_id) assertModelAvailable(ports, request.model_id, 'chat');
+      if (request.model_id) {
+        assertModelAvailable(ports, request.model_id, 'chat');
+      } else if (ports.models.list().chat.length === 0) {
+        // 发消息是请 Linnya 自己的 Agent 作答，必须有聊天模型。只用外部 Agent 的安装可以一个模型都
+        // 不配：在这里说明原因和出路，不让运行接纳阶段的内部错误原样交给调用方。
+        throw new ConversationControlError(
+          'capability_unavailable',
+          'Linnya has no chat model configured, so its own Agent cannot answer `send`. '
+            + 'Use `linnya tools call` to read and write documents directly (it needs no model), '
+            + 'or ask the user to add a model in Linnya Settings.'
+        );
+      }
       if (request.image_generation_model_id) {
         assertModelAvailable(ports, request.image_generation_model_id, 'image_generation');
       }
@@ -712,6 +724,10 @@ export function createConversationControlUseCase(
           timestamp: ports.now(),
         })
       );
+      // 插件命令的产物写在会话目录；外部调用方要直接读截图和导出文件，回执里给出本机路径。
+      const conversationDirectory = request.tool_name === CONVERSATION_CONTROL_PLUGIN_CLI_TOOL_NAME
+        ? await ports.conversationDirectories.resolveLocalPath(acceptance.conversationId)
+        : undefined;
       return {
         schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
         ok: true,
@@ -719,6 +735,7 @@ export function createConversationControlUseCase(
         action: 'call',
         tool_name: request.tool_name,
         conversation_reused: reusedConversationId !== undefined,
+        ...(conversationDirectory ? { conversation_directory: conversationDirectory } : {}),
         receipt: {
           conversation_id: acceptance.conversationId,
           user_message_id: firstIncomingEventId(acceptance),

@@ -1,5 +1,5 @@
 import TurndownService from 'turndown';
-import { normalizeExtractedText } from './extractSemanticDom';
+import { normalizeExtractedText } from './normalizeExtractedText';
 
 // 表格无法无损表达为 GFM 时保留原始跨度/标题关系；不按属性数字展开网格。
 const CONTENT_ATTRIBUTES = new Set([

@@ -48,6 +48,21 @@ invocation 并等待 lease 释放。Host 不把 token 写入 Agent 环境快照�
 四用途 snapshot 由父 Shell prepare 的独立主线程参数冻结，不写进 Commands launch、环境或审计；
 metadata 命令不获得模型 snapshot 或推理能力。
 
+## 共享执行规则
+
+一次插件命令的执行规则只有一份：`orchestration/invokePluginCliContribution.ts`。它负责查找已启用的
+contribution 并取得 invocation lease，调用 `prepare`，校验 access plan 与权限，再以冻结身份调用 `execute`，
+并把取消、输出超限和未知异常归成稳定结果。调用方只提供 `PluginCliInvocationScope`：会话与运行身份、
+会话目录、权限事实、是否提供 Host 推理和取消信号。
+
+它有两个调用方，各自拥有身份与权限的来源：
+
+- 本 bridge：身份与权限来自父 Shell execution 的冻结 launch，Host 推理按父 Shell 的用途 snapshot 提供；
+- [plugin_cli 工具](../plugin-cli-tool/README.md)：外部 `linnya tools call` 的无模型运行，权限来自该运行的冻结
+  snapshot，Host 推理固定不可用。
+
+新增入口时复用这份规则，不复制 access plan 校验或权限判断。
+
 ## 协议
 
 v1 使用 `127.0.0.1` 随机端口、固定 route、独立 token header 和有界 NDJSON frame。插件结果的

@@ -160,8 +160,18 @@ export const CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES = [
   'edit_file',
 ] as const;
 
+/** 调用已启用插件自己的命令（与 Linnya Shell 里的 linnya-<plugin> 同一合同），默认开放。 */
+export const CONVERSATION_CONTROL_PLUGIN_CLI_TOOL_NAME = 'plugin_cli' as const;
+
 export const ConversationControlToolNameSchema = z.enum(
-  [...CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES, 'web_search', 'web_read', 'image_search', 'tool_output_read'],
+  [
+    ...CONVERSATION_CONTROL_WORKSPACE_TOOL_NAMES,
+    CONVERSATION_CONTROL_PLUGIN_CLI_TOOL_NAME,
+    'web_search',
+    'web_read',
+    'image_search',
+    'tool_output_read',
+  ],
 );
 
 const ToolsRequestBaseFields = {

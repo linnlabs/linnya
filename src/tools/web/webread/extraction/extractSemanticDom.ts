@@ -1,18 +1,10 @@
+import { normalizeExtractedText } from './normalizeExtractedText';
 import { renderReadableMarkdown } from './renderReadableMarkdown';
 
 export interface SemanticDomExtraction {
   readonly text: string;
   readonly textLength: number;
   readonly title?: string;
-}
-
-export function normalizeExtractedText(value: string | null | undefined): string {
-  return (value ?? '')
-    .replace(/\r\n?/g, '\n')
-    .replace(/[\t\f\v ]+/g, ' ')
-    .replace(/ *\n */g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
 }
 
 function extractCandidate(element: Element): SemanticDomExtraction {

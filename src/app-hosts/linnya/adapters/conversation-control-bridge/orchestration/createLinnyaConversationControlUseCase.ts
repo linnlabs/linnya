@@ -9,6 +9,7 @@ import type { HistoryService } from 'src/features/conversation/history/history.s
 import type { ModelCatalog } from 'src/domains/model-catalog';
 import type { ProviderAccountRegistry } from 'src/domains/provider-account';
 import type { ToolRuntimePort } from '@linnlabs/linnkit/runtime-kernel';
+import type { ConversationWorkDirectoryAdmissionPort } from '../../../application/conversation-lifecycle';
 import {
   ConversationControlError,
   createConversationControlUseCase,
@@ -58,6 +59,8 @@ interface LinnyaConversationControlUseCaseOwners {
   readonly events: ExecutionAuditEventPort;
   readonly auditControl: AuditControlPort;
   readonly tools: Pick<ToolRuntimePort, 'getToolSchemas' | 'getToolDefinition'>;
+  /** 会话工作目录准入；只用来把本机路径回给 plugin_cli 的命令行调用方。 */
+  readonly conversationDirectories: ConversationWorkDirectoryAdmissionPort;
   /** 受管图片读取（已复核账本与内容）；会话运行时没有图片存储时缺省。 */
   readonly attachmentImages?: ConversationControlUseCasePorts['attachmentImages'];
   readonly history: Pick<
@@ -238,6 +241,12 @@ export function createLinnyaConversationControlUseCase(
         if (!validate) throw new Error(`CLI tool ${toolName} has no argument admission`);
         return validate({ ...args });
       },
+    },
+    conversationDirectories: {
+      resolveLocalPath: conversationId => owners.conversationDirectories.withAdmission(
+        { conversationId },
+        directory => directory.absolutePath,
+      ),
     },
     audit,
     auditControl: owners.auditControl,

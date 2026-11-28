@@ -77,6 +77,7 @@ import * as subagentRunner from 'src/tools/agent_control/subrun/shared';
 import { resetAgentRuntimeSingletonsForTest } from 'src/electron-main/services/agentRuntimeSingletons';
 import type { CanonicalInferenceMessage } from '@linnlabs/linnkit/ports';
 import { createDurableFlowHarness, installRecoveryModelFixture } from '../__test-helpers__/createDurableFlowHarness';
+import { modelCatalog } from 'src/domains/model-catalog';
 
 class HostOnlyProbeTool extends BaseTool {
   readonly name = 'host_only_probe';
@@ -389,6 +390,46 @@ describe('Flow host forced-tool integration', () => {
     expect(await readOutput('conv_host_read_image')).toMatchObject({ tool_name: 'read_file', status: 'success' });
     expect(readFile.imageDeliveries).toEqual(['attach', 'attach']);
     expect(aiHarness.getConsumedTurnCount()).toBe(0);
+  });
+
+  it('一个聊天模型都没配置的安装里，Host 直接调用仍被正式接纳并执行', async () => {
+    // 只装 Linnya、用自己的外部 Agent 的用户不登录也不配模型：模型目录是空的。
+    vi.spyOn(modelCatalog, 'getModel').mockReturnValue(undefined);
+    vi.spyOn(modelCatalog, 'getModelsByCapability').mockReturnValue([]);
+    vi.spyOn(modelCatalog, 'getModelsByUIVisibility').mockReturnValue([]);
+    const hostOnlyTool = new HostOnlyProbeTool();
+    aiHarness = createScriptedInferenceHarness([{ contentChunks: ['不应被调用'] }]);
+    // 走正式的持久接纳（运行描述、续跑兼容性、检查点），与安装版外部命令的路径一致。
+    durableFlow = await createDurableFlowHarness(':memory:', aiHarness, [hostOnlyTool]);
+    const projectId = createProjectLifecycle(durableFlow.db).create({ name: 'No model configured' });
+    const conversationId = 'conv_host_tool_without_models';
+    const callHostTool = (options: NonNullable<ConversationNextRequest['options']>) => durableFlow!.flow.next({
+      conversation_id: conversationId,
+      project_id: projectId,
+      new_events: [{ type: 'user_input', content: 'CLI 调用工具：host_only_probe', timestamp: Date.now(), source: 'user' }],
+      options: { project_metadata: { id: projectId }, ...options },
+    }, () => {});
+
+    await callHostTool({
+      host_tool_call: {
+        tool_name: 'host_only_probe',
+        args: { unit_ids: ['row-1'] },
+        completion_mode: 'yield_after_batch',
+      },
+    });
+
+    expect(hostOnlyTool.invocations).toEqual([['row-1']]);
+    const outputs = (await readPersistedRuntimeEvents(durableFlow.runtime, conversationId))
+      .filter(isToolOutputEvent);
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0]).toMatchObject({ tool_name: 'host_only_probe', status: 'success' });
+    expect(aiHarness.getConsumedTurnCount()).toBe(0);
+
+    // 工具结算后还要回到模型的运行仍然需要模型：没有模型就不接纳，工具也不执行。
+    await expect(callHostTool({
+      host_tool_call: { tool_name: 'host_only_probe', args: { unit_ids: ['row-2'] } },
+    })).rejects.toThrow('没有可用的聊天模型');
+    expect(hostOnlyTool.invocations).toEqual([['row-1']]);
   });
 
   it('正式 subrun_batch 应形成单一工具对，并由 default agent 生成一条 final_answer', async () => {

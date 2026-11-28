@@ -999,6 +999,7 @@ export async function configureRoutes(
       telemetry: telemetryPort,
       events: createEventStoreExecutionAuditEventPort(conversationEventStore),
       tools: dependencies.agentToolEnvironment?.toolRuntime ?? defaultToolRuntimePort,
+      conversationDirectories: conversationLifecycle.workDirectoryAdmission,
       auditControl: agentRuntime.audit,
       ...(imagePreview ? { attachmentImages: imagePreview } : {}),
     });

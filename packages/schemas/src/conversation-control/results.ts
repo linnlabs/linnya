@@ -300,6 +300,11 @@ export const ConversationControlToolsResponseSchema = z.discriminatedUnion('acti
       receipt: ConversationControlAcceptedReceiptSchema,
       /** 只给项目时，本次是否续用了该项目最近一段 CLI 会话。 */
       conversation_reused: z.boolean(),
+      /**
+       * plugin_cli 专用：本会话工作目录的本机绝对路径，插件输出里的 conversation:/x 对应其中的 x。
+       * 只回给同一系统用户的命令行调用方，不写入事件、数据库或前端。
+       */
+      conversation_directory: z.string().min(1).optional(),
     })
     .strict(),
   z

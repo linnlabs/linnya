@@ -9,6 +9,7 @@ export function projectCommandAgentRuntimes(scope: CommandProductionScope) {
   const root = Object.freeze({
     ...child,
     shellToolRuntime: scope.shellToolRuntime,
+    pluginCliToolRuntime: scope.pluginCliToolRuntime,
   });
   return Object.freeze({ root, child });
 }

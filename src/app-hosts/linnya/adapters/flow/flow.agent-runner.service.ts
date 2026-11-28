@@ -61,6 +61,7 @@ import type { ConversationCommandPermissionSelection } from '@app/schemas/comman
 import { resolveCommandRunPermissionContext } from 'src/app-hosts/linnya/adapters/context-injection/commandRunPermissionContextBinding';
 import { CommandAgentRunIdSchema, CommandConversationIdSchema } from '@app/schemas/commands';
 import type { ShellToolRuntimePort } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';
+import type { PluginCliToolRuntimePort } from 'src/app-hosts/linnya/application/plugin-cli-tool';
 import type { PhysicalFileReaderPort } from 'src/app-hosts/linnya/application/file-read';
 import type { ConversationWorkDirectoryAdmissionPort } from 'src/app-hosts/linnya/application/conversation-lifecycle';
 import type {
@@ -76,6 +77,7 @@ import {
   type ExecutionCheckpointBindings,
 } from '../../application/run-resumption';
 import { captureRuntimeCompatibility } from '../../application/run-resumption/functions/runtimeCompatibility';
+import { runCompletesWithoutModel } from '../../application/run-resumption/functions/runCompletesWithoutModel';
 import { createRunToolRecoveryPort } from '../../application/run-resumption/functions/createRunToolRecoveryPort';
 import { SqliteToolResultReceipts } from '../persistence/execution-commit';
 import { resolveAuthorizedHostToolCall } from '../context-injection/resolveAuthorizedHostToolCall';
@@ -106,6 +108,7 @@ export interface AgentRunnerRuntimePort {
     | {
         readonly kind: 'enabled';
         readonly shellToolRuntime: ShellToolRuntimePort;
+        readonly pluginCliToolRuntime: PluginCliToolRuntimePort;
         readonly agentRunLifecycle: CommandAgentRunLifecyclePort;
       };
 }
@@ -177,9 +180,12 @@ export class AgentRunnerService {
       runId: input.runId,
       request: input.request,
     });
-    const modelId = createDefaultModelResolver().resolveModelId(
-      bootstrap.finalReq.modelId ?? bootstrap.finalReq.model_id
-    );
+    const requestedModelId = bootstrap.finalReq.modelId ?? bootstrap.finalReq.model_id;
+    // 不请求模型的运行不挑默认模型：没配置任何聊天模型的安装里，外部命令的直接调用也要能被接纳。
+    // 调用方显式指定了模型时照常记录；其余运行没有可用模型就在这里失败，不发接纳回执。
+    const modelId = requestedModelId === undefined && runCompletesWithoutModel(input.options)
+      ? undefined
+      : createDefaultModelResolver().resolveModelId(requestedModelId);
     const request = freezeAgentRunInput({ ...bootstrap.finalReq, modelId, model_id: modelId });
     const policy = assembleExecutionPolicy({
       request,
@@ -419,6 +425,10 @@ export class AgentRunnerService {
                 shellToolRuntime:
                   this.runtime.commandRuntime.kind === 'enabled'
                     ? this.runtime.commandRuntime.shellToolRuntime
+                    : undefined,
+                pluginCliToolRuntime:
+                  this.runtime.commandRuntime.kind === 'enabled'
+                    ? this.runtime.commandRuntime.pluginCliToolRuntime
                     : undefined,
                 physicalFileReader: this.runtime.physicalFileReader,
                 conversationWorkDirectoryAdmission: this.runtime.conversationWorkDirectoryAdmission,

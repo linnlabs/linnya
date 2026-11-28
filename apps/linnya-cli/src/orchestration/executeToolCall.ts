@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -12,6 +12,10 @@ import {
   type ConversationControlClient,
 } from '../definitions/cli';
 import { toolCallSucceeded } from '../functions/toolCallOutcome';
+import {
+  collectConversationFileLocators,
+  type ConversationFileCandidate,
+} from '../functions/collectConversationFileLocators';
 import { watchConversationStatus } from './watchConversationStatus';
 
 interface ExecuteToolCallOptions {
@@ -93,6 +97,22 @@ async function saveToolAttachments(input: {
   return files;
 }
 
+/** 只列出确实存在的文件；插件输出里提到但没有写出的定位符不冒充产物。 */
+async function resolveConversationFiles(input: {
+  readonly toolData: unknown;
+  readonly conversationDirectory: string;
+}): Promise<readonly ConversationFileCandidate[]> {
+  const files: ConversationFileCandidate[] = [];
+  for (const candidate of collectConversationFileLocators(input)) {
+    const info = await stat(candidate.path).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return undefined;
+      throw error;
+    });
+    if (info?.isFile()) files.push(candidate);
+  }
+  return files;
+}
+
 /**
  * CLI 的同步体验只负责等待 Host 已接纳的 detached run；工具执行本身仍完全归 ToolNode。
  * terminal 与 UI projection 是两个独立 durable owner，因此终态后还需短暂等待工具卡投影完成。
@@ -166,6 +186,12 @@ export async function executeToolCall(options: ExecuteToolCallOptions) {
           message: matches[0],
           save: options.saveAttachment ?? saveAttachmentToTemp,
         });
+        const conversationFiles = accepted.conversation_directory
+          ? await resolveConversationFiles({
+              toolData: matches[0].payload.data,
+              conversationDirectory: accepted.conversation_directory,
+            })
+          : [];
         return {
           schema_version: CONVERSATION_CONTROL_SCHEMA_VERSION,
           ok: toolCallSucceeded(matches[0]),
@@ -176,6 +202,8 @@ export async function executeToolCall(options: ExecuteToolCallOptions) {
           run_id: accepted.receipt.run_id,
           tool: matches[0],
           ...(attachmentFiles.length > 0 ? { attachment_files: attachmentFiles } : {}),
+          ...(accepted.conversation_directory ? { conversation_directory: accepted.conversation_directory } : {}),
+          ...(conversationFiles.length > 0 ? { conversation_files: conversationFiles } : {}),
         };
       }
       if (matches.length > 1) {

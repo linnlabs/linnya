@@ -34,6 +34,7 @@ function createRunner(
               executeShell: vi.fn(),
               executeProcess: vi.fn(),
             },
+            pluginCliToolRuntime: { invoke: vi.fn() },
             agentRunLifecycle: commandAgentRunLifecycle,
           }
         : { kind: 'disabled' },

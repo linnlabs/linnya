@@ -36,7 +36,8 @@ describe('slides-design Skill 产品合同', () => {
     expect(body).toContain('linnya-slides inspect --presentation <id>');
     expect(body).toContain('presentation_id');
     expect(body).toContain('details.presentationId');
-    expect(body).toContain('Agent 当前没有可调用的 PPTX export 工具');
+    // export 子命令给外部 Agent 取文件；Linnya 里的 Agent 仍引导用户走界面导出，不自行导出。
+    expect(body).toContain('说明产品界面“更多”菜单的导出入口，不要自行导出');
   });
 
   it('资源地图将语法说明、类型真值、设计建议与可执行示例分开', () => {

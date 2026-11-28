@@ -1,4 +1,4 @@
-import { normalizeExtractedText } from './extractSemanticDom';
+import { normalizeExtractedText } from './normalizeExtractedText';
 import { renderReadableMarkdown } from './renderReadableMarkdown';
 
 export interface TabularDomExtraction {

@@ -41,7 +41,7 @@ export async function readConnectionDescriptor(
   ) {
     throw new LinnyaCliError(
       'protocol_incompatible',
-      `CLI protocol ${CONVERSATION_CONTROL_PROTOCOL_VERSION} is incompatible with the running App`,
+      `CLI protocol ${CONVERSATION_CONTROL_PROTOCOL_VERSION} is incompatible with the running App (protocol ${String(decoded.protocol_version)}). Installed Linnya: quit and reopen the desktop app so the app and its bundled command are the same version.`,
     );
   }
   const parsed = ConversationControlConnectionDescriptorSchema.safeParse(decoded);

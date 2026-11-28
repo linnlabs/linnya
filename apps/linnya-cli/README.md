@@ -4,7 +4,7 @@
 Host。源码普通命令只连接 CLI 所属源码工作目录的 Desktop 或 Runtime Backend，复用正式 Conversation
 admission、Flow、持久化和 read model；`runtime start`
 则在不启动 Electron 的情况下监督同一 App
-Server 实现。两种入口都不让 CLI 直读 SQLite，也不创建每 Agent 一套 Backend。当前仅供仓库内开发、评测与 Benchmark 使用，尚未作为生产功能开放或随桌面产品分发。
+Server 实现。两种入口都不让 CLI 直读 SQLite，也不创建每 Agent 一套 Backend。桌面安装包携带同一份控制命令，供外部 Agent 的 Skill 调用（见 §1.1）；`runtime start` 只在源码 checkout 中可用。
 
 当前适用场景：开发环境中脚本化发消息、查询会话与消息、观察运行状态、处理
 `awaiting_user`
@@ -83,10 +83,46 @@ approval，并只接受 Host 声明的选择；stdout 仍只保留机器可读 J
 `approvals / approval-reply` 访问同一个 Host 审批 owner；普通 HITL 继续使用
 `respond`，它与 Shell 审批是两条不同合同。
 
-当前仓库可以产出供开发测试的 CommonJS CLI/Runtime bundle 和
-`bin/linnya.cjs`，但桌面安装器不把它安装到系统
-`PATH`，也没有形成独立 CLI 安装包；这不构成生产 CLI 发行。Electron 的
-`runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品。
+Electron 的 `runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品；
+源码与安装版都用项目固定的 Node 运行 CLI。
+
+### 1.1 安装版的 `linnya` 入口
+
+桌面安装包在 `Resources/linnya-cli/` 携带 `bin/linnya.cjs`、`dist/cli.cjs` 和 `dist/build.json`，
+不含源码和 Runtime bundle。安装版 Desktop 每次启动、控制桥就绪后，在用户主目录发布一个固定入口：
+
+| 平台 | 入口 |
+| --- | --- |
+| macOS | `~/.linnya/bin/linnya` |
+| Windows | `%USERPROFILE%\.linnya\bin\linnya.cmd` |
+
+入口用安装包里 App Server 所用的同一个 Node 运行随包 CLI，所以不要求用户另装 Node，命令集与源码
+bundle 相同。它面向外部 Agent 的 Skill：Skill 只认这个固定位置，不关心 App 装在哪里。入口不进系统
+`PATH`，也不提供给人手动敲命令用的安装或设置界面。
+
+- 入口在 Desktop 退出后保留。这时调用立刻得到 `app_not_running`（退出码 3），不会挂起等待。
+- 入口记录的是发布时的安装位置。移动或升级 App 后重新打开一次即刷新；位置没变时不重写文件。
+  记录的位置上找不到 App 时，入口自己输出同样结构的 `app_not_running` 回执并说明原因。
+- 入口不含连接凭据。凭据仍只在连接描述文件里，信任边界不变：同一系统用户（见 §6）。
+- 源码运行不发布入口，继续使用 `pnpm linnya:cli`。把连接文件显式改到别处的实例（候选包验收、
+  并行隔离）也不发布，避免把用户日常使用的入口改指向测试实例。
+- 安装版拒绝 `runtime start`（`capability_unavailable`，退出码 7），也不公告审计能力。
+- Desktop 升级后没有重启时，旧进程与新 CLI 的协议可能不一致，CLI 以退出码 4 说明双方协议并提示重开 Desktop。
+- Windows 入口是批处理。经它传内联 JSON 会被 cmd 再解析一次，参数一律用 `--args-file` 等文件写法。
+
+### 1.2 在外部 Agent 的沙箱里运行
+
+CLI 通过本机 loopback 端口连接 App。外部 Agent 的命令沙箱默认会拦截这类连接，App 明明在运行却连不上：
+
+| Agent | 默认情况 | 可连的最小放行 |
+| --- | --- | --- |
+| Claude Code | 默认不开沙箱，可连 | 开了沙箱模式时：`sandbox.network.allowLocalBinding: true`，或把 `linnya` 命令排除在沙箱外，或按提示同意在沙箱外运行 |
+| Codex | 默认沙箱关闭网络，连不上 | 同意 `linnya` 命令在沙箱外运行并记住该前缀，或 `sandbox_workspace_write.network_access = true` |
+
+以上为 macOS 实测（Codex 0.170 的沙箱、Claude Code 所用沙箱运行时 0.0.83）；Windows 与 Linux 尚未实测。
+沙箱里连接描述文件读得到，被拦的是连接本身，系统返回 `connect EPERM`。CLI 把它与“App 没在运行”区分开：
+返回 `transport_failure`（退出码 3），消息说明是沙箱拦截并要求在沙箱外重跑；这时不要重启 App。
+只把 `localhost` 加进沙箱的域名白名单不够，因为沙箱让本机地址不走代理而直连。
 
 独立分发必须同时携带 `bin/linnya.cjs`、`dist/cli.cjs` 和
 `dist/build.json`。launcher 核对产物 SHA-256；在包含源码的仓库内还核对 CLI、公共 Schema、构建输入与锁文件的内容指纹。产物缺失、损坏或源码变更后未重建会以退出码 4 明确拒绝，不自动切换运行入口。版本号不变也能发现旧 bundle；指纹同时覆盖静态内联的 Schemas 与 Foundation 源码。`--version`
@@ -262,7 +298,7 @@ Agent 执行评审任务并保留会话，但普通评审文档不会自动进�
 ### 3.1 调用工具
 
 CLI 默认开放
-`list_files / read_file / grep / write_file / edit_file`；Web 工具需显式开启。它不会接受 Shell、插件工具或任意注册工具。`tools list`
+`list_files / read_file / grep / write_file / edit_file` 与 `plugin_cli`；Web 工具需显式开启。它不会接受 Shell 或任意注册工具，插件能力只经 `plugin_cli` 调用插件自己的命令。`tools list`
 只返回名称与简介；需要调用时再用 `tools describe`
 读取 App 当前注册的完整正式 schema，避免为发现工具反复传输全部参数合同：
 
@@ -315,6 +351,29 @@ UI 投影执行，因此前端能看到这次工具调用的历史，写入行�
 Agent 使用同一工具时完全一致。CLI 会等待 run 和工具卡都完成：工具成功时把完整工具消息写到 stdout；工具自身返回 error 时把同一消息写到 stderr，并以退出码
 `8` 结束。
 
+#### 调用插件命令（plugin_cli）
+
+`plugin_cli` 运行已启用插件自己的命令，与 Linnya Agent 在 Shell 里运行 `linnya-<plugin>` 走同一份执行规则
+（[Plugin CLI bridge](../../src/app-hosts/linnya/application/plugin-cli-shell-bridge/README.md)）：
+同一套命令合同、权限判断、内部数据访问开关和审计，结果进入该 Conversation 的工具记录。参数是
+`{"plugin_id": "...", "argv": [...]}`，`argv` 就是插件 CLI 的参数，例如 Slides 的
+`["export", "--presentation", "<presentation-id>"]`；先用 `["--help"]` 看插件支持的子命令。
+
+- 不调用 Linnya 的模型：声明需要 Host 推理的插件命令（例如 Knowledge 导入）以 `permission_denied` 拒绝，这类命令只能由 Linnya Agent 在 Shell 里运行。
+- 权限取本次运行冻结的权限：内部数据访问关闭时拒绝；需要写文件或写内部数据的命令在只读档位拒绝。
+  这个入口没有审批环节，需要写权限时调整运行权限，不能在 CLI 里批准。
+- 插件写出的文件在会话工作目录里，插件报告是 `conversation:/` 定位符，工具结果不含本机路径。
+  CLI 回执额外给出 `conversation_directory`（会话目录本机路径）和 `conversation_files`
+  （`[{locator, path}]`）：只列插件 JSON 报告里完整的 `conversation:/` 字符串值、且文件确实存在的产物，
+  文件名可以带空格；`--help` 等说明文字里提到的地址不算产物。外部 Agent 直接用 `path` 查看截图或拿走导出文件。
+- 插件退出码非 0 时工具结果为 error，CLI 以退出码 `8` 结束，stderr 里有插件的错误码与说明。
+
+Slides 的无模型交稿流程：`write_file` 写 `.slides` 源码（回执带编译诊断）→ `plugin_cli` 运行
+`inspect` 拿诊断、`render` 拿每页截图 → `edit_file` 修改后重复 → `plugin_cli` 运行 `export`
+得到可在 PowerPoint 里编辑的 `.pptx`。每次写入都是演示稿历史里的一版；`export` 导出最近一次构建成功的版本，
+源码还有未通过的草稿时拒绝并说明。Slides 子命令、报告与退出码见
+[`presentationCli/README.md`](../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
+
 #### 临时开放 Web
 
 ```bash
@@ -352,20 +411,22 @@ CLI 与 Host 都要升级并重启 Host；旧协议会明确拒绝，不做双�
 例如 OpenCode 使用 `~/.config/opencode/skills/deep-research/SKILL.md`；任务明确要求先加载
 `deep-research`，用其原生文件读取工具查看参考资源，再用 Linnya CLI 操作 Web 和 Workspace。
 不要用 `send` 代替外部推理：`send` 会启动 Linnya 的 Agent 和模型，`tools call` 才是无模型工具入口。
+`tools call` 不要求 Linnya 配置任何模型：新安装不预置模型，`linnya models` 为空时照样能读写文档。
+这时 `send` 会以 `capability_unavailable`（退出码 7）拒绝，并提示改用 `tools call` 或请用户在设置里添加模型。
 
 ### 3.2 与 Slides CLI 的区别
 
 | 入口                                            | 适用调用方              | 当前职责                                                                            | 是否依赖正在运行的 Linnya                                            |
 | ----------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `linnya ...`                                    | 外部 Agent、脚本、人    | 启动源码 Runtime、Conversation 控制，以及五个 Workspace 工具；可读写 `.slides` 源码 | 普通命令依赖 Desktop 或 CLI Runtime；`runtime start` 不依赖 Electron |
-| `linnya-slides ...`                             | Linnya Agent 的 `shell` | 通过当前 Shell 的临时 bridge 执行 Slides `inspect / render / fonts`                 | 是，而且只能在受管 Shell execution 内使用                            |
+| `linnya ...`                                    | 外部 Agent、脚本、人    | 启动源码 Runtime、Conversation 控制、五个 Workspace 工具与 `plugin_cli`；可读写 `.slides` 源码，并经 `plugin_cli` 运行 Slides `inspect / render / export / fonts` | 普通命令依赖 Desktop 或 CLI Runtime；`runtime start` 不依赖 Electron |
+| `linnya-slides ...`                             | Linnya Agent 的 `shell` | 通过当前 Shell 的临时 bridge 执行 Slides `inspect / render / export / fonts`        | 是，而且只能在受管 Shell execution 内使用                            |
 | `pnpm slides:cli -- ...` / 插件 `entry.command` | 外部 Agent、人、CI      | Standalone Slides 只读诊断、检查图与字体查询                                        | 否；自行提供数据库和输出目录                                         |
 
 `linnya-slides`
 不是给外部进程直连 App 的通用命令：它依赖父 Shell 临时注入的 execution
-token。外部 Agent 若只需要编辑当前 Linnya 项目，应使用
-`linnya tools call`；若需要脱离 App 做 Slides 检查或渲染，应使用 Standalone
-Slides CLI。两者当前没有相互转发。Slides CLI 的完整参数与运行环境见
+token。外部 Agent 编辑当前 Linnya 项目并检查、截图、导出时，应使用
+`linnya tools call`（Slides 命令走 `plugin_cli`，与 `linnya-slides` 是同一份插件命令）；若需要脱离 App
+做只读检查或渲染，应使用 Standalone Slides CLI，它不能导出。Slides CLI 的完整参数与运行环境见
 [`presentationCli/README.md`](../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
 
 `audit <conversation-id> [--run ID]`
@@ -474,7 +535,7 @@ contract，也不借此调整全局工具权限。
 | --: | ----------------------------------------------- |
 | `0` | 成功                                            |
 | `2` | 参数或请求合同错误                              |
-| `3` | App 未运行、目录不一致、连接描述过期或本地传输失败          |
+| `3` | App 未运行、目录不一致、连接描述过期、本地传输失败或连接被 Agent 沙箱拦截 |
 | `4` | CLI 与 App 协议不兼容                           |
 | `5` | 未授权                                          |
 | `6` | 目标或状态冲突，例如项目重名、不存在、busy、run/interaction 不匹配 |
@@ -486,8 +547,8 @@ Benchmark 应把 CLI 当作子进程，解析 stdout 的 JSON/JSONL，并用退�
 ## 6. 本地连接与安全
 
 源码 Desktop 与 CLI Runtime 默认在各自 checkout 的 `_dev_electron/runtime/conversation-control-v1.json`
-原子发布连接描述。安装版继续使用 `~/.linnya/runtime/conversation-control-v1.json`；只有脱离源码 checkout
-分发的独立 CLI 才使用用户级默认路径。源码 CLI 不回退到该路径。
+原子发布连接描述。安装版使用 `~/.linnya/runtime/conversation-control-v1.json`，随包 CLI（§1.1）与其他脱离源码
+checkout 分发的独立 CLI 读取这个用户级默认路径。源码 CLI 不回退到该路径。
 
 `LINNYA_CLI_CONNECTION_FILE` 可以覆盖路径，目录身份校验仍必需。目录权限为
 `0700`，文件权限为

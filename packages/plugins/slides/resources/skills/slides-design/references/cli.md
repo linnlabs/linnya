@@ -1,6 +1,6 @@
 # Slides CLI：Agent 使用合同
 
-`linnya-slides` 是通用 Shell 可调用的 Slides 检查与像素渲染入口。它不创建、编辑或导出文稿；内容变更仍通过 Workspace 文件工具写 deck.js。产品界面的“更多”菜单可以导出 PPTX，但 Agent 当前没有 export 子命令或可调用的 PPTX export 工具。
+`linnya-slides` 是通用 Shell 可调用的 Slides 检查与像素渲染入口。它不创建或编辑文稿；内容变更仍通过 Workspace 文件工具写 deck.js。它的 `export` 子命令给外部 Agent 经 linnya 命令行取 PPTX 文件用；在 Linnya 里用户要文件时，说明产品界面“更多”菜单的导出入口，不要自行导出。
 
 质量检查有两个等价入口：`ppt_inspect` 适合直接消费精简 observation，`linnya-slides inspect` 适合取得完整机器 JSON 后用 Shell、脚本或 benchmark 处理。两者共享同一套 inspection 事实和问题分级，按消费方式选择即可，不要求重复执行。
 

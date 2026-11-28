@@ -9,8 +9,11 @@ import {
   CONVERSATION_CONTROL_TOKEN_HEADER,
   ConversationControlErrorResponseSchema,
 } from '@app/schemas';
+import os from 'node:os';
 import {
   createConversationControlDescriptorOwner,
+  createInstalledCliLauncher,
+  publishInstalledCliLauncher,
   resolveConversationControlConnectionFile,
   type ConversationControlDescriptorOwner,
 } from 'src/app-hosts/linnya/adapters/conversation-control-bridge';
@@ -85,6 +88,7 @@ export class ApiServer {
   private readonly conversationControlSessionToken: string;
   private readonly appInstanceId: string;
   private readonly conversationControlDescriptor: ConversationControlDescriptorOwner;
+  private readonly conversationControlConnectionFile: string;
 
   constructor(options: ApiServerOptions = {}) {
     this.app = express();
@@ -92,14 +96,35 @@ export class ApiServer {
     this.conversationControlSessionToken =
       options.conversationControlSessionToken ?? randomBytes(32).toString('hex');
     this.appInstanceId = options.appInstanceId ?? randomUUID();
+    this.conversationControlConnectionFile =
+      options.conversationControlConnectionFile ?? resolveConversationControlConnectionFile();
     this.conversationControlDescriptor = createConversationControlDescriptorOwner({
-      connectionFile:
-        options.conversationControlConnectionFile ?? resolveConversationControlConnectionFile(),
+      connectionFile: this.conversationControlConnectionFile,
       appInstanceId: this.appInstanceId,
       sessionToken: this.conversationControlSessionToken,
       pid: options.pid ?? process.pid,
       now: options.now,
     });
+  }
+
+  /**
+   * 安装版把 `linnya` 入口发布到用户级固定位置，供外部 Agent 的 Skill 直接调用。
+   * 源码运行用 `pnpm linnya:cli`，不写用户目录；连接文件被显式改到别处的实例（验收、并行隔离）
+   * 也不写，否则一次候选包验收就会把用户日常使用的入口改指向候选包。
+   */
+  private async publishInstalledCliLauncherIfUserInstallation(
+    routeDependencies: RouteDependencies,
+  ): Promise<void> {
+    const { packaged, platform, resourcesPath } = routeDependencies.backendBootstrap;
+    if (!packaged) return;
+    if (this.conversationControlConnectionFile !== resolveConversationControlConnectionFile({})) return;
+    await publishInstalledCliLauncher(createInstalledCliLauncher({
+      platform,
+      homeDirectory: os.homedir(),
+      resourcesPath,
+      // App Server 自己就运行在随包 Node 上，入口复用同一个可执行文件。
+      nodeExecutablePath: process.execPath,
+    }));
   }
 
   public setupMiddleware(): void {
@@ -209,6 +234,7 @@ export class ApiServer {
       this.commandApprovalControl.setControlEndpointAvailable(true);
       try {
         await this.conversationControlDescriptor.publish(this.boundPort);
+        await this.publishInstalledCliLauncherIfUserInstallation(routeDependencies);
       } catch (error: unknown) {
         this.commandApprovalControl.setControlEndpointAvailable(false);
         throw error;

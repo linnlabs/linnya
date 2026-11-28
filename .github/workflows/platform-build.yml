@@ -57,7 +57,7 @@ jobs:
       - name: Build CLI
         run: pnpm run build:linnya-cli
       - name: Verify built CLI against bridge
-        run: pnpm exec cross-env LINNYA_CLI_TEST_ENTRY=bundle vitest run apps/linnya-cli/src/__integration-tests__
+        run: pnpm exec cross-env LINNYA_CLI_TEST_ENTRY=bundle vitest run apps/linnya-cli/src/__integration-tests__ src/app-hosts/linnya/adapters/conversation-control-bridge/__tests__/installedCliLauncher.integration.test.ts
       - name: Prepare Runtime assets and build Worker on macOS
         if: runner.os == 'macOS'
         run: pnpm run prepare:linnya-runtime:assets && pnpm run build:worker

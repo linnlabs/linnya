@@ -99,6 +99,9 @@ export interface ToolContext extends ToolExecutionContext {
   /** 由 Linnya host 注入的 Shell/process 用例；工具不能取得底层 owner 或 runner。 */
   shellToolRuntime?: import('../app-hosts/linnya/adapters/commands/shell-runtime/definitions').ShellToolRuntimePort;
 
+  /** 由 Linnya host 注入的插件命令入口；plugin_cli 工具只能经它调用已启用插件的命令。 */
+  pluginCliToolRuntime?: import('../app-hosts/linnya/application/plugin-cli-tool').PluginCliToolRuntimePort;
+
   /**
    * 🔥 Deep Research 上下文（Phase 3 / Milestone 4）
    *

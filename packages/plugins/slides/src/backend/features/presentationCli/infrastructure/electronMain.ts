@@ -69,6 +69,16 @@ async function main(): Promise<number> {
     await writeResult(result);
     return result.exitCode;
   }
+  if (invocation.command.kind === 'export') {
+    // 解析器只在 App 提供受管导出目录时产出 export；独立 CLI 只读数据库，不能导出。
+    const result = resultFromStartupError(new SlidesCliError(
+      'slides.cli.invalid_arguments',
+      SlidesCliExitCode.INVALID_ARGUMENTS,
+      'export is available only inside Linnya',
+    ));
+    await writeResult(result);
+    return result.exitCode;
+  }
   if (process.platform === 'linux' && !hasLinuxDisplay()) {
     const result = resultFromStartupError(new SlidesCliError(
       'slides.cli.environment_unavailable',

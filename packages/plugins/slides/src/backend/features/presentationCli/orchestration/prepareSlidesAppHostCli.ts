@@ -15,7 +15,10 @@ import {
 } from '../definitions/slidesCli';
 import { parseSlidesCliArgs } from '../functions/parseSlidesCliArgs';
 import { createManagedSlidesRenderDirectory } from '../functions/createManagedSlidesRenderDirectory';
+import { createManagedSlidesExportDirectory } from '../functions/createManagedSlidesExportDirectory';
+import { writeManagedSlidesExportFile } from '../infrastructure/writeManagedSlidesExportFile';
 import { executeSlidesCliCommand } from './executeSlidesCliCommand';
+import { executeSlidesCliExportCommand } from './executeSlidesCliExportCommand';
 import { executeSlidesCliFontCommand } from './executeSlidesCliFontCommand';
 
 interface SlidesCliHostContext {
@@ -32,6 +35,13 @@ export const slidesPluginCli: BackendPluginCliContribution = {
       invocation = parseSlidesCliArgs(input.argv, {
         resolveManagedRenderOutput(presentationId) {
           const relativeRoot = createManagedSlidesRenderDirectory(presentationId);
+          return {
+            root: path.join(input.conversationRoot, ...relativeRoot.split('/')),
+            directoryReference: formatConversationFileLocator(relativeRoot),
+          };
+        },
+        resolveManagedExportOutput(presentationId) {
+          const relativeRoot = createManagedSlidesExportDirectory(presentationId);
           return {
             root: path.join(input.conversationRoot, ...relativeRoot.split('/')),
             directoryReference: formatConversationFileLocator(relativeRoot),
@@ -69,6 +79,30 @@ export const slidesPluginCli: BackendPluginCliContribution = {
               checkFontFamily,
               listFontFamilies,
             }, context.signal);
+          },
+        },
+      };
+    }
+    if (command.kind === 'export') {
+      return {
+        status: 'ready',
+        plan: {
+          access: {
+            internalDataAccess: 'required',
+            conversationFiles: 'write',
+            externalFiles: 'denied',
+            network: 'denied',
+            guiControl: 'denied',
+            localIpcControl: 'denied',
+          },
+          async execute(context) {
+            context.signal.throwIfAborted();
+            const hostContext = readSlidesCliHostContext(context.hostContext);
+            const coordinator = getSharedPptCoordinator(hostContext.databaseService.getDb());
+            return executeSlidesCliExportCommand(command, {
+              getDocumentBuildState: presentationId => coordinator.getDocumentBuildState(presentationId),
+              exportPptx: presentationId => coordinator.export(presentationId),
+            }, writeManagedSlidesExportFile, context.signal);
           },
         },
       };

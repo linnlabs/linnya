@@ -7,6 +7,7 @@ import type { RuntimeEvent } from '@linnlabs/linnkit/contracts';
 import type { RegisteredChildRunInvokerPort } from 'src/app-hosts/linnya/adapters/child-runs/registeredSubagentInvoker';
 import type { CommandRunPermissionContext } from 'src/domains/commands/features/permission-settings';
 import type { ShellToolRuntimePort } from 'src/app-hosts/linnya/adapters/commands/shell-runtime/definitions';
+import type { PluginCliToolRuntimePort } from 'src/app-hosts/linnya/application/plugin-cli-tool';
 import type { PhysicalFileReaderPort } from 'src/app-hosts/linnya/application/file-read';
 import type { ConversationWorkDirectoryAdmissionPort } from 'src/app-hosts/linnya/application/conversation-lifecycle';
 import type { SubrunTraceHistoryProjectorPort } from 'src/app-hosts/linnya/adapters/persistence/subrun-trace-history/definitions/subrunTraceHistory';
@@ -23,6 +24,7 @@ export interface ToolContextHostServices {
   databaseService: DatabaseService;
   workspaceMutationPublisher?: WorkspaceMutationPublisher;
   shellToolRuntime?: ShellToolRuntimePort;
+  pluginCliToolRuntime?: PluginCliToolRuntimePort;
   physicalFileReader?: PhysicalFileReaderPort;
   conversationWorkDirectoryAdmission?: ConversationWorkDirectoryAdmissionPort;
   managedImageIngress?: ToolContext['managedImageIngress'];
@@ -120,6 +122,7 @@ export function createToolContext(options: ToolContextFactoryOptions): ToolConte
     databaseService: options.hostServices.databaseService,
     workspaceMutationPublisher: options.hostServices.workspaceMutationPublisher,
     shellToolRuntime: options.hostServices.shellToolRuntime,
+    pluginCliToolRuntime: options.hostServices.pluginCliToolRuntime,
     physicalFileReader: options.hostServices.physicalFileReader,
     conversationWorkDirectoryAdmission: options.hostServices.conversationWorkDirectoryAdmission,
     webFileStore: options.hostServices.conversationWorkDirectoryAdmission

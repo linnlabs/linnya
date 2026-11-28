@@ -1,0 +1,45 @@
+/* 与 Shell 命令卡同一种终端观感：一行命令，下面是可滚动、会换行的输出。长定位符必须在卡内折行，不能把卡片撑宽。 */
+.plugin-cli-card {
+  min-width: 0;
+}
+
+.plugin-cli-card__command,
+.plugin-cli-card__output {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.plugin-cli-card__command-line {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2-5) var(--space-3) var(--space-1);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.plugin-cli-card__prompt {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+  user-select: none;
+}
+
+.plugin-cli-card__command {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+
+.plugin-cli-card__output {
+  box-sizing: border-box;
+  max-height: 320px;
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

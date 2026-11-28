@@ -11,6 +11,7 @@ import { createBundleBuildTraceSet } from '../functions/bundleBuildTraceSet.mjs'
 const requiredDesktopBuildTargets = [
   'desktop/app-server',
   'desktop/command-runner',
+  'desktop/linnya-cli',
   'desktop/main-bytecode',
   'desktop/renderer',
   'desktop/sandbox-runner',

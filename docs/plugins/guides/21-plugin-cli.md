@@ -18,16 +18,19 @@ Agent
 
 ## 2. 两种宿主 adapter
 
-这里的“插件 CLI”不要与全局 `linnya` Conversation CLI 混淆。`linnya tools ...` 是连接当前 App 的外部控制面，只开放平台五个 Workspace 工具；本章的 Agent facade 和 standalone command 则是插件自己拥有的领域命令。Slides 的三个实际入口与使用方式见 [`presentationCli/README.md`](../../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
+这里的“插件 CLI”不要与全局 `linnya` Conversation CLI 混淆。`linnya tools ...` 是连接当前 App 的外部控制面，开放平台五个 Workspace 工具和 `plugin_cli`；本章的 Agent facade 和 standalone command 则是插件自己拥有的领域命令，`plugin_cli` 只是让外部调用方以无模型运行进入同一个 App 内 adapter。Slides 的三个实际入口与使用方式见 [`presentationCli/README.md`](../../../packages/plugins/slides/src/backend/features/presentationCli/README.md)。
 
 同一个插件 parser 和领域 orchestration 可以有两个明确分离的宿主 adapter：
 
 | 入口 | 使用者 | 启动方式 | 数据与输出 |
 | --- | --- | --- | --- |
 | Agent facade | Agent | 父 Shell 启动极小 native client，再回到当前 App bridge | 继承父 Shell 权限；受管 conversation 输出 |
+| `plugin_cli` 工具 | 经 `linnya tools call` 的外部 Agent | 无模型 Flow 运行中的工具调用，回到同一份 App 内执行规则 | 取该运行冻结的权限；受管 conversation 输出；声明 `hostInference` 的命令拒绝 |
 | standalone `entry.command` | 人、开发脚本、CI | manifest command mode，可启动独立 Electron/Node host | 显式 DB/output；自己的只读 adapter |
 
-两者共享 argv parser、领域命令类型、exit code 和核心 orchestration；数据库/coordinator/worker 装配与默认
+App 内的两个入口（Agent facade 与 `plugin_cli`）共用 Host 的同一份执行规则，插件不区分调用方，见 [Plugin CLI bridge](../../../src/app-hosts/linnya/application/plugin-cli-shell-bridge/README.md#共享执行规则)。插件报告产物时把 `conversation:/` 定位符作为 JSON 报告里完整的字符串值，`linnya` CLI 只据此列出本机路径。
+
+App 内与 standalone 两类 adapter 共享 argv parser、领域命令类型、exit code 和核心 orchestration；数据库/coordinator/worker 装配与默认
 输出策略属于各自 adapter。不要让 Agent 直接执行 `entry.command`，也不要让 standalone CLI 依赖当前 App
 的一次性 bridge token。
 

@@ -298,6 +298,8 @@ function fixture(
     attachmentImages?: ConversationControlUseCasePorts['attachmentImages'];
     /** 依次分配的新会话 ID；用完后回到 conversation-1。 */
     conversationIds?: readonly string[];
+    /** 只用外部 Agent 的安装：没有登录也没有配置任何聊天模型。 */
+    noChatModels?: boolean;
   } = {}
 ) {
   const commandApprovals = createCommandApprovalHost();
@@ -399,7 +401,7 @@ function fixture(
     models: {
       list() {
         return {
-          chat: [
+          chat: options.noChatModels ? [] : [
             {
               model_config_id: 'chat-model',
               model_name: 'chat-model-upstream',
@@ -511,6 +513,9 @@ function fixture(
       validateArguments(toolName, args) {
         return toolName === 'read_file' ? readFileTool['validateArguments']({ ...args }) : { success: true };
       },
+    },
+    conversationDirectories: {
+      resolveLocalPath: async conversationId => `/linnya-data/conversations/${conversationId}`,
     },
     audit: {
       async export(request) {
@@ -679,7 +684,7 @@ describe('conversation-control use case', () => {
     });
   });
 
-  it('只列出五个正式 Workspace 工具，并复用其真实参数合同', async () => {
+  it('默认只列出五个正式 Workspace 工具和插件命令工具，并复用其真实参数合同', async () => {
     const response = await fixture().useCase.tools({
       schema_version: 1,
       command: 'tools',
@@ -696,8 +701,41 @@ describe('conversation-control use case', () => {
         { name: 'grep', description: 'grep description' },
         { name: 'write_file', description: 'write_file description' },
         { name: 'edit_file', description: 'edit_file description' },
+        { name: 'plugin_cli', description: 'plugin_cli description' },
       ],
     });
+  });
+
+  it('plugin_cli 调用的回执带会话目录本机路径，其他工具不带', async () => {
+    const test = fixture();
+    const pluginCall = await test.useCase.tools({
+      schema_version: 1,
+      command: 'tools',
+      action: 'call',
+      tool_name: 'plugin_cli',
+      args: { plugin_id: 'slides', argv: ['render', '--presentation', 'deck-1'] },
+      project_id: 'project-1',
+    });
+    expect(pluginCall).toMatchObject({
+      action: 'call',
+      tool_name: 'plugin_cli',
+      conversation_directory: '/linnya-data/conversations/conversation-1',
+    });
+    // 插件命令同样走无模型的工具批次：参数原样交给工具，不由控制面解析。
+    expect(test.startRequests[test.startRequests.length - 1]?.options).toMatchObject({
+      host_tool_call: { tool_name: 'plugin_cli', args: { plugin_id: 'slides', argv: ['render', '--presentation', 'deck-1'] } },
+    });
+    test.setRuns([run('completed')]);
+    const fileCall = await test.useCase.tools({
+      schema_version: 1,
+      command: 'tools',
+      action: 'call',
+      tool_name: 'write_file',
+      args: { locator: 'workspace:/notes.md', content: '# Notes' },
+      project_id: 'project-1',
+      new_session: true,
+    });
+    expect(fileCall).not.toHaveProperty('conversation_directory');
   });
 
   it('按项目创建可见工具会话，并要求 ToolNode 在批次后直接结算', async () => {
@@ -765,6 +803,22 @@ describe('conversation-control use case', () => {
     const later = await test.useCase.tools(call);
     expect(later).toMatchObject({ conversation_reused: false, receipt: { conversation_id: 'cli-d' } });
     expect(test.cliSessionWrites.map(write => write.conversationId)).toEqual(['cli-a', 'cli-b', 'cli-c', 'cli-d']);
+  });
+
+  it('一个聊天模型都没配置时：直接读写文档照常接纳，发消息给 Linnya 的 Agent 说明原因和出路', async () => {
+    const test = fixture([], { noChatModels: true });
+    await test.useCase.tools({ schema_version: 1, command: 'tools', action: 'call', tool_name: 'write_file',
+      project_id: 'project-1', args: { locator: 'workspace:/report.md', content: '# Report' } });
+    expect(test.startRequests).toHaveLength(1);
+    test.setRuns([run('completed')]);
+
+    await expect(test.useCase.send({ schema_version: 1, command: 'send', message: '帮我写一份报告' }))
+      .rejects.toMatchObject({
+        code: 'capability_unavailable',
+        message: expect.stringContaining('linnya tools call'),
+      });
+    expect(test.selectedAgentWrites).toEqual([]);
+    expect(test.startRequests).toHaveLength(1);
   });
 
   it('CLI 没有模型也接纳任何 read_file 读取，图片由调用方自己接收', async () => {

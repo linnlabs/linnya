@@ -1,7 +1,8 @@
 import { Readability } from '@mozilla/readability';
 import type { WebDocumentWarning, WebPageAccessBarrier } from '../../definitions/webDocument';
 import { WebFailureError } from '../../shared/webFailure';
-import { extractSemanticDom, normalizeExtractedText } from './extractSemanticDom';
+import { extractSemanticDom } from './extractSemanticDom';
+import { normalizeExtractedText } from './normalizeExtractedText';
 import { READABLE_MAIN_SELECTOR } from '../render-capture/definitions/renderCaptureContract';
 import { extractDatedRegionList } from './extractDatedRegionList';
 import { parseCanonicalHtmlDocument } from './parseCanonicalHtmlDocument';

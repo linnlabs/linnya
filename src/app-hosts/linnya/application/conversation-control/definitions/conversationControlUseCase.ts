@@ -217,6 +217,14 @@ export interface ConversationControlToolCatalogPort {
   ): { readonly success: boolean; readonly error?: string };
 }
 
+/**
+ * 会话工作目录的本机路径。plugin_cli 的截图、导出文件写在这里，外部调用方需要直接读取；
+ * 路径只进入给命令行调用方的回执。
+ */
+export interface ConversationControlConversationDirectoryPort {
+  resolveLocalPath(conversationId: string): Promise<string>;
+}
+
 /** 已按受管图片账本复核的图片读取；Host 没有图片存储时缺省。 */
 export interface ConversationControlAttachmentImagePort {
   readImage(assetId: string): Promise<{ readonly byteLength: number; readonly bytes: Uint8Array }>;
@@ -232,6 +240,7 @@ export interface ConversationControlUseCasePorts {
   readonly projects: Pick<ProjectLifecyclePort, 'list' | 'get' | 'create' | 'update' | 'deleteEmpty'>;
   readonly history: ConversationControlHistoryPort;
   readonly tools: ConversationControlToolCatalogPort;
+  readonly conversationDirectories: ConversationControlConversationDirectoryPort;
   readonly audit: ExecutionAuditExportUseCase;
   readonly commandApprovals: CommandApprovalControlPort;
   readonly auditControl: AuditControlPort;

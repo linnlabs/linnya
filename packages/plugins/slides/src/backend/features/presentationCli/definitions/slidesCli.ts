@@ -3,6 +3,7 @@ import type {
   FontDeliveryStatus,
   OfficeFontFamily,
   PresentationInspectionRequest,
+  SlidesDocumentBuildState,
   ToolBuildStatus,
 } from '@plugin/slides/shared';
 import type {
@@ -34,7 +35,9 @@ export const SLIDES_CLI_FONT_LIST_KIND = 'linnya.slides.font-list' as const;
 export const SLIDES_CLI_FONT_REPORT_VERSION = 2 as const;
 export const SLIDES_CLI_RENDER_REPORT_KIND = 'linnya.slides.render-report' as const;
 export const SLIDES_CLI_RENDER_REPORT_VERSION = 1 as const;
-export const SLIDES_CLI_VERSION = '1.10.0' as const;
+export const SLIDES_CLI_EXPORT_REPORT_KIND = 'linnya.slides.export-report' as const;
+export const SLIDES_CLI_EXPORT_REPORT_VERSION = 1 as const;
+export const SLIDES_CLI_VERSION = '1.11.0' as const;
 
 export const SlidesCliExitCode = {
   SUCCESS: 0,
@@ -89,7 +92,22 @@ export type SlidesCliFontListCommand =
   };
 
 export type SlidesCliFontCommand = SlidesCliFontCheckCommand | SlidesCliFontListCommand;
-export type SlidesCliCommand = SlidesCliPresentationCommand | SlidesCliFontCommand;
+
+/**
+ * 导出当前版本的可编辑 PPTX 到会话目录。只有 Linnya App 内的调用（Shell 里的 linnya-slides、
+ * 外部命令行的 plugin_cli）能提供受管输出目录；独立 CLI 只读数据库，不提供导出。
+ */
+export interface SlidesCliExportCommand {
+  readonly kind: 'export';
+  readonly format?: 'json' | 'pretty';
+  readonly presentationId: string;
+  readonly output: {
+    readonly root: string;
+    readonly directoryReference: ConversationFileLocator;
+  };
+}
+
+export type SlidesCliCommand = SlidesCliPresentationCommand | SlidesCliFontCommand | SlidesCliExportCommand;
 
 export type SlidesCliInvocation =
   | { readonly kind: 'help'; readonly text: string }
@@ -104,6 +122,18 @@ export interface SlidesCliExecutionPort {
     request: PresentationInspectionRequest
   ) => Promise<PresentationInspectionResult>;
 }
+
+export interface SlidesCliExportPort {
+  /** 草稿是正常业务状态，先读状态才能给出“草稿未解决”的明确错误。 */
+  readonly getDocumentBuildState: (presentationId: string) => Promise<SlidesDocumentBuildState>;
+  readonly exportPptx: (presentationId: string) => Promise<{ readonly fileName: string; readonly buffer: Buffer }>;
+}
+
+export type WriteManagedSlidesExportFile = (input: {
+  readonly root: string;
+  readonly fileName: string;
+  readonly bytes: Buffer;
+}) => Promise<void>;
 
 export interface SlidesCliFontExecutionPort {
   readonly checkFontFamily: (family: string) => Promise<PluginFontFamilyCheckResult>;
@@ -124,6 +154,7 @@ export type SlidesCliErrorCode =
   | 'slides.cli.presentation_unavailable'
   | 'slides.cli.unresolved_draft'
   | 'slides.cli.font_catalog_unavailable'
+  | 'slides.cli.output_write_failed'
   | SlidesScreenshotErrorCode
   | 'slides.cli.environment_unavailable'
   | 'slides.cli.internal_error';
@@ -203,6 +234,23 @@ export interface SlidesCliRenderReport {
     readonly slideNumber: number;
     readonly locator: FileLocator;
   }[];
+}
+
+export interface SlidesCliExportReport {
+  readonly kind: typeof SLIDES_CLI_EXPORT_REPORT_KIND;
+  readonly schemaVersion: typeof SLIDES_CLI_EXPORT_REPORT_VERSION;
+  readonly cliVersion: typeof SLIDES_CLI_VERSION;
+  readonly presentation: {
+    readonly id: string;
+    readonly versionId: string;
+    readonly versionNumber: number;
+  };
+  readonly file: {
+    readonly format: 'pptx';
+    readonly fileName: string;
+    readonly sizeBytes: number;
+    readonly locator: ConversationFileLocator;
+  };
 }
 
 export interface SlidesCliFontCheckReport extends PluginFontFamilyCheckResult {
