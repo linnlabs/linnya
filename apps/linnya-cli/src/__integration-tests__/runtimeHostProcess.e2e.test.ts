@@ -85,9 +85,16 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
         '--agent', 'default', '--model', 'approval-fixture', '--executor', 'Linnya 用户'], environment));
       const watchArgs = ['status', receipt.conversation_id, '--run', receipt.run_id,
         '--watch', '--interval', '250', '--timeout', '20000'];
-      expect(readLastJsonLine((await runCli(watchArgs, environment)).stdout), guarded.stderr).toMatchObject({ snapshot: {
+      const blocked = await runCli(watchArgs, environment);
+      expect(readLastJsonLine(blocked.stdout), guarded.stderr).toMatchObject({ snapshot: {
         run_id: receipt.run_id, status: 'running', command_approvals: [{ status: 'awaiting_reply' }],
       } });
+      // watch 照常给出状态，但以“这一步只有用户能做”结束：外部 Agent 该转告用户并停下，不是接着查。
+      expect(blocked.code, blocked.stderr).toBe(9);
+      expect(parseJson(blocked.stderr)).toMatchObject({
+        command: 'status',
+        error: { code: 'approval_requires_user', retryable: false, message: expect.stringContaining('--allow-external-approval') },
+      });
       const listArgs = ['approvals', receipt.conversation_id, '--run', receipt.run_id];
       const listed = ConversationControlCommandApprovalsResponseSchema.parse(parseJson((await runCli(listArgs, environment)).stdout));
       if (listed.action !== 'list') throw new Error('Expected approval list');

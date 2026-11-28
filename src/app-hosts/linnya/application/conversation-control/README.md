@@ -53,6 +53,7 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 - `tools call` 先使用工具 registry 的同一个 `validateArguments` 做命令准入。非法 locator、双身份等返回 `invalid_request`（CLI 退出 2），不创建运行。ToolNode 继续拥有所有调用方的执行前 admission，CLI 不复制 locator 或工具参数规则。
 - 只给项目时续用该项目最近一段 CLI 会话：会话由 Linnya CLI 创建（会话 metadata 的 `origin: linnya_cli`）、距上次活动不超过 30 分钟、当前没有前台运行，取最近的一段；没有就新建一段前端可见的会话，运行前由事件库一次写入身份行、标题 `Linnya CLI · YYYY-MM-DD HH:mm` 与入口标记。`new_session: true` 总是新建；最近一段正在运行时也新建，不排队、不并入。响应的 `conversation_reused` 说明本次是否续用。代价：两个外部调用方同时操作同一项目会进同一段会话，CLI 目前分不出调用方；工具卡、账本（external 与运行身份）照常完整记录。`send` 仍各自独立成会话。
 - **发件人（协议 10）。** `send` 与 `tools call` 接纳时在这条 `user_input` 事件的 metadata 里记下 `sender: { entry: 'linnya_cli', name? }`（`functions/externalSender.ts`）：`entry` 是 Host 确认的入口，`name` 是请求里的 `executor_name`，调用方自报、可缺省。它沿三条路走：UI 投影把它放进用户消息 payload，界面在气泡上方标出“来自 X · CLI”；对话流程登记运行时写入运行元数据 `externalSender`；[行动账本](../../../../domains/action-ledger/README.md#执行者与作者)登记改动时从根运行读出名称存下。名称只用于显示，命令审批、工具准入、项目作用域等任何判断都不读它；`respond`、`approval-reply`、`stop` 不带名称。会话续用规则不看名称：不同调用方连续调用同一项目时仍落在同一段 CLI 会话里，靠每条消息的发件人区分。
+- **等人时叫到人。** 带发件人的运行停下来等用户批准或回答时，Desktop 通知用户一次，见 [`external-run-attention`](../external-run-attention/README.md)。`status --watch` 因命令审批返回而当前只有用户能批准时，CLI 以 `approval_requires_user`（退出码 9）结束。
 - 只给 Conversation 时从历史 owner 解析项目；同时提供时必须一致。Workspace locator 本身不携带项目身份，禁止按当前前端页面或文件存在性猜测作用域。
 - Host 工具请求使用 `yield_after_batch`：完整工具批次结算后结束 run，不调用 LLM。工具 decision/output、权限、审计、pending revision 与 UI projection 仍走普通工具链，不能在本 feature 复制工具执行逻辑。
 - 这类 run 不要求 Linnya 配置任何聊天模型：新安装不预置模型，只用外部 Agent 的用户也可以一个都不配，读写文档照常接纳并执行。

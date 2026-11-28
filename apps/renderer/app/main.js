@@ -63,6 +63,7 @@ import {
 } from '../domains/model-configuration'
 import { syncScheduledDefaultModel } from './model-inference/orchestration/syncScheduledDefaultModel'
 import { startScheduledNotificationNavigation } from './workflows/scheduled-tasks/orchestration/startScheduledNotificationNavigation'
+import { startConversationAttentionNotifications } from './workflows/conversation-attention/orchestration/startConversationAttentionNotifications'
 import { startScheduledConversationViewedReporting } from './workflows/scheduled-tasks/orchestration/startScheduledConversationViewedReporting'
 import { startScheduledConversationHistorySync } from './workflows/scheduled-tasks/orchestration/startScheduledConversationHistorySync'
 import { startConversationActivityLifecycle } from '../domains/conversation/features/conversation-activity'
@@ -195,6 +196,11 @@ app.mount('#app')
 if (!isConversationFixture) {
   const dispose = startScheduledNotificationNavigation()
   if (dispose) app.onUnmount(dispose)
+  // 外部入口发起的运行等用户处理：前台用应用内提示，点系统通知打开对应对话。
+  const disposeAttention = startConversationAttentionNotifications((text, durationMs) => {
+    useNotificationStore().show(text, 'warning', durationMs)
+  })
+  if (disposeAttention) app.onUnmount(disposeAttention)
   app.onUnmount(startScheduledConversationViewedReporting())
   app.onUnmount(startScheduledConversationHistorySync())
 }

@@ -12,6 +12,7 @@ import type {
   DesktopHiddenWorkerHostPort,
   DesktopRasterPdfDocumentPort,
 } from '../../desktop-capabilities';
+import type { ConversationAttentionNotification } from '@app/schemas';
 import type { ScheduledTaskNotification } from '@app/schemas/scheduled-tasks';
 import type { BackendBootstrapFacts } from './backendBootstrapFacts';
 import type { WebPageRenderer } from '../../../../tools/web/webread/definitions/webPageRenderer';
@@ -40,6 +41,8 @@ export interface BackendHostDependencies {
   readonly hiddenWorkerHost: DesktopHiddenWorkerHostPort;
   readonly textMeasurement: BackendTextMeasurementRuntimeDependencies;
   readonly notifyScheduledTask?: (event: ScheduledTaskNotification) => Promise<void>;
+  /** 只有 Desktop 提供：外部入口发起的运行等用户处理时提醒用户。 */
+  readonly notifyConversationAttention?: (event: ConversationAttentionNotification) => Promise<void>;
   readonly readScheduledTaskTimezone?: () => Promise<string>;
   readonly rendererIntegration: BackendRendererIntegrationPort;
   readonly rasterPdfDocument: DesktopRasterPdfDocumentPort;

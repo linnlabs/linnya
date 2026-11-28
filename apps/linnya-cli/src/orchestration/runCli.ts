@@ -19,6 +19,7 @@ import { detectCliExecutor } from '../functions/detectCliExecutor';
 import { parseCliInvocation } from '../functions/parseCliInvocation';
 import { exitCodeForError, projectCliError } from '../functions/projectCliError';
 import { createConversationControlConnection } from './createConversationControlConnection';
+import { reportApprovalNeedingUser } from './reportApprovalNeedingUser';
 import { watchConversationStatus } from './watchConversationStatus';
 import { executeToolCall } from './executeToolCall';
 import { stopConversationRun } from './stopConversationRun';
@@ -90,7 +91,7 @@ export function linnyaCliUsage(): string {
     '  resume requires an exact settled paused run; awaiting_user must use respond.',
     '  Shell approval is separate from respond: use approvals to inspect exact run/subtree requests, then approval-reply with the pending agent_run_id.',
     '  Only the user approves commands by default. approvals reports external_approval.permitted; when false, an allow reply fails with approval_requires_user (exit 9): tell the user what the message says instead of retrying. deny always works, and --reason is passed to the agent that proposed the command.',
-    '  status --watch returns when command_approvals contains awaiting_reply; it never auto-approves commands.',
+    '  status --watch returns when command_approvals contains awaiting_reply; it never auto-approves commands. When only the user may approve, it exits 9 with approval_requires_user: tell the user and stop, do not poll.',
     '  send and tools call label who is calling, so the user can tell agents apart in the conversation and in change records. Claude Code and Codex are recognised from their environment; other agents pass --executor NAME (up to 40 characters). The name is a self-reported display label and grants nothing.',
     '  A watch timeout only ends observation; it does not stop the App-owned run.',
     '  audit level changes the connected source Host default for new runs; restart resets it to startup configuration. Packaged builds never provide audit.',
@@ -237,7 +238,7 @@ export async function runCli(
       return LINNYA_CLI_EXIT.internal;
     }
     if (invocation.kind === 'status' && invocation.watch) {
-      await watchConversationStatus({
+      const settled = await watchConversationStatus({
         client,
         request: invocation.request,
         intervalMs: invocation.intervalMs,
@@ -246,6 +247,7 @@ export async function runCli(
         now: options.now,
         sleep: options.sleep,
       });
+      await reportApprovalNeedingUser(client, settled);
       return LINNYA_CLI_EXIT.success;
     }
 

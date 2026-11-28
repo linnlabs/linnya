@@ -58,8 +58,9 @@ describe('Shell approvals through the real CLI process', () => {
     const unknown = await runCliProcess(args, bridge.connectionFile);
     expect(unknown.exitCode).toBe(3);
     expect(replyCount).toBe(3);
+    // watch 停在待批准的命令上后会查一次这位调用方能不能代批（这里允许），所以 status 后多一次查询。
     expect(bridge.receivedCommands.map(request => request.command)).toEqual([
-      'command_approvals', 'status', 'command_approvals', 'command_approvals', 'command_approvals',
+      'command_approvals', 'status', 'command_approvals', 'command_approvals', 'command_approvals', 'command_approvals',
     ]);
   }, 20_000);
 
