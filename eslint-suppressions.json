@@ -39,11 +39,6 @@
       "count": 1
     }
   },
-  "apps/renderer/domains/conversation/features/composer-references/orchestration/createComposerReferenceHover.ts": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
   "apps/renderer/domains/conversation/features/context-window-usage/orchestration/useContextWindowUsagePresentation.ts": {
     "no-restricted-globals": {
       "count": 1
@@ -967,11 +962,6 @@
   "apps/renderer/domains/editor/features/citation/ui/CitationPopover.vue": {
     "no-restricted-globals": {
       "count": 1
-    }
-  },
-  "apps/renderer/domains/editor/features/document-references/ui/createDocumentReferenceNodeView.ts": {
-    "no-restricted-globals": {
-      "count": 3
     }
   },
   "apps/renderer/domains/editor/features/floating-toolbar/FloatingToolbarExtension.js": {

@@ -115,11 +115,12 @@ export function createDocumentReferenceUiPort(): DocumentReferenceUiPort {
       render(createVNode(getDocumentTypePresentationPort().readIcon(nodeType)), element);
       return () => render(null, element);
     },
-    mountPreview: (documentId, element, signal) =>
+    mountPreview: (documentId, element, signal, onReady) =>
       mountDocumentPreview({
         documentId,
         element,
         signal,
+        onReady,
         projectId: projectId(),
         mode: 'first-screen',
       }),

@@ -196,6 +196,13 @@
   white-space: pre-wrap;
 }
 
+/* 预览组件自己滚动：面板只限高并裁切，否则面板的滚动条会挤窄预览正文、引发整份重排。 */
+.conversation-reference-hover .conversation-reference-hover__content--owned {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .conversation-reference-hover__content--owned {
   --document-preview-fade-color: var(--color-bg-surface);
   --document-preview-fade-radius: var(--radius-lg);

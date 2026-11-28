@@ -100,6 +100,41 @@ describe('正式 Workspace 用户预览', () => {
     expect(document.body.children).toHaveLength(0);
   });
 
+  it('全文只等一次字体，首屏只为已排出的块等待，长文不会逐块触发整页布局', async () => {
+    // Chromium 每读一次已就绪的 fonts.ready 都同步重排整份预览；逐块读取曾让 631 块的全文生成卡住一秒以上。
+    let reads = 0;
+    Object.defineProperty(document, 'fonts', { configurable: true, value: { get ready() { reads += 1; return Promise.resolve(); } } });
+    try {
+      const cell = { type: 'tableRow', content: [{ type: 'tableCell', content: [{ type: 'tableCellContentBlock', content: [text('格')] }] }] };
+      const blocks = Array.from({ length: 120 }, (_, index) => root(`p-${index}`, 'baseBlock', {}, [text(`第 ${index} 段`)]));
+      const content = WorkspaceMarkdownPreviewSchema.parse({ format: 'workspace-markdown',
+        document: { type: 'doc', content: [...blocks, root('table', 'table', {}, [cell])] }, assets: {}, references: {} });
+      // jsdom 不做布局：让表格比可用宽度宽，定级结果才可观察。
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(320);
+      vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(900);
+      const full = await createWorkspaceMarkdownPreview({ content, document, widthPx: 320, theme: 'light', signal: new AbortController().signal });
+      expect(full.element.querySelectorAll('.workspace-preview-block')).toHaveLength(121);
+      expect(reads).toBe(1);
+      // 表格定级在字体就绪之后统一完成，全文里的表格不会被漏掉。
+      expect(full.element.querySelector('table.table-block')?.getAttribute('data-table-fit')).toBe('scroll');
+      full.dispose();
+
+      reads = 0;
+      let height = 0;
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+        height += 60;
+        return { width: 320, height, x: 0, y: 0, top: 0, left: 0, bottom: height, right: 320, toJSON: () => ({}) };
+      });
+      const first = await createWorkspaceMarkdownPreview({ content, document, widthPx: 320, maxHeight: 200, theme: 'light', signal: new AbortController().signal });
+      const rendered = first.element.querySelectorAll('.workspace-preview-block').length;
+      expect(rendered).toBe(4);
+      expect(reads).toBe(rendered + 1);
+      first.dispose();
+    } finally {
+      Reflect.deleteProperty(document, 'fonts');
+    }
+  });
+
   it('Pending 删除最后一个块时展示空白，持久化 schema 仍拒绝空正文', async () => {
     const content = WorkspaceMarkdownPreviewSchema.parse({ format: 'workspace-markdown', document: { type: 'doc', content: [] }, assets: {}, references: {} });
     const preview = await createWorkspaceMarkdownPreview({ content, document, widthPx: 320, theme: 'light', signal: new AbortController().signal });

@@ -89,7 +89,11 @@ export interface ConversationReferenceKindContribution {
   readonly pluginId: string;
   readonly kind: string;
   readonly chip: ConversationReferenceChipDescriptor;
-  /** 悬停时才挂载，只读；接收reference标准DTO，关闭/移除后卸载。 */
+  /**
+   * 悬停时才挂载，只读；接收reference标准DTO，关闭/移除后卸载。
+   * 组件在弹层还不可见时挂载，首屏排好后发出 `ready` 事件，Host 据此露出弹层；
+   * 到露出时间还没收到的，Host 最多再等 150ms 就露出，所以不发也能用，只是异步内容会在露出后才出现。
+   */
   readonly previewComponent?: Component;
   /** false 时胶囊不弹悬停预览：引用文字已说清来源、弹层只会遮挡输入框时使用；点击仍交给 onActivate。 */
   readonly hoverPreview?: false;
