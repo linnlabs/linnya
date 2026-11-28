@@ -43,6 +43,7 @@ import {
   type PluginCliBridgeFrameV1,
   type PluginCliShellBridgeRuntime,
 } from '..';
+import { createVisionForegroundMask } from '../../../adapters/foreground-mask';
 
 interface Deferred<T> {
   readonly promise: Promise<T>;
@@ -275,7 +276,7 @@ describe('Plugin CLI Shell bridge', () => {
     }
     const bridge = await startPluginCliShellBridgeRuntime({
       resolveCli: () => { throw new Error('Core must not resolve plugin'); },
-      coreCli: createCoreCli(db, 8000, createNodePhysicalFileReader(), createConversationActivityPorts(db, { readControlPending: () => [] })),
+      coreCli: createCoreCli(db, 8000, createNodePhysicalFileReader(), createVisionForegroundMask(), createConversationActivityPorts(db, { readControlPending: () => [] })),
       readConversationProjectId: async id => db.prepare<[string], { project_id: string }>('SELECT project_id FROM conversations WHERE conversation_id = ?').get(id)?.project_id,
       internalDataContext: {}, diagnostics: { recordUnexpectedFailure: ({ error }) => { throw error; } },
     });
@@ -333,7 +334,7 @@ describe('Plugin CLI Shell bridge', () => {
       const readProject = vi.fn(async () => projectId);
       const bridge = await startPluginCliShellBridgeRuntime({
         resolveCli: () => { throw new Error('Core commands must not resolve a plugin'); },
-        coreCli: createCoreCli(db, 8000, createNodePhysicalFileReader(), createConversationActivityPorts(db, { readControlPending: () => [] })), readConversationProjectId: readProject,
+        coreCli: createCoreCli(db, 8000, createNodePhysicalFileReader(), createVisionForegroundMask(), createConversationActivityPorts(db, { readControlPending: () => [] })), readConversationProjectId: readProject,
         internalDataContext: {}, diagnostics: { recordUnexpectedFailure: () => {} },
       });
       bridges.push(bridge);
@@ -815,7 +816,7 @@ describe('Plugin CLI Shell bridge', () => {
       paletteDatabases.push(database);
       const bridge = await startPluginCliShellBridgeRuntime({
         resolveCli: () => { throw new Error('Core commands must not resolve a plugin'); },
-        coreCli: createCoreCli(database.getDb(), 8000, createNodePhysicalFileReader(), { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } }),
+        coreCli: createCoreCli(database.getDb(), 8000, createNodePhysicalFileReader(), createVisionForegroundMask(), { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } }),
         internalDataContext: {},
         diagnostics: { recordUnexpectedFailure: ({ error }) => { throw error; } },
       });
@@ -967,7 +968,7 @@ describe('Plugin CLI Shell bridge', () => {
       imageDatabases.push(database);
       const bridge = await startPluginCliShellBridgeRuntime({
         resolveCli: () => { throw new Error('Core commands must not resolve a plugin'); },
-        coreCli: createCoreCli(database.getDb(), 8000, createNodePhysicalFileReader(), { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } }),
+        coreCli: createCoreCli(database.getDb(), 8000, createNodePhysicalFileReader(), createVisionForegroundMask(), { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } }),
         internalDataContext: {},
         diagnostics: { recordUnexpectedFailure: ({ error }) => { throw error; } },
       });

@@ -3,6 +3,7 @@
 本目录是源码版 `linnya runtime start` 的 Node composition root。它与 Electron Main 二选一拥有同一个
 App Server Backend 子进程；不会在 CLI 内复制 Backend、数据库、Flow 或插件 registry，也不会 detach
 成后台 daemon。终端 `SIGINT/SIGTERM`、启动中断和子进程意外退出都经过 supervisor 的真实收口或失败合同。
+已就绪的 CLI 收到终端退出信号时，通过 App Server 活动端口暂停可恢复的前台根运行，等待原 execution 收口后再关闭 Backend。重启后使用 `linnya resume` 继续原 run。启动期间收到信号则直接收口。
 launcher 被强制终止时，App Server 还会按 bootstrap 的直接 parent identity 进入同一收口；业务 owner 完成后主动关闭残余 pipe 并释放 Workspace 锁。
 
 CLI Runtime 使用 `_dev_data` AppData，并可显式覆盖 Workspace。Workspace 排他锁仍由 App Server 在任何

@@ -1,4 +1,4 @@
-export type { Oklab, Oklch, ParsedColor, RgbChannels } from './definitions/color.js'
+export type { Cielab, Oklab, Oklch, ParsedColor, RgbChannels } from './definitions/color.js'
 export { mixColors, parseColor, toHex, withAlpha } from './functions/parseColor.js'
 export {
   isLinearRgbInGamut,
@@ -14,6 +14,7 @@ export {
   srgbChannelToLinear,
   type OklchToRgbOptions,
 } from './functions/colorSpace.js'
+export { rgbToCielab } from './functions/cielab.js'
 export { contrastRatio, relativeLuminance } from './functions/contrast.js'
 export { hueDistance, isHueWithinArc, normalizeHue } from './functions/hue.js'
 export {

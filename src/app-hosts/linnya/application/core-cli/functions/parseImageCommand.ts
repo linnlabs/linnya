@@ -1,13 +1,15 @@
 import { parseArgs } from 'node:util';
-import type { ImageQuad, ImageRegion, RgbColor, SheetKeyMode, TextureKind } from 'src/domains/image-processing';
+import type { CutoutMethod, ImageQuad, ImageRegion, RgbColor, SheetKeyMode, TextureKind, TitleDirection } from 'src/domains/image-processing';
 
 export const IMAGE_USAGE = [
   'linnya image trim <图片> [--tolerance 1-100] [--save]   量出四周的白边、黑边或水印条，给出裁剪比例；--save 才另存裁好的图',
+  'linnya image cutout <图片> [--method auto|vision|edge]   去掉照片背景、裁到主体，另出品红底检查图；macOS 14+ 默认用系统 Vision，其他平台按边缘颜色抠',
   'linnya image ink <图片> [--color HEX]   白纸上的书法、拓片、印章转成单色加透明，裁到有墨的范围',
   'linnya image frost <图片> --region 左,上,宽,高 [--aspect 宽:高] [--blur 1-100] [--radius 0-0.5]   磨砂卡：预先模糊背景图上卡片所在的一块；--aspect 先按页面比例居中裁，区域按页面比例写；圆角按区域短边的比例',
   'linnya image perspective <图片> --to x1,y1,x2,y2,x3,y3,x4,y4 [--size 宽x高]   投影进四边形（左上、右上、右下、左下），四边形外透明',
   'linnya image grid <图片> [--n 2-26]   叠坐标网格（列 0 起、行 A 起），看图后按格子换算裁剪或焦点比例',
   'linnya image texture paper|grain --size 宽x高 [--color HEX]   程序生成纸纹（不透明）或颗粒（透明叠加层）',
+  'linnya image title <字体文件> --text 文字 [--color HEX] [--size 32-2000] [--vertical] [--thicken 0-0.05]   用下载的书法、展示字体把标题渲染成透明 PNG 和只含路径的 SVG；先报字体内写的许可，缺字时列出来、不出图',
   'linnya image slice <图片> [--key auto|magenta|green|flood] [--grid 列x行]   把纯色底的宫格切成透明小图（默认按连通块，粘连时按格子），另出带序号的检查图',
   '图片是当前对话工作目录里的相对路径或 conversation:/...；位置和区域都按宽高的 0–1 写，与裁剪、焦点同一种量法。',
   '结果写进工作目录的 assets/，输出 conversation:/ 路径；写文件的子命令需要 Shell 写权限（requires_write_access），trim 不带 --save 只读。',
@@ -19,15 +21,22 @@ const DEFAULT_INK: RgbColor = [31, 26, 23];
 const DEFAULT_TRIM_TOLERANCE = 16;
 const DEFAULT_FROST_BLUR = 18;
 const DEFAULT_GRID_DIVISIONS = 10;
+/** 标题默认一个字 400px：铺满半页宽的四字标题仍清晰。 */
+const DEFAULT_TITLE_SIZE = 400;
 
 export type ImageCommand =
   | { readonly kind: 'help'; readonly text: string }
   | { readonly kind: 'trim'; readonly image: string; readonly tolerance: number; readonly save: boolean }
+  | { readonly kind: 'cutout'; readonly image: string; readonly method: CutoutMethod }
   | { readonly kind: 'ink'; readonly image: string; readonly color: RgbColor }
   | { readonly kind: 'frost'; readonly image: string; readonly region: ImageRegion; readonly blur: number; readonly radius: number; readonly aspect?: number }
   | { readonly kind: 'perspective'; readonly image: string; readonly quad: ImageQuad; readonly width?: number; readonly height?: number }
   | { readonly kind: 'grid'; readonly image: string; readonly divisions: number }
   | { readonly kind: 'texture'; readonly texture: TextureKind; readonly width: number; readonly height: number; readonly color?: RgbColor }
+  | {
+    readonly kind: 'title'; readonly font: string; readonly text: string; readonly color: RgbColor;
+    readonly size: number; readonly direction: TitleDirection; readonly thicken: number;
+  }
   | { readonly kind: 'slice'; readonly image: string; readonly key: SheetKeyMode | 'auto'; readonly grid?: { readonly columns: number; readonly rows: number } };
 
 type Subcommand = Exclude<ImageCommand['kind'], 'help'>;
@@ -96,6 +105,10 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
       n: { type: 'string' },
       key: { type: 'string' },
       grid: { type: 'string' },
+      method: { type: 'string' },
+      text: { type: 'string' },
+      vertical: { type: 'boolean', default: false },
+      thicken: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
   });
@@ -103,12 +116,14 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
   // 各子命令不认的选项直接拒绝：模型把 frost 的 --region 写到 grid 上时，静默忽略会让它以为生效了。
   const allowed: Record<Subcommand, readonly string[]> = {
     trim: ['tolerance', 'save'],
+    cutout: ['method'],
     ink: ['color'],
     frost: ['region', 'aspect', 'blur', 'radius'],
     perspective: ['to', 'size'],
     grid: ['n'],
     texture: ['size', 'color'],
     slice: ['key', 'grid'],
+    title: ['text', 'color', 'size', 'vertical', 'thicken'],
   };
   const extra = Object.entries(values)
     .filter(([key, value]) => key !== 'help' && value !== undefined && value !== false && !allowed[subcommand].includes(key));
@@ -120,6 +135,11 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
         kind: 'trim', image: oneImage(positionals, subcommand),
         tolerance: number(values.tolerance, 'tolerance', DEFAULT_TRIM_TOLERANCE), save: values.save,
       };
+    case 'cutout': {
+      const method = values.method ?? 'auto';
+      if (method !== 'auto' && method !== 'vision' && method !== 'edge') throw new Error('--method 须为 auto、vision 或 edge');
+      return { kind: 'cutout', image: oneImage(positionals, subcommand), method };
+    }
     case 'ink':
       return { kind: 'ink', image: oneImage(positionals, subcommand), color: values.color === undefined ? DEFAULT_INK : rgb(values.color) };
     case 'frost': {
@@ -154,6 +174,18 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
         ...(grid === undefined ? {} : { grid: { columns: grid.width, rows: grid.height } }),
       };
     }
+    case 'title': {
+      if (values.text === undefined) throw new Error('title 需要 --text 文字');
+      const [font, ...extra] = positionals;
+      if (font === undefined || extra.length > 0) throw new Error('title 只接受一个字体文件');
+      return {
+        kind: 'title', font, text: values.text,
+        color: values.color === undefined ? DEFAULT_INK : rgb(values.color),
+        size: number(values.size, 'size', DEFAULT_TITLE_SIZE),
+        direction: values.vertical ? 'vertical' : 'horizontal',
+        thicken: number(values.thicken, 'thicken', 0),
+      };
+    }
     case 'texture': {
       const [texture, ...rest] = positionals;
       if ((texture !== 'paper' && texture !== 'grain') || rest.length > 0) throw new Error('texture 须为 paper 或 grain');
@@ -166,7 +198,7 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
   }
 }
 
-const SUBCOMMANDS: readonly Subcommand[] = ['trim', 'ink', 'frost', 'perspective', 'grid', 'texture', 'slice'];
+const SUBCOMMANDS: readonly Subcommand[] = ['trim', 'cutout', 'ink', 'frost', 'perspective', 'grid', 'texture', 'slice', 'title'];
 
 function isSubcommand(value: string): value is Subcommand {
   return SUBCOMMANDS.some(subcommand => subcommand === value);

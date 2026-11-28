@@ -4,12 +4,14 @@ import {
   PROCESSING_MAX_EDGE,
   type EncodedImage,
   type ImageProcessingOutcome,
+  type PixelBox,
   type SheetKeyMode,
   type SheetSlice,
 } from '../definitions/imageProcessing';
 import { MAX_BACKGROUND_DEVIATION, measureSheetBackground, sheetKeyModeOf } from '../functions/sheetBackground';
 import { chromaKeyMatte, floodMatte } from '../functions/sheetMatte';
-import { connectedPieceBoxes, gridPieceBoxes, type PixelBox } from '../functions/sheetPieces';
+import { opaqueBounds } from '../functions/opaqueBounds';
+import { connectedPieceBoxes, gridPieceBoxes } from '../functions/sheetPieces';
 import { decode, encode, failure, isFailure, ok, raw, toPixels, type RgbaImage } from '../shared/pixelCodec';
 
 /** 找连通块时把透明度图缩到这么大：元素间距在生图宫格里通常有几十像素，缩小后仍分得开，速度快一个量级。 */
@@ -22,24 +24,6 @@ const KEY_NAMES: Record<SheetKeyMode, string> = { magenta: '品红', green: '绿
 
 function hex(color: readonly number[]): string {
   return `#${color.map(value => value.toString(16).padStart(2, '0')).join('')}`;
-}
-
-/** 框内不透明像素的紧边界；整格透明（网格切时的空格子）返回 null。 */
-function opaqueBounds(matte: Uint8Array, width: number, box: PixelBox): PixelBox | null {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -1;
-  let maxY = -1;
-  for (let y = box.top; y < box.top + box.height; y += 1) {
-    for (let x = box.left; x < box.left + box.width; x += 1) {
-      if (matte[(y * width + x) * 4 + 3] === 0) continue;
-      minX = Math.min(minX, x);
-      maxX = Math.max(maxX, x);
-      minY = Math.min(minY, y);
-      maxY = Math.max(maxY, y);
-    }
-  }
-  return maxX < 0 ? null : { left: minX, top: minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
 async function findBoxes(matte: RgbaImage): Promise<PixelBox[]> {
@@ -128,7 +112,7 @@ export async function sliceSheet(input: {
   const matteImage = { width, height, data: matte.rgba };
   const boxes = input.grid ? gridPieceBoxes(width, height, input.grid.columns, input.grid.rows) : await findBoxes(matteImage);
   // 每块收紧到不透明的范围；网格切时格子里的留白一并去掉，空格子不出
-  const filled = boxes.flatMap(box => opaqueBounds(matte.rgba, width, box) ?? []);
+  const filled = boxes.flatMap(box => opaqueBounds(matte.rgba, width, box, 1) ?? []);
   if (filled.length === 0) return failure('no_pieces', '图上没有找到元素');
   if (filled.length > MAX_SHEET_PIECES) {
     return failure('too_many_pieces', `找到 ${filled.length} 块，超过 ${MAX_SHEET_PIECES} 块；元素粘连或底上有杂点时改用按格子切`);

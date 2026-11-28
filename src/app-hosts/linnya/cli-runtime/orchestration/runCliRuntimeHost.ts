@@ -29,7 +29,12 @@ export async function runCliRuntimeHost(input: CliRuntimeHostInput): Promise<voi
       signal.then(received => ({ kind: 'signal' as const, received })),
     ]);
     if (terminal.kind === 'exit') return;
-    await runtime.shutdown();
+    // 前台模型请求可能仍在等待供应商。先让 Flow 保存断点并释放请求，再关闭其 RPC 和数据库。
+    try {
+      await runtime.pauseForegroundRuns();
+    } finally {
+      await runtime.shutdown();
+    }
     await runtime.waitForExit();
   } finally {
     process.off('SIGINT', onSigint);

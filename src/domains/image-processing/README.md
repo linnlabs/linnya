@@ -1,23 +1,25 @@
 # Image Processing Domain
 
-`image-processing` 给 Agent 处理素材图片：量裁边、墨迹转透明、磨砂、透视、坐标网格、程序纹理，以及把生图模型出的纯色底宫格切成透明小图。入口是 Core CLI 的 `linnya image`（用法见 [Core CLI](../../app-hosts/linnya/application/core-cli/README.md#素材处理)），各文档类型共用。
+`image-processing` 给 Agent 处理素材图片：量裁边、照片去背、墨迹转透明、磨砂、透视、坐标网格、程序纹理、用下载的字体渲染标题字，以及把生图模型出的纯色底宫格切成透明小图。入口是 Core CLI 的 `linnya image`（用法见 [Core CLI](../../app-hosts/linnya/application/core-cli/README.md#素材处理)），各文档类型共用。
 
 只做文档类型自己做不到、必须改像素的处理。裁剪取景、调色、形状遮罩、投影这类文档能原生表达的（例如 Slides 的 `crop`、`adjust`、`maskShape`、`shadow`），交给文档本身：原图留在文稿里，导出后仍可修改。
 
 ## 职责
 
-- `orchestration/imageProcessing.ts` 与 `sliceSheet.ts`：每种操作一个入口，输入编码后的图片 bytes 和参数，返回 `ImageProcessingOutcome`。可预期的失败（读不出、参数不成立、底色不适用）以 `status: 'failed'` 加错误码返回，不抛异常。
-- `functions/`：不依赖 sharp 的纯计算。`perspectiveWarp.ts` 是单应矩阵与双线性取样，`inkAlpha.ts` 由纸色和墨色换算透明度，`gridOverlay.ts` 生成网格的 SVG；`sheetBackground.ts`、`sheetMatte.ts`、`sheetPieces.ts` 分别是宫格的底色实测、去底和分块。
+- `orchestration/imageProcessing.ts`、`cutoutForeground.ts`、`renderTitle.ts` 与 `sliceSheet.ts`：每种操作一个入口，输入编码后的图片 bytes 和参数，返回 `ImageProcessingOutcome`。可预期的失败（读不出、参数不成立、底色不适用）以 `status: 'failed'` 加错误码返回，不抛异常。
+- `functions/`：不依赖 sharp 的纯计算。`perspectiveWarp.ts` 是单应矩阵与双线性取样，`inkAlpha.ts` 由纸色和墨色换算透明度，`gridOverlay.ts` 生成网格的 SVG；`sheetBackground.ts`、`sheetMatte.ts`、`sheetPieces.ts` 分别是宫格的底色实测、去底和分块；`edgeMatte.ts` 是边缘抠图的背景估计，`foregroundCoverage.ts` 算去背结果的判别数，`opaqueBounds.ts` 求不透明范围，`titleOutline.ts` 把标题排成字形轮廓并查缺字。
 - `shared/pixelCodec.ts`：各操作共用的解码、编码与失败结果。
 - `definitions/imageProcessing.ts`：参数、结果、错误码与尺寸上限。
+- `definitions/foregroundMask.ts`：系统前景遮罩的端口。实现是宿主的 [foreground-mask 适配器](../../app-hosts/linnya/adapters/foreground-mask/README.md)，本 domain 不知道它怎么调起系统能力。
 
 ## 不变量
 
-- 本 domain 不读路径、不写文件，文件边界归调用方。CLI 只读当前对话工作目录，结果写进它的 `assets/`。
+- 本 domain 不读路径、不写文件、不起进程，文件和系统能力的边界归调用方。CLI 只读当前对话工作目录，结果写进它的 `assets/`。
 - 只接受 JPEG、PNG、WebP，按文件头判断；超过 1 亿像素的输入不解码。
 - 解码时先按 EXIF 摆正，再缩到长边 2400（网格 1600）。位置、区域和裁剪都按宽高的 0–1 比例给出，量的是摆正后的图，与原图尺寸无关。
 - 有透明的结果出 PNG，整张不透明的出 JPEG（质量 90）。墨迹、透视、颗粒和切出的小图总是出 PNG。
-- 不新增依赖，全部用宿主已有的 sharp。在 30 张博物馆、产品与拓片照片上实测，单次处理的进程峰值 118–244MB（含 Node 与加载代码约 105MB），结束即释放。
+- 不新增依赖，全部用宿主已有的 sharp 与 fontkit。在 30 张博物馆、产品与拓片照片上实测，单次处理的进程峰值 118–244MB（含 Node 与加载代码约 105MB）。同一进程连续处理 30 张大图后，常驻内存停在 400–600MB，GC 降不下来：这是原生图片库分配器的高水位，解码本身就有，不是哪个操作泄漏。
+- 结果都是重新编码的新文件，不带原图的元数据（EXIF、XMP、生图服务写进去的 C2PA 来源凭证）。C2PA 签名绑定原文件内容，改了像素就失效，这里不补写；生成图的“AI 生成”标注由文档里的可见标注承担。
 
 ## 各操作的约定
 
@@ -27,6 +29,28 @@
 - **perspective**：四个角按左上、右上、右下、左下顺时针给出，必须围成凸四边形且面积至少占画布 1%。四边形外透明，取样按预乘透明度处理，边缘不发黑。
 - **grid**：列号从 0 起，行号从 A 起，最多 26 等分。标签用通用无衬线字体。
 - **texture**：`paper` 是不透明纸纹，`grain` 是透明颗粒层（亮点白、暗点黑，离中灰越远越不透明），强弱交给文档的透明度。
+
+## 去背（cutout）
+
+把照片里的主体（器物、产品、人物、植物）抠出来，裁到主体范围，另出检查图。
+
+- **方法**：`auto` 在 macOS 14 及以上用系统 Vision 的前景实例遮罩，其他平台按边缘颜色抠；Vision 没找到前景时也改用边缘抠，并在结果里注明。`vision` 只用 Vision，`edge` 只按边缘抠。Vision 不可用、运行失败时报错，不换方法：失败要让调用方看见。
+- **Vision**：30 张博物馆、产品、人物照片里 29 张可直接用，展柜反光、复杂背景都抠得干净。版面图（字和器物在同一页）只取器物，户外场景可能多带一点建筑。交给它的是缩到长边 2400 的 JPEG，只用它的透明度，颜色仍取自原图。
+- **边缘抠图**：沿四条边各取一条背景颜色曲线，用 Coons 曲面插值出画面内部的背景估计，再从边框向内泛洪与估计背景色差（CIELAB ΔE76，换算取自 color-core）在 9 以内的像素。不用 OKLab：它的彩度差权重小，同一组照片上偏灰的青瓷、青铜会和灰背景混成一片，主体被挖空。只有与边框连通的才算背景，主体内部和背景同色的部分（白瓷高光）保得住。适合无缝背景纸、纯色台面；同一组照片里约一半可直接用，多数在器物底下留一点投影，展柜、复杂背景、人像会失败。
+- **判别数**：前景占比、最外一圈的前景比例。前景不到 3% 或超过 90%、贴边超过 8% 时标为可疑。它只拦得住约四成失败，所以总是出检查图：左边原图，右边结果叠在品红底上。
+- 原图本来透明的部分保持透明（取原图与遮罩较小的透明度）。
+
+## 标题字（title）
+
+用下载的书法、展示字体把标题渲染成透明 PNG 和只含路径的 SVG。字体文件的读取与位置检查归调用方，这里只收字节。
+
+- **为什么不用 sharp 的文字渲染**：它的底层 Pango 在 macOS 上不认指定的字体文件，书法字会落成系统黑体，每次还要 2 秒左右初始化字体配置。这里用 fontkit 取字形轮廓拼成 SVG path，再交 sharp 栅格化，每次 5–20 毫秒。
+- **缺字**：标题里任何一个字（空白除外）字体里没有，就报 `missing_glyphs` 并列出缺的字，不出图，也不拿别的字体补：一个标题混两种书体比缺字更难看出来。
+- **排列**：横排按字体自己的排版（字距调整、连字生效）；竖排逐字从上到下，每字在一列里居中，标点用字体的竖排字形（`vert`），字体没有时标点位置不对。
+- **加粗**：在轮廓外描一圈同色的边，宽度按字号的比例，最多 5%。
+- **输出**：PNG 一个 em 等于 `size` 像素，裁到字形范围、四周留 2px（加粗时再加半个描边）；SVG 根节点只写 `viewBox`，坐标保留一位小数，并报告路径段数，调用方据此判断能不能当矢量图形用。
+- **许可**：报告字体 name 表里的许可说明（折成一行，最多 400 字）与链接，没写时为空，由调用方按来源仓库确认。
+- 只接受单个字体（TTF、OTF、WOFF、WOFF2），字体集合（.ttc）报 `font_unreadable`。标题 1–40 个字，渲染结果任一边超过 8192px 时拒绝。
 
 ## 宫格切图（slice）
 
@@ -41,7 +65,7 @@
 
 ## 性能
 
-`perspective`、`ink`、`grain` 和 `slice` 的逐像素循环在 App Server 主线程上执行。同一组图上透视最慢约 0.5 秒（输出 2400px），2400px 的宫格切图约 0.25 秒，其余操作都在 0.3 秒内。期间其他对话的流式输出会停顿这么久；以后有更重的逐像素处理（例如边缘抠图）时，再把它们移到工作线程。
+`perspective`、`ink`、`grain`、`slice` 和边缘抠图的逐像素循环在 App Server 主线程上执行。同一组图上透视最慢约 0.5 秒（输出 2400px），2400px 的宫格切图约 0.25 秒，边缘抠图 0.06–0.5 秒，其余操作都在 0.3 秒内。Vision 去背在 osascript 子进程里算，整次 0.24–0.74 秒，不占主线程。期间其他对话的流式输出会停顿这么久；以后有更重的逐像素处理（例如边缘抠图）时，再把它们移到工作线程。
 
 ## 错误码
 
@@ -53,3 +77,8 @@
 | `background_not_uniform` | `slice` 的边框颜色不一致，不是纯色底（例如画出来的棋盘格） |
 | `no_pieces` | `slice` 在图上没找到元素 |
 | `too_many_pieces` | `slice` 找到的块超过 64，多半是元素粘连或底上有杂点，改按格子切 |
+| `vision_unavailable` | 指定 `cutout --method vision`，但本机不是 macOS 14 及以上 |
+| `vision_failed` | 系统前景遮罩运行失败，或给回的遮罩尺寸与输入不符 |
+| `no_foreground` | `cutout` 去背后没剩下前景；指定 `vision` 时也指 Vision 没找到前景 |
+| `font_unreadable` | `title` 的字体读不出：不是单个 TTF、OTF、WOFF、WOFF2，或是字体集合 |
+| `missing_glyphs` | `title` 用到的字字体里没有，消息里列出缺的字 |

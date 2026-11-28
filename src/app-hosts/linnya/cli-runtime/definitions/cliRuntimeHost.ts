@@ -36,5 +36,6 @@ export interface CliRuntimeCommandApprovalPromptPort {
 export interface CliAppServerRuntime {
   start(): Promise<AppServerProcessIdentity>;
   waitForExit(): Promise<void>;
+  pauseForegroundRuns(): Promise<void>;
   shutdown(): Promise<void>;
 }

@@ -51,6 +51,7 @@ import {
   startPluginCliShellBridgeRuntime,
 } from 'src/app-hosts/linnya/application/plugin-cli-shell-bridge';
 import { createPluginCliToolRuntime } from 'src/app-hosts/linnya/application/plugin-cli-tool';
+import { createVisionForegroundMask } from '../../../foreground-mask';
 
 const COMMAND_TEXT_PROJECTION_LIMITS = Object.freeze({
   // stdout + stderr + Shell 控制/续读说明必须留在 Linnkit 默认 20k/1200 行治理阈值内，
@@ -134,7 +135,7 @@ export async function createCommandProductionScope(input: {
   });
   const pluginCliBridge = await startPluginCliShellBridgeRuntime({
     ...pluginCliInvocationDependencies,
-    coreCli: createCoreCli(input.db, COMMAND_TEXT_PROJECTION_LIMITS.maxCharactersPerStream, createNodePhysicalFileReader(),
+    coreCli: createCoreCli(input.db, COMMAND_TEXT_PROJECTION_LIMITS.maxCharactersPerStream, createNodePhysicalFileReader(), createVisionForegroundMask(),
       createConversationActivityPorts(input.db, input.approvalHost), input.readScheduledTasks),
     createInferenceSession: ({ operations, signal }) => createPluginCliInferenceSession({
       operations, signal, inference: createPluginInferencePort(),

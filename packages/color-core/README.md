@@ -13,7 +13,7 @@
 | 解析 | `#RRGGBB`、`#RGB`、`rgb()` / `rgba()`；其他写法返回 null，不猜颜色 |
 | 输出 | `toHex` 取整并截到 0–255，输出小写 `#rrggbb` |
 | 色域 | `oklchToRgb` 超出 sRGB 时按 CSS Color 4 映射：保持明度与色相、二分降低彩度，剪裁误差小于 ΔEOK 0.02 即停。低彩度时这点剪裁会让色相偏几度，按色相判断颜色关系的调用方传 `{ jnd: 0 }`，只降彩度、明度与色相严格不变 |
-| 色差 | ΔEOK（OKLab 欧氏距离） |
+| 色差 | ΔEOK（OKLab 欧氏距离）。只有要和 CIE 1976 色差阈值对齐的去背用 `rgbToCielab`（D65）：OKLab 里彩度差权重小，偏灰的器物会和灰背景混成一片 |
 | 色觉异常 | Machado、Oliveira、Fernandes 2009 严重度 1.0 矩阵，作用在线性 sRGB 上；是最坏情况 |
 
 ## 公开入口
@@ -21,6 +21,7 @@
 - `parseColor`、`toHex`、`mixColors`、`withAlpha`
 - `rgbToOklab`、`oklabToLinearRgb`、`oklabToOklch`、`oklchToOklab`、`rgbToOklch`、`oklchToRgb`、`isLinearRgbInGamut`、`srgbChannelToLinear`、`linearToSrgbChannel`
 - `relativeLuminance`、`contrastRatio`、`deltaEOK`
+- `rgbToCielab`
 - `maxSrgbChroma`（给定明度与色相的 sRGB 最大彩度，用于相对彩度）
 - `normalizeHue`、`hueDistance`、`isHueWithinArc`
 - `simulateColorVisionDeficiency`、`COLOR_VISION_DEFICIENCY_MATRICES`（矩阵也可直接用于 SVG `feColorMatrix`，其默认在线性 RGB 中运算）

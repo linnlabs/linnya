@@ -21,6 +21,7 @@ import {
 import {
   createExportArtifactCommitRpcHandlers,
 } from '../../application/export-artifact-commit/orchestration/createExportArtifactCommitRpcHandlers';
+import { createAppServerActivityRpcGateway } from '../../app-server-runtime/features/activity-rpc/orchestration/createAppServerActivityRpcGateway';
 import { resolveAppServerBundleDirectory } from '../../app-server-runtime/functions/resolveAppServerBundleDirectory';
 import { resolveAppServerProcessLaunch } from '../../app-server-runtime/orchestration/resolveAppServerProcessLaunch';
 import { createBackendBootstrapFacts } from '../../backend-runtime/functions/createBackendBootstrapFacts';
@@ -188,6 +189,9 @@ export async function createCliAppServerRuntime(
           `App Server 意外退出：code=${String(exit.code)} signal=${String(exit.signal)}`,
         );
       }
+    },
+    async pauseForegroundRuns() {
+      await createAppServerActivityRpcGateway(supervisor).pauseAgentRuns();
     },
     shutdown() {
       if (!shutdownSettlement) {

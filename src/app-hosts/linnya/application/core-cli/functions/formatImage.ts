@@ -1,4 +1,4 @@
-import { gridRowLabel, type EncodedImage, type ImageCrop, type SheetKeyMode } from 'src/domains/image-processing';
+import { gridRowLabel, type CutoutEngine, type EncodedImage, type ImageCrop, type SheetKeyMode, type TitleRendering } from 'src/domains/image-processing';
 
 /** 一行写清产物：路径、像素尺寸、格式和大小，模型照抄路径引用即可。 */
 export function formatWrittenImage(locator: string, image: EncodedImage): string {
@@ -45,4 +45,45 @@ export function formatSlice(input: {
   return `底色 ${KEY_NAMES[input.mode]} ${hex}（实测）· ${input.pieces.length} 块${residual}\n`
     + input.pieces.map((piece, index) => `${index + 1} ${formatWrittenImage(piece.locator, piece.image)}`).join('')
     + `检查图 ${formatWrittenImage(input.check.locator, input.check.image)}`;
+}
+
+const ENGINE_NAMES: Record<CutoutEngine, string> = { vision: 'Vision（系统前景遮罩）', edge: '边缘抠图' };
+
+function percent(ratio: number): string {
+  return `${Math.round(ratio * 100)}%`;
+}
+
+/** 首行写用了哪种方法和两个判别数，可疑时多一行提示；然后是结果图和检查图。 */
+export function formatCutout(input: {
+  readonly engine: CutoutEngine;
+  readonly visionFoundNothing: boolean;
+  readonly foregroundRatio: number;
+  readonly borderForeground: number;
+  readonly suspicious: boolean;
+  readonly image: { readonly locator: string; readonly image: EncodedImage };
+  readonly check: { readonly locator: string; readonly image: EncodedImage };
+}): string {
+  const fallback = input.visionFoundNothing ? '（Vision 没找到前景）' : '';
+  const warning = input.suspicious
+    ? `提示：前景占 ${percent(input.foregroundRatio)}、贴边 ${percent(input.borderForeground)}，超出常见范围，背景多半没去干净或主体被抠掉了；读检查图确认\n`
+    : '';
+  return `方法 ${ENGINE_NAMES[input.engine]}${fallback} · 前景占 ${percent(input.foregroundRatio)} · 贴边 ${percent(input.borderForeground)}\n`
+    + warning
+    + formatWrittenImage(input.image.locator, input.image.image)
+    + `检查图 ${formatWrittenImage(input.check.locator, input.check.image)}`;
+}
+
+/** 首行写字体全名和字体自己写的许可，供使用前确认；然后是 PNG 和 SVG，SVG 带路径段数。 */
+export function formatTitle(input: {
+  readonly rendering: TitleRendering;
+  readonly png: string;
+  readonly svg: string;
+  readonly svgBytes: number;
+}): string {
+  const { fontName, license, licenseUrl, svg, image } = input.rendering;
+  const terms = license === null ? licenseUrl
+    : licenseUrl === null || license.includes(licenseUrl) ? license : `${license}（${licenseUrl}）`;
+  return `字体 ${fontName} · 许可 ${terms ?? '字体里没有写许可，按来源仓库的声明确认'}\n`
+    + formatWrittenImage(input.png, image)
+    + `${input.svg} ${svg.width}×${svg.height} svg ${Math.max(1, Math.round(input.svgBytes / 1024))}KB ${svg.pathCommands} 段路径\n`;
 }

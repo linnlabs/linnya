@@ -1,4 +1,5 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -7,6 +8,7 @@ import Database from 'better-sqlite3';
 import type { BackendPluginCliResult } from '@linnya/plugin-host-contract/backend';
 import { createNodePhysicalFileReader } from '../../../adapters/file-read';
 import { createCoreCli } from '../orchestration/createCoreCli';
+import { createVisionForegroundMask } from '../../../adapters/foreground-mask';
 
 /**
  * `linnya image` 走真实的对话工作目录和读文件适配器：读图边界、assets/ 写入、权限声明都按生产路径执行。
@@ -17,7 +19,7 @@ const activity = {
   runs: { readCandidates: async () => { throw new Error('unused'); } },
   approvals: { readControlPending: () => { throw new Error('unused'); } },
 };
-const cli = createCoreCli(db, 4000, createNodePhysicalFileReader(), activity);
+const cli = createCoreCli(db, 4000, createNodePhysicalFileReader(), createVisionForegroundMask(), activity);
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -74,6 +76,45 @@ describe('linnya image', () => {
     const grid = await run(root, ['slice', 'src/宫格.png', '--grid', '3']);
     expect(grid.exitCode).toBe(2);
     expect(grid.stderr).toContain('--grid 须写成 列x行');
+  });
+
+  it('cutout 写出透明结果和检查图，首行写明方法和判别数；--method 写错时给用法', async () => {
+    const root = await workDirectory();
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="100%" height="100%" fill="#eeeeea"/>'
+      + '<rect x="120" y="80" width="160" height="140" rx="20" fill="#3a4a40"/></svg>';
+    await sharp(Buffer.from(svg)).jpeg({ quality: 95 }).toFile(path.join(root, 'src', '器物.jpg'));
+    const result = await run(root, ['cutout', 'src/器物.jpg', '--method', 'edge']);
+    expect(result).toMatchObject({ exitCode: 0, stderr: '', access: 'write' });
+    const lines = result.stdout.trimEnd().split('\n');
+    expect(lines[0]).toMatch(/^方法 边缘抠图 · 前景占 \d+% · 贴边 0%$/u);
+    expect(lines[1]).toMatch(/^conversation:\/assets\/器物-cutout-[0-9a-f]{6}\.png \d+×\d+ png /u);
+    expect(lines[2]).toMatch(/^检查图 conversation:\/assets\/器物-cutout-check-[0-9a-f]{6}\.jpg /u);
+    expect(await readdir(path.join(root, 'assets'))).toHaveLength(2);
+    const wrong = await run(root, ['cutout', 'src/器物.jpg', '--method', 'magic']);
+    expect(wrong.exitCode).toBe(2);
+    expect(wrong.stderr).toContain('--method 须为 auto、vision 或 edge');
+  });
+
+  it('title 读工作目录里的字体，写出 PNG 和 SVG，首行报字体许可；工作目录外的字体读不到', async () => {
+    const root = await workDirectory();
+    const katexFont = createRequire(import.meta.url).resolve('katex/dist/fonts/KaTeX_Main-Regular.ttf');
+    await mkdir(path.join(root, 'assets', 'fonts'), { recursive: true });
+    await copyFile(katexFont, path.join(root, 'assets', 'fonts', 'KaTeX_Main-Regular.ttf'));
+    const result = await run(root, ['title', 'assets/fonts/KaTeX_Main-Regular.ttf', '--text', 'Bronze Age', '--color', 'b0302a']);
+    expect(result).toMatchObject({ exitCode: 0, stderr: '', access: 'write' });
+    const lines = result.stdout.trimEnd().split('\n');
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toMatch(/^字体 KaTeX_Main-Regular · 许可 .*SIL Open Font License/u);
+    expect(lines[1]).toMatch(/^conversation:\/assets\/Bronze-Age-title-[0-9a-f]{6}\.png \d+×\d+ png /u);
+    expect(lines[2]).toMatch(/^conversation:\/assets\/Bronze-Age-title-[0-9a-f]{6}\.svg \d+×\d+ svg \d+KB \d+ 段路径$/u);
+    const svgPath = path.join(root, lines[2]?.split(' ')[0]?.replace('conversation:/', '') ?? '');
+    expect(await readFile(svgPath, 'utf8')).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox=/u);
+
+    const missing = await run(root, ['title', 'assets/fonts/KaTeX_Main-Regular.ttf', '--text', '青铜']);
+    expect(missing).toMatchObject({ exitCode: 1 });
+    expect(missing.stderr).toMatch(/^missing_glyphs 字体里没有这些字：青、铜/u);
+    expect((await run(root, ['title', katexFont, '--text', 'Age'])).stderr).toMatch(/^font_unreadable /u);
+    expect((await run(root, ['title', 'assets/fonts/KaTeX_Main-Regular.ttf'])).exitCode).toBe(2);
   });
 
   it('trim 默认只读，给出可直接抄的裁剪比例，不写任何文件', async () => {

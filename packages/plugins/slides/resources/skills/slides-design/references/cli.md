@@ -74,16 +74,20 @@ pl8f2a-1 同色系·染纸·绿 bg#e8eddf sf#f4f6ee ink#1f2a1e mu#5a6656 ac#4f7a
 | 要做什么 | 命令 | 写进 deck.js |
 |---|---|---|
 | 图四周有白边、扫描黑边 | `linnya image trim assets/a.jpg` | 输出的 `crop {...}` 原样写进 Image 的 `crop`，不另存 |
+| 器物、产品、人物照片要去掉背景 | `linnya image cutout assets/obj.jpg` | 透明 PNG，`fitMode: "contain"`；要投影时写 Image 的 `shadow`，影子跟着主体边缘 |
 | 拓片、书法、白描、印章叠在底色或照片上 | `linnya image ink assets/rubbing.jpg [--color 1f1a17]` | 透明 PNG，墨色换成配色里的颜色 |
 | 磨砂卡（卡片背后的照片是模糊的） | `linnya image frost assets/bg.jpg --aspect 16:9 --region 0.55,0.15,0.38,0.7 --radius 0.06` | 结果铺满页面（`fitMode: "cover"`，不写 `focus`）；卡片用 Frame 叠在同一位置，半透明白底、细描边 |
 | 斜放的展板、屏幕、封面流 | `linnya image perspective assets/p.jpg --to 0.08,0.12,0.94,0,0.94,1,0.08,0.88` | 透明 PNG，用 `fitMode: "contain"` 放进盒子 |
 | 看不准主体在图上哪里 | `linnya image grid assets/a.jpg` | 读网格图，按输出的换算写 `crop`/`focus` |
 | 纸纹底、照片加颗粒 | `linnya image texture paper --size 1920x1080`；`texture grain --size 1920x1080` | 纸纹铺底；颗粒铺在照片上，用 Image 的 `transparency` 调强弱 |
+| 书法、展示字体的标题 | `linnya image title assets/fonts/MaShanZheng-Regular.ttf --text 青铜时代 [--vertical]` | 透明 PNG 用 Image；SVG 段数不超过 2048、不超过 64KB 时可用 `createSvgGraphic`（`conversation_file`），放大不糊 |
 | 生成的纯色底宫格切成小图 | `linnya image slice assets/sheet.png`；粘连时加 `--grid 3x3` | 每块一张透明 PNG，按输出的序号引用；先读检查图 |
 
 - 位置和区域都按宽高的 0–1 写，量法与 `crop`/`focus` 相同。frost 的 `--region` 是卡片在页面上的位置除以页面宽高，`--aspect` 写页面比例，`--radius` 是圆角占卡片短边的比例，与 Frame 的 `borderRadius` 对齐。
 - perspective 的四个角按左上、右上、右下、左下给出，是画布上的位置；画布默认和原图一样大，`--size` 可改。
 - 报 `background_not_light` 说明这张不是白纸上的墨迹，照片不要用 `ink`。
+- cutout 用之前读一遍检查图（左原图、右边结果叠在品红底上）：看背景有没有去干净、主体有没有缺一块。首行写了用的方法，`边缘抠图` 时多半留着投影或背景，Windows 上只有这一种；抠不干净就换一张背景简单的图，或不去背、用 `crop` 取景。版面图（字和器物在同一页）用 Vision 只会留下器物。
+- title 输出的第一行是字体里写的许可，先确认能用；报 `missing_glyphs` 时按列出的字改写法或换字体。字体选择与加粗分寸见 [文化意象风格](./style-cultural-imagery.md#书法字)。
 - slice 输出的第一行是实测底色和块数，最后一行是检查图：所有块排在灰色棋盘格上、带同样的序号。用之前读一遍检查图，看有没有缺块、残边或被抠掉的主体。报 `background_not_uniform` 说明底不是纯色（常见是模型画了假的棋盘格），要重新生成；块数不对或元素粘连时改用 `--grid 列x行`。
 
 ## Shell 与输出
