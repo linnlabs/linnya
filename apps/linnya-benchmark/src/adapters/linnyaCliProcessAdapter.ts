@@ -88,6 +88,9 @@ function parseProgressFrames(stdout: string) {
     .map(line => parseJson(line, ConversationControlProgressFrameSchema));
 }
 
+/** Linnya CLI 的 `approval_requires_user` 退出码，见 CLI README 的退出码表。 */
+const CLI_EXIT_NEEDS_USER = 9;
+
 export function createLinnyaCliProcessAdapter(
   options: LinnyaCliProcessAdapterOptions
 ): ResearchWorkflowCliPort & SlidesDesignBatchCliPort {
@@ -185,7 +188,9 @@ export function createLinnyaCliProcessAdapter(
       );
       const frames = parseProgressFrames(result.stdout);
       if (result.timedOut) return { frames, timedOut: true };
-      if (result.exitCode !== 0) throwProcessFailure(result);
+      // 退出码 9：watch 停在只有用户本人能批准的命令上。这是一次正常结束的观察，
+      // 最后一帧里有待回复的审批，由结果判定归为“需要命令审批”，不算运行器失败。
+      if (result.exitCode !== 0 && result.exitCode !== CLI_EXIT_NEEDS_USER) throwProcessFailure(result);
       return { frames, timedOut: false };
     },
 

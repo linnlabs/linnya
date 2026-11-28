@@ -19,9 +19,14 @@
 - 本窗口发起暂停或取消时立刻记下那次运行，避免操作后马上切走时红点出现。
 - 每次读取后只保留当前运行仍是记下那次的条目；新运行开始或对话回到空闲就删除。
 
+## 外部发起的运行等人时的提示
+
+外部入口（Linnya CLI）发起的运行开始等用户时，Host 另发一条提醒事件（`@app/schemas` 的 `conversation-attention.ts`，规则见 `src/app-hosts/linnya/application/external-run-attention/README.md`）。`functions/formatConversationAttentionNotice.ts` 把它写成一句应用内提示，例如“对话“周报”在等你批准命令（Codex 发起）。”。何时显示、点系统通知后打开对话由 `app/workflows/conversation-attention/` 编排：正看着那段对话时不提示；提示停留 6 秒，错过了侧栏标记仍在。
+
 ## 文件
 
 - `functions/resolveConversationRunStatus.ts`：状态映射、看过判断、项目汇总与记录裁剪，纯函数。
+- `functions/formatConversationAttentionNotice.ts`：外部发起的运行等人时的提示文案，纯函数。
 - `store/`：`conversationActivityStore` 持有最近一次列表；`conversationActivitySeenStore` 持有看过记录。只有状态与同步 action。
 - `composables/useConversationRunStatus.ts`：侧栏唯一读取入口，给出记号、行尾文字与项目汇总的文案。
 - `ui/ConversationRunStatusIndicator.vue`：行首记号；样式在 `styles/features/conversation-activity/`。

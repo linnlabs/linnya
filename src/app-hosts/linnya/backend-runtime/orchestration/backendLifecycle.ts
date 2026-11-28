@@ -86,6 +86,7 @@ export async function initializeAppServerBackend(
           register: (tasks, lifecycle) => runtimeOwner.registerScheduledTasks(tasks, lifecycle),
         },
         notifyScheduledTask: hostDependencies.notifyScheduledTask,
+        notifyConversationAttention: hostDependencies.notifyConversationAttention,
         readScheduledTaskTimezone: hostDependencies.readScheduledTaskTimezone,
         projectDeletionRegistration: {
           register: deletion => runtimeOwner.registerProjectDeletion(deletion),

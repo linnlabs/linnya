@@ -1,5 +1,7 @@
 import { createScheduledTaskNotificationHandlers } from '../../../app-hosts/linnya/desktop-capabilities/features/scheduled-task-notification-rpc';
+import { createConversationAttentionNotificationHandlers } from '../../../app-hosts/linnya/desktop-capabilities/features/conversation-attention-notification-rpc';
 import { createScheduledTaskDesktopNotifications } from '../../desktop-capabilities/scheduled-task-notification/notifyScheduledTask';
+import { createConversationAttentionDesktopNotifications } from '../../desktop-capabilities/conversation-attention-notification/notifyConversationAttention';
 import type { ResolvedAppServerProcessLaunch } from '../../../app-hosts/linnya/app-server-runtime';
 import path from 'node:path';
 import type { Writable } from 'node:stream';
@@ -116,6 +118,8 @@ export async function createElectronAppServerRuntime(input: {
   }));
   const scheduledNotifications = createScheduledTaskDesktopNotifications();
   registerHandlers(rpcHandlers, createScheduledTaskNotificationHandlers(scheduledNotifications.notify));
+  const attentionNotifications = createConversationAttentionDesktopNotifications();
+  registerHandlers(rpcHandlers, createConversationAttentionNotificationHandlers(attentionNotifications.notify));
   registerHandlers(rpcHandlers, createDesktopFileRevealRpcHandlers(
     createElectronFileRevealPort(),
   ));
@@ -172,6 +176,7 @@ export async function createElectronAppServerRuntime(input: {
       shutdownSettlement = (async () => {
         const failures: unknown[] = [];
         scheduledNotifications.dispose();
+        attentionNotifications.dispose();
         try {
           await process.shutdown();
         } catch (error: unknown) {

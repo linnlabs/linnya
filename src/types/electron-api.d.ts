@@ -270,6 +270,7 @@ declare global {
         } & SystemOperationFailureFields
       >;
       scheduledTasks: ReturnType<typeof import('../electron-main/preload/modules/scheduled-tasks-preload').buildScheduledTasksPreloadApi>;
+      conversationAttention: ReturnType<typeof import('../electron-main/preload/modules/conversation-attention-preload').buildConversationAttentionPreloadApi>;
       listConversationRunDocumentChanges: (
         request: import('@app/schemas').ConversationRunDocumentChangesRequest
       ) => Promise<unknown>;

@@ -177,7 +177,10 @@ pnpm linnya:cli status <conversation-id> --run <run-id> --watch
 
 `--watch` 输出 JSONL，只在状态快照变化时写一行。发现 `command_approvals`
 中待回复请求、到达已收口 `paused`、`awaiting_user`
-或任一终态后退出；仍在收口的暂停继续观察。恢复已收口暂停必须指定 exact run：
+或任一终态后退出；仍在收口的暂停继续观察。因待回复的命令审批而返回、且当前只有用户本人能批准时，
+`--watch` 以 `approval_requires_user`（退出码 9）结束，stderr 的 `message` 说明该请用户做什么：
+这时调用方应转告用户并停下，不要轮询；允许代批时照常以 0 结束，由调用方用 `approvals` 与 `approval-reply` 处理。
+恢复已收口暂停必须指定 exact run：
 
 ```bash
 pnpm linnya:cli resume <conversation-id> --run <run-id>
@@ -231,6 +234,9 @@ pnpm linnya:cli approval-reply <conversation-id> \
   为什么不能代批、该请用户做什么。外部 Agent 应把它转告用户，然后等用户处理，不要反复提交。
 - 这时提交 `allow_once` 或 `allow_for_conversation` 返回 `approval_requires_user`（退出码 9），`message` 与上面相同。
   请求不会被结算，仍然等用户决定；`status --watch` 照常能观察到它被处理。
+- 外部发起的运行停下来等用户（批准命令，或回答提问）时，Desktop 会叫用户一声：窗口不在前台发系统通知，
+  点通知打开那段对话；在前台则给一条应用内提示。侧栏该对话同时带“待审批 / 待回答”标记。
+  源码 Runtime（`linnya runtime start`）没有桌面，不发通知，审批在启动它的终端里处理。
 - `deny` 始终可以提交。`--reason`（最多 500 字符）会写进被拒命令交还给 Agent 的结果里，让它知道该换什么做法；
   理由只能跟 `deny` 一起给，不进入审计记录。
 - 放开代批有两处，都由人决定：Desktop 的“设置 › 命令权限 › 允许命令行代为批准命令”（默认关，改动立即生效），

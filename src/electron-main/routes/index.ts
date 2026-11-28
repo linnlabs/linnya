@@ -208,9 +208,10 @@ import {
 import { createLocalManagedStorageInventoryPort } from 'src/infra/adapters/storage-space/local-inventory';
 import { createStorageSpaceRouter } from 'src/features/storage-space/storageSpace.router';
 import { createProjectConversationsRouter } from 'src/features/project-conversations/projectConversations.router';
-import { createConversationActivityPorts } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
+import { createConversationActivityPorts, createRunExternalSenderReader } from 'src/app-hosts/linnya/adapters/persistence/run-registry';
 import { subscribeRunActivity } from 'src/app-hosts/linnya/adapters/persistence/run-activity-signal';
-import { connectConversationActivityChanges } from 'src/app-hosts/linnya/application/conversation-activity';
+import { connectConversationActivityChanges, listConversationActivities } from 'src/app-hosts/linnya/application/conversation-activity';
+import { connectExternalRunAttention } from 'src/app-hosts/linnya/application/external-run-attention';
 import {
   createProjectConversationStorageMeasurer,
   type ProjectConversationStorageMeasurer,
@@ -225,6 +226,7 @@ import {
   createProjectDeletionUseCase,
   type ProjectDeletionUseCasePort,
 } from 'src/app-hosts/linnya/application/project-deletion';
+import type { ConversationAttentionNotification } from '@app/schemas/conversation-attention';
 import type { ScheduledTaskNotification } from '@app/schemas/scheduled-tasks';
 import { createScheduledTasks, type ScheduledTasks, type ScheduledTaskSchedulerLifecycle } from 'src/app-hosts/linnya/application/scheduled-tasks';
 import { createSqliteScheduledTasks } from 'src/app-hosts/linnya/adapters/persistence/scheduled-tasks/sqliteScheduledTasks';
@@ -266,6 +268,7 @@ function respondCapabilityUnavailable(message: string): RequestHandler {
  */
 export interface RouteDependencies {
   readonly notifyScheduledTask?: (event: ScheduledTaskNotification) => Promise<void>;
+  readonly notifyConversationAttention?: (event: ConversationAttentionNotification) => Promise<void>;
   readonly readScheduledTaskTimezone?: () => Promise<string>;
   readonly scheduledTaskSchedulerLifecycleRegistration?: {
     register(tasks: ScheduledTasks, lifecycle: ScheduledTaskSchedulerLifecycle): void;
@@ -1008,6 +1011,30 @@ export async function configureRoutes(
       auditControl: agentRuntime.audit,
       ...(imagePreview ? { attachmentImages: imagePreview } : {}),
     });
+    // 外部入口发起的运行等用户处理时叫人。只有 Desktop 有通知端口；CLI Runtime 的用户就在终端前。
+    // 订阅与本进程的数据库连接同寿命，和下面的运行状态失效信号一样不单独断开。
+    const notifyConversationAttention = dependencies.notifyConversationAttention;
+    if (notifyConversationAttention) {
+      const attentionActivity = createConversationActivityPorts(db, dependencies.commandApprovalControl);
+      connectExternalRunAttention({
+        subscribe: listener => {
+          const unsubscribeRuns = subscribeRunActivity(db, listener);
+          const unsubscribeApprovals = executionRuntime.subscribeCommandApprovals?.(listener);
+          return () => {
+            unsubscribeRuns();
+            unsubscribeApprovals?.();
+          };
+        },
+        ports: {
+          listActivities: () => listConversationActivities(attentionActivity),
+          readExternalSender: createRunExternalSenderReader(db),
+          readConversationTitle: async conversationId =>
+            (await conversationEventStore.getConversationMetadata(conversationId))?.title ?? null,
+          notify: notifyConversationAttention,
+          logError: (message, error) => logger.error(message, error),
+        },
+      });
+    }
     logger.info('✅ 历史管理服务已初始化');
     logger.info('✅ 流程编排器已初始化');
   } catch (e) {

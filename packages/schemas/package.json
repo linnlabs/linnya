@@ -54,6 +54,12 @@
       "require": "./dist/scheduled-tasks.js",
       "default": "./dist/esm/scheduled-tasks.js"
     },
+    "./conversation-attention": {
+      "types": "./dist/conversation-attention.d.ts",
+      "import": "./dist/esm/conversation-attention.js",
+      "require": "./dist/conversation-attention.js",
+      "default": "./dist/esm/conversation-attention.js"
+    },
     "./file-locator": {
       "types": "./dist/file-locator.d.ts",
       "import": "./dist/esm/file-locator.js",
