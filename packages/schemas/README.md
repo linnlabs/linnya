@@ -114,7 +114,7 @@ Protocol 7 要求每个请求和响应都有 `list / get / create / update / del
 | `src/conversation/ui-message.ts` | Host → HTTP → Renderer 共用的 Conversation timeline message 判别联合 |
 | `src/conversation/message-metadata.ts` | user/thought/answer metadata、answer seal 状态联合与插件 message extension |
 | `src/conversation/external-sender.ts` | 经外部入口送达的消息的发件人：Host 确认的入口加调用方自报的名称（最多 40 字符、单行、无控制或格式字符）。只用于显示，不是权限依据 |
-| `src/conversation-attention.ts` | 外部入口发起的运行停下来等用户时，Desktop Main 交给 Renderer 的提醒事件与 IPC channel：等的是批准命令还是回答、对话与项目、对话标题、发件人。只用于提示和打开对话，不携带审批内容。 |
+| `src/conversation-attention.ts` | 子路径 `@app/schemas/conversation-attention`（不进包根，理由同 `scheduled-tasks`）：外部入口发起的运行停下来等用户时，Desktop Main 交给 Renderer 的提醒事件与 IPC channel：等的是批准命令还是回答、对话与项目、对话标题、发件人。只用于提示和打开对话，不携带审批内容。 |
 | `src/conversation/attachment-ref.ts` | 会话图片附件引用、单项与整批准入预算；独立 runtime 使用公开窄入口 |
 | `src/conversation/tool-message.ts` | Conversation 工具消息 lifecycle、payload 与 Renderer metadata 合同 |
 | `src/conversation/presentation.ts` | durable message presentation 与请求 UI spec |

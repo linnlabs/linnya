@@ -1,8 +1,5 @@
-import type {
-  ConversationActivityList,
-  ConversationAttentionNotification,
-  ConversationExternalSender,
-} from '@app/schemas';
+import type { ConversationActivityList, ConversationExternalSender } from '@app/schemas';
+import type { ConversationAttentionNotification } from '@app/schemas/conversation-attention';
 
 /** 一段等待：同一次运行每停下来等用户一次算一段，等的事情变了（批准 ↔ 回答）另算一段。 */
 export interface WaitingEpisode {

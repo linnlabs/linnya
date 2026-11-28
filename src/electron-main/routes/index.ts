@@ -226,7 +226,7 @@ import {
   createProjectDeletionUseCase,
   type ProjectDeletionUseCasePort,
 } from 'src/app-hosts/linnya/application/project-deletion';
-import type { ConversationAttentionNotification } from '@app/schemas';
+import type { ConversationAttentionNotification } from '@app/schemas/conversation-attention';
 import type { ScheduledTaskNotification } from '@app/schemas/scheduled-tasks';
 import { createScheduledTasks, type ScheduledTasks, type ScheduledTaskSchedulerLifecycle } from 'src/app-hosts/linnya/application/scheduled-tasks';
 import { createSqliteScheduledTasks } from 'src/app-hosts/linnya/adapters/persistence/scheduled-tasks/sqliteScheduledTasks';

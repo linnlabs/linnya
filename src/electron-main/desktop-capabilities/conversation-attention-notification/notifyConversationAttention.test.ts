@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest';
-import type { ConversationAttentionNotification } from '@app/schemas';
+import type { ConversationAttentionNotification } from '@app/schemas/conversation-attention';
 import { clearRendererReadyEventForTesting, publishRendererReady } from '../../events/rendererReadyEvent';
 import { createConversationAttentionDesktopNotifications } from './notifyConversationAttention';
 

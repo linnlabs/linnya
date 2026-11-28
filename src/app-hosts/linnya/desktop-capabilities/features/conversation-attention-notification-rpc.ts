@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ConversationAttentionNotificationSchema, type ConversationAttentionNotification } from '@app/schemas';
+import { ConversationAttentionNotificationSchema, type ConversationAttentionNotification } from '@app/schemas/conversation-attention';
 import type { AppServerRpcHandlerRegistry, AppServerRpcPeer } from '../../app-server-rpc';
 
 const NOTIFY_METHOD = 'desktop.conversation_attention.notify';

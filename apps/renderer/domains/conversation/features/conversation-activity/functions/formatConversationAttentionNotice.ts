@@ -1,4 +1,4 @@
-import type { ConversationAttentionNotification } from '@app/schemas';
+import type { ConversationAttentionNotification } from '@app/schemas/conversation-attention';
 import type { ConversationMessageResolver } from '../../../definitions/conversationMessages';
 
 /**

@@ -12,7 +12,7 @@ import type {
   DesktopHiddenWorkerHostPort,
   DesktopRasterPdfDocumentPort,
 } from '../../desktop-capabilities';
-import type { ConversationAttentionNotification } from '@app/schemas';
+import type { ConversationAttentionNotification } from '@app/schemas/conversation-attention';
 import type { ScheduledTaskNotification } from '@app/schemas/scheduled-tasks';
 import type { BackendBootstrapFacts } from './backendBootstrapFacts';
 import type { WebPageRenderer } from '../../../../tools/web/webread/definitions/webPageRenderer';

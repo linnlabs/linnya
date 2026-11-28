@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { RunIdSchema, type AgentSpec } from '@linnlabs/linnkit/contracts';
 import { execution, graph, runSupervisor } from '@linnlabs/linnkit/runtime-kernel';
-import type { ConversationAttentionNotification, ConversationExternalSender } from '@app/schemas';
+import type { ConversationExternalSender } from '@app/schemas';
+import type { ConversationAttentionNotification } from '@app/schemas/conversation-attention';
 import { parseCommandApprovalRequest } from '@app/schemas/commands';
 import { DatabaseService } from 'src/electron-main/services/database';
 import { createCommandApprovalHost } from '../../../adapters/commands/approval-host';

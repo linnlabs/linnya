@@ -1,4 +1,4 @@
-import { CONVERSATION_ATTENTION_NOTIFY_CHANNEL, type ConversationAttentionNotification } from '@app/schemas';
+import { CONVERSATION_ATTENTION_NOTIFY_CHANNEL, type ConversationAttentionNotification } from '@app/schemas/conversation-attention';
 import { createDesktopNoticeDelivery } from '../desktop-notice/createDesktopNoticeDelivery';
 import { describeConversationAttentionNotice } from './functions/describeConversationAttentionNotice';
 
