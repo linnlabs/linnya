@@ -151,7 +151,7 @@ Runner 被手动关闭不会杀掉 App 所拥有的 run；可用报告/终端中
 run、工具调用和请求身份；通过
 `linnya approvals <conversation-id> --run <root-run-id>` 核查命令，再用
 `approval-reply --run <pending-agent-run-id> --request <id> --choice <choice>`
-显式回复。不要调用
+显式回复。命令行默认只能拒绝；要在命令行批准，被测实例须由用户放开（Desktop 设置里的“允许命令行代为批准命令”，或源码 Runtime 的 `--allow-external-approval`），否则回复返回 `approval_requires_user`，请到该实例的界面或终端里批准。不要调用
 `respond --approve`、重新执行 case 或把等待时间当成命令执行时间。手工继续观察原 run 时独立记录干预、原预算与最终结算。研究 workflow 的同目录重启则自动复查原身份，见其 owner。
 
 `requires_recovery` 不是成功、失败或取消终态，也不是 `requires_user`

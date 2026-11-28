@@ -31,8 +31,10 @@ export async function applyCommandPermissionSettingsChange(
 
   if (change.kind === 'permission_level') {
     store.editPermissionLevel(change.value);
-  } else {
+  } else if (change.kind === 'internal_data_access') {
     store.editInternalDataAccess(change.value);
+  } else {
+    store.editExternalCommandApproval(change.value);
   }
 
   const backend = store.projection;
@@ -62,6 +64,7 @@ export async function applyCommandPermissionSettingsChange(
       expected_revision: backend.revision,
       permission_level: draft.permissionLevel,
       internal_data_access: draft.internalDataAccess,
+      external_command_approval: draft.externalCommandApproval,
     }));
     if (result.success) {
       store.saveSucceeded(projectCommandPermissionSettings(result.settings));

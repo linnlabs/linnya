@@ -214,13 +214,28 @@ export const CommandApprovalRequestV1Schema = z.union([
 });
 export type CommandApprovalRequestV1 = z.infer<typeof CommandApprovalRequestV1Schema>;
 
+export const COMMAND_APPROVAL_DENY_REASON_MAX_LENGTH = 500;
+
 /** renderer 只能选择 host 已提供的动作，不能把命令、cwd 或权限传回来。 */
 export const CommandApprovalReplyV1Schema = z.object({
   protocol_version: z.literal(COMMAND_RUNTIME_PROTOCOL_VERSION),
   kind: z.literal('command_approval_reply'),
   approval_request_id: CommandApprovalRequestIdSchema,
   choice: CommandApprovalChoiceSchema,
-}).strict();
+  /**
+   * 拒绝时可附的一句说明，只进入被拒命令交还给 Agent 的结果，让它知道该换什么做法。
+   * 它不是授权事实：不进结算、不进审计，也不能随“允许”提交。
+   */
+  deny_reason: z.string().trim().min(1).max(COMMAND_APPROVAL_DENY_REASON_MAX_LENGTH).optional(),
+}).strict().superRefine((reply, context) => {
+  if (reply.deny_reason !== undefined && reply.choice !== 'deny') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['deny_reason'],
+      message: 'a deny reason can only accompany a denial',
+    });
+  }
+});
 export type CommandApprovalReplyV1 = z.infer<typeof CommandApprovalReplyV1Schema>;
 
 const CommandApprovalSettlementBaseSchema = z.object({

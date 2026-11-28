@@ -80,8 +80,11 @@ owner。这里没有 daemon、系统服务、开机启动或关闭 Linnya 后继
 
 交互式 TTY 会在 stderr 呈现 shell command
 approval，并只接受 Host 声明的选择；stdout 仍只保留机器可读 JSON。stdin/stderr 不是 TTY 时不创建终端 presenter，也不会自动批准。普通控制 CLI 可通过下述
-`approvals / approval-reply` 访问同一个 Host 审批 owner；普通 HITL 继续使用
+`approvals / approval-reply` 访问同一个 Host 审批 owner，但默认只能查看和拒绝（见下文“谁能批准”）；普通 HITL 继续使用
 `respond`，它与 Shell 审批是两条不同合同。
+
+评测与自动化需要由脚本代批时，启动 Runtime 时加 `--allow-external-approval`。它只对这一次启动生效，
+只在源码 Runtime 上存在，不写入任何设置。
 
 Electron 的 `runAsNode` fuse 已关闭，不能把 Electron 可执行文件当作 CLI 的 Node 替代品；
 源码与安装版都用项目固定的 Node 运行 CLI。
@@ -212,12 +215,27 @@ pnpm linnya:cli approvals <conversation-id> --run <root-or-child-run-id>
 pnpm linnya:cli approval-reply <conversation-id> \
   --run <pending-agent-run-id> \
   --request <approval-request-id> \
-  --choice allow_once
+  --choice deny --reason "keep that folder; write to scratch/ instead"
 ```
 
 `approvals` 只读查询指定 run 及其子树；`approval-reply`
 必须绑定请求的实际 run，选择 `allow_once`、`deny`，或请求明确提供的
 `allow_for_conversation`。不提供默认选择，也没有“全部批准”。记忆放行的 token 前缀由 owner 展示和校验，CLI 不能提交新的命令、路径或权限。
+
+#### 谁能批准
+
+默认只有用户本人能批准命令：在 Desktop 的审批卡上，或在运行 `linnya runtime start` 的那个终端里。
+外部调用方（包括驱动 Linnya 的外部 Agent）默认只能查看和拒绝。
+
+- `approvals` 照实列出每个请求和它的可选项，另带 `external_approval`。`permitted: false` 时附一段 `message`：
+  为什么不能代批、该请用户做什么。外部 Agent 应把它转告用户，然后等用户处理，不要反复提交。
+- 这时提交 `allow_once` 或 `allow_for_conversation` 返回 `approval_requires_user`（退出码 9），`message` 与上面相同。
+  请求不会被结算，仍然等用户决定；`status --watch` 照常能观察到它被处理。
+- `deny` 始终可以提交。`--reason`（最多 500 字符）会写进被拒命令交还给 Agent 的结果里，让它知道该换什么做法；
+  理由只能跟 `deny` 一起给，不进入审计记录。
+- 放开代批有两处，都由人决定：Desktop 的“设置 › 命令权限 › 允许命令行代为批准命令”（默认关，改动立即生效），
+  或源码 Runtime 的 `--allow-external-approval`。控制命令里没有任何一条能改它们。
+- 这是防误操作的默认值，不是安全边界：同一系统用户下的进程能改设置文件，改动在下次启动 App 时生效。
 
 `awaiting_reply` 会让 `status --watch` 返回控制权；`processing`
 表示已有客户端作答，继续观察。回复回执 `accepted`
@@ -235,7 +253,7 @@ Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确�
 
 | 命令                               | 作用                                                              | 主要选项                                                                                               |
 | ---------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `runtime start`                    | 不启动 Electron，前台监督当前 Workspace 的唯一 App Server Backend | `--workspace`、`--api-port`、`--qdrant-port`                                                           |
+| `runtime start`                    | 不启动 Electron，前台监督当前 Workspace 的唯一 App Server Backend | `--workspace`、`--api-port`、`--qdrant-port`、`--allow-external-approval`                              |
 | `send <message>`                   | 新建会话并发送消息；或向空闲的已有会话发送下一条消息              | `--project`（必填）、`--conversation`、`--agent`、`--model`、`--image-model`、`--reasoning`            |
 | `models`                           | 查询可用于 `--model` 与 `--image-model` 的本地模型配置            | 无                                                                                                     |
 | `projects [list]`                  | 查询当前 Workspace 的项目 ID 与名称 | 无 |
@@ -248,7 +266,7 @@ Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确�
 | `messages <conversation-id>`       | 按会话查询 durable 消息窗口                                       | `--limit`、`--before`、`--after`                                                                       |
 | `status <conversation-id>`         | 查询当前或指定 root run 的状态                                    | `--run`、`--watch`、`--interval`、`--timeout`                                                          |
 | `approvals <conversation-id>`      | 查询指定 run 及子树的 Shell 待处理请求                            | 必填 `--run`                                                                                           |
-| `approval-reply <conversation-id>` | 精确回复 Shell 请求                                               | 必填 `--run`（请求实际 run）、`--request`、`--choice`                                                  |
+| `approval-reply <conversation-id>` | 精确回复 Shell 请求；默认只能拒绝                                 | 必填 `--run`（请求实际 run）、`--request`、`--choice`；拒绝时可加 `--reason`                           |
 | `resume <conversation-id>`         | 精确恢复一个已收口 `paused` 原 run                                | 必填 `--run`；可选 `--timeout`（毫秒，默认 60000）                                                     |
 | `respond <conversation-id>`        | 回应当前 `awaiting_user` 交互并继续同一 run                       | `--interaction`，以及一个 response 选项                                                                |
 | `stop <conversation-id>`           | 终止 foreground root run，并等待真实终态结算                      | `--run`、`--reason`、`--timeout`（毫秒，默认 60000）                                                   |
@@ -402,7 +420,7 @@ CLI 的 `web_search` 只允许普通搜索，`deep_search=true` 明确拒绝，�
 保存带引用的 Markdown 同样沿用该会话；只能引用工具实际返回的 `[@ref]`，不能自造来源编号。
 这里只记录 Linnya 工具执行与产物，不会自动导入外部 Agent 的推理、模型 token 或评审记录。
 
-工具命令自 wire protocol 5 起统一为 `tools`，当前控制协议为 8（项目管理形态沿用 protocol 7）。
+工具命令自 wire protocol 5 起统一为 `tools`，当前控制协议为 9（项目管理形态沿用 protocol 7；协议 9 改的是命令审批）。
 CLI 与 Host 都要升级并重启 Host；旧协议会明确拒绝，不做双协议猜测。
 
 外部 Agent 的 Skill 安装由该产品管理。可将内置 `deep-research` 及其 `references/` 原样复制到
@@ -541,6 +559,7 @@ contract，也不借此调整全局工具权限。
 | `6` | 目标或状态冲突，例如项目重名、不存在、busy、run/interaction 不匹配 |
 | `7` | 当前 App 版本未提供请求的能力                   |
 | `8` | Host 或 CLI 内部错误                            |
+| `9` | 这一步只有用户本人能做（目前是批准命令）；转告用户，不要重试 |
 
 Benchmark 应把 CLI 当作子进程，解析 stdout 的 JSON/JSONL，并用退出码分类失败；不要复制 CLI 的连接协议，也不要直接访问数据库。
 
@@ -635,7 +654,7 @@ diagnostics 与 build failure 判断，并在修复后重新写入。
 `project_name_conflict`，不存在返回 `project_not_found`，两者退出码均为 6；非法参数退出码为 2。
 项目写入失败或响应丢失不会自动重试：先用 `projects list/get` 检查实际状态，再决定下一次操作。
 
-当前 wire protocol 为 8；项目合同自 7 起请求和响应都必须带 `action`，裸命令只在 CLI 参数层转为 `list`。
+当前 wire protocol 为 9；项目合同自 7 起请求和响应都必须带 `action`，裸命令只在 CLI 参数层转为 `list`。
 协议 7 新增确认后的空项目删除与对应错误；协议 6 的项目读写形态保持不变。
 CLI 与 Host 必须同步升级，已有 Host 需要重启；不接受旧的无 action 请求，也不回退双协议。
 真实链路测试位于 `src/app-hosts/linnya/adapters/conversation-control-bridge/__tests__/projectCliProcess.integration.test.ts`；

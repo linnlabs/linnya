@@ -30,6 +30,8 @@ export type CommandProposalAuthorization = (
   | {
       readonly status: 'rejected';
       readonly code: 'approval_denied' | 'permission_unavailable';
+      /** 拒绝方附的一句说明；只用于告诉发起命令的 Agent，不是授权或审计事实。 */
+      readonly denyReason?: string;
     }
 ) & {
   readonly approval?: CommandAuthorizationApprovalFact;

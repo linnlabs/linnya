@@ -107,5 +107,6 @@ async function createRuntimeFixture(
     textMeasurement: { useBrowserPretext: false, useHarfBuzz: false, availability: { available: false, reason: 'test' } },
     processEnvironment: {},
     commandApprovalPresenter: { available: false },
+    externalCommandApproval: { allowed: false },
   };
 }

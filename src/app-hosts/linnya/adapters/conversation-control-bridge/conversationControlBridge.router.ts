@@ -40,6 +40,8 @@ function errorStatus(code: ConversationControlErrorCode): number {
   switch (code) {
     case 'invalid_request': return 400;
     case 'unauthorized': return 401;
+    // 连接本身是合法的，只是这一步只有用户本人能做。
+    case 'approval_requires_user': return 403;
     case 'run_not_found':
     case 'project_not_found': return 404;
     case 'app_not_running':

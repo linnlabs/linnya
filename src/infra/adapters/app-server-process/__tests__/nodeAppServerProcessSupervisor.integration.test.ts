@@ -362,7 +362,7 @@ function collectTestEnvironment(): Readonly<Record<string, string>> {
 
 function createBootstrap(): AppServerBootstrap {
   return {
-    schema_version: 6,
+    schema_version: 7,
     host_kind: 'desktop',
     host_process: { pid: process.pid },
     backend_configuration: {
@@ -397,6 +397,7 @@ function createBootstrap(): AppServerBootstrap {
     },
     host_capabilities: {
       command_approval_presenter: { available: false },
+      external_command_approval: { allowed: false },
     },
     text_measurement: {
       use_browser_pretext: true,

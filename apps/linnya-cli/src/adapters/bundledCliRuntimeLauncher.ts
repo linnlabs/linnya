@@ -28,6 +28,7 @@ interface CliRuntimeHostModule {
       ): Promise<CommandApprovalChoice>;
       close(): void;
     };
+    readonly allowExternalCommandApproval?: boolean;
     readonly onReady: Parameters<LinnyaCliRuntimeLauncherPort['run']>[0]['onReady'];
   }): Promise<void>;
 }
@@ -61,6 +62,7 @@ export function createBundledCliRuntimeLauncher(
           processEnvironment: environment,
           stderrSink: process.stderr,
           ...(commandApprovalPrompt ? { commandApprovalPrompt } : {}),
+          ...(input.allowExternalCommandApproval ? { allowExternalCommandApproval: true } : {}),
           onReady: input.onReady,
         });
       } catch (error: unknown) {

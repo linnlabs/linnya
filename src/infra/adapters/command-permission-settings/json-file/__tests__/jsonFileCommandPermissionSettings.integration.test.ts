@@ -43,6 +43,7 @@ describe('json file command permission settings adapter', () => {
         expected_revision: 0,
         permission_level: 'full_access',
         internal_data_access: 'denied',
+        external_command_approval: 'user_only',
       },
     });
     const restored = readCommandPermissionSettings(
@@ -85,6 +86,7 @@ describe('json file command permission settings adapter', () => {
         expected_revision: 0,
         permission_level: 'read_only',
         internal_data_access: 'allowed',
+        external_command_approval: 'user_only',
       },
     })).toThrow(expect.objectContaining({ code: 'write_failed' }));
     expect(await fsp.readFile(blockingParent, 'utf8')).toBe('file');

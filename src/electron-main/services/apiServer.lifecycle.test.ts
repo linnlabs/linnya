@@ -34,6 +34,7 @@ function createRouteDependencies(): RouteDependencies {
   return {
     projectDeletionRegistration: { register: vi.fn() },
     commandApprovalControl: createCommandApprovalHost(),
+    externalCommandApproval: { read: () => ({ permitted: false, host: 'desktop' }) },
     documentOcr: {
       resolveModelProfile: async () => undefined,
       recognizeDocument: async () => ({ pages: [] }),

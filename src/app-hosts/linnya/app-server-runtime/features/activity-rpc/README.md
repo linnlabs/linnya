@@ -1,6 +1,6 @@
 # App Server Activity RPC
 
-Electron Main 通过本 feature 询问 App Server 当前有哪些工作会被退出或安装更新打断，并在重启前暂停可恢复的 Agent 任务。Main 只拿到展示与决策所需的事实，不取得 Commands owner、RunSupervisor、数据库或 run 身份。
+Electron Main 通过本 feature 询问 App Server 当前有哪些工作会被退出或安装更新打断，并在重启前暂停可恢复的 Agent 任务。无头 CLI 已就绪后收到退出信号，也使用同一暂停端口。Main 只拿到展示与决策所需的事实，不取得 Commands owner、RunSupervisor、数据库或 run 身份。
 
 | 方法 | 请求 | 响应 |
 | --- | --- | --- |

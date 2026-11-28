@@ -2,6 +2,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { CONVERSATION_CONTROL_PROTOCOL_VERSION } from '@app/schemas';
 import type {
   ConversationControlClient,
   ConversationControlConnectionPort,
@@ -28,7 +29,7 @@ function createIo() {
 function createClient(execute: ConversationControlClient['execute']): ConversationControlClient {
   return {
     descriptor: {
-      protocol_version: 8,
+      protocol_version: CONVERSATION_CONTROL_PROTOCOL_VERSION,
       app_instance_id: 'app-1',
       pid: 42,
       host: '127.0.0.1',
@@ -39,7 +40,7 @@ function createClient(execute: ConversationControlClient['execute']): Conversati
     },
     handshake: {
       schema_version: 1,
-      protocol_version: 8,
+      protocol_version: CONVERSATION_CONTROL_PROTOCOL_VERSION,
       app_instance_id: 'app-1',
       app_version: '0.0.38',
       instance: { kind: 'source', source_root: '/example/linnya', branch: 'main', audit_level: 'off' },

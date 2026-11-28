@@ -44,6 +44,7 @@ import type {
   ShellToolRuntimeResult,
 } from '../definitions';
 import {
+  describeCommandApprovalDenial,
   freezeShellLaunchRuntimeContext,
   projectCommandOutputStore,
   projectCommandExecutionPresentationFacts,
@@ -384,7 +385,7 @@ export function createShellToolRuntime(
       return rejectedShell(
         authorization.code,
         authorization.code === 'approval_denied'
-          ? 'The command was not approved.'
+          ? describeCommandApprovalDenial(authorization.denyReason)
           : 'Command authorization is unavailable.',
       );
     }

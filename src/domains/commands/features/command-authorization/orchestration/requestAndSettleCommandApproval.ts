@@ -112,7 +112,11 @@ export async function requestAndSettleCommandApproval(input: {
           outcome: 'rejected',
           reason: 'user_rejected',
         });
-        result = { status: 'rejected', code: 'approval_denied' };
+        result = {
+          status: 'rejected',
+          code: 'approval_denied',
+          ...(parsedReply.data.deny_reason === undefined ? {} : { denyReason: parsedReply.data.deny_reason }),
+        };
       } else {
         let persistedApproval: Extract<
           CommandProposalAuthorization,

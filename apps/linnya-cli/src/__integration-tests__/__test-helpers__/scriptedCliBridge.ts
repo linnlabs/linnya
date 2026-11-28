@@ -61,7 +61,7 @@ export async function createScriptedBridge(
         await readJsonRequest(request);
         sendJson(response, 200, {
           schema_version: 1,
-          protocol_version: 8,
+          protocol_version: 9,
           app_instance_id: 'app-process-test',
           app_version: '0.0.38',
           instance,
@@ -80,7 +80,8 @@ export async function createScriptedBridge(
         const command = ConversationControlCommandRequestSchema.parse(await readJsonRequest(request));
         receivedCommands.push(command);
         const result = await execute(command, response);
-        if (!response.destroyed) sendJson(response, 200, result);
+        // 夹具已自行应答（断开连接，或模拟 App 的结构化错误）时不再补发成功响应。
+        if (!response.destroyed && !response.headersSent) sendJson(response, 200, result);
         return;
       }
       sendJson(response, 404, { error: 'not_found' });
@@ -102,7 +103,7 @@ export async function createScriptedBridge(
   temporaryRoots.push(temporaryRoot);
   const connectionFile = path.join(temporaryRoot, 'connection.json');
   const descriptor = ConversationControlConnectionDescriptorSchema.parse({
-    protocol_version: 8,
+    protocol_version: 9,
     app_instance_id: 'app-process-test',
     pid: process.pid,
     host: '127.0.0.1',

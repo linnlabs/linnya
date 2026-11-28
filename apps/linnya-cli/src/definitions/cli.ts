@@ -27,6 +27,8 @@ export const LINNYA_CLI_EXIT = {
   conflict: 6,
   unavailable: 7,
   internal: 8,
+  /** 这一步只有用户本人能做（例如批准命令）；应转告用户，而不是重试。 */
+  needsUser: 9,
 } as const;
 
 export type ConversationControlSuccessResponse = Extract<
@@ -52,6 +54,8 @@ export interface LinnyaCliRuntimeLauncherPort {
     readonly workspaceDirectory?: string;
     readonly apiPort: number;
     readonly qdrantPort: number;
+    /** 放行外部命令行代批命令；只对这一次启动的运行时生效。 */
+    readonly allowExternalCommandApproval: boolean;
     readonly onReady: (identity: LinnyaCliRuntimeIdentity) => void;
   }): Promise<void>;
 }
@@ -80,6 +84,7 @@ export type LinnyaCliInvocation =
       readonly workspaceDirectory?: string;
       readonly apiPort: number;
       readonly qdrantPort: number;
+      readonly allowExternalCommandApproval: boolean;
       readonly pretty: boolean;
     }
   | {

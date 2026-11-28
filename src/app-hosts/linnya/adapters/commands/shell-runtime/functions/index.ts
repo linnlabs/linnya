@@ -1,3 +1,4 @@
+export * from './describeCommandApprovalDenial';
 export * from './freezeShellLaunchRuntimeContext';
 export * from './projectProcessToolRejectionCode';
 export * from './projectShellToolRuntimeResult';

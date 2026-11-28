@@ -74,6 +74,15 @@ export function decideCommandApproval(approval) {
 }
 
 /**
+ * 目标实例只允许用户本人批准命令时，驱动的自动放行做不了。认出这种拒绝并返回给评测人的处理办法；
+ * 其他失败返回 undefined，照常抛出。按错误码识别，不依赖说明文字。
+ */
+export function externalApprovalRefusal(errorText) {
+  if (!/"code"\s*:\s*"approval_requires_user"/u.test(String(errorText))) return undefined;
+  return '目标实例只允许用户本人批准命令。在该实例的“设置 › 命令权限”里打开“允许命令行代为批准命令”后重跑；只在隔离的探针实例里打开，不要在日常实例里开';
+}
+
+/**
  * 审计级别是实例的运行默认值：apply 记下原级别再改，restore 改回（只改回一次）；run 保证异常时也改回。
  * 中断信号由调用方在退出前调用 restore。
  */

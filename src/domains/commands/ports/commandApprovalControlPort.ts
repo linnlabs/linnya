@@ -12,6 +12,8 @@ export interface CommandApprovalControlPort {
     readonly runId: string;
     readonly approvalRequestId: CommandApprovalRequestId;
     readonly choice: CommandApprovalChoice;
+    /** 只随 deny 提交的一句说明。 */
+    readonly denyReason?: string;
   }): { readonly status: 'accepted' | 'stale' | 'unavailable' };
 }
 

@@ -33,6 +33,16 @@
         />
       </SettingsSection>
 
+      <SettingsSection :title="settingsMessage('settings.commandPermission.externalApproval.title')">
+        <SettingsSwitchRow
+          :model-value="store.draft?.externalCommandApproval === 'allowed'"
+          :label="settingsMessage('settings.commandPermission.externalApproval.label')"
+          :description="settingsMessage('settings.commandPermission.externalApproval.description')"
+          :disabled="isBusy"
+          @update:model-value="setExternalCommandApproval"
+        />
+      </SettingsSection>
+
       <AlertDialog
         v-if="reductionPreview"
         visible
@@ -112,8 +122,14 @@ const permissionLevelOptions = computed<readonly SettingsChoiceOption[]>(() => (
     tone: level === 'full_access' ? 'danger' : 'default',
   }))
 ));
+// 档位和内部数据从下一次运行生效，命令行代批立即生效；保存成功的提示要说对是哪一种。
+const lastChangeAppliesImmediately = ref(false);
 const saveStatusMessage = computed<SettingsMessageKey | undefined>(() => {
-  if (store.saveState === 'saved') return 'settings.commandPermission.status.saved';
+  if (store.saveState === 'saved') {
+    return lastChangeAppliesImmediately.value
+      ? 'settings.commandPermission.externalApproval.saved'
+      : 'settings.commandPermission.status.saved';
+  }
   if (store.saveState !== 'failed') return undefined;
   if (store.saveFailure === 'revision_conflict') {
     return 'settings.commandPermission.status.revisionConflict';
@@ -142,10 +158,21 @@ function confirmInternalDataExpansion(): Promise<boolean> {
   });
 }
 
+function confirmExternalApprovalExpansion(): Promise<boolean> {
+  return confirm({
+    title: settingsMessage('settings.commandPermission.confirmExpansion.externalApproval.title'),
+    message: settingsMessage('settings.commandPermission.confirmExpansion.externalApproval.message'),
+    confirmText: settingsMessage('settings.commandPermission.confirmExpansion.confirm'),
+    cancelText: settingsMessage('settings.commandPermission.confirmExpansion.cancel'),
+    isDangerousAction: true,
+  });
+}
+
 async function selectPermissionLevel(value: string): Promise<void> {
   const parsed = CommandPermissionLevelSchema.safeParse(value);
   const current = store.projection;
   if (!parsed.success || !current || isBusy.value) return;
+  lastChangeAppliesImmediately.value = false;
   const level = parsed.data;
   if (compareCommandPermissionLevels(level, current.permissionLevel) < 0) {
     await prepareReduction(level);
@@ -158,10 +185,19 @@ async function selectPermissionLevel(value: string): Promise<void> {
 }
 
 async function setInternalDataAccess(allowed: boolean): Promise<void> {
+  lastChangeAppliesImmediately.value = false;
   await applyCommandPermissionSettingsChange({
     kind: 'internal_data_access',
     value: allowed ? 'allowed' : 'denied',
   }, { confirmExpansion: confirmInternalDataExpansion });
+}
+
+async function setExternalCommandApproval(allowed: boolean): Promise<void> {
+  lastChangeAppliesImmediately.value = true;
+  await applyCommandPermissionSettingsChange({
+    kind: 'external_command_approval',
+    value: allowed ? 'allowed' : 'user_only',
+  }, { confirmExpansion: confirmExternalApprovalExpansion });
 }
 
 onMounted(() => {

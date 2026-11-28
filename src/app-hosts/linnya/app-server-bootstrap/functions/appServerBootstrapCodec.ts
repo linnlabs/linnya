@@ -108,6 +108,7 @@ const AppServerBootstrapSchema = z.object({
   local_process_platform_runtime: z.unknown(),
   host_capabilities: z.object({
     command_approval_presenter: z.object({ available: z.boolean() }).strict(),
+    external_command_approval: z.object({ allowed: z.boolean() }).strict(),
   }).strict(),
   text_measurement: z.object({
     use_browser_pretext: z.boolean(),
@@ -147,6 +148,9 @@ export function parseAppServerBootstrap(value: unknown): AppServerBootstrap {
     host_capabilities: Object.freeze({
       command_approval_presenter: Object.freeze(
         parsed.host_capabilities.command_approval_presenter,
+      ),
+      external_command_approval: Object.freeze(
+        parsed.host_capabilities.external_command_approval,
       ),
     }),
     text_measurement: Object.freeze(parsed.text_measurement),

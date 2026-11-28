@@ -44,6 +44,7 @@ describe('Command Renderer RPC', () => {
       expected_revision: 0,
       permission_level: 'read_only',
       internal_data_access: 'denied',
+      external_command_approval: 'user_only',
     })).resolves.toMatchObject({
       success: true,
       settings: { revision: 1, permission_level: 'read_only' },

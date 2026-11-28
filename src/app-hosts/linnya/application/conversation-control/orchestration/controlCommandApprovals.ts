@@ -6,6 +6,10 @@ import {
 import type { CommandApprovalPendingProjectionV1 } from '@app/schemas/commands';
 import { ConversationControlError } from '../definitions/conversationControlError';
 import type { ConversationControlUseCasePorts, ConversationControlRunRecord } from '../definitions/conversationControlUseCase';
+import {
+  describeExternalCommandApproval,
+  refuseExternalApprovalReply,
+} from '../functions/externalCommandApproval';
 import { selectCommandApprovalRunScope } from '../functions/selectCommandApprovalRunScope';
 
 export function readCommandApprovals(
@@ -33,12 +37,27 @@ export async function controlCommandApprovals(
     conversation_id: request.conversation_id,
     run_id: request.run_id,
   };
-  if (request.action === 'list') return { ...common, action: 'list', pending };
+  // 每次现读：用户在设置里打开或关上之后，下一次查询和回复立刻按新值走。
+  const policy = ports.externalCommandApproval.read();
+  if (request.action === 'list') {
+    return {
+      ...common,
+      action: 'list',
+      pending,
+      external_approval: describeExternalCommandApproval(policy),
+    };
+  }
+  const refusal = refuseExternalApprovalReply(request.choice, policy);
+  if (refusal !== undefined) {
+    // 请求仍留在待处理里，等用户在桌面端或运行时终端里决定；这里不结算、也不当成拒绝。
+    throw new ConversationControlError('approval_requires_user', refusal);
+  }
   const result = ports.commandApprovals.submitControlReply({
     conversationId: request.conversation_id,
     runId: request.run_id,
     approvalRequestId: request.approval_request_id,
     choice: request.choice,
+    ...(request.deny_reason === undefined ? {} : { denyReason: request.deny_reason }),
   });
   if (result.status === 'unavailable') {
     throw new ConversationControlError('capability_unavailable', 'Command approval control is unavailable');

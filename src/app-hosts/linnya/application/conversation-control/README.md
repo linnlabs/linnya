@@ -62,7 +62,15 @@ use case 只依赖这些窄接口，不导入 Express、Electron route 或 SQLit
 
 `command_approvals`的list要求明确conversation/run，返回该run及后代的真实pending；reply要求请求实际`agent_run_id`、request ID和明确choice。审批owner同步校验作用域和允许选项，并与Renderer/TTY竞争唯一接纳点。`accepted`只确认回复被接纳，授权持久化与进程终态须继续观察原运行；不创建新Flow、user message或execution。
 
-`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。当前控制面使用 wire protocol 8，旧CLI必须升级，不用宽松解析吞掉新增字段。
+`status.run.command_approvals`为必填数组，来自同一owner并按root子树筛选；保留真实run生命周期，不能把等待命令审批伪装为已有HITL。无审批返回空数组，端点不可用明确报错；`processing`不是待回复。当前控制面使用 wire protocol 9，旧CLI必须升级，不用宽松解析吞掉新增字段。
+
+**只有人能批准（协议 9）。** 外部调用方默认只能查看和拒绝；“允许一次”“本对话内允许”只能由人在桌面端审批卡或无界面运行时自己的终端提示里给出。规则在 `functions/externalCommandApproval.ts`，本用例在把回复交给审批 owner 之前判断：
+
+- 能否代批来自 `externalCommandApproval` 端口，每次现读。两个来源任一放开即可：命令权限设置里的 `external_command_approval`（用户在桌面端改，立即生效），或宿主启动帧里的 `host_capabilities.external_command_approval`（只有源码版 `runtime start --allow-external-approval` 为真）。控制入口没有改这两项的命令。
+- 不能代批时，`list` 仍照实返回待处理请求与其可选项，另加 `external_approval: { permitted: false, message }`；提交“允许”抛 `approval_requires_user`，`message` 相同。说明是写给外部 Agent 转告用户的：为什么不能、请用户去哪里批或怎么放开，桌面端与无界面运行时各有一版。
+- 被拒的“允许”不结算请求，它仍在待处理里等人；不能把这次拒绝当成用户拒绝。
+- `deny` 永远接受，可带 `deny_reason`（最多 500 字符）。理由随回复进入被拒命令交还给 Agent 的结果，不进结算与审计。
+- 这是防误操作的默认值，不是同一系统用户下的安全边界：设置文件可被同用户进程改写，下次启动生效。
 
 ## 并发与已知边界
 

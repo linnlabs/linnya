@@ -29,6 +29,7 @@ export function updateCommandPermissionSettings(input: {
     revision: current.revision + 1,
     permission_level: update.permission_level,
     internal_data_access: update.internal_data_access,
+    external_command_approval: update.external_command_approval,
   });
   const written = input.port.write(serializeCommandPermissionSettings(next));
   if (written.status === 'failed') {

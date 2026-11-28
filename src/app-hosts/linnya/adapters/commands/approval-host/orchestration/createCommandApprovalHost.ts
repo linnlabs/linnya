@@ -97,6 +97,7 @@ export function createCommandApprovalHost(input: {
   const submitReply = (
     approvalRequestId: CommandApprovalRequestId,
     choice: CommandApprovalChoice,
+    denyReason?: string,
   ): 'accepted' | 'stale' => {
     const entry = pending.get(approvalRequestId);
     if (
@@ -117,6 +118,7 @@ export function createCommandApprovalHost(input: {
           kind: 'command_approval_reply',
           approval_request_id: approvalRequestId,
           choice,
+          ...(denyReason === undefined ? {} : { deny_reason: denyReason }),
         }),
       });
     };
@@ -223,14 +225,14 @@ export function createCommandApprovalHost(input: {
       return projectPending().filter(value => value.conversation_id === conversationId);
     },
 
-    submitControlReply({ conversationId, runId, approvalRequestId, choice }) {
+    submitControlReply({ conversationId, runId, approvalRequestId, choice, denyReason }) {
       if (!ownerActive || !controlEndpointActive) return { status: 'unavailable' };
       const identity = pending.get(approvalRequestId)?.request.proposal.identity;
       if (!identity || identity.conversation_id !== conversationId || identity.agent_run_id !== runId) {
         return { status: 'stale' };
       }
       // scope 校验和单次接纳同步完成，Renderer/TTY/CLI 都竞争同一个线性化点。
-      return { status: submitReply(approvalRequestId, choice) };
+      return { status: submitReply(approvalRequestId, choice, denyReason) };
     },
 
     endOwner() {

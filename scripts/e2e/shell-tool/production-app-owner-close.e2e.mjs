@@ -6,6 +6,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 
+import { desktopEsbuildTargets } from '../../build/definitions/desktopEsbuildTargets.mjs';
 import { createIsolatedRunRoot } from './harness/isolatedRunRoot.mjs';
 import {
   assertMacosProductionAgentProcessTreeExited,
@@ -123,21 +124,15 @@ async function buildFixtureProject(projectRoot) {
     '--platform=node',
     '--format=cjs',
     '--target=node20',
-    '--external:electron',
   ];
   await runChecked('pnpm', [
     'exec',
     'esbuild',
     path.join(fixtureDirectory, 'main.ts'),
     ...sharedBuildArgs,
-    '--external:better-sqlite3',
+    ...desktopEsbuildTargets.main.external.map(name => `--external:${name}`),
     '--external:node-pty',
-    '--external:sharp',
     '--external:tiktoken',
-    '--external:harfbuzzjs',
-    '--external:yoga-layout',
-    '--external:pdfjs-dist',
-    '--external:@node-rs/jieba',
     '--alias:@plugin/backend=./src/plugin-sdk/backend',
     `--outfile=${path.join(distMainRoot, 'main.cjs')}`,
   ]);
@@ -146,6 +141,7 @@ async function buildFixtureProject(projectRoot) {
     'esbuild',
     path.join(repositoryRoot, 'src/electron-main/preload/index.ts'),
     ...sharedBuildArgs,
+    ...desktopEsbuildTargets.preload.external.map(name => `--external:${name}`),
     `--outfile=${path.join(distMainRoot, 'preload.js')}`,
   ]);
   await writeFile(

@@ -43,6 +43,7 @@ import type {
   ConversationUiMessage,
 } from '@app/schemas';
 import type { CommandApprovalControlPort } from 'src/domains/commands';
+import type { ExternalCommandApprovalPort } from './externalCommandApproval';
 import type { ExecutionAuditExportUseCase } from '../../execution-audit-export';
 import type {
   ModelRuntimeAvailability,
@@ -243,6 +244,7 @@ export interface ConversationControlUseCasePorts {
   readonly conversationDirectories: ConversationControlConversationDirectoryPort;
   readonly audit: ExecutionAuditExportUseCase;
   readonly commandApprovals: CommandApprovalControlPort;
+  readonly externalCommandApproval: ExternalCommandApprovalPort;
   readonly auditControl: AuditControlPort;
   readonly createConversationId: () => string;
   readonly now: () => number;

@@ -636,6 +636,8 @@ export const ConversationControlErrorCodeSchema = z.enum([
   'run_not_found',
   'run_mismatch',
   'interaction_mismatch',
+  // 外部调用方提交了“允许”，但当前只有用户本人能批准命令。
+  'approval_requires_user',
   'result_unavailable',
   'unsupported_runtime_state',
   'transport_failure',

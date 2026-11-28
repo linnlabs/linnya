@@ -54,7 +54,15 @@ describe('parseCliInvocation', () => {
       kind: 'command', request: { command: 'command_approvals', action: 'reply',
         run_id: 'child-1', approval_request_id: requestId, choice: 'allow_once' },
     });
+    // 理由只随拒绝提交；跟着“允许”时在本地就报用法错误，不发请求。
+    expect(parseCliInvocation(['approval-reply', 'conversation-1', '--run', 'child-1',
+      '--request', requestId, '--choice', 'deny', '--reason', 'use scratch/ instead'])).toMatchObject({
+      request: { action: 'reply', choice: 'deny', deny_reason: 'use scratch/ instead' },
+    });
     for (const args of [
+      ['approval-reply', 'conversation-1', '--run', 'child-1', '--request', requestId,
+        '--choice', 'allow_once', '--reason', 'looks fine'],
+      ['approvals', 'conversation-1', '--run', 'root-1', '--reason', 'x'],
       ['approvals', 'conversation-1'],
       ['approval-reply', 'conversation-1', '--run', 'child-1', '--request', requestId],
       ['approval-reply', 'conversation-1', '--run', 'child-1', '--choice', 'allow_once'],
@@ -69,8 +77,11 @@ describe('parseCliInvocation', () => {
       workspaceDirectory: '/tmp/workspace',
       apiPort: 0,
       qdrantPort: 0,
+      allowExternalCommandApproval: false,
       pretty: false,
     });
+    expect(parseCliInvocation(['runtime', 'start', '--allow-external-approval']))
+      .toMatchObject({ allowExternalCommandApproval: true });
     expect(parseCliInvocation([
       'runtime', 'start', '--api-port', '43123', '--qdrant-port', '6433',
     ])).toMatchObject({ apiPort: 43123, qdrantPort: 6433 });

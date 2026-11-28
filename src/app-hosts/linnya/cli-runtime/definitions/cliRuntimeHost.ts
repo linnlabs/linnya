@@ -17,6 +17,11 @@ export interface CliRuntimeHostInput {
   readonly processEnvironment: NodeJS.ProcessEnv;
   readonly stderrSink: Writable;
   readonly commandApprovalPrompt?: CliRuntimeCommandApprovalPromptPort;
+  /**
+   * 启动者显式放行“外部命令行代批命令”（`runtime start --allow-external-approval`）。
+   * 评测与自动化用；缺省时批准只能在本运行时自己的终端提示里给出。
+   */
+  readonly allowExternalCommandApproval?: boolean;
   readonly onReady: (identity: AppServerProcessIdentity) => void;
 }
 
@@ -31,5 +36,6 @@ export interface CliRuntimeCommandApprovalPromptPort {
 export interface CliAppServerRuntime {
   start(): Promise<AppServerProcessIdentity>;
   waitForExit(): Promise<void>;
+  pauseForegroundRuns(): Promise<void>;
   shutdown(): Promise<void>;
 }

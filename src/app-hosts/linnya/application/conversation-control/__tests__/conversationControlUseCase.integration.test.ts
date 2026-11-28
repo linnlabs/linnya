@@ -20,19 +20,20 @@ import {
   type ConversationControlFlowAcceptance,
   type ConversationControlRunRecord,
   type ConversationControlUseCasePorts,
+  type ExternalCommandApprovalPolicy,
 } from '..';
 import type { ExecutionAuditExport } from '../../execution-audit-export';
 import { ReadFileTool } from 'src/tools/workspace/read_file/ReadFileTool';
 
-function shellApproval(runId = 'run-child') {
+function shellApproval(runId = 'run-child', serial = 1) {
   const identity = {
-    conversation_id: 'conversation-1', agent_run_id: runId, origin_tool_call_id: 'shell-1',
-    command_execution_id: 'command_execution_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d21',
+    conversation_id: 'conversation-1', agent_run_id: runId, origin_tool_call_id: `shell-${serial}`,
+    command_execution_id: `command_execution_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d2${serial}`,
     owner_generation_id: 'command_owner_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d21', created_at_ms: 100,
   };
   return parseCommandApprovalRequest({
     protocol_version: 1, kind: 'command_approval_request',
-    approval_request_id: 'command_approval_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d21',
+    approval_request_id: `command_approval_018f47a8-7f3c-4cc7-8b8c-aea6ce8f4d2${serial}`,
     proposal: {
       protocol_version: 1, kind: 'shell_command_proposal', identity, command: 'rm scratch.txt', cwd: '/tmp/example',
       permission: { protocol_version: 1, kind: 'command_permission_snapshot', identity,
@@ -44,12 +45,72 @@ function shellApproval(runId = 'run-child') {
 }
 
 describe('command approval control uses the original pending owner', () => {
+  it('默认只有用户能批：外部提交允许被明确拒绝且请求仍待处理，桌面端照常批准；外部拒绝可带理由；开关打开后立即生效', async () => {
+    const test = fixture([run('running')]);
+    const scope = { schema_version: 1 as const, command: 'command_approvals' as const,
+      conversation_id: 'conversation-1', run_id: 'run-1' };
+    const list = { ...scope, action: 'list' as const };
+    const first = shellApproval('run-1', 1);
+    const firstResponse = test.commandApprovals.request({ request: first });
+    const page = test.commandApprovals.openRendererPage(7);
+    if (!page) throw new Error('fixture renderer unavailable');
+
+    // 待审批照实列出（含“允许一次”），另外说明这位调用方不能代批、为什么、该请用户做什么。
+    const listed = await test.useCase.execute(list);
+    expect(listed).toMatchObject({
+      pending: [{ approval_request_id: first.approval_request_id, available_choices: ['allow_once', 'deny'] }],
+      external_approval: { permitted: false },
+    });
+    const explanation = 'external_approval' in listed && !listed.external_approval.permitted
+      ? listed.external_approval.message : '';
+    expect(explanation).toContain('the user has not turned on');
+    expect(explanation).toContain('approve this command in the Linnya desktop app');
+    expect(explanation).toContain('--choice deny');
+
+    for (const choice of ['allow_once', 'allow_for_conversation'] as const) {
+      await expect(test.useCase.execute({ ...scope, action: 'reply', approval_request_id: first.approval_request_id, choice }))
+        .rejects.toMatchObject({ code: 'approval_requires_user', message: explanation, retryable: false });
+    }
+    // 被拒的“允许”不结算、不占用请求：它仍在等人，桌面端的批准照常被接纳。
+    await expect(test.useCase.execute(list)).resolves.toMatchObject({ pending: [{ status: 'awaiting_reply' }] });
+    expect(test.commandApprovals.submitRendererReply({ ownerId: 7, submission: CommandApprovalReplySubmissionV1Schema.parse({
+      protocol_version: 1, kind: 'command_approval_reply_submission', page_ticket: page.page_ticket,
+      approval_request_id: first.approval_request_id, choice: 'allow_once',
+    }) })).toMatchObject({ status: 'accepted' });
+    await expect(firstResponse).resolves.toMatchObject({ status: 'replied', reply: { choice: 'allow_once' } });
+
+    // 外部拒绝照常接纳，理由随回复交给原命令。
+    const second = shellApproval('run-1', 2);
+    const secondResponse = test.commandApprovals.request({ request: second });
+    await expect(test.useCase.execute({ ...scope, action: 'reply', approval_request_id: second.approval_request_id,
+      choice: 'deny', deny_reason: 'do not delete; move it to scratch/' })).resolves.toMatchObject({ status: 'accepted' });
+    await expect(secondResponse).resolves.toMatchObject({
+      status: 'replied', reply: { choice: 'deny', deny_reason: 'do not delete; move it to scratch/' },
+    });
+
+    // 无界面运行时的说明指向它自己的终端和启动参数，而不是桌面端设置。
+    test.externalApproval.policy = { permitted: false, host: 'cli_runtime' };
+    await expect(test.useCase.execute(list)).resolves.toMatchObject({
+      external_approval: { permitted: false, message: expect.stringContaining('--allow-external-approval') },
+    });
+
+    // 用户打开开关后不需要重启：下一次查询与回复按新值走，行为回到放开时的样子。
+    test.externalApproval.policy = { permitted: true };
+    const third = shellApproval('run-1', 3);
+    const thirdResponse = test.commandApprovals.request({ request: third });
+    await expect(test.useCase.execute(list)).resolves.toMatchObject({ external_approval: { permitted: true } });
+    await expect(test.useCase.execute({ ...scope, action: 'reply', approval_request_id: third.approval_request_id,
+      choice: 'allow_once' })).resolves.toMatchObject({ status: 'accepted' });
+    await expect(thirdResponse).resolves.toMatchObject({ status: 'replied', reply: { choice: 'allow_once' } });
+    test.commandApprovals.endOwner();
+  });
+
   it('status 保留 running，root 列出子孙审批；CLI只接纳实际run，Renderer竞争不重复结算', async () => {
     const test = fixture([
       run('running'),
       run('running', { runId: 'run-child', parentRunId: 'run-1' }),
       run('running', { runId: 'run-other', parentRunId: 'another-root' }),
-    ]);
+    ], { externalApproval: { permitted: true } });
     const request = shellApproval();
     const response = test.commandApprovals.request({ request });
     const page = test.commandApprovals.openRendererPage(7);
@@ -300,8 +361,13 @@ function fixture(
     conversationIds?: readonly string[];
     /** 只用外部 Agent 的安装：没有登录也没有配置任何聊天模型。 */
     noChatModels?: boolean;
+    /** 外部命令行能否代批；缺省与产品默认一致（桌面端、开关关闭）。 */
+    externalApproval?: ExternalCommandApprovalPolicy;
   } = {}
 ) {
+  const externalApproval: { policy: ExternalCommandApprovalPolicy } = {
+    policy: options.externalApproval ?? { permitted: false, host: 'desktop' },
+  };
   const commandApprovals = createCommandApprovalHost();
   commandApprovals.setControlEndpointAvailable(true);
   let runs = [...initialRuns];
@@ -327,6 +393,7 @@ function fixture(
   const ports: ConversationControlUseCasePorts = {
     ...(options.attachmentImages ? { attachmentImages: options.attachmentImages } : {}),
     commandApprovals,
+    externalCommandApproval: { read: () => externalApproval.policy },
     flow: {
       async start(request) {
         startRequests.push(request);
@@ -589,6 +656,7 @@ function fixture(
     useCase: createConversationControlUseCase(ports),
     auditControl: ports.auditControl,
     commandApprovals,
+    externalApproval,
     startRequests,
     responseRequests,
     selectedAgentWrites,
