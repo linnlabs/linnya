@@ -21,9 +21,9 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
   overflow: hidden;
 }
 .readonly-document-preview__placeholder > :first-child {
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }

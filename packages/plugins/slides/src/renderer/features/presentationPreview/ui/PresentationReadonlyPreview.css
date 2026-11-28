@@ -52,8 +52,8 @@
   color: inherit;
   font: inherit;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
+  width: var(--control-height-md);
+  height: var(--control-height-md);
 }
 .slides-readonly-navigation svg {
   width: 16px;
@@ -90,7 +90,7 @@
   position: sticky;
   left: auto;
   transform: none;
-  bottom: var(--spacing-sm);
-  margin-top: calc(-1 * (32px + 2 * var(--spacing-xs) + var(--spacing-sm)));
-  margin-bottom: var(--spacing-sm);
+  bottom: var(--space-2);
+  margin-top: calc(-1 * (var(--control-height-md) + 2 * var(--space-1) + var(--space-2)));
+  margin-bottom: var(--space-2);
 }
