@@ -139,6 +139,7 @@ case 禁止启动进程、访问数据库、实现评分器或复制执行流程
    `command_approvals` 中出现 `awaiting_reply` 时保存
    `requires_command_approval`
    并结束观察；即使 case 允许普通 HITL 自动批准，也绝不自动批准 Shell。
+   这时 CLI 的 watch 可能以退出码 9（只有用户本人能批准）结束，适配器把它当作正常结束的观察。
 4. 达到 case 超时时终止 exact root run，并等待真实 terminal settlement。
 5. 仅对 completed/failed/cancelled 收集 final
    result；所有已接纳运行均收集消息数量摘要和 `audit` 安全执行摘要。

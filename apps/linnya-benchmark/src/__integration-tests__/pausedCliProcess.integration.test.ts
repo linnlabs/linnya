@@ -39,7 +39,7 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
             schema_version: 1, protocol_version: CONVERSATION_CONTROL_PROTOCOL_VERSION,
             app_instance_id: 'app-benchmark-pause', app_version: '0.0.38',
             instance: { kind: 'source', source_root: repoRoot, branch: 'main', audit_level: 'off' },
-            capabilities: ['send', 'status', 'messages'],
+            capabilities: ['send', 'status', 'messages', 'command_approvals'],
             limits: { max_request_bytes: 1_048_576, max_message_chars: 200_000,
               max_page_size: 200, min_watch_interval_ms: 1, max_watch_timeout_ms: 60_000 },
           });
@@ -74,6 +74,11 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
                   reason: 'execution_interrupted',
                 } } : {}),
               } };
+              break;
+            case 'command_approvals':
+              // watch 停在待回复的审批上后，CLI 会查一次能不能代批；默认只有用户能批。
+              result = { ...base, action: 'list', conversation_id: 'conversation-pause', run_id: 'run-pause',
+                pending: [], external_approval: { permitted: false, message: 'Only the user can approve commands.' } };
               break;
             case 'messages':
               result = { ...base, conversation_id: 'conversation-pause', status: 'preparing' };
@@ -113,7 +118,9 @@ describe('Benchmark -> real Linnya CLI -> scripted bridge', () => {
       });
       expect(exitCode).toBe(3);
       expect(errors).toEqual([]);
-      expect(commands, output.join('')).toEqual(['send', 'status', 'status', 'messages']);
+      expect(commands, output.join('')).toEqual(waiting === 'pause'
+        ? ['send', 'status', 'status', 'messages']
+        : ['send', 'status', 'status', 'command_approvals', 'messages']);
       const result: unknown = JSON.parse(output.join(''));
       const outcome = waiting === 'pause' ? 'requires_recovery' : 'requires_command_approval';
       expect(result).toMatchObject({ ok: false, outcome });
