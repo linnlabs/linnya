@@ -41,6 +41,9 @@ export type CutoutMethod = 'auto' | 'vision' | 'edge';
 /** 实际用上的去背方式。 */
 export type CutoutEngine = 'vision' | 'edge';
 
+/** 标题字的排列：横排从左到右，竖排从上到下。 */
+export type TitleDirection = 'horizontal' | 'vertical';
+
 export type ImageProcessingErrorCode =
   /** 不是 JPEG、PNG、WebP，或解码失败、超过像素上限。 */
   | 'image_unreadable'
@@ -59,7 +62,11 @@ export type ImageProcessingErrorCode =
   /** 系统前景遮罩运行失败。 */
   | 'vision_failed'
   /** 去背后没有剩下前景。 */
-  | 'no_foreground';
+  | 'no_foreground'
+  /** 不是 fontkit 能读的单个字体（TTF、OTF、WOFF、WOFF2），或是字体集合。 */
+  | 'font_unreadable'
+  /** 字体里缺标题用到的字。 */
+  | 'missing_glyphs';
 
 export interface ImageProcessingFailure {
   readonly status: 'failed';
@@ -115,6 +122,23 @@ export interface ForegroundCutout {
   /** 左边原图、右边去背结果叠在品红底上，残留的背景和被误抠的主体都看得出。 */
   readonly check: EncodedImage;
 }
+
+export interface TitleRendering {
+  /** 字体全名，例如 “Ma Shan Zheng Regular”。 */
+  readonly fontName: string;
+  /** 字体 name 表里写的许可与链接；没写时为 null，要按来源仓库的声明确认。 */
+  readonly license: string | null;
+  readonly licenseUrl: string | null;
+  /** 只含 path 的 SVG，根节点只有 viewBox，可直接交给文档的矢量图形。 */
+  readonly svg: { readonly text: string; readonly width: number; readonly height: number; readonly pathCommands: number };
+  /** 同一轮廓栅格化的透明 PNG，一个 em 等于 `size` 像素。 */
+  readonly image: EncodedImage;
+}
+
+/** 标题最多的字数：标题字是一两行的大字，再长就该用正文字体。 */
+export const TITLE_MAX_CHARACTERS = 40;
+/** 标题 PNG 的最大边长；16:9 页面铺满宽度 1920px 就清晰，8192 是给竖排长句留的余量。 */
+export const TITLE_MAX_EDGE = 8192;
 
 /** 一张宫格最多切出的块数；超过时多半是元素粘连或底上有杂点。 */
 export const MAX_SHEET_PIECES = 64;

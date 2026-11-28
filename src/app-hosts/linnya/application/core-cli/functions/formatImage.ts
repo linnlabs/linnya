@@ -1,4 +1,4 @@
-import { gridRowLabel, type CutoutEngine, type EncodedImage, type ImageCrop, type SheetKeyMode } from 'src/domains/image-processing';
+import { gridRowLabel, type CutoutEngine, type EncodedImage, type ImageCrop, type SheetKeyMode, type TitleRendering } from 'src/domains/image-processing';
 
 /** 一行写清产物：路径、像素尺寸、格式和大小，模型照抄路径引用即可。 */
 export function formatWrittenImage(locator: string, image: EncodedImage): string {
@@ -71,4 +71,19 @@ export function formatCutout(input: {
     + warning
     + formatWrittenImage(input.image.locator, input.image.image)
     + `检查图 ${formatWrittenImage(input.check.locator, input.check.image)}`;
+}
+
+/** 首行写字体全名和字体自己写的许可，供使用前确认；然后是 PNG 和 SVG，SVG 带路径段数。 */
+export function formatTitle(input: {
+  readonly rendering: TitleRendering;
+  readonly png: string;
+  readonly svg: string;
+  readonly svgBytes: number;
+}): string {
+  const { fontName, license, licenseUrl, svg, image } = input.rendering;
+  const terms = license === null ? licenseUrl
+    : licenseUrl === null || license.includes(licenseUrl) ? license : `${license}（${licenseUrl}）`;
+  return `字体 ${fontName} · 许可 ${terms ?? '字体里没有写许可，按来源仓库的声明确认'}\n`
+    + formatWrittenImage(input.png, image)
+    + `${input.svg} ${svg.width}×${svg.height} svg ${Math.max(1, Math.round(input.svgBytes / 1024))}KB ${svg.pathCommands} 段路径\n`;
 }

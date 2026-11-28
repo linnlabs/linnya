@@ -10,6 +10,7 @@ import {
   frostImageRegion,
   measureImageTrim,
   overlayImageGrid,
+  renderTitle,
   sliceSheet,
   warpImageToQuad,
   type EncodedImage,
@@ -17,10 +18,11 @@ import {
   type ImageProcessingOutcome,
 } from 'src/domains/image-processing';
 import type { PhysicalFileReaderPort } from '../../file-read';
-import { formatCutout, formatGrid, formatSlice, formatTrim, formatWrittenImage } from '../functions/formatImage';
+import { formatCutout, formatGrid, formatSlice, formatTitle, formatTrim, formatWrittenImage } from '../functions/formatImage';
 import { imageUsageFor, parseImageCommand, type ImageCommand } from '../functions/parseImageCommand';
 import {
   ConversationAssetWriteError,
+  readConversationFont,
   readConversationImage,
   writeConversationAsset,
 } from './conversationImageFiles';
@@ -58,7 +60,7 @@ async function writeResult(
 /** 一张输入图、一张输出图的子命令共用：读图 → 处理 → 写进 assets/。 */
 async function processOne(
   context: ImageCliContext,
-  command: Exclude<ProcessingCommand, { kind: 'trim' | 'texture' | 'slice' | 'cutout' }>,
+  command: Exclude<ProcessingCommand, { kind: 'trim' | 'texture' | 'slice' | 'cutout' | 'title' }>,
 ): Promise<BackendPluginCliResult> {
   const bytes = await readConversationImage(context.reader, context.root, command.image, context.signal);
   if (!bytes) return failed('image_unreadable', `读不出 ${command.image}：不在当前对话工作目录里，或不是 JPEG、PNG、WebP`);
@@ -122,6 +124,25 @@ async function cutout(
   return { exitCode: 0, stdout: formatCutout({ ...measurement, image: written, check: checked }), stderr: '' };
 }
 
+/** 标题字：读字体、渲染，PNG 和 SVG 各写一个文件，文件名取标题文字。 */
+async function title(
+  context: ImageCliContext, command: Extract<ProcessingCommand, { kind: 'title' }>,
+): Promise<BackendPluginCliResult> {
+  const fontBytes = await readConversationFont(context.root, command.font, context.signal);
+  if (!fontBytes) return failed('font_unreadable', `读不出 ${command.font}：不在当前对话工作目录里、不是普通文件，或超过 32MB`);
+  const outcome = await renderTitle({
+    fontBytes, text: command.text, color: command.color, size: command.size,
+    direction: command.direction, thicken: command.thicken,
+  });
+  if (outcome.status === 'failed') return failed(outcome.code, outcome.message);
+  const png = await writeResult(context, command.text, 'title', outcome.value.image);
+  const svgBytes = new TextEncoder().encode(outcome.value.svg.text);
+  const svg = await writeConversationAsset({
+    root: context.root, stem: command.text, operation: 'title', extension: 'svg', bytes: svgBytes, signal: context.signal,
+  });
+  return { exitCode: 0, stdout: formatTitle({ rendering: outcome.value, png, svg, svgBytes: svgBytes.byteLength }), stderr: '' };
+}
+
 async function execute(context: ImageCliContext, command: ProcessingCommand): Promise<BackendPluginCliResult> {
   try {
     if (command.kind === 'texture') {
@@ -144,6 +165,7 @@ async function execute(context: ImageCliContext, command: ProcessingCommand): Pr
     }
     if (command.kind === 'slice') return await slice(context, command);
     if (command.kind === 'cutout') return await cutout(context, command);
+    if (command.kind === 'title') return await title(context, command);
     return await processOne(context, command);
   } catch (error) {
     // 写不进 assets/ 是可预期的业务失败（例如它被换成了指向别处的链接），其余异常照常抛给 Shell 桥记录。

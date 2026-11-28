@@ -16,6 +16,8 @@ export type {
   SheetKeyMode,
   SheetSlice,
   TextureKind,
+  TitleDirection,
+  TitleRendering,
   TrimMeasurement,
 } from './definitions/imageProcessing';
 export { gridRowLabel, MAX_GRID_DIVISIONS } from './functions/gridOverlay';
@@ -28,4 +30,5 @@ export {
   warpImageToQuad,
 } from './orchestration/imageProcessing';
 export { cutoutForeground } from './orchestration/cutoutForeground';
+export { renderTitle } from './orchestration/renderTitle';
 export { sliceSheet } from './orchestration/sliceSheet';

@@ -55,57 +55,13 @@
 
 ## 去背
 
-优先选纯色或暗色背景的器物照片，边缘越清楚越省事。不要在 Slides 内置能力里找抠图；用 Shell 在 conversation 的虚拟环境里完成。
+优先选纯色或暗色背景的器物照片，边缘越清楚越省事。用 `linnya image cutout assets/<图>.jpg`（见 [CLI](./cli.md#素材处理linnya-image)），结果已裁到主体范围。macOS 14 及以上用系统 Vision，展柜反光、复杂背景也抠得干净；Windows 和旧版 macOS 只能按边缘颜色抠，适合无缝背景纸和纯色台面，展柜照和人像多半失败，这时换一张背景简单的图，或者不去背、用 `crop` 取景。不要另装 Python 抠图库。
 
-macOS 14 起可调用系统 Vision，只需两个小依赖，不用 Xcode：
-
-```bash
-python3 -m venv .venv && .venv/bin/pip install pyobjc-framework-Vision pyobjc-framework-Quartz
-```
-
-```python
-import sys, Quartz, Vision
-from Foundation import NSURL
-src, out = sys.argv[1:3]
-ci = Quartz.CIImage.imageWithContentsOfURL_(NSURL.fileURLWithPath_(src))
-handler = Vision.VNImageRequestHandler.alloc().initWithCIImage_options_(ci, {})
-req = Vision.VNGenerateForegroundInstanceMaskRequest.alloc().init()
-ok, err = handler.performRequests_error_([req], None)
-if not ok or not req.results(): sys.exit(f"no subject: {err}")
-obs = req.results()[0]
-buf, err = obs.generateScaledMaskForImageForInstances_fromRequestHandler_error_(obs.allInstances(), handler, None)
-f = Quartz.CIFilter.filterWithName_("CIBlendWithMask")
-f.setValue_forKey_(ci, "inputImage")
-f.setValue_forKey_(Quartz.CIImage.imageWithCVPixelBuffer_(buf), "inputMaskImage")
-f.setValue_forKey_(Quartz.CIImage.emptyImage(), "inputBackgroundImage")
-cs = Quartz.CGColorSpaceCreateWithName(Quartz.kCGColorSpaceSRGB)
-ok, err = Quartz.CIContext.context().writePNGRepresentationOfImage_toURL_format_colorSpace_options_error_(
-    f.outputImage(), NSURL.fileURLWithPath_(out), Quartz.kCIFormatRGBA8, cs, {}, None)
-if not ok: sys.exit(str(err))
-```
-
-Windows、Linux 或旧版 macOS 用 rembg。依赖约 450MB，首次运行还要下载约 180MB 的模型，先告诉用户再装：
-
-```bash
-python -m venv .venv
-```
-
-```bash
-.venv/Scripts/pip install "rembg[cpu]"
-```
-
-```python
-import sys
-from PIL import Image
-from rembg import new_session, remove
-remove(Image.open(sys.argv[1]).convert("RGB"), session=new_session("isnet-general-use")).save(sys.argv[2])
-```
-
-两种方式都要把结果裁到透明边界（`im.crop(im.getchannel("A").point(lambda a: 255 if a > 20 else 0).getbbox())`，rembg 的透明通道有微弱噪声，不取阈值裁不掉），否则盒子比主体大，定位和压叠全会偏。放进文稿前，放到与页面反差大的纯色底（如品红）上放大看一次，重点看底部、镂空和阴影处有没有残留背景，以及被吃掉的边；浅色残留压在米色页面上不显眼，放映时才会露出来。整张去背失败时换图，不要交付毛边。
+放进文稿前读一遍命令给的检查图（左边原图，右边结果叠在品红底上），重点看底部、镂空和阴影处有没有残留背景，以及被吃掉的边；浅色残留压在米色页面上不显眼，放映时才会露出来。整张去背失败时换图，不要交付毛边。
 
 ## 书法字
 
-**字体只用来生成图片**：观众的电脑没有这些字体，原生 Text 打开就会被替换。生成前必须读字体内嵌的 name 表或来源仓库确认许可，聚合站标注的“免费商用”不算证据。
+**字体只用来生成图片**：观众的电脑没有这些字体，原生 Text 打开就会被替换。把字体文件下载到 `assets/fonts/`，用 `linnya image title` 渲染（见 [CLI](./cli.md#素材处理linnya-image)）。命令输出的第一行是字体自己 name 表里写的许可，和下表或来源仓库的声明对上再用；聚合站标注的“免费商用”不算证据。
 
 | 字体 | 许可 | 特点 |
 |---|---|---|
@@ -115,32 +71,11 @@ remove(Image.open(sys.argv[1]).convert("RGB"), session=new_session("isnet-genera
 
 没有内置许可、也找不到作者原始声明的字体不用；用户明确提供授权时除外。
 
-**先查字符覆盖，再渲染**。缺字不会报错，只会画出方块或错字。粗笔字库常缺简体（如 录、风、盏），这时改写繁体形式，或整份换字体，不要一页混两种书体：
+**缺字时命令直接报错**，并列出缺的字，不会画出方块。粗笔字库常缺简体（如 录、风、盏），这时改写繁体形式，或整份换字体，不要一页混两种书体。
 
-```python
-from fontTools.ttLib import TTFont
-cmap = TTFont(path, lazy=True).getBestCmap()
-missing = [c for c in text if ord(c) not in cmap]
-```
+封面主字用 `--size 1000` 以上。命令同时出透明 PNG 和只含路径的 SVG：SVG 放大不糊，用 `createSvgGraphic` 的 `conversation_file` 引用；输出写明了段数，超过 2048 段或 64KB（书法字约十来个字）就用 PNG。竖写大字用 `--vertical`，逐字从上到下排；竖排标题不加标点，很多书法字体没有竖排标点的字形。
 
-用下面的函数画到透明底（封面主字 `size` 取 1000 以上），边缘是字体轮廓本身，放大后仍然锐利：
-
-```python
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
-
-def glyph(font_path, ch, size, rgb, stroke=0):
-    mask = Image.new("L", (size * 2, size * 2), 0)
-    font = ImageFont.truetype(font_path, size)
-    ImageDraw.Draw(mask).text((size // 3, size // 3), ch, font=font, fill=255, stroke_width=stroke, stroke_fill=255)
-    if stroke:  # 只磨掉外扩的接缝；阈值区间要窄，否则边缘发虚
-        mask = mask.filter(ImageFilter.GaussianBlur(size * 0.002))
-        mask = mask.point(lambda v: 0 if v < 110 else 255 if v > 145 else (v - 110) * 255 // 35)
-    out = Image.new("RGBA", mask.size, rgb + (0,))
-    out.putalpha(mask)
-    return out.crop(mask.point(lambda v: 255 if v > 20 else 0).getbbox())
-```
-
-默认 `stroke=0`。只有细笔字体压不住版面时才加粗，`stroke` 不超过字号的 0.6%。先把不加粗和加粗的结果并排看一次：字内的小空隙被糊上、笔画变成圆润的墨团，就退回不加粗或换字体。不要自己叠加噪点假装飞白。竖写大字逐字向下排，字距按字形实际高度微调。
+默认不加粗。只有细笔字体压不住版面时才加 `--thicken`，不超过 0.012（字号的 1.2%）。先把不加粗和加粗的结果并排看一次：字内的小空隙被糊上、笔画变成圆润的墨团，就退回不加粗或换字体。不要自己叠加噪点假装飞白。
 
 做完放在实际背景上读图：笔画有没有糊成一团、缺字、字义是否对。书法字是这种风格的门面，看着普通就换字体或换字。
 
@@ -156,7 +91,7 @@ def glyph(font_path, ch, size, rgb, stroke=0):
 - **画布**：想要 13.333in 宽就写 `layout: { width: 13.333, height: 7.5, unit: "in" }`，并在源码里自定义宽高常量；`SLIDE_W` 不随它变化，`"16x9"` 是 10in 宽。
 - **竖排小字**：副题、落款、章节号用原生 `writingMode: "vertical-rl"`，配系统字体，导出后仍是 PowerPoint 竖排文本框。不要逐字换行。书法大字仍用图片。
 - **图片盒子**：比例必须等于 PNG 比例，用 `fitMode: "contain"`；只给一边时另一边按比例算出来。
-- **落影**：透明 PNG 不要用 `shadow`，它按矩形盒子画。在主体下方垫一个径向渐变椭圆（中心不透明，边缘 `opacity: 0`）。
+- **落影**：去背的透明 PNG 直接写 Image 的 `shadow`，影子跟着主体边缘（见 [`syntax.md`](./syntax.md)）。要“放在台面上”的落地影时，在主体下方再垫一个径向渐变椭圆（中心不透明，边缘 `opacity: 0`）。
 - **印章**：Frame 底色加居中原生 Text，字号要算上文字默认的左右各 0.1in 内边距，否则会折行。
 - **贴边**：Text 默认有 0.1in 内边距，要和图片或色块对齐时减去它。
 - **西文与正文字体**：从 `linnya-slides fonts list` 列出的 Office 通用字体里选。中文正文用宋体、楷体、仿宋；标题可用华文中宋、华文行楷，它们是 Office 云字体，旧版 Office 会替换。西文用 Georgia、Garamond。Songti SC、Baskerville 等 Mac 专属字体会被 inspect 报 `font_not_deliverable`。

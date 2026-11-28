@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { lstat, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { formatConversationFileLocator, parseFileLocator } from '@app/schemas';
+import { inspectNodePhysicalRegularFile } from '../../../adapters/file-read';
 import { PhysicalFileReadError, type PhysicalFileReaderPort } from '../../file-read';
 
 /** Core CLI 处理出的图片都放这里，和 Agent 下载素材的推荐位置一致，引用时写 `conversation:/assets/...`。 */
@@ -31,6 +32,27 @@ export async function readConversationImage(
   try {
     const physical = await reader.readFile({ absolutePath, scope: { kind: 'conversation', rootPath: root } });
     return physical.kind === 'image_source' ? new Uint8Array(await readFile(physical.resolvedPath, { signal })) : null;
+  } catch (error) {
+    if (error instanceof PhysicalFileReadError) return null;
+    throw error;
+  }
+}
+
+/** CJK 书法字体常在 5–20MB，32MB 留了余量；再大多半不是单个字体文件。 */
+const FONT_MAX_BYTES = 32 * 1024 * 1024;
+
+/**
+ * 读对话工作目录里的字体文件。字体不是 read_file 的格式，这里只做与它相同的位置检查（不越界、不是符号链接、是普通文件）
+ * 和大小上限，格式交给字体解析判断。读不到时返回 null。
+ */
+export async function readConversationFont(root: string, reference: string, signal: AbortSignal): Promise<Uint8Array | null> {
+  signal.throwIfAborted();
+  const absolutePath = conversationPath(root, reference);
+  if (!absolutePath) return null;
+  try {
+    const inspected = await inspectNodePhysicalRegularFile({ absolutePath, scope: { kind: 'conversation', rootPath: root } });
+    if (inspected.byteLength > FONT_MAX_BYTES) return null;
+    return new Uint8Array(await readFile(inspected.resolvedPath, { signal }));
   } catch (error) {
     if (error instanceof PhysicalFileReadError) return null;
     throw error;
