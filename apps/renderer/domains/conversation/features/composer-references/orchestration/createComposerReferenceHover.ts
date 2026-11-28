@@ -18,7 +18,7 @@ export function createComposerReferenceHover(options: {
   const open = ref(false),
     revealed = ref(false);
   const side = ref<AnchoredSide>('top');
-  // 打开期间固定一侧（flip: false）：预览异步长高、展开时不跳到另一侧盖住正停在引用上的鼠标。
+  // 打开期间固定一侧（flip: false）：预览高度变化（占位换成正文）时不跳到另一侧盖住正停在引用上的鼠标。
   const anchored = useAnchoredPosition({
     anchor: options.anchor,
     floating: options.panel,
@@ -31,7 +31,7 @@ export function createComposerReferenceHover(options: {
     return {
       ...style,
       // 朝上时固定下沿而不是上沿：内容变高只往远离引用的方向长。固定上沿要等下一次重算才挪回去，
-      // 中间那一帧弹层会盖住停在引用上的鼠标，被当成“移入预览”而自动展开。
+      // 中间那一帧弹层会盖住停在引用上的鼠标，被当成“移入预览”而换入全文。
       ...(side.value === 'top' && anchor
         ? { bottom: `${document.documentElement.clientHeight - anchor.getBoundingClientRect().top + COMPOSER_REFERENCE_HOVER_GAP}px` }
         : { top }),

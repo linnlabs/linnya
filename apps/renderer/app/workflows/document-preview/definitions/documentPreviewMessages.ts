@@ -4,7 +4,6 @@ export type DocumentPreviewMessageKey =
   | 'documentPreview.surface.label'
   | 'documentPreview.loading'
   | 'documentPreview.detail.failed'
-  | 'documentPreview.expand'
   | 'documentPreview.error.outsideProject'
   | 'documentPreview.error.unavailable'
   | 'documentPreview.error.read'

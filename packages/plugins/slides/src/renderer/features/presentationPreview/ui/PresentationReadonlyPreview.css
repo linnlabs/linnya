@@ -73,7 +73,7 @@
 }
 
 /* 文档预览（引用浮层、画布卡）里的详情接在封面原来的位置：不设最小高度、不上下居中、与封面同宽，
-   否则小容器里幻灯片会下移、被裁，展开时面板跟着变高。历史面板等大容器仍用上面居中的舞台。 */
+   否则小容器里幻灯片会下移、被裁，面板跟着变高。历史面板等大容器仍用上面居中的舞台。 */
 .slides-document-preview .slides-readonly-stage {
   flex-direction: column;
   justify-content: flex-start;

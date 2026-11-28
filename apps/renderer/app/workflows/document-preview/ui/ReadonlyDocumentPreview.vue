@@ -3,8 +3,10 @@
     class="readonly-document-preview"
     :class="{ 'document-preview-more-below': moreBelow }"
     :aria-label="label || text('documentPreview.surface.label')"
-    @mouseenter="enterPreview"
+    @mouseenter="engage('pointer')"
     @mouseleave="pointerInside = false"
+    @focusin="engage('focus')"
+    @focusout="leaveFocus"
   >
     <p
       v-if="controller.error.value"
@@ -47,11 +49,12 @@
     <div
       ref="viewport"
       class="readonly-document-preview__viewport"
+      :style="viewportStyle"
       @click="preventPreviewNavigation"
       @scroll.passive="readMoreBelow"
     />
     <Teleport
-      v-if="detailComponent && expanded && surface.body.value && current"
+      v-if="detailComponent && full && surface.body.value && current"
       :to="surface.body.value"
     >
       <component
@@ -67,13 +70,6 @@
       @click="controller.recover(recovery)"
     >
       {{ recovery.label }}
-    </button>
-    <button
-      v-if="expandable"
-      type="button"
-      @click="expanded = true"
-    >
-      {{ text('documentPreview.expand') }}
     </button>
   </section>
 </template>
@@ -105,8 +101,9 @@ const { message, currentLocale } = useLocalization();
 const text = (key: DocumentPreviewMessageKey) =>
   message(key, DOCUMENT_PREVIEW_MESSAGE_FALLBACKS[key]);
 const scope = useNavigationScope(),
-  expanded = ref(Boolean(props.detailOnly)),
-  pointerInside = ref(false);
+  full = ref(Boolean(props.detailOnly)),
+  pointerInside = ref(false),
+  focusInside = ref(false);
 const viewport = ref<HTMLElement | null>(null),
   measuredWidth = ref(0),
   moreBelow = ref(false);
@@ -142,17 +139,37 @@ const detailComponent = computed(() =>
     ? readDocumentTypePreviewComponent(current.value.presentation.nodeType)
     : null
 );
-// 首屏排好后才谈得上展开；首屏没被截断、类型也没有自己的详情时，全文已在眼前，不显示按钮也不因移入而重排。
-// 按“当前显示的是首屏”判断而不是按 expanded：按钮留到全文排好时和首屏一起换掉，面板高度只变一次。
-const expandable = computed(
+// 首屏被截断、或类型有自己的详情时，全文还没在眼前；否则不必再排一遍。
+const moreThanFirstScreen = computed(
   () => surface.firstScreen.value && (Boolean(detailComponent.value) || surface.clipped.value)
 );
-function enterPreview() {
-  pointerInside.value = true;
-  if (expandable.value) expanded.value = true;
+// 悬停面板露出后尺寸不再变：滚动区的最大高度就是首屏高度，全文换进来只是多了可滚动的下文。
+// 所以没有“展开”这个动作，指针进入或键盘焦点进入（方向键滚动要先有全文）时在原地把首屏换成全文。
+// 不在首屏排好后立刻换：只是路过的悬停不该为一篇长文付整篇排版的开销。
+function engage(source: 'pointer' | 'focus') {
+  if (source === 'pointer') pointerInside.value = true;
+  else focusInside.value = true;
+  if (moreThanFirstScreen.value) full.value = true;
 }
+function leaveFocus(event: FocusEvent) {
+  const next = event.relatedTarget;
+  if (
+    event.currentTarget instanceof Element &&
+    next instanceof Node &&
+    event.currentTarget.contains(next)
+  )
+    return;
+  focusInside.value = false;
+}
+// 近景（detailOnly）铺满消费方给的容器，不限高。
+const viewportStyle = props.detailOnly
+  ? undefined
+  : { maxHeight: `${DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight}px` };
 // 读取较慢时的占位：与首屏同宽、同内边距、同高，内容到来时面板不再变宽，长文也不变高。
-const PLACEHOLDER_LINE_WIDTHS = ['92%', '100%', '84%', '96%', '70%', '100%', '88%', '94%', '100%', '58%'] as const;
+// 行数按首屏高度铺满（标题一行 + 15 行正文，行距见 documentPreview.css），改首屏高度时一起调。
+const PLACEHOLDER_LINE_WIDTHS = [
+  '92%', '100%', '84%', '96%', '70%', '100%', '88%', '94%', '100%', '76%', '100%', '90%', '82%', '100%', '58%',
+] as const;
 const placeholderStyle = {
   height: `${DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight}px`,
   padding: `${DOCUMENT_PREVIEW_LAYOUT.paddingTop}px ${DOCUMENT_PREVIEW_LAYOUT.paddingInline}px ${DOCUMENT_PREVIEW_LAYOUT.paddingBottom}px`,
@@ -180,11 +197,12 @@ onMounted(() => {
 watchEffect(() => {
   void controller.refresh();
 });
+// 内容换了从首屏重新开始，除非用户正在面板里读。
 watch(current, () => {
-  expanded.value = Boolean(props.detailOnly || pointerInside.value);
+  full.value = Boolean(props.detailOnly || pointerInside.value || focusInside.value);
 });
 watch(
-  [current, expanded, theme, measuredWidth, () => props.widthPx, currentLocale],
+  [current, full, theme, measuredWidth, () => props.widthPx, currentLocale],
   () => {
     const identity = current.value,
       width = props.widthPx ?? measuredWidth.value;
@@ -196,7 +214,7 @@ watch(
       {
         preview: identity.preview,
         widthPx: width,
-        maxHeight: expanded.value ? undefined : DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight,
+        maxHeight: full.value ? undefined : DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight,
         // 短文按内容高度，不留一截空白；长文仍停在首屏高度。
         fitContentHeight: true,
         theme: theme.value,
@@ -205,7 +223,7 @@ watch(
           ? readDocumentTypeIcon(identity.presentation.nodeType)
           : null,
         referenceTypeIcon: readDocumentTypeIcon,
-        externalBody: expanded.value && Boolean(detailComponent.value),
+        externalBody: full.value && Boolean(detailComponent.value),
         onOpen:
           identity.presentation.status === 'available'
             ? () => {

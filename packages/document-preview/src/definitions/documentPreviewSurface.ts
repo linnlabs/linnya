@@ -37,5 +37,5 @@ export const DOCUMENT_PREVIEW_LAYOUT = {
   paddingBottom: 18,
   titleHeight: 16,
   titleGap: 10,
-  firstScreenHeight: 320,
+  firstScreenHeight: 380,
 } as const;
