@@ -53,6 +53,7 @@ export function exitCodeForError(code: ConversationControlErrorCode): number {
     case 'result_unavailable':
     case 'unsupported_runtime_state':
       return LINNYA_CLI_EXIT.conflict;
+    case 'approval_requires_user': return LINNYA_CLI_EXIT.needsUser;
     case 'capability_unavailable': return LINNYA_CLI_EXIT.unavailable;
     case 'internal_error': return LINNYA_CLI_EXIT.internal;
   }

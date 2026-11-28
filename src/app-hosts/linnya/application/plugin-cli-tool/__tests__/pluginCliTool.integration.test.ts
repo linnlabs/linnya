@@ -54,6 +54,7 @@ function permissionContext(input: {
         revision: 1,
         permission_level: input.level ?? 'standard',
         internal_data_access: input.internalDataAccess ?? 'allowed',
+        external_command_approval: 'user_only',
         gui_control: 'denied',
         local_ipc_control: 'denied',
         process_lifecycle: 'terminate_with_run',

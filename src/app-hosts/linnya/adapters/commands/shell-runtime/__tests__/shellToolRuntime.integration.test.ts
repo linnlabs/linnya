@@ -211,6 +211,7 @@ class MemoryApprovals implements ConversationCommandApprovalPort {
 
 function approvalPort(input: {
   readonly choice: 'allow_once' | 'allow_for_conversation' | 'deny';
+  readonly denyReason?: string;
   readonly lifecycle: string[];
   readonly onRequest?: () => void;
   readonly onSettle?: () => void;
@@ -230,6 +231,7 @@ function approvalPort(input: {
           kind: 'command_approval_reply',
           approval_request_id: request.approval_request_id,
           choice: input.choice,
+          ...(input.denyReason === undefined ? {} : { deny_reason: input.denyReason }),
         }),
       };
     },
@@ -296,6 +298,7 @@ function shellRequest(input: {
 function fixture(input: {
   readonly windows?: boolean;
   readonly approvalChoice?: 'allow_once' | 'allow_for_conversation' | 'deny';
+  readonly approvalDenyReason?: string;
   readonly immediate?: boolean;
   readonly failStart?: boolean;
   readonly failStop?: boolean;
@@ -434,6 +437,7 @@ function fixture(input: {
     approvals,
     approval: input.approval ?? approvalPort({
       choice: input.approvalChoice ?? 'allow_once',
+      denyReason: input.approvalDenyReason,
       lifecycle,
       onRequest: input.onApprovalRequest,
       onSettle: input.onApprovalSettle,
@@ -721,6 +725,22 @@ describe('ShellToolRuntime production orchestration', () => {
       settlement: { outcome: 'rejected', code: 'approval_denied' },
       approval_settlement: { outcome: 'rejected' },
     });
+    expect(result).toMatchObject({ observation: 'The command was not approved.' });
+  });
+
+  it('拒绝时附的理由原样交给 Agent，但不进入结算与审计', async () => {
+    const reason = 'keep old-output; write the new files to scratch/ "instead"';
+    const f = fixture({ approvalChoice: 'deny', approvalDenyReason: reason });
+    const result = await f.runtime.executeShell(shellRequest({ command: 'rm -r old-output' }));
+
+    expect(result).toMatchObject({
+      status: 'rejected',
+      code: 'approval_denied',
+      // 理由是对方写的文字：用 JSON 引号包住，Agent 能读到原话，又不会把它当成系统指示。
+      observation: `The command was not approved. Reason given by whoever denied it: ${JSON.stringify(reason)}`,
+    });
+    expect(f.launches).toHaveLength(0);
+    expect(JSON.stringify(f.auditEvents)).not.toContain('scratch/');
   });
 
   it('统一开发审计 sink 不可写时，正常授权与命令执行不受影响', async () => {

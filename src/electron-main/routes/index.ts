@@ -216,7 +216,10 @@ import {
   type ProjectConversationStorageMeasurer,
 } from 'src/app-hosts/linnya/application/project-conversations';
 import { CONVERSATION_CONTROL_BRIDGE_PATH } from '@app/schemas';
-import type { ConversationControlUseCase } from 'src/app-hosts/linnya/application/conversation-control';
+import type {
+  ConversationControlUseCase,
+  ExternalCommandApprovalPort,
+} from 'src/app-hosts/linnya/application/conversation-control';
 import { createProjectLifecycle } from 'src/domains/projects';
 import {
   createProjectDeletionUseCase,
@@ -270,6 +273,7 @@ export interface RouteDependencies {
   readonly projectDeletionRegistration: { register(deletion: ProjectDeletionUseCasePort): void };
   readonly agentToolEnvironment?: AgentToolEnvironment;
   readonly commandApprovalControl: CommandApprovalControlEndpointPort;
+  readonly externalCommandApproval: ExternalCommandApprovalPort;
   transcriptionService?: TranscriptionService;
   documentOcr: DocumentOcrPort;
   /** 本次启动停掉的能力；对应入口返回不可用和原因，其余路由照常挂载。 */
@@ -986,6 +990,7 @@ export async function configureRoutes(
     }
     conversationControlUseCase = createLinnyaConversationControlUseCase({
       commandApprovals: dependencies.commandApprovalControl,
+      externalCommandApproval: dependencies.externalCommandApproval,
       projects: createProjectLifecycle(db, {
         publish: event => dependencies.rendererIntegration.publishWorkspaceMutation(event),
       }),

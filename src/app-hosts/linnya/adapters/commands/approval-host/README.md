@@ -74,4 +74,4 @@ Renderer 只拿到安全投影：不包含 PID、完整环境、内部路径和�
 
 `commandApprovalHost.integration.test.ts` 至少覆盖：单次允许、对话记忆、拒绝、重复 reply、Renderer/Host 竞争、reload 旧 ticket、owner end、持久化失败和 App drain。`host-presenter-rpc` 另行覆盖真实双向 pipe、严格 response 与通知合并；Electron IPC 测试覆盖 `sender.id` 伪造。测试应验证 resolver 只结算一次，不测试颜色、布局和弹窗宽度。
 
-CLI list/status查询root时由Conversation Control按RunRegistry父子身份筛选子树；owner回复只认请求的实际run。审批是Commands等待，不伪造HITL checkpoint或`awaiting_user`。`processing`表示回复处理中，不能当作再次可操作的等待或命令已完成。
+CLI list/status查询root时由Conversation Control按RunRegistry父子身份筛选子树；owner回复只认请求的实际run。外部调用方能不能批准由Conversation Control在调用`submitControlReply`之前判断，本owner不读设置、不区分调用方是谁；被挡下的批准不会到达这里，pending不变。拒绝可带`denyReason`，owner把它放进reply交给命令结算，Shell运行时写进交还给Agent的结果，不进审计。审批是Commands等待，不伪造HITL checkpoint或`awaiting_user`。`processing`表示回复处理中，不能当作再次可操作的等待或命令已完成。

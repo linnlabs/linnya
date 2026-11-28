@@ -17,6 +17,7 @@ import {
   type ConversationControlRunRecord,
   type ConversationControlUseCase,
   type ConversationControlUseCasePorts,
+  type ExternalCommandApprovalPort,
 } from 'src/app-hosts/linnya/application/conversation-control';
 import {
   createExecutionAuditExportUseCase,
@@ -30,6 +31,7 @@ import {
 
 interface LinnyaConversationControlUseCaseOwners {
   readonly commandApprovals: CommandApprovalControlPort;
+  readonly externalCommandApproval: ExternalCommandApprovalPort;
   readonly projects: Pick<ProjectLifecyclePort, 'list' | 'get' | 'create' | 'update' | 'deleteEmpty'>;
   readonly flow: Pick<
     FlowOrchestrator,
@@ -130,6 +132,7 @@ export function createLinnyaConversationControlUseCase(
       findByConversation: conversationId => owners.runs.findByConversation(conversationId, { includeChildren: true }),
     },
     commandApprovals: owners.commandApprovals,
+    externalCommandApproval: owners.externalCommandApproval,
     projects: owners.projects,
     models: {
       list() {

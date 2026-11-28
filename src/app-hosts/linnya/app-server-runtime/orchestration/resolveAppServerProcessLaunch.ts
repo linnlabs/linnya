@@ -32,6 +32,7 @@ export async function resolveAppServerProcessLaunch(input: {
   };
   readonly processEnvironment: NodeJS.ProcessEnv;
   readonly commandApprovalPresenter: { readonly available: boolean };
+  readonly externalCommandApproval: { readonly allowed: boolean };
 }): Promise<ResolvedAppServerProcessLaunch> {
   const runtimeDirectory = path.join(
     input.backendFacts.packaged
@@ -85,6 +86,9 @@ export async function resolveAppServerProcessLaunch(input: {
       host_capabilities: {
         command_approval_presenter: {
           available: input.commandApprovalPresenter.available,
+        },
+        external_command_approval: {
+          allowed: input.externalCommandApproval.allowed,
         },
       },
       text_measurement: {

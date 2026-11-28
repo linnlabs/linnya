@@ -64,6 +64,7 @@ try {
       expected_revision: 0,
       permission_level: 'full_access',
       internal_data_access: 'denied',
+      external_command_approval: 'user_only',
     },
   });
   const resumed = resolveCommandRunPermissionContext({

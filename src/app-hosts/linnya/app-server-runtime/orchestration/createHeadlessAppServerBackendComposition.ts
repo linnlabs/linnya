@@ -46,6 +46,7 @@ import {
   attachCommandApprovalHostPresenterPublisher,
   createCommandApprovalHostPresenterBackendRpcHandlers,
 } from '../../adapters/commands/host-presenter-rpc';
+import { createExternalCommandApprovalPort } from '../../adapters/conversation-control-bridge';
 import { createHeadlessNodeConversationExecutionRuntimeFactory } from '../../adapters/conversation-runtime/headless-node-runtime';
 import { createLocalProcessPlatformLauncher } from '../../../../infra/adapters/local-process-runtime/production-runtime';
 import { resolveQdrantProcessRuntime } from '../../../../infra/adapters/vector-store/qdrant';
@@ -151,6 +152,11 @@ export function createHeadlessAppServerBackendComposition(input: {
   return Object.freeze({
     backendHostDependencies: Object.freeze({
       commandApprovalControl: commandApprovalHost,
+      externalCommandApproval: createExternalCommandApprovalPort({
+        hostKind: input.bootstrap.host_kind,
+        hostAllows: input.bootstrap.host_capabilities.external_command_approval.allowed,
+        settings: commandPermissionSettings,
+      }),
       bootstrap: input.bootstrap.backend_facts,
       processRuntime: Object.freeze({
         qdrant: resolveQdrantProcessRuntime({

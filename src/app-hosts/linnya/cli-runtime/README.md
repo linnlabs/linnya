@@ -17,7 +17,9 @@ sink 消费，因为权威业务事实已经持久化；隐藏 Chromium worker�
 浏览器、系统文件管理器显示、Web Chromium renderer 与 Desktop 导出目标会返回明确不可用错误。普通 HTTP
 Web Read 仍可工作，其动态页面升级路径不会伪装为成功。
 
-交互式 TTY 通过独立的 pipe-authenticated Host presenter 读取 command approval projection；它与 Desktop Renderer、Conversation Control CLI 竞争同一个 pending/settlement，先到的合法回复唯一生效。CLI 不生成 Renderer page ticket 或伪造 sender。非 TTY Host 不声明 presenter capability，但鉴权控制端点可用时仍可通过 `approvals` 和 `approval-reply` 查询及回复；所有展示和控制通道均不可用时才拒绝请求。普通 `awaiting_user` 仍由 Conversation Control 的 `respond` 处理。
+交互式 TTY 通过独立的 pipe-authenticated Host presenter 读取 command approval projection；它与 Desktop Renderer、Conversation Control CLI 竞争同一个 pending/settlement，先到的合法回复唯一生效。CLI 不生成 Renderer page ticket 或伪造 sender。非 TTY Host 不声明 presenter capability，但鉴权控制端点可用时仍可通过 `approvals` 和 `approval-reply` 查询及拒绝；所有展示和控制通道均不可用时才拒绝请求。
+
+控制端点默认不能批准命令：批准只能来自这个终端的提示（或 Desktop 的审批卡）。`runtime start --allow-external-approval` 把 `allowExternalCommandApproval` 写进这一次启动的 bootstrap `host_capabilities.external_command_approval`，供评测和自动化由脚本代批；它不落盘，下次启动要重新给。没有 TTY 又没给这个参数时，没有任何一方能批准，待审批命令只能被拒绝或随 run 停止而结束，这是有意的默认值。普通 `awaiting_user` 仍由 Conversation Control 的 `respond` 处理。
 
 当前入口是独立 `linnya-cli-runtime.cjs` bundle，由 CLI 通过窄 launcher 动态加载。普通 CLI 命令仍只包含
 参数、控制面连接和输出，不把完整 Backend 打进控制客户端。bundle 导出显式 Host contract version；CLI 拒绝加载旧合同产物。

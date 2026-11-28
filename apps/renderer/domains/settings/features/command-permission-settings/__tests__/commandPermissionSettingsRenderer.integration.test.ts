@@ -41,6 +41,7 @@ function memoryGateway(initial: CommandPermissionSettingsV1 = settings()) {
         revision: backend.revision + 1,
         permission_level: update.permission_level,
         internal_data_access: update.internal_data_access,
+        external_command_approval: update.external_command_approval,
       });
       return { success: true, settings: backend };
     },
@@ -85,6 +86,7 @@ describe('command permission settings renderer write slice', () => {
         expected_revision: 0,
         permission_level: 'read_only',
         internal_data_access: 'allowed',
+        external_command_approval: 'user_only',
       },
       {
         schema_version: 1,
@@ -92,12 +94,14 @@ describe('command permission settings renderer write slice', () => {
         expected_revision: 1,
         permission_level: 'read_only',
         internal_data_access: 'denied',
+        external_command_approval: 'user_only',
       },
     ]);
     expect(store.projection?.revision).toBe(2);
     expect(store.draft).toEqual({
       permissionLevel: 'read_only',
       internalDataAccess: 'denied',
+      externalCommandApproval: 'user_only',
     });
     expect(store.isDirty).toBe(false);
     expect(store.saveState).toBe('saved');

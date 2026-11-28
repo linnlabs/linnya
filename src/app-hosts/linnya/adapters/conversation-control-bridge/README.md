@@ -21,7 +21,7 @@ router 和 use case 接收同一审计控制端口，每次握手读取实时默
 
 能力公告允许未来新增合法标识符，消费者忽略不认识的能力；命令 union 和响应 schema 仍然封闭且严格。改变既有协议语义必须升级 protocol，不能借能力扩展绕过合同校验。
 
-当前 wire protocol 为 8：握手必填实例身份，新增 `audit_level` 控制命令和 `source_mismatch` 错误；CLI 必须在业务命令前核对真实源码根。`projects` 的带 `action` 合同与空项目删除沿用协议 7。
+当前 wire protocol 为 9：命令审批默认只有用户能批准，`command_approvals` 的 list 响应新增 `external_approval`，reply 请求新增 `deny_reason`，新增错误 `approval_requires_user`（HTTP 403）。协议 8 的握手实例身份、`audit_level` 控制命令和 `source_mismatch` 错误不变；CLI 必须在业务命令前核对真实源码根。`projects` 的带 `action` 合同与空项目删除沿用协议 7。
 工具命令自协议 5 起统一为 `tools`，临时 Web 访问动作和 allowlist 保持不变。
 已有 audit 的 `llm_responses`、status/watch 的 `command_approvals` 与精确查询/回复合同保持不变。
 连接描述与 handshake 一致校验版本，旧 CLI 须明确升级；URL 和连接文件名中的 v1 仍是稳定发现地址。
@@ -32,7 +32,7 @@ router 和 use case 接收同一审计控制端口，每次握手读取实时默
 
 - API Server 只绑定 `127.0.0.1`。
 - CLI 使用独立的随机 256-bit session token；它不能访问 Renderer API，Renderer token 也不能访问 CLI 命名空间。
-- 本机控制信任持有连接凭据的同一系统用户。`0700/0600` 隔离其他系统用户，不隔离同一用户的 Shell、文件工具或外部进程；持有 token 的调用方也可提交审批回复。
+- 本机控制信任持有连接凭据的同一系统用户。`0700/0600` 隔离其他系统用户，不隔离同一用户的 Shell、文件工具或外部进程；持有 token 的调用方可以查看待审批并提交拒绝；提交批准还需要用户放开（见[控制用例](../../application/conversation-control/README.md#命令审批)），由 `createExternalCommandApprovalPort` 把命令权限设置与宿主启动放行接成该查询。
 - Commands 的固定风险匹配用于请求操作者决定，不是对任意脚本的强隔离。CLI 不默认选项或自动批准；若需要抵抗受管工具自行取得控制凭据，必须另行设计跨工具、跨平台的隔离边界，不能只增加命令字符串黑名单。
 - 鉴权位于 body parser 前，避免未授权大请求先占用解析资源。
 - 诊断日志只记录命令名与收敛后的错误类型，不记录 token 或请求正文。

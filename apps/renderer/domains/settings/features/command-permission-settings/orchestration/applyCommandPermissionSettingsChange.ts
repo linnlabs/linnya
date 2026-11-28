@@ -62,6 +62,8 @@ export async function applyCommandPermissionSettingsChange(
       expected_revision: backend.revision,
       permission_level: draft.permissionLevel,
       internal_data_access: draft.internalDataAccess,
+      // 更新是整份替换；这一项原样带回，免得保存其他两项时把它改掉。
+      external_command_approval: draft.externalCommandApproval,
     }));
     if (result.success) {
       store.saveSucceeded(projectCommandPermissionSettings(result.settings));

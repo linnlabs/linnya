@@ -85,6 +85,7 @@ const permissionSettings = {
   revision: 1,
   permission_level: 'standard' as const,
   internal_data_access: 'allowed' as const,
+  external_command_approval: 'user_only' as const,
   gui_control: 'denied' as const,
   local_ipc_control: 'denied' as const,
   process_lifecycle: 'terminate_with_run' as const,

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createAuditLevelGuard,
   decideCommandApproval,
+  externalApprovalRefusal,
   judgeShellCommand,
   resolveBenchmarkTarget,
 } from '../benchmarkSafety.mjs';
@@ -56,6 +57,20 @@ describe('decideCommandApproval', () => {
       .toMatchObject({ action: 'stop', reason: expect.stringContaining('rm') });
     expect(decideCommandApproval({ command: 'ls', available_choices: ['allow_for_conversation', 'deny'] }))
       .toMatchObject({ action: 'stop' });
+  });
+});
+
+describe('externalApprovalRefusal', () => {
+  it('实例只让用户本人批准时给出处理办法；别的失败不吞掉', () => {
+    // 与 linnya CLI 写到 stderr 的结构化错误同形；驱动把它包进 Error 文本里。
+    const refused = new Error(`linnya approval-reply 失败：${JSON.stringify({
+      schema_version: 1, ok: false, command: 'command_approvals',
+      error: { code: 'approval_requires_user', message: 'Only the user can approve commands: …', retryable: false },
+    })}`);
+    expect(externalApprovalRefusal(refused)).toContain('允许命令行代为批准命令');
+    expect(externalApprovalRefusal(new Error('linnya approval-reply 失败：{"ok":false,"error":{"code":"transport_failure"}}'))).toBeUndefined();
+    // 说明文字里出现这个词不算，只认错误码字段。
+    expect(externalApprovalRefusal(new Error('{"error":{"code":"internal_error","message":"approval_requires_user"}}'))).toBeUndefined();
   });
 });
 

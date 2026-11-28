@@ -16,6 +16,7 @@ describe('CommandPermissionSettingsReadResultV1Schema', () => {
         revision: 3,
         permission_level: 'standard',
         internal_data_access: 'allowed',
+        external_command_approval: 'allowed',
         gui_control: 'denied',
         local_ipc_control: 'denied',
         process_lifecycle: 'terminate_with_run',
@@ -51,6 +52,7 @@ describe('CommandPermissionSettings update IPC schemas', () => {
       expected_revision: 4,
       permission_level: 'full_access',
       internal_data_access: 'denied',
+      external_command_approval: 'user_only',
     };
     expect(CommandPermissionSettingsUpdateV1Schema.parse(valid)).toEqual(valid);
     expect(() => CommandPermissionSettingsUpdateV1Schema.parse({
@@ -70,6 +72,7 @@ describe('CommandPermissionSettings update IPC schemas', () => {
       revision: 5,
       permission_level: 'standard',
       internal_data_access: 'allowed',
+      external_command_approval: 'user_only',
       gui_control: 'denied',
       local_ipc_control: 'denied',
       process_lifecycle: 'terminate_with_run',

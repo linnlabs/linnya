@@ -35,11 +35,14 @@ permission-settings/
 | `revision` | 每次成功更新递增，解决并发更新和旧页面提交 |
 | `permission_level` | `read_only`、`standard`、`full_access` |
 | `internal_data_access` | `allowed` 或 `denied`，独立开关 |
+| `external_command_approval` | `user_only`（默认）或 `allowed`：外部调用方能否通过控制端点批准命令，见下 |
 | `gui_control` | 固定 `denied`；不随权限档或审批开放 |
 | `local_ipc_control` | 当前固定 `denied` |
 | `process_lifecycle` | 当前固定 `terminate_with_run` |
 
-用户可以修改的只有档位和内部数据开关。固定字段必须原样回写，不能因为某个平台暂时不使用就删除。
+用户可以修改的只有档位、内部数据开关和“命令行代批”。固定字段必须原样回写，不能因为某个平台暂时不使用就删除。
+
+`external_command_approval` 不进入运行快照：它不改变命令需不需要审批，只决定谁能回答审批，由 [Conversation Control](../../../../app-hosts/linnya/application/conversation-control/README.md#命令审批) 在每次外部回复时现读内存 authority，所以用户改完立即生效。它只能经 Desktop 的设置通道修改；控制端点和命令行没有改它的入口。0.4 之前写下的文档没有这个字段，读入时按 `user_only`；它是唯一带默认值的字段，更新请求仍必须写明。
 
 ## 4. 初始化、更新和异常
 

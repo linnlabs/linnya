@@ -138,6 +138,7 @@ export async function createCliAppServerRuntime(
     commandHostEnvironment,
     processEnvironment,
     commandApprovalPresenter: { available: Boolean(input.commandApprovalPrompt) },
+    externalCommandApproval: { allowed: input.allowExternalCommandApproval === true },
     textMeasurement: {
       useBrowserPretext: false,
       useHarfBuzz: true,

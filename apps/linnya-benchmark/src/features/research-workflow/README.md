@@ -46,7 +46,7 @@ Conversation，避免引用别名跨会话漂移；Citation 快照排除展示 i
 - Shell 的 `command_approvals` 出现 `awaiting_reply` 时保存 `waiting_command_approval`，
   state 和 CLI 摘要保留实际 run/tool/request 及允许选择，追加原始等待快照。
   主 run 仍可真实处于 running，不伪装成 HITL 或 settled pause。操作者通过正式
-  `linnya approvals / approval-reply` 核查和回复；Runner 不自动批准，也不停止原运行。
+  `linnya approvals / approval-reply` 核查和回复（命令行默认只能拒绝，批准的前提见 CLI README“谁能批准”）；Runner 不自动批准，也不停止原运行。
   同目录再次启动只检查同一 receipt；等待仍在就再次退出，已作答的 processing 则继续观察，
   不 send、不 resume。当前等待清空不删除原始等待快照。
 - paused / awaiting_user 退出观察。paused 需显式

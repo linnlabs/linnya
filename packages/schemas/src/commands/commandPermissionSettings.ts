@@ -24,6 +24,13 @@ export type CommandProcessLifecyclePolicy = z.infer<
 >;
 
 /**
+ * 外部命令行调用方能不能代用户批准命令。`user_only` 时它们只能查看和拒绝，
+ * 批准只能由人在桌面端（或无界面运行时自己的终端）里给出。
+ */
+export const CommandExternalApprovalSchema = z.enum(['user_only', 'allowed']);
+export type CommandExternalApproval = z.infer<typeof CommandExternalApprovalSchema>;
+
+/**
  * 全局设置文件的完整文档。固定能力也写入文档，避免平台 adapter 根据隐式默认值
  * 各自解释 GUI、IPC 或后台进程边界。
  */
@@ -33,6 +40,9 @@ export const CommandPermissionSettingsV1Schema = z.object({
   revision: z.number().int().nonnegative().safe(),
   permission_level: CommandPermissionLevelSchema,
   internal_data_access: CommandInternalDataAccessSchema,
+  // 0.4 之前写下的文档没有这一项。缺省按最严的 user_only 读入，下一次保存时落盘；
+  // 这是唯一带缺省值的字段，不能照此给其他权限事实加隐式默认。
+  external_command_approval: CommandExternalApprovalSchema.default('user_only'),
   gui_control: CommandGuiControlPolicySchema,
   local_ipc_control: CommandLocalIpcControlPolicySchema,
   process_lifecycle: CommandProcessLifecyclePolicySchema,
@@ -41,13 +51,14 @@ export type CommandPermissionSettingsV1 = z.infer<
   typeof CommandPermissionSettingsV1Schema
 >;
 
-/** 用户可修改的两项事实。其余字段当前是固定产品合同，不能由隐藏入口改写。 */
+/** 用户可修改的三项事实。其余字段当前是固定产品合同，不能由隐藏入口改写。 */
 export const CommandPermissionSettingsUpdateV1Schema = z.object({
   schema_version: z.literal(COMMAND_PERMISSION_SETTINGS_SCHEMA_VERSION),
   kind: z.literal('command_permission_settings_update'),
   expected_revision: z.number().int().nonnegative().safe(),
   permission_level: CommandPermissionLevelSchema,
   internal_data_access: CommandInternalDataAccessSchema,
+  external_command_approval: CommandExternalApprovalSchema,
 }).strict();
 export type CommandPermissionSettingsUpdateV1 = z.infer<
   typeof CommandPermissionSettingsUpdateV1Schema

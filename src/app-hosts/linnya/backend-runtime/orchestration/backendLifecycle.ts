@@ -92,6 +92,7 @@ export async function initializeAppServerBackend(
         },
         agentToolEnvironment: hostDependencies.agentToolEnvironment,
         commandApprovalControl: hostDependencies.commandApprovalControl,
+        externalCommandApproval: hostDependencies.externalCommandApproval,
         transcriptionService: services.transcriptionService || undefined,
         documentOcr: services.documentOcr,
         startupCapabilityFailures: runtimeOwner.getStartupCapabilityFailures(),

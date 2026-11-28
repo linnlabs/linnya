@@ -85,7 +85,7 @@ describe('command permission settings IPC', () => {
     await expect(invokeRead()).resolves.toEqual({ success: false, code: 'invalid_config' });
   });
 
-  it('更新两个可变字段并保持固定能力关闭', async () => {
+  it('桌面端设置通道更新三个可变字段（含“允许命令行代批”）并保持固定能力关闭', async () => {
     let serialized = serializeCommandPermissionSettings(DEFAULT_COMMAND_PERMISSION_SETTINGS);
     await registerWithPort({
       read: () => ({ status: 'found', serialized }),
@@ -101,6 +101,7 @@ describe('command permission settings IPC', () => {
       expected_revision: 0,
       permission_level: 'full_access',
       internal_data_access: 'denied',
+      external_command_approval: 'allowed',
     }))).toEqual({
       success: true,
       settings: {
@@ -109,6 +110,7 @@ describe('command permission settings IPC', () => {
         revision: 1,
         permission_level: 'full_access',
         internal_data_access: 'denied',
+        external_command_approval: 'allowed',
         gui_control: 'denied',
         local_ipc_control: 'denied',
         process_lifecycle: 'terminate_with_run',
@@ -143,6 +145,7 @@ describe('command permission settings IPC', () => {
       expected_revision: 8,
       permission_level: 'full_access',
       internal_data_access: 'allowed',
+      external_command_approval: 'user_only',
     })).toEqual({
       success: false,
       code: 'revision_conflict',
@@ -184,6 +187,7 @@ describe('command permission settings IPC', () => {
       expected_revision: 2,
       permission_level: 'read_only',
       internal_data_access: 'denied',
+      external_command_approval: 'user_only',
     })).toEqual({
       success: false,
       code: 'write_failed',
@@ -223,6 +227,7 @@ describe('command permission settings IPC', () => {
       expected_revision: 0,
       permission_level: 'read_only',
       internal_data_access: 'denied',
+      external_command_approval: 'user_only',
     });
     expect(CommandPermissionSettingsUpdateResultV1Schema.parse(updated)).toMatchObject({
       success: true,

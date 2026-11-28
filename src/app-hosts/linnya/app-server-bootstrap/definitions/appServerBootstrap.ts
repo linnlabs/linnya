@@ -2,7 +2,7 @@ import type { BackendBootstrapFacts } from '../../backend-runtime';
 import type { HostProcessEnvironment } from '../../../../infra/adapters/command-runtime/environment';
 import type { LocalProcessPlatformRuntime } from '../../../../infra/adapters/local-process-runtime/platform-runtime';
 
-export const APP_SERVER_BOOTSTRAP_SCHEMA_VERSION = 6 as const;
+export const APP_SERVER_BOOTSTRAP_SCHEMA_VERSION = 7 as const;
 export const APP_SERVER_BOOTSTRAP_MAX_FRAME_BYTES = 1024 * 1024;
 
 export interface AppServerBackendConfiguration {
@@ -35,6 +35,11 @@ export interface AppServerBootstrap {
      * 落入“Runtime 已 ready、终端 presenter 尚未接上”的竞态窗口。
      */
     readonly command_approval_presenter: { readonly available: boolean };
+    /**
+     * 宿主启动时是否显式放行“外部命令行代用户批准命令”。Desktop 恒为 false（由设置里的开关决定）；
+     * 只有源码版 `linnya runtime start --allow-external-approval` 为 true。
+     */
+    readonly external_command_approval: { readonly allowed: boolean };
   };
   readonly text_measurement: {
     readonly use_browser_pretext: boolean;

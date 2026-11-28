@@ -53,6 +53,7 @@ describe('command permission settings authority', () => {
         expected_revision: 0,
         permission_level: 'read_only',
         internal_data_access: 'denied',
+        external_command_approval: 'user_only',
       },
     });
     expect(readCommandPermissionSettings(authority)).toEqual(updated);
@@ -118,6 +119,7 @@ describe('command permission settings authority', () => {
         expected_revision: 0,
         permission_level: 'full_access',
         internal_data_access: 'denied',
+        external_command_approval: 'user_only',
       },
     });
 

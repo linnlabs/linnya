@@ -56,7 +56,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     await expect(fs.stat(connectionFile)).rejects.toMatchObject({ code: 'ENOENT' });
   }, 30_000);
 
-  it('无 Renderer/TTY 的真实 Shell 等待 CLI 决定；接受、拒绝和取消均保留原 run', async () => {
+  it('默认只有人能批：外部提交允许被明确拒绝并留在待处理，拒绝的理由交到 Agent 手里；启动时放行后才能代批', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-approval-e2e-'));
     temporaryRoots.push(root);
     const workspace = path.join(root, 'workspace');
@@ -78,7 +78,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
       },
     }] }));
     const environment = await createRuntimeEnvironment({ connectionFile, modelCatalog });
-    const runtime = await startRuntime({ workspace, environment });
+    const guarded = await startRuntime({ workspace, environment });
     const projectId = 'approval-runtime-e2e';
     const database = new Database(path.join(workspace, 'workspace', 'workspace.sqlite'), { fileMustExist: true });
     try {
@@ -86,6 +86,57 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
         .run(projectId, 'Approval Runtime E2E', Date.now(), Date.now());
     } finally { database.close(); }
 
+    // 第一段：按默认方式启动。没有终端、也没有放行，外部调用方只能查看和拒绝。
+    {
+      const receipt = readReceipt(await runCli(['send', 'approval-fixture', '--project', projectId,
+        '--agent', 'default', '--model', 'approval-fixture'], environment));
+      const watchArgs = ['status', receipt.conversation_id, '--run', receipt.run_id,
+        '--watch', '--interval', '250', '--timeout', '20000'];
+      expect(readLastJsonLine((await runCli(watchArgs, environment)).stdout), guarded.stderr).toMatchObject({ snapshot: {
+        run_id: receipt.run_id, status: 'running', command_approvals: [{ status: 'awaiting_reply' }],
+      } });
+      const listArgs = ['approvals', receipt.conversation_id, '--run', receipt.run_id];
+      const listed = ConversationControlCommandApprovalsResponseSchema.parse(parseJson((await runCli(listArgs, environment)).stdout));
+      if (listed.action !== 'list') throw new Error('Expected approval list');
+      // 待审批照实列出，同时说明这位调用方不能代批、该请谁怎么做。
+      expect(listed.pending).toMatchObject([{ command: fixture.command, available_choices: ['allow_once', 'deny'] }]);
+      expect(listed.external_approval).toMatchObject({
+        permitted: false, message: expect.stringContaining('--allow-external-approval'),
+      });
+      const pending = listed.pending[0];
+      if (!pending) throw new Error('Missing pending approval');
+      const replyBase = ['approval-reply', receipt.conversation_id, '--run', pending.agent_run_id,
+        '--request', pending.approval_request_id];
+      const refused = await runCli([...replyBase, '--choice', 'allow_once'], environment);
+      expect(refused.code, refused.stdout).toBe(9);
+      expect(refused.stdout).toBe('');
+      expect(parseObject(refused.stderr)).toMatchObject({
+        ok: false,
+        error: { code: 'approval_requires_user', retryable: false, message: expect.stringContaining('Only the person at the runtime terminal') },
+      });
+      // 被拒的“允许”不结算请求：命令没有执行，审批仍在等人。
+      expect(fixture.toolResults).toHaveLength(0);
+      const stillPending = ConversationControlCommandApprovalsResponseSchema.parse(parseJson((await runCli(listArgs, environment)).stdout));
+      expect(stillPending).toMatchObject({ pending: [{ approval_request_id: pending.approval_request_id, status: 'awaiting_reply' }] });
+      // 理由只能跟着拒绝走。
+      expect((await runCli([...replyBase, '--choice', 'allow_once', '--reason', 'x'], environment)).code).toBe(2);
+      const denied = await runCli([...replyBase, '--choice', 'deny', '--reason', 'keep that folder; write to scratch/ instead'], environment);
+      expect(denied.code, denied.stderr).toBe(0);
+      expect(parseObject(denied.stdout)).toMatchObject({ status: 'accepted' });
+      expect(readLastJsonLine((await runCli(watchArgs, environment)).stdout), guarded.stderr).toMatchObject({ snapshot: {
+        run_id: receipt.run_id, status: 'completed', command_approvals: [],
+      } });
+      // 模型夹具收到的工具结果里带着拒绝理由，命令没有执行。
+      expect(fixture.toolResults).toHaveLength(1);
+      expect(fixture.toolResults[0]).toContain('keep that folder; write to scratch/ instead');
+      expect(fixture.toolResults[0]).not.toContain('approval-e2e-executed');
+    }
+    guarded.child.kill('SIGTERM');
+    expect(await waitForClose(guarded.child), guarded.stderr).toBe(0);
+    removeLiveRuntime(guarded.child);
+
+    // 第二段：同一份数据，启动时显式放行。行为与放开前一致：外部调用方的接受、拒绝和取消都结算原 run。
+    const runtime = await startRuntime({ workspace, environment, allowExternalApproval: true });
     for (const choice of ['allow_once', 'deny', 'cancel'] as const) {
       const receipt = readReceipt(await runCli(['send', 'approval-fixture', '--project', projectId,
         '--agent', 'default', '--model', 'approval-fixture'], environment));
@@ -100,6 +151,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
       const list = await runCli(['approvals', receipt.conversation_id, '--run', receipt.run_id], environment);
       const response = ConversationControlCommandApprovalsResponseSchema.parse(parseJson(list.stdout));
       if (response.action !== 'list') throw new Error('Expected approval list');
+      expect(response.external_approval).toEqual({ permitted: true });
       expect(response.pending).toHaveLength(1);
       const pending = response.pending[0];
       if (!pending) throw new Error('Missing pending approval');
@@ -154,7 +206,7 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     runtime.child.kill('SIGTERM');
     expect(await waitForClose(runtime.child), runtime.stderr).toBe(0);
     removeLiveRuntime(runtime.child);
-  }, 90_000);
+  }, 150_000);
 
   it('冷启动、并行运行、拒绝第二 owner，并在重启后保留历史', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'linnya-cli-runtime-e2e-'));
@@ -421,6 +473,7 @@ async function startApprovalModelFixture(): Promise<{
 async function startRuntime(input: {
   readonly workspace: string;
   readonly environment: NodeJS.ProcessEnv;
+  readonly allowExternalApproval?: boolean;
 }): Promise<{
   readonly child: ChildProcessWithoutNullStreams;
   readonly ready: { readonly runtime: { readonly pid: number; readonly database_ready: boolean } };
@@ -430,6 +483,7 @@ async function startRuntime(input: {
     cliEntry,
     'runtime', 'start',
     '--workspace', input.workspace,
+    ...(input.allowExternalApproval ? ['--allow-external-approval'] : []),
   ], {
     cwd: repoRoot,
     env: input.environment,

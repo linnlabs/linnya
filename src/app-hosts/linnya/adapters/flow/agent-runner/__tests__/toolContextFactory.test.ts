@@ -43,6 +43,7 @@ function createHostServices() {
           revision: 0,
           permission_level: 'standard',
           internal_data_access: 'allowed',
+          external_command_approval: 'user_only',
           gui_control: 'denied',
           local_ipc_control: 'denied',
           process_lifecycle: 'terminate_with_run',

@@ -21,7 +21,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOCUMENTS, FIXTURE_PROJECT_NAME } from './fixture.mjs';
 import { semanticSnapshot, workspaceTagCount } from './semanticSnapshot.mjs';
-import { createAuditLevelGuard, decideCommandApproval, resolveBenchmarkTarget } from './benchmarkSafety.mjs';
+import { createAuditLevelGuard, decideCommandApproval, externalApprovalRefusal, resolveBenchmarkTarget } from './benchmarkSafety.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const cliEntry = path.join(repoRoot, 'apps/linnya-cli/src/main.ts');
@@ -108,10 +108,10 @@ async function selectTarget(options) {
   return target;
 }
 
-/** 白名单外的命令：停止这一轮，整个基准也随之停止。 */
+/** 命令不能自动放行（白名单外，或实例不允许命令行代批）：停止这一轮，整个基准也随之停止。 */
 class CommandOutsideAllowlist extends Error {
   constructor(blocked) {
-    super(`命令不在白名单：${blocked.command}（${blocked.reason}）`);
+    super(`命令没有放行：${blocked.command}（${blocked.reason}）`);
     this.blocked = blocked;
   }
 }
@@ -182,8 +182,18 @@ async function runTask(task, context) {
         await cli(['stop', receipt.conversation_id, '--run', receipt.run_id, '--reason', 'benchmark: command outside allowlist']);
         break;
       }
-      await cli(['approval-reply', receipt.conversation_id, '--run', receipt.run_id,
-        '--request', approval.approval_request_id, '--choice', decision.choice]);
+      try {
+        await cli(['approval-reply', receipt.conversation_id, '--run', receipt.run_id,
+          '--request', approval.approval_request_id, '--choice', decision.choice]);
+      } catch (error) {
+        // 实例默认只让用户本人批准；这时驱动替不了人，停下并告诉评测人去哪里打开。
+        const refusal = externalApprovalRefusal(error);
+        if (!refusal) throw error;
+        blocked = { command: approval.command, reason: refusal };
+        approvals.push({ command: approval.command, reasons: approval.reasons, choice: 'stopped', stopReason: refusal });
+        await cli(['stop', receipt.conversation_id, '--run', receipt.run_id, '--reason', 'benchmark: instance does not allow command-line approval']);
+        break;
+      }
       approvals.push({ command: approval.command, reasons: approval.reasons, choice: decision.choice });
     }
     if (blocked) break;

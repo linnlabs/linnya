@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ConversationControlInstanceSchema } from './auditControl';
 
 export const CONVERSATION_CONTROL_SCHEMA_VERSION = 1 as const;
-export const CONVERSATION_CONTROL_PROTOCOL_VERSION = 8 as const;
+export const CONVERSATION_CONTROL_PROTOCOL_VERSION = 9 as const;
 export const CONVERSATION_CONTROL_BRIDGE_PATH = '/api/v1/conversation-control' as const;
 export const CONVERSATION_CONTROL_TOKEN_HEADER = 'x-linnya-cli-token' as const;
 export const CONVERSATION_CONTROL_CONNECTION_FILE_ENV = 'LINNYA_CLI_CONNECTION_FILE' as const;

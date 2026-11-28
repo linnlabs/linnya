@@ -46,6 +46,7 @@ describe('command permission settings business flow', () => {
       revision: 0,
       permission_level: 'standard',
       internal_data_access: 'allowed',
+      external_command_approval: 'user_only',
       gui_control: 'denied',
       local_ipc_control: 'denied',
       process_lifecycle: 'terminate_with_run',
@@ -59,6 +60,7 @@ describe('command permission settings business flow', () => {
         expected_revision: 0,
         permission_level: 'read_only',
         internal_data_access: 'denied',
+        external_command_approval: 'user_only',
       },
     });
     expect(updated).toMatchObject({
@@ -71,6 +73,49 @@ describe('command permission settings business flow', () => {
     });
     expect(readCommandPermissionSettings(memory.port)).toEqual(updated);
     expect(memory.readSerialized()?.endsWith('\n')).toBe(true);
+  });
+
+  it('0.4 之前写下的文档没有“命令行代批”一项：按只有用户能批读入，用户打开后才落盘为允许', () => {
+    const legacy = {
+      schema_version: 1,
+      kind: 'command_permission_settings',
+      revision: 4,
+      permission_level: 'full_access',
+      internal_data_access: 'denied',
+      gui_control: 'denied',
+      local_ipc_control: 'denied',
+      process_lifecycle: 'terminate_with_run',
+    };
+    const memory = createMemoryPort(`${JSON.stringify(legacy, null, 2)}\n`);
+    // 旧文档照常可读，其余设置原样保留；缺的那一项取最严的值。
+    expect(readCommandPermissionSettings(memory.port)).toEqual({ ...legacy, external_command_approval: 'user_only' });
+
+    const opened = updateCommandPermissionSettings({
+      port: memory.port,
+      update: {
+        schema_version: 1,
+        kind: 'command_permission_settings_update',
+        expected_revision: 4,
+        permission_level: 'full_access',
+        internal_data_access: 'denied',
+        external_command_approval: 'allowed',
+      },
+    });
+    expect(opened).toEqual({ ...legacy, revision: 5, external_command_approval: 'allowed' });
+    expect(JSON.parse(memory.readSerialized() ?? '')).toEqual(opened);
+
+    // 更新必须写明这一项；缺省不被解释成“保持原值”或“关闭”。
+    expect(() => updateCommandPermissionSettings({
+      port: memory.port,
+      update: {
+        schema_version: 1,
+        kind: 'command_permission_settings_update',
+        expected_revision: 5,
+        permission_level: 'full_access',
+        internal_data_access: 'denied',
+      },
+    })).toThrow(expect.objectContaining({ code: 'invalid_update' }));
+    expect(readCommandPermissionSettings(memory.port)).toEqual(opened);
   });
 
   it('缺失配置明确不可用，不能在普通读取路径静默恢复为 standard', () => {
@@ -101,6 +146,7 @@ describe('command permission settings business flow', () => {
         expected_revision: 0,
         permission_level: 'full_access',
         internal_data_access: 'allowed',
+        external_command_approval: 'user_only',
       },
     });
 
@@ -112,6 +158,7 @@ describe('command permission settings business flow', () => {
         expected_revision: 0,
         permission_level: 'read_only',
         internal_data_access: 'denied',
+        external_command_approval: 'user_only',
       },
     })).toThrow(expect.objectContaining({ code: 'revision_conflict' }));
     expect(readCommandPermissionSettings(memory.port)).toEqual(first);

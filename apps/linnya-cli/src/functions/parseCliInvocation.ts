@@ -40,6 +40,7 @@ const BOOLEAN_OPTIONS = new Set([
   'new-session',
   'create',
   'yes',
+  'allow-external-approval',
 ]);
 
 function usageError(message: string): never {
@@ -219,7 +220,7 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
       }) };
     }
     case 'runtime': {
-      assertAllowedOptions(tokens, ['workspace', 'api-port', 'qdrant-port']);
+      assertAllowedOptions(tokens, ['workspace', 'api-port', 'qdrant-port', 'allow-external-approval']);
       if (tokens.positionals.length !== 1 || tokens.positionals[0] !== 'start') {
         usageError('runtime requires exactly: runtime start');
       }
@@ -228,6 +229,7 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
         workspaceDirectory: readString(tokens, 'workspace'),
         apiPort: readPort(tokens, 'api-port', 0, true),
         qdrantPort: readPort(tokens, 'qdrant-port', 0, true),
+        allowExternalCommandApproval: readBoolean(tokens, 'allow-external-approval'),
         pretty,
       };
     }
@@ -364,7 +366,7 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
     }
     case 'approvals':
     case 'approval-reply': {
-      assertAllowedOptions(tokens, command === 'approvals' ? ['run'] : ['run', 'request', 'choice']);
+      assertAllowedOptions(tokens, command === 'approvals' ? ['run'] : ['run', 'request', 'choice', 'reason']);
       const runId = readString(tokens, 'run');
       if (!runId) usageError(`${command} requires --run <id> to identify the exact approval scope`);
       const identity = {
@@ -381,6 +383,7 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
               action: 'reply',
               approval_request_id: readString(tokens, 'request'),
               choice: readString(tokens, 'choice'),
+              deny_reason: readString(tokens, 'reason'),
             }
       );
       return { kind: 'command', request, pretty };

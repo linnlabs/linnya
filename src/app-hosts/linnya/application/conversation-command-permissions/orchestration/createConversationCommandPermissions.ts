@@ -186,6 +186,8 @@ export function createConversationCommandPermissions(input: {
       expected_revision: global.revision,
       permission_level: target,
       internal_data_access: global.internal_data_access,
+      // 降档只改权限档位；其余用户可改的事实原样带回，否则整份替换会把它们改掉。
+      external_command_approval: global.external_command_approval,
     } as const;
     const at = Date.now();
     const changed = new Map<string, { createdAt: number; change: ConversationCommandPermissionChange }>();

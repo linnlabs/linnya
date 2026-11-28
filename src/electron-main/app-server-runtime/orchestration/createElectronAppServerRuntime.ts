@@ -79,6 +79,8 @@ export async function createElectronAppServerRuntime(input: {
       commandHostEnvironment: input.commandHostEnvironment,
       processEnvironment: input.processEnvironment,
       commandApprovalPresenter: { available: false },
+      // Desktop 不在启动时放行；外部命令行能否代批只看用户在设置里的开关。
+      externalCommandApproval: { allowed: false },
       textMeasurement: {
         useBrowserPretext: input.processEnvironment.MEASUREMENT_USE_MAIN_PRETEXT !== 'false',
         useHarfBuzz: input.processEnvironment.MEASUREMENT_USE_HARFBUZZ !== 'false',
