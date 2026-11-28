@@ -1,6 +1,10 @@
+export type { ForegroundMaskPort, ForegroundMaskResult } from './definitions/foregroundMask';
 export type {
+  CutoutEngine,
+  CutoutMethod,
   EncodedImage,
   EncodedImageFormat,
+  ForegroundCutout,
   ImageCrop,
   ImagePoint,
   ImageProcessingErrorCode,
@@ -23,4 +27,5 @@ export {
   overlayImageGrid,
   warpImageToQuad,
 } from './orchestration/imageProcessing';
+export { cutoutForeground } from './orchestration/cutoutForeground';
 export { sliceSheet } from './orchestration/sliceSheet';

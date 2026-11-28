@@ -6,16 +6,18 @@ import type {
 import {
   convertInkToAlpha,
   createTexture,
+  cutoutForeground,
   frostImageRegion,
   measureImageTrim,
   overlayImageGrid,
   sliceSheet,
   warpImageToQuad,
   type EncodedImage,
+  type ForegroundMaskPort,
   type ImageProcessingOutcome,
 } from 'src/domains/image-processing';
 import type { PhysicalFileReaderPort } from '../../file-read';
-import { formatGrid, formatSlice, formatTrim, formatWrittenImage } from '../functions/formatImage';
+import { formatCutout, formatGrid, formatSlice, formatTrim, formatWrittenImage } from '../functions/formatImage';
 import { imageUsageFor, parseImageCommand, type ImageCommand } from '../functions/parseImageCommand';
 import {
   ConversationAssetWriteError,
@@ -38,6 +40,7 @@ function failed(code: string, message: string): BackendPluginCliResult {
 
 interface ImageCliContext {
   readonly reader: PhysicalFileReaderPort;
+  readonly foregroundMask: ForegroundMaskPort;
   readonly root: string;
   readonly signal: AbortSignal;
 }
@@ -55,7 +58,7 @@ async function writeResult(
 /** 一张输入图、一张输出图的子命令共用：读图 → 处理 → 写进 assets/。 */
 async function processOne(
   context: ImageCliContext,
-  command: Exclude<ProcessingCommand, { kind: 'trim' | 'texture' | 'slice' }>,
+  command: Exclude<ProcessingCommand, { kind: 'trim' | 'texture' | 'slice' | 'cutout' }>,
 ): Promise<BackendPluginCliResult> {
   const bytes = await readConversationImage(context.reader, context.root, command.image, context.signal);
   if (!bytes) return failed('image_unreadable', `读不出 ${command.image}：不在当前对话工作目录里，或不是 JPEG、PNG、WebP`);
@@ -105,6 +108,20 @@ async function slice(
   return { exitCode: 0, stdout: formatSlice({ ...outcome.value, pieces, check }), stderr: '' };
 }
 
+/** 去背：结果图和检查图各写一个文件。 */
+async function cutout(
+  context: ImageCliContext, command: Extract<ProcessingCommand, { kind: 'cutout' }>,
+): Promise<BackendPluginCliResult> {
+  const bytes = await readConversationImage(context.reader, context.root, command.image, context.signal);
+  if (!bytes) return failed('image_unreadable', `读不出 ${command.image}：不在当前对话工作目录里，或不是 JPEG、PNG、WebP`);
+  const outcome = await cutoutForeground({ bytes, method: command.method, foregroundMask: context.foregroundMask, signal: context.signal });
+  if (outcome.status === 'failed') return failed(outcome.code, outcome.message);
+  const { image, check, ...measurement } = outcome.value;
+  const written = { locator: await writeResult(context, command.image, 'cutout', image), image };
+  const checked = { locator: await writeResult(context, command.image, 'cutout-check', check), image: check };
+  return { exitCode: 0, stdout: formatCutout({ ...measurement, image: written, check: checked }), stderr: '' };
+}
+
 async function execute(context: ImageCliContext, command: ProcessingCommand): Promise<BackendPluginCliResult> {
   try {
     if (command.kind === 'texture') {
@@ -126,6 +143,7 @@ async function execute(context: ImageCliContext, command: ProcessingCommand): Pr
       return { exitCode: 0, stdout: formatTrim({ ...measurement, saved }), stderr: '' };
     }
     if (command.kind === 'slice') return await slice(context, command);
+    if (command.kind === 'cutout') return await cutout(context, command);
     return await processOne(context, command);
   } catch (error) {
     // 写不进 assets/ 是可预期的业务失败（例如它被换成了指向别处的链接），其余异常照常抛给 Shell 桥记录。
@@ -142,6 +160,7 @@ export function prepareImageCli(input: {
   readonly argv: readonly string[];
   readonly conversationRoot: string;
   readonly fileReader: PhysicalFileReaderPort;
+  readonly foregroundMask: ForegroundMaskPort;
 }): BackendPluginCliPreparation {
   let command: ImageCommand;
   try {
@@ -157,7 +176,9 @@ export function prepareImageCli(input: {
     status: 'ready',
     plan: {
       access: access(readOnly ? 'read' : 'write'),
-      execute: async ({ signal }) => await execute({ reader: input.fileReader, root: input.conversationRoot, signal }, processing),
+      execute: async ({ signal }) => await execute({
+        reader: input.fileReader, foregroundMask: input.foregroundMask, root: input.conversationRoot, signal,
+      }, processing),
     },
   };
 }

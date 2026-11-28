@@ -1,4 +1,4 @@
-import { gridRowLabel, type EncodedImage, type ImageCrop, type SheetKeyMode } from 'src/domains/image-processing';
+import { gridRowLabel, type CutoutEngine, type EncodedImage, type ImageCrop, type SheetKeyMode } from 'src/domains/image-processing';
 
 /** 一行写清产物：路径、像素尺寸、格式和大小，模型照抄路径引用即可。 */
 export function formatWrittenImage(locator: string, image: EncodedImage): string {
@@ -44,5 +44,31 @@ export function formatSlice(input: {
   const residual = input.mode === 'flood' ? '' : ` · 残留键色 ${(input.residual * 100).toFixed(2)}%`;
   return `底色 ${KEY_NAMES[input.mode]} ${hex}（实测）· ${input.pieces.length} 块${residual}\n`
     + input.pieces.map((piece, index) => `${index + 1} ${formatWrittenImage(piece.locator, piece.image)}`).join('')
+    + `检查图 ${formatWrittenImage(input.check.locator, input.check.image)}`;
+}
+
+const ENGINE_NAMES: Record<CutoutEngine, string> = { vision: 'Vision（系统前景遮罩）', edge: '边缘抠图' };
+
+function percent(ratio: number): string {
+  return `${Math.round(ratio * 100)}%`;
+}
+
+/** 首行写用了哪种方法和两个判别数，可疑时多一行提示；然后是结果图和检查图。 */
+export function formatCutout(input: {
+  readonly engine: CutoutEngine;
+  readonly visionFoundNothing: boolean;
+  readonly foregroundRatio: number;
+  readonly borderForeground: number;
+  readonly suspicious: boolean;
+  readonly image: { readonly locator: string; readonly image: EncodedImage };
+  readonly check: { readonly locator: string; readonly image: EncodedImage };
+}): string {
+  const fallback = input.visionFoundNothing ? '（Vision 没找到前景）' : '';
+  const warning = input.suspicious
+    ? `提示：前景占 ${percent(input.foregroundRatio)}、贴边 ${percent(input.borderForeground)}，超出常见范围，背景多半没去干净或主体被抠掉了；读检查图确认\n`
+    : '';
+  return `方法 ${ENGINE_NAMES[input.engine]}${fallback} · 前景占 ${percent(input.foregroundRatio)} · 贴边 ${percent(input.borderForeground)}\n`
+    + warning
+    + formatWrittenImage(input.image.locator, input.image.image)
     + `检查图 ${formatWrittenImage(input.check.locator, input.check.image)}`;
 }

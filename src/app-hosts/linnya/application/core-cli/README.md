@@ -44,6 +44,7 @@ list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、in
 `linnya image` 给 Agent 处理对话工作目录里的图片。处理规则、尺寸上限与错误码归 [image-processing domain](../../../../domains/image-processing/README.md)。
 
 - `trim <图片> [--tolerance 1-100] [--save]`：量出四周的纯色边，输出 `crop {"top":…,"left":…}`（只列要裁的边，按原图比例）。默认只读，`--save` 才另存裁好的图。
+- `cutout <图片> [--method auto|vision|edge]`：去掉照片背景、裁到主体，另出检查图（左边原图，右边结果叠在品红底上）。首行写用了哪种方法、前景占比与贴边比例，超出常见范围时多一行提示。macOS 14 及以上默认用系统 Vision（经 [foreground-mask 适配器](../../adapters/foreground-mask/README.md)），其他平台按边缘颜色抠。
 - `ink <图片> [--color HEX]`：白纸上的书法、拓片、印章转成单色加透明，裁到有墨的范围。
 - `frost <图片> --region 左,上,宽,高 [--aspect 宽:高] [--blur 1-100] [--radius 0-0.5]`：预先模糊背景图上卡片所在的一块，整张图交回。`--aspect` 先按页面比例居中裁（与铺满页面、不写焦点时显示的部分一致），区域就能按“卡片位置 ÷ 页面尺寸”写。
 - `perspective <图片> --to x1,y1,…,x4,y4 [--size 宽x高]`：投影进四边形，四边形外透明。
@@ -53,7 +54,7 @@ list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、in
 
 图片的读法与配色相同：工作目录里的相对路径或 `conversation:/...`，不能越出工作目录。位置和区域按宽高的 0–1 写。
 
-结果写进工作目录的 `assets/`，文件名是“原图名-操作-随机后缀”，独占创建。`assets` 是符号链接或不是文件夹时报 `output_unwritable`，不会写到工作目录外。每个结果输出一行：`conversation:/assets/… 宽×高 格式 大小`；`slice` 每块各写一个文件。
+结果写进工作目录的 `assets/`，文件名是“原图名-操作-随机后缀”，独占创建。`assets` 是符号链接或不是文件夹时报 `output_unwritable`，不会写到工作目录外。每个结果输出一行：`conversation:/assets/… 宽×高 格式 大小`；`slice` 每块各写一个文件，`cutout` 与 `slice` 另写一张检查图。
 
 权限：都不读写内部数据（`internalDataAccess: none`）。`trim` 不带 `--save` 只读工作目录，其余子命令都要写，需要给 Shell 设 `requires_write_access`。
 

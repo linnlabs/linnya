@@ -6,6 +6,7 @@ import { SEMANTIC_LAYER_SCHEMAS } from 'src/domains/semantic-layer/infrastructur
 import { PROJECT_SAVED_FILTER_SCHEMAS } from 'src/app-hosts/linnya/adapters/persistence/saved-filters';
 import { parseQueryFilter } from '../functions/parseSemanticCommands';
 import { createCoreCli } from '../orchestration/createCoreCli';
+import { createVisionForegroundMask } from '../../../adapters/foreground-mask';
 
 const databases: Database.Database[] = [];
 afterEach(() => {
@@ -39,7 +40,7 @@ function setup() {
   insert.run('x', 'p2', null, 'document', '机密报告', 5, 5);
   db.prepare('INSERT INTO document_references VALUES (?, ?, ?, ?)').run('c', 'r1', 'a', 'inline');
   db.prepare('INSERT INTO document_references VALUES (?, ?, ?, ?)').run('c', 'r2', 'a', 'inline');
-  const cli = createCoreCli(db, 4000, { readFile: async () => { throw new Error('unused'); } }, { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } });
+  const cli = createCoreCli(db, 4000, { readFile: async () => { throw new Error('unused'); } }, createVisionForegroundMask(), { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } });
   const run = async (
     argv: string[],
     context: { agentRunId?: string; readOnly?: boolean; projectId?: string; conversationId?: string } = {},

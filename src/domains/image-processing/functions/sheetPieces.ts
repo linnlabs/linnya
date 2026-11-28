@@ -1,9 +1,4 @@
-export interface PixelBox {
-  readonly left: number;
-  readonly top: number;
-  readonly width: number;
-  readonly height: number;
-}
+import type { PixelBox } from '../definitions/imageProcessing';
 
 /**
  * 外接框的长边不到整张图长边 2% 的连通块当作碎屑（压缩噪点、杂点）丢掉。

@@ -18,6 +18,7 @@ import {
   searchProjectConversations,
   queryProjectConversations,
 } from '..';
+import { createVisionForegroundMask } from '../../../adapters/foreground-mask';
 
 let database: DatabaseService;
 let workspace: WorkspaceService;
@@ -100,7 +101,7 @@ describe('项目对话页', () => {
     addMessage('c', 'child-agent', 'final_answer', '子运行不算回复');
     await new WriteFileTool().run({ locator: 'workspace:/定价.md', content: '# 定价' }, context('a', 'run-a', 'query-change'));
     const activity = createConversationActivityPorts(db(), { readControlPending: () => [] });
-    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('query must not read files'); } }, activity);
+    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('query must not read files'); } }, createVisionForegroundMask(), activity);
     async function command(args: string[], project: string | undefined = projectId) {
       const prepared = cli.prepare({ argv: ['conversations', ...args], invocationId: 'query', conversationRoot: '/unused' });
       if (prepared.status === 'completed') return prepared.result;
@@ -163,7 +164,7 @@ describe('项目对话页', () => {
     expect(await panel('default')).toEqual(['chat']);
     expect(await panel('research_v1')).toEqual(['research']);
 
-    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('unused'); } }, activity);
+    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('unused'); } }, createVisionForegroundMask(), activity);
     async function shellList(args: string[]) {
       const prepared = cli.prepare({ argv: ['conversations', 'list', ...args], invocationId: 'origin', conversationRoot: '/unused' });
       if (prepared.status !== 'ready') throw new Error('list not prepared');
@@ -189,7 +190,7 @@ describe('项目对话页', () => {
     addRun('older-research', 'older-match', 'research_v1');
     addMessage('older-match', 'older-research', 'final_answer', '共同内容关键词');
     const activity = createConversationActivityPorts(db(), { readControlPending: () => [] });
-    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('unused'); } }, activity);
+    const cli = createCoreCli(db(), 30000, { readFile: async () => { throw new Error('unused'); } }, createVisionForegroundMask(), activity);
     for (const query of ['共同标题', '共同内容关键词']) {
       expect(searchProjectConversations(db(), { project_id: projectId, query })).toMatchObject({ truncated: true });
       const result = await queryProjectConversations(db(), {

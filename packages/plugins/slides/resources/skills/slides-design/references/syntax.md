@@ -218,7 +218,7 @@ absolute 节点按父容器内的添加顺序形成层级。需要让装饰位�
 
 Workspace 虚拟路径不是图片二进制地址。不要捏造 locator；图片首次成功编译时会自动复制为 presentation-owned 受控资产，之后不依赖原文件。
 
-**图片来源与预处理**：图片可以来自 `generate_image` 工具的产出、用户提供的素材，或用命令行处理后的结果。只用一张图的局部、调整取景时，直接在 Image 上写 `crop` / `focus`，不要另存裁过的图：原图保留在文稿里，导出 PPTX 后仍是 PowerPoint 里可以再调的裁剪。缩放、导出特定尺寸、转格式、去背这类改变像素的处理，才在写 deck.js 之前用命令行完成，再引用处理后的产物。量白边、拓片和书法转透明、磨砂卡背后的模糊、透视、纸纹和颗粒用内置的 `linnya image`，见 [`cli.md`](./cli.md#素材处理linnya-image)。macOS 自带 `sips`；处理前用 `sips -g pixelWidth -g pixelHeight` 读取原始尺寸，不要凭猜测传参。产生新文件的命令遵循上面的 conversation 落盘合同，并用产物的真实 locator 引用它。
+**图片来源与预处理**：图片可以来自 `generate_image` 工具的产出、用户提供的素材，或用命令行处理后的结果。只用一张图的局部、调整取景时，直接在 Image 上写 `crop` / `focus`，不要另存裁过的图：原图保留在文稿里，导出 PPTX 后仍是 PowerPoint 里可以再调的裁剪。缩放、导出特定尺寸、转格式、去背这类改变像素的处理，才在写 deck.js 之前用命令行完成，再引用处理后的产物。量白边、照片去背、拓片和书法转透明、磨砂卡背后的模糊、透视、纸纹和颗粒、生成宫格切图用内置的 `linnya image`，见 [`cli.md`](./cli.md#素材处理linnya-image)。macOS 自带 `sips`；处理前用 `sips -g pixelWidth -g pixelHeight` 读取原始尺寸，不要凭猜测传参。产生新文件的命令遵循上面的 conversation 落盘合同，并用产物的真实 locator 引用它。
 
 **图片视觉字段**：
 

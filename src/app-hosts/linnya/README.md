@@ -43,6 +43,10 @@ Provider body、不改写请求/响应、不选择具体备用模型，也不拥
 
 实现专用文档 OCR Host port：从 Model Catalog 严格投影 OCR profile，并调用 Paddle layout/job capability。它不是通用 LLM inference，不使用 AI SDK，不决定 Parser retry、partial 页或模型 fallback；详见 `adapters/document-ocr/README.md`。
 
+### `adapters/foreground-mask/`
+
+实现 image-processing 的前景遮罩 port：macOS 14 及以上经 `osascript` 调系统 Vision 给照片去背，其他平台报告不可用。不随包带可执行文件，不做图片处理与回退判断；详见 `adapters/foreground-mask/README.md`。
+
 ### `adapters/context-injection/`
 
 把 Linnya 请求、registry 与 context policy 转换为 Runtime 所需输入，构造 `ToolExecutionContext` 等宿主绑定能力。产品字段不能直接扩进 Linnkit 的通用 context。

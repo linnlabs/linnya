@@ -12,6 +12,14 @@ export interface ImageRegion {
   readonly height: number;
 }
 
+/** 图上的像素矩形，只在本 domain 内部用。 */
+export interface PixelBox {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 /** 从原图各边裁掉的比例，字段与 Slides Image 的 `crop` 一致。 */
 export interface ImageCrop {
   readonly top: number;
@@ -28,6 +36,11 @@ export type TextureKind = 'paper' | 'grain';
 /** 宫格的去底方式：品红、绿走色键，其余纯色底（白底、灰底）从边框泛洪。 */
 export type SheetKeyMode = 'magenta' | 'green' | 'flood';
 
+/** 去背怎么做：`auto` 在本机有系统前景遮罩（macOS 14+ 的 Vision）时用它，没有时按边缘颜色抠。 */
+export type CutoutMethod = 'auto' | 'vision' | 'edge';
+/** 实际用上的去背方式。 */
+export type CutoutEngine = 'vision' | 'edge';
+
 export type ImageProcessingErrorCode =
   /** 不是 JPEG、PNG、WebP，或解码失败、超过像素上限。 */
   | 'image_unreadable'
@@ -40,7 +53,13 @@ export type ImageProcessingErrorCode =
   /** 宫格上没找到元素。 */
   | 'no_pieces'
   /** 连通块太多，多半是元素挨得太近或底上有杂点，应改按格子切。 */
-  | 'too_many_pieces';
+  | 'too_many_pieces'
+  /** 指定用 Vision 去背，但本机不是 macOS 14 及以上。 */
+  | 'vision_unavailable'
+  /** 系统前景遮罩运行失败。 */
+  | 'vision_failed'
+  /** 去背后没有剩下前景。 */
+  | 'no_foreground';
 
 export interface ImageProcessingFailure {
   readonly status: 'failed';
@@ -78,6 +97,22 @@ export interface SheetSlice {
   /** 按阅读顺序（从上到下、从左到右）排列，空格子不出。 */
   readonly pieces: readonly EncodedImage[];
   /** 所有元素排在灰色棋盘格上、带序号的检查图，一次看完有没有残边。 */
+  readonly check: EncodedImage;
+}
+
+export interface ForegroundCutout {
+  readonly engine: CutoutEngine;
+  /** `auto` 时 Vision 没找到前景，改用了边缘抠图。 */
+  readonly visionFoundNothing: boolean;
+  /** 前景（透明度过半）占整张图的比例，0–1。 */
+  readonly foregroundRatio: number;
+  /** 图片最外一圈里前景的比例，0–1。偏高说明背景没去干净，或主体本来就被画面切到。 */
+  readonly borderForeground: number;
+  /** 前景占比或贴边比例超出常见范围，结果多半要换方法或换图。只拦得住一部分失败，检查图仍要看。 */
+  readonly suspicious: boolean;
+  /** 裁到主体范围的透明 PNG。 */
+  readonly image: EncodedImage;
+  /** 左边原图、右边去背结果叠在品红底上，残留的背景和被误抠的主体都看得出。 */
   readonly check: EncodedImage;
 }
 

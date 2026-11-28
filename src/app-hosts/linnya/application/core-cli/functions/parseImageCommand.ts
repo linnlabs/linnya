@@ -1,8 +1,9 @@
 import { parseArgs } from 'node:util';
-import type { ImageQuad, ImageRegion, RgbColor, SheetKeyMode, TextureKind } from 'src/domains/image-processing';
+import type { CutoutMethod, ImageQuad, ImageRegion, RgbColor, SheetKeyMode, TextureKind } from 'src/domains/image-processing';
 
 export const IMAGE_USAGE = [
   'linnya image trim <图片> [--tolerance 1-100] [--save]   量出四周的白边、黑边或水印条，给出裁剪比例；--save 才另存裁好的图',
+  'linnya image cutout <图片> [--method auto|vision|edge]   去掉照片背景、裁到主体，另出品红底检查图；macOS 14+ 默认用系统 Vision，其他平台按边缘颜色抠',
   'linnya image ink <图片> [--color HEX]   白纸上的书法、拓片、印章转成单色加透明，裁到有墨的范围',
   'linnya image frost <图片> --region 左,上,宽,高 [--aspect 宽:高] [--blur 1-100] [--radius 0-0.5]   磨砂卡：预先模糊背景图上卡片所在的一块；--aspect 先按页面比例居中裁，区域按页面比例写；圆角按区域短边的比例',
   'linnya image perspective <图片> --to x1,y1,x2,y2,x3,y3,x4,y4 [--size 宽x高]   投影进四边形（左上、右上、右下、左下），四边形外透明',
@@ -23,6 +24,7 @@ const DEFAULT_GRID_DIVISIONS = 10;
 export type ImageCommand =
   | { readonly kind: 'help'; readonly text: string }
   | { readonly kind: 'trim'; readonly image: string; readonly tolerance: number; readonly save: boolean }
+  | { readonly kind: 'cutout'; readonly image: string; readonly method: CutoutMethod }
   | { readonly kind: 'ink'; readonly image: string; readonly color: RgbColor }
   | { readonly kind: 'frost'; readonly image: string; readonly region: ImageRegion; readonly blur: number; readonly radius: number; readonly aspect?: number }
   | { readonly kind: 'perspective'; readonly image: string; readonly quad: ImageQuad; readonly width?: number; readonly height?: number }
@@ -96,6 +98,7 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
       n: { type: 'string' },
       key: { type: 'string' },
       grid: { type: 'string' },
+      method: { type: 'string' },
       help: { type: 'boolean', default: false },
     },
   });
@@ -103,6 +106,7 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
   // 各子命令不认的选项直接拒绝：模型把 frost 的 --region 写到 grid 上时，静默忽略会让它以为生效了。
   const allowed: Record<Subcommand, readonly string[]> = {
     trim: ['tolerance', 'save'],
+    cutout: ['method'],
     ink: ['color'],
     frost: ['region', 'aspect', 'blur', 'radius'],
     perspective: ['to', 'size'],
@@ -120,6 +124,11 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
         kind: 'trim', image: oneImage(positionals, subcommand),
         tolerance: number(values.tolerance, 'tolerance', DEFAULT_TRIM_TOLERANCE), save: values.save,
       };
+    case 'cutout': {
+      const method = values.method ?? 'auto';
+      if (method !== 'auto' && method !== 'vision' && method !== 'edge') throw new Error('--method 须为 auto、vision 或 edge');
+      return { kind: 'cutout', image: oneImage(positionals, subcommand), method };
+    }
     case 'ink':
       return { kind: 'ink', image: oneImage(positionals, subcommand), color: values.color === undefined ? DEFAULT_INK : rgb(values.color) };
     case 'frost': {
@@ -166,7 +175,7 @@ function parseSubcommand(subcommand: Subcommand, argv: readonly string[]): Image
   }
 }
 
-const SUBCOMMANDS: readonly Subcommand[] = ['trim', 'ink', 'frost', 'perspective', 'grid', 'texture', 'slice'];
+const SUBCOMMANDS: readonly Subcommand[] = ['trim', 'cutout', 'ink', 'frost', 'perspective', 'grid', 'texture', 'slice'];
 
 function isSubcommand(value: string): value is Subcommand {
   return SUBCOMMANDS.some(subcommand => subcommand === value);
