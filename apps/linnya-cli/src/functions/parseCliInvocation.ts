@@ -1,3 +1,4 @@
+import { describeLinnyaCommandElsewhere, findLinnyaCommand } from '@app/schemas/linnya-commands';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ConversationControlSkillsRequestSchema } from '@app/schemas';
@@ -531,8 +532,13 @@ function parseCommand(
       }
       usageError('tools requires one of: list, describe, call, web');
     }
-    default:
-      usageError(`Unknown command: ${command}`);
+    default: {
+      // 这个名字是对话 Shell 里的内建命令时，说明该去哪里用，而不是报未知命令。
+      const elsewhere = findLinnyaCommand(command);
+      usageError(elsewhere?.environment === 'agent_shell'
+        ? describeLinnyaCommandElsewhere(elsewhere)
+        : `Unknown command: ${command}`);
+    }
   }
 }
 

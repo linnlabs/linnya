@@ -136,6 +136,7 @@ Protocol 7 要求每个请求和响应都有 `list / get / create / update / del
 | `src/file-locator.ts` | `workspace:`、`conversation:`、`file:` 的 browser-safe canonical locator 合同 |
 | `src/tools/workspace-file.ts` | Workspace 文件工具 live locator、节点、分页与检索结果合同 |
 | `src/tools/workspace-file-history.ts` | 旧 path 事件的严格 replay-only 合同；禁止用于 live 工具执行 |
+| `src/linnya-commands.ts` | 子路径 `@app/schemas/linnya-commands`：`linnya` 的命令目录（每条命令的可用环境与一句说明）、两处 `--help` 共用的总览文本，以及在错误环境调用时的指引。外部命令行与对话 Shell 的内建命令共用这一份。 |
 | `src/scheduled-tasks.ts` | 子路径 `@app/schemas/scheduled-tasks`（不进包根，避免插件 CLI 等全量引用方变大）：定时任务的时间表、任务与运行记录、Renderer 请求与推送 channel、回答末尾卡片、对话列表折叠与通知合同；定时器与名额判断只在 App Server |
 | `src/user-facing-message.ts` | 可本地化用户消息与通用操作结果 |
 | `src/json-value.ts` | 跨进程和插件扩展允许的递归纯 JSON 值 |

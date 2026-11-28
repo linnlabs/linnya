@@ -60,6 +60,12 @@
       "require": "./dist/conversation-attention.js",
       "default": "./dist/esm/conversation-attention.js"
     },
+    "./linnya-commands": {
+      "types": "./dist/linnya-commands.d.ts",
+      "import": "./dist/esm/linnya-commands.js",
+      "require": "./dist/linnya-commands.js",
+      "default": "./dist/esm/linnya-commands.js"
+    },
     "./file-locator": {
       "types": "./dist/file-locator.d.ts",
       "import": "./dist/esm/file-locator.js",

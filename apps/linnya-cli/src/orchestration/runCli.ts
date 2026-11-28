@@ -1,3 +1,4 @@
+import { formatLinnyaCommandOverview } from '@app/schemas/linnya-commands';
 import type { ConversationControlConnectionContext } from '@app/schemas';
 import { resolveCliSourceCheckout } from '../functions/resolveCliSourceCheckout';
 import { readFile } from 'node:fs/promises';
@@ -97,6 +98,8 @@ export function linnyaCliUsage(): string {
     '  audit level changes the connected source Host default for new runs; restart resets it to startup configuration. Packaged builds never provide audit.',
     '  Source CLI connects only to its own checkout; doctor reports its directory, branch and current default audit level.',
     '  Every --*-json option has a --*-file PATH form that reads UTF-8 JSON. Use the file form in Windows PowerShell, which strips the double quotes inside inline JSON.',
+    '',
+    formatLinnyaCommandOverview('terminal'),
     '',
   ].join('\n');
 }
