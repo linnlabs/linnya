@@ -19,6 +19,7 @@ import { createMarkdownPreviewCapability, PendingRevisionApplyService, type Mark
 import { createMarkdownDocumentStore } from '../../../application/markdown-image-assets/createMarkdownDocumentStore';
 import { embedImageBytes } from 'src/electron-main/services/mediaService';
 import * as pathManager from 'src/shared/utils/pathManager';
+import { createFileImageVariantCache } from 'src/domains/document-preview';
 import { createMarkdownPreviewResources } from '../createMarkdownPreviewResources';
 
 const request = { documentId: 'doc', context: {}, widthPx: 640, pixelRatio: 2 };
@@ -56,8 +57,10 @@ describe('canonical Markdown preview through Host resources', () => {
     await fs.rm(root, { recursive: true, force: true });
   });
   const changes = () => db.prepare('SELECT total_changes() AS count').get();
+  const variantDirectory = () => path.join(root, 'preview-images');
+  const createResources = () => createMarkdownPreviewResources(db, createFileImageVariantCache(variantDirectory()));
 
-  it('keeps formal rich structure, manual document media and managed images, while generating bounded readonly pixels', async () => {
+  it('keeps formal rich structure, lists manual and managed images without their bytes, and serves each tier once from bounded pixels', async () => {
     const bytes = await sharp({ create: { width: 3000, height: 100, channels: 4, background: '#ff000080' } }).png().toBuffer();
     const manual = await embedImageBytes({ documentNodeId: 'doc', imageDataBuffer: Uint8Array.from(bytes).buffer, extension: 'png' });
     if (!manual.locator) throw new Error('Missing embedded image locator');
@@ -70,21 +73,37 @@ describe('canonical Markdown preview through Host resources', () => {
     ] };
     const store = createMarkdownDocumentStore(db); store.createDocument('doc', canonical);
     const before = changes();
-    const content = await createMarkdownPreviewCapability(db, createMarkdownPreviewResources(db)).render(request);
+    const capability = createMarkdownPreviewCapability(db, createResources());
+    const content = await capability.render(request);
     const preview = detail(content);
     expect(preview.document).toEqual(store.getDocument('doc'));
     expect(content.summary).toContain('用户正文'); expect(content.summary).not.toContain('chartType');
-    expect(Object.keys(preview.assets)).toEqual(['manual', managed.assetId]);
-    for (const dataUri of Object.values(preview.assets)) {
-      const meta = await sharp(Buffer.from(dataUri.split(',')[1], 'base64')).metadata();
-      expect(meta.width).toBe(2048); expect(meta.hasAlpha).toBe(true);
+    // 预览只列清单：来源与原图尺寸，顺序同正文；两张 3000px 的图不再把结果撑到 MB 级。
+    expect(Object.entries(preview.images)).toEqual([
+      ['manual', { source: { src: manual.locator }, widthPx: 3000, heightPx: 100 }],
+      [managed.assetId, { source: { assetId: managed.assetId }, widthPx: 3000, heightPx: 100 }],
+    ]);
+    expect(JSON.stringify(content).length).toBeLessThan(16_000);
+    const readImage = capability.readImage;
+    if (!readImage) throw new Error('Markdown preview must serve its images');
+    const read = (source: WorkspaceMarkdownPreview['images'][string]['source'], maxEdgePx: 512 | 1024) =>
+      readImage({ context: {}, documentId: 'doc', source, maxEdgePx });
+    for (const { source } of Object.values(preview.images)) {
+      const image = await read(source, 1024);
+      if (!image) throw new Error('Listed image must be readable');
+      const meta = await sharp(image.bytes).metadata();
+      expect(image.mimeType).toBe('image/png'); expect(meta.width).toBe(1024); expect(meta.hasAlpha).toBe(true);
+      // 同一档再取一次来自磁盘缓存，字节相同；另一档单独生成。
+      expect((await read(source, 1024))?.bytes).toEqual(image.bytes);
+      expect((await sharp((await read(source, 512))?.bytes).metadata()).width).toBe(512);
     }
+    expect((await fs.readdir(variantDirectory())).filter(name => name.endsWith('.img'))).toHaveLength(4);
     expect(changes()).toEqual(before);
   });
 
   it('shows saved Pending without accepting it, and follows reject, accept and empty-document decisions', async () => {
     const store = createMarkdownDocumentStore(db); store.createDocument('doc', { type: 'doc', content: [paragraph('旧正文')] });
-    const preview = createMarkdownPreviewCapability(db, createMarkdownPreviewResources(db));
+    const preview = createMarkdownPreviewCapability(db, createResources());
     const baselineRevision = await preview.getRevision(request);
     store.setPendingRevision('doc', 'text', '**新正文**', 'tool', { operation: 'update' });
     const pendingRevision = await preview.getRevision(request), before = changes();
@@ -105,7 +124,7 @@ describe('canonical Markdown preview through Host resources', () => {
   });
 
   it('restores persisted Pending image and reference identities through the same preparation as acceptance', async () => {
-    const capability = createMarkdownPreviewCapability(db, createMarkdownPreviewResources(db));
+    const capability = createMarkdownPreviewCapability(db, createResources());
     const bytes = await sharp({ create: { width: 12, height: 8, channels: 3, background: 'blue' } }).png().toBuffer();
     const embedded = await embedImageBytes({ documentNodeId: 'doc', imageDataBuffer: Uint8Array.from(bytes).buffer, extension: 'png' });
     const image = MarkdownImageAttrsSchema.parse({ id: 'pending-image', src: embedded.locator, alt: '图片来源' });
@@ -127,14 +146,14 @@ describe('canonical Markdown preview through Host resources', () => {
     expect(JSON.stringify(preview.document)).toContain('saved-ref');
     expect(preview.references.target.title).toBe('当前标题');
     expect(content.summary).toContain('当前标题');
-    expect(preview.assets['pending-image']).toMatch(/^data:image\/png;base64,/);
+    expect(preview.images['pending-image']).toEqual({ source: { src: embedded.locator }, widthPx: 12, heightPx: 8 });
     expect(store.getPendingRevisions('doc')).toHaveLength(2); expect(changes()).toEqual(before);
   });
 
   it('keys cache revisions by current reference presentation and never leaks a moved target title', async () => {
     const canonical: MarkdownDocJson = { type: 'doc', content: [block('ref-root', { type: 'baseBlock', attrs: { id: 'ref-inner' }, content: [{ type: 'documentReference', attrs: { referenceId: 'reference-1', documentId: 'target' } }] })] };
     const store = createMarkdownDocumentStore(db); store.createDocument('doc', canonical);
-    const preview = createMarkdownPreviewCapability(db, createMarkdownPreviewResources(db));
+    const preview = createMarkdownPreviewCapability(db, createResources());
     const original = await preview.getRevision(request);
     db.prepare("UPDATE workspace_nodes SET name = '改名' WHERE id = 'target'").run();
     expect(await preview.getRevision(request)).not.toBe(original);
@@ -147,12 +166,18 @@ describe('canonical Markdown preview through Host resources', () => {
   it('enforces document ownership on manual images and aborts after an asynchronous image read', async () => {
     const bytes = await sharp({ create: { width: 8, height: 8, channels: 3, background: 'red' } }).png().toBuffer();
     const manual = await embedImageBytes({ documentNodeId: 'foreign', imageDataBuffer: Uint8Array.from(bytes).buffer, extension: 'png' });
+    if (!manual.locator) throw new Error('Missing embedded image locator');
     const image = MarkdownImageAttrsSchema.parse({ id: 'img', src: manual.locator });
-    const resources = createMarkdownPreviewResources(db);
-    await expect(resources.readImage({ documentId: 'doc', image })).rejects.toThrow();
+    const resources = createResources();
+    await expect(resources.readImageSize({ documentId: 'doc', image })).rejects.toThrow();
+    await expect(resources.readImageVariant({ documentId: 'doc', source: { src: manual.locator }, maxEdgePx: 512 })).rejects.toThrow();
+    // 受管资产同样只对拥有它的文档开放，命中缩图缓存也不例外。
+    const managed = await createDocumentImageAssetRuntime(db).adoptImageBytes({ documentId: 'foreign', bytes, usageHint: 'markdown-image' });
+    expect(await resources.readImageVariant({ documentId: 'foreign', source: { assetId: managed.assetId }, maxEdgePx: 512 })).not.toBeNull();
+    await expect(resources.readImageVariant({ documentId: 'doc', source: { assetId: managed.assetId }, maxEdgePx: 512 })).rejects.toThrow();
     const store = createMarkdownDocumentStore(db); store.createDocument('doc', { type: 'doc', content: [block('img-root', { type: 'imageBlock', attrs: image })] });
     const abort = new AbortController();
-    const preview = createMarkdownPreviewCapability(db, { ...resources, readImage: async () => { abort.abort(); return 'data:image/png;base64,eA=='; } });
+    const preview = createMarkdownPreviewCapability(db, { ...resources, readImageSize: async () => { abort.abort(); return { widthPx: 8, heightPx: 8 }; } });
     await expect(preview.render({ ...request, signal: abort.signal })).rejects.toThrow();
   });
 });

@@ -16,7 +16,7 @@ function fixture(count = 6) {
     active++; peak = Math.max(peak, active);
     return new Promise<DocumentPreviewResult>(resolve => requests.push({ documentId: input.documentId, resolve })).finally(() => { active--; });
   });
-  const port: CanvasCardMediaPort = { preview, projectId: () => 'project', reference: vi.fn(), readImage: vi.fn(),
+  const port: CanvasCardMediaPort = { preview, previewImage: vi.fn(), projectId: () => 'project', reference: vi.fn(), readImage: vi.fn(),
     subscribe: () => () => {}, subscribeAvailability: () => () => {}, openDocument: vi.fn() };
   const previews = createCanvasDocumentPreviews(port, { version: () => generation, generation: () => generation }, () => {});
   return { cards, previews, requests, preview, peak: () => peak, bump: () => { generation++; },

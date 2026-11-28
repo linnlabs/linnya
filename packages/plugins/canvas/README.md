@@ -81,7 +81,7 @@ CLI 的 `payloadIdentity` 由可信编排从原始 operations/options 构造，�
 
 文字卡自动高度复用 shared 的 `canvasAutomaticTextHeight`，手动缩放后持久化为 fixed；编辑器 DOM 测量和正文在同一次更新提交。正文、拖动、缩放分别持有字段保护 owner，同视图只向 Backend 发送这些 owner 的字段并集；结束其中一个动作不会清除另一个尚在进行的动作，长拖动和缩放持续续约。
 
-图片卡与正文插图只持久化受管 assetId/稳定 src。Renderer 从正式图片端口读取临时 bytes，用有界缓存投影为 data URI，避免 media 协议在 HTML 光栅时空白；异步准备图片不提前建立归属。文档卡经通用候选与 preview 门面读取当前项目标题、封面和不可用状态，打开仍走 Workspace 导航。搜索由 shared 纯函数同时供 Renderer/CLI 消费，不把内部文档 ID 当作可见正文。
+图片卡与正文插图只持久化受管 assetId/稳定 src。Renderer 从正式图片端口读取临时 bytes，用有界缓存投影为 data URI，避免 media 协议在 HTML 光栅时空白；异步准备图片不提前建立归属。文档卡经通用候选与 preview 门面读取当前项目标题、封面和不可用状态，打开仍走 Workspace 导航。Markdown 文档卡正文里的图片不随预览结果到达：卡片位图和选中详情按“显示尺寸 × 出图倍率”经 `acquireDocumentPreviewImage` 取档，与 Host 悬停预览共用同一份；隐藏导出 worker 不能访问 Host，由后端在装配出图资源时把清单里的图片按最大一档读成 data URI 放进 `documents[id].bodyImages`（键为图片来源），worker 只用请求里带的这些。搜索由 shared 纯函数同时供 Renderer/CLI 消费，不把内部文档 ID 当作可见正文。
 
 显示图片共享 `cardRendering/content.resolveCanvasDisplayImages`：串行解码并生成长边不超过2048的派生，原始资源不进入长期显示缓存；查看原图仍按需读取正式资产。图片归属和结构化正文不使用显示派生。可见文档预览最多4个并行，preview缓存按32 MiB/128项限制；远景仅按owner的 `overview:thumbnail` 声明保留小缩略，不推断具体插件或有图即缩略。标题、preview及在途结果随文档变更和插件可用性失效。
 
@@ -141,7 +141,7 @@ Agent几何动效只消费正式增量中每张卡最后一次来源；用户提
 
 `pnpm run smoke:plugin:canvas:artifact`先构建schemas和Canvas独立制品，再用临时隔离根验证checksum/content BOM、正式disk Backend加载、Skill/worker/migration发现、无数据库的CLI help、编译CLI真实只读SQLite与写入拒绝、编译Node计算worker及正式Host HiddenWorker的PNG/JPEG/取消/字体/标签/图片路径。临时制品根与数据库测试后删除。干净全量[本地 CI](../../../scripts/development/features/local-ci/README.md)复用本轮官方插件验收的打包结果；两套验收各自启动隔离环境。
 
-三个Node entry各有独立esbuild元数据，main/CLI/compute初始预算分别3/3.2/5 MiB。ELK只进入计算worker；main/CLI拒绝Pixi、Renderer和Host业务装配。CLI仅内联两个公开只读SDK入口，虚拟Host specifier不得留到独立进程；native模块保留懒加载并通过正式CJS Host白名单解析。公开barrel产生的空初始化闭包可保留，但输出AST必须证明未保留可执行写函数体。Renderer、HTML worker、CSS与字体引用均验证实际zip闭包，不把开发探针、元数据或源码混进制品。独立读取使用产品提供的Electron Node ABI，help也可由普通Node运行。
+三个Node entry各有独立esbuild元数据，main/CLI/compute预算分别3/3.3/5 MiB（CLI内联整个公开schemas入口，会随公开合同增补变大，2026-11从3.2调到3.3）。ELK只进入计算worker；main/CLI拒绝Pixi、Renderer和Host业务装配。CLI仅内联两个公开只读SDK入口，虚拟Host specifier不得留到独立进程；native模块保留懒加载并通过正式CJS Host白名单解析。公开barrel产生的空初始化闭包可保留，但输出AST必须证明未保留可执行写函数体。Renderer、HTML worker、CSS与字体引用均验证实际zip闭包，不把开发探针、元数据或源码混进制品。独立读取使用产品提供的Electron Node ABI，help也可由普通Node运行。
 
 交互显示与提交保持分离：吸附只在不超过3000个其他可见候选时开启，8屏幕像素阈值同时给出非持久参考线，Alt/取消/结束清除。连线卡身落点保存auto，16屏幕像素圆点保存固定边；开始抓手只影响临时新卡朝向，起点仍自动。上下文创建在打开选择器前冻结世界位置；文档选择和图片准备不会改成新的视口中心。对齐和等距分布跳过锁定卡，线菜单支持反转和端点导航。菜单项图标集中在 `canvasChrome` 的 `canvasMenuIcons`，浮条菜单与右键菜单的同一选项共用同一图标；连线、排布等画布专用图标放在 `renderer/icon/`，是 Linnya 图标库按同一规范生成的组件（同步时整份替换，不在这里手改），对齐、分布、层级沿用平台图标，与 Slides 一致。
 

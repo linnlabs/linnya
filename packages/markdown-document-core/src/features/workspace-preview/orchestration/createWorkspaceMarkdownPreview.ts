@@ -3,7 +3,7 @@ import { workspaceMarkdownSchemaLite } from '../../workspace-schema';
 import type { WorkspaceMarkdownPreviewInput, WorkspaceMarkdownPreviewSurface } from '../definitions/workspacePreview';
 import { createWorkspacePreviewSerializer } from '../functions/createWorkspacePreviewSerializer';
 import { workspaceListNumbers } from '../functions/workspaceListNumbers';
-import { prepareWorkspacePreviewBlock, waitForPreviewResource } from './prepareWorkspacePreviewBlock';
+import { prepareWorkspacePreviewBlock, waitForPreviewResource, type PendingWorkspacePreviewImage } from './prepareWorkspacePreviewBlock';
 import { fitStaticWorkspaceTable, WORKSPACE_TABLE_CLASS } from '../../workspace-table';
 
 /**
@@ -31,9 +31,16 @@ export async function createWorkspaceMarkdownPreview(input: WorkspaceMarkdownPre
   stage.append(element);
   input.document.body.append(stage);
   let disposed = false;
+  // 图片地址的寿命跟随正文：交付后才到的图片（屏下懒加载）也在 dispose 时取消并归还。
+  const lifetime = new AbortController();
+  const releases: (() => void)[] = [];
+  let observer: IntersectionObserver | undefined;
   const dispose = () => {
     if (disposed) return;
     disposed = true;
+    lifetime.abort();
+    observer?.disconnect();
+    for (const release of releases.splice(0)) release();
     element.replaceChildren();
     element.remove();
     stage.remove();
@@ -52,8 +59,21 @@ export async function createWorkspaceMarkdownPreview(input: WorkspaceMarkdownPre
       if (scroller) fitStaticWorkspaceTable(table, scroller);
     }
   };
+  const loadImage = async ({ image, source }: PendingWorkspacePreviewImage) => {
+    if (!input.loadImage) throw new Error('preview_image_loader_missing');
+    // 位置已按清单尺寸占好，排出的宽高就是最终显示尺寸，加载方据此选档。
+    const handle = await input.loadImage({ source, widthPx: image.offsetWidth, heightPx: image.offsetHeight, signal: lifetime.signal });
+    if (disposed) {
+      handle.release();
+      throw lifetime.signal.reason;
+    }
+    releases.push(handle.release);
+    image.src = handle.url;
+    await waitForPreviewResource(image.decode(), lifetime.signal);
+  };
   try {
     const serializer = createWorkspacePreviewSerializer({ ...input, node, locale: input.locale ?? 'zh-CN' });
+    const deferred: PendingWorkspacePreviewImage[] = [];
     const numbers = new Map(workspaceListNumbers(node).map(item => [item.rootPosition, item]));
     let position = 0;
     for (let index = 0; index < node.childCount; index++) {
@@ -71,10 +91,15 @@ export async function createWorkspaceMarkdownPreview(input: WorkspaceMarkdownPre
         list?.setAttribute('data-ordered-index', String(numbering.value));
       }
       element.append(blockElement);
-      await prepareWorkspacePreviewBlock(block, blockElement, input);
+      const images = await prepareWorkspacePreviewBlock(block, blockElement, input);
       position += block.nodeSize;
-      // 全文不需要逐块量高：字体与表格定级留到循环结束后各做一次（见下）。
-      if (input.maxHeight === undefined) continue;
+      // 全文不需要逐块量高：字体、表格定级与图片留到循环结束后统一处理（见下）。
+      if (input.maxHeight === undefined) {
+        deferred.push(...images);
+        continue;
+      }
+      // 首屏只排到相交块为止，排出来的图片都在首屏里：等它们到了再交付，屏下的图片一张也不取。
+      await Promise.all(images.map(loadImage));
       // 首屏必须逐块量真实高度才能停在相交块，所以逐块等字体；块数受 maxHeight 限制，不会随文档长度增长。
       await fontsReady();
       fitTables(blockElement);
@@ -87,6 +112,38 @@ export async function createWorkspaceMarkdownPreview(input: WorkspaceMarkdownPre
     }
     await fontsReady();
     if (input.maxHeight === undefined) fitTables(element);
+    if (deferred.length > 0) {
+      const below = input.lazyImagesBelowPx;
+      // 图片都已占位，这里量一次位置即可分出“一交付就看得见”的和屏下的。
+      const top = element.getBoundingClientRect().top;
+      const waiting = new Map<Element, PendingWorkspacePreviewImage>();
+      const eager: PendingWorkspacePreviewImage[] = [];
+      for (const item of deferred) {
+        if (below === undefined || item.image.getBoundingClientRect().top - top < below) eager.push(item);
+        else waiting.set(item.image, item);
+      }
+      await Promise.all(eager.map(loadImage));
+      const view = input.document.defaultView;
+      if (waiting.size > 0 && view) {
+        // 预览在自己的滚动容器里滚动：rootMargin 只放大窗口，不提前量滚动容器内的图片，
+        // 所以用 scrollMargin 让图片在滚到之前一屏左右就开始取（Chromium 120 起支持）。
+        const options: IntersectionObserverInit & { readonly scrollMargin: string } = { rootMargin: '400px', scrollMargin: '400px' };
+        const watching = new view.IntersectionObserver(entries => {
+          for (const entry of entries) {
+            const item = waiting.get(entry.target);
+            if (!entry.isIntersecting || !item) continue;
+            waiting.delete(entry.target);
+            watching.unobserve(entry.target);
+            // 屏下图片取不到不影响已交付的正文：位置保留，标记后由样式呈现缺图。
+            loadImage(item).catch(() => {
+              if (!disposed) item.image.setAttribute('data-preview-image', 'failed');
+            });
+          }
+        }, options);
+        observer = watching;
+        for (const image of waiting.keys()) watching.observe(image);
+      }
+    }
     input.signal.throwIfAborted();
     element.remove();
     stage.remove();

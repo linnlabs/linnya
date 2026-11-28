@@ -4,6 +4,7 @@ import {
   listDocumentPreviewTypes,
 } from '@plugin/backend/documentPreview';
 import { resolveDocumentReference } from '@plugin/backend/documentReferences';
+import { documentPreviewImageSourceKey } from '@app/schemas';
 import { CANVAS_DOCUMENT_TYPE, type CanvasSnapshot } from '../../shared';
 import type { CanvasRenderRequest } from '../../shared/rendering';
 import type { CanvasDatabase } from '../definitions/canvasDatabase';
@@ -70,6 +71,23 @@ async function readDocumentCover(
     widthPx: 640,
     pixelRatio: 1,
   });
+  const detail = preview.status === 'ready' ? preview.content?.detail : undefined;
+  // 出图只排卡面首屏，但哪些图片落在首屏要排版后才知道，这里把清单里的图片都带上。
+  // 取最大一档：导出倍率由请求方决定，这里不知道，清晰度不能比改为清单前差。
+  const bodyImages: Record<string, string> = {};
+  if (detail?.format === 'workspace-markdown')
+    for (const listed of Object.values(detail.images)) {
+      input.signal.throwIfAborted();
+      const image = await previews.readImage({
+        documentId: targetId,
+        projectId: source.projectId,
+        source: listed.source,
+        maxEdgePx: 2048,
+      });
+      if (!image) throw new Error('Canvas document card image is no longer readable');
+      bodyImages[documentPreviewImageSourceKey(listed.source)] =
+        `data:${image.mimeType};base64,${Buffer.from(image.bytes).toString('base64')}`;
+    }
   return {
     ...metadata,
     previewStatus: preview.status,
@@ -82,9 +100,7 @@ async function readDocumentCover(
           keepThumbnail: preview.content.overview === 'thumbnail',
         }
       : {}),
-    ...(preview.status === 'ready' && preview.content?.detail
-      ? { body: preview.content?.detail }
-      : {}),
+    ...(detail ? { body: detail, ...(Object.keys(bodyImages).length > 0 ? { bodyImages } : {}) } : {}),
   };
 }
 function refreshResourceTitles(
@@ -116,6 +132,7 @@ function refreshResourceTitles(
             keepThumbnail: previous.keepThumbnail,
             summary: previous.summary,
             body: previous.body,
+            bodyImages: previous.bodyImages,
           }
         : snapshot
           ? { summary: previous.summary }

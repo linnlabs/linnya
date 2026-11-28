@@ -14,7 +14,7 @@ import {
   createCanvasDocumentSurface,
   canvasDocumentPreviewMessage,
 } from '../../cardRendering/content';
-import { canvasText } from '../../localization';
+import { canvasText, CanvasUserError } from '../../localization';
 
 const previewFailure = (status: Parameters<typeof canvasDocumentPreviewMessage>[0]) =>
   new Error(canvasDocumentPreviewMessage(status) || canvasText('canvas.error.documentNotOpenable'));
@@ -50,7 +50,7 @@ export function createCanvasCardContent(
     stageImage: images.stage,
     releaseStagedImages: images.release,
     resolveImageSource: images.resolve,
-    async create(card, signal) {
+    async create(card, signal, scale) {
       signal.throwIfAborted();
       const element = document.createElement('div');
       element.className = 'markdown-document-content canvas-card-content';
@@ -90,6 +90,9 @@ export function createCanvasCardContent(
         signal.throwIfAborted();
         const body = result.content?.detail;
         const icon = result.nodeType ? (port.typeIcon?.(result.nodeType) ?? null) : null;
+        const projectId = port.projectId();
+        if (!projectId)
+          throw new CanvasUserError(canvasText('canvas.error.projectMissingForCards'));
         return createCanvasDocumentSurface(
           {
             title: result.title,
@@ -111,6 +114,17 @@ export function createCanvasCardContent(
             },
             signal,
             theme: readCanvasIsDark() ? 'dark' : 'light',
+            // 卡面只排首屏：只取首屏里的图片，档位跟随出图倍率，放大后重新出图时取更大的一档。
+            images: {
+              scale,
+              acquire: request =>
+                port.previewImage({
+                  documentId: card.data.documentId,
+                  projectId,
+                  source: request.source,
+                  maxEdgePx: request.maxEdgePx,
+                }),
+            },
           }
         );
       }

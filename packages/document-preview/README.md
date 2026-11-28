@@ -15,6 +15,8 @@ Markdown 的块呈现归
 `disposeDocumentPreviewSurface`。自定义交互详情通过 `externalBody`
 共用标题与正文槽，不能再在消费方复制标题/正文外观。
 
+Workspace Markdown 正文里的图片由调用方经 `images` 提供：`acquire({ source, maxEdgePx, signal })` 返回可用的地址和 release，`scale` 是显示倍率（主窗口传屏幕倍率，位图传出图倍率）。本包按“图片显示宽高 × scale”取不小于它的最小一档（`selectDocumentPreviewImageTier`，512/1024/2048），所以不糊也不多取；`lazy` 为真时全文里一屏以下的图片滚到附近才取（悬停面板用），位图和导出不设。正文有图而没传 `images` 时明确失败。调用方负责缓存与复用，本包只在表面释放时逐个 release。
+
 传了首屏高度时表面固定为该高度（Canvas 卡面按卡高铺满）；再传 `fitContentHeight` 则只限最大高度，内容不足时按内容收短（悬停浮层的短文不留空白）。封面图带像素尺寸，解码前就按真实比例占位。首屏正文排到表面底边，确实还有下文时在底部淡出；详情滚动区还有下文时使用同一规则（`document-preview-more-below`）。消费方用 `--document-preview-fade-color` 与 `--document-preview-fade-radius` 提供所在面板的底色和底角圆角；容器比可见范围大时（Canvas 纸面内缩），位图传 `visibleInsetPx`，live 详情设置 `--document-preview-fade-inset`，让正文和淡出在可见边缘结束。淡出是渐变覆盖层，不用 `mask-image`：离屏位图绘制时遮罩会让整块正文消失。
 
 表面显式持有明暗主题，加载 Renderer

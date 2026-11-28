@@ -120,6 +120,9 @@ declare global {
       'document-preview:read': (
         request: import('@app/schemas').DocumentPreviewRequest
       ) => Promise<unknown>;
+      'document-preview:read-image': (
+        request: import('@app/schemas').DocumentPreviewImageRequest
+      ) => Promise<unknown>;
       'document-history:list': (request: { documentId: string }) => Promise<unknown>;
       'document-history:restore': (
         request: import('@app/schemas').DocumentVersionRestoreRequest

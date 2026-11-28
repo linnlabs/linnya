@@ -118,6 +118,8 @@
 .workspace-markdown-preview .image-block.align-left { margin-inline-start: 0; }
 .workspace-markdown-preview .image-block.align-right { margin-inline-end: 0; }
 .workspace-markdown-preview img { display: block; max-width: 100%; height: auto; border-radius: 0; box-shadow: none; }
+/* 字节还没到的图片按清单尺寸占着位置，只露一块浅底。 */
+.workspace-markdown-preview img.image-block-img:not([src]) { background: var(--workspace-preview-wash); }
 .workspace-markdown-preview .figure-caption { margin-top: 6px; color: var(--workspace-preview-muted); font-size: 12px; line-height: 1.5; text-align: center; }
 .workspace-markdown-preview .empty-image { padding: 20px; background: var(--workspace-preview-wash); color: var(--workspace-preview-muted); }
 .workspace-markdown-preview .workspace-preview-chart { margin: 0; }

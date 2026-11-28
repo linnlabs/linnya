@@ -33,7 +33,8 @@ function declaredFunctions(source) {
   };
   visit(source); return names;
 }
-for (const [name, outputPath, budget] of [['backend', 'dist/backend/index.cjs', 3 * 1024 ** 2], ['cli', 'dist/cli/canvas-cli.cjs', 3.2 * 1024 ** 2], ['computation', 'dist/backend/canvas-computation-worker.cjs', 5 * 1024 ** 2], ['preload', 'dist/backend/render-worker-preload.cjs', 2 * 1024 ** 2]]) {
+// CLI 内联了整个公开 schemas 入口，任何公开合同的增补都会让它变大；预算只防意外带入大依赖，不卡合同的正常增长。
+for (const [name, outputPath, budget] of [['backend', 'dist/backend/index.cjs', 3 * 1024 ** 2], ['cli', 'dist/cli/canvas-cli.cjs', 3.3 * 1024 ** 2], ['computation', 'dist/backend/canvas-computation-worker.cjs', 5 * 1024 ** 2], ['preload', 'dist/backend/render-worker-preload.cjs', 2 * 1024 ** 2]]) {
   const record = JSON.parse(await readFile(path.join(packageRoot, 'dist/.metadata', `${name}.json`), 'utf8'));
   const output = Object.entries(record.metafile.outputs).find(([file]) => path.resolve(record.workingDirectory, file) === path.join(packageRoot, outputPath));
   assert(output, `${name}: actual entry metadata missing`);

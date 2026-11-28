@@ -11,7 +11,7 @@ export const canvasDocumentPreviewMessage = documentPreviewMessage;
 /** Canvas 只提供几何和已授权事实，正文、标题与状态均消费行内引用同一个用户预览。 */
 export async function createCanvasDocumentSurface(
   presentation: CanvasDocumentSurfacePresentation | undefined,
-  { document, card, signal, theme }: CanvasDocumentSurfaceContext
+  { document, card, signal, theme, images }: CanvasDocumentSurfaceContext
 ): Promise<HTMLElement> {
   const status = presentation?.status ?? (presentation ? 'ready' : 'preview_unavailable');
   const result = await createDocumentPreviewSurface({
@@ -47,6 +47,7 @@ export async function createCanvasDocumentSurface(
     ...(presentation?.referenceTypeIcon
       ? { referenceTypeIcon: presentation.referenceTypeIcon }
       : {}),
+    ...(images ? { images } : {}),
     widthPx: card.width,
     maxHeight: card.height,
     // 位图铺满卡片几何框，看得见的纸面四周内缩；正文和淡出在纸边结束，和选中详情一致。

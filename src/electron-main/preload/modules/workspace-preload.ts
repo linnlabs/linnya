@@ -47,6 +47,7 @@ export function buildWorkspacePreloadApi(ipcRenderer: IpcRenderer) {
     'document-references:resolve': (request: { projectId: string; documentId: string }): Promise<unknown> => ipcRenderer.invoke('document-references:resolve', request),
     'document-preview:types': (): Promise<unknown> => ipcRenderer.invoke('document-preview:types'),
     'document-preview:read': (request: import('@app/schemas').DocumentPreviewRequest): Promise<unknown> => ipcRenderer.invoke('document-preview:read', request),
+    'document-preview:read-image': (request: import('@app/schemas').DocumentPreviewImageRequest): Promise<unknown> => ipcRenderer.invoke('document-preview:read-image', request),
     'document-history:list': (request: { documentId: string }): Promise<unknown> => ipcRenderer.invoke('document-history:list', request),
     'document-history:restore': (request: import('@app/schemas').DocumentVersionRestoreRequest): Promise<unknown> => ipcRenderer.invoke('document-history:restore', request),
     // --- Workspace ---

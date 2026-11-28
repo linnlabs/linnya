@@ -32,7 +32,8 @@ export interface CanvasSurfacePorts {
   createEditor(options: EmbeddedMarkdownEditorOptions): EmbeddedMarkdownEditor;
   markDirty(dirty: boolean): void;
   subscribeRestored(listener: (message: CanvasRestoredMessage) => void): () => void;
-  createContent?(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
+  /** scale 是出图像素与卡片 CSS 像素之比，文档卡据此取够清晰的图片。 */
+  createContent?(card: CanvasCard, signal: AbortSignal, scale: number): Promise<HTMLElement>;
   readContentKey?(card: CanvasCard): string;
   readDocumentTitles?(): ReadonlyMap<string, string>;
   readThumbnailCards?(cards: readonly CanvasCard[]): ReadonlySet<CanvasCardId>;

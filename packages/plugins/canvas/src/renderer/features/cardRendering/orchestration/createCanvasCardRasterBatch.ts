@@ -15,7 +15,11 @@ type Prepared =
   | { readonly kind: 'failed'; readonly error: unknown };
 export function createCanvasCardRasterBatch(options: {
   readonly rasterizer: CardRasterizer;
-  readonly createContent?: (card: CanvasCard, signal: AbortSignal) => Promise<HTMLElement>;
+  readonly createContent?: (
+    card: CanvasCard,
+    signal: AbortSignal,
+    scale: number
+  ) => Promise<HTMLElement>;
 }) {
   return async (
     inputs: readonly CanvasCardRasterInput[],
@@ -27,7 +31,7 @@ export function createCanvasCardRasterBatch(options: {
         try {
           signal.throwIfAborted();
           const element = options.createContent
-            ? await options.createContent(input.card, signal)
+            ? await options.createContent(input.card, signal, input.scale)
             : createCanvasRasterDom(input);
           if (input.card.type !== 'document')
             element.classList.add('markdown-document-content', 'canvas-card-content');

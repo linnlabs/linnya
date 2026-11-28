@@ -6,7 +6,11 @@ export interface CanvasRasterPresentationOptions {
   readonly kernel: CanvasKernel;
   readonly readAppearance: () => CanvasAppearance;
   readonly reportFailure: (message: string) => void;
-  readonly createContent?: (card: CanvasCard, signal: AbortSignal) => Promise<HTMLElement>;
+  readonly createContent?: (
+    card: CanvasCard,
+    signal: AbortSignal,
+    scale: number
+  ) => Promise<HTMLElement>;
   readonly readContentKey?: (card: CanvasCard) => string;
   /** 离屏验证器有独立paint时钟；正式可见表面跟随Page Visibility暂停。 */
   readonly suspendWhenHidden?: boolean;

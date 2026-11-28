@@ -1,6 +1,7 @@
 import type { Component } from 'vue';
 import type {
   DocumentImageAsset,
+  DocumentPreviewImageRequest,
   DocumentPreviewRequest,
   DocumentPreviewResult,
   DocumentReferencePresentation,
@@ -46,6 +47,10 @@ export interface CanvasPreviewReadWaiter {
 export interface CanvasCardMediaPort {
   readImage(documentId: string, assetId: string): Promise<DocumentImageAsset>;
   preview(input: DocumentPreviewRequest): Promise<DocumentPreviewResult>;
+  /** 文档卡正文里一张图片的可显示地址（blob:）；与 Host 的悬停预览、详情共用同一份，用完必须 release。 */
+  previewImage(
+    input: DocumentPreviewImageRequest
+  ): Promise<{ readonly url: string; release(): void }>;
   reference(documentId: string): Promise<DocumentReferencePresentation>;
   subscribe(listener: (event: WorkspaceMutationEvent) => void): () => void;
   subscribeAvailability(listener: (documentNodeTypes: readonly string[]) => void): () => void;
@@ -63,7 +68,8 @@ export type CanvasReferenceMetadataChange =
   | { readonly kind: 'resolved' | 'invalidated' }
   | { readonly kind: 'failed'; readonly error: Error };
 export interface CanvasCardContent {
-  create(card: CanvasCard, signal: AbortSignal): Promise<HTMLElement>;
+  /** scale 是出图像素与卡片 CSS 像素之比；文档卡正文里的图片按它取档。 */
+  create(card: CanvasCard, signal: AbortSignal, scale: number): Promise<HTMLElement>;
   stageImage(asset: DocumentImageAsset): Promise<void>;
   releaseStagedImages(assetIds: readonly string[]): void;
   resolveImageSource(source: string): Promise<string>;

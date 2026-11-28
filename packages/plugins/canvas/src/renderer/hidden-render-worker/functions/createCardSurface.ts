@@ -1,5 +1,5 @@
 import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
-import { JsonValueSchema } from '@app/schemas';
+import { documentPreviewImageSourceKey, JsonValueSchema } from '@app/schemas';
 import type { CanvasCard } from '../../../shared';
 import type { CanvasWorkerRequest, CanvasRenderRequest } from '../../../shared/rendering';
 import {
@@ -14,9 +14,10 @@ import {
 export async function createCardSurface(
   card: CanvasCard,
   request: CanvasRenderRequest,
-  signal = new AbortController().signal
+  signal = new AbortController().signal,
+  scale = request.dpr
 ): Promise<HTMLElement> {
-  const element = await createSurfaceElement(card, request, signal);
+  const element = await createSurfaceElement(card, request, signal, scale);
   if (card.type !== 'document') {
     element.classList.add('markdown-document-content');
     installTypography(element, request);
@@ -35,7 +36,8 @@ export async function createCardSurface(
 async function createSurfaceElement(
   card: CanvasCard,
   request: CanvasRenderRequest,
-  signal: AbortSignal
+  signal: AbortSignal,
+  scale: number
 ): Promise<HTMLElement> {
   if (card.type === 'image') {
     const source = request.assets[card.data.assetId];
@@ -43,6 +45,7 @@ async function createSurfaceElement(
     return createCanvasImageSurface(card, source, document);
   }
   if (card.type === 'document') {
+    const bodyImages = request.documents[card.data.documentId]?.bodyImages;
     return createCanvasDocumentSurface(
       projectCanvasDocumentSurface(request.documents[card.data.documentId]),
       {
@@ -55,6 +58,19 @@ async function createSurfaceElement(
         },
         signal,
         theme: request.theme,
+        // 隐藏窗口没有取图通道：正文图片的字节随请求内联，只有一档，按来源取用。
+        ...(bodyImages
+          ? {
+              images: {
+                scale,
+                acquire: async ({ source }) => {
+                  const url = bodyImages[documentPreviewImageSourceKey(source)];
+                  if (!url) throw new Error('resource_unavailable');
+                  return { url, release: () => undefined };
+                },
+              },
+            }
+          : {}),
       }
     );
   }

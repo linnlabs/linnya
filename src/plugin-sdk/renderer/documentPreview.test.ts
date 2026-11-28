@@ -49,10 +49,12 @@ describe('document preview renderer admission', () => {
 describe('document preview type icon', () => {
   it('reads the Host icon for a node type and returns null without a Host port', () => {
     const icon = { name: 'SlidesIcon' };
-    registerRendererDocumentPreviewPort({ mount: async () => () => {} });
+    const acquireImage = async () => ({ url: 'blob:preview', release: () => {} });
+    registerRendererDocumentPreviewPort({ mount: async () => () => {}, acquireImage });
     expect(readDocumentPreviewTypeIcon('slides')).toBeNull();
     registerRendererDocumentPreviewPort({
       mount: async () => () => {},
+      acquireImage,
       readTypeIcon: type => (type === 'slides' ? icon : { name: 'DocumentIcon' }),
     });
     expect(readDocumentPreviewTypeIcon('slides')).toBe(icon);

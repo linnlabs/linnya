@@ -89,6 +89,7 @@ import type { DocumentPreviewTarget } from '../definitions/documentPreview';
 import { DOCUMENT_PREVIEW_MESSAGE_FALLBACKS } from '../definitions/documentPreviewMessageCatalog';
 import type { DocumentPreviewMessageKey } from '../definitions/documentPreviewMessages';
 import { createDocumentPreviewController } from '../orchestration/createDocumentPreviewController';
+import { documentPreviewImageStore } from '../orchestration/createDocumentPreviewImageStore';
 import { createReadonlyDocumentSurface } from '../orchestration/createReadonlyDocumentSurface';
 const props = defineProps<{
   readTarget: () => DocumentPreviewTarget;
@@ -223,6 +224,17 @@ watch(
           ? readDocumentTypeIcon(identity.presentation.nodeType)
           : null,
         referenceTypeIcon: readDocumentTypeIcon,
+        // 首屏只取首屏里的图片；全文里屏下的图片滚到附近才取。
+        images: {
+          scale: devicePixelRatio,
+          lazy: true,
+          acquire: request =>
+            documentPreviewImageStore.acquire({
+              ...identity.target,
+              source: request.source,
+              maxEdgePx: request.maxEdgePx,
+            }),
+        },
         externalBody: full.value && Boolean(detailComponent.value),
         onOpen:
           identity.presentation.status === 'available'

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceMarkdownPreviewSchema, JsonValueSchema } from '@app/schemas';
+import type { WorkspacePreviewImageRequest } from '../index';
 import { createWorkspaceMarkdownPreview } from '../index';
 import { workspaceMarkdownSchemaLite } from '../../workspace-schema';
 import { renderWorkspaceTextBlock } from '../functions/workspaceBlockPresentation';
@@ -20,7 +21,7 @@ const fixture = () => WorkspaceMarkdownPreviewSchema.parse({
       { type: 'citationNode', attrs: { citationId: 'cite-1', sourceId: 'source-1', sourceType: 'web', title: '真实来源', authors: ['作者甲'], date: '2026', url: 'https://example.com' } },
     ]),
     root('image', 'imageBlock', { src: 'media://load/not-used', assetId: 'asset-1', caption: '图注保留' }),
-    root('legacy-image', 'imageBlock', { src: 'media://load/old-locator', caption: '历史图片' }),
+    root('legacy-image', 'imageBlock', { src: 'media://load/doc-image/b2xk', caption: '历史图片' }),
     root('list-a', 'listItemBlock', { listType: 'ordered', start: 5 }, [text('第五项')]),
     root('list-b', 'listItemBlock', { listType: 'ordered' }, [text('第六项')]),
     root('table', 'table', {}, [{ type: 'tableRow', content: [{ type: 'tableHeader', attrs: { style: 'text-align: right;', colwidth: [180] }, content: [{ type: 'tableCellContentBlock', content: [text('表头')] }] }] }]),
@@ -28,9 +29,19 @@ const fixture = () => WorkspaceMarkdownPreviewSchema.parse({
     root('chart', 'chartBlock', { spec: { chartType: 'bar', title: '营收图', categories: ['甲', '乙'], series: [{ name: '收入', values: [1, 2] }] } }),
     root('bibliography', 'bibliographyBlock'),
   ] },
-  assets: { 'asset-1': pixels, 'legacy-image-body': pixels },
+  images: {
+    'asset-1': { source: { assetId: 'asset-1' }, widthPx: 1200, heightPx: 800 },
+    'legacy-image-body': { source: { src: 'media://load/doc-image/b2xk' }, widthPx: 400, heightPx: 300 },
+  },
   references: { target: { documentId: 'target', status: 'available', title: '当前标题', nodeType: 'document' } },
 });
+
+/** 呈现宿主的取图口：记录每次请求和归还。 */
+function imageLoader() {
+  const release = vi.fn();
+  const load = vi.fn(async (_request: WorkspacePreviewImageRequest) => ({ url: pixels, release }));
+  return { load, release, sources: () => load.mock.calls.map(([request]) => request.source) };
+}
 
 beforeEach(() => {
   Object.defineProperty(HTMLImageElement.prototype, 'decode', { configurable: true, value: vi.fn().mockResolvedValue(undefined) });
@@ -44,7 +55,7 @@ describe('正式 Workspace 用户预览', () => {
     const content = WorkspaceMarkdownPreviewSchema.parse({
       format: 'workspace-markdown',
       document: { type: 'doc', content: [root('styled', 'table', { tableStyle: 'accent-header' }, [cell]), root('plain', 'table', {}, [cell])] },
-      assets: {}, references: {},
+      images: {}, references: {},
     });
     const preview = await createWorkspaceMarkdownPreview({ content, document, widthPx: 320, theme: 'light', signal: new AbortController().signal });
     const tables = preview.element.querySelectorAll('table.table-block');
@@ -53,8 +64,8 @@ describe('正式 Workspace 用户预览', () => {
   });
 
   it('真实正文、资产、图表、公式、编号与参考文献在同一个静态表面完整呈现', async () => {
-    const controller = new AbortController();
-    const preview = await createWorkspaceMarkdownPreview({ content: fixture(), document, widthPx: 320, theme: 'dark', signal: controller.signal });
+    const controller = new AbortController(), images = imageLoader();
+    const preview = await createWorkspaceMarkdownPreview({ content: fixture(), document, widthPx: 320, theme: 'dark', signal: controller.signal, loadImage: images.load });
     document.body.append(preview.element);
     expect(preview.element.textContent).toContain('当前标题');
     expect(preview.element.textContent).toContain('真实来源');
@@ -62,7 +73,10 @@ describe('正式 Workspace 用户预览', () => {
     expect(preview.element.querySelectorAll('.katex')).toHaveLength(2);
     const pictures = preview.element.querySelectorAll('.image-block img');
     expect(pictures).toHaveLength(2);
+    // 字节按清单里的来源向宿主取；没有用户设定宽度的图按原图宽度和比例占位，不随取到的档位变。
+    expect(images.sources()).toEqual([{ assetId: 'asset-1' }, { src: 'media://load/doc-image/b2xk' }]);
     expect(Array.from(pictures, image => image.getAttribute('src'))).toEqual([pixels, pixels]);
+    expect(Array.from(pictures, image => image.getAttribute('width'))).toEqual(['1200', '400']);
     expect(preview.element.querySelectorAll('[data-ordered-index]')).toHaveLength(2);
     expect(preview.element.querySelector('[data-ordered-index="6"]')?.textContent).toBe('第六项');
     expect(preview.element.querySelector('th')?.textContent).toBe('表头');
@@ -79,15 +93,75 @@ describe('正式 Workspace 用户预览', () => {
     expect(svg).toContain('乙');
     expect(preview.element.querySelector('[contenteditable="true"]')).toBeNull();
     expect(preview.element.textContent).not.toContain('linnya-chart');
+    expect(images.release).not.toHaveBeenCalled();
     controller.abort();
     expect(document.body.children).toHaveLength(0);
+    // 释放正文时归还取到的每一张图。
+    expect(images.release).toHaveBeenCalledTimes(2);
     preview.dispose();
+    expect(images.release).toHaveBeenCalledTimes(2);
+  });
+
+  it('首屏只取首屏里的图片；全文按可见范围分两批，屏下的滚到附近才取，取不到也不影响正文', async () => {
+    const picture = (id: string) => root(id, 'imageBlock', { src: `media://load/doc-image/${id}`, alt: id });
+    const content = WorkspaceMarkdownPreviewSchema.parse({ format: 'workspace-markdown',
+      document: { type: 'doc', content: [picture('top'), root('text', 'baseBlock', {}, [text('正文')]), picture('middle'), picture('bottom')] },
+      images: Object.fromEntries(['top', 'middle', 'bottom'].map(id => [`${id}-body`, { source: { src: `media://load/doc-image/${id}` }, widthPx: 800, heightPx: 600 }])),
+      references: {},
+    });
+    // jsdom 不做布局：按图片给出各自的位置，其余元素（含正文根）在顶部且高 400。
+    const tops: Record<string, number> = { top: 0, middle: 900, bottom: 1800 };
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const top = this instanceof HTMLImageElement ? (tops[this.alt] ?? 0) : 0;
+      return { width: 320, height: 400, x: 0, y: top, top, left: 0, bottom: top + 400, right: 320, toJSON: () => ({}) };
+    });
+    const first = imageLoader();
+    const firstScreen = await createWorkspaceMarkdownPreview({ content, document, widthPx: 320, maxHeight: 200, theme: 'light', signal: new AbortController().signal, loadImage: first.load });
+    expect(first.sources()).toEqual([{ src: 'media://load/doc-image/top' }]);
+    firstScreen.dispose();
+    expect(first.release).toHaveBeenCalledTimes(1);
+
+    // 没有取图口时，有图片的正文明确失败，不交付缺图的预览。
+    await expect(createWorkspaceMarkdownPreview({ content, document, widthPx: 320, theme: 'light', signal: new AbortController().signal })).rejects.toThrow('preview_image_loader_missing');
+
+    let intersect: ((entries: { isIntersecting: boolean; target: Element }[]) => void) | undefined;
+    const observed: Element[] = [], disconnect = vi.fn();
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: typeof intersect) { intersect = callback; }
+      observe(element: Element) { observed.push(element); }
+      unobserve() {}
+      disconnect = disconnect;
+    });
+    try {
+      const lazy = imageLoader();
+      lazy.load.mockImplementation(async request => {
+        if ('src' in request.source && request.source.src.endsWith('bottom')) throw new Error('image gone');
+        return { url: pixels, release: lazy.release };
+      });
+      const full = await createWorkspaceMarkdownPreview({ content, document, widthPx: 320, theme: 'light', signal: new AbortController().signal, loadImage: lazy.load, lazyImagesBelowPx: 600 });
+      // 交付时只有一开始看得见的那张有字节，其余按清单尺寸占位。
+      expect(lazy.sources()).toEqual([{ src: 'media://load/doc-image/top' }]);
+      const [top, middle, bottom] = Array.from(full.element.querySelectorAll('img'));
+      expect([top, middle, bottom].map(image => image.hasAttribute('src'))).toEqual([true, false, false]);
+      expect(observed).toEqual([middle, bottom]);
+      intersect?.([{ isIntersecting: false, target: middle }, { isIntersecting: true, target: bottom }]);
+      await vi.waitFor(() => expect(bottom.getAttribute('data-preview-image')).toBe('failed'));
+      expect(middle.hasAttribute('src')).toBe(false);
+      intersect?.([{ isIntersecting: true, target: middle }]);
+      await vi.waitFor(() => expect(middle.getAttribute('src')).toBe(pixels));
+      expect(lazy.load).toHaveBeenCalledTimes(3);
+      full.dispose();
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(lazy.release).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('首屏已覆盖后不准备屏下图像，详情则明确报告缺失资源', async () => {
     const content = WorkspaceMarkdownPreviewSchema.parse({ format: 'workspace-markdown',
       document: { type: 'doc', content: [root('first', 'baseBlock', {}, [text('首屏')]), root('missing', 'imageBlock', { assetId: 'absent', src: 'media://missing' })] },
-      assets: {}, references: {},
+      images: {}, references: {},
     });
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
       return { width: 320, height: 400, x: 0, y: 0, top: 0, left: 0, bottom: 400, right: 320, toJSON: () => ({}) };
@@ -108,7 +182,7 @@ describe('正式 Workspace 用户预览', () => {
       const cell = { type: 'tableRow', content: [{ type: 'tableCell', content: [{ type: 'tableCellContentBlock', content: [text('格')] }] }] };
       const blocks = Array.from({ length: 120 }, (_, index) => root(`p-${index}`, 'baseBlock', {}, [text(`第 ${index} 段`)]));
       const content = WorkspaceMarkdownPreviewSchema.parse({ format: 'workspace-markdown',
-        document: { type: 'doc', content: [...blocks, root('table', 'table', {}, [cell])] }, assets: {}, references: {} });
+        document: { type: 'doc', content: [...blocks, root('table', 'table', {}, [cell])] }, images: {}, references: {} });
       // jsdom 不做布局：让表格比可用宽度宽，定级结果才可观察。
       vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(320);
       vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(900);
@@ -136,7 +210,7 @@ describe('正式 Workspace 用户预览', () => {
   });
 
   it('Pending 删除最后一个块时展示空白，持久化 schema 仍拒绝空正文', async () => {
-    const content = WorkspaceMarkdownPreviewSchema.parse({ format: 'workspace-markdown', document: { type: 'doc', content: [] }, assets: {}, references: {} });
+    const content = WorkspaceMarkdownPreviewSchema.parse({ format: 'workspace-markdown', document: { type: 'doc', content: [] }, images: {}, references: {} });
     const preview = await createWorkspaceMarkdownPreview({ content, document, widthPx: 320, theme: 'light', signal: new AbortController().signal });
     expect(preview.element.childElementCount).toBe(0);
     expect(() => workspaceMarkdownSchemaLite.nodeFromJSON(content.document).check()).toThrow();
@@ -148,7 +222,7 @@ describe('正式 Workspace 用户预览', () => {
     let finish: (() => void) | undefined;
     vi.spyOn(HTMLImageElement.prototype, 'decode').mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
     const controller = new AbortController();
-    const pending = createWorkspaceMarkdownPreview({ content: fixture(), document, widthPx: 320, theme: 'light', signal: controller.signal });
+    const pending = createWorkspaceMarkdownPreview({ content: fixture(), document, widthPx: 320, theme: 'light', signal: controller.signal, loadImage: imageLoader().load });
     await vi.waitFor(() => expect(document.querySelector('img')).not.toBeNull());
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });

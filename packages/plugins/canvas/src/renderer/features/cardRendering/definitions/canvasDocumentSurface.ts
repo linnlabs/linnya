@@ -1,5 +1,6 @@
 import type { Component } from 'vue';
 import type { DocumentPreviewResult, DocumentPreviewDetail } from '@app/schemas';
+import type { DocumentPreviewSurfaceImages } from '@linnya/document-preview';
 import type { CanvasColor } from '../../../../shared';
 
 export interface CanvasDocumentSurfacePresentation {
@@ -27,4 +28,6 @@ export interface CanvasDocumentSurfaceContext {
   };
   readonly signal: AbortSignal;
   readonly theme: 'light' | 'dark';
+  /** 正文图片的取法；前台走 Host 共享的图片地址，后台出图用随请求内联的字节。 */
+  readonly images?: DocumentPreviewSurfaceImages;
 }

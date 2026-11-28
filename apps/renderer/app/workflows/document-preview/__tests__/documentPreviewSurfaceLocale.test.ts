@@ -63,7 +63,7 @@ describe('预览外壳文字按界面语言显示', () => {
         ] }] },
         { type: 'rootBlock', attrs: { id: 'b' }, content: [{ type: 'bibliographyBlock', attrs: { id: 'b-body' } }] },
       ] },
-      assets: {},
+      images: {},
       references: {
         gone: { documentId: 'gone', status: 'deleted', title: null, nodeType: null },
         foreign: { documentId: 'foreign', status: 'outside_project', title: null, nodeType: null },

@@ -109,9 +109,10 @@ export function createWorkspacePreviewSerializer(input: {
     latexBlock: node => math(node, document), inlineLatex: node => math(node, document),
     chartBlock: node => ['figure', { 'data-workspace-chart-id': string(node, 'id'), class: 'workspace-preview-chart' }],
     imageBlock: node => {
-      const id = string(node, 'assetId') || string(node, 'id'), source = content.assets[id];
-      if (string(node, 'src') && !source) throw new Error(`preview_image_resource_missing:${id || string(node, 'id')}`);
-      return renderWorkspaceImageBlock(node, document, { imageSource: source ?? '', emptyImageLabel: locale.startsWith('zh') ? '未添加图片' : 'No image' });
+      const id = string(node, 'assetId') || string(node, 'id'), size = content.images[id];
+      // 清单里没有这张图，说明它没有正式来源（受管资产或文档媒体目录）：不伪装成完整预览。
+      if (string(node, 'src') && !size) throw new Error(`preview_image_resource_missing:${id || string(node, 'id')}`);
+      return renderWorkspaceImageBlock(node, document, { imageSource: '', pendingImage: size, emptyImageLabel: locale.startsWith('zh') ? '未添加图片' : 'No image' });
     },
     table: node => ['div', { class: 'workspace-preview-table' }, ['table', { class: WORKSPACE_TABLE_CLASS, ...workspaceTableStyleAttributes(node.attrs.tableStyle) }, ['tbody', 0]]],
     tableRow: () => ['tr', 0], tableCell: node => tableCell(node, document), tableHeader: node => tableCell(node, document),

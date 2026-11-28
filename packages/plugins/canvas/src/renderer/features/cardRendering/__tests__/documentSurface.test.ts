@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
+import { disposeDocumentPreviewSurface } from '@linnya/document-preview';
 import { CanvasCardSchema } from '../../../../shared';
 import { CanvasRenderRequestSchema } from '../../../../shared/rendering';
 import { createCardSurface } from '../../../hidden-render-worker/functions/createCardSurface';
@@ -66,11 +67,14 @@ it('前台当前文档卡与后台出图保留相同的授权标题和无封面�
     readImage: async () => {
       throw new Error('unexpected image read');
     },
+    previewImage: async () => {
+      throw new Error('unexpected preview image read');
+    },
     openDocument: async () => {},
   };
   const content = createCanvasCardContent('current', port);
   try {
-    const frontend = await content.create(card, new AbortController().signal);
+    const frontend = await content.create(card, new AbortController().signal, 1);
     const worker = await createCardSurface(card, {
       ...request,
       documents: {
@@ -170,11 +174,14 @@ it('有正文且内容方未声明缩略图时，前台与后台都按 Markdown 
     readImage: async () => {
       throw new Error('unexpected image read');
     },
+    previewImage: async () => {
+      throw new Error('unexpected preview image read');
+    },
     openDocument: async () => {},
   };
   const content = createCanvasCardContent('current', port);
   try {
-    const frontend = await content.create(card, new AbortController().signal);
+    const frontend = await content.create(card, new AbortController().signal, 1);
     const worker = await createCardSurface(card, {
       ...request,
       documents: {
@@ -196,6 +203,116 @@ it('有正文且内容方未声明缩略图时，前台与后台都按 Markdown 
       expect(element.querySelector('.document-preview-summary, img')).toBeNull();
       expect(element.style.height).toBe(`${card.height}px`);
     }
+  } finally {
+    content.dispose();
+  }
+});
+it('正式正文里的图片：前台按出图倍率向 Host 取共享地址并在出图后归还，后台用随请求内联的字节，卡面相同', async () => {
+  // jsdom 不解码图片。
+  Object.defineProperty(HTMLImageElement.prototype, 'decode', {
+    configurable: true,
+    value: async () => {},
+  });
+  const pixels = 'data:image/png;base64,YWJj';
+  const body = {
+    format: 'workspace-markdown' as const,
+    document: {
+      type: 'doc',
+      content: [
+        {
+          type: 'rootBlock',
+          attrs: { id: 'picture' },
+          content: [
+            {
+              type: 'imageBlock',
+              attrs: { id: 'picture-body', src: 'media://load/asset-image/a1', assetId: 'a1' },
+            },
+          ],
+        },
+      ],
+    },
+    images: { a1: { source: { assetId: 'a1' }, widthPx: 1600, heightPx: 900 } },
+    references: {},
+  };
+  const release = vi.fn();
+  const previewImage = vi.fn<CanvasCardMediaPort['previewImage']>(async () => ({
+    url: 'blob:shared-picture',
+    release,
+  }));
+  const port: CanvasCardMediaPort = {
+    projectId: () => 'project',
+    preview: async input => ({
+      documentId: input.documentId,
+      title: '带图文档',
+      nodeType: 'document',
+      status: 'ready',
+      content: { revisionKey: 'v1', summary: '', detail: body },
+    }),
+    previewImage,
+    reference: async documentId => ({
+      documentId,
+      title: '带图文档',
+      nodeType: 'document',
+      status: 'available',
+      path: 'workspace:/带图文档',
+    }),
+    subscribe: () => () => {},
+    subscribeAvailability: () => () => {},
+    readImage: async () => {
+      throw new Error('unexpected image read');
+    },
+    openDocument: async () => {},
+  };
+  const content = createCanvasCardContent('current', port);
+  try {
+    const frontend = await content.create(card, new AbortController().signal, 2);
+    // 图片属于被引用的文档和当前项目；jsdom 没有布局，排出的尺寸为 0，取最小一档。
+    expect(previewImage.mock.calls).toEqual([
+      [
+        {
+          documentId: 'internal-target-id',
+          projectId: 'project',
+          source: { assetId: 'a1' },
+          maxEdgePx: 512,
+        },
+      ],
+    ]);
+    const worker = await createCardSurface(card, {
+      ...request,
+      documents: {
+        'internal-target-id': {
+          title: '带图文档',
+          status: 'available',
+          previewStatus: 'ready',
+          body,
+          bodyImages: { a1: pixels },
+        },
+      },
+    });
+    expect(frontend.querySelector('img.image-block-img')?.getAttribute('src')).toBe(
+      'blob:shared-picture'
+    );
+    expect(worker.querySelector('img.image-block-img')?.getAttribute('src')).toBe(pixels);
+    for (const element of [frontend, worker])
+      expect(element.querySelector('img.image-block-img')?.getAttribute('width')).toBe('1600');
+    expect(release).not.toHaveBeenCalled();
+    // 出图批次在画完后走这个释放口。
+    disposeDocumentPreviewSurface(frontend);
+    expect(release).toHaveBeenCalledTimes(1);
+    // 后台请求没带上图片字节时明确失败，不交付缺图的卡面。
+    await expect(
+      createCardSurface(card, {
+        ...request,
+        documents: {
+          'internal-target-id': {
+            title: '带图文档',
+            status: 'available',
+            previewStatus: 'ready',
+            body,
+          },
+        },
+      })
+    ).rejects.toThrow('preview_image_loader_missing');
   } finally {
     content.dispose();
   }

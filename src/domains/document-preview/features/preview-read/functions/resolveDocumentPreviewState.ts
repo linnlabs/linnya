@@ -2,7 +2,7 @@ import type { DocumentPreviewContent, DocumentPreviewRequest, DocumentPreviewRes
 import type { PreviewNode } from '../../../definitions/documentPreview';
 
 export function resolveDocumentPreviewState(input: {
-  readonly request: DocumentPreviewRequest;
+  readonly request: Pick<DocumentPreviewRequest, 'documentId' | 'projectId'>;
   readonly node: PreviewNode | null;
   readonly hasProvider: boolean;
   readonly textSnapshot: string | null;

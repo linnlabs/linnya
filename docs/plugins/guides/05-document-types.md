@@ -72,7 +72,7 @@ hook 实现侧的纪律：**不要从 `ToolContext` 公开插件专属 service �
 
 ### 提供方：让自己的文档能被预览
 
-后端 hook 可贡献 `preview`：`getRevision` 返回正文 owner 的真实版本，`render` 返回按正式 schema 校验的封面图片、摘要与可选只读详情数据。Host 只做身份/项目检查、派生缓存和启停分发，不解释插件内部模型。Markdown 内建 provider、Slides 第一页与 Canvas 的 provider 已接入。
+后端 hook 可贡献 `preview`：`getRevision` 返回正文 owner 的真实版本，`render` 返回按正式 schema 校验的封面图片、摘要与可选只读详情数据。`getRevision` 每次读取都会被调用（命中缓存时也要靠它确认版本），要便宜。出封面图的类型收到的宽度和像素比已由 Host 归到固定档位（宽度 320/640/1280/1600，像素比 1 或 2），消费方按容器宽度缩放显示，所以不要假设它等于某张卡片的实际宽度；内容与尺寸无关的类型可声明 `sizeIndependent: true`，各入口共用同一份结果。Host 只做身份/项目检查、派生缓存和启停分发，不解释插件内部模型。Markdown 内建 provider、Slides 第一页与 Canvas 的 provider 已接入。
 
 Renderer 文档类型可贡献 `readonlyPreviewComponent`，作为详情档的可选增强，接收 documentId/projectId；预览带封面图时还会收到可选的 `cover`（`{ dataUri, widthPx, heightPx }`，即挂载前显示的那张），自己的画面出来之前先在同一位置显示它，换成详情时就不会空白一下。悬停预览露出后尺寸不再变（最高 380，下文在预览内滚动），组件应接在封面原位、不撑高面板。消费者只在用户进入预览（指针或键盘焦点）或近景时挂载，离开、换目标或插件不可用时卸载；组件必须只读、核对范围并自行释放资源，不绑定可写 file session，也不连接编辑 store。静态封面和摘要仍走后端 `preview` 数据，不能为远景卡片批量挂载实时组件。参考实现是 Slides 的只读翻页详情（[presentationPreview](../../../packages/plugins/slides/src/renderer/features/presentationPreview/README.md)）。
 
@@ -80,7 +80,7 @@ Renderer 文档类型可贡献 `readonlyPreviewComponent`，作为详情档的�
 
 按呈现需要二选一：
 
-1. **读取数据，自己呈现。** Backend 用 `@plugin/backend/documentPreview.createDocumentPreviewReader(db)`，Renderer 用 `@plugin/renderer/documentPreview.readDocumentPreview`，都得到 `DocumentPreviewResult`。可预览的类型集合经 `listDocumentPreviewTypes` 查询，不能在 UI 硬编码。标出文档类型时用 `readDocumentPreviewTypeIcon(nodeType)`，与文件树同一图标；Host 未安装该能力时返回 null，调用方自行兜底。画布卡片位图走的就是这条路。
+1. **读取数据，自己呈现。** Backend 用 `@plugin/backend/documentPreview.createDocumentPreviewReader(db)`，Renderer 用 `@plugin/renderer/documentPreview.readDocumentPreview`，都得到 `DocumentPreviewResult`。Markdown 文档的详情（`detail.format === 'workspace-markdown'`）不带图片字节，只带清单 `images`：每项是来源和原始像素尺寸。要显示图片时按显示像素取档（长边 512/1024/2048，取不小于显示像素的最小一档）：Renderer 用 `acquireDocumentPreviewImage({ documentId, projectId, source, maxEdgePx, signal })`，得到页面内地址和 `release`，与 Host 自己的预览共用同一份，用完必须 release；Backend 用 reader 的 `readImage`，得到字节。文档不可读、来源不属于该文档时没有结果。这是 2026-11 的合同变更：此前详情里的 `assets`（每张图的 data URI）已删除。可预览的类型集合经 `listDocumentPreviewTypes` 查询，不能在 UI 硬编码。标出文档类型时用 `readDocumentPreviewTypeIcon(nodeType)`，与文件树同一图标；Host 未安装该能力时返回 null，调用方自行兜底。画布卡片位图走的就是这条路。
 2. **请 Host 挂载标准预览。** `@plugin/renderer/documentPreview.mountDocumentPreview({ element, documentId, projectId, mode?, widthPx?, signal?, onReady? })` 把与行内引用相同的只读预览挂进插件提供的容器，返回 `Promise<dispose>`。`mode` 默认首屏（`first-screen`）：按内容高度、最高 380，指针或键盘焦点进入后在原地换成全文并在预览内滚动，容器只需限高并裁切、不要自己滚动；`detail` 会加载该类型贡献的 `readonlyPreviewComponent`，目标已删除或不在当前项目时拒绝挂载。Host 在加载前后都核对当前项目；`signal` 可在读取或组件加载途中取消；同一容器再次挂载会替换旧目标，旧 disposer 不会移除后来的目标；`onReady` 在正文呈现完成后回调，可据此撤下占位位图。DOM 和 AbortSignal 不过 IPC，不能借此打开可写 surface 或批量挂载远景组件。
 
 标题、状态、类型图标、紧凑排版与首屏范围由仓内私有 workspace 包 `@linnya/document-preview` 统一定义。仓内官方插件可以把它打进自己的产物，与行内引用保持同一外观（Canvas 即如此）；该包不发布，外部插件走上面第 2 条，或读取 DTO 自己呈现。

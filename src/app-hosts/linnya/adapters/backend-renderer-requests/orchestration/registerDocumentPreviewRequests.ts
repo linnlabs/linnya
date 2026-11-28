@@ -1,4 +1,4 @@
-import { DocumentPreviewRequestSchema } from '@app/schemas';
+import { DocumentPreviewImageRequestSchema, DocumentPreviewRequestSchema } from '@app/schemas';
 import { listDocumentPreviewTypes } from '../../document-preview/listDocumentPreviewTypes';
 import { createWorkspaceDocumentPreviewReader } from '../../document-preview/createWorkspaceDocumentPreviewReader';
 import type { BackendRuntimeOwner } from '../../../backend-runtime/orchestration/backendRuntimeOwner';
@@ -10,4 +10,5 @@ export function registerDocumentPreviewRequests(owner: BackendRuntimeOwner, regi
   const preview = createWorkspaceDocumentPreviewReader(database.getDb());
   registry.handle('document-preview:types', () => listDocumentPreviewTypes());
   registry.handle('document-preview:read', value => preview.read(DocumentPreviewRequestSchema.parse(value)));
+  registry.handle('document-preview:read-image', value => preview.readImage(DocumentPreviewImageRequestSchema.parse(value)));
 }

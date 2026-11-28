@@ -8,6 +8,7 @@ import {
   createDocumentPreviewIcon,
   documentPreviewText,
 } from '../functions/documentPreviewPresentation';
+import { selectDocumentPreviewImageTier } from '../functions/selectDocumentPreviewImageTier';
 
 const releases = new WeakMap<HTMLElement, () => void>();
 /** 光栅消费方在 paint 完成/失败后和 live 预览在卸载时走同一释放口。 */
@@ -34,6 +35,8 @@ async function renderBody(detail: DocumentPreviewDetail, input: DocumentPreviewS
       '@linnya/markdown-document-core/workspace-preview'
     );
     input.signal.throwIfAborted();
+    const images = input.images,
+      windowHeight = input.document.defaultView?.innerHeight;
     return createWorkspaceMarkdownPreview({
       content: detail,
       document: input.document,
@@ -42,6 +45,19 @@ async function renderBody(detail: DocumentPreviewDetail, input: DocumentPreviewS
       theme: input.theme,
       signal: input.signal,
       ...(input.locale ? { locale: input.locale } : {}),
+      ...(images
+        ? {
+            loadImage: request =>
+              images.acquire({
+                source: request.source,
+                maxEdgePx: selectDocumentPreviewImageTier(
+                  Math.max(request.widthPx, request.heightPx) * images.scale
+                ),
+                signal: request.signal,
+              }),
+          }
+        : {}),
+      ...(images?.lazy && windowHeight !== undefined ? { lazyImagesBelowPx: windowHeight } : {}),
       referenceIcon: nodeType =>
         createDocumentPreviewIcon(
           input.document,

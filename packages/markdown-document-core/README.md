@@ -30,9 +30,9 @@ Tiptap 固定为 3.31.3；mathematics 的 peer 仅接受 KaTeX 0.16～0.18，因
 
 `./workspace-schema` 拥有持久化 rootBlock 节点及 mark 合同。Backend normalization 仅转出这个入口；生产 Editor 的 conformance 测试验证注册表覆盖同一合同。标准 Markdown 与 Workspace 是不同正式模型，不通过 Agent Markdown 字符串互转来生成用户预览。
 
-`./workspace-preview` 的 `createWorkspaceMarkdownPreview` 接收已投影 Pending 的 `WorkspaceMarkdownPreview`、调用方 Document、正文宽度、主题、AbortSignal，以及可选最大高度和 locale。返回可挂载的静态 element 和 dispose；不创建 Editor、不访问 Workspace、不请求资源、不注册文档会话。所有消费方必须加载 `./workspace-preview.css`，正文为 14px / 1.7 行高，按可用宽度换行，颜色继承统一预览外壳。
+`./workspace-preview` 的 `createWorkspaceMarkdownPreview` 接收已投影 Pending 的 `WorkspaceMarkdownPreview`、调用方 Document、正文宽度、主题、AbortSignal，以及可选最大高度和 locale。返回可挂载的静态 element 和 dispose；不创建 Editor、不访问 Workspace、不自行请求资源（图片字节经调用方传入的 `loadImage` 取得）、不注册文档会话。所有消费方必须加载 `./workspace-preview.css`，正文为 14px / 1.7 行高，按可用宽度换行，颜色继承统一预览外壳。
 
-- 图片只消费 DTO 中已准入的 data URI：有 assetId 用 assetId，否则用 imageBlock.id；不自行打开持久化 src。出现可见图片资源缺失时明确失败，不伪装成完整预览。
+- 图片：DTO 只带清单 `images`（键：有 assetId 用 assetId，否则用 imageBlock.id；值：来源和朝向校正后的原始像素尺寸），不带字节。预览按清单尺寸先留好位置，图片后到时文字不被顶动；字节经调用方的 `loadImage` 取得，本包不自行打开持久化 src，也不决定取哪一档清晰度。首屏只等首屏内的图片。全文默认全部立即取；调用方传 `lazyImagesBelowPx` 时，这个高度以下的图片滚到附近（上下 400px）才取，取失败的标 `data-preview-image="failed"`，其余内容照常。正文有可见图片而清单里没有、或调用方没给 `loadImage` 时明确失败，不伪装成完整预览。dispose 取消未完成的读取并释放已取得的图片。
 - 按真实 DOM 布局逐 rootBlock 准备。传了最大高度（首屏）时，每块等图片和字体后测量，到与最大高度相交的块即停，屏下图表和图片不会初始化；未传最大高度时生成全部内容，不逐块测量，字体只在全部块排完后等一次，再统一给表格定级。读取已就绪的 `document.fonts.ready` 会让 Chromium 同步重排整份预览，所以全文路径不能逐块读取，否则耗时随块数平方增长。空 Pending 投影可显示空白，但保存 schema 仍为 rootBlock+。
 - `./workspace-presentation` 由正式 Editor 与预览共用文本/图片 DOM、根块语义、列表编号与公式排版；颜色 token 在 `./workspace-colors.css`。预览 CSS 显式拥有根块宽度、缩进、图片和引用排版，不继承 Editor 为手柄/交互预留的全局样式；真实 Electron 对照覆盖 Host CSS 的加载顺序。Editor 的交互和 NodeView 生命周期仍留在 Editor。
 - `./workspace-charts` 拥有唯一图表规则、主题、option、懒加载运行时和静态 SVG 出图；Editor 阅读面、PDF 和预览都消费它。预览按当前主题和宽度出图，重内容没有第二套简化实现。

@@ -19,7 +19,7 @@ it('超过结果缓存容量时，单个目标变代不重读稳定前缀，后�
     return { documentId: input.documentId, title: input.documentId, nodeType: 'markdown', status: 'ready',
       content: { revisionKey: String(versions.get(input.documentId) ?? 0), overview: 'thumbnail', summary: '已授权摘要' } };
   });
-  const port: CanvasCardMediaPort = { preview, projectId: () => 'project', reference: vi.fn(), readImage: vi.fn(),
+  const port: CanvasCardMediaPort = { preview, previewImage: vi.fn(), projectId: () => 'project', reference: vi.fn(), readImage: vi.fn(),
     subscribe: () => () => {}, subscribeAvailability: () => () => {}, openDocument: vi.fn() };
   const previews = createCanvasDocumentPreviews(port, { version, generation: () => generation }, () => previews.refreshVisible(cards));
   try {

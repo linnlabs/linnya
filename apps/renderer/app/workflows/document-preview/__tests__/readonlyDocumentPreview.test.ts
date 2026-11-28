@@ -15,6 +15,7 @@ import ReadonlyDocumentPreview from '../ui/ReadonlyDocumentPreview.vue';
 const ports = vi.hoisted(() => ({
   read: vi.fn(),
   preview: vi.fn(),
+  image: vi.fn(),
   availability: vi.fn(),
   stopMutation: vi.fn(),
   stopAvailability: vi.fn(),
@@ -22,7 +23,10 @@ const ports = vi.hoisted(() => ({
   open: vi.fn(),
 }));
 vi.mock('@plugin/renderer/documentReferences', () => ({ readDocumentReference: ports.read }));
-vi.mock('@plugin/renderer/documentPreview', () => ({ readDocumentPreview: ports.preview }));
+vi.mock('@plugin/renderer/documentPreview', () => ({
+  readDocumentPreview: ports.preview,
+  readDocumentPreviewImage: ports.image,
+}));
 vi.mock('@plugin/renderer/pluginRuntime', () => ({
   subscribeRendererPluginAvailability: ports.availability,
 }));
@@ -157,7 +161,7 @@ async function mountTwoBlockPreview(initialWidth: number) {
   await import('@linnya/markdown-document-core/workspace-preview');
   const content = WorkspaceMarkdownPreviewSchema.parse({
     format: 'workspace-markdown',
-    assets: {},
+    images: {},
     references: {},
     document: {
       type: 'doc',

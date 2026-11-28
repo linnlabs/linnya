@@ -52,6 +52,8 @@ const common = {
           summary: DocumentPreviewContentSchema.shape.summary.optional(),
           /** 内容 owner 的完整预览载荷，首屏由共享预览按实际布局裁切。 */
           body: DocumentPreviewDetailSchema.optional(),
+          /** 正文图片的字节（键为 documentPreviewImageSourceKey）：预览载荷只带清单，隐藏窗口不能自己取图。 */
+          bodyImages: z.record(z.string(), resource).optional(),
           keepThumbnail: z.boolean().optional(),
           image: DocumentPreviewImageSchema.shape.dataUri.optional(),
         })

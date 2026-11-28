@@ -112,6 +112,7 @@ const WORKSPACE_CHANNELS = [
   'workspace:create-project',
   'document-preview:types',
   'document-preview:read',
+  'document-preview:read-image',
   'document-references:deletion-preview',
   'document-references:search',
   'document-references:resolve',

@@ -1,5 +1,9 @@
 import { DocumentImageAssetSchema, DocumentPreviewResultSchema } from '@app/schemas';
-import { readDocumentPreview, readDocumentPreviewTypeIcon } from '@plugin/renderer/documentPreview';
+import {
+  acquireDocumentPreviewImage,
+  readDocumentPreview,
+  readDocumentPreviewTypeIcon,
+} from '@plugin/renderer/documentPreview';
 import {
   getCurrentWorkspaceProjectId,
   subscribeWorkspaceMutations,
@@ -20,6 +24,7 @@ export function createCanvasCardMediaPort(
       );
     },
     preview: async input => DocumentPreviewResultSchema.parse(await readDocumentPreview(input)),
+    previewImage: acquireDocumentPreviewImage,
     reference: documentId => {
       if (!projectId)
         throw new CanvasUserError(canvasText('canvas.error.projectMissingForIdentity'));

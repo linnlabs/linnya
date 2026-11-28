@@ -1,11 +1,15 @@
 import {
   DocumentPreviewContentSchema,
+  DocumentPreviewImageRequestSchema,
   DocumentPreviewRequestSchema,
   type DocumentPreviewContent,
+  type DocumentPreviewImageRequest,
+  type DocumentPreviewImageResult,
   type DocumentPreviewRequest,
   type DocumentPreviewResult,
 } from '@app/schemas';
 import type { DocumentPreviewDependencies } from '../../../definitions/documentPreview';
+import { resolveDocumentPreviewCoverSize } from '../functions/resolveDocumentPreviewCoverSize';
 import { resolveDocumentPreviewState } from '../functions/resolveDocumentPreviewState';
 
 export function createDocumentPreviewOperations(deps: DocumentPreviewDependencies) {
@@ -13,7 +17,7 @@ export function createDocumentPreviewOperations(deps: DocumentPreviewDependencie
   const waiters: Array<() => void> = [];
   let active = 0;
   function currentResult(
-    input: DocumentPreviewRequest,
+    input: Pick<DocumentPreviewRequest, 'documentId' | 'projectId'>,
     content?: DocumentPreviewContent
   ): DocumentPreviewResult {
     const node = deps.readNode(input.documentId);
@@ -48,19 +52,18 @@ export function createDocumentPreviewOperations(deps: DocumentPreviewDependencie
     const nodeType = initial.nodeType;
     const provider = deps.resolveProvider(nodeType);
     if (!provider) return currentResult(input);
-    const providerInput = {
-      context: deps.context,
-      documentId: input.documentId,
-      widthPx: input.widthPx,
-      pixelRatio: input.pixelRatio,
-    };
+    // 内容与尺寸无关的类型（Markdown）按版本只存一份：悬停、输入框、画布卡和选中详情用的宽度各不相同，
+    // 把宽度放进键里它们永远用不上彼此的结果。按尺寸出图的类型归到固定档位后再出图、再入键。
+    const size = provider.sizeIndependent
+      ? { widthPx: input.widthPx, pixelRatio: input.pixelRatio }
+      : resolveDocumentPreviewCoverSize(input);
+    const providerInput = { context: deps.context, documentId: input.documentId, ...size };
     const revision = await provider.getRevision(providerInput);
     const key = JSON.stringify([
       input.projectId,
       input.documentId,
       revision,
-      input.widthPx,
-      input.pixelRatio,
+      ...(provider.sizeIndependent ? [] : [size.widthPx, size.pixelRatio]),
     ]);
     const admitCurrent = async (
       content: DocumentPreviewContent
@@ -95,5 +98,24 @@ export function createDocumentPreviewOperations(deps: DocumentPreviewDependencie
     pending.set(key, result);
     return result;
   }
-  return { read };
+  /** 与 read 同一套范围规则：文档已删除、不在该项目或类型不可用时不读字节；异步返回后再核对一次。 */
+  async function readImage(value: DocumentPreviewImageRequest): Promise<DocumentPreviewImageResult> {
+    const input = DocumentPreviewImageRequestSchema.parse(value);
+    const readable = () => {
+      const state = currentResult(input);
+      return state.status === 'preview_unavailable' && state.nodeType
+        ? deps.resolveProvider(state.nodeType)
+        : null;
+    };
+    const provider = readable();
+    if (!provider?.readImage) return null;
+    const image = await provider.readImage({
+      context: deps.context,
+      documentId: input.documentId,
+      source: input.source,
+      maxEdgePx: input.maxEdgePx,
+    });
+    return readable() === provider ? image : null;
+  }
+  return { read, readImage };
 }

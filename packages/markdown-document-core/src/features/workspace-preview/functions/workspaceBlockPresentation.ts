@@ -7,6 +7,8 @@ export interface WorkspaceBlockDom {
 }
 export interface WorkspaceBlockPresentationOptions {
   readonly imageSource?: string;
+  /** 字节稍后才到：先不设地址，按这组原始像素尺寸把位置占好，图片到达时版面不再变化。 */
+  readonly pendingImage?: { readonly widthPx: number; readonly heightPx: number };
   readonly emptyImageLabel?: string;
 }
 
@@ -94,14 +96,20 @@ export function renderWorkspaceImageBlock(
     figure.setAttribute('data-alignment', alignment);
     figure.classList.add(`align-${alignment}`);
   }
-  const source = options.imageSource ?? attribute(node, 'src');
-  if (source) {
+  const pending = options.pendingImage;
+  const source = pending ? '' : (options.imageSource ?? attribute(node, 'src'));
+  if (source || pending) {
     const image = document.createElement('img');
-    image.src = source;
+    if (source) image.src = source;
     image.alt = attribute(node, 'alt');
     if (attribute(node, 'title')) image.title = attribute(node, 'title');
     if (width > 0) image.width = width;
     if (height > 0) image.height = height;
+    if (pending) {
+      // 没有用户设定的宽度时按原图宽度排，不随取到的档位变；比例固定为原图比例，解码前后高度相同。
+      if (!(width > 0)) image.width = pending.widthPx;
+      image.style.aspectRatio = `${pending.widthPx} / ${pending.heightPx}`;
+    }
     image.style.maxWidth = '100%';
     image.className = 'image-block-img';
     figure.append(image);

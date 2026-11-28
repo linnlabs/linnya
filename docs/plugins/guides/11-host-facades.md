@@ -108,7 +108,7 @@ Backend 的 `@plugin/backend/imageTranscoding` 是不透明内存图片转码窄
 
 文档预览与引用是 Backend、Renderer 都有的门面，也是行内引用（`@`）背后的平台能力：
 
-- `@plugin/backend/documentPreview` 提供提供方合同 `DocumentPreviewCapability`（由文档类型 hook 的 `preview` 贡献）和 `createDocumentPreviewReader(db)`；`@plugin/renderer/documentPreview` 提供 `readDocumentPreview`、`listDocumentPreviewTypes`、`readDocumentPreviewTypeIcon` 与 `mountDocumentPreview`。Renderer 挂载由 Host 在 app 层通过 `registerRendererDocumentPreviewPort` 注册实现，插件只调用，不注册。
+- `@plugin/backend/documentPreview` 提供提供方合同 `DocumentPreviewCapability`（由文档类型 hook 的 `preview` 贡献）和 `createDocumentPreviewReader(db)`（`read` 读预览，`readImage` 按档位读正文图片）；`@plugin/renderer/documentPreview` 提供 `readDocumentPreview`、`acquireDocumentPreviewImage`、`listDocumentPreviewTypes`、`readDocumentPreviewTypeIcon` 与 `mountDocumentPreview`。Renderer 挂载由 Host 在 app 层通过 `registerRendererDocumentPreviewPort` 注册实现，插件只调用，不注册。
 - `@plugin/backend/documentReferences.replaceDocumentReferences` 在正文同步事务内登记稳定引用；`@plugin/renderer/documentReferences` 读取引用与反向链接。
 
 两组门面都只做身份、项目范围和启停检查，不解释插件内部模型；用法见 [05 文档类型 · 只读文档预览](./05-document-types.md#只读文档预览与稳定引用)。

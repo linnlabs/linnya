@@ -1,6 +1,13 @@
 import { MarkdownChartSpecSchema } from '@app/schemas';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import type { DocumentPreviewImageSource } from '@app/schemas';
 import type { WorkspaceMarkdownPreviewInput } from '../definitions/workspacePreview';
+
+/** 已按清单尺寸占位、还没有字节的正文图片。 */
+export interface PendingWorkspacePreviewImage {
+  readonly image: HTMLImageElement;
+  readonly source: DocumentPreviewImageSource;
+}
 
 /** 字体/图片就绪后再测量；取消不等待屏下资源，也不会留下挂在document上的测量节点。 */
 export async function waitForPreviewResource<T>(promise: PromiseLike<T>, signal: AbortSignal): Promise<T> {
@@ -12,9 +19,10 @@ export async function waitForPreviewResource<T>(promise: PromiseLike<T>, signal:
   });
 }
 
+/** 准备块内自带的重内容（图表），并列出块里等字节的正文图片；何时加载这些图片由调用方按首屏/全文决定。 */
 export async function prepareWorkspacePreviewBlock(
   root: ProseMirrorNode, element: HTMLElement, input: WorkspaceMarkdownPreviewInput,
-): Promise<void> {
+): Promise<readonly PendingWorkspacePreviewImage[]> {
   const chart = root.firstChild;
   if (chart?.type.name === 'chartBlock') {
     const { renderChartImageSvg, baseChartTheme } = await import('../../workspace-charts');
@@ -43,11 +51,20 @@ export async function prepareWorkspacePreviewBlock(
     image.height = result.height;
     image.alt = spec.title ?? '';
     figure.append(image);
-  }
-  for (const image of Array.from(element.querySelectorAll('img'))) {
     await waitForPreviewResource(image.decode(), input.signal);
   }
+  // 图片块与其 <img> 同序：清单里没有的图片在序列化时已经失败，所以两边一一对应。
+  const sources: DocumentPreviewImageSource[] = [];
+  root.descendants(node => {
+    if (node.type.name !== 'imageBlock') return;
+    const assetId: unknown = node.attrs.assetId, id: unknown = node.attrs.id;
+    const listed = input.content.images[typeof assetId === 'string' && assetId ? assetId : typeof id === 'string' ? id : ''];
+    if (listed) sources.push(listed.source);
+  });
+  const images = Array.from(element.querySelectorAll<HTMLImageElement>('img.image-block-img'));
+  if (images.length !== sources.length) throw new Error('preview_image_surface_mismatch');
   // 这里不等字体：Chromium 读取已就绪的 fonts.ready 会同步更新整份预览的样式和布局，
   // 逐块读取会让全文耗时随块数平方增长。何时等字体由调用方按是否需要逐块量高决定。
   input.signal.throwIfAborted();
+  return images.map((image, index) => ({ image, source: sources[index] }));
 }

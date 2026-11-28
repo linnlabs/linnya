@@ -9,6 +9,7 @@ import type {
 import { DocumentPreviewUserError } from '../definitions/documentPreviewUserError';
 import { assertDocumentPreviewScope } from '../functions/assertDocumentPreviewScope';
 import { resolveCurrentDocumentPreviewMessage } from '../functions/resolveCurrentDocumentPreviewMessage';
+import { documentPreviewImageStore } from './createDocumentPreviewImageStore';
 
 /** 每个DOM容器只属于一次mount，旧请求的dispose不能移除后来目标的VNode。 */
 export function createDocumentPreviewRendererPort(
@@ -20,6 +21,7 @@ export function createDocumentPreviewRendererPort(
 ): RendererDocumentPreviewPort {
   const owners = new WeakMap<HTMLElement, DocumentPreviewMountOwnership>();
   return {
+    acquireImage: request => documentPreviewImageStore.acquire(request),
     async mount(input) {
       const target = { documentId: input.documentId, projectId: input.projectId };
       owners.get(input.element)?.dispose();

@@ -14,7 +14,7 @@ function fixture() {
     createdAt: 1, updatedAt: 1, x: 0, y: 0, width: 320, height: 240, parentId: null, data: { documentId: `doc${index}` },
   }));
   const preview = vi.fn<CanvasCardMediaPort['preview']>(async ({ documentId }) => ({ documentId, title: documentId, nodeType: 'markdown', status: 'ready', content: { revisionKey: '1', summary: '摘要' } }));
-  const port: CanvasCardMediaPort = { preview, reference: async documentId => ({ documentId, status: 'available', title: documentId, nodeType: 'markdown', path: `workspace:/${documentId}.md` }),
+  const port: CanvasCardMediaPort = { preview, previewImage: vi.fn(), reference: async documentId => ({ documentId, status: 'available', title: documentId, nodeType: 'markdown', path: `workspace:/${documentId}.md` }),
     projectId: () => 'project', readImage: vi.fn(), openDocument: vi.fn(), subscribe: listener => { mutation = listener; return () => { mutation = undefined; }; }, subscribeAvailability: () => () => {} };
   const content = createCanvasCardContent('canvas', port), notified = vi.fn(); content.subscribe(notified);
   return { cards, content, preview, notified,
@@ -27,7 +27,7 @@ it('整批身份与预览独立完成，只合并显示通知，并在关闭时�
   const f = fixture();
   try {
     await f.content.refreshReferences(f.cards); f.content.refreshVisible(f.cards);
-    const surfaces = await Promise.all(f.cards.map(card => f.content.create(card, new AbortController().signal)));
+    const surfaces = await Promise.all(f.cards.map(card => f.content.create(card, new AbortController().signal, 1)));
     expect(f.preview).toHaveBeenCalledTimes(12); expect(surfaces).toHaveLength(12);
     expect(f.content.documentTitles().size).toBe(12); expect(f.notified).not.toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(1);
     f.flush(); expect(f.notified).toHaveBeenCalledExactlyOnceWith(null);
@@ -47,7 +47,7 @@ it('身份失效立即清除旧显示，资源错误也不等待成功通知工�
     await f.content.refreshReferences(f.cards);
     const error = new Error('preview unavailable'); f.preview.mockRejectedValueOnce(error);
     f.content.refreshVisible(f.cards);
-    await Promise.allSettled(f.cards.map(card => f.content.create(card, new AbortController().signal)));
+    await Promise.allSettled(f.cards.map(card => f.content.create(card, new AbortController().signal, 1)));
     expect(f.notified).toHaveBeenCalledWith(error); expect(vi.getTimerCount()).toBe(1);
   } finally { f.content.dispose(); }
 });

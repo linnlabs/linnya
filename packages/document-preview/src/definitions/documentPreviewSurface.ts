@@ -1,5 +1,25 @@
 import type { Component } from 'vue';
-import type { DocumentPreviewResult } from '@app/schemas';
+import type {
+  DocumentPreviewImageSource,
+  DocumentPreviewImageTier,
+  DocumentPreviewResult,
+} from '@app/schemas';
+
+/**
+ * 正文图片的取法。预览结果只带图片清单，字节由消费方提供可显示地址（<img> 可用；出图要求 blob: 或 data:）。
+ * 表面按图片排出的尺寸乘 scale 选档，释放表面时归还取到的每一张。
+ */
+export interface DocumentPreviewSurfaceImages {
+  /** 输出像素与 CSS 像素之比：屏幕倍率；画布出图再乘出图缩放。 */
+  readonly scale: number;
+  /** 只对全文有意义：首个窗口高度以下的图片等接近可见范围再取；出图等需要一次画全的消费方不设。 */
+  readonly lazy?: boolean;
+  acquire(request: {
+    readonly source: DocumentPreviewImageSource;
+    readonly maxEdgePx: DocumentPreviewImageTier;
+    readonly signal: AbortSignal;
+  }): Promise<{ readonly url: string; release(): void }>;
+}
 
 export interface DocumentPreviewSurfaceInput {
   readonly preview: DocumentPreviewResult;
@@ -21,6 +41,8 @@ export interface DocumentPreviewSurfaceInput {
   readonly icon?: Component | null;
   /** 正文里行内引用的类型图标，与文件树同源；后台出图等拿不到时省略，引用用通用文件图标。 */
   readonly referenceTypeIcon?: (nodeType: string) => Component | null;
+  /** 正文里有图片而没有提供时，表面构建明确失败。 */
+  readonly images?: DocumentPreviewSurfaceImages;
   readonly onOpen?: () => void;
   /** 类型自己贡献交互详情时，只复用外壳和标题；有封面图时先放着占位，详情挂进正文容器后自动让位。 */
   readonly externalBody?: boolean;

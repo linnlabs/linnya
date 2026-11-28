@@ -7,14 +7,14 @@ vi.mock('../../cardRendering/content', async importOriginal => ({ ...await impor
 const image = { assetId: 'image-1', mediaType: 'image/png' as const, byteLength: 3, width: 1, height: 1, displayWidth: 1, displayHeight: 1, sha256: 'a'.repeat(64), dataUri: 'data:image/png;base64,YWJj' };
 function fixture() {
   const readImage = vi.fn(async () => image);
-  const port: CanvasCardMediaPort = { readImage, reference: async documentId => ({ documentId, title: '文档', status: 'available', nodeType: 'markdown', path: 'workspace:/文档' }), subscribe: () => () => {}, subscribeAvailability: () => () => {}, preview: async input => ({ documentId: input.documentId, title: null, nodeType: null, status: 'outside_project' }), projectId: () => 'project', openDocument: async () => {} };
+  const port: CanvasCardMediaPort = { readImage, previewImage: vi.fn(), reference: async documentId => ({ documentId, title: '文档', status: 'available', nodeType: 'markdown', path: 'workspace:/文档' }), subscribe: () => () => {}, subscribeAvailability: () => () => {}, preview: async input => ({ documentId: input.documentId, title: null, nodeType: null, status: 'outside_project' }), projectId: () => 'project', openDocument: async () => {} };
   return { content: createCanvasCardContent('doc', port), readImage, port };
 }
 const card = CanvasTextCardSchema.parse({ id: 'c1', type: 'text', schemaVersion: 1, revision: 1, order: 'a0', locked: false, color: 'white', createdBy: { kind: 'user', conversationId: null, runId: null }, updatedBy: { kind: 'user', conversationId: null, runId: null }, createdAt: 0, updatedAt: 0, x: 0, y: 0, width: 280, height: 180, parentId: null, data: { contentVersion: 1, content: { type: 'doc', content: [{ type: 'image', attrs: { assetId: 'image-1', src: 'asset:image-1', alt: '', title: null } }] } } });
 describe('受管卡片内容投影', () => {
   it('行内图片只临时替换DOM src，不改结构化正文或持久化dataURI', async () => {
     const f = fixture();
-    const element = await f.content.create(card, new AbortController().signal);
+    const element = await f.content.create(card, new AbortController().signal, 1);
     expect(element.querySelector('img')?.getAttribute('src')).toBe(image.dataUri);
     expect(card.data.content.content[0]?.attrs?.src).toBe('asset:image-1');
     expect(await f.content.resolveImageSource('asset:image-1')).toBe(image.dataUri);
