@@ -260,4 +260,57 @@ describe('command permission settings renderer write slice', () => {
     expect(memory.updates).toHaveLength(3);
     expect(memory.backend().permission_level).toBe('standard');
   });
+
+  it('打开命令行代批要确认，取消后保持关闭；关闭直接生效，且不改动其他两项', async () => {
+    const memory = memoryGateway(settings({ permission_level: 'read_only', internal_data_access: 'denied' }));
+    await ensureCommandPermissionSettingsLoaded(memory.gateway);
+    const store = useCommandPermissionSettingsStore();
+    let confirmations = 0;
+
+    await applyCommandPermissionSettingsChange({
+      kind: 'external_command_approval',
+      value: 'allowed',
+    }, {
+      gateway: memory.gateway,
+      confirmExpansion: async () => {
+        confirmations += 1;
+        return false;
+      },
+    });
+    expect(confirmations).toBe(1);
+    expect(memory.updates).toEqual([]);
+    expect(store.draft?.externalCommandApproval).toBe('user_only');
+
+    await applyCommandPermissionSettingsChange({
+      kind: 'external_command_approval',
+      value: 'allowed',
+    }, {
+      gateway: memory.gateway,
+      confirmExpansion: async () => {
+        confirmations += 1;
+        return true;
+      },
+    });
+    expect(memory.backend()).toMatchObject({
+      revision: 1,
+      permission_level: 'read_only',
+      internal_data_access: 'denied',
+      external_command_approval: 'allowed',
+    });
+    expect(store.projection?.externalCommandApproval).toBe('allowed');
+
+    // 收紧不需要确认：没有传确认函数也能关掉。
+    await applyCommandPermissionSettingsChange({
+      kind: 'external_command_approval',
+      value: 'user_only',
+    }, { gateway: memory.gateway });
+    expect(confirmations).toBe(2);
+    expect(memory.backend()).toMatchObject({
+      revision: 2,
+      permission_level: 'read_only',
+      internal_data_access: 'denied',
+      external_command_approval: 'user_only',
+    });
+    expect(store.saveState).toBe('saved');
+  });
 });

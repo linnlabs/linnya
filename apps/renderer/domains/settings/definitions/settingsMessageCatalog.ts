@@ -132,6 +132,14 @@ export const SETTINGS_MESSAGE_FALLBACKS = {
   'settings.commandPermission.internalData.label': '允许插件命令访问 Linnya 内部数据',
   'settings.commandPermission.internalData.description':
     '仅控制 Linnya 插件命令的数据访问，不限制其他 Shell 程序读取本机文件。',
+  'settings.commandPermission.externalApproval.title': '命令审批',
+  'settings.commandPermission.externalApproval.label': '允许命令行代为批准命令',
+  'settings.commandPermission.externalApproval.description':
+    '关闭时，通过 linnya 命令行操作 Linnya 的外部 Agent 只能查看和拒绝待审批的命令，批准由你在对话里完成。',
+  'settings.commandPermission.externalApproval.saved': '已更新，立即生效。',
+  'settings.commandPermission.confirmExpansion.externalApproval.title': '允许命令行代为批准命令',
+  'settings.commandPermission.confirmExpansion.externalApproval.message':
+    '开启后，通过 linnya 命令行连接这台电脑上 Linnya 的程序和外部 Agent 都能替你批准命令，命令可能在你看到之前就已运行。立即生效，可随时关闭。',
   'settings.storageSpace.title': '存储空间',
   'settings.storageSpace.loading': '正在读取存储空间...',
   'settings.storageSpace.unavailable': '暂时无法读取存储空间，请稍后重试。',
@@ -655,6 +663,15 @@ export const SETTINGS_MESSAGE_CATALOG: MessageCatalogContribution = {
         'Allow plugin commands to access Linnya internal data',
       'settings.commandPermission.internalData.description':
         'Controls data access by Linnya plugin commands only; it does not restrict other Shell programs from reading local files.',
+      'settings.commandPermission.externalApproval.title': 'Command approval',
+      'settings.commandPermission.externalApproval.label': 'Allow the command line to approve commands',
+      'settings.commandPermission.externalApproval.description':
+        'When off, external agents that operate Linnya through the linnya command line can only view and deny commands awaiting approval; you approve them in the conversation.',
+      'settings.commandPermission.externalApproval.saved': 'Updated. This takes effect immediately.',
+      'settings.commandPermission.confirmExpansion.externalApproval.title':
+        'Allow the command line to approve commands',
+      'settings.commandPermission.confirmExpansion.externalApproval.message':
+        'Programs and external agents that connect to Linnya on this computer through the linnya command line will be able to approve commands for you, so a command may run before you see it. This takes effect immediately and can be turned off at any time.',
       'settings.storageSpace.title': 'Storage',
       'settings.storageSpace.loading': 'Reading storage usage...',
       'settings.storageSpace.unavailable':

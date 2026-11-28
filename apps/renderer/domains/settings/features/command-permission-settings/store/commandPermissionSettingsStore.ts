@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type {
+  CommandExternalApproval,
   CommandInternalDataAccess,
   CommandPermissionLevel,
 } from '@app/schemas/commands';
@@ -41,7 +42,8 @@ export const useCommandPermissionSettingsStore = defineStore(
       projection.value
       && draft.value
       && (projection.value.permissionLevel !== draft.value.permissionLevel
-        || projection.value.internalDataAccess !== draft.value.internalDataAccess),
+        || projection.value.internalDataAccess !== draft.value.internalDataAccess
+        || projection.value.externalCommandApproval !== draft.value.externalCommandApproval),
     ));
 
     function beginLoad(): void {
@@ -74,6 +76,13 @@ export const useCommandPermissionSettingsStore = defineStore(
     function editInternalDataAccess(access: CommandInternalDataAccess): void {
       if (!draft.value) return;
       draft.value = { ...draft.value, internalDataAccess: access };
+      saveState.value = 'idle';
+      saveFailure.value = undefined;
+    }
+
+    function editExternalCommandApproval(approval: CommandExternalApproval): void {
+      if (!draft.value) return;
+      draft.value = { ...draft.value, externalCommandApproval: approval };
       saveState.value = 'idle';
       saveFailure.value = undefined;
     }
@@ -127,6 +136,7 @@ export const useCommandPermissionSettingsStore = defineStore(
       loadFailed,
       editPermissionLevel,
       editInternalDataAccess,
+      editExternalCommandApproval,
       beginSave,
       beginConfirmation,
       restoreDraftFromProjection,
