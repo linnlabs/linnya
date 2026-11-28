@@ -39,6 +39,8 @@ export async function canvasPerformanceMediaFixture(elements: readonly CanvasEle
           ...(covered ? { image: { dataUri: asset.dataUri, widthPx: asset.displayWidth, heightPx: asset.displayHeight } } : {}) } };
       return request('preview', value);
     },
+    // 夹具的文档正文是纯文字，没有图片清单。
+    previewImage: async () => { throw new Error('media_fixture_preview_image_unexpected'); },
     reference: async documentId => {
       const value: DocumentReferencePresentation = { documentId, status: 'available', title: `授权文档 ${documentId}`, nodeType: 'fixture-document', path: `workspace:/${documentId}.md` };
       return request('reference', value);

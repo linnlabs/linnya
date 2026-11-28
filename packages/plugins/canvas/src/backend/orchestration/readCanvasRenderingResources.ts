@@ -43,6 +43,28 @@ function readPresentation(
   const metadata: DocumentResource = { title: resolution.title ?? '文档当前不可访问', status };
   return { metadata, nodeType: resolution.nodeType };
 }
+/**
+ * 出图 worker 不能访问 Host，文档卡正文里的图片随请求内联。
+ * 出图只排卡面首屏，但哪些图片落在首屏要排版后才知道，所以把清单里的图片都带上。
+ * 取最大一档：导出倍率由请求方决定，这里不知道，清晰度不能比改为清单前差。
+ */
+async function readDocumentBodyImages(
+  previews: ReturnType<typeof createDocumentPreviewReader>,
+  target: { readonly documentId: string; readonly projectId: string },
+  detail: DocumentResource['body'],
+  signal: AbortSignal
+): Promise<Record<string, string>> {
+  const bodyImages: Record<string, string> = {};
+  if (detail?.format !== 'workspace-markdown') return bodyImages;
+  for (const listed of Object.values(detail.images)) {
+    signal.throwIfAborted();
+    const image = await previews.readImage({ ...target, source: listed.source, maxEdgePx: 2048 });
+    if (!image) throw new Error('Canvas document card image is no longer readable');
+    bodyImages[documentPreviewImageSourceKey(listed.source)] =
+      `data:${image.mimeType};base64,${Buffer.from(image.bytes).toString('base64')}`;
+  }
+  return bodyImages;
+}
 async function readDocumentCover(
   input: ResourceInput,
   targetId: string,
@@ -72,22 +94,12 @@ async function readDocumentCover(
     pixelRatio: 1,
   });
   const detail = preview.status === 'ready' ? preview.content?.detail : undefined;
-  // 出图只排卡面首屏，但哪些图片落在首屏要排版后才知道，这里把清单里的图片都带上。
-  // 取最大一档：导出倍率由请求方决定，这里不知道，清晰度不能比改为清单前差。
-  const bodyImages: Record<string, string> = {};
-  if (detail?.format === 'workspace-markdown')
-    for (const listed of Object.values(detail.images)) {
-      input.signal.throwIfAborted();
-      const image = await previews.readImage({
-        documentId: targetId,
-        projectId: source.projectId,
-        source: listed.source,
-        maxEdgePx: 2048,
-      });
-      if (!image) throw new Error('Canvas document card image is no longer readable');
-      bodyImages[documentPreviewImageSourceKey(listed.source)] =
-        `data:${image.mimeType};base64,${Buffer.from(image.bytes).toString('base64')}`;
-    }
+  const bodyImages = await readDocumentBodyImages(
+    previews,
+    { documentId: targetId, projectId: source.projectId },
+    detail,
+    input.signal
+  );
   return {
     ...metadata,
     previewStatus: preview.status,
@@ -100,7 +112,9 @@ async function readDocumentCover(
           keepThumbnail: preview.content.overview === 'thumbnail',
         }
       : {}),
-    ...(detail ? { body: detail, ...(Object.keys(bodyImages).length > 0 ? { bodyImages } : {}) } : {}),
+    ...(detail
+      ? { body: detail, ...(Object.keys(bodyImages).length > 0 ? { bodyImages } : {}) }
+      : {}),
   };
 }
 function refreshResourceTitles(

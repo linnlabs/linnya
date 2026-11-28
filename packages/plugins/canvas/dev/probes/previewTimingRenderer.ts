@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createDocumentPreviewSurface } from '@linnya/document-preview';
 import { createHtmlCardRasterizer } from '../../src/renderer/capabilities/textRasterization';
-import { previewTimingFixture } from './previewParityFixture';
+import { previewParityImages, previewTimingFixture } from './previewParityFixture';
 
 const MemorySchema = z.object({ usedJSHeapSize: z.number(), totalJSHeapSize: z.number(), jsHeapSizeLimit: z.number() });
 function memory() {
@@ -14,7 +14,7 @@ function release() { held.forEach(image => image.close()); held = []; document.b
 
 async function measureBasics(mode: 'first' | 'full' | 'chart') {
   document.body.style.cssText = 'margin:0;background:#fff';
-  const preview = previewTimingFixture(document), samples: unknown[] = [];
+  const preview = previewTimingFixture(), samples: unknown[] = [];
   for (const temperature of ['cold', 'warm']) {
     const started = performance.now();
     if (mode === 'chart') {
@@ -23,7 +23,7 @@ async function measureBasics(mode: 'first' | 'full' | 'chart') {
         theme: charts.baseChartTheme('light'), width: 360, locale: 'zh-CN', messages: { secondaryAxis: '右轴', shareOfWhole: '占整体', share: '占比' } });
       samples.push({ temperature, milliseconds: performance.now() - started, svgCharacters: result.svg.length, width: result.width, height: result.height });
     } else {
-      const surface = await createDocumentPreviewSurface({ preview, document, widthPx: 360, ...(mode === 'first' ? { maxHeight: 320 } : {}), theme: 'light', signal: new AbortController().signal });
+      const surface = await createDocumentPreviewSurface({ preview, document, widthPx: 360, ...(mode === 'first' ? { maxHeight: 320 } : {}), theme: 'light', signal: new AbortController().signal, images: previewParityImages(document, devicePixelRatio) });
       document.body.append(surface.element); await document.fonts.ready; surface.element.getBoundingClientRect();
       samples.push({ temperature, milliseconds: performance.now() - started, renderedBlocks: surface.element.querySelectorAll('.workspace-preview-block').length,
         renderedImages: surface.element.querySelectorAll('img').length, memory: memory() });
@@ -34,10 +34,10 @@ async function measureBasics(mode: 'first' | 'full' | 'chart') {
 }
 
 async function measureBatch(temperature: 'cold' | 'warm') {
-  release(); const baselineMemory = memory(), preview = previewTimingFixture(document), started = performance.now();
+  release(); const baselineMemory = memory(), preview = previewTimingFixture(), started = performance.now();
   const sources = [];
   for (let index = 0; index < 100; index++) {
-    const surface = await createDocumentPreviewSurface({ preview: { ...preview, documentId: `timing-${index}` }, document, widthPx: 240, maxHeight: 320, theme: 'light', signal: new AbortController().signal });
+    const surface = await createDocumentPreviewSurface({ preview: { ...preview, documentId: `timing-${index}` }, document, widthPx: 240, maxHeight: 320, theme: 'light', signal: new AbortController().signal, images: previewParityImages(document, 1) });
     sources.push(surface);
   }
   const domReadyMs = performance.now() - started, domMemory = memory(), staging = document.createElement('div'); document.body.append(staging);

@@ -1,6 +1,10 @@
-import { JsonValueSchema } from '@app/schemas';
+import { JsonValueSchema, type DocumentPreviewResult } from '@app/schemas';
 import { createMarkdownDocumentFragment } from '@linnya/markdown-document-core';
-import type { CanvasCardContent, CanvasCardMediaPort } from '../definitions/cardMedia';
+import type {
+  CanvasCardContent,
+  CanvasCardMediaPort,
+  CanvasDocumentCard,
+} from '../definitions/cardMedia';
 import { readCanvasIsDark } from '../../../functions/readCanvasAppearance';
 import { createCanvasContentNotifications } from './createCanvasContentNotifications';
 import { createCanvasReferenceMetadata } from './createCanvasReferenceMetadata';
@@ -29,6 +33,53 @@ const hydrateDocumentTags = (
     canvasText('canvas.error.documentUnavailable'),
     typeIcon ? nodeType => typeIcon(nodeType) : undefined
   );
+
+/** 文档卡的卡面：正式预览的标题、封面或正文首屏。 */
+function createDocumentCardSurface(
+  card: CanvasDocumentCard,
+  result: DocumentPreviewResult,
+  port: CanvasCardMediaPort,
+  raster: { readonly signal: AbortSignal; readonly scale: number }
+) {
+  const body = result.content?.detail;
+  const icon = result.nodeType ? (port.typeIcon?.(result.nodeType) ?? null) : null;
+  const projectId = port.projectId();
+  if (!projectId) throw new CanvasUserError(canvasText('canvas.error.projectMissingForCards'));
+  return createCanvasDocumentSurface(
+    {
+      title: result.title,
+      status: result.status,
+      summary: result.content?.summary,
+      image: result.content?.image?.dataUri,
+      ...(body ? { body } : {}),
+      ...(result.content?.overview === 'thumbnail' ? { thumbnail: true } : {}),
+      ...(icon ? { icon } : {}),
+      referenceTypeIcon: nodeType => port.typeIcon?.(nodeType) ?? null,
+    },
+    {
+      document,
+      card: {
+        documentId: card.data.documentId,
+        width: card.width,
+        height: card.height,
+        color: card.color,
+      },
+      signal: raster.signal,
+      theme: readCanvasIsDark() ? 'dark' : 'light',
+      // 卡面只排首屏：只取首屏里的图片，档位跟随出图倍率，放大后重新出图时取更大的一档。
+      images: {
+        scale: raster.scale,
+        acquire: request =>
+          port.previewImage({
+            documentId: card.data.documentId,
+            projectId,
+            source: request.source,
+            maxEdgePx: request.maxEdgePx,
+          }),
+      },
+    }
+  );
+}
 
 /** 内容投影只持有有界资源缓存；文档与图片的持久身份仍归各自owner。 */
 export function createCanvasCardContent(
@@ -88,45 +139,7 @@ export function createCanvasCardContent(
       if (card.type === 'document') {
         const result = await previews.read(card);
         signal.throwIfAborted();
-        const body = result.content?.detail;
-        const icon = result.nodeType ? (port.typeIcon?.(result.nodeType) ?? null) : null;
-        const projectId = port.projectId();
-        if (!projectId)
-          throw new CanvasUserError(canvasText('canvas.error.projectMissingForCards'));
-        return createCanvasDocumentSurface(
-          {
-            title: result.title,
-            status: result.status,
-            summary: result.content?.summary,
-            image: result.content?.image?.dataUri,
-            ...(body ? { body } : {}),
-            ...(result.content?.overview === 'thumbnail' ? { thumbnail: true } : {}),
-            ...(icon ? { icon } : {}),
-            referenceTypeIcon: nodeType => port.typeIcon?.(nodeType) ?? null,
-          },
-          {
-            document,
-            card: {
-              documentId: card.data.documentId,
-              width: card.width,
-              height: card.height,
-              color: card.color,
-            },
-            signal,
-            theme: readCanvasIsDark() ? 'dark' : 'light',
-            // 卡面只排首屏：只取首屏里的图片，档位跟随出图倍率，放大后重新出图时取更大的一档。
-            images: {
-              scale,
-              acquire: request =>
-                port.previewImage({
-                  documentId: card.data.documentId,
-                  projectId,
-                  source: request.source,
-                  maxEdgePx: request.maxEdgePx,
-                }),
-            },
-          }
-        );
+        return createDocumentCardSurface(card, result, port, { signal, scale });
       }
       return element;
     },

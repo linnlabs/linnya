@@ -1,4 +1,5 @@
 import { DocumentPreviewResultSchema } from '@app/schemas';
+import type { DocumentPreviewSurfaceImages } from '@linnya/document-preview';
 import { CanvasCardSchema } from '../../src/shared';
 
 const text = (value: string) => ({ type: 'text', text: value });
@@ -6,18 +7,26 @@ const root = (id: string, type: string, attrs: Record<string, unknown>, content:
   type: 'rootBlock', attrs: { id }, content: [{ type, attrs: { id: `${id}-body`, ...attrs }, ...(content.length ? { content } : {}) }],
 });
 
-/** 彩色图片在本地生成；只给正式 DTO 的准入资源，不联网、不读取用户文档。 */
-export function previewParityFixture(document: Document) {
+/** 彩色图片在本地生成，不联网、不读取用户文档。预览结果只列图片清单，字节由各路线按自己的取法提供这同一张。 */
+export function previewParityImageUrl(document: Document): string {
   const image = document.createElement('canvas'); image.width = 240; image.height = 100;
   const context = image.getContext('2d');
   if (!context) throw new Error('preview_parity_canvas_missing');
   context.fillStyle = '#e9c45c'; context.fillRect(0, 0, 240, 100);
   context.fillStyle = '#386d9c'; context.fillRect(20, 15, 80, 70);
   context.fillStyle = '#bf4e4e'; context.beginPath(); context.arc(165, 50, 33, 0, Math.PI * 2); context.fill();
+  return image.toDataURL('image/png');
+}
+/** 标签路线直接给表面的图片取法；夹具只有一张图，任何档位都是它。 */
+export function previewParityImages(document: Document, scale: number): DocumentPreviewSurfaceImages {
+  const url = previewParityImageUrl(document);
+  return { scale, acquire: async () => ({ url, release() {} }) };
+}
+export function previewParityFixture() {
   return DocumentPreviewResultSchema.parse({
     documentId: 'preview-parity', nodeType: 'document', status: 'ready', title: '同源用户预览 · 图片图表公式',
     content: { revisionKey: 'fixture-1', summary: '完整正文不会替换成摘要', detail: {
-      format: 'workspace-markdown', assets: { 'image-1': image.toDataURL('image/png') },
+      format: 'workspace-markdown', images: { 'image-1': { source: { assetId: 'image-1' }, widthPx: 240, heightPx: 100 } },
       references: { target: { documentId: 'target', status: 'available', nodeType: 'document', title: '稳定标签当前标题' } },
       document: { type: 'doc', content: [
         root('heading', 'headingBlock', { level: 1 }, [text('可读预览必须保持一致')]),
@@ -50,8 +59,8 @@ export function previewParityCard(width: number, height: number) {
     createdBy: source, updatedBy: source, createdAt: 0, updatedAt: 0, x: 0, y: 0, width, height, parentId: null, data: { documentId: 'preview-parity' } });
 }
 
-export function previewTimingFixture(document: Document) {
-  const source = previewParityFixture(document).content?.detail;
+export function previewTimingFixture() {
+  const source = previewParityFixture().content?.detail;
   if (!source || source.format !== 'workspace-markdown') throw new Error('timing_fixture_source_missing');
   const blocks = Array.from({ length: 50 }, (_, index) => root(`timing-${index}`, 'baseBlock', {},
     [text(`第 ${index + 1} 段。正式预览按卡宽显示完整内容，包含中文、English 与作者保存的标点。重复渲染只作为实测样本，不调用模型。`)]));

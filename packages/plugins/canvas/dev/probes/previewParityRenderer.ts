@@ -10,7 +10,7 @@ import { createCanvasCardContent } from '../../src/renderer/features/cardMedia/o
 import { collectVisualTextLayout } from './visualOracle/collectVisualTextLayout';
 import { createCardSurface } from '../../src/renderer/hidden-render-worker/functions/createCardSurface';
 import { createHtmlCardRasterizer } from '../../src/renderer/capabilities/textRasterization';
-import { previewParityCard, previewParityFixture } from './previewParityFixture';
+import { previewParityCard, previewParityFixture, previewParityImages, previewParityImageUrl } from './previewParityFixture';
 
 function frame(): Promise<void> { return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))); }
 function facts(element: HTMLElement) {
@@ -45,25 +45,27 @@ async function prepare(theme: 'light' | 'dark', width: number, firstScreen: bool
   const palette = readCanvasCardCssPalette('white', theme === 'dark'), height = firstScreen ? 320 : 1500;
   // 淡出的底色和内缩由消费方提供；tag 基准和画布路线放在同一张纸上比较。
   document.body.style.cssText = `margin:0;background:${palette.paper};color:${palette.body};width:${width}px;height:${height}px;overflow:hidden;--document-preview-fade-color:${palette.paper};--document-preview-fade-radius:6px`;
-  const preview = previewParityFixture(document), card = previewParityCard(width, height), controller = new AbortController();
+  const preview = previewParityFixture(), card = previewParityCard(width, height), controller = new AbortController();
   let element: HTMLElement, cleanup = () => {};
   if (route === 'tag') {
-    const result = await createDocumentPreviewSurface({ preview, document, widthPx: width, ...(firstScreen ? { maxHeight: height, visibleInsetPx: 3 } : {}), theme, signal: controller.signal, onOpen: () => {} });
+    const result = await createDocumentPreviewSurface({ preview, document, widthPx: width, ...(firstScreen ? { maxHeight: height, visibleInsetPx: 3 } : {}), theme, signal: controller.signal, images: previewParityImages(document, devicePixelRatio), onOpen: () => {} });
     element = result.element; cleanup = result.dispose;
   } else if (route === 'canvas') {
     const content = createCanvasCardContent('canvas-probe', {
       preview: async () => preview,
+      previewImage: async () => ({ url: previewParityImageUrl(document), release() {} }),
       readImage: async () => { throw new Error('unexpected_raw_asset_access'); },
       reference: async () => ({ documentId: preview.documentId, status: 'available', nodeType: 'document', title: preview.title, path: '/probe.md' }),
       subscribe: () => () => {}, subscribeAvailability: () => () => {}, projectId: () => 'project-probe', openDocument: async () => {},
     });
-    element = await content.create(card, controller.signal);
+    element = await content.create(card, controller.signal, devicePixelRatio);
     cleanup = () => { disposeDocumentPreviewSurface(element); content.dispose(); };
   } else {
     const request = CanvasRenderRequestSchema.parse({ protocol: 1, requestId: 'preview-parity', kind: 'render', theme, material: 'paper',
       fontFamily: 'system-ui', fontSize: 14, dpr: devicePixelRatio, width, height, region: null, quality: 1, format: 'png',
       snapshot: { schemaVersion: 1, documentId: 'canvas-probe', sequence: 1, elements: [card] }, assets: {},
-      documents: { [preview.documentId]: { title: preview.title, status: 'available', previewStatus: 'ready', body: preview.content?.detail } } });
+      documents: { [preview.documentId]: { title: preview.title, status: 'available', previewStatus: 'ready', body: preview.content?.detail,
+        bodyImages: { 'image-1': previewParityImageUrl(document) } } } });
     element = await createCardSurface(card, request, controller.signal);
     cleanup = () => disposeDocumentPreviewSurface(element);
   }
