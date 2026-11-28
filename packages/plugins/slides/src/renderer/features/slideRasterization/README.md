@@ -14,6 +14,8 @@ renderer 内 thumbnail raster 与主舞台共用图片、图表注册表，避�
 
 `worker/workerEntry.ts` 是同一 raster core 的隔离宿主入口。它先用当前 Paint 真实完成 linear gradient slide 的 Konva 渲染和 PNG 编码，再发送 ready；每次请求先由 `assertSelfContainedRasterRequest()` 拒绝未物化图片，再调用 `renderSlideRasterToPng()`。worker HTML 使用 `default-src 'none'` CSP，preload 只暴露协议 bridge，不暴露 Node 或文件系统能力。
 
+PNG 编码用同步的 `canvas.toDataURL`。Chromium 的 `toBlob` / `convertToBlob` 在窗口主线程上要等页面空闲才开始编码，最多等 1 秒，开始后最多再等 5.7 秒，hidden worker 窗口多数时候等不到空闲，所以不能改回异步写法。专用 Web Worker 线程里的 `convertToBlob` 直接编码，没有这个等待。
+
 取消由 renderer 按 requestId 持有 `AbortController`，preload 只转发稳定字符串并抑制已取消请求的结果。禁止把 `AbortSignal`、DOM 对象或其他原生实例穿过 `contextBridge`；它们不属于 shared wire contract。
 
 presentation 查询、页选择、资源授权与物化、输出路径、manifest、asset 登记和 provider 转换不属于本 feature。request/response/ready codec 位于 shared raster 合同，backend definition 和 worker preload 必须共同使用它，不能各自解释消息结构。
