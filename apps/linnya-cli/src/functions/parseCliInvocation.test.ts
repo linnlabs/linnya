@@ -180,6 +180,28 @@ describe('parseCliInvocation', () => {
     );
   });
 
+  it('执行者名称：显式指定优先于自动识别，都没有就不带；只有发消息和工具调用接受，不合规的名称在连接前拒绝', () => {
+    const send = ['send', '写一份周报', '--project', 'project-1'];
+    const call = ['tools', 'call', 'write_file', '--project', 'project-1',
+      '--args-json', '{"locator":"workspace:/a.md","content":"x"}'];
+    const executorOf = (args: readonly string[], detected?: string) => {
+      const invocation = parseCliInvocation(args, undefined, detected);
+      if (invocation.kind !== 'command' && invocation.kind !== 'tool-call') throw new Error('expected a request');
+      return 'executor_name' in invocation.request ? invocation.request.executor_name : undefined;
+    };
+    for (const args of [send, call]) {
+      expect(executorOf(args)).toBeUndefined();
+      expect(executorOf(args, 'Claude Code')).toBe('Claude Code');
+      expect(executorOf([...args, '--executor', '小林的脚本'], 'Claude Code')).toBe('小林的脚本');
+      // 名称会原样显示在界面上：超长、多行和不可见的方向控制字符都不收。
+      for (const name of ['a'.repeat(41), '两\n行', 'Codex\u202E']) {
+        expect(() => parseCliInvocation([...args, '--executor', name])).toThrow();
+      }
+    }
+    expect(() => parseCliInvocation(['list', '--executor', 'Codex'])).toThrow();
+    expect(executorOf(['list'], 'Codex')).toBeUndefined();
+  });
+
   it('把新消息和产品级 Agent 选择投影成窄 send 合同', () => {
     expect(parseCliInvocation([
       'send',

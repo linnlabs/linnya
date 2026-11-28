@@ -25,6 +25,14 @@ export function toProjectOverviewActor(kind: ActionActorKind): ProjectOverviewAc
 }
 
 /**
+ * 外部调用方自报的名称只标在它自己的写入上。它经命令行让 Linnya Agent 做的改动，
+ * 执行者是那个 Agent，仍按 Agent 显示。
+ */
+function toExternalExecutor(kind: ActionActorKind, externalExecutor: string | null): string | null {
+  return kind === 'external' ? externalExecutor : null;
+}
+
+/**
  * 合成一行。最近修改取账本与节点时间中较晚的一个；只有账本那条足以解释最近这次改动时才写“谁改的”，
  * 例如插件文档里用户自己的编辑还没有入账，此时只给时间。
  */
@@ -58,6 +66,7 @@ export function projectOverviewDocument(input: {
           plugin_id: creator.pluginId,
           agent_id: toReadModelAgentId(creator.agentId),
           root_agent: toReadModelRootAgent(creator.actorKind, creator.rootAgentId),
+          external_executor: toExternalExecutor(creator.actorKind, creator.externalExecutor),
           // 对话已删除或不再属于本项目时，不给出无法打开的对话。
           conversation_id: conversationTitle === undefined ? null : conversationId,
           conversation_title: conversationTitle ?? null,
@@ -69,6 +78,7 @@ export function projectOverviewDocument(input: {
           plugin_id: summary.last.pluginId,
           agent_id: toReadModelAgentId(summary.last.agentId),
           root_agent: toReadModelRootAgent(summary.last.actorKind, summary.last.rootAgentId),
+          external_executor: toExternalExecutor(summary.last.actorKind, summary.last.externalExecutor),
         }
       : null,
     pending_revision_count: input.pendingRevisionCount,

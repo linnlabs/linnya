@@ -41,6 +41,7 @@ const row = (overrides: Partial<ProjectOverviewRow> & { readonly documentId: str
   creatorPluginId: null,
   creatorAgentId: null,
   creatorRootAgent: null,
+  creatorExternalExecutor: null,
   conversationId: null,
   conversationTitle: null,
   lastModifiedAt: 0,
@@ -48,6 +49,7 @@ const row = (overrides: Partial<ProjectOverviewRow> & { readonly documentId: str
   lastModifiedPluginId: null,
   lastModifiedAgentId: null,
   lastModifiedRootAgent: null,
+  lastModifiedExternalExecutor: null,
   pendingRevisionCount: null,
   tags: [],
   fieldRevision: 0,
@@ -197,8 +199,8 @@ describe('展示文案', () => {
     expect(resolveProjectConversationActorName('research_v1', agentName, message)).toBe('Research');
   });
 
-  it('来源：主运行显示具体 Agent，子运行显示发起它的 Agent 的子任务；用户、Linnya CLI；插件用插件名', () => {
-    const names = { pluginName: null, agentName: '', rootAgentName: null };
+  it('来源：主运行显示具体 Agent，子运行显示发起它的 Agent 的子任务；用户、Linnya CLI（报了名称的外部 Agent 显示名称）；插件用插件名', () => {
+    const names = { pluginName: null, agentName: '', rootAgentName: null, externalExecutor: null };
     expect(formatProjectOverviewActor('run', { ...names, agentName: 'Linnya Agent' }, message)).toBe('Linnya Agent');
     expect(formatProjectOverviewActor('run', { ...names, agentName: 'Research' }, message)).toBe('Research');
     expect(formatProjectOverviewActor('subrun', { ...names, agentName: 'subagent_document_editor', rootAgentName: 'Linnya Agent' }, message))
@@ -207,6 +209,8 @@ describe('展示文案', () => {
     expect(formatProjectOverviewActor('subrun', { ...names, agentName: 'subagent_document_editor' }, message)).toBe('子任务');
     expect(formatProjectOverviewActor('user', names, message)).toBe('用户');
     expect(formatProjectOverviewActor('external', names, message)).toBe('Linnya CLI');
+    // 调用方报了名称：显示名称并带上入口，和 Linnya 自己的 Agent 区分开。
+    expect(formatProjectOverviewActor('external', { ...names, externalExecutor: 'Claude Code' }, message)).toBe('Claude Code · CLI');
     expect(formatProjectOverviewActor('plugin', { ...names, pluginName: 'Slides' }, message)).toBe('Slides');
     expect(formatProjectOverviewActor('plugin', names, message)).toBe('插件');
   });

@@ -26,10 +26,10 @@ function setup() {
     );
     CREATE INDEX idx_workspace_nodes_project ON workspace_nodes(project_id, deleted_at);
     CREATE TABLE conversations (conversation_id TEXT PRIMARY KEY, title TEXT, project_id TEXT);
-    CREATE TABLE runs (id TEXT PRIMARY KEY, parent_run_id TEXT, agent_spec_id TEXT);
+    CREATE TABLE runs (id TEXT PRIMARY KEY, parent_run_id TEXT, agent_spec_id TEXT, metadata_json TEXT);
     INSERT INTO projects VALUES ('p1', '读书'), ('p2', '机密项目');
     INSERT INTO conversations VALUES ('conv', '整理资料', 'p1'), ('conv2', '机密对话', 'p2');
-    INSERT INTO runs VALUES ('root', NULL, 'default'), ('child', 'root', 'research_v1');
+    INSERT INTO runs (id, parent_run_id, agent_spec_id) VALUES ('root', NULL, 'default'), ('child', 'root', 'research_v1');
   `);
   for (const statement of [...ACTION_LEDGER_SCHEMAS, ...SEMANTIC_LAYER_SCHEMAS, ...DOCUMENT_REFERENCE_SCHEMAS, ...PROJECT_SAVED_FILTER_SCHEMAS]) db.exec(statement);
   const insert = db.prepare('INSERT INTO workspace_nodes (id, project_id, parent_id, type, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)');

@@ -5,6 +5,7 @@ import { ConversationControlAuditLevelRequestSchema } from './auditControl';
 import { ConversationControlCommandApprovalsRequestSchema } from './commandApprovals';
 import { JsonValueSchema } from '../json-value';
 import { ConversationSelectedAgentIdSchema } from '../conversation/selected-agent';
+import { ExternalExecutorNameSchema } from '../conversation/external-sender';
 import { CONVERSATION_CONTROL_SCHEMA_VERSION } from './protocol';
 import { RESEARCH_AGENT_ID, ResearchRunArgsSchema } from '../tools/research-run';
 
@@ -13,6 +14,14 @@ const CommandBaseFields = {
 } as const;
 
 const OpaqueIdSchema = z.string().trim().min(1);
+
+/**
+ * 发起这次调用的外部 Agent 自报的名称。只用来在对话和改动记录里标出是谁，
+ * 不参与任何权限判断；不给时界面显示入口名 Linnya CLI。
+ */
+const ExecutorFields = {
+  executor_name: ExternalExecutorNameSchema.optional(),
+} as const;
 
 export const ConversationControlSendRequestSchema = z
   .object({
@@ -26,6 +35,7 @@ export const ConversationControlSendRequestSchema = z
     image_generation_model_id: OpaqueIdSchema.optional(),
     reasoning_effort: z.enum(['off', 'minimal', 'low', 'medium', 'high', 'xhigh']).optional(),
     research_scope: ResearchRunArgsSchema.optional(),
+    ...ExecutorFields,
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -199,6 +209,7 @@ export const ConversationControlToolsCallRequestSchema = z.object({
   project_id: OpaqueIdSchema.optional(),
   /** 只给项目时默认续用该项目最近一段 CLI 会话；为 true 时总是新建。 */
   new_session: z.boolean().optional(),
+  ...ExecutorFields,
 }).strict().superRefine((request, ctx) => {
   if (!request.conversation_id && !request.project_id) {
     ctx.addIssue({

@@ -31,6 +31,7 @@ import {
   selectStatusRun,
   selectStopRun,
 } from '../functions/selectForegroundRun';
+import { externalSender } from '../functions/externalSender';
 import { readPendingInteraction } from '../functions/readPendingInteraction';
 import { projectRunStatus } from '../functions/projectRunStatus';
 import { projectInteractionResponse } from '../functions/projectInteractionResponse';
@@ -88,6 +89,7 @@ function buildSendRequest(
         timestamp,
         content: request.message,
         source: 'user',
+        metadata: { sender: externalSender(request.executor_name) },
       },
     ],
     options: {
@@ -186,6 +188,7 @@ function buildToolRequest(input: {
         timestamp: input.timestamp,
         content: `CLI 调用工具：${input.request.tool_name}`,
         source: 'user',
+        metadata: { sender: externalSender(input.request.executor_name) },
       },
     ],
     options: {

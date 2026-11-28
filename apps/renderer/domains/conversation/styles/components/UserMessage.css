@@ -17,6 +17,14 @@
   max-width: 90%;
 }
 
+.user-message-container .user-message-sender {
+  margin-bottom: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+  user-select: none;
+}
+
 .user-message-container .message-bubble {
   /* 气泡底比 subtle 深一点点（主文字色 0.6%）：比 subtle 有轮廓，又不至于压过正文；保持不透明。 */
   background-color: color-mix(in srgb, var(--color-text-primary) 0.6%, var(--color-bg-subtle));

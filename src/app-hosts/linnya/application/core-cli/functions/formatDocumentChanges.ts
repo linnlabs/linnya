@@ -10,6 +10,8 @@ function projectChange(change: ActionLedgerDocumentChange, path: string | null) 
     ...(change.runId ? { runId: change.runId, rootRunId: change.rootRunId } : {}),
     ...(change.agentId ? { agent: change.agentId } : {}),
     ...(change.pluginId ? { pluginId: change.pluginId } : {}),
+    // 外部调用方自报的名称，Linnya 核实不了；只标在它自己的写入上。
+    ...(change.actorKind === 'external' && change.externalExecutor ? { externalExecutor: change.externalExecutor } : {}),
     entryCount: change.entryCount,
     firstRecordedAt: formatAgentTimestamp(change.firstRecordedAt),
     lastRecordedAt: formatAgentTimestamp(change.lastRecordedAt),

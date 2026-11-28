@@ -94,6 +94,7 @@ function projectUserInput(event: Extract<RuntimeEvent, { type: 'user_input' }>):
     user_quote: event.metadata?.user_quote,
     activity: readActivityBinding(event.metadata),
     extension: event.metadata?.extension,
+    sender: event.metadata?.sender,
     delivery: event.delivery,
   }));
 

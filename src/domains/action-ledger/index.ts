@@ -13,7 +13,7 @@ export type {
   ActionRunActor,
   ActionRunAgents,
 } from './definitions/actionLedger';
-export { ACTION_LEDGER_MAX_QUERY_LIMIT } from './definitions/actionLedger';
+export { ACTION_LEDGER_MAX_QUERY_LIMIT, RUN_EXTERNAL_SENDER_METADATA_KEY } from './definitions/actionLedger';
 export { resolveToolRunActor, type ToolRunIdentity } from './functions/resolveToolRunActor';
 export { createRunAgentsReader, createSqliteActionLedger, type SqliteActionLedger } from './infrastructure/sqlite/createSqliteActionLedger';
 export { readStoredRunActor } from './infrastructure/sqlite/readStoredRunActor';

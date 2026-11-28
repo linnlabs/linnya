@@ -113,6 +113,7 @@ Protocol 7 要求每个请求和响应都有 `list / get / create / update / del
 | `src/conversation-control/` | CLI ↔ App 的版本化 command、response、status frame、handshake 与私有连接描述合同；不含业务编排和 HTTP 实现 |
 | `src/conversation/ui-message.ts` | Host → HTTP → Renderer 共用的 Conversation timeline message 判别联合 |
 | `src/conversation/message-metadata.ts` | user/thought/answer metadata、answer seal 状态联合与插件 message extension |
+| `src/conversation/external-sender.ts` | 经外部入口送达的消息的发件人：Host 确认的入口加调用方自报的名称（最多 40 字符、单行、无控制或格式字符）。只用于显示，不是权限依据 |
 | `src/conversation/attachment-ref.ts` | 会话图片附件引用、单项与整批准入预算；独立 runtime 使用公开窄入口 |
 | `src/conversation/tool-message.ts` | Conversation 工具消息 lifecycle、payload 与 Renderer metadata 合同 |
 | `src/conversation/presentation.ts` | durable message presentation 与请求 UI spec |

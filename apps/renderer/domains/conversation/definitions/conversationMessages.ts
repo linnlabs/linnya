@@ -240,6 +240,8 @@ export type ConversationMessageKey =
   | 'conversation.userMessage.action.cancel'
   | 'conversation.userMessage.action.save'
   | 'conversation.userMessage.quoteLabel'
+  | 'conversation.userMessage.sender.external'
+  | 'conversation.userMessage.sender.externalNamed'
   | 'conversation.userMessage.image.gallery'
   | 'conversation.userMessage.image.edit'
   | 'conversation.userMessage.image.loading'

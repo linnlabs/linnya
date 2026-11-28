@@ -96,6 +96,8 @@ export interface ProjectOverviewRow {
   readonly creatorAgentId: string | null;
   /** 子任务新建时发起它的 Agent；不是子任务或查不回发起者时为 null。 */
   readonly creatorRootAgent: ProjectOverviewRootAgent | null;
+  /** 经命令行新建时调用方自报的名称（例如 Claude Code）；没报或不是经命令行为 null。 */
+  readonly creatorExternalExecutor: string | null;
   readonly conversationId: string | null;
   readonly conversationTitle: string | null;
   readonly lastModifiedAt: number;
@@ -103,6 +105,7 @@ export interface ProjectOverviewRow {
   readonly lastModifiedPluginId: string | null;
   readonly lastModifiedAgentId: string | null;
   readonly lastModifiedRootAgent: ProjectOverviewRootAgent | null;
+  readonly lastModifiedExternalExecutor: string | null;
   readonly pendingRevisionCount: number | null;
   /** 当前标签，按打标签的先后。 */
   readonly tags: readonly { readonly id: string; readonly name: string }[];
