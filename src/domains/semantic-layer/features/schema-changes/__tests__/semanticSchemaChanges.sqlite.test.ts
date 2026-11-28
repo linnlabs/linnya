@@ -23,8 +23,8 @@ function setup() {
       type TEXT NOT NULL, deleted_at INTEGER
     );
     CREATE TABLE conversations (conversation_id TEXT PRIMARY KEY);
-    CREATE TABLE runs (id TEXT PRIMARY KEY, agent_spec_id TEXT);
-    INSERT INTO runs VALUES ('run-1', 'linnya-ai');
+    CREATE TABLE runs (id TEXT PRIMARY KEY, agent_spec_id TEXT, metadata_json TEXT);
+    INSERT INTO runs (id, agent_spec_id) VALUES ('run-1', 'linnya-ai');
     INSERT INTO projects VALUES ('p1');
     INSERT INTO workspace_nodes VALUES
       ('a', 'p1', 'document', NULL), ('b', 'p1', 'document', NULL), ('c', 'p1', 'document', NULL);

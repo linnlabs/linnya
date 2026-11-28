@@ -15,6 +15,7 @@ import {
   type LinnyaCliRuntimeLauncherPort,
 } from '../definitions/cli';
 import { createBundledCliRuntimeLauncher } from '../adapters/bundledCliRuntimeLauncher';
+import { detectCliExecutor } from '../functions/detectCliExecutor';
 import { parseCliInvocation } from '../functions/parseCliInvocation';
 import { exitCodeForError, projectCliError } from '../functions/projectCliError';
 import { createConversationControlConnection } from './createConversationControlConnection';
@@ -29,6 +30,8 @@ interface RunCliOptions {
   readonly now?: () => number;
   readonly sleep?: (durationMs: number) => Promise<void>;
   readonly runtimeLauncher?: LinnyaCliRuntimeLauncherPort;
+  /** 用来认出是哪个外部 Agent 在调用；默认读当前进程环境。 */
+  readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
 export function linnyaCliUsage(): string {
@@ -40,7 +43,7 @@ export function linnyaCliUsage(): string {
     '  linnya runtime start [--workspace PATH] [--api-port PORT] [--qdrant-port PORT] [--allow-external-approval]',
     '  linnya --version          Show version and source/bundle build identity',
     '  linnya --help             Show this help (also -h or <command> --help)',
-    '  linnya send <message> --project ID [--conversation ID] [--agent ID] [--model ID] [--image-model ID] [--reasoning LEVEL]',
+    '  linnya send <message> --project ID [--conversation ID] [--agent ID] [--model ID] [--image-model ID] [--reasoning LEVEL] [--executor NAME]',
     '    Research: --agent research_v1; optional --research-scope-json JSON | --research-scope-file PATH for explicit material scope (question, reader, task_type, materials, optional time_range)',
     '  linnya skills list | read NAME [PATH] | validate DIRECTORY',
     '  linnya skills install|update NAME --from DIRECTORY',
@@ -68,7 +71,7 @@ export function linnyaCliUsage(): string {
     '  linnya tools list',
     '  linnya tools web <on|off|status>',
     '  linnya tools describe <tool-name>',
-    '  linnya tools call <tool-name> (--conversation ID | --project ID [--new-session]) [--args-json JSON | --args-file PATH] [--omit-args] [--interval MS] [--timeout MS]',
+    '  linnya tools call <tool-name> (--conversation ID | --project ID [--new-session]) [--args-json JSON | --args-file PATH] [--omit-args] [--interval MS] [--timeout MS] [--executor NAME]',
     '',
     'Output:',
     '  Single commands write one JSON value to stdout. status --watch writes JSONL frames.',
@@ -88,6 +91,7 @@ export function linnyaCliUsage(): string {
     '  Shell approval is separate from respond: use approvals to inspect exact run/subtree requests, then approval-reply with the pending agent_run_id.',
     '  Only the user approves commands by default. approvals reports external_approval.permitted; when false, an allow reply fails with approval_requires_user (exit 9): tell the user what the message says instead of retrying. deny always works, and --reason is passed to the agent that proposed the command.',
     '  status --watch returns when command_approvals contains awaiting_reply; it never auto-approves commands.',
+    '  send and tools call label who is calling, so the user can tell agents apart in the conversation and in change records. Claude Code and Codex are recognised from their environment; other agents pass --executor NAME (up to 40 characters). The name is a self-reported display label and grants nothing.',
     '  A watch timeout only ends observation; it does not stop the App-owned run.',
     '  audit level changes the connected source Host default for new runs; restart resets it to startup configuration. Packaged builds never provide audit.',
     '  Source CLI connects only to its own checkout; doctor reports its directory, branch and current default audit level.',
@@ -115,7 +119,7 @@ export async function runCli(
     connectionContext = { ...connectionContext, source_root: sourceCheckout?.root ?? null, branch: sourceCheckout?.branch ?? null };
     let invocation;
     try {
-      invocation = parseCliInvocation(argv);
+      invocation = parseCliInvocation(argv, undefined, detectCliExecutor(options.env ?? process.env));
     } catch (error: unknown) {
       if (error instanceof LinnyaCliError) throw error;
       if (error instanceof ZodError) {

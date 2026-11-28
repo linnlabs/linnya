@@ -28,6 +28,8 @@ RunContext 写入 `rootRunId`，子运行沿父上下文继承。子运行缺少
 
 运行执行者另记 **Agent**（注册表 ID，如 `default`、`research_v1`）和**根运行 Agent**（用户这次请求的根运行的 Agent，也就是发起子任务的 Agent；主运行时与 Agent 相同）。子 Agent 没有面向用户的名字，读取方用根运行 Agent 说“XX 的子任务”。Linnkit 的工具上下文不带 Agent，登记时由账本按运行编号、根运行编号从运行记录查出（`createRunAgentsReader`，语义层共用），owner 与调用方都不能提供；没有运行表的装配记为空。对话删除会级联删掉运行记录，账本里的两个 Agent 仍保留，读取时不再查运行记录；显示名由读取方从 Agent 注册表取，账本不存名称。v81 之前登记、运行记录又已删除的子运行查不回根运行 Agent，保持为空，界面只显示“子任务”。
 
+经外部控制入口发起的运行另记**调用方名称**（`external_executor`）：Linnya CLI 的 `send` 与 `tools call` 可以带一个自报的名称（如 Claude Code、Codex），对话流程登记运行时把它写进运行元数据（键 `RUN_EXTERNAL_SENDER_METADATA_KEY`），账本登记时按根运行编号读出并存进这一行，理由与 Agent 相同：运行记录会随对话删除。它回答“同一份文档，是哪个外部 Agent 经命令行改的”。名称由调用方自报，Host 核实不了，只用于显示，任何权限判断都不读；没报名称、不是外部发起或没有运行表时为空。外部消息让 Linnya 的 Agent 去改时，执行者仍是运行，这一列记的是谁发起的，读取方只在执行者是 `external` 时把它当作执行者名称显示。
+
 作者与执行者不同时另记 `author_run_id`，例如用户接受运行 R 的建议：执行者是用户，作者是 R。
 
 Renderer IPC、产品 HTTP 请求、外部控制桥以及已注册插件的后台 effect 分别绑定入口身份。经 Conversation 接纳的 CLI 工具调用由一次无模型运行执行：那次原始 Host 工具调用记为 `external`，同时写入运行、根运行、对话和工具调用编号；CLI `send` 启动的模型运行里，模型自己的工具调用仍记为运行；界面发起的 Host 工具调用（表格填充等）入口身份是用户，也仍记为运行。Host 的编辑器保存、修订决定、新建与复制，以及文件工具的写入使用该身份。插件绕过这些入口直接写自己的表，仍须由对应 owner 接入细账。Shell 里的 `linnya props` 只拿到 Host 冻结的运行编号，由 `readStoredRunActor` 按运行记录找出父运行与根运行后记为运行；链条中断时报错，不按父运行猜，找不到运行记录时记为外部入口。

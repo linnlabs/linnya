@@ -48,6 +48,7 @@ import {
 } from 'src/app-hosts/linnya/adapters/runtime/agentDefinitionToAgentSpec';
 import { FlowIncomingEventPreparer } from './incoming-events/orchestration/prepareFlowIncomingEventBatch';
 import { projectActiveForegroundRun } from './interactive-run/functions/projectActiveForegroundRun';
+import { externalSenderRunMetadata } from './functions/externalSenderRunMetadata';
 import { buildInteractionResponseIncomingEvent } from './interactive-run/functions/buildInteractionResponseIncomingEvent';
 import {
   createFlowExecutionCompletionRegistry,
@@ -618,6 +619,7 @@ export class FlowOrchestrator {
                         originalSource: 'flow',
                         lane: runLane,
                         visibility: eventVisibility,
+                        ...externalSenderRunMetadata(request),
                       },
                     });
                     runAccepted = true;

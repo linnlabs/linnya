@@ -265,6 +265,7 @@ export type WorkspaceMessageKey =
   | 'workspace.projectOverview.actor.subrunOf'
   | 'workspace.projectOverview.actor.user'
   | 'workspace.projectOverview.actor.external'
+  | 'workspace.projectOverview.actor.externalNamed'
   | 'workspace.projectOverview.actor.plugin'
   | 'workspace.projectOverview.location.root'
   | 'workspace.projectOverview.pending.revisions'

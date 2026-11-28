@@ -4,8 +4,8 @@
  * 动作和执行者种类在应用层校验，不写成 CHECK：后续接入删除、移动、属性等动作时
  * 不必为改约束重建表。运行身份的完整性写成 CHECK，因为它不随动作扩展而变化。
  * 账本跟随文档删除；project_id 只标识改动发生地，不能让旧项目删除已转移文档的历史。
- * root_agent_id 必须紧跟 agent_id 放在列的最后：已有库由迁移 ALTER 补列，SQLite 把新列接在最后一列之后，
- * 新建库的 DDL 要与之一致，升级测试按建表语句比较结构。
+ * root_agent_id 必须紧跟 agent_id、external_executor 再跟在其后，都放在列的最后：已有库由迁移 ALTER 补列，
+ * SQLite 把新列接在最后一列之后，新建库的 DDL 要与之一致，升级测试按建表语句比较结构。
  */
 export const ACTION_LEDGER_SCHEMAS = [
   `CREATE TABLE IF NOT EXISTS action_ledger_entries (
@@ -30,6 +30,7 @@ export const ACTION_LEDGER_SCHEMAS = [
     tool_call_id TEXT,
     agent_id TEXT,
     root_agent_id TEXT,
+    external_executor TEXT,
     CHECK (actor_kind NOT IN ('run', 'subrun') OR (run_id IS NOT NULL AND root_run_id IS NOT NULL)),
     CHECK (actor_kind <> 'subrun' OR parent_run_id IS NOT NULL),
     CHECK (actor_kind <> 'plugin' OR actor_plugin_id IS NOT NULL)

@@ -15,7 +15,7 @@ it('昨天、显式半开区间和运行过滤可交叉使用，拒绝不存在�
 it('超过 Shell 可展示的范围时只返回完整行，且留下看得见的截断提示', () => {
   const entry: ActionLedgerDocumentChange = {
     documentId: 'first', documentType: 'document', actorKind: 'user', pluginId: null,
-    runId: null, rootRunId: null, parentRunId: null, conversationId: null, agentId: null, rootAgentId: null,
+    runId: null, rootRunId: null, parentRunId: null, conversationId: null, agentId: null, rootAgentId: null, externalExecutor: null,
     actions: ['update'], entryCount: 1, granularity: 'coarse', firstRecordedAt: 1, lastRecordedAt: 2,
   };
   const output = formatDocumentChanges({ truncated: false, changes: [entry, { ...entry, documentId: 'long' }] },
@@ -29,7 +29,7 @@ it('时间给 Agent 的是带时区偏移的本地时间，不是 UTC 的 Z', ()
   const recordedAt = new Date(2028, 2, 1, 14, 32, 5).getTime();
   const entry: ActionLedgerDocumentChange = {
     documentId: 'doc', documentType: 'document', actorKind: 'user', pluginId: null,
-    runId: null, rootRunId: null, parentRunId: null, conversationId: null, agentId: null, rootAgentId: null,
+    runId: null, rootRunId: null, parentRunId: null, conversationId: null, agentId: null, rootAgentId: null, externalExecutor: null,
     actions: ['update'], entryCount: 1, granularity: 'coarse', firstRecordedAt: recordedAt, lastRecordedAt: recordedAt,
   };
   const { changes: [row] } = JSON.parse(formatDocumentChanges({ truncated: false, changes: [entry] }, () => null, 10_000));

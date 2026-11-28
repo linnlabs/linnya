@@ -107,6 +107,45 @@ describe('项目概览', () => {
     expect(byTitle.get('早于账本.md')).toMatchObject({ creator: null, last_modified_by: null });
   });
 
+  it('两个外部 Agent 先后经命令行改同一份文档：概览分得清谁新建、谁最近改；Linnya 的 Agent 受命令行消息之托改的仍算 Agent', async () => {
+    // 外部入口发起运行时，对话流程把调用方自报的名称记在运行上；无模型的工具调用运行没有 Agent。
+    const insertCliRun = (runId: string, agentSpecId: string | null, sender: { readonly entry: 'linnya_cli'; readonly name?: string }) => {
+      database.getDb().prepare(
+        "INSERT INTO runs (id, conversation_id, kind, status, start_ts, agent_spec_id, metadata_json) VALUES (?, 'conv', 'root', 'completed', 1, ?, ?)",
+      ).run(runId, agentSpecId, JSON.stringify({ lane: 'foreground', externalSender: sender }));
+    };
+    const cliToolCall = (runId: string, locator: string, content: string) => {
+      const ctx = context({ runId, callId: `call-${runId}` });
+      ctx.authorizedHostToolCall = { toolName: 'write_file', toolCallId: ToolCallIdSchema.parse(`call-${runId}`) };
+      return withActionActor({ kind: 'external' }, () => write(locator, content, ctx));
+    };
+    insertCliRun('cli-claude', null, { entry: 'linnya_cli', name: 'Claude Code' });
+    insertCliRun('cli-codex', null, { entry: 'linnya_cli', name: 'Codex' });
+    insertCliRun('cli-unnamed', null, { entry: 'linnya_cli' });
+    insertCliRun('cli-send', 'research_v1', { entry: 'linnya_cli', name: 'Codex' });
+
+    await cliToolCall('cli-claude', 'workspace:/方案.md', '# 方案\n\n初稿。');
+    await cliToolCall('cli-codex', 'workspace:/方案.md', '# 方案\n\n第二版。');
+    await cliToolCall('cli-unnamed', 'workspace:/脚本产出.md', '# 产出');
+    await cliToolCall('cli-claude', 'workspace:/委托.md', '# 委托\n\n初稿。');
+    await withActionActor({ kind: 'external' }, () => (
+      write('workspace:/委托.md', '# 委托\n\nAgent 改。', context({ runId: 'cli-send', callId: 'model-call' }))
+    ));
+
+    const overview = readProjectOverview(database.getDb(), { project_id: projectId });
+    const byTitle = new Map(overview.documents.map(document => [document.title, document]));
+    expect(byTitle.get('方案.md')).toMatchObject({
+      creator: { actor: 'external', external_executor: 'Claude Code' },
+      last_modified_by: { actor: 'external', external_executor: 'Codex' },
+    });
+    expect(byTitle.get('脚本产出.md')).toMatchObject({ creator: { actor: 'external', external_executor: null } });
+    // 名称只跟着“经命令行直接改”的记录显示，不冒到 Agent 自己的改动上。
+    expect(byTitle.get('委托.md')).toMatchObject({
+      creator: { actor: 'external', external_executor: 'Claude Code' },
+      last_modified_by: { actor: 'run', agent_id: 'research_v1', external_executor: null },
+    });
+  });
+
   it('账本解释不了最近的改动时只给时间；对话不属于本项目时不给对话', async () => {
     database.getDb().prepare(
       'INSERT INTO conversations (conversation_id, title, project_id, created_at, last_event_at) VALUES (?, ?, NULL, 1, 1)',

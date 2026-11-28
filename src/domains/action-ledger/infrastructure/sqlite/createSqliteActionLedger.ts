@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3';
 
 import {
   ACTION_LEDGER_MAX_QUERY_LIMIT,
+  RUN_EXTERNAL_SENDER_METADATA_KEY,
   type ActionActor,
   type ActionActorKind,
   type ActionLedgerAction,
@@ -43,10 +44,12 @@ interface SummaryRow {
   readonly first_conversation_id: string | null;
   readonly first_agent_id: string | null;
   readonly first_root_agent_id: string | null;
+  readonly first_external_executor: string | null;
   readonly last_actor_kind: string;
   readonly last_plugin_id: string | null;
   readonly last_agent_id: string | null;
   readonly last_root_agent_id: string | null;
+  readonly last_external_executor: string | null;
   readonly last_recorded_at: number;
 }
 
@@ -61,6 +64,7 @@ interface ChangeRow {
   readonly conversation_id: string | null;
   readonly agent_id: string | null;
   readonly root_agent_id: string | null;
+  readonly external_executor: string | null;
   readonly actions: string;
   readonly entry_count: number;
   readonly min_granularity: string;
@@ -79,10 +83,11 @@ export function createSqliteActionLedger(
       recorded_at, project_id, document_id, document_type, action, granularity,
       part, before_ref, after_ref, summary_json,
       actor_kind, actor_plugin_id, author_run_id,
-      conversation_id, run_id, root_run_id, parent_run_id, tool_call_id, agent_id, root_agent_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      conversation_id, run_id, root_run_id, parent_run_id, tool_call_id, agent_id, root_agent_id, external_executor
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const readRunAgents = createRunAgentsReader(db);
+  const readExternalExecutor = createRunExternalExecutorReader(db);
   const hasFineEntryForCall = db.prepare(`
     SELECT 1 FROM action_ledger_entries
     WHERE root_run_id = ? AND run_id = ? AND tool_call_id = ? AND document_id = ? AND granularity = 'fine'
@@ -126,7 +131,8 @@ export function createSqliteActionLedger(
           run?.parentRunId ?? null,
           run?.toolCallId ?? null,
           agents.agentId,
-          agents.rootAgentId
+          agents.rootAgentId,
+          run ? readExternalExecutor(run.rootRunId) : null
         );
         pruneDocumentActions(db, entry.documentId);
       });
@@ -163,13 +169,13 @@ export function createSqliteActionLedger(
             CASE WHEN entry.project_id = node.project_id THEN entry.root_run_id END AS root_run_id,
             CASE WHEN entry.project_id = node.project_id THEN entry.parent_run_id END AS parent_run_id,
             CASE WHEN entry.project_id = node.project_id THEN entry.conversation_id END AS conversation_id,
-            entry.agent_id, entry.root_agent_id
+            entry.agent_id, entry.root_agent_id, entry.external_executor
           FROM workspace_nodes node JOIN action_ledger_entries entry ON entry.document_id = node.id
           WHERE ${where.join(' AND ')}
         )
         SELECT document_id, MIN(document_type) AS document_type, actor_kind, actor_plugin_id, run_id,
           MIN(root_run_id) AS root_run_id, MIN(parent_run_id) AS parent_run_id, MIN(conversation_id) AS conversation_id,
-          MIN(agent_id) AS agent_id, MIN(root_agent_id) AS root_agent_id,
+          MIN(agent_id) AS agent_id, MIN(root_agent_id) AS root_agent_id, MIN(external_executor) AS external_executor,
           GROUP_CONCAT(DISTINCT action) AS actions, COUNT(*) AS entry_count,
           MIN(granularity) AS min_granularity, MAX(granularity) AS max_granularity,
           MIN(recorded_at) AS first_recorded_at, MAX(recorded_at) AS last_recorded_at
@@ -195,7 +201,7 @@ export function createSqliteActionLedger(
           SELECT entry.document_id, entry.action, entry.actor_kind, entry.recorded_at,
             CASE WHEN entry.project_id = node.project_id THEN entry.actor_plugin_id END AS plugin_id,
             CASE WHEN entry.project_id = node.project_id THEN entry.conversation_id END AS conversation_id,
-            entry.agent_id, entry.root_agent_id,
+            entry.agent_id, entry.root_agent_id, entry.external_executor,
             ROW_NUMBER() OVER (PARTITION BY entry.document_id ORDER BY entry.recorded_at, entry.id) AS first_rank,
             ROW_NUMBER() OVER (PARTITION BY entry.document_id ORDER BY entry.recorded_at DESC, entry.id DESC) AS last_rank
           FROM workspace_nodes node JOIN action_ledger_entries entry ON entry.document_id = node.id
@@ -205,8 +211,9 @@ export function createSqliteActionLedger(
           first.action AS first_action, first.actor_kind AS first_actor_kind,
           first.plugin_id AS first_plugin_id, first.conversation_id AS first_conversation_id,
           first.agent_id AS first_agent_id, first.root_agent_id AS first_root_agent_id,
+          first.external_executor AS first_external_executor,
           last.actor_kind AS last_actor_kind, last.plugin_id AS last_plugin_id, last.agent_id AS last_agent_id,
-          last.root_agent_id AS last_root_agent_id,
+          last.root_agent_id AS last_root_agent_id, last.external_executor AS last_external_executor,
           last.recorded_at AS last_recorded_at
         FROM ranked first JOIN ranked last ON last.document_id = first.document_id AND last.last_rank = 1
         WHERE first.first_rank = 1
@@ -237,6 +244,7 @@ function toDocumentSummary(row: SummaryRow): ActionLedgerDocumentSummary {
           conversationId: row.first_conversation_id,
           agentId: row.first_agent_id,
           rootAgentId: row.first_root_agent_id,
+          externalExecutor: row.first_external_executor,
         }
       : null,
     last: {
@@ -244,6 +252,7 @@ function toDocumentSummary(row: SummaryRow): ActionLedgerDocumentSummary {
       pluginId: row.last_plugin_id,
       agentId: row.last_agent_id,
       rootAgentId: row.last_root_agent_id,
+      externalExecutor: row.last_external_executor,
       recordedAt: row.last_recorded_at,
     },
   };
@@ -263,6 +272,7 @@ function toDocumentChange(row: ChangeRow): ActionLedgerDocumentChange {
     conversationId: row.conversation_id,
     agentId: row.agent_id,
     rootAgentId: row.root_agent_id,
+    externalExecutor: row.external_executor,
     actions: row.actions.split(',').map(action => assertOneOf(action, ACTIONS, 'action')),
     entryCount: row.entry_count,
     granularity: minGranularity === maxGranularity ? minGranularity : 'mixed',
@@ -287,6 +297,20 @@ export function createRunAgentsReader(
     const agentId = agentOf(run.runId);
     return { agentId, rootAgentId: run.rootRunId === run.runId ? agentId : agentOf(run.rootRunId) };
   };
+}
+
+/**
+ * 外部入口发起的根运行，登记时由对话流程在运行元数据里记下发件人；这里读出调用方自报的名称。
+ * 与 Agent 一样在登记时存进账本：对话删除会级联删掉运行记录，之后读取不能再查运行表。
+ * 没有运行表的装配、不是外部发起的运行、调用方没报名称，都是 null。
+ */
+function createRunExternalExecutorReader(db: Database.Database): (rootRunId: string) => string | null {
+  const hasRuns = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'runs'").get();
+  if (!hasRuns) return () => null;
+  const select = db.prepare<[string], { name: string | null }>(
+    `SELECT json_extract(metadata_json, '$.${RUN_EXTERNAL_SENDER_METADATA_KEY}.name') AS name FROM runs WHERE id = ?`,
+  );
+  return rootRunId => select.get(rootRunId)?.name ?? null;
 }
 
 function assertOneOf<T extends string>(value: string, allowed: readonly T[], field: string): T {

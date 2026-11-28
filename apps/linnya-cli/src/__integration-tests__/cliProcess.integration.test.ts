@@ -279,6 +279,33 @@ describe('linnya CLI real process -> scripted bridge', { timeout: 30_000 }, () =
     }]);
   });
 
+  it('真实子进程按运行环境识别是哪个 Agent 在调用：识别不出或嵌套时不猜，显式指定优先', async () => {
+    const bridge = await createScriptedBridge(request => {
+      if (request.command !== 'send') throw new Error('expected send command');
+      return {
+        schema_version: 1, ok: true, command: 'send',
+        receipt: { conversation_id: 'conversation-1', user_message_id: 'event-1', turn_id: 'turn-1',
+          run_id: 'run-1', execution_id: 'execution-1', agent_id: 'default', accepted_at: 100 },
+      };
+    });
+    const call = ['send', '把第二页改短', '--project', 'project-1'];
+    const environments: readonly (readonly [Readonly<Record<string, string>>, readonly string[]])[] = [
+      [{}, []],
+      [{ CLAUDECODE: '1' }, []],
+      [{ CODEX_THREAD_ID: 'thread-1' }, []],
+      // Codex 由 Claude Code 启动时两个标记都在，分不清是谁在调用。
+      [{ CLAUDECODE: '1', CODEX_THREAD_ID: 'thread-1' }, []],
+      [{ CLAUDECODE: '1' }, ['--executor', '夜间整理脚本']],
+    ];
+    for (const [environment, extra] of environments) {
+      const result = await runCliProcess([...call, ...extra], bridge.connectionFile, environment);
+      expect(result.exitCode, result.stderr).toBe(0);
+    }
+    expect(bridge.receivedCommands.map(command => (
+      command.command === 'send' ? command.executor_name : 'unexpected'
+    ))).toEqual([undefined, 'Claude Code', 'Codex', undefined, '夜间整理脚本']);
+  });
+
   it('真实子进程用 status 快照的 fence 精确恢复原 run', async () => {
     const bridge = await createScriptedBridge(request => {
       if (request.command === 'status') {

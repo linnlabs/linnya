@@ -96,6 +96,8 @@ export interface ActionLedgerDocumentChange {
   readonly agentId: string | null;
   /** 根运行的 Agent，见 {@link ActionRunAgents}。 */
   readonly rootAgentId: string | null;
+  /** 外部入口发起这次根运行时调用方自报的名称，见 {@link RUN_EXTERNAL_SENDER_METADATA_KEY}；没报或不是外部发起为 null。 */
+  readonly externalExecutor: string | null;
   readonly actions: readonly ActionLedgerAction[];
   readonly entryCount: number;
   readonly granularity: ActionLedgerGranularity | 'mixed';
@@ -122,12 +124,14 @@ export interface ActionLedgerDocumentSummary {
     readonly conversationId: string | null;
     readonly agentId: string | null;
     readonly rootAgentId: string | null;
+    readonly externalExecutor: string | null;
   } | null;
   readonly last: {
     readonly actorKind: ActionActorKind;
     readonly pluginId: string | null;
     readonly agentId: string | null;
     readonly rootAgentId: string | null;
+    readonly externalExecutor: string | null;
     readonly recordedAt: number;
   };
 }
@@ -141,6 +145,13 @@ export interface ActionLedgerDocumentSummary {
  * 对话删除会级联删掉运行记录，所以登记时就把两者存进账本，之后读取不再查运行记录。
  * 查不到运行记录（没有运行表的装配、无模型的 CLI 运行没有 Agent）时为 null。
  */
+/**
+ * 运行登记元数据里保存外部发件人的键（`{ entry, name? }`）。外部控制入口发起运行时由对话流程写入，
+ * 账本登记时读根运行的这一项，把调用方自报的名称存进 `external_executor`。
+ * 名称只用于显示“是谁经命令行改的”，Host 核实不了，任何权限判断都不读它。
+ */
+export const RUN_EXTERNAL_SENDER_METADATA_KEY = 'externalSender';
+
 export interface ActionRunAgents {
   readonly agentId: string | null;
   readonly rootAgentId: string | null;

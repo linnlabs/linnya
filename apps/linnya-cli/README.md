@@ -254,7 +254,7 @@ Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确�
 | 命令                               | 作用                                                              | 主要选项                                                                                               |
 | ---------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `runtime start`                    | 不启动 Electron，前台监督当前 Workspace 的唯一 App Server Backend | `--workspace`、`--api-port`、`--qdrant-port`、`--allow-external-approval`                              |
-| `send <message>`                   | 新建会话并发送消息；或向空闲的已有会话发送下一条消息              | `--project`（必填）、`--conversation`、`--agent`、`--model`、`--image-model`、`--reasoning`            |
+| `send <message>`                   | 新建会话并发送消息；或向空闲的已有会话发送下一条消息              | `--project`（必填）、`--conversation`、`--agent`、`--model`、`--image-model`、`--reasoning`、`--executor`（[调用方名称](#标出是谁在调用)） |
 | `models`                           | 查询可用于 `--model` 与 `--image-model` 的本地模型配置            | 无                                                                                                     |
 | `projects [list]`                  | 查询当前 Workspace 的项目 ID 与名称 | 无 |
 | `projects get <project-id>`        | 查询项目详情 | 无 |
@@ -274,7 +274,7 @@ Shell 审批与 `respond --approve` 无关。控制协议自 3 起要求明确�
 | `audit <conversation-id>`          | 只读导出统一 Audit Domain 的安全执行摘要；App 未启用审计时拒绝    | `--run`                                                                                                |
 | `tools list`                       | 列出 CLI 允许调用的 Workspace 工具名称与简介                      | 无                                                                                                     |
 | `tools describe <tool-name>`       | 查询一个 Workspace 工具的真实参数合同                             | 无                                                                                                     |
-| `tools call <tool-name>`           | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果；只给 `--project` 时续用该项目 30 分钟内最近一段 CLI 会话（输出 `conversation_reused`） | `--conversation`、`--project`、`--new-session`（只给项目时总是新建会话）、`--args-json` / `--args-file`、`--omit-args`、`--interval`、`--timeout` |
+| `tools call <tool-name>`           | 在绑定项目的 Conversation 中执行一次 Workspace 工具调用并等待结果；只给 `--project` 时续用该项目 30 分钟内最近一段 CLI 会话（输出 `conversation_reused`） | `--conversation`、`--project`、`--new-session`（只给项目时总是新建会话）、`--args-json` / `--args-file`、`--omit-args`、`--interval`、`--timeout`、`--executor` |
 
 `messages` 的游标属于整个会话，所以不提供 `--run`
 过滤。按 run 精确读取结果应使用 `result --run`；客户端先分页再过滤会让
@@ -336,6 +336,19 @@ pnpm linnya:cli tools call write_file \
   --project <project-id> \
   --args-json '{"locator":"workspace:/notes.md","content":"# Notes"}'
 ```
+
+#### 标出是谁在调用
+
+`send` 和 `tools call` 会带上调用方的名称，用户在对话里能看到这条消息“来自 Claude Code · CLI”，在项目概览的“来源”“最近修改”里能分清同一份文档是哪个 Agent 改的。
+
+- Claude Code 和 Codex 由运行环境自动识别（分别是它们给子进程设置的 `CLAUDECODE`、`CODEX_THREAD_ID`），不用传参数。
+- 其他 Agent 或脚本用 `--executor <名称>` 自己报，例如 `--executor "夜间整理脚本"`。显式指定优先于自动识别。
+- 名称最多 40 个字符，单行，不能含控制字符或不可见的格式字符；不合规在连接前按用法错误拒绝（退出码 2）。
+- 一个 Agent 在另一个 Agent 里运行时（例如 Claude Code 启动的 Codex）两边的标记都在，CLI 分不清是谁，不猜；需要区分就显式传 `--executor`。
+- 识别不出也没有指定时不带名称，界面沿用“Linnya CLI”。
+- 名称是调用方自报的显示标签，Linnya 核实不了，也不据此给任何权限：报成别的名字，能做的事和不报完全一样。
+
+`approval-reply`、`respond`、`stop` 等控制命令不带名称，它们不产生消息或文档改动。
 
 `read_file` 的普通文本参数遵循 1-based 行窗口：`offset` 是起始行，`limit`
 是最大行数；输出中的 `行号 |` 仅用于定位，编辑时不属于 `old_string`。结构化
@@ -420,7 +433,7 @@ CLI 的 `web_search` 只允许普通搜索，`deep_search=true` 明确拒绝，�
 保存带引用的 Markdown 同样沿用该会话；只能引用工具实际返回的 `[@ref]`，不能自造来源编号。
 这里只记录 Linnya 工具执行与产物，不会自动导入外部 Agent 的推理、模型 token 或评审记录。
 
-工具命令自 wire protocol 5 起统一为 `tools`，当前控制协议为 9（项目管理形态沿用 protocol 7；协议 9 改的是命令审批）。
+工具命令自 wire protocol 5 起统一为 `tools`，当前控制协议为 10（项目管理形态沿用 protocol 7；协议 9 改的是命令审批，协议 10 给 `send` 和 `tools call` 加了调用方名称 `executor_name`）。
 CLI 与 Host 都要升级并重启 Host；旧协议会明确拒绝，不做双协议猜测。
 
 外部 Agent 的 Skill 安装由该产品管理。可将内置 `deep-research` 及其 `references/` 原样复制到

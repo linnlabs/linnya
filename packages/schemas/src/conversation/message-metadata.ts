@@ -4,6 +4,7 @@ import { JsonRecordSchema } from '../json-value';
 import { ConversationUiSpecSchema } from './presentation';
 import { UserQuoteSchema } from './user-quote';
 import { ConversationMessageIdSchema } from './message-identity';
+import { ConversationExternalSenderSchema } from './external-sender';
 
 /** 外部活动只表达运行归属，不参与消息 identity 或视觉轮次分组。 */
 export const ConversationActivityBindingSchema = z.object({
@@ -120,6 +121,11 @@ export const ConversationUserInputMetadataSchema = z.object({
   ui: ConversationUiSpecSchema.optional(),
   activity: ConversationActivityBindingSchema.optional(),
   extension: ConversationMessageExtensionSchema.optional(),
+  /**
+   * 这条消息不是用户本人在界面里输入的：由外部入口代为送达。只由外部控制入口填写，界面据此标出发件人。
+   * 仅用于显示，不参与任何权限判断。
+   */
+  sender: ConversationExternalSenderSchema.optional(),
 }).strict();
 export type ConversationUserInputMetadata = z.infer<typeof ConversationUserInputMetadataSchema>;
 
@@ -128,6 +134,8 @@ export const ConversationUserMessagePayloadSchema = z.object({
   user_quote: UserQuoteSchema.optional(),
   activity: ConversationActivityBindingSchema.optional(),
   extension: ConversationMessageExtensionSchema.optional(),
+  /** 经外部入口送达时的发件人；没有即用户本人输入。 */
+  sender: ConversationExternalSenderSchema.optional(),
   agent_work: ConversationAgentWorkSchema.optional(),
   context_usage: ConversationContextUsageSchema.optional(),
   /** 运行中途送达的插话；它属于一次运行的中间，编辑或重新生成会连同整次运行一起删掉，所以不提供。 */

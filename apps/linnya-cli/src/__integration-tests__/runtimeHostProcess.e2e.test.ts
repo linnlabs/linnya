@@ -13,6 +13,8 @@ import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { AGENT_ENVIRONMENT_VARIABLES } from '../functions/detectCliExecutor';
+
 const repoRoot = path.resolve(import.meta.dirname, '../../../..');
 const cliEntry = path.join(repoRoot, 'apps/linnya-cli/bin/linnya.cjs');
 const runtimeSuite = process.env.LINNYA_CLI_RUNTIME_E2E === '1' ? describe : describe.skip;
@@ -88,8 +90,9 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
 
     // 第一段：按默认方式启动。没有终端、也没有放行，外部调用方只能查看和拒绝。
     {
+      // 调用方自报的名称只用于显示：冒充成用户本人，也还是只能查看和拒绝。
       const receipt = readReceipt(await runCli(['send', 'approval-fixture', '--project', projectId,
-        '--agent', 'default', '--model', 'approval-fixture'], environment));
+        '--agent', 'default', '--model', 'approval-fixture', '--executor', 'Linnya 用户'], environment));
       const watchArgs = ['status', receipt.conversation_id, '--run', receipt.run_id,
         '--watch', '--interval', '250', '--timeout', '20000'];
       expect(readLastJsonLine((await runCli(watchArgs, environment)).stdout), guarded.stderr).toMatchObject({ snapshot: {
@@ -376,6 +379,29 @@ runtimeSuite('built CLI Runtime -> fixed Node App Server', () => {
     expect(read.code, read.stderr).toBe(0);
     expect(read.stdout).toContain('Written without a Linnya model.');
 
+    // 两个外部 Agent 先后改同一份文档：一个由运行环境识别，一个显式报名；第三次不报。
+    const write = (content: string, extra: readonly string[], agentEnvironment: NodeJS.ProcessEnv = {}) => runCli(
+      ['tools', 'call', 'write_file', '--project', projectId, '--new-session', '--args-json',
+        JSON.stringify({ locator: 'workspace:/notes/plan.md', content }), '--timeout', '30000', ...extra],
+      { ...environment, ...agentEnvironment },
+    );
+    for (const result of [
+      await write('# Plan\n\nRevised by the first agent.\n', [], { CLAUDECODE: '1' }),
+      await write('# Plan\n\nRevised by the second agent.\n', ['--executor', 'Codex']),
+      await write('# Plan\n\nRevised by an unnamed caller.\n', []),
+    ]) expect(result.code, result.stderr).toBe(0);
+    const database = new Database(path.join(workspace, 'workspace', 'workspace.sqlite'), { fileMustExist: true, readonly: true });
+    try {
+      // 改动记录分得清每一次是谁改的；没报名称的仍只知道来自命令行。
+      expect(database.prepare(`SELECT actor_kind, external_executor FROM action_ledger_entries
+        WHERE project_id = ? ORDER BY id`).all(projectId)).toEqual([
+        { actor_kind: 'external', external_executor: null },
+        { actor_kind: 'external', external_executor: 'Claude Code' },
+        { actor_kind: 'external', external_executor: 'Codex' },
+        { actor_kind: 'external', external_executor: null },
+      ]);
+    } finally { database.close(); }
+
     const sent = await runCli(['send', 'hello', '--project', projectId], environment);
     expect(sent.code).toBe(7);
     expect(parseJson(sent.stderr)).toMatchObject({
@@ -608,6 +634,8 @@ async function createRuntimeEnvironment(input: {
   }
   return {
     ...process.env,
+    // 测试常由 Claude Code、Codex 启动；去掉它们的环境标记，命令行才不会自动带上执行者名称。
+    ...Object.fromEntries(AGENT_ENVIRONMENT_VARIABLES.map(name => [name, undefined])),
     LINNYA_CLI_CONNECTION_FILE: input.connectionFile,
     LINNYA_AUDIT_LEVEL: undefined,
     NODE_ENV: 'development',

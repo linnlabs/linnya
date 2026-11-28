@@ -3,6 +3,8 @@
   <div class="user-message-container" ref="userMessageContainerRef">
     <!-- 显示模式 -->
     <div v-if="!isEditing" class="display-mode">
+      <!-- 不是用户本人在界面里输入的消息常驻标出发件人；名称由调用方自报，后面带上入口。 -->
+      <span v-if="senderLabel" class="user-message-sender">{{ senderLabel }}</span>
       <div class="message-bubble">
         <!--
           中文备注：
@@ -245,6 +247,14 @@ const quoteBlocks = computed(() => quoteList.value.filter(quote => quote.icon ==
 // 活动消息与运行中插话都不提供编辑和重新生成：二者都会连同整次运行一起删掉重来。
 const isActivityMessage = computed(() => {
   return !!props.message.metadata?.activity || props.message.metadata?.delivery === 'mid_run';
+});
+
+const senderLabel = computed(() => {
+  const sender = props.message.metadata?.sender;
+  if (!sender) return '';
+  return sender.name
+    ? conversationMessage('conversation.userMessage.sender.externalNamed', { name: sender.name })
+    : conversationMessage('conversation.userMessage.sender.external');
 });
 
 const formattedTimestamp = computed(() => formatUserMessageTimestamp(
