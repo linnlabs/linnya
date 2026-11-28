@@ -116,7 +116,7 @@ export function createDocumentReferenceNodeView(
     });
     releaseFocus = registerFocusPortal?.(panel);
     try {
-      // 浮层只管理定位与编辑焦点；首屏、展开、恢复和打开由共用预览拥有。
+      // 浮层只管理定位与编辑焦点；首屏、全文、恢复和打开由共用预览拥有。
       const dispose = await port.mountPreview(documentId, panel, active.signal, hover.ready);
       if (destroyed || popup !== panel || active.signal.aborted) {
         dispose();

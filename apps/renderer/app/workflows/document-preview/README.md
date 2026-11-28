@@ -1,13 +1,13 @@
 # 通用文档只读预览装配
 
-本 workflow 拥有用户预览的读取、范围订阅、悬停展开、恢复和打开动作。行内引用浮层、Composer 引用和 Canvas 近景都挂载这里；消费者只负责定位与生命周期，不再自己生成摘要、正文或展开按钮。
+本 workflow 拥有用户预览的读取、范围订阅、首屏与全文的切换、恢复和打开动作。行内引用浮层、Composer 引用和 Canvas 近景都挂载这里；消费者只负责定位与生命周期，不再自己生成摘要、正文或切换全文的控件。
 
 `@linnya/document-preview` 拥有唯一的标题、类型图标、间距与正文表面。Markdown 由
 `@linnya/markdown-document-core/workspace-preview` 根据正式 Workspace
 JSON 呈现，包括图片、图表、公式与引用编号；不再读取给 Agent 的 Markdown 文本。插件类型仍可提供只读详情组件，共用标题与正文容器。只读正文不装编辑 NodeView，内部链接不导航或递归展开。
 
 `mountDocumentPreview({ element, documentId, projectId, mode?, widthPx?, signal?, onReady? })`
-是 Renderer 本地挂载口，DOM 与 signal 不过 IPC。默认 first-screen 显示真实首屏：高度取内容高度，最高 320，短文不留空白；首屏被截断或类型有自己的详情时，进入预览或点展开后显示全文，否则全文已在眼前，不显示展开按钮、移入也不重排。detail 模式用于已聚焦的近景。first-screen 模式下内容还没排好时显示与首屏同宽同高的占位骨架；消费方（行内引用浮层、Composer 引用）在首屏排好（onReady / `ready` 事件）前不露出浮层，占位只在读取较慢时可见。
+是 Renderer 本地挂载口，DOM 与 signal 不过 IPC。默认 first-screen 是一个露出后尺寸不再变的面板：高度取内容高度，最高 380（`DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight`），短文不留空白；滚动区的最大高度就是这个值。首屏被截断或类型有自己的详情时，指针进入或键盘焦点进入预览后在原地换成全文（或挂上该类型的详情），多出来的下文在预览内滚动，面板不变高；没有“展开”按钮，也不在首屏排好后自动换全文（只是路过的悬停不为长文付整篇排版的开销）。首屏已是全文时移入不重排。内容换了回到首屏，除非指针或焦点还在预览里。detail 模式用于已聚焦的近景，铺满消费方的容器、不限高。first-screen 模式下内容还没排好时显示与首屏同宽同高的占位骨架；消费方（行内引用浮层、Composer 引用）在首屏排好（onReady / `ready` 事件）前不露出浮层，占位只在读取较慢时可见。
 
 滚动归本预览内部的滚动区，滚动条不占位。消费方的面板只限定高度并裁切（`overflow: hidden` 的纵向 flex 容器），不能自己再滚动：面板的滚动条会挤窄正文，触发按新宽度整份重排，底部淡出也会跟着内容滚走。正文统一 14px 并按容器宽度换行，Canvas 使用 ResizeObserver 提供的未变换卡宽，调整卡宽即时重排；宽度或主题变化时重建表面，新表面就绪前旧表面留在原处，不先清空（正文按构建信号释放自己，已显示的表面只经 disposer 释放）。正文呈现完成通知 onReady，Canvas 据此撤下位图。
 

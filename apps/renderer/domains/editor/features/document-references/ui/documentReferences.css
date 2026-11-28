@@ -31,7 +31,7 @@
   --document-preview-fade-color: var(--color-bg-elevated);
   --document-preview-fade-radius: var(--radius-lg);
 
-  /* 面板只限高并裁切，滚动交给共用预览内部的滚动区：面板自己滚动时滚动条会挤窄正文，展开后整份重排第二遍。 */
+  /* 面板只限高并裁切，滚动交给共用预览内部的滚动区：面板自己滚动时滚动条会挤窄正文，换成全文后整份重排第二遍。 */
   display: flex;
   flex-direction: column;
   overflow: hidden;

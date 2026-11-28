@@ -203,7 +203,7 @@ Composer 的页面命令端口只开放引用增删和 `focusComposerInput()`。
 
 `renderer/documentReferences.readDocumentBacklinks` 以当前 projectId/documentId 读取同项目活动来源，按来源文档分组分页并返回文档数和引用数。它不读取正文、不打开文档、不赋予跨项目访问；标题与节点类型都是当前派生事实。
 
-`DocumentTypeContribution.readonlyPreviewComponent` 是详情档的可选增强，接收 documentId/projectId；预览带封面图时还会收到可选的 cover（展开前显示的那张图及其像素尺寸），组件可以在自己的画面出来之前先在同一位置显示它，避免展开时空白。消费者只在用户展开时挂载，离开、换目标或插件不可用时卸载；组件必须只读、核对范围并释放资源，不绑定可写 file session。静态封面和摘要仍走统一 DocumentPreview 数据合同，不能为远景卡片批量挂实时组件。
+`DocumentTypeContribution.readonlyPreviewComponent` 是详情档的可选增强，接收 documentId/projectId；预览带封面图时还会收到可选的 cover（挂载前显示的那张图及其像素尺寸），组件可以在自己的画面出来之前先在同一位置显示它，避免换成详情时空白。悬停预览露出后尺寸不再变，组件应接在封面原位、不撑高面板。消费者只在用户进入预览（指针或键盘焦点）或近景时挂载，离开、换目标或插件不可用时卸载；组件必须只读、核对范围并释放资源，不绑定可写 file session。静态封面和摘要仍走统一 DocumentPreview 数据合同，不能为远景卡片批量挂实时组件。
 
 `renderer/documentPreview.mountDocumentPreview({element,documentId,projectId,mode?,widthPx?,signal?,onReady?})` 是行内引用、Composer 与 Canvas 共用的 Renderer 本地只读挂载口（first-screen 或 detail），返回 Promise<dispose>。Host 在 import 前后核对当前项目，signal 可在 Promise/插件组件加载中取消；旧 disposer 不会移除同容器后来挂载的目标。DOM 和 AbortSignal 不过 IPC，插件不得借此打开可写 surface 或批量挂载远景组件。同一门面的 `readDocumentPreviewTypeIcon(nodeType)` 返回与文件树相同的类型图标，Host 未安装时返回 null，由调用方兜底。
 

@@ -142,7 +142,8 @@ it('detailOnly renders readonly Markdown immediately, blocks nested navigation a
   expect(ports.stopAvailability).toHaveBeenCalledOnce();
 });
 
-it('the first screen and expanded document share formal content and resize without scaling', async () => {
+/** 两个根块的正式正文：jsdom 没有布局，靠测量桩决定它算“一屏放得下”还是“被首屏截断”。 */
+async function mountTwoBlockPreview(initialWidth: number) {
   vi.clearAllMocks();
   vi.stubGlobal(
     'ResizeObserver',
@@ -179,34 +180,32 @@ it('the first screen and expanded document share formal content and resize witho
             {
               type: 'baseBlock',
               attrs: { id: 'below' },
-              content: [{ type: 'text', text: '屏下正文：展开后才出现。' }],
+              content: [{ type: 'text', text: '屏下正文：全文里才有。' }],
             },
           ],
         },
       ],
     },
   });
-  const identity = {
+  ports.read.mockResolvedValue({
     documentId: 'doc',
     status: 'available',
     title: '同一文档',
     nodeType: 'document',
     path: 'workspace:/Doc.md',
-  };
-  const preview = {
+  });
+  ports.preview.mockResolvedValue({
     documentId: 'doc',
     title: '同一文档',
     nodeType: 'document',
     status: 'ready',
     content: { revisionKey: '1', summary: 'Agent 摘要不能冒充正文', detail: content },
-  };
-  ports.read.mockResolvedValue(identity);
-  ports.preview.mockResolvedValue(preview);
+  });
   ports.availability.mockReturnValue(ports.stopAvailability);
   const pinia = createPinia();
   setActivePinia(pinia);
   useNavigationScope().enterProject('project');
-  const width = ref(280),
+  const width = ref(initialWidth),
     host = document.createElement('div');
   document.body.append(host);
   const app = createApp({
@@ -216,59 +215,81 @@ it('the first screen and expanded document share formal content and resize witho
         widthPx: width.value,
       }),
   }).use(pinia);
+  app.mount(host);
+  return {
+    host,
+    width,
+    unmount() {
+      app.unmount();
+      host.remove();
+      vi.unstubAllGlobals();
+    },
+  };
+}
+const FIRST_SCREEN_HEIGHT = `${DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight}px`;
+
+it('一屏放得下的文档按内容高度显示全文，移入不重排，换宽度按新宽度换行', async () => {
+  const sample = await mountTwoBlockPreview(280);
+  const { host } = sample;
   try {
-    app.mount(host);
     await vi.waitFor(() => expect(host.textContent).toContain('正式正文'));
-    expect(host.querySelector('.document-preview-first-screen')).not.toBeNull();
     expect(host.textContent).not.toContain('Agent 摘要');
     expect(host.querySelector('.workspace-markdown-preview')?.getAttribute('style')).toContain(
       '244px'
     );
-    // 短文：首屏按内容高度（只限最大高度），全文已在眼前，没有展开按钮，移入也不重排。
+    // 首屏只限最大高度，短文不留空白；全文已在眼前。
     const firstScreen = host.querySelector<HTMLElement>('.document-preview-first-screen');
-    expect(firstScreen?.style.maxHeight).toBe('320px');
+    expect(firstScreen?.style.maxHeight).toBe(FIRST_SCREEN_HEIGHT);
     expect(firstScreen?.style.height).toBe('');
     expect(host.textContent).toContain('屏下正文');
-    expect(host.querySelector('.readonly-document-preview > button')).toBeNull();
     const root = host.querySelector('.readonly-document-preview');
     root?.dispatchEvent(new MouseEvent('mouseenter'));
     await nextTick();
     expect(host.querySelector('.document-preview-first-screen')).toBe(firstScreen);
-    root?.dispatchEvent(new MouseEvent('mouseleave'));
-    // 长文：首屏被截断才有展开按钮，移入后显示全文。jsdom 没有布局，用固定高度代表“超过首屏”。
-    const measure = vi
-      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-      .mockReturnValue(new DOMRect(0, 0, 420, 400));
-    try {
-      width.value = 420;
-      await vi.waitFor(() =>
-        expect(host.querySelector('.workspace-markdown-preview')?.getAttribute('style')).toContain(
-          '384px'
-        )
-      );
-      await vi.waitFor(() =>
-        expect(host.querySelector('.readonly-document-preview > button')).not.toBeNull()
-      );
-      expect(host.querySelector('.document-preview-clipped')).not.toBeNull();
-      expect(host.textContent).not.toContain('屏下正文');
-      root?.dispatchEvent(new MouseEvent('mouseenter'));
-      await vi.waitFor(() =>
-        expect(host.querySelector('.document-preview-first-screen')).toBeNull()
-      );
-      expect(host.textContent).toContain('正式正文');
-      expect(host.textContent).toContain('屏下正文');
-      expect(host.querySelector('.readonly-document-preview > button')).toBeNull();
-    } finally {
-      measure.mockRestore();
-    }
+    sample.width.value = 420;
+    await vi.waitFor(() =>
+      expect(host.querySelector('.workspace-markdown-preview')?.getAttribute('style')).toContain(
+        '384px'
+      )
+    );
     expect(ports.preview).toHaveBeenCalledOnce();
     expect(host.querySelector('[contenteditable]')).toBeNull();
   } finally {
-    app.unmount();
-    host.remove();
-    vi.unstubAllGlobals();
+    sample.unmount();
   }
   expect(ports.stopMutation).toHaveBeenCalledOnce();
+});
+
+it.each([
+  ['指针移入', new MouseEvent('mouseenter')],
+  ['键盘焦点进入', new FocusEvent('focusin', { bubbles: true })],
+])('被首屏截断的文档在%s时原地换成全文，滚动区高度上限不变，没有展开按钮', async (_name, engage) => {
+  // 固定高度代表“超过首屏”。
+  const measure = vi
+    .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+    .mockReturnValue(new DOMRect(0, 0, 420, 400));
+  const sample = await mountTwoBlockPreview(420);
+  const { host } = sample;
+  try {
+    await vi.waitFor(() => expect(host.querySelector('.document-preview-clipped')).not.toBeNull());
+    const viewport = host.querySelector<HTMLElement>('.readonly-document-preview__viewport');
+    expect(viewport?.style.maxHeight).toBe(FIRST_SCREEN_HEIGHT);
+    expect(host.textContent).toContain('正式正文');
+    expect(host.textContent).not.toContain('屏下正文');
+    expect(host.querySelector('.readonly-document-preview > button')).toBeNull();
+    const root = host.querySelector('.readonly-document-preview');
+    (engage.type === 'focusin' ? viewport : root)?.dispatchEvent(engage);
+    await vi.waitFor(() => expect(host.querySelector('.document-preview-first-screen')).toBeNull());
+    expect(host.textContent).toContain('正式正文');
+    expect(host.textContent).toContain('屏下正文');
+    expect(host.querySelector('.readonly-document-preview__viewport')).toBe(viewport);
+    expect(viewport?.style.maxHeight).toBe(FIRST_SCREEN_HEIGHT);
+    expect(host.querySelector('.readonly-document-preview > button')).toBeNull();
+    expect(ports.preview).toHaveBeenCalledOnce();
+  } finally {
+    measure.mockRestore();
+    sample.unmount();
+  }
 });
 
 it('plugin recovery is explicit and shared preview opening rechecks the current document scope', async () => {

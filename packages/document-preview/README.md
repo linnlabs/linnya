@@ -21,6 +21,6 @@ Markdown 的块呈现归
 UI 正式语义 token。Canvas 不对文档表面额外着墨或覆盖标题颜色；纸张材质属于外层。真实 Workspace 根节点的布局隔离由内容 owner 负责，Host 编辑器的全局留白、图注和字号不得污染预览。
 
 业务回归在 Host
-workflow 的首屏/展开/恢复/范围生命周期、Canvas 文档表面的前后台一致性，以及
+workflow 的首屏/全文/恢复/范围生命周期、Canvas 文档表面的前后台一致性，以及
 `dev/probes/run-preview-parity-probe.mjs`
 的真实 Electron 图像对照中完成；本包不复制一套只断言 DOM 字段的测试。
