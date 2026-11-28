@@ -84,10 +84,7 @@ const offscreenRendererTestState = vi.hoisted(() => {
       pixelRatio?: number,
     ) => Promise<HTMLImageElement | null>>(),
     createImageBitmapMock: vi.fn<(canvas: HTMLCanvasElement) => Promise<ImageBitmap>>(),
-    canvasToBlobMock: vi.fn<(
-      callback: BlobCallback,
-      type?: string,
-    ) => void>(),
+    canvasToDataUrlMock: vi.fn<(type?: string) => string>(),
     statRendererLocalImageMock: vi.fn<(filePath: string) => Promise<{
       success: true;
       size: number;
@@ -316,7 +313,7 @@ describe('slide rasterization', () => {
           return {
             width: 0,
             height: 0,
-            toBlob: offscreenRendererTestState.canvasToBlobMock,
+            toDataURL: offscreenRendererTestState.canvasToDataUrlMock,
             getContext: () => ({
               font: '',
               measureText: (text: string) => ({ width: text.length * 8 }),
@@ -346,9 +343,8 @@ describe('slide rasterization', () => {
     offscreenRendererTestState.createImageBitmapMock.mockImplementation(async (canvas) => (
       new offscreenRendererTestState.FakeImageBitmap(canvas.width, canvas.height)
     ));
-    offscreenRendererTestState.canvasToBlobMock.mockImplementation((callback) => {
-      callback(new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }));
-    });
+    // 0x89 'P' 'N' 'G' 的 base64
+    offscreenRendererTestState.canvasToDataUrlMock.mockReturnValue('data:image/png;base64,iVBORw==');
     vi.stubGlobal('createImageBitmap', offscreenRendererTestState.createImageBitmapMock);
   });
 
@@ -527,16 +523,12 @@ describe('slide rasterization', () => {
       heightPx: 180,
     });
     expect(Array.from(result.bytes)).toEqual([137, 80, 78, 71]);
-    expect(offscreenRendererTestState.canvasToBlobMock).toHaveBeenCalledWith(
-      expect.any(Function),
-      'image/png',
-    );
+    expect(offscreenRendererTestState.canvasToDataUrlMock).toHaveBeenCalledWith('image/png');
   });
 
   it('fails with a stable code when the browser cannot encode PNG bytes', async () => {
-    offscreenRendererTestState.canvasToBlobMock.mockImplementationOnce((callback) => {
-      callback(null);
-    });
+    // 画布宽或高为 0 时 Chromium 返回的空 data URL
+    offscreenRendererTestState.canvasToDataUrlMock.mockReturnValueOnce('data:,');
     const { renderSlideRasterToPng } = await import('./renderSlideRaster');
 
     await expect(renderSlideRasterToPng(createRasterRequest())).rejects.toMatchObject({
