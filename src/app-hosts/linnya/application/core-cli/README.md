@@ -1,6 +1,6 @@
 # Agent Shell 内建 CLI
 
-`linnya changes` 查询当前对话所属项目里保留的文档改动，`linnya conversations` 读同一项目里别的对话，`linnya schema`、`props`、`query`、`links` 读写标签与字段并按它们查文档。它与 `linnya-<插件>` 共用 Shell 的原生客户端、权限、取消和输出通道。Core 命令由 Host 注册，无需启用插件。项目由 Host 查询已授权对话的归属。
+`linnya changes` 查询当前对话所属项目里保留的文档改动，`linnya conversations` 读同一项目里别的对话，`linnya palette` 出配色，`linnya image` 处理素材图片，`linnya schema`、`props`、`query`、`links` 读写标签与字段并按它们查文档。它与 `linnya-<插件>` 共用 Shell 的原生客户端、权限、取消和输出通道。Core 命令由 Host 注册，无需启用插件。项目由 Host 查询已授权对话的归属。
 
 - `linnya changes --day yesterday` 按宿主当地日历列出昨天的记录。也接受 `today` 或具体日期。
 - `linnya changes --since 2026-11-01 --until 2026-11-06` 包含起日，不含终日。
@@ -38,6 +38,26 @@ list/read 都给 `activity`：running、awaiting_answer、awaiting_approval、in
 颜色参数可以不带 `#`，因为 Shell 会把未加引号的 `#` 后面当注释。退出码：0 成功，1 业务失败或检查不合格，2 用法错误。失败时 stderr 是 `错误码 一句原因`。
 
 `--preview` 把几套色条画成 PNG 写进工作目录根。文件名带随机后缀并独占创建，不会跟随预先放好的符号链接。
+
+## 素材处理
+
+`linnya image` 给 Agent 处理对话工作目录里的图片。处理规则、尺寸上限与错误码归 [image-processing domain](../../../../domains/image-processing/README.md)。
+
+- `trim <图片> [--tolerance 1-100] [--save]`：量出四周的纯色边，输出 `crop {"top":…,"left":…}`（只列要裁的边，按原图比例）。默认只读，`--save` 才另存裁好的图。
+- `ink <图片> [--color HEX]`：白纸上的书法、拓片、印章转成单色加透明，裁到有墨的范围。
+- `frost <图片> --region 左,上,宽,高 [--aspect 宽:高] [--blur 1-100] [--radius 0-0.5]`：预先模糊背景图上卡片所在的一块，整张图交回。`--aspect` 先按页面比例居中裁（与铺满页面、不写焦点时显示的部分一致），区域就能按“卡片位置 ÷ 页面尺寸”写。
+- `perspective <图片> --to x1,y1,…,x4,y4 [--size 宽x高]`：投影进四边形，四边形外透明。
+- `grid <图片> [--n 2-26]`：叠坐标网格，输出里写明格子怎么换算成比例。
+- `texture paper|grain --size 宽x高 [--color HEX]`：程序生成纸纹或颗粒叠加层。
+- `slice <图片> [--key auto|magenta|green|flood] [--grid 列x行]`：把纯色底的宫格切成透明小图，默认按连通块，粘连时按格子。首行是实测底色、块数和残留键色，之后一块一行（带序号），最后一行是带同样序号的检查图。
+
+图片的读法与配色相同：工作目录里的相对路径或 `conversation:/...`，不能越出工作目录。位置和区域按宽高的 0–1 写。
+
+结果写进工作目录的 `assets/`，文件名是“原图名-操作-随机后缀”，独占创建。`assets` 是符号链接或不是文件夹时报 `output_unwritable`，不会写到工作目录外。每个结果输出一行：`conversation:/assets/… 宽×高 格式 大小`；`slice` 每块各写一个文件。
+
+权限：都不读写内部数据（`internalDataAccess: none`）。`trim` 不带 `--save` 只读工作目录，其余子命令都要写，需要给 Shell 设 `requires_write_access`。
+
+退出码：0 成功；1 业务失败，stderr 是 `错误码 一句原因`；2 用法错误，stderr 附该子命令的用法。
 
 ## 标签、字段与查询
 

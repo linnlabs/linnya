@@ -11,14 +11,16 @@ import { formatConversationList, formatConversationTranscript } from '../functio
 import { formatDocumentChanges } from '../functions/formatDocumentChanges';
 import { CHANGES_USAGE, parseChangesCommand } from '../functions/parseChangesCommand';
 import { CONVERSATIONS_USAGE, parseConversationsCommand, type ConversationsCommand } from '../functions/parseConversationsCommand';
+import { IMAGE_USAGE } from '../functions/parseImageCommand';
 import { PALETTE_USAGE } from '../functions/parsePaletteCommand';
 import type { PhysicalFileReaderPort } from '../../file-read';
 import type { ScheduledTasks } from '../../scheduled-tasks';
 import { prepareSchedulesCli, SCHEDULES_USAGE } from './prepareSchedulesCli';
+import { prepareImageCli } from './prepareImageCli';
 import { preparePaletteCli } from './preparePaletteCli';
 import { prepareSemanticCli, SEMANTIC_CLI_COMMANDS, SEMANTIC_USAGE } from './prepareSemanticCli';
 
-const CORE_USAGE = `${CHANGES_USAGE}\n${CONVERSATIONS_USAGE}\n${PALETTE_USAGE}\n${SEMANTIC_USAGE}\n${SCHEDULES_USAGE}`;
+const CORE_USAGE = `${CHANGES_USAGE}\n${CONVERSATIONS_USAGE}\n${PALETTE_USAGE}\n${IMAGE_USAGE}\n${SEMANTIC_USAGE}\n${SCHEDULES_USAGE}`;
 const INTERNAL_READ_ACCESS = {
   internalDataAccess: 'required', conversationFiles: 'none', externalFiles: 'denied',
   network: 'denied', guiControl: 'denied', localIpcControl: 'denied',
@@ -37,6 +39,7 @@ export function createCoreCli(
       const [command, ...args] = argv;
       if (command === 'schedules') return prepareSchedulesCli(db, args, readScheduledTasks);
       if (command === 'palette') return preparePaletteCli({ db, argv: args, conversationRoot, fileReader });
+      if (command === 'image') return prepareImageCli({ argv: args, conversationRoot, fileReader });
       const semantic = SEMANTIC_CLI_COMMANDS.find(name => name === command);
       if (semantic) return prepareSemanticCli({ db, command: semantic, argv: args, maxOutputCharacters });
       if (argv.length === 1 && command === '--help') {

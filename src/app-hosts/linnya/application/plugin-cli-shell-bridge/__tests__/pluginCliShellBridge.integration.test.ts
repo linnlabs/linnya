@@ -950,6 +950,62 @@ describe('Plugin CLI Shell bridge', () => {
     });
   });
 
+  describe('内建 image', () => {
+    const imageDatabases: DatabaseService[] = [];
+    afterEach(() => {
+      for (const database of imageDatabases.splice(0)) database.close();
+    });
+
+    it('只读档能量裁边，写文件的子命令被拒；标准档把结果写进工作目录的 assets/；都不需要内部数据权限', async () => {
+      const root = await fsp.realpath(await fsp.mkdtemp(path.join(os.tmpdir(), 'linnya-image-cli-')));
+      temporaryRoots.push(root);
+      const ink = await sharp({ create: { width: 30, height: 40, channels: 3, background: '#202020' } }).png().toBuffer();
+      await sharp({ create: { width: 120, height: 100, channels: 3, background: '#f2ece0' } })
+        .composite([{ input: ink, left: 45, top: 30 }]).png().toFile(path.join(root, 'rubbing.png'));
+      const database = new DatabaseService(':memory:');
+      database.initialize();
+      imageDatabases.push(database);
+      const bridge = await startPluginCliShellBridgeRuntime({
+        resolveCli: () => { throw new Error('Core commands must not resolve a plugin'); },
+        coreCli: createCoreCli(database.getDb(), 8000, createNodePhysicalFileReader(), { runs: { readCandidates: async () => { throw new Error('unused'); } }, approvals: { readControlPending: () => { throw new Error('unused'); } } }),
+        internalDataContext: {},
+        diagnostics: { recordUnexpectedFailure: ({ error }) => { throw error; } },
+      });
+      bridges.push(bridge);
+      const run = async (argv: string[], permissionLevel: 'read_only' | 'standard') => {
+        const launch = createLaunch({ permissionLevel, internalDataAccess: 'denied', conversationRoot: root });
+        const prepared = createPreparedRuntime(launch);
+        const scope = bridge.prepareExecution(launch);
+        const runtime = scope.decorate(prepared.runtime);
+        await runtime.start();
+        const endpoint = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_ENDPOINT_ENV];
+        const token = scope.internalEnvironment[LINNYA_INTERNAL_PLUGIN_CLI_TOKEN_ENV];
+        if (!endpoint || !token) throw new Error('Missing test execution scope');
+        const { frames } = await invoke({ endpoint, token, argv: ['image', ...argv], core: true });
+        prepared.terminal.resolve(createTerminal(launch));
+        await runtime.terminal;
+        const stdout = frames.flatMap(frame => frame.kind === 'plugin_cli_output' && frame.channel === 'stdout'
+          ? [Buffer.from(frame.bytes_base64, 'base64').toString()] : []).join('');
+        return { terminal: frames[frames.length - 1], stdout };
+      };
+
+      const measured = await run(['trim', 'rubbing.png'], 'read_only');
+      expect(measured.terminal).toMatchObject({ exit_code: 0 });
+      expect(measured.stdout).toMatch(/^crop \{"top":0\.3,"right":0\.375,"bottom":0\.3,"left":0\.375\}/u);
+      expect((await run(['trim', 'rubbing.png', '--save'], 'read_only')).terminal)
+        .toMatchObject({ code: 'permission_denied', exit_code: 77 });
+      expect((await run(['ink', 'rubbing.png'], 'read_only')).terminal)
+        .toMatchObject({ code: 'permission_denied', exit_code: 77 });
+      await expect(fsp.readdir(path.join(root, 'assets'))).rejects.toThrow();
+
+      const written = await run(['ink', 'rubbing.png'], 'standard');
+      expect(written.terminal).toMatchObject({ exit_code: 0 });
+      const locator = /^conversation:\/(assets\/rubbing-ink-[0-9a-f]{6}\.png) 30×40 png /u.exec(written.stdout)?.[1];
+      if (!locator) throw new Error(`no asset in ${written.stdout}`);
+      expect(await sharp(path.join(root, locator)).metadata()).toMatchObject({ format: 'png', hasAlpha: true, width: 30, height: 40 });
+    });
+  });
+
   it.runIf(Boolean(process.env.LINNYA_PLUGIN_CLI_NATIVE_CLIENT_E2E_PATH))(
     '真实 native thin client 保留 argv/stdout/stderr/exit code，并且不启动 Electron',
     async () => {
