@@ -166,7 +166,10 @@ const viewportStyle = props.detailOnly
   ? undefined
   : { maxHeight: `${DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight}px` };
 // 读取较慢时的占位：与首屏同宽、同内边距、同高，内容到来时面板不再变宽，长文也不变高。
-const PLACEHOLDER_LINE_WIDTHS = ['92%', '100%', '84%', '96%', '70%', '100%', '88%', '94%', '100%', '76%', '100%', '58%'] as const;
+// 行数按首屏高度铺满（标题一行 + 15 行正文，行距见 documentPreview.css），改首屏高度时一起调。
+const PLACEHOLDER_LINE_WIDTHS = [
+  '92%', '100%', '84%', '96%', '70%', '100%', '88%', '94%', '100%', '76%', '100%', '90%', '82%', '100%', '58%',
+] as const;
 const placeholderStyle = {
   height: `${DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight}px`,
   padding: `${DOCUMENT_PREVIEW_LAYOUT.paddingTop}px ${DOCUMENT_PREVIEW_LAYOUT.paddingInline}px ${DOCUMENT_PREVIEW_LAYOUT.paddingBottom}px`,
