@@ -104,7 +104,7 @@ function inViewport(panel: HTMLElement, viewport: { width: number; height: numbe
 it('封面异步变高后按真实大小翻转/约束，屏幕下半部的展开按钮仍可进入与操作', async () => {
   const f = layout(),
     report = vi.fn(),
-    stop = positionDocumentReferencePreview({ reference: f.reference, panel: f.panel, report });
+    stop = positionDocumentReferencePreview({ reference: f.reference, panel: f.panel, report, positioned: () => {} });
   try {
     await vi.advanceTimersByTimeAsync(20);
     inViewport(f.panel, f.viewport);
@@ -138,6 +138,7 @@ it('边缘与小窗变化保持只读翻页控件可达，宿主transform式移�
       report: error => {
         throw error;
       },
+      positioned: () => {},
     });
   try {
     f.content.height = 1000;
@@ -170,7 +171,7 @@ it('边缘与小窗变化保持只读翻页控件可达，宿主transform式移�
 it('异步长封面翻到标签上方后，移入展开使内容缩短也保留原侧与鼠标位置；空间不足才翻转', async () => {
   const f = layout(),
     report = vi.fn(),
-    stop = positionDocumentReferencePreview({ reference: f.reference, panel: f.panel, report });
+    stop = positionDocumentReferencePreview({ reference: f.reference, panel: f.panel, report, positioned: () => {} });
   try {
     // 缓存封面可以在首次异步定位完成前到达，必须按它的真实高度选侧。
     await Promise.resolve();
@@ -207,7 +208,7 @@ it('异步长封面翻到标签上方后，移入展开使内容缩短也保留�
 it('关闭先停止观察与RAF，迟到的定位计算不修改已销毁浮层', async () => {
   const f = layout(),
     report = vi.fn(),
-    stop = positionDocumentReferencePreview({ reference: f.reference, panel: f.panel, report });
+    stop = positionDocumentReferencePreview({ reference: f.reference, panel: f.panel, report, positioned: () => {} });
   await vi.advanceTimersByTimeAsync(20);
   f.anchor.y = 50;
   f.content.height = 800;

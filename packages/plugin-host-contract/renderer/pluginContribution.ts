@@ -24,7 +24,11 @@ export interface DocumentTypeContribution {
   readonly surfaceComponent: Component;
   /** Core 提供历史容器，组件接收 documentId/versionId，只读加载并自行释放预览资源。 */
   readonly historyPreviewComponent?: Component;
-  /** 详情档只读组件，接收 documentId/projectId；消费者仅展开时挂载并在离开时释放。 */
+  /**
+   * 详情档只读组件，接收 documentId/projectId；消费者仅展开时挂载并在离开时释放。
+   * 预览带封面图时还会收到可选的 cover（{ dataUri, widthPx, heightPx }，即展开前显示的那张）：
+   * 组件自己的画面出来之前可以先在同一位置显示它，避免展开时空白；不用也可以。
+   */
   readonly readonlyPreviewComponent?: Component;
   /** 打开历史面板时读取并冻结当前编辑会话，恢复由该会话接纳为可撤销操作。 */
   readonly historyClientSessionId?: (documentId: string) => string | null;

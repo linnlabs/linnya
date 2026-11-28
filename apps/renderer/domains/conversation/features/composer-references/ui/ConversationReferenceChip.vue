@@ -53,6 +53,7 @@
           :is="presentation.previewComponent"
           v-else-if="presentation.previewComponent"
           :reference="reference"
+          @ready="hover.ready()"
         />
         <template v-else>
           <strong>{{ presentation.label }}</strong><p>{{ reference.previewText || reference.text }}</p>
@@ -79,7 +80,7 @@ defineEmits<{ remove: [] }>();
 const anchor = ref<HTMLElement | null>(null), panel = ref<HTMLElement | null>(null), error = ref<string | null>(null);
 // 不弹预览的引用只在点击失败时借弹层显示错误。
 const hoverable = computed(() => props.presentation.hoverPreview !== false);
-const hover = createComposerReferenceHover({ anchor: () => anchor.value, panel: () => panel.value });
+const hover = createComposerReferenceHover({ anchor: () => anchor.value, panel: () => panel.value, awaitsReady: () => hoverable.value && Boolean(props.presentation.previewComponent) });
 async function activate() { if (!props.presentation.activate) { if (hoverable.value) hover.enter(true); return; } try { await props.presentation.activate(); hover.close(); } catch (failure) { error.value = failure instanceof Error ? failure.message : String(failure); hover.enter(true); } }
 watch(() => props.reference, () => { hover.close(); error.value = null; });
 onBeforeUnmount(hover.dispose);

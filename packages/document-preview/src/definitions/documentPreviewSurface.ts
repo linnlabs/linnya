@@ -7,6 +7,11 @@ export interface DocumentPreviewSurfaceInput {
   /** 容器的逻辑宽度，不含相机缩放或 DPR。 */
   readonly widthPx: number;
   readonly maxHeight?: number;
+  /**
+   * 内容不足 maxHeight 时表面按内容高度收短（悬停浮层）；缺省表面固定为 maxHeight（画布卡面按卡高铺满）。
+   * 只在传了 maxHeight 时有意义。
+   */
+  readonly fitContentHeight?: boolean;
   /** 容器比可见范围大时（Canvas 纸面内缩）四周内缩的距离，首屏正文和淡出在可见边缘结束。 */
   readonly visibleInsetPx?: number;
   readonly theme: 'light' | 'dark';
@@ -17,7 +22,7 @@ export interface DocumentPreviewSurfaceInput {
   /** 正文里行内引用的类型图标，与文件树同源；后台出图等拿不到时省略，引用用通用文件图标。 */
   readonly referenceTypeIcon?: (nodeType: string) => Component | null;
   readonly onOpen?: () => void;
-  /** 类型自己贡献交互详情时，只复用外壳和标题，不在下方再画一张封面。 */
+  /** 类型自己贡献交互详情时，只复用外壳和标题；有封面图时先放着占位，详情挂进正文容器后自动让位。 */
   readonly externalBody?: boolean;
 }
 export interface DocumentPreviewSurface {

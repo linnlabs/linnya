@@ -5,6 +5,7 @@ import { useLocalizationStore } from '@app/localization';
 import { documentReferenceGenericLabel, documentReferenceLabel } from '@linnya/markdown-document-core/references';
 import type { DocumentReferenceUiPort } from '../definitions/documentReferenceUi';
 import type { RegisterEditorFocusPortal } from '@/domains/editor/shared/focus';
+import { createHoverPreviewSchedule } from '@shared/hover-preview';
 import { resolveCurrentEditorMessage } from '../../../functions/resolveCurrentEditorMessage';
 import { positionDocumentReferencePreview } from './positionDocumentReferencePreview';
 
@@ -34,16 +35,21 @@ export function createDocumentReferenceNodeView(
   let iconType: string | null = null;
   let presentation: DocumentReferencePresentation | null = null;
   let destroyed = false;
-  let hoverGeneration = 0;
   let refreshGeneration = 0;
-  let timer: ReturnType<typeof setTimeout> | undefined;
   let popup: HTMLElement | null = null;
+  // 浮层在准备阶段就挂进页面排首屏，但到露出时间且位置算好之前不可见（不可见的元素也不接收指针）。
+  let revealed = false,
+    positioned = false;
   let disposeDetail: (() => void) | undefined;
   let cancellation: AbortController | undefined;
   let releaseFocus: (() => void) | undefined;
   let stopPosition: (() => void) | undefined;
+  function syncVisibility() {
+    if (popup) popup.style.visibility = revealed && positioned ? 'visible' : 'hidden';
+  }
   function close() {
-    if (timer) clearTimeout(timer);
+    revealed = false;
+    positioned = false;
     cancellation?.abort();
     cancellation = undefined;
     const release = releaseFocus,
@@ -83,30 +89,35 @@ export function createDocumentReferenceNodeView(
     }
     return result;
   }
-  async function show(generation: number) {
+  // 准备阶段：读目标、建浮层、挂共用预览。此时浮层不可见，露出时机由 hover 时序决定。
+  async function prepare() {
+    const active = new AbortController();
+    cancellation = active;
     const info = await refresh();
-    if (!info || destroyed || generation !== hoverGeneration) return;
-    close();
+    if (!info || destroyed || active.signal.aborted) return;
     const panel = document.createElement('section');
     panel.className = 'document-reference-preview';
     panel.setAttribute('aria-label', resolveCurrentEditorMessage('editor.documentReference.preview.label'));
     // 预览正文不是可编辑区；点击段落/空白也要把焦点落在所属浮层，不能退到body。
     panel.tabIndex = -1;
-    panel.addEventListener('mouseenter', () => {
-      if (timer) clearTimeout(timer);
-    });
-    panel.addEventListener('mouseleave', () => {
-      timer = setTimeout(close, 200);
-    });
+    panel.style.visibility = 'hidden';
+    panel.addEventListener('mouseenter', hover.stay);
+    panel.addEventListener('mouseleave', hover.leave);
     document.body.append(panel);
     popup = panel;
-    stopPosition = positionDocumentReferencePreview({ reference: dom, panel, report: port.report });
+    stopPosition = positionDocumentReferencePreview({
+      reference: dom,
+      panel,
+      report: port.report,
+      positioned() {
+        positioned = true;
+        syncVisibility();
+      },
+    });
     releaseFocus = registerFocusPortal?.(panel);
-    const active = new AbortController();
-    cancellation = active;
     try {
       // 浮层只管理定位与编辑焦点；首屏、展开、恢复和打开由共用预览拥有。
-      const dispose = await port.mountPreview(documentId, panel, active.signal);
+      const dispose = await port.mountPreview(documentId, panel, active.signal, hover.ready);
       if (destroyed || popup !== panel || active.signal.aborted) {
         dispose();
         return;
@@ -122,26 +133,27 @@ export function createDocumentReferenceNodeView(
         notice.setAttribute('role', 'status');
         notice.textContent = resolveCurrentEditorMessage('editor.documentReference.preview.failed');
         panel.append(notice);
+        hover.ready();
       }
     }
   }
-  dom.addEventListener('mouseenter', () => {
-    const generation = ++hoverGeneration;
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      void show(generation).catch(port.report);
-    }, 400);
+  const hover = createHoverPreviewSchedule({
+    prepare() {
+      void prepare().catch(port.report);
+    },
+    reveal() {
+      revealed = true;
+      syncVisibility();
+    },
+    close,
   });
-  dom.addEventListener('mouseleave', () => {
-    hoverGeneration += 1;
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(close, 200);
-  });
+  dom.addEventListener('mouseenter', () => hover.enter());
+  dom.addEventListener('mouseleave', hover.leave);
   const open = () => {
     void refresh()
       .then(info => {
         if (!info) return;
-        if (info.status === 'plugin_unavailable') return show(++hoverGeneration);
+        if (info.status === 'plugin_unavailable') return hover.enter(true);
         return port.open(info);
       })
       .catch(port.report);
@@ -157,8 +169,7 @@ export function createDocumentReferenceNodeView(
     }
   });
   const unsubscribe = port.subscribe(documentId, () => {
-    hoverGeneration += 1;
-    close();
+    hover.close();
     void refresh().catch(port.report);
   });
   paintLabel();
@@ -169,10 +180,9 @@ export function createDocumentReferenceNodeView(
     stopEvent: () => true,
     destroy() {
       destroyed = true;
-      hoverGeneration += 1;
       unsubscribe();
       stopLocaleWatch();
-      close();
+      hover.close();
       render(null, icon);
     },
   };

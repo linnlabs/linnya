@@ -40,6 +40,18 @@ export async function createWorkspaceMarkdownPreview(input: WorkspaceMarkdownPre
     input.signal.removeEventListener('abort', dispose);
   };
   input.signal.addEventListener('abort', dispose, { once: true });
+  // 每读一次已就绪的 fonts.ready，Chromium 都会同步更新整份预览的样式和布局
+  // （third_party/blink/renderer/core/css/font_face_set_document.cc 的 ready()），所以读取次数必须有界。
+  const fontsReady = async () => {
+    if (input.document.fonts) await waitForPreviewResource(input.document.fonts.ready, input.signal);
+  };
+  // 字体就绪后按本次宽度给表格定级；与编辑器同一套退让规则。定级只看表格自身与外层滚动容器，和后续块无关。
+  const fitTables = (scope: HTMLElement) => {
+    for (const table of Array.from(scope.querySelectorAll<HTMLElement>(`table.${WORKSPACE_TABLE_CLASS}`))) {
+      const scroller = table.parentElement;
+      if (scroller) fitStaticWorkspaceTable(table, scroller);
+    }
+  };
   try {
     const serializer = createWorkspacePreviewSerializer({ ...input, node, locale: input.locale ?? 'zh-CN' });
     const numbers = new Map(workspaceListNumbers(node).map(item => [item.rootPosition, item]));
@@ -60,20 +72,21 @@ export async function createWorkspaceMarkdownPreview(input: WorkspaceMarkdownPre
       }
       element.append(blockElement);
       await prepareWorkspacePreviewBlock(block, blockElement, input);
-      // 字体就绪后按本次宽度给表格定级，再量块高；与编辑器同一套退让规则。
-      for (const table of Array.from(blockElement.querySelectorAll<HTMLElement>(`table.${WORKSPACE_TABLE_CLASS}`))) {
-        const scroller = table.parentElement;
-        if (scroller) fitStaticWorkspaceTable(table, scroller);
-      }
       position += block.nodeSize;
-      if (input.maxHeight !== undefined && element.getBoundingClientRect().height >= input.maxHeight) {
+      // 全文不需要逐块量高：字体与表格定级留到循环结束后各做一次（见下）。
+      if (input.maxHeight === undefined) continue;
+      // 首屏必须逐块量真实高度才能停在相交块，所以逐块等字体；块数受 maxHeight 限制，不会随文档长度增长。
+      await fontsReady();
+      fitTables(blockElement);
+      if (element.getBoundingClientRect().height >= input.maxHeight) {
         element.style.maxHeight = `${input.maxHeight}px`;
         element.style.overflow = 'hidden';
         element.setAttribute('data-preview-clipped', String(index < node.childCount - 1 || element.scrollHeight > input.maxHeight));
         break;
       }
     }
-    if (input.document.fonts) await waitForPreviewResource(input.document.fonts.ready, input.signal);
+    await fontsReady();
+    if (input.maxHeight === undefined) fitTables(element);
     input.signal.throwIfAborted();
     element.remove();
     stage.remove();

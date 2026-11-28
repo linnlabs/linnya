@@ -71,3 +71,26 @@
   outline: 2px solid var(--color-border-focus);
   outline-offset: 2px;
 }
+
+/* 文档预览（引用浮层、画布卡）里的详情接在封面原来的位置：不设最小高度、不上下居中、与封面同宽，
+   否则小容器里幻灯片会下移、被裁，展开时面板跟着变高。历史面板等大容器仍用上面居中的舞台。 */
+.slides-document-preview .slides-readonly-stage {
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 0;
+  padding-block: 0;
+}
+.slides-document-preview .slides-readonly-canvas {
+  width: 100%;
+  height: auto;
+  max-height: none;
+}
+/* 翻页条叠在幻灯片底部，不另占一行（负外边距把它拉回幻灯片内）；容器比幻灯片矮时粘在可见范围的底边。 */
+.slides-document-preview .slides-readonly-navigation {
+  position: sticky;
+  left: auto;
+  transform: none;
+  bottom: var(--spacing-sm);
+  margin-top: calc(-1 * (32px + 2 * var(--spacing-xs) + var(--spacing-sm)));
+  margin-bottom: var(--spacing-sm);
+}

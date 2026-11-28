@@ -74,7 +74,7 @@ hook 实现侧的纪律：**不要从 `ToolContext` 公开插件专属 service �
 
 后端 hook 可贡献 `preview`：`getRevision` 返回正文 owner 的真实版本，`render` 返回按正式 schema 校验的封面图片、摘要与可选只读详情数据。Host 只做身份/项目检查、派生缓存和启停分发，不解释插件内部模型。Markdown 内建 provider、Slides 第一页与 Canvas 的 provider 已接入。
 
-Renderer 文档类型可贡献 `readonlyPreviewComponent`，作为详情档的可选增强，接收 documentId/projectId。消费者只在用户展开时挂载，离开、换目标或插件不可用时卸载；组件必须只读、核对范围并自行释放资源，不绑定可写 file session，也不连接编辑 store。静态封面和摘要仍走后端 `preview` 数据，不能为远景卡片批量挂载实时组件。参考实现是 Slides 的只读翻页详情（[presentationPreview](../../../packages/plugins/slides/src/renderer/features/presentationPreview/README.md)）。
+Renderer 文档类型可贡献 `readonlyPreviewComponent`，作为详情档的可选增强，接收 documentId/projectId；预览带封面图时还会收到可选的 `cover`（`{ dataUri, widthPx, heightPx }`，即展开前显示的那张），自己的画面出来之前先在同一位置显示它，展开时就不会空白一下。消费者只在用户展开时挂载，离开、换目标或插件不可用时卸载；组件必须只读、核对范围并自行释放资源，不绑定可写 file session，也不连接编辑 store。静态封面和摘要仍走后端 `preview` 数据，不能为远景卡片批量挂载实时组件。参考实现是 Slides 的只读翻页详情（[presentationPreview](../../../packages/plugins/slides/src/renderer/features/presentationPreview/README.md)）。
 
 ### 消费方：预览别的文档
 

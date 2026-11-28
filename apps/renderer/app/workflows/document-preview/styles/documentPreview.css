@@ -8,10 +8,22 @@
   flex-direction: column;
   color: inherit;
 }
+/* 预览自己滚动，滚动条不占位：消费方的面板只限定高度并裁切，不能再加一层滚动，
+   否则面板的滚动条会挤窄正文、触发按新宽度整份重排，底部淡出也会跟着内容滚走。 */
 .readonly-document-preview__viewport {
   flex: 1;
   min-height: 0;
   overflow: auto;
   scrollbar-width: none;
   user-select: text;
+}
+.readonly-document-preview__placeholder {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+}
+.readonly-document-preview__placeholder > :first-child {
+  margin-bottom: 4px;
 }

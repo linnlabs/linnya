@@ -6,6 +6,7 @@ import {
   type CanvasDocumentPreviewPresentation,
   type CanvasDocumentPreviewCacheWrite,
 } from '../definitions/cardMedia';
+import { estimateCanvasPreviewBytes } from '../functions/estimateCanvasPreviewBytes';
 
 /** 预览载荷有界缓存与缩略资格共用一份正式结果；重试只清载荷，不猜测新资格。 */
 export function createCanvasDocumentPreviewCache(readVersion: (documentId: string) => number) {
@@ -33,7 +34,7 @@ export function createCanvasDocumentPreviewCache(readVersion: (documentId: strin
         revision: `${result.status}:${result.content?.revisionKey ?? ''}`,
       });
       // DTO 携带正式正文及内联图片；预算计算整个载荷，不能只计封面和摘要。
-      const size = JSON.stringify(result).length * 2;
+      const size = estimateCanvasPreviewBytes(result);
       if (size > CANVAS_DOCUMENT_PREVIEW_CACHE_BYTES) return;
       while (
         cache.size &&

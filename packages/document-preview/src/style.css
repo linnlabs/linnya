@@ -73,6 +73,10 @@
   width: 100%;
   height: auto;
 }
+/* 类型自己的详情挂进正文容器之前，封面留在原处占位；详情的根元素一出现就让位，展开时不空白一帧。 */
+.document-preview-body > .document-preview-cover:not(:only-child) {
+  display: none;
+}
 .document-preview-summary,
 .document-preview-status {
   margin: 0;

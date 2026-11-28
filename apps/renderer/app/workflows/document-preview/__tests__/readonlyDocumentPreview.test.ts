@@ -172,6 +172,17 @@ it('the first screen and expanded document share formal content and resize witho
             },
           ],
         },
+        {
+          type: 'rootBlock',
+          attrs: { id: 'root-2' },
+          content: [
+            {
+              type: 'baseBlock',
+              attrs: { id: 'below' },
+              content: [{ type: 'text', text: '屏下正文：展开后才出现。' }],
+            },
+          ],
+        },
       ],
     },
   });
@@ -213,15 +224,43 @@ it('the first screen and expanded document share formal content and resize witho
     expect(host.querySelector('.workspace-markdown-preview')?.getAttribute('style')).toContain(
       '244px'
     );
-    host.querySelector('.readonly-document-preview')?.dispatchEvent(new MouseEvent('mouseenter'));
-    await vi.waitFor(() => expect(host.querySelector('.document-preview-first-screen')).toBeNull());
-    expect(host.textContent).toContain('正式正文');
-    width.value = 420;
-    await vi.waitFor(() =>
-      expect(host.querySelector('.workspace-markdown-preview')?.getAttribute('style')).toContain(
-        '384px'
-      )
-    );
+    // 短文：首屏按内容高度（只限最大高度），全文已在眼前，没有展开按钮，移入也不重排。
+    const firstScreen = host.querySelector<HTMLElement>('.document-preview-first-screen');
+    expect(firstScreen?.style.maxHeight).toBe('320px');
+    expect(firstScreen?.style.height).toBe('');
+    expect(host.textContent).toContain('屏下正文');
+    expect(host.querySelector('.readonly-document-preview > button')).toBeNull();
+    const root = host.querySelector('.readonly-document-preview');
+    root?.dispatchEvent(new MouseEvent('mouseenter'));
+    await nextTick();
+    expect(host.querySelector('.document-preview-first-screen')).toBe(firstScreen);
+    root?.dispatchEvent(new MouseEvent('mouseleave'));
+    // 长文：首屏被截断才有展开按钮，移入后显示全文。jsdom 没有布局，用固定高度代表“超过首屏”。
+    const measure = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(0, 0, 420, 400));
+    try {
+      width.value = 420;
+      await vi.waitFor(() =>
+        expect(host.querySelector('.workspace-markdown-preview')?.getAttribute('style')).toContain(
+          '384px'
+        )
+      );
+      await vi.waitFor(() =>
+        expect(host.querySelector('.readonly-document-preview > button')).not.toBeNull()
+      );
+      expect(host.querySelector('.document-preview-clipped')).not.toBeNull();
+      expect(host.textContent).not.toContain('屏下正文');
+      root?.dispatchEvent(new MouseEvent('mouseenter'));
+      await vi.waitFor(() =>
+        expect(host.querySelector('.document-preview-first-screen')).toBeNull()
+      );
+      expect(host.textContent).toContain('正式正文');
+      expect(host.textContent).toContain('屏下正文');
+      expect(host.querySelector('.readonly-document-preview > button')).toBeNull();
+    } finally {
+      measure.mockRestore();
+    }
     expect(ports.preview).toHaveBeenCalledOnce();
     expect(host.querySelector('[contenteditable]')).toBeNull();
   } finally {

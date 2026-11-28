@@ -47,6 +47,7 @@ export async function prepareWorkspacePreviewBlock(
   for (const image of Array.from(element.querySelectorAll('img'))) {
     await waitForPreviewResource(image.decode(), input.signal);
   }
-  if (input.document.fonts) await waitForPreviewResource(input.document.fonts.ready, input.signal);
+  // 这里不等字体：Chromium 读取已就绪的 fonts.ready 会同步更新整份预览的样式和布局，
+  // 逐块读取会让全文耗时随块数平方增长。何时等字体由调用方按是否需要逐块量高决定。
   input.signal.throwIfAborted();
 }

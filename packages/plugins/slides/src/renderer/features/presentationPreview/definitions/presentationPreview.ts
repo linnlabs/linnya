@@ -7,6 +7,13 @@ export interface PresentationPreviewState {
   readonly phase: 'loading' | 'ready' | 'failed' | 'empty';
 }
 
+/** Host 预览里已经显示的封面图；字段与通用预览结果的 image 一致。 */
+export interface PresentationPreviewCover {
+  readonly dataUri: string;
+  readonly widthPx: number;
+  readonly heightPx: number;
+}
+
 export interface PresentationPreviewPort {
   readonly read: () => Promise<PresentationRenderModel>;
   readonly render: (

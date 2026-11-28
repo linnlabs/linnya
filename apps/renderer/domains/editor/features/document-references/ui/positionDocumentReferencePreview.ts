@@ -8,16 +8,20 @@ import {
   type Placement,
 } from '@floating-ui/dom';
 
-/** 挂载期间跟随真实DOM尺寸；异步封面/详情不能继续使用打开前估算的高度。 */
+/**
+ * 挂载期间跟随真实DOM尺寸；异步封面/详情不能继续使用打开前估算的高度。
+ * 只写坐标与可用空间，不管可见性：浮层何时露出由调用方按“位置已算好且内容已排好”决定。
+ */
 export function positionDocumentReferencePreview(input: {
   readonly reference: HTMLElement;
   readonly panel: HTMLElement;
   readonly report: (error: unknown) => void;
+  /** 每次坐标写上后通知；第一次之前浮层还在左上角，调用方不能让它可见。 */
+  readonly positioned: () => void;
 }) {
   let disposed = false,
     generation = 0;
   let placement: Placement = 'bottom-start';
-  input.panel.style.visibility = 'hidden';
   const update = () => {
     const current = ++generation;
     void computePosition(input.reference, input.panel, {
@@ -48,7 +52,8 @@ export function positionDocumentReferencePreview(input: {
         // 展开会缩短封面：沿用已成功的一侧，避免控件跨过锚点从鼠标下跳走。
         // flip仍可在这侧空间不足时选择新位置，并由size约束视口。
         placement = nextPlacement;
-        Object.assign(input.panel.style, { left: `${x}px`, top: `${y}px`, visibility: 'visible' });
+        Object.assign(input.panel.style, { left: `${x}px`, top: `${y}px` });
+        input.positioned();
       })
       .catch(error => {
         if (!disposed && current === generation) input.report(error);

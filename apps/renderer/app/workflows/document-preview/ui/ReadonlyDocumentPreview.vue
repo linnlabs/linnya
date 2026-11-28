@@ -3,10 +3,7 @@
     class="readonly-document-preview"
     :class="{ 'document-preview-more-below': moreBelow }"
     :aria-label="label || text('documentPreview.surface.label')"
-    @mouseenter="
-      pointerInside = true;
-      expanded = true;
-    "
+    @mouseenter="enterPreview"
     @mouseleave="pointerInside = false"
   >
     <p
@@ -16,11 +13,31 @@
       {{ controller.error.value }}
     </p>
     <p
-      v-else-if="!current"
+      v-else-if="detailOnly && !current"
       role="status"
     >
       {{ text('documentPreview.loading') }}
     </p>
+    <Skeleton
+      v-else-if="!detailOnly && !surface.body.value && surface.phase.value !== 'failed'"
+      :label="text('documentPreview.loading')"
+      :delayed="false"
+    >
+      <div
+        class="readonly-document-preview__placeholder"
+        :style="placeholderStyle"
+      >
+        <SkeletonBlock
+          width="38%"
+          height="12px"
+        />
+        <SkeletonBlock
+          v-for="(width, index) in PLACEHOLDER_LINE_WIDTHS"
+          :key="index"
+          :width="width"
+        />
+      </div>
+    </Skeleton>
     <p
       v-if="surface.phase.value === 'failed'"
       role="alert"
@@ -41,6 +58,7 @@
         :is="detailComponent"
         :document-id="current.target.documentId"
         :project-id="current.target.projectId"
+        :cover="current.preview.content?.image"
       />
     </Teleport>
     <button
@@ -51,7 +69,7 @@
       {{ recovery.label }}
     </button>
     <button
-      v-if="!expanded && hasDetail"
+      v-if="expandable"
       type="button"
       @click="expanded = true"
     >
@@ -62,6 +80,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { DOCUMENT_PREVIEW_LAYOUT } from '@linnya/document-preview';
+import { Skeleton, SkeletonBlock } from '@linnya/renderer-ui';
 import { RENDERER_UI_THEME_ATTRIBUTE } from '@linnya/renderer-ui/theme';
 import { useLocalization } from '@app/localization';
 import { useNavigationScope } from '@/app/navigation';
@@ -123,9 +142,21 @@ const detailComponent = computed(() =>
     ? readDocumentTypePreviewComponent(current.value.presentation.nodeType)
     : null
 );
-const hasDetail = computed(() =>
-  Boolean(detailComponent.value || current.value?.preview.content?.detail)
+// 首屏排好后才谈得上展开；首屏没被截断、类型也没有自己的详情时，全文已在眼前，不显示按钮也不因移入而重排。
+// 按“当前显示的是首屏”判断而不是按 expanded：按钮留到全文排好时和首屏一起换掉，面板高度只变一次。
+const expandable = computed(
+  () => surface.firstScreen.value && (Boolean(detailComponent.value) || surface.clipped.value)
 );
+function enterPreview() {
+  pointerInside.value = true;
+  if (expandable.value) expanded.value = true;
+}
+// 读取较慢时的占位：与首屏同宽、同内边距、同高，内容到来时面板不再变宽，长文也不变高。
+const PLACEHOLDER_LINE_WIDTHS = ['92%', '100%', '84%', '96%', '70%', '100%', '88%', '94%', '100%', '58%'] as const;
+const placeholderStyle = {
+  height: `${DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight}px`,
+  padding: `${DOCUMENT_PREVIEW_LAYOUT.paddingTop}px ${DOCUMENT_PREVIEW_LAYOUT.paddingInline}px ${DOCUMENT_PREVIEW_LAYOUT.paddingBottom}px`,
+};
 function preventPreviewNavigation(event: MouseEvent) {
   if (event.target instanceof Element && event.target.closest('a')) event.preventDefault();
 }
@@ -166,6 +197,8 @@ watch(
         preview: identity.preview,
         widthPx: width,
         maxHeight: expanded.value ? undefined : DOCUMENT_PREVIEW_LAYOUT.firstScreenHeight,
+        // 短文按内容高度，不留一截空白；长文仍停在首屏高度。
+        fitContentHeight: true,
         theme: theme.value,
         locale: currentLocale.value,
         icon: identity.presentation.nodeType

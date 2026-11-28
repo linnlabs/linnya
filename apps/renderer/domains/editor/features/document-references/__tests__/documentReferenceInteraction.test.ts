@@ -136,7 +136,8 @@ describe('document reference interaction', () => {
     expect(f.value.mountPreview).toHaveBeenCalledWith(
       'target',
       expect.any(HTMLElement),
-      expect.any(AbortSignal)
+      expect.any(AbortSignal),
+      expect.any(Function)
     );
     f.changed.current();
     await Promise.resolve();

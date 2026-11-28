@@ -84,7 +84,7 @@ export async function createDocumentPreviewSurface(
   if (input.visibleInsetPx)
     element.style.setProperty('--document-preview-fade-inset', `${input.visibleInsetPx}px`);
   if (input.maxHeight !== undefined) {
-    element.style.height = `${input.maxHeight}px`;
+    element.style[input.fitContentHeight ? 'maxHeight' : 'height'] = `${input.maxHeight}px`;
     element.classList.add('document-preview-first-screen');
   }
   const title = document.createElement(input.onOpen ? 'button' : 'div');
@@ -129,9 +129,14 @@ export async function createDocumentPreviewSurface(
         'document-preview-clipped',
         rendered.element.getAttribute('data-preview-clipped') === 'true'
       );
-    } else if (!input.externalBody && preview.status === 'ready' && preview.content?.image) {
+    } else if (preview.status === 'ready' && preview.content?.image) {
+      // externalBody 时封面也先放着：类型自己的详情组件挂进来之前（首次还要加载代码）正文容器不留空，
+      // 详情的根元素一出现，样式就让封面让位（style.css）。
       const image = document.createElement('img');
       image.className = 'document-preview-cover';
+      // 先给出像素尺寸，图片解码前就按真实比例占位；否则封面解码完成时表面高度会再变一次。
+      image.width = preview.content.image.widthPx;
+      image.height = preview.content.image.heightPx;
       image.src = preview.content.image.dataUri;
       image.alt = preview.title ?? '';
       body.append(image);

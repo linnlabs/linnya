@@ -1,8 +1,10 @@
 <template>
   <PresentationReadonlyPreview
     :key="`${projectId}:${documentId}:${revision}`"
+    class="slides-document-preview"
     :read="read"
     :labels="labels"
+    :cover="cover"
   />
 </template>
 <script setup lang="ts">
@@ -15,8 +17,14 @@ import { readDocumentReference } from '@plugin/renderer/documentReferences';
 import { SLIDES_IPC, SLIDES_PLUGIN_ID } from '@plugin/slides/shared/ipc';
 import type { PresentationRenderModel } from '@plugin/slides/shared/renderModel';
 import { SLIDES_PREVIEW_FALLBACKS } from '../definitions/previewMessages';
+import type { PresentationPreviewCover } from '../definitions/presentationPreview';
 import PresentationReadonlyPreview from './PresentationReadonlyPreview.vue';
-const props = defineProps<{ documentId: string; projectId: string }>();
+const props = defineProps<{
+  documentId: string;
+  projectId: string;
+  /** Host 已显示的封面图（见 DocumentTypeContribution.readonlyPreviewComponent）。 */
+  cover?: PresentationPreviewCover;
+}>();
 const revision = ref(0);
 let unsubscribe: (() => void) | undefined;
 onMounted(() => {

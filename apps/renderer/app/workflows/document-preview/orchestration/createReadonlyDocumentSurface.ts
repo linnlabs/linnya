@@ -18,6 +18,10 @@ export function createReadonlyDocumentSurface(input: {
 }) {
   const state = createDocumentPreviewDetailState();
   const body = shallowRef<HTMLElement | null>(null);
+  // 当前显示的表面是不是首屏，以及首屏是否被最大高度截断（没截断说明全文已在眼前，不必再提供“展开”）。
+  // 都随已显示的表面更新，而不是随请求更新：展开请求发出到全文排好之间，界面仍按首屏呈现。
+  const firstScreen = shallowRef(false),
+    clipped = shallowRef(false);
   let active: AbortController | undefined, release: (() => void) | undefined;
   function clear() {
     active?.abort();
@@ -25,11 +29,15 @@ export function createReadonlyDocumentSurface(input: {
     release?.();
     release = undefined;
     body.value = null;
+    firstScreen.value = false;
+    clipped.value = false;
     state.set('idle');
   }
   return {
     phase: state.phase,
     body,
+    firstScreen,
+    clipped,
     clear,
     async render(
       options: Omit<DocumentPreviewSurfaceInput, 'document' | 'signal'>,
@@ -57,6 +65,8 @@ export function createReadonlyDocumentSurface(input: {
         release = result.dispose;
         if (active === cancellation) active = undefined;
         body.value = result.body;
+        firstScreen.value = result.element.classList.contains('document-preview-first-screen');
+        clipped.value = result.element.classList.contains('document-preview-clipped');
         state.set('ready');
         input.ready();
       } catch (failure) {
@@ -64,6 +74,8 @@ export function createReadonlyDocumentSurface(input: {
           release?.();
           release = undefined;
           body.value = null;
+          firstScreen.value = false;
+          clipped.value = false;
           state.set('failed');
           input.report(failure);
         }

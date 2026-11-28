@@ -14,8 +14,18 @@
         v-if="state.bitmap"
         :bitmap="state.bitmap"
       />
+      <!-- 自己的画面出来之前沿用封面图，同一位置同一尺寸，展开时不空白一帧。 -->
+      <img
+        v-else-if="cover && state.phase === 'loading'"
+        class="slides-readonly-canvas"
+        :src="cover.dataUri"
+        :width="cover.widthPx"
+        :height="cover.heightPx"
+        alt=""
+        decoding="sync"
+      >
       <p
-        v-if="state.phase === 'loading'"
+        v-if="state.phase === 'loading' && !cover"
         role="status"
       >
         {{ labels.loading }}
@@ -65,6 +75,7 @@ import {
 } from '../../slideRasterization';
 import { createPresentationPreviewController } from '../orchestration/createPresentationPreviewController';
 import type {
+  PresentationPreviewCover,
   PresentationPreviewState,
   PresentationPreviewLabels,
 } from '../definitions/presentationPreview';
@@ -73,6 +84,8 @@ const props = defineProps<{
   read: () => Promise<PresentationRenderModel>;
   labels: PresentationPreviewLabels;
   autofocus?: boolean;
+  /** 第一页的现成封面；有它时读取期间显示封面而不是“正在生成”。 */
+  cover?: PresentationPreviewCover;
 }>();
 const state = shallowRef<PresentationPreviewState>({
   model: null,
