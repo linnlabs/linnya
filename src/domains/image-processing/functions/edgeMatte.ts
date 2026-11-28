@@ -1,34 +1,25 @@
+import { rgbToCielab } from '@linnya/color-core';
+
 /**
  * 边缘抠图：没有系统前景遮罩时的去背。假设四条边都是背景，沿每条边取一条背景颜色曲线，
  * 用 Coons 曲面插值出画面内部每一点“背景应该是什么颜色”，再从边框向内泛洪与估计背景足够接近的像素。
  * 能处理无缝背景纸上的渐变和暗角；展柜、复杂背景、人像会失败，所以调用方必须出检查图。
  */
 
-/** 与估计背景的 CIELAB 色差在它以内算背景。在 30 张器物、植物、产品照片上，9 在“留投影”和“吃掉主体”之间最均衡。 */
+/**
+ * 与估计背景的 CIELAB 色差（ΔE76）在它以内算背景。在 30 张器物、植物、产品照片上，9 在“留投影”和“吃掉主体”之间最均衡。
+ * 不用 OKLab：它的彩度差权重小，偏灰的青瓷、青铜和灰背景会被当成一样，主体被挖空（同一组照片实测）。
+ */
 export const EDGE_TOLERANCE = 9;
 
-function linear(value: number): number {
-  const v = value / 255;
-  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-}
-
-function labF(t: number): number {
-  return t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116;
-}
-
-/** sRGB → CIELAB（D65）。按色差而不按 RGB 距离判，暗部和亮部的容差才一致。 */
+/** sRGB → CIELAB，逐像素平铺成 L,a,b 三个一组；换算公式归共享的 color-core。 */
 function toLab(rgb: Uint8Array, count: number): Float32Array {
   const lab = new Float32Array(count * 3);
   for (let i = 0; i < count; i += 1) {
-    const r = linear(rgb[i * 3]);
-    const g = linear(rgb[i * 3 + 1]);
-    const b = linear(rgb[i * 3 + 2]);
-    const x = labF((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047);
-    const y = labF(0.2126 * r + 0.7152 * g + 0.0722 * b);
-    const z = labF((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
-    lab[i * 3] = 116 * y - 16;
-    lab[i * 3 + 1] = 500 * (x - y);
-    lab[i * 3 + 2] = 200 * (y - z);
+    const color = rgbToCielab([rgb[i * 3], rgb[i * 3 + 1], rgb[i * 3 + 2]]);
+    lab[i * 3] = color.l;
+    lab[i * 3 + 1] = color.a;
+    lab[i * 3 + 2] = color.b;
   }
   return lab;
 }

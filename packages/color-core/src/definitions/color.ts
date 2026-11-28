@@ -14,6 +14,13 @@ export interface Oklab {
   readonly b: number
 }
 
+/** CIELAB（D65 白点）。L 0–100，a、b 大致在 ±128 内。 */
+export interface Cielab {
+  readonly l: number
+  readonly a: number
+  readonly b: number
+}
+
 export interface Oklch {
   /** 明度，0（黑）– 1（白）。 */
   readonly l: number
