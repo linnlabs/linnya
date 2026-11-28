@@ -4,6 +4,7 @@ import type { FlowRuntimePort } from './flow.runtime';
 import type { FlowAgentRunnerPort } from './flow.runner-handoff';
 import type { PreparedFlowRunInput } from './flow.run-preparation.service';
 import type { FlowHostSessionService } from './flow.host-session.service';
+import { externalSenderRunMetadata } from './functions/externalSenderRunMetadata';
 
 /** 原输入先物化，run / descriptor / incoming 在同一个 admission 事务进入事实库。 */
 export async function admitDurableFlowStart(input: {
@@ -70,6 +71,7 @@ export async function admitDurableFlowStart(input: {
       originalSource: 'flow',
       lane: input.lane,
       visibility: input.visibility,
+      ...externalSenderRunMetadata(input.request),
     },
     admissionCommit: (record, replacement) =>
       admission.start({

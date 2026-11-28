@@ -187,7 +187,12 @@ function hasJsonInput(tokens: ParsedTokens, name: JsonInputName): boolean {
   return tokens.options.has(`${name}-json`) || tokens.options.has(`${name}-file`);
 }
 
-function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadCliTextFile): LinnyaCliInvocation {
+function parseCommand(
+  command: string,
+  tokens: ParsedTokens,
+  readTextFile: ReadCliTextFile,
+  detectedExecutor: string | undefined,
+): LinnyaCliInvocation {
   const pretty = readBoolean(tokens, 'pretty');
   switch (command) {
     case 'skills': {
@@ -241,7 +246,7 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
     case 'send': {
       assertAllowedOptions(tokens, [
         'conversation', 'project', 'agent', 'model', 'image-model', 'reasoning',
-        'research-scope-json', 'research-scope-file',
+        'research-scope-json', 'research-scope-file', 'executor',
       ]);
       const message = tokens.positionals.join(' ').trim();
       const projectId = readString(tokens, 'project');
@@ -260,6 +265,7 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
         image_generation_model_id: readString(tokens, 'image-model'),
         reasoning_effort: readString(tokens, 'reasoning'),
         research_scope: readJsonInput(tokens, 'research-scope', readTextFile),
+        executor_name: readString(tokens, 'executor') ?? detectedExecutor,
       });
       return { kind: 'command', request, pretty };
     }
@@ -498,7 +504,7 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
       if (action === 'call') {
         assertAllowedOptions(tokens, [
           'conversation', 'project', 'args-json', 'args-file', 'omit-args', 'new-session',
-          'interval', 'timeout',
+          'interval', 'timeout', 'executor',
         ]);
         if (tokens.positionals.length !== 2) {
           usageError('tools call requires exactly one tool name');
@@ -512,6 +518,7 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
           conversation_id: readString(tokens, 'conversation'),
           project_id: readString(tokens, 'project'),
           ...(tokens.options.has('new-session') ? { new_session: true } : {}),
+          executor_name: readString(tokens, 'executor') ?? detectedExecutor,
         });
         return {
           kind: 'tool-call',
@@ -532,9 +539,11 @@ function parseCommand(command: string, tokens: ParsedTokens, readTextFile: ReadC
 export function parseCliInvocation(
   argv: readonly string[],
   readTextFile: ReadCliTextFile = readCliTextFile,
+  /** 从环境认出的外部 Agent 名称；`--executor` 显式给出时以显式的为准。 */
+  detectedExecutor?: string,
 ): LinnyaCliInvocation {
   // pnpm run script -- ... 与直接调用共享同一入口；仅移除命令前的分隔符。
-  if (argv[0] === '--') return parseCliInvocation(argv.slice(1), readTextFile);
+  if (argv[0] === '--') return parseCliInvocation(argv.slice(1), readTextFile, detectedExecutor);
   if (argv.length === 0) return { kind: 'help' };
   if (argv[0] === '--help' || argv[0] === '-h') return { kind: 'help' };
   if (argv[0] === '--version' || argv[0] === '-v' || argv[0] === 'version') {
@@ -544,7 +553,7 @@ export function parseCliInvocation(
   const command = argv[0];
   const tokens = parseTokens(argv.slice(1));
   if (command === 'help' || readBoolean(tokens, 'help')) return { kind: 'help' };
-  const invocation = parseCommand(command, tokens, readTextFile);
+  const invocation = parseCommand(command, tokens, readTextFile, detectedExecutor);
   // 最终再走顶层 union，防止各命令构造器与 wire 合同发生漂移。
   if (
     invocation.kind === 'command'

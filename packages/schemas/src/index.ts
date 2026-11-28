@@ -139,6 +139,7 @@ export * from './conversation/execution-notice';
 export * from './conversation/presentation';
 export * from './conversation/tool-message';
 export * from './conversation/summary-message';
+export * from './conversation/external-sender';
 export * from './conversation/message-metadata';
 
 // ============ Conversation CLI / App Host 控制面合同 ============

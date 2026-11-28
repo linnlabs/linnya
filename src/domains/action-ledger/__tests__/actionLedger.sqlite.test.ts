@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ACTION_LEDGER_SCHEMAS } from '../infrastructure/sqlite/actionLedger.schema';
 import { createSqliteActionLedger } from '../infrastructure/sqlite/createSqliteActionLedger';
 import { resolveToolRunActor } from '../functions/resolveToolRunActor';
-import type { ActionRunActor } from '../definitions/actionLedger';
+import type { ActionActor, ActionRunActor } from '../definitions/actionLedger';
 
 const databases: Database.Database[] = [];
 
@@ -48,8 +48,8 @@ describe('行动账本', () => {
   it('运行执行者的 Agent 由账本从运行记录查出；运行被删除后账本仍保留 Agent', () => {
     const db = createDb();
     db.exec(`ALTER TABLE workspace_nodes ADD COLUMN deleted_at INTEGER;
-      CREATE TABLE runs (id TEXT PRIMARY KEY, agent_spec_id TEXT);
-      INSERT INTO runs VALUES ('run-1', 'research_v1'), ('run-1-child', 'research_source_review_v1');`);
+      CREATE TABLE runs (id TEXT PRIMARY KEY, agent_spec_id TEXT, metadata_json TEXT);
+      INSERT INTO runs (id, agent_spec_id) VALUES ('run-1', 'research_v1'), ('run-1-child', 'research_source_review_v1');`);
     const ledger = createSqliteActionLedger(db, { now: clock() });
     ledger.recorderFor(rootRun, 'coarse').record({ projectId: 'p1', documentId: 'doc-a', documentType: 'document', action: 'create' });
     ledger.recorderFor(childRun, 'coarse').record({ projectId: 'p1', documentId: 'doc-b', documentType: 'document', action: 'update' });
@@ -68,6 +68,53 @@ describe('行动账本', () => {
     expect(summary?.last).toMatchObject({ agentId: null, rootAgentId: null });
     expect(ledger.summarizeProjectDocuments('p1').find(item => item.documentId === 'doc-b')?.last)
       .toMatchObject({ actorKind: 'subrun', rootAgentId: 'research_v1' });
+  });
+
+  it('两个外部 Agent 先后经命令行改同一份文档：账本分得清各自改的那一次；名称随登记保存，对话删除后仍在', () => {
+    const db = createDb();
+    db.exec(`ALTER TABLE workspace_nodes ADD COLUMN deleted_at INTEGER;
+      CREATE TABLE runs (id TEXT PRIMARY KEY, agent_spec_id TEXT, metadata_json TEXT);`);
+    const insertRun = db.prepare('INSERT INTO runs (id, agent_spec_id, metadata_json) VALUES (?, ?, ?)');
+    // 无模型的命令行工具运行没有 Agent；发件人由对话流程在接纳时记在运行上。
+    insertRun.run('cli-1', null, JSON.stringify({ lane: 'foreground', externalSender: { entry: 'linnya_cli', name: 'Claude Code' } }));
+    insertRun.run('cli-2', null, JSON.stringify({ lane: 'foreground', externalSender: { entry: 'linnya_cli', name: 'Codex' } }));
+    // 没报名称的外部调用。
+    insertRun.run('cli-3', null, JSON.stringify({ lane: 'foreground', externalSender: { entry: 'linnya_cli' } }));
+    // 外部发消息让 Linnya Agent 改：执行者是 Agent，发起人另记。
+    insertRun.run('send-1', 'default', JSON.stringify({ lane: 'foreground', externalSender: { entry: 'linnya_cli', name: 'Codex' } }));
+    // 用户自己在界面发起的运行。
+    insertRun.run('ui-1', 'default', JSON.stringify({ lane: 'foreground' }));
+
+    const ledger = createSqliteActionLedger(db, { now: clock() });
+    const external = (runId: string): ActionActor => ({
+      kind: 'external',
+      run: { kind: 'run', runId, rootRunId: runId, parentRunId: null, conversationId: 'conv-cli', toolCallId: `call-${runId}` },
+    });
+    const run = (runId: string): ActionRunActor => (
+      { kind: 'run', runId, rootRunId: runId, parentRunId: null, conversationId: 'conv-1', toolCallId: `call-${runId}` }
+    );
+    const entry = { projectId: 'p1', documentId: 'doc-a', documentType: 'slides', action: 'update' } as const;
+    ledger.recorderFor(external('cli-1'), 'coarse').record({ ...entry, action: 'create' });
+    ledger.recorderFor(external('cli-2'), 'coarse').record(entry);
+    ledger.recorderFor(external('cli-3'), 'coarse').record(entry);
+    ledger.recorderFor(run('send-1'), 'coarse').record(entry);
+    ledger.recorderFor(run('ui-1'), 'coarse').record(entry);
+    // 入口只证明来自命令行、没有落到任何运行上的写入。
+    ledger.recorderFor({ kind: 'external' }, 'coarse').record(entry);
+    db.exec('DELETE FROM runs');
+
+    const changes = ledger.listDocumentChanges({ projectId: 'p1', limit: 10 }).changes;
+    expect(changes.map(change => [change.actorKind, change.runId, change.externalExecutor])).toEqual([
+      ['external', null, null],
+      ['run', 'ui-1', null],
+      ['run', 'send-1', 'Codex'],
+      ['external', 'cli-3', null],
+      ['external', 'cli-2', 'Codex'],
+      ['external', 'cli-1', 'Claude Code'],
+    ]);
+    const summary = ledger.summarizeProjectDocuments('p1').find(item => item.documentId === 'doc-a');
+    expect(summary?.creator).toMatchObject({ actorKind: 'external', externalExecutor: 'Claude Code' });
+    expect(summary?.last).toMatchObject({ actorKind: 'external', externalExecutor: null });
   });
 
   it('没有运行表的装配里 Agent 记为空', () => {

@@ -28,6 +28,7 @@ export function projectUserInputEvent(
       user_quote: event.metadata?.user_quote,
       activity: event.metadata?.activity,
       extension: event.metadata?.extension,
+      sender: event.metadata?.sender,
       delivery: event.delivery,
       ui: event.metadata?.ui,
       turn_id: event.turn_id,

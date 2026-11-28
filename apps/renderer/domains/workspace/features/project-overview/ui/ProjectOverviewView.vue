@@ -1019,21 +1019,28 @@ function actorText(
   pluginId: string | null,
   agentId: string | null,
   rootAgent: ProjectOverviewRootAgent | null,
+  externalExecutor: string | null,
 ): string {
   if (actor === null) return '';
   return formatProjectOverviewActor(actor, {
     pluginName: pluginId ? props.presentation.pluginName(pluginId) : null,
     agentName: props.presentation.agentName(agentId),
     rootAgentName: rootAgent ? props.presentation.agentName(rootAgent.agentId) : null,
+    externalExecutor,
   }, workspaceMessage);
 }
 
 function creatorActorText(row: ProjectOverviewRow): string {
-  return actorText(row.creatorActor, row.creatorPluginId, row.creatorAgentId, row.creatorRootAgent);
+  return actorText(
+    row.creatorActor, row.creatorPluginId, row.creatorAgentId, row.creatorRootAgent, row.creatorExternalExecutor,
+  );
 }
 
 function modifiedActorText(row: ProjectOverviewRow): string {
-  return actorText(row.lastModifiedActor, row.lastModifiedPluginId, row.lastModifiedAgentId, row.lastModifiedRootAgent);
+  return actorText(
+    row.lastModifiedActor, row.lastModifiedPluginId, row.lastModifiedAgentId, row.lastModifiedRootAgent,
+    row.lastModifiedExternalExecutor,
+  );
 }
 
 function conversationText(row: ProjectOverviewRow): string {

@@ -35,17 +35,26 @@ export function resolveProjectConversationActorName(
  * 名字由调用方查好：插件从插件注册表查，查不到时统称“插件”；主运行的 Agent 见 `resolveProjectOverviewAgentName`。
  * 子运行显示为发起它的 Agent 的子任务（`rootAgentName`，同样按 Agent 显示名规则查）：子 Agent 是 Agent 内部的协作，
  * 没有面向用户的名字。查不回发起者的历史记录为 null，只显示“子任务”。
+ * 经命令行的改动：调用方报了名称就显示“名称 · CLI”，没报沿用入口名 Linnya CLI。
  */
 export function formatProjectOverviewActor(
   actor: ProjectOverviewActor,
-  names: { readonly pluginName: string | null; readonly agentName: string; readonly rootAgentName: string | null },
+  names: {
+    readonly pluginName: string | null;
+    readonly agentName: string;
+    readonly rootAgentName: string | null;
+    readonly externalExecutor: string | null;
+  },
   message: WorkspaceMessageResolver,
 ): string {
   switch (actor) {
     case 'run': return names.agentName;
     case 'subrun': return formatSubrunActorLabel(names.rootAgentName, message);
     case 'user': return message('workspace.projectOverview.actor.user');
-    case 'external': return message('workspace.projectOverview.actor.external');
+    // 名称是调用方自报的，后面带上入口，免得被当成 Linnya 自己的 Agent。
+    case 'external': return names.externalExecutor
+      ? message('workspace.projectOverview.actor.externalNamed', { name: names.externalExecutor })
+      : message('workspace.projectOverview.actor.external');
     case 'plugin': return names.pluginName ?? message('workspace.projectOverview.actor.plugin');
   }
 }

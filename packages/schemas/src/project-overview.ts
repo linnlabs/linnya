@@ -17,12 +17,16 @@ export const ProjectOverviewRequestSchema = z.object({
  * 改动是谁做的，与行动账本的执行者种类一致。`run` 是 Agent 主运行，具体是哪个 Agent 见同级的 `agent_id`；
  * `subrun` 是 Agent 派出的子任务（子 Agent 没有面向用户的名字，界面按同级的 `root_agent` 显示为“XX 的子任务”，不知道发起者时为“子任务”）；
  * `external` 是经外部控制入口（Linnya CLI）写入的改动，分不出调用方是人、脚本还是外部 Agent；
+ * 调用方自报了名称时同级的 `external_executor` 给出它，只用于显示，Linnya 核实不了；
  * `plugin` 是插件的后台自动化。只有账本能说明的才给，说不清时为 null。
  */
 export const ProjectOverviewActorSchema = z.enum(['run', 'subrun', 'user', 'external', 'plugin']);
 
 /** 执行的 Agent（注册表 ID），按 `toReadModelAgentId` 的约定：默认 Agent 为 null；`actor` 不是运行时也为 null。 */
 const ProjectOverviewAgentIdSchema = z.string().min(1).nullable();
+
+/** 外部调用方自报的名称；只对 `external` 给出，没报时为 null。 */
+const ProjectOverviewExternalExecutorSchema = z.string().min(1).nullable();
 
 export const ProjectOverviewDocumentSchema = z.object({
   document_id: z.string().min(1),
@@ -40,6 +44,7 @@ export const ProjectOverviewDocumentSchema = z.object({
     agent_id: ProjectOverviewAgentIdSchema,
     /** 子任务由哪个 Agent 发起，按 `toReadModelRootAgent` 的约定：只对 `subrun` 给出，不知道时为 null。 */
     root_agent: ReadModelRootAgentSchema.nullable(),
+    external_executor: ProjectOverviewExternalExecutorSchema,
     /** 新建它的对话；不是在对话里新建的、或对话已不属于本项目时为 null。 */
     conversation_id: z.string().min(1).nullable(),
     conversation_title: z.string().nullable(),
@@ -52,6 +57,7 @@ export const ProjectOverviewDocumentSchema = z.object({
     plugin_id: z.string().min(1).nullable(),
     agent_id: ProjectOverviewAgentIdSchema,
     root_agent: ReadModelRootAgentSchema.nullable(),
+    external_executor: ProjectOverviewExternalExecutorSchema,
   }).strict().nullable(),
   /** 只对有待审阅修订的文档类型（内建 Markdown）给出；其他类型为 null。 */
   pending_revision_count: z.number().int().nonnegative().nullable(),

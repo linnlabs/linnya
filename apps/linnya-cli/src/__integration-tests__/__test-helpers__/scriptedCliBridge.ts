@@ -12,6 +12,8 @@ import {
   type ConversationControlInstance,
 } from '@app/schemas';
 
+import { AGENT_ENVIRONMENT_VARIABLES } from '../../functions/detectCliExecutor';
+
 const repoRoot = path.resolve(import.meta.dirname, '../../../../..');
 const bundleMode = process.env.LINNYA_CLI_TEST_ENTRY === 'bundle';
 const cliEntry = path.join(repoRoot, bundleMode ? 'apps/linnya-cli/bin/linnya.cjs' : 'apps/linnya-cli/src/main.ts');
@@ -61,7 +63,7 @@ export async function createScriptedBridge(
         await readJsonRequest(request);
         sendJson(response, 200, {
           schema_version: 1,
-          protocol_version: 9,
+          protocol_version: 10,
           app_instance_id: 'app-process-test',
           app_version: '0.0.38',
           instance,
@@ -103,7 +105,7 @@ export async function createScriptedBridge(
   temporaryRoots.push(temporaryRoot);
   const connectionFile = path.join(temporaryRoot, 'connection.json');
   const descriptor = ConversationControlConnectionDescriptorSchema.parse({
-    protocol_version: 9,
+    protocol_version: 10,
     app_instance_id: 'app-process-test',
     pid: process.pid,
     host: '127.0.0.1',
@@ -119,12 +121,19 @@ export async function createScriptedBridge(
 export function runCliProcess(
   args: readonly string[],
   connectionFile: string,
+  agentEnvironment: Readonly<Record<string, string>> = {},
 ): Promise<{ readonly exitCode: number | null; readonly stdout: string; readonly stderr: string }> {
+  // 测试本身常由 Claude Code、Codex 这类 Agent 启动，子进程会继承它们的环境标记，
+  // 命令行就会自动带上执行者名称；先去掉，用例要验证识别时再显式传入，结果才不随启动方变化。
+  const inheritedEnvironment = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !AGENT_ENVIRONMENT_VARIABLES.includes(name)),
+  );
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [...(bundleMode ? [] : ['--import', 'tsx']), cliEntry, ...args], {
       cwd: repoRoot,
       env: {
-        ...process.env,
+        ...inheritedEnvironment,
+        ...agentEnvironment,
         [CONVERSATION_CONTROL_CONNECTION_FILE_ENV]: connectionFile,
       },
       stdio: ['ignore', 'pipe', 'pipe'],

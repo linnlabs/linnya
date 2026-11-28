@@ -873,6 +873,26 @@ describe('conversation-control use case', () => {
     expect(test.cliSessionWrites.map(write => write.conversationId)).toEqual(['cli-a', 'cli-b', 'cli-c', 'cli-d']);
   });
 
+  it('发消息和直接调用工具都把“经命令行进来、调用方自报是谁”记在这条用户消息上；没报名称时只记入口', async () => {
+    const test = fixture([], { conversationIds: ['cli-a', 'cli-b'] });
+    const call = { schema_version: 1, command: 'tools', action: 'call', tool_name: 'write_file',
+      args: { locator: 'workspace:/notes.md', content: '# Notes' }, project_id: 'project-1', new_session: true } as const;
+    await test.useCase.tools({ ...call, executor_name: 'Claude Code' });
+    test.setRuns([]);
+    await test.useCase.tools(call);
+    test.setRuns([]);
+    await test.useCase.send({ schema_version: 1, command: 'send', message: '把第二页改短', executor_name: 'Codex' });
+    test.setRuns([]);
+    await test.useCase.send({ schema_version: 1, command: 'send', message: '再检查一遍' });
+
+    expect(test.startRequests.map(request => request.new_events?.[0]?.metadata)).toEqual([
+      { sender: { entry: 'linnya_cli', name: 'Claude Code' } },
+      { sender: { entry: 'linnya_cli' } },
+      { sender: { entry: 'linnya_cli', name: 'Codex' } },
+      { sender: { entry: 'linnya_cli' } },
+    ]);
+  });
+
   it('一个聊天模型都没配置时：直接读写文档照常接纳，发消息给 Linnya 的 Agent 说明原因和出路', async () => {
     const test = fixture([], { noChatModels: true });
     await test.useCase.tools({ schema_version: 1, command: 'tools', action: 'call', tool_name: 'write_file',
